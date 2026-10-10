@@ -132,6 +132,9 @@ Settings screen. Pokémon, move and item names and the GUIDE pages stay as the g
 - **Aspect**: the GBA's own 3:2, or stretched to fill a 16:9 top screen (Settings shows a preview of both).
 - **Shaders** (optional): an LCD grid (plain or on paper), scanlines or a CRT look, and the colours as the GBA's own screen
   showed them - on the game and, if you like, the companion screen too.
+- **Overlays** (optional, Settings > OVERLAY): a frame around the game - two of PokeDaisy's own, or your
+  own RetroArch overlays (a `.cfg` with its PNG, a `.zip` of them, or any PNG with a see-through screen).
+  None come bundled: bring the ones you already use. Pick them from either screen.
 - **Controls**: remap every GBA button and hotkey, or turn hotkeys off. X and Y
   are a second START and SELECT, like the menu and registered-item buttons in the
   DS games. **TURBO A** and **TURBO B** can go on any button (GAME BUTTONS): held, they

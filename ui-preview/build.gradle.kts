@@ -11,7 +11,7 @@ val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
 val appIncludes = listOf(
     "companion/ui/**", "SettingsActivity.kt", "LibraryActivity.kt", "SavesLocation.kt",
     "CoverArtSync.kt", "CoverSync.kt", "RomFolder.kt", "StorageAccess.kt", "SetupScreen.kt", "AppUpdater.kt", "AppUpdate.kt", "GameSaves.kt", "SaveBackups.kt", "GameInfo.kt", "RomSupportRequest.kt", "RomIntake.kt", "BestEffortShare.kt", "SaveStates.kt", "RomIdentity.kt", "RomArchive.kt", "CompanionSupport.kt", "CoverPicker.kt", "SteamGridDbGames.kt", "SteamGridDbClient.kt", "GameTitles.kt",
-    "achievements/**",
+    "achievements/**", "overlay/Overlays.kt", "overlay/OverlayLabels.kt",
 )
 
 // Copied (not referenced in place) so the few Android-only APIs desktop

@@ -39,6 +39,15 @@ import com.pokedaisy.app.Hotkeys
 import com.pokedaisy.app.LibraryActivity
 import com.pokedaisy.app.Prefs
 import com.pokedaisy.app.SettingsActivity
+import com.pokedaisy.app.overlay.BuiltInFrames
+import com.pokedaisy.app.overlay.Box
+import com.pokedaisy.app.overlay.OverlayChoice
+import com.pokedaisy.app.overlay.OverlayGeometry
+import com.pokedaisy.app.overlay.OverlayStore
+import com.pokedaisy.app.overlay.OverlayWindow
+import com.pokedaisy.app.overlay.Sprite
+import androidx.compose.ui.graphics.toArgb
+import androidx.compose.ui.graphics.toComposeImageBitmap
 import com.pokedaisy.app.SetupState
 import com.pokedaisy.app.companion.CompanionSettings
 import com.pokedaisy.app.companion.BattleInput
@@ -165,6 +174,10 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     private var grid = com.pokedaisy.app.companion.GridStrength.MEDIUM
     override val gridStrength get() = grid
     override fun setGridStrength(strength: com.pokedaisy.app.companion.GridStrength) { grid = strength }
+    private var overlayKey = ""
+    override val overlayChoices get() = listOf("" to "NONE", "builtin:DAISY" to "DAISY", "builtin:BEZEL" to "BEZEL", "user:wood-frame" to "WOOD FRAME")
+    override val overlay get() = overlayKey
+    override fun setOverlay(key: String) { overlayKey = key }
     private var onCompanion = true
     override val companionShaders get() = onCompanion
     override fun setCompanionShaders(on: Boolean) { onCompanion = on }
@@ -813,6 +826,10 @@ fun main(args: Array<String>) {
             onNodeWithText("SHADERS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
             onNodeWithText("FILTER").performClick()
         },
+        // OVERLAY: its pick-list (NONE, the built-in frames, an import).
+        Shot("$g-settings-overlay", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText("OVERLAY").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
         Shot("$g-settings-cheats", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("CHEATS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
         Shot("$g-settings-tabs", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("TAB BAR").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
         Shot("$g-settings-tabs-states", bw, bh, bd, companion("SETTINGS")) {
@@ -1026,6 +1043,24 @@ fun main(args: Array<String>) {
             onNodeWithText("FILTER").performClick()
         },
         Shot("settings-swap", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("SWAP SCREENS").performScrollTo() },
+        // OVERLAY: its page with one import (DAISY picked), then REMOVE's mode.
+        Shot("settings-overlay", tw, th, td, activity { withOverlays { SettingsActivity() } }) {
+            onNodeWithText("OVERLAY").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("settings-overlay-remove", tw, th, td, activity { withOverlays { SettingsActivity() } }) {
+            onNodeWithText("OVERLAY").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText("REMOVE").performClick()
+        },
+        // The top screen with each overlay around a stand-in game, placed as EmulatorView places them.
+        Shot("overlay-daisy", tw, th, 1f, overlayView(OverlayChoice.BuiltIn(BuiltInFrames.Style.DAISY), tw, th)),
+        Shot("overlay-bezel", tw, th, 1f, overlayView(OverlayChoice.BuiltIn(BuiltInFrames.Style.BEZEL), tw, th)),
+        Shot("overlay-daisy-gb", tw, th, 1f, overlayView(OverlayChoice.BuiltIn(BuiltInFrames.Style.DAISY), tw, th, gameW = 160, gameH = 144)),
+        // A single screen with the companion's panel locked beside the game (half the screen).
+        Shot("overlay-daisy-docked", 960, th, 1f, overlayView(OverlayChoice.BuiltIn(BuiltInFrames.Style.DAISY), 960, th)),
+        Shot("overlay-daisy-4x3", 1024, 768, 1f, overlayView(OverlayChoice.BuiltIn(BuiltInFrames.Style.DAISY), 1024, 768)),
+        // An import with no viewport in its .cfg: the window found from its alpha.
+        Shot("overlay-imported", tw, th, 1f, overlayView(OverlayChoice.Imported("wood-frame"), tw, th)),
+        Shot("overlay-imported-stretch", tw, th, 1f, overlayView(OverlayChoice.Imported("wood-frame"), tw, th, stretch = true)),
         Shot("settings-theme", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("THEME").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
         // THEME > FIRERED: the look before PokéDaisy became the default (the stripes, the game's OPTION windows).
         Shot("library-firered-theme", tw, th, td, activity {
@@ -1128,4 +1163,86 @@ fun main(args: Array<String>) {
         }
     }
     System.exit(if (failed > 0) 1 else 0)
+}
+
+
+/** A RetroArch-style overlay of our own drawing (a wooden picture frame, 1920x1080, its window see-through and
+ * off-centre), imported through OverlayStore with a .cfg that gives no viewport - so its window is found from alpha. */
+fun sampleOverlay(): OverlayStore {
+    val store = OverlayStore(android.content.Context().filesDir)
+    if (store.get("wood-frame") != null) return store
+    val img = java.awt.image.BufferedImage(1920, 1080, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+    val g = img.createGraphics()
+    g.paint = java.awt.GradientPaint(0f, 0f, java.awt.Color(0x8B5A2B), 1920f, 1080f, java.awt.Color(0x5C3A1A))
+    g.fillRect(0, 0, 1920, 1080)
+    g.color = java.awt.Color(0x3A220E)
+    g.fillRoundRect(330, 70, 1280, 880, 40, 40)
+    g.composite = java.awt.AlphaComposite.Clear
+    g.fillRoundRect(350, 90, 1240, 840, 24, 24)
+    g.dispose()
+    val png = java.io.ByteArrayOutputStream().also { ImageIO.write(img, "png", it) }.toByteArray()
+    val cfg = "overlays = 1\noverlay0_overlay = \"img/wood frame.png\"\noverlay0_full_screen = true\n"
+    store.import(listOf(OverlayStore.Picked("wood_frame.cfg", cfg.toByteArray()), OverlayStore.Picked("wood frame.png", png)))
+    return store
+}
+
+/** Settings with [sampleOverlay] imported and DAISY picked. */
+fun withOverlays(make: () -> androidx.activity.ComponentActivity): androidx.activity.ComponentActivity {
+    sampleOverlay()
+    Prefs(android.content.Context()).overlay = OverlayChoice.BuiltIn(BuiltInFrames.Style.DAISY).key
+    return make()
+}
+
+/** A stand-in for the game: colour bands and an 8-pixel grid, so the scale and edges show. */
+private fun standInGame(w: Int, h: Int): IntArray = IntArray(w * h) { i ->
+    val x = i % w
+    val y = i / w
+    val band = intArrayOf(0x58A8F8, 0x88D0F8, 0x70C850, 0x50A030, 0xD8B070)[minOf(4, y * 5 / h)]
+    val grid = if (x % 8 == 0 || y % 8 == 0) 0x202020 else band
+    (0xFF shl 24) or if ((x / 16 + y / 16) % 7 == 0) 0xF8F8F8 else grid
+}
+
+private fun bitmapOf(argb: IntArray, w: Int, h: Int): androidx.compose.ui.graphics.ImageBitmap {
+    val img = java.awt.image.BufferedImage(w, h, java.awt.image.BufferedImage.TYPE_INT_ARGB)
+    img.setRGB(0, 0, w, h, argb, 0, w)
+    return img.toComposeImageBitmap()
+}
+
+/** The top screen ([viewW] x [viewH]) with [choice] around a [gameW] x [gameH] stand-in game: the same frame /
+ * decode / window / placement steps as EmulatorView + OverlayBitmaps, drawn with Compose instead of GL. */
+fun overlayView(
+    choice: OverlayChoice, viewW: Int, viewH: Int, gameW: Int = 240, gameH: Int = 160, stretch: Boolean = false,
+): () -> (@Composable () -> Unit) = {
+    val game = bitmapOf(standInGame(gameW, gameH), gameW, gameH)
+    val (art, window, scale) = when (choice) {
+        is OverlayChoice.BuiltIn -> {
+            val logo = Sprite(com.pokedaisy.app.companion.ui.LOGO_ROWS, com.pokedaisy.app.companion.ui.LOGO_PALETTE.mapValues { it.value.toArgb() })
+            val f = BuiltInFrames.render(choice.style, viewW, viewH, gameW, gameH, logo)
+            Triple(bitmapOf(f.argb, f.w, f.h), f.window, f.scale)
+        }
+        is OverlayChoice.Imported -> {
+            val layer = sampleOverlay().get(choice.id)!!.layerFor(viewW.toFloat() / viewH)!!
+            val img = ImageIO.read(layer.file)
+            val px = img.getRGB(0, 0, img.width, img.height, null, 0, img.width)
+            Triple(img.toComposeImageBitmap(), layer.viewport ?: OverlayWindow.find(px, img.width, img.height), 0)
+        }
+        OverlayChoice.None -> error("no overlay")
+    }
+    val p = OverlayGeometry.layout(viewW, viewH, art.width, art.height, window, gameW, gameH, stretch, scale)
+    println("overlay ${choice.key}: window=$window scale=$scale game=${p.game} overlay=${p.overlay}")
+    val content: @Composable () -> Unit = {
+        androidx.compose.foundation.Canvas(androidx.compose.ui.Modifier.fillMaxSize()) {
+            drawRect(androidx.compose.ui.graphics.Color.Black)
+            fun androidx.compose.ui.graphics.drawscope.DrawScope.box(img: androidx.compose.ui.graphics.ImageBitmap, b: Box, smooth: Boolean) =
+                drawImage(
+                    img, dstOffset = androidx.compose.ui.unit.IntOffset(b.x.toInt(), b.y.toInt()),
+                    dstSize = androidx.compose.ui.unit.IntSize(b.w.toInt(), b.h.toInt()),
+                    filterQuality = if (smooth) androidx.compose.ui.graphics.FilterQuality.Medium else androidx.compose.ui.graphics.FilterQuality.None,
+                )
+            if (!p.onTop) box(art, p.overlay, scale == 0)
+            box(game, p.game, false)
+            if (p.onTop) box(art, p.overlay, scale == 0)
+        }
+    }
+    content
 }

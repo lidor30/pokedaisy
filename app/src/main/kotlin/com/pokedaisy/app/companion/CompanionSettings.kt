@@ -117,6 +117,12 @@ interface CompanionSettings {
     val stretchGame: Boolean
     fun setStretchGame(on: Boolean)
 
+    /** SCREEN > OVERLAY's choices, as (key, label) - see [com.pokedaisy.app.Prefs.overlay]; empty = no row (no game).
+     * Imported in the top screen's Settings (a file picker); picked here, live. */
+    val overlayChoices: List<Pair<String, String>> get() = emptyList()
+    val overlay: String get() = ""
+    fun setOverlay(key: String) {}
+
     /** The GBA LCD's colours on the game - see [Prefs.gbaColors]. */
     val gbaColors: Boolean
     fun setGbaColors(on: Boolean)

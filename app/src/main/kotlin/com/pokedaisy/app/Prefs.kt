@@ -171,6 +171,12 @@ class Prefs(context: Context) {
         get() = p.getBoolean("stretch_game", false)
         set(v) = p.edit().putBoolean("stretch_game", v).apply()
 
+    /** SCREEN > OVERLAY: the frame around the game, an [com.pokedaisy.app.overlay.OverlayChoice.key] - "" (none, the
+     * default), a built-in frame ("builtin:DAISY") or an imported overlay ("user:<its folder>"). */
+    var overlay: String
+        get() = p.getString("overlay", null) ?: ""
+        set(v) = p.edit().putString("overlay", v).apply()
+
     /** Whether the game's colours are shown as the GBA's own LCD showed them ([ScreenShaders.GBA_COLOR]). */
     var gbaColors: Boolean
         get() = p.getBoolean("gba_colors", false)

@@ -418,6 +418,13 @@ ending in CLOSE GAME / RESTART GAME (under a `Separator`). The top-screen Settin
 `GroupedRows` / `SettingRow` (`companion/ui/SettingRows.kt`), with its own groups (FAST-FORWARD / CONTROLS /
 SCREEN / LIBRARY / ONLINE / APP). Sub-pages and pick-lists get the title window's back arrow (`onBack`). TOOLS (every tab not in the tab bar) sit under the list as `TabChip`s in
 the bar's own columns (`barChips`wide, the gear's gap at the end), a second row of tabs only SETTINGS has.
+**OVERLAY** (SCREEN group on both screens, `Prefs.overlay`; `overlay/Overlays.kt` + `OverlayBitmaps.kt`, drawn by
+`EmulatorView`): a frame around the game. Two built-in frames of our own (DAISY / BEZEL, drawn at the game's pixel size,
+shown at a whole scale) plus the player's imported RetroArch overlays (.cfg + PNG, .zip, bare PNG; window = the .cfg's
+viewport or the PNG's see-through middle) under `<external files>/overlays/`. **No third-party overlay is ever bundled,
+linked file by file or shown in our screenshots** (the user's rule: the usual console borders carry the console maker's
+logo and shell). Imports happen on the top screen (file picker); the companion only picks. See docs/DEVELOPMENT.md's
+"Overlays".
 **FF steps aside on the game's region map** (SMART only):`RegionMapWatch`finds the map screens' EWRAM
 pointers per ROM (FireRed family:`sRegionMap` `0x020399D4`, found beside its `0x4796`struct
 offset in the literal pools - Town Map, Fly map, wall maps; retail/QoL Emerald:`sFieldRegionMapHandler`+`sFlyMap`+ the PokéNav's HOENN MAP - Emerald has no Town Map item -

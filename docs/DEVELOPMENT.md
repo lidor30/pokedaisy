@@ -752,6 +752,50 @@ ON, imported ones OFF. `Prefs.cheatsEnabled` is the master switch (off by defaul
 - **Savestates** don't carry cheats (`SAVESTATE_CHEATS` isn't in the flags); a state made with a
   cheat on does carry the memory it wrote, like any emulator.
 
+## Overlays
+
+SCREEN > OVERLAY (both screens' Settings; `Prefs.overlay`, a `OverlayChoice.key`: `""` none - the
+default -, `builtin:DAISY` / `builtin:BEZEL`, `user:<folder>`) draws a frame around the game on the top
+screen. The code is `overlay/Overlays.kt` (plain Kotlin: parsing, the window finder, placement, the
+built-in frames, storage + import - ui-preview compiles it, `OverlaysTest` covers it),
+`overlay/OverlayBitmaps.kt` (decoding) and `EmulatorView` (drawing).
+
+- **Nothing third-party is bundled**: the common console borders show the console maker's logo and
+  shell, so the app ships only its own two frames and players import what they already have. Docs
+  and the site may point at libretro's overlay collections in general, never at a branded file, and
+  screenshots only ever show the built-in frames.
+- **Built-in frames** (`BuiltInFrames`): DAISY (the launcher icon's blue, the website's dot grid, a dark
+  screen surround, the PokeDaisy mark in the left margin) and BEZEL (plain charcoal). Drawn at the game's
+  own pixel size for the view they're shown on and drawn at a whole-number scale (`scaleFor`: the
+  largest that leaves 8 frame pixels at the sides, 4 above and below - 6x on the Thor's 1920x1080,
+  7x for a Game Boy), so they're as crisp as the game; the game loses a little size (6x instead of 6.75x).
+- **Imports** (top-screen Settings > OVERLAY > IMPORT FILE, several files at once): RetroArch's overlay
+  `.cfg` (`overlays = N`, `overlayK_overlay` = its image, `overlayK_viewport` = "x,y,w,h" in 0..1
+  where the game goes; touch-button entries ignored), a `.zip` of those (images found by their path
+  inside it, `__MACOSX` / dot files skipped, 96 MB unpacked at most, 64 overlays per import) and bare PNGs.
+  A `.cfg`'s image is looked for among the picked files, then beside its real path (with All files
+  access), else the page asks for it (PICK THE IMAGE). Each overlay becomes a folder under
+  `<external files>/overlays/` - its PNGs renamed `0.png`, `1.png`... and the `.cfg` rewritten to match,
+  plus `pokedaisy_name`. PNG only (its window is its alpha); nothing is decoded at import.
+- **The window**: the `.cfg`'s viewport, else `OverlayWindow.find` on the decoded image - the see-through
+  region (alpha < 128) around the centre, as a rectangle, if it's at least 4% of the image and fills 60%
+  of its box (Nosh's GBA bezel in libretro/overlay-borders has no viewport; it's what RetroArch users
+  set by hand). No window: the image is a background, drawn behind the game.
+- **Placement** (`OverlayGeometry.layout`): the image fitted to the view and centred, filling it when
+  their shapes are within 4% (a 16:9 border on 16:9), the game fitted inside the window at its own shape
+  (ASPECT > STRETCH fills the window instead). A pack's several overlays (landscape / portrait): the
+  one closest to the view's shape (`StoredOverlay.layerFor`). Imports are decoded at the smallest power-of-two
+  sample still at least the view's size (a 4K border is 1920x1080 on the Thor) and scaled smoothly; the built-in
+  frames are scaled nearest.
+- **Drawing** (`EmulatorView.FrameRenderer`): the overlay is a second texture, blended over the game
+  (premultiplied, `GL_ONE, GL_ONE_MINUS_SRC_ALPHA`) or drawn before it when it's a background; the game's
+  quad is its place in the window, so SHADERS' prescale and the companion's grid cell (`onGamePixel`)
+  follow the game's real size. With an overlay `GameStageLayout` gives the view all the room under the
+  status bar. Off on a phone held upright (`topAligned`), where the game is its own shape across the top.
+- **Previews**: `gradle render -Ponly=overlay` in ui-preview draws each built-in frame (Thor, Game Boy,
+  half-screen side panel, 4:3) and an import of a drawn wooden frame (window found from alpha) around a
+  stand-in game, with the same placement code; `settings-overlay*` / `*-settings-overlay` are the pages.
+
 ## Build
 
 ```bash

@@ -70,6 +70,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "STATUS BAR" to "clock time battery money location top bar",
     "ASPECT" to "stretch ratio fullscreen full screen size scale 3:2",
     "SHADERS" to "filter lcd crt scanlines grid gba colors color correction effects screen look",
+    "OVERLAY" to "overlay overlays border borders bezel bezels frame skin retroarch background wallpaper decoration",
     "COMPANION" to "portrait phone bottom position layout",
     "SWAP SCREENS" to "dual screen display switch top bottom",
     "THEME" to "colors look background skin style",

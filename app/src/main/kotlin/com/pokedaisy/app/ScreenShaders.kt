@@ -61,6 +61,14 @@ internal object ScreenShaders {
         }
     """.trimIndent()
 
+    /** SCREEN > OVERLAY's image, alpha and all (blended over the game: its window is see-through). */
+    val OVERLAY = """
+        $HEADER
+        void main() {
+            gl_FragColor = texture2D(uTex, vUv);
+        }
+    """.trimIndent()
+
     /**
      * SHADERS > GBA COLORS ([Prefs.gbaColors]): the colours as the GBA's own LCD showed
      * them - darker, less saturated, with the colour bleed the game's palettes were made for.

@@ -3,7 +3,14 @@ package com.pokedaisy.app
 import android.content.Context
 import android.opengl.GLES20
 import android.opengl.GLSurfaceView
+import android.opengl.GLUtils
 import android.util.Log
+import com.pokedaisy.app.overlay.BuiltInFrames
+import com.pokedaisy.app.overlay.Box
+import com.pokedaisy.app.overlay.OverlayBitmaps
+import com.pokedaisy.app.overlay.OverlayGeometry
+import com.pokedaisy.app.overlay.OverlayImage
+import com.pokedaisy.app.overlay.StoredOverlay
 import java.nio.ByteBuffer
 import java.nio.ByteOrder
 import java.nio.FloatBuffer
@@ -12,7 +19,8 @@ import javax.microedition.khronos.opengles.GL10
 
 /**
  * Draws the mGBA RGBA framebuffer as an aspect-fit (or, with [stretch], view-filling)
- * nearest-filtered quad, optionally through [gbaColors] and a screen effect.
+ * nearest-filtered quad, optionally through [gbaColors] and a screen effect, and an [overlay]
+ * around it (the game then sits in the overlay's window instead of the whole view).
  * Continuous render mode. The GL thread never reads the core's own buffer, which the emu
  * thread draws into line by line: each finished frame is copied out ([publishFrame]) and
  * that copy is what's uploaded. Uploading the live buffer showed a frame half drawn - the
@@ -44,13 +52,82 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
 
     private fun reportGamePixel() {
         if (frameW == 0 || width == 0 || height == 0) return
-        // As FrameRenderer.recomputeQuad: the game's height on screen, letterboxed or stretched.
-        val h = if (stretch) height.toFloat() else minOf(height.toFloat(), width * frameH.toFloat() / frameW)
+        // As FrameRenderer.recomputeQuad: the game's height on screen, letterboxed or stretched, or in the overlay.
+        val img = overlayImage
+        val h = when {
+            img != null -> placement(img, width, height, frameW, frameH, stretch).game.h
+            stretch -> height.toFloat()
+            else -> minOf(height.toFloat(), width * frameH.toFloat() / frameW)
+        }
         onGamePixel?.invoke(h / frameH)
     }
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
+        refreshOverlay()
+        reportGamePixel()
+    }
+
+    /** What SCREEN > OVERLAY draws around the game ([com.pokedaisy.app.Prefs.overlay]). */
+    sealed class OverlaySource {
+        data class BuiltIn(val style: BuiltInFrames.Style) : OverlaySource()
+        class Imported(val overlay: StoredOverlay) : OverlaySource() {
+            /** The same files as before: nothing to load again. */
+            private val key = overlay.layers.joinToString { "${it.file.path}:${it.file.lastModified()}" }
+            override fun equals(other: Any?) = other is Imported && other.key == key
+            override fun hashCode() = key.hashCode()
+        }
+    }
+
+    /** The overlay around the game; null = none. A built-in frame is drawn for the view's size on the spot, an
+     * imported one decoded off the UI thread (the last one stays up meanwhile). */
+    var overlay: OverlaySource? = null
+        set(v) {
+            if (field == v) return
+            field = v
+            refreshOverlay()
+        }
+
+    /** What the renderer has now (UI thread's copy, for [reportGamePixel]). */
+    private var overlayImage: OverlayImage? = null
+    /** Bumped by every [refreshOverlay]: a decode that finishes after a newer one started is dropped. */
+    private var overlayGen = 0
+    /** The imported image decoded last, by file + size, so a relayout at the same size doesn't decode it again. */
+    private var decodedKey: String? = null
+    private var decoded: OverlayImage? = null
+
+    private fun refreshOverlay() {
+        val src = overlay
+        val gen = ++overlayGen
+        if (src == null) return applyOverlay(null)
+        val w = width
+        val h = height
+        val fw = frameW
+        val fh = frameH
+        if (w == 0 || h == 0 || fw == 0) return  // again from onSizeChanged / bindCore
+        when (src) {
+            is OverlaySource.BuiltIn -> applyOverlay(OverlayBitmaps.builtIn(src.style, w, h, fw, fh))
+            is OverlaySource.Imported -> {
+                val layer = src.overlay.layerFor(w.toFloat() / h) ?: return applyOverlay(null)
+                val key = "${layer.file.path}:${layer.file.lastModified()}:${w}x$h"
+                if (key == decodedKey) return applyOverlay(decoded)
+                Thread {
+                    val img = runCatching { OverlayBitmaps.imported(layer, w, h) }
+                        .onFailure { Log.w("pokedaisy", "overlay: can't load ${layer.file}", it) }.getOrNull()
+                    post {
+                        if (gen != overlayGen) return@post
+                        decodedKey = key
+                        decoded = img
+                        applyOverlay(img)
+                    }
+                }.start()
+            }
+        }
+    }
+
+    private fun applyOverlay(img: OverlayImage?) {
+        overlayImage = img
+        renderer.setOverlay(img)
         reportGamePixel()
     }
 
@@ -117,7 +194,8 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
         renderer.bind(buffer, width, height)
         frameW = width
         frameH = height
-        post { reportGamePixel() }
+        // A built-in frame is drawn around the game's own size (a Game Boy's is smaller).
+        post { refreshOverlay(); reportGamePixel() }
     }
 
     /** Emu thread, right after a frame has run: hands the finished frame to the GL thread. */
@@ -157,6 +235,9 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
      *
      * Every texture keeps the frame's own row order (top row first), so `vUv.y` runs down the
      * game in every shader; only the pass onto the view flips it to GL's bottom-up.
+     *
+     * An overlay is drawn over the game (blended: its window is see-through) or, with no window,
+     * behind it; the game's quad is then its place in the overlay ([OverlayGeometry.layout]).
      */
     private class FrameRenderer : Renderer {
         /** The core's own frame buffer, read only by [publish] (the emu thread). */
@@ -175,6 +256,13 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
         private var effect: ScreenShaders.Effect? = null
         private var gridX = 0f
         private var gridY = 0f
+        private var overlay: OverlayImage? = null
+        private var overlayProgram: Program? = null
+        private var overlayTex = 0
+        /** [overlay]'s pixels are in [overlayTex] (a new overlay or a new GL context uploads them again). */
+        private var overlayUploaded = false
+        private var overlayPos: FloatBuffer? = null
+        private var overlayOnTop = true
 
         private var plain: Program? = null
         private var colorProgram: Program? = null
@@ -246,6 +334,12 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
 
         fun setGrid(x: Float, y: Float) = synchronized(lock) { gridX = x; gridY = y }
 
+        fun setOverlay(img: OverlayImage?) = synchronized(lock) {
+            overlay = img
+            overlayUploaded = false
+            dirtyGeometry = true
+        }
+
         /** Drops the buffer reference; [onDrawFrame] just clears until the next [bind]. */
         fun unbind() = synchronized(lock) {
             synchronized(frameLock) {
@@ -259,17 +353,22 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             GLES20.glClearColor(0f, 0f, 0f, 1f)
             plain = Program(ScreenShaders.PLAIN)
             colorProgram = Program(ScreenShaders.GBA_COLOR)
+            overlayProgram = Program(ScreenShaders.OVERLAY)
             effectProgram = null
             effectProgramFor = null
             colorTarget = RenderTarget()
             effectTarget = RenderTarget()
-            val ids = IntArray(1)
-            GLES20.glGenTextures(1, ids, 0)
+            val ids = IntArray(2)
+            GLES20.glGenTextures(2, ids, 0)
             texId = ids[0]
-            GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, texId)
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
-            GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+            overlayTex = ids[1]
+            for (t in ids) {
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, t)
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_S, GLES20.GL_CLAMP_TO_EDGE)
+                GLES20.glTexParameteri(GLES20.GL_TEXTURE_2D, GLES20.GL_TEXTURE_WRAP_T, GLES20.GL_CLAMP_TO_EDGE)
+            }
             texAllocated = false
+            overlayUploaded = false
         }
 
         override fun onSurfaceChanged(gl: GL10?, width: Int, height: Int) = synchronized(lock) {
@@ -322,6 +421,9 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
                 }
             }
 
+            // No window: the overlay is a background, under the game.
+            if (!overlayOnTop) drawOverlay()
+
             var input = texId
             var last = plain
             var smooth = false
@@ -347,6 +449,23 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)
             GLES20.glViewport(0, 0, surfaceW, surfaceH)
             drawQuad(last, input, viewUv, pos, smooth)
+            if (overlayOnTop) drawOverlay()
+        }
+
+        /** The overlay, if any, over what's drawn (premultiplied alpha, as Android's bitmaps are). */
+        private fun drawOverlay() {
+            val img = overlay ?: return
+            val program = overlayProgram ?: return
+            val quad = overlayPos ?: return
+            if (!overlayUploaded) {
+                GLES20.glBindTexture(GLES20.GL_TEXTURE_2D, overlayTex)
+                GLUtils.texImage2D(GLES20.GL_TEXTURE_2D, 0, img.bitmap, 0)
+                overlayUploaded = true
+            }
+            GLES20.glEnable(GLES20.GL_BLEND)
+            GLES20.glBlendFunc(GLES20.GL_ONE, GLES20.GL_ONE_MINUS_SRC_ALPHA)
+            drawQuad(program, overlayTex, viewUv, quad, img.smooth)
+            GLES20.glDisable(GLES20.GL_BLEND)
         }
 
         /** Draws [input] through [program] into all of [target]. */
@@ -387,6 +506,17 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
         }
 
         private fun recomputeQuad() {
+            val img = overlay
+            if (img != null) {
+                val p = placement(img, surfaceW, surfaceH, texW, texH, stretch)
+                pos = ndc(p.game)
+                overlayPos = ndc(p.overlay)
+                overlayOnTop = p.onTop
+                quadW = p.game.w
+                quadH = p.game.h
+                return
+            }
+            overlayOnTop = true
             val texAspect = texW.toFloat() / texH
             val surfAspect = surfaceW.toFloat() / surfaceH
             var sx = 1f
@@ -401,6 +531,15 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             pos = floats(-sx, -sy, sx, -sy, -sx, sy, sx, sy)
             quadW = sx * surfaceW
             quadH = sy * surfaceH
+        }
+
+        /** [b] (view pixels from the top-left) as the quad's corners in GL's clip space (bottom-up). */
+        private fun ndc(b: Box): FloatBuffer {
+            val l = b.x / surfaceW * 2f - 1f
+            val r = (b.x + b.w) / surfaceW * 2f - 1f
+            val t = 1f - b.y / surfaceH * 2f
+            val bt = 1f - (b.y + b.h) / surfaceH * 2f
+            return floats(l, bt, r, bt, l, t, r, t)
         }
 
         /** A linked shader program over the shared quad ([VERT] + a [ScreenShaders] fragment shader). */
@@ -496,3 +635,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
         }
     }
 }
+
+/** Where [img] and the game go on a [viewW] x [viewH] view - shared by the GL thread's quads and the UI thread's game-pixel size. */
+private fun placement(img: OverlayImage, viewW: Int, viewH: Int, gameW: Int, gameH: Int, stretch: Boolean) =
+    OverlayGeometry.layout(viewW, viewH, img.bitmap.width, img.bitmap.height, img.window, gameW, gameH, stretch, img.scale)
