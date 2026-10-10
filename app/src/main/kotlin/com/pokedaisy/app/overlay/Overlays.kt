@@ -195,7 +195,8 @@ object OverlayGeometry {
      * Places an [imgW] x [imgH] overlay on a [viewW] x [viewH] view and the [gameW] x [gameH] game in its [window]:
      * the overlay fitted to the view, centred (filling it when their shapes nearly match), or at exactly [scale] view
      * pixels per image pixel when that's set (the built-in frames, drawn at the game's own pixel size); the game fitted
-     * in the window at its own shape, or filling it with [stretch] (ASPECT > STRETCH). No window: the overlay is a
+     * in the window at its own shape (filling it when that's within a few percent), or filling it with [stretch]
+     * (ASPECT > STRETCH). No window: the overlay is a
      * background and the game sits on it as it would without one. Game edges land on whole pixels.
      */
     fun layout(
@@ -205,7 +206,8 @@ object OverlayGeometry {
         val vw = viewW.toFloat()
         val vh = viewH.toFloat()
         val overlay = when {
-            scale > 0 -> Box((vw - imgW * scale) / 2f, (vh - imgH * scale) / 2f, imgW.toFloat() * scale, imgH.toFloat() * scale)
+            // Whole pixels, so the frame's window lines up with the game's (snapped) edges.
+            scale > 0 -> Box(floor((vw - imgW * scale) / 2f), floor((vh - imgH * scale) / 2f), imgW.toFloat() * scale, imgH.toFloat() * scale)
             imgW <= 0 || imgH <= 0 -> Box(0f, 0f, vw, vh)
             abs(imgW.toFloat() / imgH / (vw / vh) - 1f) <= FILL_TOLERANCE -> Box(0f, 0f, vw, vh)
             else -> fit(imgW.toFloat() / imgH, Box(0f, 0f, vw, vh))
@@ -215,7 +217,9 @@ object OverlayGeometry {
             return OverlayPlacement(overlay, snap(game), onTop = false)
         }
         val win = Box(overlay.x + window.x * overlay.w, overlay.y + window.y * overlay.h, window.w * overlay.w, window.h * overlay.h)
-        val game = if (stretch) win else fit(gameW.toFloat() / gameH, win)
+        // A window drawn by hand is rarely exactly 3:2: one this close is filled, not edged with black slivers.
+        val near = abs(win.w / win.h / (gameW.toFloat() / gameH) - 1f) <= FILL_TOLERANCE
+        val game = if (stretch || near) win else fit(gameW.toFloat() / gameH, win)
         return OverlayPlacement(overlay, snap(game), onTop = true)
     }
 
@@ -291,7 +295,7 @@ object BuiltInFrames {
             Style.BEZEL -> {
                 c.fill(0, 0, w, h, BEZEL_BG)
                 c.roundRect(gx - b, gy - b, gameW + 2 * b, gameH + 2 * b, b + 2, BEZEL_SURROUND)
-                c.fill(gx - b + 3, gy - b, gameW + 2 * b - 6, 1, BEZEL_SHINE)
+                c.fill(gx + 2, gy - b + 1, gameW - 4, 1, BEZEL_SHINE)
                 if (b > 1) c.fill(gx - 1, gy - 1, gameW + 2, gameH + 2, BEZEL_INNER)
             }
         }
@@ -336,7 +340,8 @@ object BuiltInFrames {
 
         /** [s] centred in the margin left of [right], with a drop shadow, if there's room for it. */
         fun stampInMargin(s: Sprite, right: Int, h: Int, shadow: Int) {
-            if (right < s.w + 4 || h < s.h + 4) return
+            // Room on both sides of it, or none at all: squeezed against the screen's edge it looked like a mistake.
+            if (right < s.w + 8 || h < s.h + 4) return
             val x0 = (right - s.w) / 2
             val y0 = (h - s.h) / 2
             for ((dx, dy, shade) in listOf(Triple(1, 1, true), Triple(0, 0, false))) {
@@ -469,7 +474,7 @@ class OverlayStore(root: File) {
 
     private fun save(baseName: String, layers: List<Pair<OverlayLayer, ByteArray>>): String {
         dir.mkdirs()
-        val base = baseName.lowercase().replace(Regex("[^a-z0-9._-]+"), "-").trim('-', '.').take(48).ifEmpty { "overlay" }
+        val base = baseName.lowercase().replace(Regex("[^a-z0-9.-]+"), "-").trim('-', '.').take(48).ifEmpty { "overlay" }
         var id = base
         var n = 2
         while (File(dir, id).exists()) id = "$base-${n++}"

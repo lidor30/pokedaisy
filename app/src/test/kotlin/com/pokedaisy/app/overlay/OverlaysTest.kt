@@ -94,8 +94,12 @@ class OverlaysTest {
     fun gameSitsInTheWindowAtItsOwnShape() {
         val p = OverlayGeometry.layout(1920, 1080, 3840, 2160, Viewport(0.25f, 0.203f, 0.5f, 0.5935f), 240, 160, stretch = false)
         assertEquals(Box(0f, 0f, 1920f, 1080f), p.overlay)
-        assertEquals(Box(480f, 220f, 960f, 640f), p.game)
+        // 960 x 641 is within a few percent of 3:2: filled, no black slivers.
+        assertEquals(Box(480f, 219f, 960f, 641f), p.game)
         assertTrue(p.onTop)
+        // A window of another shape keeps the game's.
+        val gb = OverlayGeometry.layout(1920, 1080, 3840, 2160, Viewport(0.25f, 0.203f, 0.5f, 0.5935f), 160, 144, stretch = false)
+        assertEquals(Box(604f, 219f, 712f, 641f), gb.game)
     }
 
     @Test
