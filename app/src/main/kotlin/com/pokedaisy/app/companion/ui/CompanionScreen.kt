@@ -442,19 +442,29 @@ fun CompanionScreen(
             }
             // A phone upright with no room above the companion: its grip sits in here, over the backdrop.
             val topInset = with(LocalDensity.current) { LocalCompanionTopInset.current.toDp() }
+            // BATTLE STYLE > GEN 5's controls go edge to edge: the tab area's margin eases away and the tab bar
+            // sits on a dark dock under them (only while they're up - INFO / SUGGESTIONS keep the usual frame).
+            // (The same test as the BATTLE tab's pane picking "CONTROLS" below.)
+            val controlsPane = if (!battleInfo) battleInput != null && !snapshot.isDoubleBattle && !LocalCompanionWindow.current
+            else !showSuggestions && !showBattleStats && canUseControls && battleShowControls
+            val gen5Full = current == "BATTLE" && controlsPane &&
+                settings?.battleStyle == com.pokedaisy.app.companion.BattleStyle.GEN5 && !gen1Buttons
             // A short screen: less margin round the tabs, every pixel of its height counts.
-            Column(modifier = Modifier.fillMaxSize().padding(top = topInset).padding(if (LocalShortCompanion.current) 8.dp else 12.dp)) {
+            val margin = if (LocalShortCompanion.current) 8.dp else 12.dp
+            val edge by androidx.compose.animation.core.animateDpAsState(if (gen5Full) 0.dp else margin, tween(220), label = "gen5-edge")
+            val dock = 1f - edge / margin
+            Column(modifier = Modifier.fillMaxSize().padding(top = topInset).padding(edge)) {
                 if (topStrip != null) {
-                    topStrip()
+                    Box(Modifier.padding(start = margin - edge, end = margin - edge, top = margin - edge)) { topStrip() }
                     Spacer(Modifier.height(8.dp))
                 }
                 // SETTINGS > STATUS BAR on the companion: the game's strip over the tabs.
                 if (statusBar != null && CompanionStatusBar.shown) {
-                    statusBar()
+                    Box(Modifier.padding(start = margin - edge, end = margin - edge, top = margin - edge)) { statusBar() }
                     Spacer(Modifier.height(8.dp))
                 }
                 if (loaded && !snapshot.connected) {
-                    ErrorBanner(snapshot.error ?: tk("no data yet"))
+                    Box(Modifier.padding(horizontal = margin - edge)) { ErrorBanner(snapshot.error ?: tk("no data yet")) }
                     Spacer(Modifier.height(8.dp))
                 }
 
@@ -730,6 +740,7 @@ fun CompanionScreen(
                                         modifier = Modifier.fillMaxSize(),
                                         showHints = showHints,
                                         oneTapMoves = settings?.oneTapMoves ?: false,
+                                        style = settings?.battleStyle ?: com.pokedaisy.app.companion.BattleStyle.GEN4,
                                         battleInfo = battleInfo,
                                         onShowInfo = { battleShowControls = false },
                                         onShowSuggestions = { showSuggestions = true },
@@ -799,7 +810,11 @@ fun CompanionScreen(
                     AchievementIndicators(achievements, Modifier.align(Alignment.BottomEnd).padding(8.dp))
                 }
 
-                tabBar()
+                Box(
+                    Modifier.fillMaxWidth()
+                        .drawBehind { if (dock > 0f) drawRect(Gen5Dock.copy(alpha = dock)) }
+                        .padding(start = margin - edge, end = margin - edge, bottom = margin - edge),
+                ) { tabBar() }
             }
 
             // Unlocks and the like, over every tab.

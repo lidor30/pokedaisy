@@ -335,6 +335,8 @@ class LibraryActivity : ComponentActivity() {
         ssIntro = ScreenScraperClient.enabled && !prefs.screenScraperAsked && prefs.screenScraperAccount == null
         // EXPAND's introduction, once: to everyone not already on it (first-time setup goes first).
         expandIntro = !prefs.expandIntroSeen && prefs.gameAspect != com.pokedaisy.app.companion.GameAspect.WIDE
+        // BATTLE STYLE's pick, once: to everyone (first-time setup and EXPAND's introduction go first).
+        battleStyleIntro = !prefs.battleStyleAsked
         // WHAT'S NEW, once after an update to a version with notes. A fresh install has nothing to tell: its version
         // counts as seen, so the next update's notes are the first.
         val updated = runCatching {
@@ -872,6 +874,15 @@ class LibraryActivity : ComponentActivity() {
                         expandIntro = false
                     },
                     onNotNow = { prefs.expandIntroSeen = true; expandIntro = false },
+                )
+            }
+
+            // After EXPAND's, one at a time: which battle screen.
+            if (battleStyleIntroShown) {
+                com.pokedaisy.app.companion.ui.BattleStyleIntro(
+                    m, small, com.pokedaisy.app.companion.BattleStyle.of(prefs.battleStyle),
+                    onPick = { prefs.battleStyle = it.id; prefs.battleStyleAsked = true; battleStyleIntro = false },
+                    onDismiss = { prefs.battleStyleAsked = true; battleStyleIntro = false },
                 )
             }
 
@@ -1915,7 +1926,7 @@ class LibraryActivity : ComponentActivity() {
     private val libraryDialogOpen
         get() = searching || pickingSort || addMenu || renaming != null || deleting != null || gameInfo != null || coverPickerFor != null ||
             pendingImport != null || patcher.step != null || saveLoad != null || backupPick != null || updates.release != null || crashAsk ||
-            (expandIntro && !crashAsk) || ssIntroShown || whatsNewShown || supportShown || seasonalShown
+            (expandIntro && !crashAsk) || battleStyleIntroShown || ssIntroShown || whatsNewShown || supportShown || seasonalShown
 
     /** BACK for the library's windows (OptionOverlay & co.): the newest open one closes. */
     private val libraryBack = com.pokedaisy.app.companion.ui.CompanionBack()
@@ -2401,11 +2412,15 @@ class LibraryActivity : ComponentActivity() {
 
     /** The update's one-time "set up ScreenScraper?" window: wanted (set in onCreate), then shown once nothing else is up. */
     internal var ssIntro by mutableStateOf(false)
-    private val ssIntroShown get() = ssIntro && setup == null && !crashAsk && updates.release == null && !expandIntro && !whatsNewShown && !supportShown && !seasonalShown
+    private val ssIntroShown get() = ssIntro && setup == null && !crashAsk && updates.release == null && !expandIntro && !battleStyleIntro && !whatsNewShown && !supportShown && !seasonalShown
     /** WHAT'S NEW is up: after any update offer, never over setup. */
     private val whatsNewShown get() = whatsNew != null && setup == null && updates.release == null
     /** The support window is up: after any update offer and WHAT'S NEW, never over setup. */
     private val supportShown get() = supportAsk && setup == null && updates.release == null && !whatsNewShown
+
+    /** BATTLE STYLE's one-time pick ([com.pokedaisy.app.companion.ui.BattleStyleIntro]): wanted (set in onCreate), shown once nothing else is up. */
+    internal var battleStyleIntro by mutableStateOf(false)
+    private val battleStyleIntroShown get() = battleStyleIntro && setup == null && !crashAsk && updates.release == null && !expandIntro && !whatsNewShown && !supportShown && !seasonalShown
 
     /** A limited-time theme to announce ([com.pokedaisy.app.companion.ui.theme.seasonalThemeToAnnounce]; internal for ui-preview). */
     internal var seasonalTheme by mutableStateOf<com.pokedaisy.app.companion.ui.theme.ThemeSpec?>(null)

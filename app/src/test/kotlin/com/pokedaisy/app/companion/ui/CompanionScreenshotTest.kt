@@ -465,6 +465,30 @@ open class CompanionScreenshotTest {
         }
     }
 
+    /** BATTLE STYLE > GEN 5: your turn, then the move plates (the same states the GEN 4 buttons have). */
+    @Test fun battleControlsGen5() = gen5Shot(com.pokedaisy.app.companion.data.BATTLE_INPUT_ACTION_SELECT)
+
+    @Test fun battleControlsGen5Moves() = gen5Shot(com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT)
+
+    @Test fun battleControlsGen5Waiting() = gen5Shot(0)
+
+    private fun gen5Shot(state: Int) = paparazzi.snapshot {
+        AppTheme {
+            val party = SampleCompanion.snapshot.party
+            val input = object : com.pokedaisy.app.companion.BattleInput {
+                override val busy = false
+                override fun selectAction(actionIndex: Int) {}
+                override fun selectMove(moveIndex: Int) {}
+                override fun back() {}
+            }
+            BattleControlsScreen(
+                activeMon = party[0].withMovesVs(party[1]), battleInput = input, battleInputState = state, party = party,
+                modifier = Modifier.padding(12.dp), foeParty = party.take(3),
+                style = com.pokedaisy.app.companion.BattleStyle.GEN5,
+            )
+        }
+    }
+
     @Test
     fun battleInfo() = snapshot {
         AppTheme {

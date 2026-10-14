@@ -40,6 +40,7 @@ import com.pokedaisy.app.companion.data.WildEncounters
 import com.pokedaisy.app.companion.COMPANION_TABS
 import com.pokedaisy.app.companion.CompanionSettings
 import com.pokedaisy.app.companion.KeyCapture
+import com.pokedaisy.app.companion.BattleStyle
 import com.pokedaisy.app.companion.FfMode
 import com.pokedaisy.app.companion.GameAspect
 import com.pokedaisy.app.companion.hasGrid
@@ -742,6 +743,14 @@ private fun homeRows(
             labelBadge = NewFeatures.badge(NewFeatures.BATTLE_VIEW),
         ) { s.setBattleInfoFirst(!s.battleInfoFirst); changed() }.takeIf { s.battleInfo },
         SettingRow(tk("ONE-TAP MOVES"), onOff(s.oneTapMoves), subtitle = "Your moves right on the battle menu") { s.setOneTapMoves(!s.oneTapMoves); changed() },
+        // The battle buttons' look: GEN 4 (coloured buttons) or GEN 5 (dark plates round a red and white ball).
+        SettingRow(
+            tk("BATTLE STYLE"), s.battleStyle.label, subtitle = "The battle buttons' look",
+            labelBadge = NewFeatures.badge(NewFeatures.BATTLE_STYLE),
+        ) {
+            val styles = BattleStyle.entries
+            select(Selector(tk("BATTLE STYLE"), styles.map { it.label }, s.battleStyle.label) { l -> s.setBattleStyle(styles.first { it.label == l }) })
+        },
         // A STATS page in battle INFO with the foe's IVs / EVs / nature.
         SettingRow(tk("FOE IVS"), onOff(s.showFoeIvs), subtitle = "The foe's hidden stats in battle") { s.setShowFoeIvs(!s.showFoeIvs); changed() }
             .takeIf { s.battleInfo },

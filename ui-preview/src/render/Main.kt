@@ -68,6 +68,8 @@ import com.pokedaisy.app.companion.data.TrainerCardArt
 import com.pokedaisy.app.companion.data.TrainerCardInfo
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
+import com.pokedaisy.app.companion.data.BATTLE_INPUT_TARGET_SELECT
+import com.pokedaisy.app.companion.data.BATTLE_INPUT_BAG_OPEN
 import com.pokedaisy.app.companion.data.MoveVsFoe
 import com.pokedaisy.app.companion.data.GENDER_SYMBOL_FEMALE
 import com.pokedaisy.app.companion.data.GENDER_SYMBOL_MALE
@@ -138,7 +140,8 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
                    expand: Boolean = false, battleFocus: Boolean = false,
                    coop: com.pokedaisy.app.companion.coop.CoopState? = null,
                    coopPairList: List<com.pokedaisy.app.companion.coop.CoopPair> = emptyList(),
-                   lock: com.pokedaisy.app.companion.coop.lock.CoopLockUi? = null) : CompanionSettings {
+                   lock: com.pokedaisy.app.companion.coop.lock.CoopLockUi? = null,
+                   style: com.pokedaisy.app.companion.BattleStyle = com.pokedaisy.app.companion.BattleStyle.GEN4) : CompanionSettings {
     private var battleFocusOn = battleFocus
     override val battleFocus get() = battleFocusOn
     override fun setBattleFocus(on: Boolean) { battleFocusOn = on }
@@ -157,6 +160,9 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override val coopRelayOnly get() = relayOnlyOn
     override fun setCoopRelayOnly(on: Boolean) { relayOnlyOn = on }
     private var oneTapOn = oneTap
+    private var styleNow = style
+    override val battleStyle get() = styleNow
+    override fun setBattleStyle(style: com.pokedaisy.app.companion.BattleStyle) { styleNow = style }
     override val oneTapMoves get() = oneTapOn
     var battleInfoOn = previewBattleInfo
     override val battleInfo get() = battleInfoOn
@@ -449,6 +455,8 @@ fun companion(
     expand: Boolean = false,
     /** SETTINGS opened on this row, as after SWAP SCREENS. */
     settingsRow: String? = null,
+    /** SETTINGS > BATTLE STYLE. */
+    style: com.pokedaisy.app.companion.BattleStyle = com.pokedaisy.app.companion.BattleStyle.GEN4,
     /** SETTINGS > TAB BAR's pick (null: the default five). */
     barTabs: List<String>? = null,
     /** SETTINGS > BATTLE FOCUS. */
@@ -465,7 +473,7 @@ fun companion(
     val back = com.pokedaisy.app.companion.ui.CompanionBack().also { previewBack = it }
     val content: @Composable () -> Unit = {
         CompanionScreen(
-            sv, FakeSlots(), FakeSettings(hints, initialTabs = barTabs, oneTap = oneTap, expandOffer = expandOffer, expand = expand, battleFocus = battleFocus, coop = coop, coopPairList = coopPairList, lock = lock), FakeBattleInput(busy), initialTab = tab,
+            sv, FakeSlots(), FakeSettings(hints, initialTabs = barTabs, oneTap = oneTap, expandOffer = expandOffer, expand = expand, battleFocus = battleFocus, coop = coop, coopPairList = coopPairList, lock = lock, style = style), FakeBattleInput(busy), initialTab = tab,
             initialMonIndex = mon, initialCardBack = cardBack, back = back, initialSettingsRow = settingsRow, itemUse = if (items) PreviewItemUse(sv.party, bagFull) else null,
         )
     }
@@ -975,7 +983,7 @@ fun seasonalLibrary(label: String) = run {
 /** The activity [activity] made last (a shot's action presses its keys). */
 var lastActivity: androidx.activity.ComponentActivity? = null
 
-fun activity(expandIntro: Boolean = false, start: Boolean = false, make: () -> androidx.activity.ComponentActivity): () -> (@Composable () -> Unit) = {
+fun activity(expandIntro: Boolean = false, start: Boolean = false, battleStyleIntro: Boolean = false, make: () -> androidx.activity.ComponentActivity): () -> (@Composable () -> Unit) = {
     val ctx = android.content.Context()
     val roms = File(ctx.filesDir, "roms").apply { mkdirs() }
     // Dump-style file names, as players have them; firered-hack stays unrecognised (a hack it doesn't know).
@@ -1004,6 +1012,9 @@ fun activity(expandIntro: Boolean = false, start: Boolean = false, make: () -> a
     com.pokedaisy.app.ScreenScraperClient.enabled = false
     // EXPAND's one-time introduction covers the Library: only its own shot shows it.
     prefs.expandIntroSeen = !expandIntro
+    // BATTLE STYLE's one-time pick, likewise.
+    prefs.battleStyleAsked = !battleStyleIntro
+    prefs.battleStyle = 0
     // The classic library, no ScreenScraper popup: the launcher / popup shots turn them on in their make().
     prefs.dualScreenLauncher = false
     prefs.launcherSwapped = false
@@ -1657,6 +1668,20 @@ fun main(args: Array<String>) {
             onAllNodesWithText(pokemonButton)[0].performClick()
         },
         Shot("$g-battle-party-open", bw, bh, bd, companion("PARTY") { battle(BATTLE_INPUT_PARTY_OPEN) }),
+        // SETTINGS > BATTLE STYLE > GEN 5: the same states in the Black-like look.
+        Shot("$g-battle-gen5", bw, bh, bd, companion("PARTY", style = com.pokedaisy.app.companion.BattleStyle.GEN5) { battle(BATTLE_INPUT_ACTION_SELECT) }),
+        Shot("$g-battle-gen5-trainer", bw, bh, bd, companion("PARTY", style = com.pokedaisy.app.companion.BattleStyle.GEN5) { trainerBattle(BATTLE_INPUT_ACTION_SELECT, six = true).withBench() }),
+        Shot("$g-battle-gen5-moves", bw, bh, bd, companion("PARTY", style = com.pokedaisy.app.companion.BattleStyle.GEN5) { battle(BATTLE_INPUT_MOVE_SELECT) }),
+        Shot("$g-battle-gen5-onetap", bw, bh, bd, companion("PARTY", oneTap = true, style = com.pokedaisy.app.companion.BattleStyle.GEN5) { battle(BATTLE_INPUT_ACTION_SELECT) }),
+        Shot("$g-battle-gen5-wait", bw, bh, bd, companion("PARTY", style = com.pokedaisy.app.companion.BattleStyle.GEN5) { battle(BATTLE_INPUT_TARGET_SELECT) }),
+        Shot("$g-battle-gen5-bag", bw, bh, bd, companion("PARTY", style = com.pokedaisy.app.companion.BattleStyle.GEN5) { battle(BATTLE_INPUT_BAG_OPEN) }),
+        Shot("$g-battle-gen5-busy", bw, bh, bd, companion("PARTY", busy = true, style = com.pokedaisy.app.companion.BattleStyle.GEN5) { battle(BATTLE_INPUT_ACTION_SELECT) }),
+        Shot("$g-battle-gen5-switch", bw, bh, bd, companion("PARTY", style = com.pokedaisy.app.companion.BattleStyle.GEN5) { battle(BATTLE_INPUT_ACTION_SELECT) }) {
+            onNodeWithText("POKéMON").performClick()
+        },
+        Shot("$g-battle-gen5-fight", bw, bh, bd, companion("PARTY", style = com.pokedaisy.app.companion.BattleStyle.GEN5) { battle(BATTLE_INPUT_ACTION_SELECT) }) {
+            onNodeWithText("FIGHT!").performClick()
+        },
         Shot("$g-battle-busy", bw, bh, bd, companion("PARTY", busy = true) { battle(BATTLE_INPUT_ACTION_SELECT) }),
         // A shiny wild foe: the battle screen's SHINY plate, INFO's SHINY pill and a double battle's sparkle.
         Shot("$g-battle-shiny", bw, bh, bd, companion("PARTY") { battle(BATTLE_INPUT_ACTION_SELECT).shinyFoe() }),
@@ -2215,6 +2240,13 @@ fun main(args: Array<String>) {
         Shot("trade-swap", tw, th, td, trade { selA = BoxSlot(0, 0); selB = BoxSlot(0, 0) }),
         Shot("trade-phone", 1080, 2400, 2.625f, trade { selA = BoxSlot(0, 0); selB = BoxSlot(0, 0) }),
         Shot("library-expand-intro", tw, th, td, activity(expandIntro = true) { LibraryActivity() }),
+        Shot("library-battle-style", tw, th, td, activity(battleStyleIntro = true) { LibraryActivity() }),
+        // Picking GEN 5 closes it and saves the choice.
+        Shot("library-battle-style-picked", tw, th, td, activity(battleStyleIntro = true) { LibraryActivity() }) {
+            onNodeWithText("GEN 5").performClick()
+            onAllNodesWithText("NEW: BATTLE STYLE").assertCountEquals(0)
+            check(com.pokedaisy.app.Prefs(lastActivity!!).battleStyle == 1) { "GEN 5 wasn't saved" }
+        },
         // A phone held upright (a Galaxy S9's 1080x2220 at 3x): the smaller text, the picture over the words, the buttons on screen.
         Shot("library-expand-intro-phone", 1080, 2220, 3f, activity(expandIntro = true) { LibraryActivity() }),
         // WHAT'S NEW after an update (1.3.2's notes): the Thor's top screen, phones both ways, the Duo Lite's and the RG DS's

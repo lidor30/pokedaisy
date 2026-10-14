@@ -67,6 +67,18 @@ If you want to skip the `FIGHT` step, turn on `ONE-TAP MOVES` in SETTINGS (COMPA
 
 ![ONE-TAP MOVES on: the four move cards fill the top of the screen, BAG, RUN and POKéMON in a row below](shots/companion-battle-onetap.png "ONE-TAP MOVES")
 
+### BATTLE STYLE
+
+The battle screen comes in two looks, and both work the same way. `GEN 4` is the one shown above: big coloured buttons. `GEN 5` takes after the fifth generation's touch screen. The tab turns into a big ball, red on top and pale below, with `FIGHT!` on a dark plate across the middle and `BAG`, `RUN` and `POKéMON` as dark plates along the bottom. Your party's balls sit under `FIGHT!`, and in a trainer battle the trainer's sit at the top.
+
+![GEN 5: FIGHT! on a dark plate across a red and white ball, BAG, RUN and POKéMON below, the party's balls under FIGHT!](shots/companion-battle-gen5.png "BATTLE STYLE: GEN 5")
+
+In `GEN 5`, `FIGHT!` dims the ball and lays your four moves over it, each plate edged in its move's type colour. Your Pokémon's name sits in the bar underneath, and the arrow plate at the bottom right takes you back. While the attacks play out, the tab shows a big dark ball until your next turn.
+
+![GEN 5's moves: four dark plates edged in their type's colour, a bar with your Pokémon's name and the arrow back](shots/companion-battle-gen5-moves.png "GEN 5's moves")
+
+The first time you open PokeDaisy after this update, it asks which look you want, with both side by side. Change it any time with `BATTLE STYLE` in the companion's SETTINGS (COMPANION group). `ONE-TAP MOVES` works with either look. Yellow keeps its own black and white text boxes whichever you pick.
+
 ## INFO: the whole matchup on one page
 
 Tap `INFO` for the battle at a glance. It's split down the middle, you on the left and the foe on the right:

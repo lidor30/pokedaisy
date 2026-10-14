@@ -100,9 +100,17 @@ fun BattleControlsScreen(
     active: List<MonView> = emptyList(),
     /** ONE-TAP MOVES (SETTINGS): the action menu shows the moves where FIGHT is. */
     oneTapMoves: Boolean = false,
+    /** BATTLE STYLE (SETTINGS): GEN 5 draws [Gen5BattleControls] instead (never on Yellow, which keeps its own look). */
+    style: com.pokedaisy.app.companion.BattleStyle = com.pokedaisy.app.companion.BattleStyle.GEN4,
     /** BATTLE INFO off: no INFO / SUGGESTIONS buttons. */
     battleInfo: Boolean = true,
 ) {
+    if (style == com.pokedaisy.app.companion.BattleStyle.GEN5 && !gen1Buttons) {
+        return Gen5BattleControls(
+            activeMon, battleInput, battleInputState, party, modifier, showHints,
+            onShowInfo, onShowSuggestions, foeParty, foe, active, oneTapMoves, battleInfo,
+        )
+    }
     // battleInput.busy flips the instant a tap queues a synthetic press
     // sequence and back once the game has actually caught up (see
     // BattleInputController) - polled rather than read directly since it's a
@@ -289,7 +297,7 @@ internal fun rememberBattleInputBusy(battleInput: BattleInput?): Boolean {
  * reacting (queued synthetic button presses take several real frames to
  * land - see BattleInputController), e.g. between FIGHT and the move list. */
 @Composable
-private fun ProcessingBall() {
+internal fun ProcessingBall() {
     val m = rememberGbaTextMetrics()
     Box(
         contentAlignment = Alignment.Center,
@@ -335,7 +343,7 @@ private fun PartyBallRow(party: List<MonView>, ball: Dp, modifier: Modifier = Mo
 
 /** A pixel-art Poké Ball; a fainted member's is greyed out. */
 @Composable
-private fun PokeballDot(alive: Boolean, dotSize: Dp = 26.dp) {
+internal fun PokeballDot(alive: Boolean, dotSize: Dp = 26.dp) {
     val palette = if (alive) {
         mapOf('K' to Color(0xFF202020), 'R' to Color(0xFFE83028), 'W' to Color.White, 'H' to Color(0xFFF8A8A0))
     } else {
@@ -853,7 +861,7 @@ internal val gen1Buttons get() = com.pokedaisy.app.companion.data.activeGame.isG
 /** [text] on one line at the largest whole size from [maxSize] down to [minSize] (sp) that fits the
  * width it's given; still too long at [minSize], it ends in an ellipsis. */
 @Composable
-private fun FittedText(text: String, color: Color, style: TextStyle, maxSize: Int, minSize: Int, modifier: Modifier = Modifier) {
+internal fun FittedText(text: String, color: Color, style: TextStyle, maxSize: Int, minSize: Int, modifier: Modifier = Modifier) {
     val measurer = androidx.compose.ui.text.rememberTextMeasurer()
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
         val width = constraints.maxWidth
