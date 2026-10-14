@@ -267,6 +267,10 @@ interface CompanionSettings {
     val oneTapMoves: Boolean get() = false
     fun setOneTapMoves(on: Boolean) {}
 
+    /** BATTLE STYLE - see [Prefs.battleStyle]. */
+    val battleStyle: BattleStyle get() = BattleStyle.GEN4
+    fun setBattleStyle(style: BattleStyle) {}
+
     /** Whether battle INFO shows FOE DETAILS - see [Prefs.foeDetails]. */
     val foeDetails: Boolean get() = false
     fun setFoeDetails(on: Boolean) {}
@@ -592,4 +596,18 @@ enum class FfMusicMode(val label: String) {
 
     /** Silent. */
     OFF(tk("OFF")),
+}
+
+/** SETTINGS > BATTLE STYLE: the battle controls' look. [label] stays English; the rows translate it. */
+enum class BattleStyle(val id: Int, val label: String) {
+    /** Platinum-like coloured buttons (BattleControlsScreen). */
+    GEN4(0, tk("GEN 4")),
+
+    /** Black-like: a Poké Ball split red / white, dark octagon plates. */
+    GEN5(1, tk("GEN 5")),
+    ;
+
+    companion object {
+        fun of(id: Int): BattleStyle = entries.firstOrNull { it.id == id } ?: GEN4
+    }
 }

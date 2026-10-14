@@ -306,6 +306,16 @@ class Prefs(context: Context) {
         get() = p.getBoolean("one_tap_moves", false)
         set(v) = p.edit().putBoolean("one_tap_moves", v).apply()
 
+    /** BATTLE STYLE: the battle controls' look, a [com.pokedaisy.app.companion.BattleStyle] id (0 = GEN 4, the old one). */
+    var battleStyle: Int
+        get() = p.getInt("battle_style", 0)
+        set(v) = p.edit().putInt("battle_style", v).apply()
+
+    /** The Library's one-time BATTLE STYLE pick has been answered (or dismissed). */
+    var battleStyleAsked: Boolean
+        get() = p.getBoolean("battle_style_asked", false)
+        set(v) = p.edit().putBoolean("battle_style_asked", v).apply()
+
     /** Whether battle INFO offers the foe's IVs / EVs / nature (its STATS page).
      * Off by default - it's the one thing the game itself never tells you.
      * The party summary's own STATS page shows regardless. */
