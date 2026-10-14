@@ -26,7 +26,6 @@ import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
-import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
@@ -47,21 +46,25 @@ import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Outline
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.Path
-import androidx.compose.ui.graphics.Shadow
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.Shape
+import androidx.compose.ui.graphics.SolidColor
 import androidx.compose.ui.graphics.TileMode
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipRect
+import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.text
+import androidx.compose.ui.text.AnnotatedString
+import androidx.compose.ui.text.TextLayoutResult
 import androidx.compose.ui.text.TextStyle
-import androidx.compose.ui.text.font.FontWeight
+import androidx.compose.ui.text.drawText
+import androidx.compose.ui.text.rememberTextMeasurer
 import androidx.compose.ui.unit.Density
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.LayoutDirection
-import androidx.compose.ui.unit.TextUnit
 import androidx.compose.ui.unit.dp
-import androidx.compose.ui.unit.em
 import androidx.compose.ui.unit.sp
 import com.pokedaisy.app.companion.BattleInput
 import com.pokedaisy.app.companion.data.BATTLE_INPUT_ACTION_SELECT
@@ -75,16 +78,19 @@ import com.pokedaisy.app.companion.i18n.tr
 import com.pokedaisy.app.companion.ui.theme.AppColors
 import com.pokedaisy.app.companion.ui.theme.pixelFontFamily
 import kotlin.math.floor
+import kotlin.math.hypot
 import kotlin.math.roundToInt
 
 /**
  * BATTLE STYLE > GEN 5: the battle controls in the look of Black / White's touch screen, not a copy of it.
- * The tab is a framed panel split like a Poké Ball - red on top, pale lavender below, a dark band across - with
- * FIGHT! on a dark plate over the band and BAG / RUN / POKéMON as dark dotted octagons along the bottom (RUN set
- * lower), their bottoms running off the panel like the game's. FIGHT dims the ball and lays four plates over it,
- * each edged in its move's type colour, over a message bar and the U-turn back plate. Between turns the panel goes
- * dark around a big Poké Ball. Same inputs and taps as [BattleControlsScreen] (which calls this); the POKéMON pane
- * stays the party tab's own slots. Its colours are its own art, like the game's: no dark-mode twin.
+ * The whole tab area (edge to edge: CompanionScreen drops its margin and docks the tab bar under it, [Gen5Dock])
+ * is a Poké Ball - red on top, pale lavender below, a dark band across - with FIGHT! on a dark hexagon over the
+ * band and BAG / RUN / POKéMON as half hexagons rising from the bottom edge (RUN lower). Plates are dark and
+ * dotted inside a thick white (or type-coloured) border; labels are the pixel font in pixel bold with a dark
+ * outline ([Gen5Text]). FIGHT dims the ball under four hexagon move plates, a message bar and the U-turn back
+ * plate; between turns the tab goes dark around a big Poké Ball. Same inputs and taps as [BattleControlsScreen]
+ * (which calls this); the POKéMON pane is the party tab's own slots on the dark field. Its colours are its own
+ * art, like the game's: no dark-mode twin.
  */
 @Composable
 internal fun Gen5BattleControls(
@@ -120,64 +126,62 @@ internal fun Gen5BattleControls(
         else -> Gen5Page.WAIT
     }
     val enabled = battleInput != null && !busy
+    val dim by animateFloatAsState(if (page == Gen5Page.MOVES) 1f else 0f, tween(220), label = "gen5-dim")
+    val dark by animateFloatAsState(if (page == Gen5Page.ACTIONS || page == Gen5Page.MOVES) 0f else 1f, tween(260), label = "gen5-dark")
     Box(modifier.fillMaxSize()) {
-        if (page == Gen5Page.PARTY) {
-            // The party tab's own slots, over the game's backdrop like PARTY.
-            PartyPicker(
-                party, foe, active, battleInput, busy, showHints,
-                onBack = { if (battleInputState == BATTLE_INPUT_PARTY_OPEN) battleInput?.back() else choosingMon = false },
-            )
-        } else {
-            val dim by animateFloatAsState(if (page == Gen5Page.MOVES) 1f else 0f, tween(220), label = "gen5-dim")
-            val dark by animateFloatAsState(if (page == Gen5Page.WAIT || page == Gen5Page.BACK) 1f else 0f, tween(260), label = "gen5-dark")
-            Gen5Panel(dim, dark, Modifier.fillMaxSize()) {
-                BoxWithConstraints(Modifier.fillMaxSize()) {
-                    val h = maxHeight
-                    val w = maxWidth
-                    val topRow = (h * 0.13f).coerceIn(34.dp, 48.dp)
-                    AnimatedContent(
-                        targetState = page,
-                        transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
-                        modifier = Modifier.fillMaxSize(),
-                        label = "gen5-page",
-                    ) { p ->
-                        when (p) {
-                            Gen5Page.ACTIONS -> Gen5Actions(
-                                activeMon, party, battleInput, enabled, busy, showHints, oneTapMoves, w, h, topRow,
-                                onFight = if (movesKnown) ({ choosingMove = true }) else null,
-                                onPokemon = if (canSwitch) ({ choosingMon = true }) else null,
-                            )
-                            Gen5Page.MOVES -> Gen5Moves(
-                                activeMon, battleInput, busy, showHints, h, topRow,
-                                onCancel = if (battleInputState == BATTLE_INPUT_ACTION_SELECT) ({ choosingMove = false }) else null,
-                            )
-                            else -> Gen5Waiting(
-                                when {
-                                    p == Gen5Page.BACK -> null
-                                    battleInputState == BATTLE_INPUT_TARGET_SELECT -> tr("Confirming target…")
-                                    else -> tr("Waiting for your turn…")
-                                },
-                                battleInput.takeIf { p == Gen5Page.BACK }, enabled, h, topRow,
-                            )
-                        }
+        Gen5Panel(dim, dark, ball = page != Gen5Page.PARTY, modifier = Modifier.fillMaxSize()) {
+            if (page == Gen5Page.PARTY) {
+                // The party tab's own slots, on the dark field, inset like the other tabs.
+                Box(Modifier.fillMaxSize().padding(12.dp)) {
+                    PartyPicker(
+                        party, foe, active, battleInput, busy, showHints,
+                        onBack = { if (battleInputState == BATTLE_INPUT_PARTY_OPEN) battleInput?.back() else choosingMon = false },
+                    )
+                }
+            } else BoxWithConstraints(Modifier.fillMaxSize()) {
+                val h = maxHeight
+                val w = maxWidth
+                val topRow = (h * 0.15f).coerceIn(48.dp, 64.dp)
+                AnimatedContent(
+                    targetState = page,
+                    transitionSpec = { fadeIn(tween(180)) togetherWith fadeOut(tween(120)) },
+                    modifier = Modifier.fillMaxSize(),
+                    label = "gen5-page",
+                ) { p ->
+                    when (p) {
+                        Gen5Page.ACTIONS -> Gen5Actions(
+                            activeMon, party, foeParty, battleInput, enabled, busy, showHints, oneTapMoves, w, h, topRow,
+                            onFight = if (movesKnown) ({ choosingMove = true }) else null,
+                            onPokemon = if (canSwitch) ({ choosingMon = true }) else null,
+                        )
+                        Gen5Page.MOVES -> Gen5Moves(
+                            activeMon, battleInput, busy, showHints, h, topRow,
+                            onCancel = if (battleInputState == BATTLE_INPUT_ACTION_SELECT) ({ choosingMove = false }) else null,
+                        )
+                        else -> Gen5Waiting(
+                            when {
+                                p == Gen5Page.BACK -> null
+                                battleInputState == BATTLE_INPUT_TARGET_SELECT -> tr("Confirming target…")
+                                else -> tr("Waiting for your turn…")
+                            },
+                            battleInput.takeIf { p == Gen5Page.BACK }, enabled, h, topRow,
+                        )
                     }
-                    // INFO / SUGGESTIONS and the foe's balls, on every page: they only open panes, never wait on busy.
-                    Row(
-                        Modifier.fillMaxWidth().height(topRow).padding(horizontal = 8.dp, vertical = 4.dp),
-                        verticalAlignment = Alignment.CenterVertically,
-                    ) {
-                        Gen5Plate(
-                            Modifier.width(92.dp).fillMaxHeight(), cut = 8.dp, onClick = onShowInfo,
-                            contentPadding = PaddingValues(0.dp),
-                        ) { Gen5Label(tr("INFO"), InfoText, 20.sp) }
-                        Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
-                            if (foeParty.isNotEmpty()) Gen5PartyBalls(foeParty, ball = 18.dp, mirrored = true)
-                        }
-                        Gen5Plate(
-                            Modifier.width(150.dp).fillMaxHeight(), cut = 8.dp, onClick = onShowSuggestions,
-                            contentPadding = PaddingValues(0.dp),
-                        ) { Gen5Label(tr("SUGGESTIONS"), SuggestText, 18.sp) }
-                    }
+                }
+                // INFO / SUGGESTIONS on every page: they only open panes, never wait on busy.
+                Row(
+                    Modifier.fillMaxWidth().height(topRow).padding(start = 10.dp, end = 10.dp, top = 8.dp),
+                    verticalAlignment = Alignment.CenterVertically,
+                ) {
+                    Gen5Plate(
+                        Modifier.width((w * 0.28f).coerceIn(124.dp, 200.dp)).fillMaxHeight(), borderPx = 2,
+                        onClick = onShowInfo, contentPadding = PaddingValues(0.dp),
+                    ) { Gen5Text(tr("INFO"), InfoText, 26) }
+                    Spacer(Modifier.weight(1f))
+                    Gen5Plate(
+                        Modifier.width((w * 0.44f).coerceIn(204.dp, 320.dp)).fillMaxHeight(), borderPx = 2,
+                        onClick = onShowSuggestions, contentPadding = PaddingValues(horizontal = 18.dp),
+                    ) { Gen5Text(tr("SUGGESTIONS"), SuggestText, 26, minSize = 16) }
                 }
             }
         }
@@ -190,16 +194,21 @@ internal fun Gen5BattleControls(
     }
 }
 
+/** The dark strip the tab bar sits on under GEN 5's edge-to-edge screen (CompanionScreen). */
+internal val Gen5Dock = Color(0xFF1C1C22)
+
 private enum class Gen5Page { ACTIONS, MOVES, PARTY, WAIT, BACK }
 
 /** Where the red half meets the pale one, as a share of the panel's height. */
-private const val BAND_AT = 0.45f
+private const val BAND_AT = 0.47f
 
-/** Your turn: FIGHT! on the band (or ONE-TAP MOVES' four plates), your party's balls under it, BAG / RUN / POKéMON below. */
+/** Your turn: FIGHT! on the band (or ONE-TAP MOVES' four plates), the two parties' balls either side of it,
+ * BAG / RUN / POKéMON rising from the bottom edge. */
 @Composable
 private fun Gen5Actions(
     activeMon: MonView?,
     party: List<MonView>,
+    foeParty: List<MonView>,
     battleInput: BattleInput?,
     enabled: Boolean,
     busy: Boolean,
@@ -212,10 +221,10 @@ private fun Gen5Actions(
     onPokemon: (() -> Unit)?,
 ) {
     Box(Modifier.fillMaxSize()) {
-        val buttonsTop = if (oneTapMoves) h * 0.74f else h * 0.69f
+        val buttonsTop = if (oneTapMoves) h * 0.76f else h * 0.70f
         if (oneTapMoves) {
             Column(
-                Modifier.fillMaxWidth().height(buttonsTop - topRow - 6.dp).offset(y = topRow + 2.dp).padding(horizontal = 10.dp),
+                Modifier.fillMaxWidth().height(buttonsTop - topRow - 12.dp).offset(y = topRow + 6.dp).padding(horizontal = 10.dp),
                 verticalArrangement = Arrangement.spacedBy(6.dp),
             ) {
                 for (row in 0..1) Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
@@ -226,46 +235,52 @@ private fun Gen5Actions(
                 }
             }
         } else {
-            val fightH = h * 0.24f
-            val fightW = minOf(w * 0.66f, fightH * 4.4f)
+            val band = h * BAND_AT
+            val fightH = h * 0.25f
+            val fightW = minOf(w * 0.72f, fightH * 4.6f)
+            // The foe's balls in the red half (a trainer's), between the top row and FIGHT!.
+            if (foeParty.isNotEmpty()) Box(
+                Modifier.fillMaxWidth().height(band - fightH / 2 - topRow).offset(y = topRow),
+                contentAlignment = Alignment.Center,
+            ) { Gen5PartyBalls(foeParty, ball = 20.dp, mirrored = true) }
             Gen5Plate(
-                Modifier.size(fightW, fightH).align(Alignment.TopCenter).offset(y = h * BAND_AT - fightH / 2),
-                cut = fightH * 0.42f, cutY = fightH * 0.5f, border = FightRim, fill = FightFill, dots = FightDots,
+                Modifier.size(fightW, fightH).align(Alignment.TopCenter).offset(y = band - fightH / 2),
+                border = FightRim, fill = FightFill, dots = FightDots,
                 enabled = enabled, pressesGame = onFight == null,
                 onClick = { onFight?.invoke() ?: battleInput?.selectAction(0) },
             ) {
-                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(10.dp)) {
-                    SpeciesIcon(activeMon?.iconAsset, size = 44.dp)
-                    Gen5Label(tr("FIGHT") + "!", FightText, 46.sp, shadow = FightShadow)
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SpeciesIcon(activeMon?.iconAsset, size = 48.dp)
+                    Gen5Text(tr("FIGHT") + "!", FightText, 54, outline = FightOutline)
                 }
             }
-            // Your party, on the pale half under the plate.
+            // Your balls on the pale half, between FIGHT! and the buttons.
             Box(
-                Modifier.fillMaxWidth().align(Alignment.TopCenter).offset(y = h * BAND_AT + fightH / 2 + h * 0.025f),
+                Modifier.fillMaxWidth().height(buttonsTop - band - fightH / 2).offset(y = band + fightH / 2),
                 contentAlignment = Alignment.Center,
-            ) { Gen5PartyBalls(party, ball = 20.dp) }
+            ) { Gen5PartyBalls(party, ball = 22.dp) }
         }
-        // BAG and POKéMON at the sides, RUN between them and lower, all running off the panel's bottom.
-        val bw = minOf(w * 0.31f, 300.dp)
+        // BAG and POKéMON at the sides, RUN between them and lower: half hexagons rising from the bottom edge.
+        val bw = minOf(w * 0.315f, 320.dp)
         val drop = if (oneTapMoves) 0.dp else h * 0.06f
-        val side = w * 0.025f
-        val cutX = bw * 0.2f
-        val cutY = (h - buttonsTop) * 0.34f
+        val side = w * 0.02f
+        // Clear of the slanted sides (an eighth of the width each, HexGeo.of) and the border.
+        val sidePad = PaddingValues(horizontal = bw * 0.125f + 6.dp)
         Gen5Plate(
             Modifier.size(bw, h - buttonsTop).align(Alignment.BottomStart).offset(x = side),
-            cut = cutX, cutY = cutY, openBottom = true, enabled = enabled, pressesGame = true,
+            openBottom = true, contentPadding = sidePad, enabled = enabled, pressesGame = true,
             onClick = { battleInput?.selectAction(1) },
-        ) { Gen5Label(tr("BAG"), BagText, 32.sp) }
+        ) { Gen5Text(tr("BAG"), BagText, 38) }
         Gen5Plate(
             Modifier.size(bw, h - buttonsTop - drop).align(Alignment.BottomCenter),
-            cut = cutX, cutY = cutY, openBottom = true, enabled = enabled, pressesGame = true,
+            openBottom = true, contentPadding = sidePad, enabled = enabled, pressesGame = true,
             onClick = { battleInput?.selectAction(3) },
-        ) { Gen5Label(tr("RUN"), RunText, 32.sp) }
+        ) { Gen5Text(tr("RUN"), RunText, 38) }
         Gen5Plate(
             Modifier.size(bw, h - buttonsTop).align(Alignment.BottomEnd).offset(x = -side),
-            cut = cutX, cutY = cutY, openBottom = true, enabled = enabled, pressesGame = onPokemon == null,
+            openBottom = true, contentPadding = sidePad, enabled = enabled, pressesGame = onPokemon == null,
             onClick = { onPokemon?.invoke() ?: battleInput?.selectAction(2) },
-        ) { Gen5Label(tr("POKéMON"), MonText, 28.sp) }
+        ) { Gen5Text(tr("POKéMON"), MonText, 34, minSize = 22) }
     }
 }
 
@@ -283,10 +298,10 @@ private fun Gen5Moves(
 ) {
     val enabled = battleInput != null && !busy
     CompanionBackHandler(enabled = enabled) { onCancel?.invoke() ?: battleInput?.back() }
-    val barH = (h * 0.2f).coerceIn(52.dp, 86.dp)
-    Column(Modifier.fillMaxSize().padding(start = 10.dp, end = 10.dp, top = topRow + 4.dp)) {
+    val barH = (h * 0.2f).coerceIn(56.dp, 90.dp)
+    Column(Modifier.fillMaxSize().padding(start = 10.dp, end = 10.dp, top = topRow + 8.dp)) {
         Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-            for (row in 0..1) Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(10.dp)) {
+            for (row in 0..1) Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 for (col in 0..1) {
                     val i = row * 2 + col
                     Gen5MoveCard(activeMon?.moves?.getOrNull(i), battleInput, i, busy, showHints, Modifier.weight(1f).fillMaxHeight())
@@ -295,38 +310,38 @@ private fun Gen5Moves(
         }
         Spacer(Modifier.height(8.dp))
         Row(Modifier.fillMaxWidth().height(barH), verticalAlignment = Alignment.Bottom) {
-            Gen5MessageBar(Modifier.weight(1f).height(barH * 0.62f).padding(bottom = 6.dp)) {
+            Gen5MessageBar(Modifier.weight(1f).height(barH * 0.66f).padding(bottom = 8.dp)) {
                 if (activeMon != null) Row(verticalAlignment = Alignment.CenterVertically) {
-                    SpeciesIcon(activeMon.iconAsset, size = 32.dp)
-                    Spacer(Modifier.width(6.dp))
-                    Gen5Label(activeMon.name, Color.White, 22.sp, bold = false)
+                    SpeciesIcon(activeMon.iconAsset, size = 34.dp)
+                    Spacer(Modifier.width(8.dp))
+                    Gen5Text(activeMon.name, Color.White, 24)
                 }
             }
             Spacer(Modifier.width(10.dp))
             Gen5BackPlate(
                 enabled, pressesGame = onCancel == null,
                 onClick = { onCancel?.invoke() ?: battleInput?.back() },
-                modifier = Modifier.width(barH * 1.7f).fillMaxHeight(),
+                modifier = Modifier.width(barH * 1.8f).fillMaxHeight(),
             )
         }
     }
 }
 
-/** Not your turn: the dark panel's big ball says so; [message] in the bar under it. With [backInput] (the game's
+/** Not your turn: the dark field's big ball says so; [message] in the bar under it. With [backInput] (the game's
  * bag or party screen is up) the bar gets the U-turn plate, the only thing to do here. */
 @Composable
 private fun Gen5Waiting(message: String?, backInput: BattleInput?, enabled: Boolean, h: Dp, topRow: Dp) {
     if (backInput != null) CompanionBackHandler(enabled = enabled) { backInput.back() }
-    val barH = (h * 0.2f).coerceIn(52.dp, 86.dp)
-    Column(Modifier.fillMaxSize().padding(start = 10.dp, end = 10.dp, top = topRow + 4.dp)) {
+    val barH = (h * 0.2f).coerceIn(56.dp, 90.dp)
+    Column(Modifier.fillMaxSize().padding(start = 10.dp, end = 10.dp, top = topRow + 8.dp)) {
         Spacer(Modifier.weight(1f))
         Row(Modifier.fillMaxWidth().height(barH), verticalAlignment = Alignment.Bottom) {
-            if (message != null) Gen5MessageBar(Modifier.weight(1f).height(barH * 0.62f).padding(bottom = 6.dp)) {
-                Gen5Label(message, Color.White, 20.sp, bold = false)
+            if (message != null) Gen5MessageBar(Modifier.weight(1f).height(barH * 0.66f).padding(bottom = 8.dp)) {
+                Gen5Text(message, Color.White, 22)
             } else Spacer(Modifier.weight(1f))
             if (backInput != null) {
                 Spacer(Modifier.width(10.dp))
-                Gen5BackPlate(enabled, pressesGame = true, onClick = { backInput.back() }, modifier = Modifier.width(barH * 1.7f).fillMaxHeight())
+                Gen5BackPlate(enabled, pressesGame = true, onClick = { backInput.back() }, modifier = Modifier.width(barH * 1.8f).fillMaxHeight())
             }
         }
     }
@@ -344,32 +359,26 @@ private fun Gen5MoveCard(
     val enabled = mv != null && mv.pp > 0 && battleInput != null && !busy
     val border = mv?.let { AppColors.typeColors[it.type] } ?: EmptyRim
     BoxWithConstraints(modifier) {
-        val cut = minOf(maxHeight * 0.26f, 30.dp)
+        // The hexagon's points take this much of each side (HexGeo.of); the text stays clear of them.
+        val point = minOf(maxHeight * 0.5f * HEX_SLOPE, maxWidth * 0.125f)
         Gen5Plate(
-            Modifier.fillMaxSize(), cut = cut, border = border, enabled = enabled, pressesGame = true,
+            Modifier.fillMaxSize(), border = border, enabled = enabled, pressesGame = true,
             dimDisabled = mv != null,
-            contentPadding = PaddingValues(horizontal = cut * 0.55f + 6.dp, vertical = 6.dp),
+            contentPadding = PaddingValues(start = point + 2.dp, end = point + 2.dp, top = 8.dp, bottom = 8.dp),
             onClick = { battleInput?.selectMove(moveIndex) },
         ) {
             if (mv == null) {
-                Gen5Label("—", EmptyRim, 28.sp)
+                Gen5Text("—", EmptyRim, 28)
             } else {
-                val shadowPx = with(LocalDensity.current) { 2.dp.toPx() }
-                val tight = TextStyle(
-                    fontFamily = pixelFontFamily(), lineHeight = 1.em, fontWeight = FontWeight.Bold,
-                    shadow = Shadow(PlateShadow, Offset(shadowPx, shadowPx), 0f),
-                )
                 Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
-                    Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
-                        FittedText(
-                            mv.name, Color.White, tight, maxSize = 30, minSize = 18,
-                            modifier = Modifier.weight(1f).padding(end = 8.dp),
-                        )
-                        Text(tr("PP {0}", mv.pp), color = PpText, fontSize = 20.sp, style = tight, maxLines = 1)
+                    Row(verticalAlignment = Alignment.CenterVertically, modifier = Modifier.fillMaxWidth()) {
+                        Box(Modifier.weight(1f).padding(end = 6.dp)) { Gen5Text(mv.name, Color.White, 30, minSize = 18) }
+                        Gen5Text(tr("PP {0}", mv.pp), PpText, 22)
                     }
                     Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp)) {
                         TypeBadge(mv.type, fontSize = 16.sp)
-                        Text(tr("PWR {0}", powerLabel(mv.power)), color = PlateMuted, fontSize = 20.sp, style = tight, maxLines = 1, softWrap = false)
+                        // Measured last (a weight): the power steps down before a verdict wraps.
+                        Box(Modifier.weight(1f, fill = false)) { Gen5Text(tr("PWR {0}", powerLabel(mv.power)), PlateMuted, 20, minSize = 12) }
                         if (showHints) mv.vs.forEach { v -> MultiplierChip(v.label, v.pct, fontSize = 16.sp) }
                     }
                 }
@@ -378,14 +387,14 @@ private fun Gen5MoveCard(
     }
 }
 
-/** The U-turn back plate, bottom right of the move plates. */
+/** The U-turn back plate: a half hexagon, bottom right. */
 @Composable
 private fun Gen5BackPlate(enabled: Boolean, pressesGame: Boolean, onClick: () -> Unit, modifier: Modifier) {
     BoxWithConstraints(modifier) {
         val h = maxHeight
         Gen5Plate(
-            Modifier.fillMaxSize(), cut = h * 0.3f, openBottom = true, enabled = enabled, pressesGame = pressesGame,
-            contentPadding = PaddingValues(top = 4.dp), onClick = onClick,
+            Modifier.fillMaxSize(), openBottom = true, enabled = enabled, pressesGame = pressesGame,
+            contentPadding = PaddingValues(top = 6.dp), onClick = onClick,
         ) {
             PixelArt(UTurn, mapOf('B' to UTurnBlue, 'L' to UTurnLight, 'K' to UTurnDark), Modifier.size(h * 0.55f))
         }
@@ -400,8 +409,9 @@ private fun Gen5MessageBar(modifier: Modifier, content: @Composable BoxScope.() 
             val px = gbaPixelPx()
             drawPixelRoundRect(PlateOutline, radius = 4 * px, step = px)
             drawPixelRoundRect(BarRim, Offset(px, px), Size(size.width - 2 * px, size.height - 2 * px), radius = 3 * px, step = px)
-            drawPixelRoundRect(BarFill, Offset(3 * px, 3 * px), Size(size.width - 6 * px, size.height - 6 * px), radius = 2 * px, step = px)
-        }.padding(horizontal = 14.dp),
+            drawPixelRoundRect(PlateOutline, Offset(3 * px, 3 * px), Size(size.width - 6 * px, size.height - 6 * px), radius = 2 * px, step = px)
+            drawPixelRoundRect(BarFill, Offset(4 * px, 4 * px), Size(size.width - 8 * px, size.height - 8 * px), radius = 2 * px, step = px)
+        }.padding(horizontal = 16.dp),
         contentAlignment = Alignment.CenterStart,
         content = content,
     )
@@ -410,32 +420,79 @@ private fun Gen5MessageBar(modifier: Modifier, content: @Composable BoxScope.() 
 /** A ball per member, a dot per empty slot (the game's party row). [mirrored] (the foe's) fills from the right. */
 @Composable
 private fun Gen5PartyBalls(party: List<MonView>, ball: Dp, mirrored: Boolean = false) {
-    Row(horizontalArrangement = Arrangement.spacedBy(ball * 0.45f), verticalAlignment = Alignment.CenterVertically) {
+    Row(horizontalArrangement = Arrangement.spacedBy(ball * 0.5f), verticalAlignment = Alignment.CenterVertically) {
         for (slot in 0 until 6) {
             val mon = party.getOrNull(if (mirrored) 5 - slot else slot)
             if (mon != null) PokeballDot(alive = mon.hp > 0, dotSize = ball)
-            else Box(
-                Modifier.size(ball), contentAlignment = Alignment.Center,
-            ) {
-                Box(Modifier.size(ball * 0.3f).clip(PixelPillShape).drawBehind { drawRect(EmptyDot) })
+            else Box(Modifier.size(ball), contentAlignment = Alignment.Center) {
+                Box(Modifier.size(ball * 0.32f).clip(PixelPillShape).drawBehind { drawRect(EmptyDot) })
             }
         }
     }
 }
 
 /**
- * A dark plate: a near-black outline, a [border] band (white, or a move's type colour) and a dark fill dotted like
- * the game's carbon texture, cut at the corners in whole GBA pixels ([cut] across, [cutY] down). [openBottom]: no
- * bottom edge - the plate runs off the panel. Taps click like [PlatinumButton].
+ * Text the way the plates letter it: the pixel font in pixel bold (each glyph twice, a font pixel apart, spaced a
+ * font pixel wider) inside an [outline] one font pixel wide all round. One line at the largest size from [maxSize] down to [minSize] (sp, in
+ * steps of 2) that fits the width it's given; past that it's cut at the box. Its semantics carry the text, so
+ * tests find it like any Text.
+ */
+@Composable
+internal fun Gen5Text(text: String, color: Color, maxSize: Int, minSize: Int = maxSize, outline: Color = TextOutline) {
+    val measurer = rememberTextMeasurer()
+    val density = LocalDensity.current
+    val family = pixelFontFamily()
+    BoxWithConstraints(Modifier.semantics { this.text = AnnotatedString(text) }) {
+        val maxW = constraints.maxWidth
+        val fit: Pair<TextLayoutResult, Float> = remember(text, maxW, maxSize, minSize, density, family) {
+            var pick: Pair<TextLayoutResult, Float>? = null
+            var s = maxSize
+            while (true) {
+                // One font pixel in whole screen pixels (the font's pixel is a sixteenth of its size).
+                val fp = with(density) { (s.sp.toPx() / 16f).roundToInt().coerceAtLeast(1) }.toFloat()
+                // A font pixel more between letters: the bold copy fills the font's own gap, and the outline needs one.
+                val style = TextStyle(fontFamily = family, fontSize = s.sp, letterSpacing = (s / 16f).sp)
+                pick = measurer.measure(text, style, maxLines = 1, softWrap = false) to fp
+                if (pick.first.size.width + 3 * fp <= maxW || s - 2 < minSize) break
+                s -= 2
+            }
+            pick!!
+        }
+        val (layout, fp) = fit
+        val w = minOf(layout.size.width + 3 * fp, maxW.toFloat())
+        val hgt = layout.size.height + 2 * fp
+        Box(
+            Modifier
+                .size(with(density) { w.toDp() }, with(density) { hgt.toDp() })
+                .drawBehind {
+                    clipRect {
+                        // The outline: the bold glyph (two copies a font pixel apart) stamped all round it.
+                        for (dx in -1..2) for (dy in -1..1) {
+                            if (dx in 0..1 && dy == 0) continue
+                            drawText(layout, outline, Offset(fp + dx * fp, fp + dy * fp))
+                        }
+                        drawText(layout, color, Offset(fp, fp))
+                        drawText(layout, color, Offset(2 * fp, fp))
+                    }
+                },
+        )
+    }
+}
+
+/**
+ * A dark plate: a near-black outline, a [borderPx]-GBA-pixel [border] band (white, or a move's type colour; its
+ * lower half a shade darker), a dark line, then a dark fill dotted like the game's carbon texture, lit along its
+ * top. Its left and right sides come to a point halfway down (a hexagon); with [openBottom] it's a hexagon's top
+ * half, rising from the bottom edge. Edges step in whole GBA pixels. Taps click like [PlatinumButton]; a pressed
+ * plate lights up and its content sinks a pixel.
  */
 @Composable
 private fun Gen5Plate(
     modifier: Modifier,
-    cut: Dp,
-    cutY: Dp = cut,
     border: Color = PlateWhite,
     fill: Color = PlateFill,
     dots: Color = PlateDots,
+    borderPx: Int = 3,
     openBottom: Boolean = false,
     enabled: Boolean = true,
     /** Faded while disabled (a move with no PP); false for an empty move slot, which reads by its dash. */
@@ -450,27 +507,29 @@ private fun Gen5Plate(
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
     val density = LocalDensity.current
-    val dotBrush = rememberDotBrush(dots, density.gbaPixelPx())
-    val shape = remember(cut, cutY, openBottom) { ChamferShape(cut, cutY, openBottom) }
+    val px = density.gbaPixelPx()
+    val dotBrush = rememberDotBrush(dots, px)
+    val shape = remember(openBottom) { HexShape(openBottom) }
     Box(
         modifier
             .alpha(if (enabled || !dimDisabled) 1f else 0.45f)
             .drawBehind {
-                val px = gbaPixelPx()
-                val cx = cut.toPx()
-                val cy = cutY.toPx()
-                fun layer(inset: Float, color: Color? = null, brush: Brush? = null) {
-                    val p = chamferPath(
-                        inset, inset, size.width - 2 * inset, size.height - (if (openBottom) inset else 2 * inset),
-                        (cx - inset * 0.5f).coerceAtLeast(0f), (cy - inset * 0.5f).coerceAtLeast(0f), px, openBottom,
-                    )
-                    if (color != null) drawPath(p, color)
-                    if (brush != null) drawPath(p, brush)
-                }
-                layer(0f, PlateOutline)
-                layer(px, border)
-                layer(3 * px, if (pressed) lerpColor(fill, Color.White, 0.18f) else fill)
-                layer(3 * px, brush = dotBrush)
+                var g = HexGeo.of(size, openBottom)
+                drawPath(g.path(px), PlateOutline)
+                g = g.inset(px)
+                drawPath(g.path(px), border)
+                // The border's lower half a shade darker: a bevel.
+                clipRect(top = size.height * 0.5f) { drawPath(g.path(px), lerp(border, Color.Black, 0.2f)) }
+                g = g.inset(borderPx * px)
+                drawPath(g.path(px), PlateOutline)
+                g = g.inset(px)
+                val inner = g.path(px)
+                val top = lerp(fill, Color.White, if (pressed) 0.2f else 0.07f)
+                val bottom = if (pressed) lerp(fill, Color.White, 0.1f) else lerp(fill, Color.Black, 0.22f)
+                drawPath(inner, Brush.verticalGradient(listOf(top, bottom), g.t, g.t + g.h))
+                drawPath(inner, dotBrush)
+                // A lit row along the fill's top.
+                clipRect(top = g.t, bottom = g.t + px) { drawPath(inner, Color.White.copy(alpha = 0.2f)) }
             }
             .clip(shape)
             .then(
@@ -479,13 +538,44 @@ private fun Gen5Plate(
                     if (!pressesGame || gameSilent()) sound()
                 } else Modifier,
             )
-            .padding(contentPadding),
+            .padding(contentPadding)
+            .offset(y = if (pressed) with(density) { px.toDp() } else 0.dp),
         contentAlignment = Alignment.Center,
         content = content,
     )
 }
 
-private fun lerpColor(a: Color, b: Color, t: Float) = androidx.compose.ui.graphics.lerp(a, b, t)
+/**
+ * A plate's outline: a box with its left and right sides cut to a point - halfway down, or ([open]) at the bottom
+ * edge, a hexagon's top half. [inset] shrinks it by a band of even thickness, so a border runs parallel all round.
+ */
+private data class HexGeo(val l: Float, val t: Float, val w: Float, val h: Float, val cx: Float, val cy: Float, val open: Boolean) {
+    fun path(step: Float): Path = chamferPath(l, t, w, h, cx, cy, step, open)
+
+    fun inset(d: Float): HexGeo {
+        val nh = h - if (open) d else 2 * d
+        if (cx <= 0f || cy <= 0f) return HexGeo(l + d, t + d, w - 2 * d, nh, 0f, 0f, open)
+        // Moving each slanted side in by d moves its point in by d / cos(slant) and keeps the slope.
+        val side = d * hypot(cx, cy) / cy
+        return HexGeo(l + side, t + d, w - 2 * side, nh, cx * (1 - d / cy), if (open) nh else nh / 2, open)
+    }
+
+    companion object {
+        fun of(size: Size, open: Boolean): HexGeo {
+            val cy = if (open) size.height else size.height / 2
+            // Steep points (about 60° to the horizontal), never more than an eighth of the width.
+            val cx = minOf(cy * HEX_SLOPE, size.width * 0.125f)
+            return HexGeo(0f, 0f, size.width, size.height, cx, cy, open)
+        }
+    }
+}
+
+private const val HEX_SLOPE = 0.55f
+
+private class HexShape(private val open: Boolean) : Shape {
+    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline =
+        Outline.Generic(HexGeo.of(size, open).path(density.gbaPixelPx()))
+}
 
 /** The plates' dot texture: one GBA pixel lit every three, tiled. */
 @Composable
@@ -498,21 +588,15 @@ private fun rememberDotBrush(color: Color, px: Float): Brush = remember(color, p
     ShaderBrush(ImageShader(tile, TileMode.Repeated, TileMode.Repeated))
 }
 
-private class ChamferShape(private val cut: Dp, private val cutY: Dp, private val openBottom: Boolean) : Shape {
-    override fun createOutline(size: Size, layoutDirection: LayoutDirection, density: Density): Outline = with(density) {
-        Outline.Generic(chamferPath(0f, 0f, size.width, size.height, cut.toPx(), cutY.toPx(), gbaPixelPx(), openBottom))
-    }
-}
-
 /**
  * An octagon whose corners are cut [cx] across and [cy] down as a staircase of whole [step]s (the app's corners are
- * pixel art). [openBottom]: square at the bottom.
+ * pixel art); [cy] at half the height (or the whole, [openBottom]) makes it a hexagon. [openBottom]: no bottom edge.
  */
 internal fun chamferPath(l: Float, t: Float, w: Float, h: Float, cx: Float, cy: Float, step: Float, openBottom: Boolean = false): Path {
     val maxRows = floor((if (openBottom) h else h / 2f) / step).toInt()
     val n = (cy / step).roundToInt().coerceIn(0, maxRows.coerceAtLeast(0))
-    val across = cx.coerceAtMost(w / 2f)
-    fun inset(j: Int) = if (j >= n) 0f else floor(across * (n - j) / n / step) * step
+    val across = cx.coerceIn(0f, w / 2f)
+    fun inset(j: Int) = if (j >= n) 0f else (across * (n - j) / n / step).roundToInt() * step
     return Path().apply {
         moveTo(l + inset(0), t)
         lineTo(l + w - inset(0), t)
@@ -526,7 +610,6 @@ internal fun chamferPath(l: Float, t: Float, w: Float, h: Float, cx: Float, cy: 
         } else {
             lineTo(l + w, t + h - n * step)
             for (j in n - 1 downTo 0) {
-                lineTo(l + w - inset(j + 1), t + h - (j + 1) * step)
                 lineTo(l + w - inset(j), t + h - (j + 1) * step)
                 lineTo(l + w - inset(j), t + h - j * step)
             }
@@ -546,85 +629,78 @@ internal fun chamferPath(l: Float, t: Float, w: Float, h: Float, cx: Float, cy: 
 }
 
 /**
- * The panel behind it all: a pixel-rounded frame around the ball - red over pale lavender, a dark band between them.
- * [dim] (0..1) darkens it for the move plates; [dark] (0..1) fades it to the between-turns screen, a dark field with
- * a big Poké Ball in the middle.
+ * The screen behind it all, edge to edge: the ball - red over pale lavender, a dark band between them. [dim] (0..1)
+ * darkens it for the move plates; [dark] (0..1) fades it to the dark field, with a big Poké Ball in the middle
+ * while [ball] (not behind the party slots).
  */
 @Composable
-private fun Gen5Panel(dim: Float, dark: Float, modifier: Modifier, content: @Composable BoxScope.() -> Unit) {
+private fun Gen5Panel(dim: Float, dark: Float, ball: Boolean, modifier: Modifier, content: @Composable BoxScope.() -> Unit) {
     val density = LocalDensity.current
-    val texture = rememberDotBrush(Color(0x14FFFFFF), density.gbaPixelPx())
+    val texture = rememberDotBrush(Color(0x12FFFFFF), density.gbaPixelPx())
     Box(
-        modifier
-            .clip(PixelRoundedShape(8.dp))
-            .drawBehind {
-                val px = gbaPixelPx()
-                val band = size.height * BAND_AT
-                // Red half: lighter in the middle, darker toward the rim.
-                drawRect(
-                    Brush.radialGradient(listOf(RedLight, RedMid, RedDark), Offset(size.width / 2, band * 0.55f), size.width * 0.62f),
-                    size = Size(size.width, band),
-                )
-                // Pale half.
-                drawRect(
-                    Brush.radialGradient(listOf(PaleLight, PaleMid, PaleDark), Offset(size.width / 2, band + (size.height - band) * 0.35f), size.width * 0.7f),
-                    topLeft = Offset(0f, band), size = Size(size.width, size.height - band),
-                )
-                // The band: a red rim above, the black line, a grey shade below.
-                drawRect(RedRim, Offset(0f, band - 3 * px), Size(size.width, 2 * px))
-                drawRect(BandBlack, Offset(0f, band - px), Size(size.width, 3 * px))
-                drawRect(
-                    Brush.verticalGradient(listOf(PaleShade, PaleShade.copy(alpha = 0f)), band + 2 * px, band + 10 * px),
-                    Offset(0f, band + 2 * px), Size(size.width, 8 * px),
-                )
-                if (dim > 0f) drawRect(DimScrim.copy(alpha = DimScrim.alpha * dim))
-                if (dark > 0f) {
-                    drawRect(DarkField.copy(alpha = dark))
-                    drawRect(texture, alpha = dark)
-                    drawBigBall(dark, px)
-                }
+        modifier.drawBehind {
+            val px = gbaPixelPx()
+            val band = (size.height * BAND_AT / px).roundToInt() * px
+            val mid = Offset(size.width / 2, band)
+            // Red half: deep at the top, brightest just above the band's middle.
+            drawRect(Brush.verticalGradient(listOf(RedDark, RedMid), 0f, band), size = Size(size.width, band))
+            drawRect(
+                Brush.radialGradient(listOf(RedLight, RedLight.copy(alpha = 0f)), Offset(size.width / 2, band * 0.62f), size.width * 0.55f),
+                size = Size(size.width, band),
+            )
+            // Faint rings around the middle, like the game's.
+            for (r in listOf(0.42f, 0.7f)) drawRect(
+                Brush.radialGradient(
+                    0.9f to Color.Transparent, 0.95f to Color.White.copy(alpha = 0.06f), 1f to Color.Transparent,
+                    center = mid, radius = size.width * r,
+                ),
+                size = size,
+            )
+            // Pale half: brightest in the middle, lilac toward the rim.
+            drawRect(
+                Brush.radialGradient(listOf(PaleLight, PaleMid, PaleDark), Offset(size.width / 2, band + (size.height - band) * 0.3f), size.width * 0.72f),
+                topLeft = Offset(0f, band), size = Size(size.width, size.height - band),
+            )
+            // The band: a deep red rim, the black line, a lit edge and a grey shade under it.
+            drawRect(RedRim, Offset(0f, band - 4 * px), Size(size.width, 2 * px))
+            drawRect(BandBlack, Offset(0f, band - 2 * px), Size(size.width, 4 * px))
+            drawRect(BandLight, Offset(0f, band + 2 * px), Size(size.width, px))
+            drawRect(
+                Brush.verticalGradient(listOf(PaleShade, PaleShade.copy(alpha = 0f)), band + 3 * px, band + 14 * px),
+                Offset(0f, band + 3 * px), Size(size.width, 11 * px),
+            )
+            if (dim > 0f) drawRect(DimScrim.copy(alpha = DimScrim.alpha * dim))
+            if (dark > 0f) {
+                drawRect(Brush.verticalGradient(listOf(DarkFieldTop, DarkField)), alpha = dark)
+                drawRect(texture, alpha = dark)
+                if (ball) drawBigBall(dark, px)
             }
-            .drawBehind {
-                // The frame, over the art's edge.
-                val px = gbaPixelPx()
-                drawPixelRoundFrame(PlateOutline, Offset.Zero, size, radius = 8.dp.toPx(), width = 2 * px, step = px)
-            },
+        },
         content = content,
     )
 }
 
 /** The between-turns Poké Ball: dark red over grey, a black band, the button - pixel circles throughout. */
 private fun DrawScope.drawBigBall(alpha: Float, px: Float) {
-    val d = (minOf(size.width, size.height) * 0.66f / px).roundToInt() * px
+    val d = (minOf(size.width, size.height) * 0.62f / px).roundToInt() * px
     val left = ((size.width - d) / 2 / px).roundToInt() * px
     val top = ((size.height - d) / 2 / px).roundToInt() * px
     val r = d / 2
-    fun circle(inset: Float, color: Color) {
+    fun circle(inset: Float, brush: Brush) {
         val s = d - 2 * inset
-        if (s > 0) drawPath(pixelRoundRectPath(Size(s, s), s / 2, px, Offset(left + inset, top + inset)), color, alpha = alpha)
+        if (s > 0) drawPath(pixelRoundRectPath(Size(s, s), s / 2, px, Offset(left + inset, top + inset)), brush, alpha = alpha)
     }
-    circle(0f, BallOutline)
-    clipRect(top = top, bottom = top + r) { circle(2 * px, BallRed) }
-    clipRect(top = top + r, bottom = top + d) { circle(2 * px, BallGrey) }
-    drawRect(BallOutline, Offset(left, top + r - 3 * px), Size(d, 6 * px), alpha = alpha)
-    val b = (d * 0.3f / px).roundToInt() * px
+    circle(0f, SolidColor(BallOutline))
+    clipRect(top = top, bottom = top + r) { circle(2 * px, Brush.verticalGradient(listOf(BallRedLight, BallRed), top, top + r)) }
+    clipRect(top = top + r, bottom = top + d) { circle(2 * px, Brush.verticalGradient(listOf(BallGreyLight, BallGrey), top + r, top + d)) }
+    drawRect(BallOutline, Offset(left, top + r - 4 * px), Size(d, 8 * px), alpha = alpha)
+    val b = (d * 0.32f / px).roundToInt() * px
     val bl = left + (d - b) / 2
     val bt = top + (d - b) / 2
     drawPath(pixelRoundRectPath(Size(b, b), b / 2, px, Offset(bl, bt)), BallOutline, alpha = alpha)
-    drawPath(pixelRoundRectPath(Size(b - 6 * px, b - 6 * px), b, px, Offset(bl + 3 * px, bt + 3 * px)), BallButton, alpha = alpha)
-    drawPath(pixelRoundRectPath(Size(b - 14 * px, b - 14 * px), b, px, Offset(bl + 7 * px, bt + 7 * px)), BallButtonInner, alpha = alpha)
-}
-
-/** The plates' label: the pixel font in [color] with a dark drop shadow. */
-@Composable
-private fun Gen5Label(text: String, color: Color, fontSize: TextUnit, shadow: Color = LabelShadow, bold: Boolean = true) {
-    val s = with(LocalDensity.current) { (fontSize.toPx() / 14f).coerceAtLeast(2f) }
-    Text(
-        text, color = color, fontSize = fontSize, maxLines = 1,
-        fontWeight = if (bold) FontWeight.Bold else FontWeight.Normal,
-        overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-        style = TextStyle(fontFamily = pixelFontFamily(), shadow = Shadow(shadow, Offset(s, s), 0f)),
-    )
+    drawPath(pixelRoundRectPath(Size(b - 6 * px, b - 6 * px), b, px, Offset(bl + 3 * px, bt + 3 * px)), BallRing, alpha = alpha)
+    drawPath(pixelRoundRectPath(Size(b - 12 * px, b - 12 * px), b, px, Offset(bl + 6 * px, bt + 6 * px)), BallOutline, alpha = alpha)
+    drawPath(pixelRoundRectPath(Size(b - 16 * px, b - 16 * px), b, px, Offset(bl + 8 * px, bt + 8 * px)), BallButton, alpha = alpha)
 }
 
 /** The game's back icon: a U-turn arrow. */
@@ -643,44 +719,47 @@ private val UTurn = listOf(
     ".....KKKKK....",
 )
 
-private val RedLight = Color(0xFFE84050)
-private val RedMid = Color(0xFFC82838)
-private val RedDark = Color(0xFF8C1828)
-private val RedRim = Color(0xFF701020)
-private val PaleLight = Color(0xFFF4F4FA)
-private val PaleMid = Color(0xFFE2E2EE)
-private val PaleDark = Color(0xFFBEBED2)
-private val PaleShade = Color(0x669090A8)
-private val BandBlack = Color(0xFF282028)
-private val DimScrim = Color(0x8C101018)
-private val DarkField = Color(0xFF26262A)
-private val BallOutline = Color(0xFF141418)
-private val BallRed = Color(0xFF7A2430)
-private val BallGrey = Color(0xFF5C5C66)
-private val BallButton = Color(0xFF3A3A42)
-private val BallButtonInner = Color(0xFF4A4A54)
-private val PlateOutline = Color(0xFF181818)
-private val PlateWhite = Color(0xFFF4F4F8)
-private val PlateFill = Color(0xFF343438)
-private val PlateDots = Color(0xFF4A4A50)
-private val PlateShadow = Color(0xFF101014)
-private val PlateMuted = Color(0xFFB8B8C8)
-private val PpText = Color(0xFFE8E8F0)
-private val FightRim = Color(0xFF5C5054)
-private val FightFill = Color(0xFF3A3034)
-private val FightDots = Color(0xFF4A3E42)
-private val FightText = Color(0xFFF05868)
-private val FightShadow = Color(0xFF601420)
-private val LabelShadow = Color(0xFF141414)
-private val BagText = Color(0xFFF8C840)
-private val RunText = Color(0xFF68B8F8)
-private val MonText = Color(0xFF80DC60)
-private val InfoText = Color(0xFFC0A0F8)
-private val SuggestText = Color(0xFFF8D050)
-private val EmptyRim = Color(0xFF808088)
-private val EmptyDot = Color(0xFF505058)
-private val BarRim = Color(0xFF606068)
-private val BarFill = Color(0xFF1C1C20)
+private val RedLight = Color(0xFFF05462)
+private val RedMid = Color(0xFFD02C3C)
+private val RedDark = Color(0xFF8A1424)
+private val RedRim = Color(0xFF6A0C1A)
+private val PaleLight = Color(0xFFF8F8FC)
+private val PaleMid = Color(0xFFE4E4F0)
+private val PaleDark = Color(0xFFB8B8D0)
+private val PaleShade = Color(0x7A8080A0)
+private val BandBlack = Color(0xFF221A22)
+private val BandLight = Color(0xFF9898AC)
+private val DimScrim = Color(0x99101018)
+private val DarkField = Color(0xFF1E1E24)
+private val DarkFieldTop = Color(0xFF2E2E36)
+private val BallOutline = Color(0xFF101014)
+private val BallRedLight = Color(0xFF9A3040)
+private val BallRed = Color(0xFF5E1822)
+private val BallGreyLight = Color(0xFF6C6C78)
+private val BallGrey = Color(0xFF44444E)
+private val BallRing = Color(0xFF7A7A86)
+private val BallButton = Color(0xFF3C3C46)
+private val PlateOutline = Color(0xFF121216)
+private val PlateWhite = Color(0xFFF8F8FC)
+private val PlateFill = Color(0xFF3A3A42)
+private val PlateDots = Color(0xFF50505A)
+private val PlateMuted = Color(0xFFC0C0D0)
+private val PpText = Color(0xFFF0F0F8)
+private val TextOutline = Color(0xFF101014)
+private val FightRim = Color(0xFF6A5A60)
+private val FightFill = Color(0xFF3E3236)
+private val FightDots = Color(0xFF524448)
+private val FightText = Color(0xFFFF5A6A)
+private val FightOutline = Color(0xFF3A0810)
+private val BagText = Color(0xFFFFCC40)
+private val RunText = Color(0xFF6CC0FF)
+private val MonText = Color(0xFF84E05C)
+private val InfoText = Color(0xFFC8A8FF)
+private val SuggestText = Color(0xFFFFD84C)
+private val EmptyRim = Color(0xFF80808A)
+private val EmptyDot = Color(0xFF50505A)
+private val BarRim = Color(0xFF6A6A74)
+private val BarFill = Color(0xFF1A1A20)
 private val UTurnBlue = Color(0xFF3890F0)
 private val UTurnLight = Color(0xFFA8D8FF)
 private val UTurnDark = Color(0xFF103060)

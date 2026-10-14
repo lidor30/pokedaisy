@@ -98,7 +98,9 @@ fun BattleStylePreview(style: BattleStyle, modifier: Modifier = Modifier, onClic
         ) {
             BattleControlsScreen(
                 activeMon = PREVIEW_MON, battleInput = input, battleInputState = BATTLE_INPUT_ACTION_SELECT,
-                party = PREVIEW_PARTY, modifier = Modifier.fillMaxSize().padding(8.dp), showHints = true,
+                party = PREVIEW_PARTY, showHints = true,
+                // GEN 5 fills the tab edge to edge in game; GEN 4 keeps the tab's margin.
+                modifier = Modifier.fillMaxSize().padding(if (style == BattleStyle.GEN5) 0.dp else 8.dp),
                 foeParty = PREVIEW_FOES, style = style,
             )
         }

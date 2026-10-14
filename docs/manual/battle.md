@@ -69,7 +69,7 @@ If you want to skip the `FIGHT` step, turn on `ONE-TAP MOVES` in SETTINGS (COMPA
 
 ### BATTLE STYLE
 
-The battle screen comes in two looks, and both work the same way. `GEN 4` is the one shown above: big coloured buttons. `GEN 5` takes after the fifth generation's touch screen. The tab turns into a big ball, red on top and pale below, with `FIGHT!` on a dark plate across the middle and `BAG`, `RUN` and `POKéMON` as dark plates along the bottom. Your party's balls sit under `FIGHT!`, and in a trainer battle the trainer's sit at the top.
+The battle screen comes in two looks, and both work the same way. `GEN 4` is the one shown above: big coloured buttons. `GEN 5` takes after the fifth generation's touch screen and fills the whole companion screen above the tab bar. It turns into a big ball, red on top and pale below, with `FIGHT!` on a dark hexagon across the middle and `BAG`, `RUN` and `POKéMON` as dark plates rising from the bottom edge. Your party's balls sit under `FIGHT!`, and in a trainer battle the trainer's sit at the top.
 
 ![GEN 5: FIGHT! on a dark plate across a red and white ball, BAG, RUN and POKéMON below, the party's balls under FIGHT!](shots/companion-battle-gen5.png "BATTLE STYLE: GEN 5")
 
