@@ -9,6 +9,7 @@ import androidx.compose.animation.fadeOut
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.interaction.collectIsPressedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
@@ -76,6 +77,7 @@ import com.pokedaisy.app.companion.data.MonView
 import com.pokedaisy.app.companion.data.MoveView
 import com.pokedaisy.app.companion.i18n.tr
 import com.pokedaisy.app.companion.ui.theme.AppColors
+import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 import com.pokedaisy.app.companion.ui.theme.pixelFontFamily
 import kotlin.math.floor
 import kotlin.math.hypot
@@ -246,7 +248,7 @@ private fun Gen5Actions(
             Gen5Plate(
                 Modifier.size(fightW, fightH).align(Alignment.TopCenter).offset(y = band - fightH / 2),
                 border = FightRim, fill = FightFill, dots = FightDots,
-                enabled = enabled, pressesGame = onFight == null,
+                enabled = enabled, pressesGame = onFight == null, focusFirst = true,
                 onClick = { onFight?.invoke() ?: battleInput?.selectAction(0) },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -363,7 +365,7 @@ private fun Gen5MoveCard(
         val point = minOf(maxHeight * 0.5f * HEX_SLOPE, maxWidth * 0.125f)
         Gen5Plate(
             Modifier.fillMaxSize(), border = border, enabled = enabled, pressesGame = true,
-            dimDisabled = mv != null,
+            dimDisabled = mv != null, focusFirst = moveIndex == 0,
             contentPadding = PaddingValues(start = point + 2.dp, end = point + 2.dp, top = 8.dp, bottom = 8.dp),
             onClick = { battleInput?.selectMove(moveIndex) },
         ) {
@@ -499,6 +501,8 @@ private fun Gen5Plate(
     dimDisabled: Boolean = true,
     pressesGame: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(6.dp),
+    /** Where the D-pad starts on this page (FIGHT!, the first move), like the game's cursor. */
+    focusFirst: Boolean = false,
     onClick: () -> Unit,
     content: @Composable BoxScope.() -> Unit,
 ) {
@@ -506,13 +510,17 @@ private fun Gen5Plate(
     val gameSilent = LocalGameSilent.current
     val interaction = remember { MutableInteractionSource() }
     val pressed by interaction.collectIsPressedAsState()
+    val focused by interaction.collectIsFocusedAsState()
     val density = LocalDensity.current
     val px = density.gbaPixelPx()
     val dotBrush = rememberDotBrush(dots, px)
     val shape = remember(openBottom) { HexShape(openBottom) }
     Box(
         modifier
+            .focusStart(focusFirst)
             .alpha(if (enabled || !dimDisabled) 1f else 0.45f)
+            // The D-pad's focus, along the hexagon's own edge.
+            .gbaFocusRing(focused, shape)
             .drawBehind {
                 var g = HexGeo.of(size, openBottom)
                 drawPath(g.path(px), PlateOutline)
