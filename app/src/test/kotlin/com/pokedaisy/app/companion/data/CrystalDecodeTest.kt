@@ -24,6 +24,8 @@ class CrystalDecodeTest {
             val t = read(fixture)
             assertFalse(fixture, t.inBattle)
             assertEquals(fixture, listOf("CHIKORITA", "PIDGEY"), t.party.map { speciesName(it.species) })
+            // wPartyMonNicknames: the stored names when neither was nicknamed.
+            assertEquals(fixture, listOf("CHIKORITA", "PIDGEY"), t.party.map { it.nickname })
             val chikorita = t.party[0]
             assertEquals(152 to 5, chikorita.species to chikorita.level)
             assertEquals(19 to 19, chikorita.hp to chikorita.maxHp)

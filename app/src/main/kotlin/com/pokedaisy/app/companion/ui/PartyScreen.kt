@@ -47,6 +47,7 @@ import com.pokedaisy.app.companion.data.gameText
 import com.pokedaisy.app.companion.data.localText
 import com.pokedaisy.app.companion.data.romGameCode
 import com.pokedaisy.app.companion.data.romLanguage
+import com.pokedaisy.app.companion.data.shownNickname
 import com.pokedaisy.app.companion.ui.theme.AppColors
 import kotlin.math.floor
 import kotlin.math.max
@@ -692,7 +693,7 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
         HeldItemMarker(mon.heldItemId, u, g.fx - 8 * u + 16 * u, g.fy + 22 * u)
 
         val textWidth = with(density) { (g.fx + g.fw - 4 * u - g.textX).toDp() }
-        GbaText(mon.name, text, textShadow, nameM, density.at(g.textX, g.nameMid, nameM).width(textWidth))
+        GbaText(mon.shownNickname ?: mon.name, text, textShadow, nameM, density.at(g.textX, g.nameMid, nameM).width(textWidth))
         if (!showHp) return@BoxWithConstraints
 
         val status = if (mon.hp == 0) "FNT" else mon.status

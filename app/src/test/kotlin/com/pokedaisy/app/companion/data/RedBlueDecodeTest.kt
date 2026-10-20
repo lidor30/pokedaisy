@@ -20,6 +20,7 @@ class RedBlueDecodeTest {
             val t = readGen1Telemetry(red(fixture), cfg)
             assertFalse(t.inBattle)
             assertEquals(listOf("PIKACHU", "SANDSLASH", "SNORLAX", "LAPRAS", "PIDGEOT", "RATICATE"), t.party.map { speciesName(it.species) })
+            assertEquals(listOf("Joseph", "Liam", "Fred", "Henry", "Seth", "Richard"), t.party.map { it.nickname })
             assertEquals(listOf(182, 274, 450, 382, 300, 236), t.party.map { it.hp })
             assertTrue(t.party.all { it.level == 100 && it.hp == it.maxHp })
             assertEquals(listOf("THUNDERBOLT", "THUNDER", "SLAM", "LIGHT SCREEN"), t.party[0].moves.map { lookupMove(it).name })

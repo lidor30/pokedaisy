@@ -28,6 +28,7 @@ class CrystalClearDecodeTest {
             val t = read(fixture)
             assertFalse(fixture, t.inBattle)
             assertEquals(fixture, listOf("BULBASAUR", "SENTRET"), t.party.map { speciesName(it.species) })
+            assertEquals(fixture, listOf("BULBASAUR", "SENTRET"), t.party.map { it.nickname })
             val bulbasaur = t.party[0]
             assertEquals(1 to 5, bulbasaur.species to bulbasaur.level)
             assertEquals(21 to 21, bulbasaur.hp to bulbasaur.maxHp)

@@ -14,6 +14,8 @@ class YellowDecodeTest {
         assertFalse(t.inBattle)
         assertEquals(6, t.party.size)
         assertEquals(listOf("PIKACHU", "SANDSLASH", "SNORLAX", "LAPRAS", "PIDGEOT", "RATICATE"), t.party.map { speciesName(it.species) })
+        // wPartyMonNicks: this save's are the player's own, not the species names.
+        assertEquals(listOf("Joseph", "Liam", "Fred", "Henry", "Seth", "Richard"), t.party.map { it.nickname })
         val pikachu = t.party[0]
         assertEquals(25 to 100, pikachu.species to pikachu.level)
         assertEquals(182 to 182, pikachu.hp to pikachu.maxHp)

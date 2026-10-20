@@ -10,6 +10,8 @@ class FireRedVanillaDecodeTest {
         val t = decodeNative("firered_vanilla", NATIVE_FIRERED_REV1)
         assertTrue(t.party.isNotEmpty())
         t.party.forEach { assertTrue(it.species > 0) }
+        // BoxPokemon +0x08: the stored name - the species name when it wasn't nicknamed (LAPRAS here).
+        assertEquals("LAPRAS", t.party[0].nickname)
         assertPocketsInRange(t)
         val pockets = t.items.map { it.pocket }.toSet()
         assertTrue("expected items in >1 pocket, got $pockets", pockets.size > 1)
@@ -28,6 +30,18 @@ class FireRedVanillaDecodeTest {
             t.party.take(4).map { it.genderSymbol },
         )
         assertEquals(GENDER_SYMBOL_MALE, t.party[5].genderSymbol)
+    }
+
+    @Test
+    fun `a nickname is read from the party struct`() {
+        // The nickname sits outside the encrypted substructs / checksum, so poking it keeps the mon valid.
+        romLanguage = 'E'
+        val raw = FixtureMemoryReader.load("firered_vanilla").readCoreMemory(NATIVE_FIRERED_REV1.playerParty, MON_STRUCT_SIZE)
+        val name = "SPARKY"
+        val encoded = Gen3Text.encode(name)!!
+        encoded.copyInto(raw, 0x08)
+        raw[0x08 + encoded.size] = 0xFF.toByte()
+        assertEquals(name, decodePartyMon(raw, 0)!!.nickname)
     }
 
     @Test

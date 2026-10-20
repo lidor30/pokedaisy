@@ -14,6 +14,7 @@ class QuetzalDecodeTest {
         assertEquals(1, t.party.size)
         val mon = t.party[0]
         assertEquals("Charmander", speciesNamesQuetzal[mon.species])
+        assertEquals("Charmander", mon.nickname) // vanilla's 10-byte nickname at +0x08
         assertEquals(5, mon.level)
         assertEquals(10 to 19, mon.hp to mon.maxHp) // HP is 10 bits at +0x23
         assertEquals(0L, mon.status)

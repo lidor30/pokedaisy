@@ -10,7 +10,7 @@ The `PARTY` tab is your team, live. Glance down and you know who's hurt, who's p
 
 ## Your party
 
-Each Pokémon gets a slot with its icon, name, level and HP bar, plus its status if it has one (poisoned, asleep and so on). A fainted Pokémon's slot changes colour the way the game shows it.
+Each Pokémon gets a slot with its icon, name, level and HP bar, plus its status if it has one (poisoned, asleep and so on). A nicknamed Pokémon shows its nickname, in its slot and its summary, just as the game does; one without a nickname shows its species name. A fainted Pokémon's slot changes colour the way the game shows it.
 
 A Pokémon holding an item gets a small tag in its slot's top right corner with the item's icon and name, so you can see who holds what without opening each summary. The game's own little held-item marker sits by its icon too.
 

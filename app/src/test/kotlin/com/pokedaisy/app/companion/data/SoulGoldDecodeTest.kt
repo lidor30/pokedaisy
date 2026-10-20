@@ -35,6 +35,8 @@ class SoulGoldDecodeTest {
         val t = decodeNative("soulgold_party", NATIVE_SOULGOLD)
         assertEquals(6, t.party.size)
         assertEquals(listOf("Beedrill", "Tinkatuff", "Noibat", "Misdreavus", "Quilava"), t.party.take(5).map { speciesName(it.species) })
+        // Its 12-byte nickname field at +0x08 (the egg's is junk, and the view keeps "Egg" instead).
+        assertEquals(listOf("Beedrill", "Tinkatuff", "Noibat", "Misdreavus", "Quilava"), t.party.take(5).map { it.nickname })
         assertEquals(listOf(30, 10, 0, 71, 75), t.party.take(5).map { it.hp }) // poked (see the fixture's README)
         assertEquals(GENDER_SYMBOL_FEMALE, t.party[1].genderSymbol)
         val egg = t.party[5]
@@ -44,6 +46,8 @@ class SoulGoldDecodeTest {
         val view = buildSnapshotView(t)
         assertEquals("Egg", view.party[5].name)
         assertTrue(view.party[5].isEgg)
+        assertEquals(null, view.party[5].nickname)
+        assertEquals("Beedrill", view.party[0].nickname)
     }
 
     @Test

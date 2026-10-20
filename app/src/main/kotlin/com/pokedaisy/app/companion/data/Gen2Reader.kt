@@ -331,6 +331,9 @@ const val GEN2_PARTY_MON_SIZE = 48
 const val GEN2_BATTLE_MON_SIZE = 32
 private const val GEN2_EGG = 0xFD
 private const val GEN2_TMS_HMS = 57
+/** wPartyMonNicknames' 11-byte names, right after wPartyMonOT (6 x 11): see [readGen2Telemetry]. */
+private const val GEN2_NAME_LEN = 11
+private const val GEN2_NICKNAMES_AFTER_MONS = PARTY_SIZE * GEN2_PARTY_MON_SIZE + PARTY_SIZE * GEN2_NAME_LEN
 
 private fun be16(b: ByteArray, o: Int) = ((b[o].toInt() and 0xFF) shl 8) or (b[o + 1].toInt() and 0xFF)
 private fun u8(b: ByteArray, o: Int) = b[o].toInt() and 0xFF
@@ -371,6 +374,22 @@ fun decodeGen2PartyMon(raw: ByteArray, off: Int, cfg: Gen2Config, egg: Boolean =
         heldItem = u8(raw, off + 1),
         personality = gen2MonKey(raw, off),   // no personality in Gen 2: the switch's key (GbPartySwitch)
     )
+}
+
+/**
+ * [raw]'s nickname at [off] (11 bytes) in the game's charmap. Crystal ends names with 0x50; Polished Crystal's
+ * own charmap ends them with 0x53 (or <DONE> 0x52), as its player / box names do.
+ */
+private fun gen2Nickname(raw: ByteArray, off: Int, polished: Boolean): String {
+    if (off + GEN2_NAME_LEN > raw.size) return ""
+    val chars = Gen2Art.chars(polished)
+    return buildString {
+        for (i in 0 until GEN2_NAME_LEN) {
+            val c = raw[off + i].toInt() and 0xFF
+            if (c == 0x00 || c == 0x50 || (polished && (c == 0x52 || c == 0x53))) break
+            chars[c]?.let { append(it) }
+        }
+    }.trim()
 }
 
 /** A battle_struct (wBattleMon / wEnemyMon); its types are the battler's current ones. */
@@ -499,9 +518,12 @@ fun readGen2Telemetry(r: MemoryReader, cfg: Gen2Config): Telemetry {
     // (Polished Crystal keeps no species list after it: 7 unused bytes.)
     val count = u8(countRaw, 0).takeIf { it <= PARTY_SIZE && (cfg.polished || it == PARTY_SIZE || u8(countRaw, 1 + it) == 0xFF) } ?: 0
     val partyRaw = r.readCoreMemory(cfg.partyMons, PARTY_SIZE * GEN2_PARTY_MON_SIZE)
-    val party = (0 until count).mapNotNull {
-        if (cfg.polished) decodePolishedPartyMon(partyRaw, it * GEN2_PARTY_MON_SIZE, cfg)
-        else decodeGen2PartyMon(partyRaw, it * GEN2_PARTY_MON_SIZE, cfg, egg = u8(countRaw, 1 + it) == GEN2_EGG)
+    // wPartyMonNicknames: 6 x 11 bytes, after wPartyMons and wPartyMonOT.
+    val nicknames = r.readCoreMemory(cfg.partyMons + GEN2_NICKNAMES_AFTER_MONS, PARTY_SIZE * GEN2_NAME_LEN)
+    val party = (0 until count).mapIndexedNotNull { i, _ ->
+        val mon = if (cfg.polished) decodePolishedPartyMon(partyRaw, i * GEN2_PARTY_MON_SIZE, cfg)
+        else decodeGen2PartyMon(partyRaw, i * GEN2_PARTY_MON_SIZE, cfg, egg = u8(countRaw, 1 + i) == GEN2_EGG)
+        mon?.copy(nickname = gen2Nickname(nicknames, i * GEN2_NAME_LEN, cfg.polished))
     }
 
     val items = readGen2Bag(r, cfg)

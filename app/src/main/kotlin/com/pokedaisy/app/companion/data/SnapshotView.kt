@@ -47,7 +47,12 @@ data class MonView(
     val battleStats: List<Int>? = null,
     /** Battlers: the stages on [battleStats], then accuracy, evasion (-6..+6); null = unknown. */
     val statStages: List<Int>? = null,
+    /** Party mons: the game's stored name (the nickname, or the species name when it has none); null = not read / an egg. */
+    val nickname: String? = null,
 )
+
+/** The nickname a party slot and the summary print in place of [MonView.name]; null for an egg or an unread name. */
+val MonView.shownNickname: String? get() = nickname?.takeIf { it.isNotBlank() && !isEgg }
 
 /** [total] EXP; this level starts at [levelStart], the next at [nextLevel] (== levelStart at Lv100). */
 data class ExpProgress(val total: Long, val levelStart: Long, val nextLevel: Long) {
@@ -319,6 +324,7 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
             personality = m.personality,
             stats = if (isEgg) null else m.stats,
             heldItemId = m.heldItem,
+            nickname = if (isEgg) null else m.nickname.takeIf { it.isNotBlank() },
             weaknesses = matchups.weaknesses,
             resistances = matchups.resistances,
             immunities = matchups.immunities,

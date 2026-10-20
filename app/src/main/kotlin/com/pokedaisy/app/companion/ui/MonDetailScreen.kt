@@ -53,6 +53,7 @@ import androidx.compose.ui.platform.LocalDensity
 import com.pokedaisy.app.companion.data.GENDER_SYMBOL_FEMALE
 import com.pokedaisy.app.companion.data.GENDER_SYMBOL_MALE
 import com.pokedaisy.app.companion.data.MonView
+import com.pokedaisy.app.companion.data.shownNickname
 import com.pokedaisy.app.companion.data.MoveView
 import com.pokedaisy.app.companion.data.TypeMatchup
 import com.pokedaisy.app.companion.ui.theme.AppColors
@@ -276,7 +277,7 @@ private fun PartyStrip(party: List<MonView>, index: Int, onPick: (Int) -> Unit, 
                 val on = i == index
                 PlatinumButton(
                     fill = if (on) optionLook.stripLit else optionLook.stripIdle, frame = if (on) optionLook.stripLitFrame else optionLook.stripIdleFrame,
-                    modifier = Modifier.size(cell).semantics { contentDescription = mon.name },
+                    modifier = Modifier.size(cell).semantics { contentDescription = mon.shownNickname ?: mon.name },
                     contentPadding = PaddingValues(0.dp),
                     onClick = { onPick(i) },
                 ) { SpeciesIcon(mon.iconAsset, size = cell * 0.8f) }
@@ -358,7 +359,7 @@ internal fun InfoSection(mon: MonView, m: GbaTextMetrics, small: GbaTextMetrics,
     Box(modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(u * 3)) {
             Row(verticalAlignment = Alignment.CenterVertically) {
-                GbaText(mon.name, optionLook.label, optionLook.labelShadow, m, modifier = Modifier.weight(1f, fill = false))
+                GbaText(mon.shownNickname ?: mon.name, optionLook.label, optionLook.labelShadow, m, modifier = Modifier.weight(1f, fill = false))
                 GenderMark(mon.genderSymbol, m, Modifier.padding(start = u * 3))
             }
             Row(verticalAlignment = Alignment.CenterVertically) {

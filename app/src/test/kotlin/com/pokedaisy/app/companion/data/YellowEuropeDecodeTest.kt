@@ -52,6 +52,8 @@ class YellowEuropeDecodeTest {
         val t = readGen1Telemetry(FixtureMemoryReader.load("yellow_${l.key}"), l.cfg)
         assertFalse(l.key, t.inBattle)
         assertEquals(l.key, l.party, t.party.map { speciesName(it.species) })
+        // The English save's own nicknames, through each cart's character set.
+        assertEquals(l.key, listOf("Joseph", "Liam", "Fred", "Henry", "Seth", "Richard"), t.party.map { it.nickname })
         val pikachu = t.party[0]
         assertEquals(l.key, 25 to 100, pikachu.species to pikachu.level)
         assertEquals(l.key, 182 to 182, pikachu.hp to pikachu.maxHp)

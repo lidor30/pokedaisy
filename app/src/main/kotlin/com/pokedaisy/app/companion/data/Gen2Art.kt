@@ -304,6 +304,9 @@ object Gen2Art {
         ))
     }
 
+    /** [CHARS] or [POLISHED_CHARS]: the game's text characters for its font tiles 0x80-0xFF. */
+    internal fun chars(polished: Boolean): Map<Int, Char> = if (polished) POLISHED_CHARS else CHARS
+
     private fun off(bank: Int, addr: Int) = if (bank == 0) addr else bank * 0x4000 + (addr - 0x4000)
     private fun u8(b: ByteArray, o: Int) = b[o].toInt() and 0xFF
     private fun u16(b: ByteArray, o: Int) = u8(b, o) or (u8(b, o + 1) shl 8)

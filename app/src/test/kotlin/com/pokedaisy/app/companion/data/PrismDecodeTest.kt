@@ -24,6 +24,7 @@ class PrismDecodeTest {
         val t = read("prism")
         assertFalse(t.inBattle)
         assertEquals(listOf("Larvitar", "Shinx"), t.party.map { speciesName(it.species) })
+        assertEquals(listOf("Larvitar", "Shinx"), t.party.map { it.nickname })
         val larvitar = t.party[0]
         assertEquals(246 to 5, larvitar.species to larvitar.level)   // not its Dex number: Prism's own id
         assertEquals(19 to 21, larvitar.hp to larvitar.maxHp)

@@ -148,6 +148,9 @@ val GameKind?.isRedBlue: Boolean get() = this == GameKind.RED || this == GameKin
 const val GEN1_PARTY_MON_SIZE = 44
 const val GEN1_BATTLE_MON_SIZE = 29
 private const val GEN1_BAG_SLOTS = 20
+/** wPartyMonNicks' 11-byte names, right after wPartyMonOT (6 x 11): see [readGen1Telemetry]. */
+private const val GEN1_NAME_LEN = 11
+private const val GEN1_NICKNAMES_AFTER_MONS = PARTY_SIZE * GEN1_PARTY_MON_SIZE + PARTY_SIZE * GEN1_NAME_LEN
 
 private fun be16(b: ByteArray, o: Int) = ((b[o].toInt() and 0xFF) shl 8) or (b[o + 1].toInt() and 0xFF)
 private fun u8(b: ByteArray, o: Int) = b[o].toInt() and 0xFF
@@ -190,6 +193,26 @@ fun decodeGen1BattleMon(raw: ByteArray, cfg: Gen1Config): BattleMon? {
         moves = IntArray(4) { u8(raw, 8 + it) },
         pp = IntArray(4) { u8(raw, 25 + it) and 0x3F },
     )
+}
+
+/** [raw]'s nickname at [off] (11 bytes, 0x50-terminated) in the cart's own charset. */
+private fun gen1Nickname(raw: ByteArray, off: Int, charset: Gen1Charset): String {
+    if (off + GEN1_NAME_LEN > raw.size) return ""
+    val chars = charset.chars
+    return buildString {
+        for (i in 0 until GEN1_NAME_LEN) {
+            val c = raw[off + i].toInt() and 0xFF
+            if (c == 0x00 || c == 0x50) break
+            chars[c]?.let { append(it) }
+        }
+    }.trim()
+}
+
+/** The cart's character set: German / French share one, Italian / Spanish another. */
+private fun gen1Charset(language: Char): Gen1Charset = when (language) {
+    'D', 'F' -> Gen1Charset.DF
+    'I', 'S' -> Gen1Charset.IS
+    else -> Gen1Charset.EN
 }
 
 /**
@@ -249,7 +272,14 @@ private val EMPTY_BATTLE_MON = BattleMon(0, 0, 0, 0, 0, 0, 0, IntArray(4), IntAr
 fun readGen1Telemetry(r: MemoryReader, cfg: Gen1Config): Telemetry {
     val count = u8(r.readCoreMemory(cfg.partyCount, 1), 0).coerceAtMost(PARTY_SIZE)
     val partyRaw = r.readCoreMemory(cfg.partyMons, PARTY_SIZE * GEN1_PARTY_MON_SIZE)
-    val party = (0 until count).mapNotNull { decodeGen1PartyMon(partyRaw, it * GEN1_PARTY_MON_SIZE, cfg) }
+    // wPartyMonNicks: 6 x 11 bytes, after wPartyMons and wPartyMonOT.
+    val nicknames = r.readCoreMemory(cfg.partyMons + GEN1_NICKNAMES_AFTER_MONS, PARTY_SIZE * GEN1_NAME_LEN)
+    val charset = gen1Charset(cfg.language)
+    val party = (0 until count).mapIndexedNotNull { i, _ ->
+        decodeGen1PartyMon(partyRaw, i * GEN1_PARTY_MON_SIZE, cfg)?.copy(
+            nickname = gen1Nickname(nicknames, i * GEN1_NAME_LEN, charset),
+        )
+    }
 
     val bagN = u8(r.readCoreMemory(cfg.bagCount, 1), 0).coerceAtMost(GEN1_BAG_SLOTS)
     val bagRaw = r.readCoreMemory(cfg.bagCount + 1, GEN1_BAG_SLOTS * 2)

@@ -66,6 +66,9 @@ data class PartyMonLayout(
     val hasStats: Boolean = size == MON_STRUCT_SIZE,
     /** The egg bit in the [flags] byte (vanilla's isEgg is 0x04). */
     val eggMask: Int = 0x04,
+    /** Where the box header keeps its nickname (10 bytes in vanilla / expansion; some hacks keep 12). */
+    val nickname: Int = 0x08,
+    val nicknameLength: Int = 10,
     /** R.O.W.E.'s bit-packed struct ([ROWE_PARTY_MON], [decodeRoweMon]) rather than a box of substructs. */
     val rowe: Boolean = false,
     /** Elite Redux's bit-packed struct ([ELITE_REDUX_PARTY_MON], [decodeEliteReduxMon]). */
@@ -85,6 +88,7 @@ val VANILLA_PARTY_MON = PartyMonLayout()
  */
 val ROWE_PARTY_MON = PartyMonLayout(
     size = 0x4C, status = 0x38, level = 0x3C, hp = 0x3E, maxHp = 0x40, flags = 0x27, eggMask = 0x80, hasStats = true, rowe = true,
+    nicknameLength = 12,
 )
 
 /**
@@ -97,7 +101,7 @@ val ROWE_PARTY_MON = PartyMonLayout(
  */
 val ELITE_REDUX_PARTY_MON = PartyMonLayout(
     size = 0x4C, status = 0x38, level = 0x3C, hp = 0x3E, maxHp = 0x40, flags = 0x15, eggMask = 0x80, hasStats = true,
-    eliteRedux = true,
+    eliteRedux = true, nickname = 0x26, nicknameLength = 12,
 )
 
 private fun decodeEliteReduxMon(raw: ByteArray, off: Int): Mon? {
@@ -125,6 +129,7 @@ private fun decodeEliteReduxMon(raw: ByteArray, off: Int): Mon? {
             stats = List(6) { u16(raw, off + 0x40 + 2 * it) },
         ),
         heldItem = (w14 and 0x3FF).toInt(),
+        nickname = gen3Nickname(raw, off, ELITE_REDUX_PARTY_MON),
     )
 }
 
@@ -149,8 +154,14 @@ private fun decodeRoweMon(raw: ByteArray, off: Int): Mon? {
             nature = ((raw[off + 0x27].toInt() and 0xFF) shr 2) and 0x1F,
             stats = List(6) { u16(raw, off + 0x40 + 2 * it) },
         ),
+        nickname = gen3Nickname(raw, off, ROWE_PARTY_MON),
     )
 }
+
+/** The box header's nickname, decoded in the running game's Gen 3 charset; "" when it's blank or unreadable. */
+private fun gen3Nickname(raw: ByteArray, off: Int, layout: PartyMonLayout): String =
+    Gen3Text.decode(raw, off + layout.nickname, layout.nicknameLength).trim()
+        .takeIf { it.isNotEmpty() && Gen3Text.UNKNOWN !in it }.orEmpty()
 
 /**
  * Pokémon Quetzal's 104-byte plaintext struct Pokemon (checksum 0): vanilla's box
@@ -168,6 +179,7 @@ val QUETZAL_PARTY_MON = PartyMonLayout(
 val SOULGOLD_PARTY_MON = PartyMonLayout(
     size = 96, status = 0x4C, level = 0x50, hp = 0x52, maxHp = 0x54, flags = 0x15, plainSpeciesMask = 0x07FF,
     plainItemMask = 0x03FF,   // heldItem:10 - Cyndaquil's 0x0400 read as an "Item#1024" tag on its party slot
+    nicknameLength = 12,
 )
 
 /**
@@ -224,6 +236,7 @@ fun decodePartyMon(raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PA
         personality = u32(raw, off),
         stats = if (layout.hasStats) monStats(raw, off, layout, evs, ivWord) else null,
         heldItem = heldItem,
+        nickname = gen3Nickname(raw, off, layout),
     )
 }
 

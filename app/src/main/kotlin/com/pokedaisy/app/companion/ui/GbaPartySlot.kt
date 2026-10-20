@@ -23,6 +23,7 @@ import androidx.compose.ui.unit.IntSize
 import com.pokedaisy.app.companion.data.GENDER_SYMBOL_FEMALE
 import com.pokedaisy.app.companion.data.GENDER_SYMBOL_MALE
 import com.pokedaisy.app.companion.data.MonView
+import com.pokedaisy.app.companion.data.shownNickname
 import com.pokedaisy.app.companion.ui.PartySlotLayout as L
 import kotlin.math.floor
 import kotlin.math.max
@@ -108,8 +109,8 @@ fun GbaPartySlot(
         }
         val statusIdx = statusIconIndex(mon)
         px.window(slot) {
-            // Name (the game shows the nickname; FireRed/Emerald print species in caps).
-            val name = if (st.upperCaseNames) mon.name.uppercase() else mon.name
+            // Name: the nickname exactly as the game stores it, else the species name (FireRed/Emerald print those in caps).
+            val name = mon.shownNickname ?: if (st.upperCaseNames) mon.name.uppercase() else mon.name
             px.text(assets, name, px.left(st.nameX), px.textY(st.nameY), st.text, st.textShadow)
             // Gender symbol (DisplayPartyPokemonGender) - drawn whenever known,
             // even alongside a status icon, like the game.

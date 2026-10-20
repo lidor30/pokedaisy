@@ -14,6 +14,7 @@ class RoweDecodeTest {
         assertEquals(1, t.party.size)
         val mon = t.party[0]
         assertEquals("Duraludon", speciesNamesRowe[mon.species])
+        assertEquals("Duraludon", mon.nickname) // its 12-byte nickname at +0x08
         assertEquals(10 to 34, mon.level to mon.hp)
         assertEquals(34, mon.maxHp)
         assertEquals(listOf(232, 43, 249), mon.moves.filter { it != 0 }.toList())

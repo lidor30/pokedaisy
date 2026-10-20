@@ -34,6 +34,8 @@ class EliteReduxDecodeTest {
             val t = decodeNative(key, cfg)
             assertEquals(key, listOf(644, 380, 1071, 1853, 608, 2669), t.party.map { it.species })
             assertEquals(listOf("Zekrom", "Latias", "Lucineon", "Lampent"), listOf(0, 1, 2, 4).map { speciesName(t.party[it].species) })
+            // Its 12-byte nickname at +0x26.
+            assertEquals(key, listOf("Zekrom", "Latias", "Lucineon", "Eevee", "Lampent", "Kirlia"), t.party.map { it.nickname })
             assertEquals(List(6) { 20 }, t.party.map { it.level })
             assertEquals(listOf(76, 68, 69, 62, 60, 59), t.party.map { it.maxHp })
             assertEquals(t.party.map { it.maxHp }, t.party.map { it.hp })

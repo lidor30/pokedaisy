@@ -32,6 +32,8 @@ class PolishedCrystalDecodeTest {
             val t = read(fixture, cfg)
             assertFalse(fixture, t.inBattle)
             assertEquals(fixture, listOf("Cyndaquil", "Pidgey"), t.party.map { speciesName(it.species) })
+            // Its charmap's 0x53-terminated wPartyMonNicknames.
+            assertEquals(fixture, listOf("Cyndaquil", "Pidgey"), t.party.map { it.nickname })
             val cyndaquil = t.party[0]
             assertEquals(155 to 5, cyndaquil.species to cyndaquil.level)
             assertEquals(13 to 19, cyndaquil.hp to cyndaquil.maxHp)

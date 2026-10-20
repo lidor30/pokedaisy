@@ -59,6 +59,8 @@ data class Mon(
     val isEgg: Boolean = false,
     // The held item's id from the RAM struct (the party menu's held-item marker); 0 = none or unknown.
     val heldItem: Int = 0,
+    // The name the game stores for it (its nickname; unnicknamed mons store the species name); "" = not read.
+    val nickname: String = "",
 )
 
 // What FireRed's party menu shows next to the level. UNKNOWN = a source that can't tell.
