@@ -90,7 +90,7 @@ The `SHADERS` page:
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
 | `GAME BUTTONS` | a page | Which button presses A, B, L, R, `START` and `SELECT`, plus `START 2`, `SELECT 2`, `TURBO A` and `TURBO B`. Press the button you want on each row. | [Controls](controls.md) |
-| `HOTKEYS` | **`ON`**, `OFF` (a page) | Shortcuts for save states, fast-forward, slow motion, rewind, `ZOOM` and leaving the game. Each can be a combination of buttons, or cleared with `CLEAR`. Off, every button goes to the game. | [Controls](controls.md) |
+| `HOTKEYS` | **`ON`**, `OFF` (a page) | Shortcuts for save states, fast-forward, slow motion, rewind, `ZOOM`, opening the companion and leaving the game. Each can be a combination of buttons, or cleared with `CLEAR`. Off, every button goes to the game. | [Controls](controls.md) |
 | `QUICK MENU` | a page | Its `STYLE` (**`RING`**, `GRID`), `LABELS` (**`ON`**, `OFF`) and which actions it shows (all of them to start with). Its button is the `QUICK MENU` hotkey. | [Controls](controls.md) |
 | `TOUCH CONTROLS` | a page | The on-screen buttons: `SHOW` (**`AUTO`**, `ALWAYS`, `NEVER`), `LAYOUT` (**`SIDES`**, `CLASSIC`, `COMPACT`, `CUSTOM`), `EDIT LAYOUT`, `POSITION` (`TOP`, **`MIDDLE`**, `BOTTOM`), `COMPANION` (upright, one-screen devices), `SIZE`, `OPACITY`, `D-PAD`, `FADE WHEN IDLE`, `VIBRATION` and the extra buttons (`FF`, `QUICK MENU`, turbo, save and load state). A preview shows the result. | [Controls](controls.md#touch-controls) |
 

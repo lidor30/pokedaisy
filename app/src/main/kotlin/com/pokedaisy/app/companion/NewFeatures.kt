@@ -52,10 +52,13 @@ object NewFeatures {
     /** SETTINGS > DISPLAY OPTIONS > LIGHT COMPANION: a lighter companion for slow devices (LightCompanion). */
     const val LIGHT_COMPANION = "light_companion"
 
+    /** HOTKEYS > COMPANION: opens the companion over the game on one screen (Hotkeys.Action.COMPANION). */
+    const val COMPANION_HOTKEY = "companion_hotkey"
+
     /** Every feature that gets the tag. */
     val ALL = listOf(
         HUD, BATTLE_BUTTONS, GAME_HOTKEYS, COMPANION_WINDOW, HUD_PC, QUICK_MENU, HUD_REPEL, SINGLE_SCREEN, MORE_TAB, TOUCH_CONTROLS,
-        COMPANION_TAB, REUSABLE_TMS, UNLIT_SCREEN, LIGHT_COMPANION,
+        COMPANION_TAB, REUSABLE_TMS, UNLIT_SCREEN, LIGHT_COMPANION, COMPANION_HOTKEY,
     )
 
     private const val DAYS = 7

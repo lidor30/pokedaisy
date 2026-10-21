@@ -22,6 +22,14 @@ class HotkeyBindingTest {
     }
 
     @Test
+    fun companionHotkeyIsUnboundUntilThePlayerBindsIt() {
+        val dir = tmp.newFolder()
+        // Its whole point on one screen is replacing a hidden COMPANION BUTTON tab, so it must not take a button
+        // from the game by default.
+        assertEquals(emptyList<String>(), Hotkeys.load(dir).rawBindings[Action.COMPANION])
+    }
+
+    @Test
     fun theSameChordInAnyOrderClashes() {
         val raw = mapOf(
             Action.SAVE_STATE to listOf("BUTTON_SELECT+BUTTON_R1", "F1"),

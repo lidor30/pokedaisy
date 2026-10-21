@@ -2810,6 +2810,12 @@ class PokeDaisyActivity : Activity() {
             Hotkeys.Action.EXIT_GAME -> if (e.pressed) exitGame()
             Hotkeys.Action.RESTART_GAME -> if (e.pressed) restartGame()
             Hotkeys.Action.CLOSE_APP -> if (e.pressed) closeApp()
+            Hotkeys.Action.COMPANION -> if (e.pressed) {
+                // One screen: COMPANION BUTTON can hide the edge tab, so this is the way in. Closed on a device with a
+                // second screen (CLOSE COMPANION), it comes back to its own.
+                if (companionClosed) reopenCompanion()
+                else if (::sidePanel.isInitialized && sidePanel.enabled) sidePanel.openPanel()
+            }
             Hotkeys.Action.QUICK_MENU -> {
                 val wasOpen = quickMenu.open
                 quickMenu.trigger(e.pressed)
