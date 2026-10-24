@@ -1,8 +1,9 @@
 # Builds website/ and deploys it to Firebase Hosting (project pokedaisy). The live site only changes with
 # an app release: a published release (not a pre-release) deploys that release's tag, so the game table and
-# ROM check never get ahead of the APK people can download. Pushes to main only build and test; pull
-# requests from this repo get a temporary preview channel (linked in a PR comment). Run it by hand with a
-# release tag to redeploy (or roll back to) that release's site.
+# ROM check never get ahead of the APK people can download. Pushes to main and pull requests only build and
+# test. Run it by hand with a release tag to redeploy (or roll back to) that release's site.
+# The Firebase secret lives in the `website` environment, which only runs on v* tags (which only the owner can
+# push, docs/RELEASING.md): a branch pushed by a collaborator can't reach it, so there are no PR previews.
 name: Website
 
 on:
@@ -23,8 +24,6 @@ on:
 
 permissions:
   contents: read
-  checks: write
-  pull-requests: write
 
 # Actions are pinned to commits, not tags: a moved tag can't run new code with the Firebase secret.
 # Bump them by hand (the comment names the release).
@@ -33,7 +32,7 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  deploy:
+  build:
     runs-on: ubuntu-latest
     defaults:
       run:
@@ -53,17 +52,38 @@ jobs:
       - run: npm run build
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-      # Live: releases and manual runs only. Previews: pull requests from this repo (forks get no secrets).
-      # A push to main stops here, built and tested.
-      - if: >-
-          github.event_name == 'release' || github.event_name == 'workflow_dispatch' ||
-          (github.event_name == 'pull_request' && github.event.pull_request.head.repo.full_name == github.repository)
-        uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0.11.0
+
+  # Live: releases and manual runs only, once the build above has passed its tests.
+  deploy:
+    needs: build
+    if: github.event_name == 'release' || github.event_name == 'workflow_dispatch'
+    runs-on: ubuntu-latest
+    environment: website
+    permissions:
+      contents: read
+      checks: write
+    defaults:
+      run:
+        working-directory: website
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ github.event_name == 'workflow_dispatch' && format('refs/tags/{0}', inputs.tag) || '' }}
+      - uses: actions/setup-node@a0853c24544627f65ddf259abe73b1d18a591444 # v5.0.0
+        with:
+          node-version-file: website/.nvmrc
+          cache: npm
+          cache-dependency-path: website/package-lock.json
+      - run: npm ci
+      - run: npm run build
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - uses: FirebaseExtended/action-hosting-deploy@500ac625ca2dd40cbd15f7659af953801858032a # v0.11.0
         with:
           repoToken: ${{ secrets.GITHUB_TOKEN }}
           firebaseServiceAccount: ${{ secrets.FIREBASE_SERVICE_ACCOUNT_POKEDAISY }}
           projectId: pokedaisy
           entryPoint: website
-          channelId: ${{ github.event_name == 'pull_request' && '' || 'live' }}
+          channelId: live
           # The action installs firebase-tools when it runs: an exact version, not "latest", while the secret is in scope.
           firebaseToolsVersion: 15.31.0

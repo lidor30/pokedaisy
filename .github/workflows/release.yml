@@ -179,8 +179,18 @@ jobs:
           files: dist/PokeDaisy-${{ env.VERSION }}.apk
           generate_release_notes: true
           prerelease: ${{ needs.verify.outputs.prerelease == 'true' }}
+          # Releases are immutable (docs/RELEASING.md): the APK can only go up before one is published. The
+          # action drafts a full release itself until its files are up, but publishes a pre-release at once,
+          # so a pre-release goes up as a draft and the next step publishes it.
+          draft: ${{ needs.verify.outputs.prerelease == 'true' }}
           body: |
             ${{ needs.rom-tests.result == 'skipped' && '> Released without the ROM-backed tests (no ROM runner configured).' || '' }}
+
+      - name: Publish the pre-release
+        if: needs.verify.outputs.prerelease == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: gh release edit "${GITHUB_REF_NAME}" --repo "${GITHUB_REPOSITORY}" --draft=false
 
       # The site goes live with the release (website.yml). A release published with this
       # job's token doesn't fire other workflows' `release` trigger, so start it by hand.
