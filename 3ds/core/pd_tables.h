@@ -40,6 +40,10 @@ extern const unsigned char pd_gender_ratios[];
 extern const int pd_gender_ratios_count;
 extern const unsigned char pd_species_type_table[][2];
 extern const int pd_species_type_table_count;
+// Generated from MonStats.kt, not a second maintained list.
+extern const char* const pd_nature_names[];
+extern const int pd_nature_names_count;
+extern const unsigned char pd_hidden_power_types[16];
 
 #define PD_TYPE_NONE 255
 // An egg, whatever its game numbers it (retail 412, Emerald Legacy 415: pd_config.eggSpecies): past every game's

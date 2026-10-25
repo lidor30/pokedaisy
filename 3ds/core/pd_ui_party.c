@@ -227,6 +227,59 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     ui_add_hit(ui, x + geo.fx, y + geo.fy, geo.fw, geo.fh, HIT_SLOT + slot);
 }
 
+// MonStatsSection.kt: struct order differs from the summary's display order.
+static void summary_stats(struct pd_canvas* c, const struct pd_mon_stats* s,
+                          int x, int y, int w, int h) {
+    static const int order[] = {0, 1, 2, 4, 5, 3};
+    static const char* labels[] = {"HP", "ATTACK", "DEFENSE", "SPEED", "SP. ATK", "SP. DEF"};
+    int row = h / 12;
+    if (row > 25) row = 25;
+    int statX = x + w * 46 / 100, ivX = x + w * 83 / 100;
+    char buf[48];
+    pd_text_right(c,statX,y,"STAT",PD_MUTED,PD_MUTED_SHADOW);
+    if(s->hasIvs)pd_text_right(c,ivX,y,"IV",PD_MUTED,PD_MUTED_SHADOW);
+    if(s->hasEvs)pd_text_right(c,x+w,y,"EV",PD_MUTED,PD_MUTED_SHADOW);
+    int up=s->hasNature?pd_nature_raises(s->nature):-1;
+    int down=s->hasNature?pd_nature_lowers(s->nature):-1;
+    int ivTotal=0,evTotal=0;
+    for(int r=0;r<6;r++) {
+        int i=order[r], ry=y+(r+1)*row;
+        uint32_t color=i==up?0xE04040:i==down?0x3984F7:PD_LABEL;
+        snprintf(buf,sizeof buf,"%s%s",labels[i],i==up?" +":i==down?" -":"");
+        pd_text_fit(c,x,ry,w*32/100,buf,color,PD_LABEL_SHADOW);
+        snprintf(buf,sizeof buf,"%d",s->values[i]);
+        pd_text_right(c,statX,ry,buf,PD_LABEL,PD_LABEL_SHADOW);
+        if(s->hasIvs && w>=220) {
+            int bx=statX+8,bw=ivX-bx-23;
+            pd_fill(c,bx,ry+4,bw,6,0x506858);
+            uint32_t fill=s->ivs[i]==31?0xE8B830:s->ivs[i]*2>31?0x60D048:s->ivs[i]*5>31?0xF8C838:0xF04838;
+            pd_fill(c,bx+1,ry+5,(bw-2)*s->ivs[i]/31,4,fill);
+        }
+        snprintf(buf,sizeof buf,"%d",s->ivs[i]);
+        if(s->hasIvs)pd_text_right(c,ivX,ry,buf,PD_VALUE,PD_VALUE_SHADOW);
+        snprintf(buf,sizeof buf,"%d",s->evs[i]);
+        if(s->hasEvs)pd_text_right(c,x+w,ry,buf,PD_VALUE,PD_VALUE_SHADOW);
+        ivTotal+=s->ivs[i];evTotal+=s->evs[i];
+    }
+    int ry=y+7*row;
+    pd_text(c,x,ry,"TOTAL",PD_LABEL,PD_LABEL_SHADOW);
+    snprintf(buf,sizeof buf,"%d",ivTotal);
+    if(s->hasIvs)pd_text_right(c,ivX,ry,buf,PD_VALUE,PD_VALUE_SHADOW);
+    snprintf(buf,sizeof buf,"%d",evTotal);
+    if(s->hasEvs)pd_text_right(c,x+w,ry,buf,PD_VALUE,PD_VALUE_SHADOW);
+    pd_fill(c,x,ry+row-3,w,1,PD_DIVIDER);
+    if(s->hasNature)pd_text(c,x,ry+row,"NATURE",PD_MUTED,PD_MUTED_SHADOW);
+    const char* nature=s->nature>=0&&s->nature<pd_nature_names_count?pd_nature_names[s->nature]:"?";
+    if(s->hasNature)pd_text_right(c,x+w,ry+row,nature,PD_VALUE,PD_VALUE_SHADOW);
+    if(s->hasHiddenPower) {
+        pd_text(c,x,ry+2*row,"HIDDEN POWER",PD_MUTED,PD_MUTED_SHADOW);
+        if(s->hiddenPowerPower>0)
+            snprintf(buf,sizeof buf,"%s  PWR %d",pd_type_name(s->hiddenPowerType),s->hiddenPowerPower);
+        else snprintf(buf,sizeof buf,"%s",pd_type_name(s->hiddenPowerType));
+        pd_text_fit(c,x,ry+3*row,w,buf,PD_LABEL,PD_LABEL_SHADOW);
+    }
+}
+
 static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m) {
     char buf[40], buf2[40];
     int x = MARGIN, y = CONTENT_Y, w = c->w - 2 * MARGIN, h = c->h - CONTENT_Y - MARGIN;
@@ -263,7 +316,10 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         iw = iw0;
         pd_fill(c, ix, ty, iw, 1, PD_DIVIDER);
         ty += 4;
-        for (int i = 0; i < PD_NUM_MOVES; i++) {
+        if (ui->summaryStats && m->stats.valid && h >= 210) {
+            int bottom = y + h - f - 30;
+            summary_stats(c, &m->stats, ix, ty, iw, bottom - ty);
+        } else for (int i = 0; i < PD_NUM_MOVES; i++) {
             if (!m->moves[i]) continue;
             pd_text_fit(c, ix, ty, iw - 120, pd_move_name(m->moves[i], buf, sizeof(buf)), PD_LABEL, PD_LABEL_SHADOW);
             pd_text(c, ix + iw - 116, ty, pd_type_name(pd_move_type(m->moves[i])), PD_MUTED, PD_MUTED_SHADOW);
@@ -275,6 +331,8 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
     } else {
         pd_text(c, ix, ty, "It's an egg. It will hatch in time.", PD_MUTED, PD_MUTED_SHADOW);
     }
+    if (!egg && m->stats.valid && h >= 210) // the 3DS's 240 rows are too short for it
+        ui_button(ui, c, x + w - f - 70 - 76, y + h - f - 26, 72, 22, ui->summaryStats ? "MOVES" : "STATS", HIT_SUMMARY_STATS);
     ui_button(ui, c, x + w - f - 70, y + h - f - 26, 66, 22, "BACK", HIT_BACK);
 }
 

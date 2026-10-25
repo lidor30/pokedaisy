@@ -21,6 +21,7 @@ enum {
     HIT_MORE = 111,        // the tab bar's MORE chip
     HIT_SLOT = 200,        // + party slot
     HIT_BACK = 300,
+    HIT_SUMMARY_STATS = 301,
     HIT_BAG_TAB = 400,     // + the bag's pocket tab (ALL first)
     HIT_BAG_LIST = 410,
     HIT_SETTINGS_LIST = 411, // the SETTINGS list (a drag scrolls it)

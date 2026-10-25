@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "pd_game.h"
+#include "pd_stats.h"
 
 // Reads len bytes of the GBA bus at addr into out; false if it can't.
 typedef bool (*pd_read_fn)(void* ctx, uint32_t addr, void* out, size_t len);
@@ -31,6 +32,10 @@ struct pd_mon {
     int moves[PD_NUM_MOVES];
     int pp[PD_NUM_MOVES];
     uint32_t personality;
+    // Optional live fields used by the native companions.
+    uint32_t experience;
+    int heldItem;
+    struct pd_mon_stats stats; // optional: valid only for verified decoders
 };
 
 struct pd_battle_mon {
@@ -40,6 +45,8 @@ struct pd_battle_mon {
     uint32_t status;
     int moves[PD_NUM_MOVES];
     int pp[PD_NUM_MOVES];
+    // Optional live Gen 2 battle fields, in Attack/Defense/Speed/Sp.Atk/Sp.Def order.
+    int heldItem, stats[5];
 };
 
 #define PD_POS_PLAYER_LEFT 0
@@ -76,6 +83,7 @@ struct pd_snapshot {
     int foeCount;
     struct pd_mon foes[PD_PARTY_SIZE];
     int foeActive, foeNext;
+    int partyActive; // Optional player party index, -1 when unknown in native Gen 2.
     int mapsec;
     long money; // -1 = unknown
     // By PD_POCKET_*; bagOk = the pockets read (not just empty).
@@ -110,6 +118,11 @@ struct pd_snapshot {
     uint32_t gameStats[PD_GAME_STATS];
     uint16_t museumWinners[5];
     uint16_t battlePoints;
+
+    // Polished Crystal guide: read-only progress banks from Gen2Reader.
+    bool pcProgressOk;
+    uint16_t pcBadges, pcTrades;
+    uint8_t pcTimeOfDay;
 };
 
 bool pd_flag(const struct pd_snapshot* s, int flag);

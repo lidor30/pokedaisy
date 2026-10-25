@@ -15,7 +15,31 @@ CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Werror
 CORE_SRC := $(wildcard core/*.c)
 DEVKITARM_IMAGE := devkitpro/devkitarm:latest
 
-.PHONY: preview 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
+.PHONY: preview test-font 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
+
+$(BUILD)/pd_font_test: core/pd_canvas.c core/pd_canvas.h core/pd_font.h core/pd_font_gen.c test/font_test.c
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -o $@ core/pd_canvas.c core/pd_font_gen.c test/font_test.c -lm
+
+test-font: $(BUILD)/pd_font_test
+	$(BUILD)/pd_font_test
+
+$(BUILD)/pd_host_test: $(CORE_SRC) $(wildcard core/*.h) test/host_test.c
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $(CORE_SRC) test/host_test.c -lm
+
+test-host: $(BUILD)/pd_host_test
+	$(BUILD)/pd_host_test
+
+$(BUILD)/pd_stats_test: $(CORE_SRC) $(wildcard core/*.h) test/stats_test.c desktop/pd_png.c
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $(CORE_SRC) test/stats_test.c desktop/pd_png.c -lm
+
+test-stats: $(BUILD)/pd_stats_test
+	python3 tools/gen_stats.py --check
+	@mkdir -p $(BUILD)/stats-shots
+	$(BUILD)/pd_stats_test $(FIXTURES)/emerald_vanilla BPEE $(BUILD)/stats-shots
+	$(BUILD)/pd_stats_test $(FIXTURES)/firered_vanilla BPRE $(BUILD)/stats-shots
 
 $(BUILD)/pd_preview: $(CORE_SRC) $(wildcard core/*.h) desktop/pd_preview.c desktop/pd_png.c desktop/pd_png.h
 	@mkdir -p $(BUILD)
@@ -44,6 +68,7 @@ decomps:
 	test/build_decomps.sh
 
 tables:
+	python3 tools/gen_stats.py
 	python3 tools/gen_tables.py
 	python3 tools/gen_map_tables.py
 	python3 tools/gen_guide.py

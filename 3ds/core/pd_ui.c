@@ -367,13 +367,16 @@ static void act(struct pd_ui* ui, int id) {
         ui->action = PD_ACTION_TOGGLE_FF;
     } else if (id >= HIT_SLOT && id < HIT_SLOT + PD_PARTY_SIZE) {
         ui->summarySlot = id - HIT_SLOT;
+        ui->summaryStats = false;
+    } else if (id == HIT_SUMMARY_STATS) {
+        ui->summaryStats = !ui->summaryStats;
     } else if (id == HIT_BACK) {
         pd_ui_back(ui);
     } else if (id >= HIT_BAG_TAB && id < HIT_BAG_TAB + 8) {
         ui->bagPocket = id - HIT_BAG_TAB;
         ui->bagSelected = -1;
         ui->bagScroll = 0;
-    } else if (id >= HIT_BAG_ROW && id < HIT_BAG_ROW + PD_POCKET_SLOTS) {
+    } else if (ui->tab == PD_TAB_BAG && id >= HIT_BAG_ROW && id < HIT_BAG_ROW + PD_POCKET_SLOTS) {
         ui->bagSelected = id - HIT_BAG_ROW;
     } else if (id == HIT_SETTING + SETTING_AUTO_ZOOM) {
         ui->settings->autoZoom = !ui->settings->autoZoom;
