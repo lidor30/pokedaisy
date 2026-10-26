@@ -208,6 +208,27 @@ fun CompanionScreen(
         }
         val infoFoes = shownFoeMon?.let { listOf(it) } ?: snapshot.battleOpponent
         val infoPlayer = shownFoeMon?.let { foe -> snapshot.battlePlayer.map { it.withMovesVs(foe) } } ?: snapshot.battlePlayer
+        // BATTLE FOCUS keeps its own foe state so the normal INFO page is untouched. Any foe that's
+        // been out counts as seen, and a foe that's out is shown with its battle stats.
+        val battleFocus = settings?.battleFocus == true
+        val focusSeen = remember { androidx.compose.runtime.mutableStateListOf<Int>() }
+        LaunchedEffect(snapshot.focusEnemyActive, snapshot.focusEnemyNext, snapshot.enemyBattlers) {
+            (listOf(snapshot.focusEnemyActive, snapshot.focusEnemyNext) + snapshot.enemyBattlers)
+                .filter { it >= 0 && it !in focusSeen }.forEach { focusSeen.add(it) }
+        }
+        val focusShown = selectedFoe ?: snapshot.focusEnemyNext.takeIf { it >= 0 } ?: snapshot.focusEnemyActive
+        val focusBattler = snapshot.enemyBattlers.indexOf(focusShown).takeIf { it >= 0 && focusShown >= 0 }
+            ?.let { snapshot.battleOpponent.getOrNull(it) }
+        val focusPartyMon = if (focusBattler != null) null
+            else snapshot.enemyParty.getOrNull(focusShown)?.takeIf { focusShown != snapshot.focusEnemyActive }
+        val focusFoe = focusBattler ?: focusPartyMon ?: snapshot.battleOpponent.firstOrNull()
+        val focusHeading = when {
+            focusPartyMon == null -> "FOE"
+            focusShown == snapshot.focusEnemyNext -> "FOE · NEXT"
+            focusPartyMon.hp == 0 -> "FOE · FAINTED"
+            focusShown in focusSeen -> "FOE · RESERVE"
+            else -> "FOE · UNSEEN"
+        }
         // DEX tab: filter / dex / scroll position / open entry, kept across tab switches.
         val dexListState = androidx.compose.foundation.lazy.rememberLazyListState()
         val dexUi = remember { DexUiState(dexListState) }
@@ -277,6 +298,7 @@ fun CompanionScreen(
                 if (battle) battleShowControls = true
                 showSuggestions = false; showBattleStats = false
                 seenFoes.clear(); selectedFoe = null
+                focusSeen.clear()
             }
             seenInBattle = battle
         }
@@ -596,8 +618,23 @@ fun CompanionScreen(
                                         infoPlayer, infoFoes, foeHeading,
                                         onBack = { showBattleStats = false },
                                     )
+                                    else -> if (battleFocus) BattleFocusScreen(
+                                        focusFoe,
+                                        party = snapshot.party,
+                                        // focusPlayer is empty in previews, which build the snapshot by hand
+                                        battlePlayer = snapshot.focusPlayer.ifEmpty { snapshot.battlePlayer },
+                                        playerBattlers = snapshot.playerBattlers,
+                                        showHints = showHints,
+                                        onBack = if (canUseControls) ({ battleShowControls = true }) else null,
+                                        foeTeam = snapshot.enemyParty,
+                                        seenFoes = focusSeen.toSet(),
+                                        shownFoe = focusShown,
+                                        foeHeading = focusHeading,
+                                        onSelectFoe = { selectedFoe = if (it == focusShown && selectedFoe != null) null else it },
+                                        dexTables = snapshot.pokedex?.tables,
+                                    )
                                     // Back only while there are controls to go back to.
-                                    else -> BattleInfoScreen(
+                                    else BattleInfoScreen(
                                         infoPlayer, infoFoes, snapshot.isDoubleBattle,
                                         showHints = showHints,
                                         onBack = if (canUseControls) ({ battleShowControls = true }) else null,

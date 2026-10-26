@@ -73,11 +73,14 @@ object NewFeatures {
     /** HOTKEYS > COMPANION: opens the companion over the game on one screen (Hotkeys.Action.COMPANION). */
     const val COMPANION_HOTKEY = "companion_hotkey"
 
+    /** SETTINGS > BATTLE FOCUS (Prefs.battleFocus). */
+    const val BATTLE_FOCUS = "battle_focus"
+
     /** Every feature that gets the tag. */
     val ALL = listOf(
         HUD, BATTLE_BUTTONS, GAME_HOTKEYS, COMPANION_WINDOW, HUD_PC, QUICK_MENU, HUD_REPEL, SINGLE_SCREEN, MORE_TAB, TOUCH_CONTROLS,
         COMPANION_TAB, REUSABLE_TMS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
-        FOLLOWER, COMPANION_HOTKEY,
+        FOLLOWER, COMPANION_HOTKEY, BATTLE_FOCUS,
     )
 
     private const val DAYS = 7

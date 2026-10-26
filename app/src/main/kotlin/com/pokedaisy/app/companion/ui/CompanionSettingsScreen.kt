@@ -566,6 +566,10 @@ private fun homeRows(
         SettingRow(tk("ONE-TAP MOVES"), onOff(s.oneTapMoves), subtitle = "Your moves right on the battle menu") { s.setOneTapMoves(!s.oneTapMoves); changed() },
         // A STATS page in battle INFO with the foe's IVs / EVs / nature.
         SettingRow(tk("FOE IVS"), onOff(s.showFoeIvs), subtitle = "The foe's hidden stats in battle") { s.setShowFoeIvs(!s.showFoeIvs); changed() },
+        SettingRow(
+            tk("BATTLE FOCUS"), onOff(s.battleFocus), subtitle = "Battle info on one page, no scrolling",
+            labelBadge = NewFeatures.badge(NewFeatures.BATTLE_FOCUS),
+        ) { s.setBattleFocus(!s.battleFocus); changed() },
         SettingRow(tk("TAB BAR"), tr("{0} TABS", barTabs), labelBadge = NewFeatures.badge(NewFeatures.MORE_TAB), opensPage = true, subtitle = "Which tabs sit next to the gear") { navigate(Page.TABS) },
         // The game's menu click on every companion button.
         SettingRow(tk("CLICK SOUND"), onOff(s.clickSound)) { s.setClickSound(!s.clickSound); changed() },

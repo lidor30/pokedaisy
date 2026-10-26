@@ -124,6 +124,10 @@ data class Telemetry(
     /** [enemyParty] index of the foe that's out, and of monToSwitchIntoId (its trainer's last pick); -1 = unknown. */
     val enemyActive: Int = -1,
     val enemyNext: Int = -1,
+    /** gBattlerPartyIndexes by battle position (BATTLE_POS_*); -1 = unknown. */
+    val battlerPartySlots: List<Int> = emptyList(),
+    /** The gEnemyParty slot of each [enemyParty] entry. They differ when empty slots were skipped. */
+    val enemyPartySlots: List<Int> = emptyList(),
     /** The player's money; null = not read for this game (see [readMoney]). */
     val money: Long? = null,
     /** The current map's size in metatiles and gMapHeader.mapType (see [readMapShape]); 0 / -1 = unknown. */

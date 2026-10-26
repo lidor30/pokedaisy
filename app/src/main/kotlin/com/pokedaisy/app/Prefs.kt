@@ -263,6 +263,11 @@ class Prefs(context: Context) {
         get() = p.getBoolean("foe_details", false)
         set(v) = p.edit().putBoolean("foe_details", v).apply()
 
+    /** SETTINGS > BATTLE FOCUS: shows battle INFO as a single page with no scrolling (BattleFocusScreen). Off by default. */
+    var battleFocus: Boolean
+        get() = p.getBoolean("battle_focus", false)
+        set(v) = p.edit().putBoolean("battle_focus", v).apply()
+
     /** The CHEATS master switch (cheats/Cheats.kt): off, no cheat reaches the game,
      * whatever each one is set to. Off by default. */
     var cheatsEnabled: Boolean

@@ -77,6 +77,19 @@ Scroll down the foe's column for more:
 
 To give the foe the whole page, tap the button with the corner arrows at the bottom right. Your side shrinks to a strip with your Pokémon's sprite and an upright HP bar, and the foe's facts and moves get the room. Tap it again to go back. PokeDaisy remembers your choice for the next battle.
 
+### Battle focus
+
+Turn on `BATTLE FOCUS` in SETTINGS and `INFO` becomes one page that fits the screen, with nothing to scroll. It shows one Pokémon at a time:
+
+- Its sprite, its name with its types under it, and beside them its `ABILITY` and, under that, its `HELD ITEM`. HP and level are left out.
+- Its stats, with the same stage pills.
+- Its four moves, two by two, each with its verdict.
+- What it's `WEAK TO`, what it `RESISTS` and what it's `IMMUNE TO`.
+
+The button at the bottom right turns the page from the foe to your Pokémon and back. The column down the right of the page follows it: on the foe's side it's the trainer's team (balls until you've seen them), on yours it's your whole team, every one showing. Tap one to look at it; the one you're looking at gets the frame. Back sits under the column, so the page gets the whole height. `SUGGESTIONS` and `STATS` aren't on this page; turn `BATTLE FOCUS` off to get them back.
+
+In a trainer's double battle the page shows one foe at a time, the one on the left to start with. Both foes that are out show their icon in the column, and only the one you're looking at is framed. Tap the other to look at it, just as it is in the battle; a Pokémon that's out is never `UNSEEN`. Your side shows one of yours, the one on the left until you tap another.
+
 ### Foe IVs
 
 The foe's IVs, EVs and nature are hidden by default, since knowing them is a bit of a peek. Turn on `FOE IVS` in SETTINGS and `INFO` gets a `STATS` button: your Pokémon and the foe side by side, each stat with its IV and EV, plus `NATURE` and `HIDDEN POWER`. It's the same view as the [STATS page in a summary](party.md).

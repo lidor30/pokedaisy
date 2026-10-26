@@ -1332,6 +1332,8 @@ class PokeDaisyActivity : Activity() {
         override fun setOneTapMoves(on: Boolean) { Prefs(this@PokeDaisyActivity).oneTapMoves = on }
         override val foeDetails get() = Prefs(this@PokeDaisyActivity).foeDetails
         override fun setFoeDetails(on: Boolean) { Prefs(this@PokeDaisyActivity).foeDetails = on }
+        override val battleFocus get() = Prefs(this@PokeDaisyActivity).battleFocus
+        override fun setBattleFocus(on: Boolean) { Prefs(this@PokeDaisyActivity).battleFocus = on }
         override val cheats get() = cheatStore()?.load().orEmpty()
         override val cheatsEnabled get() = Prefs(this@PokeDaisyActivity).cheatsEnabled
         override fun setCheatsEnabled(on: Boolean) {

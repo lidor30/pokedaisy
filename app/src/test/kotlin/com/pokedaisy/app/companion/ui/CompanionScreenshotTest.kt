@@ -423,6 +423,10 @@ open class CompanionScreenshotTest {
     @Test
     fun battleInfoFoeDetails() = trainerBattle(foeDetails = true)
 
+    /** INFO with BATTLE FOCUS on. */
+    @Test
+    fun battleFocus() = trainerBattle(foeDetails = false, focus = true)
+
     /** FOE DETAILS in a double battle: two sprites / HP bars on the player's strip, two foe cards. */
     @Test
     fun battleInfoFoeDetailsDouble() = snapshot {
@@ -439,7 +443,7 @@ open class CompanionScreenshotTest {
         }
     }
 
-    private fun trainerBattle(foeDetails: Boolean) = snapshot {
+    private fun trainerBattle(foeDetails: Boolean, focus: Boolean = false) = snapshot {
         AppTheme {
             fun foe(species: Int, level: Int, hp: Int, maxHp: Int): MonView {
                 val mu = com.pokedaisy.app.companion.data.typeMatchups(
@@ -462,7 +466,10 @@ open class CompanionScreenshotTest {
             val team = listOf(foe(74, 12, 0, 33), foe(95, 14, 21, 40), foe(74, 12, 33, 33))
             val me = SampleCompanion.snapshot.party[0].withMovesVs(team[1])
                 .let { it.copy(moves = it.moves.mapIndexed { i, mv -> if (i == 1) mv.copy(pp = 0) else mv }) }
-            BattleInfoScreen(
+            if (focus) BattleFocusScreen(
+                team[1], party = SampleCompanion.snapshot.party, battlePlayer = listOf(me), playerBattlers = listOf(0),
+                showHints = true, onBack = {}, foeTeam = team, seenFoes = setOf(0, 1), shownFoe = 1,
+            ) else BattleInfoScreen(
                 listOf(me), listOf(team[1]), isDouble = false, showHints = true, onBack = {}, onShowSuggestions = {},
                 foeTeam = team, seenFoes = setOf(0, 1), shownFoe = 1,
                 foeDetails = foeDetails, onToggleFoeDetails = {},

@@ -213,6 +213,17 @@ data class SnapshotView(
     val enemyParty: List<MonView> = emptyList(),
     /** [enemyParty] index of the foe that's out; -1 = unknown. */
     val enemyActive: Int = -1,
+    // The fields below are only used by BATTLE FOCUS.
+    /** [enemyParty] index of each [battleOpponent]; -1 = unknown. */
+    val enemyBattlers: List<Int> = emptyList(),
+    /** [party] index of each [battlePlayer]; -1 = unknown. */
+    val playerBattlers: List<Int> = emptyList(),
+    /** [battlePlayer] plus ability, item, battle stats and matchups, like the foe gets. */
+    val focusPlayer: List<MonView> = emptyList(),
+    /** [enemyActive] and [enemyNext] as [enemyParty] indexes. The originals are gEnemyParty slots,
+     * which are off by one or more when a two-trainer battle has a gap. */
+    val focusEnemyActive: Int = -1,
+    val focusEnemyNext: Int = -1,
     /** The foe the trainer is about to send in ("... is about to use X"):
      * set only while the one that's out has fainted; -1 = none. */
     val enemyNext: Int = -1,
@@ -346,6 +357,14 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
 
     var battlePlayer = emptyList<MonView>()
     var battleOpponent = emptyList<MonView>()
+    // gEnemyParty slot -> enemyParty index
+    fun foeIndex(slot: Int): Int = if (slot < 0) -1
+        else if (t.enemyPartySlots.isEmpty()) slot.takeIf { it in t.enemyParty.indices } ?: -1
+        else t.enemyPartySlots.indexOf(slot)
+    val focusActive = foeIndex(t.enemyActive)
+    var enemyBattlers = emptyList<Int>()
+    var playerBattlers = emptyList<Int>()
+    var focusPlayer = emptyList<MonView>()
     if (t.inBattle) {
         val opponents = listOf(BATTLE_POS_OPPONENT_LEFT, BATTLE_POS_OPPONENT_RIGHT)
             .map { t.battleMons[it] }
@@ -388,6 +407,20 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
             )
         }
 
+        // Kept separate from battlePlayer so the normal INFO page doesn't change.
+        fun focusCopy(b: BattleMon, mon: MonView): MonView {
+            val matchups = typeMatchups(b.type1, b.type2)
+            return mon.copy(
+                abilityId = b.ability,
+                heldItem = if (b.stats == null) null else if (b.item == 0) "" else itemName(b.item),
+                battleStats = b.stats?.toList(),
+                statStages = b.statStages?.map { it - 6 },
+                weaknesses = matchups.weaknesses,
+                resistances = matchups.resistances,
+                immunities = matchups.immunities,
+            )
+        }
+
         fun buildOpponentMon(b: BattleMon, prefer: Int = -1): MonView? {
             if (b.species == 0) return null
             val matchups = typeMatchups(b.type1, b.type2)
@@ -414,11 +447,19 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
             buildPlayerMon(t.battleMons[BATTLE_POS_PLAYER_LEFT]),
             buildPlayerMon(t.battleMons[BATTLE_POS_PLAYER_RIGHT]),
         )
+        focusPlayer = listOf(BATTLE_POS_PLAYER_LEFT, BATTLE_POS_PLAYER_RIGHT).map { t.battleMons[it] }
+            .filter { it.species != 0 }.zip(battlePlayer, ::focusCopy)
         battleOpponent = listOfNotNull(
             // The left foe is gEnemyParty[enemyActive] in a trainer battle.
             buildOpponentMon(t.battleMons[BATTLE_POS_OPPONENT_LEFT], prefer = t.enemyActive),
             buildOpponentMon(t.battleMons[BATTLE_POS_OPPONENT_RIGHT]),
         )
+        // Party slots in the same order as battlePlayer / battleOpponent.
+        fun slots(vararg pos: Int, size: Int) = pos.filter { t.battleMons[it].species != 0 }
+            .map { p -> t.battlerPartySlots.getOrNull(p)?.takeIf { it in 0 until size } ?: -1 }
+        playerBattlers = slots(BATTLE_POS_PLAYER_LEFT, BATTLE_POS_PLAYER_RIGHT, size = t.partyCount.coerceAtMost(PARTY_SIZE))
+        if (t.enemyParty.isNotEmpty()) enemyBattlers = slots(BATTLE_POS_OPPONENT_LEFT, BATTLE_POS_OPPONENT_RIGHT, size = PARTY_SIZE)
+            .map(::foeIndex)
     }
 
     val items = (0 until t.itemCount.coerceAtMost(t.items.size)).map { i ->
@@ -475,6 +516,14 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
             )
         },
         enemyActive = t.enemyActive,
+        enemyBattlers = enemyBattlers,
+        playerBattlers = playerBattlers,
+        focusPlayer = focusPlayer,
+        focusEnemyActive = focusActive,
+        focusEnemyNext = foeIndex(t.enemyNext).takeIf { next ->
+            next != focusActive && t.enemyParty.getOrNull(next)?.hp?.let { it > 0 } == true &&
+                t.enemyParty.getOrNull(focusActive)?.hp == 0
+        } ?: -1,
         // Only meaningful once the foe that's out is down and a live one is picked.
         enemyNext = t.enemyNext.takeIf { next ->
             next != t.enemyActive && t.enemyParty.getOrNull(next)?.hp?.let { it > 0 } == true &&

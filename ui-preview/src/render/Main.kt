@@ -132,7 +132,10 @@ class FakeSlots : StateSlots {
 }
 
 class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>? = null, oneTap: Boolean = false, expandOffer: Boolean = false,
-                   expand: Boolean = false) : CompanionSettings {
+                   expand: Boolean = false, battleFocus: Boolean = false) : CompanionSettings {
+    private var battleFocusOn = battleFocus
+    override val battleFocus get() = battleFocusOn
+    override fun setBattleFocus(on: Boolean) { battleFocusOn = on }
     private var oneTapOn = oneTap
     override val oneTapMoves get() = oneTapOn
     override fun setOneTapMoves(on: Boolean) { oneTapOn = on }
@@ -381,6 +384,8 @@ fun companion(
     settingsRow: String? = null,
     /** SETTINGS > TAB BAR's pick (null: the default five). */
     barTabs: List<String>? = null,
+    /** SETTINGS > BATTLE FOCUS. */
+    battleFocus: Boolean = false,
     snap: () -> SnapshotView = ::snapshot,
 ): () -> (@Composable () -> Unit) = {
     previewCapture = com.pokedaisy.app.companion.KeyCapture()
@@ -389,7 +394,7 @@ fun companion(
     val back = com.pokedaisy.app.companion.ui.CompanionBack().also { previewBack = it }
     val content: @Composable () -> Unit = {
         CompanionScreen(
-            sv, FakeSlots(), FakeSettings(hints, initialTabs = barTabs, oneTap = oneTap, expandOffer = expandOffer, expand = expand), FakeBattleInput(busy), initialTab = tab,
+            sv, FakeSlots(), FakeSettings(hints, initialTabs = barTabs, oneTap = oneTap, expandOffer = expandOffer, expand = expand, battleFocus = battleFocus), FakeBattleInput(busy), initialTab = tab,
             initialMonIndex = mon, initialCardBack = cardBack, back = back, initialSettingsRow = settingsRow, itemUse = if (items) PreviewItemUse(sv.party, bagFull) else null,
         )
     }
@@ -1294,6 +1299,14 @@ fun main(args: Array<String>) {
         },
         Shot("$g-battle", bw, bh, bd, companion("PARTY") { battle(BATTLE_INPUT_ACTION_SELECT) }),
         Shot("$g-battle-trainer", bw, bh, bd, companion("PARTY") { trainerBattle(BATTLE_INPUT_ACTION_SELECT, six = true).withBench() }),
+        // BATTLE FOCUS: the foe's page, then yours.
+        Shot("$g-battle-focus", bw, bh, bd, companion("PARTY", battleFocus = true) { trainerBattle(BATTLE_INPUT_ACTION_SELECT, six = true).withBench() }) {
+            onNodeWithText("INFO").performClick()
+        },
+        Shot("$g-battle-focus-you", bw, bh, bd, companion("PARTY", battleFocus = true) { trainerBattle(BATTLE_INPUT_ACTION_SELECT, six = true).withBench() }) {
+            onNodeWithText("INFO").performClick()
+            onNodeWithContentDescription("Show your Pokémon").performClick()
+        },
         Shot("$g-battle-trainer3", bw, bh, bd, companion("PARTY") { trainerBattle(BATTLE_INPUT_ACTION_SELECT).withBench() }),
         Shot("$g-battle-moves", bw, bh, bd, companion("PARTY") { battle(BATTLE_INPUT_MOVE_SELECT) }),
         // SETTINGS > ONE-TAP MOVES: the action menu with the moves where FIGHT was.

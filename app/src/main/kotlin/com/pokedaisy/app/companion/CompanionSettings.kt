@@ -211,6 +211,10 @@ interface CompanionSettings {
     val foeDetails: Boolean get() = false
     fun setFoeDetails(on: Boolean) {}
 
+    /** See [Prefs.battleFocus]. */
+    val battleFocus: Boolean get() = false
+    fun setBattleFocus(on: Boolean) {}
+
     /** Whether a launch picks up where the game was left - see [Prefs.autoResume]; off, CLOSE GAME warns. */
     val autoResume: Boolean get() = true
 

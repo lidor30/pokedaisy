@@ -127,6 +127,8 @@ internal val trCompanion: Map<String, Tr> = mapOf(
     "ACCURACY" to Tr(ja = "めいちゅう", fr = "PRÉCISION", de = "GENAUIGKEIT", it = "PRECISIONE", es = "PRECISIÓN", br = "PRECISÃO", pt = "PRECISÃO"),
     "EVASION" to Tr(ja = "かいひ", fr = "ESQUIVE", de = "AUSWEICHEN", it = "ELUSIONE", es = "EVASIÓN", br = "EVASÃO", pt = "EVASÃO"),
     "Hide foe details" to Tr(ja = "あいての くわしい じょうほうを とじる", fr = "Masquer les détails de l'ennemi", de = "Gegnerdetails ausblenden", it = "Nascondi i dettagli del nemico", es = "Ocultar detalles del enemigo", br = "Ocultar detalhes do oponente", pt = "Ocultar detalhes do oponente"),
+    "Show the foe" to Tr(ja = "あいてを みる", fr = "Voir l'ennemi", de = "Gegner zeigen", it = "Mostra il nemico", es = "Ver al enemigo", br = "Ver o oponente", pt = "Ver o oponente"),
+    "Show your Pokémon" to Tr(ja = "じぶんの ポケモンを みる", fr = "Voir votre Pokémon", de = "Dein Pokémon zeigen", it = "Mostra il tuo Pokémon", es = "Ver tu Pokémon", br = "Ver seu Pokémon", pt = "Ver o teu Pokémon"),
     "{0} Lv {1}" to Tr(ja = "{0} Lv {1}", fr = "{0} N. {1}", de = "{0} Lv {1}", it = "{0} Lv {1}", es = "{0} Nv {1}", br = "{0} Nv. {1}", pt = "{0} Nv. {1}"),
 
     // Battle panes: buttons, the controls' states.

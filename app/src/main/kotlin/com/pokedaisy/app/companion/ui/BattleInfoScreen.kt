@@ -247,26 +247,28 @@ private fun UprightHpBar(hp: Int, maxHp: Int, u: androidx.compose.ui.unit.Dp, mo
  * or lowered, and accuracy / evasion when they've moved. A Pokémon the trainer
  * hasn't sent out has no battle stats yet: its party stats stand in. Not [wide]
  * (INFO's half-width column): a line each for ability and item, stats three across.
+ * [abilityAndItem] off leaves out the ability and item (BATTLE FOCUS shows them in its header).
  */
 @Composable
-private fun FoeFacts(foe: MonView, dexTables: PokedexTables?, m: GbaTextMetrics, small: GbaTextMetrics, wide: Boolean) {
+internal fun FoeFacts(
+    foe: MonView, dexTables: PokedexTables?, m: GbaTextMetrics, small: GbaTextMetrics, wide: Boolean,
+    abilityAndItem: Boolean = true,
+) {
     val u = m.u
-    val ability = rememberLoaded(
-        foe.abilityName, dexTables, foe.abilityId,
-        cached = { foe.abilityName ?: dexTables?.let { PokedexSource.cachedAbilityName(it, foe.abilityId) } },
-        load = { dexTables?.let { PokedexSource.abilityName(it, foe.abilityId) } },
-    )
+    val ability = rememberFoeAbility(foe, dexTables).takeIf { abilityAndItem }
     // Attack, Defense, Speed, Sp. Atk, Sp. Def - the battle's, else the party struct's.
     val stats = foe.battleStats ?: foe.stats?.stats?.drop(1)
-    if (ability == null && foe.heldItem == null && stats == null) return
+    val item = foe.heldItem?.ifEmpty { tr("NONE") }?.takeIf { abilityAndItem }
+    if (ability == null && item == null && stats == null) return
     Column(verticalArrangement = Arrangement.spacedBy(u * 2)) {
-        val item = foe.heldItem?.ifEmpty { tr("NONE") }
-        if (wide) Row(verticalAlignment = Alignment.CenterVertically) {
-            ability?.let { FactPair(tr("ABILITY"), it, small, Modifier.weight(1f)) }
-            item?.let { FactPair(tr("HELD ITEM"), it, small, Modifier.weight(1f)) }
-        } else {
-            ability?.let { FactPair(tr("ABILITY"), it, small, Modifier.fillMaxWidth()) }
-            item?.let { FactPair(tr("HELD ITEM"), it, small, Modifier.fillMaxWidth()) }
+        if (abilityAndItem) {
+            if (wide) Row(verticalAlignment = Alignment.CenterVertically) {
+                ability?.let { FactPair(tr("ABILITY"), it, small, Modifier.weight(1f)) }
+                item?.let { FactPair(tr("HELD ITEM"), it, small, Modifier.weight(1f)) }
+            } else {
+                ability?.let { FactPair(tr("ABILITY"), it, small, Modifier.fillMaxWidth()) }
+                item?.let { FactPair(tr("HELD ITEM"), it, small, Modifier.fillMaxWidth()) }
+            }
         }
         if (stats != null && stats.size == 5) {
             // The summary's order: Attack, Defense, Sp. Atk, Sp. Def, Speed.
@@ -295,6 +297,14 @@ private fun FoeFacts(foe: MonView, dexTables: PokedexTables?, m: GbaTextMetrics,
         }
     }
 }
+
+/** The ability's name, read from the ROM if the battle didn't give one. */
+@Composable
+internal fun rememberFoeAbility(foe: MonView, dexTables: PokedexTables?): String? = rememberLoaded(
+    foe.abilityName, dexTables, foe.abilityId,
+    cached = { foe.abilityName ?: dexTables?.let { PokedexSource.cachedAbilityName(it, foe.abilityId) } },
+    load = { dexTables?.let { PokedexSource.abilityName(it, foe.abilityId) } },
+)
 
 @Composable
 private fun FactPair(label: String, value: String, small: GbaTextMetrics, modifier: Modifier) {
@@ -644,7 +654,7 @@ internal fun FoeTeamStrip(
 /** One of the foe's party: its icon and level once seen (faded when fainted), else a
  * Poké Ball; [current] (the one the screen shows) gets a red frame. */
 @Composable
-private fun FoeSlot(mon: MonView, shown: Boolean, current: Boolean, small: GbaTextMetrics, cell: androidx.compose.ui.unit.Dp, onClick: () -> Unit) {
+internal fun FoeSlot(mon: MonView, shown: Boolean, current: Boolean, small: GbaTextMetrics, cell: androidx.compose.ui.unit.Dp, onClick: () -> Unit) {
     val u = small.u
     val noRipple = remember { MutableInteractionSource() }
     val focused by noRipple.collectIsFocusedAsState()

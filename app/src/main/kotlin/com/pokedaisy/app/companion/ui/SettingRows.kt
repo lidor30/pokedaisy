@@ -139,6 +139,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "TAB BAR" to "tabs layout bar order",
     "BATTLE HINTS" to "suggestions recommendations best move tips",
     "FOE IVS" to "enemy opponent ivs stats",
+    "BATTLE FOCUS" to "battle info compact one page no scrolling layout enemy opponent ability held item",
     "CLICK SOUND" to "sound effects button click audio",
     "TWEAKS" to "animations bounce blink cursor jump to battle effects motion",
     "SCENE SPEEDS" to "battle speed text speed instant text fast text menu speed overworld speed faster battles quality of life qol bike speed surf speed faster bike faster surfing",
