@@ -156,6 +156,21 @@ object PixelIcons {
         "...1...1...",
     )
 
+    /** Two arrows in a circle: BATTLE FOCUS's button to switch between the foe and your Pokémon. */
+    val rotate = listOf(
+        "...11111...",
+        "..1.....1.1",
+        ".1.......11",
+        "1.......111",
+        "1..........",
+        "1.........1",
+        "..........1",
+        "111.......1",
+        "11.......1.",
+        "1.1.....1..",
+        "...11111...",
+    )
+
     /** A funnel: a list's filter (ACHIEVEMENTS' ALL / LOCKED / UNLOCKED). Cap-height of the pixel font. */
     val filter = listOf(
         "111111111",

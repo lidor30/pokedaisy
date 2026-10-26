@@ -430,6 +430,8 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
     var isTrainer = false
     var trainerRead = false
     var foeBattler = -1
+    // Which battler is at each position, so gBattlerPartyIndexes can be read by position.
+    val battlerAt = IntArray(4) { -1 }
     val battleMons = MutableList(4) { emptyBattleMon() }
     // battleMons == 0: not found for this game - show the battle as on with no
     // mons rather than decoding whatever sits at another build's address.
@@ -451,6 +453,7 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
             val pos = (posRaw?.get(battler)?.toInt()?.and(0xFF)?.takeIf { it < 4 }) ?: battler
             decodeBattleMon(monsRaw, battler * layout.size, layout, pidShiny)?.let { battleMons[pos] = it }
             if (pos == BATTLE_POS_OPPONENT_LEFT) foeBattler = battler
+            battlerAt[pos] = battler
         }
     }
 
@@ -487,11 +490,13 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
     GuideRandomizer.update(cfg.guideTables, progress)
     // gEnemyParty: a trainer's whole party (the FOE TEAM strip), or the wild
     // one(s) - read in every battle for the foes' IVs.
-    val battleFoes = if (inBattle && cfg.enemyParty != 0L) runCatching {
+    // Keep each foe's slot too: with two trainers the second team starts at slot 3, even if the first has a gap.
+    val foeRead = if (inBattle && cfg.enemyParty != 0L) runCatching {
         val raw = client.readCoreMemory(cfg.enemyParty, PARTY_SIZE * cfg.monStride)
-        (0 until PARTY_SIZE).mapNotNull { i -> decodePartyMon(raw, i * cfg.monStride, cfg.monLayout)?.masked(cfg) }
-            .filter { it.species != 0 }
+        (0 until PARTY_SIZE).mapNotNull { i -> decodePartyMon(raw, i * cfg.monStride, cfg.monLayout)?.masked(cfg)?.let { i to it } }
+            .filter { it.second.species != 0 }
     }.getOrDefault(emptyList()) else emptyList()
+    val battleFoes = foeRead.map { it.second }
     // A game whose battlers don't tell (Elite Redux and R.O.W.E. keep shininess as bits of the party record alone): the
     // foe's SHINY marks from its gEnemyParty record, matched by species, level and HP.
     if (cfg.shinyBelow > 0 && (cfg.battleMonLayout.personality < 0 || cfg.partyMonLayout.shinyBits >= 0)) {
@@ -514,6 +519,12 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
                 .takeIf { it in enemyParty.indices } ?: -1
         }
     }
+
+    // Party slot of each battler, by position. Only BATTLE FOCUS uses it, for double battles.
+    val battlerPartySlots = if (inBattle && cfg.battlerPartyIndexes != 0L) runCatching {
+        val raw = client.readCoreMemory(cfg.battlerPartyIndexes, 8)
+        battlerAt.map { b -> if (b < 0) -1 else u16le(raw, b * 2) }
+    }.getOrDefault(emptyList()) else emptyList()
 
     return Telemetry(
         frameCounter = frameCounter,
@@ -541,6 +552,8 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
         isTrainerBattle = if (inBattle && trainerRead) isTrainer else null,
         enemyActive = enemyActive,
         enemyNext = enemyNext,
+        battlerPartySlots = battlerPartySlots,
+        enemyPartySlots = if (isTrainer) foeRead.map { it.first } else emptyList(),
         money = readMoney(client, cfg),
     ).withMapShape(readMapShape(client, cfg.mapHeader, if (cfg.mapSecWide) MAP_HEADER_MAP_TYPE_OFF + 1 else MAP_HEADER_MAP_TYPE_OFF)).copy(
         playerGender = readPlayerGender(client, cfg),

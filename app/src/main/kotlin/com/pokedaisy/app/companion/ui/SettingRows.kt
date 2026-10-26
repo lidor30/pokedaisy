@@ -148,6 +148,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "TAB BAR" to "tabs layout bar order",
     "BATTLE HINTS" to "suggestions recommendations best move tips",
     "FOE IVS" to "enemy opponent ivs stats",
+    "BATTLE FOCUS" to "battle info compact one page no scrolling layout enemy opponent ability held item",
     "CLICK SOUND" to "sound effects button click audio",
     "GAME VOLUME" to "volume sound audio loudness quieter louder level percent music sfx",
     "MUTE GAME" to "mute unmute silent silence quiet sound off audio volume hotkey",
