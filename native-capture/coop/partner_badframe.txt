@@ -1,0 +1,24 @@
+# Review Focus 4: a frame or blob index past the art (a hostile or buggy update) is refused in C too: why BAD_FRAME (8),
+# nothing read out of bounds, nothing drawn, no place worked out. Every case is labelled so each needs its own line.
+# want: partnerinfo frame42: why 8 oam -1 blobOam -1 slot -1 at 0,0 frame 42
+# want: partnerinfo blob42: why 8 oam -1 blobOam -1 slot -1 at 0,0 frame 0
+# want: partnerinfo frameminus2: why 8 oam -1 blobOam -1 slot -1 at 0,0 frame -2
+# want: partnerinfo blobminus2: why 8 oam -1 blobOam -1 slot -1 at 0,0 frame 0
+# want: partnerinfo last: why 0 oam 126 blobOam 127 slot 15 at 104,56 frame 41
+wideon 0
+partnerset /repo/app/build/partner/brendan.bin
+partnerpos 1 272 400 42 0 -1 0
+wait 2
+partnerinfo frame42
+partnerpos 1 272 400 0 0 42 0
+wait 2
+partnerinfo blob42
+partnerpos 1 272 400 -2 0 -1 0
+wait 2
+partnerinfo frameminus2
+partnerpos 1 272 400 0 0 -2 0
+wait 2
+partnerinfo blobminus2
+partnerpos 1 272 400 41 0 41 0
+wait 2
+partnerinfo last

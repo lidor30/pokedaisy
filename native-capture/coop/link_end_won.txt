@@ -1,0 +1,93 @@
+# Plan 6 Task 5: a joined link battle that the two players WIN ends like a normal battle in each game. Host (core A, COOP, TORCHIC) and
+# partner (core B, NED, MUDKIP) each carry five Pokemon (their three plus two more set aside by the battle's trim: slot 0's twin, another OT
+# id, at slots 3 and 4); two route trainers (ALLEN 333, CALVIN 318). The master's gBattleOutcome is set to WON at the action prompt, so the
+# turn that follows ends the battle through the game's own end (the end turn, Cmd_endlinkbattle, the controllers' ENDLINKBATTLE block, the
+# fade, CloseLink, CB2_InitEndLinkBattle).
+#
+# After it, on BOTH cores: the game is back on the field with no VS screen and no record prompt (the callback2 watches), the result is
+# ready (outcome 1, two trainers, both trainers 333 / 318, the two-trainer prize 48 + 80 = 128 paid), each paid 128 into its own money,
+# both trainers' flags set on both cores, the party count back to 5 and the set-aside slots 3-4 byte for byte as they were, and no block
+# sent after the bridge said ENDED.
+#
+# want: PASS linkwait 2
+# want: PASS linkresultwait
+# want: link: result a 16 01 01 02 00 4D 01 3E 01 80 00 00 00 00 00 00 00
+# want: link: result b 16 01 01 02 00 4D 01 3E 01 80 00 00 00 00 00 00 00
+# want: PASS link money
+# want: PASS linkflag 333 = 1 (core a)
+# want: PASS linkflag 318 = 1 (core a)
+# want: PASS linkflag 333 = 1 (core b)
+# want: PASS linkflag 318 = 1 (core b)
+# want: expectsame resA resA2: PASS
+# want: expectsame resB resB2: PASS
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+memcopy 0x020244EC 0x02024618 100
+memcopy 0x020244EC 0x0202467C 100
+reown 0x02024618 0x1111AAAA
+reown 0x0202467C 0x2222BBBB
+poke8 0x020244E9 5
+rangehash resB 0x02024618 200
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+memcopy 0x020244EC 0x02024618 100
+memcopy 0x020244EC 0x0202467C 100
+reown 0x02024618 0x3333CCCC
+reown 0x0202467C 0x4444DDDD
+poke8 0x020244E9 5
+rangehash resA 0x02024618 200
+linkmoneymark 0
+coopbegin 1 2 333 318
+on b
+linkmoneymark 0
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+never32 0x030022C4 0x08038F15 EndLinkBattle
+never32 0x030022C4 0x080392A9 AskRecordBattle
+on a
+never32 0x030022C4 0x08038F15 EndLinkBattle
+never32 0x030022C4 0x080392A9 AskRecordBattle
+poke8 0x0202433A 1
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkresultwait 4000
+on a
+linkresult a
+expect8 0x020244E9 5
+rangehash resA2 0x02024618 200
+linkmoneyexpect 0 128
+linkflag 333 1
+linkflag 318 1
+coopexpectfree 1
+on b
+linkresult b
+expect8 0x020244E9 5
+rangehash resB2 0x02024618 200
+linkmoneyexpect 0 128
+linkflag 333 1
+linkflag 318 1
+coopexpectfree 1
+expectsame resB resB2
+on a
+expectsame resA resA2
+linkafterend
+linkinfo

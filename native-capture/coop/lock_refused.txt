@@ -1,0 +1,27 @@
+# pk_coop_lock_install refuses, changing nothing, when ScriptContext_SetupScript isn't retail's (a ROM patch on one of its
+# instructions, as a cheat or another game option would leave it: its `adds r0, r4, #0` at +0xA becomes a nop), when another
+# block sits in the lock's code area (0x08FFE000-0x08FFEFFF), or when a patch of another option is on its head (the same
+# CRC refusal: the head is part of the checked code). Then no
+# block is in the ROM (0x08FFE000 stays 0xFF) and the file's bytes are untouched.
+# want: lock: refused ScriptContext_SetupScript
+# want: lock: refused block overlap
+# want: lock: installed
+# want: romcheck raw bus: 0 byte(s) differ
+# want: romcheck overlay: 0 byte(s) differ
+rompatch 08098F00 094a201c 08098F02 0000
+lockinstall
+expect8 0x08FFE000 0xFF 16
+expect8 0x08FFE800 0xFF 16
+romunpatch
+romblocks coop/lock_overlap.blocks
+lockinstall
+expect8 0x08FFE000 0xFF 16
+romunblock
+rompatch 08098EFC 084c0949 08098EFC 11223344
+lockinstall
+expect32 0x08098EFC 0x44332211
+expect8 0x08FFE000 0xFF 16
+romunpatch
+lockinstall
+lockuninstall
+romcheck $EMERALD_ROM

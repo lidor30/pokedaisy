@@ -1,0 +1,20 @@
+# A COORD hold clears when the player is more than 1 tile (Chebyshev) from the recorded tile (the one after the step back,
+# (17, 25)): one tile away (back on the trigger tile, y 24) keeps it, two tiles (y 23) clears it (event as lock_hold_coord_stepback: id 97).
+# want: lock: held 97 kind 0
+# want: lock: held 0 kind 0
+lockinstall
+lockactive 1
+hold UP 1
+wait 30
+call 0x08098EF8 0x081DC4BE
+wait 40
+expect16 0x02037362 25
+lockheld
+hold UP 14
+wait 4
+expect16 0x02037362 24
+lockheld
+hold UP 14
+wait 4
+expect16 0x02037362 23
+lockheld

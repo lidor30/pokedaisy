@@ -1,0 +1,40 @@
+# Uninstall a few frames into a COORD step-back (id 97, 0x081DC4BE: the hook's ROM script is running from the block at
+# 0x08FFE0EC..): the context is stopped before the block goes (scriptPtr 0, mode 0, status 2, controls freed), so the game never reads
+# the 0xFF the file holds there; 40 frames later it still takes the player's keys (UP moves him one tile). Then the same with go's
+# RAM re-entry script (0x0203F420): uninstalled the moment go has set it up, the RAM is zero and the game goes on.
+# want: lock: uninstalled, rom patched: no
+# want: lock: go 1
+lockinstall
+lockactive 1
+hold UP 1
+wait 30
+call 0x08098EF8 0x081DC4BE
+wait 4
+expect8 0x03000F2C 1
+lockuninstall
+expect32 0x03000E48 0
+expect8 0x03000E41 0
+expect8 0x03000F2C 0
+expect8 0x03000E38 2
+wait 40
+expect16 0x02037362 25
+expect8 0x03000F2C 0
+hold UP 14
+wait 30
+expect16 0x02037362 24
+expect8 0x02037368 0x22 1
+lockinstall
+lockactive 1
+call 0x08098EF8 0x081DC4BE
+wait 40
+lockgo 97
+expect32 0x03000E48 0x0203F420
+lockuninstall
+expect32 0x03000E48 0
+expect8 0x03000F2C 0
+expect8 0x0203F420 0 32
+wait 40
+expect8 0x03000F2C 0
+hold UP 14
+wait 30
+expect16 0x02037362 23

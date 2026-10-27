@@ -1,0 +1,85 @@
+# Plan 6 Task 2: a single trainer with two or more Pokemon (trainerbattle ALLEN 333: ZIGZAGOON Lv 4 and TAILLOW Lv 3, as
+# join_single_trainer.txt: join kind 3) is joined as a link battle too. The tower multi has two foe trainers, so the one trainer is
+# both: its Pokemon go 0 2 4 to the left foe (gEnemyParty slots 0-2) and 1 3 5 to the right one (slots 3-5), the same way
+# the host's link start shares them out, and gTrainerBattleOpponent_B = _A for the length of the battle (both foes show
+# ALLEN's name and picture); the host's script gets its own B back when the battle ends (pk_coop_link_end_ids).
+#
+# What it checks: both cores hold ZIGZAGOON (Lv 4) at slot 0 and TAILLOW (Lv 3) at slot 3, the rest empty; both link players [2] / [3]
+# are named ALLEN; on the host both foe battlers send out (gBattleMons[1] ZIGZAGOON, [3] TAILLOW) and the prompt comes up; the host's
+# savedCallback is CB2_EndTrainerBattle again; after `linkend` the host's A / B / savedCallback are what its script left (B = 0).
+#
+# want: coop: installed
+# want: link: hold 1
+# want: link: start 1
+# want: PASS linkwait 2
+# want: expectsame ep0 ep0b: PASS
+pair $PARTNER_SAVE
+on b
+@boot
+on a
+poke32 0x0203F400 0x014D035C
+poke32 0x0203F404 0x7DD40000
+poke32 0x0203F408 0x00020831
+coopinstall
+call 0x08098EF8 0x0203F400
+waittask 0x080B05F0 300
+expect16 0x02038BCC 0
+joinhold
+linkstart 1
+on b
+linkstart 0 3 333 0
+linkwait 2 2500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+expect32 0x030022C8 0x080B1919
+expect16 0x02038BCA 0x014D
+expect16 0x02038BCC 0x014D
+expectmonin 0x02024744 288
+expectmonin 0x020247A8 0
+expectmonin 0x02024870 304
+expectmonin 0x020248D4 0
+expect8 0x02024798 4
+expect8 0x020248C4 3
+expect32 0x02022A28 0xBFC6C6BB
+expect16 0x02022A2C 0xFFC8
+expect32 0x02022A44 0xBFC6C6BB
+expect16 0x02022A48 0xFFC8
+expect16 0x020240DC 288
+expect16 0x0202418C 304
+rangehash ep0 0x02024744 600
+on b
+waitmem32 0x03005D68 0x08057589 3000
+expectmonin 0x02024744 288
+expectmonin 0x02024870 304
+expect8 0x02024798 4
+expect8 0x020248C4 3
+expect32 0x02022A28 0xBFC6C6BB
+expect32 0x02022A44 0xBFC6C6BB
+rangehash ep0b 0x02024744 600
+expectsame ep0 ep0b
+on a
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on a
+waitmem8 0x03005D23 1 3000
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+linkend
+linkstate
+expect16 0x02038BCA 0x014D
+expect16 0x02038BCC 0
+expect32 0x030022C8 0x080B1919
+linkinfo

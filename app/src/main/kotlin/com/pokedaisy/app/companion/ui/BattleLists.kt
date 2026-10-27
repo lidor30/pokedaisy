@@ -54,19 +54,22 @@ internal fun BattleMoveList(
     /** How far the rows run past the screen's right edge (their content keeps clear of it). */
     edge: Dp,
     onCancel: () -> Unit,
+    /** With no [battleInput] (the co-op partner's menu): a tap on row i calls this; [selected] is the cursor row. */
+    onPick: ((Int) -> Unit)? = null,
+    selected: Int = -1,
 ) {
-    if (gen1Buttons) {
+    if (gen1Buttons && onPick == null) {
         Box(Modifier.width(width).height(rowH * 5 + gap * 4)) {
             MoveGrid(moves, battleInput, busy, showHints, Modifier.fillMaxSize(), onCancel = onCancel, compact = true)
         }
         return
     }
-    CompanionBackHandler(enabled = battleInput != null && !busy, onBack = onCancel)
+    CompanionBackHandler(enabled = (battleInput != null || onPick != null) && !busy, onBack = onCancel)
     Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(gap)) {
         for (i in 0 until 4) {
-            MoveListRow(moves.getOrNull(i), i, battleInput, busy, showHints, edge, Modifier.focusStart(i == 0).fillMaxWidth().height(rowH))
+            MoveListRow(moves.getOrNull(i), i, battleInput, busy, showHints, edge, Modifier.focusStart(i == 0).fillMaxWidth().height(rowH), onPick, i == selected)
         }
-        ListCancel(battleInput != null && !busy, rowH * 0.7f, edge, onCancel)
+        ListCancel((battleInput != null || onPick != null) && !busy, rowH * 0.7f, edge, onCancel)
     }
 }
 
@@ -76,18 +79,22 @@ internal fun BattleMoveList(
  * HUD's GBA pixels, so it follows SIZE like the rest of the HUD.
  */
 @Composable
-private fun MoveListRow(mv: MoveView?, index: Int, battleInput: BattleInput?, busy: Boolean, showHints: Boolean, edge: Dp, modifier: Modifier) {
+private fun MoveListRow(
+    mv: MoveView?, index: Int, battleInput: BattleInput?, busy: Boolean, showHints: Boolean, edge: Dp, modifier: Modifier,
+    onPick: ((Int) -> Unit)? = null, cursor: Boolean = false,
+) {
     val m = rememberGbaTextMetrics(1f)
     val small = rememberGbaTextMetrics(0.75f)
     val u = m.u
-    val enabled = mv != null && mv.pp > 0 && battleInput != null && !busy
+    val enabled = mv != null && mv.pp > 0 && (battleInput != null || onPick != null) && !busy
     PlatinumButton(
         fill = if (mv == null) AppColors.slotFillDark else MoveCardFill,
-        frame = mv?.let { AppColors.typeColors[it.type] } ?: AppColors.slotFrame,
-        modifier = modifier, enabled = enabled, pressesGame = true, outline = u,
+        // The callback's cursor row: a gold frame (the party list's cursor is its selected colours).
+        frame = if (cursor && mv != null) SuggestGold else mv?.let { AppColors.typeColors[it.type] } ?: AppColors.slotFrame,
+        modifier = modifier, enabled = enabled, pressesGame = onPick == null, outline = u,
         // Clear of the bevel's side bands.
         contentPadding = PaddingValues(start = u * 9, end = u * 4 + edge, top = u * 2, bottom = u * 2),
-        onClick = { battleInput?.selectMove(index) },
+        onClick = { if (onPick != null) onPick(index) else battleInput?.selectMove(index) },
     ) {
         if (mv == null) {
             GbaText("—", AppColors.muted, Color.Transparent, m)
@@ -133,11 +140,18 @@ private fun ListPill(text: String, color: Color, m: GbaTextMetrics) {
 internal fun BattlePartyList(
     party: List<MonView>, foe: MonView?, active: List<MonView>, battleInput: BattleInput?, busy: Boolean, showHints: Boolean,
     width: Dp, rowH: Dp, gap: Dp, u: Dp, edge: Dp, onBack: () -> Unit,
+    /** With no [battleInput] (the co-op partner's menu): a tap on row i calls this; [selected] is the cursor row and
+     * [pickable] says which rows may be picked (default: not fainted, not an egg). */
+    onPick: ((Int) -> Unit)? = null,
+    selected: Int = -1,
+    pickable: (Int) -> Boolean = { i -> party[i].let { !it.isEgg && it.hp > 0 } },
 ) {
     CompanionBackHandler(enabled = !busy, onBack = onBack)
-    val best = remember(party, foe, active) { recommendedSwitch(party, foe, active) }?.takeIf { showHints }
-    val cursor = party.indexOfFirst { it == best }.takeIf { it >= 0 } ?: party.indexOfFirst { isOut(it, active) }
-    val enabled = battleInput != null && !busy
+    val callback = onPick != null
+    val best = remember(party, foe, active) { recommendedSwitch(party, foe, active) }?.takeIf { showHints && !callback }
+    val cursor = if (callback) selected
+        else party.indexOfFirst { it == best }.takeIf { it >= 0 } ?: party.indexOfFirst { isOut(it, active) }
+    val enabled = (battleInput != null || callback) && !busy
     val palette = partyPaletteFor(activeGame ?: com.pokedaisy.app.companion.data.GameKind.FIRERED)
     Column(Modifier.width(width), verticalArrangement = Arrangement.spacedBy(gap)) {
         party.forEachIndexed { i, mon ->
@@ -146,10 +160,10 @@ internal fun BattlePartyList(
                 isOut(mon, active) -> tr("OUT") to VerdictGrey
                 else -> null
             }
-            val pick = enabled && canSendIn(mon, active)
+            val pick = enabled && (if (callback) pickable(i) else canSendIn(mon, active))
             Box(
                 Modifier.focusStart(i == cursor).fillMaxWidth().height(rowH)
-                    .slotClickable(sound = false, enabled = pick) { battleInput?.switchTo(mon.personality) },
+                    .slotClickable(sound = callback, enabled = pick) { if (onPick != null) onPick(i) else battleInput?.switchTo(mon.personality) },
             ) { PartyListRow(palette, mon, selected = i == cursor, u, edge, tag) }
         }
         ListCancel(!busy, rowH * 0.7f, edge, onBack)

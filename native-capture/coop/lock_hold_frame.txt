@@ -1,0 +1,16 @@
+# A FRAME event: id 109, Route101_EventScript_HideMapNamePopup (0x081EBCD5, the map's ON_FRAME script): held with no
+# context set up; it stays held while the player stands, walks and turns on the map (a FRAME clears on a map change only).
+# want: lock: held 109 kind 2
+# want: returned 0x81EBCD5
+lockinstall
+lockactive 1
+call 0x08098EF8 0x081EBCD5
+expect8 0x03000E41 0
+expect8 0x03000F2C 0
+lockheld
+hold UP 1
+wait 30
+lockheld
+hold DOWN 1
+wait 30
+lockheld

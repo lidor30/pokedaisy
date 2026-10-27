@@ -843,6 +843,8 @@ fun OptionConfirm(
     onDismiss: () -> Unit,
     /** Null: [confirmLabel] alone, for a notice there's nothing to cancel on. */
     cancelLabel: String? = tk("CANCEL"),
+    /** What the cancel button does when it is not the same as dismissing (BACK or a tap outside). */
+    onCancel: () -> Unit = onDismiss,
 ) {
     OptionOverlay(onDismiss, Modifier.widthIn(max = 480.dp)) {
         Column {
@@ -861,7 +863,7 @@ fun OptionConfirm(
                         horizontalArrangement = Arrangement.spacedBy(m.u * 4),
                         modifier = Modifier.fillMaxWidth().padding(horizontal = m.u * 4, vertical = m.u * 4),
                     ) {
-                        cancelLabel?.let { OptionButton(it, m, onClick = onDismiss, modifier = Modifier.weight(1f).height(m.rowHeight * 1.4f)) }
+                        cancelLabel?.let { OptionButton(it, m, onClick = onCancel, modifier = Modifier.weight(1f).height(m.rowHeight * 1.4f)) }
                         OptionButton(confirmLabel, m, onClick = onConfirm, emphasis = true, modifier = Modifier.weight(1f).height(m.rowHeight * 1.4f))
                     }
                 }

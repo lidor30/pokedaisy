@@ -121,6 +121,13 @@ object NewFeatures {
     /** SETTINGS > THEME on both screens: themes colour the app and the companion, limited-time ones by date (ui.theme.ThemeSpec). */
     const val THEMES = "themes"
 
+    /**
+     * SETTINGS > CO-OP > PAIR: play Emerald with a friend (companion.coop). Kept OUT of [ALL] while the co-op feature flag
+     * is off (FeatureFlags.coop): it joins [ALL] when the flag goes. Until then [isNew] is true only before [init]
+     * (previews), so a flagged-on build shows no tag - a tag that never expires would be wrong too.
+     */
+    const val COOP = "coop"
+
     /** Every feature that gets the tag. */
     val ALL = listOf(
         HUD, BATTLE_BUTTONS, GAME_HOTKEYS, COMPANION_WINDOW, HUD_PC, QUICK_MENU, HUD_REPEL, SINGLE_SCREEN, MORE_TAB, TOUCH_CONTROLS,

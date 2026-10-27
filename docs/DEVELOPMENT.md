@@ -1478,6 +1478,72 @@ entries showing its sprite's tiles (subsprites split it; parked entries sit at y
 mgba_dump: `follower FILE` (frames + palette), `followon 1`, `followinfo`; checked walking / turning / running in
 Emerald and FireRed, with EXPAND too.
 
+### Co-op: seeing each other (the partner on your map)
+
+Two linked players on retail English Emerald (BPEE, SHA-1 `f3ae0881...`, the same ROM on both) see each other's character
+on a shared map: walking, running, riding either bike and surfing, in the game's picture and in EXPAND's margins. It is only
+visual: you walk through each other, nothing is written into the game's RAM, save or states, and the partner's sprites are put
+in and out per frame like FOLLOWER's. Code: `companion/data/coop/` (`Presence.kt`, `PresenceSmoother.kt`, `PartnerArt.kt`,
+`CoopPresenceLink.kt`), `CoopPresence.kt` (the glue on the emu thread), `pk_wide.c`'s `pk_partner_*`. The transport is the
+`CoopPresenceLink` seam (`send(bytes)`, `received`); the activity's `attachCoopLink(link)` sets it (null stops it and drops the `CoopPresence`). The presence is made only when
+a link is attached and the loaded ROM is a 16 MB BPEE whose SHA-1 (hashed off the UI thread) is retail Emerald's; a player
+without co-op hashes nothing and runs nothing. A reconfigure (`pk_field_configure`, a new game) also drops the native
+request, fine position and fade memory, so a stopped engine's old partner can't come back; a new presence places none on
+its first frame.
+- **Wire format** (`PresenceCodec`, 20 bytes, little endian): u8 version (1), u8 flags (bit 0 valid, bit 1 female, the rest
+  0), u8 map group, u8 map number, u16 fineX, u16 fineY (object-event coordinates x 16 plus the pixels into the step, 0..32767),
+  u8 facing (the game's 1 S / 2 N / 3 W / 4 E), u8 mode (0 walk / 1 run / 2 Mach bike / 3 Acro bike / 4 surf), u8 step (+1 for
+  every tile stepped onto; its low bit picks the foot), u8 look id, u32 sender time in milliseconds, u32 reserved (0).
+  `decode` refuses a wrong size or version, a flag past bit 1, a non-zero reserved word, coordinates past 32767, facing outside
+  1..4, mode outside 0..4 and a look id above 8; nothing is clamped. About ten updates a second (every 100 ms of wall
+  clock, the first frame, and at once on a map change), whatever the game speed.
+- **Look ids** (`PresenceLook`, pinned, never renumber): 0 the sender's own hero, 1 RED, 2 LEAF, 3 BRENDAN, 4 MAY, 5 RS_BRENDAN,
+  6 RS_MAY, 7 GOLD, 8 KRIS. Only the id crosses the network, never ROM bytes: each device draws the partner from art it has
+  itself (`LookArt`, `rom-art/look/`, kept by PLAYER LOOK), and a look it doesn't have shows as the game's own Brendan / May by
+  the partner's gender. A PLAYER LOOK Pokémon sends 0. `valid` means the sender is on a map: a player in a battle or a menu
+  keeps sending `valid` with the last field position, so the partner sees them standing there.
+- **Reading the player** (`pk_partner_self`, beside FOLLOWER, same field table): map from SaveBlock1's location, tile from
+  the player's object event (+0x10 / +0x14), facing +0x18, mode from gPlayerAvatar's flags, fine position = the previous tile x
+  16 plus the progress BG2's scroll has made since the tile changed (FOLLOWER's wrap-safe measure, capped at 16). A step is
+  counted when the object's own current and previous coordinates differ by one tile, so a warp or a map connection's shift
+  (every coordinate moves at once) never counts. The reported map is held until the coordinates agree with it (at most 4
+  frames), because the game names the new map one frame before it shifts the coordinates.
+- **Smoothing** (`PresenceSmoother`, emu thread only): the partner is drawn about 150 ms behind real time, timed in wall-clock
+  milliseconds (the clock offset is the smallest `arrived - sent` seen), so a sender at 4x or 0.25x moves at their real pace
+  and never drifts. Late and duplicate updates are dropped, and render time never goes backwards. After a stall the partner
+  holds at the newest update, then plays the buffered path back at about 2x until it has caught up, so there is no jump; it
+  snaps only for a gap over 48 px between two adjacent updates, or a map change. Hidden after 3 s without an update, while the
+  sender is on another map (a connected map is not shown) or not `valid`. A sender whose clock restarted (after a silence over
+  3 s) is shown again.
+- **Art** (`PartnerArt`, 42 frames of 32x32 4bpp then a 16 colour palette, 21536 bytes): 0-8 walking, 9-17 running, 18-26 Mach
+  Bike, 27-35 Acro Bike (each sheet's first nine: stand S / N / W, then S step A, S step B, N A, N B, W A, W B), 36-38 surfing
+  (the surfing sheet's frames 0, 2 and 4: S / N / W), 39-41 the surf blob (S / N / W, read from the ROM, CRC checked). East
+  is west flipped; 16x32 frames are centred with `PlayerLook.widen`. A dressed look goes through `PlayerLook.wear`, as the
+  player's own does. Built on a background thread, asked per (gender, look) and retried while a build runs.
+- **On screen** (`partnerBegin` at line 0, `partnerEnd` after line 159, FOLLOWER's way): the rider is OBJ tiles 976-991 and the
+  blob 992-1007 (FOLLOWER keeps 1008-1023), each a hidden OAM entry after the game's shown ones, found from 127 down and never
+  FOLLOWER's, in the highest palette slot no shown sprite uses, with the player's priority. The game's VRAM, OAM and palette
+  bytes go back after line 159, so states hold none of it (`partner_clean`: identical hashes with and without him). Where he
+  stands is an offset from the player's sprite box (partner fine minus the local fine), which survives map connections. Why
+  these choices: the same place, tile range and palette rules as FOLLOWER let the two share the screen without special cases,
+  and nothing the game could read is ever changed. A partner whose box leaves the hardware's range (x -31..239, y -31..159) is
+  never put in OAM, since the 9-bit x and 8-bit y would wrap him to the other side: only the margins draw him then.
+- **Fades and DAY AND NIGHT**: the partner's colours are blended with gPaletteFade the game's way (BlendPalette's formula), then
+  tinted like every other sprite. The game's OBJ palettes run 3 frames behind the struct's y, so a 3 frame history keeps him in
+  step with the player beside him (right for fades without a delay: the field's screen and warp fades). A fade to black keeps
+  its y until the fade back in, so the palettes it took are remembered until y is 0 again. Hardware and fast fades are ignored.
+- **EXPAND's margins** (`drawPartner` in `drawRegion`, after the ghosts): drawn from the same computed place, honouring takenBuf,
+  the OBJ enable, the window layers, priority against the player and the brightness effect. Over the real frame's area (the
+  middle rebuild) it draws only where the hardware really drew him, so the rule holds: the rebuild of the middle 240x160 must
+  equal the real frame pixel for pixel. Check with `wideon 40` + `widecheck` and `widestats`'s exact count (partner_wide: 60
+  of 60), after the area-name popup is gone (it makes the middle differ by design). Nothing is ever put in OAM for the margins.
+- **Checked headless**: `native-capture/coop/partner_*.txt` through `scripts/coop_headless_check.sh` (self, draw, clean, follower,
+  offscreen, surf, badframe, fade, wide; commands in native-capture/README.md). JVM: `PresenceCodecTest`, `PresenceSmootherTest`,
+  `PartnerArtTest` (ROM-backed ones take `POKEDAISY_ROM_DIR`), `CoopPresenceTest`.
+- **Not done**: connected maps (a partner just across a map border is hidden until you are both on one map), reflections in
+  water, tall grass over his feet, and NPC depth order north of the partner (he takes the player's priority only, so a person
+  standing behind him can draw wrongly over him). The co-op transport and its manual page are a separate piece of work.
+
 ### DAY AND NIGHT (the overworld by the clock)
 
 MAKEOVER > DAY AND NIGHT (`DayNight.kt`, `Prefs.dayNight`, off) tints the map by the device's clock: keyframes by hour
@@ -2083,6 +2149,474 @@ built-in frames, storage + import - ui-preview compiles it, `OverlaysTest` cover
   half-screen side panel, 4:3) and an import of a drawn wooden frame (window found from alpha) around a
   stand-in game, with the same placement code; `settings-overlay*` / `*-settings-overlay` are the pages.
 
+## Co-op joined battles (Emerald)
+
+Retail English Emerald only (BPEE, SHA-1 `f3ae0881...`, the `RETAIL_SHA1S` entry). A player near a partner's wild battle,
+two-trainer battle or one-trainer battle (2+ Pokémon) can be asked to join it, and a story battle (gym leader, rival, a team's
+boss) can be joined in every save by a partner standing at the same spot. A joined battle is **Emerald's own link battle, run on
+both devices**: the host's game is the link master (multiplayer id 0, battler 0) and the partner's game its link partner (id 1,
+battler 2, its own `Player` controller), so each player sees the battle from their own side with their own game's menus,
+drawn at their own screen's scale. The two games carry link.c's blocks over the co-op connection instead of the serial cable
+(the bridge, below); the app draws nothing over the battle except the join prompt, the waits and the notices. Everything is
+behind `FeatureFlags.coop`.
+
+Code, by layer:
+- `pk_coop.c`: the retail check (below). `pk_coop_field.c`: what the overworld is doing (the join rules' signals).
+  `pk_coop_after.c`: the after-battle changes through the game's own functions. `pk_coop_link*.c`: the link bridge (its own
+  section). `pk_coop_lock*.c`: the story lock (its own section). All plain C over `struct mCore*` (no JNI), so
+  `native-capture/mgba_dump` compiles the same files in and tests them headless; `pokedaisy_jni.c` is the thin JNI layer
+  (`MgbaCore.pkCoop*`), ticking `pk_coop_lock_tick` / the link's state pump after frames of the **main core only** (never `rg`).
+- `companion/data/coop/`: `CoopBattleWire.kt` (the messages), `CoopJoin.kt` (the join rules and the offer / prompt state),
+  `CoopLinkFlow.kt` + `CoopLinkBattle.kt` (the flow and the block pump), `CoopAfter.kt` / `CoopOpQueue.kt` (the after-battle
+  changes), `CoopBattle.kt` (the partner's Pokémon checked), `CoopCatchStore.kt`. `CoopBattles.kt` (the glue) and
+  `companion/ui/CoopBattleUi.kt` / `CoopBattleOverlays.kt` (the join prompt, the waits, the notices).
+
+**Generated tables.** `scripts/gen_coop_emerald.py` reads the pinned pokeemerald ELF / ROM (built with agbcc, byte for byte
+retail) in the `pokedaisy-decomp` image and writes `app/src/main/cpp/pk_coop_emerald.h`: every address, struct offset, the
+first-32-byte CRC32 of each function co-op reads, calls or patches, the few code sites the bridge patches, and the bridge's
+Thumb code (`scripts/coop_link_emerald.s`, assembled) as a `static const` array (the header is included by more than one
+file, so nothing in it may be a plain definition). Rerun it, and `gen_coop_story.py` for the lock, after any change to the
+sites or the assembly.
+
+**The retail check** (`pk_coop_install`). Changes nothing: it compares the first 32 bytes of every function the join rules,
+the wild roll and the after-battle steps read or call with retail Emerald's (a hack, another language or a cheat on that code
+refuses it; the lock's and the bridge's own head patches don't count) and says whether this game is one co-op can run in.
+`pk_coop_battle_starting` (a passed check and Task_BattleStart running) is what the join rules ask. Gate the check on the
+retail SHA-1 as well, not on it alone: its 32-byte code CRCs also pass on Emerald Kaizo and Glazed (retail edited in place),
+whose data differ. The check puts nothing in the ROM, but the bridge's code block (`0x08FFD000`-`0x08FFDFFF`) must be free of other ROM
+blocks (`pk_coop_link_install` refuses otherwise): a PLAYER LOOK or TEXT LOOK block there makes the device not ready, and a joined
+battle needs both players' PLAYER LOOK and TEXT LOOK off anyway (they change battle code and art the other game doesn't have). The
+app refuses to switch them on while a battle runs.
+
+**Who can join.** Joinable: ordinary wild battles, two-trainer battles and one-trainer battles with two or more Pokémon
+(kind 3), and story battles (kind 4, below). Never: a one-Pokémon trainer, a story trainer as an everyday join (the host
+turns kind 3 into 0 for `CoopStory.isStoryTrainer`), scripted or static wild battles, the Route 101 rescue, Safari, link,
+Frontier. No prompt is shown for those. The partner must be *nearby* (same map group and number, Manhattan distance at most
+NEARBY RANGE, `Prefs.coopNearbyRange`: 2 / 4 / 8 / 16 / 32 steps, default 8) and *free* (on the field with the controls free, or
+on the START menu's top level: `pk_coop_partner_free`). The prompt lasts 30 seconds; no answer is a decline. Once a battle runs, a player who is slow to choose is
+never timed out while the link is up (the 60 seconds are for a dropped link only). Each side, while it holds its own battle start, answers an
+incoming offer with BUSY, so two battles starting at the same moment both go on single.
+`pk_coop_join_kind` (only while `pk_coop_battle_starting`): 1 = an ordinary wild battle (no TRAINER flag, `gMain.savedCallback`
+= `CB2_EndWildBattle`, none of FIRST_BATTLE / legendary / Safari / Pyramid / roamer / link / Frontier flags), 2 = two trainers
+(TRAINER + TWO_OPPONENTS, `CB2_EndTrainerBattle`, both opponent ids set), 3 = one trainer with two or more Pokémon (flags exactly
+TRAINER or TRAINER | DOUBLE, `CB2_EndTrainerBattle`, `gTrainerBattleOpponent_A` in 1..854, the record's `partySize` >= 2), else 0
+(`pk_coop_join_trainers` gives the ids, [A, 0] for kind 3). `pk_coop_partner_free` = the free field or the START menu's top level:
+the menu's task (`Task_ShowStartMenu`) running with `gMenuCallback` = `HandleStartMenuInput` (the callback alone stays stale
+after the menu closes). Headless: mgba_dump's `coopjoin`, `coopfree`; tests `join_*`, `free_*`. The Route 101 rescue's
+FIRST_BATTLE flag is set after its transition (no `Task_BattleStart` there), so `join_rescue` checks the flag rule on a wild
+battle with the flag poked.
+
+**Protocol** (`CoopBattleWire`, types `0x0200`-`0x02FF`, little-endian, every message after STATUS starts with a host-chosen
+non-zero `u32 battleId`). `0x0204`-`0x020E` were the lockstep replica's messages: never reused, the decoder refuses them.
+
+| Type | Name | From | Carries |
+| --- | --- | --- | --- |
+| 0x0200 | STATUS | both, on change and each second | flags: free, ready, and the story event stood at (battleId 0) |
+| 0x0201 | OFFER | host | kind (1 wild / 2 trainers / 3 one trainer / 4 story), the trainer ids, the first foe's species, the host's name, gender, OT ID |
+| 0x0202 | ANSWER | partner | accept; up to 3 Pokémon (100 bytes each), name, gender, OT ID, their party slots |
+| 0x0203 | CANCEL | both | reason: TIMEOUT, DECLINED, ENGINE, LINK, BUSY, CLOSED |
+| 0x020F | RESULT_ACK | partner | the catch the host named in CAUGHT_MON is in the partner's game, saved |
+| 0x0210 | LINK_BLOCK | both | one link block of the bridge (`[u8 kind][u8 seq][u16 size][bytes]`) |
+| 0x0211 | LINK_READY | partner | the partner's game is in the link battle's setup: the host's may begin |
+| 0x0212 | CAUGHT_MON | host | what the battle caught: the host's own ball (nothing to send) or the partner's, with the Pokémon's 100 bytes |
+| 0x0213 | STORY_STATE | both | a story join's progress (`pk_coop_story_*` state 0-5), or GO (6) from the host |
+
+Everything received is untrusted: partner Pokémon pass `CoopBattle.check` (in ANSWER, and again when the host accepts); a caught one
+must carry the partner's own OT ID; a block whose game is not in a link battle (late after the end, early before the start, a
+stale seq) is dropped before anything touches RAM. A paired partner's host chooses what the battle is: it can name trainer ids
+1..854 (the prize and the trainer flag), and the EXP / EVs / moves of what a battle does to the partner's Pokémon come from the
+partner's own game, never from the network. Nothing from the network reaches game memory except through the checks and the
+core's own `pk_coop_*` calls (`CoopSafetyTest`).
+
+**After the battle** (`CoopLinkFlow`, `CoopOpQueue`, `pk_coop_after.c`, `pk_coop_link_end.c`): on a free field frame, in game RAM,
+never through the save file; each game does its own (the other's is never written). The prize is what a two-trainer battle pays,
+never doubled (`pk_coop_prize`, the ROM's own table); a single trainer's is that trainer's own (`pk_coop_prize_single`: x2 when the
+trainer's record is a double battle). Trainers' flags are set on both games (`pk_coop_set_trainer_flag` reads the flag first and
+answers 2 when this game already had it: `CoopOpQueue` then skips that trainer's prize). A player **blacks out only when no
+Pokémon in the whole party can fight** (not just the three they sent): the game's own white-out runs. A Pokémon that grew a level
+evolves in its owner's game (`pk_coop_evolve`) after a won battle, and the in-game save is made after a `SaveBackups` copy
+(`CoopOpQueue`). Balls: with two wild Pokémon up a ball is refused, as in the game's own double battles; whoever catches the last
+one keeps it, in their own party (else PC), with their own OT. The host keeps a partner's catch (`CoopCatchStore`) until the
+partner acknowledges it saved (below). A level-up's "learn a move?" prompt and an evolution on the partner's side happen in the
+partner's own game after the battle.
+
+**In the game** (`CoopBattles.kt`): `CoopBattleGlue` holds the `CoopLinkFlow` and is the engine's `CoopFrameHook`
+(`EmulatorEngine.coopBattles`, null for anyone else): asked every tick for the next frame's keys (always the player's own; null =
+no frame, the game is held: a battle start waiting for the partner's answer, or a stop in flight; also called from the held branch,
+so timers and link waits tick while no frame runs), `afterFrame` after each. It sends STATUS on change and every second (free =
+`pkCoopPartnerFree`, ready = `pkCoopInstall` and `pkCoopLinkInstall` say yes, probed once a second and only on a free field / START
+menu), takes the link's messages on the link's thread (a LINK_BLOCK straight into the flow's thread-safe queue, everything else
+hopped into an emu job), feeds the flow the nearby spots (own `pkPartnerSelf`, the partner's last `CoopPresence.lastReceived`) and
+sets plan 5's guards after every tick (`Hold.BATTLE` = the host's hold, `StateBlock.BATTLE` = busy). The activity attaches it only
+for retail English Emerald's SHA-1 with the flag on (`CoopBattles.mayHook`), and also hands presence its `CoopPresenceChannel` (type
+0x0100). Overlays (`companion/ui/CoopBattleOverlays.kt`) are drawn in the HUD's view, HUD on or off, and take the game's buttons
+like the QUICK MENU (`coopOverlayTakes`, `coopMotion`, the touch pad): only the join prompt and the host's wait take keys. While
+busy RESTART, SOFT RESET, SAVE / LOAD / UNDO STATE, REWIND (the engine keeps the ring off while states are blocked), PLAYER LOOK /
+TEXT LOOK / RIVAL LOOK, REUSABLE TMS and CHEATS are refused with a notice, and RetroAchievements idles
+(`RetroAchievements.coopBattle`). `pauseGame` / `coopStop` call `CoopBattles.stopNow()` before any suspend / sleep state: the
+game is put back first (a link battle left mid-way, the other side told CANCEL(CLOSED)); a stop that could not be confirmed
+(the emu thread did not answer) writes no resume state at all (`coopLost`, the next launch boots from the untouched save file).
+Cheats can't be switched on while co-op runs (`CoopSession.refusesCheats`). `CoopLock.releaseGuards()` closes the lock for good
+(a late `onFrame` takes nothing; `close()` still uninstalls) and `CoopGuards.reset()` runs when a game starts. REUSABLE TMS /
+PLAYER LOOK wait in the engine while `CoopGuards.battleActive()`; after they run `CoopLock.requestReinstall()` puts the story
+hook back on the next frame. `CoopBattles.resume()` replays the link state seen while stopped.
+
+**Rulings** (plan 4's, kept through the link rewrite): the prize is what a two-trainer battle pays, no doubling; a player blacks out only
+when their whole party is down; PLAYER LOOK and TEXT LOOK must be off; a single trainer with two or more Pokémon can be joined
+(its prize is the trainer's own, one-Pokémon trainers have no co-op).
+
+**Headless checks.** `scripts/coop_headless_check.sh` builds `mgba_dump` in the `pokedaisy-capture` image and runs every
+`native-capture/coop/*.txt` on the co-op test save (`boot/emerald_coop.txt` first), failing on any `FAIL`, an
+`unknown command`, or a missing `# want:` line. It needs the player's own files, never committed (the partner's save is the second
+core's, for the `pair` tests):
+```bash
+EMERALD_ROM=~/roms/emerald.gba EMERALD_SAVE=~/roms/emerald.sav EMERALD_PARTNER_SAVE=~/roms/emerald_partner.sav COOP_WORK=~/roms/work/coop bash scripts/coop_headless_check.sh [name...]
+```
+`COOP_WORK` is a scratch folder (a temp one by default), Docker must be running, and a name runs just that test. The commands the
+tests use are in `native-capture/README.md`. The groups: `install*`, `join_*`, `free_*` (the retail check and the join rules),
+`after_*` (give party / PC, items, flags and money, evolve, save, white-out, a write refused off the free field), `link_*` (the
+bridge, two cores in one process), `lock_*` / `story_*` (the lock and the story hook), `partner_*` (the partner on screen). Kotlin:
+`CoopJoinTest`, `CoopBattleWireTest`, `CoopBattleTest`, `CoopLinkBattleTest`, `CoopLinkFlowTest` (both sides of the flow over two fake
+engines: starts, cancels, stories, the end, the drop rule, catches and their acknowledgement), `CoopOpQueueTest`, `CoopBattlesTest` (the
+glue: stop order and fail-closed stops, busy / state blocks, message hopping, STATUS) and `CoopSafetyTest`.
+
+### The link bridge (a joined battle as a link battle)
+
+A joined battle is Emerald's own link multi battle: both devices run the game's link code, the host as the
+link master (multiplayer id 0, battler 0) and the partner's game its link partner (id 1, battler 2, its own `Player` controller), and link.c's block layer
+is carried over our network instead of the serial cable. No serial (SIO) emulation: a frame-timed link over the internet can't
+keep time. Code: `pk_coop_link.c` (API in `pk_coop.h`), the Thumb stubs in `scripts/coop_link_emerald.s` (generated into
+`pk_coop_emerald.h` by `gen_coop_emerald.py`: code at `0x08FFD000`, its own 4 KB below the lock's `0x08FFE000`), headless
+checks `native-capture/coop/link_*.txt` on two cores in one `mgba_dump` (`pair`, `on a|b`, `linkrun`, `linkdelay`, ...: its README).
+
+**The link battle is the tower's link multi** (`BATTLE_TYPE_BATTLE_TOWER | DOUBLE | LINK | TRAINER | MULTI | TOWER_LINK_MULTI`: cable_club.c's
+`USING_BATTLE_TOWER` flags plus battle_tower.c's `TOWER_LINK_MULTI` (1 << 23). Without that last one `HasNoMonsToSwitch` / `checkteamslost` look at the
+wrong half of `gEnemyParty` for the foes (battler 1 reads slots 3-5, the AI's own loops 0-2): a foe whose own Pokémon were all down was sent a
+"replacement" from the other foe's half, "sent out ???" with party slot 6, and the battle hung - found when the first foe of a wild battle fainted
+on a device; `link_faint_wild.txt` / `link_faint_trainers.txt` play a battle to its end with `linknoerror 1`): two linked players against two AI trainers, the AI run by the master and mirrored on the partner by link
+opponent controllers. The plain link multi (four linked players, no tower flag) has no AI controllers, so it would need two
+fake linked players and a way to run their Pokémon; the tower flavour needs none of that. What the tower flag costs is a list of
+Frontier rules the later tasks undo one by one: it counts as `BATTLE_TYPE_FRONTIER` (no EXP, no money, no catching, the enemy
+party levelled to 50 by `TrySetLinkBattleTowerEnemyPartyLevel`, names and trainer pictures looked up in the Frontier's trainer
+table by `gTrainerBattleOpponent_A` / `_B` - an id of a route trainer, 300 and up, runs the name copy over other EWRAM, so
+`pk_coop_link_begin` puts two stand-in Frontier ids there and builds the real trainers' parties itself, before the tower flag
+goes on: `CreateNPCTrainerParty` makes none for a Frontier battle) and its own end flow.
+
+**What the bridge replaces** (head patches, 8 bytes: `ldr r3, [pc, #0]; bx r3; .word <routine | 1>`, put in by `begin` and taken
+out by `reset`, each CRC-gated at install; the Thumb routines run whole in the original's place): `SendBlock` (the block goes to
+a 16-entry outbox in the bridge's RAM at `0x0203D000` for the app, and into the game's own `gBlockRecvBuffer[myId]` with its
+received flag set, as the cable echoes a sender's own block), `IsLinkTaskFinished` (the outbox has room and the own slot has
+been read), `GetMultiplayerId` (0 host / 1 partner), `HandleLinkConnection` and `HasLinkErrorOccurred` (nothing happens on a
+serial line that isn't there), `OpenLink` (the remote players are received at once) and `CloseLink` / `SetCloseLinkCallback`
+(they are gone at once; closing while `BATTLE_TYPE_LINK_IN_BATTLE` is set is the battle's end). Receiving needs no hook:
+`pk_coop_link_give` writes the block into `gBlockRecvBuffer[1 - myId]` and sets the game's `gBlockReceivedStatus`, after the
+state, seq, kind and shape checks (`CoopSafetyTest`'s rule: nothing from the network reaches game memory unchecked). `begin`
+also fills `gLinkPlayers` (host at 0, partner at 1), `gLinkStatus` (two players, master bit, connected), calls the game's own
+`SaveLinkPlayers` (else `Task_WaitForLinkPlayerConnection` closes the link as a player count mismatch), trims `gPlayerParty` to
+the first three able Pokémon (backed up in the bridge's RAM, put back by `reset`) and enters `CB2_InitBattle`.
+
+**Blocks** (`[u8 kind][u8 seq][u16 size][bytes]`, `PK_COOP_LINKB_*`; the kind comes from where in the game the block was read:
+`take` classifies by the source address, a block of no known kind is dropped and counted): HEADER (the link battler header,
+version signature 0x0300), PARTY / ENEMY (one or two struct Pokemon: decrypted and checked - checksum, level, HP, status, a real species and never an egg, moves and held item inside their tables, PP within each move's cap), SEED (the recorded
+battle's RNG seed), BUFFER (one battle controller message, checked by buffer id and command: the master accepts from the partner only its answers for battler 2 - an action 0-3, a move slot and target 0-3, a switch to one of its own live slots 3-5 with a sane party order, an item id inside the table, or a data reply that holds a sane Pokemon - and its "done" as player 1, never a command; `PK_COOP_LINK_ERROR` is the state once the game sent a block of no known kind), MPARTY (the three Pokémon the party
+showcase screen shows). An exchange takes 8 blocks before the first controller message, then one block per controller message.
+Each side's blocks go to the other in order; a block is refused (`give` = 0)
+until the game has read the last one of its slot, which is the back-pressure.
+
+**Starting a joined trainer battle from the field** (task 2, `pk_coop_link_start.c`; `link_start_trainers.txt`, `link_start_single.txt`,
+`link_two_able.txt`). The host's game is held where the join is offered (`pk_coop_link_host_hold`: `pk_coop_join_kind` 2 or 3 with
+Task_BattleStart running, usually already one transition frame in). On the partner's yes `pk_coop_link_host_go` puts the field's
+callback back (the transition's first frame set CB2_OverworldBasic, which `begin` refuses), clears the battle flags, runs
+`pk_coop_link_begin` as the master (the first three ABLE Pokémon, never an egg or a fainted one; the rest set aside and put back by
+`reset`), then resets the task table (the game's own ResetTasks: Task_BattleStart and the transition's tasks would otherwise run on
+into the party showcase, which skips ResetTasks while a link is up) and puts back what the host's script reads at the end:
+`gMain.savedCallback = CB2_EndTrainerBattle` (begin sets CB2_ReturnToField, which would leave the script waiting forever) and the
+real `gTrainerBattleOpponent_A` / `_B` (`pk_coop_link_end_ids`, once, when the link state first reads ENDED; a single trainer's B
+goes back to what the script left). The partner starts from its free field (`pk_coop_link_partner_go`, `pk_coop_on_free_field`).
+The Frontier rules the tower flag brings are undone for trainer battles by head patches of the tower flow's lookups, answered from
+`gTrainers` for the two real ids (`GetFrontierTrainerName`, cut to 7 letters into a link player's name; `GetFrontierTrainerFrontSpriteId`;
+`GetFrontierOpponentClass`; `GetBattleTowerTrainerLanguage`; `CopyFrontierTrainerText` = an empty speech on both games, the
+speeches being in the host's map script only) and `TrySetLinkBattleTowerEnemyPartyLevel` = nothing (the foes keep their own
+levels), and two patches in `BattleAI_SetupAIData` (the frontier-mask pool word loses the tower bit, the TWO_OPPONENTS test also
+fires for it) give the foes each trainer's own AI scripts (A's | B's, + DOUBLE) as in the solo game, not the tower's three.
+`CreateNPCTrainerParty` runs with TWO_OPPONENTS set (each trainer's party stops at 3) and the flag is cleared right after. A
+refused `host_go` leaves the held battle exactly as it was (`begin` notes the ids, savedCallback and gEnemyParty and puts them
+back; `link_start_refused.txt` forces a refusal with `linkforcefail`). Still as the tower has it: no EXP / money / items (later tasks). **A single trainer** (2+ Pokémon) is both foes of the tower multi: `CreateNPCTrainerParty` once, its Pokémon 0 2 4
+to the left foe (gEnemyParty 0-2) and 1 3 5 to the right (3-5), `gTrainerBattleOpponent_B = _A` during the battle.
+
+**What was checked** (`link_trainers.txt`, `link_late_block.txt`, `link_delay.txt` = the first with every block 12 frames late both ways; both cores in one process):
+both bridges reach the battle state; the host's battler 0 and the partner's battler 2 are the game's own player
+controller at its action prompt; the teams are laid out as the game lays a link multi out (gPlayerParty = the host's three, then
+the partner's three, on both cores: the partner core's own first Pokémon is at slot 3, not 0); each core picks a move with its own
+keys; a whole turn runs; the 12 HP halfwords of gPlayerParty / gEnemyParty are the same on both cores afterwards (the partner core's
+`gBattleMons` stays empty: only the master runs the engine); a block while idle, a stale seq and a block after the end are
+refused without touching the game's received flag.
+
+**Wild battles** (task 3, `pk_coop_link_wild.c`, `PK_COOP_LINK_WILD`, tests `link_wild_intro` / `link_wild_run` / `link_wild_run_partner`): the same
+link multi battle without trainers. The game itself ORs `BATTLE_TYPE_TRAINER` into the flags in `FindLinkBattleMaster` (the header
+exchange, after our `begin`), so the wild kind head-patches that function with our stub (`link_entry_FINDLINKBATTLEMASTER`: player 0 is
+the master, the trainer bit only for the other kinds) and leaves TRAINER out of the flags it writes; with no TRAINER the game makes
+the intro ("Wild X and Y appeared!"), the foe sprites (no trainer pictures, no foe AI beyond the wild random pick) and the dex
+rules itself. The host rolls the two wild Pokémon from the map's table (`GetCurrentMapWildMonHeaderId` + `TryGenerateWildMon` twice,
+the water table while surfing) into `gEnemyParty` slots 0 and 3 (battler 1 reads 0, battler 3 reads 3); the partner's game gets them
+as the link battle's own ENEMY blocks. Per-battle ROM patches for the wild kind only (`sLwPatches`, put in by `begin`, out by `reset`,
+each checked against the file's bytes): the MULTI trainer picture at the foe-right position (`COOP_EM_INTRO_FOE_RIGHT_CMP`), `TryRunFromBattle`'s
+double-battle test (`COOP_EM_RUN_DOUBLE_BNE`, the roll runs), `IsRunningFromBattleImpossible`'s `if (LINK) return SUCCESS` and `HandleAction_Run`'s
+`if (LINK | RECORDED_LINK)` forfeit (so Shadow Tag & co. refuse at the prompt and the escape roll runs, "Can't escape!" and the next
+prompt), `TrySetLinkBattleTowerEnemyPartyLevel` (returns at once: the foes keep their level, not the facility's 50), the VS screen's
+task (our no-op: no "COOP VS NED / two trainers' names" screen; `COOP_EM_LINK_WILD_INTRO_VS_SPRITES` skips the intro slide's link task setting the VS letters' callbacks by the ids at `gBattleStruct` + 0x7D / 0x7E, which read 0 without that screen and slid the host's own health box (sprite 0) off the screen; `link_healthbox_*` check all four boxes' positions) and the `gBattleMainFunc = HandleEndTurn_FinishBattle` literal of
+`HandleEndTurn_RanFromBattle` / `HandleEndTurn_MonFled` (our `link_entry_RAN_FINISH`: the escape's script ends with `end2`, which
+ends only the master's game, so the stub sends `Cmd_endlinkbattle` once - the partner's `gBattleOutcome` is 4 too - and then runs the
+game's own function). The music is chosen by `PlayBattleBGM` called while the flags are still 0 (`GetBattleBGM` says the trainer
+song for any LINK flag). Not here: EXP / money (Task 4 / 5), catching (Task 4), the end flow after `CB2_InitEndLinkBattle` (Task 5),
+the foes never being marked seen in the Pokédex (links skip it).
+**Story battles as link battles** (plan 6 Task 6, `pk_coop_link_story.c`, `scripts/coop_link_emerald.s`'s `task 6` block, kind
+`PK_COOP_LINK_STORY` = Offer kind 4): a gym leader, the rival or a Team Aqua / Magma boss is joinable in every save by a partner
+standing at the same spot (`CoopJoin.storyOffer(host: StoryAt, partner: StoryAt, partnerFree)`: same event id and trainer, neither flag
+set, the partner free; `Status.story` = the story event the sender stands at with that trainer's flag unset, 0 = none). Each game runs its
+own `trainerbattle` script; the one place every trainer battle starts is `BattleSetup_StartTrainerBattle` (the `dotrainerbattle`
+command), so that is where it joins. `pk_coop_story_arm` (the partner said yes) head-patches it (`link_entry_STORYSTART`; in only
+until go / cancel / disarm). The first `dotrainerbattle` then points the script at a small pick script in the story RAM
+(`0x0203FA00`, outside the bridge's zeroed area): `special ChooseHalfPartyForBattle; waitstate; dotrainerbattle; goto <what followed
+the original dotrainerbattle>`. The game's own multi-battle "choose three" screen runs from the field (the CB2_PreInitMultiBattle
+party screen is only a showcase, not a picker), and the pick script's own `dotrainerbattle` reads `gSelectedOrderFromParty` /
+`gSpecialVar_Result` and holds the script (`ScriptContext_Stop`): state READY, or CANCELLED when the screen was backed out of
+(`pk_coop_story_cancel` then lets the game's solo battle start). With both players READY the app calls `pk_coop_story_go`: begin
+with `setup.picks` as the party (`link_trim_party`: the picks in order instead of the first three able), the real trainer ids
+(`gTrainerBattleOpponent_A` / `_B`), the prelude of the original function written back (`sNoOfPossibleTrainerRetScripts`...) and
+`gMain.savedCallback = CB2_EndTrainerBattle`: after the battle the game continues at the `goto`, so each game's own after-battle script
+(badge, flags, text, TM) runs as it does solo. A story trainer with one party (Roxanne: three Pokémon) is split over the two foe slots
+on the master (`story_split_foes`: the first half rounded up in slots 0-2, the rest from slot 3). The pick script's `special`
+index and the opcodes come from the decomp (`story_constants` in `gen_coop_emerald.py`, the index checked against `gSpecials` in the
+built ROM). `ChooseHalfPartyForBattle` also sets `VAR_FRONTIER_FACILITY` (the game's own side effect). `coop/link_story_gym.txt` runs
+both cores through Roxanne's intro, the pick screen and into the link battle (the end of the battle and the after-battle scripts wait for
+Task 5's normal end).
+**A dropped link (Task 7, `pk_coop_link_drop.c`)**: the game has no timeout anywhere in the battle's path (a battle waits on
+`gBattleControllerExecFlags` / the partner's block for ever; link errors are raised only from `gLinkStatus`, which the bridge
+writes once), so a drop of any length is a stall the battle survives (`link_drop_back`: 30 s, nothing refused, the turn
+completes after). The "Waiting for ..." text and its 60 s clock are the app's, not the game's. `pk_coop_link_leave(core,
+blackout)` is the app's give-up: from any frame, by RAM writes only (no `pk_call`, so also where no call is safe), it points the
+battle at the game's own ending (`gBattleMainFunc = HandleEndTurn_FinishBattle`, action `B_ACTION_FINISHED`: a fade, then the
+non-link free of the battle's graphics, then `gMain.savedCallback`), after clearing the link bits of `gBattleTypeFlags` (the
+game frees the battle's graphics only for a non-link battle), putting `BattleControllerDummy` on all four battlers, resetting
+the tasks and text printers by hand (a menu's task would set callback2 back to its exit) and setting the outcome: TELEPORTED
+for 0 (not a defeat, not a win: no prize, no EXP) or LOST for a blackout (`savedCallback = CB2_WhiteOut`: half the money,
+the party healed, the heal location). **`savedCallback` is never trusted**: the party showcase of the tower multi leaves
+`CB2_PreInitMultiBattle` there (a leave during it came back into the battle), so anything but the game's own wild / scripted /
+field ends becomes `CB2_ReturnToField`; **a trainer's end is never continued**: `CB2_EndTrainerBattle` (it sets the trainers'
+flags and registers them in the match call for any outcome that is not a defeat) and
+`CB2_ReturnToFieldContinueScriptPlayMapMusic` (it would run the stopped trainer script's post-battle part: a badge, a gift, a
+flag for a trainer nobody beat) both become `CB2_EndWildBattle`: the field, controls released, the stopped script just ends,
+the trainer can be fought again (`link_drop_script`, which also shows the test script does set its flag when continued). Then
+`pk_coop_link_reset` (patches out, the set-aside party back). Evolutions the battle would have run afterwards are dropped (the
+game runs them only for a won battle; the manual draft says so). **The heap**: a screen of the battle (the party menu's
+`sPartyMenuInternal` and boxes, the bag, the summary, an evolution scene, animation buffers) holds blocks only its own exit
+frees. `pk_coop_link_begin` notes the heap blocks in use (`pk_coop_link_drop_arm`); once the game is back at its own end callback
+(`pk_coop_link_drop_tick`, called by `state` / `take`, which the app pumps every frame) every block in use that was not there is
+freed with `FreeInternal`'s logic in C, and `gBattleTypeFlags` is zeroed. `pk_coop_link_begin`'s gate is the field (callback2 =
+CB2_Overworld, `gMain.inBattle` clear, no link up), not `gBattleTypeFlags`, which the game zeroes only when the next battle
+starts (`link_begin_stale_flags`). Tests: `link_drop_back`, `link_drop_leave`, `link_drop_blackout`, `link_host_gone` (the host
+core restarts: `corereset`), `link_drop_frames` (the setup, the intro text, the party screen, the action menu; heap free bytes
+equal before and after), `link_drop_party_x20` (the party screen left 20 times, heap checked each time), `link_drop_script`.
+**EXP, the BAG and catching (plan 6 Task 4: `pk_coop_link_rewards.c`, the `task 4` block of `coop_link_emerald.s`, tests
+`coop/link_exp`, `link_bag`, `link_bag_host`, `link_catch_two_up`, `link_catch_partner`, `link_catch_host`).** The game's link battle
+gives no EXP, refuses items and has no balls; `begin` puts these ROM changes in (and `reset` takes them out), all through pk_cheats:
+the two battle-type literals of `Cmd_getexp` case 0 and `HandleTurnActionSelectionState`'s item test (Frontier bits and LINK out),
+the INGAME_PARTNER traded-boost `beq` (slots 3-5 are never boosted), table pointers for `Cmd_getexp`, `Cmd_handlelearnnewmove` and
+`sTurnActionsFuncsTable[B_ACTION_USE_ITEM]`, and head patches on `ItemUseInBattle_PokeBall`, `CompleteWhenChoseItem`,
+`Cmd_trysetcaughtmondexflags`, `Cmd_givecaughtmon`.
+- EXP: the master's `Cmd_getexp` wrapper fakes the exec flags in state 1 so the game works its totals out and waits, then works each
+  side's share out (each side divides by ITS sent-in Pokémon and Exp. Share holders), sets `*exp` / `gExpShareExp` for the side of the
+  Pokémon whose turn it is each frame in state 2 (and marks battler 0 absent for a benched partner Pokémon, so its EXP update goes
+  to battler 2, not the host's controller), and mirrors the update into the master's own copy of a partner Pokémon in state 3 (the
+  partner's game gives its copy the same through its own controller; the leftover after a level comes back as `TWORETURNVALUES` 11, accepted
+  only while getexp's state is 4). A partner Pokémon's moves are not learned in battle (nothing-to-learn): its own game does that after
+  the battle (Task 5 sets the level-up bits from the level change). Seen: the host presses A through every level-up box, the partner's too.
+- BAG: the partner's `CompleteWhenChoseItem` answers `TWORETURNVALUES` (item low byte, item high byte, and a medicine's party slot in
+  battle-id terms - the party menu lists the player's own Pokémon first and the game puts the physical order back when it closes) which
+  `link_buffer_ok` accepts only while the engine waits for an item from battler 2; the master's `USEITEM` wrapper then runs
+  `ExecuteTableBasedItemEffect` on its copy with `gBattlerInMenuId` = 2 (HP and status of the Pokémon in battle first taken from
+  `gBattleMons[2]`: the partner's game keeps the real ones, the master's copy of a partner Pokémon is stale) - the item itself came out
+  of the partner's own bag. A medicine's effect on the partner's own game emits a controller command of its own (its Pokémon's data
+  request); the partner's `SendBlock` swallows every command made on the partner's side, else it waits for the busy controller
+  forever (the IS_DONE is behind it in the receive ring). PP items aren't replayed on the master.
+- Catching: the ball rule is `link_ball_refused` (a TRAINER battle: the game's own answer; otherwise the foe in front of the thrower
+  must be the one left; each game reads `gEnemyParty` HP); the catch is `link_entry_CATCH_GIVE`: the foe's 100 bytes into the rewards'
+  RAM with who threw (`pk_coop_link_caught`, re-keyed to the catcher's trainer ID), and the script's tail is ours (`endlinkbattle` with
+  outcome 7, so the partner's game ends too). The catcher's own game gives it to itself after the battle (`pk_coop_give_mon`).
+- Fix round 1: a ball catches the last wild Pokémon whichever slot it is in (`link_entry_BALLTHROW` swaps gBattlerAttacker for the
+  game's own `Cmd_handleballthrow` so BATTLE_OPPOSITE is the living foe, keeps the real thrower in the rewards' RAM for the catch
+  commands, restores it); the master enforces the rule too (`link_script_cancel`); the PP items' `gItems` pointers go to
+  `link_entry_PPITEM` (the partner's bag refuses them, "Not now!", nothing used; the master's own is the game's; flutes are
+  `ItemUseInBattle_Medicine` and take the medicine path); a partner Pokémon's level-up box gets an A press made for it every 49 frames
+  (the host's own stay the game's); the "party and boxes full" check uses the catcher's real party count. Not replayed: the master's
+  copy after a partner PP item (refused instead). A caught Pokémon's shininess follows the catcher's trainer ID (shiny = f(ID ^ SID ^
+  PID)), so it can differ from what the battle showed (a wild Pokémon is made with the host's ID); the PID / OT pairing is kept, not
+  adjusted. The traded 1.5x stays for the host's own traded Pokémon (only slots 3-5 are never boosted).
+- Tests make the battle wild by clearing TRAINER on both cores once it runs (Task 3 does it in begin) and leave one foe by hand.
+**The end of a joined link battle** (plan 6 Task 5; `pk_coop_link_end.c`, the merge in `pk_coop_link.c`; `link_end_*.txt`): the game's own end
+of a link battle is a VS screen, a record prompt and a link reconnect, none of it wanted. One halfword is patched while `begin` is in:
+`CB2_InitEndLinkBattle`'s `if (gBattleTypeFlags & BATTLE_TYPE_FRONTIER)` `beq` (0xD011, `COOP_EM_LINK_END_BEQ`) becomes a nop, so every
+link end takes that function's frontier branch: `SetMainCallback2(gMain.savedCallback)` and the three `Free*` calls - the game's normal end
+(`ReturnFromBattleToOverworld` and `TryEvolvePokemon` are never on a link battle's path, so what they do is the app's). `begin` sets
+`savedCallback` to `CB2_EndWildBattle`: the field again, or `CB2_WhiteOut` when `IsPlayerDefeated(gBattleOutcome)` (LOST / DREW). Nothing in
+a link battle pays or flags (no script runs it), so `pk_coop_link_tick` (every frame, with the core lock, riding `pkCoopLinkState`, the app's per-frame state pump) does it:
+1. **The first frame the bridge is ENDED** (CloseLink ran, about 2-3 frames before the game's `IsPlayerDefeated`): the outcome is noted and the
+   party is put back as a **merge** (`link_restore_party`): each pre-battle Pokémon (the backup `begin` took) is found in the battle's party
+   by (personality, OT id) and replaced by the battle's 100 bytes (HP, PP, EXP, level, moves, a new species; switches reorder, personality
+   survives evolution); the set-aside reserves come back byte for byte; the other player's Pokémon are dropped, so a partner's own
+   Pokémon end up in the partner's own game. A LOST battle with an able Pokémon anywhere in the whole merged party gets `gBattleOutcome`
+   = RAN (4) before the game looks, so it doesn't black out (the ruling: a player blacks out only when nothing in the whole party can fight);
+   nothing able = the game's own white-out.
+2. **On each game's own free field** (`pk_coop_on_free_field`), one step per frame, each retried while the game isn't free: the prize (WON only;
+   a TRAINERS battle pays both trainers' `pk_coop_prize`, no x2; SINGLE pays `pk_coop_prize_single`: that trainer's own, x2 for a double
+   record), the trainers' flags (`pk_coop_set_trainer_flag`: WON only, both games, idempotent), one `pk_coop_evolve` per original slot whose
+   level went up (compared in the merge: the game's `gLeveledUpInBattle` is the master's alone), and the white-out of a win with nothing able
+   (`pk_coop_white_out`, after the prize).
+3. **The result** (`pk_coop_link_result`, 16 bytes) is ready once all that ran, the game is on the field again and the outbox is empty
+   (`pk_coop_link_drained`): reset is safe from then on. `pk_coop_link_result_clear` drops it (a new `begin` makes the old one stale anyway).
+STORY battles get none of the prize / flags part (the host's script's, a later task); a link lost (the 60 s rule) is a later task's too.
+An uneven end (one game's text box holds its battle 300 frames longer: `link_end_uneven.txt` delays the block that carries
+`CONTROLLER_ENDLINKBATTLE`) needs nothing special: the master ends first and never waits for the partner; the partner's own trailing
+`CONTROLLER_IS_DONE` reaches an ended master, whose `give` refuses it (counted in `refused`; the app drops it) and no game sends a block
+after its own ENDED. Checked: `link_end_won` / `_single_prize` / `_lost` / `_lost_reserve` / `_blackout` / `_blackout_all` / `_evolve` /
+`_uneven` (the evolution scene's level is worked out from EXP again: a poked level shows as the old one afterwards).
+
+**The app drives it (plan 6 Task 8b: `CoopLinkFlow`, `CoopLinkBattle`, `CoopBattles.kt`'s glue)**: with the native bridge the glue runs every joined
+battle through `CoopLinkFlow` . Wild / two trainers / one trainer: the host's game is held
+where `pk_coop_link_host_hold` says (wild too now: `host_go` makes kind WILD), the offer carries the host's name / gender / OT ID, the partner's yes
+makes the PARTNER enter its link battle first (`partner_go`, retried while -1, its blocks wait in `CoopLinkBattle.expect`) and say `LinkReady`; only
+then `host_go` runs (frames running so a safe one comes up, 120 tries); a refusal on either side CANCELs the other at once (no 60 s wait). Story
+(kind 4): offered where `CoopJoinRules.storyOffer` says (`Status.story` = the event stood at: the lock's held event, else `CoopStorySpots` by tile),
+both `pk_coop_story_arm`, each runs its own script, both READY -> the host `story_go`s and sends GO, the partner follows; the lock's go waits while the
+join is decided (`CoopBattles.storyPending`). The pump: `state()` (which ticks the end) every frame until the result is read or a leave has settled,
+trailing blocks refused after ENDED are dropped; the catch is read before reset / leave and the host sends it (`CaughtMon`) for the partner's ball, which
+checks it (checksum, species, its own OT ID) before `give_mon`; saves go through `CoopOpQueue` after a backup.
+**The drop rule, in the flow** (`CoopLinkBattle`, `CoopLinkFlow`; spec: the 60 s rule, changed 2026-10-26): a battle waits up to `DROP_MS` (60 s) for the link with
+the "Waiting for ..." overlay; back in time it carries on where it was. Not back: a **story** battle (every save, also an armed join that was still on the team-pick
+screen: `storyTick` waits the same minute, then `storyDropped`) is a loss with a blackout for both (`pk_coop_link_leave(blackout)` in a battle; the held script
+let go and the game's own white-out for an armed join, `CoopOp.WhiteOut` + a save); any other battle ends for both with no prize, the trainer not beaten, what
+was earned kept (`pk_coop_link_leave(0)`). An armed join whose game never frees (the pick screen left up for 120 s) is not dropped on the floor: the
+blackout is **owed** (`blackoutOwed`, the flow stays busy) and runs as soon as the game stands free (`owedStep`), never a bare reset that lets the solo battle start.
+**Final review fixes (2026-10-26)**: (1) A side that ends the battle by itself with the link up tells the other: `CoopLinkBattle.tell` sends CANCEL(ENGINE) from `failLoud` (bridge error, hostile block, full outbox, a block refused 1800 frames) and the no-result leave, a best-effort CANCEL(CLOSED) from the 60 s leave; the partner's RUNNING `cancelled` abandons at once for ENGINE. (2) A dropped story join **never calls `storyCancel`** (that one starts the solo trainer battle): `storyDropped` only latches `storyDrop`; `dropTick` keeps the hook in while the state is ARMED / PICKING (taking it out would let the script or the pick script reach the real `BattleSetup_StartTrainerBattle`), and once READY / CANCELLED (script held) calls `storyDisarm` (hook out, no battle), then the held script is let go, `CoopOp.WhiteOut` + a save; the hook gone by itself (another trainer's battle went by) just ends the join. The app closing in `S_ARMED` (`stopDisarm`) takes the hook out, lets a held script go (READY / CANCELLED) and never starts a battle; a script still on its way (ARMED / PICKING) is not ours to stop, so there the game goes on as if no join had been. Headless: `coop/link_story_drop_ready.txt` (`storydisarm`, `coopreleasescript`). (3) The host's own catch is kept like the partner's: `CoopCatchStore` under `<pairKey>#own` until given and saved, given on the next free field after a stop (a Pokémon already in the party is only saved). (4) `pairKey` is own save + the paired partner's peer key (`CoopSession.pairsList`), never a display name. (5) Trainer ids from the network are refused at `>= COOP_EM_TRAINERS_COUNT` (Kotlin decode, `pk_coop_link_begin`), kind 2 needs both.
+**A partner's catch** is kept by the host (`CoopCatchStore`, `files/coop/catches.txt`, rewritten through a temp file and a rename, on a background thread: `FileCatchStore`
+reads once at construction and writes snapshots through its `io` executor, never on the emu thread) until the partner's `ResultAck`, resent every 2 s while linked and
+at once on a reconnect or restart. The partner gives any valid `CaughtMon` (check + its own OT ID, deduped by battle id + personality) whatever its own result said, and
+**acknowledges only once the in-game save that follows the give has gone through** (`CoopOpQueue`'s `onDone` for a Save that answered 1): until then the Pokémon is
+counted as given but unsaved (`unsaved`, in memory), so a resend retries the save instead of giving it twice, and only then is it remembered as given for good (persisted)
+and acknowledged, so a close or a crash before the save never loses it. The result wait never counts while the game is off its field (an evolution, a prompt) and only a game
+on the field with no result for a minute is left, then reset. Network names need a 0xFF terminator and charset bytes (wire) and are forced to end (JNI / `link_player`).
+Story spots: the app's tile is the player object's currentCoords = SaveBlock1.pos + 7 (MAP_OFFSET; `coop/story_coords.txt`), events use map coordinates, so `CoopStorySpots`
+subtracts 7; an OBJECT spot is the tile beside the object (facing is not read). **Not offered yet:** story events with several trainers (a rival whose script holds one team per
+starter, doubles with two story trainers): the trainer to arm for is not known before the script runs.
+
+**RAM** (EWRAM the game never uses: its last symbol ends at `0x0203CF64`; FieldItems owns `0x0203FFF0-0x0203FFFF`): the bridge `0x0203D000-0x0203EFFF`
+(`PK_COOP_LINK_RAM`: state, the outbox, the party backup, the rewards at `0x0203E400`), `0x0203F000-0x0203F3FF` free, the lock `0x0203F400`, the story join `0x0203FA00`.
+**Battle text** scrolls by itself in a joined battle because the game sets `BATTLE_TYPE_LINK` (`BattlePutTextOnWindow` sets `gTextFlags.autoScroll` for LINK / RECORDED
+battles, then waits `TextPrinterWaitAutoMode`'s 49 frames instead of an A press); the earlier per-battle patch for it is gone. Menus (action, move, target, party, bag, Yes / No) still take input.
+
+## Co-op lock and story events (Emerald)
+
+`scripts/gen_coop_story.py` (same Docker image and line as `gen_coop_emerald.py`, whose ELF / probe readers it reuses)
+reads the pinned, built pokeemerald (retail by SHA-1) and writes `app/src/main/cpp/pk_coop_lock_emerald.h` (the hook's
+addresses, `COOP_LK_CRC_ScriptContext_SetupScript`, struct offsets, script command bytes, and the story table
+`COOP_LK_STORY[]` as `static const` data) and `companion/data/coop/CoopStoryGen.kt` (`COOP_STORY_EVENTS`,
+`COOP_TRAINER_WINS` and the ROM / RAM constants Kotlin needs). Rules, one function each:
+
+- **COORD** (`collect_events`): every `coord_events` entry of `type: trigger` whose `var` is not 0; a `VAR_TEMP_*` one is kept only when its script (followed through `goto` / `call`) battles a story trainer.
+- **FRAME**: every `map_script_2` of the map's `MAP_SCRIPT_ON_FRAME_TABLE` (a `VAR_TEMP_*` var only when the script battles a
+  story trainer, as the champion's room does: its `VAR_TEMP_1` entry scene starts the Wallace battle, so it is locked).
+- **OBJECT**: an object whose script, followed through `goto` / `call` / `goto_if*` / `call_if*` / `case` / a trainerbattle's
+  post-battle script to labels of the same map's `scripts.inc`, has a `trainerbattle*` naming a story trainer (class
+  LEADER, ELITE_FOUR, CHAMPION, AQUA / MAGMA LEADER / ADMIN; or `TRAINER_BRENDAN_*` / `MAY_*` / `WALLY_*`), or a
+  `setwildbattle` then `dowildbattle`. A story trainer whose object sees the player (`trainer_type` not NONE) is left
+  out (a sighted start goes through the generic approach script, which the hook can't tell apart) and printed.
+  COORD / FRAME events get their `trainers` the same way (rival scenes list every starter variant: the script holds all six).
+- **Numbering** (`number_events`): sorted (map name, kind, x, y, script), one script pointer once (the hook finds an event by
+  the script it is handed, so a scene on several tiles is one event, at its first tile), ids 1..n.
+- **Addresses**: the ELF's symbols; a label not found, or two, fails the run.
+- **Wins** (`win_flags`): the `FLAG_BADGE0n_GET` / `FLAG_DEFEATED_*` set by what a trainer's battle leads to: the script after its
+  `trainerbattle` and every script it goes on to, plus the battle's post-battle script. A flag the *caller* sets after a
+  `call` returns (Wally in Mauville: FLAG_DEFEATED_WALLY_MAUVILLE) is not in his TrainerWin; the same goes for the Aqua / Magma bosses with no extra flags (Matt, Archie, Maxie); the trainer's own flag is always allowed anyway (`CoopStory.winFlags`).
+- **ROM block check**: file offsets `0x00FFE000`-`0x00FFEFFF` of the built ROM must be all 0xFF (the lock's code block,
+  `0x08FFE000`); the CRC32 of `ScriptContext_SetupScript`'s first 32 bytes is printed (`0xEF3698BA`).
+- **Self-checks** (asserts at the end of `main`): at least 8 COORD and 8 FRAME events; the eight gym leaders each in an
+  OBJECT event; ROXANNE's wins are the Stone Badge flag + `FLAG_DEFEATED_RUSTBORO_GYM`; Route 101's Birch scene is a COORD
+  event; TRAINER_WALLACE in some event's trainers; ids unique, 1..n, script pointers unique.
+
+**Open: a held story battle is not a joined co-op battle yet.** The lock only holds both players at the same spot and releases
+them together; after the release each player fights the trainer in their own game. `CoopStory.storyBattle` and
+`CoopStory.winFlags` have no callers until plan 4 can join single-trainer battles (spec section 5: the hosting player's battle,
+the partner's game counting it as won).
+
+**The hook re-arms**: the app's ROM-patch changes (REUSABLE TMS, other game options, PLAYER LOOK) call `pk_coop_lock_uninstall`, so
+`CoopLock.onFrame` calls the idempotent `install()` every 300 frames even once installed, and re-applies `setActive`.
+
+Last run (pokeemerald, retail bytes): 200 events (109 COORD, 27 OBJECT, 64 FRAME; 21 OBJECTs battle story trainers, 6 are
+scripted wild battles; 63 duplicate scripts folded into the first), 26 trainers with win flags.
+
+Gym leader TMs (can the leader's TM still be got by talking to them after the battle?): collectable for Roxanne, Brawly,
+Wattson, Flannery, Winona, Tate and Liza and Juan (each behind its own `FLAG_RECEIVED_TM_*` receipt flag, after the
+trainerbattle falls through); **Norman's is not collectable** (it sits behind `VAR_PETALBURG_GYM_STATE`: his script picks the
+battle or the talk by that var, and only state 6 battles). Sighted story trainers left out: Tabitha (Magma Hideout, Mt.
+Chimney) and Shelly (Weather Institute, Seafloor Cavern).
+
+**The story hook** (`pk_coop_lock.c` / `.h`, `scripts/coop_lock_emerald.s`; Task 5). The generator also assembles the `.s` with
+`arm-none-eabi-as` at `COOP_LK_CODE_ADDR` = `0x08FFE000` (every header value handed to the assembler as `.set COOP_LK_<name>`)
+into `COOP_LK_CODE[]`: the code, `0xFF` up to `COOP_LK_TABLE_ADDR` (`0x08FFE800`), then the story table as bytes (8 an event:
+script u32, id u16, kind u8, 0). Co-op's retail check (`pk_coop_install`) CRC-checks `ScriptContext_SetupScript` too and reads the file's bytes under the lock's patch
+(`pk_coop_lock_original_bytes`), so either order installs and each uninstalls alone. Everything goes through `pk_cheats_block` / `pk_cheats_patch`, so the Poller's and
+RetroAchievements' views are the file.
+- **The patch**: `ScriptContext_SetupScript`'s first 8 bytes (two `pk_cheats_patch` halves) become `ldr r3, [pc, #0]; bx r3;
+  .word <entry | 1>`. Its first four instructions (`push {r4, r5, lr}; adds r5, r0, #0; ldr r4, [pc, #32]; ldr r1, [pc, #36]`,
+  checked by the generator) are replayed in the stub (`lock_orig`), the two pc-relative loads taken from the function's own
+  literal pool, and it goes on at its fifth instruction (`COOP_LK_RESUME`).
+- **The stub** (r0 = the script, lr = the caller's): not `active`, or the script isn't in the table, or its id is `allowId`
+  (then `allowId = 0`) -> the game's function. Else it records the hold in the mailbox (`0x0203F400`: id, kind, map, the
+  player's tile and facing, `gSpecialVar_LastTalked`, `gSelectedObjectEvent`) and OBJECT / FRAME return to the caller with
+  nothing set up; COORD sets up one of four ROM scripts instead (`applymovement OBJ_EVENT_ID_PLAYER, <one step opposite the
+  facing>; waitmovement 0; releaseall; end`), the tile recorded being the one after that step. A COORD with no 4-way facing
+  runs its story script.
+- **Mailbox** (`struct pk_coop_lock_mailbox`; the `.s` layout is checked against it by `_Static_assert`): `+0 active`,
+  `+1 heldKind` (0 COORD, 1 OBJECT, 2 FRAME), `+2 heldId` (0 = none), `+4 allowId`, `+6/+7 held map group / number`,
+  `+8/+10 heldX / heldY`, `+12 heldFacing` (1 south, 2 north, 3 west, 4 east), `+13 selectedObjectEvent`, `+14 lastTalked`,
+  `+0x20` the re-entry script `pk_coop_lock_go` builds (its movement bytes at `+0x30`). The lock owns `0x0203F400-0x0203F4FF`.
+- **Contract** (C API; `CoopLockNative` is the same over JNI): `install(core, call)` all or nothing (CRCs of the three functions,
+  block overlap, both patches), `uninstall`, `set_active` (off also clears the hold and the allowed id), `held(&kind)`, `cancel`,
+  `go(id)`: 0 when `id` isn't the held one; FRAME -> `allowId = id`, hold cleared, 1 (the game's own ON_FRAME check runs it);
+  otherwise a free field is needed (`ScriptContext_IsEnabled` and `ArePlayerFieldControlsLocked` called through `pk_call`: a
+  script running, locked controls or no safe frame -> -1, nothing changed); OBJECT -> `LastTalked` / `SelectedObjectEvent`
+  put back, `allowId = id`, `SetupScript(script)`; COORD -> `applymovement player, <one step the way he faced>; waitmovement 0;
+  goto <script>` written at `+0x20` and set up (a step back that was blocked, the player already on the trigger tile, just
+  goes to the script), 1. `tick(core)` after every main-core frame (RAM only, no lock): a hold goes on a map change; a COORD
+  also when the player is more than 1 tile (Chebyshev) from the recorded one, an OBJECT when his tile or facing changed.
+  A held player is never stuck: he can walk away, change map or close the game.
+- **JNI**: `pk_coop_lock_jni.c` (`Java_com_pokedaisy_app_CoopLockNative_*`) takes the core through `pk_core_access.h`
+  (`pkMainCore`, `pk_core_rdlock` / `wrlock`, `pk_core_call`: one block in `pokedaisy_jni.c`): install / uninstall under the
+  write lock, the rest under the read lock like the other co-op JNI calls. `pokedaisy_jni.c` ticks it (`pk_coop_lock_tick`) after every frame and uninstalls it
+  wherever co-op is (teardown, `pkRomUnpatch`, `pkRomBlocks`, `pkRomUnblock`).
+- **Tests**: `native-capture/coop/lock_*.txt` (`scripts/coop_headless_check.sh lock_install ...`; each names its events in its
+  header). OBJECT: id 6 (`DewfordTown_Gym_EventScript_Brawly`); FRAME: id 109 (`Route101_EventScript_HideMapNamePopup`);
+  COORD: id 97 (`PetalburgCity_EventScript_ShowGymToPlayer3`: it sets `VAR_0x8008`, which shows the story script ran). The
+  scripts are *called* on the Route 101 save (the hook only looks at the pointer): a held call returns its script as r0, a
+  call that ran returns `0x080000C1`.
+- **The lock in the running game** (`CoopLock.kt`): one `CoopLock` per game while a pairing exists for the running save (made by
+  `PokeDaisyActivity.startCoopLock` after the ROM's SHA-1 matched retail Emerald, no cheats; `activity.coopLock`, with `ui`,
+  `notice` and the `CoopLockActions`, is what the later UI reads). It draws nothing. `EmulatorEngine.coopLock?.onFrame()` runs
+  every loop turn on the emu thread, also while a hold runs no frame (so a held game can still be released). Link messages
+  (`CoopLockWire`, 0x0301-0x0310) are only queued by `onMessage` (collector thread) and handled in `onFrame`; the actions
+  (UI thread) use the party count `onFrame` last read from `gPlayerPartyCount`. `CoopLockNative.install()` happens on the
+  first `onFrame`, `uninstall()` in `close()`.
+- **Who owns which guard reason**: the lock owns `Hold.LOCK_START` (from the lock being made, on a locked save, until the first
+  `Connected`), `Hold.LOCK_LINK` (`CoopLockRules.holdForLink`: a drop over 3 s, never during a co-op battle) and
+  `StateBlock.LOCK` (while locked). Plan 4 owns `Hold.BATTLE`, `StateBlock.BATTLE` and `CoopGuards.battleActive`; the lock never
+  touches them. A game closing calls `releaseGuards()` at once (any thread) and `close()` on the emu thread.
+- **Message flow**: every `Connected` sends `Status(locked)`; a partner `Status(false)` / `Off` while locked turns ours off (a
+  notice). PROPOSE (own party must be empty) -> partner ACCEPT / NO -> `Answer(accepted, partyCount)`, each side storing the
+  lock only if both parties are empty. Locked: `setActive(connected && !battleActive)`, `CoopStoryHold.step(held id)` sends
+  `Hold` and, when both hold the same event, `native.go(id)`, asked again each frame while it says -1. The overlay is
+  `ui.waiting` (Partner while a hold is on, else AtStory).
+
 ## Nintendo DS (melonDS)
 
 Platinum (USA rev 1, `CPUE`), HeartGold / SoulSilver (USA and Germany rev 0, `IPKE` / `IPGE` / `IPKD` / `IPGD`), Black / White (USA / Europe, `IRBO` /
@@ -2485,6 +3019,58 @@ through the REST API - `sha1`, `size`, `gameCode`, `revision`, `matchedAs` (a `B
 
 Read them in the console. A ROM shared as FULL is a re-hash of a supported version - add its SHA-1 to
 `detect()` with that config; PARTIAL ones show which hacks share a supported game's RAM.
+
+## Co-op connection
+
+Pairing two devices' Emerald saves and keeping a link between them (plans 3 to 5 build on it). Off for players until
+`FeatureFlags.coop` goes: `-Ppokedaisy.coop=true`, `local.properties`, or the device marker file `files/features/coop`.
+Its manual page is a draft, `docs/manual-drafts/coop.md` (its top note says what to move when the flag goes).
+
+- **Transport**: pure Kotlin, no native code (`companion/coop/`). `RelayCoopTransport` (a `CoopTransport`, polled by
+  `CoopSession` on its own thread) joins rooms on our relay over a WebSocket (`OkHttpRelayConnector`, OkHttp) and listens on a TCP port
+  for direct and same-Wi-Fi peers; the LAN is found with Android NSD (`NsdCoopLan`, service type `_pdcoop._tcp`, the TXT record
+  carries the peer id and the HELLO user data). The relay server is `server/coop-relay/` (a separate Kotlin / JVM program on Java-WebSocket, never in the APK);
+  its README covers deploying it and its limits table.
+- **Channel** (`CoopChannel`, one per connection, whatever the pipe is): a Noise IK handshake, `Noise_IK_25519_AESGCM_SHA256`
+  (`CoopNoise`, X25519 from Bouncy Castle, the rest java.security). The static key is the device's `filesDir/coop/secret.key`
+  (32 bytes; the peer id is its public key, 64 hex characters). The prologue is ASCII `PokeDaisy co-op 1`, one path byte (0 invite room,
+  1 pair room, 2 TCP) and the room id's 32 characters (none for TCP). Message 1 carries the transport version (u16, 1), message 2 a
+  status byte (0 go on, else a reason code). After the handshake every message is sealed; the plaintext is a kind byte plus a body:
+  DATA 0 (an app frame, 1 to 65,536 bytes), PING 1, CLOSE 2 (a reason byte). A PING goes every 5 s, 20 s of silence is TIMEOUT, and the
+  handshake has 5 s. TCP frames are length-prefixed (`CoopFrames`, at most 70,000 bytes).
+- **Rooms**: a room id is 32 lowercase hex characters. The invite room is derived from the ticket's invite secret
+  (HMAC-SHA256 of `pokedaisy coop invite`), the pair room from the two peers' DH secret (HMAC-SHA256 of `pokedaisy coop pair` and the two
+  public keys, smaller first), so only the pair can find it. Two sockets per room at most; the relay forwards bytes and learns nothing else.
+- **Ticket** (`CoopTicket`): `pdco` plus lowercase unpadded base32 of version 1, the 32-byte public key, a flags byte (bit 0: an invite
+  secret of 16 bytes follows), an address count 0 to 4, and per address a family (4 or 6), the bytes and a u16 port. The link
+  `pokedaisy://coop/<ticket>` goes to the exported `CoopLinkActivity`, which only passes a parsed ticket on.
+- **Relay protocol**: `GET /v1/rooms/<room id>` upgraded to a binary-only WebSocket. Client to server `0x01` + bytes (DATA); server to
+  client `0x01` + bytes (forwarded), `0x10` PEER_JOINED, `0x11` PEER_LEFT. Close codes: 4400 bad request, 4408 expired / idle, 4409 room
+  full, 4413 too large, 4429 rate / limit (a bad path, 4400, and a per-IP limit, 4429, are refused in the HTTP handshake: the client sees a failed connect, 1006, not a close code). `GET /healthz` on the health port answers `200 ok`. The limits (`MAX_ROOMS`,
+  `MAX_SOCKETS_PER_IP`, rates, timeouts, `TRUST_PROXY`) and how to deploy are in `server/coop-relay/README.md`. The relay logs counts and
+  close codes only.
+- **Dialing**: a `connect` tries the ticket's addresses and the NSD addresses over TCP (1.5 s connect) while the relay rooms are
+  joined (the pair room of an allowed peer, else the ticket's invite room); whichever handshake finishes first wins. Relay rooms: a
+  socket on the pair room of every allowed peer, on our own invite room while pairing is open; in a pair room the smaller key
+  initiates once the relay says PEER_JOINED. One connection per peer: a newer one replaces the older unless the older is under 5 s
+  old, when the direct one wins, then the smaller initiator key; the loser is closed DUPLICATE. A room's socket reconnects with a
+  backoff of 1 s doubling to 30 s (plus or minus 20%).
+- **RELAY ONLY** (`Prefs.coopRelayOnly`): no TCP listener and no NSD, so a partner never learns your IP address; the relay does.
+- **Events** (`CoopEvent`, from `poll()`): Ready(ticket), Relay (kind 0 none, 1 custom), Connected, Frame, Disconnected(reason),
+  DialFailed(reason, message), LanPeer, LanGone, Error (Path is no longer emitted). The queue holds 1,024 frames and 64 more slots for
+  the rest; a frame that doesn't fit closes that peer OVERFLOW. Pending peers (not yet accepted) may send 8 frames of 2,048 bytes
+  within 60 s. **Reason codes**: 0 closed, 1 timeout, 2 denied, 3 version, 4 not allowed, 5 overflow, 6 error, 7 pending expired,
+  8 duplicate (above 8 reads as error).
+- **Relay URL** (a build secret, never committed): `coop.relayUrl` in `local.properties` or `COOP_RELAY_URL` (`BuildConfig.COOP_RELAY_URL`,
+  `https://host[:port]`); a player's override (`CoopRelay`, https only) wins; with neither there is no relay and co-op is the same
+  Wi-Fi and BY IP only (the RELAY row reads NONE). The transport speaks `wss://`. The release workflow reads the `COOP_RELAY_URL` secret.
+- **Threading**: start / close / poll never run on the UI thread (the session owns a worker); the channels' timers run on `tick()`.
+- **Tests**: `RelayCoopTransportTest` over a fake connector, the channel / noise / ticket / frames tests with their vectors, and
+  `CoopRelayIntegrationTest` (the real transport against a real `RelayServer` on loopback).
+- **Licenses**: Bouncy Castle (MIT, `third_party/licenses/BouncyCastle-MIT.txt`), OkHttp and Okio (Apache 2.0) are in NOTICE and the
+  `licensesAsset` list in `app/build.gradle.kts`.
+- **Message types** (`CoopWire`): 0x0001-0x00FF the link's own (HELLO, PAIR_ACCEPT, PAIR_DENY, BYE); 0x0100-0x01FF plan 3,
+  0x0200-0x02FF plan 4, 0x0300-0x03FF plan 5; others are dropped on receipt.
 
 ## Releasing
 

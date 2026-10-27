@@ -135,10 +135,27 @@ class FakeSlots : StateSlots {
 }
 
 class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>? = null, oneTap: Boolean = false, expandOffer: Boolean = false,
-                   expand: Boolean = false, battleFocus: Boolean = false) : CompanionSettings {
+                   expand: Boolean = false, battleFocus: Boolean = false,
+                   coop: com.pokedaisy.app.companion.coop.CoopState? = null,
+                   coopPairList: List<com.pokedaisy.app.companion.coop.CoopPair> = emptyList(),
+                   lock: com.pokedaisy.app.companion.coop.lock.CoopLockUi? = null) : CompanionSettings {
     private var battleFocusOn = battleFocus
     override val battleFocus get() = battleFocusOn
     override fun setBattleFocus(on: Boolean) { battleFocusOn = on }
+    override val coopLock = lock
+    override val coopLockActions = lock?.let {
+        object : com.pokedaisy.app.companion.coop.lock.CoopLockActions {
+            override fun propose() {}; override fun accept() {}; override fun decline() {}; override fun turnOff() {}
+        }
+    }
+    override val coopEnabled = true
+    override val coopLiveRefresh = false
+    override val coopState = coop ?: com.pokedaisy.app.companion.coop.CoopState.Off()
+    override val coopPairs = coopPairList
+    override val coopRelayValue = "BUILT-IN"
+    private var relayOnlyOn = false
+    override val coopRelayOnly get() = relayOnlyOn
+    override fun setCoopRelayOnly(on: Boolean) { relayOnlyOn = on }
     private var oneTapOn = oneTap
     override val oneTapMoves get() = oneTapOn
     override fun setOneTapMoves(on: Boolean) { oneTapOn = on }
@@ -426,6 +443,10 @@ fun companion(
     barTabs: List<String>? = null,
     /** SETTINGS > BATTLE FOCUS. */
     battleFocus: Boolean = false,
+    /** CO-OP: the link's state and the pairings SETTINGS shows. */
+    coop: com.pokedaisy.app.companion.coop.CoopState? = null,
+    coopPairList: List<com.pokedaisy.app.companion.coop.CoopPair> = emptyList(),
+    lock: com.pokedaisy.app.companion.coop.lock.CoopLockUi? = null,
     snap: () -> SnapshotView = ::snapshot,
 ): () -> (@Composable () -> Unit) = {
     previewCapture = com.pokedaisy.app.companion.KeyCapture()
@@ -434,7 +455,7 @@ fun companion(
     val back = com.pokedaisy.app.companion.ui.CompanionBack().also { previewBack = it }
     val content: @Composable () -> Unit = {
         CompanionScreen(
-            sv, FakeSlots(), FakeSettings(hints, initialTabs = barTabs, oneTap = oneTap, expandOffer = expandOffer, expand = expand, battleFocus = battleFocus), FakeBattleInput(busy), initialTab = tab,
+            sv, FakeSlots(), FakeSettings(hints, initialTabs = barTabs, oneTap = oneTap, expandOffer = expandOffer, expand = expand, battleFocus = battleFocus, coop = coop, coopPairList = coopPairList, lock = lock), FakeBattleInput(busy), initialTab = tab,
             initialMonIndex = mon, initialCardBack = cardBack, back = back, initialSettingsRow = settingsRow, itemUse = if (items) PreviewItemUse(sv.party, bagFull) else null,
         )
     }
@@ -995,6 +1016,7 @@ fun activity(expandIntro: Boolean = false, start: Boolean = false, make: () -> a
     File(ctx.filesDir, "states").deleteRecursively()
     File(ctx.filesDir, "cheats").deleteRecursively()
     prefs.cheatsEnabled = false
+    prefs.coopRelayOnly = false; prefs.coopRelayUrl = null
     prefs.touchControlsStyle = com.pokedaisy.app.companion.TouchControlsStyle()
     prefs.portraitCompanionUnderGame = false
     prefs.libraryView = com.pokedaisy.app.LibraryView.ALL.id
@@ -1013,6 +1035,64 @@ fun <T> withScreenScraper(make: () -> T): T {
     com.pokedaisy.app.BuildConfig.FEATURE_SCREENSCRAPER = true
     com.pokedaisy.app.ScreenScraperClient.enabled = true
     return make()
+}
+
+// ---- co-op (Settings > CO-OP): invented players and an invented invite, no network ----------------------------------------
+
+/** A trainer name in the Emerald charset: 8 bytes, 0xFF-padded. */
+private fun coopName(name: String): ByteArray = ByteArray(8) { 0xFF.toByte() }.also { b ->
+    name.forEachIndexed { i, c ->
+        b[i] = when (c) { in 'A'..'Z' -> 0xBB + (c - 'A'); in 'a'..'z' -> 0xD5 + (c - 'a'); else -> 0 }.toByte()
+    }
+}
+
+private fun coopSave(name: String, trainerId: Int) = com.pokedaisy.app.companion.coop.CoopSaveId(trainerId, 0x1234, coopName(name))
+
+private fun coopPartner(name: String, trainerId: Int) = com.pokedaisy.app.companion.coop.CoopPartner(
+    com.pokedaisy.app.companion.coop.CoopPeerId("ab".repeat(32)), name, trainerId, false, coopSave(name, trainerId),
+)
+
+private fun coopPair() = com.pokedaisy.app.companion.coop.CoopPair(coopSave("RED", 12345), "Emerald (RED)", coopPartner("LEAF", 40404), null, 0L)
+
+/** A ticket's shape (not a real one): what the invite's QR code and link carry. */
+private val COOP_TICKET = "endpoint" + "abcdefghijklmnopqrstuvwxyz234567".repeat(5)
+
+private val COOP_CHOICES by lazy {
+    val dir = File(android.content.Context().filesDir, "coop-saves").apply { mkdirs() }
+    listOf(
+        com.pokedaisy.app.companion.ui.CoopSaveChoice(File(dir, "a.gba"), File(dir, "a.sav"), "Pokémon Emerald", coopSave("RED", 12345), null),
+        com.pokedaisy.app.companion.ui.CoopSaveChoice(File(dir, "b.gba"), File(dir, "b.sav"), "Pokémon Emerald (second copy)", coopSave("MAY", 777), "LEAF"),
+        com.pokedaisy.app.companion.ui.CoopSaveChoice(File(dir, "c.gba"), File(dir, "c.sav"), "Pokémon Emerald (never saved)", null, null),
+    )
+}
+
+/** Settings with RELAY ONLY / a relay / one pairing on disk as the shot wants them; [preview] is the pairing page's stand-in. */
+internal fun coopSettings(
+    relayOnly: Boolean = false, relay: String? = null, paired: Boolean = false,
+    preview: SettingsActivity.CoopPreview? = null,
+): SettingsActivity {
+    val ctx = android.content.Context()
+    val prefs = Prefs(ctx)
+    prefs.coopRelayOnly = relayOnly
+    prefs.coopRelayUrl = relay
+    val file = File(File(ctx.filesDir, "coop"), "pairs.json")
+    file.delete()
+    if (paired) com.pokedaisy.app.companion.coop.CoopPairs(file).add(coopPair())
+    return SettingsActivity().also { it.coopPreview = preview }
+}
+
+private fun coopSteps(): Map<String, com.pokedaisy.app.companion.coop.CoopPairing.Step> {
+    val lan = listOf(
+        com.pokedaisy.app.companion.coop.CoopPairing.LanEntry(com.pokedaisy.app.companion.coop.CoopPeerId("cd".repeat(32)), "LEAF"),
+        com.pokedaisy.app.companion.coop.CoopPairing.LanEntry(com.pokedaisy.app.companion.coop.CoopPeerId("ef".repeat(32)), "BRENDAN"),
+    )
+    return mapOf(
+        "invite" to com.pokedaisy.app.companion.coop.CoopPairing.Step.Inviting(COOP_TICKET, lan),
+        "confirm" to com.pokedaisy.app.companion.coop.CoopPairing.Step.Confirm(coopPartner("LEAF", 40404)),
+        "waiting" to com.pokedaisy.app.companion.coop.CoopPairing.Step.WaitingForPartner(coopPartner("LEAF", 40404)),
+        "paired" to com.pokedaisy.app.companion.coop.CoopPairing.Step.Paired(coopPair()),
+        "failed-rom" to com.pokedaisy.app.companion.coop.CoopPairing.Step.Failed(com.pokedaisy.app.companion.coop.CoopPairing.CoopPairFail.DIFFERENT_ROM),
+    )
 }
 
 /** The launcher (a second screen, Settings > DUAL-SCREEN LAUNCHER on): [swapped] = the list on the
@@ -2373,6 +2453,84 @@ fun main(args: Array<String>) {
         Shot("settings-volume-popup", tw, th, td, activity { SettingsActivity() }) {
             onNodeWithText("GAME VOLUME").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
+        // CO-OP: its group on the hub, the save list, the invite (and what follows it), PARTNERS, RELAY.
+        Shot("settings-coop", tw, th, td, activity { coopSettings(paired = true) }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("RELAY ONLY")).performScrollTo() },
+        // CO-OP on the companion (SETTINGS > CO-OP): the link connected, retrying, not paired, and the PARTNERS page.
+        Shot("companion-coop-connected", bw, bh, bd, companion("SETTINGS", settingsRow = "LINK", coopPairList = listOf(coopPair()),
+            coop = com.pokedaisy.app.companion.coop.CoopState.Connected(coopPartner("LEAF", 40404), direct = true))),
+        Shot("companion-coop-reconnecting", bw, bh, bd, companion("SETTINGS", settingsRow = "LINK", coopPairList = listOf(coopPair()),
+            coop = com.pokedaisy.app.companion.coop.CoopState.Disconnected(coopPartner("LEAF", 40404), com.pokedaisy.app.companion.coop.CoopDropReason.NETWORK, System.currentTimeMillis() + 12_000))),
+        Shot("companion-coop-notpaired", bw, bh, bd, companion("SETTINGS", settingsRow = "LINK",
+            coop = com.pokedaisy.app.companion.coop.CoopState.Off(com.pokedaisy.app.companion.coop.CoopOffReason.NOT_PAIRED))),
+        Shot("companion-coop-partners", bw, bh, bd, companion("SETTINGS", settingsRow = "LINK", coopPairList = listOf(coopPair()),
+            coop = com.pokedaisy.app.companion.coop.CoopState.Connected(coopPartner("LEAF", 40404), direct = true))) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PARTNERS")).performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        },
+        Shot("companion-coop-lock-can", bw, bh, bd, companion("SETTINGS", settingsRow = "PLAY TOGETHER ONLY", coopPairList = listOf(coopPair()),
+            coop = com.pokedaisy.app.companion.coop.CoopState.Connected(coopPartner("LEAF", 40404), direct = true),
+            lock = com.pokedaisy.app.companion.coop.lock.CoopLockUi(refusal = null))),
+        Shot("companion-coop-lock-refused", bw, bh, bd, companion("SETTINGS", settingsRow = "PLAY TOGETHER ONLY", coopPairList = listOf(coopPair()),
+            coop = com.pokedaisy.app.companion.coop.CoopState.Connected(coopPartner("LEAF", 40404), direct = true),
+            lock = com.pokedaisy.app.companion.coop.lock.CoopLockUi(refusal = com.pokedaisy.app.companion.coop.lock.LockRefusal.PARTNER_NOT_NEW))),
+        Shot("companion-coop-lock-refused-own", bw, bh, bd, companion("SETTINGS", settingsRow = "PLAY TOGETHER ONLY", coopPairList = listOf(coopPair()),
+            coop = com.pokedaisy.app.companion.coop.CoopState.Connected(coopPartner("LEAF", 40404), direct = true),
+            lock = com.pokedaisy.app.companion.coop.lock.CoopLockUi(refusal = com.pokedaisy.app.companion.coop.lock.LockRefusal.OWN_NOT_NEW))),
+        Shot("companion-coop-lock-sent", bw, bh, bd, companion("SETTINGS", settingsRow = "PLAY TOGETHER ONLY", coopPairList = listOf(coopPair()),
+            coop = com.pokedaisy.app.companion.coop.CoopState.Connected(coopPartner("LEAF", 40404), direct = true),
+            lock = com.pokedaisy.app.companion.coop.lock.CoopLockUi(refusal = null, proposalSent = true))),
+        Shot("companion-coop-lock-on", bw, bh, bd, companion("SETTINGS", settingsRow = "PLAY TOGETHER ONLY", coopPairList = listOf(coopPair()),
+            coop = com.pokedaisy.app.companion.coop.CoopState.Connected(coopPartner("LEAF", 40404), direct = true),
+            lock = com.pokedaisy.app.companion.coop.lock.CoopLockUi(locked = true, refusal = null))),
+        Shot("companion-coop-lock-confirm-on", bw, bh, bd, companion("SETTINGS", settingsRow = "PLAY TOGETHER ONLY", coopPairList = listOf(coopPair()),
+            coop = com.pokedaisy.app.companion.coop.CoopState.Connected(coopPartner("LEAF", 40404), direct = true),
+            lock = com.pokedaisy.app.companion.coop.lock.CoopLockUi(refusal = null))) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PLAY TOGETHER ONLY")).performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        },
+        Shot("companion-coop-lock-confirm-off", bw, bh, bd, companion("SETTINGS", settingsRow = "PLAY TOGETHER ONLY", coopPairList = listOf(coopPair()),
+            coop = com.pokedaisy.app.companion.coop.CoopState.Connected(coopPartner("LEAF", 40404), direct = true),
+            lock = com.pokedaisy.app.companion.coop.lock.CoopLockUi(locked = true, refusal = null))) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PLAY TOGETHER ONLY")).performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        },
+        Shot("companion-coop-lock-proposal", bw, bh, bd, companion("SETTINGS", settingsRow = "PLAY TOGETHER ONLY", coopPairList = listOf(coopPair()),
+            coop = com.pokedaisy.app.companion.coop.CoopState.Connected(coopPartner("LEAF", 40404), direct = true),
+            lock = com.pokedaisy.app.companion.coop.lock.CoopLockUi(refusal = null, partnerProposed = true))) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PLAY TOGETHER ONLY")).performScrollTo().performSemanticsAction(androidx.compose.ui.semantics.SemanticsActions.OnClick)
+        },
+        Shot("coop-wait-partner", tw, th, td, { { com.pokedaisy.app.companion.ui.CoopWaitOverlay(com.pokedaisy.app.companion.coop.lock.LockWait.Partner, "LEAF") {} } }),
+        Shot("coop-wait-story", tw, th, td, { { com.pokedaisy.app.companion.ui.CoopWaitOverlay(com.pokedaisy.app.companion.coop.lock.LockWait.AtStory(3), "LEAF") {} } }),
+        Shot("coop-pick-save", tw, th, td, activity { coopSettings(preview = SettingsActivity.CoopPreview(choices = COOP_CHOICES)) }) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("coop-pick-save-none", tw, th, td, activity { coopSettings(preview = SettingsActivity.CoopPreview(choices = emptyList())) }) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("coop-invite", tw, th, td, activity {
+            coopSettings(preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), wifi = "192.168.1.20:47321"))
+        }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
+        Shot("coop-invite-relayonly", tw, th, td, activity {
+            coopSettings(relayOnly = true, preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite")))
+        }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
+        Shot("coop-invite-bottom", tw, th, td, activity {
+            coopSettings(preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), wifi = "192.168.1.20:47321", error = "That isn't a valid address"))
+        }) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+            onAllNodesWithText(com.pokedaisy.app.companion.i18n.tr("CONNECT")).onLast().performScrollTo()
+        },
+        *listOf("confirm", "waiting", "paired", "failed-rom").map { name ->
+            Shot("coop-$name", tw, th, td, activity {
+                coopSettings(preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue(name)))
+            }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) }
+        }.toTypedArray(),
+        Shot("coop-partners", tw, th, td, activity { coopSettings(paired = true) }) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PARTNERS")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("coop-partners-unpair", tw, th, td, activity { coopSettings(paired = true) }) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PARTNERS")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText("LEAF").performClick()
+        },
+        Shot("coop-relay", tw, th, td, activity { coopSettings(relay = "https://relay.example.com") }) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("RELAY")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
         // Two games hidden from the library with HIDE: their page, and the library without them.
         Shot("settings-hidden", tw, th, td, activity { withHidden { SettingsActivity() } }) {
             onNodeWithText("HIDDEN GAMES").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
@@ -2561,7 +2719,7 @@ fun main(args: Array<String>) {
             onNodeWithText("REPLACE ALL").performClick()
             onNodeWithText("REPLACE").performClick()
         },
-    )
+    ) + coopBattleShots(bw, bh, bd, tw, th, td)
     val shots = if (docsMode) docsShots(all, bw, bh, bd, tw, th, td) else all
     var failed = 0
     for (shot in shots) {

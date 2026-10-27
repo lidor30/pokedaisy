@@ -1,0 +1,8 @@
+# Task 8, second boot of after_save (from the save file the first run wrote): the changes are in the file. Trainer 100's flag is
+# set (FlagGet on 0x564), two POTIONs are left (CheckBagHasItem(13, 2) true, (13, 3) false).
+# want: call 0x0809D790(0x564   ): returned 0x1
+# want: call 0x080D6724(0xD 2  ): returned 0x1
+# want: call 0x080D6724(0xD 3  ): returned 0x0
+call 0x0809D790 0x564
+call 0x080D6724 0xD 2
+call 0x080D6724 0xD 3

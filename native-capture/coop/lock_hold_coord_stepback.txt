@@ -1,0 +1,28 @@
+# A COORD event: id 97, PetalburgCity_EventScript_ShowGymToPlayer3 (0x081DC4BE; only its pointer matters here, it never
+# runs). The player stands at (17, 24) facing north (gObjectEvents[0] 0x02037350: x +16, y +18, facing +24's low nibble; the
+# test save starts at y 25 facing north, one `hold UP 1` is one tile). The hook sets up a step-back script instead: after 40
+# frames the player is one tile south (y 25), controls free (the script ends in releaseall), the story script never ran
+# (VAR_0x8008 0x020375E8 untouched), and the hold is kept (id 97, kind 0, the tile after the step: x 17, y 25, facing north).
+# want: lock: held 97 kind 0
+# want: returned 0x80000C1
+lockinstall
+lockactive 1
+hold UP 1
+wait 30
+expect16 0x02037360 17
+expect16 0x02037362 24
+expect8 0x02037368 0x22 1
+poke16 0x020375E8 0
+call 0x08098EF8 0x081DC4BE
+wait 40
+expect16 0x02037362 25
+expect16 0x02037360 17
+expect8 0x03000F2C 0
+expect8 0x03000E41 0
+expect16 0x020375E8 0
+expect16 0x0203F402 97
+expect8 0x0203F401 0
+expect16 0x0203F408 17
+expect16 0x0203F40A 25
+expect8 0x0203F40C 2
+lockheld

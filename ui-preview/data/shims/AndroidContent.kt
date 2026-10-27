@@ -29,6 +29,8 @@ open class Context {
     companion object {
         const val MODE_PRIVATE = 0
         const val CLIPBOARD_SERVICE = "clipboard"
+        const val CONNECTIVITY_SERVICE = "connectivity"
+        const val WIFI_SERVICE = "wifi"
     }
 }
 

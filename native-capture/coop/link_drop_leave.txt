@@ -1,0 +1,77 @@
+# Plan 6 Task 7: a long drop. The line goes down in the middle of a turn (both players picked, no block arrives for 3600 frames: the
+# game itself waits for ever and never raises a link error), then the app gives up: pk_coop_link_leave 0 on both cores. Both games
+# end on the field, no whiteout, no prize: money unchanged, the two trainers' flags unset, the party back as it was, the link flags
+# of gBattleTypeFlags gone (the whole word is zero once the game is back at its end callback), the bridge idle. (What the battle earned - EXP, HP, level, moves - is kept by Task 5's party merge.)
+#
+# gMain.callback2 0x030022C4 (BattleMainCB2 0x08038421 in the battle, CB2_Overworld 0x08085E5D on the field); gBattleTypeFlags
+# 0x02022FEC: zeroed by the leave's tidy-up (it is stale after any battle otherwise); the trainer
+# flags are 0x500 + id in gSaveBlock1.flags (+0x1270): ALLEN 333 = bit 5 of byte +0x1339, CALVIN 318 = bit 6 of byte +0x1337.
+# want: PASS linkwait 2
+# want: link: left (blackout 0), state 0
+# want: PASS linkwait 0
+pair $PARTNER_SAVE
+on b
+@boot
+on a
+memsave 0x020244E9 1 /work/drop_leave_count_a.bin
+coopmoneymark
+on b
+memsave 0x020244E9 1 /work/drop_leave_count_b.bin
+coopmoneymark
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+linkhold 1
+on a
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkrun 3600
+# the turn never completed, no error screen: both cores still in the battle loop, the bridge still in it
+on a
+expect8 0x03005D23 0
+expect32 0x030022C4 0x08038421
+on b
+expect32 0x030022C4 0x08038421
+linkstate
+linkinfo
+on a
+linkleave 0
+on b
+linkleave 0
+linkrun 300
+linkwait 0 10
+on a
+expect32 0x030022C4 0x08085E5D
+expect32 0x02022FEC 0
+expectfile 0x020244E9 /work/drop_leave_count_a.bin
+coopmoneyexpect delta 0
+expect8p 0x03005D8C 0x1339 0x00
+expect8p 0x03005D8C 0x1337 0x00
+call 0x08098E6C
+on b
+expect32 0x030022C4 0x08085E5D
+expect32 0x02022FEC 0
+expectfile 0x020244E9 /work/drop_leave_count_b.bin
+coopmoneyexpect delta 0
+call 0x08098E6C
+# the field is free: walk
+hold LEFT 20
+wait 30
+linkstate

@@ -1,0 +1,82 @@
+# Plan 6 Task 4: the BAG in a joined link battle (the game refuses items in a link battle; pk_coop_link_rewards.c lifts that). The PARTNER
+# uses a POTION from its own bag on its own MUDKIP (RIGHT to BAG, A, then the bag's own screens: the item, USE, the Pokémon):
+#   - the item leaves the partner's bag in the partner's game (3 -> 2) and the host's bag is untouched (3 -> 3);
+#   - the master's engine applies the item to its own copy of the Pokémon too (ExecuteTableBasedItemEffect with gBattlerInMenuId = 2,
+#     link_entry_USEITEM): the master's gBattleMons[2] (HP 100, the true one) heals by 20 to 120 - not by its party copy's stale 300 (the
+#     partner's game keeps the Pokémon's real HP; the master's party copy of a partner Pokémon is a stale one, so its HP is first set from
+#     the battle data) - and both cores end the turn at 120.
+# Both foes sleep (gBattleMons status1), so nothing hits the Pokémon in the turn; the host just attacks. Needs EMERALD_PARTNER_SAVE.
+#
+# want: PASS linkwait 2
+# want: PASS expectdelta b_potion -> b_potion2 = -1
+# want: PASS expectdelta a_potion -> a_potion2 = 0
+# want: PASS expectnum a_hp = 120
+# want: PASS expectnum b_hp = 120
+# want: PASS expectnum a_copy = 120
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+bagqty b_potion 13
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+bagqty a_potion 13
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+poke32 0x02024128 7
+poke32 0x020241D8 7
+poke16 0x0202415C 100
+poke16 0x0202466E 300
+on b
+waitmem32 0x03005D68 0x08057589 3000
+poke16 0x0202466E 100
+hold RIGHT 4
+linkrun 30
+hold A 4
+linkrun 120
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 60
+hold A 4
+linkrun 60
+hold A 4
+linkrun 60
+hold A 4
+linkrun 60
+hold A 4
+linkrun 200
+hold A 4
+linkrun 100
+hold A 4
+linkrun 100
+hold A 4
+linkrun 200
+bagqty b_potion2 13
+on a
+waitmem32 0x03005D60 0x08057589 3000
+bagqty a_potion2 13
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkrun 600
+peeknum a_hp 0x0202415C 2
+peeknum a_copy 0x0202466E 2
+on b
+peeknum b_hp 0x0202466E 2
+expectdelta b_potion b_potion2 -1
+expectdelta a_potion a_potion2 0
+expectnum a_hp 120
+expectnum a_copy 120
+expectnum b_hp 120

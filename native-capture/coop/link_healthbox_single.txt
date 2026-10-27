@@ -1,0 +1,45 @@
+# Both players' health boxes of a joined single battle sit where the game puts them in a double battle (GetBattlerPosition: left player 159,76 /
+# right player 171,101 / foes 44,19 and 32,44), on both cores, once the intro is over - the action menu is up on each core (+ 60 frames). The wild kind
+# once lost the host's own box: the intro slide's link task (gBattleStruct + 0x7D / 0x7E are the VS letters' sprite ids, 0 without the
+# VS screen the wild kind skips) slid sprite 0 - the healthbox of battler 0 - off the left edge (COOP_EM_LINK_WILD_INTRO_VS_SPRITES).
+# gSprites = 0x02020630, a sprite is 0x44 bytes, x / y s16 at +0x20 / +0x22; the four boxes are sprites 2-5 in battler order.
+#
+# want: PASS linkwait 2
+pair $PARTNER_SAVE
+on b
+@boot
+on a
+poke32 0x0203F400 0x014D035C
+poke32 0x0203F404 0x7DD40000
+poke32 0x0203F408 0x00020831
+coopinstall
+call 0x08098EF8 0x0203F400
+waittask 0x080B05F0 300
+expect16 0x02038BCC 0
+joinhold
+linkstart 1
+on b
+linkstart 0 3 333 0
+linkwait 2 2500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+wait 60
+expect16 0x020206D8 159
+expect16 0x020206DA 76
+expect16 0x0202071C 44
+expect16 0x0202071E 19
+expect16 0x02020760 171
+expect16 0x02020762 101
+expect16 0x020207A4 32
+expect16 0x020207A6 44
+on b
+waitmem32 0x03005D68 0x08057589 3000
+wait 60
+expect16 0x020206D8 159
+expect16 0x020206DA 76
+expect16 0x0202071C 44
+expect16 0x0202071E 19
+expect16 0x02020760 171
+expect16 0x02020762 101
+expect16 0x020207A4 32
+expect16 0x020207A6 44

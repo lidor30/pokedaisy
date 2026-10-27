@@ -292,6 +292,21 @@ class Prefs(context: Context) {
         get() = p.getBoolean("cheats_enabled", false)
         set(v) = p.edit().putBoolean("cheats_enabled", v).apply()
 
+    /** Co-op relay override ([com.pokedaisy.app.companion.coop.CoopRelay]): null = the build's relay. */
+    var coopRelayUrl: String?
+        get() = p.getString("coop_relay_url", null)
+        set(v) = p.edit().putString("coop_relay_url", v).apply()
+
+    /** Co-op NEARBY RANGE: how many steps away a partner's battle can be joined from. */
+    var coopNearbyRange: Int
+        get() = p.getInt("coop_nearby_range", 8)
+        set(v) = p.edit().putInt("coop_nearby_range", v).apply()
+
+    /** Co-op RELAY ONLY: no direct paths, no mDNS; tickets carry the relay alone. */
+    var coopRelayOnly: Boolean
+        get() = p.getBoolean("coop_relay_only", false)
+        set(v) = p.edit().putBoolean("coop_relay_only", v).apply()
+
     /** The app's language: "AUTO" (the ROM's, or the device's in the Library) or
      * an AppLanguage code ("EN", "JA", ...) - see [com.pokedaisy.app.companion.i18n.L10n]. */
     var appLanguage: String

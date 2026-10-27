@@ -1,0 +1,133 @@
+# Plan 6 final fix: a story join that DROPPED (60 s of dead link) while a team is picked (READY) must black the player out and never start the
+# story battle solo. Roxanne's script on one core with the story hook armed (as link_story_gym.txt): the pick screen opens (PICKING 2), three
+# are picked (READY 3, her `dotrainerbattle` held: script status 1). The app's drop path is then `storydisarm` (the hook out, the game's
+# own battle NOT called - `storycancel` would call BattleSetup_StartTrainerBattle), the held script let go (`release 1`) and the game's
+# own white-out: the callback2 stays the overworld's (no trainer battle ever started), Roxanne's trainer flag stays unset, and the game
+# ends on its free field again. (The app waits for the READY state itself in PICKING / ARMED: the hook stays in till then.)
+#
+# want: story: armed 1
+# want: PASS storywait 2
+# want: PASS storywait 3
+# want: story: disarm, state 0
+# want: release 1
+# want: whiteout 1
+# want: PASS flagexpect 2151 = 0
+# want: PASS freefield 1
+poke8 0x0203F800 0x39
+poke8 0x0203F801 0x0B
+poke8 0x0203F802 0x03
+poke8 0x0203F803 0xFF
+poke8 0x0203F804 0x05
+poke8 0x0203F805 0x00
+poke8 0x0203F806 0x04
+poke8 0x0203F807 0x00
+poke8 0x0203F808 0x27
+poke8 0x0203F809 0x02
+call 0x08098EF8 0x0203F800
+wait 120
+poke16 0x020375F2 1
+poke8 0x03005DF0 1
+storyarm 265
+call 0x08098EF8 0x08212F31
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+hold A 4
+wait 30
+storywait 2 900
+wait 400
+hold DOWN 4
+wait 40
+hold A 4
+wait 60
+hold A 4
+wait 60
+storystate
+hold DOWN 4
+wait 40
+hold A 4
+wait 60
+hold A 4
+wait 60
+storystate
+hold UP 4
+wait 40
+hold UP 4
+wait 40
+hold A 4
+wait 60
+hold A 4
+wait 60
+hold A 4
+wait 30
+storywait 3 900
+expect32 0x030022C4 0x08085E5D
+storydisarm
+coopreleasescript
+expect32 0x080B17E0 0x4803B510
+expect32 0x080B17E4 0x28027800
+coopwhiteout
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 600
+coopfree
+flagexpect 2151 0
+expect32 0x030022C4 0x08085E5D
+coopexpectfree 1

@@ -1,0 +1,453 @@
+# Plan 6 Task 6: a story battle joined as a link battle. Both players stand before ROXANNE in the Rustboro gym (the host's co-op
+# test save, TORCHIC / WURMPLE / ZIGZAGOON; the partner's NED save, MUDKIP first), her trainer flag (and the badge's) unset. The
+# story hook is armed on both (`storyarm`: what the app does when the partner says yes) and each game runs its own Roxanne script
+# (RustboroCity_Gym_EventScript_Roxanne, 0x08212F31, as an A press would start it): the intro text, then her `dotrainerbattle`. The
+# hook runs the game's own team pick instead (special ChooseHalfPartyForBattle: the "Choose POKéMON and confirm." party screen),
+# both games choose three, and with both READY (`storywait 3`) each calls `storygo`: the bridge's link battle begins with the picks
+# as the party, Roxanne's three Pokémon split over the two foe slots (Geodude and Geodude first, Nosepass second), the story
+# battle's own end callback (CB2_EndTrainerBattle) in place.
+#
+# What it checks: both story states reach PICKING (2) at the script's dotrainerbattle and READY (3) after the confirm; the picks
+# are slots 1, 2, 3 on both; both bridges reach PK_COOP_LINK_BATTLE; the party on both cores is the host's three then the
+# partner's (TORCHIC at slot 0, MUDKIP at slot 3); the foes are Roxanne's own (GEODUDE 74 at slot 0, NOSEPASS 299 at slot 3 of the
+# master's gEnemyParty); each core is at its own action prompt; the story hook is out of both games.
+#
+# Task 8b: the battle is WON (the master's gBattleOutcome poked at the action prompt), both games end it through the normal end and run their own
+# after-battle script (her text, then the badge and her flag) on its own; the result waits for the field, so the test presses A through the text.
+#
+# want: PASS storywait 2
+# want: PASS storywait 3
+# want: PASS linkwait 2
+# want: PASS flagexpect 2151 = 1 (core a)
+# want: PASS flagexpect 1545 = 1 (core a)
+# want: PASS flagexpect 2151 = 1 (core b)
+# want: PASS flagexpect 1545 = 1 (core b)
+pair $PARTNER_SAVE
+on b
+@boot
+poke8 0x0203F800 0x39
+poke8 0x0203F801 0x0B
+poke8 0x0203F802 0x03
+poke8 0x0203F803 0xFF
+poke8 0x0203F804 0x05
+poke8 0x0203F805 0x00
+poke8 0x0203F806 0x04
+poke8 0x0203F807 0x00
+poke8 0x0203F808 0x27
+poke8 0x0203F809 0x02
+call 0x08098EF8 0x0203F800
+on a
+poke8 0x0203F800 0x39
+poke8 0x0203F801 0x0B
+poke8 0x0203F802 0x03
+poke8 0x0203F803 0xFF
+poke8 0x0203F804 0x05
+poke8 0x0203F805 0x00
+poke8 0x0203F806 0x04
+poke8 0x0203F807 0x00
+poke8 0x0203F808 0x27
+poke8 0x0203F809 0x02
+call 0x08098EF8 0x0203F800
+linkrun 400
+poke16 0x020375F2 1
+poke8 0x03005DF0 1
+storyarm 265
+on b
+poke16 0x020375F2 1
+poke8 0x03005DF0 1
+storyarm 265
+on a
+call 0x08098EF8 0x08212F31
+on b
+call 0x08098EF8 0x08212F31
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+storywait 2 600
+linkrun 100
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+storywait 3 900
+storystate
+on a
+storygo 1
+on b
+storygo 0
+linkwait 2 1500
+expect8 0x0203FA02 1
+expect8 0x0203FA03 2
+expect8 0x0203FA04 3
+expect8 0x0203FA01 1
+storystate
+on a
+waitmem32 0x03005D60 0x08057589 3000
+expectmonin 0x020244EC 280
+expectmonin 0x02024618 283
+expectmonin 0x02024744 74
+expectmonin 0x02024870 320
+on b
+waitmem32 0x03005D68 0x08057589 3000
+expectmonin 0x020244EC 280
+expectmonin 0x02024618 283
+on a
+shot /work/story_a_prompt.png
+on b
+shot /work/story_b_prompt.png
+expect32 0x03005D68 0x08057589
+linkinfo
+linkstate
+expect32 0x080B17E0 0x4803B510
+expect32 0x080B17E4 0x28027800
+on a
+expect32 0x080B17E0 0x4803B510
+expect32 0x080B17E4 0x28027800
+on a
+poke8 0x0202433A 1
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+flagexpect 2151 1
+flagexpect 1545 1
+on b
+flagexpect 2151 1
+flagexpect 1545 1

@@ -1,0 +1,69 @@
+# The partner follows the screen's fade (pk_wide.c partnerBegin, gPaletteFade) and DAY AND NIGHT's tint. Brendan's palette
+# (/repo/app/build/partner/brendan.bin) index 1 is 0x5B5F; the fade is the game's own, started by the script engine:
+# fadescreen (0x97) FADE_TO_BLACK 1 / FADE_FROM_BLACK 0 + end (0x02) poked into free EWRAM at 0x0203F400 and run by
+# ScriptContext_SetupScript (COOP_EM_ScriptContext_SetupScript). pal1 is the colour the partner's palette slot got the
+# last frame, fadey the fade's y it was blended with (0 = none): the game's BlendPalette, c + ((blend - c) * y >> 4) per
+# channel, then DAY AND NIGHT's tint (tint 128 128 256: r, g halved). The game's OBJ palettes run 3 frames behind
+# gPaletteFade's y (y steps after the OBJ pass, the buffer reaches palette RAM at the next VBlank), so the partner blends
+# with the y of 3 frames ago and is the player's own colour frame for frame: the struct reads 4 at frame 5, and frames
+# 8.. (wait 8) draw 0x5B5F -> 0x4277, which vdump's pal.bin shows for the player's own palette (Brendan too) at the same
+# frame (task-6-report.md); 0x4EDB one step earlier; tinted, 0x4277 -> 0x412B.
+# want: partnerinfo plain: why 0 oam 127 blobOam -1 slot 15 at 120,56 frame 0 pal1 5B5F fadey 0
+# want: partnerinfo mid: why 0 oam 127 blobOam -1 slot 15 at 120,56 frame 0 pal1 4277 fadey 4
+# want: partnerinfo s5: why 0 oam 127 blobOam -1 slot 15 at 120,56 frame 0 pal1 5B5F fadey 0
+# want: partnerinfo s6: why 0 oam 127 blobOam -1 slot 15 at 120,56 frame 0 pal1 4EDB fadey 2
+# want: partnerinfo black: why 0 oam 127 blobOam -1 slot 15 at 120,56 frame 0 pal1 0000 fadey 16
+# want: partnerinfo back: why 0 oam 127 blobOam -1 slot 15 at 120,56 frame 0 pal1 5B5F fadey 0
+# want: partnerinfo tinted: why 0 oam 127 blobOam -1 slot 15 at 120,56 frame 0 pal1 59AF fadey 0
+# want: partnerinfo tintmid: why 0 oam 127 blobOam -1 slot 15 at 120,56 frame 0 pal1 412B fadey 4
+# want: partnerinfo tintblack: why 0 oam 127 blobOam -1 slot 15 at 120,56 frame 0 pal1 0000 fadey 16
+# want: partnerinfo hold: why 0 oam 127 blobOam -1 slot 15 at 120,56 frame 0 pal1 0000 fadey 16
+wideon 0
+partnerset /repo/app/build/partner/brendan.bin
+partnernear 1 0 0 0 -1
+wait 2
+partnerinfo plain
+# fade to black, mid-way and done
+poke8 0x0203F400 0x97
+poke8 0x0203F401 0x01
+poke8 0x0203F402 0x02
+call 0x08098EF8 0x0203F400
+wait 5
+partnerinfo s5
+wait 1
+partnerinfo s6
+wait 2
+partnerinfo mid
+wait 90
+partnerinfo black
+# and back
+poke8 0x0203F401 0x00
+call 0x08098EF8 0x0203F400
+wait 90
+partnerinfo back
+# hidden while a fade to black completes, then shown during the hold (fade struct: y 16, active and selectedPalettes cleared):
+# no fade was ever seen with him, yet he is black, not bright over the black screen.
+partnerpos 0 0 0 0 0 -1 0
+wait 2
+poke8 0x0203F401 0x01
+call 0x08098EF8 0x0203F400
+wait 90
+partnernear 1 0 0 0 -1
+wait 2
+partnerinfo hold
+partnerpos 0 0 0 0 0 -1 0
+poke8 0x0203F401 0x00
+call 0x08098EF8 0x0203F400
+wait 90
+partnernear 1 0 0 0 -1
+wait 2
+# the tint alone, then the fade under it
+tint 128 128 256
+wait 2
+partnerinfo tinted
+poke8 0x0203F401 0x01
+call 0x08098EF8 0x0203F400
+wait 8
+partnerinfo tintmid
+wait 90
+partnerinfo tintblack

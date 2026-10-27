@@ -1,0 +1,1343 @@
+# Retail English Emerald, a new game played to the co-op test save in one continuous run: the way
+# native-capture/boot/emerald_coop.txt's save (emerald.sav) was made, so it can be rebuilt. Made 2026-10-24 headless.
+#
+#   head -c 131072 /dev/zero | tr '\0' '\377' > emerald.sav        # a blank 128 KB flash chip
+#   ./mgba_dump emerald.gba emerald.sav < native-capture/boot/emerald_coop_newgame.txt
+#
+# mgba_dump writes the save when it exits. It plays the real game - the intro (Birch, BOY, the name COOP), the moving
+# truck, both houses, the wall clock set to 10:00 AM, May's room, the rescue on Route 101 with TORCHIC and the battle,
+# back to the lab - then walks out to Route 101 and saves from the START menu, so every story flag is the game's own.
+# Two more Pokemon and the bag come from the game's own script commands: ScriptContext_SetupScript (0x08098EF8, retail)
+# runs a script poked into free EWRAM at 0x0203F400 (opcodes from pokeemerald's script_cmd_table: givemon 0x79,
+# additem 0x44, releaseall 0x6B, end 0x02; species ids are the game's own: WURMPLE 290, ZIGZAGOON 288).
+# Text is paced for the game's medium speed: B moves a box on (and answers a YES/NO with NO), A is pressed where a choice
+# or a menu is meant (and to fight the one Route 101 battle). Headless is deterministic: replayed from a blank save this
+# gave the same party (personalities and all) and bag as the first run. Change a wait and a later scene (the battle's
+# foe, how many presses it takes) may come out different.
+#
+# --- cold boot: START skips the Game Freak scene, A the logo, START the title; NEW GAME; A through Birch's first boxes
+wait 700
+press START
+wait 60
+press A
+wait 100
+press START
+wait 60
+press A
+wait 120
+press A
+wait 120
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+#
+# --- Birch's speech at the game's own speed (A held so it prints fast)
+wait 120
+hold A 90
+hold A 90
+hold A 90
+hold A 90
+hold A 90
+hold A 90
+hold A 90
+hold A 90
+hold A 90
+#
+# --- B moves the speech on, and cannot answer BOY / GIRL
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+#
+# --- more speech, up to the BOY / GIRL menu
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+#
+# --- BOY (A), then 'What's your name?'
+press A
+wait 100
+wait 100
+wait 100
+#
+# --- A opens the name keyboard
+wait 60
+press A
+wait 60
+wait 60
+#
+# --- C O O P
+press RIGHT
+wait 10
+press RIGHT
+wait 10
+press A
+wait 10
+press DOWN
+wait 10
+press DOWN
+wait 10
+press A
+wait 10
+press A
+wait 10
+press RIGHT
+wait 10
+press A
+wait 10
+#
+# --- START (OK), A; 'So it's COOP?' YES
+press START
+wait 20
+press A
+wait 100
+wait 100
+wait 100
+#
+# --- Birch's last lines
+press A
+wait 60
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+#
+# --- ...to the moving truck
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+#
+# --- inside the truck: wait for its door to light
+wait 120
+wait 120
+wait 120
+wait 120
+#
+# --- walk out to the right
+hold RIGHT 80
+wait 200
+wait 200
+#
+# --- onto the door's light
+hold RIGHT 40
+wait 150
+wait 150
+#
+# --- out of the truck: Mom in Littleroot Town
+hold RIGHT 30
+wait 150
+wait 150
+wait 150
+#
+# --- Mom's lines
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+press B
+wait 12
+#
+# --- into the house: 'your room is upstairs'
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+#
+# --- up the stairs, across the room
+hold UP 60
+hold UP 40
+wait 100
+#
+# --- to the wall clock
+hold LEFT 24
+wait 20
+hold UP 8
+wait 20
+#
+# --- face the wall clock, A: 'The clock is stopped...'
+hold LEFT 12
+wait 20
+hold UP 6
+wait 10
+press A
+wait 90
+wait 90
+#
+# --- 'Better set it and start it!'
+press A
+wait 90
+wait 60
+#
+# --- ...A
+wait 80
+wait 80
+#
+# --- the set-clock screen: 10:00 AM
+press A
+wait 60
+wait 60
+#
+# --- A; 'Is this the correct time?' UP = YES, A; Mom comes up
+press A
+wait 40
+press UP
+wait 10
+press A
+wait 100
+wait 100
+#
+# --- Mom's lines
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+#
+# --- (a first try at the stairs: a hold of 12 frames only turns the player; B does nothing here)
+hold RIGHT 12
+wait 10
+hold UP 16
+wait 120
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+#
+# --- to the stairs and down: Mom's Petalburg Gym report on TV
+hold RIGHT 20
+wait 10
+hold UP 20
+wait 120
+#
+# --- the report, B through its lines
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+#
+# --- ...the last of it
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+#
+# --- to the front door and out
+hold RIGHT 70
+wait 20
+hold DOWN 60
+wait 120
+#
+# --- along the road to the neighbour's door and in
+hold RIGHT 150
+wait 10
+hold UP 30
+wait 120
+#
+# --- the neighbour's mom
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+#
+# --- ...her last line
+hold B 40
+hold B 40
+hold B 40
+wait 30
+#
+# --- up to May's room
+hold UP 60
+hold UP 60
+wait 150
+#
+# --- next to May's Poke Ball
+hold DOWN 19
+wait 10
+hold RIGHT 72
+wait 10
+#
+# --- A on the Poke Ball: May comes in
+press A
+wait 120
+wait 120
+#
+# --- May's lines
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+wait 60
+#
+# --- ...and the rest
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+wait 60
+#
+# --- back downstairs and out
+hold LEFT 48
+wait 6
+hold UP 48
+wait 100
+hold DOWN 96
+wait 120
+#
+# --- north through Littleroot
+hold LEFT 48
+wait 6
+hold UP 64
+wait 6
+#
+# --- up to the kid at the Route 101 road: 'Um, hi!'
+hold UP 64
+wait 20
+wait 60
+#
+# --- his lines
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+wait 30
+#
+# --- north: 'H-help me!'
+hold UP 96
+wait 100
+wait 100
+#
+# --- Birch and the Poochyena on Route 101: B through the lines, to Birch's bag
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+#
+# --- to the bag, A: the starter picture
+hold LEFT 48
+wait 6
+hold UP 16
+wait 6
+hold LEFT 8
+wait 6
+press A
+wait 100
+#
+# --- A on TORCHIC (the cursor): 'Do you choose this POKeMON?'
+press A
+wait 60
+#
+# --- A is YES; the battle starts
+press A
+wait 120
+wait 120
+wait 120
+wait 120
+#
+# --- wild ZIGZAGOON appeared
+wait 150
+wait 100
+#
+# --- the battle: A through the text and FIGHT, the first move
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+#
+# --- ...
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+#
+# --- ...
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+#
+# --- ...
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+#
+# --- ...won
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+press A
+wait 60
+#
+# --- B through the lines: Birch's lab
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+#
+# --- B through Birch's lines: no nickname (NO), 'meet my kid?' NO, then 'Don't be that way' asks again
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+#
+# --- 'Don't be that way' YES/NO: A is YES; B through the rest
+press A
+wait 30
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+hold B 40
+wait 30
+#
+# --- out of the lab (walk down)
+hold DOWN 112
+wait 120
+#
+# --- ...onto Littleroot Town
+hold DOWN 32
+wait 120
+#
+# --- two more Pokemon and the bag, through the game's own script commands
+# Two more Pokemon and the bag items through the game's own script engine (ScriptContext_SetupScript 0x08098EF8)
+# script at 0x0203F400: givemon WURMPLE 5; givemon ZIGZAGOON 5; additem POKE_BALL 5; additem POTION 3; releaseall; end
+poke8 0x0203F400 0x79
+poke8 0x0203F401 0x22
+poke8 0x0203F402 0x01
+poke8 0x0203F403 0x05
+poke8 0x0203F404 0x00
+poke8 0x0203F405 0x00
+poke8 0x0203F406 0x00
+poke8 0x0203F407 0x00
+poke8 0x0203F408 0x00
+poke8 0x0203F409 0x00
+poke8 0x0203F40A 0x00
+poke8 0x0203F40B 0x00
+poke8 0x0203F40C 0x00
+poke8 0x0203F40D 0x00
+poke8 0x0203F40E 0x00
+poke8 0x0203F40F 0x79
+poke8 0x0203F410 0x20
+poke8 0x0203F411 0x01
+poke8 0x0203F412 0x05
+poke8 0x0203F413 0x00
+poke8 0x0203F414 0x00
+poke8 0x0203F415 0x00
+poke8 0x0203F416 0x00
+poke8 0x0203F417 0x00
+poke8 0x0203F418 0x00
+poke8 0x0203F419 0x00
+poke8 0x0203F41A 0x00
+poke8 0x0203F41B 0x00
+poke8 0x0203F41C 0x00
+poke8 0x0203F41D 0x00
+poke8 0x0203F41E 0x44
+poke8 0x0203F41F 0x04
+poke8 0x0203F420 0x00
+poke8 0x0203F421 0x05
+poke8 0x0203F422 0x00
+poke8 0x0203F423 0x44
+poke8 0x0203F424 0x0D
+poke8 0x0203F425 0x00
+poke8 0x0203F426 0x03
+poke8 0x0203F427 0x00
+poke8 0x0203F428 0x6B
+poke8 0x0203F429 0x02
+call 0x08098EF8 0x0203F400
+wait 60
+#
+# --- north through Littleroot Town to Route 101
+hold RIGHT 48
+wait 6
+hold UP 96
+wait 6
+#
+# --- ...onto the road, Route 101's sign
+hold UP 112
+wait 6
+hold UP 96
+wait 30
+#
+# --- START menu
+press START
+wait 30
+#
+# --- SAVE (3 DOWN, A)
+press DOWN
+wait 12
+press DOWN
+wait 12
+press DOWN
+wait 12
+press A
+wait 40
+#
+# --- 'Would you like to save the game?'
+wait 60
+press A
+wait 100
+wait 200
+wait 200
+#
+# --- YES: SAVING... and 'COOP saved the game.' (the save is written when mgba_dump exits)
+press A
+wait 100
+wait 150
+wait 150
+wait 150

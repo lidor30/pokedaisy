@@ -1,0 +1,40 @@
+# Review Focus 5: the game never holds the partner. From one savestate the partner is shown 120 frames while the player
+# walks, and EWRAM, IWRAM, VRAM, OAM and palette RAM are hashed; the same states and presses without him hash the same.
+# A savestate taken mid-run with him on, loaded with him off and one frame run, equals the run that never had him.
+# want: partnerinfo: why 0 oam 127 blobOam -1 slot 15
+# want: expectsame with without: PASS
+# want: expectsame restored plain: PASS
+wideon 0
+partnerset /repo/app/build/partner/brendan.bin
+savestate /work/a.ss
+partnernear 1 0 0 0 -1
+hold RIGHT 4
+wait 30
+hold RIGHT 4
+wait 20
+savestate /work/b.ss
+wait 60
+partnerinfo
+memhash with
+loadstate /work/a.ss
+partnerpos 0 0 0 0 0 -1 0
+hold RIGHT 4
+wait 30
+hold RIGHT 4
+wait 20
+wait 60
+memhash without
+expectsame with without
+# b.ss: taken with the partner on screen, loaded with it off, one frame run: the same as the run that never had it.
+loadstate /work/a.ss
+partnerpos 0 0 0 0 0 -1 0
+hold RIGHT 4
+wait 30
+hold RIGHT 4
+wait 20
+wait 1
+memhash plain
+loadstate /work/b.ss
+wait 1
+memhash restored
+expectsame restored plain

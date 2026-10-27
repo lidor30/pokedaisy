@@ -24,6 +24,9 @@ object FeatureFlags {
      */
     fun screenScraper(context: Context): Boolean = BuildConfig.FEATURE_SCREENSCRAPER || marker(context, "screenscraper")
 
+    /** CO-OP: the link to a paired partner, its Settings group and invite links. Off until it ships; marker `coop`. */
+    fun coop(context: Context): Boolean = BuildConfig.FEATURE_COOP || marker(context, "coop")
+
     private fun marker(context: Context, name: String): Boolean =
         runCatching { File(File(context.getExternalFilesDir(null) ?: context.filesDir, "features"), name).isFile }.getOrDefault(false)
 }

@@ -1,0 +1,926 @@
+# Plan 6 fix (run 6 logs, trainer flavour): a joined TRAINER battle to its end with the foes' Pokemon fainting one after the other - a
+# trainer's replacement Pokemon, a trainer whose last Pokemon faints while the other trainer's side is still up (no replacement: the game
+# must not send one), EXP on both sides, then the win. `linknoerror 1`: any block the bridge refuses as malformed is a FAIL that prints it.
+# Both leads have 999 HP; both players just press A through every menu. Needs EMERALD_PARTNER_SAVE (`$PARTNER_SAVE`).
+#
+# want: PASS linkwait 2
+# want: linknoerror 1
+# want: PASS linkwait 3
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+linknoerror 1
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+linkwait 3 3000

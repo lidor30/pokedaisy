@@ -1,0 +1,42 @@
+# Plan 6 Task 3: a wild foe's flight (HandleEndTurn_MonFled, B_OUTCOME_MON_FLED = 6) ends the partner's game too. Both players pick FIGHT;
+# gBattleOutcome is poked to 6 on the master (core A) while the turn runs (what HandleAction_Run does for a fleeing foe): the turn
+# ends into HandleEndTurn_MonFled, whose FinishBattle literal is our link_entry_RAN_FINISH (sends the end to the other player once).
+# Both cores hold outcome 6, the "sent" byte (0x0203D03F) is 1 and neither hangs.
+# Needs EMERALD_PARTNER_SAVE (`$PARTNER_SAVE`).
+#
+# want: PASS linkwait 2
+pair $PARTNER_SAVE
+on b
+@boot
+on a
+coopbegin 1 1 0 0
+on b
+coopbegin 0 1 0 0
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkrun 20
+on a
+poke8 0x0202433A 6
+linkrun 300
+expect8 0x0203D03F 1
+shot /work/link_wild_fled_a.ppm
+on b
+waitmem8 0x0202433A 6 3000
+shot /work/link_wild_fled_b.ppm

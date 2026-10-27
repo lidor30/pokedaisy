@@ -24,9 +24,13 @@ open class Intent() {
     fun putExtra(k: String, v: String) = apply { extras[k] = v }
     fun putExtra(k: String, v: Boolean) = apply { extras[k] = v.toString() }
     fun getStringExtra(k: String): String? = extras[k]
+    fun setType(t: String) = this
 
     companion object {
         const val ACTION_VIEW = "android.intent.action.VIEW"
+        const val ACTION_SEND = "android.intent.action.SEND"
+        const val EXTRA_TEXT = "android.intent.extra.TEXT"
+        fun createChooser(i: Intent, title: CharSequence?) = i
         const val FLAG_GRANT_READ_URI_PERMISSION = 1
         const val FLAG_GRANT_WRITE_URI_PERMISSION = 2
         const val FLAG_ACTIVITY_NEW_TASK = 0x10000000

@@ -1,0 +1,32 @@
+# Task 8: pk_coop_white_out: SetMainCallback2(CB2_WhiteOut) with gMain.state 0 - the game's own white-out (its text boxes need A,
+# as white_out.txt's). Within the run the player ends on the last heal spot's map (the new game's: map group 1, number 1, as
+# white_out.txt's), the party is healed (slot 0's HP, +0x56, equals its max HP, +0x58, after being set to 1) and the money is
+# halved (the white-out script's SetMoney(money / 2): the money mark before, `coopmoneyexpect half` after). It ends on the free
+# field again.
+# want: whiteout 1
+# want: PASS money
+# want: PASS freefield 1
+poke16 0x02024542 1
+coopmoneymark
+coopwhiteout
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 600
+shot /work/after_whiteout.ppm
+coopmoneyexpect half
+expect8p 0x03005D8C 4 1
+expect8p 0x03005D8C 5 1
+afterexpectsame 0x02024542 0x02024544 2
+coopexpectfree 1

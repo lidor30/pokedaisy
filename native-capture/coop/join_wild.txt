@@ -1,0 +1,11 @@
+# pk_coop_join_kind: an ordinary wild battle (StandardWildEncounter on Route 101's grass, as walking into it runs it) is
+# joinable: `join 1 0 0`, and 0 on the field before any battle starts (the kind is 0 unless Task_BattleStart runs).
+# want: coop: installed
+# want: join 0 0 0
+# want: join 1 0 0
+coopinstall
+coopjoin
+poke32 0x03005D80 9
+call 0x080B5288 2 2
+waittask 0x080B05F0 120
+coopjoin

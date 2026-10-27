@@ -1,0 +1,45 @@
+# Plan 6 Task 7: a long drop that ends in the game's whiteout (pk_coop_link_leave 1, what the app does for a player whose own side
+# was beaten when the line went). The host's core goes to CB2_WhiteOut (0x08085F59) and then the field again: money halved by the
+# game itself, the party healed (the second party Pokemon starts at 1 HP and is full after), the two trainers' flags unset (the
+# trainer end that sets them never runs). The partner core leaves with 0: field, nothing else.
+# (gSaveBlock1.flags + 0x1339 bit 5 = ALLEN 333, + 0x1337 bit 6 = CALVIN 318; party slot 1's HP 0x020245A6, its max HP +2.)
+# want: PASS linkwait 2
+# want: link: left (blackout 1), state 0
+# want: PASS money 1500
+pair $PARTNER_SAVE
+on b
+@boot
+on a
+poke16 0x020245A6 1
+coopmoneymark
+on b
+coopmoneymark
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+linkhold 1
+linkrun 1800
+on a
+expect32 0x030022C4 0x08038421
+linkleave 1
+waitmem32 0x030022C4 0x08085F59 600
+linkrun 900
+expect32 0x030022C4 0x08085E5D
+coopmoneyexpect half
+expect8p 0x03005D8C 0x1339 0x00
+expect8p 0x03005D8C 0x1337 0x00
+rangehash hp1 0x020245A6 2
+rangehash mhp1 0x020245A8 2
+expectsame hp1 mhp1
+on b
+linkleave 0
+linkrun 300
+expect32 0x030022C4 0x08085E5D
+coopmoneymark
+linkstate

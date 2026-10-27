@@ -4,6 +4,21 @@ import com.pokedaisy.app.companion.ui.theme.DarkMode
 import com.pokedaisy.app.companion.i18n.L10n
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
+import com.pokedaisy.app.companion.coop.CoopInvite
+import com.pokedaisy.app.companion.coop.CoopIpHelloClient
+import com.pokedaisy.app.companion.coop.CoopIpHelloServer
+import com.pokedaisy.app.companion.coop.CoopPair
+import com.pokedaisy.app.companion.coop.CoopPairing
+import com.pokedaisy.app.companion.coop.CoopRelay
+import com.pokedaisy.app.companion.coop.CoopSaveId
+import com.pokedaisy.app.companion.coop.CoopSession
+import com.pokedaisy.app.companion.coop.EMERALD_COOP_SHA1
+import com.pokedaisy.app.companion.coop.parseHostPort
+import com.pokedaisy.app.companion.ui.CoopPairActions
+import com.pokedaisy.app.companion.ui.CoopPairBody
+import com.pokedaisy.app.companion.ui.CoopSaveChoice
+import com.pokedaisy.app.companion.ui.coopPartnerRows
+import com.pokedaisy.app.companion.ui.coopWifiAddress
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -126,7 +141,7 @@ import com.pokedaisy.app.companion.ui.drawPixelRoundRect
  */
 class SettingsActivity : ComponentActivity() {
 
-    private enum class Screen { HOME, SPEED, DISPLAY, HOTKEYS, CONTROLS, SHADERS, FIELD_HUD, QUICK_MENU, TOUCH, OVERLAYS, FOLDERS, ROMS_FOLDERS, SAVES_FOLDER, SAVE_SEARCH, STATES_FOLDER, BACKUPS, COVER_ART, SCREENSCRAPER, HIDDEN, ACHIEVEMENTS, CHEATS, CHEAT_ADD, LICENSES, HELP }
+    private enum class Screen { HOME, SPEED, DISPLAY, HOTKEYS, CONTROLS, SHADERS, FIELD_HUD, QUICK_MENU, TOUCH, OVERLAYS, FOLDERS, ROMS_FOLDERS, SAVES_FOLDER, SAVE_SEARCH, STATES_FOLDER, BACKUPS, COVER_ART, SCREENSCRAPER, HIDDEN, ACHIEVEMENTS, CHEATS, CHEAT_ADD, LICENSES, HELP, COOP_PAIR, COOP_JOIN, COOP_PARTNERS, COOP_RELAY }
 
     private lateinit var prefs: Prefs
     private var screen by mutableStateOf(Screen.HOME)
@@ -230,6 +245,13 @@ class SettingsActivity : ComponentActivity() {
             SCREEN_HELP -> { helpOnly = true; screen = Screen.HELP }
             SCREEN_ROMS_FOLDERS -> { romsFoldersOnly = true; screen = Screen.ROMS_FOLDERS }
         }
+        // An invite link (CoopLinkActivity is exported: its extra is parsed again here, and ignored with CO-OP off).
+        if (FeatureFlags.coop(this)) {
+            intent?.getStringExtra(CoopLinkActivity.EXTRA_COOP_TICKET)?.let(CoopInvite::parse)?.let { ticket ->
+                coopTicketIn = ticket
+                screen = Screen.COOP_JOIN
+            }
+        }
         setContent {
             // Settings' text a step smaller everywhere (the user's call: the Thor's top screen read it large), not only on
             // small windows (CompactTextOnSmallWindows): a font pixel down, so it stays crisp.
@@ -251,6 +273,11 @@ class SettingsActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         capture.cancel()
+    }
+
+    override fun onDestroy() {
+        if (coopPairing != null) leaveCoopPair()
+        super.onDestroy()
     }
 
     // Analog L2 / R2 (Retroid's triggers send no keys): captured as BUTTON_L2 / R2, the keys the game
@@ -308,6 +335,9 @@ class SettingsActivity : ComponentActivity() {
                         Screen.CHEAT_ADD -> tk("ADD CODE")
                         Screen.LICENSES -> tk("LICENSES")
                         Screen.HELP -> tk("HELP")
+                        Screen.COOP_PAIR, Screen.COOP_JOIN -> tk("PAIR")
+                        Screen.COOP_PARTNERS -> tk("PARTNERS")
+                        Screen.COOP_RELAY -> tk("RELAY")
                     },
                     m = m,
                     onBack = {
@@ -341,6 +371,9 @@ class SettingsActivity : ComponentActivity() {
                     Screen.CHEAT_ADD -> CheatAddScreen(m, small)
                     Screen.LICENSES -> LicensesScreen(m, small)
                     Screen.HELP -> com.pokedaisy.app.companion.ui.DocsReader(docsUi, m, docsSource, onOpenUrl = ::openUrl)
+                    Screen.COOP_PAIR, Screen.COOP_JOIN -> CoopPairScreen(m, small)
+                    Screen.COOP_PARTNERS -> CoopPartnersScreen(m, small)
+                    Screen.COOP_RELAY -> CoopRelayScreen(m, small)
                 }
             }
 
@@ -452,6 +485,22 @@ class SettingsActivity : ComponentActivity() {
                 )
             }
 
+            coopUnpairing?.let { p ->
+                OptionConfirm(
+                    title = tk("UNPAIR"),
+                    message = tr("Unpair {0}? You'll need a new invite to play together again.", p.partner.name),
+                    confirmLabel = tk("UNPAIR"),
+                    m = m,
+                    onDismiss = { coopUnpairing = null },
+                    onConfirm = {
+                        coopUnpairing = null
+                        CoopSession.unpair(this@SettingsActivity, p.ownSave)
+                        coopPairs = coopPairs - p
+                        revision++
+                    },
+                )
+            }
+
             cheatNotice?.let { (title, message) ->
                 OptionConfirm(title, message, tk("OK"), m, onConfirm = { cheatNotice = null }, onDismiss = { cheatNotice = null }, cancelLabel = null)
             }
@@ -524,6 +573,9 @@ class SettingsActivity : ComponentActivity() {
             screen == Screen.CHEAT_ADD -> screen = Screen.CHEATS
             screen == Screen.HELP && docsUi.back() -> {}
             screen == Screen.HELP && helpOnly -> finish()
+            // A save picked on the invite page: BACK to the save list (a link's page, from outside: the hub).
+            screen == Screen.COOP_PAIR && coopPicked != null -> leaveCoopPair()
+            screen == Screen.COOP_PAIR || screen == Screen.COOP_JOIN -> { leaveCoopPair(); screen = Screen.HOME }
             screen == Screen.HOME || (screen == Screen.CHEATS && cheatsOnly) || (screen == Screen.ROMS_FOLDERS && romsFoldersOnly) -> finish()
             // FOLDERS' pages go back to it.
             screen in FOLDER_PAGES -> screen = Screen.FOLDERS
@@ -625,6 +677,7 @@ class SettingsActivity : ComponentActivity() {
     @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class) // Key.ButtonB / the keyboard controller, on older Compose
     private fun HomeScreen(m: GbaTextMetrics) {
         @Suppress("UNUSED_EXPRESSION") revision
+        LaunchedEffect(revision) { if (FeatureFlags.coop(this@SettingsActivity)) coopPairs = withContext(Dispatchers.IO) { CoopSession.pairsList(this@SettingsActivity) } }
         val rateLabels = RATES.map(::rateLabel)
         // The themes on offer today: the limited-time ones only in their dates.
         val themes = com.pokedaisy.app.companion.ui.theme.availableThemes()
@@ -795,6 +848,7 @@ class SettingsActivity : ComponentActivity() {
                 "RetroAchievements", prefs.raUsername?.uppercase() ?: tk("OFF"), labelBadge = tk("BETA"),
                 labelIcon = { GoldTrophy() }, opensPage = true,
             ) { screen = Screen.ACHIEVEMENTS },
+            *coopRows().toTypedArray(),
             groupTitle(tk("CONTROLS")),
             SettingRow(tk("GAME BUTTONS"), null, subtitle = "Key bindings: which button presses A, B, START...", opensPage = true) { screen = Screen.CONTROLS },
             SettingRow(tk("HOTKEYS"), onOff(prefs.hotkeysEnabled), opensPage = true, subtitle = "Button combos for states, FF and more") { screen = Screen.HOTKEYS },
@@ -1284,6 +1338,237 @@ class SettingsActivity : ComponentActivity() {
                                 },
                             )
                         }
+                    }
+                }
+            }
+        }
+    }
+
+    // ---- co-op --------------------------------------------------------------
+
+    /** What the pairing page shows instead of the live session (ui-preview: no network). */
+    internal class CoopPreview(
+        val choices: List<CoopSaveChoice>? = null,
+        val picked: CoopSaveChoice? = null,
+        val step: CoopPairing.Step = CoopPairing.Step.Inviting(null, emptyList()),
+        val wifi: String? = null,
+        val error: String? = null,
+    )
+
+    internal var coopPreview by mutableStateOf<CoopPreview?>(null)
+    private var coopChoices by mutableStateOf<List<CoopSaveChoice>?>(null)
+    private var coopPicked by mutableStateOf<CoopSaveChoice?>(null)
+    private var coopPairing by mutableStateOf<CoopPairing?>(null)
+    private var coopTicketIn: String? = null
+    private var coopError by mutableStateOf<String?>(null)
+    private var coopWifi by mutableStateOf<String?>(null)
+    private var coopPairs by mutableStateOf<List<CoopPair>>(emptyList())
+    private var coopUnpairing by mutableStateOf<CoopPair?>(null)
+    private val coopIp = CoopIpHelloServer { currentCoopLink() }
+    /** Bumped when the invite is left, so a BY IP listener still starting up stops itself. */
+    @Volatile private var coopIpGen = 0
+
+    /** The CO-OP group, only while the co-op flag is on; the companion's SETTINGS has the same rows in the same place. */
+    private fun coopRows(): List<SettingRow> {
+        if (!FeatureFlags.coop(this)) return emptyList()
+        fun onOff(on: Boolean) = if (on) tk("ON") else tk("OFF")
+        return listOf(
+            groupTitle(tk("CO-OP")),
+            SettingRow(
+                tk("PAIR"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.COOP),
+                opensPage = true, subtitle = "Link one of your Emerald saves with a friend's",
+            ) { openCoopPair(null) },
+            SettingRow(tk("PARTNERS"), coopPairs.size.takeIf { it > 0 }?.toString() ?: tk("NONE"), opensPage = true) { screen = Screen.COOP_PARTNERS },
+            com.pokedaisy.app.companion.ui.nearbyRangeRow(
+                prefs.coopNearbyRange,
+                { title, choices, current, onPick -> selector = Selector(title, choices, current) { onPick(it); revision++ } },
+            ) { prefs.coopNearbyRange = it },
+            SettingRow(tk("RELAY"), CoopRelay.rowValue(prefs.coopRelayUrl, BuildConfig.COOP_RELAY_URL), opensPage = true) { screen = Screen.COOP_RELAY },
+            SettingRow(tk("RELAY ONLY"), onOff(prefs.coopRelayOnly), subtitle = "Hide your IP address from your partner") {
+                prefs.coopRelayOnly = !prefs.coopRelayOnly
+                CoopSession.restart(this, prefs)
+                revision++
+            },
+            // PLAY TOGETHER ONLY: no game runs behind this screen, so it only says it needs one (the row is the game's SETTINGS').
+            *listOfNotNull(
+                com.pokedaisy.app.companion.ui.coopLockRow(
+                    com.pokedaisy.app.companion.coop.lock.CoopLockUi(refusal = com.pokedaisy.app.companion.coop.lock.LockRefusal.NOT_CONNECTED),
+                    object : com.pokedaisy.app.companion.coop.lock.CoopLockActions {
+                        override fun propose() {}
+                        override fun accept() {}
+                        override fun decline() {}
+                        override fun turnOff() {}
+                    },
+                    "",
+                ) {},
+            ).toTypedArray(),
+        )
+    }
+
+    private fun openCoopPair(ticket: String?) {
+        coopTicketIn = ticket
+        coopChoices = null
+        coopPicked = null
+        coopError = null
+        screen = if (ticket == null) Screen.COOP_PAIR else Screen.COOP_JOIN
+    }
+
+    /** The library's retail English Emerald ROMs, each with its save's trainer (read off the UI thread). */
+    private fun loadCoopChoices(): List<CoopSaveChoice> {
+        val pairs = CoopSession.pairsList(this)
+        return RomFolder.libraryRoms(this, prefs)
+            .filter { it.length() == EMERALD_ROM_BYTES && RomIdentity.gameCode(it) == "BPEE" && RomIdentity.sha1(it) == EMERALD_COOP_SHA1 }
+            .map { rom ->
+                val save = SavesLocation.saveFor(this, prefs, rom)
+                val id = if (save.isFile) CoopSaveId.read(save) else null
+                val pair = id?.let { i -> pairs.firstOrNull { it.ownSave == i } }
+                CoopSaveChoice(rom, save, GameTitles.label(this, prefs, rom), id, pair?.partner?.name)
+            }
+    }
+
+    /** A save picked: the invite opens (and, from a link, dials it). The endpoint is up before [CoopPairing.open] runs. */
+    private fun coopPick(choice: CoopSaveChoice) {
+        val id = choice.id ?: return
+        coopPicked = choice
+        coopError = null
+        CoopSession.usePairingSave(choice.save, EMERALD_COOP_SHA1)
+        val pairing = CoopSession.pairing(this)
+        coopPairing = pairing
+        val ticket = coopTicketIn
+        CoopSession.afterStart {
+            pairing.open(id)
+            if (ticket != null) pairing.join(ticket)
+        }
+        val gen = coopIpGen
+        if (!prefs.coopRelayOnly) Thread {
+            val port = coopIp.start()
+            if (gen != coopIpGen) { coopIp.stop(); return@Thread }
+            val ip = coopWifiAddress()
+            runOnUiThread { coopWifi = ip?.let { "$it:$port" } }
+        }.start()
+    }
+
+    /** Leaves the invite: the endpoint's hold and the BY IP listener go, the save list comes back. */
+    private fun leaveCoopPair() {
+        coopIpGen++
+        coopIp.stop()
+        if (coopPairing != null) CoopSession.releasePairing()
+        coopPairing = null
+        coopPicked = null
+        coopChoices = null
+        coopError = null
+        coopWifi = null
+    }
+
+    private fun currentCoopLink(): String? =
+        (coopPairing?.step?.value as? CoopPairing.Step.Inviting)?.ticket?.let { runCatching { CoopInvite.link(it) }.getOrNull() }
+
+    @Composable
+    private fun CoopPairScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
+        val preview = coopPreview
+        LaunchedEffect(screen, coopChoices == null) {
+            if (preview == null && coopChoices == null) coopChoices = withContext(Dispatchers.IO) { loadCoopChoices() }
+        }
+        val pairing = coopPairing
+        val live = remember(pairing) {
+            pairing?.step ?: kotlinx.coroutines.flow.MutableStateFlow<CoopPairing.Step>(CoopPairing.Step.Inviting(null, emptyList()))
+        }.collectAsState().value
+        val step = preview?.step ?: live
+        val link = (step as? CoopPairing.Step.Inviting)?.ticket?.let { runCatching { CoopInvite.link(it) }.getOrNull() }
+        val actions = CoopPairActions(
+            onPick = ::coopPick,
+            onCopy = {
+                currentCoopLink()?.let { l ->
+                    (getSystemService(Context.CLIPBOARD_SERVICE) as ClipboardManager).setPrimaryClip(ClipData.newPlainText("invite", l))
+                    Toast.makeText(this, tr("Link copied"), Toast.LENGTH_SHORT).show()
+                }
+            },
+            onShare = {
+                currentCoopLink()?.let { l ->
+                    val send = Intent(Intent.ACTION_SEND).setType("text/plain")
+                        .putExtra(Intent.EXTRA_TEXT, tr("Play Emerald with me in PokeDaisy: {0}", l))
+                    runCatching { startActivity(Intent.createChooser(send, null)) }
+                }
+            },
+            onJoinLink = { text -> coopError = null; coopPairing?.join(text) },
+            onJoinLan = { peer -> coopError = null; coopPairing?.joinLan(peer) },
+            onJoinIp = { text -> joinByIp(text) },
+            onAccept = { coopPairing?.accept() },
+            onDeny = { coopPairing?.deny() },
+            onDone = { leaveCoopPair(); screen = Screen.HOME },
+            onTryAgain = { coopPicked?.let(::coopPick) },
+            onCancel = { leaveCoopPair() },
+        )
+        CoopPairBody(
+            m, small, preview?.choices ?: coopChoices, preview?.picked ?: coopPicked, step, link,
+            prefs.coopRelayOnly, preview?.wifi ?: coopWifi, preview?.error ?: coopError, actions,
+        )
+    }
+
+    /** BY IP: asks the address for its invite (off the UI thread), then joins it. */
+    private fun joinByIp(text: String) {
+        val target = parseHostPort(text)
+        if (target == null) {
+            coopError = "That isn't a valid address"
+            return
+        }
+        coopError = null
+        Thread {
+            val ticket = CoopIpHelloClient.fetch(target.first, target.second)
+            runOnUiThread {
+                if (ticket == null) coopError = "Couldn't reach your partner. Check the internet and try again."
+                else coopPairing?.join(ticket)
+            }
+        }.start()
+    }
+
+    /** PARTNERS: the pairings, one row each; a tap asks UNPAIR. */
+    @Composable
+    private fun CoopPartnersScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
+        @Suppress("UNUSED_EXPRESSION") revision
+        LaunchedEffect(revision) { coopPairs = withContext(Dispatchers.IO) { CoopSession.pairsList(this@SettingsActivity) } }
+        val rows = if (coopPairs.isEmpty()) listOf(SettingRow(tk("NO PARTNERS YET"), null, enabled = false) {})
+        else coopPartnerRows(coopPairs) { coopUnpairing = it }
+        Column(Modifier.fillMaxWidth()) {
+            OptionListWindow(m, Modifier.fillMaxWidth().weight(1f, fill = false)) {
+                GroupedRows(rows, m, cursor = -1, onClick = { rows[it].onClick() })
+            }
+        }
+    }
+
+    /** RELAY: the address of a relay of your own (https://), or the built-in one. */
+    @Composable
+    private fun CoopRelayScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
+        var text by remember { mutableStateOf(prefs.coopRelayUrl.orEmpty()) }
+        var error by remember { mutableStateOf<String?>(null) }
+        Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
+            Hint(tr("A relay helps two devices find each other. Keep the built-in one unless a friend runs their own."), m, small)
+            OptionListWindow(m, Modifier.fillMaxWidth()) {
+                Column(Modifier.padding(horizontal = m.u * 4)) {
+                    GbaText(tr("RELAY"), OptionColors.label, OptionColors.labelShadow, m, Modifier.padding(vertical = m.u * 2))
+                    OptionTextField(text, { text = it; error = null }, small, placeholder = "https://relay.example.com")
+                    error?.let {
+                        GbaText(tr(it), OptionColors.value, OptionColors.valueShadow, small, Modifier.padding(top = m.u * 4), maxLines = 4)
+                    }
+                    Row(Modifier.padding(vertical = m.u * 4), horizontalArrangement = Arrangement.spacedBy(m.u * 4)) {
+                        OptionButton(tk("SAVE"), m, emphasis = true, onClick = {
+                            val url = CoopRelay.normalize(text)
+                            if (url == null) {
+                                error = "That isn't an https:// address"
+                            } else {
+                                prefs.coopRelayUrl = url
+                                text = url
+                                CoopSession.restart(this@SettingsActivity, prefs)
+                                revision++
+                            }
+                        })
+                        OptionButton(tk("USE BUILT-IN"), m, onClick = {
+                            prefs.coopRelayUrl = null
+                            text = ""
+                            error = null
+                            CoopSession.restart(this@SettingsActivity, prefs)
+                            revision++
+                        })
                     }
                 }
             }
@@ -2075,6 +2360,8 @@ class SettingsActivity : ComponentActivity() {
         const val SCREEN_ROMS_FOLDERS = "ROMS_FOLDERS"
         /** Cheat files are text; anything bigger isn't one. */
         const val MAX_CHEAT_FILE = 1 shl 20
+        /** Retail Emerald is 16 MB: the only size worth hashing for co-op. */
+        const val EMERALD_ROM_BYTES = 16L * 1024 * 1024
         /** One picked overlay file at most (read into memory; a pack of a few 4K borders is ~20 MB). */
         const val MAX_OVERLAY_FILE = 64L * 1024 * 1024
 

@@ -1,0 +1,36 @@
+# Plan 6 Task 1: a block that arrives when its game is not in a link battle is dropped, never written (pk_coop_link_give = 0 and the
+# game's gBlockReceivedStatus is left as it was): one given while the bridge is idle (before the battle, or after a reset), one with a
+# stale seq in the middle of the battle (a block of an earlier exchange, or a repeat), and one with the right seq after the battle
+# ended (the bridge's own end: CloseLink or pk_coop_link_end). Same two-core battle as link_trainers.txt, to its action prompts.
+#
+# want: link: give 0 status 0 -> 0 idle
+# want: link: give 0 status 0 -> 0 stale
+# want: link: give 0 status 0 -> 0 ended
+# want: link: give 0 status 0 -> 0 idleagain
+# want: PASS linkwait 2
+# want: linkstate a 3 b 2
+pair $PARTNER_SAVE
+linkgiveseed 0 idle
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+linkgiveseed 0 stale
+on b
+waitmem32 0x03005D68 0x08057589 3000
+linkgiveseed 0 stale
+on a
+linkend
+linkgiveseed next ended
+linkstate
+linkreset
+linkgiveseed next idleagain

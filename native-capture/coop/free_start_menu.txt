@@ -1,0 +1,10 @@
+# The START menu's top level: free 1 (the partner may take an offer there) but not the free field (the menu locks the
+# controls): `free 1 field 0`. Closing it gives the field back: `free 1 field 1`.
+# want: free 1 field 0
+# want: free 1 field 1
+press START
+wait 40
+coopfree
+press B
+wait 40
+coopfree

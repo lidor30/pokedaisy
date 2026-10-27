@@ -1,0 +1,49 @@
+# Task 8: pk_coop_evolve: the game's own evolution scene for party slot 0, a TORCHIC made Lv 16 (SetMonData MON_DATA_EXP 25 =
+# 2535, the medium-slow curve's Lv 16, then CalculateMonStats 0x08068D0C): `evolve 1`, the scene runs on (A through its text),
+# and the species is COMBUSKEN (281 = 0x119) when it ends, with the game back on the free field. A slot with nothing to evolve
+# into (slot 1, a WURMPLE at Lv 5) is `evolve 0` and starts nothing; a slot past the party is 0 too. GetMonData 0x0806A518.
+# want: call 0x0806A518(0x020244EC 11  ): returned 0x118
+# want: evolve 0
+# want: evolve 1
+# want: call 0x0806A518(0x020244EC 0xB  ): returned 0x119
+# want: PASS freefield 1
+call 0x0806A518 0x020244EC 11
+poke32 0x0203F9F0 2535
+call 0x0806ACAC 0x020244EC 25 0x0203F9F0
+call 0x08068D0C 0x020244EC
+coopevolve 1
+coopevolve 9
+coopexpectfree 1
+coopevolve 0
+wait 400
+hold A 3
+wait 200
+hold A 3
+wait 200
+hold A 3
+wait 200
+hold A 3
+wait 200
+hold A 3
+wait 200
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 300
+hold A 3
+wait 600
+shot /work/after_evolve.ppm
+call 0x0806A518 0x020244EC 0xB
+# the scene's callback is gone: CB2_Overworld again (CB2_ReturnToField's end)
+expect32 0x030022C4 0x08085E5D
+coopexpectfree 1
