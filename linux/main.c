@@ -5,6 +5,7 @@
 #include "pd_settings.h"
 #include "pd_ui.h"
 #include "pd_ui_internal.h"
+#include "pd_map.h"
 #include "host_io.h"
 #include "field_items.h"
 #include "fly.h"
@@ -870,10 +871,106 @@ static int modal_floor(const struct pd_ui *u) {
   return 0;
 }
 static int focus_index(const struct pd_ui *u, int id) {
-  for (int i = 0; i < u->hitCount; i++)
+  for (int i = modal_floor(u); i < u->hitCount; i++)
     if (u->hits[i].id == id)
       return i;
   return -1;
+}
+// The shared map is a touch target. Linux keeps a tile cursor over that same
+// target, using the shared player/section layouts rather than another grid.
+static struct {
+  bool ready;
+  unsigned rom;
+  int page, requestedPage, tx, ty, sel, dungeon;
+  int minX, minY, maxX, maxY;
+} mapCursor;
+static void map_cursor_sync(const struct pd_ui *u, const struct pd_game *g,
+                            const struct pd_snapshot *s) {
+  if (u->tab != PD_TAB_MAP) {
+    mapCursor.ready = false;
+    return;
+  }
+  const struct pd_map_art *art = pd_map_art(g);
+  if (!art) {
+    mapCursor.ready = false;
+    return;
+  }
+  if (focus_index(u, HIT_MAP) < 0)
+    return;
+  int page = 0, tx = PD_MAP_W / 16, ty = PD_MAP_H / 16;
+  bool player = pd_map_player_tile(g, s, &page, &tx, &ty);
+  int shown = u->mapPage >= 0 ? u->mapPage : player ? page : 0;
+  if (shown >= art->pages) shown = 0;
+  const struct pd_region_layout *layouts = g->kind == PD_GAME_EMERALD ?
+      pd_layouts_emerald : pd_layouts_firered;
+  int pages = g->kind == PD_GAME_EMERALD ? pd_layouts_emerald_count : pd_layouts_firered_count;
+  if (shown < 0 || shown >= pages) {
+    mapCursor.ready = false;
+    return;
+  }
+  const struct pd_region_layout *layout = &layouts[shown];
+  mapCursor.minX = layout->offX;
+  mapCursor.minY = layout->offY;
+  mapCursor.maxX = layout->offX + layout->w - 1;
+  mapCursor.maxY = layout->offY + layout->h - 1;
+  if (mapCursor.ready && mapCursor.rom == g->loadId && mapCursor.page == shown &&
+      mapCursor.requestedPage == u->mapPage &&
+      mapCursor.sel == u->mapSel && mapCursor.dungeon == u->mapDungeon)
+    return;
+  if (!player || page != shown) {
+    tx = PD_MAP_W / 16;
+    ty = PD_MAP_H / 16;
+  }
+  if (u->mapDungeon >= 0) {
+    tx = u->mapSelTx;
+    ty = u->mapSelTy;
+  } else if (u->mapSel >= 0) {
+    struct pd_tile_rect r;
+    if (pd_map_tiles(g, u->mapSel, &page, &r, 1) && page == shown) {
+      tx = r.x + (r.w - 1) / 2;
+      ty = r.y + (r.h - 1) / 2;
+    }
+  }
+  mapCursor.ready = true;
+  mapCursor.rom = g->loadId;
+  mapCursor.page = shown;
+  mapCursor.requestedPage = u->mapPage;
+  mapCursor.tx = tx < mapCursor.minX ? mapCursor.minX : tx > mapCursor.maxX ? mapCursor.maxX : tx;
+  mapCursor.ty = ty < mapCursor.minY ? mapCursor.minY : ty > mapCursor.maxY ? mapCursor.maxY : ty;
+  mapCursor.sel = u->mapSel;
+  mapCursor.dungeon = u->mapDungeon;
+}
+static bool map_cursor_active(const struct pd_ui *u) {
+  return mapCursor.ready && u->tab == PD_TAB_MAP &&
+         u->overlay == PD_OVERLAY_NONE && focusId == HIT_MAP;
+}
+// B leaves the grid for PLACES / ME / region buttons; another B is normal Back.
+static bool map_cursor_back(struct pd_ui *u) {
+  int i = focus_index(u, HIT_MAP_PLACES);
+  if (!map_cursor_active(u) || i < 0)
+    return false;
+  focusId = HIT_MAP_PLACES;
+  focusAt = u->hits[i];
+  return true;
+}
+static void focus_activate(struct pd_ui *u) {
+  int at = focus_index(u, focusId);
+  if (at < 0)
+    return;
+  const struct pd_hit *h = &u->hits[at];
+  if (map_cursor_active(u)) {
+    // Call the map's existing selection directly: overlaid map buttons must
+    // not intercept a tile in the top-right corner of the grid.
+    u->touchX0 = h->x + (mapCursor.tx * 8 + 4) * h->w / PD_MAP_W;
+    u->touchY0 = h->y + (mapCursor.ty * 8 + 4) * h->h / PD_MAP_H;
+    ui_map_act(u, HIT_MAP);
+    mapCursor.sel = u->mapSel;
+    mapCursor.dungeon = u->mapDungeon;
+    mapCursor.requestedPage = u->mapPage;
+  } else {
+    pd_ui_touch(u, h->x + h->w / 2, h->y + h->h / 2, true);
+    pd_ui_touch(u, h->x + h->w / 2, h->y + h->h / 2, false);
+  }
 }
 // After a draw: where the cursor is now (an index into u->hits, -1 = none).
 static int focus_resolve(struct pd_ui *u) {
@@ -901,14 +998,20 @@ static int focus_resolve(struct pd_ui *u) {
   for (int j = floor; i < 0 && j < u->hitCount; j++)
     if (focusable(u->hits[j].id))
       i = j;
-  if (i < 0 && u->hitCount)
-    i = 0;
   focusId = i >= 0 ? u->hits[i].id : -1;
   if (i >= 0)
     focusAt = u->hits[i];
   return i;
 }
 static void focus_move(struct pd_ui *u, int direction) {
+  if (map_cursor_active(u)) {
+    if (direction == LEFT && mapCursor.tx > mapCursor.minX) mapCursor.tx--;
+    if (direction == RIGHT && mapCursor.tx < mapCursor.maxX) mapCursor.tx++;
+    if (direction == UP && mapCursor.ty > mapCursor.minY) mapCursor.ty--;
+    if (direction == DOWN && mapCursor.ty < mapCursor.maxY) mapCursor.ty++;
+    focus_activate(u); // Name the location immediately, like the game's map.
+    return;
+  }
   int cur = focus_index(u, focusId);
   if (cur < 0) {
     focus_resolve(u);
@@ -920,8 +1023,8 @@ static void focus_move(struct pd_ui *u, int direction) {
     if (i == cur)
       continue;
     struct pd_hit *t = &u->hits[i];
-    if (t->id == HIT_SCRIM || t->id == HIT_BAG_LIST || t->id == HIT_DEX_LIST ||
-        t->id == HIT_GUIDE_LIST || t->id == HIT_SETTINGS_LIST)
+    if (t->id == HIT_SCRIM || t->id == HIT_BAG_LIST || t->id == HIT_DEX_LIST || t->id == HIT_GUIDE_LIST ||
+        t->id == HIT_SETTINGS_LIST)
       continue;
     int dx = (t->x + t->w / 2) - (h->x + h->w / 2),
         dy = (t->y + t->h / 2) - (h->y + h->h / 2);
@@ -963,6 +1066,20 @@ static void focus_draw(struct pd_ui *u, int focus) {
   if (focus < 0 || focus >= u->hitCount)
     return;
   struct pd_hit *h = &u->hits[focus];
+  struct pd_hit tile;
+  if (map_cursor_active(u)) {
+    int x = mapCursor.tx * 8, y = mapCursor.ty * 8;
+    tile = (struct pd_hit){h->x + x * h->w / PD_MAP_W,
+                          h->y + y * h->h / PD_MAP_H,
+                          (x + 8) * h->w / PD_MAP_W - x * h->w / PD_MAP_W,
+                          (y + 8) * h->h / PD_MAP_H - y * h->h / PD_MAP_H,
+                          HIT_MAP, false};
+    h = &tile;
+    pd_fill(&canvas, h->x - 1, h->y - 1, h->w + 2, 1, 0x202828);
+    pd_fill(&canvas, h->x - 1, h->y + h->h, h->w + 2, 1, 0x202828);
+    pd_fill(&canvas, h->x - 1, h->y, 1, h->h, 0x202828);
+    pd_fill(&canvas, h->x + h->w, h->y, 1, h->h, 0x202828);
+  }
   if (h->id >= HIT_SLOT && h->id < HIT_SLOT + PD_PARTY_SIZE)
     return; // a party slot shows its own selected look (pd_ui.focusId)
   pd_fill(&canvas, h->x, h->y, h->w, 2, 0xff7331);
@@ -1596,7 +1713,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
           }
         }
       } else {
-        if (down(B) && !pd_ui_back(&ui))
+        if (down(B) && !map_cursor_back(&ui) && !pd_ui_back(&ui))
           companion = false;
         if (down(L) || down(R)) {
           pd_ui_next_tab(&ui, down(R) ? 1 : -1);
@@ -1604,12 +1721,8 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
         for (int k = RIGHT; k <= DOWN; k++)
           if (down(k))
             focus_move(&ui, k);
-        int at = focus_index(&ui, focusId);
-        if (down(A) && at >= 0) {
-          struct pd_hit hit = ui.hits[at];
-          pd_ui_touch(&ui, hit.x + hit.w / 2, hit.y + hit.h / 2, true);
-          pd_ui_touch(&ui, hit.x + hit.w / 2, hit.y + hit.h / 2, false);
-        }
+        if (down(A))
+          focus_activate(&ui);
         switch (pd_ui_take_action(&ui)) {
         case PD_ACTION_LEAVE_GAME:
           leave = true;
@@ -1792,6 +1905,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
         host.ffOn = ff;
         host.hasState = access(ss, F_OK) == 0;
         pd_ui_draw(&ui, &canvas, &game, &snap, &host);
+        map_cursor_sync(&ui, &game, &snap);
         focus_draw(&ui, focus_resolve(&ui));
       }
       present();

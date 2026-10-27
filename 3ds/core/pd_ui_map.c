@@ -218,7 +218,7 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     int n = 0;
     const char* name = "";
     const char* dungeon = NULL;
-    if (ui->mapSel >= 0 || ui->mapDungeon >= 0) {
+    if (ui->mapSel >= 0 || ui->mapDungeon >= 0 || ui->mapPage >= 0) {
         int main = ui->mapSel >= 0 ? ui->mapSel : ui->mapDungeon;
         name = pd_mapsec_name(g, main);
         if (ui->mapDungeon >= 0) {
@@ -242,7 +242,7 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     // Over the map's top right: PLACES, ME, the other page(s) (MapScreen's order, left to right).
     buttonRight = view.x + view.w - 4;
     map_button(ui, c, "PLACES", HIT_MAP_PLACES);
-    if (ui->mapSel >= 0 || ui->mapDungeon >= 0 || (ui->mapPage >= 0 && ui->mapPage != playerPage)) {
+    if (ui->mapSel >= 0 || ui->mapDungeon >= 0 || ui->mapPage >= 0) {
         map_button(ui, c, "ME", HIT_MAP_ME);
     }
     if (art->pages > 1) map_button(ui, c, pd_map_page_name(g, (page + 1) % art->pages), HIT_MAP_REGION);
@@ -313,6 +313,7 @@ bool ui_map_act(struct pd_ui* ui, int id) {
         // The player's own tile: back to following the player.
         if (shown == lastPlayerPage && tx == lastPlayerTx && ty == lastPlayerTy) {
             ui->mapSel = ui->mapDungeon = -1;
+            ui->mapPage = -1;
             return true;
         }
         int mapsec, dungeon;

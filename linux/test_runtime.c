@@ -289,6 +289,89 @@ static void test_frame(struct mCore* c,bool companion,int frame,struct pd_ui* ui
     assert(found && ui->summarySlot==0);
     pd_ui_draw(ui,&canvas,&game,snap,&host);present();shot("summary");
     assert(pd_ui_back(ui) && ui->summarySlot==-1);
+    // The real region map at the host's canvas size, and PLACES through the
+    // same focused-button activation used by the physical controls.
+    ui->tab=PD_TAB_MAP;
+    pd_ui_draw(ui,&canvas,&game,snap,&host);
+    map_cursor_sync(ui,&game,snap);
+    focus_new_screen();focus_resolve(ui);
+    int mapIndex=focus_index(ui,HIT_MAP);
+    assert(mapIndex>=0);
+    assert(map_cursor_active(ui));
+    int playerPage,playerX,playerY;
+    assert(pd_map_player_tile(&game,snap,&playerPage,&playerX,&playerY));
+    assert(mapCursor.tx==playerX && mapCursor.ty==playerY);
+    int x=mapCursor.tx,y=mapCursor.ty;
+    focus_move(ui,RIGHT);assert(mapCursor.tx==x+1 && mapCursor.ty==y);
+    focus_move(ui,LEFT);assert(mapCursor.tx==x && mapCursor.ty==y);
+    focus_move(ui,DOWN);assert(mapCursor.tx==x && mapCursor.ty==y+1);
+    focus_move(ui,UP);assert(mapCursor.tx==x && mapCursor.ty==y);
+    // Every tile, including blank ocean and tiles underneath the map's buttons:
+    // A inspects the cursor's tile, never the centre or an overlaid button.
+    int checkedTiles=0;
+    for(int ty=mapCursor.minY;ty<=mapCursor.maxY;ty++)for(int tx=mapCursor.minX;tx<=mapCursor.maxX;tx++) {
+      while(mapCursor.tx<tx)focus_move(ui,RIGHT);
+      while(mapCursor.tx>tx)focus_move(ui,LEFT);
+      while(mapCursor.ty<ty)focus_move(ui,DOWN);
+      while(mapCursor.ty>ty)focus_move(ui,UP);
+      int section,dungeon;
+      pd_map_pick(&game,playerPage,tx,ty,&section,&dungeon);
+      if(tx==playerX && ty==playerY)section=dungeon=-1;
+      assert(ui->mapSel==section && ui->mapDungeon==dungeon); // updates without A
+      focus_activate(ui);
+      assert(ui->overlay==PD_OVERLAY_NONE);
+      checkedTiles++;
+      assert(ui->mapSel==section && ui->mapDungeon==dungeon);
+      pd_ui_draw(ui,&canvas,&game,snap,&host);
+      map_cursor_sync(ui,&game,snap);focus_resolve(ui);
+      assert(mapCursor.tx==tx && mapCursor.ty==ty);
+    }
+    // The grid clamps at each edge rather than jumping into another control.
+    for(int k=0;k<40;k++)focus_move(ui,RIGHT);
+    for(int k=0;k<40;k++)focus_move(ui,DOWN);
+    assert(mapCursor.tx==mapCursor.maxX && mapCursor.ty==mapCursor.maxY && focusId==HIT_MAP);
+    for(int k=0;k<40;k++)focus_move(ui,LEFT);
+    for(int k=0;k<40;k++)focus_move(ui,UP);
+    assert(mapCursor.tx==mapCursor.minX && mapCursor.ty==mapCursor.minY && focusId==HIT_MAP);
+    // ME must also reset an empty selection: both old/new section IDs are -1.
+    assert(ui->mapSel==-1 && ui->mapDungeon==-1);
+    pd_ui_draw(ui,&canvas,&game,snap,&host);
+    assert(map_cursor_back(ui));
+    int emptyMe=focus_index(ui,HIT_MAP_ME);assert(emptyMe>=0);
+    focusId=HIT_MAP_ME;focusAt=ui->hits[emptyMe];focus_activate(ui);
+    pd_ui_draw(ui,&canvas,&game,snap,&host);map_cursor_sync(ui,&game,snap);
+    assert(mapCursor.tx==playerX && mapCursor.ty==playerY);
+    focusId=HIT_MAP;focus_resolve(ui);
+    while(mapCursor.tx<playerX)focus_move(ui,RIGHT);
+    while(mapCursor.ty<playerY)focus_move(ui,DOWN);
+    focus_activate(ui);pd_ui_draw(ui,&canvas,&game,snap,&host);
+    focus_draw(ui,focus_resolve(ui));present();shot("map");
+    int placesIndex=focus_index(ui,HIT_MAP_PLACES);
+    assert(placesIndex>=0);
+    assert(map_cursor_back(ui) && focusId==HIT_MAP_PLACES);
+    assert(!map_cursor_back(ui));
+    focus_move(ui,DOWN);assert(map_cursor_active(ui));
+    assert(map_cursor_back(ui));
+    focus_activate(ui);
+    assert(ui->overlay==PD_OVERLAY_PLACES);
+    pd_ui_draw(ui,&canvas,&game,snap,&host);
+    focus_resolve(ui);focus_draw(ui,focus_resolve(ui));present();shot("map-places");
+    int placeIndex=focus_index(ui,focusId);
+    assert(placeIndex>=0 && focusId>=HIT_PLACE);
+    focus_move(ui,DOWN);assert(focusId>=HIT_PLACE);
+    focus_move(ui,UP);assert(focusId>=HIT_PLACE);
+    focus_activate(ui);
+    assert(ui->overlay==PD_OVERLAY_NONE && ui->mapSel>=0);
+    pd_ui_draw(ui,&canvas,&game,snap,&host);map_cursor_sync(ui,&game,snap);
+    focus_resolve(ui);assert(map_cursor_active(ui));
+    focus_draw(ui,focus_resolve(ui));present();shot("map-place-selected");
+    assert(map_cursor_back(ui));
+    int me=focus_index(ui,HIT_MAP_ME);assert(me>=0);focusId=HIT_MAP_ME;focusAt=ui->hits[me];
+    focus_activate(ui);pd_ui_draw(ui,&canvas,&game,snap,&host);map_cursor_sync(ui,&game,snap);
+    assert(mapCursor.tx==playerX && mapCursor.ty==playerY);
+    // Another tab invalidates the cursor so the next visit starts at ME again.
+    ui->tab=PD_TAB_PARTY;map_cursor_sync(ui,&game,snap);assert(!mapCursor.ready);
+    printf("PASS live region map: %d tiles, live names, edge clamps, PLACES, selection and ME\n",checkedTiles);
     // SETTINGS with HUD and TAB BAR, their pages, then GUIDE taken off the bar: MORE opens it.
     // As the host has it: no SCREEN row, ASPECT with AUTO ZOOM IN (ZOOM OUT), the HUD; scrolled to its end too.
     host.hasHud=true;host.hideScreenMode=true;host.hasExpand=true;host.expandGame=wideSupported;host.count=1;
@@ -408,7 +491,36 @@ static void test_controller_hotplug(void) {
   puts("PASS controller plugged in and out, its buttons the game's");
 #endif
 }
+// Modal hit lists retain the controls below the scrim for touch rendering.
+// Controller focus must neither start there nor move back through the scrim.
+static void test_modal_focus(void) {
+  struct pd_ui u={0};u.tab=PD_TAB_MAP;u.overlay=PD_OVERLAY_PLACES;u.startId=HIT_MAP;
+  u.hits[0]=(struct pd_hit){0,0,300,200,HIT_MAP,false};
+  u.hits[1]=(struct pd_hit){200,0,70,22,HIT_MAP_PLACES,false};
+  u.hits[2]=(struct pd_hit){0,0,320,240,HIT_SCRIM,false};
+  u.hits[3]=(struct pd_hit){10,30,300,180,HIT_SCRIM,true};
+  u.hits[4]=(struct pd_hit){10,48,300,18,HIT_PLACE+1,true};
+  u.hits[5]=(struct pd_hit){10,66,300,18,HIT_PLACE+2,true};
+  u.hitCount=6;
+  focusId=HIT_MAP;focus_new_screen();
+  assert(focus_resolve(&u)==4 && focusId==HIT_PLACE+1);
+  assert(focus_index(&u,HIT_MAP)==-1);
+  focus_move(&u,DOWN);assert(focusId==HIT_PLACE+2);
+  focus_move(&u,UP);assert(focusId==HIT_PLACE+1);
+  focus_move(&u,UP);assert(focusId==HIT_PLACE+1);
+  // A list with no selectable entries has no focus, never the hidden map.
+  u.hitCount=4;focus_new_screen();assert(focus_resolve(&u)==-1);
+  // Outside an overlay, L/R own the tab bar; D-pad stays on content.
+  u.overlay=PD_OVERLAY_NONE;u.hitCount=2;u.startId=-1;
+  u.hits[0]=(struct pd_hit){0,0,100,30,HIT_MAP,false};
+  u.hits[1]=(struct pd_hit){0,50,100,22,HIT_TAB+PD_TAB_MAP,false};
+  focus_new_screen();assert(focus_resolve(&u)==0);
+  focus_move(&u,DOWN);assert(focusId==HIT_MAP);
+  focusId=-1;focus_new_screen();
+  puts("PASS modal focus stays above the scrim and D-pad skips tab chips");
+}
 int main(int argc,char** argv) {
+  test_modal_focus();
   test_wide_window();
   test_companion_size();
   if(argc<4)test_controller_hotplug();

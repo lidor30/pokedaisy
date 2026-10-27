@@ -33,7 +33,14 @@ it or any of its parts off in the companion's `SETTINGS` > `HUD`. In
 
 Press the companion button to pause the game and open its companion. Use the
 D-pad to focus an option, A to choose it and B to go back. The shoulder buttons
-change tabs. Your game menu has cancel-first save, load and quit confirmations.
+change tabs. While a list or dialog is open, the D-pad stays inside it.
+Your game menu has cancel-first save, load and quit confirmations.
+
+In `MAP`, move the orange cursor across the grid with the D-pad. Towns, routes
+and landmarks are named as you move; empty tiles have no location name.
+B moves focus to `PLACES`. Use the D-pad to reach the other map
+buttons, then press A to choose one. Down from the buttons returns to the
+map cursor. L/R change tabs and X returns to the game.
 
 To see more of the map, set `ASPECT` in the companion's `SETTINGS` to `EXPAND`:
 the overworld reaches the edges of your screen at the same sharp scale as the

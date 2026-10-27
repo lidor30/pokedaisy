@@ -8,6 +8,7 @@
 // writes <name>-party.png, -pressed, -summary, -battle, -bag, -bag-item,
 // -bag-scrolled, -bag-pocket, -settings, -pick-screen and -confirm-save.
 #include <stdio.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,6 +19,7 @@
 #include "../core/pd_snapshot.h"
 #include "../core/pd_ui.h"
 #include "../core/pd_ui_internal.h"
+#include "../core/pd_map.h"
 #include "pd_png.h"
 
 #define TOP_W 400
@@ -308,6 +310,29 @@ int main(int argc, char** argv) {
         ui.mapBlink = true;
         draw(&p);
         shot(out, name, "map-blink", px);
+        // Empty tiles keep a blank label and offer ME, rather than naming the player.
+        for (int i = 0; i < ui.hitCount; i++) if (ui.hits[i].id == HIT_MAP) {
+            struct pd_hit h = ui.hits[i];
+            ui.touchX0 = h.x + 4 * h.w / PD_MAP_W;
+            ui.touchY0 = h.y + 4 * h.h / PD_MAP_H;
+            assert(ui_map_act(&ui, HIT_MAP));
+            break;
+        }
+        assert(ui.mapPage >= 0 && ui.mapSel == -1 && ui.mapDungeon == -1);
+        draw(&p);
+        assert(has_hit(&p, HIT_MAP_ME));
+        if (game.kind == PD_GAME_EMERALD) {
+            for (int i = 0; i < ui.hitCount; i++) if (ui.hits[i].id == HIT_MAP) {
+                struct pd_hit h = ui.hits[i];
+                // Inside Emerald's bottom-right label, the text area must be white.
+                for (int y = h.y + h.h - 26; y < h.y + h.h - 8; y++)
+                    for (int x = h.x + h.w - 125; x < h.x + h.w - 9; x++)
+                        assert(px[y * uiW + x] == 0xFFFFFF);
+            }
+        }
+        shot(out, name, "map-empty", px);
+        tap(&p, HIT_MAP_ME, 0);
+        assert(ui.mapPage == -1 && ui.mapSel == -1 && ui.mapDungeon == -1);
         tap(&p, HIT_MAP_PLACES, 0);
         drag(&p, HIT_SCRIM, -200);
         shot(out, name, "map-places", px);
