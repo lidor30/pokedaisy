@@ -26,6 +26,8 @@ import com.pokedaisy.app.companion.coop.CoopPair
 import com.pokedaisy.app.companion.coop.CoopPairing
 import com.pokedaisy.app.companion.coop.CoopOffReason
 import com.pokedaisy.app.companion.coop.CoopDropReason
+import com.pokedaisy.app.companion.coop.CoopLobby
+import com.pokedaisy.app.companion.coop.CoopLobbyWire
 import com.pokedaisy.app.companion.coop.CoopPartner
 import com.pokedaisy.app.companion.coop.CoopPeerId
 import com.pokedaisy.app.companion.coop.CoopQr
@@ -148,7 +150,36 @@ class CoopPairActions(
     val onDone: () -> Unit = {},
     val onTryAgain: () -> Unit = {},
     val onCancel: () -> Unit = {},
+    /** ROOMS: LIST MY ROOM flipped. */
+    val onListRoom: (Boolean) -> Unit = {},
+    /** ROOMS: a typed code to join (the page checks and looks it up). */
+    val onJoinCode: (String) -> Unit = {},
+    val onRefreshRooms: () -> Unit = {},
+    /** ROOMS: a listed room tapped, by its code. */
+    val onJoinRoom: (String) -> Unit = {},
 )
+
+/**
+ * ROOMS on the invite page: [available] = a relay to hold them; [lobby] the lobby's state (CoopSession.lobby); [error] a line
+ * under JOIN (a code that found nothing).
+ */
+class CoopRoomsUi(val available: Boolean, val lobby: CoopLobby.State, val error: String? = null)
+
+/** The line ROOMS shows for a lobby problem. */
+fun coopLobbyProblemLine(p: CoopLobby.Problem): String = when (p) {
+    CoopLobby.Problem.OFFLINE -> "Couldn't reach the relay. Trying again."
+    CoopLobby.Problem.LIMIT -> "Too many tries. Wait a minute."
+    CoopLobby.Problem.FULL -> "The relay is full. Try again later."
+}
+
+/** The line a code lookup that didn't find a room shows, or null for one that did. */
+fun coopFindLine(r: CoopLobby.FindResult): String? = when (r) {
+    is CoopLobby.FindResult.Found -> null
+    CoopLobby.FindResult.NotFound -> "No open room has that code"
+    CoopLobby.FindResult.BadCode -> "That isn't a room code"
+    CoopLobby.FindResult.Limit -> "Too many tries. Wait a minute."
+    CoopLobby.FindResult.Offline -> "Couldn't reach the relay. Try again."
+}
 
 /** The line a failed pairing shows. */
 fun coopFailLine(reason: CoopPairing.CoopPairFail): String = when (reason) {
@@ -178,6 +209,7 @@ fun CoopPairBody(
     wifi: String?,
     error: String?,
     actions: CoopPairActions,
+    rooms: CoopRoomsUi? = null,
 ) {
     if (picked == null) {
         CoopSavePick(m, small, choices, actions.onPick)
@@ -186,7 +218,7 @@ fun CoopPairBody(
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
     Column(Modifier.fillMaxSize().verticalScroll(rememberScrollState())) {
         when (step) {
-            is CoopPairing.Step.Inviting -> Invite(m, small, step, ticketLink, relayOnly, wifi, error, actions)
+            is CoopPairing.Step.Inviting -> Invite(m, small, step, ticketLink, relayOnly, wifi, error, actions, rooms)
             is CoopPairing.Step.Connecting -> StatusWindow(m, tk("CONNECTING…"), null, tk("CANCEL"), actions.onCancel)
             is CoopPairing.Step.Confirm -> StatusWindow(m, tk("WAITING FOR YOUR PARTNER…"), null, null) {}
             is CoopPairing.Step.WaitingForPartner -> StatusWindow(m, tk("WAITING FOR YOUR PARTNER…"), null, null) {}
@@ -252,11 +284,16 @@ private fun Invite(
     wifi: String?,
     error: String?,
     a: CoopPairActions,
+    rooms: CoopRoomsUi?,
 ) {
     var pasted by remember { mutableStateOf("") }
     var address by remember { mutableStateOf("") }
     OptionListWindow(m, Modifier.fillMaxWidth()) {
         Column(Modifier.padding(horizontal = m.u * 2)) {
+            if (rooms != null) {
+                Rooms(m, small, rooms, a)
+                Section(tk("INVITE LINK"), m)
+            }
             Row(horizontalArrangement = Arrangement.spacedBy(m.u * 6), verticalAlignment = Alignment.Top) {
                 if (link != null) CoopQrCode(link, m)
                 else GbaText(tr("CONNECTING…"), OptionColors.muted, OptionColors.mutedShadow, m, Modifier.padding(vertical = m.u * 4))
@@ -297,6 +334,69 @@ private fun Invite(
             Spacer(Modifier.height(m.u * 2))
         }
     }
+}
+
+/**
+ * ROOMS, first on the invite page: this device's room code (the relay holds it while the page waits), LIST MY ROOM, a code to
+ * join and the open rooms of the same ROM. Without a relay only a line saying so.
+ */
+@Composable
+private fun Rooms(m: GbaTextMetrics, small: GbaTextMetrics, rooms: CoopRoomsUi, a: CoopPairActions) {
+    var typed by remember { mutableStateOf("") }
+    if (!rooms.available) {
+        Section(tk("ROOMS"), m)
+        GbaText(tr("Rooms need a relay: CO-OP > RELAY"), OptionColors.muted, OptionColors.mutedShadow, small, Modifier.padding(vertical = m.u * 2), maxLines = 3)
+        return
+    }
+    Section(tk("YOUR ROOM"), m)
+    val lobby = rooms.lobby
+    val code = lobby.code
+    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(m.u * 6)) {
+        if (code != null) {
+            GbaText(tr("CODE") + "  " + CoopLobbyWire.showCode(code), OptionColors.value, OptionColors.valueShadow, m)
+        } else {
+            GbaText(tr("CONNECTING…"), OptionColors.muted, OptionColors.mutedShadow, m)
+        }
+    }
+    GbaText(
+        tr("Your partner types this code in JOIN A ROOM."), OptionColors.label, OptionColors.labelShadow, small,
+        Modifier.padding(vertical = m.u * 2), maxLines = 3,
+    )
+    // A row with a subtitle gets a line more, as GroupedRows gives it.
+    val subtitled = m.rowHeight * 1.2f + m.lineHeight
+    OptionLine(
+        tk("LIST MY ROOM"), tk(if (lobby.listed) "ON" else "OFF"), selected = false, m, height = subtitled,
+        subtitle = tr("Players of the same game see your trainer's name"),
+        onClick = { a.onListRoom(!lobby.listed) },
+    )
+    lobby.problem?.let {
+        GbaText(tr(coopLobbyProblemLine(it)), OptionColors.value, OptionColors.valueShadow, small, Modifier.padding(top = m.u * 2), maxLines = 3)
+    }
+
+    Section(tk("JOIN A ROOM"), m)
+    OptionTextField(typed, { typed = it.take(12) }, small, placeholder = tr("ROOM CODE"), code = true)
+    Spacer(Modifier.height(m.u * 3))
+    Row { OptionButton(tk("JOIN"), m, enabled = CoopLobbyWire.normalizeCode(typed) != null, onClick = { a.onJoinCode(typed) }) }
+    rooms.error?.let {
+        GbaText(tr(it), OptionColors.value, OptionColors.valueShadow, small, Modifier.padding(top = m.u * 3), maxLines = 3)
+    }
+
+    Section(tk("OPEN ROOMS"), m)
+    val list = lobby.rooms
+    when {
+        lobby.loadingRooms && list == null -> GbaText(tr("SEARCHING…"), OptionColors.muted, OptionColors.mutedShadow, small, Modifier.padding(vertical = m.u * 2))
+        list == null -> Unit
+        list.isEmpty() -> GbaText(tr("No open rooms for this game"), OptionColors.muted, OptionColors.mutedShadow, small, Modifier.padding(vertical = m.u * 2))
+        else -> list.forEach { r ->
+            OptionLine(
+                r.name, CoopLobbyWire.showCode(r.code), selected = false, m, chevron = true, height = subtitled,
+                subtitle = if (r.waitingMinutes < 1) tr("Just opened") else tr("Waiting {0} min", r.waitingMinutes),
+                onClick = { a.onJoinRoom(r.code) },
+            )
+        }
+    }
+    Spacer(Modifier.height(m.u * 3))
+    Row { OptionButton(tk("REFRESH"), m, enabled = !lobby.loadingRooms, onClick = a.onRefreshRooms) }
 }
 
 @Composable

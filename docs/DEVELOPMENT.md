@@ -3049,6 +3049,20 @@ Its manual page is a draft, `docs/manual-drafts/coop.md` (its top note says what
   full, 4413 too large, 4429 rate / limit (a bad path, 4400, and a per-IP limit, 4429, are refused in the HTTP handshake: the client sees a failed connect, 1006, not a close code). `GET /healthz` on the health port answers `200 ok`. The limits (`MAX_ROOMS`,
   `MAX_SOCKETS_PER_IP`, rates, timeouts, `TRUST_PROXY`) and how to deploy are in `server/coop-relay/README.md`. The relay logs counts and
   close codes only.
+- **ROOMS (the lobby)**: `GET /v1/lobby` on the same relay, binary like the rooms: HOST `0x20` (flags, bit 0 listed; invite,
+  game, name), UNHOST `0x21`, FIND `0x22` (code), LIST `0x23` (game); answers HOSTED `0x30` (code), FOUND `0x31` (invite), ROOMS
+  `0x32` (count, then code / name / u16 minutes waiting), ERROR `0x3F` (request kind, reason: 1 not found, 2 bad request, 3 limit,
+  4 full). A string is a u8 length and UTF-8 bytes. The server is `RelayLobby` + `LobbyWire`; the app's copy is `CoopLobbyWire`
+  (change them together). A room belongs to its lobby socket and goes with it; a code is 6 of `23456789ABCDEFGHJKMNPQRSTVWXYZ`
+  (no 0 / O, 1 / I / L, U), shown `K7Q-4MX`. The invite is opaque to the relay: the app sends its ticket minus the LAN addresses
+  (`CoopLobbyWire.lobbyInvite`: they'd reach strangers), so a FIND gives exactly what a link gives, and `CoopPairing.join` dials it.
+  The game key is the ROM's SHA-1, first 16 hex digits: LIST only shows the same ROM. Listed names are checked on both ends
+  (letters of any script, digits, ` .'!?&♂♀-`, 16 at most). Lookups are 10 a minute per address, right or wrong (30^6 codes), and
+  a room not refreshed for 30 minutes is dropped (the app re-hosts every 10). `CoopLobby` runs while `CoopSession`'s endpoint runs
+  with a relay, ticked from its poll loop, and hosts while the pairing step is Inviting with a ticket (`syncLobby`); LIST MY ROOM
+  is `CoopSession.roomListed`, off on every new invite page. Tests: `RelayLobbyTest`, `LobbyServerTest` (server), `CoopLobbyTest`,
+  `CoopRelayIntegrationTest.joinsThroughARoomCode` (the app's lobby and transport through the real relay). ui-preview:
+  `coop-invite-rooms*`.
 - **Dialing**: a `connect` tries the ticket's addresses and the NSD addresses over TCP (1.5 s connect) while the relay rooms are
   joined (the pair room of an allowed peer, else the ticket's invite room); whichever handshake finishes first wins. Relay rooms: a
   socket on the pair room of every allowed peer, on our own invite room while pairing is open; in a pair room the smaller key

@@ -16,6 +16,9 @@ import com.pokedaisy.app.companion.coop.EMERALD_COOP_SHA1
 import com.pokedaisy.app.companion.coop.parseHostPort
 import com.pokedaisy.app.companion.ui.CoopPairActions
 import com.pokedaisy.app.companion.ui.CoopPairBody
+import com.pokedaisy.app.companion.ui.CoopRoomsUi
+import com.pokedaisy.app.companion.ui.coopFindLine
+import com.pokedaisy.app.companion.coop.CoopLobby
 import com.pokedaisy.app.companion.ui.CoopSaveChoice
 import com.pokedaisy.app.companion.ui.coopPartnerRows
 import com.pokedaisy.app.companion.ui.coopWifiAddress
@@ -1353,11 +1356,13 @@ class SettingsActivity : ComponentActivity() {
         val step: CoopPairing.Step = CoopPairing.Step.Inviting(null, emptyList()),
         val wifi: String? = null,
         val error: String? = null,
+        val rooms: CoopRoomsUi? = null,
     )
 
     internal var coopPreview by mutableStateOf<CoopPreview?>(null)
     private var coopChoices by mutableStateOf<List<CoopSaveChoice>?>(null)
     private var coopPicked by mutableStateOf<CoopSaveChoice?>(null)
+    private var coopRoomError by mutableStateOf<String?>(null)
     private var coopPairing by mutableStateOf<CoopPairing?>(null)
     private var coopTicketIn: String? = null
     private var coopError by mutableStateOf<String?>(null)
@@ -1438,6 +1443,7 @@ class SettingsActivity : ComponentActivity() {
         CoopSession.afterStart {
             pairing.open(id)
             if (ticket != null) pairing.join(ticket)
+            CoopSession.refreshRooms()
         }
         val gen = coopIpGen
         if (!prefs.coopRelayOnly) Thread {
@@ -1457,6 +1463,7 @@ class SettingsActivity : ComponentActivity() {
         coopPicked = null
         coopChoices = null
         coopError = null
+        coopRoomError = null
         coopWifi = null
     }
 
@@ -1498,11 +1505,30 @@ class SettingsActivity : ComponentActivity() {
             onDone = { leaveCoopPair(); screen = Screen.HOME },
             onTryAgain = { coopPicked?.let(::coopPick) },
             onCancel = { leaveCoopPair() },
+            onListRoom = { on -> CoopSession.roomListed = on },
+            onJoinCode = ::joinRoom,
+            onRefreshRooms = { CoopSession.refreshRooms() },
+            onJoinRoom = ::joinRoom,
         )
+        val lobby = CoopSession.lobby.collectAsState().value
+        val rooms = preview?.rooms
+            ?: CoopRoomsUi(CoopRelay.effective(prefs.coopRelayUrl, BuildConfig.COOP_RELAY_URL) != null, lobby, coopRoomError)
         CoopPairBody(
             m, small, preview?.choices ?: coopChoices, preview?.picked ?: coopPicked, step, link,
-            prefs.coopRelayOnly, preview?.wifi ?: coopWifi, preview?.error ?: coopError, actions,
+            prefs.coopRelayOnly, preview?.wifi ?: coopWifi, preview?.error ?: coopError, actions, rooms,
         )
+    }
+
+    /** ROOMS: a typed or tapped room code, looked up on the relay's lobby, then joined like an invite link. */
+    private fun joinRoom(code: String) {
+        coopError = null
+        coopRoomError = null
+        CoopSession.findRoom(code) { r ->
+            runOnUiThread {
+                if (r is CoopLobby.FindResult.Found) coopPairing?.join(r.invite)
+                else coopRoomError = coopFindLine(r)
+            }
+        }
     }
 
     /** BY IP: asks the address for its invite (off the UI thread), then joins it. */

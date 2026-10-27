@@ -3,7 +3,7 @@
 A small WebSocket relay for the co-op link. Two phones open an outgoing `wss://` connection to the same room
 (`/v1/rooms/<32 lowercase hex characters>`); the relay pairs them and forwards their messages unchanged. The phones
 encrypt end to end, so the relay sees ciphertext and sizes only. It logs counts and close codes, never payloads, room
-ids or full IP addresses (IPv4 is cut to a /24, IPv6 to a /48).
+ids, lobby codes, names or full IP addresses (IPv4 is cut to a /24, IPv6 to a /48).
 
 ## Protocol
 
@@ -15,6 +15,34 @@ Binary messages only; byte 0 is the kind.
 - Close codes: 4400 bad request (text message, unknown kind), 4408 expired / idle, 4409 room full,
   4413 message too large, 4429 rate or limit. A bad path (4400) and a per-IP limit (4429) are refused in the HTTP
   handshake, so a client sees a failed connect (1006), not a close code.
+
+## Lobby (room codes and open rooms)
+
+`/v1/lobby` on the same port is a second kind of socket: it hands a host's invite to whoever has its short code, and lists
+the rooms their hosts chose to list. It never sees the connection that follows (that goes through `/v1/rooms/` as before),
+and the invite is opaque to it: the app sends its invite ticket without LAN addresses.
+
+Binary messages, byte 0 the kind, then fields in order. A string is a u8 byte count and that many UTF-8 bytes; numbers are
+big-endian. Every request but UNHOST gets exactly one answer, in order.
+
+| Kind | Name | Direction | Fields |
+| --- | --- | --- | --- |
+| `0x20` | HOST | to server | u8 flags (bit 0 = listed), invite, game, name: opens this socket's room or updates it (same code) |
+| `0x21` | UNHOST | to server | none: the room goes (no answer) |
+| `0x22` | FIND | to server | code (any case; spaces and `-` ignored) |
+| `0x23` | LIST | to server | game |
+| `0x30` | HOSTED | to client | code |
+| `0x31` | FOUND | to client | invite |
+| `0x32` | ROOMS | to client | u8 count, then per room: code, name, u16 minutes since it opened (newest first) |
+| `0x3F` | ERROR | to client | u8 the request's kind, u8 reason: 1 not found, 2 bad request, 3 limit, 4 lobby full |
+
+- A code is 6 characters of `23456789ABCDEFGHJKMNPQRSTVWXYZ`. A room lives as long as the socket that hosted it, until UNHOST,
+  or `LOBBY_ROOM_TIMEOUT_SEC` after its last HOST.
+- `game` is 16 lowercase hex digits; LIST returns only listed rooms of that game, never the asker's own.
+- `invite` is 8 to 255 printable ASCII characters without spaces. A listed room's `name` is 1 to 16 letters (any script),
+  digits, spaces and `.'!?&♂♀-`; an unlisted room's name is ignored.
+- A malformed message or a text message closes the socket with 4400, one over 770 bytes with 4413; a bad field is an ERROR.
+  A per-address socket limit is refused in the handshake (a failed connect).
 
 ## Limits
 
@@ -37,6 +65,16 @@ All settable by environment variable (defaults shown).
 | `TRUST_PROXY` | none | where the client address comes from: `none`, `forwarded` or `cloudflare` (below) |
 | `TRUSTED_PROXIES` | loopback + private ranges | CIDR list (comma separated); proxy headers are read only from a socket inside it |
 | `CLOUDFLARE_RANGES_FILE` | `cloudflare-ips.txt` | Cloudflare's ranges, one CIDR per line (the image ships `/app/cloudflare-ips.txt`) |
+| `LOBBY_MAX_ROOMS` | 10000 | lobby rooms at once (over it: ERROR full) |
+| `LOBBY_MAX_SOCKETS_PER_IP` | 8 | open lobby sockets per client address |
+| `LOBBY_MAX_NEW_SOCKETS_PER_IP_PER_MIN` | 30 | new lobby sockets per address per minute |
+| `LOBBY_MAX_ROOMS_PER_IP` | 4 | rooms hosted per address |
+| `LOBBY_MAX_HOSTS_PER_IP_PER_MIN` | 20 | HOSTs per address per minute |
+| `LOBBY_MAX_FINDS_PER_IP_PER_MIN` | 10 | FINDs per address per minute, found or not: what keeps guessing codes slow |
+| `LOBBY_MAX_LISTS_PER_IP_PER_MIN` | 30 | LISTs per address per minute |
+| `LOBBY_MAX_LISTED` | 50 | rooms in one ROOMS answer |
+| `LOBBY_ROOM_TIMEOUT_SEC` | 1800 | a room not refreshed by a HOST this long is dropped |
+| `LOBBY_IDLE_TIMEOUT_SEC` | 120 | a lobby socket with no room, silent this long, is closed 4408 |
 
 ### Client address modes (`TRUST_PROXY`)
 

@@ -110,6 +110,71 @@ class CoopRelayIntegrationTest {
         repeat(200) { assertArrayEquals(byteArrayOf(1, (it shr 8).toByte(), it.toByte()), got[it + 1]) }
     }
 
+    /** Waits for [pred] on a lobby's state (its answers come on OkHttp's threads). */
+    private fun CoopLobby.waitState(what: String, pred: (CoopLobby.State) -> Boolean): CoopLobby.State {
+        val end = System.currentTimeMillis() + 10_000
+        while (true) {
+            state.value.takeIf(pred)?.let { return it }
+            if (System.currentTimeMillis() > end) fail("lobby: no $what; state ${state.value}")
+            Thread.sleep(5)
+        }
+    }
+
+    @Test fun joinsThroughARoomCode() {
+        val host = Node(); val joiner = Node()
+        val game = CoopLobbyWire.gameKey(EMERALD_COOP_SHA1)
+        val hostLobby = CoopLobby(OkHttpRelayConnector(), url)
+        val joinLobby = CoopLobby(OkHttpRelayConnector(), url)
+        try {
+            host.transport.setPolicy(emptySet(), true, "host")
+            hostLobby.setHost(CoopLobby.Host(CoopLobbyWire.lobbyInvite(host.ticket)!!, game, "MAY", listed = true))
+            val code = hostLobby.waitState("code") { it.code != null }.code!!
+
+            joinLobby.refresh(game)
+            val rooms = joinLobby.waitState("rooms") { it.rooms != null }.rooms!!
+            assertEquals(listOf(CoopLobbyWire.Listing(code, "MAY", 0)), rooms)
+
+            val found = java.util.concurrent.LinkedBlockingQueue<CoopLobby.FindResult>()
+            joinLobby.find(CoopLobbyWire.showCode(code).lowercase()) { found.add(it) }
+            val invite = (found.poll(10, java.util.concurrent.TimeUnit.SECONDS) as CoopLobby.FindResult.Found).invite
+            assertTrue("no LAN addresses in a lobby invite", CoopTicket.decode(invite)!!.addresses.isEmpty())
+
+            assertEquals(0, joiner.transport.connect(invite))
+            host.connected(joiner.id)
+            joiner.connected(host.id)
+            host.transport.accept(joiner.id)
+            exchange(joiner, host)
+
+            // The host gives the room up: the code stops working.
+            hostLobby.setHost(null)
+            Thread.sleep(300)
+            joinLobby.find(code) { found.add(it) }
+            assertEquals(CoopLobby.FindResult.NotFound, found.poll(10, java.util.concurrent.TimeUnit.SECONDS))
+        } finally {
+            hostLobby.close()
+            joinLobby.close()
+        }
+    }
+
+    @Test fun anUnlistedRoomIsOnlyFoundByItsCode() {
+        val host = Node()
+        val game = CoopLobbyWire.gameKey(EMERALD_COOP_SHA1)
+        val hostLobby = CoopLobby(OkHttpRelayConnector(), url)
+        val other = CoopLobby(OkHttpRelayConnector(), url)
+        try {
+            hostLobby.setHost(CoopLobby.Host(CoopLobbyWire.lobbyInvite(host.ticket)!!, game, "MAY", listed = false))
+            val code = hostLobby.waitState("code") { it.code != null }.code!!
+            other.refresh(game)
+            assertTrue(other.waitState("rooms") { it.rooms != null }.rooms!!.isEmpty())
+            val found = java.util.concurrent.LinkedBlockingQueue<CoopLobby.FindResult>()
+            other.find(code) { found.add(it) }
+            assertTrue(found.poll(10, java.util.concurrent.TimeUnit.SECONDS) is CoopLobby.FindResult.Found)
+        } finally {
+            hostLobby.close()
+            other.close()
+        }
+    }
+
     @Test fun pairsThroughTheRelay() {
         val host = Node(); val joiner = Node()
         pairedThroughInvite(host, joiner)

@@ -26,4 +26,6 @@ dependencies {
     implementation("org.json:json:20240303")
     // CoopRelaySocket (the relay over WebSocket).
     implementation("com.squareup.okhttp3:okhttp:4.12.0")
+    // CoopKeys' X25519 (the co-op connection's Noise handshake).
+    implementation("org.bouncycastle:bcprov-jdk18on:1.79")
 }

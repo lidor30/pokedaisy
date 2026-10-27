@@ -3,7 +3,7 @@ title: Play together
 summary: How to pair with a friend's Emerald save, what the link shows, and how to battle together.
 section: player
 order: 20
-keywords: [co-op, coop, multiplayer, two player, netplay, online, link, friend, invite, qr]
+keywords: [co-op, coop, multiplayer, two player, netplay, online, link, friend, invite, qr, room, room code, lobby, open rooms]
 ---
 
 > DRAFT, not published. Co-op is behind `FeatureFlags.coop` (off by default), so this page lives in
@@ -23,6 +23,29 @@ together. You pair first, the link between your devices stays alive, and then th
 - A save you have saved in the game at least once.
 - Both devices on the internet. The same Wi-Fi is not required.
 - No cheats loaded. The link stays off while any cheat is on. Once the link is on, switching a cheat on is refused with a notice.
+
+## Pair with a room code
+
+The pairing page starts with `YOUR ROOM`. While the page is open, you have a room with a six letter code such as `K7Q-4MX`.
+
+1. On the top screen open Settings, then `CO-OP`, then `PAIR`, and pick your save.
+2. Tell your partner the code under `YOUR ROOM`.
+3. Your partner opens the same page, types the code under `JOIN A ROOM` and taps `JOIN`. Dashes and spaces don't
+   matter, and neither do capitals.
+
+Then both of you see `ACCEPT THIS PLAYER?`, as with a link. The code works only while your pairing page is open. Close
+the page and the room goes away; open it again and you get a new code.
+
+### Open rooms
+
+Turn `LIST MY ROOM` on to put your room on a public list. Other players with the same ROM see your trainer's name under
+`OPEN ROOMS` and can tap it to join, without a code. Nobody else sees it. It's off each time you open the page.
+
+`OPEN ROOMS` shows the rooms of other players who listed theirs, newest first. Tap `REFRESH` for the latest list.
+Joining a stranger's room still asks you both to accept, so check the name and ID before you do.
+
+> [!NOTE]
+> Rooms need a relay (see `RELAY` below). With `RELAY` set to `NONE` the page says so and only the other ways work.
 
 ## Pair with a link or QR code
 
@@ -90,6 +113,10 @@ The companion's SETTINGS has a `LINK` row that tells you where the link stands.
 | Couldn't reach your partner | Check both internet connections, then `TRY AGAIN`. |
 | No answer | The other device didn't respond in time. `TRY AGAIN`. |
 | That invite link isn't valid | Copy the whole link again. |
+| No open room has that code | Check the code with your partner. Their pairing page must be open. |
+| That isn't a room code | A code has six letters and digits, like `K7Q-4MX`. |
+| Too many tries. Wait a minute. | Wait a minute before you try another code. |
+| Couldn't reach the relay | Check your internet connection. The page keeps trying by itself. |
 
 ## Battling together
 

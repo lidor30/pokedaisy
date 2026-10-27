@@ -1066,6 +1066,18 @@ private val COOP_CHOICES by lazy {
     )
 }
 
+/** ROOMS with a code, listed, and two open rooms of invented trainers. */
+private val COOP_ROOMS = com.pokedaisy.app.companion.ui.CoopRoomsUi(
+    true,
+    com.pokedaisy.app.companion.coop.CoopLobby.State(
+        code = "K7Q4MX", listed = true,
+        rooms = listOf(
+            com.pokedaisy.app.companion.coop.CoopLobbyWire.Listing("ZP3W8H", "ANNA", 0),
+            com.pokedaisy.app.companion.coop.CoopLobbyWire.Listing("C9TXR2", "BEN", 12),
+        ),
+    ),
+)
+
 /** Settings with RELAY ONLY / a relay / one pairing on disk as the shot wants them; [preview] is the pairing page's stand-in. */
 internal fun coopSettings(
     relayOnly: Boolean = false, relay: String? = null, paired: Boolean = false,
@@ -2506,6 +2518,27 @@ fun main(args: Array<String>) {
         },
         Shot("coop-invite", tw, th, td, activity {
             coopSettings(preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), wifi = "192.168.1.20:47321"))
+        }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
+        // ROOMS: this device's code and the open rooms of the same game (invented trainers), then the lobby down.
+        Shot("coop-invite-rooms", tw, th, td, activity {
+            coopSettings(preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), wifi = "192.168.1.20:47321", rooms = COOP_ROOMS))
+        }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
+        Shot("coop-invite-rooms-open", tw, th, td, activity {
+            coopSettings(preview = SettingsActivity.CoopPreview(
+                COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"),
+                rooms = com.pokedaisy.app.companion.ui.CoopRoomsUi(COOP_ROOMS.available, COOP_ROOMS.lobby, "No open room has that code"),
+            ))
+        }) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("REFRESH")).performScrollTo()
+        },
+        Shot("coop-invite-rooms-offline", tw, th, td, activity {
+            coopSettings(preview = SettingsActivity.CoopPreview(
+                COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"),
+                rooms = com.pokedaisy.app.companion.ui.CoopRoomsUi(true, com.pokedaisy.app.companion.coop.CoopLobby.State(
+                    rooms = emptyList(), problem = com.pokedaisy.app.companion.coop.CoopLobby.Problem.OFFLINE,
+                )),
+            ))
         }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
         Shot("coop-invite-relayonly", tw, th, td, activity {
             coopSettings(relayOnly = true, preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite")))

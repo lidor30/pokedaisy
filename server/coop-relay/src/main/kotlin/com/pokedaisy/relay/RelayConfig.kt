@@ -35,6 +35,21 @@ data class RelayConfig(
     val trustedProxies: List<String> = DEFAULT_TRUSTED_PROXIES,
     /** Cloudflare's published ranges (CIDRs), for [ProxyMode.CLOUDFLARE]. */
     val cloudflareRanges: List<String> = emptyList(),
+    // The lobby (`/v1/lobby`: short codes and the listed rooms, RelayLobby).
+    val lobbyMaxRooms: Int = 10_000,
+    val lobbyMaxSocketsPerIp: Int = 8,
+    val lobbyMaxNewSocketsPerIpPerMin: Int = 30,
+    val lobbyMaxRoomsPerIp: Int = 4,
+    val lobbyMaxHostsPerIpPerMin: Int = 20,
+    /** Code lookups, right or wrong: what keeps guessing codes slow. */
+    val lobbyMaxFindsPerIpPerMin: Int = 10,
+    val lobbyMaxListsPerIpPerMin: Int = 30,
+    /** The most rooms one LIST answer carries (newest first). */
+    val lobbyMaxListed: Int = 50,
+    /** A room not refreshed by a HOST this long is dropped. */
+    val lobbyRoomTimeoutSec: Int = 1800,
+    /** A lobby socket with no room, silent this long, is closed. */
+    val lobbyIdleTimeoutSec: Int = 120,
 ) {
     companion object {
         val DEFAULT_TRUSTED_PROXIES = listOf(
@@ -79,6 +94,16 @@ data class RelayConfig(
                 trustedProxies = env["TRUSTED_PROXIES"]?.split(',')?.map { it.trim() }?.filter { it.isNotEmpty() }
                     ?: d.trustedProxies,
                 cloudflareRanges = ranges,
+                lobbyMaxRooms = int("LOBBY_MAX_ROOMS", d.lobbyMaxRooms),
+                lobbyMaxSocketsPerIp = int("LOBBY_MAX_SOCKETS_PER_IP", d.lobbyMaxSocketsPerIp),
+                lobbyMaxNewSocketsPerIpPerMin = int("LOBBY_MAX_NEW_SOCKETS_PER_IP_PER_MIN", d.lobbyMaxNewSocketsPerIpPerMin),
+                lobbyMaxRoomsPerIp = int("LOBBY_MAX_ROOMS_PER_IP", d.lobbyMaxRoomsPerIp),
+                lobbyMaxHostsPerIpPerMin = int("LOBBY_MAX_HOSTS_PER_IP_PER_MIN", d.lobbyMaxHostsPerIpPerMin),
+                lobbyMaxFindsPerIpPerMin = int("LOBBY_MAX_FINDS_PER_IP_PER_MIN", d.lobbyMaxFindsPerIpPerMin),
+                lobbyMaxListsPerIpPerMin = int("LOBBY_MAX_LISTS_PER_IP_PER_MIN", d.lobbyMaxListsPerIpPerMin),
+                lobbyMaxListed = int("LOBBY_MAX_LISTED", d.lobbyMaxListed),
+                lobbyRoomTimeoutSec = int("LOBBY_ROOM_TIMEOUT_SEC", d.lobbyRoomTimeoutSec),
+                lobbyIdleTimeoutSec = int("LOBBY_IDLE_TIMEOUT_SEC", d.lobbyIdleTimeoutSec),
             )
         }
     }

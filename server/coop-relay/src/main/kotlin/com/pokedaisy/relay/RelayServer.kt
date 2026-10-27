@@ -25,10 +25,13 @@ import java.util.concurrent.atomic.AtomicLong
 /**
  * The co-op relay: `GET /v1/rooms/<32 lowercase hex>` upgraded to a WebSocket pairs two peers and forwards their
  * binary DATA messages unchanged (see the protocol in README.md). It never looks inside a message and logs counts
- * and close codes only. [tap] sees each forwarded body (tests only).
+ * and close codes only. [tap] sees each forwarded body (tests only). `GET /v1/lobby` is the lobby ([RelayLobby]): short
+ * room codes and the listed rooms, which hand a host's invite to whoever asks for it.
  */
 class RelayServer(private val config: RelayConfig, private val tap: ((ByteArray) -> Unit)? = null) {
     private val rooms = RelayRooms(config) { System.currentTimeMillis() }
+    private val lobby = RelayLobby(config, { System.currentTimeMillis() })
+    private val lobbySockets = ConcurrentHashMap<Long, WebSocket>()
     private val sockets = ConcurrentHashMap<Long, WebSocket>()
     private val ids = AtomicLong()
     private val messages = AtomicLong()
@@ -82,6 +85,10 @@ class RelayServer(private val config: RelayConfig, private val tap: ((ByteArray)
 
     private fun sweep() {
         for (id in rooms.expired()) closeWith(id, 4408)
+        for (id in lobby.expired()) {
+            closeCodes.getOrPut(4408) { AtomicLong() }.incrementAndGet()
+            lobbySockets[id]?.close(4408)
+        }
     }
 
     private fun closeWith(id: Long, code: Int) {
@@ -91,7 +98,7 @@ class RelayServer(private val config: RelayConfig, private val tap: ((ByteArray)
 
     private fun logStats() {
         val codes = closeCodes.entries.sortedBy { it.key }.joinToString(",") { "${it.key}=${it.value.get()}" }
-        println("relay rooms=${rooms.roomCount} sockets=${rooms.socketCount} messages=${messages.get()} bytes=${bytes.get()} sendFailures=${sendFailures.get()} closes={$codes}")
+        println("relay rooms=${rooms.roomCount} sockets=${rooms.socketCount} messages=${messages.get()} bytes=${bytes.get()} sendFailures=${sendFailures.get()} lobbyRooms=${lobby.roomCount} lobbyListed=${lobby.listedCount} lobbySockets=${lobby.socketCount} closes={$codes}")
     }
 
     /** `/v1/rooms/<id>` -> the id, else null. */
@@ -100,6 +107,8 @@ class RelayServer(private val config: RelayConfig, private val tap: ((ByteArray)
         if (!path.startsWith(PATH_PREFIX)) return null
         return path.substring(PATH_PREFIX.length).takeIf { RelayRooms.isRoomId(it) }
     }
+
+    private fun isLobby(resource: String): Boolean = resource.substringBefore('?') == LOBBY_PATH
 
     /** The client address: the socket's, or what a trusted proxy says (see [ClientIp]). */
     private fun clientIp(conn: WebSocket, handshake: ClientHandshake): String {
@@ -133,12 +142,27 @@ class RelayServer(private val config: RelayConfig, private val tap: ((ByteArray)
         override fun onStart() { started.countDown() }
 
         override fun onWebsocketHandshakeReceivedAsServer(conn: WebSocket, draft: Draft, request: ClientHandshake): ServerHandshakeBuilder {
+            if (isLobby(request.resourceDescriptor)) {
+                if (!lobby.canAdmit(clientIp(conn, request))) throw InvalidDataException(4429, "limit")
+                return super.onWebsocketHandshakeReceivedAsServer(conn, draft, request)
+            }
             if (roomOf(request.resourceDescriptor) == null) throw InvalidDataException(4400, "bad path")
             if (!rooms.canAdmit(clientIp(conn, request))) throw InvalidDataException(4429, "limit")
             return super.onWebsocketHandshakeReceivedAsServer(conn, draft, request)
         }
 
         override fun onOpen(conn: WebSocket, handshake: ClientHandshake) {
+            if (isLobby(handshake.resourceDescriptor)) {
+                val id = ids.incrementAndGet()
+                if (!lobby.open(id, clientIp(conn, handshake))) {
+                    closeCodes.getOrPut(4429) { AtomicLong() }.incrementAndGet()
+                    conn.close(4429)
+                    return
+                }
+                conn.setAttachment(LobbyId(id))
+                lobbySockets[id] = conn
+                return
+            }
             val room = roomOf(handshake.resourceDescriptor)
             if (room == null) { conn.close(4400); return }
             val id = ids.incrementAndGet()
@@ -161,19 +185,27 @@ class RelayServer(private val config: RelayConfig, private val tap: ((ByteArray)
         }
 
         override fun onClose(conn: WebSocket, code: Int, reason: String?, remote: Boolean) {
-            val id = conn.getAttachment<Long?>() ?: return
+            val lobbyId = conn.getAttachment<Any?>() as? LobbyId
+            if (lobbyId != null) {
+                lobbySockets.remove(lobbyId.id)
+                lobby.close(lobbyId.id)
+                return
+            }
+            val id = conn.getAttachment<Any?>() as? Long ?: return
             sockets.remove(id)
             val left = rooms.leave(id)
             if (left != null) sockets[left]?.let { trySend(it, byteArrayOf(KIND_PEER_LEFT)) }
         }
 
         override fun onMessage(conn: WebSocket, message: String?) {
-            val id = conn.getAttachment<Long?>() ?: return
+            (conn.getAttachment<Any?>() as? LobbyId)?.let { return closeLobby(conn, 4400) }
+            val id = conn.getAttachment<Any?>() as? Long ?: return
             closeWith(id, 4400)
         }
 
         override fun onMessage(conn: WebSocket, message: ByteBuffer) {
-            val id = conn.getAttachment<Long?>() ?: return
+            (conn.getAttachment<Any?>() as? LobbyId)?.let { return onLobbyMessage(conn, it.id, message) }
+            val id = conn.getAttachment<Any?>() as? Long ?: return
             val size = message.remaining()
             if (size > config.maxMessageBytes) return closeWith(id, 4413)
             if (!rooms.allow(id, size)) return closeWith(id, 4429)
@@ -201,8 +233,27 @@ class RelayServer(private val config: RelayConfig, private val tap: ((ByteArray)
         }
     }
 
+    /** A lobby request: one answer back on the same socket. A malformed or oversized one closes it (4400 / 4413). */
+    private fun onLobbyMessage(conn: WebSocket, id: Long, message: ByteBuffer) {
+        if (message.remaining() > LOBBY_MAX_MESSAGE) return closeLobby(conn, 4413)
+        val request = LobbyWire.decode(body(message)) ?: return closeLobby(conn, 4400)
+        val answer = lobby.handle(id, request) ?: return
+        trySend(conn, answer)
+    }
+
+    private fun closeLobby(conn: WebSocket, code: Int) {
+        closeCodes.getOrPut(code) { AtomicLong() }.incrementAndGet()
+        conn.close(code)
+    }
+
+    /** A lobby socket's attachment (a room socket's is its bare Long id). */
+    private class LobbyId(val id: Long)
+
     private companion object {
         const val PATH_PREFIX = "/v1/rooms/"
+        const val LOBBY_PATH = "/v1/lobby"
+        /** HOST is the largest request: kind, flags and three strings of at most 255 bytes. */
+        const val LOBBY_MAX_MESSAGE = 2 + 3 * 256
         const val KIND_DATA: Byte = 0x01
         const val KIND_PEER_JOINED: Byte = 0x10
         const val KIND_PEER_LEFT: Byte = 0x11

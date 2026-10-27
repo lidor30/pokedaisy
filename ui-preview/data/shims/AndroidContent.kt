@@ -31,6 +31,7 @@ open class Context {
         const val CLIPBOARD_SERVICE = "clipboard"
         const val CONNECTIVITY_SERVICE = "connectivity"
         const val WIFI_SERVICE = "wifi"
+        const val NSD_SERVICE = "servicediscovery"
     }
 }
 

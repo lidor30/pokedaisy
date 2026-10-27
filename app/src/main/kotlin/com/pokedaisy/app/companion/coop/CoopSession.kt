@@ -7,6 +7,7 @@ import android.net.wifi.WifiManager
 import com.pokedaisy.app.BuildConfig
 import com.pokedaisy.app.FeatureFlags
 import com.pokedaisy.app.Prefs
+import com.pokedaisy.app.companion.data.Gen3Text
 import com.pokedaisy.app.companion.data.save.Gen3SaveData
 import com.pokedaisy.app.companion.data.save.Gen3SaveFile
 import com.pokedaisy.app.companion.data.save.Gen3SaveFormat
@@ -67,6 +68,31 @@ object CoopSession {
     /** 0 none, 1 custom (from [CoopEvent.Relay]). */
     val relay: StateFlow<Int> = _relay.asStateFlow()
 
+    // ROOMS: the relay's lobby, up with the endpoint when it has a relay (CoopLobby).
+    @Volatile private var lobbyImpl: CoopLobby? = null
+    private val _lobby = MutableStateFlow(CoopLobby.State())
+
+    /** This device's room code, the listed rooms and what went wrong; the empty state while there's no lobby. */
+    val lobby: StateFlow<CoopLobby.State> = _lobby.asStateFlow()
+
+    /** Whether ROOMS can work now: the endpoint runs with a relay. */
+    val lobbyAvailable: Boolean get() = lobbyImpl != null
+
+    /** LIST MY ROOM: off again on every invite page (a listed room shows the trainer's name to strangers). */
+    @Volatile var roomListed = false
+
+    /** Looks a room code up; [onResult] (any thread) gets the host's invite, which [CoopPairing.join] dials. */
+    fun findRoom(code: String, onResult: (CoopLobby.FindResult) -> Unit) {
+        val l = lobbyImpl ?: return onResult(CoopLobby.FindResult.Offline)
+        l.find(code, onResult)
+    }
+
+    /** Asks the lobby for the listed rooms of the invite page's ROM (they arrive in [lobby]). */
+    fun refreshRooms() {
+        val own = pageOwn ?: return
+        lobbyImpl?.refresh(CoopLobbyWire.gameKey(own.romSha1))
+    }
+
     /** The link to the paired partner; [CoopState.Off] while nothing holds the endpoint. */
     val link: CoopLink = object : CoopLink {
         override val state: StateFlow<CoopState> = _state.asStateFlow()
@@ -90,7 +116,7 @@ object CoopSession {
 
     /** Pure: the cheat text that reaches the engine: nothing while co-op runs. */
     fun cheatsForEngine(enabled: Boolean, coopOn: Boolean, text: () -> String): String = if (!enabled || coopOn) "" else text()
-    private var pairingHold = false
+    @Volatile private var pairingHold = false
     private var running = false
     @Volatile private var pollThread: Thread? = null
     private var multicast: WifiManager.MulticastLock? = null
@@ -120,6 +146,7 @@ object CoopSession {
     fun releasePairing() = post {
         if (pairingHold) {
             pairingHold = false
+            roomListed = false
             pairingImpl?.close()
             release()
         }
@@ -277,6 +304,7 @@ object CoopSession {
             return
         }
         running = true
+        if (relay != null) lobbyImpl = CoopLobby(OkHttpRelayConnector(), relay, clock, out = _lobby)
         if (override == CoopState.Off(CoopOffReason.NETWORK_ERROR)) setOverride(null)
         if (!relayOnly) takeMulticast(app)
         val t = Thread({ pollGuarded() }, "pokedaisy-coop").apply { isDaemon = true }
@@ -289,6 +317,9 @@ object CoopSession {
         pollThread = null
         running = false
         try { t?.join(2_000) } catch (_: InterruptedException) {}
+        lobbyImpl?.close()
+        lobbyImpl = null
+        _lobby.value = CoopLobby.State()
         releaseMulticast()
         try { transport.close() } catch (e: Throwable) { coopLog("close failed: $e") }
         _relay.value = 0
@@ -333,12 +364,29 @@ object CoopSession {
                 try {
                     impl?.tick()
                     pairingImpl?.tick()
+                    syncLobby()
                 } catch (x: Throwable) {
                     coopLog("tick failed: $x")
                 }
             }
             if (!any) try { Thread.sleep(POLL_SLEEP_MS) } catch (_: InterruptedException) { return }
         }
+    }
+
+    /**
+     * The lobby hosts this device's room while the invite page waits for a partner (its ticket known); once a partner
+     * dials in, or the page goes, the room goes too.
+     */
+    private fun syncLobby() {
+        val l = lobbyImpl ?: return
+        val own = pageOwn
+        val ticket = (pairingImpl?.step?.value as? CoopPairing.Step.Inviting)?.ticket
+        val invite = if (pairingHold && own != null && ticket != null) CoopLobbyWire.lobbyInvite(ticket) else null
+        l.setHost(invite?.let {
+            val name = CoopLobbyWire.cleanName(Gen3Text.decode(own!!.save.name, 0, 7), "TRAINER")
+            CoopLobby.Host(it, CoopLobbyWire.gameKey(own.romSha1), name, roomListed)
+        })
+        l.tick()
     }
 
     private fun takeMulticast(app: Context) {

@@ -34,14 +34,26 @@ interface CoopRelayConnector {
     fun open(relayUrl: String, room: String, listener: CoopRelaySocket.Listener): CoopRelaySocket
 }
 
-/** [CoopRelayConnector] over OkHttp: `https` goes out as `wss`, `http` as `ws`, binary messages only. */
+/** Opens the relay's lobby socket (CoopLobby); callbacks never come inline, from inside [openLobby]. */
+interface CoopLobbyConnector {
+    /** The lobby is `<relayUrl>/v1/lobby`. */
+    fun openLobby(relayUrl: String, listener: CoopRelaySocket.Listener): CoopRelaySocket
+}
+
+/** [CoopRelayConnector] and [CoopLobbyConnector] over OkHttp: `https` goes out as `wss`, `http` as `ws`, binary messages only. */
 class OkHttpRelayConnector(
     private val client: OkHttpClient = OkHttpClient.Builder()
         .pingInterval(20, TimeUnit.SECONDS)
         .connectTimeout(10, TimeUnit.SECONDS)
         .build(),
-) : CoopRelayConnector {
-    override fun open(relayUrl: String, room: String, listener: CoopRelaySocket.Listener): CoopRelaySocket {
+) : CoopRelayConnector, CoopLobbyConnector {
+    override fun open(relayUrl: String, room: String, listener: CoopRelaySocket.Listener): CoopRelaySocket =
+        connect(relayUrl, "/v1/rooms/$room", listener)
+
+    override fun openLobby(relayUrl: String, listener: CoopRelaySocket.Listener): CoopRelaySocket =
+        connect(relayUrl, "/v1/lobby", listener)
+
+    private fun connect(relayUrl: String, path: String, listener: CoopRelaySocket.Listener): CoopRelaySocket {
         val base = relayUrl.trimEnd('/')
         val ws = when {
             base.startsWith("https://") -> "wss://" + base.removePrefix("https://")
@@ -53,7 +65,7 @@ class OkHttpRelayConnector(
             if (ended.compareAndSet(false, true)) listener.onClosed(code)
         }
         val socket = client.newWebSocket(
-            Request.Builder().url("$ws/v1/rooms/$room").build(),
+            Request.Builder().url("$ws$path").build(),
             object : WebSocketListener() {
                 override fun onOpen(webSocket: WebSocket, response: Response) = listener.onOpen()
                 override fun onMessage(webSocket: WebSocket, bytes: ByteString) = listener.onMessage(bytes.toByteArray())
