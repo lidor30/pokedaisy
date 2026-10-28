@@ -1551,6 +1551,12 @@ Looper) - not done: it changes how every key arrives (two-screen focus, BACK, th
 **Heat**: the STEADY background pass runs at most 10x real time (`BACKGROUND_FRAME_NANOS`; songs being heard go flat
 out), and gives up on a song that failed on 2 launches (`FfMusicCache.failures`) - a failing song kept the pass, and a
 second core, running on every launch.
+**Clip storage (2026-10-28, players' caches ran to many GB)**: clips are FLAC (`FlacWriter`, our own encoder: fixed predictors
++ Rice, lossless so loops stay seamless - never a lossy format, whose padding gaps every loop; `FlacWriterTest` decodes it
+back), every ROM's under one budget (`FfMusicBudget`: min(1.5 GB, a quarter of clips + free space)). Over it, never-played
+(prefetched) songs go first, then those played longest ago (`.played` log at the cache root, noted by the engine when a song
+starts under STEADY); the background pass only fills free room and stops for the launch when full. A ROM's WAVs from before
+are converted when it next starts (`FfMusicCache.prepare`, half duty, giving way to a song being heard) and play meanwhile.
 **Updater loop** (same report: the bar filled, nothing installed): with "install unknown apps" off, the settings page
 failing to open left only a toast and UPDATE downloading again; now the installer opens anyway (it asks itself), and an
 APK already downloaded for the offered release is reused (`AppUpdateFlow.check` keeps it).

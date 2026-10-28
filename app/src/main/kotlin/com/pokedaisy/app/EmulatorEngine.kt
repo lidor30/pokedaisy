@@ -1066,6 +1066,7 @@ class EmulatorEngine(
                 if (mode != FfMusicMode.STEADY) requestedKey = null
                 else if (ffMusicKey != null && ffMusicKey != requestedKey) {
                     requestedKey = ffMusicKey
+                    ffMusicCache.notePlayed(ffMusicKey)   // the songs played longest ago go first when the cache is full
                     if (!ffMusicCache.complete(ffMusicKey)) runCatching { onFfMusicWanted?.invoke(ffMusicKey) }
                 }
                 // The clip follows the FF the player asked for, not SMART's 1x stretches: it

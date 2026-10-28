@@ -116,8 +116,11 @@ class FfMusicRenderer(
         prefetch.forEach { queue.offerLast(it) }
         if (fanfare?.hasOwn == false && fanfareSongId() != null) queue.offerFirst(FANFARE)
         if (click?.hasOwn == false) queue.offerFirst(CLICK)
+        // The click / fanfare and a song being heard come before converting old clips.
+        cache.prepare { stopped || queue.peekFirst().let { it is String || it === CLICK || it === FANFARE } }
         var prefetchLeft = prefetch.size
         var prefetchOk = true
+        var backgroundFull = false
         var core: RenderCore? = null
         try {
             while (!stopped) {
@@ -140,6 +143,13 @@ class FfMusicRenderer(
                 }
                 // A background song that failed on earlier launches too is left alone (it counts as done).
                 val givenUp = job is Int && cache.failures(job.toString()) >= MAX_SONG_FAILURES
+                // The cache's budget is full: the background pass stops for this launch, never marked done, and never
+                // pushes a song out (songs being heard still are recorded, and push out the ones played longest ago).
+                if (job is Int && songId != null && !givenUp && (backgroundFull || !cache.roomForBackground())) {
+                    if (!backgroundFull) Log.i("pokedaisy", "FF music: the cache is full - no more background songs this time")
+                    backgroundFull = true
+                    continue
+                }
                 val outcome = if (songId == null || givenUp) Outcome.CACHED
                 else (core ?: RenderCore(songs).also { core = it }).record(songs, songId, background = job is Int)
                 if (job is String && !cache.complete(job) && (songId == null || outcome == Outcome.FAILED || outcome == Outcome.ENDED)) {

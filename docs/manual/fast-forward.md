@@ -3,7 +3,7 @@ title: Fast-forward and game speed
 summary: Speed through the slow parts, set a pace that sticks for each game, slow things down, and keep the music sounding right while you do.
 section: player
 order: 1
-keywords: [ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, clock, rtc, time, day, night]
+keywords: [ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, clock, rtc, time, day, night, storage, space]
 ---
 
 Pokémon games have a lot of walking, text and grinding. Fast-forward runs the game several times faster so you get through it quicker, and PokeDaisy tries to get out of your way when speed would be a problem: in menus, on the map, and with the music.
@@ -81,6 +81,8 @@ Sped-up game music turns into chipmunk noise. `FF MUSIC` picks what you hear whi
 - **`OFF`** is silence while fast-forwarding.
 
 `STEADY` works by preparing a clean recording of each song from your ROM, in the background. The first time you play a game, it goes through the game's songs once; a song that isn't ready yet is silent during fast-forward. Once a song is done, it's kept, so this only happens the first time you hear it.
+
+The recordings take at most 1.5 GB of your device's storage for all your games together, and less when the device is short on space. When they reach that, the songs you haven't heard for the longest time make room. A song that was removed is recorded again the next time the game plays it, so it can be silent once more for a moment.
 
 > [!NOTE]
 > If a song sounds wrong or stays silent with `STEADY`, switch to `SPED-UP`, and let us know which game and where.
