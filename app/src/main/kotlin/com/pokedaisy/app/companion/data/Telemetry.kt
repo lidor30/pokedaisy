@@ -149,7 +149,15 @@ data class Telemetry(
     val townsVisited: Long? = null,
     /** HeartGold / SoulSilver: the Pokégear's skin << 2 | its map's unlock level ([PokegearMap]); null elsewhere. */
     val pokegearState: Int? = null,
+    /** The PC's boxes (the BOXES tab, [readPcBoxes]); null where the game's storage isn't mapped. */
+    val pcBoxes: PcBoxes? = null,
 )
+
+/** The PC's Pokémon storage: the box the PC opens on and every box, in order. */
+data class PcBoxes(val currentBox: Int, val boxes: List<PcBox>)
+
+/** One PC box: its name, wallpaper id and 30 slots (null = empty). */
+data class PcBox(val name: String, val wallpaper: Int, val mons: List<Mon?>)
 
 /** ROM addresses of the icon-graphics tables (0 = unknown). */
 data class IconTables(

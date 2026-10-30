@@ -302,6 +302,26 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
 fun monIcon(species: Int): String? = if (docsMode) creatureIcon(species) else
     System.getProperty("monIcons").orEmpty().takeIf { it.isNotBlank() }?.let { "$it/$species.png" }
 
+/** [snapshot] with the PC's boxes: box 1 nearly full (two gaps), box 2 a few, the rest empty; the default wallpapers. */
+fun boxesSnapshot(): SnapshotView {
+    val base = snapshot()
+    fun mon(species: Int, level: Int) = base.party[species % 2].copy(
+        species = species, name = speciesName(species), level = level, hp = 20 + level, maxHp = 20 + level, status = "",
+        iconAsset = monIcon(species), exp = expProgress(species, level, 0L),
+    )
+    val first = listOf(1, 4, 7, 10, 13, 16, 19, 21, 23, 25, 27, 29, 0, 35, 37, 39, 41, 43, 46, 48, 0, 52, 54, 56, 58, 60, 63, 66, 69, 72)
+    val boxes = (0 until 14).map { b ->
+        val mons = when (b) {
+            // The first holds an item (the window's last line).
+            0 -> first.mapIndexed { i, sp -> if (sp == 0) null else mon(sp, 5 + i).copy(heldItemId = if (i == 0) 13 else 0) }
+            1 -> List(30) { i -> listOf(74, 77, 79, 81, 84).getOrNull(i / 3)?.takeIf { i % 3 == 0 }?.let { mon(it, 20 + i) } }
+            else -> List(30) { null }
+        }
+        com.pokedaisy.app.companion.data.BoxView("BOX${b + 1}", b % 4, mons)
+    }
+    return base.copy(pcBoxes = com.pokedaisy.app.companion.data.BoxesView(0, boxes))
+}
+
 fun snapshot() = SnapshotView(
     connected = true, facingDirection = "down", x = 12, y = 7, game = activeGame,
     // Highlight in the region-map image's own 240x160 coordinates.
@@ -412,6 +432,10 @@ fun companion(
  */
 class PreviewItemUse(private val party: List<MonView>, private val bagFull: Boolean = false) : com.pokedaisy.app.companion.ItemUse {
     override fun canTake() = true
+    // BOXES' SWAP: the button shows, a pick goes through.
+    override fun canSwapBox() = true
+    override fun swapBox(box: Int, slot: Int, boxPersonality: Long, partySlot: Int, partyPersonality: Long, done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit) =
+        done(com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED)
     // PC anywhere: the button shows; a tap answers "not now" (a menu open), as the BAG pops it up.
     override fun canPc() = true
     override fun openPc(done: (com.pokedaisy.app.companion.data.ItemUseOutcome) -> Unit) =
@@ -1238,6 +1262,33 @@ fun main(args: Array<String>) {
     ) else emptyList()
     val all = real + listOf(
         Shot("$g-party", bw, bh, bd, companion("PARTY")),
+        // BOXES: the PC's box screen (FireRed's art from -Prom / the decomp build), a summary, the box list, the next box.
+        Shot("$g-boxes", bw, bh, bd, companion("BOXES", snap = ::boxesSnapshot)),
+        Shot("$g-boxes-detail", bw, bh, bd, companion("BOXES", snap = ::boxesSnapshot, items = true)) {
+            onAllNodesWithContentDescription(speciesName(4), ignoreCase = true).onFirst().performClick()
+        },
+        // SWAP: the summary's button opens the party pick; a pick says what happened.
+        Shot("$g-boxes-swap", bw, bh, bd, companion("BOXES", snap = ::boxesSnapshot, items = true)) {
+            onAllNodesWithContentDescription(speciesName(4), ignoreCase = true).onFirst().performClick()
+            waitForIdle()
+            onAllNodesWithText("SWAP", ignoreCase = true).onFirst().performClick()
+        },
+        Shot("$g-boxes-swapped", bw, bh, bd, companion("BOXES", snap = ::boxesSnapshot, items = true)) {
+            onAllNodesWithContentDescription(speciesName(4), ignoreCase = true).onFirst().performClick()
+            waitForIdle()
+            onAllNodesWithText("SWAP", ignoreCase = true).onFirst().performClick()
+            waitForIdle()
+            // The first party slot (top left), by where it is: the slots have no text node to find.
+            onRoot().performTouchInput { click(androidx.compose.ui.geometry.Offset(width * 0.27f, height * 0.15f)) }
+        },
+        Shot("$g-boxes-pick", bw, bh, bd, companion("BOXES", snap = ::boxesSnapshot)) {
+            onNodeWithContentDescription("Pick a box").performClick()
+        },
+        Shot("$g-boxes-next", bw, bh, bd, companion("BOXES", snap = ::boxesSnapshot)) {
+            onNodeWithContentDescription("Next box").performClick()
+        },
+        // The tab on an upright phone: the window over the box.
+        Shot("$g-boxes-tall", 1080, 1500, bd, companion("BOXES", snap = ::boxesSnapshot)),
         // The lead holds a Potion, the second a QUICK CLAW: the tag in each slot's corner and the game's marker by the icon.
         Shot("$g-party-held", bw, bh, bd, companion("PARTY") {
             snapshot().let { s -> s.copy(party = s.party.mapIndexed { i, m -> m.copy(heldItemId = listOf(13, 183).getOrElse(i) { 0 }) }) }

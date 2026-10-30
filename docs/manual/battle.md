@@ -2,7 +2,7 @@
 title: Battles
 summary: The BATTLE tab's touch buttons, move verdicts, the INFO and SUGGESTIONS pages, the foe's team and switching Pokémon.
 section: companion
-order: 4
+order: 5
 keywords: [battle, fight, combat, trainer, wild, effectiveness, super effective, type chart, matchup, switch, swap, run, flee, foe, enemy, opponent, ability, held item, stat stages, boosts, ivs, shiny, sparkle, recommendation, best move, battle buttons, single screen, one screen, widescreen, side buttons]
 ---
 

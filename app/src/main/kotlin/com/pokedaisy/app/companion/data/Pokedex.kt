@@ -1427,6 +1427,7 @@ object PokedexSource {
     private val entries = ConcurrentHashMap<Int, DexEntry>()
     private val sprites = ConcurrentHashMap<Int, Bitmap>()
     private val footprints = ConcurrentHashMap<Int, Bitmap>()
+    private val baseStats = ConcurrentHashMap<Int, IntArray>()
     @Volatile private var nationalToSpecies: IntArray? = null
     @Volatile private var speciesToNational: IntArray? = null
     @Volatile private var regional: IntArray? = null
@@ -1436,9 +1437,25 @@ object PokedexSource {
         if (cachedFor == t) return
         synchronized(this) {
             if (cachedFor == t) return
-            entries.clear(); sprites.clear(); footprints.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
+            entries.clear(); sprites.clear(); footprints.clear(); baseStats.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
             cachedFor = t
         }
+    }
+
+    /**
+     * [species]' base stats in the struct's order (HP, ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF) from the ROM's
+     * gBaseStats - the BOXES tab's stats, which a box record doesn't keep. Null = no table / unreadable.
+     */
+    fun baseStats(t: PokedexTables, species: Int): IntArray? {
+        if (species <= 0 || t.speciesInfo == 0L || t.cartDex) return null
+        sync(t)
+        baseStats[species]?.let { return it }
+        val bs = t.baseStats
+        val stride = t.expansion?.stride ?: bs.stride
+        return runCatching {
+            val info = rd(t.speciesInfo + species.toLong() * stride, 12)
+            IntArray(6) { if (t.expansion == null && bs.statsU16) u16le(info, it * 2) else info[it].toInt() and 0xFF }
+        }.getOrNull()?.also { baseStats[species] = it }
     }
 
     /**

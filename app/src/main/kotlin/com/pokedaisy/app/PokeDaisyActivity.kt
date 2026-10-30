@@ -574,6 +574,21 @@ class PokeDaisyActivity : Activity() {
             }
         }
 
+        override fun canSwapBox() = com.pokedaisy.app.companion.data.boxSwapFor(fieldItemSupport()?.fns) != null
+
+        override fun swapBox(
+            box: Int, slot: Int, boxPersonality: Long, partySlot: Int, partyPersonality: Long,
+            done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+        ) {
+            val inBattle = telemetry.snapshot.value.inBattle
+            onGame(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED, { r ->
+                done(if (inBattle && r == com.pokedaisy.app.companion.data.BoxSwapResult.NOT_NOW) com.pokedaisy.app.companion.data.BoxSwapResult.IN_BATTLE else r)
+            }) { s, calls, busy ->
+                val fns = com.pokedaisy.app.companion.data.boxSwapFor(s.fns) ?: return@onGame com.pokedaisy.app.companion.data.BoxSwapResult.FAILED
+                com.pokedaisy.app.companion.data.swapWithBox(s.fns, fns, box, slot, boxPersonality, partySlot, partyPersonality, busy, calls)
+            }
+        }
+
         /** A DS game whose PC pk_nds_call knows (Platinum, HeartGold / SoulSilver, Black). */
         private fun dsCalls() = romIsNds && telemetry.snapshot.value.game.let {
             com.pokedaisy.app.companion.data.gen4ConfigFor(it) != null || com.pokedaisy.app.companion.data.gen5ConfigFor(it) != null

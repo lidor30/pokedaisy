@@ -91,6 +91,8 @@ fun MonDetailScreen(
     initialTakeAsk: Boolean = false,
     /** A TAKE result popped up first - for screenshot tests. */
     initialNotice: ItemNotice? = null,
+    /** SWAP (a box Pokémon's summary: trade it for a party one); null = no button. */
+    onSwap: (() -> Unit)? = null,
 ) {
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
@@ -177,6 +179,7 @@ fun MonDetailScreen(
             if (canLearn && party.getOrNull(index)?.isEgg == false) {
                 TextNavButton(if (showLearn) tr("MOVES") else tr("LEARN"), SuggestGold, SuggestGoldDark) { showLearn = !showLearn; learnPick = 0 }
             }
+            if (onSwap != null) TextNavButton(tr("SWAP"), SwapGreen, SwapGreenDark, onSwap)
             PartyStrip(party, index, onIndexChange, Modifier.weight(1f))
             NavButton(PixelIcons.back, tr("Back"), RunBlue, RunBlueDark, enabled = true, onClick = onBack)
         }
@@ -267,15 +270,18 @@ internal fun NavButton(
 
 /** The party as a row of raised buttons, one per Pokémon: the one shown is
  * lit white, a tap on another shows it. As big as the space between the
- * other buttons allows (up to their own height). */
+ * other buttons allows (up to their own height). A PC box's (BOXES) shows six of
+ * its Pokémon at a time, the one on show among them. */
 @Composable
 private fun PartyStrip(party: List<MonView>, index: Int, onPick: (Int) -> Unit, modifier: Modifier = Modifier) {
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val gap = 6.dp
-        val n = party.size.coerceAtLeast(1)
+        val first = (index - STRIP_MAX / 2).coerceIn(0, (party.size - STRIP_MAX).coerceAtLeast(0))
+        val shown = party.withIndex().drop(first).take(STRIP_MAX)
+        val n = shown.size.coerceAtLeast(1)
         val cell = minOf(NavButtonSize, (maxWidth - gap * (n - 1)) / n)
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(gap)) {
-            party.forEachIndexed { i, mon ->
+            shown.forEach { (i, mon) ->
                 val on = i == index
                 PlatinumButton(
                     fill = if (on) optionLook.stripLit else optionLook.stripIdle, frame = if (on) optionLook.stripLitFrame else optionLook.stripIdleFrame,
@@ -288,6 +294,8 @@ private fun PartyStrip(party: List<MonView>, index: Int, onPick: (Int) -> Unit, 
     }
 }
 
+/** The most Pokémon the summary's strip shows: a party. */
+private const val STRIP_MAX = 6
 
 /** A 1-GBA-pixel rule between the summary's sections, in the window frame's light grey. */
 @Composable
@@ -309,6 +317,10 @@ internal fun Separator(m: GbaTextMetrics, modifier: Modifier = Modifier, vertica
             },
     )
 }
+
+/** SWAP's button (a box Pokémon's summary): the party menu's HP green. */
+private val SwapGreen = Color(0xFF58C060)
+private val SwapGreenDark = Color(0xFF2E7C38)
 
 /** The summary screen's EXP bar blue. */
 private val ExpBlue = Color(0xFF40B8F8)

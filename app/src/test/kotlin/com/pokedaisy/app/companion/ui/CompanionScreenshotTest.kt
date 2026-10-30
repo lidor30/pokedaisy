@@ -1510,6 +1510,9 @@ open class CompanionScreenshotTest {
             (if (dex == null) emptyList() else (1..10).map { PokedexSource.speciesFor(dex.tables, it) } +
                 (PokedexSource.regionalOrder(dex.tables) ?: IntArray(0)).take(10).map { PokedexSource.speciesFor(dex.tables, it) }))
             .forEach { DecompIconSource.get(it) }
+        // BOXES: every box Pokémon's icon, and PKMN DATA's first picture.
+        t.pcBoxes?.boxes?.flatMap { it.mons }?.filterNotNull()?.forEach { DecompIconSource.get(it.species) }
+        if (dex != null) t.pcBoxes?.boxes?.get(t.pcBoxes!!.currentBox)?.mons?.firstOrNull { it != null }?.let { PokedexSource.frontSprite(dex.tables, it.species) }
         v.items.forEach { DecompIconSource.getItem(it.itemId) }
         if (entry != null && dex != null) {
             val species = PokedexSource.speciesFor(dex.tables, entry)
@@ -1651,6 +1654,13 @@ open class CompanionScreenshotTest {
 
     // The dex page's EVOLVE / AREA / MOVES (GitHub #28), each from the game's own ROM and save.
     // The move advice (original games): PARTY > LEARN with a pick, and a TM's party row on ITEMS.
+    // The PC's boxes on FireRed's own box screen (its art rebuilt from the ROM), at every size the subclasses run.
+    @Test fun fireRedBoxes() = retail(
+        "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "BOXES", art = true,
+    )
+    @Test fun emeraldBoxes() = retail(
+        "emerald_vanilla", NATIVE_EMERALD_RETAIL.copy(pokemonStoragePtr = NATIVE_EMERALD_RETAIL.saveBlock2Ptr + 4), EM_ROM, GameKind.EMERALD, "BOXES", art = true,
+    )
     @Test fun fireRedLearn() = retail("firered_vanilla", NATIVE_FIRERED_REV1, FR_ROM, GameKind.FIRERED, "PARTY", art = true, learn = true)
     @Test fun fireRedTmRow() = retail("firered_vanilla", NATIVE_FIRERED_REV1, FR_ROM, GameKind.FIRERED, "ITEMS", art = true, tmRow = true)
     @Test fun emeraldLearn() = retail("emerald_vanilla", NATIVE_EMERALD_RETAIL, EM_ROM, GameKind.EMERALD, "PARTY", art = true, learn = true)

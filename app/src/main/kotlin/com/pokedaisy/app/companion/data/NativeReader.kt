@@ -177,6 +177,8 @@ data class NativeConfig(
     val shinyBelow: Int = 0,
     /** gMonPaletteTable, for the shiny icons where [pokedex] (which has it) isn't mapped: English FireRed rev 0. */
     val monPalettes: Long = 0,
+    /** gPokemonStoragePtr, for the BOXES tab ([readPcBoxes]); 0 = no tab. Set by the Poller on retail FireRed only. */
+    val pokemonStoragePtr: Long = 0,
 ) {
     /** [partyMonLayout] with [shinyBelow] as its shiny check, where the layout has none of its own. */
     val monLayout: PartyMonLayout
@@ -389,6 +391,7 @@ private var bagValid = false
  * next throttled refresh. */
 internal fun resetNativeBagCache() {
     bagTick = 0; lastBag = emptyList(); bagValid = false
+    synchronized(PcBoxes::class) { lastStorageRaw = null; lastStorage = null }
 }
 
 fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
@@ -527,8 +530,59 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
         playerGender = readPlayerGender(client, cfg),
         mapSecName = if (regionMapSectionId == 0) readHubName(client, cfg) else null,
         trainerCard = readTrainerCard(client, cfg),
+        pcBoxes = if (cfg.pokemonStoragePtr != 0L) readPcBoxes(client, cfg) else null,
     )
 }
+
+// struct PokemonStorage (pokefirered's include/pokemon_storage_system.h): u8 currentBox (+ 3 bytes of padding), then
+// boxes[14][30] of BoxPokemon, boxNames[14][9], boxWallpapers[14].
+const val PC_BOXES = 14
+const val PC_BOX_SLOTS = 30
+private const val PC_BOX_NAME_LEN = 9
+private const val PC_STORAGE_MONS_OFF = 4
+private const val PC_STORAGE_NAMES_OFF = PC_STORAGE_MONS_OFF + PC_BOXES * PC_BOX_SLOTS * BOX_MON_SIZE
+private const val PC_STORAGE_SIZE = PC_STORAGE_NAMES_OFF + PC_BOXES * PC_BOX_NAME_LEN + PC_BOXES
+
+// The last storage read and what it decoded to: the boxes only change while the player is at a PC, so a sample whose
+// bytes are the same hands back the same object (the BOXES tab then has nothing to redraw).
+private var lastStorageRaw: ByteArray? = null
+private var lastStorage: PcBoxes? = null
+
+/**
+ * The PC's boxes through [NativeConfig.pokemonStoragePtr], each slot decoded like a party member's (gender, egg,
+ * shiny) with its level and stats worked out ([decodeBoxMon]: base stats from the ROM's DEX tables). Null when the
+ * pointer doesn't lead into EWRAM.
+ */
+internal fun readPcBoxes(c: MemoryReader, cfg: NativeConfig): PcBoxes? = runCatching {
+    val at = u32le(c.readCoreMemory(cfg.pokemonStoragePtr, 4), 0)
+    if (at !in 0x02000000L until 0x04000000L - PC_STORAGE_SIZE) return null
+    val raw = ByteArray(PC_STORAGE_SIZE)
+    var off = 0
+    while (off < raw.size) {
+        val n = minOf(4096, raw.size - off)
+        c.readCoreMemory(at + off, n).copyInto(raw, off)
+        off += n
+    }
+    synchronized(PcBoxes::class) {
+        if (raw.contentEquals(lastStorageRaw)) lastStorage?.let { return it }
+    }
+    val dex = cfg.pokedex
+    val base = { species: Int -> dex?.let { PokedexSource.baseStats(it, species) } }
+    val boxes = List(PC_BOXES) { b ->
+        val names = PC_STORAGE_NAMES_OFF + b * PC_BOX_NAME_LEN
+        PcBox(
+            name = Gen3Text.decode(raw, names, PC_BOX_NAME_LEN),
+            wallpaper = raw[PC_STORAGE_NAMES_OFF + PC_BOXES * PC_BOX_NAME_LEN + b].toInt() and 0xFF,
+            mons = List(PC_BOX_SLOTS) { s ->
+                val o = PC_STORAGE_MONS_OFF + (b * PC_BOX_SLOTS + s) * BOX_MON_SIZE
+                decodeBoxMon(raw, o, cfg.monLayout, base)?.masked(cfg)?.withNativeGender(raw, o, cfg.partyMonLayout, cfg.eggSpecies)
+            },
+        )
+    }
+    PcBoxes(currentBox = (raw[0].toInt() and 0xFF).coerceIn(0, PC_BOXES - 1), boxes = boxes).also {
+        synchronized(PcBoxes::class) { lastStorageRaw = raw; lastStorage = it }
+    }
+}.getOrNull()
 
 /**
  * Pokémon Quetzal's bag: no gBagPockets, but a "BAG3" bit stream in SaveBlock1

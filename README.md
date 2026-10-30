@@ -79,6 +79,7 @@ The app updates itself: it offers each new version when you open it. The full ma
 - **DEX**: seen / caught, full entries, evolutions, where to catch each one and the moves it learns.
 - **GUIDE**: hints first, answers on a second tap. What's in the area you're in, the next boss's team, evolutions,
   tips and a STUCK? page.
+- **BOXES** (FireRed and Emerald for now): your PC's boxes, laid out like the game's box screen. Tap a Pokemon for its summary, or SWAP it with one in your party.
 - **CARD**, **STATES** (10 save-state slots), **ACHIEVEMENTS** (RetroAchievements), and the tabs you pick for the bar.
 - **NUZLOCKE** (per game, GBA games but Emerald Rogue): keeps score of a Nuzlocke run, the first encounter in each
   area and every fainted Pokemon out for good, with a gravestone on its party slot.

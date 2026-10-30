@@ -22,7 +22,7 @@ Along the bottom of the companion is a row of tabs, with `MORE` (a grid of nine 
 | `BAG` | Every pocket of your bag. See [Bag](bag.md). |
 | `GUIDE` | Hints, the next boss and what's around you. See [Guide](guide.md). |
 
-A few more are off the bar to begin with and wait under `MORE`: `CARD` (your [trainer card](trainer-card.md)), `STATES` (save states) and `CHEEVOS` ([RetroAchievements](achievements.md)). `NUZLOCKE` joins them once you turn on [Nuzlocke](nuzlocke.md) tracking for a game.
+A few more are off the bar to begin with and wait under `MORE`: `BOXES` (your [PC boxes](boxes.md), FireRed for now), `CARD` (your [trainer card](trainer-card.md)), `STATES` (save states) and `CHEEVOS` ([RetroAchievements](achievements.md)). `NUZLOCKE` joins them once you turn on [Nuzlocke](nuzlocke.md) tracking for a game.
 
 Some tabs only appear when the game has what they need. `DEX` needs the game's Pokédex data and `GUIDE` needs a guide for that game, so a game without them has fewer tabs. The bag tab also takes the game's own word for it: `PACK` in Gold, Silver, Crystal, Crystal Clear and Prism, `CUBE` in Unbound, `INVENTORY` in R.O.W.E., `POCKETS` in Super Mariomon, `BAG` everywhere else.
 

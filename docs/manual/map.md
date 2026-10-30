@@ -2,7 +2,7 @@
 title: Map
 summary: The game's own region map with you on it, tapping a spot to name it, and finding any town or route from the PLACES list.
 section: companion
-order: 5
+order: 6
 keywords: [town map, region map, location, where am i, places, route, city, fly, sevii, islands, find]
 ---
 

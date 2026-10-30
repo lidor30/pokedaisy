@@ -2,7 +2,7 @@
 title: Bag
 summary: Every pocket of your bag with icons and descriptions, favorite items, which Pokémon can use a TM, reusable TMs, and using an item from the bottom screen.
 section: companion
-order: 3
+order: 4
 keywords: [items, inventory, cube, pockets, tm, hm, reusable tm, infinite tm, technical machine, description, sort, use item, berries, key items, star, starred, pin, favourite]
 ---
 

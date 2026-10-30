@@ -402,6 +402,20 @@ on the bus); their wording / text colours / glyph clipping are `TrainerCardArt.W
 The tab shows the card cropped to itself (no BG2 backdrop) at the largest whole scale (5x on the
 Thor); a tap flips it (squash, like the game), and the time colon blinks via an infinite transition
 (a`delay`loop never lets Compose tests go idle, which hung ui-preview once).
+**BOXES tab** (`BoxesScreen.kt`, under MORE, NEW tag; retail English FireRed and Emerald so far): the PC's boxes read live
+(`readPcBoxes`: gPokemonStoragePtr, set by the Poller on retail FireRed / Emerald as `pokemonStoragePtr` = saveBlock2Ptr + 4; a box
+record's stats recomputed from the ROM's base stats, `decodeBoxMon` / `gen3Stats`). **Drawn in our own pieces, not the ROM's
+PC art** (the user's call: one look every game can have, close to the game's, not 1:1) but **in its colours** (the
+user's next call: sampled from FireRed's PC screen - `PcColors`: the PKMN DATA panel, picture well, peach backdrop, arrows;
+`BoxWallpapers`: each Gen 3 wallpaper's frame / edge bevels, header-strip sky bands and fill, under patterns of our own;
+Emerald's own set for the games that run as EMERALD - several frames and every header differ - while the screen around
+them is the same in both).
+Panel and box fill the tab (its peach backdrop is the screen's, CompanionScreen's `PcBackdrop`, like the bag's); icons at
+whole scales, allowed past their cells like the game's. A new game needs only its storage read. **SWAP** (`BoxSwap.kt`,
+FireRed rev 1 and Emerald: `boxSwapFor`): a box Pokémon's summary trades it for a party one in the running game, the PC's own way
+(BoxMonToMon out, the party one's 80 bytes in + BoxMonRestorePP), on the bag's field gate, Mail / last-fighter refused;
+checked headless with an in-game save and a reboot. Its functions were found in retail by masked bytes from the decomp
+build (the `$DECOMPS` FireRed map is shifted, 0x120 there): a new game needs its own.
 **SoulGold v1.1.4** (`NATIVE_SOULGOLD`; v1.2 = `NATIVE_SOULGOLD_V1_2`, a rebuild at shifted addresses, same save
 format, v1.1.4's generated tables but TM75 via `soulGoldV12`; a second v1.2 build = `NATIVE_SOULGOLD_V1_2B`, same RAM, ROM data 0x98-0xA4 earlier; a third = `NATIVE_SOULGOLD_V1_2C`, same RAM, ROM data 0x18C-0x198 later, wild / map tables 0x2DF30; v1.2.1 = `NATIVE_SOULGOLD_V1_2_1` (two builds, 2 bytes of item data apart; "Soulgold" in the header), v1.2's tables, IWRAM and battle globals, but EWRAM moved (the party globals -0x1BC / -0x1C0, gMapHeader / gObjectEvents +8, gBagPockets +0xC) and ROM data 0x7A38-0xBEE8; gPartyMenu comes from `NativeConfig.partyMenu`, newer expansion, no source) breaks several vanilla
 assumptions, each a `NativeConfig` field now: its struct Pokemon is 96 bytes and plaintext

@@ -2,7 +2,7 @@
 title: RetroAchievements
 summary: Earn RetroAchievements while you play, see the game's set and leaderboards on the companion, and why it's softcore only.
 section: companion
-order: 9
+order: 10
 keywords: [cheevos, ra, achievements, trophies, login, account, sign in, points, hardcore, softcore, leaderboard, shiny odds]
 ---
 

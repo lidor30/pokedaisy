@@ -211,6 +211,12 @@ fun CompanionScreen(
         // DEX tab: filter / dex / scroll position / open entry, kept across tab switches.
         val dexListState = androidx.compose.foundation.lazy.rememberLazyListState()
         val dexUi = remember { DexUiState(dexListState) }
+        // BOXES tab: the box on show and its open summary, kept across tab switches.
+        val boxesUi = remember { BoxesUiState() }
+        val pcBoxes = snapshot.pcBoxes
+        val openBoxMon = pcBoxes?.let { b -> boxesUi.open?.takeIf { it in boxSummaryList(b.boxes[boxesUi.boxOf(b)]).indices } }
+        val lastBoxMon = remember { mutableStateOf(0) }
+        openBoxMon?.let { lastBoxMon.value = it }
         val dex = snapshot.pokedex
         // GUIDE tab: page, reveals and scroll position, kept across tab switches.
         val guideUi = remember { GuideUiState() }
@@ -232,6 +238,7 @@ fun CompanionScreen(
                 "DEX" -> dex != null || id in cachedTabs
                 "GUIDE" -> guide != null || id in cachedTabs
                 "CARD" -> card != null && cardArt?.style == card.style || id in cachedTabs
+                "BOXES" -> snapshot.pcBoxes != null || id in cachedTabs
                 "ACHIEVEMENTS" -> achievements != null
                 "NUZLOCKE" -> com.pokedaisy.app.companion.Nuzlocke.on && com.pokedaisy.app.companion.Nuzlocke.supports(game)
                 else -> true
@@ -361,6 +368,11 @@ fun CompanionScreen(
                     visible = current == "ITEMS" && hasItemsBackdrop(game),
                     enter = fadeIn(tween(200)), exit = fadeOut(tween(200)), label = "tab-backdrop",
                 ) { ItemsBackdrop(game, Modifier.fillMaxSize()) }
+                // BOXES: the PC screen's peach backdrop, the same way.
+                AnimatedVisibility(
+                    visible = current == "BOXES",
+                    enter = fadeIn(tween(200)), exit = fadeOut(tween(200)), label = "boxes-backdrop",
+                ) { PcBackdrop() }
                 // The Pokédex's own screen (Black's green grid), the same way.
                 dsDexPattern(game)?.let { dex ->
                     AnimatedVisibility(
@@ -434,6 +446,8 @@ fun CompanionScreen(
                     GameStart.waiting && current in WAITING_TABS -> "WAITING"
                     current == "PARTY" && openDetail != null -> "PARTY/DETAIL"
                     current == "DEX" && dexUi.open != null -> "DEX/DETAIL"
+                    current == "BOXES" && openBoxMon != null && boxesUi.swapping != null -> "BOXES/SWAP"
+                    current == "BOXES" && openBoxMon != null -> "BOXES/DETAIL"
                     else -> current
                 }
                 // When the last switch was moments ago (a player tapping through tabs), cut
@@ -494,6 +508,37 @@ fun CompanionScreen(
                                 learn = learnContext,
                                 itemUse = itemUse,
                             )
+                        } else if (paneKey == "BOXES/DETAIL" && pcBoxes != null) {
+                            // A box Pokémon's summary, like PARTY's: up / down page through the box.
+                            val inBox = boxSummaryList(pcBoxes.boxes[boxesUi.boxOf(pcBoxes)])
+                            MonDetailScreen(
+                                inBox, lastBoxMon.value.coerceIn(0, (inBox.size - 1).coerceAtLeast(0)),
+                                onIndexChange = { i -> boxesUi.open = i; boxesUi.looked = pcBoxes.boxes[boxesUi.boxOf(pcBoxes)].mons.indexOf(inBox.getOrNull(i)) },
+                                onBack = { boxesUi.open = null },
+                                onSwap = if (itemUse?.canSwapBox() == true) {
+                                    { inBox.getOrNull(lastBoxMon.value)?.let { boxesUi.swapping = it } }
+                                } else null,
+                            )
+                            BoxSwapNotice(boxesUi)
+                        } else if (paneKey == "BOXES/SWAP" && pcBoxes != null) {
+                            val boxIndex = boxesUi.boxOf(pcBoxes)
+                            val boxMon = boxesUi.swapping
+                            BoxSwapPicker(
+                                boxMon, snapshot.party,
+                                onCancel = { boxesUi.swapping = null },
+                                onPick = { partySlot, partyMon ->
+                                    val slot = pcBoxes.boxes[boxIndex].mons.indexOf(boxMon)
+                                    if (boxMon == null || slot < 0 || itemUse == null) boxesUi.swapping = null
+                                    else itemUse.swapBox(boxIndex, slot, boxMon.personality, partySlot, partyMon.personality) { r ->
+                                        boxesUi.swapping = null
+                                        if (r == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) boxesUi.open = null
+                                        boxesUi.swapMessage = boxSwapMessage(r, boxMon, partyMon, pcBoxes.boxes[boxIndex].name)
+                                    }
+                                },
+                            )
+                        } else if (tab == "BOXES" && pcBoxes != null) {
+                            BoxesScreen(pcBoxes, boxesUi, snapshot.pokedex?.tables, Modifier.fillMaxSize())
+                            BoxSwapNotice(boxesUi)
                         } else if (tab == "DEX" && dex != null) {
                             if (paneKey == "DEX/DETAIL") PokedexEntryScreen(dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables)
                             else PokedexScreen(dex, dexUi)
@@ -706,6 +751,7 @@ internal fun companionTabLabel(id: String): String = when (id) {
     "GUIDE" -> tr("GUIDE")
     "NUZLOCKE" -> tr("NUZLOCKE")
     "CARD" -> tr("CARD")
+    "BOXES" -> tr("BOXES")
     "STATES" -> tr("STATES")
     "BATTLE" -> tr("BATTLE")
     "SETTINGS" -> tr("SETTINGS")

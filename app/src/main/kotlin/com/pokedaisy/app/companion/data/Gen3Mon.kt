@@ -265,6 +265,60 @@ fun decodePartyMon(raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PA
     )
 }
 
+/** sizeof(struct BoxPokemon): a PC box slot, the first 80 bytes of a party struct. */
+const val BOX_MON_SIZE = 80
+
+/**
+ * One PC box slot (struct BoxPokemon at [off], vanilla's encrypted 80 bytes) as the summary shows it: a box record
+ * keeps no level, HP or stats, so the level comes from the experience and the stats are worked out the game's way
+ * (CalculateMonStats) from [baseStats] (HP, ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF; null = unknown, then no stats and
+ * no HP). A box Pokémon is always healed: HP is its max. Null for an empty slot or one whose checksum fails (the game's
+ * Bad Egg).
+ */
+fun decodeBoxMon(raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PARTY_MON, baseStats: (Int) -> IntArray? = { null }): Mon? {
+    if (raw.size < off + BOX_MON_SIZE) return null
+    val dec = decryptGen3Substructs(raw, off) ?: return null
+    if (dec.species == 0) return null
+    val egg = (dec.ivWord shr 30) and 1L == 1L
+    val level = com.pokedaisy.app.companion.data.save.Gen3BoxMon.levelFor(dec.species, dec.exp).coerceAtLeast(1)
+    val ivs = List(6) { ((dec.ivWord shr (5 * it)) and 0x1F).toInt() }
+    val nature = (u32(raw, off) % 25).toInt()
+    val stats = if (egg) null else baseStats(dec.species)?.takeIf { it.size >= 6 }?.let { gen3Stats(dec.species, it, ivs, dec.evs, nature, level) }
+    return Mon(
+        species = dec.species,
+        level = level,
+        hp = stats?.get(STAT_HP) ?: 0,
+        maxHp = stats?.get(STAT_HP) ?: 0,
+        status = 0,
+        moves = dec.moves,
+        pp = dec.pp,
+        exp = dec.exp,
+        personality = u32(raw, off),
+        stats = stats?.let { MonStats(ivs = ivs, evs = dec.evs, nature = nature, stats = it) },
+        heldItem = dec.heldItem,
+        nickname = gen3Nickname(raw, off, layout),
+        shiny = layout.shinyBelow > 0 && shinyValue(u32(raw, off), u32(raw, off + 4)) < layout.shinyBelow,
+    )
+}
+
+/** CalculateMonStats: HP, ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF from base stats, IVs, EVs, nature and level. */
+internal fun gen3Stats(species: Int, base: IntArray, ivs: List<Int>, evs: List<Int>, nature: Int, level: Int): List<Int> = List(6) { s ->
+    val n = (2 * base[s] + ivs[s] + evs[s] / 4) * level / 100
+    if (s == STAT_HP) {
+        // Shedinja's HP is always 1.
+        if (species == SPECIES_SHEDINJA) 1 else n + level + 10
+    } else {
+        val v = n + 5
+        when (s) {
+            natureRaises(nature) -> v * 110 / 100
+            natureLowers(nature) -> v * 90 / 100
+            else -> v
+        }
+    }
+}
+
+private const val SPECIES_SHEDINJA = 303
+
 /** Gen 3's shiny value: the OT ID's and the personality's halves XORed together. */
 internal fun shinyValue(personality: Long, otId: Long): Int =
     ((otId ushr 16) xor (otId and 0xFFFF) xor (personality ushr 16) xor (personality and 0xFFFF)).toInt()

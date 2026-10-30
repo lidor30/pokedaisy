@@ -186,6 +186,8 @@ data class SnapshotView(
      * id itself. Used to look up the FF-music table (see FfMusicPlayer). */
     val regionMapSectionId: Int = 0,
     val party: List<MonView> = emptyList(),
+    /** The PC's boxes (the BOXES tab); null = not read for this game. */
+    val pcBoxes: BoxesView? = null,
     val battlePlayer: List<MonView> = emptyList(),
     val battleOpponent: List<MonView> = emptyList(),
     val items: List<ItemView> = emptyList(),
@@ -310,6 +312,62 @@ fun spriteAsset(kind: String, id: Int): String? {
 /** A shiny Pokémon's party icon: `<dir>/shiny/<id>.png`, drawn in its species' shiny palette (DecompIconSource). */
 fun shinyIconAsset(species: Int): String? = spriteAsset("pokemon", species)?.let { it.substringBeforeLast('/') + "/shiny/" + it.substringAfterLast('/') }
 
+/** A party (or PC box) Pokémon as the PARTY tab and the summary show it. */
+fun partyMonView(m: Mon): MonView {
+    val st = activeSpeciesTypeData[m.species]
+    val type1 = st?.type1 ?: TYPE_NONE
+    val type2 = st?.type2 ?: TYPE_NONE
+    val matchups = typeMatchups(type1, type2)
+    val moves = m.moves.toList().mapIndexedNotNull { idx, moveId ->
+        if (moveId == 0) null
+        else {
+            val info = lookupMove(moveId)
+            MoveView(info.name, typeName(info.type), m.pp[idx], info.power, id = moveId)
+        }
+    }
+    val isEgg = m.isEgg || isVanillaEgg(m.species)
+    return MonView(
+        species = m.species,
+        name = if (isEgg) gameCase("Egg") else speciesName(m.species),
+        isEgg = isEgg,
+        level = m.level,
+        hp = m.hp,
+        maxHp = m.maxHp,
+        status = statusLabel(m.status),
+        types = monTypes(type1, type2),
+        // A DS game's eggs keep their species: the egg's own icon is NdsArt's 494.
+        iconAsset = if (m.shiny && !isEgg) shinyIconAsset(m.species) else spriteAsset("pokemon", if (isEgg && activeGame.isGen5) NdsArt.BLACK_EGG else if (isEgg && activeGame.isDsGame) 494 else m.species),
+        genderSymbol = m.genderSymbol,
+        moves = moves,
+        exp = if (isEgg) null else expProgress(m.species, m.level, m.exp),
+        personality = m.personality,
+        stats = if (isEgg) null else m.stats,
+        heldItemId = m.heldItem,
+        nickname = if (isEgg) null else m.nickname,
+        shiny = m.shiny && !isEgg,
+        weaknesses = matchups.weaknesses,
+        resistances = matchups.resistances,
+        immunities = matchups.immunities,
+    )
+}
+
+/** The PC's boxes as the BOXES tab shows them. */
+data class BoxesView(val currentBox: Int, val boxes: List<BoxView>)
+
+/** One box: its name (and the game's bytes for it), wallpaper and 30 slots (null = empty). */
+data class BoxView(val name: String, val wallpaper: Int, val mons: List<MonView?>) {
+    val count: Int get() = mons.count { it != null }
+}
+
+// The last boxes turned into views: the reader hands back the same PcBoxes while the storage is unchanged.
+private var lastBoxes: Pair<PcBoxes, BoxesView>? = null
+
+private fun boxesView(b: PcBoxes): BoxesView = synchronized(PcBoxes::class) {
+    lastBoxes?.takeIf { it.first === b }?.let { return it.second }
+    BoxesView(b.currentBox, b.boxes.map { box -> BoxView(box.name, box.wallpaper, box.mons.map { it?.let(::partyMonView) }) })
+        .also { lastBoxes = b to it }
+}
+
 fun buildSnapshotView(t: Telemetry): SnapshotView {
     // v2 ROMs export the icon-graphics table addresses; hand them to the live
     // sprite reader so nothing has to be bundled.
@@ -317,44 +375,8 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
     // HeartGold / SoulSilver's Pokégear map follows the save's state (PokegearMap).
     t.pokegearState?.let { PokegearMap.state = it to (t.townsVisited ?: 0L) }
 
-    val party = (0 until t.partyCount.coerceAtMost(PARTY_SIZE)).map { i ->
-        val m = t.party[i]
-        val st = activeSpeciesTypeData[m.species]
-        val type1 = st?.type1 ?: TYPE_NONE
-        val type2 = st?.type2 ?: TYPE_NONE
-        val matchups = typeMatchups(type1, type2)
-        val moves = m.moves.toList().mapIndexedNotNull { idx, moveId ->
-            if (moveId == 0) null
-            else {
-                val info = lookupMove(moveId)
-                MoveView(info.name, typeName(info.type), m.pp[idx], info.power, id = moveId)
-            }
-        }
-        val isEgg = m.isEgg || isVanillaEgg(m.species)
-        MonView(
-            species = m.species,
-            name = if (isEgg) gameCase("Egg") else speciesName(m.species),
-            isEgg = isEgg,
-            level = m.level,
-            hp = m.hp,
-            maxHp = m.maxHp,
-            status = statusLabel(m.status),
-            types = monTypes(type1, type2),
-            // A DS game's eggs keep their species: the egg's own icon is NdsArt's 494.
-            iconAsset = if (m.shiny && !isEgg) shinyIconAsset(m.species) else spriteAsset("pokemon", if (isEgg && activeGame.isGen5) NdsArt.BLACK_EGG else if (isEgg && activeGame.isDsGame) 494 else m.species),
-            genderSymbol = m.genderSymbol,
-            moves = moves,
-            exp = if (isEgg) null else expProgress(m.species, m.level, m.exp),
-            personality = m.personality,
-            stats = if (isEgg) null else m.stats,
-            heldItemId = m.heldItem,
-            nickname = if (isEgg) null else m.nickname,
-            shiny = m.shiny && !isEgg,
-            weaknesses = matchups.weaknesses,
-            resistances = matchups.resistances,
-            immunities = matchups.immunities,
-        )
-    }
+    val party = (0 until t.partyCount.coerceAtMost(PARTY_SIZE)).map { i -> partyMonView(t.party[i]) }
+    val pcBoxes = t.pcBoxes?.let(::boxesView)
 
     var battlePlayer = emptyList<MonView>()
     var battleOpponent = emptyList<MonView>()
@@ -457,6 +479,7 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
         location = lookupLocation(t.regionMapSectionId).let { l -> t.mapSecName?.let { l.copy(mapSecName = it) } ?: l },
         regionMapSectionId = t.regionMapSectionId,
         party = party,
+        pcBoxes = pcBoxes,
         battlePlayer = battlePlayer,
         battleOpponent = battleOpponent,
         items = items,

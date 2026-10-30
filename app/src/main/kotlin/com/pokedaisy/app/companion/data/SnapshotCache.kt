@@ -31,6 +31,7 @@ object SnapshotCache {
         val tables = v.pokedex?.tables?.takeIf { it.evolutions != 0L }
         if (tables != null || v.guideTables != null || gameGuide(guideId(v.game, v.guideTables)) != null) add("GUIDE")
         if (v.trainerCard != null) add("CARD")
+        if (v.pcBoxes != null) add("BOXES")
     }
 
     /** Writes [v] beside [state], or removes a stale one when [v] has no data worth showing. */

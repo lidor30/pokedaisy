@@ -56,4 +56,13 @@ interface ItemUse {
 
     /** Opens the game's own PC on the field (USED = it's open; NOT_NOW / IN_BATTLE: not from here, now). */
     fun openPc(done: (ItemUseOutcome) -> Unit) = done(ItemUseOutcome(ItemUseResult.FAILED))
+
+    /** Whether a box Pokémon's summary has SWAP here (BoxSwap.kt). */
+    fun canSwapBox(): Boolean = false
+
+    /** Swaps box [box]'s slot [slot] ([boxPersonality]) with party slot [partySlot] ([partyPersonality]) in the game. */
+    fun swapBox(
+        box: Int, slot: Int, boxPersonality: Long, partySlot: Int, partyPersonality: Long,
+        done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+    ) = done(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED)
 }

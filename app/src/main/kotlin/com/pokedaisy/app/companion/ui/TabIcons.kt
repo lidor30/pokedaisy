@@ -233,12 +233,39 @@ internal object TabIcons {
         ),
     )
 
+    /** A PC whose screen is a box on a grassy wallpaper, three Pokémon in it: the BOXES tab. */
+    private val boxes = TabIcon(
+        listOf(
+            "................",
+            ".kkkkkkkkkkkkkk.",
+            ".kwwwwwwwwwwwwk.",
+            ".kwkkkkkkkkkkwk.",
+            ".kwkggggggggkwk.",
+            ".kwkgrgggbggkwk.",
+            ".kwkggggggggkwk.",
+            ".kwkggyggggrkwk.",
+            ".kwkggggggggkwk.",
+            ".kwkkkkkkkkkkwk.",
+            ".kwwwwwwwwwwwwk.",
+            ".kkkkkkkkkkkkkk.",
+            "......kssk......",
+            ".....kssssk.....",
+            "...kkkkkkkkkk...",
+            "...kssssssssk...",
+        ),
+        mapOf(
+            'k' to OUTLINE, 'w' to Color(0xFFD8D8E0), 's' to Color(0xFF9898A8), 'g' to Color(0xFF78C058),
+            'r' to Color(0xFFE83838), 'b' to Color(0xFF3878E8), 'y' to Color(0xFFF8C830),
+        ),
+    )
+
     /** A tab id's icon; null for a tab without one (BATTLE and SETTINGS never sit on the MORE grid). */
     fun forTab(id: String): TabIcon? = when (id) {
         "PARTY" -> party
         "DEX" -> dex
         "MAP" -> map
         "ITEMS" -> bag
+        "BOXES" -> boxes
         "GUIDE" -> guide
         "NUZLOCKE" -> grave
         "CARD" -> card

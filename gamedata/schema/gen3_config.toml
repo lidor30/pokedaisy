@@ -450,3 +450,11 @@ default = 0
 kotlin = 'Long'
 type = 'long'
 default = 0
+
+# gPokemonStoragePtr (the PC's struct PokemonStorage: current box, 14 boxes of 30 BoxPokemon, names, wallpapers), for the
+# BOXES tab. Set by the Poller on retail FireRed only (gSaveBlock2Ptr + 4: the three save pointers sit together in every
+# build), never in a config file: the hacks and language ports that copy FireRed's config weren't checked.
+[field.pokemonStoragePtr]
+kotlin = 'Long'
+type = 'long'
+default = 0

@@ -606,8 +606,10 @@ class TelemetrySampler {
             // NATIVE_FIRERED_REV0 is the hacks' base too: only retail gets the card.
             else -> NATIVE_FIRERED_REV0.copy(trainerCard = TRAINER_CARD_FIRERED)
         }
-        // The SHINY marks: retail's shiny check (8 of 65536), on this copy only.
-        nativeCfg = withCheckedTables(reader, cfg).copy(shinyBelow = 8)
+        // The SHINY marks: retail's shiny check (8 of 65536), on this copy only. BOXES: gPokemonStoragePtr, right after
+        // gSaveBlock2Ptr (FireRed 0x03005010 in both revisions, Emerald 0x03005D94; read off captures: every box record's
+        // checksum held).
+        nativeCfg = withCheckedTables(reader, cfg).copy(shinyBelow = 8, pokemonStoragePtr = cfg.saveBlock2Ptr + 4)
         ramVerified = true
     }
 
