@@ -11,6 +11,8 @@ import androidx.compose.animation.slideInVertically
 import androidx.compose.animation.slideOutVertically
 import androidx.compose.animation.togetherWith
 import androidx.compose.foundation.background
+import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
@@ -50,19 +52,22 @@ import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.platform.testTag
 import com.pokedaisy.app.companion.data.GENDER_SYMBOL_FEMALE
 import com.pokedaisy.app.companion.data.GENDER_SYMBOL_MALE
 import com.pokedaisy.app.companion.data.MonView
 import com.pokedaisy.app.companion.data.MoveView
 import com.pokedaisy.app.companion.data.TypeMatchup
 import com.pokedaisy.app.companion.ui.theme.AppColors
+import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 
 /**
  * A party member's summary, filling the PARTY tab (opened by tapping a slot):
  * name / level / gender / types / HP top-left, type matchups bottom-left,
- * the four moves on the right - in the app's OPTION-screen windows. Up/down
+ * the four moves on the right. FireRed/LeafGreen use their summary paper and
+ * heading; other games keep the app's OPTION-screen windows. Up/down
  * cycle through the party (wrapping), back returns to the slots; the buttons
- * are the battle screen's [PlatinumButton]s with pixel-art icons.
+ * keep pixel-art icons and use flat menu frames in FireRed/LeafGreen.
  *
  * Takes the whole party plus an index (not one [MonView]) so it keeps
  * following live telemetry while open. STATS (when the read has IVs, i.e.
@@ -133,9 +138,11 @@ fun MonDetailScreen(
             // Compose's slot table mid-transition.)
             val mon = party.getOrNull(i)
             if (mon != null) {
-                // One white window, split by separators: info over matchups
-                // on the left, the moves on the right.
-                OptionListWindow(m, Modifier.fillMaxSize(), fill = optionLook.titleFill) {
+                // Kanto's summary pages keep their blue/cream heading and striped paper;
+                // the companion's extra information still fits the same adaptive columns.
+                MonSummaryWindow(m, stats = showStats && mon.stats != null && !showLearn,
+                    page = if (showLearn && canLearn) tr("LEARN") else if (showStats && mon.stats != null) tr("STATS") else tr("MOVES"),
+                    modifier = Modifier.fillMaxSize()) {
                     Row(Modifier.fillMaxSize()) {
                         if (showLearn && canLearn) {
                             val options = rememberLearnOptions(learn!!, mon)
@@ -256,6 +263,16 @@ internal fun NavButton(
     enabled: Boolean,
     onClick: () -> Unit,
 ) {
+    if (usesKantoMenu) {
+        val m = rememberGbaTextMetrics(1f)
+        OptionButton(
+            label = null, m = m, onClick = onClick, modifier = Modifier.size(NavButtonSize),
+            pixelIcon = if (icon == PixelIcons.back) PixelIcons.arrowBack else icon,
+            contentDescription = description, enabled = enabled, sidePadding = 0,
+            frameLayers = KantoMenuColors.layers,
+        )
+        return
+    }
     PlatinumButton(
         fill = fill, frame = frame,
         modifier = Modifier.size(NavButtonSize).semantics { contentDescription = description },
@@ -277,13 +294,95 @@ private fun PartyStrip(party: List<MonView>, index: Int, onPick: (Int) -> Unit, 
         Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(gap)) {
             party.forEachIndexed { i, mon ->
                 val on = i == index
-                PlatinumButton(
-                    fill = if (on) optionLook.stripLit else optionLook.stripIdle, frame = if (on) optionLook.stripLitFrame else optionLook.stripIdleFrame,
-                    modifier = Modifier.size(cell).semantics { contentDescription = mon.name },
-                    contentPadding = PaddingValues(0.dp),
-                    onClick = { onPick(i) },
-                ) { SpeciesIcon(mon.iconAsset, size = cell * 0.8f) }
+                if (usesKantoMenu) {
+                    KantoPartyButton(mon, on, cell) { onPick(i) }
+                } else {
+                    PlatinumButton(
+                        fill = if (on) optionLook.stripLit else optionLook.stripIdle, frame = if (on) optionLook.stripLitFrame else optionLook.stripIdleFrame,
+                        modifier = Modifier.size(cell).semantics { contentDescription = mon.name },
+                        contentPadding = PaddingValues(0.dp),
+                        onClick = { onPick(i) },
+                    ) { SpeciesIcon(mon.iconAsset, size = cell * 0.8f) }
+                }
             }
+        }
+    }
+}
+
+/** Flat, pixel-framed party markers, with the party menu's orange selection outline. */
+@Composable
+private fun KantoPartyButton(mon: MonView, selected: Boolean, size: Dp, onClick: () -> Unit) {
+    val m = rememberGbaTextMetrics(1f)
+    val interaction = remember { MutableInteractionSource() }
+    val focused by interaction.collectIsFocusedAsState()
+    Box(
+        Modifier.size(size)
+            .semantics { contentDescription = mon.name }
+            .gbaFocusRing(focused, PixelRoundedShape(m.u * 2))
+            .drawBehind {
+                val frame = if (selected) listOf(KantoSummaryColors.selection to 2, OptionColors.titleFill to 1)
+                    else KantoMenuColors.layers
+                drawLayeredBox(frame.inPx(m.u.toPx()), if (selected) OptionColors.titleFill else KantoSummaryColors.identityPaper,
+                    radius = m.u.toPx() * 2)
+            }
+            .soundClickable(interactionSource = interaction, indication = null, onClick = onClick),
+        contentAlignment = Alignment.Center,
+    ) { SpeciesIcon(mon.iconAsset, size = size * 0.8f) }
+}
+
+/** FireRed/LeafGreen's summary-paper colours (graphics/summary_screen/bg.png in pret/pokefirered),
+ * expanded from BGR555 like the ROM renderer; dark mode keeps the same page cues. */
+private object KantoSummaryColors {
+    private fun c(light: Long, dark: Long) = Color(if (OptionColors.dark) dark else light)
+    val heading get() = c(0xFFE7DE9C, 0xFF514C2D)
+    val identityFrame get() = c(0xFFB58CD6, 0xFF74608E)
+    val identityPaper get() = c(0xFFE7CEFF, 0xFF302B3C)
+    val identityStripe get() = c(0xFFCEADEF, 0xFF3D334D)
+    val portraitPaper get() = c(0xFFE7E7E7, 0xFF292D35)
+    val portraitStripe get() = c(0xFFF7F7F7, 0xFF323740)
+    val movesPaper get() = c(0xFFADF7DE, 0xFF263D36)
+    val movesStripe get() = c(0xFF9CEFD6, 0xFF1F332D)
+    val statsPaper get() = c(0xFFFFEF7B, 0xFF443C27)
+    val statsStripe get() = c(0xFFFFD65A, 0xFF352F21)
+    val moveFrame get() = c(0xFF6BC69C, 0xFF4A7567)
+    val selection get() = c(0xFFFF7331, 0xFFFF9C63)
+}
+
+/** Native-sized stripes, drawn as whole pixels rather than scaling a background bitmap. */
+private fun Modifier.summaryPaper(m: GbaTextMetrics, paper: Color, stripe: Color) = drawBehind {
+    val px = m.u.toPx()
+    drawRect(paper)
+    var y = px
+    while (y < size.height) {
+        drawRect(stripe, Offset(0f, y), Size(size.width, px))
+        y += px * 2
+    }
+}
+
+@Composable
+private fun MonSummaryWindow(
+    m: GbaTextMetrics, stats: Boolean, page: String, modifier: Modifier = Modifier, content: @Composable () -> Unit,
+) {
+    if (!usesKantoMenu) {
+        OptionListWindow(m, modifier, fill = optionLook.titleFill, content = content)
+        return
+    }
+    val title = rememberGbaTextMetrics(1f)
+    Column(modifier.background(OptionColors.frameDark).padding(m.u * 2)) {
+        Row(Modifier.fillMaxWidth().height(title.lineHeight + m.u * 6).background(OptionColors.hintBar),
+            verticalAlignment = Alignment.CenterVertically) {
+            Box(Modifier.weight(1f).fillMaxHeight().background(KantoSummaryColors.heading)
+                .padding(horizontal = m.u * 6), contentAlignment = Alignment.CenterStart) {
+                GbaText(tr("INFO"), OptionColors.label, OptionColors.labelShadow, title)
+            }
+            Box(Modifier.weight(1f).padding(horizontal = m.u * 6), contentAlignment = Alignment.CenterStart) {
+                GbaText(page, OptionColors.hintText, OptionColors.hintShadow, title)
+            }
+        }
+        Box(Modifier.weight(1f).fillMaxWidth().summaryPaper(m,
+            if (stats) KantoSummaryColors.statsPaper else KantoSummaryColors.movesPaper,
+            if (stats) KantoSummaryColors.statsStripe else KantoSummaryColors.movesStripe).padding(m.u * 3)) {
+            content()
         }
     }
 }
@@ -325,12 +424,29 @@ private fun SummaryLeftColumn(
     held: (@Composable () -> Unit)? = null,
 ) {
     val sections = listOf(mon.weaknesses, mon.resistances, mon.immunities)
+    if (usesKantoMenu && LocalShortCompanion.current) {
+        // On a 240-GBA-pixel screen the identity + held item can consume the entire column.
+        // Scroll the whole column so matchups and TAKE remain reachable, rather than giving
+        // only the matchups a near-zero-height viewport.
+        val scroll = rememberScrollState()
+        Column(modifier.testTag("summary-details-scroll")
+            .dpadScroll(scroll, RectangleShape, small.lineHeight * 3).verticalScroll(scroll)) {
+            SummaryIdentity(mon, m, small, compact = true)
+            held?.invoke()
+            Separator(m, Modifier.fillMaxWidth().padding(vertical = gap))
+            MatchupColumn(
+                listOf(tr("WEAK TO"), tr("RESISTS"), tr("IMMUNE TO")).zip(sections).filter { it.second.isNotEmpty() },
+                small, inline = true, scroll = false,
+            )
+        }
+        return
+    }
     androidx.compose.ui.layout.SubcomposeLayout(modifier) { c ->
         val fits = !c.hasBoundedHeight || run {
             val loose = c.copy(minHeight = 0, maxHeight = androidx.compose.ui.unit.Constraints.Infinity)
             val probe = subcompose("probe") {
                 Column(Modifier.fillMaxWidth()) {
-                    InfoSection(mon, m, small, Modifier.fillMaxWidth())
+                    SummaryIdentity(mon, m, small, compact = false)
                     held?.invoke()
                     Separator(m, Modifier.fillMaxWidth().padding(vertical = gap))
                     MatchupColumn(
@@ -343,7 +459,7 @@ private fun SummaryLeftColumn(
         }
         val shown = subcompose(if (fits) "full" else "compact") {
             Column(Modifier.fillMaxSize()) {
-                InfoSection(mon, m, small, Modifier.fillMaxWidth(), typesBesideIcon = !fits)
+                SummaryIdentity(mon, m, small, compact = !fits)
                 held?.invoke()
                 Separator(m, Modifier.fillMaxWidth().padding(vertical = gap))
                 MatchupSection(mon, small, Modifier.fillMaxWidth().weight(1f))
@@ -353,14 +469,26 @@ private fun SummaryLeftColumn(
     }
 }
 
+@Composable
+private fun SummaryIdentity(mon: MonView, m: GbaTextMetrics, small: GbaTextMetrics, compact: Boolean) {
+    val frame = if (usesKantoMenu) Modifier
+        .background(KantoSummaryColors.identityFrame).padding(m.u * 2)
+        .summaryPaper(m, KantoSummaryColors.portraitPaper, KantoSummaryColors.portraitStripe).padding(m.u * 3)
+        else Modifier
+    InfoSection(mon, m, small, Modifier.fillMaxWidth().then(frame), typesBesideIcon = compact, kantoIdentity = usesKantoMenu)
+}
+
 /** Name + gender, icon, level, types, status, HP - the summary's top-left block. [typesBesideIcon]:
  * the types under the level, next to the icon, instead of a row of their own (a short screen). */
 @Composable
-internal fun InfoSection(mon: MonView, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier = Modifier, typesBesideIcon: Boolean = false) {
+internal fun InfoSection(mon: MonView, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier = Modifier, typesBesideIcon: Boolean = false, kantoIdentity: Boolean = false) {
     val u = m.u
     Box(modifier) {
         Column(verticalArrangement = Arrangement.spacedBy(u * 3)) {
-            Row(verticalAlignment = Alignment.CenterVertically) {
+            Row(
+                modifier = if (kantoIdentity) Modifier.fillMaxWidth().background(KantoSummaryColors.identityStripe) else Modifier,
+                verticalAlignment = Alignment.CenterVertically,
+            ) {
                 GbaText(mon.shownName, optionLook.label, optionLook.labelShadow, m, modifier = Modifier.weight(1f, fill = false))
                 GenderMark(mon.genderSymbol, m, Modifier.padding(start = u * 3))
                 if (mon.shiny) ShinySparkle(m, Modifier.padding(start = u * 3))
@@ -370,8 +498,9 @@ internal fun InfoSection(mon: MonView, m: GbaTextMetrics, small: GbaTextMetrics,
             Row(verticalAlignment = Alignment.CenterVertically) {
                 // The 32px icon at a whole multiple of the frame's GBA pixel, so it stays crisp.
                 // A shiny one: in a gold frame, as on battle INFO.
-                Box(Modifier.monIconBox(u * 36, u, mon.shiny, optionLook.listFill), contentAlignment = Alignment.Center) {
-                    SpeciesIcon(mon.iconAsset, size = u * 32)
+                val compactPortrait = kantoIdentity && typesBesideIcon
+                Box(Modifier.monIconBox(u * if (compactPortrait) 28 else 36, u, mon.shiny, optionLook.listFill), contentAlignment = Alignment.Center) {
+                    SpeciesIcon(mon.iconAsset, size = u * if (compactPortrait) 24 else 32)
                 }
                 Spacer(Modifier.width(u * 5))
                 if (!mon.isEgg) {
@@ -513,11 +642,14 @@ internal fun MatchupGroup(heading: String, list: List<TypeMatchup>, small: GbaTe
 /** The four moves, sharing out the column's height, separated by rules. */
 @Composable
 private fun MovesSection(mon: MonView, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier = Modifier, forget: Int = 0) {
-    Column(modifier) {
+    Column(modifier, verticalArrangement = Arrangement.spacedBy(if (usesKantoMenu) m.u * 3 else 0.dp)) {
         for (i in 0 until 4) {
-            if (i > 0) Separator(m, Modifier.fillMaxWidth())
+            if (i > 0 && !usesKantoMenu) Separator(m, Modifier.fillMaxWidth())
             val mv = mon.moves.getOrNull(i)
-            MoveRow(mv, m, small, Modifier.weight(1f).fillMaxWidth(), forget = forget != 0 && mv?.id == forget)
+            val paper = if (usesKantoMenu) Modifier.background(KantoSummaryColors.moveFrame)
+                .padding(end = m.u, bottom = m.u).background(OptionColors.titleFill).padding(horizontal = m.u * 2)
+                else Modifier
+            MoveRow(mv, m, small, Modifier.weight(1f).fillMaxWidth().then(paper), forget = forget != 0 && mv?.id == forget)
         }
     }
 }
@@ -587,6 +719,11 @@ internal fun Stat(label: String, value: String, small: GbaTextMetrics) {
 /** A labelled button for the summary screens' bottom row, as tall as [NavButton]. */
 @Composable
 internal fun TextNavButton(label: String, fill: Color, frame: Color, onClick: () -> Unit) {
+    if (usesKantoMenu) {
+        OptionButton(label, rememberGbaTextMetrics(1f), onClick = onClick, modifier = Modifier.height(NavButtonSize),
+            sidePadding = 6, frameLayers = KantoMenuColors.layers)
+        return
+    }
     PlatinumButton(
         fill = fill, frame = frame,
         modifier = Modifier.height(NavButtonSize),

@@ -61,6 +61,9 @@ import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.selected
+import androidx.compose.ui.semantics.role
+import androidx.compose.ui.semantics.Role
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.text.style.TextAlign
 import androidx.compose.ui.unit.dp
@@ -731,7 +734,7 @@ internal fun companionTabLabel(id: String): String = when (id) {
 private fun rememberTabMetrics(): GbaTextMetrics {
     // A fixed-width game font (Gen 1's 8px letters, condensed): its own size at whole pixels, crisp.
     val wide = LocalGameFont.current != null
-    return rememberGbaTextMetrics(if (wide) 1f else 1.15f, wholePixels = wide)
+    return rememberGbaTextMetrics(if (wide) 1f else 1.15f, wholePixels = wide || usesKantoMenu)
 }
 
 /** The gear and MORE chips' fixed width (narrower on a short screen, which is narrow too: the text tabs keep their words). */
@@ -903,10 +906,21 @@ private fun TabChipShell(
                 // Idle tabs take the list window's frame + grey; the selected
                 // one the title window's white, like the OPTION screen's cursor row.
                 val px = u.toPx()
-                drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px)
+                val layers = if (usesKantoMenu) KantoMenuColors.layers else OptionColors.chipLayers
+                drawLayeredBox(layers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px)
+                // A cursor tab remains distinguishable without relying on red text alone.
+                if (usesKantoMenu && selected) {
+                    drawRect(OptionColors.value, androidx.compose.ui.geometry.Offset(6 * px, size.height - 4 * px),
+                        androidx.compose.ui.geometry.Size((size.width - 12 * px).coerceAtLeast(0f), px))
+                }
             }
             .soundClickable(interactionSource = noRipple, indication = null, enabled = enabled, onClick = onClick)
-            .padding(horizontal = if (LocalGameFont.current != null) u else u * 2, vertical = u * 6),
+            .semantics { this.selected = selected; role = Role.Tab }
+            .padding(horizontal = when {
+                usesKantoMenu -> u * 6
+                LocalGameFont.current != null -> u
+                else -> u * 2
+            }, vertical = u * 6),
         contentAlignment = Alignment.Center,
     ) { content() }
 }

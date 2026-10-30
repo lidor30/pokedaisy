@@ -52,9 +52,10 @@ startup from the decomp builds under `$DECOMPS` (`pokefirered/`, `pokeemerald/`)
 `-Prom` or `-PartRoms=a.gba,b.gba`, into `build/scratch/files/rom-art`. The fake
 party's mon icons come from `-PmonIcons=DIR` (or `$MON_ICONS`): one
 `<species>.png` per internal Gen 3 species id, e.g. the private ROM-hack project's
-`tools/telemetry-viewer/assets/pokemon`. Without it the party shows no icons. Without
+`tools/telemetry-viewer/assets/pokemon`. With `-Prom`, the supported retail preview
+also reads icons directly from that ROM. Without either source the party shows no icons. Without
 any of those ROMs (a cloud session) those games show their fallbacks: the drawn
-party slot, no backdrop, a text-only map. A FireRed-engine hack's own region map
+party slot, a teal striped backdrop in FireRed/LeafGreen, a text-only map. A FireRed-engine hack's own region map
 (`RomRegionMap`) comes from `-Prom` too: `gradle render -Pgame=UNBOUND
 -Prom=<unbound.gba> -Ponly=map`.
 

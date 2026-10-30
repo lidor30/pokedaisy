@@ -232,6 +232,7 @@ fun docsCompanion(
     popup: AchievementPopup? = null,
     snap: () -> SnapshotView = { snapshot().withBench() },
 ): () -> (@Composable () -> Unit) = {
+    com.pokedaisy.app.companion.ui.OptionColors.inGame = true
     previewCapture = com.pokedaisy.app.companion.KeyCapture()
     DeviceBattery.status.value = BatteryStatus(76, charging = false)
     val sv = snap().disguised()

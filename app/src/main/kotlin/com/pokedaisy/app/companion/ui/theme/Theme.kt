@@ -507,7 +507,11 @@ private fun buildGameBackground(context: android.content.Context, game: GameKind
     }
     // Every backdrop comes from a ROM the player has run (RomArt): until the
     // game's own is there, FireRed's or Emerald's if one of those is (untiled).
-    val bmp = sequenceOf(asset, "partybg/firered.png", "partybg/emerald.png").distinct()
+    // Retail FR/LG draws its teal stripes while waiting for its art; another cart's cached
+    // backdrop must not turn it into Emerald. GameBackdrop owns the integer-scaled fallback.
+    val candidates = if (game == GameKind.FIRERED && com.pokedaisy.app.companion.data.runningFireRedHack == null)
+        sequenceOf(asset) else sequenceOf(asset, "partybg/firered.png", "partybg/emerald.png")
+    val bmp = candidates.distinct()
         .firstNotNullOfOrNull { path -> GameArt.get(context, path)?.let { it to (tiled && path == asset) } }
     return bmp?.let { (b, tile) -> GameBackground(b.asImageBitmap(), tile) }
 }

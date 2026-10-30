@@ -300,6 +300,7 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
  * The docs render (DocsShots.kt) draws invented creatures instead. */
 fun monIcon(species: Int): String? = if (docsMode) creatureIcon(species) else
     System.getProperty("monIcons").orEmpty().takeIf { it.isNotBlank() }?.let { "$it/$species.png" }
+        ?: if (com.pokedaisy.app.companion.data.DecompIconSource.tables.monPresent) "pokemon/$species.png" else null
 
 fun snapshot() = SnapshotView(
     connected = true, facingDirection = "down", x = 12, y = 7, game = activeGame,
@@ -391,6 +392,7 @@ fun companion(
     barTabs: List<String>? = null,
     snap: () -> SnapshotView = ::snapshot,
 ): () -> (@Composable () -> Unit) = {
+    com.pokedaisy.app.companion.ui.OptionColors.inGame = true
     previewCapture = com.pokedaisy.app.companion.KeyCapture()
     DeviceBattery.status.value = battery
     val sv = snap()
@@ -600,7 +602,10 @@ fun liveGuide(): ((SnapshotView) -> SnapshotView)? {
     }
     if (path.isBlank()) return null
     val tables = cfg.guideTables!!
-    PokedexSource.reader = RomFile(File(path).readBytes())
+    val rom = RomFile(File(path).readBytes())
+    PokedexSource.reader = rom
+    com.pokedaisy.app.companion.data.DecompIconSource.reader = rom
+    com.pokedaisy.app.companion.data.DecompIconSource.tables = cfg.iconTables
     // The render task runs in app/src/main/assets. -Phour=22: the game's clock at that hour (Lazarus's night lists).
     val fixtureRam = RamFixture(File("../../test/resources/fixtures/$fixture"))
     val hour = System.getProperty("hour").orEmpty().toIntOrNull()
@@ -860,6 +865,7 @@ fun supportLibrary() = LibraryActivity().apply { supportAsk = true }
 var lastActivity: androidx.activity.ComponentActivity? = null
 
 fun activity(expandIntro: Boolean = false, start: Boolean = false, make: () -> androidx.activity.ComponentActivity): () -> (@Composable () -> Unit) = {
+    com.pokedaisy.app.companion.ui.OptionColors.inGame = false
     val ctx = android.content.Context()
     val roms = File(ctx.filesDir, "roms").apply { mkdirs() }
     // Dump-style file names, as players have them; firered-hack stays unrecognised (a hack it doesn't know).

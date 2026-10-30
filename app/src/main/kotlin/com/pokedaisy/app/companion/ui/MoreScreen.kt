@@ -14,17 +14,21 @@ import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.remember
+import androidx.compose.runtime.mutableStateOf
+import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.dp
 import androidx.compose.ui.platform.testTag
 import kotlin.math.floor
 import androidx.compose.ui.semantics.contentDescription
@@ -58,6 +62,10 @@ internal fun MoreScreen(
 ) {
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
+    if (usesKantoMenu) {
+        KantoMoreScreen(tabs, onOpen, onConfigure, modifier, usable, m, small)
+        return
+    }
     Column(modifier.fillMaxSize()) {
         OptionTitleWindow(tk("MORE"), m)
         Spacer(Modifier.height(m.u * 4))
@@ -97,6 +105,49 @@ internal fun MoreScreen(
                     OptionButton(tk("TAB BAR"), m, onClick = onConfigure, pixelIcon = PixelIcons.gear, modifier = Modifier.testTag("more-tab-bar"))
                 }
             }
+        }
+    }
+}
+
+/** FR/LG's START-menu idiom: a white command list with a solid cursor and a separate help window. */
+@Composable
+private fun KantoMoreScreen(
+    tabs: List<String>,
+    onOpen: (String) -> Unit,
+    onConfigure: () -> Unit,
+    modifier: Modifier,
+    usable: (String) -> Boolean,
+    m: GbaTextMetrics,
+    small: GbaTextMetrics,
+) {
+    var focused by remember(tabs) { mutableStateOf(tabs.firstOrNull { usable(it) } ?: "TAB BAR") }
+    Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(m.u * 4)) {
+        OptionTitleWindow(tk("MORE"), m)
+        Box(Modifier.weight(1f).fillMaxWidth(), contentAlignment = Alignment.TopEnd) {
+            KantoMenuWindow(m, Modifier.widthIn(max = 320.dp).fillMaxWidth()) {
+                Column(Modifier.verticalScroll(rememberScrollState())) {
+                    tabs.forEach { id ->
+                        KantoMenuCommand(
+                            companionTabLabel(id), m, selected = focused == id,
+                            modifier = Modifier.focusStart(id == focused).testTag("more-$id"),
+                            enabled = usable(id), onFocus = { focused = id }, onClick = { onOpen(id) },
+                        )
+                    }
+                    Separator(m, Modifier.padding(vertical = m.u * 3))
+                    KantoMenuCommand(
+                        tk("TAB BAR"), m, selected = focused == "TAB BAR",
+                        modifier = Modifier.testTag("more-tab-bar"),
+                        onFocus = { focused = "TAB BAR" }, onClick = onConfigure,
+                    )
+                }
+            }
+        }
+        KantoMenuWindow(m, Modifier.fillMaxWidth()) {
+            GbaText(
+                tr("Tabs that aren't on the tab bar are here. Pick the bar's tabs in TAB BAR."),
+                OptionColors.label, OptionColors.labelShadow, small, maxLines = 4,
+                modifier = Modifier.padding(horizontal = m.u * 3, vertical = m.u * 2),
+            )
         }
     }
 }

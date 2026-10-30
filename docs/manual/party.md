@@ -28,11 +28,15 @@ Tap any slot to open that Pokémon's summary. It fills the tab:
 - **Bottom left**: `WEAK TO`, `RESISTS` and `IMMUNE TO`, with the multiplier on each type (2x, ½x, 0x and so on). It's the quickest way to see what to keep this Pokémon away from.
 - **Right**: its four moves, each with its type, power (`PWR`) and remaining `PP`.
 
+In FireRed and LeafGreen, the summary follows the game's colours: a cream and blue page heading, a lavender identity panel, mint stripes for moves and yellow stripes for stats. The buttons use flat menu frames, and an orange border marks the Pokémon you're viewing in the party strip.
+
+On a small companion screen in FireRed and LeafGreen, scroll the left column to reach the held item and type matchups. The whole column moves together so the details stay within reach.
+
 ![EMBERPUP's summary: level, HP and EXP on the left above its weaknesses and resistances, its four moves on the right](shots/companion-summary.png "A Pokémon's summary")
 
 If the Pokémon holds an item, its `ITEM` line shows it. In games where the companion can use items, a `TAKE` button puts the item back in your bag, after asking first. When the bag has no room for it, the line says `BAG FULL` instead, just as the game would refuse.
 
-Along the bottom is a strip with every Pokémon in your party: tap another one to switch to its summary. The page you're on (moves, stats or learn) stays put while you switch, so you can compare the whole team's IVs one after another. The blue button at the bottom right, or BACK, returns to the party.
+Along the bottom is a strip with every Pokémon in your party: tap another one to switch to its summary. The page you're on (moves, stats or learn) stays put while you switch, so you can compare the whole team's IVs one after another. The arrow button at the bottom right, or BACK, returns to the party.
 
 ## STATS: IVs, EVs and nature
 

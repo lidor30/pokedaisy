@@ -10,6 +10,8 @@ The companion is everything on the bottom screen while a game runs. It reads you
 
 You don't have to do anything to start it. Open a supported game and the companion fills in once the game has loaded. On a device with only one screen it lives in a panel beside the game instead (see [Devices](devices.md)).
 
+In FireRed and LeafGreen, the companion uses the games' teal party stripes, blue text-box borders and shadowed menu lettering. The stripes appear even while the ROM art is loading. The open tab has a red underline as well as a red label, so you can spot it by its shape too. `DARK MODE` keeps these frames with darker colours.
+
 ## The tabs
 
 Along the bottom of the companion is a row of tabs, with `MORE` (a grid of nine squares) and the SETTINGS gear at its right end. Out of the box you get:
@@ -40,11 +42,11 @@ Your choice is shared by every game. A tab the running game doesn't have shows `
 
 ### Tabs that aren't on the bar
 
-Hidden tabs are still one tap away. Tap `MORE`, left of the gear: every tab you left off the bar is there as an app, with a coloured icon and its name. Tap one to open it. While it's open `MORE` stays lit, and BACK takes you back to it.
+Hidden tabs are still one tap away. Tap `MORE`, left of the gear: every tab you left off the bar is there. In FireRed and LeafGreen, they form a white command list like the game's START menu, with a triangle marking the row under the cursor. Other games show apps with coloured icons and names. Tap a name or icon to open it. While it's open `MORE` stays lit, and BACK takes you back to it.
 
-Under the icons, a line reminds you that you pick the bar's tabs yourself, and the `TAB BAR` button takes you straight to that page in SETTINGS. When every tab the game has is on the bar, `MORE` isn't shown.
+The `TAB BAR` button takes you straight to that page in SETTINGS. It sits at the end of the command list in FireRed and LeafGreen, or below the icons in other games. A message below reminds you that you pick the bar's tabs yourself. When every tab the game has is on the bar, `MORE` isn't shown.
 
-![The MORE tab, with STATES and CHEEVOS as app icons and the TAB BAR button under them](shots/companion-more.png "MORE")
+![The MORE tab in FireRed, with a command list and TAB BAR at its end](shots/companion-more.png "MORE")
 
 ### The BATTLE tab
 

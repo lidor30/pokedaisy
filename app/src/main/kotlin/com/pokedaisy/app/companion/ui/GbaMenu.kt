@@ -141,14 +141,15 @@ object OptionColors {
         Color(0xFF293131) to 1, Color(0xFF8C8CCE) to 1, Color(0xFF736B84) to 2,
         Color(0xFFDED6DE) to 1, Color(0xFFFFFFFF) to 2,
     )
-    val listFill get() = if (gen1) G1_PAPER else c(0xFFE0DFDF, 0xFF1D2128)
+    val listFill get() = if (gen1) G1_PAPER else c(if (usesKantoMenu) 0xFFDEDEDE else 0xFFE0DFDF, 0xFF1D2128)
     /** The cursor row (Gen 1 marks it with its ▶; here a light grey band, a lighter slate in dark). */
     val rowSelected get() = if (gen1) (if (activeGame.isRedBlue) c(0xFFE6D6E6, 0xFF3A3A3A) else c(0xFFDCDCDC, 0xFF3A3A3A))
         else c(0xFFFFFFFF, 0xFF353C49)
-    val label get() = if (gen1) G1_INK else c(0xFF575656, 0xFFCDD1D9)
-    val labelShadow get() = if (gen1) Color.Transparent else c(0xFFBCBBB4, 0xFF3A404B)
-    val value get() = if (gen1) G1_INK else c(0xFFCB0707, 0xFFFF6A5C)
-    val valueShadow get() = if (gen1) Color.Transparent else c(0xFFE0A564, 0xFF6E2A22)
+    // FR/LG's standard menu text palette, expanded from BGR555 like RomArt's pixels.
+    val label get() = if (gen1) G1_INK else c(if (usesKantoMenu) 0xFF636363 else 0xFF575656, 0xFFCDD1D9)
+    val labelShadow get() = if (gen1) Color.Transparent else c(if (usesKantoMenu) 0xFFD6D6CE else 0xFFBCBBB4, 0xFF3A404B)
+    val value get() = if (gen1) G1_INK else c(if (usesKantoMenu) 0xFFE70808 else 0xFFCB0707, 0xFFFF6A5C)
+    val valueShadow get() = if (gen1) Color.Transparent else c(if (usesKantoMenu) 0xFFFFBD73 else 0xFFE0A564, 0xFF6E2A22)
     /** Something done in the game went through: FireRed's stdpal_0 green (TEXT_COLOR_GREEN). */
     val success get() = if (gen1) G1_INK else c(0xFF209C08, 0xFF6BD65A)
     /** The party menu's field moves (FLY, CUT...): TEXT_COLOR_BLUE on LIGHT_BLUE, FireRed's stdpal_0. */
@@ -840,7 +841,23 @@ fun GameBackdrop(game: GameKind, modifier: Modifier = Modifier.fillMaxSize()) {
     }
     // Black's and Platinum's party screens: their own patterns (the scrim already on [modifier]).
     dsPartyPattern(game)?.let { DsBackdrop(it, modifier, scrim = 0f); return }
-    val bg = rememberGameBackground(game) ?: return
+    val bg = rememberGameBackground(game)
+    if (bg == null) {
+        // Retail FR/LG must not depend on another game having populated the art cache.
+        // Match the party slots' integer scale; stretching a 240x160 bitmap creates uneven stripes.
+        if (game == GameKind.FIRERED && com.pokedaisy.app.companion.data.runningFireRedHack == null) {
+            Canvas(modifier) {
+                val stripe = max(1, (size.width / 240f).toInt()).toFloat()
+                drawRect(Color(0xFF398C8C))
+                var y = 0f
+                while (y < size.height) {
+                    drawRect(Color(0xFF4AADA5), Offset(0f, y), Size(size.width, stripe))
+                    y += 2 * stripe
+                }
+            }
+        }
+        return
+    }
     if (bg.tiled) {
         // Whole-number scale of a 240px-wide GBA screen - on the
         // Thor the same scale the party slots land on, so the grid
