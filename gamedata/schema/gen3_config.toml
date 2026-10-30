@@ -452,9 +452,16 @@ type = 'long'
 default = 0
 
 # gPokemonStoragePtr (the PC's struct PokemonStorage: current box, 14 boxes of 30 BoxPokemon, names, wallpapers), for the
-# BOXES tab. Set by the Poller on retail FireRed only (gSaveBlock2Ptr + 4: the three save pointers sit together in every
-# build), never in a config file: the hacks and language ports that copy FireRed's config weren't checked.
+# BOXES tab. Set by the Poller on retail FireRed / LeafGreen / Emerald (gSaveBlock2Ptr + 4: the three save pointers sit
+# together in every build), not in their config files: the hacks and language ports that copy those configs weren't
+# checked. A hack whose boxes were checked sets it in its own config, with its pcStorage.
 [field.pokemonStoragePtr]
 kotlin = 'Long'
 type = 'long'
 default = 0
+
+# How the boxes behind pokemonStoragePtr are kept (PcStorageLayout): vanilla's, SoulGold's plaintext ones, CFRU's.
+[field.pcStorage]
+kotlin = 'PcStorageLayout'
+type = 'ref'
+default = 'VANILLA_PC_STORAGE'

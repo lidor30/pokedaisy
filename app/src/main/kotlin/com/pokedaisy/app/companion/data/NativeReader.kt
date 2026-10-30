@@ -177,8 +177,11 @@ data class NativeConfig(
     val shinyBelow: Int = 0,
     /** gMonPaletteTable, for the shiny icons where [pokedex] (which has it) isn't mapped: English FireRed rev 0. */
     val monPalettes: Long = 0,
-    /** gPokemonStoragePtr, for the BOXES tab ([readPcBoxes]); 0 = no tab. Set by the Poller on retail FireRed only. */
+    /** gPokemonStoragePtr, for the BOXES tab ([readPcBoxes]); 0 = no tab. Set by the Poller on retail FireRed / LeafGreen /
+     * Emerald (gSaveBlock2Ptr + 4), in the config where a hack's was checked. */
     val pokemonStoragePtr: Long = 0,
+    /** How the boxes behind [pokemonStoragePtr] are laid out (SoulGold's plaintext ones, CFRU's compressed ones). */
+    val pcStorage: PcStorageLayout = VANILLA_PC_STORAGE,
 ) {
     /** [partyMonLayout] with [shinyBelow] as its shiny check, where the layout has none of its own. */
     val monLayout: PartyMonLayout
@@ -540,46 +543,126 @@ const val PC_BOXES = 14
 const val PC_BOX_SLOTS = 30
 private const val PC_BOX_NAME_LEN = 9
 private const val PC_STORAGE_MONS_OFF = 4
-private const val PC_STORAGE_NAMES_OFF = PC_STORAGE_MONS_OFF + PC_BOXES * PC_BOX_SLOTS * BOX_MON_SIZE
-private const val PC_STORAGE_SIZE = PC_STORAGE_NAMES_OFF + PC_BOXES * PC_BOX_NAME_LEN + PC_BOXES
+
+/**
+ * How a game keeps its PC boxes ([readPcBoxes]): vanilla's struct PokemonStorage behind [NativeConfig.pokemonStoragePtr]
+ * with [boxes] boxes of [recordSize]-byte records in [format], or CFRU's 25 boxes in its own places ([cfru]).
+ */
+data class PcStorageLayout(
+    val boxes: Int = PC_BOXES,
+    val recordSize: Int = BOX_MON_SIZE,
+    val format: BoxRecordFormat = BoxRecordFormat.ENCRYPTED,
+    val cfru: CfruStorage? = null,
+) {
+    /** The struct's bytes: current box, the records, the names, the wallpapers (CFRU's stays vanilla's size). */
+    val size: Int get() = if (cfru != null) CFRU_STORAGE_SIZE else PC_STORAGE_MONS_OFF + boxes * PC_BOX_SLOTS * recordSize + boxes * (PC_BOX_NAME_LEN + 1)
+}
+
+/**
+ * CFRU's PC (Complete-Fire-Red-Upgrade's src/pokemon_storage_system.c): 25 boxes of 58-byte CompressedPokemon. Boxes
+ * 1-19 fill vanilla's struct PokemonStorage at [storage] (its 14 x 30 x 80 bytes hold 19 x 30 x 58), boxes 20-25 sit at
+ * [extraBoxes] (one address per box); boxes 1-14's names and wallpapers are vanilla's, boxes 15-25's names count back
+ * from box 1's (9 bytes each) and their wallpapers follow box 19's last record. The game's code hardcodes it all, so
+ * the storage pointer must lead to [storage]. A record keeps no PP: they're worked out from the moves' base PP in the
+ * ROM's gBattleMoves ([movesTable], 12-byte records, PP at +4), as the game does (CalculatePPWithBonus).
+ */
+data class CfruStorage(val storage: Long, val extraBoxes: List<Long>, val movesTable: Long)
+
+const val CFRU_PC_BOXES = 25
+private const val CFRU_BOXES_IN_PLACE = 19
+private const val CFRU_RECORD = 58
+private const val CFRU_NAMES_OFF = 0x8344
+private const val CFRU_WALLPAPERS_OFF = 0x83C2
+private const val CFRU_STORAGE_SIZE = CFRU_WALLPAPERS_OFF + PC_BOXES
+private const val CFRU_EXTRA_WALLPAPERS_OFF = PC_STORAGE_MONS_OFF + CFRU_BOXES_IN_PLACE * PC_BOX_SLOTS * CFRU_RECORD
+
+val VANILLA_PC_STORAGE = PcStorageLayout()
+
+/** SoulGold: 15 boxes of its 76-byte plaintext BoxPokemon (its 96-byte struct Pokemon up to the status; headless on the
+ * user's save, `soulgold_party`: 31 boxed Pokémon, each one's stats worked out the game's way equal to a party copy's). */
+val SOULGOLD_PC_STORAGE = PcStorageLayout(boxes = 15, recordSize = 0x4C, format = BoxRecordFormat.PLAIN)
+
+/** Unbound (CFRU's own addresses): checked headless - the game's SendMonToPC put a party Pokémon at box 1's, 20's, 23's
+ * and 25's place with the current box set before each, record for record equal to it. */
+val UNBOUND_PC_STORAGE = PcStorageLayout(
+    boxes = CFRU_PC_BOXES, recordSize = CFRU_RECORD, format = BoxRecordFormat.CFRU,
+    cfru = CfruStorage(
+        storage = 0x02029314L,
+        extraBoxes = listOf(0x0203CB44L, 0x0203CB44L + 30 * 58, 0x0203CB44L + 60 * 58, 0x02027434L, 0x02027434L + 30 * 58, 0x02024638L),
+        movesTable = 0x08A769AFL,
+    ),
+)
 
 // The last storage read and what it decoded to: the boxes only change while the player is at a PC, so a sample whose
 // bytes are the same hands back the same object (the BOXES tab then has nothing to redraw).
 private var lastStorageRaw: ByteArray? = null
 private var lastStorage: PcBoxes? = null
 
+private fun MemoryReader.readInto(at: Long, raw: ByteArray, off: Int, len: Int) {
+    var o = 0
+    while (o < len) {
+        val n = minOf(4096, len - o)
+        readCoreMemory(at + o, n).copyInto(raw, off + o)
+        o += n
+    }
+}
+
 /**
- * The PC's boxes through [NativeConfig.pokemonStoragePtr], each slot decoded like a party member's (gender, egg,
- * shiny) with its level and stats worked out ([decodeBoxMon]: base stats from the ROM's DEX tables). Null when the
- * pointer doesn't lead into EWRAM.
+ * The PC's boxes through [NativeConfig.pokemonStoragePtr] laid out as [NativeConfig.pcStorage] says, each slot decoded
+ * like a party member's (gender, egg, shiny) with its level and stats worked out ([decodeBoxMon]: base stats and growth
+ * rates from the ROM's DEX tables). Null when the pointer doesn't lead into EWRAM (or, CFRU, to its storage).
  */
 internal fun readPcBoxes(c: MemoryReader, cfg: NativeConfig): PcBoxes? = runCatching {
+    val layout = cfg.pcStorage
+    val cfru = layout.cfru
+    val rec = layout.recordSize
     val at = u32le(c.readCoreMemory(cfg.pokemonStoragePtr, 4), 0)
-    if (at !in 0x02000000L until 0x04000000L - PC_STORAGE_SIZE) return null
-    val raw = ByteArray(PC_STORAGE_SIZE)
-    var off = 0
-    while (off < raw.size) {
-        val n = minOf(4096, raw.size - off)
-        c.readCoreMemory(at + off, n).copyInto(raw, off)
-        off += n
-    }
+    if (at !in 0x02000000L until 0x04000000L - layout.size) return null
+    if (cfru != null && at != cfru.storage) return null
+    // The struct, then (CFRU) its boxes kept elsewhere, one after another.
+    val boxBytes = PC_BOX_SLOTS * rec
+    val raw = ByteArray(layout.size + (cfru?.extraBoxes?.size ?: 0) * boxBytes)
+    c.readInto(at, raw, 0, layout.size)
+    cfru?.extraBoxes?.forEachIndexed { i, a -> c.readInto(a, raw, layout.size + i * boxBytes, boxBytes) }
     synchronized(PcBoxes::class) {
         if (raw.contentEquals(lastStorageRaw)) lastStorage?.let { return it }
     }
     val dex = cfg.pokedex
     val base = { species: Int -> dex?.let { PokedexSource.baseStats(it, species) } }
-    val boxes = List(PC_BOXES) { b ->
-        val names = PC_STORAGE_NAMES_OFF + b * PC_BOX_NAME_LEN
+    val growth = { species: Int -> dex?.let { PokedexSource.growthRate(it, species) } }
+    val pp = HashMap<Int, Int?>()
+    val movePp = { move: Int ->
+        pp.getOrPut(move) {
+            cfru?.let { runCatching { c.readCoreMemory(it.movesTable + 12L * move + 4, 1)[0].toInt() and 0xFF }.getOrNull() }
+        }
+    }
+    fun slot(b: Int, s: Int): Int = when {
+        cfru == null || b < CFRU_BOXES_IN_PLACE -> PC_STORAGE_MONS_OFF + (b * PC_BOX_SLOTS + s) * rec
+        else -> layout.size + ((b - CFRU_BOXES_IN_PLACE) * PC_BOX_SLOTS + s) * rec
+    }
+    val namesOff = PC_STORAGE_MONS_OFF + layout.boxes * PC_BOX_SLOTS * rec
+    fun name(b: Int): Int = when {
+        cfru == null -> namesOff + b * PC_BOX_NAME_LEN
+        b < PC_BOXES -> CFRU_NAMES_OFF + b * PC_BOX_NAME_LEN
+        else -> CFRU_NAMES_OFF - (b - PC_BOXES + 1) * PC_BOX_NAME_LEN
+    }
+    fun wallpaper(b: Int): Int = when {
+        cfru == null -> namesOff + layout.boxes * PC_BOX_NAME_LEN + b
+        b < PC_BOXES -> CFRU_WALLPAPERS_OFF + b
+        else -> CFRU_EXTRA_WALLPAPERS_OFF + (b - PC_BOXES)
+    }
+    val boxes = List(layout.boxes) { b ->
         PcBox(
-            name = Gen3Text.decode(raw, names, PC_BOX_NAME_LEN),
-            wallpaper = raw[PC_STORAGE_NAMES_OFF + PC_BOXES * PC_BOX_NAME_LEN + b].toInt() and 0xFF,
+            name = Gen3Text.decode(raw, name(b), PC_BOX_NAME_LEN),
+            wallpaper = raw[wallpaper(b)].toInt() and 0xFF,
             mons = List(PC_BOX_SLOTS) { s ->
-                val o = PC_STORAGE_MONS_OFF + (b * PC_BOX_SLOTS + s) * BOX_MON_SIZE
-                decodeBoxMon(raw, o, cfg.monLayout, base)?.masked(cfg)?.withNativeGender(raw, o, cfg.partyMonLayout, cfg.eggSpecies)
+                val o = slot(b, s)
+                decodeBoxMon(raw, o, cfg.monLayout, base, layout.format, growth, movePp)
+                    ?.masked(cfg)?.withNativeGender(raw, o, cfg.partyMonLayout, cfg.eggSpecies)
             },
         )
     }
-    PcBoxes(currentBox = (raw[0].toInt() and 0xFF).coerceIn(0, PC_BOXES - 1), boxes = boxes).also {
+    PcBoxes(currentBox = (raw[0].toInt() and 0xFF).coerceIn(0, layout.boxes - 1), boxes = boxes).also {
         synchronized(PcBoxes::class) { lastStorageRaw = raw; lastStorage = it }
     }
 }.getOrNull()

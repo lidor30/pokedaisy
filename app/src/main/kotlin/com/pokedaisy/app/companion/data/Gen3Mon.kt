@@ -268,19 +268,38 @@ fun decodePartyMon(raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PA
 /** sizeof(struct BoxPokemon): a PC box slot, the first 80 bytes of a party struct. */
 const val BOX_MON_SIZE = 80
 
+/** How a PC box slot is kept ([decodeBoxMon]). */
+enum class BoxRecordFormat {
+    /** Vanilla's 80-byte BoxPokemon: substructs encrypted and shuffled by the personality, a checksum. */
+    ENCRYPTED,
+    /** A plaintext box (SoulGold's 76 bytes): the substructs in order from [PartyMonLayout.plainBox], no checksum. */
+    PLAIN,
+    /** CFRU's 58-byte CompressedPokemon: the box's first 0x1C bytes, then growth (no unknown byte), four 10-bit moves
+     * (no PP), the EVs, then misc's first 8 bytes (pokérus, met, the IV word). */
+    CFRU,
+}
+
 /**
- * One PC box slot (struct BoxPokemon at [off], vanilla's encrypted 80 bytes) as the summary shows it: a box record
- * keeps no level, HP or stats, so the level comes from the experience and the stats are worked out the game's way
- * (CalculateMonStats) from [baseStats] (HP, ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF; null = unknown, then no stats and
- * no HP). A box Pokémon is always healed: HP is its max. Null for an empty slot or one whose checksum fails (the game's
- * Bad Egg).
+ * One PC box slot (a BoxPokemon at [off], kept as [format] says) as the summary shows it: a box record keeps no level,
+ * HP or stats, so the level comes from the experience on its species' growth rate ([growthRate], else vanilla's table)
+ * and the stats are worked out the game's way (CalculateMonStats) from [baseStats] (HP, ATTACK, DEFENSE, SPEED,
+ * SP. ATK, SP. DEF; null = unknown, then no stats and no HP). A box Pokémon is always healed: HP is its max. CFRU's
+ * records keep no PP: full PP from [movePp] (a move's base PP; null = unknown, 0). Null for an empty slot or one whose
+ * checksum fails (the game's Bad Egg).
  */
-fun decodeBoxMon(raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PARTY_MON, baseStats: (Int) -> IntArray? = { null }): Mon? {
-    if (raw.size < off + BOX_MON_SIZE) return null
-    val dec = decryptGen3Substructs(raw, off) ?: return null
+fun decodeBoxMon(
+    raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PARTY_MON, baseStats: (Int) -> IntArray? = { null },
+    format: BoxRecordFormat = BoxRecordFormat.ENCRYPTED, growthRate: (Int) -> Int? = { null }, movePp: (Int) -> Int? = { null },
+): Mon? {
+    val dec = when (format) {
+        BoxRecordFormat.ENCRYPTED -> if (raw.size < off + BOX_MON_SIZE) null else decryptGen3Substructs(raw, off)
+        BoxRecordFormat.PLAIN -> plainBoxSubstructs(raw, off, layout)
+        BoxRecordFormat.CFRU -> cfruBoxSubstructs(raw, off, movePp)
+    } ?: return null
     if (dec.species == 0) return null
     val egg = (dec.ivWord shr 30) and 1L == 1L
-    val level = com.pokedaisy.app.companion.data.save.Gen3BoxMon.levelFor(dec.species, dec.exp).coerceAtLeast(1)
+    val rate = growthRate(dec.species)?.takeIf { it in gen3ExperienceTables.indices } ?: gen3GrowthRates.getOrNull(dec.species)?.toInt()
+    val level = boxMonLevel(rate, dec.exp)
     val ivs = List(6) { ((dec.ivWord shr (5 * it)) and 0x1F).toInt() }
     val nature = (u32(raw, off) % 25).toInt()
     val stats = if (egg) null else baseStats(dec.species)?.takeIf { it.size >= 6 }?.let { gen3Stats(dec.species, it, ivs, dec.evs, nature, level) }
@@ -297,7 +316,62 @@ fun decodeBoxMon(raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PART
         stats = stats?.let { MonStats(ivs = ivs, evs = dec.evs, nature = nature, stats = it) },
         heldItem = dec.heldItem,
         nickname = gen3Nickname(raw, off, layout),
-        shiny = layout.shinyBelow > 0 && shinyValue(u32(raw, off), u32(raw, off + 4)) < layout.shinyBelow,
+        shiny = layout.shinyBelow > 0 &&
+            (shinyValue(u32(raw, off), u32(raw, off + 4)) < layout.shinyBelow) !=
+            (format == BoxRecordFormat.PLAIN && layout.shinyModifier > 0 && raw[off + layout.shinyModifier].toInt() and 0x40 != 0),
+    )
+}
+
+/** The level [exp] makes on growth rate [rate] (gExperienceTables), at least 1; 1 when the rate isn't known. */
+private fun boxMonLevel(rate: Int?, exp: Long): Int {
+    val table = rate?.let { gen3ExperienceTables.getOrNull(it) } ?: return 1
+    var level = 1
+    while (level < 100 && exp >= table[level + 1]) level++
+    return level
+}
+
+/** A plaintext box ([BoxRecordFormat.PLAIN]): growth, attacks, EVs and misc in that order from [PartyMonLayout.plainBox],
+ * the box ending where the party fields start ([PartyMonLayout.status]). */
+private fun plainBoxSubstructs(raw: ByteArray, off: Int, layout: PartyMonLayout): Gen3Substructs? {
+    if (raw.size < off + layout.status) return null
+    val box = off + layout.plainBox
+    val species = u16(raw, box) and layout.plainSpeciesMask
+    if (species > 4000) return null
+    return Gen3Substructs(
+        species = species,
+        exp = u32(raw, box + 4),
+        moves = IntArray(NUM_MOVES) { u16(raw, box + 0x0C + it * 2) },
+        pp = IntArray(NUM_MOVES) { raw[box + 0x0C + 8 + it].toInt() and 0xFF },
+        evs = List(6) { raw[box + 0x18 + it].toInt() and 0xFF },
+        ivWord = u32(raw, box + 0x28),
+        heldItem = u16(raw, box + 2) and layout.plainItemMask,
+    )
+}
+
+private const val CFRU_RECORD_SIZE = 58
+
+/** CFRU's CompressedPokemon ([BoxRecordFormat.CFRU]); the PP the game gives a Pokémon coming out of the box, from
+ * [movePp] and the PP Ups (CalculatePPWithBonus: a fifth more of the base for each). */
+private fun cfruBoxSubstructs(raw: ByteArray, off: Int, movePp: (Int) -> Int?): Gen3Substructs? {
+    if (raw.size < off + CFRU_RECORD_SIZE) return null
+    val species = u16(raw, off + 0x1C)
+    if (species > 4000) return null
+    // Four 10-bit moves packed into the 5 bytes from +0x27.
+    var packed = 0L
+    for (i in 0 until 5) packed = packed or ((raw[off + 0x27 + i].toLong() and 0xFF) shl (8 * i))
+    val moves = IntArray(NUM_MOVES) { ((packed shr (10 * it)) and 0x3FF).toInt() }
+    val bonuses = raw[off + 0x24].toInt() and 0xFF
+    return Gen3Substructs(
+        species = species,
+        exp = u32(raw, off + 0x20),
+        moves = moves,
+        pp = IntArray(NUM_MOVES) { i ->
+            val base = if (moves[i] == 0) 0 else movePp(moves[i]) ?: 0
+            base + base * 20 * ((bonuses shr (2 * i)) and 3) / 100
+        },
+        evs = List(6) { raw[off + 0x2C + it].toInt() and 0xFF },
+        ivWord = u32(raw, off + 0x36),
+        heldItem = u16(raw, off + 0x1E),
     )
 }
 

@@ -12,7 +12,8 @@ package com.pokedaisy.app.companion.data
  * the summary showed (by personality), the party one not holding Mail (the game: "Please remove the MAIL"), and an egg
  * never coming out in place of the last Pokémon that can fight. Checked headless on retail FireRed rev 1 with the
  * user's save: the swap, an in-game save, a reboot from the save file - both Pokémon where they were put, their data
- * read back by the game's own GetBoxMonData (no Bad Egg). Retail Emerald the same way, on its own save.
+ * read back by the game's own GetBoxMonData (no Bad Egg). Retail Emerald and both LeafGreens the same way, on their own
+ * saves.
  */
 data class BoxSwapFns(
     val boxMonToMon: Long,
@@ -39,12 +40,35 @@ val BOX_SWAP_EMERALD = BoxSwapFns(
     codeCrcs = listOf(0xD6140AE3L, 0x04CE5AB8L, 0xF3E3F4DDL),
 )
 
-/** The swap's table for the game whose bag runs on [fields] (the same build), or null. */
-fun boxSwapFor(fields: FieldItemFns?): BoxSwapFns? = when {
-    fields == null || fields.party == null -> null
-    fields === FIELD_ITEMS_FIRERED_REV1 -> BOX_SWAP_FIRERED_REV1
-    fields === FIELD_ITEMS_EMERALD -> BOX_SWAP_EMERALD
-    else -> null
+/** Retail LeafGreen rev 1: FireRed rev 1's addresses (the same pokefirered build, masked bytes found once each), its own
+ * BoxMonToMon bytes (a call elsewhere). Checked headless on the user's save the same way. */
+val BOX_SWAP_LEAFGREEN_REV1 = BoxSwapFns(
+    boxMonToMon = 0x0803E788L, boxMonRestorePP = 0x080442F8L, getBoxMonData = 0x0803FD58L, storagePtr = 0x03005010L,
+    codeCrcs = listOf(0x3F859618L, 0x05F9FBC2L, 0xF3E3F4DDL),
+)
+
+/** Retail LeafGreen rev 0 (its first cartridge): 0x14 bytes before rev 1's, the same way. */
+val BOX_SWAP_LEAFGREEN_REV0 = BoxSwapFns(
+    boxMonToMon = 0x0803E774L, boxMonRestorePP = 0x080442E4L, getBoxMonData = 0x0803FD44L, storagePtr = 0x03005010L,
+    codeCrcs = listOf(0x9435DDECL, 0x05F9FBC2L, 0xF3E3F4DDL),
+)
+
+/**
+ * The swap's table for the game whose bag runs on [fields] (the same build) and whose boxes [cfg] reads, or null. Only
+ * where the BOXES tab reads vanilla's boxes at the table's own storage pointer: hacks built on these games' code (their
+ * bag tables are the same objects) keep their boxes their own way (CFRU's compressed ones), and the game's BoxMonToMon
+ * on one of those would wreck it.
+ */
+fun boxSwapFor(fields: FieldItemFns?, cfg: NativeConfig?): BoxSwapFns? {
+    if (fields == null || fields.party == null || cfg == null || cfg.pcStorage != VANILLA_PC_STORAGE) return null
+    val fns = when {
+        fields === FIELD_ITEMS_FIRERED_REV1 -> BOX_SWAP_FIRERED_REV1
+        fields === FIELD_ITEMS_LEAFGREEN_REV1 -> BOX_SWAP_LEAFGREEN_REV1
+        fields === FIELD_ITEMS_LEAFGREEN_REV0 -> BOX_SWAP_LEAFGREEN_REV0
+        fields === FIELD_ITEMS_EMERALD -> BOX_SWAP_EMERALD
+        else -> null
+    }
+    return fns?.takeIf { cfg.pokemonStoragePtr == it.storagePtr }
 }
 
 enum class BoxSwapResult {

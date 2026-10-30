@@ -1428,6 +1428,7 @@ object PokedexSource {
     private val sprites = ConcurrentHashMap<Int, Bitmap>()
     private val footprints = ConcurrentHashMap<Int, Bitmap>()
     private val baseStats = ConcurrentHashMap<Int, IntArray>()
+    private val growthRates = ConcurrentHashMap<Int, Int>()
     @Volatile private var nationalToSpecies: IntArray? = null
     @Volatile private var speciesToNational: IntArray? = null
     @Volatile private var regional: IntArray? = null
@@ -1437,7 +1438,7 @@ object PokedexSource {
         if (cachedFor == t) return
         synchronized(this) {
             if (cachedFor == t) return
-            entries.clear(); sprites.clear(); footprints.clear(); baseStats.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
+            entries.clear(); sprites.clear(); footprints.clear(); baseStats.clear(); growthRates.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
             cachedFor = t
         }
     }
@@ -1456,6 +1457,20 @@ object PokedexSource {
             val info = rd(t.speciesInfo + species.toLong() * stride, 12)
             IntArray(6) { if (t.expansion == null && bs.statsU16) u16le(info, it * 2) else info[it].toInt() and 0xFF }
         }.getOrNull()?.also { baseStats[species] = it }
+    }
+
+    /**
+     * [species]' growth rate (GROWTH_*, gExperienceTables' row) from the same table: the byte before the egg groups in
+     * vanilla's gBaseStats (+0x13) and in expansion's gSpeciesInfo (+0x15) alike. A box record's level comes from it.
+     */
+    fun growthRate(t: PokedexTables, species: Int): Int? {
+        if (species <= 0 || t.speciesInfo == 0L || t.cartDex || (t.expansion == null && t.baseStats.statsU16)) return null
+        sync(t)
+        growthRates[species]?.let { return it }
+        val stride = t.expansion?.stride ?: t.baseStats.stride
+        val off = (t.expansion?.eggGroupsOff ?: t.baseStats.eggGroupsOff) - 1
+        return runCatching { rd(t.speciesInfo + species.toLong() * stride + off, 1)[0].toInt() and 0xFF }
+            .getOrNull()?.also { growthRates[species] = it }
     }
 
     /**

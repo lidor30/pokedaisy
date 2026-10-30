@@ -574,7 +574,7 @@ class PokeDaisyActivity : Activity() {
             }
         }
 
-        override fun canSwapBox() = com.pokedaisy.app.companion.data.boxSwapFor(fieldItemSupport()?.fns) != null
+        override fun canSwapBox() = com.pokedaisy.app.companion.data.boxSwapFor(fieldItemSupport()?.fns, com.pokedaisy.app.companion.data.activeNativeConfig) != null
 
         override fun swapBox(
             box: Int, slot: Int, boxPersonality: Long, partySlot: Int, partyPersonality: Long,
@@ -584,7 +584,7 @@ class PokeDaisyActivity : Activity() {
             onGame(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED, { r ->
                 done(if (inBattle && r == com.pokedaisy.app.companion.data.BoxSwapResult.NOT_NOW) com.pokedaisy.app.companion.data.BoxSwapResult.IN_BATTLE else r)
             }) { s, calls, busy ->
-                val fns = com.pokedaisy.app.companion.data.boxSwapFor(s.fns) ?: return@onGame com.pokedaisy.app.companion.data.BoxSwapResult.FAILED
+                val fns = com.pokedaisy.app.companion.data.boxSwapFor(s.fns, com.pokedaisy.app.companion.data.activeNativeConfig) ?: return@onGame com.pokedaisy.app.companion.data.BoxSwapResult.FAILED
                 com.pokedaisy.app.companion.data.swapWithBox(s.fns, fns, box, slot, boxPersonality, partySlot, partyPersonality, busy, calls)
             }
         }

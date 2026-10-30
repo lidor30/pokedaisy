@@ -402,9 +402,14 @@ on the bus); their wording / text colours / glyph clipping are `TrainerCardArt.W
 The tab shows the card cropped to itself (no BG2 backdrop) at the largest whole scale (5x on the
 Thor); a tap flips it (squash, like the game), and the time colon blinks via an infinite transition
 (a`delay`loop never lets Compose tests go idle, which hung ui-preview once).
-**BOXES tab** (`BoxesScreen.kt`, under MORE, NEW tag; retail English FireRed and Emerald so far): the PC's boxes read live
-(`readPcBoxes`: gPokemonStoragePtr, set by the Poller on retail FireRed / Emerald as `pokemonStoragePtr` = saveBlock2Ptr + 4; a box
-record's stats recomputed from the ROM's base stats, `decodeBoxMon` / `gen3Stats`). **Drawn in our own pieces, not the ROM's
+**BOXES tab** (`BoxesScreen.kt`, under MORE, NEW tag; retail English FireRed, LeafGreen and Emerald, Unbound, SoulGold so far): the
+PC's boxes read live (`readPcBoxes`: gPokemonStoragePtr, set by the Poller on retail FireRed / LeafGreen / Emerald as
+`pokemonStoragePtr` = saveBlock2Ptr + 4, in the TOML for the hacks; a box record's level from the ROM's growth rate and its stats
+from the ROM's base stats, `decodeBoxMon` / `gen3Stats` / `PokedexSource.growthRate`). How a game keeps them is its `pcStorage`
+(`PcStorageLayout`): vanilla's encrypted 80-byte records; SoulGold's 15 boxes of 76-byte plaintext ones behind saveBlock2Ptr + 8;
+CFRU's 25 boxes of 58-byte compressed ones (no PP: worked out from the ROM's gBattleMoves) at fixed addresses, boxes 20-25 elsewhere in
+EWRAM (`UNBOUND_PC_STORAGE`, from CFRU's public src/pokemon_storage_system.c, checked by calling the game's SendMonToPC headless:
+`unbound_boxes`). Other CFRU hacks likely share it but weren't checked. **Drawn in our own pieces, not the ROM's
 PC art** (the user's call: one look every game can have, close to the game's, not 1:1) but **in its colours** (the
 user's next call: sampled from FireRed's PC screen - `PcColors`: the PKMN DATA panel, picture well, peach backdrop, arrows;
 `BoxWallpapers`: each Gen 3 wallpaper's frame / edge bevels, header-strip sky bands and fill, under patterns of our own;
@@ -412,9 +417,12 @@ Emerald's own set for the games that run as EMERALD - several frames and every h
 them is the same in both).
 Panel and box fill the tab (its peach backdrop is the screen's, CompanionScreen's `PcBackdrop`, like the bag's); icons at
 whole scales, allowed past their cells like the game's. A new game needs only its storage read. **SWAP** (`BoxSwap.kt`,
-FireRed rev 1 and Emerald: `boxSwapFor`): a box Pokémon's summary trades it for a party one in the running game, the PC's own way
-(BoxMonToMon out, the party one's 80 bytes in + BoxMonRestorePP), on the bag's field gate, Mail / last-fighter refused;
-checked headless with an in-game save and a reboot. Its functions were found in retail by masked bytes from the decomp
+FireRed rev 1, LeafGreen rev 0 / 1 and Emerald: `boxSwapFor`, only with vanilla boxes at the table's own storage pointer - the CFRU hacks
+share FireRed rev 0's bag tables, and BoxMonToMon on a compressed record would wreck it): a box Pokémon's summary trades it for a party
+one in the running game, the PC's own way (BoxMonToMon out, the party one's 80 bytes in + BoxMonRestorePP), on the bag's field gate,
+Mail / last-fighter refused; checked headless with an in-game save and a reboot. Then the two trade places over the tab
+(`BoxSwapAnimation`: white, shrunk in whole steps to a spark, the sparks cross on two arcs, a burst; tap / BACK skips, none with
+LIGHT COMPANION) before the message. Its functions were found in retail by masked bytes from the decomp
 build (the `$DECOMPS` FireRed map is shifted, 0x120 there): a new game needs its own.
 **SoulGold v1.1.4** (`NATIVE_SOULGOLD`; v1.2 = `NATIVE_SOULGOLD_V1_2`, a rebuild at shifted addresses, same save
 format, v1.1.4's generated tables but TM75 via `soulGoldV12`; a second v1.2 build = `NATIVE_SOULGOLD_V1_2B`, same RAM, ROM data 0x98-0xA4 earlier; a third = `NATIVE_SOULGOLD_V1_2C`, same RAM, ROM data 0x18C-0x198 later, wild / map tables 0x2DF30; v1.2.1 = `NATIVE_SOULGOLD_V1_2_1` (two builds, 2 bytes of item data apart; "Soulgold" in the header), v1.2's tables, IWRAM and battle globals, but EWRAM moved (the party globals -0x1BC / -0x1C0, gMapHeader / gObjectEvents +8, gBagPockets +0xC) and ROM data 0x7A38-0xBEE8; gPartyMenu comes from `NativeConfig.partyMenu`, newer expansion, no source) breaks several vanilla

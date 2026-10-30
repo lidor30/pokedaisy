@@ -4579,6 +4579,10 @@ val NATIVE_SOULGOLD = NATIVE_EMERALD.copy(
     gMain = 0x030055C0L,
     saveBlock1Ptr = 0x030040C4L,
     saveBlock2Ptr = 0x030040C0L,
+    // BOXES: gPokemonStoragePtr is the third save pointer here (gSaveBlock2Ptr + 8), 15 boxes of 76-byte plaintext records
+    // (headless on the user's save, soulgold_party: box names, wallpapers, 31 Pokémon whose stats work out as the party's).
+    pokemonStoragePtr = 0x030040C8L,
+    pcStorage = SOULGOLD_PC_STORAGE,
     encryptionKeyOff = 0xB4L,
     moneyOff = 0x478L,
     objectEvents = 0x02003314L,
@@ -5017,6 +5021,10 @@ val NATIVE_UNBOUND_WITH_DEX = NATIVE_UNBOUND.copy(
     pokedex = POKEDEX_UNBOUND,
     guideTables = GUIDE_TABLES_UNBOUND,
     trainerCard = TRAINER_CARD_UNBOUND,
+    // BOXES: CFRU's 25 boxes of compressed records (UNBOUND_PC_STORAGE: CFRU's source, then the game's own SendMonToPC
+    // headless, a party Pokémon sent into boxes 1, 20, 23 and 25 and read back). gPokemonStoragePtr is FireRed rev 0's.
+    pokemonStoragePtr = 0x03005010L,
+    pcStorage = UNBOUND_PC_STORAGE,
 )
 
 // Pokémon Unbound v2.1.1.1 FR - a French fan translation of the same release (32 MB, sha1

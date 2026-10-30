@@ -1481,6 +1481,8 @@ open class CompanionScreenshotTest {
         learn: Boolean = false, tmRow: Boolean = false,
         /** The battle tab's touch controls (FIGHT / BAG / POKéMON / RUN), with a battle input to drive. */
         controls: Boolean = false,
+        /** BOXES: SWAP's animation over the tab at this moment (ms), the box's first Pokémon trading with the party's lead. */
+        swapAnimAt: Long? = null,
     ) {
         val rom = RomFileReader.load(RETAIL_ROM_DIR + romFile) ?: return
         if (art) RomArt.extractTo(java.io.File(RETAIL_ROM_DIR + romFile).readBytes(), RomArt.dirOverride!!)
@@ -1513,6 +1515,8 @@ open class CompanionScreenshotTest {
         // BOXES: every box Pokémon's icon, and PKMN DATA's first picture.
         t.pcBoxes?.boxes?.flatMap { it.mons }?.filterNotNull()?.forEach { DecompIconSource.get(it.species) }
         if (dex != null) t.pcBoxes?.boxes?.get(t.pcBoxes!!.currentBox)?.mons?.firstOrNull { it != null }?.let { PokedexSource.frontSprite(dex.tables, it.species) }
+        val swapBoxMon = v.pcBoxes?.let { b -> b.boxes[b.currentBox].mons.firstOrNull { it != null } }
+        if (swapAnimAt != null && dex != null) listOfNotNull(swapBoxMon, v.party.firstOrNull()).forEach { PokedexSource.frontSprite(dex.tables, it.species) }
         v.items.forEach { DecompIconSource.getItem(it.itemId) }
         if (entry != null && dex != null) {
             val species = PokedexSource.speciesFor(dex.tables, entry)
@@ -1544,6 +1548,12 @@ open class CompanionScreenshotTest {
                 )
             }
             else if (describe) AppTheme { ItemsScreen(v.items, androidx.compose.ui.Modifier.fillMaxSize(), initialItemId = v.items.first().itemId) }
+            else if (swapAnimAt != null) androidx.compose.foundation.layout.Box {
+                CompanionScreen(v, SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = tab)
+                AppTheme {
+                    BoxSwapAnimation(BoxSwapAnim(swapBoxMon!!, v.party.first(), "BOX1", ""), dex?.tables, onDone = {}, at = swapAnimAt)
+                }
+            }
             else if (entry == null) CompanionScreen(
                 v, SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = tab,
                 battleInput = if (!controls) null else object : com.pokedaisy.app.companion.BattleInput {
@@ -1660,6 +1670,24 @@ open class CompanionScreenshotTest {
     )
     @Test fun emeraldBoxes() = retail(
         "emerald_vanilla", NATIVE_EMERALD_RETAIL.copy(pokemonStoragePtr = NATIVE_EMERALD_RETAIL.saveBlock2Ptr + 4), EM_ROM, GameKind.EMERALD, "BOXES", art = true,
+    )
+    @Test fun leafGreenBoxes() = retail(
+        "leafgreen_rev1", NATIVE_LEAFGREEN_REV1.copy(pokemonStoragePtr = NATIVE_LEAFGREEN_REV1.saveBlock2Ptr + 4), LG_ROM, GameKind.FIRERED, "BOXES", art = true,
+    )
+    @Test fun soulGoldBoxes() = retail("soulgold_party", NATIVE_SOULGOLD, SG_ROM, GameKind.SOULGOLD, "BOXES", art = true)
+    @Test fun unboundBoxes() = retail("unbound_boxes", NATIVE_UNBOUND_WITH_DEX, "Pokemon Unbound (v2.1.1.1).gba", GameKind.UNBOUND, "BOXES", art = true)
+    /** SWAP's animation, held at the pictures turning white, the sparks crossing and the landing. */
+    @Test fun fireRedBoxesSwapWhite() = retail(
+        "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "BOXES", art = true, swapAnimAt = 330,
+    )
+    @Test fun fireRedBoxesSwapCrossing() = retail(
+        "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "BOXES", art = true, swapAnimAt = 840,
+    )
+    @Test fun fireRedBoxesSwapLanding() = retail(
+        "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "BOXES", art = true, swapAnimAt = 1250,
+    )
+    @Test fun fireRedBoxesSwapLanded() = retail(
+        "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "BOXES", art = true, swapAnimAt = 1600,
     )
     @Test fun fireRedLearn() = retail("firered_vanilla", NATIVE_FIRERED_REV1, FR_ROM, GameKind.FIRERED, "PARTY", art = true, learn = true)
     @Test fun fireRedTmRow() = retail("firered_vanilla", NATIVE_FIRERED_REV1, FR_ROM, GameKind.FIRERED, "ITEMS", art = true, tmRow = true)

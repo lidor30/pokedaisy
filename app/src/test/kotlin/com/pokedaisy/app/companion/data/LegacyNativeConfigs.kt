@@ -135,6 +135,7 @@ val LEGACY_NATIVE_UNBOUND_WITH_DEX = LEGACY_NATIVE_UNBOUND.copy(
     // CFRU repointed gItems (FireRed 1.0's literal pools load it from here).
     itemDescs = vanillaItems(0x08876200L),
     pokedex = POKEDEX_UNBOUND, guideTables = GUIDE_TABLES_UNBOUND, trainerCard = TRAINER_CARD_UNBOUND,
+    pokemonStoragePtr = 0x03005010L, pcStorage = UNBOUND_PC_STORAGE,
 )
 
 // Pokémon Unbound v2.1.1.1 FR - a French fan translation of the same release (32 MB, sha1
@@ -650,6 +651,8 @@ val LEGACY_NATIVE_SOULGOLD = LEGACY_NATIVE_EMERALD.copy(
     gMain = 0x030055C0L,
     saveBlock1Ptr = 0x030040C4L,
     saveBlock2Ptr = 0x030040C0L,
+    pokemonStoragePtr = 0x030040C8L,
+    pcStorage = SOULGOLD_PC_STORAGE,
     encryptionKeyOff = 0xB4L,
     moneyOff = 0x478L,
     objectEvents = 0x02003314L,

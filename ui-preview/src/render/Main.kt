@@ -1281,6 +1281,21 @@ fun main(args: Array<String>) {
             // The first party slot (top left), by where it is: the slots have no text node to find.
             onRoot().performTouchInput { click(androidx.compose.ui.geometry.Offset(width * 0.27f, height * 0.15f)) }
         },
+        // SWAP's animation, held at moments of it: white, shrinking, the sparks crossing, landing, landed.
+        *listOf(300L, 470L, 840L, 1220L, 1600L).map { ms ->
+            Shot("$g-boxes-swapanim-$ms", bw, bh, bd, {
+                val tab = companion("BOXES", snap = ::boxesSnapshot)()
+                val s = boxesSnapshot()
+                val boxMon = s.pcBoxes!!.boxes[0].mons[3]!!
+                val anim = com.pokedaisy.app.companion.ui.BoxSwapAnim(boxMon, s.party[0], "BOX1", "")
+                ({
+                    androidx.compose.foundation.layout.Box {
+                        tab()
+                        com.pokedaisy.app.companion.ui.BoxSwapAnimation(anim, s.pokedex?.tables, onDone = {}, at = ms)
+                    }
+                })
+            })
+        }.toTypedArray(),
         Shot("$g-boxes-pick", bw, bh, bd, companion("BOXES", snap = ::boxesSnapshot)) {
             onNodeWithContentDescription("Pick a box").performClick()
         },

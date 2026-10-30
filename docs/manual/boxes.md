@@ -33,6 +33,8 @@ A Pokémon in a box keeps no stats of its own, so the companion works them out t
 
 The summary of a Pokémon in a box has a green `SWAP` button. Tap it, then tap one of your party's Pokémon: the two trade places, right there in your game, just as if you had dropped one on the other in a PC. The one from the box comes out at full health, and the one going in keeps everything but its HP and status.
 
+Back on the box, you see them trade: each one flashes white, shrinks to a spark, and the sparks cross over to the other side before the Pokémon appear in their new places. Tap anywhere to skip it. With `LIGHT COMPANION` on, the message shows straight away.
+
 A few things the game itself wouldn't allow are refused:
 
 - **Mail**: a Pokémon holding Mail can't go into a box. Take the Mail off first.
@@ -50,4 +52,6 @@ The swap happens in your game right away. **Save in the game** to keep it, just 
 
 ## Games with BOXES
 
-For now, the English FireRed (both versions of the cartridge) and the English Emerald. `SWAP` works on Emerald and on the newer FireRed (the Rev 1 cartridge) for now. More games will follow.
+For now, the English FireRed and LeafGreen (both versions of each cartridge), the English Emerald, Unbound and SoulGold. Unbound has 25 boxes and SoulGold 15, and the tab shows them all.
+
+`SWAP` works on Emerald, on both LeafGreens and on the newer FireRed (the Rev 1 cartridge). Unbound and SoulGold show their boxes but can't swap yet. More games will follow.

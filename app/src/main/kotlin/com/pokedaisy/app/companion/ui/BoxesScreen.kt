@@ -44,6 +44,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.graphics.drawscope.DrawScope
 import androidx.compose.ui.graphics.drawscope.clipPath
 import androidx.compose.ui.graphics.drawscope.clipRect
@@ -80,6 +81,14 @@ class BoxesUiState {
     var swapping by mutableStateOf<MonView?>(null)
     /** What the last SWAP did, in a window until OK; null = none. */
     var swapMessage by mutableStateOf<String?>(null)
+    /** A SWAP that went through, playing its animation ([BoxSwapAnimation]) before [swapMessage]; null = none. */
+    var swapAnim by mutableStateOf<BoxSwapAnim?>(null)
+
+    /** [anim] done: its message in the window ([BoxSwapNotice]). */
+    fun finishSwapAnim() {
+        swapAnim?.let { swapMessage = it.message }
+        swapAnim = null
+    }
 
     fun boxOf(boxes: BoxesView): Int = (if (box >= 0) box else boxes.currentBox).coerceIn(0, boxes.boxes.size - 1)
 }
@@ -192,6 +201,203 @@ internal fun BoxSwapNotice(ui: BoxesUiState) {
     OptionConfirm(tk("SWAP"), text, tk("OK"), rememberGbaTextMetrics(), onConfirm = { ui.swapMessage = null },
         onDismiss = { ui.swapMessage = null }, cancelLabel = null)
 }
+
+/** A SWAP that went through: [boxMon] came out of box [boxName] and [partyMon] went in; [message] follows the animation. */
+class BoxSwapAnim(val boxMon: MonView, val partyMon: MonView, val boxName: String, val message: String)
+
+// The animation's timeline (ms): the wells come in, both pictures flash white and shrink in whole steps to a spark, the
+// sparks cross (one over, one under), each grows into the other's well with a burst, a moment's hold.
+private const val SWAP_IN = 220L
+private const val SWAP_WHITE = 380L
+private const val SWAP_SHRUNK = 540L
+private const val SWAP_LANDED = 1140L
+private const val SWAP_GROWN = 1380L
+private const val SWAP_END = 1750L
+
+/**
+ * SWAP's animation over the tab ([BoxSwapAnim]): the box's and the party's picture wells (PKMN DATA's), [anim]'s two
+ * Pokémon in them, then the PC's kind of move - each turns white, shrinks to a spark, and the sparks trade wells along
+ * two arcs; [onDone] at the end, or at once on a tap / BACK. Everything moves in whole GBA pixels and the pictures scale
+ * in whole steps, so it stays pixel art. [at]: a fixed moment (ms) instead of the clock, for screenshots.
+ */
+@Composable
+internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: () -> Unit, at: Long? = null) {
+    val m = rememberGbaTextMetrics()
+    val small = rememberGbaTextMetrics(1f)
+    val u = m.u
+    val night = OptionColors.dark
+    val done by androidx.compose.runtime.rememberUpdatedState(onDone)
+    CompanionBackHandler(onBack = { done() })
+    var clock by remember(anim) { mutableStateOf(0L) }
+    if (at == null) {
+        androidx.compose.runtime.LaunchedEffect(anim) {
+            val start = androidx.compose.runtime.withFrameMillis { it }
+            while (clock < SWAP_END) clock = androidx.compose.runtime.withFrameMillis { it } - start
+            done()
+        }
+    }
+    val t = at ?: clock
+    val outPic = swapPictureOf(anim.boxMon, dex)
+    val inPic = swapPictureOf(anim.partyMon, dex)
+    val outArt = remember(outPic) { outPic?.let { SwapArt(it.asImageBitmap(), opaqueBounds(it)) } }
+    val inArt = remember(inPic) { inPic?.let { SwapArt(it.asImageBitmap(), opaqueBounds(it)) } }
+    val fade = (t / SWAP_IN.toFloat()).coerceIn(0f, 1f)
+    val noRipple = remember { MutableInteractionSource() }
+    BoxWithConstraints(
+        Modifier.fillMaxSize()
+            .drawBehind { drawRect(Color.Black.copy(alpha = 0.8f * fade)) }
+            .soundClickable(interactionSource = noRipple, indication = null, onClick = { done() }),
+    ) {
+        val density = LocalDensity.current
+        val p = with(density) { u.toPx() }
+        fun snap(v: Float) = (v / p).roundToInt() * p
+        val w = with(density) { maxWidth.toPx() }
+        val h = with(density) { maxHeight.toPx() }
+        val labelH = with(density) { (small.lineHeight + u * 3).toPx() }
+        val side = snap(minOf(w * 0.3f, (h - labelH) * 0.62f))
+        val gap = snap(minOf(w * 0.14f, side * 0.7f))
+        val top = snap((h - labelH - side) / 2) + labelH
+        val leftX = snap(w / 2 - gap / 2 - side)
+        val rightX = leftX + side + gap
+        val cy = top + side / 2
+        val lx = leftX + side / 2
+        val rx = rightX + side / 2
+        val room = side - 12 * p
+        val wellAlpha = fade
+        // The two wells and their labels: the box's on the left, the party's on the right.
+        for ((x, label) in listOf(leftX to anim.boxName, rightX to tr("PARTY"))) {
+            Box(
+                Modifier.offset { IntOffset(x.roundToInt(), top.roundToInt()) }
+                    .size(with(density) { side.toDp() })
+                    .graphicsLayerAlpha(wellAlpha)
+                    .drawBehind { pictureWell(p, night) },
+            )
+            Box(
+                Modifier.offset { IntOffset(x.roundToInt(), (top - labelH).roundToInt()) }
+                    .width(with(density) { side.toDp() })
+                    .graphicsLayerAlpha(wellAlpha),
+                contentAlignment = Alignment.Center,
+            ) {
+                GbaText(label, PcColors.shade(PcColors.TITLE_TEXT, night), PcColors.shade(PcColors.FRAME, night), small, maxLines = 1)
+            }
+        }
+        Canvas(Modifier.fillMaxSize()) {
+            val white = (((t - SWAP_IN).toFloat() / (SWAP_WHITE - SWAP_IN))).coerceIn(0f, 1f)
+            val shrink = ((t - SWAP_WHITE).toFloat() / (SWAP_SHRUNK - SWAP_WHITE)).coerceIn(0f, 1f)
+            val travel = ((t - SWAP_SHRUNK).toFloat() / (SWAP_LANDED - SWAP_SHRUNK)).coerceIn(0f, 1f)
+            val grow = ((t - SWAP_LANDED).toFloat() / (SWAP_GROWN - SWAP_LANDED)).coerceIn(0f, 1f)
+            val burst = ((t - SWAP_LANDED).toFloat() / 420f).coerceIn(0f, 1f)
+            val lift = side * 0.42f
+            when {
+                t < SWAP_SHRUNK -> {
+                    // Each Pokémon in its own well, turning white, then shrinking a whole step at a time.
+                    swapPicture(outArt, lx, cy, room, 1f - shrink, white * fade, p, fade)
+                    swapPicture(inArt, rx, cy, room, 1f - shrink, white * fade, p, fade)
+                }
+                t < SWAP_LANDED -> {
+                    val e = travel * travel * (3 - 2 * travel)
+                    // The box's spark over the top to the party, the party's under to the box; a short trail behind each.
+                    for (k in 3 downTo 0) {
+                        val back = (e - k * 0.05f).coerceAtLeast(0f)
+                        val alpha = if (k == 0) 1f else 0.5f / k
+                        val arc = kotlin.math.sin(Math.PI.toFloat() * back)
+                        val twinkle = k == 0 && (t / 80) % 2 == 0L
+                        swapSpark(snap(lx + (rx - lx) * back), snap(cy - lift * arc), p, alpha, twinkle)
+                        swapSpark(snap(rx + (lx - rx) * back), snap(cy + lift * arc), p, alpha, !twinkle && k == 0)
+                    }
+                }
+                else -> {
+                    // Grown into the other well, the white fading out, a burst of pixels around each.
+                    swapPicture(outArt, rx, cy, room, grow, (1f - grow), p, 1f)
+                    swapPicture(inArt, lx, cy, room, grow, (1f - grow), p, 1f)
+                    if (burst < 1f) {
+                        swapBurst(rx, cy, side, burst, p)
+                        swapBurst(lx, cy, side, burst, p)
+                    }
+                }
+            }
+        }
+    }
+}
+
+private class SwapArt(val image: ImageBitmap, val trim: Trim)
+
+/** [mon]'s front picture from the ROM, else (no Pokédex tables, an egg) its icon's first frame. */
+@Composable
+private fun swapPictureOf(mon: MonView, dex: PokedexTables?): Bitmap? {
+    val species = mon.species.takeIf { !mon.isEgg && dex != null } ?: 0
+    return if (dex != null && species > 0) rememberRomBitmap(dex, species, PokedexSource::cachedFrontSprite, PokedexSource::frontSprite)
+    else remember(mon.iconAsset) { peekMonIcon(mon.iconAsset)?.let(::cropToFirstFrame) }
+}
+
+private fun Modifier.graphicsLayerAlpha(a: Float) = this.then(Modifier.graphicsLayer { alpha = a })
+
+/**
+ * [art] centred on ([cx], [cy]) at [size] (0..1) of the largest whole scale that fits [room] - in whole steps, so its
+ * pixels stay square - with [white] (0..1) of a white silhouette over it. Below the first step it's a spark.
+ */
+private fun DrawScope.swapPicture(art: SwapArt?, cx: Float, cy: Float, room: Float, size: Float, white: Float, p: Float, alpha: Float) {
+    if (art == null) {
+        if (size < 1f) swapSpark(cx, cy, p, alpha)
+        return
+    }
+    // At most a front picture's scale (64 pixels across the room): an icon (the fallback) isn't blown up past it.
+    val full = floor(minOf(room / art.trim.width, room / art.trim.height, room / SWAP_PICTURE_MIN)).coerceAtLeast(1f)
+    val k = kotlin.math.ceil(full * size)
+    if (k < 1f) {
+        swapSpark((cx / p).roundToInt() * p, (cy / p).roundToInt() * p, p, alpha)
+        return
+    }
+    val dw = (art.trim.width * k).roundToInt()
+    val dh = (art.trim.height * k).roundToInt()
+    val dst = IntOffset((cx - dw / 2f).roundToInt(), (cy - dh / 2f).roundToInt())
+    fun draw(a: Float, filter: androidx.compose.ui.graphics.ColorFilter?) = drawImage(
+        art.image, srcOffset = IntOffset(art.trim.left, art.trim.top), srcSize = IntSize(art.trim.width, art.trim.height),
+        dstOffset = dst, dstSize = IntSize(dw, dh), alpha = a, colorFilter = filter, filterQuality = FilterQuality.None,
+    )
+    draw(alpha, null)
+    if (white > 0f) draw(white.coerceIn(0f, 1f), SWAP_WHITE_FILTER)
+}
+
+private const val SWAP_PICTURE_MIN = 48f
+
+private val SWAP_WHITE_FILTER = androidx.compose.ui.graphics.ColorFilter.tint(Color.White, androidx.compose.ui.graphics.BlendMode.SrcIn)
+
+/**
+ * The spark a Pokémon shrinks to, centred on ([cx], [cy]): a white pixel diamond in the picture well's blue, with four
+ * points that twinkle ([twinkle]: on or off).
+ */
+private fun DrawScope.swapSpark(cx: Float, cy: Float, p: Float, alpha: Float, twinkle: Boolean = true) {
+    val edge = Color(PcColors.WELL_EDGE).copy(alpha = alpha)
+    val white = Color.White.copy(alpha = alpha)
+    fun dot(c: Color, dx: Int, dy: Int) = drawRect(c, Offset(cx + (dx - 0.5f) * p, cy + (dy - 0.5f) * p), Size(p, p))
+    for ((dx, dy) in SPARK_EDGE) dot(edge, dx, dy)
+    for ((dx, dy) in SPARK_FILL) dot(white, dx, dy)
+    if (twinkle) for (r in 5..6) for ((dx, dy) in listOf(r to 0, -r to 0, 0 to r, 0 to -r)) dot(if (r == 5) white else edge, dx, dy)
+}
+
+private val SPARK_FILL = (-3..3).flatMap { dx -> (-3..3).map { dy -> dx to dy } }.filter { (x, y) -> kotlin.math.abs(x) + kotlin.math.abs(y) <= 3 }
+private val SPARK_EDGE = (-4..4).flatMap { dx -> (-4..4).map { dy -> dx to dy } }.filter { (x, y) -> kotlin.math.abs(x) + kotlin.math.abs(y) == 4 }
+
+/** Twelve little stars flying out from ([cx], [cy]) as a picture lands ([q] 0..1), fading and shrinking as they go. */
+private fun DrawScope.swapBurst(cx: Float, cy: Float, side: Float, q: Float, p: Float) {
+    val d = side * (0.2f + 0.4f * q)
+    val fade = 1f - q * q
+    val c = Color.White.copy(alpha = fade)
+    // The arms in the frame's grey-blue, so they show on the light well; the centre white.
+    val arm = Color(SWAP_BURST_ARM).copy(alpha = fade)
+    for (i in 0 until 12) {
+        val a = i * Math.PI.toFloat() / 6
+        // Every other one a little behind, so they leave as a ring of two.
+        val r = if (i % 2 == 0) d else d * 0.8f
+        val x = ((cx + r * kotlin.math.cos(a)) / p).roundToInt() * p
+        val y = ((cy + r * kotlin.math.sin(a)) / p).roundToInt() * p
+        if (q < 0.6f) for ((dx, dy) in listOf(1 to 0, -1 to 0, 0 to 1, 0 to -1)) drawRect(arm, Offset(x - p / 2 + dx * p, y - p / 2 + dy * p), Size(p, p))
+        drawRect(if (q < 0.6f) c else arm, Offset(x - p / 2, y - p / 2), Size(p, p))
+    }
+}
+
+private const val SWAP_BURST_ARM = 0xFF4A83B4
 
 /**
  * The game's PKMN DATA panel: a dark grey frame, its title in gold, [mon]'s picture in the blue checked well, then its
@@ -724,8 +930,12 @@ internal object BoxWallpapers {
             hdr(0xD5D5D5, 0xFFFFFF, 0xDEDEDE, 0xDEDEDE, 0xDEDEDE, 0xDEDEDE, 0xDEDEDE, 0xDEDEDE, 0xDEDEDE, 0xDEDEDE, 0xDEDEDE, 0xDEDEDE, 0xDEDEDE, 0xDEDEDE, 0xFFFFFF, 0xD5D5D5)),
     )
 
-    /** The running game's set: Emerald's for the games that run as Emerald, else FireRed's. */
-    private val papers get() = if (com.pokedaisy.app.companion.data.activeGame == com.pokedaisy.app.companion.data.GameKind.EMERALD) EMERALD else FIRERED
+    /** The running game's set: Emerald's for the games on Emerald's code (SoulGold is a pokeemerald rebuild), else
+     * FireRed's (LeafGreen, and Unbound on FireRed's). */
+    private val papers get() = when (com.pokedaisy.app.companion.data.activeGame) {
+        com.pokedaisy.app.companion.data.GameKind.EMERALD, com.pokedaisy.app.companion.data.GameKind.SOULGOLD -> EMERALD
+        else -> FIRERED
+    }
 
     fun paper(id: Int): Paper = papers.let { it.getOrNull(id) ?: it.last() }
 

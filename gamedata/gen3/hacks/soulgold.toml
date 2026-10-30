@@ -50,6 +50,10 @@ partyMonLayout = 'SOULGOLD_PARTY_MON'
 gMain = 0x030055C0
 saveBlock1Ptr = 0x030040C4
 saveBlock2Ptr = 0x030040C0
+# BOXES: gPokemonStoragePtr is the third save pointer here (gSaveBlock2Ptr + 8), 15 boxes of 76-byte plaintext records
+# (headless on the user's save, soulgold_party: box names, wallpapers, 31 Pokémon whose stats work out as the party's).
+pokemonStoragePtr = 0x030040C8
+pcStorage = 'SOULGOLD_PC_STORAGE'
 encryptionKeyOff = 0xB4
 moneyOff = 0x478
 objectEvents = 0x02003314

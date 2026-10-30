@@ -531,13 +531,20 @@ fun CompanionScreen(
                                     if (boxMon == null || slot < 0 || itemUse == null) boxesUi.swapping = null
                                     else itemUse.swapBox(boxIndex, slot, boxMon.personality, partySlot, partyMon.personality) { r ->
                                         boxesUi.swapping = null
-                                        if (r == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) boxesUi.open = null
-                                        boxesUi.swapMessage = boxSwapMessage(r, boxMon, partyMon, pcBoxes.boxes[boxIndex].name)
+                                        val boxName = pcBoxes.boxes[boxIndex].name
+                                        val message = boxSwapMessage(r, boxMon, partyMon, boxName)
+                                        // Back on the box, the two trading places first (not with LIGHT COMPANION on), then the message.
+                                        if (r == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) {
+                                            boxesUi.open = null
+                                            if (com.pokedaisy.app.companion.LightCompanion.on) boxesUi.swapMessage = message
+                                            else boxesUi.swapAnim = BoxSwapAnim(boxMon, partyMon, boxName, message)
+                                        } else boxesUi.swapMessage = message
                                     }
                                 },
                             )
                         } else if (tab == "BOXES" && pcBoxes != null) {
                             BoxesScreen(pcBoxes, boxesUi, snapshot.pokedex?.tables, Modifier.fillMaxSize())
+                            boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = boxesUi::finishSwapAnim) }
                             BoxSwapNotice(boxesUi)
                         } else if (tab == "DEX" && dex != null) {
                             if (paneKey == "DEX/DETAIL") PokedexEntryScreen(dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables)
