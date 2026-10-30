@@ -1778,8 +1778,8 @@ class PokeDaisyActivity : Activity() {
         if (::portraitPanel.isInitialized) portraitPanel.ds = nds
         dsWildRates = if (!nds) null else when (RomIdentity.ndsGameCode(r)) {
             "CPUE" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
-            "IPKE" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
-            "IPGE" -> com.pokedaisy.app.companion.data.SOULSILVER_WORLD::wildRates
+            "IPKE", "IPKD" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
+            "IPGE", "IPGD" -> com.pokedaisy.app.companion.data.SOULSILVER_WORLD::wildRates
             "IRBO" -> { { com.pokedaisy.app.companion.data.BLACK_WORLD.wildRateWords() } }
             else -> null
         }

@@ -143,7 +143,9 @@
   ],
   "ds": [
     {"code": "CPUE", "rev": 1, "title": "Pokémon Platinum"},
+    {"code": "IPGD", "rev": 0, "title": "Pokémon Silberne Edition SoulSilver"},
     {"code": "IPGE", "rev": 0, "title": "Pokémon SoulSilver"},
+    {"code": "IPKD", "rev": 0, "title": "Pokémon Goldene Edition HeartGold"},
     {"code": "IPKE", "rev": 0, "title": "Pokémon HeartGold"},
     {"code": "IRBO", "rev": 0, "title": "Pokémon Black"}
   ],
@@ -221,8 +223,8 @@
       {"game": "Sapphire", "version": "USA, rev 0, 1 and 2", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "Sapphire", "version": "ES/DE/FR/IT/JP, rev 0-1", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "Platinum (DS)", "version": "USA rev 1", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
-      {"game": "HeartGold (DS)", "version": "USA", "cells": ["yes", "yes", "no", "yes", "yes", "yes"]},
-      {"game": "SoulSilver (DS)", "version": "USA", "cells": ["yes", "yes", "no", "yes", "yes", "yes"]},
+      {"game": "HeartGold (DS)", "version": "USA, Germany rev 0", "cells": ["yes", "yes", "no", "yes", "yes", "yes"]},
+      {"game": "SoulSilver (DS)", "version": "USA, Germany rev 0", "cells": ["yes", "yes", "no", "yes", "yes", "yes"]},
       {"game": "Black (DS)", "version": "USA/Europe", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "Unbound", "version": "2.1.1.1", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "Unbound", "version": "2.1.1.1 French", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},

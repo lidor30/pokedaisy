@@ -259,7 +259,7 @@ val GEN4_PLATINUM_US = Gen4Config(
  * player's own saves, then checked live. Their own items, pockets (101 TM / HM slots, 24 balls), map places and FLY
  * spots (the Pokégear's flypoints); the Pokégear map and battles come later.
  */
-private fun gen4HeartGoldFamily(saveDataPtr: Long) = Gen4Config(
+private fun gen4HeartGoldFamily(saveDataPtr: Long, fieldSystemPtr: Long = 0x021D4158) = Gen4Config(
     saveDataPtr = saveDataPtr,
     bodyOff = 0x10,
     trainerOff = 0x64,
@@ -290,7 +290,7 @@ private fun gen4HeartGoldFamily(saveDataPtr: Long) = Gen4Config(
     // SAVE_POKEGEAR's chunk (0xBAE0) + 4
     pokegearWordOff = 0xBAE4,
     pokegear = Gen4Pokegear(
-        fieldSystemPtr = 0x021D4158,   // sFieldSysPtr
+        fieldSystemPtr = fieldSystemPtr,   // sFieldSysPtr
         mainMatrixHeaders = mainMatrixHeadersHeartGold,
         worldMap = worldMapHeartGold,
     ),
@@ -302,6 +302,13 @@ private const val HEARTGOLD_SAVE_DATA_PTR = 0x021D2228L
 val GEN4_HEARTGOLD_US = gen4HeartGoldFamily(saveDataPtr = HEARTGOLD_SAVE_DATA_PTR)
 val GEN4_SOULSILVER_US = gen4HeartGoldFamily(saveDataPtr = HEARTGOLD_SAVE_DATA_PTR)
 
+/** German HeartGold rev 0 (IPKD, SHA-1 13b6853a…): SaveData_Get and Field_NewGame_AppInit's literal pools.
+ * The save layout is shared with the US carts; its two globals moved by 0x20. */
+val GEN4_HEARTGOLD_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138)
+
+/** German SoulSilver rev 0 shares HeartGold's globals and save layout (IPGD, SHA-1 576cdb7e…). */
+val GEN4_SOULSILVER_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138)
+
 /** A DS game ([readGen4Telemetry], [readGen5Telemetry]): two screens, its own look and tables. */
 val GameKind?.isDsGame: Boolean get() = this == GameKind.PLATINUM || isHgss || isGen5
 
@@ -309,10 +316,10 @@ val GameKind?.isDsGame: Boolean get() = this == GameKind.PLATINUM || isHgss || i
 val GameKind?.isGen5: Boolean get() = this == GameKind.BLACK
 
 /** The Gen 4 config for [kind], or null. */
-fun gen4ConfigFor(kind: GameKind?): Gen4Config? = when (kind) {
+fun gen4ConfigFor(kind: GameKind?, code: String = romGameCode): Gen4Config? = when (kind) {
     GameKind.PLATINUM -> GEN4_PLATINUM_US
-    GameKind.HEARTGOLD -> GEN4_HEARTGOLD_US
-    GameKind.SOULSILVER -> GEN4_SOULSILVER_US
+    GameKind.HEARTGOLD -> if (code == "IPKD") GEN4_HEARTGOLD_DE else GEN4_HEARTGOLD_US
+    GameKind.SOULSILVER -> if (code == "IPGD") GEN4_SOULSILVER_DE else GEN4_SOULSILVER_US
     else -> null
 }
 

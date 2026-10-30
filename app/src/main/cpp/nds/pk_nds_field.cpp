@@ -51,6 +51,26 @@ static const PkNdsFieldGame HEARTGOLD_US = {
     0x08,         // BattleContext.command (5 at the command menus, 22 running a move's script: headless dumps)
 };
 
+// German HeartGold, IPKD rev 0 (SHA-1 13b6853a…): ARM9's SaveData / FieldSystem and sound literal pools,
+// gOverlayTemplate_Battle's reference in sub_02087C38, and overlay 1's field-map template. Structs and the
+// callSet 2 function addresses are shared with the US carts (checked against the German ARM9).
+static const PkNdsFieldGame HEARTGOLD_DE = {
+    "HeartGold / SoulSilver (Germany)",
+    0x021D4138,   // sFieldSysPtr
+    0x020FA438,   // gOverlayTemplate_Battle
+    0x00, 0x10, 0x40, 0x6C,
+    0x18,
+    0x14, 0x920, 0x921,
+    0x20,
+    0x021E5BC5,   // ov01_02206378's main in German overlay 1
+    0x021D0534,   // sSoundWork (0x02111938) + 0xBEBFC
+    0x021DF964,   // sSeqPlayer
+    1,
+    2,
+    0x30,
+    0x08,
+};
+
 // Black (USA / Europe, IRBO rev 0): no decomp, so from headless captures (nds_dump dumps of the field, a text box, the X
 // menu, the party screen and a Battle Subway battle, diffed; the heap's blocks carry their source file's name). The
 // GameSystem is procsys.c's proc work, its pointer static; its proc system's running proc names its overlay (21 the field
@@ -108,6 +128,7 @@ const PkNdsFieldGame* pk_nds_field_game(const char code[4], int revision)
 {
     if (memcmp(code, "CPUE", 4) == 0 && revision == 1) return &PLATINUM_US_REV1;
     if ((memcmp(code, "IPKE", 4) == 0 || memcmp(code, "IPGE", 4) == 0) && revision == 0) return &HEARTGOLD_US;
+    if ((memcmp(code, "IPKD", 4) == 0 || memcmp(code, "IPGD", 4) == 0) && revision == 0) return &HEARTGOLD_DE;
     if (memcmp(code, "IRBO", 4) == 0 && revision == 0) return &BLACK_US;
     return 0;
 }

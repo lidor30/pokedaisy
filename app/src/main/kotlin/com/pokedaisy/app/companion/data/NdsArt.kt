@@ -88,7 +88,12 @@ object NdsArt {
         Thread({
             // The names first (a few text banks): the companion's first samples use them.
             runCatching { names = readNames(rom) }.onFailure { android.util.Log.w("pokedaisy", "NdsArt: names failed", it) }
-            names?.let { n -> if (activeGame.isDsGame) romLanguage = n.language }
+            names?.let { n ->
+                if (activeGame.isDsGame) {
+                    romLanguage = n.language
+                    com.pokedaisy.app.companion.i18n.L10n.applyGameLanguage(n.language)
+                }
+            }
             runCatching {
                 PokegearMap.dir = RomArt.dir(filesDir)
                 dir = RomArt.dir(filesDir)
@@ -103,7 +108,7 @@ object NdsArt {
         val code = String(header, 0x0C, 4, Charsets.US_ASCII)
         val rev = header[0x1E].toInt() and 0xFF
         val platinum = code == "CPUE" && rev == 1
-        val heartGold = (code == "IPKE" || code == "IPGE") && rev == 0
+        val heartGold = (code == "IPKE" || code == "IPKD" || code == "IPGE" || code == "IPGD") && rev == 0
         val black = code == "IRBO" && rev == 0
         if (!platinum && !heartGold && !black) return false
         val marker = File(dir, if (black) "nds/black-built" else if (platinum) "nds/platinum-built" else "nds/heartgold-built")
@@ -140,7 +145,7 @@ object NdsArt {
         } else {
             file(f, header, "/a/1/4/4")?.let { pokegear(Narc(it), dir) }
             file(f, header, "/a/0/1/5")?.let { bagPockets(Narc(it), dir) }
-            dex(f, header, dir, if (code == "IPGE") DEX_SOULSILVER else DEX_HEARTGOLD)
+            dex(f, header, dir, if (code == "IPGE" || code == "IPGD") DEX_SOULSILVER else DEX_HEARTGOLD)
         }
         marker.parentFile?.mkdirs()
         marker.writeText(stamp)
@@ -563,7 +568,7 @@ object NdsArt {
         }
         val banks = when {
             code == "CPUE" && rev == 1 -> NAMES_PLATINUM
-            (code == "IPKE" || code == "IPGE") && rev == 0 -> NAMES_HEARTGOLD
+            (code == "IPKE" || code == "IPKD" || code == "IPGE" || code == "IPGD") && rev == 0 -> NAMES_HEARTGOLD
             else -> return null
         }
         val msg = Narc(file(f, header, banks.msg) ?: return null)

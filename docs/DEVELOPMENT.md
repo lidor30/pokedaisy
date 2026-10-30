@@ -1965,7 +1965,7 @@ built-in frames, storage + import - ui-preview compiles it, `OverlaysTest` cover
 
 ## Nintendo DS (melonDS)
 
-Platinum (USA rev 1, `CPUE`), HeartGold / SoulSilver (USA, `IPKE` / `IPGE`) and Black (USA / Europe, `IRBO`, a DSi
+Platinum (USA rev 1, `CPUE`), HeartGold / SoulSilver (USA and Germany rev 0, `IPKE` / `IPGE` / `IPKD` / `IPGD`) and Black (USA / Europe, `IRBO`, a DSi
 enhanced cart that runs in DS mode) run on melonDS, with the companion, EXPAND and STEADY music.
 
 **The core.** `third_party/melonds` (a submodule pinned to upstream 1.1) builds its core library only, with the
@@ -2007,6 +2007,17 @@ Johto's 256 from `a/1/3/8`), and the save's seen / caught flags are read from it
 and `nationalDexOff`: the struct's languages array differs in size, so the National Dex byte moved: 0x31B in Platinum,
 0x337 in HG / SS). The TM / HM lists differ in HM05 (Defog / Whirlpool): `tmMovesPlatinum` lives in
 `Gen4MachinesPlatinum.kt`, a file of its own, since `Gen4TablesPlatinum.kt`'s static initializer is at the JVM's limit.
+
+German HeartGold rev 0 (`IPKD`, SHA-1 `13b6853aa93121069df1d17446d3ecb36872aecf`) shares the US save layout and
+message banks. Its ARM9 literal pools give `sSaveDataPtr` at `0x021D2208` (`SaveData_Get`, `0x020272B0`),
+`sFieldSysPtr` at `0x021D4138`, and `sSoundWork` at `0x02111938`; the battle template is `0x020FA438` and overlay 1's
+field main is `0x021E5BC5`. The functions used by `pk_nds_call` keep their US addresses. `GEN4_HEARTGOLD_DE` and
+`GEN4_SOULSILVER_DE` and the native `HEARTGOLD_DE` table select these addresses; `romGameCode` also carries `IPKD` so field actions use the
+same config as the sampler. Names and art are read from the German cart. A new game and the PC script were checked
+headlessly, with the captured state kept locally. `HeartGoldGermanTest` relocates the existing US fixture's two globals
+to exercise the shared party, bag, dex and map layout without bundling another player's state.
+
+German SoulSilver rev 0 (`IPGD`, SHA-1 `576cdb7eec728c49aed85b9dd7e1e084ba1f08f9`) shares these globals and the call ABI. Other German generations remain outside this change.
 
 **GUIDE.** `scripts/gen_gen4_guide.py` writes `GuideGen4PlatinumGen.kt` / `GuideGen4HeartGoldGen.kt` from the decomps,
 numbers only: every map header's wild set (Platinum's grass with its day / night pair, HG / SS's per time of day and
