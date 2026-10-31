@@ -118,6 +118,14 @@
             android:exported="false"
             android:theme="@style/Theme.PokeDaisy" />
 
+        <!-- LINK PLAY: two to four GBA games on one link cable (a game's library menu). configChanges keeps the games
+             running through a rotation or a controller connecting, as PokeDaisyActivity's. -->
+        <activity
+            android:name=".LinkActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
+            android:theme="@style/Theme.PokeDaisy" />
+
         <!-- No screenOrientation: PokeDaisyActivity locks landscape itself with a second
              screen and follows the device's rotation without one (a phone upright puts the
              companion under the game, PortraitPanel). configChanges keeps the game running

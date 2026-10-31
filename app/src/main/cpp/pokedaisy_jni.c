@@ -91,6 +91,11 @@ static void pkHealRtc(struct mCore* core) {
     rtc->control = RTCControlFillHour24(0);
     rtc->offset = 0;
 }
+/** pkHealRtc for LINK PLAY's games (pk_link_jni.c). */
+void pk_heal_rtc(struct mCore* core) {
+    pkHealRtc(core);
+}
+
 #define PK_AUDIO_SCRATCH_SAMPLES 8192   // per-channel; * 2 shorts for interleave
 
 static struct {

@@ -522,6 +522,14 @@ private fun homeRows(
         ) {
             if (s.reusableTmsSupported) { s.setReusableTms(!s.reusableTms); changed() }
         },
+        // A Pokémon that evolves by trading evolves from its summary, through the game's own evolution (TradeEvolution.kt).
+        SettingRow(
+            tk("TRADE EVOLUTIONS"), if (s.tradeEvolutionsSupported) onOff(s.tradeEvolutions) else tk("N/A"),
+            enabled = s.tradeEvolutionsSupported, labelBadge = NewFeatures.badge(NewFeatures.TRADE_EVOLUTIONS),
+            subtitle = "Evolve from a Pokémon's summary, no trade needed",
+        ) {
+            if (s.tradeEvolutionsSupported) { s.setTradeEvolutions(!s.tradeEvolutions); changed() }
+        },
         // A new wild foe made shiny at these odds before its battle draws it (ShinyOdds.kt; the versions it knows by hash).
         SettingRow(
             tk("SHINY ODDS"), if (s.shinyOddsSupported) shinyOddsLabel(s.shinyOdds) else tk("N/A"),

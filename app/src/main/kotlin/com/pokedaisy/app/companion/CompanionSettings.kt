@@ -68,6 +68,12 @@ interface CompanionSettings {
     /** The game's own TMs never run out ([com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN]): the row says so. */
     val reusableTmsBuiltIn: Boolean get() = false
 
+    /** TRADE EVOLUTIONS - see [com.pokedaisy.app.Prefs.tradeEvolutions]; [tradeEvolutionsSupported]: this game's
+     * evolution code is known ([com.pokedaisy.app.companion.data.tradeEvoFor]). */
+    val tradeEvolutions: Boolean get() = false
+    fun setTradeEvolutions(on: Boolean) {}
+    val tradeEvolutionsSupported: Boolean get() = false
+
     /** DS RESOLUTION ([com.pokedaisy.app.Prefs.dsResolution]): the scale, null when the game isn't a DS one (no row);
      * [dsGpuAvailable] false = this device can't run the GPU renderer (no OpenGL ES 3.2), so the DS's own it is. */
     val dsResolution: Int? get() = null

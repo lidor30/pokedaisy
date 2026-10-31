@@ -100,6 +100,8 @@ fun MonDetailScreen(
     onDeposit: (() -> Unit)? = null,
     /** WITHDRAW (a box Pokémon's summary: into the party, or SWAP's pick when it's full); null = no button. */
     onWithdraw: (() -> Unit)? = null,
+    /** Open with TRADE EVOLUTIONS' question up (screenshot tests). */
+    initialEvolveAsk: Boolean = false,
 ) {
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
@@ -126,6 +128,15 @@ fun MonDetailScreen(
     var takeResult by remember { mutableStateOf<String?>(null) }
     // A TAKE that went through closes its question and pops up like the bag's USE / GIVE.
     var notice by remember { mutableStateOf(initialNotice) }
+    // TRADE EVOLUTIONS: which Pokémon the game would evolve by trade (asked whenever the party read changes), the question,
+    // then what it said when it didn't.
+    val evolves = itemUse?.takeIf { it.canTradeEvolve() }
+    var tradeTargets by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
+    remember { evolves?.tradeEvolveTargets { tradeTargets = it }; true } // in the first composition: a screenshot draws one frame
+    LaunchedEffect(party, evolves != null) { evolves?.tradeEvolveTargets { tradeTargets = it } }
+    val evoTarget = party.getOrNull(index)?.takeIf { !it.isEgg }?.let { tradeTargets[it.personality] }
+    var evolveAsk by remember { mutableStateOf(initialEvolveAsk) }
+    var evolveResult by remember { mutableStateOf<String?>(null) }
     Row(modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
     Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         AnimatedContent(
@@ -182,11 +193,13 @@ fun MonDetailScreen(
         // No up / down arrows (STATS needed the room): the column's slots pick the Pokémon.
         val stats = party.getOrNull(index)?.stats != null && !showLearn
         val learns = canLearn && party.getOrNull(index)?.isEgg == false
-        if (stats || learns || onDeposit != null || onWithdraw != null) {
+        val evolve = evolves != null && evoTarget != null && !showLearn
+        if (stats || learns || evolve || onDeposit != null || onWithdraw != null) {
             Row(Modifier.height(SummaryButtonSize), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val size = SummaryButtonSize
                 if (stats) TextNavButton(if (showStats) tr("MOVES") else tr("STATS"), StatsPurple, StatsPurpleDark, size) { showStats = !showStats }
                 if (learns) TextNavButton(if (showLearn) tr("MOVES") else tr("LEARN"), SuggestGold, SuggestGoldDark, size) { showLearn = !showLearn; learnPick = 0 }
+                if (evolve) TextNavButton(tr("EVOLVE"), EvolveBlue, EvolveBlueDark, size) { evolveResult = null; evolveAsk = true }
                 if (onDeposit != null) TextNavButton(tr("DEPOSIT"), PcGreen, PcGreenDark, size, onClick = onDeposit)
                 if (onWithdraw != null) TextNavButton(tr("WITHDRAW"), PcGreen, PcGreenDark, size, onClick = onWithdraw)
             }
@@ -214,6 +227,29 @@ fun MonDetailScreen(
             onClose = { takeAsk = false; takeResult = null },
         )
     }
+    val evolving = party.getOrNull(index)
+    if (evolveAsk && evolves != null && evolving != null) {
+        val target = tradeTargets[evolving.personality]
+        if (evolveResult == null && target != null) {
+            OptionConfirm(
+                tk("TRADE EVOLUTION"),
+                tr("{0} evolves into {1}, as if it had been traded. It stays yours.", evolving.name, com.pokedaisy.app.companion.data.speciesName(target)),
+                tk("EVOLVE"), m,
+                onConfirm = {
+                    val slot = index
+                    evolves.tradeEvolve(slot, evolving.personality) { r ->
+                        if (r == com.pokedaisy.app.companion.data.TradeEvoResult.EVOLVING) evolveAsk = false
+                        else evolveResult = tradeEvoMessage(r, evolving.name)
+                        evolves.tradeEvolveTargets { tradeTargets = it }
+                    }
+                },
+                onDismiss = { evolveAsk = false },
+            )
+        } else {
+            OptionConfirm(tk("TRADE EVOLUTION"), evolveResult ?: tradeEvoMessage(com.pokedaisy.app.companion.data.TradeEvoResult.NO_EVOLUTION, evolving.name),
+                tk("OK"), m, onConfirm = { evolveAsk = false }, onDismiss = { evolveAsk = false }, cancelLabel = null)
+        }
+    }
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         ItemNoticeHost(notice, m, Modifier.align(Alignment.TopCenter).padding(top = m.u * 6, start = m.u * 8, end = m.u * 8)) { notice = null }
     }
@@ -231,6 +267,14 @@ private fun TakeDialog(
     } else {
         OptionConfirm(tk("TAKE"), result, tk("OK"), m, onConfirm = onClose, onDismiss = onClose, cancelLabel = null)
     }
+}
+
+/** Why TRADE EVOLUTIONS didn't evolve [mon], in the companion's words. */
+internal fun tradeEvoMessage(r: com.pokedaisy.app.companion.data.TradeEvoResult, mon: String): String = when (r) {
+    com.pokedaisy.app.companion.data.TradeEvoResult.NOT_NOW -> tr("Not now: it evolves on the field, with no menu, text or battle open.")
+    com.pokedaisy.app.companion.data.TradeEvoResult.NO_EVOLUTION -> tr("{0} wouldn't evolve from a trade right now.", mon)
+    com.pokedaisy.app.companion.data.TradeEvoResult.MOVED -> tr("The party has changed. Try again.")
+    else -> tr("It can't be used here.")
 }
 
 /** What TAKE did, in the companion's words. */
@@ -352,6 +396,10 @@ internal fun Separator(m: GbaTextMetrics, modifier: Modifier = Modifier, vertica
             },
     )
 }
+
+/** TRADE EVOLUTIONS' EVOLVE button: the party menu's field-move blue. */
+private val EvolveBlue = Color(0xFF5878E8)
+private val EvolveBlueDark = Color(0xFF3152CD)
 
 /** The PC's DEPOSIT / WITHDRAW buttons: the party menu's HP green. */
 private val PcGreen = Color(0xFF58C060)

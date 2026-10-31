@@ -72,6 +72,16 @@ interface ItemUse {
         done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
     ) = done(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED)
 
+    /** TRADE EVOLUTIONS (TradeEvolution.kt): the setting is on and this game's evolution code is known. */
+    fun canTradeEvolve(): Boolean = false
+
+    /** The party Pokémon that would evolve by trade now, by personality: what each becomes (the game's own answer). */
+    fun tradeEvolveTargets(done: (Map<Long, Int>) -> Unit) = done(emptyMap())
+
+    /** Evolves party slot [slot] ([personality]) as a trade would: the game's evolution plays on the game's screen. */
+    fun tradeEvolve(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.TradeEvoResult) -> Unit) =
+        done(com.pokedaisy.app.companion.data.TradeEvoResult.FAILED)
+
     /** WITHDRAW: box [box]'s slot [slot] ([boxPersonality]) into the party in the game. */
     fun withdrawFromBox(
         box: Int, slot: Int, boxPersonality: Long,

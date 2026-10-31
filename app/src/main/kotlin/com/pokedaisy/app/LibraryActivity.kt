@@ -74,6 +74,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -1011,6 +1012,12 @@ class LibraryActivity : ComponentActivity() {
             add(RomMenuItem(tr("SET COVER"), Icons.Filled.Image, opens = true) { pendingCoverTarget = rom; pickCoverImage.launch("image/*") })
             if (prefs.romCoverManual(rom)) {
                 add(RomMenuItem(tr("RESET COVER"), Icons.Filled.Refresh) { resetCover(rom) })
+            }
+            // Two to four GBA games on one link cable (LinkActivity): trades, battles, record mixing between them.
+            if (rom.extension.lowercase() !in setOf("gb", "gbc", "nds")) {
+                add(RomMenuItem(tr("LINK PLAY"), Icons.Filled.Link, opens = true) {
+                    startActivity(Intent(this@LibraryActivity, LinkActivity::class.java).putExtra(LinkActivity.EXTRA_ROM, rom.absolutePath))
+                })
             }
             add(RomMenuItem(tr("LOAD SAVE"), Icons.Filled.FileOpen, opens = true) { saveTarget = rom; pickSaveFile.launch(arrayOf("*/*")) })
             add(RomMenuItem(tr("RESTORE BACKUP"), Icons.Filled.History, opens = true) { showBackups(rom) })

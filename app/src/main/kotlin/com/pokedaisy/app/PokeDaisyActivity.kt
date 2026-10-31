@@ -416,6 +416,28 @@ class PokeDaisyActivity : Activity() {
         return support
     }
 
+    /** TRADE EVOLUTIONS' calls for the loaded ROM ([com.pokedaisy.app.companion.data.tradeEvoFor]), its code checked once
+     * per ROM; null where the game has none (a hack, another language, a Game Boy or DS game). */
+    @Volatile private var tradeEvoCache: Pair<String, com.pokedaisy.app.companion.data.TradeEvoFns?>? = null
+
+    private fun tradeEvoFns(): com.pokedaisy.app.companion.data.TradeEvoFns? {
+        if (romIsGameBoy || romIsNds) return null
+        val game = telemetry.snapshot.value.game
+        val hack = com.pokedaisy.app.companion.data.runningFireRedHack != null || com.pokedaisy.app.companion.data.runningEmeraldHack != null ||
+            com.pokedaisy.app.companion.data.emeraldLegacy || com.pokedaisy.app.companion.data.romGameCode == com.pokedaisy.app.companion.data.KAIZO_TEXT
+        val evo = com.pokedaisy.app.companion.data.tradeEvoFor(game, romCode, romRev, hack) ?: return null
+        val key = "$romCode/$romRev/$game/${com.pokedaisy.app.companion.data.romGameCode}"
+        tradeEvoCache?.let { (k, v) -> if (k == key) return v }
+        if (!::engine.isInitialized || !engine.running) return null
+        val ok = runCatching {
+            com.pokedaisy.app.companion.data.tradeEvoCodeMatches(evo) { addr, len -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(addr, len) }
+        }.getOrElse { return null }
+        Log.i("pokedaisy", "trade evolutions: ${if (ok) "code found" else "code not found"}")
+        val v = evo.takeIf { ok }
+        tradeEvoCache = key to v
+        return v
+    }
+
     /** A Game Boy game's PC / FLY / WILD ENCOUNTERS ([com.pokedaisy.app.companion.data.GbField]): English Yellow and
      * Crystal, their code checked in the cart once per ROM. */
     @Volatile private var gbFieldCache: Pair<String, com.pokedaisy.app.companion.data.GbField?>? = null
@@ -595,6 +617,26 @@ class PokeDaisyActivity : Activity() {
             done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
         ) = onBoxes(done) { fields, fns, calls, busy ->
             com.pokedaisy.app.companion.data.withdrawFromBox(fields, fns, box, slot, boxPersonality, busy, calls)
+        }
+
+        override fun canTradeEvolve() = Prefs(this@PokeDaisyActivity).tradeEvolutions && tradeEvoFns() != null
+
+        override fun tradeEvolveTargets(done: (Map<Long, Int>) -> Unit) {
+            val evo = tradeEvoFns()
+            if (evo == null || !Prefs(this@PokeDaisyActivity).tradeEvolutions) return done(emptyMap())
+            onGame(emptyMap(), done) { s, calls, _ -> com.pokedaisy.app.companion.data.tradeEvolveTargets(s.fns, evo, calls) }
+        }
+
+        override fun tradeEvolve(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.TradeEvoResult) -> Unit) {
+            val evo = tradeEvoFns()
+            if (evo == null || !Prefs(this@PokeDaisyActivity).tradeEvolutions) return done(com.pokedaisy.app.companion.data.TradeEvoResult.FAILED)
+            // Only from the field the player walks on: the scene takes the screen, then CB2_ReturnToField brings the field back.
+            if (!::engine.isInitialized || !engine.onField.value) return done(com.pokedaisy.app.companion.data.TradeEvoResult.NOT_NOW)
+            onGame(com.pokedaisy.app.companion.data.TradeEvoResult.FAILED, { r ->
+                // The evolution is the game's to show: the window over it goes.
+                if (r == com.pokedaisy.app.companion.data.TradeEvoResult.EVOLVING) closeCompanionWindow()
+                done(r)
+            }) { s, calls, busy -> com.pokedaisy.app.companion.data.tradeEvolve(s.fns, evo, slot, personality, busy, calls) }
         }
 
         /** A PC move ([move]) on the emu thread, its NOT_NOW told apart from a battle's. */
@@ -1223,6 +1265,9 @@ class PokeDaisyActivity : Activity() {
         }
         override val wildEncountersSupported get() = (fieldGame != WideScreen.OFF && wildFlag != 0L) || gbField() != null ||
             romIsNds && ::engine.isInitialized && engine.fieldState and MgbaCore.FIELD_KNOWN != 0
+        override val tradeEvolutions get() = Prefs(this@PokeDaisyActivity).tradeEvolutions
+        override fun setTradeEvolutions(on: Boolean) { Prefs(this@PokeDaisyActivity).tradeEvolutions = on }
+        override val tradeEvolutionsSupported get() = tradeEvoFns() != null
         override val reusableTms get() = Prefs(this@PokeDaisyActivity).reusableTms
         override fun setReusableTms(on: Boolean) {
             if (on) com.pokedaisy.app.companion.FeatureTips.used(TipId.REUSABLE_TMS)

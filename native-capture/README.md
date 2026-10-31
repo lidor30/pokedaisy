@@ -139,3 +139,49 @@ it was checked on 2026-10-08: on FireRed rev 1, a plain CodeBreaker write (`8203
 a hooked one (`100005FC 0007+8203F002 5678`, a hook on ReadKeys) and an encrypted GameShark
 code (autodetected as `GSAv1`) all fired; `cheatclear` put the ROM back byte for byte.
 
+
+## Games on a link cable (`mgba_link`)
+
+`mgba_link.c` runs two to four GBA games in one process joined by mGBA's own lockstep link
+(`gba/sio/lockstep.c`, the multiplayer cable), on the app's own LINK PLAY code: it compiles
+`app/src/main/cpp/pk_link.c` (and `pk_savevf.c`), so build it from the repo root. mGBA only defines the
+link's hooks; its Qt frontend fills them with a thread per game that sleeps and wakes
+(`MultiplayerController.cpp`). `pk_link.c` runs them all on one thread and "asleep" means "not run": the
+first game is the link's parent, the others run only on the cycles it hands them, so none drifts more than
+one lockstep step (2000 cycles) from it. Commands are mgba_dump's with a side (`0`..`3`, or `all` / `both`):
+`wait N`, `keys`/`press`/`hold SIDE KEYS [N]`, `shot SIDE FILE` (every side: `_0`, `_1`, ... before the
+extension), `dump`, `peek SIDE ADDR N`, `poke8/16/32` and `link` (each game's SIO mode, the lockstep phase and
+budgets).
+
+```sh
+docker run --rm -v "$(pwd):/repo" -w /repo/native-capture pokedaisy-capture \
+    -c "gcc -O2 -Wall -o mgba_link mgba_link.c -I/usr/include -L/usr/lib/aarch64-linux-gnu -lmgba -lm"
+docker run --rm -v "$(pwd):/work" -w /work pokedaisy-capture \
+    -c "./mgba_link fr.gba fr.sav lg.gba lg.sav < trade.txt"
+```
+
+What it has done, on copies of the user's saves (2026-10-31 / 11-01). Each save was first put at a cable club
+counter with mgba_dump: `call` ScriptContext_SetupScript (FireRed / LeafGreen 0x08069AF9, Emerald 0x08098EF9,
+Ruby rev 1 / 2 0x080655D9, Sapphire 0x080655DD) on a `warp` to a Pokémon Center 2F, then saved through START.
+
+- **FireRed with LeafGreen** (Viridian 2F, x 10 y 3, the Direct Corner attendant): TRADE CENTER and YES to both
+  saves; the parent (game 0) then says "When all players are ready... A Button: Confirm", the other "Awaiting
+  linkup"; A twice more on the parent and A **held** for the last one (`Task_LinkupTryConfirmation` reads
+  JOY_HELD once its message is gone). Walk in one tile at a time (`hold both UP 10`, LEFT / RIGHT, then
+  `hold both UP 30` onto the chairs at (4, 5) / (7, 5)) and the trade screen opens on both. HAUNTER for
+  HAUNTER: both evolved into GENGAR, both games saved, each save booted alone has the other's Pokémon, evolved.
+  The one FireRed received kept its name: it's Italian (language 4), and EvolutionRenameMon only renames a
+  Pokémon of the game's own language, as on a real cable.
+- **FireRed with Emerald** (Emerald: Oldale 2F, the same (10, 3); set VAR_CABLE_CLUB_TUTORIAL_STATE 0x40CD
+  to 2 first or its first-visit walk moves the player): the games' own rules held first - FireRed needs
+  FLAG_SYS_CAN_LINK_WITH_RS (0x844) and Emerald FLAG_IS_CHAMPION (0x87F), else "The other TRAINER is not
+  ready" / "I'm awfully sorry" over the cable. With both set: KADABRA for MANECTRIC, the KADABRA evolved into
+  ALAKAZAM on Emerald, both saved.
+- **Ruby rev 2, Sapphire rev 1, Sapphire rev 2 and Emerald, four games** at the Record Corner (Ruby / Sapphire:
+  Oldale 2F, **(10, 4)**, a row lower than FireRed's and Emerald's: from (10, 3) the walk ends a tile past the
+  door, SetCableClubWarp finds no warp under the player and warps to map 0.0, Petalburg). "4P LINK" on Ruby,
+  every game in the Record Corner, each walked out of the doorway (y 9) to a seat, "Mixing records..." on all
+  four, then "FEDE sent over one EON TICKET." on the other three, every save written.
+
+Speed: one game alone ran ~2000 frames a second here, the linked pair ~1000: the link costs no more than
+the second game. On the API 32 emulator the app's LINK PLAY ran two games at ~57 frames a second.

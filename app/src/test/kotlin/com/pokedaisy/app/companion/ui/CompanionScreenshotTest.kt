@@ -407,6 +407,19 @@ open class CompanionScreenshotTest {
     /** ...which asks first. */
     @Test fun partyDetailTakeAsk() = snapshot { AppTheme { MonDetailScreen(takeParty, 0, {}, {}, itemUse = takeUse, initialTakeAsk = true) } }
 
+    /** TRADE EVOLUTIONS (TradeEvolution.kt): the game says the lead would evolve by trade, so its summary has EVOLVE... */
+    @Test fun partyDetailTradeEvolve() = snapshot { AppTheme { MonDetailScreen(takeParty, 0, {}, {}, itemUse = evolveUse) } }
+
+    /** ...which asks first. */
+    @Test fun partyDetailTradeEvolveAsk() = snapshot { AppTheme { MonDetailScreen(takeParty, 0, {}, {}, itemUse = evolveUse, initialEvolveAsk = true) } }
+
+    private val evolveUse = object : com.pokedaisy.app.companion.ItemUse {
+        override fun canUse(itemId: Int) = false
+        override fun use(itemId: Int, done: (com.pokedaisy.app.companion.data.ItemUseOutcome) -> Unit) {}
+        override fun canTradeEvolve() = true
+        override fun tradeEvolveTargets(done: (Map<Long, Int>) -> Unit) = done(mapOf(1L to 5))
+    }
+
     private val takeParty get() = SampleCompanion.snapshot.party.mapIndexed { i, m -> m.copy(personality = i + 1L, iconAsset = spriteAsset("pokemon", m.species)) }
 
     private val takeUse = object : com.pokedaisy.app.companion.ItemUse {

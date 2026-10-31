@@ -703,6 +703,20 @@ TMs never run out by themselves (checked headless), so `ReusableTms.BUILT_IN` sh
 list beside the cheats' in `pk_cheats.c` (`sOptions`: loading cheats never drops them), with the same overlay / RA swap, so the
 Poller's hash and RetroAchievements' see the file; they don't pause achievements. Played headless with mgba_dump's `rompatch`
 (docs/ROM_FEATURES.md note 15). The newer-engine hacks build the check another way: each needs its own site.
+**LINK PLAY** (2026-11-01, a game's library menu; `LinkActivity`, `LinkCore`, native `pk_link.c` / `pk_link_jni.c`): two to
+four GBA games on mGBA's own lockstep link cable, apart from the player's core (`g`): only the games, no companion / EXPAND /
+HUD / hotkeys / FF / states. mGBA defines only the link's hooks (struct mLockstep); `pk_link.c` fills them with Qt's
+MultiplayerController callbacks on ONE thread ("asleep" = not run; game 0 the parent, the others run on its posted cycles) - never
+call a sleeping parent's runLoop (its event would advance the transfer without the children). A tap / L2 R2 / L3 R3 picks the game
+with the buttons and sound; the focused game's blocking audio writes pace the loop; a second screen gets half the games. Saves:
+`SavesLocation.saveFor` + `SaveBackups.snapshot` each, a second copy of one ROM plays `<save> (link N)`; leaving runs frames until
+no save is dirty. `native-capture/mgba_link.c` runs the same `pk_link.c` headless (its README: FireRed / LeafGreen / Emerald trades,
+four-game record mixing). Not tried on a Thor yet.
+**TRADE EVOLUTIONS** (2026-11-01, companion GAMEPLAY, `Prefs.tradeEvolutions` OFF, NEW tag; `TradeEvolution.kt`): the summary's
+EVOLVE runs the game's own GetEvolutionTargetSpecies(mon, EVO_MODE_TRADE) + BeginEvolutionScene with gCB2_AfterEvolution =
+CB2_ReturnToField, controls locked first, from the field only. Which Pokémon get the button: the same call on each slot with its 100
+bytes put back (a held-item evolution's item would be spent otherwise). Records `TRADE_EVO_*` in gamedata (retail English FireRed
+rev 1, LeafGreen rev 0 / 1 - found in retail by the shifted `$DECOMPS` build's masked code - and Emerald); hacks / Kaizo / Legacy off.
 **PLAYER LOOK** (2026-10-22, the companion's MAKEOVER group - first, a blue-framed `featuredGroupTitle`, only in a game it works in; per ROM: `Prefs.playerLookFor`, NEW tag; `PlayerLook.kt`,
 `PlayerLookRunner.kt`, docs/DEVELOPMENT.md's "PLAYER LOOK"): play retail FireRed / LeafGreen / Ruby / Sapphire / Emerald (and Kaizo, Legacy, Imperium, Ultra
 Violet: `PlayerLook.HACKS`) as another game's hero, picked from tiles of the heroes walking (`PlayerLookPicker`),

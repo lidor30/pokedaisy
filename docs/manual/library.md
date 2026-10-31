@@ -123,6 +123,7 @@ Long-press a game, in the list or the grid, to open its menu. In list view, the 
 | `REPLACE COVER` | Opens the cover picker (see [Cover art](#cover-art)). |
 | `SET COVER` | Uses an image from your device as the cover. |
 | `RESET COVER` | Goes back to the automatic cover. Only shows after you picked one yourself. |
+| `LINK PLAY` | Runs this GBA game with up to three others, joined as if by a link cable. See [Link play](link-play.md). |
 | `LOAD SAVE` | Puts another save file into the game. Your current save is kept as a dated copy. |
 | `RESTORE BACKUP` | Brings back one of the automatic save backups. |
 | `SAVE FOLDER` | Gives this game its own save folder, such as another emulator's. |

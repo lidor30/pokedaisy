@@ -147,6 +147,11 @@ class Prefs(context: Context) {
         get() = if (p.getInt("wild_encounters", 100) == 0) 0 else 100
         set(v) = p.edit().putInt("wild_encounters", v).apply()
 
+    /** TRADE EVOLUTIONS: a Pokémon that evolves by trading can evolve from its summary (TradeEvolution.kt). */
+    var tradeEvolutions: Boolean
+        get() = p.getBoolean("trade_evolutions", false)
+        set(v) = p.edit().putBoolean("trade_evolutions", v).apply()
+
     /** REUSABLE TMS: a TM stays in the bag after it teaches a move, as an HM does (ReusableTms.kt). */
     var reusableTms: Boolean
         get() = p.getBoolean("reusable_tms", false)
