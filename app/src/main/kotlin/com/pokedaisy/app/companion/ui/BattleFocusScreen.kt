@@ -5,6 +5,8 @@ import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
+import androidx.compose.foundation.layout.ExperimentalLayoutApi
+import androidx.compose.foundation.layout.FlowRow
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
@@ -23,10 +25,16 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
+import androidx.compose.ui.draw.clipToBounds
+import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.platform.LocalDensity
+import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.unit.Dp
 import androidx.compose.ui.unit.dp
+import androidx.compose.ui.unit.sp
 import com.pokedaisy.app.companion.data.MonView
 import com.pokedaisy.app.companion.data.PokedexTables
+import com.pokedaisy.app.companion.data.TypeMatchup
 import com.pokedaisy.app.companion.data.itemName
 import com.pokedaisy.app.companion.data.withMovesVs
 import com.pokedaisy.app.companion.i18n.tr
@@ -121,22 +129,81 @@ private fun FocusPage(
         tr("RESISTS") to mon.resistances.sortedBy { it.pct },
         tr("IMMUNE TO") to mon.immunities,
     ).filter { it.second.isNotEmpty() }
-    Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(u * 3)) {
-        FocusHeader(mon, pill, dexTables, m, small)
-        FoeFacts(mon, dexTables, m, small, wide = true, abilityAndItem = false)
-        Column(Modifier.weight(1f).fillMaxWidth().padding(bottom = if (groups.isEmpty()) buttonRoom else 0.dp)) {
-            if (mon.moves.isEmpty()) GbaText(tr("NO MOVE DATA"), OptionColors.muted, OptionColors.mutedShadow, small)
-            else for (pair in 0 until 2) Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(u * 6)) {
-                for (j in 0 until 2) BattleMoveRow(
-                    mon.moves.getOrNull(pair * 2 + j), showHints, foeCount, m, small,
-                    Modifier.weight(1f).fillMaxHeight(), threat = isFoe, shortVerdict = true,
-                )
+    // Measured, not guessed: the header, stats and moves keep their own height and the matchups get the rest. A long
+    // list (a short screen like the RG DS's, a foe weak or resistant to a dozen types) used to squeeze the moves until
+    // their type and PP lines were cut. Then the groups run on as one flow, and only past that is the list's end cut.
+    SubcomposeLayout(Modifier.fillMaxSize()) { c ->
+        val gap = (u * 3).roundToPx()
+        val wide = Constraints(minWidth = c.maxWidth, maxWidth = c.maxWidth)
+        val top = subcompose("top") {
+            Column(verticalArrangement = Arrangement.spacedBy(u * 3)) {
+                FocusHeader(mon, pill, dexTables, m, small)
+                FoeFacts(mon, dexTables, m, small, wide = true, abilityAndItem = false)
             }
+        }.single().measure(wide)
+        val moves = subcompose("moves") {
+            Column(Modifier.fillMaxSize().padding(bottom = if (groups.isEmpty()) buttonRoom else 0.dp)) {
+                if (mon.moves.isEmpty()) GbaText(tr("NO MOVE DATA"), OptionColors.muted, OptionColors.mutedShadow, small)
+                else for (pair in 0 until 2) Row(Modifier.weight(1f).fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(u * 6)) {
+                    for (j in 0 until 2) BattleMoveRow(
+                        mon.moves.getOrNull(pair * 2 + j), showHints, foeCount, m, small,
+                        Modifier.weight(1f).fillMaxHeight(), threat = isFoe, shortVerdict = true,
+                    )
+                }
+            }
+        }.single()
+        val movesMin = moves.minIntrinsicHeight(c.maxWidth)
+        val room = c.maxHeight - top.height - gap - movesMin - gap
+        val matchups = if (groups.isEmpty()) null else {
+            val full = subcompose("matchups") {
+                Column(verticalArrangement = Arrangement.spacedBy(u * 3)) {
+                    Separator(m, Modifier.fillMaxWidth())
+                    Column(Modifier.padding(end = buttonRoom + u * 6), verticalArrangement = Arrangement.spacedBy(u * 2)) {
+                        groups.forEach { (label, list) -> MatchupGroup(label, list, small, inline = true) }
+                    }
+                }
+            }.single().measure(wide)
+            if (full.height <= room) full
+            else subcompose("flow") {
+                Column(Modifier.clipToBounds(), verticalArrangement = Arrangement.spacedBy(u * 3)) {
+                    Separator(m, Modifier.fillMaxWidth())
+                    MatchupFlow(groups, small, Modifier.padding(end = buttonRoom + u * 6))
+                }
+            }.single().measure(wide.copy(maxHeight = maxOf(room, 0)))
         }
-        if (groups.isNotEmpty()) {
-            Separator(m, Modifier.fillMaxWidth())
-            Column(Modifier.padding(end = buttonRoom + u * 6), verticalArrangement = Arrangement.spacedBy(u * 2)) {
-                groups.forEach { (label, list) -> MatchupGroup(label, list, small, inline = true) }
+        val bottom = matchups?.let { it.height + gap } ?: 0
+        val movesHeight = (c.maxHeight - top.height - gap - bottom).coerceAtLeast(0)
+        val placedMoves = moves.measure(Constraints.fixed(c.maxWidth, movesHeight))
+        layout(c.maxWidth, c.maxHeight) {
+            top.place(0, 0)
+            placedMoves.place(0, top.height + gap)
+            matchups?.place(0, top.height + gap + movesHeight + gap)
+        }
+    }
+}
+
+/** The matchup groups as one flow of chips, each heading kept with its first chip: the lines a group's last chips
+ * leave half empty go to the next group. For a page too short for a line per group. */
+@OptIn(ExperimentalLayoutApi::class)
+@Composable
+private fun MatchupFlow(groups: List<Pair<String, List<TypeMatchup>>>, small: GbaTextMetrics, modifier: Modifier) {
+    // MatchupGroup's heading: at least a chip's height (12 sp + its padding), so it sits level with the chips.
+    val chipHeight = with(LocalDensity.current) { 12.sp.toDp() } + 6.dp
+    FlowRow(modifier, horizontalArrangement = Arrangement.spacedBy(4.dp), verticalArrangement = Arrangement.spacedBy(4.dp)) {
+        groups.forEachIndexed { i, (heading, list) ->
+            // A wider gap after a group's last chip, not before its heading: at a line's end it costs nothing, where a
+            // heading's would indent the line it wraps to.
+            val groupEnd = if (i < groups.lastIndex) 6.dp else 0.dp
+            Row(Modifier.align(Alignment.CenterVertically), verticalAlignment = Alignment.CenterVertically) {
+                Box(Modifier.heightIn(min = chipHeight).padding(end = 6.dp), contentAlignment = Alignment.CenterStart) {
+                    GbaText(heading, optionLook.label, optionLook.labelShadow, small)
+                }
+                TypeBadgeWithLabel(list.first(), Modifier.padding(end = if (list.size == 1) groupEnd else 0.dp))
+            }
+            list.drop(1).forEachIndexed { j, it ->
+                Box(Modifier.align(Alignment.CenterVertically).padding(end = if (j == list.size - 2) groupEnd else 0.dp)) {
+                    TypeBadgeWithLabel(it)
+                }
             }
         }
     }
