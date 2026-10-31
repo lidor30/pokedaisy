@@ -2376,6 +2376,20 @@ fun main(args: Array<String>) {
             waitForIdle()
             onNodeWithText("ALSO LOOK IN").performSemanticsAction(SemanticsActions.OnClick)
         },
+        // FOLDERS > SAVE BACKUPS: as it starts (beside each save), then with a folder of its own picked.
+        Shot("settings-folders-backups", tw, th, td, activity { SettingsActivity() }) {
+            onNodeWithText("FOLDERS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+            waitForIdle()
+            onNodeWithText("SAVE BACKUPS").performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("settings-folders-backups-custom", tw, th, td, activity {
+            Prefs(android.content.Context()).saveBackupsDir = "/storage/emulated/0/Backups/PokeDaisy"
+            SettingsActivity()
+        }) {
+            onNodeWithText("FOLDERS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+            waitForIdle()
+            onNodeWithText("SAVE BACKUPS").performSemanticsAction(SemanticsActions.OnClick)
+        },
         // CHEATS from the hub (no cheats yet), then as a game's library menu opens it.
         Shot("settings-cheats-empty", tw, th, td, activity { SettingsActivity() }) {
             onNodeWithText("CHEATS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)

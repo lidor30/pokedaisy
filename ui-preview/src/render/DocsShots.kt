@@ -265,6 +265,7 @@ fun docsShots(all: List<Shot>, bw: Int, bh: Int, bd: Float, tw: Int, th: Int, td
         "settings-overlay" to "settings-overlay", "settings-theme" to "settings-theme", "overlay-daisy" to "overlay-daisy",
         "overlay-bezel" to "overlay-bezel",
         "settings-touch-phone" to "settings-touch-phone", "settings-touch-edit" to "settings-touch-edit",
+        "settings-folders-backups" to "settings-folders-backups",
     )
     val byName = all.associateBy { it.name }
     val top = reuse.mapNotNull { (from, to) ->

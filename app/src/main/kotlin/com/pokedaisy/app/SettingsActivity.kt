@@ -127,7 +127,7 @@ import com.pokedaisy.app.companion.ui.drawPixelRoundRect
  */
 class SettingsActivity : ComponentActivity() {
 
-    private enum class Screen { HOME, SPEED, DISPLAY, HOTKEYS, CONTROLS, SHADERS, FIELD_HUD, QUICK_MENU, TOUCH, OVERLAYS, FOLDERS, ROMS_FOLDERS, SAVES_FOLDER, SAVE_SEARCH, STATES_FOLDER, COVER_ART, SCREENSCRAPER, HIDDEN, ACHIEVEMENTS, CHEATS, CHEAT_ADD, LICENSES, HELP }
+    private enum class Screen { HOME, SPEED, DISPLAY, HOTKEYS, CONTROLS, SHADERS, FIELD_HUD, QUICK_MENU, TOUCH, OVERLAYS, FOLDERS, ROMS_FOLDERS, SAVES_FOLDER, SAVE_SEARCH, STATES_FOLDER, BACKUPS, COVER_ART, SCREENSCRAPER, HIDDEN, ACHIEVEMENTS, CHEATS, CHEAT_ADD, LICENSES, HELP }
 
     private lateinit var prefs: Prefs
     private var screen by mutableStateOf(Screen.HOME)
@@ -292,6 +292,7 @@ class SettingsActivity : ComponentActivity() {
                         Screen.SAVES_FOLDER -> tk("GAME SAVES")
                         Screen.SAVE_SEARCH -> tk("ALSO LOOK IN")
                         Screen.STATES_FOLDER -> tk("SAVE STATES")
+                        Screen.BACKUPS -> tk("SAVE BACKUPS")
                         Screen.COVER_ART -> tk("COVER ART")
                         Screen.SCREENSCRAPER -> "ScreenScraper"
                         Screen.HIDDEN -> tk("HIDDEN GAMES")
@@ -324,6 +325,7 @@ class SettingsActivity : ComponentActivity() {
                     Screen.SAVES_FOLDER -> SavesFolderScreen(m, small)
                     Screen.SAVE_SEARCH -> AlsoLookInScreen(m, small)
                     Screen.STATES_FOLDER -> StatesFolderScreen(m, small)
+                    Screen.BACKUPS -> SaveBackupsScreen(m, small)
                     Screen.COVER_ART -> CoverArtScreen(m, small)
                     Screen.SCREENSCRAPER -> ScreenScraperScreen(m, small)
                     Screen.HIDDEN -> HiddenScreen(m, small)
@@ -1677,6 +1679,11 @@ class SettingsActivity : ComponentActivity() {
             SettingRow(tk("ALSO LOOK IN"), if (extra.isEmpty()) tk("NONE") else extra.size.toString(), opensPage = true, subtitle = "More folders to find a game's save in") {
                 screen = Screen.SAVE_SEARCH
             },
+            SettingRow(
+                tk("SAVE BACKUPS"), if (prefs.saveBackups) tk("ON") else tk("OFF"), opensPage = true,
+                subtitle = "A copy of the save each time a game starts",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.SAVE_BACKUPS),
+            ) { screen = Screen.BACKUPS },
             SettingRow(tk("SAVE STATES"), humanSize(states), opensPage = true, subtitle = "The app's own save states") { screen = Screen.STATES_FOLDER },
         )
     }
@@ -1786,6 +1793,75 @@ class SettingsActivity : ComponentActivity() {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             FolderSection(null, statesDir, folderTick, m, small)
         }
+    }
+
+    /** SAVE BACKUPS: the copy of the save each game's start takes ([SaveBackups]) - on or off, how many a game
+     * keeps and where they go. The save editor backs up whatever this says. */
+    @Composable
+    private fun SaveBackupsScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
+        @Suppress("UNUSED_EXPRESSION") revision
+        val tick = folderTick
+        val pick = rememberLauncherForActivityResult(StorageAccess.PickFolder()) { uri ->
+            val path = pickedFolder(uri) ?: return@rememberLauncherForActivityResult
+            prefs.saveBackupsDir = path
+            backupsChanged()
+        }
+        val on = prefs.saveBackups
+        val keep = prefs.saveBackupsKeep
+        val folder = remember(tick) { prefs.saveBackupsDir }
+        val rows = listOf(
+            SettingRow(tk("BACKUPS"), if (on) tk("ON") else tk("OFF"), subtitle = "A copy of the save each time a game starts") {
+                prefs.saveBackups = !on
+                backupsChanged()
+            },
+            SettingRow(tk("KEEP PER GAME"), keep.toString(), enabled = on, subtitle = "The oldest go when a new one is made") {
+                selector = Selector(tk("KEEP PER GAME"), SaveBackups.KEEP_CHOICES.map { it.toString() }, keep.toString()) {
+                    prefs.saveBackupsKeep = it.toInt()
+                    backupsChanged()
+                }
+            },
+        )
+        val ctx = LocalContext.current
+        Column(Modifier.fillMaxWidth()) {
+            OptionListWindow(m, Modifier.fillMaxWidth().weight(1f, fill = false)) {
+                GroupedRows(rows, m, cursor = -1, onClick = { rows[it].onClick() }, footer = {
+                    // Level with the rows' labels.
+                    Column(Modifier.padding(horizontal = m.u * 8).padding(top = m.u * 4)) {
+                        GbaText(tr("BACKUP FOLDER"), OptionColors.label, OptionColors.labelShadow, m)
+                        if (folder == null) {
+                            GbaText(
+                                tr("Beside each save, in a {0} folder.", SaveBackups.DIR_NAME),
+                                OptionColors.muted, OptionColors.mutedShadow, small, maxLines = Int.MAX_VALUE,
+                            )
+                        } else {
+                            GbaText(folder, OptionColors.muted, OptionColors.mutedShadow, small, maxLines = 3)
+                        }
+                        GbaText(
+                            tr("Backups made before a change stay where they are, and RESTORE BACKUP still finds them."),
+                            OptionColors.muted, OptionColors.mutedShadow, small, maxLines = Int.MAX_VALUE,
+                            modifier = Modifier.padding(top = m.u * 2),
+                        )
+                        Row(
+                            modifier = Modifier.padding(vertical = m.u * 4),
+                            horizontalArrangement = Arrangement.spacedBy(m.u * 4),
+                        ) {
+                            OptionButton(tk("CHANGE FOLDER"), small, enabled = on, onClick = { pickFolder(pick) })
+                            if (folder != null) {
+                                OptionButton(tk("USE DEFAULT"), small, enabled = on, onClick = { prefs.saveBackupsDir = null; backupsChanged() })
+                                OptionButton(tk("COPY PATH"), small, onClick = { copyPath(ctx, folder) })
+                            }
+                        }
+                    }
+                })
+            }
+        }
+    }
+
+    /** A SAVE BACKUPS choice changed: the next game's start reads it from [SaveBackups.settings]. */
+    private fun backupsChanged() {
+        SaveBackups.settings = SaveBackups.Settings.from(prefs)
+        revision++
+        folderTick++
     }
 
     private var romsScanning by mutableStateOf(false)
@@ -1918,7 +1994,7 @@ class SettingsActivity : ComponentActivity() {
     }
 
     companion object {
-        private val FOLDER_PAGES = setOf(Screen.ROMS_FOLDERS, Screen.SAVES_FOLDER, Screen.SAVE_SEARCH, Screen.STATES_FOLDER)
+        private val FOLDER_PAGES = setOf(Screen.ROMS_FOLDERS, Screen.SAVES_FOLDER, Screen.SAVE_SEARCH, Screen.STATES_FOLDER, Screen.BACKUPS)
         val RATES = floatArrayOf(0f, 1.5f, 2f, 3f, 4f, 5f, 6f, 8f, 10f)
         const val REPO_URL = "https://github.com/lidor30/pokedaisy"
         /** A ROM path: open straight on that game's CHEATS (its library menu). */

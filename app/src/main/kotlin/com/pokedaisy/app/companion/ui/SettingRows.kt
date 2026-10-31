@@ -128,7 +128,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "FPS / CPU" to "fps frame rate framerate cpu usage performance speed overlay counter 60",
     "DARK MODE" to "dark night black theme light colors appearance auto system",
     "RESUME GAMES" to "auto resume continue launch boot",
-    "FOLDERS" to "roms folder folders multiple add link saves directory path location storage retroarch syncthing save states",
+    "FOLDERS" to "roms folder folders multiple add link saves directory path location storage retroarch syncthing save states backup backups restore",
     "COVER ART" to "box art boxart covers steamgriddb images thumbnails api key",
     "HIDDEN GAMES" to "hide unhide library show",
     "CHEATS" to "gameshark action replay codebreaker codes",

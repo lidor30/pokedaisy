@@ -83,7 +83,7 @@ The `SHADERS` page:
 | `RESUME GAMES` | **`ON`**, `OFF` | On, a game opens right where you left it. Off, it starts at the title screen and loads your save. | [Saves](saves.md) |
 | `DUAL-SCREEN LAUNCHER` | **`ON`**, `OFF` | With two screens, the library shows the game list on one and the selected game's media on the other. Off, the plain library. | [Library](library.md#the-dual-screen-launcher) |
 | `COVER ART` | `ON` once a key is saved, else **`OFF`** (a page) | Your own free keys for RetroAchievements box art and SteamGridDB icons (`GET KEY` opens the page to make one). `REPLACE ALL` fetches every cover again. | [Library](library.md) |
-| `FOLDERS` | a page | A page for each: `ROMS FOLDERS`, your linked ROMs folders (`ADD FOLDER`, `RESCAN`, `REMOVE`); `GAME SAVES`, the folder saves go to (`CHANGE FOLDER`, `USE DEFAULT`); `ALSO LOOK IN`, other emulators' save folders; `SAVE STATES`, where save states are kept. | [Library](library.md), [Saves](saves.md) |
+| `FOLDERS` | a page | A page for each: `ROMS FOLDERS`, your linked ROMs folders (`ADD FOLDER`, `RESCAN`, `REMOVE`); `GAME SAVES`, the folder saves go to (`CHANGE FOLDER`, `USE DEFAULT`); `ALSO LOOK IN`, other emulators' save folders; `SAVE BACKUPS`, the backup taken each time a game starts (`BACKUPS` on or off, `KEEP PER GAME`, and a folder for all of them); `SAVE STATES`, where save states are kept. | [Library](library.md), [Saves](saves.md) |
 | `HIDDEN GAMES` | **`NONE`**, or how many | Games you hid from the library with `HIDE`. Tap one to `SHOW` it again, or `SHOW ALL`. | [Library](library.md) |
 | `CHEATS` | `ON`, **`OFF`** (a page) | The master switch for cheat codes, and each game's codes: `ADD CODE`, `IMPORT FILE`, `REMOVE`. | [Cheats](cheats.md) |
 

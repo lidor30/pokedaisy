@@ -154,7 +154,7 @@ class SaveEditorActivity : ComponentActivity() {
         saving = false
         when (result) {
             is SaveFileEdits.Result.Written -> {
-                Toast.makeText(this, tr("Saved. The previous save is in {0}", SaveBackups.DIR_NAME), Toast.LENGTH_LONG).show()
+                Toast.makeText(this, tr("Saved. The previous save is in {0}", result.backup.parentFile?.name ?: SaveBackups.DIR_NAME), Toast.LENGTH_LONG).show()
                 load()   // further edits start from the file as written
             }
             is SaveFileEdits.Result.Failed -> Toast.makeText(this, result.reason, Toast.LENGTH_LONG).show()

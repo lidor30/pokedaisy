@@ -605,6 +605,21 @@ class Prefs(context: Context) {
         get() = p.getString("extra_save_dirs", null)?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
         set(v) = p.edit().putString("extra_save_dirs", v.distinct().joinToString("\n")).apply()
 
+    /** Settings > FOLDERS > SAVE BACKUPS: a backup of the save each time a game starts ([SaveBackups]). */
+    var saveBackups: Boolean
+        get() = p.getBoolean("save_backups", true)
+        set(v) = p.edit().putBoolean("save_backups", v).apply()
+
+    /** SAVE BACKUPS' folder for every game's backups; null = a pokedaisy-backups folder beside each save. */
+    var saveBackupsDir: String?
+        get() = p.getString("save_backups_dir", null)
+        set(v) = p.edit().putString("save_backups_dir", v).apply()
+
+    /** SAVE BACKUPS > KEEP PER GAME: how many backups a game keeps, newest first. */
+    var saveBackupsKeep: Int
+        get() = p.getInt("save_backups_keep", 10)   // SaveBackups.KEEP
+        set(v) = p.edit().putInt("save_backups_keep", v).apply()
+
     /** [file]'s own save folder (the library menu's SAVE FOLDER); null = [SavesLocation.saveFor]'s search. */
     fun romSaveDir(file: java.io.File): String? = p.getString("romsavedir_${file.name}", null)
     fun setRomSaveDir(file: java.io.File, path: String?) = p.edit().apply {

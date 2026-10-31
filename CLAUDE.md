@@ -1828,7 +1828,9 @@ game being detected mid-launch no longer sends a player who opened SETTINGS back
 folder moved, a save copied in), the state is set aside as `resume.replaced` and the game boots
 from the file (a real report: a resume state from a blank first boot wiped an Unbound save to all
 0xFF). The save reaches mGBA through `pk_save_vf` (`pk_savevf.c`): mGBA maps it with a shared writable mmap and never checks the result, so a save opened read-only (another app's file without All files access) gave it NULL and the first flash read crashed (GBASavedataReadFlash on Crashlytics); a map the file can't give is a copy in memory now, written back on sync / unmap. Every start also copies the save to `<saves>/pokedaisy-backups/` first (`SaveBackups`, newest
-10 distinct), which the library's RESTORE BACKUP lists. Never add a path that writes the save
+10 distinct), which the library's RESTORE BACKUP lists. Settings > FOLDERS > SAVE BACKUPS (`Prefs.saveBackups` /
+`saveBackupsKeep` / `saveBackupsDir`, read through `SaveBackups.settings`, NEW tag) can turn that start's copy off, keep 1-50,
+or put every game's in one folder (RESTORE BACKUP lists both places); the save editor's backups ignore the switch (`force`). Never add a path that writes the save
 without both.
 A save the game is writing always finishes before the core stops (`pkFinishSave`, from EmulatorEngine before the suspend
 state and before `pkDeinit`): frames run unheard while mGBA's savedata `dirty` flag is set. Leaving mid-"SAVING..." and
