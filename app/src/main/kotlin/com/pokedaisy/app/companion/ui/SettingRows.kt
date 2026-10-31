@@ -51,6 +51,9 @@ class SettingRow(
     val opensPage: Boolean = false,
     /** A group title drawn to stand out ([featuredGroupTitle]). */
     val featured: Boolean = false,
+    /** The value as a slider beside [value] (GAME VOLUME): touch or LEFT / RIGHT move it; a tap on the row's label does
+     * [onClick] as usual. */
+    val slider: SettingSlider? = null,
     val onClick: () -> Unit,
 )
 
@@ -133,7 +136,8 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "FOLDERS" to "roms folder folders multiple add link saves directory path location storage retroarch syncthing save states backup backups restore",
     "COVER ART" to "box art boxart covers steamgriddb images thumbnails api key",
     "HIDDEN GAMES" to "hide unhide library show",
-    "PATCH A ROM" to "patch patching bps rom hack apply base checksum crc32 hacks",
+    "PATCH A ROM" to "patch patching bps rom hack apply base checksum crc32 hacks tools patcher",
+    "LINK PLAY" to "link cable trade trading battle colosseum record mixing two games multiplayer second save tools",
     "CHEATS" to "gameshark action replay codebreaker codes",
     "RetroAchievements" to "achievements cheevos ra login account trophies",
     "LANGUAGE" to "language translation locale english japanese french german italian spanish portuguese português brazil brasil portugal idioma",
@@ -158,7 +162,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "RIVAL LOOK" to "rival look rival costume outfit skin sprite appearance dress up brendan may other hero opponent",
     "PLAYER LOOK" to "player look hero heroine character protagonist trainer costume outfit skin sprite appearance swap play as another game red leaf brendan may",
     "NUZLOCKE" to "nuzlocke challenge hardcore run tracker encounter first catch per route area death dead faint permadeath graveyard dupes clause",
-    "TRADE EVOLUTIONS" to "trade trading evolve evolves evolution evolutions traded link cable friend second game without trading held item",
+    "TRADE EVOS" to "trade evolutions trading evolve evolves evolution evolutions traded link cable friend second game without trading held item",
     "REUSABLE TMS" to "reusable tm tms technical machine machines reuse infinite unlimited keep tm single use consumed used up teach moves",
     "SHINY ODDS" to "shiny shinies shiny odds shiny rate shiny hunting hunt shiny charm sparkle rare color colour chance",
     "TIPS" to "tips hints help popup pop up feature discovery introduce new features suggestions what can it do",
@@ -364,7 +368,7 @@ private fun GroupedRowsList(
                     bottomPadding = if (row.subtitle != null) 0.dp else m.u * ONE_LINE_ROW_EXTRA,
                     divider = rows.getOrNull(i + 1)?.header == false, labelBadge = row.labelBadge, labelIcon = row.labelIcon,
                     valueBadge = row.badge, enabled = row.enabled, subtitle = row.subtitle, labelWeight = labelWeight,
-                    chevron = row.opensPage,
+                    chevron = row.opensPage, slider = row.slider,
                     onFocus = onFocused?.let { f -> { f(i) } },
                 ) { onClick(i) }
             }

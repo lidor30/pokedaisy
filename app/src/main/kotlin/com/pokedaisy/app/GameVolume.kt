@@ -8,8 +8,8 @@ package com.pokedaisy.app
  * plays or, the engine, every frame; [listeners] hear a change at once (a clip already playing).
  */
 object GameVolume {
-    /** The percents GAME VOLUME offers, loudest first. */
-    val STEPS = listOf(100, 90, 80, 70, 60, 50, 40, 30, 20, 10)
+    /** GAME VOLUME's slider moves in steps of this many percent (a drag, LEFT / RIGHT). */
+    const val STEP = 5
 
     @Volatile var percent: Int = 100
         private set

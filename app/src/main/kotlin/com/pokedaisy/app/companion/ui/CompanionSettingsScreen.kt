@@ -354,7 +354,12 @@ fun CompanionSettingsScreen(
                 onDismiss = { selector = null },
             )
         }
-        selector?.takeIf { !it.tiles && !it.dsLayouts }?.let { sel ->
+        selector?.slider?.let { read ->
+            // Read after every change (tick), so the pop-up shows the value it just moved to.
+            val (value, slider) = tick.let { read() }
+            OptionSliderPopup(selector!!.title, value, slider, m, onDismiss = { selector = null })
+        }
+        selector?.takeIf { !it.tiles && !it.dsLayouts && it.slider == null }?.let { sel ->
             OptionSelector(
                 sel.title, sel.options, sel.current, { it }, m,
                 onPick = { sel.onPick(it); selector = null; tick++ },
@@ -415,6 +420,8 @@ private class Selector(
     val note: String? = null,
     /** DS LAYOUT's pick-list with its miniatures ([DsLayoutPicker]): [options] are the layouts' labels. */
     val dsLayouts: Boolean = false,
+    /** A slider setting's pop-up ([OptionSliderPopup]) instead of a list: its value and slider, read fresh on each change. */
+    val slider: (() -> Pair<String, SettingSlider>)? = null,
     val onPick: (String) -> Unit,
 )
 
@@ -488,7 +495,7 @@ private fun homeRows(
         groupTitle(tk("FF / SPEED")),
         // On / off - the group's title already says fast-forward.
         SettingRow("FF", onOff(s.ffToggled)) { s.setFfToggled(!s.ffToggled); changed() },
-        SettingRow(tk("FF SPEED"), rateLabel(s.ffMaxSpeed), subtitle = "How fast FF runs") {
+        SettingRow(tk("FF SPEED"), rateLabel(s.ffMaxSpeed)) {
             select(Selector(tk("FF SPEED"), rateLabels, rateLabel(s.ffMaxSpeed)) { s.setFfMaxSpeed(FF_RATES[rateLabels.indexOf(it)]) })
         },
         // The game's own pace, kept per game: slow-motion that stays (0.5x, 0.25x) up to 4x. FF, when on, wins.
@@ -505,14 +512,15 @@ private fun homeRows(
         SettingRow(tk("SPEED OPTIONS"), null, subtitle = "Scene speeds, FF mode and FF music", opensPage = true) { navigate(Page.SPEED) },
         groupTitle(tk("SOUND")),
         // The game's loudness under the device's own volume (100% = the device's); MUTE GAME keeps it for after.
-        SettingRow(tk("GAME VOLUME"), gameVolumeLabel(s.gameVolume), subtitle = "How loud the game is",
-            labelBadge = NewFeatures.badge(NewFeatures.GAME_VOLUME)) {
-            val labels = gameVolumeLabels()
-            select(Selector(tk("GAME VOLUME"), labels, gameVolumeLabel(s.gameVolume)) { l ->
-                s.setGameVolume(com.pokedaisy.app.GameVolume.STEPS[labels.indexOf(l)]); changed()
-            })
+        SettingRow(tk("GAME VOLUME"), gameVolumeLabel(s.gameVolume),
+            labelBadge = NewFeatures.badge(NewFeatures.GAME_VOLUME),
+            slider = gameVolumeSlider(s.gameVolume) { s.setGameVolume(it); changed() }) {
+            // A tap opens it in a pop-up with a bigger bar (the user's call).
+            select(Selector(tk("GAME VOLUME"), emptyList(), "", slider = {
+                gameVolumeLabel(s.gameVolume) to gameVolumeSlider(s.gameVolume) { s.setGameVolume(it); changed() }
+            }) {})
         },
-        SettingRow(tk("MUTE GAME"), onOff(s.gameMuted), subtitle = "No game sound; HOTKEYS > MUTE flips it",
+        SettingRow(tk("MUTE GAME"), onOff(s.gameMuted),
             labelBadge = NewFeatures.badge(NewFeatures.GAME_VOLUME)) { s.setGameMuted(!s.gameMuted); changed() },
         groupTitle(tk("GAMEPLAY")),
         // The game's own switch for random encounters (WildEncounters.kt): ON (the game's rate) or OFF.
@@ -533,9 +541,9 @@ private fun homeRows(
         },
         // A Pokémon that evolves by trading evolves from its summary, through the game's own evolution (TradeEvolution.kt).
         SettingRow(
-            tk("TRADE EVOLUTIONS"), if (s.tradeEvolutionsSupported) onOff(s.tradeEvolutions) else tk("N/A"),
+            tk("TRADE EVOS"), if (s.tradeEvolutionsSupported) onOff(s.tradeEvolutions) else tk("N/A"),
             enabled = s.tradeEvolutionsSupported, labelBadge = NewFeatures.badge(NewFeatures.TRADE_EVOLUTIONS),
-            subtitle = "Evolve from a Pokémon's summary, no trade needed",
+            subtitle = "Evolve without a trade",
         ) {
             if (s.tradeEvolutionsSupported) { s.setTradeEvolutions(!s.tradeEvolutions); changed() }
         },
@@ -581,13 +589,13 @@ private fun homeRows(
             )
         },
         // EXPAND only: whether a conversation, sign, menu or picture over the field pulls the zoom in (battles always do).
-        SettingRow(tk("AUTO ZOOM IN"), onOff(s.expandZoomOnText), subtitle = "1x on dialogue, signs, menus") { s.setExpandZoomOnText(!s.expandZoomOnText); changed() }
+        SettingRow(tk("AUTO ZOOM IN"), onOff(s.expandZoomOnText)) { s.setExpandZoomOnText(!s.expandZoomOnText); changed() }
             .takeIf { s.gameAspect == GameAspect.WIDE },
         // A DS game: its 3D at 2x to 8x the DS's own on the GPU, or ORIGINAL (the CPU's, pixel for pixel).
         s.dsResolution?.let { scale ->
             SettingRow(
                 tk("DS RESOLUTION"), if (s.dsGpuAvailable) dsResolutionLabel(scale) else tk("N/A"), enabled = s.dsGpuAvailable,
-                labelBadge = NewFeatures.badge(NewFeatures.DS_RESOLUTION), subtitle = "Sharper 3D in DS games",
+                labelBadge = NewFeatures.badge(NewFeatures.DS_RESOLUTION),
             ) {
                 if (!s.dsGpuAvailable) return@SettingRow
                 val labels = dsResolutionLabels()
@@ -681,11 +689,11 @@ private fun homeRows(
         },
         // PokeDaisy's Discord server, opened in the browser (or the Discord app) on the main screen.
         SettingRow(
-            "DISCORD", null, subtitle = "Help, bug reports, ideas and chat",
+            "DISCORD", null,
             labelBadge = NewFeatures.badge(NewFeatures.DISCORD), labelIcon = { DiscordMark() },
         ) { s.openDiscord() },
         // The manual: every tab and setting explained (served by the website, kept for offline reading).
-        SettingRow(tk("HELP"), null, subtitle = "The manual: how every screen and setting works", opensPage = true) { navigate(Page.HELP) },
+        SettingRow(tk("HELP"), null, opensPage = true) { navigate(Page.HELP) },
     )
 }
 
@@ -829,9 +837,12 @@ private fun KeyCapture.toggle(title: String, request: () -> KeyCapture.Request) 
 }
 
 /** WILD ENCOUNTERS' value: ON (the game's own rate) or OFF. */
-/** GAME VOLUME's value and pick-list (both screens): "100%" .. "10%" ([com.pokedaisy.app.GameVolume.STEPS]). */
+/** GAME VOLUME's value (both screens): "100%" .. "0%". */
 internal fun gameVolumeLabel(percent: Int) = "$percent%"
-internal fun gameVolumeLabels() = com.pokedaisy.app.GameVolume.STEPS.map(::gameVolumeLabel)
+
+/** GAME VOLUME's slider (both screens): 0 - 100% in [com.pokedaisy.app.GameVolume.STEP]s, [set] on every move. */
+internal fun gameVolumeSlider(percent: Int, set: (Int) -> Unit) =
+    SettingSlider(percent, 0..100, com.pokedaisy.app.GameVolume.STEP, set)
 
 internal fun wildEncountersLabel(percent: Int) = if (percent == 0) tk("OFF") else tk("ON")
 

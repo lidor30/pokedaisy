@@ -10,7 +10,7 @@ Some Pokémon only evolve when traded, and each version has Pokémon the other d
 
 ## Start a link
 
-1. In the library, open a GBA game's menu (long-press it) and pick `LINK PLAY`.
+1. In the library, open a GBA game's menu (long-press it) and pick `LINK PLAY`. Or open Settings > `TOOLS` > `LINK PLAY` and add your games there.
 2. That game is `GAME 1`. Tap `ADD A GAME` to add the next one, up to four. Tap a game to swap it for another, or pick `REMOVE`.
 3. Tap `START LINK`.
 
@@ -19,6 +19,8 @@ Every game starts from its own save, the one it plays normally, and PokeDaisy ba
 ## Playing
 
 The games run at the same time. One has the buttons and the sound, framed in orange; the others keep running behind a dim. Tap a game to play it, or press `L2` / `R2` (or click a stick) on a controller to move to the previous or next one. On a two-screen device the games are split between the screens.
+
+The `FF` button in the bottom right corner fast-forwards every game at once, up to four times the normal speed, with the sound off while it's on. Tap it again to go back to normal.
 
 Then play as you would with a cable: go up to the second floor of any Pokémon Center and talk to the cable club counter in each game. The first game is the one the others wait for, so when it asks you to confirm the link, do that in `GAME 1`.
 
@@ -36,7 +38,7 @@ What doesn't work:
 - **Game Boy and DS games**: link play is for GBA games.
 - **Many ROM hacks** removed their link features. A hack that kept them links with another copy of the same hack and version; don't link a hack with a different game, since the two may read each other's Pokémon differently.
 
-Link play is only the games: no companion, `EXPAND`, HUD, fast-forward or save states while it runs.
+Link play is only the games: no companion, `EXPAND`, HUD or save states while it runs.
 
 ## Leaving
 

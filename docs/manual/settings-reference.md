@@ -34,7 +34,7 @@ The `SPEED OPTIONS` page:
 
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
-| `GAME VOLUME` | **`100%`**, `90%` down to `10%` | How loud the game is. `100%` is your device's own volume; the rest are quieter than that. Covers the game's music and sounds, `FF MUSIC` and the companion's click. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
+| `GAME VOLUME` | a slider, **`100%`** down to `0%` | How loud the game is. `100%` is your device's own volume; the rest are quieter than that. Drag it, tap along it, or use left and right on the D-pad. Covers the game's music and sounds, `FF MUSIC` and the companion's click. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
 | `MUTE GAME` | `ON`, **`OFF`** | No game sound at all, keeping your `GAME VOLUME` for when you turn it back on. The `MUTE` hotkey flips it too. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
 
 ### Screen
@@ -88,7 +88,13 @@ The `SHADERS` page:
 | `FOLDERS` | a page | A page for each: `ROMS FOLDERS`, your linked ROMs folders (`ADD FOLDER`, `RESCAN`, `REMOVE`); `GAME SAVES`, the folder saves go to (`CHANGE FOLDER`, `USE DEFAULT`); `ALSO LOOK IN`, other emulators' save folders; `SAVE BACKUPS`, the backup taken each time a game starts (`BACKUPS` on or off, `KEEP PER GAME`, and a folder for all of them); `SAVE STATES`, where save states are kept. | [Library](library.md), [Saves](saves.md) |
 | `HIDDEN GAMES` | **`NONE`**, or how many | Games you hid from the library with `HIDE`. Tap one to `SHOW` it again, or `SHOW ALL`. | [Library](library.md) |
 | `CHEATS` | `ON`, **`OFF`** (a page) | The master switch for cheat codes, and each game's codes: `ADD CODE`, `IMPORT FILE`, `REMOVE`. | [Cheats](cheats.md) |
+
+### Tools
+
+| Setting | Choices | What it does | More |
+| --- | --- | --- | --- |
 | `PATCH A ROM` | (opens a file) | Applies a `.bps` patch to the game it was made for, found in your library by its checksum. | [Library](library.md#patch-a-rom-hack) |
+| `LINK PLAY` | (opens a page) | Runs two to four GBA games joined as if by a link cable, to trade, battle and mix records between them. | [Link play](link-play.md) |
 
 ### Online
 
@@ -171,7 +177,7 @@ At the top of SETTINGS, in a blue frame, in the games where any of it works.
 | --- | --- | --- | --- |
 | `WILD ENCOUNTERS` | **`ON`**, `OFF` | Wild Pokémon jumping out in grass, caves and water, or none. `N/A` in a game where it can't work. | [Controls](controls.md) |
 | `REUSABLE TMS` | `ON`, **`OFF`** | A TM stays in your bag after it teaches a move, like an HM. `ON` and greyed out where the game already keeps its TMs, `N/A` where it can't work. | [Bag](bag.md) |
-| `TRADE EVOLUTIONS` | `ON`, **`OFF`** | A Pokémon that evolves by trading can evolve from its summary's `EVOLVE` button, through the game's own evolution. `N/A` where it can't work. | [Party](party.md#trade-evolutions) |
+| `TRADE EVOS` | `ON`, **`OFF`** | A Pokémon that evolves by trading can evolve from its summary's `EVOLVE` button, through the game's own evolution. `N/A` where it can't work. | [Party](party.md#trade-evolutions) |
 | `SHINY ODDS` | **`NORMAL`**, `1 IN 4096`, `1 IN 1024`, `1 IN 512`, `1 IN 128` | How often a wild Pokémon is shiny. Pauses achievements while raised. `N/A` where it can't work. | [Controls](controls.md#shiny-odds) |
 | `NUZLOCKE` | `ON`, **`OFF`** | Keeps score of a Nuzlocke run in this game: one catch per area, a faint is final. Adds the `NUZLOCKE` tab. `N/A` in the Game Boy and DS games, and in Emerald Rogue. | [Nuzlocke](nuzlocke.md) |
 | `AUTO-RUN` | `ON`, **`OFF`** | Walking on the field runs without holding B; holding B walks instead. | [Controls](controls.md) |

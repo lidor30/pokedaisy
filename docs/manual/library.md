@@ -75,7 +75,7 @@ Games copied straight into `Android/data/com.pokedaisy.app/files/roms/` on the d
 
 Most ROM hacks come as a `.bps` patch: a file that turns a game you already have into the hack. PokeDaisy can apply it for you.
 
-1. Tap `+` and pick `PATCH A ROM` (it's also in Settings > `LIBRARY`), then pick the `.bps` file. Picking a `.bps` with `ADD A ROM FILE`, or opening one with PokeDaisy from a file manager, does the same.
+1. Tap `+` and pick `PATCH A ROM` (it's also in Settings > `TOOLS`), then pick the `.bps` file. Picking a `.bps` with `ADD A ROM FILE`, or opening one with PokeDaisy from a file manager, does the same.
 2. PokeDaisy reads the patch and looks through your library for the game it was made for. A patch names that game by its checksum (CRC32, a fingerprint of every byte), so it finds the right file whatever it's called, zipped ones too. You don't pick it yourself.
 3. When it's found, you see the patch, the game it goes on and where the patched game will be saved. Tap `APPLY PATCH` and a bar shows how far along it is.
 4. When it's done, you're told where the new game is. If the companion can read it, it's in your library right away and `PLAY` starts it.

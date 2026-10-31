@@ -42,6 +42,7 @@ import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.key.onPreviewKeyEvent
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -413,6 +414,8 @@ fun OptionLine(
     bottomPadding: Dp = 0.dp,
     /** A picture before the label, as tall as the row (DS LAYOUT's miniatures): the label and subtitle beside it. */
     leading: (@Composable () -> Unit)? = null,
+    /** The value column as a [GbaSlider] with [value] after it; LEFT / RIGHT move it while the row has the D-pad. */
+    slider: SettingSlider? = null,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -436,6 +439,7 @@ fun OptionLine(
             .background(if (selected || focused) OptionColors.rowSelected else Color.Transparent)
             .then(if (divider) Modifier.drawBehind { drawRowDivider(OptionColors.divider, m.u.toPx(), 4 * m.u.toPx()) } else Modifier)
             .then(if (enabled) Modifier.soundClickable(interactionSource = interaction, indication = null, onClick = { stack?.lastClicked = self; onClick() }) else Modifier)
+            .then(if (enabled && slider != null) Modifier.onPreviewKeyEvent { slider.onKey(it) } else Modifier)
             .padding(start = m.u * 8, end = m.u * 8, bottom = bottomPadding),
     ) {
         val text = @Composable { Column(Modifier.fillMaxWidth()) {
@@ -443,8 +447,9 @@ fun OptionLine(
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(labelWeight), verticalAlignment = Alignment.CenterVertically) {
                     labelIcon?.let { Box(Modifier.size(m.lineHeight)) { it() }; Spacer(Modifier.width(m.u * 4)) }
-                    if (enabled) GbaText(tr(label), OptionColors.label, OptionColors.labelShadow, m)
-                    else GbaText(tr(label), OptionColors.muted, OptionColors.mutedShadow, m)
+                    val labelColor = if (enabled) OptionColors.label else OptionColors.muted
+                    val labelShadow = if (enabled) OptionColors.labelShadow else OptionColors.mutedShadow
+                    GbaText(tr(label), labelColor, labelShadow, m)
                     labelBadge?.let {
                         // NEW (a just-shipped feature, companion.NewFeatures) in the Library's green; anything else red.
                         val new = it == com.pokedaisy.app.companion.NewFeatures.NEW_TAG
@@ -455,7 +460,21 @@ fun OptionLine(
                         )
                     }
                 }
-                if (value != null) {
+                if (slider != null) {
+                    Row(Modifier.weight(1f - labelWeight).padding(end = chevronRoom), verticalAlignment = Alignment.CenterVertically) {
+                        // Up to SLIDER_MAX GBA pixels long: across the top screen's wide value column it ran half the screen.
+                        GbaSlider(slider, m, enabled, Modifier.weight(1f, fill = false).widthIn(max = m.u * SLIDER_MAX).fillMaxWidth())
+                        Spacer(Modifier.width(m.u * 6))
+                        // As wide as "100%" whatever it shows, so the bar doesn't move as the number shrinks.
+                        Box(contentAlignment = Alignment.CenterEnd) {
+                            GbaText("100%", Color.Transparent, Color.Transparent, m)
+                            value?.let {
+                                if (enabled) GbaText(tr(it), OptionColors.value, OptionColors.valueShadow, m)
+                                else GbaText(tr(it), OptionColors.muted, OptionColors.mutedShadow, m)
+                            }
+                        }
+                    }
+                } else if (value != null) {
                     Row(Modifier.weight(1f - labelWeight).padding(end = chevronRoom), verticalAlignment = Alignment.CenterVertically) {
                         if (enabled) GbaText(tr(value), OptionColors.value, OptionColors.valueShadow, m)
                         else GbaText(tr(value), OptionColors.muted, OptionColors.mutedShadow, m)
@@ -485,6 +504,9 @@ fun OptionLine(
         }
     }
 }
+
+/** The longest an [OptionLine]'s slider gets, in GBA pixels. */
+private const val SLIDER_MAX = 110
 
 /** [OptionLine]'s subtitle text: 0.8 of the row's - [m] already holds a game font's larger size, so not scaled again (it
  * came out as large as the label in Yellow, and was cut off). */

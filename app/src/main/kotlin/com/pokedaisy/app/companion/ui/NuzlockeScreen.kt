@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Spacer
@@ -9,16 +10,21 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
+import androidx.compose.foundation.layout.widthIn
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.saveable.rememberSaveable
 import androidx.compose.runtime.setValue
+import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.drawBehind
 import androidx.compose.ui.semantics.contentDescription
 import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.Nuzlocke
 import com.pokedaisy.app.companion.data.NuzlockeEncounter
 import com.pokedaisy.app.companion.data.NuzlockeMon
@@ -36,6 +42,10 @@ import com.pokedaisy.app.companion.i18n.tr
  */
 @Composable
 internal fun NuzlockeScreen(area: Int, areaName: String, modifier: Modifier = Modifier) {
+    if (!Nuzlocke.on) {
+        NuzlockeOff(modifier)
+        return
+    }
     val m = rememberGbaTextMetrics()
     val run = Nuzlocke.run
     var cursor by rememberSaveable { mutableStateOf(1) }
@@ -113,6 +123,44 @@ internal fun NuzlockeScreen(area: Int, areaName: String, modifier: Modifier = Mo
         }
         confirm?.let { (title, message, action) ->
             OptionConfirm(title, message, tk("YES"), m, onConfirm = { confirm = null; action() }, onDismiss = { confirm = null })
+        }
+    }
+}
+
+/**
+ * The tab while NUZLOCKE is off for this game (it's always under MORE): what it does and a TURN ON button, the same switch
+ * as SETTINGS > GAMEPLAY > NUZLOCKE. A run kept from before picks up where it was.
+ */
+@Composable
+private fun NuzlockeOff(modifier: Modifier = Modifier) {
+    val m = rememberGbaTextMetrics()
+    val u = m.u
+    Box(modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+        Column(Modifier.widthIn(max = 560.dp)) {
+            OptionTitleWindow(tk("NUZLOCKE"), m, trailing = tk("OFF"))
+            Spacer(Modifier.height(u * 4))
+            OptionListWindow(m, Modifier.fillMaxWidth().weight(1f, fill = false)) {
+                Column(Modifier.padding(horizontal = u * 8, vertical = u * 6), verticalArrangement = Arrangement.spacedBy(u * 6)) {
+                    Column(
+                        Modifier.weight(1f, fill = false).verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(u * 6),
+                    ) {
+                        GbaText(
+                            tr("NUZLOCKE tracking is off for this game. Turn it on and the companion keeps score of your run: only the first wild POKéMON in each area counts, and a POKéMON that faints is out for good."),
+                            OptionColors.label, OptionColors.labelShadow, m, maxLines = Int.MAX_VALUE,
+                        )
+                        GbaText(
+                            tr("You can turn it off again in SETTINGS, under GAMEPLAY."),
+                            OptionColors.muted, OptionColors.mutedShadow, rememberGbaTextMetrics(1f), maxLines = Int.MAX_VALUE,
+                        )
+                    }
+                    // Where the D-pad starts (the companion's window).
+                    OptionButton(
+                        tk("TURN ON"), m, onClick = { Nuzlocke.setOn(true) }, emphasis = true,
+                        modifier = Modifier.fillMaxWidth().height(m.rowHeight * 1.4f).focusStart(true),
+                    )
+                }
+            }
         }
     }
 }

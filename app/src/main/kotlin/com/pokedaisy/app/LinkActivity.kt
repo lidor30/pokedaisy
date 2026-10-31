@@ -85,6 +85,9 @@ class LinkActivity : ComponentActivity() {
     private var notice by mutableStateOf<String?>(null)
     private var confirmLeave by mutableStateOf(false)
     private var hint by mutableStateOf(false)
+    /** FF: every game runs up to [FF_SPEED]x, the focused one's sound off meanwhile (the FF button). */
+    private var ffState by mutableStateOf(false)
+    @Volatile private var ff = false
 
     private var games: List<Game> = emptyList()
     private var views: List<LinkGameView> = emptyList()
@@ -242,7 +245,13 @@ class LinkActivity : ComponentActivity() {
         loop = null
     }
 
-    /** The link thread: a frame of every game, the focused one's keys and sound; its blocking audio writes pace it. */
+    private fun setFf(on: Boolean) {
+        ffState = on
+        ff = on
+    }
+
+    /** The link thread: a frame of every game, the focused one's keys and sound; its blocking audio writes pace it. With
+     * FF on the frames are paced by the clock instead, [FF_SPEED] to a 60th of a second, and the track stays quiet. */
     private fun runLoop() {
         val rate = LinkCore.pkLinkSampleRate()
         val bytes = maxOf(AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT), rate / 15 * 4)
@@ -256,8 +265,20 @@ class LinkActivity : ComponentActivity() {
         val audio = ShortArray(8192)
         var heard = -1
         var frames = 0L
+        var fast = false
+        var next = System.nanoTime()
+        // Once a second in the log: frames run, the link's own time per frame and the audio write's (what paced it).
+        var statAt = System.nanoTime()
+        var statFrames = 0
+        var runNanos = 0L
+        var writeNanos = 0L
         try {
             while (looping) {
+                if (ff != fast) {
+                    fast = ff
+                    if (fast) { track.pause(); track.flush() } else track.play()
+                    next = System.nanoTime()
+                }
                 val f = focused
                 if (f != heard) {
                     for (i in games.indices) LinkCore.pkLinkSetKeys(i, 0)
@@ -265,14 +286,28 @@ class LinkActivity : ComponentActivity() {
                     heard = f
                 }
                 LinkCore.pkLinkSetKeys(f, input.mask)
+                val t0 = System.nanoTime()
                 if (!LinkCore.pkLinkRunFrame()) {
                     Log.w(TAG, "link fault: ${LinkCore.pkLinkStatus()}")
                     runOnUiThread { notice = tr("The link stopped. Leave and start it again; your saves are safe.") }
                     break
                 }
+                val t1 = System.nanoTime()
                 views.forEachIndexed { i, v -> v.publish { LinkCore.pkLinkCopyVideo(i, it) } }
                 val n = LinkCore.pkLinkReadAudio(f, audio)
-                if (n > 0) track.write(audio, 0, n * 2) else Thread.sleep(16)
+                if (fast) {
+                    // Paced by the clock; behind (a slow frame), it doesn't race to catch up.
+                    next += FF_FRAME_NANOS
+                    val wait = next - System.nanoTime()
+                    if (wait > 0) Thread.sleep(wait / 1_000_000, (wait % 1_000_000).toInt()) else next = System.nanoTime()
+                } else if (n > 0) track.write(audio, 0, n * 2) else Thread.sleep(16)
+                runNanos += t1 - t0
+                writeNanos += System.nanoTime() - t1
+                statFrames++
+                if (System.nanoTime() - statAt >= 1_000_000_000L) {
+                    Log.i(TAG, "fps=$statFrames run=${runNanos / statFrames / 1000}us rest=${writeNanos / statFrames / 1000}us audio=$n ff=$fast")
+                    statAt = System.nanoTime(); statFrames = 0; runNanos = 0; writeNanos = 0
+                }
                 if (++frames % 1800 == 0L) Log.i(TAG, LinkCore.pkLinkStatus())
             }
         } finally {
@@ -408,6 +443,11 @@ class LinkActivity : ComponentActivity() {
                     }
                 }
             }
+            // FF: a toggle in the corner (lit red while on), over whichever game sits there.
+            OptionButton(
+                tk("FF"), m, onClick = { setFf(!ffState) }, emphasis = ffState,
+                modifier = Modifier.align(Alignment.BottomEnd).padding(12.dp),
+            )
             if (confirmLeave) {
                 OptionConfirm(
                     tk("LEAVE LINK PLAY?"), tr("Save in each game first: what you did since a game's last save is lost."), tk("LEAVE"), m,
@@ -435,6 +475,9 @@ class LinkActivity : ComponentActivity() {
     companion object {
         const val EXTRA_ROM = "rom"
         private const val TAG = "pokedaisy/link"
+        /** FF's speed: four frames of every game per 60th of a second. */
+        private const val FF_SPEED = 4
+        private const val FF_FRAME_NANOS = 1_000_000_000L / (60L * FF_SPEED)
         /** How long a save in progress may take to finish on leaving: a Gen 3 save takes ~280 frames. */
         private const val CLOSE_FRAMES = 900
     }

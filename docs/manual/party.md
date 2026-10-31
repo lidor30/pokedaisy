@@ -42,12 +42,12 @@ The game's own rules still apply: your last Pokémon that can battle has to stay
 
 ## Trade evolutions
 
-Some Pokémon only evolve when traded, some of them while holding an item. If you have no one to trade with, turn on `TRADE EVOLUTIONS` in the companion's `SETTINGS`, `GAMEPLAY` group (it's `OFF` until you turn it on). A Pokémon in your party that would evolve from a trade right now then gets an `EVOLVE` button on its summary. Tap it and confirm: the game plays its own evolution on the game's screen, as it would after a trade, and you're back where you were when it's done. The Pokémon stays yours, with your name on it.
+Some Pokémon only evolve when traded, some of them while holding an item. If you have no one to trade with, turn on `TRADE EVOS` in the companion's `SETTINGS`, `GAMEPLAY` group (it's `OFF` until you turn it on). A Pokémon in your party that would evolve from a trade right now then gets an `EVOLVE` button on its summary. Tap it and confirm: the game plays its own evolution on the game's screen, as it would after a trade, and you're back where you were when it's done. The Pokémon stays yours, with your name on it.
 
 The game decides, by its own rules: a Pokémon holding the item that stops evolution doesn't get the button, and one that needs a held item uses it up, as in a real trade. It works on the field, with no menu, text or battle open. **Save in the game** to keep it.
 
 > [!NOTE]
-> `TRADE EVOLUTIONS` works in the English FireRed (the later release), LeafGreen and Emerald. In other games it shows `N/A`. To trade for real between two of your games, see [Link play](link-play.md).
+> `TRADE EVOS` works in the English FireRed (the later release), LeafGreen and Emerald. In other games it shows `N/A`. To trade for real between two of your games, see [Link play](link-play.md).
 
 ## STATS: IVs, EVs and nature
 

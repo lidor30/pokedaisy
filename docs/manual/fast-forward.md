@@ -91,7 +91,7 @@ The recordings take at most 1.5 GB of your device's storage for all your games t
 
 The `SOUND` group, right under `FF / SPEED` in the companion's `SETTINGS` (and in the top screen's Settings), sets how loud the game is, so you can keep it down while listening to something else.
 
-- **`GAME VOLUME`** goes from `100%` (the default) down to `10%`. `100%` is the game as loud as your device's own volume plays it; the lower steps are quieter than that, and the device's volume buttons still work on top. It covers everything the game sounds like: its music and sounds, `FF MUSIC`'s songs and the click of the companion's buttons.
+- **`GAME VOLUME`** is a slider from `100%` (the default) down to `0%`: drag it, tap along it, or press left and right on the D-pad while the row is picked. `100%` is the game as loud as your device's own volume plays it; anything lower is quieter than that, and the device's volume buttons still work on top. It covers everything the game sounds like: its music and sounds, `FF MUSIC`'s songs and the click of the companion's buttons.
 - **`MUTE GAME`** turns the game's sound off completely. Your `GAME VOLUME` is kept, so turning it back on brings the same level back.
 
 To mute and unmute without opening `SETTINGS`, give the `MUTE` hotkey a button under `HOTKEYS` (see [Controls](controls.md#hotkeys)). A short message on the game says which way it went.

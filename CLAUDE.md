@@ -1013,6 +1013,12 @@ SCREEN > DISPLAY OPTIONS (STATUS BAR, SHADERS, OVERLAY, an upright phone's COMPA
 opens from DISPLAY OPTIONS, so BACK returns there (`Page.parent`, SettingsActivity's `goBack`). A row that opens a page of its own (not a pick-list) sets
 `SettingRow.opensPage`: a pixel chevron (`PixelIcons.chevronRight`) at its right end. Sub-pages and pick-lists get the title window's back arrow (`onBack`). The tabs not in the tab bar used to sit under the
 list as a second row of chips (TOOLS); they're the MORE tab now.
+**Settings round (2026-11-01, the user's calls)**: the top-screen Settings draws a step smaller (`LocalTextStep` -1 for the whole
+activity); rows whose label says it all carry no subtitle; a row can be a slider (`SettingRow.slider` -> `SettingSlider` /
+`GbaSlider`, LEFT / RIGHT step it) and GAME VOLUME's opens `OptionSliderPopup` on a tap (a bigger bar, - / +, DONE); a TOOLS
+group (PATCH A ROM, LINK PLAY) on the top screen; NUZLOCKE sits under MORE in every game the tracker follows, a TURN ON page
+while it's off (never a bar filler then); TRADE EVOLUTIONS' row reads TRADE EVOS (with NEW the long label left the badge a
+dot); Monomyth's orange party backdrop gets a blue D-pad ring (`AppColors.focusRing`).
 **OVERLAY** (SCREEN group on both screens, `Prefs.overlay`; `overlay/Overlays.kt` + `OverlayBitmaps.kt`, drawn by
 `EmulatorView`): a frame around the game. Two built-in frames of our own (DAISY / BEZEL, drawn at the game's pixel size,
 shown at a whole scale) plus the player's imported RetroArch overlays (.cfg + PNG, .zip, bare PNG; window = the .cfg's

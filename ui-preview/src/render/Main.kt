@@ -16,6 +16,8 @@ import androidx.compose.ui.test.onNodeWithTag
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onAllNodesWithText
 import androidx.compose.ui.test.onRoot
+import androidx.compose.ui.test.SemanticsMatcher
+import androidx.compose.ui.semantics.SemanticsProperties
 import androidx.compose.ui.test.isRoot
 import androidx.compose.ui.test.performClick
 import androidx.compose.ui.test.performTouchInput
@@ -181,6 +183,10 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override val runIndoors get() = runIndoorsOn
     override fun setRunIndoors(on: Boolean) { runIndoorsOn = on }
     override val runIndoorsSupported get() = true
+    override val tradeEvolutionsSupported get() = true
+    private var volumePercent = 70
+    override val gameVolume get() = volumePercent
+    override fun setGameVolume(percent: Int) { volumePercent = percent }
     private var wildPercent = 50
     override val wildEncounters get() = wildPercent
     override fun setWildEncounters(percent: Int) { wildPercent = percent }
@@ -1577,6 +1583,8 @@ fun main(args: Array<String>) {
         Shot("$g-settings", bw, bh, bd, companion("SETTINGS")),
         // MORE (left of the gear): the tabs off the bar as app icons, the TAB BAR link under them.
         Shot("$g-more", bw, bh, bd, companion("MORE")),
+        // NUZLOCKE is under MORE in every game the tracker follows; off, the tab says so and offers TURN ON.
+        Shot("$g-nuzlocke-off", bw, bh, bd, companion("NUZLOCKE")),
         Shot("$g-more-full", bw, bh, bd, companion("MORE", barTabs = listOf("PARTY", "MAP"))),
         // Every app icon at once (a game can't have all of them off the bar with a ROM-less preview).
         Shot("$g-more-icons", bw, bh, bd, {
@@ -1595,9 +1603,18 @@ fun main(args: Array<String>) {
             onNodeWithText("AUTO ZOOM IN").performScrollTo()
         },
         Shot("$g-settings-ffspeed", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("FF SPEED").performClick() },
-        // SOUND: GAME VOLUME's row and its pick-list.
+        // SOUND: GAME VOLUME's slider (70%), then moved to 35% through its semantics (what a drag or LEFT / RIGHT call).
         Shot("$g-settings-sound", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("MUTE GAME").performScrollTo() },
-        Shot("$g-settings-volume", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("GAME VOLUME").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
+        Shot("$g-settings-volume", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText("MUTE GAME").performScrollTo()
+            onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
+                .performSemanticsAction(SemanticsActions.SetProgress) { it(35f) }
+        },
+        // A tap on GAME VOLUME: its slider in a pop-up.
+        Shot("$g-settings-volume-popup", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText("GAME VOLUME").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("$g-settings-gameplay", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("TRADE EVOS").performScrollTo() },
         Shot("$g-settings-touch", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText("TOUCH CONTROLS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
@@ -2295,6 +2312,9 @@ fun main(args: Array<String>) {
             LibraryActivity().apply { setup = SetupState().apply { step = SetupState.Step.COVERS; apiKey = "preview-key" } }
         }) { onNodeWithText("SAVE").performClick() },
         Shot("settings-home", tw, th, td, activity { SettingsActivity() }),
+        Shot("settings-volume-popup", tw, th, td, activity { SettingsActivity() }) {
+            onNodeWithText("GAME VOLUME").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
         // Two games hidden from the library with HIDE: their page, and the library without them.
         Shot("settings-hidden", tw, th, td, activity { withHidden { SettingsActivity() } }) {
             onNodeWithText("HIDDEN GAMES").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)

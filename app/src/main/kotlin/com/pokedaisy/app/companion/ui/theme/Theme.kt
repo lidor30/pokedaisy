@@ -208,7 +208,12 @@ object AppColors {
     // D-pad / keyboard focus ring: a bright orange (the user's call - it was cyan), a
     // lighter, yellower one than slotSelected's so the cursor and "what's already
     // picked" stay apart; the screens' chosen items now mostly use the white cursor row.
-    val focusRing = Color(0xFFFFB238)
+    // Monomyth's party backdrop is that orange too (the ring vanished on it): there it's a deep blue, which reads on the
+    // orange, its teal slots and the white windows.
+    val focusRing: Color get() =
+        if (com.pokedaisy.app.companion.ui.OptionColors.inGame &&
+            com.pokedaisy.app.companion.data.activeGame == com.pokedaisy.app.companion.data.GameKind.MONOMYTH
+        ) Color(0xFF1F4FC8) else Color(0xFFFFB238)
 
     val statusSlp = Color(0xFF8A8A8A)
     val statusPsn = Color(0xFFA259D9)
