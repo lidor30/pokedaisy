@@ -1595,6 +1595,9 @@ fun main(args: Array<String>) {
             onNodeWithText("AUTO ZOOM IN").performScrollTo()
         },
         Shot("$g-settings-ffspeed", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("FF SPEED").performClick() },
+        // SOUND: GAME VOLUME's row and its pick-list.
+        Shot("$g-settings-sound", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("MUTE GAME").performScrollTo() },
+        Shot("$g-settings-volume", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("GAME VOLUME").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
         Shot("$g-settings-touch", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText("TOUCH CONTROLS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
@@ -2320,6 +2323,7 @@ fun main(args: Array<String>) {
         },
         // The list's end: LIBRARY / ONLINE (RetroAchievements' BETA tag) / APP.
         Shot("settings-home-bottom", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("RUN SETUP").performScrollTo() },
+        Shot("settings-sound", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("MUTE GAME").performScrollTo() },
         Shot("settings-buttons", tw, th * 2, td, activity { SettingsActivity() }) { onNodeWithText("GAME BUTTONS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
         // A GBA button waiting for its button, in place.
         Shot("settings-buttons-capture", tw, th * 2, td, activity { SettingsActivity() }) {

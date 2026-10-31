@@ -30,6 +30,13 @@ The `SPEED OPTIONS` page:
 | `FF MODE` | **`SMART`**, `NORMAL` | `SMART` drops to normal speed in menus, on the region map and while a battle waits for your command, and keeps the rest of a battle fast. `NORMAL` is fast everywhere. | [Fast-forward](fast-forward.md) |
 | `FF MUSIC` | **`STEADY`**, `SPED-UP`, `OFF` | What you hear while fast-forwarding: the song at its normal tempo, the game's audio sped up, or silence. | [Fast-forward](fast-forward.md) |
 
+### Sound
+
+| Setting | Choices | What it does | More |
+| --- | --- | --- | --- |
+| `GAME VOLUME` | **`100%`**, `90%` down to `10%` | How loud the game is. `100%` is your device's own volume; the rest are quieter than that. Covers the game's music and sounds, `FF MUSIC` and the companion's click. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
+| `MUTE GAME` | `ON`, **`OFF`** | No game sound at all, keeping your `GAME VOLUME` for when you turn it back on. The `MUTE` hotkey flips it too. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
+
 ### Screen
 
 | Setting | Choices | What it does | More |
@@ -91,7 +98,7 @@ The `SHADERS` page:
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
 | `GAME BUTTONS` | a page | Which button presses A, B, L, R, `START`, `SELECT`, `TURBO A` and `TURBO B` in every game, the DS games' `X` and `Y`, and the GBA and Game Boy games' `START 2`, `SELECT 2` and `TO COMPANION`. Press the button you want on each row. | [Controls](controls.md) |
-| `HOTKEYS` | **`ON`**, `OFF` (a page) | Shortcuts for save states, fast-forward, slow motion, rewind, `ZOOM`, opening the companion and leaving the game. Each can be a combination of buttons, or cleared with `CLEAR`. Off, every button goes to the game. | [Controls](controls.md) |
+| `HOTKEYS` | **`ON`**, `OFF` (a page) | Shortcuts for save states, fast-forward, slow motion, rewind, `ZOOM`, muting the game, opening the companion and leaving the game. Each can be a combination of buttons, or cleared with `CLEAR`. Off, every button goes to the game. | [Controls](controls.md) |
 | `QUICK MENU` | a page | Its `STYLE` (**`RING`**, `GRID`), `LABELS` (**`ON`**, `OFF`) and which actions it shows (all of them to start with). Its button is the `QUICK MENU` hotkey. | [Controls](controls.md) |
 | `TOUCH CONTROLS` | a page | The on-screen buttons: `SHOW` (**`AUTO`**, `ALWAYS`, `NEVER`), `LAYOUT` (**`SIDES`**, `CLASSIC`, `COMPACT`, `CUSTOM`), `EDIT LAYOUT`, `POSITION` (`TOP`, **`MIDDLE`**, `BOTTOM`), `COMPANION` (upright, one-screen devices), `SIZE`, `OPACITY`, `D-PAD`, `FADE WHEN IDLE`, `VIBRATION` and the extra buttons (`FF`, `QUICK MENU`, turbo, save and load state). A preview shows the result. | [Controls](controls.md#touch-controls) |
 
@@ -110,7 +117,7 @@ The `SHADERS` page:
 
 ## Companion SETTINGS
 
-The companion's list puts what you change while you play first: speed, then `GAMEPLAY` (a group of its own), the screen and the companion itself, with the buttons and the app's language last. `CLOSE GAME` and `RESTART GAME` sit at the bottom of the list. Tabs you've taken off the tab bar are in the `MORE` tab, left of the gear.
+The companion's list puts what you change while you play first: speed and `SOUND`, then `GAMEPLAY` (a group of its own), the screen and the companion itself, with the buttons and the app's language last. `CLOSE GAME` and `RESTART GAME` sit at the bottom of the list. Tabs you've taken off the tab bar are in the `MORE` tab, left of the gear.
 
 ### Game (for an unknown ROM)
 
@@ -135,6 +142,13 @@ The `SPEED OPTIONS` page:
 | `SCENE SPEEDS` | each **`SAME`** | `BATTLE SPEED`, `TEXT SPEED`, `MENU SPEED`, `BIKE SPEED` and `SURF SPEED`: a speed of their own while fast-forward is off. | [Fast-forward](fast-forward.md) |
 | `FF MODE` | as on the top screen | Where fast-forward slows down. | [Fast-forward](fast-forward.md) |
 | `FF MUSIC` | as on the top screen | What fast-forward sounds like. | [Fast-forward](fast-forward.md) |
+
+### Sound
+
+| Setting | Choices | What it does | More |
+| --- | --- | --- | --- |
+| `GAME VOLUME` | as on the top screen | How loud the game is, from your device's volume (`100%`) down. You hear it change right away. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
+| `MUTE GAME` | as on the top screen | The game's sound off, or back on. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
 
 ### Makeover
 

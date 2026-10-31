@@ -90,8 +90,9 @@ When SELECT or START is part of a chord, the game gets it when you let go rather
 | `CLOSE APP` | Leaves the game (it saves as usual) and closes PokeDaisy completely, so it's gone from your recent apps | | |
 | `QUICK MENU` | Opens the [quick menu](#the-quick-menu), or closes it | L3 (shown as `THUMBL`) | |
 | `COMPANION` | Opens the companion over the game on one screen, where you can hide its edge button with `COMPANION BUTTON`. Also brings it back after `CLOSE COMPANION` | | |
+| `MUTE` | Mutes the game, or brings its sound back (`MUTE GAME` in [SOUND](fast-forward.md#game-volume-and-mute-sound)) | | |
 
-`RESTART GAME`, `CLOSE APP` and `COMPANION` have no buttons until you give them some.
+`RESTART GAME`, `CLOSE APP`, `COMPANION` and `MUTE` have no buttons until you give them some.
 
 The speed hotkeys are explained in [Fast-forward and game speed](fast-forward.md), states and rewind in [Saves](saves.md), and zoom in [Screen](screen.md).
 

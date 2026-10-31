@@ -494,6 +494,17 @@ private fun homeRows(
         } else null,
         // SCENE SPEEDS, FF MODE and FF MUSIC: set once and rarely touched, on their own page.
         SettingRow(tk("SPEED OPTIONS"), null, subtitle = "Scene speeds, FF mode and FF music", opensPage = true) { navigate(Page.SPEED) },
+        groupTitle(tk("SOUND")),
+        // The game's loudness under the device's own volume (100% = the device's); MUTE GAME keeps it for after.
+        SettingRow(tk("GAME VOLUME"), gameVolumeLabel(s.gameVolume), subtitle = "How loud the game is",
+            labelBadge = NewFeatures.badge(NewFeatures.GAME_VOLUME)) {
+            val labels = gameVolumeLabels()
+            select(Selector(tk("GAME VOLUME"), labels, gameVolumeLabel(s.gameVolume)) { l ->
+                s.setGameVolume(com.pokedaisy.app.GameVolume.STEPS[labels.indexOf(l)]); changed()
+            })
+        },
+        SettingRow(tk("MUTE GAME"), onOff(s.gameMuted), subtitle = "No game sound; HOTKEYS > MUTE flips it",
+            labelBadge = NewFeatures.badge(NewFeatures.GAME_VOLUME)) { s.setGameMuted(!s.gameMuted); changed() },
         groupTitle(tk("GAMEPLAY")),
         // The game's own switch for random encounters (WildEncounters.kt): ON (the game's rate) or OFF.
         SettingRow(tk("WILD ENCOUNTERS"), if (s.wildEncountersSupported) wildEncountersLabel(s.wildEncounters) else tk("N/A"),
@@ -784,6 +795,10 @@ private fun KeyCapture.toggle(title: String, request: () -> KeyCapture.Request) 
 }
 
 /** WILD ENCOUNTERS' value: ON (the game's own rate) or OFF. */
+/** GAME VOLUME's value and pick-list (both screens): "100%" .. "10%" ([com.pokedaisy.app.GameVolume.STEPS]). */
+internal fun gameVolumeLabel(percent: Int) = "$percent%"
+internal fun gameVolumeLabels() = com.pokedaisy.app.GameVolume.STEPS.map(::gameVolumeLabel)
+
 internal fun wildEncountersLabel(percent: Int) = if (percent == 0) tk("OFF") else tk("ON")
 
 /** SHINY ODDS' value: NORMAL (the game's own 1 in 8192), else "1 IN n". */

@@ -306,6 +306,16 @@ class Prefs(context: Context) {
         get() = p.getBoolean("click_sound", true)
         set(v) = p.edit().putBoolean("click_sound", v).apply()
 
+    /** SETTINGS > SOUND > GAME VOLUME ([GameVolume]): the game's loudness in percent of the device's volume, 100 default. */
+    var gameVolume: Int
+        get() = p.getInt("game_volume", 100).coerceIn(0, 100)
+        set(v) = p.edit().putInt("game_volume", v.coerceIn(0, 100)).apply()
+
+    /** SETTINGS > SOUND > MUTE GAME and the MUTE hotkey ([GameVolume]): the game silent, GAME VOLUME kept for after. */
+    var gameMuted: Boolean
+        get() = p.getBoolean("game_muted", false)
+        set(v) = p.edit().putBoolean("game_muted", v).apply()
+
     /** Whether the emulator hotkeys ([com.pokedaisy.app.Hotkeys]) fire at all; off, every key goes to the game. */
     var hotkeysEnabled: Boolean
         get() = p.getBoolean("hotkeys_enabled", true)

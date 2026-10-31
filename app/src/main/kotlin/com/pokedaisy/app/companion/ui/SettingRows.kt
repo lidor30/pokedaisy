@@ -142,6 +142,8 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "BATTLE HINTS" to "suggestions recommendations best move tips",
     "FOE IVS" to "enemy opponent ivs stats",
     "CLICK SOUND" to "sound effects button click audio",
+    "GAME VOLUME" to "volume sound audio loudness quieter louder level percent music sfx",
+    "MUTE GAME" to "mute unmute silent silence quiet sound off audio volume hotkey",
     "TWEAKS" to "animations bounce blink cursor jump to battle effects motion",
     "SCENE SPEEDS" to "battle speed text speed instant text fast text menu speed overworld speed faster battles quality of life qol bike speed surf speed faster bike faster surfing",
     "AUTO-RUN" to "auto run autorun running shoes run sprint dash always run hold b",

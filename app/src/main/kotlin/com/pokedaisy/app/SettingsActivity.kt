@@ -604,6 +604,23 @@ class SettingsActivity : ComponentActivity() {
             SettingRow(tk("REWIND"), if (prefs.rewind) tk("ON") else tk("OFF")) { prefs.rewind = !prefs.rewind; revision++ },
             // FF MODE and FF MUSIC: set once and rarely touched, on their own page (the companion's has SCENE SPEEDS too).
             SettingRow(tk("SPEED OPTIONS"), null, subtitle = "FF mode and FF music", opensPage = true) { screen = Screen.SPEED },
+            groupTitle(tk("SOUND")),
+            // The game's loudness under the device's own volume (100% = the device's); MUTE GAME keeps it for after.
+            SettingRow(tk("GAME VOLUME"), com.pokedaisy.app.companion.ui.gameVolumeLabel(prefs.gameVolume),
+                       subtitle = "How loud the game is",
+                       labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.GAME_VOLUME)) {
+                val labels = com.pokedaisy.app.companion.ui.gameVolumeLabels()
+                selector = Selector(tk("GAME VOLUME"), labels, com.pokedaisy.app.companion.ui.gameVolumeLabel(prefs.gameVolume)) {
+                    prefs.gameVolume = GameVolume.STEPS[labels.indexOf(it)]
+                    GameVolume.load(prefs)
+                }
+            },
+            SettingRow(tk("MUTE GAME"), onOff(prefs.gameMuted), subtitle = "No game sound; HOTKEYS > MUTE flips it",
+                       labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.GAME_VOLUME)) {
+                prefs.gameMuted = !prefs.gameMuted
+                GameVolume.load(prefs)
+                revision++
+            },
             groupTitle(tk("SCREEN")),
             // The game at 3:2, stretched to fill the screen, or WIDE (more of the map, BETA); picked by preview.
             SettingRow(tk("ASPECT"), aspectLabel(prefs.gameAspect),

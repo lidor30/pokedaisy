@@ -821,6 +821,11 @@ class EmulatorEngine(
             .onFailure { Log.e("pokedaisy", "audio track failed", it) }
             .getOrNull()
 
+        // SOUND > GAME VOLUME / MUTE GAME (GameVolume): the track's own gain, under the device's volume. Set here and
+        // whenever it changes below; the writes (and so 1x's pacing) go on as before.
+        var trackGain = GameVolume.gain
+        runCatching { track?.setVolume(trackGain) }
+
         val scratch = ShortArray(4096)
         val tap = AudioTap()
         val frameNanos = 1_000_000_000L / 60L
@@ -1236,6 +1241,10 @@ class EmulatorEngine(
                 if (half != trackHalf && track != null) {
                     trackHalf = half
                     runCatching { track.bufferSizeInFrames = if (half) bufferFrames / 2 else bufferFrames }
+                }
+                if (GameVolume.gain != trackGain && track != null) {
+                    trackGain = GameVolume.gain
+                    runCatching { track.setVolume(trackGain) }
                 }
                 gameAudioPaused = wantPaused
                 if (wantPaused != paused) {

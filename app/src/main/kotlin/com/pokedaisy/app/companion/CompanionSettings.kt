@@ -275,6 +275,13 @@ interface CompanionSettings {
     val quickMenuLabels: Boolean get() = true
     fun setQuickMenuLabels(on: Boolean) {}
 
+    /** SOUND > GAME VOLUME, in percent of the device's volume (100 = the device's) - see [Prefs.gameVolume]. */
+    val gameVolume: Int get() = 100
+    fun setGameVolume(percent: Int) {}
+    /** SOUND > MUTE GAME (also the MUTE hotkey) - see [Prefs.gameMuted]. */
+    val gameMuted: Boolean get() = false
+    fun setGameMuted(on: Boolean) {}
+
     /** FPS / CPU over the game's corner - see [Prefs.showPerformance]. */
     val showPerformance: Boolean get() = false
     fun setShowPerformance(on: Boolean) {}

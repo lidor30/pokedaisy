@@ -1359,6 +1359,10 @@ class PokeDaisyActivity : Activity() {
         override fun openCompanion() = runOnUiThread { reopenCompanion() }
         override val autoResume get() = Prefs(this@PokeDaisyActivity).autoResume
         override fun setTweak(key: String, on: Boolean) = Prefs(this@PokeDaisyActivity).setTweak(key, on)
+        override val gameVolume get() = GameVolume.percent
+        override fun setGameVolume(percent: Int) = this@PokeDaisyActivity.setGameVolume(percent, GameVolume.muted)
+        override val gameMuted get() = GameVolume.muted
+        override fun setGameMuted(on: Boolean) = this@PokeDaisyActivity.setGameVolume(GameVolume.percent, on)
         override val clickSound get() = clickSoundOn
         override fun setClickSound(on: Boolean) {
             Prefs(this@PokeDaisyActivity).clickSound = on
@@ -3447,7 +3451,20 @@ class PokeDaisyActivity : Activity() {
                 else if (::sidePanel.isInitialized && sidePanel.enabled) sidePanel.openPanel()
             }
             Hotkeys.Action.QUICK_MENU -> triggerQuickMenu(e.pressed)
+            Hotkeys.Action.MUTE -> if (e.pressed) {
+                val muted = !GameVolume.muted
+                setGameVolume(GameVolume.percent, muted)
+                showHud(com.pokedaisy.app.companion.i18n.tr(if (muted) "Game muted" else "Game sound on"))
+            }
         }
+    }
+
+    /** SOUND > GAME VOLUME / MUTE GAME, and the MUTE hotkey: kept, and heard at once (GameVolume). */
+    private fun setGameVolume(percent: Int, muted: Boolean) {
+        val prefs = Prefs(this)
+        prefs.gameVolume = percent
+        prefs.gameMuted = muted
+        GameVolume.set(percent, muted)
     }
 
     /** ZOOM (its hotkey, or a tip's SHOW ME): EXPAND's next zoom step. */

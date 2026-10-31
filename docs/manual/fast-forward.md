@@ -3,7 +3,7 @@ title: Fast-forward and game speed
 summary: Speed through the slow parts, set a pace that sticks for each game, slow things down, and keep the music sounding right while you do.
 section: player
 order: 1
-keywords: [ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, clock, rtc, time, day, night, storage, space]
+keywords: [ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, volume, mute, quiet, silent, clock, rtc, time, day, night, storage, space]
 ---
 
 Pokémon games have a lot of walking, text and grinding. Fast-forward runs the game several times faster so you get through it quicker, and PokeDaisy tries to get out of your way when speed would be a problem: in menus, on the map, and with the music.
@@ -86,6 +86,15 @@ The recordings take at most 1.5 GB of your device's storage for all your games t
 
 > [!NOTE]
 > If a song sounds wrong or stays silent with `STEADY`, switch to `SPED-UP`, and let us know which game and where.
+
+## Game volume and mute: SOUND
+
+The `SOUND` group, right under `FF / SPEED` in the companion's `SETTINGS` (and in the top screen's Settings), sets how loud the game is, so you can keep it down while listening to something else.
+
+- **`GAME VOLUME`** goes from `100%` (the default) down to `10%`. `100%` is the game as loud as your device's own volume plays it; the lower steps are quieter than that, and the device's volume buttons still work on top. It covers everything the game sounds like: its music and sounds, `FF MUSIC`'s songs and the click of the companion's buttons.
+- **`MUTE GAME`** turns the game's sound off completely. Your `GAME VOLUME` is kept, so turning it back on brings the same level back.
+
+To mute and unmute without opening `SETTINGS`, give the `MUTE` hotkey a button under `HOTKEYS` (see [Controls](controls.md#hotkeys)). A short message on the game says which way it went.
 
 ## The real-time clock
 

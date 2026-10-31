@@ -29,6 +29,17 @@ class FfMusicPlayer {
     private var loopPlayer: MediaPlayer? = null
     private var current: File? = null
 
+    /** SOUND > GAME VOLUME / MUTE GAME (GameVolume), on the players already going too: posted to the UI thread. The
+     *  activity keeps one player for its life ([release] only stops it), so the listener stays. */
+    private val main = android.os.Handler(android.os.Looper.getMainLooper())
+    private val onVolume: () -> Unit = { main.post { applyVolume() } }
+    init { GameVolume.addListener(onVolume) }
+
+    private fun applyVolume() {
+        val g = GameVolume.gain
+        for (p in listOfNotNull(introPlayer, loopPlayer)) runCatching { p.setVolume(g, g) }
+    }
+
     /** clip == null stops playback (leaving FF, or nothing cached yet for this song). */
     fun setClip(clip: Clip?) {
         if (clip?.loop == current && (clip == null || introPlayer != null || loopPlayer != null)) return
@@ -49,11 +60,13 @@ class FfMusicPlayer {
             prepare()
         }
         loopPlayer = loop
+        loop.setVolume(GameVolume.gain, GameVolume.gain)
         val intro = clip.intro?.let { f ->
             runCatching {
                 MediaPlayer().apply {
                     setDataSource(f.absolutePath)
                     prepare()
+                    setVolume(GameVolume.gain, GameVolume.gain)
                 }
             }.getOrNull()
         }?.takeIf { it.duration > 0 }

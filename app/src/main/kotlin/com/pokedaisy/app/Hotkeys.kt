@@ -36,7 +36,9 @@ class Hotkeys private constructor(
         // Pressed: the QUICK MENU opens or closes (companion.ui.QuickMenu); L3 by default.
         QUICK_MENU(tk("QUICK MENU")),
         // No default keys: opens the companion over the game on one screen, where COMPANION BUTTON can hide its tab.
-        COMPANION(tk("COMPANION"));
+        COMPANION(tk("COMPANION")),
+        // No default keys: the game's sound off and on again (SOUND > MUTE GAME, GameVolume).
+        MUTE(tk("MUTE"));
 
         val prop get() = name.lowercase()
 
@@ -45,6 +47,7 @@ class Hotkeys private constructor(
             RESTART_GAME, CLOSE_APP -> NewFeatures.badge(NewFeatures.GAME_HOTKEYS)
             QUICK_MENU -> NewFeatures.badge(NewFeatures.QUICK_MENU)
             COMPANION -> NewFeatures.badge(NewFeatures.COMPANION_HOTKEY)
+            MUTE -> NewFeatures.badge(NewFeatures.GAME_VOLUME)
             else -> null
         }
         val label get() = name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }

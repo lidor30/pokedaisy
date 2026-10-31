@@ -9,7 +9,7 @@ plugins {
 
 val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
 val appSrc = fileTree(app) {
-    listOf("companion/data/**", "companion/*.kt", "companion/i18n/**", "MgbaCore.kt", "Prefs.kt", "cheats/Cheats.kt", "GbaControls.kt", "Hotkeys.kt")
+    listOf("companion/data/**", "companion/*.kt", "companion/i18n/**", "MgbaCore.kt", "Prefs.kt", "cheats/Cheats.kt", "GbaControls.kt", "Hotkeys.kt", "GameVolume.kt")
         .forEach { include(it) }
 }
 sourceSets["main"].kotlin.srcDir("shims")
