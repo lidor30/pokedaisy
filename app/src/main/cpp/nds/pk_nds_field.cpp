@@ -28,6 +28,8 @@ static const PkNdsFieldGame PLATINUM_US_REV1 = {
     0x021CAF64,   // sSeqPlayer (libnnssnd's player.c)
     0,
     1,
+    0x30,         // BattleSystem.battleCtx (Gen4Reader.kt; checked on retail Platinum)
+    0x08,         // BattleContext.command follows two four-byte battler-state arrays
 };
 
 // HeartGold / SoulSilver (USA): pret/pokeheartgold's .xMAP (the same in both games' builds, compared) and field_system.h, checked on
