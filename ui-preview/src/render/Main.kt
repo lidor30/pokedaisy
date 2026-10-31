@@ -322,6 +322,11 @@ fun boxesSnapshot(): SnapshotView {
     return base.copy(pcBoxes = com.pokedaisy.app.companion.data.BoxesView(0, boxes))
 }
 
+/** [boxesSnapshot] with six in the party (its own, round again), so WITHDRAW goes to SWAP's pick. */
+fun fullPartyBoxesSnapshot(): SnapshotView = boxesSnapshot().let { s ->
+    s.copy(party = List(6) { i -> s.party[i % s.party.size].copy(personality = i + 1L) })
+}
+
 fun snapshot() = SnapshotView(
     connected = true, facingDirection = "down", x = 12, y = 7, game = activeGame,
     // Highlight in the region-map image's own 240x160 coordinates.
@@ -435,6 +440,10 @@ class PreviewItemUse(private val party: List<MonView>, private val bagFull: Bool
     // BOXES' SWAP: the button shows, a pick goes through.
     override fun canSwapBox() = true
     override fun swapBox(box: Int, slot: Int, boxPersonality: Long, partySlot: Int, partyPersonality: Long, done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit) =
+        done(com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED)
+    override fun depositToBox(partySlot: Int, partyPersonality: Long, box: Int, done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit) =
+        done(com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED)
+    override fun withdrawFromBox(box: Int, slot: Int, boxPersonality: Long, done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit) =
         done(com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED)
     // PC anywhere: the button shows; a tap answers "not now" (a menu open), as the BAG pops it up.
     override fun canPc() = true
@@ -1267,27 +1276,44 @@ fun main(args: Array<String>) {
         Shot("$g-boxes-detail", bw, bh, bd, companion("BOXES", snap = ::boxesSnapshot, items = true)) {
             onAllNodesWithContentDescription(speciesName(4), ignoreCase = true).onFirst().performClick()
         },
-        // SWAP: the summary's button opens the party pick; a pick says what happened.
-        Shot("$g-boxes-swap", bw, bh, bd, companion("BOXES", snap = ::boxesSnapshot, items = true)) {
+        // WITHDRAW with a full party: the summary's button opens SWAP's party pick; a pick plays the swap, then says so.
+        Shot("$g-boxes-swap", bw, bh, bd, companion("BOXES", snap = ::fullPartyBoxesSnapshot, items = true)) {
             onAllNodesWithContentDescription(speciesName(4), ignoreCase = true).onFirst().performClick()
             waitForIdle()
-            onAllNodesWithText("SWAP", ignoreCase = true).onFirst().performClick()
+            onAllNodesWithText("WITHDRAW", ignoreCase = true).onFirst().performClick()
         },
-        Shot("$g-boxes-swapped", bw, bh, bd, companion("BOXES", snap = ::boxesSnapshot, items = true)) {
+        Shot("$g-boxes-swapped", bw, bh, bd, companion("BOXES", snap = ::fullPartyBoxesSnapshot, items = true)) {
             onAllNodesWithContentDescription(speciesName(4), ignoreCase = true).onFirst().performClick()
             waitForIdle()
-            onAllNodesWithText("SWAP", ignoreCase = true).onFirst().performClick()
+            onAllNodesWithText("WITHDRAW", ignoreCase = true).onFirst().performClick()
             waitForIdle()
             // The first party slot (top left), by where it is: the slots have no text node to find.
             onRoot().performTouchInput { click(androidx.compose.ui.geometry.Offset(width * 0.27f, height * 0.15f)) }
         },
-        // SWAP's animation, held at moments of it: white, shrinking, the sparks crossing, landing, landed.
-        *listOf(300L, 470L, 840L, 1220L, 1600L).map { ms ->
+        // WITHDRAW with room in the party: straight in, the box's Pokémon flying over, then the message.
+        Shot("$g-boxes-withdrawn", bw, bh, bd, companion("BOXES", snap = ::boxesSnapshot, items = true)) {
+            onAllNodesWithContentDescription(speciesName(4), ignoreCase = true).onFirst().performClick()
+            waitForIdle()
+            onAllNodesWithText("WITHDRAW", ignoreCase = true).onFirst().performClick()
+        },
+        // DEPOSIT: the party summary's button, its box pick, and the move into BOX2 with its message.
+        Shot("$g-party-detail-deposit", bw, bh, bd, companion("PARTY", mon = 1, items = true, snap = ::boxesSnapshot)),
+        Shot("$g-party-deposit-pick", bw, bh, bd, companion("PARTY", mon = 1, items = true, snap = ::boxesSnapshot)) {
+            onAllNodesWithText("DEPOSIT", ignoreCase = true).onFirst().performClick()
+        },
+        Shot("$g-party-deposited", bw, bh, bd, companion("PARTY", mon = 1, items = true, snap = ::boxesSnapshot)) {
+            onAllNodesWithText("DEPOSIT", ignoreCase = true).onFirst().performClick()
+            waitForIdle()
+            onAllNodesWithText("BOX2", substring = true).onFirst().performClick()
+        },
+        // SWAP's animation, held at moments of it: white, shrinking, the sparks crossing, landing, landed, the message.
+        *listOf(300L, 470L, 840L, 1220L, 1600L, 2000L).map { ms ->
             Shot("$g-boxes-swapanim-$ms", bw, bh, bd, {
                 val tab = companion("BOXES", snap = ::boxesSnapshot)()
                 val s = boxesSnapshot()
                 val boxMon = s.pcBoxes!!.boxes[0].mons[3]!!
-                val anim = com.pokedaisy.app.companion.ui.BoxSwapAnim(boxMon, s.party[0], "BOX1", "")
+                val anim = com.pokedaisy.app.companion.ui.BoxSwapAnim(boxMon, s.party[0], "BOX1",
+                    com.pokedaisy.app.companion.ui.boxSwapMessage(com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED, boxMon, s.party[0], "BOX1"))
                 ({
                     androidx.compose.foundation.layout.Box {
                         tab()

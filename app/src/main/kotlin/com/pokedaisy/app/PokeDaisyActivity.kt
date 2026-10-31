@@ -579,13 +579,36 @@ class PokeDaisyActivity : Activity() {
         override fun swapBox(
             box: Int, slot: Int, boxPersonality: Long, partySlot: Int, partyPersonality: Long,
             done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+        ) = onBoxes(done) { fields, fns, calls, busy ->
+            com.pokedaisy.app.companion.data.swapWithBox(fields, fns, box, slot, boxPersonality, partySlot, partyPersonality, busy, calls)
+        }
+
+        override fun depositToBox(
+            partySlot: Int, partyPersonality: Long, box: Int,
+            done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+        ) = onBoxes(done) { fields, fns, calls, busy ->
+            com.pokedaisy.app.companion.data.depositToBox(fields, fns, partySlot, partyPersonality, box, busy, calls)
+        }
+
+        override fun withdrawFromBox(
+            box: Int, slot: Int, boxPersonality: Long,
+            done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+        ) = onBoxes(done) { fields, fns, calls, busy ->
+            com.pokedaisy.app.companion.data.withdrawFromBox(fields, fns, box, slot, boxPersonality, busy, calls)
+        }
+
+        /** A PC move ([move]) on the emu thread, its NOT_NOW told apart from a battle's. */
+        private fun onBoxes(
+            done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+            move: (com.pokedaisy.app.companion.data.FieldItemFns, com.pokedaisy.app.companion.data.BoxSwapFns,
+                   com.pokedaisy.app.companion.data.GameCalls, Boolean) -> com.pokedaisy.app.companion.data.BoxSwapResult,
         ) {
             val inBattle = telemetry.snapshot.value.inBattle
             onGame(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED, { r ->
                 done(if (inBattle && r == com.pokedaisy.app.companion.data.BoxSwapResult.NOT_NOW) com.pokedaisy.app.companion.data.BoxSwapResult.IN_BATTLE else r)
             }) { s, calls, busy ->
                 val fns = com.pokedaisy.app.companion.data.boxSwapFor(s.fns, com.pokedaisy.app.companion.data.activeNativeConfig) ?: return@onGame com.pokedaisy.app.companion.data.BoxSwapResult.FAILED
-                com.pokedaisy.app.companion.data.swapWithBox(s.fns, fns, box, slot, boxPersonality, partySlot, partyPersonality, busy, calls)
+                move(s.fns, fns, calls, busy)
             }
         }
 
@@ -3130,7 +3153,9 @@ class PokeDaisyActivity : Activity() {
      * companion had drawn the move list). A device it finds slow is remembered, and starts light from then on.
      */
     private fun noteKeyDelay(event: KeyEvent) {
-        if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount != 0) return
+        // System keys don't count: Android holds the volume keys back ~150 ms itself (it waits for a volume + power
+        // chord), which once made the Thor's AUTO turn LIGHT COMPANION on.
+        if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount != 0 || event.isSystem) return
         val now = android.os.SystemClock.uptimeMillis()
         val delay = now - event.eventTime
         if (delay < com.pokedaisy.app.companion.LightCompanion.LATE_KEY_MS) return

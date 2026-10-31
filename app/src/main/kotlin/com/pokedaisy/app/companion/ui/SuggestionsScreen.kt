@@ -75,7 +75,7 @@ fun SuggestionsScreen(
     val gap = m.u * 3
     SummaryFrame(
         m, onBack, modifier,
-        buttons = { TextNavButton(tr("INFO"), InfoPurple, InfoPurpleDark, onShowInfo) },
+        buttons = { TextNavButton(tr("INFO"), InfoPurple, InfoPurpleDark, onClick = onShowInfo) },
         middle = if (foeTeam.size > 1) ({ FoeTeamStrip(foeTeam, seenFoes, shownFoe, small, onSelectFoe) }) else null,
     ) {
         Column(Modifier.fillMaxSize()) {

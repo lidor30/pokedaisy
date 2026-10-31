@@ -462,10 +462,11 @@ class Prefs(context: Context) {
         set(v) = p.edit().putInt("light_companion", v).apply()
 
     /** LIGHT COMPANION's AUTO saw this device's buttons come late ([com.pokedaisy.app.companion.LightCompanion.noteKeyDelay]):
-     * it starts light from then on. */
+     * it starts light from then on. A new key: the old one was also set by the volume keys, which Android always holds back
+     * (a fast device read as slow). */
     var lightCompanionMeasured: Boolean
-        get() = p.getBoolean("light_companion_measured", false)
-        set(v) = p.edit().putBoolean("light_companion_measured", v).apply()
+        get() = p.getBoolean("light_companion_measured_v2", false)
+        set(v) = p.edit().putBoolean("light_companion_measured_v2", v).apply()
 
     /** Whether SHADERS (filter and GBA COLORS) also draw over the companion and status bar ([CompanionColors]). */
     var companionShaders: Boolean

@@ -416,14 +416,19 @@ user's next call: sampled from FireRed's PC screen - `PcColors`: the PKMN DATA p
 Emerald's own set for the games that run as EMERALD - several frames and every header differ - while the screen around
 them is the same in both).
 Panel and box fill the tab (its peach backdrop is the screen's, CompanionScreen's `PcBackdrop`, like the bag's); icons at
-whole scales, allowed past their cells like the game's. A new game needs only its storage read. **SWAP** (`BoxSwap.kt`,
+whole scales, allowed past their cells like the game's. A new game needs only its storage read. **The PC's moves** (`BoxSwap.kt`,
 FireRed rev 1, LeafGreen rev 0 / 1 and Emerald: `boxSwapFor`, only with vanilla boxes at the table's own storage pointer - the CFRU hacks
-share FireRed rev 0's bag tables, and BoxMonToMon on a compressed record would wreck it): a box Pokémon's summary trades it for a party
-one in the running game, the PC's own way (BoxMonToMon out, the party one's 80 bytes in + BoxMonRestorePP), on the bag's field gate,
-Mail / last-fighter refused; checked headless with an in-game save and a reboot. Then the two trade places over the tab
-(`BoxSwapAnimation`: white, shrunk in whole steps to a spark, the sparks cross on two arcs, a burst; tap / BACK skips, none with
-LIGHT COMPANION) before the message. Its functions were found in retail by masked bytes from the decomp
-build (the `$DECOMPS` FireRed map is shifted, 0x120 there): a new game needs its own.
+share FireRed rev 0's bag tables, and BoxMonToMon on a compressed record would wreck it), each in the running game the PC's own way, on
+the bag's field gate: a box Pokémon's summary has WITHDRAW (`withdrawFromBox`: BoxMonToMon into gPlayerParty[count], the slot zeroed,
+count + 1), which with six in the party opens SWAP's pick instead (`swapWithBox`: BoxMonToMon out, the party one's 80 bytes in +
+BoxMonRestorePP); a party one's has DEPOSIT (`depositToBox`, a box pick: its 80 bytes into the box's first free slot +
+BoxMonRestorePP, the party moved up and zeroed behind - CompactPartySlots - count - 1). Mail, the last fighter and a full box refused;
+each checked headless on FireRed and Emerald with an in-game save and a reboot. The summary's Pokémon (party or box, six at a time) are
+a column on the right with Back under it (`PartyColumn`, like battle INFO's foe team), the PC's button with STATS / LEARN. Then the move
+plays over the tab (`BoxSwapAnimation`: white, shrunk in whole steps to a spark, the sparks cross on two arcs - one for DEPOSIT /
+WITHDRAW - a burst) and its message stays in a window under the wells until OK (the user's call: no popup after it); a tap skips to the
+message, LIGHT COMPANION starts there. A refusal is a popup (`BoxSwapNotice`). Its functions were found in retail by masked bytes from
+the decomp build (the `$DECOMPS` FireRed map is shifted, 0x120 there): a new game needs its own.
 **SoulGold v1.1.4** (`NATIVE_SOULGOLD`; v1.2 = `NATIVE_SOULGOLD_V1_2`, a rebuild at shifted addresses, same save
 format, v1.1.4's generated tables but TM75 via `soulGoldV12`; a second v1.2 build = `NATIVE_SOULGOLD_V1_2B`, same RAM, ROM data 0x98-0xA4 earlier; a third = `NATIVE_SOULGOLD_V1_2C`, same RAM, ROM data 0x18C-0x198 later, wild / map tables 0x2DF30; v1.2.1 = `NATIVE_SOULGOLD_V1_2_1` (two builds, 2 bytes of item data apart; "Soulgold" in the header), v1.2's tables, IWRAM and battle globals, but EWRAM moved (the party globals -0x1BC / -0x1C0, gMapHeader / gObjectEvents +8, gBagPockets +0xC) and ROM data 0x7A38-0xBEE8; gPartyMenu comes from `NativeConfig.partyMenu`, newer expansion, no source) breaks several vanilla
 assumptions, each a `NativeConfig` field now: its struct Pokemon is 96 bytes and plaintext

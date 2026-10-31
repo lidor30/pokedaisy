@@ -71,7 +71,9 @@ fun boxSwapFor(fields: FieldItemFns?, cfg: NativeConfig?): BoxSwapFns? {
     return fns?.takeIf { cfg.pokemonStoragePtr == it.storagePtr }
 }
 
+/** What a SWAP, DEPOSIT or WITHDRAW did. */
 enum class BoxSwapResult {
+    /** Done: swapped, deposited or withdrawn. */
     SWAPPED,
     /** Not on the field with the controls free (a battle, a menu, a text box, the game's own PC). */
     NOT_NOW,
@@ -80,8 +82,12 @@ enum class BoxSwapResult {
     CHANGED,
     /** The party Pokémon holds Mail. */
     HOLDS_MAIL,
-    /** An egg would take the place of the last Pokémon that can fight. */
+    /** An egg would take the place of the last Pokémon that can fight, or (DEPOSIT) it's the last one that can. */
     LAST_MON,
+    /** WITHDRAW with six in the party. */
+    PARTY_FULL,
+    /** DEPOSIT into a box with no free slot. */
+    BOX_FULL,
     FAILED,
 }
 
@@ -90,10 +96,52 @@ private const val BOX_MON = 80
 private const val HP_OFF = 0x56
 private const val BOXES = 14
 private const val SLOTS = 30
+private const val PARTY_MAX = 6
 private const val FIELD_PERSONALITY = 0
 private const val FIELD_SPECIES = 11
 private const val FIELD_HELD_ITEM = 12
 private const val FIELD_IS_EGG = 45
+
+/**
+ * What the three moves share: the game's party and storage as its own functions see them, and the PC's rules. Made by
+ * [boxMove] once the code checks out and the field is free.
+ */
+private class BoxMove(val fields: FieldItemFns, val p: PartyItemFns, val fns: BoxSwapFns, val g: GameCalls) {
+    fun u32(addr: Long) = g.read(addr, 4).let { b -> b.indices.fold(0L) { acc, i -> acc or ((b[i].toLong() and 0xFF) shl (8 * i)) } }
+    fun partyMon(i: Int) = p.party + i.toLong() * MON_SIZE
+    fun mon(i: Int, field: Int) = g.call(p.getMonData, partyMon(i).toInt(), field).also { if (it < 0) throw IllegalStateException("GetMonData didn't return") }
+    fun boxed(addr: Long, field: Int) = g.call(fns.getBoxMonData, addr.toInt(), field).also { if (it < 0) throw IllegalStateException("GetBoxMonData didn't return") }
+    val count get() = (g.read(p.partyCount, 1)[0].toInt() and 0xFF).coerceAtMost(PARTY_MAX)
+
+    /** Box [box]'s slot [slot] in the game's storage; null = the storage pointer isn't set (not on the field yet). */
+    fun boxMon(box: Int, slot: Int): Long? {
+        val storage = u32(fns.storagePtr)
+        if (storage !in 0x02000000L until 0x02040000L) return null
+        return storage + 4 + (box * SLOTS + slot).toLong() * BOX_MON
+    }
+
+    fun holdsMail(i: Int) = mon(i, FIELD_HELD_ITEM).toInt() in p.mail
+
+    /** Whether the party keeps a Pokémon that can fight without slot [without] (the PC's "That's your last POKéMON!"). */
+    fun fighterLeft(without: Int) = (0 until count).any { i ->
+        i != without && mon(i, FIELD_SPECIES) != 0L && mon(i, FIELD_IS_EGG) == 0L &&
+            g.read(partyMon(i) + HP_OFF, 2).let { (it[0].toInt() and 0xFF) or ((it[1].toInt() and 0xFF) shl 8) } > 0
+    }
+}
+
+/**
+ * Runs [move] where the PC itself could be used: the functions' code checked first (the bag's and the swap's own), on
+ * the field with the controls free ([busy] = a battle or a menu screen is up). A throw (a call that didn't return) is
+ * FAILED.
+ */
+private fun boxMove(fields: FieldItemFns, fns: BoxSwapFns, busy: Boolean, g: GameCalls, move: BoxMove.() -> BoxSwapResult): BoxSwapResult {
+    val p = fields.party ?: return BoxSwapResult.FAILED
+    val crcs = fns.codeCrcs.zip(listOf(fns.boxMonToMon, fns.boxMonRestorePP, fns.getBoxMonData))
+    if (!fieldItemCodeMatches(fields, g::read) ||
+        crcs.any { (crc, fn) -> java.util.zip.CRC32().apply { update(g.read(fn, 32)) }.value != crc }) return BoxSwapResult.FAILED
+    if (busy || g.call(fields.fieldControlsLocked) != 0L) return BoxSwapResult.NOT_NOW
+    return runCatching { BoxMove(fields, p, fns, g).move() }.getOrElse { BoxSwapResult.FAILED }
+}
 
 /**
  * Swaps box [box]'s slot [slot] (holding [boxPersonality]) with party slot [partySlot] (holding [partyPersonality]);
@@ -103,52 +151,111 @@ fun swapWithBox(
     fields: FieldItemFns, fns: BoxSwapFns, box: Int, slot: Int, boxPersonality: Long, partySlot: Int, partyPersonality: Long,
     busy: Boolean, g: GameCalls,
 ): BoxSwapResult {
-    val p = fields.party ?: return BoxSwapResult.FAILED
     // r0 comes back unsigned; the companion's reads may hold a personality either way.
     @Suppress("NAME_SHADOWING") val boxPersonality = boxPersonality and 0xFFFFFFFFL
     @Suppress("NAME_SHADOWING") val partyPersonality = partyPersonality and 0xFFFFFFFFL
     if (box !in 0 until BOXES || slot !in 0 until SLOTS) return BoxSwapResult.FAILED
-    val crcs = fns.codeCrcs.zip(listOf(fns.boxMonToMon, fns.boxMonRestorePP, fns.getBoxMonData))
-    if (!fieldItemCodeMatches(fields, g::read) ||
-        crcs.any { (crc, fn) -> java.util.zip.CRC32().apply { update(g.read(fn, 32)) }.value != crc }) return BoxSwapResult.FAILED
-    if (busy || g.call(fields.fieldControlsLocked) != 0L) return BoxSwapResult.NOT_NOW
-
-    fun u32(addr: Long) = g.read(addr, 4).let { b -> b.indices.fold(0L) { acc, i -> acc or ((b[i].toLong() and 0xFF) shl (8 * i)) } }
-    fun partyMon(i: Int) = p.party + i.toLong() * MON_SIZE
-    fun mon(i: Int, field: Int) = g.call(p.getMonData, partyMon(i).toInt(), field).also { if (it < 0) throw IllegalStateException("GetMonData didn't return") }
-    fun boxed(addr: Long, field: Int) = g.call(fns.getBoxMonData, addr.toInt(), field).also { if (it < 0) throw IllegalStateException("GetBoxMonData didn't return") }
-
-    return runCatching {
-        val storage = u32(fns.storagePtr)
-        if (storage !in 0x02000000L until 0x02040000L) return BoxSwapResult.FAILED
-        val boxMon = storage + 4 + (box * SLOTS + slot).toLong() * BOX_MON
-        val count = (g.read(p.partyCount, 1)[0].toInt() and 0xFF).coerceAtMost(6)
+    return boxMove(fields, fns, busy, g) {
+        val boxMon = boxMon(box, slot) ?: return@boxMove BoxSwapResult.FAILED
+        val count = count
         if (partySlot !in 0 until count || mon(partySlot, FIELD_PERSONALITY) != partyPersonality ||
-            boxed(boxMon, FIELD_SPECIES) == 0L || boxed(boxMon, FIELD_PERSONALITY) != boxPersonality) return BoxSwapResult.CHANGED
-        if (mon(partySlot, FIELD_HELD_ITEM).toInt() in p.mail) return BoxSwapResult.HOLDS_MAIL
+            boxed(boxMon, FIELD_SPECIES) == 0L || boxed(boxMon, FIELD_PERSONALITY) != boxPersonality) return@boxMove BoxSwapResult.CHANGED
+        if (holdsMail(partySlot)) return@boxMove BoxSwapResult.HOLDS_MAIL
         // The party must keep a Pokémon that can fight: only an egg coming out can break that (a Pokémon out of a box has
         // full HP).
-        if (boxed(boxMon, FIELD_IS_EGG) != 0L) {
-            val fighter = (0 until count).any { i ->
-                i != partySlot && mon(i, FIELD_SPECIES) != 0L && mon(i, FIELD_IS_EGG) == 0L &&
-                    g.read(partyMon(i) + HP_OFF, 2).let { (it[0].toInt() and 0xFF) or ((it[1].toInt() and 0xFF) shl 8) } > 0
-            }
-            if (!fighter) return BoxSwapResult.LAST_MON
-        }
+        if (boxed(boxMon, FIELD_IS_EGG) != 0L && !fighterLeft(partySlot)) return@boxMove BoxSwapResult.LAST_MON
 
         val partyBefore = g.read(partyMon(partySlot), MON_SIZE)
         val boxBefore = g.read(boxMon, BOX_MON)
-        if (partyBefore.size != MON_SIZE || boxBefore.size != BOX_MON) return BoxSwapResult.FAILED
+        if (partyBefore.size != MON_SIZE || boxBefore.size != BOX_MON) return@boxMove BoxSwapResult.FAILED
         fun putBack(): BoxSwapResult {
             g.write(partyMon(partySlot), partyBefore)
             g.write(boxMon, boxBefore)
             return BoxSwapResult.FAILED
         }
         // Out first (BoxMonToMon reads the box slot), then the party Pokémon's box half into the slot it left.
-        if (g.call(fns.boxMonToMon, boxMon.toInt(), partyMon(partySlot).toInt()) < 0) return putBack()
-        if (!g.write(boxMon, partyBefore.copyOfRange(0, BOX_MON))) return putBack()
-        if (g.call(fns.boxMonRestorePP, boxMon.toInt()) < 0) return putBack()
-        if (mon(partySlot, FIELD_PERSONALITY) != boxPersonality || boxed(boxMon, FIELD_PERSONALITY) != partyPersonality) return putBack()
+        if (g.call(fns.boxMonToMon, boxMon.toInt(), partyMon(partySlot).toInt()) < 0) return@boxMove putBack()
+        if (!g.write(boxMon, partyBefore.copyOfRange(0, BOX_MON))) return@boxMove putBack()
+        if (g.call(fns.boxMonRestorePP, boxMon.toInt()) < 0) return@boxMove putBack()
+        if (mon(partySlot, FIELD_PERSONALITY) != boxPersonality || boxed(boxMon, FIELD_PERSONALITY) != partyPersonality) return@boxMove putBack()
         BoxSwapResult.SWAPPED
-    }.getOrElse { BoxSwapResult.FAILED }
+    }
+}
+
+/**
+ * DEPOSIT: party slot [partySlot] (holding [partyPersonality]) into box [box]'s first free slot, as the game's PC does
+ * (pokefirered / pokeemerald's pokemon_storage_system: the Pokémon's 80-byte BoxPokemon into the slot, BoxMonRestorePP,
+ * its party slot zeroed and the ones after it moved up - CompactPartySlots - and gPlayerPartyCount one less). Refused
+ * like the game: the last Pokémon that can fight ("That's your last POKéMON!"), Mail ("Please remove the MAIL"), a full
+ * box. Puts the party and the slot back if anything didn't take. Emu thread.
+ */
+fun depositToBox(
+    fields: FieldItemFns, fns: BoxSwapFns, partySlot: Int, partyPersonality: Long, box: Int, busy: Boolean, g: GameCalls,
+): BoxSwapResult {
+    @Suppress("NAME_SHADOWING") val partyPersonality = partyPersonality and 0xFFFFFFFFL
+    if (box !in 0 until BOXES) return BoxSwapResult.FAILED
+    return boxMove(fields, fns, busy, g) {
+        val count = count
+        if (partySlot !in 0 until count || mon(partySlot, FIELD_PERSONALITY) != partyPersonality) return@boxMove BoxSwapResult.CHANGED
+        if (count <= 1 || !fighterLeft(partySlot)) return@boxMove BoxSwapResult.LAST_MON
+        if (holdsMail(partySlot)) return@boxMove BoxSwapResult.HOLDS_MAIL
+        boxMon(box, 0) ?: return@boxMove BoxSwapResult.FAILED
+        // The box's first free slot, as the PC fills it.
+        val slot = (0 until SLOTS).firstOrNull { s -> boxed(boxMon(box, s)!!, FIELD_SPECIES) == 0L } ?: return@boxMove BoxSwapResult.BOX_FULL
+        val boxMon = boxMon(box, slot)!!
+
+        val partyBefore = g.read(p.party, count * MON_SIZE)
+        val boxBefore = g.read(boxMon, BOX_MON)
+        if (partyBefore.size != count * MON_SIZE || boxBefore.size != BOX_MON) return@boxMove BoxSwapResult.FAILED
+        fun putBack(): BoxSwapResult {
+            g.write(p.party, partyBefore)
+            g.write(boxMon, boxBefore)
+            g.write(p.partyCount, byteArrayOf(count.toByte()))
+            return BoxSwapResult.FAILED
+        }
+        val leaving = partyBefore.copyOfRange(partySlot * MON_SIZE, (partySlot + 1) * MON_SIZE)
+        // The party with the slot taken out and the others moved up, the last slot zeroed (ZeroMonData).
+        val compacted = partyBefore.copyOfRange(0, partySlot * MON_SIZE) +
+            partyBefore.copyOfRange((partySlot + 1) * MON_SIZE, count * MON_SIZE) + ByteArray(MON_SIZE)
+        if (!g.write(boxMon, leaving.copyOfRange(0, BOX_MON))) return@boxMove putBack()
+        if (g.call(fns.boxMonRestorePP, boxMon.toInt()) < 0) return@boxMove putBack()
+        if (boxed(boxMon, FIELD_PERSONALITY) != partyPersonality) return@boxMove putBack()
+        if (!g.write(p.party, compacted) || !g.write(p.partyCount, byteArrayOf((count - 1).toByte()))) return@boxMove putBack()
+        if (this.count != count - 1 || mon(count - 1, FIELD_SPECIES) != 0L) return@boxMove putBack()
+        BoxSwapResult.SWAPPED
+    }
+}
+
+/**
+ * WITHDRAW: box [box]'s slot [slot] (holding [boxPersonality]) into the party's first free slot, as the game's PC does
+ * (BoxMonToMon into gPlayerParty[count] - its stats worked out, full HP - the box slot zeroed, gPlayerPartyCount one
+ * more). PARTY_FULL with six in the party (SWAP is the way then). Puts both back if anything didn't take. Emu thread.
+ */
+fun withdrawFromBox(
+    fields: FieldItemFns, fns: BoxSwapFns, box: Int, slot: Int, boxPersonality: Long, busy: Boolean, g: GameCalls,
+): BoxSwapResult {
+    @Suppress("NAME_SHADOWING") val boxPersonality = boxPersonality and 0xFFFFFFFFL
+    if (box !in 0 until BOXES || slot !in 0 until SLOTS) return BoxSwapResult.FAILED
+    return boxMove(fields, fns, busy, g) {
+        val boxMon = boxMon(box, slot) ?: return@boxMove BoxSwapResult.FAILED
+        val count = count
+        if (boxed(boxMon, FIELD_SPECIES) == 0L || boxed(boxMon, FIELD_PERSONALITY) != boxPersonality) return@boxMove BoxSwapResult.CHANGED
+        if (count >= PARTY_MAX) return@boxMove BoxSwapResult.PARTY_FULL
+
+        val partyBefore = g.read(partyMon(count), MON_SIZE)
+        val boxBefore = g.read(boxMon, BOX_MON)
+        if (partyBefore.size != MON_SIZE || boxBefore.size != BOX_MON) return@boxMove BoxSwapResult.FAILED
+        fun putBack(): BoxSwapResult {
+            g.write(partyMon(count), partyBefore)
+            g.write(boxMon, boxBefore)
+            g.write(p.partyCount, byteArrayOf(count.toByte()))
+            return BoxSwapResult.FAILED
+        }
+        if (g.call(fns.boxMonToMon, boxMon.toInt(), partyMon(count).toInt()) < 0) return@boxMove putBack()
+        if (mon(count, FIELD_PERSONALITY) != boxPersonality) return@boxMove putBack()
+        // The slot emptied (ZeroBoxMonData), the party one longer.
+        if (!g.write(boxMon, ByteArray(BOX_MON)) || !g.write(p.partyCount, byteArrayOf((count + 1).toByte()))) return@boxMove putBack()
+        if (this.count != count + 1 || boxed(boxMon, FIELD_SPECIES) != 0L) return@boxMove putBack()
+        BoxSwapResult.SWAPPED
+    }
 }

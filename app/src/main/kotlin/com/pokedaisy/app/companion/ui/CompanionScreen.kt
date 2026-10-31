@@ -501,22 +501,66 @@ fun CompanionScreen(
                             WaitingView(Modifier.fillMaxSize())
                         } else if (paneKey == "PARTY/DETAIL") {
                             // A mon's summary takes over the whole tab (back returns to the slots).
+                            val shownSlot = lastDetail.value.coerceIn(0, (snapshot.party.size - 1).coerceAtLeast(0))
                             MonDetailScreen(
-                                snapshot.party, lastDetail.value.coerceIn(0, (snapshot.party.size - 1).coerceAtLeast(0)),
+                                snapshot.party, shownSlot,
                                 onIndexChange = { detailIndex = it },
                                 onBack = { detailIndex = null },
                                 learn = learnContext,
                                 itemUse = itemUse,
+                                // The PC's DEPOSIT, where its moves work and the boxes are read: pick a box.
+                                onDeposit = if (pcBoxes != null && itemUse?.canSwapBox() == true) {
+                                    { boxesUi.depositing = shownSlot }
+                                } else null,
                             )
+                            val depositSlot = boxesUi.depositing
+                            val depositMon = depositSlot?.let { snapshot.party.getOrNull(it) }
+                            if (pcBoxes != null && itemUse != null && depositSlot != null && depositMon != null) {
+                                BoxDepositPicker(
+                                    pcBoxes, depositMon,
+                                    onPick = { box ->
+                                        boxesUi.depositing = null
+                                        val boxName = pcBoxes.boxes[box].name
+                                        itemUse.depositToBox(depositSlot, depositMon.personality, box) { r ->
+                                            // Gone from the party: back on its slots, where the move plays.
+                                            if (r == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) detailIndex = null
+                                            boxesUi.moved(r, "DEPOSIT", boxDepositMessage(r, depositMon, boxName)) {
+                                                BoxSwapAnim(null, depositMon, boxName, boxDepositMessage(r, depositMon, boxName))
+                                            }
+                                        }
+                                    },
+                                    onDismiss = { boxesUi.depositing = null },
+                                )
+                            }
+                            BoxSwapNotice(boxesUi)
                         } else if (paneKey == "BOXES/DETAIL" && pcBoxes != null) {
                             // A box Pokémon's summary, like PARTY's: up / down page through the box.
-                            val inBox = boxSummaryList(pcBoxes.boxes[boxesUi.boxOf(pcBoxes)])
+                            val boxIndex = boxesUi.boxOf(pcBoxes)
+                            val inBox = boxSummaryList(pcBoxes.boxes[boxIndex])
                             MonDetailScreen(
                                 inBox, lastBoxMon.value.coerceIn(0, (inBox.size - 1).coerceAtLeast(0)),
-                                onIndexChange = { i -> boxesUi.open = i; boxesUi.looked = pcBoxes.boxes[boxesUi.boxOf(pcBoxes)].mons.indexOf(inBox.getOrNull(i)) },
+                                onIndexChange = { i -> boxesUi.open = i; boxesUi.looked = pcBoxes.boxes[boxIndex].mons.indexOf(inBox.getOrNull(i)) },
                                 onBack = { boxesUi.open = null },
-                                onSwap = if (itemUse?.canSwapBox() == true) {
-                                    { inBox.getOrNull(lastBoxMon.value)?.let { boxesUi.swapping = it } }
+                                // WITHDRAW into the party; with six there, SWAP's pick instead.
+                                onWithdraw = if (itemUse?.canSwapBox() == true) {
+                                    {
+                                        val boxMon = inBox.getOrNull(lastBoxMon.value)
+                                        val slot = pcBoxes.boxes[boxIndex].mons.indexOf(boxMon)
+                                        if (boxMon != null && slot >= 0) {
+                                            if (snapshot.party.size >= 6) boxesUi.swapping = boxMon
+                                            else {
+                                                val boxName = pcBoxes.boxes[boxIndex].name
+                                                itemUse.withdrawFromBox(boxIndex, slot, boxMon.personality) { r ->
+                                                    // Out of the box: back on it, where the move plays.
+                                                    if (r == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) boxesUi.open = null
+                                                    if (r == com.pokedaisy.app.companion.data.BoxSwapResult.PARTY_FULL) boxesUi.swapping = boxMon
+                                                    else boxesUi.moved(r, "WITHDRAW", boxWithdrawMessage(r, boxMon, boxName)) {
+                                                        BoxSwapAnim(boxMon, null, boxName, boxWithdrawMessage(r, boxMon, boxName))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
                                 } else null,
                             )
                             BoxSwapNotice(boxesUi)
@@ -533,18 +577,15 @@ fun CompanionScreen(
                                         boxesUi.swapping = null
                                         val boxName = pcBoxes.boxes[boxIndex].name
                                         val message = boxSwapMessage(r, boxMon, partyMon, boxName)
-                                        // Back on the box, the two trading places first (not with LIGHT COMPANION on), then the message.
-                                        if (r == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) {
-                                            boxesUi.open = null
-                                            if (com.pokedaisy.app.companion.LightCompanion.on) boxesUi.swapMessage = message
-                                            else boxesUi.swapAnim = BoxSwapAnim(boxMon, partyMon, boxName, message)
-                                        } else boxesUi.swapMessage = message
+                                        // Back on the box, the two trading places, then the message under them.
+                                        if (r == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) boxesUi.open = null
+                                        boxesUi.moved(r, "SWAP", message) { BoxSwapAnim(boxMon, partyMon, boxName, message) }
                                     }
                                 },
                             )
                         } else if (tab == "BOXES" && pcBoxes != null) {
                             BoxesScreen(pcBoxes, boxesUi, snapshot.pokedex?.tables, Modifier.fillMaxSize())
-                            boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = boxesUi::finishSwapAnim) }
+                            boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = { boxesUi.swapAnim = null }) }
                             BoxSwapNotice(boxesUi)
                         } else if (tab == "DEX" && dex != null) {
                             if (paneKey == "DEX/DETAIL") PokedexEntryScreen(dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables)
@@ -566,6 +607,9 @@ fun CompanionScreen(
                             // ones) over the party-menu backdrop - no extra window
                             // behind them, and the full tab area for bigger slots.
                             PartyScreen(snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) })
+                            // A DEPOSIT that went through plays over the party, then says so.
+                            boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = { boxesUi.swapAnim = null }) }
+                            BoxSwapNotice(boxesUi)
                         } else if (tab == "SETTINGS") {
                             // Draws its own OPTION-screen windows, no cream card behind them.
                             CompanionSettingsScreen(

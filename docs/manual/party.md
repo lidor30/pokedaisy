@@ -3,7 +3,7 @@ title: Party and summaries
 summary: Your team at a glance, each Pokémon's full summary, its exact IVs and EVs, and which new moves are worth learning.
 section: companion
 order: 2
-keywords: [team, pokemon, summary, ivs, evs, nature, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, weakness, resistance, held item, holding, item, shiny, shiny icon, colours]
+keywords: [team, pokemon, summary, ivs, evs, nature, hidden power, stats, moves, exp, experience, learn, tm, forget, move advice, weakness, resistance, held item, holding, item, shiny, shiny icon, colours, deposit, pc, box]
 ---
 
 The `PARTY` tab is your team, live. Glance down and you know who's hurt, who's poisoned and who's about to level up, without pausing to open the game's menu.
@@ -32,7 +32,13 @@ Tap any slot to open that Pokémon's summary. It fills the tab:
 
 If the Pokémon holds an item, its `ITEM` line shows it. In games where the companion can use items, a `TAKE` button puts the item back in your bag, after asking first. When the bag has no room for it, the line says `BAG FULL` instead, just as the game would refuse.
 
-Along the bottom is a strip with every Pokémon in your party: tap another one to switch to its summary. The page you're on (moves, stats or learn) stays put while you switch, so you can compare the whole team's IVs one after another. The blue button at the bottom right, or BACK, returns to the party.
+Down the right side is a column with every Pokémon in your party, the one on show framed in red: tap another one to switch to its summary. The page you're on (moves, stats or learn) stays put while you switch, so you can compare the whole team's IVs one after another. The blue button under the column, or BACK, returns to the party.
+
+## DEPOSIT: into a PC box
+
+In the games where the [BOXES tab](boxes.md) can move Pokémon, the summary has a green `DEPOSIT` button, like the game's own PC. Tap it, then pick a box from the list, which shows how full each one is. The Pokémon goes into that box's first free slot, right there in your game, and the rest of your party moves up. Back on your party you see it fly over to the box, then a message says where it went.
+
+The game's own rules still apply: your last Pokémon that can battle has to stay, a Pokémon holding Mail can't go in until you take the Mail off, and a full box says so. You have to be walking around, with no battle, menu or text box open. **Save in the game** to keep it, just as you would after using a PC.
 
 ## STATS: IVs, EVs and nature
 

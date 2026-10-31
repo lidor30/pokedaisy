@@ -57,12 +57,24 @@ interface ItemUse {
     /** Opens the game's own PC on the field (USED = it's open; NOT_NOW / IN_BATTLE: not from here, now). */
     fun openPc(done: (ItemUseOutcome) -> Unit) = done(ItemUseOutcome(ItemUseResult.FAILED))
 
-    /** Whether a box Pokémon's summary has SWAP here (BoxSwap.kt). */
+    /** Whether the PC's moves work here (BoxSwap.kt): a box Pokémon's WITHDRAW / SWAP, a party one's DEPOSIT. */
     fun canSwapBox(): Boolean = false
 
     /** Swaps box [box]'s slot [slot] ([boxPersonality]) with party slot [partySlot] ([partyPersonality]) in the game. */
     fun swapBox(
         box: Int, slot: Int, boxPersonality: Long, partySlot: Int, partyPersonality: Long,
+        done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+    ) = done(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED)
+
+    /** DEPOSIT: party slot [partySlot] ([partyPersonality]) into box [box]'s first free slot in the game. */
+    fun depositToBox(
+        partySlot: Int, partyPersonality: Long, box: Int,
+        done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+    ) = done(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED)
+
+    /** WITHDRAW: box [box]'s slot [slot] ([boxPersonality]) into the party in the game. */
+    fun withdrawFromBox(
+        box: Int, slot: Int, boxPersonality: Long,
         done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
     ) = done(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED)
 }

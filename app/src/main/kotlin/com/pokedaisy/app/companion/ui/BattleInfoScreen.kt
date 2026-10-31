@@ -122,8 +122,8 @@ fun BattleInfoScreen(
     SummaryFrame(
         m, onBack, modifier,
         buttons = {
-            TextNavButton(tr("SUGGESTIONS"), SuggestGold, SuggestGoldDark, onShowSuggestions)
-            if (onShowStats != null) TextNavButton(tr("STATS"), StatsPurple, StatsPurpleDark, onShowStats)
+            TextNavButton(tr("SUGGESTIONS"), SuggestGold, SuggestGoldDark, onClick = onShowSuggestions)
+            if (onShowStats != null) TextNavButton(tr("STATS"), StatsPurple, StatsPurpleDark, onClick = onShowStats)
         },
         middle = if (foeTeam.size > 1) ({ FoeTeamStrip(foeTeam, seenFoes, shownFoe, small, onSelectFoe) }) else null,
     ) {

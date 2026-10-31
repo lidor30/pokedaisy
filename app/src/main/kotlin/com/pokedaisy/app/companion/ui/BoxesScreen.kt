@@ -22,6 +22,7 @@ import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.offset
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.size
@@ -77,17 +78,21 @@ class BoxesUiState {
     /** The open summary's index among the box's Pokémon; null = the box. */
     var open by mutableStateOf<Int?>(null)
     var picking by mutableStateOf(false)
-    /** SWAP's party pick is up for this box Pokémon; null = not. */
+    /** SWAP's party pick is up for this box Pokémon (WITHDRAW with a full party); null = not. */
     var swapping by mutableStateOf<MonView?>(null)
-    /** What the last SWAP did, in a window until OK; null = none. */
+    /** DEPOSIT's box pick is up for this party Pokémon (its party slot); null = not. */
+    var depositing by mutableStateOf<Int?>(null)
+    /** Why the last PC move didn't go through, in a window until OK, under [swapTitle]; null = none. */
     var swapMessage by mutableStateOf<String?>(null)
-    /** A SWAP that went through, playing its animation ([BoxSwapAnimation]) before [swapMessage]; null = none. */
+    var swapTitle by mutableStateOf("SWAP")
+    /** A PC move that went through, playing its animation and then its message ([BoxSwapAnimation]); null = none.
+     * PARTY and BOXES both draw it, so it plays over whichever the move was made from. */
     var swapAnim by mutableStateOf<BoxSwapAnim?>(null)
 
-    /** [anim] done: its message in the window ([BoxSwapNotice]). */
-    fun finishSwapAnim() {
-        swapAnim?.let { swapMessage = it.message }
-        swapAnim = null
+    /** A PC move's [result] ([title]: SWAP / DEPOSIT / WITHDRAW): [anim] when it went through, else [message] in a window. */
+    fun moved(result: com.pokedaisy.app.companion.data.BoxSwapResult, title: String, message: String, anim: () -> BoxSwapAnim) {
+        if (result == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) swapAnim = anim()
+        else { swapTitle = title; swapMessage = message }
     }
 
     fun boxOf(boxes: BoxesView): Int = (if (box >= 0) box else boxes.currentBox).coerceIn(0, boxes.boxes.size - 1)
@@ -162,6 +167,8 @@ fun boxSummaryList(box: BoxView): List<MonView> = box.mons.filterNotNull()
  */
 @Composable
 internal fun BoxSwapPicker(boxMon: MonView?, party: List<MonView>, onCancel: () -> Unit, onPick: (Int, MonView) -> Unit) {
+    val prompt = if (party.size >= 6) tr("Party full: swap {0} with which POKéMON?", boxMon?.shownName.orEmpty())
+    else tr("Swap {0} with which POKéMON?", boxMon?.shownName.orEmpty())
     val m = rememberGbaTextMetrics()
     CompanionBackHandler(onBack = onCancel)
     fun holdsMail(mon: MonView) = mon.heldItemId in com.pokedaisy.app.companion.data.MAIL_ITEMS
@@ -173,7 +180,7 @@ internal fun BoxSwapPicker(boxMon: MonView?, party: List<MonView>, onCancel: () 
             dimmed = ::holdsMail,
         )
         OptionTitleWindow(
-            tr("Swap {0} with which POKéMON?", boxMon?.shownName.orEmpty()), m,
+            prompt, m,
             leading = { SpeciesIcon(boxMon?.iconAsset, m.lineHeight * 1.5f) },
             titleMaxLines = 2,
         ) {
@@ -191,34 +198,75 @@ internal fun boxSwapMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, b
     com.pokedaisy.app.companion.data.BoxSwapResult.CHANGED -> tr("The party or the box has changed. Try again.")
     com.pokedaisy.app.companion.data.BoxSwapResult.HOLDS_MAIL -> tr("Take the MAIL from {0} first.", partyMon.shownName)
     com.pokedaisy.app.companion.data.BoxSwapResult.LAST_MON -> tr("An EGG can't take the place of your last POKéMON that can battle.")
+    com.pokedaisy.app.companion.data.BoxSwapResult.PARTY_FULL -> tr("Your party is full!")
+    com.pokedaisy.app.companion.data.BoxSwapResult.BOX_FULL -> tr("{0} is full.", boxName)
     com.pokedaisy.app.companion.data.BoxSwapResult.FAILED -> tr("The swap didn't work. Nothing was changed.")
 }
 
-/** The last SWAP's message ([BoxesUiState.swapMessage]) in a window, until OK. */
+/** Why the last PC move didn't go through ([BoxesUiState.swapMessage]) in a window, until OK. */
 @Composable
 internal fun BoxSwapNotice(ui: BoxesUiState) {
     val text = ui.swapMessage ?: return
-    OptionConfirm(tk("SWAP"), text, tk("OK"), rememberGbaTextMetrics(), onConfirm = { ui.swapMessage = null },
+    OptionConfirm(tk(ui.swapTitle), text, tk("OK"), rememberGbaTextMetrics(), onConfirm = { ui.swapMessage = null },
         onDismiss = { ui.swapMessage = null }, cancelLabel = null)
 }
 
-/** A SWAP that went through: [boxMon] came out of box [boxName] and [partyMon] went in; [message] follows the animation. */
-class BoxSwapAnim(val boxMon: MonView, val partyMon: MonView, val boxName: String, val message: String)
+/** What a DEPOSIT of [mon] into box [boxName] did, in the companion's words. */
+internal fun boxDepositMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
+    com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} was stored in {1}. Save in the game to keep it.", mon.shownName, boxName)
+    com.pokedaisy.app.companion.data.BoxSwapResult.LAST_MON -> tr("That's your last POKéMON that can battle!")
+    com.pokedaisy.app.companion.data.BoxSwapResult.BOX_FULL -> tr("{0} is full.", boxName)
+    com.pokedaisy.app.companion.data.BoxSwapResult.FAILED -> tr("That didn't work. Nothing was changed.")
+    else -> boxSwapMessage(r, mon, mon, boxName)
+}
 
-// The animation's timeline (ms): the wells come in, both pictures flash white and shrink in whole steps to a spark, the
-// sparks cross (one over, one under), each grows into the other's well with a burst, a moment's hold.
+/** What a WITHDRAW of [mon] from box [boxName] did, in the companion's words. */
+internal fun boxWithdrawMessage(r: com.pokedaisy.app.companion.data.BoxSwapResult, mon: MonView, boxName: String): String = when (r) {
+    com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED -> tr("{0} was taken out of {1} and joined the party. Save in the game to keep it.", mon.shownName, boxName)
+    com.pokedaisy.app.companion.data.BoxSwapResult.PARTY_FULL -> tr("Your party is full!")
+    com.pokedaisy.app.companion.data.BoxSwapResult.FAILED -> tr("That didn't work. Nothing was changed.")
+    else -> boxSwapMessage(r, mon, mon, boxName)
+}
+
+/** DEPOSIT's box pick: every box with how full it is, the save's current box first lit; a full one says FULL. */
+@Composable
+internal fun BoxDepositPicker(boxes: BoxesView, mon: MonView?, onPick: (Int) -> Unit, onDismiss: () -> Unit) {
+    OptionSelector(
+        title = tr("Deposit {0} in which BOX?", mon?.shownName.orEmpty()),
+        options = boxes.boxes.indices.toList(),
+        selected = boxes.currentBox,
+        label = { i -> boxes.boxes[i].let { b -> "${b.name}   ${b.count}/$SLOTS" } },
+        m = rememberGbaTextMetrics(),
+        onPick = onPick,
+        onDismiss = onDismiss,
+        badge = { i -> if (boxes.boxes[i].count >= SLOTS) tr("FULL") else null },
+    )
+}
+
+/**
+ * A PC move that went through, for [BoxSwapAnimation]: [boxMon] came out of box [boxName] into the party (WITHDRAW, or
+ * SWAP's half), [partyMon] went into the box (DEPOSIT, or SWAP's other half) - null where nothing moved that way.
+ * [message] shows under the wells once they've traded.
+ */
+class BoxSwapAnim(val boxMon: MonView?, val partyMon: MonView?, val boxName: String, val message: String)
+
+// The animation's timeline (ms): the wells come in, the pictures flash white and shrink in whole steps to a spark, the
+// sparks cross (one over, one under), each grows into the other's well with a burst, a moment's hold, then the message.
 private const val SWAP_IN = 220L
 private const val SWAP_WHITE = 380L
 private const val SWAP_SHRUNK = 540L
 private const val SWAP_LANDED = 1140L
 private const val SWAP_GROWN = 1380L
 private const val SWAP_END = 1750L
+private const val SWAP_DONE = 1950L
 
 /**
- * SWAP's animation over the tab ([BoxSwapAnim]): the box's and the party's picture wells (PKMN DATA's), [anim]'s two
+ * A PC move's animation over the tab ([BoxSwapAnim]): the box's and the party's picture wells (PKMN DATA's), [anim]'s
  * Pokémon in them, then the PC's kind of move - each turns white, shrinks to a spark, and the sparks trade wells along
- * two arcs; [onDone] at the end, or at once on a tap / BACK. Everything moves in whole GBA pixels and the pictures scale
- * in whole steps, so it stays pixel art. [at]: a fixed moment (ms) instead of the clock, for screenshots.
+ * two arcs (one, for DEPOSIT / WITHDRAW). Then [BoxSwapAnim.message] in a window under the wells, until OK, a tap or
+ * BACK ([onDone]); a tap or BACK before that skips to it. Everything moves in whole GBA pixels and the pictures scale in
+ * whole steps, so it stays pixel art. With LIGHT COMPANION on it starts at the end. [at]: a fixed moment (ms) instead
+ * of the clock, for screenshots.
  */
 @Composable
 internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: () -> Unit, at: Long? = null) {
@@ -227,18 +275,22 @@ internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: ()
     val u = m.u
     val night = OptionColors.dark
     val done by androidx.compose.runtime.rememberUpdatedState(onDone)
-    CompanionBackHandler(onBack = { done() })
     var clock by remember(anim) { mutableStateOf(0L) }
+    var skipped by remember(anim) { mutableStateOf(com.pokedaisy.app.companion.LightCompanion.on) }
     if (at == null) {
         androidx.compose.runtime.LaunchedEffect(anim) {
             val start = androidx.compose.runtime.withFrameMillis { it }
-            while (clock < SWAP_END) clock = androidx.compose.runtime.withFrameMillis { it } - start
-            done()
+            while (!skipped && clock < SWAP_DONE) clock = androidx.compose.runtime.withFrameMillis { it } - start
         }
     }
-    val t = at ?: clock
-    val outPic = swapPictureOf(anim.boxMon, dex)
-    val inPic = swapPictureOf(anim.partyMon, dex)
+    val t = at ?: if (skipped) SWAP_DONE else clock
+    // A tap or BACK mid-way skips to the message; once it's up, closes it.
+    fun tap() {
+        if (t < SWAP_END) skipped = true else done()
+    }
+    CompanionBackHandler(onBack = ::tap)
+    val outPic = anim.boxMon?.let { swapPictureOf(it, dex) }
+    val inPic = anim.partyMon?.let { swapPictureOf(it, dex) }
     val outArt = remember(outPic) { outPic?.let { SwapArt(it.asImageBitmap(), opaqueBounds(it)) } }
     val inArt = remember(inPic) { inPic?.let { SwapArt(it.asImageBitmap(), opaqueBounds(it)) } }
     val fade = (t / SWAP_IN.toFloat()).coerceIn(0f, 1f)
@@ -246,7 +298,7 @@ internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: ()
     BoxWithConstraints(
         Modifier.fillMaxSize()
             .drawBehind { drawRect(Color.Black.copy(alpha = 0.8f * fade)) }
-            .soundClickable(interactionSource = noRipple, indication = null, onClick = { done() }),
+            .soundClickable(interactionSource = noRipple, indication = null, onClick = ::tap),
     ) {
         val density = LocalDensity.current
         val p = with(density) { u.toPx() }
@@ -254,9 +306,12 @@ internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: ()
         val w = with(density) { maxWidth.toPx() }
         val h = with(density) { maxHeight.toPx() }
         val labelH = with(density) { (small.lineHeight + u * 3).toPx() }
-        val side = snap(minOf(w * 0.3f, (h - labelH) * 0.62f))
+        // Room under the wells for the message's window (up to three lines).
+        val messageGap = with(density) { (u * 8).toPx() }
+        val messageH = with(density) { (m.lineHeight * 3 + u * 14).toPx() }
+        val side = snap(minOf(w * 0.3f, (h - labelH - messageGap - messageH) * 0.9f))
         val gap = snap(minOf(w * 0.14f, side * 0.7f))
-        val top = snap((h - labelH - side) / 2) + labelH
+        val top = snap((h - labelH - side - messageGap - messageH) / 2) + labelH
         val leftX = snap(w / 2 - gap / 2 - side)
         val rightX = leftX + side + gap
         val cy = top + side / 2
@@ -288,11 +343,16 @@ internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: ()
             val grow = ((t - SWAP_LANDED).toFloat() / (SWAP_GROWN - SWAP_LANDED)).coerceIn(0f, 1f)
             val burst = ((t - SWAP_LANDED).toFloat() / 420f).coerceIn(0f, 1f)
             val lift = side * 0.42f
+            val out = anim.boxMon != null
+            val into = anim.partyMon != null
+            // One Pokémon moving takes the top arc, whichever way it goes.
+            val outLift = if (out) -lift else 0f
+            val inLift = if (out) lift else -lift
             when {
                 t < SWAP_SHRUNK -> {
                     // Each Pokémon in its own well, turning white, then shrinking a whole step at a time.
-                    swapPicture(outArt, lx, cy, room, 1f - shrink, white * fade, p, fade)
-                    swapPicture(inArt, rx, cy, room, 1f - shrink, white * fade, p, fade)
+                    if (out) swapPicture(outArt, lx, cy, room, 1f - shrink, white * fade, p, fade)
+                    if (into) swapPicture(inArt, rx, cy, room, 1f - shrink, white * fade, p, fade)
                 }
                 t < SWAP_LANDED -> {
                     val e = travel * travel * (3 - 2 * travel)
@@ -302,18 +362,33 @@ internal fun BoxSwapAnimation(anim: BoxSwapAnim, dex: PokedexTables?, onDone: ()
                         val alpha = if (k == 0) 1f else 0.5f / k
                         val arc = kotlin.math.sin(Math.PI.toFloat() * back)
                         val twinkle = k == 0 && (t / 80) % 2 == 0L
-                        swapSpark(snap(lx + (rx - lx) * back), snap(cy - lift * arc), p, alpha, twinkle)
-                        swapSpark(snap(rx + (lx - rx) * back), snap(cy + lift * arc), p, alpha, !twinkle && k == 0)
+                        if (out) swapSpark(snap(lx + (rx - lx) * back), snap(cy + outLift * arc), p, alpha, twinkle)
+                        if (into) swapSpark(snap(rx + (lx - rx) * back), snap(cy + inLift * arc), p, alpha, if (out) !twinkle && k == 0 else twinkle)
                     }
                 }
                 else -> {
                     // Grown into the other well, the white fading out, a burst of pixels around each.
-                    swapPicture(outArt, rx, cy, room, grow, (1f - grow), p, 1f)
-                    swapPicture(inArt, lx, cy, room, grow, (1f - grow), p, 1f)
+                    if (out) swapPicture(outArt, rx, cy, room, grow, (1f - grow), p, 1f)
+                    if (into) swapPicture(inArt, lx, cy, room, grow, (1f - grow), p, 1f)
                     if (burst < 1f) {
-                        swapBurst(rx, cy, side, burst, p)
-                        swapBurst(lx, cy, side, burst, p)
+                        if (out) swapBurst(rx, cy, side, burst, p)
+                        if (into) swapBurst(lx, cy, side, burst, p)
                     }
+                }
+            }
+        }
+        // What happened, in a window under the wells, fading in once they've traded; OK closes it all.
+        val shown = ((t - SWAP_END).toFloat() / (SWAP_DONE - SWAP_END)).coerceIn(0f, 1f)
+        if (shown > 0f) {
+            val maxW = with(density) { (w * 0.86f).toDp() }
+            Box(
+                Modifier.fillMaxWidth()
+                    .offset { IntOffset(0, (top + side + messageGap).roundToInt()) }
+                    .graphicsLayerAlpha(shown),
+                contentAlignment = Alignment.TopCenter,
+            ) {
+                OptionTitleWindow(anim.message, m, Modifier.widthIn(max = maxW), titleMaxLines = 3) {
+                    OptionButton(tk("OK"), m, onClick = { done() }, modifier = Modifier.padding(start = u * 8))
                 }
             }
         }

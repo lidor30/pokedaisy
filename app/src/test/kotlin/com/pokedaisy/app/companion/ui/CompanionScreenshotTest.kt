@@ -1483,6 +1483,10 @@ open class CompanionScreenshotTest {
         controls: Boolean = false,
         /** BOXES: SWAP's animation over the tab at this moment (ms), the box's first Pokémon trading with the party's lead. */
         swapAnimAt: Long? = null,
+        /** With [swapAnimAt]: "swap", or "deposit" (the party's second into the box) / "withdraw" (the box's first out). */
+        pcMove: String = "swap",
+        /** A summary with the PC's button: "deposit" (the party's second), "pick" (its box pick), "withdraw" (the box's first). */
+        summary: String? = null,
     ) {
         val rom = RomFileReader.load(RETAIL_ROM_DIR + romFile) ?: return
         if (art) RomArt.extractTo(java.io.File(RETAIL_ROM_DIR + romFile).readBytes(), RomArt.dirOverride!!)
@@ -1516,7 +1520,14 @@ open class CompanionScreenshotTest {
         t.pcBoxes?.boxes?.flatMap { it.mons }?.filterNotNull()?.forEach { DecompIconSource.get(it.species) }
         if (dex != null) t.pcBoxes?.boxes?.get(t.pcBoxes!!.currentBox)?.mons?.firstOrNull { it != null }?.let { PokedexSource.frontSprite(dex.tables, it.species) }
         val swapBoxMon = v.pcBoxes?.let { b -> b.boxes[b.currentBox].mons.firstOrNull { it != null } }
-        if (swapAnimAt != null && dex != null) listOfNotNull(swapBoxMon, v.party.firstOrNull()).forEach { PokedexSource.frontSprite(dex.tables, it.species) }
+        val boxName = v.pcBoxes?.let { b -> b.boxes[b.currentBox].name }.orEmpty()
+        val ok = com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED
+        val pcAnim = when (pcMove) {
+            "deposit" -> BoxSwapAnim(null, v.party[1], boxName, boxDepositMessage(ok, v.party[1], boxName))
+            "withdraw" -> swapBoxMon?.let { BoxSwapAnim(it, null, boxName, boxWithdrawMessage(ok, it, boxName)) }
+            else -> swapBoxMon?.let { BoxSwapAnim(it, v.party.first(), boxName, boxSwapMessage(ok, it, v.party.first(), boxName)) }
+        }
+        if (swapAnimAt != null && dex != null) listOfNotNull(pcAnim?.boxMon, pcAnim?.partyMon).forEach { PokedexSource.frontSprite(dex.tables, it.species) }
         v.items.forEach { DecompIconSource.getItem(it.itemId) }
         if (entry != null && dex != null) {
             val species = PokedexSource.speciesFor(dex.tables, entry)
@@ -1551,8 +1562,21 @@ open class CompanionScreenshotTest {
             else if (swapAnimAt != null) androidx.compose.foundation.layout.Box {
                 CompanionScreen(v, SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = tab)
                 AppTheme {
-                    BoxSwapAnimation(BoxSwapAnim(swapBoxMon!!, v.party.first(), "BOX1", ""), dex?.tables, onDone = {}, at = swapAnimAt)
+                    BoxSwapAnimation(pcAnim!!, dex?.tables, onDone = {}, at = swapAnimAt)
                 }
+            }
+            else if (summary == "withdraw") AppTheme {
+                MonDetailScreen(boxSummaryList(v.pcBoxes!!.boxes[v.pcBoxes!!.currentBox]), 0, {}, {}, onWithdraw = {})
+            }
+            else if (summary != null) androidx.compose.foundation.layout.Box {
+                // The party summary as the tab opens it, its PC moves on.
+                val pc = object : com.pokedaisy.app.companion.ItemUse {
+                    override fun canUse(itemId: Int) = false
+                    override fun use(itemId: Int, done: (com.pokedaisy.app.companion.data.ItemUseOutcome) -> Unit) = Unit
+                    override fun canSwapBox() = true
+                }
+                CompanionScreen(v, SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = tab, initialMonIndex = 1, itemUse = pc)
+                if (summary == "pick") AppTheme { BoxDepositPicker(v.pcBoxes!!, v.party[1], onPick = {}, onDismiss = {}) }
             }
             else if (entry == null) CompanionScreen(
                 v, SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = tab,
@@ -1688,6 +1712,38 @@ open class CompanionScreenshotTest {
     )
     @Test fun fireRedBoxesSwapLanded() = retail(
         "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "BOXES", art = true, swapAnimAt = 1600,
+    )
+    /** The swap's end: what happened, in a window under the two wells. */
+    @Test fun fireRedBoxesSwapMessage() = retail(
+        "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "BOXES", art = true, swapAnimAt = 2000,
+    )
+    /** WITHDRAW with room in the party: the box's Pokémon alone, over the top, then its message. */
+    @Test fun fireRedBoxesWithdrawing() = retail(
+        "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "BOXES", art = true,
+        swapAnimAt = 840, pcMove = "withdraw",
+    )
+    @Test fun fireRedBoxesWithdrawn() = retail(
+        "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "BOXES", art = true,
+        swapAnimAt = 2000, pcMove = "withdraw",
+    )
+    /** DEPOSIT over the PARTY tab: the party's second into the box, then its message. */
+    @Test fun fireRedPartyDeposited() = retail(
+        "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "PARTY", art = true,
+        swapAnimAt = 2000, pcMove = "deposit",
+    )
+    /** The summaries with the PC's buttons: a party Pokémon's DEPOSIT (and its box pick), a box one's WITHDRAW; the
+     * Pokémon in a column on the right. */
+    @Test fun fireRedPartySummaryDeposit() = retail(
+        "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "PARTY", art = true,
+        summary = "deposit",
+    )
+    @Test fun fireRedPartyDepositPick() = retail(
+        "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "PARTY", art = true,
+        summary = "pick",
+    )
+    @Test fun fireRedBoxSummaryWithdraw() = retail(
+        "firered_vanilla", NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4), FR_ROM, GameKind.FIRERED, "BOXES", art = true,
+        summary = "withdraw",
     )
     @Test fun fireRedLearn() = retail("firered_vanilla", NATIVE_FIRERED_REV1, FR_ROM, GameKind.FIRERED, "PARTY", art = true, learn = true)
     @Test fun fireRedTmRow() = retail("firered_vanilla", NATIVE_FIRERED_REV1, FR_ROM, GameKind.FIRERED, "ITEMS", art = true, tmRow = true)

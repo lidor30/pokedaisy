@@ -25,15 +25,19 @@ The window beside the box shows one Pokémon's picture, its name, its kind, its 
 
 ## A Pokémon's summary
 
-Tap a Pokémon to open its summary, the same one the [PARTY tab](party.md#the-summary) shows: its level, types, moves, matchups, and `STATS` with its IVs, EVs and nature. The strip along the bottom holds the Pokémon in the same box, six at a time, so you can step through the whole box. BACK returns to the box.
+Tap a Pokémon to open its summary, the same one the [PARTY tab](party.md#the-summary) shows: its level, types, moves, matchups, and `STATS` with its IVs, EVs and nature. The column down the right side holds the Pokémon in the same box, six at a time, so you can step through the whole box. BACK returns to the box.
 
 A Pokémon in a box keeps no stats of its own, so the companion works them out the way the game does when you take it out. A Pokémon in a box is always at full HP.
 
-## Swapping with your party
+## Taking a Pokémon out
 
-The summary of a Pokémon in a box has a green `SWAP` button. Tap it, then tap one of your party's Pokémon: the two trade places, right there in your game, just as if you had dropped one on the other in a PC. The one from the box comes out at full health, and the one going in keeps everything but its HP and status.
+The summary of a Pokémon in a box has a green `WITHDRAW` button, like the game's own PC. Tap it and the Pokémon joins your party, right there in your game, at full health.
 
-Back on the box, you see them trade: each one flashes white, shrinks to a spark, and the sparks cross over to the other side before the Pokémon appear in their new places. Tap anywhere to skip it. With `LIGHT COMPANION` on, the message shows straight away.
+When your party already has six, `WITHDRAW` asks which of them to swap it with instead. Tap one of your party's Pokémon: the two trade places, just as if you had dropped one on the other in a PC. The one going into the box keeps everything but its HP and status.
+
+You can also put a party Pokémon into a box from its own summary on the PARTY tab, with [DEPOSIT](party.md#deposit-into-a-pc-box).
+
+Back on the box, you see the move: each Pokémon flashes white, shrinks to a spark, and flies over to the other side before it appears in its new place. Then a message under the two pictures says what happened. Tap `OK`, or anywhere, to close it; a tap before the end skips straight to the message. With `LIGHT COMPANION` on, the message shows straight away.
 
 A few things the game itself wouldn't allow are refused:
 
@@ -41,7 +45,7 @@ A few things the game itself wouldn't allow are refused:
 - **Your last fighter**: an Egg can't take the place of the last Pokémon in your party that can battle.
 - **Not now**: you have to be walking around, with no battle, menu or text box open. Close the game's own PC first too.
 
-The swap happens in your game right away. **Save in the game** to keep it, just as you would after using a PC.
+The move happens in your game right away. **Save in the game** to keep it, just as you would after using a PC.
 
 ## Opening the BOXES tab
 
@@ -54,4 +58,4 @@ The swap happens in your game right away. **Save in the game** to keep it, just 
 
 For now, the English FireRed and LeafGreen (both versions of each cartridge), the English Emerald, Unbound and SoulGold. Unbound has 25 boxes and SoulGold 15, and the tab shows them all.
 
-`SWAP` works on Emerald, on both LeafGreens and on the newer FireRed (the Rev 1 cartridge). Unbound and SoulGold show their boxes but can't swap yet. More games will follow.
+`WITHDRAW`, the swap and `DEPOSIT` work on Emerald, on both LeafGreens and on the newer FireRed (the Rev 1 cartridge). Unbound and SoulGold show their boxes but can't move Pokémon yet. More games will follow.
