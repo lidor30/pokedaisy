@@ -409,6 +409,12 @@ class SettingsActivity : ComponentActivity() {
             }
 
             UpdateDialog(updates, m, small)
+            PatchWindow(
+                patcher, m, small, onPlay = null,
+                onAskSupport = { rom ->
+                    Thread({ val url = RomSupportRequest.url(rom); runOnUiThread { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } } }, "pokedaisy-support-url").start()
+                },
+            )
 
             removingCheat?.let { i ->
                 val c = cheatList.getOrNull(i)
@@ -728,6 +734,11 @@ class SettingsActivity : ComponentActivity() {
             SettingRow(tk("HIDDEN GAMES"), RomFolder.hiddenRoms(this@SettingsActivity, prefs).size.takeIf { it > 0 }?.toString() ?: tk("NONE"), opensPage = true) { screen = Screen.HIDDEN },
             // A game's GameShark / Action Replay / CodeBreaker codes, on their own page.
             SettingRow(tk("CHEATS"), onOff(prefs.cheatsEnabled), opensPage = true) { screen = Screen.CHEATS },
+            // A ROM hack's .bps applied to the ROM it's for, found in the library by its checksum (RomPatchFlow).
+            SettingRow(
+                tk("PATCH A ROM"), null, subtitle = "Turn a .bps patch into a game",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.ROM_PATCH),
+            ) { pickPatch.launch(arrayOf("*/*")) },
             groupTitle(tk("ONLINE")),
             // Signed in = on; the account's name, else OFF.
             SettingRow(
@@ -982,6 +993,14 @@ class SettingsActivity : ComponentActivity() {
     private var removingOverlay by mutableStateOf<Pair<String, String>?>(null)
     /** REMOVE ALL's confirm is up. */
     private var removingAllOverlays by mutableStateOf(false)
+
+    /** LIBRARY > PATCH A ROM: the library's patch window, over Settings (internal for ui-preview). */
+    internal val patcher by lazy {
+        RomPatchFlow(this) { revision++ }
+    }
+    private val pickPatch = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { patcher.start(it) }
+    }
 
     private val importOverlayFiles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) importOverlays(uris, emptyList())

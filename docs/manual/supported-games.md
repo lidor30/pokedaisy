@@ -87,7 +87,7 @@ PokeDaisy recognises a game by its file, using the ROM's SHA-1 checksum (a finge
 
 That's why the version matters:
 
-- If you patched a hack yourself, make sure you used the right patch on the right base ROM (most hacks want a clean, unmodified US FireRed or Emerald).
+- If you patched a hack yourself, make sure you used the right patch on the right base ROM (most hacks want a clean, unmodified US FireRed or Emerald). [Patch a ROM hack](library.md#patch-a-rom-hack) finds the right base ROM by itself.
 - If the hack has a newer version than the one listed, it may not be recognised until it's added. [Best effort](#best-effort-for-games-pokedaisy-doesnt-know) may still read it.
 
 ## Check your ROM before you play

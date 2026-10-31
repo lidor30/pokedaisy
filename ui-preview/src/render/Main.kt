@@ -2135,6 +2135,15 @@ fun main(args: Array<String>) {
                 pendingImport = LibraryActivity.PendingImport(File("import.gba"), "Metroid Fusion.gba", null, play = false)
             }
         }),
+        // PATCH A ROM: found and ready, patching, done (a hack the companion may read as its base game), and not found.
+        Shot("library-patch-ready", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("ready") } }),
+        Shot("library-patch-patching", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("patching") } }),
+        Shot("library-patch-done", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("done") } }),
+        Shot("library-patch-done-unsupported", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("unsupported") } }),
+        Shot("library-patch-not-found", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("notfound") } }),
+        Shot("library-patch-not-found-unknown", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("unknown") } }),
+        Shot("library-patch-looking", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("looking") } }),
+        Shot("library-patch-failed", tw, th, td, activity { LibraryActivity().apply { patcher.step = fakePatch("failed") } }),
         // REPLACE COVER: a known game's icons, a search's game list, and no API key.
         Shot("library-cover-picker", tw, th, td, activity {
             LibraryActivity().apply { coverPickerFor = File("firered-hack.gba"); coverSourceOverride = FakeCoverSource(known = true) }
@@ -2574,4 +2583,25 @@ fun PreviewGame(content: @Composable () -> Unit) {
     androidx.compose.foundation.layout.Box(
         androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF58A848)),
     ) { content() }
+}
+
+/** PATCH A ROM's window in each state, over a made-up hack (no real patch or ROM). */
+private fun fakePatch(state: String): com.pokedaisy.app.RomPatchFlow.Step {
+    val info = com.pokedaisy.app.RomPatchFlow.PatchInfo("Daisy Quest (v1.2).bps", 16L shl 20, 0x84EE4776L, 32L shl 20, "")
+    val unknown = com.pokedaisy.app.RomPatchFlow.PatchInfo("Daisy Quest (v1.2).bps", 16L shl 20, 0x12345678L, 32L shl 20, "")
+    val plan = com.pokedaisy.app.RomPatchFlow.Plan(
+        File("/storage/emulated/0/ROMs/gba/Pokemon - FireRed Version (USA, Europe) (Rev 1).gba"), "Pokémon FireRed",
+        File("/storage/emulated/0/ROMs/gba"), "Daisy Quest (v1.2).gba",
+    )
+    val out = File(plan.dir, plan.name)
+    return when (state) {
+        "ready" -> com.pokedaisy.app.RomPatchFlow.Step.Ready(info, plan)
+        "patching" -> com.pokedaisy.app.RomPatchFlow.Step.Patching(info, plan, 0.6f)
+        "done" -> com.pokedaisy.app.RomPatchFlow.Step.Done(info, plan, out, false, com.pokedaisy.app.CompanionSupport.Verdict.TRYABLE, "Daisy Quest (v1.2)")
+        "unsupported" -> com.pokedaisy.app.RomPatchFlow.Step.Done(info, plan, out, false, com.pokedaisy.app.CompanionSupport.Verdict.UNSUPPORTED, "Daisy Quest (v1.2)")
+        "notfound" -> com.pokedaisy.app.RomPatchFlow.Step.NotFound(info)
+        "unknown" -> com.pokedaisy.app.RomPatchFlow.Step.NotFound(unknown)
+        "looking" -> com.pokedaisy.app.RomPatchFlow.Step.Looking(info, 0.35f)
+        else -> com.pokedaisy.app.RomPatchFlow.Step.Failed(com.pokedaisy.app.RomPatchFlow.messageFor(com.pokedaisy.app.BpsPatch.Reason.DAMAGED))
+    }
 }

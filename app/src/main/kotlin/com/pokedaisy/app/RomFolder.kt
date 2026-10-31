@@ -84,6 +84,14 @@ object RomFolder {
             .map { File(it.key) }.filter { it.isFile }
     }
 
+    /** Every ROM file the app knows, whatever its verdict: imported ones and the linked folders' from the last scan,
+     * hidden ones too - where PATCH A ROM looks for a patch's base ROM ([RomPatcher.findBase]). Cheap, the cache only. */
+    fun allRomFiles(context: Context, prefs: Prefs): List<File> {
+        val roots = prefs.romsFolders
+        val linked = load(context).keys.filter { path -> roots.any { under(path, it) } }.map(::File)
+        return (importedRoms(context) + linked + prefs.hiddenRoms.map(::File)).filter { it.isFile }.distinctBy { it.absolutePath }
+    }
+
     /** Whether [rom] came from a linked folder (the player's own file: HIDE only, no DELETE). */
     fun isLinked(prefs: Prefs, rom: File): Boolean =
         prefs.romsFolders.any { under(rom.absolutePath, it) }

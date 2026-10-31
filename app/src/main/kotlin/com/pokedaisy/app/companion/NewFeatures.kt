@@ -103,12 +103,15 @@ object NewFeatures {
     /** SETTINGS > SOUND: GAME VOLUME, MUTE GAME and HOTKEYS > MUTE (GameVolume). */
     const val GAME_VOLUME = "game_volume"
 
+    /** Settings > LIBRARY > PATCH A ROM and the library's + menu: a .bps patch applied to a ROM the library has (RomPatchFlow). */
+    const val ROM_PATCH = "rom_patch"
+
     /** Every feature that gets the tag. */
     val ALL = listOf(
         HUD, BATTLE_BUTTONS, GAME_HOTKEYS, COMPANION_WINDOW, HUD_PC, QUICK_MENU, HUD_REPEL, SINGLE_SCREEN, MORE_TAB, TOUCH_CONTROLS,
         COMPANION_TAB, REUSABLE_TMS, SHINY_ODDS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
-        GAME_VOLUME,
+        GAME_VOLUME, ROM_PATCH,
     )
 
     private const val DAYS = 7

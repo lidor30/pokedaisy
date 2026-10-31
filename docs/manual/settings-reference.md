@@ -86,6 +86,7 @@ The `SHADERS` page:
 | `FOLDERS` | a page | A page for each: `ROMS FOLDERS`, your linked ROMs folders (`ADD FOLDER`, `RESCAN`, `REMOVE`); `GAME SAVES`, the folder saves go to (`CHANGE FOLDER`, `USE DEFAULT`); `ALSO LOOK IN`, other emulators' save folders; `SAVE BACKUPS`, the backup taken each time a game starts (`BACKUPS` on or off, `KEEP PER GAME`, and a folder for all of them); `SAVE STATES`, where save states are kept. | [Library](library.md), [Saves](saves.md) |
 | `HIDDEN GAMES` | **`NONE`**, or how many | Games you hid from the library with `HIDE`. Tap one to `SHOW` it again, or `SHOW ALL`. | [Library](library.md) |
 | `CHEATS` | `ON`, **`OFF`** (a page) | The master switch for cheat codes, and each game's codes: `ADD CODE`, `IMPORT FILE`, `REMOVE`. | [Cheats](cheats.md) |
+| `PATCH A ROM` | (opens a file) | Applies a `.bps` patch to the game it was made for, found in your library by its checksum. | [Library](library.md#patch-a-rom-hack) |
 
 ### Online
 

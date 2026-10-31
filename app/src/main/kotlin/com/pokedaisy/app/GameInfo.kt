@@ -283,7 +283,7 @@ fun GameInfoDialog(
 }
 
 @Composable
-private fun InfoSection(section: GameInfo.Section, first: Boolean, m: GbaTextMetrics, small: GbaTextMetrics) {
+internal fun InfoSection(section: GameInfo.Section, first: Boolean, m: GbaTextMetrics, small: GbaTextMetrics) {
     GbaText(
         section.title, OptionColors.value, OptionColors.valueShadow, m,
         Modifier.padding(top = if (first) m.u * 2 else m.u * 8, bottom = m.u * 2),

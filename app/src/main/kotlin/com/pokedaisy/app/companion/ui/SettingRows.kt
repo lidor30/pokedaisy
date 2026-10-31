@@ -131,6 +131,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "FOLDERS" to "roms folder folders multiple add link saves directory path location storage retroarch syncthing save states backup backups restore",
     "COVER ART" to "box art boxart covers steamgriddb images thumbnails api key",
     "HIDDEN GAMES" to "hide unhide library show",
+    "PATCH A ROM" to "patch patching bps rom hack apply base checksum crc32 hacks",
     "CHEATS" to "gameshark action replay codebreaker codes",
     "RetroAchievements" to "achievements cheevos ra login account trophies",
     "LANGUAGE" to "language translation locale english japanese french german italian spanish portuguese português brazil brasil portugal idioma",

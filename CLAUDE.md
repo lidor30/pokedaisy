@@ -1802,6 +1802,15 @@ to a save already under the archive's own name. Imports (+, frontend copies, VIE
 magic bytes (`RomArchive.sniff`). Library Refresh toasts what the scan found (`RomFolder.ScanResult`).
 The bottom-screen Presentation hides the system bars (`DualScreenPresentation.goFullScreen`).
 
+**PATCH A ROM** (2026-11-01; the library's + menu and Settings > LIBRARY, NEW tag; a `.bps` picked with ADD A ROM FILE or
+opened with the app goes there too): `BpsPatch` (pure BPS decode, source / target / patch CRCs checked), `RomPatcher` (the base
+ROM found by size + CRC32 among `RomFolder.allRomFiles` - imported, every linked file of any verdict, hidden ones - CRCs kept in
+`filesDir/rom-crcs.tsv`; the result goes to a linked folder named for its kind (`gba` / `gb` / `gbc` / `nds`, or one right
+inside a linked folder), else the base's folder if linked, else `roms/`, named after the patch, ` (2)` on a clash, the same
+ROM kept), `RomPatchFlow` + `PatchWindow` (Looking / NotFound / Ready / Patching / Done / Failed; hosted by LibraryActivity and
+SettingsActivity, PLAY only in the library). An UNSUPPORTED result in `roms/` is hidden (HIDDEN GAMES shows it). BPS only: UPS /
+IPS / xdelta aren't read. `BpsPatchTest` (a hand-built patch with every action, and the player's `FireRed QoL.bps`); ui-preview
+`library-patch-*`.
 **CHEATS** (GameShark / Action Replay / CodeBreaker, GBA only; docs/DEVELOPMENT.md's "Cheats"): per ROM in
 `filesDir/cheats/<CRC32>.cheats` (mGBA's format, `CheatStore`), master switch `Prefs.cheatsEnabled` (off). Added /
 imported on the top screen (Settings > CHEATS, or a game's library menu > CHEATS - a keyboard); the companion's SETTINGS

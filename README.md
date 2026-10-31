@@ -99,7 +99,8 @@ The app updates itself: it offers each new version when you open it. The full ma
 - Makeovers: play one game as another game's hero, a Pokemon following you, day and night tints.
 - Remappable controls and hotkeys, touch controls you can lay out yourself, Bluetooth and USB controllers.
 - Optional cheats, wild encounters off, reusable TMs, auto-run and running indoors.
-- A library with cover art, favorites, zipped ROMs, a dual-screen launcher, and launching from frontends like
+- A library with cover art, favorites, zipped ROMs, BPS patching (it finds the base ROM by itself), a dual-screen
+  launcher, and launching from frontends like
   ES-DE, Cocoon and iiSU ([iiSU](docs/iisu/README.md), [ES-DE](docs/es-de/README.md) setup).
 - Standard `.sav` / `.srm` saves, shared with mGBA and RetroArch. Every start keeps a backup of your save.
 - English, Japanese, French, German, Italian, Spanish and Portuguese.

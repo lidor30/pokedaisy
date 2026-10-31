@@ -163,6 +163,18 @@ class LibraryActivity : ComponentActivity() {
         uri?.let { startImport(it, play = false) }
     }
 
+    /** PATCH A ROM: a .bps applied to a ROM the library has (internal for ui-preview). */
+    internal val patcher by lazy {
+        RomPatchFlow(this) { out ->
+            generateAutoCoverAsync(out)
+            identifyGames()
+            bump()
+        }
+    }
+    private val pickPatch = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { patcher.start(it) }
+    }
+
     /** LOAD SAVE: the save file picked for a game, waiting on its confirm (internal for ui-preview). */
     internal class PendingSaveLoad(val rom: File, val bytes: ByteArray, val fileName: String)
     internal var saveLoad by mutableStateOf<PendingSaveLoad?>(null)
@@ -553,7 +565,7 @@ class LibraryActivity : ComponentActivity() {
 
     /** The header's +: one ROM file, a ROMs folder (several can be linked), or the folders linked so far. */
     private enum class AddChoice(val label: String) {
-        FILE(tk("ADD A ROM FILE")), FOLDER(tk("ADD A ROMS FOLDER")), MANAGE(tk("MANAGE ROMS FOLDERS")),
+        FILE(tk("ADD A ROM FILE")), FOLDER(tk("ADD A ROMS FOLDER")), MANAGE(tk("MANAGE ROMS FOLDERS")), PATCH(tk("PATCH A ROM")),
     }
 
     /** The + menu is up (internal for ui-preview). */
@@ -567,6 +579,7 @@ class LibraryActivity : ComponentActivity() {
             AddChoice.MANAGE -> startActivity(
                 Intent(this, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_SCREEN, SettingsActivity.SCREEN_ROMS_FOLDERS),
             )
+            AddChoice.PATCH -> pickPatch.launch(arrayOf("*/*"))
         }
     }
 
@@ -592,6 +605,7 @@ class LibraryActivity : ComponentActivity() {
                     tr("ADD GAMES"), AddChoice.entries.toList(), AddChoice.FILE, { tr(it.label) }, m,
                     onPick = ::pickAdd,
                     onDismiss = { addMenu = false },
+                    badge = { if (it == AddChoice.PATCH) com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.ROM_PATCH) else null },
                 )
             }
             if (pickingSort) {
@@ -668,6 +682,12 @@ class LibraryActivity : ComponentActivity() {
                         rescanRomsFolder()
                     },
                 ) }
+
+            PatchWindow(
+                patcher, m, small,
+                onPlay = ::play,
+                onAskSupport = { rom -> Thread({ val url = RomSupportRequest.url(rom); runOnUiThread { openUrl(url) } }, "pokedaisy-support-url").start() },
+            )
 
             UpdateDialog(updates, m, small)
 
@@ -1557,6 +1577,12 @@ class LibraryActivity : ComponentActivity() {
                     throw t
                 }
                 var name = RomUris.sanitizeFileName(RomUris.displayName(this, uri) ?: "imported-${System.currentTimeMillis()}.gba")
+                // A BPS patch picked as a ROM file (or opened with the app): PATCH A ROM takes it from here.
+                if (BpsPatch.looksLikeBps(tmp.inputStream().use { s -> ByteArray(4).also { s.read(it) } })) {
+                    tmp.delete()
+                    runOnUiThread { patcher.start(uri, name) }
+                    return@Thread
+                }
                 RomArchive.sniff(tmp)?.let { format ->
                     val rom = File(importDir, "${tmp.name}.rom")
                     val entry = RomArchive.extract(tmp, rom, format)
@@ -1645,7 +1671,7 @@ class LibraryActivity : ComponentActivity() {
     /** Every window over the main screen (pass keys to them, not the launcher). */
     private val libraryDialogOpen
         get() = pickingSort || addMenu || renaming != null || deleting != null || gameInfo != null || coverPickerFor != null ||
-            pendingImport != null || saveLoad != null || backupPick != null || updates.release != null || crashAsk ||
+            pendingImport != null || patcher.step != null || saveLoad != null || backupPick != null || updates.release != null || crashAsk ||
             (expandIntro && !crashAsk) || ssIntroShown || whatsNewShown || supportShown
 
     /** BACK for the library's windows (OptionOverlay & co.): the newest open one closes. */

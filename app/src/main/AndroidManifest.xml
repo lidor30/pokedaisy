@@ -76,6 +76,8 @@
                 <data android:mimeType="*/*" android:pathPattern=".*\\.gbc" />
                 <!-- Nintendo DS, with TelemetrySampler.NDS_SUPPORT. -->
                 <data android:mimeType="*/*" android:pathPattern=".*\\.nds" />
+                <!-- A ROM hack's BPS patch: PATCH A ROM (RomPatchFlow). -->
+                <data android:mimeType="*/*" android:pathPattern=".*\\.bps" />
             </intent-filter>
         </activity>
 
