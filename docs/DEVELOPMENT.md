@@ -2099,7 +2099,9 @@ the lists' swap at VBlank, the clipper), the software renderer's column range, f
 (`GPU::SkipDraw` / `SkipDrawNext`: no 2D lines or 3D render on a frame nobody sees, decided at line 215 where the next
 frame's 3D starts, never while display capture is on), the OpenGL renderer's port (below) and `NDS::Current` as a plain static (Android's emulated
 `thread_local` cost ~8% of the emulation thread). To change it: edit `third_party/melonds`, then
-`git -C third_party/melonds diff > third_party/patches/melonds-pokedaisy.patch`. Moving the submodule means re-making the
+`git -C third_party/melonds diff > third_party/patches/melonds-pokedaisy.patch`. `.gitmodules` sets `ignore = dirty` on
+the submodule, so the applied patch doesn't show in `git status`; `scripts/check_melonds_patch.py` (in `make check`) fails
+when it holds anything but the patch (an edit not copied into it, a stray file). Moving the submodule means re-making the
 patch. melonDS and its bundled pieces (FatFs, Teakra, xxHash, tiny-AES-c, blip_buf, Dolphin's code) are in NOTICE and
 the LICENSES page.
 

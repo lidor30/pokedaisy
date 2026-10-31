@@ -7,3 +7,6 @@
 [submodule "third_party/melonds"]
 	path = third_party/melonds
 	url = https://github.com/melonDS-emu/melonDS.git
+	# The build applies third_party/patches/melonds-pokedaisy.patch here; scripts/check_melonds_patch.py checks that
+	# nothing else changed.
+	ignore = dirty

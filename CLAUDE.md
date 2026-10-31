@@ -642,7 +642,8 @@ flag is set again. Swarms and roaming beasts aren't listed.
 **Nintendo DS (2026-10-19; on for players from 1.3.0, `TelemetrySampler.NDS_SUPPORT = true` like the Game Boy's switch,
 the cart list `NDS_GAMES`, which the website's ROM check reads by header through compat.json's `ds`)**: Platinum (USA rev 1)
 and HeartGold / SoulSilver (USA) on melonDS (`third_party/melonds` at 1.1; our changes are one patch, `third_party/patches/melonds-pokedaisy.patch`,
-applied at configure time - edit the submodule, then `git -C third_party/melonds diff >` it). App code in
+applied at configure time - edit the submodule, then `git -C third_party/melonds diff >` it; `ignore = dirty` hides it from
+`git status`, `scripts/check_melonds_patch.py` in `make check` fails on anything else in there). App code in
 `app/src/main/cpp/nds/` (core, field read, function caller, EXPAND from the game's own polygons, STEADY = a second melonDS
 from the game's state with its ARM9 stopped, its ARM7 FIFO drained every frame), `Gen4*.kt` / `NdsArt.kt` (reads from the
 SaveData in RAM; art, DEX pages from the player's cart, never bundled), the DS bottom screen on the bottom display
