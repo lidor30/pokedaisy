@@ -233,7 +233,7 @@ class EmulatorEngine(
     /** Fired (emu thread) only when the FF music that should be playing
      * actually changes — a cached clip (its loop, intro and when the song
      * started), or null to stop (nothing cached yet for this state, or FF
-     * isn't active). Wrap MediaPlayer work in the callback yourself (see FfMusicPlayer). */
+     * isn't active). Post the player's work to the UI thread yourself (see FfMusicPlayer). */
     var onFfMusicChanged: ((clip: FfMusicPlayer.Clip?) -> Unit)? = null
 
     /** Fired (emu thread) in STEADY when the game starts a song with no clip

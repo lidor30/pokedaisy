@@ -1840,7 +1840,7 @@ class PokeDaisyActivity : Activity() {
         val crc = SaveStates.crc32(r)
         romKey = crc
         states = SaveStates(getExternalFilesDir(null) ?: filesDir, crc)
-        val ffMusicCache = FfMusicCache(getExternalFilesDir(null) ?: filesDir, crc)
+        val ffMusicCache = FfMusicCache(getExternalFilesDir(null) ?: filesDir, crc, gameBoy = RomIdentity.isGameBoy(r))
         // STEADY FF music: songs rendered on their own from this ROM, in the
         // background, as the game starts them (see FfMusicRenderer).
         // The companion's button click is rendered from this ROM the same way.

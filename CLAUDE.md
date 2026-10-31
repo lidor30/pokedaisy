@@ -496,7 +496,8 @@ crackle players kept hearing (GitHub #269 / #327, 2026-10-29): mGBA 0.10.5's GB 
 whose 48 kHz output has sudden level drops of up to 25,000 (~4 a second in Crystal, 2.4 in Yellow; its own 131 kHz samples,
 newer mGBA, Gambatte and SameBoy: 0 - 0.5). So both cores take the raw samples from the stream's `postAudioFrame` and
 resample them themselves (`pk_gb_audio.c`, also in mgba_dump: `gbaudio 0` records mGBA's own path); never read a GB core's
-`getAudioChannel`. Count pops by peaks over 4x the RMS on level-matched 90 s recordings, and listen. Debug builds record what
+`getAudioChannel`. STEADY clips recorded before that kept the crackle in FF: a Game Boy game's are recorded again when its sound
+changes (`FfMusicCache`'s `GB_SOUND` stamp, bump it). Count pops by peaks over 4x the RMS on level-matched 90 s recordings, and listen. Debug builds record what
 the AudioTrack is given (`EmulatorEngine.audioTapDir`: an `audio_tap` file in `files/debug/` -> `audio-tap.pcm` / `.txt`, 30 s).
 Never tile a 1px backdrop
 (`GameBackdrop` draws tiles one by one: Yellow's white was ~53,000 draws a frame, 77 ms on the
@@ -1002,7 +1003,7 @@ never paced by the audio device. STEADY loops a clean clip of the song playing (
 `songHeader` from the m4a engine every frame (`0x03007FF0` -> SoundInfo -> player chain, BGM is
 the tail) - no per-game song table (a hand-picked FireRed "battle song" was MUS_RS_VS_TRAINER, i.e.
 Emerald's theme). `M4aSongs` matches agbcc's `m4aSongNumStart` and, masked, Emerald Rogue's gcc build of it, newer expansion's
-(ident check) and Heart and Soul's, which takes a second argument: set, it plays the song's entry in an alternate
+(ident check), Monomyth's (agbcc, its gSongTable's headers stored top bit flipped: `Signature.headerXor`) and Heart and Soul's, which takes a second argument: set, it plays the song's entry in an alternate
 soundtrack table (its songs are `M4aSongs.ALT` ids; `pkRenderForceSong` always passes r1, which used to be whatever the
 game left there); the render core boots 300 frames, then waits (up to 30 s) for the game's own music, since Rogue keeps the sound engine paused through ~15 s of splash screens and a forced song never starts there. Clips are **never captured from the live game** (that mix carried menu clicks
 and battle sounds): `FfMusicRenderer` renders each song alone on the second core (`rg`) as the
@@ -1019,8 +1020,10 @@ ROMs their `MapMusic*.kt` list, any other ROM every `gSongTable` entry on the BG
 themselves (fanfares) count as done. **Clips loop where the song loops** (`M4aLoop.kt`, cache v6): the BGM's
 first track jumping back through its GOTO (0xB2) marks the loop end, the frame its main stream passed the
 GOTO target the start (no intro: two GOTOs apart); `M4aLoopSplice` cuts one period starting 1 s into the
-loop, tuned to the sample. The recording before that cut is saved as `<key>.intro.wav`: `FfMusicPlayer` plays it once, then
-hands over gaplessly to the loop (`setNextMediaPlayer`), both started at the song's own position
+loop, tuned to the sample. The recording before that cut is saved as `<key>.intro.wav`: `FfMusicPlayer` (an AudioTrack built like the game's, USAGE_GAME / low latency: a MediaPlayer played as media on the
+deep-buffer output, where the Thor's settings app runs a system-wide equalizer - the clips came out louder and harsher
+than the game) plays it once, then
+runs straight into the loop in one stream, both started at the song's own position
 (`Clip.songStartedAt`, when the BGM key changed). Without the intro a song with one started ~9 s in
 (FireRed's Route 7). A heard song whose clip predates intros is re-recorded; the background pass isn't redone. The old audio-envelope `LoopDetector` cut battle themes to ~3 s and looped back
 to the intro. **The clip follows the FF the player asked for** (`EmulatorEngine.requestedSpeed`), not SMART's
@@ -1526,7 +1529,7 @@ categories, smol front pictures, packed egg groups: `BaseStatsLayout.eggGroupsPa
 PokeNav's ATHANTO MAP (RomArt's `MMY_REGION_*`, a mode-0 text screen of its own; one head for either gender). EXPAND and
 field reads have a WIDE family of its own (`PK_WIDE_FAMILY_MM`: inBattle at -0x17 from callback1, `CAMERA_WIDE` s16 camera
 offsets, `MAX_SPRITES` 80; it doesn't rewrite DISPCNT each frame, so mgba_dump's `layers` goes before the boot); PC
-anywhere is special 57 (`FIELD_ITEMS_MONOMYTH`, PC only). Its StandardWildEncounter has no switch (no WILD ENCOUNTERS),
+anywhere is special 57 (`FIELD_ITEMS_MONOMYTH`, PC only); STEADY needed `M4aSongs`' flipped-header signature. Its StandardWildEncounter has no switch (no WILD ENCOUNTERS),
 and a look-alike gcc shape there taught `WildEncounters.gccRead` to want the HEADER_NONE compare. No FLY, bag USE, card or
 far-off characters in EXPAND.
 **Emerald Legacy v1.1.4 (2026-10-14)**: BPEE, 16 MB, but a rebuild - its public source (`$DECOMPS/pokelegacy`, tag V1.1.4)

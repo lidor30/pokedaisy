@@ -96,6 +96,18 @@ class M4aSongsTest {
         assertTrue(559 in s.bgmSongIds && alt in s.bgmSongIds)
     }
 
+    @Test fun monomyth() {
+        // Agbcc's m4aSongNumStart, but gSongTable's headers are stored top bit flipped. Headless (the user's save):
+        // CATSEAR CITY's music is the BGM player's 0x0983110C, and `call 0x08259d0c 638` on the parked render core
+        // (`park 0x0801179a`) starts it.
+        val s = songs(File(File(RomFileReader.FIRERED_REV1_PATH).parentFile, "Pokemon Monomyth (v1.0).gba").path)
+        assertEquals(0x08259D0DL, s.songNumStart)
+        assertEquals(0x08E3AE10L, s.songTable)
+        assertEquals(0x0801179AL, s.idleLoop)
+        assertEquals(638, s.songId("song_183110c"))
+        assertTrue(638 in s.bgmSongIds)
+    }
+
     @Test fun superMariomon() {
         // Agbcc's m4aSongNumStart in every release; the field's music in WORLD 1-1 (headless
         // mgba_dump `bgm`: the BGM player's song header) is a BGM-player song of its table.

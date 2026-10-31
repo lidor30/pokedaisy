@@ -15,7 +15,7 @@ import java.io.RandomAccessFile
  * hacks can have completely different music. Every ROM's clips share one
  * budget ([FfMusicBudget]): the songs played longest ago go first.
  */
-class FfMusicCache(filesDir: File, private val romCrc: String) {
+class FfMusicCache(filesDir: File, private val romCrc: String, gameBoy: Boolean = false) {
     // CACHE_VERSION as a path segment: bump it whenever anything about what
     // gets written changes, so old clips in the
     // previous format are simply never found — rather than being read as
@@ -29,6 +29,12 @@ class FfMusicCache(filesDir: File, private val romCrc: String) {
         // captured from the live game, sound effects and all): drop them
         // rather than leave hundreds of MB of WAVs behind.
         File(filesDir, "ffmusic").listFiles()?.filter { it.name != "v$CACHE_VERSION" }?.forEach { it.deleteRecursively() }
+        // A Game Boy game's clips are recorded again when its sound changes, without touching the GBA games' (a
+        // CACHE_VERSION bump would re-render every game's music).
+        if (gameBoy && !File(dir, GB_SOUND).isFile) {
+            clear()
+            runCatching { File(dir, GB_SOUND).writeText("") }
+        }
     }
 
     private fun file(key: String) = File(dir, "$key.flac")
@@ -147,6 +153,10 @@ class FfMusicCache(filesDir: File, private val romCrc: String) {
          * battle themes to a few seconds and looped them back to the intro). */
         const val CACHE_VERSION = 6
 
+        /** Marks a Game Boy game's clips as recorded with its current sound. Bump it when that changes. v2:
+         * pk_gb_audio.c's resampling (GitHub #269 / #327) - clips made through mGBA's own blip_buf before it
+         * kept its pops, so FF crackled while 1x didn't. */
+        private const val GB_SOUND = ".gb-sound-v2"
         private const val PREFETCHED = ".prefetched"
         private const val WAV_HEADER = 44
         private const val FAILED = ".failed"
