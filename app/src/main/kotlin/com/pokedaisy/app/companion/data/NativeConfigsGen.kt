@@ -4789,6 +4789,80 @@ val NATIVE_TEAM_ROCKET = NATIVE_EMERALD.copy(
     guideTables = GUIDE_TABLES_TEAM_ROCKET,
 )
 
+// Pokémon Team Rocket Edition 2026 - Dragonsden, Spanish (32 MB, BPEE, sha1 0d8bdaee…; its START menu says v3.0.9): a rebuild
+// on pokeemerald-expansion 1.14.4 (its RHHEXP block), nothing of v1.5's RAM or ROM left, so its own config. Mapped in mGBA
+// from the user's save (Alex in ALMACÉN ROCKET, a Lv5 ZUBAT, ₽3128 - its FICHA ROCKET and bag screen show the same) and a
+// trainer battle against its EKANS, each address checked on the game's own screens:
+// - gPlayerParty 0x020395C8 (551 literal-pool words) / gPlayerPartyCount 0x02039369, gEnemyParty 0x02039370 (before the
+// player's, its count at 0x0203936A): vanilla's 100-byte encrypted mon with expansion's packing (species / moves 11 bits,
+// PP 7), the language at +0x12 and flags +0x13 as in vanilla. The egg is species 1698 (the header's species count).
+// - gSaveBlock2Ptr / 1Ptr 0x030040EC / 0x030040F0 (gPokemonStoragePtr after them). Money SaveBlock1 +0x490 XOR
+// SaveBlock2's encryption key, which this build keeps at +0x44 (the bag's empty slots read 0 through it).
+// - gMain 0x03005CCC (vblankCounter1 +0x20 ran 101 in 100 frames; inBattle bit 1 of +0x439), gMapHeader 0x020011A0 (u16
+// mapsec at +0x14: 0x10A ALMACÉN ROCKET, mapType 8 at +0x18), gObjectEvents 0x02000C90 (the player's coords = pos + 7).
+// - gBagPockets 0x02006254: eight {ItemSlot *, capacity} by gItemsInfo's pocket (bits 3-7 of +0x1E): Items, Medicine
+// (the save's POCIÓN), TMs, Key Items, Poké Balls, Battle Items, Berries, Mega Stones ([TEAM_ROCKET_V3_BAG_POCKET_ORDER]).
+// - Battle (its EKANS / ZUBAT trainer): gBattleTypeFlags 0x020000A8 (0x0C trainer), gBattlersCount 0x020000AC,
+// gBattleStruct 0x020000B0 with monToSwitchIntoId at +0xB0 (6 6, then [1] = 1 before its ZUBAT came out),
+// gBattlerPositions 0x0200013C, gBattlerPartyIndexes 0x02000140 ([1] 0 -> 1 at the switch), the menus' cursors
+// 0x020003D4 / 0x020003D8 (RIGHT / DOWN walked the action cursor 0 -> 1 -> 3, RIGHT in FIGHT the move cursor 0 -> 1),
+// gBattleMons 0x0200055C ([TEAM_ROCKET_V3_BATTLE_MON]: 0x68 bytes). gBattlerControllerFuncs 0x03002EA8: action / move /
+// bag / party read live (0x08054FA5 / 0x08053FC9 / 0x08052B95 / 0x08052BD5); HandleInputChooseTarget 0x08053051 by code
+// (the handler before the move menu's in its literal pool, back to the move menu on B, as Dreamstone's). gPartyMenu
+// 0x02038D78 (slotId +9 walked 0 -> 7, CANCEL, on DOWN with one Pokémon).
+// - Icons: gSpeciesInfo 0x08970CE8 (0xA8-byte entries: iconSprite +0x68, iconPalIndex +0x86), gMonIconPaletteTable
+// 0x08964C70 (the GF header's); gItemsInfo 0x088CCC1C (0x2C-byte entries: icon +0x24 smol-compressed, its palette +0x28
+// plain). Names / types / moves / chart / map sections: scripts/gen_expansion_tables.py team_rocket_v3.
+val NATIVE_TEAM_ROCKET_V3 = NATIVE_EMERALD.copy(
+    itemDescs = ItemDescTable(0x088CCC30L, 0x2C, -8),
+    playerParty = 0x020395C8L,
+    playerPartyCount = 0x02039369L,
+    enemyParty = 0x02039370L,
+    gMain = 0x03005CCCL,
+    saveBlock1Ptr = 0x030040F0L,
+    saveBlock2Ptr = 0x030040ECL,
+    encryptionKeyOff = 0x44L,
+    moneyOff = 0x490L,
+    maxMoney = 99_999_999,
+    objectEvents = 0x02000C90L,
+    mapHeader = 0x020011A0L,
+    mapSecWide = true,
+    bagPockets = 0x02006254L,
+    bagPocketCount = 8,
+    bagPocketOrder = TEAM_ROCKET_V3_BAG_POCKET_ORDER,
+    speciesMask = 0x07FF,
+    moveMask = 0x07FF,
+    ppMask = 0x7F,
+    battleTypeFlags = 0x020000A8L,
+    battlersCount = 0x020000ACL,
+    battlerPartyIndexes = 0x02000140L,
+    battlerPositions = 0x0200013CL,
+    battleMons = 0x0200055CL,
+    battleMonLayout = TEAM_ROCKET_V3_BATTLE_MON,
+    battleStructPtr = 0x020000B0L,
+    monToSwitchIntoOff = 0xB0,
+    actionCursor = 0x020003D4L,
+    moveCursor = 0x020003D8L,
+    battlerControllerFuncs = 0x03002EA8L,
+    handleInputChooseAction = 0x08054FA5L,
+    handleInputChooseMove = 0x08053FC9L,
+    completeWhenChoseItem = 0x08052B95L,
+    waitForMonSelection = 0x08052BD5L,
+    handleInputChooseTarget = 0x08053051L,
+    partyMenu = 0x02038D78L,
+    eggSpecies = 1698,
+    monIconTable = 0x08970D50L, // gSpeciesInfo[0].iconSprite
+    monIconStride = 0xA8,
+    monIconPaletteIndices = 0x08970D6EL, // gSpeciesInfo[0].iconPalIndex
+    monPalIdxStride = 0xA8,
+    monPalIdxMask = 0x07,
+    monIconPaletteTable = 0x08964C70L,
+    itemIconTable = 0x088CCC40L, // gItemsInfo[0].iconPic
+    itemIconStride = 0x2C,
+    itemPalCompressed = false,
+    guideTables = GUIDE_TABLES_TEAM_ROCKET_V3,
+)
+
 // ---- gamedata/gen3/hacks/tmt2.toml ----
 
 // Pokemon Too Many Types 2 v1.5.2 - BPEE, 32 MB, a NEWER

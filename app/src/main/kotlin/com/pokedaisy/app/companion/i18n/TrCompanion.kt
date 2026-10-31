@@ -186,6 +186,10 @@ internal val trCompanion: Map<String, Tr> = mapOf(
     "Poke Balls" to Tr(ja = "ボール", fr = "Poké Balls", de = "Bälle", it = "Poké Ball", es = "Poké Balls", br = "Poké Bolas", pt = "Poké Bolas"),
     "Berries" to Tr(ja = "きのみ", fr = "Baies", de = "Beeren", it = "Bacche", es = "Bayas", br = "Frutas", pt = "Frutas"),
     "Key Items" to Tr(ja = "たいせつなもの", fr = "Objets rares", de = "Basis-Items", it = "Strum. base", es = "Obj. clave", br = "Itens-chave", pt = "Itens-chave"),
+    // Team Rocket Edition 2026's own pockets (pocketLabel).
+    "Medicine" to Tr(ja = "くすり", fr = "Soins", de = "Medizin", it = "Medicine", es = "Medicinas", br = "Remédios", pt = "Remédios"),
+    "Battle Items" to Tr(ja = "せんとうよう", fr = "Objets combat", de = "Kampf-Items", it = "Strum. lotta", es = "Obj. batalla", br = "Itens batalha", pt = "Itens batalha"),
+    "Mega Stones" to Tr(ja = "メガストーン", fr = "Méga-Gemmes", de = "Mega-Steine", it = "Megapietre", es = "Megapiedras", br = "Megapedras", pt = "Megapedras"),
     "Favorites" to Tr(ja = "おきにいり", fr = "Favoris", de = "Favoriten", it = "Preferiti", es = "Favoritos", br = "Favoritos", pt = "Favoritos"),
     "Default" to Tr(ja = "もとの じゅん", fr = "Défaut", de = "Standard", it = "Predefinito", es = "Original", br = "Padrão", pt = "Padrão"),
     "Name" to Tr(ja = "なまえ", fr = "Nom", de = "Name", it = "Nome", es = "Nombre", br = "Nome", pt = "Nome"),

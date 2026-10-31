@@ -99,7 +99,8 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
     // Super Mariomon keeps vanilla's curves; its species' rates come from its own gBaseStats.
     // So does Team Rocket Edition: Dragonsden (its species are National Dex ids, past Gen 3's).
     val rate = if (activeGame == GameKind.MARIOMON) (if (mariomonV13) growthRatesMariomonV13 else growthRatesMariomon).getOrNull(species)
-        else if (activeGame == GameKind.TEAM_ROCKET) growthRatesTeamRocket.getOrNull(species)?.takeIf { it <= 5 }
+        else if (activeGame == GameKind.TEAM_ROCKET)
+            (if (teamRocketV3) growthRatesTeamRocketV3 else growthRatesTeamRocket).getOrNull(species)?.takeIf { it <= 5 }
         // Wishes of Tomorrow (expansion 1.15.3): vanilla's curves, its gSpeciesInfo's rates (gen_expansion_tables.py).
         else if (activeGame == GameKind.WISHES) growthRatesWishes.getOrNull(species)?.takeIf { it <= 5 }
         // PureRGB moved 25 species to other curves: its own BaseStats' (gen_gen1_tables.py purered).

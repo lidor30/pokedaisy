@@ -33,6 +33,8 @@ const val POCKET_KEY_ITEMS = 4
 const val POCKET_MEDICINE = 5
 const val POCKET_MAIL = 6
 const val POCKET_BATTLE_ITEMS = 7
+// Team Rocket Edition 2026's own pocket (its bag's MEGAPIEDRAS): Mega Stones. It folds into ITEMS too.
+const val POCKET_MEGA_STONES = 8
 
 /** [pocket] as one of the five pockets every game has: Gen 4's MEDICINE / MAIL / BATTLE ITEMS ride with ITEMS. */
 fun basePocket(pocket: Int): Int = if (pocket >= POCKET_MEDICINE) POCKET_ITEMS else pocket
