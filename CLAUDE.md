@@ -188,13 +188,34 @@ distinct); states carry no save data, so loading one never writes the save. Keep
 than mGBA's ROM block pointer: a GPIO write (FireRed) swaps the mapping. CI: `.github/workflows/linux.yml` (x86_64
 native, AArch64 under QEMU with the checksum-pinned TrimUI toolchain).
 
+## Testing: quick by default, full runs only with the user's OK
+
+The user runs several agents at once and runs the full suites about once a day, so (the user's rule, 2026-11-01):
+
+- **Everyday check: `make test-quick`** (`./gradlew :app:testDebugUnitTest -Pquick`, about 1 min warm). It
+  drops the Paparazzi renders (`*ScreenshotTest`: they assert nothing and were 86% of the full run's ~10 min)
+  and `BestEffortTest` (26 whole ROMs, ~45 s), and runs the forks side by side. Fixture decodes, ROM-backed
+  tests and guards still run. Run it before calling a change done.
+- **While working, run only the tests for what you touched**: `make test-quick T='*MoneyTest'` (~25 s), or
+  several with `./gradlew :app:testDebugUnitTest -Pquick --tests '*Foo*' --tests '*Bar*'`. A test you add or
+  change: run it by name. `BestEffortTest` runs by name too if you touch detection / `BestEffort`.
+- **Ask the user before any full run**, and say why: `make test`, `make check`, `make test-roms`, a plain
+  `./gradlew :app:testDebugUnitTest` (no `-Pquick`), every Paparazzi class at once (`recordPaparazziDebug` over
+  `'*ScreenshotTest'`), and the whole ui-preview suites (`gradle render` with no `-Ponly`, `stress`,
+  `docsSearchCheck`, `keyedStateCheck`, `docsShots`, `make docs-shots`). CI runs all of them on every PR, so a
+  branch still gets the full check before it merges.
+- **Looking at a changed screen is not a full run**: one Paparazzi class (`--tests '*PortraitScreenshotTest'`)
+  or one ui-preview render (`gradle render -Ponly=settings-home`, ~25 s warm) is fine without asking (see UI
+  work below). Name only the screens you changed.
+
 ## UI work
 
 **Look at every UI change before calling it done** — render it and read the PNG, don't
 reason about Compose layout blind. Two ways, same screens:
 
 1. **Paparazzi** (needs the Android SDK + Google Maven, i.e. the user's Mac):
-   `./gradlew :app:recordPaparazziDebug --tests '*ScreenshotTest'`,
+   `./gradlew :app:recordPaparazziDebug --tests '*CompanionScreenshotTest'` (the class for the screen you
+   changed; all of them at once is a full run: ask first),
    then Read the PNGs in `app/src/test/snapshots/images/` (gitignored — a viewing tool,
    not a regression gate). Tests live in
    `app/src/test/kotlin/.../companion/ui/CompanionScreenshotTest.kt`: one per companion
@@ -223,8 +244,9 @@ pixel, so there its text was as large for the screen as on a GBA): `LocalTextSte
    Android shims and renders PNGs of every companion tab _and_ the top-screen
    Library/Settings, including tapped states (selectors, confirms, sub-pages):
    `cd ui-preview && gradle render` → `build/shots/*.png`
-   (`-Ponly=settings` filters by name, `-Pgame=EMERALD` switches game). It's also the
-   only compile check available in such sessions, so run it after any UI edit there. See
+   (`-Ponly=settings` filters by name, `-Pgame=EMERALD` switches game; render only what you changed,
+   a render of everything needs the user's OK). It's also the
+   only compile check available in such sessions, so run it (with `-Ponly`) after any UI edit there. See
    its README for the shims and quirks (CMP 1.5 / Kotlin 1.9.22, `Icons.AutoMirrored`
    rewritten to `Icons.Filled`, a stale incremental cache once faked "Unresolved
    reference" errors — delete `build/kotlin` if errors look impossible).
@@ -1953,8 +1975,8 @@ and the README row with it); the Poller then reads a Yellow cart as unsupported.
 a 1 MB typeface per `GbaText` and crashed when tabs were switched quickly); `PerformanceGuardsTest`
 checks that, plus the GL unbind before `pkDeinit` and the native core lock. `cd ui-preview && gradle
 stress` switches the companion's tabs every 2 frames and fails over its memory / time budgets (it
-skips desktop Compose 1.5's own OnPositionedDispatcher NPE, which the app's 1.6.8 doesn't have) - run
-it after touching anything a tab composes. Per-visit work belongs in process-wide caches (slot art,
+skips desktop Compose 1.5's own OnPositionedDispatcher NPE, which the app's 1.6.8 doesn't have) - CI runs
+it; after touching anything a tab composes, ask the user before running it yourself. Per-visit work belongs in process-wide caches (slot art,
 backdrops, card renders, state thumbnails), not `remember`, which a tab loses each time it leaves.
 **Crash reports** (`CrashReports.kt`, Firebase Crashlytics + -ndk): opt-in, off by default (manifest
 `firebase_crashlytics_collection_enabled=false`); on via Settings > CRASH REPORTS or the Library's one-time ask

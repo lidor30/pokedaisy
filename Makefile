@@ -18,7 +18,7 @@ export MON_ICONS
 .DEFAULT_GOAL := help
 
 .PHONY: help docs-shots docs-check submodules apk install run test clean shots preview menu-shots capture-image \
-        check gamedata stress test-roms version bump release-apk symbols release release-local
+        check gamedata stress test-roms test-quick version bump release-apk symbols release release-local
 
 # versionName / versionCode, read from app/build.gradle.kts.
 VERSION      := $(shell sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts)
@@ -48,7 +48,10 @@ run: install ## Build + install + launch the library screen on the connected dev
 gamedata: ## Regenerate the per-game code from gamedata/ (NativeConfigsGen.kt; see gamedata/README.md)
 	python3 scripts/gen_gamedata.py
 
-test: ## JVM unit tests (fixture decode tests, UI logic)
+test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (T='*FooTest' to pick)
+	./gradlew :app:testDebugUnitTest -Pquick $(if $(T),--tests '$(T)')
+
+test: ## All JVM unit tests, Paparazzi renders included (CLAUDE.md: agents ask first)
 	./gradlew :app:testDebugUnitTest
 
 clean: ## gradle clean
