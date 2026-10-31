@@ -67,6 +67,15 @@ private fun fireRedGuide(leafGreen: Boolean) = GameGuide(
         page(
             "TIPS",
             section(
+                "RANDOMIZED",
+                Randomized.ONLY,
+                entry(
+                    "This game is randomized",
+                    "HERE, NEXT BOSS, EVOLUTIONS and the DEX read the randomizer's POKéMON, teams, moves and items from the game itself. " +
+                        "The gift and legendary POKéMON it moved aren't listed: the guide can't know them.",
+                ),
+            ),
+            section(
                 "CONTROLS",
                 entry("In-game help", "Press L or R almost anywhere for the game's own HELP menu (OPTION: BUTTON MODE = HELP, the default)."),
                 entry("Running", "Hold B to run once you have the RUNNING SHOES."),
@@ -121,12 +130,13 @@ private fun fireRedGuide(leafGreen: Boolean) = GameGuide(
             ),
             section(
                 "SHOPS & SERVICES",
-                entry("Evolution stones", "CELADON DEPT. STORE 4F sells FIRE, THUNDER, WATER and LEAF STONES. MOON STONES are found, e.g. in MT. MOON.", hint = "The big store.", areas = listOf("CELADON CITY")),
+                entry("Evolution stones", "CELADON DEPT. STORE 4F sells FIRE, THUNDER, WATER and LEAF STONES. MOON STONES are found, e.g. in MT. MOON.", hint = "The big store.", areas = listOf("CELADON CITY"), randomized = Randomized.HIDE),
                 entry("MOVE DELETER", "A house in FUCHSIA CITY.", areas = listOf("FUCHSIA CITY")),
                 entry("MOVE RELEARNER", "A house on TWO ISLAND. Bring a BIG MUSHROOM or two TINY MUSHROOMS.", areas = listOf("TWO ISLAND")),
             ),
             section(
                 "GIFT POKéMON",
+                Randomized.HIDE,
                 entry("EEVEE", "The rooftop room of the CELADON CONDOMINIUMS - reached by the back entrance.", hint = "CELADON CITY.", have = Have.Caught(133), areas = listOf("CELADON CITY")),
                 entry("LAPRAS", "An employee on SILPH CO. 7F, after you reach him during the ROCKET takeover.", hint = "SAFFRON CITY.", have = Have.Caught(131), areas = listOf("SILPH CO")),
                 entry("HITMONLEE / HITMONCHAN", "Beat the FIGHTING DOJO in SAFFRON CITY and pick one.", hint = "Next to a gym.", have = Have.Caught(106, 107), areas = listOf("SAFFRON CITY")),
@@ -140,6 +150,7 @@ private fun fireRedGuide(leafGreen: Boolean) = GameGuide(
             ),
             section(
                 "LEGENDARY POKéMON",
+                Randomized.HIDE,
                 entry("ARTICUNO", "The bottom of the SEAFOAM ISLANDS. Push boulders with STRENGTH to slow the currents.", hint = "Between FUCHSIA CITY and CINNABAR ISLAND.", have = Have.Caught(144), areas = listOf("SEAFOAM ISLANDS")),
                 entry("ZAPDOS", "The POWER PLANT - SURF from ROUTE 10.", hint = "An abandoned building.", have = Have.Caught(145), areas = listOf("POWER PLANT", "ROUTE 10")),
                 entry("MOLTRES", "The top of MT. EMBER on ONE ISLAND.", hint = "A volcano on the SEVII ISLANDS.", have = Have.Caught(146), areas = listOf("MT EMBER")),
@@ -176,7 +187,8 @@ private fun fireRedGuide(leafGreen: Boolean) = GameGuide(
                 entry(
                     "A SNORLAX blocks the road",
                     "Rescue MR. FUJI from the top of POKéMON TOWER; he gives you the POKé FLUTE at his house in LAVENDER TOWN.",
-                    hint = "Something in LAVENDER TOWN wakes it.", areas = listOf("ROUTE 12", "ROUTE 16", "LAVENDER TOWN")
+                    hint = "Something in LAVENDER TOWN wakes it.", areas = listOf("ROUTE 12", "ROUTE 16", "LAVENDER TOWN"),
+                    randomized = Randomized.HIDE,
                 ),
                 entry("How do I get to FUCHSIA CITY?", "Ride CYCLING ROAD south from CELADON CITY (BICYCLE needed), or go down ROUTES 12-15 from LAVENDER TOWN after waking the SNORLAX.", hint = "There are two ways - one needs wheels.", areas = listOf("CELADON CITY", "LAVENDER TOWN", "ROUTE 12", "ROUTE 16")),
                 entry("SILPH CO.'s doors are locked", "Find the CARD KEY on 5F; it opens every locked door in the building.", hint = "Somewhere in the middle floors.", areas = listOf("SILPH CO")),

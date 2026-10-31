@@ -106,7 +106,8 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
         else if (activeGame.isPureRgb) gen1GrowthRatesPureRgb.getOrNull(species)
         // Dreamstone Mysteries too (expansion's curves are vanilla's; its rates from gSpeciesInfo, gen_expansion_tables.py).
         else if (activeGame == GameKind.DREAMSTONE) growthRatesDreamstone.getOrNull(species)?.takeIf { it <= 5 }
-        else gen3GrowthRates.getOrNull(species)?.toInt()
+        // A randomized retail ROM's own (UPR can standardize the curves): read from its gBaseStats.
+        else (runningRandomized?.growthRates ?: gen3GrowthRates).getOrNull(species)?.toInt()
     if (rate == null) return null
     val table = gen3ExperienceTables.getOrNull(rate) ?: return null
     val start = table[level].toLong()

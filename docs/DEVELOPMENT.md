@@ -1113,6 +1113,108 @@ the entry + (1, 2) tiles, where the game draws the player's head; moving its cur
 Emerald's own Brendan / May (the ROM keeps both; a female save shows May's), so the app's `player_brendan` /
 `player_may` are the game's.
 
+## Randomized ROMs (Universal Pokémon Randomizer ZX)
+
+English FireRed rev 0 / rev 1 and Emerald run through [Universal Pokémon Randomizer ZX](https://github.com/Ajarmar/universal-pokemon-randomizer-zx)
+4.6.1, with any settings and seed, read as retail with the randomizer's data taken from the ROM (`RandomizedRetail.kt`).
+Other randomizers, other base games and other languages stay NOT SUPPORTED / BEST EFFORT.
+
+### Recognising one: a masked hash
+
+A seed changes thousands of bytes, but every byte UPR may write sits at a fixed offset of the retail layout: its tables,
+the item balls / hidden items / NPC text pointers it finds by walking the maps, its code patches (all in retail's places,
+never moved), and what grows goes into retail's 0xFF free space (FireRed from 0x800000, Emerald from 0xE40000, past the data
+end `RetailDumps` already stops at). So, like `RetailDumps` (and on top of its ranges), bytes [0, end) with
+- the species name table upper-cased (`fold`: UPR rewrites it on every run, lower case with its LOWER_CASE_POKEMON_NAMES
+  tweak; folded it's retail's byte for byte, so the names, which the app bundles, are still checked), then
+- every site UPR may write zeroed (`mask`)
+
+hash to `sha1`. `scripts/gen_randomized_retail.py` writes `RandomizedRetailGen.kt` (offsets and hashes only) from the three
+retail ROMs and a UPR checkout (`UPR_SRC`, read for facts only: UPR is GPLv3, none of its code is here): `gen3_offsets.ini`'s
+offsets (tables, statics, roamers, starters, trades, shops, misc tweak sites), its IPS patches' records, and its scans
+redone on the retail ROM (the wild header table, map events: item balls are object events with the item-ball picture whose
+script starts `setorcopyvar 0x8000, item; setorcopyvar 0x8001, n; callstd`, hidden items bg events of kind 5-7; trainer
+parties and learnsets as one run each; TM / tutor text pointers and their copies within 500 bytes). Strided fields stay
+strided ("start:len:count:stride"): base stats bytes 0-8, 12-16, 19, 22-23 of each 28, move data 0-4 of each 12, trainers 0,
+4-15, 24, 32, 36-39 of each 40, item prices, TM item palettes / descriptions, the trade table's fields. About 86 KB is masked
+outside free space per game, ~800 descriptors. Not masked (so still checked): code outside the patches' own bytes, names of
+moves / items / abilities, item data but prices, maps, scripts, graphics, the save code. UPR never touches the header,
+key items, HMs or NPC item gifts.
+
+**Validated** with `--check`: 102 UPR outputs (each game: 6 seeds with everything on, 2 with forced double battles, 2
+without the misc tweaks, one with nothing on, one per misc tweak alone) all hash right and no byte changed outside the mask;
+every 16 MB BPRE / BPEE hack on this machine (18: Kaizo, Legacy, Rocket Edition, Ash Gray, Orange Islands, the Recharged
+games, the QoL builds, ...) is rejected (closest: Kaizo, 23,839 bytes outside). Retail itself also hashes right, which is
+why the Poller and `CompanionSupport` try retail's SHA-1 and `RetailDumps` first. `RandomizedRetailTest` checks it on the
+retail ROMs (a byte changed inside the mask matches, a lower-cased name matches, a code byte / a respelled name / a move
+name doesn't).
+
+**A new UPR version**: clone it at its tag and rerun the generator with `UPR_SRC` pointing there (UPR_VERSION at its top);
+then make fresh outputs and `--check` them. UPR's CLI takes a settings file: `java -jar PokeRandoZX.jar cli -s <file.rnqs>
+-i <rom> -o <out> -l`. The settings files were made with a few lines of Java against the jar (`com.dabomstew.pkrandom.
+Settings`: set every mod, `setSelectedEXPCurve`, `setRomName`, `setCurrentRestrictions`, `setCurrentMiscTweaks`, then
+`write(FileOutputStream)`) - kept outside the repo. Mind the `set...Mod(boolean...)` setters: the true one picks the enum
+value by position, so `setTrainersMod(true, false, ...)` is UNCHANGED.
+
+### Reading one
+
+`TelemetrySampler.detect()` takes a match as retail (`retailHash`; retail's config; `ramVerified`, so the one-press picks;
+retail's shiny check, which UPR doesn't touch) and reads `RandomizedRetail.read` into `randomizedRetail` (ActiveTables), a
+`HackText` laid over retail's like the hacks' own (`runningRandomized`, kept apart from `fireRedHack` / `emeraldHack`: it's
+retail's look and party art). What the app bundles for FireRed / Emerald and the randomizer changes, and where it comes from
+now:
+
+| Bundled table | Used by | On a randomized ROM |
+|---|---|---|
+| species types (`SpeciesTypes.kt`) | party / foe matchups, SUGGESTIONS, FOE TEAM, move advice, NEXT BOSS hints | gBaseStats +6/+7 |
+| move type and power (`MoveData.kt`) | battle verdicts, SUGGESTIONS, move advice, DEX MOVES | gBattleMoves +1/+2 (retail's names) |
+| move effect / accuracy / PP / chance / priority (`MoveStatsGen.kt`) | move advice, LEARN's PWR / ACC / PP | gBattleMoves, effect names by id (`vanillaMoveEffectNames`) |
+| type chart (`TypeChart.kt`) | every matchup | gTypeEffectiveness (UPR's "update type effectiveness" rewrites it) |
+| growth rates (`ExpTables.kt`) | the summary's EXP bar | gBaseStats +19 ("standardize EXP curves") |
+| gender ratios, the experience tables, HMs, TM item ids | | unchanged by UPR |
+| PC BOXES' legality tables (`SaveTablesGen.kt`) | the save editor (flagged off) | not offered: it needs retail's exact SHA-1 |
+
+Already read from the ROM and so randomized for free: DEX pages (types, stats, abilities), learnsets, wild encounters, trainer
+teams (NEXT BOSS, FOE TEAM), item descriptions, gBattleMons' types and ability. Two checks there assumed retail's data and
+are skipped on a randomized game (`gameRandomized`; the hash vouches for the table's place instead): BULBASAUR's
+evolution (`DexDetails`, `EvolutionSource`; their caches now drop on a ROM change, a randomized game shares retail's
+`PokedexTables`) and the TM table's (any move on a TM, retail's HMs). `guideTablesMatchRom` skips its probe trainer's name
+(`byName = false`): UPR's trainer names renamed BROCK.
+
+### GUIDE
+
+HERE's area data (`GuideAreas*Gen.kt`) is retail's, so `allAreaThings` lays the ROM over it (`randomizedAreas`, from
+`RandomizedGuide`, read at detection): each item ball / hidden item's item by its flag (the generator maps every flag to its
+site, all 339 FireRed and 274 Emerald), each trade's two species from its table row, a gift / static Pokémon's species
+where only one static has that retail species (FireRed 6, Emerald 5; the others are left out). NPC item gifts and key
+items stay. The hand-written pages mark what a randomizer moves (`Randomized.HIDE`: GIFT POKéMON, LEGENDARY POKéMON, the
+evolution stone entry, FireRed's sleeping-Pokémon STUCK? entry) and TIPS gets a `Randomized.ONLY` section;
+`gameGuide(id)` filters by `gameRandomized` (`randomized = null`: every line, for `GuideTranslationsTest`).
+
+### EXPAND, field reads and the rest
+
+`WideScreen.tablesCrc` hands `pkWideConfigure` / the field reads retail's CRC for a randomized cart (UPR leaves the maps,
+tilesets, sprites and the RAM `pk_wide.c` reads alone; per-ROM caches - FF music, rom-art, cheats, favorites - stay on the
+file's own CRC). Checked with mgba_dump's `wideon 22 <retail CRC>` (the new CRC argument) + `widecheck` + `widestats` on one
+seed of each game, every option on: walking, 636 of 637 frames exact (the first after `wideon` has no snapshot, retail
+the same); a scripted wild battle and a trainer battle with `layers 0x18` + `widecheck all`: exactly as many inexact frames
+as retail on the same script. The field item / FLY / PC functions pass their code CRCs, WILD ENCOUNTERS' switch and REUSABLE
+TMS' sites are found where retail's are (`RandomizedRetailTest`), and PLAYER LOOK is offered (`PlayerLookRunner`). The
+library names it "Pokémon FireRed (Randomized)" (`GameTitles.randomizedTitle`, translated when shown), the website's ROM
+check takes the same rule (`compat.js`' `randomizedRetailOf`, over `compat.json`'s `randomizedRetail`).
+
+Test ROMs: `Pokemon FireRed Randomized (v4.6.1) (Rev 0, seed ...).gba`, `(Rev 1, seed ...)`, `Pokemon Emerald Randomized
+(v4.6.1) (seed ...).gba` in the ROM folder (every option on); fixtures `firered_randomized*`, `emerald_randomized*` boot the
+retail saves (UPR keeps the save format).
+
+### Not done yet
+
+- NEXT BOSS keeps the leaders' usual names when UPR renamed the trainers (the gym's own text still uses them).
+- Gift / static Pokémon whose retail species isn't unique among the statics (two of a kind) aren't listed in HERE.
+- Shops (the few UPR randomizes) aren't in the guide; the hand-written shop lines that UPR could change are hidden.
+- The starters' choice isn't shown anywhere new (the game's own lab shows them).
+- LeafGreen, Ruby, Sapphire, other languages and other randomizers.
+
 ## Launch from a frontend (Cocoon, iiSU, ES-DE, ...)
 
 Frontends can open a game in PokeDaisy directly, with no library screen in

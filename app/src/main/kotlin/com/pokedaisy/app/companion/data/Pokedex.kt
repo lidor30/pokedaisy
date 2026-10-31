@@ -1482,6 +1482,7 @@ object PokedexSource {
         synchronized(this) { cachedFor = null }
         DexDetails.romChanged()
         GuideRomSource.romChanged()
+        EvolutionSource.romChanged()
     }
 
     /** Already-loaded data only (no ROM read) - composables start from these,

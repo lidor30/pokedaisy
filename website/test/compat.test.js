@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
-import { checkFile, readHeader, retailDumpOf, sha1Hex, verdict } from '../src/lib/compat.js';
+import { checkFile, maskRanges, randomizedRetailOf, readHeader, retailDumpOf, sha1Hex, verdict } from '../src/lib/compat.js';
 
 const data = JSON.parse(readFileSync(new URL('../src/data/compat.json', import.meta.url)));
 const MB = 1024 * 1024;
@@ -161,4 +161,40 @@ test('a retail dump with its end trimmed and its save code patched reads as reta
   assert.equal(await retailDumpOf(fake, readHeader(modded), modded), null);
   assert.equal((await checkFile(fake, 'mod.gba', modded)).verdict.reason, 'unknown-hack');
   assert.equal(await retailDumpOf(fake, readHeader(patched), patched.slice(0, end - 1)), null);
+});
+
+test('a mask spec expands like RandomizedRetail.kt', () => {
+  assert.deepEqual(maskRanges('c4:6,100:2:3:10'), [[0xc4, 0xca], [0x100, 0x102], [0x110, 0x112], [0x120, 0x122]]);
+  assert.deepEqual(maskRanges(''), []);
+});
+
+test('retail randomized by Universal Pokemon Randomizer reads as retail, randomized', async () => {
+  // A stand-in retail ROM: names (upper-case Gen 3 text) at 0x200, data around them, and its entry built the way
+  // gen_randomized_retail.py builds the real ones.
+  const full = gba('BPRE', 1);
+  const big = new Uint8Array(0x1000).fill(0xff);
+  big.set(full);
+  for (let i = 0x200; i < 0x210; i++) big[i] = 0xbb + (i & 0x0f);
+  for (let i = 0x300; i < 0x800; i++) big[i] = i & 0x7f;
+  const end = 0x800;
+  const mask = '400:2:4:10,600:10';
+  const zeroed = big.slice(0, end);
+  for (const [a, z] of maskRanges(mask)) zeroed.fill(0, a, z);
+  const retailSha1 = await sha1Hex(big);
+  const fake = { ...data, randomizedRetail: [{ code: 'BPRE', rev: 1, end, fold: '200:10', mask, sha1: await sha1Hex(zeroed), retailSha1 }],
+    titles: { ...data.titles, [retailSha1]: 'Pokémon FireRed' } };
+
+  // Randomized inside the mask, its names in lower case: FireRed, randomized.
+  const rando = big.slice();
+  rando[0x411] ^= 0x55;
+  rando[0x605] ^= 0x33;
+  for (let i = 0x201; i < 0x208; i++) rando[i] += 0x1a;
+  assert.equal(await randomizedRetailOf(fake, readHeader(rando), rando), retailSha1);
+  assert.deepEqual((await checkFile(fake, 'rando.gba', rando)).verdict, { status: 'supported', title: 'Pokémon FireRed (Randomized)' });
+  // A byte between the strided fields, or a name spelled differently: a hack.
+  for (const at of [0x404, 0x203]) {
+    const other = rando.slice();
+    other[at] ^= 0x01;
+    assert.equal(await randomizedRetailOf(fake, readHeader(other), other), null);
+  }
 });

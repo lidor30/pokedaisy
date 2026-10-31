@@ -8,6 +8,9 @@ FireRed / LeafGreen / Ruby / Sapphire / Emerald share the table: pokeemerald's
 differs only in flags and NATURE POWER's accuracy (0 here, 95 there - it calls
 another move, so the advice never reads it).
 
+Also the EFFECT_* names by id (`vanillaMoveEffectNames`), for a randomized ROM's gBattleMoves read
+from the ROM (RandomizedRetail.kt): its effects are the same ids, their names these.
+
 Usage: DECOMPS=... scripts/gen_move_stats.py   (re-run only if the pin changes)
 """
 import os
@@ -37,6 +40,12 @@ def main():
         table[moves[m.group(1)]] = fields
     assert sorted(table) == list(range(count)), "every move id once"
 
+    effects = {}
+    for m in re.finditer(r"^#define\s+EFFECT_(\w+)\s+(\d+)\b",
+                         open(os.path.join(root, "include/constants/battle_move_effects.h")).read(), re.M):
+        effects[int(m.group(2))] = m.group(1)
+    assert sorted(effects) == list(range(len(effects))), "every effect id once"
+
     lines = []
     for i in range(count):
         f = table[i]
@@ -52,6 +61,9 @@ def main():
         out.write("// Ruby / Sapphire / Emerald share it).\n\n")
         out.write("internal val vanillaMoveStats: List<MoveStats> = listOf(\n")
         out.write("\n".join(lines) + "\n)\n")
+        out.write("\n// gBattleMoves' effect ids -> the names above (include/constants/battle_move_effects.h).\n")
+        out.write("internal val vanillaMoveEffectNames: List<String> = listOf(\n")
+        out.write("".join('    "%s",\n' % effects[i] for i in range(len(effects))) + ")\n")
     print("wrote %d moves to %s" % (count, os.path.relpath(KOTLIN)))
 
 

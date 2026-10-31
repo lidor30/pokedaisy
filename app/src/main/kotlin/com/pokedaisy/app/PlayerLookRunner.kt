@@ -113,12 +113,14 @@ class PlayerLookRunner(private val context: Context, private val onPatch: (Playe
                 LookArt.keep(filesDir, scan)
                 TextArt.keep(filesDir, scan)
                 MonArt.keep(filesDir, bytes)
-                // Only retail carts (a collection dump of one too) and the hacks played dressed up headless
-                // ([PlayerLook.HACKS]) wear another look: a hack may load its hero's pictures or palettes its own way.
-                // Every ROM's heroes are still kept for the other games.
+                // Only retail carts (a collection dump of one too, or one randomized: the randomizer leaves the hero's
+                // pictures alone) and the hacks played dressed up headless ([PlayerLook.HACKS]) wear another look: a hack
+                // may load its hero's pictures or palettes its own way. Every ROM's heroes are still kept for the other games.
                 val sha1 = java.security.MessageDigest.getInstance("SHA-1").digest(bytes).joinToString("") { "%02x".format(it) }
+                val rev = bytes.getOrNull(0xBC)?.toInt()?.and(0xFF)
                 val retail = GameTitles.isRetail(sha1) || sha1 in PlayerLook.HACKS ||
-                    RetailDumps.matchStream(code, bytes.getOrNull(0xBC)?.toInt()?.and(0xFF), bytes.size.toLong()) { bytes.inputStream() } != null
+                    RetailDumps.matchStream(code, rev, bytes.size.toLong()) { bytes.inputStream() } != null ||
+                    com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, rev, bytes.size.toLong()) { bytes.inputStream() } != null
                 if (!retail) {
                     Log.i("pokedaisy", "player look: not a retail cart or a known hack, none offered")
                     android.os.Handler(android.os.Looper.getMainLooper()).post { if (gen == generation) supported.value = false }

@@ -1,5 +1,6 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.data.RANDOMIZED_RETAIL
 import com.pokedaisy.app.companion.data.RETAIL_DUMPS
 import com.pokedaisy.app.companion.data.RETAIL_PORT_CODE_TITLES
 import com.pokedaisy.app.companion.data.TelemetrySampler
@@ -117,6 +118,14 @@ class SiteDataExportTest {
                 "    {\"code\": ${q(d.code)}, \"rev\": ${d.rev}, \"end\": ${d.end}, \"ranges\": [" +
                     d.ranges.joinToString(", ") { "[${it.first}, ${it.last + 1}]" } +
                     "], \"sha1\": ${q(d.sha1)}, \"retailSha1\": ${q(d.retailSha1)}}"
+            })
+            append("\n  ],\n")
+            // Retail FireRed / Emerald randomized by Universal Pokemon Randomizer ZX (RandomizedRetail): their names
+            // upper-cased (fold), the randomizer's sites (mask, "start:len[:count:stride]" in hex) and the dump ranges zeroed.
+            append("  \"randomizedRetail\": [\n")
+            append(RANDOMIZED_RETAIL.joinToString(",\n") { r ->
+                "    {\"code\": ${q(r.code)}, \"rev\": ${r.rev}, \"end\": ${r.end}, \"fold\": ${q(r.fold)}, \"mask\": ${q(r.mask)}, " +
+                    "\"sha1\": ${q(r.sha1)}, \"retailSha1\": ${q(r.retailSha1)}}"
             })
             append("\n  ],\n")
             append("  \"gameBoy\": [\n")

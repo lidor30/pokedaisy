@@ -192,7 +192,22 @@ object GameTitles {
 
     /** The game's name, if [identify] has already recognised this exact file. Cheap. */
     fun title(context: Context, rom: File): String? =
-        cache(context)[rom.absolutePath]?.takeIf { it.matches(rom) }?.title
+        cache(context)[rom.absolutePath]?.takeIf { it.matches(rom) }?.title?.let(::shown)
+
+    /** What a randomized retail cart is cached as ([RandomizedRetail]): retail's name and this, in English. */
+    private const val RANDOMIZED = " (Randomized)"
+
+    /** [title] in the app's language: a randomized cart's "(Randomized)" is translated. */
+    internal fun shown(title: String): String =
+        if (title.endsWith(RANDOMIZED)) com.pokedaisy.app.companion.i18n.tr("{0} (Randomized)", title.removeSuffix(RANDOMIZED)) else title
+
+    /** [rom]'s name as retail randomized by Universal Pokémon Randomizer ZX ([RandomizedRetail]), or null. Blocking. */
+    internal fun randomizedTitle(rom: File, code: String?): String? {
+        if (code != "BPRE" && code != "BPEE") return null
+        val size = RomArchive.romSize(rom)
+        val hit = com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, RomIdentity.revision(rom), size) { RomArchive.open(rom) }
+        return hit?.let { RETAIL[it.retailSha1] }?.let { it + RANDOMIZED }
+    }
 
     /** What kind of game [rom] is, if [identify] has looked at this exact file. Cheap. */
     fun category(context: Context, rom: File): RomCategory? =
@@ -239,9 +254,11 @@ object GameTitles {
 
     /** [rom]'s [RomCategory] (reads its header; [sha1] when [identify] hashed it). A Pokémon cart hashed but known as
      * neither retail nor a hack is a hack too (an unsupported one); a cart nobody hashes is its platform's. */
-    private fun categoryOf(rom: File, sha1: String?, hashed: Boolean): RomCategory = when {
+    private fun categoryOf(rom: File, sha1: String?, hashed: Boolean, randomized: Boolean = false): RomCategory = when {
         RomIdentity.isNds(rom) -> RomCategory.NDS
         sha1 != null && sha1 in HACKS -> RomCategory.HACK
+        // A randomized retail cart is still the retail game.
+        randomized -> RomCategory.GBA
         hashed && sha1 != null && sha1 !in RETAIL && sha1 !in RETAIL_PORT_TITLES -> RomCategory.HACK
         RomIdentity.isGameBoy(rom) -> gameBoyPlatform(rom) { sha1 }
         else -> RomCategory.GBA
@@ -271,8 +288,9 @@ object GameTitles {
                 val worthHashing = if (nds) RomIdentity.ndsGameCode(rom) in NDS_CODES
                     else RomIdentity.gameCode(rom) in CODES || RomIdentity.isGameBoy(rom)
                 val sha1 = if (worthHashing) RomIdentity.sha1(rom) else null
-                val title = sha1?.let { BY_SHA1[it] }
-                Entry(rom.length(), rom.lastModified(), title, categoryOf(rom, sha1, worthHashing), platformOf(rom) { sha1 })
+                val randomized = if (sha1 != null && sha1 !in BY_SHA1 && !nds) randomizedTitle(rom, RomIdentity.gameCode(rom)) else null
+                val title = sha1?.let { BY_SHA1[it] } ?: randomized
+                Entry(rom.length(), rom.lastModified(), title, categoryOf(rom, sha1, worthHashing, randomized != null), platformOf(rom) { sha1 })
             }
             synchronized(this) { cache(context)[rom.absolutePath] = entry }
             changed = true
@@ -321,7 +339,9 @@ object GameTitles {
     private fun cacheFile(context: Context) = File(context.filesDir, "rom-titles.tsv")
 
     /** Which games [BY_SHA1] knew when the cache was written: a file found nameless then may have a name now. */
-    private val KNOWN = "#known\t" + Integer.toHexString(BY_SHA1.keys.sorted().hashCode())
+    /** Randomized retail carts are named too ([randomizedTitle]): a cache from before asks its nameless files again. */
+    private const val RANDOMIZED_KNOWN = "\tupr-4.6.1"
+    private val KNOWN = "#known\t" + Integer.toHexString(BY_SHA1.keys.sorted().hashCode()) + RANDOMIZED_KNOWN
 
     /** How [RomCategory] was decided when the cache was written: a cache from before asks every file again. */
     private const val CATEGORIES = "#categories\t4"

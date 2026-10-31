@@ -3,7 +3,7 @@ title: Guide
 summary: The GUIDE tab's hints, what's in the area you're in, the next gym leader's team, evolutions and the hand-written help pages.
 section: companion
 order: 8
-keywords: [walkthrough, hints, spoilers, help, stuck, where, encounters, wild, gym, leader, boss, items, hidden, gifts, trades, evolve, trees, clock, time of day, rematch, season, spring, summer, autumn, winter]
+keywords: [randomizer, randomized, walkthrough, hints, spoilers, help, stuck, where, encounters, wild, gym, leader, boss, items, hidden, gifts, trades, evolve, trees, clock, time of day, rematch, season, spring, summer, autumn, winter]
 ---
 
 The GUIDE tab is there for the moments you'd normally open a walkthrough: you're stuck, you want to know what lives on this route, or you'd like to see the next gym leader's team before walking in. It reads your game as you play, so it knows where you are, what you've already picked up and which bosses you've beaten.
@@ -88,6 +88,15 @@ The pages a game gets depend on how much of it has been mapped. The [supported g
 | Emerald Rogue, R.O.W.E., PureRed, PureBlue, Gold, Silver, Crystal Clear, Prism | No guide yet |
 
 The original games' hand-written pages follow the app's language when you play a French, German, Italian, Spanish or Japanese copy. Most hacks' pages are in English.
+
+## Randomized games
+
+On a FireRed or Emerald you've randomized (see [supported games](supported-games.md)), the GUIDE reads the randomized game, not the original:
+
+- `HERE` lists the wild Pokémon the randomizer put on the route, and the items lying around and hidden there as your ROM has them. The trades show the Pokémon they really swap now. Gifts from people that are items (and every key item) stay as they were, since the randomizer doesn't change them.
+- `NEXT BOSS` shows each leader's randomized team. If the randomizer renamed the trainers, the guide still calls the leaders by their usual names.
+- `EVOLUTIONS` and the Pokédex pages follow the randomized evolutions, learnsets and TMs.
+- The hand-written pages leave out what the randomizer moves: the gift Pokémon, the legendary Pokémon and where to find evolution stones. A gift Pokémon a person hands you in `HERE` shows only when the guide can read which one it is. The story, key items and HMs stay, since they don't change. `TIPS` gets a `RANDOMIZED` section saying so.
 
 ## The "may be wrong" notice
 

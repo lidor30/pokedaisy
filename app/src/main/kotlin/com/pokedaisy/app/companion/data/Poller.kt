@@ -58,6 +58,9 @@ class TelemetrySampler {
     private var unsupportedHackLabel: String? = null
     // The ROM hashed as retail FireRed / Emerald.
     private var retailHash = false
+    // Retail FireRed / Emerald with a randomizer's data (RandomizedRetail): read as retail, with its own tables.
+    private var randomizedRom: RandomizedRetailRom? = null
+    private var randomizedText: HackText? = null
     // [nativeCfg]'s RAM is known to be this ROM's: a retail hash, or another language's retail
     // path - not an unrecognised same-size hack or a BEST EFFORT match landing on a retail config.
     private var ramVerified = false
@@ -320,6 +323,7 @@ class TelemetrySampler {
             eliteRedux265_3 = base === NATIVE_ELITE_REDUX_V2_65_3B
             fireRedHack = fireRedHackFor(base)
             emeraldHack = emeraldHackFor(base)
+            randomizedRetail = randomizedText
             mariomonV13 = base === NATIVE_MARIOMON_V1_3 || base === NATIVE_MARIOMON_V1_2_2 || base === NATIVE_MARIOMON_V1_2_1
             quetzalV084 = base?.quetzalV084 == true
             quetzalV1 = base?.quetzalV1 == true
@@ -448,7 +452,7 @@ class TelemetrySampler {
                 nativeCfg = it
                 return
             }
-            retailHash = hash in RETAIL_SHA1S || retailDump(reader, code, size)
+            retailHash = hash in RETAIL_SHA1S || retailDump(reader, code, size) || randomizedDump(reader, code, size)
             smallHash = hash
         }
 
@@ -589,7 +593,7 @@ class TelemetrySampler {
                 ramVerified = true   // its build's own symbols; the battle cursors kept retail's EWRAM (checked headless)
                 return
             }
-            retailHash = hash in RETAIL_SHA1S || retailDump(reader, code, size)
+            retailHash = hash in RETAIL_SHA1S || retailDump(reader, code, size) || randomizedDump(reader, code, size)
             smallHash = hash
         }
 
@@ -610,11 +614,26 @@ class TelemetrySampler {
             // NATIVE_FIRERED_REV0 is the hacks' base too: only retail gets the card.
             else -> NATIVE_FIRERED_REV0.copy(trainerCard = TRAINER_CARD_FIRERED)
         }
-        // The SHINY marks: retail's shiny check (8 of 65536), on this copy only. BOXES: gPokemonStoragePtr, right after
-        // gSaveBlock2Ptr (FireRed 0x03005010 in both revisions, Emerald 0x03005D94; read off captures: every box record's
-        // checksum held). LeafGreen's is set where the other retail games are detected.
+        // The SHINY marks: retail's shiny check (8 of 65536), on this copy only - a randomizer leaves it be. BOXES:
+        // gPokemonStoragePtr, right after gSaveBlock2Ptr (FireRed 0x03005010 in both revisions, Emerald 0x03005D94; read
+        // off captures: every box record's checksum held). LeafGreen's is set where the other retail games are detected.
         nativeCfg = withCheckedTables(reader, cfg).copy(shinyBelow = 8, pokemonStoragePtr = cfg.saveBlock2Ptr + 4)
         ramVerified = true
+        randomizedText = randomizedRom?.let { runCatching { RandomizedRetail.read(reader, it) }.getOrNull() }
+        if (randomizedRom != null && randomizedText == null) {
+            // Its tables didn't read: retail's would be wrong, so nothing at all.
+            nativeCfg = null
+            unsupportedHackLabel = "a randomized ${if (emerald) "Emerald" else "FireRed"} whose tables didn't read"
+        }
+    }
+
+    /** Retail with a randomizer's data (UPR ZX: [RandomizedRetail]): retail's RAM and code, so read as retail. */
+    private fun randomizedDump(reader: MemoryReader, code: String, size: Long): Boolean {
+        val rev = runCatching { reader.readCoreMemory(0x080000BCL, 1)[0].toInt() and 0xFF }.getOrNull()
+        randomizedRom = runCatching {
+            RandomizedRetail.match(code, rev, size) { off, len -> reader.readCoreMemory(0x08000000L + off, len) }
+        }.getOrNull()?.also { android.util.Log.i("pokedaisy", "$code: retail randomized by Universal Pokemon Randomizer (retail ${it.retailSha1})") }
+        return randomizedRom != null
     }
 
     /** A trimmed / save-patched retail dump ([RetailDumps]): retail's RAM and code, so read as retail. */
@@ -629,7 +648,8 @@ class TelemetrySampler {
      * tables are really where it expects them in this ROM. */
     private fun withCheckedTables(reader: MemoryReader, cfg: NativeConfig): NativeConfig {
         val checked = cfg.pokedex?.takeIf { !pokedexMatchesRom(reader, it) }?.let { cfg.copy(pokedex = null) } ?: cfg
-        return checked.guideTables?.takeIf { !guideTablesMatchRom(reader, it) }
+        // A randomized retail ROM may rename its trainers (BROCK as "Leo"): the probe trainer's name is no test there.
+        return checked.guideTables?.takeIf { !guideTablesMatchRom(reader, it, byName = randomizedRom == null) }
             ?.let { checked.copy(guideTables = null, enemyParty = 0) } ?: checked
     }
 

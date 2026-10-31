@@ -32,6 +32,22 @@ object WideScreen {
         return if (v != OFF && runCatching { MgbaCore.pkWideKnows(v) }.getOrDefault(false)) v else OFF
     }
 
+    /**
+     * The CRC32 to look [rom] up by in WIDE's and the field reads' tables: its own ([crc]), or, for retail FireRed /
+     * Emerald randomized by Universal Pokémon Randomizer ZX ([RandomizedRetail]), retail's - the randomizer leaves
+     * the code, RAM, maps and sprites those tables describe alone. Blocking (hashes the ROM when it's unknown).
+     */
+    fun tablesCrc(rom: java.io.File, crc: String): String {
+        val v = crc.toLongOrNull(16)?.toInt() ?: return crc
+        if (runCatching { MgbaCore.pkWideKnows(v) || MgbaCore.pkFieldKnows(v) }.getOrDefault(false)) return crc
+        val hit = runCatching {
+            com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(
+                RomIdentity.gameCode(rom), RomIdentity.revision(rom), RomArchive.romSize(rom),
+            ) { RomArchive.open(rom) }
+        }.getOrNull() ?: return crc
+        return "%08x".format(hit.retailCrc)
+    }
+
     /** The same for the field reads behind SCENE SPEEDS' TEXT, AUTO-RUN, RUN INDOORS and WILD ENCOUNTERS
      * ([MgbaCore.pkFieldConfigure]): WIDE's games with the field's addresses, plus the hacks WIDE doesn't draw yet. */
     fun fieldGameFor(crc: String): Int {

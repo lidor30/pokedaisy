@@ -3,7 +3,7 @@ title: Supported games
 summary: Which games the companion can read, how to check your ROM, and what happens with a hack or version PokeDaisy doesn't know.
 section: help
 order: 1
-keywords: [nds, nintendo ds, platinum, heartgold, soulsilver, black, unova, gen 5, purered, pureblue, purergb, compatibility, compatible, rom hack, hacks, version, sha1, sha-1, checksum, unsupported, best effort, partially supported, request]
+keywords: [randomizer, randomized, randomiser, universal randomizer, upr, upr zx, nds, nintendo ds, platinum, heartgold, soulsilver, black, unova, gen 5, purered, pureblue, purergb, compatibility, compatible, rom hack, hacks, version, sha1, sha-1, checksum, unsupported, best effort, partially supported, request]
 ---
 
 Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the companion on the bottom screen: to show your party, bag, map and battles, it has to know exactly which game you're running and where that game keeps its data. A game it doesn't know still plays fine on the top screen; the companion shows a notice instead of your party.
@@ -14,6 +14,7 @@ Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the compan
 
 - Pokémon FireRed, LeafGreen, Emerald, Ruby and Sapphire.
 - The English (USA / Europe) releases and the Spanish, German, French, Italian and Japanese ones, every revision.
+- English FireRed (both revisions) and Emerald also count when you've run them through Universal Pokemon Randomizer ZX (version 4.6.1), with any settings and any seed. The library calls them "Pokémon FireRed (Randomized)" and "Pokémon Emerald (Randomized)". The companion reads what the randomizer changed from your ROM: each Pokémon's types, the moves' power and type, the type chart, the trainers' teams, the wild Pokémon, evolutions, learnsets and TMs, and the items lying around. The [guide](guide.md#randomized-games) leaves out what it can't know. A randomized copy of another game, or one made with another randomizer, isn't recognized.
 - English FireRed and Emerald also count when the file comes from a collection that changed it a little: the empty space at its end cut off or filled with something of its own, or patched to run on a flash cartridge (its save code changed so it saves without the original flash chip, often with the "internal battery has run dry" message reworded). Any change to the game itself makes it a hack the companion doesn't know.
 
 **Game Boy and Game Boy Color:**

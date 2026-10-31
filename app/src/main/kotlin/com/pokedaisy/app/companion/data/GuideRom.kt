@@ -177,12 +177,13 @@ private const val TRAINER_PARTY_HELD_ITEM = 2
 private const val WILD_SET_SIZE = 16 // four WildPokemonInfo pointers (+ expansion's hidden one, see below)
 private const val MAP_GROUP_UNDEFINED = 0xFF
 
-/** Whether the running ROM has these tables where [t] says: its probe trainer (FireRed's BROCK) has the right name. */
-fun guideTablesMatchRom(c: MemoryReader, t: GuideTables): Boolean = runCatching {
+/** Whether the running ROM has these tables where [t] says: its probe trainer (FireRed's BROCK) has the right name
+ * ([byName]: not on a ROM whose hash already vouches for the tables but whose trainers may be renamed, [RandomizedRetail]). */
+fun guideTablesMatchRom(c: MemoryReader, t: GuideTables, byName: Boolean = true): Boolean = runCatching {
     val at = t.trainers + t.probeTrainer.toLong() * t.trainerStride + t.trainerNameOff
     val name = if (t.trainerNamePtr) c.readCoreMemory(u32le(c.readCoreMemory(at, 4), 0), t.trainerNameLen)
         else c.readCoreMemory(at, t.trainerNameLen)
-    Gen3Text.decode(name) == t.probeName && c.readCoreMemory(t.wildHeaders, 1)[0].toInt() and 0xFF != MAP_GROUP_UNDEFINED
+    (!byName || Gen3Text.decode(name) == t.probeName) && c.readCoreMemory(t.wildHeaders, 1)[0].toInt() and 0xFF != MAP_GROUP_UNDEFINED
 }.getOrDefault(false)
 
 /** The save's event flags and vars, as the scripts see them. */

@@ -1763,6 +1763,22 @@ fun main(args: Array<String>) {
         Shot("$g-guide-stuck", bw, bh, bd, companion("GUIDE") { live?.invoke(snapshot()) ?: snapshot() }) {
             onNodeWithText("STUCK?").performClick()
         },
+        // A randomized FireRed / Emerald (RandomizedRetail): TIPS with its RANDOMIZED section, WHERE IS without the gifts and
+        // legendaries (Randomized.HIDE). The tables are retail's here; only the guide's lines change.
+        *(if (game != GameKind.FIRERED && game != GameKind.EMERALD) emptyArray() else arrayOf(
+            Shot("$g-guide-randomized", bw, bh, bd, companion("GUIDE") {
+                com.pokedaisy.app.companion.data.randomizedRetail = com.pokedaisy.app.companion.data.HackText(
+                    emptyMap(), emptyMap(), emptyMap(), emptyMap(), emptyMap(),
+                )
+                live?.invoke(snapshot()) ?: snapshot()
+            }) { onNodeWithText("TIPS").performClick() },
+            Shot("$g-guide-randomized-where", bw, bh, bd, companion("GUIDE") {
+                com.pokedaisy.app.companion.data.randomizedRetail = com.pokedaisy.app.companion.data.HackText(
+                    emptyMap(), emptyMap(), emptyMap(), emptyMap(), emptyMap(),
+                )
+                live?.invoke(snapshot()) ?: snapshot()
+            }) { onNodeWithText("WHERE IS").performClick() },
+        )),
         // The top screen's status bar over a stand-in for the game (GameStageLayout's layout).
         Shot("status-bar", tw, th, td, {
             {
@@ -2414,6 +2430,7 @@ fun main(args: Array<String>) {
         try {
             com.pokedaisy.app.companion.FavoriteItems.load(emptySet()) {} // a shot's stars don't carry into the next
             com.pokedaisy.app.companion.data.PlayerLook.worn.value = null
+            com.pokedaisy.app.companion.data.randomizedRetail = null // only the randomized shots set it
             val content = shot.content()
             runSkikoComposeUiTest(Size(shot.w.toFloat(), shot.h.toFloat()), Density(shot.density)) {
                 // Manual clock: the party icons / map highlight animate forever,

@@ -74,6 +74,9 @@ object EvolutionSource {
     /** Already-loaded table only (no ROM read). */
     fun cached(t: PokedexTables): List<List<Evolution>>? = cached?.takeIf { it.first == t }?.second
 
+    /** Another ROM: a randomized retail one shares retail's [PokedexTables] but not its evolutions. */
+    fun romChanged() { cached = null }
+
     /** Evolutions by species id, or null if [t] has no table or it doesn't check out. */
     fun table(t: PokedexTables): List<List<Evolution>>? {
         if (t.evolutions == 0L) return null
@@ -102,7 +105,8 @@ object EvolutionSource {
             }
         }
         // A hack of the same size that moved the table must not get wrong data:
-        // BULBASAUR evolves at 16 into species 2.
-        return table.takeIf { it.getOrNull(1)?.firstOrNull() == Evolution(EVO_LEVEL, 16, 2) }
+        // BULBASAUR evolves at 16 into species 2. A randomized retail ROM's is at retail's place (its hash says so)
+        // with the randomizer's evolutions in it.
+        return table.takeIf { gameRandomized || it.getOrNull(1)?.firstOrNull() == Evolution(EVO_LEVEL, 16, 2) }
     }
 }

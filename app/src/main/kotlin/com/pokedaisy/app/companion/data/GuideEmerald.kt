@@ -57,6 +57,15 @@ internal val GUIDE_EMERALD = GameGuide(
         page(
             "TIPS",
             section(
+                "RANDOMIZED",
+                Randomized.ONLY,
+                entry(
+                    "This game is randomized",
+                    "HERE, NEXT BOSS, EVOLUTIONS and the DEX read the randomizer's POKéMON, teams, moves and items from the game itself. " +
+                        "The gift and legendary POKéMON it moved aren't listed: the guide can't know them.",
+                ),
+            ),
+            section(
                 "CONTROLS",
                 entry("Running", "Hold B to run once you have the RUNNING SHOES."),
                 entry("Two bikes", "The MACH BIKE is the fast one - fast enough to cross cracked floors before they give way. The ACRO BIKE can hop and ride narrow rails. RYDEL in MAUVILLE CITY swaps one for the other."),
@@ -130,13 +139,14 @@ internal val GUIDE_EMERALD = GameGuide(
                     "Evolution stones",
                     "The TREASURE HUNTER's house on ROUTE 124 swaps shards found by DIVING: RED for a FIRE STONE, YELLOW for THUNDER, BLUE for WATER, GREEN for LEAF. " +
                         "Some lie around too: FIERY PATH (FIRE), ROUTE 119 (LEAF), NEW MAUVILLE (THUNDER), the ABANDONED SHIP (WATER), METEOR FALLS (MOON).",
-                    hint = "Diving treasure.", areas = listOf("ROUTE 124")
+                    hint = "Diving treasure.", areas = listOf("ROUTE 124"), randomized = Randomized.HIDE,
                 ),
                 entry("MOVE DELETER", "A house in LILYCOVE CITY.", areas = listOf("LILYCOVE CITY")),
                 entry("MOVE TUTOR", "A house in FALLARBOR TOWN. Bring a HEART SCALE.", areas = listOf("FALLARBOR TOWN")),
             ),
             section(
                 "GIFT POKéMON",
+                Randomized.HIDE,
                 entry("CASTFORM", "The WEATHER INSTITUTE on ROUTE 119 gives it to you after you drive TEAM AQUA out.", hint = "A research building.", have = Have.Caught(351), areas = listOf("ROUTE 119")),
                 entry("WYNAUT (egg)", "An old woman in LAVARIDGE TOWN.", hint = "A hot-spring town.", have = Have.Caught(360), areas = listOf("LAVARIDGE TOWN")),
                 entry(
@@ -155,6 +165,7 @@ internal val GUIDE_EMERALD = GameGuide(
             ),
             section(
                 "LEGENDARY POKéMON",
+                Randomized.HIDE,
                 entry(
                     "RAYQUAZA",
                     "The top of the SKY PILLAR on ROUTE 131, once the story's SOOTOPOLIS CITY crisis is over. Some floors crack: ride the MACH BIKE across them.",

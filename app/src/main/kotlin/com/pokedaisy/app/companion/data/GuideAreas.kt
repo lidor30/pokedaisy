@@ -109,8 +109,34 @@ fun hasAreaGuide(guide: GuideId?): Boolean = guide != null
 fun areaThings(guide: GuideId?, mapsec: Int): List<AreaThing> =
     if (guide == null) emptyList() else allAreaThings(guide)[mapsec].orEmpty()
 
-/** Every area of [guide]'s game: region map section -> what's in it. */
+/** Every area of [guide]'s game: region map section -> what's in it. On a randomized game ([runningRandomized]) the
+ * randomizer's items, trades and gift Pokémon ([randomizedAreas]). */
 fun allAreaThings(guide: GuideId): Map<Int, List<AreaThing>> {
+    val r = runningRandomized?.randomizedGuide ?: return retailAreaThings(guide)
+    randomizedCache?.let { (g, id, m) -> if (g === r && id == guide) return m }
+    return randomizedAreas(retailAreaThings(guide), r).also { randomizedCache = Triple(r, guide, it) }
+}
+
+@Volatile private var randomizedCache: Triple<RandomizedGuide, GuideId, Map<Int, List<AreaThing>>>? = null
+
+/**
+ * [areas] as the randomized ROM [r] has them: an item ball's or hidden item's item read where the game keeps it (its
+ * place and flag are retail's), a trade's two species and a gift Pokémon's from the ROM. What [r] can't place is left
+ * out rather than shown as retail's; NPC item gifts and key items are kept (no randomizer touches them).
+ */
+internal fun randomizedAreas(areas: Map<Int, List<AreaThing>>, r: RandomizedGuide): Map<Int, List<AreaThing>> =
+    areas.mapValues { (_, things) ->
+        things.mapNotNull { t ->
+            when (t.kind) {
+                AreaKind.ITEM, AreaKind.HIDDEN -> r.items[t.flag]?.let { t.copy(id = it) }
+                AreaKind.TRADE -> r.trades["${t.id}/${t.wants}"]?.let { (given, wanted) -> t.copy(id = given, wants = wanted) }
+                AreaKind.MON, AreaKind.EGG -> r.statics[t.id]?.let { t.copy(id = it) }
+                AreaKind.GIFT, AreaKind.KEY -> t
+            }
+        }
+    }.filterValues { it.isNotEmpty() }
+
+private fun retailAreaThings(guide: GuideId): Map<Int, List<AreaThing>> {
     val raw = rawAreas(guide)
     return areaCache.getOrPut(guide) {
         raw.asSequence().flatMap { it.lineSequence() }.filter { it.isNotBlank() }.mapNotNull { line ->

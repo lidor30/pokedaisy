@@ -1921,6 +1921,18 @@ Emerald's siirtc, the save warnings reworded, AgbMain's WAITCNT value) and thing
 (64 KB+ runs of 0xFF) read as retail - library, `detect()` and the website's `retailDumpOf` alike: bytes [0, data end) with
 those ranges (and the GPIO bytes) zeroed hash to the table's SHA-1. Anything else changed stays a hack.
 The pokefirered map in `$DECOMPS` isn't byte-identical to retail (code 0x93C off), so FireRed's ranges are found by bytes.
+**Randomized retail (2026-10-31)**: English FireRed rev 0 / 1 and Emerald run through Universal Pokemon Randomizer ZX 4.6.1
+(any settings / seed) read as retail (`RandomizedRetail.kt`, `RandomizedRetailGen.kt` from `scripts/gen_randomized_retail.py`
+with `UPR_SRC` = a UPR checkout, facts only - it's GPLv3): bytes [0, end) with the species names upper-cased (`fold`) and
+every site UPR may write zeroed (`mask`: its offsets file, IPS records and map / table scans redone on retail, strided, on top
+of `RetailDumps`' ranges) hash to `sha1`; `--check <folder>` proves a batch of outputs inside it. Retail's config,
+`ramVerified`, retail's shiny check; `randomizedRetail` (ActiveTables, a `HackText`, `runningRandomized` / `gameRandomized`)
+carries types, growth rates, gBattleMoves (+ `MoveStats`, effect names `vanillaMoveEffectNames`), the type chart and the
+GUIDE's item / trade / gift species read from the ROM. Retail-data probes skip on it (BULBASAUR's evolution and TMs, the
+guide's probe trainer name: UPR renames BROCK). Hand-written guide lines naming what a randomizer moves are
+`Randomized.HIDE` (gifts, legendaries, stones), TIPS has a `Randomized.ONLY` line; `gameGuide(id)` filters. EXPAND / field
+reads go by retail's CRC (`WideScreen.tablesCrc`; mgba_dump `wideon MARGIN CRC`). Library: "Pokémon FireRed (Randomized)";
+website: `compat.json`'s `randomizedRetail`. docs/DEVELOPMENT.md's "Randomized ROMs" (and how to redo it for a new UPR).
 **Unsupported ROMs**: `CompanionSupport.isSupported(file)` (FireRed/Emerald game code, ≤16 MB,
 retail LeafGreen rev 0/1 / Ruby / Sapphire rev 1/2 — `TelemetrySampler.OTHER_RETAIL_CODES`,
 read as FireRed / Emerald — or a >16 MB hack whose SHA1 is in `TelemetrySampler.SUPPORTED_HACK_SHA1S`) mirrors the

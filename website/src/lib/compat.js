@@ -42,11 +42,39 @@ export async function retailDumpOf(data, { code, rev }, bytes) {
   return (await sha1Hex(copy)) === dump.sha1 ? dump.retailSha1 : null;
 }
 
+/** "start:len[:count:stride]" entries (hex, comma-separated) as [start, end) pairs - RandomizedRetail.kt's format. */
+export function maskRanges(spec) {
+  const out = [];
+  for (const e of spec.split(',')) {
+    if (!e) continue;
+    const [start, len, count = 1, stride = 0] = e.split(':').map((x) => parseInt(x, 16));
+    for (let i = 0; i < count; i++) out.push([start + i * stride, start + i * stride + len]);
+  }
+  return out;
+}
+
+/**
+ * Retail FireRed / Emerald run through Universal Pokemon Randomizer ZX: the retail SHA-1 it was made from, or null. The
+ * app's RandomizedRetail.kt: bytes [0, end) with the species names upper-cased (`fold`), then every site the randomizer
+ * may write zeroed (`mask`, which holds the dump ranges too), hash to the entry's `sha1`.
+ */
+export async function randomizedRetailOf(data, { code, rev }, bytes) {
+  const rom = (data.randomizedRetail ?? []).find((d) => d.code === code && d.rev === rev);
+  if (!rom || bytes.length < rom.end || bytes.length > data.maxBaseSize) return null;
+  const copy = bytes.slice(0, rom.end);
+  for (const [a, z] of maskRanges(rom.fold)) {
+    for (let i = a; i < z; i++) if (copy[i] >= 0xd5 && copy[i] <= 0xee) copy[i] -= 0x1a;
+  }
+  for (const [a, z] of maskRanges(rom.mask)) copy.fill(0, a, z);
+  return (await sha1Hex(copy)) === rom.sha1 ? rom.retailSha1 : null;
+}
+
 /**
  * The verdict for one ROM: `supported` (the companion knows this exact game) or `unsupported`.
- * `size` is the ROM's own size (not an archive's); `retailOf` the retail dump it is ([retailDumpOf]).
+ * `size` is the ROM's own size (not an archive's); `retailOf` the retail dump it is ([retailDumpOf]); `randomizedOf` the
+ * retail cart it's a randomized copy of ([randomizedRetailOf]).
  */
-export function verdict(data, { platform, code, rev, size, sha1, retailOf }) {
+export function verdict(data, { platform, code, rev, size, sha1, retailOf, randomizedOf }) {
   if (platform === 'gb') {
     const hit = data.gameBoy.find((g) => g.sha1 === sha1);
     return hit
@@ -80,9 +108,10 @@ export function verdict(data, { platform, code, rev, size, sha1, retailOf }) {
   // Detected by the app, but its companion isn't ready yet: the game plays, the companion doesn't read it.
   const soon = (data.inProgress ?? []).find((h) => h.sha1 === sha1);
   if (soon) return { status: 'unsupported', reason: 'in-progress', title: soon.title, version: soon.version, base };
-  // Retail FireRed / Emerald by their hash (or as a trimmed / save-patched dump of one); any other ROM under
-  // those codes is a hack the app doesn't know.
-  const title = !ownCode && size <= data.maxBaseSize ? data.titles[sha1] ?? data.titles[retailOf] : undefined;
+  // Retail FireRed / Emerald by their hash (or as a trimmed / save-patched dump of one, or randomized); any other ROM
+  // under those codes is a hack the app doesn't know.
+  const randomized = randomizedOf && data.titles[randomizedOf] ? `${data.titles[randomizedOf]} (Randomized)` : undefined;
+  const title = !ownCode && size <= data.maxBaseSize ? data.titles[sha1] ?? data.titles[retailOf] ?? randomized : undefined;
   return title ? { status: 'supported', title } : { status: 'unsupported', reason: 'unknown-hack', base };
 }
 
@@ -137,6 +166,10 @@ export async function checkFile(data, name, bytes) {
   if (header.platform === 'gba' && !data.titles[sha1]) {
     const retailOf = await retailDumpOf(data, header, bytes);
     if (retailOf) info.retailOf = retailOf;
+    else {
+      const randomizedOf = await randomizedRetailOf(data, header, bytes);
+      if (randomizedOf) info.randomizedOf = randomizedOf;
+    }
   }
   return { name, ...info, verdict: verdict(data, info) };
 }

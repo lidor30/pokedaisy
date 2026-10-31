@@ -136,6 +136,14 @@ class HackText(
     /** It redrew FireRed's region map (Ash Gray's Orange Islands): the MAP reads its own from the ROM
      * (RomRegionMap), as for the other FireRed-engine hacks, rather than FireRed's bundled boxes. */
     val ownRegionMap: Boolean = false,
+    /** Its gBattleMoves' effect / accuracy / PP / chance / priority by move id, when they aren't retail's ([moveStats]). */
+    val moveStats: List<MoveStats>? = null,
+    /** Its gBaseStats growth rates by species id, when they aren't retail's ([gen3GrowthRates]). */
+    val growthRates: ByteArray? = null,
+    /** Retail with a randomizer's data ([RandomizedRetail]): its tables above were read from the ROM. */
+    val randomized: RandomizedRetailRom? = null,
+    /** And what its GUIDE area data names, as the ROM has it. */
+    val randomizedGuide: RandomizedGuide? = null,
 ) {
     val speciesMerged by lazy { speciesNames + species }
     val movesMerged by lazy { moveData + moves }
@@ -187,6 +195,19 @@ var emeraldHack: HackText? = null
 /** The running game is an Emerald hack with its own text ([emeraldHack]), laid over Emerald's. */
 val runningEmeraldHack: HackText? get() = emeraldHack?.takeIf { activeGame == GameKind.EMERALD }
 
+/** Retail FireRed / Emerald randomized by Universal Pokémon Randomizer ZX ([RandomizedRetail]): the types, moves, type
+ * chart and growth rates read from its ROM, laid over retail's. Kept apart from [fireRedHack] / [emeraldHack]: it is
+ * retail's code and look (party art, POKéMON switch, bag), only its data differ. Set with [activeGame] by the Poller. */
+@Volatile
+var randomizedRetail: HackText? = null
+
+/** The running game is a randomized retail FireRed / Emerald ([randomizedRetail]). */
+val runningRandomized: HackText? get() = randomizedRetail?.takeIf { activeGame == GameKind.FIRERED || activeGame == GameKind.EMERALD }
+
+/** Whether the running game is randomized ([runningRandomized]): what the GUIDE hand-wrote about its Pokémon and items
+ * may not hold, and checks against retail's data (BULBASAUR's TMs, its evolution) don't apply. */
+val gameRandomized: Boolean get() = runningRandomized != null
+
 /** The Emerald hack [cfg] is, or null. */
 fun emeraldHackFor(cfg: NativeConfig?): HackText? = when {
     cfg === NATIVE_RECHARGED_EMERALD_V2_2_5 || cfg === NATIVE_RECHARGED_EMERALD_V2_2_8 -> hackTextRechargedEmerald
@@ -214,7 +235,7 @@ private inline val odyssey get() = activeGame == GameKind.ODYSSEY
 // Pokémon Sword and Shield Ultimate Plus: Galar on CFRU, its own names (gen_cfru_tables.py sword_shield).
 private inline val swordShield get() = activeGame == GameKind.SWORD_SHIELD
 // A FireRed or Emerald hack's own text over the shared tables (their species / move / item ids are the same).
-private inline val frHack get() = runningFireRedHack ?: runningEmeraldHack
+private inline val frHack get() = runningFireRedHack ?: runningEmeraldHack ?: runningRandomized
 // Pokémon GS Chronicles: Johto and Kanto on CFRU, its own names (gen_cfru_tables.py gs_chronicles).
 private inline val gsChronicles get() = activeGame == GameKind.GS_CHRONICLES
 // CFRU-family hacks with CFRU's own type ids (Fairy = 23, as in Unbound) -

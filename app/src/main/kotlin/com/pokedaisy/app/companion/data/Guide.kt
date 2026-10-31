@@ -27,6 +27,8 @@ data class GuideEntry(
     val owned: Boolean = false,
     /** Area names (as the game's map shows them) this is about - HERE lists it there under TO DO. */
     val areas: List<String> = emptyList(),
+    /** Whether it holds on a randomized game ([gameRandomized]). */
+    val randomized: Randomized = Randomized.ANY,
 ) {
     /** Taps until the answer shows: one straight to it, two via the hint; 0 = nothing hidden. */
     val steps: Int get() = when {
@@ -36,11 +38,35 @@ data class GuideEntry(
     }
 }
 
+/** Whether a hand-written entry or section holds on a randomized game ([gameRandomized], [RandomizedRetail]). */
+enum class Randomized {
+    /** Either way: the story, key items, HMs. */
+    ANY,
+    /** Only unrandomized: it names a Pokémon or an item a randomizer moves (a gift, a legendary, an item ball). */
+    HIDE,
+    /** Only randomized: about the randomized game itself. */
+    ONLY,
+}
+
 /** [note]: a line under the heading (a boss's ace level vs. yours). */
-data class GuideSection(val heading: String, val entries: List<GuideEntry>, val note: String? = null)
+data class GuideSection(
+    val heading: String,
+    val entries: List<GuideEntry>,
+    val note: String? = null,
+    val randomized: Randomized = Randomized.ANY,
+)
 
 data class GuidePage(val title: String, val sections: List<GuideSection>) {
     val size: Int get() = sections.sumOf { it.entries.size }
+}
+
+/** [g]'s pages as they read on a game that is ([randomized]) or isn't randomized: what doesn't hold there left out. */
+private fun shownPages(g: GameGuide, randomized: Boolean): List<GuidePage> {
+    fun shows(r: Randomized) = r == Randomized.ANY || (r == Randomized.ONLY) == randomized
+    return g.pages.map { p ->
+        p.copy(sections = p.sections.filter { shows(it.randomized) }.map { s -> s.copy(entries = s.entries.filter { shows(it.randomized) }) }
+            .filter { it.entries.isNotEmpty() })
+    }.filter { it.sections.isNotEmpty() }
 }
 
 data class GameGuide(
@@ -54,7 +80,14 @@ data class GameGuide(
     /** HERE's wild Pokémon and NEXT BOSS's teams from tables of the game's own instead of the GBA ROM tables
      * [GuideTables] reads (a Game Boy game); null = those. */
     val world: GuideWorld? = null,
-)
+) {
+    /** These pages as an unrandomized ([plain]) and a randomized ([randomizedView]) game reads them ([Randomized]); this
+     * guide itself where it has no lines of either kind (most games). */
+    val plain: GameGuide by lazy { if (marked) copy(pages = shownPages(this, randomized = false)) else this }
+    val randomizedView: GameGuide by lazy { if (marked) copy(pages = shownPages(this, randomized = true)) else this }
+    private val marked: Boolean
+        get() = pages.any { p -> p.sections.any { s -> s.randomized != Randomized.ANY || s.entries.any { it.randomized != Randomized.ANY } } }
+}
 
 /**
  * A game whose wild Pokémon and boss teams the guide has as data of its own (Polished Crystal's, generated from its
@@ -170,8 +203,17 @@ fun guideId(game: GameKind?, live: GuideTables?): GuideId? = live?.guide ?: when
     else -> null
 }
 
-/** The hand-written guide [id] has, if one has been written. */
-fun gameGuide(id: GuideId?): GameGuide? = when (id) {
+/** The hand-written guide [id] has, if one has been written, as it reads on a game that is ([randomized]: the running
+ * one by default, [gameRandomized]) or isn't randomized; null = every line, whichever ([Randomized]). */
+fun gameGuide(id: GuideId?, randomized: Boolean? = gameRandomized): GameGuide? = wholeGuide(id)?.let {
+    when (randomized) {
+        null -> it
+        true -> it.randomizedView
+        false -> it.plain
+    }
+}
+
+private fun wholeGuide(id: GuideId?): GameGuide? = when (id) {
     GuideId.FIRERED -> GUIDE_FIRERED
     GuideId.LEAFGREEN -> GUIDE_LEAFGREEN
     GuideId.EMERALD -> GUIDE_EMERALD
@@ -226,5 +268,10 @@ fun gameGuide(id: GuideId?): GameGuide? = when (id) {
 // Small builders so the per-game files read like the content they hold.
 internal fun page(title: String, vararg sections: GuideSection) = GuidePage(title, sections.toList())
 internal fun section(heading: String, vararg entries: GuideEntry) = GuideSection(heading, entries.toList())
-internal fun entry(title: String, answer: String, hint: String? = null, have: Have? = null, areas: List<String> = emptyList()) =
-    GuideEntry(title, answer, hint, have, areas = areas)
+/** A section that holds only on an unrandomized game, or only on a randomized one ([Randomized]). */
+internal fun section(heading: String, randomized: Randomized, vararg entries: GuideEntry) =
+    GuideSection(heading, entries.toList(), randomized = randomized)
+internal fun entry(
+    title: String, answer: String, hint: String? = null, have: Have? = null, areas: List<String> = emptyList(),
+    randomized: Randomized = Randomized.ANY,
+) = GuideEntry(title, answer, hint, have, areas = areas, randomized = randomized)
