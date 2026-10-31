@@ -1341,7 +1341,29 @@ class LibraryActivity : ComponentActivity() {
 
     private fun coverFile(rom: File): File = File(coversDir, "${rom.name}.png")
 
+    /** A launch waiting on [RomCrcs.prepare]: a second tap doesn't start another. */
+    private var preparing = false
+
     private fun play(rom: File) {
+        if (preparing) return
+        // A ROM whose CRC isn't known (or an archive) is read / unpacked first, off the UI thread: the game's window did
+        // it on its own and froze on a 512 MB DS cart.
+        if (RomCrcs.needsPrepare(this, rom)) {
+            preparing = true
+            if (RomCrcs.isBig(rom)) Toast.makeText(this, tr("Getting {0} ready…", romLabel(rom)), Toast.LENGTH_SHORT).show()
+            kotlin.concurrent.thread(name = "pokedaisy-prepare") {
+                RomCrcs.prepare(this, rom)
+                runOnUiThread {
+                    preparing = false
+                    launch(rom)
+                }
+            }
+            return
+        }
+        launch(rom)
+    }
+
+    private fun launch(rom: File) {
         // The game puts its own window on the second screen.
         secondScreen.dismiss()
         launcher.menu = null

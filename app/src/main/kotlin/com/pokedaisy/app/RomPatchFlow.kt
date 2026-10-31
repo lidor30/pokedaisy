@@ -75,7 +75,7 @@ class RomPatchFlow(
     private val prefs by lazy { Prefs(activity) }
     /** The app's `roms/` (imported games): where a patched ROM goes when no linked folder fits. */
     private val importedDir by lazy { File(activity.getExternalFilesDir(null), "roms") }
-    private val crcs by lazy { RomPatcher.CrcCache(File(activity.filesDir, "rom-crcs.tsv")) }
+    private val crcs by lazy { RomCrcs.cache(activity) }
 
     /** A patch file picked (the + menu's PATCH A ROM, a `.bps` opened with the app or added as a ROM file). */
     fun start(uri: Uri, name: String? = null) {
