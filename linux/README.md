@@ -166,4 +166,12 @@ and a summary. Every companion tab at a canvas size, from the RAM fixtures:
 or extracted artwork is included in commits or install artifacts.
 
 GPL-3.0, preserving Lidor Itzhari's attribution. Existing dependency/font notices
-are in NOTICE and the packaged licenses. No new third-party library is added.
+are in NOTICE and the packaged licenses. The normal build adds no third-party library; DS builds additionally use DSperate.
+
+## Optional DS backend
+
+Build with `-DPOCKET_DSPERATE=ON` to add DSperate emulation and a limited,
+read-only Platinum USA rev1 companion. DS is disabled in normal builds.
+See [dsperate/README.md](dsperate/README.md) for builds, controls, save paths,
+architecture and current limits. This backend does not include DS expansion
+or custom battle controls. DSperate is an additional opt-in dependency.

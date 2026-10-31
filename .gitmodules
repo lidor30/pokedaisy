@@ -7,3 +7,6 @@
 [submodule "third_party/melonds"]
 	path = third_party/melonds
 	url = https://github.com/melonDS-emu/melonDS.git
+[submodule "third_party/dsperate"]
+	path = third_party/dsperate
+	url = https://github.com/beebono/DSperate.git

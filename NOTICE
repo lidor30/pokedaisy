@@ -33,6 +33,13 @@ The app shows every license below in full under Settings > LICENSES.
   stays under the MPL 2.0 (its header says so).
 - rcheevos (third_party/rcheevos), Copyright (c) 2018 RetroAchievements.org,
   MIT License - https://github.com/RetroAchievements/rcheevos
+- Optional Linux DS experiment only: DSperate (third_party/dsperate),
+  Copyright (C) 2026 DSperate contributors, GNU GPL 3.0 or later. Its built-in
+  FreeBIOS is Copyright (c) 2013 Gilead Kutnick, BSD 2-clause
+  (src/core/bios/LICENSE.freebios); its miniz implementation is MIT
+  (src/core/cart/miniz/LICENSE). Its DSi font tables have the Noto Sans OFL 1.1
+  and WenQuanYi Micro Hei GPL-3+ font-exception notices under
+  src/core/io/dsi_font. Experiment packages include these license texts.
 - melonDS (third_party/melonds), Copyright (c) melonDS team, GNU GPL 3.0 -
   https://github.com/melonDS-emu/melonDS (source: the submodule's pinned commit,
   with PokeDaisy's changes in third_party/patches/melonds-pokedaisy.patch). Built
