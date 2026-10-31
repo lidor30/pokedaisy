@@ -117,6 +117,14 @@ int pk_nds_battle_3d(const PkNdsFieldGame* game);
 /** [game]'s battle command while the player chooses (Gen 4's PK_NDS_BATTLE_SELECTING; Gen 5's adapter has its own). */
 int pk_nds_battle_selecting(const PkNdsFieldGame* game);
 
+/** STEADY FF music: whether the song the game plays can be copied now (pk_nds_music copies what's playing, frozen):
+ * -1 while it can't - a volume fade runs, or (Gen 5) the song's own sequence player is missing (not started yet), paused
+ * or not yet back to its volume (a song resumed after a battle: paused at 0 for a few frames, then a short fade in) - else
+ * the player's index << 16 | the volume it's at (0 faded out; Gen 4: 0x7F00, no player read), which a copy already
+ * playing compares: another one means the game paused, faded or resumed the song since (the copy is taken again, or
+ * faded out with it). */
+int pk_nds_bgm_settle(const PkNdsFieldGame* game, uint32_t (*read32)(uint32_t addr));
+
 /** The cart's own grass / surf rates by map header id: [map, grass, surf] triples (n triples; the app's generated tables,
  * Gen4World.wildRates). WILD ENCOUNTERS back on puts a map's rates back from here when they're still 0 - a hold this
  * process no longer remembers, from a resume state taken while it was off. Emu thread. */

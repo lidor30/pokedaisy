@@ -243,6 +243,16 @@ static int skipDraw = 0;
 static int appGroup = 0, appPerTick = 0;
 static bool drawGuard = true;   // ffguard 0: pk_nds_run_frame's guard off (a frame drawn though its 3D was skipped)
 static int musicPerFrame = 0;   // musicon N: the STEADY copy's frames after each game frame
+// steady G FILE: EmulatorEngine's STEADY for a DS game, G game frames a refresh: the song id read every frame, a copy
+// begun once it has changed and its player has settled (pk_nds_bgm_settle) for DS_MUSIC_SETTLE_FRAMES, taken again when
+// that player changes, a copy frame each refresh - its audio collected and written to FILE by `steady off`. With G 0 the
+// game's own audio is collected instead.
+static int steadyPer = -1, steadyGroup = 0, steadyBgm = -1, steadyWait = -1;
+static bool steadyOn = false;
+static int steadySince = 0;   // STEADY_DEBUG: the copy's state 1 and 30 frames after its begin
+static std::string steadyFile;
+static std::vector<s16> steadyPcm;
+static void steadyFrame();
 static std::string recordPrefix;
 static u64 recordStart = 0;
 static void recordShown();
@@ -316,6 +326,7 @@ static void runFrames(int n, u32 keys)
             static s16 musicBuf[4096];
             for (int k = 0; k < musicPerFrame; k++) pk_nds_music_frame(musicBuf, 2048);
         }
+        if (steadyPer >= 0) steadyFrame();
     }
 }
 
@@ -406,6 +417,61 @@ static bool writeWav(const char* path, const std::vector<s16>& pcm, int rate)
 }
 
 
+// EmulatorEngine's STEADY, after each game frame (see steadyPer). pk_nds_bgm / pk_nds_bgm_settle as pk_nds.cpp reads them.
+static void steadyFrame()
+{
+    static s16 buf[4096];
+    if (steadyPer == 0) {
+        int got = nds->SPU.ReadOutput(buf, 2048);
+        steadyPcm.insert(steadyPcm.end(), buf, buf + got * 2);
+        return;
+    }
+    while (nds->SPU.ReadOutput(buf, 2048) > 0) {}   // the game's own, muted
+    auto* cart = nds->NDSCartSlot.GetCart();
+    const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+    int bgm = -1;
+    if (g && g->currentBgm) {
+        u32 depth = g->bgmDepth ? read32(g->bgmDepth) : 0;
+        if (depth <= 7) bgm = (int) (read32(g->currentBgm + 0x1C * depth) & 0xFFFF);
+    }
+    int state = g ? pk_nds_bgm_settle(g, read32) : 0;
+    static int copyState = -1, stateSeen = -1, stateFrames = 0;
+    if (state != stateSeen) { stateSeen = state; stateFrames = 0; } else stateFrames++;
+    bool settled = state >= 0 && stateFrames >= 4;
+    if (bgm >= 0) {
+        if (!steadyOn && steadyWait < 0) steadyWait = 4;
+        else if (steadyOn && bgm != steadyBgm) {
+            if (bgm == 0) pk_nds_music_fade(30); else steadyWait = 0;
+            printf("steady %llu: song %d -> %d\n", (unsigned long long) frameCount, steadyBgm, bgm);
+        } else if (steadyOn && steadyWait < 0 && settled && state != copyState) {
+            printf("steady %llu: song %d's player %08X -> %08X\n", (unsigned long long) frameCount, bgm, copyState, state);
+            if ((state & 0xFFFF) == 0) pk_nds_music_fade(30); else steadyWait = 4;
+            copyState = state;
+        }
+        steadyBgm = bgm;
+        if (steadyWait >= 0 && ++steadyWait > 4 && (settled || steadyWait > 300)) {
+            steadyWait = -1;
+            copyState = state;
+            steadyOn = pk_nds_music_begin(nds, 48000);
+            steadySince = 0;
+            printf("steady %llu: copy %s, song %d (player %08X)\n", (unsigned long long) frameCount, steadyOn ? "playing" : "FAILED", bgm, state);
+        }
+    }
+    // A copy frame a refresh: the game's G frames make one
+    if (--steadyGroup > 0) return;
+    steadyGroup = steadyPer;
+    int got = steadyOn ? pk_nds_music_frame(buf, 2048) : 800;
+    if (!steadyOn) memset(buf, 0, sizeof(buf));
+    if (steadyOn && getenv("STEADY_DEBUG") && steadyWait < 0) {
+        if (++steadySince == 30 || steadySince == 1) {
+            char line[2000];
+            pk_nds_music_debug(line, sizeof(line));
+            printf("steady %llu: copy +%d %s\n", (unsigned long long) frameCount, steadySince, line);
+        }
+    }
+    steadyPcm.insert(steadyPcm.end(), buf, buf + got * 2);
+}
+
 // fieldinfo: the field read's raw words and bits (pk_nds_field.cpp), for the cart's table entry.
 static void fieldInfo()
 {
@@ -455,6 +521,16 @@ int main(int argc, char** argv)
     // The app's JIT: no fast memory (pk_nds.cpp)
     if (jit) args.JIT = JITArgs {32, true, true, false};
     else args.JIT = std::nullopt;
+    if (const char* dir = getenv("NDS_BIOS_DIR")) {
+        // The real BIOS (bios7.bin / bios9.bin in that folder) instead of FreeBIOS, to compare against
+        std::vector<u8> b7 = readFile((std::string(dir) + "/bios7.bin").c_str());
+        std::vector<u8> b9 = readFile((std::string(dir) + "/bios9.bin").c_str());
+        if (b7.size() == ARM7BIOSSize && b9.size() == ARM9BIOSSize) {
+            memcpy(args.ARM7BIOS->data(), b7.data(), ARM7BIOSSize);
+            memcpy(args.ARM9BIOS->data(), b9.data(), ARM9BIOSSize);
+            fprintf(stderr, "real BIOS from %s\n", dir);
+        }
+    }
     nds = new WatchNDS(std::move(args), &host);
     nds->Reset();
 
@@ -531,6 +607,12 @@ int main(int argc, char** argv)
             else v = nds->ARM9Read32(addr);
             printf("%s 0x%08X = 0x%X (%u)\n", cmd, addr, v, v);
             fflush(stdout);
+        } else if (!strcmp(cmd, "dump7")) {
+            // dump7 ADDR LEN FILE: LEN bytes of the ARM7's bus from ADDR (its WRAM, code, the shared area)
+            u32 addr = num(a), n7 = num(b);
+            std::vector<u8> bytes(n7);
+            for (u32 k = 0; k < n7; k++) bytes[k] = nds->ARM7Read8(addr + k);
+            writeFile(c, bytes.data(), n7);
         } else if (!strcmp(cmd, "poke8") || !strcmp(cmd, "poke16") || !strcmp(cmd, "poke32")) {
             u32 addr = num(a), v = num(b);
             if (!strcmp(cmd, "poke8")) nds->ARM9Write8(addr, (u8) v);
@@ -652,6 +734,25 @@ int main(int argc, char** argv)
             // recording - what EmulatorEngine does when ffPerTick changes (SMART's 1x, FF off, the refresh estimate)
             appPerTick = (int) num(a);
             appGroup = appPerTick;
+        } else if (!strcmp(cmd, "steady")) {
+            // steady G FILE: EmulatorEngine's STEADY from here on (G game frames a refresh; 0 = the game's own audio),
+            // its audio into FILE at `steady off`
+            if (!strcmp(a, "off")) {
+                if (steadyPer >= 0) writeWav(steadyFile.c_str(), steadyPcm, 48000);
+                printf("steady: %.1f s into %s\n", steadyPcm.size() / 2 / 48000.0, steadyFile.c_str());
+                fflush(stdout);
+                pk_nds_music_end();
+                steadyPer = -1;
+                steadyOn = false;
+                continue;
+            }
+            steadyPer = (int) num(a);
+            steadyGroup = steadyPer;
+            steadyFile = b;
+            steadyPcm.clear();
+            steadyOn = false;
+            steadyWait = -1;
+            steadyBgm = -1;
         } else if (!strcmp(cmd, "musicon")) {
             // musicon N: STEADY's copy begun now and run N frames after each game frame from here on, as the app runs it
             // between its frames (0: stopped)
@@ -768,7 +869,7 @@ int main(int argc, char** argv)
                 pcm.insert(pcm.end(), buf, buf + got * 2);
                 if (pk_nds_music_stalled() > stall) { stall = pk_nds_music_stalled(); stallAt = i; }
                 if (getenv("MUSIC_DEBUG") && (i < 30 || i % 60 == 0)) {
-                    char line[400];
+                    char line[2000];
                     pk_nds_music_debug(line, sizeof(line));
                     printf("music %d: still %d %s\n", i, pk_nds_music_stalled(), line);
                 }

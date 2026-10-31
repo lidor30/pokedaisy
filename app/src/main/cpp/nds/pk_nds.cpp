@@ -548,16 +548,9 @@ int pk_nds_bgm(void)
     return (int) (mainRead32(ds->field->currentBgm + 0x1C * depth) & 0xFFFF);
 }
 
-bool pk_nds_bgm_fading(void)
+int pk_nds_bgm_state(void)
 {
-    if (!ds || !ds->field || !ds->field->seqPlayers) return false;
-    // NNSSndSeqPlayer: the fader { origin, target, counter, frame } at 0x1C, status (0 = stopped) at 0x2C. A fade is
-    // run by the ARM9 a frame at a time (NNS_SndPlayerMoveVolume), so a copy taken mid-fade would stay there.
-    for (u32 i = 0; i < 16; i++) {
-        u32 p = ds->field->seqPlayers + i * 0x44;
-        if ((mainRead32(p + 0x2C) & 0xFF) && (s32) mainRead32(p + 0x24) < (s32) mainRead32(p + 0x28)) return true;
-    }
-    return false;
+    return ds && ds->field ? pk_nds_bgm_settle(ds->field, mainRead32) : 0x7F00;
 }
 
 bool pk_nds_music_start(void)

@@ -1518,9 +1518,9 @@ Java_com_pokedaisy_app_MgbaCore_pkNdsBgm(JNIEnv* env, jobject thiz) {
     return pk_nds_active() ? pk_nds_bgm() : -1;
 }
 
-JNIEXPORT jboolean JNICALL
-Java_com_pokedaisy_app_MgbaCore_pkNdsBgmFading(JNIEnv* env, jobject thiz) {
-    return pk_nds_active() && pk_nds_bgm_fading() ? JNI_TRUE : JNI_FALSE;
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsBgmState(JNIEnv* env, jobject thiz) {
+    return pk_nds_active() ? pk_nds_bgm_state() : -1;
 }
 
 JNIEXPORT jboolean JNICALL

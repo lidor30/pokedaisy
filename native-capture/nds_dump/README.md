@@ -14,7 +14,8 @@ native-capture/nds_dump/build/nds_dump ROM.nds SAVE.sav [--jit] < script.txt
 
 It boots with melonDS's FreeBIOS and generated firmware (no BIOS or firmware files), reads `SAVE.sav` if it exists and
 **writes every save the game makes back to it**: always give it a copy, never the player's save. `--jit` runs the app's
-JIT settings (no fast memory); without it, the interpreter.
+JIT settings (no fast memory); without it, the interpreter. `NDS_BIOS_DIR=<folder>` boots with the real BIOS from that folder
+(`bios7.bin`, `bios9.bin`) instead, to rule FreeBIOS in or out.
 
 ### The GPU renderer (DS RESOLUTION)
 
@@ -72,7 +73,9 @@ X Y`, joined with commas (`A,UP`), or `NONE`.
 | `itcm32 ADDR V` | A word into the hook's spare ITCM (an argument a call points at). |
 | `watch LO HI [r\|w\|rw] [N]`, `watch off` | The game's own reads / writes of main RAM in [LO, HI) (at most N, default 20), each with the ARM9's PC, LR, r0-r5 and SP; `WATCH_STACK=N` in the environment adds N stack words (the callers' return addresses). The interpreter only: run without `--jit`. How Black's PC and FLY were traced. |
 | `wildoff 1/0`, `battles` | WILD ENCOUNTERS OFF / back on, and the battles started since. |
-| `music SECONDS FILE.wav` | STEADY's copy (`pk_nds_music`) begun from the game as it is, run alone; its audio, its cost a frame and the longest stall (`MUSIC_DEBUG=1` prints the ARM7 / IPC state). |
+| `music SECONDS FILE.wav` | STEADY's copy (`pk_nds_music`) begun from the game as it is, run alone; its audio, its cost a frame and the longest stall (`MUSIC_DEBUG=1` prints the ARM7 / IPC state and the sounding channels). |
+| `steady G FILE.wav` / `steady off` | From here on, the app's STEADY as EmulatorEngine runs it at G game frames a refresh (a copy for each song once its player settles, taken again when it changes; `STEADY_DEBUG=1` prints the copy's state), its audio written at `steady off`; `steady 0` records the game's own audio instead. Run a script both ways and compare. |
+| `dump7 ADDR LEN FILE` | LEN bytes of the ARM7's bus from ADDR (its WRAM and code). |
 | `livewav SECONDS FILE.wav` | The game's own audio over that many frames. |
 | `frame`, `echo TEXT` | The frame count; a line to stdout. |
 

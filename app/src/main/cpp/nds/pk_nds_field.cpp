@@ -419,6 +419,34 @@ static void gen5Wild(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), void
     if (holding5) *bits |= PK_NDS_FIELD_WILD_HELD;
 }
 
+int pk_nds_bgm_settle(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t))
+{
+    if (!g || !g->seqPlayers) return 0x7F00;
+    // NNSSndSeqPlayer (0x44 bytes): its handle's address first, the volume fader { origin, target, counter, frame } at
+    // 0x1C, status at 0x2C (byte 0 playing, byte 2 paused). A fade is run by the ARM9 a frame at a time
+    // (NNS_SndPlayerMoveVolume), so a copy taken mid-fade would stay at that volume.
+    for (uint32_t i = 0; i < 16; i++) {
+        uint32_t p = g->seqPlayers + i * 0x44;
+        if ((read32(p + 0x2C) & 0xFF) && (int32_t) read32(p + 0x24) < (int32_t) read32(p + 0x28)) return -1;
+    }
+    if (!g->bgmDepth) return 0x7F00;   // Gen 4: no song's player read, so always full volume
+    // Gen 5: the song's player is the one holding the BGM stack entry's handle (the entry + 4). Headless in Black, a
+    // song coming back after a battle (or the battle's after its interlude) was paused at volume 0 when its id changed,
+    // un-paused and faded in 6 - 24 frames later: a copy taken in between stayed silent until the next song.
+    uint32_t depth = read32(g->bgmDepth);
+    if (depth > 7) return -1;
+    uint32_t handle = g->currentBgm + 0x1C * depth + 4;
+    for (uint32_t i = 0; i < 16; i++) {
+        uint32_t p = g->seqPlayers + i * 0x44;
+        if (read32(p) != handle) continue;
+        uint32_t status = read32(p + 0x2C);
+        if (!(status & 0xFF) || (status & 0xFF0000)) return -1;
+        uint32_t target = read32(p + 0x20) & 0xFFFF;
+        return (int) ((i << 16) | target);
+    }
+    return -1;
+}
+
 int pk_nds_battle_command(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t))
 {
     if (g && g->gen == 5) return gen5BattleCommand(g, read32);

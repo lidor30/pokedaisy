@@ -922,6 +922,9 @@ class EmulatorEngine(
         var dsMusicOk = true
         var dsMusicBgm = -1
         var dsMusicWait = -1   // game frames since a copy became due (-1: none due)
+        var dsMusicState = -1  // pkNdsBgmState when the copy was taken (-1: taken unsettled, after the longest wait)
+        var dsStateSeen = -1   // pkNdsBgmState last frame, and the frames it has held
+        var dsStateFrames = 0
         val dsMusicOut = ShortArray(4096)
         var dsMusicFrames = 0   // audio frames the copy wrote since the last fps log line
         var dsMusicPos = 0      // the copy's last frame of audio not written yet: dsMusicOut[pos, pos + left)
@@ -1282,19 +1285,35 @@ class EmulatorEngine(
                 val dsBgm = if (nds && dsMusicOk && mode == FfMusicMode.STEADY && ffWanted) MgbaCore.pkNdsBgm() else -1
                 if (dsBgm >= 0) {
                     // A copy is due when FF comes on and for each new song: taken once the sound driver has the song
-                    // (a few frames on) and no volume fade runs (a song coming back after a battle fades in - a copy
-                    // taken then stayed nearly silent), or after DS_MUSIC_MAX_WAIT_FRAMES whatever.
+                    // (a few frames on) and it's settled (pkNdsBgmState: no volume fade runs, and its player isn't
+                    // paused - a song coming back after a battle is, at 0, for a few frames before it fades in: a copy
+                    // taken then stayed silent), or after DS_MUSIC_MAX_WAIT_FRAMES whatever. Settled for a few frames:
+                    // the ARM9 marks a song started a frame or so before its command reaches the ARM7, and a copy
+                    // taken in between never starts it (Black 2, leaving a Pokemon Center: silent).
+                    val bgmState = MgbaCore.pkNdsBgmState()
+                    if (bgmState != dsStateSeen) {
+                        dsStateSeen = bgmState
+                        dsStateFrames = 0
+                    } else dsStateFrames++
+                    val settled = bgmState >= 0 && dsStateFrames >= DS_MUSIC_SETTLE_FRAMES
                     if (!dsMusicOn && dsMusicWait < 0) dsMusicWait = DS_MUSIC_SETTLE_FRAMES
                     else if (dsMusicOn && dsBgm != dsMusicBgm) {
                         // 0: the game fading its song out before the next (its fades run on the ARM9, stopped in the
                         // copy).
                         if (dsBgm == 0) MgbaCore.pkNdsMusicFade(DS_MUSIC_FADE_FRAMES) else dsMusicWait = 0
+                    } else if (dsMusicOn && dsMusicWait < 0 && settled && bgmState != dsMusicState) {
+                        // Same song, but the game paused, faded or resumed it since the copy (which can't follow): faded
+                        // out with it when it's gone silent (before the next song, usually), else copied again as it is.
+                        if ((bgmState and 0xFFFF) == 0) MgbaCore.pkNdsMusicFade(DS_MUSIC_FADE_FRAMES)
+                        else dsMusicWait = DS_MUSIC_SETTLE_FRAMES
+                        dsMusicState = bgmState
                     }
                     dsMusicBgm = dsBgm
                     if (dsMusicWait >= 0 && ++dsMusicWait > DS_MUSIC_SETTLE_FRAMES &&
-                        (!MgbaCore.pkNdsBgmFading() || dsMusicWait > DS_MUSIC_MAX_WAIT_FRAMES)
+                        (settled || dsMusicWait > DS_MUSIC_MAX_WAIT_FRAMES)
                     ) {
                         dsMusicWait = -1
+                        dsMusicState = bgmState
                         dsMusicLeft = 0
                         dsMusicOn = MgbaCore.pkNdsMusicStart()
                         if (dsMusicOn) Log.i("pokedaisy", "FF music: DS copy playing song %d".format(dsBgm))
@@ -1383,6 +1402,10 @@ class EmulatorEngine(
                     var queued = framesWritten.toInt() - played
                     if (queued < 0) queued = 0
                     framesWritten = played.toLong() + queued
+                    // Seen here, so 1x's guard below doesn't take an underrun from FF (a copy starting) for one of its
+                    // own: it read it as "ran dry" and zeroed the estimate over a full buffer (Black on the Thor: 1x ran
+                    // ~2.2x after FF, every frame a catch-up, half its audio cut off).
+                    underruns = track.underrunCount
                     // A copy frame runs only once the last one's audio is all written (what didn't fit waits in
                     // dsMusicOut): run per game frame instead, the copy ran at the game's speed and its music skipped.
                     var runs = 0
@@ -1395,6 +1418,7 @@ class EmulatorEngine(
                         }
                         val w = track.write(dsMusicOut, dsMusicPos, dsMusicLeft, AudioTrack.WRITE_NON_BLOCKING)
                         if (w <= 0) break
+                        tap.frame(dsMusicOut, dsMusicLeft, w, sampleRate.toDouble(), queued, 's', dsMusicPos)
                         if (BuildConfig.DEBUG) for (i in dsMusicPos until dsMusicPos + w) dsMusicPeak = maxOf(dsMusicPeak, kotlin.math.abs(dsMusicOut[i].toInt()))
                         dsMusicPos += w
                         dsMusicLeft -= w
@@ -1434,8 +1458,13 @@ class EmulatorEngine(
                         tap.frame(scratch, n, w, rate, queued, 'v')
                         if (w > 0) fpsAudioTaken += w / 2
                         if (w > 0) framesWritten += w / 2
-                        if (w in 0 until n) fpsDropped += (n - w) / 2   // a full buffer cut it short
-                        queuedAfter = queued + maxOf(w, 0) / 2
+                        if (w in 0 until n) {
+                            fpsDropped += (n - w) / 2   // a full buffer cut it short
+                            // ... so it's full, whatever the estimate says: one that had gone low stays low
+                            // otherwise (the play head and the writes keep step), every frame a catch-up.
+                            framesWritten = played.toLong() + track.bufferSizeInFrames
+                        }
+                        queuedAfter = (framesWritten - played).toInt()
                         lastQueued = queuedAfter
                     } else if (speed == 1f) {
                         val w = track.write(scratch, 0, n)   // blocking → real-time pacing at 1x
@@ -1460,6 +1489,7 @@ class EmulatorEngine(
                             val w = track.write(spedUpOut, 0, m, AudioTrack.WRITE_NON_BLOCKING)
                             if (w > 0) framesWritten += w / 2
                         }
+                        underruns = track.underrunCount   // FF's own, not 1x's (as the DS copy's above)
                     }
                 }
 
@@ -2102,14 +2132,15 @@ private class AudioTap {
         Log.i("pokedaisy", "audio tap: recording $SECONDS s")
     }
 
-    /** One frame's audio: [made] shorts from the core, the first [taken] of [data] given to the track. */
-    fun frame(data: ShortArray, made: Int, taken: Int, rate: Double, queued: Int, mode: Char) {
+    /** One frame's audio: [made] shorts from the core, the first [taken] of [data] (from [from]) given to the track.
+     * Modes: v vsync-paced 1x, b blocking 1x, s a DS game's STEADY copy. */
+    fun frame(data: ShortArray, made: Int, taken: Int, rate: Double, queued: Int, mode: Char, from: Int = 0) {
         val out = pcm ?: return
         log?.println("$made $taken ${"%.1f".format(rate)} $queued $mode")
-        val n = taken.coerceIn(0, data.size)
+        val n = taken.coerceIn(0, minOf(data.size - from, bytes.size / 2))
         for (i in 0 until n) {
-            bytes[i * 2] = data[i].toByte()
-            bytes[i * 2 + 1] = (data[i].toInt() shr 8).toByte()
+            bytes[i * 2] = data[from + i].toByte()
+            bytes[i * 2 + 1] = (data[from + i].toInt() shr 8).toByte()
         }
         out.write(bytes, 0, n * 2)
         left -= n / 2

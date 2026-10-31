@@ -2250,8 +2250,15 @@ refresh pacing dropping out): `pk_nds_run_frame` then skips that frame too and s
 up with an older frame's 3D and EXPAND's margins black, a flash each time (nds_dump's `ffmode` / `ffgroup` / `ffguard`).
 SMART's battle wait reads HG/SS's `BattleContext.command` (5 = SELECTION_SCREEN_INPUT) and reports it as `MgbaCore.FIELD_BATTLE_INPUT`. STEADY music is a second melonDS loaded from
 the game's own state with its ARM9 stopped: the sound driver runs on the ARM7 from data already in RAM, so it plays on
-from that moment by itself, loops and tempo included. Its ARM7 FIFO must be drained every frame as the ARM9 would (a
-full FIFO stalls the driver into a buzz); a new song id starts a new copy, a song fading out in the game fades the copy.
+from that moment by itself, loops and tempo included. Two things the ARM9 does every frame the copy does for it: drain
+the ARM7's FIFO (full, it stalls the driver into a buzz) and clear bit 0 of the shared flag at 0x027FFF96 (Gen 5 writes
+it 0x02FFFF96, the same byte; the ARM7 sets it and spins until the ARM9 clears it - in Black 2 the copy froze into a
+drone 15 frames in). It draws no video. A new song id starts a new copy, taken only once the song's own sequence player
+has settled for a few frames (`pk_nds_bgm_settle`: no fade, and on Gen 5 the player holding the BGM stack entry's handle
+not paused - a song coming back after a battle sits paused at 0 for a few frames, and the ARM9 marks a song started a
+frame before the ARM7 gets it: copies taken then stayed silent); a change of that player's state later takes it again,
+or fades the copy out when the game faded the song out. Check with nds_dump's `steady G FILE` against `steady 0 FILE` (the
+game's own audio) over the same script (2026-11-01: Black's Battle Subway, Black 2 in and out of a Pokemon Center).
 
 **Headless.** `native-capture/nds_dump` (its README): scripted input, shots, RAM dumps, states, EXPAND checks, music
 copies, calls and scripts. The fixtures `platinum`, `platinum_battle` and `heartgold` are its dumps (main RAM with only

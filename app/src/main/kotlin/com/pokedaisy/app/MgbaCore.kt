@@ -227,8 +227,9 @@ object MgbaCore {
      * frame (1/60 s) of its audio into [out] (interleaved stereo; returns the shorts written), its fade-out over [frames]
      * frames, and stopping it. Emu thread, between frames. */
     external fun pkNdsBgm(): Int
-    /** A song's volume is being faded right now (a copy taken now would stay at that volume). */
-    external fun pkNdsBgmFading(): Boolean
+    /** Whether the song can be copied now: -1 not yet (a volume fade runs, or its player is paused or not started), else
+     * its player's state - a copy taken at another state is taken again (the game paused, faded or resumed the song). */
+    external fun pkNdsBgmState(): Int
     external fun pkNdsMusicStart(): Boolean
     external fun pkNdsMusicRead(out: ShortArray): Int
     external fun pkNdsMusicFade(frames: Int)
