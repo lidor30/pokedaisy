@@ -22,6 +22,31 @@ fun Color.nightInk(): Color = remap { l -> 0.93f - 0.22f * l to 0.5f }
 /** A text shadow: light mode's sits between the text and the window; here it does too, a step over the window. */
 fun Color.nightShadow(): Color = remap { l -> 0.16f + 0.15f * l to 0.3f }
 
+/**
+ * A window colour in a theme's [hue] (ThemeSpec): greys and whites take the hue, [wash] of full colour at mid
+ * lightness and less towards white and black (white itself a faint tint, a step under pure white), keeping their
+ * lightness, so a window keeps its build (dark outline, lighter bands, text over its shadow) the way dark mode's
+ * twins do. Colours of their own (saturation over 0.5: HP greens, field-move blue) are left alone.
+ */
+fun Color.themed(hue: Float, wash: Float): Color {
+    if (alpha == 0f || wash <= 0f) return this
+    val (_, s, l) = hsl(red, green, blue)
+    if (s > 0.5f) return this
+    val l2 = if (l > 0.95f) 0.95f + (l - 0.95f) * 0.4f else l
+    val edge = abs(2f * l2 - 1f)
+    // Text-dark greys a little calmer than the window bands, or labels read as coloured ink.
+    val reach = (1f - edge * edge * edge) * (if (l2 < 0.5f) 0.55f + 0.6f * l2 else 1f)
+    val (r, g, b) = rgb(hue, max(s * 0.5f, wash * reach), l2)
+    return Color(r, g, b, alpha)
+}
+
+/** A theme's backdrop colour at night (DaisyBackdrop's blobs): its hue kept, as a dim glow on the dark page. */
+fun Color.nightGlow(): Color {
+    val (h, s, _) = hsl(red, green, blue)
+    val (r, g, b) = rgb(h, s * 0.6f, 0.26f)
+    return Color(r, g, b, alpha)
+}
+
 private inline fun Color.remap(f: (Float) -> Pair<Float, Float>): Color {
     if (alpha == 0f) return this
     val (h, s, l) = hsl(red, green, blue)

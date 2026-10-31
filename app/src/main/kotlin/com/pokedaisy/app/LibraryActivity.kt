@@ -140,6 +140,7 @@ import com.pokedaisy.app.companion.ui.drawLayeredFrame
 import com.pokedaisy.app.companion.ui.rememberGbaTextMetrics
 import com.pokedaisy.app.companion.ui.theme.AppTheme
 import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
+import com.pokedaisy.app.companion.ui.theme.windowOn
 import java.io.File
 import com.pokedaisy.app.companion.ui.PixelRoundedShape
 
@@ -382,6 +383,13 @@ class LibraryActivity : ComponentActivity() {
         // The support window, once its play time has come (back from a game, usually); never on WHAT'S NEW's visit.
         if (!supportAsk && whatsNew == null) {
             supportAsk = com.pokedaisy.app.companion.SupportAsk.due(prefs.playMillis, prefs.supportAskAt, prefs.supportAskDone)
+        }
+        // A limited-time theme's dates have come (and an ended one gives way to the theme worn before it).
+        com.pokedaisy.app.companion.ui.theme.loadTheme(this)
+        if (seasonalTheme == null) {
+            seasonalTheme = com.pokedaisy.app.companion.ui.theme.seasonalThemeToAnnounce(
+                com.pokedaisy.app.companion.ui.theme.ThemeClock.today(), prefs.seasonalThemesShown, prefs.appTheme,
+            )
         }
         if (prefs.setupRequested) {
             prefs.setupRequested = false
@@ -731,8 +739,23 @@ class LibraryActivity : ComponentActivity() {
                 )
             }
 
+            // A limited-time theme's dates have come: once per window, alone like the support window, after it.
+            if (seasonalShown) seasonalTheme?.let { theme ->
+                val window = theme.windowOn()
+                if (window == null) { seasonalTheme = null; return@let }
+                // Shown = told, whatever the answer: once per window.
+                LaunchedEffect(theme.id) {
+                    prefs.seasonalThemesShown = prefs.seasonalThemesShown + com.pokedaisy.app.companion.ui.theme.announceKey(theme, window)
+                }
+                com.pokedaisy.app.companion.ui.SeasonalThemeWindow(
+                    theme, window.endInclusive, m, small,
+                    onTry = { com.pokedaisy.app.companion.ui.theme.pickTheme(this@LibraryActivity, theme); seasonalTheme = null },
+                    onNoThanks = { seasonalTheme = null },
+                )
+            }
+
             // After the crash-reports question, one at a time.
-            if (expandIntro && setup == null && !crashAsk && updates.release == null && !whatsNewShown && !supportShown) {
+            if (expandIntro && setup == null && !crashAsk && updates.release == null && !whatsNewShown && !supportShown && !seasonalShown) {
                 com.pokedaisy.app.companion.ui.ExpandIntro(
                     m, small,
                     onTurnOn = {
@@ -1701,7 +1724,7 @@ class LibraryActivity : ComponentActivity() {
     private val libraryDialogOpen
         get() = pickingSort || addMenu || renaming != null || deleting != null || gameInfo != null || coverPickerFor != null ||
             pendingImport != null || patcher.step != null || saveLoad != null || backupPick != null || updates.release != null || crashAsk ||
-            (expandIntro && !crashAsk) || ssIntroShown || whatsNewShown || supportShown
+            (expandIntro && !crashAsk) || ssIntroShown || whatsNewShown || supportShown || seasonalShown
 
     /** BACK for the library's windows (OptionOverlay & co.): the newest open one closes. */
     private val libraryBack = com.pokedaisy.app.companion.ui.CompanionBack()
@@ -2073,11 +2096,16 @@ class LibraryActivity : ComponentActivity() {
 
     /** The update's one-time "set up ScreenScraper?" window: wanted (set in onCreate), then shown once nothing else is up. */
     internal var ssIntro by mutableStateOf(false)
-    private val ssIntroShown get() = ssIntro && setup == null && !crashAsk && updates.release == null && !expandIntro && !whatsNewShown && !supportShown
+    private val ssIntroShown get() = ssIntro && setup == null && !crashAsk && updates.release == null && !expandIntro && !whatsNewShown && !supportShown && !seasonalShown
     /** WHAT'S NEW is up: after any update offer, never over setup. */
     private val whatsNewShown get() = whatsNew != null && setup == null && updates.release == null
     /** The support window is up: after any update offer and WHAT'S NEW, never over setup. */
     private val supportShown get() = supportAsk && setup == null && updates.release == null && !whatsNewShown
+
+    /** A limited-time theme to announce ([com.pokedaisy.app.companion.ui.theme.seasonalThemeToAnnounce]; internal for ui-preview). */
+    internal var seasonalTheme by mutableStateOf<com.pokedaisy.app.companion.ui.theme.ThemeSpec?>(null)
+    /** Its popup is up: after any update offer, WHAT'S NEW and the support window, never over setup or the crash question. */
+    private val seasonalShown get() = seasonalTheme != null && setup == null && updates.release == null && !whatsNewShown && !supportShown && !crashAsk
 
     /** The popup's sign-in (internal for ui-preview). */
     internal val ssLogin by lazy { ScreenScraperLogin.of(prefs) }

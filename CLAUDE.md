@@ -257,20 +257,31 @@ values and a white row as the cursor, white framed buttons, black-out overlays. 
 `GbaText` sized by `GbaTextMetrics` (whole screen pixels per font pixel, so the pixel
 font stays crisp; `rememberGbaTextMetrics(1f)` for denser secondary text). Companion
 SETTINGS/STATES and the top-screen Library/Settings are all built from these pieces over
-a game backdrop (`GameBackdrop` on the companion, `AppBackdrop` — FireRed's party-menu
-stripes — on the top screen); ITEMS (`ItemsScreen.kt`) is the per-game bag screen in the
+a game backdrop (`GameBackdrop` on the companion, `AppBackdrop` - the website's
+`DaisyBackdrop` in the THEME's colours - on the top screen); ITEMS (`ItemsScreen.kt`) is the per-game bag screen in the
 same idiom. PARTY uses the game's own slot (`GbaPartySlot`, generated `PartySlotStyle`s) where one exists; every other game gets a FireRed-like slot drawn from a `PartyPalette` (`PartyScreen.kt`, `partyPaletteFor`) — restyle a game by adding a palette there, like ITEMS' `BagPalette`. Rogue, Gaia, Lazarus, Seaglass and R.O.W.E. have palettes sampled from their party menus (headless: the save's first mon copied into slots 2-3, slot 3 at 0 HP, so normal / selected / fainted all show; `PartySlotColors.band` / per-state `text`, `PartyPalette.empty` cover flat and white-box slots); their bags have `BagPalette`s (TMT2's is `EmeraldBag`; Celia and Gaia match FireRed's). Their backdrop is FireRed's party backdrop recoloured (`backdropColors` in `theme/Theme.kt`: its 3 colours mapped to the game's), or plain stripes until a FireRed ROM has supplied the art. Multi-choice settings open an `OptionSelector` pick-list — never make a row
 cycle through more than two values (exceptions, the user's call: SHADERS > FILTER, GRID and SMOOTHING, and HUD > LAYOUT, LOOK and SIZE
 cycle on tap, so each look shows on the game at once; every TOUCH CONTROLS row, so each shows in its preview; and DARK MODE,
-OFF / ON / AUTO). **The PokéDaisy theme** (the default, `DAISY_THEME_ID` 8 in `theme/Theme.kt`; Settings > THEME, `Prefs.appTheme` by
-id - FireRed is 0, the old default) only changes the top screen's backdrop (Library, Settings, setup): `AppBackdrop`
--> `DaisyBackdrop`, the website's (blobs, dot grid and, on the Library, its floating logos). The windows and text
-stay the OPTION look; only text drawn straight on the backdrop (`OptionColors.onBackdrop`) turns the windows' grey
-there. Never in a game (`OptionColors.inGame`), and the theme's chrome colours are FireRed's, so nothing in game
-changes. The logo (`LogoGen.kt`) and the launcher icon's foreground PNGs (on the blue `ic_launcher_background`) are
-generated from the website's own drawing by `node scripts/gen_logo.mjs`: the app's screens use the website's mark as
-it is; only the launcher icon has edits on top (the 3 and 9 o'clock petal tips rounded, a 2 px outline; its size
-follows the flower, not the outline).
+OFF / ON / AUTO). **THEME** (Settings > THEME on both screens, SCREEN group, NEW tag; `ThemeSpec` / `APP_THEMES` / `SEASONAL_THEMES` in
+`theme/Theme.kt`, `Prefs.appTheme` by id; the user's redesign, 2026-11-01): a theme colours the app *and* the companion the way
+DARK MODE does. `OptionColors`' window getters go through `tint()` (`Color.themed(hue, wash)`, `theme/NightColors.kt`: greys
+and whites take the hue, colours with saturation over 0.5 - HP, field-move blue, types - keep theirs), values / group titles take
+`ThemeSpec.value` (`valueNight` in dark), the top screen's `DaisyBackdrop` its `page` / `blobs` / `motif` (16x16 pixel art in
+`ThemeMotifs.kt` floating where the logo does; a `darkPage` theme - HALLOWEEN, NEW YEAR - makes `onBackdrop` text white), and a
+game's party backdrop in the companion a Multiply `gameWash` (`GameBackdrop`, `AppBackdrop`'s in-game stripes). RAINBOW's list
+windows get rainbow frame lines (`ThemeSpec.rainbow`). Gen 1 / Gen 2's black-on-white windows and game art stay the game's.
+POKéDAISY (`DAISY_THEME_ID` 8, the default, `hue` null) is the classic look, untinted. Ids 0-7 were the old game-named themes
+(FireRed ... SoulSilver, which only changed the top screen's stripes): `Prefs.appTheme` reads them as 8 (the user's call: everyone
+who picked one is on the new default) - never reuse 0-7. **Limited-time themes** (`SEASONAL_THEMES`, ids 40+, a `Season` each in
+`theme/Seasons.kt`: LUNAR NEW YEAR / VALENTINE'S DAY / ST. PATRICK'S DAY / EASTER / HALLOWEEN / CHRISTMAS / NEW YEAR) are
+offered only from a few days before their holiday to a few after (`availableThemes`, `ThemeClock.today`, which ui-preview moves);
+Lunar New Year's dates are a table to 2035 (extend it then), Easter is computed. The Library announces one once per
+window (`seasonalThemeToAnnounce`, `Prefs.seasonalThemesShown` keyed `id:windowStart`; `SeasonalThemeWindow`: TRY IT / NO THANKS,
+after any update offer / WHAT'S NEW / support window). TRY IT or a pick remembers the theme before (`pickTheme`,
+`Prefs.themeBeforeSeasonal`); `loadTheme` (AppTheme, Library resume) puts it back once the dates are over (`themeToWear`).
+`ThemesTest`; ui-preview `-Ptheme=CHERRY` (any theme by English name) and `library-theme-*`, `library-seasonal-popup*`,
+`settings-theme*` shots. A new theme: a `ThemeSpec` with a new id, its name's seven translations (TrSettings), the manual's
+THEME section and SETTING_KEYWORDS' "THEME" words.
 New screens should reuse these rather than
 `GbaWindow`/`GbaButton` (the older cream-window look). Full-tab detail views (the Pokémon
 summary, battle INFO / SUGGESTIONS) use `SummaryFrame` (`MonDetailScreen.kt`): one white

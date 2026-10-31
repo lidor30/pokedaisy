@@ -110,7 +110,6 @@ import com.pokedaisy.app.companion.ui.OptionTitleWindow
 import com.pokedaisy.app.companion.ui.drawLayeredBox
 import com.pokedaisy.app.companion.ui.inPx
 import com.pokedaisy.app.companion.ui.rememberGbaTextMetrics
-import com.pokedaisy.app.companion.ui.theme.APP_THEMES
 import com.pokedaisy.app.companion.ui.theme.AppColors
 import com.pokedaisy.app.companion.ui.theme.AppTheme
 import java.io.File
@@ -627,9 +626,8 @@ class SettingsActivity : ComponentActivity() {
     private fun HomeScreen(m: GbaTextMetrics) {
         @Suppress("UNUSED_EXPRESSION") revision
         val rateLabels = RATES.map(::rateLabel)
-        // Upper case, but the game's small é (POKéDAISY, like POKéMON).
-        val themeLabels = APP_THEMES.map { it.label.uppercase().replace('É', 'é') }
-        val themeIdx = APP_THEMES.indexOfFirst { it.id == prefs.appTheme }.coerceAtLeast(0)
+        // The themes on offer today: the limited-time ones only in their dates.
+        val themes = com.pokedaisy.app.companion.ui.theme.availableThemes()
         fun onOff(on: Boolean) = if (on) tk("ON") else tk("OFF")
         // The same groups and order as the bottom screen's SETTINGS where they overlap.
         val rows = listOfNotNull(
@@ -739,13 +737,15 @@ class SettingsActivity : ComponentActivity() {
                 prefs.singleScreen = !prefs.singleScreen
                 revision++
             }.takeIf { hasSecondScreen },
-            // Changes the colors immediately, everywhere — the companion screen too.
-            SettingRow(tk("THEME"), themeLabels[themeIdx]) {
-                selector = Selector(tk("THEME"), themeLabels, themeLabels[themeIdx]) {
-                    val spec = APP_THEMES[themeLabels.indexOf(it)]
-                    prefs.appTheme = spec.id
-                    AppColors.applyTheme(spec)
-                }
+            // Changes the colors immediately, everywhere - the companion screen too.
+            SettingRow(
+                tk("THEME"), AppColors.theme.label,
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.THEMES),
+            ) {
+                selector = Selector(
+                    tk("THEME"), themes.map { it.label }, AppColors.theme.label,
+                    badge = { l -> tk("LIMITED").takeIf { themes.firstOrNull { it.label == l }?.season != null } },
+                ) { l -> themes.firstOrNull { it.label == l }?.let { com.pokedaisy.app.companion.ui.theme.pickTheme(this@SettingsActivity, it) } }
             },
             // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
             SettingRow(tk("DARK MODE"), DarkMode.setting.label) {

@@ -129,7 +129,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "SINGLE SCREEN" to "one screen single screen dual screen multitask multitasking second screen free other apps window modal popup",
     "SPEED OPTIONS" to "scene speeds battle speed text speed menu speed ff mode ff music fast forward smart steady",
     "DISPLAY OPTIONS" to "status bar shaders filter overlay border frame companion position portrait",
-    "THEME" to "colors look background skin style",
+    "THEME" to "colors colours look background skin style themes cherry rainbow ocean mint lavender sunset forest lemon holiday seasonal christmas halloween easter valentine lunar new year limited",
     "FPS / CPU" to "fps frame rate framerate cpu usage performance speed overlay counter 60",
     "DARK MODE" to "dark night black theme light colors appearance auto system",
     "RESUME GAMES" to "auto resume continue launch boot",

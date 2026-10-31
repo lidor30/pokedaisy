@@ -901,6 +901,45 @@ fun whatsNewLibrary() = LibraryActivity().apply { whatsNew = com.pokedaisy.app.c
 /** The Library after 5 hours of play: the support window up. */
 fun supportLibrary() = LibraryActivity().apply { supportAsk = true }
 
+/** -Ptheme=CHERRY: every shot in that THEME (by its English name), else the default. */
+val previewTheme: com.pokedaisy.app.companion.ui.theme.ThemeSpec =
+    System.getProperty("theme").orEmpty().takeIf { it.isNotBlank() }?.let { name ->
+        (com.pokedaisy.app.companion.ui.theme.APP_THEMES + com.pokedaisy.app.companion.ui.theme.SEASONAL_THEMES)
+            .firstOrNull { it.label.equals(name.replace('_', ' '), ignoreCase = true) } ?: error("No theme $name")
+    } ?: com.pokedaisy.app.companion.ui.theme.themeById(com.pokedaisy.app.companion.ui.theme.DAISY_THEME_ID)
+
+/** A day inside [t]'s next window (today's, if it's on now); null for a theme that's always there. */
+fun previewThemeDay(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec): java.time.LocalDate? {
+    val now = java.time.LocalDate.now()
+    return t.season?.let { s -> (now.year..now.year + 2).firstNotNullOf { y -> s.window(y)?.takeIf { it.endInclusive >= now } } }
+        ?.let { w -> if (now in w) now else w.start.plusDays(1) }
+}
+
+/** Saves and puts on [t]; for a limited-time one the theme clock moves into its window (so it isn't put away). */
+fun wearPreviewTheme(t: com.pokedaisy.app.companion.ui.theme.ThemeSpec) {
+    val day = previewThemeDay(t)
+    // The docs' shots on a day with no holiday theme, so they don't change with the date they're made on.
+    val quiet = java.time.LocalDate.of(java.time.LocalDate.now().year, 6, 15).takeIf { System.getProperty("docs") == "true" }
+    com.pokedaisy.app.companion.ui.theme.ThemeClock.today = { day ?: quiet ?: java.time.LocalDate.now() }
+    Prefs(android.content.Context()).appTheme = t.id
+    com.pokedaisy.app.companion.ui.theme.AppColors.applyTheme(t)
+}
+
+private fun themeNamed(label: String) =
+    (com.pokedaisy.app.companion.ui.theme.APP_THEMES + com.pokedaisy.app.companion.ui.theme.SEASONAL_THEMES).first { it.label == label }
+
+/** The Library with a theme on: [label]'s (English) saved before it opens. */
+fun themedLibrary(label: String) = run { wearPreviewTheme(themeNamed(label)); LibraryActivity() }
+
+/** The Library as a limited-time theme's dates come ([label], English): its popup up over the theme worn now. */
+fun seasonalLibrary(label: String) = run {
+    val t = themeNamed(label)
+    val day = previewThemeDay(t)!!
+    com.pokedaisy.app.companion.ui.theme.ThemeClock.today = { day }
+    Prefs(android.content.Context()).seasonalThemesShown = emptySet()
+    LibraryActivity().apply { seasonalTheme = t }
+}
+
 /** The activity [activity] made last (a shot's action presses its keys). */
 var lastActivity: androidx.activity.ComponentActivity? = null
 
@@ -947,8 +986,12 @@ fun activity(expandIntro: Boolean = false, start: Boolean = false, make: () -> a
     prefs.savesDirOverride = null
     prefs.gameAspect = com.pokedaisy.app.companion.GameAspect.ORIGINAL
     prefs.statusBar = false
-    // The default theme (PokéDaisy); a shot that wants another sets it in its make().
-    prefs.appTheme = com.pokedaisy.app.companion.ui.theme.DAISY_THEME_ID
+    // The default theme (PokéDaisy, or -Ptheme's); a shot that wants another sets it in its make().
+    wearPreviewTheme(previewTheme)
+    // No limited-time theme's popup over the library shots: only the shots that want one.
+    prefs.seasonalThemesShown = com.pokedaisy.app.companion.ui.theme.SEASONAL_THEMES.mapNotNull { t ->
+        t.season?.windowOn(com.pokedaisy.app.companion.ui.theme.ThemeClock.today())?.let { com.pokedaisy.app.companion.ui.theme.announceKey(t, it) }
+    }.toSet()
     File(ctx.filesDir, "states").deleteRecursively()
     File(ctx.filesDir, "cheats").deleteRecursively()
     prefs.cheatsEnabled = false
@@ -1183,6 +1226,8 @@ fun main(args: Array<String>) {
     }
     // -Pdark=true: DARK MODE on for every shot.
     if (System.getProperty("dark") == "true") com.pokedaisy.app.companion.ui.theme.DarkMode.override = true
+    // -Ptheme=CHERRY: that THEME on for every shot (the top screen's put it on again in activity {}).
+    wearPreviewTheme(previewTheme)
     val g = game.name.lowercase()
     // The battle menu's POKéMON button: PkMn on the Game Boy games (drawn twice there, bold: the first copy is tapped).
     val pokemonButton = if (game.isGameBoyGame) "PkMn" else "POKéMON"
@@ -2374,11 +2419,19 @@ fun main(args: Array<String>) {
         Shot("overlay-imported", tw, th, 1f, overlayView(OverlayChoice.Imported("wood-frame"), tw, th)),
         Shot("overlay-imported-stretch", tw, th, 1f, overlayView(OverlayChoice.Imported("wood-frame"), tw, th, stretch = true)),
         Shot("settings-theme", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("THEME").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
-        // THEME > FIRERED: the look before PokéDaisy became the default (the stripes, the game's OPTION windows).
-        Shot("library-firered-theme", tw, th, td, activity {
-            Prefs(android.content.Context()).appTheme = com.pokedaisy.app.companion.ui.theme.FIRERED_THEME_ID
-            LibraryActivity()
-        }),
+        // THEME: a few themes on the Library and Settings (the rest with -Ptheme), and a limited-time one's popup.
+        Shot("library-theme-cherry", tw, th, td, activity { themedLibrary("CHERRY") }),
+        Shot("library-theme-rainbow", tw, th, td, activity { themedLibrary("RAINBOW") }),
+        Shot("library-theme-halloween", tw, th, td, activity { themedLibrary("HALLOWEEN") }),
+        Shot("library-theme-christmas", tw, th, td, activity { themedLibrary("CHRISTMAS") }),
+        Shot("settings-theme-ocean", tw, th, td, activity { wearPreviewTheme(themeNamed("OCEAN")); SettingsActivity() }),
+        // The THEME pick-list on a day with a limited-time theme (HALLOWEEN's LIMITED tag).
+        Shot("settings-theme-limited", tw, th, td, activity { wearPreviewTheme(themeNamed("HALLOWEEN")); SettingsActivity() }) {
+            onNodeWithText("THEME").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
+        Shot("library-seasonal-popup", tw, th, td, activity { seasonalLibrary("HALLOWEEN") }),
+        Shot("library-seasonal-popup-phone", 1080, 2400, 2.625f, activity { seasonalLibrary("LUNAR NEW YEAR") }),
+        Shot("library-seasonal-popup-rgds", 640, 480, 1.5f, activity { seasonalLibrary("ST. PATRICK'S DAY") }),
         Shot("settings-hotkeys", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("HOTKEYS").performScrollTo().performClick() },
         // A hotkey waiting for keys: CLEAR (unbind) / CANCEL over the list.
         Shot("settings-hotkeys-capture", tw, th, td, activity { SettingsActivity() }) {

@@ -650,6 +650,18 @@ private fun homeRows(
             tk("SINGLE SCREEN"), onOff(s.singleScreen), subtitle = "Second screen free; companion over the game",
             labelBadge = NewFeatures.badge(NewFeatures.SINGLE_SCREEN),
         ) { s.setSingleScreen(!s.singleScreen); changed() }.takeIf { s.hasSecondScreen },
+        // The app's and the companion's colours (the limited-time themes only in their dates): both screens at once.
+        com.pokedaisy.app.companion.ui.theme.availableThemes().let { themes ->
+            val now = com.pokedaisy.app.companion.ui.theme.AppColors.theme
+            SettingRow(
+                tk("THEME"), now.label, labelBadge = NewFeatures.badge(NewFeatures.THEMES),
+            ) {
+                select(Selector(
+                    tk("THEME"), themes.map { it.label }, now.label,
+                    badge = { l -> tk("LIMITED").takeIf { themes.firstOrNull { it.label == l }?.season != null } },
+                ) { l -> themes.firstOrNull { it.label == l }?.let { s.setAppTheme(it.id); com.pokedaisy.app.companion.ui.theme.AppColors.applyTheme(it) } })
+            }
+        },
         // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
         SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
             val pick = DarkMode.setting.next()

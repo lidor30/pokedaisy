@@ -1,12 +1,12 @@
 ---
 title: Screen, aspect and shaders
-summary: Change how the game sits on the top screen and how it looks, from widescreen EXPAND to LCD and CRT filters, frames and dark mode.
+summary: Change how the game sits on the top screen and how it looks, from widescreen EXPAND to LCD and CRT filters, frames, themes and dark mode.
 section: player
 order: 3
-keywords: [ds resolution, internal resolution, upscaling, hd, sharper 3d, jagged, lag, slow device, input delay, light companion, widescreen, fullscreen, 16:9, 3:2, ratio, bezel, border, frame, crt, lcd, scanlines, xbrz, scalefx, upscale, unlit, backlight, pixel transparency, night, appearance, framerate, fps, performance, graphics, look]
+keywords: [ds resolution, internal resolution, upscaling, hd, sharper 3d, jagged, lag, slow device, input delay, light companion, widescreen, fullscreen, 16:9, 3:2, ratio, bezel, border, frame, crt, lcd, scanlines, xbrz, scalefx, upscale, unlit, backlight, pixel transparency, night, appearance, framerate, fps, performance, graphics, look, theme, themes, colour scheme, color scheme, skin, holiday, seasonal, christmas, halloween, easter, lunar new year, valentine, cherry, rainbow]
 ---
 
-The top screen is wider than a GBA, so there's a choice to make about the space around the game. You can keep the GBA's own shape, stretch it, or let PokeDaisy draw more of the world into the gaps. On top of that you can run the picture through a filter, put a frame around it and switch the app's windows to a dark look.
+The top screen is wider than a GBA, so there's a choice to make about the space around the game. You can keep the GBA's own shape, stretch it, or let PokeDaisy draw more of the world into the gaps. On top of that you can run the picture through a filter, put a frame around it and give the app's windows a theme or a dark look.
 
 Everything on this page is in the `SCREEN` group of Settings, on both screens: the top screen's Settings (from the library) and the companion's `SETTINGS` tab. `STATUS BAR`, `SHADERS`, `OVERLAY` and `LIGHT COMPANION` are on its `DISPLAY OPTIONS` page. A change made on the companion shows on the game straight away.
 
@@ -177,11 +177,26 @@ The game's own art stays as it is: party slots, the map, the trainer card and ba
 
 ## Theme
 
-`THEME` picks the backdrop behind the top screen's library, Settings and setup. `POKéDAISY` (the default) is the website's light page with soft blobs and floating logos. The others are colour themes from the games: `FIRERED`, `LEAFGREEN`, `EMERALD`, `RUBY`, `SAPPHIRE`, `PLATINUM`, `HEARTGOLD` and `SOULSILVER`.
+`THEME` gives the whole app a colour scheme: the library, Settings, setup and the companion while you play, on both screens at once. It works like `DARK MODE`: the windows take the theme's colour, the values in the lists take its accent, and the backdrop behind them gets its own colours. You can pick it in the top screen's Settings or in the companion's SETTINGS, under SCREEN, and use it with `DARK MODE` on or off.
 
-The theme only changes the top screen outside a game. While you play, the companion always uses the running game's own look.
+- `POKéDAISY` (the default): the classic white and grey windows over the website's light page with soft blobs and floating logos.
+- `CHERRY`, `RAINBOW`, `OCEAN`, `MINT`, `LAVENDER`, `SUNSET`, `FOREST` and `LEMON`: always there. `CHERRY` floats blossoms over the library, and `RAINBOW` gives the windows rainbow frames.
 
-![The THEME pick-list in Settings with POKéDAISY selected and the game themes below it](shots/settings-theme.png)
+The game's own art stays as it is: party slots, the map, the trainer card and type colours keep the game's look. Behind them, the game's backdrop takes a soft wash of the theme's colour.
+
+![The library in the CHERRY theme: pink windows over a light pink backdrop with blossoms](shots/library-theme-cherry.png)
+
+![The THEME pick-list in Settings with POKéDAISY selected and the other themes below it](shots/settings-theme.png)
+
+### Holiday themes
+
+A few themes show up only around a holiday, from a few days before it to a few days after: `LUNAR NEW YEAR`, `VALENTINE'S DAY`, `ST. PATRICK'S DAY`, `EASTER`, `HALLOWEEN`, `CHRISTMAS` and `NEW YEAR`. Each has its own picture floating over the library (a pumpkin, snowflakes, lanterns and so on) and carries a `LIMITED` tag in the `THEME` list.
+
+When one of them arrives, the library tells you once with a small window. `TRY IT` puts it on right away; `NO THANKS` leaves your theme alone, and the holiday theme stays in the `THEME` list until its dates are over. When they end, the app goes back to the theme you had before.
+
+The dates follow your device's calendar. If two holidays overlap (`LUNAR NEW YEAR` and `VALENTINE'S DAY` sometimes do), you get one window for each.
+
+![The window for a holiday theme: its picture, its name, the last day it's available, NO THANKS and TRY IT](shots/library-seasonal-popup.png)
 
 ## FPS / CPU
 

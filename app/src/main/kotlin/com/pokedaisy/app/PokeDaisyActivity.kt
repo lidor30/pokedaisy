@@ -1603,6 +1603,9 @@ class PokeDaisyActivity : Activity() {
         }
 
         override fun setDarkMode(v: Int) { Prefs(this@PokeDaisyActivity).darkMode = v }
+        override fun setAppTheme(id: Int) {
+            com.pokedaisy.app.companion.ui.theme.pickTheme(this@PokeDaisyActivity, com.pokedaisy.app.companion.ui.theme.themeById(id))
+        }
         override val showFoeIvs get() = Prefs(this@PokeDaisyActivity).showFoeIvs
         override fun setShowFoeIvs(on: Boolean) {
             Prefs(this@PokeDaisyActivity).showFoeIvs = on

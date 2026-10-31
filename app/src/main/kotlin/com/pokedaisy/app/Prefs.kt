@@ -724,11 +724,22 @@ class Prefs(context: Context) {
         get() = p.getBoolean("setup_requested", false)
         set(v) = p.edit().putBoolean("setup_requested", v).apply()
 
-    /** A ThemeSpec.id from APP_THEMES (Theme.kt): 8 = PokéDaisy (the default, DAISY_THEME_ID - spelled out:
-     * ui-preview's data module has no UI), 0 = FireRed (the default before it; kept for whoever picked it). */
+    /** A ThemeSpec.id (Theme.kt's APP_THEMES / SEASONAL_THEMES): 8 = PokéDaisy, the default (DAISY_THEME_ID - spelled
+     * out: ui-preview's data module has no UI). 0-7 were the old game-named themes (FireRed, LeafGreen, ...), which only
+     * changed the top screen's backdrop: whoever picked one is on the default now (the user's call, 2026-11-01). */
     var appTheme: Int
-        get() = p.getInt("app_theme", 8)
+        get() = p.getInt("app_theme", 8).let { if (it in 0..7) 8 else it }
         set(v) = p.edit().putInt("app_theme", v).apply()
+
+    /** The theme worn before a limited-time one was picked: back to it once that one's dates are over. */
+    var themeBeforeSeasonal: Int
+        get() = p.getInt("theme_before_seasonal", 8).let { if (it in 0..7) 8 else it }
+        set(v) = p.edit().putInt("theme_before_seasonal", v).apply()
+
+    /** Limited-time themes whose "it's here" popup has shown, as "<theme id>:<first day of its window>" (once a year each). */
+    var seasonalThemesShown: Set<String>
+        get() = p.getString("seasonal_themes_shown", null)?.split("\n")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+        set(v) = p.edit().putString("seasonal_themes_shown", v.joinToString("\n")).apply()
 
     /** SETTINGS > DARK MODE: 0 off (the default: the OPTION screen's white windows), 1 on, 2 AUTO (the device's
      * own light / dark setting). See DarkMode (companion/ui/theme/DarkMode.kt). */

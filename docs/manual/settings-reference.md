@@ -53,7 +53,7 @@ The `SPEED OPTIONS` page:
 | `COMPANION BUTTON` | **`ON`**, `OFF` | Where `COMPANION VIEW` shows: the small button at the bottom of the screen's right edge that opens the companion. Off, `BACK` and the HUD's `COMPANION` button still do. | [Devices](devices.md) |
 | `SWAP SCREENS` | `ON`, **`OFF`** | Only on a device with two screens: the game on the second screen and the companion on the main one. With a TV as the second screen it starts `ON`: the game on the TV. | [Devices](devices.md) |
 | `SINGLE SCREEN` | `ON`, **`OFF`** | Only on a device with two screens: play on one, the second screen free for other apps and the companion as a window over the game. | [Devices](devices.md#single-screen) |
-| `THEME` | **`POKéDAISY`**, `FIRERED`, `LEAFGREEN`, `EMERALD`, `RUBY`, `SAPPHIRE`, `PLATINUM`, `HEARTGOLD`, `SOULSILVER` | The backdrop of the library, Settings and setup. Nothing changes in game. | [Screen](screen.md) |
+| `THEME` | **`POKéDAISY`**, `CHERRY`, `RAINBOW`, `OCEAN`, `MINT`, `LAVENDER`, `SUNSET`, `FOREST`, `LEMON`, and a holiday theme around its dates | Colours of the app and the companion, on both screens. | [Screen](screen.md#theme) |
 | `DARK MODE` | **`OFF`**, `ON`, `AUTO` | Dark windows on both screens. `AUTO` follows the device. | [Screen](screen.md) |
 | `FPS / CPU` | `ON`, **`OFF`** | Frames per second and the app's CPU use in the game's corner. Tap it for more. | [Screen](screen.md) |
 
@@ -200,6 +200,7 @@ At the top of SETTINGS, in a blue frame, in the games where any of it works.
 | `COMPANION BUTTON` | as on the top screen | With `COMPANION VIEW`. Switches right away. | [Devices](devices.md) |
 | `SWAP SCREENS` | as on the top screen | Only with two screens. | [Devices](devices.md) |
 | `SINGLE SCREEN` | as on the top screen | Only with two screens. Switches right away, and the companion opens over the game. | [Devices](devices.md#single-screen) |
+| `THEME` | as on the top screen | Colours of the app and the companion, on both screens. | [Screen](screen.md#theme) |
 | `DARK MODE` | as on the top screen | Dark windows on both screens. | [Screen](screen.md) |
 | `FPS / CPU` | as on the top screen | The performance readout. | [Screen](screen.md) |
 
