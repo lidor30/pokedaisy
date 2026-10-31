@@ -73,6 +73,14 @@ class BattleInputController(
     @Volatile
     var stateNow: (() -> Int?)? = null
 
+    /**
+     * The foe in battle is shiny: RUN then picks RUN and nothing more. Unbound (CFRU) asks "Are you sure you want to run
+     * away?" before running from one, and that question is the player's to answer on the game's own YES / NO (the user's
+     * call) - the follow-up's A said YES for them. Its "Got away safely!" waits for the player's button too.
+     */
+    @Volatile
+    var runAsksFirst = false
+
     /** The open Gen 1 menu's cursor (action cell column + 2 x row, or move index); -1 unknown. */
     @Volatile
     private var gen1Cursor = -1
@@ -622,8 +630,9 @@ class BattleInputController(
             if (gen1) queueGen1ActionLocked(actionIndex) else pickCellLocked(actionIndex, move = false)
             if (actionIndex == ACTION_RUN) {
                 // "Got away safely!" waits for a button: close it (a press while
-                // it's still printing just finishes the text).
-                runPresses = RUN_PRESSES
+                // it's still printing just finishes the text). Not from a shiny
+                // foe ([runAsksFirst]): the game's question waits for the player.
+                runPresses = if (runAsksFirst) 0 else RUN_PRESSES
                 runGap = RUN_FIRST_GAP
                 runLeftMenu = false
             }

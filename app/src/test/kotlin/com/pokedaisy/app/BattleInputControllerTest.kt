@@ -212,6 +212,18 @@ class BattleInputControllerTest {
         assertFalse(c.isBusy)
     }
 
+    @Test fun runFromAShinyLeavesTheQuestionToThePlayer() {
+        // Unbound's "Are you sure you want to run away?" before a shiny: RUN is picked, then nothing more is pressed,
+        // even with a fresh read saying a message (the question) is up.
+        c.runAsksFirst = true
+        c.stateNow = { BATTLE_INPUT_BUSY }
+        c.onState(0, BATTLE_INPUT_ACTION_SELECT)
+        c.selectAction(3)
+        run(400) { key -> if (key == "A") c.onState(0, BATTLE_INPUT_BUSY) }
+        assertEquals(listOf("LEFT", "UP", "RIGHT", "DOWN", "A"), game.presses)
+        assertFalse(c.isBusy)
+    }
+
     @Test fun runStopsWhenTheMenuComesBack() {
         // "Can't escape!" (or a trainer battle): one B, then the action menu again.
         c.onState(0, BATTLE_INPUT_ACTION_SELECT)

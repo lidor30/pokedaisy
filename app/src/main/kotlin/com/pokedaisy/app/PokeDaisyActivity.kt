@@ -2104,6 +2104,8 @@ class PokeDaisyActivity : Activity() {
                     }
                 // WILD ENCOUNTERS on a Game Boy game is held by the engine, frame by frame.
                 if (snap.connected && romIsGameBoy) engine.gbField = gbField()
+                // A shiny foe: RUN leaves Unbound's "Are you sure you want to run away?" to the player.
+                engine.battleRunAsksFirst = snap.battleOpponent.any { it.shiny }
                 if (snap.connected) battleGen1Menus = snap.game.isGen1 ||
                     snap.game.isGen2   // the same 2x2 menu and move column
                 // party.isNotEmpty(), not just connected: `connected` flips true as

@@ -295,6 +295,11 @@ class EmulatorEngine(
         get() = battleInput.stateNow
         set(v) { battleInput.stateNow = v }
 
+    /** The foe in battle is shiny: RUN leaves the game's "are you sure?" to the player ([BattleInputController.runAsksFirst]). */
+    var battleRunAsksFirst: Boolean
+        get() = battleInput.runAsksFirst
+        set(v) { battleInput.runAsksFirst = v }
+
     /** Switch to the party mon with this personality. Call from the UI thread. */
     fun battleSwitchTo(personality: Long) = battleInput.switchTo(personality)
 

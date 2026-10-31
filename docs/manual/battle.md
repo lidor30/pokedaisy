@@ -27,7 +27,7 @@ What each button does:
 - `FIGHT` opens your four moves right away. Tap one to use it, or `CANCEL` to go back.
 - `BAG` opens the game's own bag on the top screen. Pick your item there; `BACK` on the companion backs out of it.
 - `POKéMON` opens your party on the companion to switch (see [Switching during a battle](#switching-during-a-battle)).
-- `RUN` runs away, and clears the "got away" message for you too. If the game asks whether you're sure (Unbound does before a shiny, and in some of its trainer battles), `RUN` answers yes.
+- `RUN` runs away, and clears the "got away" message for you too. Against a shiny Pokémon it only picks `RUN` and leaves the rest to you: if the game asks whether you're sure (Unbound does), answer on the game's own `YES` or `NO`. If it asks at another time, `RUN` answers yes.
 
 Elite Redux has no bag in its battle menu, so there the tab shows `RUN` and `POKéMON` side by side under `FIGHT`, with no `BAG`.
 
