@@ -47,6 +47,7 @@ class BattleCursorTest {
             "team_rocket_battle" to NATIVE_TEAM_ROCKET, "team_rocket_trainer" to NATIVE_TEAM_ROCKET,
             "wishes_battle" to NATIVE_WISHES, "wishes_trainer" to NATIVE_WISHES,
             "dreamstone_battle" to NATIVE_DREAMSTONE, "dreamstone_trainer" to NATIVE_DREAMSTONE,
+            "monomyth_battle" to NATIVE_MONOMYTH, "monomyth_trainer" to NATIVE_MONOMYTH,
         ).forEach { (fixture, cfg) ->
             val ram = FixtureMemoryReader.load(fixture)
             assertEquals(fixture, 0, ram.readCoreMemory(cfg.actionCursor, 1)[0].toInt())

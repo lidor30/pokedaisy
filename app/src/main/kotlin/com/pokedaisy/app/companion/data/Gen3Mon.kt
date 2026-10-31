@@ -90,6 +90,8 @@ data class PartyMonLayout(
      * the star by the name). -1 = none. */
     val shinyBits: Int = -1,
     val shinyBitsMask: Int = 0,
+    /** The substructs' key is Monomyth's ([monomythKey]) rather than personality ^ OT ID. */
+    val monomythKey: Boolean = false,
 )
 
 val VANILLA_PARTY_MON = PartyMonLayout()
@@ -128,6 +130,41 @@ val ELITE_REDUX_PARTY_MON = PartyMonLayout(
  * (the save's Crobat is Adamant by its stats; the XOR would make it Lonely).
  */
 val TEAM_ROCKET_PARTY_MON = PartyMonLayout(flags = 0x12, eggMask = 0x20, natureModifier = false)
+
+/**
+ * Pokémon Monomyth's struct Pokemon: vanilla's 100 bytes, substructs, order and checksum, but encrypted with a key of its
+ * own ([monomythKey]). No Mints (+0x12 is the language alone).
+ */
+val MONOMYTH_PARTY_MON = PartyMonLayout(monomythKey = true, natureModifier = false)
+
+/**
+ * Monomyth's substruct key, as its box decryption works it out (0x08068198, from the personality and the OT ID, then XORed
+ * over the 12 words): every party and enemy mon of the saves decrypts to a valid checksum with it.
+ */
+internal fun monomythKey(personality: Long, otId: Long): Long {
+    fun ror(x: Long, n: Int): Long = ((x ushr n) or (x shl (32 - n))) and 0xFFFFFFFFL
+    var r3 = (otId + ror(personality xor 0x690, 7)) and 0xFFFFFFFFL
+    r3 = ror((r3 + ror(personality, 11)) and 0xFFFFFFFFL, 13)
+    r3 = (personality + ror(0x5A000000L xor r3 xor otId, 17)) and 0xFFFFFFFFL
+    return r3 xor ror(otId, 5)
+}
+
+/** Where Monomyth's natures start in [MonStats.nature]: past vanilla's 25, so they raise and lower nothing. */
+const val MONOMYTH_NATURE_BASE = 25
+
+/**
+ * Pokémon Monomyth's nature: one of 250 of its own (natureNamesMonomyth), flavour only - its stats are every Pokémon's
+ * neutral ones (the saves' parties recompute exactly with no nature) - picked by a hash of the personality, as its
+ * GetNature (0x0805B214) works it out: the user's MISHIMIZU is 190, "Dreamy", as its summary says.
+ */
+internal fun monomythNature(personality: Long): Int {
+    var x = personality xor (personality ushr 16)
+    x = (x * 0x7FEB352DL) and 0xFFFFFFFFL
+    x = x xor (x ushr 15)
+    x = (x * 0x846CA68BL) and 0xFFFFFFFFL
+    x = x xor (x ushr 16)
+    return (x % 250).toInt()
+}
 
 private fun decodeEliteReduxMon(raw: ByteArray, off: Int, layout: PartyMonLayout): Mon? {
     val w08 = u32(raw, off + 0x08)
@@ -223,7 +260,7 @@ fun decodePartyMon(raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PA
     val evs: List<Int>
     val ivWord: Long
 
-    val dec = decryptGen3Substructs(raw, off)
+    val dec = decryptGen3Substructs(raw, off, layout.monomythKey)
     if (dec != null) {
         species = dec.species
         heldItem = dec.heldItem
@@ -420,7 +457,8 @@ private fun monStats(raw: ByteArray, off: Int, layout: PartyMonLayout, evs: List
     val pidNature = (u32(raw, off) % 25).toInt()
     // pokeemerald-expansion's Mints: hiddenNatureModifier sits above the 3
     // language bits at +0x12 (0 in every other game) and is XORed in.
-    val nature = if (!layout.natureModifier) pidNature
+    val nature = if (layout.monomythKey) MONOMYTH_NATURE_BASE + monomythNature(u32(raw, off))
+        else if (!layout.natureModifier) pidNature
         else (pidNature xor ((raw[off + 0x12].toInt() and 0xFF) ushr 3)).takeIf { it < 25 } ?: pidNature
     return MonStats(
         ivs = List(6) { ((ivWord shr (5 * it)) and 0x1F).toInt() },
@@ -435,11 +473,11 @@ private class Gen3Substructs(
     val evs: List<Int>, val ivWord: Long, val heldItem: Int,
 )
 
-private fun decryptGen3Substructs(raw: ByteArray, off: Int): Gen3Substructs? {
+private fun decryptGen3Substructs(raw: ByteArray, off: Int, monomyth: Boolean = false): Gen3Substructs? {
     val personality = u32(raw, off + 0)
     val otId = u32(raw, off + 4)
     val storedChecksum = u16(raw, off + 28)
-    val key = personality xor otId
+    val key = if (monomyth) monomythKey(personality, otId) else personality xor otId
 
     val block = ByteArray(48)
     var sum = 0
@@ -561,6 +599,19 @@ val TEAM_ROCKET_BATTLE_MON = EXPANSION_BATTLE_MON.copy(size = 0x5C)
  * read the foe at +0x88, Heart and Soul's size).
  */
 val WISHES_BATTLE_MON = EXPANSION_BATTLE_MON.copy(size = 0x88)
+
+/**
+ * Pokémon Monomyth's 0x58-byte struct BattlePokemon, rearranged (its battle dumps, field by field against the party
+ * structs): PP +0x00, statStages +0x04, species +0x0C, ability +0x0E, types +0x0F / +0x10, level +0x12, moves +0x18, the
+ * held item +0x20 (Leftovers given to the lead read there), the five stats +0x22, HP / max HP +0x2C / +0x2E, status1
+ * +0x30, status2, otId +0x38, the IV word, personality +0x40, the OT name and the nickname.
+ */
+val MONOMYTH_BATTLE_MON = BattleMonLayout(
+    size = 0x58, moves = 0x18, type1 = 0x0F, type2 = 0x10, pp = 0x00,
+    hp = 0x2C, level = 0x12, maxHp = 0x2E, status1 = 0x30,
+    ability = 0x0E, item = 0x20, species = 0x0C, stats = 0x22, statStages = 0x04,
+    personality = 0x40, otId = 0x38,
+)
 
 /** R.O.W.E.'s: expansion's layout, the species' form id in its top 5 bits. */
 val ROWE_BATTLE_MON = EXPANSION_BATTLE_MON.copy(speciesMask = 0x7FF)

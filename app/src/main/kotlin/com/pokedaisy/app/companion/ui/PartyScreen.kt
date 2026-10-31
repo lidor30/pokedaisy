@@ -301,6 +301,20 @@ val ImperiumPartyPalette = FireRedPartyPalette.copy(
 )
 
 /**
+ * Pokémon Monomyth (headless, its party grid on the user's save and a five-Pokémon one): teal boxes striped lighter in a
+ * slate line, the cursor's pale cyan in grey, empty slots grey lines every other row in a near-black line. Text, HP bar
+ * and Poké Ball are FireRed's; the HP bar's frame is the slot's dark line.
+ */
+val MonomythPartyPalette = FireRedPartyPalette.copy(
+    normal = PartySlotColors(Color(0xFF293942), Color(0xFF6BCEC6), Color(0xFF42AD9C), Color(0xFF42AD9C)),
+    selected = PartySlotColors(Color(0xFF636363), Color(0xFFBDE7E7), Color(0xFF84DED6), Color(0xFF84DED6)),
+    fainted = FireRedPartyPalette.fainted.copy(outline = Color(0xFF293942)),
+    empty = PartySlotColors(Color(0xFF292129), Color(0xFF525252), Color(0xFF525252), Color(0xFF525252)),
+    emptyLines = Color(0xFF737373),
+    hpFrame = Color(0xFF292129),
+)
+
+/**
  * Super Mariomon (headless, its party grid with a selected, a low-HP, a fainted and empty slots):
  * FireRed's slot in greens - mint boxes in a dark brown line, pale green in a lilac line under the
  * cursor - the fainted slot FireRed's orange in its own darker line, empty slots the menu's wood
@@ -582,6 +596,7 @@ fun partyPaletteFor(game: GameKind): PartyPalette = when (game) {
     GameKind.IMPERIUM -> ImperiumPartyPalette
     // Dreamstone Mysteries' party grid is Imperium's, colour for colour (sampled headless: boxes, cursor, empty slots).
     GameKind.DREAMSTONE -> ImperiumPartyPalette
+    GameKind.MONOMYTH -> MonomythPartyPalette
     GameKind.SWORD_SHIELD -> SwordShieldPartyPalette
     GameKind.MARIOMON -> MariomonPartyPalette
     GameKind.HEARTGOLD, GameKind.SOULSILVER -> HeartGoldPartyPalette

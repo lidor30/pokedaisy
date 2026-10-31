@@ -367,6 +367,13 @@ kotlin = 'Long'
 type = 'long'
 default = 0x439
 
+# gMain's frame counter (vblankCounter2) the telemetry carries: +0x24, but +0x20 where struct Main has no intrCheck
+# before its counters (Monomyth's).
+[field.frameCounterOff]
+kotlin = 'Long'
+type = 'long'
+default = 0x24
+
 # Where the save keeps the TRAINER CARD's data (TrainerCard.kt); null = no
 # CARD tab. Retail FireRed / LeafGreen / Emerald only:
 # the hacks below copy these configs and their saves differ.
@@ -465,3 +472,9 @@ default = 0
 kotlin = 'PcStorageLayout'
 type = 'ref'
 default = 'VANILLA_PC_STORAGE'
+
+# gMonIconTable points at Monomyth's packed icon blobs ([MonomythIcons]), not raw tiles.
+[field.monIconPacked]
+kotlin = 'Boolean'
+type = 'bool'
+default = false

@@ -74,6 +74,7 @@ The companion reads their party, bag, map, Pokédex and guide, with pictures, Po
 | Pokémon Team Rocket Edition: Dragonsden Version | 1.5 (its START menu shows the version) |
 | Pokémon Wishes of Tomorrow | 1.2.6 |
 | Pokémon Dreamstone Mysteries | its one release (the game shows no version) |
+| Pokémon Monomyth | 1.0 |
 | Emerald Rogue | 2.2.1-EX |
 | Pokémon SoulGold | 1.1.4, three builds of 1.2, and two of 1.2.1 |
 | Pokémon R.O.W.E. | 2.1.9.1 Experimental |

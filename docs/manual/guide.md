@@ -81,7 +81,7 @@ The pages a game gets depend on how much of it has been mapped. The [supported g
 | --- | --- |
 | FireRed, LeafGreen, Emerald, Ruby, Sapphire | Everything: HERE with all its sections, NEXT BOSS, EVOLUTIONS, TIPS, WHERE IS and STUCK? |
 | Unbound, Radical Red, Heart and Soul, Odyssey, Gaia, Amethyst, Celia's hack, Orange Islands, Ultra Violet, FireRed Rocket Edition, Ash Gray, Ghost Grey, Sword and Shield Ultimate Plus, GS Chronicles, Recharged Yellow, Emerald Legacy, Red, Blue, Yellow, Crystal, Polished Crystal | NEXT BOSS, HERE with people and items, a WHERE IS built from the maps and, for most of them, a few TIPS |
-| Lazarus, Seaglass, Too Many Types 2, SoulGold, Glazed, Emerald Imperium, Quetzal (both releases, and Moemon Quetzal), Super Mariomon, Recharged Emerald, Dreamstone Mysteries | NEXT BOSS and the wild Pokémon in HERE |
+| Lazarus, Seaglass, Too Many Types 2, SoulGold, Glazed, Emerald Imperium, Quetzal (both releases, and Moemon Quetzal), Super Mariomon, Recharged Emerald, Dreamstone Mysteries, Monomyth | NEXT BOSS and the wild Pokémon in HERE |
 | Elite Redux | The wild Pokémon in HERE. Its gym leaders pick one of several teams when the battle starts, so there's no NEXT BOSS |
 | Team Rocket Edition: Dragonsden Version | The wild Pokémon in HERE. Its story takes you around in its own order, so there's no NEXT BOSS yet |
 | Wishes of Tomorrow | The wild Pokémon in HERE, swapped the way your save swaps them when you play with its randomizer on. Its story takes you around its own region in its own order, so there's no NEXT BOSS yet |

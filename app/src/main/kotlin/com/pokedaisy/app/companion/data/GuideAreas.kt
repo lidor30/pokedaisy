@@ -65,6 +65,7 @@ private fun rawAreas(guide: GuideId): List<String> = when (guide) {
     GuideId.MARIOMON, GuideId.RECHARGED_EMERALD, GuideId.ELITE_REDUX, GuideId.TEAM_ROCKET,
     GuideId.WISHES -> emptyList()
     GuideId.DREAMSTONE -> emptyList()
+    GuideId.MONOMYTH -> emptyList()
     // The DS games: item balls and hidden items (scripts/gen_gen4_guide.py), keyed by place - see [areaSection].
     GuideId.PLATINUM -> PT_AREAS_RAW
     GuideId.HEARTGOLD, GuideId.SOULSILVER -> HG_AREAS_RAW

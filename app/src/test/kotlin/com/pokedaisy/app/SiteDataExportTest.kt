@@ -39,7 +39,7 @@ class SiteDataExportTest {
         "IRAO" to "Pokémon White", "IREO" to "Pokémon Black 2", "IRDO" to "Pokémon White 2")
 
     /** The base game of each hack that has a game code of its own ([TelemetrySampler.HACK_GAME_CODES]). */
-    private val hackCodeBases = mapOf(TelemetrySampler.ULTRA_VIOLET_CODE to "BPRE")
+    private val hackCodeBases = mapOf(TelemetrySampler.ULTRA_VIOLET_CODE to "BPRE", TelemetrySampler.MONOMYTH_CODE to "BPEE")
 
     /** `LAZARUS_V2_0_SHA1` -> v2.0, `EMERALD_ROGUE_V2_2_1_EX_SHA1` -> v2.2.1-EX, `SOULGOLD_V1_2B_SHA1` -> v1.2b,
      * `QUETZAL_V9_0_ALPHA_ES_SHA1` -> v9.0-ALPHA-ES, `MARIOMON_V1_5_2_Anniversary_SHA1` -> v1.5.2-Anniversary (a tag

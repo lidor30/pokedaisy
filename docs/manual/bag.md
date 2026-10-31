@@ -14,7 +14,7 @@ The tab's name follows the game: `BAG` in most games, `ITEM` in Red, Blue, Yello
 
 The pockets run down the left like folder tabs. `ALL` shows everything at once; the others are the game's own pockets (items, balls, TMs and HMs, berries, key items, and whatever extra pockets a hack adds). Only pockets with something in them get a tab.
 
-Each row has the item's name and how many you have. TMs and HMs show the move they teach after their number, the way the game's TM case does. In Prism and Polished Crystal TMs never run out, so each one shows a count of 1. Polished Crystal's Medicine pocket shows with your items, and so do Dreamstone Mysteries' Medicine and Battle Items pockets. Elite Redux keeps no counts at all (an item you have can be used again and again), so its rows show names only.
+Each row has the item's name and how many you have. TMs and HMs show the move they teach after their number, the way the game's TM case does. In Prism and Polished Crystal TMs never run out, so each one shows a count of 1. Polished Crystal's Medicine pocket shows with your items, and so do Dreamstone Mysteries' Medicine and Battle Items pockets and Monomyth's Medicine and held items pockets. Elite Redux keeps no counts at all (an item you have can be used again and again), so its rows show names only.
 
 The button under the pockets changes the order. Each tap moves to the next: the game's own order, by name, by type, or by count (most first).
 
@@ -82,7 +82,7 @@ It only works while you're walking around. If a menu, a conversation or a battle
 
 In FireRed, LeafGreen, Emerald, Ruby and Sapphire, the bag tab has a `PC` button above the sort button (its small arrow means it opens the game's own screen, not a companion page). Tap it and the game's own PC opens right where you're standing, the same menu a PC in a Pokémon Center gives you: take Pokémon out, put them away and move them between boxes (and, outside Ruby and Sapphire, move their items). Back out of it as usual and you're on the field again.
 
-It works in every language, and on hacks that kept those games' code: Glazed, Emerald Kaizo, Emerald Legacy, Gaia, Odyssey, Orange Islands, Ultra Violet, Ghost Grey and the CFRU hacks (Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus). Heart and Soul, SoulGold, Lazarus and Emerald Imperium have the `PC` button too, but not the bag's `USE`, `GIVE` and `TAKE` yet (SoulGold's `USE` for the keep-away spray aside). So do Red, Blue, Yellow (in every language), PureRed, PureBlue and Crystal on the Game Boy: the PC there is the whole one from their Pokémon Centers, with its other choices too, like the PC that stores your items.
+It works in every language, and on hacks that kept those games' code: Glazed, Emerald Kaizo, Emerald Legacy, Gaia, Odyssey, Orange Islands, Ultra Violet, Ghost Grey and the CFRU hacks (Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus). Heart and Soul, SoulGold, Lazarus, Emerald Imperium and Monomyth have the `PC` button too, but not the bag's `USE`, `GIVE` and `TAKE` yet (SoulGold's `USE` for the keep-away spray aside). So do Red, Blue, Yellow (in every language), PureRed, PureBlue and Crystal on the Game Boy: the PC there is the whole one from their Pokémon Centers, with its other choices too, like the PC that stores your items.
 
 On the DS it works in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2, with the same whole PC as their Pokémon Centers.
 

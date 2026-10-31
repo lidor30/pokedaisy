@@ -40,6 +40,11 @@ data class GuideTables(
     val trainerPartyOff: Int = 0x24,
     /** pokeemerald-expansion's struct TrainerMon (always custom moves); null = vanilla's party structs. */
     val trainerMon: TrainerMonLayout? = null,
+    /** Vanilla's party structs behind this many bytes of the game's own, each struct's size by the trainer's party flags
+     * (none, custom moves, held item, both) - Monomyth's: a u32 first, then vanilla's fields, 12 / 20 / 12 / 24 bytes.
+     * Null = vanilla's 8 / 16. */
+    val trainerMonStrides: List<Int>? = null,
+    val trainerMonHeader: Int = 0,
     /** WildPokemonHeader: expansion keeps one set of four tables per time of day. */
     val wildSets: Int = 1,
     /** Which set HERE shows (expansion's TIME_DAY); a missing table falls back to the others. */
@@ -412,10 +417,10 @@ object GuideRomSource {
             val custom = flags and TRAINER_PARTY_CUSTOM_MOVESET != 0
             val item = flags and TRAINER_PARTY_HELD_ITEM != 0
             // {u16 iv, u8 lvl, pad, u16 species, [u16 item], [u16 moves[4]]}, padded to 8 / 16 bytes.
-            val stride = if (custom) 16 else 8
+            val stride = t.trainerMonStrides?.getOrNull(flags and 3) ?: if (custom) 16 else 8
             val raw = rd(ptr, size * stride)
             (0 until size).map { i ->
-                val o = i * stride
+                val o = i * stride + t.trainerMonHeader
                 val species = u16le(raw, o + 4)
                 val level = raw[o + 2].toInt() and 0xFF
                 val movesOff = if (item) o + 8 else o + 6
@@ -994,6 +999,31 @@ val GUIDE_TABLES_WISHES = GuideTables(
     wildSet = 0,
     mapGroups = 0x08F90738L,
     trainerIdVar = true,
+)
+
+/**
+ * Pokémon Monomyth v1.0, from the ROM: gTrainers 0x084B6C84 (vanilla's 0x28-byte records; 1 = BUG CATCHER TIM, whose
+ * SPINARAK Lv3 and JOLTIK Lv4 the headless trainer battle met), its parties vanilla's structs behind a u32 (12 / 20 / 12 /
+ * 24 bytes by party flags, level +6, species +8, item +0xA, moves +0xA or +0xC), gLevelUpLearnsets 0x0850664C ({u16 move,
+ * u16 level} ending 0xFFFF: its moves pass 511), gWildMonHeaders 0x089C2E58 (vanilla's 20 bytes, 211 of them). SaveBlock1's
+ * flags / vars at +0x18C4 / +0x19FC (ScrCmd_setflag's and ClearAllVars' literals), 0x138 bytes of flags.
+ */
+val GUIDE_TABLES_MONOMYTH = GuideTables(
+    trainers = 0x084B6C84L,
+    learnsets = 0x0850664CL,
+    learnsetPairs = true,
+    wildHeaders = 0x089C2E58L,
+    // gMapGroups (its own maps: the save's CATSEAR CITY building is 2.5, ROUTE 1 0.12) - DEX AREA's map sections.
+    mapGroups = 0x0886EED8L,
+    sb1FlagsOff = 0x18C4,
+    sb1VarsOff = 0x19FC,
+    flagBytes = 0x138,
+    varCount = 0x110,
+    probeTrainer = 1,
+    probeName = "Tim",
+    guide = GuideId.MONOMYTH,
+    trainerMonStrides = listOf(12, 20, 12, 24),
+    trainerMonHeader = 4,
 )
 
 /**

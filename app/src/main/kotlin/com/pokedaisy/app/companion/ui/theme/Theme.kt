@@ -413,6 +413,8 @@ private fun backdropColors(game: GameKind): IntArray? = when (game) {
     // Dreamstone Mysteries' party grid: Imperium's rows, the same two colours.
     GameKind.DREAMSTONE -> intArrayOf(0xFF424242.toInt(), 0xFF101821.toInt(), 0xFF101821.toInt())
     GameKind.ROWE -> IntArray(3) { 0xFF292929.toInt() }
+    // Pokémon Monomyth's party menu: orange behind its slots (its dots left out).
+    GameKind.MONOMYTH -> IntArray(3) { 0xFFFFBD52.toInt() }
     // Super Mariomon's party menu: flat brown behind its wood-plank slots.
     GameKind.MARIOMON -> IntArray(3) { 0xFF845A4A.toInt() }
     // SoulGold's party list: light-blue stripes, a deeper blue edge.

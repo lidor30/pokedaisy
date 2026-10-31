@@ -1067,6 +1067,16 @@ open class CompanionScreenshotTest {
     @Test fun dreamstoneTrainer() = retail("dreamstone_trainer_next", NATIVE_DSM, DSM_ROM, GameKind.DREAMSTONE, "BATTLE", art = true)
     @Test fun dreamstoneGuideHere() = retailGuide("dreamstone_route", NATIVE_DSM, DSM_ROM, "HERE", kind = GameKind.DREAMSTONE)
     @Test fun dreamstoneGuideBoss() = retailGuide("dreamstone", NATIVE_DSM, DSM_ROM, "NEXT BOSS", kind = GameKind.DREAMSTONE)
+    // Pokémon Monomyth: its own party grid and bag colours, its names, natures and battle structs; NEXT BOSS / HERE.
+    @Test fun monomythParty() = retail("monomyth", NATIVE_MMY, MMY_ROM, GameKind.MONOMYTH, "PARTY", art = true)
+    @Test fun monomythItems() = retail("monomyth", NATIVE_MMY, MMY_ROM, GameKind.MONOMYTH, "ITEMS", art = true)
+    @Test fun monomythDex() = retail("monomyth", NATIVE_MMY, MMY_ROM, GameKind.MONOMYTH, "DEX", art = true)
+    @Test fun monomythDexEntry() = retail("monomyth", NATIVE_MMY, MMY_ROM, GameKind.MONOMYTH, "DEX", entry = 7, art = true)
+    @Test fun monomythMap() = retail("monomyth", NATIVE_MMY, MMY_ROM, GameKind.MONOMYTH, "MAP", art = true)
+    @Test fun monomythBattle() = retail("monomyth_battle", NATIVE_MMY, MMY_ROM, GameKind.MONOMYTH, "BATTLE", art = true)
+    @Test fun monomythBattleMenu() = retail("monomyth_battle", NATIVE_MMY, MMY_ROM, GameKind.MONOMYTH, "BATTLE", art = true, controls = true)
+    @Test fun monomythTrainer() = retail("monomyth_trainer_next", NATIVE_MMY, MMY_ROM, GameKind.MONOMYTH, "BATTLE", art = true)
+    @Test fun monomythGuideBoss() = retailGuide("monomyth", NATIVE_MMY, MMY_ROM, "NEXT BOSS", kind = GameKind.MONOMYTH)
     // Ghost Grey: its 1.0.3 save in v1.0.4 (the fixtures' READMEs), its grey map from the ROM.
     @Test fun ghostGreyParty() = retail("ghost_grey", NATIVE_GG, GG_ROM, GameKind.FIRERED, "PARTY", art = true)
     @Test fun ghostGreyItems() = retail("ghost_grey", NATIVE_GG, GG_ROM, GameKind.FIRERED, "ITEMS", art = true)
@@ -2035,6 +2045,8 @@ private const val ER_ROM = "Pokemon Elite Redux (2.65.4.1b).gba"
 private const val TR_ROM = "Pokemon Team Rocket Dragonsden Version.gba"
 private const val DSM_ROM = "Pokemon Dreamstone Mysteries.gba"
 private val NATIVE_DSM get() = com.pokedaisy.app.companion.data.NATIVE_DREAMSTONE
+private const val MMY_ROM = "Pokemon Monomyth (v1.0).gba"
+private val NATIVE_MMY get() = com.pokedaisy.app.companion.data.NATIVE_MONOMYTH
 private val NATIVE_TR get() = com.pokedaisy.app.companion.data.NATIVE_TEAM_ROCKET
 private const val WOT_ROM = "Pokemon Wishes of Tomorrow (v1.2.6).gba"
 private val NATIVE_WOT get() = com.pokedaisy.app.companion.data.NATIVE_WISHES

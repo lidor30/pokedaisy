@@ -39,6 +39,10 @@ enum class EvoScheme {
     QUETZAL,
     /** R.O.W.E.: [EXPANSION]'s numbering up to 31 (EVO_TRADE_SPECIFIC_MON). */
     ROWE,
+    /** Pokémon Monomyth: vanilla's 1-15, and of expansion's older list the ones its data bears out (23 knows a move:
+     * TANGELA's ANCIENTPOWER; 25 at a place: POLIKAZAN at BLAZING PATH; 27 an item on a female: SNORUNT's DAWN STONE;
+     * 32 at a map); its 31, 33 and 34 are its own. */
+    MONOMYTH,
     /** pokeemerald-expansion 1.12+ (TMT2, Heart and Soul, SoulGold): EVO_LEVEL / TRADE / ITEM / ...
      * plus a list of {condition, arg1, arg2, arg3} (IF_GENDER, IF_TIME, IF_HOLD_ITEM, ...). */
     EXPANSION_PARAMS,
@@ -61,6 +65,9 @@ data class EvoLayout(
     val perMon: Int = 5,
     val record: Int = 8,
     val conditionsEnd: Int = 39,
+    /** The level species 1 evolves into species 2 at, which a table-shaped layout must show (BULBASAUR's 16; Monomyth's
+     * KOTORA becomes RAITORA at 31). */
+    val probeLevel: Int = 16,
 )
 
 /** expansion's TimeOfDay (and the old day / night / dusk methods). */
@@ -252,9 +259,10 @@ object DexDetails {
                 if (links.isNotEmpty()) out[s] = knownFirst(links)
             }
             // A hack of the same size that moved the table must not get wrong data:
-            // BULBASAUR evolves at 16 into IVYSAUR (species 1 -> 2) in every table-shaped game here. A randomized
-            // retail ROM's table is at retail's place (its hash says so), the randomizer's evolutions in it.
-            if (!gameRandomized && out[1]?.firstOrNull()?.let { it.to == 2 && it.reqs == listOf(EvoReq.Level(16)) } != true) return null
+            // BULBASAUR evolves at 16 into IVYSAUR (species 1 -> 2) in every table-shaped game here ([EvoLayout.probeLevel]:
+            // Monomyth's at 31). A randomized retail ROM's table is at retail's place (its hash says so), the randomizer's
+            // evolutions in it.
+            if (!gameRandomized && out[1]?.firstOrNull()?.let { it.to == 2 && it.reqs == listOf(EvoReq.Level(layout.probeLevel)) } != true) return null
             return out
         }
         val x = t.expansion ?: return null
@@ -328,6 +336,7 @@ object DexDetails {
             }
             EvoScheme.QUETZAL -> if (m <= 42) expansion(m, p) else null
             EvoScheme.ROWE -> if (m <= 31) expansion(m, p) else null
+            EvoScheme.MONOMYTH -> vanilla(m, p) ?: if (m in setOf(23, 25, 27, 32)) expansion(m, p) else null
             EvoScheme.EXPANSION_PARAMS -> null
             EvoScheme.RECHARGED_YELLOW -> vanilla(m, p) ?: if (m == 16) listOf(EvoReq.UseItem(p), EvoReq.Hold(extra)) else null
         } ?: listOf(EvoReq.Special)

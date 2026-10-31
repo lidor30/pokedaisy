@@ -1472,6 +1472,26 @@ ENCOUNTERS (its switch 0x02037F88 checked headless anyway), EXPAND, field items 
 differently each run (`dreamstone_trainer_next` pokes the foe's HP). Imperium's gSpeciesInfo DEX (`POKEDEX_DREAMSTONE`: its
 own 315-entry Cormoria list, which the game titles HOENN), party palette and backdrop; Emerald's bag; its TOWN MAP is a
 FireRed-like screen (RomArt's `DSM_REGION_*`), no player head (the player picks one of five looks).
+**Monomyth v1.0 (2026-10-31)** (`GameKind.MONOMYTH`, `NATIVE_MONOMYTH`; Team Monomyth's Athanto game): its own game code
+**MONE** (32 MB), so it rides `HACK_GAME_CODES` like Ultra Violet's PUVV and is detected by hash. A closed pokeemerald build
+(gcc): globals sit in EWRAM behind section anchors, so a literal-pool word points near a variable, not at it - find RAM by
+diffing dumps, not by counting pool references. Vanilla's shapes with its own twists, each a switch now: party substructs
+XORed with a key of its own (`PartyMonLayout.monomythKey`, its box decryption at 0x08068198), 250 flavour-only natures
+(`monomythNature`, carried as `MONOMYTH_NATURE_BASE` + index so no stat arrows), a rearranged 0x58-byte BattlePokemon
+(`MONOMYTH_BATTLE_MON`), a struct Main in its own order (`frameCounterOff`: no intrCheck; inBattle 0x17 bytes before callback1, at 0x02020601), 4 bytes
+before SaveBlock1's `pos`, the key at SaveBlock2 +0x40, its own EXP curves past Lv70 (`expTablesMonomyth`) trainer
+parties behind a u32 (`GuideTables.trainerMonStrides` / `trainerMonHeader`) and party icons packed by its own tile coder
+(`MonomythIcons`, `monIconPacked`: an ARM routine at 0x081C4284 it runs from the stack). Its system flags sit 0x20 above vanilla's
+(POKéMON 0x880, badges 0x887+), Heroic mode is flag 0x8A3. The user's save (`~/Documents/RetroArch/saves/mGBA/Pokemon
+Monomyth (v1.0).srm`, a copy of theirs) is every fixture's; its setwildbattle takes species, level, item, a byte and a word
+(ScriptContext_SetupScript 0x08090871). Tables: `scripts/gen_monomyth_tables.py`. DEX: `POKEDEX_MONOMYTH` (its one ATHANTO dex: 0x28-byte entries with 14-byte
+categories, smol front pictures, packed egg groups: `BaseStatsLayout.eggGroupsPacked`, `EvoScheme.MONOMYTH`). MAP: its
+PokeNav's ATHANTO MAP (RomArt's `MMY_REGION_*`, a mode-0 text screen of its own; one head for either gender). EXPAND and
+field reads have a WIDE family of its own (`PK_WIDE_FAMILY_MM`: inBattle at -0x17 from callback1, `CAMERA_WIDE` s16 camera
+offsets, `MAX_SPRITES` 80; it doesn't rewrite DISPCNT each frame, so mgba_dump's `layers` goes before the boot); PC
+anywhere is special 57 (`FIELD_ITEMS_MONOMYTH`, PC only). Its StandardWildEncounter has no switch (no WILD ENCOUNTERS),
+and a look-alike gcc shape there taught `WildEncounters.gccRead` to want the HEADER_NONE compare. No FLY, bag USE, card or
+far-off characters in EXPAND.
 **Emerald Legacy v1.1.4 (2026-10-14)**: BPEE, 16 MB, but a rebuild - its public source (`$DECOMPS/pokelegacy`, tag V1.1.4)
 built with agbcc is the release byte for byte, so take every address from that ELF (`nm`) and every struct offset / constant
 from agbcc compiling `offsetof` against its headers, never from retail. Runs as `GameKind.EMERALD` under `LEGACY_TEXT`

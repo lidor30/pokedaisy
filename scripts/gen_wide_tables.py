@@ -271,6 +271,18 @@ HACKS = [
           ("1.9.7", "ed60654d7525ba005bfc8f799bf0ecba2ef08a2e", "recharged_yellow", 0x081A5898, 0x030049AC,
            0x0200B6D4, 0x08B3F134, 0x03005AD0, 0x02005CD4, 0x0203BC04, 0x0203D110, 0x0203CD48,
            dict(OBJ_GFX_INFO=0x0887EE9C, CONTROLS_LOCKED=0x03005EC4, OBJ_PALETTES=0x08890458, ELEVATION_PRIO=0x088935F4, OBJ_FACING=0x0887E9C4))]],
+    # Monomyth v1.0: its own closed pokeemerald build (game code MONE), its own family (MM: Emerald's map and objects, its
+    # struct Main and camera). find_wide_addrs.py's walk (--pos 4: SaveBlock1's pos is 4 bytes in) gave the map, sprites
+    # and objects; sFieldCameraOffset 0x0203824C is four s16 (pixel x / y, tile x / y), its pans 0xC on (0 and 32 on the
+    # field); sLockFieldControls 0x0203BF67 is what its ArePlayerFieldControlsLocked (0x080907E4) reads, 1 under a scripted
+    # lockall and 0 after releaseall. gMain's callback1 0x02020618, inBattle 0x17 before it. gPlayerAvatar isn't after
+    # gObjectEvents (BIKE / SURF read N/A).
+    dict(name="Monomyth v1.0", sha1="ae1c4be9be8d706bb989602bc05731203d42860d", family="MM", save="monomyth",
+         boot_file="monomyth.txt", script=0x08090871,
+         a=dict(VMAP=0x0203823C, MAP_HEADER=0x02038210, MAP_GROUPS=0x0886EED8, SAVE_BLOCK1_PTR=0x03001240, SB1_POS=4,
+                CAMERA_OFFSET=0x0203824C, PAN_OFF=0xC, OBJECT_EVENTS=0x02038280, SPRITES=0x020214D0, COORD_OFFSET=0x02022DA8,
+                COORD_OFFSET_Y=0x02022DAA, SPRITE_ORDER=0x02022A54, GMAIN=0x02020618, CONTROLS_LOCKED=0x0203BF67,
+                METATILE_SIZE=24)),
     # pokeemerald-expansion builds: scripts/find_wide_addrs.py's dumps (gMapHeader, gSaveBlock1Ptr and gMapGroups from
     # the app's NativeConfig / GuideTables), ScriptContext_SetupScript from their battle fixtures' READMEs.
     dict(name="Lazarus v2.0", sha1="7dcdc7e280bc4631487e13dd37e6e0cea04adea6", family="EX", save="lazarus_srm",
@@ -341,7 +353,7 @@ HACKS = [
 ]
 FAMILY = {"BPR": "FR", "BPG": "FR", "BPE": "EM", "AXV": "RS", "AXP": "RS"}
 # Hacks under a game code of their own (only taken by SHA-1, as every hack).
-HACK_CODES = {"PUV"}
+HACK_CODES = {"PUV", "MON"}
 KOTLIN = os.path.join(ROOT, "app", "src", "main", "kotlin", "com", "pokedaisy", "app")
 
 

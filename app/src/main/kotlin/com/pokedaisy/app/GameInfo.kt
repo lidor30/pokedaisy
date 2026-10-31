@@ -190,7 +190,7 @@ class GameInfo(
         private fun baseGame(code: String?): String? = when (code) {
             "BPRE", "PUVV" -> "Pokémon FireRed" // PUVV: Ultra Violet
             "BPGE" -> "Pokémon LeafGreen"
-            "BPEE" -> "Pokémon Emerald"
+            "BPEE", "MONE" -> "Pokémon Emerald" // MONE: Monomyth (its own pokeemerald build)
             "BPES" -> "Pokémon Edición Esmeralda"
             "BPED" -> "Pokémon Smaragd-Edition"
             "BPEF" -> "Pokémon Version Émeraude"

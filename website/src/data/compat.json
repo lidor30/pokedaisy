@@ -2,7 +2,7 @@
   "_generated": "by app/src/test/kotlin/com/pokedaisy/app/SiteDataExportTest.kt - don't edit by hand",
   "maxBaseSize": 16777216,
   "baseCodes": {"BPRE": "Pokémon FireRed", "BPEE": "Pokémon Emerald"},
-  "hackCodes": {"PUVV": "Pokémon FireRed"},
+  "hackCodes": {"MONE": "Pokémon Emerald", "PUVV": "Pokémon FireRed"},
   "retail": [
     {"code": "AXPD", "revs": [0, 1], "title": "Pokémon Saphir-Edition"},
     {"code": "AXPE", "revs": [0, 1, 2], "title": "Pokémon Sapphire"},
@@ -58,6 +58,7 @@
     {"sha1": "e10105d8544469c6a11ca2cf510289981df3c3b0", "title": "Pokémon Glazed", "version": "v9.2.0"},
     {"sha1": "79ee6df0869c1773c8c6a5f764afc1f8d833d8bb", "title": "Pokémon Heart & Soul", "version": "v2.0.6"},
     {"sha1": "7dcdc7e280bc4631487e13dd37e6e0cea04adea6", "title": "Pokémon Lazarus", "version": "v2.0"},
+    {"sha1": "ae1c4be9be8d706bb989602bc05731203d42860d", "title": "Pokémon Monomyth", "version": "v1.0"},
     {"sha1": "8745ddbdbfadf6abaf66de4e9055923b62eb4668", "title": "Pokémon Odyssey", "version": "v4.1.1"},
     {"sha1": "8bac897de515f88e6ce92d0712ce2c018a394b37", "title": "Pokémon Orange Islands", "version": ""},
     {"sha1": "d2e3800e69e44c9649c3d9a15dc1cd12c1d90501", "title": "Pokémon Orange Islands", "version": "v5.7-BETA"},
@@ -274,6 +275,7 @@
       {"game": "Team Rocket Dragonsden", "version": "1.5", "cells": ["yes", "yes", "part", "part", "no", "part"]},
       {"game": "Wishes of Tomorrow", "version": "1.2.6", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "Dreamstone Mysteries", "version": "the one release", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
+      {"game": "Monomyth", "version": "1.0", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "Emerald Rogue", "version": "2.2.1-EX", "cells": ["yes", "yes", "yes", "yes", "yes", "no"]},
       {"game": "SoulGold", "version": "1.1.4, 1.2 (3), 1.2.1 (2)", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "R.O.W.E.", "version": "2.1.9.1 Experimental", "cells": ["yes", "yes", "part", "yes", "part", "no"]}

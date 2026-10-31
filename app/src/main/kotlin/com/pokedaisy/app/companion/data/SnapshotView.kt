@@ -73,7 +73,7 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
     if (activeGame != GameKind.FIRERED && activeGame != GameKind.EMERALD && !activeGame.isGen1 &&
         activeGame != GameKind.ORANGE_ISLANDS && activeGame != GameKind.RECHARGED_YELLOW &&
         activeGame != GameKind.MARIOMON && activeGame != GameKind.TEAM_ROCKET && activeGame != GameKind.WISHES &&
-        activeGame != GameKind.DREAMSTONE &&
+        activeGame != GameKind.DREAMSTONE && activeGame != GameKind.MONOMYTH &&
         // Crystal's growth rates for its 251 are Gen 3's, byte for byte, and its curves the same formulas (CrystalDecodeTest);
         // Crystal Clear, Gold and Silver kept Crystal's base data (gen_gen2_tables.py checks it).
         !activeGame.isGen2) return null
@@ -90,6 +90,13 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
     if (activeGame == GameKind.POLISHED_CRYSTAL) {
         val rate = activeGen2.growthRates?.getOrNull(species)?.let { intArrayOf(0, 3, 4, 5).getOrNull(it) } ?: return null
         val table = gen3ExperienceTables.getOrNull(rate) ?: return null
+        val start = table[level].toLong()
+        return ExpProgress(exp, start, if (level < 100) table[level + 1].toLong() else start)
+    }
+    // Pokémon Monomyth: its species' rates numbered by its own gExperienceTables' five rows, which leave vanilla's curves
+    // past Lv70 (gen_monomyth_tables.py).
+    if (activeGame == GameKind.MONOMYTH) {
+        val table = growthRatesMonomyth.getOrNull(species)?.let { expTablesMonomyth.getOrNull(it) } ?: return null
         val start = table[level].toLong()
         return ExpProgress(exp, start, if (level < 100) table[level + 1].toLong() else start)
     }

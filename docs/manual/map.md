@@ -60,7 +60,7 @@ On the DS it works in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and
 No game art comes with PokeDaisy. The map picture is rebuilt from your own ROM, once, the first time you play a game, and kept after that. So the very first time, the map can take a moment to appear.
 
 - **FireRed, LeafGreen, Emerald, Ruby and Sapphire** use their region's own map.
-- **Many hacks** have their own region drawn into the ROM, and get it: Unbound, Radical Red, Gaia, Odyssey and other FireRed-based hacks, plus hacks like Lazarus, SoulGold, Heart and Soul, Glazed, Quetzal and Wishes of Tomorrow. Quetzal Alpha 0.8.4 (and Moemon Quetzal) is Hoenn only and shows the Hoenn map.
+- **Many hacks** have their own region drawn into the ROM, and get it: Unbound, Radical Red, Gaia, Odyssey and other FireRed-based hacks, plus hacks like Lazarus, SoulGold, Heart and Soul, Glazed, Quetzal and Wishes of Tomorrow. Monomyth shows the map its PokeNav has. Quetzal Alpha 0.8.4 (and Moemon Quetzal) is Hoenn only and shows the Hoenn map.
 - **Hacks that kept the original map** use FireRed's or Emerald's.
 
 When there's no picture for a game (or for the area you're in), the tab shows the place's name and your position as text instead.

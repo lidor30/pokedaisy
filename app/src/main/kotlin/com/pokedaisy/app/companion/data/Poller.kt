@@ -418,6 +418,18 @@ class TelemetrySampler {
             return
         }
 
+        // Pokémon Monomyth: its own pokeemerald build under a game code of its own (MONE) - by its hash.
+        if (code == MONOMYTH_CODE) {
+            val hash = runCatching { romHash(reader, size) }.getOrNull()
+            kind = GameKind.EMERALD
+            if (hash == MONOMYTH_V1_0_SHA1) {
+                kind = GameKind.MONOMYTH
+                nativeCfg = NATIVE_MONOMYTH
+                ramVerified = true   // its battle cursors: a written cell + A checked headless
+            } else unsupportedRom(reader, code, size, hash, "unrecognized Monomyth build (sha1 ${hash?.take(12) ?: "unknown"}…)")
+            return
+        }
+
         // Not FireRed/Emerald-based at all (another GBA game): nothing here
         // knows its RAM - say so rather than read it as FireRed.
         // [CompanionSupport] makes the same call from the file at import.
@@ -965,8 +977,13 @@ class TelemetrySampler {
             else -> null
         }
 
+        // Pokémon Monomyth v1.0 (Team Monomyth; 32 MB, its own pokeemerald build under the game code MONE) - host-side
+        // masked hash (GPIO bytes zero, so a plain `shasum`).
+        const val MONOMYTH_V1_0_SHA1 = "ae1c4be9be8d706bb989602bc05731203d42860d"
+        const val MONOMYTH_CODE = "MONE"
+
         /** Hacks under a game code of their own that detect() reads as their base game (by hash). */
-        val HACK_GAME_CODES = setOf(ULTRA_VIOLET_CODE)
+        val HACK_GAME_CODES = setOf(ULTRA_VIOLET_CODE, MONOMYTH_CODE)
         // Pokémon Recharged Yellow (BPRE rev 0, 16 MB, a pokefirered rebuild): four releases, each
         // its own build (NATIVE_RECHARGED_YELLOW_*). Host-side masked hashes (GPIO bytes zero).
         const val RECHARGED_YELLOW_V1_8_0_SHA1 = "be5033598e91d0e80fa93e551406f02a7876d7c2"
@@ -1135,7 +1152,7 @@ class TelemetrySampler {
             GHOST_GREY_V1_0_1_SHA1, GHOST_GREY_V1_0_2_SHA1, GHOST_GREY_V1_0_4_SHA1,
             ELITE_REDUX_V2_65_3B_SHA1, ELITE_REDUX_V2_65_4_1B_SHA1, TEAM_ROCKET_DRAGONSDEN_V1_5_SHA1,
             WISHES_OF_TOMORROW_V1_2_6_SHA1,
-            DREAMSTONE_MYSTERIES_UNVERSIONED_SHA1,
+            DREAMSTONE_MYSTERIES_UNVERSIONED_SHA1, MONOMYTH_V1_0_SHA1,
             ULTRA_VIOLET_V1_22_SHA1, SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_SHA1, SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_CASUAL_SHA1,
             SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_PERFORMANCE_SHA1, SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_CASUAL_PERFORMANCE_SHA1,
             RECHARGED_YELLOW_V1_8_0_SHA1, RECHARGED_YELLOW_V1_9_0_SHA1, RECHARGED_YELLOW_V1_9_4_SHA1,

@@ -45,7 +45,7 @@ The game's own rules still apply: your last Pokémon that can battle has to stay
 Tap `STATS` to swap the moves for the numbers behind them, including the ones the game never shows you:
 
 - Each stat's current value, its **IV** (0 to 31, as a bar that turns gold at a perfect 31) and its **EV**, with totals underneath.
-- `NATURE`, with the stat it raises marked in red and the one it lowers in blue.
+- `NATURE`, with the stat it raises marked in red and the one it lowers in blue. Monomyth names its own natures, which raise and lower nothing, so none is marked there.
 - `HIDDEN POWER`: the type that move would have for this Pokémon, and its power in FireRed, Emerald and the other original games.
 
 Tap `MOVES` to go back to the moves.

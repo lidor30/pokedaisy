@@ -176,6 +176,7 @@ shows a "not supported" notice).
 | Team Rocket Dragonsden         | 1.5                        |  ✅   | ✅  |   ◐    |  ◐  |    —    |   ◐   |
 | Wishes of Tomorrow             | 1.2.6                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Dreamstone Mysteries           | the one release            |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
+| Monomyth                       | 1.0                        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Emerald Rogue                  | 2.2.1-EX                   |  ✅   | ✅  |   ✅   | ✅  |   ✅    |   —   |
 | SoulGold                       | 1.1.4, 1.2 (3), 1.2.1 (2)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | R.O.W.E.                       | 2.1.9.1 Experimental       |  ✅   | ✅  |   ◐    | ✅  |    ◐    |   —   |
@@ -190,7 +191,8 @@ means the battle panes work but haven't been checked in every kind of battle. On
 battles aren't read yet. Team Rocket Dragonsden is DragonsdenTV's Team Rocket Edition, not FireRed Rocket Edition.
 FireRed (rev 0 and 1) and Emerald randomized with Universal Pokemon Randomizer ZX 4.6.1 work with any settings and
 seed: the companion reads the randomized types, moves, teams, wild Pokémon and items from the ROM, and the guide leaves
-out the gift and legendary Pokémon it can't know. With Wishes of Tomorrow's randomizer on, the guide and the Pokédex's AREA show the wild Pokémon your save meets.
+out the gift and legendary Pokémon it can't know. Monomyth's natures are its own: the summary names them, and they change no stat.
+With Wishes of Tomorrow's randomizer on, the guide and the Pokédex's AREA show the wild Pokémon your save meets.
 The guides were written from each game's own data and may contain mistakes.
 
 </details>

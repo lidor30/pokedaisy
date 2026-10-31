@@ -13,7 +13,8 @@ package com.pokedaisy.app.companion.data
 data class MonStats(
     val ivs: List<Int>,
     val evs: List<Int>,
-    /** 0..24, Hardy..Quirky: the nature the stats use (an expansion Mint's included). */
+    /** 0..24, Hardy..Quirky: the nature the stats use (an expansion Mint's included); Monomyth's own, which change no stat,
+     * from [MONOMYTH_NATURE_BASE] on. */
     val nature: Int,
     val stats: List<Int>,
 )
@@ -40,7 +41,9 @@ private val natureNames = listOf(
 )
 
 fun natureName(nature: Int): String =
-    localText?.natures?.getOrNull(nature) ?: gameCase(natureNames.getOrElse(nature) { "?" })
+    // Monomyth's own (flavour-only) natures, in its own case.
+    if (nature >= MONOMYTH_NATURE_BASE) natureNamesMonomyth.getOrElse(nature - MONOMYTH_NATURE_BASE) { "?" }
+    else localText?.natures?.getOrNull(nature) ?: gameCase(natureNames.getOrElse(nature) { "?" })
 
 // gNatureStatTable: nature / 5 is the raised stat, nature % 5 the lowered one,
 // counting ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF; equal = neutral.

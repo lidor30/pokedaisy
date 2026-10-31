@@ -193,6 +193,8 @@ data class IconTables(
     // gMonPaletteTable ({LZ77 palette, tag} per species), with gMonShinyPaletteTable right after it: a shared-palette icon's
     // shiny colours (decodeMonIcon). 0 = no shiny icons.
     val battlePalettes: Long = 0,
+    // gMonIconTable's entries are Monomyth's packed blobs ([MonomythIcons]), not raw tiles.
+    val monIconPacked: Boolean = false,
 ) {
     // Split per-kind: some hacks relocate one table but not the other (Gaia
     // keeps sItemIconTable at its vanilla address but moved gMonIconTable

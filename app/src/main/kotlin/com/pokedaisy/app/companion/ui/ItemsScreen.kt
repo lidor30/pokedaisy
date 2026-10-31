@@ -262,6 +262,23 @@ private val EmeraldBag = BagPalette(
 )
 
 /**
+ * Sampled 1:1 from Pokémon Monomyth's bag screen (headless, the user's save): Emerald's layout in its own colours - a
+ * cream list in a grey line, a pale gold edge and a gold band, black text, the pocket title's orange arrows, a white
+ * description box, over pale-blue checks.
+ */
+private val MonomythBag = BagPalette(
+    panelLayers = listOf(Color(0xFF7B7B7B) to 1, Color(0xFFE7DEA5) to 1, Color(0xFFF7CE73) to 2, Color(0xFFD6B54A) to 1),
+    tabLayerCount = 3,
+    fill = Color(0xFFFFFFCE), divider = null,
+    text = Color(0xFF000000), textShadow = Color(0xFFD6D6CE),
+    tabText = Color(0xFF000000), tabTextShadow = Color(0xFFD6B54A), tabUnderline = Color(0xFFFF5200),
+    descLayers = listOf(Color(0xFF7B7B7B) to 1), descFill = Color(0xFFFFFFFF),
+    descText = Color(0xFF000000), descTextShadow = Color(0xFFD6D6CE),
+    iconBox = Color(0xFFFFFFFF), iconBoxEdge = Color(0xFF7B7B7B),
+    backdrop = Color(0xFFC6E7FF) to Color(0xFFADCEE7),
+)
+
+/**
  * Sampled 1:1 from Heart and Soul's bag screen (headless mGBA): Emerald's bag
  * layout re-skinned - a cream list window in a grey/charcoal/slate frame
  * around a gold band, black text, the gold pocket banner with its orange
@@ -726,6 +743,7 @@ private fun lightBagFor(game: GameKind, hgssPocket: Int = 0): BagPalette = when 
     GameKind.PRISM -> CrystalBag
     GameKind.POLISHED_CRYSTAL -> PolishedCrystalBag
     GameKind.MARIOMON -> MariomonBag
+    GameKind.MONOMYTH -> MonomythBag
     GameKind.HEARTGOLD, GameKind.SOULSILVER -> hgssBags.getOrElse(hgssPocket) { HeartGoldBag }
     GameKind.PLATINUM -> PlatinumBag
     GameKind.BLACK, GameKind.WHITE, GameKind.BLACK2, GameKind.WHITE2 -> BlackBag

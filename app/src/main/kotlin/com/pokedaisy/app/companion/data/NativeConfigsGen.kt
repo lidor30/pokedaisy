@@ -3753,6 +3753,86 @@ val NATIVE_MARIOMON_V1_2_1 = NATIVE_MARIOMON_V1_2_2.copy(
     guideTables = GUIDE_TABLES_MARIOMON_V1_2_1,
 )
 
+// ---- gamedata/gen3/hacks/monomyth.toml ----
+
+// Pokémon Monomyth v1.0 (32 MB, game code MONE, sha1 ae1c4be9…; Team Monomyth, monomyth.jp): the Athanto region on its
+// own closed pokeemerald build (gcc: its globals sit in EWRAM behind section anchors, so literal-pool words point near a
+// variable rather than at it). Vanilla's struct shapes, rearranged in places, and everything renumbered. Mapped headless
+// from the user's save (in CATSEAR CITY with six Pokémon Lv9-12) and a new game played to the first bedroom, every
+// address checked on the game's own screens:
+// - gPlayerParty 0x02025908 / gPlayerPartyCount 0x02025905, gEnemyParty 0x02025B60 (+0x258, its CreateScriptedWildMon's
+// pool): vanilla's 100-byte mon whose substructs are XORed with a key of its own ([MONOMYTH_PARTY_MON], Gen3Mon.kt's
+// monomythKey, from its box decryption at 0x08068198); every mon's checksum holds with it.
+// - gSaveBlock1Ptr / 2Ptr 0x03001240 / 0x03001244 (gPokemonStoragePtr after them). SaveBlock1 has 4 bytes before `pos`
+// (location at +8); flags +0x18C4 (FLAG_SYS_POKEMON_GET 0x880, POKéDEX 0x881: its BuildNormalStartMenu), vars +0x19FC.
+// SaveBlock2 keeps its encryption key at +0x40: money SaveBlock1 +0x494 XOR it (₽1,968 on the user's save, ₽3,000 on a
+// new game), bag quantities XOR its low half.
+// - gMain: its struct Main has its own order: the callbacks are 0x02020618.. (callback2 +4), the frame counters a word
+// early (+0x1C / +0x20: no intrCheck, both counting) and inBattle is bit 1 of 0x02020601, 0x17 before callback1 (the
+// battle's init ORs it in at 0x08016FCC; clear on every field dump, after a battle too, set in every battle screen).
+// - gMapHeader 0x02038210 (mapsec +0x14: 0x00 CHAMOMILE TOWN, 0x01 CATSEAR CITY; mapType 8 indoors), gObjectEvents
+// 0x02038280 (the player first, coords = pos + 7).
+// - gBagPockets 0x0203C18C: eight {ItemSlot *, capacity} ([MONOMYTH_BAG_POCKET_ORDER]: each item's gItems pocket
+// bits; the user's Repel / Potions / PokéBalls and Apricorns / held items / a TM / berries sit as its bag shows them).
+// - Battle (a scripted wild POLIWAG on both saves, BUG CATCHER TIM's two): gBattleTypeFlags 0x0202538C (4 wild, 0xC
+// trainer), gActiveBattler 0x020253FE, gBattlersCount 0x020253FF, gBattlerPartyIndexes 0x02025400 ([0] = 2 after a
+// SHIFT to slot 2, [1] = 1 after Tim sent his JOLTIK), gBattlerPositions 0x0202540B (00 01), gBattleMons 0x0202541C
+// ([MONOMYTH_BATTLE_MON], 0x58 bytes in its own order). The menus' cursors 0x02025820 / 0x02025824 (RIGHT walked the
+// action cursor 0 -> 1, the move cursor read 2 on CHARGE). gBattlerControllerFuncs 0x020258EC: action / move / bag /
+// party read live (0x08048549 / 0x08048E69 / 0x0804ACBD / 0x0804ABF5), HandleInputChooseTarget 0x08048821 by code (it
+// reads gBattleMoves' target and goes back to the move menu on B). The trainer's next pick (monToSwitchIntoId) wasn't
+// found in either battle structure: no FOE TEAM "next" marker. gPartyMenu 0x0203D8D0 (slotId +9; a two-column grid:
+// DOWN 0 -> 2).
+// - Icons: gMonIconTable 0x089DF54C (packed blobs, not raw tiles), gMonIconPaletteIndices 0x089DFBA4, gMonIconPaletteTable 0x089DFD3C (tags
+// 0xDAC0..), gItemIconTable 0x08AAFA00 (448 pairs); gItems 0x089F15D0 (32-byte entries, the description pointer +0x18).
+// Names / types / moves / chart / map sections: scripts/gen_monomyth_tables.py. DEX: POKEDEX_MONOMYTH (Pokedex.kt).
+val NATIVE_MONOMYTH = NATIVE_EMERALD.copy(
+    // gItems: 32-byte entries {price, name[14], ...}, the description pointer at +0x18; 447 items.
+    itemDescs = ItemDescTable(0x089F15D0L, 0x20, 0x18, count = 447),
+    playerParty = 0x02025908L,
+    playerPartyCount = 0x02025905L,
+    enemyParty = 0x02025B60L,
+    partyMonLayout = MONOMYTH_PARTY_MON,
+    battleMons = 0x0202541CL,
+    battleMonLayout = MONOMYTH_BATTLE_MON,
+    battlerPositions = 0x0202540BL,
+    battlersCount = 0x020253FFL,
+    battleTypeFlags = 0x0202538CL,
+    battlerPartyIndexes = 0x02025400L,
+    actionCursor = 0x02025820L,
+    moveCursor = 0x02025824L,
+    battlerControllerFuncs = 0x020258ECL,
+    handleInputChooseAction = 0x08048549L,
+    handleInputChooseMove = 0x08048E69L,
+    completeWhenChoseItem = 0x0804ACBDL,
+    waitForMonSelection = 0x0804ABF5L,
+    handleInputChooseTarget = 0x08048821L,
+    partyMenu = 0x0203D8D0L,
+    gMain = 0x02020618L,
+    inBattleOff = -23, // -0x17: 0x02020601
+    frameCounterOff = 0x20L,
+    saveBlock1Ptr = 0x03001240L,
+    saveBlock2Ptr = 0x03001244L,
+    saveBlock1PosOff = 4,
+    objectEvents = 0x02038280L,
+    mapHeader = 0x02038210L,
+    bagPockets = 0x0203C18CL,
+    bagPocketCount = 8,
+    bagPocketOrder = MONOMYTH_BAG_POCKET_ORDER,
+    encryptionKeyOff = 0x40L,
+    moneyOff = 0x494L,
+    // Its icons are packed (MonomythIcons: its own tile coder, an ARM routine at 0x081C4284 it runs from the stack).
+    monIconTable = 0x089DF54CL,
+    monIconPacked = true,
+    monIconPaletteIndices = 0x089DFBA4L,
+    monIconPaletteTable = 0x089DFD3CL,
+    itemIconTable = 0x08AAFA00L,
+    pokedex = POKEDEX_MONOMYTH,
+    // PC anywhere (FieldItems.kt's FIELD_ITEMS_MONOMYTH: special 57 through its ScriptContext_SetupScript); no bag USE or FLY.
+    fieldItems = FIELD_ITEMS_MONOMYTH,
+    guideTables = GUIDE_TABLES_MONOMYTH,
+)
+
 // ---- gamedata/gen3/hacks/odyssey.toml ----
 
 // Pokemon Odyssey (English) v4.1.1 - a 32 MB BPRE hack like the others above.

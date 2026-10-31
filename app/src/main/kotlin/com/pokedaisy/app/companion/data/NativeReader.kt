@@ -145,6 +145,9 @@ data class NativeConfig(
     // gMain.inBattle's byte (bit 1): FireRed/Emerald's struct Main has it at
     // +0x439, Ruby/Sapphire's (4 bytes more before it) at +0x43D.
     val inBattleOff: Long = 0x439,
+    // gMain's frame counter (vblankCounter2) the telemetry carries: +0x24, but +0x20 where struct Main has no intrCheck
+    // before its counters (Monomyth's).
+    val frameCounterOff: Long = 0x24,
     // Where the save keeps the TRAINER CARD's data (TrainerCard.kt); null = no
     // CARD tab. Retail FireRed / LeafGreen / Emerald only:
     // the hacks below copy these configs and their saves differ.
@@ -182,18 +185,21 @@ data class NativeConfig(
     val pokemonStoragePtr: Long = 0,
     /** How the boxes behind [pokemonStoragePtr] are laid out (SoulGold's plaintext ones, CFRU's compressed ones). */
     val pcStorage: PcStorageLayout = VANILLA_PC_STORAGE,
+    /** gMonIconTable points at Monomyth's packed icon blobs ([MonomythIcons]), not raw tiles. */
+    val monIconPacked: Boolean = false,
 ) {
     /** [partyMonLayout] with [shinyBelow] as its shiny check, where the layout has none of its own. */
     val monLayout: PartyMonLayout
         get() = if (shinyBelow > 0 && partyMonLayout.shinyBelow == 0) partyMonLayout.copy(shinyBelow = shinyBelow) else partyMonLayout
     val gMainInBattle get() = gMain + inBattleOff
-    val gMainVblankCtr get() = gMain + 0x24
+    val gMainVblankCtr get() = gMain + frameCounterOff
     val iconTables get() = IconTables(
         monIconTable, monIconPaletteTable, monIconPaletteIndices, itemIconTable,
         monIconStride, monPalIdxStride, monPalIdxMask, itemIconStride, itemPalCompressed,
         extraItemIconTable, extraItemFirst, extraItemCount, extraItemStride, monIconPalettes,
         // Shiny icons where the game's shiny check is known: recoloured through the battle palettes (decodeMonIcon).
         battlePalettes = if (shinyBelow > 0) pokedex?.palettes ?: monPalettes else 0L,
+        monIconPacked = monIconPacked,
     )
     val hasBattleInputAddrs get() = battlerControllerFuncs != 0L && handleInputChooseAction != 0L && handleInputChooseMove != 0L
 }
@@ -278,6 +284,13 @@ val TEAM_ROCKET_BAG_POCKET_ORDER = listOf(
  * and Battle Items fold into the app's ITEMS, like the other hacks' extra pockets. */
 val DREAMSTONE_BAG_POCKET_ORDER = listOf(
     POCKET_ITEMS, POCKET_ITEMS, POCKET_ITEMS, POCKET_POKE_BALLS, POCKET_BERRIES, POCKET_TM_HM, POCKET_KEY_ITEMS,
+)
+
+/** Pokémon Monomyth's gBagPockets: eight, by its items' pocket bits (gItems +0x1F bits 3-5: 1 Items, 2 Medicine, 3 Poké
+ * Balls with the Apricorns, 4 held items, 5 TMs, 6 Berries, 7 Key Items, 8 none seen), as its bag screen shows them;
+ * Medicine and held items fold into the app's ITEMS. */
+val MONOMYTH_BAG_POCKET_ORDER = listOf(
+    POCKET_ITEMS, POCKET_ITEMS, POCKET_POKE_BALLS, POCKET_ITEMS, POCKET_TM_HM, POCKET_BERRIES, POCKET_KEY_ITEMS, POCKET_ITEMS,
 )
 
 // The game's notes: [config.recharged_yellow_v1_8_0] in gamedata/gen3/hacks/recharged_yellow.toml.
@@ -857,6 +870,7 @@ private fun Mon.withNativeGender(raw: ByteArray, off: Int, layout: PartyMonLayou
         GameKind.ELITE_REDUX -> genderRatiosEliteRedux
         GameKind.TEAM_ROCKET -> genderRatiosTeamRocket
         GameKind.WISHES -> genderRatiosWishes
+        GameKind.MONOMYTH -> genderRatiosMonomyth
         GameKind.DREAMSTONE -> genderRatiosDreamstone
         else -> return this
     }

@@ -461,7 +461,7 @@ class PokeDaisyActivity : Activity() {
     }
 
     private val itemUse = object : com.pokedaisy.app.companion.ItemUse {
-        override val repelVar get() = fieldItemSupport()?.fns?.repelVar
+        override val repelVar get() = fieldItemSupport()?.fns?.repelVar?.takeIf { it != 0 }   // 0: none mapped (Monomyth: PC only)
         override fun repelSteps(v: Int) = fieldItemSupport()?.fns?.repelSteps(v) ?: v
         /** A DS game's Repels ([com.pokedaisy.app.companion.data.useGen4Repel], Black's [com.pokedaisy.app.companion.data.useGen5Repel]);
          * nothing else yet. */
@@ -1124,6 +1124,10 @@ class PokeDaisyActivity : Activity() {
         // (slotId 0 -> 2), A, SHIFT put slot 2 into gBattlerPartyIndexes[0].
         game == com.pokedaisy.app.companion.data.GameKind.DREAMSTONE ->
             BattleInputController.SwitchAddrs(partyMenu = 0x02031E04L, party = 0x02032314L, grid = true)
+        // Monomyth: a two-column grid at its own gPartyMenu (NATIVE_MONOMYTH). Headless: a written POKéMON cell + A opened
+        // it, DOWN (slotId 0 -> 2), A, SHIFT put slot 2 into gBattlerPartyIndexes[0].
+        game == com.pokedaisy.app.companion.data.GameKind.MONOMYTH ->
+            BattleInputController.SwitchAddrs(partyMenu = 0x0203D8D0L, party = 0x02025908L, grid = true)
         // Glazed is retail Emerald's RAM and party menu code (NATIVE_GLAZED).
         game == com.pokedaisy.app.companion.data.GameKind.GLAZED ->
             BattleInputController.SwitchAddrs(partyMenu = 0x0203CEC8L, party = 0x020244ECL)

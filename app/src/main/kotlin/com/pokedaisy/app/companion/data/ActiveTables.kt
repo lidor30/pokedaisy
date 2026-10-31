@@ -27,7 +27,7 @@ package com.pokedaisy.app.companion.data
 // ROM-extracted tables (*Hns.kt / *Lazarus.kt, scripts/gen_expansion_tables.py).
 enum class GameKind { FIRERED, EMERALD, UNBOUND, GAIA, RADICAL_RED, ODYSSEY, HEART_AND_SOUL, LAZARUS, ROWE, EMERALD_ROGUE, AMETHYST, EMERALD_SEAGLASS, CELIA, TMT2, SOULGOLD, YELLOW, GLAZED, IMPERIUM, QUETZAL, ORANGE_ISLANDS, RECHARGED_YELLOW, MARIOMON, SWORD_SHIELD, GS_CHRONICLES, CRYSTAL, CRYSTAL_CLEAR, PRISM,
     GOLD, SILVER, RED, BLUE, ELITE_REDUX, POLISHED_CRYSTAL, PLATINUM, HEARTGOLD, SOULSILVER, TEAM_ROCKET, BLACK, WHITE, BLACK2, WHITE2,
-    WISHES, PURE_RED, PURE_BLUE, DREAMSTONE }
+    WISHES, PURE_RED, PURE_BLUE, DREAMSTONE, MONOMYTH }
 
 @Volatile
 var activeGame: GameKind = GameKind.FIRERED
@@ -260,6 +260,8 @@ private inline val teamRocket get() = activeGame == GameKind.TEAM_ROCKET
 private inline val wishes get() = activeGame == GameKind.WISHES
 // Pokémon Dreamstone Mysteries: its own species / moves / items / types / map sections (gen_expansion_tables.py dreamstone).
 private inline val dreamstone get() = activeGame == GameKind.DREAMSTONE
+// Pokémon Monomyth: its own species / moves / items / types / map sections (gen_monomyth_tables.py).
+private inline val monomyth get() = activeGame == GameKind.MONOMYTH
 
 /** Elite Redux 2.65.3b is running (its few names / types / moves over 2.65.4.1b's). Set with [activeGame] by the Poller. */
 var eliteRedux265_3 = false
@@ -302,6 +304,7 @@ val activeSpeciesNames: Map<Int, String> get() = localText?.species ?: when {
     teamRocket -> speciesNamesTeamRocket
     wishes -> speciesNamesWishes
     dreamstone -> speciesNamesDreamstone
+    monomyth -> speciesNamesMonomyth
     else -> frHack?.speciesMerged ?: speciesNames
 }
 val activeMoveData: Map<Int, MoveInfo> get() = localText?.moveData ?: when {
@@ -335,6 +338,7 @@ val activeMoveData: Map<Int, MoveInfo> get() = localText?.moveData ?: when {
     teamRocket -> moveDataTeamRocket
     wishes -> moveDataWishes
     dreamstone -> moveDataDreamstone
+    monomyth -> moveDataMonomyth
     odyssey -> fireRedHackOdyssey.movesMerged
     else -> frHack?.movesMerged ?: moveData
 }
@@ -373,6 +377,7 @@ val activeItemNames: Map<Int, String> get() = localText?.items ?: when {
     teamRocket -> itemNamesTeamRocket
     wishes -> itemNamesWishes
     dreamstone -> itemNamesDreamstone
+    monomyth -> itemNamesMonomyth
     odyssey -> fireRedHackOdyssey.itemsMerged
     else -> frHack?.itemsMerged ?: itemNames
 }
@@ -406,6 +411,7 @@ val activeSpeciesTypeData: Map<Int, SpeciesTypes> get() = when {
     teamRocket -> speciesTypeDataTeamRocket
     wishes -> speciesTypeDataWishes
     dreamstone -> speciesTypeDataDreamstone
+    monomyth -> speciesTypeDataMonomyth
     odyssey -> fireRedHackOdyssey.typesMerged   // its regional forms (GitHub #206)
     else -> frHack?.typesMerged ?: speciesTypeData
 }
@@ -439,6 +445,7 @@ val activeTypeEffectiveness: Map<Int, Int> get() = when {
     teamRocket -> typeEffectivenessTeamRocket
     wishes -> typeEffectivenessWishes
     dreamstone -> typeEffectivenessDreamstone
+    monomyth -> typeEffectivenessMonomyth
     odyssey -> fireRedHackOdyssey.typeChart ?: typeEffectiveness
     else -> frHack?.typeChart ?: typeEffectiveness
 }
@@ -467,6 +474,7 @@ val activeTypeNames: Map<Int, String> get() = when {
     teamRocket -> typeNamesTeamRocket
     wishes -> typeNamesWishes
     dreamstone -> typeNamesDreamstone
+    monomyth -> typeNamesMonomyth
     else -> frHack?.typeNamesMerged ?: typeNames
 }
 val activeMapSecData: Map<Int, MapSecInfo> get() = localText?.mapSecData ?: when {
@@ -505,6 +513,8 @@ val activeMapSecData: Map<Int, MapSecInfo> get() = localText?.mapSecData ?: when
     wishes -> mapSecDataWishes
     // Its own Cormoria sections (and Emerald's leftovers, off the map), on its own region map.
     dreamstone -> mapSecDataDreamstone
+    // Athanto's sections; its map isn't drawn yet, so none is "on the map" (the MAP tab names the place).
+    monomyth -> mapSecDataMonomyth
     else -> frHack?.mapSecsMerged ?: mapSecData
 }
 /**
@@ -621,6 +631,8 @@ val activeRegionMapImages: Array<String> get() = when {
     wishes -> regionMapImagesWishes
     // Dreamstone Mysteries' Cormoria map, rebuilt from its ROM (RomArt's DSM_REGION_*).
     dreamstone -> regionMapImagesDreamstone
+    // Monomyth's ATHANTO MAP (its PokeNav's), rebuilt from its ROM (RomArt's MMY_REGION_*).
+    monomyth -> regionMapImagesMonomyth
     else -> regionMapImages
 }
 
@@ -687,6 +699,7 @@ fun GameKind.displayName(): String = when (this) {
     GameKind.TEAM_ROCKET -> "Pokémon Team Rocket Edition: Dragonsden Version"
     GameKind.WISHES -> "Pokémon Wishes of Tomorrow"
     GameKind.DREAMSTONE -> "Pokémon Dreamstone Mysteries"
+    GameKind.MONOMYTH -> "Pokémon Monomyth"
     GameKind.RECHARGED_YELLOW -> "Pokémon Recharged Yellow"
     GameKind.MARIOMON -> "Super Mariomon"
     GameKind.CRYSTAL -> "Pokémon Crystal"

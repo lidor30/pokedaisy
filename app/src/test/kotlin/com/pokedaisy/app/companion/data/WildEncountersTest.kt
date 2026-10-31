@@ -62,7 +62,9 @@ class WildEncountersTest {
         // Dreamstone Mysteries (expansion 1.11.2): checked headless - set, 160 steps in ROUTE 1's grass met nothing; left
         // alone, a PIDOVE came. Not offered yet: the switch is rolled by the field read, which doesn't know this game.
         "Pokemon Dreamstone Mysteries.gba" to 0x02037F88L,
-        // Not found: no WILD ENCOUNTERS there.
+        // Not found: no WILD ENCOUNTERS there. Monomyth's StandardWildEncounter (0x080B3F58) has no switch; a function of
+        // the gcc shape at 0x081B3D64 loads 0xFFFF as an argument, not to compare (its byte 0x02020A44 sits at 1).
+        "Pokemon Monomyth (v1.0).gba" to 0L,
         "Pokemon Emerald Rogue (v2.2.1-EX).gba" to 0L,
         "Pokemon Quetzal (Alpha 9.0) (English).gba" to 0L,
     )

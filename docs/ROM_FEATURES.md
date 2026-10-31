@@ -56,6 +56,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ |
 | Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — |
 | Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ |
+| Monomyth | 1.0 | ✅ ²³ | ✅ | ✅ | ✅ | — | — | — | ✅ ²³ | — | — ²³ | ✅ ²³ | — | — | — |
 | Odyssey | 4.1.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ |
 | Orange Islands | Beta 5.7, an older beta | ◐ ³ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | — | ✅ ¹⁹ ²⁰ |
 | Quetzal | English / Spanish Alpha 9 v0 | ◐ ³ | ✅ | ✅ | ✅ | — | — | — | ◐ ⁶ | — | — | — | — | — | — |
@@ -296,6 +297,17 @@ change to any of the places listed under "Where it's decided" updates its rows h
     (`pk_field_state`) doesn't know the game: on its pokeemerald-expansion 1.11.2 the field-controls lock is a bit among the
     special flags (FLAG 0x4005 at 0x0200179C), not the byte the field read tests. No EXPAND, field reads, field items, FLY
     or PC yet for the same reason (no WIDE / field row, no field item functions mapped).
+23. Monomyth (its own pokeemerald build, game code MONE, `NATIVE_MONOMYTH`), checked headless on the user's save: the five
+    controller handlers read live, a written POKéMON cell + A opened its party grid (DOWN slot 0 -> 2, SHIFT sent slot 2 in),
+    a written move cell + A used that move (its PP 19 -> 18). EXPAND and field reads: its own WIDE family
+    (`PK_WIDE_FAMILY_MM`: 16-bit camera offsets, 80 sprites, inBattle 0x17 before gMain's callback1), checked with
+    verify_wide.py (map 440/440, battle 814/814 exact) and walks in CATSEAR CITY, Routes 1 and 3 and under snow, ash and
+    sandstorm (all exact); under rain 25 of 440 frames show raindrops a frame late; far-off characters aren't drawn.
+    sLockFieldControls 0x0203BF67 (1 under a scripted lockall, 0 after); gPlayerAvatar isn't after gObjectEvents, so no bike / surf. PC
+    anywhere: special 57 through its ScriptContext_SetupScript (`FIELD_ITEMS_MONOMYTH`, PC only), opened and closed
+    headless. No WILD ENCOUNTERS: its StandardWildEncounter (0x080B3F58) has no switch to hold (only an immunity-step
+    counter in its caller), and `WildEncounters.find` now passes over a look-alike function there. No bag USE or FLY (its
+    functions aren't retail's code), and REUSABLE TMS doesn't know its game code.
 
 23. Retail FireRed / Emerald run through Universal Pokémon Randomizer ZX 4.6.1 (`RandomizedRetail.kt`, docs/DEVELOPMENT.md's
     "Randomized ROMs"): retail's code and RAM, so retail's row. EXPAND and the field reads look it up by retail's CRC

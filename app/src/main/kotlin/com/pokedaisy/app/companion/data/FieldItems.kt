@@ -261,6 +261,21 @@ val FIELD_ITEMS_HEART_AND_SOUL = FieldItemFns(
 )
 
 /**
+ * Monomyth v1.0 (its own closed pokeemerald build): PC anywhere only. VarGet / VarSet (0x08096068 / 0x080960A0, StandardWildEncounter
+ * calls the first with 0x40B1), its ArePlayerFieldControlsLocked (0x080907E4, reading sLockFieldControls 0x0203BF67),
+ * ScriptContext_SetupScript (0x08090870: gScriptCmdTable 0x08297D18, whose `special` handler reads gSpecials 0x08298150)
+ * and ShowPokemonStorageSystemPC, special 57 there (0x080C62A1: retail's code, its own task and lock calls). Headless on the
+ * user's save: the PC menu opened, BOXES showed, three B presses closed it and the field was free again.
+ */
+val FIELD_ITEMS_MONOMYTH = FieldItemFns(
+    varGet = 0x08096068L, varSet = 0x080960A0L, checkBagHasItem = 0, removeBagItem = 0,
+    fieldControlsLocked = 0x080907E4L, repelVar = 0 /* not mapped: no REPEL STEPS */, items = 0,
+    codeCrcs = listOf(0x2D145029L, 0x54901474L, 0x3E311A26L),
+    bagActions = false,
+    pc = PcFns(0x08090870L, 57, 0x08298150L, 0x080C62A1L, listOf(0xEF3698BAL, 0x3DECE7E0L)),
+)
+
+/**
  * Emerald Imperium 1.3.1 (pokeemerald-expansion 1.10.0, no source): pokeemerald-expansion's 1.10.0 tag built plain with
  * Debian's arm-none-eabi-gcc 12 as the reference, each function found in Imperium by its first instructions (literal
  * loads / BLs masked); the field-lock trio by its byte (EXPAND's CONTROLS_LOCKED, 0x03000E84), ReturnToFieldFromFlyMapSelect
@@ -594,7 +609,10 @@ class FieldItemSupport(
  * that moved it). The holdable items come from the ROM's gItems ([holdableItems]). */
 fun fieldItemSupport(fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArray): FieldItemSupport? {
     if (!fieldItemCodeMatches(fns, read)) return null
-    val party = fns.party ?: return FieldItemSupport(fns, emptySet())
+    // No party functions: the Repels where the bag's functions are mapped, and PC anywhere (Monomyth's table is the PC alone).
+    val party = fns.party ?: return FieldItemSupport(
+        fns, emptySet(), if (fns.bagActions) fns.repelItems else emptySet(), canPc = fns.pc?.let { pcCodeMatches(it, read) } == true,
+    )
     val fly = fns.fly?.let { flyCodeMatches(it, read) } == true
     val pc = fns.pc?.let { pcCodeMatches(it, read) } == true
     if (!fns.bagActions) {

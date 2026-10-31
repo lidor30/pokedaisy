@@ -211,6 +211,8 @@ data class BaseStatsLayout(
     val statsU16: Boolean = false,
     val typesOff: Int = 6,
     val catchRateOff: Int = 8,
+    /** Both egg groups packed into the byte at [eggGroupsOff], a nibble each (Monomyth's), not a byte each. */
+    val eggGroupsPacked: Boolean = false,
 )
 
 val VANILLA_BASE_STATS = BaseStatsLayout()
@@ -641,6 +643,49 @@ val POKEDEX_TMT2 = PokedexTables(
  * in both arrays on the user's save; a wild WURMPLE marked seen only). Its START menu has no POKéDEX
  * yet on this save, so not compared with the game's own screen.
  */
+/**
+ * Pokémon Monomyth's ATHANTO dex, its only one (no National switch), from the ROM and the user's save (its dex screen:
+ * SEEN 22 / OWN 11; No.007 MISHIMIZU "Rookie Pokémon" 0.5 m 9.1 kg, No.033 VENIPEDE "Centipede Pokémon" 0.4 m 5.3 kg,
+ * metric as it prints them): gPokedexEntries 0x089D3798, 0x28-byte entries by dex number (a 14-byte category, height +0x0E,
+ * weight +0x10, text +0x14, two scale / offset sets), No.1 MARMROOT "Groundhog"; the species -> number table 0x084F4520
+ * (1-362, forms on their base's number; an identical copy follows it); gMonFrontPicTable 0x0849F718 (smol, as
+ * pokeemerald-expansion packs them; its back pictures are at 0x08487428), gMonPaletteTable 0x084880D0 (LZ77); its 24-byte
+ * gBaseStats (genderRatio +9, both egg groups in the nibbles of +0x0D, abilities +0x14 / +0x15, the hidden one +0x16) and
+ * 13-byte gAbilityNames 0x084EE603 (35 Torrent, MISHIMIZU's, as its summary says); gEvolutionTable 0x0850010C, eight
+ * 8-byte rows a species. The flags are SaveBlock1's, a bit per dex number: seen +0x37F4, caught +0x3827, 51 bytes.
+ */
+val POKEDEX_MONOMYTH = PokedexTables(
+    entries = 0x089D3798L,
+    frontPics = 0x0849F718L,
+    palettes = 0x084880D0L,
+    speciesInfo = 0x084F6DBCL,
+    speciesToNational = 0x084F4520L,
+    abilityNames = 0x084EE603L,
+    footprints = 0,
+    hiddenAbilityOff = 0x16,
+    entryStride = 0x28,
+    entryCategoryLen = 14,
+    entryHeightOff = 0x0E,
+    entryDescOff = 0x14,
+    baseStats = BaseStatsLayout(stride = 24, genderOff = 0x09, eggGroupsOff = 0x0D, eggGroupsPacked = true, abilitiesOff = 0x14),
+    categorySuffix = "Pokémon",
+    metric = true,
+    decimalPoint = '.',
+    probeCategory = "Groundhog",
+    probeHeight = 4,
+    probeWeight = 85,
+    probeSpecies = 176,
+    evoLayout = EvoLayout(EvoScheme.MONOMYTH, table = 0x0850010CL, perMon = 8, probeLevel = 31),
+    // gLevelUpLearnsets: {u16 move, u16 level} lists (its moves pass 511), as GUIDE_TABLES_MONOMYTH reads them.
+    levelUpLearnsets = 0x0850664CL,
+    speciesCount = 405,
+    nationalCount = 362,
+    regionalCount = 362,
+    regionName = null,
+    flags = DexFlags(DexFlagBlock.SAVE_BLOCK_1, seen = 0x37F4, caught = 0x3827, bytes = 0x33),
+    nationalMagicOff = -1,
+)
+
 val POKEDEX_ROWE = PokedexTables(
     entries = 0x08F592C8L,
     frontPics = 0x083E0AA4L,
@@ -1697,7 +1742,8 @@ object PokedexSource {
             hiddenAbility = hidden,
             catchRate = b(bs.catchRateOff),
             genderRatio = b(bs.genderOff),
-            eggGroups = listOf(b(bs.eggGroupsOff), b(bs.eggGroupsOff + 1)).distinct().mapNotNull { EGG_GROUP_NAMES.getOrNull(it) },
+            eggGroups = (if (bs.eggGroupsPacked) listOf(b(bs.eggGroupsOff) shr 4, b(bs.eggGroupsOff) and 0x0F)
+                else listOf(b(bs.eggGroupsOff), b(bs.eggGroupsOff + 1))).distinct().mapNotNull { EGG_GROUP_NAMES.getOrNull(it) },
         )
     }
 
