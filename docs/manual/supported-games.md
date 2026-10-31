@@ -74,7 +74,7 @@ The companion reads their party, bag, map, Pokédex and guide, with pictures, Po
 | Pokémon Wishes of Tomorrow | 1.2.6 |
 | Pokémon Dreamstone Mysteries | its one release (the game shows no version) |
 | Emerald Rogue | 2.2.1-EX |
-| Pokémon SoulGold | 1.1.4, and three builds of 1.2 |
+| Pokémon SoulGold | 1.1.4, three builds of 1.2, and two of 1.2.1 |
 | Pokémon R.O.W.E. | 2.1.9.1 Experimental |
 
 Not every game gets every tab yet. Some hacks have the guide's live pages only, a few have no guide, and battle panes in many hacks haven't been checked in every kind of battle. The full table, tab by tab, is on the [compatibility page](https://pokedaisy.com/compatibility/) and in the [README](https://github.com/lidor30/pokedaisy#supported-games).

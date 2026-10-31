@@ -64,6 +64,7 @@ import com.pokedaisy.app.companion.data.NATIVE_LAZARUS
 import com.pokedaisy.app.companion.data.NATIVE_SOULGOLD
 import com.pokedaisy.app.companion.data.NATIVE_SOULGOLD_V1_2
 import com.pokedaisy.app.companion.data.NATIVE_SOULGOLD_V1_2B
+import com.pokedaisy.app.companion.data.NATIVE_SOULGOLD_V1_2_1
 import com.pokedaisy.app.companion.data.NATIVE_HEART_AND_SOUL
 import com.pokedaisy.app.companion.data.NATIVE_CELIA
 import com.pokedaisy.app.companion.data.NATIVE_GAIA_V3_2
@@ -1279,6 +1280,11 @@ open class CompanionScreenshotTest {
     @Test fun soulGoldV12bParty() = retail("soulgold_v12b_battle", NATIVE_SOULGOLD_V1_2B, SG12B_ROM, GameKind.SOULGOLD, "PARTY", art = true)
     @Test fun soulGoldV12bItems() = retail("soulgold_v12b", NATIVE_SOULGOLD_V1_2B, SG12B_ROM, GameKind.SOULGOLD, "ITEMS", art = true)
     @Test fun soulGoldV12bDexEntry() = hackDex("soulgold_v12b", NATIVE_SOULGOLD_V1_2B, SG12B_ROM, GameKind.SOULGOLD, 25)
+    @Test fun soulGoldV121Party() = retail("soulgold_v121_battle", NATIVE_SOULGOLD_V1_2_1, SG121_ROM, GameKind.SOULGOLD, "PARTY", art = true)
+    @Test fun soulGoldV121Items() = retail("soulgold_v121", NATIVE_SOULGOLD_V1_2_1, SG121_ROM, GameKind.SOULGOLD, "ITEMS", art = true)
+    @Test fun soulGoldV121Battle() = retail("soulgold_v121_battle", NATIVE_SOULGOLD_V1_2_1, SG121_ROM, GameKind.SOULGOLD, "BATTLE", art = true)
+    @Test fun soulGoldV121Map() = retail("soulgold_v121", NATIVE_SOULGOLD_V1_2_1, SG121_ROM, GameKind.SOULGOLD, "MAP", art = true)
+    @Test fun soulGoldV121DexEntry() = hackDex("soulgold_v121", NATIVE_SOULGOLD_V1_2_1, SG121_ROM, GameKind.SOULGOLD, 25)
     @Test fun soulGoldDex() = hackDex("soulgold", NATIVE_SOULGOLD, SG_ROM, GameKind.SOULGOLD)
     @Test fun soulGoldDexEntry() = hackDex("soulgold", NATIVE_SOULGOLD, SG_ROM, GameKind.SOULGOLD, 155)
 
@@ -1894,6 +1900,7 @@ private const val RR_ROM = "Pokemon Radical Red (v4.1).gba"
 private const val SG_ROM = "Pokemon SoulGold (v1.1.4).gba"
 private const val SG12_ROM = "Pokemon SoulGold (v1.2).gba"
 private const val SG12B_ROM = "Pokemon SoulGold (v1.2) (Alt 1).gba"
+private const val SG121_ROM = "Pokemon SoulGold (v1.2.1).gba"
 private const val AM141_ROM = "Pokemon Amethyst (v1.4.1).gba"
 // The other-language ROMs: "Pokemon Multi Language" beside the retail dir, a folder per game.
 private const val ML = "../Pokemon Multi Language/"

@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Finds what a Repel needs (FieldItems.kt's FIELD_ITEMS_SOULGOLD*) in Pokemon SoulGold's four builds.
+"""Finds what a Repel needs (FieldItems.kt's FIELD_ITEMS_SOULGOLD*) in Pokemon SoulGold's builds.
 
     scripts/find_field_items_soulgold.py <roms dir>
 
@@ -30,6 +30,8 @@ BUILDS = [
     ("SOULGOLD_V1_2", "Pokemon SoulGold (v1.2).gba", 0x08236D5C, 0x08753834, 0x0813466C, 0x08134700),
     ("SOULGOLD_V1_2B", "Pokemon SoulGold (v1.2) (Alt 1).gba", 0x08236CC4, 0x0875379C, 0x0813465C, 0x081346F0),
     ("SOULGOLD_V1_2C", "Pokemon SoulGold (v1.2) (Alt 2).gba", 0x08236DBC, 0x08753928, 0x081346C8, 0x0813475C),
+    ("SOULGOLD_V1_2_1", "Pokemon SoulGold (v1.2.1).gba", 0x0823BC04, 0x0875B360, 0x08136B90, 0x08136C24),
+    ("SOULGOLD_V1_2_1 (second build)", "Pokemon SoulGold (v1.2.1) (Alt 1).gba", 0x0823BC04, 0x0875B360, 0x08136B90, 0x08136C24),
 ]
 ITEM_SIZE, PARAM_OFF, USE_OFF = 0x2C, 9, -12
 REPELS = {114: 100, 115: 200, 116: 250}

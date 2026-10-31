@@ -74,6 +74,9 @@ class M4aSongsTest {
         val soulGold12b = songs(File(dir, "Pokemon SoulGold (v1.2) (Alt 1).gba").path)
         assertEquals(0x081A2915L, soulGold12b.songNumStart)
         assertEquals(0x09608658L, soulGold12b.songTable)
+        val soulGold121 = songs(File(dir, "Pokemon SoulGold (v1.2.1).gba").path)
+        assertEquals(0x081A5441L, soulGold121.songNumStart)
+        assertEquals(0x09642470L, soulGold121.songTable)
     }
 
     @Test fun heartAndSoulAlternateSoundtrack() {

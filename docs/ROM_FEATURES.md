@@ -62,7 +62,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Radical Red | 4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ |
 | Recharged Emerald | 2.2.5, 2.2.8, Rebalanced 2.2.8 | — | ✅ | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | ✅ ¹⁹ |
 | Recharged Yellow | 1.8.0, 1.9.0, 1.9.4, 1.9.7 | ✅ | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ ¹⁹ |
-| SoulGold | 1.1.4, 1.2 (3 builds) | ✅ | ✅ | ✅ | ✅ | ◐ ¹⁷ | ✅ | ✅ | ◐ ⁶ | — | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ |
+| SoulGold | 1.1.4, 1.2 (3 builds), 1.2.1 (2 builds) | ✅ | ✅ | ✅ | ✅ | ◐ ¹⁷ | ✅ | ✅ | ◐ ⁶ | — | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ |
 | Super Mariomon | 1.2.1-1.3, 1.5.1, 1.5.2 | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | — | — | ✅ ¹⁹ |
 | Sword and Shield Ultimate Plus | 1.2.1.2 + its 3 patches | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ |
 | Team Rocket Dragonsden | 1.5 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | ✅ ¹⁹ |
@@ -224,7 +224,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
     stayed in the TM Case / bag: SoulGold v1.1.4 and v1.2's third build, the others share its code); Prism and Polished
     Crystal keep a bit per TM, no count.
 17. SoulGold: the Repels only (USE on the bag, the QUICK MENU's REPEL), its own item ids 114..116 and its expansion
-    Repel rules (a Lure's bit 15 in VAR_REPEL_STEP_COUNT, VAR_LAST_REPEL_LURE_USED 0x40BD), all four builds
+    Repel rules (a Lure's bit 15 in VAR_REPEL_STEP_COUNT, VAR_LAST_REPEL_LURE_USED 0x40BD), every build
     (`scripts/find_field_items_soulgold.py`); checked headless on v1.2 with a player's save (GitHub #242: the bag 5 -> 4,
     the steps 100). Its QUICK MENU BIKE / ROD go through its SELECT wheel (`KeyItems.selectWheel`): no USE / GIVE / TAKE
     for other items (its renumbered items and gItemsInfo aren't mapped).
@@ -354,9 +354,10 @@ change to any of the places listed under "Where it's decided" updates its rows h
   own source (2.0.6) built plain with Debian's gcc 12; Lazarus and Imperium from pokeemerald-expansion 1.10.0 built the
   same way - each function found by its masked first instructions or through its callers' BLs. The expansion renumbered
   MON_DATA (`FlyFns.monMoveField` / `monEggField`); Lazarus's town table is 122 rows (its towns from section 90); Heart
-  and Soul's FLY gate is its gFieldMoveInfo entry's own functions. Flown headless on each, the PC opened on each. SoulGold (its four
+  and Soul's FLY gate is its gFieldMoveInfo entry's own functions. Flown headless on each, the PC opened on each. SoulGold (its six
   builds, `fieldItemsCandidatesForGame`: the code CRCs pick one): v1.1.4 from pokeemerald-expansion 1.13.0's build plus its
-  own code (gFieldMoveInfo, SetFlyDestination's literal and calls, GetMapsecType's switch); the v1.2 builds from v1.1.4.
+  own code (gFieldMoveInfo, SetFlyDestination's literal and calls, GetMapsecType's switch); the v1.2 builds from v1.1.4,
+  v1.2.1 (one table for its two builds) from v1.2's third build.
   Emerald Legacy (`FIELD_ITEMS_EMERALD_LEGACY`, `FLY_EMERALD_LEGACY`, `PC_EMERALD_LEGACY`): its source at V1.1.4 built with
   agbcc is the release byte for byte, so every address is its ELF's and every CRC its own code's (retail's functions,
   their calls moved; FLAG_BADGE06_GET 0x8CC). Flown headless four times in a row (Oldale, Littleroot, both twice: no

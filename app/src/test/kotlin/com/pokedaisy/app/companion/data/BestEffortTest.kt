@@ -51,6 +51,7 @@ class BestEffortTest {
         Game("Pokemon SoulGold (v1.1.4).gba", "soulgold", "BPEE", "SOULGOLD"),
         Game("Pokemon SoulGold (v1.2).gba", "soulgold_v12", "BPEE", "SOULGOLD_V1_2"),
         Game("Pokemon SoulGold (v1.2) (Alt 1).gba", "soulgold_v12b", "BPEE", "SOULGOLD_V1_2B"),
+        Game("Pokemon SoulGold (v1.2.1).gba", "soulgold_v121", "BPEE", "SOULGOLD_V1_2_1"),
         Game("Pokemon Heart and Soul (v2.0.6).gba", "heart_and_soul", "BPEE", "HEART_AND_SOUL"),
         Game("Pokemon Lazarus (v2.0).gba", "lazarus", "BPEE", "LAZARUS"),
         Game("Pokemon Emerald Seaglass (v3.0).gba", "emerald_seaglass", "BPEE", "EMERALD_SEAGLASS"),

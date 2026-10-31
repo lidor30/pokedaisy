@@ -57,6 +57,8 @@ class RomItemTextTest {
         Case("Pokemon SoulGold (v1.2).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2, mapOf(28 to "by 20 points", SOULGOLD_V12_TM75 to "Speed")),
         Case("Pokemon SoulGold (v1.2) (Alt 1).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2B, mapOf(SOULGOLD_V12_TM75 to "Speed")),
         Case("Pokemon SoulGold (v1.2) (Alt 2).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2C, mapOf(28 to "by 20 points", SOULGOLD_V12_TM75 to "Speed")),
+        Case("Pokemon SoulGold (v1.2.1).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2_1, mapOf(28 to "by 20 points", SOULGOLD_V12_TM75 to "Speed")),
+        Case("Pokemon SoulGold (v1.2.1) (Alt 1).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2_1, mapOf(28 to "by 20 points", SOULGOLD_V12_TM75 to "Speed")),
         // Rogue's own items (827+) are in a second table.
         Case("Pokemon Emerald Rogue (v2.2.1-EX).gba", GameKind.EMERALD_ROGUE, NATIVE_EMERALD_ROGUE,
             mapOf(39 to "by 20 points", 827 to "species of Pokémon evolve")),

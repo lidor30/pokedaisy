@@ -314,7 +314,8 @@ class TelemetrySampler {
             }
             activeGame = kind ?: GameKind.FIRERED
             val base = baseCfg ?: unmarkedCfg
-            soulGoldV12 = base === NATIVE_SOULGOLD_V1_2 || base === NATIVE_SOULGOLD_V1_2B || base === NATIVE_SOULGOLD_V1_2C
+            soulGoldV12 = base === NATIVE_SOULGOLD_V1_2 || base === NATIVE_SOULGOLD_V1_2B || base === NATIVE_SOULGOLD_V1_2C ||
+                base === NATIVE_SOULGOLD_V1_2_1
             amethystV141 = base === NATIVE_AMETHYST_V1_4_1
             eliteRedux265_3 = base === NATIVE_ELITE_REDUX_V2_65_3B
             fireRedHack = fireRedHackFor(base)
@@ -519,6 +520,7 @@ class TelemetrySampler {
                 SOULGOLD_V1_2_SHA1 -> { kind = GameKind.SOULGOLD; nativeCfg = NATIVE_SOULGOLD_V1_2 }
                 SOULGOLD_V1_2B_SHA1 -> { kind = GameKind.SOULGOLD; nativeCfg = NATIVE_SOULGOLD_V1_2B }
                 SOULGOLD_V1_2C_SHA1 -> { kind = GameKind.SOULGOLD; nativeCfg = NATIVE_SOULGOLD_V1_2C }
+                SOULGOLD_V1_2_1_SHA1, SOULGOLD_V1_2_1B_SHA1 -> { kind = GameKind.SOULGOLD; nativeCfg = NATIVE_SOULGOLD_V1_2_1 }
                 GLAZED_V9_2_0_SHA1 -> { kind = GameKind.GLAZED; nativeCfg = NATIVE_GLAZED }
                 IMPERIUM_V1_3_1_SHA1 -> { kind = GameKind.IMPERIUM; nativeCfg = NATIVE_IMPERIUM }
                 QUETZAL_V9_0_ALPHA_SHA1 -> { kind = GameKind.QUETZAL; nativeCfg = NATIVE_QUETZAL }
@@ -856,6 +858,10 @@ class TelemetrySampler {
         // A third build released as SoulGold v1.2 ("v1.2" on its title screen too) - masked hash
         // (GPIO bytes zero).
         const val SOULGOLD_V1_2C_SHA1 = "2be7c99aa473308debe1d03ff2015bab7d9addb5"
+        // Pokémon SoulGold v1.2.1 ("Soulgold" in its header) and a second build of it, 2 bytes of item data
+        // apart - masked hashes (GPIO bytes zero).
+        const val SOULGOLD_V1_2_1_SHA1 = "32988f918ca09923466ae3bc5bbfe5f2a771c728"
+        const val SOULGOLD_V1_2_1B_SHA1 = "dacb6e40e7f572ddefd2dfa10e99c0da6835b062"
         // Pokémon Emerald Kaizo v2.0 (BPEE, 16 MB) - its GPIO bytes are zero, so the masked hash is the file's.
         const val EMERALD_KAIZO_V2_0_SHA1 = "a7c4e34fafb53f2d5283eb6d43dad285c0dd40a8"
         // Pokémon Emerald Legacy v1.1.4 (BPEE, 16 MB) - its source at tag V1.1.4 built with agbcc is this file byte for byte.
@@ -1094,6 +1100,7 @@ class TelemetrySampler {
             AMETHYST_V1_3_0_SHA1, AMETHYST_V1_4_1_SHA1, CELIA_V1_1_4_SHA1, HEART_AND_SOUL_V2_0_6_SHA1, LAZARUS_V2_0_SHA1,
             ROWE_V2_1_9_1_SHA1, EMERALD_ROGUE_V2_2_1_EX_SHA1, TMT2_V1_5_2_SHA1, EMERALD_SEAGLASS_V3_0_SHA1, EMERALD_KAIZO_V2_0_SHA1, EMERALD_LEGACY_V1_1_4_SHA1,
             SOULGOLD_V1_1_4_SHA1, SOULGOLD_V1_2_SHA1, SOULGOLD_V1_2B_SHA1, SOULGOLD_V1_2C_SHA1, GLAZED_V9_2_0_SHA1, IMPERIUM_V1_3_1_SHA1,
+            SOULGOLD_V1_2_1_SHA1, SOULGOLD_V1_2_1B_SHA1,
             QUETZAL_V9_0_ALPHA_SHA1, QUETZAL_V9_0_ALPHA_ES_SHA1, QUETZAL_V9_1_ALPHA_SHA1, QUETZAL_V9_1_ALPHA_ES_SHA1, UNBOUND_V2_1_1_1_FR_SHA1,
             QUETZAL_V0_8_4_ALPHA_SHA1, QUETZAL_V0_8_4_ALPHA_ES_SHA1, MOEMON_QUETZAL_V0_8_4_ALPHA_Hotfix_SHA1,
             MOEMON_QUETZAL_V0_8_4_ALPHA_ES_Hotfix_SHA1,

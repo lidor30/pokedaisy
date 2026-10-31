@@ -166,3 +166,35 @@ monIconPaletteTable = 0x08F20BB0
 monIconPalettes = 0x087D5E58
 itemIconTable = 0x08753938
 pokedex = 'POKEDEX_SOULGOLD_V1_2C'
+
+# SoulGold v1.2.1 (two builds: sha1 32988f91... and dacb6e40..., 2 bytes of item data apart; "Soulgold"
+# in the header's title) - a rebuild of v1.2, the same save format (the v1.2 save loads in it). Mapped
+# from the third v1.2 build: RAM by literal-pool reference counts, code by masked byte matches (else
+# through the functions' callers / the pools that point at them), ROM data by byte runs; then checked
+# headless on that save (the soulgold_v121 / soulgold_v121_battle fixtures; the action / move / bag /
+# party handlers in a scripted wild battle - ScriptContext_SetupScript is 0x0823BC04). IWRAM and the
+# battle globals didn't move; EWRAM did: gMapHeader / gObjectEvents +8, gBagPockets +0xC, the party
+# globals -0x1BC / -0x1C0. ROM data moved 0x7A38 (gItemsInfo), 0x7BA0 (gSpeciesInfo) or 0xB61C - 0xBEE8
+# (dex, wild and map tables). Its tables are byte for byte v1.2's, TM75 included.
+[config.soulgold_v1_2_1]
+base = 'soulgold_v1_2'
+itemDescs = { base = 0x0875B360, stride = 0x2C, descOff = -8 }
+guideTables = 'GUIDE_TABLES_SOULGOLD_V1_2_1'
+playerParty = 0x02038E68
+playerPartyCount = 0x02038C1D
+enemyParty = 0x02038C28
+partyMenu = 0x02038B6C
+objectEvents = 0x0200331C
+mapHeader = 0x02003830
+bagPockets = 0x020088E0
+handleInputChooseAction = 0x08061DBD
+handleInputChooseMove = 0x08060F01
+completeWhenChoseItem = 0x0805FB39
+waitForMonSelection = 0x0805FB7D
+handleInputChooseTarget = 0x0805FF89
+monIconTable = 0x087DD9D0
+monIconPaletteIndices = 0x087DD9F6
+monIconPaletteTable = 0x08F2C2B0
+monIconPalettes = 0x087DD9F8
+itemIconTable = 0x0875B370
+pokedex = 'POKEDEX_SOULGOLD_V1_2_1'

@@ -39,6 +39,8 @@ class WildEncountersTest {
         "Pokemon SoulGold (v1.2).gba" to 0x0203E434L,
         "Pokemon SoulGold (v1.2) (Alt 1).gba" to 0x0203E434L,
         "Pokemon SoulGold (v1.2) (Alt 2).gba" to 0x0203E434L,
+        "Pokemon SoulGold (v1.2.1).gba" to 0x0203E35CL,
+        "Pokemon SoulGold (v1.2.1) (Alt 1).gba" to 0x0203E35CL,
         "Pokemon Recharged Yellow (v1.8.0).gba" to 0x0203E374L,
         "Pokemon Recharged Yellow (v1.9.0).gba" to 0x0203E39CL,
         "Pokemon Recharged Yellow (v1.9.4).gba" to 0x0203E3A8L,

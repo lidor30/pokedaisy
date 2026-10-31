@@ -190,6 +190,8 @@ HACKS = [
     ("SOULGOLD_V12", "BPEE", 0, "soulgold_v12", (SG_BOOT, False), 0x08236D5C, 0x0203FF00, SOULGOLD_WHOLE),
     ("SOULGOLD_V12B", "BPEE", 0, "soulgold_v12b", (SG_BOOT, False), 0x08236CC4, 0x0203FF00, SOULGOLD_WHOLE),
     ("SOULGOLD_V12C", "BPEE", 0, "soulgold_v12c", (SG_BOOT, False), 0x08236DBC, 0x0203FF00, SOULGOLD_WHOLE),
+    ("SOULGOLD_V121", "BPEE", 0, "soulgold_v121", (SG_BOOT, False), 0x0823BC04, 0x0203FF00, SOULGOLD_WHOLE),
+    ("SOULGOLD_V121B", "BPEE", 0, "soulgold_v121b", (SG_BOOT, False), 0x0823BC04, 0x0203FF00, SOULGOLD_WHOLE),
     ("QUETZAL", "BPEE", 0, "quetzal", ("rhh_splash.txt", False), 0x080DB9CC, 0x0203FF00, QUETZAL_WHOLE),
     ("QUETZAL_ES", "BPEE", 0, (GBA + "/Pokemon Quetzal (Alpha 9.0) (Spanish).gba", QZ_ES_SAV), ("rhh_splash.txt", False), 0x080DB9E5, 0x0203FF00, QUETZAL_WHOLE),
     ("QUETZAL_V1", "BPEE", 0, (GBA + "/Pokemon Quetzal (Alpha 9v1) (English).gba", QZ_EN_SAV), ("rhh_splash.txt", False), 0x080DE340, 0x0203FF00, QUETZAL_WHOLE),

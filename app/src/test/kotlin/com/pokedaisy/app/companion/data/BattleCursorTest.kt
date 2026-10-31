@@ -22,6 +22,7 @@ class BattleCursorTest {
         // Unbound keeps FireRed's cursors (CFRU's EWRAM is FireRed's); SoulGold's are its own, the same in every build.
         listOf("unbound_battle" to NATIVE_UNBOUND, "soulgold_battle" to NATIVE_SOULGOLD, "soulgold_v12_battle" to NATIVE_SOULGOLD_V1_2,
             "soulgold_v12b_battle" to NATIVE_SOULGOLD_V1_2B, "soulgold_v12c_battle" to NATIVE_SOULGOLD_V1_2C,
+            "soulgold_v121_battle" to NATIVE_SOULGOLD_V1_2_1,
             "emerald_kaizo_battle" to NATIVE_EMERALD_KAIZO, "emerald_legacy_battle" to NATIVE_EMERALD_LEGACY, "radical_red_battle" to NATIVE_RADICAL_RED_V4_1,
             "gaia_battle" to NATIVE_GAIA_V3_2, "glazed_battle" to NATIVE_GLAZED, "lazarus_battle" to NATIVE_LAZARUS,
             "odyssey_battle" to NATIVE_ODYSSEY, "amethyst_battle" to NATIVE_AMETHYST, "sword_shield_up_battle" to NATIVE_SWORD_SHIELD,
@@ -61,6 +62,7 @@ class BattleCursorTest {
         assertEquals(0x02023FF8L to 0x02023FFCL, NATIVE_UNBOUND_FR.actionCursor to NATIVE_UNBOUND_FR.moveCursor)
         assertEquals(0x02001E50L to 0x02001E54L, NATIVE_SOULGOLD.actionCursor to NATIVE_SOULGOLD.moveCursor)
         assertEquals(0x02001E50L to 0x02001E54L, NATIVE_SOULGOLD_V1_2C.actionCursor to NATIVE_SOULGOLD_V1_2C.moveCursor)
+        assertEquals(0x02001E50L to 0x02001E54L, NATIVE_SOULGOLD_V1_2_1.actionCursor to NATIVE_SOULGOLD_V1_2_1.moveCursor)
         assertEquals(0x02024E60L to 0x02024E64L, NATIVE_RUBY.actionCursor to NATIVE_RUBY.moveCursor)
         // Copies whose RAM differs (or isn't checked) are zeroed; the hacks' base configs never had them.
         listOf(NATIVE_EMERALD_JA, NATIVE_LEAFGREEN_REV1, NATIVE_EMERALD, NATIVE_FIRERED_REV0, NATIVE_EMERALD_ROGUE).forEach {

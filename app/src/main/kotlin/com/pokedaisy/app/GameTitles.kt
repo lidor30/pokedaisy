@@ -100,6 +100,8 @@ object GameTitles {
         "805d880ee229fb6dc3ce03d7b03baf48f0d759d0" to "Pokémon SoulGold",
         "5d6a036260fdbde96f85b5c1b92d0256d3aebafb" to "Pokémon SoulGold",
         "2be7c99aa473308debe1d03ff2015bab7d9addb5" to "Pokémon SoulGold",
+        "32988f918ca09923466ae3bc5bbfe5f2a771c728" to "Pokémon SoulGold",
+        "dacb6e40e7f572ddefd2dfa10e99c0da6835b062" to "Pokémon SoulGold",
         "e10105d8544469c6a11ca2cf510289981df3c3b0" to "Pokémon Glazed",
         "a7c4e34fafb53f2d5283eb6d43dad285c0dd40a8" to "Pokémon Emerald Kaizo",
         "cbd71af65ee3dcd53280a6a12014bfb11e8f626a" to "Pokémon Emerald Legacy",

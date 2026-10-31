@@ -1307,6 +1307,13 @@ val POKEDEX_SOULGOLD_V1_2C = POKEDEX_SOULGOLD_V1_2.copy(
     regionalOrder = 0x08F0EF6CL,
 )
 
+/** SoulGold v1.2.1 (both builds): the same tables again, 0x7BA0 (gSpeciesInfo) / 0xB61C later than the third v1.2's. */
+val POKEDEX_SOULGOLD_V1_2_1 = POKEDEX_SOULGOLD_V1_2.copy(
+    speciesInfo = 0x087DD964L,
+    abilityNames = 0x08F1B3D8L,
+    regionalOrder = 0x08F1A588L,
+)
+
 /**
  * Whether the running ROM really has these tables where [t] says: entry 1 is
  * BULBASAUR's (SEED, 7 dm, 69 hg), species 1 is dex number 1 and its front

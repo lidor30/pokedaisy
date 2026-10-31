@@ -4697,6 +4697,38 @@ val NATIVE_SOULGOLD_V1_2C = NATIVE_SOULGOLD_V1_2.copy(
     pokedex = POKEDEX_SOULGOLD_V1_2C,
 )
 
+// SoulGold v1.2.1 (two builds: sha1 32988f91... and dacb6e40..., 2 bytes of item data apart; "Soulgold"
+// in the header's title) - a rebuild of v1.2, the same save format (the v1.2 save loads in it). Mapped
+// from the third v1.2 build: RAM by literal-pool reference counts, code by masked byte matches (else
+// through the functions' callers / the pools that point at them), ROM data by byte runs; then checked
+// headless on that save (the soulgold_v121 / soulgold_v121_battle fixtures; the action / move / bag /
+// party handlers in a scripted wild battle - ScriptContext_SetupScript is 0x0823BC04). IWRAM and the
+// battle globals didn't move; EWRAM did: gMapHeader / gObjectEvents +8, gBagPockets +0xC, the party
+// globals -0x1BC / -0x1C0. ROM data moved 0x7A38 (gItemsInfo), 0x7BA0 (gSpeciesInfo) or 0xB61C - 0xBEE8
+// (dex, wild and map tables). Its tables are byte for byte v1.2's, TM75 included.
+val NATIVE_SOULGOLD_V1_2_1 = NATIVE_SOULGOLD_V1_2.copy(
+    itemDescs = ItemDescTable(0x0875B360L, 0x2C, -8),
+    guideTables = GUIDE_TABLES_SOULGOLD_V1_2_1,
+    playerParty = 0x02038E68L,
+    playerPartyCount = 0x02038C1DL,
+    enemyParty = 0x02038C28L,
+    partyMenu = 0x02038B6CL,
+    objectEvents = 0x0200331CL,
+    mapHeader = 0x02003830L,
+    bagPockets = 0x020088E0L,
+    handleInputChooseAction = 0x08061DBDL,
+    handleInputChooseMove = 0x08060F01L,
+    completeWhenChoseItem = 0x0805FB39L,
+    waitForMonSelection = 0x0805FB7DL,
+    handleInputChooseTarget = 0x0805FF89L,
+    monIconTable = 0x087DD9D0L,
+    monIconPaletteIndices = 0x087DD9F6L,
+    monIconPaletteTable = 0x08F2C2B0L,
+    monIconPalettes = 0x087DD9F8L,
+    itemIconTable = 0x0875B370L,
+    pokedex = POKEDEX_SOULGOLD_V1_2_1,
+)
+
 // ---- gamedata/gen3/hacks/sword_shield.toml ----
 
 // Pokémon Sword and Shield Ultimate Plus v1.2.1.2 (32 MB, sha1 afe4c8e0…): Galar on CFRU, so

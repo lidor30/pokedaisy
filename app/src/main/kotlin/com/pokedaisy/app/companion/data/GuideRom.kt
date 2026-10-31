@@ -872,10 +872,12 @@ val GUIDE_TABLES_SOULGOLD = GuideTables(
     mapGroups = 0x09587364L, mapSecWide = true,
 )
 
-// v1.2 / v1.2b / v1.2c: the same layouts, ids, flags and scripts; only the tables moved.
+// v1.2 / v1.2b / v1.2c / v1.2.1: the same layouts, ids, flags and scripts; only the tables moved.
 val GUIDE_TABLES_SOULGOLD_V1_2 = GUIDE_TABLES_SOULGOLD.copy(trainers = 0x084A5800L, wildHeaders = 0x09420BA8L, altTrainers = listOf(0x084B4470L), mapGroups = 0x09592634L)
 val GUIDE_TABLES_SOULGOLD_V1_2B = GUIDE_TABLES_SOULGOLD.copy(trainers = 0x084A5768L, wildHeaders = 0x09420B04L, altTrainers = listOf(0x084B43D8L), mapGroups = 0x09592590L)
 val GUIDE_TABLES_SOULGOLD_V1_2C = GUIDE_TABLES_SOULGOLD.copy(trainers = 0x084A58F4L, wildHeaders = 0x0944EA34L, altTrainers = listOf(0x084B4564L), mapGroups = 0x095C04C0L)
+// v1.2.1 (both builds): the same again, moved once more.
+val GUIDE_TABLES_SOULGOLD_V1_2_1 = GUIDE_TABLES_SOULGOLD.copy(trainers = 0x084AD384L, wildHeaders = 0x0945A8E0L, altTrainers = listOf(0x084BBFF4L), mapGroups = 0x095CC3A8L)
 
 val GUIDE_TABLES_CELIA = GuideTables(
     trainers = 0x0871FCA0L,

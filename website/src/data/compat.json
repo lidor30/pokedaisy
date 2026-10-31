@@ -78,6 +78,8 @@
     {"sha1": "ed60654d7525ba005bfc8f799bf0ecba2ef08a2e", "title": "Pokémon Recharged Yellow", "version": "v1.9.7"},
     {"sha1": "ea5d369cc8a31cbf1cfacb7c9470ea670f08957b", "title": "Pokémon SoulGold", "version": "v1.1.4"},
     {"sha1": "805d880ee229fb6dc3ce03d7b03baf48f0d759d0", "title": "Pokémon SoulGold", "version": "v1.2"},
+    {"sha1": "32988f918ca09923466ae3bc5bbfe5f2a771c728", "title": "Pokémon SoulGold", "version": "v1.2.1"},
+    {"sha1": "dacb6e40e7f572ddefd2dfa10e99c0da6835b062", "title": "Pokémon SoulGold", "version": "v1.2.1b"},
     {"sha1": "5d6a036260fdbde96f85b5c1b92d0256d3aebafb", "title": "Pokémon SoulGold", "version": "v1.2b"},
     {"sha1": "2be7c99aa473308debe1d03ff2015bab7d9addb5", "title": "Pokémon SoulGold", "version": "v1.2c"},
     {"sha1": "afe4c8e0f9c7186860fcea5f25d8318f5d7929b9", "title": "Pokémon Sword and Shield Ultimate Plus", "version": "v1.2.1.2"},
@@ -267,7 +269,7 @@
       {"game": "Wishes of Tomorrow", "version": "1.2.6", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "Dreamstone Mysteries", "version": "the one release", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "Emerald Rogue", "version": "2.2.1-EX", "cells": ["yes", "yes", "yes", "yes", "yes", "no"]},
-      {"game": "SoulGold", "version": "1.1.4, 1.2 (3 builds)", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
+      {"game": "SoulGold", "version": "1.1.4, 1.2 (3), 1.2.1 (2)", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "R.O.W.E.", "version": "2.1.9.1 Experimental", "cells": ["yes", "yes", "part", "yes", "part", "no"]}
     ]
   }

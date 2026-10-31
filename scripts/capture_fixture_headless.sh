@@ -75,7 +75,8 @@ cat "$BOOT_SCRIPT" >"$work/cmds.txt"
 echo "dump /work/out" >>"$work/cmds.txt"
 
 docker image inspect "$IMAGE" >/dev/null 2>&1 || docker build -q -t "$IMAGE" "$CAPTURE_DIR"
-docker run --rm -v "$CAPTURE_DIR:/build" -v "$work:/work" -w /build "$IMAGE" \
+# Built from the repo root: mgba_dump compiles in the app's own C files (pk_wide.c, pk_cheats.c, ...).
+docker run --rm -v "$CAPTURE_DIR/..:/repo" -v "$work:/work" -w /repo/native-capture "$IMAGE" \
     -c "gcc -O2 -Wall -o /work/mgba_dump mgba_dump.c -I/usr/include -L/usr/lib/aarch64-linux-gnu -lmgba -lm"
 
 docker run --rm -v "$work:/work" -w /work "$IMAGE" \

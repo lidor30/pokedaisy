@@ -16,6 +16,7 @@ class NuzlockeFixturesTest {
         "emerald_rogue_battle" to NATIVE_EMERALD_ROGUE,
         "unbound_battle" to NATIVE_UNBOUND_WITH_DEX, "soulgold_battle" to NATIVE_SOULGOLD, "soulgold_v12_battle" to NATIVE_SOULGOLD_V1_2,
         "soulgold_v12b_battle" to NATIVE_SOULGOLD_V1_2B, "soulgold_v12c_battle" to NATIVE_SOULGOLD_V1_2C,
+        "soulgold_v121_battle" to NATIVE_SOULGOLD_V1_2_1,
         "emerald_kaizo_battle" to NATIVE_EMERALD_KAIZO, "emerald_legacy_battle" to NATIVE_EMERALD_LEGACY, "radical_red_battle" to NATIVE_RADICAL_RED_V4_1,
         "gaia_battle" to NATIVE_GAIA_V3_2, "glazed_battle" to NATIVE_GLAZED, "lazarus_battle" to NATIVE_LAZARUS,
         "odyssey_battle" to NATIVE_ODYSSEY, "amethyst_battle" to NATIVE_AMETHYST, "sword_shield_up_battle" to NATIVE_SWORD_SHIELD,

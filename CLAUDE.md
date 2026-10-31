@@ -403,7 +403,7 @@ The tab shows the card cropped to itself (no BG2 backdrop) at the largest whole 
 Thor); a tap flips it (squash, like the game), and the time colon blinks via an infinite transition
 (a`delay`loop never lets Compose tests go idle, which hung ui-preview once).
 **SoulGold v1.1.4** (`NATIVE_SOULGOLD`; v1.2 = `NATIVE_SOULGOLD_V1_2`, a rebuild at shifted addresses, same save
-format, v1.1.4's generated tables but TM75 via `soulGoldV12`; a second v1.2 build = `NATIVE_SOULGOLD_V1_2B`, same RAM, ROM data 0x98-0xA4 earlier; a third = `NATIVE_SOULGOLD_V1_2C`, same RAM, ROM data 0x18C-0x198 later, wild / map tables 0x2DF30; gPartyMenu comes from `NativeConfig.partyMenu`, newer expansion, no source) breaks several vanilla
+format, v1.1.4's generated tables but TM75 via `soulGoldV12`; a second v1.2 build = `NATIVE_SOULGOLD_V1_2B`, same RAM, ROM data 0x98-0xA4 earlier; a third = `NATIVE_SOULGOLD_V1_2C`, same RAM, ROM data 0x18C-0x198 later, wild / map tables 0x2DF30; v1.2.1 = `NATIVE_SOULGOLD_V1_2_1` (two builds, 2 bytes of item data apart; "Soulgold" in the header), v1.2's tables, IWRAM and battle globals, but EWRAM moved (the party globals -0x1BC / -0x1C0, gMapHeader / gObjectEvents +8, gBagPockets +0xC) and ROM data 0x7A38-0xBEE8; gPartyMenu comes from `NativeConfig.partyMenu`, newer expansion, no source) breaks several vanilla
 assumptions, each a `NativeConfig` field now: its struct Pokemon is 96 bytes and plaintext
 (`SOULGOLD_PARTY_MON`: 12-char nicknames push the egg flags to +0x15, status at +0x4C, level/HP
 from +0x50), BattlePokemon is 0x98 bytes (`SOULGOLD_BATTLE_MON`), mapsec ids are u16 with mapType a

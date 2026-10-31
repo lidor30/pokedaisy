@@ -201,8 +201,10 @@ class FlyTest {
                 "Pokemon Lazarus (v2.0).gba" to GameKind.LAZARUS,
                 "Pokemon SoulGold (v1.1.4).gba" to GameKind.SOULGOLD, "Pokemon SoulGold (v1.2).gba" to GameKind.SOULGOLD,
                 "Pokemon SoulGold (v1.2) (Alt 1).gba" to GameKind.SOULGOLD,
-                "Pokemon SoulGold (v1.2) (Alt 2).gba" to GameKind.SOULGOLD)) read(name)?.let { r ->
-            // Exactly one candidate's code is in the ROM (SoulGold's four builds share the kind).
+                "Pokemon SoulGold (v1.2) (Alt 2).gba" to GameKind.SOULGOLD,
+                "Pokemon SoulGold (v1.2.1).gba" to GameKind.SOULGOLD,
+                "Pokemon SoulGold (v1.2.1) (Alt 1).gba" to GameKind.SOULGOLD)) read(name)?.let { r ->
+            // Exactly one candidate's code is in the ROM (SoulGold's builds share the kind).
             val matching = fieldItemsCandidatesForGame(kind, "BPEE", 0).filter { fieldItemCodeMatches(it, r) && flyCodeMatches(it.fly!!, r) }
             assertEquals(name, 1, matching.size)
             val t = matching.single()
