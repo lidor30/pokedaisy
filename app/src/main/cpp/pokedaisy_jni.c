@@ -1460,6 +1460,18 @@ Java_com_pokedaisy_app_MgbaCore_pkNdsSetDraw(JNIEnv* env, jobject thiz, jboolean
     if (pk_nds_active()) pk_nds_set_draw(draw == JNI_TRUE, drawNext == JNI_TRUE);
 }
 
+// DS CPU BOOST: the ARM9 at twice the DS's clock. Emu thread, between frames.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsCpuBoost(JNIEnv* env, jobject thiz, jboolean on) {
+    if (pk_nds_active()) pk_nds_set_cpu_boost(on == JNI_TRUE);
+}
+
+// DS LAYOUT floats the X menu on one screen: it comes back after a menu screen left by touch. Emu thread.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsKeepStartMenu(JNIEnv* env, jobject thiz, jboolean on) {
+    if (pk_nds_active()) pk_nds_set_keep_start_menu(on == JNI_TRUE);
+}
+
 // DS RESOLUTION (nds/pk_nds_gl.h): 1 = the software renderer, 2-8 the GPU's. Taken before the next frame. Emu thread.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkNdsSetScale(JNIEnv* env, jobject thiz, jint scale) {

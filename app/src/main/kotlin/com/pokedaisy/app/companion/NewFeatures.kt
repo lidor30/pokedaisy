@@ -89,6 +89,7 @@ object NewFeatures {
 
     /** SETTINGS > DS RESOLUTION: a DS game's 3D drawn at 2x to 8x on the GPU (nds/pk_nds_gl.h). */
     const val DS_RESOLUTION = "ds_resolution"
+    const val DS_CPU_BOOST = "ds_cpu_boost"
 
     /** SETTINGS > APP > TIPS: a card now and then about a feature the player hasn't found (FeatureTips). */
     const val TIPS = "tips"
@@ -108,12 +109,16 @@ object NewFeatures {
     /** Settings > LIBRARY > PATCH A ROM and the library's + menu: a .bps patch applied to a ROM the library has (RomPatchFlow). */
     const val ROM_PATCH = "rom_patch"
 
+    /** SETTINGS > DS LAYOUT: a DS game's two screens on one (companion.DsLayout), its touch screen floating in over the
+     * game when wanted; the TOUCH SCREEN hotkey and the HUD's TOUCH button open it by hand. */
+    const val DS_LAYOUT = "ds_layout"
+
     /** Every feature that gets the tag. */
     val ALL = listOf(
         HUD, BATTLE_BUTTONS, GAME_HOTKEYS, COMPANION_WINDOW, HUD_PC, QUICK_MENU, HUD_REPEL, SINGLE_SCREEN, MORE_TAB, TOUCH_CONTROLS,
         COMPANION_TAB, REUSABLE_TMS, SHINY_ODDS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
-        GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS,
+        GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST,
     )
 
     private const val DAYS = 7

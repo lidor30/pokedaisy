@@ -1783,6 +1783,32 @@ fun main(args: Array<String>) {
             }) { onNodeWithText("WHERE IS").performClick() },
         )),
         // The top screen's status bar over a stand-in for the game (GameStageLayout's layout).
+        // DS LAYOUT's pick-list (each layout's miniature), and ONE SCREEN's touch screen floating over a stand-in game.
+        Shot("ds-layout-picker", tw, th, td, {
+            {
+                com.pokedaisy.app.companion.ui.AppBackdrop()
+                com.pokedaisy.app.companion.ui.DsLayoutPicker(
+                    com.pokedaisy.app.companion.DsLayout.ONE_SCREEN, com.pokedaisy.app.companion.ui.rememberGbaTextMetrics(), {}, {},
+                )
+            }
+        }),
+        Shot("ds-touch-window", tw, th, td, {
+            {
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF58A048)),
+                )
+                com.pokedaisy.app.companion.ui.DsTouchWindow(open = true, onClose = {}) { modifier ->
+                    androidx.compose.foundation.layout.Box(
+                        modifier.background(androidx.compose.ui.graphics.Color(0xFF1E6E3A)),
+                        contentAlignment = androidx.compose.ui.Alignment.Center,
+                    ) {
+                        androidx.compose.foundation.layout.Box(
+                            androidx.compose.ui.Modifier.fillMaxSize(0.9f).background(androidx.compose.ui.graphics.Color(0xFFD8F0DC)),
+                        )
+                    }
+                }
+            }
+        }),
         Shot("status-bar", tw, th, td, {
             {
                 androidx.compose.foundation.layout.Box(

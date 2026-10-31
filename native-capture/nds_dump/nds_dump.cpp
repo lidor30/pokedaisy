@@ -800,11 +800,32 @@ int main(int argc, char** argv)
             for (int i = 0; i < frames; i++) {
                 runFrames(1, heldKeys);
                 int bits = g ? pk_nds_field_state(g, read32, nullptr, 0) : 0;
-                printf("trace %llu: bits %03X brightA %04X brightB %04X dispA %08X bg3 %d\n", (unsigned long long) frameCount, bits,
-                    nds->GPU.GPU2D_A.MasterBrightness, nds->GPU.GPU2D_B.MasterBrightness, nds->GPU.GPU2D_A.DispCnt,
+                // Each screen of one colour (the app's oneColour: a 16 x 12 grid alike), as T / B.
+                char flat[3] = "--";
+                for (int sc = 0; sc < 2; sc++) {
+                    const u32* px = nds->GPU.Framebuffer[nds->GPU.FrontBuffer][sc].get();
+                    bool one = px != nullptr;
+                    for (int gy = 0; one && gy < 12; gy++)
+                        for (int gx = 0; one && gx < 16; gx++)
+                            one = (px[(gy * 16 + 8) * 256 + gx * 16 + 8] & 0xFFFFFF) == (px[8 * 256 + 8] & 0xFFFFFF);
+                    if (one) flat[sc] = sc ? 'B' : 'T';
+                }
+                printf("trace %llu: bits %04X brightA %04X brightB %04X flat %s dispA %08X bg3 %d\n", (unsigned long long) frameCount, bits,
+                    nds->GPU.GPU2D_A.MasterBrightness, nds->GPU.GPU2D_B.MasterBrightness, flat, nds->GPU.GPU2D_A.DispCnt,
                     pk_nds_bg3_tiles(nds));
             }
             fflush(stdout);
+        } else if (!strcmp(cmd, "arm9shift")) {
+            // arm9shift N: the ARM9's clock as 2^N times the bus's (1 = a DS, 2 = twice that, the DSi's), switched live
+            // the way DSi::Set_SCFG_Clock9 does it.
+            u32 shift = num(a) ? num(a) : 1;
+            nds->ARM9Timestamp >>= nds->ARM9ClockShift;
+            nds->ARM9Target >>= nds->ARM9ClockShift;
+            nds->ARM9ClockShift = shift;
+            nds->ARM9Timestamp <<= shift;
+            nds->ARM9Target <<= shift;
+            nds->ARM9.UpdateRegionTimings(0x00000, 0x100000);
+            printf("arm9shift %u\n", shift);
         } else if (!strcmp(cmd, "bench")) {
             // bench N: N frames as fast as they go, then the average ms per frame (with wide on, its frames too)
             int frames = (int) num(a);

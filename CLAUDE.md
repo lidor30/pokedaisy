@@ -662,6 +662,36 @@ there is one polygon list of the whole view drawn in one pass (`submitGpu`, no s
 the software renderer, pixel for pixel. Check GPU changes headless with nds_dump's `NDS_DUMP_GL` build (ANGLE; `gpu N`,
 `gpushot`) and compare `ffmode 0` / `ffmode 3` runs; shaders compile as GLSL ES 3.00 in WebGL2 too. docs/DEVELOPMENT.md's
 "DS RESOLUTION".
+**DS LAYOUT (one screen held sideways, 2026-11-01; SETTINGS > SCREEN on both screens, `Prefs.dsLayout`, NEW tag)**: ONE SCREEN
+(default) / SIDE BY SIDE / LARGE + SMALL / PICTURE IN PICTURE / STACKED, picked from drawn miniatures (`DsLayoutPicker`); the
+stage places the screens (`GameStageLayout.dsArrange`, `DsLayouts.arrange`, edge to edge) over the game's own picture (`DsShots`:
+PixelCopy about once a second - the overworld kept for menus, else the newest blurred; the user's rule: never black bars, nor a
+plain colour). ONE SCREEN / PIP float the touch screen in over the dimmed game (`DsTouchWindow`, the user's modal idea) when the game
+wants it: `PK_NDS_FIELD_TOUCH` from `pk_nds_field.cpp`'s touch rules (HG/SS only so far: the X menu's task, menu screens, a battle's
+bag / party / prompts), or by hand (the HUD's TOUCH, the TOUCH SCREEN hotkey: L2; DS LAYOUT's, R2, steps the layouts - the user's pick: the triggers are
+theirs only in a DS game on one screen, SPEED CYCLE / FF HOLD's elsewhere, `Action.dsOnly` / `Hotkeys.dsActive`). Games without rules get
+ONE SCREEN as PIP (`DsLayout.forGame`). The party's, the Pokédex's first and the options' pages float alone over the overworld
+(`PK_NDS_FIELD_TOUCH_ONLY`, the user's call); other menu screens show both side by side (`dsMenuScreen`); a tap on the dim closes
+/ presses B; outside the field and battles EXPAND gives way to the 4:3 (`dsWideScene`). A battle (HG/SS) stays wide: a strip in the band's black over
+the text box's rows, our HG message window at its far left (SoulSilver's: its gold line silver-blue), the game's four buttons HG-coloured at its right (the user's call:
+`DsBattleMenu`, red corners in a white rim, pulsing; the D-pad its own; moves one line a card), pressing the game's touch buttons with the stylus (`NdsBattleTaps`, `readGen4BattleInput`).
+Fades (headless `trace`: HG fades by master brightness and blends, then both screens one colour for up to ~1.5 s):
+both screens black (`PK_NDS_FIELD_DARK_TOP` / `_BOTTOM`, `EmulatorEngine.dsDark`) holds every DS flow and the first lit frame
+decides at once; the window hides while the touch screen is blank (`dsTouchBlank`); a menu's way back to the field is covered by
+the overworld's picture (the window view's cover); the battle's bag / party (`PK_NDS_FIELD_TOUCH_FADES`) float in only after
+their fade (black, then 12 lit frames) and end at their first black (the battle redraws a Poké Ball for 5 frames at the bag's
+step). The cover carries `DsLoader` (`RockingPokeBall`, three dots; after 160 ms). HG closes its X menu after a screen left by touch
+(start_menu.c's WaitApp: FieldSystem.menuInputState +0x10C TOUCH): floating, the screen's closing fade sets it to buttons
+(`pk_nds_field_keep_start_menu`, `MgbaCore.pkNdsKeepStartMenu`), so the X menu comes back. The strip is drawn by the window's view (under its dim) and holds behind the bag / party; the game view holds the focus
+while it's up (else Android eats the first D-pad press after a touch). Gen 4 / 5 party nicknames are read (block C).
+The strip's moves are HG's move buttons redrawn (frame and colours sampled, thin top / bottom: ours are 21 DS px tall, the
+game's 52) with `MoveVsFoe.label` in the corner; BACK is the battle bag's blue return button (0.72 as wide as tall); the message's text is a font pixel a
+DS pixel (`dsTextMetrics`: both fonts' capitals are 9). **DS CPU BOOST** (SCREEN on both screens, `Prefs.dsCpuBoost` ON, NEW tag):
+`ARM9ClockShift` 2 as melonDS's DSi mode, switched live (`pk_nds.cpp`'s `setArm9Shift`, states and STEADY's copy always at 1:
+melonDS stores raw timestamps) - HG walking held a frame 3-4 refreshes every few steps (headless and on the RP6; the app's
+`repeats` / `unshown` on the fps line were 0), steady 30 fps boosted; HG uses the cycles (work 3.8 -> 7.3 ms on the RP6).
+LARGE + SMALL / PIP: the HUD's CORNERS go `DsCornerLayout` (buttons bottom left, party in two columns under the minimap,
+three to a row above PIP's inset: `dsCorner` / `dsClearBottom`). Upright keeps the old dock (`DsTouchPane`). docs/DEVELOPMENT.md's "DS LAYOUT".
 **Black (Gen 5, IRBO; 2026-10-27)**: no decomp, so every address is from headless captures of the player's save (heap blocks
 carry their source file's name); `Gen5Reader.kt` (the live save image, the GameSystem's live zone, the battle's main module),
 `pk_nds_field.cpp`'s `BLACK_US` (scene by the running proc's overlay, field map, event; WILD ENCOUNTERS on the zone's

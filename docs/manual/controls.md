@@ -91,8 +91,10 @@ When SELECT or START is part of a chord, the game gets it when you let go rather
 | `QUICK MENU` | Opens the [quick menu](#the-quick-menu), or closes it | L3 (shown as `THUMBL`) | |
 | `COMPANION` | Opens the companion over the game on one screen, where you can hide its edge button with `COMPANION BUTTON`. Also brings it back after `CLOSE COMPANION` | | |
 | `MUTE` | Mutes the game, or brings its sound back (`MUTE GAME` in [SOUND](fast-forward.md#game-volume-and-mute-sound)) | | |
+| `TOUCH SCREEN` | In a DS game on one screen: brings its touch screen up over the game, or closes it (see [DS layout](devices.md#ds-layout-two-screens-on-one)) | L2 | T |
+| `DS LAYOUT` | In a DS game on one screen held sideways: steps to the next `DS LAYOUT` (`ONE SCREEN`, `SIDE BY SIDE`, `LARGE + SMALL`, `PICTURE IN PICTURE`, `STACKED`, then round again), its name showing on the game for a moment | R2 | |
 
-`RESTART GAME`, `CLOSE APP`, `COMPANION` and `MUTE` have no buttons until you give them some.
+`RESTART GAME`, `CLOSE APP`, `COMPANION` and `MUTE` have no buttons until you give them some. `TOUCH SCREEN` and `DS LAYOUT` share L2 and R2 with `SPEED CYCLE` and `FF HOLD`: in a DS game on one screen the triggers are theirs, and everywhere else they're speed's, so changing one never asks you to move the other.
 
 The speed hotkeys are explained in [Fast-forward and game speed](fast-forward.md), states and rewind in [Saves](saves.md), and zoom in [Screen](screen.md).
 

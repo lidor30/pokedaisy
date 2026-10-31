@@ -71,6 +71,20 @@ typedef struct PkNdsFieldGame {
 #define PK_NDS_FIELD_MENU 512
 /** A battle waits for the player's command (pk_nds_battle_command is PK_NDS_BATTLE_SELECTING): SMART FF's 1x. */
 #define PK_NDS_FIELD_BATTLE_INPUT 1024
+/** The game wants its touch screen now - one screen's DS LAYOUT floats it in over the game (HeartGold / SoulSilver: the
+ * X menu, a menu screen, a battle's bag / party / prompts; pk_nds_field.cpp's touch rules). */
+#define PK_NDS_FIELD_TOUCH 2048
+/** A battle's command or move panel is on the touch screen (BATTLE BUTTONS take its place where they can). */
+#define PK_NDS_FIELD_TOUCH_BATTLE_MENU 4096
+/** A menu screen whose page is all on the touch screen (HG/SS's party list, options, the Pokédex's first page): it floats in
+ * alone, not beside the top screen. */
+#define PK_NDS_FIELD_TOUCH_ONLY 8192
+/** The touch screen PK_NDS_FIELD_TOUCH wants is a new one the game fades in first (a battle's bag / party): it floats in
+ * once that's done, not over the old screen fading out. */
+#define PK_NDS_FIELD_TOUCH_FADES 16384
+/** The top screen / the touch screen is one colour (black between scenes, a fade's end; pk_nds.cpp's oneColour). */
+#define PK_NDS_FIELD_DARK_TOP 32768
+#define PK_NDS_FIELD_DARK_BOTTOM 65536
 
 #ifdef __cplusplus
 }
@@ -114,6 +128,10 @@ void pk_nds_field_set_rates(const int32_t* triples, int n);
  * they are; off again, the rates go back (a new map loads its own anyway). */
 int pk_nds_field_state(const PkNdsFieldGame* game, uint32_t (*read32)(uint32_t addr),
                        void (*write32)(uint32_t addr, uint32_t value), int wildOff);
+
+/** DS LAYOUT on one screen: the X menu comes back after a menu screen left by touch too (pk_nds_field.cpp). Call on the
+ * screen's closing fade. */
+void pk_nds_field_keep_start_menu(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), void (*write32)(uint32_t, uint32_t));
 
 #ifdef __cplusplus
 }

@@ -347,7 +347,14 @@ fun CompanionSettingsScreen(
                 label = { settings?.playerLookLabel(it) ?: it },
             )
         }
-        selector?.takeIf { !it.tiles }?.let { sel ->
+        selector?.takeIf { it.dsLayouts }?.let { sel ->
+            DsLayoutPicker(
+                com.pokedaisy.app.companion.DsLayout.entries.firstOrNull { it.label == sel.current } ?: com.pokedaisy.app.companion.DsLayout.ONE_SCREEN, m,
+                onPick = { sel.onPick(it.label); selector = null; tick++ },
+                onDismiss = { selector = null },
+            )
+        }
+        selector?.takeIf { !it.tiles && !it.dsLayouts }?.let { sel ->
             OptionSelector(
                 sel.title, sel.options, sel.current, { it }, m,
                 onPick = { sel.onPick(it); selector = null; tick++ },
@@ -406,6 +413,8 @@ private class Selector(
     val tiles: Boolean = false,
     /** A few words above the options ([OptionSelector]'s note), or null. */
     val note: String? = null,
+    /** DS LAYOUT's pick-list with its miniatures ([DsLayoutPicker]): [options] are the layouts' labels. */
+    val dsLayouts: Boolean = false,
     val onPick: (String) -> Unit,
 )
 
@@ -583,6 +592,23 @@ private fun homeRows(
                 if (!s.dsGpuAvailable) return@SettingRow
                 val labels = dsResolutionLabels()
                 select(Selector(tk("DS RESOLUTION"), labels, dsResolutionLabel(scale)) { l -> s.setDsResolution(labels.indexOf(l) + 1); changed() })
+            }
+        },
+        // A DS game: its CPU at twice the DS's clock, so the game's own slow frames go (HeartGold walking).
+        s.dsCpuBoost?.let { on ->
+            SettingRow(
+                tk("DS CPU BOOST"), onOff(on), labelBadge = NewFeatures.badge(NewFeatures.DS_CPU_BOOST), subtitle = "Fewer slowdowns in DS games",
+            ) { s.setDsCpuBoost(!on); changed() }
+        },
+        // A DS game on one screen held sideways: where its two screens go (DsLayout), picked from miniatures.
+        s.dsLayout?.let { layout ->
+            SettingRow(
+                tk("DS LAYOUT"), layout.label, labelBadge = NewFeatures.badge(NewFeatures.DS_LAYOUT),
+                subtitle = "Where a DS game's two screens go",
+            ) {
+                select(Selector(tk("DS LAYOUT"), com.pokedaisy.app.companion.DsLayout.entries.map { it.label }, layout.label, dsLayouts = true) { l ->
+                    s.setDsLayout(com.pokedaisy.app.companion.DsLayout.entries.first { it.label == l })
+                })
             }
         },
         // The party, a minimap, the balls and BAG / WILD over the game on the field: its own page (layout, look, size, parts).

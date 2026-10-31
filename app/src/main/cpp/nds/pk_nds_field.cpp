@@ -208,6 +208,84 @@ const PkNdsFieldGame* pk_nds_field_game(const char code[4], int revision)
 
 static int inMainRam(uint32_t p) { return p >= 0x02000000u && p < 0x02400000u; }
 
+// When the game wants its touch screen (PK_NDS_FIELD_TOUCH), for the games whose touch-screen moments are mapped.
+// HeartGold / SoulSilver (pret/pokeheartgold, checked headless on the player's save): the X menu is the field task
+// Task_StartMenu (start_menu.c), its buttons on the touch screen (its SAVE too); every menu screen it opens (party,
+// bag, Pokégear, Pokédex, trainer card, options) has its controls there. A battle's touch panels hang off
+// BattleSystem.battleInput: its text objects are set only while a panel is drawn; battler 0's selection step
+// (BattleContext's first byte, SSI_STATE_*) is 1 / 2 at the commands, 3 / 4 the moves, 7 / 8 the bag, 9 / 10 the party.
+// A menu screen whose page is the touch screen's alone: its template's init function (the child's first word) and, where
+// only some pages are, the app's states (OverlayManager +0x14) on those pages as a bit mask (0 = every page).
+struct PkNdsTouchApp {
+    uint32_t init;
+    uint32_t states;
+};
+
+struct PkNdsTouchRules {
+    const PkNdsFieldGame* game;
+    uint32_t startMenuTask;   // Task_StartMenu (Thumb)
+    int offBattleInput;       // BattleSystem.battleInput
+    int offPanelShown;        // BattleInput.textObj[]'s first pointer: NULL while no panel is drawn
+    PkNdsTouchApp touchOnly[4];
+    int offMenuInputState;    // FieldSystem.menuInputState: 0 buttons, 1 touch (the last input on a menu screen)
+};
+
+// HeartGold / SoulSilver's touch-screen-only pages (headless, the player's saves): the party list (its summary is an app of
+// its own, two screens), the options, the Pokédex's first page (states 0 / 2 / 5 opening it, 6 on it; 11 is its list, an
+// INFO page on top). Everything here is the same address in both games but the Pokédex's init: SoulSilver's overlay has it
+// 4 bytes earlier (its version's dex differs), so both are listed.
+static const PkNdsTouchRules TOUCH_RULES[] = {
+    { &HEARTGOLD_US, 0x0203BEF1, 0x19C, 0x4D0, {
+        { 0x02078E31, 0 },                                      // the party
+        { 0x021E5901, 0 },                                      // the options
+        { 0x021E5AA1, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
+        { 0x021E5A9D, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
+    }, 0x10C },
+};
+
+// [child]'s app is on a page all on the touch screen.
+static int touchOnlyPage(const PkNdsTouchRules* t, uint32_t (*read32)(uint32_t), uint32_t child)
+{
+    uint32_t init = read32(child);
+    for (const PkNdsTouchApp& a : t->touchOnly) {
+        if (!a.init || a.init != init) continue;
+        if (!a.states) return 1;
+        uint32_t state = read32(child + 0x14);
+        return state < 32 && (a.states >> state & 1);
+    }
+    return 0;
+}
+
+static const PkNdsTouchRules* touchRules(const PkNdsFieldGame* g)
+{
+    for (const PkNdsTouchRules& r : TOUCH_RULES)
+        if (r.game == g) return &r;
+    return nullptr;
+}
+
+// The touch bits for a battle child process [child] (its data the BattleSystem). While the controller waits for the
+// player (SELECTION_SCREEN_INPUT), battler 0's step says which: 1 - 4 the commands and the moves (what BATTLE BUTTONS stand
+// in for - whatever BattleMenuID draws them: HG redraws the commands under another one after a move's CANCEL), 7 - 10 the
+// bag and the party (screens of their own); anything else with a panel drawn (a target, YES / NO, "Use next Pokémon?") is
+// the touch screen's.
+static int battleTouch(const PkNdsFieldGame* g, const PkNdsTouchRules* t, uint32_t (*read32)(uint32_t), uint32_t child)
+{
+    uint32_t bs = read32(child + 0x1C);
+    if (!inMainRam(bs)) return 0;
+    uint32_t ctx = read32(bs + g->offBattleContext);
+    uint32_t input = read32(bs + t->offBattleInput);
+    bool panel = inMainRam(input) && inMainRam(read32(input + t->offPanelShown));
+    if (inMainRam(ctx) && read32(ctx + g->offCommand) == PK_NDS_BATTLE_SELECTING) {
+        int step = (int) (read32(ctx) & 0xFF);
+        // The bag / the party: their own screens, faded in and out (the engine waits the fades out).
+        if (step >= 7 && step <= 10) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
+        // The commands and the moves (1 - 4), the steps between them (0 - 2: back from the moves goes through the
+        // command init, its panel still drawn) and a target (5 / 6), a message's wait (15): the battle buttons' own.
+        if (step <= 6 || step == 15) return panel ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : 0;
+    }
+    return panel ? PK_NDS_FIELD_TOUCH : 0;
+}
+
 // An encounter rate: a u32 (Platinum) or a u8 (HeartGold / SoulSilver), read and written through the aligned word.
 static uint32_t rateRead(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), uint32_t a)
 {
@@ -373,9 +451,13 @@ int pk_nds_field_state(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), vo
     uint32_t parent = read32(pm), child = read32(pm + 4), pause = read32(pm + 8);
     uint32_t task = read32(fs + g->offTask);
     int running = read32(fs + g->offRunningFieldMap) != 0;
+    const PkNdsTouchRules* touch = touchRules(g);
     if (inMainRam(child)) {
         // The battle's child process starts from gBattleApplicationTemplate (its template is copied in whole).
-        bits |= read32(child) == read32(g->battleTemplate) ? PK_NDS_FIELD_BATTLE : PK_NDS_FIELD_MENU;
+        int battle = read32(child) == read32(g->battleTemplate);
+        bits |= battle ? PK_NDS_FIELD_BATTLE : PK_NDS_FIELD_MENU;
+        if (touch) bits |= battle ? battleTouch(g, touch, read32, child)
+                               : PK_NDS_FIELD_TOUCH | (touchOnlyPage(touch, read32, child) ? PK_NDS_FIELD_TOUCH_ONLY : 0);
         return bits | PK_NDS_FIELD_LOCKED;
     }
     if (inMainRam(parent) && running) bits |= PK_NDS_FIELD_SCREEN;
@@ -385,6 +467,8 @@ int pk_nds_field_state(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), vo
         bits |= PK_NDS_FIELD_LOCKED;
         if (task && running) bits |= PK_NDS_FIELD_TEXT;
     }
+    // The X menu (HeartGold / SoulSilver: on the touch screen): its field task.
+    if (touch && inMainRam(task) && read32(task + 4) == touch->startMenuTask) bits |= PK_NDS_FIELD_TOUCH;
     // WILD ENCOUNTERS: the current map's rates, held at 0 while it's off.
     uint32_t data = read32(fs + g->offMapHeaderData);
     uint32_t loc = read32(fs + g->offLocation);
@@ -445,4 +529,19 @@ int pk_nds_bg3_tiles(melonDS::NDS* nds, int bg)
     for (uint32_t i = 0; i < 32 * 24; i++)
         if (nds->ARM9Read16(base + i * 2) & 0x3FF) n++;
     return n;
+}
+
+// A menu screen opened from the X menu ends: the X menu comes back for buttons, but closes itself when the screen was
+// left by touch (start_menu.c's Task_StartMenu_WaitApp: FieldSystem.menuInputState TOUCH -> START_MENU_STATE_10).
+// DS LAYOUT's floating X menu should come back either way, so the screen's closing fade sets it to buttons. (HeartGold /
+// SoulSilver; headless: the trainer card's Cancel, then this during its fade - the menu stays, its cursor shown.)
+void pk_nds_field_keep_start_menu(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), void (*write32)(uint32_t, uint32_t))
+{
+    const PkNdsTouchRules* t = touchRules(g);
+    if (!t || !t->offMenuInputState || !write32) return;
+    uint32_t fs = read32(g->fieldSystemPtr);
+    if (!inMainRam(fs)) return;
+    uint32_t task = read32(fs + g->offTask);
+    if (!inMainRam(task) || read32(task + 4) != t->startMenuTask) return;
+    if (read32(fs + t->offMenuInputState) != 0) write32(fs + t->offMenuInputState, 0);
 }

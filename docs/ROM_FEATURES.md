@@ -33,8 +33,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Ruby / Sapphire | USA rev 0, ES / DE / FR / IT | ✅ | ✅ | ✅ | — | ✅ | ✅ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ |
 | Ruby / Sapphire | JP | ✅ | ✅ | ✅ | — | ✅ | ✅ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ |
 | Platinum (DS) | USA rev 1 | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
-| HeartGold (DS) | USA | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
-| SoulSilver (DS) | USA | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
+| HeartGold (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
+| SoulSilver (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
 | Black (DS) | USA/Europe | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | White (DS) | USA/Europe | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | Black 2 (DS) | USA/Europe | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
@@ -317,6 +317,13 @@ change to any of the places listed under "Where it's decided" updates its rows h
     written move cell + A spent that move's PP on rev 1 and Emerald (`firered_randomized_battle` /
     `emerald_randomized_battle`'s READMEs). The field item, FLY and PC functions' code CRCs, WILD ENCOUNTERS' switch and
     REUSABLE TMS' sites are retail's in every randomized ROM (`RandomizedRetailTest`); they weren't used headless.
+24. HeartGold / SoulSilver's battle is touch-screen panels, so a pick on the top screen's buttons (`DsBattleMenu`, the D-pad or a tap) is
+    the stylus on the game's own button (`NdsBattleTaps`: FIGHT, then the move's card once the move panel is reported drawn;
+    BAG / POKéMON / RUN), from the
+    battle state `readGen4BattleInput` reads (BattleContext's command + battler 0's selection step, BattleSystem.battleInput's
+    drawn panel; docs/DEVELOPMENT.md's "DS LAYOUT"). Checked headless on the player's save in a scripted wild battle: each
+    tap at those places, a move tapped from 7 frames after FIGHT on. BAG and POKéMON open the game's own screens (the
+    touch screen floats in on one screen); there's no switch of our own.
 
 ## What each column is
 

@@ -259,23 +259,26 @@ class EmulatorEngine(
      * same touch-overlay bitmask the on-screen D-pad uses. */
     private val battleInput = BattleInputController(input, writer = { a, b -> MgbaCore.pkWriteBytes(a, b) })
 
+    /** A DS game's battle picks: the game's own touch-screen buttons pressed with the stylus ([NdsBattleTaps]). */
+    private val ndsTaps = NdsBattleTaps()
+
     /** True while a queued battle-menu button sequence hasn't fully drained —
      * the touch battle UI should disable further taps while this is true. */
-    val battleInputBusy: Boolean get() = battleInput.isBusy
+    val battleInputBusy: Boolean get() = if (nds) ndsTaps.busy else battleInput.isBusy
 
     /** Keep showing the last frame: an automated switch is in the game's party menu (see [BattleInputController.holdFrame]). */
     val holdFrame: Boolean get() = battleInput.holdFrame
 
     /** actionIndex: 0=FIGHT, 1=BAG, 2=POKEMON, 3=RUN. Call from the UI thread. */
-    fun battleSelectAction(actionIndex: Int) = battleInput.selectAction(actionIndex)
+    fun battleSelectAction(actionIndex: Int) = if (nds) ndsTaps.selectAction(actionIndex) else battleInput.selectAction(actionIndex)
 
     /** moveIndex 0-3. Call from the UI thread; opens FIGHT first if needed. */
-    fun battleSelectMove(moveIndex: Int) = battleInput.selectMove(moveIndex)
+    fun battleSelectMove(moveIndex: Int) = if (nds) ndsTaps.selectMove(moveIndex) else battleInput.selectMove(moveIndex)
 
     /** Backs out of move-select to action-select (a single B press). */
-    fun battleBack() = battleInput.back()
+    fun battleBack() = if (nds) ndsTaps.back() else battleInput.back()
 
-    fun battleCancelInput() = battleInput.cancel()
+    fun battleCancelInput() { battleInput.cancel(); ndsTaps.cancel() }
 
     /** Where [battleSwitchTo] finds the party menu; null = not supported for this game. */
     var battleSwitchAddrs: BattleInputController.SwitchAddrs?
@@ -305,7 +308,10 @@ class EmulatorEngine(
 
     /** Feed the latest (battleActiveBattler, battleInputState) from the fast
      * poll above. */
-    fun setBattleMenuState(activeBattler: Int, state: Int, cursor: Int = -1) = battleInput.onState(activeBattler, state, cursor)
+    fun setBattleMenuState(activeBattler: Int, state: Int, cursor: Int = -1) {
+        ndsTaps.onState(state)
+        battleInput.onState(activeBattler, state, cursor)
+    }
 
     /** A Gen 1 game's battle menus (steered from their read cursor - see [BattleInputController.gen1]). */
     var battleGen1Menus: Boolean
@@ -402,6 +408,51 @@ class EmulatorEngine(
      * back (a conversation's lines don't make the HUD blink), goes at once. Set on the emu thread.
      */
     val onField = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+    /**
+     * DS LAYOUT: a DS game wants its touch screen ([MgbaCore.FIELD_TOUCH], or [MgbaCore.FIELD_TOUCH_BATTLE_MENU] while
+     * [dsBattleMenuFloats]); a screen the game fades in ([MgbaCore.FIELD_TOUCH_FADES]) once it has. On after
+     * [TOUCH_ON_FRAMES], off after [TOUCH_OFF_FRAMES]; while both screens are black ([dsDark]: the fade from the X menu
+     * into a menu screen and back) it holds, and the first frame after decides at once. Set on the emu thread.
+     */
+    val dsTouchWanted = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+    /** A DS game's menu screen is up (the party, the bag, the Pokédex, the Pokégear...: [MgbaCore.FIELD_MENU], not a battle):
+     * DS LAYOUT shows both screens side by side then, both full of what the screen has to say. Same timing as [dsTouchWanted]. */
+    val dsMenuScreen = kotlinx.coroutines.flow.MutableStateFlow(false)
+    private var menuFrames = 0
+
+    /** A DS game's menu screen of any kind is up ([dsMenuScreen]'s, or one whose page is all on the touch screen, which
+     * floats in alone): the overworld it was opened from goes behind it. Same timing. */
+    val dsMenuApp = kotlinx.coroutines.flow.MutableStateFlow(false)
+    private var appFrames = 0
+
+    /** A DS game's scene is one EXPAND widens (the overworld - its menus and boxes over it - or a battle): elsewhere (the
+     * title, a menu screen) DS LAYOUT keeps the game at its 4:3 with the backdrop beside it, never black bars. Same timing. */
+    val dsWideScene = kotlinx.coroutines.flow.MutableStateFlow(true)
+    private var wideFrames = 0
+
+    /** Both of a DS game's screens are black (between two scenes; or a side-by-side menu screen's top one): DS LAYOUT
+     * covers a menu's way in and out with the overworld's picture and its loader. (The DS flows above hold while both
+     * are.) Set on the emu thread. */
+    val dsDark = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+    /** A DS game's touch screen is one colour (a fade, an evolution): the floating window hides meanwhile. Emu thread. */
+    val dsTouchBlank = kotlinx.coroutines.flow.MutableStateFlow(false)
+    private var darkBefore = false
+    private var fadeSeen = false
+    private var fadeFrames = 0
+    private var litFrames = 0
+
+    /** DS CPU BOOST ([Prefs.dsCpuBoost]): the emulated ARM9 at twice the DS's clock, set between frames. */
+    @Volatile var ndsCpuBoost = true
+
+    /** DS LAYOUT floats the X menu (one screen): it comes back after a menu screen left by touch ([MgbaCore.pkNdsKeepStartMenu]). */
+    @Volatile var dsKeepStartMenu = false
+
+    /** The battle's command / move panel floats in too: BATTLE BUTTONS can't stand in for it (off, a double battle). */
+    @Volatile var dsBattleMenuFloats = false
+    private var touchFrames = 0
     private var fieldFrames = 0
 
     /**
@@ -711,6 +762,11 @@ class EmulatorEngine(
     @Volatile var audioUnderruns = 0
         private set
 
+    /** The GL thread's refreshes with no new frame and frames never drawn so far (EmulatorView), for the fps log line. */
+    @Volatile var drawStatsSource: (() -> Pair<Long, Long>)? = null
+    private var fpsRepeats = 0L
+    private var fpsUnshown = 0L
+
     /** The GL thread's late draws so far (EmulatorView.lateFrames), for the fps log line; null = unknown. */
     @Volatile var lateFramesSource: (() -> Long)? = null
 
@@ -921,6 +977,7 @@ class EmulatorEngine(
             while (running) {
                 val frameStart = System.nanoTime()
                 battleInput.tick()
+                if (nds) ndsTaps.tick()
                 val rewindWanted = rewindEntries
                 if (rewindWanted != rewindApplied) {
                     MgbaCore.pkSetRewind(rewindWanted)
@@ -1051,6 +1108,55 @@ class EmulatorEngine(
                 menuOpen = gba && FfMenuWatch.tick(InProcessReader) && !ShopWatch.isOpen(InProcessReader) ||
                     nds && fieldState and MgbaCore.FIELD_MENU != 0   // a DS menu screen: the field's child process
                 battleWaiting = nds && fieldState and MgbaCore.FIELD_BATTLE_INPUT != 0
+                if (nds) {
+                    // Both screens black (between two scenes): every choice below holds - what comes after the black
+                    // decides, at once, on its first frame (no gap to bridge then, so no off delay either).
+                    val dark = fieldState and MgbaCore.FIELD_DARK_TOP != 0 && fieldState and MgbaCore.FIELD_DARK_BOTTOM != 0
+                    val bottomDark = fieldState and MgbaCore.FIELD_DARK_BOTTOM != 0
+                    // (Covered too: a side-by-side menu screen's top half already black, its touch half still up.)
+                    val covered = dark || dsMenuScreen.value && fieldState and MgbaCore.FIELD_DARK_TOP != 0
+                    if (dsDark.value != covered) dsDark.value = covered
+                    if (dsTouchBlank.value != bottomDark) dsTouchBlank.value = bottomDark
+                    val afterDark = darkBefore && !dark
+                    darkBefore = dark
+                    if (!dark) {
+                        var want = fieldState and MgbaCore.FIELD_TOUCH != 0 ||
+                            dsBattleMenuFloats && fieldState and MgbaCore.FIELD_TOUCH_BATTLE_MENU != 0
+                        // A screen the game fades in (a battle's bag / party): not over the old one fading out - once
+                        // the touch screen has been black and then lit for a while (or the game took too long about it).
+                        // It ends at its first black: leaving it, the battle redraws its own touch screen (a Poké Ball for
+                        // a few frames) while still at the bag's step.
+                        val fades = fieldState and MgbaCore.FIELD_TOUCH_FADES != 0
+                        if (fades && dsTouchWanted.value && bottomDark) {
+                            dsTouchWanted.value = false
+                            touchFrames = 0
+                            fadeSeen = true; fadeFrames = 0; litFrames = 0
+                        }
+                        if (want && !dsTouchWanted.value && fades) {
+                            if (bottomDark) { fadeSeen = true; litFrames = 0 } else litFrames++
+                            fadeFrames++
+                            if (!(fadeSeen && litFrames >= FADE_LIT_FRAMES) && fadeFrames < FADE_WAIT_FRAMES) want = false
+                        } else if (!want) { fadeSeen = false; fadeFrames = 0; litFrames = 0 }
+                        val menu = fieldState and MgbaCore.FIELD_MENU != 0 && fieldState and (MgbaCore.FIELD_BATTLE or MgbaCore.FIELD_TOUCH_ONLY) == 0
+                        val app = fieldState and MgbaCore.FIELD_MENU != 0 && fieldState and MgbaCore.FIELD_BATTLE == 0
+                        val wide = fieldState and (MgbaCore.FIELD_SCREEN or MgbaCore.FIELD_BATTLE) != 0
+                        fun settle(flow: kotlinx.coroutines.flow.MutableStateFlow<Boolean>, v: Boolean, frames: Int): Int {
+                            if (v == flow.value) return 0
+                            val n = frames + 1
+                            if (afterDark || n >= (if (v) TOUCH_ON_FRAMES else TOUCH_OFF_FRAMES)) { flow.value = v; return 0 }
+                            return n
+                        }
+                        touchFrames = settle(dsTouchWanted, want, touchFrames)
+                        if (dsTouchWanted.value) { fadeSeen = false; fadeFrames = 0; litFrames = 0 }
+                        menuFrames = settle(dsMenuScreen, menu, menuFrames)
+                        appFrames = settle(dsMenuApp, app, appFrames)
+                        wideFrames = settle(dsWideScene, wide, wideFrames)
+                    }
+                } else {
+                    if (dsTouchWanted.value) dsTouchWanted.value = false
+                    if (dsMenuScreen.value) dsMenuScreen.value = false
+                    if (dsMenuApp.value) dsMenuApp.value = false
+                }
                 if (wideApplied == WideScreen.OFF || (wideCamera == null && !probeOnly)) wideScene = -1
                 // A fade between two maps keeps whatever the HUD was doing.
                 if (wideScene != WideCamera.SCENE_FADE) {
@@ -1084,6 +1190,10 @@ class EmulatorEngine(
                 } ?: run { gbWildHeld = null }
                 // A DS game holds its own switch in its field read (pk_nds_field.cpp: the map's rates at 0).
                 val wildKeep = if (wildFlag != 0L || nds) wildEncounters else 100
+                if (nds) {
+                    MgbaCore.pkNdsKeepStartMenu(dsKeepStartMenu)
+                    MgbaCore.pkNdsCpuBoost(ndsCpuBoost)
+                }
                 fieldState = when {
                     nds -> MgbaCore.pkFieldState(false, wildKeep)
                     gba && fieldGame != WideScreen.OFF -> MgbaCore.pkFieldState(runIndoors, wildKeep)
@@ -1377,6 +1487,11 @@ class EmulatorEngine(
                         fpsAudioMade, fpsAudioTaken,
                         (track?.playbackHeadPosition?.toLong()?.and(0xFFFFFFFFL) ?: 0L).let { p -> if (fpsPlayedAt < 0) -1 else p - fpsPlayedAt },
                         if (vsyncFallback) " fallback" else "") +
+                        (drawStatsSource?.invoke()?.let { (r, u) ->
+                            val line = " repeats=%d unshown=%d".format(r - fpsRepeats, u - fpsUnshown)
+                            fpsRepeats = r; fpsUnshown = u
+                            line
+                        } ?: "") +
                         if (nds) " dsMusic=%s/%d written=%d peak=%d gamePeak=%d track=%d".format(dsMusicOn, dsMusicBgm, dsMusicFrames, dsMusicPeak, gamePeak, track?.playState ?: -1) else "")
                     dsMusicPeak = 0
                     gamePeak = 0
@@ -1761,6 +1876,16 @@ class EmulatorEngine(
         /** Frames a field-item job waits for a clean frame end (MgbaCore.pkCallSafe) - after that its calls just fail
          * (pk_call refuses them), so the job reports its own failure rather than calling into the game mid-code. */
         const val CALL_WAIT_FRAMES = 120
+
+        /** [dsTouchWanted]: frames the game wants its touch screen before it floats in, and frames without before it goes. */
+        const val TOUCH_ON_FRAMES = 2
+        const val TOUCH_OFF_FRAMES = 6
+
+        /** [MgbaCore.FIELD_TOUCH_FADES]: frames to wait for the new touch screen's fade before floating it in anyway. */
+        const val FADE_WAIT_FRAMES = 90
+
+        /** ...and frames it must stay lit first: the battle's own redraw between the bag and its commands lasts 5. */
+        const val FADE_LIT_FRAMES = 12
 
         /** FIELD HUD: frames of plain field before [onField] comes on (~1/3 s at 1x). */
         const val FIELD_SETTLE_FRAMES = 20

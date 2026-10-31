@@ -80,6 +80,14 @@ interface CompanionSettings {
     val dsGpuAvailable: Boolean get() = true
     fun setDsResolution(scale: Int) {}
 
+    /** DS CPU BOOST ([com.pokedaisy.app.Prefs.dsCpuBoost]): null when the game isn't a DS one (no row). */
+    val dsCpuBoost: Boolean? get() = null
+    fun setDsCpuBoost(on: Boolean) {}
+
+    /** DS LAYOUT ([com.pokedaisy.app.Prefs.dsLayout]): null when there's no row (not a DS game, or one on two screens). */
+    val dsLayout: DsLayout? get() = null
+    fun setDsLayout(layout: DsLayout) {}
+
     /** NUZLOCKE ([Nuzlocke]): [nuzlockeSupported] = a GBA game whose party and battles are read; the switch is per game. */
     val nuzlockeSupported: Boolean get() = false
     val nuzlocke: Boolean get() = false

@@ -781,7 +781,11 @@ class TelemetrySampler {
         private set
 
     fun sampleBattleInputFast(reader: MemoryReader): Pair<Int, Int>? {
-        if (kind.isDsGame) return null   // no battle reads on DS yet
+        // A DS game: HeartGold / SoulSilver's battle panels (their states for BATTLE BUTTONS); the others aren't read yet.
+        if (kind.isDsGame) return gen4Cfg?.battle?.takeIf { it.offBattleInput != 0 }?.let { b ->
+            if (kind != GameKind.HEARTGOLD && kind != GameKind.SOULSILVER) null
+            else runCatching { 0 to readGen4BattleInput(reader, b) }.getOrNull()
+        }
         if (kind.isGen1) {
             val (state, cursor) = runCatching { readGen1BattleInput(reader, gen1Cfg ?: GEN1_YELLOW) }.getOrNull() ?: return null
             battleMenuCursor = cursor

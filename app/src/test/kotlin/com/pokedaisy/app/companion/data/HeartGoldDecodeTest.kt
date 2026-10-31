@@ -31,6 +31,8 @@ class HeartGoldDecodeTest {
         )
         assertEquals(listOf("Discharge", "Signal Beam", "Power Gem", "Flash"), t.party[1].moves.map { lookupMove(it).name })
         assertEquals(0x83DE92E4L, t.party[1].personality)
+        // The nicknames, as the game's party screen and battle print them.
+        assertEquals(listOf("HDChipCard", "FlashDrive", "USBCharger", "Micro Chip", "MemoryCard", "Micro Card"), t.party.map { it.nickname })
     }
 
     @Test

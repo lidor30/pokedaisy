@@ -70,6 +70,14 @@ A few things worth knowing:
 - **Some shaders step aside.** `SMOOTHING` and `UNLIT SCREEN` work on the DS's own pixels, so they're off at `2x` and up. `FILTER` and `GBA COLORS` still apply.
 - On the companion, the row only shows while a DS game is running, and a change shows on the game straight away.
 
+## DS CPU boost: fewer slowdowns
+
+The DS games sometimes can't finish a frame in time and hold the last picture a little longer: walking in HeartGold and SoulSilver stutters every few steps, more so with a Pokémon following you. That happens on a real DS too. `DS CPU BOOST` (on by default) runs the DS's processor twice as fast, so the game finishes its frames and walking stays smooth. The game itself doesn't speed up: it still waits for each frame as it always does.
+
+The overworld in these games runs at 30 frames a second on a DS as well, so that's as smooth as walking gets; the boost removes the hiccups on top of it.
+
+It costs your device more work. If a DS game runs slower with it on, or your device runs warm, turn it off. On the companion, the row only shows while a DS game is running.
+
 ## Status bar
 
 `STATUS BAR` adds a thin strip with the game's name, where you are, your money, the time and the battery. It's handy when the game is full screen and you can't see the device's own clock.

@@ -141,6 +141,8 @@ class SettingsActivity : ComponentActivity() {
     private var hotkeyClash by mutableStateOf<HotkeyClash?>(null)
     private var revision by mutableIntStateOf(0)
     private var aspectPicker by mutableStateOf(false)
+    /** SCREEN > DS LAYOUT's pick-list with its miniatures (DsLayoutPicker) is open. */
+    private var dsLayoutPicker by mutableStateOf(false)
 
     /** TOUCH CONTROLS' EDIT LAYOUT, over a stand-in of the game's screen; BACK goes to it ([touchBack]) while open. */
     private var touchEditing by mutableStateOf(false)
@@ -264,6 +266,7 @@ class SettingsActivity : ComponentActivity() {
     private fun Root() {
         BackHandler(enabled = screen != Screen.HOME) { capture.cancel(); goBack() }
         BackHandler(enabled = aspectPicker) { aspectPicker = false }
+        BackHandler(enabled = dsLayoutPicker) { dsLayoutPicker = false }
         BackHandler(enabled = touchEditing) { touchBack.back() }
         BackHandler(enabled = hotkeyClash != null) { hotkeyClash = null }
         val m = rememberGbaTextMetrics()
@@ -375,6 +378,14 @@ class SettingsActivity : ComponentActivity() {
                     prefs.gameAspect, gameScreenAspect(), prefs.statusBar && !prefs.statusBarOnCompanion, shot, m,
                     onPick = { prefs.gameAspect = it; aspectPicker = false; revision++ },
                     onDismiss = { aspectPicker = false },
+                )
+            }
+
+            if (dsLayoutPicker) {
+                com.pokedaisy.app.companion.ui.DsLayoutPicker(
+                    prefs.dsLayout, m,
+                    onPick = { prefs.dsLayout = it; dsLayoutPicker = false; revision++ },
+                    onDismiss = { dsLayoutPicker = false },
                 )
             }
 
@@ -654,6 +665,19 @@ class SettingsActivity : ComponentActivity() {
                     }
                 }
             }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
+            // DS games: the emulated CPU at twice the DS's clock, so a game's own slow frames go.
+            SettingRow(
+                tk("DS CPU BOOST"), onOff(prefs.dsCpuBoost), subtitle = "Fewer slowdowns in DS games",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_CPU_BOOST),
+            ) {
+                prefs.dsCpuBoost = !prefs.dsCpuBoost
+                revision++
+            }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
+            // A DS game on one screen held sideways: where its two screens go (DsLayout), picked from miniatures.
+            SettingRow(
+                tk("DS LAYOUT"), prefs.dsLayout.label, subtitle = "Where a DS game's two screens go",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_LAYOUT),
+            ) { dsLayoutPicker = true }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT && !usesSecondScreen },
             // The party, a minimap, the balls and BAG / WILD over the game on the field: its own page (layout, look, size, parts).
             SettingRow(tk("HUD"), onOff(prefs.fieldHud), labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.HUD), opensPage = true, subtitle = "Party, minimap and bag over the game") { screen = Screen.FIELD_HUD },
             // One screen: FIGHT, POKéMON and RUN in the room beside a battle (BattleButtons).

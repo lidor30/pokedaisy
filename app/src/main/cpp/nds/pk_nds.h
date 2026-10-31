@@ -65,6 +65,10 @@ int pk_nds_action_status(int seq);
 bool pk_nds_action_results(int seq, uint32_t* out);
 // WILD ENCOUNTERS OFF: no random encounters (the field read holds the map's grass / surf rates at 0). Emu thread.
 void pk_nds_set_wild_off(bool off);
+/** DS LAYOUT floats the X menu: it comes back after a menu screen left by touch (the game closes it then). */
+void pk_nds_set_keep_start_menu(bool on);
+/** DS CPU BOOST: the ARM9 at twice the DS's clock (fewer of a game's own slow frames). Emu thread, between frames. */
+void pk_nds_set_cpu_boost(bool on);
 // The cart's grass / surf rates by map header id, [map, grass, surf] x n (pk_nds_field_set_rates). Emu thread.
 void pk_nds_set_wild_rates(const int32_t* triples, int n);
 

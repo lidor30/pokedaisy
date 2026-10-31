@@ -2155,6 +2155,63 @@ follow (engine A's registers, palettes, OAM) is a snapshot taken as line 192 sta
 the frame, it was already the game's VBlank handler's next frame - a battle's fade-in a step brighter than the screen,
 scroll and sprites a step on. `nds_dump`'s `look DX DY` moves the window a frame at a time, as the look-around does.
 
+**DS LAYOUT (one screen).** With no second screen, held sideways, `GameStageLayout.dsArrange` places the two screens by
+`DsLayouts.arrange` (the game in the top box, `NdsTouchScreenView` in the touch box, edge to edge; behind both the game's own
+picture, `DsShots`: a PixelCopy of the game view about once a second, the overworld kept apart while a menu screen is up and
+drawn sharp under its dim, else the newest drawn blurred; the HUD over the whole area, its rects moved by `dsGameOffset`). ONE SCREEN and PICTURE IN PICTURE float the touch
+screen in (`DsTouchWindow`) while `EmulatorEngine.dsTouchWanted` says the game wants it: the field read's
+`PK_NDS_FIELD_TOUCH` (and `_TOUCH_BATTLE_MENU` where BATTLE BUTTONS can't stand in), from `pk_nds_field.cpp`'s touch rules
+(HeartGold / SoulSilver so far, found headless on the player's save with nds_dump's `fieldinfo`, `dump` and frame-by-frame
+`peek`s): the X menu is the field task `Task_StartMenu` (0x0203BEF1, pokeheartgold's .xMAP; its buttons are on the touch
+screen, the top one only says "look below"); every menu screen it opens (party, bag, Pokégear, Pokédex, card, options) is a
+child process with its controls there (shown side by side, `EmulatorEngine.dsMenuScreen`, not floating) - but the party's
+first page (app init 0x02078E31), the options (0x021E5901) and the Pokédex's first page (0x021E5AA1, SoulSilver's 0x021E5A9D -
+the one address that differs between the two games; the rest were checked on the SoulSilver save too - while its state, the
+OverlayManager child's +0x14, is 0 / 2 / 5 / 6: opening and the first page; 0xB is the list) float alone over the overworld
+(`PK_NDS_FIELD_TOUCH_ONLY`, `touchOnlyPage`; the summary 0x02088299, the bag 0x021F9381, the card, the Pokégear stay side by
+side); a battle's touch
+panels hang off BattleSystem.battleInput (+0x19C), whose text objects (+0x4D0, non-NULL only while a panel is drawn) say one
+is up, and battler 0's selection step (BattleContext's first byte: battle_controller_player.c's SSI states, 1 / 2 commands,
+3 / 4 moves, 8 bag, 10 party) says which, while the controller waits (command 5): 1 - 4 are BATTLE BUTTONS' (curMenuId,
++0x68B, isn't used - HG redraws the commands under another id after a move's CANCEL), the bag and the party (screens of
+their own, battleInput freed meanwhile) and any panel outside the selection (YES / NO, "Use next Pokémon?") the touch
+screen's. Any game: a one-colour top screen over a touch screen that isn't (the title's CONTINUE) wants the touch screen too
+(`pk_nds.cpp`'s `oneColour`). `readGen4BattleInput` reads the same for BATTLE BUTTONS
+(`NdsBattleTaps`: the stylus on the game's own buttons) and `DsBattleMenu` (the battle stays wide; a strip over the text box's
+rows 144-191 in the band's #202020, HG's message window drawn at its far left - outline, gold line, slate frame, sampled
+headless - with the battler's nickname, the game's four buttons in its colours at its right, a 2 x 2 with FireRed's no-wrap
+D-pad and pulsing red corners, moves a card each on one line; the D-pad is the menu's, `PokeDaisyActivity.dsBattleTakes`, with
+the game view focused so no press goes to leaving touch mode). Steps 0 - 6 and 15 of the selection (the command init the move
+panel's CANCEL passes through, two frames with the panel drawn) are the battle buttons' own, never the floating touch screen.
+**Fades** (nds_dump's `trace` prints each screen's one-colour state): leaving a menu screen, HG fades both screens and keeps
+them black for up to ~80 frames before the X menu or the field fades in; a battle's end ~95. While both are black
+(`PK_NDS_FIELD_DARK_TOP` / `_BOTTOM`) every DS flow holds, and the first lit frame decides at once (so `TOUCH_OFF_FRAMES` is 6,
+not the 12 that used to bridge the gap - and closed the window on the way back to the X menu); the window hides while the touch
+screen is blank, and the black between a menu and the field is covered by the overworld's last picture (`DsShots.field`). The
+battle's bag and party fade the touch screen out and in: `PK_NDS_FIELD_TOUCH_FADES` makes them float in only once it has been
+black and then lit for 12 frames, and their window ends at the first black after (leaving the bag, the battle draws a Poké Ball
+for 5 frames while still at the bag's step; no black inside the bag's pockets or the party's summary, headless).
+The cover shows `DsLoader` (the PokeDaisy flower hopping in whole pixels, three dots in turn) once a wait has lasted 160 ms;
+a side-by-side menu screen whose top half is already black (the card blanks it 16 frames before its touch half) counts as
+covered too. **The X menu after a screen left by touch**: HG's `Task_StartMenu_WaitApp` closes the menu when the screen it
+opened ends with `FieldSystem.menuInputState` (+0x10C) at TOUCH - so a screen's own Cancel / Quit button returns to the
+field, B to the menu (headless: the card's Cancel, the menu back for 11 frames, then gone). With the X menu floating (one
+screen), the screen's closing fade - black after it was lit, `menuLitFrames` - sets it to buttons
+(`pk_nds_field_keep_start_menu`), so the menu comes back with its cursor; the screen itself still opens as it was opened. LARGE + SMALL and PICTURE IN PICTURE give
+the HUD's CORNERS `DsCornerLayout` (FieldHud's `dsCorner`: the buttons bottom left, the party in two columns under the
+minimap, three to a row where `GameStageLayout.dsTouchOverGame` says PIP's inset would meet it). Outside the field and battles
+(`EmulatorEngine.dsWideScene` off) EXPAND has nothing to widen, so the stage keeps the game's 4:3 with the backdrop beside it. A game without rules (Platinum, Black and the rest) gets ONE
+SCREEN as PICTURE IN PICTURE (`DsLayout.forGame`). Its BattleContext / BattleSystem are Platinum's layout (battleMons at
+0x2D40, 0xC0 each). A blank touch screen (`NdsBottomFrame.blank`: an evolution, a fade) never floats in.
+
+**DS CPU BOOST.** `ARM9ClockShift` 2 (the ARM9 at twice the DS's, as melonDS's DSi mode runs it), switched between frames the
+way `DSi::Set_SCFG_Clock9` does (timestamps rescaled, `UpdateRegionTimings`, the JIT's block cache dropped: `pk_nds.cpp`'s
+`setArm9Shift`). States and STEADY's copy are always taken and read at 1 (melonDS stores the timestamps as they are). Found by
+hashing every frame headless while walking in HeartGold (nds_dump's `arm9shift`, `shots`): at 1 the 30 fps overworld holds a
+frame for 3-4 refreshes every few steps (the RP6 the same, while the fps line's `repeats` / `unshown` - refreshes with no new
+frame, frames never drawn - stayed 0: the app showed every frame); at 2 and 4 alike, a steady 30. The game spends the
+cycles (the RP6's work 3.8 -> 7.3 ms a frame), so it's a setting.
+
 **DS RESOLUTION (the GPU path).** `ORIGINAL` is the software renderer above, pixel for pixel; `2x`-`8x` switch melonDS to its
 OpenGL renderer (`nds/pk_nds_gl.cpp`, between frames, back and forth while playing). The patch ports it to OpenGL ES
 (`MELONDS_GLES`): the GLSL 1.40 shaders rewritten to GLSL ES 3.00 when compiled (`OpenGLSupport.cpp`'s `ToGLES`: version

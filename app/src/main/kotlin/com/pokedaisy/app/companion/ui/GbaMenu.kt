@@ -411,6 +411,8 @@ fun OptionLine(
     chevron: Boolean = false,
     /** Room under the text, inside [height]: the label sits that much above the row's middle. */
     bottomPadding: Dp = 0.dp,
+    /** A picture before the label, as tall as the row (DS LAYOUT's miniatures): the label and subtitle beside it. */
+    leading: (@Composable () -> Unit)? = null,
     onClick: () -> Unit,
 ) {
     val interaction = remember { MutableInteractionSource() }
@@ -436,7 +438,7 @@ fun OptionLine(
             .then(if (enabled) Modifier.soundClickable(interactionSource = interaction, indication = null, onClick = { stack?.lastClicked = self; onClick() }) else Modifier)
             .padding(start = m.u * 8, end = m.u * 8, bottom = bottomPadding),
     ) {
-        Column(Modifier.fillMaxWidth()) {
+        val text = @Composable { Column(Modifier.fillMaxWidth()) {
             // The label and value columns stay where they are with or without a chevron, so values line up down a list.
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Row(Modifier.weight(labelWeight), verticalAlignment = Alignment.CenterVertically) {
@@ -466,6 +468,12 @@ fun OptionLine(
                 val small = subtitleMetrics(m)
                 GbaText(tr(it), OptionColors.muted, OptionColors.mutedShadow, small, modifier = Modifier.padding(end = chevronRoom))
             }
+        } }
+        if (leading == null) text()
+        else Row(verticalAlignment = Alignment.CenterVertically) {
+            leading()
+            Spacer(Modifier.width(m.u * 6))
+            text()
         }
         if (chevron) {
             ShadowedPixelIcon(

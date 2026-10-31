@@ -440,9 +440,20 @@ class Prefs(context: Context) {
 
     /** SCREEN > DS RESOLUTION: a DS game's 3D at this many times the DS's own (2-8: the GPU renderer,
      * nds/pk_nds_gl.h) or the DS's own on the CPU (1, the default: melonDS's software renderer, pixel for pixel). */
+    /** DS CPU BOOST: the emulated ARM9 at twice the DS's clock (MgbaCore.pkNdsCpuBoost), on unless turned off. */
+    var dsCpuBoost: Boolean
+        get() = p.getBoolean("ds_cpu_boost", true)
+        set(v) = p.edit().putBoolean("ds_cpu_boost", v).apply()
+
     var dsResolution: Int
         get() = p.getInt("ds_resolution", 1).coerceIn(1, DS_RESOLUTION_MAX)
         set(v) = p.edit().putInt("ds_resolution", v.coerceIn(1, DS_RESOLUTION_MAX)).apply()
+
+    /** SCREEN > DS LAYOUT: where a DS game's two screens go on one screen held sideways
+     * ([com.pokedaisy.app.companion.DsLayout] id; ONE SCREEN, the default: the game alone, its touch screen floating in). */
+    var dsLayout: com.pokedaisy.app.companion.DsLayout
+        get() = com.pokedaisy.app.companion.DsLayout.of(p.getInt("ds_layout", 0))
+        set(v) = p.edit().putInt("ds_layout", v.id).apply()
 
     /** EXPAND > AUTO ZOOM IN: whether a conversation, a sign, a menu or a picture over the field pulls the zoomed-out
      * view in to 1x (battles always do). On by default. */
