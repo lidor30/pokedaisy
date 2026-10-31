@@ -1269,12 +1269,15 @@ int main(int argc, char** argv) {
 #endif
 #ifdef HAVE_PK_WIDE
         } else if (!strcmp(cmd, "wideon")) {
-            sscanf(line, "%*s %d", &n);
+            unsigned crcArg = 0;
+            sscanf(line, "%*s %d %x", &n, &crcArg);
             // The game by its ROM's CRC32, as the app picks it (pk_wide_games.h): the file's bytes. Not the ROM in
             // memory - mGBA keeps a cart's GPIO registers (the RTC of Emerald, Unbound...) inside its ROM buffer at
             // 0xC4, so once the game has read its clock the buffer (and the bus) no longer hash as the file does.
-            uint32_t crc = 0;
-            FILE* rf = fopen(romPath, "rb");
+            // A CRC after the margin is used instead: the retail one the app hands over for a randomized retail cart
+            // (WideScreen.tablesCrc).
+            uint32_t crc = crcArg;
+            FILE* rf = crc ? NULL : fopen(romPath, "rb");
             if (rf) {
                 fseek(rf, 0, SEEK_END);
                 long fsz = ftell(rf);
