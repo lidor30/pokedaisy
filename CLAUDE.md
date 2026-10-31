@@ -807,8 +807,10 @@ coming back means the game said no (Crystal's "can't be recalled") and the switc
 the pick (white, then the battle: ~8 frames Yellow, ~14 Crystal). Checked by driving the real controller and readers
 against mgba_dump's running game frame by frame (a local harness over its stdin; not committed): every case in
 docs/ROM_FEATURES.md's note 5; fixtures `yellow_battle_party` / `_switch_menu` / `_faint`, `crystal_battle_party` /
-`_switch_menu` / `_faint` (`GbPartySwitchTest`), the simulated menus in `BattleInputControllerGbTest`. RUN presses B to close "Got away safely!" (every 30 frames until the battle ends or the
-action menu returns). All synthetic presses go through`GbaInput.setScript(bits, exclusive)`: the player's own
+`_switch_menu` / `_faint` (`GbPartySwitchTest`), the simulated menus in `BattleInputControllerGbTest`. RUN presses A to close "Got away safely!" (every 30 frames until the battle ends or the
+action menu returns), each only on a battle state read that same frame (`BattleInputController.stateNow`): A says YES to
+Unbound's (CFRU's) "Are you sure you want to run away?" (a shiny foe, or flag 0x16C6) - B said NO, and RUN did nothing - but
+an A that met the action menu back between two polls would run again. With no fresh read it's B, as before. All synthetic presses go through`GbaInput.setScript(bits, exclusive)`: the player's own
 keys are ignored while a sequence runs (they used to share `touchBits`, which also wiped the touch pad's presses) -
 only while presses play or a closed loop steers (`exclusiveLocked`), never during the passive target-confirm /
 pending-move watches: those once held the lock through the whole turn, so a level-up or "learn a move?" message

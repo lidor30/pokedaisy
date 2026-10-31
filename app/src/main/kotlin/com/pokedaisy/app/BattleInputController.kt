@@ -64,6 +64,15 @@ class BattleInputController(
     @Volatile
     var gen1 = false
 
+    /**
+     * A fresh read of the battle input state (the emu thread, between frames), or null. RUN's follow-up presses A
+     * only on a state read the same frame: A answers YES to the "Are you sure you want to run away?" Unbound asks
+     * (CFRU: a shiny foe, or its flag 0x16C6) - B said NO, and the tap did nothing - but an A that met the action
+     * menu coming back ("Can't escape!") between two ~4-frame polls would pick RUN again. Without it, B.
+     */
+    @Volatile
+    var stateNow: (() -> Int?)? = null
+
     /** The open Gen 1 menu's cursor (action cell column + 2 x row, or move index); -1 unknown. */
     @Volatile
     private var gen1Cursor = -1
@@ -163,9 +172,10 @@ class BattleInputController(
     private var gbLastA = 0
     private var gbAPresses = 0
 
-    // RUN's follow-up: B presses left to close "Got away safely!" (or "Can't
-    // escape!"), the frames until the next one, and whether the game has left
-    // action-select since RUN was picked.
+    // RUN's follow-up: presses left to close "Got away safely!" (or "Can't
+    // escape!", or answer a hack's "Are you sure you want to run away?"), the
+    // frames until the next one, and whether the game has left action-select
+    // since RUN was picked.
     private var runPresses = 0
     private var runGap = 0
     private var runLeftMenu = false
@@ -508,10 +518,24 @@ class BattleInputController(
             runLeftMenu && lastKnownState == BATTLE_INPUT_ACTION_SELECT -> runPresses = 0
             else -> {
                 if (lastKnownState != BATTLE_INPUT_ACTION_SELECT) runLeftMenu = true
-                if (--runGap <= 0) {
+                if (--runGap > 0) return
+                runGap = RUN_PRESS_GAP
+                val read = stateNow ?: run {
                     pressLocked(MgbaCore.Key.B)
                     runPresses--
-                    runGap = RUN_B_GAP
+                    return
+                }
+                when (runCatching { read() }.getOrNull()) {
+                    // A message or a YES / NO: A closes the one and says YES to the other.
+                    BATTLE_INPUT_BUSY -> {
+                        runLeftMenu = true
+                        pressLocked(MgbaCore.Key.A)
+                        runPresses--
+                    }
+                    // Still leaving the menu, or back on it: nothing to press this time.
+                    BATTLE_INPUT_ACTION_SELECT -> runPresses--
+                    // The battle's over, a party menu after a faint, an unreadable state: done.
+                    else -> runPresses = 0
                 }
             }
         }
@@ -597,9 +621,9 @@ class BattleInputController(
             pendingMoveIndex = null
             if (gen1) queueGen1ActionLocked(actionIndex) else pickCellLocked(actionIndex, move = false)
             if (actionIndex == ACTION_RUN) {
-                // "Got away safely!" waits for a button: close it with B (a press
-                // while it's still printing just finishes the text).
-                runPresses = RUN_B_PRESSES
+                // "Got away safely!" waits for a button: close it (a press while
+                // it's still printing just finishes the text).
+                runPresses = RUN_PRESSES
                 runGap = RUN_FIRST_GAP
                 runLeftMenu = false
             }
@@ -876,9 +900,9 @@ class BattleInputController(
         const val GB_PICK_SETTLE_FRAMES = 4    // after a battle menu's cursor step: Polished Crystal drops presses for 3 (headless)
         const val MAX_GB_PICK_PRESSES = 12     // two steps at most; the rest re-press dropped ones
         const val GB_HOLD_TAIL_FRAMES = 20     // white, then the battle back: ~8 frames on Yellow, ~14 on Crystal (headless)
-        const val RUN_B_PRESSES = 6
+        const val RUN_PRESSES = 6
         const val RUN_FIRST_GAP = 45           // the escape message starts printing
-        const val RUN_B_GAP = 30
+        const val RUN_PRESS_GAP = 30
         const val HOLD_TAIL_FRAMES = 12        // the ~4-frame state poll, and a little more
         const val WATCH_TIMEOUT_FRAMES = 300   // a target screen / FIGHT that hasn't shown by then won't
         const val EXCLUSIVE_TIMEOUT_FRAMES = 1200 // a switch's worst case (every step timing out) is ~800

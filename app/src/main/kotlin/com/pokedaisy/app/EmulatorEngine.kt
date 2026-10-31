@@ -287,6 +287,11 @@ class EmulatorEngine(
         get() = battleInput.cursorAddrs
         set(v) { battleInput.cursorAddrs = v }
 
+    /** A fresh read of the battle input state, for RUN's follow-up (see [BattleInputController.stateNow]). */
+    var battleStateNow: (() -> Int?)?
+        get() = battleInput.stateNow
+        set(v) { battleInput.stateNow = v }
+
     /** Switch to the party mon with this personality. Call from the UI thread. */
     fun battleSwitchTo(personality: Long) = battleInput.switchTo(personality)
 

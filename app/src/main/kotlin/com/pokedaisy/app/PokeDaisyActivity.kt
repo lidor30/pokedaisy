@@ -1980,6 +1980,7 @@ class PokeDaisyActivity : Activity() {
                 com.pokedaisy.app.companion.data.SnapshotCache.write(state, telemetry.forState())
             }
             onResumeResult = { loaded -> if (!loaded) { telemetry.dropCached(); runOnUiThread { waitForPlay() } } }
+            battleStateNow = { telemetry.refreshBattleInputFast()?.second }   // the emu thread, before a RUN follow-up press
             onBattleInputSample = {   // runs on the emu thread, ~15x/sec
                 telemetry.refreshBattleInputFast()?.let { (battler, state) ->
                     setBattleMenuState(battler, state, telemetry.battleMenuCursor())

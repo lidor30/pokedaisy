@@ -1585,6 +1585,12 @@ only keeps a 256x256 ring of tiles in VRAM (`field_camera.c`), so the rest would
   back exactly as the card goes (it once stayed dark until the card's tiles were gone, then brightened in a step).
   The camera holds its zoom for the card (OVERLAY decides nothing, like FADE): a pull-in and a zoom back out around a
   two-second card was motion for nothing.
+- **Bars over the field go on** (`markBarRows`): a row where BG0 is opaque all the way across and the frame shows it at
+  both edges (Unbound's START menu: its quest bar over the field and its icon bar under it; FireRed's quest-log recap
+  bars) is a hole in the margins, so the row's own edge pixel goes on like a battle's text box band - the map used to
+  go on beside the bars. Both conditions count: Unbound's POKéDEX label and clock windows touch the screen's edges with
+  the field between them (a white strip once), and BG0 sits opaque under the map beside them. Not under FireRed's map
+  preview, which keeps its dimmed map around it.
 - **A warp holds the zoom** (`fadedFrame`): between two maps (a door, a connection building) the screen is black for a
   few frames with no map to check, which used to read as OFF - the camera pulled in to 1x and zoomed back out on the
   other side. A frame that's all black (or all white) outside a battle is FADE, whatever the map check or the menu

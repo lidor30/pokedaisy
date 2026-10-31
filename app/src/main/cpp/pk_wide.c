@@ -2459,6 +2459,43 @@ static bool textUp(void) {
     return n >= 8;
 }
 
+/** BG0 is what the frame shows at screen pixel (x, y): it's opaque there and the frame has its colour (BG0 can sit
+ * opaque under the map: Unbound's START menu leaves tiles beside its middle windows). Line y's registers. */
+static bool barEdge(int x, int y) {
+    int pal, ci = (windowLayers(x, y) & 1) ? bgPixel(0, x, y, &pal) : 0;
+    if (!ci) return false;
+    uint16_t c = P[pal + ci];
+    uint32_t v = (uint32_t) (c & 0x1F) << 3 | (uint32_t) ((c >> 5) & 0x1F) << 11 | (uint32_t) ((c >> 10) & 0x1F) << 19;
+    v |= (v >> 5) & 0x070707;   // mColorFrom555, untinted: DAY AND NIGHT leaves the text windows' palettes alone
+    uint32_t f = realFrame[y * PK_WIDE_W + x] & 0xFFFFFF;
+    return f == v || f == (color(c, 0) & 0xFFFFFF);
+}
+
+/** BG0 is opaque all the way across line y (a bar, not two windows that each touch an edge: Unbound's POKéDEX label
+ * and clock reach the screen's edges with the field between them). Sprites over it (the bar's icons) don't matter. */
+static bool bg0Across(int y) {
+    for (int x = 1; x < PK_WIDE_W - 1; x++) {
+        int pal;
+        if (!(windowLayers(x, y) & 1) || !bgPixel(0, x, y, &pal)) return false;
+    }
+    return true;
+}
+
+/** The rows a full-width bar on BG0 crosses: BG0 shows at both of the screen's edges (Unbound's START menu, its quest
+ * bar over the field and its icons under it). Past the edges they're holes - the row's own edge pixel goes on, as a
+ * battle's text box band does - instead of the map going on beside the bar. Line by line, as the PPU drew them. */
+static void markBarRows(int x0, int y0, int w, int h) {
+    for (int j = 0; j < h; j++) {
+        int y = y0 + j;
+        if (y < 0 || y >= PK_WIDE_H) continue;
+        useLine(y);
+        if (!(io(0) & 0x100) || !barEdge(0, y) || !barEdge(PK_WIDE_W - 1, y) || !bg0Across(y)) continue;
+        for (int x = 0; x < w; x++)
+            if (!onFrame(x0 + x, y)) holeBuf[j][x] = 1;
+    }
+    useLive();
+}
+
 /** A screen effect is up: lines drawn with their own scroll or windows (a transition's slices, wedges, bands). */
 static bool effectsUp(void) {
     const uint16_t* a = lineRegs(0);
@@ -2780,6 +2817,7 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
         if (valid) {
             const struct Snap* s = &snaps[bestSnap];
             drawRegion(s, bestCx, bestCy, bestH, bestV, v.x, v.y, v.x + v.w, v.y + v.h, true, &raw[0][0], BUF_W, alpha);
+            if (!overlay) markBarRows(v.x, v.y, v.w, v.h);   // FireRed's map preview keeps its dimmed map around it
         } else if (battle) {
             drawBattleRegion(v.x, v.y, v.x + v.w, v.y + v.h, true, &raw[0][0], BUF_W, alpha);
         } else {
