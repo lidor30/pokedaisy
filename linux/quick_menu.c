@@ -20,7 +20,7 @@
 #define ACCENT 0x00E83838u
 
 // QuickMenu.kt's icons: one character a pixel, '.' clear.
-static const char *const GRASS[] = {
+const char *const quick_icon_grass[] = {
     "................", "...K......K.....", "..KGK....KGK..K.", "..KGK...KGGK.KGK", ".KGLGK..KGLGKKGK",
     ".KGLGK.KGLLGKGLK", "KGLLGKKGLLGKGLLK", "KGLLGGKGLLGGGLLK", "KGLLLGGGLLLGGLLK", "KGLLLGGGLLLLGLLK",
     "KGGLLLGGLLLLGLGK", "KGGLLLLGLLLLLLGK", "KGGGLLLLLLLLLGGK", "KGGGGGLLLLLGGGGK", "KKKKKKKKKKKKKKKK",
@@ -39,7 +39,7 @@ static const char *const FF[] = {
     "11111.11111.", "1111..1111..", "111...111...", "11....11....", "1.....1.....", NULL,
 };
 // FieldHud.kt's PC_ICON.
-static const char *const PC[] = {
+const char *const quick_icon_pc[] = {
     "................", ".KKKKKKKKKKKKKK.", ".KLLLLLLLLLLLLK.", ".KLKKKKKKKKKKLK.", ".KLKSSSSSSHHKLK.",
     ".KLKSSSSSHHSKLK.", ".KLKSSSSHHSSKLK.", ".KLKSSSSSSSSKLK.", ".KLKKKKKKKKKKLK.", ".KLLLLLLLLLLGLK.",
     ".KDDDDDDDDDDDDK.", ".KKKKKKKKKKKKKK.", "......KDDK......", "....KKKKKKKK....", "...KLLLLLLLLK...",
@@ -55,7 +55,7 @@ static const char *const BIKE[] = {
     ".K...KK.K.K...K.", "K...K.KK.K.K...K", "K...K..KK..K...K", "K.....K..K.....K", ".K...K....K...K.",
     "..KKK......KKK..", NULL,
 };
-static const char *const COMPANION[] = {
+const char *const quick_icon_companion[] = {
     "......11", ".....11.", "....11..", "...11...", "..11....", ".11.....", "11......",
     ".11.....", "..11....", "...11...", "....11..", ".....11.", "......11", NULL,
 };
@@ -90,9 +90,9 @@ static uint32_t icon_color(enum quick_action a, char ch) {
 
 // An icon centred at (cx, cy), `scale` canvas pixels a pixel; dim: at half strength over the glass.
 static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int scale, bool dim) {
-  const char *const *rows = a == QUICK_PC ? PC : a == QUICK_WILD ? GRASS : a == QUICK_SAVE_STATE ? SAVE_STATE
+  const char *const *rows = a == QUICK_PC ? quick_icon_pc : a == QUICK_WILD ? quick_icon_grass : a == QUICK_SAVE_STATE ? SAVE_STATE
                           : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : a == QUICK_REPEL ? REPEL
-                          : a == QUICK_BIKE ? BIKE : COMPANION;
+                          : a == QUICK_BIKE ? BIKE : quick_icon_companion;
   int h = 0, w = (int)strlen(rows[0]);
   while (rows[h])
     h++;

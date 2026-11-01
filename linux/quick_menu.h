@@ -30,6 +30,8 @@ void quick_list_draw(struct pd_canvas *c, const char *title, const char *const *
 /* The tile a D-pad press (dx, dy: -1 / 0 / 1) moves to from sel: the nearest one that way round the ring. */
 int quick_step(int n, int sel, int dx, int dy, int w, int h);
 const char *quick_label(enum quick_action a);
+/* Pixel art shared with the HUD's buttons, a character a pixel ('.' clear), NULL-terminated. */
+extern const char *const quick_icon_pc[], *const quick_icon_grass[], *const quick_icon_companion[];
 /* After drawing: every pixel opaque but the clear ones and the glass's own alpha. */
 void quick_finish(struct pd_canvas *c);
 #endif

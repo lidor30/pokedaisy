@@ -42,6 +42,11 @@ Tab=companion, F=quick menu, Escape=game menu. In the companion use
 D-pad to focus, A to choose, B to go back and L/R to change tabs.
 Save/load/quit confirmations are cancel-first. Fast-forward has no audio.
 
+The HUD hotkey (plorpOS binds one from its in-game menu's Hotkeys, "hud" in the hotkeys file) puts a cursor on the
+HUD over the overworld: the D-pad moves it, A presses what it is on (a party slot opens its summary, the minimap and
+MAP the map, the balls, REPEL STEPS and BAG the bag, PC the game's PC, WILD the guide's HERE page, COMPANION the
+companion) and B or the hotkey again leaves. The game gets no keys meanwhile.
+
 Y (F on a keyboard) opens the QUICK MENU over the running game. In retail
 English FireRed, LeafGreen and Emerald: PC (the game's own PC, anywhere on the
 field), FLY (once a Pokemon in the party knows the move: a list of the towns

@@ -14,6 +14,9 @@ void pd_settings_defaults(struct pd_settings* s) {
     s->tabBar = PD_TAB_BAR_DEFAULT;
     s->hud = true;
     s->hudHidden = 0;
+    s->hudLayout = PD_HUD_CORNERS;
+    s->hudLook = PD_HUD_GLASS;
+    s->hudSize = PD_HUD_NORMAL;
     s->scaling = PD_SCALE_INTEGER;
     s->ffAudio = false;
     s->rewind = false;
@@ -69,7 +72,10 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
         } else if (!strcmp(key, "hudhide")) {
             int bits;
             if (int_in(value, 0, (1 << PD_HUD_PARTS) - 1, &bits)) s->hudHidden = bits;
-        } else if (!strcmp(key, "scaling")) int_in(value, 0, PD_SCALINGS - 1, &s->scaling);
+        } else if (!strcmp(key, "hudlayout")) int_in(value, 0, PD_HUD_LAYOUTS - 1, &s->hudLayout);
+        else if (!strcmp(key, "hudlook")) int_in(value, 0, PD_HUD_LOOKS - 1, &s->hudLook);
+        else if (!strcmp(key, "hudsize")) int_in(value, 0, PD_HUD_SIZES - 1, &s->hudSize);
+        else if (!strcmp(key, "scaling")) int_in(value, 0, PD_SCALINGS - 1, &s->scaling);
         else {
             int on;
             bool* b = !strcmp(key, "ffaudio") ? &s->ffAudio : !strcmp(key, "rewind") ? &s->rewind
@@ -90,6 +96,7 @@ bool pd_settings_save(const struct pd_settings* s, const char* path) {
     fprintf(f, "screen=%d\nff=%d\nguide=%d\naspect=%d\nautozoom=%d\nwildoff=%d\ntabs=%d\nhud=%d\nhudhide=%d\n",
             s->screenMode, s->ffSpeed, s->guideNotice, s->aspect, s->autoZoom ? 1 : 0, s->wildOff ? 1 : 0, s->tabBar,
             s->hud ? 1 : 0, s->hudHidden);
+    fprintf(f, "hudlayout=%d\nhudlook=%d\nhudsize=%d\n", s->hudLayout, s->hudLook, s->hudSize);
     fprintf(f, "scaling=%d\nffaudio=%d\nrewind=%d\nrunindoors=%d\n", s->scaling, s->ffAudio ? 1 : 0,
             s->rewind ? 1 : 0, s->runIndoors ? 1 : 0);
     if (fclose(f) != 0) return false;

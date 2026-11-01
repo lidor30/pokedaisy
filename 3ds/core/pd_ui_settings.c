@@ -159,7 +159,7 @@ static void pick_list(struct pd_ui* ui, struct pd_canvas* c, const char* title, 
 // A page of ON / OFF rows (TAB BAR's, HUD's), each flipped by A / a tap, or a plain list (MORE's: values NULL);
 // a grey note under them. B / a tap beside it closes it.
 static void toggle_page(struct pd_ui* ui, struct pd_canvas* c, const char* title, const char* const* labels,
-                        const bool* on, const bool* muted, int n, const char* note) {
+                        const bool* on, const bool* muted, int n, const char* note, const char* const* values) {
     int x = MARGIN, w = c->w - 2 * MARGIN;
     int y = CONTENT_Y + 4;
     title_window(c, y, title);
@@ -171,11 +171,13 @@ static void toggle_page(struct pd_ui* ui, struct pd_canvas* c, const char* title
     for (int i = 0; i < n; i++) {
         bool sel = ui->pressedId == HIT_OPTION + i;
         if (on) {
-            ui_row(c, ix, ry, iw, labels[i], on[i] ? "ON" : "OFF", sel);
+            // A value of its own (HUD's LAYOUT / LOOK / SIZE), else ON / OFF.
+            const char* v = values && values[i] ? values[i] : on[i] ? "ON" : "OFF";
+            ui_row(c, ix, ry, iw, labels[i], v, sel);
             if (muted && muted[i]) {
                 // Its value while the whole thing is off: shown, greyed.
                 pd_fill(c, ix + iw * 42 / 100, ry + 1, iw - iw * 42 / 100, ROW_H - 2, sel ? PD_ROW_SELECTED : PD_LIST_FILL);
-                pd_text(c, ix + iw * 42 / 100, pd_text_y(ry, ROW_H), on[i] ? "ON" : "OFF", PD_MUTED, PD_MUTED_SHADOW);
+                pd_text(c, ix + iw * 42 / 100, pd_text_y(ry, ROW_H), v, PD_MUTED, PD_MUTED_SHADOW);
             }
         } else {
             if (sel) pd_fill(c, ix - 4, ry, iw + 8, ROW_H, PD_ROW_SELECTED);
@@ -195,18 +197,23 @@ static void tab_bar_page(struct pd_ui* ui, struct pd_canvas* c) {
         labels[i] = ui_tab_label(UI_BAR_CHOICE[i]);
         on[i] = (ui->settings->tabBar >> UI_BAR_CHOICE[i]) & 1;
     }
-    toggle_page(ui, c, "TAB BAR", labels, on, NULL, UI_BAR_CHOICES, "At most 5 on the bar; the rest open from MORE.");
+    toggle_page(ui, c, "TAB BAR", labels, on, NULL, UI_BAR_CHOICES, "At most 5 on the bar; the rest open from MORE.", NULL);
 }
 
+// FieldHud.kt's fieldHudRows: the switch, LAYOUT / LOOK / SIZE (a press cycles them), then which parts show.
 static void hud_page(struct pd_ui* ui, struct pd_canvas* c) {
-    const char* labels[1 + PD_HUD_PARTS] = { "HUD" };
-    bool on[1 + PD_HUD_PARTS] = { ui->settings->hud }, muted[1 + PD_HUD_PARTS] = { false };
+    enum { N = 4 + PD_HUD_PARTS };
+    const struct pd_settings* s = ui->settings;
+    const char* labels[N] = { "HUD", "LAYOUT", "LOOK", "SIZE" };
+    const char* values[N] = { NULL, pd_hud_layout_name(s->hudLayout), pd_hud_look_name(s->hudLook),
+                              pd_hud_size_name(s->hudSize) };
+    bool on[N] = { s->hud, true, true, true }, muted[N] = { false, !s->hud, !s->hud, !s->hud };
     for (int i = 0; i < PD_HUD_PARTS; i++) {
-        labels[1 + i] = pd_hud_part_name(i);
-        on[1 + i] = !((ui->settings->hudHidden >> i) & 1);
-        muted[1 + i] = !ui->settings->hud;
+        labels[4 + i] = pd_hud_part_name(i);
+        on[4 + i] = !((s->hudHidden >> i) & 1);
+        muted[4 + i] = !s->hud;
     }
-    toggle_page(ui, c, "HUD", labels, on, muted, 1 + PD_HUD_PARTS, "Shown over the overworld, off in menus and battles.");
+    toggle_page(ui, c, "HUD", labels, on, muted, N, "Shown over the overworld, off in menus and battles.", values);
 }
 
 static void more_page(struct pd_ui* ui, struct pd_canvas* c) {
@@ -214,7 +221,7 @@ static void more_page(struct pd_ui* ui, struct pd_canvas* c) {
     const char* labels[UI_BAR_CHOICES];
     int n = ui_more_tabs(ui, more);
     for (int i = 0; i < n; i++) labels[i] = ui_tab_label(more[i]);
-    toggle_page(ui, c, "MORE", labels, NULL, NULL, n, "Which tabs are on the bar: SETTINGS > TAB BAR.");
+    toggle_page(ui, c, "MORE", labels, NULL, NULL, n, "Which tabs are on the bar: SETTINGS > TAB BAR.", NULL);
 }
 
 static void confirm(struct pd_ui* ui, struct pd_canvas* c, const char* title, const char* text, const char* yes) {

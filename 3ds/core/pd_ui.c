@@ -61,8 +61,24 @@ int ui_more_tabs(const struct pd_ui* ui, enum pd_tab out[UI_BAR_CHOICES]) {
 }
 
 const char* pd_hud_part_name(int part) {
-    static const char* const NAMES[PD_HUD_PARTS] = { "PARTY", "MINIMAP", "POKé BALLS", "REPEL STEPS" };
+    static const char* const NAMES[PD_HUD_PARTS] = { "PARTY", "MINIMAP", "POKé BALLS", "REPEL STEPS", "PC", "BAG",
+                                                     "WILD POKéMON" };
     return part >= 0 && part < PD_HUD_PARTS ? NAMES[part] : "";
+}
+
+const char* pd_hud_layout_name(int layout) {
+    static const char* const NAMES[PD_HUD_LAYOUTS] = { "CORNERS", "CORNERS 2", "RAILS", "DOCK" };
+    return layout >= 0 && layout < PD_HUD_LAYOUTS ? NAMES[layout] : "";
+}
+
+const char* pd_hud_look_name(int look) {
+    static const char* const NAMES[PD_HUD_LOOKS] = { "GLASS", "WHITE GLASS", "WINDOW" };
+    return look >= 0 && look < PD_HUD_LOOKS ? NAMES[look] : "";
+}
+
+const char* pd_hud_size_name(int size) {
+    static const char* const NAMES[PD_HUD_SIZES] = { "SMALL", "NORMAL", "LARGE" };
+    return size >= 0 && size < PD_HUD_SIZES ? NAMES[size] : "";
 }
 
 void ui_toggle_act(struct pd_ui* ui, int i) {
@@ -78,8 +94,13 @@ void ui_toggle_act(struct pd_ui* ui, int i) {
         return;
     }
     if (ui->overlay == PD_OVERLAY_HUD) {
+        // HUD, then LAYOUT / LOOK / SIZE (each cycles on a press, FieldHud.kt's fieldHudRows), then the parts.
         if (i == 0) s->hud = !s->hud;
-        else if (i <= PD_HUD_PARTS) s->hudHidden ^= 1 << (i - 1);
+        else if (!s->hud) return;
+        else if (i == 1) s->hudLayout = (s->hudLayout + 1) % PD_HUD_LAYOUTS;
+        else if (i == 2) s->hudLook = (s->hudLook + 1) % PD_HUD_LOOKS;
+        else if (i == 3) s->hudSize = (s->hudSize + 1) % PD_HUD_SIZES;
+        else if (i - 4 < PD_HUD_PARTS) s->hudHidden ^= 1 << (i - 4);
         ui->action = PD_ACTION_SETTINGS_CHANGED;
         return;
     }
@@ -308,7 +329,7 @@ static void act(struct pd_ui* ui, int id) {
         return;
     }
     if (ui->overlay == PD_OVERLAY_TAB_BAR || ui->overlay == PD_OVERLAY_HUD || ui->overlay == PD_OVERLAY_MORE) {
-        if (id >= HIT_OPTION && id < HIT_OPTION + 8) {
+        if (id >= HIT_OPTION && id < HIT_OPTION + 16) {
             ui_toggle_act(ui, id - HIT_OPTION);
         } else if (id == HIT_NO || id == HIT_SCRIM) {
             close_overlay(ui, PD_ACTION_NONE);
@@ -316,7 +337,7 @@ static void act(struct pd_ui* ui, int id) {
         return;
     }
     if (ui->overlay != PD_OVERLAY_NONE) {
-        if (id >= HIT_OPTION && id < HIT_OPTION + 8) {
+        if (id >= HIT_OPTION && id < HIT_OPTION + 16) {
             int i = id - HIT_OPTION;
             if (ui->overlay == PD_OVERLAY_PICK_SCREEN) ui->settings->screenMode = i;
             if (ui->overlay == PD_OVERLAY_PICK_FF && i < PD_FF_CHOICES) ui->settings->ffSpeed = PD_FF_SPEEDS[i];

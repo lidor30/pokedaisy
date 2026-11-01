@@ -61,3 +61,8 @@ __pycache__/
 # 3DS build output (3ds/README.md)
 *.3dsx
 *.smdh
+
+# plorpOS release build (plorpos/build.sh)
+plorpos/dist/
+/build.cfg.log
+/build.log

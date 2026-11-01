@@ -71,6 +71,9 @@ struct pd_settings {
     int tabBar;      // TAB BAR: a bit per enum pd_tab on the bar (PARTY .. DEX, CARD); the rest open from MORE
     bool hud;        // HUD over the overworld (hosts with hasHud) ...
     int hudHidden;   // ... less these parts: a bit per enum pd_hud_part
+    int hudLayout;   // enum pd_hud_layout (the app's FieldHudLayout)
+    int hudLook;     // enum pd_hud_look (FieldHudLook)
+    int hudSize;     // enum pd_hud_size (FieldHudSize)
     // plorpOS (its in-game menu writes these too):
     int scaling;     // enum pd_scaling, ASPECT ORIGINAL's picture
     bool ffAudio;    // the game's sound sped up under fast-forward, else silent
@@ -82,10 +85,16 @@ struct pd_settings {
 #define PD_MAX_BAR_TABS 5
 #define PD_TAB_BAR_DEFAULT (1 << PD_TAB_PARTY | 1 << PD_TAB_BAG | 1 << PD_TAB_MAP | 1 << PD_TAB_GUIDE | 1 << PD_TAB_DEX)
 
-// The HUD's parts (the app's FieldHudPart less its buttons: with no touch screen BAG, PC and WILD are the
-// QUICK MENU's, and a tap on a party icon or the minimap has nothing to open).
-enum pd_hud_part { PD_HUD_PARTY, PD_HUD_MAP, PD_HUD_BALLS, PD_HUD_REPEL, PD_HUD_PARTS };
+// The HUD's parts (the app's FieldHudPart, in its order) and SETTINGS > HUD's LAYOUT / LOOK / SIZE
+// (FieldHudSettings.kt). The buttons (PC, BAG, WILD) are reached with the HUD hotkey on a host without touch.
+enum pd_hud_part { PD_HUD_PARTY, PD_HUD_MAP, PD_HUD_BALLS, PD_HUD_REPEL, PD_HUD_PC, PD_HUD_BAG, PD_HUD_WILD, PD_HUD_PARTS };
+enum pd_hud_layout { PD_HUD_CORNERS, PD_HUD_CORNERS_2, PD_HUD_RAILS, PD_HUD_DOCK, PD_HUD_LAYOUTS };
+enum pd_hud_look { PD_HUD_GLASS, PD_HUD_WHITE_GLASS, PD_HUD_WINDOW, PD_HUD_LOOKS };
+enum pd_hud_size { PD_HUD_SMALL, PD_HUD_NORMAL, PD_HUD_LARGE, PD_HUD_SIZES };
 const char* pd_hud_part_name(int part);
+const char* pd_hud_layout_name(int layout);
+const char* pd_hud_look_name(int look);
+const char* pd_hud_size_name(int size);
 
 enum pd_action {
     PD_ACTION_NONE,
