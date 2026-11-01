@@ -68,7 +68,8 @@ const CallFns PLATINUM = {
     0, 0,
 };
 
-// pret/pokeheartgold's .xMAP: every address the same in HeartGold's and SoulSilver's builds (both checked).
+// pret/pokeheartgold's .xMAP: every address the same in the US HeartGold / SoulSilver builds and German
+// HeartGold / SoulSilver rev 0 (checked against its ARM9, including Task_RunScripts' calls and environment layout).
 const CallFns HEARTGOLD = {
     0, 0, 0,
     0x0203FE0D,   // ScriptJump

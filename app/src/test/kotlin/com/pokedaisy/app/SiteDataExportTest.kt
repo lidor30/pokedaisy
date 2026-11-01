@@ -35,7 +35,8 @@ class SiteDataExportTest {
     )
 
     /** The DS carts' titles by game code ([TelemetrySampler.NDS_GAMES]). */
-    private val dsTitles = mapOf("CPUE" to "Pokémon Platinum", "IPKE" to "Pokémon HeartGold", "IPGE" to "Pokémon SoulSilver", "IRBO" to "Pokémon Black",
+    private val dsTitles = mapOf("CPUE" to "Pokémon Platinum", "IPKE" to "Pokémon HeartGold", "IPKD" to "Pokémon Goldene Edition HeartGold",
+        "IPGE" to "Pokémon SoulSilver", "IPGD" to "Pokémon Silberne Edition SoulSilver", "IRBO" to "Pokémon Black",
         "IRAO" to "Pokémon White", "IREO" to "Pokémon Black 2", "IRDO" to "Pokémon White 2")
 
     /** The base game of each hack that has a game code of its own ([TelemetrySampler.HACK_GAME_CODES]). */

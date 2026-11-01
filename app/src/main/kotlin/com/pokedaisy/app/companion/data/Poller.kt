@@ -51,6 +51,7 @@ class TelemetrySampler {
     private var gen2Cfg: Gen2Config? = null
     // A DS game's (Gen 4) addresses instead.
     private var gen4Cfg: Gen4Config? = null
+    private var dsGameCode = ""
     private var gen5Cfg: Gen5Config? = null
     private var lastError: String? = null
     // Set instead of nativeCfg for a large BPRE ROM that isn't recognized as
@@ -312,7 +313,9 @@ class TelemetrySampler {
                 itemTextChosen = true
                 onGameIdentified?.invoke(kind!!.name, beMatch?.candidate?.title)
                 PokedexSource.romChanged()
-                (nativeCfg?.language ?: gen1Cfg?.language)?.let { com.pokedaisy.app.companion.i18n.L10n.applyGameLanguage(it) }
+                // A DS cart: its text's language once NdsArt has read it (it applies it itself when it lands later), else the header's.
+                (nativeCfg?.language ?: gen1Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language
+                    ?: dsGameCode.getOrNull(3))?.let { com.pokedaisy.app.companion.i18n.L10n.applyGameLanguage(it) }
                 RomItemText.use(itemTable(reader))
             }
             activeGame = kind ?: GameKind.FIRERED
@@ -329,8 +332,8 @@ class TelemetrySampler {
             quetzalV1 = base?.quetzalV1 == true
             gen2Cfg?.let { activeGen2 = it }
             // A DS cart: its own text's language (NdsArt.names: a French Sacred Gold is an IPKE HeartGold, GitHub #230).
-            romLanguage = nativeCfg?.language ?: gen1Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language ?: 'E'
-            romGameCode = nativeCfg?.gameCode ?: gen1Cfg?.gameCode.orEmpty()
+            romLanguage = nativeCfg?.language ?: gen1Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language ?: dsGameCode.getOrNull(3) ?: 'E'
+            romGameCode = nativeCfg?.gameCode ?: gen1Cfg?.gameCode ?: dsGameCode
             // Quetzal picks each kind of name's language from its own options (a few bytes a sample).
             quetzalNames = nativeCfg?.takeIf { it.quetzalPlacesDefault >= 0 }
                 ?.let { runCatching { readQuetzalNames(reader, it) }.getOrNull() } ?: QuetzalNames()
@@ -680,16 +683,19 @@ class TelemetrySampler {
     /** A Game Boy / Color cart, by the whole ROM's SHA1 (read from the cart: it's bank-switched). */
     /**
      * A DS cart: by its header's game code and revision (a 128 MB+ ROM isn't hashed live). Platinum USA rev 1 and
-     * HeartGold / SoulSilver USA are mapped (pret/pokeplatinum and pret/pokeheartgold build them), Black, White, Black 2 and
+     * HeartGold / SoulSilver USA / Germany are mapped (pret/pokeplatinum and pret/pokeheartgold build them), Black, White, Black 2 and
      * White 2 (USA / Europe) from headless captures (Gen5Reader); anything else gets the
      * "not supported" notice.
      */
     private fun detectDs() {
         val code = runCatching { MgbaCore.pkRomCode() }.getOrNull().orEmpty()
+        dsGameCode = code
         val rev = runCatching { reader0x1E() }.getOrDefault(-1)
         when {
             ndsSupported(code, rev) -> when (code) {
                 "IPKE" -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_HEARTGOLD_US }
+                "IPKD" -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_HEARTGOLD_DE }
+                "IPGD" -> { kind = GameKind.SOULSILVER; gen4Cfg = GEN4_SOULSILVER_DE }
                 "IPGE" -> { kind = GameKind.SOULSILVER; gen4Cfg = GEN4_SOULSILVER_US }
                 "IRBO" -> { kind = GameKind.BLACK; gen5Cfg = GEN5_BLACK }
                 "IRAO" -> { kind = GameKind.WHITE; gen5Cfg = GEN5_WHITE }
@@ -1132,9 +1138,9 @@ class TelemetrySampler {
         const val NDS_SUPPORT = true
 
         /** The DS carts the companion reads, by their header's game code (0x0C) and revision (0x1E): Platinum USA rev 1,
-         * HeartGold / SoulSilver USA (rev 0, their only one), Black, White, Black 2 and White 2 (USA / Europe, rev 0). The
+         * HeartGold / SoulSilver USA / Germany (rev 0), Black, White, Black 2 and White 2 (USA / Europe, rev 0). The
          * website's ROM check gets them through compat.json. */
-        val NDS_GAMES = mapOf("CPUE" to 1, "IPKE" to 0, "IPGE" to 0, "IRBO" to 0, "IRAO" to 0, "IREO" to 0, "IRDO" to 0)
+        val NDS_GAMES = mapOf("CPUE" to 1, "IPKE" to 0, "IPKD" to 0, "IPGE" to 0, "IPGD" to 0, "IRBO" to 0, "IRAO" to 0, "IREO" to 0, "IRDO" to 0)
 
         /** [detectDs] and the library's [com.pokedaisy.app.CompanionSupport] both ask this. */
         fun ndsSupported(code: String?, revision: Int?): Boolean =

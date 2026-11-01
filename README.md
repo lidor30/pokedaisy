@@ -140,8 +140,8 @@ shows a "not supported" notice).
 | Sapphire                       | USA, rev 0, 1 and 2        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Sapphire                       | ES/DE/FR/IT/JP, rev 0-1    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Platinum (DS)                  | USA rev 1                  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
-| HeartGold (DS)                 | USA                        |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
-| SoulSilver (DS)                | USA                        |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
+| HeartGold (DS)                 | USA, Germany rev 0         |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
+| SoulSilver (DS)                | USA, Germany rev 0         |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
 | Black (DS)                     | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | White (DS)                     | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Black 2 (DS)                   | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |

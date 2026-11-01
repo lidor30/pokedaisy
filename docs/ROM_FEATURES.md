@@ -35,6 +35,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Platinum (DS) | USA rev 1 | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
 | HeartGold (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
 | SoulSilver (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
+| HeartGold (DS) | Germany rev 0 | ✅ ¹⁴ | ◐ ²⁵ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
+| SoulSilver (DS) | Germany rev 0 | ✅ ¹⁴ | ◐ ²⁵ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
 | Black (DS) | USA/Europe | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | White (DS) | USA/Europe | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | Black 2 (DS) | USA/Europe | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
@@ -324,6 +326,10 @@ change to any of the places listed under "Where it's decided" updates its rows h
     drawn panel; docs/DEVELOPMENT.md's "DS LAYOUT"). Checked headless on the player's save in a scripted wild battle: each
     tap at those places, a move tapped from 7 frames after FIGHT on. BAG and POKéMON open the game's own screens (the
     touch screen floats in on one screen); there's no switch of our own.
+25. German HeartGold / SoulSilver rev 0 (`IPKD` / `IPGD`): the USA carts' code and layouts with their globals moved, the
+    battle read through the German `sFieldSysPtr` / `gOverlayTemplate_Battle` (`GEN4_HEARTGOLD_DE`), so the buttons should
+    work as note 24's, but no German battle has been checked yet. Their touch-screen moments aren't followed
+    (`pk_nds_field.cpp`'s TOUCH_RULES has the USA addresses only), so DS LAYOUT's ONE SCREEN is PICTURE IN PICTURE there.
 
 ## What each column is
 
