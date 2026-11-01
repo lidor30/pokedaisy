@@ -3030,7 +3030,7 @@ Its manual page is a draft, `docs/manual-drafts/coop.md` (its top note says what
   `CoopSession` on its own thread) joins rooms on our relay over a WebSocket (`OkHttpRelayConnector`, OkHttp) and listens on a TCP port
   for direct and same-Wi-Fi peers; the LAN is found with Android NSD (`NsdCoopLan`, service type `_pdcoop._tcp`, the TXT record
   carries the peer id and the HELLO user data). The relay server is `server/coop-relay/` (a separate Kotlin / JVM program on Java-WebSocket, never in the APK);
-  its README covers deploying it and its limits table.
+  its README covers deploying it (by hand, or to Google Cloud by `.github/workflows/coop-relay.yml` over `deploy/gcp/`) and its limits table.
 - **Channel** (`CoopChannel`, one per connection, whatever the pipe is): a Noise IK handshake, `Noise_IK_25519_AESGCM_SHA256`
   (`CoopNoise`, X25519 from Bouncy Castle, the rest java.security). The static key is the device's `filesDir/coop/secret.key`
   (32 bytes; the peer id is its public key, 64 hex characters). The prologue is ASCII `PokeDaisy co-op 1`, one path byte (0 invite room,

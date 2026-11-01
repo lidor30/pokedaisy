@@ -92,8 +92,37 @@ Per-address limits need the real client address. Proxy headers are read only whe
 
 ## Where to run it
 
-A small always-on VPS (Hetzner CX22, or a Fly.io machine). Not Cloud Run: it bills an instance for every open
-WebSocket. The relay needs about 100 MB of memory.
+A small always-on VM: a Google Cloud e2-micro (below, deployed by GitHub Actions), a Hetzner CX22, a Fly.io machine.
+Not Cloud Run: it bills an instance for every open WebSocket, cuts them after an hour, and rooms live in one
+process's memory. The relay needs about 100 MB of memory.
+
+## Deploy to Google Cloud (GitHub Actions)
+
+`deploy/gcp/` runs the relay on a Compute Engine VM (an e2-micro by default, in Google Cloud's free tier in
+us-west1 / us-central1 / us-east1): the relay's image from Artifact Registry, Caddy in front of it for HTTPS, both
+under Docker Compose in `/opt/coop-relay`. `.github/workflows/coop-relay.yml` tests the relay on pull requests that
+touch it, and on a push to main (or a manual run) builds the image and rolls it out.
+
+1. Once, signed in to `gcloud` as a project owner and to `gh`:
+
+   ```sh
+   PROJECT=my-project RELAY_HOST=relay.example.com server/coop-relay/deploy/gcp/setup.sh
+   ```
+
+   It makes the repository, the VM with a static address, the firewall rules (80 / 443 open, 22 from IAP only), a
+   service account for the VM and one for deploys, and keyless sign-in (Workload Identity Federation) for this
+   GitHub repository's `coop-relay` environment, which it creates (main only) with the variables the workflow
+   reads. `REGION`, `ZONE`, `VM`, `MACHINE` and `REPOSITORY` override the defaults (`deploy/gcp/config.sh`). It is
+   safe to run again.
+2. Point a DNS A record for `RELAY_HOST` at the address it prints, DNS only (no Cloudflare proxy: Caddy gets the
+   certificate itself and strips `CF-Connecting-IP`).
+3. Deploy: run the "Co-op relay" workflow, or from this machine
+   `PROJECT=my-project RELAY_HOST=relay.example.com server/coop-relay/deploy/gcp/deploy.sh` (Docker running; it
+   builds for linux/amd64). It waits until `https://RELAY_HOST/healthz` says `ok`.
+
+Every later push to main that changes `server/coop-relay/` deploys again. To roll back, re-run an older run of the
+workflow: it builds and deploys that commit. Artifact Registry keeps the ten newest images. On the VM:
+`gcloud compute ssh coop-relay --tunnel-through-iap`, then `cd /opt/coop-relay && sudo docker compose logs`.
 
 ## Deploy with Caddy (automatic HTTPS)
 
