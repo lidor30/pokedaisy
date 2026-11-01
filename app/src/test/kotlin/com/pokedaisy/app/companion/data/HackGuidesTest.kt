@@ -30,7 +30,10 @@ class HackGuidesTest {
     private val ghostGrey = Game("Pokemon Ghost Grey (v1.0.4).gba", GameKind.FIRERED, NATIVE_GHOST_GREY, "ghost_grey")
     private val ghostGreyV101 = Game("Pokemon Ghost Grey (v1.0.1).gba", GameKind.FIRERED, NATIVE_GHOST_GREY_V1_0_1, "ghost_grey_v101")
     private val gsChronicles = Game("Pokemon GS Chronicles (v2.7.6).gba", GameKind.GS_CHRONICLES, NATIVE_GS_CHRONICLES, "gs_chronicles")
-    private val all = listOf(odyssey, gaia, amethyst, amethyst141, celia, uvGame, swordShield, gsChronicles, rocket, ashGray, ashGrayFork, ghostGrey, ghostGreyV101)
+    private val letsGoPikachu = Game("Pokemon Let's Go Pikachu.gba", GameKind.FIRERED, NATIVE_LETS_GO_PIKACHU, "lets_go_pikachu")
+    private val letsGoEevee = Game("Pokemon Let's Go Eevee.gba", GameKind.FIRERED, NATIVE_LETS_GO_EEVEE, "lets_go_eevee")
+    private val all = listOf(odyssey, gaia, amethyst, amethyst141, celia, uvGame, swordShield, gsChronicles, rocket, ashGray, ashGrayFork, ghostGrey, ghostGreyV101,
+        letsGoPikachu, letsGoEevee)
 
     private fun load(g: Game): RomFileReader? = RomFileReader.load(RETAIL_ROM_DIR + g.rom)?.also {
         select(g)
@@ -242,6 +245,20 @@ class HackGuidesTest {
         val summer = GUIDE_GHOST_GREY.bosses.last()
         val starter = { v: Int -> SaveProgress(ByteArray(0x120), ByteArray(0x200).also { it[0x31 * 2] = v.toByte() }) }
         assertEquals(listOf(437, 436, 435), (0..2).map { summer.trainer(starter(it)) })
+        fireRedHack = null
+    }
+
+    /** Let's Go Pikachu / Eevee: FireRed's bosses with each version's own teams (BROCK's OMANYTE or KABUTO), BROCK next on
+     * the new game; each version's own wild Pokémon. */
+    @Test fun `lets go`() {
+        for ((g, fossil) in listOf(letsGoPikachu to "Omanyte", letsGoEevee to "Kabuto")) {
+            load(g) ?: continue
+            assertEquals(listOf("Rhyhorn", "Onix", "Geodude", fossil), GuideRomSource.party(g.t, 414)!!.map { speciesName(it.species) })
+            val p = readSaveProgress(FixtureMemoryReader.load(g.fixture), g.cfg, g.t)!!
+            assertEquals("LEADER BROCK", GUIDE_LETS_GO.bosses.first { !it.isDone(p) }.title)
+            assertTrue(GuideRomSource.wildMapKeys(g.t).isNotEmpty())
+            assertNotNull(generatedWhereIs(GuideId.LETS_GO, { "AREA $it" }) { false })
+        }
         fireRedHack = null
     }
 

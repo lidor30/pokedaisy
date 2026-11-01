@@ -5196,6 +5196,30 @@ val NATIVE_GHOST_GREY = NATIVE_ULTRA_VIOLET.copy(
 
 val NATIVE_GHOST_GREY_V1_0_1 = NATIVE_GHOST_GREY.copy()
 
+// ---- gamedata/gen3/hacks/lets_go.toml ----
+
+// Pokémon Let's Go Pikachu / Eevee (Kevin Pokefan, English translation; 32 MB, BPRE rev 0, no version in the game):
+// FireRed 1.0 edited in place, not CFRU. Each version has a "Translation Only" build that puts three moves' battle data
+// back (10 bytes apart) and shares its tables: Pikachu (sha1 62bb9009…, Translation Only 11f6ee38…) and Eevee
+// (4a41d539…, 5b6146ad…), one config each (ActiveTables' fireRedHack picks the text by config). Every RAM global's
+// literal pool still names rev 0's address, and so do gTrainers, gItems, gMapGroups and the map section names; Rocket
+// Edition's repointed moves (to 510) / types (FAIRY 23) / ability names; the species grown to 987 ids, with every
+// species table past 16 MB - gSpeciesNames 0x08A000E8, gBaseStats 0x08A02B50, the icon table 0x08A9D0C4 and its palette
+// indices 0x08A9E030 (the icon palettes are rev 0's), gMonPaletteTable 0x08A0E460. Retail FireRed's save is "deleted"
+// by it: the `lets_go*` fixtures are a new game played headless, which loads in all four builds.
+val NATIVE_LETS_GO_PIKACHU = NATIVE_ULTRA_VIOLET.copy(
+    monIconTable = 0x08A9D0C4L,
+    monIconPaletteIndices = 0x08A9E030L,
+    monPalettes = 0x08A0E460L,
+    pokedex = POKEDEX_LETS_GO,
+    guideTables = GUIDE_TABLES_LETS_GO_PIKACHU,
+)
+
+// Eevee's own gWildMonHeaders (its exclusives); the rest at Pikachu's addresses.
+val NATIVE_LETS_GO_EEVEE = NATIVE_LETS_GO_PIKACHU.copy(
+    guideTables = GUIDE_TABLES_LETS_GO_EEVEE,
+)
+
 // ---- gamedata/gen3/hacks/rocket_edition.toml ----
 
 // Pokémon FireRed Rocket Edition (16 MB, BPRE rev 0, sha1 033d0537…): FireRed 1.0 edited in place, no

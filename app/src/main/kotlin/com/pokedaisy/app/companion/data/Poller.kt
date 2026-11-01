@@ -986,13 +986,22 @@ class TelemetrySampler {
         const val GHOST_GREY_V1_0_1_SHA1 = "20dfaea1d5317cf95fe0b493208edce7d50b865f"
         const val GHOST_GREY_V1_0_2_SHA1 = "74337272566a74625d6dedefe47d2d153eb48ec1"
         const val GHOST_GREY_V1_0_4_SHA1 = "0dafc0116b74406a2df491e26ccb40dd362fb0b7"
+        // Pokémon Let's Go Pikachu / Eevee (BPRE rev 0, 32 MB; Kevin Pokefan, English translation, no version in the game),
+        // each with a "Translation Only" build - host-side masked hashes (GPIO bytes zero, so a plain `shasum`).
+        const val LETS_GO_PIKACHU_UNVERSIONED_SHA1 = "62bb900925118796fb963b7df92d02cb548c404e"
+        const val LETS_GO_PIKACHU_TRANSLATION_ONLY_UNVERSIONED_SHA1 = "11f6ee3890a0aaeb95903471ec73413c846e86fc"
+        const val LETS_GO_EEVEE_UNVERSIONED_SHA1 = "4a41d539cbf6108cfe3344db5ba997fc5660d77d"
+        const val LETS_GO_EEVEE_TRANSLATION_ONLY_UNVERSIONED_SHA1 = "5b6146adec1a30f88c565e8f555ab7a578825598"
 
-        /** The config of a FireRed 1.0 hack edited in place that runs as FireRed (Rocket Edition, Ash Gray, Ghost Grey), or null. */
+        /** The config of a FireRed 1.0 hack edited in place that runs as FireRed (Rocket Edition, Ash Gray, Ghost Grey,
+         * Let's Go Pikachu / Eevee), or null. */
         fun fireRedHackConfig(hash: String?): NativeConfig? = when (hash) {
             FIRERED_ROCKET_EDITION_UNVERSIONED_SHA1 -> NATIVE_ROCKET_EDITION
             ASH_GRAY_V4_5_3_SHA1, ASH_GRAY_FORK_BUG_FIX_V1_0_SHA1 -> NATIVE_ASH_GRAY
             GHOST_GREY_V1_0_2_SHA1, GHOST_GREY_V1_0_4_SHA1 -> NATIVE_GHOST_GREY
             GHOST_GREY_V1_0_1_SHA1 -> NATIVE_GHOST_GREY_V1_0_1
+            LETS_GO_PIKACHU_UNVERSIONED_SHA1, LETS_GO_PIKACHU_TRANSLATION_ONLY_UNVERSIONED_SHA1 -> NATIVE_LETS_GO_PIKACHU
+            LETS_GO_EEVEE_UNVERSIONED_SHA1, LETS_GO_EEVEE_TRANSLATION_ONLY_UNVERSIONED_SHA1 -> NATIVE_LETS_GO_EEVEE
             else -> null
         }
 
@@ -1169,6 +1178,8 @@ class TelemetrySampler {
             ORANGE_ISLANDS_V5_7_BETA_SHA1, ORANGE_ISLANDS_UNVERSIONED_SHA1,
             FIRERED_ROCKET_EDITION_UNVERSIONED_SHA1, ASH_GRAY_V4_5_3_SHA1, ASH_GRAY_FORK_BUG_FIX_V1_0_SHA1,
             GHOST_GREY_V1_0_1_SHA1, GHOST_GREY_V1_0_2_SHA1, GHOST_GREY_V1_0_4_SHA1,
+            LETS_GO_PIKACHU_UNVERSIONED_SHA1, LETS_GO_PIKACHU_TRANSLATION_ONLY_UNVERSIONED_SHA1,
+            LETS_GO_EEVEE_UNVERSIONED_SHA1, LETS_GO_EEVEE_TRANSLATION_ONLY_UNVERSIONED_SHA1,
             ELITE_REDUX_V2_65_3B_SHA1, ELITE_REDUX_V2_65_4_1B_SHA1, TEAM_ROCKET_DRAGONSDEN_V1_5_SHA1,
             TEAM_ROCKET_2026_V3_0_9_ES_SHA1,
             WISHES_OF_TOMORROW_V1_2_6_SHA1,

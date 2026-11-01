@@ -164,6 +164,17 @@ HACKS = [
       for v, sha, save in [("v1.0.1", "20dfaea1d5317cf95fe0b493208edce7d50b865f", "ghost_grey_v101"),
                            ("v1.0.2", "74337272566a74625d6dedefe47d2d153eb48ec1", "ghost_grey_v102"),
                            ("v1.0.4", "0dafc0116b74406a2df491e26ccb40dd362fb0b7", "ghost_grey")]],
+    # Pokémon Let's Go Pikachu / Eevee (32 MB, each with a Translation Only build): FireRed rev 0 edited in place with rev
+    # 0's map groups, its object graphics table repointed (0x0880B9D0, the pool of rev 0's 0x0839FDB0); booted with its own
+    # new game's save (lets_go.txt: its long intro, CONTINUE).
+    *[dict(name=f"Let's Go {v}", sha1=sha, family="FR", mapped=True, save=save, boot_file="lets_go.txt",
+           a=dict(MAP_GROUPS=0x083526A8, OBJ_GFX_INFO=0x0880B9D0))
+      for v, sha, save in [("Pikachu", "62bb900925118796fb963b7df92d02cb548c404e", "lets_go_pikachu"),
+                           ("Pikachu (Translation Only)", "11f6ee3890a0aaeb95903471ec73413c846e86fc",
+                            "lets_go_pikachu_translation"),
+                           ("Eevee", "4a41d539cbf6108cfe3344db5ba997fc5660d77d", "lets_go_eevee"),
+                           ("Eevee (Translation Only)", "5b6146adec1a30f88c565e8f555ab7a578825598",
+                            "lets_go_eevee_translation")]],
     # Binary Emerald hacks: Emerald's code, mapped the same way.
     dict(name="Glazed 9.2.0", sha1="e10105d8544469c6a11ca2cf510289981df3c3b0", family="EM", mapped=True,
          save="glazed", a=dict(MAP_GROUPS=0x08486578)),

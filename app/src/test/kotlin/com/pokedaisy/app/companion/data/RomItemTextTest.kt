@@ -81,6 +81,8 @@ class RomItemTextTest {
         Case("Pokemon Ash Gray (v4.5.3).gba", GameKind.FIRERED, NATIVE_ASH_GRAY, mapOf(13 to "20 points")),
         // Ghost Grey's RAGECANDYBAR in FireRed's POTION slot.
         Case("Pokemon Ghost Grey (v1.0.4).gba", GameKind.FIRERED, NATIVE_GHOST_GREY, mapOf(13 to "Heals 20 HP")),
+        Case("Pokemon Let's Go Pikachu.gba", GameKind.FIRERED, NATIVE_LETS_GO_PIKACHU, mapOf(13 to "Restores 20 HP")),
+        Case("Pokemon Let's Go Eevee.gba", GameKind.FIRERED, NATIVE_LETS_GO_EEVEE, mapOf(13 to "Restores 20 HP")),
         Case("Pokemon Sword and Shield Ultimate Plus (v1.2.1.2).gba", GameKind.SWORD_SHIELD, NATIVE_SWORD_SHIELD, mapOf(13 to "by 20 points")),
         Case("Pokemon GS Chronicles (v2.7.6).gba", GameKind.GS_CHRONICLES, NATIVE_GS_CHRONICLES, mapOf(13 to "by 20 points")),
         // Recharged Yellow: 48-byte records, the text at +0x18; its own items past FireRed's (the LINKING CORD, 61).

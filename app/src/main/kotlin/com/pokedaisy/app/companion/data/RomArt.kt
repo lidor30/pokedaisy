@@ -27,7 +27,7 @@ object RomArt {
     const val DIR = "rom-art"
 
     /** Bump when [OUTPUTS] grows, so ROMs scanned before get scanned again. */
-    private const val SCAN_VERSION = 24
+    private const val SCAN_VERSION = 25
 
     /** Bumped whenever new art lands on disk, so loaders can retry. */
     val updates: StateFlow<Int> get() = _updates
@@ -148,6 +148,7 @@ object RomArt {
             (slots + "empty").map { "$UNBOUND_FR_PARTY_DIR/slot_$it.png" } +
             listOf("$UNBOUND_FR_PARTY_DIR/status_icons.png", "$UNBOUND_FR_PARTY_DIR/font_small.png") +
             listOf(SWSH_BACKDROP) + (slots + "empty").map { "$SWSH_PARTY_DIR/slot_$it.png" } +
+            listOf(LETS_GO_BACKDROP, "$LETS_GO_PARTY_DIR/status_icons.png") + (slots + "empty").map { "$LETS_GO_PARTY_DIR/slot_$it.png" } +
             listOf("kanto", "sevii123", "sevii45", "sevii67", "hoenn", "seaglass", "lazarus", "soulgold", "glazed", "imperium", "hns", "recharged_emerald", "rowe_hoenn", "rowe_kanto", "rowe_sevii",
                 "mariomon", "quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67", "dreamstone", "wishes", "monomyth",
                 "tr3_kanto", "tr3_sevii123", "tr3_sevii45", "tr3_sevii67", "tr3_johto", "tr3_hoenn", "tr3_sinnoh").map { "regionmap/$it.png" } +
@@ -321,6 +322,10 @@ object RomArt {
     /** Sword and Shield Ultimate Plus' party menu: CFRU's tiles and tilemaps in its own palette (its status icons are Odyssey's). */
     const val SWSH_PARTY_DIR = "partyswsh"
     const val SWSH_BACKDROP = "partybg/swsh_tile.png"
+
+    /** Let's Go Pikachu / Eevee's party menu: CFRU's code and slot tilemaps with its own tiles, palette, backdrop and status icons. */
+    const val LETS_GO_PARTY_DIR = "partylg"
+    const val LETS_GO_BACKDROP = "partybg/letsgo_tile.png"
 
     /** The European FireReds' (LeafGreen's are the same bytes): scripts/port_retail.py found them. */
     private val FIRERED_LANGUAGE_PARTIES = listOf(
@@ -541,18 +546,22 @@ object RomArt {
         cfruMenu(found, found[RomBlob.SS_PARTY_BG_PAL], SWSH_PARTY_DIR, SWSH_BACKDROP, out)
         // Unbound FR: its own tiles under CFRU's palette and tilemaps (the backdrop is the same: no cell of its own).
         cfruMenu(found, found[RomBlob.CFRU_PARTY_BG_PAL], UNBOUND_FR_PARTY_DIR, null, out, gfxBlob = RomBlob.UBFR_PARTY_BG_GFX)
+        // Let's Go: CFRU's slot tilemaps over its own tiles, palette and backdrop tilemap.
+        cfruMenu(found, found[RomBlob.LGO_PARTY_BG_PAL], LETS_GO_PARTY_DIR, LETS_GO_BACKDROP, out,
+            gfxBlob = RomBlob.LGO_PARTY_BG_GFX, mapBlob = RomBlob.LGO_PARTY_BG_MAP)
         found[RomBlob.UBFR_FONT_SMALL]?.let { out["$UNBOUND_FR_PARTY_DIR/font_small.png"] = font(it, halfWidth = true) }
         val statusPal = found[RomBlob.FR_STATUS_PAL]?.let { palette(it) } ?: return
         for ((dir, blob) in CFRU_STATUS) {
             found[blob]?.let { out["partycfru/$dir/status_icons.png"] = sprite(it, statusPal, 7 * 32, 8) { tx, _ -> tx } }
         }
         found[RomBlob.UBFR_STATUS_GFX]?.let { out["$UNBOUND_FR_PARTY_DIR/status_icons.png"] = sprite(it, statusPal, 7 * 32, 8) { tx, _ -> tx } }
+        found[RomBlob.LGO_STATUS_GFX]?.let { out["$LETS_GO_PARTY_DIR/status_icons.png"] = sprite(it, statusPal, 7 * 32, 8) { tx, _ -> tx } }
     }
 
     /** The CFRU party menu's slot frames into [dir] and its backdrop cell as [backdrop], in [palBytes]. */
     private fun cfruMenu(
         found: Map<RomBlob, ByteArray>, palBytes: ByteArray?, dir: String, backdrop: String?, out: MutableMap<String, Image>,
-        gfxBlob: RomBlob = RomBlob.CFRU_PARTY_BG_GFX,
+        gfxBlob: RomBlob = RomBlob.CFRU_PARTY_BG_GFX, mapBlob: RomBlob = RomBlob.CFRU_PARTY_BG_MAP,
     ) {
         val gfx = found[gfxBlob] ?: return
         val pal = palBytes?.let { palette(it) } ?: return
@@ -562,7 +571,7 @@ object RomArt {
         if (main != null && noHp != null && empty != null) {
             slots(gfx, pal, main, noHp, empty, tilesW = 14, tilesH = 5).forEach { (k, v) -> out["$dir/$k"] = v }
         }
-        if (backdrop != null) found[RomBlob.CFRU_PARTY_BG_MAP]?.let { map ->
+        if (backdrop != null) found[mapBlob]?.let { map ->
             // The cell at (32, 32): clear of the zig-zags between the slot columns, in the
             // screen's own phase, so tiling it from (0, 0) redraws the grid.
             val full = screen(gfx, pal, map, 32, tilesW = 32, tilesH = 32)

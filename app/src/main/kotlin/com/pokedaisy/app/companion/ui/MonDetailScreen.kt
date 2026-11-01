@@ -307,10 +307,11 @@ private fun HeldItemLine(itemId: Int, small: GbaTextMetrics, onTake: (() -> Unit
 internal val NavButtonSize: androidx.compose.ui.unit.Dp
     @Composable get() = if (LocalShortCompanion.current) 44.dp else 60.dp
 
-/** The Pokémon summary's buttons (STATS / LEARN / the PC's, Back) and its party column: about a tab chip's height. The
- * battle panes keep [NavButtonSize], whose bar holds the FOE TEAM's icons. */
+/** The Pokémon summary's buttons (STATS / LEARN / the PC's, Back) and its party column: a little over a tab chip's height
+ * (44 dp was a touch small to tap, the user's call, 2026-11-03; a short screen's stays 34, its STATS page has no width to
+ * spare). The battle panes keep [NavButtonSize], whose bar holds the FOE TEAM's icons. */
 private val SummaryButtonSize: androidx.compose.ui.unit.Dp
-    @Composable get() = if (LocalShortCompanion.current) 34.dp else 44.dp
+    @Composable get() = if (LocalShortCompanion.current) 34.dp else 48.dp
 
 @Composable
 internal fun NavButton(

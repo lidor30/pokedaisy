@@ -167,6 +167,8 @@ fun fireRedHackFor(cfg: NativeConfig?): HackText? = when {
     cfg === NATIVE_ASH_GRAY -> fireRedHackAshGray
     cfg === NATIVE_GHOST_GREY -> fireRedHackGhostGrey
     cfg === NATIVE_GHOST_GREY_V1_0_1 -> fireRedHackGhostGreyV101
+    cfg === NATIVE_LETS_GO_PIKACHU -> fireRedHackLetsGoPikachu
+    cfg === NATIVE_LETS_GO_EEVEE -> fireRedHackLetsGoEevee
     else -> null
 }
 
@@ -186,6 +188,9 @@ val battleHasBag: Boolean get() = activeGame != GameKind.ELITE_REDUX
 
 /** Pokémon Ghost Grey is running (any build): its party menu, bag and backdrop are its own greys, not FireRed's colours. */
 val runningGhostGrey: Boolean get() = runningFireRedHack.let { it != null && (it === fireRedHackGhostGrey || it === fireRedHackGhostGreyV101) }
+
+/** Pokémon Let's Go Pikachu / Eevee is running (any build): its party menu is a two-column grid, not FireRed's list. */
+val runningLetsGo: Boolean get() = runningFireRedHack.let { it != null && (it === fireRedHackLetsGoPikachu || it === fireRedHackLetsGoEevee) }
 
 /** The Emerald hack that runs as EMERALD with its own names (Recharged Emerald: [emeraldHackFor]); null
  * for Emerald itself and every other game. Set with [activeGame] by the Poller. */

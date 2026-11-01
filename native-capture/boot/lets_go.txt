@@ -1,0 +1,10 @@
+# Pokémon Let's Go Pikachu / Eevee (Kevin Pokefan's FireRed rev 0 hack, English translation): its new game's save
+# (the lets_go fixture's README). Its intro runs ~1500 frames before the title takes START; the presses are held
+# (one-frame presses were missed on its title), then CONTINUE.
+wait 1500
+hold START 6
+wait 150
+hold A 6
+wait 200
+hold A 6
+wait 300

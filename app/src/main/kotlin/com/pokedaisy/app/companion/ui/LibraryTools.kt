@@ -44,15 +44,20 @@ class LibraryTool(val id: String, val label: String, val blurb: String, val newB
  * user's call). The gaps between cards, across and down, are the header's space above them (8 GBA pixels): one margin.
  */
 @Composable
-fun ToolsPage(tools: List<LibraryTool>, m: GbaTextMetrics, small: GbaTextMetrics, contentPadding: PaddingValues, modifier: Modifier = Modifier) {
+fun ToolsPage(
+    tools: List<LibraryTool>, m: GbaTextMetrics, small: GbaTextMetrics, contentPadding: PaddingValues, modifier: Modifier = Modifier,
+    /** The dual-screen launcher's cursor (its keys move it, not Compose focus), -1 = none; [onColumns] gets the layout's columns. */
+    cursor: Int = -1, onColumns: (Int) -> Unit = {},
+) {
     val gap = m.u * 8
     SubcomposeLayout(modifier.fillMaxWidth().verticalScroll(rememberScrollState()).padding(contentPadding)) { c ->
         val g = gap.roundToPx()
         val cols = ((c.maxWidth + g) / (TOOL_CARD_MIN.roundToPx() + g)).coerceIn(1, tools.size.coerceAtLeast(1))
         val w = ((c.maxWidth - (cols - 1) * g) / cols).coerceAtLeast(0)
+        onColumns(cols)
         val probe = subcompose("probe") { tools.forEach { ToolCard(it, m, small) } }.map { it.measure(Constraints(minWidth = w, maxWidth = w)) }
         val h = probe.maxOfOrNull { it.height } ?: 0
-        val cards = subcompose("cards") { tools.forEach { ToolCard(it, m, small) } }.map { it.measure(Constraints.fixed(w, h)) }
+        val cards = subcompose("cards") { tools.forEachIndexed { i, t -> ToolCard(t, m, small, cursor = i == cursor) } }.map { it.measure(Constraints.fixed(w, h)) }
         val rows = (cards.size + cols - 1) / cols
         // At least the page's height (its weight asks for it), the cards from the top: a smaller layout was centred in it.
         layout(c.maxWidth, (rows * h + (rows - 1).coerceAtLeast(0) * g).coerceAtLeast(c.minHeight)) {
@@ -64,10 +69,10 @@ fun ToolsPage(tools: List<LibraryTool>, m: GbaTextMetrics, small: GbaTextMetrics
 /** A tool's card: the title window's white box, its icon in a framed well, the name (and NEW) over a line saying what it does,
  * both from the card's top-left padding, so every card's icon and name line up whatever its blurb's length. */
 @Composable
-private fun ToolCard(tool: LibraryTool, m: GbaTextMetrics, small: GbaTextMetrics) {
+private fun ToolCard(tool: LibraryTool, m: GbaTextMetrics, small: GbaTextMetrics, cursor: Boolean = false) {
     val u = m.u
     val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
+    val focused = interaction.collectIsFocusedAsState().value || cursor
     val label = tr(tool.label)
     Row(
         Modifier
@@ -111,11 +116,16 @@ enum class LibrarySection(val label: String) { GAMES("GAMES"), TOOLS("TOOLS"), S
 @Composable
 fun LibraryNav(
     open: LibrarySection, vertical: Boolean, m: GbaTextMetrics, small: GbaTextMetrics, toolsBadge: Boolean,
-    modifier: Modifier = Modifier, onPick: (LibrarySection) -> Unit,
+    modifier: Modifier = Modifier,
+    /** The dual-screen launcher's cursor on the rail (its keys move it, not Compose focus), or null. */
+    cursor: LibrarySection? = null,
+    onPick: (LibrarySection) -> Unit,
 ) {
     val u = m.u
     val items = @Composable { weighted: Modifier ->
-        for (s in LibrarySection.entries) NavItem(s, s == open, m, small, badge = toolsBadge && s == LibrarySection.TOOLS, weighted) { onPick(s) }
+        for (s in LibrarySection.entries) {
+            NavItem(s, s == open, m, small, badge = toolsBadge && s == LibrarySection.TOOLS, weighted, cursor = s == cursor) { onPick(s) }
+        }
     }
     // The rail runs off the screen's bottom (its frame open there, the user's call); the bar is a whole window.
     val frame = Modifier.drawBehind {
@@ -133,10 +143,13 @@ fun LibraryNav(
 }
 
 @Composable
-private fun NavItem(section: LibrarySection, on: Boolean, m: GbaTextMetrics, small: GbaTextMetrics, badge: Boolean, modifier: Modifier, onClick: () -> Unit) {
+private fun NavItem(
+    section: LibrarySection, on: Boolean, m: GbaTextMetrics, small: GbaTextMetrics, badge: Boolean, modifier: Modifier, cursor: Boolean = false,
+    onClick: () -> Unit,
+) {
     val u = m.u
     val interaction = remember { MutableInteractionSource() }
-    val focused by interaction.collectIsFocusedAsState()
+    val focused = interaction.collectIsFocusedAsState().value || cursor
     val label = tr(section.label)
     Box(
         modifier

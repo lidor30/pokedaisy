@@ -1105,6 +1105,15 @@ open class CompanionScreenshotTest {
     @Test fun ghostGreyDexEntry() = retail("ghost_grey", NATIVE_GG, GG_ROM, GameKind.FIRERED, "DEX", entry = 12, art = true)
     @Test fun ghostGreyGuideBoss() = retailGuide("ghost_grey", NATIVE_GG, GG_ROM, "NEXT BOSS", kind = GameKind.FIRERED)
     @Test fun ghostGreyGuideHere() = retailGuide("ghost_grey", NATIVE_GG, GG_ROM, "HERE", kind = GameKind.FIRERED)
+
+    // Let's Go Pikachu: its new game's save (the fixtures' READMEs) - species past FireRed's (FALINKS 413), its dex numbers.
+    @Test fun letsGoParty() = retail("lets_go_pikachu", NATIVE_LETS_GO, LETS_GO_ROM, GameKind.FIRERED, "PARTY", art = true)
+    @Test fun letsGoItems() = retail("lets_go_pikachu", NATIVE_LETS_GO, LETS_GO_ROM, GameKind.FIRERED, "ITEMS", art = true)
+    @Test fun letsGoMap() = retail("lets_go_pikachu", NATIVE_LETS_GO, LETS_GO_ROM, GameKind.FIRERED, "MAP", art = true)
+    @Test fun letsGoBattle() = retail("lets_go_pikachu_battle", NATIVE_LETS_GO, LETS_GO_ROM, GameKind.FIRERED, "BATTLE", art = true)
+    @Test fun letsGoDexEntry() = retail("lets_go_pikachu", NATIVE_LETS_GO, LETS_GO_ROM, GameKind.FIRERED, "DEX", entry = 313, art = true)
+    @Test fun letsGoGuideBoss() = retailGuide("lets_go_pikachu", NATIVE_LETS_GO, LETS_GO_ROM, "NEXT BOSS", kind = GameKind.FIRERED)
+    @Test fun letsGoGuideHere() = retailGuide("lets_go_pikachu", NATIVE_LETS_GO, LETS_GO_ROM, "HERE", kind = GameKind.FIRERED)
     // Sword and Shield Ultimate Plus: Galar on CFRU, its sampled party / bag look, its map from the ROM.
     @Test fun swordShieldParty() = retail("sword_shield_up", NATIVE_SS, SS_ROM, GameKind.SWORD_SHIELD, "PARTY", art = true)
     @Test fun swordShieldItems() = retail("sword_shield_up", NATIVE_SS, SS_ROM, GameKind.SWORD_SHIELD, "ITEMS", art = true)
@@ -2061,6 +2070,7 @@ private const val AG_ROM = "Pokemon Ash Gray (v4.5.3).gba"
 private val NATIVE_RE get() = com.pokedaisy.app.companion.data.NATIVE_ROCKET_EDITION
 private val NATIVE_AG get() = com.pokedaisy.app.companion.data.NATIVE_ASH_GRAY
 private const val GG_ROM = "Pokemon Ghost Grey (v1.0.4).gba"
+private const val LETS_GO_ROM = "Pokemon Let's Go Pikachu.gba"
 private const val ER_ROM = "Pokemon Elite Redux (2.65.4.1b).gba"
 private const val TR_ROM = "Pokemon Team Rocket Dragonsden Version.gba"
 private const val DSM_ROM = "Pokemon Dreamstone Mysteries.gba"
@@ -2072,6 +2082,7 @@ private const val WOT_ROM = "Pokemon Wishes of Tomorrow (v1.2.6).gba"
 private val NATIVE_WOT get() = com.pokedaisy.app.companion.data.NATIVE_WISHES
 private val NATIVE_ER get() = com.pokedaisy.app.companion.data.NATIVE_ELITE_REDUX_V2_65_4_1B
 private val NATIVE_GG get() = com.pokedaisy.app.companion.data.NATIVE_GHOST_GREY
+private val NATIVE_LETS_GO get() = com.pokedaisy.app.companion.data.NATIVE_LETS_GO_PIKACHU
 private val NATIVE_SS get() = com.pokedaisy.app.companion.data.NATIVE_SWORD_SHIELD
 private const val RY_ROM = "Pokemon Recharged Yellow (v1.9.7).gba"
 private const val RY180_ROM = "Pokemon Recharged Yellow (v1.8.0).gba"

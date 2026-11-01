@@ -31,6 +31,8 @@ class ReusableTmsTest {
         // One of FireRed's three left: none, it would still use TMs up elsewhere.
         "Pokemon Ash Gray (v4.5.3).gba" to 0,
         "Pokemon Ghost Grey (v1.0.4).gba" to 0,
+        // Let's Go: none of FireRed's three sites kept (its TM code isn't checked: the row stays off).
+        "Pokemon Let's Go Pikachu.gba" to 0,
         // Their own TM code: Radical Red / Unbound / SoulGold's TMs never run out ([ReusableTms.BUILT_IN]).
         "Pokemon Radical Red (v4.1).gba" to 0,
         "Pokemon Unbound (v2.1.1.1).gba" to 0,

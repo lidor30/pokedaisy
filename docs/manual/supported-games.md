@@ -56,6 +56,7 @@ The companion reads their party, bag, map, Pokédex and guide, with pictures, Po
 | Pokémon FireRed Rocket Edition | its one release |
 | Pokémon Ash Gray | 4.5.3, and its Fork Bug Fix 1.0 build |
 | Pokémon Ghost Grey | 1.0.1, 1.0.2 and 1.0.4 |
+| Pokémon Let's Go (both versions) | its English translation, and each version's Translation Only build |
 | Sword and Shield Ultimate Plus | 1.2.1.2, plus its three patches |
 | Pokémon GS Chronicles | 2.7.6 |
 | Pokémon Recharged Yellow | 1.8.0, 1.9.0, 1.9.4 and 1.9.7 |

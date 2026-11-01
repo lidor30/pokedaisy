@@ -112,6 +112,11 @@ class LauncherState {
     var headerCursor by mutableIntStateOf(-1)
     /** The header's buttons, as laid out. */
     var headerCount = 0
+    /** The cursor on the GAMES / TOOLS / SETTINGS rail, on this place (-1 = not there): LEFT off the left edge lands there. */
+    var navCursor by mutableIntStateOf(-1)
+    /** The cursor on TOOLS' cards (while TOOLS is open in the games' place), and their columns as laid out. */
+    var toolCursor by mutableIntStateOf(0)
+    var toolColumns = 1
     /** The list on the second screen, the media on the main one. */
     var swapped by mutableStateOf(false)
     /** 0 at rest; 1 = both screens' contents fully out, mid-swap. */
@@ -188,12 +193,13 @@ class LauncherState {
     fun select(rom: File) {
         headerCursor = -1
         viewCursor = false
+        navCursor = -1
         games.indexOfFirst { it.absolutePath == rom.absolutePath }.takeIf { it >= 0 }?.let { selected = it }
     }
 
     /** Whether the cursor is on [rom]. */
     fun isCursor(rom: File): Boolean =
-        headerCursor < 0 && !viewCursor && games.getOrNull(selected)?.absolutePath == rom.absolutePath
+        headerCursor < 0 && !viewCursor && navCursor < 0 && games.getOrNull(selected)?.absolutePath == rom.absolutePath
 
     /** X: out (130 ms), trade screens, in (210 ms). Needs a frame clock: launch it from a composition's scope. */
     suspend fun swap(onSwapped: (Boolean) -> Unit) {

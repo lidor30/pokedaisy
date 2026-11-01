@@ -544,8 +544,9 @@ private fun recolorBackdrop(bmp: android.graphics.Bitmap?, to: IntArray, from: I
 fun rememberGameBackground(game: GameKind): GameBackground? {
     val context = LocalContext.current
     val gen = rememberArtGeneration()
-    // Recharged Emerald runs as EMERALD and Ghost Grey as FIRERED, each with its own backdrop.
-    val hack = com.pokedaisy.app.companion.data.runningEmeraldHack != null || com.pokedaisy.app.companion.data.runningGhostGrey
+    // Recharged Emerald runs as EMERALD and Ghost Grey and Let's Go as FIRERED, each with its own backdrop.
+    val hack = com.pokedaisy.app.companion.data.runningEmeraldHack != null || com.pokedaisy.app.companion.data.runningGhostGrey ||
+        com.pokedaisy.app.companion.data.runningLetsGo
     return remember(game, gen, hack) {
         // Kept across visits: the ITEMS backdrop crossfade unmounts this one, and
         // rebuilding it recoloured 38k pixels on the main thread each time.
@@ -569,6 +570,11 @@ private fun buildGameBackground(context: android.content.Context, game: GameKind
     if (game.isGameBoyGame || ghostGrey) {
         val paper = if (ghostGrey) -1 else com.pokedaisy.app.companion.ui.OptionColors.gbPaper(game).toArgb()
         return GameBackground(android.graphics.Bitmap.createBitmap(intArrayOf(paper), 1, 1, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap(), false)
+    }
+    // Let's Go Pikachu / Eevee: CFRU's party menu with its own grid (RomArt), else CFRU's own.
+    if (game == GameKind.FIRERED && com.pokedaisy.app.companion.data.runningLetsGo) {
+        sequenceOf(com.pokedaisy.app.companion.data.RomArt.LETS_GO_BACKDROP, com.pokedaisy.app.companion.data.RomArt.CFRU_BACKDROP)
+            .firstNotNullOfOrNull { GameArt.get(context, it) }?.let { return GameBackground(it.asImageBitmap(), true) }
     }
     // Sword and Shield Ultimate Plus: CFRU's grid in its own red, one 32px cell tiled (RomArt).
     if (game == GameKind.SWORD_SHIELD) {

@@ -62,28 +62,37 @@ class FfMusicPlayer {
         current = null
     }
 
-    /** One clip's playback: its own thread writing the WAVs' samples into the track, blocking, so the track paces it. */
+    /**
+     * One clip's playback: its own thread writing the WAVs' samples into the track, blocking, so the track paces it. The
+     * clip is opened there too: a FLAC is decoded first ([FlacPcm], ~0.2 s a minute of music), never on the caller's thread.
+     */
     private class Streamer(private val clip: Clip) : Thread("pokedaisy-ffmusic") {
-        private val loop = Wav(clip.loop)
-        private val intro = clip.intro?.let { runCatching { Wav(it) }.getOrNull() }?.takeIf { it.frames > 0 && it.rate == loop.rate }
-        private val track = buildTrack(loop.rate)
+        private var loop: Wav? = null
+        private var intro: Wav? = null
+        private var track: AudioTrack? = null
         private val lock = Any()
         @Volatile private var running = true
         private var released = false
 
-        init { applyVolume() }
-
-        fun applyVolume() = synchronized(lock) { if (!released) runCatching { track.setVolume(GameVolume.gain) } }
+        fun applyVolume() = synchronized(lock) { if (!released) runCatching { track?.setVolume(GameVolume.gain) } }
 
         fun finish() {
             running = false
             // A blocking write returns once the track is paused; the thread releases it.
-            synchronized(lock) { if (!released) runCatching { track.pause(); track.flush() } }
+            synchronized(lock) { if (!released) runCatching { track?.pause(); track?.flush() } }
         }
 
         override fun run() {
             Process.setThreadPriority(Process.THREAD_PRIORITY_AUDIO)
             try {
+                val loop = Wav(FlacPcm.wavFor(clip.loop)).also { loop = it }
+                val intro = clip.intro?.let { runCatching { Wav(FlacPcm.wavFor(it)) }.getOrNull() }
+                    ?.takeIf { it.frames > 0 && it.rate == loop.rate }.also { intro = it }
+                val track = synchronized(lock) {
+                    if (!running) return
+                    buildTrack(loop.rate).also { track = it }
+                }
+                applyVolume()
                 val atFrames = ((SystemClock.elapsedRealtime() - clip.songStartedAt).coerceAtLeast(0L) * loop.rate / 1000L)
                 val introFrames = intro?.frames ?: 0L
                 track.play()
@@ -101,11 +110,10 @@ class FfMusicPlayer {
             } finally {
                 synchronized(lock) {
                     released = true
-                    runCatching { track.stop() }
-                    track.release()
+                    track?.let { t -> runCatching { t.stop() }; t.release() }
                 }
                 intro?.close()
-                loop.close()
+                loop?.close()
             }
         }
 
@@ -119,7 +127,7 @@ class FfMusicPlayer {
                 if (n <= 0) return running
                 var off = 0
                 while (off < n) {
-                    val w = track.write(buf, off, n - off, AudioTrack.WRITE_BLOCKING)
+                    val w = track!!.write(buf, off, n - off, AudioTrack.WRITE_BLOCKING)
                     if (w <= 0 || !running) return false
                     off += w
                 }

@@ -16,6 +16,10 @@ class WildEncountersTest {
     private val cases = listOf(
         "Pokemon - Emerald Version (USA, Europe).gba" to 0x02038C00L,
         "Pokemon - FireRed Version (USA).gba" to 0x020386DCL,
+        // Let's Go Pikachu / Eevee keep rev 0's StandardWildEncounter (its wild Pokémon also walk the grass, which the
+        // switch doesn't touch).
+        "Pokemon Let's Go Pikachu.gba" to 0x020386DCL,
+        "Pokemon Let's Go Eevee (Translation Only).gba" to 0x020386DCL,
         "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba" to 0x020386DCL,
         "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba" to 0x020386DCL,
         "Pokemon - Ruby Version (USA, Europe) (Rev 1).gba" to 0x0202FF7CL,

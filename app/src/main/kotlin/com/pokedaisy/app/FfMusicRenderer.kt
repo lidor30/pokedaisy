@@ -301,9 +301,9 @@ class FfMusicRenderer(
         fun recordSfx(songs: M4aSongs, songId: Int, frames: Int, sink: GameClickSound?, label: String) {
             val fn = songs.songNumStart and 1L.inv()
             // MUS_DUMMY replaces whatever the title screen was playing with silence.
-            if (!MgbaCore.pkRenderForceSong(fn, MUS_DUMMY, 0)) return
+            if (!forceSong(fn, MUS_DUMMY, 0)) return
             repeat(SILENCE_FRAMES) { MgbaCore.pkRenderRunFrame(); MgbaCore.pkRenderReadAudio(scratch) }
-            if (!MgbaCore.pkRenderForceSong(fn, songId, 0)) return
+            if (!forceSong(fn, songId, 0)) return
             val buf = ShortArray(sampleRate * 2 * frames / 60 + scratch.size)
             var pos = 0
             repeat(frames) {
@@ -319,7 +319,7 @@ class FfMusicRenderer(
         /** Starts [songId] via the ROM's m4aSongNumStart; the key it plays under, once its tracks run. */
         private fun start(songs: M4aSongs, songId: Int): String? {
             val fn = songs.songNumStart and 1L.inv()
-            if (!MgbaCore.pkRenderForceSong(fn, M4aSongs.number(songId), M4aSongs.alt(songId))) return null
+            if (!forceSong(fn, M4aSongs.number(songId), M4aSongs.alt(songId))) return null
             // MPlayStart clears the player's status; the next sound tick marks its tracks playing.
             repeat(START_FRAMES) {
                 MgbaCore.pkRenderRunFrame()
@@ -327,6 +327,20 @@ class FfMusicRenderer(
                 FfMusicKey.current(reader)?.let { return it }
             }
             return null
+        }
+
+        /**
+         * Calls m4aSongNumStart, a frame at a time until the core lets it run: pk_call refuses while a frame ended inside
+         * the game's interrupt handler, not on the parked `b .` (Let's Go Pikachu's render core, after a long recording:
+         * every song after it "didn't start", 2026-11-03), as mgba_dump's `call` waits for.
+         */
+        private fun forceSong(fn: Long, number: Int, alt: Int): Boolean {
+            repeat(SAFE_CALL_FRAMES) {
+                if (MgbaCore.pkRenderForceSong(fn, number, alt)) return true
+                MgbaCore.pkRenderRunFrame()
+                MgbaCore.pkRenderReadAudio(scratch)
+            }
+            return false
         }
 
         fun close() {
@@ -395,6 +409,7 @@ class FfMusicRenderer(
         /** The background pass's cap: 10x real time (a frame every 1.67 ms). */
         const val BACKGROUND_FRAME_NANOS = 1_000_000_000L / 60 / 10
         const val START_FRAMES = 30                                   // up to half a second for a forced song to start
+        const val SAFE_CALL_FRAMES = 60                               // up to a second for a frame m4aSongNumStart may run in
         const val BOOT_FRAMES = 300                                   // ~5 s of game time at 60 fps
         const val MAX_BOOT_FRAMES = 1800                              // 30 s: waiting for the title music
         val WATCHDOG_FRAMES = 60 * (FfMusicCache.CAPTURE_SECONDS + 5)
