@@ -13,10 +13,12 @@
 #include "quick_menu.h"
 #include "wild.h"
 #include "../app/src/main/cpp/pk_wide.h"
+#include "../app/src/main/cpp/pk_rewind.h"
 #include <SDL.h>
 #include <dirent.h>
 #include <errno.h>
 #include <fcntl.h>
+#include <linux/input.h>
 #include <mgba-util/vfs.h>
 #include <mgba/core/blip_buf.h>
 #include <mgba/core/core.h>
@@ -60,6 +62,9 @@ static int appError;
 static unsigned audioNonzero;
 #endif
 static const char *root = ".";
+/* plorpOS: --save FILE, the battery save another emulator keeps (its backups
+ * then go to DATA/backups); NULL = DATA/saves/ROM.sav. */
+static const char *saveFile;
 static char message[128];
 static unsigned messageUntil;
 enum {
@@ -78,6 +83,13 @@ enum {
   L2,
   R2,
   MENU,
+  L3,
+  SUP, // plorpOS: the left stick's directions apart (they're also the D-pad's), and the Brick's Fn keys
+  SDOWN,
+  SLEFT,
+  SRIGHT,
+  FN1,
+  FN2,
   NKEYS
 };
 static SDL_GameController *controller;
@@ -215,6 +227,7 @@ static int controller_button(int button) {
     case SDL_CONTROLLER_BUTTON_BACK:return SELECT;
     case SDL_CONTROLLER_BUTTON_START:return START;
     case SDL_CONTROLLER_BUTTON_GUIDE:return MENU;
+    case SDL_CONTROLLER_BUTTON_LEFTSTICK:return L3;
     case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:return L;
     case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:return R;
     case SDL_CONTROLLER_BUTTON_DPAD_UP:return UP;
@@ -272,6 +285,23 @@ static void controller_removed(SDL_JoystickID id) {
     if (SDL_IsGameController(i))
       controller_added(i);
 }
+/* plorpOS: keys SDL's joystick never reports (below BTN_MISC: the Brick's Fn keys, KEY_F1 / KEY_F2), read
+ * from the pad's own node beside SDL: POCKET_FN_KEYS=NODE:FN1CODE:FN2CODE. */
+static void fn_keys(void) {
+  static int fd = -2, code[2];
+  if (fd == -2) {
+    const char *spec = getenv("POCKET_FN_KEYS");
+    char node[256];
+    fd = -1;
+    if (spec && sscanf(spec, "%255[^:]:%d:%d", node, &code[0], &code[1]) == 3)
+      fd = open(node, O_RDONLY | O_NONBLOCK);
+  }
+  struct input_event ev;
+  while (fd >= 0 && read(fd, &ev, sizeof ev) == (ssize_t)sizeof ev)
+    for (int i = 0; i < 2; i++)
+      if (ev.type == EV_KEY && ev.code == code[i] && ev.value != 2)
+        key(FN1 + i, ev.value != 0);
+}
 static void events(void) {
   pressed = 0;
   SDL_Event e;
@@ -296,8 +326,10 @@ static void events(void) {
     if(e.type == SDL_CONTROLLERAXISMOTION) {
       if(e.caxis.axis==SDL_CONTROLLER_AXIS_TRIGGERLEFT)key(L2,e.caxis.value>16000);
       if(e.caxis.axis==SDL_CONTROLLER_AXIS_TRIGGERRIGHT)key(R2,e.caxis.value>16000);
-      if(e.caxis.axis==SDL_CONTROLLER_AXIS_LEFTX) {key(LEFT,e.caxis.value < -16000);key(RIGHT,e.caxis.value > 16000);}
-      if(e.caxis.axis==SDL_CONTROLLER_AXIS_LEFTY) {key(UP,e.caxis.value < -16000);key(DOWN,e.caxis.value > 16000);}
+      if(e.caxis.axis==SDL_CONTROLLER_AXIS_LEFTX) {key(LEFT,e.caxis.value < -16000);key(RIGHT,e.caxis.value > 16000);
+        key(SLEFT,e.caxis.value < -16000);key(SRIGHT,e.caxis.value > 16000);}
+      if(e.caxis.axis==SDL_CONTROLLER_AXIS_LEFTY) {key(UP,e.caxis.value < -16000);key(DOWN,e.caxis.value > 16000);
+        key(SUP,e.caxis.value < -16000);key(SDOWN,e.caxis.value > 16000);}
     }
     if (!controller && rawTrimui && (e.type == SDL_JOYBUTTONDOWN || e.type == SDL_JOYBUTTONUP))
       key(joy(e.jbutton.button), e.type == SDL_JOYBUTTONDOWN);
@@ -317,6 +349,7 @@ static void events(void) {
         e.window.event == SDL_WINDOWEVENT_FOCUS_LOST)
       held = 0;
   }
+  fn_keys();
 }
 static void repeat_directions(void) {
   for (int k = RIGHT; k <= DOWN; k++)
@@ -326,6 +359,103 @@ static void repeat_directions(void) {
     }
 }
 static bool down(int k) { return (pressed & (1u << k)) != 0; }
+/* plorpOS: its GBA hotkeys, in the file POCKET_HOTKEYS_FILE names - Diatom's wire on its first line
+ * ("l2:ff,d.x:savestate,select+r1:rewind"), the modifier a binding naming none holds on its second - read
+ * at start and again after a pause (its in-game menu can change them). A trigger is held with its modifier,
+ * or alone with "d.". The game doesn't get a trigger while it's a hotkey's (hotkeyMask). Set at all, the
+ * host owns MENU - its own in-game menu and the modifier - and MENU no longer opens this GAME menu
+ * (START+SELECT still does). */
+enum { HK_FF, HK_REWIND, HK_SAVE, HK_LOAD, HK_ACTIONS };
+static struct {
+  int action, key, mod; // mod -1: alone
+} hotkey[16];
+static int hotkeyN;
+static unsigned hotkeyMask;
+static bool hostMenu, rewindBound; // rewindBound: a REWIND hotkey, which keeps the ring on (as plorpOS's games)
+static int key_named(const char *s) {
+  static const struct {
+    const char *name;
+    int key;
+  } names[] = {{"a", A},       {"b", B},         {"x", X},         {"y", Y},           {"l1", L},
+               {"r1", R},      {"l2", L2},       {"r2", R2},       {"up", UP},         {"down", DOWN},
+               {"left", LEFT}, {"right", RIGHT}, {"menu", MENU},   {"select", SELECT}, {"l3", L3},
+               {"sup", SUP},   {"sdown", SDOWN}, {"sleft", SLEFT}, {"sright", SRIGHT}, {"fn1", FN1},
+               {"fn2", FN2}};
+  for (size_t i = 0; i < sizeof names / sizeof names[0]; i++)
+    if (!strcmp(s, names[i].name))
+      return names[i].key;
+  return -1;
+}
+static void hotkeys_load(void) {
+  static const char *const actions[HK_ACTIONS] = {"ff", "rewind", "savestate", "loadstate"};
+  const char *path = getenv("POCKET_HOTKEYS_FILE");
+  char buf[512] = "", modBuf[32] = "menu", *mod = modBuf, *save = NULL;
+  FILE *f = path ? fopen(path, "r") : NULL;
+  hostMenu = path != NULL;
+  hotkeyN = 0;
+  rewindBound = false;
+  if (f) {
+    if (!fgets(buf, sizeof buf, f))
+      buf[0] = 0;
+    if (!fgets(modBuf, sizeof modBuf, f))
+      snprintf(modBuf, sizeof modBuf, "menu");
+    fclose(f);
+  }
+  buf[strcspn(buf, "\r\n")] = 0;
+  modBuf[strcspn(modBuf, "\r\n")] = 0;
+  for (char *t = strtok_r(buf, ",", &save); t && hotkeyN < 16; t = strtok_r(NULL, ",", &save)) {
+    char *colon = strchr(t, ':'), *plus = strchr(t, '+');
+    int action = -1, m, k;
+    if (!colon)
+      continue;
+    *colon = 0;
+    for (int i = 0; i < HK_ACTIONS; i++)
+      if (!strcmp(colon + 1, actions[i]))
+        action = i;
+    if (plus) {
+      *plus = 0;
+      m = key_named(t);
+      k = key_named(plus + 1);
+    } else if (!strncmp(t, "d.", 2)) {
+      m = -2;
+      k = key_named(t + 2);
+    } else {
+      m = key_named(mod);
+      k = key_named(t);
+    }
+    // Others (screenshot, turbo, the right stick, the GKD's Home) aren't this host's.
+    if (action < 0 || k < 0 || m == -1)
+      continue;
+    rewindBound |= action == HK_REWIND;
+    hotkey[hotkeyN].action = action;
+    hotkey[hotkeyN].key = k;
+    hotkey[hotkeyN++].mod = m < 0 ? -1 : m;
+  }
+}
+/* The actions held this frame; *fired: those whose trigger went down now. */
+static unsigned hotkeys_held(unsigned *fired) {
+  unsigned on = 0;
+  *fired = 0;
+  hotkeyMask = 0;
+  for (int i = 0; i < hotkeyN; i++) {
+    unsigned bit = 1u << hotkey[i].key;
+    bool mod = hotkey[i].mod >= 0 ? (held & (1u << hotkey[i].mod)) != 0
+                                  : !(hostMenu && (held & (1u << MENU)));
+    // pressed too: a tap shorter than a frame is let go before this sees it.
+    if (!((held | pressed) & bit) || !mod)
+      continue;
+    on |= 1u << hotkey[i].action;
+    if (pressed & bit)
+      *fired |= 1u << hotkey[i].action;
+    pressed &= ~bit;
+    hotkeyMask |= bit;
+    // A stick direction is the D-pad's too: the game doesn't get that either.
+    if (hotkey[i].key >= SUP && hotkey[i].key <= SRIGHT)
+      hotkeyMask |= 1u << (hotkey[i].key == SUP ? UP : hotkey[i].key == SDOWN ? DOWN
+                           : hotkey[i].key == SLEFT ? LEFT : RIGHT);
+  }
+  return on;
+}
 /* The companion's canvas for an ow x oh screen: the largest whole scale that
  * keeps it at least 320x240 (the 3DS's, which every tab is laid out for), so
  * its pixel text is about as big on every panel: 320x240 at 2x on 640x480,
@@ -460,6 +590,7 @@ static void wide_tick(struct mCore *c, bool skip, const struct pd_settings *s) {
 }
 // Gameplay scales in physical panel pixels; the companion keeps its 512x384
 // grid.
+static int gameScaling; // plorpOS: enum pd_scaling, for ASPECT ORIGINAL's picture
 static bool render_game(unsigned gw, unsigned gh) {
   int ow, oh;
   if (SDL_GetRendererOutputSize(renderer, &ow, &oh) < 0 || ow <= 0 || oh <= 0)
@@ -474,6 +605,16 @@ static bool render_game(unsigned gw, unsigned gh) {
   lastGameRect =
       (SDL_Rect){(ow - (int)gw * scale) / 2, (oh - (int)gh * scale) / 2,
                  (int)gw * scale, (int)gh * scale};
+  if (gameScaling == PD_SCALE_STRETCH)
+    lastGameRect = (SDL_Rect){0, 0, ow, oh};
+  else if (gameScaling == PD_SCALE_FIT) {
+    int w = ow, h = (int)((long)ow * gh / gw);
+    if (h > oh) {
+      h = oh;
+      w = (int)((long)oh * gw / gh);
+    }
+    lastGameRect = (SDL_Rect){(ow - w) / 2, (oh - h) / 2, w, h};
+  }
   // The textures take mGBA's pixels as they are (XBGR: SDL's BGR888).
   if (SDL_UpdateTexture(gameTexture, &(SDL_Rect){0, 0, (int)gw, (int)gh}, video, 256 * 4) < 0) {
     notice(SDL_GetError());
@@ -816,7 +957,8 @@ static void pacing_check(double frameMs) {
   avg = 0;
   count = 0;
 }
-static void audio_rate(struct mCore *c, double gameHz) {
+/* plorpOS: speed > 1 is fast-forward with its sound: as many samples as one frame's, so it plays sped up. */
+static void audio_rate(struct mCore *c, double gameHz, int speed) {
   double rate = 32768;
   if (vsyncPaced && audio && screenHz > 0) {
     double queued = SDL_GetQueuedAudioSize(audio) / 4.0, target = 32768 * 0.06;
@@ -824,6 +966,7 @@ static void audio_rate(struct mCore *c, double gameHz) {
     d = d > 1 ? 1 : d < -1 ? -1 : d;
     rate = 32768 * gameHz / screenHz * (1 + 0.005 * d);
   }
+  rate /= speed;
   for (int i = 0; i < 2; i++)
     blip_set_rates(c->getAudioChannel(c, i), c->frequency(c), rate);
 }
@@ -878,6 +1021,28 @@ static void perf_frame(uint64_t start, double hz) {
 static void test_frame(struct mCore *, bool, int, struct pd_ui *,
                        struct pd_snapshot *);
 #endif
+/* plorpOS: REWIND, the app's ring - a state every 2 frames, 600 of them (~20 s) - while settings.rewind. */
+static struct mCoreRewindContext rewindRing;
+static bool rewindOn;
+static int rewindTick;
+static void rewind_follow(bool on) {
+  if (on == rewindOn)
+    return;
+  if (rewindOn)
+    pk_rewind_deinit(&rewindRing);
+  else
+    pk_rewind_init(&rewindRing, 600);
+  rewindOn = on;
+  rewindTick = 0;
+}
+/* plorpOS: fast-forward's frames this refresh - its speed, or for MAX as many as ~80% of a frame's time fits
+ * (frameMs: what one cost lately). */
+static int ff_frames(const struct pd_settings *s, double hz, double frameMs) {
+  if (s->ffSpeed)
+    return s->ffSpeed;
+  int n = frameMs > 0 ? (int)(800.0 / hz / frameMs) : 2;
+  return n < 2 ? 2 : n > 30 ? 30 : n;
+}
 static void run_game(const char *path, int maxFrames, const char *shot) {
   FILE *f = fopen(path, "rb");
   if (!f) {
@@ -933,7 +1098,10 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   char sav[1024], ss[1024];
   const char *name = strrchr(path, '/');
   name = name ? name + 1 : path;
-  snprintf(sav, sizeof sav, "%s/saves/%s.sav", root, name);
+  if (saveFile)
+    snprintf(sav, sizeof sav, "%s", saveFile);
+  else
+    snprintf(sav, sizeof sav, "%s/saves/%s.sav", root, name);
   snprintf(ss, sizeof ss, "%s/states/%s.ss", root, name);
   struct pocket_save_status saveStatus = {0};
   if (!pocket_save_backup(sav, time(NULL))) {
@@ -1009,6 +1177,10 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   const char *repelNames[REPEL_KINDS];
   struct pd_ui ui;
   pd_ui_init(&ui, &settings);
+  hotkeys_load();
+  rewind_follow(settings.rewind || rewindBound);
+  double frameCost = 0;
+  uint64_t lastStart = 0;
   struct pd_snapshot snap = {0};
   struct pd_host_info host = {.hideScreenMode = true, .hasExpand = true, .hasHud = c->platform(c) == mPLATFORM_GBA,
                               .expandGame = wideSupported, .count = 1, .labels = {"HOST"}};
@@ -1036,9 +1208,34 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   while (running && !leave) {
     uint64_t frameStart = SDL_GetPerformanceCounter();
     if(saveStatus.failed) { appError=1; notice("Save I/O failed; stopping game"); break; }
+    // plorpOS: back from a pause (its in-game menu stops this process, as does sleep): what its OPTIONS
+    // changed in settings.ini, taken at once.
+    if (lastStart && (frameStart - lastStart) * 4 > SDL_GetPerformanceFrequency()) {
+      struct pd_settings fresh;
+      if (pd_settings_load(&fresh, config)) {
+        settings = fresh;
+        if (wildSwitch)
+          pk_field_wild(wildSwitch, settings.wildOff);
+        hudDrawnKey = 0;
+      }
+      hotkeys_load();
+    }
+    lastStart = frameStart;
+    rewind_follow(settings.rewind || rewindBound);
+    gameScaling = settings.aspect == PD_ASPECT_ORIGINAL || !wideSupported ? settings.scaling : PD_SCALE_INTEGER;
     events();
     audio_check();
     repeat_directions();
+    // plorpOS's hotkeys, over the game only.
+    unsigned hkFired = 0, hkOn = 0;
+    hotkeyMask = 0;
+    if (!companion && !quickOpen)
+      hkOn = hotkeys_held(&hkFired);
+    if (hkFired & (1u << HK_SAVE))
+      notice(state(c, ss, true) ? "State saved" : "State save failed");
+    if (hkFired & (1u << HK_LOAD))
+      notice(access(ss, F_OK) ? "No state saved yet" : state(c, ss, false) ? "State loaded" : "State load failed");
+    bool ffHeld = hkOn & (1u << HK_FF), rewinding = (hkOn & (1u << HK_REWIND)) && rewindOn;
     if (down(X)) {
       menuOpen = 0;
       companion = !companion;
@@ -1046,7 +1243,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
       if (audio)
         SDL_ClearQueuedAudio(audio);
     }
-    if (down(MENU) || ((down(START) || down(SELECT)) &&
+    if ((!hostMenu && down(MENU)) || ((down(START) || down(SELECT)) &&
                        (held & (1u << START)) && (held & (1u << SELECT)))) {
       menuOpen = menuOpen ? 0 : 1;
       companion = true;
@@ -1309,24 +1506,35 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
         confirmMenu.selected = 0;
       }
     } else {
-      muted = ff;
-      c->setKeys(c, (quickOpen ? 0 : held & 1023) | (gameKeyFrames > 0 ? gameKeys : 0));
-      int count = ff ? settings.ffSpeed : 1;
-      audio_rate(c, hz);
+      bool fast = (ff || ffHeld) && !rewinding;
+      muted = (fast && !settings.ffAudio) || rewinding;
+      c->setKeys(c, (quickOpen ? 0 : held & ~hotkeyMask & 1023) | (gameKeyFrames > 0 ? gameKeys : 0));
+      int count = fast ? ff_frames(&settings, hz, frameCost) : 1;
+      audio_rate(c, hz, count);
+      uint64_t runStart = SDL_GetPerformanceCounter();
       for (int i = 0; i < count; i++) {
         uint64_t t = SDL_GetPerformanceCounter();
+        // REWIND: back one entry, then that frame runs to draw it; at the oldest, stand still.
+        if (rewinding && !pk_rewind_restore(&rewindRing, c))
+          break;
+        if (rewindOn && !rewinding && ++rewindTick >= 2) {
+          rewindTick = 0;
+          pk_rewind_append(&rewindRing, c);
+        }
         c->runFrame(c);
         if (gameKeyFrames > 0 && --gameKeyFrames == 0)
-          c->setKeys(c, quickOpen ? 0 : held & 1023);
+          c->setKeys(c, quickOpen ? 0 : held & ~hotkeyMask & 1023);
         if (c->platform(c) == mPLATFORM_GBA)
           pk_rest_note(c);
         if (fieldKnown)
-          fieldFlags = pk_field_state(c, 0, wildSwitch && settings.wildOff ? 0 : 100);
+          fieldFlags = pk_field_state(c, settings.runIndoors, wildSwitch && settings.wildOff ? 0 : 100);
         emuMs += ms_since(t);
         t = SDL_GetPerformanceCounter();
         wide_tick(c, i < count - 1, &settings);
         wideMs += ms_since(t);
       }
+      if (fast)
+        frameCost = frameCost * 0.8 + 0.2 * ms_since(runStart) / count;
     }
     // The companion's data: fresh when it opens (it pauses the game), else twice a
     // second - read through the bus byte by byte, every frame cost frame time.
@@ -1502,6 +1710,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   if (audio)
     SDL_ClearQueuedAudio(audio);
 cleanup:
+  rewind_follow(false);
   pk_wide_configure(0);
   wideSupported = wideReady = false;
   c->unloadROM(c);
@@ -1520,6 +1729,8 @@ int main(int argc, char **argv) {
   for (int i = 1; i < argc; i++) {
     if (!strcmp(argv[i], "--data") && i + 1 < argc)
       root = argv[++i];
+    else if (!strcmp(argv[i], "--save") && i + 1 < argc)
+      saveFile = argv[++i];
     else if (!strcmp(argv[i], "--frames") && i + 1 < argc)
       frames = atoi(argv[++i]);
     else if (!strcmp(argv[i], "--shot") && i + 1 < argc)
@@ -1532,6 +1743,11 @@ int main(int argc, char **argv) {
   signal(SIGTERM, stop);
   mkdir(root, 0755);
   char path[1024];
+  static char backups[1024];
+  if (saveFile) {
+    snprintf(backups, sizeof backups, "%s/backups", root);
+    pocket_backup_dir = backups;
+  }
   const char *dirs[] = {"roms", "saves", "states"};
   for (int i = 0; i < 3; i++) {
     snprintf(path, sizeof path, "%s/%s", root, dirs[i]);

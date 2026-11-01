@@ -16,9 +16,11 @@ find_library(SDL2_LIBRARY NAMES SDL2 REQUIRED)
 find_package(Threads REQUIRED)
 file(GLOB PD_CORE CONFIGURE_DEPENDS ../3ds/core/*.c)
 add_library(pd_linux_common STATIC host_io.c wild.c fly.c field_items.c hud.c quick_menu.c ${PD_CORE} ../3ds/desktop/pd_png.c ../app/src/main/cpp/pk_savevf.c
-  ../app/src/main/cpp/pk_call.c ../app/src/main/cpp/pk_wide.c ../app/src/main/cpp/pk_wide_gb.c)
+  ../app/src/main/cpp/pk_call.c ../app/src/main/cpp/pk_wide.c ../app/src/main/cpp/pk_wide_gb.c
+  ../app/src/main/cpp/pk_rewind.c)
 target_include_directories(pd_linux_common PUBLIC ../3ds/core ../third_party/mgba/include ${CMAKE_CURRENT_BINARY_DIR}/mgba/include ${SDL2_INCLUDE_DIR})
-target_compile_definitions(pd_linux_common PUBLIC _GNU_SOURCE _POSIX_C_SOURCE=200809L)
+target_compile_definitions(pd_linux_common PUBLIC _GNU_SOURCE _POSIX_C_SOURCE=200809L
+  USE_PTHREADS) # plorpOS: libmgba is, and pk_rewind.c needs its threaded mCoreRewindContext
 target_compile_options(pd_linux_common PRIVATE -Wall -Wextra)
 # The app's EXPAND sources, built as they are.
 set_source_files_properties(../app/src/main/cpp/pk_wide.c ../app/src/main/cpp/pk_wide_gb.c PROPERTIES COMPILE_OPTIONS -Wno-unused-parameter)

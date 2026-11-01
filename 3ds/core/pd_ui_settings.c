@@ -92,7 +92,10 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
 
     if (!host || !host->hideScreenMode)
         setting(ui, c, ix, &y, iw, SETTING_SCREEN, "SCREEN", pd_screen_mode_name(ui->settings->screenMode));
-    snprintf(buf, sizeof(buf), "%dx", ui->settings->ffSpeed);
+    if (ui->settings->ffSpeed)
+        snprintf(buf, sizeof(buf), "%dx", ui->settings->ffSpeed);
+    else
+        snprintf(buf, sizeof(buf), "MAX");
     setting(ui, c, ix, &y, iw, SETTING_FF, "FAST-FORWARD", buf);
     if (host && host->hasExpand) {
         if (host->expandGame) {
@@ -234,7 +237,7 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     pd_dim(c, 0xE6);
     // Swallows taps beside the windows (they close the overlay).
     ui_add_hit(ui, 0, 0, c->w, c->h, HIT_SCRIM);
-    static const char* const FF[PD_FF_MAX - PD_FF_MIN + 1] = { "2x", "3x", "4x" };
+    static const char* const FF[PD_FF_CHOICES] = { "2x", "3x", "4x", "5x", "6x", "8x", "10x", "MAX" };
     switch (ui->overlay) {
     case PD_OVERLAY_PICK_SCREEN:
         pick_list(ui, c, "SCREEN", SCREEN_NAMES, PD_SCREEN_MODES, ui->settings->screenMode);
@@ -243,7 +246,7 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
         pick_list(ui, c, "ASPECT", ASPECT_NAMES, PD_ASPECTS, ui->settings->aspect);
         break;
     case PD_OVERLAY_PICK_FF:
-        pick_list(ui, c, "FAST-FORWARD", FF, PD_FF_MAX - PD_FF_MIN + 1, ui->settings->ffSpeed - PD_FF_MIN);
+        pick_list(ui, c, "FAST-FORWARD", FF, PD_FF_CHOICES, pd_ff_index(ui->settings->ffSpeed));
         break;
     case PD_OVERLAY_TAB_BAR:
         tab_bar_page(ui, c);

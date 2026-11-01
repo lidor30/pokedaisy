@@ -51,6 +51,14 @@ enum pd_aspect {
 
 #define PD_FF_MIN 2
 #define PD_FF_MAX 4
+// plorpOS: the fast-forward speeds offered (the app's RATES less 1.5x), 0 = MAX: as many frames as a
+// screen refresh has time for.
+#define PD_FF_CHOICES 8
+extern const int PD_FF_SPEEDS[PD_FF_CHOICES];
+int pd_ff_index(int speed);
+
+// plorpOS: how ORIGINAL's picture fills the screen - whole pixels, the largest 3:2, or all of it.
+enum pd_scaling { PD_SCALE_INTEGER, PD_SCALE_FIT, PD_SCALE_STRETCH, PD_SCALINGS };
 
 // What the player set; the host loads and saves it (pd_settings.h).
 struct pd_settings {
@@ -63,6 +71,11 @@ struct pd_settings {
     int tabBar;      // TAB BAR: a bit per enum pd_tab on the bar (PARTY .. DEX, CARD); the rest open from MORE
     bool hud;        // HUD over the overworld (hosts with hasHud) ...
     int hudHidden;   // ... less these parts: a bit per enum pd_hud_part
+    // plorpOS (its in-game menu writes these too):
+    int scaling;     // enum pd_scaling, ASPECT ORIGINAL's picture
+    bool ffAudio;    // the game's sound sped up under fast-forward, else silent
+    bool rewind;     // REWIND: the last ~20 s kept for the rewind hotkey
+    bool runIndoors; // RUN INDOORS: every map lets the player run
 };
 
 // TAB BAR: at most this many tabs beside the gear (the app's MAX_BAR_TABS).

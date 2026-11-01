@@ -319,7 +319,7 @@ static void act(struct pd_ui* ui, int id) {
         if (id >= HIT_OPTION && id < HIT_OPTION + 8) {
             int i = id - HIT_OPTION;
             if (ui->overlay == PD_OVERLAY_PICK_SCREEN) ui->settings->screenMode = i;
-            if (ui->overlay == PD_OVERLAY_PICK_FF) ui->settings->ffSpeed = PD_FF_MIN + i;
+            if (ui->overlay == PD_OVERLAY_PICK_FF && i < PD_FF_CHOICES) ui->settings->ffSpeed = PD_FF_SPEEDS[i];
             if (ui->overlay == PD_OVERLAY_PICK_ASPECT && i < PD_ASPECTS) ui->settings->aspect = i;
             close_overlay(ui, PD_ACTION_SETTINGS_CHANGED);
         } else if (id == HIT_YES) {
