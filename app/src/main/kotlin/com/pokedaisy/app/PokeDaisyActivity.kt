@@ -1723,6 +1723,9 @@ class PokeDaisyActivity : Activity() {
         // Focusable, so a DS battle's menu can give it the focus ([dsBattleTakes]: no D-pad press lost to touch mode).
         view.isFocusable = true
         view.isFocusableInTouchMode = true
+        // Out of touch mode (a controller's buttons) Android draws its default focus highlight over a focused view: the
+        // whole game washed out by a ~30% white (black read 77 grey).
+        view.defaultFocusHighlightEnabled = false
         view.holdFrame = { ::engine.isInitialized && engine.holdFrame }
         // 1x frames follow the game screen's refresh (EmulatorEngine.onVsync).
         view.onVsync = { if (::engine.isInitialized) engine.onVsync() else 0L }
