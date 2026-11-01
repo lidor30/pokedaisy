@@ -203,8 +203,8 @@ fun List<Pair<Color, Int>>.inPx(px: Float) = map { (color, u) -> color to u * px
 /**
  * Nested pixel-cornered rects, outermost layer first, then [fill]. [openRight] runs
  * the shape past the right edge and clips it, dropping the right-hand frame
- * (a folder tab that continues into the window beside it); [openBottom] and
- * [openTop] do the same downwards / upwards.
+ * (a folder tab that continues into the window beside it); [openBottom],
+ * [openTop] and [openLeft] do the same downwards / upwards / leftwards.
  */
 fun DrawScope.drawLayeredBox(
     layers: List<Pair<Color, Float>>,
@@ -213,9 +213,11 @@ fun DrawScope.drawLayeredBox(
     openRight: Boolean = false,
     openBottom: Boolean = false,
     openTop: Boolean = false,
+    openLeft: Boolean = false,
 ) {
     val run = radius + layers.sumOf { it.second.toDouble() }.toFloat() + 1f
-    val extraW = if (openRight) run else 0f
+    val left = if (openLeft) run else 0f
+    val extraW = (if (openRight) run else 0f) + left
     val top = if (openTop) run else 0f
     val extraH = (if (openBottom) run else 0f) + top
     clipRect {
@@ -223,14 +225,14 @@ fun DrawScope.drawLayeredBox(
         var r = radius
         for ((color, width) in layers) {
             drawPixelRoundRect(
-                color, Offset(inset, inset - top), Size(size.width + extraW - 2 * inset, size.height + extraH - 2 * inset),
+                color, Offset(inset - left, inset - top), Size(size.width + extraW - 2 * inset, size.height + extraH - 2 * inset),
                 r.coerceAtLeast(0f),
             )
             inset += width
             r -= width
         }
         drawPixelRoundRect(
-            fill, Offset(inset, inset - top), Size(size.width + extraW - 2 * inset, size.height + extraH - 2 * inset),
+            fill, Offset(inset - left, inset - top), Size(size.width + extraW - 2 * inset, size.height + extraH - 2 * inset),
             r.coerceAtLeast(0f),
         )
     }

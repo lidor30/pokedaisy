@@ -2131,6 +2131,8 @@ fun main(args: Array<String>) {
         Shot("launcher-swapped-main", tw, th, td, launcher(swapped = true)),
         Shot("launcher-swapped-second", bw, bh, bd, launcher(swapped = true, second = true)),
         Shot("launcher-phone-bottom", 1280, 960, bd, launcher(second = true)),
+        // Upright: the legend floats over the bar, not on it.
+        Shot("launcher-portrait", 1080, 2400, 2.625f, launcher()),
         // The update's one-time ScreenScraper window, over the classic library.
         Shot("library-ss-intro", tw, th, td, activity { Prefs(android.content.Context()).screenScraperAsked = false; withScreenScraper { LibraryActivity() } }),
         // PC BOXES (a game's library menu): the save's party and boxes, then a Pokémon picked, moved and saved.
@@ -2515,6 +2517,9 @@ fun main(args: Array<String>) {
             LibraryActivity().apply { setup = SetupState().apply { step = SetupState.Step.COVERS; apiKey = "preview-key" } }
         }) { onNodeWithText("SAVE").performClick() },
         Shot("settings-home", tw, th, td, activity { SettingsActivity() }),
+        // The library's SETTINGS tab: its rail (a bar upright) and header over HOME.
+        Shot("settings-tab", tw, th, td, activity { SettingsActivity().apply { intent.putExtra(SettingsActivity.EXTRA_TAB, true).putExtra(SettingsActivity.EXTRA_TOOLS_NEW, true) } }),
+        Shot("settings-tab-phone", 1080, 2400, 2.625f, activity { SettingsActivity().apply { intent.putExtra(SettingsActivity.EXTRA_TAB, true) } }),
         Shot("settings-volume-popup", tw, th, td, activity { SettingsActivity() }) {
             onNodeWithText("GAME VOLUME").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },

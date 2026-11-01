@@ -6,6 +6,7 @@ abstract class ActivityResultContract<I, O>
 
 object ActivityResultContracts {
     class OpenDocument : ActivityResultContract<Array<String>, Uri?>()
+    class StartActivityForResult : ActivityResultContract<android.content.Intent, androidx.activity.result.ActivityResult>()
     class OpenMultipleDocuments : ActivityResultContract<Array<String>, List<Uri>>()
     class GetContent : ActivityResultContract<String, Uri?>()
     open class OpenDocumentTree : ActivityResultContract<Uri?, Uri?>() {

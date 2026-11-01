@@ -24,11 +24,11 @@ The game you have open says `PLAYING`, and a small save icon next to a name mean
 
 ## Games, tools and settings
 
-Down the left of the library are three buttons: `GAMES`, `TOOLS` and `SETTINGS`. On a phone held upright they sit in a bar along the bottom instead.
+Down the left edge of the library are three buttons: `GAMES`, `TOOLS` and `SETTINGS`. On a phone held upright they sit in a bar along the bottom edge instead. They stay on screen whichever one is open, and the page beside them changes.
 
 - `GAMES` is your library, the games and the quick views over them.
-- `TOOLS` shows, in the games' place, what PokeDaisy can do with your games besides playing them. Tap one to open it.
-- `SETTINGS` opens Settings.
+- `TOOLS` shows, in the games' place, what PokeDaisy can do with your games besides playing them. Tap one to open it. Its header has only the help button, since sorting and adding are for your games.
+- `SETTINGS` shows Settings in the same place, under the library's header. Tap `SETTINGS` again on one of its pages to go back to the first one, and `BACK` from there takes you to your games.
 
 | Tool | What it does |
 | --- | --- |
@@ -188,6 +188,8 @@ The D-pad moves a cursor through it: up and down a row, left and right along a r
 - **A** opens the game.
 - **B** opens the game's menu (the same entries as a long press). Whatever an entry opens, like `INFO`, B takes you back to the menu.
 - **Y** opens Settings.
+
+On a screen held upright the legend floats just above the bar of `GAMES`, `TOOLS` and `SETTINGS`, so it never covers them.
 
 With the touch screen, a tap on a game opens it straight away, and a long press opens its menu.
 

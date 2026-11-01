@@ -173,6 +173,14 @@ class LibraryActivity : ComponentActivity() {
             bump()
         }
     }
+    /** SETTINGS opened as the rail's / bar's tab: its own GAMES / TOOLS come back here as the place to show. */
+    private val settingsTab = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        when (r.data?.getStringExtra(SettingsActivity.EXTRA_SECTION)) {
+            com.pokedaisy.app.companion.ui.LibrarySection.TOOLS.name -> { toolsOpen = true; launcher.toolCursor = 0 }
+            com.pokedaisy.app.companion.ui.LibrarySection.GAMES.name -> toolsOpen = false
+        }
+    }
+
     private val pickPatch = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { patcher.start(it) }
     }
@@ -511,7 +519,7 @@ class LibraryActivity : ComponentActivity() {
             when (s) {
                 com.pokedaisy.app.companion.ui.LibrarySection.GAMES -> toolsOpen = false
                 com.pokedaisy.app.companion.ui.LibrarySection.TOOLS -> toolsOpen = true
-                com.pokedaisy.app.companion.ui.LibrarySection.SETTINGS -> startActivity(Intent(this@LibraryActivity, SettingsActivity::class.java))
+                com.pokedaisy.app.companion.ui.LibrarySection.SETTINGS -> openSettings()
             }
         }
         val section = if (toolsOpen) com.pokedaisy.app.companion.ui.LibrarySection.TOOLS else com.pokedaisy.app.companion.ui.LibrarySection.GAMES
@@ -522,15 +530,16 @@ class LibraryActivity : ComponentActivity() {
             // A wide screen: GAMES / TOOLS / SETTINGS down the left, the library beside it.
             Row(Modifier.fillMaxSize()) {
             if (wide) com.pokedaisy.app.companion.ui.LibraryNav(
-                section, vertical = true, m, small, toolsBadge = toolsNew && !toolsOpen,
-                modifier = Modifier.padding(start = SCREEN_MARGIN, top = SCREEN_MARGIN), onPick = pickSection,
+                section, vertical = true, m, small, toolsBadge = toolsNew && !toolsOpen, top = SCREEN_MARGIN, onPick = pickSection,
             )
             // The lists scroll to the screen's edges (their margin is padding inside them), so a card
             // slides off the screen rather than being cut at an inner box's edge.
             Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
-                OptionTitleWindow(if (narrowHeader) "" else "POKéDAISY", m, Modifier.padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, top = SCREEN_MARGIN), leading = {
+                OptionTitleWindow(if (narrowHeader && !toolsOpen) "" else "POKéDAISY", m, Modifier.padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, top = SCREEN_MARGIN), leading = {
                     PixelArt(LOGO_ROWS, LOGO_PALETTE, Modifier.size(m.lineHeight))
                 }) {
+                    // TOOLS has no games to sort, show, add or refresh: HELP alone.
+                    if (!toolsOpen) {
                     // The header's first button: where UP from the top of the games lands.
                     HeaderIcon(Icons.AutoMirrored.Filled.Sort, tr("Sort"), m, Modifier.focusRequester(headerFirst)) { pickingSort = true }
                     androidx.compose.runtime.DisposableEffect(Unit) {
@@ -542,6 +551,7 @@ class LibraryActivity : ComponentActivity() {
                     }
                     HeaderIcon(Icons.Filled.Add, tr("Add games"), m) { addMenu = true }
                     HeaderIcon(Icons.Filled.Refresh, tr("Refresh"), m) { refreshLibrary() }
+                    }
                     // The manual (Settings > HELP), on its own.
                     HeaderIcon(Icons.AutoMirrored.Filled.HelpOutline, tr("Help"), m) {
                         startActivity(Intent(this@LibraryActivity, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_SCREEN, SettingsActivity.SCREEN_HELP))
@@ -611,8 +621,7 @@ class LibraryActivity : ComponentActivity() {
                 }
                 // A tall screen: GAMES / TOOLS / SETTINGS along the bottom.
                 if (!wide) com.pokedaisy.app.companion.ui.LibraryNav(
-                    section, vertical = false, m, small, toolsBadge = toolsNew && !toolsOpen,
-                    modifier = Modifier.padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, bottom = SCREEN_MARGIN), onPick = pickSection,
+                    section, vertical = false, m, small, toolsBadge = toolsNew && !toolsOpen, onPick = pickSection,
                 )
             }
             }
@@ -910,11 +919,12 @@ class LibraryActivity : ComponentActivity() {
     private class HeaderButton(val icon: ImageVector, val label: String, val onClick: () -> Unit)
 
     /** The launcher's header, left to right. */
-    private fun launcherHeader(): List<HeaderButton> = listOf(
-        HeaderButton(Icons.AutoMirrored.Filled.Sort, tr("Sort")) { pickingSort = true },
-        HeaderButton(if (gridView) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.GridView, tr("Toggle view")) { gridView = !gridView },
-        HeaderButton(Icons.Filled.Add, tr("Add games")) { addMenu = true },
-        HeaderButton(Icons.Filled.Refresh, tr("Refresh")) { refreshLibrary() },
+    private fun launcherHeader(): List<HeaderButton> = listOfNotNull(
+        // TOOLS has no games to sort, show, add or refresh: HELP alone.
+        HeaderButton(Icons.AutoMirrored.Filled.Sort, tr("Sort")) { pickingSort = true }.takeIf { !toolsOpen },
+        HeaderButton(if (gridView) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.GridView, tr("Toggle view")) { gridView = !gridView }.takeIf { !toolsOpen },
+        HeaderButton(Icons.Filled.Add, tr("Add games")) { addMenu = true }.takeIf { !toolsOpen },
+        HeaderButton(Icons.Filled.Refresh, tr("Refresh")) { refreshLibrary() }.takeIf { !toolsOpen },
         HeaderButton(Icons.AutoMirrored.Filled.HelpOutline, tr("Help")) {
             startActivity(Intent(this, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_SCREEN, SettingsActivity.SCREEN_HELP))
         },
@@ -2018,8 +2028,13 @@ class LibraryActivity : ComponentActivity() {
         launcherScope?.launch { launcher.swap { prefs.launcherSwapped = it } }
     }
 
+    /** SETTINGS as the library's third tab: the rail / bar stays, no slide between them (SettingsActivity.EXTRA_TAB). */
     private fun openSettings() {
-        startActivity(Intent(this, SettingsActivity::class.java))
+        settingsTab.launch(
+            Intent(this, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_TAB, true)
+                .putExtra(SettingsActivity.EXTRA_TOOLS_NEW, libraryTools().any { it.newBadge != null }),
+            androidx.core.app.ActivityOptionsCompat.makeCustomAnimation(this, 0, 0),
+        )
     }
 
     /** The launcher on the activity's (main) screen: the list, or the media after a swap, under the library's windows. */
@@ -2099,10 +2114,13 @@ class LibraryActivity : ComponentActivity() {
             // GAMES / TOOLS / SETTINGS as in the classic library: down the left of a wide screen, along the bottom of a tall one.
             val wide = maxWidth >= maxHeight
             SideEffect { launcherRailVertical = wide }
+            // The bar's height (a tall screen): the legend floats over it, not on it.
+            var barHeight by remember { mutableStateOf(0.dp) }
+            val density = androidx.compose.ui.platform.LocalDensity.current
             Row(Modifier.fillMaxSize()) {
             if (wide) com.pokedaisy.app.companion.ui.LibraryNav(
-                section, vertical = true, m, small, toolsBadge = toolsNew && !toolsOpen,
-                modifier = Modifier.padding(start = SCREEN_MARGIN, top = SCREEN_MARGIN), cursor = railCursor, onPick = ::launcherPick,
+                section, vertical = true, m, small, toolsBadge = toolsNew && !toolsOpen, top = SCREEN_MARGIN, cursor = railCursor,
+                onPick = ::launcherPick,
             )
             Column(Modifier.weight(1f).fillMaxHeight()) {
                 OptionTitleWindow("POKéDAISY", m, Modifier.padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, top = SCREEN_MARGIN), leading = {
@@ -2202,8 +2220,8 @@ class LibraryActivity : ComponentActivity() {
                     }
                 }
                 if (!wide) com.pokedaisy.app.companion.ui.LibraryNav(
-                    section, vertical = false, m, small, toolsBadge = toolsNew && !toolsOpen,
-                    modifier = Modifier.padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, bottom = SCREEN_MARGIN), cursor = railCursor,
+                    section, vertical = false, m, small, toolsBadge = toolsNew && !toolsOpen, cursor = railCursor,
+                    modifier = Modifier.onSizeChanged { barHeight = with(density) { it.height.toDp() } },
                     onPick = ::launcherPick,
                 )
             }
@@ -2221,7 +2239,7 @@ class LibraryActivity : ComponentActivity() {
                     LegendEntry("Y", tr("SETTINGS")) { openSettings() },
                 ),
                 small,
-                Modifier.align(Alignment.BottomEnd).padding(SCREEN_MARGIN),
+                Modifier.align(Alignment.BottomEnd).padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, bottom = SCREEN_MARGIN + if (wide) 0.dp else barHeight),
             )
             launcher.menu?.let { menu -> LauncherMenuOverlay(menu, m) { launcher.menu = null } }
         }

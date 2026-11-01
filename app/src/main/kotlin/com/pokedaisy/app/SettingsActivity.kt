@@ -33,6 +33,7 @@ import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
+import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
@@ -43,10 +44,12 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.HelpOutline
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material3.Icon
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.runtime.SideEffect
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.ui.input.key.key
 import androidx.compose.ui.input.key.onPreviewKeyEvent
@@ -218,12 +221,22 @@ class SettingsActivity : ComponentActivity() {
     /** HOME's search box; kept while a sub-page it led to is open. */
     private var searchQuery by mutableStateOf("")
 
+    /** Opened as the library's SETTINGS tab ([EXTRA_TAB]): the library's rail / bar beside the pages and its POKéDAISY
+     * header over HOME, the library's GAMES / TOOLS handed back to it ([EXTRA_SECTION]). */
+    private var tab = false
+    /** The library's TOOLS carry a NEW tool (its rail's dot). */
+    private var toolsNew = false
+    /** The library's own text step (CompactTextOnSmallWindows'), for the rail and header: the pages here are a step smaller. */
+    private var navTextStep by mutableIntStateOf(0)
+
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         RomFolder.useBestEffortStore(this)
         prefs = Prefs(this)
         com.pokedaisy.app.companion.i18n.L10n.apply(prefs.appLanguage, null)
         RetroAchievements.init(this)
+        tab = intent?.getBooleanExtra(EXTRA_TAB, false) == true
+        toolsNew = intent?.getBooleanExtra(EXTRA_TOOLS_NEW, false) == true
         intent?.getStringExtra(EXTRA_CHEATS_ROM)?.let { path ->
             cheatsOnly = true
             cheatRom = File(path)
@@ -240,12 +253,14 @@ class SettingsActivity : ComponentActivity() {
         setContent {
             // Settings' text a step smaller everywhere (the user's call: the Thor's top screen read it large), not only on
             // small windows (CompactTextOnSmallWindows): a font pixel down, so it stays crisp.
-            AppTheme {
+            AppTheme { com.pokedaisy.app.companion.ui.CompactTextOnSmallWindows {
+                val libraryStep = com.pokedaisy.app.companion.ui.LocalTextStep.current
+                SideEffect { navTextStep = libraryStep }
                 androidx.compose.runtime.CompositionLocalProvider(
                     com.pokedaisy.app.companion.ui.LocalTextStep provides -1,
                     com.pokedaisy.app.companion.ui.LocalOverlayStack provides overlays,
                 ) { Root() }
-            }
+            } }
         }
     }
 
@@ -281,6 +296,8 @@ class SettingsActivity : ComponentActivity() {
     @Composable
     private fun Root() {
         BackHandler(enabled = screen != Screen.HOME) { capture.cancel(); goBack() }
+        // The library's tab: BACK goes back to its games, with no slide (the rail stays where it is).
+        BackHandler(enabled = tab && screen == Screen.HOME) { finishTab(com.pokedaisy.app.companion.ui.LibrarySection.GAMES) }
         BackHandler(enabled = aspectPicker) { aspectPicker = false }
         BackHandler(enabled = dsLayoutPicker) { dsLayoutPicker = false }
         BackHandler(enabled = touchEditing) { touchBack.back() }
@@ -292,8 +309,33 @@ class SettingsActivity : ComponentActivity() {
             if (it.width > 0 && it.height > 0) screenAspect = it.width.toFloat() / it.height
             rootSize = it
         }) {
-            AppBackdrop()
-            Column(modifier = Modifier.fillMaxSize().padding(16.dp)) {
+            AppBackdrop(logos = tab)
+            val wide = rootSize.width >= rootSize.height
+            Row(Modifier.fillMaxSize()) {
+            if (tab && wide) LibraryLook { nm, ns ->
+                com.pokedaisy.app.companion.ui.LibraryNav(
+                    com.pokedaisy.app.companion.ui.LibrarySection.SETTINGS, vertical = true, nm, ns, toolsBadge = toolsNew,
+                    top = 16.dp, onPick = ::pickSection,
+                )
+            }
+            Column(Modifier.weight(1f).fillMaxHeight()) {
+            Column(modifier = Modifier.weight(1f).fillMaxWidth().padding(16.dp)) {
+                if (tab && screen == Screen.HOME) LibraryLook { nm, _ ->
+                    // The library's header in place of HOME's SETTINGS title, as on GAMES and TOOLS.
+                    OptionTitleWindow(
+                        // One button beside it: the name always fits (the games' header drops it on a phone held upright).
+                        "POKéDAISY",
+                        nm,
+                        leading = { com.pokedaisy.app.companion.ui.PixelArt(com.pokedaisy.app.companion.ui.LOGO_ROWS, com.pokedaisy.app.companion.ui.LOGO_PALETTE, Modifier.size(nm.lineHeight)) },
+                    ) {
+                        Spacer(Modifier.width(nm.u * 4))
+                        com.pokedaisy.app.companion.ui.OptionButton(
+                            null, nm, onClick = { screen = Screen.HELP },
+                            icon = Icons.AutoMirrored.Filled.HelpOutline, contentDescription = tr("Help"),
+                        )
+                    }
+                    Spacer(Modifier.height(nm.u * 8))
+                } else {
                 OptionTitleWindow(
                     title = when (screen) {
                         Screen.HOME -> tk("SETTINGS")
@@ -331,6 +373,7 @@ class SettingsActivity : ComponentActivity() {
                     },
                 )
                 Spacer(Modifier.height(m.u * 4))
+                }
                 when (screen) {
                     Screen.HOME -> HomeScreen(m)
                     Screen.SPEED -> SubRowsScreen(m) { speedRows() }
@@ -360,6 +403,13 @@ class SettingsActivity : ComponentActivity() {
                     Screen.COOP_PARTNERS -> coop.PartnersPage(m, revision)
                     Screen.COOP_RELAY -> coop.RelayPage(m, small)
                 }
+            }
+            if (tab && !wide) LibraryLook { nm, ns ->
+                com.pokedaisy.app.companion.ui.LibraryNav(
+                    com.pokedaisy.app.companion.ui.LibrarySection.SETTINGS, vertical = false, nm, ns, toolsBadge = toolsNew, onPick = ::pickSection,
+                )
+            }
+            }
             }
 
             selector?.slider?.let { read ->
@@ -538,6 +588,31 @@ class SettingsActivity : ComponentActivity() {
         }
     }
 
+    /** The library's rail / bar and header, at the library's text size (the pages here are a step smaller). */
+    @Composable
+    private fun LibraryLook(content: @Composable (GbaTextMetrics, GbaTextMetrics) -> Unit) {
+        androidx.compose.runtime.CompositionLocalProvider(com.pokedaisy.app.companion.ui.LocalTextStep provides navTextStep) {
+            content(rememberGbaTextMetrics(), rememberGbaTextMetrics(textScale = 1f))
+        }
+    }
+
+    /** The tab's rail / bar: GAMES and TOOLS are the library's; SETTINGS again goes back to HOME. */
+    private fun pickSection(section: com.pokedaisy.app.companion.ui.LibrarySection) {
+        capture.cancel()
+        if (section == com.pokedaisy.app.companion.ui.LibrarySection.SETTINGS) {
+            cheatRemoveMode = false
+            overlayRemoveMode = false
+            screen = Screen.HOME
+        } else finishTab(section)
+    }
+
+    /** Back to the library on [section], with no slide: the rail / bar stays put, only the page beside it changes. */
+    private fun finishTab(section: com.pokedaisy.app.companion.ui.LibrarySection) {
+        setResult(RESULT_OK, Intent().putExtra(EXTRA_SECTION, section.name))
+        finish()
+        @Suppress("DEPRECATION") overridePendingTransition(0, 0)
+    }
+
     /** Back one page: ADD CODE to CHEATS, a page to the hub, the hub (or cheats opened from a game's menu) out. */
     private fun goBack() {
         when {
@@ -547,6 +622,7 @@ class SettingsActivity : ComponentActivity() {
             // A save picked on the invite page: BACK to the save list (a link's page, from outside: the hub).
             screen == Screen.COOP_PAIR && coop.picking -> coop.leave()
             screen == Screen.COOP_PAIR || screen == Screen.COOP_JOIN -> { coop.leave(); screen = Screen.HOME }
+            screen == Screen.HOME && tab -> finishTab(com.pokedaisy.app.companion.ui.LibrarySection.GAMES)
             screen == Screen.HOME || (screen == Screen.CHEATS && cheatsOnly) || (screen == Screen.ROMS_FOLDERS && romsFoldersOnly) -> finish()
             // FOLDERS' pages go back to it.
             screen in FOLDER_PAGES -> screen = Screen.FOLDERS
@@ -2141,6 +2217,12 @@ class SettingsActivity : ComponentActivity() {
         /** Opens one page alone ([SCREEN_HELP]: the manual); BACK finishes. */
         const val EXTRA_SCREEN = "screen"
         const val SCREEN_HELP = "HELP"
+        /** Opened as the library's SETTINGS tab (its rail / bar, its header over HOME). */
+        const val EXTRA_TAB = "tab"
+        /** With [EXTRA_TAB]: the library's TOOLS hold a NEW tool. */
+        const val EXTRA_TOOLS_NEW = "tools_new"
+        /** The result's library place to show (a [com.pokedaisy.app.companion.ui.LibrarySection]'s name). */
+        const val EXTRA_SECTION = "section"
         /** [EXTRA_SCREEN]: FOLDERS > ROMS FOLDERS alone (the library's + > MANAGE ROMS FOLDERS). */
         const val SCREEN_ROMS_FOLDERS = "ROMS_FOLDERS"
         /** Cheat files are text; anything bigger isn't one. */

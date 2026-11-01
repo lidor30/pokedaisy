@@ -2195,8 +2195,12 @@ FIXES bands, daisy bullets, and every line leads with its feature and a colon, d
 TOOLS pill by the quick views): `LibraryNav` is a rail down the left of a wide library (its frame open at the screen's bottom) or a
 bar along the bottom of an upright one; TOOLS (`LibraryActivity.toolsOpen`, BACK closes it) shows `ToolsPage`'s cards in the
 games' place (`libraryTools()`: PATCH A ROM, LINK PLAY, TRADE SAVES - a new tool goes there, in Settings' TOOLS group and the
-manual's "Games, tools and settings"), a green dot on TOOLS while one is NEW; SETTINGS left the header for it. ui-preview
-`library-tools*`.
+manual's "Games, tools and settings"), a green dot on TOOLS while one is NEW; SETTINGS left the header for it. Docked to the
+screen's edge (2026-11-03, the user's call: the frame only on the side facing the page; 16 px coloured `ToolIcons` at
+NAV_ICON GBA pixels, not 9 px glyphs). TOOLS' header keeps only HELP. SETTINGS is a tab: SettingsActivity with `EXTRA_TAB`
+(started with no animation, `settingsTab`) draws the same rail / bar at the library's text step (`LibraryLook`) and the
+POKéDAISY header over HOME; its GAMES / TOOLS hand `EXTRA_SECTION` back and finish without a slide. The launcher's legend
+floats over an upright bar. ui-preview `library-tools*`, `settings-tab*`, `launcher-portrait`.
 **Library order + NEW** (`LibraryOrder.kt`): the header's sort button picks NAME / LAST PLAYED / DATE ADDED
 (`Prefs.librarySort`, a `LibrarySort` id). LAST PLAYED reads `Prefs.romLastPlayed` (set by `pushRecentRom`, so frontend
 launches count), older plays by their place in the recent list. DATE ADDED and the green NEW tag (24 h) come from

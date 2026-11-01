@@ -111,12 +111,15 @@ enum class LibrarySection(val label: String) { GAMES("GAMES"), TOOLS("TOOLS"), S
 /**
  * GAMES / TOOLS / SETTINGS as a rail down the left of a wide screen ([vertical]) or a bar along the bottom of a tall one
  * (the players' pick in a Discord poll, 2026-11-02, over a TOOLS button by the quick views): each item its icon over its
- * name, the open one a white block with a red label.
+ * name, the open one a white block with a red label. Docked to the screen's edge (the user's call, 2026-11-03): the
+ * window's frame only on the side facing the page, its other sides run off the screen. [top] puts the rail's first item
+ * level with the page's header.
  */
 @Composable
 fun LibraryNav(
     open: LibrarySection, vertical: Boolean, m: GbaTextMetrics, small: GbaTextMetrics, toolsBadge: Boolean,
     modifier: Modifier = Modifier,
+    top: Dp = 0.dp,
     /** The dual-screen launcher's cursor on the rail (its keys move it, not Compose focus), or null. */
     cursor: LibrarySection? = null,
     onPick: (LibrarySection) -> Unit,
@@ -127,16 +130,24 @@ fun LibraryNav(
             NavItem(s, s == open, m, small, badge = toolsBadge && s == LibrarySection.TOOLS, weighted, cursor = s == cursor) { onPick(s) }
         }
     }
-    // The rail runs off the screen's bottom (its frame open there, the user's call); the bar is a whole window.
     val frame = Modifier.drawBehind {
-        drawLayeredBox(OptionColors.listLayers.inPx(u.toPx()), OptionColors.listFill, radius = 3 * u.toPx(), openBottom = vertical)
+        drawLayeredBox(
+            OptionColors.listLayers.inPx(u.toPx()), OptionColors.listFill, radius = 0f,
+            openLeft = true, openTop = vertical, openBottom = true, openRight = !vertical,
+        )
     }
     if (vertical) {
-        Column(modifier.fillMaxHeight().then(frame).padding(u * 5), verticalArrangement = Arrangement.spacedBy(u * 5)) {
+        Column(
+            modifier.fillMaxHeight().then(frame).padding(start = u * 5, end = u * 10, top = top, bottom = u * 5),
+            verticalArrangement = Arrangement.spacedBy(u * 4),
+        ) {
             items(Modifier.width(NAV_RAIL_ITEM))
         }
     } else {
-        Row(modifier.fillMaxWidth().then(frame).padding(u * 5), horizontalArrangement = Arrangement.spacedBy(u * 5)) {
+        Row(
+            modifier.fillMaxWidth().then(frame).padding(start = u * 5, end = u * 5, top = u * 10, bottom = u * 5),
+            horizontalArrangement = Arrangement.spacedBy(u * 4),
+        ) {
             items(Modifier.weight(1f))
         }
     }
@@ -163,11 +174,13 @@ private fun NavItem(
     ) {
         Column(horizontalAlignment = Alignment.CenterHorizontally) {
             val icon = when (section) {
-                LibrarySection.GAMES -> ToolIcons.cartridge
+                LibrarySection.GAMES -> ToolIcons.games
                 LibrarySection.TOOLS -> ToolIcons.toolbox
-                LibrarySection.SETTINGS -> PixelIcons.gear
+                LibrarySection.SETTINGS -> ToolIcons.settings
             }
-            PixelIcon(icon, if (on) OptionColors.value else OptionColors.label, Modifier.size(m.lineHeight))
+            // Finer than the label's GBA pixel (PixelArt keeps whole screen pixels per icon pixel): a 16-pixel drawing, not a
+            // blown-up 9-pixel glyph.
+            PixelArt(icon.bitmap, icon.palette, Modifier.size(u * NAV_ICON))
             Spacer(Modifier.height(u * 3))
             GbaText(label, if (on) OptionColors.value else OptionColors.label, if (on) OptionColors.valueShadow else OptionColors.labelShadow, small, bold = gameBoldLabels())
         }
@@ -180,6 +193,9 @@ private fun NavItem(
 
 /** A tool card's least width: as many columns as fit, one on a phone held upright. */
 private val TOOL_CARD_MIN: Dp = 300.dp
+
+/** The rail's / bar's icons, in GBA pixels (their 16 pixels a little over one each). */
+private const val NAV_ICON = 20
 
 /** The rail's items' width (a wide screen). */
 private val NAV_RAIL_ITEM: Dp = 76.dp
@@ -265,29 +281,78 @@ internal object ToolIcons {
         else -> null
     }
 
-    /** TOOLS (the rail / bar): a toolbox with its handle and latch. */
-    val toolbox = listOf(
-        ".........",
-        "...111...",
-        "..1...1..",
-        "111111111",
-        "1.......1",
-        "1111.1111",
-        "1...1...1",
-        "1.......1",
-        "111111111",
+    /** GAMES (the rail / bar): a grey cartridge with a blue label. */
+    val games = TabIcons.TabIcon(
+        listOf(
+            ".kkkkkkkkkkkk...",
+            ".khhhhhhhhhhhk..",
+            ".khsssssssssssk.",
+            ".khkkkkkkkkkksk.",
+            ".khkbbbbbbbbksk.",
+            ".khkbwwwbbbbksk.",
+            ".khkbwbbbbbbksk.",
+            ".khkbbbbbyybksk.",
+            ".khkbbbbyyybksk.",
+            ".khkbbbbbbbbksk.",
+            ".khkkkkkkkkkksk.",
+            ".khssssssssssdk.",
+            ".khsksksksksddk.",
+            ".khsksksksksddk.",
+            ".kddddddddddddk.",
+            ".kkkkkkkkkkkkkk.",
+        ),
+        mapOf(
+            'k' to OUTLINE, 'h' to Color(0xFFE0E0E8), 's' to Color(0xFFB4B4C4), 'd' to Color(0xFF84849A),
+            'b' to Color(0xFF3878E0), 'w' to Color(0xFFB0D0FF), 'y' to Color(0xFFF8D030),
+        ),
     )
 
-    /** GAMES (the rail / bar): a cartridge. */
-    val cartridge = listOf(
-        "111111111",
-        "1.......1",
-        "1.11111.1",
-        "1.1...1.1",
-        "1.11111.1",
-        "1.......1",
-        "1.......1",
-        "1.1.1.1.1",
-        "111111111",
+    /** TOOLS (the rail / bar): a red toolbox, its grey handle and a gold latch. */
+    val toolbox = TabIcons.TabIcon(
+        listOf(
+            "................",
+            ".....kkkkkk.....",
+            "....kggggggk....",
+            "....kgkkkkgk....",
+            ".kkkkkkkkkkkkkk.",
+            "khhhhhhhhhhhhhhk",
+            "krrrrrrrrrrrrrrk",
+            "krrrrrrrrrrrrrrk",
+            "kddddddkkddddddk",
+            "kkkkkkkyykkkkkkk",
+            "krrrrrrkkrrrrrrk",
+            "krrrrrrrrrrrrrrk",
+            "krrrrrrrrrrrrrrk",
+            "kddddddddddddddk",
+            ".kkkkkkkkkkkkkk.",
+            "................",
+        ),
+        mapOf(
+            'k' to OUTLINE, 'g' to Color(0xFFA8A8B8), 'h' to Color(0xFFFF9080), 'r' to Color(0xFFE04040),
+            'd' to Color(0xFFA02828), 'y' to Color(0xFFF8D030),
+        ),
+    )
+
+    /** SETTINGS (the rail / bar): a steel gear, lit from the top left. */
+    val settings = TabIcons.TabIcon(
+        listOf(
+            "......kkkk......",
+            "...kk.khhk.kk...",
+            "..khk.khhk.ksk..",
+            ".khhhkhhssksssk.",
+            ".kkhhhhsssssskk.",
+            "...khhskksssk...",
+            "kkkhhsk..kssskkk",
+            "khhhsk....kssddk",
+            "khhssk....ksdddk",
+            "kkksssk..ksddkkk",
+            "...kssskksddk...",
+            ".kkssssssddddkk.",
+            ".kssskssddkdddk.",
+            "..ksk.kddk.kdk..",
+            "...kk.kddk.kk...",
+            "......kkkk......",
+        ),
+        mapOf('k' to OUTLINE, 'h' to Color(0xFFD8E0EC), 's' to Color(0xFFA4AEC0), 'd' to Color(0xFF6E788C)),
     )
 }
