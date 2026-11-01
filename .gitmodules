@@ -10,3 +10,6 @@
 	# The build applies third_party/patches/melonds-pokedaisy.patch here; scripts/check_melonds_patch.py checks that
 	# nothing else changed.
 	ignore = dirty
+[submodule "third_party/dsperate"]
+	path = third_party/dsperate
+	url = https://github.com/beebono/DSperate.git

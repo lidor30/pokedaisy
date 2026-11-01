@@ -1,0 +1,55 @@
+name: Linux DS backend
+on:
+  pull_request:
+    paths:
+      - 'linux/**'
+      - '3ds/core/**'
+      - 'app/src/main/cpp/nds/pk_nds_field.*'
+      - 'app/src/main/kotlin/com/pokedaisy/app/companion/data/**'
+      - 'app/src/main/kotlin/com/pokedaisy/app/GameTitles.kt'
+      - 'third_party/mgba'
+      - 'gamedata/**'
+      - 'app/src/main/cpp/pk_savevf.*'
+      - 'third_party/dsperate'
+      - '.gitmodules'
+      - 'NOTICE'
+      - '.github/workflows/linux-ds-experiment.yml'
+  push:
+    branches: [main, dev, pr/linux-ds-backend]
+  workflow_dispatch:
+permissions:
+  contents: read
+jobs:
+  build:
+    strategy:
+      matrix:
+        target: [native, trimui]
+    runs-on: ubuntu-24.04
+    timeout-minutes: 25
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - run: git submodule update --init third_party/mgba third_party/dsperate
+      - run: sudo apt-get update && sudo apt-get install -y cmake libsdl2-dev qemu-user-static
+      - name: Native build and tests
+        if: matrix.target == 'native'
+        run: |
+          cmake -S linux -B linux/build-ds -DCMAKE_BUILD_TYPE=Release -DBUILD_LTO=OFF -DPOCKET_DSPERATE=ON
+          cmake --build linux/build-ds -j2
+          ctest --test-dir linux/build-ds --output-on-failure
+          python3 linux/package.py --dsperate linux/build-ds/pokedaisy-linux "$RUNNER_TEMP/ds-artifacts"
+      - name: TrimUI build and QEMU tests
+        if: matrix.target == 'trimui'
+        run: |
+          python3 linux/setup_trimui_sdk.py "$RUNNER_TEMP/trimui-sdk"
+          export NEXTUI_TOOLCHAIN="$RUNNER_TEMP/trimui-sdk/cross/x86_64-aarch64-nextui-linux-gnu"
+          cmake -S linux -B linux/build-ds-arm -DCMAKE_TOOLCHAIN_FILE=trimui-toolchain.cmake \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_LTO=OFF -DPOCKET_DSPERATE=ON \
+            -DCMAKE_CROSSCOMPILING_EMULATOR="qemu-aarch64-static;-L;$NEXTUI_TOOLCHAIN/aarch64-nextui-linux-gnu/libc"
+          cmake --build linux/build-ds-arm -j2
+          ctest --test-dir linux/build-ds-arm --output-on-failure
+          python3 linux/package.py --dsperate linux/build-ds-arm/pokedaisy-linux "$RUNNER_TEMP/ds-artifacts"
+      - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: pokedaisy-ds-experiment-${{ matrix.target }}
+          path: ${{ runner.temp }}/ds-artifacts/*.zip
+          if-no-files-found: error
