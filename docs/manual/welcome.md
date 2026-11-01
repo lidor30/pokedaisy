@@ -16,7 +16,7 @@ You never have to pause and open a menu to check a Pokémon's moves or look up w
 
 - **An Android device running Android 8.0 or newer.** A handheld with two screens or one, or a phone.
 - **Your own games.** PokeDaisy comes with no games at all. Use ROMs you dumped yourself from cartridges you own: `.gba` files (Game Boy and Game Boy Color `.gb` / `.gbc` and DS `.nds` work too), loose or inside a `.zip` or `.7z`.
-- **A supported game for the companion.** Any Game Boy, Game Boy Color, GBA or DS game plays, but the companion only reads the games it knows: FireRed, LeafGreen, Emerald, Ruby, Sapphire, Red to Crystal on the Game Boy, Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2 on the DS, and a long list of ROM hacks. [Supported games](supported-games.md) has the full list and the exact versions.
+- **A supported game for the companion.** Any Game Boy, Game Boy Color, GBA or DS game plays, but the companion only reads the games it knows: FireRed, LeafGreen, Emerald, Ruby, Sapphire, Red to Crystal on the Game Boy, Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2 on the DS, and a long list of ROM hacks (Origin HeartGold among them on the DS). [Supported games](supported-games.md) has the full list and the exact versions.
 
 Ready? [Install and first setup](install.md) walks you through the first five minutes.
 

@@ -52,6 +52,10 @@ class TelemetrySampler {
     // A DS game's (Gen 4) addresses instead.
     private var gen4Cfg: Gen4Config? = null
     private var dsGameCode = ""
+    /** The DS cart is Origin HeartGold's ([OriginHeartGold]: a Japanese HeartGold's header, English text). */
+    private var dsOrigin = false
+    /** The DS cart's language letter before its text is read: its header's, but English for Origin HeartGold. */
+    private val dsLanguage: Char? get() = if (dsOrigin) 'E' else dsGameCode.getOrNull(3)
     private var gen5Cfg: Gen5Config? = null
     private var lastError: String? = null
     // Set instead of nativeCfg for a large BPRE ROM that isn't recognized as
@@ -315,7 +319,7 @@ class TelemetrySampler {
                 PokedexSource.romChanged()
                 // A DS cart: its text's language once NdsArt has read it (it applies it itself when it lands later), else the header's.
                 (nativeCfg?.language ?: gen1Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language
-                    ?: dsGameCode.getOrNull(3))?.let { com.pokedaisy.app.companion.i18n.L10n.applyGameLanguage(it) }
+                    ?: dsLanguage)?.let { com.pokedaisy.app.companion.i18n.L10n.applyGameLanguage(it) }
                 RomItemText.use(itemTable(reader))
             }
             activeGame = kind ?: GameKind.FIRERED
@@ -325,6 +329,7 @@ class TelemetrySampler {
             amethystV141 = base === NATIVE_AMETHYST_V1_4_1
             eliteRedux265_3 = base === NATIVE_ELITE_REDUX_V2_65_3B
             teamRocketV3 = base === NATIVE_TEAM_ROCKET_V3
+            originHeartGold = dsOrigin
             fireRedHack = fireRedHackFor(base)
             emeraldHack = emeraldHackFor(base)
             randomizedRetail = randomizedText
@@ -333,7 +338,7 @@ class TelemetrySampler {
             quetzalV1 = base?.quetzalV1 == true
             gen2Cfg?.let { activeGen2 = it }
             // A DS cart: its own text's language (NdsArt.names: a French Sacred Gold is an IPKE HeartGold, GitHub #230).
-            romLanguage = nativeCfg?.language ?: gen1Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language ?: dsGameCode.getOrNull(3) ?: 'E'
+            romLanguage = nativeCfg?.language ?: gen1Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language ?: dsLanguage ?: 'E'
             romGameCode = nativeCfg?.gameCode ?: gen1Cfg?.gameCode ?: dsGameCode
             // Quetzal picks each kind of name's language from its own options (a few bytes a sample).
             quetzalNames = nativeCfg?.takeIf { it.quetzalPlacesDefault >= 0 }
@@ -691,7 +696,9 @@ class TelemetrySampler {
         val code = runCatching { MgbaCore.pkRomCode() }.getOrNull().orEmpty()
         dsGameCode = code
         val rev = runCatching { reader0x1E() }.getOrDefault(-1)
+        dsOrigin = code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
         when {
+            dsOrigin && NDS_SUPPORT -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_ORIGIN_HEARTGOLD }
             ndsSupported(code, rev) -> when (code) {
                 "IPKE" -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_HEARTGOLD_US }
                 "IPKD" -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_HEARTGOLD_DE }

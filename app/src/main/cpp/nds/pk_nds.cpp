@@ -251,8 +251,8 @@ bool pk_nds_init(const char* romPath, const char* savePath, int sampleRate)
     if (const u8* mem = ds->nds->GetNDSSave()) ds->saveCopy.assign(mem, mem + ds->nds->GetNDSSaveLength());
     ds->audio.resize(8192 * 2);
     {
-        const auto& h = ds->nds->NDSCartSlot.GetCart()->GetHeader();
-        ds->field = pk_nds_field_game(h.GameCode, h.ROMVersion);
+        const auto* c = ds->nds->NDSCartSlot.GetCart();
+        ds->field = pk_nds_field_game_rom(c->GetROM(), c->GetROMLength());
     }
     LOGI("DS up: save %u bytes, %d Hz", ds->nds->GetNDSSaveLength(), sampleRate);
     return true;

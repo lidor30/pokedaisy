@@ -89,6 +89,8 @@ import com.pokedaisy.app.companion.data.POCKET_BATTLE_ITEMS
 import com.pokedaisy.app.companion.data.NdsArt
 import com.pokedaisy.app.companion.data.lookupMove
 import com.pokedaisy.app.companion.data.tmMovesHeartGold
+import com.pokedaisy.app.companion.data.OriginHeartGold
+import com.pokedaisy.app.companion.data.originHeartGold
 import com.pokedaisy.app.companion.data.HEARTGOLD_TM01
 import com.pokedaisy.app.companion.data.activeGame
 import com.pokedaisy.app.companion.data.isHgss
@@ -1228,6 +1230,8 @@ private fun HgssBagBody(
 
 /** A machine in HeartGold / SoulSilver's bag: its move and number (1-92 a TM, 1-8 an HM), or null. */
 private fun hgssMachine(itemId: Int): Triple<String, Boolean, Int>? {
+    // Origin HeartGold: 130 TMs, its own moves (TM93 on are later items), from its cart.
+    if (originHeartGold) return OriginHeartGold.machine(itemId)?.let { (move, hm, n) -> Triple(lookupMove(move).name, hm, n) }
     val i = itemId - HEARTGOLD_TM01
     if (i !in tmMovesHeartGold.indices) return null
     val hm = i >= 92

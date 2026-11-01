@@ -41,6 +41,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | White (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | Black 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | White 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
+| Origin HeartGold (DS) | 4.0.3 English 1.0.0 | ✅ ¹⁴ | — ²⁸ | — | — | — | ✅ ²⁸ | — | ✅ ²⁸ | ✅ ¹⁴ | ✅ ²⁸ | ✅ ²⁸ | — | n/a | — |
 | Amethyst | 1.3.0, 1.4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ |
 | Ash Gray | 4.5.3, Fork Bug Fix 1.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ |
 | Celia's Stupid Romhack | 1.1.4 | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | ✅ ¹⁵ | — | — |
@@ -346,6 +347,15 @@ change to any of the places listed under "Where it's decided" updates its rows h
     same, with btlv_scd at core +0x1C4, btlv_input at scd +0xBC and the opened screen at scd +0xA4 (headless in Black 2's wild
     battle: every button, each move card, the way back; the move panel's 3-frame gap too). White 2's battle wasn't reached
     headless: its structs are Black 2's, its chain from its own GameSystem. Their look is `DsLook.UNOVA2`.
+28. Origin HeartGold (`IPKJ` rev 0, a Japanese HeartGold's header: `OriginHeartGold.matches` checks SaveData_Get's pool
+    word at cart 0x2B73C, so only this build reads): HeartGold's code rebuilt over the Japanese game, every global moved,
+    found through the US code that uses it (`pk_nds_field.cpp`'s `ORIGIN_HEARTGOLD`, `pk_nds_call.cpp`'s `ORIGIN_HEARTGOLD`).
+    PC anywhere and FLY ran headless through its own script engine and flight task (landed in Pallet Town); WILD ENCOUNTERS'
+    cart rates come from its map headers and encounter archive (`NdsArt.readOrigin`). Its battle engine is its own (a
+    manager at 0x02255BAC, no BattleSystem): the BATTLE tab reads its battle objects (`Gen4ManagedBattle`), but there are no
+    battle buttons (its panels aren't HeartGold's): DS LAYOUT floats the game's
+    touch screen in while its battle UI's input handler is set (+0x238 -> +0x10: the commands, the moves, the party), and
+    SMART FF slows down then. EXPAND and STEADY music work as HeartGold's (widecheck's overlap as US HeartGold's).
 
 ## What each column is
 

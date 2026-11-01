@@ -710,6 +710,13 @@ there is one polygon list of the whole view drawn in one pass (`submitGpu`, no s
 the software renderer, pixel for pixel. Check GPU changes headless with nds_dump's `NDS_DUMP_GL` build (ANGLE; `gpu N`,
 `gpushot`) and compare `ffmode 0` / `ffmode 3` runs; shaders compile as GLSL ES 3.00 in WebGL2 too. docs/DEVELOPMENT.md's
 "DS RESOLUTION".
+**Origin HeartGold (2026-11-02, the user's request)**: v4.0.3 + English patch 1.0.0-rc8, an hg-engine rebuild over the
+*Japanese* HeartGold (header IPKJ rev 0, so `OriginHeartGold.matches` checks a code word first; app, native and website alike).
+It runs as `GameKind.HEARTGOLD` with `originHeartGold` set (`GEN4_ORIGIN_HEARTGOLD`, `pk_nds_field.cpp` / `pk_nds_call.cpp`'s
+`ORIGIN_HEARTGOLD`, callSet 7) and its own tables read from the cart (`NdsArt.readOrigin`: 1440 species / forms, 920 moves,
+Fairy = 9, its type chart, icons, its DEX's pages): never bundled. Its battle engine is its own: the BATTLE tab reads its
+battle objects (`Gen4ManagedBattle`), no battle buttons, the touch screen floats in while its battle waits (`battleManagerPtr`).
+No GUIDE. Fixtures `origin_heartgold(_battle, _trainer)`; docs/DEVELOPMENT.md's "Origin HeartGold".
 **DS LAYOUT (one screen held sideways, 2026-11-01; SETTINGS > SCREEN on both screens, `Prefs.dsLayout`, NEW tag)**: ONE SCREEN
 (default) / SIDE BY SIDE / LARGE + SMALL / PICTURE IN PICTURE / STACKED, picked from drawn miniatures (`DsLayoutPicker`); the
 stage places the screens (`GameStageLayout.dsArrange`, `DsLayouts.arrange`, edge to edge) over the game's own picture (`DsShots`:

@@ -3,6 +3,7 @@ package com.pokedaisy.app
 import com.pokedaisy.app.companion.data.RANDOMIZED_RETAIL
 import com.pokedaisy.app.companion.data.RETAIL_DUMPS
 import com.pokedaisy.app.companion.data.RETAIL_PORT_CODE_TITLES
+import com.pokedaisy.app.companion.data.OriginHeartGold
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -134,6 +135,14 @@ class SiteDataExportTest {
             append("\n  ],\n")
             append("  \"ds\": [\n")
             append(ds.joinToString(",\n") { (code, rev) -> "    {\"code\": ${q(code)}, \"rev\": $rev, \"title\": ${q(dsTitles.getValue(code))}}" })
+            append("\n  ],\n")
+            // DS hacks under a retail header (OriginHeartGold: a Japanese HeartGold's), told apart by a word of their code.
+            append("  \"dsHacks\": [\n")
+            if (TelemetrySampler.NDS_SUPPORT) append(
+                "    {\"code\": ${q(OriginHeartGold.CODE)}, \"rev\": 0, \"offset\": ${OriginHeartGold.SIG_OFFSET}, " +
+                    "\"word\": ${OriginHeartGold.SIG}, \"title\": ${q(GameTitles.BY_SHA1.getValue(OriginHeartGold.V4_0_3_EN_RC8_SHA1))}, " +
+                    "\"version\": \"v4.0.3 English 1.0.0\"}",
+            )
             append("\n  ],\n")
             append("  \"titles\": {\n")
             append(titles.entries.joinToString(",\n") { (sha1, title) -> "    ${q(sha1)}: ${q(title)}" })

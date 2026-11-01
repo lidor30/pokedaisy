@@ -356,7 +356,7 @@ fun partyMonView(m: Mon): MonView {
         status = statusLabel(m.status),
         types = monTypes(type1, type2),
         // A DS game's eggs keep their species: the egg's own icon is NdsArt's 494.
-        iconAsset = if (m.shiny && !isEgg) shinyIconAsset(m.species) else spriteAsset("pokemon", if (isEgg && activeGame.isGen5) NdsArt.BLACK_EGG else if (isEgg && activeGame.isDsGame) 494 else m.species),
+        iconAsset = if (m.shiny && !isEgg) shinyIconAsset(m.species) else spriteAsset("pokemon", if (isEgg && activeGame.isGen5) NdsArt.BLACK_EGG else if (isEgg && originHeartGold) NdsArt.ORIGIN_EGG else if (isEgg && activeGame.isDsGame) 494 else m.species),
         genderSymbol = m.genderSymbol,
         moves = moves,
         exp = if (isEgg) null else expProgress(m.species, m.level, m.exp),

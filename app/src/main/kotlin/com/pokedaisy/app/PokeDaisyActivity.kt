@@ -1089,6 +1089,8 @@ class PokeDaisyActivity : Activity() {
     /** The loaded ROM's header code / revision byte, for [switchAddrsFor]. */
     @Volatile private var romCode = ""
     @Volatile private var romRev = -1
+    /** The loaded cart is Origin HeartGold's ([com.pokedaisy.app.companion.data.OriginHeartGold]: a Japanese header). */
+    @Volatile private var romOrigin = false
 
     /**
      * Where the battle POKéMON pane's switch finds the party menu: retail
@@ -1963,7 +1965,12 @@ class PokeDaisyActivity : Activity() {
         romIsNds = nds
         if (::portraitPanel.isInitialized) portraitPanel.ds = nds
         val ndsCode = if (nds) RomIdentity.ndsGameCode(r).orEmpty() else ""
-        dsWildRates = if (!nds) null else when (ndsCode) {
+        romOrigin = nds && ndsCode == com.pokedaisy.app.companion.data.OriginHeartGold.CODE &&
+            com.pokedaisy.app.companion.data.OriginHeartGold.matches(r)
+        dsWildRates = if (!nds) null else if (romOrigin) {
+            // Its tables are read in the background (NdsArt.prefetch); the core may start first, so read them here then.
+            { (com.pokedaisy.app.companion.data.OriginHeartGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readOrigin(r))?.wildRates ?: IntArray(0) }
+        } else when (ndsCode) {
             "CPUE" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
             "IPKE", "IPKD" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
             "IPGE", "IPGD" -> com.pokedaisy.app.companion.data.SOULSILVER_WORLD::wildRates
@@ -2037,11 +2044,11 @@ class PokeDaisyActivity : Activity() {
         }.getOrNull()
         val gameCode = header?.let { String(it, 0, 4, Charsets.US_ASCII) }.orEmpty()
         romCode = gameCode
-        // AUTO = the ROM's own language (its game code's last letter).
-        com.pokedaisy.app.companion.i18n.L10n.apply(Prefs(this).appLanguage, gameCode)
+        // AUTO = the ROM's own language (its game code's last letter; Origin HeartGold's header is Japanese, its text English).
+        com.pokedaisy.app.companion.i18n.L10n.apply(Prefs(this).appLanguage, if (romOrigin) "IPKE" else gameCode)
         romRev = header?.let { it[if (nds) 0x12 else 0x10].toInt() and 0xFF } ?: -1
         // A DS cart's EXPAND: the overworld past the top screen's edges, for a cart its field read knows.
-        if (nds && WideScreen.ndsKnows(gameCode, romRev)) wideGame = WideScreen.NDS
+        if (nds && (WideScreen.ndsKnows(gameCode, romRev) || romOrigin)) wideGame = WideScreen.NDS
         view.camera.ndsMode(nds)
         // DS RESOLUTION's frames come through a SurfaceTexture the view hands the core (EmulatorView.gpuFrames).
         view.gpuFrames = nds
@@ -3241,7 +3248,7 @@ class PokeDaisyActivity : Activity() {
     private fun syncDsStage(aspect: GameAspect) {
         if (!::stage.isInitialized || !::dsBackdropView.isInitialized) return
         val on = dsStageOn
-        val chosen = Prefs(this).dsLayout.forGame(com.pokedaisy.app.companion.DsLayout.followed(romCode))
+        val chosen = Prefs(this).dsLayout.forGame(com.pokedaisy.app.companion.DsLayout.followed(romCode) || romOrigin)
         // A menu screen (the party, the bag, the Pokédex...) has something to say on both screens: side by side then, not
         // the touch screen over the top one (whose 4:3 left bars beside it in EXPAND).
         val layout = if (dsMenuUp && chosen.floats) com.pokedaisy.app.companion.DsLayout.SIDE_BY_SIDE else chosen
@@ -3286,7 +3293,7 @@ class PokeDaisyActivity : Activity() {
     private fun nextDsLayout() {
         if (!dsStageOn) return
         val prefs = Prefs(this)
-        val followed = com.pokedaisy.app.companion.DsLayout.followed(romCode)
+        val followed = com.pokedaisy.app.companion.DsLayout.followed(romCode) || romOrigin
         val all = com.pokedaisy.app.companion.DsLayout.entries.filter { followed || it != com.pokedaisy.app.companion.DsLayout.ONE_SCREEN }
         val now = prefs.dsLayout.forGame(followed)
         val next = all[(all.indexOf(now) + 1).mod(all.size)]

@@ -1,6 +1,7 @@
 package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.data.BestEffortStore
+import com.pokedaisy.app.companion.data.OriginHeartGold
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import java.io.File
 
@@ -40,7 +41,10 @@ object CompanionSupport {
         // Game Boy / Color: the exact carts the GB reader knows (Pokémon Yellow).
         if (RomIdentity.isGameBoy(rom)) return TelemetrySampler.GAME_BOY_SUPPORT && RomIdentity.sha1(rom) in TelemetrySampler.SUPPORTED_GB_SHA1S
         // A DS cart: by its header's code and revision, as detect() takes it (a 128 MB+ ROM isn't hashed).
-        if (RomIdentity.isNds(rom)) return TelemetrySampler.ndsSupported(RomIdentity.ndsGameCode(rom), RomIdentity.ndsRevision(rom))
+        if (RomIdentity.isNds(rom)) return TelemetrySampler.ndsSupported(RomIdentity.ndsGameCode(rom), RomIdentity.ndsRevision(rom)) ||
+            // Origin HeartGold: a Japanese HeartGold's header, told apart by its code.
+            TelemetrySampler.NDS_SUPPORT && RomIdentity.ndsGameCode(rom) == OriginHeartGold.CODE &&
+                OriginHeartGold.matches { off, len -> RomArchive.readAt(rom, off, len) }
         val code = RomIdentity.gameCode(rom) ?: return false
         val size = RomArchive.romSize(rom)
         if (code in TelemetrySampler.OTHER_RETAIL_CODES) {
