@@ -261,6 +261,21 @@ val FIELD_ITEMS_HEART_AND_SOUL = FieldItemFns(
 )
 
 /**
+ * Monomyth v1.0 (its own closed pokeemerald build): PC anywhere only. VarGet / VarSet (0x08096068 / 0x080960A0, StandardWildEncounter
+ * calls the first with 0x40B1), its ArePlayerFieldControlsLocked (0x080907E4, reading sLockFieldControls 0x0203BF67),
+ * ScriptContext_SetupScript (0x08090870: gScriptCmdTable 0x08297D18, whose `special` handler reads gSpecials 0x08298150)
+ * and ShowPokemonStorageSystemPC, special 57 there (0x080C62A1: retail's code, its own task and lock calls). Headless on the
+ * user's save: the PC menu opened, BOXES showed, three B presses closed it and the field was free again.
+ */
+val FIELD_ITEMS_MONOMYTH = FieldItemFns(
+    varGet = 0x08096068L, varSet = 0x080960A0L, checkBagHasItem = 0, removeBagItem = 0,
+    fieldControlsLocked = 0x080907E4L, repelVar = 0 /* not mapped: no REPEL STEPS */, items = 0,
+    codeCrcs = listOf(0x2D145029L, 0x54901474L, 0x3E311A26L),
+    bagActions = false,
+    pc = PcFns(0x08090870L, 57, 0x08298150L, 0x080C62A1L, listOf(0xEF3698BAL, 0x3DECE7E0L)),
+)
+
+/**
  * Emerald Imperium 1.3.1 (pokeemerald-expansion 1.10.0, no source): pokeemerald-expansion's 1.10.0 tag built plain with
  * Debian's arm-none-eabi-gcc 12 as the reference, each function found in Imperium by its first instructions (literal
  * loads / BLs masked); the field-lock trio by its byte (EXPAND's CONTROLS_LOCKED, 0x03000E84), ReturnToFieldFromFlyMapSelect
@@ -327,7 +342,7 @@ val FIELD_ITEMS_LAZARUS = FieldItemFns(
 )
 
 /**
- * SoulGold (pokeemerald-expansion, no source), its four builds: v1.1.4 mapped from pokeemerald-expansion 1.13.0's build
+ * SoulGold (pokeemerald-expansion, no source), its four builds (v1.2.1 below): v1.1.4 mapped from pokeemerald-expansion 1.13.0's build
  * (FlagGet, VarGet / VarSet, FadeScreen, the PC by code; GetMonData / SetMonData through their callers), the rest from its
  * own code - gFieldMoveInfo's FLY entry (SetUpFieldMove_Fly, IsFieldMoveUnlocked_Fly), SetFlyDestination's literal and
  * calls (sMapHealLocations 313 rows by u16 section, Johto from 196; the two warps; gSaveBlock2Ptr), the call after it in
@@ -437,6 +452,35 @@ val FIELD_ITEMS_SOULGOLD_V1_2C = FieldItemFns(
         ),
     ),
 )
+/** SoulGold v1.2.1 (both builds): the third v1.2 build's functions, matched in its code (masked bytes, else through their
+ * callers; SetUpFieldMoveFly from its gFieldMoveInfo, as a masked match takes its twin neighbour again), the Repel's
+ * by find_field_items_soulgold.py; the party globals and gPartyMenu moved with its EWRAM. Headless on the v1.2 save:
+ * the PC opened, a flight from Cherrygrove landed in New Bark. */
+val FIELD_ITEMS_SOULGOLD_V1_2_1 = FieldItemFns(
+    varGet = 0x08136B90L, varSet = 0x08136C24L, checkBagHasItem = 0x0818D158L, removeBagItem = 0x0818DCACL,
+    fieldControlsLocked = 0x0823BB60L, repelVar = 0x4021, items = 0x0875B360L,
+    codeCrcs = listOf(0xAEDB0050L, 0xC6FC58DDL, 0x3DAF3E13L, 0xF947826AL, 0x41C9CB9EL),
+    repelItems = SOULGOLD_REPEL_ITEMS, repelLureBit = 0x8000, itemParamOffset = 9, lastRepelVar = 0x40BD,
+    party = PartyItemFns(
+        getMonData = 0x081F1748L, setMonData = 0x081F1D28L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
+        party = 0x02038E68L, partyCount = 0x02038C1DL, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        codeCrcs = listOf(0x99E9AFF8L, 0x2E734A9CL),
+    ),
+    bagActions = false,
+    pc = PcFns(0x0823BC04L, 71, 0x082D77C4L, 0x0820F339L, listOf(0xB41D4149L, 0x9225F1BFL)),
+    fly = FlyFns(
+        flagGet = 0x08158790L, badgeFlag = 0x0, setUpFieldMoveFly = 0x081D5ECCL, getMapsecType = 0x0822807CL,
+        fadeScreen = 0x081643B4L, lockControls = 0x0823BB40L, unlockControls = 0x0823BB54L, setFlyWarpDestination = 0,
+        partyMenuSlotId = 0x02038B75L, destinations = 0x08F4DE4CL, firstMapsec = 0, count = 313,
+        codeCrcs = listOf(0x737934D0L, 0x26AB0FBDL, 0x6108C555L, 0x194580CBL, 0x6FE2BF05L, 0x10E7E49AL, 0xAF17E189L, 0xC39FD5A6L, 0x31398813L),
+        flyTypes = setOf(2, 4), extraMapsecs = listOf(), monMoveField = 21, monEggField = 55,
+        healWarp = HealWarp(
+            toHealLocation = 0x081C0A44L, toMapWarp = 0x081C09C0L, returnToField = 0x08154C70L,
+            saveBlock2Ptr = 0x030040C0L, special = mapOf(),
+            genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
+        ),
+    ),
+)
 
 /** The CFRU hacks keep every function the tables use where FireRed rev 0 has it (each checked by CRC), with their
  * own item table: repointed and grown ([items]; ids past the real ones never reach the bag, so a generous
@@ -479,11 +523,12 @@ private fun fieldItemsByKind(kind: GameKind?, gameCode: String, revision: Int): 
     else -> null
 }
 
-/** Every table a game may need, for the games whose builds share a [GameKind] and game code (SoulGold's four): the
+/** Every table a game may need, for the games whose builds share a [GameKind] and game code (SoulGold's five): the
  * code CRCs pick the build ([fieldItemSupport] returns null for the others). Otherwise [fieldItemsForGame]'s one. */
 fun fieldItemsCandidatesForGame(kind: GameKind?, gameCode: String, revision: Int, configured: FieldItemFns? = null): List<FieldItemFns> = when (kind) {
     GameKind.SOULGOLD -> if (gameCode == "BPEE") listOf(
         FIELD_ITEMS_SOULGOLD, FIELD_ITEMS_SOULGOLD_V1_2, FIELD_ITEMS_SOULGOLD_V1_2B, FIELD_ITEMS_SOULGOLD_V1_2C,
+        FIELD_ITEMS_SOULGOLD_V1_2_1,
     ) else emptyList()
     else -> listOfNotNull(fieldItemsForGame(kind, gameCode, revision, configured))
 }
@@ -564,7 +609,10 @@ class FieldItemSupport(
  * that moved it). The holdable items come from the ROM's gItems ([holdableItems]). */
 fun fieldItemSupport(fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArray): FieldItemSupport? {
     if (!fieldItemCodeMatches(fns, read)) return null
-    val party = fns.party ?: return FieldItemSupport(fns, emptySet())
+    // No party functions: the Repels where the bag's functions are mapped, and PC anywhere (Monomyth's table is the PC alone).
+    val party = fns.party ?: return FieldItemSupport(
+        fns, emptySet(), if (fns.bagActions) fns.repelItems else emptySet(), canPc = fns.pc?.let { pcCodeMatches(it, read) } == true,
+    )
     val fly = fns.fly?.let { flyCodeMatches(it, read) } == true
     val pc = fns.pc?.let { pcCodeMatches(it, read) } == true
     if (!fns.bagActions) {

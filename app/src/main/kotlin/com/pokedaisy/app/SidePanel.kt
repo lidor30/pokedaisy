@@ -92,23 +92,11 @@ class SidePanel(
      */
     private val fullScreen = mutableStateOf(false)
 
-    /**
-     * A DS game on one screen (GitHub #244): the panel holds its touch screen ([DsTouchPane]), so it stays open and locked
-     * at half the screen beside the game - the DS's two screens side by side - with no tabs to close, unlock or resize it.
-     */
-    private val dsScreen = mutableStateOf(false)
+    /** Opens as a window: COMPANION VIEW's WINDOW, or [fullScreen]. */
+    private val isWindow: Boolean get() = window.value || fullScreen.value
 
-    fun setDsScreen(on: Boolean) {
-        if (dsScreen.value == on) return
-        dsScreen.value = on
-        if (enabled) { open = on || (!isWindow && docked.value); apply() }
-    }
-
-    /** Opens as a window: COMPANION VIEW's WINDOW, or [fullScreen] - never with a DS game's touch screen in it. */
-    private val isWindow: Boolean get() = (window.value || fullScreen.value) && !dsScreen.value
-
-    /** Locked beside the game: the lock tab's, or a DS game's touch screen. */
-    private val isDocked: Boolean get() = docked.value || dsScreen.value
+    /** Locked beside the game (the lock tab's). */
+    private val isDocked: Boolean get() = docked.value
 
     fun setFullScreen(on: Boolean) {
         if (fullScreen.value == on) return
@@ -146,7 +134,7 @@ class SidePanel(
 
     private val rootWidth get() = root.width.takeIf { it > 0 } ?: context.resources.displayMetrics.widthPixels
     private val rootHeight get() = root.height.takeIf { it > 0 } ?: context.resources.displayMetrics.heightPixels
-    private val panelWidth get() = (rootWidth * (if (dsScreen.value) 0.5f else fraction)).roundToInt()
+    private val panelWidth get() = (rootWidth * fraction).roundToInt()
 
     private val relayout = View.OnLayoutChangeListener { _, l, _, r, _, _, _, _, _ ->
         if (r - l != lastRootWidth) {
@@ -300,7 +288,7 @@ class SidePanel(
     }
 
     private fun hide() {
-        if (!open || dsScreen.value) return
+        if (!open) return
         open = false
         if (isWindow) {
             // The buttons are the game's again now; the window fades out over it. Its focus goes: the next opening
@@ -362,8 +350,7 @@ class SidePanel(
         val win = isWindow
         // The window: the panel's view is the whole screen (its dim), the companion drawn in the middle, no tabs.
         val side = shown && !win
-        // A DS game's touch screen: no lock / close / resize tabs (it stays as it is).
-        val tabs = side && !dsScreen.value
+        val tabs = side
         outside?.visibility = if (side && !isDocked) View.VISIBLE else View.GONE
         panel?.apply {
             visibility = if (shown) View.VISIBLE else View.GONE
@@ -388,12 +375,7 @@ class SidePanel(
             alpha = if (docked.value && !win) LOCKED_TAB_ALPHA else 1f
         }
         setRightMargin(game, if (side && isDocked) w else 0)
-        // A DS game's touch screen: the controls span both screens (the D-pad's side on the left, A / B / X / Y's on the
-        // right), above the panel; a touch on no button goes through to the screen (TouchControlsView.passMisses).
-        val overDs = side && dsScreen.value
-        setRightMargin(touchControls, if (side && !overDs) w else 0)
-        touchControls.translationZ = if (overDs) DS_CONTROLS_Z else 0f
-        (touchControls as? TouchControlsView)?.passMisses = overDs
+        setRightMargin(touchControls, if (side) w else 0)
     }
 
     private fun setRightMargin(v: View, margin: Int) {
@@ -429,9 +411,6 @@ class SidePanel(
     }
 
     private companion object {
-        /** The touch controls' lift over a DS game's touch screen in the panel (it's drawn and touched in Z order). */
-        private const val DS_CONTROLS_Z = 8f
-
         const val MIN_FRACTION = 0.3f
         const val MAX_FRACTION = 0.75f
         const val HANDLE_TOP_DP = 12

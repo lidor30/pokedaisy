@@ -190,7 +190,7 @@ class GameInfo(
         private fun baseGame(code: String?): String? = when (code) {
             "BPRE", "PUVV" -> "Pokémon FireRed" // PUVV: Ultra Violet
             "BPGE" -> "Pokémon LeafGreen"
-            "BPEE" -> "Pokémon Emerald"
+            "BPEE", "MONE" -> "Pokémon Emerald" // MONE: Monomyth (its own pokeemerald build)
             "BPES" -> "Pokémon Edición Esmeralda"
             "BPED" -> "Pokémon Smaragd-Edition"
             "BPEF" -> "Pokémon Version Émeraude"
@@ -283,7 +283,7 @@ fun GameInfoDialog(
 }
 
 @Composable
-private fun InfoSection(section: GameInfo.Section, first: Boolean, m: GbaTextMetrics, small: GbaTextMetrics) {
+internal fun InfoSection(section: GameInfo.Section, first: Boolean, m: GbaTextMetrics, small: GbaTextMetrics) {
     GbaText(
         section.title, OptionColors.value, OptionColors.valueShadow, m,
         Modifier.padding(top = if (first) m.u * 2 else m.u * 8, bottom = m.u * 2),

@@ -46,7 +46,7 @@ object SaveFileEdits {
     /** Writes [edited] over [rom]'s save, which must still be [expected]. Blocking: off the UI thread. */
     fun commit(context: Context, prefs: Prefs, rom: File, expected: ByteArray, edited: ByteArray): Result {
         val save = SavesLocation.saveFor(context, prefs, rom)
-        val result = write(save, expected, edited) { SaveBackups.snapshot(it) }
+        val result = write(save, expected, edited) { SaveBackups.snapshot(it, force = true) }
         if (result is Result.Written) runCatching {
             SaveStates(context.getExternalFilesDir(null) ?: context.filesDir, SaveStates.crc32(rom)).freshBootFile.createNewFile()
         }
@@ -60,7 +60,7 @@ object SaveFileEdits {
     fun commitBoth(context: Context, prefs: Prefs, a: Edit, b: Edit): Result {
         val saveA = SavesLocation.saveFor(context, prefs, a.rom)
         val saveB = SavesLocation.saveFor(context, prefs, b.rom)
-        val result = writeBoth(saveA, a, saveB, b) { SaveBackups.snapshot(it) }
+        val result = writeBoth(saveA, a, saveB, b) { SaveBackups.snapshot(it, force = true) }
         if (result is Result.Written) for (rom in listOf(a.rom, b.rom)) runCatching {
             SaveStates(context.getExternalFilesDir(null) ?: context.filesDir, SaveStates.crc32(rom)).freshBootFile.createNewFile()
         }

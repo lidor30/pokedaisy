@@ -1,0 +1,53 @@
+# Pokémon Monomyth v1.0: monomyth_trainer.txt's battle, then FIGHT, WATER GUN (the move menu's bottom right): it knocks
+# out TIM's SPINARAK; A through the EXP message and the send-out, dumped at the action menu facing his JOLTIK
+# (gBattlerPartyIndexes[1] = 1).
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press A
+wait 300
+poke32 0x0203c800 0x0001035c
+poke32 0x0203c804 0x62240000
+poke32 0x0203c808 0x0208a121
+call 0x08090871 0x0203c800
+wait 150
+press A
+wait 150
+press A
+wait 150
+press A
+wait 150
+press A
+wait 150
+press A
+wait 30
+press DOWN
+wait 10
+press RIGHT
+wait 10
+press A
+wait 720
+press A
+wait 90
+press A
+wait 90
+press A
+wait 90
+press A
+wait 90
+press A
+wait 90

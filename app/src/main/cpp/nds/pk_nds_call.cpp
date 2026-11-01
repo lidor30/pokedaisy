@@ -146,6 +146,60 @@ const Gen5Fns BLACK = {
     },
 };
 
+// White (IRAO rev 0): Black's functions, found again by their code; the overlays and the GameSystem pointer sit 0x20
+// higher, the ARM9's code where Black's is. Checked headless like Black's (the PC, FLY).
+const Gen5Fns WHITE = {
+    0x02146268,
+    0x10, 0x18, 0x20,
+    0x0218A095,
+    0x0200565D,
+    0x02012109,
+    0x02158789,
+    10090,
+    0x0215E861, 0x0215EA35, 0x0215EA59,
+    4,
+    {
+        {0x0218A094, 0xB082B5F8}, {0x02158788, 0x1C0DB538}, {0x02158940, 0xB083B5F0},
+        {0x0215E860, 0xB08AB5F8}, {0x0215EA34, 0x1C02B510}, {0x0215EA58, 0x1C03B538},
+    },
+};
+
+// Black 2 (IREO rev 0): Black's functions in a new build, each found by its code (BLs masked) - overlay 12 holds what
+// Black's 10 did, 36 the field's event check (Black's 21) - and checked headless on the player's save (the PC, FLY).
+const Gen5Fns BLACK2 = {
+    0x021410F4,
+    0x10, 0x18, 0x20,
+    0x0218185D,
+    0x020056B9,
+    0x02016AED,
+    0x0215366D,
+    10090,
+    0x02159231, 0x021593FD, 0x02159421,
+    4,
+    {
+        {0x0218185C, 0xB082B5F8}, {0x0215366C, 0x1C0DB538}, {0x02153824, 0xB083B5F0},
+        {0x02159230, 0xB08AB5F8}, {0x021593FC, 0x1C02B510}, {0x02159420, 0x1C03B538},
+    },
+};
+
+// White 2 (IRDO rev 0): Black 2's functions, found again by their code, the overlays and the GameSystem pointer 0x40 higher
+// (the ARM9's low code where Black 2's is). Checked headless like Black 2's.
+const Gen5Fns WHITE2 = {
+    0x02141134,
+    0x10, 0x18, 0x20,
+    0x0218189D,
+    0x020056B9,
+    0x02016AED,
+    0x021536AD,
+    10090,
+    0x02159271, 0x0215943D, 0x02159461,
+    4,
+    {
+        {0x0218189C, 0xB082B5F8}, {0x021536AC, 0x1C0DB538}, {0x02153864, 0xB083B5F0},
+        {0x02159270, 0xB08AB5F8}, {0x0215943C, 0x1C02B510}, {0x02159460, 0x1C03B538},
+    },
+};
+
 struct Pending {
     int seq;
     uint32_t parent;   // the field map's ApplicationManager the hook sits in (Gen 5: the GameSystem)
@@ -167,7 +221,14 @@ const CallFns* fnsFor(const PkNdsFieldGame* game)
 
 const Gen5Fns* gen5FnsFor(const PkNdsFieldGame* game)
 {
-    return game && game->gen == 5 && game->callSet == 3 ? &BLACK : nullptr;
+    if (!game || game->gen != 5) return nullptr;
+    switch (game->callSet) {
+    case 3: return &BLACK;
+    case 4: return &WHITE;
+    case 5: return &BLACK2;
+    case 6: return &WHITE2;
+    default: return nullptr;
+    }
 }
 
 u32 rd32(NDS* nds, u32 a)

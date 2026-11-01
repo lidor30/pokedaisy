@@ -18,6 +18,8 @@ package com.pokedaisy.app.companion.data
  * (12-byte `{u32 n, SongHeader*, u16 ms, u16 me}`, n = -1 ends it) when `alt`
  * is set and n has one there - the fourth entry, which finds both tables. Its
  * songs get ids with [ALT] set ([number] / [alt] split them for the call).
+ * Monomyth's is agbcc's with the table's song headers stored top bit flipped
+ * (`eor` 0x80000000 before MPlayStart) - the fifth entry.
  */
 class M4aSongs private constructor(
     val songNumStart: Long,
@@ -40,7 +42,8 @@ class M4aSongs private constructor(
          * load at +6. gcc (Emerald Rogue): the whole function, table load at +2.
          * Newer expansion (gcc, with the ident check): the whole function, +2.
          * Heart and Soul (the ident check + its alternate table): the whole function,
-         * +0x38, and the alternate table's load at +0x0A.
+         * +0x38, and the alternate table's load at +0x0A. Monomyth (agbcc, every
+         * header XORed with 0x80000000): up to the `bl`, +6.
          */
         private val SIGNATURES = listOf(
             Signature("00b50004074a0849400b401883885900c918890089180a680168101c00f0a2fb", 6),
@@ -51,8 +54,9 @@ class M4aSongs private constructor(
                     "4b005b189b000433eb1802e0..4bc000c31899884a005218..4992008858..4a416b914202d11968........30bc01bc0047",
                 0x38, altLdr = 0x0A,
             ),
+            Signature("00b50004..4a..49400b401883885900c918890089180a680168802000064140101c", 6, headerXor = 0x80000000L),
         )
-        private class Signature(val pattern: String, val tableLdr: Int, val altLdr: Int = -1)
+        private class Signature(val pattern: String, val tableLdr: Int, val altLdr: Int = -1, val headerXor: Long = 0)
         private const val MAX_SONGS = 4096
 
         /** Set on an alternate song's id: m4aSongNumStart's `alt` argument (Heart and Soul's second table). */
@@ -78,7 +82,7 @@ class M4aSongs private constructor(
             val bgm = ArrayList<Int>()
             var n = 0
             while (n < MAX_SONGS && t + n * 8 + 8 <= rom.size) {
-                val header = u32(rom, t + n * 8)
+                val header = u32(rom, t + n * 8) xor sig.headerXor
                 if (header !in ROM until ROM + rom.size) break
                 val ms = u16(rom, t + n * 8 + 4)
                 if (ids.putIfAbsent(header - ROM, n) == null && ms == MUSIC_PLAYER_BGM) bgm += n

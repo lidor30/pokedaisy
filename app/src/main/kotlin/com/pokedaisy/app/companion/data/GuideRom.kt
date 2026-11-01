@@ -40,6 +40,11 @@ data class GuideTables(
     val trainerPartyOff: Int = 0x24,
     /** pokeemerald-expansion's struct TrainerMon (always custom moves); null = vanilla's party structs. */
     val trainerMon: TrainerMonLayout? = null,
+    /** Vanilla's party structs behind this many bytes of the game's own, each struct's size by the trainer's party flags
+     * (none, custom moves, held item, both) - Monomyth's: a u32 first, then vanilla's fields, 12 / 20 / 12 / 24 bytes.
+     * Null = vanilla's 8 / 16. */
+    val trainerMonStrides: List<Int>? = null,
+    val trainerMonHeader: Int = 0,
     /** WildPokemonHeader: expansion keeps one set of four tables per time of day. */
     val wildSets: Int = 1,
     /** Which set HERE shows (expansion's TIME_DAY); a missing table falls back to the others. */
@@ -177,12 +182,13 @@ private const val TRAINER_PARTY_HELD_ITEM = 2
 private const val WILD_SET_SIZE = 16 // four WildPokemonInfo pointers (+ expansion's hidden one, see below)
 private const val MAP_GROUP_UNDEFINED = 0xFF
 
-/** Whether the running ROM has these tables where [t] says: its probe trainer (FireRed's BROCK) has the right name. */
-fun guideTablesMatchRom(c: MemoryReader, t: GuideTables): Boolean = runCatching {
+/** Whether the running ROM has these tables where [t] says: its probe trainer (FireRed's BROCK) has the right name
+ * ([byName]: not on a ROM whose hash already vouches for the tables but whose trainers may be renamed, [RandomizedRetail]). */
+fun guideTablesMatchRom(c: MemoryReader, t: GuideTables, byName: Boolean = true): Boolean = runCatching {
     val at = t.trainers + t.probeTrainer.toLong() * t.trainerStride + t.trainerNameOff
     val name = if (t.trainerNamePtr) c.readCoreMemory(u32le(c.readCoreMemory(at, 4), 0), t.trainerNameLen)
         else c.readCoreMemory(at, t.trainerNameLen)
-    Gen3Text.decode(name) == t.probeName && c.readCoreMemory(t.wildHeaders, 1)[0].toInt() and 0xFF != MAP_GROUP_UNDEFINED
+    (!byName || Gen3Text.decode(name) == t.probeName) && c.readCoreMemory(t.wildHeaders, 1)[0].toInt() and 0xFF != MAP_GROUP_UNDEFINED
 }.getOrDefault(false)
 
 /** The save's event flags and vars, as the scripts see them. */
@@ -411,10 +417,10 @@ object GuideRomSource {
             val custom = flags and TRAINER_PARTY_CUSTOM_MOVESET != 0
             val item = flags and TRAINER_PARTY_HELD_ITEM != 0
             // {u16 iv, u8 lvl, pad, u16 species, [u16 item], [u16 moves[4]]}, padded to 8 / 16 bytes.
-            val stride = if (custom) 16 else 8
+            val stride = t.trainerMonStrides?.getOrNull(flags and 3) ?: if (custom) 16 else 8
             val raw = rd(ptr, size * stride)
             (0 until size).map { i ->
-                val o = i * stride
+                val o = i * stride + t.trainerMonHeader
                 val species = u16le(raw, o + 4)
                 val level = raw[o + 2].toInt() and 0xFF
                 val movesOff = if (item) o + 8 else o + 6
@@ -872,10 +878,12 @@ val GUIDE_TABLES_SOULGOLD = GuideTables(
     mapGroups = 0x09587364L, mapSecWide = true,
 )
 
-// v1.2 / v1.2b / v1.2c: the same layouts, ids, flags and scripts; only the tables moved.
+// v1.2 / v1.2b / v1.2c / v1.2.1: the same layouts, ids, flags and scripts; only the tables moved.
 val GUIDE_TABLES_SOULGOLD_V1_2 = GUIDE_TABLES_SOULGOLD.copy(trainers = 0x084A5800L, wildHeaders = 0x09420BA8L, altTrainers = listOf(0x084B4470L), mapGroups = 0x09592634L)
 val GUIDE_TABLES_SOULGOLD_V1_2B = GUIDE_TABLES_SOULGOLD.copy(trainers = 0x084A5768L, wildHeaders = 0x09420B04L, altTrainers = listOf(0x084B43D8L), mapGroups = 0x09592590L)
 val GUIDE_TABLES_SOULGOLD_V1_2C = GUIDE_TABLES_SOULGOLD.copy(trainers = 0x084A58F4L, wildHeaders = 0x0944EA34L, altTrainers = listOf(0x084B4564L), mapGroups = 0x095C04C0L)
+// v1.2.1 (both builds): the same again, moved once more.
+val GUIDE_TABLES_SOULGOLD_V1_2_1 = GUIDE_TABLES_SOULGOLD.copy(trainers = 0x084AD384L, wildHeaders = 0x0945A8E0L, altTrainers = listOf(0x084BBFF4L), mapGroups = 0x095CC3A8L)
 
 val GUIDE_TABLES_CELIA = GuideTables(
     trainers = 0x0871FCA0L,
@@ -991,6 +999,31 @@ val GUIDE_TABLES_WISHES = GuideTables(
     wildSet = 0,
     mapGroups = 0x08F90738L,
     trainerIdVar = true,
+)
+
+/**
+ * Pokémon Monomyth v1.0, from the ROM: gTrainers 0x084B6C84 (vanilla's 0x28-byte records; 1 = BUG CATCHER TIM, whose
+ * SPINARAK Lv3 and JOLTIK Lv4 the headless trainer battle met), its parties vanilla's structs behind a u32 (12 / 20 / 12 /
+ * 24 bytes by party flags, level +6, species +8, item +0xA, moves +0xA or +0xC), gLevelUpLearnsets 0x0850664C ({u16 move,
+ * u16 level} ending 0xFFFF: its moves pass 511), gWildMonHeaders 0x089C2E58 (vanilla's 20 bytes, 211 of them). SaveBlock1's
+ * flags / vars at +0x18C4 / +0x19FC (ScrCmd_setflag's and ClearAllVars' literals), 0x138 bytes of flags.
+ */
+val GUIDE_TABLES_MONOMYTH = GuideTables(
+    trainers = 0x084B6C84L,
+    learnsets = 0x0850664CL,
+    learnsetPairs = true,
+    wildHeaders = 0x089C2E58L,
+    // gMapGroups (its own maps: the save's CATSEAR CITY building is 2.5, ROUTE 1 0.12) - DEX AREA's map sections.
+    mapGroups = 0x0886EED8L,
+    sb1FlagsOff = 0x18C4,
+    sb1VarsOff = 0x19FC,
+    flagBytes = 0x138,
+    varCount = 0x110,
+    probeTrainer = 1,
+    probeName = "Tim",
+    guide = GuideId.MONOMYTH,
+    trainerMonStrides = listOf(12, 20, 12, 24),
+    trainerMonHeader = 4,
 )
 
 /**

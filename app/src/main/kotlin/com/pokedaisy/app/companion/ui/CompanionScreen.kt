@@ -208,9 +208,36 @@ fun CompanionScreen(
         }
         val infoFoes = shownFoeMon?.let { listOf(it) } ?: snapshot.battleOpponent
         val infoPlayer = shownFoeMon?.let { foe -> snapshot.battlePlayer.map { it.withMovesVs(foe) } } ?: snapshot.battlePlayer
+        // BATTLE FOCUS keeps its own foe state so the normal INFO page is untouched. Any foe that's
+        // been out counts as seen, and a foe that's out is shown with its battle stats.
+        val battleFocus = settings?.battleFocus == true
+        val focusSeen = remember { androidx.compose.runtime.mutableStateListOf<Int>() }
+        LaunchedEffect(snapshot.focusEnemyActive, snapshot.focusEnemyNext, snapshot.enemyBattlers) {
+            (listOf(snapshot.focusEnemyActive, snapshot.focusEnemyNext) + snapshot.enemyBattlers)
+                .filter { it >= 0 && it !in focusSeen }.forEach { focusSeen.add(it) }
+        }
+        val focusShown = selectedFoe ?: snapshot.focusEnemyNext.takeIf { it >= 0 } ?: snapshot.focusEnemyActive
+        val focusBattler = snapshot.enemyBattlers.indexOf(focusShown).takeIf { it >= 0 && focusShown >= 0 }
+            ?.let { snapshot.battleOpponent.getOrNull(it) }
+        val focusPartyMon = if (focusBattler != null) null
+            else snapshot.enemyParty.getOrNull(focusShown)?.takeIf { focusShown != snapshot.focusEnemyActive }
+        val focusFoe = focusBattler ?: focusPartyMon ?: snapshot.battleOpponent.firstOrNull()
+        val focusHeading = when {
+            focusPartyMon == null -> "FOE"
+            focusShown == snapshot.focusEnemyNext -> "FOE · NEXT"
+            focusPartyMon.hp == 0 -> "FOE · FAINTED"
+            focusShown in focusSeen -> "FOE · RESERVE"
+            else -> "FOE · UNSEEN"
+        }
         // DEX tab: filter / dex / scroll position / open entry, kept across tab switches.
         val dexListState = androidx.compose.foundation.lazy.rememberLazyListState()
         val dexUi = remember { DexUiState(dexListState) }
+        // BOXES tab: the box on show and its open summary, kept across tab switches.
+        val boxesUi = remember { BoxesUiState() }
+        val pcBoxes = snapshot.pcBoxes
+        val openBoxMon = pcBoxes?.let { b -> boxesUi.open?.takeIf { it in boxSummaryList(b.boxes[boxesUi.boxOf(b)]).indices } }
+        val lastBoxMon = remember { mutableStateOf(0) }
+        openBoxMon?.let { lastBoxMon.value = it }
         val dex = snapshot.pokedex
         // GUIDE tab: page, reveals and scroll position, kept across tab switches.
         val guideUi = remember { GuideUiState() }
@@ -232,8 +259,10 @@ fun CompanionScreen(
                 "DEX" -> dex != null || id in cachedTabs
                 "GUIDE" -> guide != null || id in cachedTabs
                 "CARD" -> card != null && cardArt?.style == card.style || id in cachedTabs
+                "BOXES" -> snapshot.pcBoxes != null || id in cachedTabs
                 "ACHIEVEMENTS" -> achievements != null
-                "NUZLOCKE" -> com.pokedaisy.app.companion.Nuzlocke.on && com.pokedaisy.app.companion.Nuzlocke.supports(game)
+                // Always there for a game the tracker follows (under MORE); while it's off the tab says so and turns it on.
+                "NUZLOCKE" -> com.pokedaisy.app.companion.Nuzlocke.supports(game)
                 else -> true
             }
         }
@@ -245,7 +274,9 @@ fun CompanionScreen(
         val room = if (battle) MAX_BAR_TABS - 1 else MAX_BAR_TABS
         // The chosen tabs this game has, then - while there's room - its others: a game without a DEX or GUIDE still
         // fills the bar. In the tabs' own order.
-        val picked = available.filter { it in chosenTabs }.take(room).let { c -> c + available.filter { it !in c }.take(room - c.size) }
+        // NUZLOCKE switched off isn't a filler: it waits under MORE unless the player put it on the bar.
+        val fillers = available.filter { it != "NUZLOCKE" || com.pokedaisy.app.companion.Nuzlocke.on }
+        val picked = available.filter { it in chosenTabs }.take(room).let { c -> c + fillers.filter { it !in c }.take(room - c.size) }
         val bar = available.filter { it in picked }
         // The rest open from MORE, left of the gear (still tabs, just without a chip); no MORE chip with none.
         // Tabs go by id ("ITEMS"); the bar shows each game's own word (companionTabLabel).
@@ -278,6 +309,7 @@ fun CompanionScreen(
                 if (battle) battleShowControls = true
                 showSuggestions = false; showBattleStats = false
                 seenFoes.clear(); selectedFoe = null
+                focusSeen.clear()
             }
             seenInBattle = battle
         }
@@ -361,6 +393,11 @@ fun CompanionScreen(
                     visible = current == "ITEMS" && hasItemsBackdrop(game),
                     enter = fadeIn(tween(200)), exit = fadeOut(tween(200)), label = "tab-backdrop",
                 ) { ItemsBackdrop(game, Modifier.fillMaxSize()) }
+                // BOXES: the PC screen's peach backdrop, the same way.
+                AnimatedVisibility(
+                    visible = current == "BOXES",
+                    enter = fadeIn(tween(200)), exit = fadeOut(tween(200)), label = "boxes-backdrop",
+                ) { PcBackdrop() }
                 // The Pokédex's own screen (Black's green grid), the same way.
                 dsDexPattern(game)?.let { dex ->
                     AnimatedVisibility(
@@ -434,6 +471,8 @@ fun CompanionScreen(
                     GameStart.waiting && current in WAITING_TABS -> "WAITING"
                     current == "PARTY" && openDetail != null -> "PARTY/DETAIL"
                     current == "DEX" && dexUi.open != null -> "DEX/DETAIL"
+                    current == "BOXES" && openBoxMon != null && boxesUi.swapping != null -> "BOXES/SWAP"
+                    current == "BOXES" && openBoxMon != null -> "BOXES/DETAIL"
                     else -> current
                 }
                 // When the last switch was moments ago (a player tapping through tabs), cut
@@ -487,13 +526,92 @@ fun CompanionScreen(
                             WaitingView(Modifier.fillMaxSize())
                         } else if (paneKey == "PARTY/DETAIL") {
                             // A mon's summary takes over the whole tab (back returns to the slots).
+                            val shownSlot = lastDetail.value.coerceIn(0, (snapshot.party.size - 1).coerceAtLeast(0))
                             MonDetailScreen(
-                                snapshot.party, lastDetail.value.coerceIn(0, (snapshot.party.size - 1).coerceAtLeast(0)),
+                                snapshot.party, shownSlot,
                                 onIndexChange = { detailIndex = it },
                                 onBack = { detailIndex = null },
                                 learn = learnContext,
                                 itemUse = itemUse,
+                                // The PC's DEPOSIT, where its moves work and the boxes are read: pick a box.
+                                onDeposit = if (pcBoxes != null && itemUse?.canSwapBox() == true) {
+                                    { boxesUi.depositing = shownSlot }
+                                } else null,
                             )
+                            val depositSlot = boxesUi.depositing
+                            val depositMon = depositSlot?.let { snapshot.party.getOrNull(it) }
+                            if (pcBoxes != null && itemUse != null && depositSlot != null && depositMon != null) {
+                                BoxDepositPicker(
+                                    pcBoxes, depositMon,
+                                    onPick = { box ->
+                                        boxesUi.depositing = null
+                                        val boxName = pcBoxes.boxes[box].name
+                                        itemUse.depositToBox(depositSlot, depositMon.personality, box) { r ->
+                                            // Gone from the party: back on its slots, where the move plays.
+                                            if (r == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) detailIndex = null
+                                            boxesUi.moved(r, "DEPOSIT", boxDepositMessage(r, depositMon, boxName)) {
+                                                BoxSwapAnim(null, depositMon, boxName, boxDepositMessage(r, depositMon, boxName))
+                                            }
+                                        }
+                                    },
+                                    onDismiss = { boxesUi.depositing = null },
+                                )
+                            }
+                            BoxSwapNotice(boxesUi)
+                        } else if (paneKey == "BOXES/DETAIL" && pcBoxes != null) {
+                            // A box Pokémon's summary, like PARTY's: up / down page through the box.
+                            val boxIndex = boxesUi.boxOf(pcBoxes)
+                            val inBox = boxSummaryList(pcBoxes.boxes[boxIndex])
+                            MonDetailScreen(
+                                inBox, lastBoxMon.value.coerceIn(0, (inBox.size - 1).coerceAtLeast(0)),
+                                onIndexChange = { i -> boxesUi.open = i; boxesUi.looked = pcBoxes.boxes[boxIndex].mons.indexOf(inBox.getOrNull(i)) },
+                                onBack = { boxesUi.open = null },
+                                // WITHDRAW into the party; with six there, SWAP's pick instead.
+                                onWithdraw = if (itemUse?.canSwapBox() == true) {
+                                    {
+                                        val boxMon = inBox.getOrNull(lastBoxMon.value)
+                                        val slot = pcBoxes.boxes[boxIndex].mons.indexOf(boxMon)
+                                        if (boxMon != null && slot >= 0) {
+                                            if (snapshot.party.size >= 6) boxesUi.swapping = boxMon
+                                            else {
+                                                val boxName = pcBoxes.boxes[boxIndex].name
+                                                itemUse.withdrawFromBox(boxIndex, slot, boxMon.personality) { r ->
+                                                    // Out of the box: back on it, where the move plays.
+                                                    if (r == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) boxesUi.open = null
+                                                    if (r == com.pokedaisy.app.companion.data.BoxSwapResult.PARTY_FULL) boxesUi.swapping = boxMon
+                                                    else boxesUi.moved(r, "WITHDRAW", boxWithdrawMessage(r, boxMon, boxName)) {
+                                                        BoxSwapAnim(boxMon, null, boxName, boxWithdrawMessage(r, boxMon, boxName))
+                                                    }
+                                                }
+                                            }
+                                        }
+                                    }
+                                } else null,
+                            )
+                            BoxSwapNotice(boxesUi)
+                        } else if (paneKey == "BOXES/SWAP" && pcBoxes != null) {
+                            val boxIndex = boxesUi.boxOf(pcBoxes)
+                            val boxMon = boxesUi.swapping
+                            BoxSwapPicker(
+                                boxMon, snapshot.party,
+                                onCancel = { boxesUi.swapping = null },
+                                onPick = { partySlot, partyMon ->
+                                    val slot = pcBoxes.boxes[boxIndex].mons.indexOf(boxMon)
+                                    if (boxMon == null || slot < 0 || itemUse == null) boxesUi.swapping = null
+                                    else itemUse.swapBox(boxIndex, slot, boxMon.personality, partySlot, partyMon.personality) { r ->
+                                        boxesUi.swapping = null
+                                        val boxName = pcBoxes.boxes[boxIndex].name
+                                        val message = boxSwapMessage(r, boxMon, partyMon, boxName)
+                                        // Back on the box, the two trading places, then the message under them.
+                                        if (r == com.pokedaisy.app.companion.data.BoxSwapResult.SWAPPED) boxesUi.open = null
+                                        boxesUi.moved(r, "SWAP", message) { BoxSwapAnim(boxMon, partyMon, boxName, message) }
+                                    }
+                                },
+                            )
+                        } else if (tab == "BOXES" && pcBoxes != null) {
+                            BoxesScreen(pcBoxes, boxesUi, snapshot.pokedex?.tables, Modifier.fillMaxSize())
+                            boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = { boxesUi.swapAnim = null }) }
+                            BoxSwapNotice(boxesUi)
                         } else if (tab == "DEX" && dex != null) {
                             if (paneKey == "DEX/DETAIL") PokedexEntryScreen(dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables)
                             else PokedexScreen(dex, dexUi)
@@ -514,6 +632,9 @@ fun CompanionScreen(
                             // ones) over the party-menu backdrop - no extra window
                             // behind them, and the full tab area for bigger slots.
                             PartyScreen(snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) })
+                            // A DEPOSIT that went through plays over the party, then says so.
+                            boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = { boxesUi.swapAnim = null }) }
+                            BoxSwapNotice(boxesUi)
                         } else if (tab == "SETTINGS") {
                             // Draws its own OPTION-screen windows, no cream card behind them.
                             CompanionSettingsScreen(
@@ -606,8 +727,23 @@ fun CompanionScreen(
                                         infoPlayer, infoFoes, foeHeading,
                                         onBack = { showBattleStats = false },
                                     )
+                                    else -> if (battleFocus) BattleFocusScreen(
+                                        focusFoe,
+                                        party = snapshot.party,
+                                        // focusPlayer is empty in previews, which build the snapshot by hand
+                                        battlePlayer = snapshot.focusPlayer.ifEmpty { snapshot.battlePlayer },
+                                        playerBattlers = snapshot.playerBattlers,
+                                        showHints = showHints,
+                                        onBack = if (canUseControls) ({ battleShowControls = true }) else null,
+                                        foeTeam = snapshot.enemyParty,
+                                        seenFoes = focusSeen.toSet(),
+                                        shownFoe = focusShown,
+                                        foeHeading = focusHeading,
+                                        onSelectFoe = { selectedFoe = if (it == focusShown && selectedFoe != null) null else it },
+                                        dexTables = snapshot.pokedex?.tables,
+                                    )
                                     // Back only while there are controls to go back to.
-                                    else -> BattleInfoScreen(
+                                    else BattleInfoScreen(
                                         infoPlayer, infoFoes, snapshot.isDoubleBattle,
                                         showHints = showHints,
                                         onBack = if (canUseControls) ({ battleShowControls = true }) else null,
@@ -706,6 +842,7 @@ internal fun companionTabLabel(id: String): String = when (id) {
     "GUIDE" -> tr("GUIDE")
     "NUZLOCKE" -> tr("NUZLOCKE")
     "CARD" -> tr("CARD")
+    "BOXES" -> tr("BOXES")
     "STATES" -> tr("STATES")
     "BATTLE" -> tr("BATTLE")
     "SETTINGS" -> tr("SETTINGS")

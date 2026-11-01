@@ -39,6 +39,10 @@ enum class EvoScheme {
     QUETZAL,
     /** R.O.W.E.: [EXPANSION]'s numbering up to 31 (EVO_TRADE_SPECIFIC_MON). */
     ROWE,
+    /** Pokémon Monomyth: vanilla's 1-15, and of expansion's older list the ones its data bears out (23 knows a move:
+     * TANGELA's ANCIENTPOWER; 25 at a place: POLIKAZAN at BLAZING PATH; 27 an item on a female: SNORUNT's DAWN STONE;
+     * 32 at a map); its 31, 33 and 34 are its own. */
+    MONOMYTH,
     /** pokeemerald-expansion 1.12+ (TMT2, Heart and Soul, SoulGold): EVO_LEVEL / TRADE / ITEM / ...
      * plus a list of {condition, arg1, arg2, arg3} (IF_GENDER, IF_TIME, IF_HOLD_ITEM, ...). */
     EXPANSION_PARAMS,
@@ -61,6 +65,9 @@ data class EvoLayout(
     val perMon: Int = 5,
     val record: Int = 8,
     val conditionsEnd: Int = 39,
+    /** The level species 1 evolves into species 2 at, which a table-shaped layout must show (BULBASAUR's 16; Monomyth's
+     * KOTORA becomes RAITORA at 31). */
+    val probeLevel: Int = 16,
 )
 
 /** expansion's TimeOfDay (and the old day / night / dusk methods). */
@@ -252,8 +259,10 @@ object DexDetails {
                 if (links.isNotEmpty()) out[s] = knownFirst(links)
             }
             // A hack of the same size that moved the table must not get wrong data:
-            // BULBASAUR evolves at 16 into IVYSAUR (species 1 -> 2) in every table-shaped game here.
-            if (out[1]?.firstOrNull()?.let { it.to == 2 && it.reqs == listOf(EvoReq.Level(16)) } != true) return null
+            // BULBASAUR evolves at 16 into IVYSAUR (species 1 -> 2) in every table-shaped game here ([EvoLayout.probeLevel]:
+            // Monomyth's at 31). A randomized retail ROM's table is at retail's place (its hash says so), the randomizer's
+            // evolutions in it.
+            if (!gameRandomized && out[1]?.firstOrNull()?.let { it.to == 2 && it.reqs == listOf(EvoReq.Level(layout.probeLevel)) } != true) return null
             return out
         }
         val x = t.expansion ?: return null
@@ -327,6 +336,7 @@ object DexDetails {
             }
             EvoScheme.QUETZAL -> if (m <= 42) expansion(m, p) else null
             EvoScheme.ROWE -> if (m <= 31) expansion(m, p) else null
+            EvoScheme.MONOMYTH -> vanilla(m, p) ?: if (m in setOf(23, 25, 27, 32)) expansion(m, p) else null
             EvoScheme.EXPANSION_PARAMS -> null
             EvoScheme.RECHARGED_YELLOW -> vanilla(m, p) ?: if (m == 16) listOf(EvoReq.UseItem(p), EvoReq.Hold(extra)) else null
         } ?: listOf(EvoReq.Special)
@@ -584,15 +594,23 @@ object DexDetails {
     }
 
     /** The TM tables hold what they should: TM01-04 FOCUS PUNCH, DRAGON CLAW, WATER PULSE, CALM MIND,
-     * HM01 CUT, and BULBASAUR's 19 TMs / HMs (TOXIC ... ROCK SMASH). */
+     * HM01 CUT, and BULBASAUR's 19 TMs / HMs (TOXIC ... ROCK SMASH). A randomized retail ROM's are at retail's place (its
+     * hash says so) with random TMs and compatibility: there, every TM a move and the HMs retail's (no randomizer
+     * touches them). */
     private fun tmhmChecks(t: PokedexTables): Boolean = tmhmOk ?: runCatching {
         val m = rd(t.tmhmMoves, 58 * 2)
+        if (gameRandomized) return@runCatching (0 until 50).all { u16le(m, it * 2) in 1 until MOVES_GEN3 } &&
+            (50 until 58).map { u16le(m, it * 2) } == RETAIL_HM_MOVES
         val bulbasaur = rd(t.tmhmLearnsets + 8, 8)
         var v = 0L
         for (i in 0 until 8) v = v or ((bulbasaur[i].toLong() and 0xFF) shl (8 * i))
         listOf(u16le(m, 0), u16le(m, 2), u16le(m, 4), u16le(m, 6), u16le(m, 100)) == listOf(264, 337, 352, 347, 15) &&
             v == BULBASAUR_TMHM
     }.getOrDefault(false).also { tmhmOk = it }
+
+    private const val MOVES_GEN3 = 355
+    /** HM01..HM08: CUT, FLY, SURF, STRENGTH, FLASH, ROCK SMASH, WATERFALL, DIVE. */
+    private val RETAIL_HM_MOVES = listOf(15, 19, 57, 70, 148, 249, 127, 291)
 
     private val BULBASAUR_TMHM: Long = (listOf(6, 9, 10, 11, 17, 19, 21, 22, 27, 32, 36, 42, 43, 44, 45).map { it - 1 } +
         listOf(1, 4, 5, 6).map { 49 + it }).fold(0L) { acc, b -> acc or (1L shl b) }

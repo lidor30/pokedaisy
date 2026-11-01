@@ -110,7 +110,6 @@ import com.pokedaisy.app.companion.ui.OptionTitleWindow
 import com.pokedaisy.app.companion.ui.drawLayeredBox
 import com.pokedaisy.app.companion.ui.inPx
 import com.pokedaisy.app.companion.ui.rememberGbaTextMetrics
-import com.pokedaisy.app.companion.ui.theme.APP_THEMES
 import com.pokedaisy.app.companion.ui.theme.AppColors
 import com.pokedaisy.app.companion.ui.theme.AppTheme
 import java.io.File
@@ -127,7 +126,7 @@ import com.pokedaisy.app.companion.ui.drawPixelRoundRect
  */
 class SettingsActivity : ComponentActivity() {
 
-    private enum class Screen { HOME, SPEED, DISPLAY, HOTKEYS, CONTROLS, SHADERS, FIELD_HUD, QUICK_MENU, TOUCH, OVERLAYS, FOLDERS, ROMS_FOLDERS, SAVES_FOLDER, SAVE_SEARCH, STATES_FOLDER, COVER_ART, SCREENSCRAPER, HIDDEN, ACHIEVEMENTS, CHEATS, CHEAT_ADD, LICENSES, HELP }
+    private enum class Screen { HOME, SPEED, DISPLAY, HOTKEYS, CONTROLS, SHADERS, FIELD_HUD, QUICK_MENU, TOUCH, OVERLAYS, FOLDERS, ROMS_FOLDERS, SAVES_FOLDER, SAVE_SEARCH, STATES_FOLDER, BACKUPS, COVER_ART, SCREENSCRAPER, HIDDEN, ACHIEVEMENTS, CHEATS, CHEAT_ADD, LICENSES, HELP }
 
     private lateinit var prefs: Prefs
     private var screen by mutableStateOf(Screen.HOME)
@@ -141,6 +140,8 @@ class SettingsActivity : ComponentActivity() {
     private var hotkeyClash by mutableStateOf<HotkeyClash?>(null)
     private var revision by mutableIntStateOf(0)
     private var aspectPicker by mutableStateOf(false)
+    /** SCREEN > DS LAYOUT's pick-list with its miniatures (DsLayoutPicker) is open. */
+    private var dsLayoutPicker by mutableStateOf(false)
 
     /** TOUCH CONTROLS' EDIT LAYOUT, over a stand-in of the game's screen; BACK goes to it ([touchBack]) while open. */
     private var touchEditing by mutableStateOf(false)
@@ -230,9 +231,14 @@ class SettingsActivity : ComponentActivity() {
             SCREEN_ROMS_FOLDERS -> { romsFoldersOnly = true; screen = Screen.ROMS_FOLDERS }
         }
         setContent {
-            AppTheme { com.pokedaisy.app.companion.ui.CompactTextOnSmallWindows {
-                androidx.compose.runtime.CompositionLocalProvider(com.pokedaisy.app.companion.ui.LocalOverlayStack provides overlays) { Root() }
-            } }
+            // Settings' text a step smaller everywhere (the user's call: the Thor's top screen read it large), not only on
+            // small windows (CompactTextOnSmallWindows): a font pixel down, so it stays crisp.
+            AppTheme {
+                androidx.compose.runtime.CompositionLocalProvider(
+                    com.pokedaisy.app.companion.ui.LocalTextStep provides -1,
+                    com.pokedaisy.app.companion.ui.LocalOverlayStack provides overlays,
+                ) { Root() }
+            }
         }
     }
 
@@ -264,6 +270,7 @@ class SettingsActivity : ComponentActivity() {
     private fun Root() {
         BackHandler(enabled = screen != Screen.HOME) { capture.cancel(); goBack() }
         BackHandler(enabled = aspectPicker) { aspectPicker = false }
+        BackHandler(enabled = dsLayoutPicker) { dsLayoutPicker = false }
         BackHandler(enabled = touchEditing) { touchBack.back() }
         BackHandler(enabled = hotkeyClash != null) { hotkeyClash = null }
         val m = rememberGbaTextMetrics()
@@ -292,6 +299,7 @@ class SettingsActivity : ComponentActivity() {
                         Screen.SAVES_FOLDER -> tk("GAME SAVES")
                         Screen.SAVE_SEARCH -> tk("ALSO LOOK IN")
                         Screen.STATES_FOLDER -> tk("SAVE STATES")
+                        Screen.BACKUPS -> tk("SAVE BACKUPS")
                         Screen.COVER_ART -> tk("COVER ART")
                         Screen.SCREENSCRAPER -> "ScreenScraper"
                         Screen.HIDDEN -> tk("HIDDEN GAMES")
@@ -324,6 +332,7 @@ class SettingsActivity : ComponentActivity() {
                     Screen.SAVES_FOLDER -> SavesFolderScreen(m, small)
                     Screen.SAVE_SEARCH -> AlsoLookInScreen(m, small)
                     Screen.STATES_FOLDER -> StatesFolderScreen(m, small)
+                    Screen.BACKUPS -> SaveBackupsScreen(m, small)
                     Screen.COVER_ART -> CoverArtScreen(m, small)
                     Screen.SCREENSCRAPER -> ScreenScraperScreen(m, small)
                     Screen.HIDDEN -> HiddenScreen(m, small)
@@ -335,7 +344,12 @@ class SettingsActivity : ComponentActivity() {
                 }
             }
 
-            selector?.let { sel ->
+            selector?.slider?.let { read ->
+                // Read after every change (revision), so the pop-up shows the value it just moved to.
+                val (value, slider) = revision.let { read() }
+                com.pokedaisy.app.companion.ui.OptionSliderPopup(selector!!.title, value, slider, m, onDismiss = { selector = null })
+            }
+            selector?.takeIf { it.slider == null }?.let { sel ->
                 OptionSelector(
                     sel.title, sel.options, sel.current, { it }, m,
                     onPick = { sel.onPick(it); selector = null; revision++ },
@@ -376,6 +390,14 @@ class SettingsActivity : ComponentActivity() {
                 )
             }
 
+            if (dsLayoutPicker) {
+                com.pokedaisy.app.companion.ui.DsLayoutPicker(
+                    prefs.dsLayout, m,
+                    onPick = { prefs.dsLayout = it; dsLayoutPicker = false; revision++ },
+                    onDismiss = { dsLayoutPicker = false },
+                )
+            }
+
             if (confirmReplaceAll) {
                 OptionConfirm(
                     title = tk("REPLACE ALL COVERS?"),
@@ -407,6 +429,12 @@ class SettingsActivity : ComponentActivity() {
             }
 
             UpdateDialog(updates, m, small)
+            PatchWindow(
+                patcher, m, small, onPlay = null,
+                onAskSupport = { rom ->
+                    Thread({ val url = RomSupportRequest.url(rom); runOnUiThread { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } } }, "pokedaisy-support-url").start()
+                },
+            )
 
             removingCheat?.let { i ->
                 val c = cheatList.getOrNull(i)
@@ -518,10 +546,20 @@ class SettingsActivity : ComponentActivity() {
         val options: List<String>,
         val current: String,
         val badge: (String) -> String? = { null },
+        /** A slider setting's pop-up ([com.pokedaisy.app.companion.ui.OptionSliderPopup]) instead of a list: its value and
+         *  slider, read fresh on each change. */
+        val slider: (() -> Pair<String, com.pokedaisy.app.companion.ui.SettingSlider>)? = null,
         val onPick: (String) -> Unit,
     )
 
     private var selector by mutableStateOf<Selector?>(null)
+
+    /** SOUND > GAME VOLUME's slider (the row's and its pop-up's): kept and heard at once. */
+    private fun setGameVolume(percent: Int) {
+        prefs.gameVolume = percent
+        GameVolume.load(prefs)
+        revision++
+    }
 
     // ---- hub --------------------------------------------------------------
 
@@ -588,14 +626,13 @@ class SettingsActivity : ComponentActivity() {
     private fun HomeScreen(m: GbaTextMetrics) {
         @Suppress("UNUSED_EXPRESSION") revision
         val rateLabels = RATES.map(::rateLabel)
-        // Upper case, but the game's small é (POKéDAISY, like POKéMON).
-        val themeLabels = APP_THEMES.map { it.label.uppercase().replace('É', 'é') }
-        val themeIdx = APP_THEMES.indexOfFirst { it.id == prefs.appTheme }.coerceAtLeast(0)
+        // The themes on offer today: the limited-time ones only in their dates.
+        val themes = com.pokedaisy.app.companion.ui.theme.availableThemes()
         fun onOff(on: Boolean) = if (on) tk("ON") else tk("OFF")
         // The same groups and order as the bottom screen's SETTINGS where they overlap.
         val rows = listOfNotNull(
             groupTitle(tk("FF / SPEED")),
-            SettingRow(tk("FF SPEED"), rateLabel(prefs.ffMaxSpeed), subtitle = "How fast FF runs") {
+            SettingRow(tk("FF SPEED"), rateLabel(prefs.ffMaxSpeed)) {
                 selector = Selector(tk("FF SPEED"), rateLabels, rateLabel(prefs.ffMaxSpeed)) {
                     prefs.ffMaxSpeed = RATES[rateLabels.indexOf(it)]
                 }
@@ -604,13 +641,29 @@ class SettingsActivity : ComponentActivity() {
             SettingRow(tk("REWIND"), if (prefs.rewind) tk("ON") else tk("OFF")) { prefs.rewind = !prefs.rewind; revision++ },
             // FF MODE and FF MUSIC: set once and rarely touched, on their own page (the companion's has SCENE SPEEDS too).
             SettingRow(tk("SPEED OPTIONS"), null, subtitle = "FF mode and FF music", opensPage = true) { screen = Screen.SPEED },
+            groupTitle(tk("SOUND")),
+            // The game's loudness under the device's own volume (100% = the device's); MUTE GAME keeps it for after.
+            SettingRow(tk("GAME VOLUME"), com.pokedaisy.app.companion.ui.gameVolumeLabel(prefs.gameVolume),
+                       labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.GAME_VOLUME),
+                       slider = com.pokedaisy.app.companion.ui.gameVolumeSlider(prefs.gameVolume, ::setGameVolume)) {
+                // A tap opens it in a pop-up with a bigger bar (the user's call).
+                selector = Selector(tk("GAME VOLUME"), emptyList(), "", slider = {
+                    com.pokedaisy.app.companion.ui.gameVolumeLabel(prefs.gameVolume) to
+                        com.pokedaisy.app.companion.ui.gameVolumeSlider(prefs.gameVolume, ::setGameVolume)
+                }) {}
+            },
+            SettingRow(tk("MUTE GAME"), onOff(prefs.gameMuted),
+                       labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.GAME_VOLUME)) {
+                prefs.gameMuted = !prefs.gameMuted
+                GameVolume.load(prefs)
+                revision++
+            },
             groupTitle(tk("SCREEN")),
             // The game at 3:2, stretched to fill the screen, or WIDE (more of the map, BETA); picked by preview.
             SettingRow(tk("ASPECT"), aspectLabel(prefs.gameAspect),
                        badge = tk("BETA").takeIf { prefs.gameAspect == com.pokedaisy.app.companion.GameAspect.WIDE }, subtitle = "Original shape, stretched, or more of the map") { aspectPicker = true },
             // EXPAND only: whether a conversation, sign, menu or picture over the field pulls the zoom in (battles always do).
-            SettingRow(tk("AUTO ZOOM IN"), onOff(prefs.expandZoomOnText),
-                       subtitle = "1x on dialogue, signs, menus") {
+            SettingRow(tk("AUTO ZOOM IN"), onOff(prefs.expandZoomOnText)) {
                 prefs.expandZoomOnText = !prefs.expandZoomOnText
                 revision++
             }.takeIf { prefs.gameAspect == com.pokedaisy.app.companion.GameAspect.WIDE },
@@ -619,7 +672,7 @@ class SettingsActivity : ComponentActivity() {
             dsGpu.let { gpu ->
                 SettingRow(
                     tk("DS RESOLUTION"), if (gpu) com.pokedaisy.app.companion.ui.dsResolutionLabel(prefs.dsResolution) else tk("N/A"),
-                    enabled = gpu, subtitle = "Sharper 3D in DS games",
+                    enabled = gpu,
                     labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_RESOLUTION),
                 ) {
                     if (!gpu) return@SettingRow
@@ -629,6 +682,19 @@ class SettingsActivity : ComponentActivity() {
                     }
                 }
             }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
+            // DS games: the emulated CPU at twice the DS's clock, so a game's own slow frames go.
+            SettingRow(
+                tk("DS CPU BOOST"), onOff(prefs.dsCpuBoost), subtitle = "Fewer slowdowns in DS games",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_CPU_BOOST),
+            ) {
+                prefs.dsCpuBoost = !prefs.dsCpuBoost
+                revision++
+            }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
+            // A DS game on one screen held sideways: where its two screens go (DsLayout), picked from miniatures.
+            SettingRow(
+                tk("DS LAYOUT"), prefs.dsLayout.label, subtitle = "Where a DS game's two screens go",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_LAYOUT),
+            ) { dsLayoutPicker = true }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT && !usesSecondScreen },
             // The party, a minimap, the balls and BAG / WILD over the game on the field: its own page (layout, look, size, parts).
             SettingRow(tk("HUD"), onOff(prefs.fieldHud), labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.HUD), opensPage = true, subtitle = "Party, minimap and bag over the game") { screen = Screen.FIELD_HUD },
             // One screen: FIGHT, POKéMON and RUN in the room beside a battle (BattleButtons).
@@ -671,13 +737,15 @@ class SettingsActivity : ComponentActivity() {
                 prefs.singleScreen = !prefs.singleScreen
                 revision++
             }.takeIf { hasSecondScreen },
-            // Changes the colors immediately, everywhere — the companion screen too.
-            SettingRow(tk("THEME"), themeLabels[themeIdx], subtitle = "The backdrop of the library and Settings") {
-                selector = Selector(tk("THEME"), themeLabels, themeLabels[themeIdx]) {
-                    val spec = APP_THEMES[themeLabels.indexOf(it)]
-                    prefs.appTheme = spec.id
-                    AppColors.applyTheme(spec)
-                }
+            // Changes the colors immediately, everywhere - the companion screen too.
+            SettingRow(
+                tk("THEME"), AppColors.theme.label,
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.THEMES),
+            ) {
+                selector = Selector(
+                    tk("THEME"), themes.map { it.label }, AppColors.theme.label,
+                    badge = { l -> tk("LIMITED").takeIf { themes.firstOrNull { it.label == l }?.season != null } },
+                ) { l -> themes.firstOrNull { it.label == l }?.let { com.pokedaisy.app.companion.ui.theme.pickTheme(this@SettingsActivity, it) } }
             },
             // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
             SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
@@ -709,6 +777,18 @@ class SettingsActivity : ComponentActivity() {
             SettingRow(tk("HIDDEN GAMES"), RomFolder.hiddenRoms(this@SettingsActivity, prefs).size.takeIf { it > 0 }?.toString() ?: tk("NONE"), opensPage = true) { screen = Screen.HIDDEN },
             // A game's GameShark / Action Replay / CodeBreaker codes, on their own page.
             SettingRow(tk("CHEATS"), onOff(prefs.cheatsEnabled), opensPage = true) { screen = Screen.CHEATS },
+            // TOOLS: what works on games rather than the app (the user's call: a section of their own).
+            groupTitle(tk("TOOLS")),
+            // A ROM hack's .bps applied to the ROM it's for, found in the library by its checksum (RomPatchFlow).
+            SettingRow(
+                tk("PATCH A ROM"), null, subtitle = "Turn a .bps patch into a game",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.ROM_PATCH),
+            ) { pickPatch.launch(arrayOf("*/*")) },
+            // Two to four GBA games on one link cable (LinkActivity), picked on its page; a game's menu starts it with that game.
+            SettingRow(tk("LINK PLAY"), null, subtitle = "Trade and battle between your games", opensPage = true,
+                       labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.LINK_PLAY)) {
+                startActivity(android.content.Intent(this@SettingsActivity, LinkActivity::class.java))
+            },
             groupTitle(tk("ONLINE")),
             // Signed in = on; the account's name, else OFF.
             SettingRow(
@@ -727,7 +807,7 @@ class SettingsActivity : ComponentActivity() {
             // Back to the library, which opens the first-time setup again.
             SettingRow(tk("RUN SETUP"), null, subtitle = "First-time setup again: folders, buttons, art") { prefs.setupRequested = true; finish() },
             // Opt-in crash reports (CrashReports.kt); only in builds that can send them.
-            SettingRow(tk("CRASH REPORTS"), onOff(prefs.crashReportsEnabled), subtitle = "Send a report if the app crashes") {
+            SettingRow(tk("CRASH REPORTS"), onOff(prefs.crashReportsEnabled)) {
                 CrashReports.setEnabled(prefs, !prefs.crashReportsEnabled)
                 revision++
             }.takeIf { CrashReports.available },
@@ -749,11 +829,11 @@ class SettingsActivity : ComponentActivity() {
             },
             // PokeDaisy's Discord server in the browser (or the Discord app).
             SettingRow(
-                "DISCORD", null, subtitle = "Help, bug reports, ideas and chat",
+                "DISCORD", null,
                 labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DISCORD), labelIcon = { DiscordMark() },
             ) { openUrl(Discord.URL) },
             // The manual (docs/manual, served by the website), readable offline once fetched.
-            SettingRow(tk("HELP"), null, subtitle = "The manual: how every screen and setting works", opensPage = true) { screen = Screen.HELP },
+            SettingRow(tk("HELP"), null, opensPage = true) { screen = Screen.HELP },
         )
         // Search: every row whose name, value or keywords (SETTING_KEYWORDS: "rebind", "keybinds"...) match.
         val shown = filterRows(rows, searchQuery)
@@ -963,6 +1043,14 @@ class SettingsActivity : ComponentActivity() {
     private var removingOverlay by mutableStateOf<Pair<String, String>?>(null)
     /** REMOVE ALL's confirm is up. */
     private var removingAllOverlays by mutableStateOf(false)
+
+    /** LIBRARY > PATCH A ROM: the library's patch window, over Settings (internal for ui-preview). */
+    internal val patcher by lazy {
+        RomPatchFlow(this) { revision++ }
+    }
+    private val pickPatch = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { patcher.start(it) }
+    }
 
     private val importOverlayFiles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) importOverlays(uris, emptyList())
@@ -1660,7 +1748,12 @@ class SettingsActivity : ComponentActivity() {
             SettingRow(tk("ALSO LOOK IN"), if (extra.isEmpty()) tk("NONE") else extra.size.toString(), opensPage = true, subtitle = "More folders to find a game's save in") {
                 screen = Screen.SAVE_SEARCH
             },
-            SettingRow(tk("SAVE STATES"), humanSize(states), opensPage = true, subtitle = "The app's own save states") { screen = Screen.STATES_FOLDER },
+            SettingRow(
+                tk("SAVE BACKUPS"), if (prefs.saveBackups) tk("ON") else tk("OFF"), opensPage = true,
+                subtitle = "A copy of the save each time a game starts",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.SAVE_BACKUPS),
+            ) { screen = Screen.BACKUPS },
+            SettingRow(tk("SAVE STATES"), humanSize(states), opensPage = true) { screen = Screen.STATES_FOLDER },
         )
     }
 
@@ -1769,6 +1862,75 @@ class SettingsActivity : ComponentActivity() {
         Column(Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             FolderSection(null, statesDir, folderTick, m, small)
         }
+    }
+
+    /** SAVE BACKUPS: the copy of the save each game's start takes ([SaveBackups]) - on or off, how many a game
+     * keeps and where they go. The save editor backs up whatever this says. */
+    @Composable
+    private fun SaveBackupsScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
+        @Suppress("UNUSED_EXPRESSION") revision
+        val tick = folderTick
+        val pick = rememberLauncherForActivityResult(StorageAccess.PickFolder()) { uri ->
+            val path = pickedFolder(uri) ?: return@rememberLauncherForActivityResult
+            prefs.saveBackupsDir = path
+            backupsChanged()
+        }
+        val on = prefs.saveBackups
+        val keep = prefs.saveBackupsKeep
+        val folder = remember(tick) { prefs.saveBackupsDir }
+        val rows = listOf(
+            SettingRow(tk("BACKUPS"), if (on) tk("ON") else tk("OFF"), subtitle = "A copy of the save each time a game starts") {
+                prefs.saveBackups = !on
+                backupsChanged()
+            },
+            SettingRow(tk("KEEP PER GAME"), keep.toString(), enabled = on, subtitle = "The oldest go when a new one is made") {
+                selector = Selector(tk("KEEP PER GAME"), SaveBackups.KEEP_CHOICES.map { it.toString() }, keep.toString()) {
+                    prefs.saveBackupsKeep = it.toInt()
+                    backupsChanged()
+                }
+            },
+        )
+        val ctx = LocalContext.current
+        Column(Modifier.fillMaxWidth()) {
+            OptionListWindow(m, Modifier.fillMaxWidth().weight(1f, fill = false)) {
+                GroupedRows(rows, m, cursor = -1, onClick = { rows[it].onClick() }, footer = {
+                    // Level with the rows' labels.
+                    Column(Modifier.padding(horizontal = m.u * 8).padding(top = m.u * 4)) {
+                        GbaText(tr("BACKUP FOLDER"), OptionColors.label, OptionColors.labelShadow, m)
+                        if (folder == null) {
+                            GbaText(
+                                tr("Beside each save, in a {0} folder.", SaveBackups.DIR_NAME),
+                                OptionColors.muted, OptionColors.mutedShadow, small, maxLines = Int.MAX_VALUE,
+                            )
+                        } else {
+                            GbaText(folder, OptionColors.muted, OptionColors.mutedShadow, small, maxLines = 3)
+                        }
+                        GbaText(
+                            tr("Backups made before a change stay where they are, and RESTORE BACKUP still finds them."),
+                            OptionColors.muted, OptionColors.mutedShadow, small, maxLines = Int.MAX_VALUE,
+                            modifier = Modifier.padding(top = m.u * 2),
+                        )
+                        Row(
+                            modifier = Modifier.padding(vertical = m.u * 4),
+                            horizontalArrangement = Arrangement.spacedBy(m.u * 4),
+                        ) {
+                            OptionButton(tk("CHANGE FOLDER"), small, enabled = on, onClick = { pickFolder(pick) })
+                            if (folder != null) {
+                                OptionButton(tk("USE DEFAULT"), small, enabled = on, onClick = { prefs.saveBackupsDir = null; backupsChanged() })
+                                OptionButton(tk("COPY PATH"), small, onClick = { copyPath(ctx, folder) })
+                            }
+                        }
+                    }
+                })
+            }
+        }
+    }
+
+    /** A SAVE BACKUPS choice changed: the next game's start reads it from [SaveBackups.settings]. */
+    private fun backupsChanged() {
+        SaveBackups.settings = SaveBackups.Settings.from(prefs)
+        revision++
+        folderTick++
     }
 
     private var romsScanning by mutableStateOf(false)
@@ -1901,7 +2063,7 @@ class SettingsActivity : ComponentActivity() {
     }
 
     companion object {
-        private val FOLDER_PAGES = setOf(Screen.ROMS_FOLDERS, Screen.SAVES_FOLDER, Screen.SAVE_SEARCH, Screen.STATES_FOLDER)
+        private val FOLDER_PAGES = setOf(Screen.ROMS_FOLDERS, Screen.SAVES_FOLDER, Screen.SAVE_SEARCH, Screen.STATES_FOLDER, Screen.BACKUPS)
         val RATES = floatArrayOf(0f, 1.5f, 2f, 3f, 4f, 5f, 6f, 8f, 10f)
         const val REPO_URL = "https://github.com/lidor30/pokedaisy"
         /** A ROM path: open straight on that game's CHEATS (its library menu). */

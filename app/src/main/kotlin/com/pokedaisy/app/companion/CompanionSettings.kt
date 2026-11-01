@@ -68,11 +68,25 @@ interface CompanionSettings {
     /** The game's own TMs never run out ([com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN]): the row says so. */
     val reusableTmsBuiltIn: Boolean get() = false
 
+    /** TRADE EVOLUTIONS - see [com.pokedaisy.app.Prefs.tradeEvolutions]; [tradeEvolutionsSupported]: this game's
+     * evolution code is known ([com.pokedaisy.app.companion.data.tradeEvoFor]). */
+    val tradeEvolutions: Boolean get() = false
+    fun setTradeEvolutions(on: Boolean) {}
+    val tradeEvolutionsSupported: Boolean get() = false
+
     /** DS RESOLUTION ([com.pokedaisy.app.Prefs.dsResolution]): the scale, null when the game isn't a DS one (no row);
      * [dsGpuAvailable] false = this device can't run the GPU renderer (no OpenGL ES 3.2), so the DS's own it is. */
     val dsResolution: Int? get() = null
     val dsGpuAvailable: Boolean get() = true
     fun setDsResolution(scale: Int) {}
+
+    /** DS CPU BOOST ([com.pokedaisy.app.Prefs.dsCpuBoost]): null when the game isn't a DS one (no row). */
+    val dsCpuBoost: Boolean? get() = null
+    fun setDsCpuBoost(on: Boolean) {}
+
+    /** DS LAYOUT ([com.pokedaisy.app.Prefs.dsLayout]): null when there's no row (not a DS game, or one on two screens). */
+    val dsLayout: DsLayout? get() = null
+    fun setDsLayout(layout: DsLayout) {}
 
     /** NUZLOCKE ([Nuzlocke]): [nuzlockeSupported] = a GBA game whose party and battles are read; the switch is per game. */
     val nuzlockeSupported: Boolean get() = false
@@ -224,6 +238,9 @@ interface CompanionSettings {
     /** Saves DARK MODE (an ordinal of DarkModeSetting, see [Prefs.darkMode]); the look itself is DarkMode's state. */
     fun setDarkMode(v: Int) {}
 
+    /** Saves THEME (a ThemeSpec.id, see [Prefs.appTheme]; ui.theme.pickTheme); the screen puts the theme on itself. */
+    fun setAppTheme(id: Int) {}
+
     /** Whether battle INFO has a STATS page with the foe's IVs - see [Prefs.showFoeIvs]. */
     val showFoeIvs: Boolean get() = false
     fun setShowFoeIvs(on: Boolean) {}
@@ -235,6 +252,10 @@ interface CompanionSettings {
     /** Whether battle INFO shows FOE DETAILS - see [Prefs.foeDetails]. */
     val foeDetails: Boolean get() = false
     fun setFoeDetails(on: Boolean) {}
+
+    /** See [Prefs.battleFocus]. */
+    val battleFocus: Boolean get() = false
+    fun setBattleFocus(on: Boolean) {}
 
     /** Whether a launch picks up where the game was left - see [Prefs.autoResume]; off, CLOSE GAME warns. */
     val autoResume: Boolean get() = true
@@ -274,6 +295,13 @@ interface CompanionSettings {
     fun setQuickMenuStyle(style: com.pokedaisy.app.companion.QuickMenuStyle) {}
     val quickMenuLabels: Boolean get() = true
     fun setQuickMenuLabels(on: Boolean) {}
+
+    /** SOUND > GAME VOLUME, in percent of the device's volume (100 = the device's) - see [Prefs.gameVolume]. */
+    val gameVolume: Int get() = 100
+    fun setGameVolume(percent: Int) {}
+    /** SOUND > MUTE GAME (also the MUTE hotkey) - see [Prefs.gameMuted]. */
+    val gameMuted: Boolean get() = false
+    fun setGameMuted(on: Boolean) {}
 
     /** FPS / CPU over the game's corner - see [Prefs.showPerformance]. */
     val showPerformance: Boolean get() = false
@@ -416,7 +444,7 @@ interface CompanionSettings {
  * battle runs) and SETTINGS (the way to the hidden ones) are always there.
  * CARD (the TRAINER CARD) and ACHIEVEMENTS (RetroAchievements) start off the
  * bar, under the MORE tab. */
-val COMPANION_TABS = listOf("PARTY", "DEX", "MAP", "ITEMS", "GUIDE", "NUZLOCKE", "CARD", "STATES", "ACHIEVEMENTS")
+val COMPANION_TABS = listOf("PARTY", "DEX", "MAP", "ITEMS", "BOXES", "GUIDE", "NUZLOCKE", "CARD", "STATES", "ACHIEVEMENTS")
 val DEFAULT_COMPANION_TABS = listOf("PARTY", "DEX", "MAP", "ITEMS", "GUIDE")
 
 /** Tabs next to SETTINGS: six chips in all is as many as fit. During a

@@ -2,7 +2,7 @@
 package com.pokedaisy.app.companion.data
 
 /** Black's wild Pokémon by zone (see the generator's doc for the line formats). */
-internal val BW_WILD_RAW: List<String> = listOf(
+internal val BLACK_WILD_RAW: List<String> = listOf(
     """
 M|6|0
 M|96|1
@@ -270,7 +270,7 @@ E|111|-1|0|0-0:0 0-0:0 0-0:0 0-0:0 0-0:0 0-0:0 0-0:0 0-0:0 0-0:0 0-0:0 0-0:0 0-0
 )
 
 /** Black's gym leaders, Elite Four, N, Ghetsis and the champion: key|trainer id|team. */
-internal val BW_BOSSES_RAW: List<String> = listOf(
+internal val BLACK_BOSSES_RAW: List<String> = listOf(
     """
 CHILI|11|12 506 0 44,526;14 513 0 510,526
 CILAN|12|12 506 0 44,526;14 511 0 22,526
@@ -297,7 +297,7 @@ CAITLIN_2|566|71 518 0 94,138,95,115;71 561 0 403,94,430,58;71 437 0 371,430,94,
 )
 
 /** Black's item balls by place (GuideAreas.kt's lines; places are mapPlaceIdsBlack's). */
-internal val BW_AREAS_RAW: List<String> = listOf(
+internal val BLACK_AREAS_RAW: List<String> = listOf(
     """
 6|ITEM|3|1256|1|0|
 6|ITEM|59|1362|1|0|

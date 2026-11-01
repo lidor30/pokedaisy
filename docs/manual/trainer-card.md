@@ -2,7 +2,7 @@
 title: Trainer card
 summary: The CARD tab shows your trainer card, drawn the way your game draws it, front and back.
 section: companion
-order: 8
+order: 9
 keywords: [trainer card, id, play time, badges, stars, money, profile]
 ---
 

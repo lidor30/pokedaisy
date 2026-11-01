@@ -80,6 +80,7 @@ import com.pokedaisy.app.companion.data.activeRegionMap
 import com.pokedaisy.app.companion.data.flySpotName
 import com.pokedaisy.app.companion.data.gameCase
 import com.pokedaisy.app.companion.data.isDsGame
+import com.pokedaisy.app.companion.data.isGen5
 import com.pokedaisy.app.companion.data.isHgss
 import kotlin.math.floor
 
@@ -219,7 +220,7 @@ fun MapScreen(
                         bitmap = bitmap,
                         style = style,
                         head = regionMapBitmap(
-                            if (snapshot.game == GameKind.BLACK) NdsArt.BLACK_PLAYER
+                            if (snapshot.game.isGen5) NdsArt.gen5Player(snapshot.game)
                             else if (snapshot.game.isHgss) (if (snapshot.playerGender == 1) com.pokedaisy.app.companion.data.PokegearMap.HEAD_F else com.pokedaisy.app.companion.data.PokegearMap.HEAD_M)
                             else if (snapshot.game.isDsGame) (if (snapshot.playerGender == 1) NdsArt.PLATINUM_HEAD_F else NdsArt.PLATINUM_HEAD_M)
                             else style.headAsset(snapshot.playerGender, snapshot.game),
@@ -239,9 +240,9 @@ fun MapScreen(
                             val small = regionMapBitmap(com.pokedaisy.app.companion.data.PokegearMap.cursor(0))
                             val big = regionMapBitmap(com.pokedaisy.app.companion.data.PokegearMap.cursor(1))
                             if (small != null && big != null) small to big else null
-                        } else if (snapshot.game == GameKind.BLACK) {
-                            val small = regionMapBitmap(NdsArt.blackCursor(0))
-                            val big = regionMapBitmap(NdsArt.blackCursor(1))
+                        } else if (snapshot.game.isGen5) {
+                            val small = regionMapBitmap(NdsArt.gen5Cursor(snapshot.game, 0))
+                            val big = regionMapBitmap(NdsArt.gen5Cursor(snapshot.game, 1))
                             if (small != null && big != null) small to big else null
                         } else null,
                         headAt = headPoint?.let { (x, y) -> IntOffset(x, y) },
@@ -334,7 +335,9 @@ internal enum class MapLabelStyle(val width: Int, val height: Int) {
         // Recharged Emerald redrew both heads for its map.
         // Dreamstone Mysteries' player picks one of five looks at the start: no head of ours fits, so none is drawn.
         // Wishes of Tomorrow's JOKAIM map keeps Emerald's Brendan / May heads (by gender, checked headless).
+        // Monomyth's ATHANTO MAP has one head of its own for either gender.
         EMERALD -> if (game == GameKind.DREAMSTONE) null
+            else if (game == GameKind.MONOMYTH) "player_monomyth"
             else if (com.pokedaisy.app.companion.data.runningEmeraldHack != null) { if (gender == 1) "player_may_re" else "player_brendan_re" }
             else if (gender == 1) "player_may" else if (game == GameKind.MARIOMON) "player_mario" else "player_brendan"
         // Red's standing sprite (Gen1Art), Crystal's CHRIS / KRIS or Gold / Silver's boy (Gen2Art), from the ROM.
@@ -357,6 +360,8 @@ internal enum class MapLabelStyle(val width: Int, val height: Int) {
             GameKind.GLAZED, GameKind.IMPERIUM, GameKind.MARIOMON, GameKind.WISHES,
             // Dreamstone Mysteries' TOWN MAP: its place name in a framed window bottom right, like Emerald's.
             GameKind.DREAMSTONE,
+            // Monomyth's ATHANTO MAP too.
+            GameKind.MONOMYTH,
         )
 
         fun of(game: GameKind?) = when (game) {

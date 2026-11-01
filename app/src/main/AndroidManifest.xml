@@ -76,6 +76,8 @@
                 <data android:mimeType="*/*" android:pathPattern=".*\\.gbc" />
                 <!-- Nintendo DS, with TelemetrySampler.NDS_SUPPORT. -->
                 <data android:mimeType="*/*" android:pathPattern=".*\\.nds" />
+                <!-- A ROM hack's BPS patch: PATCH A ROM (RomPatchFlow). -->
+                <data android:mimeType="*/*" android:pathPattern=".*\\.bps" />
             </intent-filter>
         </activity>
 
@@ -114,6 +116,14 @@
         <activity
             android:name=".SaveEditorActivity"
             android:exported="false"
+            android:theme="@style/Theme.PokeDaisy" />
+
+        <!-- LINK PLAY: two to four GBA games on one link cable (a game's library menu). configChanges keeps the games
+             running through a rotation or a controller connecting, as PokeDaisyActivity's. -->
+        <activity
+            android:name=".LinkActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:theme="@style/Theme.PokeDaisy" />
 
         <!-- No screenOrientation: PokeDaisyActivity locks landscape itself with a second

@@ -70,9 +70,10 @@ One command per line:
 | `bgm` | Print the m4a BGM player: address, status, song header (what `FfMusicKey` reads) |
 | `wav FILE N` | Run N frames and write what the APU played to `FILE` as a 16-bit stereo WAV — e.g. `call <m4aSongNumStart> 0`, `wait 20`, `call <m4aSongNumStart> 5`, `wav click.wav 45` renders SE_SELECT alone, the app's click sound. It also prints each frame whose audio is over 10% off one frame's worth (a Game Boy game turning its screen off or on restarts mGBA's frame) |
 | `volume V` | mGBA's master volume from now on (0x100 = full; the app runs Game Boy games at 0x80, `PK_GB_VOLUME`): two `wav`s of the same frames at two volumes show where the mixer clips - half the volume should be half every sample |
+| `gbaudio 0\|1` | A Game Boy game's `wav`: 1 (the default, built from the repo root) = resampled as the app does (`pk_gb_audio.c`), 0 = through mGBA 0.10.5's own blip_buf, whose pops were the Game Boy "crackle" (GitHub #269 / #327) |
 | `cheat TYPE CODE` | Add a cheat (TYPE `auto` / `cb` / `gs` / `ar`, CODE's lines joined by `+`) and load every cheat added so far into the core the way the app does - it compiles in the app's own `app/src/main/cpp/pk_cheats.c`, so only when built with the repo mounted (see below). Prints the directive mGBA settled on and which lines it read |
 | `cheatclear` | Take every cheat out again (the ROM goes back to the file's bytes) |
-| `wideon MARGIN` | Run the app's WIDE (`app/src/main/cpp/pk_wide.c`) after every frame from now on, MARGIN GBA px per side, for the game the ROM header names (retail FireRed rev 1 / Emerald). Repo builds only, like `cheat`. A Game Boy game it knows (English Yellow, Crystal: `pk_wide_gb.c`) works the same way in its 160x144 pixels: `widecheck`, `wideview`, `wideshot`, `widerec`, `wideinfo` (which also prints LCDC, the scroll and the window there) |
+| `wideon MARGIN [CRC]` | Run the app's WIDE (`app/src/main/cpp/pk_wide.c`) after every frame from now on, MARGIN GBA px per side, for the game the ROM header names (retail FireRed rev 1 / Emerald). Repo builds only, like `cheat`. A Game Boy game it knows (English Yellow, Crystal: `pk_wide_gb.c`) works the same way in its 160x144 pixels: `widecheck`, `wideview`, `wideshot`, `widerec`, `wideinfo` (which also prints LCDC, the scroll and the window there) CRC (hex): look the game up by this CRC32 instead of the file's - retail's, for a randomized retail cart (`WideScreen.tablesCrc`) |
 | `widecheck [all]` | Also rebuild the middle 240x160 every frame and compare it with the real frame pixel for pixel - how WIDE's rebuild was checked: it must match wherever it says the field checks out. Map frames only; `all` checks battle frames too, for a capture with `layers 0x18` (a battle's rebuild is BG3 + sprites). Not counted (and printed as such): a frame VRAM was written in while it was drawn, and one whose differences all lie in the partly shown edge tile column / row the field is scrolled by (the game's own stale ring) |
 | `wideskip N` | From now on WIDE runs like fast-forward: only every Nth frame drawn, the others just noted (`pk_wide_skip`); 0 or 1 draws them all |
 | `widestats` | Print WIDE's tally: frames, unverified ones (margins faded), torn sprite lists, centre checks exact / worst, and its time per frame (frames over 2 ms are also printed as they happen) |
@@ -138,3 +139,49 @@ it was checked on 2026-10-08: on FireRed rev 1, a plain CodeBreaker write (`8203
 a hooked one (`100005FC 0007+8203F002 5678`, a hook on ReadKeys) and an encrypted GameShark
 code (autodetected as `GSAv1`) all fired; `cheatclear` put the ROM back byte for byte.
 
+
+## Games on a link cable (`mgba_link`)
+
+`mgba_link.c` runs two to four GBA games in one process joined by mGBA's own lockstep link
+(`gba/sio/lockstep.c`, the multiplayer cable), on the app's own LINK PLAY code: it compiles
+`app/src/main/cpp/pk_link.c` (and `pk_savevf.c`), so build it from the repo root. mGBA only defines the
+link's hooks; its Qt frontend fills them with a thread per game that sleeps and wakes
+(`MultiplayerController.cpp`). `pk_link.c` runs them all on one thread and "asleep" means "not run": the
+first game is the link's parent, the others run only on the cycles it hands them, so none drifts more than
+one lockstep step (2000 cycles) from it. Commands are mgba_dump's with a side (`0`..`3`, or `all` / `both`):
+`wait N`, `keys`/`press`/`hold SIDE KEYS [N]`, `shot SIDE FILE` (every side: `_0`, `_1`, ... before the
+extension), `dump`, `peek SIDE ADDR N`, `poke8/16/32` and `link` (each game's SIO mode, the lockstep phase and
+budgets).
+
+```sh
+docker run --rm -v "$(pwd):/repo" -w /repo/native-capture pokedaisy-capture \
+    -c "gcc -O2 -Wall -o mgba_link mgba_link.c -I/usr/include -L/usr/lib/aarch64-linux-gnu -lmgba -lm"
+docker run --rm -v "$(pwd):/work" -w /work pokedaisy-capture \
+    -c "./mgba_link fr.gba fr.sav lg.gba lg.sav < trade.txt"
+```
+
+What it has done, on copies of the user's saves (2026-10-31 / 11-01). Each save was first put at a cable club
+counter with mgba_dump: `call` ScriptContext_SetupScript (FireRed / LeafGreen 0x08069AF9, Emerald 0x08098EF9,
+Ruby rev 1 / 2 0x080655D9, Sapphire 0x080655DD) on a `warp` to a Pokémon Center 2F, then saved through START.
+
+- **FireRed with LeafGreen** (Viridian 2F, x 10 y 3, the Direct Corner attendant): TRADE CENTER and YES to both
+  saves; the parent (game 0) then says "When all players are ready... A Button: Confirm", the other "Awaiting
+  linkup"; A twice more on the parent and A **held** for the last one (`Task_LinkupTryConfirmation` reads
+  JOY_HELD once its message is gone). Walk in one tile at a time (`hold both UP 10`, LEFT / RIGHT, then
+  `hold both UP 30` onto the chairs at (4, 5) / (7, 5)) and the trade screen opens on both. HAUNTER for
+  HAUNTER: both evolved into GENGAR, both games saved, each save booted alone has the other's Pokémon, evolved.
+  The one FireRed received kept its name: it's Italian (language 4), and EvolutionRenameMon only renames a
+  Pokémon of the game's own language, as on a real cable.
+- **FireRed with Emerald** (Emerald: Oldale 2F, the same (10, 3); set VAR_CABLE_CLUB_TUTORIAL_STATE 0x40CD
+  to 2 first or its first-visit walk moves the player): the games' own rules held first - FireRed needs
+  FLAG_SYS_CAN_LINK_WITH_RS (0x844) and Emerald FLAG_IS_CHAMPION (0x87F), else "The other TRAINER is not
+  ready" / "I'm awfully sorry" over the cable. With both set: KADABRA for MANECTRIC, the KADABRA evolved into
+  ALAKAZAM on Emerald, both saved.
+- **Ruby rev 2, Sapphire rev 1, Sapphire rev 2 and Emerald, four games** at the Record Corner (Ruby / Sapphire:
+  Oldale 2F, **(10, 4)**, a row lower than FireRed's and Emerald's: from (10, 3) the walk ends a tile past the
+  door, SetCableClubWarp finds no warp under the player and warps to map 0.0, Petalburg). "4P LINK" on Ruby,
+  every game in the Record Corner, each walked out of the doorway (y 9) to a seat, "Mixing records..." on all
+  four, then "FEDE sent over one EON TICKET." on the other three, every save written.
+
+Speed: one game alone ran ~2000 frames a second here, the linked pair ~1000: the link costs no more than
+the second game. On the API 32 emulator the app's LINK PLAY ran two games at ~57 frames a second.

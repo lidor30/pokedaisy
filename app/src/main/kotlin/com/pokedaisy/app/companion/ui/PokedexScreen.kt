@@ -529,7 +529,7 @@ private fun genderLabel(ratio: Int): String = when (ratio) {
 private fun pct(tenths: Int) = if (tenths % 10 == 0) "${tenths / 10}" else "${tenths / 10}.${tenths % 10}"
 
 @Composable
-private fun rememberRomBitmap(
+internal fun rememberRomBitmap(
     t: PokedexTables, species: Int,
     cached: (PokedexTables, Int) -> Bitmap?, load: (PokedexTables, Int) -> Bitmap?,
 ): Bitmap? =
@@ -542,7 +542,7 @@ private fun rememberRomBitmap(
  * pixels per sprite pixel that fits, centered - pixel art stays crisp.
  */
 @Composable
-private fun PixelImage(bitmap: Bitmap?, srcPx: Int, modifier: Modifier) {
+internal fun PixelImage(bitmap: Bitmap?, srcPx: Int, modifier: Modifier) {
     val density = LocalDensity.current
     BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
         val room = with(density) { minOf(maxWidth, maxHeight).toPx() }

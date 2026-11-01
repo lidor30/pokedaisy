@@ -57,6 +57,8 @@ class RomItemTextTest {
         Case("Pokemon SoulGold (v1.2).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2, mapOf(28 to "by 20 points", SOULGOLD_V12_TM75 to "Speed")),
         Case("Pokemon SoulGold (v1.2) (Alt 1).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2B, mapOf(SOULGOLD_V12_TM75 to "Speed")),
         Case("Pokemon SoulGold (v1.2) (Alt 2).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2C, mapOf(28 to "by 20 points", SOULGOLD_V12_TM75 to "Speed")),
+        Case("Pokemon SoulGold (v1.2.1).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2_1, mapOf(28 to "by 20 points", SOULGOLD_V12_TM75 to "Speed")),
+        Case("Pokemon SoulGold (v1.2.1) (Alt 1).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2_1, mapOf(28 to "by 20 points", SOULGOLD_V12_TM75 to "Speed")),
         // Rogue's own items (827+) are in a second table.
         Case("Pokemon Emerald Rogue (v2.2.1-EX).gba", GameKind.EMERALD_ROGUE, NATIVE_EMERALD_ROGUE,
             mapOf(39 to "by 20 points", 827 to "species of Pokémon evolve")),
@@ -100,6 +102,8 @@ class RomItemTextTest {
         Case("Pokemon Team Rocket Dragonsden Version.gba", GameKind.TEAM_ROCKET, NATIVE_TEAM_ROCKET, mapOf(121 to "a cave or a dungeon")),
         // Wishes of Tomorrow's POTION, as its bag screen prints it.
         Case("Pokemon Wishes of Tomorrow (v1.2.6).gba", GameKind.WISHES, NATIVE_WISHES, mapOf(28 to "by 20 points")),
+        // Monomyth's REPEL and ANTIDOTE, as its bag screen prints them (its own item ids, 32-byte gItems).
+        Case("Pokemon Monomyth (v1.0).gba", GameKind.MONOMYTH, NATIVE_MONOMYTH, mapOf(93 to "for 100 steps", 33 to "poisoned")),
         // Dreamstone Mysteries' REPEL, as its bag shows it, and its own LAB PACKAGE ("Just a bunch of notes and things.").
         Case("Pokemon Dreamstone Mysteries.gba", GameKind.DREAMSTONE, NATIVE_DREAMSTONE, mapOf(114 to "for 100 steps", 829 to "notes and things")),
     )

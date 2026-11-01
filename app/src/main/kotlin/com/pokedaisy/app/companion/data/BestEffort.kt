@@ -158,6 +158,7 @@ object BestEffort {
             Candidate("SOULGOLD_V1_2", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2, EMERALD, "Pokémon SoulGold v1.2"),
             Candidate("SOULGOLD_V1_2B", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2B, EMERALD, "Pokémon SoulGold v1.2"),
             Candidate("SOULGOLD_V1_2C", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2C, EMERALD, "Pokémon SoulGold v1.2"),
+            Candidate("SOULGOLD_V1_2_1", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2_1, EMERALD, "Pokémon SoulGold v1.2.1"),
             Candidate("ROWE", GameKind.ROWE, NATIVE_ROWE, EMERALD, "Pokémon R.O.W.E."),
             Candidate("EMERALD_ROGUE", GameKind.EMERALD_ROGUE, NATIVE_EMERALD_ROGUE, EMERALD, "Emerald Rogue"),
             Candidate("EMERALD_SEAGLASS", GameKind.EMERALD_SEAGLASS, NATIVE_EMERALD_SEAGLASS, EMERALD, "Emerald Seaglass"),
@@ -502,7 +503,8 @@ object BestEffort {
             activeGame = c.kind
             romLanguage = c.cfg.language
             romGameCode = c.cfg.gameCode
-            soulGoldV12 = c.cfg === NATIVE_SOULGOLD_V1_2 || c.cfg === NATIVE_SOULGOLD_V1_2B || c.cfg === NATIVE_SOULGOLD_V1_2C
+            soulGoldV12 = c.cfg === NATIVE_SOULGOLD_V1_2 || c.cfg === NATIVE_SOULGOLD_V1_2B || c.cfg === NATIVE_SOULGOLD_V1_2C ||
+                c.cfg === NATIVE_SOULGOLD_V1_2_1
             amethystV141 = c.cfg === NATIVE_AMETHYST_V1_4_1
             fireRedHack = fireRedHackFor(c.cfg)
             emeraldHack = emeraldHackFor(c.cfg)

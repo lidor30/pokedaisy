@@ -30,6 +30,7 @@
 #include "pk_savevf.h"
 #include "pk_wide.h"
 #include "pk_gb_field.h"
+#include "pk_gb_audio.h"
 #include "nds/pk_nds.h"
 
 #define LOG_TAG "pokedaisy/jni"
@@ -90,6 +91,11 @@ static void pkHealRtc(struct mCore* core) {
     rtc->control = RTCControlFillHour24(0);
     rtc->offset = 0;
 }
+/** pkHealRtc for LINK PLAY's games (pk_link_jni.c). */
+void pk_heal_rtc(struct mCore* core) {
+    pkHealRtc(core);
+}
+
 #define PK_AUDIO_SCRATCH_SAMPLES 8192   // per-channel; * 2 shorts for interleave
 
 static struct {
@@ -105,6 +111,7 @@ static struct {
     size_t romFileSize;
     int16_t audio[PK_AUDIO_SCRATCH_SAMPLES * 2];
     int audioAvail;                     // interleaved shorts ready in audio[]
+    struct pk_gb_audio gbAudio;         // a Game Boy game's sound, resampled here (pk_gb_audio.c); zeroed for a GBA game
     // REWIND (pk_rewind.c): a state every PK_REWIND_INTERVAL frames while rewindEntries > 0;
     // while rewinding, each frame goes back one of them instead.
     struct mCoreRewindContext rewind;
@@ -136,9 +143,14 @@ static struct {
     color_t* video;
     int16_t audio[PK_AUDIO_SCRATCH_SAMPLES * 2];
     int audioAvail;
+    struct pk_gb_audio gbAudio;         // as g's: STEADY clips of a Game Boy game's music
 } rg;
 
 static void pkDrainAudio(void) {
+    if (g.gbAudio.left) {
+        g.audioAvail = pk_gb_audio_read(&g.gbAudio, g.audio, PK_AUDIO_SCRATCH_SAMPLES) * 2;
+        return;
+    }
     struct blip_t* left = g.core->getAudioChannel(g.core, 0);
     struct blip_t* right = g.core->getAudioChannel(g.core, 1);
     int avail = blip_samples_avail(left);
@@ -177,6 +189,7 @@ static void pkTeardown(void) {
         pk_cheats_clear(g.core);        // and forgets the ROM bytes it kept
         pk_cheats_unpatch(g.core);      // the game options' (REUSABLE TMS) too
         pk_cheats_unblock(g.core);      // and PLAYER LOOK's blocks
+        pk_gb_audio_detach(&g.gbAudio, g.core);
         g.core->deinit(g.core);         // unloads ROM, flushes and closes the save VFile
         g.core = NULL;
         // Both cores close the save VFile they were given themselves (GBUnloadROM: sramRealVf;
@@ -214,6 +227,10 @@ struct mCore* pkMainCore(void) {
 }
 
 static void pkRenderDrainAudio(void) {
+    if (rg.gbAudio.left) {
+        rg.audioAvail = pk_gb_audio_read(&rg.gbAudio, rg.audio, PK_AUDIO_SCRATCH_SAMPLES) * 2;
+        return;
+    }
     struct blip_t* left = rg.core->getAudioChannel(rg.core, 0);
     struct blip_t* right = rg.core->getAudioChannel(rg.core, 1);
     int avail = blip_samples_avail(left);
@@ -231,6 +248,7 @@ static void pkRenderDrainAudio(void) {
 
 static void pkRenderTeardown(void) {
     if (rg.core) {
+        pk_gb_audio_detach(&rg.gbAudio, rg.core);
         rg.core->deinit(rg.core);       // no save VFile ever attached — nothing to flush
         rg.core = NULL;
     }
@@ -356,6 +374,7 @@ Java_com_pokedaisy_app_MgbaCore_pkInit(JNIEnv* env, jobject thiz,
     g.vh = h;
     g.saveVf = saveVf;
     g.audioAvail = 0;
+    pk_gb_audio_attach(&g.gbAudio, core, PK_SAMPLE_RATE);
     // EXPAND's window: the GBA's, and a Game Boy game's (pk_wide_gb.c: Yellow so far).
     g.wide = calloc((size_t) PK_WIDE_MAX_VIEW_W * PK_WIDE_MAX_VIEW_H, sizeof(uint32_t));
     pthread_rwlock_unlock(&pk_coreLock);
@@ -406,7 +425,9 @@ Java_com_pokedaisy_app_MgbaCore_pkSetAudioRate(JNIEnv* env, jobject thiz, jdoubl
         pk_nds_set_audio_rate(rate);
         return;
     }
-    if (g.core && rate > 0) {
+    if (g.gbAudio.left) {
+        pk_gb_audio_set_rate(&g.gbAudio, rate);
+    } else if (g.core && rate > 0) {
         blip_set_rates(g.core->getAudioChannel(g.core, 0), g.core->frequency(g.core), rate);
         blip_set_rates(g.core->getAudioChannel(g.core, 1), g.core->frequency(g.core), rate);
     }
@@ -744,6 +765,7 @@ Java_com_pokedaisy_app_MgbaCore_pkRenderInit(JNIEnv* env, jobject thiz, jstring 
     rg.vw = w;
     rg.vh = h;
     rg.audioAvail = 0;
+    pk_gb_audio_attach(&rg.gbAudio, core, PK_SAMPLE_RATE);
     LOGI("render core up: %ux%u", w, h);
     return JNI_TRUE;
 }
@@ -1438,6 +1460,18 @@ Java_com_pokedaisy_app_MgbaCore_pkNdsSetDraw(JNIEnv* env, jobject thiz, jboolean
     if (pk_nds_active()) pk_nds_set_draw(draw == JNI_TRUE, drawNext == JNI_TRUE);
 }
 
+// DS CPU BOOST: the ARM9 at twice the DS's clock. Emu thread, between frames.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsCpuBoost(JNIEnv* env, jobject thiz, jboolean on) {
+    if (pk_nds_active()) pk_nds_set_cpu_boost(on == JNI_TRUE);
+}
+
+// DS LAYOUT floats the X menu on one screen: it comes back after a menu screen left by touch. Emu thread.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsKeepStartMenu(JNIEnv* env, jobject thiz, jboolean on) {
+    if (pk_nds_active()) pk_nds_set_keep_start_menu(on == JNI_TRUE);
+}
+
 // DS RESOLUTION (nds/pk_nds_gl.h): 1 = the software renderer, 2-8 the GPU's. Taken before the next frame. Emu thread.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkNdsSetScale(JNIEnv* env, jobject thiz, jint scale) {
@@ -1484,9 +1518,9 @@ Java_com_pokedaisy_app_MgbaCore_pkNdsBgm(JNIEnv* env, jobject thiz) {
     return pk_nds_active() ? pk_nds_bgm() : -1;
 }
 
-JNIEXPORT jboolean JNICALL
-Java_com_pokedaisy_app_MgbaCore_pkNdsBgmFading(JNIEnv* env, jobject thiz) {
-    return pk_nds_active() && pk_nds_bgm_fading() ? JNI_TRUE : JNI_FALSE;
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsBgmState(JNIEnv* env, jobject thiz) {
+    return pk_nds_active() ? pk_nds_bgm_state() : -1;
 }
 
 JNIEXPORT jboolean JNICALL

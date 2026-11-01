@@ -255,3 +255,34 @@ special = 60
 specials = 0x0815FDB4
 pcFn = 0x0808C691
 codeCrcs = [0xAAC00946, 0x5333E53E]
+
+# TRADE EVOLUTIONS (TradeEvolution.kt's TradeEvoFns): retail FireRed rev 1 / LeafGreen rev 0 / rev 1. The functions
+# found in each retail ROM by the pinned pokefirered build's code (calls and literal pools masked: that build sits off
+# retail), gCB2_AfterEvolution from the pool word after the same code in retail. Headless on the user's FireRed save:
+# KADABRA to ALAKAZAM from the field, the field back after.
+[record.TRADE_EVO_FIRERED_REV1]
+schema = 'gen3_trade_evo'
+getEvolutionTarget = 0x08042ED8
+beginEvolutionScene = 0x080CDDBC
+afterEvolution = 0x0300537C
+returnToField = 0x080567F0
+lockControls = 0x08069954
+codeCrcs = [0xA970F637, 0xB9EDBA19, 0x95CA9A3E, 0x0111A86E]
+
+[record.TRADE_EVO_LEAFGREEN_REV0]
+schema = 'gen3_trade_evo'
+getEvolutionTarget = 0x08042EC4
+beginEvolutionScene = 0x080CDD7C
+afterEvolution = 0x0300537C
+returnToField = 0x080567DC
+lockControls = 0x08069940
+codeCrcs = [0xA970F637, 0x8B13D433, 0xB892BBB7, 0x0111A86E]
+
+[record.TRADE_EVO_LEAFGREEN_REV1]
+schema = 'gen3_trade_evo'
+getEvolutionTarget = 0x08042ED8
+beginEvolutionScene = 0x080CDD90
+afterEvolution = 0x0300537C
+returnToField = 0x080567F0
+lockControls = 0x08069954
+codeCrcs = [0xA970F637, 0x8B13D433, 0x95CA9A3E, 0x0111A86E]

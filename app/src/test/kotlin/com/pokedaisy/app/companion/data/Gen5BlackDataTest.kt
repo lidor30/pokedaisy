@@ -121,10 +121,10 @@ class Gen5BlackDataTest {
     @Test
     fun `HERE's item balls are keyed by place`() {
         val route1 = mapPlaceIdsBlack.getValue(317)
-        val things = BW_AREAS_RAW.flatMap { it.lines() }.filter { it.startsWith("$route1|ITEM|") }
+        val things = BLACK_AREAS_RAW.flatMap { it.lines() }.filter { it.startsWith("$route1|ITEM|") }
         // Route 1's two item balls: a Max Ether (39) and a Pearl (88), each with its hide flag.
         assertEquals(listOf("$route1|ITEM|39|1230|1|0|", "$route1|ITEM|88|1143|1|0|").sorted(), things.sorted())
         val dreamyard = mapPlaceIdsBlack.getValue(152)
-        assertTrue(BW_AREAS_RAW.any { it.contains("\n$dreamyard|ITEM|${328 + 84}|") })   // TM85
+        assertTrue(BLACK_AREAS_RAW.any { it.contains("\n$dreamyard|ITEM|${328 + 84}|") })   // TM85
     }
 }

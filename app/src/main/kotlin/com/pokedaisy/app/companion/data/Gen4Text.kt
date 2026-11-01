@@ -37,6 +37,10 @@ object Gen4Text {
         }
     }
 
+    /** A name in a Pokémon's record ([max] codes from [off], 0xFFFF-ended): the nickname. */
+    fun name(b: ByteArray, off: Int, max: Int): String =
+        decode(IntArray(max) { if (off + it * 2 + 1 < b.size) u16(b, off + it * 2) else 0xFFFF })
+
     private fun decode(codes: IntArray): String {
         val sb = StringBuilder()
         var j = 0

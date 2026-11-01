@@ -90,6 +90,8 @@ data class PartyMonLayout(
      * the star by the name). -1 = none. */
     val shinyBits: Int = -1,
     val shinyBitsMask: Int = 0,
+    /** The substructs' key is Monomyth's ([monomythKey]) rather than personality ^ OT ID. */
+    val monomythKey: Boolean = false,
 )
 
 val VANILLA_PARTY_MON = PartyMonLayout()
@@ -128,6 +130,41 @@ val ELITE_REDUX_PARTY_MON = PartyMonLayout(
  * (the save's Crobat is Adamant by its stats; the XOR would make it Lonely).
  */
 val TEAM_ROCKET_PARTY_MON = PartyMonLayout(flags = 0x12, eggMask = 0x20, natureModifier = false)
+
+/**
+ * Pokémon Monomyth's struct Pokemon: vanilla's 100 bytes, substructs, order and checksum, but encrypted with a key of its
+ * own ([monomythKey]). No Mints (+0x12 is the language alone).
+ */
+val MONOMYTH_PARTY_MON = PartyMonLayout(monomythKey = true, natureModifier = false)
+
+/**
+ * Monomyth's substruct key, as its box decryption works it out (0x08068198, from the personality and the OT ID, then XORed
+ * over the 12 words): every party and enemy mon of the saves decrypts to a valid checksum with it.
+ */
+internal fun monomythKey(personality: Long, otId: Long): Long {
+    fun ror(x: Long, n: Int): Long = ((x ushr n) or (x shl (32 - n))) and 0xFFFFFFFFL
+    var r3 = (otId + ror(personality xor 0x690, 7)) and 0xFFFFFFFFL
+    r3 = ror((r3 + ror(personality, 11)) and 0xFFFFFFFFL, 13)
+    r3 = (personality + ror(0x5A000000L xor r3 xor otId, 17)) and 0xFFFFFFFFL
+    return r3 xor ror(otId, 5)
+}
+
+/** Where Monomyth's natures start in [MonStats.nature]: past vanilla's 25, so they raise and lower nothing. */
+const val MONOMYTH_NATURE_BASE = 25
+
+/**
+ * Pokémon Monomyth's nature: one of 250 of its own (natureNamesMonomyth), flavour only - its stats are every Pokémon's
+ * neutral ones (the saves' parties recompute exactly with no nature) - picked by a hash of the personality, as its
+ * GetNature (0x0805B214) works it out: the user's MISHIMIZU is 190, "Dreamy", as its summary says.
+ */
+internal fun monomythNature(personality: Long): Int {
+    var x = personality xor (personality ushr 16)
+    x = (x * 0x7FEB352DL) and 0xFFFFFFFFL
+    x = x xor (x ushr 15)
+    x = (x * 0x846CA68BL) and 0xFFFFFFFFL
+    x = x xor (x ushr 16)
+    return (x % 250).toInt()
+}
 
 private fun decodeEliteReduxMon(raw: ByteArray, off: Int, layout: PartyMonLayout): Mon? {
     val w08 = u32(raw, off + 0x08)
@@ -223,7 +260,7 @@ fun decodePartyMon(raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PA
     val evs: List<Int>
     val ivWord: Long
 
-    val dec = decryptGen3Substructs(raw, off)
+    val dec = decryptGen3Substructs(raw, off, layout.monomythKey)
     if (dec != null) {
         species = dec.species
         heldItem = dec.heldItem
@@ -265,6 +302,134 @@ fun decodePartyMon(raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PA
     )
 }
 
+/** sizeof(struct BoxPokemon): a PC box slot, the first 80 bytes of a party struct. */
+const val BOX_MON_SIZE = 80
+
+/** How a PC box slot is kept ([decodeBoxMon]). */
+enum class BoxRecordFormat {
+    /** Vanilla's 80-byte BoxPokemon: substructs encrypted and shuffled by the personality, a checksum. */
+    ENCRYPTED,
+    /** A plaintext box (SoulGold's 76 bytes): the substructs in order from [PartyMonLayout.plainBox], no checksum. */
+    PLAIN,
+    /** CFRU's 58-byte CompressedPokemon: the box's first 0x1C bytes, then growth (no unknown byte), four 10-bit moves
+     * (no PP), the EVs, then misc's first 8 bytes (pokérus, met, the IV word). */
+    CFRU,
+}
+
+/**
+ * One PC box slot (a BoxPokemon at [off], kept as [format] says) as the summary shows it: a box record keeps no level,
+ * HP or stats, so the level comes from the experience on its species' growth rate ([growthRate], else vanilla's table)
+ * and the stats are worked out the game's way (CalculateMonStats) from [baseStats] (HP, ATTACK, DEFENSE, SPEED,
+ * SP. ATK, SP. DEF; null = unknown, then no stats and no HP). A box Pokémon is always healed: HP is its max. CFRU's
+ * records keep no PP: full PP from [movePp] (a move's base PP; null = unknown, 0). Null for an empty slot or one whose
+ * checksum fails (the game's Bad Egg).
+ */
+fun decodeBoxMon(
+    raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PARTY_MON, baseStats: (Int) -> IntArray? = { null },
+    format: BoxRecordFormat = BoxRecordFormat.ENCRYPTED, growthRate: (Int) -> Int? = { null }, movePp: (Int) -> Int? = { null },
+): Mon? {
+    val dec = when (format) {
+        BoxRecordFormat.ENCRYPTED -> if (raw.size < off + BOX_MON_SIZE) null else decryptGen3Substructs(raw, off)
+        BoxRecordFormat.PLAIN -> plainBoxSubstructs(raw, off, layout)
+        BoxRecordFormat.CFRU -> cfruBoxSubstructs(raw, off, movePp)
+    } ?: return null
+    if (dec.species == 0) return null
+    val egg = (dec.ivWord shr 30) and 1L == 1L
+    val rate = growthRate(dec.species)?.takeIf { it in gen3ExperienceTables.indices } ?: gen3GrowthRates.getOrNull(dec.species)?.toInt()
+    val level = boxMonLevel(rate, dec.exp)
+    val ivs = List(6) { ((dec.ivWord shr (5 * it)) and 0x1F).toInt() }
+    val nature = (u32(raw, off) % 25).toInt()
+    val stats = if (egg) null else baseStats(dec.species)?.takeIf { it.size >= 6 }?.let { gen3Stats(dec.species, it, ivs, dec.evs, nature, level) }
+    return Mon(
+        species = dec.species,
+        level = level,
+        hp = stats?.get(STAT_HP) ?: 0,
+        maxHp = stats?.get(STAT_HP) ?: 0,
+        status = 0,
+        moves = dec.moves,
+        pp = dec.pp,
+        exp = dec.exp,
+        personality = u32(raw, off),
+        stats = stats?.let { MonStats(ivs = ivs, evs = dec.evs, nature = nature, stats = it) },
+        heldItem = dec.heldItem,
+        nickname = gen3Nickname(raw, off, layout),
+        shiny = layout.shinyBelow > 0 &&
+            (shinyValue(u32(raw, off), u32(raw, off + 4)) < layout.shinyBelow) !=
+            (format == BoxRecordFormat.PLAIN && layout.shinyModifier > 0 && raw[off + layout.shinyModifier].toInt() and 0x40 != 0),
+    )
+}
+
+/** The level [exp] makes on growth rate [rate] (gExperienceTables), at least 1; 1 when the rate isn't known. */
+private fun boxMonLevel(rate: Int?, exp: Long): Int {
+    val table = rate?.let { gen3ExperienceTables.getOrNull(it) } ?: return 1
+    var level = 1
+    while (level < 100 && exp >= table[level + 1]) level++
+    return level
+}
+
+/** A plaintext box ([BoxRecordFormat.PLAIN]): growth, attacks, EVs and misc in that order from [PartyMonLayout.plainBox],
+ * the box ending where the party fields start ([PartyMonLayout.status]). */
+private fun plainBoxSubstructs(raw: ByteArray, off: Int, layout: PartyMonLayout): Gen3Substructs? {
+    if (raw.size < off + layout.status) return null
+    val box = off + layout.plainBox
+    val species = u16(raw, box) and layout.plainSpeciesMask
+    if (species > 4000) return null
+    return Gen3Substructs(
+        species = species,
+        exp = u32(raw, box + 4),
+        moves = IntArray(NUM_MOVES) { u16(raw, box + 0x0C + it * 2) },
+        pp = IntArray(NUM_MOVES) { raw[box + 0x0C + 8 + it].toInt() and 0xFF },
+        evs = List(6) { raw[box + 0x18 + it].toInt() and 0xFF },
+        ivWord = u32(raw, box + 0x28),
+        heldItem = u16(raw, box + 2) and layout.plainItemMask,
+    )
+}
+
+private const val CFRU_RECORD_SIZE = 58
+
+/** CFRU's CompressedPokemon ([BoxRecordFormat.CFRU]); the PP the game gives a Pokémon coming out of the box, from
+ * [movePp] and the PP Ups (CalculatePPWithBonus: a fifth more of the base for each). */
+private fun cfruBoxSubstructs(raw: ByteArray, off: Int, movePp: (Int) -> Int?): Gen3Substructs? {
+    if (raw.size < off + CFRU_RECORD_SIZE) return null
+    val species = u16(raw, off + 0x1C)
+    if (species > 4000) return null
+    // Four 10-bit moves packed into the 5 bytes from +0x27.
+    var packed = 0L
+    for (i in 0 until 5) packed = packed or ((raw[off + 0x27 + i].toLong() and 0xFF) shl (8 * i))
+    val moves = IntArray(NUM_MOVES) { ((packed shr (10 * it)) and 0x3FF).toInt() }
+    val bonuses = raw[off + 0x24].toInt() and 0xFF
+    return Gen3Substructs(
+        species = species,
+        exp = u32(raw, off + 0x20),
+        moves = moves,
+        pp = IntArray(NUM_MOVES) { i ->
+            val base = if (moves[i] == 0) 0 else movePp(moves[i]) ?: 0
+            base + base * 20 * ((bonuses shr (2 * i)) and 3) / 100
+        },
+        evs = List(6) { raw[off + 0x2C + it].toInt() and 0xFF },
+        ivWord = u32(raw, off + 0x36),
+        heldItem = u16(raw, off + 0x1E),
+    )
+}
+
+/** CalculateMonStats: HP, ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF from base stats, IVs, EVs, nature and level. */
+internal fun gen3Stats(species: Int, base: IntArray, ivs: List<Int>, evs: List<Int>, nature: Int, level: Int): List<Int> = List(6) { s ->
+    val n = (2 * base[s] + ivs[s] + evs[s] / 4) * level / 100
+    if (s == STAT_HP) {
+        // Shedinja's HP is always 1.
+        if (species == SPECIES_SHEDINJA) 1 else n + level + 10
+    } else {
+        val v = n + 5
+        when (s) {
+            natureRaises(nature) -> v * 110 / 100
+            natureLowers(nature) -> v * 90 / 100
+            else -> v
+        }
+    }
+}
+
+private const val SPECIES_SHEDINJA = 303
+
 /** Gen 3's shiny value: the OT ID's and the personality's halves XORed together. */
 internal fun shinyValue(personality: Long, otId: Long): Int =
     ((otId ushr 16) xor (otId and 0xFFFF) xor (personality ushr 16) xor (personality and 0xFFFF)).toInt()
@@ -292,7 +457,8 @@ private fun monStats(raw: ByteArray, off: Int, layout: PartyMonLayout, evs: List
     val pidNature = (u32(raw, off) % 25).toInt()
     // pokeemerald-expansion's Mints: hiddenNatureModifier sits above the 3
     // language bits at +0x12 (0 in every other game) and is XORed in.
-    val nature = if (!layout.natureModifier) pidNature
+    val nature = if (layout.monomythKey) MONOMYTH_NATURE_BASE + monomythNature(u32(raw, off))
+        else if (!layout.natureModifier) pidNature
         else (pidNature xor ((raw[off + 0x12].toInt() and 0xFF) ushr 3)).takeIf { it < 25 } ?: pidNature
     return MonStats(
         ivs = List(6) { ((ivWord shr (5 * it)) and 0x1F).toInt() },
@@ -307,11 +473,11 @@ private class Gen3Substructs(
     val evs: List<Int>, val ivWord: Long, val heldItem: Int,
 )
 
-private fun decryptGen3Substructs(raw: ByteArray, off: Int): Gen3Substructs? {
+private fun decryptGen3Substructs(raw: ByteArray, off: Int, monomyth: Boolean = false): Gen3Substructs? {
     val personality = u32(raw, off + 0)
     val otId = u32(raw, off + 4)
     val storedChecksum = u16(raw, off + 28)
-    val key = personality xor otId
+    val key = if (monomyth) monomythKey(personality, otId) else personality xor otId
 
     val block = ByteArray(48)
     var sum = 0
@@ -433,6 +599,19 @@ val TEAM_ROCKET_BATTLE_MON = EXPANSION_BATTLE_MON.copy(size = 0x5C)
  * read the foe at +0x88, Heart and Soul's size).
  */
 val WISHES_BATTLE_MON = EXPANSION_BATTLE_MON.copy(size = 0x88)
+
+/**
+ * Pokémon Monomyth's 0x58-byte struct BattlePokemon, rearranged (its battle dumps, field by field against the party
+ * structs): PP +0x00, statStages +0x04, species +0x0C, ability +0x0E, types +0x0F / +0x10, level +0x12, moves +0x18, the
+ * held item +0x20 (Leftovers given to the lead read there), the five stats +0x22, HP / max HP +0x2C / +0x2E, status1
+ * +0x30, status2, otId +0x38, the IV word, personality +0x40, the OT name and the nickname.
+ */
+val MONOMYTH_BATTLE_MON = BattleMonLayout(
+    size = 0x58, moves = 0x18, type1 = 0x0F, type2 = 0x10, pp = 0x00,
+    hp = 0x2C, level = 0x12, maxHp = 0x2E, status1 = 0x30,
+    ability = 0x0E, item = 0x20, species = 0x0C, stats = 0x22, statStages = 0x04,
+    personality = 0x40, otId = 0x38,
+)
 
 /** R.O.W.E.'s: expansion's layout, the species' form id in its top 5 bits. */
 val ROWE_BATTLE_MON = EXPANSION_BATTLE_MON.copy(speciesMask = 0x7FF)

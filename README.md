@@ -29,15 +29,15 @@
 </div>
 
 PokeDaisy is a Game Boy, Game Boy Color, GBA and Nintendo DS player for Android handhelds with two screens or one,
-made for the Pokemon games of every generation from Red to Black and popular ROM hacks. Next to the game runs a
-live companion that reads it as you play: your party, bag, map, battle matchups, Pokedex and a spoiler-free guide,
-all drawn in the game's own menu style.
+made for the Pokemon games of every generation from Red to Black 2 and White 2 and popular ROM hacks. Next to the
+game runs a live companion that reads it as you play: your party, bag, map, battle matchups, Pokedex and a spoiler-free
+guide, all drawn in the game's own menu style.
 
 - **Two screens** (AYN Thor, Retroid Pocket Duo, ...): the game on top, the companion on the bottom screen.
 - **One screen** (Retroid Pocket 6, phones, ...): the companion opens as a window over the game or a panel beside
   it, and a HUD, a quick menu and battle buttons keep the essentials on the game screen.
-- **DS games** (Platinum, HeartGold, SoulSilver, Black): the touch screen goes on the bottom screen, one tap swaps it for
-  the companion.
+- **DS games** (Platinum, HeartGold, SoulSilver, Black, White, Black 2, White 2): the touch screen goes on the bottom screen, one tap
+  swaps it for the companion.
 
 ## Devices
 
@@ -79,6 +79,7 @@ The app updates itself: it offers each new version when you open it. The full ma
 - **DEX**: seen / caught, full entries, evolutions, where to catch each one and the moves it learns.
 - **GUIDE**: hints first, answers on a second tap. What's in the area you're in, the next boss's team, evolutions,
   tips and a STUCK? page.
+- **BOXES** (FireRed, LeafGreen, Emerald, Unbound and SoulGold for now): your PC's boxes, laid out like the game's box screen. Tap a Pokemon for its summary, WITHDRAW it into your party (or swap it with one there), or DEPOSIT a party Pokemon from its summary.
 - **CARD**, **STATES** (10 save-state slots), **ACHIEVEMENTS** (RetroAchievements), and the tabs you pick for the bar.
 - **NUZLOCKE** (per game, GBA games but Emerald Rogue): keeps score of a Nuzlocke run, the first encounter in each
   area and every fainted Pokemon out for good, with a gravestone on its party slot.
@@ -97,8 +98,11 @@ The app updates itself: it offers each new version when you open it. The full ma
 - Shaders (LCD, scanlines, CRT, GBA colours, edge smoothing), overlays, and your own RetroArch overlays.
 - Makeovers: play one game as another game's hero, a Pokemon following you, day and night tints.
 - Remappable controls and hotkeys, touch controls you can lay out yourself, Bluetooth and USB controllers.
-- Optional cheats, wild encounters off, reusable TMs, auto-run and running indoors.
-- A library with cover art, favorites, zipped ROMs, a dual-screen launcher, and launching from frontends like
+- **Link play**: two to four GBA games at once on one link cable, to trade (trade evolutions too), battle and
+  mix records between your games or two saves of one.
+- Optional cheats, wild encounters off, reusable TMs, trade evolutions without a trade, auto-run and running indoors.
+- A library with cover art, favorites, zipped ROMs, BPS patching (it finds the base ROM by itself), a dual-screen
+  launcher, and launching from frontends like
   ES-DE, Cocoon and iiSU ([iiSU](docs/iisu/README.md), [ES-DE](docs/es-de/README.md) setup).
 - Standard `.sav` / `.srm` saves, shared with mGBA and RetroArch. Every start keeps a backup of your save.
 - English, Japanese, French, German, Italian, Spanish and Portuguese.
@@ -130,6 +134,7 @@ shows a "not supported" notice).
 | LeafGreen                      | ES / DE / FR / IT / JP     |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Emerald                        | USA/Europe                 |  ✅   | ✅  |   ✅   | ✅  |   ✅    |  ✅   |
 | Emerald                        | ES / DE / FR / IT / JP     |  ✅   | ✅  |   ✅   | ✅  |   ✅    |  ✅   |
+| FireRed / Emerald, randomized  | UPR ZX 4.6.1, USA/Europe   |  ✅   | ✅  |   ✅   | ✅  |   ✅    |   ◐   |
 | Ruby                           | USA, rev 0, 1 and 2        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Ruby                           | ES/DE/FR/IT/JP, rev 0-1    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Sapphire                       | USA, rev 0, 1 and 2        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
@@ -138,6 +143,9 @@ shows a "not supported" notice).
 | HeartGold (DS)                 | USA, Germany rev 0         |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
 | SoulSilver (DS)                | USA, Germany rev 0         |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
 | Black (DS)                     | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| White (DS)                     | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| Black 2 (DS)                   | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| White 2 (DS)                   | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Unbound                        | 2.1.1.1                    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Unbound                        | 2.1.1.1 French             |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Radical Red                    | 4.1                        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
@@ -171,8 +179,9 @@ shows a "not supported" notice).
 | Team Rocket Dragonsden         | 1.5                        |  ✅   | ✅  |   ◐    |  ◐  |    —    |   ◐   |
 | Wishes of Tomorrow             | 1.2.6                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Dreamstone Mysteries           | the one release            |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
+| Monomyth                       | 1.0                        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Emerald Rogue                  | 2.2.1-EX                   |  ✅   | ✅  |   ✅   | ✅  |   ✅    |   —   |
-| SoulGold                       | 1.1.4, 1.2 (3 builds)      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
+| SoulGold                       | 1.1.4, 1.2 (3), 1.2.1 (2)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | R.O.W.E.                       | 2.1.9.1 Experimental       |  ✅   | ✅  |   ◐    | ✅  |    ◐    |   —   |
 
 <details>
@@ -183,6 +192,9 @@ when it isn't sure. Map ◐ means place names only,
 without the map picture. Guide ◐ means the live pages only (the wild encounters here and the next boss). Battle ◐
 means the battle panes work but haven't been checked in every kind of battle. On the DS, HeartGold's and SoulSilver's
 battles aren't read yet. Team Rocket Dragonsden is DragonsdenTV's Team Rocket Edition, not FireRed Rocket Edition.
+FireRed (rev 0 and 1) and Emerald randomized with Universal Pokemon Randomizer ZX 4.6.1 work with any settings and
+seed: the companion reads the randomized types, moves, teams, wild Pokémon and items from the ROM, and the guide leaves
+out the gift and legendary Pokémon it can't know. Monomyth's natures are its own: the summary names them, and they change no stat.
 With Wishes of Tomorrow's randomizer on, the guide and the Pokédex's AREA show the wild Pokémon your save meets.
 The guides were written from each game's own data and may contain mistakes.
 

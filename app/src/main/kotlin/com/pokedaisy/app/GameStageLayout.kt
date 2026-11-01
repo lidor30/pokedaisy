@@ -66,6 +66,29 @@ class GameStageLayout(
             requestLayout()
         }
 
+    /**
+     * A DS game on one screen held sideways (SETTINGS > DS LAYOUT): where its two screens go in the area under the bar,
+     * or null for the usual. [game] goes in the arrangement's top box, [dsTouch] (its frame [dsTouchFrame] px round it)
+     * in the touch box - or GONE when there's none - and [dsBackdrop] behind both fills the area.
+     */
+    var dsArrange: ((Int, Int) -> com.pokedaisy.app.companion.DsArrangement)? = null
+        set(v) {
+            if (field === v) return
+            field = v
+            requestLayout()
+        }
+
+    /** The touch screen's view for [dsArrange] (a child of this layout, over [game]). */
+    var dsTouch: View? = null
+
+    /** The game's backdrop for [dsArrange] (a child of this layout, under [game]). */
+    var dsBackdrop: View? = null
+
+    /** The frame round [dsTouch] (PICTURE IN PICTURE's edge), px each side. */
+    var dsTouchFrame = 0
+
+    private var dsLaid: com.pokedaisy.app.companion.DsArrangement? = null
+
     /** How tall the game (and the bar over it, when shown) comes out at [width] wide, fitted. A bar not
      * attached to a window yet counts as 0: measuring a ComposeView then throws ("Cannot locate
      * windowRecomposer" - issue #31, PortraitPanel enabled from onResume); its first layout corrects it. */
@@ -79,11 +102,33 @@ class GameStageLayout(
 
     override fun onMeasure(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         measureStage(widthMeasureSpec, heightMeasureSpec)
-        overGame.forEach { if (it.visibility != GONE) it.measure(exactly(game.measuredWidth), exactly(game.measuredHeight)) }
+        // DS LAYOUT: over the whole area (BATTLE BUTTONS go beside the screens, in the backdrop's room).
+        val ds = dsLaid != null
+        val w = if (ds) dsBackdrop?.measuredWidth ?: game.measuredWidth else game.measuredWidth
+        val h = if (ds) dsBackdrop?.measuredHeight ?: game.measuredHeight else game.measuredHeight
+        overGame.forEach { if (it.visibility != GONE) it.measure(exactly(w), exactly(h)) }
     }
+
+    /** DS LAYOUT: where the game's box starts in the area [overGame] covers (px), to move the game's rects into it. */
+    val dsGameOffset: Pair<Int, Int>
+        get() = dsLaid?.let { it.top.left to it.top.top + barH } ?: (0 to 0)
+
+    /** DS LAYOUT: how much of the game's box, from its bottom edge, the touch screen covers where it sits over the game
+     * (PICTURE IN PICTURE's inset, its frame and a little room), as a share of the box's height; 0 where it's beside it. */
+    val dsTouchOverGame: Float
+        get() {
+            val a = dsLaid ?: return 0f
+            val t = a.touch ?: return 0f
+            val g = a.top
+            if (g.height <= 0 || t.left >= g.right || t.right <= g.left || t.top >= g.bottom || t.bottom <= g.top) return 0f
+            return ((g.bottom - t.top + dsTouchFrame * 3).toFloat() / g.height).coerceIn(0f, 1f)
+        }
 
     private fun measureStage(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
+        dsLaid = null
+        val ds = dsArrange
+        if (ds != null && !topAligned) { measureDs(ds); return }
         if (!barShown && !topAligned) return
         val lp = game.layoutParams as LayoutParams
         val areaW = measuredWidth - lp.leftMargin - lp.rightMargin
@@ -106,13 +151,53 @@ class GameStageLayout(
         if (barShown) bar.measure(exactly(gameW), exactly(barH))
     }
 
+    private fun measureDs(ds: (Int, Int) -> com.pokedaisy.app.companion.DsArrangement) {
+        val lp = game.layoutParams as LayoutParams
+        val areaW = (measuredWidth - lp.leftMargin - lp.rightMargin).coerceAtLeast(0)
+        val areaH = (measuredHeight - lp.topMargin - lp.bottomMargin).coerceAtLeast(0)
+        barH = if (barShown) {
+            bar.measure(MeasureSpec.makeMeasureSpec(areaW, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(areaH, MeasureSpec.AT_MOST))
+            bar.measuredHeight
+        } else 0
+        val a = ds(areaW, (areaH - barH).coerceAtLeast(0))
+        dsLaid = a
+        gameW = a.top.width
+        gameH = a.top.height
+        game.measure(exactly(gameW), exactly(gameH))
+        if (barShown) bar.measure(exactly(gameW), exactly(barH))
+        dsBackdrop?.measure(exactly(areaW), exactly(areaH))
+        val t = a.touch
+        dsTouch?.let { v ->
+            if (t != null && v.visibility != GONE) v.measure(exactly(t.width + dsTouchFrame * 2), exactly(t.height + dsTouchFrame * 2))
+        }
+    }
+
     override fun onLayout(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         layoutStage(changed, left, top, right, bottom)
-        overGame.forEach { if (it.visibility != GONE) it.layout(game.left, game.top, game.right, game.bottom) }
+        val area = dsBackdrop?.takeIf { dsLaid != null }
+        overGame.forEach {
+            if (it.visibility == GONE) return@forEach
+            if (area != null) it.layout(area.left, area.top, area.right, area.bottom)
+            else it.layout(game.left, game.top, game.right, game.bottom)
+        }
     }
 
     private fun layoutStage(changed: Boolean, left: Int, top: Int, right: Int, bottom: Int) {
         super.onLayout(changed, left, top, right, bottom)
+        dsLaid?.let { a ->
+            val lp = game.layoutParams as LayoutParams
+            val x = lp.leftMargin
+            val y = lp.topMargin
+            dsBackdrop?.layout(x, y, x + (dsBackdrop?.measuredWidth ?: 0), y + (dsBackdrop?.measuredHeight ?: 0))
+            if (barShown) bar.layout(x + a.top.left, y + a.top.top, x + a.top.right, y + a.top.top + barH)
+            game.layout(x + a.top.left, y + barH + a.top.top, x + a.top.right, y + barH + a.top.bottom)
+            a.touch?.let { t ->
+                val f = dsTouchFrame
+                dsTouch?.layout(x + t.left - f, y + barH + t.top - f, x + t.right + f, y + barH + t.bottom + f)
+            }
+            if (barH > 0) huds.forEach { it.offsetTopAndBottom(y + barH) }
+            return
+        }
         if (!barShown && !topAligned) return
         val lp = game.layoutParams as LayoutParams
         val areaW = width - lp.leftMargin - lp.rightMargin

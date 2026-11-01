@@ -3,7 +3,7 @@ title: Your game library
 summary: Add games, sort and favorite them, set covers, and use each game's menu for saves, info, cheats and more.
 section: start
 order: 4
-keywords: [support, donate, donation, tip, patreon, ko-fi, kofi, buy me a coffee, games list, add rom, import, folder, folders, multiple folders, several folders, add folder, zip, 7z, archive, cover, box art, artwork, icon, steamgriddb, rename, delete, hide, favourite, star, sort, grid, list view, frontend, es-de, esde, iisu, cocoon, launcher, filter, tabs, recently played, history, hacks, game boy, gbc, gba, console, platform]
+keywords: [support, donate, donation, tip, patreon, ko-fi, kofi, buy me a coffee, games list, add rom, import, folder, folders, multiple folders, several folders, add folder, zip, 7z, archive, cover, box art, artwork, icon, steamgriddb, rename, delete, hide, favourite, star, sort, grid, list view, frontend, es-de, esde, iisu, cocoon, launcher, filter, tabs, recently played, history, hacks, game boy, gbc, gba, console, platform, patch, patching, bps, apply patch, base rom, checksum, crc32, rom hack patch]
 ---
 
 The library is the first thing you see when you open PokeDaisy: every game you've added, in the order you pick. Tap a game to play it.
@@ -16,7 +16,7 @@ The buttons in the header, from left to right:
 | --- | --- |
 | Sort | Picks the order of your games (see [Sorting](#sorting-and-favorites)). |
 | List / grid | Switches between a list (one game per row, with its file path) and a grid of covers. |
-| `+` | Adds games: `ADD A ROM FILE`, `ADD A ROMS FOLDER` or `MANAGE ROMS FOLDERS` (see [Adding games](#adding-games)). |
+| `+` | Adds games: `ADD A ROM FILE`, `ADD A ROMS FOLDER`, `MANAGE ROMS FOLDERS` or `PATCH A ROM` (see [Adding games](#adding-games)). |
 | Refresh | Looks through your ROMs folders again and tells you what it found. |
 | `?` | Opens this manual. |
 | Gear | Opens Settings. |
@@ -46,7 +46,7 @@ The library remembers the view you picked, also after you close the app. A view 
 
 ## Adding games
 
-There are three ways to get games into the library. Use whichever suits you; they mix fine.
+There are three ways to get games into the library. Use whichever suits you; they mix fine. A ROM hack that comes as a patch is made into a game with [Patch a ROM hack](#patch-a-rom-hack).
 
 ### Link your ROMs folders
 
@@ -70,6 +70,21 @@ If the companion can't read the game, you're told it's `NOT SUPPORTED` and asked
 ### Copy files into the app's folder
 
 Games copied straight into `Android/data/com.pokedaisy.app/files/roms/` on the device (with a file manager or from a computer) show up too. Tap refresh in the library after copying.
+
+### Patch a ROM hack
+
+Most ROM hacks come as a `.bps` patch: a file that turns a game you already have into the hack. PokeDaisy can apply it for you.
+
+1. Tap `+` and pick `PATCH A ROM` (it's also in Settings > `TOOLS`), then pick the `.bps` file. Picking a `.bps` with `ADD A ROM FILE`, or opening one with PokeDaisy from a file manager, does the same.
+2. PokeDaisy reads the patch and looks through your library for the game it was made for. A patch names that game by its checksum (CRC32, a fingerprint of every byte), so it finds the right file whatever it's called, zipped ones too. You don't pick it yourself.
+3. When it's found, you see the patch, the game it goes on and where the patched game will be saved. Tap `APPLY PATCH` and a bar shows how far along it is.
+4. When it's done, you're told where the new game is. If the companion can read it, it's in your library right away and `PLAY` starts it.
+
+Your original game is never changed: the patched game is a new file, named after the patch (`My Hack.bps` makes `My Hack.gba`). It goes with your other games of its kind: a linked folder called `gba`, `gb`, `gbc` or `nds`, else the folder the original game is in, else PokeDaisy's own games folder. If a file with that name is already there, the new one gets a number (`My Hack (2).gba`); the same patched game made before is just kept.
+
+If you see `BASE ROM NOT FOUND`, none of your games has the checksum the patch wants. The message says which game it is when PokeDaisy knows it (an exact version, such as the first or second release of FireRed). Add that game to your library or a ROMs folder, then try again. Most hacks want a clean, unmodified US FireRed or Emerald: a game that was already patched, or another language or version, has a different checksum.
+
+If the companion doesn't support the patched game, you're told so and it stays out of the library, but the file is still saved. `ASK FOR SUPPORT` asks for the game to be added. If it was saved in PokeDaisy's own games folder, Settings > `HIDDEN GAMES` can still show it in the library.
 
 ### File types
 
@@ -108,6 +123,7 @@ Long-press a game, in the list or the grid, to open its menu. In list view, the 
 | `REPLACE COVER` | Opens the cover picker (see [Cover art](#cover-art)). |
 | `SET COVER` | Uses an image from your device as the cover. |
 | `RESET COVER` | Goes back to the automatic cover. Only shows after you picked one yourself. |
+| `LINK PLAY` | Runs this GBA game with up to three others, joined as if by a link cable. See [Link play](link-play.md). |
 | `LOAD SAVE` | Puts another save file into the game. Your current save is kept as a dated copy. |
 | `RESTORE BACKUP` | Brings back one of the automatic save backups. |
 | `SAVE FOLDER` | Gives this game its own save folder, such as another emulator's. |

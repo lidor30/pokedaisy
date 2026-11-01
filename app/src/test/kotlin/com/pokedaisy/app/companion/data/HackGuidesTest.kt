@@ -412,7 +412,9 @@ class HackGuidesTest {
     private val soulgold12 = Game("Pokemon SoulGold (v1.2).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2, "soulgold_v12")
     private val soulgold12b = Game("Pokemon SoulGold (v1.2) (Alt 1).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2B, "soulgold_v12b")
     private val soulgold12c = Game("Pokemon SoulGold (v1.2) (Alt 2).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2C, "soulgold_v12c")
-    private val expansion = listOf(lazarus, seaglass, tmt2, soulgold, soulgold12, soulgold12b, soulgold12c)
+    private val soulgold121 = Game("Pokemon SoulGold (v1.2.1).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2_1, "soulgold_v121")
+    private val soulgold121b = Game("Pokemon SoulGold (v1.2.1) (Alt 1).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2_1, "soulgold_v121b")
+    private val expansion = listOf(lazarus, seaglass, tmt2, soulgold, soulgold12, soulgold12b, soulgold12c, soulgold121, soulgold121b)
 
     /** The expansion hacks' tables and every team (SoulGold's Kanto BROCK has mons with no moves listed: the game fills them). */
     @Test fun `expansion hacks tables and teams`() = expansion.forEach { g ->
@@ -429,7 +431,7 @@ class HackGuidesTest {
     }
 
     /** HERE on a map each was walked on headless until a wild battle came (that foe is in the table). */
-    @Test fun `expansion hacks HERE`() = listOf(lazarus to (0 to 79), seaglass to (0 to 16), tmt2 to (0 to 32), soulgold to (0 to 16), soulgold12c to (0 to 16)).forEach { (g, map) ->
+    @Test fun `expansion hacks HERE`() = listOf(lazarus to (0 to 79), seaglass to (0 to 16), tmt2 to (0 to 32), soulgold to (0 to 16), soulgold12c to (0 to 16), soulgold121 to (0 to 16)).forEach { (g, map) ->
         load(g) ?: return@forEach
         val here = GuideRomSource.encounters(g.t, map.first, map.second)
         assertNotNull(g.fixture, here)
