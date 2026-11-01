@@ -24,53 +24,56 @@ together. You pair first, the link between your devices stays alive, and then th
 - Both devices on the internet. The same Wi-Fi is not required.
 - No cheats loaded. The link stays off while any cheat is on. Once the link is on, switching a cheat on is refused with a notice.
 
+## The pairing page
+
+On the top screen open Settings, then `CO-OP`, then `PAIR`. Under `PICK A SAVE`, tap the save you want to pair (each save
+has one partner). The page then has three tabs down its left side:
+
+- `YOUR ROOM`: your room code, and the same invite as a QR code and a link.
+- `JOIN`: type someone's code, pick an open room, or paste a link.
+- `NEARBY`: players on the same Wi-Fi, and pairing by IP address. It's hidden while `RELAY ONLY` is on, because both
+  need your devices to see each other's addresses.
+
+Whichever way you connect, both devices then show `ACCEPT THIS PLAYER?` with the other trainer's name and ID. Check them,
+then accept. Pairing finishes only when both of you accept. If either says no, nothing is saved.
+
 ## Pair with a room code
 
-The pairing page starts with `YOUR ROOM`. While the page is open, you have a room with a six letter code such as `K7Q-4MX`.
+While the pairing page is open you have a room with a six letter code such as `K7Q-4MX`, shown under `YOUR ROOM`.
 
-1. On the top screen open Settings, then `CO-OP`, then `PAIR`, and pick your save.
-2. Tell your partner the code under `YOUR ROOM`.
-3. Your partner opens the same page, types the code under `JOIN A ROOM` and taps `JOIN`. Dashes and spaces don't
+1. Tell your partner the code.
+2. Your partner opens the same page, goes to `JOIN`, types the code and taps `JOIN`. Dashes and spaces don't
    matter, and neither do capitals.
 
-Then both of you see `ACCEPT THIS PLAYER?`, as with a link. The code works only while your pairing page is open. Close
-the page and the room goes away; open it again and you get a new code.
+The code works only while your pairing page is open. Close the page and the room goes away; open it again and you get a
+new code.
 
 ### Open rooms
 
 Turn `LIST MY ROOM` on to put your room on a public list. Other players with the same ROM see your trainer's name under
-`OPEN ROOMS` and can tap it to join, without a code. Nobody else sees it. It's off each time you open the page.
+`OPEN ROOMS` in `JOIN` and can tap it to join, without a code. Nobody else sees it. It's off each time you open the page.
 
-`OPEN ROOMS` shows the rooms of other players who listed theirs, newest first. It refreshes by itself every 20 seconds while the page is open; `REFRESH`, beside its title, does it at once.
-Joining a stranger's room still asks you both to accept, so check the name and ID before you do.
+`OPEN ROOMS` shows the rooms of other players who listed theirs, newest first. It refreshes by itself every 20 seconds
+while the page is open; `REFRESH`, beside its title, does it at once. Joining a stranger's room still asks you both to
+accept, so check the name and ID before you do.
 
 > [!NOTE]
-> Rooms need a relay (see `RELAY` below). With `RELAY` set to `NONE` the page says so and only the other ways work.
+> Rooms need a relay (see `RELAY` below). With `RELAY` set to `NONE` the page says so, and the link and `NEARBY` still work.
 
 ## Pair with a link or QR code
 
-1. On the top screen open Settings, then `CO-OP`, then `PAIR`.
-2. Under `PICK A SAVE`, tap the save you want to pair. Each save has one partner.
-3. You now see an invite: a QR code, `COPY LINK` and `SHARE LINK`.
-4. Your partner opens the same page on their device and pastes your link under `JOIN WITH A LINK`, or scans
-   your QR code with the system camera, which opens the link in PokeDaisy.
-
-Both devices then show `ACCEPT THIS PLAYER?` with the other trainer's name and ID. Check them, then accept.
-Pairing finishes only when both of you accept. If either says no, nothing is saved.
+`YOUR ROOM` also shows a QR code, `COPY LINK` and `SHARE LINK`. Your partner pastes your link under `JOIN WITH A LINK`
+in their `JOIN` tab, or scans the QR code with the system camera, which opens the link in PokeDaisy.
 
 ## Pair on the same Wi-Fi
 
-Under the invite, `SAME WI-FI` lists players on your network who are on their own invite page. Tap one to
-connect. If nothing shows up, use the link, or try `BY IP`.
+`NEARBY` lists players on your network who have their own pairing page open. Tap one to connect. If nothing shows up,
+use a code or the link, or try `BY IP`.
 
 ## Pair by IP address
 
-`BY IP` shows your address. Type your partner's address in the box and connect. Use it when the same
-Wi-Fi list stays empty, for example on a network that blocks discovery.
-
-> [!NOTE]
-> `SAME WI-FI` and `BY IP` are hidden while `RELAY ONLY` is on, because both need your devices to see each
-> other's addresses.
+`BY IP`, also in `NEARBY`, shows your address. Type your partner's address in the box and tap `CONNECT`. Use it when the
+same Wi-Fi list stays empty, for example on a network that blocks discovery.
 
 ## Partners and unpairing
 

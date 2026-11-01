@@ -1054,8 +1054,10 @@ private fun coopPartner(name: String, trainerId: Int) = com.pokedaisy.app.compan
 
 private fun coopPair() = com.pokedaisy.app.companion.coop.CoopPair(coopSave("RED", 12345), "Emerald (RED)", coopPartner("LEAF", 40404), null, 0L)
 
-/** A ticket's shape (not a real one): what the invite's QR code and link carry. */
-private val COOP_TICKET = "endpoint" + "abcdefghijklmnopqrstuvwxyz234567".repeat(5)
+/** An invented ticket (no device has this key): what the invite's QR code and link carry. */
+private val COOP_TICKET = com.pokedaisy.app.companion.coop.CoopTicket(
+    com.pokedaisy.app.companion.coop.CoopPeerId("ab".repeat(32)), ByteArray(16) { it.toByte() }, emptyList(),
+).encode()
 
 private val COOP_CHOICES by lazy {
     val dir = File(android.content.Context().filesDir, "coop-saves").apply { mkdirs() }
@@ -1081,7 +1083,7 @@ private val COOP_ROOMS = com.pokedaisy.app.companion.ui.CoopRoomsUi(
 /** Settings with RELAY ONLY / a relay / one pairing on disk as the shot wants them; [preview] is the pairing page's stand-in. */
 internal fun coopSettings(
     relayOnly: Boolean = false, relay: String? = null, paired: Boolean = false,
-    preview: SettingsActivity.CoopPreview? = null,
+    preview: com.pokedaisy.app.companion.ui.CoopPairView? = null,
 ): SettingsActivity {
     val ctx = android.content.Context()
     val prefs = Prefs(ctx)
@@ -1090,7 +1092,7 @@ internal fun coopSettings(
     val file = File(File(ctx.filesDir, "coop"), "pairs.json")
     file.delete()
     if (paired) com.pokedaisy.app.companion.coop.CoopPairs(file).add(coopPair())
-    return SettingsActivity().also { it.coopPreview = preview }
+    return SettingsActivity().also { it.coop.preview = preview }
 }
 
 private fun coopSteps(): Map<String, com.pokedaisy.app.companion.coop.CoopPairing.Step> {
@@ -2511,48 +2513,34 @@ fun main(args: Array<String>) {
         },
         Shot("coop-wait-partner", tw, th, td, { { com.pokedaisy.app.companion.ui.CoopWaitOverlay(com.pokedaisy.app.companion.coop.lock.LockWait.Partner, "LEAF") {} } }),
         Shot("coop-wait-story", tw, th, td, { { com.pokedaisy.app.companion.ui.CoopWaitOverlay(com.pokedaisy.app.companion.coop.lock.LockWait.AtStory(3), "LEAF") {} } }),
-        Shot("coop-pick-save", tw, th, td, activity { coopSettings(preview = SettingsActivity.CoopPreview(choices = COOP_CHOICES)) }) {
+        Shot("coop-pick-save", tw, th, td, activity { coopSettings(preview = com.pokedaisy.app.companion.ui.CoopPairView(choices = COOP_CHOICES)) }) {
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
-        Shot("coop-pick-save-none", tw, th, td, activity { coopSettings(preview = SettingsActivity.CoopPreview(choices = emptyList())) }) {
+        Shot("coop-pick-save-none", tw, th, td, activity { coopSettings(preview = com.pokedaisy.app.companion.ui.CoopPairView(choices = emptyList())) }) {
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
+        // PAIR's panes, a save picked: no relay (rooms say so), a room, JOIN, NEARBY, RELAY ONLY, the lobby down.
         Shot("coop-invite", tw, th, td, activity {
-            coopSettings(preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), wifi = "192.168.1.20:47321"))
+            coopSettings(preview = com.pokedaisy.app.companion.ui.CoopPairView(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), wifi = "192.168.1.20:47321"))
         }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
-        // ROOMS: this device's code and the open rooms of the same game (invented trainers), then the lobby down.
         Shot("coop-invite-rooms", tw, th, td, activity {
-            coopSettings(preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), wifi = "192.168.1.20:47321", rooms = COOP_ROOMS))
+            coopSettings(preview = com.pokedaisy.app.companion.ui.CoopPairView(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), wifi = "192.168.1.20:47321", rooms = COOP_ROOMS))
         }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
-        Shot("coop-invite-rooms-open", tw, th, td, activity {
-            coopSettings(preview = SettingsActivity.CoopPreview(
-                COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"),
-                rooms = com.pokedaisy.app.companion.ui.CoopRoomsUi(COOP_ROOMS.available, COOP_ROOMS.lobby, "No open room has that code"),
-            ))
-        }) {
-            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
-            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("REFRESH")).performScrollTo()
-        },
-        Shot("coop-invite-rooms-offline", tw, th, td, activity {
-            coopSettings(preview = SettingsActivity.CoopPreview(
-                COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"),
-                rooms = com.pokedaisy.app.companion.ui.CoopRoomsUi(true, com.pokedaisy.app.companion.coop.CoopLobby.State(
-                    rooms = emptyList(), problem = com.pokedaisy.app.companion.coop.CoopLobby.Problem.OFFLINE,
-                )),
-            ))
+        Shot("coop-invite-join", tw, th, td, activity {
+            coopSettings(preview = com.pokedaisy.app.companion.ui.CoopPairView(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), rooms = COOP_ROOMS, joinError = "No open room has that code", tab = com.pokedaisy.app.companion.ui.CoopPairTab.JOIN))
+        }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
+        Shot("coop-invite-nearby", tw, th, td, activity {
+            coopSettings(preview = com.pokedaisy.app.companion.ui.CoopPairView(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), wifi = "192.168.1.20:47321", nearbyError = "That isn't a valid address", tab = com.pokedaisy.app.companion.ui.CoopPairTab.NEARBY))
         }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
         Shot("coop-invite-relayonly", tw, th, td, activity {
-            coopSettings(relayOnly = true, preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite")))
+            coopSettings(relayOnly = true, preview = com.pokedaisy.app.companion.ui.CoopPairView(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), relayOnly = true, rooms = COOP_ROOMS))
         }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
-        Shot("coop-invite-bottom", tw, th, td, activity {
-            coopSettings(preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), wifi = "192.168.1.20:47321", error = "That isn't a valid address"))
-        }) {
-            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
-            onAllNodesWithText(com.pokedaisy.app.companion.i18n.tr("CONNECT")).onLast().performScrollTo()
-        },
+        Shot("coop-invite-rooms-offline", tw, th, td, activity {
+            coopSettings(preview = com.pokedaisy.app.companion.ui.CoopPairView(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue("invite"), rooms = com.pokedaisy.app.companion.ui.CoopRoomsUi(true, com.pokedaisy.app.companion.coop.CoopLobby.State(rooms = emptyList(), problem = com.pokedaisy.app.companion.coop.CoopLobby.Problem.OFFLINE))))
+        }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
         *listOf("confirm", "waiting", "paired", "failed-rom", "failed-same-save").map { name ->
             Shot("coop-$name", tw, th, td, activity {
-                coopSettings(preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue(name)))
+                coopSettings(preview = com.pokedaisy.app.companion.ui.CoopPairView(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue(name)))
             }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) }
         }.toTypedArray(),
         Shot("coop-partners", tw, th, td, activity { coopSettings(paired = true) }) {

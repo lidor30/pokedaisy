@@ -3065,6 +3065,11 @@ Its manual page is a draft, `docs/manual-drafts/coop.md` (its top note says what
   long enough to send its own HELLO, so both sides stop with it instead of the joiner timing out. Tests: `RelayLobbyTest`, `LobbyServerTest` (server), `CoopLobbyTest`,
   `CoopRelayIntegrationTest.joinsThroughARoomCode` (the app's lobby and transport through the real relay). ui-preview:
   `coop-invite-rooms*`.
+- **The PAIR page** (top-screen Settings > CO-OP): `CoopSettingsPages` holds its state and actions (PAIR, PARTNERS, RELAY;
+  SettingsActivity only routes to it), `CoopUi.kt` draws it from one `CoopPairView`: the save list, then three panes on a
+  `TabRail` (`CoopPairTab`: YOUR ROOM = code, LIST MY ROOM, QR and link; JOIN = a code, OPEN ROOMS, a pasted link; NEARBY =
+  same Wi-Fi and BY IP, not with RELAY ONLY), then the steps after a dial. ui-preview passes a `CoopPairView` straight in
+  (`coop-invite*` shots, `tab` picks the pane).
 - **Dialing**: a `connect` tries the ticket's addresses and the NSD addresses over TCP (1.5 s connect) while the relay rooms are
   joined (the pair room of an allowed peer, else the ticket's invite room); whichever handshake finishes first wins. Relay rooms: a
   socket on the pair room of every allowed peer, on our own invite room while pairing is open; in a pair room the smaller key

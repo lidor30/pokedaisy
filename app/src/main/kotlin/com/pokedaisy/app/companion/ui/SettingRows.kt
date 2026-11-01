@@ -281,6 +281,20 @@ private fun GroupTabs(
     val shown = groups.lastOrNull { (tops[it] ?: Int.MAX_VALUE) <= scroll.value + slack } ?: groups.first()
     // At the very end the last group is on screen whatever reached the top.
     val current = picked.takeIf { it >= 0 } ?: if (atEnd) groups.last() else shown
+    TabRail(groups.map { tr(rows[it].label) }, groups.indexOf(current), m) { i ->
+        val g = groups[i]
+        picked = g
+        val top = tops[g] ?: return@TabRail
+        scope.launch { scroll.animateScrollTo(top.coerceAtMost(scroll.maxValue)) }
+    }
+}
+
+/**
+ * Tabs down a window's left edge, [selected] lit like the tab bar's chosen chip, a dashed rule between them and the page:
+ * [GroupedRows]' group tabs, and pages split into panes (CO-OP's PAIR). [labels] are drawn as given (translated).
+ */
+@Composable
+fun TabRail(labels: List<String>, selected: Int, m: GbaTextMetrics, onSelect: (Int) -> Unit) {
     val small = rememberGbaTextMetrics(1f)
     androidx.compose.foundation.layout.Column(
         Modifier
@@ -299,17 +313,22 @@ private fun GroupTabs(
             .padding(start = m.u * 4, end = m.u * 6, top = m.u * 4, bottom = m.u * 4),
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(m.u * 2),
     ) {
-        for (g in groups) {
-            GroupTab(tr(rows[g].label), g == current, small) {
-                picked = g
-                val top = tops[g] ?: return@GroupTab
-                scope.launch { scroll.animateScrollTo(top.coerceAtMost(scroll.maxValue)) }
-            }
-        }
+        labels.forEachIndexed { i, label -> GroupTab(label, i == selected, small) { onSelect(i) } }
     }
 }
 
-/** One of [GroupTabs]: a tab chip's frame (white with a red label when [selected], like the tab bar's) at the list's
+/** Explanatory text in its own small window, above a page's list (top-screen Settings' pages). */
+@Composable
+fun PageHint(text: String, m: GbaTextMetrics, small: GbaTextMetrics) {
+    OptionListWindow(m, Modifier.fillMaxWidth().padding(bottom = m.u * 4)) {
+        GbaText(
+            text, OptionColors.label, OptionColors.labelShadow, small, maxLines = Int.MAX_VALUE,
+            modifier = Modifier.padding(horizontal = m.u * 6, vertical = m.u * 2),
+        )
+    }
+}
+
+/** One of [TabRail]'s tabs: a tab chip's frame (white with a red label when [selected], like the tab bar's) at the list's
  * smaller text. */
 @Composable
 private fun GroupTab(label: String, selected: Boolean, m: GbaTextMetrics, onClick: () -> Unit) {
