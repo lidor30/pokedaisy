@@ -28,7 +28,7 @@ object WhatsNew {
                 Section(
                     NEW,
                     listOf(
-                        "New games: Pokémon White, Black 2 and White 2, Let's Go, Monomyth and randomized FireRed and Emerald.",
+                        "New games: Pokémon White, Black 2 and White 2, Origin HeartGold, Let's Go, Monomyth and randomized FireRed and Emerald.",
                         "DS on one screen: hold your device sideways and the touch screen floats in when the game needs it.",
                         "BOXES: your PC's boxes in the companion. Move Pokémon between a box and your party.",
                         "THEME: colour the app and the companion, with eight new themes and a few for the holidays.",
