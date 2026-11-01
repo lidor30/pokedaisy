@@ -136,6 +136,10 @@
 #include "../app/src/main/cpp/pk_gb_field.c"
 #define HAVE_PK_WIDE 1
 #endif
+#if __has_include("../app/src/main/cpp/pk_gb_audio.c")
+#include "../app/src/main/cpp/pk_gb_audio.c"
+#define HAVE_PK_GB_AUDIO 1
+#endif
 #endif
 
 // GBA key bit positions (GBA_KEY_* in mgba/gba/input.h) — kept local, same
@@ -382,6 +386,12 @@ static void cmdShot(const char* path) {
 
 // Runs `frames` frames and writes what the APU played meanwhile as a 16-bit
 // stereo WAV (what the app's render core records, e.g. for the click sound).
+#ifdef HAVE_PK_GB_AUDIO
+// A Game Boy game's sound as the app resamples it (pk_gb_audio.c), not through mGBA's own blip_buf; `gbaudio 0`
+// records mGBA's own path again, for a before / after.
+static struct pk_gb_audio gbAudio;
+#endif
+
 static void cmdWav(const char* path, int frames) {
     struct blip_t* l = core->getAudioChannel(core, 0);
     struct blip_t* r = core->getAudioChannel(core, 1);
@@ -389,12 +399,31 @@ static void cmdWav(const char* path, int frames) {
     blip_clear(r);
     size_t cap = (size_t) frames * (SAMPLE_RATE / 20) * 2, pos = 0;
     int16_t* pcm = calloc(cap, sizeof(int16_t));
+#ifdef HAVE_PK_GB_AUDIO
+    if (gbAudio.left) {
+        // What piled up before (nothing reads it between commands): read away, so the level carries on.
+        while (pk_gb_audio_read(&gbAudio, pcm, (int) (cap / 2)) > 0) {}
+    }
+#endif
     // Audio made per runFrame: the app plays one frame a display refresh, so a frame much shorter or longer than
     // the core's frame rate (a Game Boy game turning its screen off or on restarts mGBA's frame) is a gap or a glut.
     int least = 1 << 30, most = 0, uneven = 0;
     const double expect = SAMPLE_RATE * (double) core->frameCycles(core) / core->frequency(core);
     for (int i = 0; i < frames; i++) {
         core->runFrame(core);
+#ifdef HAVE_PK_GB_AUDIO
+        if (gbAudio.left) {
+            int n = pk_gb_audio_read(&gbAudio, pcm + pos, (int) ((cap - pos) / 2));
+            if (n < least) least = n;
+            if (n > most) most = n;
+            if (n < expect * 0.9 || n > expect * 1.1) {
+                if (uneven < 40) printf("wav: frame %d made %d samples (%.0f%%)\n", i, n, 100.0 * n / expect);
+                uneven++;
+            }
+            pos += (size_t) n * 2;
+            continue;
+        }
+#endif
         int n = blip_samples_avail(l);
         if (n < least) least = n;
         if (n > most) most = n;
@@ -920,6 +949,9 @@ int main(int argc, char** argv) {
     core->setAudioBufferSize(core, 2048);
     blip_set_rates(core->getAudioChannel(core, 0), core->frequency(core), SAMPLE_RATE);
     blip_set_rates(core->getAudioChannel(core, 1), core->frequency(core), SAMPLE_RATE);
+#ifdef HAVE_PK_GB_AUDIO
+    pk_gb_audio_attach(&gbAudio, core, SAMPLE_RATE);
+#endif
 
     if (!core->loadROM(core, rom)) {
         fprintf(stderr, "mgba_dump: core->loadROM failed\n");
@@ -1200,6 +1232,14 @@ int main(int argc, char** argv) {
             mCoreConfigSetIntValue(&core->config, "volume", n);
             core->reloadConfigOption(core, "volume", &core->config);
             printf("volume: %d\n", n);
+#ifdef HAVE_PK_GB_AUDIO
+        } else if (!strcmp(cmd, "gbaudio")) {
+            // 1 (the default) = a Game Boy game's sound resampled as the app does (pk_gb_audio.c); 0 = mGBA's own.
+            sscanf(line, "%*s %d", &n);
+            pk_gb_audio_detach(&gbAudio, core);
+            if (n) pk_gb_audio_attach(&gbAudio, core, SAMPLE_RATE);
+            printf("gbaudio: %s\n", gbAudio.left ? "the app's" : "mGBA's own");
+#endif
         } else if (!strcmp(cmd, "wav")) {
             sscanf(line, "%*s %255s %d", arg1, &n);
             cmdWav(arg1, n);
@@ -1229,12 +1269,15 @@ int main(int argc, char** argv) {
 #endif
 #ifdef HAVE_PK_WIDE
         } else if (!strcmp(cmd, "wideon")) {
-            sscanf(line, "%*s %d", &n);
+            unsigned crcArg = 0;
+            sscanf(line, "%*s %d %x", &n, &crcArg);
             // The game by its ROM's CRC32, as the app picks it (pk_wide_games.h): the file's bytes. Not the ROM in
             // memory - mGBA keeps a cart's GPIO registers (the RTC of Emerald, Unbound...) inside its ROM buffer at
             // 0xC4, so once the game has read its clock the buffer (and the bus) no longer hash as the file does.
-            uint32_t crc = 0;
-            FILE* rf = fopen(romPath, "rb");
+            // A CRC after the margin is used instead: the retail one the app hands over for a randomized retail cart
+            // (WideScreen.tablesCrc).
+            uint32_t crc = crcArg;
+            FILE* rf = crc ? NULL : fopen(romPath, "rb");
             if (rf) {
                 fseek(rf, 0, SEEK_END);
                 long fsz = ftell(rf);

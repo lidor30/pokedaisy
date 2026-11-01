@@ -45,6 +45,10 @@ itemDescs = { preset = 'vanilla', base = 0x08876200 }
 pokedex = 'POKEDEX_UNBOUND'
 guideTables = 'GUIDE_TABLES_UNBOUND'
 trainerCard = 'TRAINER_CARD_UNBOUND'
+# BOXES: CFRU's 25 boxes of compressed records (UNBOUND_PC_STORAGE: CFRU's source, then the game's own SendMonToPC
+# headless, a party Pokémon sent into boxes 1, 20, 23 and 25 and read back). gPokemonStoragePtr is FireRed rev 0's.
+pokemonStoragePtr = 0x03005010
+pcStorage = 'UNBOUND_PC_STORAGE'
 
 # Pokémon Unbound v2.1.1.1 FR - a French fan translation of the same release (32 MB, sha1
 # 0ce2a880…, its header's revision byte left at 0x9E). Only text changed: every literal pool

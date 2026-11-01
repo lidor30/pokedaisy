@@ -63,7 +63,23 @@ The companion is still there:
 
 `SWAP SCREENS` trades a DS game's two screens too: the top screen goes on your bottom screen, and the touch screen, with its `COMPANION` button, on the top one. The touch screen stays up whatever `CLOSE COMPANION` says. `REWIND` isn't available in DS games.
 
-On a handheld or phone with one screen, a DS game shows both of its screens on it. Held sideways, the touch screen sits beside the game, the two side by side like an open DS; held upright, it sits under the game, where the companion would be. Its `COMPANION` button swaps it for the companion (and `GAME SCREEN` brings the touch screen back), the same switch as on a dual-screen device. Held sideways, the touch controls lie over the two screens: the D-pad in the bottom left corner and A, B, X and Y in the bottom right, with `SELECT` and `START` along the bottom just inside them, and the touch screen's `COMPANION` button moves above it. A tap anywhere that isn't a button reaches the touch screen.
+On a handheld or phone with one screen, a DS game shows both of its screens on it. Held upright, the touch screen sits under the game, where the companion would be. Its `COMPANION` button swaps it for the companion (and `GAME SCREEN` brings the touch screen back), the same switch as on a dual-screen device.
+
+### DS layout: two screens on one
+
+Held sideways, `DS LAYOUT` (in the `SCREEN` group of Settings and of the companion's `SETTINGS`) picks where the two screens go. Each choice has a little picture of how it looks:
+
+- `ONE SCREEN` (the default): the game fills the screen, with `EXPAND` if `ASPECT` says so, and the touch screen floats in over it whenever the game wants it: when you press X for the game's menu, in a battle's bag, party and questions, and whenever the top screen goes blank while the touch screen has something (like the title's `CONTINUE`). The game dims behind it, like a pop up on a web page, and keeps running. When the game is done with the touch screen, it goes away by itself. While the game loads between two screens the window waits, and you see the field greyed out with a little ball rocking on it, never an empty frame. Leaving a menu screen with its own back or quit button brings you back to the X menu, as B does. Tap the dim beside it to close it: the game gets B, its own way back (not in a battle). The first page of the party, the Pokédex and the options floats in alone the same way, over the field you came from. Pages with something to say on both screens (a Pokémon's summary, the Pokédex list, the bag, the Pokégear and the rest) show side by side over it instead, edge to edge. A battle gets the game's buttons on the top screen (see [Battle](battle.md#on-one-screen-battle-buttons)).
+- `SIDE BY SIDE`: both screens at the same size, next to each other like an open DS.
+- `LARGE + SMALL`: the game large, the touch screen small beside it, level with its bottom edge. The HUD moves its buttons to the bottom left and your party under the minimap, in two columns.
+- `PICTURE IN PICTURE`: the game fills the screen, the touch screen small in its bottom right corner, framed in white. The HUD moves its buttons to the bottom left and your party under the minimap, to keep the corner clear. When the game wants it, it floats in large instead.
+- `STACKED`: the game above its touch screen, as you hold a DS.
+
+To switch layouts while you play, press R2 (the `DS LAYOUT` hotkey, see [Hotkeys](controls.md#hotkeys)): each press steps to the next one. Wherever the screens leave room, the game itself fills it, blurred, never black bars, also where `EXPAND` has nothing to draw past the game (the title, a menu screen). Tap the touch screen with your finger in any layout.
+
+To bring up the touch screen yourself in `ONE SCREEN` or `PICTURE IN PICTURE`, tap `TOUCH` on the [HUD](hud.md), or press L2 (the `TOUCH SCREEN` hotkey, T on a keyboard). Close it with its X, the same button again, or `BACK`. Taps beside the window still reach your touch controls.
+
+HeartGold and SoulSilver (the USA releases) are the games PokeDaisy follows this closely so far. In the German HeartGold and SoulSilver, Platinum, Black, White and their sequels, `ONE SCREEN` keeps the touch screen small in the corner, as `PICTURE IN PICTURE` does, so it's always there.
 
 ## Single-screen handhelds
 

@@ -106,6 +106,17 @@ object MgbaCore {
     const val FIELD_MENU = 512
     /** A DS game's own: a battle waits for the player's command (FIGHT / BAG / POKéMON / RUN, a move, a target). */
     const val FIELD_BATTLE_INPUT = 1024
+    /** A DS game's own: the game wants its touch screen now (DS LAYOUT floats it in; nds/pk_nds_field.cpp's touch rules). */
+    const val FIELD_TOUCH = 2048
+    /** A DS game's own: a battle's command or move panel is on the touch screen (BATTLE BUTTONS stand in for it). */
+    const val FIELD_TOUCH_BATTLE_MENU = 4096
+    /** A DS game's own: a menu screen's page is all on the touch screen (it floats in alone, not beside the top one). */
+    const val FIELD_TOUCH_ONLY = 8192
+    /** A DS game's own: the touch screen [FIELD_TOUCH] wants is a new one the game fades in first (a battle's bag / party). */
+    const val FIELD_TOUCH_FADES = 16384
+    /** A DS game's own: the top screen / the touch screen is one colour (black between scenes). */
+    const val FIELD_DARK_TOP = 32768
+    const val FIELD_DARK_BOTTOM = 65536
     /** WIDE: the window to draw around the frame from the next frame on ([WideCamera]), in the frame's pixels
      * (its top-left 0, 0); [w] 0 = none. Any thread. */
     external fun pkWideSetView(x: Int, y: Int, w: Int, h: Int)
@@ -184,6 +195,13 @@ object MgbaCore {
      * skip their drawing. Emu thread, before [pkRunFrame]. */
     external fun pkNdsSetDraw(draw: Boolean, drawNext: Boolean)
 
+    /** DS LAYOUT floats the X menu (one screen): it comes back after a menu screen left by touch, as after B (the game
+     * closes it then: HeartGold / SoulSilver's menuInputState). Emu thread. */
+    external fun pkNdsKeepStartMenu(on: Boolean)
+
+    /** DS CPU BOOST: the emulated ARM9 at twice the DS's clock - a game's own slow frames (HeartGold walking) go. Emu thread. */
+    external fun pkNdsCpuBoost(on: Boolean)
+
     /** DS RESOLUTION (nds/pk_nds_gl.h): the 3D at [scale] times the DS's on the GPU (2-8), or the DS's own on the CPU
      * (1). Taken before the next frame. Emu thread. */
     external fun pkNdsSetScale(scale: Int)
@@ -209,8 +227,9 @@ object MgbaCore {
      * frame (1/60 s) of its audio into [out] (interleaved stereo; returns the shorts written), its fade-out over [frames]
      * frames, and stopping it. Emu thread, between frames. */
     external fun pkNdsBgm(): Int
-    /** A song's volume is being faded right now (a copy taken now would stay at that volume). */
-    external fun pkNdsBgmFading(): Boolean
+    /** Whether the song can be copied now: -1 not yet (a volume fade runs, or its player is paused or not started), else
+     * its player's state - a copy taken at another state is taken again (the game paused, faded or resumed the song). */
+    external fun pkNdsBgmState(): Int
     external fun pkNdsMusicStart(): Boolean
     external fun pkNdsMusicRead(out: ShortArray): Int
     external fun pkNdsMusicFade(frames: Int)

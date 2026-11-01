@@ -45,6 +45,11 @@ enum class DsPattern(internal val tile: List<String>, internal val colors: Map<C
         List(8) { y -> if (y == 0) "LLLLLLLL" else "L......." },
         mapOf('.' to Color(0xFF08B279), 'L' to Color(0xFF008261)),
     ),
+    /** Black 2's and White 2's Pokédex: Black's grid in red (headless, its list screen). */
+    BLACK2_DEX(
+        List(8) { y -> if (y == 0) "LLLLLLLL" else "L......." },
+        mapOf('.' to Color(0xFFBA2010), 'L' to Color(0xFF821808)),
+    ),
     /** HeartGold / SoulSilver's Pokédex: white, a grey line every 40 pixels. */
     HGSS_DEX(
         List(40) { y -> if (y == 0) "L".repeat(40) else "L" + ".".repeat(39) },
@@ -58,14 +63,15 @@ enum class DsPattern(internal val tile: List<String>, internal val colors: Map<C
 
 /** The party screen's pattern behind every tab of [game], or null for its art / stripes ([GameBackdrop]). */
 fun dsPartyPattern(game: GameKind): DsPattern? = when (game) {
-    GameKind.BLACK -> DsPattern.BLACK_PARTY
+    GameKind.BLACK, GameKind.WHITE, GameKind.BLACK2, GameKind.WHITE2 -> DsPattern.BLACK_PARTY
     GameKind.PLATINUM -> DsPattern.PLATINUM_PARTY
     else -> null
 }
 
 /** The Pokédex's own pattern over the party one while DEX is open (Black's green grid, HG / SS's white one), or null. */
 fun dsDexPattern(game: GameKind): DsPattern? = when (game) {
-    GameKind.BLACK -> DsPattern.BLACK_DEX
+    GameKind.BLACK, GameKind.WHITE -> DsPattern.BLACK_DEX
+    GameKind.BLACK2, GameKind.WHITE2 -> DsPattern.BLACK2_DEX
     GameKind.HEARTGOLD, GameKind.SOULSILVER -> DsPattern.HGSS_DEX
     else -> null
 }

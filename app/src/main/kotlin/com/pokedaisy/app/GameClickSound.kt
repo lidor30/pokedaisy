@@ -60,7 +60,9 @@ class GameClickSound(filesDir: File, romCrc: String, name: String = CLICK) {
 
     fun play() {
         val id = soundId
-        if (id != 0) pool.play(id, 1f, 1f, 1, 0, 1f)
+        // The game's own sound, so SOUND > GAME VOLUME / MUTE GAME (GameVolume) applies; muted, it isn't played.
+        val g = GameVolume.gain
+        if (id != 0 && g > 0f) pool.play(id, g, g, 1, 0, 1f)
     }
 
     fun release() = pool.release()

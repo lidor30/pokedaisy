@@ -260,6 +260,18 @@ def team_rocket_v3_symbols(rom):
     return out
 
 
+# Pokemon Monomyth v1.0 (sha1 ae1c4be9...), its own closed pokeemerald build: the PokeNav's ATHANTO MAP, a mode-0 screen -
+# 8bpp tiles (LZ77, loaded from tile 0x60), a 32x32 u16 text tilemap (LZ77; the game shows rows 2..21) and a 48-colour
+# palette at BG palette 7 - and the one player head its map code loads (0x08117950's pool: the same for either gender).
+# Headless, the ATHANTO MAP's VRAM (BG2), palette RAM and OBJ tiles matched them.
+MONOMYTH_ROM = os.path.expanduser("~/Downloads/Game ROMs & Emulation/gba/Pokemon Monomyth (v1.0).gba")
+
+
+def monomyth_symbols(rom):
+    return {"RegionGfx": (0xA12550, 0), "RegionMap": (0xA1582C, 0), "RegionPal": (0xA124F0, 0x60),
+            "PlayerGfx": (0xA15DA8, 0), "PlayerPal": (0xA15D88, 0x20)}
+
+
 # Pokemon Quetzal English Alpha 9 v0 (sha1 d0658315...): FireRed's Kanto / Sevii maps (pixel for
 # pixel, 3 tiles left and 2 up of FireRed's screen) redrawn for Emerald's region_map.c - 8bpp
 # tiles and a 64x64 affine tilemap per map (LZ77), FireRed's palette loaded at BG palette 7. Its
@@ -543,6 +555,13 @@ GAMES = {
         for row in ((f"TR3_{region}_GFX", f"{region.title()}Gfx", "smol"), (f"TR3_{region}_MAP", f"{region.title()}Map", "smol"),
                     (f"TR3_{region}_PAL", f"{region.title()}Pal", False))
     ]),
+    "MMY": (MONOMYTH_ROM, None, [
+        ("MMY_REGION_GFX", "RegionGfx", True),
+        ("MMY_REGION_MAP", "RegionMap", True),
+        ("MMY_REGION_PAL", "RegionPal", False),
+        ("MMY_PLAYER_GFX", "PlayerGfx", True),
+        ("MMY_PLAYER_PAL", "PlayerPal", False),
+    ]),
     "RW": (ROWE_ROM, None, [
         ("RW_REGION_PAL", "RegionPal", False),
         ("RW_REGION_GFX", "RegionGfx", True),
@@ -692,7 +711,7 @@ def fireRed_symbols(p):
 
 # The binary hacks' made-up symbols (no ELF).
 ROM_SYMBOLS = {"RY": recharged_yellow_symbols, "UB": unbound_symbols, "UBFR": unbound_fr_symbols, "RR": cfru_symbols, "OD": cfru_symbols, "AM": cfru_symbols, "SS": cfru_symbols, "LZ": lazarus_symbols, "SGL": seaglass_symbols, "SG": soulgold_symbols,
-               "GZ": glazed_symbols, "IMP": imperium_symbols, "DSM": dreamstone_symbols, "WSH": wishes_symbols, "TR3": team_rocket_v3_symbols, "QTZ": quetzal_symbols, "HNS": hns_symbols, "RW": rowe_symbols, "MM": mariomon_symbols, "RE": recharged_emerald_symbols,
+               "GZ": glazed_symbols, "IMP": imperium_symbols, "DSM": dreamstone_symbols, "WSH": wishes_symbols, "MMY": monomyth_symbols, "TR3": team_rocket_v3_symbols, "QTZ": quetzal_symbols, "HNS": hns_symbols, "RW": rowe_symbols, "MM": mariomon_symbols, "RE": recharged_emerald_symbols,
                **{"EM" + lang: emerald_eu_symbols(lang) for lang in EMERALD_EU_ROMS},
                **{"FR" + lang: fireRed_symbols(p) for lang, p in fireRed_ports().items()}}
 

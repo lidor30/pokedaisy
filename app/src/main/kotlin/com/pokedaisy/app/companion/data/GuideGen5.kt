@@ -7,9 +7,10 @@ package com.pokedaisy.app.companion.data
 const val GEN5_VAR_MONTH = 0x10001
 
 /**
- * Pokémon Black's GUIDE data: HERE's wild Pokémon by zone and NEXT BOSS's teams, read from the cart by
- * scripts/gen_gen5_guide.py (GuideGen5BlackGen.kt: numbers only). A Gen 5 save's map is a zone (the reader's mapGroup
- * 0, mapNum the zone id).
+ * Pokémon Black's, White's, Black 2's and White 2's GUIDE data: HERE's wild Pokémon by zone and NEXT BOSS's teams, read
+ * from each cart by scripts/gen_gen5_guide.py (GuideGen5BlackGen.kt, GuideGen5WhiteGen.kt, GuideGen5Black2Gen.kt,
+ * GuideGen5White2Gen.kt: numbers only). A Gen 5 save's map is a zone
+ * (the reader's mapGroup 0, mapNum the zone id).
  *
  * The seasons are the month's: January, May and September are spring, then summer, autumn and winter in turn
  * (season = (month - 1) % 4). A place whose Pokémon change with them has four wild sets (spring first; the Moor of
@@ -162,7 +163,10 @@ class Gen5World(wildRaw: List<String>, bossesRaw: List<String>) : GuideWorld {
     }
 }
 
-val BLACK_WORLD = Gen5World(BW_WILD_RAW, BW_BOSSES_RAW)
+val BLACK_WORLD = Gen5World(BLACK_WILD_RAW, BLACK_BOSSES_RAW)
+val WHITE_WORLD = Gen5World(WHITE_WILD_RAW, WHITE_BOSSES_RAW)
+val BLACK2_WORLD = Gen5World(BLACK2_WILD_RAW, BLACK2_BOSSES_RAW)
+val WHITE2_WORLD = Gen5World(WHITE2_WILD_RAW, WHITE2_BOSSES_RAW)
 
 /** A boss NEXT BOSS shows: done once [done] is set, or by [doneIf]; its team is [world]'s for boss [key]. */
 internal fun gen5Boss(world: Gen5World, title: String, where: String, key: String, done: Int, doneIf: ((SaveProgress) -> Boolean)? = null): Boss =

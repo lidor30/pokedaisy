@@ -15,10 +15,12 @@ val movesAreVanilla: Boolean get() =
     (activeGame == GameKind.FIRERED && runningFireRedHack?.moves.isNullOrEmpty()) ||
         (activeGame == GameKind.EMERALD && runningEmeraldHack == null)
 
-/** [id]'s [MoveStats]; null where the running game's moves aren't the original games'. */
+/** [id]'s [MoveStats]; null where the running game's moves aren't the original games'. A randomized retail ROM's
+ * ([runningRandomized]) are its own, read from it. */
 fun moveStats(id: Int): MoveStats? = if (!movesAreVanilla) null
+    else runningRandomized?.moveStats?.let { it.getOrNull(id)?.takeIf { id > 0 } }
     // Emerald Legacy rebalanced ~130 moves (accuracy, PP, a few effects): its own table, read from its ROM.
-    else (if (emeraldLegacy) moveStatsEmeraldLegacy else vanillaMoveStats).getOrNull(id)?.takeIf { id > 0 }
+    ?: (if (emeraldLegacy) moveStatsEmeraldLegacy else vanillaMoveStats).getOrNull(id)?.takeIf { id > 0 }
 
 /** The original games' HMs (CUT, FLY, SURF, STRENGTH, FLASH, ROCK SMASH, WATERFALL, DIVE): the
  * game won't let a Pokémon forget one, so the advice never suggests it. */

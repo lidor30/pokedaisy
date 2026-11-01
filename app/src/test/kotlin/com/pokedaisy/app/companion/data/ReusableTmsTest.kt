@@ -36,6 +36,7 @@ class ReusableTmsTest {
         "Pokemon Unbound (v2.1.1.1).gba" to 0,
         "Pokemon SoulGold (v1.1.4).gba" to 0,
         "Pokemon SoulGold (v1.2) (Alt 2).gba" to 0,
+        "Pokemon SoulGold (v1.2.1).gba" to 0,
         "Pokemon Glazed (v9.2.0).gba" to 0,
         "Pokemon Lazarus (v2.0).gba" to 0,
     )

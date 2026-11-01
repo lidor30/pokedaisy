@@ -95,7 +95,7 @@ class ShinyOddsTest {
 
     /** The hacks (verify_shiny.py's passes): each a hack the library knows by that hash, at a shiny check of 8 or more. */
     @Test fun hackHashesAreKnownHacks() {
-        assertEquals(44, ShinyOdds.HACK_SHINY_BELOW.size)
+        assertEquals(46, ShinyOdds.HACK_SHINY_BELOW.size)
         assertTrue(ShinyOdds.PLAINTEXT_SHA1S.all { it in ShinyOdds.HACK_SHINY_BELOW })
         assertTrue(ShinyOdds.NATIONAL_SHA1S.all { it in ShinyOdds.HACK_SHINY_BELOW })
         for ((sha1, below) in ShinyOdds.HACK_SHINY_BELOW) {

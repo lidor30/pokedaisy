@@ -1,0 +1,36 @@
+# Pokémon Monomyth v1.0: boot as monomyth.txt, then a scripted trainer battle - trainerbattle
+# TRAINER_BATTLE_SINGLE_NO_INTRO_TEXT (5C 03), trainer 1 (BUG CATCHER TIM: SPINARAK Lv3, JOLTIK Lv4), local id 0, lose text
+# = a place name (0x08A16224), then end - run through ScriptContext_SetupScript (0x08090871); A past "would like to
+# battle!" and the send-outs, dumped at the action menu.
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press A
+wait 300
+poke32 0x0203c800 0x0001035c
+poke32 0x0203c804 0x62240000
+poke32 0x0203c808 0x0208a121
+call 0x08090871 0x0203c800
+wait 150
+press A
+wait 150
+press A
+wait 150
+press A
+wait 150
+press A
+wait 150

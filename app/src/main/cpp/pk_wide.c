@@ -56,17 +56,21 @@
 
 // Each engine's layout.
 static const int32_t FAMILIES[][PK_WIDE_CONFIG_SIZE - PK_WIDE_ADDRS] = {
-    [PK_WIDE_FAMILY_FR] = { 640, 0x14, 4, 29, 3, 1, 0, 0x439, 4, 4, 0x8E0, 0xEE0, 0x1000, 7, 2 },    // u32 attributes, layer in bits 29-30; sized border
-    [PK_WIDE_FAMILY_EM] = { 512, 0x10, 2, 12, 0xF, 0, 0, 0x439, 4, 4, 0xC70, 0x1270, 0x139C, 6, 2 },  // u16 attributes, layer in bits 12-15; 2x2 border
+    [PK_WIDE_FAMILY_FR] = { 640, 0x14, 4, 29, 3, 1, 0, 0x439, 4, 4, 0x8E0, 0xEE0, 0x1000, 7, 2, 0, 64 },    // u32 attributes, layer in bits 29-30; sized border
+    [PK_WIDE_FAMILY_EM] = { 512, 0x10, 2, 12, 0xF, 0, 0, 0x439, 4, 4, 0xC70, 0x1270, 0x139C, 6, 2, 0, 64 },  // u16 attributes, layer in bits 12-15; 2x2 border
     // Emerald's map; a static SaveBlock1, a longer gMain, 16-bit subsprite offsets.
-    [PK_WIDE_FAMILY_RS] = { 512, 0x10, 2, 12, 0xF, 0, 1, 0x43D, 8, 4, 0xC20, 0x1220, 0x1340, 6, 2 },
+    [PK_WIDE_FAMILY_RS] = { 512, 0x10, 2, 12, 0xF, 0, 1, 0x43D, 8, 4, 0xC20, 0x1220, 0x1340, 6, 2, 0, 64 },
     // Japanese Ruby / Sapphire: the static SaveBlock1, but gMain's inBattle and 8-bit subsprites as later games.
-    [PK_WIDE_FAMILY_RS_JA] = { 512, 0x10, 2, 12, 0xF, 0, 1, 0x439, 4, 4, 0xC20, 0x1220, 0x1340, 6, 2 },
+    [PK_WIDE_FAMILY_RS_JA] = { 512, 0x10, 2, 12, 0xF, 0, 1, 0x439, 4, 4, 0xC20, 0x1220, 0x1340, 6, 2, 0, 64 },
     // pokeemerald-expansion: Emerald's map and sprites, ObjectEvent.spriteId at +0x23, 16-bit template graphics ids;
     // each hack's SaveBlock1 its own (PK_WIDE_SB1_OFFSETS).
-    [PK_WIDE_FAMILY_EX] = { 512, 0x10, 2, 12, 0xF, 0, 0, 0x439, 4, 0x23, 0, 0, 0, 6, 3 },
+    [PK_WIDE_FAMILY_EX] = { 512, 0x10, 2, 12, 0xF, 0, 0, 0x439, 4, 0x23, 0, 0, 0, 6, 3, 0, 64 },
     // FireRed's map (its tilesets, attributes and sized border) with expansion's objects (Recharged Yellow).
-    [PK_WIDE_FAMILY_FR_EX] = { 640, 0x14, 4, 29, 3, 1, 0, 0x439, 4, 0x23, 0, 0, 0, 7, 3 },
+    [PK_WIDE_FAMILY_FR_EX] = { 640, 0x14, 4, 29, 3, 1, 0, 0x439, 4, 0x23, 0, 0, 0, 7, 3, 0, 64 },
+    // Monomyth: Emerald's map and objects; its struct Main keeps inBattle 0x17 bytes before callback1 (PK_WIDE_GMAIN is
+    // callback1 there), its sFieldCameraOffset is four s16, it has 80 sprites (its snow and rain sit past 64); its SaveBlock1
+    // is its own (PK_WIDE_SB1_OFFSETS / _FLAGS_AT).
+    [PK_WIDE_FAMILY_MM] = { 512, 0x10, 2, 12, 0xF, 0, 0, -0x17, 4, 4, 0, 0, 0, 6, 2, 1, 80 },
 };
 
 // Every engine row and every ROM row fills its part of the config, no more, no less.
@@ -166,6 +170,9 @@ struct Ghost {
 };
 #define MAX_GHOSTS 256
 
+/** The most sprites a game has ([PK_WIDE_MAX_SPRITES]: 64, Monomyth 80). */
+#define SPRITES_CAP 128
+
 struct Snap {
     bool ok;
     int posX, posY, xTile, yTile;
@@ -179,8 +186,8 @@ struct Snap {
     struct Conn conn[MAX_CONNS];
     int nconn;
     uint16_t vmap[MAX_MAP_DATA];
-    uint8_t sprites[64 * 0x44];
-    uint8_t order[64];
+    uint8_t sprites[SPRITES_CAP * 0x44];   // gSprites' first PK_WIDE_MAX_SPRITES entries
+    uint8_t order[SPRITES_CAP];
     uint8_t objects[16 * 0x24];
     int coordX, coordY;
     struct Ghost ghosts[MAX_GHOSTS];   // the map's objects the game hasn't spawned (far off), front first
@@ -451,13 +458,16 @@ static void take(struct Snap* s) {
     s->group = (int) r8(pos + 4);
     s->num = (int) r8(pos + 5);
     uint32_t co = (uint32_t) C[PK_WIDE_CAMERA_OFFSET];
-    s->xTile = (int) r8(co + 2);
-    s->yTile = (int) r8(co + 3);
+    // { xPixelOffset, yPixelOffset, xTileOffset, yTileOffset }: u8s, or s16s in Monomyth (PK_WIDE_CAMERA_WIDE).
+    bool wideCam = C[PK_WIDE_CAMERA_WIDE] != 0;
+    s->xTile = wideCam ? (int) (uint8_t) s16(co + 4) : (int) r8(co + 2);
+    s->yTile = wideCam ? (int) (uint8_t) s16(co + 6) : (int) r8(co + 3);
     // FieldUpdateBgTilemapScroll: HOFS = xPixelOffset + sHorizontalCameraPan, VOFS = yPixelOffset +
     // sVerticalCameraPan + 8 (the pans follow the offset struct).
     uint32_t pan = (uint32_t) ((int32_t) co + C[PK_WIDE_PAN_OFF]);
-    s->href = ((int) r8(co) + s16(pan)) & 0x1FF;
-    s->vref = ((int) r8(co + 1) + s16(pan + 2) + 8) & 0x1FF;
+    int xPixel = wideCam ? s16(co) : (int) r8(co), yPixel = wideCam ? s16(co + 2) : (int) r8(co + 1);
+    s->href = (xPixel + s16(pan)) & 0x1FF;
+    s->vref = (yPixel + s16(pan + 2) + 8) & 0x1FF;
     uint32_t vm = (uint32_t) C[PK_WIDE_VMAP];
     s->vw = s32(vm);
     s->vh = s32(vm + 4);
@@ -492,8 +502,10 @@ static void take(struct Snap* s) {
         readConnections(s, s->conn[i].header, s->conn[i].w, s->conn[i].h, s->conn[i].ox, s->conn[i].oy, 2);
 
     const uint8_t* p;
-    if ((p = mem((uint32_t) C[PK_WIDE_SPRITES], sizeof(s->sprites)))) memcpy(s->sprites, p, sizeof(s->sprites));
-    if ((p = mem((uint32_t) C[PK_WIDE_SPRITE_ORDER], sizeof(s->order)))) memcpy(s->order, p, sizeof(s->order));
+    uint32_t nspr = (uint32_t) C[PK_WIDE_MAX_SPRITES];
+    memset(s->order, 0xFF, sizeof(s->order));
+    if ((p = mem((uint32_t) C[PK_WIDE_SPRITES], nspr * 0x44))) memcpy(s->sprites, p, nspr * 0x44);
+    if ((p = mem((uint32_t) C[PK_WIDE_SPRITE_ORDER], nspr))) memcpy(s->order, p, nspr);
     if ((p = mem((uint32_t) C[PK_WIDE_OBJECT_EVENTS], sizeof(s->objects)))) memcpy(s->objects, p, sizeof(s->objects));
     s->coordX = s16((uint32_t) C[PK_WIDE_COORD_OFFSET]);
     s->coordY = s16((uint32_t) C[PK_WIDE_COORD_OFFSET_Y]);
@@ -1109,17 +1121,18 @@ static void hardwareWrap(struct Piece* p) {
 /** The OAM entries the game would build if the screen were wider, front first (BuildOamBuffer +
  * AddSubspritesToOamBuffer), positions kept as s16 instead of OAM's 9 / 8 bits. */
 static int buildPieces(const struct Snap* s, struct Piece* out) {
-    bool offscreen[64] = { false };   // sprites the game hid only for being off screen
+    int nspr = C[PK_WIDE_MAX_SPRITES];
+    bool offscreen[SPRITES_CAP] = { false };   // sprites the game hid only for being off screen
     for (int i = 0; i < 16; i++) {
         const uint8_t* oe = s->objects + 0x24 * i;
         uint32_t flags = (uint32_t) oe[0] | (uint32_t) oe[1] << 8;
         int id = C[PK_WIDE_SPRITE_ID_OFF] >= 0 && C[PK_WIDE_SPRITE_ID_OFF] < 0x24 ? oe[C[PK_WIDE_SPRITE_ID_OFF]] : 0xFF;
-        if ((flags & 1) && (flags & (1 << 14)) && !(flags & (1 << 13)) && id < 64) offscreen[id] = true;
+        if ((flags & 1) && (flags & (1 << 14)) && !(flags & (1 << 13)) && id < nspr) offscreen[id] = true;
     }
     int n = 0;
-    for (int k = 0; k < 64 && n < 256; k++) {
+    for (int k = 0; k < nspr && n < 256; k++) {
         int id = s->order[k];
-        if (id >= 64) continue;
+        if (id >= nspr) continue;
         const uint8_t* sp = s->sprites + 0x44 * id;
         uint32_t fl = le16(sp + 0x3E);
         if (!(fl & 1) || ((fl & 4) && !offscreen[id])) continue;   // !inUse, or invisible for its own reasons
@@ -2356,7 +2369,7 @@ static void allowRunning(void) {
     uint32_t off;
     uint8_t bit;
     if (F.family == PK_WIDE_FAMILY_FR || F.family == PK_WIDE_FAMILY_FR_EX) { off = 0x19; bit = 2; }
-    else if (F.family == PK_WIDE_FAMILY_EM || F.family == PK_WIDE_FAMILY_EX) { off = 0x1A; bit = 4; }
+    else if (F.family == PK_WIDE_FAMILY_EM || F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_MM) { off = 0x1A; bit = 4; }
     else return;
     uint8_t* p = (uint8_t*) mem(F.mapHeader + off, 1);
     if (p && !(*p & bit)) *p |= bit;
@@ -2457,6 +2470,43 @@ static bool textUp(void) {
             if (le16(vram + scr + 2 * (uint32_t) (ry * 32 + rx)) & 0x3FF) n++;
         }
     return n >= 8;
+}
+
+/** BG0 is what the frame shows at screen pixel (x, y): it's opaque there and the frame has its colour (BG0 can sit
+ * opaque under the map: Unbound's START menu leaves tiles beside its middle windows). Line y's registers. */
+static bool barEdge(int x, int y) {
+    int pal, ci = (windowLayers(x, y) & 1) ? bgPixel(0, x, y, &pal) : 0;
+    if (!ci) return false;
+    uint16_t c = P[pal + ci];
+    uint32_t v = (uint32_t) (c & 0x1F) << 3 | (uint32_t) ((c >> 5) & 0x1F) << 11 | (uint32_t) ((c >> 10) & 0x1F) << 19;
+    v |= (v >> 5) & 0x070707;   // mColorFrom555, untinted: DAY AND NIGHT leaves the text windows' palettes alone
+    uint32_t f = realFrame[y * PK_WIDE_W + x] & 0xFFFFFF;
+    return f == v || f == (color(c, 0) & 0xFFFFFF);
+}
+
+/** BG0 is opaque all the way across line y (a bar, not two windows that each touch an edge: Unbound's POKéDEX label
+ * and clock reach the screen's edges with the field between them). Sprites over it (the bar's icons) don't matter. */
+static bool bg0Across(int y) {
+    for (int x = 1; x < PK_WIDE_W - 1; x++) {
+        int pal;
+        if (!(windowLayers(x, y) & 1) || !bgPixel(0, x, y, &pal)) return false;
+    }
+    return true;
+}
+
+/** The rows a full-width bar on BG0 crosses: BG0 shows at both of the screen's edges (Unbound's START menu, its quest
+ * bar over the field and its icons under it). Past the edges they're holes - the row's own edge pixel goes on, as a
+ * battle's text box band does - instead of the map going on beside the bar. Line by line, as the PPU drew them. */
+static void markBarRows(int x0, int y0, int w, int h) {
+    for (int j = 0; j < h; j++) {
+        int y = y0 + j;
+        if (y < 0 || y >= PK_WIDE_H) continue;
+        useLine(y);
+        if (!(io(0) & 0x100) || !barEdge(0, y) || !barEdge(PK_WIDE_W - 1, y) || !bg0Across(y)) continue;
+        for (int x = 0; x < w; x++)
+            if (!onFrame(x0 + x, y)) holeBuf[j][x] = 1;
+    }
+    useLive();
 }
 
 /** A screen effect is up: lines drawn with their own scroll or windows (a transition's slices, wedges, bands). */
@@ -2780,6 +2830,7 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
         if (valid) {
             const struct Snap* s = &snaps[bestSnap];
             drawRegion(s, bestCx, bestCy, bestH, bestV, v.x, v.y, v.x + v.w, v.y + v.h, true, &raw[0][0], BUF_W, alpha);
+            if (!overlay) markBarRows(v.x, v.y, v.w, v.h);   // FireRed's map preview keeps its dimmed map around it
         } else if (battle) {
             drawBattleRegion(v.x, v.y, v.x + v.w, v.y + v.h, true, &raw[0][0], BUF_W, alpha);
         } else {

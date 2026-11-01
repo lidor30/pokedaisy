@@ -199,6 +199,15 @@ tasks.withType<Test> {
     // Tests that read real ROMs skip without them (Assume). Point them at a folder of
     // the player's own dumps with POKEDAISY_ROM_DIR (the release workflow's runner does).
     System.getenv("POKEDAISY_ROM_DIR")?.takeIf { it.isNotBlank() }?.let { systemProperty("romDir", it) }
+    // `make test-quick` (-Pquick): the everyday run. The Paparazzi renders assert nothing and were 86% of the
+    // full run's time; BestEffortTest scans 26 whole ROMs. The forks run side by side (still one class each).
+    if (project.hasProperty("quick")) {
+        filter {
+            excludeTestsMatching("*ScreenshotTest")
+            excludeTestsMatching("*BestEffortTest")
+        }
+        maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+    }
 }
 
 dependencies {

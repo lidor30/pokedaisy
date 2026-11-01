@@ -37,6 +37,9 @@ object NewFeatures {
     /** The MORE tab right of the gear (companion.ui.MoreScreen): its row is SETTINGS > TAB BAR. */
     const val MORE_TAB = "more_tab"
 
+    /** The BOXES tab (companion.ui.BoxesScreen): the PC's boxes, retail FireRed first. Its rows are SETTINGS > TAB BAR's. */
+    const val BOXES_TAB = "boxes_tab"
+
     /** SETTINGS > TOUCH CONTROLS: layouts, size, opacity, extra buttons and EDIT LAYOUT (companion.ui.TouchControls). */
     const val TOUCH_CONTROLS = "touch_controls"
 
@@ -45,6 +48,8 @@ object NewFeatures {
 
     /** SETTINGS > REUSABLE TMS: a TM stays in the bag after it teaches a move (companion.data.ReusableTms). */
     const val REUSABLE_TMS = "reusable_tms"
+    /** SETTINGS > TRADE EVOLUTIONS: a trade evolution from the Pokémon's summary (companion.data.TradeEvolution). */
+    const val TRADE_EVOLUTIONS = "trade_evolutions"
     /** SETTINGS > SHINY ODDS: a wild foe shiny at the odds picked (companion.data.ShinyOdds). */
     const val SHINY_ODDS = "shiny_odds"
 
@@ -84,6 +89,7 @@ object NewFeatures {
 
     /** SETTINGS > DS RESOLUTION: a DS game's 3D drawn at 2x to 8x on the GPU (nds/pk_nds_gl.h). */
     const val DS_RESOLUTION = "ds_resolution"
+    const val DS_CPU_BOOST = "ds_cpu_boost"
 
     /** SETTINGS > APP > TIPS: a card now and then about a feature the player hasn't found (FeatureTips). */
     const val TIPS = "tips"
@@ -91,14 +97,36 @@ object NewFeatures {
     /** Settings > FOLDERS > ROMS FOLDERS and the library's + menu: several ROMs folders linked at once (RomFolder). */
     const val ROMS_FOLDERS = "roms_folders"
 
+    /** Settings > FOLDERS > SAVE BACKUPS: turn the start's save backups off, keep more or fewer, one folder for all. */
+    const val SAVE_BACKUPS = "save_backups"
+
     /** SETTINGS > DISCORD: PokeDaisy's Discord server, for help, bug reports, ideas and chat (companion.Discord). */
     const val DISCORD = "discord"
+
+    /** SETTINGS > SOUND: GAME VOLUME, MUTE GAME and HOTKEYS > MUTE (GameVolume). */
+    const val GAME_VOLUME = "game_volume"
+
+    /** Settings > LIBRARY > PATCH A ROM and the library's + menu: a .bps patch applied to a ROM the library has (RomPatchFlow). */
+    const val ROM_PATCH = "rom_patch"
+    /** Settings > TOOLS > LINK PLAY (and a GBA game's library menu): two to four GBA games on one link cable (LinkActivity). */
+    const val LINK_PLAY = "link_play"
+
+    /** SETTINGS > DS LAYOUT: a DS game's two screens on one (companion.DsLayout), its touch screen floating in over the
+     * game when wanted; the TOUCH SCREEN hotkey and the HUD's TOUCH button open it by hand. */
+    const val DS_LAYOUT = "ds_layout"
+
+    /** SETTINGS > BATTLE FOCUS (Prefs.battleFocus). */
+    const val BATTLE_FOCUS = "battle_focus"
+
+    /** SETTINGS > THEME on both screens: themes colour the app and the companion, limited-time ones by date (ui.theme.ThemeSpec). */
+    const val THEMES = "themes"
 
     /** Every feature that gets the tag. */
     val ALL = listOf(
         HUD, BATTLE_BUTTONS, GAME_HOTKEYS, COMPANION_WINDOW, HUD_PC, QUICK_MENU, HUD_REPEL, SINGLE_SCREEN, MORE_TAB, TOUCH_CONTROLS,
         COMPANION_TAB, REUSABLE_TMS, SHINY_ODDS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
-        FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, DISCORD,
+        FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
+        GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES,
     )
 
     private const val DAYS = 7

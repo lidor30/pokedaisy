@@ -36,7 +36,17 @@ class Hotkeys private constructor(
         // Pressed: the QUICK MENU opens or closes (companion.ui.QuickMenu); L3 by default.
         QUICK_MENU(tk("QUICK MENU")),
         // No default keys: opens the companion over the game on one screen, where COMPANION BUTTON can hide its tab.
-        COMPANION(tk("COMPANION"));
+        COMPANION(tk("COMPANION")),
+        // No default keys: the game's sound off and on again (SOUND > MUTE GAME, GameVolume).
+        MUTE(tk("MUTE")),
+        // A DS game on one screen: its touch screen floating over the game (DS LAYOUT), or closed again. L2.
+        TOUCH_SCREEN(tk("TOUCH SCREEN")),
+        // A DS game on one screen held sideways steps to the next DS LAYOUT (ONE SCREEN, SIDE BY SIDE...). R2.
+        DS_LAYOUT(tk("DS LAYOUT"));
+
+        /** A DS game's own ([TOUCH_SCREEN], [DS_LAYOUT]): it fires only where it does something ([dsActive]), and there
+         * it takes its keys from the other hotkeys on them - L2 / R2, SPEED CYCLE's and FF HOLD's in every other game. */
+        val dsOnly get() = this == TOUCH_SCREEN || this == DS_LAYOUT
 
         val prop get() = name.lowercase()
 
@@ -45,6 +55,8 @@ class Hotkeys private constructor(
             RESTART_GAME, CLOSE_APP -> NewFeatures.badge(NewFeatures.GAME_HOTKEYS)
             QUICK_MENU -> NewFeatures.badge(NewFeatures.QUICK_MENU)
             COMPANION -> NewFeatures.badge(NewFeatures.COMPANION_HOTKEY)
+            MUTE -> NewFeatures.badge(NewFeatures.GAME_VOLUME)
+            TOUCH_SCREEN, DS_LAYOUT -> NewFeatures.badge(NewFeatures.DS_LAYOUT)
             else -> null
         }
         val label get() = name.lowercase().replace('_', ' ').replaceFirstChar { it.uppercase() }
@@ -67,10 +79,16 @@ class Hotkeys private constructor(
     fun onKey(keyCode: Int, down: Boolean): List<Event> {
         if (down) held.add(keyCode) else held.remove(keyCode)
         val out = ArrayList<Event>()
+        // The DS hotkeys' chords while they're live: theirs, not the other hotkeys' on the same keys.
+        val dsTaken = chords.filter { (a, _) -> a.dsOnly && dsActive(a) }.values.flatten().toSet()
         for ((action, list) in chords) for (chord in list) {
             if (keyCode !in chord) continue
             val satisfied = held.containsAll(chord)
             val key = action to chord
+            // Only a new press is turned away: a chord already down still gets its release (an FF HOLD let go after
+            // the screen turned).
+            val off = if (action.dsOnly) !dsActive(action) else chord in dsTaken
+            if (off && key !in activeChords) continue
             if (satisfied && activeChords.add(key)) {
                 out.add(Event(action, true))
                 // A held-back key that fired a chord was the hotkey's: the game never gets it.
@@ -165,7 +183,15 @@ class Hotkeys private constructor(
             "exit_game" to "BUTTON_SELECT+BUTTON_START, ESCAPE",
             // The QUICK MENU (the user's pick, L3: no GBA button, so nothing in the game loses it).
             "quick_menu" to "BUTTON_THUMBL",
+            // A DS game on one screen (DS LAYOUT): L2 its touch screen over the game, R2 the next layout - the triggers, which
+            // a DS game doesn't use; elsewhere they stay SPEED CYCLE / FF HOLD ([Action.dsOnly]).
+            "touch_screen" to "BUTTON_L2, T",
+            "ds_layout" to "BUTTON_R2",
         )
+
+        /** Whether a DS hotkey ([Action.dsOnly]) does something now (PokeDaisyActivity: a DS game on one screen); off,
+         * its keys are the other hotkeys'. */
+        @Volatile var dsActive: (Action) -> Boolean = { false }
 
         /** Earlier defaults (X / Y saved and loaded states, R3 the next slot), swapped for [DEFAULTS]' where a file still
          * has them - nobody changed those. */
@@ -244,7 +270,8 @@ class Hotkeys private constructor(
         fun clashes(raw: Map<Action, List<String>>, action: Action, keyNames: Collection<String>): List<Action> {
             val chord = chordOf(keyNames.joinToString("+"))
             if (chord.isEmpty()) return emptyList()
-            return raw.filter { (other, chords) -> other != action && chords.any { chordOf(it) == chord } }.keys.toList()
+            // A DS hotkey and another one share keys by design (each has them in its own games).
+            return raw.filter { (other, chords) -> other != action && other.dsOnly == action.dsOnly && chords.any { chordOf(it) == chord } }.keys.toList()
         }
 
         private fun chordOf(s: String): Set<String> =

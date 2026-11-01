@@ -124,4 +124,33 @@ class BlackDecodeTest {
         assertEquals(listOf(350, 419, 160), t.enemyParty.map { it.species })
         assertEquals(0, t.enemyActive)
     }
+
+    @Test
+    fun `a full party - the sixth slot reads too`() {
+        // GitHub #328: a party of six showed nothing (the sixth slot was read 16 bytes past the party). The fixture has
+        // five, so its lead is copied into slot 6 (a Pokemon's encryption doesn't depend on its slot).
+        val fixture = FixtureMemoryReader.load("black")
+        val party = 0x0221BBACL + GEN5_BLACK.partyOff
+        val reader = object : MemoryReader {
+            override fun readCoreMemory(addr: Long, size: Int): ByteArray {
+                val out = fixture.readCoreMemory(addr, size)
+                for (i in out.indices) {
+                    val a = addr + i
+                    when {
+                        a == party + 4 -> out[i] = 6
+                        a in party + 8 + 5 * 0xDC until party + 8 + 6 * 0xDC ->
+                            out[i] = fixture.readCoreMemory(a - 5 * 0xDC, 1)[0]
+                    }
+                }
+                return out
+            }
+        }
+        activeGame = GameKind.BLACK
+        romLanguage = 'E'
+        romGameCode = ""
+        val t = readGen5Telemetry(reader, GEN5_BLACK)
+        assertEquals(listOf(381, 245, 639, 521, 612, 381), t.party.map { it.species })
+        assertEquals(302 to 302, t.party[5].hp to t.party[5].maxHp)
+        assertEquals(684_260L, t.money)
+    }
 }

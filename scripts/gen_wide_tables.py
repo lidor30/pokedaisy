@@ -271,6 +271,18 @@ HACKS = [
           ("1.9.7", "ed60654d7525ba005bfc8f799bf0ecba2ef08a2e", "recharged_yellow", 0x081A5898, 0x030049AC,
            0x0200B6D4, 0x08B3F134, 0x03005AD0, 0x02005CD4, 0x0203BC04, 0x0203D110, 0x0203CD48,
            dict(OBJ_GFX_INFO=0x0887EE9C, CONTROLS_LOCKED=0x03005EC4, OBJ_PALETTES=0x08890458, ELEVATION_PRIO=0x088935F4, OBJ_FACING=0x0887E9C4))]],
+    # Monomyth v1.0: its own closed pokeemerald build (game code MONE), its own family (MM: Emerald's map and objects, its
+    # struct Main and camera). find_wide_addrs.py's walk (--pos 4: SaveBlock1's pos is 4 bytes in) gave the map, sprites
+    # and objects; sFieldCameraOffset 0x0203824C is four s16 (pixel x / y, tile x / y), its pans 0xC on (0 and 32 on the
+    # field); sLockFieldControls 0x0203BF67 is what its ArePlayerFieldControlsLocked (0x080907E4) reads, 1 under a scripted
+    # lockall and 0 after releaseall. gMain's callback1 0x02020618, inBattle 0x17 before it. gPlayerAvatar isn't after
+    # gObjectEvents (BIKE / SURF read N/A).
+    dict(name="Monomyth v1.0", sha1="ae1c4be9be8d706bb989602bc05731203d42860d", family="MM", save="monomyth",
+         boot_file="monomyth.txt", script=0x08090871,
+         a=dict(VMAP=0x0203823C, MAP_HEADER=0x02038210, MAP_GROUPS=0x0886EED8, SAVE_BLOCK1_PTR=0x03001240, SB1_POS=4,
+                CAMERA_OFFSET=0x0203824C, PAN_OFF=0xC, OBJECT_EVENTS=0x02038280, SPRITES=0x020214D0, COORD_OFFSET=0x02022DA8,
+                COORD_OFFSET_Y=0x02022DAA, SPRITE_ORDER=0x02022A54, GMAIN=0x02020618, CONTROLS_LOCKED=0x0203BF67,
+                METATILE_SIZE=24)),
     # pokeemerald-expansion builds: scripts/find_wide_addrs.py's dumps (gMapHeader, gSaveBlock1Ptr and gMapGroups from
     # the app's NativeConfig / GuideTables), ScriptContext_SetupScript from their battle fixtures' READMEs.
     dict(name="Lazarus v2.0", sha1="7dcdc7e280bc4631487e13dd37e6e0cea04adea6", family="EX", save="lazarus_srm",
@@ -311,6 +323,16 @@ HACKS = [
              COORD_OFFSET_Y=0x0203BABC, SPRITE_ORDER=0x0203BA78, GMAIN=0x030055C0, PAN_OFF=-4, METATILE_SIZE=24,
              METATILE_MASK=0x7FF, PRIMARY_OVERRIDE=1024, OBJ_GFX_INFO=0x084FF660, OBJ_PALETTES=0x084F7F00,
              OBJ_FACING=0x084F4860, ELEVATION_PRIO=0x084F4CD0, **SG_OBJECTS)),
+    # v1.2.1's two builds (2 bytes of item data apart): IWRAM as before, EWRAM moved (gMapHeader / gObjectEvents +8,
+    # the sprite globals -0xD8: their dumps against the third v1.2 build's), its own ROM data.
+    *[dict(name=f"SoulGold v1.2.1{n}", sha1=sha, family="EX", save=save, boot=["press B", "wait 30"] * 3, script=0x0823BC04,
+           a=dict(VMAP=0x03002F58, MAP_HEADER=0x02003830, MAP_GROUPS=0x095CC3A8, SAVE_BLOCK1_PTR=0x030040C4,
+                  CAMERA_OFFSET=0x03000CB8, OBJECT_EVENTS=0x0200331C, SPRITES=0x0203BE68, COORD_OFFSET=0x0203B9E2,
+                  COORD_OFFSET_Y=0x0203B9E4, SPRITE_ORDER=0x0203B9A0, GMAIN=0x030055C0, PAN_OFF=-4, METATILE_SIZE=24,
+                  METATILE_MASK=0x7FF, PRIMARY_OVERRIDE=1024, OBJ_GFX_INFO=0x085070EC, OBJ_PALETTES=0x084FF98C,
+                  OBJ_FACING=0x084FC2EC, ELEVATION_PRIO=0x084FC75C, **SG_OBJECTS))
+      for n, sha, save in [("", "32988f918ca09923466ae3bc5bbfe5f2a771c728", "soulgold_v121"),
+                           (" (second build)", "dacb6e40e7f572ddefd2dfa10e99c0da6835b062", "soulgold_v121b")]],
     # Elite Redux: its own gcc pokeemerald (not expansion) with expansion-like objects (a u16 graphicsId at +4,
     # spriteId +0x23; templates' graphicsId a u16 at +2, byte 1 padding - no clones) and R.O.W.E.'s maps (12-bit metatile
     # ids, 2048 primary metatiles). Its GetObjectEventGraphicsInfo (inlined): ids 271.. from VAR_OBJ_GFX_ID_* (vars at
@@ -331,7 +353,7 @@ HACKS = [
 ]
 FAMILY = {"BPR": "FR", "BPG": "FR", "BPE": "EM", "AXV": "RS", "AXP": "RS"}
 # Hacks under a game code of their own (only taken by SHA-1, as every hack).
-HACK_CODES = {"PUV"}
+HACK_CODES = {"PUV", "MON"}
 KOTLIN = os.path.join(ROOT, "app", "src", "main", "kotlin", "com", "pokedaisy", "app")
 
 

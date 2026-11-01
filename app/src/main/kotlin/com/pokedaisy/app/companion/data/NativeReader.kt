@@ -145,6 +145,9 @@ data class NativeConfig(
     // gMain.inBattle's byte (bit 1): FireRed/Emerald's struct Main has it at
     // +0x439, Ruby/Sapphire's (4 bytes more before it) at +0x43D.
     val inBattleOff: Long = 0x439,
+    // gMain's frame counter (vblankCounter2) the telemetry carries: +0x24, but +0x20 where struct Main has no intrCheck
+    // before its counters (Monomyth's).
+    val frameCounterOff: Long = 0x24,
     // Where the save keeps the TRAINER CARD's data (TrainerCard.kt); null = no
     // CARD tab. Retail FireRed / LeafGreen / Emerald only:
     // the hacks below copy these configs and their saves differ.
@@ -177,18 +180,26 @@ data class NativeConfig(
     val shinyBelow: Int = 0,
     /** gMonPaletteTable, for the shiny icons where [pokedex] (which has it) isn't mapped: English FireRed rev 0. */
     val monPalettes: Long = 0,
+    /** gPokemonStoragePtr, for the BOXES tab ([readPcBoxes]); 0 = no tab. Set by the Poller on retail FireRed / LeafGreen /
+     * Emerald (gSaveBlock2Ptr + 4), in the config where a hack's was checked. */
+    val pokemonStoragePtr: Long = 0,
+    /** How the boxes behind [pokemonStoragePtr] are laid out (SoulGold's plaintext ones, CFRU's compressed ones). */
+    val pcStorage: PcStorageLayout = VANILLA_PC_STORAGE,
+    /** gMonIconTable points at Monomyth's packed icon blobs ([MonomythIcons]), not raw tiles. */
+    val monIconPacked: Boolean = false,
 ) {
     /** [partyMonLayout] with [shinyBelow] as its shiny check, where the layout has none of its own. */
     val monLayout: PartyMonLayout
         get() = if (shinyBelow > 0 && partyMonLayout.shinyBelow == 0) partyMonLayout.copy(shinyBelow = shinyBelow) else partyMonLayout
     val gMainInBattle get() = gMain + inBattleOff
-    val gMainVblankCtr get() = gMain + 0x24
+    val gMainVblankCtr get() = gMain + frameCounterOff
     val iconTables get() = IconTables(
         monIconTable, monIconPaletteTable, monIconPaletteIndices, itemIconTable,
         monIconStride, monPalIdxStride, monPalIdxMask, itemIconStride, itemPalCompressed,
         extraItemIconTable, extraItemFirst, extraItemCount, extraItemStride, monIconPalettes,
         // Shiny icons where the game's shiny check is known: recoloured through the battle palettes (decodeMonIcon).
         battlePalettes = if (shinyBelow > 0) pokedex?.palettes ?: monPalettes else 0L,
+        monIconPacked = monIconPacked,
     )
     val hasBattleInputAddrs get() = battlerControllerFuncs != 0L && handleInputChooseAction != 0L && handleInputChooseMove != 0L
 }
@@ -282,6 +293,13 @@ val TEAM_ROCKET_V3_BAG_POCKET_ORDER = listOf(
  * and Battle Items fold into the app's ITEMS, like the other hacks' extra pockets. */
 val DREAMSTONE_BAG_POCKET_ORDER = listOf(
     POCKET_ITEMS, POCKET_ITEMS, POCKET_ITEMS, POCKET_POKE_BALLS, POCKET_BERRIES, POCKET_TM_HM, POCKET_KEY_ITEMS,
+)
+
+/** Pokémon Monomyth's gBagPockets: eight, by its items' pocket bits (gItems +0x1F bits 3-5: 1 Items, 2 Medicine, 3 Poké
+ * Balls with the Apricorns, 4 held items, 5 TMs, 6 Berries, 7 Key Items, 8 none seen), as its bag screen shows them;
+ * Medicine and held items fold into the app's ITEMS. */
+val MONOMYTH_BAG_POCKET_ORDER = listOf(
+    POCKET_ITEMS, POCKET_ITEMS, POCKET_POKE_BALLS, POCKET_ITEMS, POCKET_TM_HM, POCKET_BERRIES, POCKET_KEY_ITEMS, POCKET_ITEMS,
 )
 
 // The game's notes: [config.recharged_yellow_v1_8_0] in gamedata/gen3/hacks/recharged_yellow.toml.
@@ -398,6 +416,7 @@ private var bagValid = false
  * next throttled refresh. */
 internal fun resetNativeBagCache() {
     bagTick = 0; lastBag = emptyList(); bagValid = false
+    synchronized(PcBoxes::class) { lastStorageRaw = null; lastStorage = null }
 }
 
 fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
@@ -420,6 +439,8 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
     var isTrainer = false
     var trainerRead = false
     var foeBattler = -1
+    // Which battler is at each position, so gBattlerPartyIndexes can be read by position.
+    val battlerAt = IntArray(4) { -1 }
     val battleMons = MutableList(4) { emptyBattleMon() }
     // battleMons == 0: not found for this game - show the battle as on with no
     // mons rather than decoding whatever sits at another build's address.
@@ -441,6 +462,7 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
             val pos = (posRaw?.get(battler)?.toInt()?.and(0xFF)?.takeIf { it < 4 }) ?: battler
             decodeBattleMon(monsRaw, battler * layout.size, layout, pidShiny)?.let { battleMons[pos] = it }
             if (pos == BATTLE_POS_OPPONENT_LEFT) foeBattler = battler
+            battlerAt[pos] = battler
         }
     }
 
@@ -477,11 +499,13 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
     GuideRandomizer.update(cfg.guideTables, progress)
     // gEnemyParty: a trainer's whole party (the FOE TEAM strip), or the wild
     // one(s) - read in every battle for the foes' IVs.
-    val battleFoes = if (inBattle && cfg.enemyParty != 0L) runCatching {
+    // Keep each foe's slot too: with two trainers the second team starts at slot 3, even if the first has a gap.
+    val foeRead = if (inBattle && cfg.enemyParty != 0L) runCatching {
         val raw = client.readCoreMemory(cfg.enemyParty, PARTY_SIZE * cfg.monStride)
-        (0 until PARTY_SIZE).mapNotNull { i -> decodePartyMon(raw, i * cfg.monStride, cfg.monLayout)?.masked(cfg) }
-            .filter { it.species != 0 }
+        (0 until PARTY_SIZE).mapNotNull { i -> decodePartyMon(raw, i * cfg.monStride, cfg.monLayout)?.masked(cfg)?.let { i to it } }
+            .filter { it.second.species != 0 }
     }.getOrDefault(emptyList()) else emptyList()
+    val battleFoes = foeRead.map { it.second }
     // A game whose battlers don't tell (Elite Redux and R.O.W.E. keep shininess as bits of the party record alone): the
     // foe's SHINY marks from its gEnemyParty record, matched by species, level and HP.
     if (cfg.shinyBelow > 0 && (cfg.battleMonLayout.personality < 0 || cfg.partyMonLayout.shinyBits >= 0)) {
@@ -504,6 +528,12 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
                 .takeIf { it in enemyParty.indices } ?: -1
         }
     }
+
+    // Party slot of each battler, by position. Only BATTLE FOCUS uses it, for double battles.
+    val battlerPartySlots = if (inBattle && cfg.battlerPartyIndexes != 0L) runCatching {
+        val raw = client.readCoreMemory(cfg.battlerPartyIndexes, 8)
+        battlerAt.map { b -> if (b < 0) -1 else u16le(raw, b * 2) }
+    }.getOrDefault(emptyList()) else emptyList()
 
     return Telemetry(
         frameCounter = frameCounter,
@@ -531,13 +561,146 @@ fun readNativeTelemetry(client: MemoryReader, cfg: NativeConfig): Telemetry {
         isTrainerBattle = if (inBattle && trainerRead) isTrainer else null,
         enemyActive = enemyActive,
         enemyNext = enemyNext,
+        battlerPartySlots = battlerPartySlots,
+        enemyPartySlots = if (isTrainer) foeRead.map { it.first } else emptyList(),
         money = readMoney(client, cfg),
     ).withMapShape(readMapShape(client, cfg.mapHeader, if (cfg.mapSecWide) MAP_HEADER_MAP_TYPE_OFF + 1 else MAP_HEADER_MAP_TYPE_OFF)).copy(
         playerGender = readPlayerGender(client, cfg),
         mapSecName = if (regionMapSectionId == 0) readHubName(client, cfg) else null,
         trainerCard = readTrainerCard(client, cfg),
+        pcBoxes = if (cfg.pokemonStoragePtr != 0L) readPcBoxes(client, cfg) else null,
     )
 }
+
+// struct PokemonStorage (pokefirered's include/pokemon_storage_system.h): u8 currentBox (+ 3 bytes of padding), then
+// boxes[14][30] of BoxPokemon, boxNames[14][9], boxWallpapers[14].
+const val PC_BOXES = 14
+const val PC_BOX_SLOTS = 30
+private const val PC_BOX_NAME_LEN = 9
+private const val PC_STORAGE_MONS_OFF = 4
+
+/**
+ * How a game keeps its PC boxes ([readPcBoxes]): vanilla's struct PokemonStorage behind [NativeConfig.pokemonStoragePtr]
+ * with [boxes] boxes of [recordSize]-byte records in [format], or CFRU's 25 boxes in its own places ([cfru]).
+ */
+data class PcStorageLayout(
+    val boxes: Int = PC_BOXES,
+    val recordSize: Int = BOX_MON_SIZE,
+    val format: BoxRecordFormat = BoxRecordFormat.ENCRYPTED,
+    val cfru: CfruStorage? = null,
+) {
+    /** The struct's bytes: current box, the records, the names, the wallpapers (CFRU's stays vanilla's size). */
+    val size: Int get() = if (cfru != null) CFRU_STORAGE_SIZE else PC_STORAGE_MONS_OFF + boxes * PC_BOX_SLOTS * recordSize + boxes * (PC_BOX_NAME_LEN + 1)
+}
+
+/**
+ * CFRU's PC (Complete-Fire-Red-Upgrade's src/pokemon_storage_system.c): 25 boxes of 58-byte CompressedPokemon. Boxes
+ * 1-19 fill vanilla's struct PokemonStorage at [storage] (its 14 x 30 x 80 bytes hold 19 x 30 x 58), boxes 20-25 sit at
+ * [extraBoxes] (one address per box); boxes 1-14's names and wallpapers are vanilla's, boxes 15-25's names count back
+ * from box 1's (9 bytes each) and their wallpapers follow box 19's last record. The game's code hardcodes it all, so
+ * the storage pointer must lead to [storage]. A record keeps no PP: they're worked out from the moves' base PP in the
+ * ROM's gBattleMoves ([movesTable], 12-byte records, PP at +4), as the game does (CalculatePPWithBonus).
+ */
+data class CfruStorage(val storage: Long, val extraBoxes: List<Long>, val movesTable: Long)
+
+const val CFRU_PC_BOXES = 25
+private const val CFRU_BOXES_IN_PLACE = 19
+private const val CFRU_RECORD = 58
+private const val CFRU_NAMES_OFF = 0x8344
+private const val CFRU_WALLPAPERS_OFF = 0x83C2
+private const val CFRU_STORAGE_SIZE = CFRU_WALLPAPERS_OFF + PC_BOXES
+private const val CFRU_EXTRA_WALLPAPERS_OFF = PC_STORAGE_MONS_OFF + CFRU_BOXES_IN_PLACE * PC_BOX_SLOTS * CFRU_RECORD
+
+val VANILLA_PC_STORAGE = PcStorageLayout()
+
+/** SoulGold: 15 boxes of its 76-byte plaintext BoxPokemon (its 96-byte struct Pokemon up to the status; headless on the
+ * user's save, `soulgold_party`: 31 boxed Pokémon, each one's stats worked out the game's way equal to a party copy's). */
+val SOULGOLD_PC_STORAGE = PcStorageLayout(boxes = 15, recordSize = 0x4C, format = BoxRecordFormat.PLAIN)
+
+/** Unbound (CFRU's own addresses): checked headless - the game's SendMonToPC put a party Pokémon at box 1's, 20's, 23's
+ * and 25's place with the current box set before each, record for record equal to it. */
+val UNBOUND_PC_STORAGE = PcStorageLayout(
+    boxes = CFRU_PC_BOXES, recordSize = CFRU_RECORD, format = BoxRecordFormat.CFRU,
+    cfru = CfruStorage(
+        storage = 0x02029314L,
+        extraBoxes = listOf(0x0203CB44L, 0x0203CB44L + 30 * 58, 0x0203CB44L + 60 * 58, 0x02027434L, 0x02027434L + 30 * 58, 0x02024638L),
+        movesTable = 0x08A769AFL,
+    ),
+)
+
+// The last storage read and what it decoded to: the boxes only change while the player is at a PC, so a sample whose
+// bytes are the same hands back the same object (the BOXES tab then has nothing to redraw).
+private var lastStorageRaw: ByteArray? = null
+private var lastStorage: PcBoxes? = null
+
+private fun MemoryReader.readInto(at: Long, raw: ByteArray, off: Int, len: Int) {
+    var o = 0
+    while (o < len) {
+        val n = minOf(4096, len - o)
+        readCoreMemory(at + o, n).copyInto(raw, off + o)
+        o += n
+    }
+}
+
+/**
+ * The PC's boxes through [NativeConfig.pokemonStoragePtr] laid out as [NativeConfig.pcStorage] says, each slot decoded
+ * like a party member's (gender, egg, shiny) with its level and stats worked out ([decodeBoxMon]: base stats and growth
+ * rates from the ROM's DEX tables). Null when the pointer doesn't lead into EWRAM (or, CFRU, to its storage).
+ */
+internal fun readPcBoxes(c: MemoryReader, cfg: NativeConfig): PcBoxes? = runCatching {
+    val layout = cfg.pcStorage
+    val cfru = layout.cfru
+    val rec = layout.recordSize
+    val at = u32le(c.readCoreMemory(cfg.pokemonStoragePtr, 4), 0)
+    if (at !in 0x02000000L until 0x04000000L - layout.size) return null
+    if (cfru != null && at != cfru.storage) return null
+    // The struct, then (CFRU) its boxes kept elsewhere, one after another.
+    val boxBytes = PC_BOX_SLOTS * rec
+    val raw = ByteArray(layout.size + (cfru?.extraBoxes?.size ?: 0) * boxBytes)
+    c.readInto(at, raw, 0, layout.size)
+    cfru?.extraBoxes?.forEachIndexed { i, a -> c.readInto(a, raw, layout.size + i * boxBytes, boxBytes) }
+    synchronized(PcBoxes::class) {
+        if (raw.contentEquals(lastStorageRaw)) lastStorage?.let { return it }
+    }
+    val dex = cfg.pokedex
+    val base = { species: Int -> dex?.let { PokedexSource.baseStats(it, species) } }
+    val growth = { species: Int -> dex?.let { PokedexSource.growthRate(it, species) } }
+    val pp = HashMap<Int, Int?>()
+    val movePp = { move: Int ->
+        pp.getOrPut(move) {
+            cfru?.let { runCatching { c.readCoreMemory(it.movesTable + 12L * move + 4, 1)[0].toInt() and 0xFF }.getOrNull() }
+        }
+    }
+    fun slot(b: Int, s: Int): Int = when {
+        cfru == null || b < CFRU_BOXES_IN_PLACE -> PC_STORAGE_MONS_OFF + (b * PC_BOX_SLOTS + s) * rec
+        else -> layout.size + ((b - CFRU_BOXES_IN_PLACE) * PC_BOX_SLOTS + s) * rec
+    }
+    val namesOff = PC_STORAGE_MONS_OFF + layout.boxes * PC_BOX_SLOTS * rec
+    fun name(b: Int): Int = when {
+        cfru == null -> namesOff + b * PC_BOX_NAME_LEN
+        b < PC_BOXES -> CFRU_NAMES_OFF + b * PC_BOX_NAME_LEN
+        else -> CFRU_NAMES_OFF - (b - PC_BOXES + 1) * PC_BOX_NAME_LEN
+    }
+    fun wallpaper(b: Int): Int = when {
+        cfru == null -> namesOff + layout.boxes * PC_BOX_NAME_LEN + b
+        b < PC_BOXES -> CFRU_WALLPAPERS_OFF + b
+        else -> CFRU_EXTRA_WALLPAPERS_OFF + (b - PC_BOXES)
+    }
+    val boxes = List(layout.boxes) { b ->
+        PcBox(
+            name = Gen3Text.decode(raw, name(b), PC_BOX_NAME_LEN),
+            wallpaper = raw[wallpaper(b)].toInt() and 0xFF,
+            mons = List(PC_BOX_SLOTS) { s ->
+                val o = slot(b, s)
+                decodeBoxMon(raw, o, cfg.monLayout, base, layout.format, growth, movePp)
+                    ?.masked(cfg)?.withNativeGender(raw, o, cfg.partyMonLayout, cfg.eggSpecies)
+            },
+        )
+    }
+    PcBoxes(currentBox = (raw[0].toInt() and 0xFF).coerceIn(0, layout.boxes - 1), boxes = boxes).also {
+        synchronized(PcBoxes::class) { lastStorageRaw = raw; lastStorage = it }
+    }
+}.getOrNull()
 
 /**
  * Pokémon Quetzal's bag: no gBagPockets, but a "BAG3" bit stream in SaveBlock1
@@ -729,6 +892,7 @@ private fun Mon.withNativeGender(raw: ByteArray, off: Int, layout: PartyMonLayou
         GameKind.ELITE_REDUX -> genderRatiosEliteRedux
         GameKind.TEAM_ROCKET -> if (teamRocketV3) genderRatiosTeamRocketV3 else genderRatiosTeamRocket
         GameKind.WISHES -> genderRatiosWishes
+        GameKind.MONOMYTH -> genderRatiosMonomyth
         GameKind.DREAMSTONE -> genderRatiosDreamstone
         else -> return this
     }

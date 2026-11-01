@@ -2,8 +2,8 @@
 title: Guide
 summary: The GUIDE tab's hints, what's in the area you're in, the next gym leader's team, evolutions and the hand-written help pages.
 section: companion
-order: 7
-keywords: [walkthrough, hints, spoilers, help, stuck, where, encounters, wild, gym, leader, boss, items, hidden, gifts, trades, evolve, trees, clock, time of day, rematch, season, spring, summer, autumn, winter]
+order: 8
+keywords: [randomizer, randomized, walkthrough, hints, spoilers, help, stuck, where, encounters, wild, gym, leader, boss, items, hidden, gifts, trades, evolve, trees, clock, time of day, rematch, season, spring, summer, autumn, winter]
 ---
 
 The GUIDE tab is there for the moments you'd normally open a walkthrough: you're stuck, you want to know what lives on this route, or you'd like to see the next gym leader's team before walking in. It reads your game as you play, so it knows where you are, what you've already picked up and which bosses you've beaten.
@@ -35,7 +35,7 @@ In Crystal and Polished Crystal the grass list follows your game's clock (mornin
 
 In Lazarus many outdoor areas have different Pokémon by day and at night. Its night runs from 8 in the evening to 7 in the morning on your game's clock. HERE lists the ones out right now, says under `GRASS / CAVE` whether that's `DAY` or `NIGHT`, and adds an `AT NIGHT` (or `BY DAY`) section for the ones that only show up at the other time. The line at the top that counts how many you've caught here counts both.
 
-In Black the wild Pokémon change with the seasons, and the season changes every month: January, May and September are spring, then summer, autumn and winter in turn. The line under `GRASS / CAVE` says which season HERE shows, going by your device's date.
+In Black, White, Black 2 and White 2 the wild Pokémon change with the seasons, and the season changes every month: January, May and September are spring, then summer, autumn and winter in turn. The line under `GRASS / CAVE` says which season HERE shows, going by your device's date.
 - **PEOPLE**: anyone in the area who gives you an item, a Pokémon or an egg, and in-game trades (what they offer and what they want for it). Some of them want something done first.
 - **ITEMS**: items lying on the ground and hidden ones. A hidden item shows as `HIDDEN ITEM` until you tap it: the hint says roughly where it's buried, the answer names it.
 
@@ -55,7 +55,7 @@ Each of their Pokémon is its own entry, with its level showing:
 
 When every boss is beaten, the page says `ALL DONE`.
 
-Some hacks give a boss more than one team, for example one per difficulty in Unbound. Those get a section for each team, so look at the one you're playing on. In Red, Blue and Yellow your rival's team as champion depends on what happened at the start of the game. Once your save has settled it, NEXT BOSS shows that team; before then it shows each team the game could pick. In Polished Crystal the Elite Four and the champion bring stronger teams once you hold all 16 badges, and NEXT BOSS lists that rematch after the Kanto gyms.
+Some hacks give a boss more than one team, for example one per difficulty in Unbound. Those get a section for each team, so look at the one you're playing on. In Red, Blue and Yellow your rival's team as champion depends on what happened at the start of the game. Once your save has settled it, NEXT BOSS shows that team; before then it shows each team the game could pick. In Polished Crystal the Elite Four and the champion bring stronger teams once you hold all 16 badges, and NEXT BOSS lists that rematch after the Kanto gyms. In Black 2 and White 2 every leader, the Elite Four and the champion show two teams: the normal game's and Challenge Mode's. Once you've entered the Hall of Fame, the Elite Four and the champion switch to their stronger second-round teams.
 
 ## EVOLUTIONS
 
@@ -81,13 +81,22 @@ The pages a game gets depend on how much of it has been mapped. The [supported g
 | --- | --- |
 | FireRed, LeafGreen, Emerald, Ruby, Sapphire | Everything: HERE with all its sections, NEXT BOSS, EVOLUTIONS, TIPS, WHERE IS and STUCK? |
 | Unbound, Radical Red, Heart and Soul, Odyssey, Gaia, Amethyst, Celia's hack, Orange Islands, Ultra Violet, FireRed Rocket Edition, Ash Gray, Ghost Grey, Sword and Shield Ultimate Plus, GS Chronicles, Recharged Yellow, Emerald Legacy, Red, Blue, Yellow, Crystal, Polished Crystal | NEXT BOSS, HERE with people and items, a WHERE IS built from the maps and, for most of them, a few TIPS |
-| Lazarus, Seaglass, Too Many Types 2, SoulGold, Glazed, Emerald Imperium, Quetzal (both releases, and Moemon Quetzal), Super Mariomon, Recharged Emerald, Dreamstone Mysteries | NEXT BOSS and the wild Pokémon in HERE |
+| Lazarus, Seaglass, Too Many Types 2, SoulGold, Glazed, Emerald Imperium, Quetzal (both releases, and Moemon Quetzal), Super Mariomon, Recharged Emerald, Dreamstone Mysteries, Monomyth | NEXT BOSS and the wild Pokémon in HERE |
 | Elite Redux | The wild Pokémon in HERE. Its gym leaders pick one of several teams when the battle starts, so there's no NEXT BOSS |
 | Team Rocket Edition: Dragonsden Version | The wild Pokémon in HERE. Its story takes you around in its own order, so there's no NEXT BOSS yet |
 | Wishes of Tomorrow | The wild Pokémon in HERE, swapped the way your save swaps them when you play with its randomizer on. Its story takes you around its own region in its own order, so there's no NEXT BOSS yet |
 | Emerald Rogue, R.O.W.E., PureRed, PureBlue, Gold, Silver, Crystal Clear, Prism | No guide yet |
 
 The original games' hand-written pages follow the app's language when you play a French, German, Italian, Spanish or Japanese copy. Most hacks' pages are in English.
+
+## Randomized games
+
+On a FireRed or Emerald you've randomized (see [supported games](supported-games.md)), the GUIDE reads the randomized game, not the original:
+
+- `HERE` lists the wild Pokémon the randomizer put on the route, and the items lying around and hidden there as your ROM has them. The trades show the Pokémon they really swap now. Gifts from people that are items (and every key item) stay as they were, since the randomizer doesn't change them.
+- `NEXT BOSS` shows each leader's randomized team. If the randomizer renamed the trainers, the guide still calls the leaders by their usual names.
+- `EVOLUTIONS` and the Pokédex pages follow the randomized evolutions, learnsets and TMs.
+- The hand-written pages leave out what the randomizer moves: the gift Pokémon, the legendary Pokémon and where to find evolution stones. A gift Pokémon a person hands you in `HERE` shows only when the guide can read which one it is. The story, key items and HMs stay, since they don't change. `TIPS` gets a `RANDOMIZED` section saying so.
 
 ## The "may be wrong" notice
 

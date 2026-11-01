@@ -35,16 +35,7 @@ object RetailDumps {
     fun matchStream(code: String?, rev: Int?, size: Long, input: () -> InputStream): String? {
         val dump = candidate(code, rev, size) ?: return null
         return input().use { s ->
-            val ok = normalizedSha1(dump) { len ->
-                val buf = ByteArray(len)
-                var n = 0
-                while (n < len) {
-                    val r = s.read(buf, n, len - n)
-                    if (r < 0) return@normalizedSha1 null
-                    n += r
-                }
-                buf
-            } == dump.sha1
+            val ok = normalizedSha1(dump) { len -> readFully(s, len) } == dump.sha1
             if (ok) dump.retailSha1 else null
         }
     }
@@ -61,13 +52,25 @@ object RetailDumps {
         RETAIL_DUMPS.firstOrNull { it.code == code && it.rev == rev }?.takeIf { size >= it.end && size <= 0x1000000L }
 
     /** SHA-1 of bytes [0, end) with the ranges zeroed, [next] giving each following chunk; null if one's short. */
-    private fun normalizedSha1(dump: RetailDump, next: (Int) -> ByteArray?): String? {
+    private fun normalizedSha1(dump: RetailDump, next: (Int) -> ByteArray?): String? = maskedSha1(dump.end, dump.ranges, emptyList(), next)
+
+    /** SHA-1 of bytes [0, [end]) with the text in [fold] upper-cased (Gen 3's a-z as A-Z) and then [ranges] zeroed,
+     * [next] giving each following chunk; null if one's short. [RandomizedRetail] hashes the same way. */
+    internal fun maskedSha1(end: Int, ranges: List<IntRange>, fold: List<IntRange>, next: (Int) -> ByteArray?): String? {
         val digest = MessageDigest.getInstance("SHA-1")
         var off = 0
-        while (off < dump.end) {
-            val len = minOf(CHUNK, dump.end - off)
+        while (off < end) {
+            val len = minOf(CHUNK, end - off)
             val chunk = next(len) ?: return null
-            for (r in dump.ranges) {
+            for (r in fold) {
+                val a = maxOf(r.first, off) - off
+                val z = minOf(r.last + 1, off + len) - off
+                for (i in a until z) {
+                    val c = chunk[i].toInt() and 0xFF
+                    if (c in 0xD5..0xEE) chunk[i] = (c - 0x1A).toByte()
+                }
+            }
+            for (r in ranges) {
                 val a = maxOf(r.first, off) - off
                 val z = minOf(r.last + 1, off + len) - off
                 if (a < z) java.util.Arrays.fill(chunk, a, z, 0)
@@ -76,5 +79,17 @@ object RetailDumps {
             off += len
         }
         return digest.digest().joinToString("") { "%02x".format(it) }
+    }
+
+    /** [len] bytes from [s], or null at its end. */
+    internal fun readFully(s: InputStream, len: Int): ByteArray? {
+        val buf = ByteArray(len)
+        var n = 0
+        while (n < len) {
+            val r = s.read(buf, n, len - n)
+            if (r < 0) return null
+            n += r
+        }
+        return buf
     }
 }

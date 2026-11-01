@@ -1,0 +1,58 @@
+# Retail Emerald randomized by Universal Pokemon Randomizer ZX 4.6.1 (docs/DEVELOPMENT.md's "Randomized ROMs"), booted
+# from the retail save: default.txt and B x3, then a wild PIKACHU Lv5 (setwildbattle; dowildbattle; end: B6 1900 05 0000
+# B7 02 at 0x0203FF00), run through ScriptContext_SetupScript (0x08098EF9, retail's: UPR leaves the code alone); dumped
+# at the action menu.
+wait 120
+press START
+wait 30
+press A
+wait 60
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 60
+wait 120
+press B
+wait 20
+press B
+wait 20
+press B
+wait 20
+poke32 0x0203FF00 0x050019B6
+poke32 0x0203FF04 0x02B70000
+call 0x08098EF9 0x0203FF00
+wait 560
+press A
+wait 300

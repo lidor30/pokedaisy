@@ -20,6 +20,7 @@ add_executable(nds_dump
     nds_dump.cpp
     ../../app/src/main/cpp/nds/pk_nds_platform.cpp
     ../../app/src/main/cpp/nds/pk_nds_field.cpp
+    ../../app/src/main/cpp/nds/pk_nds_field_gpu.cpp
     ../../app/src/main/cpp/nds/pk_nds_call.cpp
     ../../app/src/main/cpp/nds/pk_nds_wide.cpp
     ../../app/src/main/cpp/nds/pk_nds_music.cpp)

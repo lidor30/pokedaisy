@@ -139,6 +139,9 @@ class RegionMapModel(
 /** The Map tab's maps for the running game - the same source [lookupLocation] names places from. */
 fun activeRegionMap(): RegionMapModel? {
     if (activeGame == GameKind.BLACK) return blackTownMap
+    if (activeGame == GameKind.WHITE) return whiteTownMap
+    if (activeGame == GameKind.BLACK2) return black2TownMap
+    if (activeGame == GameKind.WHITE2) return white2TownMap
     if (activeGame == GameKind.PLATINUM) return platinumTownMap
     if (activeGame.isHgss) return PokegearMap.model()
     val rom = if (readsRomRegionMap) RomRegionMap.current else null
@@ -159,6 +162,7 @@ fun activeRegionMap(): RegionMapModel? {
         GameKind.DREAMSTONE -> regionLayoutsDreamstone
         GameKind.WISHES -> regionLayoutsWishes
         GameKind.TEAM_ROCKET -> if (teamRocketV3) regionLayoutsTeamRocketV3 else emptyList()
+        GameKind.MONOMYTH -> regionLayoutsMonomyth
         GameKind.QUETZAL -> if (quetzalV084) regionLayoutsEmerald else regionLayoutsQuetzal
         GameKind.ROWE -> regionLayoutsRowe
         GameKind.MARIOMON -> if (mariomonV13) regionLayoutsMariomonV13 else regionLayoutsMariomon
@@ -197,7 +201,24 @@ private val platinumTownMap: RegionMapModel by lazy {
  * map may not show: a house's, a cave's), named by the cart. Arrived-at towns, Victory Road and Unity Tower get the
  * game's sprite (Unity Tower none before), Liberty Garden its island's once the bag holds the Liberty Pass.
  */
-internal val blackTownMap: RegionMapModel by lazy {
+internal val blackTownMap: RegionMapModel by lazy { gen5TownMap(townMapPlacesBlack) }
+
+/** White's: Black's picture (the same files in its cart), its own places - White Forest where Black City is. */
+internal val whiteTownMap: RegionMapModel by lazy { gen5TownMap(townMapPlacesWhite) }
+
+/**
+ * Black 2's: its own picture ([NdsArt.BLACK2_MAP]) and places, the same kind of map. Its arrival flags start lower
+ * ([GEN5_BW2_FIRST_ARRIVAL]); arrived-at towns and the new places FLY reaches (kind 3) get the towns' dot, Unity Tower
+ * its ring. A place the story reveals (kind 4) gets the green mark once its flag is set ([GEN5_BW2_SHOWN_BIT]: N's
+ * Castle, the Abyssal Ruins); the Plasma Frigate's is one of the game's own checks, so it gets none. Checked against
+ * the game's own Town Map headless on the player's save.
+ */
+internal val black2TownMap: RegionMapModel by lazy { gen5TownMap(townMapPlacesBlack2, sequel = true) }
+
+/** White 2's: Black 2's picture, its own places - White Forest where Black City is. */
+internal val white2TownMap: RegionMapModel by lazy { gen5TownMap(townMapPlacesWhite2, sequel = true) }
+
+private fun gen5TownMap(places: List<Gen5TownMapPlace>, sequel: Boolean = false): RegionMapModel {
     val tile = GEN5_TOWN_MAP_TILE
     val w = 256 / tile
     val h = 168 / tile
@@ -208,29 +229,33 @@ internal val blackTownMap: RegionMapModel by lazy {
         val cy = ty * tile + tile / 2
         var best = none
         var bestD = Int.MAX_VALUE
-        for (p in townMapPlacesBlack) {
+        for (p in places) {
             val dy = when { cy < p.y - 4 -> p.y - 4 - cy; cy > p.y + 4 -> cy - p.y - 4; else -> 0 }
             val d = (cx - p.x) * (cx - p.x) + dy * dy
             if (d <= 8 * 8 && d < bestD) { bestD = d; best = p.place }
         }
         cells[ty * w + tx] = best
     }
-    for (p in townMapPlacesBlack) cells[(p.y / tile) * w + p.x / tile] = p.place
+    for (p in places) cells[(p.y / tile) * w + p.x / tile] = p.place
     val grid = ByteArray(w * h * 2) { i -> (cells[i / 2] shr (8 * (i % 2))).toByte() }
-    RegionMapModel(
-        images = arrayOf(NdsArt.BLACK_MAP),
-        sections = placeNamesBlack.mapValues { (id, name) -> MapSecInfo(NdsArt.names?.place(id) ?: name, 0, 0, 0, 0, 0) },
+    val town = if (sequel) NdsArt::black2Town else NdsArt::blackTown
+    val shown = if (sequel) gen5ShownFlags(places) else emptyList()
+    return RegionMapModel(
+        images = arrayOf(if (sequel) NdsArt.BLACK2_MAP else NdsArt.BLACK_MAP),
+        sections = (if (sequel) placeNamesBlack2 else placeNamesBlack)
+            .mapValues { (id, name) -> MapSecInfo(NdsArt.names?.place(id) ?: name, 0, 0, 0, 0, 0) },
         layouts = listOf(RegionLayout(0, 0, w, h, none, listOf(grid), cellBytes = 2)),
         tile = tile,
-        marks = townMapPlacesBlack.mapNotNull { p ->
+        marks = places.mapNotNull { p ->
             val bit = when {
-                p.kind == 4 -> GEN5_LIBERTY_PASS_BIT
-                p.flag >= 0 && p.kind in intArrayOf(0, 3, 5) -> p.flag - GEN5_FIRST_ARRIVAL
+                p.kind == 4 && !sequel -> GEN5_LIBERTY_PASS_BIT
+                p.kind == 4 -> shown.indexOf(p.shownBy).takeIf { it >= 0 }?.let { GEN5_BW2_SHOWN_BIT + it } ?: return@mapNotNull null
+                p.flag >= 0 && p.kind in intArrayOf(0, 3, 5) -> p.flag - if (sequel) GEN5_BW2_FIRST_ARRIVAL else GEN5_FIRST_ARRIVAL
                 else -> return@mapNotNull null
             }
-            RegionMapMark(p.x, p.y, NdsArt.blackTown(p.kind), NdsArt.blackTown(p.kind), bit, hiddenUntilVisited = true)
+            RegionMapMark(p.x, p.y, town(p.kind), town(p.kind), bit, hiddenUntilVisited = true)
         },
-        points = townMapPlacesBlack.associate { it.place to (it.x to it.y) },
+        points = places.associate { it.place to (it.x to it.y) },
     )
 }
 

@@ -74,6 +74,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -139,6 +140,7 @@ import com.pokedaisy.app.companion.ui.drawLayeredFrame
 import com.pokedaisy.app.companion.ui.rememberGbaTextMetrics
 import com.pokedaisy.app.companion.ui.theme.AppTheme
 import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
+import com.pokedaisy.app.companion.ui.theme.windowOn
 import java.io.File
 import com.pokedaisy.app.companion.ui.PixelRoundedShape
 
@@ -161,6 +163,18 @@ class LibraryActivity : ComponentActivity() {
 
     private val importRom = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { startImport(it, play = false) }
+    }
+
+    /** PATCH A ROM: a .bps applied to a ROM the library has (internal for ui-preview). */
+    internal val patcher by lazy {
+        RomPatchFlow(this) { out ->
+            generateAutoCoverAsync(out)
+            identifyGames()
+            bump()
+        }
+    }
+    private val pickPatch = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { patcher.start(it) }
     }
 
     /** LOAD SAVE: the save file picked for a game, waiting on its confirm (internal for ui-preview). */
@@ -370,6 +384,13 @@ class LibraryActivity : ComponentActivity() {
         if (!supportAsk && whatsNew == null) {
             supportAsk = com.pokedaisy.app.companion.SupportAsk.due(prefs.playMillis, prefs.supportAskAt, prefs.supportAskDone)
         }
+        // A limited-time theme's dates have come (and an ended one gives way to the theme worn before it).
+        com.pokedaisy.app.companion.ui.theme.loadTheme(this)
+        if (seasonalTheme == null) {
+            seasonalTheme = com.pokedaisy.app.companion.ui.theme.seasonalThemeToAnnounce(
+                com.pokedaisy.app.companion.ui.theme.ThemeClock.today(), prefs.seasonalThemesShown, prefs.appTheme,
+            )
+        }
         if (prefs.setupRequested) {
             prefs.setupRequested = false
             startSetup()
@@ -553,7 +574,7 @@ class LibraryActivity : ComponentActivity() {
 
     /** The header's +: one ROM file, a ROMs folder (several can be linked), or the folders linked so far. */
     private enum class AddChoice(val label: String) {
-        FILE(tk("ADD A ROM FILE")), FOLDER(tk("ADD A ROMS FOLDER")), MANAGE(tk("MANAGE ROMS FOLDERS")),
+        FILE(tk("ADD A ROM FILE")), FOLDER(tk("ADD A ROMS FOLDER")), MANAGE(tk("MANAGE ROMS FOLDERS")), PATCH(tk("PATCH A ROM")),
     }
 
     /** The + menu is up (internal for ui-preview). */
@@ -567,6 +588,7 @@ class LibraryActivity : ComponentActivity() {
             AddChoice.MANAGE -> startActivity(
                 Intent(this, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_SCREEN, SettingsActivity.SCREEN_ROMS_FOLDERS),
             )
+            AddChoice.PATCH -> pickPatch.launch(arrayOf("*/*"))
         }
     }
 
@@ -592,6 +614,7 @@ class LibraryActivity : ComponentActivity() {
                     tr("ADD GAMES"), AddChoice.entries.toList(), AddChoice.FILE, { tr(it.label) }, m,
                     onPick = ::pickAdd,
                     onDismiss = { addMenu = false },
+                    badge = { if (it == AddChoice.PATCH) com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.ROM_PATCH) else null },
                 )
             }
             if (pickingSort) {
@@ -669,6 +692,12 @@ class LibraryActivity : ComponentActivity() {
                     },
                 ) }
 
+            PatchWindow(
+                patcher, m, small,
+                onPlay = ::play,
+                onAskSupport = { rom -> Thread({ val url = RomSupportRequest.url(rom); runOnUiThread { openUrl(url) } }, "pokedaisy-support-url").start() },
+            )
+
             UpdateDialog(updates, m, small)
 
             // After any update offer, before the other one-time windows: this update's news.
@@ -710,8 +739,23 @@ class LibraryActivity : ComponentActivity() {
                 )
             }
 
+            // A limited-time theme's dates have come: once per window, alone like the support window, after it.
+            if (seasonalShown) seasonalTheme?.let { theme ->
+                val window = theme.windowOn()
+                if (window == null) { seasonalTheme = null; return@let }
+                // Shown = told, whatever the answer: once per window.
+                LaunchedEffect(theme.id) {
+                    prefs.seasonalThemesShown = prefs.seasonalThemesShown + com.pokedaisy.app.companion.ui.theme.announceKey(theme, window)
+                }
+                com.pokedaisy.app.companion.ui.SeasonalThemeWindow(
+                    theme, window.endInclusive, m, small,
+                    onTry = { com.pokedaisy.app.companion.ui.theme.pickTheme(this@LibraryActivity, theme); seasonalTheme = null },
+                    onNoThanks = { seasonalTheme = null },
+                )
+            }
+
             // After the crash-reports question, one at a time.
-            if (expandIntro && setup == null && !crashAsk && updates.release == null && !whatsNewShown && !supportShown) {
+            if (expandIntro && setup == null && !crashAsk && updates.release == null && !whatsNewShown && !supportShown && !seasonalShown) {
                 com.pokedaisy.app.companion.ui.ExpandIntro(
                     m, small,
                     onTurnOn = {
@@ -991,6 +1035,12 @@ class LibraryActivity : ComponentActivity() {
             add(RomMenuItem(tr("SET COVER"), Icons.Filled.Image, opens = true) { pendingCoverTarget = rom; pickCoverImage.launch("image/*") })
             if (prefs.romCoverManual(rom)) {
                 add(RomMenuItem(tr("RESET COVER"), Icons.Filled.Refresh) { resetCover(rom) })
+            }
+            // Two to four GBA games on one link cable (LinkActivity): trades, battles, record mixing between them.
+            if (rom.extension.lowercase() !in setOf("gb", "gbc", "nds")) {
+                add(RomMenuItem(tr("LINK PLAY"), Icons.Filled.Link, opens = true) {
+                    startActivity(Intent(this@LibraryActivity, LinkActivity::class.java).putExtra(LinkActivity.EXTRA_ROM, rom.absolutePath))
+                })
             }
             add(RomMenuItem(tr("LOAD SAVE"), Icons.Filled.FileOpen, opens = true) { saveTarget = rom; pickSaveFile.launch(arrayOf("*/*")) })
             add(RomMenuItem(tr("RESTORE BACKUP"), Icons.Filled.History, opens = true) { showBackups(rom) })
@@ -1314,7 +1364,29 @@ class LibraryActivity : ComponentActivity() {
 
     private fun coverFile(rom: File): File = File(coversDir, "${rom.name}.png")
 
+    /** A launch waiting on [RomCrcs.prepare]: a second tap doesn't start another. */
+    private var preparing = false
+
     private fun play(rom: File) {
+        if (preparing) return
+        // A ROM whose CRC isn't known (or an archive) is read / unpacked first, off the UI thread: the game's window did
+        // it on its own and froze on a 512 MB DS cart.
+        if (RomCrcs.needsPrepare(this, rom)) {
+            preparing = true
+            if (RomCrcs.isBig(rom)) Toast.makeText(this, tr("Getting {0} ready…", romLabel(rom)), Toast.LENGTH_SHORT).show()
+            kotlin.concurrent.thread(name = "pokedaisy-prepare") {
+                RomCrcs.prepare(this, rom)
+                runOnUiThread {
+                    preparing = false
+                    launch(rom)
+                }
+            }
+            return
+        }
+        launch(rom)
+    }
+
+    private fun launch(rom: File) {
         // The game puts its own window on the second screen.
         secondScreen.dismiss()
         launcher.menu = null
@@ -1557,6 +1629,12 @@ class LibraryActivity : ComponentActivity() {
                     throw t
                 }
                 var name = RomUris.sanitizeFileName(RomUris.displayName(this, uri) ?: "imported-${System.currentTimeMillis()}.gba")
+                // A BPS patch picked as a ROM file (or opened with the app): PATCH A ROM takes it from here.
+                if (BpsPatch.looksLikeBps(tmp.inputStream().use { s -> ByteArray(4).also { s.read(it) } })) {
+                    tmp.delete()
+                    runOnUiThread { patcher.start(uri, name) }
+                    return@Thread
+                }
                 RomArchive.sniff(tmp)?.let { format ->
                     val rom = File(importDir, "${tmp.name}.rom")
                     val entry = RomArchive.extract(tmp, rom, format)
@@ -1645,8 +1723,8 @@ class LibraryActivity : ComponentActivity() {
     /** Every window over the main screen (pass keys to them, not the launcher). */
     private val libraryDialogOpen
         get() = pickingSort || addMenu || renaming != null || deleting != null || gameInfo != null || coverPickerFor != null ||
-            pendingImport != null || saveLoad != null || backupPick != null || updates.release != null || crashAsk ||
-            (expandIntro && !crashAsk) || ssIntroShown || whatsNewShown || supportShown
+            pendingImport != null || patcher.step != null || saveLoad != null || backupPick != null || updates.release != null || crashAsk ||
+            (expandIntro && !crashAsk) || ssIntroShown || whatsNewShown || supportShown || seasonalShown
 
     /** BACK for the library's windows (OptionOverlay & co.): the newest open one closes. */
     private val libraryBack = com.pokedaisy.app.companion.ui.CompanionBack()
@@ -2018,11 +2096,16 @@ class LibraryActivity : ComponentActivity() {
 
     /** The update's one-time "set up ScreenScraper?" window: wanted (set in onCreate), then shown once nothing else is up. */
     internal var ssIntro by mutableStateOf(false)
-    private val ssIntroShown get() = ssIntro && setup == null && !crashAsk && updates.release == null && !expandIntro && !whatsNewShown && !supportShown
+    private val ssIntroShown get() = ssIntro && setup == null && !crashAsk && updates.release == null && !expandIntro && !whatsNewShown && !supportShown && !seasonalShown
     /** WHAT'S NEW is up: after any update offer, never over setup. */
     private val whatsNewShown get() = whatsNew != null && setup == null && updates.release == null
     /** The support window is up: after any update offer and WHAT'S NEW, never over setup. */
     private val supportShown get() = supportAsk && setup == null && updates.release == null && !whatsNewShown
+
+    /** A limited-time theme to announce ([com.pokedaisy.app.companion.ui.theme.seasonalThemeToAnnounce]; internal for ui-preview). */
+    internal var seasonalTheme by mutableStateOf<com.pokedaisy.app.companion.ui.theme.ThemeSpec?>(null)
+    /** Its popup is up: after any update offer, WHAT'S NEW and the support window, never over setup or the crash question. */
+    private val seasonalShown get() = seasonalTheme != null && setup == null && updates.release == null && !whatsNewShown && !supportShown && !crashAsk
 
     /** The popup's sign-in (internal for ui-preview). */
     internal val ssLogin by lazy { ScreenScraperLogin.of(prefs) }

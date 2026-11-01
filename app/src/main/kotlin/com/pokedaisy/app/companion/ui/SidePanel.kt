@@ -219,13 +219,12 @@ private fun WindowFrame(window: Boolean, modifier: Modifier, content: @Composabl
  *  see-through, so that stays readable. */
 private const val FULL_SCREEN_CLOSE_ALPHA = 0.55f
 
-/** The window's X: a white framed square like the side panel's tabs, top right of the window. */
+/** The window's X: a white framed square like the side panel's tabs, top right of the window (the DS touch window's too). */
 @Composable
-private fun WindowCloseButton(onClose: () -> Unit, alpha: Float = 1f) {
+internal fun WindowCloseButton(onClose: () -> Unit, alpha: Float = 1f, description: String = tr("Close the companion")) {
     val m = rememberGbaTextMetrics()
     val u = m.u
     val noRipple = remember { MutableInteractionSource() }
-    val description = tr("Close the companion")
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier

@@ -211,6 +211,8 @@ data class BaseStatsLayout(
     val statsU16: Boolean = false,
     val typesOff: Int = 6,
     val catchRateOff: Int = 8,
+    /** Both egg groups packed into the byte at [eggGroupsOff], a nibble each (Monomyth's), not a byte each. */
+    val eggGroupsPacked: Boolean = false,
 )
 
 val VANILLA_BASE_STATS = BaseStatsLayout()
@@ -641,6 +643,49 @@ val POKEDEX_TMT2 = PokedexTables(
  * in both arrays on the user's save; a wild WURMPLE marked seen only). Its START menu has no POKéDEX
  * yet on this save, so not compared with the game's own screen.
  */
+/**
+ * Pokémon Monomyth's ATHANTO dex, its only one (no National switch), from the ROM and the user's save (its dex screen:
+ * SEEN 22 / OWN 11; No.007 MISHIMIZU "Rookie Pokémon" 0.5 m 9.1 kg, No.033 VENIPEDE "Centipede Pokémon" 0.4 m 5.3 kg,
+ * metric as it prints them): gPokedexEntries 0x089D3798, 0x28-byte entries by dex number (a 14-byte category, height +0x0E,
+ * weight +0x10, text +0x14, two scale / offset sets), No.1 MARMROOT "Groundhog"; the species -> number table 0x084F4520
+ * (1-362, forms on their base's number; an identical copy follows it); gMonFrontPicTable 0x0849F718 (smol, as
+ * pokeemerald-expansion packs them; its back pictures are at 0x08487428), gMonPaletteTable 0x084880D0 (LZ77); its 24-byte
+ * gBaseStats (genderRatio +9, both egg groups in the nibbles of +0x0D, abilities +0x14 / +0x15, the hidden one +0x16) and
+ * 13-byte gAbilityNames 0x084EE603 (35 Torrent, MISHIMIZU's, as its summary says); gEvolutionTable 0x0850010C, eight
+ * 8-byte rows a species. The flags are SaveBlock1's, a bit per dex number: seen +0x37F4, caught +0x3827, 51 bytes.
+ */
+val POKEDEX_MONOMYTH = PokedexTables(
+    entries = 0x089D3798L,
+    frontPics = 0x0849F718L,
+    palettes = 0x084880D0L,
+    speciesInfo = 0x084F6DBCL,
+    speciesToNational = 0x084F4520L,
+    abilityNames = 0x084EE603L,
+    footprints = 0,
+    hiddenAbilityOff = 0x16,
+    entryStride = 0x28,
+    entryCategoryLen = 14,
+    entryHeightOff = 0x0E,
+    entryDescOff = 0x14,
+    baseStats = BaseStatsLayout(stride = 24, genderOff = 0x09, eggGroupsOff = 0x0D, eggGroupsPacked = true, abilitiesOff = 0x14),
+    categorySuffix = "Pokémon",
+    metric = true,
+    decimalPoint = '.',
+    probeCategory = "Groundhog",
+    probeHeight = 4,
+    probeWeight = 85,
+    probeSpecies = 176,
+    evoLayout = EvoLayout(EvoScheme.MONOMYTH, table = 0x0850010CL, perMon = 8, probeLevel = 31),
+    // gLevelUpLearnsets: {u16 move, u16 level} lists (its moves pass 511), as GUIDE_TABLES_MONOMYTH reads them.
+    levelUpLearnsets = 0x0850664CL,
+    speciesCount = 405,
+    nationalCount = 362,
+    regionalCount = 362,
+    regionName = null,
+    flags = DexFlags(DexFlagBlock.SAVE_BLOCK_1, seen = 0x37F4, caught = 0x3827, bytes = 0x33),
+    nationalMagicOff = -1,
+)
+
 val POKEDEX_ROWE = PokedexTables(
     entries = 0x08F592C8L,
     frontPics = 0x083E0AA4L,
@@ -1339,6 +1384,13 @@ val POKEDEX_SOULGOLD_V1_2C = POKEDEX_SOULGOLD_V1_2.copy(
     regionalOrder = 0x08F0EF6CL,
 )
 
+/** SoulGold v1.2.1 (both builds): the same tables again, 0x7BA0 (gSpeciesInfo) / 0xB61C later than the third v1.2's. */
+val POKEDEX_SOULGOLD_V1_2_1 = POKEDEX_SOULGOLD_V1_2.copy(
+    speciesInfo = 0x087DD964L,
+    abilityNames = 0x08F1B3D8L,
+    regionalOrder = 0x08F1A588L,
+)
+
 /**
  * Whether the running ROM really has these tables where [t] says: entry 1 is
  * BULBASAUR's (SEED, 7 dm, 69 hg), species 1 is dex number 1 and its front
@@ -1452,6 +1504,8 @@ object PokedexSource {
     private val entries = ConcurrentHashMap<Int, DexEntry>()
     private val sprites = ConcurrentHashMap<Int, Bitmap>()
     private val footprints = ConcurrentHashMap<Int, Bitmap>()
+    private val baseStats = ConcurrentHashMap<Int, IntArray>()
+    private val growthRates = ConcurrentHashMap<Int, Int>()
     @Volatile private var nationalToSpecies: IntArray? = null
     @Volatile private var speciesToNational: IntArray? = null
     @Volatile private var regional: IntArray? = null
@@ -1461,9 +1515,39 @@ object PokedexSource {
         if (cachedFor == t) return
         synchronized(this) {
             if (cachedFor == t) return
-            entries.clear(); sprites.clear(); footprints.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
+            entries.clear(); sprites.clear(); footprints.clear(); baseStats.clear(); growthRates.clear(); nationalToSpecies = null; speciesToNational = null; regional = null
             cachedFor = t
         }
+    }
+
+    /**
+     * [species]' base stats in the struct's order (HP, ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF) from the ROM's
+     * gBaseStats - the BOXES tab's stats, which a box record doesn't keep. Null = no table / unreadable.
+     */
+    fun baseStats(t: PokedexTables, species: Int): IntArray? {
+        if (species <= 0 || t.speciesInfo == 0L || t.cartDex) return null
+        sync(t)
+        baseStats[species]?.let { return it }
+        val bs = t.baseStats
+        val stride = t.expansion?.stride ?: bs.stride
+        return runCatching {
+            val info = rd(t.speciesInfo + species.toLong() * stride, 12)
+            IntArray(6) { if (t.expansion == null && bs.statsU16) u16le(info, it * 2) else info[it].toInt() and 0xFF }
+        }.getOrNull()?.also { baseStats[species] = it }
+    }
+
+    /**
+     * [species]' growth rate (GROWTH_*, gExperienceTables' row) from the same table: the byte before the egg groups in
+     * vanilla's gBaseStats (+0x13) and in expansion's gSpeciesInfo (+0x15) alike. A box record's level comes from it.
+     */
+    fun growthRate(t: PokedexTables, species: Int): Int? {
+        if (species <= 0 || t.speciesInfo == 0L || t.cartDex || (t.expansion == null && t.baseStats.statsU16)) return null
+        sync(t)
+        growthRates[species]?.let { return it }
+        val stride = t.expansion?.stride ?: t.baseStats.stride
+        val off = (t.expansion?.eggGroupsOff ?: t.baseStats.eggGroupsOff) - 1
+        return runCatching { rd(t.speciesInfo + species.toLong() * stride + off, 1)[0].toInt() and 0xFF }
+            .getOrNull()?.also { growthRates[species] = it }
     }
 
     /**
@@ -1475,6 +1559,7 @@ object PokedexSource {
         synchronized(this) { cachedFor = null }
         DexDetails.romChanged()
         GuideRomSource.romChanged()
+        EvolutionSource.romChanged()
     }
 
     /** Already-loaded data only (no ROM read) - composables start from these,
@@ -1689,7 +1774,8 @@ object PokedexSource {
             hiddenAbility = hidden,
             catchRate = b(bs.catchRateOff),
             genderRatio = b(bs.genderOff),
-            eggGroups = listOf(b(bs.eggGroupsOff), b(bs.eggGroupsOff + 1)).distinct().mapNotNull { EGG_GROUP_NAMES.getOrNull(it) },
+            eggGroups = (if (bs.eggGroupsPacked) listOf(b(bs.eggGroupsOff) shr 4, b(bs.eggGroupsOff) and 0x0F)
+                else listOf(b(bs.eggGroupsOff), b(bs.eggGroupsOff + 1))).distinct().mapNotNull { EGG_GROUP_NAMES.getOrNull(it) },
         )
     }
 

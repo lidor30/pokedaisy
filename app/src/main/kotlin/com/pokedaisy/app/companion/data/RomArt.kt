@@ -27,7 +27,7 @@ object RomArt {
     const val DIR = "rom-art"
 
     /** Bump when [OUTPUTS] grows, so ROMs scanned before get scanned again. */
-    private const val SCAN_VERSION = 23
+    private const val SCAN_VERSION = 24
 
     /** Bumped whenever new art lands on disk, so loaders can retry. */
     val updates: StateFlow<Int> get() = _updates
@@ -118,6 +118,8 @@ object RomArt {
         // Recharged Emerald redrew both heads for its own map.
         "player_brendan_re" to (RomBlob.RE_PLAYER_BRENDAN_GFX to RomBlob.RE_PLAYER_BRENDAN_PAL),
         "player_may_re" to (RomBlob.RE_PLAYER_MAY_GFX to RomBlob.RE_PLAYER_MAY_PAL),
+        // Monomyth's map code loads one head, whichever gender the player is.
+        "player_monomyth" to (RomBlob.MMY_PLAYER_GFX to RomBlob.MMY_PLAYER_PAL),
     )
 
     /**
@@ -147,7 +149,7 @@ object RomArt {
             listOf("$UNBOUND_FR_PARTY_DIR/status_icons.png", "$UNBOUND_FR_PARTY_DIR/font_small.png") +
             listOf(SWSH_BACKDROP) + (slots + "empty").map { "$SWSH_PARTY_DIR/slot_$it.png" } +
             listOf("kanto", "sevii123", "sevii45", "sevii67", "hoenn", "seaglass", "lazarus", "soulgold", "glazed", "imperium", "hns", "recharged_emerald", "rowe_hoenn", "rowe_kanto", "rowe_sevii",
-                "mariomon", "quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67", "dreamstone", "wishes",
+                "mariomon", "quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67", "dreamstone", "wishes", "monomyth",
                 "tr3_kanto", "tr3_sevii123", "tr3_sevii45", "tr3_sevii67", "tr3_johto", "tr3_hoenn", "tr3_sinnoh").map { "regionmap/$it.png" } +
             PLAYER_ICONS.map { "regionmap/${it.first}.png" } +
             listOf(BAG_STARS_SOULGOLD, HOLD_ICONS) +
@@ -421,6 +423,10 @@ object RomArt {
         if (has(RomBlob.DSM_REGION_GFX, RomBlob.DSM_REGION_PAL, RomBlob.DSM_REGION_MAP)) {
             out["regionmap/dreamstone.png"] = screen(d(RomBlob.DSM_REGION_GFX), palette(d(RomBlob.DSM_REGION_PAL)), d(RomBlob.DSM_REGION_MAP), 32)
         }
+        // Monomyth's ATHANTO MAP (its PokeNav's): a mode-0 text screen of its own.
+        if (has(RomBlob.MMY_REGION_GFX, RomBlob.MMY_REGION_PAL, RomBlob.MMY_REGION_MAP)) {
+            out["regionmap/monomyth.png"] = monomythRegionMap(d(RomBlob.MMY_REGION_GFX), palette(d(RomBlob.MMY_REGION_PAL)), d(RomBlob.MMY_REGION_MAP))
+        }
         // Emerald's region map, and Seaglass's / Lazarus's / SoulGold's / Glazed's / Imperium's own (same region_map.c, their own art).
         listOf(
             "hoenn" to Triple(RomBlob.EM_REGION_GFX, RomBlob.EM_REGION_PAL, RomBlob.EM_REGION_MAP),
@@ -497,6 +503,28 @@ object RomArt {
             for (y in 0 until 8) for (x in 0 until 8) {
                 val v = (tiles[t * 64 + y * 8 + x].toInt() and 0xFF) - firstColour
                 img.argb[(ty * 8 + y) * 240 + tx * 8 + x] = pal.getOrElse(v) { pal[0] }
+            }
+        }
+        return img
+    }
+
+    /**
+     * Monomyth's ATHANTO MAP: 8bpp tiles loaded from tile 0x60 through a 32x32 u16 text tilemap (flips allowed), shown
+     * from row 2 (BG2's vertical scroll of 16), its 48-colour palette at BG palette 7 like Emerald's. Pixels outside that
+     * palette (the blank tile's, under the game's CANCEL bar) stay transparent.
+     */
+    private fun monomythRegionMap(tiles: ByteArray, pal: IntArray, map: ByteArray): Image {
+        val img = Image(240, 160)
+        for (ty in 0 until 20) for (tx in 0 until 30) {
+            val o = ((ty + 2) * 32 + tx) * 2
+            val e = (map[o].toInt() and 0xFF) or ((map[o + 1].toInt() and 0xFF) shl 8)
+            val t = (e and 0x3FF) - 0x60
+            if (t < 0 || (t + 1) * 64 > tiles.size) continue
+            for (y in 0 until 8) for (x in 0 until 8) {
+                val sx = if (e and 0x400 != 0) 7 - x else x
+                val sy = if (e and 0x800 != 0) 7 - y else y
+                val v = (tiles[t * 64 + sy * 8 + sx].toInt() and 0xFF) - 112
+                if (v in pal.indices) img.argb[(ty * 8 + y) * 240 + tx * 8 + x] = pal[v]
             }
         }
         return img

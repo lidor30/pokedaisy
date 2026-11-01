@@ -1,8 +1,8 @@
 package com.pokedaisy.app.companion.data
 
 /**
- * Pokémon Black's guide (IRBO rev 0). HERE and NEXT BOSS come from [BLACK_WORLD] (read from the cart by
- * scripts/gen_gen5_guide.py); the hand-written pages are from the cart's own scripts (a/0/5/7, each zone's script file
+ * Pokémon Black's guide (IRBO rev 0), White's too ([GUIDE_WHITE]). HERE and NEXT BOSS come from [BLACK_WORLD] (read
+ * from the cart by scripts/gen_gen5_guide.py); the hand-written pages are from the cart's own scripts (a/0/5/7, each zone's script file
  * by its header's +0x06), in our own words:
  * - who hands out what: the scripts that set VAR 0x8000 to the item and call the give-item routine (`2A 00 00 80
  *   <item>`), placed by the zone whose script file it is - CUT in Striaton City, FLY in Driftveil City, SURF in Twist
@@ -33,42 +33,52 @@ internal const val BW_FLAG_E4 = 0x969
  */
 internal const val BW_TRAINER_FLAGS = 1420
 
-/** A gym leader: done with the badge (the case's order, TRIO 0 .. LEGEND 7). */
-private fun bwGym(title: String, where: String, key: String, badge: Int) =
-    gen5Boss(BLACK_WORLD, title, where, key, GEN4_BADGE_FLAG + badge)
-
-private fun bwElite(title: String, key: String, room: Int) =
-    gen5Boss(BLACK_WORLD, title, "POKéMON LEAGUE", key, BW_FLAG_E4 + room)
-
-private val BOSSES_BLACK = listOf(
-    // You face the one whose type beats your first POKéMON's.
-    Boss(
-        "STRIATON GYM LEADER", "STRIATON CITY GYM", GEN4_BADGE_FLAG + 0,
-        variants = listOf("CHILI" to BLACK_WORLD.trainer("CHILI"), "CRESS" to BLACK_WORLD.trainer("CRESS"), "CILAN" to BLACK_WORLD.trainer("CILAN")),
-    ) { BLACK_WORLD.trainer("CHILI") },
-    bwGym("LEADER LENORA", "NACRENE CITY GYM", "LENORA", 1),
-    bwGym("LEADER BURGH", "CASTELIA CITY GYM", "BURGH", 2),
-    bwGym("LEADER ELESA", "NIMBASA CITY GYM", "ELESA", 3),
-    bwGym("LEADER CLAY", "DRIFTVEIL CITY GYM", "CLAY", 4),
-    bwGym("LEADER SKYLA", "MISTRALTON CITY GYM", "SKYLA", 5),
-    bwGym("LEADER BRYCEN", "ICIRRUS CITY GYM", "BRYCEN", 6),
-    bwGym("LEADER DRAYDEN", "OPELUCID CITY GYM", "DRAYDEN", 7),
-    bwElite("ELITE FOUR SHAUNTAL", "SHAUNTAL", 0),
-    bwElite("ELITE FOUR GRIMSLEY", "GRIMSLEY", 1),
-    bwElite("ELITE FOUR MARSHAL", "MARSHAL", 2),
-    bwElite("ELITE FOUR CAITLIN", "CAITLIN", 3),
-    // No done flag known yet (see above): never done.
-    gen5Boss(BLACK_WORLD, "N", "N's CASTLE", "N", 0, doneIf = { it.flag(GEN5_NATIONAL_DEX_FLAG) }),
-    gen5Boss(BLACK_WORLD, "GHETSIS", "N's CASTLE", "GHETSIS", 0, doneIf = { it.flag(GEN5_NATIONAL_DEX_FLAG) }),
-)
+/**
+ * The bosses in [world]: the same in both versions but the eighth gym's leader ([leader8]: Black's DRAYDEN, White's
+ * IRIS, the same badge) and N's team (his legend: the generated data's).
+ */
+private fun bwBosses(world: Gen5World, leader8: String): List<Boss> {
+    /** A gym leader: done with the badge (the case's order, TRIO 0 .. LEGEND 7). */
+    fun gym(title: String, where: String, key: String, badge: Int) =
+        gen5Boss(world, title, where, key, GEN4_BADGE_FLAG + badge)
+    fun elite(title: String, key: String, room: Int) =
+        gen5Boss(world, title, "POKéMON LEAGUE", key, BW_FLAG_E4 + room)
+    return listOf(
+        // You face the one whose type beats your first POKéMON's.
+        Boss(
+            "STRIATON GYM LEADER", "STRIATON CITY GYM", GEN4_BADGE_FLAG + 0,
+            variants = listOf("CHILI" to world.trainer("CHILI"), "CRESS" to world.trainer("CRESS"), "CILAN" to world.trainer("CILAN")),
+        ) { world.trainer("CHILI") },
+        gym("LEADER LENORA", "NACRENE CITY GYM", "LENORA", 1),
+        gym("LEADER BURGH", "CASTELIA CITY GYM", "BURGH", 2),
+        gym("LEADER ELESA", "NIMBASA CITY GYM", "ELESA", 3),
+        gym("LEADER CLAY", "DRIFTVEIL CITY GYM", "CLAY", 4),
+        gym("LEADER SKYLA", "MISTRALTON CITY GYM", "SKYLA", 5),
+        gym("LEADER BRYCEN", "ICIRRUS CITY GYM", "BRYCEN", 6),
+        gym("LEADER $leader8", "OPELUCID CITY GYM", leader8, 7),
+        elite("ELITE FOUR SHAUNTAL", "SHAUNTAL", 0),
+        elite("ELITE FOUR GRIMSLEY", "GRIMSLEY", 1),
+        elite("ELITE FOUR MARSHAL", "MARSHAL", 2),
+        elite("ELITE FOUR CAITLIN", "CAITLIN", 3),
+        // No done flag known yet (see above): never done.
+        gen5Boss(world, "N", "N's CASTLE", "N", 0, doneIf = { it.flag(GEN5_NATIONAL_DEX_FLAG) }),
+        gen5Boss(world, "GHETSIS", "N's CASTLE", "GHETSIS", 0, doneIf = { it.flag(GEN5_NATIONAL_DEX_FLAG) }),
+    )
+}
 
 private fun hm(n: Int, move: String, answer: String, hint: String, areas: List<String>) =
     entry("HM%02d %s".format(n, move), answer, hint, Have.Item(BW_HM01 + n - 1), areas)
 
-internal val GUIDE_BLACK = GameGuide(
+internal val GUIDE_BLACK = bwGuide(BLACK_WORLD, "DRAYDEN")
+
+/** White's: Black's pages (its cart's scripts, trainers and zone events are Black's, file for file), its own wild
+ * Pokémon, IRIS in Opelucid City's gym and N's team ([WHITE_WORLD]). */
+internal val GUIDE_WHITE = bwGuide(WHITE_WORLD, "IRIS")
+
+private fun bwGuide(world: Gen5World, leader8: String) = GameGuide(
     verified = false,
-    bosses = BOSSES_BLACK,
-    world = BLACK_WORLD,
+    bosses = bwBosses(world, leader8),
+    world = world,
     pages = listOf(
         page(
             "TIPS",

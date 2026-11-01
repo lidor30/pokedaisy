@@ -1,6 +1,7 @@
 // See pk_nds_field.h. Addresses from pret/pokeplatinum's .xMAP (it builds the retail ROM byte for byte), struct
 // offsets from its headers, both checked on headless captures (nds_dump's fieldinfo: the field, a text box, the X
-// menu, the party screen, a battle).
+// menu, the party screen, a battle). RAM only, through the callbacks, so the Linux host builds it beside DSperate
+// (linux/dsperate/); the one read of melonDS itself, pk_nds_bg3_tiles, is in pk_nds_field_gpu.cpp.
 
 #include "pk_nds_field.h"
 
@@ -8,8 +9,6 @@
 
 #include <unordered_map>
 #include <utility>
-
-#include <NDS.h>
 
 static const PkNdsFieldGame PLATINUM_US_REV1 = {
     "Platinum (USA, rev 1)",
@@ -28,6 +27,8 @@ static const PkNdsFieldGame PLATINUM_US_REV1 = {
     0x021CAF64,   // sSeqPlayer (libnnssnd's player.c)
     0,
     1,
+    0x30,         // BattleSystem.battleCtx (Gen4Reader.kt; checked on retail Platinum)
+    0x08,         // BattleContext.command follows two four-byte battler-state arrays
 };
 
 // HeartGold / SoulSilver (USA): pret/pokeheartgold's .xMAP (the same in both games' builds, compared) and field_system.h, checked on
@@ -49,6 +50,26 @@ static const PkNdsFieldGame HEARTGOLD_US = {
     2,
     0x30,         // BattleSystem.ctx
     0x08,         // BattleContext.command (5 at the command menus, 22 running a move's script: headless dumps)
+};
+
+// German HeartGold, IPKD rev 0 (SHA-1 13b6853a…): ARM9's SaveData / FieldSystem and sound literal pools,
+// gOverlayTemplate_Battle's reference in sub_02087C38, and overlay 1's field-map template. Structs and the
+// callSet 2 function addresses are shared with the US carts (checked against the German ARM9).
+static const PkNdsFieldGame HEARTGOLD_DE = {
+    "HeartGold / SoulSilver (Germany)",
+    0x021D4138,   // sFieldSysPtr
+    0x020FA438,   // gOverlayTemplate_Battle
+    0x00, 0x10, 0x40, 0x6C,
+    0x18,
+    0x14, 0x920, 0x921,
+    0x20,
+    0x021E5BC5,   // ov01_02206378's main in German overlay 1
+    0x021D0534,   // sSoundWork (0x02111938) + 0xBEBFC
+    0x021DF964,   // sSeqPlayer
+    1,
+    2,
+    0x30,
+    0x08,
 };
 
 // Black (USA / Europe, IRBO rev 0): no decomp, so from headless captures (nds_dump dumps of the field, a text box, the X
@@ -84,6 +105,97 @@ static const PkNdsFieldGame BLACK_US = {
     0x020AA1B0,   // the BGM stack's depth: 0 on the field, 1 in a battle
 };
 
+// White (USA / Europe, IRAO rev 0): Black's code, its statics and overlays 0x20 higher (each word found through the code
+// that uses it in both carts, then checked in White's headless captures of the same save); the structs are Black's.
+static const PkNdsFieldGame WHITE_US = {
+    "White (USA / Europe)",
+    0x02146268,   // the GameSystem
+    0,
+    0, 0, 0, 0,
+    0,
+    0, 0, 0,
+    0,
+    0,
+    0x020AA1DC,   // the BGM stack's first song
+    0x0214E044,   // sSeqPlayer
+    0,
+    4,            // pk_nds_call's Gen 5 jobs (WHITE there)
+    0, 0,
+    5,
+    0x08, 0x08, 0x04, 21, 93,
+    0x14, 0x18,
+    0x14, 0x10, 0x50, 0x0F,
+    3,
+    1,
+    0x1C,
+    0x114,
+    0x154,
+    0x158,
+    0x38,
+    0x020AA1D0,   // the BGM stack's depth
+};
+
+// Black 2 (USA / Europe, IREO rev 0): a new build of Black's engine, so every static moved, but the GameSystem, its procs,
+// the GameData and the battle module keep Black's shapes (headless captures of the player's save, each word found again
+// through the code that uses it in Black and Black 2). The field map is overlay 36, the battle 167.
+static const PkNdsFieldGame BLACK2_US = {
+    "Black 2 (USA / Europe)",
+    0x021410F4,   // the GameSystem
+    0,
+    0, 0, 0, 0,
+    0,
+    0, 0, 0,
+    0,
+    0,
+    0x0209DA80,   // the BGM stack's first song
+    0x02148EE4,   // sSeqPlayer
+    0,
+    5,            // pk_nds_call's Gen 5 jobs (BLACK2 there)
+    0, 0,
+    5,
+    0x08, 0x08, 0x04, 36, 167,
+    0x14, 0x18,
+    0x14, 0x10, 0x50, 0x0F,
+    3,
+    1,
+    0x1C,
+    0x114,
+    0x154,
+    0x158,
+    0x38,
+    0x0209DA74,   // the BGM stack's depth
+};
+
+// White 2 (USA / Europe, IRDO rev 0): Black 2's code with its statics and overlays 0x40 higher (each word found through
+// the code that uses it in both carts, then checked in White 2's headless captures of the player's save).
+static const PkNdsFieldGame WHITE2_US = {
+    "White 2 (USA / Europe)",
+    0x02141134,   // the GameSystem
+    0,
+    0, 0, 0, 0,
+    0,
+    0, 0, 0,
+    0,
+    0,
+    0x0209DAC0,   // the BGM stack's first song
+    0x02148F24,   // sSeqPlayer
+    0,
+    6,            // pk_nds_call's Gen 5 jobs (WHITE2 there)
+    0, 0,
+    5,
+    0x08, 0x08, 0x04, 36, 167,
+    0x14, 0x18,
+    0x14, 0x10, 0x50, 0x0F,
+    3,
+    1,
+    0x1C,
+    0x114,
+    0x154,
+    0x158,
+    0x38,
+    0x0209DAB4,   // the BGM stack's depth
+};
+
 // WILD ENCOUNTERS OFF's hold: the MapHeaderData whose rates it zeroed, for which map, and their values before.
 static uint32_t heldData, heldMap, heldGrass, heldSurf;
 static int holding;
@@ -108,11 +220,93 @@ const PkNdsFieldGame* pk_nds_field_game(const char code[4], int revision)
 {
     if (memcmp(code, "CPUE", 4) == 0 && revision == 1) return &PLATINUM_US_REV1;
     if ((memcmp(code, "IPKE", 4) == 0 || memcmp(code, "IPGE", 4) == 0) && revision == 0) return &HEARTGOLD_US;
+    if ((memcmp(code, "IPKD", 4) == 0 || memcmp(code, "IPGD", 4) == 0) && revision == 0) return &HEARTGOLD_DE;
     if (memcmp(code, "IRBO", 4) == 0 && revision == 0) return &BLACK_US;
+    if (memcmp(code, "IRAO", 4) == 0 && revision == 0) return &WHITE_US;
+    if (memcmp(code, "IREO", 4) == 0 && revision == 0) return &BLACK2_US;
+    if (memcmp(code, "IRDO", 4) == 0 && revision == 0) return &WHITE2_US;
     return 0;
 }
 
 static int inMainRam(uint32_t p) { return p >= 0x02000000u && p < 0x02400000u; }
+
+// When the game wants its touch screen (PK_NDS_FIELD_TOUCH), for the games whose touch-screen moments are mapped.
+// HeartGold / SoulSilver (pret/pokeheartgold, checked headless on the player's save): the X menu is the field task
+// Task_StartMenu (start_menu.c), its buttons on the touch screen (its SAVE too); every menu screen it opens (party,
+// bag, Pokégear, Pokédex, trainer card, options) has its controls there. A battle's touch panels hang off
+// BattleSystem.battleInput: its text objects are set only while a panel is drawn; battler 0's selection step
+// (BattleContext's first byte, SSI_STATE_*) is 1 / 2 at the commands, 3 / 4 the moves, 7 / 8 the bag, 9 / 10 the party.
+// A menu screen whose page is the touch screen's alone: its template's init function (the child's first word) and, where
+// only some pages are, the app's states (OverlayManager +0x14) on those pages as a bit mask (0 = every page).
+struct PkNdsTouchApp {
+    uint32_t init;
+    uint32_t states;
+};
+
+struct PkNdsTouchRules {
+    const PkNdsFieldGame* game;
+    uint32_t startMenuTask;   // Task_StartMenu (Thumb)
+    int offBattleInput;       // BattleSystem.battleInput
+    int offPanelShown;        // BattleInput.textObj[]'s first pointer: NULL while no panel is drawn
+    PkNdsTouchApp touchOnly[4];
+    int offMenuInputState;    // FieldSystem.menuInputState: 0 buttons, 1 touch (the last input on a menu screen)
+};
+
+// HeartGold / SoulSilver's touch-screen-only pages (headless, the player's saves): the party list (its summary is an app of
+// its own, two screens), the options, the Pokédex's first page (states 0 / 2 / 5 opening it, 6 on it; 11 is its list, an
+// INFO page on top). Everything here is the same address in both games but the Pokédex's init: SoulSilver's overlay has it
+// 4 bytes earlier (its version's dex differs), so both are listed.
+static const PkNdsTouchRules TOUCH_RULES[] = {
+    { &HEARTGOLD_US, 0x0203BEF1, 0x19C, 0x4D0, {
+        { 0x02078E31, 0 },                                      // the party
+        { 0x021E5901, 0 },                                      // the options
+        { 0x021E5AA1, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
+        { 0x021E5A9D, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
+    }, 0x10C },
+};
+
+// [child]'s app is on a page all on the touch screen.
+static int touchOnlyPage(const PkNdsTouchRules* t, uint32_t (*read32)(uint32_t), uint32_t child)
+{
+    uint32_t init = read32(child);
+    for (const PkNdsTouchApp& a : t->touchOnly) {
+        if (!a.init || a.init != init) continue;
+        if (!a.states) return 1;
+        uint32_t state = read32(child + 0x14);
+        return state < 32 && (a.states >> state & 1);
+    }
+    return 0;
+}
+
+static const PkNdsTouchRules* touchRules(const PkNdsFieldGame* g)
+{
+    for (const PkNdsTouchRules& r : TOUCH_RULES)
+        if (r.game == g) return &r;
+    return nullptr;
+}
+
+// The touch bits for a battle child process [child] (its data the BattleSystem). While the controller waits for the
+// player (SELECTION_SCREEN_INPUT), battler 0's step says which: 1 - 4 the commands and the moves (what BATTLE BUTTONS stand
+// in for - whatever BattleMenuID draws them: HG redraws the commands under another one after a move's CANCEL), 7 - 10 the
+// bag and the party (screens of their own); anything else with a panel drawn (a target, YES / NO, "Use next Pokémon?") is
+// the touch screen's.
+static int battleTouch(const PkNdsFieldGame* g, const PkNdsTouchRules* t, uint32_t (*read32)(uint32_t), uint32_t child)
+{
+    uint32_t bs = read32(child + 0x1C);
+    if (!inMainRam(bs)) return 0;
+    uint32_t ctx = read32(bs + g->offBattleContext);
+    uint32_t input = read32(bs + t->offBattleInput);
+    bool panel = inMainRam(input) && inMainRam(read32(input + t->offPanelShown));
+    if (inMainRam(ctx) && read32(ctx + g->offCommand) == PK_NDS_BATTLE_SELECTING) {
+        int step = (int) (read32(ctx) & 0xFF);
+        // The bag / the party: their own screens, faded in and out (the engine waits the fades out).
+        if (step >= 7 && step <= 10) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
+        // The commands and the moves (1 - 4), the steps between them (0 - 2: back from the moves goes through the
+        // command init, its panel still drawn) and a target (5 / 6), a message's wait (15): the battle buttons' own.
+        if (step <= 6 || step == 15) return panel ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : 0;
+    }
+    return panel ? PK_NDS_FIELD_TOUCH : 0;
+}
 
 // An encounter rate: a u32 (Platinum) or a u8 (HeartGold / SoulSilver), read and written through the aligned word.
 static uint32_t rateRead(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), uint32_t a)
@@ -247,6 +441,34 @@ static void gen5Wild(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), void
     if (holding5) *bits |= PK_NDS_FIELD_WILD_HELD;
 }
 
+int pk_nds_bgm_settle(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t))
+{
+    if (!g || !g->seqPlayers) return 0x7F00;
+    // NNSSndSeqPlayer (0x44 bytes): its handle's address first, the volume fader { origin, target, counter, frame } at
+    // 0x1C, status at 0x2C (byte 0 playing, byte 2 paused). A fade is run by the ARM9 a frame at a time
+    // (NNS_SndPlayerMoveVolume), so a copy taken mid-fade would stay at that volume.
+    for (uint32_t i = 0; i < 16; i++) {
+        uint32_t p = g->seqPlayers + i * 0x44;
+        if ((read32(p + 0x2C) & 0xFF) && (int32_t) read32(p + 0x24) < (int32_t) read32(p + 0x28)) return -1;
+    }
+    if (!g->bgmDepth) return 0x7F00;   // Gen 4: no song's player read, so always full volume
+    // Gen 5: the song's player is the one holding the BGM stack entry's handle (the entry + 4). Headless in Black, a
+    // song coming back after a battle (or the battle's after its interlude) was paused at volume 0 when its id changed,
+    // un-paused and faded in 6 - 24 frames later: a copy taken in between stayed silent until the next song.
+    uint32_t depth = read32(g->bgmDepth);
+    if (depth > 7) return -1;
+    uint32_t handle = g->currentBgm + 0x1C * depth + 4;
+    for (uint32_t i = 0; i < 16; i++) {
+        uint32_t p = g->seqPlayers + i * 0x44;
+        if (read32(p) != handle) continue;
+        uint32_t status = read32(p + 0x2C);
+        if (!(status & 0xFF) || (status & 0xFF0000)) return -1;
+        uint32_t target = read32(p + 0x20) & 0xFFFF;
+        return (int) ((i << 16) | target);
+    }
+    return -1;
+}
+
 int pk_nds_battle_command(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t))
 {
     if (g && g->gen == 5) return gen5BattleCommand(g, read32);
@@ -279,9 +501,13 @@ int pk_nds_field_state(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), vo
     uint32_t parent = read32(pm), child = read32(pm + 4), pause = read32(pm + 8);
     uint32_t task = read32(fs + g->offTask);
     int running = read32(fs + g->offRunningFieldMap) != 0;
+    const PkNdsTouchRules* touch = touchRules(g);
     if (inMainRam(child)) {
         // The battle's child process starts from gBattleApplicationTemplate (its template is copied in whole).
-        bits |= read32(child) == read32(g->battleTemplate) ? PK_NDS_FIELD_BATTLE : PK_NDS_FIELD_MENU;
+        int battle = read32(child) == read32(g->battleTemplate);
+        bits |= battle ? PK_NDS_FIELD_BATTLE : PK_NDS_FIELD_MENU;
+        if (touch) bits |= battle ? battleTouch(g, touch, read32, child)
+                               : PK_NDS_FIELD_TOUCH | (touchOnlyPage(touch, read32, child) ? PK_NDS_FIELD_TOUCH_ONLY : 0);
         return bits | PK_NDS_FIELD_LOCKED;
     }
     if (inMainRam(parent) && running) bits |= PK_NDS_FIELD_SCREEN;
@@ -291,6 +517,8 @@ int pk_nds_field_state(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), vo
         bits |= PK_NDS_FIELD_LOCKED;
         if (task && running) bits |= PK_NDS_FIELD_TEXT;
     }
+    // The X menu (HeartGold / SoulSilver: on the touch screen): its field task.
+    if (touch && inMainRam(task) && read32(task + 4) == touch->startMenuTask) bits |= PK_NDS_FIELD_TOUCH;
     // WILD ENCOUNTERS: the current map's rates, held at 0 while it's off.
     uint32_t data = read32(fs + g->offMapHeaderData);
     uint32_t loc = read32(fs + g->offLocation);
@@ -339,16 +567,17 @@ int pk_nds_field_state(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), vo
     return bits;
 }
 
-int pk_nds_bg3_tiles(melonDS::NDS* nds, int bg)
+// A menu screen opened from the X menu ends: the X menu comes back for buttons, but closes itself when the screen was
+// left by touch (start_menu.c's Task_StartMenu_WaitApp: FieldSystem.menuInputState TOUCH -> START_MENU_STATE_10).
+// DS LAYOUT's floating X menu should come back either way, so the screen's closing fade sets it to buttons. (HeartGold /
+// SoulSilver; headless: the trainer card's Cancel, then this during its fade - the menu stays, its cursor shown.)
+void pk_nds_field_keep_start_menu(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), void (*write32)(uint32_t, uint32_t))
 {
-    uint32_t disp = nds->GPU.GPU2D_A.DispCnt;
-    if (!(disp & (1 << (8 + bg)))) return 0;   // the BG is off
-    if (bg == 3 && (disp & 7) > 1) return 0;   // not a text BG in this mode
-    if (bg == 2 && (disp & 7) > 3) return 0;
-    uint16_t cnt = nds->GPU.GPU2D_A.BGCnt[bg];
-    uint32_t base = 0x06000000u + ((disp >> 27) & 7) * 0x10000 + ((cnt >> 8) & 0x1F) * 0x800;
-    int n = 0;
-    for (uint32_t i = 0; i < 32 * 24; i++)
-        if (nds->ARM9Read16(base + i * 2) & 0x3FF) n++;
-    return n;
+    const PkNdsTouchRules* t = touchRules(g);
+    if (!t || !t->offMenuInputState || !write32) return;
+    uint32_t fs = read32(g->fieldSystemPtr);
+    if (!inMainRam(fs)) return;
+    uint32_t task = read32(fs + g->offTask);
+    if (!inMainRam(task) || read32(task + 4) != t->startMenuTask) return;
+    if (read32(fs + t->offMenuInputState) != 0) write32(fs + t->offMenuInputState, 0);
 }

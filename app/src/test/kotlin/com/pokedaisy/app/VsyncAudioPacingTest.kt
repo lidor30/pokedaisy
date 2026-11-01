@@ -18,6 +18,52 @@ class VsyncAudioPacingTest {
         assertEquals(VsyncPace.ON_TICK, vsyncPace(0, 0))   // no audio track: plain ticks
     }
 
+    /**
+     * The audio's refresh period (#80's "tonal shifts"): GL-thread ticks up to 2 ms either side of a 60.03 Hz refresh,
+     * some skipped. The quick average the audio used to follow swings; total time over refreshes lands on the screen's
+     * period, and starts over when the screen goes to 120 Hz.
+     */
+    @Test fun refreshAverageCancelsTickJitterAndFollowsARateChange() {
+        val rnd = Random(7)
+        val period = 1e9 / 60.03
+        val avg = RefreshAverage()
+        var fast = 0.0
+        var fastLow = Double.MAX_VALUE
+        var fastHigh = 0.0
+        var audio = 0.0
+        var refresh = 0L
+        var last = 0L
+        fun tickAt(p: Double, skip: Boolean) {
+            refresh += if (skip) 2 else 1
+            val at = (refresh * p).toLong() + rnd.nextLong(-2_000_000L, 2_000_000L)
+            val d = at - last
+            last = at
+            fast = if (fast == 0.0) d.toDouble() else fast + (d - fast) * 0.05
+            audio = avg.tick(d, fast)
+        }
+        repeat(1800) { i ->
+            tickAt(period, skip = i % 97 == 0)
+            if (i > 300) { fastLow = minOf(fastLow, fast); fastHigh = maxOf(fastHigh, fast) }
+        }
+        assertTrue("quick average swings: ${fastHigh / fastLow}", fastHigh / fastLow > 1.005)
+        assertEquals(1.0, audio / period, 0.0005)
+
+        // The screen goes to 120 Hz: the average starts over and finds the new period.
+        val half = period / 2
+        val base = last
+        refresh = 0
+        val from = base
+        repeat(1800) { i ->
+            refresh += 1
+            val at = from + (refresh * half).toLong() + rnd.nextLong(-1_000_000L, 1_000_000L)
+            val d = at - last
+            last = at
+            fast = fast + (d - fast) * 0.05
+            audio = avg.tick(d, fast)
+        }
+        assertEquals(1.0, audio / half, 0.0005)
+    }
+
     @Test fun troubleNeedsSeveralUnderrunsCloseTogether() {
         val w = AudioTroubleWatch(max = 4, windowNanos = 10_000_000_000L)
         val s = 1_000_000_000L

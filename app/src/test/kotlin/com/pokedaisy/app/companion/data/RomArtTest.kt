@@ -70,6 +70,14 @@ class RomArtTest {
         assertTrue("regionmap/player_brendan.png" in images && "regionmap/player_may.png" in images)
     }
 
+    /** Monomyth's ATHANTO MAP (MMY_REGION_*: its PokeNav's, a text screen of its own) and the one head its map code
+     * loads: the map matched the game's own screen headless, pixel for pixel, but for its place-name window. */
+    @Test fun monomythSuppliesItsRegionMap() {
+        val images = composed(System.getProperty("user.home") + "/Downloads/Game ROMs & Emulation/gba/Pokemon Monomyth (v1.0).gba")
+        assertEquals("bed46b86", pixels(images.getValue("regionmap/monomyth.png")))
+        assertEquals("867f8756", pixels(images.getValue("regionmap/player_monomyth.png")))
+    }
+
     /** Super Mariomon's world map (MM_REGION_*, the same bytes in every release) and MARIO's head for it. */
     @Test fun mariomonSuppliesItsRegionMap() {
         for (v in listOf("v1.2.1", "v1.2.2", "v1.3", "v1.5.1 Anniversary", "v1.5.2 Anniversary")) {

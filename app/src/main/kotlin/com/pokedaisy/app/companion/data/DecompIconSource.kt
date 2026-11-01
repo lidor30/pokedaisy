@@ -145,7 +145,7 @@ internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, 
     if (!Gfx.inRom(palDataPtr)) {
         android.util.Log.w("pokedaisy", "DecompIcon mon $species: palPtr %08x not in ROM (idx=$palIdx)".format(palDataPtr)); return null
     }
-    val tiles = rd(tilesPtr, MON_TILE_BYTES)
+    val tiles = if (t.monIconPacked) MonomythIcons.unpack(rd, tilesPtr) ?: return null else rd(tilesPtr, MON_TILE_BYTES)
     var pal = rd(palDataPtr, PAL_BYTES)
     if (shiny && t.monIconPalettes == 0L) pal = shinyIconPalette(t, species, pal, rd) ?: return null
     // 32x64 = 4x8 tiles; UI crops to the first 32x32 frame.

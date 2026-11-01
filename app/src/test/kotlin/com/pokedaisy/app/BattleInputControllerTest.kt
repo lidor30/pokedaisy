@@ -200,6 +200,7 @@ class BattleInputControllerTest {
     }
 
     @Test fun runClosesTheGotAwayMessageWithB() {
+        // No fresh state read: B, which a menu coming back shrugs off.
         c.onState(0, BATTLE_INPUT_ACTION_SELECT)
         c.selectAction(3)
         var b = 0
@@ -208,6 +209,18 @@ class BattleInputControllerTest {
             if (key == "B" && ++b == 2) c.onState(0, BATTLE_INPUT_NONE) // the battle ended
         }
         assertEquals(listOf("LEFT", "UP", "RIGHT", "DOWN", "A", "B", "B"), game.presses)
+        assertFalse(c.isBusy)
+    }
+
+    @Test fun runFromAShinyLeavesTheQuestionToThePlayer() {
+        // Unbound's "Are you sure you want to run away?" before a shiny: RUN is picked, then nothing more is pressed,
+        // even with a fresh read saying a message (the question) is up.
+        c.runAsksFirst = true
+        c.stateNow = { BATTLE_INPUT_BUSY }
+        c.onState(0, BATTLE_INPUT_ACTION_SELECT)
+        c.selectAction(3)
+        run(400) { key -> if (key == "A") c.onState(0, BATTLE_INPUT_BUSY) }
+        assertEquals(listOf("LEFT", "UP", "RIGHT", "DOWN", "A"), game.presses)
         assertFalse(c.isBusy)
     }
 
@@ -220,6 +233,42 @@ class BattleInputControllerTest {
             if (key == "B") c.onState(0, BATTLE_INPUT_ACTION_SELECT)
         }
         assertEquals(1, game.presses.count { it == "B" })
+        assertFalse(c.isBusy)
+    }
+
+    @Test fun runSaysYesToAreYouSureThenClosesTheMessage() {
+        // Unbound before a shiny: "Are you sure you want to run away?" YES / NO (YES first), then "Got away safely!".
+        var state = BATTLE_INPUT_ACTION_SELECT
+        c.stateNow = { state }
+        c.onState(0, state)
+        c.selectAction(3)
+        var a = 0
+        run(400) { key ->
+            if (key != "A") return@run
+            state = when (++a) {
+                1 -> BATTLE_INPUT_BUSY  // RUN taken: the question, then YES / NO
+                2 -> BATTLE_INPUT_BUSY  // YES: "Got away safely!"
+                else -> BATTLE_INPUT_NONE // closed: the battle's over
+            }
+            c.onState(0, state)
+        }
+        assertEquals(listOf("LEFT", "UP", "RIGHT", "DOWN", "A", "A", "A"), game.presses)
+        assertFalse(c.isBusy)
+    }
+
+    @Test fun runNeverPressesAOnAMenuTheLastPollMissed() {
+        // "Can't escape!" closes and the action menu is back before the ~4-frame poll has seen it: the fresh read has.
+        var state = BATTLE_INPUT_ACTION_SELECT
+        c.stateNow = { state }
+        c.onState(0, state)
+        c.selectAction(3)
+        var a = 0
+        run(400) { key ->
+            if (key != "A") return@run
+            if (++a == 1) { state = BATTLE_INPUT_BUSY; c.onState(0, state) }
+            else state = BATTLE_INPUT_ACTION_SELECT   // the poll still says BUSY
+        }
+        assertEquals(2, game.presses.count { it == "A" }) // RUN, then the one that closed the message
         assertFalse(c.isBusy)
     }
 
