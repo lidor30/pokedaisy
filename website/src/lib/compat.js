@@ -74,7 +74,7 @@ export async function randomizedRetailOf(data, { code, rev }, bytes) {
  * `size` is the ROM's own size (not an archive's); `retailOf` the retail dump it is ([retailDumpOf]); `randomizedOf` the
  * retail cart it's a randomized copy of ([randomizedRetailOf]).
  */
-export function verdict(data, { platform, code, rev, size, sha1, retailOf, randomizedOf }) {
+export function verdict(data, { platform, code, rev, size, sha1, retailOf, randomizedOf, dsHack }) {
   if (platform === 'gb') {
     const hit = data.gameBoy.find((g) => g.sha1 === sha1);
     return hit
@@ -82,6 +82,8 @@ export function verdict(data, { platform, code, rev, size, sha1, retailOf, rando
       : { status: 'unsupported', reason: 'gb' };
   }
   if (platform === 'nds') {
+    // A DS hack under a retail header, by a word of its code ([dsHackOf]; the app's OriginHeartGold.matches).
+    if (dsHack) return { status: 'supported', title: dsHack.title, version: dsHack.version, family: 'Nintendo DS' };
     // By the header's code and revision, as the app takes a DS cart (CompanionSupport.isSupported).
     const hit = (data.ds ?? []).find((g) => g.code === code);
     if (!hit) return { status: 'unsupported', reason: 'ds' };
@@ -151,6 +153,19 @@ export async function unzipRom(zip) {
   return null;
 }
 
+/**
+ * The DS hack [bytes] is, for one that keeps a retail header (Origin HeartGold's is a Japanese HeartGold's): the
+ * `dsHacks` entry with its code and revision whose code word sits at its offset, else undefined.
+ */
+export function dsHackOf(data, header, bytes) {
+  if (header.platform !== 'nds') return undefined;
+  return (data.dsHacks ?? []).find((h) => {
+    if (h.code !== header.code || h.rev !== header.rev || bytes.length < h.offset + 4) return false;
+    const o = h.offset;
+    return ((bytes[o] | (bytes[o + 1] << 8) | (bytes[o + 2] << 16) | (bytes[o + 3] << 24)) >>> 0) === h.word;
+  });
+}
+
 /** Everything the page shows for one dropped file: header, hash, size and the verdict. */
 export async function checkFile(data, name, bytes) {
   const lower = name.toLowerCase();
@@ -163,6 +178,8 @@ export async function checkFile(data, name, bytes) {
   const header = readHeader(bytes);
   const sha1 = await sha1Hex(bytes);
   const info = { ...header, size: bytes.length, sha1 };
+  const dsHack = dsHackOf(data, header, bytes);
+  if (dsHack) info.dsHack = dsHack;
   if (header.platform === 'gba' && !data.titles[sha1]) {
     const retailOf = await retailDumpOf(data, header, bytes);
     if (retailOf) info.retailOf = retailOf;

@@ -86,6 +86,8 @@ HeartGold and SoulSilver (the USA releases), Platinum, Black, White, Black 2 and
 
 In the German HeartGold and SoulSilver, `ONE SCREEN` keeps the touch screen small in the corner, as `PICTURE IN PICTURE` does, so it's always there.
 
+In Origin HeartGold, `ONE SCREEN` floats the touch screen in for its X menu, its options and its battles: its battle system is its own, so its battle buttons aren't on the top screen. Whenever a battle waits for you (your moves, your party), its touch screen floats in and you tap the game's own buttons on it. While the battle plays, the game fills the screen again. The companion's `BATTLE` tab still shows the matchups.
+
 ## Single-screen handhelds
 
 On a handheld with one screen, like the Retroid Pocket 6, the companion shares the game's screen. The `COMPANION VIEW` setting (in the `SCREEN` group of Settings and of the companion's `SETTINGS`) picks how:

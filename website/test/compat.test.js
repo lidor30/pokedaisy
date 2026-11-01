@@ -2,7 +2,7 @@ import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { deflateRawSync } from 'node:zlib';
 import { readFileSync } from 'node:fs';
-import { checkFile, maskRanges, randomizedRetailOf, readHeader, retailDumpOf, sha1Hex, verdict } from '../src/lib/compat.js';
+import { checkFile, dsHackOf, maskRanges, randomizedRetailOf, readHeader, retailDumpOf, sha1Hex, verdict } from '../src/lib/compat.js';
 
 const data = JSON.parse(readFileSync(new URL('../src/data/compat.json', import.meta.url)));
 const MB = 1024 * 1024;
@@ -72,6 +72,20 @@ test('DS: Platinum rev 1, HeartGold / SoulSilver, by the header', () => {
     for (const rev of [1, 255]) assert.equal(ds(code, rev).reason, 'revision');
   }
   assert.equal(ds('ADAE', 0).reason, 'ds');
+});
+
+test('DS: Origin HeartGold by its code word, not a Japanese HeartGold', () => {
+  const hack = data.dsHacks.find((h) => h.code === 'IPKJ');
+  const cart = (word) => {
+    const b = new Uint8Array(hack.offset + 4);
+    b.set(nds('IPKJ', 0));
+    new DataView(b.buffer).setUint32(hack.offset, word, true);
+    return b;
+  };
+  const check = (bytes) => verdict(data, { ...readHeader(bytes), size: bytes.length, sha1: '0'.repeat(40), dsHack: dsHackOf(data, readHeader(bytes), bytes) });
+  assert.deepEqual(check(cart(hack.word)), { status: 'supported', title: 'Pokémon Origin HeartGold', version: hack.version, family: 'Nintendo DS' });
+  assert.equal(check(cart(0)).reason, 'ds');
+  assert.equal(check(nds('IPKJ', 0)).reason, 'ds');
 });
 
 test('Game Boy: Yellow only', () => {

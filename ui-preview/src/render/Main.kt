@@ -1302,6 +1302,12 @@ fun main(args: Array<String>) {
         com.pokedaisy.app.companion.data.PokegearMap.dir = dir
         com.pokedaisy.app.companion.data.NdsArt.dir = dir
         if (com.pokedaisy.app.companion.data.NdsArt.extractTo(File(path), dir)) println("nds art: from ${File(path).name}")
+        // Its own words (the Poller's NdsArt.prefetch), and Origin HeartGold's tables (it runs as HEARTGOLD).
+        com.pokedaisy.app.companion.data.NdsArt.names = com.pokedaisy.app.companion.data.NdsArt.readNames(File(path))
+        if (com.pokedaisy.app.companion.data.OriginHeartGold.matches(File(path))) {
+            com.pokedaisy.app.companion.data.originHeartGold = true
+            com.pokedaisy.app.companion.data.OriginHeartGold.data = com.pokedaisy.app.companion.data.NdsArt.readOrigin(File(path))
+        }
     }
     // A FireRed-engine hack's own region map (Unbound, Odyssey, ...) from -Prom.
     System.getProperty("rom").orEmpty().takeIf { it.isNotBlank() }?.let { path ->

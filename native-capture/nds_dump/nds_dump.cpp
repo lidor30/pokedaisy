@@ -296,7 +296,7 @@ static void runFrames(int n, u32 keys)
         static int wasBattle = 0;
         int battle = 0, inBattle = 0, battle3d = 0;
         if (auto* cart = nds->NDSCartSlot.GetCart()) {
-            if (const PkNdsFieldGame* g = pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion)) {
+            if (const PkNdsFieldGame* g = pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength())) {
                 int bits = pk_nds_field_state(g, read32, write32, wildOff);
                 pk_nds_call_frame(nds, g);
                 battle = (bits & PK_NDS_FIELD_BATTLE) != 0;
@@ -428,7 +428,7 @@ static void steadyFrame()
     }
     while (nds->SPU.ReadOutput(buf, 2048) > 0) {}   // the game's own, muted
     auto* cart = nds->NDSCartSlot.GetCart();
-    const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+    const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
     int bgm = -1;
     if (g && g->currentBgm) {
         u32 depth = g->bgmDepth ? read32(g->bgmDepth) : 0;
@@ -476,7 +476,7 @@ static void steadyFrame()
 static void fieldInfo()
 {
     auto* cart = nds->NDSCartSlot.GetCart();
-    const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+    const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
     if (!g) { printf("fieldinfo: no table for this cart\n"); fflush(stdout); return; }
     if (g->gen == 5) {
         u32 gs = read32(g->fieldSystemPtr);
@@ -679,7 +679,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "scriptgo")) {
             // scriptgo FILE: as script, but back once it has started (a battle doesn't free the field for a while)
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             std::vector<u8> bytes = readFile(a);
             int seq = pk_nds_call_script(nds, g, bytes.data(), (u32) bytes.size());
             int f = 0;
@@ -765,7 +765,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "battlemenu")) {
             // battlemenu N: the battle controller's step (pk_nds_battle_command) each frame for N frames, as it changes
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             int frames = (int) num(a), last = -100;
             for (int i = 0; i < frames; i++) {
                 int m = pk_nds_battle_command(g, read32);
@@ -793,7 +793,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "wildrate")) {
             // wildrate: the current map's grass / surf rates as the field holds them now
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             if (g) {
                 u32 fs = read32(g->fieldSystemPtr), data = read32(fs + g->offMapHeaderData), map = read32(read32(fs + g->offLocation));
                 auto rate = [&](u32 at) { return g->rateBytes ? (read32(at & ~3u) >> ((at & 3) * 8)) & 0xFF : read32(at); };
@@ -807,7 +807,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "action")) {
             // action N [A0 A1 A2 A3]: post pk_nds_call's action N (1 = PC) for the next frame, then report when it ran
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             u32 args[4] = {n > 2 ? num(b) : 0, n > 3 ? num(c) : 0, n > 4 ? num(d) : 0, 0};
             if (n > 5) sscanf(line, "%*s %*s %*s %*s %*s %u", &args[3]);
             int seq = pk_nds_call_action(nds, g, (int) num(a), args);
@@ -824,7 +824,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "call")) {
             // call FN [A0 A1 A2 A3]: the game's function FN (Thumb: odd) from the field's main loop next frame (pk_nds_call)
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             u32 v[5] = {0};
             int got = sscanf(line, "%*s %i %i %i %i %i", (int*) &v[0], (int*) &v[1], (int*) &v[2], (int*) &v[3], (int*) &v[4]);
             PkNdsOp op = {v[0], {v[1], v[2], v[3], v[4]}};
@@ -839,7 +839,7 @@ int main(int argc, char** argv)
             // script FILE: a field script (the game's bytecode, e.g. assembled with pret/pokeplatinum's macros) run as
             // the PC action runs its own; then frames until the field is free again (at most 3000)
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             std::vector<u8> bytes = readFile(a);
             int seq = pk_nds_call_script(nds, g, bytes.data(), (u32) bytes.size());
             int f = 0;
@@ -896,7 +896,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "trace")) {
             // trace N: N frames (keys held as set), each one's field bits and the top screen's master brightness
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             int frames = (int) num(a);
             for (int i = 0; i < frames; i++) {
                 runFrames(1, heldKeys);

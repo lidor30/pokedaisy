@@ -2674,6 +2674,41 @@ to exercise the shared party, bag, dex and map layout without bundling another p
 
 German SoulSilver rev 0 (`IPGD`, SHA-1 `576cdb7eec728c49aed85b9dd7e1e084ba1f08f9`) shares these globals and the call ABI. Other German generations remain outside this change.
 
+**Origin HeartGold** (v4.0.3, English patch 1.0.0-rc8 applied to the US HeartGold; SHA-1 `a54a647599d59ed0060dfc4375c289d6e041318a`):
+Yannanfei TB's hack, rebuilt by Alex on hg-engine over the *Japanese* HeartGold, so its header is a real Japanese HeartGold's
+(`IPKJ` rev 0) and nothing of the US cart's layout holds: 120 overlays at other addresses, a decompressed ARM9 of its own.
+`OriginHeartGold.matches` tells it apart by SaveData_Get's literal pool (cart 0x2B73C holds 0x021D11B0: the save's static
+block, its pointer 4 bytes in, where the US code keeps the pointer alone), and every table below is that build's; another
+build fails the check and reads as not supported. The website does the same (`compat.json`'s `dsHacks`, `dsHackOf`).
+Finding its addresses: each US function (pret/pokeheartgold's `.xMAP`, bytes from the US cart) searched in its ARM9 and
+overlays with BL pairs and pool-looking words masked; a global through a US function that loads it from a pool, the hack's
+match read at the same offset. Short functions matched look-alikes (the first "SaveData_Get" hit was another getter), so
+every word was then checked live in nds_dump: `sFieldSysPtr` 0x021D31F4, the SaveData pointer 0x021D11B4,
+`gOverlayTemplate_Battle` 0x020F70B8, FieldMap_Main 0x021E4C51, sSoundWork 0x021107A0 (+0xBEBFC the BGM), sSeqPlayer
+0x021DEA04, Task_StartMenu 0x0203B3E9 (its StartMenu struct grew 4 bytes), and `pk_nds_call`'s functions (the PC and FLY
+ran). The save is HeartGold's with a bigger bag (151 TM / HM slots for its 130 TMs) and Pokédex (a bit per species to 1600):
+the sections' offsets are read off the SaveData's `arrayHeaders` (+0x2E014; `GEN4_ORIGIN_HEARTGOLD`). There was no save:
+a new game was played headless (the `origin_heartgold` fixture's README; the US save isn't taken), its party and items given
+through the game's own GiveMon / GiveItem. Its data is its own and read from the cart at run time (`NdsArt.readOrigin`,
+`OriginHeartGold.Data`, never bundled): species / form ids to 1440 (forms past 1025 by its ARM9's form table: a party record
+keeps the base species and the form), 52-byte personal records (types at 6 / 7), `/extra/new_move_data.narc` (40 bytes a
+move: type 0, category 2, power 3) for its 920 moves, Fairy as type 9 and its 18 x 18 type chart (overlay 14, 4 = 1x), the
+text banks renumbered (species 232, moves 739, items 219, places 272, types 724), party icons in `/data/pokeicon.narc` (7 +
+2 x id, palettes by its ARM9's table), item icons at 2 x item + 2 in `/a/0/1/8`, TM tables for its 130 TMs. **Its battle
+engine is its own**: `gOverlayTemplate_Battle` runs overlay 14's init, which makes a 0x274-byte manager (0x02255BAC) with
+battle objects (0x414 bytes each) pointing at the parties' (encrypted) records: no BattleSystem / BattleContext. The BATTLE
+tab reads those objects instead (`Gen4ManagedBattle`: HP, item, level, stats, types, stages, moves and PP, ability; the
+player's six from manager +0x60, the foe's from +0x7C, each side in battle order, the one out first - a switch reorders them -
+and the BattleSetup's type for trainer battles; found by diffing dumps across a Leer, an Agility and a switch). Its battle
+buttons can't work: its panels aren't HeartGold's. Its touch screen's controller (manager +0x238) has an input handler at +0x10 while the battle waits
+for a tap, which `pk_nds_field.cpp`'s `managedBattleInput` reads: DS LAYOUT floats the game's touch screen in then, and
+SMART FF slows down. Its DEX (`POKEDEX_ORIGIN`, one national list of 1025) is written by `NdsArt.dexOrigin` from its cart:
+the text banks 791 / 803 / 711, heights / weights in `/a/0/7/4`, abilities u16 (a hidden one at 0x1A), evolutions of ten
+6-byte entries (HeartGold's methods 1-26, hg-engine's from 27: `Gen4Dex.originEvoReqs`), learnsets as { u16 level, u16 move },
+machines by its own rule (the species' `/data/tutor_moves.narc` list or its learnset, RETURN anyone, MEW all), fronts from
+`/data/pokepic_m.narc` (member 8 x species, 160 x 80, linear, unscrambled - a 37.6 MB archive, so `NdsArt.file` takes up to
+48 MB). The save's Pokedex keeps 0xC8-byte flag arrays (`Gen4Config.dexFlagBytes`). No GUIDE (its world isn't HeartGold's).
+
 **GUIDE.** `scripts/gen_gen4_guide.py` writes `GuideGen4PlatinumGen.kt` / `GuideGen4HeartGoldGen.kt` from the decomps,
 numbers only: every map header's wild set (Platinum's grass with its day / night pair, HG / SS's per time of day and
 each version's own branch, surf, rock smash, rods and HG / SS's night fish), the bosses' teams, and HERE's item balls

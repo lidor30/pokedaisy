@@ -102,6 +102,39 @@ const CallFns HEARTGOLD = {
     1, 0x08,
 };
 
+// Origin HeartGold (nds/pk_nds_field.cpp's ORIGIN_HEARTGOLD): HeartGold's functions in the hack's build, each found by its
+// US code (BLs and pool words masked) and its environment layout checked in Task_RunScripts' code; the script borrowed is
+// the US one's (its file and text bank kept by the hack).
+const CallFns ORIGIN_HEARTGOLD = {
+    0, 0, 0,
+    0x0203F515,   // ScriptJump
+    0x0200BCB9,   // MessageFormat_New_Custom
+    0x02026865,   // String_New
+    0,
+    0x020670AD,   // FieldMove_InitCheckData
+    0x020672A9,   // FieldMove_CheckFly
+    0,
+    0x0207365D,   // SaveArray_Party_Get
+    0x0207339D,   // Party_GetMonByIndex
+    0x02066E95,   // sub_02067BF8
+    0x02066ECD,   // sub_02067C30
+    0x0204F979,   // FieldSystem_CreateTask
+    0, 0,
+    0x0C, 0,
+    0x0A, 0x0C,
+    0, 0,
+    0,
+    11,
+    0, 0, 0, 0, 0,
+    0,
+    0x0203F725,   // ScriptEnvironment_New
+    0x0203F7B5,   // CreateScriptContext
+    0x0203F64D,   // Task_RunScripts
+    2010,         // std_pokecenter_pc
+    4, 9, 0x0A, 0x38, 0x44, 0x48, 0x4C,
+    1, 0x08,
+};
+
 // Black (IRBO rev 0). There's no decomp, so these were traced in the running game with nds_dump's `watch` (the ARM9's
 // writes to the GameSystem's event, their registers and stack): the PC's furniture, a Pokémon Center nurse and FLY
 // from the party menu, each followed back to the function that made the event.
@@ -216,7 +249,7 @@ uint32_t lastResults[PK_NDS_MAX_RESULTS];
 const CallFns* fnsFor(const PkNdsFieldGame* game)
 {
     if (!game || !game->fieldMapMain) return nullptr;
-    return game->callSet == 1 ? &PLATINUM : game->callSet == 2 ? &HEARTGOLD : nullptr;
+    return game->callSet == 1 ? &PLATINUM : game->callSet == 2 ? &HEARTGOLD : game->callSet == 7 ? &ORIGIN_HEARTGOLD : nullptr;
 }
 
 const Gen5Fns* gen5FnsFor(const PkNdsFieldGame* game)

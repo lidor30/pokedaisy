@@ -72,6 +72,39 @@ static const PkNdsFieldGame HEARTGOLD_DE = {
     0x08,
 };
 
+// Origin HeartGold (v4.0.3, English patch 1.0.0; header IPKJ rev 0): Yannanfei TB's hack, rebuilt by Alex on hg-engine over
+// the Japanese HeartGold, patched to English. Every global and overlay sits elsewhere than the US cart's, so each word was
+// found again through the US code that uses it (pret/pokeheartgold's .xMAP, BLs and pool words masked: SaveData_Get,
+// Field_NewGame_AppInit, the battle launchers, GetSoundDataPointer, NNS_SndPlayer's) and checked headless on a new game.
+// The structs are HeartGold's. A real Japanese HeartGold shares the header, so [ORIGIN_HEARTGOLD_SIG] is checked first.
+static const PkNdsFieldGame ORIGIN_HEARTGOLD = {
+    "Origin HeartGold",
+    0x021D31F4,   // sFieldSysPtr
+    0x020F70B8,   // gOverlayTemplate_Battle
+    0x00, 0x10, 0x40, 0x6C,
+    0x18,
+    0x14, 0x920, 0x921,
+    0x20,
+    0x021E4C51,   // FieldMap_Main in its overlay 1
+    0x021CF39C,   // sSoundWork (0x021107A0) + 0xBEBFC
+    0x021DEA04,   // sSeqPlayer
+    1,
+    7,
+    0, 0,         // no BattleSystem / BattleContext: its battle engine is its own (battleManagerPtr below)
+    0,
+    0, 0, 0, 0, 0,
+    0, 0,
+    0, 0, 0, 0,
+    0,
+    0,
+    0, 0, 0, 0, 0,
+    0,
+    // Its battle manager (0x274 bytes, made by its overlay 14's battle init, which gOverlayTemplate_Battle runs): its
+    // touch screen's controller at +0x238, whose +0x10 is the input handler while the battle waits for the player (headless:
+    // 0x0220368D at the commands and the moves, 0x02203B61 at the party after a faint, 0 while the turn plays).
+    0x02255BAC, 0x238, 0x10,
+};
+
 // Black (USA / Europe, IRBO rev 0): no decomp, so from headless captures (nds_dump dumps of the field, a text box, the X
 // menu, the party screen and a Battle Subway battle, diffed; the heap's blocks carry their source file's name). The
 // GameSystem is procsys.c's proc work, its pointer static; its proc system's running proc names its overlay (21 the field
@@ -216,6 +249,25 @@ void pk_nds_field_set_rates(const int32_t* triples, int n)
 // PLAYER_AVATAR_* (constants/player_avatar.h)
 enum { AVATAR_WALKING = 0, AVATAR_CYCLING = 1, AVATAR_SURFING = 2 };
 
+// Origin HeartGold's cart: SaveData_Get's literal pool (0x0202773C in its ARM9, which the cart keeps uncompressed at 0x4000)
+// holds the save's static block (its SaveData pointer 4 bytes in: `ldr r0, [r0, #4]`, where the US cart's has the pointer
+// alone). Another build of the hack (or a real Japanese HeartGold) moves it, and gets no table.
+static const uint32_t ORIGIN_HEARTGOLD_SIG_OFFSET = 0x4000 + 0x2773C, ORIGIN_HEARTGOLD_SIG = 0x021D11B0;
+
+int pk_nds_origin_heartgold(const uint8_t* rom, uint32_t romLen)
+{
+    if (!rom || romLen < ORIGIN_HEARTGOLD_SIG_OFFSET + 4 || memcmp(rom + 0xC, "IPKJ", 4) != 0 || rom[0x1E] != 0) return 0;
+    const uint8_t* w = rom + ORIGIN_HEARTGOLD_SIG_OFFSET;
+    return (uint32_t) (w[0] | w[1] << 8 | w[2] << 16 | (uint32_t) w[3] << 24) == ORIGIN_HEARTGOLD_SIG;
+}
+
+const PkNdsFieldGame* pk_nds_field_game_rom(const uint8_t* rom, uint32_t romLen)
+{
+    if (pk_nds_origin_heartgold(rom, romLen)) return &ORIGIN_HEARTGOLD;
+    if (!rom || romLen < 0x20) return 0;
+    return pk_nds_field_game((const char*) rom + 0xC, rom[0x1E]);
+}
+
 const PkNdsFieldGame* pk_nds_field_game(const char code[4], int revision)
 {
     if (memcmp(code, "CPUE", 4) == 0 && revision == 1) return &PLATINUM_US_REV1;
@@ -258,6 +310,14 @@ struct PkNdsTouchRules {
 // INFO page on top). Everything here is the same address in both games but the Pokédex's init: SoulSilver's overlay has it
 // 4 bytes earlier (its version's dex differs), so both are listed.
 static const PkNdsTouchRules TOUCH_RULES[] = {
+    // Origin HeartGold: its Task_StartMenu found through StartMenu_Init's pool (checked headless: the X menu's field task),
+    // PartyMenuApp_Init by its code (HeartGold's, byte for byte but the calls); its options are a page of its own, all on
+    // the touch screen (init 0x023DE0F9, read off the child process while it was up headless). Its Pokédex is its own too
+    // (not reached headless: side by side). Its battles are pk_nds_field.cpp's managed battle (battleManagerPtr).
+    { &ORIGIN_HEARTGOLD, 0x0203B3E9, 0x19C, 0x4D0, {
+        { 0x02076E9D, 0 },                                      // the party
+        { 0x023DE0F9, 0 },                                      // the options
+    }, 0x10C },
     { &HEARTGOLD_US, 0x0203BEF1, 0x19C, 0x4D0, {
         { 0x02078E31, 0 },                                      // the party
         { 0x021E5901, 0 },                                      // the options
@@ -363,6 +423,15 @@ static const PkNdsTouchRules* touchRules(const PkNdsFieldGame* g)
     return nullptr;
 }
 
+// A hack's own battle engine (PkNdsFieldGame.battleManagerPtr): its touch screen's input handler, set while the battle waits
+// for a tap; 0 while it plays (or no manager yet).
+static uint32_t managedBattleInput(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t))
+{
+    uint32_t mgr = read32(g->battleManagerPtr);
+    uint32_t ui = inMainRam(mgr) ? read32(mgr + g->offBattleUi) : 0;
+    return inMainRam(ui) ? read32(ui + g->offUiHandler) : 0;
+}
+
 // The touch bits for a battle child process [child] (its data the BattleSystem). While the controller waits for the
 // player (SELECTION_SCREEN_INPUT), battler 0's step says which: 1 - 4 the commands and the moves (what BATTLE BUTTONS stand
 // in for - whatever BattleMenuID draws them: HG redraws the commands under another one after a move's CANCEL), 7 - 10 the
@@ -370,6 +439,9 @@ static const PkNdsTouchRules* touchRules(const PkNdsFieldGame* g)
 // the touch screen's.
 static int battleTouch(const PkNdsFieldGame* g, const PkNdsTouchRules* t, uint32_t (*read32)(uint32_t), uint32_t child)
 {
+    // A battle of its own (Origin HeartGold): BATTLE BUTTONS can't steer its panels, so whatever waits for a tap is the
+    // touch screen's.
+    if (g->battleManagerPtr) return managedBattleInput(g, read32) ? PK_NDS_FIELD_TOUCH : 0;
     uint32_t bs = read32(child + 0x1C);
     if (!inMainRam(bs)) return 0;
     uint32_t ctx = read32(bs + g->offBattleContext);
@@ -583,6 +655,13 @@ int pk_nds_bgm_settle(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t))
 int pk_nds_battle_command(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t))
 {
     if (g && g->gen == 5) return gen5BattleCommand(g, read32);
+    if (g && g->battleManagerPtr) {
+        uint32_t fs = read32(g->fieldSystemPtr);
+        uint32_t pm = inMainRam(fs) ? read32(fs + g->offProcessManager) : 0;
+        uint32_t child = inMainRam(pm) ? read32(pm + 4) : 0;
+        if (!inMainRam(child) || read32(child) != read32(g->battleTemplate)) return -1;
+        return managedBattleInput(g, read32) ? PK_NDS_BATTLE_SELECTING : 0;
+    }
     if (!g || !g->offBattleContext) return -1;
     uint32_t fs = read32(g->fieldSystemPtr);
     if (!inMainRam(fs)) return -1;

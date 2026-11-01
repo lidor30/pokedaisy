@@ -196,7 +196,8 @@ fun guideId(game: GameKind?, live: GuideTables?): GuideId? = live?.guide ?: when
     GameKind.CRYSTAL -> GuideId.CRYSTAL
     // A DS game: its guide carries its own tables too (Gen4World).
     GameKind.PLATINUM -> GuideId.PLATINUM
-    GameKind.HEARTGOLD -> GuideId.HEARTGOLD
+    // Origin HeartGold runs as HEARTGOLD, but its world isn't HeartGold's (its own wild Pokémon, trainers, story): no guide.
+    GameKind.HEARTGOLD -> if (originHeartGold) null else GuideId.HEARTGOLD
     GameKind.SOULSILVER -> GuideId.SOULSILVER
     GameKind.BLACK -> GuideId.BLACK
     GameKind.WHITE -> GuideId.WHITE

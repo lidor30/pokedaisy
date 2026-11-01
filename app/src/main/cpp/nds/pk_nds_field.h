@@ -28,7 +28,7 @@ typedef struct PkNdsFieldGame {
     uint32_t seqPlayers;       // NitroSystem's sSeqPlayer[16] (NNSSndSeqPlayer, 0x44 bytes): a volume fade running (STEADY waits it out)
     int rateBytes;             // the encounter rates are u8s (HeartGold / SoulSilver's EncounterData), not Platinum's u32s
     int callSet;               // pk_nds_call's functions for this game: 0 none, 1 Platinum's, 2 HeartGold / SoulSilver's, 3 Black's, 4 White's,
-                               // 5 Black 2's, 6 White 2's
+                               // 5 Black 2's, 6 White 2's, 7 Origin HeartGold's
     int offBattleContext;      // BattleSystem.ctx (the battle process's data is the BattleSystem), 0 = unknown
     int offCommand;            // BattleContext.command: the battle controller's step (constants/battle.h's CONTROLLER_COMMAND_*)
     // Gen 5 (Black): no FieldSystem. fieldSystemPtr is then the static GameSystem pointer, and the scene comes from it:
@@ -54,6 +54,12 @@ typedef struct PkNdsFieldGame {
     int offEncounterRates;     // the event data's encounter table: 7 rate bytes (grass, dark grass, rustling grass,
                                // surf, rippling surf, fishing, rippling fishing)
     uint32_t bgmDepth;         // the BGM stack's depth (u32); currentBgm is its first entry's song, 0x1C an entry
+    // A battle engine of the hack's own (Origin HeartGold): no BattleSystem / BattleContext, but a manager whose static
+    // pointer is here, its touch screen's controller at offBattleUi and that controller's input handler at offUiHandler -
+    // set only while the battle waits for a tap (the commands, the moves, the party). 0 = HeartGold's battle.
+    uint32_t battleManagerPtr;
+    int offBattleUi;
+    int offUiHandler;
 } PkNdsFieldGame;
 
 // pk_wide.h's PK_FIELD_* bits, which the engine already reads, plus two the DS sets:
@@ -102,6 +108,13 @@ extern "C" {
 
 /** The table entry for this cart (its header's game code and revision), or NULL. */
 const PkNdsFieldGame* pk_nds_field_game(const char code[4], int revision);
+
+/** The table entry for this cart from its bytes (header, and for a hack sharing a retail header its code: Origin
+ * HeartGold's IPKJ), or NULL. */
+const PkNdsFieldGame* pk_nds_field_game_rom(const uint8_t* rom, uint32_t romLen);
+
+/** The cart is Origin HeartGold's build these tables were taken from (an IPKJ header with its code where it was mapped). */
+int pk_nds_origin_heartgold(const uint8_t* rom, uint32_t romLen);
 
 /** The battle controller's step (BattleContext.command: CONTROLLER_COMMAND_*) while a battle runs, else -1. */
 int pk_nds_battle_command(const PkNdsFieldGame* game, uint32_t (*read32)(uint32_t addr));
