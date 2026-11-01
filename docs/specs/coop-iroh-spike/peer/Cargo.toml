@@ -1,0 +1,10 @@
+[package]
+name = "iroh-peer"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[dependencies]
+iroh = "=1.4.1"
+tokio = { version = "1", features = ["full"] }
+anyhow = "1"
