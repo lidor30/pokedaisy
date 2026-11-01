@@ -114,8 +114,35 @@ static void glass(struct pd_canvas *c, int x, int y, int w, int h) {
   pd_round_rect(c, x + 1, y + 1, w - 2, h - 2, 3, GLASS_FILL);
 }
 
+/* GRID (QuickMenuStyle.GRID; Keegan Whitacre's layout, pokedaisy-brick): the width fitted, rows balanced, the short
+ * last row centred, room kept under the tiles for the selected action's name. */
+static bool gridMode;
+void quick_set_grid(bool grid) { gridMode = grid; }
+static void grid_shape(int n, int w, int *cols, int *rows) {
+  int fit = (w - 24 + 6) / (TILE_W + 6);
+  if (fit < 1)
+    fit = 1;
+  if (fit > n)
+    fit = n;
+  *rows = (n + fit - 1) / fit;
+  *cols = (n + *rows - 1) / *rows;
+}
+static void grid_place(int n, int i, int w, int h, int *x, int *y) {
+  int cols, rows;
+  grid_shape(n, w, &cols, &rows);
+  int row = i / cols, count = n - row * cols;
+  if (count > cols)
+    count = cols;
+  *x = (w - (count * TILE_W + (count - 1) * 6)) / 2 + (i % cols) * (TILE_W + 6);
+  *y = (h - (rows * TILE_H + (rows - 1) * 6 + 52)) / 2 + row * (TILE_H + 6);
+}
+
 // Where tile i sits: round an ellipse that fits the canvas (a circle where it can be), the first at the top.
 static void place(int n, int i, int w, int h, int *x, int *y) {
+  if (gridMode) {
+    grid_place(n, i, w, h, x, y);
+    return;
+  }
   double rx = (w - TILE_W) / 2.0 - 4, ry = (h - TILE_H) / 2.0 - 4;
   // Close round the middle's hint, not out at the screen's edges (QuickMenu.kt's ring); wide enough that
   // nine tiles don't touch.
@@ -131,10 +158,15 @@ static void place(int n, int i, int w, int h, int *x, int *y) {
 int quick_step(int n, int sel, int dx, int dy, int w, int h) {
   if (n <= 0)
     return 0;
-  int sx, sy, best = sel, score = 1 << 30;
+  int sx, sy, best = sel, score = 1 << 30, cols = 1, rows;
   place(n, sel, w, h, &sx, &sy);
+  if (gridMode)
+    grid_shape(n, w, &cols, &rows);
   for (int i = 0; i < n; i++) {
     if (i == sel)
+      continue;
+    // GRID: left / right stay in the row, up / down go to the next one.
+    if (gridMode && (dx ? i / cols != sel / cols : i / cols != sel / cols + (dy > 0 ? 1 : -1)))
       continue;
     int x, y;
     place(n, i, w, h, &x, &y);
@@ -185,6 +217,11 @@ bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick
     int nw = pd_text_width(name), ow = note ? pd_text_width(note) : 0;
     int w = (nw > ow ? nw : ow) + 16, h = note ? 40 : 24;
     int x = (c->w - w) / 2, y = (c->h - h) / 2;
+    if (gridMode) { // under the tiles
+      int cols, rows;
+      grid_shape(n, c->w, &cols, &rows);
+      y = (c->h - (rows * TILE_H + (rows - 1) * 6 + 52)) / 2 + rows * (TILE_H + 6) + 6;
+    }
     glass(c, x, y, w, h);
     pd_text(c, x + (w - nw) / 2, y + 4, name, INK, INK_SHADOW);
     if (note)

@@ -79,6 +79,7 @@ struct pd_settings {
     bool ffAudio;    // the game's sound sped up under fast-forward, else silent
     bool rewind;     // REWIND: the last ~20 s kept for the rewind hotkey
     bool runIndoors; // RUN INDOORS: every map lets the player run
+    bool quickGrid;  // hosts with hasQuickMenu: false = RING, true = GRID
 };
 
 // TAB BAR: at most this many tabs beside the gear (the app's MAX_BAR_TABS).
@@ -116,6 +117,7 @@ struct pd_host_info {
     bool hasExpand;      // Optional: the host can EXPAND (ASPECT / AUTO ZOOM IN rows) ...
     bool expandGame;     // ... and does for this game (else ASPECT reads N/A)
     bool hasHud;         // Optional: the host draws the HUD over the game (its SETTINGS row)
+    bool hasQuickMenu;   // host implements the selectable RING / GRID quick menu
     bool hasState;      // a save state exists for LOAD STATE
     char stateWhen[24]; // when it was made, shown beside LOAD STATE
 };

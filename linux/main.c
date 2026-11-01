@@ -1375,7 +1375,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   double frameCost = 0;
   uint64_t lastStart = 0;
   struct pd_snapshot snap = {0};
-  struct pd_host_info host = {.hideScreenMode = true, .hasExpand = true, .hasHud = c->platform(c) == mPLATFORM_GBA,
+  struct pd_host_info host = {.hideScreenMode = true, .hasExpand = true, .hasQuickMenu = true, .hasHud = c->platform(c) == mPLATFORM_GBA,
                               .expandGame = wideSupported, .count = 1, .labels = {"HOST"}};
   snprintf(host.values[0], 40, "PokeDaisy Linux");
   const char *opts[] = {"Resume game",
@@ -1545,6 +1545,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
     quick[quickN++] = (struct quick_item){QUICK_COMPANION, false, false, NULL, 0, 0, NULL};
     if (quickSel >= quickN)
       quickSel = 0;
+    quick_set_grid(settings.quickGrid);
     if (down(Y) && !companion) {
       quickOpen = !quickOpen;
       flyList = repelList = false;

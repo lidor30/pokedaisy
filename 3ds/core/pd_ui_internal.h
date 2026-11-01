@@ -63,6 +63,7 @@ enum setting_row {
     SETTING_AUTO_ZOOM,
     SETTING_TAB_BAR,   // opens its page
     SETTING_HUD,       // hosts with hasHud: opens its page
+    SETTING_QUICK_MENU, // hosts with hasQuickMenu: two styles, flips in place
 };
 
 // The tabs TAB BAR offers, in the bar's order.
