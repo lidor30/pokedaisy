@@ -10,10 +10,12 @@ import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
+import androidx.compose.foundation.layout.IntrinsicSize
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
+import androidx.compose.foundation.layout.widthIn
 import androidx.compose.foundation.rememberScrollState
 import androidx.compose.foundation.verticalScroll
 import androidx.compose.runtime.Composable
@@ -66,7 +68,7 @@ fun ToolsPage(
     }
 }
 
-/** A tool's card: the title window's white box, its icon in a framed well, the name (and NEW) over a line saying what it does,
+/** A tool's card: the title window's white box, its icon, the name (and NEW) over a line saying what it does,
  * both from the card's top-left padding, so every card's icon and name line up whatever its blurb's length. */
 @Composable
 private fun ToolCard(tool: LibraryTool, m: GbaTextMetrics, small: GbaTextMetrics, cursor: Boolean = false) {
@@ -84,12 +86,9 @@ private fun ToolCard(tool: LibraryTool, m: GbaTextMetrics, small: GbaTextMetrics
             .padding(u * 6),
         verticalAlignment = Alignment.Top,
     ) {
+        // The icon on the card itself, no well round it, at the rail's grain (not two GBA pixels an icon pixel: the user's call).
         ToolIcons.of(tool.id)?.let { icon ->
-            Box(
-                Modifier
-                    .drawBehind { drawLayeredBox(OptionColors.chipLayers.inPx(u.toPx()), OptionColors.tabIdleFill, radius = 2 * u.toPx()) }
-                    .padding(u * 4),
-            ) { PixelArt(icon.bitmap, icon.palette, Modifier.size(u * (TabIcons.SIZE * 2))) }
+            PixelArt(icon.bitmap, icon.palette, Modifier.size(u * TOOL_ICON))
             Spacer(Modifier.width(u * 6))
         }
         Column(Modifier.weight(1f)) {
@@ -137,11 +136,13 @@ fun LibraryNav(
         )
     }
     if (vertical) {
+        // As wide as its widest label needs (SETTINGS was cut short on the Thor, whose 2.3 density makes the pixel font
+        // wider in dp than ui-preview's 2.5), at least NAV_RAIL_ITEM.
         Column(
-            modifier.fillMaxHeight().then(frame).padding(start = u * 5, end = u * 10, top = top, bottom = u * 5),
+            modifier.fillMaxHeight().width(IntrinsicSize.Max).then(frame).padding(start = u * 5, end = u * 10, top = top, bottom = u * 5),
             verticalArrangement = Arrangement.spacedBy(u * 4),
         ) {
-            items(Modifier.width(NAV_RAIL_ITEM))
+            items(Modifier.widthIn(min = NAV_RAIL_ITEM).fillMaxWidth())
         }
     } else {
         Row(
@@ -194,8 +195,11 @@ private fun NavItem(
 /** A tool card's least width: as many columns as fit, one on a phone held upright. */
 private val TOOL_CARD_MIN: Dp = 300.dp
 
-/** The rail's / bar's icons, in GBA pixels (their 16 pixels a little over one each). */
-private const val NAV_ICON = 20
+/** The rail's / bar's icons, in GBA pixels (their 16 pixels about one and a half each). */
+private const val NAV_ICON = 26
+
+/** A tool card's icon, in GBA pixels: as tall as the name and its line under it. */
+private const val TOOL_ICON = 30
 
 /** The rail's items' width (a wide screen). */
 private val NAV_RAIL_ITEM: Dp = 76.dp
@@ -274,9 +278,36 @@ internal object ToolIcons {
         mapOf('k' to OUTLINE, 'o' to Color(0xFFF08830), 'b' to Color(0xFF3878E0)),
     )
 
+    /** SAVE EDITOR: a blue floppy disk, its shutter and label. */
+    private val edit = TabIcons.TabIcon(
+        listOf(
+            "kkkkkkkkkkkkk...",
+            "khhkssssssskbk..",
+            "khbksssskkskbbk.",
+            "kbbksssskkskbbk.",
+            "kbbksssskkskbbk.",
+            "kbbkssssssskbbk.",
+            "kbbbkkkkkkkbbbk.",
+            "kbkkkkkkkkkkkbk.",
+            "kbwwwwwwwwwwwbk.",
+            "kbwwwwwwwwwwwbk.",
+            "kbwwlllllllwwbk.",
+            "kbwwwwwwwwwwwbk.",
+            "kbwwlllllllwwbk.",
+            "kbwwwwwwwwwwwbk.",
+            "kbwwwwwwwwwwwbk.",
+            "kkkkkkkkkkkkkkk.",
+        ),
+        mapOf(
+            'k' to OUTLINE, 'b' to Color(0xFF3878E0), 'h' to Color(0xFF90B8F8), 's' to Color(0xFFC0C0D0),
+            'w' to WHITE, 'l' to Color(0xFFA8A8B8),
+        ),
+    )
+
     fun of(id: String): TabIcons.TabIcon? = when (id) {
         "PATCH" -> patch
         "LINK" -> link
+        "EDIT" -> edit
         "TRADE" -> trade
         else -> null
     }

@@ -1079,8 +1079,8 @@ opens from DISPLAY OPTIONS, so BACK returns there (`Page.parent`, SettingsActivi
 list as a second row of chips (TOOLS); they're the MORE tab now.
 **Settings round (2026-11-01, the user's calls)**: the top-screen Settings draws a step smaller (`LocalTextStep` -1 for the whole
 activity); rows whose label says it all carry no subtitle; a row can be a slider (`SettingRow.slider` -> `SettingSlider` /
-`GbaSlider`, LEFT / RIGHT step it) and GAME VOLUME's opens `OptionSliderPopup` on a tap (a bigger bar, - / +, DONE); a TOOLS
-group (PATCH A ROM, LINK PLAY) on the top screen; NUZLOCKE sits under MORE in every game the tracker follows, a TURN ON page
+`GbaSlider`, LEFT / RIGHT step it) and GAME VOLUME's opens `OptionSliderPopup` on a tap (a bigger bar, - / +, DONE); the tools
+are the library's TOOLS tab, not a Settings group (2026-11-03); NUZLOCKE sits under MORE in every game the tracker follows, a TURN ON page
 while it's off (never a bar filler then); TRADE EVOLUTIONS' row reads TRADE EVOS (with NEW the long label left the badge a
 dot); Monomyth's orange party backdrop gets a blue D-pad ring (`AppColors.focusRing`).
 **OVERLAY** (SCREEN group on both screens, `Prefs.overlay`; `overlay/Overlays.kt` + `OverlayBitmaps.kt`, drawn by
@@ -2019,9 +2019,10 @@ none - never moves it), else the first of the saves folder and Settings > FOLDER
 holding one - played and written where it is, so RetroArch's per-core folders keep their saves - else a new one in the
 saves folder. Only the folders themselves, never below (a user's synced RetroArch/saves pulled in Syncthing's
 `.stversions` when FOLDERS listed recursively; that list now skips hidden folders). `SavesLocationTest` pins the order.
-**PC BOXES / save editing** (library menu, `SaveEditorActivity`, `companion/data/save/`, docs/DEVELOPMENT.md's "PC BOXES";
-on for everyone since 2026-11-01, its flag gone; Settings > TOOLS > TRADE SAVES (and the library's TOOLS) opens it with `EXTRA_TRADE`, the two games
-picked first; manual `save-trade.md`, NEW tag `SAVE_TRADE`):
+**SAVE EDITOR / save editing** (was PC BOXES, renamed 2026-11-03; a game's library menu, `SaveEditorActivity`, `companion/data/save/`,
+docs/DEVELOPMENT.md's "PC BOXES"; on for everyone since 2026-11-01, its flag gone; the library's TOOLS has SAVE EDITOR (`EXTRA_PICK`: the game
+picked first) and TRADE SAVES (`EXTRA_TRADE`: the two games picked, then the trade alone, BACK out to TOOLS - the user's call: it read as a page
+inside the editor); manual `save-trade.md`, NEW tag `SAVE_TRADE`):
 the save *file* read and written with the game closed, never game RAM. Writes go the game's way (`Gen3SaveFile.withBlocks`:
 the other slot, counter + 1, rotation + 1, checksums over each chunk's real size) so the loaded slot stays the game's fallback,
 and only after `SaveFileEdits` has a backup, a still-unchanged file and a read-back; then `boot_fresh`. Retail-layout games only
@@ -2194,8 +2195,8 @@ FIXES bands, daisy bullets, and every line leads with its feature and a colon, d
 **Library GAMES / TOOLS / SETTINGS** (`companion/ui/LibraryTools.kt`, 2026-11-02; the players' pick in a Discord poll over a
 TOOLS pill by the quick views): `LibraryNav` is a rail down the left of a wide library (its frame open at the screen's bottom) or a
 bar along the bottom of an upright one; TOOLS (`LibraryActivity.toolsOpen`, BACK closes it) shows `ToolsPage`'s cards in the
-games' place (`libraryTools()`: PATCH A ROM, LINK PLAY, TRADE SAVES - a new tool goes there, in Settings' TOOLS group and the
-manual's "Games, tools and settings"), a green dot on TOOLS while one is NEW; SETTINGS left the header for it. Docked to the
+games' place (`libraryTools()`: PATCH A ROM, LINK PLAY, SAVE EDITOR, TRADE SAVES - a new tool goes there and in the manual's "Games, tools and
+settings"; never a Settings row: the TOOLS group left Settings on 2026-11-03, the user's call), a green dot on TOOLS while one is NEW; SETTINGS left the header for it. Docked to the
 screen's edge (2026-11-03, the user's call: the frame only on the side facing the page; 16 px coloured `ToolIcons` at
 NAV_ICON GBA pixels, not 9 px glyphs). TOOLS' header keeps only HELP. SETTINGS is a tab: SettingsActivity with `EXTRA_TAB`
 (started with no animation, `settingsTab`) draws the same rail / bar at the library's text step (`LibraryLook`) and the

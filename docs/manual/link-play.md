@@ -10,7 +10,7 @@ Some Pokémon only evolve when traded, and each version has Pokémon the other d
 
 ## Start a link
 
-1. In the library, open a GBA game's menu (long-press it) and pick `LINK PLAY`. Or tap `TOOLS` in the library (or Settings > `TOOLS`), then `LINK PLAY`, and add your games there.
+1. In the library, open a GBA game's menu (long-press it) and pick `LINK PLAY`. Or tap `TOOLS` in the library, then `LINK PLAY`, and add your games there.
 2. That game is `GAME 1`. Tap `ADD A GAME` to add the next one, up to four. Tap a game to swap it for another, or pick `REMOVE`.
 3. Tap `START LINK`.
 

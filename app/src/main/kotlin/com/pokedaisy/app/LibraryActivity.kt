@@ -459,6 +459,9 @@ class LibraryActivity : ComponentActivity() {
             com.pokedaisy.app.companion.ui.LibraryTool("LINK", "LINK PLAY", "Trade and battle between your games", nf.badge(nf.LINK_PLAY)) {
                 startActivity(Intent(this, LinkActivity::class.java))
             },
+            com.pokedaisy.app.companion.ui.LibraryTool("EDIT", "SAVE EDITOR", "Change a game's boxes, bag and money", nf.badge(nf.SAVE_TRADE)) {
+                startActivity(Intent(this, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_PICK, true))
+            },
             com.pokedaisy.app.companion.ui.LibraryTool("TRADE", "TRADE SAVES", "Move Pokémon between your games' saves", nf.badge(nf.SAVE_TRADE)) {
                 startActivity(Intent(this, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_TRADE, true))
             },
@@ -512,7 +515,6 @@ class LibraryActivity : ComponentActivity() {
         val roms = views.games(view)
 
         val density = androidx.compose.ui.platform.LocalDensity.current
-        val wide = screenSize.width >= screenSize.height
         val tools = remember(revision) { libraryTools() }
         val toolsNew = tools.any { it.newBadge != null }
         val pickSection: (com.pokedaisy.app.companion.ui.LibrarySection) -> Unit = { s ->
@@ -525,7 +527,10 @@ class LibraryActivity : ComponentActivity() {
         val section = if (toolsOpen) com.pokedaisy.app.companion.ui.LibrarySection.TOOLS else com.pokedaisy.app.companion.ui.LibrarySection.GAMES
         // BACK on TOOLS goes back to the games, not out of the app.
         BackHandler(enabled = toolsOpen) { toolsOpen = false }
-        Box(modifier = Modifier.fillMaxSize().onSizeChanged { screenSize = with(density) { DpSize(it.width.toDp(), it.height.toDp()) } }) {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize().onSizeChanged { screenSize = with(density) { DpSize(it.width.toDp(), it.height.toDp()) } }) {
+            // The window's own shape from the first frame (screenSize is only known after one: an upright phone showed the
+            // rail for a frame before its bar).
+            val wide = maxWidth >= maxHeight
             AppBackdrop(logos = true)
             // A wide screen: GAMES / TOOLS / SETTINGS down the left, the library beside it.
             Row(Modifier.fillMaxSize()) {
@@ -1127,7 +1132,7 @@ class LibraryActivity : ComponentActivity() {
             add(RomMenuItem(tr("RESTORE BACKUP"), Icons.Filled.History, opens = true) { showBackups(rom) })
             // The save's party and PC boxes, read (and edited) from the file; Game Boy and DS saves aren't Gen 3's.
             if (rom.extension.lowercase() !in setOf("gb", "gbc", "nds")) {
-                add(RomMenuItem(tr("PC BOXES"), Icons.Filled.Inventory2, opens = true) {
+                add(RomMenuItem(tr("SAVE EDITOR"), Icons.Filled.Inventory2, opens = true) {
                     startActivity(Intent(this@LibraryActivity, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_ROM, rom.absolutePath))
                 })
             }

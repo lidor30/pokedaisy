@@ -305,12 +305,14 @@ class SettingsActivity : ComponentActivity() {
         val m = rememberGbaTextMetrics()
         val small = rememberGbaTextMetrics(textScale = 1f)
 
-        Box(modifier = Modifier.fillMaxSize().onSizeChanged {
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize().onSizeChanged {
             if (it.width > 0 && it.height > 0) screenAspect = it.width.toFloat() / it.height
             rootSize = it
         }) {
             AppBackdrop(logos = tab)
-            val wide = rootSize.width >= rootSize.height
+            // The window's own shape from the first frame (rootSize starts as a guess: an upright phone showed the rail
+            // for a frame before its bar).
+            val wide = maxWidth >= maxHeight
             Row(Modifier.fillMaxSize()) {
             if (tab && wide) LibraryLook { nm, ns ->
                 com.pokedaisy.app.companion.ui.LibraryNav(
@@ -497,12 +499,6 @@ class SettingsActivity : ComponentActivity() {
             }
 
             UpdateDialog(updates, m, small)
-            PatchWindow(
-                patcher, m, small, onPlay = null,
-                onAskSupport = { rom ->
-                    Thread({ val url = RomSupportRequest.url(rom); runOnUiThread { runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) } } }, "pokedaisy-support-url").start()
-                },
-            )
 
             removingCheat?.let { i ->
                 val c = cheatList.getOrNull(i)
@@ -877,23 +873,8 @@ class SettingsActivity : ComponentActivity() {
             SettingRow(tk("HIDDEN GAMES"), RomFolder.hiddenRoms(this@SettingsActivity, prefs).size.takeIf { it > 0 }?.toString() ?: tk("NONE"), opensPage = true) { screen = Screen.HIDDEN },
             // A game's GameShark / Action Replay / CodeBreaker codes, on their own page.
             SettingRow(tk("CHEATS"), onOff(prefs.cheatsEnabled), opensPage = true) { screen = Screen.CHEATS },
-            // TOOLS: what works on games rather than the app (the user's call: a section of their own).
-            groupTitle(tk("TOOLS")),
-            // A ROM hack's .bps applied to the ROM it's for, found in the library by its checksum (RomPatchFlow).
-            SettingRow(
-                tk("PATCH A ROM"), null, subtitle = "Turn a .bps patch into a game",
-                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.ROM_PATCH),
-            ) { pickPatch.launch(arrayOf("*/*")) },
-            // Two to four GBA games on one link cable (LinkActivity), picked on its page; a game's menu starts it with that game.
-            SettingRow(tk("LINK PLAY"), null, subtitle = "Trade and battle between your games", opensPage = true,
-                       labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.LINK_PLAY)) {
-                startActivity(android.content.Intent(this@SettingsActivity, LinkActivity::class.java))
-            },
-            // The save editor's TRADE between two games' saves, files read and written with the games closed (SaveEditorActivity).
-            SettingRow(tk("TRADE SAVES"), null, subtitle = "Move Pokémon between your games' saves", opensPage = true,
-                       labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.SAVE_TRADE)) {
-                startActivity(android.content.Intent(this@SettingsActivity, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_TRADE, true))
-            },
+            // The tools (PATCH A ROM, LINK PLAY, SAVE EDITOR, TRADE SAVES) are the library's TOOLS tab, not rows here (the user's
+            // call, 2026-11-03: they have a tab of their own).
             groupTitle(tk("ONLINE")),
             // Signed in = on; the account's name, else OFF.
             SettingRow(
@@ -1149,14 +1130,6 @@ class SettingsActivity : ComponentActivity() {
     private var removingOverlay by mutableStateOf<Pair<String, String>?>(null)
     /** REMOVE ALL's confirm is up. */
     private var removingAllOverlays by mutableStateOf(false)
-
-    /** LIBRARY > PATCH A ROM: the library's patch window, over Settings (internal for ui-preview). */
-    internal val patcher by lazy {
-        RomPatchFlow(this) { revision++ }
-    }
-    private val pickPatch = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
-        uri?.let { patcher.start(it) }
-    }
 
     private val importOverlayFiles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) importOverlays(uris, emptyList())

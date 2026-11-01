@@ -1,16 +1,16 @@
 ---
-title: PC boxes and save trades
+title: Save editor and save trades
 summary: Rearrange a game's PC, change its bag and moves, or trade Pokémon between two of your games' saves, straight in the save files.
 section: player
 order: 8
-keywords: [save editor, edit save, pc boxes, boxes, trade saves, trade, trading, transfer, move pokemon between games, bag, money, coins, held item, moves, save file]
+keywords: [save editor, edit save, editor, pc boxes, boxes, trade saves, trade, trading, transfer, move pokemon between games, bag, money, coins, held item, moves, save file]
 ---
 
 PokeDaisy can open a game's save file while the game is closed: you can tidy its PC, change what it holds, or move Pokémon between two of your games, the way a trade would. It works with FireRed, LeafGreen, Emerald, Ruby and Sapphire saves (and ROM hacks that kept their save layout), in English and the other Western languages.
 
-## PC boxes
+## Save editor
 
-In the library, open a game's menu (long-press it) and pick `PC BOXES`. You see the game's boxes and your party, read from its save.
+Tap `TOOLS` in the library, then `SAVE EDITOR`, and pick a game. Or open a game's menu in the library (long-press it) and pick `SAVE EDITOR` there. You see the game's boxes and your party, read from its save.
 
 - Tap a Pokémon to see it. `MOVE` puts it in another slot, in any box.
 - Tap its held item or a move to change it. You can only pick what the game itself allows: items the bag can hold, and moves that Pokémon could learn.
@@ -19,7 +19,7 @@ In the library, open a game's menu (long-press it) and pick `PC BOXES`. You see 
 
 ## Trade between saves
 
-Tap `TOOLS` in the library (or open Settings > `TOOLS`), then `TRADE SAVES`, and pick the game to trade from and then the one to trade with. (From a game's `PC BOXES`, `TRADE` does the same.) The two games' boxes are side by side: pick a slot on each side, a Pokémon for a Pokémon, or one for an empty slot. `SAVE` writes both saves together.
+Tap `TOOLS` in the library, then `TRADE SAVES`, and pick the game to trade from and then the one to trade with. `BACK` on the second pick lets you choose the first game again, and `BACK` from the trade takes you back to `TOOLS`. (In a game's `SAVE EDITOR`, `TRADE` starts a trade from that game, and `BACK` returns to its boxes.) The two games' boxes are side by side: pick a slot on each side, a Pokémon for a Pokémon, or one for an empty slot. `SAVE` writes both saves together.
 
 The games' own trade rules apply. FireRed and LeafGreen only trade with Ruby, Sapphire and Emerald after the island part of their story, and a game without its National Pokédex yet only takes Pokémon from its own regional one. A Pokémon that evolves when traded evolves when it arrives, as it would with a cable. If you'd rather trade inside the games themselves, see [Link play](link-play.md).
 

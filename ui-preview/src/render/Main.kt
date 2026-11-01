@@ -2135,7 +2135,7 @@ fun main(args: Array<String>) {
         Shot("launcher-portrait", 1080, 2400, 2.625f, launcher()),
         // The update's one-time ScreenScraper window, over the classic library.
         Shot("library-ss-intro", tw, th, td, activity { Prefs(android.content.Context()).screenScraperAsked = false; withScreenScraper { LibraryActivity() } }),
-        // PC BOXES (a game's library menu): the save's party and boxes, then a Pokémon picked, moved and saved.
+        // SAVE EDITOR (a game's library menu): the save's party and boxes, then a Pokémon picked, moved and saved.
         Shot("pc-boxes", tw, th, td, pcBoxes()),
         Shot("pc-boxes-selected", tw, th, td, pcBoxes()) { onAllNodesWithText("ABRA")[0].performClick() },
         Shot("pc-boxes-moving", tw, th, td, pcBoxes()) {
@@ -2519,6 +2519,8 @@ fun main(args: Array<String>) {
         Shot("settings-home", tw, th, td, activity { SettingsActivity() }),
         // The library's SETTINGS tab: its rail (a bar upright) and header over HOME.
         Shot("settings-tab", tw, th, td, activity { SettingsActivity().apply { intent.putExtra(SettingsActivity.EXTRA_TAB, true).putExtra(SettingsActivity.EXTRA_TOOLS_NEW, true) } }),
+        // The Thor's top screen is 2.3 dense (369 dpi): the pixel font is wider in dp there, and SETTINGS once cut short.
+        Shot("settings-tab-thor", 1920, 1080, 2.30625f, activity { SettingsActivity().apply { intent.putExtra(SettingsActivity.EXTRA_TAB, true) } }),
         Shot("settings-tab-phone", 1080, 2400, 2.625f, activity { SettingsActivity().apply { intent.putExtra(SettingsActivity.EXTRA_TAB, true) } }),
         Shot("settings-volume-popup", tw, th, td, activity { SettingsActivity() }) {
             onNodeWithText("GAME VOLUME").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)

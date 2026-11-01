@@ -110,7 +110,7 @@ object NewFeatures {
     const val ROM_PATCH = "rom_patch"
     /** Settings > TOOLS > LINK PLAY (and a GBA game's library menu): two to four GBA games on one link cable (LinkActivity). */
     const val LINK_PLAY = "link_play"
-    /** Settings > TOOLS > TRADE SAVES and a game's library menu > PC BOXES: the save editor, out from behind its flag. */
+    /** TOOLS > SAVE EDITOR / TRADE SAVES and a game's library menu > SAVE EDITOR: the save editor, out from behind its flag. */
     const val SAVE_TRADE = "save_trade"
 
     /** SETTINGS > DS LAYOUT: a DS game's two screens on one (companion.DsLayout), its touch screen floating in over the

@@ -34,7 +34,8 @@ Down the left edge of the library are three buttons: `GAMES`, `TOOLS` and `SETTI
 | --- | --- |
 | `PATCH A ROM` | Turns a `.bps` patch into a game (see [Patch a ROM hack](#patch-a-rom-hack)). |
 | `LINK PLAY` | Runs two to four GBA games joined as if by a link cable, to trade and battle between them (see [Link play](link-play.md)). |
-| `TRADE SAVES` | Trades Pokémon between two of your games' save files (see [PC boxes and save trades](save-trade.md)). |
+| `SAVE EDITOR` | Opens a game's save: rearrange the PC, change the bag, money and moves (see [Save editor and save trades](save-trade.md)). |
+| `TRADE SAVES` | Trades Pokémon between two of your games' save files (see [Save editor and save trades](save-trade.md)). |
 
 A green dot on `TOOLS` means one of them is new. `BACK` on the tools takes you back to your games.
 
@@ -92,7 +93,7 @@ Games copied straight into `Android/data/com.pokedaisy.app/files/roms/` on the d
 
 Most ROM hacks come as a `.bps` patch: a file that turns a game you already have into the hack. PokeDaisy can apply it for you.
 
-1. Tap `+` and pick `PATCH A ROM` (it's also in Settings > `TOOLS`), then pick the `.bps` file. Picking a `.bps` with `ADD A ROM FILE`, or opening one with PokeDaisy from a file manager, does the same.
+1. Tap `+` and pick `PATCH A ROM` (it's also under `TOOLS`), then pick the `.bps` file. Picking a `.bps` with `ADD A ROM FILE`, or opening one with PokeDaisy from a file manager, does the same.
 2. PokeDaisy reads the patch and looks through your library for the game it was made for. A patch names that game by its checksum (CRC32, a fingerprint of every byte), so it finds the right file whatever it's called, zipped ones too. You don't pick it yourself.
 3. When it's found, you see the patch, the game it goes on and where the patched game will be saved. Tap `APPLY PATCH` and a bar shows how far along it is.
 4. When it's done, you're told where the new game is. If the companion can read it, it's in your library right away and `PLAY` starts it.
@@ -141,7 +142,7 @@ Long-press a game, in the list or the grid, to open its menu. In list view, the 
 | `SET COVER` | Uses an image from your device as the cover. |
 | `RESET COVER` | Goes back to the automatic cover. Only shows after you picked one yourself. |
 | `LINK PLAY` | Runs this GBA game with up to three others, joined as if by a link cable. See [Link play](link-play.md). |
-| `PC BOXES` | Opens the game's save: rearrange the PC, change the bag and moves, or trade with another game's save. See [PC boxes and save trades](save-trade.md). |
+| `SAVE EDITOR` | Opens the game's save: rearrange the PC, change the bag and moves, or trade with another game's save. See [Save editor and save trades](save-trade.md). |
 | `LOAD SAVE` | Puts another save file into the game. Your current save is kept as a dated copy. |
 | `RESTORE BACKUP` | Brings back one of the automatic save backups. |
 | `SAVE FOLDER` | Gives this game its own save folder, such as another emulator's. |

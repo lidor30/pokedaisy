@@ -8,6 +8,8 @@ keywords: [options, preferences, configuration, config, defaults, menu, referenc
 
 PokeDaisy has two settings screens. **Settings** on the top screen opens from the library (`SETTINGS`, beside your games) and has everything, including the things that need a keyboard or a file picker. **SETTINGS** on the companion is the gear tab on the bottom screen, there while you play; changes made there show on the game straight away.
 
+The tools (`PATCH A ROM`, `LINK PLAY`, `SAVE EDITOR`, `TRADE SAVES`) aren't settings: they're under the library's `TOOLS`, beside `SETTINGS` (see [Games, tools and settings](library.md#games-tools-and-settings)).
+
 Many rows are on both. They're the same setting, so changing it on one screen changes it on the other. The tables below list each screen's rows in the order the app shows them, with the default in **bold**. A row with an arrow at its right end opens a page of its own; the others flip, or open a short list to pick from. On a wide enough screen both lists have their groups as tabs down the left side: tap one to jump to that group, and the tab of the group you're in stays lit, following the cursor as you move through the list.
 
 > [!TIP]
@@ -88,16 +90,6 @@ The `SHADERS` page:
 | `FOLDERS` | a page | A page for each: `ROMS FOLDERS`, your linked ROMs folders (`ADD FOLDER`, `RESCAN`, `REMOVE`); `GAME SAVES`, the folder saves go to (`CHANGE FOLDER`, `USE DEFAULT`); `ALSO LOOK IN`, other emulators' save folders; `SAVE BACKUPS`, the backup taken each time a game starts (`BACKUPS` on or off, `KEEP PER GAME`, and a folder for all of them); `SAVE STATES`, where save states are kept. | [Library](library.md), [Saves](saves.md) |
 | `HIDDEN GAMES` | **`NONE`**, or how many | Games you hid from the library with `HIDE`. Tap one to `SHOW` it again, or `SHOW ALL`. | [Library](library.md) |
 | `CHEATS` | `ON`, **`OFF`** (a page) | The master switch for cheat codes, and each game's codes: `ADD CODE`, `IMPORT FILE`, `REMOVE`. | [Cheats](cheats.md) |
-
-### Tools
-
-The same tools are in the library, under `TOOLS` (see [Games, tools and settings](library.md#games-tools-and-settings)).
-
-| Setting | Choices | What it does | More |
-| --- | --- | --- | --- |
-| `PATCH A ROM` | (opens a file) | Applies a `.bps` patch to the game it was made for, found in your library by its checksum. | [Library](library.md#patch-a-rom-hack) |
-| `LINK PLAY` | (opens a page) | Runs two to four GBA games joined as if by a link cable, to trade, battle and mix records between them. | [Link play](link-play.md) |
-| `TRADE SAVES` | (opens a page) | Trades Pokémon between two of your games' save files, with the games closed. | [PC boxes and save trades](save-trade.md) |
 
 ### Online
 
