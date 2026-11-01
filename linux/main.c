@@ -9,6 +9,7 @@
 #include "host_io.h"
 #include "field_items.h"
 #include "fly.h"
+#include "display_filter.h"
 #include "hud.h"
 #include "pd_dex.h"
 #include "pd_guide.h"
@@ -511,8 +512,50 @@ static double presentMs, emuMs, wideMs;
 static double ms_since(uint64_t t) {
   return (double)(SDL_GetPerformanceCounter() - t) * 1000.0 / SDL_GetPerformanceFrequency();
 }
+/* LCD (SETTINGS > FILTER): Keegan Whitacre's output-space aperture mask (pokedaisy-brick dfc62a0), multiplied over the
+ * whole presented frame; no emulator or companion buffer changes. */
+static bool lcdEnabled;
+static SDL_Texture *lcdTexture;
+static int lcdW, lcdH;
+static void render_lcd(void) {
+  if (!lcdEnabled)
+    return;
+  int w, h;
+  if (SDL_GetRendererOutputSize(renderer, &w, &h) < 0 || w <= 0 || h <= 0)
+    return;
+  if (!lcdTexture || lcdW != w || lcdH != h) {
+    SDL_DestroyTexture(lcdTexture);
+    lcdTexture = NULL;
+    uint32_t *mask = malloc((size_t)w * h * 4);
+    if (!mask)
+      return;
+    for (int y = 0; y < h; y++)
+      for (int x = 0; x < w; x++)
+        mask[y * w + x] = pocket_lcd_pixel(x, y);
+    lcdTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STATIC, w, h);
+    if (lcdTexture && (SDL_UpdateTexture(lcdTexture, NULL, mask, w * 4) < 0 ||
+                       SDL_SetTextureBlendMode(lcdTexture, SDL_BLENDMODE_MOD) < 0)) {
+      SDL_DestroyTexture(lcdTexture);
+      lcdTexture = NULL;
+    }
+    free(mask);
+    lcdW = w;
+    lcdH = h;
+  }
+  if (!lcdTexture)
+    return;
+  int lw, lh;
+  SDL_RenderGetLogicalSize(renderer, &lw, &lh);
+  SDL_bool integer = SDL_RenderGetIntegerScale(renderer);
+  SDL_RenderSetLogicalSize(renderer, w, h);
+  SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
+  SDL_RenderCopy(renderer, lcdTexture, NULL, NULL);
+  SDL_RenderSetLogicalSize(renderer, lw, lh);
+  SDL_RenderSetIntegerScale(renderer, integer);
+}
 static void timed_present(void) {
   uint64_t t = SDL_GetPerformanceCounter();
+  render_lcd();
   SDL_RenderPresent(renderer);
   presentMs += (double)(SDL_GetPerformanceCounter() - t) * 1000.0 / SDL_GetPerformanceFrequency();
 }
@@ -1375,7 +1418,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   double frameCost = 0;
   uint64_t lastStart = 0;
   struct pd_snapshot snap = {0};
-  struct pd_host_info host = {.hideScreenMode = true, .hasExpand = true, .hasQuickMenu = true, .hasHud = c->platform(c) == mPLATFORM_GBA,
+  struct pd_host_info host = {.hideScreenMode = true, .hasExpand = true, .hasQuickMenu = true, .hasDisplayFilter = true, .hasHud = c->platform(c) == mPLATFORM_GBA,
                               .expandGame = wideSupported, .count = 1, .labels = {"HOST"}};
   snprintf(host.values[0], 40, "PokeDaisy Linux");
   const char *opts[] = {"Resume game",
@@ -1415,6 +1458,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
     }
     lastStart = frameStart;
     rewind_follow(settings.rewind || rewindBound);
+    lcdEnabled = settings.lcdFilter;
     gameScaling = settings.aspect == PD_ASPECT_ORIGINAL || !wideSupported ? settings.scaling : PD_SCALE_INTEGER;
     events();
     audio_check();
@@ -2117,6 +2161,8 @@ int main(int argc, char **argv) {
   texture = NULL;
   SDL_DestroyTexture(gameTexture);
   SDL_DestroyTexture(wideTexture);
+  SDL_DestroyTexture(lcdTexture);
+  lcdTexture = NULL;
   if (menuTexture)
     SDL_DestroyTexture(menuTexture);
   menuTexture = NULL;

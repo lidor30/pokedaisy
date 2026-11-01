@@ -110,6 +110,8 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         }
     }
     if (host && host->hasHud) setting(ui, c, ix, &y, iw, SETTING_HUD, "HUD", ui->settings->hud ? "ON" : "OFF");
+    if (host && host->hasDisplayFilter)
+        setting(ui, c, ix, &y, iw, SETTING_FILTER, "FILTER", ui->settings->lcdFilter ? "LCD" : "OFF");
     if (host && host->hasQuickMenu)
         setting(ui, c, ix, &y, iw, SETTING_QUICK_MENU, "QUICK MENU", ui->settings->quickGrid ? "GRID" : "RING");
     snprintf(buf, sizeof(buf), "%d TABS", ui_bar_count(ui));
