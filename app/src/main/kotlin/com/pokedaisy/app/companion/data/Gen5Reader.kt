@@ -126,7 +126,7 @@ data class Gen5Battle(
     val offAdapter: Int = 0x50,
     val offAdapterCommand: Int = 0x0F,
     /** The touch screen ([readGen5BattleInput]): client -> btlv_core -> btlv_scd -> btlv_input (the heap names their source
-     * files); 0 = not read (the sequels). */
+     * files); 0 = not read. */
     val offView: Int = 0,
     val offScd: Int = 0x180,
     val offInput: Int = 0xB0,
@@ -140,7 +140,7 @@ data class Gen5Battle(
 )
 
 /**
- * The battle's input state for BATTLE BUTTONS ([BATTLE_INPUT_*]), Black / White (headless on the player's save, frame by
+ * The battle's input state for BATTLE BUTTONS ([BATTLE_INPUT_*]), Black / White and their sequels (headless on the player's saves, frame by
  * frame through FIGHT, CANCEL, a move, the bag, the party and a faint): while the adapter's command is the choice's (3),
  * the commands / the moves once their panel has slid in (it takes no touch before), the bag / the party by the screen the panel opened; command 5
  * is a fainted Pokémon's party. Anything else in a battle is BUSY; no battle is NONE.
@@ -451,7 +451,8 @@ val GEN5_BLACK2 = GEN5_BLACK.copy(
     repelStepsOff = 0x2192D,
     zonePlaces = mapPlacesBlack2,
     zonePlaceIds = mapPlaceIdsBlack2,
-    battle = Gen5Battle(gameSystemPtr = 0x021410F4, battleOverlay = 167),
+    // The battle's touch screen: Black's chain, btlv_scd and btlv_input further into their structs (headless).
+    battle = Gen5Battle(gameSystemPtr = 0x021410F4, battleOverlay = 167, offView = 0x54, offScd = 0x1C4, offInput = 0xBC, offSubscreen = 0xA4),
     townMapPlaces = townMapPlacesBlack2,
     townMapZones = townMapZonesBlack2,
     libertyPass = 0,
@@ -467,7 +468,7 @@ val GEN5_WHITE2 = GEN5_BLACK2.copy(
     saveControlPtr = 0x0209A378,
     pokedexTables = POKEDEX_WHITE2,
     gameSystemPtr = 0x02141134,
-    battle = Gen5Battle(gameSystemPtr = 0x02141134, battleOverlay = 167),
+    battle = Gen5Battle(gameSystemPtr = 0x02141134, battleOverlay = 167, offView = 0x54, offScd = 0x1C4, offInput = 0xBC, offSubscreen = 0xA4),
     townMapPlaces = townMapPlacesWhite2,
     townMapZones = townMapZonesWhite2,
 )

@@ -787,10 +787,10 @@ class TelemetrySampler {
         private set
 
     fun sampleBattleInputFast(reader: MemoryReader): Pair<Int, Int>? {
-        // A DS game: HeartGold / SoulSilver's and Platinum's battle panels, Black / White's (their states for BATTLE
-        // BUTTONS); the sequels' aren't read yet.
+        // A DS game: HeartGold / SoulSilver's and Platinum's battle panels, Black / White's and their sequels' (their
+        // states for BATTLE BUTTONS).
         if (kind.isDsGame) {
-            if (kind == GameKind.BLACK || kind == GameKind.WHITE) return gen5Cfg?.battle?.let { b ->
+            if (gen5Cfg != null) return gen5Cfg?.battle?.let { b ->
                 runCatching { 0 to readGen5BattleInput(reader, b) }.getOrNull()
             }
             return gen4Cfg?.battle?.takeIf { it.offBattleInput != 0 }?.let { b ->

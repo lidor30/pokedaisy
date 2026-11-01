@@ -114,8 +114,8 @@ class NdsBattleTaps(private val touch: (down: Boolean, x: Int, y: Int) -> Unit =
             moves = listOf(64 to 42, 192 to 42, 64 to 113, 192 to 113),
             cancel = 128 to 175,
         )
-        /** Black / White's (headless in White: FIGHT the big plate up top, BAG / RUN / POKéMON along the bottom, the cards
-         * 2 x 2 from y 35, the return arrow bottom right). */
+        /** Black / White's and their sequels' (headless in White and Black 2: FIGHT the big plate up top, BAG / RUN /
+         * POKéMON along the bottom, the cards 2 x 2 from y 35, the return arrow bottom right). */
         val GEN5 = Layout(
             actions = listOf(128 to 80, 30 to 172, 222 to 172, 128 to 178),
             moves = listOf(63 to 56, 191 to 56, 63 to 104, 191 to 104),

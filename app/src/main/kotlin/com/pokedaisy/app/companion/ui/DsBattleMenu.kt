@@ -61,7 +61,8 @@ import com.pokedaisy.app.companion.i18n.tr
  * A DS battle on one screen (HeartGold / SoulSilver, Platinum, Black / White; DS LAYOUT's ONE SCREEN and PICTURE IN PICTURE):
  * the game's own battle buttons, run like Gen 3's menus - the user's call. Every game gets HeartGold's layout in its own look
  * ([DsLook]: Platinum's bevelled buttons and cream move cards; Black / White's charcoal plates with coloured words, their
- * round-ended panel made a plain 2 x 2 - the user's call, with their magenta cursor). The battle keeps its wide view; a strip across the whole screen takes
+ * round-ended panel made a plain 2 x 2 - the user's call, with their magenta cursor; Black 2 / White 2's black plates rimmed
+ * in each button's colour, the same way). The battle keeps its wide view; a strip across the whole screen takes
  * the text box's rows, in the band's own black: HeartGold's text box at its far left ("What will ... do?", drawn here, the
  * game's own hidden under the strip) and FIGHT / BAG / POKéMON / RUN as a 2 x 2 at its right, the cursor HeartGold's red
  * corners, pulsing. FIGHT turns the strip into the moves, HeartGold's cards 2 x 2, BACK beside them. The D-pad moves the cursor and A picks
@@ -112,16 +113,18 @@ class DsBattleMenuState {
  * A game's look on the strip, with the rows it takes on the DS's top screen (of its 192, headless): [bandTop] where the band
  * starts, [textTop] where its message and buttons do. HeartGold / SoulSilver: the battle's black band from 144, the message
  * window 146 - 191. Platinum: its message window's black edge from 144, the window inside from 146. Black / White: the
- * message band's dark teal from 145, its red-brown lines at 147 and 188, the words from 149.
+ * message band's dark teal from 145, its red-brown lines at 147 and 188, the words from 149. Black 2 / White 2: their dark
+ * blue band from 146, its lines at 147 - 148 and 187 - 188, the words from 149.
  */
 enum class DsLook(val bandTop: Int, val textTop: Int) {
-    HEARTGOLD(144, 146), SOULSILVER(144, 146), PLATINUM(144, 146), UNOVA(145, 149);
+    HEARTGOLD(144, 146), SOULSILVER(144, 146), PLATINUM(144, 146), UNOVA(145, 149), UNOVA2(146, 149);
 
     companion object {
         fun of(game: GameKind?) = when (game) {
             GameKind.SOULSILVER -> SOULSILVER
             GameKind.PLATINUM -> PLATINUM
-            GameKind.BLACK, GameKind.WHITE, GameKind.BLACK2, GameKind.WHITE2 -> UNOVA
+            GameKind.BLACK, GameKind.WHITE -> UNOVA
+            GameKind.BLACK2, GameKind.WHITE2 -> UNOVA2
             else -> HEARTGOLD
         }
     }
@@ -137,6 +140,13 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBand(look: DsLo
             drawRect(UNOVA_BAND, Offset(0f, size.height * 0.35f), Size(size.width, size.height * 0.65f))
             fun row(r: Int, c: Color) = drawRect(c, Offset(0f, (r - look.bandTop) * ds), Size(size.width, ds))
             row(147, UNOVA_LINE); row(148, UNOVA_LINE_SHADOW); row(187, UNOVA_LINE_SHADOW); row(188, UNOVA_LINE)
+        }
+        DsLook.UNOVA2 -> {
+            // Black 2 / White 2's: dark blue, lighter in the middle, two lines at either end.
+            drawRect(B2_BAND)
+            drawRect(B2_BAND_MID, Offset(0f, size.height * 0.3f), Size(size.width, size.height * 0.4f))
+            fun row(r: Int, c: Color) = drawRect(c, Offset(0f, (r - look.bandTop) * ds), Size(size.width, ds))
+            row(147, B2_LINE_DARK); row(148, B2_LINE); row(187, B2_LINE_LOW); row(188, B2_LINE_LIGHT)
         }
         else -> drawRect(BAND)
     }
@@ -227,6 +237,7 @@ fun DsBattleMenu(
                 when (look) {
                     DsLook.PLATINUM -> PtMessageWindow(tr("What will {0} do?", battler), ds)
                     DsLook.UNOVA -> UnovaMessage(tr("What will {0} do?", battler), ds)
+                    DsLook.UNOVA2 -> UnovaMessage(tr("What will {0} do?", battler), ds, B2_TEXT_SHADOW)
                     else -> DsMessageWindow(tr("What will {0} do?", battler), m, ds, silver = look == DsLook.SOULSILVER)
                 }
             }
@@ -251,6 +262,7 @@ fun DsBattleMenu(
                             when (look) {
                                 DsLook.PLATINUM -> PtMoveCard(move, enabled, ds, Modifier.fillMaxSize(), pick)
                                 DsLook.UNOVA -> UnovaMoveCard(move, enabled, ds, Modifier.fillMaxSize(), pick)
+                                DsLook.UNOVA2 -> B2MoveCard(move, enabled, ds, Modifier.fillMaxSize(), pick)
                                 else -> DsMoveCard(move, enabled, ds, Modifier.fillMaxSize(), pick)
                             }
                         }
@@ -260,6 +272,7 @@ fun DsBattleMenu(
                     when (look) {
                         DsLook.PLATINUM -> PtBackButton(!idle, ds, back) { state.back() }
                         DsLook.UNOVA -> UnovaBackButton(!idle, ds, back) { state.back() }
+                        DsLook.UNOVA2 -> B2BackButton(!idle, ds, back) { state.back() }
                         else -> DsBackButton(!idle, ds, back) { state.back() }
                     }
                 }
@@ -379,6 +392,7 @@ private fun Grid(look: DsLook, cursor: Int, u: Dp, pulse: Float, cell: @Composab
                 val corners = when (look) {
                     DsLook.PLATINUM -> Modifier.ptCursor(i == cursor, u, pulse)
                     DsLook.UNOVA -> Modifier.unovaCursor(i == cursor, u, pulse)
+                    DsLook.UNOVA2 -> Modifier.b2Cursor(i == cursor, u, pulse)
                     else -> Modifier.cursorCorners(i == cursor, u, pulse)
                 }
                 Box(Modifier.weight(1f).fillMaxHeight().zIndex(if (i == cursor) 1f else 0f).then(corners)) {
@@ -432,6 +446,13 @@ private fun DsActionButton(look: DsLook, i: Int, enabled: Boolean, m: GbaTextMet
                 .padding(horizontal = u * 4),
             contentAlignment = Alignment.Center,
         ) { FittedGbaText(tr(label), UNOVA_ACTIONS[i], UNOVA_LABEL_OUTLINE, m) }
+        DsLook.UNOVA2 -> Box(
+            modifier.alpha(if (enabled) 1f else 0.45f)
+                .drawBehind { drawB2Plate(B2_ACTIONS[i].first, B2_ACTIONS[i].second, u.toPx()) }
+                .clickable(remember { MutableInteractionSource() }, null, enabled = enabled, onClick = onClick)
+                .padding(horizontal = u * 4),
+            contentAlignment = Alignment.Center,
+        ) { FittedGbaText(tr(label), B2_ACTIONS[i].first, B2_ACTIONS[i].second, m) }
         else -> DsButton(label, ACTIONS[i].second, enabled, m, u, modifier, onClick)
     }
 }
@@ -747,14 +768,14 @@ private fun PtBackButton(enabled: Boolean, ds: Float, modifier: Modifier, onClic
     )
 }
 
-/** Black / White's message: no window, the words white over the band's teal with a pale shadow. */
+/** Black / White's message (and their sequels'): no window, the words white over the band with a pale shadow. */
 @Composable
-private fun UnovaMessage(text: String, ds: Float) {
+private fun UnovaMessage(text: String, ds: Float, shadow: Color = UNOVA_TEXT_SHADOW) {
     val density = LocalDensity.current
     Box(
         Modifier.fillMaxSize().padding(start = with(density) { (6 * ds).toDp() }, top = with(density) { (2 * ds).toDp() }),
         contentAlignment = Alignment.TopStart,
-    ) { GbaText(text, UNOVA_TEXT, UNOVA_TEXT_SHADOW, dsTextMetrics(ds, 1f), maxLines = 2) }
+    ) { GbaText(text, UNOVA_TEXT, shadow, dsTextMetrics(ds, 1f), maxLines = 2) }
 }
 
 /** Black / White's battle plate ([px]: a GBA pixel): a white rim between a grey shade and a darker one, its face charcoal
@@ -868,3 +889,113 @@ private val UNOVA_CURSOR = Color(0xFFFB0092)
 private val UNOVA_CURSOR_RIM = Color(0xFFFBFBFB)
 private val UNOVA_ARROW = Color(0xFF28BAF3)
 private val UNOVA_ARROW_EDGE = Color(0xFF202020)
+
+/** Black 2 / White 2's colours (headless in Black 2's battle): the message band and its lines, the words' shadow, the plates
+ * (black, rimmed in the button's colour - bright down the sides, its shade along the top and bottom - over a face striped
+ * in two greys), each button's colour and shade (FIGHT red, BAG yellow, POKéMON green, RUN blue), the cursor's layers. */
+private val B2_BAND = Color(0xFF0C3851)
+private val B2_BAND_MID = Color(0xFF184155)
+private val B2_LINE_DARK = Color(0xFF083855)
+private val B2_LINE = Color(0xFF305D7D)
+private val B2_LINE_LOW = Color(0xFF285165)
+private val B2_LINE_LIGHT = Color(0xFF41697D)
+private val B2_TEXT_SHADOW = Color(0xFF82AABE)
+private val B2_OUTLINE = Color(0xFF202020)
+private val B2_FACE = Color(0xFF282828)
+private val B2_STRIPE = Color(0xFF383838)
+private val B2_ACTIONS = listOf(
+    Color(0xFFFB2018) to Color(0xFF921818),
+    Color(0xFFFBCB28) to Color(0xFF927108),
+    Color(0xFF71DB30) to Color(0xFF207108),
+    Color(0xFF20A2FB) to Color(0xFF005992),
+)
+private val B2_ARROW = Color(0xFFEBF3FB)
+private val B2_CURSOR = listOf(Color(0xFFF3F3F3), Color(0xFFEB7192), Color(0xFFC31028), Color(0xFFF3F3F3))
+
+/** A Black 2 / White 2 plate ([px]: a GBA pixel): a black outline, the button's colour 2 pixels thick all round, its shade
+ * inside that, black again, then the face in grey stripes (a light row over two darker ones). */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawB2Plate(color: Color, shade: Color, px: Float) {
+    val w = size.width
+    val h = size.height
+    drawPixelRoundRect(B2_OUTLINE, radius = 4 * px, step = px)
+    drawPixelRoundRect(color, Offset(px, px), Size(w - 2 * px, h - 2 * px), radius = 3 * px, step = px)
+    drawRect(shade, Offset(3 * px, 3 * px), Size(w - 6 * px, h - 6 * px))
+    drawRect(B2_OUTLINE, Offset(4 * px, 4 * px), Size(w - 8 * px, h - 8 * px))
+    drawB2Face(Offset(5 * px, 5 * px), Size(w - 10 * px, h - 10 * px), px)
+}
+
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawB2Face(o: Offset, s: Size, px: Float) {
+    drawRect(B2_FACE, o, s)
+    var y = 0
+    val rows = (s.height / px).toInt()
+    while (y < rows) {
+        drawRect(B2_STRIPE, Offset(o.x, o.y + y * px), Size(s.width, px))
+        y += 3
+    }
+}
+
+/** Black 2 / White 2's move button, made a plain card: black, the type's dark line, its colour 2 wide down the sides (a
+ * line along the top and bottom), its dark line, black, the striped face; the name white over a grey shadow. */
+@Composable
+private fun B2MoveCard(move: MoveView?, enabled: Boolean, ds: Float, modifier: Modifier, onClick: () -> Unit) {
+    val type = move?.let { com.pokedaisy.app.companion.ui.theme.AppColors.typeColors[it.type] } ?: Color(0xFF8A8A8A)
+    val d = kotlin.math.floor(ds).coerceAtLeast(1f)
+    val density = LocalDensity.current
+    fun dp(n: Float) = with(density) { (n * d).toDp() }
+    Box(
+        modifier.alpha(if (move != null && enabled) 1f else 0.45f)
+            .drawBehind {
+                val w = size.width
+                val h = size.height
+                val dark = lerp(type, Color.Black, 0.35f)
+                drawPixelRoundRect(Color.Black, radius = 3 * d, step = d)
+                drawPixelRoundRect(dark, Offset(d, d), Size(w - 2 * d, h - 2 * d), radius = 2 * d, step = d)
+                drawRect(type, Offset(2 * d, d), Size(w - 4 * d, h - 2 * d))
+                drawRect(dark, Offset(4 * d, 2 * d), Size(w - 8 * d, h - 4 * d))
+                drawRect(Color.Black, Offset(5 * d, 2 * d), Size(w - 10 * d, h - 4 * d))
+                drawB2Face(Offset(6 * d, 2 * d), Size(w - 12 * d, h - 4 * d), d)
+            }
+            .clickable(remember { MutableInteractionSource() }, null, enabled = move != null && enabled, onClick = onClick)
+            .padding(start = dp(7f), end = dp(7f), top = dp(3f), bottom = dp(2f)),
+    ) { if (move != null) MoveCardText(move, ds, d, UNOVA_TEXT, UNOVA_NAME_SHADOW, UNOVA_TEXT, UNOVA_NAME_SHADOW) }
+}
+
+/** Black 2 / White 2's way back: a plate rimmed in RUN's blue, the return arrow white outlined dark. */
+@Composable
+private fun B2BackButton(enabled: Boolean, ds: Float, modifier: Modifier, onClick: () -> Unit) {
+    val d = kotlin.math.floor(ds).coerceAtLeast(1f)
+    Box(
+        modifier.alpha(if (enabled) 1f else 0.45f)
+            .drawBehind {
+                drawB2Plate(B2_ACTIONS[3].first, B2_ACTIONS[3].second, d)
+                drawArrow(B2_ARROW, B2_OUTLINE, d, outlined = true)
+            }
+            .clickable(remember { MutableInteractionSource() }, null, enabled = enabled, onClick = onClick),
+    )
+}
+
+/** Black 2 / White 2's cursor (headless): an L at each corner, its outer corner rounded, four pixels thick - white, pink,
+ * red, white from the outside in - [pulse] px out. */
+private fun Modifier.b2Cursor(on: Boolean, u: Dp, pulse: Float) = if (!on) this else drawWithContent {
+    drawContent()
+    val px = u.toPx()
+    val out = (1 + pulse) * px
+    val arm = 10
+    val rc = 5
+    for ((cx, cy) in listOf(-1f to -1f, 1f to -1f, -1f to 1f, 1f to 1f)) {
+        val ox = if (cx < 0) -out else size.width + out
+        val oy = if (cy < 0) -out else size.height + out
+        for (j in 0 until arm) for (k in 0 until arm) {
+            // How deep the pixel is from the bracket's outer edge: round within the corner, straight along the arms.
+            val depth = if (j < rc && k < rc) {
+                val dx = rc - j - 0.5f
+                val dy = rc - k - 0.5f
+                rc - kotlin.math.sqrt(dx * dx + dy * dy)
+            } else minOf(j, k).toFloat()
+            if (depth < 0f || depth >= B2_CURSOR.size) continue
+            val x = if (cx < 0) ox + j * px else ox - (j + 1) * px
+            val y = if (cy < 0) oy + k * px else oy - (k + 1) * px
+            drawRect(B2_CURSOR[depth.toInt()], Offset(x, y), Size(px, px))
+        }
+    }
+}

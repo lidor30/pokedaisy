@@ -298,7 +298,7 @@ static int topOnlyPage(const PkNdsTouchRules* t, uint32_t (*read32)(uint32_t), u
     return pageIn(t->topOnly, 2, read32, child);
 }
 
-// Black / White (headless on the player's save, the heap's blocks named by their source files): the X menu is a field
+// Black / White and their sequels (headless on the player's saves, the heap's blocks named by their source files): the X menu is a field
 // event (GMEVENT: parent at 0, its function at 4) on the touch screen, and so is what it starts on the field (the save's
 // prompt runs two events under it); the party, the bag, the trainer card and the options are apps all on the touch screen
 // (their overlays; the top screen a pattern). A battle's touch screen is btlv_scd's (client -> btlv_core +0x54 -> scd
@@ -311,16 +311,23 @@ struct PkNdsGen5Touch {
     const PkNdsFieldGame* game;
     uint32_t startMenuEvent;  // the X menu's event function (Thumb)
     int touchOnly[4];         // apps' overlays all on the touch screen
+    int offScd, offInput, offSubscreen;   // btlv_core -> btlv_scd, btlv_scd -> btlv_input, btlv_scd's opened screen
 };
 
 static const PkNdsGen5Touch GEN5_TOUCH[] = {
-    { &BLACK_US, 0x0215FD0D, { 91, 70, 111, 68 } },
+    { &BLACK_US, 0x0215FD0D, { 91, 70, 111, 68 }, 0x180, 0xB0, 0x98 },
     // White: Black's code, its overlays 0x20 higher (the X menu's function checked in White's capture of the same save).
-    { &WHITE_US, 0x0215FD2D, { 91, 70, 111, 68 } },
+    { &WHITE_US, 0x0215FD2D, { 91, 70, 111, 68 }, 0x180, 0xB0, 0x98 },
+    // Black 2 (headless on the player's save, its wild battle on Route 20 / Humilau's water): the apps renumbered
+    // (party 165, bag 142, trainer card 186, options 140; the Pokédex, 302, both screens), btlv_scd 0x1C4 into the core,
+    // btlv_input 0xBC into it, the opened screen at +0xA4; the rest Black's. White 2: Black 2's code 0x40 higher (its X
+    // menu's function and apps checked on its save; its battle not reached headless: Black 2's structs).
+    { &BLACK2_US, 0x0215A875, { 165, 142, 186, 140 }, 0x1C4, 0xBC, 0xA4 },
+    { &WHITE2_US, 0x0215A8B5, { 165, 142, 186, 140 }, 0x1C4, 0xBC, 0xA4 },
 };
 
-static const int GEN5_OFF_VIEW = 0x54, GEN5_OFF_SCD = 0x180, GEN5_OFF_INPUT = 0xB0;
-static const int GEN5_OFF_SLIDE = 0x08, GEN5_OFF_PANEL = 0x58, GEN5_OFF_WAITING = 0x60, GEN5_OFF_SUBSCREEN = 0x98;
+static const int GEN5_OFF_VIEW = 0x54;
+static const int GEN5_OFF_SLIDE = 0x08, GEN5_OFF_PANEL = 0x58, GEN5_OFF_WAITING = 0x60;
 static const int GEN5_ACMD_PARTY = 5;
 
 static const PkNdsGen5Touch* gen5Touch(const PkNdsFieldGame* g)
@@ -332,18 +339,18 @@ static const PkNdsGen5Touch* gen5Touch(const PkNdsFieldGame* g)
 
 static int byteAt(uint32_t (*read32)(uint32_t), uint32_t a) { return (int) ((read32(a & ~3u) >> ((a & 3) * 8)) & 0xFF); }
 
-static int gen5BattlePanel(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), uint32_t proc, int* panel, int* waiting,
-                           int* subscreen)
+static int gen5BattlePanel(const PkNdsFieldGame* g, const PkNdsGen5Touch* t, uint32_t (*read32)(uint32_t), uint32_t proc,
+                           int* panel, int* waiting, int* subscreen)
 {
     uint32_t main = read32(proc + g->offProcWork);
     uint32_t client = inMainRam(main) ? read32(main + g->offClient) : 0;
     uint32_t view = inMainRam(client) ? read32(client + GEN5_OFF_VIEW) : 0;
-    uint32_t scd = inMainRam(view) ? read32(view + GEN5_OFF_SCD) : 0;
-    uint32_t input = inMainRam(scd) ? read32(scd + GEN5_OFF_INPUT) : 0;
+    uint32_t scd = inMainRam(view) ? read32(view + t->offScd) : 0;
+    uint32_t input = inMainRam(scd) ? read32(scd + t->offInput) : 0;
     if (!inMainRam(input)) return 0;
     *panel = byteAt(read32, input + GEN5_OFF_PANEL);
     *waiting = byteAt(read32, scd + GEN5_OFF_WAITING) && !read32(input + GEN5_OFF_SLIDE);
-    *subscreen = byteAt(read32, scd + GEN5_OFF_SUBSCREEN);
+    *subscreen = byteAt(read32, scd + t->offSubscreen);
     return 1;
 }
 
@@ -436,10 +443,10 @@ static int gen5BattleCommand(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_
 // Gen 5's touch bits in a battle (proc: the battle's): the commands and the moves are the battle buttons' own while their
 // panel takes touches; the bag and the party (and a fainted Pokémon's party) are screens of their own, faded in; any
 // other panel (a prompt) is the touch screen's.
-static int gen5BattleTouch(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), uint32_t proc)
+static int gen5BattleTouch(const PkNdsFieldGame* g, const PkNdsGen5Touch* t, uint32_t (*read32)(uint32_t), uint32_t proc)
 {
     int panel = 0, waiting = 0, sub = 0;
-    if (!gen5BattlePanel(g, read32, proc, &panel, &waiting, &sub)) return 0;
+    if (!gen5BattlePanel(g, t, read32, proc, &panel, &waiting, &sub)) return 0;
     int command = gen5BattleCommand(g, read32);
     if (command == g->battleSelecting) {
         if (panel == 1 || panel == 2) return waiting ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : 0;
@@ -472,7 +479,7 @@ static int gen5FieldState(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t),
     uint32_t event = read32(gs + g->offEvent);
     const PkNdsGen5Touch* touch = gen5Touch(g);
     if (overlay == g->battleOverlay)
-        return bits | PK_NDS_FIELD_BATTLE | PK_NDS_FIELD_LOCKED | (touch ? gen5BattleTouch(g, read32, proc) : 0);
+        return bits | PK_NDS_FIELD_BATTLE | PK_NDS_FIELD_LOCKED | (touch ? gen5BattleTouch(g, touch, read32, proc) : 0);
     if (overlay != g->fieldOverlay || !inMainRam(fieldMap)) {
         bits |= PK_NDS_FIELD_MENU | PK_NDS_FIELD_LOCKED;
         if (touch) {

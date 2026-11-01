@@ -39,8 +39,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | SoulSilver (DS) | Germany rev 0 | ✅ ¹⁴ | ◐ ²⁵ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
 | Black (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | White (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
-| Black 2 (DS) | USA/Europe | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
-| White 2 (DS) | USA/Europe | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
+| Black 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
+| White 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | Amethyst | 1.3.0, 1.4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ |
 | Ash Gray | 4.5.3, Fork Bug Fix 1.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ |
 | Celia's Stupid Romhack | 1.1.4 | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | ✅ ¹⁵ | — | — |
@@ -342,7 +342,10 @@ change to any of the places listed under "Where it's decided" updates its rows h
     after +0x58 says 2, the commands 12 after CANCEL), scd +0x60 a panel up, scd +0x98 the bag (2) / party (3) it opened
     while the adapter's command is 3; command 5 is a fainted Pokémon's party, 7 a prompt (`readGen5BattleInput`,
     `pk_nds_field.cpp`'s `gen5BattleTouch`). Their buttons are elsewhere (`NdsBattleTaps.GEN5`), each tap checked. The strip
-    is drawn in their look, the round panel made a 2 x 2 (`DsLook.UNOVA`, the user's call). Black 2 / White 2 aren't read.
+    is drawn in their look, the round panel made a 2 x 2 (`DsLook.UNOVA`, the user's call). Black 2 / White 2 (2026-11-02): the
+    same, with btlv_scd at core +0x1C4, btlv_input at scd +0xBC and the opened screen at scd +0xA4 (headless in Black 2's wild
+    battle: every button, each move card, the way back; the move panel's 3-frame gap too). White 2's battle wasn't reached
+    headless: its structs are Black 2's, its chain from its own GameSystem. Their look is `DsLook.UNOVA2`.
 
 ## What each column is
 

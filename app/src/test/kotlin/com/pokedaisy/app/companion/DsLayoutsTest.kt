@@ -70,8 +70,8 @@ class DsLayoutsTest {
         assertEquals(DsLayout.PICTURE_IN_PICTURE, DsLayout.ONE_SCREEN.forGame(followed = false))
         assertEquals(DsLayout.ONE_SCREEN, DsLayout.ONE_SCREEN.forGame(followed = true))
         assertEquals(DsLayout.STACKED, DsLayout.STACKED.forGame(followed = false))
-        for (code in listOf("IPKE", "IPGE", "CPUE", "IRBO", "IRAO")) assertTrue(code, DsLayout.followed(code))
-        // The German HeartGold / SoulSilver and Black 2 / White 2 aren't followed yet.
-        for (code in listOf("IPKD", "IPGD", "IREO", "IRDO")) assertTrue(code, !DsLayout.followed(code))
+        for (code in listOf("IPKE", "IPGE", "CPUE", "IRBO", "IRAO", "IREO", "IRDO")) assertTrue(code, DsLayout.followed(code))
+        // The German HeartGold / SoulSilver aren't followed yet.
+        for (code in listOf("IPKD", "IPGD")) assertTrue(code, !DsLayout.followed(code))
     }
 }

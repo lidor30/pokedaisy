@@ -1980,7 +1980,7 @@ fun main(args: Array<String>) {
             }
         }),
         // A DS battle on one screen (DsBattleMenu): each game's look over its battle, the commands and the moves.
-        *listOf(GameKind.HEARTGOLD, GameKind.SOULSILVER, GameKind.PLATINUM, GameKind.BLACK).flatMap { dsGame ->
+        *listOf(GameKind.HEARTGOLD, GameKind.SOULSILVER, GameKind.PLATINUM, GameKind.BLACK, GameKind.BLACK2).flatMap { dsGame ->
             listOf(BATTLE_INPUT_ACTION_SELECT to "commands", com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT to "moves").map { (state, what) ->
                 Shot("ds-battle-${dsGame.name.lowercase()}-$what", tw, th, td, { { DsBattlePreview(dsGame, state) } })
             }

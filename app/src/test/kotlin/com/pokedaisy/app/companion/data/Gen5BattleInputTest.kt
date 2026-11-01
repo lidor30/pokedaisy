@@ -74,8 +74,8 @@ class Gen5BattleInputTest {
         battle(command = 3, panel = 1, up = 1, sub = 0)
         w32(proc + b.offProcOverlay, 21)
         assertEquals(BATTLE_INPUT_NONE, state())
-        // The sequels' panels aren't read.
+        // A config without the touch screen's chain reads nothing.
         battle(command = 3, panel = 1, up = 1, sub = 0)
-        assertEquals(BATTLE_INPUT_NONE, readGen5BattleInput(reader, GEN5_BLACK2.battle!!))
+        assertEquals(BATTLE_INPUT_NONE, readGen5BattleInput(reader, b.copy(offView = 0)))
     }
 }

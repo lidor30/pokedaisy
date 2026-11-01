@@ -2747,8 +2747,7 @@ screen), the screen's closing fade - black after it was lit, `menuLitFrames` - s
 (`pk_nds_field_keep_start_menu`), so the menu comes back with its cursor; the screen itself still opens as it was opened. LARGE + SMALL and PICTURE IN PICTURE give
 the HUD's CORNERS `DsCornerLayout` (FieldHud's `dsCorner`: the buttons bottom left, the party in two columns under the
 minimap, three to a row where `GameStageLayout.dsTouchOverGame` says PIP's inset would meet it). Outside the field and battles
-(`EmulatorEngine.dsWideScene` off) EXPAND has nothing to widen, so the stage keeps the game's 4:3 with the backdrop beside it. A game without rules (the German HeartGold / SoulSilver, Black 2 /
-White 2) gets ONE SCREEN as PICTURE IN PICTURE (`DsLayout.forGame`).
+(`EmulatorEngine.dsWideScene` off) EXPAND has nothing to widen, so the stage keeps the game's 4:3 with the backdrop beside it. A game without rules (the German HeartGold / SoulSilver) gets ONE SCREEN as PICTURE IN PICTURE (`DsLayout.forGame`).
 
 **Platinum's and Black / White's rules (2026-11-01).** Platinum (a new game played headless, given two Pokémon and a wild
 battle through its own script commands: `GivePokemon` 0x96, `StartWildBattle` 0x124, `SetVarFromValue` 0x28 on
@@ -2765,7 +2764,11 @@ name 0x14 in, the data 0x2C in): client 0 +0x54 -> btlv_core, +0x180 -> btlv_scd
 panel (1 commands, 2 moves, 4 a prompt), input +0x08 its slide task (taps before it's NULL are lost), scd +0x60 a panel
 up, scd +0x98 the screen opened from it (2 bag, 3 party; stale afterwards, so only under command 3); the adapter's command 5
 is a fainted Pokémon's party, 7 a prompt. Their move panel reports itself for 3 frames between its two slides, so
-`NdsBattleTaps` waits for the state to hold. The post-battle "give a nickname?" is its own proc (overlay 92): a menu screen. Its BattleContext / BattleSystem are Platinum's layout (battleMons at
+`NdsBattleTaps` waits for the state to hold. The post-battle "give a nickname?" is its own proc (overlay 92): a menu screen.
+Black 2 / White 2 (2026-11-02, Black 2's wild battle and both games' X menus headless): the same reads with their own numbers - the X
+menu's function 0x0215A875 (White 2 0x0215A8B5), the touch-only apps party 165, bag 142, trainer card 186, options 140 (the
+Pokédex 302 both screens), btlv_scd at core +0x1C4, btlv_input at scd +0xBC, the opened screen at scd +0xA4; their buttons sit
+where Black's do (`NdsBattleTaps.GEN5` checked on Black 2). Its BattleContext / BattleSystem are Platinum's layout (battleMons at
 0x2D40, 0xC0 each). A blank touch screen (`NdsBottomFrame.blank`: an evolution, a fade) never floats in.
 
 **DS CPU BOOST.** `ARM9ClockShift` 2 (the ARM9 at twice the DS's, as melonDS's DSi mode runs it), switched between frames the
