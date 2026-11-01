@@ -1104,6 +1104,19 @@ val GUIDE_TABLES_GHOST_GREY = GUIDE_TABLES_ULTRA_VIOLET.copy(
     probeName = "Aston",
 )
 
+/** Pokémon Let's Go Pikachu: rev 0's gTrainers (414 is BROCK, its own teams) and gMapGroups, its learnsets repointed to
+ * 0x08A09744 for its 987 species, its own gWildMonHeaders (0x08736860, all 14 literal-pool words); mixed-case text. */
+val GUIDE_TABLES_LETS_GO_PIKACHU = GUIDE_TABLES_ULTRA_VIOLET.copy(
+    learnsets = 0x08A09744L,
+    wildHeaders = 0x08736860L,
+    guide = GuideId.LETS_GO,
+    mapGroups = 0x083526A8L,
+    probeName = "Brock",
+)
+
+/** Let's Go Eevee: Pikachu's tables but its own gWildMonHeaders (0x0874AC1C), its version's exclusives. */
+val GUIDE_TABLES_LETS_GO_EEVEE = GUIDE_TABLES_LETS_GO_PIKACHU.copy(wildHeaders = 0x0874AC1CL)
+
 /**
  * Pokémon Sword and Shield Ultimate Plus (CFRU): gTrainers rewritten in place at FireRed rev
  * 0's address (trainer 414 is MILO), CFRU's 3-byte learnsets at 0x099F4D98, gWildMonHeaders

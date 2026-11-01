@@ -1120,6 +1120,10 @@ class PokeDaisyActivity : Activity() {
         // Orange Islands is retail FireRed rev 0's RAM and party menu, edited in place.
         game == com.pokedaisy.app.companion.data.GameKind.ORANGE_ISLANDS ->
             BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L)
+        // Let's Go Pikachu / Eevee: rev 0's gPartyMenu under a two-column grid (headless in its battle: DOWN 0 -> 2 -> 4,
+        // RIGHT 0 -> 1; A, SHIFT on slot 3 sent it in).
+        game == com.pokedaisy.app.companion.data.GameKind.FIRERED && com.pokedaisy.app.companion.data.runningLetsGo ->
+            BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L, grid = true)
         // So are Ultra Violet, Rocket Edition, Ash Gray and Ghost Grey (FireRed 1.0 edited in place, ActiveTables' fireRedHack;
         // their fixtures' READMEs: a written POKéMON cell + DOWN, A, SHIFT sent party slot 1 in).
         game == com.pokedaisy.app.companion.data.GameKind.FIRERED && com.pokedaisy.app.companion.data.runningFireRedHack != null ->

@@ -53,6 +53,7 @@ private fun rawAreas(guide: GuideId): List<String> = when (guide) {
     GuideId.ROCKET_EDITION -> GUIDE_AREAS_ROCKET_EDITION_RAW
     GuideId.ASH_GRAY -> GUIDE_AREAS_ASH_GRAY_RAW
     GuideId.GHOST_GREY -> GUIDE_AREAS_GHOST_GREY_RAW
+    GuideId.LETS_GO -> GUIDE_AREAS_LETS_GO_RAW
     GuideId.SWORD_SHIELD -> GUIDE_AREAS_SWORD_SHIELD_RAW
     GuideId.GS_CHRONICLES -> GUIDE_AREAS_GS_CHRONICLES_RAW
     // Each Recharged Yellow release moved items and gifts around: its own data.

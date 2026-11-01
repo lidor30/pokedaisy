@@ -1062,6 +1062,28 @@ val POKEDEX_ROCKET_EDITION = POKEDEX_ULTRA_VIOLET.copy(abilityNames = 0x08950000
 val POKEDEX_GHOST_GREY = POKEDEX_ROCKET_EDITION
 
 /**
+ * Pokémon Let's Go Pikachu / Eevee (both versions share these): FireRed's dex screens over 987 species, every table found
+ * through rev 0's literal-pool words - entries 0x08AB7AF0 (No. 0-855: its own numbering, Kanto's 151 first; the newest
+ * species past it have no entry), front pics 0x08A0A6B0, palettes 0x08A0E460, base stats 0x08A02B50, species -> No.
+ * 0x08A9E40C, footprints 0x08AB6B84, evolutions 0x08AA19D0 (vanilla's five rows), TM / HM learnsets 0x08A9F374 (rev 0's
+ * machines). Rocket Edition's ability names (0x08950000). The seen / caught bits left the save blocks for two 0x6B-byte
+ * arrays in EWRAM (GetSetPokedexFlag's literals; a wild battle sets 0x0203C0C8's bit alone: seen).
+ */
+val POKEDEX_LETS_GO = POKEDEX_ROCKET_EDITION.copy(
+    entries = 0x08AB7AF0L,
+    frontPics = 0x08A0A6B0L,
+    palettes = 0x08A0E460L,
+    speciesInfo = 0x08A02B50L,
+    speciesToNational = 0x08A9E40CL,
+    footprints = 0x08AB6B84L,
+    evolutions = 0x08AA19D0L,
+    tmhmLearnsets = 0x08A9F374L,
+    speciesCount = 987,
+    nationalCount = 855,
+    flags = DexFlags(DexFlagBlock.FIXED, 0x0203C0C8L, 0x0203C133L, 0x6B),
+)
+
+/**
  * Pokémon Sword and Shield Ultimate Plus v1.2.1.2 (CFRU): every table found through the
  * literal-pool word FireRed 1.0 loads it from (entries 0x09A04D08, front pics 0x099EDB5C,
  * palettes 0x09A02128, base stats 0x099AFBEC, species -> national 0x09A11274, ability names

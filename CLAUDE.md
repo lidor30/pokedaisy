@@ -1711,6 +1711,16 @@ object - `fireRedHackFor` goes by identity). Its own save (1.0.3, from its Disco
 from discord/`) loads in all three. Seven badges on FireRed's flags 0x821..0x827 (0x820 never given); Cinnabar's leftover script
 also sets 0x826, and SUMMER's sets 0x827 before the battle (her trainer flag marks her beaten). Its repel items last 250 / 200 / 250. USE, the PC, FLY, the field reads, the bike and WILD ENCOUNTERS were each
 checked headless on v1.0.4 and v1.0.1 (docs/ROM_FEATURES.md's note 11).
+**Let's Go Pikachu / Eevee (2026-11-02)**: Kevin Pokefan's English-translated FireRed rev 0 hack (32 MB, no version in the
+game; each version has a "Translation Only" build, three moves' battle data apart, sharing its tables): Ghost Grey's path
+(`fireRedHackConfig`, `GameKind.FIRERED`, `LetsGoGen.kt` from `gen_firered_hack_tables.py lets_go`, one `HackText` per version) but
+the species grew to 987 ids, so its tables carry every species with gender ratios and growth rates (`HackText.growthRates`, read
+by `expProgress`), its config repoints the icon tables, and its DEX flags left the save blocks for EWRAM (0x0203C0C8 seen /
+0x0203C133 caught, `DexFlagBlock.FIXED`) under its own dex numbers (to 855). Its party menu is a two-column grid
+(`runningLetsGo`, the switch's `grid`). Its wild Pokémon walk the grass. Retail FireRed's save is "deleted" by it: the `lets_go*`
+fixtures are a new game played headless (setup through rev 0's ScriptContext_SetupScript), loading in all four builds; its intro
+takes ~1500 frames and its title wants held presses (`boot/lets_go.txt`). The manual can't name it in full (docs.test.js bans one
+of the names): it's "Let's Go" there.
 **GS Chronicles v2.7.6 (2026-10-13)** (`GameKind.GS_CHRONICLES`, `NATIVE_GS_CHRONICLES`): Johto and Kanto on CFRU (32 MB BPRE
 rev 0, Ruki Studios), FireRed rev 0's RAM (every RAM global's pool word is rev 0's) with its tables repointed
 (`gen_cfru_tables.py gs_chronicles`; gBattleMoves at an odd 0x09D10BE3). Gotchas: its gItems is indexed by slot and the

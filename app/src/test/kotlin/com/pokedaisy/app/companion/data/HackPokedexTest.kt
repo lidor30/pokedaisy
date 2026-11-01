@@ -491,6 +491,21 @@ class HackPokedexTest {
             assertTrue(rowlet.abilities.isNotEmpty())
         }
 
+    /** Let's Go Pikachu / Eevee: FireRed's dex shapes over 987 species, its own numbers (WOOLOO No. 300 is species 315). */
+    @Test
+    fun `Let's Go entries - its tables past 16 MB, its own numbers`() {
+        for (file in listOf("Pokemon Let's Go Pikachu.gba", "Pokemon Let's Go Eevee.gba")) {
+            roms(file, GameKind.FIRERED, POKEDEX_LETS_GO) { t ->
+                val pikachu = PokedexSource.entry(t, 25)!!
+                assertEquals(25 to "Mouse", pikachu.species to pikachu.category)
+                assertEquals(4 to 60, pikachu.heightDm to pikachu.weightHg)
+                assertEquals(315, PokedexSource.speciesFor(t, 300))
+                assertEquals(1, PokedexSource.speciesFor(t, 1))
+                assertTrue(pikachu.abilities.isNotEmpty())
+            }
+        }
+    }
+
     @Test
     fun `Ash Gray entries - rev 0's tables`() = roms("Pokemon Ash Gray (v4.5.3).gba", GameKind.FIRERED, POKEDEX_ULTRA_VIOLET) { t ->
         val pikachu = PokedexSource.entry(t, 25)!!

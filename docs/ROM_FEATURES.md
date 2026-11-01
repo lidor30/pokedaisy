@@ -54,6 +54,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | FireRed Rocket Edition | the one release | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ✅ ¹⁵ | — | ✅ ¹⁹ |
 | Gaia | 3.2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ |
 | Ghost Grey | 1.0.1, 1.0.2, 1.0.4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹¹ | — | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | — | — | — |
+| Let's Go Pikachu / Eevee | English, Translation Only (4 builds) | ✅ ²⁸ | ✅ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ | — | ✅ ²⁸ | ◐ ²⁸ | ◐ ²⁸ | ✅ ²⁸ | — | — | — |
 | Glazed | 9.2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁷ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ |
 | GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ |
 | Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — |
@@ -346,6 +347,17 @@ change to any of the places listed under "Where it's decided" updates its rows h
     same, with btlv_scd at core +0x1C4, btlv_input at scd +0xBC and the opened screen at scd +0xA4 (headless in Black 2's wild
     battle: every button, each move card, the way back; the move panel's 3-frame gap too). White 2's battle wasn't reached
     headless: its structs are Black 2's, its chain from its own GameSystem. Their look is `DsLook.UNOVA2`.
+28. Let's Go Pikachu / Eevee (FireRed rev 0 edited in place; all four builds share rev 0's RAM, code and tables for these),
+    checked headless on Let's Go Pikachu with its new game's save (the `lets_go` fixtures' READMEs): EXPAND by `verify_wide.py`
+    on all four (map 440/440, battle 895/895 exact); a written action cell 2 + A opened the party menu and a written move
+    cell 1 + A used TAIL WHIP; its party menu is a two-column grid (`runningLetsGo`: DOWN 0 -> 2 -> 4, RIGHT 0 -> 1), A and
+    SHIFT on slot 3 sent SNOM in; rev 0's field-item table (`FIELD_ITEMS_PORTS["BPRE0"]`, its CRCs on all four): a POTION
+    through ExecuteTableBasedItemEffect healed PIKACHU 10 -> 30, the PC script opened the PC in the player's room; with
+    FLY taught by SetMonData and badge 3 / VIRIDIAN's map flag set, outside in PALLET TOWN, SetUpFieldMove_Fly, the map
+    type and SetFlyWarpDestination flew to Viridian's Pokémon Center, controls free after; `fieldinfo` read the field.
+    Bike / surf: rev 0's gPlayerAvatar, not ridden here. WILD ENCOUNTERS: rev 0's switch is found (0x020386DC), but this
+    game's wild Pokémon walk in the grass and battle when touched, which the switch doesn't stop; not walked. No REUSABLE
+    TMS sites (none of FireRed's three kept).
 
 ## What each column is
 

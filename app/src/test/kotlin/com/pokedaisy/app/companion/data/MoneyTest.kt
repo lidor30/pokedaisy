@@ -67,6 +67,9 @@ class MoneyTest {
         assertEquals(163300L, money("ghost_grey", NATIVE_GHOST_GREY))
         assertEquals(163300L, money("ghost_grey_v102", NATIVE_GHOST_GREY))
         assertEquals(163300L, money("ghost_grey_v101", NATIVE_GHOST_GREY_V1_0_1))
+        // Let's Go's new game (its START menu's 3000 + a script's 3000).
+        assertEquals(6000L, money("lets_go_pikachu", NATIVE_LETS_GO_PIKACHU))
+        assertEquals(6000L, money("lets_go_eevee", NATIVE_LETS_GO_EEVEE))
         assertEquals(5000L, money("sword_shield_up", NATIVE_SWORD_SHIELD))
         assertEquals(13000L, money("gs_chronicles", NATIVE_GS_CHRONICLES))
         assertEquals(13000L, money("gs_chronicles_swapped", NATIVE_GS_CHRONICLES))
