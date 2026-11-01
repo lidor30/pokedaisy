@@ -187,6 +187,13 @@ summary. Saves are backed up into `saves/pokedaisy-backups/` like Android's (`po
 distinct); states carry no save data, so loading one never writes the save. Keep a copy of the ROM's bytes rather
 than mGBA's ROM block pointer: a GPIO write (FireRed) swaps the mapping. CI: `.github/workflows/linux.yml` (x86_64
 native, AArch64 under QEMU with the checksum-pinned TrimUI toolchain).
+**DS on Linux** (opt-in, `-DPOCKET_DSPERATE=ON`; Keegan's, 2026-10-28; `linux/dsperate/README.md`): `.nds` games on the
+DSperate core (`third_party/dsperate`, unmodified), its own event loop (`frontend.cpp`), a read-only Platinum USA rev 1
+companion (`companion.cpp`, Gen4Reader.kt's rules), the shared quick menu and party HUD. It builds the app's
+`pk_nds_field.cpp` as is - keep that file RAM-only (melonDS reads go in `pk_nds_field_gpu.cpp`). `data_gen.h` is scraped
+from the Kotlin (Gen4Reader / Gen4TablesPlatinum / Gen4TownMapPlatinum / NdsArt / Gen4Dex ...) by `gen_data.py`: after
+changing those, run it (`--check` fails in `.github/workflows/linux-ds-experiment.yml`). DSperate states carry the save;
+loading one keeps the battery save in memory (`load_state_keeping_save`), like the GBA host.
 
 ## Testing: quick by default, full runs only with the user's OK
 

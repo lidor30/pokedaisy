@@ -10,21 +10,13 @@ add_subdirectory("${DSPERATE_DIR}" dsperate EXCLUDE_FROM_ALL)
 # The pinned TrimUI GCC package has no lto1. Keep this optional backend usable
 # with the same SDK as the normal Linux build, without patching DSperate's build.
 set_property(TARGET dsperate_core PROPERTY INTERPROCEDURAL_OPTIMIZATION FALSE)
-# pk_nds_field.cpp's RAM-only portion is already portable. The one function
-# reading melonDS's GPU is excluded, without copying its address tables.
-set_property(DIRECTORY APPEND PROPERTY CMAKE_CONFIGURE_DEPENDS "${CMAKE_CURRENT_SOURCE_DIR}/../app/src/main/cpp/nds/pk_nds_field.cpp")
-file(READ "${CMAKE_CURRENT_SOURCE_DIR}/../app/src/main/cpp/nds/pk_nds_field.cpp" field_source)
-string(REPLACE "#include <NDS.h>" "" field_source "${field_source}")
-string(FIND "${field_source}" "int pk_nds_bg3_tiles(" gpu_begin)
-if(gpu_begin LESS 0)
-  message(FATAL_ERROR "Review upstream pk_nds_field.cpp before updating this adapter")
-endif()
-string(SUBSTRING "${field_source}" 0 ${gpu_begin} field_source)
-file(WRITE "${CMAKE_CURRENT_BINARY_DIR}/ds_field.cpp" "${field_source}")
-add_library(pd_ds_backend STATIC dsperate/frontend.cpp dsperate/companion.cpp dsperate/map_art.cpp "${CMAKE_CURRENT_BINARY_DIR}/ds_field.cpp")
+# The Android app's DS field read (pk_nds_field.cpp) reads RAM through callbacks only, so it builds here unchanged; its
+# one read of melonDS's GPU lives in pk_nds_field_gpu.cpp, which isn't built here.
+add_library(pd_ds_backend STATIC dsperate/frontend.cpp dsperate/companion.cpp dsperate/map_art.cpp ../app/src/main/cpp/nds/pk_nds_field.cpp)
 target_include_directories(pd_ds_backend PRIVATE dsperate ../app/src/main/cpp/nds ../3ds/desktop)
 target_link_libraries(pd_ds_backend PUBLIC dsperate_core pd_linux_common)
-target_compile_options(pd_ds_backend PRIVATE -Wall -Wextra)
+# The field tables leave each game's unused trailing fields zero on purpose.
+target_compile_options(pd_ds_backend PRIVATE -Wall -Wextra -Wno-missing-field-initializers)
 if(CMAKE_CXX_COMPILER_ID STREQUAL "GNU" AND CMAKE_CXX_COMPILER_VERSION VERSION_LESS 9)
   target_link_libraries(pd_ds_backend PUBLIC stdc++fs)
 endif()

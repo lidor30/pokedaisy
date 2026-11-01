@@ -81,16 +81,17 @@ the previous disk copy. Continue using the game's own Save menu.
 AUTO-RESUME defaults OFF and captures a separate state on clean exit. A forced
 power-off cannot capture it. A newer battery-save timestamp takes precedence.
 Invalid resume states are loaded into a separate console and fall back to a
-fresh boot. `POCKET_DS_RESUME=0` bypasses resume and capture for recovery. Resume
-states contain battery RAM; do not treat them as portable archival saves or
-assume compatibility with another emulator/version.
+fresh boot. `POCKET_DS_RESUME=0` bypasses resume and capture for recovery.
+DSperate states contain battery RAM, but loading one (manual or resume) never
+writes it: the battery save already loaded is kept, as the GBA host's states
+carry none. Do not treat states as portable archival saves or assume
+compatibility with another emulator/version.
 
 ## Shared data and interfaces for review
 
-The adapter reuses `pk_nds_field.cpp`'s existing game/state logic through RAM
-callbacks. CMake currently extracts its RAM-only prefix and excludes the
-melonDS GPU helper. A missing extraction marker fails configuration. This is
-an interim integration point for upstream to replace with a portable target.
+The adapter builds the Android app's `pk_nds_field.cpp` unchanged and reads its
+game/state logic through RAM callbacks; its one melonDS GPU read lives apart in
+`pk_nds_field_gpu.cpp`, which this build leaves out.
 The two missing Platinum battle-context/command offsets are a small shared
 prerequisite; no `3ds/core` or `pk_wide_gb.c` modifications are needed.
 

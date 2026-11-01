@@ -43,6 +43,15 @@ bool atomic_file(const std::string& path,const uint8_t* data,size_t size){
   if(ok && !std::rename(temp.c_str(),path.c_str()))return true;
   std::remove(temp.c_str());return false;
 }
+// A DSperate state carries the cart's save memory, and loading one marks it dirty, so the next flush would write the
+// state's (maybe older) save over the file. States never carry the save here, as the GBA host's don't: the battery save
+// the console held before the load is put back, still waiting for its flush if it was.
+bool load_state_keeping_save(ds::NDS& nds,ds::state::Reader& reader,std::string& err){
+  std::vector<uint8_t> battery=nds.cart->sram();bool dirty=nds.cart->sram_dirty();
+  if(!nds.load_state(reader,err))return false;
+  nds.cart->sram()=std::move(battery);if(!dirty)nds.cart->clear_sram_dirty();
+  return true;
+}
 struct DsPrefs {
   bool bottom=false, resume=false, hud=true;
   int battle=0;
@@ -181,6 +190,8 @@ extern "C" int pd_ds_run(const char* rom,const char* root,int limit,const char* 
       bool ready=candidate->load_bios("","","",{},&problem) && candidate->load_rom(rom);
       if(ready)candidate->setup_direct_boot();
       if(ready && candidate->load_state(reader,problem)){
+        // The file's save wins over the state's copy (they match unless the file changed since the capture).
+        if(std::filesystem::exists(save)){candidate->cart->sram()=nds->cart->sram();candidate->cart->clear_sram_dirty();}
         nds=std::move(candidate);active=nds.get();autoResumed=true;std::fprintf(stderr,"DS auto-resumed at core frame %llu\n",(unsigned long long)nds->frame_count);
       }else std::fprintf(stderr,"DS resume ignored: %s; booting normally\n",problem.c_str());
       }
@@ -203,7 +214,7 @@ extern "C" int pd_ds_run(const char* rom,const char* root,int limit,const char* 
   bool done=false,showCompanion=false,showQuick=false,paused=false,summary=false,failed=false;
   int quickSelected=0;uint32_t blocked=0;
   int mapX=-1,mapY=-1,setting=0,page=0,tab=0,selected=0,scroll=0,touchX=128,touchY=96;uint32_t keys=0;unsigned repeat[8]={};int frame=0,lastPhase=-1,overrideScreen=-1;
-  const int raw[]={1,0,11,10,9,8,2,3,15,-1,12,13};
+  const int raw[]={1,0,11,10,9,8,2,3,15,-1,12,13};const bool rawTrimui=std::getenv("POCKET_RAW_TRIMUI")!=nullptr;
   struct Press{int at,n;uint32_t mask;};std::vector<Press> script,hostScript;
   if(auto s=std::getenv("POCKET_DS_KEYS")){std::string text=s;size_t pos=0;while(pos<text.size()){Press p{};int used=0;if(std::sscanf(text.c_str()+pos,"%d:%u:%d%n",&p.at,&p.mask,&p.n,&used)!=3)break;script.push_back(p);pos+=used+1;}}
   if(auto s=std::getenv("POCKET_DS_HOST_KEYS")){std::string text=s;size_t pos=0;while(pos<text.size()){Press p{};int used=0;if(std::sscanf(text.c_str()+pos,"%d:%u:%d%n",&p.at,&p.mask,&p.n,&used)!=3)break;hostScript.push_back(p);pos+=used+1;}}
@@ -223,8 +234,8 @@ extern "C" int pd_ds_run(const char* rom,const char* root,int limit,const char* 
         if(e.caxis.axis==SDL_CONTROLLER_AXIS_LEFTX){key(5,e.caxis.value<-16000);key(4,e.caxis.value>16000);}
         if(e.caxis.axis==SDL_CONTROLLER_AXIS_LEFTY){key(6,e.caxis.value<-16000);key(7,e.caxis.value>16000);}
       }
-      if((e.type==SDL_JOYBUTTONDOWN || e.type==SDL_JOYBUTTONUP) && std::getenv("POCKET_RAW_TRIMUI") && !SDL_IsGameController(0)){k=e.jbutton.button<12?raw[e.jbutton.button]:-1;down=e.type==SDL_JOYBUTTONDOWN;}
-      if(std::getenv("POCKET_RAW_TRIMUI") && !SDL_IsGameController(0)){
+      if((e.type==SDL_JOYBUTTONDOWN || e.type==SDL_JOYBUTTONUP) && rawTrimui && !SDL_IsGameController(0)){k=e.jbutton.button<12?raw[e.jbutton.button]:-1;down=e.type==SDL_JOYBUTTONDOWN;}
+      if(rawTrimui && !SDL_IsGameController(0)){
         if(e.type==SDL_JOYHATMOTION){key(4,e.jhat.value&SDL_HAT_RIGHT);key(5,e.jhat.value&SDL_HAT_LEFT);key(6,e.jhat.value&SDL_HAT_UP);key(7,e.jhat.value&SDL_HAT_DOWN);}
         if(e.type==SDL_JOYAXISMOTION && (e.jaxis.axis==2 || e.jaxis.axis==5)){k=e.jaxis.axis==2?12:13;down=e.jaxis.value>16000;}
       }
@@ -281,7 +292,7 @@ extern "C" int pd_ds_run(const char* rom,const char* root,int limit,const char* 
     }
     if(paused){if(pressed&(1u<<1))paused=false;if(pressed&(1u<<3))done=true;
       if(pressed&1){ds::state::Writer w;if(!nds->save_state(w,err) || !atomic_file(state,w.data().data(),w.data().size())){std::fprintf(stderr,"DS state save failed: %s\n",err.c_str());failed=true;done=true;}paused=false;}
-      if(pressed&(1u<<10)){auto data=read_file(state);if(!data.empty()){ds::state::Reader r(data.data(),data.size());if(!nds->load_state(r,err)){failed=true;done=true;std::fprintf(stderr,"DS state load failed: %s\n",err.c_str());}else std::fprintf(stderr,"DS manual state loaded at core frame %llu\n",(unsigned long long)nds->frame_count);}paused=false;}
+      if(pressed&(1u<<10)){auto data=read_file(state);if(!data.empty()){ds::state::Reader r(data.data(),data.size());if(!load_state_keeping_save(*nds,r,err)){failed=true;done=true;std::fprintf(stderr,"DS state load failed: %s\n",err.c_str());}else std::fprintf(stderr,"DS manual state loaded at core frame %llu\n",(unsigned long long)nds->frame_count);}paused=false;}
     }else if(showQuick){
       nds->io.set_buttons(0);nds->io.set_touch(0,0,false);
     }else if(showCompanion){

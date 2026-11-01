@@ -15,7 +15,7 @@ on:
       - 'NOTICE'
       - '.github/workflows/linux-ds-experiment.yml'
   push:
-    branches: [main, dev, pr/linux-ds-backend]
+    branches: [main, dev]
   workflow_dispatch:
 permissions:
   contents: read

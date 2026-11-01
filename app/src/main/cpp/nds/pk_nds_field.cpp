@@ -1,6 +1,7 @@
 // See pk_nds_field.h. Addresses from pret/pokeplatinum's .xMAP (it builds the retail ROM byte for byte), struct
 // offsets from its headers, both checked on headless captures (nds_dump's fieldinfo: the field, a text box, the X
-// menu, the party screen, a battle).
+// menu, the party screen, a battle). RAM only, through the callbacks, so the Linux host builds it beside DSperate
+// (linux/dsperate/); the one read of melonDS itself, pk_nds_bg3_tiles, is in pk_nds_field_gpu.cpp.
 
 #include "pk_nds_field.h"
 
@@ -8,8 +9,6 @@
 
 #include <unordered_map>
 #include <utility>
-
-#include <NDS.h>
 
 static const PkNdsFieldGame PLATINUM_US_REV1 = {
     "Platinum (USA, rev 1)",
@@ -545,20 +544,6 @@ int pk_nds_field_state(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), vo
         if (state == AVATAR_SURFING) bits |= PK_NDS_FIELD_SURF;
     }
     return bits;
-}
-
-int pk_nds_bg3_tiles(melonDS::NDS* nds, int bg)
-{
-    uint32_t disp = nds->GPU.GPU2D_A.DispCnt;
-    if (!(disp & (1 << (8 + bg)))) return 0;   // the BG is off
-    if (bg == 3 && (disp & 7) > 1) return 0;   // not a text BG in this mode
-    if (bg == 2 && (disp & 7) > 3) return 0;
-    uint16_t cnt = nds->GPU.GPU2D_A.BGCnt[bg];
-    uint32_t base = 0x06000000u + ((disp >> 27) & 7) * 0x10000 + ((cnt >> 8) & 0x1F) * 0x800;
-    int n = 0;
-    for (uint32_t i = 0; i < 32 * 24; i++)
-        if (nds->ARM9Read16(base + i * 2) & 0x3FF) n++;
-    return n;
 }
 
 // A menu screen opened from the X menu ends: the X menu comes back for buttons, but closes itself when the screen was
