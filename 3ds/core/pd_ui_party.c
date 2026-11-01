@@ -5,6 +5,7 @@
 
 #include "pd_icon.h"
 #include "pd_tables.h"
+#include "pd_experience.h"
 #include "pd_ui_internal.h"
 
 // FireRedPartyPalette (PartyScreen.kt): a state's frame (outline, light inner edge,
@@ -280,6 +281,59 @@ static void summary_stats(struct pd_canvas* c, const struct pd_mon_stats* s,
     }
 }
 
+// INFO: the EXP bar, the held item and its description, the type matchups (MonDetailScreen's information column,
+// after Keegan Whitacre's Summary INFO in pokedaisy-brick), packed to fit rows of a 341x256 canvas.
+static void summary_info(struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m, int x, int y, int w,
+                         int bottom) {
+    char buf[96];
+    int row = y;
+    struct pd_exp xp;
+    if (m->hasExperience && pd_retail_exp_progress(m->species, m->level, m->experience, w - 2, &xp)) {
+        pd_text(c, x, row, "EXP", PD_MUTED, PD_MUTED_SHADOW);
+        snprintf(buf, sizeof(buf), "%lu", (unsigned long) m->experience);
+        pd_text_right(c, x + w, row, buf, PD_VALUE, PD_VALUE_SHADOW);
+        row += 17;
+        pd_fill(c, x, row, w, 9, PD_DIVIDER);
+        pd_fill(c, x + 1, row + 1, w - 2, 7, 0x506858);
+        pd_fill(c, x + 1, row + 1, xp.filled, 7, 0x40B8F8);
+        row += 10;
+        if (m->level == 100) snprintf(buf, sizeof(buf), "MAX");
+        else snprintf(buf, sizeof(buf), "NEXT %lu", (unsigned long) xp.toNext);
+        pd_text_right(c, x + w, row, buf, PD_VALUE, PD_VALUE_SHADOW);
+        row += 17;
+    }
+    if (m->hasHeldItem && row + 17 <= bottom) {
+        pd_text(c, x, row, "HELD ITEM", PD_MUTED, PD_MUTED_SHADOW);
+        const char* item = m->heldItem ? pd_item_name(g, m->heldItem) : "NONE";
+        if (!item[0]) item = "UNKNOWN ITEM";
+        pd_text_fit(c, x + 84, row, w - 84, item, PD_LABEL, PD_LABEL_SHADOW);
+        row += 17;
+        const char* desc = m->heldItem ? pd_item_description(g, m->heldItem) : "";
+        if (desc[0] && row + 14 <= bottom) {
+            int lines = (bottom - row - 40) / 14;
+            if (lines > 2) lines = 2;
+            if (lines > 0) row += pd_text_wrap(c, x, row, w, 14, lines, desc, PD_LABEL, PD_LABEL_SHADOW) * 14 + 4;
+        }
+    }
+    int t1, t2;
+    pd_species_type_pair(m->species, &t1, &t2);
+    static const char* const heads[3] = {"WEAK TO", "RESISTS", "IMMUNE"};
+    for (int group = 0; group < 3; group++) {
+        buf[0] = 0;
+        for (int t = 0; t < pd_type_names_count; t++) {
+            int pct = pd_type_multiplier_pct(t, t1, t2);
+            if (!((group == 0 && pct > 100) || (group == 1 && pct > 0 && pct < 100) || (group == 2 && pct == 0)))
+                continue;
+            size_t n = strlen(buf);
+            snprintf(buf + n, sizeof(buf) - n, "%s%s", n ? ", " : "", pd_type_name(t));
+        }
+        if (!buf[0] || row + 13 > bottom) continue;
+        pd_text(c, x, row, heads[group], PD_MUTED, PD_MUTED_SHADOW);
+        pd_text_fit(c, x + 66, row, w - 66, buf, PD_LABEL, PD_LABEL_SHADOW);
+        row += 14;
+    }
+}
+
 static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m) {
     char buf[40], buf2[40];
     int x = MARGIN, y = CONTENT_Y, w = c->w - 2 * MARGIN, h = c->h - CONTENT_Y - MARGIN;
@@ -316,8 +370,10 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         iw = iw0;
         pd_fill(c, ix, ty, iw, 1, PD_DIVIDER);
         ty += 4;
-        if (ui->summaryStats && m->stats.valid && h >= 210) {
-            int bottom = y + h - f - 30;
+        int bottom = y + h - f - 30;
+        if (ui->summaryInfo && h >= 210) {
+            summary_info(c, g, m, ix, ty, iw, bottom);
+        } else if (ui->summaryStats && m->stats.valid && h >= 210) {
             summary_stats(c, &m->stats, ix, ty, iw, bottom - ty);
         } else for (int i = 0; i < PD_NUM_MOVES; i++) {
             if (!m->moves[i]) continue;
@@ -331,8 +387,20 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
     } else {
         pd_text(c, ix, ty, "It's an egg. It will hatch in time.", PD_MUTED, PD_MUTED_SHADOW);
     }
-    if (!egg && m->stats.valid && h >= 210) // the 3DS's 240 rows are too short for it
-        ui_button(ui, c, x + w - f - 70 - 76, y + h - f - 26, 72, 22, ui->summaryStats ? "MOVES" : "STATS", HIT_SUMMARY_STATS);
+    if (!egg && h >= 210) { // the 3DS's 240 rows are too short for the other panes
+        // The two panes this isn't, as buttons right to left from BACK: the pane's own button goes back to MOVES.
+        struct pane_btn { const char* label; int hit; } pane[2];
+        int n = 0;
+        if (ui->summaryInfo) {
+            pane[n++] = (struct pane_btn){"MOVES", HIT_SUMMARY_INFO};
+            if (m->stats.valid) pane[n++] = (struct pane_btn){"STATS", HIT_SUMMARY_STATS};
+        } else {
+            if (m->stats.valid) pane[n++] = (struct pane_btn){ui->summaryStats ? "MOVES" : "STATS", HIT_SUMMARY_STATS};
+            pane[n++] = (struct pane_btn){"INFO", HIT_SUMMARY_INFO};
+        }
+        for (int i = 0; i < n; i++)
+            ui_button(ui, c, x + w - f - 70 - 76 * (i + 1), y + h - f - 26, 72, 22, pane[i].label, pane[i].hit);
+    }
     ui_button(ui, c, x + w - f - 70, y + h - f - 26, 66, 22, "BACK", HIT_BACK);
 }
 

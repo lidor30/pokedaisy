@@ -127,6 +127,11 @@ int main(int argc,char** argv) {
             assert(!memcmp(expected,pixels,(size_t)w*h*sizeof *expected));free(expected);
             snap.party[0].stats=saved;
             tap(&ui,HIT_SUMMARY_STATS);assert(!ui.summaryStats);
+            assert(has(&ui,HIT_SUMMARY_INFO));tap(&ui,HIT_SUMMARY_INFO);assert(ui.summaryInfo && !ui.summaryStats);
+            pd_ui_draw(&ui,&canvas,&game,&snap,&host);
+            snprintf(path,sizeof path,"%s/%s-info-%dx%d.png",argv[3],argv[2],w,h);
+            assert(pd_png_write(path,w,h,pixels));
+            tap(&ui,HIT_SUMMARY_INFO);assert(!ui.summaryInfo);
             snap.party[0].stats.valid=false;
             pd_ui_draw(&ui,&canvas,&game,&snap,&host);assert(!has(&ui,HIT_SUMMARY_STATS));
             snap.party[0].stats.valid=true;

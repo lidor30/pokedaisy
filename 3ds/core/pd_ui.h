@@ -160,6 +160,7 @@ struct pd_ui {
     int lastFoeActive, lastFoeNext;
     int summarySlot; // party slot whose summary is open, -1 = none
     bool summaryStats; // STATS replaces MOVES, as in MonDetailScreen
+    bool summaryInfo;  // INFO (EXP, held item, type matchups) replaces them
     int bagPocket;   // the open pocket tab: 0 ALL, then each pocket with items, in the game's order
     int bagSelected; // the item's row in that tab, -1 = none
     int bagScroll;   // pixels

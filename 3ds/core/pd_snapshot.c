@@ -139,6 +139,7 @@ bool pd_decode_party_mon(const uint8_t* raw, struct pd_mon* m) {
     // Android Gen3Mon.kt decryptGen3Substructs / monStats, retail layout.
     m->heldItem = u16(block + off[0] + 2);
     m->experience = u32(block + off[0] + 4);
+    m->hasExperience = m->hasHeldItem = true;
     uint32_t ivWord = u32(block + off[3] + 4);
     for (int i = 0; i < 6; i++) {
         m->stats.ivs[i] = (ivWord >> (5 * i)) & 31;

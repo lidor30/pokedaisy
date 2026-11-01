@@ -37,6 +37,7 @@ $(BUILD)/pd_stats_test: $(CORE_SRC) $(wildcard core/*.h) test/stats_test.c deskt
 
 test-stats: $(BUILD)/pd_stats_test
 	python3 tools/gen_stats.py --check
+	python3 tools/gen_experience.py --check
 	@mkdir -p $(BUILD)/stats-shots
 	$(BUILD)/pd_stats_test $(FIXTURES)/emerald_vanilla BPEE $(BUILD)/stats-shots
 	$(BUILD)/pd_stats_test $(FIXTURES)/firered_vanilla BPRE $(BUILD)/stats-shots
@@ -68,6 +69,7 @@ decomps:
 	test/build_decomps.sh
 
 tables:
+	python3 tools/gen_experience.py
 	python3 tools/gen_stats.py
 	python3 tools/gen_tables.py
 	python3 tools/gen_map_tables.py

@@ -367,9 +367,13 @@ static void act(struct pd_ui* ui, int id) {
         ui->action = PD_ACTION_TOGGLE_FF;
     } else if (id >= HIT_SLOT && id < HIT_SLOT + PD_PARTY_SIZE) {
         ui->summarySlot = id - HIT_SLOT;
-        ui->summaryStats = false;
+        ui->summaryStats = ui->summaryInfo = false;
     } else if (id == HIT_SUMMARY_STATS) {
         ui->summaryStats = !ui->summaryStats;
+        ui->summaryInfo = false;
+    } else if (id == HIT_SUMMARY_INFO) {
+        ui->summaryInfo = !ui->summaryInfo;
+        ui->summaryStats = false;
     } else if (id == HIT_BACK) {
         pd_ui_back(ui);
     } else if (id >= HIT_BAG_TAB && id < HIT_BAG_TAB + 8) {

@@ -33,6 +33,7 @@ struct pd_mon {
     int pp[PD_NUM_MOVES];
     uint32_t personality;
     // Optional live fields used by the native companions.
+    bool hasExperience, hasHeldItem; // distinguish unavailable data from zero
     uint32_t experience;
     int heldItem;
     struct pd_mon_stats stats; // optional: valid only for verified decoders
