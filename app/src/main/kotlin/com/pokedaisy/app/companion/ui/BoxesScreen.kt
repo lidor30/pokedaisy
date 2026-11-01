@@ -111,8 +111,10 @@ class BoxesUiState {
 fun BoxesScreen(boxes: BoxesView, ui: BoxesUiState, dex: PokedexTables?, modifier: Modifier = Modifier) {
     val boxIndex = ui.boxOf(boxes)
     val box = boxes.boxes[boxIndex]
-    fun step(by: Int) {
-        ui.box = Math.floorMod(boxIndex + by, boxes.boxes.size)
+    // The box on show read at the tap, not captured: a `::step` of a local fun equals the last one whatever it captured,
+    // so Compose kept the arrows' first click handler and they only ever stepped from the box the tab opened on.
+    val step: (Int) -> Unit = { by ->
+        ui.box = Math.floorMod(ui.boxOf(boxes) + by, boxes.boxes.size)
         ui.looked = null
     }
     val m = rememberGbaTextMetrics()
@@ -127,7 +129,7 @@ fun BoxesScreen(boxes: BoxesView, ui: BoxesUiState, dex: PokedexTables?, modifie
         val sideBySide = maxWidth >= maxHeight
         val gap = u * 4
         val content = @Composable { boxModifier: Modifier ->
-            BoxWindow(box, boxIndex, lookedSlot, ui, m, ::step, boxModifier)
+            BoxWindow(box, boxIndex, lookedSlot, ui, m, step, boxModifier)
         }
         if (sideBySide) {
             // The window about as wide as the tab's height allows a tall picture in, never most of the tab.
