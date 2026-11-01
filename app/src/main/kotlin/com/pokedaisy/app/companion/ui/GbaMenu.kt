@@ -140,18 +140,13 @@ object OptionColors {
     val titleText get() = if (gen1) G1_INK else w(0xFF636363, 0xFFE3E6EC)
     // The game's shadow sits between the text and the window (lighter than grey text on white): mirrored in dark.
     val titleShadow get() = if (gen1) Color.Transparent else w(0xFFD6D6CE, 0xFF3F4652)
-    val listLayers get() = if (gen1) G1_FRAME else if (AppColors.theme.rainbow) rainbowLayers else (if (dark) listOf(
+    val listLayers get() = if (gen1) G1_FRAME else (if (dark) listOf(
         Color(0xFF050608) to 1, Color(0xFF6F6FB8) to 1, Color(0xFF3B3653) to 2,
         Color(0xFF242932) to 1, Color(0xFF2D333E) to 2,
     ) else listOf(
         Color(0xFF293131) to 1, Color(0xFF8C8CCE) to 1, Color(0xFF736B84) to 2,
         Color(0xFFDED6DE) to 1, Color(0xFFFFFFFF) to 2,
     )).map { (color, width) -> tint(color) to width }
-    /** RAINBOW's list windows: the outline, then a line of each colour of the rainbow (dimmer at night), as wide
-     * in all as the usual frame. */
-    private val rainbowLayers get() = listOf(Color(if (dark) 0xFF050608 else 0xFF293131) to 1) +
-        (if (dark) listOf(0xFFB83030, 0xFFC07028, 0xFFC0A830, 0xFF409848, 0xFF3870C0, 0xFF7048B0)
-        else listOf(0xFFE83838, 0xFFF89030, 0xFFF8D838, 0xFF58C058, 0xFF4890E8, 0xFF9060D0)).map { Color(it) to 1 }
     val listFill get() = if (gen1) G1_PAPER else w(0xFFE0DFDF, 0xFF1D2128)
     /** The cursor row (Gen 1 marks it with its ▶; here a light grey band, a lighter slate in dark). */
     val rowSelected get() = if (gen1) (if (activeGame.isRedBlue) c(0xFFE6D6E6, 0xFF3A3A3A) else c(0xFFDCDCDC, 0xFF3A3A3A))
@@ -194,6 +189,16 @@ object OptionColors {
      * dark: the cursor row's slate over the list's). */
     val tabSelectedFill get() = if (gen1) rowSelected else if (dark) rowSelected else titleFill
     val tabIdleFill get() = if (gen1) G1_PAPER else listFill
+    /** RAINBOW ([com.pokedaisy.app.companion.ui.theme.ThemeSpec.rainbow]): a tab chip's or button's own colour,
+     * [slot] picking one of seven (a tab by its place in the bar: a full bar is seven chips, a button by
+     * [nextRainbowSlot]); null = the usual look (any other theme, and the Game Boy games' black-on-white). */
+    fun rainbow(slot: Int): RainbowColors? =
+        if (gen1 || !AppColors.theme.rainbow) null else RainbowColors.of(RAINBOW[Math.floorMod(slot, RAINBOW.size)], dark)
+    private val RAINBOW = listOf(0xFFE83838, 0xFFF88A20, 0xFFE0A800, 0xFF40B048, 0xFF3C88E0, 0xFF8E58D0, 0xFFE8509A).map { Color(it) }
+    /** The next button's [rainbow] slot, taken once when it's first drawn: buttons drawn one after another (a header's,
+     * a window's NO THANKS / TRY IT) get the next colours, so neighbours never match. (Composition runs on one thread.) */
+    fun nextRainbowSlot(): Int = rainbowSlots++
+    private var rainbowSlots = 0
     /** Settings group titles: Gen 1's value colour is the rows' black, so its titles get a black band (white text). */
     val groupTitleFill: Color? get() = if (gen1) G1_INK else null
     val groupTitleText get() = if (gen1) G1_PAPER else value
@@ -614,6 +619,8 @@ fun OptionButton(
     sidePadding: Int = 8,
     /** In a pop-up, the D-pad starts here rather than on its first control. */
     focusStart: Boolean = false,
+    /** RAINBOW may colour it; false keeps the usual look (STATES' buttons). */
+    rainbow: Boolean = true,
 ) {
     val u = m.u
     val interaction = remember { MutableInteractionSource() }
@@ -621,15 +628,21 @@ fun OptionButton(
     val stack = LocalOverlayStack.current
     val self = remember { FocusRequester() }
     if (enabled) LocalOverlayStart.current?.register(self, current = focusStart)
+    // RAINBOW: each button in a colour of its own, the next one along from the button drawn before it; a button with
+    // colours of its own (a field move's blue), greyed out or asked to stay plain keeps the usual look.
+    val rainbowSlot = remember { OptionColors.nextRainbowSlot() }
+    val colors = if (!rainbow || !enabled || labelColors != null || frameLayers != null) null else OptionColors.rainbow(rainbowSlot)
     val fg = when {
         !enabled -> OptionColors.muted
         labelColors != null -> labelColors.first
+        colors != null -> colors.text
         emphasis -> OptionColors.value
         else -> OptionColors.label
     }
     val shadow = when {
         !enabled -> OptionColors.mutedShadow
         labelColors != null -> labelColors.second
+        colors != null -> colors.shadow
         emphasis -> OptionColors.valueShadow
         else -> OptionColors.labelShadow
     }
@@ -643,8 +656,12 @@ fun OptionButton(
             .heightIn(min = m.rowHeight)
             .drawBehind {
                 drawLayeredBox(
-                    (frameLayers ?: OptionColors.titleLayers).inPx(u.toPx()),
-                    if (focused) OptionColors.listFill else OptionColors.titleFill,
+                    (frameLayers ?: colors?.frame ?: OptionColors.titleLayers).inPx(u.toPx()),
+                    when {
+                        colors != null -> if (focused) colors.focusFill else colors.fill
+                        focused -> OptionColors.listFill
+                        else -> OptionColors.titleFill
+                    },
                     radius = 3 * u.toPx(),
                 )
             }
@@ -666,6 +683,36 @@ fun OptionButton(
         }
         if ((icon != null || pixelIcon != null) && label != null) Spacer(Modifier.width(u * 4))
         if (label != null) GbaText(tr(label), fg, shadow, m, bold = gameBoldLabels())
+    }
+}
+
+/**
+ * One colour of RAINBOW's tab chips and buttons ([OptionColors.rainbow]): [fill] is the solid colour (a shade deeper,
+ * [focusFill], under the D-pad's focus) with a white label ([text] / [shadow]) inside [frame], the title window's build in
+ * that colour. The open tab keeps its colour and gets a white ring round the frame ([selectedFrame]).
+ */
+class RainbowColors(
+    val frame: List<Pair<Color, Int>>,
+    val selectedFrame: List<Pair<Color, Int>>,
+    val fill: Color,
+    val focusFill: Color,
+    val text: Color,
+    val shadow: Color,
+) {
+    companion object {
+        fun of(c: Color, dark: Boolean): RainbowColors {
+            val fill = if (dark) lerp(c, Color.Black, 0.2f) else c
+            val frame = if (dark) listOf(Color(0xFF0B0D11) to 2, lerp(c, Color.White, 0.25f) to 1)
+                else listOf(lerp(c, Color.Black, 0.45f) to 2, lerp(c, Color.White, 0.4f) to 1)
+            return RainbowColors(
+                frame = frame,
+                selectedFrame = listOf(Color.White to 2) + frame,
+                fill = fill,
+                focusFill = lerp(fill, Color.Black, 0.18f),
+                text = Color.White,
+                shadow = lerp(c, Color.Black, 0.55f),
+            )
+        }
     }
 }
 

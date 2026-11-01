@@ -419,12 +419,12 @@ fun CompanionScreen(
                     tabs.forEachIndexed { i, title ->
                         val open = { openTab(title) }
                         if (title == "SETTINGS") {
-                            IconTabChip(PixelIcons.gear, tr("Settings"), selectedIdx == i, open)
+                            IconTabChip(PixelIcons.gear, tr("Settings"), selectedIdx == i, open, slot = i)
                         } else if (title == "MORE") {
-                            IconTabChip(PixelIcons.more, tr("MORE"), selectedIdx == i, open, Modifier.testTag("tab-MORE"))
+                            IconTabChip(PixelIcons.more, tr("MORE"), selectedIdx == i, open, Modifier.testTag("tab-MORE"), slot = i)
                         } else {
                             val usable = !snapshot.unsupported || title == "ACHIEVEMENTS"
-                            TabChip(companionTabLabel(title), selectedIdx == i && usable, Modifier.weight(1f).testTag("tab-$title"), enabled = usable, open)
+                            TabChip(companionTabLabel(title), selectedIdx == i && usable, Modifier.weight(1f).testTag("tab-$title"), enabled = usable, slot = i, onClick = open)
                         }
                     }
                     if (shoulderHints > 0f) ShoulderHint("R", shoulderHints) { stepTab(1) }
@@ -1007,16 +1007,17 @@ private fun ShoulderHint(letter: String, shown: Float, onClick: () -> Unit) {
 
 /**
  * A tab in the OPTION-screen look (see GbaMenu): framed like [OptionButton],
- * grey when idle, white with the value-red label when selected.
+ * grey when idle, white with the value-red label when selected. RAINBOW gives each a colour by its [slot] in the bar.
  */
 @Composable
-internal fun TabChip(label: String, selected: Boolean, modifier: Modifier = Modifier, enabled: Boolean = true, onClick: () -> Unit) {
+internal fun TabChip(label: String, selected: Boolean, modifier: Modifier = Modifier, enabled: Boolean = true, slot: Int = 0, onClick: () -> Unit) {
     val m = rememberTabMetrics()
-    TabChipShell(selected, m, modifier.fillMaxHeight().alpha(if (enabled) 1f else 0.4f), onClick, enabled) {
+    val rainbow = OptionColors.rainbow(slot)
+    TabChipShell(selected, m, modifier.fillMaxHeight().alpha(if (enabled) 1f else 0.4f), onClick, enabled, rainbow) {
         GbaText(
             label,
-            if (selected) OptionColors.value else OptionColors.label,
-            if (selected) OptionColors.valueShadow else OptionColors.labelShadow,
+            if (rainbow != null) rainbow.text else if (selected) OptionColors.value else OptionColors.label,
+            if (rainbow != null) rainbow.shadow else if (selected) OptionColors.valueShadow else OptionColors.labelShadow,
             m,
             bold = gameBoldLabels(),
             // A long label (NUZLOCKE on a full bar) narrows its letters rather than being cut short.
@@ -1029,12 +1030,13 @@ internal fun TabChip(label: String, selected: Boolean, modifier: Modifier = Modi
  * showing only a pixel-art [icon] (the gear, MORE's nine squares) rather than a word. Same
  * height as the text tabs (the tab row stretches it). */
 @Composable
-private fun IconTabChip(icon: List<String>, description: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier) {
+private fun IconTabChip(icon: List<String>, description: String, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, slot: Int = 0) {
     val m = rememberTabMetrics()
-    TabChipShell(selected, m, modifier.width(SETTINGS_CHIP_WIDTH).fillMaxHeight().semantics { contentDescription = description }, onClick) {
+    val rainbow = OptionColors.rainbow(slot)
+    TabChipShell(selected, m, modifier.width(SETTINGS_CHIP_WIDTH).fillMaxHeight().semantics { contentDescription = description }, onClick, rainbow = rainbow) {
         PixelIcon(
             icon,
-            color = if (selected) OptionColors.value else OptionColors.label,
+            color = if (rainbow != null) rainbow.text else if (selected) OptionColors.value else OptionColors.label,
             modifier = Modifier.size(m.u * 20),
         )
     }
@@ -1047,6 +1049,8 @@ private fun TabChipShell(
     modifier: Modifier = Modifier,
     onClick: () -> Unit,
     enabled: Boolean = true,
+    /** RAINBOW's colour for this chip; null = the OPTION look. */
+    rainbow: RainbowColors? = null,
     content: @Composable () -> Unit,
 ) {
     val u = m.u
@@ -1060,7 +1064,8 @@ private fun TabChipShell(
                 // Idle tabs take the list window's frame + grey; the selected
                 // one the title window's white, like the OPTION screen's cursor row.
                 val px = u.toPx()
-                drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px)
+                if (rainbow != null) drawLayeredBox((if (selected) rainbow.selectedFrame else rainbow.frame).inPx(px), rainbow.fill, radius = 3 * px)
+                else drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px)
             }
             .soundClickable(interactionSource = noRipple, indication = null, enabled = enabled, onClick = onClick)
             .padding(horizontal = if (LocalGameFont.current != null) u else u * 2, vertical = u * 6),

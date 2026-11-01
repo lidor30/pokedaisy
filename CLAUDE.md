@@ -296,8 +296,10 @@ DARK MODE does. `OptionColors`' window getters go through `tint()` (`Color.theme
 and whites take the hue, colours with saturation over 0.5 - HP, field-move blue, types - keep theirs), values / group titles take
 `ThemeSpec.value` (`valueNight` in dark), the top screen's `DaisyBackdrop` its `page` / `blobs` / `motif` (16x16 pixel art in
 `ThemeMotifs.kt` floating where the logo does; a `darkPage` theme - HALLOWEEN, NEW YEAR - makes `onBackdrop` text white), and a
-game's party backdrop in the companion a Multiply `gameWash` (`GameBackdrop`, `AppBackdrop`'s in-game stripes). RAINBOW's list
-windows get rainbow frame lines (`ThemeSpec.rainbow`). Gen 1 / Gen 2's black-on-white windows and game art stay the game's.
+game's party backdrop in the companion a Multiply `gameWash` (`GameBackdrop`, `AppBackdrop`'s in-game stripes). RAINBOW keeps
+the default's windows and fills each tab chip (by its place in the bar) and `OptionButton` (the next of seven, in the order
+they're first drawn) with a solid colour, white text; the open tab keeps its colour inside a white ring (`ThemeSpec.rainbow`,
+`OptionColors.rainbow` / `RainbowColors`; STATES' buttons stay plain, `OptionButton(rainbow = false)`). Gen 1 / Gen 2's black-on-white windows and game art stay the game's.
 POKéDAISY (`DAISY_THEME_ID` 8, the default, `hue` null) is the classic look, untinted. Ids 0-7 were the old game-named themes
 (FireRed ... SoulSilver, which only changed the top screen's stripes): `Prefs.appTheme` reads them as 8 (the user's call: everyone
 who picked one is on the new default) - never reuse 0-7. **Limited-time themes** (`SEASONAL_THEMES`, ids 40+, a `Season` each in

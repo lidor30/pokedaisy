@@ -75,7 +75,7 @@ data class ThemeSpec(
     val gameWash: Color? = null,
     /** Floats over the Library's backdrop instead of the PokeDaisy mark; null = the mark. */
     val motif: ThemeMotif? = null,
-    /** The list windows' frame lines in the rainbow's colours. */
+    /** The tab chips and buttons each in a colour of the rainbow (OptionColors.rainbow); its windows are the default's. */
     val rainbow: Boolean = false,
     /** A limited-time theme: offered only in its [Season]'s window. */
     val season: Season? = null,
@@ -85,7 +85,7 @@ data class ThemeSpec(
 const val DAISY_THEME_ID = 8
 
 /** The default theme is on (its look is the OPTION screen's own, untinted). */
-val isDaisyTheme: Boolean get() = AppColors.theme.hue == null && !AppColors.theme.darkPage
+val isDaisyTheme: Boolean get() = AppColors.theme.hue == null && !AppColors.theme.darkPage && !AppColors.theme.rainbow
 
 /** The theme stored as [id], or the default for an unknown one. */
 fun themeById(id: Int): ThemeSpec = (APP_THEMES + SEASONAL_THEMES).firstOrNull { it.id == id } ?: APP_THEMES.first()
@@ -101,8 +101,7 @@ val APP_THEMES = listOf(
         gameWash = Color(0xFFFFD6E0), motif = ThemeMotifs.BLOSSOM,
     ),
     ThemeSpec(
-        21, tk("RAINBOW"), hue = 275f, wash = 0.22f,
-        value = Color(0xFFB0189A), valueNight = Color(0xFFFF7AE6),
+        21, tk("RAINBOW"),
         page = Color(0xFFFBF9FF),
         blobs = listOf(Color(0xFFFFC4C4), Color(0xFFFFEFA8), Color(0xFFC8F0C8), Color(0xFFC4DAFF), Color(0xFFE2CCFF)),
         motif = ThemeMotifs.RAINBOW, rainbow = true,

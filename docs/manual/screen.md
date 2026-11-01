@@ -180,7 +180,7 @@ The game's own art stays as it is: party slots, the map, the trainer card and ba
 `THEME` gives the whole app a colour scheme: the library, Settings, setup and the companion while you play, on both screens at once. It works like `DARK MODE`: the windows take the theme's colour, the values in the lists take its accent, and the backdrop behind them gets its own colours. You can pick it in the top screen's Settings or in the companion's SETTINGS, under SCREEN, and use it with `DARK MODE` on or off.
 
 - `POKéDAISY` (the default): the classic white and grey windows over the website's light page with soft blobs and floating logos.
-- `CHERRY`, `RAINBOW`, `OCEAN`, `MINT`, `LAVENDER`, `SUNSET`, `FOREST` and `LEMON`: always there. `CHERRY` floats blossoms over the library, and `RAINBOW` gives the windows rainbow frames.
+- `CHERRY`, `RAINBOW`, `OCEAN`, `MINT`, `LAVENDER`, `SUNSET`, `FOREST` and `LEMON`: always there. `CHERRY` floats blossoms over the library, and `RAINBOW` keeps the usual windows but fills the tabs and buttons with the colours of the rainbow.
 
 The game's own art stays as it is: party slots, the map, the trainer card and type colours keep the game's look. Behind them, the game's backdrop takes a soft wash of the theme's colour.
 
