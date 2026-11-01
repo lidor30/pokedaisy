@@ -2018,6 +2018,27 @@ fun main(args: Array<String>) {
         Shot("library-views-gba", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.GBA); LibraryActivity() }),
         Shot("library-views-ds", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.DS); LibraryActivity() }),
         Shot("library-views-hacks", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.HACKS); LibraryActivity() }),
+        // GAMES / TOOLS / SETTINGS: a rail down the left of a wide screen, a bar along the bottom of an upright one. Each with
+        // the games, then TOOLS open.
+        Shot("library-tools", tw, th, td, activity { platformLibrary(); LibraryActivity() }) { onNodeWithContentDescription("Toggle view").performClick() },
+        Shot("library-tools-open", tw, th, td, activity { platformLibrary(); LibraryActivity().apply { toolsOpen = true } }),
+        Shot("library-tools-phone", 1080, 2400, 2.625f, activity { platformLibrary(); LibraryActivity() }),
+        Shot("library-tools-phone-open", 1080, 2400, 2.625f, activity { platformLibrary(); LibraryActivity().apply { toolsOpen = true } }),
+        // LINK PLAY's setup list (LinkActivity can't render here): one game picked, ADD A GAME as a button under it.
+        Shot("link-slots", tw, th, td, {
+            {
+                androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                    com.pokedaisy.app.companion.ui.AppBackdrop()
+                    val m = com.pokedaisy.app.companion.ui.rememberGbaTextMetrics()
+                    androidx.compose.foundation.layout.Column(androidx.compose.ui.Modifier.fillMaxSize().padding(16.dp)) {
+                        com.pokedaisy.app.companion.ui.OptionTitleWindow("LINK PLAY", m, onBack = {})
+                        com.pokedaisy.app.companion.ui.OptionListWindow(m, androidx.compose.ui.Modifier.fillMaxWidth()) {
+                            com.pokedaisy.app.companion.ui.LinkSlots(listOf("GAME 1" to "Pokémon FireRed"), canAdd = true, m, onPick = {}, onAdd = {})
+                        }
+                    }
+                }
+            }
+        }),
         Shot("library-views-phone", 1080, 2400, 2.625f, activity { platformLibrary(com.pokedaisy.app.LibraryView.GBA); LibraryActivity() }) {
             mainClock.advanceTimeBy(500)   // the open pill scrolled into view
         },

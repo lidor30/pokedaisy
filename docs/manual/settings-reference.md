@@ -6,7 +6,7 @@ order: 2
 keywords: [options, preferences, configuration, config, defaults, menu, reference, list]
 ---
 
-PokeDaisy has two settings screens. **Settings** on the top screen opens from the library (the gear) and has everything, including the things that need a keyboard or a file picker. **SETTINGS** on the companion is the gear tab on the bottom screen, there while you play; changes made there show on the game straight away.
+PokeDaisy has two settings screens. **Settings** on the top screen opens from the library (`SETTINGS`, beside your games) and has everything, including the things that need a keyboard or a file picker. **SETTINGS** on the companion is the gear tab on the bottom screen, there while you play; changes made there show on the game straight away.
 
 Many rows are on both. They're the same setting, so changing it on one screen changes it on the other. The tables below list each screen's rows in the order the app shows them, with the default in **bold**. A row with an arrow at its right end opens a page of its own; the others flip, or open a short list to pick from. On a wide enough screen both lists have their groups as tabs down the left side: tap one to jump to that group, and the tab of the group you're in stays lit, following the cursor as you move through the list.
 
@@ -91,10 +91,13 @@ The `SHADERS` page:
 
 ### Tools
 
+The same tools are in the library, under `TOOLS` (see [Games, tools and settings](library.md#games-tools-and-settings)).
+
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
 | `PATCH A ROM` | (opens a file) | Applies a `.bps` patch to the game it was made for, found in your library by its checksum. | [Library](library.md#patch-a-rom-hack) |
 | `LINK PLAY` | (opens a page) | Runs two to four GBA games joined as if by a link cable, to trade, battle and mix records between them. | [Link play](link-play.md) |
+| `TRADE SAVES` | (opens a page) | Trades Pokémon between two of your games' save files, with the games closed. | [PC boxes and save trades](save-trade.md) |
 
 ### Online
 

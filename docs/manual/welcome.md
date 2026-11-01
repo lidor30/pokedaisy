@@ -59,7 +59,7 @@ With one screen, the companion opens as a window over the game (or a panel besid
 This manual is built into PokeDaisy, so you can look something up without leaving your game. There are three ways in:
 
 - On the top screen, tap the `?` button in the library's header.
-- On the top screen, open Settings (the gear in the library's header) and pick `HELP`, in the `APP` group.
+- On the top screen, open Settings (`SETTINGS` in the library, down the left or along the bottom) and pick `HELP`, in the `APP` group.
 - On the bottom screen, open the companion's `SETTINGS` and pick `HELP`, at the very end of the list, in the `APP` group.
 
 The top screen's copy has a search box: type what you're after ("fast-forward", "backup", "rebind") and the matching pages and sections show up. Each page links to the previous and next one at its end.

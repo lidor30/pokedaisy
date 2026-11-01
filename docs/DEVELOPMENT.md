@@ -1175,7 +1175,7 @@ now:
 | type chart (`TypeChart.kt`) | every matchup | gTypeEffectiveness (UPR's "update type effectiveness" rewrites it) |
 | growth rates (`ExpTables.kt`) | the summary's EXP bar | gBaseStats +19 ("standardize EXP curves") |
 | gender ratios, the experience tables, HMs, TM item ids | | unchanged by UPR |
-| PC BOXES' legality tables (`SaveTablesGen.kt`) | the save editor (flagged off) | not offered: it needs retail's exact SHA-1 |
+| PC BOXES' legality tables (`SaveTablesGen.kt`) | the save editor | not offered: it needs retail's exact SHA-1 |
 
 Already read from the ROM and so randomized for free: DEX pages (types, stats, abilities), learnsets, wild encounters, trainer
 teams (NEXT BOSS, FOE TEAM), item descriptions, gBattleMons' types and ability. Two checks there assumed retail's data and
@@ -1567,17 +1567,10 @@ A game's library menu > PC BOXES (`SaveEditorActivity`, `companion/ui/PcBoxesScr
 save file with the game closed, rearranges the PC, edits values and trades with another game's save. Event flags
 come next, on the same reader and writer.
 
-**It's off by default** (`FeatureFlags.saveEditor`) until it has been tried on real saves: the library menu has no
-PC BOXES row and `SaveEditorActivity` closes itself. Turn it on for a build with `./gradlew assembleDebug
--Ppokedaisy.saveEditor=true` (or `pokedaisy.saveEditor=true` in local.properties: `BuildConfig.FEATURE_SAVE_EDITOR`),
-or on a device with any build already installed:
-
-```sh
-adb shell mkdir -p /sdcard/Android/data/com.pokedaisy.app/files/features
-adb shell touch /sdcard/Android/data/com.pokedaisy.app/files/features/save_editor   # rm it to turn it off
-```
-
-When it ships, drop the flag and put its README lines back (PC boxes, TRADE, editing).
+It's on for everyone since 2026-11-01 (it was behind `FeatureFlags.saveEditor`): a GBA game's library menu has PC BOXES,
+and TRADE SAVES (the library's TOOLS, Settings > TOOLS) opens `SaveEditorActivity` with `EXTRA_TRADE` and no ROM, which asks for the first
+game (TRADE FROM) and then the partner (TRADE WITH), the same list PC BOXES > TRADE gives. The manual's page is
+`docs/manual/save-trade.md`.
 
 - **Reading** (`companion/data/save/Gen3SaveFile.kt`): the Gen 3 flash layout as pret's `save.c`
   has it. Two 14-sector slots (0x0000, 0xE000); each 4 KB sector is 0xF80 bytes of data, then its

@@ -78,8 +78,6 @@ android {
         buildConfigField("String", "SCREENSCRAPER_DEV_PASSWORD", "\"${buildSecret("screenscraper.devPassword", "SCREENSCRAPER_DEV_PASSWORD")}\"")
         // The co-op relay this build starts on (empty = no relay: LAN and BY IP only); Settings can override it.
         buildConfigField("String", "COOP_RELAY_URL", "\"${buildSecret("coop.relayUrl", "COOP_RELAY_URL")}\"")
-        // PC BOXES (the save editor): off unless the build or the device asks (FeatureFlags.saveEditor).
-        buildConfigField("boolean", "FEATURE_SAVE_EDITOR", featureFlag("saveEditor").toString())
         // ScreenScraper (game media, its setup step and the update's popup): off until the app has its developer login
         // (FeatureFlags.screenScraper).
         buildConfigField("boolean", "FEATURE_SCREENSCRAPER", featureFlag("screenScraper").toString())

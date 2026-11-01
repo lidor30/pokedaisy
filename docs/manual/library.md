@@ -3,12 +3,12 @@ title: Your game library
 summary: Add games, sort and favorite them, set covers, and use each game's menu for saves, info, cheats and more.
 section: start
 order: 4
-keywords: [support, donate, donation, tip, patreon, ko-fi, kofi, buy me a coffee, games list, add rom, import, folder, folders, multiple folders, several folders, add folder, zip, 7z, archive, cover, box art, artwork, icon, steamgriddb, rename, delete, hide, favourite, star, sort, grid, list view, frontend, es-de, esde, iisu, cocoon, launcher, filter, tabs, recently played, history, hacks, game boy, gbc, gba, console, platform, patch, patching, bps, apply patch, base rom, checksum, crc32, rom hack patch]
+keywords: [support, donate, donation, tip, patreon, ko-fi, kofi, buy me a coffee, games list, add rom, import, folder, folders, multiple folders, several folders, add folder, zip, 7z, archive, cover, box art, artwork, icon, steamgriddb, rename, delete, hide, favourite, star, sort, grid, list view, frontend, es-de, esde, iisu, cocoon, launcher, filter, tabs, recently played, history, hacks, game boy, gbc, gba, console, platform, patch, patching, bps, apply patch, base rom, checksum, crc32, rom hack patch, tools, toolbox, rail, bottom bar, where is settings]
 ---
 
 The library is the first thing you see when you open PokeDaisy: every game you've added, in the order you pick. Tap a game to play it.
 
-![The library in list view: the header's sort, view, add, refresh, help and settings buttons, a row of coloured quick views (ALL, FAVORITES, RECENT, GB, GBC, GBA, DS, HACKS) and the games under them](shots/library-list.png "The library in list view")
+![The library in list view: GAMES, TOOLS and SETTINGS down the left, the header's sort, view, add, refresh and help buttons, a row of coloured quick views (ALL, FAVORITES, RECENT, GB, GBC, GBA, DS, HACKS) and the games under them](shots/library-list.png "The library in list view")
 
 The buttons in the header, from left to right:
 
@@ -19,9 +19,26 @@ The buttons in the header, from left to right:
 | `+` | Adds games: `ADD A ROM FILE`, `ADD A ROMS FOLDER`, `MANAGE ROMS FOLDERS` or `PATCH A ROM` (see [Adding games](#adding-games)). |
 | Refresh | Looks through your ROMs folders again and tells you what it found. |
 | `?` | Opens this manual. |
-| Gear | Opens Settings. |
 
 The game you have open says `PLAYING`, and a small save icon next to a name means it has a save file.
+
+## Games, tools and settings
+
+Down the left of the library are three buttons: `GAMES`, `TOOLS` and `SETTINGS`. On a phone held upright they sit in a bar along the bottom instead.
+
+- `GAMES` is your library, the games and the quick views over them.
+- `TOOLS` shows, in the games' place, what PokeDaisy can do with your games besides playing them. Tap one to open it.
+- `SETTINGS` opens Settings.
+
+| Tool | What it does |
+| --- | --- |
+| `PATCH A ROM` | Turns a `.bps` patch into a game (see [Patch a ROM hack](#patch-a-rom-hack)). |
+| `LINK PLAY` | Runs two to four GBA games joined as if by a link cable, to trade and battle between them (see [Link play](link-play.md)). |
+| `TRADE SAVES` | Trades Pokémon between two of your games' save files (see [PC boxes and save trades](save-trade.md)). |
+
+A green dot on `TOOLS` means one of them is new. `BACK` on the tools takes you back to your games.
+
+![TOOLS open: a card for each tool, with its icon, its name and a line on what it does](shots/library-tools.png "The tools")
 
 ## Quick views
 
@@ -124,6 +141,7 @@ Long-press a game, in the list or the grid, to open its menu. In list view, the 
 | `SET COVER` | Uses an image from your device as the cover. |
 | `RESET COVER` | Goes back to the automatic cover. Only shows after you picked one yourself. |
 | `LINK PLAY` | Runs this GBA game with up to three others, joined as if by a link cable. See [Link play](link-play.md). |
+| `PC BOXES` | Opens the game's save: rearrange the PC, change the bag and moves, or trade with another game's save. See [PC boxes and save trades](save-trade.md). |
 | `LOAD SAVE` | Puts another save file into the game. Your current save is kept as a dated copy. |
 | `RESTORE BACKUP` | Brings back one of the automatic save backups. |
 | `SAVE FOLDER` | Gives this game its own save folder, such as another emulator's. |

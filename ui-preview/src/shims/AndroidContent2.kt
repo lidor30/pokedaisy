@@ -25,6 +25,7 @@ open class Intent() {
     fun putExtra(k: String, v: Boolean) = apply { extras[k] = v.toString() }
     fun getStringExtra(k: String): String? = extras[k]
     fun setType(t: String) = this
+    fun getBooleanExtra(k: String, default: Boolean): Boolean = extras[k]?.toBoolean() ?: default
 
     companion object {
         const val ACTION_VIEW = "android.intent.action.VIEW"

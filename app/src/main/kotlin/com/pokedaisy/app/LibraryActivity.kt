@@ -438,6 +438,25 @@ class LibraryActivity : ComponentActivity() {
     /** The open quick view (the pills over the games, Prefs.libraryView). */
     private var quickView by mutableStateOf(LibraryView.ALL)
 
+    /** TOOLS is open in the games' place (the rail's / bar's TOOLS). Internal for ui-preview. */
+    internal var toolsOpen by mutableStateOf(false)
+
+    /** The library's TOOLS, in the order they're shown. */
+    private fun libraryTools(): List<com.pokedaisy.app.companion.ui.LibraryTool> {
+        val nf = com.pokedaisy.app.companion.NewFeatures
+        return listOf(
+            com.pokedaisy.app.companion.ui.LibraryTool("PATCH", "PATCH A ROM", "Turn a .bps patch into a game", nf.badge(nf.ROM_PATCH)) {
+                pickPatch.launch(arrayOf("*/*"))
+            },
+            com.pokedaisy.app.companion.ui.LibraryTool("LINK", "LINK PLAY", "Trade and battle between your games", nf.badge(nf.LINK_PLAY)) {
+                startActivity(Intent(this, LinkActivity::class.java))
+            },
+            com.pokedaisy.app.companion.ui.LibraryTool("TRADE", "TRADE SAVES", "Move Pokémon between your games' saves", nf.badge(nf.SAVE_TRADE)) {
+                startActivity(Intent(this, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_TRADE, true))
+            },
+        )
+    }
+
     /** The library ([sortLibrary]'s order) split into its quick views. */
     private class QuickViews(val byView: Map<LibraryView, List<File>>) {
         /** A console's (or HACKS') pill only while the library holds one of its games; the others always (an empty one says how to fill it). */
@@ -457,6 +476,7 @@ class LibraryActivity : ComponentActivity() {
     }
 
     private fun pickQuickView(view: LibraryView) {
+        toolsOpen = false
         quickView = view
         prefs.libraryView = view.id
         refreshLauncherGames()
@@ -484,11 +504,30 @@ class LibraryActivity : ComponentActivity() {
         val roms = views.games(view)
 
         val density = androidx.compose.ui.platform.LocalDensity.current
+        val wide = screenSize.width >= screenSize.height
+        val tools = remember(revision) { libraryTools() }
+        val toolsNew = tools.any { it.newBadge != null }
+        val pickSection: (com.pokedaisy.app.companion.ui.LibrarySection) -> Unit = { s ->
+            when (s) {
+                com.pokedaisy.app.companion.ui.LibrarySection.GAMES -> toolsOpen = false
+                com.pokedaisy.app.companion.ui.LibrarySection.TOOLS -> toolsOpen = true
+                com.pokedaisy.app.companion.ui.LibrarySection.SETTINGS -> startActivity(Intent(this@LibraryActivity, SettingsActivity::class.java))
+            }
+        }
+        val section = if (toolsOpen) com.pokedaisy.app.companion.ui.LibrarySection.TOOLS else com.pokedaisy.app.companion.ui.LibrarySection.GAMES
+        // BACK on TOOLS goes back to the games, not out of the app.
+        BackHandler(enabled = toolsOpen) { toolsOpen = false }
         Box(modifier = Modifier.fillMaxSize().onSizeChanged { screenSize = with(density) { DpSize(it.width.toDp(), it.height.toDp()) } }) {
             AppBackdrop(logos = true)
+            // A wide screen: GAMES / TOOLS / SETTINGS down the left, the library beside it.
+            Row(Modifier.fillMaxSize()) {
+            if (wide) com.pokedaisy.app.companion.ui.LibraryNav(
+                section, vertical = true, m, small, toolsBadge = toolsNew && !toolsOpen,
+                modifier = Modifier.padding(start = SCREEN_MARGIN, top = SCREEN_MARGIN), onPick = pickSection,
+            )
             // The lists scroll to the screen's edges (their margin is padding inside them), so a card
             // slides off the screen rather than being cut at an inner box's edge.
-            Column(modifier = Modifier.fillMaxSize()) {
+            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
                 OptionTitleWindow(if (narrowHeader) "" else "POKéDAISY", m, Modifier.padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, top = SCREEN_MARGIN), leading = {
                     PixelArt(LOGO_ROWS, LOGO_PALETTE, Modifier.size(m.lineHeight))
                 }) {
@@ -507,13 +546,11 @@ class LibraryActivity : ComponentActivity() {
                     HeaderIcon(Icons.AutoMirrored.Filled.HelpOutline, tr("Help"), m) {
                         startActivity(Intent(this@LibraryActivity, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_SCREEN, SettingsActivity.SCREEN_HELP))
                     }
-                    HeaderIcon(Icons.Filled.Settings, tr("Settings"), m) {
-                        startActivity(Intent(this@LibraryActivity, SettingsActivity::class.java))
-                    }
+                    // SETTINGS is the rail's / bar's.
                 }
-                Spacer(Modifier.height(m.u * (if (library.isNotEmpty()) 8 else 4)))
+                Spacer(Modifier.height(m.u * (if (library.isNotEmpty() || toolsOpen) 8 else 4)))
 
-                if (library.isNotEmpty()) {
+                if (library.isNotEmpty() && !toolsOpen) {
                     com.pokedaisy.app.companion.ui.QuickViewPills(
                         views.shown, view, views.counts, m, small,
                         onPick = ::pickQuickView,
@@ -527,7 +564,13 @@ class LibraryActivity : ComponentActivity() {
                     Spacer(Modifier.height(m.u * 8))
                 }
 
-                if (library.isNotEmpty() && roms.isEmpty()) {
+                if (toolsOpen) {
+                    com.pokedaisy.app.companion.ui.ToolsPage(
+                        tools, m, small,
+                        contentPadding = PaddingValues(start = SCREEN_MARGIN, end = SCREEN_MARGIN, bottom = SCREEN_MARGIN),
+                        modifier = Modifier.weight(1f),
+                    )
+                } else if (library.isNotEmpty() && roms.isEmpty()) {
                     OptionListWindow(m, Modifier.fillMaxWidth().padding(horizontal = SCREEN_MARGIN)) {
                         GbaText(
                             emptyViewText(view),
@@ -566,6 +609,12 @@ class LibraryActivity : ComponentActivity() {
                         )
                     }
                 }
+                // A tall screen: GAMES / TOOLS / SETTINGS along the bottom.
+                if (!wide) com.pokedaisy.app.companion.ui.LibraryNav(
+                    section, vertical = false, m, small, toolsBadge = toolsNew && !toolsOpen,
+                    modifier = Modifier.padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, bottom = SCREEN_MARGIN), onPick = pickSection,
+                )
+            }
             }
 
             LibraryDialogs(m, small)
@@ -1044,9 +1093,8 @@ class LibraryActivity : ComponentActivity() {
             }
             add(RomMenuItem(tr("LOAD SAVE"), Icons.Filled.FileOpen, opens = true) { saveTarget = rom; pickSaveFile.launch(arrayOf("*/*")) })
             add(RomMenuItem(tr("RESTORE BACKUP"), Icons.Filled.History, opens = true) { showBackups(rom) })
-            // The save's party and PC boxes, read (and edited) from the file; Game Boy saves aren't Gen 3's. Behind a
-            // feature flag until it's been tried on real saves (FeatureFlags).
-            if (FeatureFlags.saveEditor(this@LibraryActivity) && rom.extension.lowercase() !in setOf("gb", "gbc")) {
+            // The save's party and PC boxes, read (and edited) from the file; Game Boy and DS saves aren't Gen 3's.
+            if (rom.extension.lowercase() !in setOf("gb", "gbc", "nds")) {
                 add(RomMenuItem(tr("PC BOXES"), Icons.Filled.Inventory2, opens = true) {
                     startActivity(Intent(this@LibraryActivity, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_ROM, rom.absolutePath))
                 })

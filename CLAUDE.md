@@ -1996,8 +1996,8 @@ holding one - played and written where it is, so RetroArch's per-core folders ke
 saves folder. Only the folders themselves, never below (a user's synced RetroArch/saves pulled in Syncthing's
 `.stversions` when FOLDERS listed recursively; that list now skips hidden folders). `SavesLocationTest` pins the order.
 **PC BOXES / save editing** (library menu, `SaveEditorActivity`, `companion/data/save/`, docs/DEVELOPMENT.md's "PC BOXES";
-**off by default** behind `FeatureFlags.saveEditor` - `-Ppokedaisy.saveEditor=true` / local.properties, or the device marker
-file `files/features/save_editor` - and out of README until it ships):
+on for everyone since 2026-11-01, its flag gone; Settings > TOOLS > TRADE SAVES (and the library's TOOLS) opens it with `EXTRA_TRADE`, the two games
+picked first; manual `save-trade.md`, NEW tag `SAVE_TRADE`):
 the save *file* read and written with the game closed, never game RAM. Writes go the game's way (`Gen3SaveFile.withBlocks`:
 the other slot, counter + 1, rotation + 1, checksums over each chunk's real size) so the loaded slot stays the game's fallback,
 and only after `SaveFileEdits` has a backup, a still-unchanged file and a read-back; then `boot_fresh`. Retail-layout games only
@@ -2167,6 +2167,12 @@ BACK) +5 h, NO THANKS or a site (BUY ME A COFFEE / PATREON / KO-FI, the website'
 over an update offer / setup. The user's calls: no play time shown (it read as tracking), no line under the site names, no
 scrolling on any screen (a short paragraph and COFFEE on the RG DS). WHAT'S NEW: the flower, the version as a red pill, NEW /
 FIXES bands, daisy bullets, and every line leads with its feature and a colon, drawn red (`WhatsNewTest` checks the lead-in).
+**Library GAMES / TOOLS / SETTINGS** (`companion/ui/LibraryTools.kt`, 2026-11-02; the players' pick in a Discord poll over a
+TOOLS pill by the quick views): `LibraryNav` is a rail down the left of a wide library (its frame open at the screen's bottom) or a
+bar along the bottom of an upright one; TOOLS (`LibraryActivity.toolsOpen`, BACK closes it) shows `ToolsPage`'s cards in the
+games' place (`libraryTools()`: PATCH A ROM, LINK PLAY, TRADE SAVES - a new tool goes there, in Settings' TOOLS group and the
+manual's "Games, tools and settings"), a green dot on TOOLS while one is NEW; SETTINGS left the header for it. ui-preview
+`library-tools*`.
 **Library order + NEW** (`LibraryOrder.kt`): the header's sort button picks NAME / LAST PLAYED / DATE ADDED
 (`Prefs.librarySort`, a `LibrarySort` id). LAST PLAYED reads `Prefs.romLastPlayed` (set by `pushRecentRom`, so frontend
 launches count), older plays by their place in the recent list. DATE ADDED and the green NEW tag (24 h) come from

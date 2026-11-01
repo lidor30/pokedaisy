@@ -255,7 +255,7 @@ fun docsShots(all: List<Shot>, bw: Int, bh: Int, bd: Float, tw: Int, th: Int, td
     val reuse = linkedMapOf(
         "library-views" to "library-list", "library-views-gbc" to "library-views", "library-grid" to "library-grid", "library-list-menu" to "library-menu",
         "library-info" to "library-info", "library-sort" to "library-sort", "library-cover-picker" to "library-cover-picker",
-        "library-update" to "library-update", "library-list-phone" to "phone-library",
+        "library-update" to "library-update", "library-list-phone" to "phone-library", "library-tools-open" to "library-tools",
         "setup-roms" to "setup-roms", "setup-saves" to "setup-saves", "setup-buttons" to "setup-buttons", "setup-covers" to "setup-covers",
         "setup-buttons-capture" to "setup-buttons-capture", "game-capture-hotkey" to "game-capture",
         "settings-home" to "settings-home", "settings-search" to "settings-search", "settings-aspect" to "settings-aspect",

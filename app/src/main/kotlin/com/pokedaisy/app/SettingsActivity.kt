@@ -813,6 +813,11 @@ class SettingsActivity : ComponentActivity() {
                        labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.LINK_PLAY)) {
                 startActivity(android.content.Intent(this@SettingsActivity, LinkActivity::class.java))
             },
+            // The save editor's TRADE between two games' saves, files read and written with the games closed (SaveEditorActivity).
+            SettingRow(tk("TRADE SAVES"), null, subtitle = "Move Pokémon between your games' saves", opensPage = true,
+                       labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.SAVE_TRADE)) {
+                startActivity(android.content.Intent(this@SettingsActivity, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_TRADE, true))
+            },
             groupTitle(tk("ONLINE")),
             // Signed in = on; the account's name, else OFF.
             SettingRow(

@@ -147,6 +147,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "COVER ART" to "box art boxart covers steamgriddb images thumbnails api key",
     "HIDDEN GAMES" to "hide unhide library show",
     "PATCH A ROM" to "patch patching bps rom hack apply base checksum crc32 hacks tools patcher",
+    "TRADE SAVES" to "trade trading save saves save editor pc boxes box move pokemon between games transfer tools",
     "LINK PLAY" to "link cable trade trading battle colosseum record mixing two games multiplayer second save tools",
     "CHEATS" to "gameshark action replay codebreaker codes",
     "RetroAchievements" to "achievements cheevos ra login account trophies",
