@@ -23,6 +23,30 @@ object WhatsNew {
     /** Newest first. */
     val RELEASES: List<Notes> = listOf(
         Notes(
+            "1.4.0",
+            listOf(
+                Section(
+                    NEW,
+                    listOf(
+                        "New games: Pokémon White, Black 2 and White 2, Let's Go, Monomyth and randomized FireRed and Emerald.",
+                        "DS on one screen: hold your device sideways and the touch screen floats in when the game needs it.",
+                        "BOXES: your PC's boxes in the companion. Move Pokémon between a box and your party.",
+                        "THEME: colour the app and the companion, with eight new themes and a few for the holidays.",
+                        "TOOLS: patch a ROM, play linked games and trade between your saves, all from the library.",
+                    ),
+                ),
+                Section(
+                    FIXES,
+                    listOf(
+                        "Game Boy sound: no more crackle in Yellow, Crystal and the other Game Boy games.",
+                        "Sound: no more wobble in the music's pitch while you play.",
+                        "Black: a party of six no longer blanks the companion.",
+                        "Black 2 and White 2: the battle's text box looks like the game's, and the bag shows the item you pick.",
+                    ),
+                ),
+            ),
+        ),
+        Notes(
             "1.3.3",
             listOf(
                 Section(

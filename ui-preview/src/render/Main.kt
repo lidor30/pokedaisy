@@ -917,7 +917,7 @@ fun trade(setup: com.pokedaisy.app.companion.ui.TradeState.() -> Unit = {}): () 
 }
 
 /** The Library just after an update, its WHAT'S NEW up with 1.3.2's notes. */
-fun whatsNewLibrary() = LibraryActivity().apply { whatsNew = com.pokedaisy.app.companion.WhatsNew.notesFor("1.3.3") }
+fun whatsNewLibrary() = LibraryActivity().apply { whatsNew = com.pokedaisy.app.companion.WhatsNew.RELEASES.first() }
 
 /** The Library after 5 hours of play: the support window up. */
 fun supportLibrary() = LibraryActivity().apply { supportAsk = true }
@@ -2953,17 +2953,29 @@ fun DsBattlePreview(dsGame: GameKind, state: Int) {
             ?.let { File(it, dsGame.name.lowercase() + ".png") }?.takeIf { it.exists() }
             ?.let { org.jetbrains.skia.Image.makeFromEncoded(it.readBytes()).toComposeImageBitmap() }
     }
+    // <game>_wide.png beside it: an EXPAND frame (nds_dump's wideshot, the top screen in its middle) across the whole shot.
+    val wide = androidx.compose.runtime.remember(dsGame) {
+        System.getProperty("dsBattleShots").orEmpty().takeIf { it.isNotBlank() }
+            ?.let { File(it, dsGame.name.lowercase() + "_wide.png") }?.takeIf { it.exists() }
+            ?.let { org.jetbrains.skia.Image.makeFromEncoded(it.readBytes()).toComposeImageBitmap() }
+    }
     androidx.compose.foundation.layout.BoxWithConstraints(androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF305838))) {
         val w = constraints.maxWidth.toFloat()
         val h = constraints.maxHeight.toFloat()
         val pw = h * 4f / 3f
         val picture = androidx.compose.ui.geometry.Rect((w - pw) / 2f, 0f, (w + pw) / 2f, h)
         androidx.compose.foundation.Canvas(androidx.compose.ui.Modifier.fillMaxSize()) {
-            if (frame != null) drawImage(
+            if (wide != null) {
+                val ww = h * wide.width / wide.height
+                drawImage(
+                    wide, dstOffset = androidx.compose.ui.unit.IntOffset(((w - ww) / 2f).toInt(), 0),
+                    dstSize = androidx.compose.ui.unit.IntSize(ww.toInt(), h.toInt()), filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+                )
+            } else if (frame != null) drawImage(
                 frame, dstOffset = androidx.compose.ui.unit.IntOffset(picture.left.toInt(), 0),
                 dstSize = androidx.compose.ui.unit.IntSize(pw.toInt(), h.toInt()), filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
             ) else drawRect(androidx.compose.ui.graphics.Color(0xFF7FB0A0), picture.topLeft, picture.size)
         }
-        com.pokedaisy.app.companion.ui.DsBattleMenu(snap, menu, FakeBattleInput(false), picture, shown = true)
+        com.pokedaisy.app.companion.ui.DsBattleMenu(snap, menu, FakeBattleInput(false), picture, shown = true, gameFills = wide != null)
     }
 }

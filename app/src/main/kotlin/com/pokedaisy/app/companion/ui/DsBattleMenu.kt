@@ -41,6 +41,7 @@ import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.zIndex
 import androidx.compose.ui.unit.Dp
@@ -153,13 +154,15 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBand(look: DsLo
 }
 
 /**
- * The menu over the stage, for [snapshot]'s battle. [picture]: where the DS's top screen is in this box (px); [shown]
- * false (no battle, BATTLE BUTTONS off, a double battle) = nothing, and [state] lets go of the keys; [active] false (the
- * floating touch screen is up) = the strip stays as it was, the keys the window's.
+ * The menu over the stage, for [snapshot]'s battle. [picture]: where the DS's top screen is in this box (px); [gameFills]:
+ * the game's picture runs across the whole box (EXPAND carries the text box's rows into the margins), not just [picture];
+ * [shown] false (no battle, BATTLE BUTTONS off, a double battle) = nothing, and [state] lets go of the keys; [active] false
+ * (the floating touch screen is up) = the strip stays as it was, the keys the window's.
  */
 @Composable
 fun DsBattleMenu(
     snapshot: SnapshotView, state: DsBattleMenuState, battleInput: BattleInput?, picture: Rect?, shown: Boolean, active: Boolean = true,
+    gameFills: Boolean = false,
 ) {
     val input = snapshot.battleInputState
     val busy = rememberBattleInputBusy(battleInput)
@@ -215,11 +218,26 @@ fun DsBattleMenu(
         val bottom = picture.bottom
         val textTop = picture.top + look.textTop * ds
         val gap = with(density) { (u * 3).toPx() }
+        val buttonsW = (picture.width * BUTTONS_WIDTH).coerceAtMost(boxW / 2)
+        val buttonsL = boxW - gap - buttonsW
+        // Black 2 / White 2's band is glass (the scene shows through it: BLDALPHA's 16 + 7/16), which no flat colour can
+        // be: there the game's own band shows - its message too, in its own words and font, while the buttons leave it
+        // room - and the strip draws the band only where the game's picture doesn't reach (the bars beside a 4:3 game).
+        val glass = look == DsLook.UNOVA2 && (shownMode == 2 || buttonsL >= picture.left + picture.width * GAME_MESSAGE_END)
+        val gameL = if (gameFills) 0f else picture.left
+        val gameR = if (gameFills) boxW else picture.right
         // The strip: the band's black across the screen, under everything else here (taps on it are the menu's, not the
         // game's).
         with(density) {
             Box(
-                Modifier.offset(y = top.toDp()).size(maxWidth, (bottom - top).toDp()).drawBehind { drawBand(look, ds) }
+                Modifier.offset(y = top.toDp()).size(maxWidth, (bottom - top).toDp())
+                    .drawBehind {
+                        if (!glass) drawBand(look, ds)
+                        else {
+                            if (gameL > 0f) clipRect(right = gameL) { drawBand(look, ds) }
+                            if (gameR < size.width) clipRect(left = gameR) { drawBand(look, ds) }
+                        }
+                    }
                     .clickable(remember { MutableInteractionSource() }, null) {},
             )
         }
@@ -231,9 +249,7 @@ fun DsBattleMenu(
         }
         if (shownMode == 1) {
             // The buttons at the strip's right end, the message window filling the rest from the far left.
-            val buttonsW = (picture.width * BUTTONS_WIDTH).coerceAtMost(boxW / 2)
-            val buttonsL = boxW - gap - buttonsW
-            Area(2 * ds, buttonsL - gap) {
+            if (!glass) Area(2 * ds, buttonsL - gap) {
                 when (look) {
                     DsLook.PLATINUM -> PtMessageWindow(tr("What will {0} do?", battler), ds)
                     DsLook.UNOVA -> UnovaMessage(tr("What will {0} do?", battler), ds)
@@ -254,7 +270,8 @@ fun DsBattleMenu(
             // The moves across the strip, as Gen 3's take the text box; HeartGold's cards. BACK for a finger at the end.
             Area(gap, boxW - gap) {
                 Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(u * 3)) {
-                    Box(Modifier.weight(1f).fillMaxHeight()) {
+                    // (Over the game's band, the gaps between the cards in its colour: its message stays under them.)
+                    Box(Modifier.weight(1f).fillMaxHeight().then(if (glass) Modifier.background(B2_BAND) else Modifier)) {
                         Grid(look, state.moveCursor, u, step) { i, on ->
                             val move = moves.getOrNull(i)
                             val enabled = state.moveEnabled(i) && !idle
@@ -327,6 +344,10 @@ private const val TEXT_SCALE = 1.3f
 
 /** The buttons' share of the DS top screen's width (at most half the strip). */
 private const val BUTTONS_WIDTH = 0.46f
+
+/** Where Black 2 / White 2's "What will ... do?" ends on the DS top screen, a long nickname's (its share of the width):
+ * buttons left of it would cover the game's own message, so the strip draws its own then. */
+private const val GAME_MESSAGE_END = 0.62f
 
 /** How long the strip stays after its menu goes (not to the bag / party): FIGHT's panel slides in meanwhile. */
 private const val HOLD_MS = 300L

@@ -2754,16 +2754,16 @@ game stays alone (not side by side). Its battle is HeartGold's ancestor: BattleS
 word points back at the BattleSystem), the first font OAM at 0x4D0 set while a panel is drawn, the selection steps and
 touch rects the same. Black / White (the player's save; White's wild battle, Black's field): the X menu is a GMEVENT
 (parent at +0, function at +4: Black 0x0215FD0D, White 0x0215FD2D) and the save's question runs two events under it, so
-the read walks up to three parents; the party (overlay 91), bag (70), trainer card (111) and options (68) are touch-only
-apps, the Pokédex (212) both. The battle's touch screen came from the heap's named blocks (a 'DU' header, the source file's
+the read walks up to three parents; the party (overlay 91), trainer card (111) and options (68) are touch-only
+apps, the Pokédex (212) and the bag (70: the item picked shows on the top screen, 2026-11-03) both. The battle's touch screen came from the heap's named blocks (a 'DU' header, the source file's
 name 0x14 in, the data 0x2C in): client 0 +0x54 -> btlv_core, +0x180 -> btlv_scd, +0xB0 -> btlv_input; input +0x58 the
 panel (1 commands, 2 moves, 4 a prompt), input +0x08 its slide task (taps before it's NULL are lost), scd +0x60 a panel
 up, scd +0x98 the screen opened from it (2 bag, 3 party; stale afterwards, so only under command 3); the adapter's command 5
 is a fainted Pokémon's party, 7 a prompt. Their move panel reports itself for 3 frames between its two slides, so
 `NdsBattleTaps` waits for the state to hold. The post-battle "give a nickname?" is its own proc (overlay 92): a menu screen.
 Black 2 / White 2 (2026-11-02, Black 2's wild battle and both games' X menus headless): the same reads with their own numbers - the X
-menu's function 0x0215A875 (White 2 0x0215A8B5), the touch-only apps party 165, bag 142, trainer card 186, options 140 (the
-Pokédex 302 both screens), btlv_scd at core +0x1C4, btlv_input at scd +0xBC, the opened screen at scd +0xA4; their buttons sit
+menu's function 0x0215A875 (White 2 0x0215A8B5), the touch-only apps party 165, trainer card 186, options 140 (the
+Pokédex 302 and the bag 142 both screens), btlv_scd at core +0x1C4, btlv_input at scd +0xBC, the opened screen at scd +0xA4; their buttons sit
 where Black's do (`NdsBattleTaps.GEN5` checked on Black 2). Its BattleContext / BattleSystem are Platinum's layout (battleMons at
 0x2D40, 0xC0 each). A blank touch screen (`NdsBottomFrame.blank`: an evolution, a fade) never floats in.
 

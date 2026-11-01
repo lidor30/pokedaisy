@@ -3261,6 +3261,8 @@ class PokeDaisyActivity : Activity() {
         dsBackdropView.visibility = if (on) View.VISIBLE else View.GONE
         dsTouchView.visibility = if (on && layout != com.pokedaisy.app.companion.DsLayout.ONE_SCREEN) View.VISIBLE else View.GONE
         dsFloats.value = on && layout.floats
+        dsPip.value = on && pip
+        dsFill.value = on && fill
         // The X menu floats in: it comes back after a menu screen however that was left (the game closes it after touch).
         if (::engine.isInitialized) engine.dsKeepStartMenu = on && chosen.floats
         dsCornerTaken.value = on && (layout == com.pokedaisy.app.companion.DsLayout.LARGE_SMALL || layout == com.pokedaisy.app.companion.DsLayout.PICTURE_IN_PICTURE)
@@ -3302,6 +3304,13 @@ class PokeDaisyActivity : Activity() {
     /** DS LAYOUT puts the touch screen in the screen's bottom right corner (LARGE + SMALL, PICTURE IN PICTURE): the HUD
      * keeps clear of it (FieldHud's dsCorner). */
     private val dsCornerTaken = androidx.compose.runtime.mutableStateOf(false)
+
+    /** DS LAYOUT is PICTURE IN PICTURE now: the game's own command panel is in its inset, so a battle gets no BATTLE
+     * BUTTONS / DS battle menu over it, and that panel doesn't float in either. */
+    private val dsPip = androidx.compose.runtime.mutableStateOf(false)
+
+    /** DS LAYOUT fills the screen with the game (EXPAND, STRETCH): a battle's text box runs across it, not just the 4:3. */
+    private val dsFill = androidx.compose.runtime.mutableStateOf(false)
 
     /** A DS battle's menu shows / takes its keys ([com.pokedaisy.app.companion.ui.DsBattleMenu]'s shown / active): set
      * by the HUD, drawn by the floating window's view. */
@@ -3419,6 +3428,7 @@ class PokeDaisyActivity : Activity() {
                     ) {
                         com.pokedaisy.app.companion.ui.DsBattleMenu(
                             snap, dsBattleMenu, battleInput, coreFrame.value, shown = dsStripShown.value, active = dsStripActive.value,
+                            gameFills = dsFill.value,
                         )
                     }
                     // The menu's D-pad: with no plain view focused, Android takes the first press after a touch to leave
@@ -3559,16 +3569,16 @@ class PokeDaisyActivity : Activity() {
             androidx.compose.runtime.LaunchedEffect(snap.inBattle, snap.battleInputState) {
                 battleRead = snap.inBattle && (battleRead || snap.battleInputState != com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
             }
-            // A DS game: only where DS LAYOUT floats its touch screen (the others show the game's own panel), and out of the
-            // way while the floating touch screen is up (a bag, a party, a prompt).
+            // A DS game: only where DS LAYOUT floats its touch screen (the others, PICTURE IN PICTURE's inset too, show the
+            // game's own panel), and out of the way while the floating touch screen is up (a bag, a party, a prompt).
             val dsIdle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
             val dsWanted by (engine?.dsTouchWanted ?: dsIdle).collectAsState()
             val dsWindowUp = dsFloats.value && (dsWanted || dsWindowManual.value)
             val buttonsWanted = battleButtonsOn.value && hudSingleScreen.value && !hudUpright.value && snap.hasData && !snap.unsupported &&
-                snap.inBattle && !snap.isDoubleBattle && (!romIsNds || dsFloats.value)
+                snap.inBattle && !snap.isDoubleBattle && (!romIsNds || dsFloats.value && !dsPip.value)
             val buttons = buttonsWanted && battleRead && !dsWindowUp
             // Where BATTLE BUTTONS can't stand in for a DS battle's command panel, that panel floats in too.
-            androidx.compose.runtime.SideEffect { engine?.dsBattleMenuFloats = dsFloats.value && !buttonsWanted }
+            androidx.compose.runtime.SideEffect { engine?.dsBattleMenuFloats = dsFloats.value && !dsPip.value && !buttonsWanted }
             androidx.compose.runtime.CompositionLocalProvider(
                 com.pokedaisy.app.companion.ui.LocalCompanionBack provides hudBack,
                 com.pokedaisy.app.companion.ui.LocalClickSound provides playClick,

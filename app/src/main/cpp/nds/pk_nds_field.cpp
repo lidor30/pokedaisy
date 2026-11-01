@@ -310,20 +310,22 @@ static int topOnlyPage(const PkNdsTouchRules* t, uint32_t (*read32)(uint32_t), u
 struct PkNdsGen5Touch {
     const PkNdsFieldGame* game;
     uint32_t startMenuEvent;  // the X menu's event function (Thumb)
-    int touchOnly[4];         // apps' overlays all on the touch screen
+    int touchOnly[4];         // apps' overlays all on the touch screen (0: none)
     int offScd, offInput, offSubscreen;   // btlv_core -> btlv_scd, btlv_scd -> btlv_input, btlv_scd's opened screen
 };
 
+// The bag (Black / White 70, their sequels 142) isn't one: the item picked shows on the top screen, its picture, count
+// and description (headless, Black's and Black 2's), so it's a menu screen on both, side by side.
 static const PkNdsGen5Touch GEN5_TOUCH[] = {
-    { &BLACK_US, 0x0215FD0D, { 91, 70, 111, 68 }, 0x180, 0xB0, 0x98 },
+    { &BLACK_US, 0x0215FD0D, { 91, 111, 68, 0 }, 0x180, 0xB0, 0x98 },
     // White: Black's code, its overlays 0x20 higher (the X menu's function checked in White's capture of the same save).
-    { &WHITE_US, 0x0215FD2D, { 91, 70, 111, 68 }, 0x180, 0xB0, 0x98 },
+    { &WHITE_US, 0x0215FD2D, { 91, 111, 68, 0 }, 0x180, 0xB0, 0x98 },
     // Black 2 (headless on the player's save, its wild battle on Route 20 / Humilau's water): the apps renumbered
-    // (party 165, bag 142, trainer card 186, options 140; the Pokédex, 302, both screens), btlv_scd 0x1C4 into the core,
+    // (party 165, trainer card 186, options 140; the Pokédex, 302, and the bag, 142, both screens), btlv_scd 0x1C4 into the core,
     // btlv_input 0xBC into it, the opened screen at +0xA4; the rest Black's. White 2: Black 2's code 0x40 higher (its X
     // menu's function and apps checked on its save; its battle not reached headless: Black 2's structs).
-    { &BLACK2_US, 0x0215A875, { 165, 142, 186, 140 }, 0x1C4, 0xBC, 0xA4 },
-    { &WHITE2_US, 0x0215A8B5, { 165, 142, 186, 140 }, 0x1C4, 0xBC, 0xA4 },
+    { &BLACK2_US, 0x0215A875, { 165, 186, 140, 0 }, 0x1C4, 0xBC, 0xA4 },
+    { &WHITE2_US, 0x0215A8B5, { 165, 186, 140, 0 }, 0x1C4, 0xBC, 0xA4 },
 };
 
 static const int GEN5_OFF_VIEW = 0x54;
