@@ -2,6 +2,7 @@ package com.pokedaisy.app.companion.ui
 
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.layout.Arrangement
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.Row
 import androidx.compose.foundation.layout.Spacer
@@ -185,6 +186,7 @@ fun coopFindLine(r: CoopLobby.FindResult): String? = when (r) {
 fun coopFailLine(reason: CoopPairing.CoopPairFail): String = when (reason) {
     CoopPairing.CoopPairFail.VERSION -> "Your partner's PokeDaisy is a different version. Update both to the same one."
     CoopPairing.CoopPairFail.DIFFERENT_ROM -> "Your partner plays a different Emerald ROM."
+    CoopPairing.CoopPairFail.SAME_SAVE -> "That's a copy of this same save. Co-op needs two different players."
     CoopPairing.CoopPairFail.SAVE_ALREADY_PAIRED -> "This save is already paired. Unpair it in PARTNERS first."
     CoopPairing.CoopPairFail.DENIED -> "The other player said no."
     CoopPairing.CoopPairFail.NETWORK -> "Couldn't reach your partner. Check the internet and try again."
@@ -381,7 +383,11 @@ private fun Rooms(m: GbaTextMetrics, small: GbaTextMetrics, rooms: CoopRoomsUi, 
         GbaText(tr(it), OptionColors.value, OptionColors.valueShadow, small, Modifier.padding(top = m.u * 3), maxLines = 3)
     }
 
-    Section(tk("OPEN ROOMS"), m)
+    // REFRESH beside the title, not under the list: a long list (or a short screen) pushed it off the page's end.
+    Row(verticalAlignment = Alignment.CenterVertically) {
+        Box(Modifier.weight(1f)) { Section(tk("OPEN ROOMS"), m) }
+        OptionButton(tk("REFRESH"), m, enabled = !lobby.loadingRooms, onClick = a.onRefreshRooms, modifier = Modifier.padding(top = m.u * 4))
+    }
     val list = lobby.rooms
     when {
         lobby.loadingRooms && list == null -> GbaText(tr("SEARCHING…"), OptionColors.muted, OptionColors.mutedShadow, small, Modifier.padding(vertical = m.u * 2))
@@ -395,8 +401,6 @@ private fun Rooms(m: GbaTextMetrics, small: GbaTextMetrics, rooms: CoopRoomsUi, 
             )
         }
     }
-    Spacer(Modifier.height(m.u * 3))
-    Row { OptionButton(tk("REFRESH"), m, enabled = !lobby.loadingRooms, onClick = a.onRefreshRooms) }
 }
 
 @Composable

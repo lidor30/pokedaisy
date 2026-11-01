@@ -3060,7 +3060,9 @@ Its manual page is a draft, `docs/manual-drafts/coop.md` (its top note says what
   (letters of any script, digits, ` .'!?&♂♀-`, 16 at most). Lookups are 10 a minute per address, right or wrong (30^6 codes), and
   a room not refreshed for 30 minutes is dropped (the app re-hosts every 10). `CoopLobby` runs while `CoopSession`'s endpoint runs
   with a relay, ticked from its poll loop, and hosts while the pairing step is Inviting with a ticket (`syncLobby`); LIST MY ROOM
-  is `CoopSession.roomListed`, off on every new invite page. Tests: `RelayLobbyTest`, `LobbyServerTest` (server), `CoopLobbyTest`,
+  is `CoopSession.roomListed`, off on every new invite page; OPEN ROOMS refreshes every 20 s while the page waits (`ROOMS_REFRESH_MS`).
+  Pairing refuses a HELLO naming this device's own save (`CoopPairFail.SAME_SAVE`: a copied save): the host lets that joiner in
+  long enough to send its own HELLO, so both sides stop with it instead of the joiner timing out. Tests: `RelayLobbyTest`, `LobbyServerTest` (server), `CoopLobbyTest`,
   `CoopRelayIntegrationTest.joinsThroughARoomCode` (the app's lobby and transport through the real relay). ui-preview:
   `coop-invite-rooms*`.
 - **Dialing**: a `connect` tries the ticket's addresses and the NSD addresses over TCP (1.5 s connect) while the relay rooms are

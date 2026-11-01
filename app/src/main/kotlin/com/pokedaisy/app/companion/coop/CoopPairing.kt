@@ -32,7 +32,7 @@ class CoopPairing(
 
     data class LanEntry(val peer: CoopPeerId, val label: String)
 
-    enum class CoopPairFail { VERSION, DIFFERENT_ROM, SAVE_ALREADY_PAIRED, DENIED, NETWORK, TIMEOUT, BAD_INVITE }
+    enum class CoopPairFail { VERSION, DIFFERENT_ROM, SAME_SAVE, SAVE_ALREADY_PAIRED, DENIED, NETWORK, TIMEOUT, BAD_INVITE }
 
     private val _step = MutableStateFlow<Step>(Step.Inviting(null, emptyList()))
     val step: StateFlow<Step> = _step.asStateFlow()
@@ -225,6 +225,7 @@ class CoopPairing(
             }
             hello.romSha1 != EMERALD_COOP_SHA1 || (ours != null && hello.romSha1 != ours) ->
                 refuseHello(from, CoopPairFail.DIFFERENT_ROM)
+            hello.save == ownSave -> sameSave(from)
             else -> {
                 theirHello = hello
                 peer = from
@@ -247,6 +248,21 @@ class CoopPairing(
                 _step.value = Step.Confirm(who)
             }
         }
+    }
+
+    /**
+     * The other device's HELLO names this very save (the same trainer, IDs and name: a copy of it): no pairing. A joiner
+     * stops there. A host can't send to a joiner it hasn't let in, so it lets this one in long enough for its own HELLO,
+     * which makes the joiner stop the same way (and close the connection) instead of waiting for a timeout.
+     */
+    private fun sameSave(from: CoopPeerId) {
+        if (joining) {
+            refuseHello(from, CoopPairFail.SAME_SAVE)
+            return
+        }
+        if (candidates.remove(from)?.pending == true) transport.accept(from)
+        sendHello(from)
+        fail(CoopPairFail.SAME_SAVE)
     }
 
     private fun onDisconnected(who: CoopPeerId, code: Int) {

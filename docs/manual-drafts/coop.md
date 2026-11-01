@@ -41,7 +41,7 @@ the page and the room goes away; open it again and you get a new code.
 Turn `LIST MY ROOM` on to put your room on a public list. Other players with the same ROM see your trainer's name under
 `OPEN ROOMS` and can tap it to join, without a code. Nobody else sees it. It's off each time you open the page.
 
-`OPEN ROOMS` shows the rooms of other players who listed theirs, newest first. Tap `REFRESH` for the latest list.
+`OPEN ROOMS` shows the rooms of other players who listed theirs, newest first. It refreshes by itself every 20 seconds while the page is open; `REFRESH`, beside its title, does it at once.
 Joining a stranger's room still asks you both to accept, so check the name and ID before you do.
 
 > [!NOTE]
@@ -114,6 +114,7 @@ The companion's SETTINGS has a `LINK` row that tells you where the link stands.
 | No answer | The other device didn't respond in time. `TRY AGAIN`. |
 | That invite link isn't valid | Copy the whole link again. |
 | No open room has that code | Check the code with your partner. Their pairing page must be open. |
+| That's a copy of this same save | Both devices hold the same trainer (a save copied from one to the other). Pair with someone else's save. |
 | That isn't a room code | A code has six letters and digits, like `K7Q-4MX`. |
 | Too many tries. Wait a minute. | Wait a minute before you try another code. |
 | Couldn't reach the relay | Check your internet connection. The page keeps trying by itself. |

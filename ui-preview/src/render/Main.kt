@@ -1104,6 +1104,7 @@ private fun coopSteps(): Map<String, com.pokedaisy.app.companion.coop.CoopPairin
         "waiting" to com.pokedaisy.app.companion.coop.CoopPairing.Step.WaitingForPartner(coopPartner("LEAF", 40404)),
         "paired" to com.pokedaisy.app.companion.coop.CoopPairing.Step.Paired(coopPair()),
         "failed-rom" to com.pokedaisy.app.companion.coop.CoopPairing.Step.Failed(com.pokedaisy.app.companion.coop.CoopPairing.CoopPairFail.DIFFERENT_ROM),
+        "failed-same-save" to com.pokedaisy.app.companion.coop.CoopPairing.Step.Failed(com.pokedaisy.app.companion.coop.CoopPairing.CoopPairFail.SAME_SAVE),
     )
 }
 
@@ -2549,7 +2550,7 @@ fun main(args: Array<String>) {
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
             onAllNodesWithText(com.pokedaisy.app.companion.i18n.tr("CONNECT")).onLast().performScrollTo()
         },
-        *listOf("confirm", "waiting", "paired", "failed-rom").map { name ->
+        *listOf("confirm", "waiting", "paired", "failed-rom", "failed-same-save").map { name ->
             Shot("coop-$name", tw, th, td, activity {
                 coopSettings(preview = SettingsActivity.CoopPreview(COOP_CHOICES, COOP_CHOICES[0], coopSteps().getValue(name)))
             }) { onNodeWithText(com.pokedaisy.app.companion.i18n.tr("PAIR")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick) }

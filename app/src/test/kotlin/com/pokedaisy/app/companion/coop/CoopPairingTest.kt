@@ -160,6 +160,20 @@ class CoopPairingTest {
         assertTrue(other.step.value is Step.Failed)
     }
 
+    @Test fun aCopyOfTheSameSaveFailsOnBothSides() {
+        // B holds a copy of A's save (the same trainer, IDs and name): neither side asks ACCEPT THIS PLAYER?.
+        val copy = CoopSaveId(saveA.trainerId, saveA.secretId, saveA.name)
+        val joiner = pairing(tB, pairsB, copy, tickB)
+        a.open(saveA)
+        joiner.open(copy)
+        joiner.join(tickA)
+        net.pump()
+        assertEquals(Step.Failed(CoopPairFail.SAME_SAVE), a.step.value)
+        assertEquals(Step.Failed(CoopPairFail.SAME_SAVE), joiner.step.value)
+        assertEquals(null, pairsA.forSave(saveA))
+        assertEquals(null, pairsB.forSave(copy))
+    }
+
     @Test fun dialFailureIsNetwork() {
         b.open(saveB)
         b.join(tickA)   // A never opened: refused

@@ -90,8 +90,13 @@ object CoopSession {
     /** Asks the lobby for the listed rooms of the invite page's ROM (they arrive in [lobby]). */
     fun refreshRooms() {
         val own = pageOwn ?: return
-        lobbyImpl?.refresh(CoopLobbyWire.gameKey(own.romSha1))
+        val l = lobbyImpl ?: return
+        roomsAt = clock()
+        l.refresh(CoopLobbyWire.gameKey(own.romSha1))
     }
+
+    /** When OPEN ROOMS was last asked for: [syncLobby] asks again every [ROOMS_REFRESH_MS] while the page waits. */
+    @Volatile private var roomsAt = 0L
 
     /** The link to the paired partner; [CoopState.Off] while nothing holds the endpoint. */
     val link: CoopLink = object : CoopLink {
@@ -386,6 +391,7 @@ object CoopSession {
             val name = CoopLobbyWire.cleanName(Gen3Text.decode(own!!.save.name, 0, 7), "TRAINER")
             CoopLobby.Host(it, CoopLobbyWire.gameKey(own.romSha1), name, roomListed)
         })
+        if (invite != null && clock() - roomsAt >= ROOMS_REFRESH_MS) refreshRooms()
         l.tick()
     }
 
@@ -407,5 +413,7 @@ object CoopSession {
     }
 
     private const val TICK_MS = 250L
+    /** OPEN ROOMS refreshes by itself this often while the invite page waits (the relay allows 30 LISTs a minute). */
+    private const val ROOMS_REFRESH_MS = 20_000L
     private const val POLL_SLEEP_MS = 16L
 }
