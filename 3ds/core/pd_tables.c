@@ -14,9 +14,16 @@ static const char* game_case(const char* src, char* buf, size_t len) {
     return buf;
 }
 
+// Emerald Legacy numbers DEOXYS's other forms 412-414 (its egg 415): named and typed as DEOXYS (the game's own
+// names, EmeraldTextLegacyGen.kt). No retail game has a species there (an egg is PD_SPECIES_EGG by its flag).
+static int form_base(int species) {
+    return species >= 412 && species <= 414 ? 410 : species;
+}
+
 const char* pd_species_name(int species, char* buf, size_t len) {
     if (species == 0) return "-";
     if (species == PD_SPECIES_EGG) return "EGG";
+    species = form_base(species);
     if (species > 0 && species < pd_species_names_count && pd_species_names[species]) {
         return game_case(pd_species_names[species], buf, len);
     }
@@ -61,6 +68,7 @@ int pd_type_multiplier_pct(int atk, int def1, int def2) {
 
 void pd_species_type_pair(int species, int* t1, int* t2) {
     *t1 = *t2 = PD_TYPE_NONE;
+    species = form_base(species);
     if (species <= 0 || species >= pd_species_type_table_count) return;
     *t1 = pd_species_type_table[species][0];
     *t2 = pd_species_type_table[species][1];

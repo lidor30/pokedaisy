@@ -42,7 +42,9 @@ extern const unsigned char pd_species_type_table[][2];
 extern const int pd_species_type_table_count;
 
 #define PD_TYPE_NONE 255
-#define PD_SPECIES_EGG 412
+// An egg, whatever its game numbers it (retail 412, Emerald Legacy 415: pd_config.eggSpecies): past every game's
+// species, so a hack's species 412 (Legacy's Deoxys forms) isn't one.
+#define PD_SPECIES_EGG 0x7FFF
 
 // Names in the game's own casing: FireRed / Emerald print species and moves
 // in capitals with a small é (the app's gameCase()). Writes into buf.

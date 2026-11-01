@@ -40,6 +40,7 @@ enum pd_boss_kind {
     PD_BOSS_FIXED,    // trainer a
     PD_BOSS_LEAGUE,   // a, or rematch b once the League has its rematch teams
     PD_BOSS_CHAMPION, // the rival: league(a, b) + an offset by the starter
+    PD_BOSS_BY_FLAGS, // alts' first {flag, trainer} whose flag is set, else a (Emerald Legacy's BRAWLY)
 };
 
 struct pd_boss {
@@ -48,6 +49,7 @@ struct pd_boss {
     uint16_t doneFlag;
     uint8_t kind;
     uint16_t a, b;
+    const uint16_t* alts; // PD_BOSS_BY_FLAGS: {flag, trainer} pairs, 0-terminated
 };
 
 struct pd_guide {
@@ -60,7 +62,8 @@ struct pd_guide {
     uint16_t starterVar;        // FireRed's VAR_STARTER_MON
 };
 
-extern const struct pd_guide pd_guide_firered, pd_guide_leafgreen, pd_guide_emerald;
+extern const struct pd_guide pd_guide_firered, pd_guide_leafgreen, pd_guide_emerald, pd_guide_ruby, pd_guide_sapphire,
+    pd_guide_emerald_legacy;
 
 enum pd_area_kind { PD_AREA_ITEM, PD_AREA_HIDDEN, PD_AREA_GIFT, PD_AREA_KEY, PD_AREA_MON, PD_AREA_EGG, PD_AREA_TRADE };
 
@@ -74,8 +77,10 @@ struct pd_area_thing {
     const char* where; // the sub-map ("" = the area's main map)
 };
 
-extern const struct pd_area_thing pd_areas_firered[], pd_areas_leafgreen[], pd_areas_emerald[];
-extern const int pd_areas_firered_count, pd_areas_leafgreen_count, pd_areas_emerald_count;
+extern const struct pd_area_thing pd_areas_firered[], pd_areas_leafgreen[], pd_areas_emerald[], pd_areas_ruby_sapphire[],
+    pd_areas_emerald_legacy[];
+extern const int pd_areas_firered_count, pd_areas_leafgreen_count, pd_areas_emerald_count, pd_areas_ruby_sapphire_count,
+    pd_areas_emerald_legacy_count;
 
 // The guide and area data for g (NULL / 0 if none).
 const struct pd_guide* pd_guide_for(const struct pd_game* g);

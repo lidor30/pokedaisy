@@ -4,6 +4,7 @@
 // answer; one entry open at a time. The first visit per game shows the app's
 // "written with AI" notice.
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "pd_dex.h"
@@ -34,7 +35,7 @@ struct view_section {
     int first, count;
 };
 
-enum page_kind { PAGE_HERE, PAGE_BOSS, PAGE_STATIC };
+enum page_kind { PAGE_HERE, PAGE_BOSS, PAGE_STATIC, PAGE_WHERE };
 struct page_ref {
     enum page_kind kind;
     int index; // the guide's page, for PAGE_STATIC
@@ -83,9 +84,13 @@ static void build_pages(const struct pd_game* g, const struct pd_snapshot* s, co
     bool rom = pd_guide_rom_ok(g);
     if (areaCount || rom) pages[pageCount++] = (struct page_ref) { PAGE_HERE, 0, "HERE" };
     if (rom && s->flagsOk && gd->bossCount) pages[pageCount++] = (struct page_ref) { PAGE_BOSS, 0, "NEXT BOSS" };
+    bool whereIs = false;
     for (int i = 0; i < gd->pageCount && pageCount < MAX_PAGES; i++) {
         pages[pageCount++] = (struct page_ref) { PAGE_STATIC, i, page_label(gd->pages[i].title) };
+        whereIs |= !strcmp(gd->pages[i].title, "WHERE IS");
     }
+    // No hand-written WHERE IS (the ROM hacks): one built from the area data, as the app's GuideScreen does.
+    if (!whereIs && areaCount && pageCount < MAX_PAGES) pages[pageCount++] = (struct page_ref) { PAGE_WHERE, 0, "WHERE IS" };
 }
 
 // --- the pages ---
@@ -253,6 +258,62 @@ static void build_here(const struct pd_game* g, const struct pd_snapshot* s, con
     }
 }
 
+// WHERE IS from the area data (GuideAreas.kt generatedWhereIs): every HM, key item and gift POKéMON someone hands
+// out, the area it's in as the hint and where in it as the answer; each named once (its first area), by name.
+static bool is_hm(const char* name) {
+    return !strncmp(name, "HM", 2) && name[2] >= '0' && name[2] <= '9';
+}
+
+static int by_title(const void* a, const void* b) {
+    return strcmp(((const struct view_entry*) a)->title, ((const struct view_entry*) b)->title);
+}
+
+static void build_where(const struct pd_game* g, const struct pd_snapshot* s) {
+    int n;
+    const struct pd_area_thing* things = pd_areas_for(g, &n);
+    static const char* const HEADINGS[3] = { "HMs", "KEY ITEMS", "GIFT POKéMON" };
+    for (int sec = 0; sec < 3; sec++) {
+        add_section(HEADINGS[sec], NULL);
+        int first = entryCount;
+        for (int i = 0; i < n; i++) {
+            const struct pd_area_thing* t = &things[i];
+            bool gift = t->kind == PD_AREA_GIFT || t->kind == PD_AREA_KEY, mon = t->kind == PD_AREA_MON || t->kind == PD_AREA_EGG;
+            char name[48], sp[40];
+            if (mon) {
+                if (sec != 2) continue;
+                snprintf(name, sizeof(name), "%s%s", pd_species_name(t->id, sp, sizeof(sp)),
+                         t->kind == PD_AREA_EGG ? " (egg)" : "");
+            } else {
+                if (!gift && t->kind != PD_AREA_ITEM) continue;
+                const char* item = pd_item_name(g, t->id);
+                bool hm = is_hm(item);
+                if (sec == 2 || (sec == 0 && !hm) || (sec == 1 && (hm || t->kind != PD_AREA_KEY))) continue;
+                snprintf(name, sizeof(name), "%s", item);
+            }
+            if (name[0] == '#' || !strncmp(name, "Item#", 5)) continue;  // no name to show
+            bool dup = false;
+            for (int k = first; k < entryCount && !dup; k++) dup = !strcmp(entries[k].title, name);
+            if (dup) continue;
+            struct view_entry* e = add_entry();
+            if (!e) break;
+            const char* area = pd_mapsec_name(g, t->mapsec);
+            snprintf(e->title, sizeof(e->title), "%s", name);
+            snprintf(e->hintBuf, sizeof(e->hintBuf), "In %s.", area);
+            e->hint = e->hintBuf;
+            if (t->kind == PD_AREA_ITEM)
+                snprintf(e->answerBuf, sizeof(e->answerBuf), t->where[0] ? "Lying in the %s (%s)." : "Lying around %s.",
+                         t->where[0] ? t->where : area, area);
+            else
+                snprintf(e->answerBuf, sizeof(e->answerBuf), t->where[0] ? "Someone in the %s (%s)." : "Someone around %s.",
+                         t->where[0] ? t->where : area, area);
+            e->answer = e->answerBuf;
+            e->owned = pd_area_done(g, s, t);
+        }
+        qsort(entries + first, (size_t) (entryCount - first), sizeof(*entries), by_title);
+        if (!sections[sectionCount - 1].count) sectionCount--;
+    }
+}
+
 static void build_bosses(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_guide* gd) {
     int best = 0;
     for (int i = 0; i < s->partyCount; i++) {
@@ -386,7 +447,8 @@ void ui_guide_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
         return;
     }
     // The first visit per game: the notice first.
-    lastKindBit = 1 << g->kind;
+    // (A bit per game kind, as saved settings have it; the guides past Emerald's get their own.)
+    lastKindBit = g->guide >= PD_GUIDE_RUBY ? 1 << (8 + g->guide) : 1 << g->kind;
     if (!(ui->settings->guideNotice & lastKindBit) && ui->overlay == PD_OVERLAY_NONE) {
         ui->overlay = PD_OVERLAY_GUIDE_NOTICE;
     }
@@ -418,6 +480,7 @@ void ui_guide_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     const struct page_ref* p = &pages[ui->guidePage];
     if (p->kind == PAGE_HERE) build_here(g, s, gd);
     else if (p->kind == PAGE_BOSS) build_bosses(g, s, gd);
+    else if (p->kind == PAGE_WHERE) build_where(g, s);
     else build_static(g, s, &gd->pages[p->index]);
     if (ui->guideOpen >= entryCount) ui->guideOpen = -1;
 

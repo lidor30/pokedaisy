@@ -175,7 +175,9 @@ static void balls_panel(struct pd_canvas *c, const struct pd_game *g, const stru
   for (int i = 0; i < n; i++) {
     char t[12];
     snprintf(t, sizeof t, "%d", b[i].quantity);
-    pd_draw_item_icon(c, g, b[i].id, bx, y + PAD, false);
+    // Ruby / Sapphire keep no item icons: a drawn ball in the icon's place, as the app does.
+    if (!pd_draw_item_icon(c, g, b[i].id, bx, y + PAD, false))
+      pd_draw_party_ball(c, bx + (PD_ITEM_ICON - 20) / 2, y + PAD + (PD_ITEM_ICON - 20) / 2);
     bx += PD_ITEM_ICON + 1;
     bx += pd_text(c, bx, pd_text_y(y, BALLS_H), t, INK, INK_SHADOW) + 4;
   }

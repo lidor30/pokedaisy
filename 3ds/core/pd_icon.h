@@ -23,5 +23,7 @@ bool pd_draw_mon_icon_scaled(struct pd_canvas* c, const struct pd_game* g, int s
 // An item's bag icon (24x24, from the ROM's item icon table) with its top-left at (x, y); faded = dimmed (45%).
 #define PD_ITEM_ICON 24
 bool pd_draw_item_icon(struct pd_canvas* c, const struct pd_game* g, int item, int x, int y, bool faded);
+// A plain Poke Ball, 20x20 (pd_ui_party.c), for a game without item icons.
+void pd_draw_party_ball(struct pd_canvas* c, int x, int y);
 
 #endif

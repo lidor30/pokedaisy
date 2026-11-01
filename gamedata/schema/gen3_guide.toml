@@ -97,6 +97,7 @@ default = 0x24
 [field.trainerMon]
 kotlin = 'TrainerMonLayout?'
 type = 'ref'
+record = 'gen3_trainer_mon'
 default = 'none'
 
 # WildPokemonHeader: expansion keeps one set of four tables per time of day.

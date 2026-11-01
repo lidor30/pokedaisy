@@ -61,6 +61,7 @@ const struct pd_blob_sig pd_blob_sigs[PD_BLOB_COUNT] = {
     [PD_EM_FONT_NORMAL] = { false, 32768, 0xA7757FEEu, 314, 0x2FD9CE0079AD4F11ull, 0xE1B0, PD_BLOB_EMERALD },
     [PD_EM_FONT_NORMAL_WIDTHS] = { false, 512, 0x002DEBCBu, 38, 0xD417A07C815713A0ull, 0xDFE0, PD_BLOB_EMERALD },
     [PD_CARD_STAR_PAL] = { false, 32, 0xB6380DF6u, 0, 0xF6817DDB3D14BFE1ull, 0xD9B3, PD_BLOB_FIRERED | PD_BLOB_EMERALD },
+    [PD_LG_CARD_PAL5] = { false, 96, 0x46E1B864u, 0, 0xED03EED40A1C9008ull, 0x9E4E, PD_BLOB_FIRERED | PD_BLOB_EMERALD },
 };
 
 static const unsigned char firered_layout0_0[330] = {

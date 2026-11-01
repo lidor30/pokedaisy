@@ -300,3 +300,10 @@ void ui_party_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
         party_slot(ui, c, g, x, y, cw, ch, m, i, m && i == selected);
     }
 }
+
+// The party's Poke Ball, 20x20 at 1x: what the HUD draws where a game has no item icons (Ruby / Sapphire; the
+// app's PixelIcons.pokeBall in FieldHud).
+void pd_draw_party_ball(struct pd_canvas* c, int x, int y) {
+    static const uint32_t RED_WHITE[4] = { 0x383840, 0xE04838, 0xA83028, 0xF8F8F8 };
+    char_bitmap(c, BALL, 20, x, y, 1, "KRHW", RED_WHITE);
+}

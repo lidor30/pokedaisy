@@ -834,6 +834,14 @@ static bool focusable(int id) {
   return !(id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) && id != HIT_FF && id != HIT_SCRIM &&
          id != HIT_BAG_LIST && id != HIT_DEX_LIST && id != HIT_GUIDE_LIST && id != HIT_SETTINGS_LIST;
 }
+// A window over the screen (the guide's notice, a picker, PLACES) starts with its scrim: the cursor stays on what
+// comes after it - the screen under the window can't be reached (or pressed) while it's open.
+static int modal_floor(const struct pd_ui *u) {
+  for (int i = 0; i < u->hitCount; i++)
+    if (u->hits[i].id == HIT_SCRIM)
+      return i;
+  return 0;
+}
 static int focus_index(const struct pd_ui *u, int id) {
   for (int i = 0; i < u->hitCount; i++)
     if (u->hits[i].id == id)
@@ -845,10 +853,13 @@ static int focus_resolve(struct pd_ui *u) {
   struct screen now = screen_of(u);
   bool changed = memcmp(&now, &lastScreen, sizeof now) != 0;
   lastScreen = now;
+  int floor = modal_floor(u);
   int i = changed ? -1 : focus_index(u, focusId);
+  if (i >= 0 && i < floor)
+    i = -1;
   if (i < 0 && !changed && focusId >= 0) { // gone: the nearest item to where it was
     int best = 1 << 30;
-    for (int j = 0; j < u->hitCount; j++) {
+    for (int j = floor; j < u->hitCount; j++) {
       const struct pd_hit *h = &u->hits[j];
       int dx = h->x + h->w / 2 - (focusAt.x + focusAt.w / 2),
           dy = h->y + h->h / 2 - (focusAt.y + focusAt.h / 2);
@@ -858,7 +869,9 @@ static int focus_resolve(struct pd_ui *u) {
   }
   if (i < 0 && u->startId >= 0)
     i = focus_index(u, u->startId);
-  for (int j = 0; i < 0 && j < u->hitCount; j++)
+  if (i >= 0 && i < floor)
+    i = -1;
+  for (int j = floor; i < 0 && j < u->hitCount; j++)
     if (focusable(u->hits[j].id))
       i = j;
   if (i < 0 && u->hitCount)
@@ -876,7 +889,7 @@ static void focus_move(struct pd_ui *u, int direction) {
   }
   const struct pd_hit *h = &u->hits[cur];
   int best = -1, score = 1000000;
-  for (int i = 0; i < u->hitCount; i++) {
+  for (int i = modal_floor(u); i < u->hitCount; i++) {
     if (i == cur)
       continue;
     struct pd_hit *t = &u->hits[i];
@@ -1138,6 +1151,9 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   pd_game_detect(&game, romdata, (size_t)len);
   game.rom = romdata;
   game.romSize = (size_t)len;
+  pd_game_identify(&game);
+  fprintf(stderr, "pokedaisy: %s, sha1 %s%s%s\n", game.title ? game.title : "?", game.sha1[0] ? game.sha1 : "-",
+          game.unsupported ? " - " : "", game.unsupported ? game.unsupported : "");
   if (c->platform(c) == mPLATFORM_GBA)
     pd_romart_scan(&game);
   char config[1024];

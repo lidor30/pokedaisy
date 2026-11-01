@@ -15,6 +15,17 @@ enum pd_game_kind {
     PD_GAME_EMERALD,
 };
 
+// Which GUIDE a game gets (pd_guide_for): its own, or none until it's ported.
+enum pd_guide_id {
+    PD_GUIDE_NONE = 0,
+    PD_GUIDE_FIRERED,
+    PD_GUIDE_LEAFGREEN,
+    PD_GUIDE_EMERALD,
+    PD_GUIDE_RUBY,
+    PD_GUIDE_SAPPHIRE,
+    PD_GUIDE_EMERALD_LEGACY,
+};
+
 struct pd_config {
     uint32_t playerParty;
     uint32_t playerPartyCount;
@@ -26,7 +37,9 @@ struct pd_config {
     uint32_t saveBlock1Ptr;
     uint32_t saveBlock2Ptr;
     uint32_t mapHeader;
-    uint32_t encryptionKeyOff; // in SaveBlock2
+    int32_t encryptionKeyOff;  // in SaveBlock2; -1 = no key (Ruby / Sapphire: money and bag counts plain)
+    // Ruby / Sapphire: saveBlock1Ptr / saveBlock2Ptr are the blocks themselves, gBattleStruct a fixed block.
+    bool staticSaveBlocks, battleStructStatic;
     uint32_t moneyOff;         // in SaveBlock1
     // The battle's FOE TEAM: gEnemyParty (6 struct Pokemon), gBattlerPartyIndexes
     // (u16 per battler: which one is out) and gBattleStruct (a pointer) ->
@@ -42,6 +55,8 @@ struct pd_config {
     // The bag's icons: sItemIconTable, {tiles, palette} (both LZ77) every itemIconStride bytes. 0 = none.
     uint32_t itemIconTable;
     int itemIconStride;
+    // The game's own egg species (0 = retail's 412) and how many species its tables hold (with the egg).
+    int eggSpecies, speciesCount;
     // gBagPockets: five {slots pointer, capacity} pairs, 8 bytes apart;
     // bagOrder[i] is the pocket (PD_POCKET_*) the game keeps at index i.
     uint32_t bagPockets;
@@ -68,6 +83,8 @@ struct pd_config {
     uint32_t learnsets;   // gLevelUpLearnsets, a pointer per species
     uint32_t wildHeaders; // gWildMonHeaders, 20 bytes each
     uint32_t flagsOff, varsOff, flagBytes; // in SaveBlock1
+    // A hack's own struct TrainerMon (GuideTables.trainerMon), every field at a fixed offset; stride 0 = retail's.
+    int trainerMonStride, trainerMonMovesOff, trainerMonSpeciesOff, trainerMonItemOff, trainerMonLevelOff;
     int probeTrainer;     // checks the tables match the ROM ...
     const char* probeName; // ... by this trainer's name
 
@@ -82,6 +99,7 @@ struct pd_config {
     int nationalVar, nationalVarValue, nationalFlag;
     int stickerVar;
     int frontierSymbolFlag;
+    int extraStarFlag; // a flag worth one more star (Legacy's FLAG_CAUGHT_MEW); 0 = none
     uint32_t museumWinnersOff, frontierBpOff; // in SaveBlock1 / SaveBlock2
 
     // FLY (the app's FlyFns / HealWarp, Fly.kt): the game's own functions, called between frames (the Linux host's
@@ -100,6 +118,8 @@ struct pd_config {
     uint32_t flyHealTo, flyMapWarp, flyReturn, flySaveBlock2Ptr; // gSaveBlock2Ptr: playerGender at +8
     int flySpecial[4][2]; // {map section, heal location} taken before the table's
     int flyGenderMapsec, flyMaleHeal, flyFemaleHeal; // the home town: by the player's gender
+    bool flySaveBlock2Static; // flySaveBlock2Ptr is gSaveBlock2 itself (Ruby / Sapphire)
+    uint32_t flyMapHeader; // set: SetUpFieldMove_Fly takes gMapHeader.mapType (+0x17) as its argument (Ruby / Sapphire)
 
     // REPEL and PC anywhere (the app's FieldItemFns / PcFns, FieldItems.kt / Pc.kt): VarGet, VarSet,
     // CheckBagHasItem, RemoveBagItem and ArePlayerFieldControlsLocked (fieldCrcs, in that order), VAR_REPEL_STEP_COUNT
@@ -116,7 +136,8 @@ struct pd_config {
     uint32_t pcSpecials, pcFn, pcCrcs[2], pcScript;
 };
 
-enum pd_card_style { PD_CARD_NONE, PD_CARD_KANTO, PD_CARD_HOENN };
+// LEGACY: Emerald Legacy's - HOENN's card, a fifth star (extraStarFlag) on a black one, Hoenn's dex and eight more.
+enum pd_card_style { PD_CARD_NONE, PD_CARD_KANTO, PD_CARD_HOENN, PD_CARD_LEGACY };
 
 // The bag's pockets, in a fixed order of our own (the app's POCKET_* ids).
 enum pd_pocket {
@@ -133,6 +154,7 @@ struct pd_game {
     char code[5];       // ROM header game code, e.g. "BPRE"
     int revision;       // ROM header 0xBC
     const char* title;  // "Pokémon FireRed"
+    enum pd_guide_id guide;
     const struct pd_config* cfg; // NULL = detected but not supported
     const char* unsupported;     // why, when cfg is NULL
     // The ROM's bytes (0x08000000 on the bus), for the tabs that read its
@@ -140,6 +162,7 @@ struct pd_game {
     const uint8_t* rom;
     size_t romSize;
     unsigned loadId; // new on every pd_game_detect (see pd_rom_id)
+    char sha1[41];   // the whole ROM's, once pd_game_identify ran ("" before)
 };
 
 // Which ROM the tabs' caches were built from: 0 = none, else new for every
@@ -154,5 +177,11 @@ const uint8_t* pd_rom_at(const struct pd_game* g, uint32_t addr, size_t len);
 
 // Reads the ROM header (the first 0xC0 bytes of the ROM) and its size.
 void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize);
+
+// Once g->rom is set: which FireRed / LeafGreen / Emerald file this is, by its SHA-1, as the app's Poller.detect
+// tells them apart - a hack the companion knows gets its own config, a retail cart (or a collection's dump of one,
+// the app's RetailDumps) keeps detect's, and anything else is an unknown hack: unsupported rather than read with
+// retail's addresses.
+void pd_game_identify(struct pd_game* g);
 
 #endif

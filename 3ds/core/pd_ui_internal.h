@@ -24,7 +24,6 @@ enum {
     HIT_BAG_TAB = 400,     // + the bag's pocket tab (ALL first)
     HIT_BAG_LIST = 410,
     HIT_SETTINGS_LIST = 411, // the SETTINGS list (a drag scrolls it)
-    HIT_BAG_ROW = 500,     // + item index
     HIT_SETTING = 600,     // + enum setting_row
     HIT_OPTION = 700,      // + pick-list option
     HIT_YES = 800,
@@ -48,6 +47,7 @@ enum {
     HIT_BATTLE_SUGGEST = 3000,
     HIT_BATTLE_INFO = 3001,
     HIT_FOE_SLOT = 3010,   // + foe party index
+    HIT_BAG_ROW = 20000,   // + item index (up to PD_POCKET_SLOTS: a hack's pockets run past 100)
     HIT_OPEN_CARD = 3100,
     HIT_CARD = 3101,
 };

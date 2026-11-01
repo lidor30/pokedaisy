@@ -45,6 +45,16 @@ static const char *const PC[] = {
     ".KDDDDDDDDDDDDK.", ".KKKKKKKKKKKKKK.", "......KDDK......", "....KKKKKKKK....", "...KLLLLLLLLK...",
     "...KKKKKKKKKK...", NULL,
 };
+// REPEL and BIKE where the game has no item icons to draw (Ruby / Sapphire; the app has its bundled item sprites).
+static const char *const REPEL[] = {
+    "....KKK.....", "...KLLLK.K..", "...KKKKK..K.", "..KGGGGGK.K.", "..KGLGGGK...", "..KGLGGGK...",
+    "..KGGGGGK...", "..KGGGGGK...", "..KGGGGGK...", "..KKKKKKK...", NULL,
+};
+static const char *const BIKE[] = {
+    "...........KK...", "...KKK.....K....", "....K.....K.....", "....KKKKKKK.....", "..KKK.K..K.KKK..",
+    ".K...KK.K.K...K.", "K...K.KK.K.K...K", "K...K..KK..K...K", "K.....K..K.....K", ".K...K....K...K.",
+    "..KKK......KKK..", NULL,
+};
 static const char *const COMPANION[] = {
     "......11", ".....11.", "....11..", "...11...", "..11....", ".11.....", "11......",
     ".11.....", "..11....", "...11...", "....11..", ".....11.", "......11", NULL,
@@ -71,6 +81,8 @@ static uint32_t icon_color(enum quick_action a, char ch) {
   if (a == QUICK_PC)
     return ch == 'K' ? 0x202838 : ch == 'L' ? 0xD8D8E0 : ch == 'D' ? 0x9098A8 : ch == 'S' ? 0x3070C8
          : ch == 'H' ? 0x90C8F8 : 0x40D040;
+  if (a == QUICK_REPEL)
+    return ch == 'K' ? 0x202838 : ch == 'L' ? 0xE8ECF4 : 0x48A848;
   if (a == QUICK_SAVE_STATE || a == QUICK_LOAD_STATE)
     return ch == 'K' ? 0x202838 : ch == 'D' ? 0x4870C0 : ch == 'L' ? 0xE8ECF4 : 0xF8C030;
   return INK;
@@ -79,7 +91,8 @@ static uint32_t icon_color(enum quick_action a, char ch) {
 // An icon centred at (cx, cy), `scale` canvas pixels a pixel; dim: at half strength over the glass.
 static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int scale, bool dim) {
   const char *const *rows = a == QUICK_PC ? PC : a == QUICK_WILD ? GRASS : a == QUICK_SAVE_STATE ? SAVE_STATE
-                          : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : COMPANION;
+                          : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : a == QUICK_REPEL ? REPEL
+                          : a == QUICK_BIKE ? BIKE : COMPANION;
   int h = 0, w = (int)strlen(rows[0]);
   while (rows[h])
     h++;

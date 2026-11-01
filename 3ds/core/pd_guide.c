@@ -19,23 +19,27 @@ static uint32_t u32(const uint8_t* p) {
 }
 
 const struct pd_guide* pd_guide_for(const struct pd_game* g) {
-    if (g->kind == PD_GAME_EMERALD) return &pd_guide_emerald;
-    if (g->kind == PD_GAME_FIRERED) return !strcmp(g->code, "BPGE") ? &pd_guide_leafgreen : &pd_guide_firered;
-    return NULL;
+    switch (g->guide) {
+    case PD_GUIDE_FIRERED: return &pd_guide_firered;
+    case PD_GUIDE_LEAFGREEN: return &pd_guide_leafgreen;
+    case PD_GUIDE_EMERALD: return &pd_guide_emerald;
+    case PD_GUIDE_RUBY: return &pd_guide_ruby;
+    case PD_GUIDE_SAPPHIRE: return &pd_guide_sapphire;
+    case PD_GUIDE_EMERALD_LEGACY: return &pd_guide_emerald_legacy;
+    default: return NULL;
+    }
 }
 
 const struct pd_area_thing* pd_areas_for(const struct pd_game* g, int* count) {
-    if (g->kind == PD_GAME_EMERALD) {
-        *count = pd_areas_emerald_count;
-        return pd_areas_emerald;
+    switch (g->guide) {
+    case PD_GUIDE_FIRERED: *count = pd_areas_firered_count; return pd_areas_firered;
+    case PD_GUIDE_LEAFGREEN: *count = pd_areas_leafgreen_count; return pd_areas_leafgreen;
+    case PD_GUIDE_EMERALD: *count = pd_areas_emerald_count; return pd_areas_emerald;
+    case PD_GUIDE_RUBY:
+    case PD_GUIDE_SAPPHIRE: *count = pd_areas_ruby_sapphire_count; return pd_areas_ruby_sapphire;
+    case PD_GUIDE_EMERALD_LEGACY: *count = pd_areas_emerald_legacy_count; return pd_areas_emerald_legacy;
+    default: *count = 0; return NULL;
     }
-    if (g->kind == PD_GAME_FIRERED) {
-        bool lg = !strcmp(g->code, "BPGE");
-        *count = lg ? pd_areas_leafgreen_count : pd_areas_firered_count;
-        return lg ? pd_areas_leafgreen : pd_areas_firered;
-    }
-    *count = 0;
-    return NULL;
 }
 
 static bool caught_species(const struct pd_game* g, const struct pd_snapshot* s, int species) {
@@ -103,6 +107,11 @@ bool pd_guide_rom_ok(const struct pd_game* g) {
 }
 
 int pd_boss_trainer(const struct pd_guide* gd, const struct pd_boss* b, const struct pd_snapshot* s) {
+    if (b->kind == PD_BOSS_BY_FLAGS) {
+        for (const uint16_t* p = b->alts; p && p[0]; p += 2)
+            if (pd_flag(s, p[0])) return p[1];
+        return b->a;
+    }
     int id = b->kind == PD_BOSS_FIXED ? b->a : pd_flag(s, gd->leagueRematchFlag) ? b->b : b->a;
     if (b->kind == PD_BOSS_CHAMPION) {
         // The rival answers the starter: CHARMANDER (2) -> +0, SQUIRTLE (1) -> +1, else +2.
@@ -143,6 +152,23 @@ int pd_trainer_team(const struct pd_game* g, int trainer, struct pd_team_mon* ou
     if (!t) return 0;
     int flags = t[0], size = t[0x20];
     if (size < 1 || size > PD_TEAM_MAX) return 0;
+    const struct pd_config* cfg = g->cfg;
+    if (cfg->trainerMonStride) {  // a hack's own TrainerMon (Emerald Legacy's 0x2C), whatever the flags
+        const uint8_t* party = pd_rom_at(g, u32(t + 0x24), (size_t) (size * cfg->trainerMonStride));
+        if (!party) return 0;
+        for (int i = 0; i < size; i++) {
+            const uint8_t* m = party + i * cfg->trainerMonStride;
+            struct pd_team_mon* o = &out[i];
+            memset(o, 0, sizeof(*o));
+            o->level = m[cfg->trainerMonLevelOff];
+            o->species = u16(m + cfg->trainerMonSpeciesOff);
+            o->item = u16(m + cfg->trainerMonItemOff);
+            bool any = false;
+            for (int k = 0; k < 4; k++) any |= (o->moves[k] = u16(m + cfg->trainerMonMovesOff + k * 2)) != 0;
+            if (!any) default_moves(g, o->species, o->level, o->moves);  // none = the level-up moves
+        }
+        return size;
+    }
     bool customMoves = flags & 1, heldItem = flags & 2;
     int stride = customMoves ? 16 : 8;
     const uint8_t* party = pd_rom_at(g, u32(t + 0x24), (size_t) (size * stride));

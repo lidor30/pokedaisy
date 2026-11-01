@@ -34,6 +34,8 @@ BLOBS = [
     "EM_PIC_BRENDAN", "EM_PIC_BRENDAN_PAL", "EM_PIC_MAY", "EM_PIC_MAY_PAL",
     "EM_FONT_NORMAL", "EM_FONT_NORMAL_WIDTHS",
     "CARD_STAR_PAL",
+    # Emerald Legacy's card (TrainerCardArt.kt LEGACY): HOENN's, plus the fifth star's (black) palette.
+    "LG_CARD_PAL5",
 ]
 
 

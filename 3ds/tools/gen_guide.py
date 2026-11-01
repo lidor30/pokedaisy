@@ -67,6 +67,12 @@ def read_string(text, pos):
         elif c == '"':
             parts.append(buf)
             return parts, pos + 1
+        elif c == "$" and re.match(r"[A-Za-z_]", text[pos + 1]):  # $name, a bare template
+            name = re.match(r"[A-Za-z_]\w*", text[pos + 1:]).group(0)
+            parts.append(buf)
+            buf = ""
+            parts.append(("tmpl", name))
+            pos += 1 + len(name)
         elif text.startswith("${", pos):
             depth, j = 1, pos + 2
             while depth:
@@ -124,6 +130,8 @@ class Parser:
                 return self.call(name)
             if name in self.env["consts"]:
                 return self.env["consts"][name]
+            if name in self.env.get("strings", {}):  # a guide's own string locals (Ruby / Sapphire's legend)
+                return self.env["strings"][name]
             if name in ("true", "false"):
                 return name == "true"
             return ("name", name)
@@ -207,20 +215,35 @@ def bosses_of(text, decl, env):
     body = text[text.index(f"val {decl} = listOf("):]
     body = body[:matching_paren(body, body.index("(")) + 1]
     out = []
+    named = list(re.finditer(r'Boss\(("[^"]*"), ("[^"]*"), ([^,){]+?), trainer = ([a-z]\w*)\)', body))
+    for m in named:
+        # trainer = brawly: `private val brawly: (SaveProgress) -> Int = { p -> when { p.flag(F) -> N ... else -> M } }`
+        lam = text[text.index(f"val {m.group(4)}:"):]
+        lam = lam[:lam.index("\n}\n") + 2]
+        alts = [(Parser(tokenize(f), env).expr(), int(n)) for f, n in re.findall(r"p\.flag\(([^)]+)\) -> (\d+)", lam)]
+        default = int(re.search(r"else -> (\d+)", lam).group(1))
+        title = Parser(tokenize(m.group(1)), env).expr()
+        where = Parser(tokenize(m.group(2)), env).expr()
+        flag = Parser(tokenize(m.group(3)), env).expr()
+        out.append((m.start(), (title, where, flag, "BY_FLAGS", default, 0, alts)))
+    plain = []
     for m in re.finditer(r'Boss\(("[^"]*"), ("[^"]*"), ([^,){]+?)(?:, trainer = league\((\d+), (\d+)\))?\)\s*(\{[^}]*\})?', body):
         title = Parser(tokenize(m.group(1)), env).expr()
         where = Parser(tokenize(m.group(2)), env).expr()
         flag = Parser(tokenize(m.group(3)), env).expr()
         if m.group(4):
-            out.append((title, where, flag, "LEAGUE", int(m.group(4)), int(m.group(5))))
+            plain.append((m.start(), (title, where, flag, "LEAGUE", int(m.group(4)), int(m.group(5)))))
         else:
             lam = m.group(6) or ""
             champ = re.search(r"league\((\d+), (\d+)\)\(p\) \+ rivalOffset", body[m.end():m.end() + 300])
             if "rivalOffset" in lam or (champ and "val rivalOffset" in body[m.end():m.end() + 200]):
-                out.append((title, where, flag, "CHAMPION", int(champ.group(1)), int(champ.group(2))))
+                plain.append((m.start(), (title, where, flag, "CHAMPION", int(champ.group(1)), int(champ.group(2)))))
             else:
-                out.append((title, where, flag, "FIXED", int(re.search(r"\d+", lam).group()), 0))
-    return out
+                plain.append((m.start(), (title, where, flag, "FIXED", int(re.search(r"\d+", lam).group()), 0)))
+    # In the list's order; every Boss( read, or the guide would quietly skip one.
+    bosses = [b for _, b in sorted(out + plain, key=lambda e: e[0])]
+    assert len(bosses) == body.count("Boss("), f"gen_guide: {decl}: read {len(bosses)} of {body.count('Boss(')} bosses"
+    return [b if len(b) == 7 else b + ([],) for b in bosses]
 
 
 def areas_of(name, decl):
@@ -264,9 +287,14 @@ def emit_guide(out, prefix, pages, bosses, verified, extra):
     for pi, (title, sections) in enumerate(pages):
         out.append(f"    {{ {c_str(title)}, {prefix}_p{pi}, {len(sections)} }},")
     out.append("};")
+    for bi, (title, where, flag, kind, a, b, alts) in enumerate(bosses):
+        if alts:
+            pairs = ", ".join(f"0x{f:X}, {t}" for f, t in alts)
+            out.append(f"static const uint16_t {prefix}_alts{bi}[] = {{ {pairs}, 0 }};")
     out.append(f"static const struct pd_boss {prefix}_bosses[] = {{")
-    for title, where, flag, kind, a, b in bosses:
-        out.append(f"    {{ {c_str(title)}, {c_str(where)}, 0x{flag:X}, PD_BOSS_{kind}, {a}, {b} }},")
+    for bi, (title, where, flag, kind, a, b, alts) in enumerate(bosses):
+        alt = f"{prefix}_alts{bi}" if alts else "NULL"
+        out.append(f"    {{ {c_str(title)}, {c_str(where)}, 0x{flag:X}, PD_BOSS_{kind}, {a}, {b}, {alt} }},")
     out.append("};")
     out.append(f"const struct pd_guide {prefix} = {{")
     out.append(f"    {prefix}_pages, {len(pages)}, {prefix}_bosses, {len(bosses)}, {str(verified).lower()}, {extra},")
@@ -304,6 +332,28 @@ def main():
 
     em_env = {"consts": em_consts, "template": no_template}
 
+    # Ruby and Sapphire: one text built per version (rubySapphireGuide(ruby)), its locals by version.
+    rs_text = read("GuideRubySapphire.kt")
+    rs_consts = consts(rs_text)
+
+    def rs_env(ruby):
+        local = {"team": "TEAM MAGMA" if ruby else "TEAM AQUA", "legend": "GROUDON" if ruby else "KYOGRE",
+                 "roamer": "LATIOS" if ruby else "LATIAS"}
+        nums = dict(rs_consts, legendNo=383 if ruby else 382, roamerNo=381 if ruby else 380)
+
+        def template(expr):
+            if expr.strip() in local:
+                return local[expr.strip()]
+            raise SyntaxError(f"gen_guide: unknown template {expr}")
+        return {"consts": nums, "template": template, "strings": local}
+
+    rs_bosses = bosses_of(rs_text, "BOSSES_RUBY_SAPPHIRE", rs_env(True))
+
+    # Emerald Legacy: its own bosses (BRAWLY by flags), no hand-written WHERE IS (built from its areas at run time).
+    el_text = read("GuideEmeraldLegacy.kt")
+    el_env = {"consts": consts(el_text), "template": no_template}
+    el_bosses = bosses_of(el_text, "BOSSES_EMERALD_LEGACY", el_env)
+
     # The League's rematch flag and the starter var (the champion's team).
     league_flag = fr_consts["FLAG_SYS_CAN_LINK_WITH_RS"]
     starter_var = fr_consts["VAR_STARTER_MON"]
@@ -312,8 +362,8 @@ def main():
     em_verified = "verified = false" not in em_text
 
     out = [
-        "// Generated by 3ds/tools/gen_guide.py from the app's GuideFireRed.kt, GuideEmerald.kt",
-        "// and GuideAreas{FireRed,LeafGreen,Emerald}Gen.kt - do not hand-edit.",
+        "// Generated by 3ds/tools/gen_guide.py from the app's GuideFireRed.kt, GuideEmerald.kt, GuideRubySapphire.kt, GuideEmeraldLegacy.kt",
+        "// and GuideAreas{FireRed,LeafGreen,Emerald,RubySapphire,EmeraldLegacy}Gen.kt - do not hand-edit.",
         '#include "pd_guide.h"',
         "",
     ]
@@ -322,6 +372,14 @@ def main():
     emit_guide(out, "pd_guide_leafgreen", pages_of(fr_text, fr_env(True)), fr_bosses, True,
                f"0x{league_flag:X}, 0x{starter_var:X}")
     emit_guide(out, "pd_guide_emerald", pages_of(em_text, em_env), em_bosses, em_verified, "0, 0")
+    emit_guide(out, "pd_guide_ruby", pages_of(rs_text, rs_env(True)), rs_bosses,
+               "verified = false" not in rs_text, "0, 0")
+    emit_guide(out, "pd_guide_sapphire", pages_of(rs_text, rs_env(False)), rs_bosses,
+               "verified = false" not in rs_text, "0, 0")
+    emit_guide(out, "pd_guide_emerald_legacy", pages_of(el_text, el_env), el_bosses,
+               "verified = false" not in el_text, "0, 0")
+    emit_areas(out, "pd_areas_emerald_legacy", areas_of("GuideAreasEmeraldLegacyGen.kt", "GUIDE_AREAS_EMERALD_LEGACY_RAW"))
+    emit_areas(out, "pd_areas_ruby_sapphire", areas_of("GuideAreasRubySapphireGen.kt", "GUIDE_AREAS_RUBY_SAPPHIRE_RAW"))
     emit_areas(out, "pd_areas_firered", areas_of("GuideAreasFireRedGen.kt", "GUIDE_AREAS_FIRERED_RAW"))
     emit_areas(out, "pd_areas_leafgreen", areas_of("GuideAreasLeafGreenGen.kt", "GUIDE_AREAS_LEAFGREEN_RAW"))
     emit_areas(out, "pd_areas_emerald", areas_of("GuideAreasEmeraldGen.kt", "GUIDE_AREAS_EMERALD_RAW"))

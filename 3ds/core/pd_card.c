@@ -8,6 +8,9 @@
 // --- the data (readTrainerCard) ---
 
 // pokeemerald's sHoennToNationalOrder: the Hoenn dex's national numbers.
+// Emerald Legacy's regional dex past Hoenn's (TrainerCard.kt LEGACY_HOENN_TO_NATIONAL).
+static const uint16_t LEGACY_EXTRA[8] = { 77, 78, 198, 215, 220, 221, 228, 229 };
+
 static const uint16_t HOENN_TO_NATIONAL[202] = {
     252, 253, 254, 255, 256, 257, 258, 259, 260, 261, 262, 263, 264, 265, 266, 267, 268, 269, 270, 271,
     272, 273, 274, 275, 276, 277, 278, 279, 280, 281, 282, 283, 284, 285, 286, 287, 288, 289, 63, 64,
@@ -59,8 +62,10 @@ bool pd_card_info(const struct pd_game* g, const struct pd_snapshot* s, struct p
     int caught = 0;
     if (national) {
         for (int n = 1; n <= PD_NATIONAL_COUNT; n++) caught += pd_dex_caught(s, n);
-    } else if (cfg->cardStyle == PD_CARD_HOENN) {
+    } else if (cfg->cardStyle == PD_CARD_HOENN || cfg->cardStyle == PD_CARD_LEGACY) {
         for (int i = 0; i < 202; i++) caught += pd_dex_caught(s, HOENN_TO_NATIONAL[i]);
+        if (cfg->cardStyle == PD_CARD_LEGACY)
+            for (int i = 0; i < 8; i++) caught += pd_dex_caught(s, LEGACY_EXTRA[i]);
     } else {
         for (int n = 1; n <= 151; n++) caught += pd_dex_caught(s, n);
     }
@@ -76,7 +81,10 @@ bool pd_card_info(const struct pd_game* g, const struct pd_snapshot* s, struct p
     // HasAllHoennMons: the Hoenn dex minus Jirachi and Deoxys.
     bool allHoenn = true;
     for (int i = 0; i < 200 && allHoenn; i++) allHoenn = pd_dex_caught(s, HOENN_TO_NATIONAL[i]);
+    // Legacy's regional dex runs 210 (Hoenn's 202, JIRACHI and DEOXYS still left out of "all", then eight more).
+    for (int i = 0; i < 8 && allHoenn && cfg->cardStyle == PD_CARD_LEGACY; i++) allHoenn = pd_dex_caught(s, LEGACY_EXTRA[i]);
     c->stars = (hof != 0) + allHoenn;
+    if (cfg->extraStarFlag && pd_flag(s, cfg->extraStarFlag)) c->stars++;
     if (cfg->museumWinnersOff) {
         bool all = true;
         for (int i = 0; i < 5; i++) all &= s->museumWinners[i] != 0;
@@ -90,7 +98,7 @@ bool pd_card_info(const struct pd_game* g, const struct pd_snapshot* s, struct p
         c->stars += all;
     }
 
-    bool hoenn = cfg->cardStyle == PD_CARD_HOENN;
+    bool hoenn = cfg->cardStyle == PD_CARD_HOENN || cfg->cardStyle == PD_CARD_LEGACY;
     c->linkWins = capped(s, STAT_LINK_BATTLE_WINS, 9999);
     c->linkLosses = capped(s, STAT_LINK_BATTLE_LOSSES, 9999);
     c->trades = capped(s, STAT_POKEMON_TRADES, 0xFFFF);
@@ -106,14 +114,14 @@ bool pd_card_info(const struct pd_game* g, const struct pd_snapshot* s, struct p
 // --- the art (TrainerCardArt.render) ---
 
 struct blobs {
-    int gfx, front, back, bg, pals[5], femalePal, badgesPal, badgesGfx;
+    int gfx, front, back, bg, pals[6], femalePal, badgesPal, badgesGfx; // pals: one per star count; [5] -1 = none
     int picMale, picMalePal, picFemale, picFemalePal, font, widths;
     int stickers[5]; // FireRed: the tiles, then a palette per brag level; -1 = none
 };
 
 static const struct blobs KANTO = {
     PD_FR_CARD_GFX, PD_FR_CARD_FRONT, PD_FR_CARD_BACK, PD_FR_CARD_BG,
-    { PD_FR_CARD_PAL0, PD_FR_CARD_PAL1, PD_FR_CARD_PAL2, PD_FR_CARD_PAL3, PD_FR_CARD_PAL4 },
+    { PD_FR_CARD_PAL0, PD_FR_CARD_PAL1, PD_FR_CARD_PAL2, PD_FR_CARD_PAL3, PD_FR_CARD_PAL4, -1 },
     PD_FR_CARD_FEMALE_PAL, PD_FR_CARD_BADGES_PAL, PD_FR_CARD_BADGES_GFX,
     PD_FR_PIC_RED, PD_FR_PIC_RED_PAL, PD_FR_PIC_LEAF, PD_FR_PIC_LEAF_PAL,
     PD_FR_FONT_NORMAL, PD_FR_FONT_NORMAL_WIDTHS,
@@ -123,7 +131,17 @@ static const struct blobs KANTO = {
 
 static const struct blobs HOENN = {
     PD_EM_CARD_GFX, PD_EM_CARD_FRONT, PD_EM_CARD_BACK, PD_EM_CARD_BG,
-    { PD_EM_CARD_PAL0, PD_EM_CARD_PAL1, PD_EM_CARD_PAL2, PD_EM_CARD_PAL3, PD_EM_CARD_PAL4 },
+    { PD_EM_CARD_PAL0, PD_EM_CARD_PAL1, PD_EM_CARD_PAL2, PD_EM_CARD_PAL3, PD_EM_CARD_PAL4, -1 },
+    PD_EM_CARD_FEMALE_PAL, PD_EM_CARD_BADGES_PAL, PD_EM_CARD_BADGES_GFX,
+    PD_EM_PIC_BRENDAN, PD_EM_PIC_BRENDAN_PAL, PD_EM_PIC_MAY, PD_EM_PIC_MAY_PAL,
+    PD_EM_FONT_NORMAL, PD_EM_FONT_NORMAL_WIDTHS,
+    { -1, -1, -1, -1, -1 },
+};
+
+// Emerald Legacy (TrainerCardArt.kt LEGACY): HOENN's, the fifth star on LeafGreen's black palette.
+static const struct blobs LEGACY = {
+    PD_EM_CARD_GFX, PD_EM_CARD_FRONT, PD_EM_CARD_BACK, PD_EM_CARD_BG,
+    { PD_EM_CARD_PAL0, PD_EM_CARD_PAL1, PD_EM_CARD_PAL2, PD_EM_CARD_PAL3, PD_EM_CARD_PAL4, PD_LG_CARD_PAL5 },
     PD_EM_CARD_FEMALE_PAL, PD_EM_CARD_BADGES_PAL, PD_EM_CARD_BADGES_GFX,
     PD_EM_PIC_BRENDAN, PD_EM_PIC_BRENDAN_PAL, PD_EM_PIC_MAY, PD_EM_PIC_MAY_PAL,
     PD_EM_FONT_NORMAL, PD_EM_FONT_NORMAL_WIDTHS,
@@ -491,12 +509,12 @@ static void hoenn_text(const struct art* a, const struct blobs* b, const struct 
 bool pd_card_render(const struct pd_game* g, const struct pd_card_info* c, bool back, bool colon, bool backdrop,
                     uint32_t* img) {
     bool kanto = c->style == PD_CARD_KANTO;
-    const struct blobs* b = kanto ? &KANTO : &HOENN;
+    const struct blobs* b = kanto ? &KANTO : c->style == PD_CARD_LEGACY ? &LEGACY : &HOENN;
     struct art a = { .img = img, .lay = kanto ? &KANTO_LAYOUT : &HOENN_LAYOUT };
-    if (c->style != PD_CARD_KANTO && c->style != PD_CARD_HOENN) return false;
+    if (c->style != PD_CARD_KANTO && c->style != PD_CARD_HOENN && c->style != PD_CARD_LEGACY) return false;
     // Every blob the card needs, or no card.
     const int need[] = {
-        b->gfx, b->front, b->back, b->bg, b->pals[0], b->pals[1], b->pals[2], b->pals[3], b->pals[4],
+        b->gfx, b->front, b->back, b->bg, b->pals[0], b->pals[1], b->pals[2], b->pals[3], b->pals[4], b->pals[5],
         b->femalePal, b->badgesPal, b->badgesGfx, b->picMale, b->picMalePal, b->picFemale, b->picFemalePal,
         b->font, b->widths, PD_CARD_STAR_PAL, b->stickers[0], b->stickers[1], b->stickers[2], b->stickers[3],
         b->stickers[4],
@@ -509,7 +527,8 @@ bool pd_card_render(const struct pd_game* g, const struct pd_card_info* c, bool 
     a.d[PD_CARD_STAR_PAL] = pd_romart_blob(g, PD_CARD_STAR_PAL);
 
     uint32_t pal[256] = { 0 };
-    int stars = c->stars < 0 ? 0 : c->stars > 4 ? 4 : c->stars;
+    int most = b->pals[5] >= 0 ? 5 : 4;
+    int stars = c->stars < 0 ? 0 : c->stars > most ? most : c->stars;
     palette(a.d[b->pals[stars]], 48, pal);
     if (c->female) palette(a.d[b->femalePal], 16, pal + 16);
     palette(a.d[b->badgesPal], 16, pal + 48);

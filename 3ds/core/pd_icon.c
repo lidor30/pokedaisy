@@ -29,7 +29,9 @@ static uint32_t bgr555(uint16_t c) {
 
 static bool decode(const struct pd_game* g, int species, uint32_t* out) {
     const struct pd_config* cfg = g->cfg;
-    if (!cfg || !cfg->monIconTable || species <= 0 || species > PD_SPECIES_EGG) return false;
+    if (!cfg || !cfg->monIconTable || species <= 0) return false;
+    if (species == PD_SPECIES_EGG) species = cfg->eggSpecies ? cfg->eggSpecies : 412;
+    else if (species >= (cfg->speciesCount ? cfg->speciesCount : 412)) return false;
     uint8_t w[4], idx;
     if (!pd_rom_read(g, cfg->monIconTable + (uint32_t) species * 4, w, 4)) return false;
     const uint8_t* tiles = pd_rom_at(g, u32le(w), 16 * 32);

@@ -97,7 +97,9 @@ static enum fly_result gate(struct mCore *core, const struct pd_config *cfg, con
     return FLY_FAILED;
   if (r != 1)
     return FLY_NO_BADGE;
-  if (!call(core, cfg->flySetUp, 0, 0, 0, &r))
+  // Ruby / Sapphire's SetUpFieldMove_Fly takes the map type (Fly.kt's mayFlyHere).
+  uint32_t type = cfg->flyMapHeader ? core->busRead8(core, cfg->flyMapHeader + 0x17) : 0;
+  if (!call(core, cfg->flySetUp, type, 0, 0, &r))
     return FLY_FAILED;
   return r == 1 ? FLY_OK : FLY_CANT_FLY_HERE;
 }
@@ -177,7 +179,7 @@ static bool warp(struct mCore *core, const struct pd_config *cfg, const uint8_t 
     if (cfg->flySpecial[k][1] && cfg->flySpecial[k][0] == mapsec)
       heal = cfg->flySpecial[k][1];
   if (heal < 0 && mapsec == cfg->flyGenderMapsec) {
-    uint32_t block = core->busRead32(core, cfg->flySaveBlock2Ptr);
+    uint32_t block = cfg->flySaveBlock2Static ? cfg->flySaveBlock2Ptr : core->busRead32(core, cfg->flySaveBlock2Ptr);
     heal = core->busRead8(core, block + 8) == 0 ? cfg->flyMaleHeal : cfg->flyFemaleHeal;
   }
   if (heal < 0)
