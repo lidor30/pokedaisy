@@ -1,0 +1,67 @@
+# Plan 6 Task 3: RUN in a joined wild link battle is the wild escape roll, not a link battle's forfeit. The host (core A, battler 0)
+# picks RUN; the partner (core B, battler 2) picks FIGHT / a move / the target. The master runs the engine, so the speeds are
+# poked on core A (gBattleMons[0].speed 0x0202408A against its opposite foe's [1] 0x020240E2: TryRunFromBattle's roll is
+# speed * 128 / foe speed + runTries * 30 against Random() & 0xFF; runTries is 0 in a new battle).
+# Turn 1: the host far slower than the foe (1 vs 999): the roll can't pass. "Can't escape!" (gDisplayedStringBattle starts C a n ' =
+# 0xB4E2D5BD), the battle goes on (gBattleOutcome 0x0202433A stays 0) and both cores come back to the action prompt.
+# Turn 2: 999 vs 1: always gets away; gBattleOutcome is B_OUTCOME_RAN (4) on both cores (not a lost / won link battle's 1 / 2).
+# Needs EMERALD_PARTNER_SAVE (`$PARTNER_SAVE`).
+#
+# want: PASS linkwait 2
+pair $PARTNER_SAVE
+on b
+@boot
+on a
+coopbegin 1 1 0 0
+on b
+coopbegin 0 1 0 0
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+poke16 0x0202408A 1
+poke16 0x020240E2 999
+hold DOWN 4
+linkrun 40
+hold RIGHT 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on a
+waitmem32 0x02022E2C 0xB4E2D5BD 3000
+expect8 0x0202433A 0
+shot /work/link_wild_run_cant.ppm
+waitmem32 0x03005D60 0x08057589 3000
+expect8 0x0202433A 0
+on b
+waitmem32 0x03005D68 0x08057589 3000
+expect8 0x0202433A 0
+on a
+poke16 0x0202408A 999
+poke16 0x020240E2 1
+hold DOWN 4
+linkrun 40
+hold RIGHT 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on a
+waitmem8 0x0202433A 4 3000
+on b
+waitmem8 0x0202433A 4 3000

@@ -1,0 +1,358 @@
+# Plan 6 Task 4: EXP in a joined link battle. The tower's link multi (pk_coop_link.c) with the rewards' patches (pk_coop_link_rewards.c,
+# scripts/coop_link_emerald.s' `task 4`): Cmd_getexp's skip of link battles lifted, each side's Pokémon given a single battle's
+# full EXP by the master's wrapper, the partner's own Pokémon given theirs by its own game's controller (and mirrored in the master's
+# copy so the level-up text and the stats are right). Needs EMERALD_PARTNER_SAVE (`$PARTNER_SAVE`; scripts/coop_headless_check.sh).
+#
+# Both leads get 999 HP so the level 50 foes' hits faint nobody; the foe at battler 1 is left with 1 HP, so the first hit of the first
+# turn faints it (ZIGZAGOON Lv 50, 60 x 50 / 7 = 428 EXP, x 1.5 for a trainer's: 642). Both games hold the host's three Pokémon at
+# slots 0-2 and the partner's at 3-5: 0 TORCHIC, 3 MUDKIP; slot 4 (the partner's benched WURMPLE) is counted as sent in by hand
+# (gSentPokesToOpponent) to show a benched partner Pokémon's EXP go to the partner's own game as well. The host presses A through the
+# level-up boxes (the master's screen draws them, the partner's too).
+# The host presses exactly as many As as the level-ups need (130): the trainer sends in a replacement foe (its own low level) after the first
+# faint, and any more presses start a second turn in which the host kills it and a second award (+37 for each sent-in side) lands.
+#
+# Checked: each side divides the yield by its own sent-in Pokémon, not by all six: the host's TORCHIC (alone on its side) gets the whole
+# 642, the partner's MUDKIP and WURMPLE (two) 321 each, on the game that owns them (the partner's core) and in the host's copy of
+# them (both cores agree on them); the host's Pokémon on the partner's core get nothing there, nor does a benched one that was not sent
+# in; the levels follow (TORCHIC Lv 11: 794 EXP, MUDKIP Lv 9, WURMPLE Lv 7).
+#
+# want: PASS linkwait 2
+# want: PASS expectdelta a_h0 -> a_h0x = 642
+# want: PASS expectdelta b_p3 -> b_p3x = 321
+# want: PASS expectdelta a_p3 -> a_p3x = 321
+# want: PASS expectdelta b_p4 -> b_p4x = 321
+# want: PASS expectdelta a_p4 -> a_p4x = 321
+# want: PASS expectdelta b_h0 -> b_h0x = 0
+# want: PASS expectdelta a_h1 -> a_h1x = 0
+# want: PASS expectnum a_h0x.lv = 11
+# want: PASS expectnum b_p3x.lv = 9
+# want: PASS expectnum a_p4x.lv = 7
+# want: PASS expectnum b_p4x.lv = 7
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+poke16 0x02024104 1
+poke8 0x02024106 50   # the foes keep their own levels (Task 2): this one is made Lv 50 (gBattleMons[1].level) so the yield is the one below
+poke16 0x020241B4 999   # the other foe (battler 3) must not faint too: its own Lv
+monexp a_h0 0x020244EC
+monexp a_h1 0x02024550
+monexp a_p3 0x02024618
+monexp a_p4 0x0202467C
+on b
+monexp b_h0 0x020244EC
+monexp b_p3 0x02024618
+monexp b_p4 0x0202467C
+on a
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on a
+waitmem8 0x02024490 1 4000
+poke8 0x020243FE 0x19
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+hold A 3
+linkrun 27
+monexp a_h0x 0x020244EC
+monexp a_h1x 0x02024550
+monexp a_p3x 0x02024618
+monexp a_p4x 0x0202467C
+on b
+monexp b_h0x 0x020244EC
+monexp b_p3x 0x02024618
+monexp b_p4x 0x0202467C
+expectdelta a_h0 a_h0x 642
+expectdelta b_p3 b_p3x 321
+expectdelta b_p4 b_p4x 321
+expectdelta b_h0 b_h0x 0
+on a
+expectdelta a_h0 a_h0x 642
+expectdelta a_p3 a_p3x 321
+expectdelta a_p4 a_p4x 321
+expectdelta a_h1 a_h1x 0
+expectnum a_h0x.lv 11
+expectnum a_p4x.lv 7
+on b
+expectnum b_p3x.lv 9
+expectnum b_p4x.lv 7
+linkinfo

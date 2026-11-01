@@ -438,6 +438,27 @@ interface CompanionSettings {
      * (a [com.pokedaisy.app.companion.data.GameKind] name). */
     fun guideNoticeAccepted(game: String): Boolean
     fun acceptGuideNotice(game: String)
+
+    /** CO-OP shows only while its feature flag is on (read once by the activity, never per recomposition). */
+    val coopEnabled: Boolean get() = false
+    /** SETTINGS re-reads the link once a second while it shows (LINK's retry countdown); previews turn it off so they can go idle. */
+    val coopLiveRefresh: Boolean get() = true
+    /** CO-OP (see [com.pokedaisy.app.companion.coop.CoopSession]): the link's state, the pairings, the relay and its RELAY ONLY switch. */
+    val coopState: com.pokedaisy.app.companion.coop.CoopState get() = com.pokedaisy.app.companion.coop.CoopState.Off()
+    val coopPairs: List<com.pokedaisy.app.companion.coop.CoopPair> get() = emptyList()
+    val coopRelayValue: String get() = ""
+    val coopRelayOnly: Boolean get() = false
+    fun setCoopRelayOnly(on: Boolean) {}
+    /** NEARBY RANGE in steps (2 / 4 / 8 / 16 / 32): how close a partner's battle must be to join; the activity reads Prefs. */
+    var coopNearbyRange: Int
+        get() = 8
+        set(_) {}
+    fun coopUnpair(save: com.pokedaisy.app.companion.coop.CoopSaveId) {}
+    /** PLAY TOGETHER ONLY: the running game's lock state and actions (null = the row is hidden). */
+    val coopLock: com.pokedaisy.app.companion.coop.lock.CoopLockUi? get() = null
+    val coopLockActions: com.pokedaisy.app.companion.coop.lock.CoopLockActions? get() = null
+    /** Show the partner's PLAY TOGETHER ONLY proposal on the companion itself (two screens: the game screen can't be touched). */
+    val coopProposalHere: Boolean get() = false
 }
 
 /** Every tab the player can show or hide, in tab-bar order. BATTLE (while a

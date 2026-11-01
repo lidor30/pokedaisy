@@ -1,0 +1,61 @@
+# Plan 6 Task 7: a left battle never continues the trainer's script. A script stands in for the host's trainer script: `lockall;
+# waitstate` (what trainerbattle does: the context stops and waits for the battle's end callback), then, as the post-battle part,
+# `setflag 0x950; releaseall; end` (a badge, a gift, a flag nobody earned). It is run at 0x0203FA00 on a core, a joined battle is
+# begun from that stopped state, savedCallback is set as Task 2 sets it for a trainer script (CB2_EndTrainerBattle 0x080B1919), and
+# the player leaves. Core a: the leave ends in CB2_EndWildBattle: the field, the controls released (ArePlayerFieldControlsLocked 0),
+# the flag unset (gSaveBlock1.flags + 0x139A bit 0). Core b is the control: the same, but the callback is put back to
+# CB2_ReturnToFieldContinueScriptPlayMapMusic (0x080861CD) right after the leave - the script then runs on and sets the flag (so the
+# test script does what it claims). Script bytes: lockall 69, waitstate 27, setflag 29 50 09, releaseall 6B, end 02.
+# want: PASS linkwait 2
+pair $PARTNER_SAVE
+on b
+@boot
+wait 120
+on a
+poke8 0x0203FA00 0x69
+poke8 0x0203FA01 0x27
+poke8 0x0203FA02 0x29
+poke8 0x0203FA03 0x50
+poke8 0x0203FA04 0x09
+poke8 0x0203FA05 0x6B
+poke8 0x0203FA06 0x02
+on b
+poke8 0x0203FA00 0x69
+poke8 0x0203FA01 0x27
+poke8 0x0203FA02 0x29
+poke8 0x0203FA03 0x50
+poke8 0x0203FA04 0x09
+poke8 0x0203FA05 0x6B
+poke8 0x0203FA06 0x02
+call 0x08098EF8 0x0203FA00
+wait 30
+call 0x08098E6C
+on a
+call 0x08098EF8 0x0203FA00
+wait 30
+call 0x08098E6C
+expect8p 0x03005D8C 0x139A 0x00
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+poke32 0x030022C8 0x080B1919
+linkrun 60
+linkleave 0
+on b
+poke32 0x030022C8 0x080B1919
+linkrun 60
+linkleave 0
+poke32 0x030022C8 0x080861CD
+linkrun 400
+on a
+linkrun 100
+expect32 0x030022C4 0x08085E5D
+expect8p 0x03005D8C 0x139A 0x00
+call 0x08098E6C
+hold LEFT 20
+wait 30
+on b
+expect32 0x030022C4 0x08085E5D
+expect8p 0x03005D8C 0x139A 0x01

@@ -1,0 +1,12 @@
+# The Route 101 rescue is the game's first battle (BATTLE_TYPE_FIRST_BATTLE, set by CB2_StartFirstBattle after the
+# starter's transition: there Task_BattleStart never runs, so the kind is 0 by that alone). Here the flag rule is
+# checked on its own: an ordinary wild battle (savedCallback CB2_EndWildBattle, joinable: join_wild) with FIRST_BATTLE
+# (0x10) set as the rescue has it is refused.
+# want: coop: installed
+# want: join 0 0 0
+coopinstall
+poke32 0x03005D80 9
+call 0x080B5288 2 2
+waittask 0x080B05F0 120
+poke32 0x02022FEC 0x00000010
+coopjoin

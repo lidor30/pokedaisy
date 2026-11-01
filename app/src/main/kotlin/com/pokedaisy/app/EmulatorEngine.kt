@@ -365,7 +365,7 @@ class EmulatorEngine(
     fun softReset() { softResetFrames = SOFT_RESET_FRAMES }
 
     fun setRewindHeld(on: Boolean) {
-        rewindHeld = on
+        rewindHeld = on && rewindAllowed(CoopGuards.statesBlocked)
     }
 
     fun setSlowmoHeld(on: Boolean) {
@@ -514,6 +514,17 @@ class EmulatorEngine(
         }
     }
     private var followerFrames = 0
+
+    /** Co-op presence ([CoopPresence]): called once per game frame beside FOLLOWER; null = none (not retail Emerald). */
+    @Volatile var coopPresence: CoopPresence? = null
+    /** The co-op lock (PLAY TOGETHER ONLY): stepped every loop turn, also while a hold runs no frame. */
+    @Volatile var coopLock: CoopLock? = null
+
+    /**
+     * Co-op joined battles ([CoopBattles]): asked every tick (also while [CoopGuards.held], when no frame runs) for the keys of
+     * the next frame - null = no frame this tick - and told after each one. Null = no co-op battles (not retail Emerald, no link).
+     */
+    @Volatile var coopBattles: CoopFrameHook? = null
 
     /** DAY AND NIGHT, once a frame (emu thread): [tintNow] a step toward [dayNightTint] on the field, toward none off it. */
     private fun stepTint(field: Boolean) {
@@ -723,9 +734,12 @@ class EmulatorEngine(
      * with no scene (no EXPAND row: the European Yellows, Red / Blue) leaves it to [gbField]'s own RAM checks. */
     private val gbOnField get() = wideScene == WideCamera.SCENE_FIELD || wideScene == -1
 
-    fun requestSaveState(slot: Int) { pendingSave = slot.coerceIn(SaveStates.SLOT_MIN, SaveStates.SLOT_MAX) }
+    fun requestSaveState(slot: Int) { if (CoopGuards.battleActive()) return; pendingSave = slot.coerceIn(SaveStates.SLOT_MIN, SaveStates.SLOT_MAX) }
+    /** False while co-op blocks LOAD STATE (slot loads and UNDO LOAD; the launch's resume is never blocked). */
+    fun loadAllowed(): Boolean = !CoopGuards.statesBlocked
+
     fun requestLoadState(slot: Int) { pendingLoad = slot.coerceIn(SaveStates.SLOT_MIN, SaveStates.SLOT_MAX) }
-    fun requestUndoSave() { pendingUndoSave = true }
+    fun requestUndoSave() { if (!CoopGuards.battleActive()) pendingUndoSave = true }   // no state of a co-op battle is ever written
     fun requestUndoLoad() { pendingUndoLoad = true }
 
     fun cycleSlot(delta: Int) {
@@ -801,6 +815,7 @@ class EmulatorEngine(
         val n = pacedPerFrame
         if (vsyncTicks.availablePermits() < (if (n == 0) 1 else 2 * n)) vsyncTicks.release()
         if (n == 0) return 0L
+        if (CoopGuards.held) return 0L   // a hold runs no frame: nothing to wait for, no late draws to count
         // A DS frame takes 4-20 ms on the RP6 / Thor: waited for within ~60% of a refresh, every one past ~10 ms
         // missed it and the last picture showed twice (GitHub #215: 45 of 120 frames late in HeartGold). It's drawn
         // a refresh later instead, never waited for: a frame of latency, and a whole refresh to finish in.
@@ -903,6 +918,7 @@ class EmulatorEngine(
         var fpsPlayedAt = -1L
         var fpsSampleWork = 0L
         var fpsMaxSample = 0L
+        var wasHeld = false
         var fpsLate = -1L
         var slowWindows = 0
         slowFrames = false
@@ -984,9 +1000,33 @@ class EmulatorEngine(
         try {
             while (running) {
                 val frameStart = System.nanoTime()
+                if (rewindHeld && !rewindAllowed(CoopGuards.statesBlocked)) rewindHeld = false
+                if (loopAction(CoopGuards.held, !running, pendingSave >= 0) != LoopAction.RUN) {
+                    wasHeld = true
+                    // Co-op holds the game: no frame, the last picture stays; saves, suspend, sleep and stop still served.
+                    gameAudioPaused = true
+                    if (!paused) { paused = true; runCatching { track?.pause(); track?.flush() }; framesWritten = 0L }
+                    coopBattles?.beforeFrame(input.mask)   // CO-OP BATTLES: its timers and link waits tick while no frame runs
+                    coopLock?.onFrame()
+                    servicePending(runFieldJobs = false)
+                    if (sleeping) synchronized(sleepLock) {
+                        while (sleeping && running && pendingSuspend == null) sleepLock.wait(SLEEP_POLL_MS)
+                        sleeping = false
+                    } else Thread.sleep(16)
+                    next = System.nanoTime()
+                    continue
+                }
+                if (wasHeld) {
+                    // The hold's refreshes were never waited for: the first window after it counts no late draws.
+                    wasHeld = false
+                    fpsLate = -1L; slowWindows = 0; ticksSinceFrame = 0
+                    vsyncSettledAt = System.nanoTime() + VSYNC_SETTLE_NANOS
+                    vsyncTicks.drainPermits()
+                }
                 battleInput.tick()
                 if (nds) ndsTaps.tick()
-                val rewindWanted = rewindEntries
+                // No ring while a co-op battle runs: it would fill with the other game's frames.
+                val rewindWanted = if (CoopGuards.statesBlocked) 0 else rewindEntries
                 if (rewindWanted != rewindApplied) {
                     MgbaCore.pkSetRewind(rewindWanted)
                     rewindApplied = rewindWanted
@@ -1041,6 +1081,26 @@ class EmulatorEngine(
                     walkFrames++
                     if (keys and MgbaCore.Key.B != 0) runFrames++
                 }
+                // CO-OP BATTLES (hook null = nothing changes): the hook gives this frame's keys (always the player's own: a joined
+                // battle is the game's own link battle); null = the game is held (a joined battle waiting at its start, a stop in flight).
+                val coop = coopBattles
+                if (coop != null) {
+                    val coopKeys = coop.beforeFrame(keys)
+                    if (coopKeys == null) {
+                        // No frame this tick: nothing runs, no new audio.
+                        wasHeld = true
+                        gameAudioPaused = true
+                        if (!paused) { paused = true; runCatching { track?.pause(); track?.flush() }; framesWritten = 0L }
+                        servicePending(runFieldJobs = false)
+                        if (sleeping) synchronized(sleepLock) {
+                            while (sleeping && running && pendingSuspend == null) sleepLock.wait(SLEEP_POLL_MS)
+                            sleeping = false
+                        } else Thread.sleep(2)
+                        next = System.nanoTime()
+                        continue
+                    }
+                    keys = coopKeys
+                }
                 MgbaCore.pkSetKeys(keys)
                 if (nds) {
                     if (ndsScale != ndsScaleSet) {
@@ -1055,6 +1115,7 @@ class EmulatorEngine(
                 }
                 MgbaCore.pkRunFrame()
                 onFrame?.invoke()
+                coop?.afterFrame()
                 framesRun++
                 ticksSinceFrame = 0
                 // Achievements never take the game down with them (a pending JNI
@@ -1246,6 +1307,9 @@ class EmulatorEngine(
                 }
                 if (gba) stepFollower(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
                     battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE && fieldState and MgbaCore.FIELD_SURF == 0)
+                if (gba) coopLock?.onFrame()
+                if (gba) coopPresence?.onFrame(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
+                    battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
                 if (gba) stepTint(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
                     battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
                 logField(effectiveSpeed())
@@ -1711,13 +1775,15 @@ class EmulatorEngine(
         if (n > 0) Log.i("pokedaisy", "player look: $n palette(s) swapped")
     }
 
-    private fun servicePending() {
+    private fun servicePending(runFieldJobs: Boolean = true) {
         repeat(emuJobs.size) { emuJobs.poll()?.let { job -> runCatching(job).onFailure { Log.e("pokedaisy", "emu job failed", it) } } }
         if (cheatsDirty) applyCheats()
-        if (tmPatchDirty) applyTmPatch()
-        if (lookDirty) applyLook()
+        // Never during a co-op battle: both reach pkRomUnpatch / pkRomUnblock, which uninstall co-op (they stay dirty until it ends).
+        if (tmPatchDirty && !CoopGuards.battleActive()) { applyTmPatch(); coopLock?.requestReinstall() }
+        if (lookDirty && !CoopGuards.battleActive()) { applyLook(); coopLock?.requestReinstall() }
         // The jobs queued by now (one a job queues runs on a later frame); a delayed one waits its frames.
-        repeat(fieldItemJobs.size) {
+        // Not while co-op holds the game: they call game code (PC, USE, FLY) with no frames advancing; they stay queued.
+        if (runFieldJobs) repeat(fieldItemJobs.size) {
             val job = fieldItemJobs.poll() ?: return@repeat
             if (job.delayFrames > 0) {
                 job.delayFrames--
@@ -1774,7 +1840,9 @@ class EmulatorEngine(
         val load = pendingLoad
         if (load >= 0) {
             pendingLoad = -1
-            if (states.exists(load)) {
+            if (refuseLoad(CoopGuards.statesBlocked, isResume = false)) {
+                onStateResult?.invoke(Hotkeys.Action.LOAD_STATE, load, false)
+            } else if (states.exists(load)) {
                 // Snapshot the live state so the load can be undone.
                 runCatching { saveState(states.undoLoadFile) }
                 val ok = loadState(states.stateFile(load))
@@ -1802,7 +1870,8 @@ class EmulatorEngine(
         }
         if (pendingUndoLoad) {
             pendingUndoLoad = false
-            val ok = states.undoLoadFile.let { it.isFile && it.length() > 0 } &&
+            val ok = !refuseLoad(CoopGuards.statesBlocked, isResume = false) &&
+                states.undoLoadFile.let { it.isFile && it.length() > 0 } &&
                 loadState(states.undoLoadFile)
             onStateResult?.invoke(Hotkeys.Action.UNDO_LOAD, currentSlot, ok)
         }
@@ -1897,7 +1966,7 @@ class EmulatorEngine(
             }
     }
 
-    private companion object {
+    internal companion object {
         /** DAY AND NIGHT's ease: per frame, of 256 (a full night's dimming in about half a second). */
         const val TINT_STEP = 4f
 
@@ -2164,4 +2233,23 @@ private class AudioTap {
     companion object {
         const val SECONDS = 30
     }
+}
+
+internal enum class LoopAction { STOP, SAVE_STATE, HOLD, RUN }
+
+/** No game frame while co-op holds the game. */
+internal fun EmulatorEngine.Companion.shouldRunFrame(held: Boolean): Boolean = !held
+
+/** A slot load / UNDO LOAD is refused while co-op blocks states; the launch's resume never is. */
+internal fun EmulatorEngine.Companion.refuseLoad(statesBlocked: Boolean, isResume: Boolean): Boolean = statesBlocked && !isResume
+
+internal fun EmulatorEngine.Companion.rewindAllowed(statesBlocked: Boolean): Boolean = !statesBlocked
+
+/** What a loop turn does: not held = RUN; held = no frame, but a stop or a pending save is still served (all three
+ * take the held branch, which serves them through servicePending). */
+internal fun EmulatorEngine.Companion.loopAction(held: Boolean, stopRequested: Boolean, saveRequested: Boolean): LoopAction = when {
+    !shouldRunFrame(held) && stopRequested -> LoopAction.STOP
+    !shouldRunFrame(held) && saveRequested -> LoopAction.SAVE_STATE
+    !shouldRunFrame(held) -> LoopAction.HOLD
+    else -> LoopAction.RUN
 }

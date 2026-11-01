@@ -1,0 +1,50 @@
+# Plan 6 Task 7: the heap tidy-up after a leave never frees the field's memory. Core a leaves from the party screen with the app's
+# pump stopped (`linkpump 0`: no state / take poll) for 120 frames (the fade ends and the flip is in there), so the field has started loading and allocating
+# by the time the tick first sees the game. It must free nothing (no use-after-free of the field's blocks), count one leak
+# (`dropleaks 1`), and the game must be fine: CB2_Overworld, controls free, the party count the save had, a step walks.
+# Core b leaves normally (pumped every frame) as the control: no leak, the heap as before.
+# want: PASS linkwait 2
+# want: dropleaks 1
+# want: dropleaks 0
+pair $PARTNER_SAVE
+on b
+@boot
+wait 120
+memsave 0x020244E9 1 /work/late_pump_count_a.bin
+heapmark
+on a
+memsave 0x020244E9 1 /work/late_pump_count_a.bin
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+waitmem32 0x03005D68 0x08057589 3000
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+linkrun 200
+dropleaks
+expect32 0x030022C4 0x08085E5D
+heapexpect
+call 0x08098E6C
+on a
+linkleave 0
+linkpump 0
+linkrun 120
+linkpump 1
+linkrun 300
+dropleaks
+expect32 0x030022C4 0x08085E5D
+expectfile 0x020244E9 /work/late_pump_count_a.bin
+call 0x08098E6C
+hold LEFT 20
+wait 30

@@ -1,0 +1,15 @@
+# pk_coop_on_free_field: 1 on the field with the controls free, 0 while the field controls are locked (what a sign's or
+# NPC's text box does: sLockFieldControls, 0x03000F2C) or a palette fade is active (a warp's: gPaletteFade.active is
+# bit 7 of the byte at 0x02037FD4 + 7), and 1 again once both are let go. Needs no install: it only reads the game.
+# want: freefield 1
+# want: freefield 0
+# want: freefield 0
+# want: freefield 1
+coopfreefield
+poke8 0x03000F2C 1
+coopfreefield
+poke8 0x03000F2C 0
+poke8 0x02037FDB 0x80
+coopfreefield
+poke8 0x02037FDB 0
+coopfreefield

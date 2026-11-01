@@ -31,6 +31,9 @@ class Gen3SaveData(
     class PartyMon(val mon: Gen3BoxMon, val level: Int)
 
     val trainerName: String get() = Gen3Text.decode(saveBlock2, 0, 7)
+
+    /** The 8 raw name bytes at the start of SaveBlock2 (the game's charset, 0xFF-terminated when short). */
+    val trainerNameBytes: ByteArray get() = saveBlock2.copyOfRange(0, 8)
     val isFemale: Boolean get() = saveBlock2[8].toInt() != 0
     val trainerId: Int get() = u16(saveBlock2, 0x0A)
     val secretId: Int get() = u16(saveBlock2, 0x0C)

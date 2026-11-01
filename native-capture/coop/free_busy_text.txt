@@ -1,0 +1,16 @@
+# Busy is not free: a sign's text box (msgbox MSGBOX_SIGN through ScriptContext_SetupScript: lockall, the message box
+# up, waiting for a button) is `free 0 field 0`.
+# want: free 0 field 0
+poke8 0x0203F400 0x0F
+poke8 0x0203F401 0x00
+poke32 0x0203F402 0x0203F420
+poke8 0x0203F406 0x09
+poke8 0x0203F407 0x03
+poke8 0x0203F408 0x02
+poke32 0x0203F420 0xBBBBBBBB
+poke32 0x0203F424 0xBBBBBBBB
+poke32 0x0203F428 0xFFBBBBBB
+call 0x08098EF8 0x0203F400
+wait 60
+coopfree
+shot /work/free_busy_text.ppm

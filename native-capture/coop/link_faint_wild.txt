@@ -1,0 +1,394 @@
+# Plan 6 fix (run 6 logs): the REAL end-to-end flow of a joined WILD battle to its end - the host's game walks into grass (link_start_wild's start), both
+# players fight, battler 1 (a foe) is left with 1 HP so it faints first, EXP is awarded on both sides, battler 3 is still up and then faints too
+# (the battle ends). `linknoerror 1`: any block the bridge refuses as malformed (PK_COOP_LINK_ERROR, either core, give or take) is a FAIL that
+# prints the block. A device run once ended the battle at the first foe's faint with "the bridge reports the two games out of step".
+# Needs EMERALD_PARTNER_SAVE (`$PARTNER_SAVE`).
+#
+# want: PASS linkwait 2
+# want: linknoerror 1
+# want: PASS linkwait 3
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+coopinstall
+poke32 0x03005D80 9
+call 0x080B5288 2 2
+waittask 0x080B05F0 120
+joinhold
+linkstart 1
+on b
+linkstart 0 1 0 0
+linkwait 2 2500
+linknoerror 1
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+poke16 0x02024104 1
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+on a
+hold A 4
+linkrun 30
+on b
+hold A 4
+linkrun 30
+linkwait 3 3000

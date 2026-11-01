@@ -57,7 +57,7 @@ struct pk_fix {
 static struct pk_fix sFixes[PK_MAX_FIXES];
 static int sFixCount;
 
-#define PK_MAX_OPTIONS 64
+#define PK_MAX_OPTIONS 128   // co-op alone puts ~63 patches in (link hooks, rewards, wild) beside the lock's and REUSABLE TMS': 64 refused the wild kind on a device
 static struct pk_fix sOptions[PK_MAX_OPTIONS];
 static int sOptionCount;
 
@@ -307,6 +307,47 @@ void pk_cheats_unpatch(struct mCore* core) {
     sOptionCount = 0;
 }
 
+// Takes out only the game options' patches that touch [addr, addr + len) (the file's bytes back) and keeps the
+// others: co-op's patches go while REUSABLE TMS stays. Returns how many went.
+int pk_cheats_unpatch_range(struct mCore* core, uint32_t addr, uint32_t len) {
+    uint32_t lo = addr & (SIZE_CART0 - 1), hi = lo + len;
+    int removed = 0, kept = 0;
+    for (int i = sOptionCount - 1; i >= 0; i--) {
+        uint32_t o = sOptions[i].addr & (SIZE_CART0 - 1);
+        if (o < hi && lo < o + (uint32_t) sOptions[i].width) {
+            for (int b = 0; pk_cheats_is_gba(core) && b < sOptions[i].width; b++) {
+                uint8_t* rom = pk_rom_byte(core, sOptions[i].addr + b);
+                if (rom) {
+                    *rom = sOptions[i].orig[b];
+                }
+            }
+            sOptions[i].width = 0;   // dropped below
+            removed++;
+        }
+    }
+    for (int i = 0; i < sOptionCount; i++) {
+        if (sOptions[i].width) {
+            sOptions[kept++] = sOptions[i];
+        }
+    }
+    sOptionCount = kept;
+    return removed;
+}
+
+// Whether a game option's patch already in touches [addr, addr + len): pk_cheats_patch answers 1 for an address
+// another option holds without putting anything in, so a caller that takes its own patches out by range (co-op) asks
+// first.
+int pk_cheats_patch_overlaps(uint32_t addr, uint32_t len) {
+    uint32_t lo = addr & (SIZE_CART0 - 1), hi = lo + len;
+    for (int i = 0; i < sOptionCount; i++) {
+        uint32_t o = sOptions[i].addr & (SIZE_CART0 - 1);
+        if (o < hi && lo < o + (uint32_t) sOptions[i].width) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
 static uint32_t pk_crc32(const uint8_t* p, int len) {
     uint32_t c = 0xFFFFFFFFu;
     for (int i = 0; i < len; i++) {
@@ -369,6 +410,45 @@ void pk_cheats_unblock(struct mCore* core) {
         k->orig = NULL;
     }
     sBlockCount = 0;
+}
+
+// Whether a block already in overlaps [addr, addr + len).
+int pk_cheats_block_overlaps(uint32_t addr, uint32_t len) {
+    uint32_t lo = addr & (SIZE_CART0 - 1), hi = lo + len;
+    for (int i = 0; i < sBlockCount; i++) {
+        uint32_t o = sBlocks[i].addr & (SIZE_CART0 - 1);
+        if (o < hi && lo < o + (uint32_t) sBlocks[i].len) {
+            return 1;
+        }
+    }
+    return 0;
+}
+
+// Takes out only the blocks that lie inside [addr, addr + len) (the file's bytes back) and keeps the others: co-op's
+// code goes while PLAYER LOOK's stay. Returns how many went.
+int pk_cheats_unblock_range(struct mCore* core, uint32_t addr, uint32_t len) {
+    uint32_t lo = addr & (SIZE_CART0 - 1), hi = lo + len;
+    int removed = 0, kept = 0;
+    for (int i = sBlockCount - 1; i >= 0; i--) {
+        struct pk_block* k = &sBlocks[i];
+        uint32_t o = k->addr & (SIZE_CART0 - 1);
+        if (o >= lo && o + (uint32_t) k->len <= hi) {
+            uint8_t* rom = pk_cheats_is_gba(core) ? pk_rom_byte(core, k->addr) : NULL;
+            if (rom) {
+                memcpy(rom, k->orig, (size_t) k->len);
+            }
+            free(k->orig);
+            k->orig = NULL;
+            removed++;
+        }
+    }
+    for (int i = 0; i < sBlockCount; i++) {
+        if (sBlocks[i].orig) {
+            sBlocks[kept++] = sBlocks[i];
+        }
+    }
+    sBlockCount = kept;
+    return removed;
 }
 
 // Swaps 32-byte palettes already loaded: wherever one of `from` (n of them back to back)

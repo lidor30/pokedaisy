@@ -1,0 +1,23 @@
+# Task 8: pk_coop_give_mon with a full party: GiveMonToPlayer sends it to the PC (give 1), into the first free slot of the current
+# box (box 1, slot 0 on a new game's save), party count unchanged, SEEN and CAUGHT set. Party filled by copying slot 0 into slots
+# 3-5 and gPlayerPartyCount = 6. gPokemonStoragePtr 0x03005D94 (boxes from +4, 80 bytes a Pokemon). Species 1 as in
+# after_give_party.
+# want: give 1
+# want: call 0x080C0664(1 0  ): returned 0x0
+# want: call 0x080C0664(0x1 0  ): returned 0x1
+# want: call 0x080C0664(0x1 1  ): returned 0x1
+memcopy 0x020244EC 0x02024618 100
+memcopy 0x020244EC 0x0202467C 100
+memcopy 0x020244EC 0x020246E0 100
+poke8 0x020244E9 6
+memcopy 0x020245B4 0x0203F900 100
+poke16 0x0203F9F0 1
+call 0x0806ACAC 0x0203F900 11 0x0203F9F0
+memsave 0x0203F900 100 /work/give_mon.bin
+call 0x080C0664 1 0
+coopgive /work/give_mon.bin
+expect8 0x020244E9 6
+call 0x080C0664 0x1 0
+call 0x080C0664 0x1 1
+# box 1's first slot holds it: the personality (the game puts its own OT on it), checked through the storage pointer
+expectfilep 0x03005D94 4 /work/give_mon.bin 4

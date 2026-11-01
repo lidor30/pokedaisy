@@ -1,0 +1,98 @@
+# Plan 6 Task 4: a catch in a joined link battle, the HOST's ball (link_catch_partner's twin). Battler 3 is gone, battler 1 sleeps with 1 HP
+# (the wild battle is made by hand as there). The host throws a POKé BALL from its own bag (the master's own bag screens are the game's):
+# the ball leaves the host's bag only, the nickname question is answered No, the caught foe waits in the rewards' RAM (caught by 1) instead
+# of going in the temporary link party, and both games end with outcome 7. After the battle the HOST's game gives it to ITSELF
+# (`coopgive` on its core): the host's real party grows to 4 with the host's OT ID / name, the partner's game gets nothing (its party
+# count and slot 3 are as they were). Needs EMERALD_PARTNER_SAVE (`$PARTNER_SAVE`).
+#
+# want: PASS linkwait 2
+# want: PASS linkwait 3
+# want: link: caught by 1
+# want: PASS expectdelta a_ball -> a_ball2 = -1
+# want: PASS expectdelta b_ball -> b_ball2 = 0
+# want: PASS expectnum a_out = 7
+# want: PASS expectnum b_out = 7
+# want: PASS expectnum a_count2 = 4
+# want: PASS expectnum b_count2 = 3
+# want: PASS expectnum b_slot3b = 0
+# want: PASS expectmon 02024618
+# want: PASS expectotname 02024618
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+bagqty b_ball 4
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+bagqty a_ball 4
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+poke32 0x02022FEC 0x800163
+poke8 0x02024210 8
+poke16 0x020241B4 0
+poke16 0x020248C6 0
+poke32 0x02024128 7
+poke16 0x02024104 1
+on b
+waitmem32 0x03005D68 0x08057589 3000
+poke16 0x020248C6 0
+poke32 0x02022FEC 0x800163
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on a
+hold RIGHT 4
+linkrun 30
+hold A 4
+linkrun 120
+hold RIGHT 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 100
+hold A 4
+linkrun 100
+linkrun 800
+hold B 4
+linkrun 60
+hold B 4
+linkrun 60
+linkwait 3 4000
+bagqty a_ball2 4
+peeknum a_out 0x0202433A 1
+expectnum a_out 7
+linkcaught /work/caught_host.bin
+on b
+bagqty b_ball2 4
+peeknum b_out 0x0202433A 1
+expectnum b_out 7
+linkreset
+on a
+linkreset
+waitmem32 0x030022C4 0x08085E5D 4000
+on b
+waitmem32 0x030022C4 0x08085E5D 4000
+peeknum b_count2 0x020244E9 1
+expectnum b_count2 3
+monexp b_slot3b 0x02024618
+expectnum b_slot3b 0
+on a
+linkrun 200
+coopgive /work/caught_host.bin
+linkrun 5
+peeknum a_count2 0x020244E9 1
+expectnum a_count2 4
+expectmon 0x02024618 own 288 own
+expectotname 0x02024618
+expectdelta a_ball a_ball2 -1
+expectdelta b_ball b_ball2 0

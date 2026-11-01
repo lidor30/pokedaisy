@@ -1,0 +1,63 @@
+# Plan 6 Task 5 (an uneven end): the block that carries the game's ENDLINKBATTLE to the partner arrives 300 frames late (`linkdelayend 300`:
+# the partner's game is held back, as if its battle text box had run 300 frames longer) while the master has already ended and is on its
+# field. The master's result is ready and its money paid first, the partner's is NOT ready then (its game is still in the battle); then the
+# partner follows. Both reach the field, each paid once (+128), the outbox of each drained, and NO block is sent by either game after its
+# bridge said ENDED (linkafterend a 0 b 0): a reset on either core, the moment its result is ready, loses nothing.
+#
+# want: PASS linkwait 2
+# want: PASS linkresultwait after
+# want: link: result b 0
+# want: link: result a 16 01 01 02 00 4D 01 3E 01 80 00 00 00 00 00 00 00
+# want: link: result b 16 01 01 02 00 4D 01 3E 01 80 00 00 00 00 00 00 00
+# want: PASS link money 3128 (mark 3000 + 128)
+# want: link: drained 1
+# want: linkafterend a 0 b 0
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+linkmoneymark 0
+coopbegin 1 2 333 318
+on b
+linkmoneymark 0
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+linkdelayend 300
+on a
+poke8 0x0202433A 1
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkresultwait 4000 a
+on a
+linkresult a
+linkmoneyexpect 0 128
+coopexpectfree 1
+linkdrained
+on b
+linkresult b
+linkresultwait 4000 b
+linkresult b
+linkmoneyexpect 0 128
+coopexpectfree 1
+linkdrained
+linkafterend
+linkinfo

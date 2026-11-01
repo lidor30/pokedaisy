@@ -203,6 +203,45 @@ void pk_follower_info(char* out, int n);
  * without the last one's (they live here, not in the core, and the next game's engine starts from none). */
 void pk_wide_extras_reset(void);
 
+/** Co-op presence: pk_partner_self's values. FX / FY = the player's object-event coords x 16 plus the step's progress
+ * in pixels; FACING the game's DIR_* (1 S, 2 N, 3 W, 4 E); MODE 0 walk / 1 run / 2 Mach / 3 Acro / 4 surf (PresenceMode);
+ * STEP + 1 each tile stepped onto. */
+enum { PK_PARTNER_SELF_VALID, PK_PARTNER_SELF_GROUP, PK_PARTNER_SELF_NUM, PK_PARTNER_SELF_FX, PK_PARTNER_SELF_FY,
+       PK_PARTNER_SELF_FACING, PK_PARTNER_SELF_MODE, PK_PARTNER_SELF_STEP, PK_PARTNER_SELF_N };
+
+/** Co-op presence: where the player is this frame, through the field table [pk_field_configure] loaded. Call once a
+ * frame, between frames (the step's progress is the map's scroll since the player's tile last changed). 1 = [out]
+ * filled (VALID 0 when there's no player object); 0 = not a GBA game the field reads know. */
+int pk_partner_self(struct mCore* core, int32_t out[PK_PARTNER_SELF_N]);
+
+/** Co-op presence: the partner's art (PK_PARTNER_ART_BYTES: 42 32x32 4bpp frames in reading order, then the 16-colour
+ * palette; NULL = none), copied. See PartnerArt.kt for the frame order. */
+#define PK_PARTNER_FRAMES 42
+#define PK_PARTNER_ART_BYTES (PK_PARTNER_FRAMES * 512 + 32)
+void pk_partner_set(const uint8_t* art);
+
+/** Why the last frame drew no partner (pk_partner_info): DRAWN none, OFF not asked for, NO_ART, NO_PLAYER (the player's own
+ * sprite or position isn't known), OFFSCREEN (the box isn't inside x -31..239 / y -31..159: never put in OAM, whose x / y
+ * wrap), NO_ENTRY / NO_SLOT (no hidden OAM entry after the game's last shown one / no free palette slot), TILES_USED (a
+ * shown sprite uses OBJ tiles 976-1007), BAD_FRAME (a frame or blob index past the art). */
+enum { PK_PARTNER_DRAWN, PK_PARTNER_OFF, PK_PARTNER_NO_ART, PK_PARTNER_NO_PLAYER, PK_PARTNER_OFFSCREEN,
+       PK_PARTNER_NO_ENTRY, PK_PARTNER_NO_SLOT, PK_PARTNER_TILES_USED, PK_PARTNER_BAD_FRAME };
+
+/** Co-op presence: the partner for the frames from now on - where (fine position, object-event coords x 16 + pixels:
+ * pk_partner_self's), which of the art's frames (0..41), mirrored, the surf blob's frame under it (-1 = none, else 0..41)
+ * and its bob in pixels. Drawn as hardware sprites at each frame's line 0 (installs the scanline hook); visible 0 = none.
+ * Emu thread. */
+void pk_partner_place(struct mCore* core, int visible, int fineX, int fineY, int frame, int hflip, int blobFrame, int bob);
+
+/** The last frame's why, OAM entries (-1 = none), palette slot, where the sprite's top-left was put (unclipped, even when
+ * OFFSCREEN) and the frame, as text (mgba_dump's partnerinfo): "why W oam O blobOam B slot S at X,Y frame F". */
+void pk_partner_info(char* out, int n);
+
+/** Where the last frame's partner sprite's top-left was, unclipped (EXPAND's margins draw what the hardware can't): 1 =
+ * worked out this frame (drawn, or skipped for OFFSCREEN / NO_ENTRY / NO_SLOT / TILES_USED), 0 = no place (OFF, NO_ART,
+ * NO_PLAYER, BAD_FRAME). */
+int pk_partner_at(int* x, int* y);
+
 /** The signal (SIGSEGV...) that made pk_wide_view switch WIDE off for this game, or 0. A fault while drawing never
  * takes the app down: the frame is shown plain until the game is configured again. */
 int pk_wide_fault(void);

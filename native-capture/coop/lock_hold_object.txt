@@ -1,0 +1,23 @@
+# Active: an OBJECT event's script (id 6, DewfordTown_Gym_EventScript_Brawly, 0x081FC7C2, as the game's A-press would
+# start it) waits in the hook: the call returns at once, no context was set up (mode stays 0 = stopped, the script pointer is
+# not the gym's, controls not locked: ArePlayerFieldControlsLocked's byte 0x03000F2C), and the hold is in the mailbox.
+# want: lock: installed
+# want: lock: active 1
+# want: lock: held 6 kind 1
+# want: returned 0x81FC7C2
+lockinstall
+lockactive 1
+poke16 0x020375F2 7
+poke8 0x03005DF0 3
+call 0x08098EF8 0x081FC7C2
+expect8 0x03000E41 0
+expect32 0x03000E48 0
+expect8 0x03000F2C 0
+expect8 0x03000E38 2
+lockheld
+expect16 0x0203F402 6
+expect8 0x0203F401 1
+expect8 0x0203F40D 3
+expect16 0x0203F40E 7
+wait 60
+lockheld

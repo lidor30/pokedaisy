@@ -1,0 +1,37 @@
+# Plan 6 Task 2 (fix round 1): two trainers, the first with FIVE Pokemon (SIDNEY 261: MIGHTYENA Lv 46, SHIFTRY 48, CACTURNE 46,
+# CRAWDAUNT 48, ABSOL 49; CALVIN 318 has one POOCHYENA Lv 5). The tower multi has no TWO_OPPONENTS flag, so begin sets it around the two
+# CreateNPCTrainerParty calls only: each trainer stops at three, the first one's 4th / 5th Pokemon are not made (slots 3 / 4 hold the
+# second trainer and nothing). Also: the AI flags the joined foes think with are the trainers' own as in the solo game (SIDNEY's four
+# scripts | CALVIN's one | the DOUBLE bit = 0x8F), not the Battle Tower's three (0x87).
+#
+# want: link: begin 1
+# want: link: start 1
+# want: PASS linkwait 2
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+coopbegin 1 2 261 318
+on b
+linkstart 0 2 261 318
+linkwait 2 2500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+expect8 0x02024798 46
+expect8 0x020247FC 48
+expect8 0x02024860 46
+expect8 0x020248C4 5
+expect8 0x02024928 0
+expect8 0x0202498C 0
+linkrun 40
+expectptr 0x020244A8 20 12 0x8F
+on b
+waitmem32 0x03005D68 0x08057589 3000
+expect8 0x02024798 46
+expect8 0x02024860 46
+expect8 0x020248C4 5
+expect8 0x02024928 0

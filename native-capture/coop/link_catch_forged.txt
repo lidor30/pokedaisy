@@ -1,0 +1,57 @@
+# Plan 6 Task 4: the master holds the ball rule too. Both wild foes are up on the master, but the partner's own game is made to think foe 1
+# is down (its copy of that foe has 0 HP), as a modified partner's would: its bag lets the ball out (the ball count -1 on the partner's
+# side: it can't be given back) - and the master's engine cancels the throw (link_script_cancel) instead of catching one of two foes:
+# (foe 3 sleeps with 1 HP: the ball would catch it) nothing is caught (outcome 0, caught by 0) and the battle goes on to the next turn prompt. Needs EMERALD_PARTNER_SAVE.
+#
+# want: PASS linkwait 2
+# want: PASS expectdelta b_ball -> b_ball2 = -1
+# want: PASS expectnum a_out = 0
+# want: link: caught by 0
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+bagqty b_ball 4
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+poke32 0x02022FEC 0x800163
+poke32 0x02024128 7
+poke32 0x020241D8 7
+poke16 0x020241B4 1
+on b
+waitmem32 0x03005D68 0x08057589 3000
+poke32 0x02022FEC 0x800163
+poke16 0x0202479A 0
+hold RIGHT 4
+linkrun 30
+hold A 4
+linkrun 120
+hold RIGHT 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 100
+hold A 4
+linkrun 100
+bagqty b_ball2 4
+on a
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkrun 900
+peeknum a_out 0x0202433A 1
+expectnum a_out 0
+linkcaught /work/none2.bin
+expectdelta b_ball b_ball2 -1

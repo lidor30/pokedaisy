@@ -2199,6 +2199,10 @@ object SampleCompanion {
         private var tabs: List<String> = com.pokedaisy.app.companion.DEFAULT_COMPANION_TABS,
         private var cheatList: List<com.pokedaisy.app.cheats.Cheat> = emptyList(),
     ) : CompanionSettings {
+        override val coopEnabled = true
+        override val coopLiveRefresh = false
+        override val coopState get() = com.pokedaisy.app.companion.coop.CoopSession.link.state.value
+        override val coopRelayValue = "BUILT-IN"
         override val cheats get() = cheatList
         override val cheatsEnabled get() = cheatList.isNotEmpty()
         override val companionTabs get() = tabs

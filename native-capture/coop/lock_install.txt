@@ -1,0 +1,23 @@
+# Co-op lock (app/src/main/cpp/pk_coop_lock.c), Task 5: install CRC-checks ScriptContext_SetupScript & co. and puts in
+# the code + story-table block (0x08FFE000-0x08FFEFFF) and the head patch (the function's first 8 bytes ->
+# `ldr r3, [pc, #0]; bx r3; .word <our entry | 1>`); the ROM still reads as the file for everyone but the CPU (the Poller's
+# and RetroAchievements' view: romcheck). Its RAM (0x0203F400-0x0203F4FF) starts zeroed.
+# While it is in the raw bus differs at the patch (and under the block) only; after the uninstall every view is the file.
+# Addresses (pk_coop_lock_emerald.h): ScriptContext_SetupScript 0x08098EF8, entry 0x08FFE000, table 0x08FFE800 (its first
+# event, id 1: 0x082339EB, AquaHideout_B1F_EventScript_Electrode1).
+# want: lock: installed
+# want: romcheck raw bus: 0 byte(s) differ
+# want: romcheck overlay: 0 byte(s) differ
+# want: romcheck swapped: 0 byte(s) differ
+poke32 0x0203F400 0x12345678
+poke32 0x0203F4FC 0x9ABCDEF0
+lockinstall
+expect8 0x0203F400 0 256
+expect32 0x08098EF8 0x47184B00
+expect32 0x08098EFC 0x08FFE001
+expect32 0x08FFE800 0x082339EB
+romcheck $EMERALD_ROM
+lockuninstall
+expect32 0x08098EF8 0x1C05B530
+romcheck $EMERALD_ROM
+wait 60

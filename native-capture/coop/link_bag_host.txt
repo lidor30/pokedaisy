@@ -1,0 +1,72 @@
+# Plan 6 Task 4: the BAG in a joined link battle, the HOST's turn (link_bag's twin): the host uses a POTION from its own bag on its TORCHIC
+# through the game's own bag and party screens (the master's own controller: nothing of ours but the lifted refusal): the item leaves
+# the host's bag (3 -> 2), the partner's bag is untouched (3 -> 3), and the master's battle data and party copy of TORCHIC heal by
+# 20 (100 -> 120). Both foes sleep, so the turn only has the partner's attack. Needs EMERALD_PARTNER_SAVE.
+#
+# want: PASS linkwait 2
+# want: PASS expectdelta a_potion -> a_potion2 = -1
+# want: PASS expectdelta b_potion -> b_potion2 = 0
+# want: PASS expectnum a_hp = 120
+# want: PASS expectnum a_copy = 120
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+bagqty b_potion 13
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+bagqty a_potion 13
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+poke32 0x02024128 7
+poke32 0x020241D8 7
+poke16 0x020240AC 100
+poke16 0x02024542 100
+hold RIGHT 4
+linkrun 30
+hold A 4
+linkrun 120
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 60
+hold A 4
+linkrun 60
+hold A 4
+linkrun 60
+hold A 4
+linkrun 60
+hold A 4
+linkrun 200
+hold A 4
+linkrun 100
+hold A 4
+linkrun 100
+hold A 4
+linkrun 200
+bagqty a_potion2 13
+on b
+waitmem32 0x03005D68 0x08057589 3000
+bagqty b_potion2 13
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkrun 600
+on a
+peeknum a_hp 0x020240AC 2
+peeknum a_copy 0x02024542 2
+expectdelta a_potion a_potion2 -1
+expectdelta b_potion b_potion2 0
+expectnum a_hp 120
+expectnum a_copy 120

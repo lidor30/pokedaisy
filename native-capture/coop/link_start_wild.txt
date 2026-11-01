@@ -1,0 +1,51 @@
+# Plan 6 Task 8b: a joined WILD battle starts as a link battle from the held battle start, as the two-trainer one does. The host (core A, the
+# co-op test save on Route 101) walks into grass (StandardWildEncounter) and is held at Task_BattleStart (joinhold = 1: pk_coop_link_host_hold
+# takes an ordinary wild battle now too); on the partner's yes `linkstart 1` stops the task and starts the link battle (pk_coop_link_host_go,
+# kind WILD: the host's game rolls its own two wild Pokemon, the held encounter is let go), the partner (core B) starts from its free field
+# (`linkstart 0 1 0 0`, pk_coop_link_partner_go).
+#
+# What it checks: both bridges reach the battle (`linkwait 2`); gBattleTypeFlags is the wild link multi's (no TRAINER bit: 0x800167 on the host,
+# 0x800163 on the partner (BATTLE_TYPE_TOWER_LINK_MULTI, 1 << 23, is on: the engine needs it to pick each foe's half of gEnemyParty)); the foes are Route 101's own wild Pokemon, the same on both cores; the intro text on both cores is "Wild ..."; the host's
+# gMain.savedCallback is the wild battle's own CB2_EndWildBattle (0x080B1921-ish: read back, not asserted) and no trainer ids are left behind.
+#
+# want: coop: installed
+# want: link: hold 1
+# want: link: start 1
+# want: PASS linkwait 2
+# want: expectsame wild0 wild0b: PASS
+# want: expectsame wild3 wild3b: PASS
+pair $PARTNER_SAVE
+on b
+@boot
+on a
+coopinstall
+poke32 0x03005D80 9
+call 0x080B5288 2 2
+waittask 0x080B05F0 120
+joinhold
+linkstart 1
+on b
+linkstart 0 1 0 0
+linkwait 2 2500
+on a
+expect32 0x02022FEC 0x00800167
+expectmonin 0x02024744 286 288 290
+expectmonin 0x02024870 286 288 290
+expect32 0x03007420 0x0895F6E0
+on b
+expect32 0x02022FEC 0x00800163
+expect32 0x03007420 0x0895F6E0
+on a
+waitmem32 0x02022E2C 0xD8E0DDD1 3000
+on b
+waitmem32 0x02022E2C 0xD8E0DDD1 600
+on a
+waitmem32 0x03005D60 0x08057589 3000
+rangehash wild0 0x02024744 100
+rangehash wild3 0x02024870 100
+on b
+waitmem32 0x03005D68 0x08057589 3000
+rangehash wild0b 0x02024744 100
+rangehash wild3b 0x02024870 100
+expectsame wild0 wild0b
+expectsame wild3 wild3b

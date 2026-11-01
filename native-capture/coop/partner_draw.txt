@@ -1,0 +1,19 @@
+# The partner drawn as a hardware sprite (pk_wide.c partnerBegin / partnerEnd): Brendan from the user's own ROM
+# (/repo/app/build/partner/brendan.bin, 21536 bytes: Task 3's PartnerArt), put one tile right of the player
+# (partnernear DX DY FRAME FLIP BLOB: each frame the local fine position + DX, DY tiles x 16). The same two frames
+# run from one savestate with and without him: framediff prints the box of pixels that differ, which sits one tile
+# right of the player's own sprite (the camera centres the player on Route 101: his box is x 112..128, y 56..88).
+# want: partnerinfo: why 0 oam 127 blobOam -1 slot 15
+# want: framediff box 129,66-142,86
+wideon 0
+partnerset /repo/app/build/partner/brendan.bin
+savestate /work/a.ss
+partnernear 1 0 0 0 -1
+wait 2
+partnerinfo
+shot /work/with.ppm
+loadstate /work/a.ss
+partnerpos 0 0 0 0 0 -1 0
+wait 2
+shot /work/without.ppm
+framediff /work/with.ppm /work/without.ppm

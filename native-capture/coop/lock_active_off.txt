@@ -1,0 +1,15 @@
+# Switching the lock off drops a hold and the allowed id; the story script then starts as the game wrote it. (Event: id 6, 0x081FC7C2.)
+# want: lock: held 6 kind 1
+# want: lock: active 0
+# want: lock: held 0 kind 0
+lockinstall
+lockactive 1
+call 0x08098EF8 0x081FC7C2
+lockheld
+poke16 0x0203F404 6
+lockactive 0
+lockheld
+expect16 0x0203F404 0
+call 0x08098EF8 0x081FC7C2
+expect8 0x03000E41 1
+lockheld

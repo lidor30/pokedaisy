@@ -1,0 +1,23 @@
+# One trainer's battle with two or more Pokemon (trainerbattle TRAINER_ALLEN: ZIGZAGOON and TAILLOW, as arm_trainer.txt) is
+# joinable as kind 3: `join 3 333 0` (the second id is always 0). The same battle with another saved callback (gMain.savedCallback
+# 0x030022C8, here the wild battle's end: not a trainerbattle script's) is not, nor one whose battle type has another bit set
+# (bit 10): join 0. TRAINER | DOUBLE (a trainer whose record is a double battle) is joinable too.
+# want: coop: installed
+# want: join 3 333 0
+# want: join 3 333 0
+# want: join 0 0 0
+# want: join 0 0 0
+poke32 0x0203F400 0x014D035C
+poke32 0x0203F404 0x7DD40000
+poke32 0x0203F408 0x00020831
+coopinstall
+call 0x08098EF8 0x0203F400
+waittask 0x080B05F0 300
+coopjoin
+poke32 0x02022FEC 0x00000009
+coopjoin
+poke32 0x02022FEC 0x00000408
+coopjoin
+poke32 0x02022FEC 0x00000008
+poke32 0x030022C8 0x080B0AF9
+coopjoin

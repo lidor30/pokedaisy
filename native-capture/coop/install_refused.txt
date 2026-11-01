@@ -1,0 +1,21 @@
+# pk_coop_install refuses, changing nothing, when the code it checks isn't retail Emerald's (here a ROM patch on
+# Task_BattleStart's first instructions, as a cheat or another game option would leave it), and says yes again once the
+# patch is gone. A game option's patch is never touched by install or uninstall.
+# want: coop: refused Task_BattleStart
+# want: coop: installed
+# want: coop: uninstalled, rom patched: no
+# want: romcheck raw bus: 0 byte(s) differ
+# want: romcheck overlay: 0 byte(s) differ
+rompatch 080B05F0 30b50006 080B05F2 0000
+coopinstall
+romunpatch
+coopinstall
+coopuninstall
+romcheck $EMERALD_ROM
+# a game option's patch away from the checked functions survives install and uninstall
+rompatch 08100000 0121a8f7 08100002 0000
+coopinstall
+coopuninstall
+expect8 0x08100002 0 2
+romunpatch
+romcheck $EMERALD_ROM

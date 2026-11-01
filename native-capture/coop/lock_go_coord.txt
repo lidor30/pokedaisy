@@ -1,0 +1,38 @@
+# `lockgo` on a held COORD event (id 97, PetalburgCity_EventScript_ShowGymToPlayer3, 0x081DC4BE: lockall; setvar VAR_0x8008, 3;
+# ... a message). After the step back the player is at (17, 25); go sets up the re-entry script at 0x0203F420 (applymovement
+# the player one step north, waitmovement, goto the story script): the context runs it at once, 40 frames later the player is back on
+# the trigger tile (17, 24) and the story script has run (VAR_0x8008 0x020375E8 = 3, the context busy with it).
+# want: lock: held 97 kind 0
+# want: lock: go 1
+# want: lock: held 0 kind 0
+lockinstall
+lockactive 1
+hold UP 1
+wait 30
+poke16 0x020375E8 0
+call 0x08098EF8 0x081DC4BE
+wait 40
+expect16 0x02037362 25
+lockheld
+lockgo 97
+expect32 0x03000E48 0x0203F420
+expect8 0x0203F420 0x4F
+expect8 0x0203F421 0xFF
+expect8 0x0203F422 0
+expect8 0x0203F423 0x30
+expect8 0x0203F424 0xF4
+expect8 0x0203F425 0x03
+expect8 0x0203F426 0x02
+expect8 0x0203F430 0x09
+expect8 0x0203F42A 0x05
+expect8 0x0203F42B 0xBE
+expect8 0x0203F42C 0xC4
+expect8 0x0203F42D 0x1D
+expect8 0x0203F42E 0x08
+expect16 0x020375E8 0
+wait 40
+expect16 0x02037362 24
+expect16 0x02037360 17
+expect16 0x020375E8 3
+expect8 0x03000F2C 1
+lockheld

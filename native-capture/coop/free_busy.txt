@@ -1,0 +1,12 @@
+# Busy is not free: START then a menu entry (a screen opens: callback2 leaves CB2_Overworld) is `free 0 field 0`, and the
+# START menu itself is free (free 1) before the pick. free_busy_text.txt does the text box.
+# want: free 1 field 0
+# want: free 0 field 0
+press START
+wait 40
+coopfree
+press DOWN
+wait 10
+hold A 3
+wait 120
+coopfree

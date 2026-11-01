@@ -81,6 +81,15 @@ The app shows every license below in full under Settings > LICENSES.
   Google Play services' play-services-basement and play-services-tasks, under
   the Android Software Development Kit License
   (https://developer.android.com/studio/terms).
+- Bouncy Castle (bcprov), Copyright (c) 2000-2024 The Legion of the Bouncy Castle
+  Inc., MIT License (third_party/licenses/BouncyCastle-MIT.txt) -
+  https://www.bouncycastle.org - X25519 for the co-op link's handshake.
+- OkHttp and Okio, Copyright (c) Square, Inc., Apache License 2.0
+  (third_party/licenses/Apache-2.0.txt) - https://square.github.io/okhttp/ - the
+  co-op link's WebSocket to the relay.
+- ZXing core, Copyright (c) ZXing authors, Apache License 2.0
+  (third_party/licenses/Apache-2.0.txt) - https://github.com/zxing/zxing - QR
+  encoding for co-op invites.
 - Some decoders and layouts follow the community decompilations of the games
   (pret's pokered / pokeyellow / pokegold / pokecrystal / pokefirered /
   pokeemerald / pokeruby / pokeplatinum / pokeheartgold, pokeemerald-expansion,

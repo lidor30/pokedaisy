@@ -1,0 +1,572 @@
+# Plan 6 Task 7: the party screen left 20 times in a row (the battle menu's heap blocks - sPartyMenuInternal, its boxes, the sprites'
+# data - are freed by the leave's tidy-up, never leaked): each round begins a joined battle on both cores, opens the party screen
+# from the action menu, and both leave; the heap's free bytes after every round equal the ones before the first battle, both
+# cores are back on the field and the next begin needs nothing done by hand (the gate is the field, not gBattleTypeFlags).
+# want: PASS heap free
+pair $PARTNER_SAVE
+on b
+@boot
+wait 120
+heapmark
+on a
+heapmark
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 90
+linkleave 0
+on a
+linkleave 0
+linkrun 200
+expect32 0x030022C4 0x08085E5D
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+heapexpect

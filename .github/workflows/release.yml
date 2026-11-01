@@ -143,9 +143,14 @@ jobs:
           # ScreenScraper's developer credentials (ScreenScraperClient), read by app/build.gradle.kts.
           SCREENSCRAPER_DEV_ID: ${{ secrets.SCREENSCRAPER_DEV_ID }}
           SCREENSCRAPER_DEV_PASSWORD: ${{ secrets.SCREENSCRAPER_DEV_PASSWORD }}
+          # The co-op relay (BuildConfig.COOP_RELAY_URL), read by app/build.gradle.kts.
+          COOP_RELAY_URL: ${{ secrets.COOP_RELAY_URL }}
         run: |
           if [ -z "${SCREENSCRAPER_DEV_ID}" ]; then
             echo "::warning::SCREENSCRAPER_DEV_ID isn't set: ScreenScraper may refuse this release's calls"
+          fi
+          if [ -z "${COOP_RELAY_URL}" ]; then
+            echo "::notice::COOP_RELAY_URL isn't set: this release's co-op works on the same Wi-Fi and BY IP only"
           fi
           ./gradlew :app:assembleRelease --stacktrace
 

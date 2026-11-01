@@ -1,0 +1,61 @@
+# Plan 6 Task 3: the partner's RUN in a joined wild link battle (battler 2, its opposite foe is battler 3: speeds 0x0202413A /
+# 0x02024192 on the master's core A). The host picks FIGHT first (the engine asks battler 0, then 2).
+# 1. The foe in front of the host has Shadow Tag (ability id 23 at gBattleMons[1] + 0x20 = 0x020240FC): the partner's RUN is refused at
+#    the prompt, IsRunningFromBattleImpossible no longer says SUCCESS for any link battle: the partner's
+#    screen says "Wild WURMPLE prevents escape with SHADOW TAG!" (gDisplayedStringBattle on core B starts "Wild" again, 0xD8E0DDD1;
+#    the shot was read), gBattleOutcome stays 0 on both cores and the partner's core is at its action prompt again
+#    (0x03005D68 = 0x08057589) with nothing consumed.
+# 2. Shadow Tag gone, the partner far faster than its opposite foe (999 vs 1): RUN gets away, gBattleOutcome is B_OUTCOME_RAN (4)
+#    on both cores.
+# Needs EMERALD_PARTNER_SAVE (`$PARTNER_SAVE`).
+#
+# want: PASS linkwait 2
+pair $PARTNER_SAVE
+on b
+@boot
+on a
+coopbegin 1 1 0 0
+on b
+coopbegin 0 1 0 0
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+poke8 0x020240FC 23
+poke16 0x0202413A 999
+poke16 0x02024192 1
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold DOWN 4
+linkrun 40
+hold RIGHT 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+waitmem32 0x02022E2C 0xD8E0DDD1 3000
+shot /work/link_wild_run_partner_shadow.ppm
+waitmem32 0x03005D68 0x08057589 3000
+expect8 0x0202433A 0
+on a
+expect8 0x0202433A 0
+on a
+poke8 0x020240FC 0
+on b
+hold DOWN 4
+linkrun 40
+hold RIGHT 4
+linkrun 40
+hold A 4
+linkrun 40
+on a
+waitmem8 0x0202433A 4 3000
+on b
+waitmem8 0x0202433A 4 3000

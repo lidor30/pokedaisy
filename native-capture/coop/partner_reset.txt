@@ -1,0 +1,15 @@
+# A new game (wideon again: pk_field_configure) drops the last one's partner request even when nobody asked for none: a
+# stopped engine's old presence can't (pkPartnerPlace needs a core), and a new presence's first frame only places null
+# once its link is attached. Requested (visible but off the screen: why 4), then reconfigured without re-placing: OFF (why 1).
+# want: partnerinfo shown: why 4 oam -1
+# want: partnerinfo reset: why 1 oam -1
+wideon 0
+partnerset /repo/app/build/partner/brendan.bin
+partnernear 1 0 0 0 -1
+wait 2
+partnerpos 1 0 0 0 0 -1 0
+wait 2
+partnerinfo shown
+wideon 0
+wait 2
+partnerinfo reset

@@ -1,0 +1,100 @@
+# Plan 6 Task 5 (evolutions): the partner's lead (MUDKIP, species 283, Lv 15 here) goes up to Lv 16 in the battle (its level is poked to 16
+# in the battle party on the partner's core, slot 3: the game's link end has no TryEvolvePokemon of its own), so once the battle has ended
+# and the partner is on its own field the app starts the game's evolution scene for it (pk_coop_evolve; the result's leveled bits = original
+# slot 0): the scene runs on the partner's core, A presses take it through, and its party slot 0 ends as MARSHTOMP (284) (its level is then
+# worked out from its EXP again, 5: the poke gave none). The host has no level-up: no scene there.
+#
+# want: PASS linkwait 2
+# want: PASS linkresultwait
+# want: link: result b 16 01 01 02 01 4D 01 3E 01 80 00 00 00 00 00 00 00
+# want: link: result a 16 01 01 02 00 4D 01 3E 01 80 00 00 00 00 00 00 00
+# want: PASS 020244EC species 284
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+poke8 0x02024540 15
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+poke8 0x0202466C 16
+on a
+poke8 0x0202433A 1
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkrun 700
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 30
+linkresultwait 3000
+linkresult b
+expectmonin 0x020244EC 284
+on a
+linkresult a
+expectmonin 0x020244EC 280
+coopexpectfree 1

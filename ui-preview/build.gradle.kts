@@ -9,8 +9,8 @@ plugins {
 
 val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
 val appIncludes = listOf(
-    "companion/ui/**", "SettingsActivity.kt", "LibraryActivity.kt", "SavesLocation.kt",
-    "CoverArtSync.kt", "CoverSync.kt", "DocsApi.kt", "DocsSearch.kt", "RomFolder.kt", "StorageAccess.kt", "SetupScreen.kt", "AppUpdater.kt", "AppUpdate.kt", "GameSaves.kt", "SaveBackups.kt", "GameInfo.kt", "LibraryOrder.kt", "RomSupportRequest.kt", "RomIntake.kt", "BestEffortShare.kt", "SaveStates.kt", "RomIdentity.kt", "RomArchive.kt", "CompanionSupport.kt", "CoverPicker.kt", "SteamGridDbGames.kt", "SteamGridDbClient.kt", "GameTitles.kt", "SaveEditorActivity.kt", "SaveFileEdits.kt", "FeatureFlags.kt",
+    "companion/ui/**", "SettingsActivity.kt", "CoopSettingsPages.kt", "LibraryActivity.kt", "SavesLocation.kt",
+    "CoverArtSync.kt", "CoverSync.kt", "DocsApi.kt", "DocsSearch.kt", "RomFolder.kt", "StorageAccess.kt", "SetupScreen.kt", "AppUpdater.kt", "AppUpdate.kt", "GameSaves.kt", "SaveBackups.kt", "GameInfo.kt", "LibraryOrder.kt", "RomSupportRequest.kt", "RomIntake.kt", "BestEffortShare.kt", "SaveStates.kt", "RomIdentity.kt", "RomArchive.kt", "CompanionSupport.kt", "CoverPicker.kt", "SteamGridDbGames.kt", "SteamGridDbClient.kt", "GameTitles.kt", "SaveEditorActivity.kt", "SaveFileEdits.kt",
     "BpsPatch.kt", "RomPatcher.kt", "RomPatchFlow.kt", "RomCrcs.kt",
     "ScreenScraperClient.kt", "ScreenScraperUi.kt", "GameMedia.kt", "LauncherScreen.kt",
     "achievements/**", "overlay/Overlays.kt", "overlay/OverlayLabels.kt",

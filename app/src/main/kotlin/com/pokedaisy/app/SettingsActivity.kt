@@ -4,6 +4,9 @@ import com.pokedaisy.app.companion.ui.theme.DarkMode
 import com.pokedaisy.app.companion.i18n.L10n
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
+import com.pokedaisy.app.companion.coop.CoopInvite
+import com.pokedaisy.app.companion.coop.CoopRelay
+import com.pokedaisy.app.companion.coop.CoopSession
 import android.content.ClipData
 import android.content.ClipboardManager
 import android.content.Context
@@ -126,7 +129,7 @@ import com.pokedaisy.app.companion.ui.drawPixelRoundRect
  */
 class SettingsActivity : ComponentActivity() {
 
-    private enum class Screen { HOME, SPEED, DISPLAY, HOTKEYS, CONTROLS, SHADERS, FIELD_HUD, QUICK_MENU, TOUCH, OVERLAYS, FOLDERS, ROMS_FOLDERS, SAVES_FOLDER, SAVE_SEARCH, STATES_FOLDER, BACKUPS, COVER_ART, SCREENSCRAPER, HIDDEN, ACHIEVEMENTS, CHEATS, CHEAT_ADD, LICENSES, HELP }
+    private enum class Screen { HOME, SPEED, DISPLAY, HOTKEYS, CONTROLS, SHADERS, FIELD_HUD, QUICK_MENU, TOUCH, OVERLAYS, FOLDERS, ROMS_FOLDERS, SAVES_FOLDER, SAVE_SEARCH, STATES_FOLDER, BACKUPS, COVER_ART, SCREENSCRAPER, HIDDEN, ACHIEVEMENTS, CHEATS, CHEAT_ADD, LICENSES, HELP, COOP_PAIR, COOP_JOIN, COOP_PARTNERS, COOP_RELAY }
 
     private lateinit var prefs: Prefs
     private var screen by mutableStateOf(Screen.HOME)
@@ -230,6 +233,10 @@ class SettingsActivity : ComponentActivity() {
             SCREEN_HELP -> { helpOnly = true; screen = Screen.HELP }
             SCREEN_ROMS_FOLDERS -> { romsFoldersOnly = true; screen = Screen.ROMS_FOLDERS }
         }
+        // An invite link (CoopLinkActivity is exported: its extra is parsed again here, and ignored with CO-OP off).
+        if (FeatureFlags.coop(this)) {
+            intent?.getStringExtra(CoopLinkActivity.EXTRA_COOP_TICKET)?.let(CoopInvite::parse)?.let(::openCoopPair)
+        }
         setContent {
             // Settings' text a step smaller everywhere (the user's call: the Thor's top screen read it large), not only on
             // small windows (CompactTextOnSmallWindows): a font pixel down, so it stays crisp.
@@ -251,6 +258,11 @@ class SettingsActivity : ComponentActivity() {
     override fun onPause() {
         super.onPause()
         capture.cancel()
+    }
+
+    override fun onDestroy() {
+        coop.leave()
+        super.onDestroy()
     }
 
     // Analog L2 / R2 (Retroid's triggers send no keys): captured as BUTTON_L2 / R2, the keys the game
@@ -308,6 +320,9 @@ class SettingsActivity : ComponentActivity() {
                         Screen.CHEAT_ADD -> tk("ADD CODE")
                         Screen.LICENSES -> tk("LICENSES")
                         Screen.HELP -> tk("HELP")
+                        Screen.COOP_PAIR, Screen.COOP_JOIN -> tk("PAIR")
+                        Screen.COOP_PARTNERS -> tk("PARTNERS")
+                        Screen.COOP_RELAY -> tk("RELAY")
                     },
                     m = m,
                     onBack = {
@@ -341,6 +356,9 @@ class SettingsActivity : ComponentActivity() {
                     Screen.CHEAT_ADD -> CheatAddScreen(m, small)
                     Screen.LICENSES -> LicensesScreen(m, small)
                     Screen.HELP -> com.pokedaisy.app.companion.ui.DocsReader(docsUi, m, docsSource, onOpenUrl = ::openUrl)
+                    Screen.COOP_PAIR, Screen.COOP_JOIN -> coop.PairPage(m, small) { screen = Screen.HOME }
+                    Screen.COOP_PARTNERS -> coop.PartnersPage(m, revision)
+                    Screen.COOP_RELAY -> coop.RelayPage(m, small)
                 }
             }
 
@@ -452,6 +470,8 @@ class SettingsActivity : ComponentActivity() {
                 )
             }
 
+            coop.UnpairConfirm(m)
+
             cheatNotice?.let { (title, message) ->
                 OptionConfirm(title, message, tk("OK"), m, onConfirm = { cheatNotice = null }, onDismiss = { cheatNotice = null }, cancelLabel = null)
             }
@@ -524,6 +544,9 @@ class SettingsActivity : ComponentActivity() {
             screen == Screen.CHEAT_ADD -> screen = Screen.CHEATS
             screen == Screen.HELP && docsUi.back() -> {}
             screen == Screen.HELP && helpOnly -> finish()
+            // A save picked on the invite page: BACK to the save list (a link's page, from outside: the hub).
+            screen == Screen.COOP_PAIR && coop.picking -> coop.leave()
+            screen == Screen.COOP_PAIR || screen == Screen.COOP_JOIN -> { coop.leave(); screen = Screen.HOME }
             screen == Screen.HOME || (screen == Screen.CHEATS && cheatsOnly) || (screen == Screen.ROMS_FOLDERS && romsFoldersOnly) -> finish()
             // FOLDERS' pages go back to it.
             screen in FOLDER_PAGES -> screen = Screen.FOLDERS
@@ -625,6 +648,7 @@ class SettingsActivity : ComponentActivity() {
     @OptIn(androidx.compose.ui.ExperimentalComposeUiApi::class) // Key.ButtonB / the keyboard controller, on older Compose
     private fun HomeScreen(m: GbaTextMetrics) {
         @Suppress("UNUSED_EXPRESSION") revision
+        LaunchedEffect(revision) { if (FeatureFlags.coop(this@SettingsActivity)) coop.loadPairs() }
         val rateLabels = RATES.map(::rateLabel)
         // The themes on offer today: the limited-time ones only in their dates.
         val themes = com.pokedaisy.app.companion.ui.theme.availableThemes()
@@ -795,6 +819,7 @@ class SettingsActivity : ComponentActivity() {
                 "RetroAchievements", prefs.raUsername?.uppercase() ?: tk("OFF"), labelBadge = tk("BETA"),
                 labelIcon = { GoldTrophy() }, opensPage = true,
             ) { screen = Screen.ACHIEVEMENTS },
+            *coopRows().toTypedArray(),
             groupTitle(tk("CONTROLS")),
             SettingRow(tk("GAME BUTTONS"), null, subtitle = "Key bindings: which button presses A, B, START...", opensPage = true) { screen = Screen.CONTROLS },
             SettingRow(tk("HOTKEYS"), onOff(prefs.hotkeysEnabled), opensPage = true, subtitle = "Button combos for states, FF and more") { screen = Screen.HOTKEYS },
@@ -1214,14 +1239,7 @@ class SettingsActivity : ComponentActivity() {
 
     /** Explanatory text in its own small window, above a page's list. */
     @Composable
-    private fun Hint(text: String, m: GbaTextMetrics, small: GbaTextMetrics) {
-        OptionListWindow(m, Modifier.fillMaxWidth().padding(bottom = m.u * 4)) {
-            GbaText(
-                text, OptionColors.label, OptionColors.labelShadow, small, maxLines = Int.MAX_VALUE,
-                modifier = Modifier.padding(horizontal = m.u * 6, vertical = m.u * 2),
-            )
-        }
-    }
+    private fun Hint(text: String, m: GbaTextMetrics, small: GbaTextMetrics) = com.pokedaisy.app.companion.ui.PageHint(text, m, small)
 
     // ---- RetroAchievements --------------------------------------------------
 
@@ -1288,6 +1306,53 @@ class SettingsActivity : ComponentActivity() {
                 }
             }
         }
+    }
+
+    // ---- co-op --------------------------------------------------------------
+
+    /** CO-OP's pages and their state (PAIR, PARTNERS, RELAY); internal for ui-preview's stand-in ([CoopSettingsPages.preview]). */
+    internal val coop by lazy { CoopSettingsPages(this, { prefs }) { revision++ } }
+
+    /** The CO-OP group, only while the co-op flag is on; the companion's SETTINGS has the same rows in the same place. */
+    private fun coopRows(): List<SettingRow> {
+        if (!FeatureFlags.coop(this)) return emptyList()
+        fun onOff(on: Boolean) = if (on) tk("ON") else tk("OFF")
+        return listOf(
+            groupTitle(tk("CO-OP")),
+            SettingRow(
+                tk("PAIR"), null, labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.COOP),
+                opensPage = true, subtitle = "Link one of your Emerald saves with a friend's",
+            ) { openCoopPair(null) },
+            SettingRow(tk("PARTNERS"), coop.pairs.size.takeIf { it > 0 }?.toString() ?: tk("NONE"), opensPage = true) { screen = Screen.COOP_PARTNERS },
+            com.pokedaisy.app.companion.ui.nearbyRangeRow(
+                prefs.coopNearbyRange,
+                { title, choices, current, onPick -> selector = Selector(title, choices, current) { onPick(it); revision++ } },
+            ) { prefs.coopNearbyRange = it },
+            SettingRow(tk("RELAY"), CoopRelay.rowValue(prefs.coopRelayUrl, BuildConfig.COOP_RELAY_URL), opensPage = true) { screen = Screen.COOP_RELAY },
+            SettingRow(tk("RELAY ONLY"), onOff(prefs.coopRelayOnly), subtitle = "Hide your IP address from your partner") {
+                prefs.coopRelayOnly = !prefs.coopRelayOnly
+                CoopSession.restart(this, prefs)
+                revision++
+            },
+            // PLAY TOGETHER ONLY: no game runs behind this screen, so it only says it needs one (the row is the game's SETTINGS').
+            *listOfNotNull(
+                com.pokedaisy.app.companion.ui.coopLockRow(
+                    com.pokedaisy.app.companion.coop.lock.CoopLockUi(refusal = com.pokedaisy.app.companion.coop.lock.LockRefusal.NOT_CONNECTED),
+                    object : com.pokedaisy.app.companion.coop.lock.CoopLockActions {
+                        override fun propose() {}
+                        override fun accept() {}
+                        override fun decline() {}
+                        override fun turnOff() {}
+                    },
+                    "",
+                ) {},
+            ).toTypedArray(),
+        )
+    }
+
+    private fun openCoopPair(ticket: String?) {
+        coop.open(ticket)
+        screen = if (ticket == null) Screen.COOP_PAIR else Screen.COOP_JOIN
     }
 
     // ---- cheats -------------------------------------------------------------
@@ -2075,6 +2140,8 @@ class SettingsActivity : ComponentActivity() {
         const val SCREEN_ROMS_FOLDERS = "ROMS_FOLDERS"
         /** Cheat files are text; anything bigger isn't one. */
         const val MAX_CHEAT_FILE = 1 shl 20
+        /** Retail Emerald is 16 MB: the only size worth hashing for co-op. */
+        const val EMERALD_ROM_BYTES = 16L * 1024 * 1024
         /** One picked overlay file at most (read into memory; a pack of a few 4K borders is ~20 MB). */
         const val MAX_OVERLAY_FILE = 64L * 1024 * 1024
 

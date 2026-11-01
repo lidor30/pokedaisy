@@ -1,0 +1,49 @@
+# Plan 6 Task 2 (fix round 1): a refused join leaves the held trainer battle exactly as it was. The host holds a single trainer's battle
+# (ALLEN 333, as link_start_single); `linkforcefail 1` makes pk_coop_link_begin refuse AFTER it has written everything (the trainer ids,
+# gMain.savedCallback, gEnemyParty, the battle flags, the link players): the host's flags, trainer ids, both callbacks and gEnemyParty
+# are the same bytes afterwards, it is still held (linkhold 1), and the game's own solo battle then starts with the right foe (ZIGZAGOON
+# at battler 1, the action prompt up), the script's CB2_EndTrainerBattle still the saved callback and the ids still 333 / 0.
+#
+# want: link: forcefail 1
+# want: link: start 0 refused
+# want: link: hold 1
+# want: expectsame fl0 fl1: PASS
+# want: expectsame ab0 ab1: PASS
+# want: expectsame sc0 sc1: PASS
+# want: expectsame cb0 cb1: PASS
+# want: expectsame ep0 ep1: PASS
+pair $PARTNER_SAVE
+on b
+@boot
+on a
+poke32 0x0203F400 0x014D035C
+poke32 0x0203F404 0x7DD40000
+poke32 0x0203F408 0x00020831
+coopinstall
+call 0x08098EF8 0x0203F400
+waittask 0x080B05F0 300
+rangehash fl0 0x02022FEC 4
+rangehash ab0 0x02038BCA 4
+rangehash sc0 0x030022C8 4
+rangehash cb0 0x030022C4 4
+rangehash ep0 0x02024744 600
+linkforcefail 1
+linkstart 1
+linkforcefail 0
+rangehash fl1 0x02022FEC 4
+rangehash ab1 0x02038BCA 4
+rangehash sc1 0x030022C8 4
+rangehash cb1 0x030022C4 4
+rangehash ep1 0x02024744 600
+expectsame fl0 fl1
+expectsame ab0 ab1
+expectsame sc0 sc1
+expectsame cb0 cb1
+expectsame ep0 ep1
+joinhold
+keys A
+waitmem16 0x020240DC 288 3000
+keys NONE
+expect16 0x020240DC 288
+expect16 0x02038BCA 0x014D
+expect32 0x030022C8 0x080B1919

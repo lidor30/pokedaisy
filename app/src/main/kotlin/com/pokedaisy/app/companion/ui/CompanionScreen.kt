@@ -788,6 +788,26 @@ fun CompanionScreen(
                 )
             }
 
+            // PLAY TOGETHER ONLY: the partner's proposal over whatever tab is open, on the touchable screen when the game screen isn't
+            // (settings.coopProposalHere). BACK / a tap outside hides it until the next proposal; only NO declines.
+            if (settings?.coopProposalHere == true && settings.coopEnabled) {
+                var lockUi by remember { mutableStateOf(settings.coopLock) }
+                LaunchedEffect(settings) { while (true) { lockUi = settings.coopLock; kotlinx.coroutines.delay(300) } }
+                val proposed = lockUi?.partnerProposed == true
+                var dismissed by remember(proposed) { mutableStateOf(false) }
+                val actions = settings.coopLockActions
+                if (proposed && !dismissed && actions != null) {
+                    val st = settings.coopState
+                    val name = when (st) {
+                        is com.pokedaisy.app.companion.coop.CoopState.Connected -> st.partner.name
+                        is com.pokedaisy.app.companion.coop.CoopState.Connecting -> st.partner.name
+                        is com.pokedaisy.app.companion.coop.CoopState.Disconnected -> st.partner.name
+                        else -> ""
+                    }
+                    CoopLockProposal(name, actions) { dismissed = true }
+                }
+            }
+
             // EXPAND's one-time offer, in a game it knows (the Library's "NOT NOW" doesn't stop this one, once).
             if (settings?.expandOffer == true) {
                 ExpandIntro(

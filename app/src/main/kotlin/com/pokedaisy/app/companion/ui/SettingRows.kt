@@ -54,6 +54,8 @@ class SettingRow(
     /** The value as a slider beside [value] (GAME VOLUME): touch or LEFT / RIGHT move it; a tap on the row's label does
      * [onClick] as usual. */
     val slider: SettingSlider? = null,
+    /** More (or less) of the line for the label than the page's default: a long label beside a short value. */
+    val labelWeight: Float? = null,
     val onClick: () -> Unit,
 )
 
@@ -89,6 +91,14 @@ fun filterRows(rows: List<SettingRow>, query: String): List<SettingRow> {
  */
 val FLAGGED_SETTING_KEYWORDS: Map<String, String> = mapOf(
     "ScreenScraper" to "scraper scraping media artwork art box art boxart covers screenshots logos wheel fanart videos synopsis",
+    // CO-OP (FeatureFlags.coop): moves to SETTING_KEYWORDS, with its manual page, when the flag goes.
+    "LINK" to "co-op coop connection connected status partner online",
+    "PAIR" to "co-op coop multiplayer multi player two player online friend partner link invite qr code join netplay play together",
+    "PARTNERS" to "co-op coop paired friends unpair forget remove partner",
+    "NEARBY RANGE" to "co-op coop range distance join co-op battle battle together how close steps",
+    "RELAY" to "co-op coop server relay address url self hosted",
+    "RELAY ONLY" to "co-op coop privacy hide ip address relay only",
+    "PLAY TOGETHER ONLY" to "co-op coop lock together story wait partner both players new game only",
 )
 
 /**
@@ -271,6 +281,20 @@ private fun GroupTabs(
     val shown = groups.lastOrNull { (tops[it] ?: Int.MAX_VALUE) <= scroll.value + slack } ?: groups.first()
     // At the very end the last group is on screen whatever reached the top.
     val current = picked.takeIf { it >= 0 } ?: if (atEnd) groups.last() else shown
+    TabRail(groups.map { tr(rows[it].label) }, groups.indexOf(current), m) { i ->
+        val g = groups[i]
+        picked = g
+        val top = tops[g] ?: return@TabRail
+        scope.launch { scroll.animateScrollTo(top.coerceAtMost(scroll.maxValue)) }
+    }
+}
+
+/**
+ * Tabs down a window's left edge, [selected] lit like the tab bar's chosen chip, a dashed rule between them and the page:
+ * [GroupedRows]' group tabs, and pages split into panes (CO-OP's PAIR). [labels] are drawn as given (translated).
+ */
+@Composable
+fun TabRail(labels: List<String>, selected: Int, m: GbaTextMetrics, onSelect: (Int) -> Unit) {
     val small = rememberGbaTextMetrics(1f)
     androidx.compose.foundation.layout.Column(
         Modifier
@@ -289,17 +313,22 @@ private fun GroupTabs(
             .padding(start = m.u * 4, end = m.u * 6, top = m.u * 4, bottom = m.u * 4),
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(m.u * 2),
     ) {
-        for (g in groups) {
-            GroupTab(tr(rows[g].label), g == current, small) {
-                picked = g
-                val top = tops[g] ?: return@GroupTab
-                scope.launch { scroll.animateScrollTo(top.coerceAtMost(scroll.maxValue)) }
-            }
-        }
+        labels.forEachIndexed { i, label -> GroupTab(label, i == selected, small) { onSelect(i) } }
     }
 }
 
-/** One of [GroupTabs]: a tab chip's frame (white with a red label when [selected], like the tab bar's) at the list's
+/** Explanatory text in its own small window, above a page's list (top-screen Settings' pages). */
+@Composable
+fun PageHint(text: String, m: GbaTextMetrics, small: GbaTextMetrics) {
+    OptionListWindow(m, Modifier.fillMaxWidth().padding(bottom = m.u * 4)) {
+        GbaText(
+            text, OptionColors.label, OptionColors.labelShadow, small, maxLines = Int.MAX_VALUE,
+            modifier = Modifier.padding(horizontal = m.u * 6, vertical = m.u * 2),
+        )
+    }
+}
+
+/** One of [TabRail]'s tabs: a tab chip's frame (white with a red label when [selected], like the tab bar's) at the list's
  * smaller text. */
 @Composable
 private fun GroupTab(label: String, selected: Boolean, m: GbaTextMetrics, onClick: () -> Unit) {
@@ -368,7 +397,7 @@ private fun GroupedRowsList(
                     height = if (row.subtitle != null) rowHeight + subtitleLine else rowHeight + m.u * ONE_LINE_ROW_EXTRA,
                     bottomPadding = if (row.subtitle != null) 0.dp else m.u * ONE_LINE_ROW_EXTRA,
                     divider = rows.getOrNull(i + 1)?.header == false, labelBadge = row.labelBadge, labelIcon = row.labelIcon,
-                    valueBadge = row.badge, enabled = row.enabled, subtitle = row.subtitle, labelWeight = labelWeight,
+                    valueBadge = row.badge, enabled = row.enabled, subtitle = row.subtitle, labelWeight = row.labelWeight ?: labelWeight,
                     chevron = row.opensPage, slider = row.slider,
                     onFocus = onFocused?.let { f -> { f(i) } },
                 ) { onClick(i) }

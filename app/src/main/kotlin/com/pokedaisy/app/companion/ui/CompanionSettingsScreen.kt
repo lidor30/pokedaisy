@@ -21,6 +21,7 @@ import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.width
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.DisposableEffect
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.SideEffect
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -51,7 +52,7 @@ internal val STATUS_BAR_PLACES = listOf(tk("OFF"), tk("GAME"), tk("COMPANION"))
 
 internal fun statusBarLabel(on: Boolean, onCompanion: Boolean) = STATUS_BAR_PLACES[if (!on) 0 else if (onCompanion) 2 else 1]
 
-internal enum class Page(val title: String) { HOME(tk("SETTINGS")), TABS(tk("TAB BAR")), BUTTONS(tk("GAME BUTTONS")), HOTKEYS(tk("HOTKEYS")), SHADERS(tk("SHADERS")), FIELD_HUD(tk("HUD")), QUICK_MENU(tk("QUICK MENU")), TOUCH(tk("TOUCH CONTROLS")), SPEED(tk("SPEED OPTIONS")), DISPLAY(tk("DISPLAY OPTIONS")), CHEATS(tk("CHEATS")), TWEAKS(tk("TWEAKS")), HELP(tk("HELP")) }
+internal enum class Page(val title: String) { HOME(tk("SETTINGS")), TABS(tk("TAB BAR")), BUTTONS(tk("GAME BUTTONS")), HOTKEYS(tk("HOTKEYS")), SHADERS(tk("SHADERS")), FIELD_HUD(tk("HUD")), QUICK_MENU(tk("QUICK MENU")), TOUCH(tk("TOUCH CONTROLS")), SPEED(tk("SPEED OPTIONS")), DISPLAY(tk("DISPLAY OPTIONS")), CHEATS(tk("CHEATS")), TWEAKS(tk("TWEAKS")), COOP_PARTNERS(tk("PARTNERS")), HELP(tk("HELP")) }
 
 /** Where BACK from a page goes: SHADERS opens from DISPLAY OPTIONS, the rest from HOME. */
 internal val Page.parent: Page get() = if (this == Page.SHADERS) Page.DISPLAY else Page.HOME
@@ -135,6 +136,10 @@ fun CompanionSettingsScreen(
                 }
                 Spacer(Modifier.height(m.u * 4))
             }
+            // CO-OP's LINK follows the link: re-read once a second while HOME shows (the retry countdown ticks too).
+            if (settings != null && settings.coopEnabled && settings.coopLiveRefresh && page == Page.HOME) {
+                LaunchedEffect(settings) { while (true) { kotlinx.coroutines.delay(1000); tick++ } }
+            }
             // EDIT LAYOUT saves over the game, outside this page: its revision redraws TOUCH CONTROLS.
             val touchRevision = settings?.touchRevision ?: 0
             val rows = remember(settings, page, tick, availableTabs, playsAs, capturing, capturedKeys, touchRevision) {
@@ -142,7 +147,8 @@ fun CompanionSettingsScreen(
                 when (page) {
                     Page.HOME -> playsAs?.let { game ->
                         listOf(groupTitle(tk("GAME")), SettingRow(tk("PLAYS AS"), game, subtitle = "Which game this ROM is read as", opensPage = true) { onPlaysAs() })
-                    }.orEmpty() + homeRows(settings, barCount(settings, availableTabs), { tick++ }, { page = it }, { selector = it })
+                    }.orEmpty() + homeRows(settings, barCount(settings, availableTabs), { tick++ }, { page = it }, { selector = it },
+                        { c -> confirm = Confirm(c.title, c.message, c.confirmLabel, c.onConfirm).also { it.cancelLabel = c.cancelLabel; it.onCancel = c.onCancel } })
                     Page.TABS -> COMPANION_TABS.map { id ->
                         val shown = id in settings.companionTabs
                         // A tab this game doesn't have (DEX, GUIDE) keeps its setting for the games that do.
@@ -242,6 +248,11 @@ fun CompanionSettingsScreen(
                             CompanionTweaks[t] = !CompanionTweaks.stored(t)
                             settings.setTweak(t.key, CompanionTweaks.stored(t))
                             tick++
+                        }
+                    } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
+                    Page.COOP_PARTNERS -> coopPartnerRows(settings.coopPairs) { p ->
+                        confirm = Confirm(tk("UNPAIR"), tr("Unpair {0}? You'll need a new invite to play together again.", p.partner.name), tk("UNPAIR")) {
+                            settings.coopUnpair(p.ownSave); tick++
                         }
                     } + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.HELP -> emptyList()
@@ -371,6 +382,8 @@ fun CompanionSettingsScreen(
             OptionConfirm(
                 c.title, c.message, c.confirmLabel, m,
                 onConfirm = { confirm = null; c.action() }, onDismiss = { confirm = null },
+                onCancel = { confirm = null; c.onCancel() },
+                cancelLabel = c.cancelLabel ?: tk("CANCEL"),
             )
         }
     }
@@ -425,7 +438,11 @@ private class Selector(
     val onPick: (String) -> Unit,
 )
 
-private class Confirm(val title: String, val message: String, val confirmLabel: String, val action: () -> Unit)
+private class Confirm(val title: String, val message: String, val confirmLabel: String, val action: () -> Unit) {
+    /** YES / NO style confirms name their buttons; [onCancel] runs on NO only (BACK just closes it). */
+    var cancelLabel: String? = null
+    var onCancel: () -> Unit = {}
+}
 
 private fun homeRows(
     s: CompanionSettings,
@@ -433,6 +450,7 @@ private fun homeRows(
     changed: () -> Unit,
     navigate: (Page) -> Unit,
     select: (Selector) -> Unit,
+    askLock: (CoopLockAsk) -> Unit = {},
 ): List<SettingRow> {
     fun onOff(on: Boolean) = if (on) tk("ON") else tk("OFF")
     val rateLabels = FF_RATES.map(::rateLabel)
@@ -686,6 +704,7 @@ private fun homeRows(
         SettingRow(tk("CLICK SOUND"), onOff(s.clickSound)) { s.setClickSound(!s.clickSound); changed() },
         // Small on / off preferences: the icons' bounce, the map cursor's blink, tab slides, the battle jump.
         SettingRow(tk("TWEAKS"), null, opensPage = true, subtitle = "Small animations and the battle jump") { navigate(Page.TWEAKS) },
+    ) + coopRows(s, changed, navigate, pick = { title, choices, current, onPick -> select(Selector(title, choices, current) { onPick(it); changed() }) }, askLock = askLock) + listOfNotNull(
         groupTitle(tk("CONTROLS")),
         SettingRow(tk("GAME BUTTONS"), null, subtitle = "Key bindings: which button presses A, B, START...", opensPage = true) { navigate(Page.BUTTONS) },
         SettingRow(tk("HOTKEYS"), onOff(s.hotkeysEnabled), opensPage = true, subtitle = "Button combos for states, FF and more") { navigate(Page.HOTKEYS) },
@@ -711,6 +730,66 @@ private fun homeRows(
         // The manual: every tab and setting explained (served by the website, kept for offline reading).
         SettingRow(tk("HELP"), null, opensPage = true) { navigate(Page.HELP) },
     )
+}
+
+/** The CO-OP group: LINK (companion only, the state and why), PAIR (top screen), PARTNERS, RELAY (top screen) and RELAY ONLY. */
+internal fun coopRows(
+    s: CompanionSettings, changed: () -> Unit, navigate: (Page) -> Unit,
+    pick: (title: String, choices: List<String>, current: String, onPick: (String) -> Unit) -> Unit,
+    /** Shows PLAY TOGETHER ONLY's confirm (the screen draws it); the row is hidden while the settings carry no lock state. */
+    askLock: (CoopLockAsk) -> Unit = {},
+): List<SettingRow> {
+    if (!s.coopEnabled) return emptyList()
+    val state = s.coopState
+    val pairs = s.coopPairs
+    val partnerName = when (state) {
+        is com.pokedaisy.app.companion.coop.CoopState.Off -> null
+        is com.pokedaisy.app.companion.coop.CoopState.Connecting -> state.partner.name
+        is com.pokedaisy.app.companion.coop.CoopState.Connected -> state.partner.name
+        is com.pokedaisy.app.companion.coop.CoopState.Disconnected -> state.partner.name
+    }
+    val why = when (state) {
+        is com.pokedaisy.app.companion.coop.CoopState.Off -> when (state.reason) {
+            com.pokedaisy.app.companion.coop.CoopOffReason.NOT_PAIRED -> "Pair it on the top screen: CO-OP"
+            com.pokedaisy.app.companion.coop.CoopOffReason.CHEATS_ON -> "Turn cheats off to play together"
+            com.pokedaisy.app.companion.coop.CoopOffReason.NOT_EMERALD -> "Co-op needs English Pokémon Emerald."
+            else -> null
+        }
+        is com.pokedaisy.app.companion.coop.CoopState.Disconnected -> when (state.reason) {
+            com.pokedaisy.app.companion.coop.CoopDropReason.CLOSED, com.pokedaisy.app.companion.coop.CoopDropReason.NETWORK -> {
+                val secs = ((state.retryAtMs - System.currentTimeMillis() + 999) / 1000).coerceAtLeast(0)
+                tr("{0}: trying again in {1} s", state.partner.name, secs.toString())
+            }
+            else -> partnerName
+        }
+        else -> partnerName
+    }
+    return listOf(
+        groupTitle(tk("CO-OP")),
+        SettingRow(tk("LINK"), coopLinkLabel(state), subtitle = why) {},
+        SettingRow(tk("PAIR"), null, enabled = false, labelBadge = NewFeatures.badge(NewFeatures.COOP), subtitle = "On the top screen: Settings > CO-OP") {},
+        SettingRow(tk("PARTNERS"), if (pairs.isEmpty()) tk("NONE") else pairs.size.toString(), opensPage = true) { navigate(Page.COOP_PARTNERS) },
+        nearbyRangeRow(s.coopNearbyRange, pick) { s.coopNearbyRange = it },
+        SettingRow(tk("RELAY"), s.coopRelayValue, enabled = false, subtitle = "Change it in Settings on the top screen") {},
+        SettingRow(tk("RELAY ONLY"), if (s.coopRelayOnly) tk("ON") else tk("OFF")) { s.setCoopRelayOnly(!s.coopRelayOnly); changed() },
+    ) + listOfNotNull(
+        coopLockRow(s.coopLock, s.coopLockActions, partnerName ?: "", askLock),
+    )
+}
+
+/** NEARBY RANGE (both screens): how far away a partner's battle can be joined from, in steps. */
+internal val COOP_NEARBY_RANGES = listOf(2, 4, 8, 16, 32)
+
+internal fun nearbyRangeRow(
+    current: Int,
+    pick: (title: String, choices: List<String>, current: String, onPick: (String) -> Unit) -> Unit,
+    set: (Int) -> Unit,
+): SettingRow {
+    val labels = COOP_NEARBY_RANGES.map { tr("{0} STEPS", it) }
+    val now = tr("{0} STEPS", if (current in COOP_NEARBY_RANGES) current else 8)
+    return SettingRow(tk("NEARBY RANGE"), now, labelBadge = NewFeatures.badge(NewFeatures.COOP), subtitle = "How close you must be to join") {
+        pick(tk("NEARBY RANGE"), labels, now) { l -> set(COOP_NEARBY_RANGES[labels.indexOf(l)]) }
+    }
 }
 
 /** CHEATS' value on the options: OFF, or how many of this game's cheats are on. */

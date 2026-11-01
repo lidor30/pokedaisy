@@ -1711,3 +1711,4 @@ private fun ItemNoticeWindow(n: ItemNotice, m: GbaTextMetrics, modifier: Modifie
         GbaText(n.text, OptionColors.titleText, OptionColors.titleShadow, m, maxLines = 3)
     }
 }
+

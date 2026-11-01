@@ -1,0 +1,24 @@
+# Plan 6 Task 7: pk_coop_link_begin's gate is the field (callback2 CB2_Overworld, gMain.inBattle clear, no link up), not
+# gBattleTypeFlags: the game zeroes that word only when the next battle starts, so after a vanilla trainer battle it still reads
+# its flags (DOUBLE | TRAINER | TWO_OPPONENTS here, 0x100D) on a free field. Both cores have it set, begin is not refused and the
+# joined battle reaches its action prompt. (A battle in progress is still refused: its callback2 is the battle's.)
+# want: PASS linkwait 2
+# want: link: begin 0 refused not on the field
+pair $PARTNER_SAVE
+on b
+@boot
+poke32 0x02022FEC 0x100D
+on a
+poke32 0x02022FEC 0x100D
+# a core whose callback2 is not the overworld's is refused
+poke32 0x030022C4 0x08038421
+coopbegin 1 2 333 318
+poke32 0x030022C4 0x08085E5D
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000

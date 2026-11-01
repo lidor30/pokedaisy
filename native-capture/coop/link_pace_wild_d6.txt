@@ -1,0 +1,44 @@
+# Plan 6 Task 10: the pace of one typical turn (both pick FIGHT + move + target; damage, effect text) of a joined wild battle
+# with linkdelay 6 (100 ms each way, the spec's pace budget). The turn is timed from the second core's last pick: frames until core A
+# is back at its action prompt (waitchange32 = it left the prompt, waitmem32 = it is back), then core B's. The blocks the bridge
+# moved are linkinfo's sent counters before and after. link_pace_trainers_d0.txt is the same turn on the same Wi-Fi (no delay);
+# the budget is d6 at most 180 frames longer than d0.
+#
+# want: PASS linkwait 2
+# want: PASS waitmem 03005D68
+pair $PARTNER_SAVE
+linkdelay 6
+on b
+@boot
+on a
+coopbegin 1 1 0 0
+on b
+coopbegin 0 1 0 0
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+linkinfo
+on a
+poke16 0x02024104 999
+poke16 0x02024108 999
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 1
+on a
+waitmem32 0x03005D60 0x0805BDFD 3000
+waitmem32 0x03005D60 0x08057505 3000
+on b
+waitmem32 0x03005D68 0x08057505 3000
+linkinfo

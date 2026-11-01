@@ -15,6 +15,7 @@ open class ComponentActivity : Context() {
     open fun onPause() {}
     open fun onStart() {}
     open fun onStop() {}
+    open fun onDestroy() {}
     open fun dispatchKeyEvent(event: android.view.KeyEvent): Boolean = false
     open fun onKeyDown(keyCode: Int, event: android.view.KeyEvent): Boolean = false
     open fun onKeyUp(keyCode: Int, event: android.view.KeyEvent): Boolean = false
