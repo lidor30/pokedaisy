@@ -249,6 +249,7 @@ internal val trSettings: Map<String, Tr> = mapOf(
     "RUN INDOORS" to Tr(ja = "なかでも ダッシュ", fr = "COURIR DEDANS", de = "DRINNEN RENNEN", it = "CORRERE DENTRO", es = "CORRER DENTRO", br = "CORRER DENTRO", pt = "CORRER DENTRO"),
     "REUSABLE TMS" to Tr(ja = "マシン むげん", fr = "CT ILLIMITÉES", de = "TM BLEIBEN", it = "MT ILLIMITATE", es = "MT ILIMITADAS", br = "MT ILIMITADOS", pt = "MT ILIMITADOS"),
     "This game's TMs never run out" to Tr(ja = "この ゲームの わざマシンは なくならない", fr = "Les CT de ce jeu ne s'épuisent pas", de = "Die TM in diesem Spiel bleiben immer", it = "Le MT di questo gioco non finiscono", es = "Las MT de este juego no se gastan", br = "Os MT deste jogo nunca acabam", pt = "Os MT deste jogo nunca acabam"),
+    "GAMES" to Tr(ja = "ゲーム", fr = "JEUX", de = "SPIELE", it = "GIOCHI", es = "JUEGOS", br = "JOGOS", pt = "JOGOS"),
     "TOOLS" to Tr(ja = "ツール", fr = "OUTILS", de = "WERKZEUGE", it = "STRUMENTI", es = "HERRAMIENTAS", br = "FERRAMENTAS", pt = "FERRAMENTAS"),
     "Trade and battle between your games" to Tr(ja = "じぶんの ゲームどうしで こうかんや たいせん", fr = "Échanger et combattre entre vos jeux", de = "Tauschen und kämpfen zwischen deinen Spielen", it = "Scambia e lotta tra i tuoi giochi", es = "Intercambia y combate entre tus juegos", br = "Troque e batalhe entre seus jogos", pt = "Troca e combate entre os teus jogos"),
     "TRADE EVOS" to Tr(ja = "こうかん しんか", fr = "ÉVOL. PAR ÉCHANGE", de = "TAUSCH-ENTW.", it = "EVOL. DA SCAMBIO", es = "EVOL. POR INTERC.", br = "EVOL. POR TROCA", pt = "EVOL. POR TROCA"),

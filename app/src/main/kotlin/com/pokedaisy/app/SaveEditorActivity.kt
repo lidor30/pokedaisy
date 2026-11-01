@@ -44,7 +44,8 @@ import java.io.File
 /**
  * A game's PC BOXES (its library menu), and TRADE with another game's save from there: the save files read and
  * edited while the games are closed - the library is in front, so a game's engine has stopped and written its save,
- * and it reloads the file when it starts again. Reading and writing run off the UI thread.
+ * and it reloads the file when it starts again. Reading and writing run off the UI thread. Settings > TOOLS > TRADE
+ * SAVES opens it with no game ([EXTRA_TRADE]): the two games are picked first, then the trade.
  */
 class SaveEditorActivity : ComponentActivity() {
 
@@ -65,6 +66,10 @@ class SaveEditorActivity : ComponentActivity() {
     private var saving by mutableStateOf(false)
     /** TRADE's pick-list: the other games with a save it can read. */
     private var partners by mutableStateOf<List<Pair<File, String>>?>(null)
+    /** TRADE SAVES: the first game's pick-list, before any game is open. */
+    private var firstPick by mutableStateOf<List<Pair<File, String>>?>(null)
+    /** Opened for a trade (TOOLS): the partner's pick-list follows the first game's load. */
+    private var tradeFirst = false
     /** Icons per ROM path, once loaded (absent = none for that ROM). */
     private val icons = mutableStateMapOf<String, MonIconLoader>()
 
@@ -73,12 +78,34 @@ class SaveEditorActivity : ComponentActivity() {
         prefs = Prefs(this)
         com.pokedaisy.app.companion.i18n.L10n.apply(prefs.appLanguage, null)
         val path = intent?.getStringExtra(EXTRA_ROM)
-        // Off unless FeatureFlags turns it on: nothing reaches the save editor without it, not just the menu row.
-        if (path == null || !FeatureFlags.saveEditor(this)) { finish(); return }
-        rom = File(path)
-        gameName = GameTitles.label(this, prefs, rom)
+        tradeFirst = intent?.getBooleanExtra(EXTRA_TRADE, false) == true
+        if (path == null && !tradeFirst) { finish(); return }
         setContent { AppTheme { com.pokedaisy.app.companion.ui.CompactTextOnSmallWindows { Root() } } }
+        if (path != null) openGame(File(path)) else pickFirst()
+    }
+
+    private fun openGame(f: File) {
+        rom = f
+        gameName = GameTitles.label(this, prefs, rom)
         load()
+    }
+
+    /** The library's games with a save PC BOXES can read. Blocking. */
+    private fun readableGames(except: File? = null): List<Pair<File, String>> =
+        RomFolder.libraryRoms(this, prefs)
+            .filter { it.absolutePath != except?.absolutePath && SaveFileEdits.formatFor(it) != null && SavesLocation.saveFor(this, prefs, it).isFile }
+            .map { it to GameTitles.label(this, prefs, it) }
+
+    /** TRADE SAVES: which game to trade from (then [pickPartner] for the other). */
+    private fun pickFirst() {
+        page = Page.Loading
+        Thread {
+            val list = readableGames()
+            runOnUiThread {
+                if (list.size < 2) page = Page.Message(tr("TRADE SAVES needs two games with a save it can read: FireRed, LeafGreen, Emerald, Ruby or Sapphire, saved once in the game."))
+                else firstPick = list
+            }
+        }.start()
     }
 
     override fun onResume() {
@@ -93,7 +120,11 @@ class SaveEditorActivity : ComponentActivity() {
                 is Opened -> Page.Ready(PcBoxesState(Gen3SaveEditor(o.file)), o)
                 else -> Page.Message(o as String)
             }
-            runOnUiThread { page = next }
+            runOnUiThread {
+                page = next
+                // From TOOLS: straight on to the other game.
+                if (tradeFirst && next is Page.Ready) { tradeFirst = false; pickPartner() }
+            }
             loadIcons(rom)
         }.start()
     }
@@ -164,9 +195,7 @@ class SaveEditorActivity : ComponentActivity() {
     /** TRADE: the library's other games whose saves PC BOXES can read. */
     private fun pickPartner() {
         Thread {
-            val list = RomFolder.libraryRoms(this, prefs)
-                .filter { it.absolutePath != rom.absolutePath && SaveFileEdits.formatFor(it) != null && SavesLocation.saveFor(this, prefs, it).isFile }
-                .map { it to GameTitles.label(this, prefs, it) }
+            val list = readableGames(except = rom)
             runOnUiThread {
                 if (list.isEmpty()) Toast.makeText(this, tr("No other game here has a save PC BOXES can read"), Toast.LENGTH_LONG).show()
                 else partners = list
@@ -239,6 +268,13 @@ class SaveEditorActivity : ComponentActivity() {
             Page.Loading -> MessagePage(tr("Reading the save…"), m)
             is Page.Message -> MessagePage(p.text, m)
         }
+        firstPick?.let { list ->
+            OptionSelector(
+                tk("TRADE FROM"), list.indices.toList(), -1, { list[it].second }, m,
+                onPick = { firstPick = null; openGame(list[it].first) },
+                onDismiss = { finish() },
+            )
+        }
     }
 
     @Composable
@@ -247,7 +283,7 @@ class SaveEditorActivity : ComponentActivity() {
         Box(Modifier.fillMaxSize()) {
             AppBackdrop()
             Column(Modifier.fillMaxSize().padding(16.dp)) {
-                OptionTitleWindow(tk("PC BOXES"), m, trailing = gameName, onBack = { finish() })
+                OptionTitleWindow(if (::rom.isInitialized) tk("PC BOXES") else tk("TRADE SAVES"), m, trailing = gameName, onBack = { finish() })
                 Spacer(Modifier.height(m.u * 4))
                 OptionListWindow(m, Modifier.fillMaxWidth()) {
                     GbaText(text, OptionColors.label, OptionColors.labelShadow, m, maxLines = Int.MAX_VALUE, modifier = Modifier.padding(m.u * 4))
@@ -258,5 +294,7 @@ class SaveEditorActivity : ComponentActivity() {
 
     companion object {
         const val EXTRA_ROM = "rom"
+        /** Settings > TOOLS > TRADE SAVES: no [EXTRA_ROM], the two games picked first. */
+        const val EXTRA_TRADE = "trade"
     }
 }

@@ -67,8 +67,6 @@ android {
         buildConfigField("boolean", "CRASHLYTICS", crashlytics.toString())
         buildConfigField("String", "SCREENSCRAPER_DEV_ID", "\"${screenScraperSecret("screenscraper.devId", "SCREENSCRAPER_DEV_ID")}\"")
         buildConfigField("String", "SCREENSCRAPER_DEV_PASSWORD", "\"${screenScraperSecret("screenscraper.devPassword", "SCREENSCRAPER_DEV_PASSWORD")}\"")
-        // PC BOXES (the save editor): off unless the build or the device asks (FeatureFlags.saveEditor).
-        buildConfigField("boolean", "FEATURE_SAVE_EDITOR", featureFlag("saveEditor").toString())
         // ScreenScraper (game media, its setup step and the update's popup): off until the app has its developer login
         // (FeatureFlags.screenScraper).
         buildConfigField("boolean", "FEATURE_SCREENSCRAPER", featureFlag("screenScraper").toString())

@@ -100,6 +100,8 @@ The app updates itself: it offers each new version when you open it. The full ma
 - Remappable controls and hotkeys, touch controls you can lay out yourself, Bluetooth and USB controllers.
 - **Link play**: two to four GBA games at once on one link cable, to trade (trade evolutions too), battle and
   mix records between your games or two saves of one.
+- **PC boxes and save trades**: rearrange a game's PC, change its bag and moves, or trade Pokemon between two of your
+  games' save files with the games closed (FireRed, LeafGreen, Emerald, Ruby, Sapphire), by the games' own rules.
 - Optional cheats, wild encounters off, reusable TMs, trade evolutions without a trade, auto-run and running indoors.
 - A library with cover art, favorites, zipped ROMs, BPS patching (it finds the base ROM by itself), a dual-screen
   launcher, and launching from frontends like

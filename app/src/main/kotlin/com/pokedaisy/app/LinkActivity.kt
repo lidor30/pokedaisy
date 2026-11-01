@@ -390,9 +390,10 @@ class LinkActivity : ComponentActivity() {
                 Spacer(Modifier.height(m.u * 4))
                 OptionListWindow(m, Modifier.fillMaxWidth().weight(1f, fill = false)) {
                     Column {
-                        val rows = slots.indices.map { i -> Triple(tr("GAME {0}", i + 1), slotValue(i), { pick(i) }) } +
-                            (if (slots.size < LinkCore.MAX_GAMES) listOf(Triple(tk("ADD A GAME"), null as String?, { pick(slots.size) })) else emptyList())
-                        OptionRows(rows, m, Modifier.weight(1f, fill = false))
+                        com.pokedaisy.app.companion.ui.LinkSlots(
+                            slots.indices.map { i -> tr("GAME {0}", i + 1) to slotValue(i) }, canAdd = slots.size < LinkCore.MAX_GAMES, m,
+                            onPick = { pick(it) }, onAdd = { pick(slots.size) }, modifier = Modifier.weight(1f, fill = false),
+                        )
                         GbaText(
                             tr("Up to four GBA games run at once, joined as if by a link cable: trade, battle and mix records at the games' own Pokémon Centers. Tap a game to play it (L2 / R2 on a controller). The same game twice plays its second copy on a save of its own."),
                             OptionColors.label, OptionColors.labelShadow, rememberGbaTextMetrics(0.8f), maxLines = Int.MAX_VALUE,
