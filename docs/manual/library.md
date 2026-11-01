@@ -181,9 +181,9 @@ To use your own image instead, tap `SET COVER` in the menu and pick a picture fr
 
 ## The dual-screen launcher
 
-On a device with two screens, the library is made for buttons. It's the same library: the [quick views](#quick-views) at the top, then the open view's games as a list or a grid (the view button in the header switches), each row with where its file is.
+On a device with two screens, the library is made for buttons. It's the same library: `GAMES`, `TOOLS` and `SETTINGS` down the left (see [Games, tools and settings](#games-tools-and-settings)), the [quick views](#quick-views) at the top, then the open view's games as a list or a grid (the view button in the header switches), each row with where its file is.
 
-The D-pad moves a cursor through it: up and down a row, left and right along a row of the grid. Up from the top of the list reaches the quick views: left and right open the next view, and down, A or B go back to the games. Up once more reaches the header's buttons (sort, view, import and the rest); A presses one, down or B goes back. L and R jump a page. A small legend in the corner reminds you of the rest:
+The D-pad moves a cursor through it: up and down a row, left and right along a row of the grid. Up from the top of the list reaches the quick views: left and right open the next view, and down, A or B go back to the games. Up once more reaches the header's buttons (sort, view, import and the rest); A presses one, down or B goes back. Left from the header's first button, the first quick view or the grid's first column reaches `GAMES`, `TOOLS` and `SETTINGS`: up and down pick one, A opens it, right or B goes back. On `TOOLS` the D-pad moves between the tools, A opens one, and B or `BACK` returns to your games. L and R jump a page. A small legend in the corner reminds you of the rest:
 
 - **A** opens the game.
 - **B** opens the game's menu (the same entries as a long press). Whatever an entry opens, like `INFO`, B takes you back to the menu.

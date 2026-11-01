@@ -2092,6 +2092,23 @@ fun main(args: Array<String>) {
             pressKey(android.view.KeyEvent.KEYCODE_DPAD_UP)
             pressKey(android.view.KeyEvent.KEYCODE_DPAD_RIGHT)
         },
+        // The rail (as the classic library's): LEFT off the header's first button onto it, DOWN to TOOLS, A opens it in the
+        // games' place, RIGHT walks its cards; LEFT off the grid's first column onto the rail too.
+        Shot("launcher-rail", tw, th, td, launcher()) {
+            pressKey(android.view.KeyEvent.KEYCODE_DPAD_UP)
+            pressKey(android.view.KeyEvent.KEYCODE_DPAD_UP)
+            pressKey(android.view.KeyEvent.KEYCODE_DPAD_LEFT)
+            pressKey(android.view.KeyEvent.KEYCODE_DPAD_DOWN)
+        },
+        Shot("launcher-tools", tw, th, td, launcher()) {
+            pressKey(android.view.KeyEvent.KEYCODE_DPAD_UP)
+            pressKey(android.view.KeyEvent.KEYCODE_DPAD_UP)
+            pressKey(android.view.KeyEvent.KEYCODE_DPAD_LEFT)
+            pressKey(android.view.KeyEvent.KEYCODE_DPAD_DOWN)
+            pressKey(android.view.KeyEvent.KEYCODE_BUTTON_A)
+            pressKey(android.view.KeyEvent.KEYCODE_DPAD_RIGHT)
+        },
+        Shot("launcher-grid-rail", tw, th, td, launcher(grid = true)) { pressKey(android.view.KeyEvent.KEYCODE_DPAD_LEFT) },
         Shot("launcher-grid", tw, th, td, launcher(grid = true)),
         Shot("launcher-grid-down-right", tw, th, td, launcher(grid = true)) {
             pressKey(android.view.KeyEvent.KEYCODE_DPAD_DOWN)

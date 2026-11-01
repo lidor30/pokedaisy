@@ -630,6 +630,16 @@ private fun localPartyStyle(base: PartySlotStyle, fireRed: Boolean): PartySlotSt
 
 private val localStyles = java.util.concurrent.ConcurrentHashMap<String, PartySlotStyle>()
 
+/**
+ * Let's Go Pikachu / Eevee's slot: CFRU's party menu (its slot tilemaps, layout and FireRed's font and Poké Ball) over its own
+ * tiles, palette and status icons (RomArt's partylg/: navy slots, a blue one selected; the status icons still its Spanish
+ * original's).
+ */
+private val LetsGoPartyStyle: PartySlotStyle by lazy {
+    val dir = com.pokedaisy.app.companion.data.RomArt.LETS_GO_PARTY_DIR
+    UnboundPartyStyle.copy(frameDir = dir, statusAsset = "$dir/status_icons.png")
+}
+
 private val UnboundFrPartyStyle: PartySlotStyle by lazy {
     val dir = com.pokedaisy.app.companion.data.RomArt.UNBOUND_FR_PARTY_DIR
     UnboundPartyStyle.copy(frameDir = dir, fontAsset = "$dir/font_small.png", statusAsset = "$dir/status_icons.png")
@@ -660,6 +670,8 @@ fun partySlotStyleFor(game: GameKind): PartySlotStyle? = when (game) {
     GameKind.FIRERED -> when {
         // Ghost Grey's grey slots aren't FireRed's art: its palette slot.
         com.pokedaisy.app.companion.data.runningGhostGrey -> null
+        // Let's Go's party menu is CFRU's in its own blues (RomArt's partylg/).
+        com.pokedaisy.app.companion.data.runningLetsGo -> LetsGoPartyStyle
         romGameCode.isEmpty() -> FireRedPartyStyle
         else -> localPartyStyle(FireRedPartyStyle, fireRed = true)
     }

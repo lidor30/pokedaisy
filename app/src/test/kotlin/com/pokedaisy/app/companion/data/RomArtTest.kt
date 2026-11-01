@@ -90,6 +90,23 @@ class RomArtTest {
         }
     }
 
+    /** Let's Go Pikachu / Eevee's party menu: CFRU's slot tilemaps over its own tiles / palette / grid / status icons (LGO_*),
+     * the same in both versions; its slots the game's own colours (a selected one's fill 16,115,165, sampled headless). */
+    @Test fun letsGoSuppliesItsPartyMenu() {
+        for (v in listOf("Pikachu", "Eevee")) {
+            val path = System.getProperty("user.home") + "/Downloads/Game ROMs & Emulation/gba/Pokemon Let's Go $v.gba"
+            if (!File(path).isFile) continue
+            val images = RomArt.compose(RomArt.find(File(path).readBytes()))
+            val slots = listOf("normal", "selected", "fainted", "selected_fainted", "nohp_normal", "nohp_selected", "empty")
+            for (k in slots) assertTrue("$v $k", "${RomArt.LETS_GO_PARTY_DIR}/slot_$k.png" in images)
+            assertTrue(v, RomArt.LETS_GO_BACKDROP in images && "${RomArt.LETS_GO_PARTY_DIR}/status_icons.png" in images)
+            val selected = images.getValue("${RomArt.LETS_GO_PARTY_DIR}/slot_selected.png")
+            assertEquals(v, 0xFF1073A5.toInt(), selected.argb.groupBy { it }.maxBy { it.value.size }.key)
+            // CFRU's own palette isn't in it: its partycfru/ slots come from another CFRU ROM, not this one.
+            assertTrue(v, "partycfru/slot_normal.png" !in images)
+        }
+    }
+
     /** Quetzal's Kanto / Sevii maps: FireRed's art redrawn for Emerald's region_map.c (QTZ_*). */
     @Test fun quetzalSuppliesItsRegionMaps() {
         val images = composed(System.getProperty("user.home") + "/Downloads/Game ROMs & Emulation/gba/Pokemon Quetzal (Alpha 9.0) (English).gba")

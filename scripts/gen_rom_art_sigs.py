@@ -123,6 +123,9 @@ AMETHYST_ROM = GBA_DIR + "Pokemon Amethyst (v1.3.0).gba"  # v1.4.1's status icon
 # Sword and Shield Ultimate Plus kept CFRU's party tiles, backdrop tilemap and slot tilemaps byte for
 # byte; only its palette (Galar red / charcoal) is its own (its status icons are Odyssey's).
 SWORD_SHIELD_ROM = GBA_DIR + "Pokemon Sword and Shield Ultimate Plus (v1.2.1.2).gba"
+# Let's Go Pikachu / Eevee kept CFRU's party menu code and slot tilemaps (its literal pools at CFRU's offsets) with its own
+# tiles, palette, backdrop tilemap and status icons, the same bytes in both versions.
+LETS_GO_ROM = GBA_DIR + "Pokemon Let's Go Pikachu.gba"
 
 
 def unbound_fr_symbols(rom):
@@ -513,6 +516,12 @@ GAMES = {
     "AM": (AMETHYST_ROM, None, [("AM_STATUS_GFX", "StatusGfx", True)]),
     # (its status icons are Odyssey's bytes: OD_STATUS_GFX finds them)
     "SS": (SWORD_SHIELD_ROM, None, [("SS_PARTY_BG_PAL", "PartyBgPal", True)]),
+    "LGO": (LETS_GO_ROM, None, [
+        ("LGO_PARTY_BG_GFX", "PartyBgGfx", True),
+        ("LGO_PARTY_BG_PAL", "PartyBgPal", True),
+        ("LGO_PARTY_BG_MAP", "PartyBgMap", True),
+        ("LGO_STATUS_GFX", "StatusGfx", True),
+    ]),
     "LZ": (LAZARUS_ROM, None, [
         ("LZ_REGION_GFX", "RegionGfx", True),
         ("LZ_REGION_PAL", "RegionPal", False),
@@ -710,7 +719,7 @@ def fireRed_symbols(p):
 
 
 # The binary hacks' made-up symbols (no ELF).
-ROM_SYMBOLS = {"RY": recharged_yellow_symbols, "UB": unbound_symbols, "UBFR": unbound_fr_symbols, "RR": cfru_symbols, "OD": cfru_symbols, "AM": cfru_symbols, "SS": cfru_symbols, "LZ": lazarus_symbols, "SGL": seaglass_symbols, "SG": soulgold_symbols,
+ROM_SYMBOLS = {"RY": recharged_yellow_symbols, "UB": unbound_symbols, "UBFR": unbound_fr_symbols, "RR": cfru_symbols, "OD": cfru_symbols, "AM": cfru_symbols, "SS": cfru_symbols, "LGO": cfru_symbols, "LZ": lazarus_symbols, "SGL": seaglass_symbols, "SG": soulgold_symbols,
                "GZ": glazed_symbols, "IMP": imperium_symbols, "DSM": dreamstone_symbols, "WSH": wishes_symbols, "MMY": monomyth_symbols, "TR3": team_rocket_v3_symbols, "QTZ": quetzal_symbols, "HNS": hns_symbols, "RW": rowe_symbols, "MM": mariomon_symbols, "RE": recharged_emerald_symbols,
                **{"EM" + lang: emerald_eu_symbols(lang) for lang in EMERALD_EU_ROMS},
                **{"FR" + lang: fireRed_symbols(p) for lang, p in fireRed_ports().items()}}

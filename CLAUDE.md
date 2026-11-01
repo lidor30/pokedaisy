@@ -1102,7 +1102,9 @@ game left there); the render core boots 300 frames, then waits (up to 30 s) for 
 and battle sounds): `FfMusicRenderer` renders each song alone on the second core (`rg`) as the
 game starts it, calling the ROM's `m4aSongNumStart` - found by code signature (`M4aSongs`; every
 agbcc-built game and binary hack, not pokeemerald-expansion) - via `pk_call`, which runs the
-call to its return and restores the CPU (a bare PC hijack corrupted Unbound mid-frame), after
+call to its return and restores the CPU (a bare PC hijack corrupted Unbound mid-frame; a frame that ended inside the game's
+interrupt handler is refused, so the renderer retries a frame at a time, `forceSong` - every song after Let's Go's title once
+"didn't start"), after
 parking the booted game on a `b .` so its intro can't switch songs (only once the VBlank IRQ is
 fully on - Unbound froze otherwise). Until a song's clip exists STEADY is silent
 through FF (`SongRenderer.willRender`; the user's call - it used to play the song SPED-UP meanwhile); only a song
@@ -1717,7 +1719,8 @@ game; each version has a "Translation Only" build, three moves' battle data apar
 the species grew to 987 ids, so its tables carry every species with gender ratios and growth rates (`HackText.growthRates`, read
 by `expProgress`), its config repoints the icon tables, and its DEX flags left the save blocks for EWRAM (0x0203C0C8 seen /
 0x0203C133 caught, `DexFlagBlock.FIXED`) under its own dex numbers (to 855). Its party menu is a two-column grid
-(`runningLetsGo`, the switch's `grid`). Its wild Pokémon walk the grass. Retail FireRed's save is "deleted" by it: the `lets_go*`
+(`runningLetsGo`, the switch's `grid`), drawn as the game draws it: CFRU's party menu code and slot tilemaps over its own
+tiles, palette, grid and status icons (RomArt's `LGO_*` -> `partylg/`, `LetsGoPartyStyle`). Its wild Pokémon walk the grass. Retail FireRed's save is "deleted" by it: the `lets_go*`
 fixtures are a new game played headless (setup through rev 0's ScriptContext_SetupScript), loading in all four builds; its intro
 takes ~1500 frames and its title wants held presses (`boot/lets_go.txt`). The manual can't name it in full (docs.test.js bans one
 of the names): it's "Let's Go" there.
@@ -1911,6 +1914,8 @@ back), every ROM's under one budget (`FfMusicBudget`: min(1.5 GB, a quarter of c
 (prefetched) songs go first, then those played longest ago (`.played` log at the cache root, noted by the engine when a song
 starts under STEADY); the background pass only fills free room and stops for the launch when full. A ROM's WAVs from before
 are converted when it next starts (`FfMusicCache.prepare`, half duty, giving way to a song being heard) and play meanwhile.
+The player streams WAV: a FLAC clip is decoded first by Android's own decoder into the cache dir (`FlacPcm`, the last 6 kept), on
+the player's thread (until 2026-11-03 it opened FLACs as WAVs and STEADY played nothing).
 **Updater loop** (same report: the bar filled, nothing installed): with "install unknown apps" off, the settings page
 failing to open left only a toast and UPDATE downloading again; now the installer opens anyway (it asks itself), and an
 APK already downloaded for the offered release is reused (`AppUpdateFlow.check` keeps it).
@@ -2272,7 +2277,10 @@ drives both windows; the second is a `DualScreenPresentation` (never focusable, 
 `LibraryActivity.dispatchKeyEvent`**, which moves `launcher.selected` itself - no Compose focus, the D-pad works
 whichever screen holds the list. A = play, B = the game's menu (`LauncherMenuOverlay`, two columns when it doesn't fit),
 X = swap (`LauncherState.swap`: out 130 ms toward the other screen, trade, in 210 ms - needs the main window's frame
-clock), Y = Settings, the floating `ButtonLegend` bottom right of the list says so. While a library window is open
+clock), Y = Settings, the floating `ButtonLegend` bottom right of the list says so. The classic library's GAMES / TOOLS /
+SETTINGS rail (`LibraryNav`, `ToolsPage`) is in the list too, driven by these keys (`LauncherState.navCursor` / `toolCursor`):
+LEFT off the left edge onto it, TOOLS in the games' place, its header without the gear (the Thor never showed TOOLS before:
+the rail was the classic library's alone, 2026-11-03). While a library window is open
 (`libraryDialogOpen`) keys go to Compose as before; the windows (`LibraryDialogs`) always draw on the main screen.
 ui-preview: `launcher-*` shots (`-Ponly=launcher`), `LauncherHost.kt` shimmed (`CapturedSecond`).
 

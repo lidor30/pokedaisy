@@ -918,8 +918,30 @@ class LibraryActivity : ComponentActivity() {
         HeaderButton(Icons.AutoMirrored.Filled.HelpOutline, tr("Help")) {
             startActivity(Intent(this, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_SCREEN, SettingsActivity.SCREEN_HELP))
         },
-        HeaderButton(Icons.Filled.Settings, tr("Settings")) { openSettings() },
+        // SETTINGS is the rail's / bar's (and Y's), as in the classic library.
     )
+
+    /** The launcher's rail runs down the left (a wide screen) rather than along the bottom, as last laid out. */
+    private var launcherRailVertical = true
+    /** TOOLS' cards, as last laid out. */
+    private var launcherTools: List<com.pokedaisy.app.companion.ui.LibraryTool> = emptyList()
+
+    /** The launcher's rail / bar: a place picked (a tap, or A on it). */
+    private fun launcherPick(section: com.pokedaisy.app.companion.ui.LibrarySection) {
+        launcher.navCursor = -1
+        when (section) {
+            com.pokedaisy.app.companion.ui.LibrarySection.GAMES -> toolsOpen = false
+            com.pokedaisy.app.companion.ui.LibrarySection.TOOLS -> { toolsOpen = true; launcher.toolCursor = 0 }
+            com.pokedaisy.app.companion.ui.LibrarySection.SETTINGS -> openSettings()
+        }
+    }
+
+    /** Onto the rail / bar, on the open place. */
+    private fun launcherToRail() {
+        launcher.headerCursor = -1
+        launcher.viewCursor = false
+        launcher.navCursor = if (toolsOpen) 1 else 0
+    }
 
     /** The header's leftmost button (sort). */
     private val headerFirst = FocusRequester()
@@ -1830,6 +1852,74 @@ class LibraryActivity : ComponentActivity() {
             }
             return true
         }
+        val vertical = launcherRailVertical
+        // BACK on TOOLS (or the rail) goes back to the games, not out of the app; its key up is taken too.
+        if (code == KeyEvent.KEYCODE_BACK && (toolsOpen || launcher.navCursor >= 0)) {
+            if (first) {
+                launcher.navCursor = -1
+                toolsOpen = false
+                backTaken = true
+            }
+            return true
+        }
+        // On the GAMES / TOOLS / SETTINGS rail (a bar on a tall screen): along it, A opens the place, RIGHT (UP: the bar)
+        // or B back to what's open.
+        if (launcher.navCursor >= 0) {
+            val last = com.pokedaisy.app.companion.ui.LibrarySection.entries.lastIndex
+            val back = if (vertical) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_UP
+            when {
+                code == (if (vertical) KeyEvent.KEYCODE_DPAD_UP else KeyEvent.KEYCODE_DPAD_LEFT) ->
+                    if (down) launcher.navCursor = (launcher.navCursor - 1).coerceAtLeast(0)
+                code == (if (vertical) KeyEvent.KEYCODE_DPAD_DOWN else KeyEvent.KEYCODE_DPAD_RIGHT) ->
+                    if (down) launcher.navCursor = (launcher.navCursor + 1).coerceAtMost(last)
+                code == KeyEvent.KEYCODE_BUTTON_A || code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER ->
+                    if (first) launcherPick(com.pokedaisy.app.companion.ui.LibrarySection.entries[launcher.navCursor])
+                code == back || code == KeyEvent.KEYCODE_BUTTON_B -> if (first) launcher.navCursor = -1
+                code == KeyEvent.KEYCODE_BUTTON_Y -> if (first) openSettings()
+                code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT || code == KeyEvent.KEYCODE_DPAD_UP ||
+                    code == KeyEvent.KEYCODE_DPAD_DOWN -> Unit
+                else -> return code in LAUNCHER_KEYS
+            }
+            return true
+        }
+        // LEFT off the left edge (the header's first button, the first quick view, the grid's first column) onto the rail.
+        if (vertical && code == KeyEvent.KEYCODE_DPAD_LEFT && !toolsOpen && (
+                launcher.headerCursor == 0 ||
+                    (launcher.viewCursor && launcher.views.indexOf(launcher.view) <= 0) ||
+                    (launcher.headerCursor < 0 && !launcher.viewCursor && launcher.columns > 1 && launcher.selected % launcher.columns == 0)
+                )
+        ) {
+            if (first) launcherToRail()
+            return true
+        }
+        // DOWN off the games' last row onto the bar (a tall screen).
+        if (!vertical && code == KeyEvent.KEYCODE_DPAD_DOWN && !toolsOpen && launcher.headerCursor < 0 && !launcher.viewCursor &&
+            launcher.selected / launcher.columns.coerceAtLeast(1) >= launcher.games.lastIndex.coerceAtLeast(0) / launcher.columns.coerceAtLeast(1)
+        ) {
+            if (first) launcherToRail()
+            return true
+        }
+        // TOOLS in the games' place: the D-pad walks its cards (UP off the top row to the header, LEFT off the first column /
+        // DOWN off the last row to the rail / bar), A opens the tool, B back to the games.
+        if (toolsOpen && launcher.headerCursor < 0) {
+            val n = launcherTools.size
+            val cols = launcher.toolColumns.coerceAtLeast(1)
+            val c = launcher.toolCursor.coerceIn(0, (n - 1).coerceAtLeast(0))
+            when (code) {
+                KeyEvent.KEYCODE_DPAD_UP -> if (down) { if (c - cols < 0) launcher.headerCursor = 0 else launcher.toolCursor = c - cols }
+                KeyEvent.KEYCODE_DPAD_DOWN -> if (down) {
+                    if (c + cols <= n - 1) launcher.toolCursor = c + cols else if (!vertical) launcherToRail()
+                }
+                KeyEvent.KEYCODE_DPAD_LEFT -> if (down) { if (c % cols == 0) { if (vertical) launcherToRail() } else launcher.toolCursor = c - 1 }
+                KeyEvent.KEYCODE_DPAD_RIGHT -> if (down && c % cols < cols - 1 && c + 1 < n) launcher.toolCursor = c + 1
+                KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_BUTTON_START ->
+                    if (first) launcherTools.getOrNull(c)?.open?.invoke()
+                KeyEvent.KEYCODE_BUTTON_B -> if (first) toolsOpen = false
+                KeyEvent.KEYCODE_BUTTON_Y -> if (first) openSettings()
+                else -> return code in LAUNCHER_KEYS
+            }
+            return true
+        }
         // On the quick views' row: LEFT / RIGHT open the next view (moveColumn), A / B go back down to the games.
         if (launcher.viewCursor) {
             when (code) {
@@ -1848,6 +1938,11 @@ class LibraryActivity : ComponentActivity() {
                 }
                 KeyEvent.KEYCODE_BUTTON_B -> {
                     if (first) launcher.headerCursor = -1
+                    return true
+                }
+                // Over TOOLS, DOWN goes back to its cards (there are no quick views there).
+                KeyEvent.KEYCODE_DPAD_DOWN -> if (toolsOpen) {
+                    if (down) launcher.headerCursor = -1
                     return true
                 }
             }
@@ -1994,9 +2089,22 @@ class LibraryActivity : ComponentActivity() {
             onTap = { launcher.select(rom); play(rom) },
             onMenu = { launcher.select(rom); openLauncherMenu() },
         )
-        Box(Modifier.fillMaxSize()) {
+        val tools = remember(revision) { libraryTools() }
+        val toolsNew = tools.any { it.newBadge != null }
+        val section = if (toolsOpen) com.pokedaisy.app.companion.ui.LibrarySection.TOOLS else com.pokedaisy.app.companion.ui.LibrarySection.GAMES
+        val railCursor = com.pokedaisy.app.companion.ui.LibrarySection.entries.getOrNull(launcher.navCursor)
+        SideEffect { launcherTools = tools }
+        BoxWithConstraints(Modifier.fillMaxSize()) {
             AppBackdrop(logos = true)
-            Column(Modifier.fillMaxSize()) {
+            // GAMES / TOOLS / SETTINGS as in the classic library: down the left of a wide screen, along the bottom of a tall one.
+            val wide = maxWidth >= maxHeight
+            SideEffect { launcherRailVertical = wide }
+            Row(Modifier.fillMaxSize()) {
+            if (wide) com.pokedaisy.app.companion.ui.LibraryNav(
+                section, vertical = true, m, small, toolsBadge = toolsNew && !toolsOpen,
+                modifier = Modifier.padding(start = SCREEN_MARGIN, top = SCREEN_MARGIN), cursor = railCursor, onPick = ::launcherPick,
+            )
+            Column(Modifier.weight(1f).fillMaxHeight()) {
                 OptionTitleWindow("POKéDAISY", m, Modifier.padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, top = SCREEN_MARGIN), leading = {
                     PixelArt(LOGO_ROWS, LOGO_PALETTE, Modifier.size(m.lineHeight))
                 }) {
@@ -2007,8 +2115,8 @@ class LibraryActivity : ComponentActivity() {
                     }
                 }
                 val library = views?.library.orEmpty()
-                Spacer(Modifier.height(m.u * (if (library.isNotEmpty()) 8 else 4)))
-                if (views != null && library.isNotEmpty()) {
+                Spacer(Modifier.height(m.u * (if (library.isNotEmpty() || toolsOpen) 8 else 4)))
+                if (views != null && library.isNotEmpty() && !toolsOpen) {
                     com.pokedaisy.app.companion.ui.QuickViewPills(
                         views.shown, launcher.view, views.counts, m, small,
                         onPick = { launcher.viewCursor = false; pickQuickView(it) },
@@ -2019,7 +2127,13 @@ class LibraryActivity : ComponentActivity() {
                 }
                 // Room at the end for the legend, so the last game can scroll clear of it.
                 val padding = PaddingValues(start = SCREEN_MARGIN, end = SCREEN_MARGIN, bottom = SCREEN_MARGIN + m.rowHeight * 1.6f)
-                if (games.isEmpty()) {
+                if (toolsOpen) {
+                    com.pokedaisy.app.companion.ui.ToolsPage(
+                        tools, m, small, contentPadding = padding, modifier = Modifier.weight(1f),
+                        cursor = launcher.toolCursor.takeIf { launcher.navCursor < 0 && launcher.headerCursor < 0 } ?: -1,
+                        onColumns = { launcher.toolColumns = it },
+                    )
+                } else if (games.isEmpty()) {
                     OptionListWindow(m, Modifier.fillMaxWidth().padding(horizontal = SCREEN_MARGIN)) {
                         GbaText(
                             if (library.isNotEmpty()) emptyViewText(launcher.view) else tr(
@@ -2087,9 +2201,19 @@ class LibraryActivity : ComponentActivity() {
                         }
                     }
                 }
+                if (!wide) com.pokedaisy.app.companion.ui.LibraryNav(
+                    section, vertical = false, m, small, toolsBadge = toolsNew && !toolsOpen,
+                    modifier = Modifier.padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, bottom = SCREEN_MARGIN), cursor = railCursor,
+                    onPick = ::launcherPick,
+                )
+            }
             }
             ButtonLegend(
-                listOfNotNull(
+                if (toolsOpen) listOf(
+                    LegendEntry("A", tr("OPEN")) { launcherTools.getOrNull(launcher.toolCursor)?.open?.invoke() },
+                    LegendEntry("B", tr("BACK")) { toolsOpen = false },
+                    LegendEntry("Y", tr("SETTINGS")) { openSettings() },
+                ) else listOfNotNull(
                     LegendEntry("A", tr("OPEN")) { launcher.current?.let(::play) },
                     LegendEntry("B", tr("OPTIONS")) { openLauncherMenu() },
                     // SWAP comes with the second screen's media page (ScreenScraper).
