@@ -155,6 +155,11 @@ fun itemDescription(id: Int): String = when (activeGame) {
 // the in-game bag's own tab order.
 val pocketOrder: List<Int> = listOf(POCKET_ITEMS, POCKET_POKE_BALLS, POCKET_TM_HM, POCKET_BERRIES, POCKET_KEY_ITEMS)
 
+/** The running game's bag tabs: [pocketOrder], or a game's own pockets where its bag shows more of them apart (Team Rocket
+ * Edition 2026's eight, in its gBagPockets' order: [TEAM_ROCKET_V3_BAG_POCKET_ORDER]). */
+val activePocketOrder: List<Int> get() =
+    if (activeGame == GameKind.TEAM_ROCKET && teamRocketV3) TEAM_ROCKET_V3_BAG_POCKET_ORDER else pocketOrder
+
 fun pocketLabel(pocket: Int): String = when (pocket) {
     POCKET_ITEMS -> "Items"
     POCKET_POKE_BALLS -> "Poke Balls"
@@ -164,6 +169,7 @@ fun pocketLabel(pocket: Int): String = when (pocket) {
     POCKET_MEDICINE -> "Medicine"
     POCKET_MAIL -> "Mail"
     POCKET_BATTLE_ITEMS -> "Battle Items"
+    POCKET_MEGA_STONES -> "Mega Stones"
     else -> "Items"
 }
 

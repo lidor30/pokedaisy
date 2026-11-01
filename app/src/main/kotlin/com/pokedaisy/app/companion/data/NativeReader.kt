@@ -268,6 +268,15 @@ val TEAM_ROCKET_BAG_POCKET_ORDER = listOf(
     POCKET_ITEMS, POCKET_ITEMS, POCKET_POKE_BALLS, POCKET_ITEMS, POCKET_BERRIES, POCKET_ITEMS, POCKET_TM_HM, POCKET_KEY_ITEMS,
 )
 
+// Team Rocket Edition 2026's eight, by gItemsInfo's pocket (bits 3-7 of +0x1E, 0-7), in its bag screen's order and names
+// (the pocket-name table 0x08E853D8): OBJETOS, MEDICINAS, MTs y MOs, OBJ. CLAVE, POKéBALLS, OBJ. BATALLA (its evolution
+// items and battle items), BAYAS, MEGAPIEDRAS - each pocket's capacity fits its items (28 balls, 254 TMs). The bag shows
+// each apart, so its MEDICINE / BATTLE ITEMS / MEGA STONES keep their own ids (the ITEMS tab's [activePocketOrder]).
+val TEAM_ROCKET_V3_BAG_POCKET_ORDER = listOf(
+    POCKET_ITEMS, POCKET_MEDICINE, POCKET_TM_HM, POCKET_KEY_ITEMS, POCKET_POKE_BALLS, POCKET_BATTLE_ITEMS, POCKET_BERRIES,
+    POCKET_MEGA_STONES,
+)
+
 /** Pokémon Dreamstone Mysteries' gBagPockets: seven, in its items' own pocket numbers (gItemsInfo +0x41: 1 Items,
  * 2 Medicine, 3 Battle Items, 4 Poké Balls, 5 Berries, 6 TMs, 7 Key Items), as its bag screen's tabs show them; Medicine
  * and Battle Items fold into the app's ITEMS, like the other hacks' extra pockets. */
@@ -718,7 +727,7 @@ private fun Mon.withNativeGender(raw: ByteArray, off: Int, layout: PartyMonLayou
         GameKind.GS_CHRONICLES -> genderRatiosGsChronicles
         GameKind.MARIOMON -> if (mariomonV13) genderRatiosMariomonV13 else genderRatiosMariomon
         GameKind.ELITE_REDUX -> genderRatiosEliteRedux
-        GameKind.TEAM_ROCKET -> genderRatiosTeamRocket
+        GameKind.TEAM_ROCKET -> if (teamRocketV3) genderRatiosTeamRocketV3 else genderRatiosTeamRocket
         GameKind.WISHES -> genderRatiosWishes
         GameKind.DREAMSTONE -> genderRatiosDreamstone
         else -> return this

@@ -230,7 +230,8 @@ private inline val rogue get() = activeGame == GameKind.EMERALD_ROGUE
 // Pokémon Elite Redux: its own species / moves / items / map sections (gen_elite_redux_tables.py); 2.65.3b's few
 // differences over 2.65.4.1b's when [eliteRedux265_3] (set by the Poller).
 private inline val eliteRedux get() = activeGame == GameKind.ELITE_REDUX
-// Pokémon Team Rocket Edition: Dragonsden Version: its own species / moves / items / map sections (gen_team_rocket_tables.py).
+// Pokémon Team Rocket Edition: Dragonsden Version: its own species / moves / items / map sections (gen_team_rocket_tables.py);
+// the 2026 rebuild's (Spanish v3.0.9, gen_expansion_tables.py team_rocket_v3) when [teamRocketV3] (set by the Poller).
 private inline val teamRocket get() = activeGame == GameKind.TEAM_ROCKET
 // Pokémon Wishes of Tomorrow: its own species / moves / items / map sections (gen_expansion_tables.py wishes).
 private inline val wishes get() = activeGame == GameKind.WISHES
@@ -239,6 +240,10 @@ private inline val dreamstone get() = activeGame == GameKind.DREAMSTONE
 
 /** Elite Redux 2.65.3b is running (its few names / types / moves over 2.65.4.1b's). Set with [activeGame] by the Poller. */
 var eliteRedux265_3 = false
+
+/** Team Rocket Edition 2026 is running (an expansion 1.14.4 rebuild: every table its own, expansion's type ids). Set with
+ * [activeGame] by the Poller. */
+var teamRocketV3 = false
 
 // Odyssey reuses vanilla's unused "???" type (9) as Fairy (CLEFAIRY is 9/9).
 
@@ -275,7 +280,7 @@ val activeSpeciesNames: Map<Int, String> get() = localText?.species ?: when {
     rechargedYellow -> speciesNamesRechargedYellow
     mariomon -> if (mariomonV13) speciesNamesMariomonV13 else speciesNamesMariomon
     eliteRedux -> if (eliteRedux265_3) speciesNamesEliteRedux265_3 else speciesNamesEliteRedux
-    teamRocket -> speciesNamesTeamRocket
+    teamRocket -> if (teamRocketV3) speciesNamesTeamRocketV3 else speciesNamesTeamRocket
     wishes -> speciesNamesWishes
     dreamstone -> speciesNamesDreamstone
     else -> frHack?.speciesMerged ?: speciesNames
@@ -308,7 +313,7 @@ val activeMoveData: Map<Int, MoveInfo> get() = localText?.moveData ?: when {
     mariomon -> if (mariomonV13) moveDataMariomonV13 else moveDataMariomon
     amethyst -> moveDataAmethyst   // both versions' (GitHub #96: past Gen 3's 354 they read "Move#N")
     eliteRedux -> if (eliteRedux265_3) moveDataEliteRedux265_3 else moveDataEliteRedux
-    teamRocket -> moveDataTeamRocket
+    teamRocket -> if (teamRocketV3) moveDataTeamRocketV3 else moveDataTeamRocket
     wishes -> moveDataWishes
     dreamstone -> moveDataDreamstone
     odyssey -> fireRedHackOdyssey.movesMerged
@@ -345,7 +350,7 @@ val activeItemNames: Map<Int, String> get() = localText?.items ?: when {
     rechargedYellow -> itemNamesRechargedYellow
     mariomon -> itemNamesMariomon
     eliteRedux -> if (eliteRedux265_3) itemNamesEliteRedux265_3 else itemNamesEliteRedux
-    teamRocket -> itemNamesTeamRocket
+    teamRocket -> if (teamRocketV3) itemNamesTeamRocketV3 else itemNamesTeamRocket
     wishes -> itemNamesWishes
     dreamstone -> itemNamesDreamstone
     odyssey -> fireRedHackOdyssey.itemsMerged
@@ -378,7 +383,7 @@ val activeSpeciesTypeData: Map<Int, SpeciesTypes> get() = when {
     mariomon -> if (mariomonV13) speciesTypeDataMariomonV13 else speciesTypeDataMariomon
     emeraldLegacy -> speciesTypeDataEmeraldLegacy
     eliteRedux -> if (eliteRedux265_3) speciesTypeDataEliteRedux265_3 else speciesTypeDataEliteRedux
-    teamRocket -> speciesTypeDataTeamRocket
+    teamRocket -> if (teamRocketV3) speciesTypeDataTeamRocketV3 else speciesTypeDataTeamRocket
     wishes -> speciesTypeDataWishes
     dreamstone -> speciesTypeDataDreamstone
     odyssey -> fireRedHackOdyssey.typesMerged   // its regional forms (GitHub #206)
@@ -411,7 +416,7 @@ val activeTypeEffectiveness: Map<Int, Int> get() = when {
     orangeIslands -> typeEffectivenessOrangeIslands
     mariomon -> typeEffectivenessMariomon
     eliteRedux -> typeEffectivenessEliteRedux
-    teamRocket -> typeEffectivenessTeamRocket
+    teamRocket -> if (teamRocketV3) typeEffectivenessTeamRocketV3 else typeEffectivenessTeamRocket
     wishes -> typeEffectivenessWishes
     dreamstone -> typeEffectivenessDreamstone
     odyssey -> fireRedHackOdyssey.typeChart ?: typeEffectiveness
@@ -439,7 +444,7 @@ val activeTypeNames: Map<Int, String> get() = when {
     orangeIslands -> typeNamesOrangeIslands
     mariomon -> typeNamesMariomon
     eliteRedux -> typeNamesEliteRedux
-    teamRocket -> typeNamesTeamRocket
+    teamRocket -> if (teamRocketV3) typeNamesTeamRocketV3 else typeNamesTeamRocket
     wishes -> typeNamesWishes
     dreamstone -> typeNamesDreamstone
     else -> frHack?.typeNamesMerged ?: typeNames
@@ -475,7 +480,7 @@ val activeMapSecData: Map<Int, MapSecInfo> get() = localText?.mapSecData ?: when
     // Emerald's Hoenn sections and rects (and its own few past them), on Emerald's map.
     eliteRedux -> mapSecDataEliteRedux
     // Its own sections' names; no map of its own is drawn yet (it has several), so none is "on the map".
-    teamRocket -> mapSecDataTeamRocket
+    teamRocket -> if (teamRocketV3) mapSecDataTeamRocketV3 else mapSecDataTeamRocket
     // Its own JOKAIM sections (Munen Village...) on its own region map; Emerald's / Kanto's leftovers off it.
     wishes -> mapSecDataWishes
     // Its own Cormoria sections (and Emerald's leftovers, off the map), on its own region map.
@@ -590,8 +595,9 @@ val activeRegionMapImages: Array<String> get() = when {
     mariomon -> regionMapImagesMariomon
     // Their own maps (the Orange Archipelago, Galar), drawn from the ROM (RomRegionMap) - none bundled.
     orangeIslands || swordShield || gsChronicles || frHack?.ownRegionMap == true -> emptyArray()
-    // Team Rocket Edition: Dragonsden's Kanto / Sevii / Johto maps aren't read yet - the MAP tab names the place.
-    teamRocket -> emptyArray()
+    // Team Rocket Edition: Dragonsden's Kanto / Sevii / Johto maps aren't read yet in v1.5 - the MAP tab names the place;
+    // the 2026 rebuild's seven are drawn from its ROM (RomArt's TR3_*).
+    teamRocket -> if (teamRocketV3) regionMapImagesTeamRocketV3 else emptyArray()
     // Wishes of Tomorrow's JOKAIM map, rebuilt from its ROM (RomArt's WSH_REGION_*).
     wishes -> regionMapImagesWishes
     // Dreamstone Mysteries' Cormoria map, rebuilt from its ROM (RomArt's DSM_REGION_*).

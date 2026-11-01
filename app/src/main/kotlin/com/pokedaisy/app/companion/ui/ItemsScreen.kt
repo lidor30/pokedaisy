@@ -99,7 +99,7 @@ import com.pokedaisy.app.companion.data.runningEmeraldHack
 import com.pokedaisy.app.companion.data.runningFireRedHack
 import com.pokedaisy.app.companion.data.localText
 import com.pokedaisy.app.companion.data.pocketLabel
-import com.pokedaisy.app.companion.data.pocketOrder
+import com.pokedaisy.app.companion.data.activePocketOrder
 import com.pokedaisy.app.companion.ui.theme.pixelFontFamily
 import com.pokedaisy.app.companion.data.isGameBoyGame
 import com.pokedaisy.app.companion.data.isGen2
@@ -800,7 +800,8 @@ fun ItemsScreen(
     // Only categories the bag actually has something in - an empty pocket
     // (e.g. no Key Items exported by a pre-v4 ROM) shouldn't show as a dead
     // tab with nothing behind it.
-    val categoriesPresent = pocketOrder.filter { p -> items.any { it.pocket == p } }
+    val pocketTabs = activePocketOrder
+    val categoriesPresent = pocketTabs.filter { p -> items.any { it.pocket == p } }
     val favorites = FavoriteItems.ids
     // FAVORITES under ALL, only while the bag holds a starred item.
     val hasFavorites = items.any { it.itemId in favorites }
@@ -829,7 +830,7 @@ fun ItemsScreen(
         ItemSort.NAME -> filtered.sortedBy { it.name }
         ItemSort.COUNT -> filtered.sortedWith(compareByDescending<ItemView> { it.quantity }.thenBy { it.name })
         ItemSort.TYPE -> filtered.sortedWith(
-            compareBy<ItemView> { pocketOrder.indexOf(it.pocket).let { i -> if (i < 0) Int.MAX_VALUE else i } }
+            compareBy<ItemView> { pocketTabs.indexOf(it.pocket).let { i -> if (i < 0) Int.MAX_VALUE else i } }
                 .thenBy { it.name },
         )
     }

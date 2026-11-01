@@ -962,6 +962,38 @@ val GUIDE_TABLES_TEAM_ROCKET = GuideTables(
 )
 
 /**
+ * Pokémon Team Rocket Edition 2026, Spanish (v3.0.9, expansion 1.14.4): HERE only, like v1.5's. gTrainers[EASY][NORMAL][HARD]
+ * [2859] at 0x084ECA78 (the literal pools' word; its FÁCIL / DIFÍCIL modes pick a table), [trainers] the NORMAL one: 0x30-byte
+ * records (party +8, an 11-byte name +0x17, party size +0x24); 415 is BROCK (four there, three EASY, five HARD) and 543 the
+ * ROCKET whose EKANS Lv4 / ZUBAT Lv5 the save's trainer battle met, expansion's 0x24-byte TrainerMons. Level-up moves from
+ * gSpeciesInfo's levelUpLearnset (+0x90, {move, level} pairs: BULBASAUR's TACKLE 1, GROWL 3). gWildMonHeaders 0x090990D4
+ * (10 literal-pool words; 462 headers of 84 bytes, four time-of-day sets). SaveBlock1's flags / vars at +0x1DB0 / +0x217E
+ * (its GF ROM header, 0x08000150).
+ */
+val GUIDE_TABLES_TEAM_ROCKET_V3 = GuideTables(
+    trainers = 0x0850E288L,
+    learnsets = 0x08970D78L, // gSpeciesInfo[0].levelUpLearnset
+    learnsetStride = 0xA8,
+    learnsetPairs = true,
+    wildHeaders = 0x090990D4L,
+    sb1FlagsOff = 0x1DB0,
+    sb1VarsOff = 0x217E,
+    flagBytes = 0x3CE,
+    probeTrainer = 415,
+    probeName = "BROCK",
+    guide = GuideId.TEAM_ROCKET,
+    trainerStride = 0x30,
+    trainerNameOff = 0x17,
+    trainerNameLen = 11,
+    trainerSizeOff = 0x24,
+    trainerPartyOff = 8,
+    trainerMon = TrainerMonLayout(stride = 0x24, movesOff = 0x0C, speciesOff = 0x14, itemOff = 0x16, levelOff = 0x1A),
+    wildSets = 4,
+    wildSet = 0,
+    mapSecWide = true,
+)
+
+/**
  * Pokémon Wishes of Tomorrow v1.2.6 (expansion 1.15.3): HERE only. gTrainers[EASY][NORMAL][HARD][896] at 0x08428F54 (EASY
  * empty, so its NORMAL array 0x08435354; 0x38-byte records - its own, four bytes longer than the reference build's: party
  * +8, class +0x1C, a 13-byte name +0x1F, party size +0x2D; 885 is GENERAL EDWARDS, whose six the headless trainer battle

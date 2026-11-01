@@ -427,6 +427,13 @@ val ELITE_REDUX_BATTLE_MON = BattleMonLayout(
 val TEAM_ROCKET_BATTLE_MON = EXPANSION_BATTLE_MON.copy(size = 0x5C)
 
 /**
+ * Team Rocket Edition 2026's (expansion 1.14.4) 0x68-byte struct BattlePokemon: [EXPANSION_BATTLE_MON]'s fields up to
+ * personality +0x4C (its trainer battle's ZUBAT / EKANS: moves +0x0C, ability +0x20, types +0x22 / +0x23, PP +0x25, HP +0x2A,
+ * level +0x2C, max HP +0x2E, item +0x30, experience +0x48), the otId at +0x60 (the party struct's, both battlers).
+ */
+val TEAM_ROCKET_V3_BATTLE_MON = EXPANSION_BATTLE_MON.copy(size = 0x68, otId = 0x60)
+
+/**
  * Pokémon Wishes of Tomorrow's (pokeemerald-expansion 1.15.3) 0x88-byte struct BattlePokemon: expansion's fields where
  * [EXPANSION_BATTLE_MON] has them (types +0x22 / +0x23 and a third at +0x24, PP +0x25, HP +0x2A, level +0x2C, max HP +0x2E,
  * item +0x30, status1 +0x50), its volatiles grown to 0x88 (the reference build's sizeof; its wild and trainer battles

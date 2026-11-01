@@ -773,6 +773,38 @@ val POKEDEX_WISHES = PokedexTables(
 )
 
 /**
+ * Pokémon Team Rocket Edition 2026, Spanish (v3.0.9, expansion 1.14.4): the page from gSpeciesInfo (0xA8-byte entries:
+ * category +0x1F, natDexNum +0x3C, text +0x4C, smol front pic +0x58, a plain palette +0x60, no footprints; level-up /
+ * teachable / evolutions +0x90 / +0x94 / +0x9C, 12-byte evolution records with a condition list ending at 39: EEVEE's
+ * SYLVEON / LEAFEON / GLACEON), gAbilitiesInfo 0x08E60C48 (its RHHEXP block; 0x1C-byte records, HEDOR first). One national
+ * list, 1-1062: the 1025 then its own 37 (TRXATU 1026 ... ZAPDOS-Z 1062). Flags in SaveBlock1: seen +0x3740 (the GF
+ * header's), caught +0x37C5 (8 literal-pool words), 133 bytes each - the save's ZUBAT seen and caught, a MEOWTH seen.
+ * BULBASAUR reads "Semilla", 0,7 m, 6,9 kg.
+ */
+val POKEDEX_TEAM_ROCKET_V3 = PokedexTables(
+    entries = 0,
+    frontPics = 0,
+    palettes = 0,
+    speciesInfo = 0x08970CE8L,
+    speciesToNational = 0,
+    abilityNames = 0x08E60C48L,
+    footprints = 0,
+    abilityNameLength = 17,
+    abilityNameStride = 0x1C,
+    categoryPrefix = "Pokémon",
+    categorySuffix = "",
+    metric = true,
+    probeCategory = "Semilla",
+    speciesCount = 1698,
+    nationalCount = 1062,
+    regionName = null,
+    expansion = SpeciesInfoDex(stride = 0xA8, paletteOff = 0x60, levelUpOff = 0x90, teachableOff = 0x94, evolutionsOff = 0x9C),
+    evoLayout = EvoLayout(EvoScheme.EXPANSION_PARAMS, record = 12, conditionsEnd = 39),
+    flags = DexFlags(DexFlagBlock.SAVE_BLOCK_1, 0x3740, 0x37C5, 133),
+    nationalMagicOff = -1,
+)
+
+/**
  * Pokémon Dreamstone Mysteries (expansion 1.11.2): Imperium's gSpeciesInfo page (the same 0x104-byte entries and
  * offsets; gSpeciesInfo 0x087B0160, gAbilitiesInfo 0x08E65E98), its own regional order - 315 national numbers from
  * 0x08E65C20 (GOTHITA first; CHIKORITA No. 054, OSHAWOTT No. 224) - and the flags in its SaveBlock1 (+0x3494 seen,

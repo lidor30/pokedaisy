@@ -334,7 +334,8 @@ internal enum class MapLabelStyle(val width: Int, val height: Int) {
         // Recharged Emerald redrew both heads for its map.
         // Dreamstone Mysteries' player picks one of five looks at the start: no head of ours fits, so none is drawn.
         // Wishes of Tomorrow's JOKAIM map keeps Emerald's Brendan / May heads (by gender, checked headless).
-        EMERALD -> if (game == GameKind.DREAMSTONE) null
+        // Team Rocket Edition 2026's player is a Rocket recruit of the player's choosing: no head of ours fits either.
+        EMERALD -> if (game == GameKind.DREAMSTONE || game == GameKind.TEAM_ROCKET) null
             else if (com.pokedaisy.app.companion.data.runningEmeraldHack != null) { if (gender == 1) "player_may_re" else "player_brendan_re" }
             else if (gender == 1) "player_may" else if (game == GameKind.MARIOMON) "player_mario" else "player_brendan"
         // Red's standing sprite (Gen1Art), Crystal's CHRIS / KRIS or Gold / Silver's boy (Gen2Art), from the ROM.
@@ -357,6 +358,8 @@ internal enum class MapLabelStyle(val width: Int, val height: Int) {
             GameKind.GLAZED, GameKind.IMPERIUM, GameKind.MARIOMON, GameKind.WISHES,
             // Dreamstone Mysteries' TOWN MAP: its place name in a framed window bottom right, like Emerald's.
             GameKind.DREAMSTONE,
+            // Team Rocket Edition: Emerald's region_map.c screen (its 2026 rebuild's seven maps).
+            GameKind.TEAM_ROCKET,
         )
 
         fun of(game: GameKind?) = when (game) {
@@ -386,6 +389,13 @@ private fun regionName(images: Array<String>, i: Int): String = when (images[i])
     "polished_crystal_johto" -> "JOHTO"
     "polished_crystal_kanto" -> "KANTO"
     "polished_crystal_orange" -> "ISLANDS"   // the game's own label on that map
+    "tr3_kanto" -> "KANTO"
+    "tr3_sevii123" -> "SEVII 1-3"
+    "tr3_sevii45" -> "SEVII 4-5"
+    "tr3_sevii67" -> "SEVII 6-7"
+    "tr3_johto" -> "JOHTO"
+    "tr3_hoenn" -> "HOENN"
+    "tr3_sinnoh" -> "SINNOH"
     else -> tr("MAP {0}", i + 1)
 }
 

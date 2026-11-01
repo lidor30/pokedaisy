@@ -169,6 +169,7 @@ object BestEffort {
             Candidate("ELITE_REDUX_V2_65_4_1B", GameKind.ELITE_REDUX, NATIVE_ELITE_REDUX_V2_65_4_1B, EMERALD, "Pokémon Elite Redux 2.65.4.1b"),
             Candidate("ELITE_REDUX_V2_65_3B", GameKind.ELITE_REDUX, NATIVE_ELITE_REDUX_V2_65_3B, EMERALD, "Pokémon Elite Redux 2.65.3b"),
             Candidate("TEAM_ROCKET", GameKind.TEAM_ROCKET, NATIVE_TEAM_ROCKET, EMERALD, "Pokémon Team Rocket Edition: Dragonsden"),
+            Candidate("TEAM_ROCKET_V3", GameKind.TEAM_ROCKET, NATIVE_TEAM_ROCKET_V3, EMERALD, "Pokémon Team Rocket Edition 2026"),
             Candidate("WISHES", GameKind.WISHES, NATIVE_WISHES, EMERALD, "Pokémon Wishes of Tomorrow"),
             Candidate("DREAMSTONE", GameKind.DREAMSTONE, NATIVE_DREAMSTONE, EMERALD, "Pokémon Dreamstone Mysteries"),
             Candidate("MARIOMON_V1_5_2", GameKind.MARIOMON, NATIVE_MARIOMON_V1_5_2, EMERALD, "Super Mariomon v1.5.2"),
@@ -490,13 +491,15 @@ object BestEffort {
     private object Globals {
         class Saved(
             val game: GameKind, val lang: Char, val code: String, val sg12: Boolean, val am141: Boolean, val mm13: Boolean, val frHack: HackText?,
-            val q084: Boolean, val emHack: HackText?, val er3: Boolean,
+            val q084: Boolean, val emHack: HackText?, val er3: Boolean, val tr3: Boolean,
         )
 
-        fun save() = Saved(activeGame, romLanguage, romGameCode, soulGoldV12, amethystV141, mariomonV13, fireRedHack, quetzalV084, emeraldHack, eliteRedux265_3)
+        fun save() = Saved(activeGame, romLanguage, romGameCode, soulGoldV12, amethystV141, mariomonV13, fireRedHack, quetzalV084, emeraldHack,
+            eliteRedux265_3, teamRocketV3)
         fun restore(s: Saved) {
             activeGame = s.game; romLanguage = s.lang; romGameCode = s.code; soulGoldV12 = s.sg12; amethystV141 = s.am141
             mariomonV13 = s.mm13; fireRedHack = s.frHack; quetzalV084 = s.q084; emeraldHack = s.emHack; eliteRedux265_3 = s.er3
+            teamRocketV3 = s.tr3
         }
         fun set(c: Candidate) {
             activeGame = c.kind
@@ -509,6 +512,7 @@ object BestEffort {
             mariomonV13 = c.cfg === NATIVE_MARIOMON_V1_3 || c.cfg === NATIVE_MARIOMON_V1_2_2 || c.cfg === NATIVE_MARIOMON_V1_2_1
             quetzalV084 = c.cfg.quetzalV084
             eliteRedux265_3 = c.cfg === NATIVE_ELITE_REDUX_V2_65_3B
+            teamRocketV3 = c.cfg === NATIVE_TEAM_ROCKET_V3
         }
     }
 }
