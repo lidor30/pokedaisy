@@ -265,7 +265,9 @@ val GEN4_PLATINUM_US = Gen4Config(
  * player's own saves, then checked live. Their own items, pockets (101 TM / HM slots, 24 balls), map places and FLY
  * spots (the Pokégear's flypoints); the Pokégear map and battles come later.
  */
-private fun gen4HeartGoldFamily(saveDataPtr: Long, fieldSystemPtr: Long = 0x021D4158) = Gen4Config(
+private fun gen4HeartGoldFamily(
+    saveDataPtr: Long, fieldSystemPtr: Long = 0x021D4158, battleTemplate: Long = 0x020FA484,
+) = Gen4Config(
     saveDataPtr = saveDataPtr,
     bodyOff = 0x10,
     trainerOff = 0x64,
@@ -297,7 +299,7 @@ private fun gen4HeartGoldFamily(saveDataPtr: Long, fieldSystemPtr: Long = 0x021D
     pokegearWordOff = 0xBAE4,
     // gOverlayTemplate_Battle; BattleSystem / BattleContext laid out as Platinum's (battleMons at 0x2D40, 0xC0 each:
     // headless dumps of a wild battle), its touch panels behind BattleSystem.battleInput (0x19C).
-    battle = Gen4Battle(fieldSystemPtr = 0x021D4158, battleTemplate = 0x020FA484, offBattleInput = 0x19C),
+    battle = Gen4Battle(fieldSystemPtr = fieldSystemPtr, battleTemplate = battleTemplate, offBattleInput = 0x19C),
     pokegear = Gen4Pokegear(
         fieldSystemPtr = fieldSystemPtr,   // sFieldSysPtr
         mainMatrixHeaders = mainMatrixHeadersHeartGold,
@@ -312,11 +314,12 @@ val GEN4_HEARTGOLD_US = gen4HeartGoldFamily(saveDataPtr = HEARTGOLD_SAVE_DATA_PT
 val GEN4_SOULSILVER_US = gen4HeartGoldFamily(saveDataPtr = HEARTGOLD_SAVE_DATA_PTR)
 
 /** German HeartGold rev 0 (IPKD, SHA-1 13b6853a…): SaveData_Get and Field_NewGame_AppInit's literal pools.
- * The save layout is shared with the US carts; its two globals moved by 0x20. */
-val GEN4_HEARTGOLD_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138)
+ * The save layout is shared with the US carts; its two globals moved by 0x20, gOverlayTemplate_Battle by 0x4C
+ * (nds/pk_nds_field.cpp's HEARTGOLD_DE has the same three). */
+val GEN4_HEARTGOLD_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138, battleTemplate = 0x020FA438)
 
 /** German SoulSilver rev 0 shares HeartGold's globals and save layout (IPGD, SHA-1 576cdb7e…). */
-val GEN4_SOULSILVER_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138)
+val GEN4_SOULSILVER_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138, battleTemplate = 0x020FA438)
 
 /** A DS game ([readGen4Telemetry], [readGen5Telemetry]): two screens, its own look and tables. */
 val GameKind?.isDsGame: Boolean get() = this == GameKind.PLATINUM || isHgss || isGen5

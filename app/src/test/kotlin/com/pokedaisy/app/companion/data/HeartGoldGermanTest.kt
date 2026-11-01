@@ -44,6 +44,14 @@ class HeartGoldGermanTest {
             assertSame(GEN4_HEARTGOLD_US, gen4ConfigFor(GameKind.HEARTGOLD, "IPKE"))
             assertSame(GEN4_SOULSILVER_DE, gen4ConfigFor(GameKind.SOULSILVER, "IPGD"))
             assertSame(GEN4_SOULSILVER_US, gen4ConfigFor(GameKind.SOULSILVER, "IPGE"))
+            // The battle reads follow the German globals too (the US ones are other data there).
+            for (cfg in listOf(GEN4_HEARTGOLD_DE, GEN4_SOULSILVER_DE)) {
+                assertEquals(0x021D4138L, cfg.battle!!.fieldSystemPtr)
+                assertEquals(0x020FA438L, cfg.battle!!.battleTemplate)
+                assertEquals(cfg.pokegear!!.fieldSystemPtr, cfg.battle!!.fieldSystemPtr)
+            }
+            assertEquals(0x021D4158L, GEN4_HEARTGOLD_US.battle!!.fieldSystemPtr)
+            assertEquals(0x020FA484L, GEN4_HEARTGOLD_US.battle!!.battleTemplate)
         } finally { romGameCode = oldCode }
     }
 

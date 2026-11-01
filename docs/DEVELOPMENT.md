@@ -2136,7 +2136,9 @@ message banks. Its ARM9 literal pools give `sSaveDataPtr` at `0x021D2208` (`Save
 `sFieldSysPtr` at `0x021D4138`, and `sSoundWork` at `0x02111938`; the battle template is `0x020FA438` and overlay 1's
 field main is `0x021E5BC5`. The functions used by `pk_nds_call` keep their US addresses. `GEN4_HEARTGOLD_DE` and
 `GEN4_SOULSILVER_DE` and the native `HEARTGOLD_DE` table select these addresses; `romGameCode` also carries `IPKD` so field actions use the
-same config as the sampler. Names and art are read from the German cart. A new game and the PC script were checked
+same config as the sampler, and the battle reads (`Gen4Battle`) take the German `sFieldSysPtr` and battle template too.
+DS LAYOUT's touch rules (`TOUCH_RULES`, `DsLayout.followed`) are the USA carts' alone: the German ones fall back to
+PICTURE IN PICTURE until their Task_StartMenu / app init addresses are checked. Names and art are read from the German cart. A new game and the PC script were checked
 headlessly, with the captured state kept locally. `HeartGoldGermanTest` relocates the existing US fixture's two globals
 to exercise the shared party, bag, dex and map layout without bundling another player's state.
 

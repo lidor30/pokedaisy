@@ -45,6 +45,7 @@ object GameTitles {
         "0862ec35b24de5c7e2dcb88c9eea0873110d755c" to "Pokémon Platinum",
         "4fcded0e2713dc03929845de631d0932ea2b5a37" to "Pokémon HeartGold",
         "f8dc38ea20c17541a43b58c5e6d18c1732c7e582" to "Pokémon SoulSilver",
+        // German HeartGold / SoulSilver, rev 0 (the contributor's dumps; GitHub #349).
         "13b6853aa93121069df1d17446d3ecb36872aecf" to "Pokémon Goldene Edition HeartGold",
         "576cdb7eec728c49aed85b9dd7e1e084ba1f08f9" to "Pokémon Silberne Edition SoulSilver",
         // Black and White (USA, Europe): the No-Intro dumps (no decomp builds them).
