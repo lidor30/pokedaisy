@@ -71,13 +71,14 @@ typedef struct PkNdsFieldGame {
 #define PK_NDS_FIELD_MENU 512
 /** A battle waits for the player's command (pk_nds_battle_command is PK_NDS_BATTLE_SELECTING): SMART FF's 1x. */
 #define PK_NDS_FIELD_BATTLE_INPUT 1024
-/** The game wants its touch screen now - one screen's DS LAYOUT floats it in over the game (HeartGold / SoulSilver: the
- * X menu, a menu screen, a battle's bag / party / prompts; pk_nds_field.cpp's touch rules). */
+/** The game wants its touch screen now - one screen's DS LAYOUT floats it in over the game (HeartGold / SoulSilver, Black /
+ * White: the X menu, a menu screen, a battle's bag / party / prompts; Platinum: a menu screen, a battle's; pk_nds_field.cpp's
+ * touch rules). */
 #define PK_NDS_FIELD_TOUCH 2048
 /** A battle's command or move panel is on the touch screen (BATTLE BUTTONS take its place where they can). */
 #define PK_NDS_FIELD_TOUCH_BATTLE_MENU 4096
-/** A menu screen whose page is all on the touch screen (HG/SS's party list, options, the Pokédex's first page): it floats in
- * alone, not beside the top screen. */
+/** A menu screen whose page is all on the touch screen (HG/SS's party list, options, the Pokédex's first page; Black /
+ * White's party, bag, trainer card, options): it floats in alone, not beside the top screen. */
 #define PK_NDS_FIELD_TOUCH_ONLY 8192
 /** The touch screen PK_NDS_FIELD_TOUCH wants is a new one the game fades in first (a battle's bag / party): it floats in
  * once that's done, not over the old screen fading out. */
@@ -85,6 +86,9 @@ typedef struct PkNdsFieldGame {
 /** The top screen / the touch screen is one colour (black between scenes, a fade's end; pk_nds.cpp's oneColour). */
 #define PK_NDS_FIELD_DARK_TOP 32768
 #define PK_NDS_FIELD_DARK_BOTTOM 65536
+/** A menu screen all on the top screen, its touch screen only a picture (Platinum's party and options): one screen's DS
+ * LAYOUT keeps the game alone, not side by side. */
+#define PK_NDS_FIELD_TOP_ONLY 131072
 
 #ifdef __cplusplus
 }

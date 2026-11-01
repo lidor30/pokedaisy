@@ -1962,7 +1962,8 @@ class PokeDaisyActivity : Activity() {
         val nds = RomIdentity.isNds(r)
         romIsNds = nds
         if (::portraitPanel.isInitialized) portraitPanel.ds = nds
-        dsWildRates = if (!nds) null else when (RomIdentity.ndsGameCode(r)) {
+        val ndsCode = if (nds) RomIdentity.ndsGameCode(r).orEmpty() else ""
+        dsWildRates = if (!nds) null else when (ndsCode) {
             "CPUE" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
             "IPKE", "IPKD" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
             "IPGE", "IPGD" -> com.pokedaisy.app.companion.data.SOULSILVER_WORLD::wildRates
@@ -2059,6 +2060,7 @@ class PokeDaisyActivity : Activity() {
             if (BuildConfig.DEBUG) audioTapDir = getExternalFilesDir("debug")
             this.gba = gba
             this.nds = nds
+            ndsGameCode = ndsCode
             wideCamera = view.camera.also { it.zoomOnText = Prefs(this@PokeDaisyActivity).expandZoomOnText }
             onWideOff = { runOnUiThread { showHud(com.pokedaisy.app.companion.i18n.tr("EXPAND hit a problem and is off for this game")) } }
             gen1Music = this@PokeDaisyActivity.gen1Music

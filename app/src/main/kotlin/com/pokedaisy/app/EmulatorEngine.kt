@@ -262,6 +262,10 @@ class EmulatorEngine(
     /** A DS game's battle picks: the game's own touch-screen buttons pressed with the stylus ([NdsBattleTaps]). */
     private val ndsTaps = NdsBattleTaps()
 
+    /** The DS game's header code: where its battle panels have their buttons ([NdsBattleTaps.layoutFor]). */
+    var ndsGameCode: String = ""
+        set(v) { field = v; ndsTaps.layout = NdsBattleTaps.layoutFor(v) }
+
     /** True while a queued battle-menu button sequence hasn't fully drained —
      * the touch battle UI should disable further taps while this is true. */
     val battleInputBusy: Boolean get() = if (nds) ndsTaps.busy else battleInput.isBusy
@@ -1206,7 +1210,9 @@ class EmulatorEngine(
                             fadeFrames++
                             if (!(fadeSeen && litFrames >= FADE_LIT_FRAMES) && fadeFrames < FADE_WAIT_FRAMES) want = false
                         } else if (!want) { fadeSeen = false; fadeFrames = 0; litFrames = 0 }
-                        val menu = fieldState and MgbaCore.FIELD_MENU != 0 && fieldState and (MgbaCore.FIELD_BATTLE or MgbaCore.FIELD_TOUCH_ONLY) == 0
+                        // (A page all on one screen isn't one for both: the touch screen's floats in, the top screen's stays alone.)
+                        val menu = fieldState and MgbaCore.FIELD_MENU != 0 &&
+                            fieldState and (MgbaCore.FIELD_BATTLE or MgbaCore.FIELD_TOUCH_ONLY or MgbaCore.FIELD_TOP_ONLY) == 0
                         val app = fieldState and MgbaCore.FIELD_MENU != 0 && fieldState and MgbaCore.FIELD_BATTLE == 0
                         val wide = fieldState and (MgbaCore.FIELD_SCREEN or MgbaCore.FIELD_BATTLE) != 0
                         fun settle(flow: kotlinx.coroutines.flow.MutableStateFlow<Boolean>, v: Boolean, frames: Int): Int {

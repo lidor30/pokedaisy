@@ -250,6 +250,7 @@ struct PkNdsTouchRules {
     int offPanelShown;        // BattleInput.textObj[]'s first pointer: NULL while no panel is drawn
     PkNdsTouchApp touchOnly[4];
     int offMenuInputState;    // FieldSystem.menuInputState: 0 buttons, 1 touch (the last input on a menu screen)
+    PkNdsTouchApp topOnly[2]; // menu screens all on the top screen (their touch screen only a picture): no touch screen
 };
 
 // HeartGold / SoulSilver's touch-screen-only pages (headless, the player's saves): the party list (its summary is an app of
@@ -263,19 +264,87 @@ static const PkNdsTouchRules TOUCH_RULES[] = {
         { 0x021E5AA1, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
         { 0x021E5A9D, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
     }, 0x10C },
+    // Platinum (pret/pokeplatinum, headless on a new game): its X menu is on the top screen (no field task to follow), its
+    // battle's touch panels are HeartGold's (BattleSystem.battleSubscreen at 0x19C, its first font OAM at 0x4D0; the
+    // command selection's states the same). The party and the options are top-screen pages, their touch screen a picture.
+    { &PLATINUM_US_REV1, 0, 0x19C, 0x4D0, {}, 0, {
+        { 0x0207E0B9, 0 },   // the party
+        { 0x021D0D81, 0 },   // the options
+    } },
 };
 
-// [child]'s app is on a page all on the touch screen.
-static int touchOnlyPage(const PkNdsTouchRules* t, uint32_t (*read32)(uint32_t), uint32_t child)
+static int pageIn(const PkNdsTouchApp* apps, int n, uint32_t (*read32)(uint32_t), uint32_t child)
 {
     uint32_t init = read32(child);
-    for (const PkNdsTouchApp& a : t->touchOnly) {
+    for (int i = 0; i < n; i++) {
+        const PkNdsTouchApp& a = apps[i];
         if (!a.init || a.init != init) continue;
         if (!a.states) return 1;
         uint32_t state = read32(child + 0x14);
         return state < 32 && (a.states >> state & 1);
     }
     return 0;
+}
+
+// [child]'s app is on a page all on the touch screen.
+static int touchOnlyPage(const PkNdsTouchRules* t, uint32_t (*read32)(uint32_t), uint32_t child)
+{
+    return pageIn(t->touchOnly, 4, read32, child);
+}
+
+// [child]'s app is all on the top screen.
+static int topOnlyPage(const PkNdsTouchRules* t, uint32_t (*read32)(uint32_t), uint32_t child)
+{
+    return pageIn(t->topOnly, 2, read32, child);
+}
+
+// Black / White (headless on the player's save, the heap's blocks named by their source files): the X menu is a field
+// event (GMEVENT: parent at 0, its function at 4) on the touch screen, and so is what it starts on the field (the save's
+// prompt runs two events under it); the party, the bag, the trainer card and the options are apps all on the touch screen
+// (their overlays; the top screen a pattern). A battle's touch screen is btlv_scd's (client -> btlv_core +0x54 -> scd
+// +0x180), its panel btlv_input's (scd +0xB0): the panel's kind at +0x58 (1 the commands, 2 the moves, 4 a prompt such
+// as "Use next Pokémon?"), scd +0x60 set while a panel is up and input +0x08 its slide's task (NULL once it takes touches:
+// a tap before that is lost - headless, FIGHT's moves 10 frames after +0x58 says 2), scd +0x98 the screen it opened (2 the
+// bag, 3 the party; stale after, so only while the adapter's command is the choice's); command 5 is a fainted Pokémon's
+// party.
+struct PkNdsGen5Touch {
+    const PkNdsFieldGame* game;
+    uint32_t startMenuEvent;  // the X menu's event function (Thumb)
+    int touchOnly[4];         // apps' overlays all on the touch screen
+};
+
+static const PkNdsGen5Touch GEN5_TOUCH[] = {
+    { &BLACK_US, 0x0215FD0D, { 91, 70, 111, 68 } },
+    // White: Black's code, its overlays 0x20 higher (the X menu's function checked in White's capture of the same save).
+    { &WHITE_US, 0x0215FD2D, { 91, 70, 111, 68 } },
+};
+
+static const int GEN5_OFF_VIEW = 0x54, GEN5_OFF_SCD = 0x180, GEN5_OFF_INPUT = 0xB0;
+static const int GEN5_OFF_SLIDE = 0x08, GEN5_OFF_PANEL = 0x58, GEN5_OFF_WAITING = 0x60, GEN5_OFF_SUBSCREEN = 0x98;
+static const int GEN5_ACMD_PARTY = 5;
+
+static const PkNdsGen5Touch* gen5Touch(const PkNdsFieldGame* g)
+{
+    for (const PkNdsGen5Touch& t : GEN5_TOUCH)
+        if (t.game == g) return &t;
+    return nullptr;
+}
+
+static int byteAt(uint32_t (*read32)(uint32_t), uint32_t a) { return (int) ((read32(a & ~3u) >> ((a & 3) * 8)) & 0xFF); }
+
+static int gen5BattlePanel(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), uint32_t proc, int* panel, int* waiting,
+                           int* subscreen)
+{
+    uint32_t main = read32(proc + g->offProcWork);
+    uint32_t client = inMainRam(main) ? read32(main + g->offClient) : 0;
+    uint32_t view = inMainRam(client) ? read32(client + GEN5_OFF_VIEW) : 0;
+    uint32_t scd = inMainRam(view) ? read32(view + GEN5_OFF_SCD) : 0;
+    uint32_t input = inMainRam(scd) ? read32(scd + GEN5_OFF_INPUT) : 0;
+    if (!inMainRam(input)) return 0;
+    *panel = byteAt(read32, input + GEN5_OFF_PANEL);
+    *waiting = byteAt(read32, scd + GEN5_OFF_WAITING) && !read32(input + GEN5_OFF_SLIDE);
+    *subscreen = byteAt(read32, scd + GEN5_OFF_SUBSCREEN);
+    return 1;
 }
 
 static const PkNdsTouchRules* touchRules(const PkNdsFieldGame* g)
@@ -364,6 +433,23 @@ static int gen5BattleCommand(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_
     return (int) ((read32(a & ~3u) >> ((a & 3) * 8)) & 0xFF);
 }
 
+// Gen 5's touch bits in a battle (proc: the battle's): the commands and the moves are the battle buttons' own while their
+// panel takes touches; the bag and the party (and a fainted Pokémon's party) are screens of their own, faded in; any
+// other panel (a prompt) is the touch screen's.
+static int gen5BattleTouch(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), uint32_t proc)
+{
+    int panel = 0, waiting = 0, sub = 0;
+    if (!gen5BattlePanel(g, read32, proc, &panel, &waiting, &sub)) return 0;
+    int command = gen5BattleCommand(g, read32);
+    if (command == g->battleSelecting) {
+        if (panel == 1 || panel == 2) return waiting ? PK_NDS_FIELD_TOUCH_BATTLE_MENU : 0;
+        if (sub == 2 || sub == 3) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
+        return 0;
+    }
+    if (command == GEN5_ACMD_PARTY) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
+    return panel >= 3 ? PK_NDS_FIELD_TOUCH : 0;
+}
+
 // Gen 5's WILD ENCOUNTERS hold: the zone's seven rates (the event data's encounter table, reloaded on every zone
 // change), zeroed while it's off and put back after. Two words: rates 0-3, then 4-6 under the table's flag byte.
 static uint32_t heldTable, heldZone5, heldRates[2];
@@ -384,11 +470,27 @@ static int gen5FieldState(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t),
     int overlay = (int) read32(proc + g->offProcOverlay);
     uint32_t fieldMap = read32(gs + g->offFieldMap);
     uint32_t event = read32(gs + g->offEvent);
-    if (overlay == g->battleOverlay) return bits | PK_NDS_FIELD_BATTLE | PK_NDS_FIELD_LOCKED;
-    if (overlay != g->fieldOverlay || !inMainRam(fieldMap)) return bits | PK_NDS_FIELD_MENU | PK_NDS_FIELD_LOCKED;
+    const PkNdsGen5Touch* touch = gen5Touch(g);
+    if (overlay == g->battleOverlay)
+        return bits | PK_NDS_FIELD_BATTLE | PK_NDS_FIELD_LOCKED | (touch ? gen5BattleTouch(g, read32, proc) : 0);
+    if (overlay != g->fieldOverlay || !inMainRam(fieldMap)) {
+        bits |= PK_NDS_FIELD_MENU | PK_NDS_FIELD_LOCKED;
+        if (touch) {
+            bits |= PK_NDS_FIELD_TOUCH;
+            for (int o : touch->touchOnly) if (o && o == overlay) bits |= PK_NDS_FIELD_TOUCH_ONLY;
+        }
+        return bits;
+    }
     bits |= PK_NDS_FIELD_SCREEN;
     // A script, a text box, the X menu (drawn on the touch screen over the field), a warp: each runs as an event.
     if (event) bits |= PK_NDS_FIELD_LOCKED | PK_NDS_FIELD_TEXT;
+    // The X menu, or what it runs on the field (the save's prompt: two events under it).
+    if (touch && inMainRam(event)) {
+        uint32_t e = event;
+        for (int depth = 0; depth < 3 && inMainRam(e); depth++, e = read32(e)) {
+            if (read32(e + 4) == touch->startMenuEvent) { bits |= PK_NDS_FIELD_TOUCH; break; }
+        }
+    }
     uint32_t gd = read32(gs + g->offGameData);
     if (!inMainRam(gd)) return bits;
     uint32_t form = read32(gd + g->offMoveForm);
@@ -506,8 +608,10 @@ int pk_nds_field_state(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), vo
         // The battle's child process starts from gBattleApplicationTemplate (its template is copied in whole).
         int battle = read32(child) == read32(g->battleTemplate);
         bits |= battle ? PK_NDS_FIELD_BATTLE : PK_NDS_FIELD_MENU;
+        // (A top-screen page wants no touch screen: the game alone, not side by side.)
         if (touch) bits |= battle ? battleTouch(g, touch, read32, child)
-                               : PK_NDS_FIELD_TOUCH | (touchOnlyPage(touch, read32, child) ? PK_NDS_FIELD_TOUCH_ONLY : 0);
+                         : topOnlyPage(touch, read32, child) ? PK_NDS_FIELD_TOP_ONLY
+                         : PK_NDS_FIELD_TOUCH | (touchOnlyPage(touch, read32, child) ? PK_NDS_FIELD_TOUCH_ONLY : 0);
         return bits | PK_NDS_FIELD_LOCKED;
     }
     if (inMainRam(parent) && running) bits |= PK_NDS_FIELD_SCREEN;
@@ -518,7 +622,7 @@ int pk_nds_field_state(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), vo
         if (task && running) bits |= PK_NDS_FIELD_TEXT;
     }
     // The X menu (HeartGold / SoulSilver: on the touch screen): its field task.
-    if (touch && inMainRam(task) && read32(task + 4) == touch->startMenuTask) bits |= PK_NDS_FIELD_TOUCH;
+    if (touch && touch->startMenuTask && inMainRam(task) && read32(task + 4) == touch->startMenuTask) bits |= PK_NDS_FIELD_TOUCH;
     // WILD ENCOUNTERS: the current map's rates, held at 0 while it's off.
     uint32_t data = read32(fs + g->offMapHeaderData);
     uint32_t loc = read32(fs + g->offLocation);

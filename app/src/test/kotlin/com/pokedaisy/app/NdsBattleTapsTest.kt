@@ -59,4 +59,33 @@ class NdsBattleTapsTest {
         assertEquals(listOf(128 to 90), presses())
         assertFalse(taps.busy)
     }
+
+    @Test
+    fun blackAndWhitePressTheirOwnButtons() {
+        taps.layout = NdsBattleTaps.layoutFor("IRBO")
+        taps.onState(BATTLE_INPUT_ACTION_SELECT)
+        for (i in 1..3) { taps.selectAction(i); run(10) }
+        taps.onState(BATTLE_INPUT_MOVE_SELECT)
+        taps.selectMove(3); run(10)
+        taps.back(); run(10)
+        assertEquals(listOf(30 to 172, 222 to 172, 128 to 178, 191 to 104, 230 to 175), presses())
+        assertEquals(NdsBattleTaps.GEN5, NdsBattleTaps.layoutFor("IRAO"))
+        assertEquals(NdsBattleTaps.GEN4, NdsBattleTaps.layoutFor("CPUE"))
+    }
+
+    @Test
+    fun theCardWaitsForThePanelToStayUp() {
+        // Black / White's move panel reports itself for a few frames between its two slides: not long enough to tap.
+        taps.onState(BATTLE_INPUT_ACTION_SELECT)
+        taps.selectMove(0)
+        run(10)
+        taps.onState(BATTLE_INPUT_MOVE_SELECT)
+        run(3)
+        taps.onState(BATTLE_INPUT_BUSY)
+        run(6)
+        assertEquals(listOf(128 to 90), presses())
+        taps.onState(BATTLE_INPUT_MOVE_SELECT)
+        run(10)
+        assertEquals(listOf(128 to 90, 64 to 42), presses())
+    }
 }

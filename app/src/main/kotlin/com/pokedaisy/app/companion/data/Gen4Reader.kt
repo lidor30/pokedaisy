@@ -250,7 +250,9 @@ val GEN4_PLATINUM_US = Gen4Config(
     mapPlaceIds = mapPlaceIdsPlatinum,
     itemPockets = itemPocketsPlatinum,
     flySpots = flySpotsPlatinum,
-    battle = Gen4Battle(fieldSystemPtr = 0x021C07DC, battleTemplate = 0x020EA358),
+    // battleInput: BattleSystem.battleSubscreen, HeartGold's place (its first font OAM at 0x4D0 too: headless, set at the
+    // commands and the moves, NULL while the turn plays; battler 0's steps 1 / 4 / 8 / 10 at the commands, moves, bag, party).
+    battle = Gen4Battle(fieldSystemPtr = 0x021C07DC, battleTemplate = 0x020EA358, offBattleInput = 0x19C),
     townMap = Gen4TownMap(
         fieldSystemPtr = 0x021C07DC,
         mainMatrixHeaders = mainMatrixHeadersPlatinum,

@@ -131,6 +131,8 @@ object MgbaCore {
     /** A DS game's own: the top screen / the touch screen is one colour (black between scenes). */
     const val FIELD_DARK_TOP = 32768
     const val FIELD_DARK_BOTTOM = 65536
+    /** A DS game's own: a menu screen all on the top screen, its touch screen a picture (Platinum's party): the game alone. */
+    const val FIELD_TOP_ONLY = 131072
     /** WIDE: the window to draw around the frame from the next frame on ([WideCamera]), in the frame's pixels
      * (its top-left 0, 0); [w] 0 = none. Any thread. */
     external fun pkWideSetView(x: Int, y: Int, w: Int, h: Int)

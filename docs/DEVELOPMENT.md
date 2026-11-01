@@ -2747,8 +2747,25 @@ screen), the screen's closing fade - black after it was lit, `menuLitFrames` - s
 (`pk_nds_field_keep_start_menu`), so the menu comes back with its cursor; the screen itself still opens as it was opened. LARGE + SMALL and PICTURE IN PICTURE give
 the HUD's CORNERS `DsCornerLayout` (FieldHud's `dsCorner`: the buttons bottom left, the party in two columns under the
 minimap, three to a row where `GameStageLayout.dsTouchOverGame` says PIP's inset would meet it). Outside the field and battles
-(`EmulatorEngine.dsWideScene` off) EXPAND has nothing to widen, so the stage keeps the game's 4:3 with the backdrop beside it. A game without rules (Platinum, Black and the rest) gets ONE
-SCREEN as PICTURE IN PICTURE (`DsLayout.forGame`). Its BattleContext / BattleSystem are Platinum's layout (battleMons at
+(`EmulatorEngine.dsWideScene` off) EXPAND has nothing to widen, so the stage keeps the game's 4:3 with the backdrop beside it. A game without rules (the German HeartGold / SoulSilver, Black 2 /
+White 2) gets ONE SCREEN as PICTURE IN PICTURE (`DsLayout.forGame`).
+
+**Platinum's and Black / White's rules (2026-11-01).** Platinum (a new game played headless, given two Pokémon and a wild
+battle through its own script commands: `GivePokemon` 0x96, `StartWildBattle` 0x124, `SetVarFromValue` 0x28 on
+VAR_PLAYER_STARTER 0x4030 and `GivePokedex` 0x158 for the X menu's POKéMON / POKéDEX, run with nds_dump's `script`):
+its X menu is a top-screen list (no field task to follow), and the party (app init 0x0207E0B9) and the options
+(0x021D0D81) are top-screen pages whose touch screen is a picture: `topOnly`, reported as `PK_NDS_FIELD_TOP_ONLY`, so the
+game stays alone (not side by side). Its battle is HeartGold's ancestor: BattleSystem.battleSubscreen at 0x19C (its first
+word points back at the BattleSystem), the first font OAM at 0x4D0 set while a panel is drawn, the selection steps and
+touch rects the same. Black / White (the player's save; White's wild battle, Black's field): the X menu is a GMEVENT
+(parent at +0, function at +4: Black 0x0215FD0D, White 0x0215FD2D) and the save's question runs two events under it, so
+the read walks up to three parents; the party (overlay 91), bag (70), trainer card (111) and options (68) are touch-only
+apps, the Pokédex (212) both. The battle's touch screen came from the heap's named blocks (a 'DU' header, the source file's
+name 0x14 in, the data 0x2C in): client 0 +0x54 -> btlv_core, +0x180 -> btlv_scd, +0xB0 -> btlv_input; input +0x58 the
+panel (1 commands, 2 moves, 4 a prompt), input +0x08 its slide task (taps before it's NULL are lost), scd +0x60 a panel
+up, scd +0x98 the screen opened from it (2 bag, 3 party; stale afterwards, so only under command 3); the adapter's command 5
+is a fainted Pokémon's party, 7 a prompt. Their move panel reports itself for 3 frames between its two slides, so
+`NdsBattleTaps` waits for the state to hold. The post-battle "give a nickname?" is its own proc (overlay 92): a menu screen. Its BattleContext / BattleSystem are Platinum's layout (battleMons at
 0x2D40, 0xC0 each). A blank touch screen (`NdsBottomFrame.blank`: an evolution, a fade) never floats in.
 
 **DS CPU BOOST.** `ARM9ClockShift` 2 (the ARM9 at twice the DS's, as melonDS's DSi mode runs it), switched between frames the

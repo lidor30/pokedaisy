@@ -79,7 +79,12 @@ To switch layouts while you play, press R2 (the `DS LAYOUT` hotkey, see [Hotkeys
 
 To bring up the touch screen yourself in `ONE SCREEN` or `PICTURE IN PICTURE`, tap `TOUCH` on the [HUD](hud.md), or press L2 (the `TOUCH SCREEN` hotkey, T on a keyboard). Close it with its X, the same button again, or `BACK`. Taps beside the window still reach your touch controls.
 
-HeartGold and SoulSilver (the USA releases) are the games PokeDaisy follows this closely so far. In the German HeartGold and SoulSilver, Platinum, Black, White and their sequels, `ONE SCREEN` keeps the touch screen small in the corner, as `PICTURE IN PICTURE` does, so it's always there.
+HeartGold and SoulSilver (the USA releases), Platinum, Black and White are the games PokeDaisy follows this closely so far, each its own way:
+
+- **Platinum** opens its X menu, its party and its options on the top screen, so those stay on the game alone. The bag, the trainer card and the Pokédex show side by side, and a battle's bag, party and questions float in.
+- **Black and White** put their X menu on the touch screen, so it floats in when you press X, and so does its save question. The party, the bag, the trainer card and the options float in alone; the Pokédex shows side by side. A battle's bag, party and questions float in, as does the party after one of yours faints.
+
+In the German HeartGold and SoulSilver, Black 2 and White 2, `ONE SCREEN` keeps the touch screen small in the corner, as `PICTURE IN PICTURE` does, so it's always there.
 
 ## Single-screen handhelds
 

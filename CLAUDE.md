@@ -715,14 +715,19 @@ the software renderer, pixel for pixel. Check GPU changes headless with nds_dump
 stage places the screens (`GameStageLayout.dsArrange`, `DsLayouts.arrange`, edge to edge) over the game's own picture (`DsShots`:
 PixelCopy about once a second - the overworld kept for menus, else the newest blurred; the user's rule: never black bars, nor a
 plain colour). ONE SCREEN / PIP float the touch screen in over the dimmed game (`DsTouchWindow`, the user's modal idea) when the game
-wants it: `PK_NDS_FIELD_TOUCH` from `pk_nds_field.cpp`'s touch rules (HG/SS only so far: the X menu's task, menu screens, a battle's
-bag / party / prompts), or by hand (the HUD's TOUCH, the TOUCH SCREEN hotkey: L2; DS LAYOUT's, R2, steps the layouts - the user's pick: the triggers are
-theirs only in a DS game on one screen, SPEED CYCLE / FF HOLD's elsewhere, `Action.dsOnly` / `Hotkeys.dsActive`). Games without rules get
-ONE SCREEN as PIP (`DsLayout.forGame`). The party's, the Pokédex's first and the options' pages float alone over the overworld
+wants it: `PK_NDS_FIELD_TOUCH` from `pk_nds_field.cpp`'s touch rules (HG/SS: the X menu's task, menu screens, a battle's
+bag / party / prompts; Platinum, 2026-11-01: its battle's are HG's, its X menu / party / options are top-screen pages,
+`topOnly` -> `PK_NDS_FIELD_TOP_ONLY`, the game alone; Black / White: `GEN5_TOUCH`, the X menu's GMEVENT function up the
+event's parents, touch-only apps by overlay, the battle's btlv_scd / btlv_input bytes - docs/ROM_FEATURES.md notes 26 / 27), or by hand (the HUD's TOUCH, the TOUCH SCREEN hotkey: L2; DS LAYOUT's, R2, steps the layouts - the user's pick: the triggers are
+theirs only in a DS game on one screen, SPEED CYCLE / FF HOLD's elsewhere, `Action.dsOnly` / `Hotkeys.dsActive`). Games without rules
+(`DsLayout.followed`: German HG/SS, Black 2 / White 2) get ONE SCREEN as PIP (`DsLayout.forGame`). The party's, the Pokédex's first and the options' pages float alone over the overworld
 (`PK_NDS_FIELD_TOUCH_ONLY`, the user's call); other menu screens show both side by side (`dsMenuScreen`); a tap on the dim closes
-/ presses B; outside the field and battles EXPAND gives way to the 4:3 (`dsWideScene`). A battle (HG/SS) stays wide: a strip in the band's black over
-the text box's rows, our HG message window at its far left (SoulSilver's: its gold line silver-blue), the game's four buttons HG-coloured at its right (the user's call:
-`DsBattleMenu`, red corners in a white rim, pulsing; the D-pad its own; moves one line a card), pressing the game's touch buttons with the stylus (`NdsBattleTaps`, `readGen4BattleInput`).
+/ presses B; outside the field and battles EXPAND gives way to the 4:3 (`dsWideScene`). A battle (HG/SS, Platinum, Black / White) stays wide: a strip
+over the text box's rows, the game's message at its far left (SoulSilver's: its gold line silver-blue), the game's four buttons at its right (the user's call:
+`DsBattleMenu`, red corners in a white rim, pulsing; the D-pad its own; moves one line a card), pressing the game's touch buttons with the stylus (`NdsBattleTaps`,
+its `Layout` per game; `readGen4BattleInput` / `readGen5BattleInput`). Each game's look on HG's layout (`DsLook`, sampled headless: Platinum's
+bevelled buttons, cream move cards and red corners; Black / White's charcoal plates with coloured words - their round panel made a plain 2 x 2, the
+user's call - teal message band and magenta round corners). `gradle render -Ponly=ds-battle -PdsBattleShots=<dir of 256x192 battle frames>` draws them.
 Fades (headless `trace`: HG fades by master brightness and blends, then both screens one colour for up to ~1.5 s):
 both screens black (`PK_NDS_FIELD_DARK_TOP` / `_BOTTOM`, `EmulatorEngine.dsDark`) holds every DS flow and the first lit frame
 decides at once; the window hides while the touch screen is blank (`dsTouchBlank`); a menu's way back to the field is covered by

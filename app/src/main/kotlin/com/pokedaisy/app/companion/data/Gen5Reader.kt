@@ -120,7 +120,65 @@ data class Gen5Battle(
      * member 0 (and 1 in a double) the ones out. */
     val offParties: Int = 0xCC,
     val partyStride: Int = 0x1C,
+    /** The main module's client 0 (the player's) and its adapter's command byte (3 while the player chooses, 5 a fainted
+     * Pokémon's party, 7 a prompt, 8 the turn playing). */
+    val offClient: Int = 0x10,
+    val offAdapter: Int = 0x50,
+    val offAdapterCommand: Int = 0x0F,
+    /** The touch screen ([readGen5BattleInput]): client -> btlv_core -> btlv_scd -> btlv_input (the heap names their source
+     * files); 0 = not read (the sequels). */
+    val offView: Int = 0,
+    val offScd: Int = 0x180,
+    val offInput: Int = 0xB0,
+    /** btlv_input's slide task (non-NULL while its panel moves in or out: a tap then is lost) and its panel (1 the
+     * commands, 2 the moves, 4 a prompt); btlv_scd's "a panel is up" and the screen it opened (2 the bag, 3 the party: left
+     * as it was after, so only while the player chooses). */
+    val offSlide: Int = 0x08,
+    val offPanel: Int = 0x58,
+    val offWaiting: Int = 0x60,
+    val offSubscreen: Int = 0x98,
 )
+
+/**
+ * The battle's input state for BATTLE BUTTONS ([BATTLE_INPUT_*]), Black / White (headless on the player's save, frame by
+ * frame through FIGHT, CANCEL, a move, the bag, the party and a faint): while the adapter's command is the choice's (3),
+ * the commands / the moves once their panel has slid in (it takes no touch before), the bag / the party by the screen the panel opened; command 5
+ * is a fainted Pokémon's party. Anything else in a battle is BUSY; no battle is NONE.
+ */
+fun readGen5BattleInput(r: MemoryReader, b: Gen5Battle): Int {
+    if (b.offView == 0) return BATTLE_INPUT_NONE
+    fun p(a: Long) = u32(r.readCoreMemory(a, 4), 0)
+    val gs = p(b.gameSystemPtr)
+    if (!inMain(gs)) return BATTLE_INPUT_NONE
+    val ps = p(gs + b.offProcSys)
+    val proc = if (inMain(ps)) p(ps + b.offCurrentProc) else 0
+    if (!inMain(proc) || p(proc + b.offProcOverlay) != b.battleOverlay.toLong()) return BATTLE_INPUT_NONE
+    val main = p(proc + b.offProcWork)
+    val client = if (inMain(main)) p(main + b.offClient) else 0
+    val adapter = if (inMain(client)) p(client + b.offAdapter) else 0
+    if (!inMain(adapter)) return BATTLE_INPUT_BUSY
+    val command = u8(r.readCoreMemory(adapter + b.offAdapterCommand, 1), 0)
+    if (command == GEN5_ACMD_PARTY) return BATTLE_INPUT_PARTY_OPEN
+    if (command != GEN5_ACMD_SELECTING) return BATTLE_INPUT_BUSY
+    val view = p(client + b.offView)
+    val scd = if (inMain(view)) p(view + b.offScd) else 0
+    val input = if (inMain(scd)) p(scd + b.offInput) else 0
+    if (!inMain(input)) return BATTLE_INPUT_BUSY
+    val panel = u8(r.readCoreMemory(input + b.offPanel, 1), 0)
+    val s = r.readCoreMemory(scd + b.offWaiting, b.offSubscreen - b.offWaiting + 1)
+    val waiting = u8(s, 0) != 0 && p(input + b.offSlide) == 0L
+    return when {
+        panel == 1 -> if (waiting) BATTLE_INPUT_ACTION_SELECT else BATTLE_INPUT_BUSY
+        panel == 2 -> if (waiting) BATTLE_INPUT_MOVE_SELECT else BATTLE_INPUT_BUSY
+        u8(s, b.offSubscreen - b.offWaiting) == 2 -> BATTLE_INPUT_BAG_OPEN
+        u8(s, b.offSubscreen - b.offWaiting) == 3 -> BATTLE_INPUT_PARTY_OPEN
+        else -> BATTLE_INPUT_BUSY
+    }
+}
+
+/** BTL_ACMD_*: the player chooses (the commands, the moves, the bag, the party); a fainted Pokémon's replacement. */
+private const val GEN5_ACMD_SELECTING = 3
+private const val GEN5_ACMD_PARTY = 5
 
 private fun u8(b: ByteArray, o: Int) = b[o].toInt() and 0xFF
 private fun u16(b: ByteArray, o: Int) = u16le(b, o)
@@ -217,8 +275,9 @@ private fun decodeGen5BattleMon(b: ByteArray, o: Int): BattleMon {
         level = u8(b, o + 0x18),
         type1 = gen5Type(u8(b, o + 0xF8)),
         type2 = gen5Type(u8(b, o + 0xF9)),
-        hp = u16(b, o + 0x0E),
-        maxHp = u16(b, o + 0x10),
+        // Max HP first (headless: a Pokémon fainted in White read 245 then 0).
+        hp = u16(b, o + 0x10),
+        maxHp = u16(b, o + 0x0E),
         status1 = 0,
         moves = IntArray(4) { u16(b, o + 0x104 + it * 14) },
         pp = IntArray(4) { u8(b, o + 0x104 + it * 14 + 2) },
@@ -309,6 +368,7 @@ fun readGen5Telemetry(r: MemoryReader, cfg: Gen5Config): Telemetry {
         frameCounter = 0,
         inBattle = battle != null,
         isDoubleBattle = battle?.doubles == true,
+        battleInputState = if (battle != null) cfg.battle?.let { readGen5BattleInput(r, it) } ?: BATTLE_INPUT_NONE else BATTLE_INPUT_NONE,
         mapGroup = 0,
         mapNum = zone,
         regionMapSectionId = cfg.zonePlaceIds[zone] ?: -1,
@@ -351,7 +411,7 @@ val GEN5_BLACK = Gen5Config(
     repelStepsOff = 0x21B31,
     zonePlaces = mapPlacesBlack,
     zonePlaceIds = mapPlaceIdsBlack,
-    battle = Gen5Battle(gameSystemPtr = 0x02146248),
+    battle = Gen5Battle(gameSystemPtr = 0x02146248, offView = 0x54),
     townMapPlaces = townMapPlacesBlack,
     townMapZones = townMapZonesBlack,
     libertyPass = 574,
@@ -364,7 +424,7 @@ val GEN5_WHITE = GEN5_BLACK.copy(
     saveControlPtr = 0x020A72B8,
     pokedexTables = POKEDEX_WHITE,
     gameSystemPtr = 0x02146268,
-    battle = Gen5Battle(gameSystemPtr = 0x02146268),
+    battle = Gen5Battle(gameSystemPtr = 0x02146268, offView = 0x54),
     townMapPlaces = townMapPlacesWhite,
     townMapZones = townMapZonesWhite,
 )

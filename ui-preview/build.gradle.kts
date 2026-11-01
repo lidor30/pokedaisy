@@ -82,6 +82,9 @@ tasks.register<JavaExec>("render") {
     // (NdsArt), the snapshot read from that save fixture (app/src/test/resources/fixtures/<name>/mainram.bin).
     systemProperty("ndsRom", (project.findProperty("ndsRom") as String?) ?: "")
     systemProperty("ndsFixture", (project.findProperty("ndsFixture") as String?) ?: "")
+    // -PdsBattleShots=<dir>: the ds-battle-* shots over that folder's <game>.png (a DS top screen, 256x192, e.g. nds_dump's
+    // battle frames cropped) instead of a plain stand-in. Game art: look at the PNGs, never commit them.
+    systemProperty("dsBattleShots", (project.findProperty("dsBattleShots") as String?) ?: "")
     systemProperty("decomps", System.getenv("DECOMPS").orEmpty())
     // Asset paths are opened relative to workingDir, so pass the icon dir relative to it.
     val monIcons = (project.findProperty("monIcons") as String?) ?: System.getenv("MON_ICONS").orEmpty()

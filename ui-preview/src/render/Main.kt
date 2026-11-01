@@ -1979,6 +1979,12 @@ fun main(args: Array<String>) {
                 }
             }
         }),
+        // A DS battle on one screen (DsBattleMenu): each game's look over its battle, the commands and the moves.
+        *listOf(GameKind.HEARTGOLD, GameKind.SOULSILVER, GameKind.PLATINUM, GameKind.BLACK).flatMap { dsGame ->
+            listOf(BATTLE_INPUT_ACTION_SELECT to "commands", com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT to "moves").map { (state, what) ->
+                Shot("ds-battle-${dsGame.name.lowercase()}-$what", tw, th, td, { { DsBattlePreview(dsGame, state) } })
+            }
+        }.toTypedArray(),
         Shot("status-bar", tw, th, td, {
             {
                 androidx.compose.foundation.layout.Box(
@@ -2895,5 +2901,31 @@ private fun fakePatch(state: String): com.pokedaisy.app.RomPatchFlow.Step {
         "unknown" -> com.pokedaisy.app.RomPatchFlow.Step.NotFound(unknown)
         "looking" -> com.pokedaisy.app.RomPatchFlow.Step.Looking(info, 0.35f)
         else -> com.pokedaisy.app.RomPatchFlow.Step.Failed(com.pokedaisy.app.RomPatchFlow.messageFor(com.pokedaisy.app.BpsPatch.Reason.DAMAGED))
+    }
+}
+
+/** DsBattleMenu over a DS battle at the Thor's top screen (EXPAND's 4:3 top screen in the middle, the strip across): the
+ * frame from -PdsBattleShots/<game>.png when given, else a plain stand-in. */
+@Composable
+fun DsBattlePreview(dsGame: GameKind, state: Int) {
+    val snap = battle(state).copy(game = dsGame)
+    val menu = androidx.compose.runtime.remember { com.pokedaisy.app.companion.ui.DsBattleMenuState() }
+    val frame = androidx.compose.runtime.remember(dsGame) {
+        System.getProperty("dsBattleShots").orEmpty().takeIf { it.isNotBlank() }
+            ?.let { File(it, dsGame.name.lowercase() + ".png") }?.takeIf { it.exists() }
+            ?.let { org.jetbrains.skia.Image.makeFromEncoded(it.readBytes()).toComposeImageBitmap() }
+    }
+    androidx.compose.foundation.layout.BoxWithConstraints(androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF305838))) {
+        val w = constraints.maxWidth.toFloat()
+        val h = constraints.maxHeight.toFloat()
+        val pw = h * 4f / 3f
+        val picture = androidx.compose.ui.geometry.Rect((w - pw) / 2f, 0f, (w + pw) / 2f, h)
+        androidx.compose.foundation.Canvas(androidx.compose.ui.Modifier.fillMaxSize()) {
+            if (frame != null) drawImage(
+                frame, dstOffset = androidx.compose.ui.unit.IntOffset(picture.left.toInt(), 0),
+                dstSize = androidx.compose.ui.unit.IntSize(pw.toInt(), h.toInt()), filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+            ) else drawRect(androidx.compose.ui.graphics.Color(0xFF7FB0A0), picture.topLeft, picture.size)
+        }
+        com.pokedaisy.app.companion.ui.DsBattleMenu(snap, menu, FakeBattleInput(false), picture, shown = true)
     }
 }

@@ -32,13 +32,13 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Ruby / Sapphire | USA rev 1 and 2 | ✅ | ✅ | ✅ | — | ✅ | ✅ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ |
 | Ruby / Sapphire | USA rev 0, ES / DE / FR / IT | ✅ | ✅ | ✅ | — | ✅ | ✅ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ |
 | Ruby / Sapphire | JP | ✅ | ✅ | ✅ | — | ✅ | ✅ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ |
-| Platinum (DS) | USA rev 1 | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
+| Platinum (DS) | USA rev 1 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
 | HeartGold (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
 | SoulSilver (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
 | HeartGold (DS) | Germany rev 0 | ✅ ¹⁴ | ◐ ²⁵ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
 | SoulSilver (DS) | Germany rev 0 | ✅ ¹⁴ | ◐ ²⁵ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — |
-| Black (DS) | USA/Europe | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
-| White (DS) | USA/Europe | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
+| Black (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
+| White (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | Black 2 (DS) | USA/Europe | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | White 2 (DS) | USA/Europe | ✅ ¹⁴ | — | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | Amethyst | 1.3.0, 1.4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ |
@@ -331,6 +331,18 @@ change to any of the places listed under "Where it's decided" updates its rows h
     battle read through the German `sFieldSysPtr` / `gOverlayTemplate_Battle` (`GEN4_HEARTGOLD_DE`), so the buttons should
     work as note 24's, but no German battle has been checked yet. Their touch-screen moments aren't followed
     (`pk_nds_field.cpp`'s TOUCH_RULES has the USA addresses only), so DS LAYOUT's ONE SCREEN is PICTURE IN PICTURE there.
+26. Platinum's battle panels are HeartGold's ancestors: the same touch rects (`battle_subscreen.c`), the same selection steps
+    and BattleSystem.battleSubscreen at 0x19C with its first font OAM at 0x4D0, so note 24's taps and reads work as they are
+    (`GEN4_PLATINUM_US`'s `offBattleInput`). Checked headless on a new game given two Pokémon and a wild battle through its
+    own script commands (GivePokemon, StartWildBattle): FIGHT, a move tapped from 6 frames after FIGHT on, BAG, POKéMON.
+    The strip is drawn in Platinum's look (`DsLook.PLATINUM`).
+27. Black / White's battle panels (no decomp: headless in White's Route 1 wild battle on the player's save, frame by frame):
+    client 0 -> btlv_core (+0x54) -> btlv_scd (+0x180) -> btlv_input (+0xB0); the panel's kind at input +0x58 (1 the
+    commands, 2 the moves, 4 a prompt), its slide task at input +0x08 (a tap lands only once it's NULL: the moves 10 frames
+    after +0x58 says 2, the commands 12 after CANCEL), scd +0x60 a panel up, scd +0x98 the bag (2) / party (3) it opened
+    while the adapter's command is 3; command 5 is a fainted Pokémon's party, 7 a prompt (`readGen5BattleInput`,
+    `pk_nds_field.cpp`'s `gen5BattleTouch`). Their buttons are elsewhere (`NdsBattleTaps.GEN5`), each tap checked. The strip
+    is drawn in their look, the round panel made a 2 x 2 (`DsLook.UNOVA`, the user's call). Black 2 / White 2 aren't read.
 
 ## What each column is
 
