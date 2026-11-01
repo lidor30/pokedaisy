@@ -1,0 +1,58 @@
+# Generic boot sequence for mgba_dump: clears the intro/title screen, selects
+# CONTINUE, and mashes through the "quest log" recap pages a real save shows
+# on load (see CLAUDE.md's testing notes - this needs a LOT of A presses,
+# one per recap page, before the player actually regains field control).
+# Deliberately generous (more presses than most saves need) - extra A presses
+# once already on the field are usually harmless (swallowed by the field/
+# dialogue system), a real risk only if the player happens to be facing an
+# NPC at their save point. Verified end-to-end against a FireRed .srm
+# (2026-09-22): reaches the field with the real save's party+bag intact by
+# frame ~850. If a capture for some other save/hack comes out still on a
+# menu (check partyCount in the dumped struct, or `dump` more than once and
+# diff), copy this file, add more `wait/press A` pairs, and pass it via
+# --script to capture_fixture_headless.sh.
+wait 120
+press START
+wait 30
+press A
+wait 60
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 30
+press A
+wait 60
+hold DOWN 120
+wait 120
+hold DOWN 90
+wait 60

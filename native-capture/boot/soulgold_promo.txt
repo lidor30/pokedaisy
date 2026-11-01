@@ -1,0 +1,20 @@
+# The website's SoulGold page (scripts/promo_shots.py): rhh_splash.txt's way past the splash screens and
+# CONTINUE, then B past the save's recap - on the field by frame ~1200 (the player's own v1.1.4 save, a route
+# by the sea with its follower out).
+wait 300
+press START
+wait 60
+press START
+wait 90
+press START
+wait 90
+press A
+wait 120
+press A
+wait 400
+press B
+wait 30
+press B
+wait 30
+press B
+wait 90

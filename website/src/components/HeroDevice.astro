@@ -4,7 +4,8 @@
 // The hinge. The base: the 3.92" bottom screen (1240x1080, the companion's canvas) under glass between the
 // controls - left stick (with its light ring) over the d-pad, ABXY over the right stick - three small keys
 // under it and the speaker grilles. The top screen is HeroScene's overworld; the bottom one plays the
-// companion's PARTY, MAP and BAG tabs (CompanionDemo).
+// companion's PARTY, MAP and BAG tabs (CompanionDemo). A page can put its own pictures on either screen instead
+// (`slot="top"` / `slot="bottom"`: the game pages' real shots, ScreenShots).
 import Pixel from './Pixel.astro';
 import CompanionDemo from './CompanionDemo.astro';
 import HeroScene from './HeroScene.astro';
@@ -18,15 +19,15 @@ const at = (x: number, y: number, w?: number, h?: number) => `--x:${x};--y:${y}`
     <div class="hh-part" style={at(0, 0, 160, 100)}>
       <span class="hh-shell f-thorLid"></span>
       <div class="hh-part glass f-glass" style={at(3, 3, 154, 94)}></div>
-      <div class="hh-part topscreen" style={at(12, 11, 136, 77)}>
-        <HeroScene lines={['Your party is on the bottom screen.', 'So are the map, the bag and your dex.', 'In a battle, every matchup is a glance away.']} />
+      <div class="hh-part topscreen" style={at(8, 9, 144, 81)}>
+        <slot name="top"><HeroScene lines={['Your party is on the bottom screen.', 'So are the map, the bag and your dex.', 'In a battle, every matchup is a glance away.']} /></slot>
       </div>
     </div>
     <div class="hh-part thor-hinge" style={at(5, 100, 150, 7)}><i></i><i></i></div>
     <div class="hh-part" style={at(0, 106, 160, 96)}>
       <span class="hh-shell f-thorBase"></span>
       <div class="hh-part glass f-glass" style={at(38, 6, 84, 74)}></div>
-      <div class="hh-part lowscreen" style={at(41, 9, 78, 68)}><CompanionDemo /></div>
+      <div class="hh-part lowscreen" style={at(41, 9, 78, 68)}><slot name="bottom"><CompanionDemo /></slot></div>
       <span class="hh-part" style={at(7, 9)}><Pixel name="thorStick2" scale={1} /></span>
       <span class="hh-part" style={at(8, 46)}><Pixel name="thorDpad2" scale={1} /></span>
       <span class="hh-part" style={at(122, 6)}><Pixel name="thorAbxy2" scale={1} /></span>

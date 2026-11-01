@@ -5,7 +5,8 @@
 // shoulder buttons over the top edge. The game fills the screen (HeroScene); the companion opens over it
 // as the app's window (SidePanel.kt's SidePanelHost: 88% of the screen's height, ~1.39:1 on 16:9, the
 // game dimmed under it, the X beside its top right corner) while the device has `.open` - CompanionDemo
-// opens it, plays its tabs and closes it with the X.
+// opens it, plays its tabs and closes it with the X. A page can put its own pictures on the screen instead
+// (`slot="screen"`: the game pages' real shots, no window).
 import Pixel from './Pixel.astro';
 import CompanionDemo from './CompanionDemo.astro';
 import HeroScene from './HeroScene.astro';
@@ -21,13 +22,15 @@ const at = (x: number, y: number, w?: number, h?: number) => `--x:${x};--y:${y}`
     <span class="hh-shell f-rp5Shell"></span>
     <div class="hh-part glass f-rp5Glass" style={at(35, 3, 130, 74)}></div>
     <div class="hh-part topscreen" style={at(40, 6, 120, 68)}>
-      <HeroScene lines={['Press a button and the companion opens.', 'It floats over the game, which keeps running.', 'Close it, and the whole screen is the game again.']} />
-      <div class="cwin-dim"></div>
-      <div class="hh-part cwin" style={at(18, 4, 84, 60)}>
-        <div class="cwin-app"><CompanionDemo window order={['BAG', 'MAP']} /></div>
-        <span class="cwin-frame f-winFrame"></span>
-      </div>
-      <span class="hh-part cwin-x f-appBtn" style={at(104, 4, 6, 6)} data-close><Pixel name="winClose" scale={1} /></span>
+      <slot name="screen">
+        <HeroScene lines={['Press a button and the companion opens.', 'It floats over the game, which keeps running.', 'Close it, and the whole screen is the game again.']} />
+        <div class="cwin-dim"></div>
+        <div class="hh-part cwin" style={at(18, 4, 84, 60)}>
+          <div class="cwin-app"><CompanionDemo window order={['BAG', 'MAP']} /></div>
+          <span class="cwin-frame f-winFrame"></span>
+        </div>
+        <span class="hh-part cwin-x f-appBtn" style={at(104, 4, 6, 6)} data-close><Pixel name="winClose" scale={1} /></span>
+      </slot>
     </div>
     <span class="hh-part" style={at(6, 11)}><Pixel name="rp5Dpad" scale={1} /></span>
     <span class="hh-part" style={at(10, 43)}><Pixel name="rp5Stick" scale={1} /></span>
