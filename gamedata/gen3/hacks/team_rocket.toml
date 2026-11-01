@@ -134,4 +134,5 @@ monIconPaletteTable = 0x08964C70
 itemIconTable = 0x088CCC40  # gItemsInfo[0].iconPic
 itemIconStride = 0x2C
 itemPalCompressed = false
+pokedex = 'POKEDEX_TEAM_ROCKET_V3'
 guideTables = 'GUIDE_TABLES_TEAM_ROCKET_V3'

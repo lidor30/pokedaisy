@@ -335,6 +335,14 @@ GAMES = {
         moves_base=0x08934E7C, moves_stride=0x3C, move_bits_off=0x0A,
         chart=0x084BE1B0, chart_n=21,
         mapsec_base=0x08E6A944, mapsec_name_off=4, mapsec_count=0x1EF,
+        # Its seven region maps (RomArt's TR3_*: gen_rom_art_sigs.py says where each comes from): 0x08192D44 picks the
+        # map by the section's id, 0x08192B80 reads that map's cursor grid, u16 [15][28] at (1, 2), MAPSEC_NONE 0x1EF.
+        # Every section a grid names is in its map's range; their {x, y, w, h} land on their grids' cells.
+        region_maps=[dict(image=img, layout=grid, ids=ids, w=28, h=15, ox=1, oy=2, none=0x1EF, cell=2) for img, grid, ids in (
+            ("tr3_kanto", 0x08E6DDD4, (0x7A, 0xE6)), ("tr3_sevii123", 0x08E6D744, (0xE7, 0xFD)),
+            ("tr3_sevii45", 0x08E6D3FC, (0xFE, 0x116)), ("tr3_sevii67", 0x08E6D0B4, (0x117, 0x13C)),
+            ("tr3_johto", 0x08E6DA8C, (0x13D, 0x190)), ("tr3_hoenn", 0x08E6E11C, (0x00, 0x79)),
+            ("tr3_sinnoh", 0x08E6CD6C, (0x191, 0x1EE)))],
         checks=dict(species={1: "Bulbasaur", 23: "Ekans", 25: "Pikachu", 41: "Zubat", 169: "Crobat", 1669: "Zubat"},
                     types={1: (13, 4), 23: (4, 4), 41: (4, 3), 169: (4, 3)},
                     gender={1: 31, 25: 127}, growth={1: 3, 41: 0},
@@ -567,7 +575,45 @@ def main():
         if s is not None:  # some slots point at an empty string
             mapsecs[i] = title(s)
     rm = g.get("region_map")
-    if rm is None:
+    if "region_maps" in g:
+        # Several region maps, each with its own cursor grid and its own range of mapsec ids (the game's map code
+        # picks the map by the section's id): a section goes on the map whose range holds it, its rect + (ox, oy) as
+        # below, or its grid tiles where it has no rect of its own.
+        assert g.get("mapsec_name_off") == 4
+        images, rows, layouts = [], [], []
+        regions = g["region_maps"]
+        for r in regions:
+            images.append(r["image"])
+            gr = rom.d[rom.off(r["layout"]):rom.off(r["layout"]) + r["w"] * r["h"] * r.get("cell", 1)]
+            layouts.append(gr)
+            r["on_grid"] = {struct.unpack_from("<H" if r.get("cell", 1) == 2 else "<B", gr, k)[0]
+                            for k in range(0, len(gr), r.get("cell", 1))} - {r["none"]}
+            assert r["on_grid"] <= set(mapsecs), sorted(r["on_grid"] - set(mapsecs))
+            assert all(r["ids"][0] <= s <= r["ids"][1] for s in r["on_grid"]), r["image"]
+        for i, s in sorted(mapsecs.items()):
+            k = next((k for k, r in enumerate(regions) if r["ids"][0] <= i <= r["ids"][1]), None)
+            a = g["mapsec_base"] + 8 * i
+            x, y, mw, mh = (rom.u8(a + n) for n in range(4))
+            if k is None:
+                rows.append(f"    {i} to MapSecInfo({kstr(s)}, -1, 0, 0, 0, 0),\n")
+            elif (x, y) != (0, 0) and mw and mh:
+                r = regions[k]
+                rows.append(f"    {i} to MapSecInfo({kstr(s)}, {k}, {x + r['ox']}, {y + r['oy']}, {mw}, {mh}),\n")
+            elif i in regions[k]["on_grid"]:
+                rows.append(f"    {i} to MapSecInfo({kstr(s)}, {k}, 0, 0, 0, 0),\n")
+            else:
+                rows.append(f"    {i} to MapSecInfo({kstr(s)}, -1, 0, 0, 0, 0),\n")
+        write(f"MapSecData{sfx}.kt", header(g, "gRegionMapEntries by mapsec id, rects in 8px tiles on\n"
+              "// regionMapImages' screens (RomArt rebuilds them from the ROM); region -1 = not on a map. The grids are\n"
+              "// each map's cursor grid, by image.\n") +
+              f"val regionMapImages{sfx} = arrayOf({', '.join(kstr(n) for n in images)})\n\n" +
+              f"val mapSecData{sfx}: Map<Int, MapSecInfo> = mapOf(\n" + "".join(rows) + ")\n\n" +
+              f"internal val regionLayouts{sfx}: List<RegionLayout> = listOf(\n" +
+              "".join(f"    RegionLayout({r['ox']}, {r['oy']}, {r['w']}, {r['h']}, 0x{r['none']:02X}, listOf(\n"
+                      f"        hexBytes(\"{gr.hex()}\"),\n" +
+                      ("    ), cellBytes = 2),\n" if r.get("cell", 1) == 2 else "    )),\n")
+                      for r, gr in zip(regions, layouts)) + ")\n")
+    elif rm is None:
         write(f"MapSecData{sfx}.kt", header(g, "gRegionMapEntries names by mapsec id. No region-map\n"
               "// image yet, so every entry is region -1 (text-only Map tab, like Unbound).\n") +
               f"val regionMapImages{sfx} = arrayOf<String>()\n\n" +

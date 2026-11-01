@@ -27,7 +27,7 @@ object RomArt {
     const val DIR = "rom-art"
 
     /** Bump when [OUTPUTS] grows, so ROMs scanned before get scanned again. */
-    private const val SCAN_VERSION = 22
+    private const val SCAN_VERSION = 23
 
     /** Bumped whenever new art lands on disk, so loaders can retry. */
     val updates: StateFlow<Int> get() = _updates
@@ -147,7 +147,8 @@ object RomArt {
             listOf("$UNBOUND_FR_PARTY_DIR/status_icons.png", "$UNBOUND_FR_PARTY_DIR/font_small.png") +
             listOf(SWSH_BACKDROP) + (slots + "empty").map { "$SWSH_PARTY_DIR/slot_$it.png" } +
             listOf("kanto", "sevii123", "sevii45", "sevii67", "hoenn", "seaglass", "lazarus", "soulgold", "glazed", "imperium", "hns", "recharged_emerald", "rowe_hoenn", "rowe_kanto", "rowe_sevii",
-                "mariomon", "quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67", "dreamstone", "wishes").map { "regionmap/$it.png" } +
+                "mariomon", "quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67", "dreamstone", "wishes",
+                "tr3_kanto", "tr3_sevii123", "tr3_sevii45", "tr3_sevii67", "tr3_johto", "tr3_hoenn", "tr3_sinnoh").map { "regionmap/$it.png" } +
             PLAYER_ICONS.map { "regionmap/${it.first}.png" } +
             listOf(BAG_STARS_SOULGOLD, HOLD_ICONS) +
             TrainerCardArt.BLOBS.map { rawPath(it) }
@@ -448,9 +449,24 @@ object RomArt {
             "quetzal_sevii123" to Triple(RomBlob.QTZ_SEVII123_GFX, RomBlob.QTZ_REGION_PAL, RomBlob.QTZ_SEVII123_MAP),
             "quetzal_sevii45" to Triple(RomBlob.QTZ_SEVII45_GFX, RomBlob.QTZ_REGION_PAL, RomBlob.QTZ_SEVII45_MAP),
             "quetzal_sevii67" to Triple(RomBlob.QTZ_SEVII67_GFX, RomBlob.QTZ_REGION_PAL, RomBlob.QTZ_SEVII67_MAP),
+            // Team Rocket Edition 2026's Kanto, Hoenn and Sinnoh (smol, Wishes' kind of screen).
+            "tr3_kanto" to Triple(RomBlob.TR3_KANTO_GFX, RomBlob.TR3_KANTO_PAL, RomBlob.TR3_KANTO_MAP),
+            "tr3_hoenn" to Triple(RomBlob.TR3_HOENN_GFX, RomBlob.TR3_HOENN_PAL, RomBlob.TR3_HOENN_MAP),
+            "tr3_sinnoh" to Triple(RomBlob.TR3_SINNOH_GFX, RomBlob.TR3_SINNOH_PAL, RomBlob.TR3_SINNOH_MAP),
         ).forEach { (name, blobs) ->
             if (has(blobs.first, blobs.second, blobs.third)) {
                 out["regionmap/$name.png"] = emeraldRegionMap(d(blobs.first), palette(d(blobs.second)), d(blobs.third))
+            }
+        }
+        // Its Johto and Sevii maps: the same screen, their palette loaded at BG palette 0 (colours 0-15 of their tiles).
+        listOf(
+            "tr3_johto" to Triple(RomBlob.TR3_JOHTO_GFX, RomBlob.TR3_JOHTO_PAL, RomBlob.TR3_JOHTO_MAP),
+            "tr3_sevii123" to Triple(RomBlob.TR3_SEVII123_GFX, RomBlob.TR3_SEVII123_PAL, RomBlob.TR3_SEVII123_MAP),
+            "tr3_sevii45" to Triple(RomBlob.TR3_SEVII45_GFX, RomBlob.TR3_SEVII45_PAL, RomBlob.TR3_SEVII45_MAP),
+            "tr3_sevii67" to Triple(RomBlob.TR3_SEVII67_GFX, RomBlob.TR3_SEVII67_PAL, RomBlob.TR3_SEVII67_MAP),
+        ).forEach { (name, blobs) ->
+            if (has(blobs.first, blobs.second, blobs.third)) {
+                out["regionmap/$name.png"] = emeraldRegionMap(d(blobs.first), palette(d(blobs.second)), d(blobs.third), firstColour = 0)
             }
         }
         for ((name, blobs) in PLAYER_ICONS) {
@@ -470,15 +486,16 @@ object RomArt {
      * affine map; the palette is loaded at BG palette 7, so colour index 112
      * is its first entry. A cell past the tiles the ROM has (Super Mariomon's
      * map names 21 of them in its bottom-right corner - whatever VRAM holds
-     * there, under the game's own text box) stays transparent.
+     * there, under the game's own text box) stays transparent. [firstColour]: where the game loads the palette (Team
+     * Rocket Edition 2026's Johto and Sevii maps load theirs at BG palette 0).
      */
-    private fun emeraldRegionMap(tiles: ByteArray, pal: IntArray, map: ByteArray): Image {
+    private fun emeraldRegionMap(tiles: ByteArray, pal: IntArray, map: ByteArray, firstColour: Int = 112): Image {
         val img = Image(240, 160)
         for (ty in 0 until 20) for (tx in 0 until 30) {
             val t = map[ty * 64 + tx].toInt() and 0xFF
             if ((t + 1) * 64 > tiles.size) continue
             for (y in 0 until 8) for (x in 0 until 8) {
-                val v = (tiles[t * 64 + y * 8 + x].toInt() and 0xFF) - 112
+                val v = (tiles[t * 64 + y * 8 + x].toInt() and 0xFF) - firstColour
                 img.argb[(ty * 8 + y) * 240 + tx * 8 + x] = pal.getOrElse(v) { pal[0] }
             }
         }

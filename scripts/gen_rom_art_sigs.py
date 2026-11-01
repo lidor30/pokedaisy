@@ -240,6 +240,26 @@ def wishes_symbols(rom):
     return {"RegionGfx": (0xCE59A8, 0), "RegionMap": (0xCE5880, 0), "RegionPal": (0xCE77C8, 0x60)}
 
 
+# Pokemon Team Rocket Edition 2026, Spanish (v3.0.9, sha1 0d8bdaee...): Wishes' kind of screen (8bpp smol tiles, a 64x64
+# one-byte smol tilemap, a 48-colour palette) for each of its seven region maps. 0x08192D44 turns the map section into a
+# region (1 Kanto 0x7A-0xE6, 2-4 the Sevii Islands 1-3 / 4-5 / 6-7, 5 Johto 0x13D-0x190, 6 Hoenn 0x00-0x79, 7 Sinnoh
+# 0x191-0x1EE) and the map code's switches (jump tables 0x08E69B28 / B68 / B88) load that region's tilemap, tiles and
+# palette - Kanto's, Hoenn's and Sinnoh's palette at BG palette 7 like Emerald's, the other four at BG palette 0.
+TEAM_ROCKET_V3_ROM = os.path.expanduser("~/Downloads/Game ROMs & Emulation/gba/Pokemon Team Rocket Edition 2026 (Spanish).gba")
+
+
+def team_rocket_v3_symbols(rom):
+    out = {}
+    for name, (gfx, tilemap, pal) in {
+        "Kanto": (0xE70B68, 0xE7097C, 0xE69F6C), "Sevii123": (0xE6FB48, 0xE6FA94, 0xE6A02C),
+        "Sevii45": (0xE6F8DC, 0xE69EF4, 0xE6A06C), "Sevii67": (0xE6F544, 0xE6F46C, 0xE6A08C),
+        "Johto": (0xE70090, 0xE6FE44, 0xE69FAC), "Hoenn": (0xE7168C, 0xE7147C, 0xE69FEC),
+        "Sinnoh": (0xE6E9A4, 0xE6E764, 0xE6A0AC),
+    }.items():
+        out.update({f"{name}Gfx": (gfx, 0), f"{name}Map": (tilemap, 0), f"{name}Pal": (pal, 0x60)})
+    return out
+
+
 # Pokemon Quetzal English Alpha 9 v0 (sha1 d0658315...): FireRed's Kanto / Sevii maps (pixel for
 # pixel, 3 tiles left and 2 up of FireRed's screen) redrawn for Emerald's region_map.c - 8bpp
 # tiles and a 64x64 affine tilemap per map (LZ77), FireRed's palette loaded at BG palette 7. Its
@@ -518,6 +538,11 @@ GAMES = {
         ("WSH_REGION_MAP", "RegionMap", "smol"),
         ("WSH_REGION_PAL", "RegionPal", False),
     ]),
+    "TR3": (TEAM_ROCKET_V3_ROM, None, [
+        row for region in ("KANTO", "SEVII123", "SEVII45", "SEVII67", "JOHTO", "HOENN", "SINNOH")
+        for row in ((f"TR3_{region}_GFX", f"{region.title()}Gfx", "smol"), (f"TR3_{region}_MAP", f"{region.title()}Map", "smol"),
+                    (f"TR3_{region}_PAL", f"{region.title()}Pal", False))
+    ]),
     "RW": (ROWE_ROM, None, [
         ("RW_REGION_PAL", "RegionPal", False),
         ("RW_REGION_GFX", "RegionGfx", True),
@@ -667,7 +692,7 @@ def fireRed_symbols(p):
 
 # The binary hacks' made-up symbols (no ELF).
 ROM_SYMBOLS = {"RY": recharged_yellow_symbols, "UB": unbound_symbols, "UBFR": unbound_fr_symbols, "RR": cfru_symbols, "OD": cfru_symbols, "AM": cfru_symbols, "SS": cfru_symbols, "LZ": lazarus_symbols, "SGL": seaglass_symbols, "SG": soulgold_symbols,
-               "GZ": glazed_symbols, "IMP": imperium_symbols, "DSM": dreamstone_symbols, "WSH": wishes_symbols, "QTZ": quetzal_symbols, "HNS": hns_symbols, "RW": rowe_symbols, "MM": mariomon_symbols, "RE": recharged_emerald_symbols,
+               "GZ": glazed_symbols, "IMP": imperium_symbols, "DSM": dreamstone_symbols, "WSH": wishes_symbols, "TR3": team_rocket_v3_symbols, "QTZ": quetzal_symbols, "HNS": hns_symbols, "RW": rowe_symbols, "MM": mariomon_symbols, "RE": recharged_emerald_symbols,
                **{"EM" + lang: emerald_eu_symbols(lang) for lang in EMERALD_EU_ROMS},
                **{"FR" + lang: fireRed_symbols(p) for lang, p in fireRed_ports().items()}}
 

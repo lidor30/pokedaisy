@@ -595,8 +595,9 @@ val activeRegionMapImages: Array<String> get() = when {
     mariomon -> regionMapImagesMariomon
     // Their own maps (the Orange Archipelago, Galar), drawn from the ROM (RomRegionMap) - none bundled.
     orangeIslands || swordShield || gsChronicles || frHack?.ownRegionMap == true -> emptyArray()
-    // Team Rocket Edition: Dragonsden's Kanto / Sevii / Johto maps aren't read yet - the MAP tab names the place.
-    teamRocket -> emptyArray()
+    // Team Rocket Edition: Dragonsden's Kanto / Sevii / Johto maps aren't read yet in v1.5 - the MAP tab names the place;
+    // the 2026 rebuild's seven are drawn from its ROM (RomArt's TR3_*).
+    teamRocket -> if (teamRocketV3) regionMapImagesTeamRocketV3 else emptyArray()
     // Wishes of Tomorrow's JOKAIM map, rebuilt from its ROM (RomArt's WSH_REGION_*).
     wishes -> regionMapImagesWishes
     // Dreamstone Mysteries' Cormoria map, rebuilt from its ROM (RomArt's DSM_REGION_*).

@@ -4860,6 +4860,7 @@ val NATIVE_TEAM_ROCKET_V3 = NATIVE_EMERALD.copy(
     itemIconTable = 0x088CCC40L, // gItemsInfo[0].iconPic
     itemIconStride = 0x2C,
     itemPalCompressed = false,
+    pokedex = POKEDEX_TEAM_ROCKET_V3,
     guideTables = GUIDE_TABLES_TEAM_ROCKET_V3,
 )
 
