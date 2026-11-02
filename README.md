@@ -36,6 +36,8 @@ guide, all drawn in the game's own menu style.
 - **Two screens** (AYN Thor, Retroid Pocket Duo, ...): the game on top, the companion on the bottom screen.
 - **One screen** (Retroid Pocket 6, phones, ...): the companion opens as a window over the game or a panel beside
   it, and a HUD, a quick menu and battle buttons keep the essentials on the game screen.
+- **Folding phones** (Galaxy Z Fold, Pixel Fold, ...): half open, the game goes above the fold and the companion below it,
+  like a two-screen handheld (or on facing pages when held like a book).
 - **DS games** (Platinum, HeartGold, SoulSilver, Black, White, Black 2, White 2): the touch screen goes on the bottom screen, one tap
   swaps it for the companion.
 

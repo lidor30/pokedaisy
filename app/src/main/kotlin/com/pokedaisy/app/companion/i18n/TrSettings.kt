@@ -520,6 +520,8 @@ internal val trSettings: Map<String, Tr> = mapOf(
     "The on-screen buttons: layout, size, extras" to Tr(ja = "がめんの ボタン: はいち・サイズ・ついか", fr = "Les boutons à l'écran : place, taille, extras", de = "Die Tasten am Bildschirm: Anordnung, Größe, Extras", it = "I tasti sullo schermo: posizione, misura, extra", es = "Los botones en pantalla: diseño, tamaño, extras", br = "Os botões na tela: layout, tamanho, extras", pt = "Os botões no ecrã: disposição, tamanho, extras"),
     "CLASSIC" to Tr(ja = "クラシック", fr = "CLASSIQUE", de = "KLASSISCH", it = "CLASSICO", es = "CLÁSICO", br = "CLÁSSICO", pt = "CLÁSSICO"),
     "SIDES" to Tr(ja = "りょうはし", fr = "CÔTÉS", de = "SEITEN", it = "LATI", es = "LADOS", br = "LADOS", pt = "LADOS"),
+    "FOLD LAYOUT" to Tr(ja = "おりたたみ", fr = "MODE PLIÉ", de = "FALT-LAYOUT", it = "LAYOUT PIEGATO", es = "MODO PLEGADO", br = "MODO DOBRADO", pt = "MODO DOBRADO"),
+    "Half open: the game on one side of the fold" to Tr(ja = "はんぶん ひらくと ゲームと コンパニオンが わかれます", fr = "Entrouvert : le jeu d'un côté du pli", de = "Halb offen: das Spiel auf einer Seite des Knicks", it = "Mezzo aperto: il gioco da un lato della piega", es = "Medio abierto: el juego a un lado del pliegue", br = "Meio aberto: o jogo de um lado da dobra", pt = "Meio aberto: o jogo de um lado da dobra"),
     "COMPACT" to Tr(ja = "コンパクト", fr = "COMPACT", de = "KOMPAKT", it = "COMPATTO", es = "COMPACTO", br = "COMPACTO", pt = "COMPACTO"),
     "CUSTOM" to Tr(ja = "じぶんで", fr = "PERSO", de = "EIGENES", it = "PERSONALE", es = "PROPIO", br = "PERSONAL.", pt = "PERSONAL."),
     "D-PAD" to Tr(ja = "じゅうじキー", fr = "CROIX", de = "STEUERKREUZ", it = "CROCE", es = "CRUCETA", br = "DIRECIONAL", pt = "DIRECIONAL"),

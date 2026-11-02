@@ -584,6 +584,17 @@ class Prefs(context: Context) {
         get() = p.getBoolean("portrait_companion_under_game", true)
         set(v) = p.edit().putBoolean("portrait_companion_under_game", v).apply()
 
+    /** SETTINGS > FOLD LAYOUT: a foldable half open lays the game and the companion out on either side of its hinge
+     * (TABLETOP: game above, companion below; BOOK: game left, companion right). On by default. */
+    var foldLayout: Boolean
+        get() = p.getBoolean("fold_layout", true)
+        set(v) = p.edit().putBoolean("fold_layout", v).apply()
+
+    /** This device has reported a hinge (a foldable): FOLD LAYOUT's row shows on both screens. */
+    var foldSeen: Boolean
+        get() = p.getBoolean("fold_seen", false)
+        set(v) = p.edit().putBoolean("fold_seen", v).apply()
+
     /** A phone held upright in a DS game: the touch screen's slot (where the companion goes) as a ratio of the screen's
      * width, kept apart from [portraitCompanionRatio]. 0.76: the DS screen (4:3) over its COMPANION switch, with the touch
      * controls still getting the space below on a 18.5:9 phone (PortraitLayout.padInGap; 0.8 missed it by a few px). */

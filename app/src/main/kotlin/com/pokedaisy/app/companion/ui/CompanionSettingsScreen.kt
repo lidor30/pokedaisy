@@ -653,6 +653,13 @@ private fun homeRows(
                 labelBadge = NewFeatures.badge(NewFeatures.COMPANION_WINDOW), subtitle = "A window over the game, or a side panel",
             ) { s.setCompanionWindow(!window); changed() }
         },
+        // A foldable half open: the game on one side of the hinge, the companion on the other.
+        s.foldLayout?.let { fold ->
+            SettingRow(
+                tk("FOLD LAYOUT"), onOff(fold), labelBadge = NewFeatures.badge(NewFeatures.FOLD_LAYOUT),
+                subtitle = "Half open: the game on one side of the fold",
+            ) { s.setFoldLayout(!fold); changed() }
+        },
         // The white tab at the screen's right edge that opens it (BACK and the HUD's COMPANION still do).
         s.companionTab?.let { tab ->
             SettingRow(

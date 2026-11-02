@@ -30,7 +30,8 @@ import com.pokedaisy.app.companion.ui.SidePanelCompanion
  * ([back]).
  *
  * Held sideways the same device gets [SidePanel] instead (PokeDaisyActivity
- * switches between them on rotation).
+ * switches between them on rotation) - but a foldable half open like a laptop gets this one either way, in tabletop
+ * mode ([hinge]): the game above the fold, the companion filling everything below it, no grip.
  */
 class PortraitPanel(
     private val root: GameStageLayout,
@@ -75,6 +76,21 @@ class PortraitPanel(
             field = v
             apply()
         }
+
+    /**
+     * SETTINGS > FOLD LAYOUT, a foldable half open with its hinge across the screen (TABLETOP): where the hinge runs
+     * (px, top to bottom of it, in the stage's coordinates). The game and the touch controls get everything above it,
+     * the companion everything below; null = the usual upright layout.
+     */
+    var hinge: IntRange? = null
+        set(v) {
+            if (field == v) return
+            field = v
+            apply()
+        }
+
+    /** In tabletop mode ([hinge]). */
+    val tabletop: Boolean get() = enabled && hinge != null
 
     private var panel: View? = null
     private var gripView: View? = null
@@ -127,6 +143,7 @@ class PortraitPanel(
             panel = null
             gripView = null
             root.topAligned = false
+            hinge = null
             setMargins(game, 0, 0)
             setMargins(touchControls, 0, 0)
         }
@@ -157,6 +174,22 @@ class PortraitPanel(
 
     private fun apply() {
         if (!enabled) return
+        val fold = hinge
+        if (fold != null) {
+            // TABLETOP: the hinge is the split; the grip has nothing to size.
+            val h = screenH
+            val top = fold.first.coerceIn(0, h)
+            val bottom = fold.last.coerceIn(top, h)
+            laidOutFor = Triple(screenW, h, gameH)
+            grip.value = PortraitLayout.Grip.ABOVE
+            topInset.intValue = 0
+            gripView?.visibility = View.GONE
+            panel?.let { setFrame(it, bottom, h - bottom) }
+            setMargins(game, 0, h - top)
+            setMargins(touchControls, 0, h - top)
+            return
+        }
+        gripView?.visibility = View.VISIBLE
         val h = screenH
         val a = arrangement()
         laidOutFor = Triple(screenW, h, gameH)
@@ -192,6 +225,7 @@ class PortraitPanel(
     private val currentRatio get() = arrangement().companionHeight.toFloat() / screenW
 
     private fun stepSize() {
+        if (hinge != null) return
         ratio = PortraitLayout.next(screenW, screenH, gameH, currentRatio, reserve)
         save()
     }
@@ -208,11 +242,13 @@ class PortraitPanel(
     }
 
     private fun onDrag(dy: Float) {
+        if (hinge != null) return
         ratio = ((dragStartHeight + dragGrows * dy) / screenW).coerceAtLeast(0f)
         apply()
     }
 
     private fun onDragEnd() {
+        if (hinge != null) return
         ratio = PortraitLayout.snap(screenW, screenH, gameH, currentRatio, reserve)
         save()
     }
