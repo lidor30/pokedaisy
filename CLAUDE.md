@@ -1097,11 +1097,12 @@ ROMs their `MapMusic*.kt` list, any other ROM every `gSongTable` entry on the BG
 themselves (fanfares) count as done. **Clips loop where the song loops** (`M4aLoop.kt`, cache v6): the BGM's
 first track jumping back through its GOTO (0xB2) marks the loop end, the frame its main stream passed the
 GOTO target the start (no intro: two GOTOs apart); `M4aLoopSplice` cuts one period starting 1 s into the
-loop, tuned to the sample. The recording before that cut is saved as `<key>.intro.wav`: `FfMusicPlayer` (an AudioTrack built like the game's, USAGE_GAME / low latency: a MediaPlayer played as media on the
-deep-buffer output, where the Thor's settings app runs a system-wide equalizer - the clips came out louder and harsher
-than the game) plays it once, then
+loop, tuned to the sample. The recording before that cut is saved as `<key>.intro.wav`: `FfMusicPlayer` plays it once, then
 runs straight into the loop in one stream, both started at the song's own position
-(`Clip.songStartedAt`, when the BGM key changed). Without the intro a song with one started ~9 s in
+(`Clip.songStartedAt`, when the BGM key changed). Live audio, clips and link play share `GameAudioTrack`'s
+USAGE_MEDIA / POWER_SAVING policy: request deep-buffer media output so the Thor's system EQ (JamesDSP)
+can apply at 1x and in FF (#336), rather than bypassing it in both. Device policy decides the actual route;
+buffered output can add latency. Without the intro a song with one started ~9 s in
 (FireRed's Route 7). A heard song whose clip predates intros is re-recorded; the background pass isn't redone. The old audio-envelope `LoopDetector` cut battle themes to ~3 s and looped back
 to the intro. **The clip follows the FF the player asked for** (`EmulatorEngine.requestedSpeed`), not SMART's
 temporary 1x: it plays straight through a menu (game audio muted meanwhile, menu SFX included) instead of

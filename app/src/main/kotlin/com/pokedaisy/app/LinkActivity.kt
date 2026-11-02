@@ -5,7 +5,6 @@ import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Paint
 import android.graphics.Rect
-import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.os.Bundle
@@ -255,12 +254,7 @@ class LinkActivity : ComponentActivity() {
     private fun runLoop() {
         val rate = LinkCore.pkLinkSampleRate()
         val bytes = maxOf(AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT), rate / 15 * 4)
-        val track = AudioTrack.Builder()
-            .setAudioAttributes(AudioAttributes.Builder().setUsage(AudioAttributes.USAGE_GAME).setContentType(AudioAttributes.CONTENT_TYPE_MUSIC).build())
-            .setAudioFormat(AudioFormat.Builder().setEncoding(AudioFormat.ENCODING_PCM_16BIT).setSampleRate(rate).setChannelMask(AudioFormat.CHANNEL_OUT_STEREO).build())
-            .setBufferSizeInBytes(bytes)
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .build()
+        val track = GameAudioTrack.build(rate, bytes)
         track.play()
         val audio = ShortArray(8192)
         var heard = -1

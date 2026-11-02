@@ -1,6 +1,5 @@
 package com.pokedaisy.app
 
-import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.os.Process
@@ -17,10 +16,8 @@ import java.io.RandomAccessFile
  * Driven by [EmulatorEngine.onFfMusicChanged], which only fires when the
  * desired clip actually changes — call [setClip] on the UI thread.
  *
- * Through an AudioTrack built like the game's own (USAGE_GAME, low latency), not a MediaPlayer: a MediaPlayer plays
- * as media on the deep-buffer output, where the AYN Thor's settings app runs a system-wide equalizer that also takes
- * over its volume - the clips came out louder and harsher than the game they stand in for (most of all a Game Boy
- * game's square waves). The game's track goes to the primary output, which has no effects; so does this one.
+ * Uses the same buffered media output policy as live game audio (GameAudioTrack), so both can use the device's
+ * system equalizer, including JamesDSP on the AYN Thor. Keep the intro and loop in one PCM stream for gapless audio.
  */
 class FfMusicPlayer {
 
@@ -136,24 +133,7 @@ class FfMusicPlayer {
         private fun buildTrack(rate: Int): AudioTrack {
             val minBuf = AudioTrack.getMinBufferSize(rate, AudioFormat.CHANNEL_OUT_STEREO, AudioFormat.ENCODING_PCM_16BIT)
                 .coerceAtLeast(4096)
-            return AudioTrack.Builder()
-                .setAudioAttributes(
-                    AudioAttributes.Builder()
-                        .setUsage(AudioAttributes.USAGE_GAME)
-                        .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                        .build(),
-                )
-                .setAudioFormat(
-                    AudioFormat.Builder()
-                        .setSampleRate(rate)
-                        .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                        .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
-                        .build(),
-                )
-                .setBufferSizeInBytes(maxOf(minBuf * 4, rate / 10 * 4))   // ~100 ms: the writer is the only work here
-                .setTransferMode(AudioTrack.MODE_STREAM)
-                .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
-                .build()
+            return GameAudioTrack.build(rate, maxOf(minBuf * 4, rate / 10 * 4))   // ~100 ms: the writer is the only work here
         }
     }
 

@@ -3,7 +3,6 @@ package com.pokedaisy.app
 import com.pokedaisy.app.companion.data.SnapshotCache
 import com.pokedaisy.app.companion.i18n.tr
 import android.graphics.Bitmap
-import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.util.Log
@@ -1935,27 +1934,13 @@ class EmulatorEngine(
             AudioFormat.CHANNEL_OUT_STEREO,
             AudioFormat.ENCODING_PCM_16BIT,
         ).coerceAtLeast(4096)
-        return AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_GAME)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build(),
-            )
-            .setAudioFormat(
-                AudioFormat.Builder()
-                    .setSampleRate(sampleRate)
-                    .setEncoding(AudioFormat.ENCODING_PCM_16BIT)
-                    .setChannelMask(AudioFormat.CHANNEL_OUT_STEREO)
-                    .build(),
-            )
+        return GameAudioTrack.build(
+            sampleRate,
             // Room for the vsync pacing's rate control to keep it half full: at least ~85 ms.
-            .setBufferSizeInBytes(maxOf(minBuf * 2, 4096 * 4))
-            .setTransferMode(AudioTrack.MODE_STREAM)
-            .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
-            .build()
+            maxOf(minBuf * 2, 4096 * 4),
+        )
             .also { t ->
-                // A low-latency track can start with less of its buffer in use than was asked for: vsync pacing
+                // A track can start with less of its buffer in use than was asked for: vsync pacing
                 // keeps it about half full, so give it all of it (and say what it got, for a logcat read: #80).
                 val asked = t.bufferSizeInFrames
                 runCatching { t.setBufferSizeInFrames(t.bufferCapacityInFrames) }

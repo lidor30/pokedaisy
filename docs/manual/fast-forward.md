@@ -3,7 +3,7 @@ title: Fast-forward and game speed
 summary: Speed through the slow parts, set a pace that sticks for each game, slow things down, and keep the music sounding right while you do.
 section: player
 order: 1
-keywords: [ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, volume, mute, quiet, silent, clock, rtc, time, day, night, storage, space]
+keywords: [ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, volume, mute, quiet, silent, clock, rtc, time, day, night, storage, space, JamesDSP, EQ, equalizer]
 ---
 
 Pokémon games have a lot of walking, text and grinding. Fast-forward runs the game several times faster so you get through it quicker, and PokeDaisy tries to get out of your way when speed would be a problem: in menus, on the map, and with the music.
@@ -95,6 +95,14 @@ The `SOUND` group, right under `FF / SPEED` in the companion's `SETTINGS` (and i
 - **`MUTE GAME`** turns the game's sound off completely. Your `GAME VOLUME` is kept, so turning it back on brings the same level back.
 
 To mute and unmute without opening `SETTINGS`, give the `MUTE` hotkey a button under `HOTKEYS` (see [Controls](controls.md#hotkeys)). A short message on the game says which way it went.
+
+### System equalizers on Android
+
+Game audio and `STEADY` music request the same buffered media output. This lets system equalizers, such as JamesDSP on the AYN Thor, process both instead of only fast-forward music. Link play uses this output policy too. You do not need to enable a PokeDaisy setting.
+
+Enable your equalizer and select its speaker or headphone profile in the device settings or equalizer app. PokeDaisy does not install an equalizer or change your EQ profile. Android and your device configuration control which effects apply.
+
+Buffered output can add audio delay compared with low-latency game output. If the sound is too loud after EQ, reduce the device volume or `GAME VOLUME`.
 
 ## The real-time clock
 
