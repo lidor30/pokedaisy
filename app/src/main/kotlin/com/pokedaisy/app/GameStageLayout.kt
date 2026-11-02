@@ -78,6 +78,23 @@ class GameStageLayout(
             requestLayout()
         }
 
+    /**
+     * TOUCH CONTROLS > SKIN held sideways: where the skin's screen puts the game, in [skinHost]'s area (the touch
+     * controls' view, its margins taken off) of the given size; null = the usual place. The game's view is laid out
+     * there exactly (it fits its picture in itself), the status bar, when shown, over its top.
+     */
+    var skinGame: ((Int, Int) -> androidx.compose.ui.geometry.Rect?)? = null
+        set(v) {
+            if (field === v) return
+            field = v
+            requestLayout()
+        }
+
+    /** The view [skinGame]'s area is: the touch controls. */
+    var skinHost: View? = null
+
+    private var skinLaid: android.graphics.Rect? = null
+
     /** The touch screen's view for [dsArrange] (a child of this layout, over [game]). */
     var dsTouch: View? = null
 
@@ -127,8 +144,10 @@ class GameStageLayout(
     private fun measureStage(widthMeasureSpec: Int, heightMeasureSpec: Int) {
         super.onMeasure(widthMeasureSpec, heightMeasureSpec)
         dsLaid = null
+        skinLaid = null
         val ds = dsArrange
         if (ds != null && !topAligned) { measureDs(ds); return }
+        if (!topAligned && measureSkin()) return
         if (!barShown && !topAligned) return
         val lp = game.layoutParams as LayoutParams
         val areaW = measuredWidth - lp.leftMargin - lp.rightMargin
@@ -149,6 +168,31 @@ class GameStageLayout(
         }
         game.measure(exactly(gameW), exactly(gameH))
         if (barShown) bar.measure(exactly(gameW), exactly(barH))
+    }
+
+    /** SKIN sideways: the game in the skin's screen ([skinGame]); false = no skin (or no screen in it). */
+    private fun measureSkin(): Boolean {
+        val place = skinGame ?: return false
+        val host = skinHost?.takeIf { it.visibility != GONE } ?: return false
+        val lp = host.layoutParams as? MarginLayoutParams ?: return false
+        val areaW = measuredWidth - lp.leftMargin - lp.rightMargin
+        val areaH = measuredHeight - lp.topMargin - lp.bottomMargin
+        if (areaW <= 0 || areaH <= 0) return false
+        val r = place(areaW, areaH) ?: return false
+        val rect = android.graphics.Rect(
+            lp.leftMargin + r.left.toInt(), lp.topMargin + r.top.toInt(),
+            lp.leftMargin + r.right.toInt(), lp.topMargin + r.bottom.toInt(),
+        )
+        if (rect.width() <= 0 || rect.height() <= 0) return false
+        barH = if (barShown) {
+            bar.measure(MeasureSpec.makeMeasureSpec(rect.width(), MeasureSpec.EXACTLY), MeasureSpec.makeMeasureSpec(rect.height(), MeasureSpec.AT_MOST))
+            bar.measuredHeight
+        } else 0
+        gameW = rect.width()
+        gameH = (rect.height() - barH).coerceAtLeast(0)
+        game.measure(exactly(gameW), exactly(gameH))
+        skinLaid = rect
+        return true
     }
 
     private fun measureDs(ds: (Int, Int) -> com.pokedaisy.app.companion.DsArrangement) {
@@ -196,6 +240,12 @@ class GameStageLayout(
                 dsTouch?.layout(x + t.left - f, y + barH + t.top - f, x + t.right + f, y + barH + t.bottom + f)
             }
             if (barH > 0) huds.forEach { it.offsetTopAndBottom(y + barH) }
+            return
+        }
+        skinLaid?.let { r ->
+            if (barShown) bar.layout(r.left, r.top, r.right, r.top + barH)
+            game.layout(r.left, r.top + barH, r.right, r.top + barH + gameH)
+            huds.forEach { it.offsetTopAndBottom(r.top + barH) }
             return
         }
         if (!barShown && !topAligned) return

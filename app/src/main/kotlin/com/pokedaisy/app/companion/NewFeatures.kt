@@ -43,6 +43,12 @@ object NewFeatures {
     /** SETTINGS > TOUCH CONTROLS: layouts, size, opacity, extra buttons and EDIT LAYOUT (companion.ui.TouchControls). */
     const val TOUCH_CONTROLS = "touch_controls"
 
+    /** TOUCH CONTROLS > LOOK / COLORS (and the MIRRORED / RAISED layouts): how the drawn buttons look. */
+    const val TOUCH_STYLES = "touch_styles"
+
+    /** TOUCH CONTROLS > SKINS: Delta skins (.deltaskin) in place of the drawn buttons (companion.DeltaSkin). */
+    const val TOUCH_SKINS = "touch_skins"
+
     /** SETTINGS > COMPANION BUTTON: hide the edge button that opens the companion on one screen (SidePanel). */
     const val COMPANION_TAB = "companion_tab"
 
@@ -133,7 +139,7 @@ object NewFeatures {
         HUD, BATTLE_BUTTONS, GAME_HOTKEYS, COMPANION_WINDOW, HUD_PC, QUICK_MENU, HUD_REPEL, SINGLE_SCREEN, MORE_TAB, TOUCH_CONTROLS,
         COMPANION_TAB, REUSABLE_TMS, SHINY_ODDS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
-        GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES,
+        GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, TOUCH_STYLES, TOUCH_SKINS,
     )
 
     private const val DAYS = 7

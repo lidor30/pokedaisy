@@ -97,7 +97,7 @@ The app updates itself: it offers each new version when you open it. The full ma
   rewind, a real-time clock, save states, turbo buttons.
 - Shaders (LCD, scanlines, CRT, GBA colours, edge smoothing), overlays, and your own RetroArch overlays.
 - Makeovers: play one game as another game's hero, a Pokemon following you, day and night tints.
-- Remappable controls and hotkeys, touch controls you can lay out yourself, Bluetooth and USB controllers.
+- Remappable controls and hotkeys, touch controls you can lay out yourself (with several looks and colors, or a Delta `.deltaskin` controller skin), Bluetooth and USB controllers.
 - **Link play**: two to four GBA games at once on one link cable, to trade (trade evolutions too), battle and
   mix records between your games or two saves of one.
 - Optional cheats, wild encounters off, reusable TMs, trade evolutions without a trade, auto-run and running indoors.

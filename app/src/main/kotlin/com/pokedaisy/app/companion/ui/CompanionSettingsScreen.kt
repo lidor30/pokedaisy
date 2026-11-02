@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.SkinSystem
+
 import com.pokedaisy.app.companion.NewFeatures
 
 import com.pokedaisy.app.companion.data.LookChar
@@ -106,6 +108,9 @@ fun CompanionSettingsScreen(
     DisposableEffect(page, capture) { onDispose { capture?.cancel() } }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     var selector by remember { mutableStateOf<Selector?>(null) }
+    // TOUCH CONTROLS > SKINS: the imported skins (read on the way in) and their pick-list.
+    val touchSkinUi = remember { TouchSkinUi() }
+    val touchSkins = remember(settings, page) { if (page == Page.TOUCH) settings?.touchSkins.orEmpty() else emptyList() }
 
     // The games' own spelling: "POKéMON", not "POKÉMON".
     val gameName = settings?.gameName?.uppercase()?.replace('É', 'é') ?: ""
@@ -235,6 +240,8 @@ fun CompanionSettingsScreen(
                         onEdit = settings::editTouchLayout,
                         underGame = settings.uprightUnderGame, setUnderGame = { settings.setPortraitUnderGame(it); tick++ },
                         expand = settings.gameAspect == GameAspect.WIDE && settings.wideSupported, touchShown = settings.touchControlsShown,
+                        skins = touchSkins, skinUi = touchSkinUi,
+                        skinSystem = settings.touchStage?.let { if (it.ds) SkinSystem.DS else if (it.gameBoy) SkinSystem.GB else SkinSystem.GBA } ?: SkinSystem.GBA,
                     ) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.SPEED -> speedRows(settings, { tick++ }, { selector = it }) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.DISPLAY -> displayRows(settings, { tick++ }, { page = it }, { selector = it }) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
@@ -278,6 +285,7 @@ fun CompanionSettingsScreen(
                     TouchControlsPage(
                         stage, style, shot, m, Modifier.fillMaxWidth().weight(1f), underGame = settings.uprightUnderGame == true,
                         expand = settings.gameAspect == GameAspect.WIDE && settings.wideSupported, touchShown = settings.touchControlsShown,
+                        skins = touchSkins, skinUi = touchSkinUi, setStyle = { settings.setTouchStyle(it); tick++ },
                     ) { mod ->
                         OptionListWindow(m, mod) {
                             GroupedRows(rows, m, cursor, onClick = { i -> moveCursor(i); rows[i].onClick() }, onFocused = ::moveCursor)
@@ -711,7 +719,7 @@ private fun homeRows(
         // PC, FLY, a Repel, the bike, a rod, states, FF... on a held button (L3 by default): its own page.
         SettingRow(tk("QUICK MENU"), null, subtitle = "Actions on a held button", labelBadge = quickMenuBadge(), opensPage = true) { navigate(Page.QUICK_MENU) },
         // The on-screen buttons: when they show, layouts, size, extras, EDIT LAYOUT - its own page, with a preview.
-        SettingRow(tk("TOUCH CONTROLS"), s.touchStyle.show.label, labelBadge = touchControlsBadge(), opensPage = true, subtitle = "The on-screen buttons: layout, size, extras") { navigate(Page.TOUCH) },
+        SettingRow(tk("TOUCH CONTROLS"), s.touchStyle.show.label, labelBadge = touchControlsBadge(), opensPage = true, subtitle = "The on-screen buttons: layout, look, skins") { navigate(Page.TOUCH) },
         groupTitle(tk("APP")),
         // A card now and then about a feature the player hasn't found (FeatureTips).
         tipsRow(s.tips) { s.setTips(it); changed() },

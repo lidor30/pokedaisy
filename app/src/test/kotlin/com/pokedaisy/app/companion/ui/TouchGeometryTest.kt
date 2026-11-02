@@ -120,6 +120,33 @@ class TouchGeometryTest {
         assertTrue(p.items.filter { it.button.extra }.all { it.right < p.w / 2 })
     }
 
+    /** MIRRORED: the D-pad and A / B swap sides, A stays right of B, L / R and SELECT / START keep their own sides. */
+    @Test fun mirroredSwapsTheHands() {
+        for ((w, h) in listOf(2400f to 1080f, 1920f to 1080f, 1080f to 2400f)) {
+            val stage = simulateTouchStage(w, h, dp)
+            val p = TouchGeometry.place(TouchControlsStyle(preset = TouchPreset.MIRRORED), stage.area.width, stage.area.height, dp, stage.portrait)
+            assertEquals(TouchPreset.MIRRORED, p.preset)
+            val dpad = p.item(TouchButton.DPAD)!!; val a = p.item(TouchButton.A)!!; val b = p.item(TouchButton.B)!!
+            assertTrue("$w: D-pad on the right", dpad.cx > p.w / 2)
+            assertTrue("$w: A / B on the left", a.cx < p.w / 2 && b.cx < p.w / 2)
+            assertTrue(a.cx > b.cx && a.cy < b.cy)
+            assertTrue(p.item(TouchButton.L)!!.cx < p.item(TouchButton.R)!!.cx)
+            assertTrue(p.item(TouchButton.SELECT)!!.cx < p.item(TouchButton.START)!!.cx)
+        }
+    }
+
+    /** RAISED, held sideways: the D-pad and A / B higher than CLASSIC's, L over the D-pad and R over A / B. */
+    @Test fun raisedLiftsTheThumbs() {
+        val classic = TouchGeometry.place(TouchControlsStyle(preset = TouchPreset.CLASSIC), 2400f, 1080f, dp, false)
+        val p = TouchGeometry.place(TouchControlsStyle(preset = TouchPreset.RAISED), 2400f, 1080f, dp, false)
+        val dpad = p.item(TouchButton.DPAD)!!
+        assertTrue(dpad.cy < classic.item(TouchButton.DPAD)!!.cy - 50)
+        val l = p.item(TouchButton.L)!!; val r = p.item(TouchButton.R)!!
+        assertEquals(dpad.cx, l.cx, 0.5f)
+        assertTrue(l.bottom <= dpad.top && r.bottom <= p.item(TouchButton.A)!!.top)
+        assertTrue(r.cx > p.w / 2)
+    }
+
     @Test fun gameBoyHasNoShoulders() {
         val p = TouchGeometry.place(TouchControlsStyle(), 2400f, 1080f, dp, false, gameAspect = 10f / 9f, gameBoy = true)
         assertTrue(p.items.none { it.button == TouchButton.L || it.button == TouchButton.R })

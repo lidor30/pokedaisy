@@ -1462,6 +1462,15 @@ whole block within its room (`shiftTo`), and the page repeats DISPLAY OPTIONS' C
 upright preview shows only the screen's part around the controls. EXPAND upright fills everything above the companion, so
 there UNDER GAME = the controls' own strip along the bottom (`PortraitLayout.arrange(padStrip)`, `TouchGeometry.naturalHeight`,
 set by `syncTouchControls`), and COMPANION / POSITION grey out with a reason where they'd do nothing (`uprightCompanionRow`). ui-preview `touch-*` / `settings-touch*` shots.
+LOOK (GLASS / SOLID / OUTLINE / CONSOLE) and COLORS (`TouchColors`, ARGB + optional A / B / X / Y accents) are drawn through
+`PadPaint` (TouchControls.kt); MIRRORED / RAISED are transforms of SIDES / CLASSIC (`TouchGeometry.mirrored` / `raised`). **SKINS**
+(NEW tag `TOUCH_SKINS`): Delta's `.deltaskin` (zip: info.json + PDF / PNG) read by our own parser (`companion/DeltaSkin.kt`: the
+representation closest in shape, `SkinFit`: sideways the whole picture with the game moved into its screen through
+`GameStageLayout.skinGame`; upright only the part under its screen, from its topmost button, in the controls' area), imported on the
+top screen only (`DeltaSkinStore`, files/skins/<identifier>/: entry names checked, size / count capped), pictures decoded by
+`SkinImages.decode` (the app's `SkinBitmaps`: PdfRenderer / BitmapFactory; ui-preview's PNG-only `DemoSkin`). GBA and GBC skins
+only (a GBC skin for Game Boy games); DS skins are refused for now. **No third-party skin is ever bundled, linked or shown in our
+shots** (the overlays' rule): ui-preview's demo skin is drawn in code. `DeltaSkinTest`.
 **External controllers** (8BitDo, GameSir, ...): `configChanges` includes `keyboard` (many controller modes
 register as a keyboard, and connecting one recreated the activity mid-game); diagonal D-pad keycodes press
 both bits; joystick motion is taken in `dispatchGenericMotionEvent` before a focused ComposeView in the same
