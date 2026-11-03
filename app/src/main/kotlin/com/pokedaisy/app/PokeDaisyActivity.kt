@@ -4341,8 +4341,8 @@ class PokeDaisyActivity : Activity() {
                 setGameVolume(GameVolume.percent, muted)
                 showHud(com.pokedaisy.app.companion.i18n.tr(if (muted) "Game muted" else "Game sound on"))
             }
-            Hotkeys.Action.TOUCH_SCREEN -> if (e.pressed) toggleDsTouch()
-            Hotkeys.Action.DS_LAYOUT -> if (e.pressed) nextDsLayout()
+            Hotkeys.Action.TOUCH_SCREEN -> if (e.pressed) { com.pokedaisy.app.companion.FeatureTips.used(TipId.DS_TRIGGERS); toggleDsTouch() }
+            Hotkeys.Action.DS_LAYOUT -> if (e.pressed) { com.pokedaisy.app.companion.FeatureTips.used(TipId.DS_TRIGGERS); nextDsLayout() }
         }
     }
 
@@ -4439,6 +4439,8 @@ class PokeDaisyActivity : Activity() {
         val mapOpen = e.regionMapOpen
         if (tipMapOpen && !mapOpen) tips.moment(TipId.FLY)
         tipMapOpen = mapOpen
+        // The DS triggers: any time a DS game runs on one screen (the tip's done once answered or a trigger is used).
+        if (dsStageOn) tips.moment(TipId.DS_TRIGGERS)
     }
 
     /** A tip's feature is there to try here, and not on already. */
@@ -4458,6 +4460,8 @@ class PokeDaisyActivity : Activity() {
             TipId.FLY -> flyAction.canFly() && telemetry.snapshot.value.party.any { m ->
                 !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLY_MOVE }
             }
+            // A DS game on one screen with the triggers on a controller (the HUD's TOUCH stands in without one).
+            TipId.DS_TRIGGERS -> dsStageOn && tipKey(Hotkeys.Action.DS_LAYOUT) != null
         }
     }
 
@@ -4482,6 +4486,11 @@ class PokeDaisyActivity : Activity() {
             tipKey(Hotkeys.Action.ZOOM)?.let { it to tr("ZOOM") }, tr("RIGHT STICK") to tr("LOOK AROUND"),
         )
         TipId.QUICK_MENU -> listOfNotNull(tipKey(Hotkeys.Action.QUICK_MENU)?.let { it to tr("QUICK MENU") })
+        // TOUCH SCREEN only where the touch screen floats in (ONE SCREEN, PICTURE IN PICTURE).
+        TipId.DS_TRIGGERS -> listOfNotNull(
+            tipKey(Hotkeys.Action.TOUCH_SCREEN)?.takeIf { dsFloats.value }?.let { it to tr("TOUCH SCREEN") },
+            tipKey(Hotkeys.Action.DS_LAYOUT)?.let { it to tr("NEXT LAYOUT") },
+        )
         else -> emptyList()
     }
 
@@ -4511,6 +4520,8 @@ class PokeDaisyActivity : Activity() {
                 triggerQuickMenu(true)
                 runQuickAction(com.pokedaisy.app.companion.QuickAction.FLY)
             }
+            // L2's touch screen floated in, else (both screens on show) R2's next layout.
+            TipId.DS_TRIGGERS -> if (dsFloats.value) toggleDsTouch() else nextDsLayout()
         }
     }
 

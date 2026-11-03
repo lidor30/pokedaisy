@@ -2026,6 +2026,13 @@ fun main(args: Array<String>) {
         Shot("library-views-hacks", tw, th, td, activity { platformLibrary(com.pokedaisy.app.LibraryView.HACKS); LibraryActivity() }),
         // GAMES / TOOLS / SETTINGS: a rail down the left of a wide screen, a bar along the bottom of an upright one. Each with
         // the games, then TOOLS open.
+        // A big game being got ready to start: the library dimmed under the rocking ball.
+        Shot("library-loading", tw, th, td, activity { LibraryActivity().apply { preparing = File(android.content.Context().filesDir, "roms/firered-hack.gba") } }) {
+            mainClock.advanceTimeBy(1200)
+        },
+        Shot("library-loading-phone", 1080, 2400, 2.625f, activity { LibraryActivity().apply { preparing = File(android.content.Context().filesDir, "roms/firered-hack.gba") } }) {
+            mainClock.advanceTimeBy(1200)
+        },
         Shot("library-tools", tw, th, td, activity { platformLibrary(); LibraryActivity() }) { onNodeWithContentDescription("Toggle view").performClick() },
         Shot("library-tools-open", tw, th, td, activity { platformLibrary(); LibraryActivity().apply { toolsOpen = true } }),
         Shot("library-tools-phone", 1080, 2400, 2.625f, activity { platformLibrary(); LibraryActivity() }),
@@ -2516,6 +2523,23 @@ fun main(args: Array<String>) {
         Shot("setup-covers-saved", tw, th, td, activity {
             LibraryActivity().apply { setup = SetupState().apply { step = SetupState.Step.COVERS; apiKey = "preview-key" } }
         }) { onNodeWithText("SAVE").performClick() },
+        // The first DS game on one screen: its triggers' tip (TipId.DS_TRIGGERS), at the one-screen card's width (54%) over a
+        // stand-in picture.
+        Shot("tip-ds-buttons", 1920, 1080, 2.30625f, {
+            {
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF3A5A40), androidx.compose.ui.graphics.Color(0xFF1E2A22)))),
+                    contentAlignment = androidx.compose.ui.Alignment.TopCenter,
+                ) {
+                    com.pokedaisy.app.companion.ui.FeatureTipCard(
+                        com.pokedaisy.app.companion.ui.featureTipText(com.pokedaisy.app.companion.TipId.DS_TRIGGERS),
+                        androidx.compose.ui.Modifier.padding(top = 24.dp).fillMaxWidth(0.54f),
+                        keys = listOf("L2" to "TOUCH SCREEN", "R2" to "NEXT LAYOUT"),
+                        left = 0.7f,
+                    )
+                }
+            }
+        }),
         Shot("settings-home", tw, th, td, activity { SettingsActivity() }),
         // The library's SETTINGS tab: its rail (a bar upright) and header over HOME.
         Shot("settings-tab", tw, th, td, activity { SettingsActivity().apply { intent.putExtra(SettingsActivity.EXTRA_TAB, true).putExtra(SettingsActivity.EXTRA_TOOLS_NEW, true) } }),

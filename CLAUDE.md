@@ -92,7 +92,8 @@ one-off), and `make -C 3ds test-configs-gen` the generated C against the old han
 
 A TIP card (the PokeDaisy flower, NO THANKS / TRY IT, a bar that runs out = later) introduces a feature the player hasn't
 found (the user's picks, 2026-10-21): ZOOM / look-around, EXPAND, QUICK MENU, HUD taps, PC, AUTO-RUN, WILD ENCOUNTERS,
-REUSABLE TMS, FLY (`TipId`, `companion/FeatureTips.kt`; card + texts `companion/ui/FeatureTip.kt`). `TipScheduler`'s rules
+REUSABLE TMS, FLY, and the DS triggers (2026-11-03: `TipId.DS_TRIGGERS`, `early`: its moment - a DS game on one screen - skips the half
+hour and the gap, `EARLY_SETTLE` into a session) (`TipId`, `companion/FeatureTips.kt`; card + texts `companion/ui/FeatureTip.kt`). `TipScheduler`'s rules
 (`TipSchedulerTest`): 30 min of field play first, **at least 5 min of play between two cards** (the user's rule: never one
 after the other), only on a calm field (no battle, menu, text, HUD panel, QUICK MENU or companion window), a moment's tip
 first (`FeatureTips.moment`: B held while walking, 3 wild battles in 3 min, a TM used up, the game's region map closed),

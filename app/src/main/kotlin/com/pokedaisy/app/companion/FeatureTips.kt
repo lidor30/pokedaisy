@@ -8,9 +8,11 @@ import androidx.compose.runtime.setValue
  * The features a TIP card introduces (SETTINGS > APP > TIPS, `Prefs.tips`, ON): one a player hasn't found, shown at a
  * moment it would help ([TipScheduler]). [generic] tips may show on any calm stretch of the field once the player has
  * played a while; the others only after their moment ([TipScheduler.moment]): holding B while walking, a few wild
- * battles in a row, a TM used up, the game's own Fly map closed.
+ * battles in a row, a TM used up, the game's own Fly map closed. An [TipId.early] tip's moment calls it up without the
+ * half hour's wait or the gap after another card ([TipScheduler.EARLY_SETTLE] into a session): the DS triggers, which a
+ * player needs from their first DS game on (the user's call, 2026-11-03).
  */
-enum class TipId(val key: String, val generic: Boolean) {
+enum class TipId(val key: String, val generic: Boolean, val early: Boolean = false) {
     ZOOM("zoom", true),
     EXPAND("expand", true),
     QUICK_MENU("quick_menu", true),
@@ -20,6 +22,8 @@ enum class TipId(val key: String, val generic: Boolean) {
     WILD("wild", false),
     REUSABLE_TMS("reusable_tms", false),
     FLY("fly", false),
+    /** A DS game on one screen: L2 floats its touch screen in, R2 steps DS LAYOUT. [early]: shown in the first DS game. */
+    DS_TRIGGERS("ds_triggers", false, early = true),
     ;
 
     companion object {
@@ -110,11 +114,13 @@ class TipScheduler(private val store: TipStore, private val available: (TipId) -
 
     /** The tip that would show now, ignoring [calm]-ness (tests). */
     fun next(): TipId? {
+        moments.entries.removeAll { fieldMillis - it.value > MOMENT_TTL || done(it.key) }
+        val ready = { t: TipId -> !done(t) && canShowAgain(t) && available(t) }
+        // An early tip's moment: no half hour first, no gap after another card.
+        if (sessionMillis >= EARLY_SETTLE) moments.entries.filter { it.key.early }.sortedBy { it.value }.firstOrNull { ready(it.key) }?.let { return it.key }
         if (fieldMillis < FIRST_TIP_AFTER || sessionMillis < SESSION_SETTLE) return null
         val last = store.lastClosedAt
         if (last >= 0 && fieldMillis - last < GAP) return null
-        moments.entries.removeAll { fieldMillis - it.value > MOMENT_TTL || done(it.key) }
-        val ready = { t: TipId -> !done(t) && canShowAgain(t) && available(t) }
         moments.entries.sortedBy { it.value }.firstOrNull { ready(it.key) }?.let { return it.key }
         return TipId.entries.firstOrNull { it.generic && ready(it) }
     }
@@ -159,6 +165,8 @@ class TipScheduler(private val store: TipStore, private val available: (TipId) -
         const val FIRST_TIP_AFTER = 30 * MINUTE
         const val GAP = 5 * MINUTE
         const val SESSION_SETTLE = MINUTE
+        /** An [TipId.early] tip's wait into a session: the game up and the player walking, a few seconds. */
+        const val EARLY_SETTLE = 5_000L
         const val CALM_MS = 3_000L
         const val MOMENT_TTL = 10 * MINUTE
         const val MAX_SHOWS = 2

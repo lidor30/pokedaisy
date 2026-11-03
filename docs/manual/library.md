@@ -8,6 +8,8 @@ keywords: [support, donate, donation, tip, patreon, ko-fi, kofi, buy me a coffee
 
 The library is the first thing you see when you open PokeDaisy: every game you've added, in the order you pick. Tap a game to play it.
 
+The first time you play a big game, like a DS game or one in a `.zip`, PokeDaisy reads it through before it starts, which can take a few seconds. The library dims and a little red and white ball rocks in the middle until the game opens; nothing else can be tapped meanwhile.
+
 ![The library in list view: GAMES, TOOLS and SETTINGS down the left, the header's sort, view, add, refresh and help buttons, a row of coloured quick views (ALL, FAVORITES, RECENT, GB, GBC, GBA, DS, HACKS) and the games under them](shots/library-list.png "The library in list view")
 
 The buttons in the header, from left to right:

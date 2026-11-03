@@ -101,6 +101,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -632,6 +633,35 @@ class LibraryActivity : ComponentActivity() {
             }
 
             LibraryDialogs(m, small)
+            GameLoadingCover(m)
+        }
+    }
+
+    /**
+     * While a game is got ready to start ([preparing]: a big DS cart's checksum, an archive unpacked - White 2 took ~6 s):
+     * the library dimmed, the app's rocking Poké Ball and the game's name over it, and every tap swallowed (keys too, in
+     * [dispatchKeyEvent]). It replaced a toast that let the library go on being used meanwhile (the user's call, 2026-11-03).
+     */
+    @Composable
+    private fun GameLoadingCover(m: GbaTextMetrics) {
+        val rom = preparing ?: return
+        // Fades in, so a game that's ready at once never flashes it.
+        val shown = remember { androidx.compose.animation.core.Animatable(0f) }
+        LaunchedEffect(rom) { shown.animateTo(1f, androidx.compose.animation.core.tween(180)) }
+        val noTaps = remember { MutableInteractionSource() }
+        Box(
+            Modifier.fillMaxSize()
+                .graphicsLayer { alpha = shown.value }
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable(interactionSource = noTaps, indication = null) {},
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // The loader draws at three GBA pixels a ball pixel: its ball, shadow and dots are ~66 tall.
+                Box(Modifier.size(m.u * 60, m.u * 72)) { com.pokedaisy.app.companion.ui.DsLoader() }
+                Spacer(Modifier.height(m.u * 14))
+                GbaText(tr("Getting {0} ready…", romLabel(rom)), Color.White, Color.Black.copy(alpha = 0.5f), m)
+            }
         }
     }
 
@@ -1449,21 +1479,21 @@ class LibraryActivity : ComponentActivity() {
 
     private fun coverFile(rom: File): File = File(coversDir, "${rom.name}.png")
 
-    /** A launch waiting on [RomCrcs.prepare]: a second tap doesn't start another. */
-    private var preparing = false
+    /** A launch waiting on [RomCrcs.prepare] (its game): [GameLoadingCover] dims the library over it, and nothing else
+     * can be pressed or started meanwhile. Internal for ui-preview. */
+    internal var preparing by mutableStateOf<File?>(null)
 
     private fun play(rom: File) {
-        if (preparing) return
+        if (preparing != null) return
         // A ROM whose CRC isn't known (or an archive) is read / unpacked first, off the UI thread: the game's window did
         // it on its own and froze on a 512 MB DS cart.
         if (RomCrcs.needsPrepare(this, rom)) {
-            preparing = true
-            if (RomCrcs.isBig(rom)) Toast.makeText(this, tr("Getting {0} ready…", romLabel(rom)), Toast.LENGTH_SHORT).show()
+            preparing = rom
             kotlin.concurrent.thread(name = "pokedaisy-prepare") {
                 RomCrcs.prepare(this, rom)
                 runOnUiThread {
-                    preparing = false
                     launch(rom)
+                    preparing = null
                 }
             }
             return
@@ -1828,6 +1858,8 @@ class LibraryActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // A game being got ready ([GameLoadingCover]): no key acts until it starts.
+        if (preparing != null) return true
         // Setup's GAME BUTTONS row waiting for a button: every key is its, before the launcher, the windows or the focus.
         if (setup?.capture?.onKey(event) == true) return true
         if (launcherOn && setup == null && !libraryDialogOpen && launcherKey(event)) return true
@@ -2055,6 +2087,7 @@ class LibraryActivity : ComponentActivity() {
                 if (launcher.swapped) LauncherMedia(m, small) else LauncherList(m, small, onMain = true)
             }
             LibraryDialogs(m, small)
+            GameLoadingCover(m)
         }
     }
 

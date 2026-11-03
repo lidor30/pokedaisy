@@ -146,6 +146,8 @@ PokeDaisy does a lot, and some of it is easy to miss. Once you've played for abo
 
 Most cards come up when the feature would help right then: `AUTO-RUN` after you've held B to run for a while, `WILD ENCOUNTERS` after a few wild battles in a row, `REUSABLE TMS` right after a TM gets used up.
 
+One card doesn't wait the half hour: the first time you play a DS game on a one-screen device, a card a few seconds in shows what your triggers do there (`L2` brings in the touch screen, `R2` moves to the next `DS LAYOUT`). It goes for good once you answer it or press either trigger yourself.
+
 - **TRY IT** (its button says what it does, like `TURN ON` or `SHOW ME`) does the thing at once.
 - **`NO THANKS`** means that card never comes back.
 - Leave it, and it goes by itself when its bar runs out. It may come back once, much later.
