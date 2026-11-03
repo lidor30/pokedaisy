@@ -1,0 +1,37 @@
+# TradeEvoFns's fields (TradeEvolution.kt), checked against it by scripts/gen_gamedata.py.
+# type: long | int | bool | char | string | item_descs | int_range | long_list | int_list | int_set | long_set | int_map |
+# ref (a Kotlin val's name, or a record in gamedata/gen3/records/).
+
+version = 1
+kotlin_class = 'TradeEvoFns'
+kotlin_file = 'TradeEvolution.kt'
+
+# GetEvolutionTargetSpecies(mon, mode, evolutionItem).
+[field.getEvolutionTarget]
+kotlin = 'Long'
+type = 'long'
+
+# BeginEvolutionScene(mon, postEvoSpecies, canStopEvo, partyId).
+[field.beginEvolutionScene]
+kotlin = 'Long'
+type = 'long'
+
+# gCB2_AfterEvolution (IWRAM).
+[field.afterEvolution]
+kotlin = 'Long'
+type = 'long'
+
+# CB2_ReturnToField.
+[field.returnToField]
+kotlin = 'Long'
+type = 'long'
+
+# LockPlayerFieldControls.
+[field.lockControls]
+kotlin = 'Long'
+type = 'long'
+
+# CRC32 of each function's first 32 bytes: getEvolutionTarget, beginEvolutionScene, returnToField, lockControls.
+[field.codeCrcs]
+kotlin = 'List<Long>'
+type = 'long_list'

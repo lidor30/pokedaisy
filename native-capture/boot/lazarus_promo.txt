@@ -1,0 +1,18 @@
+# The website's Lazarus page (scripts/promo_shots.py): rhh_splash.txt, then B past the save's recap.
+wait 300
+press START
+wait 60
+press START
+wait 90
+press START
+wait 90
+press A
+wait 120
+press A
+wait 400
+press B
+wait 30
+press B
+wait 30
+press B
+wait 90

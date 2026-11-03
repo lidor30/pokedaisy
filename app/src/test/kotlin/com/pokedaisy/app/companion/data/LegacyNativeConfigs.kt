@@ -135,6 +135,7 @@ val LEGACY_NATIVE_UNBOUND_WITH_DEX = LEGACY_NATIVE_UNBOUND.copy(
     // CFRU repointed gItems (FireRed 1.0's literal pools load it from here).
     itemDescs = vanillaItems(0x08876200L),
     pokedex = POKEDEX_UNBOUND, guideTables = GUIDE_TABLES_UNBOUND, trainerCard = TRAINER_CARD_UNBOUND,
+    pokemonStoragePtr = 0x03005010L, pcStorage = UNBOUND_PC_STORAGE,
 )
 
 // Pokémon Unbound v2.1.1.1 FR - a French fan translation of the same release (32 MB, sha1
@@ -204,6 +205,7 @@ val LEGACY_NATIVE_UNBOUND_FR = LEGACY_NATIVE_UNBOUND_WITH_DEX.copy(
 // independently since a future hack could easily have this asymmetry the
 // other way around.
 val LEGACY_NATIVE_GAIA_V3_2 = LEGACY_NATIVE_FIRERED_REV0.copy(
+    pokemonStoragePtr = 0x03005010L, pcStorage = PLAIN_PC_STORAGE,
     itemDescs = vanillaItems(0x083DB028L), // retail's address, its own text
     monIconTable = 0x0872A86CL,
     monIconPaletteIndices = 0x0872B870L,
@@ -242,6 +244,7 @@ val LEGACY_NATIVE_GAIA_V3_2 = LEGACY_NATIVE_FIRERED_REV0.copy(
 // still vanilla's. Inheriting rev 0's read species past 411 off the end of
 // vanilla's tables - the broken party / bag sprites.
 val LEGACY_NATIVE_RADICAL_RED_V4_1 = LEGACY_NATIVE_FIRERED_REV0.copy(
+    pokemonStoragePtr = 0x03005010L, pcStorage = RADICAL_RED_PC_STORAGE,
     // Repointed by CFRU; indexed by slot, as the game's ItemId_GetDescription does.
     itemDescs = vanillaItems(0x093C0000L),
     monIconTable = 0x097FE6CCL,
@@ -266,6 +269,7 @@ val LEGACY_NATIVE_RADICAL_RED_V4_1 = LEGACY_NATIVE_FIRERED_REV0.copy(
 // tables were (find a still-byte-identical helper function, read its literal
 // pool) rather than guessing again.
 val LEGACY_NATIVE_ODYSSEY = LEGACY_NATIVE_FIRERED_REV0.copy(
+    pokemonStoragePtr = 0x03005010L, pcStorage = PLAIN_PC_STORAGE,
     pokedex = POKEDEX_ODYSSEY, guideTables = GUIDE_TABLES_ODYSSEY, itemDescs = vanillaItems(0x083DB028L),
     // FireRed's battle menu cursors (CFRU), checked headless like Unbound's (odyssey_battle's README).
     actionCursor = 0x02023FF8L, moveCursor = 0x02023FFCL,
@@ -333,6 +337,7 @@ val LEGACY_NATIVE_EMERALD_RETAIL = LEGACY_NATIVE_EMERALD.copy(
 // guide tables. German and Italian's battle code sits 4 bytes later. The
 // TRAINER CARD stays off: their cards are localized art, not matched yet.
 val LEGACY_NATIVE_EMERALD_ES = LEGACY_NATIVE_EMERALD_RETAIL.copy(
+    pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x0858639CL),
     language = 'S', gameCode = "BPES", trainerCard = null,
     monIconTable = 0x0857E784L, monIconPaletteIndices = 0x0857EE64L, monIconPaletteTable = 0x0857F01CL,
@@ -341,6 +346,7 @@ val LEGACY_NATIVE_EMERALD_ES = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 )
 
 val LEGACY_NATIVE_EMERALD_DE = LEGACY_NATIVE_EMERALD_RETAIL.copy(
+    pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x085946DCL),
     language = 'D', gameCode = "BPED", trainerCard = null,
     monIconTable = 0x0858CAA8L, monIconPaletteIndices = 0x0858D188L, monIconPaletteTable = 0x0858D340L,
@@ -351,6 +357,7 @@ val LEGACY_NATIVE_EMERALD_DE = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 )
 
 val LEGACY_NATIVE_EMERALD_FR = LEGACY_NATIVE_EMERALD_RETAIL.copy(
+    pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x08587D6CL),
     language = 'F', gameCode = "BPEF", trainerCard = null,
     monIconTable = 0x08580020L, monIconPaletteIndices = 0x08580700L, monIconPaletteTable = 0x085808B8L,
@@ -359,6 +366,7 @@ val LEGACY_NATIVE_EMERALD_FR = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 )
 
 val LEGACY_NATIVE_EMERALD_IT = LEGACY_NATIVE_EMERALD_RETAIL.copy(
+    pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x0858000CL),
     language = 'I', gameCode = "BPEI", trainerCard = null,
     monIconTable = 0x0857838CL, monIconPaletteIndices = 0x08578A6CL, monIconPaletteTable = 0x08578C24L,
@@ -377,6 +385,7 @@ val LEGACY_NATIVE_EMERALD_IT = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 // Japanese table). No TRAINER CARD, and the party slot is the app's own (its
 // fonts aren't the Western ones the slot art is drawn with).
 val LEGACY_NATIVE_EMERALD_JA = LEGACY_NATIVE_EMERALD_RETAIL.copy(
+    pokemonStoragePtr = 0x03005AF4L,
     itemDescs = japaneseItems(0x0855CEE8L),
     actionCursor = 0, moveCursor = 0, // its RAM moved; not located yet
 
@@ -402,6 +411,7 @@ val LEGACY_NATIVE_EMERALD_JA = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 // only ROM data (icons, dex tables, dex text) moves. sItemIconTable is static
 // (not in the map): found by matching FireRed's item-icon data.
 val LEGACY_NATIVE_LEAFGREEN_REV0 = LEGACY_NATIVE_FIRERED_REV0.copy(
+    pokemonStoragePtr = 0x03005010L,
     itemDescs = vanillaItems(0x083DAE64L),
     monIconTable = 0x083D35DCL,
     monIconPaletteIndices = 0x083D3CBCL,
@@ -413,6 +423,7 @@ val LEGACY_NATIVE_LEAFGREEN_REV0 = LEGACY_NATIVE_FIRERED_REV0.copy(
 )
 
 val LEGACY_NATIVE_LEAFGREEN_REV1 = LEGACY_NATIVE_FIRERED_REV1.copy(
+    pokemonStoragePtr = 0x03005010L,
     itemDescs = vanillaItems(0x083DAED4L),
     actionCursor = 0, moveCursor = 0, // FireRed's, probably, but not checked on LeafGreen yet
     monIconTable = 0x083D364CL,
@@ -439,6 +450,7 @@ val LEGACY_NATIVE_LEAFGREEN_REV1 = LEGACY_NATIVE_FIRERED_REV1.copy(
 // the same in both games and in rev 2's ROMs, byte for byte); the POKéMON
 // switch isn't: R/S's party menu keeps its cursor in a sprite, not gPartyMenu.
 val LEGACY_NATIVE_RUBY = NativeConfig(
+    pokemonStoragePtr = 0x020300A0L, pcStorage = STATIC_PC_STORAGE,
     itemDescs = vanillaItems(0x083C5580L, RUBY_SAPPHIRE_ITEMS),
     playerParty = 0x03004360L,
     playerPartyCount = 0x03004350L,
@@ -650,6 +662,8 @@ val LEGACY_NATIVE_SOULGOLD = LEGACY_NATIVE_EMERALD.copy(
     gMain = 0x030055C0L,
     saveBlock1Ptr = 0x030040C4L,
     saveBlock2Ptr = 0x030040C0L,
+    pokemonStoragePtr = 0x030040C8L,
+    pcStorage = SOULGOLD_PC_STORAGE,
     encryptionKeyOff = 0xB4L,
     moneyOff = 0x478L,
     objectEvents = 0x02003314L,
@@ -1109,7 +1123,7 @@ val LEGACY_NATIVE_TMT2 = LEGACY_NATIVE_EMERALD.copy(
 // POKéDEX is retail's tables rewritten in place (its own 1..386 numbering).
 // Pokémon Emerald Kaizo v2.0 - BPEE, 16 MB, an in-place edit of retail Emerald (95% of the ROM byte for byte): retail's
 // code, RAM and save, so everything retail reads; its own moves (KAIZO_TEXT) and wild table (GUIDE_TABLES_EMERALD_KAIZO).
-val LEGACY_NATIVE_EMERALD_KAIZO = LEGACY_NATIVE_EMERALD_RETAIL.copy(gameCode = KAIZO_TEXT, guideTables = GUIDE_TABLES_EMERALD_KAIZO)
+val LEGACY_NATIVE_EMERALD_KAIZO = LEGACY_NATIVE_EMERALD_RETAIL.copy(pokemonStoragePtr = 0x03005D94L, gameCode = KAIZO_TEXT, guideTables = GUIDE_TABLES_EMERALD_KAIZO)
 
 // Pokémon Emerald Legacy v1.1.4 - BPEE, 16 MB: pret's pokeemerald rebuilt from its own source (cRz-Shadows/
 // Pokemon_Emerald_Legacy at V1.1.4, built with agbcc = the release byte for byte), so every address here is a symbol of
@@ -1144,6 +1158,7 @@ val LEGACY_NATIVE_EMERALD_LEGACY = LEGACY_NATIVE_EMERALD_RETAIL.copy(
 )
 
 val LEGACY_NATIVE_GLAZED = LEGACY_NATIVE_EMERALD.copy(
+    pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x085839A0L), // retail's, rewritten in place
     guideTables = GUIDE_TABLES_GLAZED,
     // Retail's dex tables and flags, rewritten in place in its own 1..386 numbering (No.322 is
@@ -1486,6 +1501,7 @@ val LEGACY_NATIVE_QUETZAL_MOEMON_V084_ES = LEGACY_NATIVE_QUETZAL_V084_ES.copy(
 //   (the user's real Potion, LZ77 tiles+palette) and it rendered as a real,
 //   recognizable potion-bottle icon.
 val LEGACY_NATIVE_AMETHYST = LEGACY_NATIVE_FIRERED_REV0.copy(
+    pokemonStoragePtr = 0x03005010L, pcStorage = AMETHYST_PC_STORAGE,
     itemDescs = vanillaItems(0x0872DB0CL), // repointed; v1.4.1 keeps the address
     monIconTable = 0x09C018FCL,
     monIconPaletteIndices = 0x09C01408L,
@@ -1515,6 +1531,7 @@ val LEGACY_NATIVE_AMETHYST = LEGACY_NATIVE_FIRERED_REV0.copy(
 // more species (Hisuian forms at 1234, the Gigantamax forms after them), so its
 // names / gender ratios are its own (ActiveTables' amethystV141).
 val LEGACY_NATIVE_AMETHYST_V1_4_1 = LEGACY_NATIVE_AMETHYST.copy(
+    pcStorage = AMETHYST_V141_PC_STORAGE,
     monIconTable = 0x09AD8B50L,
     monIconPaletteIndices = 0x09AD8642L,
     pokedex = POKEDEX_AMETHYST_V1_4_1,
@@ -1533,6 +1550,7 @@ val LEGACY_NATIVE_AMETHYST_V1_4_1 = LEGACY_NATIVE_AMETHYST.copy(
 // gWildMonHeaders (0x08A1B1B0), which it repointed: scripts/gen_orange_islands_tables.py. Its
 // region map is its own Orange Archipelago on FireRed's region_map.c (RomRegionMap).
 val LEGACY_NATIVE_ORANGE_ISLANDS = LEGACY_NATIVE_FIRERED_REV0.copy(
+    pokemonStoragePtr = 0x03005010L,
     // FireRed's battle menu cursors (retail rev 0's EWRAM), checked headless like Unbound's: RIGHT / DOWN walk
     // 0 -> 1 -> 3, a written 2 + A opens the party menu, a written move 1 + A spends its PP.
     actionCursor = LEGACY_NATIVE_FIRERED_REV1.actionCursor,
@@ -1554,6 +1572,7 @@ val LEGACY_NATIVE_ORANGE_ISLANDS = LEGACY_NATIVE_FIRERED_REV0.copy(
 // (0x0872AF04) for its new maps, and renamed a few things (GameKind.FIRERED with
 // ActiveTables' fireRedHack: UltraVioletGen.kt). Its region map is FireRed's byte for byte.
 val LEGACY_NATIVE_ULTRA_VIOLET = LEGACY_NATIVE_FIRERED_REV0.copy(
+    pokemonStoragePtr = 0x03005010L,
     // FireRed's battle menu cursors (retail rev 0's EWRAM), checked headless like Unbound's: RIGHT / DOWN walk
     // 0 -> 1 -> 3, a written 2 + A opens the party menu, a written move 1 + A spends its PP.
     actionCursor = LEGACY_NATIVE_FIRERED_REV1.actionCursor,
@@ -1753,6 +1772,7 @@ val LEGACY_NATIVE_TEAM_ROCKET = LEGACY_NATIVE_EMERALD.copy(
 // TACKLE, ₽5000, POTION x2 / SOOTHE BELL / OLD ROD) decodes with rev 0's RAM. Its Casual / Performance /
 // Casual and Performance patches keep every table and the RAM: the same save and battle decode in each.
 val LEGACY_NATIVE_SWORD_SHIELD = LEGACY_NATIVE_FIRERED_REV0.copy(
+    pokemonStoragePtr = 0x03005010L, pcStorage = SWORD_SHIELD_PC_STORAGE,
     // FireRed's battle menu cursors (CFRU), checked headless like Unbound's (a scripted WOOLOO battle on the base patch).
     actionCursor = 0x02023FF8L,
     moveCursor = 0x02023FFCL,
@@ -1779,6 +1799,7 @@ val LEGACY_NATIVE_SWORD_SHIELD = LEGACY_NATIVE_FIRERED_REV0.copy(
 // vanilla's), sItemIconTable 0x08F78000. No save of the user's: the `gs_chronicles*` fixtures are
 // a new game played headless (CYNDAQUIL / TOTODILE / CHIKORITA in NEW BARK TOWN; the READMEs).
 val LEGACY_NATIVE_GS_CHRONICLES = LEGACY_NATIVE_FIRERED_REV0.copy(
+    pokemonStoragePtr = 0x03005010L, pcStorage = GS_CHRONICLES_PC_STORAGE,
     actionCursor = 0x02023FF8L,
     moveCursor = 0x02023FFCL,
     itemDescs = vanillaItems(0x08F70000L),

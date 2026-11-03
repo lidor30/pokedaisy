@@ -9,6 +9,9 @@
 # a new game played headless (CYNDAQUIL / TOTODILE / CHIKORITA in NEW BARK TOWN; the READMEs).
 [config.gs_chronicles]
 base = 'firered_rev0'
+# BOXES: Unbound's CFRU boxes (the game's SendMonToPC headless into boxes 1, 20, 23 and 25: `gs_chronicles_boxes`).
+pokemonStoragePtr = 0x03005010
+pcStorage = 'GS_CHRONICLES_PC_STORAGE'
 actionCursor = 0x02023FF8
 moveCursor = 0x02023FFC
 itemDescs = { preset = 'vanilla', base = 0x08F70000 }

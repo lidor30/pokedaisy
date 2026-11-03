@@ -1,0 +1,32 @@
+# Review Focus 3: a partner past the screen edge is never put in OAM (its 9-bit x / 8-bit y would wrap to the far side):
+# why OFFSCREEN, and no pixel of the frame changes. Every case is labelled so each needs its own matching line.
+# want: partnerinfo right: why 4 oam -1 blobOam -1 slot -1 at 248,56
+# want: framediff right none
+# want: partnerinfo below: why 4 oam -1 blobOam -1 slot -1 at 104,168
+# want: framediff below none
+# want: partnerinfo aboveleft: why 4 oam -1 blobOam -1 slot -1 at -40,-40
+# want: framediff aboveleft none
+wideon 0
+partnerset /repo/app/build/partner/brendan.bin
+savestate /work/a.ss
+partnerpos 0 0 0 0 0 -1 0
+wait 2
+shot /work/base.ppm
+loadstate /work/a.ss
+partnernear 9 0 0 0 -1
+wait 2
+partnerinfo right
+shot /work/right.ppm
+framediff /work/base.ppm /work/right.ppm right
+loadstate /work/a.ss
+partnernear 0 7 0 0 -1
+wait 2
+partnerinfo below
+shot /work/below.ppm
+framediff /work/base.ppm /work/below.ppm below
+loadstate /work/a.ss
+partnernear -9 -6 0 0 -1
+wait 2
+partnerinfo aboveleft
+shot /work/aboveleft.ppm
+framediff /work/base.ppm /work/aboveleft.ppm aboveleft

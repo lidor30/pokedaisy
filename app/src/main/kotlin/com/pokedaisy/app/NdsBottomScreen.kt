@@ -63,8 +63,24 @@ object NdsBottomFrame {
             src.rewind()
             pixels.clear()
             pixels.put(src)
+            blank = isOneColour()
         }
         for (v in views) v.postInvalidateOnAnimation()
+    }
+
+    /** The last frame is one colour (a fade, an evolution's blank touch screen): nothing there to touch. */
+    @Volatile var blank = false
+        private set
+
+    // A 16 x 12 grid of the frame's pixels all alike.
+    private fun isOneColour(): Boolean {
+        val first = pixels.getInt(0)
+        for (gy in 0 until 12) for (gx in 0 until 16) {
+            val x = gx * W / 16 + W / 32
+            val y = gy * H / 12 + H / 24
+            if (pixels.getInt((y * W + x) * 4) != first) return false
+        }
+        return true
     }
 
     internal fun copyInto(bitmap: Bitmap) = synchronized(lock) {
@@ -196,10 +212,10 @@ class NdsTouchScreenView(context: Context) : View(context) {
 }
 
 /**
- * A DS game's touch screen on a one-screen device (GitHub #244), in the companion's place: the side panel beside the game
- * held sideways (SidePanel.setDsScreen: the DS's screens side by side), the dock under it held upright. The same switch as
- * [NdsBottomHost]'s: the touch screen at its 4:3, as large as fits, or the [companion] (Prefs.dsBottomCompanion), with
- * COMPANION / GAME SCREEN under it.
+ * A DS game's touch screen on a one-screen device held upright (GitHub #244): the dock under the game, in the companion's
+ * place (held sideways DS LAYOUT places it: PokeDaisyActivity.syncDsStage). The same switch as [NdsBottomHost]'s: the
+ * touch screen at its 4:3, as large as fits, or the [companion] (Prefs.dsBottomCompanion), with COMPANION / GAME SCREEN
+ * under it.
  */
 @Composable
 fun DsTouchPane(showCompanion: Boolean, onSwitch: (Boolean) -> Unit, companion: @Composable () -> Unit) {

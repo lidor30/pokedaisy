@@ -1,0 +1,21 @@
+# Task 8: pk_coop_remove_item through RemoveBagItem. The save holds 3 POTIONs (item 13): removing 1 leaves 2 (CheckBagHasItem(13, 2)
+# is true, (13, 3) false); removing 5 (more than held) is `remove 0` and changes nothing; out-of-range ids / counts are 0 with
+# nothing written (item 0 and 377, count 0 and 100). CheckBagHasItem 0x080D6724.
+# want: call 0x080D6724(13 3  ): returned 0x1
+# want: remove 1
+# want: call 0x080D6724(0xD 2  ): returned 0x1
+# want: call 0x080D6724(0xD 3  ): returned 0x0
+# want: remove 0
+call 0x080D6724 13 3
+coopremove 13 1
+call 0x080D6724 0xD 2
+call 0x080D6724 0xD 3
+coopremove 13 5
+call 0x080D6724 0xD 2
+coopremove 0 1
+coopremove 377 1
+coopremove 13 0
+coopremove 13 100
+call 0x080D6724 0xD 2
+# a failed or refused call left the 2 where they were: still 2, not 3
+call 0x080D6724 0xD 3

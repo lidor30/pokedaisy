@@ -16,6 +16,10 @@ class WildEncountersTest {
     private val cases = listOf(
         "Pokemon - Emerald Version (USA, Europe).gba" to 0x02038C00L,
         "Pokemon - FireRed Version (USA).gba" to 0x020386DCL,
+        // Let's Go Pikachu / Eevee keep rev 0's StandardWildEncounter (its wild Pokémon also walk the grass, which the
+        // switch doesn't touch).
+        "Pokemon Let's Go Pikachu.gba" to 0x020386DCL,
+        "Pokemon Let's Go Eevee (Translation Only).gba" to 0x020386DCL,
         "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba" to 0x020386DCL,
         "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba" to 0x020386DCL,
         "Pokemon - Ruby Version (USA, Europe) (Rev 1).gba" to 0x0202FF7CL,
@@ -39,6 +43,8 @@ class WildEncountersTest {
         "Pokemon SoulGold (v1.2).gba" to 0x0203E434L,
         "Pokemon SoulGold (v1.2) (Alt 1).gba" to 0x0203E434L,
         "Pokemon SoulGold (v1.2) (Alt 2).gba" to 0x0203E434L,
+        "Pokemon SoulGold (v1.2.1).gba" to 0x0203E35CL,
+        "Pokemon SoulGold (v1.2.1) (Alt 1).gba" to 0x0203E35CL,
         "Pokemon Recharged Yellow (v1.8.0).gba" to 0x0203E374L,
         "Pokemon Recharged Yellow (v1.9.0).gba" to 0x0203E39CL,
         "Pokemon Recharged Yellow (v1.9.4).gba" to 0x0203E3A8L,
@@ -60,7 +66,9 @@ class WildEncountersTest {
         // Dreamstone Mysteries (expansion 1.11.2): checked headless - set, 160 steps in ROUTE 1's grass met nothing; left
         // alone, a PIDOVE came. Not offered yet: the switch is rolled by the field read, which doesn't know this game.
         "Pokemon Dreamstone Mysteries.gba" to 0x02037F88L,
-        // Not found: no WILD ENCOUNTERS there.
+        // Not found: no WILD ENCOUNTERS there. Monomyth's StandardWildEncounter (0x080B3F58) has no switch; a function of
+        // the gcc shape at 0x081B3D64 loads 0xFFFF as an argument, not to compare (its byte 0x02020A44 sits at 1).
+        "Pokemon Monomyth (v1.0).gba" to 0L,
         "Pokemon Emerald Rogue (v2.2.1-EX).gba" to 0L,
         "Pokemon Quetzal (Alpha 9.0) (English).gba" to 0L,
     )

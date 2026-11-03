@@ -1,0 +1,26 @@
+# The app's own game options and the lock beside co-op when a joined wild battle starts: REUSABLE TMS' patch (the bhi at 0x081B6EE6 turned
+# into a b) and the lock's two head patches take option slots too; co-op's own patches (link hooks, rewards, wild: 63) plus those passed 64,
+# the old limit, and the partner's start was refused "wild patch" on a device. Both cores must start (`linkwait 2`).
+# Needs EMERALD_PARTNER_SAVE (`$PARTNER_SAVE`).
+#
+# want: coop: installed
+# want: link: hold 1
+# want: link: start 1
+# want: PASS linkwait 2
+pair $PARTNER_SAVE
+on b
+@boot
+rompatch 081B6EE0 a9204000844203d8201c01211ff7dafd 081B6EE6 03e0
+lockinstall
+on a
+rompatch 081B6EE0 a9204000844203d8201c01211ff7dafd 081B6EE6 03e0
+lockinstall
+coopinstall
+poke32 0x03005D80 9
+call 0x080B5288 2 2
+waittask 0x080B05F0 120
+joinhold
+linkstart 1
+on b
+linkstart 0 1 0 0
+linkwait 2 2500

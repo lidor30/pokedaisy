@@ -2,11 +2,22 @@
 """Gen 5 (DS) name / data tables for the companion, read from the player's own Pokémon Black cart (there is no pret
 decomp for Gen 5, so everything comes from the cart's file system and its ARM9).
 
-    python3 -I scripts/gen_gen5_tables.py <Pokemon Black (USA, Europe).nds>      # IRBO, rev 0
+    python3 -I scripts/gen_gen5_tables.py <Black.nds> [<White.nds> [<Black 2.nds> <White 2.nds>]]   # (USA, Europe)
 
 Writes app/src/main/kotlin/com/pokedaisy/app/companion/data/Gen5TablesBlack.kt (species, moves, places) and
 Gen5ItemsBlack.kt (items, their pockets and icons, the party icons' palettes): two files, since one
 class's static initializer can't hold them all. Numbers and the game's own names only - no art, no prose.
+The carts are IRBO / IRAO / IREO / IRDO rev 0 (USA, Europe).
+
+White's cart has Black's names, types, moves, items, icons and zones (checked here, table for table): only its Town Map
+differs - White Forest (zone 424) where Black City (zone 0) is, the same place on the map - so with White's cart as well
+it writes Gen5TownMapWhite.kt (its Town Map and FLY spots) and nothing else of White's.
+
+Black 2 and White 2 are the same engine with the archives renumbered (CARTS: the text banks, 615 zones, the Town Map's
+places in /a/0/8/5): their species and moves are Black's (checked), so with their carts it writes Gen5TablesBlack2.kt
+(places, zones, the 12 key items they added, the item icons and party icon palettes, which moved, their Unova Dex) and
+Gen5TownMapBlack2.kt / Gen5TownMapWhite2.kt. Both list Black City and White Forest at the same point; each version keeps
+its own. White 2's other tables are Black 2's (checked).
 
 Where each comes from (Gen 5 keeps its data in numbered NARCs, `/a/x/y/z`):
   - text: /a/0/0/2, Gen 5's encrypted UTF-16 message files (a line starting 0xF100 is 9-bit packed): species names are
@@ -213,15 +224,44 @@ def find_u16_table(arm9, values, what):
     return i
 
 
-def read(rom):
-    assert rom.d[0xC:0x10] == b"IRBO" and rom.d[0x1E] == 0, "not Pokémon Black (IRBO rev 0)"
+class Cart:
+    """Where one cart keeps what read() takes: Black / White and Black 2 / White 2 are one engine, numbered apart."""
+
+    def __init__(self, code, name, banks, zones, town, item_icon0, icon_count, pal_count, other_zone=None):
+        self.code, self.name = code, name
+        self.species, self.moves, self.items, self.places = banks   # text banks in /a/0/0/2
+        self.zones = zones                     # zone headers in /a/0/1/2 member 0 (48 bytes each)
+        self.town = town                       # the Town Map's place list (54-byte records, member 0)
+        self.item_icon0 = item_icon0           # item 0's (graphics, palette) pair, which the item icon table opens with
+        self.icon_count = icon_count           # party icon entries in /a/0/0/7
+        self.pal_count = pal_count             # the ARM9's icon palette table's bytes (Black 2's runs 5 past its icons)
+        # Black 2 / White 2 list both Black City and White Forest at the same point; each version shows its own and
+        # drops this zone (the other version's) from its Town Map and FLY.
+        self.other_zone = other_zone
+
+
+CARTS = {
+    b"IRBO": Cart(b"IRBO", "Black", (70, 203, 54, 89), 427, "/a/0/8/6", (1001, 1002), 712, 712),
+    b"IRAO": Cart(b"IRAO", "White", (70, 203, 54, 89), 427, "/a/0/8/6", (1001, 1002), 712, 712),
+    b"IREO": Cart(b"IREO", "Black 2", (90, 403, 64, 109), 615, "/a/0/8/5", (1021, 1022), 751, 756, other_zone=424),
+    b"IRDO": Cart(b"IRDO", "White 2", (90, 403, 64, 109), 615, "/a/0/8/5", (1021, 1022), 751, 756, other_zone=0),
+}
+
+
+def read(rom, code=b"IRBO"):
+    assert rom.d[0xC:0x10] == code and rom.d[0x1E] == 0, f"not {code.decode()} rev 0"
+    cart = CARTS[code]
+    sequel = code in (b"IREO", b"IRDO")
     texts = rom.narc("/a/0/0/2")
-    species_names = text5(texts[70])
-    move_names = text5(texts[203])
-    item_names = text5(texts[54])
-    place_names = text5(texts[89])
+    species_names = text5(texts[cart.species])
+    move_names = text5(texts[cart.moves])
+    item_names = text5(texts[cart.items])
+    place_names = text5(texts[cart.places])
     assert species_names[495] == "Snivy" and move_names[1] == "Pound" and item_names[4] == "Poké Ball", "text banks"
-    assert place_names[47] == "Gear Station", place_names[47]
+    if sequel:
+        assert place_names[117] == "Aspertia City", place_names[117]
+    else:
+        assert place_names[47] == "Gear Station", place_names[47]
 
     personal = rom.narc("/a/0/1/6")
     species = {}
@@ -251,7 +291,7 @@ def read(rom):
 
     arm9 = rom.arm9()
     # Item icons: (graphics, palette) per item from item 0 (the "?" icon, the archive's last pair) on.
-    at = find_u16_table(arm9, [1001, 1002, 2, 3, 4, 5, 6, 7], "item icon table")
+    at = find_u16_table(arm9, list(cart.item_icon0) + [2, 3, 4, 5, 6, 7], "item icon table")
     icon_narc = rom.narc("/a/0/2/5")
     item_icons = {}
     for i in items:
@@ -263,73 +303,110 @@ def read(rom):
     assert pal_at >= 0
     icon_count = (len(rom.narc("/a/0/0/7")) - 7) // 2
     icon_pals = [arm9[pal_at + k] & 0xF for k in range(icon_count)]
-    assert icon_count == 712 and all(v <= 2 for v in icon_pals) and arm9[pal_at + icon_count] > 0x22, icon_count
+    assert icon_count == cart.icon_count and all(v <= 2 for v in icon_pals) \
+        and (arm9[pal_at + cart.pal_count] > 0x22 or arm9[pal_at + cart.pal_count] & 0xF > 2), icon_count
     # TM / HM moves: TM01 HONE CLAWS, TM02 DRAGON CLAW, TM03 PSYSHOCK, TM04 CALM MIND ...
     tm_at = find_u16_table(arm9, [468, 337, 473, 347], "TM table")
     tm_moves = list(struct.unpack_from("<101H", arm9, tm_at))
     assert tm_moves[92:98] == [15, 19, 57, 70, 127, 291] and tm_moves[98:] == [528, 249, 555], tm_moves[92:]   # HM01-06, TM93-95
 
     zones = rom.narc("/a/0/1/2")[0]
-    assert len(zones) == 427 * 48
+    nz = cart.zones
+    assert len(zones) == nz * 48
     map_place_ids, spawn = {}, {}
-    for z in range(427):
+    for z in range(nz):
         r = zones[z * 48:z * 48 + 48]
         map_place_ids[z] = r[0x1A]
         spawn[z] = (u32(r, 0x24), u32(r, 0x2C))
-    assert place_names[map_place_ids[66]] == "Gear Station" and place_names[map_place_ids[317]] == "Route 1"
+    if sequel:
+        assert place_names[map_place_ids[427]] == "Aspertia City" and place_names[map_place_ids[465]] == "Humilau City"
+    else:
+        assert place_names[map_place_ids[66]] == "Gear Station"
+    assert place_names[map_place_ids[317]] == "Route 1"
 
-    town = rom.narc("/a/0/8/6")[0]
+    town = rom.narc(cart.town)[0]
+    records = [town[k * 54:k * 54 + 54] for k in range(len(town) // 54)]
+    records = [r for r in records if u16(r, 0) != cart.other_zone]
     fly = []
-    for k in range(len(town) // 54):
-        zone, flag = u16(town, k * 54), u16(town, k * 54 + 0x1E)
+    for r in records:
+        zone, flag = u16(r, 0), u16(r, 0x1E)
         if flag != 0xFFFF:
             fly.append((zone, spawn[zone][0], spawn[zone][1], flag))
-    assert fly[0][0] == 389 and len(fly) == 16, fly   # NUVEMA TOWN first
+    assert fly[0][0] == 389 and len(fly) == (24 if sequel else 16), (len(fly), fly)   # NUVEMA TOWN first
 
     # The Town Map's places themselves (town_map below): zone, place, the point on the map, kind, arrival flag.
     town_map = []
-    for k in range(len(town) // 54):
-        r = town[k * 54:k * 54 + 54]
+    for r in records:
         zone = u16(r, 0)
         town_map.append((zone, map_place_ids[zone], u16(r, 4), u16(r, 6), u16(r, 0x16), u16(r, 0x1E)))
-    assert len(town_map) == 61 and town_map[38][:4] == (317, map_place_ids[317], 232, 148), town_map[38]
-    assert len({t[1] for t in town_map}) == 61   # a place each
+    route1 = next(k for k, t in enumerate(town_map) if t[0] == 317)
+    assert len(town_map) == (84 if sequel else 61) and town_map[route1][:4] == (317, map_place_ids[317], 232, 148), town_map[route1]
+    assert len({t[1] for t in town_map}) == len(town_map)   # a place each
     # Each zone's place on the Town Map: its own record, else its parent zone's (+0x18: a house, a cave's floors), else
-    # one of the same place name (the zones 289-316 are the towns' and routes' other versions, under lines of their own).
+    # one of the same place name (Black's zones 289-316 are the towns' and routes' other versions, under lines of their own).
     by_zone = {t[0]: k for k, t in enumerate(town_map)}
     by_place = {place_names[t[1]]: k for k, t in enumerate(town_map)}
     town_zones = []
-    for z in range(427):
+    for z in range(nz):
         parent = u16(zones, z * 48 + 0x18)
         town_zones.append(by_zone.get(z, by_zone.get(parent, by_place.get(place_names[map_place_ids[z]], -1))))
-    assert town_zones[68] == by_zone[62] and town_zones[317] == 38, (town_zones[68], town_zones[317])   # Gear Station: Nimbasa
+    if sequel:
+        assert town_zones[465] == by_zone[465] and town_zones[427] == by_zone[427], (town_zones[465], town_zones[427])
+    else:
+        assert town_zones[68] == by_zone[62] and town_zones[317] == 38, (town_zones[68], town_zones[317])   # Gear Station: Nimbasa
 
-    return species, moves, items, item_icons, icon_pals, place_names, map_place_ids, fly, (town_map, town_zones)
+    shown = [u16(r, 0x20) for r in records]
+    return species, moves, items, item_icons, icon_pals, place_names, map_place_ids, fly, (town_map, town_zones, shown)
 
 
-def write_town_map(town_map, town_zones):
-    out = os.path.join(OUT_DIR, "Gen5TownMapBlack.kt")
+def write_fly(f, name, fly):
+    f.write("\n/**\n * The towns FLY can reach (the Town Map's places with an arrival flag, in its order): the zone, the zone's own\n"
+            " * spawn x / z (its header's +0x24 / +0x2C - where a warp into the zone puts the player; not checked as FLY's\n"
+            " * landing tile yet) and the arrival flag that unlocks it.\n */\n")
+    f.write(f"val flySpots{name}: List<FlySpot> = listOf(\n")
+    f.writelines(f"    FlySpot({z}, {x}, {y}, flag = {fl}),\n" for z, x, y, fl in fly)
+    f.write(")\n")
+
+
+def write_town_map(town_map, town_zones, name="Black", code="IRBO", fly=None, shown=None):
+    """The Town Map's file; White's (name "White") and the sequels' also hold their FLY spots ([fly]), Black's are in
+    Gen5TablesBlack.kt. The sequels' places carry what shows them ([shown], their +0x20 condition)."""
+    sequel = code in ("IREO", "IRDO")
+    path = CARTS[code.encode()].town
+    out = os.path.join(OUT_DIR, f"Gen5TownMap{name.replace(' ', '')}.kt")
+    upper = name.replace(" ", "").upper()
+    name = name.replace(" ", "")
     with open(out, "w") as f:
-        f.write("// Generated by scripts/gen_gen5_tables.py from the Pokémon Black cart (IRBO rev 0) - do not edit.\n"
+        f.write(f"// Generated by scripts/gen_gen5_tables.py from the Pokémon {name} cart ({code} rev 0) - do not edit.\n"
                 "package com.pokedaisy.app.companion.data\n\n")
-        f.write("/**\n * The Town Map's places (a/0/8/6 member 0: 54-byte records, in the cart's order): the zone, its place, its point\n"
-                " * on the map (the touch screen's pixels, +4 / +6), its kind (+0x16: 0 a town, 1 a route, 2 a place, 3 Victory\n"
-                " * Road, 4 Liberty Garden, 5 Unity Tower) and its arrival flag (+0x1E; -1 none).\n */\n")
-        f.write("val townMapPlacesBlack: List<Gen5TownMapPlace> = listOf(\n")
-        for zone, place, x, y, kind, flag in town_map:
-            f.write(f"    Gen5TownMapPlace({zone}, {place}, {x}, {y}, {kind}, {flag if flag != 0xFFFF else -1}),\n")
-        f.write(")\n\n/** Each zone's place on the Town Map (an index into [townMapPlacesBlack], -1 none), by zone id. */\n")
-        f.write("val townMapZonesBlack: IntArray by lazy { TOWN_MAP_ZONES_BLACK.split(',').map { it.toInt() }.toIntArray() }\n\n")
-        f.write("private const val TOWN_MAP_ZONES_BLACK =\n")
+        if sequel:
+            f.write(f"/**\n * The Town Map's places ({path[1:]} member 0: 54-byte records, in the cart's order, the other version's Black City /\n"
+                    " * White Forest left out): the zone, its place, its point on the map (the touch screen's pixels, +4 / +6), its kind\n"
+                    " * (+0x16: 0 a town, 1 a route, 2 a place, 3 one of the new places FLY reaches - PWT, Pokéstar Studios, Join\n"
+                    " * Avenue, Victory Road -, 4 shown once [Gen5TownMapPlace.shownBy] says so, 5 Unity Tower), its arrival flag\n"
+                    " * (+0x1E; -1 none) and what shows it (+0x20: a flag, 0xF00n a special; -1 always).\n */\n")
+        else:
+            f.write("/**\n * The Town Map's places (a/0/8/6 member 0: 54-byte records, in the cart's order): the zone, its place, its point\n"
+                    " * on the map (the touch screen's pixels, +4 / +6), its kind (+0x16: 0 a town, 1 a route, 2 a place, 3 Victory\n"
+                    " * Road, 4 Liberty Garden, 5 Unity Tower) and its arrival flag (+0x1E; -1 none).\n */\n")
+        f.write(f"val townMapPlaces{name}: List<Gen5TownMapPlace> = listOf(\n")
+        for k, (zone, place, x, y, kind, flag) in enumerate(town_map):
+            show = f", shownBy = {shown[k]}" if shown and shown[k] != 0xFFFF else ""
+            f.write(f"    Gen5TownMapPlace({zone}, {place}, {x}, {y}, {kind}, {flag if flag != 0xFFFF else -1}{show}),\n")
+        f.write(f")\n\n/** Each zone's place on the Town Map (an index into [townMapPlaces{name}], -1 none), by zone id. */\n")
+        f.write(f"val townMapZones{name}: IntArray by lazy {{ TOWN_MAP_ZONES_{upper}.split(',').map {{ it.toInt() }}.toIntArray() }}\n\n")
+        f.write(f"private const val TOWN_MAP_ZONES_{upper} =\n")
         ids = [str(v) for v in town_zones]
         rows = [",".join(ids[i:i + 40]) for i in range(0, len(ids), 40)]
         f.write("    " + " +\n    ".join(f'"{row}{"," if i < len(rows) - 1 else ""}"' for i, row in enumerate(rows)) + "\n")
+        if fly is not None:
+            write_fly(f, name, fly)
     print(f"wrote {out}: {len(town_map)} places")
 
 
 def write(species, moves, items, item_icons, icon_pals, place_names, map_place_ids, fly, town=None):
     if town:
-        write_town_map(*town)
+        write_town_map(town[0], town[1])
     head = "// Generated by scripts/gen_gen5_tables.py from the Pokémon Black cart (IRBO rev 0) - do not edit.\n" \
            "package com.pokedaisy.app.companion.data\n\n"
     out = os.path.join(OUT_DIR, "Gen5TablesBlack.kt")
@@ -360,12 +437,7 @@ def write(species, moves, items, item_icons, icon_pals, place_names, map_place_i
         for k in range(0, len(ids), 40):
             f.write('    "' + ",".join(ids[k:k + 40]) + ("," if k + 40 < len(ids) else "") + '"' +
                     (" +\n" if k + 40 < len(ids) else "\n"))
-        f.write("\n/**\n * The towns FLY can reach (the Town Map's places with an arrival flag, in its order): the zone, the zone's own\n"
-                " * spawn x / z (its header's +0x24 / +0x2C - where a warp into the zone puts the player; not checked as FLY's\n"
-                " * landing tile yet) and the arrival flag that unlocks it.\n */\n")
-        f.write("val flySpotsBlack: List<FlySpot> = listOf(\n")
-        f.writelines(f"    FlySpot({z}, {x}, {y}, flag = {fl}),\n" for z, x, y, fl in fly)
-        f.write(")\n")
+        write_fly(f, "Black", fly)
     print(f"wrote {out}: {len(species)} species, {len(moves)} moves, {len(map_place_ids)} zones, {len(fly)} fly spots")
 
     out = os.path.join(OUT_DIR, "Gen5ItemsBlack.kt")
@@ -390,10 +462,84 @@ def write(species, moves, items, item_icons, icon_pals, place_names, map_place_i
     print(f"wrote {out}: {len(items)} items")
 
 
+def sequel_regional(rom):
+    """The sequels' Unova Dex: /a/0/1/6 member 709, a u16 per species - its place there (VICTINI 0 .. GENESECT 300) or
+    999. In the dex's order."""
+    v = struct.unpack_from("<650H", rom.narc("/a/0/1/6")[709], 0)
+    order = [s for _, s in sorted((x, s) for s, x in enumerate(v) if x != 999)]
+    assert len(order) == 301 and order[:2] == [494, 495] and order[-1] == 649, order[:4]
+    return order
+
+
+def write_sequel(black2, white2, black, regional):
+    """Black 2's and White 2's files: Gen5TablesBlack2.kt (places, zones, the items they added, the item icons and party
+    icon palettes, which moved) and each version's Town Map with its FLY spots. Their species and moves are Black's."""
+    species, moves, items, item_icons, icon_pals, place_names, map_place_ids, fly, town = black2
+    assert species == black[0] and moves == black[1], "the sequels' species and moves are Black's"
+    assert all(items.get(i) == v for i, v in black[2].items()), "the sequels keep Black's items"
+    # White 2's tables are Black 2's but for its Town Map (White Forest for Black City) and FLY.
+    assert white2[:7] == black2[:7], [k for k, (a, b) in enumerate(zip(white2[:7], black2[:7])) if a != b]
+    write_town_map(town[0], town[1], name="Black 2", code="IREO", fly=fly, shown=town[2])
+    write_town_map(white2[8][0], white2[8][1], name="White 2", code="IRDO", fly=white2[7], shown=white2[8][2])
+    out = os.path.join(OUT_DIR, "Gen5TablesBlack2.kt")
+    with open(out, "w") as f:
+        f.write("// Generated by scripts/gen_gen5_tables.py from the Pokémon Black 2 cart (IREO rev 0) - do not edit.\n"
+                "package com.pokedaisy.app.companion.data\n\n")
+        f.write("/** The place names (text bank 109: the Town Map's and the map labels' lines), by place id. */\n")
+        f.write("val placeNamesBlack2: Map<Int, String> = mapOf(\n")
+        used = sorted(set(map_place_ids.values()))
+        f.writelines(f"    {i} to {kstr(place_names[i])},\n" for i in used)
+        f.write(")\n\n/** Each zone's place (its map label), by zone id (the save's map: a zone). */\n")
+        f.write("val mapPlaceIdsBlack2: Map<Int, Int> by lazy {\n")
+        f.write("    MAP_PLACE_IDS_BLACK2.split(',').withIndex().associate { (zone, place) -> zone to place.toInt() }\n}\n\n")
+        f.write("/** Each zone's place name, by zone id. */\n")
+        f.write("val mapPlacesBlack2: Map<Int, String> by lazy {\n")
+        f.write("    mapPlaceIdsBlack2.mapValues { (_, place) -> placeNamesBlack2[place].orEmpty() }\n}\n\n")
+        f.write("/** Zone id -> place id, comma-separated by zone. */\n")
+        f.write("private const val MAP_PLACE_IDS_BLACK2 =\n")
+        ids = [str(map_place_ids[z]) for z in range(len(map_place_ids))]
+        for k in range(0, len(ids), 40):
+            f.write('    "' + ",".join(ids[k:k + 40]) + ("," if k + 40 < len(ids) else "") + '"' +
+                    (" +\n" if k + 40 < len(ids) else "\n"))
+        added = {i: v for i, v in sorted(items.items()) if i not in black[2]}
+        f.write("\n/** The items the sequels added to Black's ([itemNamesBlack]): the key items 627-638. */\n")
+        f.write("val itemNamesBlack2Added: Map<Int, String> = mapOf(\n")
+        f.writelines(f"    {i} to {kstr(n)},\n" for i, (n, _) in added.items())
+        f.write(")\n\n/** Their pockets (every one a key item). */\n")
+        f.write("val itemPocketsBlack2Added: Map<Int, Int> = mapOf(\n")
+        f.writelines(f"    {i} to {p},\n" for i, (_, p) in added.items())
+        f.write(")\n\n/** Each item's icon in the item icon archive (a/0/2/5; the sequels renumbered it from item 505 on): its NCGR\n"
+                " * and NCLR members, packed (ncgr shl 16 or nclr). */\n")
+        f.write("val itemIconsBlack2: Map<Int, Int> = mapOf(\n")
+        f.writelines(f"    {i} to 0x{g:04X}{c:04X},\n" for i, (g, c) in sorted(item_icons.items()))
+        f.write(")\n\n/** Each party icon's palette (0-2: member 0's three) in the icon archive (a/0/0/7, the icon is member 8 + 2 *\n"
+                " * entry: the sequels added a second palette at 1): species 0..649, then the egg (650), the Manaphy egg (651)\n"
+                " * and the forms (the sequels added some). */\n")
+        f.write("val iconPalettesBlack2: ByteArray = byteArrayOf(\n")
+        for i in range(0, len(icon_pals), 32):
+            f.write("    " + ", ".join(str(v) for v in icon_pals[i:i + 32]) + ",\n")
+        f.write(")\n\n/** The sequels' Unova Dex (a/0/1/6 member 709), in its order: VICTINI first, then SNIVY ... - 301 species,\n"
+                " * older ones among them (the reader's National Dex check: anything seen outside it). */\n")
+        f.write("val unovaDexBlack2: IntArray = intArrayOf(\n")
+        for i in range(0, len(regional), 16):
+            f.write("    " + ", ".join(str(v) for v in regional[i:i + 16]) + ",\n")
+        f.write(")\n")
+    print(f"wrote {out}: {len(map_place_ids)} zones, {len(added)} added items")
+
+
 def main():
-    if len(sys.argv) != 2:
+    if len(sys.argv) not in (2, 3, 5):
         sys.exit(__doc__)
-    write(*read(Rom(sys.argv[1])))
+    black = read(Rom(sys.argv[1]))
+    write(*black)
+    if len(sys.argv) >= 3:
+        white = read(Rom(sys.argv[2]), b"IRAO")
+        # Everything but the FLY spots and the Town Map is Black's (the lists' order: read's return).
+        assert white[:7] == black[:7], [k for k, (a, b) in enumerate(zip(white[:7], black[:7])) if a != b]
+        write_town_map(white[8][0], white[8][1], name="White", code="IRAO", fly=white[7])
+    if len(sys.argv) == 5:
+        black2 = Rom(sys.argv[3])
+        write_sequel(read(black2, b"IREO"), read(Rom(sys.argv[4]), b"IRDO"), black, sequel_regional(black2))
 
 
 if __name__ == "__main__":

@@ -1,0 +1,17 @@
+# The partner beside FOLLOWER: both drawn, in different OAM entries and palette slots, the partner never on FOLLOWER's
+# entry, tiles or slot. FOLLOWER's frames are native-capture/coop/data/solid_follower.bin (synthetic: colour 1 everywhere);
+# it appears after the player's first step.
+# want: followinfo: on 1 have 1 state 1 why 0 oam 127 slot 15
+# want: partnerinfo: why 0 oam 126 blobOam -1 slot 13
+wideon 0
+follower /repo/native-capture/coop/data/solid_follower.bin
+followon 1
+partnerset /repo/app/build/partner/brendan.bin
+partnernear 1 0 0 0 -1
+hold RIGHT 4
+wait 30
+hold RIGHT 4
+wait 8
+followinfo
+partnerinfo
+shot /work/both.ppm

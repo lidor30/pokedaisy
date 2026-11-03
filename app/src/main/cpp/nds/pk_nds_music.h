@@ -5,7 +5,8 @@
 // on playing exactly what the game was playing, from that very moment, by itself - its loops, its tempo, nothing to
 // record or cut. That copy has no cart (the cart's part of the state is skipped, so its save is never touched) and no JIT,
 // and only its ARM7, timers and sound run; what the ARM7 sends the ARM9 is read off its FIFO every frame, as the ARM9
-// would (a full FIFO stalls the driver: a buzz). A new song in the game: a new copy (pk_nds_music_begin again).
+// would (a full FIFO stalls the driver: a buzz), and the shared flag the ARM9 releases is released (else the driver spins
+// on it for good: a drone). A new song in the game: a new copy (pk_nds_music_begin again).
 //
 // Shared by the app (pk_nds.cpp) and the headless tool (native-capture/nds_dump's music).
 #pragma once
@@ -27,7 +28,7 @@ int pk_nds_music_frame(int16_t* out, int maxFrames);
  * it's sequencing, or silent). */
 int pk_nds_music_stalled(void);
 
-/** Debug: the instance's ARM7 and IPC state, a line into [out]. */
+/** Debug: the instance's ARM7, IPC and shared flag state and its sounding channels, a line into [out]. */
 void pk_nds_music_debug(char* out, int len);
 
 /** Fades what it plays out over [frames] frames and stays silent (the game's own fades run on its ARM9, which is stopped

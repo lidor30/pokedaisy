@@ -21,7 +21,13 @@ class Gen4DexTables(
     val lastSpecies: Int = 493,
     /** Gen 5's evolution methods ([Gen4Dex.parse]). */
     val gen5: Boolean = false,
-)
+    /** Origin HeartGold's: HeartGold's methods, hg-engine's from 27 ([Gen4Dex.originEvoReqs]). */
+    val origin: Boolean = false,
+    /** The machines' moves read from the cart when they aren't fixed ([OriginHeartGold]); null = [tmMoves]. */
+    val machineMoves: (() -> IntArray)? = null,
+) {
+    val moves: IntArray get() = machineMoves?.invoke() ?: tmMoves
+}
 
 val GEN4_DEX_PLATINUM = Gen4DexTables(NdsArt.PLATINUM_DEX, NdsArt.PLATINUM_FRONT, tmMovesPlatinum)
 val GEN4_DEX_HEARTGOLD = Gen4DexTables(NdsArt.HEARTGOLD_DEX, NdsArt.HEARTGOLD_FRONT, tmMovesHeartGold)
@@ -40,6 +46,18 @@ val POKEDEX_HEARTGOLD = PokedexTables(
     entries = 0, frontPics = 0, palettes = 0, speciesInfo = 0, speciesToNational = 0, abilityNames = 0, footprints = 0,
     speciesCount = 494, nationalCount = 493, regionalCount = 256, regionName = "JOHTO",
     gen4 = GEN4_DEX_HEARTGOLD, categorySuffix = "Pokémon",
+)
+
+/** Origin HeartGold's dex ([OriginHeartGold]): one list, the National Dex's 1025 in its order, from its cart; its 130 TMs
+ * and 8 HMs, also from its cart. */
+val GEN4_DEX_ORIGIN = Gen4DexTables(
+    NdsArt.ORIGIN_DEX, NdsArt.ORIGIN_FRONT, IntArray(0), tmCount = 130, lastSpecies = OriginHeartGold.LAST_NATIONAL, origin = true,
+    machineMoves = { OriginHeartGold.data?.machines?.let(OriginHeartGold::dexMachines) ?: IntArray(0) },
+)
+
+val POKEDEX_ORIGIN = POKEDEX_HEARTGOLD.copy(
+    speciesCount = OriginHeartGold.LAST_NATIONAL + 1, nationalCount = OriginHeartGold.LAST_NATIONAL,
+    regionalCount = OriginHeartGold.LAST_NATIONAL, regionName = null, gen4 = GEN4_DEX_ORIGIN,
 )
 
 /** A dex read from the cart (a Game Boy's bytes, a DS game's files), not a GBA ROM's tables. */
@@ -75,8 +93,9 @@ object Gen4Dex {
     /** [species]' TMs and HMs ("TM06", the move), from the cart's bits and the bag's machine list. */
     fun machines(t: Gen4DexTables, species: Int): List<TeachMove>? {
         val bits = load(t)?.machines?.get(species) ?: return null
-        return t.tmMoves.indices.filter { i -> i / 8 < bits.size && (bits[i / 8].toInt() shr (i % 8)) and 1 != 0 }.map { i ->
-            TeachMove(if (i < t.tmCount) "TM%02d".format(i + 1) else "HM%02d".format(i - t.tmCount + 1), t.tmMoves[i])
+        val moves = t.moves
+        return moves.indices.filter { i -> i / 8 < bits.size && (bits[i / 8].toInt() shr (i % 8)) and 1 != 0 }.map { i ->
+            TeachMove(if (i < t.tmCount) "TM%02d".format(i + 1) else "HM%02d".format(i - t.tmCount + 1), moves[i])
         }
     }
 
@@ -89,7 +108,7 @@ object Gen4Dex {
         val key = f.path to f.lastModified()
         if (pagesFor != key) synchronized(this) {
             if (pagesFor != key) {
-                pages = runCatching { parse(f.readLines(), t.lastSpecies, t.gen5) }.getOrNull()
+                pages = runCatching { parse(f.readLines(), t.lastSpecies, t.gen5, t.origin) }.getOrNull()
                 pagesFor = key
             }
         }
@@ -107,7 +126,7 @@ object Gen4Dex {
      * catch rate, gender ratio, egg groups 1 / 2, abilities 1 / 2; then (a cart read since v8) the regional number, the
      * evolutions, the level-up moves and the TM / HM bits; Black's a hidden ability last. Evolutions to past
      * [lastSpecies] are dropped; [gen5]: their methods are Gen 5's ([gen5EvoReqs]). */
-    internal fun parse(lines: List<String>, lastSpecies: Int = 493, gen5: Boolean = false): Pages {
+    internal fun parse(lines: List<String>, lastSpecies: Int = 493, gen5: Boolean = false, origin: Boolean = false): Pages {
         val entries = HashMap<Int, DexEntry>()
         val regional = HashMap<Int, Int>()
         val evolutions = HashMap<Int, List<EvoLink>>()
@@ -138,7 +157,8 @@ object Gen4Dex {
             if (i(19) > 0) regional[i(19)] = n
             c.getOrNull(20)?.takeIf { it.isNotEmpty() }?.split(';')?.mapNotNull { e ->
                 val (m, p, to) = e.split(',').map { it.toIntOrNull() ?: return@mapNotNull null }.takeIf { it.size == 3 } ?: return@mapNotNull null
-                if (to !in 1..lastSpecies || to == n) null else EvoLink(n, to, if (gen5) gen5EvoReqs(m, p) else evoReqs(m, p))
+                if (to !in 1..lastSpecies || to == n) null
+                else EvoLink(n, to, if (gen5) gen5EvoReqs(m, p) else if (origin) originEvoReqs(m, p) else evoReqs(m, p))
             }?.distinct()?.takeIf { it.isNotEmpty() }?.let { evolutions[n] = it }
             c.getOrNull(21)?.takeIf { it.isNotEmpty() }?.split(',')?.mapNotNull { e ->
                 val (lv, mv) = e.split(':').map { it.toIntOrNull() ?: return@mapNotNull null }.takeIf { it.size == 2 } ?: return@mapNotNull null
@@ -150,6 +170,30 @@ object Gen4Dex {
         }
         val order = regional.keys.sorted().let { nums -> IntArray(nums.size) { regional.getValue(nums[it]) } }
         return Pages(entries, order, evolutions, levelUp, machines)
+    }
+
+    /** Origin HeartGold's methods (hg-engine's, read off its evolution data: the species and the items they take): HeartGold's
+     * 1 - 26 as they are (its trade evolutions are 18 / 6 now: a held item), then 27 a move of type [p], 28 / 29 a level by
+     * day / night, 30 a level in the rain, 31 a level with a Dark Pokémon along, 33 [p] critical hits in a battle, 34 999 of
+     * item [p] in the bag (GIMMIGHOUL), 37 a level-up holding [p], 38 [p] HP lost to recoil, 40 [p] steps, 41 a level (its
+     * Union Circle check left out); 35 / 36 (KUBFU's scrolls, YAMASK's damage) and the rest a special condition. */
+    internal fun originEvoReqs(m: Int, p: Int): List<EvoReq> {
+        val level = if (p in 1..100) EvoReq.Level(p) else EvoReq.LevelUp
+        return when (m) {
+            in 1..26 -> evoReqs(m, p)
+            27 -> listOf(EvoReq.LevelUp, EvoReq.KnowsMoveType(p))
+            28 -> listOf(level, EvoReq.Time(EvoTime.DAY))
+            29 -> listOf(level, EvoReq.Time(EvoTime.NIGHT))
+            30 -> listOf(level, EvoReq.Weather(EvoReq.WEATHER_RAIN))
+            31 -> listOf(level, EvoReq.DarkInParty)
+            33 -> listOf(EvoReq.Crits(p))
+            34 -> listOf(EvoReq.LevelUp, EvoReq.BagCount(p, 999))
+            37 -> listOf(EvoReq.LevelUp, EvoReq.Hold(p))
+            38 -> listOf(EvoReq.Recoil(p))
+            40 -> listOf(EvoReq.LevelUp, EvoReq.Steps(p))
+            41 -> listOf(level)
+            else -> listOf(EvoReq.Special)
+        }
     }
 
     /** Gen 5's methods (Black / White): Gen 4's with 7 a trade with another Pokémon ([p] the other one's species, as
@@ -200,12 +244,14 @@ object Gen4Dex {
 fun readGen4PokedexState(r: MemoryReader, cfg: Gen4Config, body: Long): PokedexState? {
     val off = cfg.pokedexOff ?: return null
     val tables = cfg.pokedexTables ?: return null
-    val d = r.readCoreMemory(body + off, 0x340)
-    if (d.size < 0x340) return null
+    val flagBytes = cfg.dexFlagBytes
+    val size = 4 + 4 * flagBytes + 0x50
+    val d = r.readCoreMemory(body + off, maxOf(size, 0x340))
+    if (d.size < maxOf(size, 0x340)) return null
     val magic = (d[0].toLong() and 0xFF) or ((d[1].toLong() and 0xFF) shl 8) or ((d[2].toLong() and 0xFF) shl 16) or ((d[3].toLong() and 0xFF) shl 24)
     if (magic != 0xBEEFCAFEL) return null
     fun bit(base: Int, n: Int) = (d[base + (n - 1) / 8].toInt() shr ((n - 1) % 8)) and 1 != 0
-    val seen = (1..493).filter { bit(4 + 64, it) }.toSet()
-    val caught = (1..493).filter { bit(4, it) && it in seen }.toSet()
+    val seen = (1..tables.nationalCount).filter { bit(4 + flagBytes, it) }.toSet()
+    val caught = (1..tables.nationalCount).filter { bit(4, it) && it in seen }.toSet()
     return PokedexState(tables, seen, caught, national = d[cfg.nationalDexOff].toInt() != 0)
 }

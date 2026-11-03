@@ -68,7 +68,8 @@ const CallFns PLATINUM = {
     0, 0,
 };
 
-// pret/pokeheartgold's .xMAP: every address the same in HeartGold's and SoulSilver's builds (both checked).
+// pret/pokeheartgold's .xMAP: every address the same in the US HeartGold / SoulSilver builds and German
+// HeartGold / SoulSilver rev 0 (checked against its ARM9, including Task_RunScripts' calls and environment layout).
 const CallFns HEARTGOLD = {
     0, 0, 0,
     0x0203FE0D,   // ScriptJump
@@ -97,6 +98,39 @@ const CallFns HEARTGOLD = {
     2010,         // std_pokecenter_pc: scr_seq_0003 and msg_0040, the PC's own lines
     // ScriptEnvironment (script.h; checked against Task_RunScripts' code): state, activeScriptContextCount,
     // activeScriptNumber, scriptContexts[3], msgfmt, stringBuffer0 / 1
+    4, 9, 0x0A, 0x38, 0x44, 0x48, 0x4C,
+    1, 0x08,
+};
+
+// Origin HeartGold (nds/pk_nds_field.cpp's ORIGIN_HEARTGOLD): HeartGold's functions in the hack's build, each found by its
+// US code (BLs and pool words masked) and its environment layout checked in Task_RunScripts' code; the script borrowed is
+// the US one's (its file and text bank kept by the hack).
+const CallFns ORIGIN_HEARTGOLD = {
+    0, 0, 0,
+    0x0203F515,   // ScriptJump
+    0x0200BCB9,   // MessageFormat_New_Custom
+    0x02026865,   // String_New
+    0,
+    0x020670AD,   // FieldMove_InitCheckData
+    0x020672A9,   // FieldMove_CheckFly
+    0,
+    0x0207365D,   // SaveArray_Party_Get
+    0x0207339D,   // Party_GetMonByIndex
+    0x02066E95,   // sub_02067BF8
+    0x02066ECD,   // sub_02067C30
+    0x0204F979,   // FieldSystem_CreateTask
+    0, 0,
+    0x0C, 0,
+    0x0A, 0x0C,
+    0, 0,
+    0,
+    11,
+    0, 0, 0, 0, 0,
+    0,
+    0x0203F725,   // ScriptEnvironment_New
+    0x0203F7B5,   // CreateScriptContext
+    0x0203F64D,   // Task_RunScripts
+    2010,         // std_pokecenter_pc
     4, 9, 0x0A, 0x38, 0x44, 0x48, 0x4C,
     1, 0x08,
 };
@@ -145,6 +179,60 @@ const Gen5Fns BLACK = {
     },
 };
 
+// White (IRAO rev 0): Black's functions, found again by their code; the overlays and the GameSystem pointer sit 0x20
+// higher, the ARM9's code where Black's is. Checked headless like Black's (the PC, FLY).
+const Gen5Fns WHITE = {
+    0x02146268,
+    0x10, 0x18, 0x20,
+    0x0218A095,
+    0x0200565D,
+    0x02012109,
+    0x02158789,
+    10090,
+    0x0215E861, 0x0215EA35, 0x0215EA59,
+    4,
+    {
+        {0x0218A094, 0xB082B5F8}, {0x02158788, 0x1C0DB538}, {0x02158940, 0xB083B5F0},
+        {0x0215E860, 0xB08AB5F8}, {0x0215EA34, 0x1C02B510}, {0x0215EA58, 0x1C03B538},
+    },
+};
+
+// Black 2 (IREO rev 0): Black's functions in a new build, each found by its code (BLs masked) - overlay 12 holds what
+// Black's 10 did, 36 the field's event check (Black's 21) - and checked headless on the player's save (the PC, FLY).
+const Gen5Fns BLACK2 = {
+    0x021410F4,
+    0x10, 0x18, 0x20,
+    0x0218185D,
+    0x020056B9,
+    0x02016AED,
+    0x0215366D,
+    10090,
+    0x02159231, 0x021593FD, 0x02159421,
+    4,
+    {
+        {0x0218185C, 0xB082B5F8}, {0x0215366C, 0x1C0DB538}, {0x02153824, 0xB083B5F0},
+        {0x02159230, 0xB08AB5F8}, {0x021593FC, 0x1C02B510}, {0x02159420, 0x1C03B538},
+    },
+};
+
+// White 2 (IRDO rev 0): Black 2's functions, found again by their code, the overlays and the GameSystem pointer 0x40 higher
+// (the ARM9's low code where Black 2's is). Checked headless like Black 2's.
+const Gen5Fns WHITE2 = {
+    0x02141134,
+    0x10, 0x18, 0x20,
+    0x0218189D,
+    0x020056B9,
+    0x02016AED,
+    0x021536AD,
+    10090,
+    0x02159271, 0x0215943D, 0x02159461,
+    4,
+    {
+        {0x0218189C, 0xB082B5F8}, {0x021536AC, 0x1C0DB538}, {0x02153864, 0xB083B5F0},
+        {0x02159270, 0xB08AB5F8}, {0x0215943C, 0x1C02B510}, {0x02159460, 0x1C03B538},
+    },
+};
+
 struct Pending {
     int seq;
     uint32_t parent;   // the field map's ApplicationManager the hook sits in (Gen 5: the GameSystem)
@@ -161,12 +249,19 @@ uint32_t lastResults[PK_NDS_MAX_RESULTS];
 const CallFns* fnsFor(const PkNdsFieldGame* game)
 {
     if (!game || !game->fieldMapMain) return nullptr;
-    return game->callSet == 1 ? &PLATINUM : game->callSet == 2 ? &HEARTGOLD : nullptr;
+    return game->callSet == 1 ? &PLATINUM : game->callSet == 2 ? &HEARTGOLD : game->callSet == 7 ? &ORIGIN_HEARTGOLD : nullptr;
 }
 
 const Gen5Fns* gen5FnsFor(const PkNdsFieldGame* game)
 {
-    return game && game->gen == 5 && game->callSet == 3 ? &BLACK : nullptr;
+    if (!game || game->gen != 5) return nullptr;
+    switch (game->callSet) {
+    case 3: return &BLACK;
+    case 4: return &WHITE;
+    case 5: return &BLACK2;
+    case 6: return &WHITE2;
+    default: return nullptr;
+    }
 }
 
 u32 rd32(NDS* nds, u32 a)

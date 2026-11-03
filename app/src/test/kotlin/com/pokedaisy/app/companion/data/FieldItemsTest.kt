@@ -451,14 +451,16 @@ class FieldItemsTest {
         assertTrue(s.marked(13) && s.canTake && s.picksMove(34))
     }
 
-    /** FireRed Rocket Edition, Ash Gray (both builds) and Ghost Grey (three) keep rev 0's code: rev 0's table, its CRCs,
-     * their own gItems (Ghost Grey's 86 lasts 250 steps, not 100). */
+    /** FireRed Rocket Edition, Ash Gray (both builds), Ghost Grey (three) and Let's Go (four) keep rev 0's code: rev 0's
+     * table, its CRCs, their own gItems (Ghost Grey's 86 lasts 250 steps, not 100). */
     @Test
     fun `the FireRed hacks edited in place run rev 0's table`() {
         val fns = fieldItemsForGame(GameKind.FIRERED, "BPRE", 0)!!
         var ran = 0
         for (file in listOf("Pokemon FireRed Rocket Edition.gba", "Pokemon Ash Gray (v4.5.3).gba", "Pokemon Ash Gray Fork Bug Fix (v1.0).gba",
-            "Pokemon Ghost Grey (v1.0.1).gba", "Pokemon Ghost Grey (v1.0.2).gba", "Pokemon Ghost Grey (v1.0.4).gba")) {
+            "Pokemon Ghost Grey (v1.0.1).gba", "Pokemon Ghost Grey (v1.0.2).gba", "Pokemon Ghost Grey (v1.0.4).gba",
+            "Pokemon Let's Go Pikachu.gba", "Pokemon Let's Go Pikachu (Translation Only).gba", "Pokemon Let's Go Eevee.gba",
+            "Pokemon Let's Go Eevee (Translation Only).gba")) {
             val bytes = File(RETAIL_ROM_DIR + file).takeIf { it.isFile }?.readBytes() ?: continue
             val s = fieldItemSupport(fns, romReader(bytes))
             assertTrue(file, s != null && s.marked(13) && s.canUse(13) && s.canGive(200) && s.canTake)

@@ -1,0 +1,40 @@
+# Task 8: the trainer flag (FlagSet(TRAINER_FLAGS_START 0x500 + id): trainer 100 = flag 0x564, read with FlagGet 0x0809D790), the
+# prize from the ROM's tables (pk_coop_prize: last party member's level x 4 x the class's rate, no x2 (a two-trainer battle's prize):
+# ROXANNE 1 (265, a leader, 25, last mon Lv 15) = 1500; GABBY & TY 1 (51, an interviewer, 12, Lv 17) = 4 x 17 x 12
+# = 816; ids outside 1..854 = -1) and AddMoney (exactly the amount; 0 and 1,000,000 are refused, nothing written).
+# want: call 0x0809D790(1380   ): returned 0x0
+# want: flag 1
+# want: call 0x0809D790(0x564   ): returned 0x1
+# want: prize 1500
+# want: prize 816
+# want: prize -1
+# want: prize 1500
+# want: prize 1632
+# want: prize -1
+# want: money 1
+# want: money 0
+# want: flag 0
+# want: flag 2
+call 0x0809D790 1380
+coopflag 100
+call 0x0809D790 0x564
+# a trainer already beaten answers 2 and is not written again
+coopflag 100
+# a trainer outside the range sets nothing
+coopflag 0
+coopflag 855
+coopprize 265
+coopprize 51
+coopprize 0
+coopprize 855
+# pk_coop_prize_single (a one-trainer battle: the trainer alone): a leader pays the same (1500), a trainer whose record is a double
+# battle (GABBY & TY 1: doubleBattle) pays x2 (1632), a bad id is -1
+coopprize 265 single
+coopprize 51 single
+coopprize 0 single
+coopmoneymark
+coopmoney 1234
+coopmoneyexpect delta 1234
+coopmoney 0
+coopmoney 1000000
+coopmoneyexpect delta 1234

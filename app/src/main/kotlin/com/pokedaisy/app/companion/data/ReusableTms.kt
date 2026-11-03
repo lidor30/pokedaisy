@@ -45,7 +45,7 @@ object ReusableTms {
     /** Games whose own TMs never run out, so the row says so instead of offering it: Radical Red, Unbound and SoulGold
      * checked headless (a TM taught on their saves stayed in the bag: SoulGold v1.1.4 and v1.2's third build), Prism and
      * Polished Crystal (a bit per TM). */
-    val BUILT_IN = setOf(GameKind.RADICAL_RED, GameKind.UNBOUND, GameKind.SOULGOLD, GameKind.PRISM, GameKind.POLISHED_CRYSTAL, GameKind.BLACK)
+    val BUILT_IN = setOf(GameKind.RADICAL_RED, GameKind.UNBOUND, GameKind.SOULGOLD, GameKind.PRISM, GameKind.POLISHED_CRYSTAL, GameKind.BLACK, GameKind.WHITE, GameKind.BLACK2, GameKind.WHITE2)
 
     /** How many sites the engine behind [code] (the header's game code) has: the FireRed engine (FireRed, LeafGreen,
      * Ultra Violet's PUVV) three, Emerald / Ruby / Sapphire one; 0 = not a Gen 3 code we know. */

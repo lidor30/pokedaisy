@@ -1,0 +1,77 @@
+# Plan 6 Task 1 (fix round 2): the same rule on the partner's side. On the partner's phone the host is a network peer, so its blocks are
+# checked before the partner's game runs them. Forged on the partner (core B) at its action prompt, as a hostile host would send them:
+# commands the master never sends (a DMA3 transfer, which writes to any address, and raw mon data), a switch animation for party slot 9,
+# a health bar change of 0x4000, experience for party slot 7, a held-HP set to 5000, a set of a request that doesn't exist, a move
+# animation of move 9999, a string id 999, a sound past the song table, a battle animation past its table, a party order with a nibble
+# of 15, a "done" as player 3, a link header whose berry name never ends and a Pokemon with a species past the table. Every one is
+# refused (give 0, the game's received flag untouched) and counted as malformed (the u16 at 0x0203D030); the error flag the first one
+# sets is put back between them (poke8 0x0203D015) so each is judged by its own shape, not by the state; the last leaves it set.
+#
+# want: PASS linkwait 2
+# want: linkstate a 2 b 4
+# want: link: give 0 status 0 -> 0 dma3
+# want: link: give 0 status 0 -> 0 rawmon
+# want: link: give 0 status 0 -> 0 switchin9
+# want: link: give 0 status 0 -> 0 healthbar
+# want: link: give 0 status 0 -> 0 expparty7
+# want: link: give 0 status 0 -> 0 sethp5000
+# want: link: give 0 status 0 -> 0 setreq99
+# want: link: give 0 status 0 -> 0 moveanim
+# want: link: give 0 status 0 -> 0 string999
+# want: link: give 0 status 0 -> 0 playse
+# want: link: give 0 status 0 -> 0 battleanim
+# want: link: give 0 status 0 -> 0 order15
+# want: link: give 0 status 0 -> 0 donep3
+# want: link: give 0 status 0 -> 0 header
+# want: link: give 0 status 0 -> 0 badmon
+# want: link: give 0 status 0 -> 0 lastone
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+linkgivehex 5 dma3 00020000080000001E00000000000000
+poke8 0x0203D015 0
+linkgivehex 5 rawmon 00020000080000000100000000000000
+poke8 0x0203D015 0
+linkgivehex 5 switchin9 00020000080000000509000000000000
+poke8 0x0203D015 0
+linkgivehex 5 healthbar 00020000080000001800004000000000
+poke8 0x0203D015 0
+linkgivehex 5 expparty7 00020000080000001907000000000000
+poke8 0x0203D015 0
+linkgivehex 5 sethp5000 0002000008000000022A018813000000
+poke8 0x0203D015 0
+linkgivehex 5 setreq99 00020000080000000263000000000000
+poke8 0x0203D015 0
+linkgivehex 5 moveanim 00020000300000000F0F27000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+poke8 0x0203D015 0
+linkgivehex 5 string999 000200004800000010000E030000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000
+poke8 0x0203D015 0
+linkgivehex 5 playse 00020000080000002B0F270000000000
+poke8 0x0203D015 0
+linkgivehex 5 battleanim 00020000080000003463000000000000
+poke8 0x0203D015 0
+linkgivehex 5 order15 000200000C00000016000000FF00000000000000
+poke8 0x0203D015 0
+linkgivehex 5 donep3 02020000080000000300000000000000
+poke8 0x0203D015 0
+linkgivehex 1 header 00030000F8F8F8F8F8F8F8000000000000000000000000000000000000000000
+poke8 0x0203D015 0
+linkgivemon 2 496 33 35 0 badmon
+poke8 0x0203D015 0
+linkgivehex 5 lastone 00020000080000001E00000000000000
+linkstate
+expect16 0x0203D030 16
+expect8 0x0203D015 1

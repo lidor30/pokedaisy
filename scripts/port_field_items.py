@@ -71,6 +71,17 @@ FLY = {
 # English FireRed rev 0 is written from REFS, but no clean build gives its FLY: ported from rev 1 like the others.
 FLY_FROM = {"BPRE0": "BPRE1", "AXVE0": "AXVE1", "AXPE0": "AXVE1", "AXPE1": "AXVE1"}
 
+# The BOXES tab's moves (BoxSwap.kt): BoxMonToMon, BoxMonRestorePP, GetBoxMonData and gPokemonStoragePtr, from the English
+# tables (BOX_SWAP_*), mapped like FLY's. Ruby / Sapphire have no BoxMonToMon (their PC builds the Pokémon another way).
+BOX_FUNCS = ("boxMonToMon", "boxMonRestorePP", "getBoxMonData")
+BOX = {
+    "BPRE1": dict(boxMonToMon=0x0803E788, boxMonRestorePP=0x080442F8, getBoxMonData=0x0803FD58, storage=0x03005010),
+    "BPGE1": dict(boxMonToMon=0x0803E788, boxMonRestorePP=0x080442F8, getBoxMonData=0x0803FD58, storage=0x03005010),
+    "BPGE0": dict(boxMonToMon=0x0803E774, boxMonRestorePP=0x080442E4, getBoxMonData=0x0803FD44, storage=0x03005010),
+    "BPEE0": dict(boxMonToMon=0x08069004, boxMonRestorePP=0x0806E930, getBoxMonData=0x0806A674, storage=0x03005D94),
+}
+BOX_FROM = {"BPRE0": "BPRE1"}
+
 
 def ref(stem, fam, **a):
     return dict(stem=stem, fam=fam, a=a)
@@ -223,7 +234,27 @@ def port(rom, refs, key):
     out["pc"] = port_pc(src, rom, r, shift)
     fly_key = key if key in FLY else FLY_FROM.get(key)
     out["fly"] = port_fly(refs[fly_key], rom, fly_key, shift) if fly_key else None
+    out["box"] = port_box(src, rom, key, shift) if key in BOX else None
     return out, None
+
+
+def port_box(src, rom, key, shift):
+    """The BOXES moves' addresses mapped from English [key]'s, or None (the port keeps the tab, without the moves).
+    Checked: every function found, gPokemonStoragePtr a word right after a literal-pool IWRAM word (gSaveBlock2Ptr)."""
+    f = BOX[key]
+    got = {}
+    for n in BOX_FUNCS:
+        v = map_code(src, rom, f[n])
+        if v is None:
+            v = map_code_masked(src, rom, f[n], f[n] + shift, radius=0x10000)
+        if v is None:
+            return None
+        got[n] = v
+    v, _ = map_literal(src, rom, f["storage"])
+    if v is None or not 0x03000000 <= v < 0x03008000:
+        return None
+    got["storage"] = v
+    return got
 
 
 def port_fly(src, rom, key, shift):
@@ -342,6 +373,14 @@ def fly_kt(rom, fly):
     return (f"\n        fly = FLY_FIRERED_REV1.copy(\n            {common}setFlyWarpDestination = {h(fly['setFlyWarpDestination'])},\n"
             f"            codeCrcs = listOf({crcs}),\n        ),")
 
+def box_kt(rom, box):
+    h = lambda v: f"0x{v:08X}L"
+    return (f'    // {os.path.basename(rom.path)}.\n    "{rom.code}{rom.rev}" to BoxSwapFns(\n'
+            f"        boxMonToMon = {h(box['boxMonToMon'])}, boxMonRestorePP = {h(box['boxMonRestorePP'])}, "
+            f"getBoxMonData = {h(box['getBoxMonData'])}, storagePtr = {h(box['storage'])},\n"
+            f"        codeCrcs = listOf({', '.join(f'0x{crc(rom, box[n]):08X}L' for n in BOX_FUNCS)}),\n    ),")
+
+
 def pc_kt(rom, fam, pc):
     if not pc:
         return ""
@@ -363,7 +402,14 @@ def main():
         refs[k] = Rom(by_stem[r["stem"]])
         if f"{refs[k].code}{refs[k].rev}" != k:
             sys.exit(f"{r['stem']} is {refs[k].code}{refs[k].rev}, not {k}")
-    blocks, done, js = [], set(), {}
+    # English FireRed rev 0's box functions, from rev 1's (the ports of rev 0 map theirs from these).
+    for key, fr in BOX_FROM.items():
+        shift = int(statistics.median(REFS[key]["a"][n] - REFS[fr]["a"][n] for n in FUNCS if REFS[key]["a"].get(n)))
+        box = port_box(refs[fr], refs[key], fr, shift)
+        if box is None:
+            sys.exit(f"{key}: the box functions didn't map from {fr}")
+        BOX[key] = box
+    blocks, box_blocks, done, js = [], [], set(), {}
     for p in sorted(paths):
         name = os.path.basename(p)
         if any(x in name for x in ("Pirate", "Debug", "Pokemon Box")):
@@ -379,6 +425,7 @@ def main():
             m["pc"] = {n: m[n] for n in ("setupScript", "pcFn", "specials")}
             if key in FLY_FROM:
                 m["fly"] = port_fly(refs[FLY_FROM[key]], rom, FLY_FROM[key], 0)
+            m["box"] = BOX.get(key)
             ref_key = key
         else:
             cands = {k: v for k, v in refs.items() if k[:3] == rom.code[:3]}
@@ -392,10 +439,13 @@ def main():
                 continue
         done.add(key)
         blocks.append(kt(rom, ref_key, m))
+        if m.get("box"):
+            box_blocks.append(box_kt(rom, m["box"]))
         js[key] = dict(path=os.path.abspath(p), ref=ref_key, family=rom.code[:3], **{k: v for k, v in m.items() if k != "how"})
         masked = [n for n, v in m["how"].items() if v == "masked"]
         print(f"{key:6} {name[:48]:48} from {ref_key}  items {m['items']:#x} x{m['name_len'] + 30}"
-              f"  party {m['party']:#x}{'  masked ' + ','.join(masked) if masked else ''}{'' if m.get('pc') else '  NO PC'}{'' if m.get('fly') else '  NO FLY'}")
+              f"  party {m['party']:#x}{'  masked ' + ','.join(masked) if masked else ''}{'' if m.get('pc') else '  NO PC'}{'' if m.get('fly') else '  NO FLY'}"
+              f"{'' if m.get('box') else '  NO BOX MOVES'}")
     # The hand-written English tables' FLY (FieldItems.kt), checked the same way: printed for FLY_RUBY's file.
     for key in ("AXVE1", "AXPE1"):
         if key in refs:
@@ -416,7 +466,12 @@ def main():
 // FireRed / Ruby / Sapphire rev 0, by game code + revision; each checked headless.
 
 val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
-""" + "\n".join(blocks) + "\n)\n")
+""" + "\n".join(blocks) + """
+)
+
+/** The BOXES tab's moves (BoxSwap.kt) for the same games, by the same keys (scripts/verify_box_swap.py checks them). */
+val BOX_SWAP_PORTS: Map<String, BoxSwapFns> = mapOf(
+""" + "\n".join(box_blocks) + "\n)\n")
     print("wrote", os.path.relpath(OUT), len(blocks), "tables")
 
 

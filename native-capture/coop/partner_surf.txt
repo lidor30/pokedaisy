@@ -1,0 +1,19 @@
+# A surfing partner: the rider (frame 36, surfing south) and the surf blob (frame 39) in two OAM entries, the blob at the
+# higher index (drawn under the rider), one palette slot. With bob 2 the blob sits 2 px lower than with bob 0 (the diff of
+# the two frames is the blob's rows only: its box ends 2 rows lower).
+# want: partnerinfo plain: why 0 oam 126 blobOam 127 slot 15 at 120,56 frame 36
+# want: partnerinfo bob: why 0 oam 126 blobOam 127 slot 15 at 120,56 frame 36
+# want: framediff bobdiff box 125,68-147,88
+wideon 0
+partnerset /repo/app/build/partner/brendan.bin
+savestate /work/a.ss
+partnernear 1 0 36 0 39
+wait 2
+partnerinfo plain
+shot /work/surf.ppm
+loadstate /work/a.ss
+partnerpos 1 288 400 36 0 39 2
+wait 2
+partnerinfo bob
+shot /work/surf_bob.ppm
+framediff /work/surf.ppm /work/surf_bob.ppm bobdiff

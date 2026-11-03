@@ -23,6 +23,36 @@ object WhatsNew {
     /** Newest first. */
     val RELEASES: List<Notes> = listOf(
         Notes(
+            "1.4.0",
+            listOf(
+                Section(
+                    NEW,
+                    listOf(
+                        "DS on one screen: hold your device sideways and the touch screen floats in when the game needs it.",
+                        "New DS games: Pokémon White, Black 2, White 2, Origin HeartGold, and German HeartGold and SoulSilver.",
+                        "New GBA games: Let's Go, Monomyth, Team Rocket Edition 2026 (Spanish), and randomized FireRed and Emerald.",
+                        "BOXES: your PC's boxes in the companion. Move Pokémon between a box and your party.",
+                        "THEME: colour the app and the companion, with eight new themes and a few for the holidays.",
+                        "TRADE EVOLUTIONS: evolve a Pokémon that needs a trade, from its summary.",
+                        "GAME VOLUME: a volume slider, MUTE GAME and a MUTE hotkey.",
+                        "PATCH A ROM: turn a .bps patch into a game, from the library's TOOLS.",
+                        "LINK PLAY: two to four GBA games joined by a link cable, to trade and battle between them.",
+                        "SAVE EDITOR: change a game's boxes, bag and money in its save.",
+                        "TRADE SAVES: move Pokémon between your games' saves, the way a trade would.",
+                    ),
+                ),
+                Section(
+                    FIXES,
+                    listOf(
+                        "Game Boy sound: no more crackle in Yellow, Crystal and the other Game Boy games.",
+                        "Sound: no more wobble in the music's pitch while you play.",
+                        "Black: a party of six no longer blanks the companion.",
+                        "Black 2 and White 2: the battle's text box looks like the game's, and the bag shows the item you pick.",
+                    ),
+                ),
+            ),
+        ),
+        Notes(
             "1.3.3",
             listOf(
                 Section(

@@ -1,6 +1,7 @@
 package com.pokedaisy.app
 
 import com.pokedaisy.app.companion.data.BestEffortStore
+import com.pokedaisy.app.companion.data.OriginHeartGold
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import java.io.File
 
@@ -10,7 +11,8 @@ import java.io.File
  * the library can warn before adding a ROM the companion will only show a
  * "not supported" notice for. Retail LeafGreen / Ruby / Sapphire (the
  * revisions detect() has addresses for), retail FireRed / Emerald by their SHA1 (or as a trimmed /
- * save-patched dump of one, [com.pokedaisy.app.companion.data.RetailDumps]), and
+ * save-patched dump of one, [com.pokedaisy.app.companion.data.RetailDumps], or randomized by Universal Pokémon
+ * Randomizer ZX, [com.pokedaisy.app.companion.data.RandomizedRetail]), and
  * a hack only when its SHA1 is one detect() knows. An archive is judged by the ROM
  * inside it ([RomArchive]). Blocking (hashes up to 32 MB) - never on the UI thread.
  * The website's ROM check (`website/src/lib/compat.js`) is the same rules in JavaScript, over
@@ -39,7 +41,10 @@ object CompanionSupport {
         // Game Boy / Color: the exact carts the GB reader knows (Pokémon Yellow).
         if (RomIdentity.isGameBoy(rom)) return TelemetrySampler.GAME_BOY_SUPPORT && RomIdentity.sha1(rom) in TelemetrySampler.SUPPORTED_GB_SHA1S
         // A DS cart: by its header's code and revision, as detect() takes it (a 128 MB+ ROM isn't hashed).
-        if (RomIdentity.isNds(rom)) return TelemetrySampler.ndsSupported(RomIdentity.ndsGameCode(rom), RomIdentity.ndsRevision(rom))
+        if (RomIdentity.isNds(rom)) return TelemetrySampler.ndsSupported(RomIdentity.ndsGameCode(rom), RomIdentity.ndsRevision(rom)) ||
+            // Origin HeartGold: a Japanese HeartGold's header, told apart by its code.
+            TelemetrySampler.NDS_SUPPORT && RomIdentity.ndsGameCode(rom) == OriginHeartGold.CODE &&
+                OriginHeartGold.matches { off, len -> RomArchive.readAt(rom, off, len) }
         val code = RomIdentity.gameCode(rom) ?: return false
         val size = RomArchive.romSize(rom)
         if (code in TelemetrySampler.OTHER_RETAIL_CODES) {
@@ -52,8 +57,11 @@ object CompanionSupport {
         val sha1 = RomIdentity.sha1(rom)
         if (sha1 in TelemetrySampler.SUPPORTED_HACK_SHA1S) return true
         if (size > 0x1000000L) return false
-        // Retail, or a retail dump with its end trimmed / save code patched (RetailDumps), as detect() takes them.
+        // Retail, a retail dump with its end trimmed / save code patched (RetailDumps), or retail randomized
+        // (RandomizedRetail), as detect() takes them.
+        val rev = RomIdentity.revision(rom)
         return sha1 in TelemetrySampler.RETAIL_SHA1S ||
-            com.pokedaisy.app.companion.data.RetailDumps.matchStream(code, RomIdentity.revision(rom), size) { RomArchive.open(rom) } != null
+            com.pokedaisy.app.companion.data.RetailDumps.matchStream(code, rev, size) { RomArchive.open(rom) } != null ||
+            com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, rev, size) { RomArchive.open(rom) } != null
     }
 }

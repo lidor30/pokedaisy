@@ -28,6 +28,9 @@
 # vanilla's tables - the broken party / bag sprites.
 [config.radical_red_v4_1]
 base = 'firered_rev0'
+# BOXES: Unbound's CFRU boxes (the game's SendMonToPC headless into boxes 1, 20, 23 and 25: `radical_red_boxes`).
+pokemonStoragePtr = 0x03005010
+pcStorage = 'RADICAL_RED_PC_STORAGE'
 # Repointed by CFRU; indexed by slot, as the game's ItemId_GetDescription does.
 itemDescs = { preset = 'vanilla', base = 0x093C0000 }
 monIconTable = 0x097FE6CC

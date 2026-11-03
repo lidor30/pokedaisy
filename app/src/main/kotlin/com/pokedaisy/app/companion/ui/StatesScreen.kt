@@ -85,8 +85,8 @@ fun StatesScreen(slots: StateSlots?, tick: Long) {
         OptionTitleWindow(tr("SAVE STATES"), m, trailing = tr("SLOT {0}", slots.currentIndex))
         Spacer(Modifier.height(m.u * 4))
         Row(modifier = Modifier.fillMaxWidth(), horizontalArrangement = Arrangement.spacedBy(m.u * 4)) {
-            OptionButton(tr("UNDO SAVE"), m, onClick = { slots.requestUndoSave(); requests++ }, modifier = Modifier.weight(1f))
-            OptionButton(tr("UNDO LOAD"), m, onClick = { slots.requestUndoLoad() }, modifier = Modifier.weight(1f))
+            OptionButton(tr("UNDO SAVE"), m, onClick = { slots.requestUndoSave(); requests++ }, rainbow = false, modifier = Modifier.weight(1f))
+            OptionButton(tr("UNDO LOAD"), m, onClick = { slots.requestUndoLoad() }, rainbow = false, modifier = Modifier.weight(1f))
         }
         Spacer(Modifier.height(m.u * 4))
         BoxWithConstraints(Modifier.fillMaxSize()) {
@@ -211,8 +211,8 @@ private fun SlotCard(
             Spacer(Modifier.height(u * 3))
             Row(horizontalArrangement = Arrangement.spacedBy(u * 3)) {
                 // The D-pad starts on the slot the hotkeys target (the companion's window).
-                OptionButton(tr("SAVE"), buttons, onClick = onSave, emphasis = true, modifier = Modifier.weight(1f).focusStart(isCurrent))
-                OptionButton(tr("LOAD"), buttons, onClick = onLoad, enabled = slot.present, modifier = Modifier.weight(1f))
+                OptionButton(tr("SAVE"), buttons, onClick = onSave, emphasis = true, rainbow = false, modifier = Modifier.weight(1f).focusStart(isCurrent))
+                OptionButton(tr("LOAD"), buttons, onClick = onLoad, enabled = slot.present, rainbow = false, modifier = Modifier.weight(1f))
             }
         }
     }

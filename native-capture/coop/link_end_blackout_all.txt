@@ -1,0 +1,66 @@
+# Plan 6 Task 5 (the blackout rule): the host's side WINS, the partner's three battle Pokemon are down AND its two set-aside ones can't
+# fight either (HP 0 at slots 3-4 before the battle): nothing in the partner's whole party can fight, so after the prize (+128) the app
+# starts the game's own white-out on the partner's core (money halved: (3000 + 128) / 2 = 1564), while the host - alive - is paid
+# +128 and walks on. The result of the partner says blackout (flags b0).
+#
+# want: PASS linkwait 2
+# want: PASS linkresultwait
+# want: link: result a 16 01 01 02 00 4D 01 3E 01 80 00 00 00 00 00 00 00
+# want: link: result b 16 01 01 03 00 4D 01 3E 01 80 00 00 00 00 00 00 00
+# want: PASS link money 3128 (mark 3000 + 128)
+# want: PASS link money 1564 (mark 3000 + -1436)
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+memcopy 0x020244EC 0x02024618 100
+memcopy 0x020244EC 0x0202467C 100
+reown 0x02024618 0x1111AAAA
+reown 0x0202467C 0x2222BBBB
+poke8 0x020244E9 5
+poke16 0x0202466E 0
+poke16 0x020246D2 0
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+linkmoneymark 0
+coopbegin 1 2 333 318
+on b
+linkmoneymark 0
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+poke16 0x0202466E 0
+poke16 0x020246D2 0
+poke16 0x02024736 0
+on a
+poke8 0x0202433A 1
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkresultwait 6000
+on a
+linkresult a
+linkmoneyexpect 0 128
+coopexpectfree 1
+on b
+linkresult b
+expect8 0x020244E9 5
+linkmoneyexpect 0 -1436
+linkflag 333 1
+linkflag 318 1
+coopexpectfree 1

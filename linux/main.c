@@ -878,7 +878,24 @@ static void perf_frame(uint64_t start, double hz) {
 static void test_frame(struct mCore *, bool, int, struct pd_ui *,
                        struct pd_snapshot *);
 #endif
+#ifdef POCKET_DSPERATE
+extern int pd_ds_run(const char*, const char*, int, const char*, SDL_Renderer*, bool (*)(void));
+static bool ds_running(void) { return running != 0; }
+#endif
 static void run_game(const char *path, int maxFrames, const char *shot) {
+#ifdef POCKET_DSPERATE
+  const char *ext = strrchr(path, '.');
+  if (ext && !strcasecmp(ext, ".nds")) {
+    if (audio) { SDL_CloseAudioDevice(audio); audio = 0; }
+    appError = pd_ds_run(path, root, maxFrames, shot, renderer, ds_running);
+    // The DS backend owns its device while running. Restore the normal host's
+    // device for the next GB/GBA game selected without restarting the app.
+    audio_open();
+    audioLost = !audio;
+    held = pressed = 0;
+    return;
+  }
+#endif
   FILE *f = fopen(path, "rb");
   if (!f) {
     appError = 1;
@@ -1604,7 +1621,11 @@ int main(int argc, char **argv) {
     while (d && (e = readdir(d)) && count < 256) {
       char *ext = strrchr(e->d_name, '.');
       if (ext && (!strcasecmp(ext, ".gba") || !strcasecmp(ext, ".gbc") ||
-                  !strcasecmp(ext, ".gb")))
+                  !strcasecmp(ext, ".gb")
+#ifdef POCKET_DSPERATE
+                  || !strcasecmp(ext, ".nds")
+#endif
+                  ))
         names[count++] = strdup(e->d_name);
     }
     if (d)

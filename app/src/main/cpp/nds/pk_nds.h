@@ -65,14 +65,19 @@ int pk_nds_action_status(int seq);
 bool pk_nds_action_results(int seq, uint32_t* out);
 // WILD ENCOUNTERS OFF: no random encounters (the field read holds the map's grass / surf rates at 0). Emu thread.
 void pk_nds_set_wild_off(bool off);
+/** DS LAYOUT floats the X menu: it comes back after a menu screen left by touch (the game closes it then). */
+void pk_nds_set_keep_start_menu(bool on);
+/** DS CPU BOOST: the ARM9 at twice the DS's clock (fewer of a game's own slow frames). Emu thread, between frames. */
+void pk_nds_set_cpu_boost(bool on);
 // The cart's grass / surf rates by map header id, [map, grass, surf] x n (pk_nds_field_set_rates). Emu thread.
 void pk_nds_set_wild_rates(const int32_t* triples, int n);
 
 // STEADY FF music (pk_nds_music.h). The song the game is playing (its sound system's current BGM id; 0 = none or a fade
 // to the next), -1 for a cart whose sound system isn't mapped. Emu thread.
 int pk_nds_bgm(void);
-// A song's volume is being faded (in or out) right now: a copy taken now would stay at that volume.
-bool pk_nds_bgm_fading(void);
+// Whether the song can be copied now, and its player's state (pk_nds_bgm_settle in pk_nds_field.h): -1 not yet (a
+// fade runs, or the song's player is paused / missing), else a state a running copy compares (another = copy again).
+int pk_nds_bgm_state(void);
 // Starts the music copy from the game as it is now; false if it couldn't. Emu thread, between frames.
 bool pk_nds_music_start(void);
 // One frame (1/60 s) of the copy's audio (stereo) into out, at most maxFrames; returns the frames written.

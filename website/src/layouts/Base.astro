@@ -3,13 +3,16 @@
 // whole pixels and every word in the app's pixel font (Pixel Operator).
 import Pixel from '../components/Pixel.astro';
 import { frameCss, spriteSvg } from '../lib/pixel.js';
+import { THEMES, themeCss } from '../lib/themes.js';
 import { REPO_URL } from '../lib/releases.js';
 import { REDDIT_URL, DISCORD_URL, KOFI_URL, PATREON_URL, COFFEE_URL } from '../lib/links.js';
 
-interface Props { title: string; description: string; noindex?: boolean }
-const { title, description, noindex = false } = Astro.props;
+/** [image]: the link preview's picture (og:image), a path on this site. [theme]: a look of its own (themes.js). */
+interface Props { title: string; description: string; noindex?: boolean; image?: string; theme?: string }
+const { title, description, noindex = false, image = '/og.png', theme } = Astro.props;
+const themed = theme ? THEMES[theme] : undefined;
 const site = Astro.site ?? new URL('https://pokedaisy.com');
-const ogImage = new URL('/og.png', site).href;
+const ogImage = new URL(image, site).href;
 const favicon = `data:image/svg+xml,${encodeURIComponent(spriteSvg('logo').svg)}`;
 const path = Astro.url.pathname;
 const nav = [
@@ -23,14 +26,14 @@ const nav = [
 const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 78, 2, 2, 28], [46, 92, 1, 6, 25], [95, 70, 1, 12, 30]];
 ---
 <!doctype html>
-<html lang="en">
+<html lang="en" data-theme={themed ? theme : undefined}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
-    <meta name="theme-color" content="#f7f6fb" />
+    <meta name="theme-color" content={themed?.themeColor ?? '#f7f6fb'} />
     <link rel="icon" href={favicon} />
     <link rel="preload" href="/fonts/PixelOperator.ttf" as="font" type="font/ttf" crossorigin />
     <meta property="og:type" content="website" />
@@ -78,6 +81,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
       })();
     </script>
     <style is:global set:html={frameCss()}></style>
+    {themed && <style is:global set:html={themeCss(theme)}></style>}
     <slot name="head" />
   </head>
   <body>

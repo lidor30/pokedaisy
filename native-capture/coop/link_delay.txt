@@ -1,0 +1,90 @@
+# Plan 6 Task 1: link_trainers.txt with the network in the way: every block arrives 12 frames (200 ms) after it was sent, each way.
+# The game's own waits (IsLinkTaskFinished, the received flags) and the bridge's back-pressure (give = 0 until the slot was read) must
+# carry the battle through unchanged: both cores at their action prompts, a whole turn, the same HP on both afterwards.
+#
+# want: PASS linkwait 2
+# want: expectsame php0 php0b: PASS
+# want: expectsame ehp5 ehp5b: PASS
+pair $PARTNER_SAVE
+linkdelay 12
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+expectmonin 0x020244EC 280
+expectmonin 0x02024618 283
+on b
+waitmem32 0x03005D68 0x08057589 3000
+expect32 0x03005D68 0x08057589
+expectmonin 0x020244EC 280
+expectmonin 0x02024618 283
+on a
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on a
+waitmem8 0x03005D23 1 3000
+waitmem32 0x03005D60 0x08057589 3000
+expect32 0x03005D60 0x08057589
+on b
+waitmem32 0x03005D68 0x08057589 3000
+expect32 0x03005D68 0x08057589
+on a
+rangehash php0 0x02024542 2
+rangehash ehp0 0x0202479A 2
+rangehash php1 0x020245A6 2
+rangehash ehp1 0x020247FE 2
+rangehash php2 0x0202460A 2
+rangehash ehp2 0x02024862 2
+rangehash php3 0x0202466E 2
+rangehash ehp3 0x020248C6 2
+rangehash php4 0x020246D2 2
+rangehash ehp4 0x0202492A 2
+rangehash php5 0x02024736 2
+rangehash ehp5 0x0202498E 2
+on b
+rangehash php0b 0x02024542 2
+rangehash ehp0b 0x0202479A 2
+rangehash php1b 0x020245A6 2
+rangehash ehp1b 0x020247FE 2
+rangehash php2b 0x0202460A 2
+rangehash ehp2b 0x02024862 2
+rangehash php3b 0x0202466E 2
+rangehash ehp3b 0x020248C6 2
+rangehash php4b 0x020246D2 2
+rangehash ehp4b 0x0202492A 2
+rangehash php5b 0x02024736 2
+rangehash ehp5b 0x0202498E 2
+expectsame php0 php0b
+expectsame ehp0 ehp0b
+expectsame php1 php1b
+expectsame ehp1 ehp1b
+expectsame php2 php2b
+expectsame ehp2 ehp2b
+expectsame php3 php3b
+expectsame ehp3 ehp3b
+expectsame php4 php4b
+expectsame ehp4 ehp4b
+expectsame php5 php5b
+expectsame ehp5 ehp5b
+linkinfo
+linkstate

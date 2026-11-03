@@ -36,6 +36,8 @@ Without `EXPAND`, the HUD stays on the game's picture, not in the bars beside it
 
 When the game's picture is too narrow for your party beside the buttons, for example with the companion's side panel locked beside the game, the HUD gets smaller: the party and the minimap step aside, and your balls and the buttons sit in the bottom left corner, with a `MAP` button after `WILD`. The party is still a tap away in the companion. `LAYOUT` can't be changed meanwhile: it says it's not available because the screen is too small.
 
+In a DS game on one screen, a `TOUCH` button joins them while `DS LAYOUT` floats the touch screen in: it brings the touch screen up over the game, and a second tap closes it (see [DS layout](devices.md#ds-layout-two-screens-on-one)).
+
 On a device with one screen, the button that opens the companion joins `BAG` and `WILD` as `COMPANION` while the HUD is up, instead of sitting on the screen's edge. It stays there while the companion's window is open. When the HUD steps aside (in a battle or a menu), the edge tab is back.
 
 ## Make it yours

@@ -40,6 +40,11 @@ data class GuideTables(
     val trainerPartyOff: Int = 0x24,
     /** pokeemerald-expansion's struct TrainerMon (always custom moves); null = vanilla's party structs. */
     val trainerMon: TrainerMonLayout? = null,
+    /** Vanilla's party structs behind this many bytes of the game's own, each struct's size by the trainer's party flags
+     * (none, custom moves, held item, both) - Monomyth's: a u32 first, then vanilla's fields, 12 / 20 / 12 / 24 bytes.
+     * Null = vanilla's 8 / 16. */
+    val trainerMonStrides: List<Int>? = null,
+    val trainerMonHeader: Int = 0,
     /** WildPokemonHeader: expansion keeps one set of four tables per time of day. */
     val wildSets: Int = 1,
     /** Which set HERE shows (expansion's TIME_DAY); a missing table falls back to the others. */
@@ -177,12 +182,13 @@ private const val TRAINER_PARTY_HELD_ITEM = 2
 private const val WILD_SET_SIZE = 16 // four WildPokemonInfo pointers (+ expansion's hidden one, see below)
 private const val MAP_GROUP_UNDEFINED = 0xFF
 
-/** Whether the running ROM has these tables where [t] says: its probe trainer (FireRed's BROCK) has the right name. */
-fun guideTablesMatchRom(c: MemoryReader, t: GuideTables): Boolean = runCatching {
+/** Whether the running ROM has these tables where [t] says: its probe trainer (FireRed's BROCK) has the right name
+ * ([byName]: not on a ROM whose hash already vouches for the tables but whose trainers may be renamed, [RandomizedRetail]). */
+fun guideTablesMatchRom(c: MemoryReader, t: GuideTables, byName: Boolean = true): Boolean = runCatching {
     val at = t.trainers + t.probeTrainer.toLong() * t.trainerStride + t.trainerNameOff
     val name = if (t.trainerNamePtr) c.readCoreMemory(u32le(c.readCoreMemory(at, 4), 0), t.trainerNameLen)
         else c.readCoreMemory(at, t.trainerNameLen)
-    Gen3Text.decode(name) == t.probeName && c.readCoreMemory(t.wildHeaders, 1)[0].toInt() and 0xFF != MAP_GROUP_UNDEFINED
+    (!byName || Gen3Text.decode(name) == t.probeName) && c.readCoreMemory(t.wildHeaders, 1)[0].toInt() and 0xFF != MAP_GROUP_UNDEFINED
 }.getOrDefault(false)
 
 /** The save's event flags and vars, as the scripts see them. */
@@ -411,10 +417,10 @@ object GuideRomSource {
             val custom = flags and TRAINER_PARTY_CUSTOM_MOVESET != 0
             val item = flags and TRAINER_PARTY_HELD_ITEM != 0
             // {u16 iv, u8 lvl, pad, u16 species, [u16 item], [u16 moves[4]]}, padded to 8 / 16 bytes.
-            val stride = if (custom) 16 else 8
+            val stride = t.trainerMonStrides?.getOrNull(flags and 3) ?: if (custom) 16 else 8
             val raw = rd(ptr, size * stride)
             (0 until size).map { i ->
-                val o = i * stride
+                val o = i * stride + t.trainerMonHeader
                 val species = u16le(raw, o + 4)
                 val level = raw[o + 2].toInt() and 0xFF
                 val movesOff = if (item) o + 8 else o + 6
@@ -872,10 +878,12 @@ val GUIDE_TABLES_SOULGOLD = GuideTables(
     mapGroups = 0x09587364L, mapSecWide = true,
 )
 
-// v1.2 / v1.2b / v1.2c: the same layouts, ids, flags and scripts; only the tables moved.
+// v1.2 / v1.2b / v1.2c / v1.2.1: the same layouts, ids, flags and scripts; only the tables moved.
 val GUIDE_TABLES_SOULGOLD_V1_2 = GUIDE_TABLES_SOULGOLD.copy(trainers = 0x084A5800L, wildHeaders = 0x09420BA8L, altTrainers = listOf(0x084B4470L), mapGroups = 0x09592634L)
 val GUIDE_TABLES_SOULGOLD_V1_2B = GUIDE_TABLES_SOULGOLD.copy(trainers = 0x084A5768L, wildHeaders = 0x09420B04L, altTrainers = listOf(0x084B43D8L), mapGroups = 0x09592590L)
 val GUIDE_TABLES_SOULGOLD_V1_2C = GUIDE_TABLES_SOULGOLD.copy(trainers = 0x084A58F4L, wildHeaders = 0x0944EA34L, altTrainers = listOf(0x084B4564L), mapGroups = 0x095C04C0L)
+// v1.2.1 (both builds): the same again, moved once more.
+val GUIDE_TABLES_SOULGOLD_V1_2_1 = GUIDE_TABLES_SOULGOLD.copy(trainers = 0x084AD384L, wildHeaders = 0x0945A8E0L, altTrainers = listOf(0x084BBFF4L), mapGroups = 0x095CC3A8L)
 
 val GUIDE_TABLES_CELIA = GuideTables(
     trainers = 0x0871FCA0L,
@@ -962,6 +970,38 @@ val GUIDE_TABLES_TEAM_ROCKET = GuideTables(
 )
 
 /**
+ * Pokémon Team Rocket Edition 2026, Spanish (v3.0.9, expansion 1.14.4): HERE only, like v1.5's. gTrainers[EASY][NORMAL][HARD]
+ * [2859] at 0x084ECA78 (the literal pools' word; its FÁCIL / DIFÍCIL modes pick a table), [trainers] the NORMAL one: 0x30-byte
+ * records (party +8, an 11-byte name +0x17, party size +0x24); 415 is BROCK (four there, three EASY, five HARD) and 543 the
+ * ROCKET whose EKANS Lv4 / ZUBAT Lv5 the save's trainer battle met, expansion's 0x24-byte TrainerMons. Level-up moves from
+ * gSpeciesInfo's levelUpLearnset (+0x90, {move, level} pairs: BULBASAUR's TACKLE 1, GROWL 3). gWildMonHeaders 0x090990D4
+ * (10 literal-pool words; 462 headers of 84 bytes, four time-of-day sets). SaveBlock1's flags / vars at +0x1DB0 / +0x217E
+ * (its GF ROM header, 0x08000150).
+ */
+val GUIDE_TABLES_TEAM_ROCKET_V3 = GuideTables(
+    trainers = 0x0850E288L,
+    learnsets = 0x08970D78L, // gSpeciesInfo[0].levelUpLearnset
+    learnsetStride = 0xA8,
+    learnsetPairs = true,
+    wildHeaders = 0x090990D4L,
+    sb1FlagsOff = 0x1DB0,
+    sb1VarsOff = 0x217E,
+    flagBytes = 0x3CE,
+    probeTrainer = 415,
+    probeName = "BROCK",
+    guide = GuideId.TEAM_ROCKET,
+    trainerStride = 0x30,
+    trainerNameOff = 0x17,
+    trainerNameLen = 11,
+    trainerSizeOff = 0x24,
+    trainerPartyOff = 8,
+    trainerMon = TrainerMonLayout(stride = 0x24, movesOff = 0x0C, speciesOff = 0x14, itemOff = 0x16, levelOff = 0x1A),
+    wildSets = 4,
+    wildSet = 0,
+    mapSecWide = true,
+)
+
+/**
  * Pokémon Wishes of Tomorrow v1.2.6 (expansion 1.15.3): HERE only. gTrainers[EASY][NORMAL][HARD][896] at 0x08428F54 (EASY
  * empty, so its NORMAL array 0x08435354; 0x38-byte records - its own, four bytes longer than the reference build's: party
  * +8, class +0x1C, a 13-byte name +0x1F, party size +0x2D; 885 is GENERAL EDWARDS, whose six the headless trainer battle
@@ -991,6 +1031,31 @@ val GUIDE_TABLES_WISHES = GuideTables(
     wildSet = 0,
     mapGroups = 0x08F90738L,
     trainerIdVar = true,
+)
+
+/**
+ * Pokémon Monomyth v1.0, from the ROM: gTrainers 0x084B6C84 (vanilla's 0x28-byte records; 1 = BUG CATCHER TIM, whose
+ * SPINARAK Lv3 and JOLTIK Lv4 the headless trainer battle met), its parties vanilla's structs behind a u32 (12 / 20 / 12 /
+ * 24 bytes by party flags, level +6, species +8, item +0xA, moves +0xA or +0xC), gLevelUpLearnsets 0x0850664C ({u16 move,
+ * u16 level} ending 0xFFFF: its moves pass 511), gWildMonHeaders 0x089C2E58 (vanilla's 20 bytes, 211 of them). SaveBlock1's
+ * flags / vars at +0x18C4 / +0x19FC (ScrCmd_setflag's and ClearAllVars' literals), 0x138 bytes of flags.
+ */
+val GUIDE_TABLES_MONOMYTH = GuideTables(
+    trainers = 0x084B6C84L,
+    learnsets = 0x0850664CL,
+    learnsetPairs = true,
+    wildHeaders = 0x089C2E58L,
+    // gMapGroups (its own maps: the save's CATSEAR CITY building is 2.5, ROUTE 1 0.12) - DEX AREA's map sections.
+    mapGroups = 0x0886EED8L,
+    sb1FlagsOff = 0x18C4,
+    sb1VarsOff = 0x19FC,
+    flagBytes = 0x138,
+    varCount = 0x110,
+    probeTrainer = 1,
+    probeName = "Tim",
+    guide = GuideId.MONOMYTH,
+    trainerMonStrides = listOf(12, 20, 12, 24),
+    trainerMonHeader = 4,
 )
 
 /**
@@ -1038,6 +1103,19 @@ val GUIDE_TABLES_GHOST_GREY = GUIDE_TABLES_ULTRA_VIOLET.copy(
     mapGroups = 0x083526A8L,
     probeName = "Aston",
 )
+
+/** Pokémon Let's Go Pikachu: rev 0's gTrainers (414 is BROCK, its own teams) and gMapGroups, its learnsets repointed to
+ * 0x08A09744 for its 987 species, its own gWildMonHeaders (0x08736860, all 14 literal-pool words); mixed-case text. */
+val GUIDE_TABLES_LETS_GO_PIKACHU = GUIDE_TABLES_ULTRA_VIOLET.copy(
+    learnsets = 0x08A09744L,
+    wildHeaders = 0x08736860L,
+    guide = GuideId.LETS_GO,
+    mapGroups = 0x083526A8L,
+    probeName = "Brock",
+)
+
+/** Let's Go Eevee: Pikachu's tables but its own gWildMonHeaders (0x0874AC1C), its version's exclusives. */
+val GUIDE_TABLES_LETS_GO_EEVEE = GUIDE_TABLES_LETS_GO_PIKACHU.copy(wildHeaders = 0x0874AC1CL)
 
 /**
  * Pokémon Sword and Shield Ultimate Plus (CFRU): gTrainers rewritten in place at FireRed rev

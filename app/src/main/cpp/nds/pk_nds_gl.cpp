@@ -70,6 +70,7 @@ uniform ivec4 uPlanRect;      // what it covers: x, y, w, h in DS pixels (w 0: n
 uniform int uBoth;            // 1: both screens, rows 0-383 (the 1x copy); 0: the top screen and its margins
 uniform ivec3 uBackdrop;      // the margins' compose: the backdrop (6 bits a channel), BLDCNT, EVA, EVB, brightness
 uniform ivec4 uBlend;
+uniform ivec2 uFx;            // BLDCNT's brightness up / down where nothing's over the 3D: mode << 14 | EVY, its targets
 
 in vec2 vDs;
 out vec4 oColor;
@@ -192,6 +193,13 @@ vec4 Margin(ivec2 ip, vec2 p)
         int eva = (c3.a & 0x1F) + 1;
         if (eva < 32) c = min((c3.rgb * eva + uBackdrop * (32 - eva) + 0x10) >> 5, ivec3(0x3F));
     }
+    if (plan.a != 2 && (uFx.y & (has3D ? 1 : 0x20)) != 0)
+    {
+        // BLDCNT's brightness up / down (melonDS's biases: 8 up, 7 down; the master brightness's are 0 / 15).
+        int evy = min(uFx.x & 0x1F, 16);
+        if ((uFx.x >> 14) == 1) c += ((0x3F - c) * evy + 8) >> 4;
+        else if ((uFx.x >> 14) == 2) c -= (c * evy + 7) >> 4;
+    }
     c = Brightness(ivec4(c, 0), uBlend.w >> 14, uBlend.w & 0x1F).rgb;
     return Out(c);
 }
@@ -242,7 +250,7 @@ struct Gl {
     GLuint pbo[2] = {};
     bool pboFull[2] = {};
     int pboNext = 0;
-    GLint uWin = -1, uFlip = -1, u3DView = -1, u3DScale = -1, uPlanRect = -1, uBoth = -1, uBackdrop = -1, uBlend = -1;
+    GLint uWin = -1, uFlip = -1, u3DView = -1, u3DScale = -1, uPlanRect = -1, uBoth = -1, uBackdrop = -1, uBlend = -1, uFx = -1;
 
     std::mutex winLock;
     bool winPending = false;
@@ -407,6 +415,7 @@ bool ensureCompositor()
     gl.uBoth = glGetUniformLocation(gl.prog, "uBoth");
     gl.uBackdrop = glGetUniformLocation(gl.prog, "uBackdrop");
     gl.uBlend = glGetUniformLocation(gl.prog, "uBlend");
+    gl.uFx = glGetUniformLocation(gl.prog, "uFx");
 
     const float quad[] = {-1, -1, 1, -1, -1, 1, 1, 1};
     glGenVertexArrays(1, &gl.vao);
@@ -675,6 +684,7 @@ bool pk_nds_gl_frame(NDS* nds, int x, int y, int w, int h, uint32_t* top, uint32
         glUniform3i(gl.uBackdrop, (GLint) (plan.backdrop & 0x3F), (GLint) ((plan.backdrop >> 8) & 0x3F),
             (GLint) ((plan.backdrop >> 16) & 0x3F));
         glUniform4i(gl.uBlend, (GLint) plan.blendCnt, (GLint) plan.eva, (GLint) plan.evb, (GLint) plan.brightness);
+        glUniform2i(gl.uFx, (GLint) plan.fx, (GLint) plan.fxTargets);
     } else {
         glUniform4i(gl.uPlanRect, 0, 0, 0, 0);
     }

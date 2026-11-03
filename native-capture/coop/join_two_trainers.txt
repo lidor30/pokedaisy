@@ -1,0 +1,17 @@
+# Two trainers' battle (BattleSetup_StartTrainerBattle's TRAINER | DOUBLE | TWO_OPPONENTS with both opponent ids set, made
+# as arm_trainer.txt does from a trainerbattle script: ALLEN 333 = 0x14D, CALVIN 318 = 0x13E) is joinable: `join 2 333 318`.
+# A zero second id is not (join 0).
+# want: coop: installed
+# want: join 2 333 318
+# want: join 0 0 0
+poke32 0x0203F400 0x014D035C
+poke32 0x0203F404 0x7DD40000
+poke32 0x0203F408 0x00020831
+coopinstall
+call 0x08098EF8 0x0203F400
+waittask 0x080B05F0 300
+poke32 0x02022FEC 0x00008009
+poke16 0x02038BCC 0x013E
+coopjoin
+poke16 0x02038BCC 0
+coopjoin

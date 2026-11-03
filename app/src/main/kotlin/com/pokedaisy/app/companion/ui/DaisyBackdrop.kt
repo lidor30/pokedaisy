@@ -26,6 +26,7 @@ import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
 import androidx.compose.ui.unit.dp
+import com.pokedaisy.app.companion.ui.theme.nightGlow
 import kotlin.math.PI
 import kotlin.math.abs
 import kotlin.math.cos
@@ -38,7 +39,8 @@ import kotlin.math.roundToInt
  * `.backdrop`): its light page colour, three soft blobs of colour (peach, yellow,
  * blue) drifting over 30 s, a faint pixel dot grid, and with [logos] (the Library)
  * the PokeDaisy mark floating up and down and turning in steps, the site's
- * "petals" at the site's places.
+ * "petals" at the site's places. A THEME ([com.pokedaisy.app.companion.ui.theme.ThemeSpec]) gives the page, the blobs
+ * and the floating picture its own; dark mode turns them into its night page and glows.
  */
 @Composable
 fun DaisyBackdrop(logos: Boolean = false) {
@@ -48,11 +50,26 @@ fun DaisyBackdrop(logos: Boolean = false) {
         0f, LOOP_S, infiniteRepeatable(tween((LOOP_S * 1000).toInt(), easing = LinearEasing), RepeatMode.Restart),
         label = "daisy-clock",
     )
-    // Dark mode: the same page at night - deep ink, the blobs as dim glows, the dots and logos fainter.
-    val dark = com.pokedaisy.app.companion.ui.theme.DarkMode.on
-    val blobs = if (dark) NIGHT_BLOBS else BLOBS
+    // Dark mode: the same page at night - deep ink, the blobs as dim glows, the dots and logos fainter. A theme with
+    // a dark page of its own (HALLOWEEN) keeps it then, a little deeper.
+    val theme = com.pokedaisy.app.companion.ui.theme.AppColors.theme
+    val night = com.pokedaisy.app.companion.ui.theme.DarkMode.on
+    val dark = night || theme.darkPage
+    val plain = theme.hue == null && !theme.darkPage
+    val page = when {
+        theme.darkPage -> if (night) androidx.compose.ui.graphics.lerp(theme.page, NIGHT_PAGE, 0.4f) else theme.page
+        night -> if (plain) NIGHT_PAGE else OptionColors.tint(NIGHT_PAGE)
+        else -> theme.page
+    }
+    val colors = when {
+        plain -> if (night) NIGHT_BLOBS.map { it.color } else BLOBS.map { it.color }
+        night && !theme.darkPage -> theme.blobs.map { it.nightGlow() }
+        else -> theme.blobs
+    }
+    val blobs = colors.mapIndexed { i, c -> BLOB_PLACES[i % BLOB_PLACES.size].let { b -> Blob(b.x, b.y, b.yw, b.r, c, b.delay) } }
+    val logo = motifBitmap(theme.motif)
     Canvas(Modifier.fillMaxSize()) {
-        drawRect(if (dark) NIGHT_PAGE else PAGE)
+        drawRect(page)
         // vw / vh like the site's CSS; the blobs size by the longer side so they stay soft on a phone too.
         val vw = size.width / 100f
         val vh = size.height / 100f
@@ -74,12 +91,12 @@ fun DaisyBackdrop(logos: Boolean = false) {
         }
         drawRect(dotBrush(1.dp.toPx().roundToInt().coerceAtLeast(1), 12.dp.toPx().roundToInt().coerceAtLeast(4), dark))
         if (logos) {
-            val logo = logoBitmap
             for (petal in PETALS) {
                 // The site's float: up 60 px and back while turning once, in 48 steps.
                 val phase = floor((((t + petal.delay) / petal.duration) % 1f) * 48f) / 48f
                 val lift = -60.dp.toPx() * (1 - abs(2 * phase - 1))
-                val cell = max(1, (petal.scale * 2.dp.toPx()).roundToInt())
+                // A 16-pixel motif at twice the cell, as big as the 32-pixel mark.
+                val cell = max(1, (petal.scale * 2.dp.toPx() * 32 / logo.width).roundToInt())
                 val side = cell * logo.width
                 val x = petal.x / 100f * size.width
                 val y = petal.y / 100f * size.height + lift
@@ -87,7 +104,12 @@ fun DaisyBackdrop(logos: Boolean = false) {
                     rotate(phase * 360f, pivot = Offset(side / 2f, side / 2f)) {
                         drawImage(
                             logo, dstOffset = IntOffset.Zero, dstSize = IntSize(side, side),
-                            alpha = if (dark) NIGHT_LOGO_ALPHA else LOGO_ALPHA, filterQuality = FilterQuality.None,
+                            alpha = when {
+                                theme.motif != null -> if (dark) MOTIF_NIGHT_ALPHA else MOTIF_ALPHA
+                                dark -> NIGHT_LOGO_ALPHA
+                                else -> LOGO_ALPHA
+                            },
+                            filterQuality = FilterQuality.None,
                         )
                     }
                 }
@@ -125,6 +147,16 @@ private val NIGHT_BLOBS = listOf(
     Blob(45f, 100f, 5f, 25f, Color(0xFF233A7A), 20f),
 )
 
+// Where a theme's blobs go: the site's three, then two more for themes with more colours (RAINBOW, EASTER).
+private val BLOB_PLACES = BLOBS + listOf(
+    Blob(80f, 85f, 0f, 18f, Color.Transparent, 5f),
+    Blob(30f, 45f, 0f, 16f, Color.Transparent, 15f),
+)
+
+/** A theme's own picture is clearer than the mark (it's the theme), but still a backdrop. */
+private const val MOTIF_ALPHA = 0.32f
+private const val MOTIF_NIGHT_ALPHA = 0.22f
+
 /** A logo: at [x] / [y] % of the screen, [scale] (1 or 2), its float [delay] s in, [duration] s round. */
 private class Petal(val x: Float, val y: Float, val scale: Int, val delay: Float, val duration: Float)
 
@@ -135,12 +167,18 @@ private val PETALS = listOf(
 )
 
 /** The mark as a bitmap (one pixel per sprite pixel), drawn scaled with no smoothing. */
-private val logoBitmap: ImageBitmap by lazy {
-    val n = LOGO_ROWS.size
-    val px = IntArray(n * n) { i ->
-        LOGO_PALETTE[LOGO_ROWS[i / n].getOrNull(i % n)]?.toArgb() ?: 0
-    }
-    android.graphics.Bitmap.createBitmap(px, n, n, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
+private val logoBitmap: ImageBitmap by lazy { pixelBitmap(LOGO_ROWS, LOGO_PALETTE) }
+
+/** [motif] as a bitmap like [logoBitmap] (the mark for none), made once per motif. */
+internal fun motifBitmap(motif: com.pokedaisy.app.companion.ui.theme.ThemeMotif?): ImageBitmap =
+    if (motif == null) logoBitmap else motifBitmaps.getOrPut(motif) { pixelBitmap(motif.rows, motif.palette) }
+
+private val motifBitmaps = HashMap<com.pokedaisy.app.companion.ui.theme.ThemeMotif, ImageBitmap>()
+
+private fun pixelBitmap(rows: List<String>, palette: Map<Char, Color>): ImageBitmap {
+    val n = rows.size
+    val px = IntArray(n * n) { i -> palette[rows[i / n].getOrNull(i % n)]?.toArgb() ?: 0 }
+    return android.graphics.Bitmap.createBitmap(px, n, n, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap()
 }
 
 /** The site's dot grid: a [dot]-px square of its ink at 9% every [step] px, as a repeating tile. */

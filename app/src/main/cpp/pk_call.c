@@ -79,6 +79,13 @@ int pk_call_safe(struct mCore* core) {
     return !rest || pk_sys_sp(cpu) == rest;
 }
 
+#define PK_CALL_CAP 2000000
+static __thread long pkCallCap = PK_CALL_CAP; // per thread: the render core calls on another one
+
+void pk_call_set_cap(long steps) {
+    pkCallCap = steps > 0 ? steps : PK_CALL_CAP;
+}
+
 int pk_call(struct mCore* core, uint32_t fn, const uint32_t args[4], uint32_t* r0) {
     if (core->platform(core) != mPLATFORM_GBA) {
         return 0;   // an ARM-only trick: the GB core's CPU is an SM83
@@ -121,7 +128,7 @@ int pk_call(struct mCore* core, uint32_t fn, const uint32_t args[4], uint32_t* r
     _ARMSetMode(cpu, MODE_THUMB);
     ThumbWritePC(cpu);
     int ok = 0;
-    for (int i = 0; i < 2000000; i++) {
+    for (long i = 0; i < pkCallCap; i++) {
         if (cpu->executionMode == MODE_THUMB && (uint32_t) cpu->gprs[ARM_PC] - WORD_SIZE_THUMB == PK_CALL_SENTINEL) {
             ok = 1;
             break;

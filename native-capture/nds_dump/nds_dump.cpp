@@ -243,6 +243,16 @@ static int skipDraw = 0;
 static int appGroup = 0, appPerTick = 0;
 static bool drawGuard = true;   // ffguard 0: pk_nds_run_frame's guard off (a frame drawn though its 3D was skipped)
 static int musicPerFrame = 0;   // musicon N: the STEADY copy's frames after each game frame
+// steady G FILE: EmulatorEngine's STEADY for a DS game, G game frames a refresh: the song id read every frame, a copy
+// begun once it has changed and its player has settled (pk_nds_bgm_settle) for DS_MUSIC_SETTLE_FRAMES, taken again when
+// that player changes, a copy frame each refresh - its audio collected and written to FILE by `steady off`. With G 0 the
+// game's own audio is collected instead.
+static int steadyPer = -1, steadyGroup = 0, steadyBgm = -1, steadyWait = -1;
+static bool steadyOn = false;
+static int steadySince = 0;   // STEADY_DEBUG: the copy's state 1 and 30 frames after its begin
+static std::string steadyFile;
+static std::vector<s16> steadyPcm;
+static void steadyFrame();
 static std::string recordPrefix;
 static u64 recordStart = 0;
 static void recordShown();
@@ -286,7 +296,7 @@ static void runFrames(int n, u32 keys)
         static int wasBattle = 0;
         int battle = 0, inBattle = 0, battle3d = 0;
         if (auto* cart = nds->NDSCartSlot.GetCart()) {
-            if (const PkNdsFieldGame* g = pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion)) {
+            if (const PkNdsFieldGame* g = pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength())) {
                 int bits = pk_nds_field_state(g, read32, write32, wildOff);
                 pk_nds_call_frame(nds, g);
                 battle = (bits & PK_NDS_FIELD_BATTLE) != 0;
@@ -316,6 +326,7 @@ static void runFrames(int n, u32 keys)
             static s16 musicBuf[4096];
             for (int k = 0; k < musicPerFrame; k++) pk_nds_music_frame(musicBuf, 2048);
         }
+        if (steadyPer >= 0) steadyFrame();
     }
 }
 
@@ -406,11 +417,66 @@ static bool writeWav(const char* path, const std::vector<s16>& pcm, int rate)
 }
 
 
+// EmulatorEngine's STEADY, after each game frame (see steadyPer). pk_nds_bgm / pk_nds_bgm_settle as pk_nds.cpp reads them.
+static void steadyFrame()
+{
+    static s16 buf[4096];
+    if (steadyPer == 0) {
+        int got = nds->SPU.ReadOutput(buf, 2048);
+        steadyPcm.insert(steadyPcm.end(), buf, buf + got * 2);
+        return;
+    }
+    while (nds->SPU.ReadOutput(buf, 2048) > 0) {}   // the game's own, muted
+    auto* cart = nds->NDSCartSlot.GetCart();
+    const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
+    int bgm = -1;
+    if (g && g->currentBgm) {
+        u32 depth = g->bgmDepth ? read32(g->bgmDepth) : 0;
+        if (depth <= 7) bgm = (int) (read32(g->currentBgm + 0x1C * depth) & 0xFFFF);
+    }
+    int state = g ? pk_nds_bgm_settle(g, read32) : 0;
+    static int copyState = -1, stateSeen = -1, stateFrames = 0;
+    if (state != stateSeen) { stateSeen = state; stateFrames = 0; } else stateFrames++;
+    bool settled = state >= 0 && stateFrames >= 4;
+    if (bgm >= 0) {
+        if (!steadyOn && steadyWait < 0) steadyWait = 4;
+        else if (steadyOn && bgm != steadyBgm) {
+            if (bgm == 0) pk_nds_music_fade(30); else steadyWait = 0;
+            printf("steady %llu: song %d -> %d\n", (unsigned long long) frameCount, steadyBgm, bgm);
+        } else if (steadyOn && steadyWait < 0 && settled && state != copyState) {
+            printf("steady %llu: song %d's player %08X -> %08X\n", (unsigned long long) frameCount, bgm, copyState, state);
+            if ((state & 0xFFFF) == 0) pk_nds_music_fade(30); else steadyWait = 4;
+            copyState = state;
+        }
+        steadyBgm = bgm;
+        if (steadyWait >= 0 && ++steadyWait > 4 && (settled || steadyWait > 300)) {
+            steadyWait = -1;
+            copyState = state;
+            steadyOn = pk_nds_music_begin(nds, 48000);
+            steadySince = 0;
+            printf("steady %llu: copy %s, song %d (player %08X)\n", (unsigned long long) frameCount, steadyOn ? "playing" : "FAILED", bgm, state);
+        }
+    }
+    // A copy frame a refresh: the game's G frames make one
+    if (--steadyGroup > 0) return;
+    steadyGroup = steadyPer;
+    int got = steadyOn ? pk_nds_music_frame(buf, 2048) : 800;
+    if (!steadyOn) memset(buf, 0, sizeof(buf));
+    if (steadyOn && getenv("STEADY_DEBUG") && steadyWait < 0) {
+        if (++steadySince == 30 || steadySince == 1) {
+            char line[2000];
+            pk_nds_music_debug(line, sizeof(line));
+            printf("steady %llu: copy +%d %s\n", (unsigned long long) frameCount, steadySince, line);
+        }
+    }
+    steadyPcm.insert(steadyPcm.end(), buf, buf + got * 2);
+}
+
 // fieldinfo: the field read's raw words and bits (pk_nds_field.cpp), for the cart's table entry.
 static void fieldInfo()
 {
     auto* cart = nds->NDSCartSlot.GetCart();
-    const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+    const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
     if (!g) { printf("fieldinfo: no table for this cart\n"); fflush(stdout); return; }
     if (g->gen == 5) {
         u32 gs = read32(g->fieldSystemPtr);
@@ -455,6 +521,16 @@ int main(int argc, char** argv)
     // The app's JIT: no fast memory (pk_nds.cpp)
     if (jit) args.JIT = JITArgs {32, true, true, false};
     else args.JIT = std::nullopt;
+    if (const char* dir = getenv("NDS_BIOS_DIR")) {
+        // The real BIOS (bios7.bin / bios9.bin in that folder) instead of FreeBIOS, to compare against
+        std::vector<u8> b7 = readFile((std::string(dir) + "/bios7.bin").c_str());
+        std::vector<u8> b9 = readFile((std::string(dir) + "/bios9.bin").c_str());
+        if (b7.size() == ARM7BIOSSize && b9.size() == ARM9BIOSSize) {
+            memcpy(args.ARM7BIOS->data(), b7.data(), ARM7BIOSSize);
+            memcpy(args.ARM9BIOS->data(), b9.data(), ARM9BIOSSize);
+            fprintf(stderr, "real BIOS from %s\n", dir);
+        }
+    }
     nds = new WatchNDS(std::move(args), &host);
     nds->Reset();
 
@@ -531,6 +607,12 @@ int main(int argc, char** argv)
             else v = nds->ARM9Read32(addr);
             printf("%s 0x%08X = 0x%X (%u)\n", cmd, addr, v, v);
             fflush(stdout);
+        } else if (!strcmp(cmd, "dump7")) {
+            // dump7 ADDR LEN FILE: LEN bytes of the ARM7's bus from ADDR (its WRAM, code, the shared area)
+            u32 addr = num(a), n7 = num(b);
+            std::vector<u8> bytes(n7);
+            for (u32 k = 0; k < n7; k++) bytes[k] = nds->ARM7Read8(addr + k);
+            writeFile(c, bytes.data(), n7);
         } else if (!strcmp(cmd, "poke8") || !strcmp(cmd, "poke16") || !strcmp(cmd, "poke32")) {
             u32 addr = num(a), v = num(b);
             if (!strcmp(cmd, "poke8")) nds->ARM9Write8(addr, (u8) v);
@@ -597,7 +679,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "scriptgo")) {
             // scriptgo FILE: as script, but back once it has started (a battle doesn't free the field for a while)
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             std::vector<u8> bytes = readFile(a);
             int seq = pk_nds_call_script(nds, g, bytes.data(), (u32) bytes.size());
             int f = 0;
@@ -652,6 +734,25 @@ int main(int argc, char** argv)
             // recording - what EmulatorEngine does when ffPerTick changes (SMART's 1x, FF off, the refresh estimate)
             appPerTick = (int) num(a);
             appGroup = appPerTick;
+        } else if (!strcmp(cmd, "steady")) {
+            // steady G FILE: EmulatorEngine's STEADY from here on (G game frames a refresh; 0 = the game's own audio),
+            // its audio into FILE at `steady off`
+            if (!strcmp(a, "off")) {
+                if (steadyPer >= 0) writeWav(steadyFile.c_str(), steadyPcm, 48000);
+                printf("steady: %.1f s into %s\n", steadyPcm.size() / 2 / 48000.0, steadyFile.c_str());
+                fflush(stdout);
+                pk_nds_music_end();
+                steadyPer = -1;
+                steadyOn = false;
+                continue;
+            }
+            steadyPer = (int) num(a);
+            steadyGroup = steadyPer;
+            steadyFile = b;
+            steadyPcm.clear();
+            steadyOn = false;
+            steadyWait = -1;
+            steadyBgm = -1;
         } else if (!strcmp(cmd, "musicon")) {
             // musicon N: STEADY's copy begun now and run N frames after each game frame from here on, as the app runs it
             // between its frames (0: stopped)
@@ -664,7 +765,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "battlemenu")) {
             // battlemenu N: the battle controller's step (pk_nds_battle_command) each frame for N frames, as it changes
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             int frames = (int) num(a), last = -100;
             for (int i = 0; i < frames; i++) {
                 int m = pk_nds_battle_command(g, read32);
@@ -692,7 +793,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "wildrate")) {
             // wildrate: the current map's grass / surf rates as the field holds them now
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             if (g) {
                 u32 fs = read32(g->fieldSystemPtr), data = read32(fs + g->offMapHeaderData), map = read32(read32(fs + g->offLocation));
                 auto rate = [&](u32 at) { return g->rateBytes ? (read32(at & ~3u) >> ((at & 3) * 8)) & 0xFF : read32(at); };
@@ -706,7 +807,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "action")) {
             // action N [A0 A1 A2 A3]: post pk_nds_call's action N (1 = PC) for the next frame, then report when it ran
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             u32 args[4] = {n > 2 ? num(b) : 0, n > 3 ? num(c) : 0, n > 4 ? num(d) : 0, 0};
             if (n > 5) sscanf(line, "%*s %*s %*s %*s %*s %u", &args[3]);
             int seq = pk_nds_call_action(nds, g, (int) num(a), args);
@@ -723,7 +824,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "call")) {
             // call FN [A0 A1 A2 A3]: the game's function FN (Thumb: odd) from the field's main loop next frame (pk_nds_call)
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             u32 v[5] = {0};
             int got = sscanf(line, "%*s %i %i %i %i %i", (int*) &v[0], (int*) &v[1], (int*) &v[2], (int*) &v[3], (int*) &v[4]);
             PkNdsOp op = {v[0], {v[1], v[2], v[3], v[4]}};
@@ -738,7 +839,7 @@ int main(int argc, char** argv)
             // script FILE: a field script (the game's bytecode, e.g. assembled with pret/pokeplatinum's macros) run as
             // the PC action runs its own; then frames until the field is free again (at most 3000)
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             std::vector<u8> bytes = readFile(a);
             int seq = pk_nds_call_script(nds, g, bytes.data(), (u32) bytes.size());
             int f = 0;
@@ -768,7 +869,7 @@ int main(int argc, char** argv)
                 pcm.insert(pcm.end(), buf, buf + got * 2);
                 if (pk_nds_music_stalled() > stall) { stall = pk_nds_music_stalled(); stallAt = i; }
                 if (getenv("MUSIC_DEBUG") && (i < 30 || i % 60 == 0)) {
-                    char line[400];
+                    char line[2000];
                     pk_nds_music_debug(line, sizeof(line));
                     printf("music %d: still %d %s\n", i, pk_nds_music_stalled(), line);
                 }
@@ -795,16 +896,37 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "trace")) {
             // trace N: N frames (keys held as set), each one's field bits and the top screen's master brightness
             auto* cart = nds->NDSCartSlot.GetCart();
-            const PkNdsFieldGame* g = cart ? pk_nds_field_game(cart->GetHeader().GameCode, cart->GetHeader().ROMVersion) : nullptr;
+            const PkNdsFieldGame* g = cart ? pk_nds_field_game_rom(cart->GetROM(), cart->GetROMLength()) : nullptr;
             int frames = (int) num(a);
             for (int i = 0; i < frames; i++) {
                 runFrames(1, heldKeys);
                 int bits = g ? pk_nds_field_state(g, read32, nullptr, 0) : 0;
-                printf("trace %llu: bits %03X brightA %04X brightB %04X dispA %08X bg3 %d\n", (unsigned long long) frameCount, bits,
-                    nds->GPU.GPU2D_A.MasterBrightness, nds->GPU.GPU2D_B.MasterBrightness, nds->GPU.GPU2D_A.DispCnt,
+                // Each screen of one colour (the app's oneColour: a 16 x 12 grid alike), as T / B.
+                char flat[3] = "--";
+                for (int sc = 0; sc < 2; sc++) {
+                    const u32* px = nds->GPU.Framebuffer[nds->GPU.FrontBuffer][sc].get();
+                    bool one = px != nullptr;
+                    for (int gy = 0; one && gy < 12; gy++)
+                        for (int gx = 0; one && gx < 16; gx++)
+                            one = (px[(gy * 16 + 8) * 256 + gx * 16 + 8] & 0xFFFFFF) == (px[8 * 256 + 8] & 0xFFFFFF);
+                    if (one) flat[sc] = sc ? 'B' : 'T';
+                }
+                printf("trace %llu: bits %04X brightA %04X brightB %04X flat %s dispA %08X bg3 %d\n", (unsigned long long) frameCount, bits,
+                    nds->GPU.GPU2D_A.MasterBrightness, nds->GPU.GPU2D_B.MasterBrightness, flat, nds->GPU.GPU2D_A.DispCnt,
                     pk_nds_bg3_tiles(nds));
             }
             fflush(stdout);
+        } else if (!strcmp(cmd, "arm9shift")) {
+            // arm9shift N: the ARM9's clock as 2^N times the bus's (1 = a DS, 2 = twice that, the DSi's), switched live
+            // the way DSi::Set_SCFG_Clock9 does it.
+            u32 shift = num(a) ? num(a) : 1;
+            nds->ARM9Timestamp >>= nds->ARM9ClockShift;
+            nds->ARM9Target >>= nds->ARM9ClockShift;
+            nds->ARM9ClockShift = shift;
+            nds->ARM9Timestamp <<= shift;
+            nds->ARM9Target <<= shift;
+            nds->ARM9.UpdateRegionTimings(0x00000, 0x100000);
+            printf("arm9shift %u\n", shift);
         } else if (!strcmp(cmd, "bench")) {
             // bench N: N frames as fast as they go, then the average ms per frame (with wide on, its frames too)
             int frames = (int) num(a);

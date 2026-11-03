@@ -308,7 +308,55 @@ GAMES = {
                     gender={1: 31, 25: 127}, items={1: "Poké Ball", 2: "Great Ball", 28: "Potion", 829: "Lab Package"},
                     moves={1: (1, 40), 33: (1, 40), 52: (11, 40), 57: (12, 90), 89: (5, 100), 585: (19, 95)}),
     ),
+    # Pokemon Team Rocket Edition 2026 - Dragonsden, Spanish (its START menu says v3.0.9; BPEE, 32 MB, DragonsdenTV's own
+    # build, the text Spanish): pokeemerald-expansion 1.14.4 (its RHHEXP block: 848 moves, 1698 species), gcc, no source.
+    # A rebuild on a newer expansion than v1.5's (gen_team_rocket_tables.py): its tables are these, not that script's. Its GF
+    # ROM header gives gSpeciesInfo 0x08970CE8, gItemsInfo 0x088CCC1C and gMovesInfo 0x08934E7C; checked against the data:
+    #  - species: 0xA8-byte entries (its build leaves out the female pictures and footprints), National Dex ids:
+    #    "Bulbasaur" at +0x2C of entry 1 (46/49/49/45/65/65 at name-0x2C: its own HP), types (13 Grass, 4 Poison)
+    #    name-0x26, genderRatio 31 name-0x1A, growthRate name-0x17 - Wishes' offsets. Forms and its own Pokemon past
+    #    1025 (1669 is a ZUBAT: the save's starter), 1698 (the header's species count) is the egg's entry.
+    #  - items: 0x2C-byte entries with a name POINTER at +0x14 ("Poke Ball" 1, "Perla" / "Perla Grande" 148 / 149 = the
+    #    save's bag), the description pointer 8 bytes before the name's.
+    #  - moves: 0x3C-byte entries, the name pointer first ("Destructor" 1, "Golpe Karate" 2, "Placaje" 33); +0xA bits.
+    #  - chart: the unique [21][21] u32 run whose Normal row is 1x except Rock/Steel 0.5x, Ghost 0x (0x084BE1B0).
+    #  - mapsecs: older {x, y, w, h, name ptr} entries from 0x08E6A944 (the literal pools' gRegionMapEntries), u16 ids
+    #    (0x1EF of them): its own places first (VILLA RAIZ 0), then Emerald's / Kanto's / Johto's 34 later than
+    #    vanilla's (PUEBLO PALETA 0x7A). The save's gMapHeader reads 0x10A = ALMACEN ROCKET. No region map picture.
+    "team_rocket_v3": dict(
+        suffix="TeamRocketV3",
+        label="Pokemon Team Rocket Edition 2026 (Spanish, v3.0.9)",
+        sha1="0d8bdaeeca0856175037a75679c1a2b73ad2b68a",
+        spanish=True,
+        potion_desc="20 PS",
+        species_name1=0x08970DBC, species_stride=0xA8, species_max=1698,
+        species_types_off=-0x26, species_gender_off=-0x1A, species_growth_off=-0x17,
+        items_base=0x088CCC1C + 0x14, items_stride=0x2C, items_desc_off=-8,
+        moves_base=0x08934E7C, moves_stride=0x3C, move_bits_off=0x0A,
+        chart=0x084BE1B0, chart_n=21,
+        mapsec_base=0x08E6A944, mapsec_name_off=4, mapsec_count=0x1EF,
+        # Its seven region maps (RomArt's TR3_*: gen_rom_art_sigs.py says where each comes from): 0x08192D44 picks the
+        # map by the section's id, 0x08192B80 reads that map's cursor grid, u16 [15][28] at (1, 2), MAPSEC_NONE 0x1EF.
+        # Every section a grid names is in its map's range; their {x, y, w, h} land on their grids' cells.
+        region_maps=[dict(image=img, layout=grid, ids=ids, w=28, h=15, ox=1, oy=2, none=0x1EF, cell=2) for img, grid, ids in (
+            ("tr3_kanto", 0x08E6DDD4, (0x7A, 0xE6)), ("tr3_sevii123", 0x08E6D744, (0xE7, 0xFD)),
+            ("tr3_sevii45", 0x08E6D3FC, (0xFE, 0x116)), ("tr3_sevii67", 0x08E6D0B4, (0x117, 0x13C)),
+            ("tr3_johto", 0x08E6DA8C, (0x13D, 0x190)), ("tr3_hoenn", 0x08E6E11C, (0x00, 0x79)),
+            ("tr3_sinnoh", 0x08E6CD6C, (0x191, 0x1EE)))],
+        checks=dict(species={1: "Bulbasaur", 23: "Ekans", 25: "Pikachu", 41: "Zubat", 169: "Crobat", 1669: "Zubat"},
+                    types={1: (13, 4), 23: (4, 4), 41: (4, 3), 169: (4, 3)},
+                    gender={1: 31, 25: 127}, growth={1: 3, 41: 0},
+                    items={1: "Poké Ball", 2: "Super Ball", 28: "Poción", 148: "Perla", 149: "Perla Grande"},
+                    moves={1: (1, 40), 33: (1, 40), 44: (18, 60), 52: (11, 40), 57: (12, 90), 89: (5, 100),
+                           585: (19, 95)}),
+    ),
 }
+
+# The Western charmap's accented letters and Spanish punctuation, for a game whose text is Spanish (`spanish=True`).
+SPANISH_CHARS = {0x01: "À", 0x02: "Á", 0x04: "Ç", 0x05: "È", 0x06: "É", 0x09: "Ì", 0x0D: "Ò", 0x0E: "Ó", 0x11: "Ù",
+                 0x12: "Ú", 0x14: "Ñ", 0x16: "à", 0x17: "á", 0x19: "ç", 0x1A: "è", 0x1E: "ì", 0x22: "ò", 0x23: "ó",
+                 0x26: "ù", 0x27: "ú", 0x29: "ñ", 0x2A: "º", 0x2B: "ª", 0x51: "¿", 0x52: "¡", 0x5A: "Í", 0x6F: "í",
+                 0xF1: "Ä", 0xF2: "Ö", 0xF3: "Ü", 0xF4: "ä", 0xF5: "ö", 0xF6: "ü"}
 
 CHARS = {0x00: " ", 0x1B: "é", 0xAB: "!", 0xAC: "?", 0xAD: ".", 0xAE: "-", 0xB0: "…", 0xB1: "“", 0xB2: "”",
          0xB3: "‘", 0xB4: "'", 0xB5: "♂", 0xB6: "♀", 0xB8: ",", 0xBA: "/", 0xF0: ":", 0x2D: "&", 0x5C: "(",
@@ -438,6 +486,8 @@ def main():
     if sha1 != g["sha1"]:
         sys.exit(f"sha1 {sha1} is not {g['label']} ({g['sha1']})")
     rom = Rom(data)
+    if g.get("spanish"):
+        CHARS.update(SPANISH_CHARS)
     global ONLY
     ONLY = g.get("only")
     sfx = g["suffix"]
@@ -479,7 +529,8 @@ def main():
     # (RomItemText) through the game's NativeConfig.itemDescs - this table. The
     # description pointer sits items_desc_off bytes before the name (pointer or inline).
     p = rom.u32(g["items_base"] + 28 * g["items_stride"] + g["items_desc_off"])
-    assert rom.is_ptr(p) and "20 points" in (rom.text(p, 200) or ""), "item description offset is wrong"
+    probe = g.get("potion_desc", "20 points")  # POTION's description, in the game's language
+    assert rom.is_ptr(p) and probe in (rom.text(p, 200) or ""), "item description offset is wrong"
     print(f"itemDescs = ItemDescTable(0x{g['items_base']:08X}L, 0x{g['items_stride']:X}, {g['items_desc_off']})")
 
     moves = named_table(rom, g["moves_base"], g["moves_stride"])
@@ -524,7 +575,45 @@ def main():
         if s is not None:  # some slots point at an empty string
             mapsecs[i] = title(s)
     rm = g.get("region_map")
-    if rm is None:
+    if "region_maps" in g:
+        # Several region maps, each with its own cursor grid and its own range of mapsec ids (the game's map code
+        # picks the map by the section's id): a section goes on the map whose range holds it, its rect + (ox, oy) as
+        # below, or its grid tiles where it has no rect of its own.
+        assert g.get("mapsec_name_off") == 4
+        images, rows, layouts = [], [], []
+        regions = g["region_maps"]
+        for r in regions:
+            images.append(r["image"])
+            gr = rom.d[rom.off(r["layout"]):rom.off(r["layout"]) + r["w"] * r["h"] * r.get("cell", 1)]
+            layouts.append(gr)
+            r["on_grid"] = {struct.unpack_from("<H" if r.get("cell", 1) == 2 else "<B", gr, k)[0]
+                            for k in range(0, len(gr), r.get("cell", 1))} - {r["none"]}
+            assert r["on_grid"] <= set(mapsecs), sorted(r["on_grid"] - set(mapsecs))
+            assert all(r["ids"][0] <= s <= r["ids"][1] for s in r["on_grid"]), r["image"]
+        for i, s in sorted(mapsecs.items()):
+            k = next((k for k, r in enumerate(regions) if r["ids"][0] <= i <= r["ids"][1]), None)
+            a = g["mapsec_base"] + 8 * i
+            x, y, mw, mh = (rom.u8(a + n) for n in range(4))
+            if k is None:
+                rows.append(f"    {i} to MapSecInfo({kstr(s)}, -1, 0, 0, 0, 0),\n")
+            elif (x, y) != (0, 0) and mw and mh:
+                r = regions[k]
+                rows.append(f"    {i} to MapSecInfo({kstr(s)}, {k}, {x + r['ox']}, {y + r['oy']}, {mw}, {mh}),\n")
+            elif i in regions[k]["on_grid"]:
+                rows.append(f"    {i} to MapSecInfo({kstr(s)}, {k}, 0, 0, 0, 0),\n")
+            else:
+                rows.append(f"    {i} to MapSecInfo({kstr(s)}, -1, 0, 0, 0, 0),\n")
+        write(f"MapSecData{sfx}.kt", header(g, "gRegionMapEntries by mapsec id, rects in 8px tiles on\n"
+              "// regionMapImages' screens (RomArt rebuilds them from the ROM); region -1 = not on a map. The grids are\n"
+              "// each map's cursor grid, by image.\n") +
+              f"val regionMapImages{sfx} = arrayOf({', '.join(kstr(n) for n in images)})\n\n" +
+              f"val mapSecData{sfx}: Map<Int, MapSecInfo> = mapOf(\n" + "".join(rows) + ")\n\n" +
+              f"internal val regionLayouts{sfx}: List<RegionLayout> = listOf(\n" +
+              "".join(f"    RegionLayout({r['ox']}, {r['oy']}, {r['w']}, {r['h']}, 0x{r['none']:02X}, listOf(\n"
+                      f"        hexBytes(\"{gr.hex()}\"),\n" +
+                      ("    ), cellBytes = 2),\n" if r.get("cell", 1) == 2 else "    )),\n")
+                      for r, gr in zip(regions, layouts)) + ")\n")
+    elif rm is None:
         write(f"MapSecData{sfx}.kt", header(g, "gRegionMapEntries names by mapsec id. No region-map\n"
               "// image yet, so every entry is region -1 (text-only Map tab, like Unbound).\n") +
               f"val regionMapImages{sfx} = arrayOf<String>()\n\n" +

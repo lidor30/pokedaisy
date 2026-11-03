@@ -51,6 +51,11 @@ class SettingRow(
     val opensPage: Boolean = false,
     /** A group title drawn to stand out ([featuredGroupTitle]). */
     val featured: Boolean = false,
+    /** The value as a slider beside [value] (GAME VOLUME): touch or LEFT / RIGHT move it; a tap on the row's label does
+     * [onClick] as usual. */
+    val slider: SettingSlider? = null,
+    /** More (or less) of the line for the label than the page's default: a long label beside a short value. */
+    val labelWeight: Float? = null,
     val onClick: () -> Unit,
 )
 
@@ -86,6 +91,14 @@ fun filterRows(rows: List<SettingRow>, query: String): List<SettingRow> {
  */
 val FLAGGED_SETTING_KEYWORDS: Map<String, String> = mapOf(
     "ScreenScraper" to "scraper scraping media artwork art box art boxart covers screenshots logos wheel fanart videos synopsis",
+    // CO-OP (FeatureFlags.coop): moves to SETTING_KEYWORDS, with its manual page, when the flag goes.
+    "LINK" to "co-op coop connection connected status partner online",
+    "PAIR" to "co-op coop multiplayer multi player two player online friend partner link invite qr code join netplay play together",
+    "PARTNERS" to "co-op coop paired friends unpair forget remove partner",
+    "NEARBY RANGE" to "co-op coop range distance join co-op battle battle together how close steps",
+    "RELAY" to "co-op coop server relay address url self hosted",
+    "RELAY ONLY" to "co-op coop privacy hide ip address relay only",
+    "PLAY TOGETHER ONLY" to "co-op coop lock together story wait partner both players new game only",
 )
 
 /**
@@ -111,7 +124,9 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "HUD" to "field hud heads up display overlay party minimap mini map balls bag wild encounters overworld legends single screen",
     "ASPECT" to "stretch ratio fullscreen full screen size scale 3:2 wide widescreen 16:9 expand zoom",
     "AUTO ZOOM IN" to "expand wide zoom close-up closeup dialogue conversation sign menu text box pull in automatic",
+    "DS CPU BOOST" to "overclock cpu clock speed boost faster lag slowdown slow stutter stuttering smooth smoother frame rate fps 30fps 60fps choppy laggy nintendo ds heartgold soulsilver platinum black white",
     "DS RESOLUTION" to "internal resolution upscale upscaling scale scaling hd high definition sharp sharper crisp 3d render renderer gpu opengl 2x 4x 6x 8x jaggies jagged blurry nintendo ds platinum heartgold soulsilver",
+    "DS LAYOUT" to "screen layout screens dual screen two screens bottom screen touch screen touchscreen side by side stacked vertical hybrid picture in picture pip large small single screen one screen floating window popup nintendo ds heartgold soulsilver",
     "SHADERS" to "filter lcd crt scanlines grid gba colors color correction effects screen look smoothing xbr xbrz scalefx upscale hd edges unlit pixel transparency backlight",
     "LIGHT COMPANION" to "lag laggy slow slowdown stutter performance weak device low end battery buttons late input delay unresponsive animations smooth",
     "UNLIT SCREEN" to "pixel transparency transparent backlight backlit no backlight unlit reflective backing shadow drop shadow original gba screen white",
@@ -124,11 +139,11 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "SINGLE SCREEN" to "one screen single screen dual screen multitask multitasking second screen free other apps window modal popup",
     "SPEED OPTIONS" to "scene speeds battle speed text speed menu speed ff mode ff music fast forward smart steady",
     "DISPLAY OPTIONS" to "status bar shaders filter overlay border frame companion position portrait",
-    "THEME" to "colors look background skin style",
+    "THEME" to "colors colours look background skin style themes cherry rainbow ocean mint lavender sunset forest lemon holiday seasonal christmas halloween easter valentine lunar new year limited",
     "FPS / CPU" to "fps frame rate framerate cpu usage performance speed overlay counter 60",
     "DARK MODE" to "dark night black theme light colors appearance auto system",
     "RESUME GAMES" to "auto resume continue launch boot",
-    "FOLDERS" to "roms folder folders multiple add link saves directory path location storage retroarch syncthing save states",
+    "FOLDERS" to "roms folder folders multiple add link saves directory path location storage retroarch syncthing save states backup backups restore",
     "COVER ART" to "box art boxart covers steamgriddb images thumbnails api key",
     "HIDDEN GAMES" to "hide unhide library show",
     "CHEATS" to "gameshark action replay codebreaker codes",
@@ -141,7 +156,10 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "TAB BAR" to "tabs layout bar order",
     "BATTLE HINTS" to "suggestions recommendations best move tips",
     "FOE IVS" to "enemy opponent ivs stats",
+    "BATTLE FOCUS" to "battle info compact one page no scrolling layout enemy opponent ability held item",
     "CLICK SOUND" to "sound effects button click audio",
+    "GAME VOLUME" to "volume sound audio loudness quieter louder level percent music sfx",
+    "MUTE GAME" to "mute unmute silent silence quiet sound off audio volume hotkey",
     "TWEAKS" to "animations bounce blink cursor jump to battle effects motion",
     "SCENE SPEEDS" to "battle speed text speed instant text fast text menu speed overworld speed faster battles quality of life qol bike speed surf speed faster bike faster surfing",
     "AUTO-RUN" to "auto run autorun running shoes run sprint dash always run hold b",
@@ -153,6 +171,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "RIVAL LOOK" to "rival look rival costume outfit skin sprite appearance dress up brendan may other hero opponent",
     "PLAYER LOOK" to "player look hero heroine character protagonist trainer costume outfit skin sprite appearance swap play as another game red leaf brendan may",
     "NUZLOCKE" to "nuzlocke challenge hardcore run tracker encounter first catch per route area death dead faint permadeath graveyard dupes clause",
+    "TRADE EVOS" to "trade evolutions trading evolve evolves evolution evolutions traded link cable friend second game without trading held item",
     "REUSABLE TMS" to "reusable tm tms technical machine machines reuse infinite unlimited keep tm single use consumed used up teach moves",
     "SHINY ODDS" to "shiny shinies shiny odds shiny rate shiny hunting hunt shiny charm sparkle rare color colour chance",
     "TIPS" to "tips hints help popup pop up feature discovery introduce new features suggestions what can it do",
@@ -260,6 +279,20 @@ private fun GroupTabs(
     val shown = groups.lastOrNull { (tops[it] ?: Int.MAX_VALUE) <= scroll.value + slack } ?: groups.first()
     // At the very end the last group is on screen whatever reached the top.
     val current = picked.takeIf { it >= 0 } ?: if (atEnd) groups.last() else shown
+    TabRail(groups.map { tr(rows[it].label) }, groups.indexOf(current), m) { i ->
+        val g = groups[i]
+        picked = g
+        val top = tops[g] ?: return@TabRail
+        scope.launch { scroll.animateScrollTo(top.coerceAtMost(scroll.maxValue)) }
+    }
+}
+
+/**
+ * Tabs down a window's left edge, [selected] lit like the tab bar's chosen chip, a dashed rule between them and the page:
+ * [GroupedRows]' group tabs, and pages split into panes (CO-OP's PAIR). [labels] are drawn as given (translated).
+ */
+@Composable
+fun TabRail(labels: List<String>, selected: Int, m: GbaTextMetrics, onSelect: (Int) -> Unit) {
     val small = rememberGbaTextMetrics(1f)
     androidx.compose.foundation.layout.Column(
         Modifier
@@ -278,17 +311,22 @@ private fun GroupTabs(
             .padding(start = m.u * 4, end = m.u * 6, top = m.u * 4, bottom = m.u * 4),
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(m.u * 2),
     ) {
-        for (g in groups) {
-            GroupTab(tr(rows[g].label), g == current, small) {
-                picked = g
-                val top = tops[g] ?: return@GroupTab
-                scope.launch { scroll.animateScrollTo(top.coerceAtMost(scroll.maxValue)) }
-            }
-        }
+        labels.forEachIndexed { i, label -> GroupTab(label, i == selected, small) { onSelect(i) } }
     }
 }
 
-/** One of [GroupTabs]: a tab chip's frame (white with a red label when [selected], like the tab bar's) at the list's
+/** Explanatory text in its own small window, above a page's list (top-screen Settings' pages). */
+@Composable
+fun PageHint(text: String, m: GbaTextMetrics, small: GbaTextMetrics) {
+    OptionListWindow(m, Modifier.fillMaxWidth().padding(bottom = m.u * 4)) {
+        GbaText(
+            text, OptionColors.label, OptionColors.labelShadow, small, maxLines = Int.MAX_VALUE,
+            modifier = Modifier.padding(horizontal = m.u * 6, vertical = m.u * 2),
+        )
+    }
+}
+
+/** One of [TabRail]'s tabs: a tab chip's frame (white with a red label when [selected], like the tab bar's) at the list's
  * smaller text. */
 @Composable
 private fun GroupTab(label: String, selected: Boolean, m: GbaTextMetrics, onClick: () -> Unit) {
@@ -357,8 +395,8 @@ private fun GroupedRowsList(
                     height = if (row.subtitle != null) rowHeight + subtitleLine else rowHeight + m.u * ONE_LINE_ROW_EXTRA,
                     bottomPadding = if (row.subtitle != null) 0.dp else m.u * ONE_LINE_ROW_EXTRA,
                     divider = rows.getOrNull(i + 1)?.header == false, labelBadge = row.labelBadge, labelIcon = row.labelIcon,
-                    valueBadge = row.badge, enabled = row.enabled, subtitle = row.subtitle, labelWeight = labelWeight,
-                    chevron = row.opensPage,
+                    valueBadge = row.badge, enabled = row.enabled, subtitle = row.subtitle, labelWeight = row.labelWeight ?: labelWeight,
+                    chevron = row.opensPage, slider = row.slider,
                     onFocus = onFocused?.let { f -> { f(i) } },
                 ) { onClick(i) }
             }

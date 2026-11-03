@@ -33,6 +33,13 @@ The app shows every license below in full under Settings > LICENSES.
   stays under the MPL 2.0 (its header says so).
 - rcheevos (third_party/rcheevos), Copyright (c) 2018 RetroAchievements.org,
   MIT License - https://github.com/RetroAchievements/rcheevos
+- Optional Linux DS experiment only: DSperate (third_party/dsperate),
+  Copyright (C) 2026 DSperate contributors, GNU GPL 3.0 or later. Its built-in
+  FreeBIOS is Copyright (c) 2013 Gilead Kutnick, BSD 2-clause
+  (src/core/bios/LICENSE.freebios); its miniz implementation is MIT
+  (src/core/cart/miniz/LICENSE). Its DSi font tables have the Noto Sans OFL 1.1
+  and WenQuanYi Micro Hei GPL-3+ font-exception notices under
+  src/core/io/dsi_font. Experiment packages include these license texts.
 - melonDS (third_party/melonds), Copyright (c) melonDS team, GNU GPL 3.0 -
   https://github.com/melonDS-emu/melonDS (source: the submodule's pinned commit,
   with PokeDaisy's changes in third_party/patches/melonds-pokedaisy.patch). Built
@@ -74,6 +81,15 @@ The app shows every license below in full under Settings > LICENSES.
   Google Play services' play-services-basement and play-services-tasks, under
   the Android Software Development Kit License
   (https://developer.android.com/studio/terms).
+- Bouncy Castle (bcprov), Copyright (c) 2000-2024 The Legion of the Bouncy Castle
+  Inc., MIT License (third_party/licenses/BouncyCastle-MIT.txt) -
+  https://www.bouncycastle.org - X25519 for the co-op link's handshake.
+- OkHttp and Okio, Copyright (c) Square, Inc., Apache License 2.0
+  (third_party/licenses/Apache-2.0.txt) - https://square.github.io/okhttp/ - the
+  co-op link's WebSocket to the relay.
+- ZXing core, Copyright (c) ZXing authors, Apache License 2.0
+  (third_party/licenses/Apache-2.0.txt) - https://github.com/zxing/zxing - QR
+  encoding for co-op invites.
 - Some decoders and layouts follow the community decompilations of the games
   (pret's pokered / pokeyellow / pokegold / pokecrystal / pokefirered /
   pokeemerald / pokeruby / pokeplatinum / pokeheartgold, pokeemerald-expansion,

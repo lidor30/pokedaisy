@@ -70,7 +70,7 @@ One key is enough. Tap `SAVE` and PokeDaisy fetches covers for your games (`FETC
 
 ### Run setup again
 
-Open Settings (the gear in the library's header) and tap `RUN SETUP` at the bottom, in the `APP` group. Setup opens over the library; `BACK` on the first step takes you back to Settings.
+Open Settings (`SETTINGS` in the library, down the left or along the bottom) and tap `RUN SETUP` at the bottom, in the `APP` group. Setup opens over the library; `BACK` on the first step takes you back to Settings.
 
 ## All files access
 

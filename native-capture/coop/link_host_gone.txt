@@ -1,0 +1,47 @@
+# Plan 6 Task 7: the host's game restarts in the middle of the battle (its app was closed or killed: `corereset`, its bridge
+# patches go and the game boots again; core A is never driven again, so nothing more comes from it). The partner's game
+# is left waiting for ever on the host's next block - no error screen, still in its battle loop (BattleMainCB2 0x08038421) after
+# 1200 frames - until the app gives up: pk_coop_link_leave 0 on the partner core ends cleanly: the field (CB2_Overworld
+# 0x08085E5D), the link flags of gBattleTypeFlags gone, the party back as it was (its count: the save's), money and the trainers'
+# flags unchanged, the field free, the bridge idle.
+# want: PASS linkwait 2
+# want: link: core reset
+# want: link: left (blackout 0), state 0
+pair $PARTNER_SAVE
+on b
+@boot
+memsave 0x020244E9 1 /work/host_gone_count_b.bin
+coopmoneymark
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+hold A 4
+linkrun 60
+on a
+hold A 4
+linkrun 60
+on a
+corereset
+linkhold 1
+on b
+linkrun 1200
+expect32 0x030022C4 0x08038421
+linkstate
+linkleave 0
+linkrun 300
+expect32 0x030022C4 0x08085E5D
+expect32 0x02022FEC 0
+expectfile 0x020244E9 /work/host_gone_count_b.bin
+coopmoneyexpect delta 0
+expect8p 0x03005D8C 0x1339 0x00
+expect8p 0x03005D8C 0x1337 0x00
+call 0x08098E6C
+hold LEFT 20
+wait 30
+linkstate

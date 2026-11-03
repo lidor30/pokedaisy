@@ -10,6 +10,9 @@
 # ActiveTables' fireRedHack: UltraVioletGen.kt). Its region map is FireRed's byte for byte.
 [config.ultra_violet]
 base = 'firered_rev0'
+# BOXES: retail rev 0's (gPokemonStoragePtr = gSaveBlock2Ptr + 4), for Rocket Edition, Ash Gray and Ghost Grey too
+# (their captures' boxes read, every checksum good).
+pokemonStoragePtr = 0x03005010
 # FireRed's battle menu cursors (retail rev 0's EWRAM), checked headless like Unbound's: RIGHT / DOWN walk
 # 0 -> 1 -> 3, a written 2 + A opens the party menu, a written move 1 + A spends its PP.
 actionCursor = { from = 'firered_rev1' }

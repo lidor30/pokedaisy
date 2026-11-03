@@ -2,7 +2,7 @@
 title: Pokédex
 summary: Your Pokédex with seen and caught marks, and full entries with stats, evolutions, where to catch each Pokémon and the moves it learns.
 section: companion
-order: 6
+order: 7
 keywords: [pokedex, dex, entry, seen, caught, owned, national, regional, evolution, evolve, how to evolve, where to catch, location, encounter, learnset, level up moves, tm, base stats, ability, egg group, catch rate]
 ---
 

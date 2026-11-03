@@ -1,0 +1,37 @@
+# Plan 6 Task 4: PP items in the PARTNER's bag. The master's engine can't tell which move of the partner's Pokémon an Ether restored (its battle
+# data would go stale), so the partner's bag refuses them with "Not now!" (link_entry_PPITEM, the gItems battleUseFunc of the five PP items) and
+# nothing is used: the ETHER count stays 3. Needs EMERALD_PARTNER_SAVE.
+#
+# want: PASS linkwait 2
+# want: PASS expectdelta b_ether -> b_ether2 = 0
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+bagset 34 3
+bagqty b_ether 34
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+waitmem32 0x03005D68 0x08057589 3000
+hold RIGHT 4
+linkrun 30
+hold A 4
+linkrun 120
+hold A 4
+linkrun 30
+hold A 4
+linkrun 100
+hold A 4
+linkrun 60
+shot /work/pp_b0.ppm
+hold A 4
+linkrun 25
+shot /work/pp_b.ppm
+bagqty b_ether2 34
+expectdelta b_ether b_ether2 0

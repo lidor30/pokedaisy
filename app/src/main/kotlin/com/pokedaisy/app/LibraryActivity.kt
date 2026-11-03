@@ -74,6 +74,7 @@ import androidx.compose.material.icons.filled.Code
 import androidx.compose.material.icons.filled.Delete
 import androidx.compose.material.icons.filled.Edit
 import androidx.compose.material.icons.filled.GridView
+import androidx.compose.material.icons.filled.Link
 import androidx.compose.material.icons.filled.History
 import androidx.compose.material.icons.filled.Star
 import androidx.compose.material.icons.filled.StarBorder
@@ -100,6 +101,7 @@ import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.LaunchedEffect
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
@@ -139,6 +141,7 @@ import com.pokedaisy.app.companion.ui.drawLayeredFrame
 import com.pokedaisy.app.companion.ui.rememberGbaTextMetrics
 import com.pokedaisy.app.companion.ui.theme.AppTheme
 import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
+import com.pokedaisy.app.companion.ui.theme.windowOn
 import java.io.File
 import com.pokedaisy.app.companion.ui.PixelRoundedShape
 
@@ -161,6 +164,26 @@ class LibraryActivity : ComponentActivity() {
 
     private val importRom = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
         uri?.let { startImport(it, play = false) }
+    }
+
+    /** PATCH A ROM: a .bps applied to a ROM the library has (internal for ui-preview). */
+    internal val patcher by lazy {
+        RomPatchFlow(this) { out ->
+            generateAutoCoverAsync(out)
+            identifyGames()
+            bump()
+        }
+    }
+    /** SETTINGS opened as the rail's / bar's tab: its own GAMES / TOOLS come back here as the place to show. */
+    private val settingsTab = registerForActivityResult(ActivityResultContracts.StartActivityForResult()) { r ->
+        when (r.data?.getStringExtra(SettingsActivity.EXTRA_SECTION)) {
+            com.pokedaisy.app.companion.ui.LibrarySection.TOOLS.name -> { toolsOpen = true; launcher.toolCursor = 0 }
+            com.pokedaisy.app.companion.ui.LibrarySection.GAMES.name -> toolsOpen = false
+        }
+    }
+
+    private val pickPatch = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri ->
+        uri?.let { patcher.start(it) }
     }
 
     /** LOAD SAVE: the save file picked for a game, waiting on its confirm (internal for ui-preview). */
@@ -370,6 +393,13 @@ class LibraryActivity : ComponentActivity() {
         if (!supportAsk && whatsNew == null) {
             supportAsk = com.pokedaisy.app.companion.SupportAsk.due(prefs.playMillis, prefs.supportAskAt, prefs.supportAskDone)
         }
+        // A limited-time theme's dates have come (and an ended one gives way to the theme worn before it).
+        com.pokedaisy.app.companion.ui.theme.loadTheme(this)
+        if (seasonalTheme == null) {
+            seasonalTheme = com.pokedaisy.app.companion.ui.theme.seasonalThemeToAnnounce(
+                com.pokedaisy.app.companion.ui.theme.ThemeClock.today(), prefs.seasonalThemesShown, prefs.appTheme,
+            )
+        }
         if (prefs.setupRequested) {
             prefs.setupRequested = false
             startSetup()
@@ -417,6 +447,28 @@ class LibraryActivity : ComponentActivity() {
     /** The open quick view (the pills over the games, Prefs.libraryView). */
     private var quickView by mutableStateOf(LibraryView.ALL)
 
+    /** TOOLS is open in the games' place (the rail's / bar's TOOLS). Internal for ui-preview. */
+    internal var toolsOpen by mutableStateOf(false)
+
+    /** The library's TOOLS, in the order they're shown. */
+    private fun libraryTools(): List<com.pokedaisy.app.companion.ui.LibraryTool> {
+        val nf = com.pokedaisy.app.companion.NewFeatures
+        return listOf(
+            com.pokedaisy.app.companion.ui.LibraryTool("PATCH", "PATCH A ROM", "Turn a .bps patch into a game", nf.badge(nf.ROM_PATCH)) {
+                pickPatch.launch(arrayOf("*/*"))
+            },
+            com.pokedaisy.app.companion.ui.LibraryTool("LINK", "LINK PLAY", "Trade and battle between your games", nf.badge(nf.LINK_PLAY)) {
+                startActivity(Intent(this, LinkActivity::class.java))
+            },
+            com.pokedaisy.app.companion.ui.LibraryTool("EDIT", "SAVE EDITOR", "Change a game's boxes, bag and money", nf.badge(nf.SAVE_TRADE)) {
+                startActivity(Intent(this, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_PICK, true))
+            },
+            com.pokedaisy.app.companion.ui.LibraryTool("TRADE", "TRADE SAVES", "Move Pokémon between your games' saves", nf.badge(nf.SAVE_TRADE)) {
+                startActivity(Intent(this, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_TRADE, true))
+            },
+        )
+    }
+
     /** The library ([sortLibrary]'s order) split into its quick views. */
     private class QuickViews(val byView: Map<LibraryView, List<File>>) {
         /** A console's (or HACKS') pill only while the library holds one of its games; the others always (an empty one says how to fill it). */
@@ -436,6 +488,7 @@ class LibraryActivity : ComponentActivity() {
     }
 
     private fun pickQuickView(view: LibraryView) {
+        toolsOpen = false
         quickView = view
         prefs.libraryView = view.id
         refreshLauncherGames()
@@ -463,14 +516,36 @@ class LibraryActivity : ComponentActivity() {
         val roms = views.games(view)
 
         val density = androidx.compose.ui.platform.LocalDensity.current
-        Box(modifier = Modifier.fillMaxSize().onSizeChanged { screenSize = with(density) { DpSize(it.width.toDp(), it.height.toDp()) } }) {
+        val tools = remember(revision) { libraryTools() }
+        val toolsNew = tools.any { it.newBadge != null }
+        val pickSection: (com.pokedaisy.app.companion.ui.LibrarySection) -> Unit = { s ->
+            when (s) {
+                com.pokedaisy.app.companion.ui.LibrarySection.GAMES -> toolsOpen = false
+                com.pokedaisy.app.companion.ui.LibrarySection.TOOLS -> toolsOpen = true
+                com.pokedaisy.app.companion.ui.LibrarySection.SETTINGS -> openSettings()
+            }
+        }
+        val section = if (toolsOpen) com.pokedaisy.app.companion.ui.LibrarySection.TOOLS else com.pokedaisy.app.companion.ui.LibrarySection.GAMES
+        // BACK on TOOLS goes back to the games, not out of the app.
+        BackHandler(enabled = toolsOpen) { toolsOpen = false }
+        androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize().onSizeChanged { screenSize = with(density) { DpSize(it.width.toDp(), it.height.toDp()) } }) {
+            // The window's own shape from the first frame (screenSize is only known after one: an upright phone showed the
+            // rail for a frame before its bar).
+            val wide = maxWidth >= maxHeight
             AppBackdrop(logos = true)
+            // A wide screen: GAMES / TOOLS / SETTINGS down the left, the library beside it.
+            Row(Modifier.fillMaxSize()) {
+            if (wide) com.pokedaisy.app.companion.ui.LibraryNav(
+                section, vertical = true, m, small, toolsBadge = toolsNew && !toolsOpen, top = SCREEN_MARGIN, onPick = pickSection,
+            )
             // The lists scroll to the screen's edges (their margin is padding inside them), so a card
             // slides off the screen rather than being cut at an inner box's edge.
-            Column(modifier = Modifier.fillMaxSize()) {
-                OptionTitleWindow(if (narrowHeader) "" else "POKéDAISY", m, Modifier.padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, top = SCREEN_MARGIN), leading = {
+            Column(modifier = Modifier.weight(1f).fillMaxHeight()) {
+                OptionTitleWindow(if (narrowHeader && !toolsOpen) "" else "POKéDAISY", m, Modifier.padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, top = SCREEN_MARGIN), leading = {
                     PixelArt(LOGO_ROWS, LOGO_PALETTE, Modifier.size(m.lineHeight))
                 }) {
+                    // TOOLS has no games to sort, show, add or refresh: HELP alone.
+                    if (!toolsOpen) {
                     // The header's first button: where UP from the top of the games lands.
                     HeaderIcon(Icons.AutoMirrored.Filled.Sort, tr("Sort"), m, Modifier.focusRequester(headerFirst)) { pickingSort = true }
                     androidx.compose.runtime.DisposableEffect(Unit) {
@@ -482,17 +557,16 @@ class LibraryActivity : ComponentActivity() {
                     }
                     HeaderIcon(Icons.Filled.Add, tr("Add games"), m) { addMenu = true }
                     HeaderIcon(Icons.Filled.Refresh, tr("Refresh"), m) { refreshLibrary() }
+                    }
                     // The manual (Settings > HELP), on its own.
                     HeaderIcon(Icons.AutoMirrored.Filled.HelpOutline, tr("Help"), m) {
                         startActivity(Intent(this@LibraryActivity, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_SCREEN, SettingsActivity.SCREEN_HELP))
                     }
-                    HeaderIcon(Icons.Filled.Settings, tr("Settings"), m) {
-                        startActivity(Intent(this@LibraryActivity, SettingsActivity::class.java))
-                    }
+                    // SETTINGS is the rail's / bar's.
                 }
-                Spacer(Modifier.height(m.u * (if (library.isNotEmpty()) 8 else 4)))
+                Spacer(Modifier.height(m.u * (if (library.isNotEmpty() || toolsOpen) 8 else 4)))
 
-                if (library.isNotEmpty()) {
+                if (library.isNotEmpty() && !toolsOpen) {
                     com.pokedaisy.app.companion.ui.QuickViewPills(
                         views.shown, view, views.counts, m, small,
                         onPick = ::pickQuickView,
@@ -506,7 +580,13 @@ class LibraryActivity : ComponentActivity() {
                     Spacer(Modifier.height(m.u * 8))
                 }
 
-                if (library.isNotEmpty() && roms.isEmpty()) {
+                if (toolsOpen) {
+                    com.pokedaisy.app.companion.ui.ToolsPage(
+                        tools, m, small,
+                        contentPadding = PaddingValues(start = SCREEN_MARGIN, end = SCREEN_MARGIN, bottom = SCREEN_MARGIN),
+                        modifier = Modifier.weight(1f),
+                    )
+                } else if (library.isNotEmpty() && roms.isEmpty()) {
                     OptionListWindow(m, Modifier.fillMaxWidth().padding(horizontal = SCREEN_MARGIN)) {
                         GbaText(
                             emptyViewText(view),
@@ -545,15 +625,49 @@ class LibraryActivity : ComponentActivity() {
                         )
                     }
                 }
+                // A tall screen: GAMES / TOOLS / SETTINGS along the bottom.
+                if (!wide) com.pokedaisy.app.companion.ui.LibraryNav(
+                    section, vertical = false, m, small, toolsBadge = toolsNew && !toolsOpen, onPick = pickSection,
+                )
+            }
             }
 
             LibraryDialogs(m, small)
+            GameLoadingCover(m)
+        }
+    }
+
+    /**
+     * While a game is got ready to start ([preparing]: a big DS cart's checksum, an archive unpacked - White 2 took ~6 s):
+     * the library dimmed, the app's rocking Poké Ball and the game's name over it, and every tap swallowed (keys too, in
+     * [dispatchKeyEvent]). It replaced a toast that let the library go on being used meanwhile (the user's call, 2026-11-03).
+     */
+    @Composable
+    private fun GameLoadingCover(m: GbaTextMetrics) {
+        val rom = preparing ?: return
+        // Fades in, so a game that's ready at once never flashes it.
+        val shown = remember { androidx.compose.animation.core.Animatable(0f) }
+        LaunchedEffect(rom) { shown.animateTo(1f, androidx.compose.animation.core.tween(180)) }
+        val noTaps = remember { MutableInteractionSource() }
+        Box(
+            Modifier.fillMaxSize()
+                .graphicsLayer { alpha = shown.value }
+                .background(Color.Black.copy(alpha = 0.7f))
+                .clickable(interactionSource = noTaps, indication = null) {},
+            contentAlignment = Alignment.Center,
+        ) {
+            Column(horizontalAlignment = Alignment.CenterHorizontally) {
+                // The loader draws at three GBA pixels a ball pixel: its ball, shadow and dots are ~66 tall.
+                Box(Modifier.size(m.u * 60, m.u * 72)) { com.pokedaisy.app.companion.ui.DsLoader() }
+                Spacer(Modifier.height(m.u * 14))
+                GbaText(tr("Getting {0} ready…", romLabel(rom)), Color.White, Color.Black.copy(alpha = 0.5f), m)
+            }
         }
     }
 
     /** The header's +: one ROM file, a ROMs folder (several can be linked), or the folders linked so far. */
     private enum class AddChoice(val label: String) {
-        FILE(tk("ADD A ROM FILE")), FOLDER(tk("ADD A ROMS FOLDER")), MANAGE(tk("MANAGE ROMS FOLDERS")),
+        FILE(tk("ADD A ROM FILE")), FOLDER(tk("ADD A ROMS FOLDER")), MANAGE(tk("MANAGE ROMS FOLDERS")), PATCH(tk("PATCH A ROM")),
     }
 
     /** The + menu is up (internal for ui-preview). */
@@ -567,6 +681,7 @@ class LibraryActivity : ComponentActivity() {
             AddChoice.MANAGE -> startActivity(
                 Intent(this, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_SCREEN, SettingsActivity.SCREEN_ROMS_FOLDERS),
             )
+            AddChoice.PATCH -> pickPatch.launch(arrayOf("*/*"))
         }
     }
 
@@ -592,6 +707,7 @@ class LibraryActivity : ComponentActivity() {
                     tr("ADD GAMES"), AddChoice.entries.toList(), AddChoice.FILE, { tr(it.label) }, m,
                     onPick = ::pickAdd,
                     onDismiss = { addMenu = false },
+                    badge = { if (it == AddChoice.PATCH) com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.ROM_PATCH) else null },
                 )
             }
             if (pickingSort) {
@@ -669,6 +785,12 @@ class LibraryActivity : ComponentActivity() {
                     },
                 ) }
 
+            PatchWindow(
+                patcher, m, small,
+                onPlay = ::play,
+                onAskSupport = { rom -> Thread({ val url = RomSupportRequest.url(rom); runOnUiThread { openUrl(url) } }, "pokedaisy-support-url").start() },
+            )
+
             UpdateDialog(updates, m, small)
 
             // After any update offer, before the other one-time windows: this update's news.
@@ -710,8 +832,23 @@ class LibraryActivity : ComponentActivity() {
                 )
             }
 
+            // A limited-time theme's dates have come: once per window, alone like the support window, after it.
+            if (seasonalShown) seasonalTheme?.let { theme ->
+                val window = theme.windowOn()
+                if (window == null) { seasonalTheme = null; return@let }
+                // Shown = told, whatever the answer: once per window.
+                LaunchedEffect(theme.id) {
+                    prefs.seasonalThemesShown = prefs.seasonalThemesShown + com.pokedaisy.app.companion.ui.theme.announceKey(theme, window)
+                }
+                com.pokedaisy.app.companion.ui.SeasonalThemeWindow(
+                    theme, window.endInclusive, m, small,
+                    onTry = { com.pokedaisy.app.companion.ui.theme.pickTheme(this@LibraryActivity, theme); seasonalTheme = null },
+                    onNoThanks = { seasonalTheme = null },
+                )
+            }
+
             // After the crash-reports question, one at a time.
-            if (expandIntro && setup == null && !crashAsk && updates.release == null && !whatsNewShown && !supportShown) {
+            if (expandIntro && setup == null && !crashAsk && updates.release == null && !whatsNewShown && !supportShown && !seasonalShown) {
                 com.pokedaisy.app.companion.ui.ExpandIntro(
                     m, small,
                     onTurnOn = {
@@ -817,16 +954,39 @@ class LibraryActivity : ComponentActivity() {
     private class HeaderButton(val icon: ImageVector, val label: String, val onClick: () -> Unit)
 
     /** The launcher's header, left to right. */
-    private fun launcherHeader(): List<HeaderButton> = listOf(
-        HeaderButton(Icons.AutoMirrored.Filled.Sort, tr("Sort")) { pickingSort = true },
-        HeaderButton(if (gridView) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.GridView, tr("Toggle view")) { gridView = !gridView },
-        HeaderButton(Icons.Filled.Add, tr("Add games")) { addMenu = true },
-        HeaderButton(Icons.Filled.Refresh, tr("Refresh")) { refreshLibrary() },
+    private fun launcherHeader(): List<HeaderButton> = listOfNotNull(
+        // TOOLS has no games to sort, show, add or refresh: HELP alone.
+        HeaderButton(Icons.AutoMirrored.Filled.Sort, tr("Sort")) { pickingSort = true }.takeIf { !toolsOpen },
+        HeaderButton(if (gridView) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.GridView, tr("Toggle view")) { gridView = !gridView }.takeIf { !toolsOpen },
+        HeaderButton(Icons.Filled.Add, tr("Add games")) { addMenu = true }.takeIf { !toolsOpen },
+        HeaderButton(Icons.Filled.Refresh, tr("Refresh")) { refreshLibrary() }.takeIf { !toolsOpen },
         HeaderButton(Icons.AutoMirrored.Filled.HelpOutline, tr("Help")) {
             startActivity(Intent(this, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_SCREEN, SettingsActivity.SCREEN_HELP))
         },
-        HeaderButton(Icons.Filled.Settings, tr("Settings")) { openSettings() },
+        // SETTINGS is the rail's / bar's (and Y's), as in the classic library.
     )
+
+    /** The launcher's rail runs down the left (a wide screen) rather than along the bottom, as last laid out. */
+    private var launcherRailVertical = true
+    /** TOOLS' cards, as last laid out. */
+    private var launcherTools: List<com.pokedaisy.app.companion.ui.LibraryTool> = emptyList()
+
+    /** The launcher's rail / bar: a place picked (a tap, or A on it). */
+    private fun launcherPick(section: com.pokedaisy.app.companion.ui.LibrarySection) {
+        launcher.navCursor = -1
+        when (section) {
+            com.pokedaisy.app.companion.ui.LibrarySection.GAMES -> toolsOpen = false
+            com.pokedaisy.app.companion.ui.LibrarySection.TOOLS -> { toolsOpen = true; launcher.toolCursor = 0 }
+            com.pokedaisy.app.companion.ui.LibrarySection.SETTINGS -> openSettings()
+        }
+    }
+
+    /** Onto the rail / bar, on the open place. */
+    private fun launcherToRail() {
+        launcher.headerCursor = -1
+        launcher.viewCursor = false
+        launcher.navCursor = if (toolsOpen) 1 else 0
+    }
 
     /** The header's leftmost button (sort). */
     private val headerFirst = FocusRequester()
@@ -992,12 +1152,17 @@ class LibraryActivity : ComponentActivity() {
             if (prefs.romCoverManual(rom)) {
                 add(RomMenuItem(tr("RESET COVER"), Icons.Filled.Refresh) { resetCover(rom) })
             }
+            // Two to four GBA games on one link cable (LinkActivity): trades, battles, record mixing between them.
+            if (rom.extension.lowercase() !in setOf("gb", "gbc", "nds")) {
+                add(RomMenuItem(tr("LINK PLAY"), Icons.Filled.Link, opens = true) {
+                    startActivity(Intent(this@LibraryActivity, LinkActivity::class.java).putExtra(LinkActivity.EXTRA_ROM, rom.absolutePath))
+                })
+            }
             add(RomMenuItem(tr("LOAD SAVE"), Icons.Filled.FileOpen, opens = true) { saveTarget = rom; pickSaveFile.launch(arrayOf("*/*")) })
             add(RomMenuItem(tr("RESTORE BACKUP"), Icons.Filled.History, opens = true) { showBackups(rom) })
-            // The save's party and PC boxes, read (and edited) from the file; Game Boy saves aren't Gen 3's. Behind a
-            // feature flag until it's been tried on real saves (FeatureFlags).
-            if (FeatureFlags.saveEditor(this@LibraryActivity) && rom.extension.lowercase() !in setOf("gb", "gbc")) {
-                add(RomMenuItem(tr("PC BOXES"), Icons.Filled.Inventory2, opens = true) {
+            // The save's party and PC boxes, read (and edited) from the file; Game Boy and DS saves aren't Gen 3's.
+            if (rom.extension.lowercase() !in setOf("gb", "gbc", "nds")) {
+                add(RomMenuItem(tr("SAVE EDITOR"), Icons.Filled.Inventory2, opens = true) {
                     startActivity(Intent(this@LibraryActivity, SaveEditorActivity::class.java).putExtra(SaveEditorActivity.EXTRA_ROM, rom.absolutePath))
                 })
             }
@@ -1314,7 +1479,29 @@ class LibraryActivity : ComponentActivity() {
 
     private fun coverFile(rom: File): File = File(coversDir, "${rom.name}.png")
 
+    /** A launch waiting on [RomCrcs.prepare] (its game): [GameLoadingCover] dims the library over it, and nothing else
+     * can be pressed or started meanwhile. Internal for ui-preview. */
+    internal var preparing by mutableStateOf<File?>(null)
+
     private fun play(rom: File) {
+        if (preparing != null) return
+        // A ROM whose CRC isn't known (or an archive) is read / unpacked first, off the UI thread: the game's window did
+        // it on its own and froze on a 512 MB DS cart.
+        if (RomCrcs.needsPrepare(this, rom)) {
+            preparing = rom
+            kotlin.concurrent.thread(name = "pokedaisy-prepare") {
+                RomCrcs.prepare(this, rom)
+                runOnUiThread {
+                    launch(rom)
+                    preparing = null
+                }
+            }
+            return
+        }
+        launch(rom)
+    }
+
+    private fun launch(rom: File) {
         // The game puts its own window on the second screen.
         secondScreen.dismiss()
         launcher.menu = null
@@ -1557,6 +1744,12 @@ class LibraryActivity : ComponentActivity() {
                     throw t
                 }
                 var name = RomUris.sanitizeFileName(RomUris.displayName(this, uri) ?: "imported-${System.currentTimeMillis()}.gba")
+                // A BPS patch picked as a ROM file (or opened with the app): PATCH A ROM takes it from here.
+                if (BpsPatch.looksLikeBps(tmp.inputStream().use { s -> ByteArray(4).also { s.read(it) } })) {
+                    tmp.delete()
+                    runOnUiThread { patcher.start(uri, name) }
+                    return@Thread
+                }
                 RomArchive.sniff(tmp)?.let { format ->
                     val rom = File(importDir, "${tmp.name}.rom")
                     val entry = RomArchive.extract(tmp, rom, format)
@@ -1645,8 +1838,8 @@ class LibraryActivity : ComponentActivity() {
     /** Every window over the main screen (pass keys to them, not the launcher). */
     private val libraryDialogOpen
         get() = pickingSort || addMenu || renaming != null || deleting != null || gameInfo != null || coverPickerFor != null ||
-            pendingImport != null || saveLoad != null || backupPick != null || updates.release != null || crashAsk ||
-            (expandIntro && !crashAsk) || ssIntroShown || whatsNewShown || supportShown
+            pendingImport != null || patcher.step != null || saveLoad != null || backupPick != null || updates.release != null || crashAsk ||
+            (expandIntro && !crashAsk) || ssIntroShown || whatsNewShown || supportShown || seasonalShown
 
     /** BACK for the library's windows (OptionOverlay & co.): the newest open one closes. */
     private val libraryBack = com.pokedaisy.app.companion.ui.CompanionBack()
@@ -1665,6 +1858,8 @@ class LibraryActivity : ComponentActivity() {
     }
 
     override fun dispatchKeyEvent(event: KeyEvent): Boolean {
+        // A game being got ready ([GameLoadingCover]): no key acts until it starts.
+        if (preparing != null) return true
         // Setup's GAME BUTTONS row waiting for a button: every key is its, before the launcher, the windows or the focus.
         if (setup?.capture?.onKey(event) == true) return true
         if (launcherOn && setup == null && !libraryDialogOpen && launcherKey(event)) return true
@@ -1704,6 +1899,74 @@ class LibraryActivity : ComponentActivity() {
             }
             return true
         }
+        val vertical = launcherRailVertical
+        // BACK on TOOLS (or the rail) goes back to the games, not out of the app; its key up is taken too.
+        if (code == KeyEvent.KEYCODE_BACK && (toolsOpen || launcher.navCursor >= 0)) {
+            if (first) {
+                launcher.navCursor = -1
+                toolsOpen = false
+                backTaken = true
+            }
+            return true
+        }
+        // On the GAMES / TOOLS / SETTINGS rail (a bar on a tall screen): along it, A opens the place, RIGHT (UP: the bar)
+        // or B back to what's open.
+        if (launcher.navCursor >= 0) {
+            val last = com.pokedaisy.app.companion.ui.LibrarySection.entries.lastIndex
+            val back = if (vertical) KeyEvent.KEYCODE_DPAD_RIGHT else KeyEvent.KEYCODE_DPAD_UP
+            when {
+                code == (if (vertical) KeyEvent.KEYCODE_DPAD_UP else KeyEvent.KEYCODE_DPAD_LEFT) ->
+                    if (down) launcher.navCursor = (launcher.navCursor - 1).coerceAtLeast(0)
+                code == (if (vertical) KeyEvent.KEYCODE_DPAD_DOWN else KeyEvent.KEYCODE_DPAD_RIGHT) ->
+                    if (down) launcher.navCursor = (launcher.navCursor + 1).coerceAtMost(last)
+                code == KeyEvent.KEYCODE_BUTTON_A || code == KeyEvent.KEYCODE_DPAD_CENTER || code == KeyEvent.KEYCODE_ENTER ->
+                    if (first) launcherPick(com.pokedaisy.app.companion.ui.LibrarySection.entries[launcher.navCursor])
+                code == back || code == KeyEvent.KEYCODE_BUTTON_B -> if (first) launcher.navCursor = -1
+                code == KeyEvent.KEYCODE_BUTTON_Y -> if (first) openSettings()
+                code == KeyEvent.KEYCODE_DPAD_LEFT || code == KeyEvent.KEYCODE_DPAD_RIGHT || code == KeyEvent.KEYCODE_DPAD_UP ||
+                    code == KeyEvent.KEYCODE_DPAD_DOWN -> Unit
+                else -> return code in LAUNCHER_KEYS
+            }
+            return true
+        }
+        // LEFT off the left edge (the header's first button, the first quick view, the grid's first column) onto the rail.
+        if (vertical && code == KeyEvent.KEYCODE_DPAD_LEFT && !toolsOpen && (
+                launcher.headerCursor == 0 ||
+                    (launcher.viewCursor && launcher.views.indexOf(launcher.view) <= 0) ||
+                    (launcher.headerCursor < 0 && !launcher.viewCursor && launcher.columns > 1 && launcher.selected % launcher.columns == 0)
+                )
+        ) {
+            if (first) launcherToRail()
+            return true
+        }
+        // DOWN off the games' last row onto the bar (a tall screen).
+        if (!vertical && code == KeyEvent.KEYCODE_DPAD_DOWN && !toolsOpen && launcher.headerCursor < 0 && !launcher.viewCursor &&
+            launcher.selected / launcher.columns.coerceAtLeast(1) >= launcher.games.lastIndex.coerceAtLeast(0) / launcher.columns.coerceAtLeast(1)
+        ) {
+            if (first) launcherToRail()
+            return true
+        }
+        // TOOLS in the games' place: the D-pad walks its cards (UP off the top row to the header, LEFT off the first column /
+        // DOWN off the last row to the rail / bar), A opens the tool, B back to the games.
+        if (toolsOpen && launcher.headerCursor < 0) {
+            val n = launcherTools.size
+            val cols = launcher.toolColumns.coerceAtLeast(1)
+            val c = launcher.toolCursor.coerceIn(0, (n - 1).coerceAtLeast(0))
+            when (code) {
+                KeyEvent.KEYCODE_DPAD_UP -> if (down) { if (c - cols < 0) launcher.headerCursor = 0 else launcher.toolCursor = c - cols }
+                KeyEvent.KEYCODE_DPAD_DOWN -> if (down) {
+                    if (c + cols <= n - 1) launcher.toolCursor = c + cols else if (!vertical) launcherToRail()
+                }
+                KeyEvent.KEYCODE_DPAD_LEFT -> if (down) { if (c % cols == 0) { if (vertical) launcherToRail() } else launcher.toolCursor = c - 1 }
+                KeyEvent.KEYCODE_DPAD_RIGHT -> if (down && c % cols < cols - 1 && c + 1 < n) launcher.toolCursor = c + 1
+                KeyEvent.KEYCODE_BUTTON_A, KeyEvent.KEYCODE_DPAD_CENTER, KeyEvent.KEYCODE_ENTER, KeyEvent.KEYCODE_BUTTON_START ->
+                    if (first) launcherTools.getOrNull(c)?.open?.invoke()
+                KeyEvent.KEYCODE_BUTTON_B -> if (first) toolsOpen = false
+                KeyEvent.KEYCODE_BUTTON_Y -> if (first) openSettings()
+                else -> return code in LAUNCHER_KEYS
+            }
+            return true
+        }
         // On the quick views' row: LEFT / RIGHT open the next view (moveColumn), A / B go back down to the games.
         if (launcher.viewCursor) {
             when (code) {
@@ -1722,6 +1985,11 @@ class LibraryActivity : ComponentActivity() {
                 }
                 KeyEvent.KEYCODE_BUTTON_B -> {
                     if (first) launcher.headerCursor = -1
+                    return true
+                }
+                // Over TOOLS, DOWN goes back to its cards (there are no quick views there).
+                KeyEvent.KEYCODE_DPAD_DOWN -> if (toolsOpen) {
+                    if (down) launcher.headerCursor = -1
                     return true
                 }
             }
@@ -1797,8 +2065,13 @@ class LibraryActivity : ComponentActivity() {
         launcherScope?.launch { launcher.swap { prefs.launcherSwapped = it } }
     }
 
+    /** SETTINGS as the library's third tab: the rail / bar stays, no slide between them (SettingsActivity.EXTRA_TAB). */
     private fun openSettings() {
-        startActivity(Intent(this, SettingsActivity::class.java))
+        settingsTab.launch(
+            Intent(this, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_TAB, true)
+                .putExtra(SettingsActivity.EXTRA_TOOLS_NEW, libraryTools().any { it.newBadge != null }),
+            androidx.core.app.ActivityOptionsCompat.makeCustomAnimation(this, 0, 0),
+        )
     }
 
     /** The launcher on the activity's (main) screen: the list, or the media after a swap, under the library's windows. */
@@ -1814,6 +2087,7 @@ class LibraryActivity : ComponentActivity() {
                 if (launcher.swapped) LauncherMedia(m, small) else LauncherList(m, small, onMain = true)
             }
             LibraryDialogs(m, small)
+            GameLoadingCover(m)
         }
     }
 
@@ -1868,9 +2142,25 @@ class LibraryActivity : ComponentActivity() {
             onTap = { launcher.select(rom); play(rom) },
             onMenu = { launcher.select(rom); openLauncherMenu() },
         )
-        Box(Modifier.fillMaxSize()) {
+        val tools = remember(revision) { libraryTools() }
+        val toolsNew = tools.any { it.newBadge != null }
+        val section = if (toolsOpen) com.pokedaisy.app.companion.ui.LibrarySection.TOOLS else com.pokedaisy.app.companion.ui.LibrarySection.GAMES
+        val railCursor = com.pokedaisy.app.companion.ui.LibrarySection.entries.getOrNull(launcher.navCursor)
+        SideEffect { launcherTools = tools }
+        BoxWithConstraints(Modifier.fillMaxSize()) {
             AppBackdrop(logos = true)
-            Column(Modifier.fillMaxSize()) {
+            // GAMES / TOOLS / SETTINGS as in the classic library: down the left of a wide screen, along the bottom of a tall one.
+            val wide = maxWidth >= maxHeight
+            SideEffect { launcherRailVertical = wide }
+            // The bar's height (a tall screen): the legend floats over it, not on it.
+            var barHeight by remember { mutableStateOf(0.dp) }
+            val density = androidx.compose.ui.platform.LocalDensity.current
+            Row(Modifier.fillMaxSize()) {
+            if (wide) com.pokedaisy.app.companion.ui.LibraryNav(
+                section, vertical = true, m, small, toolsBadge = toolsNew && !toolsOpen, top = SCREEN_MARGIN, cursor = railCursor,
+                onPick = ::launcherPick,
+            )
+            Column(Modifier.weight(1f).fillMaxHeight()) {
                 OptionTitleWindow("POKéDAISY", m, Modifier.padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, top = SCREEN_MARGIN), leading = {
                     PixelArt(LOGO_ROWS, LOGO_PALETTE, Modifier.size(m.lineHeight))
                 }) {
@@ -1881,8 +2171,8 @@ class LibraryActivity : ComponentActivity() {
                     }
                 }
                 val library = views?.library.orEmpty()
-                Spacer(Modifier.height(m.u * (if (library.isNotEmpty()) 8 else 4)))
-                if (views != null && library.isNotEmpty()) {
+                Spacer(Modifier.height(m.u * (if (library.isNotEmpty() || toolsOpen) 8 else 4)))
+                if (views != null && library.isNotEmpty() && !toolsOpen) {
                     com.pokedaisy.app.companion.ui.QuickViewPills(
                         views.shown, launcher.view, views.counts, m, small,
                         onPick = { launcher.viewCursor = false; pickQuickView(it) },
@@ -1893,7 +2183,13 @@ class LibraryActivity : ComponentActivity() {
                 }
                 // Room at the end for the legend, so the last game can scroll clear of it.
                 val padding = PaddingValues(start = SCREEN_MARGIN, end = SCREEN_MARGIN, bottom = SCREEN_MARGIN + m.rowHeight * 1.6f)
-                if (games.isEmpty()) {
+                if (toolsOpen) {
+                    com.pokedaisy.app.companion.ui.ToolsPage(
+                        tools, m, small, contentPadding = padding, modifier = Modifier.weight(1f),
+                        cursor = launcher.toolCursor.takeIf { launcher.navCursor < 0 && launcher.headerCursor < 0 } ?: -1,
+                        onColumns = { launcher.toolColumns = it },
+                    )
+                } else if (games.isEmpty()) {
                     OptionListWindow(m, Modifier.fillMaxWidth().padding(horizontal = SCREEN_MARGIN)) {
                         GbaText(
                             if (library.isNotEmpty()) emptyViewText(launcher.view) else tr(
@@ -1961,9 +2257,19 @@ class LibraryActivity : ComponentActivity() {
                         }
                     }
                 }
+                if (!wide) com.pokedaisy.app.companion.ui.LibraryNav(
+                    section, vertical = false, m, small, toolsBadge = toolsNew && !toolsOpen, cursor = railCursor,
+                    modifier = Modifier.onSizeChanged { barHeight = with(density) { it.height.toDp() } },
+                    onPick = ::launcherPick,
+                )
+            }
             }
             ButtonLegend(
-                listOfNotNull(
+                if (toolsOpen) listOf(
+                    LegendEntry("A", tr("OPEN")) { launcherTools.getOrNull(launcher.toolCursor)?.open?.invoke() },
+                    LegendEntry("B", tr("BACK")) { toolsOpen = false },
+                    LegendEntry("Y", tr("SETTINGS")) { openSettings() },
+                ) else listOfNotNull(
                     LegendEntry("A", tr("OPEN")) { launcher.current?.let(::play) },
                     LegendEntry("B", tr("OPTIONS")) { openLauncherMenu() },
                     // SWAP comes with the second screen's media page (ScreenScraper).
@@ -1971,7 +2277,7 @@ class LibraryActivity : ComponentActivity() {
                     LegendEntry("Y", tr("SETTINGS")) { openSettings() },
                 ),
                 small,
-                Modifier.align(Alignment.BottomEnd).padding(SCREEN_MARGIN),
+                Modifier.align(Alignment.BottomEnd).padding(start = SCREEN_MARGIN, end = SCREEN_MARGIN, bottom = SCREEN_MARGIN + if (wide) 0.dp else barHeight),
             )
             launcher.menu?.let { menu -> LauncherMenuOverlay(menu, m) { launcher.menu = null } }
         }
@@ -2018,11 +2324,16 @@ class LibraryActivity : ComponentActivity() {
 
     /** The update's one-time "set up ScreenScraper?" window: wanted (set in onCreate), then shown once nothing else is up. */
     internal var ssIntro by mutableStateOf(false)
-    private val ssIntroShown get() = ssIntro && setup == null && !crashAsk && updates.release == null && !expandIntro && !whatsNewShown && !supportShown
+    private val ssIntroShown get() = ssIntro && setup == null && !crashAsk && updates.release == null && !expandIntro && !whatsNewShown && !supportShown && !seasonalShown
     /** WHAT'S NEW is up: after any update offer, never over setup. */
     private val whatsNewShown get() = whatsNew != null && setup == null && updates.release == null
     /** The support window is up: after any update offer and WHAT'S NEW, never over setup. */
     private val supportShown get() = supportAsk && setup == null && updates.release == null && !whatsNewShown
+
+    /** A limited-time theme to announce ([com.pokedaisy.app.companion.ui.theme.seasonalThemeToAnnounce]; internal for ui-preview). */
+    internal var seasonalTheme by mutableStateOf<com.pokedaisy.app.companion.ui.theme.ThemeSpec?>(null)
+    /** Its popup is up: after any update offer, WHAT'S NEW and the support window, never over setup or the crash question. */
+    private val seasonalShown get() = seasonalTheme != null && setup == null && updates.release == null && !whatsNewShown && !supportShown && !crashAsk
 
     /** The popup's sign-in (internal for ui-preview). */
     internal val ssLogin by lazy { ScreenScraperLogin.of(prefs) }

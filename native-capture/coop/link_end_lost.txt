@@ -1,0 +1,84 @@
+# Plan 6 Task 5: a LOST joined battle with nothing left that can fight, on both players: both black out - the game's own CB2_WhiteOut
+# through the normal end (CB2_EndWildBattle sees LOST), money halved - and the trainers stay unbeaten (no flags, no prize). Each core's
+# party of five (three + two set aside) is at 0 HP when the battle ends (the HP of all six slots is poked to 0 on both cores at the action
+# prompt, the master's gBattleOutcome to LOST): the merged party has no Pokemon that can fight, so no reserve saves anyone.
+#
+# want: PASS linkwait 2
+# want: PASS linkresultwait
+# want: link: result a 16 01 02 03 00 00 00 00 00 00 00 00 00 00 00 00 00
+# want: link: result b 16 01 02 03 00 00 00 00 00 00 00 00 00 00 00 00 00
+# want: PASS link money 1500 (mark 3000 + -1500)
+# want: PASS linkflag 333 = 0 (core a)
+# want: PASS linkflag 318 = 0 (core b)
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+memcopy 0x020244EC 0x02024618 100
+memcopy 0x020244EC 0x0202467C 100
+reown 0x02024618 0x1111AAAA
+reown 0x0202467C 0x2222BBBB
+poke8 0x020244E9 5
+poke16 0x0202466E 0
+poke16 0x020246D2 0
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+memcopy 0x020244EC 0x02024618 100
+memcopy 0x020244EC 0x0202467C 100
+reown 0x02024618 0x3333CCCC
+reown 0x0202467C 0x4444DDDD
+poke8 0x020244E9 5
+poke16 0x0202466E 0
+poke16 0x020246D2 0
+linkmoneymark 0
+coopbegin 1 2 333 318
+on b
+linkmoneymark 0
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+poke16 0x02024542 0
+poke16 0x020245A6 0
+poke16 0x0202460A 0
+poke16 0x0202466E 0
+poke16 0x020246D2 0
+poke16 0x02024736 0
+on a
+poke16 0x02024542 0
+poke16 0x020245A6 0
+poke16 0x0202460A 0
+poke16 0x0202466E 0
+poke16 0x020246D2 0
+poke16 0x02024736 0
+poke8 0x0202433A 2
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkresultwait 5000
+on a
+linkresult a
+linkmoneyexpect 0 -1500
+linkflag 333 0
+linkflag 318 0
+coopexpectfree 1
+on b
+linkresult b
+linkmoneyexpect 0 -1500
+linkflag 333 0
+linkflag 318 0
+coopexpectfree 1

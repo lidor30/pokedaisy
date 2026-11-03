@@ -31,6 +31,8 @@ object GameTitles {
     /** The DS carts [BY_SHA1] names (the website's ROM check reads DS carts by their header: compat.json's `ds`). */
     internal val NDS_SHA1S = setOf(
         "0862ec35b24de5c7e2dcb88c9eea0873110d755c", "4fcded0e2713dc03929845de631d0932ea2b5a37", "f8dc38ea20c17541a43b58c5e6d18c1732c7e582",
+        "13b6853aa93121069df1d17446d3ecb36872aecf", "576cdb7eec728c49aed85b9dd7e1e084ba1f08f9",
+        com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1,
     )
 
     private val RETAIL: Map<String, String> = mapOf(
@@ -44,8 +46,17 @@ object GameTitles {
         "0862ec35b24de5c7e2dcb88c9eea0873110d755c" to "Pokémon Platinum",
         "4fcded0e2713dc03929845de631d0932ea2b5a37" to "Pokémon HeartGold",
         "f8dc38ea20c17541a43b58c5e6d18c1732c7e582" to "Pokémon SoulSilver",
-        // Black (USA, Europe): the No-Intro dump (no decomp builds it).
+        // German HeartGold / SoulSilver, rev 0 (the contributor's dumps; GitHub #349).
+        "13b6853aa93121069df1d17446d3ecb36872aecf" to "Pokémon Goldene Edition HeartGold",
+        "576cdb7eec728c49aed85b9dd7e1e084ba1f08f9" to "Pokémon Silberne Edition SoulSilver",
+        // Origin HeartGold v4.0.3, the English patch 1.0.0-rc8 on the US HeartGold (OriginHeartGold).
+        com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1 to "Pokémon Origin HeartGold",
+        // Black and White (USA, Europe): the No-Intro dumps (no decomp builds them).
         "26ad0b9967aa279c4a266ee69f52b9b2332399a5" to "Pokémon Black",
+        "bc696a0dfb448c7b3a8a206f0f8214411a039208" to "Pokémon White",
+        // Black 2 and White 2 (USA, Europe): the No-Intro dumps.
+        "e51e6dfb8678a3d19dcd2a10691b96a569ca0abb" to "Pokémon Black 2",
+        "b5d7490be7b415b8f1e672a53e978a9cc667e56a" to "Pokémon White 2",
         // The other Emeralds, by their own titles (No-Intro's dumps; no decomp builds them).
         "fe1558a3dcb0360ab558969e09b690888b846dd9" to "Pokémon Edición Esmeralda",
         "61c2eb2b380b1a75f0c94b767a2d4c26cd7ce4e3" to "Pokémon Smaragd-Edition",
@@ -96,6 +107,8 @@ object GameTitles {
         "805d880ee229fb6dc3ce03d7b03baf48f0d759d0" to "Pokémon SoulGold",
         "5d6a036260fdbde96f85b5c1b92d0256d3aebafb" to "Pokémon SoulGold",
         "2be7c99aa473308debe1d03ff2015bab7d9addb5" to "Pokémon SoulGold",
+        "32988f918ca09923466ae3bc5bbfe5f2a771c728" to "Pokémon SoulGold",
+        "dacb6e40e7f572ddefd2dfa10e99c0da6835b062" to "Pokémon SoulGold",
         "e10105d8544469c6a11ca2cf510289981df3c3b0" to "Pokémon Glazed",
         "a7c4e34fafb53f2d5283eb6d43dad285c0dd40a8" to "Pokémon Emerald Kaizo",
         "cbd71af65ee3dcd53280a6a12014bfb11e8f626a" to "Pokémon Emerald Legacy",
@@ -118,11 +131,17 @@ object GameTitles {
         "5b38a681b6924ef3e0bb9f6cfbf22426c4c4e523" to "Pokémon Elite Redux",
         "2f3e17e55c6afe23da97ec0f96a067eeb142ad15" to "Pokémon Elite Redux",
         "40780347d0b4df6bf491eaf12603e5422caee677" to "Pokémon Team Rocket Edition: Dragonsden Version",
+        "0d8bdaeeca0856175037a75679c1a2b73ad2b68a" to "Pokémon Team Rocket Edition 2026 (ES)",
+        "ae1c4be9be8d706bb989602bc05731203d42860d" to "Pokémon Monomyth",
         "60182b934d2e8eb3eef226a9bbc25e5df6becd4f" to "Pokémon Wishes of Tomorrow",
         "20e91aecb3243eea7cd610659846f37062f5d709" to "Pokémon Dreamstone Mysteries",
         "20dfaea1d5317cf95fe0b493208edce7d50b865f" to "Pokémon Ghost Grey",
         "74337272566a74625d6dedefe47d2d153eb48ec1" to "Pokémon Ghost Grey",
         "0dafc0116b74406a2df491e26ccb40dd362fb0b7" to "Pokémon Ghost Grey",
+        "62bb900925118796fb963b7df92d02cb548c404e" to "Pokémon Let's Go Pikachu",
+        "11f6ee3890a0aaeb95903471ec73413c846e86fc" to "Pokémon Let's Go Pikachu (Translation Only)",
+        "4a41d539cbf6108cfe3344db5ba997fc5660d77d" to "Pokémon Let's Go Eevee",
+        "5b6146adec1a30f88c565e8f555ab7a578825598" to "Pokémon Let's Go Eevee (Translation Only)",
         "afe4c8e0f9c7186860fcea5f25d8318f5d7929b9" to "Pokémon Sword and Shield Ultimate Plus",
         "daa2f89934d2c0447d5271dabeba86bfba04e1fd" to "Pokémon Sword and Shield Ultimate Plus",
         "4858cc3d7b335bb5eed553861d7a4a17bad9ce2c" to "Pokémon Sword and Shield Ultimate Plus",
@@ -170,7 +189,7 @@ object GameTitles {
     )
 
     /** DS carts worth hashing (128 MB each, once per file): the DS games above. */
-    private val NDS_CODES = setOf("CPUE", "IPKE", "IPGE", "IRBO")
+    private val NDS_CODES = setOf("CPUE", "IPKE", "IPKD", "IPGE", "IPGD", "IRBO", "IRAO", "IREO", "IRDO", "IPKJ")
 
     /** Only these games' ROMs (and Game Boy carts) are worth hashing: every entry above is one of them. */
     private val CODES = setOf("BPRE", "BPGE", "BPEE", "AXVE", "AXPE") + EMERALD_LOCALIZED_CODES +
@@ -186,7 +205,22 @@ object GameTitles {
 
     /** The game's name, if [identify] has already recognised this exact file. Cheap. */
     fun title(context: Context, rom: File): String? =
-        cache(context)[rom.absolutePath]?.takeIf { it.matches(rom) }?.title
+        cache(context)[rom.absolutePath]?.takeIf { it.matches(rom) }?.title?.let(::shown)
+
+    /** What a randomized retail cart is cached as ([RandomizedRetail]): retail's name and this, in English. */
+    private const val RANDOMIZED = " (Randomized)"
+
+    /** [title] in the app's language: a randomized cart's "(Randomized)" is translated. */
+    internal fun shown(title: String): String =
+        if (title.endsWith(RANDOMIZED)) com.pokedaisy.app.companion.i18n.tr("{0} (Randomized)", title.removeSuffix(RANDOMIZED)) else title
+
+    /** [rom]'s name as retail randomized by Universal Pokémon Randomizer ZX ([RandomizedRetail]), or null. Blocking. */
+    internal fun randomizedTitle(rom: File, code: String?): String? {
+        if (code != "BPRE" && code != "BPEE") return null
+        val size = RomArchive.romSize(rom)
+        val hit = com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(code, RomIdentity.revision(rom), size) { RomArchive.open(rom) }
+        return hit?.let { RETAIL[it.retailSha1] }?.let { it + RANDOMIZED }
+    }
 
     /** What kind of game [rom] is, if [identify] has looked at this exact file. Cheap. */
     fun category(context: Context, rom: File): RomCategory? =
@@ -233,9 +267,11 @@ object GameTitles {
 
     /** [rom]'s [RomCategory] (reads its header; [sha1] when [identify] hashed it). A Pokémon cart hashed but known as
      * neither retail nor a hack is a hack too (an unsupported one); a cart nobody hashes is its platform's. */
-    private fun categoryOf(rom: File, sha1: String?, hashed: Boolean): RomCategory = when {
+    private fun categoryOf(rom: File, sha1: String?, hashed: Boolean, randomized: Boolean = false): RomCategory = when {
         RomIdentity.isNds(rom) -> RomCategory.NDS
         sha1 != null && sha1 in HACKS -> RomCategory.HACK
+        // A randomized retail cart is still the retail game.
+        randomized -> RomCategory.GBA
         hashed && sha1 != null && sha1 !in RETAIL && sha1 !in RETAIL_PORT_TITLES -> RomCategory.HACK
         RomIdentity.isGameBoy(rom) -> gameBoyPlatform(rom) { sha1 }
         else -> RomCategory.GBA
@@ -265,8 +301,9 @@ object GameTitles {
                 val worthHashing = if (nds) RomIdentity.ndsGameCode(rom) in NDS_CODES
                     else RomIdentity.gameCode(rom) in CODES || RomIdentity.isGameBoy(rom)
                 val sha1 = if (worthHashing) RomIdentity.sha1(rom) else null
-                val title = sha1?.let { BY_SHA1[it] }
-                Entry(rom.length(), rom.lastModified(), title, categoryOf(rom, sha1, worthHashing), platformOf(rom) { sha1 })
+                val randomized = if (sha1 != null && sha1 !in BY_SHA1 && !nds) randomizedTitle(rom, RomIdentity.gameCode(rom)) else null
+                val title = sha1?.let { BY_SHA1[it] } ?: randomized
+                Entry(rom.length(), rom.lastModified(), title, categoryOf(rom, sha1, worthHashing, randomized != null), platformOf(rom) { sha1 })
             }
             synchronized(this) { cache(context)[rom.absolutePath] = entry }
             changed = true
@@ -315,7 +352,9 @@ object GameTitles {
     private fun cacheFile(context: Context) = File(context.filesDir, "rom-titles.tsv")
 
     /** Which games [BY_SHA1] knew when the cache was written: a file found nameless then may have a name now. */
-    private val KNOWN = "#known\t" + Integer.toHexString(BY_SHA1.keys.sorted().hashCode())
+    /** Randomized retail carts are named too ([randomizedTitle]): a cache from before asks its nameless files again. */
+    private const val RANDOMIZED_KNOWN = "\tupr-4.6.1"
+    private val KNOWN = "#known\t" + Integer.toHexString(BY_SHA1.keys.sorted().hashCode()) + RANDOMIZED_KNOWN
 
     /** How [RomCategory] was decided when the cache was written: a cache from before asks every file again. */
     private const val CATEGORIES = "#categories\t4"

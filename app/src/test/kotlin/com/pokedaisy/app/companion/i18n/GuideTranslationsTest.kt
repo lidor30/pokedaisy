@@ -24,7 +24,7 @@ class GuideTranslationsTest {
     /** Every hand-written line [id]'s GUIDE can show. */
     private fun lines(id: GuideId): Set<String> {
         val out = linkedSetOf<String>()
-        val guide = gameGuide(id) ?: return out
+        val guide = gameGuide(id, randomized = null) ?: return out
         for (page in guide.pages) for (section in page.sections) {
             out += section.heading
             section.note?.let { out += it }

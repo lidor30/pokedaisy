@@ -1,0 +1,17 @@
+# A scripted wild battle (setwildbattle + dowildbattle: the game's scripted / static wild battles, here with a Route 101
+# species, ZIGZAGOON 288) is not joinable even though the species is in the map's table: its savedCallback is
+# CB2_EndScriptedWildBattle, never CB2_EndWildBattle.
+# want: coop: installed
+# want: join 0 0 0
+coopinstall
+poke8 0x0203F400 0xB6
+poke8 0x0203F401 0x20
+poke8 0x0203F402 0x01
+poke8 0x0203F403 0x03
+poke8 0x0203F404 0x00
+poke8 0x0203F405 0x00
+poke8 0x0203F406 0xB7
+poke8 0x0203F407 0x02
+call 0x08098EF8 0x0203F400
+waittask 0x080B05F0 120
+coopjoin

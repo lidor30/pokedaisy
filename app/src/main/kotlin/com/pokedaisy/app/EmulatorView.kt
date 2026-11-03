@@ -88,7 +88,8 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
     private var frameW = 0
     private var frameH = 0
 
-    private fun reportGamePixel() {
+    /** Tells [onGamePixel] / [onGameRect] / [onCoreRect] again (the view moved in its parent: DS LAYOUT). */
+    fun reportGamePixel() {
         if (frameW == 0 || width == 0 || height == 0) return
         // As FrameRenderer.recomputeQuad: the game's height on screen, letterboxed or stretched, or in the overlay
         // (WIDE's frame is never wider than the view and has no overlay, so it's always the view's height).
@@ -339,6 +340,8 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
      * (it showed a refresh later) - for FPS / CPU's performance panel. */
     val framesShown: Long get() = renderer.framesShown
     val lateFrames: Long get() = renderer.lateFrames
+    val repeatedDraws: Long get() = renderer.repeatedDraws
+    val unshownFrames: Long get() = renderer.unshownFrames
 
     /**
      * Drops the renderer's reference to the current framebuffer and blocks
@@ -441,6 +444,10 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
 
         @Volatile var framesShown = 0L
         @Volatile var lateFrames = 0L
+        /** Refreshes that drew no new game frame, and game frames replaced before any refresh drew them: together the
+         * judder a log line reads (a steady 1x shows neither). */
+        @Volatile var repeatedDraws = 0L
+        @Volatile var unshownFrames = 0L
 
         /** Ticks the engine; returns how long this draw may wait for the game frame that tick starts (0 = none due). */
         @Volatile var onVsync: (() -> Long)? = null
@@ -492,6 +499,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
 
         /** Emu thread: the frame the core just put into [gpuTexture] (with [win], EXPAND's window) is the next to show. */
         fun publishGpu(win: WideCamera.Window?) = synchronized(frameLock) {
+            if (fresh) unshownFrames++
             readyGpu = true
             readyWin = win
             fresh = true
@@ -515,6 +523,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             readyW = w
             readyH = h
             readyWin = if (wideSrc != null) win else null
+            if (fresh) unshownFrames++
             fresh = true
             (frameLock as Object).notifyAll()
         }
@@ -690,6 +699,7 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             // is held only for the copy into GL, not the passes below.
             synchronized(frameLock) {
                 val buf = ready ?: return  // set with buffer by bind
+                if (!fresh) repeatedDraws++
                 if (readyGpu) {
                     // A held frame keeps what's up, as below; without one taken yet the last upload stays.
                     if (fresh && !holdFrame() && takeGpuFrame()) {

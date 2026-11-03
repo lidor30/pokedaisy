@@ -39,8 +39,11 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.foundation.interaction.collectIsFocusedAsState
+import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -70,7 +73,9 @@ import com.pokedaisy.app.companion.ui.theme.AppColors
  * while cycling through the party. LEARN ([learn], the original games for now)
  * puts the moves on the left and [CanLearnSection] on the right: a picked option
  * tags the move it would replace FORGET. TAKE ([itemUse], FieldItems.kt) shows when the Pokémon
- * holds an item the game lets it give up: it asks first, then says what happened.
+ * holds an item the game lets it give up: it asks first, then says what happened. The party (or a
+ * box's Pokémon, six at a time) is a column on the right with Back under it, like battle INFO's
+ * foe team; the PC's DEPOSIT (a party Pokémon) or WITHDRAW (a box one) sits with STATS / LEARN.
  */
 @Composable
 fun MonDetailScreen(
@@ -91,6 +96,12 @@ fun MonDetailScreen(
     initialTakeAsk: Boolean = false,
     /** A TAKE result popped up first - for screenshot tests. */
     initialNotice: ItemNotice? = null,
+    /** DEPOSIT (a party Pokémon's summary: into a PC box); null = no button. */
+    onDeposit: (() -> Unit)? = null,
+    /** WITHDRAW (a box Pokémon's summary: into the party, or SWAP's pick when it's full); null = no button. */
+    onWithdraw: (() -> Unit)? = null,
+    /** Open with TRADE EVOLUTIONS' question up (screenshot tests). */
+    initialEvolveAsk: Boolean = false,
 ) {
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
@@ -117,7 +128,17 @@ fun MonDetailScreen(
     var takeResult by remember { mutableStateOf<String?>(null) }
     // A TAKE that went through closes its question and pops up like the bag's USE / GIVE.
     var notice by remember { mutableStateOf(initialNotice) }
-    Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+    // TRADE EVOLUTIONS: which Pokémon the game would evolve by trade (asked whenever the party read changes), the question,
+    // then what it said when it didn't.
+    val evolves = itemUse?.takeIf { it.canTradeEvolve() }
+    var tradeTargets by remember { mutableStateOf<Map<Long, Int>>(emptyMap()) }
+    remember { evolves?.tradeEvolveTargets { tradeTargets = it }; true } // in the first composition: a screenshot draws one frame
+    LaunchedEffect(party, evolves != null) { evolves?.tradeEvolveTargets { tradeTargets = it } }
+    val evoTarget = party.getOrNull(index)?.takeIf { !it.isEgg }?.let { tradeTargets[it.personality] }
+    var evolveAsk by remember { mutableStateOf(initialEvolveAsk) }
+    var evolveResult by remember { mutableStateOf<String?>(null) }
+    Row(modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         AnimatedContent(
             targetState = index,
             transitionSpec = {
@@ -169,17 +190,25 @@ fun MonDetailScreen(
         }
 
         CompanionBackHandler(onBack = onBack)
-        // No up / down arrows (STATS needed the room): the party strip's buttons pick the Pokémon.
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-            if (party.getOrNull(index)?.stats != null && !showLearn) {
-                TextNavButton(if (showStats) tr("MOVES") else tr("STATS"), StatsPurple, StatsPurpleDark) { showStats = !showStats }
+        // No up / down arrows (STATS needed the room): the column's slots pick the Pokémon.
+        val stats = party.getOrNull(index)?.stats != null && !showLearn
+        val learns = canLearn && party.getOrNull(index)?.isEgg == false
+        val evolve = evolves != null && evoTarget != null && !showLearn
+        if (stats || learns || evolve || onDeposit != null || onWithdraw != null) {
+            Row(Modifier.height(SummaryButtonSize), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                val size = SummaryButtonSize
+                if (stats) TextNavButton(if (showStats) tr("MOVES") else tr("STATS"), StatsPurple, StatsPurpleDark, size) { showStats = !showStats }
+                if (learns) TextNavButton(if (showLearn) tr("MOVES") else tr("LEARN"), SuggestGold, SuggestGoldDark, size) { showLearn = !showLearn; learnPick = 0 }
+                if (evolve) TextNavButton(tr("EVOLVE"), EvolveBlue, EvolveBlueDark, size) { evolveResult = null; evolveAsk = true }
+                if (onDeposit != null) TextNavButton(tr("DEPOSIT"), PcGreen, PcGreenDark, size, onClick = onDeposit)
+                if (onWithdraw != null) TextNavButton(tr("WITHDRAW"), PcGreen, PcGreenDark, size, onClick = onWithdraw)
             }
-            if (canLearn && party.getOrNull(index)?.isEgg == false) {
-                TextNavButton(if (showLearn) tr("MOVES") else tr("LEARN"), SuggestGold, SuggestGoldDark) { showLearn = !showLearn; learnPick = 0 }
-            }
-            PartyStrip(party, index, onIndexChange, Modifier.weight(1f))
-            NavButton(PixelIcons.back, tr("Back"), RunBlue, RunBlueDark, enabled = true, onClick = onBack)
         }
+    }
+    Column(Modifier.width(SummaryButtonSize).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+        PartyColumn(party, index, onIndexChange, small, Modifier.weight(1f).fillMaxWidth())
+        BackNavButton(onBack, SummaryButtonSize)
+    }
     }
     val asked = heldHere ?: held.getOrNull(index)
     if (takeAsk && takes != null && asked != null) {
@@ -198,6 +227,29 @@ fun MonDetailScreen(
             onClose = { takeAsk = false; takeResult = null },
         )
     }
+    val evolving = party.getOrNull(index)
+    if (evolveAsk && evolves != null && evolving != null) {
+        val target = tradeTargets[evolving.personality]
+        if (evolveResult == null && target != null) {
+            OptionConfirm(
+                tk("TRADE EVOLUTION"),
+                tr("{0} evolves into {1}, as if it had been traded. It stays yours.", evolving.name, com.pokedaisy.app.companion.data.speciesName(target)),
+                tk("EVOLVE"), m,
+                onConfirm = {
+                    val slot = index
+                    evolves.tradeEvolve(slot, evolving.personality) { r ->
+                        if (r == com.pokedaisy.app.companion.data.TradeEvoResult.EVOLVING) evolveAsk = false
+                        else evolveResult = tradeEvoMessage(r, evolving.name)
+                        evolves.tradeEvolveTargets { tradeTargets = it }
+                    }
+                },
+                onDismiss = { evolveAsk = false },
+            )
+        } else {
+            OptionConfirm(tk("TRADE EVOLUTION"), evolveResult ?: tradeEvoMessage(com.pokedaisy.app.companion.data.TradeEvoResult.NO_EVOLUTION, evolving.name),
+                tk("OK"), m, onConfirm = { evolveAsk = false }, onDismiss = { evolveAsk = false }, cancelLabel = null)
+        }
+    }
     androidx.compose.foundation.layout.Box(Modifier.fillMaxSize()) {
         ItemNoticeHost(notice, m, Modifier.align(Alignment.TopCenter).padding(top = m.u * 6, start = m.u * 8, end = m.u * 8)) { notice = null }
     }
@@ -215,6 +267,14 @@ private fun TakeDialog(
     } else {
         OptionConfirm(tk("TAKE"), result, tk("OK"), m, onConfirm = onClose, onDismiss = onClose, cancelLabel = null)
     }
+}
+
+/** Why TRADE EVOLUTIONS didn't evolve [mon], in the companion's words. */
+internal fun tradeEvoMessage(r: com.pokedaisy.app.companion.data.TradeEvoResult, mon: String): String = when (r) {
+    com.pokedaisy.app.companion.data.TradeEvoResult.NOT_NOW -> tr("Not now: it evolves on the field, with no menu, text or battle open.")
+    com.pokedaisy.app.companion.data.TradeEvoResult.NO_EVOLUTION -> tr("{0} wouldn't evolve from a trade right now.", mon)
+    com.pokedaisy.app.companion.data.TradeEvoResult.MOVED -> tr("The party has changed. Try again.")
+    else -> tr("It can't be used here.")
 }
 
 /** What TAKE did, in the companion's words. */
@@ -247,6 +307,12 @@ private fun HeldItemLine(itemId: Int, small: GbaTextMetrics, onTake: (() -> Unit
 internal val NavButtonSize: androidx.compose.ui.unit.Dp
     @Composable get() = if (LocalShortCompanion.current) 44.dp else 60.dp
 
+/** The Pokémon summary's buttons (STATS / LEARN / the PC's, Back) and its party column: a little over a tab chip's height
+ * (44 dp was a touch small to tap, the user's call, 2026-11-03; a short screen's stays 34, its STATS page has no width to
+ * spare). The battle panes keep [NavButtonSize], whose bar holds the FOE TEAM's icons. */
+private val SummaryButtonSize: androidx.compose.ui.unit.Dp
+    @Composable get() = if (LocalShortCompanion.current) 34.dp else 48.dp
+
 @Composable
 internal fun NavButton(
     icon: List<String>,
@@ -254,40 +320,62 @@ internal fun NavButton(
     fill: Color,
     frame: Color,
     enabled: Boolean,
+    size: Dp = NavButtonSize,
     onClick: () -> Unit,
 ) {
     PlatinumButton(
         fill = fill, frame = frame,
-        modifier = Modifier.size(NavButtonSize).semantics { contentDescription = description },
+        modifier = Modifier.size(size).semantics { contentDescription = description },
         enabled = enabled,
         contentPadding = PaddingValues(0.dp),
         onClick = onClick,
-    ) { PixelIcon(icon, buttonContent, Modifier.size(26.dp)) }
+    ) { PixelIcon(icon, buttonContent, Modifier.size(size * 26 / 60)) }
 }
 
-/** The party as a row of raised buttons, one per Pokémon: the one shown is
- * lit white, a tap on another shows it. As big as the space between the
- * other buttons allows (up to their own height). */
+/** The party as a column of slots on the right, like battle INFO's foe team: the one shown framed in red, a tap on
+ * another shows it. As big as the height allows (up to [SummaryButtonSize]). A PC box's (BOXES) shows six of its Pokémon at
+ * a time, the one on show among them. */
 @Composable
-private fun PartyStrip(party: List<MonView>, index: Int, onPick: (Int) -> Unit, modifier: Modifier = Modifier) {
-    BoxWithConstraints(modifier, contentAlignment = Alignment.Center) {
-        val gap = 6.dp
-        val n = party.size.coerceAtLeast(1)
-        val cell = minOf(NavButtonSize, (maxWidth - gap * (n - 1)) / n)
-        Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(gap)) {
-            party.forEachIndexed { i, mon ->
-                val on = i == index
-                PlatinumButton(
-                    fill = if (on) optionLook.stripLit else optionLook.stripIdle, frame = if (on) optionLook.stripLitFrame else optionLook.stripIdleFrame,
-                    modifier = Modifier.size(cell).semantics { contentDescription = mon.name },
-                    contentPadding = PaddingValues(0.dp),
-                    onClick = { onPick(i) },
-                ) { SpeciesIcon(mon.iconAsset, size = cell * 0.8f) }
-            }
+private fun PartyColumn(party: List<MonView>, index: Int, onPick: (Int) -> Unit, small: GbaTextMetrics, modifier: Modifier = Modifier) {
+    BoxWithConstraints(modifier, contentAlignment = Alignment.TopCenter) {
+        val gap = 4.dp
+        val first = (index - STRIP_MAX / 2).coerceIn(0, (party.size - STRIP_MAX).coerceAtLeast(0))
+        val shown = party.withIndex().drop(first).take(STRIP_MAX)
+        val n = shown.size.coerceAtLeast(1)
+        val cell = minOf(SummaryButtonSize, (maxHeight - gap * (n - 1)) / n)
+        Column(verticalArrangement = Arrangement.spacedBy(gap)) {
+            shown.forEach { (i, mon) -> PartyColumnSlot(mon, current = i == index, small, cell) { onPick(i) } }
         }
     }
 }
 
+/** One of [PartyColumn]'s slots: [mon]'s icon in a white window, the one on show ([current]) framed in the values' red
+ * (battle INFO's FoeSlot), in the summary's look (the HUD's GLASS too). */
+@Composable
+private fun PartyColumnSlot(mon: MonView, current: Boolean, small: GbaTextMetrics, cell: Dp, onClick: () -> Unit) {
+    val u = small.u
+    val look = optionLook
+    val noRipple = remember { androidx.compose.foundation.interaction.MutableInteractionSource() }
+    val focused by noRipple.collectIsFocusedAsState()
+    Box(
+        contentAlignment = Alignment.Center,
+        modifier = Modifier
+            .size(cell)
+            .gbaFocusRing(focused, PixelRoundedShape(u * 3))
+            .drawBehind {
+                val px = u.toPx()
+                val frame = if (current) listOf(look.value to 2 * px, look.valueShadow to px) else look.listLayers.inPx(px)
+                drawLayeredBox(frame, look.titleFill, radius = 3 * px)
+            }
+            .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick)
+            .semantics { contentDescription = tr("{0} Lv {1}", mon.name, mon.level) },
+    ) {
+        SpeciesIcon(mon.iconAsset, size = cell * 0.85f, modifier = Modifier.alpha(if (mon.hp == 0 && !mon.isEgg) 0.35f else 1f))
+    }
+}
+
+/** The most Pokémon the summary's strip shows: a party. */
+private const val STRIP_MAX = 6
 
 /** A 1-GBA-pixel rule between the summary's sections, in the window frame's light grey. */
 @Composable
@@ -309,6 +397,14 @@ internal fun Separator(m: GbaTextMetrics, modifier: Modifier = Modifier, vertica
             },
     )
 }
+
+/** TRADE EVOLUTIONS' EVOLVE button: the party menu's field-move blue. */
+private val EvolveBlue = Color(0xFF5878E8)
+private val EvolveBlueDark = Color(0xFF3152CD)
+
+/** The PC's DEPOSIT / WITHDRAW buttons: the party menu's HP green. */
+private val PcGreen = Color(0xFF58C060)
+private val PcGreenDark = Color(0xFF2E7C38)
 
 /** The summary screen's EXP bar blue. */
 private val ExpBlue = Color(0xFF40B8F8)
@@ -527,6 +623,8 @@ private fun MovesSection(mon: MonView, m: GbaTextMetrics, small: GbaTextMetrics,
 private fun MoveRow(mv: MoveView?, m: GbaTextMetrics, small: GbaTextMetrics, modifier: Modifier = Modifier, forget: Boolean = false) {
     val u = m.u
     val edge = mv?.let { AppColors.typeColors[it.type] } ?: optionLook.muted
+    // A short screen's two tight lines (below) take the row's whole height.
+    val pad = if (LocalShortCompanion.current) 0.dp else u * 3
     Box(
         modifier
             .drawBehind {
@@ -536,22 +634,25 @@ private fun MoveRow(mv: MoveView?, m: GbaTextMetrics, small: GbaTextMetrics, mod
                     drawPixelRoundRect(edge, Offset(0f, 4 * px), Size(3 * px, size.height - 8 * px), radius = px, step = px)
                 }
             }
-            .padding(start = u * 8, top = u * 3, bottom = u * 3),
+            .padding(start = u * 8, top = pad, bottom = pad),
     ) {
         if (mv == null) {
             GbaText("—", optionLook.muted, optionLook.mutedShadow, m, modifier = Modifier.align(Alignment.CenterStart))
         } else if (mv.vs.isEmpty() && LocalShortCompanion.current) {
-            // A short screen (the RG DS): no room for a second line - power and PP beside the name, the type left to the
-            // stripe's colour.
-            Row(Modifier.fillMaxSize(), verticalAlignment = Alignment.CenterVertically) {
-                Row(Modifier.weight(1f), verticalAlignment = Alignment.CenterVertically) {
+            // A short screen (the RG DS): no room for the type badge's line - the name over power and PP, the type left
+            // to the stripe's colour. (Power and PP beside the name left it three letters once the party column took
+            // its width.)
+            Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
+                Row(verticalAlignment = Alignment.CenterVertically) {
                     GbaText(mv.name, optionLook.label, optionLook.labelShadow, m, Modifier.weight(1f, fill = false))
                     if (forget) { Spacer(Modifier.width(u * 4)); ForgetTag() }
                 }
-                Spacer(Modifier.width(u * 6))
-                Stat(tr("PWR"), powerLabel(mv.power), small)
-                Spacer(Modifier.width(u * 6))
-                Stat(tr("PP"), "${mv.pp}", small)
+                Row(verticalAlignment = Alignment.CenterVertically) {
+                    Spacer(Modifier.weight(1f))
+                    Stat(tr("PWR"), powerLabel(mv.power), small)
+                    Spacer(Modifier.width(u * 6))
+                    Stat(tr("PP"), "${mv.pp}", small)
+                }
             }
         } else Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly) {
             Row(verticalAlignment = Alignment.CenterVertically) {
@@ -584,21 +685,22 @@ internal fun Stat(label: String, value: String, small: GbaTextMetrics) {
     }
 }
 
-/** A labelled button for the summary screens' bottom row, as tall as [NavButton]. */
+/** A labelled button for the summary screens' bottom row, as tall as [NavButton] (or [size]; the label scales with it). */
 @Composable
-internal fun TextNavButton(label: String, fill: Color, frame: Color, onClick: () -> Unit) {
+internal fun TextNavButton(label: String, fill: Color, frame: Color, size: Dp = NavButtonSize, onClick: () -> Unit) {
+    val scale = size / NavButtonSize
     PlatinumButton(
         fill = fill, frame = frame,
-        modifier = Modifier.height(NavButtonSize),
-        contentPadding = PaddingValues(horizontal = 20.dp),
+        modifier = Modifier.height(size),
+        contentPadding = PaddingValues(horizontal = 20.dp * scale),
         onClick = onClick,
-    ) { ButtonLabel(label, 24.sp, bold = true) }
+    ) { ButtonLabel(label, 24.sp * scale, bold = true) }
 }
 
 /** The summary screens' Back button: bottom-right, blue, a U-turn arrow. */
 @Composable
-internal fun BackNavButton(onBack: () -> Unit) {
-    NavButton(PixelIcons.back, tr("Back"), RunBlue, RunBlueDark, enabled = true, onClick = onBack)
+internal fun BackNavButton(onBack: () -> Unit, size: Dp = NavButtonSize) {
+    NavButton(PixelIcons.back, tr("Back"), RunBlue, RunBlueDark, enabled = true, size = size, onClick = onBack)
 }
 
 /**

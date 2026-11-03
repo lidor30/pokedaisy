@@ -1,0 +1,14 @@
+# Retail English Emerald on the co-op test save (emerald_coop_newgame.txt made it; native-capture/README.md, "Test saves"):
+# a cold boot to the field on Route 101, controls free. Every press moves the intro one scene on, whenever it comes
+# (the Game Freak scene takes none before ~frame 400): START skips the intro to the logo, START the logo to the title,
+# A the title to the menu (CONTINUE is the cursor's start), A loads the save. Nothing is pressed on the field: a stray A
+# there can talk to an NPC or open a door (README, "Gotchas").
+wait 700
+press START
+wait 120
+press START
+wait 90
+press A
+wait 120
+press A
+wait 200

@@ -148,7 +148,7 @@ fun PcBoxesScreen(
     Box(Modifier.fillMaxSize()) {
         AppBackdrop()
         Column(Modifier.fillMaxSize().padding(16.dp)) {
-            OptionTitleWindow(tk("PC BOXES"), m, trailing = gameName, onBack = leave)
+            OptionTitleWindow(tk("SAVE EDITOR"), m, trailing = gameName, onBack = leave)
             Spacer(Modifier.height(m.u * 4))
             Row(horizontalArrangement = Arrangement.spacedBy(m.u * 4)) {
                 for (p in PcBoxesState.Page.entries) {

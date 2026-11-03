@@ -46,136 +46,219 @@ import com.pokedaisy.app.companion.ui.PixelRoundedShape
 import com.pokedaisy.app.companion.ui.rememberArtGeneration
 import com.pokedaisy.app.companion.ui.soundClickable
 import com.pokedaisy.app.companion.data.isGameBoyGame
+import com.pokedaisy.app.companion.i18n.tk
 
 /**
- * A named "chrome" palette — one of 9 selectable reskins (PokéDaisy default, then
- * FireRed and 7 more named after mainline Pokémon versions). Only the
- * identity/chrome colors vary per theme; semantic colors (HP/status/type, cream
- * panel, dark text) stay constant across all of them so contrast and meaning
- * never break. Picked by [id] (stored in Prefs.appTheme), not list position.
+ * A theme (Settings > THEME on both screens): the app's and the companion's look in its colours, the way DARK MODE
+ * turns it dark. The OPTION windows' greys and whites take its [hue] ([themed]), the rows' red values its [value],
+ * the top screen's backdrop its [page] and [blobs] (DaisyBackdrop) and a game's own backdrop a wash of [gameWash].
+ * Game art (party slots, the map, the card) and colours that mean something (HP, types, statuses) stay as they are,
+ * and Gen 1 / Gen 2's black-on-white windows stay the game's. Picked by [id] (Prefs.appTheme), not list position.
  */
 data class ThemeSpec(
     val id: Int,
+    /** The theme's name, English (a [tk] key, translated where it's drawn). */
     val label: String,
-    val bgTop: Color,
-    val bgBottom: Color,
-    val windowFrame: Color,
-    val windowInner: Color,
-    val windowGold: Color,
-    val accent: Color,
-    val slotFill: Color,
-    val slotFillDark: Color,
-    val slotFrame: Color,
-    val slotInner: Color,
+    /** The hue (0-360) the windows' greys take; null = FireRed's OPTION greys as they are (POKéDAISY). */
+    val hue: Float? = null,
+    /** How much of [hue] the greys take, 0..1 (mid-greys most, the lightest and darkest less). */
+    val wash: Float = 0f,
+    /** The rows' values and group titles: light mode's, dark mode's. */
+    val value: Color = Color(0xFFCB0707),
+    val valueNight: Color = Color(0xFFFF6A5C),
+    /** The top screen's backdrop: its page colour and three or more soft blobs drifting over it. */
+    val page: Color = Color(0xFFF7F6FB),
+    val blobs: List<Color> = listOf(Color(0xFFFFD2CC), Color(0xFFFFF0B0), Color(0xFFD6E2FF)),
+    /** A page dark enough that text on it is white (HALLOWEEN, NEW YEAR), in light mode too. */
+    val darkPage: Boolean = false,
+    /** Multiplied over a game's party backdrop in the companion; null = the game's own colours. */
+    val gameWash: Color? = null,
+    /** Floats over the Library's backdrop instead of the PokeDaisy mark; null = the mark. */
+    val motif: ThemeMotif? = null,
+    /** The tab chips and buttons each in a colour of the rainbow (OptionColors.rainbow); its windows are the default's. */
+    val rainbow: Boolean = false,
+    /** A limited-time theme: offered only in its [Season]'s window. */
+    val season: Season? = null,
 )
 
-/** [ThemeSpec.id] of the PokéDaisy theme, the default: the website's look (see [isDaisyTheme]). */
+/** [ThemeSpec.id] of the PokéDaisy theme, the default: FireRed's OPTION windows over the website's backdrop. */
 const val DAISY_THEME_ID = 8
 
-/** [ThemeSpec.id] of the FireRed theme (the default before PokéDaisy): FireRed's party-menu stripes. */
-const val FIRERED_THEME_ID = 0
-
-/**
- * The PokéDaisy theme draws the top screen (Library, Settings, setup) like the
- * website: light, soft colour, ink-outlined white windows (OptionColors), the
- * drifting backdrop with the logo (AppBackdrop). Its chrome colours here are
- * FireRed's, so what still reads them (the in-game companion's few themed bits)
- * looks as before.
- */
-val isDaisyTheme: Boolean get() = AppColors.currentThemeId == DAISY_THEME_ID
+/** The default theme is on (its look is the OPTION screen's own, untinted). */
+val isDaisyTheme: Boolean get() = AppColors.theme.hue == null && !AppColors.theme.darkPage && !AppColors.theme.rainbow
 
 /** The theme stored as [id], or the default for an unknown one. */
-fun themeById(id: Int): ThemeSpec = APP_THEMES.firstOrNull { it.id == id } ?: APP_THEMES.first()
+fun themeById(id: Int): ThemeSpec = (APP_THEMES + SEASONAL_THEMES).firstOrNull { it.id == id } ?: APP_THEMES.first()
 
+/** The default and the themes that are always there. Ids 0-7 were the old game-named themes (FireRed, LeafGreen,
+ * Emerald, Ruby, Sapphire, Platinum, HeartGold, SoulSilver): Prefs reads them as the default now, so never reuse them. */
 val APP_THEMES = listOf(
+    ThemeSpec(DAISY_THEME_ID, "POKéDAISY"),
     ThemeSpec(
-        DAISY_THEME_ID, "PokéDaisy",
-        bgTop = Color(0xFF3AA890), bgBottom = Color(0xFF2C7868),
-        windowFrame = Color(0xFF3860A8), windowInner = Color(0xFF98C0F8), windowGold = Color(0xFFF8D060),
-        accent = Color(0xFF3860A8),
-        slotFill = Color(0xFF48B8A8), slotFillDark = Color(0xFF308878), slotFrame = Color(0xFF206858), slotInner = Color(0xFF90E0D0),
+        20, tk("CHERRY"), hue = 345f, wash = 0.5f,
+        value = Color(0xFFC8143C), valueNight = Color(0xFFFF6A88),
+        page = Color(0xFFFFF3F6), blobs = listOf(Color(0xFFFFC2D4), Color(0xFFFFE3EC), Color(0xFFF7B0C8)),
+        gameWash = Color(0xFFFFD6E0), motif = ThemeMotifs.BLOSSOM,
     ),
     ThemeSpec(
-        FIRERED_THEME_ID, "FireRed",
-        bgTop = Color(0xFF3AA890), bgBottom = Color(0xFF2C7868),
-        windowFrame = Color(0xFF3860A8), windowInner = Color(0xFF98C0F8), windowGold = Color(0xFFF8D060),
-        accent = Color(0xFF3860A8),
-        slotFill = Color(0xFF48B8A8), slotFillDark = Color(0xFF308878), slotFrame = Color(0xFF206858), slotInner = Color(0xFF90E0D0),
+        21, tk("RAINBOW"),
+        page = Color(0xFFFBF9FF),
+        blobs = listOf(Color(0xFFFFC4C4), Color(0xFFFFEFA8), Color(0xFFC8F0C8), Color(0xFFC4DAFF), Color(0xFFE2CCFF)),
+        motif = ThemeMotifs.RAINBOW, rainbow = true,
     ),
     ThemeSpec(
-        1, "LeafGreen",
-        bgTop = Color(0xFF4CAA58), bgBottom = Color(0xFF307838),
-        windowFrame = Color(0xFF388850), windowInner = Color(0xFFA8E8B0), windowGold = Color(0xFFF8D060),
-        accent = Color(0xFF388850),
-        slotFill = Color(0xFF68B858), slotFillDark = Color(0xFF488838), slotFrame = Color(0xFF305820), slotInner = Color(0xFFA8E090),
+        22, tk("OCEAN"), hue = 200f, wash = 0.5f,
+        value = Color(0xFF0062B0), valueNight = Color(0xFF6CC0FF),
+        page = Color(0xFFEFF7FC), blobs = listOf(Color(0xFFB4E2F8), Color(0xFFC4F0E8), Color(0xFFCCD8FF)),
+        gameWash = Color(0xFFCCE6FF),
     ),
     ThemeSpec(
-        2, "Emerald",
-        bgTop = Color(0xFF189878), bgBottom = Color(0xFF106050),
-        windowFrame = Color(0xFF189858), windowInner = Color(0xFF90E8B8), windowGold = Color(0xFFF8D060),
-        accent = Color(0xFF189858),
-        slotFill = Color(0xFF38B888), slotFillDark = Color(0xFF208858), slotFrame = Color(0xFF106040), slotInner = Color(0xFF80E0B0),
+        23, tk("MINT"), hue = 155f, wash = 0.42f,
+        value = Color(0xFF0F8A64), valueNight = Color(0xFF5EE0B0),
+        page = Color(0xFFF1FBF6), blobs = listOf(Color(0xFFC0F0DA), Color(0xFFE6F8C4), Color(0xFFC4EAF0)),
+        gameWash = Color(0xFFD2F4E4),
     ),
     ThemeSpec(
-        3, "Ruby",
-        bgTop = Color(0xFFC84850), bgBottom = Color(0xFF983038),
-        windowFrame = Color(0xFFC82838), windowInner = Color(0xFFF8A8A8), windowGold = Color(0xFFF8D060),
-        accent = Color(0xFFC82838),
-        slotFill = Color(0xFFE86858), slotFillDark = Color(0xFFB84838), slotFrame = Color(0xFF802818), slotInner = Color(0xFFF8B098),
+        24, tk("LAVENDER"), hue = 265f, wash = 0.45f,
+        value = Color(0xFF7434C4), valueNight = Color(0xFFC4A0FF),
+        page = Color(0xFFF7F4FD), blobs = listOf(Color(0xFFDDCCFF), Color(0xFFFFD6EC), Color(0xFFD0DAFF)),
+        gameWash = Color(0xFFE2D8FF),
     ),
     ThemeSpec(
-        4, "Sapphire",
-        bgTop = Color(0xFF3868B0), bgBottom = Color(0xFF284878),
-        windowFrame = Color(0xFF2858B8), windowInner = Color(0xFFA8C8F8), windowGold = Color(0xFFD8E8F8),
-        accent = Color(0xFF2858B8),
-        slotFill = Color(0xFF4888D8), slotFillDark = Color(0xFF3068A8), slotFrame = Color(0xFF204878), slotInner = Color(0xFF90B8F0),
+        25, tk("SUNSET"), hue = 22f, wash = 0.55f,
+        value = Color(0xFFD0440C), valueNight = Color(0xFFFF9858),
+        page = Color(0xFFFFF5EC), blobs = listOf(Color(0xFFFFC4A0), Color(0xFFFFE49A), Color(0xFFFFB4C2)),
+        gameWash = Color(0xFFFFDCC4),
     ),
     ThemeSpec(
-        5, "Platinum",
-        bgTop = Color(0xFF8098B0), bgBottom = Color(0xFF586878),
-        windowFrame = Color(0xFF7888A0), windowInner = Color(0xFFD8E0E8), windowGold = Color(0xFFF0F4F8),
-        accent = Color(0xFF5878A0),
-        slotFill = Color(0xFF98A8C0), slotFillDark = Color(0xFF708098), slotFrame = Color(0xFF506078), slotInner = Color(0xFFC0D0E0),
+        26, tk("FOREST"), hue = 110f, wash = 0.4f,
+        value = Color(0xFF2E7A28), valueNight = Color(0xFF8AD878),
+        page = Color(0xFFF3F8EE), blobs = listOf(Color(0xFFCCE6B4), Color(0xFFE8E2B8), Color(0xFFB4DAC0)),
+        gameWash = Color(0xFFD8ECCC),
     ),
     ThemeSpec(
-        6, "HeartGold",
-        bgTop = Color(0xFFD8A030), bgBottom = Color(0xFF986818),
-        windowFrame = Color(0xFFC88820), windowInner = Color(0xFFF8D888), windowGold = Color(0xFFF8E8A0),
-        accent = Color(0xFFC87810),
-        slotFill = Color(0xFFE8A838), slotFillDark = Color(0xFFB87818), slotFrame = Color(0xFF805008), slotInner = Color(0xFFF8C868),
-    ),
-    ThemeSpec(
-        7, "SoulSilver",
-        bgTop = Color(0xFF9888C0), bgBottom = Color(0xFF685890),
-        windowFrame = Color(0xFF8878A8), windowInner = Color(0xFFD0C8F0), windowGold = Color(0xFFE0D8F0),
-        accent = Color(0xFF7868A0),
-        slotFill = Color(0xFFA898D0), slotFillDark = Color(0xFF8078B0), slotFrame = Color(0xFF584878), slotInner = Color(0xFFC8B8F0),
+        27, tk("LEMON"), hue = 50f, wash = 0.6f,
+        value = Color(0xFFB86E00), valueNight = Color(0xFFFFCC4A),
+        page = Color(0xFFFFFCEA), blobs = listOf(Color(0xFFFFEE98), Color(0xFFFFF6C4), Color(0xFFE6F2A4)),
+        gameWash = Color(0xFFFFF2B8),
     ),
 )
 
+/** The limited-time themes, each picked only in its [Season]'s window (see [availableThemes]). */
+val SEASONAL_THEMES = listOf(
+    ThemeSpec(
+        40, tk("LUNAR NEW YEAR"), hue = 4f, wash = 0.5f,
+        value = Color(0xFFC20E2A), valueNight = Color(0xFFFF6E6E),
+        page = Color(0xFFFFF4EA), blobs = listOf(Color(0xFFFFBCAC), Color(0xFFFFDE86), Color(0xFFFFAC9C)),
+        gameWash = Color(0xFFFFD4C4), motif = ThemeMotifs.LANTERN, season = Season.LUNAR_NEW_YEAR,
+    ),
+    ThemeSpec(
+        41, tk("VALENTINE'S DAY"), hue = 340f, wash = 0.6f,
+        value = Color(0xFFDA1E58), valueNight = Color(0xFFFF7099),
+        page = Color(0xFFFFF0F4), blobs = listOf(Color(0xFFFFB4CA), Color(0xFFFFD4E0), Color(0xFFF0BCE6)),
+        gameWash = Color(0xFFFFD0DE), motif = ThemeMotifs.HEART, season = Season.VALENTINES,
+    ),
+    ThemeSpec(
+        42, tk("ST. PATRICK'S DAY"), hue = 135f, wash = 0.55f,
+        value = Color(0xFF108436), valueNight = Color(0xFF66DC86),
+        page = Color(0xFFF0FAF2), blobs = listOf(Color(0xFFB4E6BC), Color(0xFFE0F4AC), Color(0xFFC4F0D6)),
+        gameWash = Color(0xFFCCF0D4), motif = ThemeMotifs.CLOVER, season = Season.ST_PATRICKS,
+    ),
+    ThemeSpec(
+        43, tk("EASTER"), hue = 290f, wash = 0.3f,
+        value = Color(0xFFA43CB8), valueNight = Color(0xFFE6A0FF),
+        page = Color(0xFFFCF8FF),
+        blobs = listOf(Color(0xFFFFE6A4), Color(0xFFD4F4CC), Color(0xFFD4E2FF), Color(0xFFFFD4EA)),
+        gameWash = Color(0xFFF0E0FF), motif = ThemeMotifs.EGG, season = Season.EASTER,
+    ),
+    ThemeSpec(
+        44, tk("HALLOWEEN"), hue = 28f, wash = 0.6f,
+        value = Color(0xFFD45A00), valueNight = Color(0xFFFF9A3C),
+        page = Color(0xFF22162E), blobs = listOf(Color(0xFF6E3A0E), Color(0xFF4A2268), Color(0xFF2C561C)),
+        darkPage = true, gameWash = Color(0xFFFFC890), motif = ThemeMotifs.PUMPKIN, season = Season.HALLOWEEN,
+    ),
+    ThemeSpec(
+        46, tk("CHRISTMAS"), hue = 140f, wash = 0.4f,
+        value = Color(0xFFC41C26), valueNight = Color(0xFFFF6A6A),
+        page = Color(0xFFF4FAF5), blobs = listOf(Color(0xFFFFC4C4), Color(0xFFC4EACA), Color(0xFFFFEEBC)),
+        gameWash = Color(0xFFE0F0E0), motif = ThemeMotifs.SNOWFLAKE, season = Season.CHRISTMAS,
+    ),
+    ThemeSpec(
+        47, tk("NEW YEAR"), hue = 45f, wash = 0.38f,
+        value = Color(0xFFA86400), valueNight = Color(0xFFFFCC50),
+        page = Color(0xFF131A32), blobs = listOf(Color(0xFF6A5016), Color(0xFF5A1E50), Color(0xFF1C3A7A)),
+        darkPage = true, gameWash = Color(0xFFFFF0C8), motif = ThemeMotifs.SPARKLE, season = Season.NEW_YEAR,
+    ),
+)
+
+/** The themes the THEME row offers on [date]: every one that's always there, then the limited ones in their window. */
+fun availableThemes(date: java.time.LocalDate = ThemeClock.today()): List<ThemeSpec> =
+    APP_THEMES + SEASONAL_THEMES.filter { it.season!!.windowOn(date) != null }
+
+/** A limited-time theme's window around [date] (null: not a limited one, or not now). */
+fun ThemeSpec.windowOn(date: java.time.LocalDate = ThemeClock.today()): ClosedRange<java.time.LocalDate>? = season?.windowOn(date)
+
 /**
- * FireRed / LeafGreen menu chrome: cream windows with a double frame, teal (or
- * theme-colored) party slots with an orange "selected" border, a beige HP
- * capsule, and a pixel font throughout. Field names kept stable so callers
- * don't churn. The "chrome" fields (bgTop, bgBottom, the window/accent/slot
- * colors) are backed by Compose `State` so picking a theme (see [applyTheme]) recomposes
- * every screen live, app-wide — AppColors is a process-wide singleton, so this
- * reaches the top screen AND the Screen-2 companion (a separate Presentation
- * in the same process) at once.
+ * The limited-time theme to announce on [date], once per window: in its window, not already worn, and not in [shown]
+ * (Prefs.seasonalThemesShown, [announceKey]s). Several at once (LUNAR NEW YEAR and VALENTINE'S DAY): the one that began first.
+ */
+fun seasonalThemeToAnnounce(date: java.time.LocalDate, shown: Set<String>, currentId: Int): ThemeSpec? =
+    SEASONAL_THEMES.mapNotNull { t -> t.windowOn(date)?.let { t to it } }
+        .filter { (t, w) -> t.id != currentId && announceKey(t, w) !in shown }
+        .minByOrNull { (_, w) -> w.start }?.first
+
+/** The key a theme's window is remembered by once its popup has shown: the theme and the window's first day. */
+fun announceKey(theme: ThemeSpec, window: ClosedRange<java.time.LocalDate>): String = "${theme.id}:${window.start}"
+
+/**
+ * The theme to wear on [date] for the stored [id]: itself, unless it's a limited-time theme past its window - then
+ * the theme worn before it ([before], if that's still a theme), else the default.
+ */
+fun themeToWear(id: Int, before: Int, date: java.time.LocalDate = ThemeClock.today()): ThemeSpec {
+    val t = themeById(id)
+    if (t.season == null || t.windowOn(date) != null) return t
+    return themeById(before).takeIf { it.season == null } ?: themeById(DAISY_THEME_ID)
+}
+
+/** Puts on [spec] on both screens and saves it; a limited-time one remembers the theme it replaced, to go back to. */
+fun pickTheme(context: android.content.Context, spec: ThemeSpec) {
+    runCatching {
+        val prefs = com.pokedaisy.app.Prefs(context)
+        val was = themeById(prefs.appTheme)
+        if (spec.season != null && was.season == null) prefs.themeBeforeSeasonal = was.id
+        prefs.appTheme = spec.id
+    }
+    AppColors.applyTheme(spec)
+}
+
+/** The saved theme ([themeToWear]: a limited one that has ended gives way), put on and saved again if it changed. */
+fun loadTheme(context: android.content.Context) {
+    val prefs = runCatching { com.pokedaisy.app.Prefs(context) }.getOrNull()
+    val spec = prefs?.let { themeToWear(it.appTheme, it.themeBeforeSeasonal) } ?: themeById(DAISY_THEME_ID)
+    if (prefs != null && prefs.appTheme != spec.id) runCatching { prefs.appTheme = spec.id }
+    AppColors.applyTheme(spec)
+}
+
+/**
+ * FireRed / LeafGreen menu chrome: cream windows with a double frame, teal party slots with an orange "selected"
+ * border, a beige HP capsule, and a pixel font throughout. The chrome colours are FireRed's whatever the theme
+ * (they're the companion's in-game bits); the theme itself ([theme]) is Compose state in this process-wide object,
+ * so a pick redraws the top screen and the Screen-2 companion (a Presentation in the same process) at once.
  */
 object AppColors {
-    private var theme by mutableStateOf(APP_THEMES[0])
+    var theme by mutableStateOf(APP_THEMES[0])
+        private set
 
-    val bgTop: Color get() = theme.bgTop
-    val bgBottom: Color get() = theme.bgBottom
-    val windowFrame: Color get() = theme.windowFrame
-    val windowInner: Color get() = theme.windowInner
-    val windowGold: Color get() = theme.windowGold
-    val accent: Color get() = theme.accent
-    val slotFill: Color get() = theme.slotFill
-    val slotFillDark: Color get() = theme.slotFillDark
-    val slotFrame: Color get() = theme.slotFrame
-    val slotInner: Color get() = theme.slotInner
+    val bgTop = Color(0xFF3AA890)
+    val bgBottom = Color(0xFF2C7868)
+    val windowFrame = Color(0xFF3860A8)
+    val windowInner = Color(0xFF98C0F8)
+    val windowGold = Color(0xFFF8D060)
+    val accent = Color(0xFF3860A8)
+    val slotFill = Color(0xFF48B8A8)
+    val slotFillDark = Color(0xFF308878)
+    val slotFrame = Color(0xFF206858)
+    val slotInner = Color(0xFF90E0D0)
 
     val currentThemeId: Int get() = theme.id
     fun applyTheme(spec: ThemeSpec) { theme = spec }
@@ -208,7 +291,12 @@ object AppColors {
     // D-pad / keyboard focus ring: a bright orange (the user's call - it was cyan), a
     // lighter, yellower one than slotSelected's so the cursor and "what's already
     // picked" stay apart; the screens' chosen items now mostly use the white cursor row.
-    val focusRing = Color(0xFFFFB238)
+    // Monomyth's party backdrop is that orange too (the ring vanished on it): there it's a deep blue, which reads on the
+    // orange, its teal slots and the white windows.
+    val focusRing: Color get() =
+        if (com.pokedaisy.app.companion.ui.OptionColors.inGame &&
+            com.pokedaisy.app.companion.data.activeGame == com.pokedaisy.app.companion.data.GameKind.MONOMYTH
+        ) Color(0xFF1F4FC8) else Color(0xFFFFB238)
 
     val statusSlp = Color(0xFF8A8A8A)
     val statusPsn = Color(0xFFA259D9)
@@ -345,8 +433,7 @@ fun AppTheme(content: @Composable () -> Unit) {
     val context = LocalContext.current
     remember(context) {
         // runCatching: previews / screenshot tests may have no real prefs.
-        val id = runCatching { com.pokedaisy.app.Prefs(context).appTheme }.getOrDefault(DAISY_THEME_ID)
-        AppColors.applyTheme(themeById(id))
+        runCatching { loadTheme(context) }
         runCatching { DarkMode.load(context) }
     }
 
@@ -413,6 +500,8 @@ private fun backdropColors(game: GameKind): IntArray? = when (game) {
     // Dreamstone Mysteries' party grid: Imperium's rows, the same two colours.
     GameKind.DREAMSTONE -> intArrayOf(0xFF424242.toInt(), 0xFF101821.toInt(), 0xFF101821.toInt())
     GameKind.ROWE -> IntArray(3) { 0xFF292929.toInt() }
+    // Pokémon Monomyth's party menu: orange behind its slots (its dots left out).
+    GameKind.MONOMYTH -> IntArray(3) { 0xFFFFBD52.toInt() }
     // Super Mariomon's party menu: flat brown behind its wood-plank slots.
     GameKind.MARIOMON -> IntArray(3) { 0xFF845A4A.toInt() }
     // SoulGold's party list: light-blue stripes, a deeper blue edge.
@@ -454,8 +543,9 @@ private fun recolorBackdrop(bmp: android.graphics.Bitmap?, to: IntArray, from: I
 fun rememberGameBackground(game: GameKind): GameBackground? {
     val context = LocalContext.current
     val gen = rememberArtGeneration()
-    // Recharged Emerald runs as EMERALD and Ghost Grey as FIRERED, each with its own backdrop.
-    val hack = com.pokedaisy.app.companion.data.runningEmeraldHack != null || com.pokedaisy.app.companion.data.runningGhostGrey
+    // Recharged Emerald runs as EMERALD and Ghost Grey and Let's Go as FIRERED, each with its own backdrop.
+    val hack = com.pokedaisy.app.companion.data.runningEmeraldHack != null || com.pokedaisy.app.companion.data.runningGhostGrey ||
+        com.pokedaisy.app.companion.data.runningLetsGo
     return remember(game, gen, hack) {
         // Kept across visits: the ITEMS backdrop crossfade unmounts this one, and
         // rebuilding it recoloured 38k pixels on the main thread each time.
@@ -479,6 +569,11 @@ private fun buildGameBackground(context: android.content.Context, game: GameKind
     if (game.isGameBoyGame || ghostGrey) {
         val paper = if (ghostGrey) -1 else com.pokedaisy.app.companion.ui.OptionColors.gbPaper(game).toArgb()
         return GameBackground(android.graphics.Bitmap.createBitmap(intArrayOf(paper), 1, 1, android.graphics.Bitmap.Config.ARGB_8888).asImageBitmap(), false)
+    }
+    // Let's Go Pikachu / Eevee: CFRU's party menu with its own grid (RomArt), else CFRU's own.
+    if (game == GameKind.FIRERED && com.pokedaisy.app.companion.data.runningLetsGo) {
+        sequenceOf(com.pokedaisy.app.companion.data.RomArt.LETS_GO_BACKDROP, com.pokedaisy.app.companion.data.RomArt.CFRU_BACKDROP)
+            .firstNotNullOfOrNull { GameArt.get(context, it) }?.let { return GameBackground(it.asImageBitmap(), true) }
     }
     // Sword and Shield Ultimate Plus: CFRU's grid in its own red, one 32px cell tiled (RomArt).
     if (game == GameKind.SWORD_SHIELD) {

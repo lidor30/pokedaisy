@@ -9,6 +9,9 @@
 # Casual and Performance patches keep every table and the RAM: the same save and battle decode in each.
 [config.sword_shield]
 base = 'firered_rev0'
+# BOXES: Unbound's CFRU boxes (the game's SendMonToPC headless into boxes 1, 20, 23 and 25: `sword_shield_up_boxes`).
+pokemonStoragePtr = 0x03005010
+pcStorage = 'SWORD_SHIELD_PC_STORAGE'
 # FireRed's battle menu cursors (CFRU), checked headless like Unbound's (a scripted WOOLOO battle on the base patch).
 actionCursor = 0x02023FF8
 moveCursor = 0x02023FFC

@@ -99,5 +99,7 @@ struct PkNdsWidePlan {
     uint32_t backdrop = 0;   // the backdrop, 6 bits a channel (r | g << 8 | b << 16)
     uint32_t blendCnt = 0, eva = 0, evb = 0;
     uint32_t brightness = 0;   // the top screen's master brightness (0: none)
+    uint32_t fx = 0;           // BLDCNT's brightness up / down on the 3D / backdrop alone (mode << 14 | EVY; 0: none)
+    uint32_t fxTargets = 0;    // its first targets: 1 the 3D, 0x20 the backdrop
 };
 void pk_nds_wide_plan(PkNdsWidePlan* out);

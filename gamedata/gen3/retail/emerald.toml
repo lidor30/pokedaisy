@@ -65,6 +65,7 @@ base = 'emerald_retail'
 itemDescs = { preset = 'vanilla', base = 0x0858639C }
 language = 'S'
 gameCode = 'BPES'
+pokemonStoragePtr = 0x03005D94  # BOXES: English's (the `emerald_es` capture's boxes read, checksums good)
 trainerCard = 'none'
 monIconTable = 0x0857E784
 monIconPaletteIndices = 0x0857EE64
@@ -78,6 +79,7 @@ base = 'emerald_retail'
 itemDescs = { preset = 'vanilla', base = 0x085946DC }
 language = 'D'
 gameCode = 'BPED'
+pokemonStoragePtr = 0x03005D94  # BOXES: English's (the `emerald_de` capture's boxes read, checksums good)
 trainerCard = 'none'
 monIconTable = 0x0858CAA8
 monIconPaletteIndices = 0x0858D188
@@ -96,6 +98,7 @@ base = 'emerald_retail'
 itemDescs = { preset = 'vanilla', base = 0x08587D6C }
 language = 'F'
 gameCode = 'BPEF'
+pokemonStoragePtr = 0x03005D94  # BOXES: English's (the `emerald_fr` capture's boxes read, checksums good)
 trainerCard = 'none'
 monIconTable = 0x08580020
 monIconPaletteIndices = 0x08580700
@@ -109,6 +112,7 @@ base = 'emerald_retail'
 itemDescs = { preset = 'vanilla', base = 0x0858000C }
 language = 'I'
 gameCode = 'BPEI'
+pokemonStoragePtr = 0x03005D94  # BOXES: English's (the `emerald_it` capture's boxes read, checksums good)
 trainerCard = 'none'
 monIconTable = 0x0857838C
 monIconPaletteIndices = 0x08578A6C
@@ -150,6 +154,7 @@ enemyParty = 0x020243E8
 gMain = 0x03002360
 saveBlock1Ptr = 0x03005AEC
 saveBlock2Ptr = 0x03005AF0
+pokemonStoragePtr = 0x03005AF4  # BOXES: gSaveBlock2Ptr + 4, as in English (`emerald_ja` / `_own`: checksums good)
 objectEvents = 0x02036FF0
 mapHeader = 0x02036FB8
 bagPockets = 0x02039A78

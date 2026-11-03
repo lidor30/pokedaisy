@@ -73,6 +73,11 @@ fun featureTipText(id: TipId): FeatureTip = when (id) {
     TipId.FLY -> FeatureTip(
         tr("FLY WITHOUT THE MENUS"), tr("Pick a town you've been to and fly there: FLY on the MAP, or in the QUICK MENU."), tk("FLY NOW"),
     )
+    TipId.DS_TRIGGERS -> FeatureTip(
+        tr("TRIGGERS IN DS GAMES"),
+        tr("A DS game on one screen keeps its touch screen out of the way. Your triggers bring it in and change how the two screens sit."),
+        tk("SHOW ME"),
+    )
 }
 
 /**

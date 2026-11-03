@@ -49,3 +49,13 @@ This early version does not include the Polished Crystal companion, the longer
 summaries or firmware power handling. Earlier
 builds ran on the Brick and Smart Pro, but this separated foundation still
 needs fresh device testing. Other Linux handhelds are not verified.
+
+An optional DSperate backend can be enabled with `POCKET_DSPERATE=ON`.
+Its limited, read-only companion supports Platinum USA rev1, including party,
+bag, dex and a ROM-derived Town Map. L2 opens the shared quick menu; select
+COMPANION for its screens. R2 swaps the native DS screens. Optional battle
+AUTO mode shows the bottom screen while choosing and the top for animations.
+
+DS expansion and custom battle controls are not included. The Linux companion
+and data bridge remain an initial implementation for upstream review; see
+`linux/dsperate/README.md` for scope, builds, controls and remaining testing.

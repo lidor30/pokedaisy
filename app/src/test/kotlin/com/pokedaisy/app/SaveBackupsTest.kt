@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Rule
 import org.junit.Test
 import org.junit.rules.TemporaryFolder
+import java.io.File
 import kotlin.random.Random
 
 class SaveBackupsTest {
@@ -53,5 +54,49 @@ class SaveBackupsTest {
         assertNull(SaveBackups.snapshot(tmp.root.resolve("none.sav")))
         assertNull(SaveBackups.snapshot(tmp.newFile("empty.sav")))
         assertFalse(SaveBackups.dir(tmp.root.resolve("x.sav")).exists())
+    }
+
+    @Test
+    fun offTakesNoneButTheEditorStillDoes() {
+        val save = tmp.newFile("off.sav").apply { writeBytes(flash) }
+        val off = SaveBackups.Settings(enabled = false)
+        assertNull(SaveBackups.snapshot(save, settings = off))
+        assertFalse(SaveBackups.dir(save, off).exists())
+        assertNotNull(SaveBackups.snapshot(save, settings = off, force = true))
+    }
+
+    @Test
+    fun keepsWhatKeepPerGameSays() {
+        val save = tmp.newFile("few.sav")
+        val three = SaveBackups.Settings(keep = 3)
+        repeat(6) { i ->
+            save.writeBytes(flash.copyOf().also { it[0] = i.toByte() })
+            SaveBackups.snapshot(save, now = 1_000_000L * (i + 1), settings = three)
+        }
+        assertEquals(3, SaveBackups.list(save, three).size)
+        // Lowered later: the extra ones go at the next start, even with the save unchanged.
+        val one = SaveBackups.Settings(keep = 1)
+        assertNull(SaveBackups.snapshot(save, now = 9_000_000L, settings = one))
+        assertEquals(1, SaveBackups.list(save, one).size)
+        assertEquals(5.toByte(), SaveBackups.list(save, one).first().readBytes()[0])
+    }
+
+    @Test
+    fun oneFolderForEveryGame() {
+        val saves = tmp.newFolder("saves")
+        val folder = tmp.newFolder("backups")
+        val save = File(saves, "Pokemon Emerald.sav").apply { writeBytes(flash) }
+        val beside = SaveBackups.snapshot(save, now = 1_000_000L)!!
+        val custom = SaveBackups.Settings(folder = folder)
+        // The folder has none yet: a copy goes there even though the one beside the save is the same.
+        val moved = SaveBackups.snapshot(save, now = 2_000_000L, settings = custom)!!
+        assertEquals(folder, moved.parentFile)
+        assertTrue(beside.exists())
+        // RESTORE BACKUP lists both places, newest first.
+        assertEquals(listOf(moved, beside), SaveBackups.list(save, custom))
+        // Another game's backups in the same folder aren't this one's.
+        File(saves, "Pokemon Emerald Kaizo.sav").writeBytes(flash)
+        SaveBackups.snapshot(File(saves, "Pokemon Emerald Kaizo.sav"), now = 3_000_000L, settings = custom)
+        assertEquals(2, SaveBackups.list(save, custom).size)
     }
 }

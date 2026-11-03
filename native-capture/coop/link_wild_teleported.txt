@@ -1,0 +1,42 @@
+# Plan 6 Task 3: Roar / Whirlwind on the wild foes ends the battle with B_OUTCOME_PLAYER_TELEPORTED (5): sEndTurnFuncsTable points it at
+# HandleEndTurn_FinishBattle directly, patched to our link_entry_RAN_FINISH for the wild kind, so the partner hears of the end too.
+# gBattleOutcome is poked to 5 on the master mid turn; both cores hold 5 and the "sent" byte (0x0203D03F) is 1.
+# Needs EMERALD_PARTNER_SAVE (`$PARTNER_SAVE`).
+#
+#
+# want: PASS linkwait 2
+pair $PARTNER_SAVE
+on b
+@boot
+on a
+coopbegin 1 1 0 0
+on b
+coopbegin 0 1 0 0
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkrun 20
+on a
+poke8 0x0202433A 5
+linkrun 300
+expect8 0x0203D03F 1
+shot /work/link_wild_teleported_a.ppm
+on b
+waitmem8 0x0202433A 5 3000
+shot /work/link_wild_teleported_b.ppm

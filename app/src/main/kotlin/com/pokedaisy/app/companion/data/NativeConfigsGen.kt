@@ -113,9 +113,13 @@ val NATIVE_LEAFGREEN_REV0 = NATIVE_FIRERED_REV0.copy(
     pokedex = POKEDEX_LEAFGREEN_REV0,
     guideTables = GUIDE_TABLES_LEAFGREEN_REV0,
     trainerCard = TRAINER_CARD_FIRERED,
+    // BOXES: FireRed's gPokemonStoragePtr (gSaveBlock2Ptr + 4), checked on both revisions' captures (every box
+    // record's checksum held). Retail only: the Poller drops it for any other ROM under these codes.
+    pokemonStoragePtr = 0x03005010L,
 )
 
 val NATIVE_LEAFGREEN_REV1 = NATIVE_FIRERED_REV1.copy(
+    pokemonStoragePtr = 0x03005010L, // BOXES, as rev 0's
     itemDescs = vanillaItems(0x083DAED4L),
     actionCursor = 0,
     moveCursor = 0, // FireRed's, probably, but not checked on LeafGreen yet
@@ -197,6 +201,7 @@ val NATIVE_EMERALD_ES = NATIVE_EMERALD_RETAIL.copy(
     itemDescs = vanillaItems(0x0858639CL),
     language = 'S',
     gameCode = "BPES",
+    pokemonStoragePtr = 0x03005D94L, // BOXES: English's (the `emerald_es` capture's boxes read, checksums good)
     trainerCard = null,
     monIconTable = 0x0857E784L,
     monIconPaletteIndices = 0x0857EE64L,
@@ -210,6 +215,7 @@ val NATIVE_EMERALD_DE = NATIVE_EMERALD_RETAIL.copy(
     itemDescs = vanillaItems(0x085946DCL),
     language = 'D',
     gameCode = "BPED",
+    pokemonStoragePtr = 0x03005D94L, // BOXES: English's (the `emerald_de` capture's boxes read, checksums good)
     trainerCard = null,
     monIconTable = 0x0858CAA8L,
     monIconPaletteIndices = 0x0858D188L,
@@ -228,6 +234,7 @@ val NATIVE_EMERALD_FR = NATIVE_EMERALD_RETAIL.copy(
     itemDescs = vanillaItems(0x08587D6CL),
     language = 'F',
     gameCode = "BPEF",
+    pokemonStoragePtr = 0x03005D94L, // BOXES: English's (the `emerald_fr` capture's boxes read, checksums good)
     trainerCard = null,
     monIconTable = 0x08580020L,
     monIconPaletteIndices = 0x08580700L,
@@ -241,6 +248,7 @@ val NATIVE_EMERALD_IT = NATIVE_EMERALD_RETAIL.copy(
     itemDescs = vanillaItems(0x0858000CL),
     language = 'I',
     gameCode = "BPEI",
+    pokemonStoragePtr = 0x03005D94L, // BOXES: English's (the `emerald_it` capture's boxes read, checksums good)
     trainerCard = null,
     monIconTable = 0x0857838CL,
     monIconPaletteIndices = 0x08578A6CL,
@@ -282,6 +290,7 @@ val NATIVE_EMERALD_JA = NATIVE_EMERALD_RETAIL.copy(
     gMain = 0x03002360L,
     saveBlock1Ptr = 0x03005AECL,
     saveBlock2Ptr = 0x03005AF0L,
+    pokemonStoragePtr = 0x03005AF4L, // BOXES: gSaveBlock2Ptr + 4, as in English (`emerald_ja` / `_own`: checksums good)
     objectEvents = 0x02036FF0L,
     mapHeader = 0x02036FB8L,
     bagPockets = 0x02039A78L,
@@ -325,6 +334,9 @@ val NATIVE_RUBY = NativeConfig(
     saveBlock1Ptr = 0x02025734L, // gSaveBlock1 itself
     saveBlock2Ptr = 0x02024EA4L, // gSaveBlock2 itself
     staticSaveBlocks = true,
+    // BOXES: gPokemonStorage itself (static like the save blocks; the `ruby_rev1` / `sapphire_rev1` captures' boxes read).
+    pokemonStoragePtr = 0x020300A0L,
+    pcStorage = STATIC_PC_STORAGE,
     objectEvents = 0x030048A0L,
     mapHeader = 0x0202E828L,
     bagPockets = 0x083C1634L,
@@ -392,6 +404,7 @@ private val NATIVE_PORT_BPRD0 by lazy {
         monIconPaletteIndices = 0x083D3794L,
         monIconPaletteTable = 0x083D394CL,
         monIconTable = 0x083D30B4L,
+        monPalettes = 0x082371DCL,
         objectEvents = 0x02036E38L,
         playerParty = 0x02024284L,
         playerPartyCount = 0x02024029L,
@@ -400,6 +413,7 @@ private val NATIVE_PORT_BPRD0 by lazy {
         waitForMonSelection = 0x08030584L,
         itemDescs = vanillaItems(0x083DA518L),
         partyMenu = 0x0203B0A0L,
+        pokemonStoragePtr = 0x03004F60L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0824FB64L,
             entries = 0x0844F73CL,
@@ -456,6 +470,7 @@ private val NATIVE_PORT_BPRF0 by lazy {
         monIconPaletteIndices = 0x083CDCC0L,
         monIconPaletteTable = 0x083CDE78L,
         monIconTable = 0x083CD5E0L,
+        monPalettes = 0x08231718L,
         objectEvents = 0x02036E38L,
         playerParty = 0x02024284L,
         playerPartyCount = 0x02024029L,
@@ -464,6 +479,7 @@ private val NATIVE_PORT_BPRF0 by lazy {
         waitForMonSelection = 0x0803055CL,
         itemDescs = vanillaItems(0x083D3324L),
         partyMenu = 0x0203B0A0L,
+        pokemonStoragePtr = 0x03004F60L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0824A090L,
             entries = 0x08447F70L,
@@ -520,6 +536,7 @@ private val NATIVE_PORT_BPRI0 by lazy {
         monIconPaletteIndices = 0x083CC950L,
         monIconPaletteTable = 0x083CCB08L,
         monIconTable = 0x083CC270L,
+        monPalettes = 0x082303B0L,
         objectEvents = 0x02036E38L,
         playerParty = 0x02024284L,
         playerPartyCount = 0x02024029L,
@@ -528,6 +545,7 @@ private val NATIVE_PORT_BPRI0 by lazy {
         waitForMonSelection = 0x08030570L,
         itemDescs = vanillaItems(0x083D1EE8L),
         partyMenu = 0x0203B0A0L,
+        pokemonStoragePtr = 0x03004F60L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x08248D20L,
             entries = 0x08445868L,
@@ -585,6 +603,7 @@ private val NATIVE_PORT_BPRJ0 by lazy {
         monIconPaletteIndices = 0x0839C388L,
         monIconPaletteTable = 0x0839C540L,
         monIconTable = 0x0839BCA8L,
+        monPalettes = 0x081F68F0L,
         objectEvents = 0x02036D6CL,
         playerParty = 0x020241E4L,
         playerPartyCount = 0x02023F89L,
@@ -593,6 +612,7 @@ private val NATIVE_PORT_BPRJ0 by lazy {
         waitForMonSelection = 0x0802FE04L,
         itemDescs = japaneseItems(0x083A06F8L),
         partyMenu = 0x0203B014L,
+        pokemonStoragePtr = 0x03005050L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0820C274L,
             entries = 0x0840E2D0L,
@@ -652,6 +672,7 @@ private val NATIVE_PORT_BPRJ1 by lazy {
         monIconPaletteIndices = 0x08397B48L,
         monIconPaletteTable = 0x08397D00L,
         monIconTable = 0x08397468L,
+        monPalettes = 0x081F2108L,
         objectEvents = 0x02036D6CL,
         playerParty = 0x020241E4L,
         playerPartyCount = 0x02023F89L,
@@ -660,6 +681,7 @@ private val NATIVE_PORT_BPRJ1 by lazy {
         waitForMonSelection = 0x0802FD70L,
         itemDescs = japaneseItems(0x0839BEB8L),
         partyMenu = 0x0203B014L,
+        pokemonStoragePtr = 0x03004FB0L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x08207A8CL,
             entries = 0x08409C00L,
@@ -732,6 +754,7 @@ private val NATIVE_PORT_BPRS0 by lazy {
         waitForMonSelection = 0x08030570L,
         itemDescs = vanillaItems(0x083D4F50L),
         partyMenu = 0x0203B0A0L,
+        pokemonStoragePtr = 0x03004F60L,
         pokedex = POKEDEX_FIRERED_REV1.copy(
             abilityNames = 0x0824B408L,
             entries = 0x0844912CL,
@@ -794,6 +817,7 @@ private val NATIVE_PORT_BPGD0 by lazy {
         objectEvents = 0x02036E38L,
         playerParty = 0x02024284L,
         playerPartyCount = 0x02024029L,
+        pokemonStoragePtr = 0x03004F60L,
         saveBlock1Ptr = 0x03004F58L,
         saveBlock2Ptr = 0x03004F5CL,
         waitForMonSelection = 0x08030584L,
@@ -858,6 +882,7 @@ private val NATIVE_PORT_BPGF0 by lazy {
         objectEvents = 0x02036E38L,
         playerParty = 0x02024284L,
         playerPartyCount = 0x02024029L,
+        pokemonStoragePtr = 0x03004F60L,
         saveBlock1Ptr = 0x03004F58L,
         saveBlock2Ptr = 0x03004F5CL,
         waitForMonSelection = 0x0803055CL,
@@ -922,6 +947,7 @@ private val NATIVE_PORT_BPGI0 by lazy {
         objectEvents = 0x02036E38L,
         playerParty = 0x02024284L,
         playerPartyCount = 0x02024029L,
+        pokemonStoragePtr = 0x03004F60L,
         saveBlock1Ptr = 0x03004F58L,
         saveBlock2Ptr = 0x03004F5CL,
         waitForMonSelection = 0x08030570L,
@@ -987,6 +1013,7 @@ private val NATIVE_PORT_BPGJ0 by lazy {
         objectEvents = 0x02036D6CL,
         playerParty = 0x020241E4L,
         playerPartyCount = 0x02023F89L,
+        pokemonStoragePtr = 0x03005050L,
         saveBlock1Ptr = 0x03005048L,
         saveBlock2Ptr = 0x0300504CL,
         waitForMonSelection = 0x0802FE04L,
@@ -1054,6 +1081,7 @@ private val NATIVE_PORT_BPGJ1 by lazy {
         objectEvents = 0x02036D6CL,
         playerParty = 0x020241E4L,
         playerPartyCount = 0x02023F89L,
+        pokemonStoragePtr = 0x03004FB0L,
         saveBlock1Ptr = 0x03004FA8L,
         saveBlock2Ptr = 0x03004FACL,
         waitForMonSelection = 0x0802FD70L,
@@ -1126,6 +1154,7 @@ private val NATIVE_PORT_BPGS0 by lazy {
         objectEvents = 0x02036E38L,
         playerParty = 0x02024284L,
         playerPartyCount = 0x02024029L,
+        pokemonStoragePtr = 0x03004F60L,
         saveBlock1Ptr = 0x03004F58L,
         saveBlock2Ptr = 0x03004F5CL,
         waitForMonSelection = 0x08030570L,
@@ -1198,6 +1227,7 @@ private val NATIVE_PORT_AXVD0 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E15CL,
@@ -1268,6 +1298,7 @@ private val NATIVE_PORT_AXVD1 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E15CL,
@@ -1337,6 +1368,7 @@ private val NATIVE_PORT_AXVE0 by lazy {
         objectEvents = 0x030048A0L,
         playerParty = 0x03004360L,
         playerPartyCount = 0x03004350L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802DF88L,
@@ -1405,6 +1437,7 @@ private val NATIVE_PORT_AXVF0 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E15CL,
@@ -1475,6 +1508,7 @@ private val NATIVE_PORT_AXVF1 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E15CL,
@@ -1545,6 +1579,7 @@ private val NATIVE_PORT_AXVI0 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E154L,
@@ -1616,6 +1651,7 @@ private val NATIVE_PORT_AXVI1 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E154L,
@@ -1687,6 +1723,7 @@ private val NATIVE_PORT_AXVJ0 by lazy {
         objectEvents = 0x030047D0L,
         playerParty = 0x03004290L,
         playerPartyCount = 0x03004280L,
+        pokemonStoragePtr = 0x0202FDBCL,
         saveBlock1Ptr = 0x02025494L,
         saveBlock2Ptr = 0x02024C04L,
         waitForMonSelection = 0x0802B354L,
@@ -1760,6 +1797,7 @@ private val NATIVE_PORT_AXVJ1 by lazy {
         objectEvents = 0x030047D0L,
         playerParty = 0x03004290L,
         playerPartyCount = 0x03004280L,
+        pokemonStoragePtr = 0x0202FDBCL,
         saveBlock1Ptr = 0x02025494L,
         saveBlock2Ptr = 0x02024C04L,
         waitForMonSelection = 0x0802B354L,
@@ -1833,6 +1871,7 @@ private val NATIVE_PORT_AXVS0 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E154L,
@@ -1904,6 +1943,7 @@ private val NATIVE_PORT_AXVS1 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E154L,
@@ -1977,6 +2017,7 @@ private val NATIVE_PORT_AXPD0 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E15CL,
@@ -2047,6 +2088,7 @@ private val NATIVE_PORT_AXPD1 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E15CL,
@@ -2116,6 +2158,7 @@ private val NATIVE_PORT_AXPE0 by lazy {
         objectEvents = 0x030048A0L,
         playerParty = 0x03004360L,
         playerPartyCount = 0x03004350L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802DF88L,
@@ -2184,6 +2227,7 @@ private val NATIVE_PORT_AXPF0 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E15CL,
@@ -2254,6 +2298,7 @@ private val NATIVE_PORT_AXPF1 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E15CL,
@@ -2324,6 +2369,7 @@ private val NATIVE_PORT_AXPI0 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E154L,
@@ -2395,6 +2441,7 @@ private val NATIVE_PORT_AXPI1 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E154L,
@@ -2466,6 +2513,7 @@ private val NATIVE_PORT_AXPJ0 by lazy {
         objectEvents = 0x030047D0L,
         playerParty = 0x03004290L,
         playerPartyCount = 0x03004280L,
+        pokemonStoragePtr = 0x0202FDBCL,
         saveBlock1Ptr = 0x02025494L,
         saveBlock2Ptr = 0x02024C04L,
         waitForMonSelection = 0x0802B354L,
@@ -2539,6 +2587,7 @@ private val NATIVE_PORT_AXPJ1 by lazy {
         objectEvents = 0x030047D0L,
         playerParty = 0x03004290L,
         playerPartyCount = 0x03004280L,
+        pokemonStoragePtr = 0x0202FDBCL,
         saveBlock1Ptr = 0x02025494L,
         saveBlock2Ptr = 0x02024C04L,
         waitForMonSelection = 0x0802B354L,
@@ -2612,6 +2661,7 @@ private val NATIVE_PORT_AXPS0 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E154L,
@@ -2683,6 +2733,7 @@ private val NATIVE_PORT_AXPS1 by lazy {
         objectEvents = 0x030048B0L,
         playerParty = 0x03004370L,
         playerPartyCount = 0x03004360L,
+        pokemonStoragePtr = 0x020300A0L,
         saveBlock1Ptr = 0x02025734L,
         saveBlock2Ptr = 0x02024EA4L,
         waitForMonSelection = 0x0802E154L,
@@ -2757,6 +2808,9 @@ private val NATIVE_PORT_AXPS1 by lazy {
 // (the user's real Potion, LZ77 tiles+palette) and it rendered as a real,
 // recognizable potion-bottle icon.
 val NATIVE_AMETHYST = NATIVE_FIRERED_REV0.copy(
+    // BOXES: Unbound's CFRU boxes (the game's SendMonToPC headless into boxes 1, 20, 23 and 25: `amethyst_boxes`).
+    pokemonStoragePtr = 0x03005010L,
+    pcStorage = AMETHYST_PC_STORAGE,
     itemDescs = vanillaItems(0x0872DB0CL), // repointed; v1.4.1 keeps the address
     monIconTable = 0x09C018FCL,
     monIconPaletteIndices = 0x09C01408L,
@@ -2786,6 +2840,7 @@ val NATIVE_AMETHYST = NATIVE_FIRERED_REV0.copy(
 // more species (Hisuian forms at 1234, the Gigantamax forms after them), so its
 // names / gender ratios are its own (ActiveTables' amethystV141).
 val NATIVE_AMETHYST_V1_4_1 = NATIVE_AMETHYST.copy(
+    pcStorage = AMETHYST_V141_PC_STORAGE, // its gBattleMoves moved
     monIconTable = 0x09AD8B50L,
     monIconPaletteIndices = 0x09AD8642L,
     pokedex = POKEDEX_AMETHYST_V1_4_1,
@@ -3045,6 +3100,8 @@ val NATIVE_ELITE_REDUX_V2_65_3B = NATIVE_ELITE_REDUX_V2_65_4_1B.copy(
 // Pokémon Emerald Kaizo v2.0 - BPEE, 16 MB, an in-place edit of retail Emerald (95% of the ROM byte for byte): retail's
 // code, RAM and save, so everything retail reads; its own moves (KAIZO_TEXT) and wild table (GUIDE_TABLES_EMERALD_KAIZO).
 val NATIVE_EMERALD_KAIZO = NATIVE_EMERALD_RETAIL.copy(
+    // BOXES: retail's (gPokemonStoragePtr = gSaveBlock2Ptr + 4; the `emerald_kaizo` capture's boxes read, checksums good).
+    pokemonStoragePtr = 0x03005D94L,
     gameCode = KAIZO_TEXT,
     guideTables = GUIDE_TABLES_EMERALD_KAIZO,
 )
@@ -3225,6 +3282,9 @@ val NATIVE_EMERALD_ROGUE = NATIVE_EMERALD.copy(
 // independently since a future hack could easily have this asymmetry the
 // other way around.
 val NATIVE_GAIA_V3_2 = NATIVE_FIRERED_REV0.copy(
+    // BOXES: vanilla's 14 boxes, plaintext like its party (SendMonToPC headless into boxes 1 and 14: `gaia_boxes`).
+    pokemonStoragePtr = 0x03005010L,
+    pcStorage = PLAIN_PC_STORAGE,
     itemDescs = vanillaItems(0x083DB028L), // retail's address, its own text
     monIconTable = 0x0872A86CL,
     monIconPaletteIndices = 0x0872B870L,
@@ -3239,6 +3299,8 @@ val NATIVE_GAIA_V3_2 = NATIVE_FIRERED_REV0.copy(
 // ---- gamedata/gen3/hacks/glazed.toml ----
 
 val NATIVE_GLAZED = NATIVE_EMERALD.copy(
+    // BOXES: retail's (gPokemonStoragePtr = gSaveBlock2Ptr + 4; the `glazed` capture's box names read).
+    pokemonStoragePtr = 0x03005D94L,
     itemDescs = vanillaItems(0x085839A0L), // retail's, rewritten in place
     guideTables = GUIDE_TABLES_GLAZED,
     // Retail's dex tables and flags, rewritten in place in its own 1..386 numbering (No.322 is
@@ -3267,6 +3329,9 @@ val NATIVE_GLAZED = NATIVE_EMERALD.copy(
 // vanilla's), sItemIconTable 0x08F78000. No save of the user's: the `gs_chronicles*` fixtures are
 // a new game played headless (CYNDAQUIL / TOTODILE / CHIKORITA in NEW BARK TOWN; the READMEs).
 val NATIVE_GS_CHRONICLES = NATIVE_FIRERED_REV0.copy(
+    // BOXES: Unbound's CFRU boxes (the game's SendMonToPC headless into boxes 1, 20, 23 and 25: `gs_chronicles_boxes`).
+    pokemonStoragePtr = 0x03005010L,
+    pcStorage = GS_CHRONICLES_PC_STORAGE,
     actionCursor = 0x02023FF8L,
     moveCursor = 0x02023FFCL,
     itemDescs = vanillaItems(0x08F70000L),
@@ -3753,6 +3818,86 @@ val NATIVE_MARIOMON_V1_2_1 = NATIVE_MARIOMON_V1_2_2.copy(
     guideTables = GUIDE_TABLES_MARIOMON_V1_2_1,
 )
 
+// ---- gamedata/gen3/hacks/monomyth.toml ----
+
+// Pokémon Monomyth v1.0 (32 MB, game code MONE, sha1 ae1c4be9…; Team Monomyth, monomyth.jp): the Athanto region on its
+// own closed pokeemerald build (gcc: its globals sit in EWRAM behind section anchors, so literal-pool words point near a
+// variable rather than at it). Vanilla's struct shapes, rearranged in places, and everything renumbered. Mapped headless
+// from the user's save (in CATSEAR CITY with six Pokémon Lv9-12) and a new game played to the first bedroom, every
+// address checked on the game's own screens:
+// - gPlayerParty 0x02025908 / gPlayerPartyCount 0x02025905, gEnemyParty 0x02025B60 (+0x258, its CreateScriptedWildMon's
+// pool): vanilla's 100-byte mon whose substructs are XORed with a key of its own ([MONOMYTH_PARTY_MON], Gen3Mon.kt's
+// monomythKey, from its box decryption at 0x08068198); every mon's checksum holds with it.
+// - gSaveBlock1Ptr / 2Ptr 0x03001240 / 0x03001244 (gPokemonStoragePtr after them). SaveBlock1 has 4 bytes before `pos`
+// (location at +8); flags +0x18C4 (FLAG_SYS_POKEMON_GET 0x880, POKéDEX 0x881: its BuildNormalStartMenu), vars +0x19FC.
+// SaveBlock2 keeps its encryption key at +0x40: money SaveBlock1 +0x494 XOR it (₽1,968 on the user's save, ₽3,000 on a
+// new game), bag quantities XOR its low half.
+// - gMain: its struct Main has its own order: the callbacks are 0x02020618.. (callback2 +4), the frame counters a word
+// early (+0x1C / +0x20: no intrCheck, both counting) and inBattle is bit 1 of 0x02020601, 0x17 before callback1 (the
+// battle's init ORs it in at 0x08016FCC; clear on every field dump, after a battle too, set in every battle screen).
+// - gMapHeader 0x02038210 (mapsec +0x14: 0x00 CHAMOMILE TOWN, 0x01 CATSEAR CITY; mapType 8 indoors), gObjectEvents
+// 0x02038280 (the player first, coords = pos + 7).
+// - gBagPockets 0x0203C18C: eight {ItemSlot *, capacity} ([MONOMYTH_BAG_POCKET_ORDER]: each item's gItems pocket
+// bits; the user's Repel / Potions / PokéBalls and Apricorns / held items / a TM / berries sit as its bag shows them).
+// - Battle (a scripted wild POLIWAG on both saves, BUG CATCHER TIM's two): gBattleTypeFlags 0x0202538C (4 wild, 0xC
+// trainer), gActiveBattler 0x020253FE, gBattlersCount 0x020253FF, gBattlerPartyIndexes 0x02025400 ([0] = 2 after a
+// SHIFT to slot 2, [1] = 1 after Tim sent his JOLTIK), gBattlerPositions 0x0202540B (00 01), gBattleMons 0x0202541C
+// ([MONOMYTH_BATTLE_MON], 0x58 bytes in its own order). The menus' cursors 0x02025820 / 0x02025824 (RIGHT walked the
+// action cursor 0 -> 1, the move cursor read 2 on CHARGE). gBattlerControllerFuncs 0x020258EC: action / move / bag /
+// party read live (0x08048549 / 0x08048E69 / 0x0804ACBD / 0x0804ABF5), HandleInputChooseTarget 0x08048821 by code (it
+// reads gBattleMoves' target and goes back to the move menu on B). The trainer's next pick (monToSwitchIntoId) wasn't
+// found in either battle structure: no FOE TEAM "next" marker. gPartyMenu 0x0203D8D0 (slotId +9; a two-column grid:
+// DOWN 0 -> 2).
+// - Icons: gMonIconTable 0x089DF54C (packed blobs, not raw tiles), gMonIconPaletteIndices 0x089DFBA4, gMonIconPaletteTable 0x089DFD3C (tags
+// 0xDAC0..), gItemIconTable 0x08AAFA00 (448 pairs); gItems 0x089F15D0 (32-byte entries, the description pointer +0x18).
+// Names / types / moves / chart / map sections: scripts/gen_monomyth_tables.py. DEX: POKEDEX_MONOMYTH (Pokedex.kt).
+val NATIVE_MONOMYTH = NATIVE_EMERALD.copy(
+    // gItems: 32-byte entries {price, name[14], ...}, the description pointer at +0x18; 447 items.
+    itemDescs = ItemDescTable(0x089F15D0L, 0x20, 0x18, count = 447),
+    playerParty = 0x02025908L,
+    playerPartyCount = 0x02025905L,
+    enemyParty = 0x02025B60L,
+    partyMonLayout = MONOMYTH_PARTY_MON,
+    battleMons = 0x0202541CL,
+    battleMonLayout = MONOMYTH_BATTLE_MON,
+    battlerPositions = 0x0202540BL,
+    battlersCount = 0x020253FFL,
+    battleTypeFlags = 0x0202538CL,
+    battlerPartyIndexes = 0x02025400L,
+    actionCursor = 0x02025820L,
+    moveCursor = 0x02025824L,
+    battlerControllerFuncs = 0x020258ECL,
+    handleInputChooseAction = 0x08048549L,
+    handleInputChooseMove = 0x08048E69L,
+    completeWhenChoseItem = 0x0804ACBDL,
+    waitForMonSelection = 0x0804ABF5L,
+    handleInputChooseTarget = 0x08048821L,
+    partyMenu = 0x0203D8D0L,
+    gMain = 0x02020618L,
+    inBattleOff = -23, // -0x17: 0x02020601
+    frameCounterOff = 0x20L,
+    saveBlock1Ptr = 0x03001240L,
+    saveBlock2Ptr = 0x03001244L,
+    saveBlock1PosOff = 4,
+    objectEvents = 0x02038280L,
+    mapHeader = 0x02038210L,
+    bagPockets = 0x0203C18CL,
+    bagPocketCount = 8,
+    bagPocketOrder = MONOMYTH_BAG_POCKET_ORDER,
+    encryptionKeyOff = 0x40L,
+    moneyOff = 0x494L,
+    // Its icons are packed (MonomythIcons: its own tile coder, an ARM routine at 0x081C4284 it runs from the stack).
+    monIconTable = 0x089DF54CL,
+    monIconPacked = true,
+    monIconPaletteIndices = 0x089DFBA4L,
+    monIconPaletteTable = 0x089DFD3CL,
+    itemIconTable = 0x08AAFA00L,
+    pokedex = POKEDEX_MONOMYTH,
+    // PC anywhere (FieldItems.kt's FIELD_ITEMS_MONOMYTH: special 57 through its ScriptContext_SetupScript); no bag USE or FLY.
+    fieldItems = FIELD_ITEMS_MONOMYTH,
+    guideTables = GUIDE_TABLES_MONOMYTH,
+)
+
 // ---- gamedata/gen3/hacks/odyssey.toml ----
 
 // Pokemon Odyssey (English) v4.1.1 - a 32 MB BPRE hack like the others above.
@@ -3767,6 +3912,9 @@ val NATIVE_MARIOMON_V1_2_1 = NATIVE_MARIOMON_V1_2_2.copy(
 // tables were (find a still-byte-identical helper function, read its literal
 // pool) rather than guessing again.
 val NATIVE_ODYSSEY = NATIVE_FIRERED_REV0.copy(
+    // BOXES: vanilla's 14 boxes, plaintext like its party (SendMonToPC headless into boxes 1 and 14: `odyssey_boxes`).
+    pokemonStoragePtr = 0x03005010L,
+    pcStorage = PLAIN_PC_STORAGE,
     pokedex = POKEDEX_ODYSSEY,
     guideTables = GUIDE_TABLES_ODYSSEY,
     itemDescs = vanillaItems(0x083DB028L),
@@ -3788,6 +3936,8 @@ val NATIVE_ODYSSEY = NATIVE_FIRERED_REV0.copy(
 // gWildMonHeaders (0x08A1B1B0), which it repointed: scripts/gen_orange_islands_tables.py. Its
 // region map is its own Orange Archipelago on FireRed's region_map.c (RomRegionMap).
 val NATIVE_ORANGE_ISLANDS = NATIVE_FIRERED_REV0.copy(
+    // BOXES: retail rev 0's (gPokemonStoragePtr = gSaveBlock2Ptr + 4; the `orange_islands` capture's boxes read, checksums good).
+    pokemonStoragePtr = 0x03005010L,
     // FireRed's battle menu cursors (retail rev 0's EWRAM), checked headless like Unbound's: RIGHT / DOWN walk
     // 0 -> 1 -> 3, a written 2 + A opens the party menu, a written move 1 + A spends its PP.
     actionCursor = NATIVE_FIRERED_REV1.actionCursor,
@@ -4073,6 +4223,9 @@ val NATIVE_QUETZAL_MOEMON_V084_ES = NATIVE_QUETZAL_V084_ES.copy(
 // still vanilla's. Inheriting rev 0's read species past 411 off the end of
 // vanilla's tables - the broken party / bag sprites.
 val NATIVE_RADICAL_RED_V4_1 = NATIVE_FIRERED_REV0.copy(
+    // BOXES: Unbound's CFRU boxes (the game's SendMonToPC headless into boxes 1, 20, 23 and 25: `radical_red_boxes`).
+    pokemonStoragePtr = 0x03005010L,
+    pcStorage = RADICAL_RED_PC_STORAGE,
     // Repointed by CFRU; indexed by slot, as the game's ItemId_GetDescription does.
     itemDescs = vanillaItems(0x093C0000L),
     monIconTable = 0x097FE6CCL,
@@ -4579,6 +4732,10 @@ val NATIVE_SOULGOLD = NATIVE_EMERALD.copy(
     gMain = 0x030055C0L,
     saveBlock1Ptr = 0x030040C4L,
     saveBlock2Ptr = 0x030040C0L,
+    // BOXES: gPokemonStoragePtr is the third save pointer here (gSaveBlock2Ptr + 8), 15 boxes of 76-byte plaintext records
+    // (headless on the user's save, soulgold_party: box names, wallpapers, 31 Pokémon whose stats work out as the party's).
+    pokemonStoragePtr = 0x030040C8L,
+    pcStorage = SOULGOLD_PC_STORAGE,
     encryptionKeyOff = 0xB4L,
     moneyOff = 0x478L,
     objectEvents = 0x02003314L,
@@ -4697,6 +4854,38 @@ val NATIVE_SOULGOLD_V1_2C = NATIVE_SOULGOLD_V1_2.copy(
     pokedex = POKEDEX_SOULGOLD_V1_2C,
 )
 
+// SoulGold v1.2.1 (two builds: sha1 32988f91... and dacb6e40..., 2 bytes of item data apart; "Soulgold"
+// in the header's title) - a rebuild of v1.2, the same save format (the v1.2 save loads in it). Mapped
+// from the third v1.2 build: RAM by literal-pool reference counts, code by masked byte matches (else
+// through the functions' callers / the pools that point at them), ROM data by byte runs; then checked
+// headless on that save (the soulgold_v121 / soulgold_v121_battle fixtures; the action / move / bag /
+// party handlers in a scripted wild battle - ScriptContext_SetupScript is 0x0823BC04). IWRAM and the
+// battle globals didn't move; EWRAM did: gMapHeader / gObjectEvents +8, gBagPockets +0xC, the party
+// globals -0x1BC / -0x1C0. ROM data moved 0x7A38 (gItemsInfo), 0x7BA0 (gSpeciesInfo) or 0xB61C - 0xBEE8
+// (dex, wild and map tables). Its tables are byte for byte v1.2's, TM75 included.
+val NATIVE_SOULGOLD_V1_2_1 = NATIVE_SOULGOLD_V1_2.copy(
+    itemDescs = ItemDescTable(0x0875B360L, 0x2C, -8),
+    guideTables = GUIDE_TABLES_SOULGOLD_V1_2_1,
+    playerParty = 0x02038E68L,
+    playerPartyCount = 0x02038C1DL,
+    enemyParty = 0x02038C28L,
+    partyMenu = 0x02038B6CL,
+    objectEvents = 0x0200331CL,
+    mapHeader = 0x02003830L,
+    bagPockets = 0x020088E0L,
+    handleInputChooseAction = 0x08061DBDL,
+    handleInputChooseMove = 0x08060F01L,
+    completeWhenChoseItem = 0x0805FB39L,
+    waitForMonSelection = 0x0805FB7DL,
+    handleInputChooseTarget = 0x0805FF89L,
+    monIconTable = 0x087DD9D0L,
+    monIconPaletteIndices = 0x087DD9F6L,
+    monIconPaletteTable = 0x08F2C2B0L,
+    monIconPalettes = 0x087DD9F8L,
+    itemIconTable = 0x0875B370L,
+    pokedex = POKEDEX_SOULGOLD_V1_2_1,
+)
+
 // ---- gamedata/gen3/hacks/sword_shield.toml ----
 
 // Pokémon Sword and Shield Ultimate Plus v1.2.1.2 (32 MB, sha1 afe4c8e0…): Galar on CFRU, so
@@ -4707,6 +4896,9 @@ val NATIVE_SOULGOLD_V1_2C = NATIVE_SOULGOLD_V1_2.copy(
 // TACKLE, ₽5000, POTION x2 / SOOTHE BELL / OLD ROD) decodes with rev 0's RAM. Its Casual / Performance /
 // Casual and Performance patches keep every table and the RAM: the same save and battle decode in each.
 val NATIVE_SWORD_SHIELD = NATIVE_FIRERED_REV0.copy(
+    // BOXES: Unbound's CFRU boxes (the game's SendMonToPC headless into boxes 1, 20, 23 and 25: `sword_shield_up_boxes`).
+    pokemonStoragePtr = 0x03005010L,
+    pcStorage = SWORD_SHIELD_PC_STORAGE,
     // FireRed's battle menu cursors (CFRU), checked headless like Unbound's (a scripted WOOLOO battle on the base patch).
     actionCursor = 0x02023FF8L,
     moveCursor = 0x02023FFCL,
@@ -4787,6 +4979,81 @@ val NATIVE_TEAM_ROCKET = NATIVE_EMERALD.copy(
     itemIconTable = 0x08D3B894L,
     eggSpecies = 1395,
     guideTables = GUIDE_TABLES_TEAM_ROCKET,
+)
+
+// Pokémon Team Rocket Edition 2026 - Dragonsden, Spanish (32 MB, BPEE, sha1 0d8bdaee…; its START menu says v3.0.9): a rebuild
+// on pokeemerald-expansion 1.14.4 (its RHHEXP block), nothing of v1.5's RAM or ROM left, so its own config. Mapped in mGBA
+// from the user's save (Alex in ALMACÉN ROCKET, a Lv5 ZUBAT, ₽3128 - its FICHA ROCKET and bag screen show the same) and a
+// trainer battle against its EKANS, each address checked on the game's own screens:
+// - gPlayerParty 0x020395C8 (551 literal-pool words) / gPlayerPartyCount 0x02039369, gEnemyParty 0x02039370 (before the
+// player's, its count at 0x0203936A): vanilla's 100-byte encrypted mon with expansion's packing (species / moves 11 bits,
+// PP 7), the language at +0x12 and flags +0x13 as in vanilla. The egg is species 1698 (the header's species count).
+// - gSaveBlock2Ptr / 1Ptr 0x030040EC / 0x030040F0 (gPokemonStoragePtr after them). Money SaveBlock1 +0x490 XOR
+// SaveBlock2's encryption key, which this build keeps at +0x44 (the bag's empty slots read 0 through it).
+// - gMain 0x03005CCC (vblankCounter1 +0x20 ran 101 in 100 frames; inBattle bit 1 of +0x439), gMapHeader 0x020011A0 (u16
+// mapsec at +0x14: 0x10A ALMACÉN ROCKET, mapType 8 at +0x18), gObjectEvents 0x02000C90 (the player's coords = pos + 7).
+// - gBagPockets 0x02006254: eight {ItemSlot *, capacity} by gItemsInfo's pocket (bits 3-7 of +0x1E): Items, Medicine
+// (the save's POCIÓN), TMs, Key Items, Poké Balls, Battle Items, Berries, Mega Stones ([TEAM_ROCKET_V3_BAG_POCKET_ORDER]).
+// - Battle (its EKANS / ZUBAT trainer): gBattleTypeFlags 0x020000A8 (0x0C trainer), gBattlersCount 0x020000AC,
+// gBattleStruct 0x020000B0 with monToSwitchIntoId at +0xB0 (6 6, then [1] = 1 before its ZUBAT came out),
+// gBattlerPositions 0x0200013C, gBattlerPartyIndexes 0x02000140 ([1] 0 -> 1 at the switch), the menus' cursors
+// 0x020003D4 / 0x020003D8 (RIGHT / DOWN walked the action cursor 0 -> 1 -> 3, RIGHT in FIGHT the move cursor 0 -> 1),
+// gBattleMons 0x0200055C ([TEAM_ROCKET_V3_BATTLE_MON]: 0x68 bytes). gBattlerControllerFuncs 0x03002EA8: action / move /
+// bag / party read live (0x08054FA5 / 0x08053FC9 / 0x08052B95 / 0x08052BD5); HandleInputChooseTarget 0x08053051 by code
+// (the handler before the move menu's in its literal pool, back to the move menu on B, as Dreamstone's). gPartyMenu
+// 0x02038D78 (slotId +9 walked 0 -> 7, CANCEL, on DOWN with one Pokémon).
+// - Icons: gSpeciesInfo 0x08970CE8 (0xA8-byte entries: iconSprite +0x68, iconPalIndex +0x86), gMonIconPaletteTable
+// 0x08964C70 (the GF header's); gItemsInfo 0x088CCC1C (0x2C-byte entries: icon +0x24 smol-compressed, its palette +0x28
+// plain). Names / types / moves / chart / map sections: scripts/gen_expansion_tables.py team_rocket_v3.
+val NATIVE_TEAM_ROCKET_V3 = NATIVE_EMERALD.copy(
+    itemDescs = ItemDescTable(0x088CCC30L, 0x2C, -8),
+    playerParty = 0x020395C8L,
+    playerPartyCount = 0x02039369L,
+    enemyParty = 0x02039370L,
+    gMain = 0x03005CCCL,
+    saveBlock1Ptr = 0x030040F0L,
+    saveBlock2Ptr = 0x030040ECL,
+    encryptionKeyOff = 0x44L,
+    moneyOff = 0x490L,
+    maxMoney = 99_999_999,
+    objectEvents = 0x02000C90L,
+    mapHeader = 0x020011A0L,
+    mapSecWide = true,
+    bagPockets = 0x02006254L,
+    bagPocketCount = 8,
+    bagPocketOrder = TEAM_ROCKET_V3_BAG_POCKET_ORDER,
+    speciesMask = 0x07FF,
+    moveMask = 0x07FF,
+    ppMask = 0x7F,
+    battleTypeFlags = 0x020000A8L,
+    battlersCount = 0x020000ACL,
+    battlerPartyIndexes = 0x02000140L,
+    battlerPositions = 0x0200013CL,
+    battleMons = 0x0200055CL,
+    battleMonLayout = TEAM_ROCKET_V3_BATTLE_MON,
+    battleStructPtr = 0x020000B0L,
+    monToSwitchIntoOff = 0xB0,
+    actionCursor = 0x020003D4L,
+    moveCursor = 0x020003D8L,
+    battlerControllerFuncs = 0x03002EA8L,
+    handleInputChooseAction = 0x08054FA5L,
+    handleInputChooseMove = 0x08053FC9L,
+    completeWhenChoseItem = 0x08052B95L,
+    waitForMonSelection = 0x08052BD5L,
+    handleInputChooseTarget = 0x08053051L,
+    partyMenu = 0x02038D78L,
+    eggSpecies = 1698,
+    monIconTable = 0x08970D50L, // gSpeciesInfo[0].iconSprite
+    monIconStride = 0xA8,
+    monIconPaletteIndices = 0x08970D6EL, // gSpeciesInfo[0].iconPalIndex
+    monPalIdxStride = 0xA8,
+    monPalIdxMask = 0x07,
+    monIconPaletteTable = 0x08964C70L,
+    itemIconTable = 0x088CCC40L, // gItemsInfo[0].iconPic
+    itemIconStride = 0x2C,
+    itemPalCompressed = false,
+    pokedex = POKEDEX_TEAM_ROCKET_V3,
+    guideTables = GUIDE_TABLES_TEAM_ROCKET_V3,
 )
 
 // ---- gamedata/gen3/hacks/tmt2.toml ----
@@ -4885,6 +5152,9 @@ val NATIVE_TMT2 = NATIVE_EMERALD.copy(
 // (0x0872AF04) for its new maps, and renamed a few things (GameKind.FIRERED with
 // ActiveTables' fireRedHack: UltraVioletGen.kt). Its region map is FireRed's byte for byte.
 val NATIVE_ULTRA_VIOLET = NATIVE_FIRERED_REV0.copy(
+    // BOXES: retail rev 0's (gPokemonStoragePtr = gSaveBlock2Ptr + 4), for Rocket Edition, Ash Gray and Ghost Grey too
+    // (their captures' boxes read, every checksum good).
+    pokemonStoragePtr = 0x03005010L,
     // FireRed's battle menu cursors (retail rev 0's EWRAM), checked headless like Unbound's: RIGHT / DOWN walk
     // 0 -> 1 -> 3, a written 2 + A opens the party menu, a written move 1 + A spends its PP.
     actionCursor = NATIVE_FIRERED_REV1.actionCursor,
@@ -4925,6 +5195,30 @@ val NATIVE_GHOST_GREY = NATIVE_ULTRA_VIOLET.copy(
 )
 
 val NATIVE_GHOST_GREY_V1_0_1 = NATIVE_GHOST_GREY.copy()
+
+// ---- gamedata/gen3/hacks/lets_go.toml ----
+
+// Pokémon Let's Go Pikachu / Eevee (Kevin Pokefan, English translation; 32 MB, BPRE rev 0, no version in the game):
+// FireRed 1.0 edited in place, not CFRU. Each version has a "Translation Only" build that puts three moves' battle data
+// back (10 bytes apart) and shares its tables: Pikachu (sha1 62bb9009…, Translation Only 11f6ee38…) and Eevee
+// (4a41d539…, 5b6146ad…), one config each (ActiveTables' fireRedHack picks the text by config). Every RAM global's
+// literal pool still names rev 0's address, and so do gTrainers, gItems, gMapGroups and the map section names; Rocket
+// Edition's repointed moves (to 510) / types (FAIRY 23) / ability names; the species grown to 987 ids, with every
+// species table past 16 MB - gSpeciesNames 0x08A000E8, gBaseStats 0x08A02B50, the icon table 0x08A9D0C4 and its palette
+// indices 0x08A9E030 (the icon palettes are rev 0's), gMonPaletteTable 0x08A0E460. Retail FireRed's save is "deleted"
+// by it: the `lets_go*` fixtures are a new game played headless, which loads in all four builds.
+val NATIVE_LETS_GO_PIKACHU = NATIVE_ULTRA_VIOLET.copy(
+    monIconTable = 0x08A9D0C4L,
+    monIconPaletteIndices = 0x08A9E030L,
+    monPalettes = 0x08A0E460L,
+    pokedex = POKEDEX_LETS_GO,
+    guideTables = GUIDE_TABLES_LETS_GO_PIKACHU,
+)
+
+// Eevee's own gWildMonHeaders (its exclusives); the rest at Pikachu's addresses.
+val NATIVE_LETS_GO_EEVEE = NATIVE_LETS_GO_PIKACHU.copy(
+    guideTables = GUIDE_TABLES_LETS_GO_EEVEE,
+)
 
 // ---- gamedata/gen3/hacks/rocket_edition.toml ----
 
@@ -4985,6 +5279,10 @@ val NATIVE_UNBOUND_WITH_DEX = NATIVE_UNBOUND.copy(
     pokedex = POKEDEX_UNBOUND,
     guideTables = GUIDE_TABLES_UNBOUND,
     trainerCard = TRAINER_CARD_UNBOUND,
+    // BOXES: CFRU's 25 boxes of compressed records (UNBOUND_PC_STORAGE: CFRU's source, then the game's own SendMonToPC
+    // headless, a party Pokémon sent into boxes 1, 20, 23 and 25 and read back). gPokemonStoragePtr is FireRed rev 0's.
+    pokemonStoragePtr = 0x03005010L,
+    pcStorage = UNBOUND_PC_STORAGE,
 )
 
 // Pokémon Unbound v2.1.1.1 FR - a French fan translation of the same release (32 MB, sha1
