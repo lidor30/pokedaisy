@@ -1539,7 +1539,7 @@ SaveBlock1 layout and a "BAG3" bit-stream bag (`Bag3Layout`) instead of gBagPock
 Pokémon walk the grass (no random encounters): script a battle (setwildbattle takes a second mon's fields;
 ScriptContext_SetupScript 0x080DB9CC). Its Town Map is FireRed's Kanto / Sevii art, pixel for pixel, redrawn for Emerald's
 region_map.c (8bpp affine, `QTZ_*`) 3 tiles left / 2 up of FireRed's screen, and its mapsec ids are FireRed's: FireRed's
-rects and grids, shifted (`mapSecDataQuetzalOnMap`). Glazed's and Quetzal's party menus are Emerald's slots on TMT2's olive stripes.
+rects and grids, shifted (`mapSecDataQuetzalOnMap`). Its Hoenn is Emerald's map byte for byte and its Johto its own (`QTZ_JOHTO_*`, Emerald's palette; the game loads them at 0x0818A7xx): the ROM's boxes +1, +2 (gRegionMapEntries is `{x, y, w, h, names**}` from 0x09229554), images 4 and 5, a tap goes by the boxes (no cursor grid read). Glazed's and Quetzal's party menus are Emerald's slots on TMT2's olive stripes.
 DEX: Glazed is `POKEDEX_EMERALD` (retail's tables rewritten in place, its own 1..386); Imperium's is gSpeciesInfo-based;
 Quetzal's needed new shapes (`entryCategoryPtr`, `BaseStatsLayout`, `DexFlags.seenLevels` / `caughtRegions`). CARD:
 `CardStyle.GLAZED` (its badges / pics / font, 7-digit money, `NativeConfig.maxMoney` 9,999,999) and `.IMPERIUM` (its font,

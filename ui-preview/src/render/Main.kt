@@ -1553,6 +1553,15 @@ fun main(args: Array<String>) {
         *(if (game == GameKind.FIRERED) arrayOf(
             Shot("$g-map-region", bw, bh, bd, companion("MAP")) { onNodeWithText("SEVII", substring = true).performClick() },
         ) else emptyArray()),
+        // Quetzal's Hoenn and Johto, after its Kanto and Sevii maps on the region button (-Prom=<Alpha 9 ROM> for the art).
+        *(if (game == GameKind.QUETZAL) arrayOf(
+            Shot("$g-map-hoenn", bw, bh, bd, companion("MAP")) {
+                for (next in listOf("SEVII 1-3", "SEVII 4-5", "SEVII 6-7", "HOENN")) { onNodeWithText(next).performClick(); waitForIdle() }
+            },
+            Shot("$g-map-johto", bw, bh, bd, companion("MAP")) {
+                for (next in listOf("SEVII 1-3", "SEVII 4-5", "SEVII 6-7", "HOENN", "JOHTO")) { onNodeWithText(next).performClick(); waitForIdle() }
+            },
+        ) else emptyArray()),
         // R.O.W.E.'s three maps (its region button reads MAP 2 / MAP 3): the buttons' bottom-left row on each.
         *(if (game == GameKind.ROWE) arrayOf(
             Shot("$g-map-region", bw, bh, bd, companion("MAP")) { onNodeWithText("MAP ", substring = true).performClick() },

@@ -394,6 +394,12 @@ private fun regionName(images: Array<String>, i: Int): String = when (images[i])
     "polished_crystal_johto" -> "JOHTO"
     "polished_crystal_kanto" -> "KANTO"
     "polished_crystal_orange" -> "ISLANDS"   // the game's own label on that map
+    "quetzal_kanto" -> "KANTO"
+    "quetzal_sevii123" -> "SEVII 1-3"
+    "quetzal_sevii45" -> "SEVII 4-5"
+    "quetzal_sevii67" -> "SEVII 6-7"
+    "hoenn" -> "HOENN"   // Quetzal's fifth map: Emerald's, which alone never needs a name
+    "quetzal_johto" -> "JOHTO"
     "tr3_kanto" -> "KANTO"
     "tr3_sevii123" -> "SEVII 1-3"
     "tr3_sevii45" -> "SEVII 4-5"

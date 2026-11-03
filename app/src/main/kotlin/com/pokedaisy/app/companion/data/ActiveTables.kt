@@ -550,11 +550,12 @@ val activeMapSecData: Map<Int, MapSecInfo> get() = localText?.mapSecData ?: when
 /**
  * Quetzal's Kanto and Sevii maps are FireRed's, pixel for pixel, drawn 3 tiles left and 2 up of
  * FireRed's screen (RomArt's QTZ_*: regionmap/quetzal_*.png), and its map sections keep FireRed's
- * ids: FireRed's rects and cursor grids, shifted, under Quetzal's own names.
+ * ids: FireRed's rects and cursor grids, shifted, under Quetzal's own names. Its Hoenn is Emerald's map, its Johto its
+ * own (images 4 and 5, the ROM's boxes in [mapSecDataQuetzal], no cursor grid: a tap goes by the boxes).
  */
 private const val QUETZAL_MAP_DX = -3
 private const val QUETZAL_MAP_DY = -2
-private val regionMapImagesQuetzalOnMap = arrayOf("quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67")
+private val regionMapImagesQuetzalOnMap = arrayOf("quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67", regionMapImagesEmerald[0], "quetzal_johto")
 private val mapSecDataQuetzalOnMap: Map<Int, MapSecInfo> by lazy {
     mapSecDataQuetzal.mapValues { (id, q) ->
         val fr = mapSecData[id] ?: return@mapValues q
