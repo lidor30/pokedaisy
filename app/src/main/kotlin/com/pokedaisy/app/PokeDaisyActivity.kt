@@ -1443,6 +1443,8 @@ class PokeDaisyActivity : Activity() {
         override fun setGameVolume(percent: Int) = this@PokeDaisyActivity.setGameVolume(percent, GameVolume.muted)
         override val gameMuted get() = GameVolume.muted
         override fun setGameMuted(on: Boolean) = this@PokeDaisyActivity.setGameVolume(GameVolume.percent, on)
+        override val audioEffects get() = Prefs(this@PokeDaisyActivity).audioEffects
+        override fun setAudioEffects(on: Boolean) { Prefs(this@PokeDaisyActivity).audioEffects = on }
         override val clickSound get() = clickSoundOn
         override fun setClickSound(on: Boolean) {
             Prefs(this@PokeDaisyActivity).clickSound = on
@@ -2713,6 +2715,8 @@ class PokeDaisyActivity : Activity() {
     private fun startGame(): Boolean {
         val r = rom ?: return false
         val st = states ?: return false
+        AudioEffects.load(Prefs(this))
+        AudioEffectsTrack.open(this)
         val save = SavesLocation.saveFor(this, Prefs(this), r)
         // Cheats may have changed in the library's Settings since the game was last up.
         syncCheats()
@@ -2903,6 +2907,7 @@ class PokeDaisyActivity : Activity() {
     /** Everything onPause does: the game stops (or holds, asleep), its listeners and the second screen go. */
     private fun pauseGame() {
         stopPlayClock()
+        AudioEffectsTrack.close(this)
         keyCapture.cancel()
         runCatching { displayManager.unregisterDisplayListener(displayListener) }
         runCatching { inputManager.unregisterInputDeviceListener(inputDeviceListener) }
@@ -4316,7 +4321,10 @@ class PokeDaisyActivity : Activity() {
             Hotkeys.Action.FF_TOGGLE -> if (e.pressed) engine.toggleFastForward()
             Hotkeys.Action.SPEED_CYCLE -> if (e.pressed) engine.cycleSpeed()
             Hotkeys.Action.SLOWMO_HOLD -> engine.setSlowmoHeld(e.pressed)
-            Hotkeys.Action.REWIND_HOLD -> if (!romIsNds) {
+            Hotkeys.Action.REWIND_HOLD -> if (romIsNds) {
+                // The rewind ring is mGBA's: the hotkey would do nothing at all and look broken.
+                if (e.pressed) showHud(com.pokedaisy.app.companion.i18n.tr("Rewind doesn't work in DS games"))
+            } else {
                 if (e.pressed && !Prefs(this).rewind) showHud(com.pokedaisy.app.companion.i18n.tr("Rewind is off - turn it on in SETTINGS"))
                 else if (e.pressed) showHud(com.pokedaisy.app.companion.i18n.tr("Rewinding"))
                 engine.setRewindHeld(e.pressed)

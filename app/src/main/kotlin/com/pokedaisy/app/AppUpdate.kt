@@ -183,12 +183,18 @@ class AppUpdateFlow(private val activity: ComponentActivity) {
         // Straight to Android's installer: the library's VIEW filter (any type, see the
         // manifest) otherwise put PokeDaisy itself next to it in an "Open with" prompt.
         // The system's installer first: other apps can claim APKs too (on the Thor, another
-        // emulator front-end's own VIEW filter answered before it).
+        // emulator front-end's own VIEW filter answered before it; ArmadaOS ships its store and
+        // launcher as system apps, so "a system app" alone isn't enough - GitHub #345).
         @Suppress("DEPRECATION")
         val candidates = activity.packageManager.queryIntentActivities(intent, 0)
             .filter { it.activityInfo.packageName != activity.packageName }
-        (candidates.firstOrNull { it.activityInfo.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0 }
-            ?: candidates.firstOrNull { "packageinstaller" in it.activityInfo.packageName }
+        val system = { c: android.content.pm.ResolveInfo ->
+            c.activityInfo.applicationInfo.flags and android.content.pm.ApplicationInfo.FLAG_SYSTEM != 0
+        }
+        val installer = { c: android.content.pm.ResolveInfo -> "packageinstaller" in c.activityInfo.packageName }
+        (candidates.firstOrNull { system(it) && installer(it) }
+            ?: candidates.firstOrNull(installer)
+            ?: candidates.firstOrNull(system)
             ?: candidates.firstOrNull())
             ?.let { intent.setClassName(it.activityInfo.packageName, it.activityInfo.name) }
         runCatching { activity.startActivity(intent) }

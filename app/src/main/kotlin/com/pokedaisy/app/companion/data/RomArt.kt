@@ -27,7 +27,7 @@ object RomArt {
     const val DIR = "rom-art"
 
     /** Bump when [OUTPUTS] grows, so ROMs scanned before get scanned again. */
-    private const val SCAN_VERSION = 25
+    private const val SCAN_VERSION = 26
 
     /** Bumped whenever new art lands on disk, so loaders can retry. */
     val updates: StateFlow<Int> get() = _updates
@@ -150,7 +150,7 @@ object RomArt {
             listOf(SWSH_BACKDROP) + (slots + "empty").map { "$SWSH_PARTY_DIR/slot_$it.png" } +
             listOf(LETS_GO_BACKDROP, "$LETS_GO_PARTY_DIR/status_icons.png") + (slots + "empty").map { "$LETS_GO_PARTY_DIR/slot_$it.png" } +
             listOf("kanto", "sevii123", "sevii45", "sevii67", "hoenn", "seaglass", "lazarus", "soulgold", "glazed", "imperium", "hns", "recharged_emerald", "rowe_hoenn", "rowe_kanto", "rowe_sevii",
-                "mariomon", "quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67", "dreamstone", "wishes", "monomyth",
+                "mariomon", "quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67", "quetzal_johto", "dreamstone", "wishes", "monomyth",
                 "tr3_kanto", "tr3_sevii123", "tr3_sevii45", "tr3_sevii67", "tr3_johto", "tr3_hoenn", "tr3_sinnoh").map { "regionmap/$it.png" } +
             PLAYER_ICONS.map { "regionmap/${it.first}.png" } +
             listOf(BAG_STARS_SOULGOLD, HOLD_ICONS) +
@@ -460,6 +460,8 @@ object RomArt {
             "quetzal_sevii123" to Triple(RomBlob.QTZ_SEVII123_GFX, RomBlob.QTZ_REGION_PAL, RomBlob.QTZ_SEVII123_MAP),
             "quetzal_sevii45" to Triple(RomBlob.QTZ_SEVII45_GFX, RomBlob.QTZ_REGION_PAL, RomBlob.QTZ_SEVII45_MAP),
             "quetzal_sevii67" to Triple(RomBlob.QTZ_SEVII67_GFX, RomBlob.QTZ_REGION_PAL, RomBlob.QTZ_SEVII67_MAP),
+            // Its Johto, on Emerald's palette (its Hoenn is Emerald's map, byte for byte: "emerald" below).
+            "quetzal_johto" to Triple(RomBlob.QTZ_JOHTO_GFX, RomBlob.EM_REGION_PAL, RomBlob.QTZ_JOHTO_MAP),
             // Team Rocket Edition 2026's Kanto, Hoenn and Sinnoh (smol, Wishes' kind of screen).
             "tr3_kanto" to Triple(RomBlob.TR3_KANTO_GFX, RomBlob.TR3_KANTO_PAL, RomBlob.TR3_KANTO_MAP),
             "tr3_hoenn" to Triple(RomBlob.TR3_HOENN_GFX, RomBlob.TR3_HOENN_PAL, RomBlob.TR3_HOENN_MAP),

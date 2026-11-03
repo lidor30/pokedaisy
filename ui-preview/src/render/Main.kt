@@ -1553,6 +1553,15 @@ fun main(args: Array<String>) {
         *(if (game == GameKind.FIRERED) arrayOf(
             Shot("$g-map-region", bw, bh, bd, companion("MAP")) { onNodeWithText("SEVII", substring = true).performClick() },
         ) else emptyArray()),
+        // Quetzal's Hoenn and Johto, after its Kanto and Sevii maps on the region button (-Prom=<Alpha 9 ROM> for the art).
+        *(if (game == GameKind.QUETZAL) arrayOf(
+            Shot("$g-map-hoenn", bw, bh, bd, companion("MAP")) {
+                for (next in listOf("SEVII 1-3", "SEVII 4-5", "SEVII 6-7", "HOENN")) { onNodeWithText(next).performClick(); waitForIdle() }
+            },
+            Shot("$g-map-johto", bw, bh, bd, companion("MAP")) {
+                for (next in listOf("SEVII 1-3", "SEVII 4-5", "SEVII 6-7", "HOENN", "JOHTO")) { onNodeWithText(next).performClick(); waitForIdle() }
+            },
+        ) else emptyArray()),
         // R.O.W.E.'s three maps (its region button reads MAP 2 / MAP 3): the buttons' bottom-left row on each.
         *(if (game == GameKind.ROWE) arrayOf(
             Shot("$g-map-region", bw, bh, bd, companion("MAP")) { onNodeWithText("MAP ", substring = true).performClick() },
@@ -1763,7 +1772,7 @@ fun main(args: Array<String>) {
         },
         Shot("$g-settings-ffspeed", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("FF SPEED").performClick() },
         // SOUND: GAME VOLUME's slider (70%), then moved to 35% through its semantics (what a drag or LEFT / RIGHT call).
-        Shot("$g-settings-sound", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("MUTE GAME").performScrollTo() },
+        Shot("$g-settings-sound", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("AUDIO EFFECTS").performScrollTo() },
         Shot("$g-settings-volume", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText("MUTE GAME").performScrollTo()
             onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
@@ -2705,7 +2714,7 @@ fun main(args: Array<String>) {
         },
         // The list's end: LIBRARY / ONLINE (RetroAchievements' BETA tag) / APP.
         Shot("settings-home-bottom", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("RUN SETUP").performScrollTo() },
-        Shot("settings-sound", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("MUTE GAME").performScrollTo() },
+        Shot("settings-sound", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("AUDIO EFFECTS").performScrollTo() },
         Shot("settings-buttons", tw, th * 2, td, activity { SettingsActivity() }) { onNodeWithText("GAME BUTTONS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
         // A GBA button waiting for its button, in place.
         Shot("settings-buttons-capture", tw, th * 2, td, activity { SettingsActivity() }) {

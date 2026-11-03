@@ -1,8 +1,9 @@
 package com.pokedaisy.app.companion.data
 
 /**
- * PC anywhere (GitHub #85): the game's own PC (Bill's / Someone's: WITHDRAW, DEPOSIT, MOVE POKéMON, MOVE ITEMS) from
- * the BAG tab, the way a PC's script opens it - a five-command script run through the game's own script engine:
+ * PC anywhere (GitHub #85): the game's own PC from the BAG tab. On the retail games its whole menu ([PcMenuScript]: the
+ * storage, the player's own PC with its items, and the rest); elsewhere Bill's / Someone's alone (WITHDRAW, DEPOSIT, MOVE
+ * POKéMON, MOVE ITEMS), the way a PC's script opens it - a five-command script run through the game's own script engine:
  * `lockall; special ShowPokemonStorageSystemPC; waitstate; releaseall; end`. The special hands the script context
  * back once the player leaves the PC, so the field comes back as a real PC leaves it. FieldItems.kt's idea: the
  * game's code, called between frames, only where it's found where these tables say.
@@ -41,12 +42,31 @@ fun pcCodeMatches(pc: PcFns, read: (addr: Long, len: Int) -> ByteArray): Boolean
     return entry == pc.pcFn && listOf(crc(pc.setupScript), crc(pc.pcFn)) == pc.codeCrcs
 }
 
+/** The retail games' code and RAM: a hack may use the EWRAM the menu's copy goes in. */
+private val pcMenuRamFree: Boolean get() =
+    (activeGame == GameKind.FIRERED || activeGame == GameKind.EMERALD) && runningFireRedHack == null &&
+        runningEmeraldHack == null && !emeraldLegacy
+
+/** The menu's script if it can go in now: empty RAM, or its own copy from the last time. */
+private fun pcMenuScript(pc: PcFns, g: GameCalls): ByteArray? {
+    if (!pcMenuRamFree) return null
+    val menu = PcMenuScript.forGame(pc, g::read) ?: return null
+    val there = g.read(PcMenuScript.RAM, menu.size)
+    return menu.takeIf { there.contentEquals(menu) || there.all { it.toInt() == 0 } }
+}
+
 /** Opens the PC now, on the player's free field; NOT_NOW in a menu, a battle or a script. Emu thread. */
 fun openPc(fns: FieldItemFns, busy: Boolean, g: GameCalls): ItemUseResult {
     val pc = fns.pc ?: return ItemUseResult.FAILED
     return runCatching {
         if (!fieldItemCodeMatches(fns, g::read) || !pcCodeMatches(pc, g::read)) return ItemUseResult.FAILED
         if (busy || g.call(fns.fieldControlsLocked) != 0L) return ItemUseResult.NOT_NOW
+        // The game's whole PC menu (PcMenuScript), where its RAM is known to be free; else the storage alone.
+        pcMenuScript(pc, g)?.let { menu ->
+            if (!g.write(PcMenuScript.RAM, menu)) return ItemUseResult.FAILED
+            g.call(pc.setupScript, PcMenuScript.RAM.toInt())
+            return ItemUseResult.USED
+        }
         // lockall; special N; waitstate; releaseall; end (Gen 3's script opcodes, the same in both engines).
         val script = byteArrayOf(0x69, 0x25, pc.special.toByte(), (pc.special shr 8).toByte(), 0x27, 0x6B, 0x02)
         if (!g.write(pc.script, script)) return ItemUseResult.FAILED

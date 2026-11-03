@@ -1372,8 +1372,11 @@ static void drawGhosts(const struct Snap* s, int cx, int cy, int x0, int y0, int
         if (gx + g->w <= x0 || gx >= x1 || gy + g->h <= y0 || gy >= y1) continue;
         const uint8_t* px4 = mem(g->pixels, (uint32_t) (g->w * g->h / 2));
         uint32_t pal[16];
-        // Only an NPC's own palette: the lights and the like (expansion's 0x8001) are the game's to show, as it does.
-        if (!px4 || !romPalette(g->palTag) || !ghostPalette(g->palTag, alpha, pal)) continue;
+        // Only an NPC's own palette: the lights and the like are the game's to show, as it does. Expansion's lamp lights
+        // (0x8001 / 0x8002) can be in the ROM's table all the same: Lazarus's glowed past the screen's edges by day, cut off
+        // at the frame and gone inside it (GitHub #208).
+        if (!px4 || g->palTag == 0x8001 || g->palTag == 0x8002 || !romPalette(g->palTag) ||
+            !ghostPalette(g->palTag, alpha, pal)) continue;
         for (int yy = 0; yy < g->h; yy++) {
             int Y = gy + yy, J = Y - y0;
             if (Y < y0 || Y >= y1) continue;
@@ -1618,7 +1621,10 @@ static bool battleEdgeBroken(int side) {
 /** Whether BG1 / BG2 ([n - 1]) can be mirrored in past each edge ([side]: 0 left, 1 right) this frame: it isn't a
  * window against that edge. A window or banner the game put there (the level-up stats and banner, GitHub #245) has
  * tiles in the screen's last tile column, the map empty past them on every line; scenery goes on in VRAM on some line
- * above the text box (retail's intro grass, an animation's backdrop), or stops short of the edge (the intro's rocks). */
+ * above the text box (retail's intro grass, an animation's backdrop), or stops short of the edge (the intro's rocks).
+ * The banner's rows don't count as going on: sliding in or out it has tiles past the edge for a moment, and read as
+ * scenery the strip was mirrored in for those frames, a piece of the platform flashing at the side (GitHub #258). */
+#define BATTLE_BANNER_ROWS 32   // Unbound's banner when a Pokémon on the bench levels up, across the top
 static bool battleBgScenery[2][2];
 
 static void findBattleBgScenery(void) {
@@ -1630,7 +1636,7 @@ static void findBattleBgScenery(void) {
             for (int side = 0; side < 2; side++) {
                 if (goesOn[n - 1][side] || !bgTileFilled(n, side ? PK_WIDE_W - 1 : 0, y)) continue;
                 touches[n - 1][side] = true;
-                goesOn[n - 1][side] = bgTileFilled(n, side ? PK_WIDE_W : -1, y);
+                goesOn[n - 1][side] = y >= BATTLE_BANNER_ROWS && bgTileFilled(n, side ? PK_WIDE_W : -1, y);
             }
         }
     }

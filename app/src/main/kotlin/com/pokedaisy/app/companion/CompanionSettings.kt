@@ -302,6 +302,9 @@ interface CompanionSettings {
     /** SOUND > MUTE GAME (also the MUTE hotkey) - see [Prefs.gameMuted]. */
     val gameMuted: Boolean get() = false
     fun setGameMuted(on: Boolean) {}
+    /** SOUND > AUDIO EFFECTS: the device's audio effects on the game's sound, from its next start - see [Prefs.audioEffects]. */
+    val audioEffects: Boolean get() = false
+    fun setAudioEffects(on: Boolean) {}
 
     /** FPS / CPU over the game's corner - see [Prefs.showPerformance]. */
     val showPerformance: Boolean get() = false

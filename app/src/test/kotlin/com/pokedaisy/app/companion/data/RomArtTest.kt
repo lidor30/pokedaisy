@@ -114,6 +114,12 @@ class RomArtTest {
             listOf("eee6e9af", "307eba25", "f356dacb", "508b250a"),
             listOf("kanto", "sevii123", "sevii45", "sevii67").map { pixels(images.getValue("regionmap/quetzal_$it.png")) },
         )
+        // Its Johto is its own, on Emerald's palette; its Hoenn is Emerald's map (the same bytes, so the same image).
+        assertEquals("e649e781", pixels(images.getValue("regionmap/quetzal_johto.png")))
+        // extractTo keeps only what OUTPUTS lists: built but not listed, a player never gets it.
+        assertTrue("regionmap/quetzal_johto.png" in RomArt.OUTPUTS)
+        assertEquals(pixels(composed(RomFileReader.EMERALD_PATH).getValue("regionmap/${regionMapImagesEmerald[0]}.png")),
+                     pixels(images.getValue("regionmap/${regionMapImagesEmerald[0]}.png")))
     }
 
     /** Heart and Soul's Johto + Kanto Pokegear map (smol, HNS_REGION_*), on Emerald's palette. */

@@ -283,7 +283,7 @@ QUETZAL_ROM = os.path.expanduser("~/Downloads/Game ROMs & Emulation/gba/Pokemon 
 
 
 def quetzal_symbols(rom):
-    return {"RegionPal": (0x121EA1C, 0x40),
+    return {"RegionPal": (0x121EA1C, 0x40), "JohtoGfx": (0x121DC04, 0), "JohtoMap": (0x121E6A0, 0),
             "KantoGfx": (0x121EA5C, 0), "Sevii123Gfx": (0x121F84C, 0), "Sevii45Gfx": (0x1220428, 0), "Sevii67Gfx": (0x1220F38, 0),
             "KantoMap": (0x121F51C, 0), "Sevii123Map": (0x12201EC, 0), "Sevii45Map": (0x1220D14, 0), "Sevii67Map": (0x1221920, 0)}
 
@@ -602,6 +602,8 @@ GAMES = {
         ("QTZ_SEVII45_MAP", "Sevii45Map", True),
         ("QTZ_SEVII67_GFX", "Sevii67Gfx", True),
         ("QTZ_SEVII67_MAP", "Sevii67Map", True),
+        ("QTZ_JOHTO_GFX", "JohtoGfx", True),
+        ("QTZ_JOHTO_MAP", "JohtoMap", True),
     ]),
     "GZ": (GLAZED_ROM, None, [
         ("GZ_REGION_GFX", "RegionGfx", True),

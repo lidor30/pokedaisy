@@ -341,6 +341,11 @@ class Prefs(context: Context) {
         get() = p.getBoolean("game_muted", false)
         set(v) = p.edit().putBoolean("game_muted", v).apply()
 
+    /** SETTINGS > SOUND > AUDIO EFFECTS ([AudioEffects]): the game's sound through the device's audio effects, off by default. */
+    var audioEffects: Boolean
+        get() = p.getBoolean("audio_effects", false)
+        set(v) = p.edit().putBoolean("audio_effects", v).apply()
+
     /** Whether the emulator hotkeys ([com.pokedaisy.app.Hotkeys]) fire at all; off, every key goes to the game. */
     var hotkeysEnabled: Boolean
         get() = p.getBoolean("hotkeys_enabled", true)

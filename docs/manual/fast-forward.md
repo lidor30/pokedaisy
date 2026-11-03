@@ -3,7 +3,7 @@ title: Fast-forward and game speed
 summary: Speed through the slow parts, set a pace that sticks for each game, slow things down, and keep the music sounding right while you do.
 section: player
 order: 1
-keywords: [ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, volume, mute, quiet, silent, clock, rtc, time, day, night, storage, space]
+keywords: [ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, volume, mute, quiet, silent, equalizer, eq, jamesdsp, clock, rtc, time, day, night, storage, space]
 ---
 
 Pokémon games have a lot of walking, text and grinding. Fast-forward runs the game several times faster so you get through it quicker, and PokeDaisy tries to get out of your way when speed would be a problem: in menus, on the map, and with the music.
@@ -93,6 +93,7 @@ The `SOUND` group, right under `FF / SPEED` in the companion's `SETTINGS` (and i
 
 - **`GAME VOLUME`** is a slider from `100%` (the default) down to `0%`: drag it, tap along it, or press left and right on the D-pad while the row is picked. `100%` is the game as loud as your device's own volume plays it; anything lower is quieter than that, and the device's volume buttons still work on top. It covers everything the game sounds like: its music and sounds, `FF MUSIC`'s songs and the click of the companion's buttons.
 - **`MUTE GAME`** turns the game's sound off completely. Your `GAME VOLUME` is kept, so turning it back on brings the same level back.
+- **`AUDIO EFFECTS`** lets equalizer apps like JamesDSP change the game's sound. It's off by default because the game's sound normally takes a faster way out that skips them. Turned on, the sound can lag a little behind the picture, so leave it off unless you use one of these apps. It starts working the next time you start a game.
 
 To mute and unmute without opening `SETTINGS`, give the `MUTE` hotkey a button under `HOTKEYS` (see [Controls](controls.md#hotkeys)). A short message on the game says which way it went.
 
@@ -106,4 +107,4 @@ A save copied off a real cartridge can carry that cartridge's clock with it, and
 
 ## Rewind
 
-Missed a jump or walked into the wrong trainer? With `REWIND` on, holding the `REWIND HOLD` hotkey plays the last 20 seconds or so backwards. It's off by default and never touches your save file. See [Saves](saves.md) for how it works.
+Missed a jump or walked into the wrong trainer? With `REWIND` on, holding the `REWIND HOLD` hotkey plays the last 20 seconds or so backwards. It's off by default and never touches your save file. It works in Game Boy, Game Boy Color and Game Boy Advance games, not DS games. See [Saves](saves.md) for how it works.

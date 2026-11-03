@@ -89,7 +89,7 @@ class QuetzalV084DecodeTest {
         quetzalNames = QuetzalNames()
         quetzalV084 = false
         assertEquals(80, lookupMove(163).power)
-        assertEquals(activeRegionMapImages.toList(), listOf("quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67"))
+        assertEquals(activeRegionMapImages.toList(), listOf("quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67", "hoenn", "quetzal_johto"))
         quetzalV084 = true
         assertEquals(listOf("hoenn"), activeRegionMapImages.toList())
     }
