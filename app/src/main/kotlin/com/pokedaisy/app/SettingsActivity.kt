@@ -754,6 +754,13 @@ class SettingsActivity : ComponentActivity() {
                 GameVolume.load(prefs)
                 revision++
             },
+            // Equalizer apps and the like on the game's sound (AudioEffects): the game's tracks take it at their next start.
+            SettingRow(tk("AUDIO EFFECTS"), onOff(prefs.audioEffects),
+                       labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.AUDIO_EFFECTS),
+                       subtitle = "For equalizer apps, on the next start") {
+                prefs.audioEffects = !prefs.audioEffects
+                revision++
+            },
             groupTitle(tk("SCREEN")),
             // The game at 3:2, stretched to fill the screen, or WIDE (more of the map, BETA); picked by preview.
             SettingRow(tk("ASPECT"), aspectLabel(prefs.gameAspect),

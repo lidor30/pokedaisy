@@ -540,6 +540,10 @@ private fun homeRows(
         },
         SettingRow(tk("MUTE GAME"), onOff(s.gameMuted),
             labelBadge = NewFeatures.badge(NewFeatures.GAME_VOLUME)) { s.setGameMuted(!s.gameMuted); changed() },
+        // Equalizer apps and the like on the game's sound (AudioEffects): the game's tracks take it at their next start.
+        SettingRow(tk("AUDIO EFFECTS"), onOff(s.audioEffects),
+            labelBadge = NewFeatures.badge(NewFeatures.AUDIO_EFFECTS),
+            subtitle = "For equalizer apps, on the next start") { s.setAudioEffects(!s.audioEffects); changed() },
         groupTitle(tk("GAMEPLAY")),
         // The game's own switch for random encounters (WildEncounters.kt): ON (the game's rate) or OFF.
         SettingRow(tk("WILD ENCOUNTERS"), if (s.wildEncountersSupported) wildEncountersLabel(s.wildEncounters) else tk("N/A"),

@@ -1145,6 +1145,7 @@ render core headless with `native-capture/mgba_dump`'s `call` / `park` / `bgm` /
 SETTINGS title also shows the device battery (`BatteryIndicator`, fed by the activity through
 `DeviceBattery`).
 
+**AUDIO EFFECTS** (SOUND on both screens, `Prefs.audioEffects` OFF, NEW tag; GitHub #336): low-latency tracks skip the device's audio effects, so JamesDSP never touched the game (and since 1.4.0 not STEADY's clips either). On, `AudioEffectsTrack` builds the game's and the clips' tracks as media with no low latency, on one shared session announced by Android's open / close broadcasts; from the next game start (a track keeps what it was built with). The Thor's own system-wide equalizer applies then too. Not yet tried on a device.
 **STATUS BAR** (SETTINGS on either screen, `Prefs.statusBar`, off by default, live-toggled): a
 white title-window strip on top of the game, exactly as wide as it (`GameStatusBar`, laid out by
 `GameStageLayout`, which shrinks the game to 3:2 under it and moves the HUD down) - the ROM's

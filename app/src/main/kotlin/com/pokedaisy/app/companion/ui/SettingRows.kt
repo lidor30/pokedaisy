@@ -160,6 +160,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "CLICK SOUND" to "sound effects button click audio",
     "GAME VOLUME" to "volume sound audio loudness quieter louder level percent music sfx",
     "MUTE GAME" to "mute unmute silent silence quiet sound off audio volume hotkey",
+    "AUDIO EFFECTS" to "equalizer equaliser eq jamesdsp james dsp viper sound audio bass speaker enhancer",
     "TWEAKS" to "animations bounce blink cursor jump to battle effects motion",
     "SCENE SPEEDS" to "battle speed text speed instant text fast text menu speed overworld speed faster battles quality of life qol bike speed surf speed faster bike faster surfing",
     "AUTO-RUN" to "auto run autorun running shoes run sprint dash always run hold b",

@@ -80,6 +80,8 @@ internal val trSettings: Map<String, Tr> = mapOf(
     // In-game switches you flip while playing: encounters, running, cheats.
     "SOUND" to Tr(ja = "サウンド", fr = "SON", de = "TON", it = "AUDIO", es = "SONIDO", br = "SOM", pt = "SOM"),
     "GAME VOLUME" to Tr(ja = "ゲームの おんりょう", fr = "VOLUME DU JEU", de = "SPIEL-LAUTSTÄRKE", it = "VOLUME GIOCO", es = "VOLUMEN DEL JUEGO", br = "VOLUME DO JOGO", pt = "VOLUME DO JOGO"),
+    "AUDIO EFFECTS" to Tr(ja = "オーディオ こうか", fr = "EFFETS AUDIO", de = "AUDIOEFFEKTE", it = "EFFETTI AUDIO", es = "EFECTOS DE AUDIO", br = "EFEITOS DE ÁUDIO", pt = "EFEITOS DE ÁUDIO"),
+    "For equalizer apps, on the next start" to Tr(ja = "イコライザーよう つぎの きどうから", fr = "Pour égaliseurs, au prochain lancement", de = "Für Equalizer, ab dem nächsten Start", it = "Per equalizzatori, dal prossimo avvio", es = "Para ecualizadores, al próximo inicio", br = "Para equalizadores, no próximo início", pt = "Para equalizadores, no próximo arranque"),
     "MUTE GAME" to Tr(ja = "ゲームを ミュート", fr = "COUPER LE SON", de = "SPIEL STUMM", it = "AUDIO MUTO", es = "SILENCIAR JUEGO", br = "SILENCIAR JOGO", pt = "SILENCIAR JOGO"),
     "MUTE" to Tr(ja = "ミュート", fr = "MUET", de = "STUMM", it = "MUTO", es = "SILENCIAR", br = "SILENCIAR", pt = "SILENCIAR"),
     "GAMEPLAY" to Tr(ja = "プレイ", fr = "GAMEPLAY", de = "GAMEPLAY", it = "GAMEPLAY", es = "JUGABILIDAD", br = "JOGABILIDADE", pt = "JOGABILIDADE"),

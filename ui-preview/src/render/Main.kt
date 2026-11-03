@@ -1763,7 +1763,7 @@ fun main(args: Array<String>) {
         },
         Shot("$g-settings-ffspeed", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("FF SPEED").performClick() },
         // SOUND: GAME VOLUME's slider (70%), then moved to 35% through its semantics (what a drag or LEFT / RIGHT call).
-        Shot("$g-settings-sound", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("MUTE GAME").performScrollTo() },
+        Shot("$g-settings-sound", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("AUDIO EFFECTS").performScrollTo() },
         Shot("$g-settings-volume", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText("MUTE GAME").performScrollTo()
             onNode(SemanticsMatcher.keyIsDefined(SemanticsProperties.ProgressBarRangeInfo))
@@ -2705,7 +2705,7 @@ fun main(args: Array<String>) {
         },
         // The list's end: LIBRARY / ONLINE (RetroAchievements' BETA tag) / APP.
         Shot("settings-home-bottom", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("RUN SETUP").performScrollTo() },
-        Shot("settings-sound", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("MUTE GAME").performScrollTo() },
+        Shot("settings-sound", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("AUDIO EFFECTS").performScrollTo() },
         Shot("settings-buttons", tw, th * 2, td, activity { SettingsActivity() }) { onNodeWithText("GAME BUTTONS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick) },
         // A GBA button waiting for its button, in place.
         Shot("settings-buttons-capture", tw, th * 2, td, activity { SettingsActivity() }) {

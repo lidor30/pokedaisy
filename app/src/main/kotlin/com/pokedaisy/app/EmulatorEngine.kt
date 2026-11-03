@@ -3,7 +3,6 @@ package com.pokedaisy.app
 import com.pokedaisy.app.companion.data.SnapshotCache
 import com.pokedaisy.app.companion.i18n.tr
 import android.graphics.Bitmap
-import android.media.AudioAttributes
 import android.media.AudioFormat
 import android.media.AudioTrack
 import android.util.Log
@@ -1942,12 +1941,7 @@ class EmulatorEngine(
             AudioFormat.ENCODING_PCM_16BIT,
         ).coerceAtLeast(4096)
         return AudioTrack.Builder()
-            .setAudioAttributes(
-                AudioAttributes.Builder()
-                    .setUsage(AudioAttributes.USAGE_GAME)
-                    .setContentType(AudioAttributes.CONTENT_TYPE_MUSIC)
-                    .build(),
-            )
+            .setAudioAttributes(AudioEffectsTrack.attributes())
             .setAudioFormat(
                 AudioFormat.Builder()
                     .setSampleRate(sampleRate)
@@ -1958,7 +1952,7 @@ class EmulatorEngine(
             // Room for the vsync pacing's rate control to keep it half full: at least ~85 ms.
             .setBufferSizeInBytes(maxOf(minBuf * 2, 4096 * 4))
             .setTransferMode(AudioTrack.MODE_STREAM)
-            .setPerformanceMode(AudioTrack.PERFORMANCE_MODE_LOW_LATENCY)
+            .let(AudioEffectsTrack::mode)
             .build()
             .also { t ->
                 // A low-latency track can start with less of its buffer in use than was asked for: vsync pacing

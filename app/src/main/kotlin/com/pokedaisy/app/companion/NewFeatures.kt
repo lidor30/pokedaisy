@@ -106,6 +106,9 @@ object NewFeatures {
     /** SETTINGS > SOUND: GAME VOLUME, MUTE GAME and HOTKEYS > MUTE (GameVolume). */
     const val GAME_VOLUME = "game_volume"
 
+    /** SETTINGS > SOUND > AUDIO EFFECTS: the device's audio effects on the game's sound (AudioEffects). */
+    const val AUDIO_EFFECTS = "audio_effects"
+
     /** Settings > LIBRARY > PATCH A ROM and the library's + menu: a .bps patch applied to a ROM the library has (RomPatchFlow). */
     const val ROM_PATCH = "rom_patch"
     /** Settings > TOOLS > LINK PLAY (and a GBA game's library menu): two to four GBA games on one link cable (LinkActivity). */
@@ -136,6 +139,7 @@ object NewFeatures {
         COMPANION_TAB, REUSABLE_TMS, SHINY_ODDS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
         GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE,
+        AUDIO_EFFECTS,
     )
 
     private const val DAYS = 7

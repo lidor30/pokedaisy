@@ -38,6 +38,7 @@ The `SPEED OPTIONS` page:
 | --- | --- | --- | --- |
 | `GAME VOLUME` | a slider, **`100%`** down to `0%` | How loud the game is. `100%` is your device's own volume; the rest are quieter than that. Drag it, tap along it, or use left and right on the D-pad. Covers the game's music and sounds, `FF MUSIC` and the companion's click. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
 | `MUTE GAME` | `ON`, **`OFF`** | No game sound at all, keeping your `GAME VOLUME` for when you turn it back on. The `MUTE` hotkey flips it too. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
+| `AUDIO EFFECTS` | `ON`, **`OFF`** | Lets equalizer apps like JamesDSP change the game's sound, with a little delay. Works from the next game start. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
 
 ### Screen
 
@@ -153,6 +154,7 @@ The `SPEED OPTIONS` page:
 | --- | --- | --- | --- |
 | `GAME VOLUME` | as on the top screen | How loud the game is, from your device's volume (`100%`) down. You hear it change right away. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
 | `MUTE GAME` | as on the top screen | The game's sound off, or back on. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
+| `AUDIO EFFECTS` | as on the top screen | Equalizer apps on the game's sound, from the next game start. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
 
 ### Makeover
 
