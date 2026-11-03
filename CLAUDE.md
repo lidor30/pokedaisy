@@ -463,9 +463,15 @@ on the bus); their wording / text colours / glyph clipping are `TrainerCardArt.W
 The tab shows the card cropped to itself (no BG2 backdrop) at the largest whole scale (5x on the
 Thor); a tap flips it (squash, like the game), and the time colon blinks via an infinite transition
 (a`delay`loop never lets Compose tests go idle, which hung ui-preview once).
-**BOXES tab** (`BoxesScreen.kt`, under MORE, NEW tag; retail English FireRed, LeafGreen and Emerald, Unbound, SoulGold so far): the
-PC's boxes read live (`readPcBoxes`: gPokemonStoragePtr, set by the Poller on retail FireRed / LeafGreen / Emerald as
-`pokemonStoragePtr` = saveBlock2Ptr + 4, in the TOML for the hacks; a box record's level from the ROM's growth rate and its stats
+**BOXES tab** (`BoxesScreen.kt`, under MORE, NEW tag; retail FireRed / LeafGreen / Emerald / Ruby / Sapphire in every language,
+the in-place hacks of retail (Kaizo, Glazed, Orange Islands, Ultra Violet, Rocket Edition, Ash Gray, Ghost Grey), the CFRU hacks
+(Unbound, Radical Red, Amethyst, Sword and Shield, GS Chronicles: CFRU's 25 boxes, each with its own gBattleMoves / gExperienceTables -
+CFRU's EXP rows are 256 long and medium slow is a point under vanilla's; Odyssey / Gaia: vanilla's 14 boxes in plaintext,
+`PLAIN_PC_STORAGE`), SoulGold; each checked by a `<hack>_boxes` fixture of the game's own SendMonToPC): the
+PC's boxes read live (`readPcBoxes`: gPokemonStoragePtr, set by the Poller on retail English FireRed / Emerald as
+`pokemonStoragePtr` = saveBlock2Ptr + 4 - their configs are the hacks' bases - and in the TOML for the rest, the language ports'
+mapped by port_retail.py and checked by verify_ports.py's BOXES column; Ruby / Sapphire's gPokemonStorage is static,
+`STATIC_PC_STORAGE`; the Poller drops it on a non-retail hash under a port's code); a box record's level from the ROM's growth rate and its stats
 from the ROM's base stats, `decodeBoxMon` / `gen3Stats` / `PokedexSource.growthRate`). How a game keeps them is its `pcStorage`
 (`PcStorageLayout`): vanilla's encrypted 80-byte records; SoulGold's 15 boxes of 76-byte plaintext ones behind saveBlock2Ptr + 8;
 CFRU's 25 boxes of 58-byte compressed ones (no PP: worked out from the ROM's gBattleMoves) at fixed addresses, boxes 20-25 elsewhere in
@@ -478,7 +484,10 @@ Emerald's own set for the games that run as EMERALD - several frames and every h
 them is the same in both).
 Panel and box fill the tab (its peach backdrop is the screen's, CompanionScreen's `PcBackdrop`, like the bag's); icons at
 whole scales, allowed past their cells like the game's. A new game needs only its storage read. **The PC's moves** (`BoxSwap.kt`,
-FireRed rev 1, LeafGreen rev 0 / 1 and Emerald: `boxSwapFor`, only with vanilla boxes at the table's own storage pointer - the CFRU hacks
+FireRed rev 1, LeafGreen rev 0 / 1 and Emerald; the German / French / Italian / Spanish ones and English FireRed rev 0 from
+`BOX_SWAP_PORTS`, mapped by port_field_items.py under the bag tables' keys - Japanese has none - and so Ultra Violet / Rocket Edition /
+Ash Gray / Ghost Grey, which run rev 0's bag table; each checked by `scripts/verify_box_swap.py`, the game's functions called headless,
+not yet an in-game save and reboot: `boxSwapFor`, only with vanilla boxes at the table's own storage pointer - the CFRU hacks
 share FireRed rev 0's bag tables, and BoxMonToMon on a compressed record would wreck it), each in the running game the PC's own way, on
 the bag's field gate: a box Pokémon's summary has WITHDRAW (`withdrawFromBox`: BoxMonToMon into gPlayerParty[count], the slot zeroed,
 count + 1), which with six in the party opens SWAP's pick instead (`swapWithBox`: BoxMonToMon out, the party one's 80 bytes in +

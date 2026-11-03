@@ -581,13 +581,15 @@ private const val PC_STORAGE_MONS_OFF = 4
 
 /**
  * How a game keeps its PC boxes ([readPcBoxes]): vanilla's struct PokemonStorage behind [NativeConfig.pokemonStoragePtr]
- * with [boxes] boxes of [recordSize]-byte records in [format], or CFRU's 25 boxes in its own places ([cfru]).
+ * with [boxes] boxes of [recordSize]-byte records in [format], or CFRU's 25 boxes in its own places ([cfru]). [direct]:
+ * the struct sits at [NativeConfig.pokemonStoragePtr] itself (Ruby / Sapphire's gPokemonStorage, no pointer).
  */
 data class PcStorageLayout(
     val boxes: Int = PC_BOXES,
     val recordSize: Int = BOX_MON_SIZE,
     val format: BoxRecordFormat = BoxRecordFormat.ENCRYPTED,
     val cfru: CfruStorage? = null,
+    val direct: Boolean = false,
 ) {
     /** The struct's bytes: current box, the records, the names, the wallpapers (CFRU's stays vanilla's size). */
     val size: Int get() = if (cfru != null) CFRU_STORAGE_SIZE else PC_STORAGE_MONS_OFF + boxes * PC_BOX_SLOTS * recordSize + boxes * (PC_BOX_NAME_LEN + 1)
@@ -599,9 +601,11 @@ data class PcStorageLayout(
  * [extraBoxes] (one address per box); boxes 1-14's names and wallpapers are vanilla's, boxes 15-25's names count back
  * from box 1's (9 bytes each) and their wallpapers follow box 19's last record. The game's code hardcodes it all, so
  * the storage pointer must lead to [storage]. A record keeps no PP: they're worked out from the moves' base PP in the
- * ROM's gBattleMoves ([movesTable], 12-byte records, PP at +4), as the game does (CalculatePPWithBonus).
+ * ROM's gBattleMoves ([movesTable], 12-byte records, PP at +4), as the game does (CalculatePPWithBonus). The level comes
+ * from CFRU's own gExperienceTables ([expTables]: 6 rows of 256 levels; its medium slow is a point under vanilla's at a
+ * few levels - 134 for Lv5, not 135).
  */
-data class CfruStorage(val storage: Long, val extraBoxes: List<Long>, val movesTable: Long)
+data class CfruStorage(val storage: Long, val extraBoxes: List<Long>, val movesTable: Long, val expTables: Long)
 
 const val CFRU_PC_BOXES = 25
 private const val CFRU_BOXES_IN_PLACE = 19
@@ -617,16 +621,47 @@ val VANILLA_PC_STORAGE = PcStorageLayout()
  * user's save, `soulgold_party`: 31 boxed Pokémon, each one's stats worked out the game's way equal to a party copy's). */
 val SOULGOLD_PC_STORAGE = PcStorageLayout(boxes = 15, recordSize = 0x4C, format = BoxRecordFormat.PLAIN)
 
-/** Unbound (CFRU's own addresses): checked headless - the game's SendMonToPC put a party Pokémon at box 1's, 20's, 23's
- * and 25's place with the current box set before each, record for record equal to it. */
-val UNBOUND_PC_STORAGE = PcStorageLayout(
+/** Ruby / Sapphire: vanilla's boxes in gPokemonStorage itself (their save blocks never move: 0x020300A0 in English). */
+val STATIC_PC_STORAGE = PcStorageLayout(direct = true)
+
+/** Odyssey, Gaia: vanilla's 14 boxes of 80 bytes, plaintext like their party (the party struct's first 80 bytes, byte for
+ * byte: the game's SendMonToPC headless, a party Pokémon sent into boxes 1 and 14, `odyssey_boxes` / `gaia_boxes`). */
+val PLAIN_PC_STORAGE = PcStorageLayout(format = BoxRecordFormat.PLAIN)
+
+/** CFRU's 25 boxes at its own addresses, a hack's gBattleMoves ([movesTable]) giving the PP and its gExperienceTables
+ * ([expTables]) the level. */
+private fun cfruPcStorage(movesTable: Long, expTables: Long) = PcStorageLayout(
     boxes = CFRU_PC_BOXES, recordSize = CFRU_RECORD, format = BoxRecordFormat.CFRU,
     cfru = CfruStorage(
         storage = 0x02029314L,
         extraBoxes = listOf(0x0203CB44L, 0x0203CB44L + 30 * 58, 0x0203CB44L + 60 * 58, 0x02027434L, 0x02027434L + 30 * 58, 0x02024638L),
-        movesTable = 0x08A769AFL,
+        movesTable = movesTable, expTables = expTables,
     ),
 )
+
+/** Unbound (CFRU's own addresses): checked headless - the game's SendMonToPC put a party Pokémon at box 1's, 20's, 23's
+ * and 25's place with the current box set before each, record for record equal to it. */
+val UNBOUND_PC_STORAGE = cfruPcStorage(0x08A769AFL, 0x08A79560L)
+
+// The other CFRU hacks keep Unbound's places (each checked the same way: `<hack>_boxes`); their gBattleMoves is the word
+// in the literal pools where Unbound's code loads its own (122+ places each, every move's PP retail's), their
+// gExperienceTables the word where FireRed rev 0's code loads its own (all 18).
+val RADICAL_RED_PC_STORAGE = cfruPcStorage(0x091521D0L, 0x0915514CL)
+val AMETHYST_PC_STORAGE = cfruPcStorage(0x089B6358L, 0x089C419CL)
+val AMETHYST_V141_PC_STORAGE = cfruPcStorage(0x089FFCA8L, 0x08A0DAECL)
+val SWORD_SHIELD_PC_STORAGE = cfruPcStorage(0x094BFA7CL, 0x094C24E8L)
+val GS_CHRONICLES_PC_STORAGE = cfruPcStorage(0x09D10BE3L, 0x09D13854L)
+
+// CFRU's gExperienceTables as read from the ROM (levels 0..100 of each row), by address.
+private val cfruExpTableCache = HashMap<Long, Array<IntArray>>()
+
+private fun cfruExpTables(c: MemoryReader, at: Long): Array<IntArray>? = synchronized(cfruExpTableCache) {
+    cfruExpTableCache[at] ?: runCatching {
+        Array(6) { r -> c.readCoreMemory(at + r * 256L * 4, 101 * 4).let { b -> IntArray(101) { u32le(b, 4 * it).toInt() } } }
+            // A real table climbs from 0: anything else (no ROM on the bus) falls back to vanilla's.
+            .takeIf { t -> t.all { it[0] == 0 && it[2] > 0 && it[100] > it[50] } }
+    }.getOrNull()?.also { cfruExpTableCache[at] = it }
+}
 
 // The last storage read and what it decoded to: the boxes only change while the player is at a PC, so a sample whose
 // bytes are the same hands back the same object (the BOXES tab then has nothing to redraw).
@@ -651,7 +686,7 @@ internal fun readPcBoxes(c: MemoryReader, cfg: NativeConfig): PcBoxes? = runCatc
     val layout = cfg.pcStorage
     val cfru = layout.cfru
     val rec = layout.recordSize
-    val at = u32le(c.readCoreMemory(cfg.pokemonStoragePtr, 4), 0)
+    val at = if (layout.direct) cfg.pokemonStoragePtr else u32le(c.readCoreMemory(cfg.pokemonStoragePtr, 4), 0)
     if (at !in 0x02000000L until 0x04000000L - layout.size) return null
     if (cfru != null && at != cfru.storage) return null
     // The struct, then (CFRU) its boxes kept elsewhere, one after another.
@@ -665,6 +700,7 @@ internal fun readPcBoxes(c: MemoryReader, cfg: NativeConfig): PcBoxes? = runCatc
     val dex = cfg.pokedex
     val base = { species: Int -> dex?.let { PokedexSource.baseStats(it, species) } }
     val growth = { species: Int -> dex?.let { PokedexSource.growthRate(it, species) } }
+    val expTables = cfru?.let { cfruExpTables(c, it.expTables) } ?: gen3ExperienceTables
     val pp = HashMap<Int, Int?>()
     val movePp = { move: Int ->
         pp.getOrPut(move) {
@@ -692,7 +728,7 @@ internal fun readPcBoxes(c: MemoryReader, cfg: NativeConfig): PcBoxes? = runCatc
             wallpaper = raw[wallpaper(b)].toInt() and 0xFF,
             mons = List(PC_BOX_SLOTS) { s ->
                 val o = slot(b, s)
-                decodeBoxMon(raw, o, cfg.monLayout, base, layout.format, growth, movePp)
+                decodeBoxMon(raw, o, cfg.monLayout, base, layout.format, growth, movePp, expTables)
                     ?.masked(cfg)?.withNativeGender(raw, o, cfg.partyMonLayout, cfg.eggSpecies)
             },
         )

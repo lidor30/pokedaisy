@@ -12,6 +12,8 @@
 # region map is its own Orange Archipelago on FireRed's region_map.c (RomRegionMap).
 [config.orange_islands]
 base = 'firered_rev0'
+# BOXES: retail rev 0's (gPokemonStoragePtr = gSaveBlock2Ptr + 4; the `orange_islands` capture's boxes read, checksums good).
+pokemonStoragePtr = 0x03005010
 # FireRed's battle menu cursors (retail rev 0's EWRAM), checked headless like Unbound's: RIGHT / DOWN walk
 # 0 -> 1 -> 3, a written 2 + A opens the party menu, a written move 1 + A spends its PP.
 actionCursor = { from = 'firered_rev1' }

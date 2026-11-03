@@ -401,12 +401,10 @@ class TelemetrySampler {
                 cfg == null -> unsupportedRom(reader, code, size, null, "${gameLabel(code)} revision $rev isn't supported yet")
                 else -> {
                     // The shiny marks, shiny icons and SHINY ODDS: only on a ROM whose hash is retail's (ShinyOdds.RETAIL_SHA1S).
-                    // English LeafGreen's BOXES too: FireRed's gPokemonStoragePtr (gSaveBlock2Ptr + 4), checked on both revisions'
-                    // captures (every box record's checksum held) - not the language ports', which weren't.
+                    // BOXES too: the configs' storage was checked on retail captures only (every box record's checksum held).
                     val hash = runCatching { romHash(reader, size) }.getOrNull()
                     val retail = hash in ShinyOdds.RETAIL_SHA1S
-                    nativeCfg = withCheckedTables(reader, cfg).let { if (retail) it.copy(shinyBelow = 8) else it }
-                        .let { if (retail && code == "BPGE") it.copy(pokemonStoragePtr = cfg.saveBlock2Ptr + 4) else it }
+                    nativeCfg = withCheckedTables(reader, cfg).let { if (retail) it.copy(shinyBelow = 8) else it.copy(pokemonStoragePtr = 0) }
                     ramVerified = true
                 }
             }

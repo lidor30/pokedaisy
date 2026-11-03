@@ -70,7 +70,8 @@ ENGLISH = {
 # ROM by their bytes / literal pools. Ruby rev 1: pokeruby builds it byte for byte.
 ANCHORS = {
     "FR": ("BPRE1", dict(species=0x08245F50, moves=0x08247104, items=0x083DB098, natures=0x08463EC0,
-                         mapnames=0x083F1D1C, small_widths=0x081EEF70, script=0x08069AF8, party_menu=0x0203B0A0)),
+                         mapnames=0x083F1D1C, small_widths=0x081EEF70, script=0x08069AF8, party_menu=0x0203B0A0,
+                         storage=0x03005010)),
     "RS": ("AXVE1", dict(species=0x081F7184, moves=0x081F8338, items=0x083C5580, natures=0x083C1020,
                          mapsecs=0x083E73E0, script=0x080655D8)),
 }
@@ -701,6 +702,11 @@ def toml_config(p):
         out.append("itemDescs = 'none'")
     if p["anchors"].get("party_menu", [None])[0]:
         out.append(f"partyMenu = 0x{p['anchors']['party_menu'][0]:08X}")
+    # BOXES: gPokemonStoragePtr (FireRed's family: no English config holds it - the hacks share those) or the English
+    # config's own, mapped (LeafGreen's, Ruby / Sapphire's gPokemonStorage); 0 where neither mapped, never English's.
+    if "pokemonStoragePtr" not in p["fields"]:
+        storage = p["anchors"].get("storage", [None])[0]
+        out.append(f"pokemonStoragePtr = 0x{storage or 0:08X}")
     dex = [f"{k.split('.')[1]} = 0x{v:08X}" for k, (v, m) in sorted(p["tables"].items()) if k.startswith(p["dex"] + ".") and v]
     if p["dex_layout"]:
         st, cl, ho, do = p["dex_layout"]

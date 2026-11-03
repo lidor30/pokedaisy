@@ -327,6 +327,7 @@ enum class BoxRecordFormat {
 fun decodeBoxMon(
     raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PARTY_MON, baseStats: (Int) -> IntArray? = { null },
     format: BoxRecordFormat = BoxRecordFormat.ENCRYPTED, growthRate: (Int) -> Int? = { null }, movePp: (Int) -> Int? = { null },
+    expTables: Array<IntArray> = gen3ExperienceTables,
 ): Mon? {
     val dec = when (format) {
         BoxRecordFormat.ENCRYPTED -> if (raw.size < off + BOX_MON_SIZE) null else decryptGen3Substructs(raw, off)
@@ -335,8 +336,8 @@ fun decodeBoxMon(
     } ?: return null
     if (dec.species == 0) return null
     val egg = (dec.ivWord shr 30) and 1L == 1L
-    val rate = growthRate(dec.species)?.takeIf { it in gen3ExperienceTables.indices } ?: gen3GrowthRates.getOrNull(dec.species)?.toInt()
-    val level = boxMonLevel(rate, dec.exp)
+    val rate = growthRate(dec.species)?.takeIf { it in expTables.indices } ?: gen3GrowthRates.getOrNull(dec.species)?.toInt()
+    val level = boxMonLevel(expTables, rate, dec.exp)
     val ivs = List(6) { ((dec.ivWord shr (5 * it)) and 0x1F).toInt() }
     val nature = (u32(raw, off) % 25).toInt()
     val stats = if (egg) null else baseStats(dec.species)?.takeIf { it.size >= 6 }?.let { gen3Stats(dec.species, it, ivs, dec.evs, nature, level) }
@@ -359,9 +360,9 @@ fun decodeBoxMon(
     )
 }
 
-/** The level [exp] makes on growth rate [rate] (gExperienceTables), at least 1; 1 when the rate isn't known. */
-private fun boxMonLevel(rate: Int?, exp: Long): Int {
-    val table = rate?.let { gen3ExperienceTables.getOrNull(it) } ?: return 1
+/** The level [exp] makes on growth rate [rate] ([tables]: gExperienceTables), at least 1; 1 when the rate isn't known. */
+private fun boxMonLevel(tables: Array<IntArray>, rate: Int?, exp: Long): Int {
+    val table = rate?.let { tables.getOrNull(it) } ?: return 1
     var level = 1
     while (level < 100 && exp >= table[level + 1]) level++
     return level

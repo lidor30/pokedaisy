@@ -17,6 +17,32 @@ class BoxSwapTest {
         assertSame(BOX_SWAP_EMERALD, boxSwapFor(FIELD_ITEMS_EMERALD, retail(NATIVE_EMERALD_RETAIL)))
     }
 
+    /** The other languages (and English FireRed rev 0): each port's own table, under its bag table's key, with its config's
+     * storage; Japanese has none (its code was rebuilt). Emerald's languages run their hand-written configs. */
+    @Test fun eachPortGetsItsOwnTable() {
+        val emerald = mapOf("BPED0" to NATIVE_EMERALD_DE, "BPEF0" to NATIVE_EMERALD_FR, "BPEI0" to NATIVE_EMERALD_IT, "BPES0" to NATIVE_EMERALD_ES)
+        assertEquals(13, BOX_SWAP_PORTS.size)
+        for ((key, fns) in BOX_SWAP_PORTS) {
+            val cfg = emerald[key] ?: RETAIL_PORTS[key]?.invoke() ?: retail(NATIVE_FIRERED_REV0)
+            assertSame(key, fns, boxSwapFor(FIELD_ITEMS_PORTS[key], cfg))
+        }
+        for (key in listOf("BPRJ0", "BPRJ1", "BPGJ0", "BPGJ1", "BPEJ0")) assertNull(key, BOX_SWAP_PORTS[key])
+        // A port's table never goes with another storage (a ROM under that code whose hash isn't retail's: the Poller zeroes it).
+        assertNull(boxSwapFor(FIELD_ITEMS_PORTS["BPRD0"], RETAIL_PORTS.getValue("BPRD0")().copy(pokemonStoragePtr = 0)))
+    }
+
+    /** The hacks: rev 0's moves where they run rev 0's bag table on vanilla boxes (the in-place edits, checked headless with
+     * scripts/verify_box_swap.py), none on CFRU's compressed boxes or Odyssey / Gaia's plaintext ones. */
+    @Test fun hacksOnRetailCode() {
+        val rev0 = FIELD_ITEMS_PORTS["BPRE0"]
+        for (cfg in listOf(NATIVE_ULTRA_VIOLET, NATIVE_ROCKET_EDITION, NATIVE_ASH_GRAY, NATIVE_GHOST_GREY)) {
+            assertSame(BOX_SWAP_PORTS["BPRE0"], boxSwapFor(rev0, cfg))
+        }
+        for (cfg in listOf(NATIVE_RADICAL_RED_V4_1, NATIVE_AMETHYST, NATIVE_GS_CHRONICLES, NATIVE_SWORD_SHIELD, NATIVE_ODYSSEY, NATIVE_GAIA_V3_2)) {
+            assertNull(boxSwapFor(rev0, cfg))
+        }
+    }
+
     /** No BOXES read (a hack or port copying the config) or other boxes (CFRU's compressed ones): no SWAP. */
     @Test fun nothingWithoutVanillaBoxes() {
         assertNull(boxSwapFor(FIELD_ITEMS_FIRERED_REV1, NATIVE_FIRERED_REV1))

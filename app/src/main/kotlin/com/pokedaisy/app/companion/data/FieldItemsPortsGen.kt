@@ -215,7 +215,7 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             codeCrcs = listOf(0x07BEBC3AL, 0x516FF14BL, 0x5B69DD06L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x39034401L),
         ),
     ),
-    // Pokemon - Edicion Esmeralda.gba (SHA1 fe1558a3...), from BPEE0; masked: repel.
+    // Pokemon - Edicion Esmeralda (Spain).gba (SHA1 fe1558a3...), from BPEE0; masked: repel.
     "BPES0" to FieldItemFns(
         varGet = 0x0809D6A8L, varSet = 0x0809D6C4L, checkBagHasItem = 0x080D637CL, removeBagItem = 0x080D66FCL,
         fieldControlsLocked = 0x08098E80L, repelVar = 0x4021, items = 0x0858639CL,
@@ -236,7 +236,7 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             healWarp = FLY_EMERALD.healWarp!!.copy(toHealLocation = 0x08084CE0L, toMapWarp = 0x08084C3CL, returnToField = 0x080B69F0L, saveBlock2Ptr = 0x03005D90L),
         ),
     ),
-    // Pokemon - Edicion Rojo Fuego.gba (SHA1 ab8f6bfe...), from BPRE1; masked: repel.
+    // Pokemon - Edicion Rojo Fuego (Spain).gba (SHA1 ab8f6bfe...), from BPRE1; masked: repel.
     "BPRS0" to FieldItemFns(
         varGet = 0x0806E5A0L, varSet = 0x0806E5BCL, checkBagHasItem = 0x0809A0F8L, removeBagItem = 0x0809A390L,
         fieldControlsLocked = 0x08069A1CL, repelVar = 0x4020, items = 0x083D4F50L,
@@ -844,5 +844,74 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x58D1994BL, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x8FCA39CBL, 0x2F1D18CAL, 0x0E2A645CL),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x0805388CL, toMapWarp = 0x080537E4L, returnToField = 0x080869B0L, saveBlock2Ptr = 0x02024EA4L),
         ),
+    ),
+)
+
+/** The BOXES tab's moves (BoxSwap.kt) for the same games, by the same keys (scripts/verify_box_swap.py checks them). */
+val BOX_SWAP_PORTS: Map<String, BoxSwapFns> = mapOf(
+    // Pokemon - Blattgruene Edition (Germany).gba.
+    "BPGD0" to BoxSwapFns(
+        boxMonToMon = 0x0803E674L, boxMonRestorePP = 0x080441E4L, getBoxMonData = 0x0803FC44L, storagePtr = 0x03004F60L,
+        codeCrcs = listOf(0xAFE33744L, 0x05F9FBC2L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Edicion Esmeralda (Spain).gba.
+    "BPES0" to BoxSwapFns(
+        boxMonToMon = 0x08069004L, boxMonRestorePP = 0x0806E930L, getBoxMonData = 0x0806A674L, storagePtr = 0x03005D94L,
+        codeCrcs = listOf(0xCE7B814BL, 0x04CE5AB8L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Edicion Rojo Fuego (Spain).gba.
+    "BPRS0" to BoxSwapFns(
+        boxMonToMon = 0x0803E660L, boxMonRestorePP = 0x080441D0L, getBoxMonData = 0x0803FC30L, storagePtr = 0x03004F60L,
+        codeCrcs = listOf(0x2E285EE0L, 0x05F9FBC2L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Edicion Verde Hoja (Spain).gba.
+    "BPGS0" to BoxSwapFns(
+        boxMonToMon = 0x0803E660L, boxMonRestorePP = 0x080441D0L, getBoxMonData = 0x0803FC30L, storagePtr = 0x03004F60L,
+        codeCrcs = listOf(0xE659418BL, 0x05F9FBC2L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Feuerrote Edition (Germany).gba.
+    "BPRD0" to BoxSwapFns(
+        boxMonToMon = 0x0803E674L, boxMonRestorePP = 0x080441E4L, getBoxMonData = 0x0803FC44L, storagePtr = 0x03004F60L,
+        codeCrcs = listOf(0x57F19FDFL, 0x05F9FBC2L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - FireRed Version (USA, Europe).gba.
+    "BPRE0" to BoxSwapFns(
+        boxMonToMon = 0x0803E774L, boxMonRestorePP = 0x080442E4L, getBoxMonData = 0x0803FD44L, storagePtr = 0x03005010L,
+        codeCrcs = listOf(0x7416AE8FL, 0x05F9FBC2L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Smaragd-Edition (Germany).gba.
+    "BPED0" to BoxSwapFns(
+        boxMonToMon = 0x08069008L, boxMonRestorePP = 0x0806E934L, getBoxMonData = 0x0806A678L, storagePtr = 0x03005D94L,
+        codeCrcs = listOf(0x1E21B301L, 0x04CE5AB8L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Version Emeraude (France).gba.
+    "BPEF0" to BoxSwapFns(
+        boxMonToMon = 0x08069004L, boxMonRestorePP = 0x0806E930L, getBoxMonData = 0x0806A674L, storagePtr = 0x03005D94L,
+        codeCrcs = listOf(0x9E6DF03EL, 0x04CE5AB8L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Version Rouge Feu (France).gba.
+    "BPRF0" to BoxSwapFns(
+        boxMonToMon = 0x0803E64CL, boxMonRestorePP = 0x080441BCL, getBoxMonData = 0x0803FC1CL, storagePtr = 0x03004F60L,
+        codeCrcs = listOf(0x264A4209L, 0x05F9FBC2L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Version Vert Feuille (France).gba.
+    "BPGF0" to BoxSwapFns(
+        boxMonToMon = 0x0803E64CL, boxMonRestorePP = 0x080441BCL, getBoxMonData = 0x0803FC1CL, storagePtr = 0x03004F60L,
+        codeCrcs = listOf(0xC56F0A15L, 0x05F9FBC2L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Versione Rosso Fuoco (Italy).gba.
+    "BPRI0" to BoxSwapFns(
+        boxMonToMon = 0x0803E660L, boxMonRestorePP = 0x080441D0L, getBoxMonData = 0x0803FC30L, storagePtr = 0x03004F60L,
+        codeCrcs = listOf(0x3F7133D1L, 0x05F9FBC2L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Versione Smeraldo (Italy).gba.
+    "BPEI0" to BoxSwapFns(
+        boxMonToMon = 0x08069008L, boxMonRestorePP = 0x0806E934L, getBoxMonData = 0x0806A678L, storagePtr = 0x03005D94L,
+        codeCrcs = listOf(0x6A5B27E0L, 0x04CE5AB8L, 0xF3E3F4DDL),
+    ),
+    // Pokemon - Versione Verde Foglia (Italy).gba.
+    "BPGI0" to BoxSwapFns(
+        boxMonToMon = 0x0803E660L, boxMonRestorePP = 0x080441D0L, getBoxMonData = 0x0803FC30L, storagePtr = 0x03004F60L,
+        codeCrcs = listOf(0xDF5240B2L, 0x05F9FBC2L, 0xF3E3F4DDL),
     ),
 )

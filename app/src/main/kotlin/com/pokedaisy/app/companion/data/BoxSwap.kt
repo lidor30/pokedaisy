@@ -66,9 +66,16 @@ fun boxSwapFor(fields: FieldItemFns?, cfg: NativeConfig?): BoxSwapFns? {
         fields === FIELD_ITEMS_LEAFGREEN_REV1 -> BOX_SWAP_LEAFGREEN_REV1
         fields === FIELD_ITEMS_LEAFGREEN_REV0 -> BOX_SWAP_LEAFGREEN_REV0
         fields === FIELD_ITEMS_EMERALD -> BOX_SWAP_EMERALD
-        else -> null
+        // The other languages and English FireRed rev 0: the table under the bag table's own key (port_field_items.py).
+        else -> boxSwapPortKeys[fields]?.let { BOX_SWAP_PORTS[it] }
     }
     return fns?.takeIf { cfg.pokemonStoragePtr == it.storagePtr }
+}
+
+/** FIELD_ITEMS_PORTS' keys by table, by identity (the hacks on FireRed rev 0's code share BPRE0's bag table object, but
+ * their boxes aren't vanilla's at its pointer, which [boxSwapFor] checks). */
+private val boxSwapPortKeys: Map<FieldItemFns, String> by lazy {
+    java.util.IdentityHashMap<FieldItemFns, String>().apply { FIELD_ITEMS_PORTS.forEach { (k, v) -> put(v, k) } }
 }
 
 /** What a SWAP, DEPOSIT or WITHDRAW did. */

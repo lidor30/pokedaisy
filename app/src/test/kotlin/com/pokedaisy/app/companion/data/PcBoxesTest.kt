@@ -150,6 +150,89 @@ class PcBoxesTest {
         assertEquals(0, readPcBoxes(FixtureMemoryReader.load("unbound"), cfg)!!.boxes.sumOf { b -> b.mons.count { it != null } })
     }
 
+    /** Retail's boxes in the other languages and in the hacks edited into retail in place: their configs' storage, every
+     * record's checksum good (decodeBoxMon drops the rest), as many as the capture holds. */
+    @Test fun readsRetailCodeBoxes() {
+        val cases = listOf(
+            Triple("emerald_de", NATIVE_EMERALD_DE, 16), Triple("emerald_es", NATIVE_EMERALD_ES, 16),
+            Triple("emerald_fr", NATIVE_EMERALD_FR, 16), Triple("emerald_it", NATIVE_EMERALD_IT, 16),
+            Triple("emerald_ja", NATIVE_EMERALD_JA, 16), Triple("emerald_ja_own", NATIVE_EMERALD_JA, 76),
+            Triple("emerald_kaizo", NATIVE_EMERALD_KAIZO, 16), Triple("glazed", NATIVE_GLAZED, 0),
+            Triple("ruby_rev1", NATIVE_RUBY, 3), Triple("ruby_rev2", NATIVE_RUBY, 3),
+            Triple("sapphire_rev1", NATIVE_SAPPHIRE, 84), Triple("sapphire_rev2", NATIVE_SAPPHIRE, 84),
+            Triple("orange_islands", NATIVE_ORANGE_ISLANDS, 1), Triple("ultra_violet", NATIVE_ULTRA_VIOLET, 0),
+            Triple("rocket_edition", NATIVE_ROCKET_EDITION, 59), Triple("ash_gray", NATIVE_ASH_GRAY, 59),
+            Triple("ghost_grey", NATIVE_GHOST_GREY, 40), Triple("ghost_grey_v101", NATIVE_GHOST_GREY_V1_0_1, 40),
+        )
+        for ((fixture, cfg, count) in cases) {
+            activeGame = if (fixture.startsWith("emerald") || fixture.startsWith("glazed") || fixture.startsWith("ruby") ||
+                fixture.startsWith("sapphire")) GameKind.EMERALD else GameKind.FIRERED
+            val boxes = readPcBoxes(FixtureMemoryReader.load(fixture), cfg)
+            assertNotNull(fixture, boxes)
+            assertEquals(fixture, PC_BOXES, boxes!!.boxes.size)
+            assertEquals(fixture, count, boxes.boxes.sumOf { b -> b.mons.count { it != null } })
+            // Every box named (the player's own names in emerald_ja_own's).
+            assertTrue(fixture, boxes.boxes.all { it.name.isNotBlank() })
+        }
+    }
+
+    /** The other CFRU hacks: Unbound's 25 boxes at Unbound's places (the game's SendMonToPC put the lead into boxes 1, 20,
+     * 23 and 25), each copy the lead itself; with the ROM, its level and PP the party's (the hack's own gBattleMoves). */
+    @Test fun readsCfruHackBoxes() {
+        for ((fixture, cfg, romName) in listOf(
+            Triple("radical_red_boxes", NATIVE_RADICAL_RED_V4_1, "Pokemon Radical Red (v4.1).gba"),
+            Triple("amethyst_boxes", NATIVE_AMETHYST, "Pokemon Amethyst (v1.3.0).gba"),
+            Triple("amethyst_v141_boxes", NATIVE_AMETHYST_V1_4_1, "Pokemon Amethyst (v1.4.1).gba"),
+            Triple("gs_chronicles_boxes", NATIVE_GS_CHRONICLES, "Pokemon GS Chronicles (v2.7.6).gba"),
+            Triple("sword_shield_up_boxes", NATIVE_SWORD_SHIELD, "Pokemon Sword and Shield Ultimate Plus (v1.2.1.2).gba"),
+        )) {
+            activeGame = GameKind.FIRERED
+            val dump = FixtureMemoryReader.load(fixture)
+            val rom = RomFileReader.load(RETAIL_ROM_DIR + romName)
+            val ram = rom?.withRam(dump) ?: dump
+            rom?.let { PokedexSource.reader = it }
+            val lead = decodePartyMon(ram.readCoreMemory(cfg.playerParty, MON_STRUCT_SIZE), 0, cfg.partyMonLayout)!!
+            val boxes = readPcBoxes(ram, cfg)!!
+            assertEquals(fixture, CFRU_PC_BOXES, boxes.boxes.size)
+            assertEquals(fixture, listOf(0, 19, 22, 24), boxes.boxes.indices.filter { boxes.boxes[it].mons.any { m -> m != null } })
+            for (b in listOf(0, 19, 22, 24)) {
+                val m = boxes.boxes[b].mons[0]!!
+                assertEquals(fixture, lead.species, m.species)
+                assertEquals(fixture, lead.personality, m.personality)
+                assertEquals(fixture, lead.moves.toList(), m.moves.toList())
+                if (rom != null) {
+                    assertEquals(fixture, lead.level, m.level)
+                    // Full PP from the hack's gBattleMoves: no less than what the lead has left.
+                    m.pp.zip(lead.pp).forEachIndexed { i, (full, left) -> if (m.moves[i] != 0) assertTrue("$fixture move $i: $full < $left", full >= left && full > 0) }
+                }
+            }
+            PokedexSource.reader = InProcessReader
+        }
+    }
+
+    /** Odyssey and Gaia: vanilla's 14 boxes, plaintext - the game's SendMonToPC put the lead into boxes 1 and 14, the
+     * party struct's first 80 bytes as they are. */
+    @Test fun readsPlainBoxes() {
+        activeGame = GameKind.FIRERED
+        for ((fixture, cfg) in listOf("odyssey_boxes" to NATIVE_ODYSSEY, "gaia_boxes" to NATIVE_GAIA_V3_2)) {
+            val ram = FixtureMemoryReader.load(fixture)
+            val lead = decodePartyMon(ram.readCoreMemory(cfg.playerParty, MON_STRUCT_SIZE), 0, cfg.partyMonLayout)!!
+            val boxes = readPcBoxes(ram, cfg)!!
+            assertEquals(fixture, PC_BOXES, boxes.boxes.size)
+            assertEquals(fixture, listOf(0, 13), boxes.boxes.indices.filter { boxes.boxes[it].mons.any { m -> m != null } })
+            for (b in listOf(0, 13)) {
+                val m = boxes.boxes[b].mons[0]!!
+                assertEquals(fixture, lead.species, m.species)
+                assertEquals(fixture, lead.personality, m.personality)
+                assertEquals(fixture, lead.moves.toList(), m.moves.toList())
+                assertEquals(fixture, lead.pp.toList(), m.pp.toList())
+            }
+            // Their saves as they were: nothing boxed.
+            val before = FixtureMemoryReader.load(fixture.removeSuffix("_boxes"))
+            assertEquals(fixture, 0, readPcBoxes(before, cfg)!!.boxes.sumOf { b -> b.mons.count { it != null } })
+        }
+    }
+
     /** Unbound's boxed GIBLE against itself in the party: its level (its growth rate from the ROM), stats and PP (the
      * moves' base PP from the ROM's gBattleMoves). */
     @Test fun unboundBoxMonMatchesTheParty() {

@@ -140,7 +140,8 @@ def main():
         with open(os.path.join(work, "run.sh"), "w") as f:
             f.write("\n".join(sh) + "\n")
         subprocess.run(["docker", "image", "inspect", IMAGE], check=True, capture_output=True)
-        subprocess.run(["docker", "run", "--rm", "-v", f"{CAPTURE}:/build", "-v", f"{work}:/work", "-w", "/build", IMAGE, "-c",
+        # Built from the repo root: mgba_dump compiles in the app's own C files (pk_wide.c, pk_cheats.c, ...).
+        subprocess.run(["docker", "run", "--rm", "-v", f"{ROOT}:/repo", "-v", f"{work}:/work", "-w", "/repo/native-capture", IMAGE, "-c",
                         "gcc -O2 -Wall -o /work/mgba_dump mgba_dump.c -I/usr/include -L/usr/lib/aarch64-linux-gnu -lmgba -lm "
                         "&& bash /work/run.sh"], check=True)
         shutil.rmtree(roms, ignore_errors=True)
