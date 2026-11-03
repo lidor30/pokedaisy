@@ -382,13 +382,16 @@ class RelayCoopTransportTest {
         val frame = ByteArray(16) { 2 }
         val end = System.currentTimeMillis() + 10_000
         var sent = 0
-        while (sent < 1_300 && a.transport.channelHashFor(b.id) != null) {
+        // Until b closes the link: a fixed count could stop with frames still in the relay, and polling b afterwards
+        // freed room for them, so on a slow runner b never overflowed.
+        while (a.transport.channelHashFor(b.id) != null) {
             if (a.transport.send(b.id, frame)) sent++ else Thread.sleep(1)
             if (System.currentTimeMillis() > end) fail("flood stalled at $sent")
         }
-        // b never polled while the flood ran: its queue held 1,024 frames, the next one closed the peer
-        b.disconnected(a.id, code = CoopFrames.OVERFLOW)
+        // b never polled while the flood ran: its queue held 1,024 frames, the next one closed the peer. a's side first:
+        // waiting on b polls it, which must come only after the overflow.
         a.disconnected(b.id, code = CoopFrames.OVERFLOW)
+        b.disconnected(a.id, code = CoopFrames.OVERFLOW)
         assertTrue("frames: ${b.seen.count { it is CoopEvent.Frame }}", b.seen.count { it is CoopEvent.Frame } <= 1_024)
         assertTrue(sent > 1_024)
     }
