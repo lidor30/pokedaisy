@@ -4321,7 +4321,10 @@ class PokeDaisyActivity : Activity() {
             Hotkeys.Action.FF_TOGGLE -> if (e.pressed) engine.toggleFastForward()
             Hotkeys.Action.SPEED_CYCLE -> if (e.pressed) engine.cycleSpeed()
             Hotkeys.Action.SLOWMO_HOLD -> engine.setSlowmoHeld(e.pressed)
-            Hotkeys.Action.REWIND_HOLD -> if (!romIsNds) {
+            Hotkeys.Action.REWIND_HOLD -> if (romIsNds) {
+                // The rewind ring is mGBA's: the hotkey would do nothing at all and look broken.
+                if (e.pressed) showHud(com.pokedaisy.app.companion.i18n.tr("Rewind doesn't work in DS games"))
+            } else {
                 if (e.pressed && !Prefs(this).rewind) showHud(com.pokedaisy.app.companion.i18n.tr("Rewind is off - turn it on in SETTINGS"))
                 else if (e.pressed) showHud(com.pokedaisy.app.companion.i18n.tr("Rewinding"))
                 engine.setRewindHeld(e.pressed)
