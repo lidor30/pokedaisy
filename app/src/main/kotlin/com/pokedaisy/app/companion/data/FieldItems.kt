@@ -104,7 +104,7 @@ data class PartyItemFns(
     /** ExecuteTableBasedItemEffect(mon, item, partyIndex, moveIndex): FALSE = it did something. */
     val itemEffect: Long,
     val addBagItem: Long,
-    /** gPlayerParty (struct Pokemon, 100 bytes each) and gPlayerPartyCount (a byte). */
+    /** gPlayerParty and gPlayerPartyCount (a byte). */
     val party: Long,
     val partyCount: Long,
     /** Two bytes of RAM the game never uses, for SetMonData's argument (restored after). */
@@ -118,6 +118,8 @@ data class PartyItemFns(
     val medicine: Set<Int> = MEDICINE_ITEMS,
     val ppOneMove: Set<Int> = PP_ONE_MOVE_ITEMS,
     val ppAllMoves: Set<Int> = PP_ALL_MOVES_ITEMS,
+    /** sizeof(struct Pokemon): 100, SoulGold's 96 (NativeConfig.monStride). */
+    val monStride: Int = 100,
     val mail: Set<Int> = MAIL_ITEMS,
     val hpUp: Int = 63,
     val shedinja: Int = 303,
@@ -359,7 +361,7 @@ val FIELD_ITEMS_SOULGOLD = FieldItemFns(
     repelItems = SOULGOLD_REPEL_ITEMS, repelLureBit = 0x8000, itemParamOffset = 9, lastRepelVar = 0x40BD,
     party = PartyItemFns(
         getMonData = 0x081ED710L, setMonData = 0x081EDD68L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
-        party = 0x0203901CL, partyCount = 0x02038DD5L, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        party = 0x0203901CL, partyCount = 0x02038DD5L, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(), monStride = 96,
         codeCrcs = listOf(0xDA6FC37DL, 0x7D68264BL),
     ),
     bagActions = false,
@@ -384,7 +386,7 @@ val FIELD_ITEMS_SOULGOLD_V1_2 = FieldItemFns(
     repelItems = SOULGOLD_REPEL_ITEMS, repelLureBit = 0x8000, itemParamOffset = 9, lastRepelVar = 0x40BD,
     party = PartyItemFns(
         getMonData = 0x081EE340L, setMonData = 0x081EE998L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
-        party = 0x02039024L, partyCount = 0x02038DDDL, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        party = 0x02039024L, partyCount = 0x02038DDDL, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(), monStride = 96,
         codeCrcs = listOf(0x9A0CA5AEL, 0x7D68264BL),
     ),
     bagActions = false,
@@ -409,7 +411,7 @@ val FIELD_ITEMS_SOULGOLD_V1_2B = FieldItemFns(
     repelItems = SOULGOLD_REPEL_ITEMS, repelLureBit = 0x8000, itemParamOffset = 9, lastRepelVar = 0x40BD,
     party = PartyItemFns(
         getMonData = 0x081EE2D4L, setMonData = 0x081EE92CL, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
-        party = 0x02039024L, partyCount = 0x02038DDDL, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        party = 0x02039024L, partyCount = 0x02038DDDL, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(), monStride = 96,
         codeCrcs = listOf(0x9A0CA5AEL, 0x7D68264BL),
     ),
     bagActions = false,
@@ -434,7 +436,7 @@ val FIELD_ITEMS_SOULGOLD_V1_2C = FieldItemFns(
     repelItems = SOULGOLD_REPEL_ITEMS, repelLureBit = 0x8000, itemParamOffset = 9, lastRepelVar = 0x40BD,
     party = PartyItemFns(
         getMonData = 0x081EE3A0L, setMonData = 0x081EE9F8L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
-        party = 0x02039024L, partyCount = 0x02038DDDL, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        party = 0x02039024L, partyCount = 0x02038DDDL, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(), monStride = 96,
         codeCrcs = listOf(0x9A0CA5AEL, 0x7D68264BL),
     ),
     bagActions = false,
@@ -463,7 +465,7 @@ val FIELD_ITEMS_SOULGOLD_V1_2_1 = FieldItemFns(
     repelItems = SOULGOLD_REPEL_ITEMS, repelLureBit = 0x8000, itemParamOffset = 9, lastRepelVar = 0x40BD,
     party = PartyItemFns(
         getMonData = 0x081F1748L, setMonData = 0x081F1D28L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
-        party = 0x02038E68L, partyCount = 0x02038C1DL, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        party = 0x02038E68L, partyCount = 0x02038C1DL, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(), monStride = 96,
         codeCrcs = listOf(0x99E9AFF8L, 0x2E734A9CL),
     ),
     bagActions = false,
@@ -665,7 +667,6 @@ data class PartyTarget(
 /** The party pick: [result] USED = pick from [targets]; otherwise why not (NOT_NOW, NONE_LEFT, FAILED). */
 data class PartyTargets(val result: ItemUseResult, val targets: List<PartyTarget> = emptyList())
 
-private const val MON_SIZE = 100
 private const val MON_DATA_PERSONALITY = 0
 private const val MON_DATA_SPECIES = 11
 private const val MON_DATA_HELD_ITEM = 12
@@ -697,7 +698,7 @@ private fun partyGate(fns: FieldItemFns, itemId: Int, allowed: Boolean, busy: Bo
     else -> null
 }
 
-private fun PartyItemFns.mon(slot: Int) = (party + slot * MON_SIZE).toInt()
+private fun PartyItemFns.mon(slot: Int) = (party + slot * monStride).toInt()
 
 /** GetMonData, failing loudly: a call that never returned would read as a 0 field otherwise. */
 private fun PartyItemFns.get(g: GameCalls, slot: Int, field: Int): Long =
@@ -709,7 +710,7 @@ private fun PartyItemFns.helps(g: GameCalls, itemId: Int, slot: Int, move: Int):
     itemNoEffect?.let { return g.call(it, mon(slot), itemId, slot, move) == 0L }
     // The effect itself, undone: the Pokémon's struct is all it touches on the field (HP, status, PP, EVs and
     // stats, friendship). Whatever happens, its bytes go back.
-    val saved = g.read(mon(slot).toLong() and 0xFFFFFFFFL, MON_SIZE)
+    val saved = g.read(mon(slot).toLong() and 0xFFFFFFFFL, monStride)
     return try {
         g.call(itemEffect, mon(slot), itemId, slot, move) == 0L
     } finally {
