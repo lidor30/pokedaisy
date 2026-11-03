@@ -801,7 +801,7 @@ set: FireRed +0x19 bit 1, Emerald / expansion +0x1A bit 2; Ruby / Sapphire test 
 field read is `pk_field_state` (pk_wide.c): WIDE's table for the ROM, EXPAND on or off, its own copy of the addresses
 (controls locked, gMain, object events, gMapHeader); `mgba_dump`'s `fieldinfo [run]` prints it. TEXT = locked + BG0 text
 outside battles: it speeds the whole game while a box is up, not just the printing. GUIDE > HERE says "N of M caught
-here" (the DexNav). PC anywhere (BAG's `PC`, `Pc.kt`): `lockall; special ShowPokemonStorageSystemPC; waitstate;
+here" (the DexNav). PC anywhere (BAG's `PC`, `Pc.kt`; on retail the game's whole PC menu, items too: `PcMenuScript` copies its script graph to 0x0203FD00 at run time, found through the storage special, the exit's AnimatePcTurnOff blanked - left in, it stamps a PC tile on the map; hacks and anything of another shape keep the storage alone): `lockall; special ShowPokemonStorageSystemPC; waitstate;
 releaseall; end` written to 0x0203FFF4 and run by ScriptContext_SetupScript - special 60 (FireRed / LeafGreen) / 63
 (Emerald), traced from each retail ROM's script command table (ScrCmd_special's literal pool: the pokeemerald .map's
 gSpecials symbol sat 0x14 off and gave a wrong index once). Debug builds log every scene / speed change and AUTO-RUN's ready / blocked.
