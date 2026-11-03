@@ -1709,7 +1709,7 @@ only keeps a 256x256 ring of tiles in VRAM (`field_camera.c`), so the rest would
   brightness. BG0-2 (text, menus, animations) aren't drawn past 240; where BG3 is transparent (the text box rows)
   the strip goes on with the game's own edge pixel of that row - the solid dark band the text box and menus sit on
   (the glow there looked muddy, the user's call). The text box rows (from y 112, `BATTLE_TEXT_TOP`) are always holes past
-  the edges, so that band goes on even where a hack's BG3 has light tiles there (GitHub #114). Where BG3 alone can't
+  the edges, so that band goes on even where a hack's BG3 has light tiles there (GitHub #114). A BG1 / BG2 tile past an edge in the top `BATTLE_BANNER_ROWS` isn't scenery going on: Unbound's banner, when a Pokémon on the bench levels up, has tiles past the edge while it slides, and the strip was mirrored in for those frames (GitHub #258; to trigger it headless, switch a second Pokémon in so both share the EXP). Where BG3 alone can't
   go on, a side's strip mirrors BG1-3 in from the edge instead (`battleMirrorX`, stacked by priority; BG0, the text,
   stays out): a background that is one 256 px picture twice over (BG3's two screen blocks equal above the text box:
   SoulGold's forest), BG3 that doesn't continue past that edge (`battleEdgeBroken`: the colour step across the edge,
@@ -1935,8 +1935,8 @@ only keeps a 256x256 ring of tiles in VRAM (`field_camera.c`), so the rest would
   goes with a warp (the map no longer current or beside it) or a reset. A template whose object is still live - the
   map you just crossed from keeps its objects until they leave the view - isn't drawn either (it was a double at home).
   Never on the real frame (the game shows what's there), and only with an NPC palette from the ROM's table - Lazarus's
-  lamp lights are templates too (palette tag 0x8001, shown by the game as blended glows), which drew over the real
-  glows. A ROM palette is tinted as the game tinted its loaded ones (`measureTint`: palette RAM vs the ROM, per channel,
+  lamp lights are templates too (palette tags 0x8001 / 0x8002, shown by the game as blended glows), which drew over the
+  real glows, so those tags are never drawn: its ROM's table has them (GitHub #208: they glowed by day past the frame). A ROM palette is tinted as the game tinted its loaded ones (`measureTint`: palette RAM vs the ROM, per channel,
   darkening only): SoulGold's night, a fade. CFRU's ids are 16-bit (`OBJ_GFX_TABLES`: template byte 3 picks a table,
   0xFF a var; Unbound, Radical Red, Amethyst, Orange Islands, Sword and Shield), expansion's too (`TEMPLATE_KIND` 3:
   graphicsId at +1, kind at +3; ids past `OBJ_GFX_VAR_FROM` + 16 are overworld Pokémon, not drawn). Unbound's palette
