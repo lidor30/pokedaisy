@@ -68,6 +68,25 @@ static void screen_4bpp_wide(const uint8_t* tiles, size_t tilesSize, const uint3
     screen_4bpp(tiles, tilesSize, pal, palCount, cut, out);
 }
 
+// Monomyth's ATHANTO MAP (RomArt's monomythRegionMap): 8bpp tiles loaded from tile 0x60 through a 32x32 u16 tilemap (flips
+// allowed), shown from row 2, its palette at slot 7. A pixel outside that palette stays clear.
+static void screen_monomyth(const uint8_t* tiles, size_t tilesSize, const uint32_t* pal, int palCount, const uint8_t* map, uint32_t* out) {
+    for (int i = 0; i < PD_MAP_W * PD_MAP_H; i++) out[i] = PD_MAP_CLEAR;
+    for (int ty = 0; ty < 20; ty++) {
+        for (int tx = 0; tx < 30; tx++) {
+            int o = ((ty + 2) * 32 + tx) * 2, e = map[o] | map[o + 1] << 8, t = (e & 0x3FF) - 0x60;
+            if (t < 0 || (size_t) (t + 1) * 64 > tilesSize) continue;
+            for (int y = 0; y < 8; y++) {
+                for (int x = 0; x < 8; x++) {
+                    int sx = e & 0x400 ? 7 - x : x, sy = e & 0x800 ? 7 - y : y;
+                    int v = tiles[t * 64 + sy * 8 + sx] - 112;
+                    if (v >= 0 && v < palCount) out[(ty * 8 + y) * PD_MAP_W + tx * 8 + x] = pal[v];
+                }
+            }
+        }
+    }
+}
+
 // A 16x16 sprite from 2x2 4bpp tiles; index 0 is see-through.
 static void sprite16(const uint8_t* gfx, const uint32_t* pal, uint32_t* out) {
     for (int y = 0; y < 16; y++) {
@@ -85,15 +104,21 @@ static unsigned cachedRom;
 
 // A hack's own pages, by fingerprint (RomArt's REGION blobs).
 static void hack_pages(const struct pd_game* g, const struct pd_game_entry* e) {
-    const struct pd_blob_sig* sigs[3 * PD_MAP_PAGES];
-    uint8_t* blobs[3 * PD_MAP_PAGES];
+    const struct pd_blob_sig* sigs[3 * PD_MAP_PAGES + 2];
+    uint8_t* blobs[3 * PD_MAP_PAGES + 2];
     int n = e->regionPageCount < PD_MAP_PAGES ? e->regionPageCount : PD_MAP_PAGES;
     for (int i = 0; i < n; i++) {
         sigs[3 * i] = e->regionPages[i].gfx;
         sigs[3 * i + 1] = e->regionPages[i].pal;
         sigs[3 * i + 2] = e->regionPages[i].map;
     }
-    pd_romart_find(g, sigs, 3 * n, blobs);
+    int total = 3 * n;
+    bool head = n > 0 && e->regionPages[0].headGfx;
+    if (head) {
+        sigs[total++] = e->regionPages[0].headGfx;
+        sigs[total++] = e->regionPages[0].headPal;
+    }
+    pd_romart_find(g, sigs, total, blobs);
     static uint32_t pal[256];
     for (int i = 0; i < n; i++) {
         const struct pd_region_page* p = &e->regionPages[i];
@@ -107,12 +132,19 @@ static void hack_pages(const struct pd_game* g, const struct pd_game_entry* e) {
         int count = (int) p->pal->size / 2;
         if (count > 256) count = 256;
         palette(colours, count, pal);
-        if (p->kind == 1) screen_4bpp_wide(gfx, p->gfx->size, pal, count, map, cached->page[i]);
+        if (p->kind == 2) screen_monomyth(gfx, p->gfx->size, pal, count, map, cached->page[i]);
+        else if (p->kind == 1) screen_4bpp_wide(gfx, p->gfx->size, pal, count, map, cached->page[i]);
         else screen_8bpp_from(gfx, p->gfx->size, pal, count, map, cached->page[i], p->firstColour);
         cached->pages = i + 1;
         cached->ok = true;
     }
-    for (int i = 0; i < 3 * n; i++) free(blobs[i]);
+    if (head && blobs[total - 2] && blobs[total - 1]) {
+        palette(blobs[total - 1], 16, pal);
+        sprite16(blobs[total - 2], pal, cached->head[0]);
+        memcpy(cached->head[1], cached->head[0], sizeof(cached->head[0]));
+        cached->hasHead[0] = cached->hasHead[1] = true;
+    }
+    for (int i = 0; i < total; i++) free(blobs[i]);
 }
 
 // RomRegionMap: FireRed 1.0's region_map.c stays where it is in most binary hacks and CFRU, with its data repointed: the words

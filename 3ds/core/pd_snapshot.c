@@ -130,10 +130,31 @@ static const struct pd_party_layout* party_layout(const struct pd_config* cfg) {
 }
 
 // decryptGen3Substructs: false when the box isn't encrypted (a plaintext game), or it's an empty slot.
+static inline uint32_t ror32(uint32_t x, int n) {
+    return x >> n | x << (32 - n);
+}
+
+// Monomyth's own key (Gen3Mon.kt's monomythKey, its box decryption at 0x08068198).
+static uint32_t monomyth_key(uint32_t personality, uint32_t otId) {
+    uint32_t r = otId + ror32(personality ^ 0x690, 7);
+    r = ror32(r + ror32(personality, 11), 13);
+    r = personality + ror32(0x5A000000u ^ r ^ otId, 17);
+    return r ^ ror32(otId, 5);
+}
+
+// Its 250 flavour natures by a hash of the personality (monomythNature, its GetNature at 0x0805B214).
+static int monomyth_nature(uint32_t personality) {
+    uint32_t x = personality ^ personality >> 16;
+    x *= 0x7FEB352Du;
+    x ^= x >> 15;
+    x *= 0x846CA68Bu;
+    x ^= x >> 16;
+    return (int) (x % 250);
+}
+
 static bool decrypt_box(const uint8_t* raw, uint8_t* block, int off[4], bool monomyth) {
-    if (monomyth) return false;
     uint32_t personality = u32(raw);
-    uint32_t key = personality ^ u32(raw + 4);
+    uint32_t key = monomyth ? monomyth_key(personality, u32(raw + 4)) : personality ^ u32(raw + 4);
     uint16_t stored = u16(raw + 28);
     uint16_t sum = 0;
     for (int i = 0; i < 12; i++) {
@@ -236,7 +257,7 @@ bool pd_decode_party_mon_for(const struct pd_config* cfg, const uint8_t* raw, st
     m->stats[0] = m->maxHp;
     for (int i = 1; i < 6; i++) m->stats[i] = u16(raw + l->maxHp + i * 2);
     for (int i = 0; i < 6; i++) m->ivs[i] = (int) (iv >> (i * 5) & 31);
-    m->nature = (int) (personality % 25);
+    m->nature = l->monomythKey ? PD_MONOMYTH_NATURE_BASE + monomyth_nature(personality) : (int) (personality % 25);
     uint32_t otId = u32(raw + 4);
     m->shiny = ((otId >> 16) ^ (otId & 0xFFFF) ^ (personality >> 16) ^ (personality & 0xFFFF)) < 8;
     m->hasStats = l->hasStats;

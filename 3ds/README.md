@@ -8,9 +8,9 @@ portable C core that re-implements the companion's reading and drawing, plus a
 3DS host and a desktop preview tool around it.
 
 **Status: preview.** It builds, every screen below has been driven on real ROMs and copies of real saves in the
-headless simulator (`make sim-test`, below), and the dev build runs on a New 3DS: FireRed, Emerald, Unbound (32 MB) and
-Yellow boot copies of real saves to the field with the companion, the HUD and the minimap up. At ASPECT ORIGINAL it holds
-60 FPS on the field and in battle in FireRed, Emerald and Yellow; Unbound's field runs at about 50, EXPAND at about 43
+headless simulator (`make sim-test`, below), and the dev build runs on a New 3DS: FireRed, Emerald, Unbound and Monomyth
+(32 MB) and Yellow boot copies of real saves to the field with the companion, the HUD and the minimap up. At ASPECT ORIGINAL it holds
+60 FPS on the field and in battle in FireRed, Emerald and Yellow; Unbound's field and Monomyth run at about 50, EXPAND at about 43
 (`pdlink.py stat`). HOME and the lid work; most companion screens haven't been tried on a console.
 Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS XL / 2DS may not hold full speed
 (see "Hardware").

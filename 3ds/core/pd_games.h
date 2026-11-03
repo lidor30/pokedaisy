@@ -72,13 +72,16 @@ extern const struct pd_bag_palette* pd_bag_cur;
 extern const struct pd_party_palette* const pd_party_default[2];
 extern const struct pd_bag_palette* const pd_bag_default[2];
 
-// A hack's region map pages (RomArt's REGION blobs): which fingerprints make each. kind 0: Emerald's 8bpp screen; 1: a 32-wide 4bpp one.
+// A hack's region map pages (RomArt's REGION blobs): which fingerprints make each. kind 0: Emerald's 8bpp screen; 1: a 32-wide 4bpp one;
+// 2: Monomyth's 8bpp text screen.
 struct pd_region_page {
     const struct pd_blob_sig* gfx;
     const struct pd_blob_sig* pal;
     const struct pd_blob_sig* map;
     int firstColour, kind;
     const char* label;
+    // The head on it, where the map has one of its own (a 16x16 sprite).
+    const struct pd_blob_sig *headGfx, *headPal;
 };
 
 struct pd_guide;

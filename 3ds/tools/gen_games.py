@@ -48,7 +48,10 @@ REGION = {
     "tr3_sinnoh": ("TR3_SINNOH_GFX", "TR3_SINNOH_PAL", "TR3_SINNOH_MAP", 112, 0), "tr3_johto": ("TR3_JOHTO_GFX", "TR3_JOHTO_PAL", "TR3_JOHTO_MAP", 0, 0),
     "tr3_sevii123": ("TR3_SEVII123_GFX", "TR3_SEVII123_PAL", "TR3_SEVII123_MAP", 0, 0), "tr3_sevii45": ("TR3_SEVII45_GFX", "TR3_SEVII45_PAL", "TR3_SEVII45_MAP", 0, 0),
     "tr3_sevii67": ("TR3_SEVII67_GFX", "TR3_SEVII67_PAL", "TR3_SEVII67_MAP", 0, 0), "dreamstone": ("DSM_REGION_GFX", "DSM_REGION_PAL", "DSM_REGION_MAP", 0, 1),
+    "monomyth": ("MMY_REGION_GFX", "MMY_REGION_PAL", "MMY_REGION_MAP", 112, 2),
 }
+# A map with a head of its own: its 16x16 sprite and palette.
+REGION_HEAD = {"monomyth": ("MMY_PLAYER_GFX", "MMY_PLAYER_PAL")}
 EMERALD_LIKE = {"BPEE", "BPES", "BPED", "BPEF", "BPEI"}
 HOENN_ENGINE = ("BPE", "AXV", "AXP")
 
@@ -303,7 +306,9 @@ def main():
         rows = []
         for n, (gfx, pal, mp, first, kind) in zip(names, pages):
             label = n.split("_")[-1].upper() if "_" in n else n.upper()
-            rows.append(f"{{ &{sig(gfx)}, &{sig(pal)}, &{sig(mp)}, {first}, {kind}, {c_str(label)} }}")
+            head = REGION_HEAD.get(n)
+            heads = f"&{sig(head[0])}, &{sig(head[1])}" if head else "0, 0"
+            rows.append(f"{{ &{sig(gfx)}, &{sig(pal)}, &{sig(mp)}, {first}, {kind}, {c_str(label)}, {heads} }}")
         text = ", ".join(rows)
         name = emit("rp_", [f"static const struct pd_region_page @[{len(rows)}] = {{ {text} }};", ""], ("rp", text))
         return f"{name}, {len(rows)}"
@@ -629,6 +634,14 @@ def main():
             engine = "PD_GAME_FIRERED"
         gd = guide(g["guide"]) if g.get("guide") else ("0", "0", "0")
         entries.append((g["crc32"], g["size"], g["file"], g["title"], g["language"], configs[key], table_set(g["tables"]), engine, kind, gd, "0", look_of(g)))
+
+    # Monomyth's own natures (natureNamesMonomyth).
+    kt = open(os.path.join(ROOT, "app/src/main/kotlin/com/pokedaisy/app/companion/data/MonomythGen.kt"), encoding="utf-8").read()
+    natures = re.findall(r'"([^"]*)"', kt[kt.index("natureNamesMonomyth"):kt.index(")", kt.index("listOf(", kt.index("natureNamesMonomyth")) + 7)])
+    assert len(natures) == 250, len(natures)
+    out.append("const char* const pd_monomyth_natures[250] = {")
+    out.extend(f'    "{n}",' for n in natures)
+    out.extend(["};", ""])
 
     out.append("const struct pd_game_entry pd_game_entries[] = {")
     for crc, size, file, title, lang, cfg, ts, engine, kind, gd, gb, look in sorted(entries):

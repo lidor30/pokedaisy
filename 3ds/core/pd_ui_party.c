@@ -317,7 +317,8 @@ static void summary_stats(struct pd_canvas* c, const struct pd_mon* m, int x, in
     pd_text(c, x + labelW + statW + 6, y, "IV", PD_MUTED, PD_MUTED_SHADOW);
     pd_text_right(c, x + w, y, "EV", PD_MUTED, PD_MUTED_SHADOW);
     y += 15;
-    int up = m->nature / 5, down = m->nature % 5; // attack, defense, speed, sp. atk, sp. def
+    bool ownNature = m->nature >= PD_MONOMYTH_NATURE_BASE;
+    int up = ownNature ? 0 : m->nature / 5, down = ownNature ? 0 : m->nature % 5; // attack, defense, speed, sp. atk, sp. def
     int totalIv = 0, totalEv = 0;
     for (int i = 0; i < 6; i++) {
         int s = STAT_ORDER[i];
@@ -346,7 +347,8 @@ static void summary_stats(struct pd_canvas* c, const struct pd_mon* m, int x, in
     pd_text_right(c, x + w, y, buf, PD_VALUE, PD_VALUE_SHADOW);
     y += 17;
     pd_text(c, x, y, "NATURE", PD_LABEL, PD_LABEL_SHADOW);
-    pd_text(c, x + w * 46 / 100, y, NATURES[m->nature % 25], PD_VALUE, PD_VALUE_SHADOW);
+    pd_text(c, x + w * 46 / 100, y, ownNature ? pd_monomyth_natures[m->nature - PD_MONOMYTH_NATURE_BASE] : NATURES[m->nature % 25],
+            PD_VALUE, PD_VALUE_SHADOW);
 }
 
 static void summary_moves(struct pd_canvas* c, const struct pd_mon* m, int x, int y, int w, int h) {

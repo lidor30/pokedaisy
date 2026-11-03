@@ -22,6 +22,10 @@ enum pd_gender {
     PD_GENDER_FEMALE,
 };
 
+// Where Monomyth's natures start in pd_mon.nature: past vanilla's 25, so they raise and lower nothing.
+#define PD_MONOMYTH_NATURE_BASE 25
+extern const char* const pd_monomyth_natures[250]; // pd_games_gen.c
+
 struct pd_mon {
     int species;      // internal species id; PD_SPECIES_EGG for an egg
     char nickname[32]; // UTF-8, decoded from the game's charset
