@@ -10,7 +10,7 @@
 // FireRed rev 0 and LeafGreen: the tabs that read RAM (and the MAP, whose art is found by fingerprint)
 // and the party icons; their POKéDEX and GUIDE tables aren't ported yet. The FOE TEAM's addresses
 // are known for rev 1 only.
-// gamedata/gen3/retail/firered.toml: firered_rev1 (ram, foes, icons, dex, guide, card, fly, field)
+// gamedata/gen3/retail/firered.toml: firered_rev1 (ram, foes, battle, icons, dex, guide, card, fly, field)
 static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .playerParty = 0x02024284,
     .playerPartyCount = 0x02024029,
@@ -37,6 +37,16 @@ static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .battlerPartyIndexes = 0x02023BCE,
     .battleStructPtr = 0x02023FE8,
     .monToSwitchIntoOff = 0x5C,
+    .inBattleOff = 0x439,
+    .battlerControllerFuncs = 0x03004fe0,
+    .handleInputChooseAction = 0x0802e44c,
+    .handleInputChooseMove = 0x0802ea24,
+    .handleInputChooseTarget = 0x0802e688,
+    .completeWhenChoseItem = 0x08030750,
+    .waitForMonSelection = 0x08030698,
+    .actionCursor = 0x02023FF8,
+    .moveCursor = 0x02023FFC,
+    .partyMenu = 0x0203B0A0,
     .monIconTable = 0x083D3810,
     .monIconPaletteIndices = 0x083D3EF0,
     .monIconPaletteTable = 0x083D40A8,
@@ -110,7 +120,7 @@ static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .pcScript = 0x0203FFF4,
 };
 
-// gamedata/gen3/retail/firered.toml: firered_rev0 (ram, icons)
+// gamedata/gen3/retail/firered.toml: firered_rev0 (ram, battle, icons)
 static const struct pd_config PD_CONFIG_FIRERED_REV0 = {
     .playerParty = 0x02024284,
     .playerPartyCount = 0x02024029,
@@ -133,6 +143,16 @@ static const struct pd_config PD_CONFIG_FIRERED_REV0 = {
     .flagsOff = 0xEE0,
     .varsOff = 0x1000,
     .flagBytes = 0x120,
+    .inBattleOff = 0x439,
+    .battlerControllerFuncs = 0x03004fe0,
+    .handleInputChooseAction = 0x0802e438,
+    .handleInputChooseMove = 0x0802ea10,
+    .handleInputChooseTarget = 0x0802e674,
+    .completeWhenChoseItem = 0x0803073c,
+    .waitForMonSelection = 0x08030684,
+    .actionCursor = 0,
+    .moveCursor = 0,
+    .partyMenu = 0,
     .monIconTable = 0x083D37A0,
     .monIconPaletteIndices = 0x083D3E80,
     .monIconPaletteTable = 0x083D4038,
@@ -140,7 +160,7 @@ static const struct pd_config PD_CONFIG_FIRERED_REV0 = {
     .itemIconStride = 8,
 };
 
-// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev0 (ram, icons, card, fly, field)
+// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev0 (ram, battle, icons, card, fly, field)
 static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .playerParty = 0x02024284,
     .playerPartyCount = 0x02024029,
@@ -163,6 +183,16 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .flagsOff = 0xEE0,
     .varsOff = 0x1000,
     .flagBytes = 0x120,
+    .inBattleOff = 0x439,
+    .battlerControllerFuncs = 0x03004fe0,
+    .handleInputChooseAction = 0x0802e438,
+    .handleInputChooseMove = 0x0802ea10,
+    .handleInputChooseTarget = 0x0802e674,
+    .completeWhenChoseItem = 0x0803073c,
+    .waitForMonSelection = 0x08030684,
+    .actionCursor = 0,
+    .moveCursor = 0,
+    .partyMenu = 0,
     .monIconTable = 0x083D35DC,
     .monIconPaletteIndices = 0x083D3CBC,
     .monIconPaletteTable = 0x083D3E74,
@@ -221,7 +251,7 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .pcScript = 0x0203FFF4,
 };
 
-// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev1 (ram, foes, icons, card, fly, field)
+// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev1 (ram, foes, battle, icons, card, fly, field)
 static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .playerParty = 0x02024284,
     .playerPartyCount = 0x02024029,
@@ -248,6 +278,16 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .battlerPartyIndexes = 0x02023BCE,
     .battleStructPtr = 0x02023FE8,
     .monToSwitchIntoOff = 0x5C,
+    .inBattleOff = 0x439,
+    .battlerControllerFuncs = 0x03004fe0,
+    .handleInputChooseAction = 0x0802e44c,
+    .handleInputChooseMove = 0x0802ea24,
+    .handleInputChooseTarget = 0x0802e688,
+    .completeWhenChoseItem = 0x08030750,
+    .waitForMonSelection = 0x08030698,
+    .actionCursor = 0,
+    .moveCursor = 0,
+    .partyMenu = 0,
     .monIconTable = 0x083D364C,
     .monIconPaletteIndices = 0x083D3D2C,
     .monIconPaletteTable = 0x083D3EE4,
@@ -306,7 +346,7 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .pcScript = 0x0203FFF4,
 };
 
-// gamedata/gen3/retail/emerald.toml: emerald_retail (ram, foes, icons, dex, guide, card, fly, field)
+// gamedata/gen3/retail/emerald.toml: emerald_retail (ram, foes, battle, icons, dex, guide, card, fly, field)
 static const struct pd_config PD_CONFIG_EMERALD = {
     .playerParty = 0x020244EC,
     .playerPartyCount = 0x020244E9,
@@ -333,6 +373,16 @@ static const struct pd_config PD_CONFIG_EMERALD = {
     .battlerPartyIndexes = 0x0202406E,
     .battleStructPtr = 0x0202449C,
     .monToSwitchIntoOff = 0x5C,
+    .inBattleOff = 0x439,
+    .battlerControllerFuncs = 0x03005d60,
+    .handleInputChooseAction = 0x08057588,
+    .handleInputChooseMove = 0x08057bfc,
+    .handleInputChooseTarget = 0x08057824,
+    .completeWhenChoseItem = 0x080598e0,
+    .waitForMonSelection = 0x08059828,
+    .actionCursor = 0x020244AC,
+    .moveCursor = 0x020244B0,
+    .partyMenu = 0x0203CEC8,
     .monIconTable = 0x0857BCA8,
     .monIconPaletteIndices = 0x0857C388,
     .monIconPaletteTable = 0x0857C540,

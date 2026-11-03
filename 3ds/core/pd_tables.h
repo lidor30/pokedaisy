@@ -44,6 +44,14 @@ extern const int pd_species_type_table_count;
 #define PD_TYPE_NONE 255
 #define PD_SPECIES_EGG 412
 
+struct pd_table_set;
+// The running game's own tables; NULL = retail English's, here below.
+void pd_tables_use(const struct pd_table_set* set);
+// How many types the running game's chart has names for.
+int pd_type_count(void);
+// A species' gender ratio (254 all female ...), -1 where it isn't known.
+int pd_gender_ratio(int species);
+
 // Names in the game's own casing: FireRed / Emerald print species and moves
 // in capitals with a small é (the app's gameCase()). Writes into buf.
 const char* pd_species_name(int species, char* buf, size_t len);

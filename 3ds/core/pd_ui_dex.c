@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "pd_dex.h"
+#include "pd_dex_details.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
 
@@ -110,6 +111,64 @@ static void draw_sprite(struct pd_canvas* c, int x, int y, const uint32_t* px) {
     }
 }
 
+static void info_page(struct pd_canvas* c, const struct pd_dex_entry* e, int ix, int dy, int iw) {
+    pd_text_wrap(c, ix, dy, iw, 15, 3, e->description, PD_LABEL, PD_LABEL_SHADOW);
+}
+
+// A line of a section's page, kept to the page.
+static void page_line(struct pd_canvas* c, int x, int* y, int top, int bottom, int w, const char* left, const char* right, bool value) {
+    if (*y >= top - 2 && *y + 15 <= bottom + 4) {
+        pd_text_fit(c, x, *y, right ? w * 62 / 100 : w, left, value ? PD_VALUE : PD_LABEL, value ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
+        if (right) pd_text_right(c, x + w, *y, right, PD_MUTED, PD_MUTED_SHADOW);
+    }
+    *y += 15;
+}
+
+static void section_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_dex_entry* e, int x, int top, int w, int h) {
+    char left[64], right[32];
+    if (ui->dexPageScroll > ui->dexPageMax) ui->dexPageScroll = ui->dexPageMax;
+    if (ui->dexPageScroll < 0) ui->dexPageScroll = 0;
+    int bottom = top + h, y = top - ui->dexPageScroll;
+    pd_clip(c, x, top, w, h);
+    ui_add_hit(ui, x, top, w, h, HIT_DEX_PAGE);
+    if (ui->dexSection == 1) {
+        struct pd_evo evos[PD_EVO_MAX];
+        int n = pd_dex_family(g, e->species, evos, PD_EVO_MAX);
+        if (!n) page_line(c, x, &y, top, bottom, w, "Doesn't evolve.", NULL, false);
+        for (int i = 0; i < n; i++) {
+            char a[24], b[24], how[56];
+            snprintf(left, sizeof(left), "%s > %s", pd_species_name(evos[i].from, a, sizeof(a)), pd_species_name(evos[i].to, b, sizeof(b)));
+            page_line(c, x, &y, top, bottom, w, left, NULL, evos[i].from == e->species || evos[i].to == e->species);
+            pd_dex_evo_text(g, &evos[i], how, sizeof(how));
+            if (y >= top - 2 && y + 15 <= bottom + 4) pd_text_fit(c, x + 8, y, w - 8, how, PD_MUTED, PD_MUTED_SHADOW);
+            y += 15;
+        }
+    } else if (ui->dexSection == 2) {
+        static const char* const HOW[4] = { "GRASS", "SURF", "ROCK", "FISH" };
+        struct pd_spot spots[PD_SPOTS_MAX];
+        int n = pd_dex_spots(g, e->species, spots, PD_SPOTS_MAX);
+        if (!n) page_line(c, x, &y, top, bottom, w, "Not found in the wild.", NULL, false);
+        for (int i = 0; i < n; i++) {
+            snprintf(right, sizeof(right), "%s LV%d-%d", HOW[spots[i].method], spots[i].minLevel, spots[i].maxLevel);
+            page_line(c, x, &y, top, bottom, w, pd_mapsec_name(g, spots[i].mapsec), right, false);
+        }
+    } else {
+        struct pd_level_move moves[PD_LEVEL_MOVES_MAX];
+        uint16_t tms[PD_TM_MOVES_MAX];
+        int n = pd_dex_level_moves(g, e->species, moves, PD_LEVEL_MOVES_MAX);
+        for (int i = 0; i < n; i++) {
+            snprintf(right, sizeof(right), "LV %d", moves[i].level);
+            page_line(c, x, &y, top, bottom, w, pd_move_name(moves[i].move, left, sizeof(left)), right, false);
+        }
+        int t = pd_dex_tm_moves(g, e->species, tms, PD_TM_MOVES_MAX);
+        if (t) page_line(c, x, &y, top, bottom, w, "TM / HM", NULL, true);
+        for (int i = 0; i < t; i++) page_line(c, x, &y, top, bottom, w, pd_move_name(tms[i], left, sizeof(left)), NULL, false);
+    }
+    pd_unclip(c);
+    ui->dexPageMax = y + ui->dexPageScroll - top - h;
+    if (ui->dexPageMax < 0) ui->dexPageMax = 0;
+}
+
 static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     static struct pd_dex_entry e;
     static uint32_t sprite[PD_SPRITE * PD_SPRITE];
@@ -151,27 +210,34 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     pd_dex_height(e.heightDm, ht, sizeof(ht));
     pd_dex_weight(e.weightHg, wt, sizeof(wt));
     snprintf(buf, sizeof(buf), "HT %s   WT %s", ht, wt);
-    pd_text_fit(c, tx, top + 54, tw, buf, PD_LABEL, PD_LABEL_SHADOW);
+    pd_text_fit(c, tx, top + 52, tw, buf, PD_LABEL, PD_LABEL_SHADOW);
+    static const char* const STAT[6] = { "HP", "AT", "DF", "SA", "SD", "SP" };
+    int sx = tx;
+    for (int i = 0; i < 6; i++) {
+        sx += pd_text(c, sx, top + 68, STAT[i], PD_MUTED, PD_MUTED_SHADOW) + 2;
+        snprintf(buf, sizeof(buf), "%d", e.stats[i]);
+        sx += pd_text(c, sx, top + 68, buf, PD_LABEL, PD_LABEL_SHADOW) + 6;
+    }
 
     int dy = by + PD_SPRITE + 20;
     pd_fill(c, ix, dy - 2, iw, 1, PD_DIVIDER);
-    pd_text_wrap(c, ix, dy, iw, 16, 3, e.description, PD_LABEL, PD_LABEL_SHADOW);
-    dy += 3 * 16 + 2;
-    static const char* const STAT[6] = { "HP", "ATK", "DEF", "SPA", "SPD", "SPE" };
-    int sx = ix;
-    for (int i = 0; i < 6; i++) {
-        sx += pd_text(c, sx, dy, STAT[i], PD_MUTED, PD_MUTED_SHADOW) + 3;
-        snprintf(buf, sizeof(buf), "%d", e.stats[i]);
-        sx += pd_text(c, sx, dy, buf, PD_LABEL, PD_LABEL_SHADOW) + 9;
+    int sectionCount = pd_dex_has_details(g) ? 4 : 1;
+    if (sectionCount > 1) {
+        // Chips switch what fills the rest of the entry (DexSection).
+        static const char* const SECTIONS[4] = { "INFO", "EVOLVE", "AREA", "MOVES" };
+        int cw = (iw - 3 * 2) / 4;
+        for (int i = 0; i < 4; i++) {
+            int cx = ix + i * (cw + 2);
+            pd_title_box(c, cx, dy, cw, 18, i == ui->dexSection ? PD_TITLE_FILL : PD_LIST_FILL);
+            pd_text(c, cx + (cw - pd_text_width(SECTIONS[i])) / 2, pd_text_y(dy, 18), SECTIONS[i],
+                    i == ui->dexSection ? PD_VALUE : PD_LABEL, i == ui->dexSection ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
+            ui_add_hit(ui, cx, dy, cw, 18, HIT_DEX_SECTION + i);
+        }
+        dy += 20;
     }
-    dy += 18;
-    if (e.ability2[0]) {
-        snprintf(buf, sizeof(buf), "%s / %s", e.ability1, e.ability2);
-    } else {
-        snprintf(buf, sizeof(buf), "%s", e.ability1);
-    }
-    int aw = pd_text(c, ix, dy, "ABILITY", PD_MUTED, PD_MUTED_SHADOW);
-    pd_text_fit(c, ix + aw + 6, dy, iw - aw - 150, buf, PD_LABEL, PD_LABEL_SHADOW);
+    int pageBottom = y + h - f - 28;
+    if (ui->dexSection == 0 || sectionCount == 1) info_page(c, &e, ix, dy, iw);
+    else section_page(ui, c, g, &e, ix, dy, iw, pageBottom - dy);
 
     // Step through the list (wrapping) or go back to it.
     int byBtn = y + h - f - 26;
@@ -201,6 +267,11 @@ void ui_dex_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
 }
 
 bool ui_dex_act(struct pd_ui* ui, int id) {
+    if (id >= HIT_DEX_SECTION && id < HIT_DEX_SECTION + 4) {
+        ui->dexSection = id - HIT_DEX_SECTION;
+        ui->dexPageScroll = 0;
+        return true;
+    }
     if (ui->tab != PD_TAB_DEX || ui->overlay != PD_OVERLAY_NONE) return false;
     if (id == HIT_DEX_TOGGLE) {
         // Flip from what shows now (the save's default until something was picked).

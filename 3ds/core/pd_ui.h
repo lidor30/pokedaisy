@@ -28,7 +28,11 @@ enum pd_tab {
     PD_TAB_DEX,
     PD_TAB_BATTLE,
     PD_TAB_SETTINGS,
-    PD_TAB_CARD, // the TRAINER CARD: no chip, it opens from SETTINGS
+    PD_TAB_CARD,
+    PD_TAB_STATES,
+    PD_TAB_BOXES,
+    PD_TAB_NUZLOCKE,
+    PD_TAB_ACHIEVEMENTS,
     PD_TAB_COUNT,
 };
 
@@ -63,11 +67,26 @@ struct pd_settings {
     int tabBar;      // TAB BAR: a bit per enum pd_tab on the bar (PARTY .. DEX, CARD); the rest open from MORE
     bool hud;        // HUD over the overworld (hosts with hasHud) ...
     int hudHidden;   // ... less these parts: a bit per enum pd_hud_part
+    bool hideHints;  // BATTLE HINTS off
+    bool oneTapMoves; // ONE-TAP MOVES: the moves on the action menu where FIGHT is
+    int gameSpeed;   // GAME SPEED: an index into PD_GAME_SPEEDS
+    int gameVolume;  // GAME VOLUME: 20 ... 100
+    bool gameMuted;  // MUTE GAME
+    bool autoRun;    // AUTO-RUN: B held for the player while walking
+    bool runIndoors; // RUN INDOORS
+    bool darkMode;   // DARK MODE
+    bool ffNormal;   // FF MODE: NORMAL; off = SMART, 1x while the game waits for the player
+    bool cheats;     // CHEATS: the game's file's codes on
+    int theme;       // THEME: a pd_themes[] id
 };
+
+// GAME SPEED's steps, as the app's SPEED_STEPS: the old five, then the slow two.
+#define PD_GAME_SPEED_COUNT 7
+extern const char* const PD_GAME_SPEEDS[PD_GAME_SPEED_COUNT];
 
 // TAB BAR: at most this many tabs beside the gear (the app's MAX_BAR_TABS).
 #define PD_MAX_BAR_TABS 5
-#define PD_TAB_BAR_DEFAULT (1 << PD_TAB_PARTY | 1 << PD_TAB_BAG | 1 << PD_TAB_MAP | 1 << PD_TAB_GUIDE | 1 << PD_TAB_DEX)
+#define PD_TAB_BAR_DEFAULT (1 << PD_TAB_PARTY | 1 << PD_TAB_DEX | 1 << PD_TAB_MAP | 1 << PD_TAB_BAG | 1 << PD_TAB_GUIDE)
 
 // The HUD's parts (the app's FieldHudPart less its buttons: with no touch screen BAG, PC and WILD are the
 // QUICK MENU's, and a tap on a party icon or the minimap has nothing to open).
@@ -81,6 +100,35 @@ enum pd_action {
     PD_ACTION_LOAD_STATE,
     PD_ACTION_LEAVE_GAME,
     PD_ACTION_SETTINGS_CHANGED,
+    PD_ACTION_STATE_SLOT, // STATES picked another slot: ui.actionSlot
+    PD_ACTION_RESTART_GAME,
+    PD_ACTION_ITEM_PICK, // USE / GIVE: who it can go to (ui.itemId, ui.itemGive) is wanted
+    PD_ACTION_ITEM_APPLY, // ... and the pick: ui.itemSlot, ui.itemMove
+    PD_ACTION_ITEM_TAKE, // TAKE from ui.summarySlot's Pokémon
+    PD_ACTION_UNDO_SAVE,
+    PD_ACTION_UNDO_LOAD,
+    PD_ACTION_BOX_WITHDRAW, // the PC: ui.boxShown, ui.boxSlot
+    PD_ACTION_BOX_SWAP,     // ... with party slot ui.boxPartySlot
+    PD_ACTION_BOX_DEPOSIT,  // party slot ui.boxPartySlot into box ui.boxTarget
+    PD_ACTION_FLY_ASK,   // MAP's FLY: where it can go is wanted
+    PD_ACTION_FLY_TO,    // ... and the pick: ui.flyPick
+};
+
+// A party slot in USE / GIVE's pick: dimmed, or which of its moves it would help.
+struct pd_item_slot {
+    bool ok;
+    int heldItem;
+    bool moves[4];
+};
+
+// STATES: the slots, as the host keeps them. thumb: the game at a quarter of its size (120x80 RGB, 0xRRGGBB), or NULL.
+#define PD_STATE_SLOTS 10
+#define PD_STATE_THUMB_W 120
+#define PD_STATE_THUMB_H 80
+struct pd_state_slot {
+    bool used;
+    char when[24];
+    const uint32_t* thumb;
 };
 
 // What the host tells the companion about itself.
@@ -96,6 +144,18 @@ struct pd_host_info {
     bool hasHud;         // Optional: the host draws the HUD over the game (its SETTINGS row)
     bool hasState;      // a save state exists for LOAD STATE
     char stateWhen[24]; // when it was made, shown beside LOAD STATE
+    bool fullSettings;  // Optional: SETTINGS' groups and the rows the 3DS has
+    bool wildSupported, fieldSupported; // WILD ENCOUNTERS / the field read works on this game
+    int batteryPct;     // -1 = unknown
+    bool flyReady;      // MAP's FLY button: someone in the party can
+    bool canTake;       // the summary's TAKE
+    bool (*itemCanUse)(int item);  // Optional: what the bag's USE / GIVE can do with an item
+    bool (*itemCanGive)(int item);
+    bool hasStates;     // Optional: the STATES tab's slots below (the 3DS)
+    struct pd_state_slot slots[PD_STATE_SLOTS];
+    bool undoSave, undoLoad; // STATES' UNDO has something to put back
+    bool hasCheats;          // the game has a .cheats file
+    int slotSelected;
 };
 
 #define PD_UI_MAX_HITS 64
@@ -118,34 +178,66 @@ enum pd_overlay {
     PD_OVERLAY_TAB_BAR, // SETTINGS > TAB BAR: each tab ON / OFF
     PD_OVERLAY_HUD,     // SETTINGS > HUD: the HUD and its parts ON / OFF
     PD_OVERLAY_MORE,    // the tabs off the bar
+    PD_OVERLAY_PICK_SPEED,
+    PD_OVERLAY_PICK_THEME,
+    PD_OVERLAY_PICK_BOX,    // the boxes, BOXES' name or DEPOSIT's where to
+    PD_OVERLAY_CONFIRM_BOX, // WITHDRAW / DEPOSIT asked
+    PD_OVERLAY_PICK_VOLUME,
+    PD_OVERLAY_CONFIRM_RESTART,
+    PD_OVERLAY_FLY,     // MAP's FLY: the towns
 };
 
+struct pd_binput;
+
 struct pd_ui {
+    struct pd_binput* battleInput; // the host's, NULL = no touch controls
+    const struct pd_snapshot* drawn; // what the last pd_ui_draw showed, for the taps on it
+    const struct pd_game* drawnGame;
+    bool hostHasStates;              // the host's STATES tab has slots to show
     enum pd_tab tab;
     enum pd_tab tabBeforeBattle; // the tab a battle took over from
-    int battleSlot;              // the bar slot BATTLE shows in, -1 = none
+    bool battleOnBar;            // BATTLE leads the bar: a battle is on
     bool battleWasOn;
     // BATTLE: INFO (0) or SUGGESTIONS (1); the FOE TEAM's slots seen so far
     // this battle (a bit each), the one tapped (-1 = follow the battle) and
     // the one shown (set by the draw); what the last read said was out / next.
     int battlePane;
+    bool battleInfoOpen;     // INFO over the touch controls (their way back shows)
+    bool battleChoosingMon;  // POKéMON tapped: our party pane, not yet the game's
+    bool battleChoosingMove; // FIGHT tapped: our move grid, FIGHT not sent yet
     unsigned foeSeen;
     int foeSelected, foeShown;
     int lastFoeActive, lastFoeNext;
     int summarySlot; // party slot whose summary is open, -1 = none
+    // BOXES: what the host read (NULL = the tab isn't here), the box asked for, the picked slot and the box summary.
+    const struct pd_boxes* boxes;
+    bool boxMoves;   // WITHDRAW / DEPOSIT / SWAP work here
+    int boxShown, boxSlot, boxSummary, boxPartySlot, boxTarget;
+    bool boxSwapPick, boxDepositing;
+    char boxMessage[64];
+    bool summaryStats; // its STATS page, not its moves
     int bagPocket;   // the open pocket tab: 0 ALL, then each pocket with items, in the game's order
     int bagSelected; // the item's row in that tab, -1 = none
     int bagScroll;   // pixels
+    // USE / GIVE on the open item: the host's answer, the pick (itemPicking), a move's pick for that slot (-1 = none).
+    int itemId, bagItemShown;
+    bool itemGive, itemPicking;
+    int itemSlot, itemMove, itemMoveSlot;
+    struct pd_item_slot itemSlots[PD_PARTY_SIZE];
 
     // POKéDEX: the list's scroll, the open entry (national number, 0 = the
     // list), and which dex shows (-1 = the save's own: National once it has
     // it, else the regional one).
     int dexScroll, dexOpen, dexNational;
+    int bagSort; // the bag's SORT: DEFAULT, NAME, COUNT
+    int dexSection, dexPageScroll, dexPageMax; // the entry's INFO / EVOLVE / AREA / MOVES
     // MAP: the page shown (-1 = the player's), the tapped place, the cursor's blink.
     int mapPage, mapSel, mapDungeon, mapSelTx, mapSelTy;
     bool mapBlink;
     unsigned blinkMs;
     int placesScroll;
+    const char* const* flyNames; // FLY's towns, as the host found them
+    int flyCount, flyPick;
     // GUIDE: the page, its scroll, the open entry and how far it's revealed.
     int guidePage, guideScroll, guideOpen, guideLevel;
     bool guideNoticeShown;
@@ -160,6 +252,7 @@ struct pd_ui {
     int settingsScroll; // SETTINGS' list, in canvas pixels
     struct pd_settings* settings;
     enum pd_action action;
+    int actionSlot;
 
     bool touching, dragging, touchScroll;
     int touchX0, touchY0, touchLastY;

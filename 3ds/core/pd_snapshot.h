@@ -31,6 +31,15 @@ struct pd_mon {
     int moves[PD_NUM_MOVES];
     int pp[PD_NUM_MOVES];
     uint32_t personality;
+    // The summary's: Growth's held item and EXP, the party struct's stats in its own order (attack, defense, speed,
+    // sp. atk, sp. def after HP), IVs and EVs (the struct's order: HP, ATK, DEF, SPEED, SPATK, SPDEF).
+    int heldItem;
+    uint32_t exp;
+    int stats[6], ivs[6], evs[6];
+    int nature;
+    bool shiny;
+    bool hasStats;
+    bool egg;
 };
 
 struct pd_battle_mon {
@@ -62,12 +71,24 @@ struct pd_pocket_items {
     struct pd_item items[PD_POCKET_SLOTS];
 };
 
+// The app's BATTLE_INPUT_*: what the game's battle waits for.
+enum pd_battle_state {
+    PD_BATTLE_NONE,
+    PD_BATTLE_BUSY,
+    PD_BATTLE_ACTION,
+    PD_BATTLE_MOVE,
+    PD_BATTLE_BAG_OPEN,
+    PD_BATTLE_PARTY_OPEN,
+    PD_BATTLE_TARGET,
+};
+
 struct pd_snapshot {
     bool valid;
     uint32_t frame;  // gMain's vblank counter
     int partyCount;
     struct pd_mon party[PD_PARTY_SIZE];
     bool inBattle, isDouble, isTrainer;
+    enum pd_battle_state battleState;
     struct pd_battle_mon battlers[4]; // by battler position; species 0 = none
     // The FOE TEAM (trainer battles): gEnemyParty in order, the one out
     // (gBattlerPartyIndexes) and the one the trainer is about to send in -
@@ -119,6 +140,9 @@ bool pd_dex_caught(const struct pd_snapshot* s, int national);
 bool pd_bag_has(const struct pd_snapshot* s, int item);
 
 void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn read, void* ctx);
+// readNativeBattleInputFast: what the battle waits for, and from which battler. PD_BATTLE_NONE outside a battle or
+// where the handlers aren't known.
+enum pd_battle_state pd_battle_state_read(const struct pd_config* cfg, pd_read_fn read, void* ctx, int* battler);
 
 // The English games' text (up to 0xFF or maxLen bytes) as UTF-8; line breaks
 // become spaces and control codes are skipped.
@@ -126,6 +150,8 @@ void pd_gen3_text(const uint8_t* src, size_t maxLen, char* out, size_t outLen);
 
 // Decodes one struct Pokemon (100 bytes); false for an empty slot.
 bool pd_decode_party_mon(const uint8_t* raw, struct pd_mon* out);
+// The same by the game's own layout.
+bool pd_decode_party_mon_for(const struct pd_config* cfg, const uint8_t* raw, struct pd_mon* out);
 
 // The item's name / bag description in the game's own words ("" if unknown).
 const char* pd_item_name(const struct pd_game* g, int item);

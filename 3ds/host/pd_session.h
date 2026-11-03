@@ -1,0 +1,167 @@
+// A running game, the same on every host that has the companion on a screen of its own: the 3DS (ctr/main.c) and the
+// headless simulator (desktop/sim/). The host owns the screens, the sound and the files; this owns the core's frames,
+// what the companion reads, what its taps do to the game, the QUICK MENU, the HUD and EXPAND.
+#ifndef PD_SESSION_H
+#define PD_SESSION_H
+
+#include <stdbool.h>
+#include <stddef.h>
+#include <stdint.h>
+
+#include "../../linux/fly.h"
+#include "../../linux/hud.h"
+#include "../../linux/quick_menu.h"
+#include "../core/pd_binput.h"
+#include "../core/pd_boxes.h"
+#include "../core/pd_game.h"
+#include "../core/pd_snapshot.h"
+#include "../core/pd_ui.h"
+#include "pd_items.h"
+
+struct mCore;
+
+// How often the companion reads the game (frames).
+#define PD_SNAPSHOT_EVERY 10
+// The top screen, where the overlay (QUICK MENU, HUD, notices) and EXPAND's window go.
+#define PD_TOP_W 400
+#define PD_TOP_H 240
+#define PD_GAME_STRIDE 256
+
+// A player's buttons this loop: the GBA's (PD_KEY_*) and what the host maps to the app's own.
+struct pd_input {
+    uint32_t held, down;
+    bool quickMenu;  // QUICK MENU: pressed this loop
+    bool ffHeld;     // FF HOLD
+    int stickAngle;  // the left stick aims the ring: degrees clockwise from up, -1 = centred
+};
+
+// What the host does for the session.
+struct pd_session_host {
+    // STATES' slots: the file's path for mGBA's VFile and for stdio (they differ on the 3DS).
+    void (*statePath)(void* ctx, int slot, char* vfPath, size_t vfLen, char* stdPath, size_t stdLen);
+    // The save was about to change under a load: copied aside first.
+    void (*backupSave)(void* ctx);
+    void (*settingsChanged)(void* ctx);
+    // The game's .cheats file (mGBA's format), by the ROM's CRC32; NULL = none here.
+    void (*cheatPath)(void* ctx, uint32_t crc, char* path, size_t len);
+    void* ctx;
+};
+
+enum pd_job { PD_JOB_NONE, PD_JOB_GB_TAKEN, PD_JOB_PC, PD_JOB_REPEL, PD_JOB_BIKE, PD_JOB_BIKE_WAIT, PD_JOB_BIKE_RESTORE };
+
+struct pd_session {
+    struct mCore* core;
+    struct pd_game game;
+    struct pd_ui ui;
+    struct pd_binput input;
+    struct pd_snapshot snap, shown;
+    struct pd_host_info host;
+    struct pd_settings* settings;
+    struct pd_session_host files;
+
+    uint8_t* ewram;
+    size_t ewramSize;
+    uint8_t* iwram;
+    size_t iwramSize;
+    const uint8_t* rom;
+    size_t romSize;
+
+    const uint32_t* video; // the core's frame, PD_GAME_STRIDE wide
+    unsigned frame;
+    bool redraw;
+    bool ffToggled, ff;
+    bool leave;
+    bool wasBusy;
+    int speedDebt; // quarters of a frame owed at GAME SPEED
+
+    // The field read (pk_field_state) and EXPAND.
+    uint32_t romCrc;
+    bool fieldKnown, wideKnown;
+    uint32_t wildSwitch;
+    int fieldFlags;
+    bool wideReady;       // this frame shows EXPAND's window
+    int wideW, wideH;     // ... this big, in game pixels
+    int hudFieldFrames;
+    struct hud_state hud;
+
+    // The QUICK MENU.
+    bool quickOpen;
+    int quickSel, quickCount;
+    struct quick_item quick[QUICK_COUNT];
+    char repelWhy[32];
+    bool flyList, repelList;
+    int flySel, repelSel;
+    int flyAsk, flyStage, flyWait, flyMapsec;
+    bool flyFromMap; // the MAP's FLY asked: its list is the companion's
+    uint32_t flyCallback;
+    struct fly_targets flyTargets;
+    const char* flyNames[FLY_MAX_TOWNS];
+    int repelKinds[3], repelKindCount;
+    char repelRows[3][48];
+    const char* repelNames[3];
+    const struct pd_config* flyCfg;
+    bool itemsOk, pcOk, bikeOk;
+
+    // USE / GIVE / TAKE, each run between frames.
+    int itemAsk;   // 1 = pick wanted, 2 = apply, 3 = take
+    struct pd_party_targets itemTargets;
+    enum pd_job job;
+    int jobItem, jobFrames, jobTries;
+    bool bikeWasRiding, bikeTook;
+    uint16_t bikeOld;
+    uint32_t gameKeys;
+    int gameKeyFrames;
+
+    // The Game Boy games' PC / FLY / WILD ENCOUNTERS: NULL where the cart isn't known.
+    const struct pd_gb_field* gbField;
+    bool gbWildHeld;
+
+    // CHEATS: the file's text.
+    char* cheatText;
+    size_t cheatLen;
+    bool cheatsOn;
+
+    // BOXES.
+    struct pd_boxes boxes;
+    int boxAsk; // the PC's move asked: enum pd_action
+
+    // What the overlay shows.
+    char notice[64];
+    int noticeFrames;
+    uint32_t overlayKey;
+    bool overlayShown, overlayDirty, overlayDim;
+
+    // STATES.
+    int undoSaveSlot; // the slot a SAVE replaced, -1 = none
+    uint32_t thumbs[PD_STATE_SLOTS][PD_STATE_THUMB_W * PD_STATE_THUMB_H];
+};
+
+// The core has its ROM and save and has been reset, [video] is the buffer it draws in. Sets up what the companion
+// reads, scans the ROM's art.
+void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* video, struct pd_settings* settings,
+                      const struct pd_session_host* files);
+// One loop: the QUICK MENU, the frames (several in fast-forward), the jobs between them, the overlay.
+void pd_session_tick(struct pd_session* s, const struct pd_input* in, unsigned ms);
+// One emulated frame with the player's keys held: the battle's touch controls may take the keys over.
+void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last);
+// What pd_ui_take_action handed over: true if the session has dealt with it (else it's the host's: CLOSE GAME ...).
+bool pd_session_action(struct pd_session* s, enum pd_action action);
+// Draws the companion on the bottom canvas.
+void pd_session_draw(struct pd_session* s, struct pd_canvas* bottom);
+// The last frame stays on screen (the battle's switch drives the game's party menu behind it).
+bool pd_session_holds_frame(const struct pd_session* s);
+// The overlay's canvas (PD_TOP_W x PD_TOP_H, alpha in the top byte); redrawn when overlayDirty.
+const uint32_t* pd_session_overlay(struct pd_session* s);
+// EXPAND's window, s->wideW x s->wideH pixels, when s->wideReady.
+const uint32_t* pd_session_wide(const struct pd_session* s);
+// STATES: the slot's file and picture; the save state of the session's game.
+bool pd_session_save_state(struct pd_session* s, int slot);
+bool pd_session_load_state(struct pd_session* s, int slot);
+bool pd_session_undo_save(struct pd_session* s);
+bool pd_session_undo_load(struct pd_session* s);
+void pd_session_show(struct pd_session* s, const char* text);
+
+bool pd_session_read(void* ctx, uint32_t addr, void* out, size_t len);
+bool pd_session_write(void* ctx, uint32_t addr, const void* data, size_t len);
+
+#endif

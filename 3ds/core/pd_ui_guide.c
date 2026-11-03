@@ -256,7 +256,7 @@ static void build_here(const struct pd_game* g, const struct pd_snapshot* s, con
 static void build_bosses(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_guide* gd) {
     int best = 0;
     for (int i = 0; i < s->partyCount; i++) {
-        if (s->party[i].species != PD_SPECIES_EGG && s->party[i].level > best) best = s->party[i].level;
+        if (!s->party[i].egg && s->party[i].level > best) best = s->party[i].level;
     }
     int shown = 0;
     for (int b = 0; b < gd->bossCount && shown < MAX_BOSSES_SHOWN; b++) {

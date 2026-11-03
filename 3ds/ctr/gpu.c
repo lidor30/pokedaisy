@@ -19,9 +19,10 @@ static C3D_RenderTarget* bottomTarget;
 // smooth modes - mGBA's "sharp bilinear", the 2x nearest copy sampled
 // linearly. Everything is written by the CPU in the GPU's tiled order: no
 // display transfers, no render-to-texture.
-static uint16_t* gameBuf;
+static uint32_t* gameBuf;
 static C3D_Tex gameTex, game2xTex;
-static C3D_Tex bottomTex, topTex;
+static C3D_Tex wideTex, wide2xTex; // EXPAND's window at 1x (up to 400 x 240), and 2x for the smooth modes
+static C3D_Tex bottomTex, topTex, overlayTex;
 
 // Texel (x, y) of a w-wide texture in the GPU's layout: 8x8 tiles, row by
 // row, Morton (Z) order inside a tile. The first row is the image's top
@@ -60,10 +61,16 @@ bool gpu_init(void) {
     topTarget = C2D_CreateScreenTarget(GFX_TOP, GFX_LEFT);
     bottomTarget = C2D_CreateScreenTarget(GFX_BOTTOM, GFX_LEFT);
 
-    gameBuf = linearMemAlign(GPU_GAME_STRIDE * GBA_H * sizeof(uint16_t), 0x80);
+    gameBuf = linearMemAlign(GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t), 0x80);
     if (!gameBuf) return false;
-    memset(gameBuf, 0, GPU_GAME_STRIDE * GBA_H * sizeof(uint16_t));
+    memset(gameBuf, 0, GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t));
+    if (!C3D_TexInit(&overlayTex, 512, 256, GPU_RGBA8)) return false;
+    C3D_TexSetFilter(&overlayTex, GPU_NEAREST, GPU_NEAREST);
+    C3D_TexSetWrap(&overlayTex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+    memset(overlayTex.data, 0, overlayTex.size);
+    GSPGPU_FlushDataCache(overlayTex.data, overlayTex.size);
     return tex_init(&gameTex, 256, 256, GPU_NEAREST) && tex_init(&game2xTex, 512, 512, GPU_LINEAR) &&
+        tex_init(&wideTex, 512, 256, GPU_NEAREST) && tex_init(&wide2xTex, 1024, 512, GPU_LINEAR) &&
         tex_init(&bottomTex, 512, 256, GPU_NEAREST) && tex_init(&topTex, 512, 256, GPU_NEAREST);
 }
 
@@ -72,13 +79,16 @@ void gpu_exit(void) {
     C3D_TexDelete(&game2xTex);
     C3D_TexDelete(&bottomTex);
     C3D_TexDelete(&topTex);
+    C3D_TexDelete(&wideTex);
+    C3D_TexDelete(&wide2xTex);
+    C3D_TexDelete(&overlayTex);
     if (gameBuf) linearFree(gameBuf);
     C2D_Fini();
     C3D_Fini();
     gfxExit();
 }
 
-uint16_t* gpu_game_buffer(void) {
+uint32_t* gpu_game_buffer(void) {
     return gameBuf;
 }
 
@@ -109,27 +119,77 @@ void gpu_set_top(const uint32_t* px) {
     pendingTop = px;
 }
 
-static void write_game_1x(void) {
-    uint16_t* t = gameTex.data;
-    for (int y = 0; y < GBA_H; y++) {
-        const uint16_t* row = gameBuf + y * GPU_GAME_STRIDE;
-        for (int x = 0; x < GBA_W; x++) t[tiled((u32) x, (u32) y, gameTex.width)] = row[x];
+// mGBA's 0xXXBBGGRR as RGB565.
+static inline uint16_t to565(uint32_t p) {
+    return (uint16_t) ((p & 0xF8) << 8 | (p >> 5 & 0x7E0) | (p >> 19 & 0x1F));
+}
+
+static void write_1x(C3D_Tex* tex, const uint32_t* px, int w, int h, int stride) {
+    uint16_t* t = tex->data;
+    for (int y = 0; y < h; y++) {
+        const uint32_t* row = px + y * stride;
+        for (int x = 0; x < w; x++) t[tiled((u32) x, (u32) y, tex->width)] = to565(row[x]);
     }
-    GSPGPU_FlushDataCache(gameTex.data, gameTex.size);
+    GSPGPU_FlushDataCache(tex->data, tex->size);
 }
 
 // Each game pixel becomes a 2x2 block - in the tiled order an aligned 2x2
 // block is 4 consecutive texels, so one 64-bit store.
-static void write_game_2x(void) {
-    uint64_t* t = game2xTex.data;
-    for (int y = 0; y < GBA_H; y++) {
-        const uint16_t* row = gameBuf + y * GPU_GAME_STRIDE;
-        for (int x = 0; x < GBA_W; x++) {
-            uint64_t c = row[x];
-            t[tiled((u32) (2 * x), (u32) (2 * y), game2xTex.width) >> 2] = c | c << 16 | c << 32 | c << 48;
+static void write_2x(C3D_Tex* tex, const uint32_t* px, int w, int h, int stride) {
+    uint64_t* t = tex->data;
+    for (int y = 0; y < h; y++) {
+        const uint32_t* row = px + y * stride;
+        for (int x = 0; x < w; x++) {
+            uint64_t c = to565(row[x]);
+            t[tiled((u32) (2 * x), (u32) (2 * y), tex->width) >> 2] = c | c << 16 | c << 32 | c << 48;
         }
     }
-    GSPGPU_FlushDataCache(game2xTex.data, game2xTex.size);
+    GSPGPU_FlushDataCache(tex->data, tex->size);
+}
+
+static const uint32_t* widePx;
+static int wideW, wideH;
+static const uint32_t* pendingOverlay;
+static bool overlayShown, overlayDim;
+
+void gpu_set_wide(const uint32_t* px, int w, int h) {
+    widePx = px;
+    wideW = w;
+    wideH = h;
+}
+
+void gpu_set_overlay(const uint32_t* px) {
+    pendingOverlay = px;
+}
+
+void gpu_show_overlay(bool shown, bool dim) {
+    overlayShown = shown;
+    overlayDim = dim;
+}
+
+// 0xAARRGGBB into the RGBA8 texture (the GPU reads its bytes A, B, G, R).
+static void write_overlay(const uint32_t* px) {
+    uint32_t* t = overlayTex.data;
+    for (int y = 0; y < TOP_H; y++) {
+        const uint32_t* row = px + y * TOP_W;
+        for (int x = 0; x < TOP_W; x++) {
+            uint32_t p = row[x];
+            t[tiled((u32) x, (u32) y, overlayTex.width)] = (p & 0xFF000000) >> 24 | (p & 0xFF) << 8 | (p & 0xFF00) << 8 | (p & 0xFF0000) << 8;
+        }
+    }
+    GSPGPU_FlushDataCache(overlayTex.data, overlayTex.size);
+}
+
+static bool holdGame;
+static int gameW = GBA_W, gameH = GBA_H;
+
+void gpu_set_game_size(int w, int h) {
+    gameW = w;
+    gameH = h;
+}
+
+void gpu_hold_game(bool hold) {
+    holdGame = hold;
 }
 
 void gpu_draw(bool game, int screenMode) {
@@ -142,25 +202,44 @@ void gpu_draw(bool game, int screenMode) {
         write_canvas(&topTex, pendingTop, TOP_W, TOP_H);
         pendingTop = NULL;
     }
+    if (pendingOverlay) {
+        write_overlay(pendingOverlay);
+        pendingOverlay = NULL;
+    }
     Tex3DS_SubTexture sub;
     u32 black = C2D_Color32(0, 0, 0, 0xFF);
     C2D_TargetClear(topTarget, black);
     C2D_SceneBegin(topTarget);
     if (!game) {
         C2D_DrawImageAt(image(&topTex, &sub, TOP_W, TOP_H), 0, 0, 0.5f, NULL, 1.0f, 1.0f);
+    } else if (widePx) {
+        // EXPAND: its window fills the screen, at 1x or sharp bilinear like the game.
+        if (wideW >= TOP_W) {
+            if (!holdGame) write_1x(&wideTex, widePx, wideW, wideH, wideW);
+            C2D_DrawImageAt(image(&wideTex, &sub, wideW, wideH), (TOP_W - wideW) / 2.0f, (TOP_H - wideH) / 2.0f, 0.5f, NULL, 1.0f, 1.0f);
+        } else {
+            if (!holdGame) write_2x(&wide2xTex, widePx, wideW, wideH, wideW);
+            float k = (float) TOP_H / (2 * wideH);
+            C2D_DrawImageAt(image(&wide2xTex, &sub, 2 * wideW, 2 * wideH), (TOP_W - 2 * wideW * k) / 2, 0, 0.5f, NULL, k, k);
+        }
     } else if (screenMode == PD_SCREEN_PIXEL) {
-        write_game_1x();
-        C2D_DrawImageAt(image(&gameTex, &sub, GBA_W, GBA_H), (TOP_W - GBA_W) / 2, (TOP_H - GBA_H) / 2, 0.5f, NULL,
+        if (!holdGame) write_1x(&gameTex, gameBuf, gameW, gameH, GPU_GAME_STRIDE);
+        C2D_DrawImageAt(image(&gameTex, &sub, gameW, gameH), (TOP_W - gameW) / 2, (TOP_H - gameH) / 2, 0.5f, NULL,
                         1.0f, 1.0f);
     } else {
-        write_game_2x();
-        C2D_Image up = image(&game2xTex, &sub, 2 * GBA_W, 2 * GBA_H);
+        if (!holdGame) write_2x(&game2xTex, gameBuf, gameW, gameH, GPU_GAME_STRIDE);
+        C2D_Image up = image(&game2xTex, &sub, 2 * gameW, 2 * gameH);
         if (screenMode == PD_SCREEN_STRETCH) {
-            C2D_DrawImageAt(up, 0, 0, 0.5f, NULL, (float) TOP_W / (2 * GBA_W), (float) TOP_H / (2 * GBA_H));
+            C2D_DrawImageAt(up, 0, 0, 0.5f, NULL, (float) TOP_W / (2 * gameW), (float) TOP_H / (2 * gameH));
         } else {
-            float s = (float) TOP_H / (2 * GBA_H); // 240 / 320: the game at 1.5x
-            C2D_DrawImageAt(up, (TOP_W - 2 * GBA_W * s) / 2, 0, 0.5f, NULL, s, s);
+            float s = (float) TOP_H / (2 * gameH); // the screen's height: a GBA game at 1.5x
+            C2D_DrawImageAt(up, (TOP_W - 2 * gameW * s) / 2, 0, 0.5f, NULL, s, s);
         }
+    }
+    if (game && overlayDim) C2D_DrawRectSolid(0, 0, 0.6f, TOP_W, TOP_H, C2D_Color32(0, 0, 0, 0x55));
+    if (game && overlayShown) {
+        Tex3DS_SubTexture osub;
+        C2D_DrawImageAt(image(&overlayTex, &osub, TOP_W, TOP_H), 0, 0, 0.7f, NULL, 1.0f, 1.0f);
     }
 
     Tex3DS_SubTexture bottomSub;

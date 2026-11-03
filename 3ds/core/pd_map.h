@@ -16,7 +16,7 @@
 
 #define PD_MAP_W 240
 #define PD_MAP_H 160
-#define PD_MAP_PAGES 4 // FireRed: Kanto + three Sevii pages; Emerald: Hoenn
+#define PD_MAP_PAGES 7 // FireRed: Kanto + three Sevii pages; Emerald: Hoenn; a hack up to seven
 
 struct pd_region_layout {
     int offX, offY, w, h; // the grid's place on the 30x20 screen, in tiles
@@ -47,6 +47,9 @@ struct pd_map_art {
     uint32_t page[PD_MAP_PAGES][PD_MAP_W * PD_MAP_H];
     bool hasHead[2];
     uint32_t head[2][16 * 16]; // [0] boy, [1] girl
+    // A hack whose map was read from its ROM (RomRegionMap): its sections, by id.
+    bool romSections;
+    struct pd_mapsec_rect sections[256];
 };
 
 // Finds and draws the map for g's ROM - the first call scans the ROM (well

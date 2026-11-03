@@ -37,4 +37,9 @@ bool pd_dex_sprite(const struct pd_game* g, int species, uint32_t* out);
 void pd_dex_height(int dm, char* buf, int len);
 void pd_dex_weight(int hg, char* buf, int len);
 
+// The species' growth rate (gBaseStats +19: 0 medium fast ... 5 slow), -1 where the ROM's table isn't known.
+int pd_growth_rate(const struct pd_game* g, int species);
+// EXP at a level by growth rate (the games' gExperienceTables).
+long pd_exp_at(int rate, int level);
+
 #endif

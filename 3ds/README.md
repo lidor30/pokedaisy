@@ -7,10 +7,11 @@ and Jetpack Compose, which the 3DS can't run - so this folder holds a small,
 portable C core that re-implements the companion's reading and drawing, plus a
 3DS host and a desktop preview tool around it.
 
-**Status: early preview.** It builds, boots and works in the Azahar emulator
-(below); it has not been run on a real 3DS yet, so speed on hardware is
-unknown. Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original
-3DS / 3DS XL / 2DS may not hold full speed (see "Hardware").
+**Status: preview.** It builds and every screen below has been driven on real ROMs and copies of real
+saves in the headless simulator (`make sim-test`, below), but the `.3dsx` itself hasn't been run since the big
+rework: its GPU path (32-bit frames into RGB565 textures, the overlay, EXPAND's window) and the Wi-Fi dev link
+have only been compiled, so speed and those paths on a console are unknown. Target the **New 3DS / New 3DS XL /
+New 2DS XL** first; the original 3DS / 3DS XL / 2DS may not hold full speed (see "Hardware").
 
 ## What works
 
@@ -71,14 +72,28 @@ unknown. Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original
     trainer pic; a tap flips it to the back (Hall of Fame debut, link battles,
     trades, FireRed's stickers ...) the way the game does. FireRed rev 1,
     LeafGreen and Emerald, as in the app.
-- Games: retail English **FireRed / LeafGreen (rev 0 and 1)** and **Emerald**.
-  MAP, POKéDEX and GUIDE's wild / BOSS parts read ROM tables mapped for
-  FireRed rev 1 and Emerald only so far: on FireRed rev 0 and LeafGreen MAP
-  works, POKéDEX says it's not available yet, and GUIDE has its pages and
-  HERE's people / items. The FOE TEAM's addresses are known for FireRed /
-  LeafGreen rev 1 and Emerald (as in the app); the icons for all five. ROM hacks, other languages, Ruby / Sapphire and Game Boy
-  aren't ported yet; they show "not
-  supported".
+- **Games: what the app knows** (`core/pd_games_gen.c`, 158 ROMs by CRC32, exported from the app's own detection):
+  every retail GBA game in every language, the GBA hacks, and the Game Boy games (Red, Blue, Yellow in five
+  languages, Gold, Silver, Crystal, Crystal Clear, Prism, Polished Crystal, PureRed / PureBlue). Per game: its
+  names, moves, types and type chart, party and bag palettes, backdrop, and the companion's windows in the Game
+  Boy games' black on white. No DS: the 3DS can't run melonDS.
+- **Library**: the app's rail, view pills and tiles.
+- **Battle controls**: FIGHT / BAG / RUN / POKéMON, the moves, the party to send in (BEST / OUT), ONE-TAP MOVES,
+  on the GBA games with their handlers known and on every Game Boy game (its 2x2 menu in the cart's own words).
+- **QUICK MENU** (Y): PC, FLY, REPEL, BIKE, WILD, states, FF. The Game Boy games have PC, FLY and WILD (`GbField`).
+- **EXPAND / ZOOM OUT** on the games the app has it for, Game Boy too, and the **HUD** (party, minimap, balls,
+  Repel steps), kept to the game's picture without EXPAND.
+- **BOXES**: the PC's boxes live, in FireRed's and Emerald's colours and wallpapers; encrypted, plain and CFRU
+  storage. WITHDRAW, DEPOSIT and SWAP through the game's own functions where the app has them.
+- **USE / GIVE / TAKE**, the summary's STATS, the bag's SORT, **DEX** sections (INFO, EVOLVE, AREA, MOVES on
+  vanilla's tables), region maps on the hacks (`RomRegionMap`, RomArt's fingerprints, smol) and the Game Boy games'
+  town maps, **STATES** with ten slots, thumbnails and UNDO, **DARK MODE**, **THEME**, **FF MODE**, **CHEATS**
+  (mGBA's format, `sdmc:/pokedaisy/cheats/<CRC32>.cheats`, one master switch).
+
+Not here yet: the Game Boy games' DEX and GUIDE, GUIDE's live pages on hacks with their own tables, the hacks'
+evolutions and learnsets in DEX, Quetzal v1's BAG4, the game's own font on the Game Boy games, Japanese text
+(kana), REWIND, STEADY music, shaders, ACHIEVEMENTS, Nuzlocke, co-op, translated UI, seasonal themes, RAINBOW's
+coloured chips, per-cheat switches.
 
 ## Controls
 
@@ -86,10 +101,10 @@ unknown. Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original
 |---|---|
 | A / B / START / SELECT / L / R / D-pad or circle pad | the GBA's buttons |
 | Touch screen | the companion |
-| X | next companion tab |
-| Y | companion back (close a summary, an entry, a pick-list, a confirm) |
+| Y | QUICK MENU (the circle pad aims the ring) |
+| X | companion back (close a summary, an entry, a pick-list, a confirm) |
+| ZL (New 3DS) | next companion tab |
 | ZR (New 3DS) | fast-forward while held |
-| Hold X + Y (1 s) | save and return to the game list (or SETTINGS > LEAVE GAME) |
 | START on the game list | quit to the Homebrew Launcher |
 
 ## Installing on a 3DS
@@ -124,6 +139,33 @@ Azahar's default keys (Emulation > Configure > Controls to change them): A =
 `M`, SELECT = `N`, L / R = `Q` / `W`, ZR = `2` (fast-forward), D-pad =
 `T` `F` `G` `H`, circle pad = the arrow keys. Azahar plays sound without the
 DSP firmware. It shows that things work, not how fast they'll run on a console.
+
+## A dev build over Wi-Fi
+
+`make 3ds-dev` builds `ctr/pokedaisy-dev.3dsx`, kept apart from the real one (`sdmc:/pokedaisy-dev/`, title
+"PokeDaisy dev"), with a small link (`ctr/devlink.c`, TCP 17498, a UDP beacon on 17499) that `tools/pdlink.py`
+talks to: `find`, `ping`, `stat`, `log`, `put` / `push` / `get` / `ls` / `rm` (only under `sdmc:/pokedaisy-dev/`),
+`press`, `tap`, `drag`, `shot`, `leave`, `restart`, `launch`. Start it once from the Homebrew Launcher (press Y
+there for its netloader and send it with `3dslink`), then `tools/pdlink.py find`. Never in a release build.
+
+## The simulator
+
+`make sim` builds `build/sim/pd_sim` (`desktop/sim/`): the real session (`host/`) and companion over the real mGBA,
+with no 3DS code, from a script of `run`, `press`, `quick`, `tap`, `hit ID`, `hits`, `shot`, `wild`, `wait-state`,
+`press-to-state`, `poke`, `peek`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`. `make sim-test` runs
+`test/sim_*.txt` on FireRed and Emerald (`ROM_DIR`, `SAVE_DIR`), `make sim-test-gb` the Game Boy script on Yellow; saves
+are copied first, never written.
+
+## Game data from the app
+
+```sh
+cd ui-preview && gradle gameExport -PgameExport -Proms=<ROMs folder> -Pout=<dir>
+python3 3ds/tools/gen_games.py <dir>
+```
+
+`src/render/GameExport.kt` runs each ROM through the app's own detection (with `-PgameExport` the core is a stub
+answering from the file) and writes what it picked: the config, the tables, the palettes, every theme's windows,
+which art it wants. `gen_games.py` turns that into `core/pd_games_gen.c`. A new game or a changed table: run both.
 
 ## Building and testing
 
@@ -188,7 +230,8 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
 | `core/` | Portable C, no platform code: game detection (`pd_game`, the app's `NativeConfig` addresses), the snapshot reader (`pd_snapshot`: party, battle, bag, money, place - ports `Gen3Mon.kt` / `readNativeTelemetry` / `readNativeBag`), the canvas (`pd_canvas`: pixel-stepped corners, layered OPTION frames, GBA-shadowed and wrapped text, drawn cursors), the companion (`pd_ui.c` frame + `pd_ui_party` / `_battle` (INFO, SUGGESTIONS, FOE TEAM) / `_bag` / `_map` / `_guide` / `_dex` / `_settings` / `_widgets`), the ROM readers (`pd_romart`: `RomArt`'s scan - every blob of the game in one pass; `pd_map`: the region map and heads, `RegionMapModel`'s pick, `PlayerMapTile`; `pd_dex`: the dex tables and front pics; `pd_guide`: `GuideRom.kt`'s bosses, teams and wild tables), the party icons (`pd_icon`: `DecompIconSource`'s tables), the TRAINER CARD (`pd_card`: `readTrainerCard` + `TrainerCardArt`; `pd_ui_card`), the game list (`pd_menu`) and the settings file (`pd_settings`) |
 | `core/*_gen.c` | Generated: names / moves / type chart / map sections / item text / gender ratios from the app's Kotlin tables (`tools/gen_tables.py`), the ROM art's fingerprints (map and card) and the cursor grids (`tools/gen_map_tables.py`), the guides and area data (`tools/gen_guide.py`), Pixel Operator as a 1-bit font plus drawn ♂ ♀ (`tools/gen_font.py`) |
 | `ctr/` | The 3DS host: `main.c` (game loop, ndsp audio, HID, files, states) and `gpu.c` (citro2d: the game and canvases written into textures in the GPU's tiled order, drawn as quads), and the CMake build against the mGBA submodule |
-| `desktop/` | The preview tool and its small PNG writer |
+| `host/` | What a running game needs on any host: the session (`pd_session`), USE / GIVE / TAKE and the PC's moves (`pd_items`), the Game Boy games' field actions (`pd_gb_field`) |
+| `desktop/` | The preview tool, its small PNG writer and the simulator (`sim/`) |
 | `test/` | The fixture ROM, the decomp build and the Azahar script |
 | `tools/` | The generators |
 
@@ -212,11 +255,6 @@ not used; nor is render-to-texture.
 
 ## Next steps
 
-- Run it on a New 3DS: measure the frame time per screen mode, check the
-  texture orientation, sound and save writes on hardware.
-- Port more of the app: the rest of `NativeConfig` (hacks, other languages,
-  Ruby / Sapphire, ROM tables for FireRed rev 0 / LeafGreen - the app has
-  LeafGreen's), the battle's touch controls (`BattleInputController`), the
-  party icons' two-frame animation.
-- More state slots with thumbnails, and resuming where the player left off (with
-  the app's `pkStateMatchesSave` check first).
+- Run it on a New 3DS: measure the frame time per screen mode, check the texture orientation, the overlay's byte
+  order, sound and save writes on hardware.
+- The list under "What works": the Game Boy games' DEX and GUIDE first.

@@ -2,6 +2,7 @@
 
 #include <string.h>
 
+#include "pd_gb.h"
 #include "pd_romart.h"
 #include "pd_tables.h"
 
@@ -29,12 +30,20 @@ static uint32_t bgr555(uint16_t c) {
 
 static bool decode(const struct pd_game* g, int species, uint32_t* out) {
     const struct pd_config* cfg = g->cfg;
-    if (!cfg || !cfg->monIconTable || species <= 0 || species > PD_SPECIES_EGG) return false;
-    uint8_t w[4], idx;
-    if (!pd_rom_read(g, cfg->monIconTable + (uint32_t) species * 4, w, 4)) return false;
+    if (!cfg || !cfg->monIconTable || species <= 0 || cfg->monIconPacked) return false;
+    uint32_t stride = (uint32_t) (cfg->monIconStride ? cfg->monIconStride : 4);
+    uint32_t idxStride = (uint32_t) (cfg->monPalIdxStride ? cfg->monPalIdxStride : 1);
+    uint8_t w[4], idx = 0;
+    if (!pd_rom_read(g, cfg->monIconTable + (uint32_t) species * stride, w, 4)) return false;
     const uint8_t* tiles = pd_rom_at(g, u32le(w), 16 * 32);
-    if (!tiles || !pd_rom_read(g, cfg->monIconPaletteIndices + (uint32_t) species, &idx, 1) || idx > 15) return false;
-    if (!pd_rom_read(g, cfg->monIconPaletteTable + (uint32_t) idx * 8, w, 4)) return false;
+    if (!tiles) return false;
+    if (cfg->monIconPalettes) {
+        if (!pd_rom_read(g, cfg->monIconPalettes + (uint32_t) species * stride, w, 4)) return false;
+    } else {
+        if (!pd_rom_read(g, cfg->monIconPaletteIndices + (uint32_t) species * idxStride, &idx, 1)) return false;
+        if (cfg->monPalIdxMask) idx &= (uint8_t) cfg->monPalIdxMask;
+        if (idx > 15 || !pd_rom_read(g, cfg->monIconPaletteTable + (uint32_t) idx * 8, w, 4)) return false;
+    }
     const uint8_t* pal = pd_rom_at(g, u32le(w), 32);
     if (!pal) return false;
     uint32_t colours[16];
@@ -61,7 +70,7 @@ static const struct icon* icon_for(const struct pd_game* g, int species) {
     nextSlot = (nextSlot + 1) % CACHE;
     e->rom = rom;
     e->species = species;
-    e->ok = decode(g, species, e->px);
+    e->ok = g->gb ? pd_gb_icon(g, species, e->px, CLEAR) : decode(g, species, e->px);
     return e;
 }
 

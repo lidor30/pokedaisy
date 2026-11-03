@@ -54,6 +54,21 @@ battlerPartyIndexes = 'battlerPartyIndexes'
 battleStructPtr = 'battleStructPtr'
 monToSwitchIntoOff = 'monToSwitchIntoOff'
 
+# The battle's touch controls (BattleInputController): the handlers that say what the battle waits for, the menus'
+# cursors, gPartyMenu. The app keeps gPartyMenu and its grid in PokeDaisyActivity.switchAddrsFor, not the config:
+# a config's `values` give them here. No partyMenu = no POKéMON switch on that game, as in the app.
+[part.battle]
+inBattleOff = 'inBattleOff'
+battlerControllerFuncs = 'battlerControllerFuncs'
+handleInputChooseAction = 'handleInputChooseAction'
+handleInputChooseMove = 'handleInputChooseMove'
+handleInputChooseTarget = 'handleInputChooseTarget'
+completeWhenChoseItem = 'completeWhenChoseItem'
+waitForMonSelection = 'waitForMonSelection'
+actionCursor = 'actionCursor'
+moveCursor = 'moveCursor'
+partyMenu = 'partyMenu'
+
 # The party menu's icons and the bag's.
 [part.icons]
 monIconTable = 'monIconTable'
@@ -152,24 +167,26 @@ pcScript = '@items.pc.script'
 # are known for rev 1 only.
 [config.firered_rev1]
 name = 'FIRERED_REV1'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
+parts = ['ram', 'foes', 'battle', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
 records = { items = 'FIELD_ITEMS_FIRERED_REV1' }
+values = { partyMenu = 0x0203B0A0 }
 
 [config.firered_rev0]
 name = 'FIRERED_REV0'
-parts = ['ram', 'icons']
+parts = ['ram', 'battle', 'icons']
 
 [config.leafgreen_rev0]
 name = 'LEAFGREEN_REV0'
-parts = ['ram', 'icons', 'card', 'fly', 'field']
+parts = ['ram', 'battle', 'icons', 'card', 'fly', 'field']
 records = { items = 'FIELD_ITEMS_LEAFGREEN_REV0' }
 
 [config.leafgreen_rev1]
 name = 'LEAFGREEN_REV1'
-parts = ['ram', 'foes', 'icons', 'card', 'fly', 'field']
+parts = ['ram', 'foes', 'battle', 'icons', 'card', 'fly', 'field']
 records = { items = 'FIELD_ITEMS_LEAFGREEN_REV1' }
 
 [config.emerald_retail]
 name = 'EMERALD'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
+parts = ['ram', 'foes', 'battle', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
 records = { items = 'FIELD_ITEMS_EMERALD' }
+values = { partyMenu = 0x0203CEC8 }

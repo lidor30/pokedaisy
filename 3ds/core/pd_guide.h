@@ -69,7 +69,7 @@ struct pd_area_thing {
     uint8_t kind;      // enum pd_area_kind
     uint16_t id;       // an item, or the species you get
     uint16_t flag;     // set once it's done (0 = none known)
-    uint8_t qty;
+    uint16_t qty;
     uint16_t wants;    // TRADE: the species they want
     const char* where; // the sub-map ("" = the area's main map)
 };

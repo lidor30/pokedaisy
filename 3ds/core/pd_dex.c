@@ -147,3 +147,9 @@ void pd_dex_weight(int hg, char* buf, int len) {
     if (lbs % 10 >= 5) lbs += 10;
     snprintf(buf, (size_t) len, "%ld.%ld lbs.", lbs / 100, (lbs % 100) / 10);
 }
+
+int pd_growth_rate(const struct pd_game* g, int species) {
+    if (!g->cfg || !g->cfg->speciesInfo || species <= 0 || species >= PD_SPECIES_EGG) return -1;
+    uint8_t rate = 0;
+    return pd_rom_read(g, g->cfg->speciesInfo + (uint32_t) species * 28 + 19, &rate, 1) && rate <= 5 ? rate : -1;
+}

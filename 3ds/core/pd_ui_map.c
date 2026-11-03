@@ -8,6 +8,8 @@
 #include <strings.h>
 
 #include "pd_map.h"
+#include "pd_games.h"
+#include "pd_gb.h"
 #include "pd_ui_internal.h"
 
 #define FRAME 5
@@ -185,8 +187,50 @@ static void map_button(struct pd_ui* ui, struct pd_canvas* c, const char* text, 
     buttonRight -= 4;
 }
 
-void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
+// A Game Boy game's map: the cart's own town map, the player on the section it's in.
+static void gb_map(struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
+    static uint32_t map[160 * 144], player[16 * 16]; // the cart's
+    static unsigned loadedRom;
+    static int loaded = -1;
+    const struct pd_table_set* t = g->tables;
+    int region = 0, tx = -1, ty = 0;
+    if (t && s->mapsec >= 0 && s->mapsec < t->mapsecAtCount && t->mapsecAt[s->mapsec][0] != 255) {
+        region = t->mapsecAt[s->mapsec][0];
+        tx = t->mapsecAt[s->mapsec][1];
+        ty = t->mapsecAt[s->mapsec][2];
+    }
+    if (loaded != region || loadedRom != pd_rom_id(g)) {
+        loaded = pd_gb_town_map(g, region, map) ? region : -2;
+        loadedRom = pd_rom_id(g);
+    }
+    if (loaded < 0) {
+        ui_notice(c, "NO MAP", "This game's map isn't known", "here yet.");
+        return;
+    }
+    int h = c->h - 2, w = 160 * h / 144, x0 = (c->w - w) / 2;
+    for (int y = 0; y < h; y++)
+        for (int x = 0; x < w; x++) pd_fill(c, x0 + x, 1 + y, 1, 1, map[(y * 144 / h) * 160 + x * 160 / w]);
+    if (tx >= 0 && pd_gb_player(g, s->gender > 0 ? s->gender : 0, player, 0xFF000000u)) {
+        int px = x0 + (tx * 8 - 4) * w / 160, py = 1 + (ty * 8 - 4) * h / 144;
+        for (int y = 0; y < 16; y++)
+            for (int x = 0; x < 16; x++)
+                if (player[y * 16 + x] != 0xFF000000u) pd_fill(c, px + x * w / 160, py + y * h / 144, 2, 2, player[y * 16 + x]);
+    }
+    const char* name = pd_mapsec_name(g, s->mapsec);
+    if (*name) {
+        int bw = pd_text_width(name) + 12, by = c->h - 22;
+        int f = pd_title_box(c, x0 + w - bw - 2, by, bw, 20, PD_TITLE_FILL);
+        pd_text(c, x0 + w - bw - 2 + f + 3, pd_text_y(by, 20), name, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    }
+}
+
+void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
+                const struct pd_host_info* host) {
     lastGame = g;
+    if (g->gb) {
+        gb_map(c, g, s);
+        return;
+    }
     const struct pd_map_art* art = pd_map_art(g);
     if (!art) {
         ui_notice(c, "NO MAP", "The region map's art wasn't found", "in this ROM.");
@@ -242,10 +286,37 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     // Over the map's top right: PLACES, ME, the other page(s) (MapScreen's order, left to right).
     buttonRight = view.x + view.w - 4;
     map_button(ui, c, "PLACES", HIT_MAP_PLACES);
+    if (host && host->flyReady) map_button(ui, c, "FLY", HIT_MAP_FLY);
     if (ui->mapSel >= 0 || ui->mapDungeon >= 0 || (ui->mapPage >= 0 && ui->mapPage != playerPage)) {
         map_button(ui, c, "ME", HIT_MAP_ME);
     }
     if (art->pages > 1) map_button(ui, c, pd_map_page_name(g, (page + 1) % art->pages), HIT_MAP_REGION);
+}
+
+// MAP's FLY: the towns the game would fly to.
+void ui_fly_overlay(struct pd_ui* ui, struct pd_canvas* c) {
+    pd_dim(c, 0xE6);
+    ui_add_hit(ui, 0, 0, c->w, c->h, HIT_SCRIM);
+    int x = MARGIN, w = c->w - 2 * MARGIN, y = CONTENT_Y;
+    int f = pd_title_box(c, x, y, w, 24, PD_TITLE_FILL);
+    pd_text(c, x + f + 6, pd_text_y(y, 24), "FLY", PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    y += 28;
+    int lf = pd_list_box(c, x, y, w, c->h - y - MARGIN);
+    int ix = x + lf, iy = y + lf + 1, iw = w - 2 * lf, ih = c->h - y - MARGIN - 2 * lf - 2;
+    ui_add_scroll_hit(ui, ix, iy, iw, ih, HIT_SCRIM);
+    ui->placesScroll = ui_clamp_scroll(ui->placesScroll, ui->flyCount * PLACE_ROW, ih);
+    pd_clip(c, ix, iy, iw, ih);
+    for (int i = ui->placesScroll / PLACE_ROW; i < ui->flyCount; i++) {
+        int ry = iy + i * PLACE_ROW - ui->placesScroll;
+        if (ry >= iy + ih) break;
+        if (ui->pressedId == HIT_FLY_TOWN + i) pd_fill(c, ix, ry, iw, PLACE_ROW, PD_ROW_SELECTED);
+        pd_text_fit(c, ix + 14, pd_text_y(ry, PLACE_ROW), iw - 28, ui->flyNames[i], PD_LABEL, PD_LABEL_SHADOW);
+        int top = ry < iy ? iy : ry;
+        int bottom = ry + PLACE_ROW > iy + ih ? iy + ih : ry + PLACE_ROW;
+        ui_add_scroll_hit(ui, ix, top, iw, bottom - top, HIT_FLY_TOWN + i);
+    }
+    pd_unclip(c);
+    ui_scroll_bar(c, ix + iw - 4, iy, ih, ui->placesScroll, ui->flyCount * PLACE_ROW, PD_MUTED);
 }
 
 void ui_places_overlay(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g) {
@@ -285,6 +356,19 @@ void ui_places_overlay(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
 }
 
 bool ui_map_act(struct pd_ui* ui, int id) {
+    if (ui->overlay == PD_OVERLAY_FLY) {
+        if (id >= HIT_FLY_TOWN && id < HIT_FLY_TOWN + ui->flyCount) {
+            ui->flyPick = id - HIT_FLY_TOWN;
+            ui->overlay = PD_OVERLAY_NONE;
+            ui->action = PD_ACTION_FLY_TO;
+            return true;
+        }
+        if (id == HIT_SCRIM) {
+            ui->overlay = PD_OVERLAY_NONE;
+            return true;
+        }
+        return false;
+    }
     if (ui->overlay == PD_OVERLAY_PLACES) {
         if (id >= HIT_PLACE && id < HIT_PLACE + placeCount && places[id - HIT_PLACE].mapsec >= 0 && lastGame) {
             int mapsec = places[id - HIT_PLACE].mapsec, page;
@@ -334,6 +418,9 @@ bool ui_map_act(struct pd_ui* ui, int id) {
     case HIT_MAP_PLACES:
         ui->overlay = PD_OVERLAY_PLACES;
         ui->placesScroll = 0;
+        return true;
+    case HIT_MAP_FLY:
+        ui->action = PD_ACTION_FLY_ASK;
         return true;
     default:
         return false;

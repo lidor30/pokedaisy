@@ -103,7 +103,7 @@ def main():
     ]
     for name, lz, size, crc, head_off, head, pre in blobs():
         out.append(f"    [PD_{name}] = {{ {str(lz).lower()}, {size}, 0x{crc:08X}u, {head_off}, 0x{head:016X}ull, 0x{pre:04X}, "
-                   f"{family(name)} }},")
+                   f"{family(name)}, false }},")
     out.append("};")
     out.append("")
 

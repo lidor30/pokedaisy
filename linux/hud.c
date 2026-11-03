@@ -70,7 +70,7 @@ static void party_row(struct pd_canvas *c, const struct pd_game *g, const struct
   int tx = x + PAD + 1, ty = y + PAD + 1;
   for (int i = 0; i < n; i++, tx += TILE + TILE_GAP) {
     const struct pd_mon *m = &s->party[i];
-    bool egg = m->species == PD_SPECIES_EGG, fainted = !egg && m->hp == 0;
+    bool egg = m->egg, fainted = !egg && m->hp == 0;
     if (i == 0) { // the lead (the one that goes out first): a lit tile with an accent edge
       pd_round_rect(c, tx - 2, ty - 2, TILE + 4, PARTY_H - 2 * PAD - 2 + 4, 3, ACCENT);
       pd_round_rect(c, tx - 1, ty - 1, TILE + 2, PARTY_H - 2 * PAD - 2 + 2, 3, LEAD_FILL);
@@ -227,14 +227,15 @@ bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snap
     return false;
   bool any = false;
   int mapBottom = EDGE;
-  if (!(hidden & 1 << PD_HUD_MAP) && minimap(c, g, s, c->w - EDGE - MINIMAP_W, EDGE)) {
+  int left = h->left + EDGE, right = (h->right ? h->right : c->w) - EDGE;
+  if (!(hidden & 1 << PD_HUD_MAP) && minimap(c, g, s, right - MINIMAP_W, EDGE)) {
     any = true;
     mapBottom = EDGE + MINIMAP_H + 4;
   }
   int partyRight = 0;
   if (!(hidden & 1 << PD_HUD_PARTY) && s->partyCount > 0) {
-    party_row(c, g, s, EDGE, c->h - EDGE - PARTY_H, NULL, NULL);
-    partyRight = EDGE + party_width(s);
+    party_row(c, g, s, left, c->h - EDGE - PARTY_H, NULL, NULL);
+    partyRight = left + party_width(s);
     any = true;
   }
   // The right column, from the bottom up: the balls, then REPEL STEPS over them. Where the party row reaches
@@ -252,14 +253,14 @@ bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snap
     colH += (colH ? 4 : 0) + REPEL_H;
   }
   if (colH) {
-    bool top = partyRight && c->w - EDGE - colW < partyRight + 4;
+    bool top = partyRight && right - colW < partyRight + 4;
     int y = top ? mapBottom : c->h - EDGE - colH;
     if (repel) {
-      repel_panel(c, g, h, c->w - EDGE - repel_width(h->repel), y);
+      repel_panel(c, g, h, right - repel_width(h->repel), y);
       y += REPEL_H + 4;
     }
     if (nb)
-      balls_panel(c, g, b, nb, c->w - EDGE - balls_width(b, nb), y);
+      balls_panel(c, g, b, nb, right - balls_width(b, nb), y);
     any = true;
   }
   return any;

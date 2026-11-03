@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "pd_tables.h"
 #include "pd_ui_internal.h"
 
 #define HP_FRAME 0x525252
@@ -31,6 +32,41 @@ void ui_add_hit(struct pd_ui* ui, int x, int y, int w, int h, int id) {
 
 void ui_add_scroll_hit(struct pd_ui* ui, int x, int y, int w, int h, int id) {
     add(ui, x, y, w, h, id, true);
+}
+
+void ui_mono(struct pd_canvas* c, const struct pd_mono* icon, int x, int y, int scale, uint32_t color) {
+    for (int r = 0; r < icon->h; r++)
+        for (int col = 0; icon->rows[r][col]; col++)
+            if (icon->rows[r][col] == '1') pd_fill(c, x + col * scale, y + r * scale, scale, scale, color);
+}
+
+void ui_art(struct pd_canvas* c, const struct pd_art* art, int x, int y, int scale) {
+    for (int r = 0; r < art->h; r++) {
+        for (int col = 0; art->rows[r][col]; col++) {
+            const char* k = strchr(art->keys, art->rows[r][col]);
+            if (k && art->rows[r][col] != '.') pd_fill(c, x + col * scale, y + r * scale, scale, scale, art->colors[k - art->keys]);
+        }
+    }
+}
+
+uint32_t ui_type_color(int type) {
+    static const uint32_t COLORS[18] = {
+        0xA8A878, 0xC03028, 0xA890F0, 0xA040A0, 0xE0C068, 0xB8A038, 0xA8B820, 0x705898, 0xB8B8D0,
+        0x68A090, 0xF08030, 0x6890F0, 0x78C850, 0xF8D030, 0xF85888, 0x98D8D8, 0x7038F8, 0x705848,
+    };
+    return type >= 0 && type < 18 ? COLORS[type] : PD_MUTED;
+}
+
+int ui_type_badge(struct pd_canvas* c, int x, int y, int type) {
+    char text[12];
+    const char* name = pd_type_name(type);
+    int n = 0;
+    for (; name[n] && n < 11; n++) text[n] = name[n] >= 'a' && name[n] <= 'z' ? (char) (name[n] - 32) : name[n];
+    text[n] = 0;
+    int w = pd_text_width(text) + 6;
+    pd_round_rect(c, x, y, w, 12, 1, ui_type_color(type));
+    pd_text(c, x + 3, y - 2, text, 0xFFFFFF, PD_NO_SHADOW);
+    return w;
 }
 
 void ui_button(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, const char* label, int id) {

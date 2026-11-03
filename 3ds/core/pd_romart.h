@@ -49,6 +49,7 @@ struct pd_blob_sig {
     uint64_t head;
     uint16_t pre;
     uint8_t family; // PD_BLOB_*
+    bool smol;      // pokeemerald-expansion's compression (pd_smol)
 };
 
 extern const struct pd_blob_sig pd_blob_sigs[PD_BLOB_COUNT];
@@ -59,6 +60,12 @@ void pd_romart_scan(const struct pd_game* g);
 // The blob's decoded bytes (pd_blob_sigs[b].size of them), or NULL when the
 // ROM doesn't have it.
 const uint8_t* pd_romart_blob(const struct pd_game* g, enum pd_blob b);
+
+// One pass over g's ROM for [sigs]: out[i] = the decoded blob (malloc'd, sigs[i]->size bytes) or NULL.
+void pd_romart_find(const struct pd_game* g, const struct pd_blob_sig* const* sigs, int n, uint8_t** out);
+
+// pokeemerald-expansion's "smol" data (Smol.kt) at src: tile data or a tilemap. dstLen = what it should decode to.
+bool pd_smol(const uint8_t* src, size_t srcLen, uint8_t* dst, size_t dstLen);
 
 // GBA BIOS LZ77 (type 0x10); returns the decoded size or 0.
 size_t pd_lz77(const uint8_t* src, size_t srcLen, uint8_t* dst, size_t dstLen);

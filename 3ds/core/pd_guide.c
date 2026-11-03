@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "pd_dex.h"
+#include "pd_games.h"
 
 #define TRAINER_STRIDE 0x28
 #define WILD_HEADER 20
@@ -19,12 +20,17 @@ static uint32_t u32(const uint8_t* p) {
 }
 
 const struct pd_guide* pd_guide_for(const struct pd_game* g) {
+    if (g->entry) return g->entry->guide;
     if (g->kind == PD_GAME_EMERALD) return &pd_guide_emerald;
     if (g->kind == PD_GAME_FIRERED) return !strcmp(g->code, "BPGE") ? &pd_guide_leafgreen : &pd_guide_firered;
     return NULL;
 }
 
 const struct pd_area_thing* pd_areas_for(const struct pd_game* g, int* count) {
+    if (g->entry) {
+        *count = g->entry->areaCount ? *g->entry->areaCount : 0;
+        return g->entry->areas;
+    }
     if (g->kind == PD_GAME_EMERALD) {
         *count = pd_areas_emerald_count;
         return pd_areas_emerald;

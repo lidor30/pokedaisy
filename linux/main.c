@@ -10,6 +10,7 @@
 #include "fly.h"
 #include "hud.h"
 #include "../app/src/main/cpp/pk_call.h"
+#include "../app/src/main/cpp/pk_host.h"
 #include "quick_menu.h"
 #include "wild.h"
 #include "../app/src/main/cpp/pk_wide.h"
@@ -662,6 +663,7 @@ static bool state(struct mCore *c, const char *path, bool save) {
                  : mCoreLoadStateNamed(c, f, SAVESTATE_RTC);
   if(!f->close(f))ok=false;
   if (ok && !save) {
+    pk_heal_rtc(c);
     pk_wide_reset(); // EXPAND's RAM history is from before the jump
     wideReady = false;
   }
@@ -971,6 +973,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   for (int i = 0; i < 2; i++)
     blip_set_rates(c->getAudioChannel(c, i), c->frequency(c), 32768);
   c->reset(c);
+  pk_heal_rtc(c);
   uint32_t crc = 0;
   c->checksum(c, &crc, mCHECKSUM_CRC32);
   wideSupported = pk_wide_configure(crc) != 0;
@@ -1019,7 +1022,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   unsigned gameKeys = 0;
   int gameKeyFrames = 0;
   // The HUD: on after 20 frames of the plain field (FieldHud's rule), off at once.
-  struct hud_state hudState = {0, 0};
+  struct hud_state hudState = { .repel = 0 };
   int hudFieldFrames = 0;
   hudDrawnKey = 0;
   char repelRows[REPEL_KINDS][48];
@@ -1516,6 +1519,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
     else if (now - due > SDL_GetPerformanceFrequency() / 5)
       due = now;
   }
+  pk_finish_save(c, PK_FINISH_SAVE_FRAMES, NULL); // a save the game is writing finishes before the core stops
   if (audio)
     SDL_ClearQueuedAudio(audio);
 cleanup:

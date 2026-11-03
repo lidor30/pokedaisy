@@ -2,6 +2,8 @@
 
 #include <string.h>
 
+#include "pd_games.h"
+
 // The configs come from gamedata/ (gamedata/targets/3ds.toml picks the fields
 // this port reads), generated with the app's: `make gamedata`.
 #include "pd_configs_gen.h"
@@ -57,4 +59,34 @@ void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize) {
         g->title = g->kind == PD_GAME_FIRERED ? "FireRed ROM hack" : "Emerald ROM hack";
         g->unsupported = "ROM hacks aren't supported on 3DS yet";
     }
+}
+
+const struct pd_game_entry* pd_game_entry_for(uint32_t crc32) {
+    int lo = 0, hi = pd_game_entry_count - 1;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        uint32_t c = pd_game_entries[mid].crc32;
+        if (c == crc32) return &pd_game_entries[mid];
+        if (c < crc32) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return NULL;
+}
+
+bool pd_game_identify(struct pd_game* g, uint32_t crc32) {
+    const struct pd_game_entry* e = pd_game_entry_for(crc32);
+    if (!e) {
+        pd_tables_use(NULL);
+        return false;
+    }
+    g->kind = e->kind;
+    g->title = e->title;
+    g->cfg = e->cfg;
+    g->tables = e->tables;
+    g->entry = e;
+    g->gb = e->gb;
+    g->language = e->language;
+    g->unsupported = NULL;
+    pd_tables_use(e->tables);
+    return true;
 }

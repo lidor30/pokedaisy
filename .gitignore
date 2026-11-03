@@ -61,5 +61,6 @@ __pycache__/
 # make release-apk output
 /dist/
 # 3DS build output (3ds/README.md)
+3ds/ctr/build-dev/
 *.3dsx
 *.smdh

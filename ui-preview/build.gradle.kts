@@ -30,6 +30,8 @@ val prepSrc = tasks.register<Sync>("prepSrc") {
 }
 sourceSets["main"].kotlin.srcDir("src/render")
 sourceSets["main"].kotlin.srcDir("src/shims")
+// GameExport.kt needs -PgameExport's stubbed core (data/build.gradle.kts).
+if (!project.hasProperty("gameExport")) sourceSets["main"].kotlin.exclude("**/GameExport.kt")
 tasks.withType<KotlinCompile>().configureEach {
     source(files(layout.buildDirectory.dir("appsrc")).builtBy(prepSrc))
     kotlinOptions.jvmTarget = "17"
@@ -45,6 +47,17 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("org.tukaani:xz:1.12")
     implementation("org.jetbrains.compose.ui:ui-test-junit4-desktop:1.5.12")
+}
+
+// The game data the 3DS port builds from, with -PgameExport: every ROM under -Proms through the app's own detection.
+tasks.register<JavaExec>("gameExport") {
+    description = "Writes every ROM's detected config and tables as JSON (see src/render/GameExport.kt); needs -PgameExport."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("render.GameExportKt")
+    args = listOf((project.findProperty("roms") as String?) ?: "", (project.findProperty("out") as String?) ?: "")
+    workingDir = rootDir.resolve("../app/src/main/assets")
+    maxHeapSize = "3g"
+    systemProperty("java.awt.headless", "true")
 }
 
 tasks.register<JavaExec>("render") {

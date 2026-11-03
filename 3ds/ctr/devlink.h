@@ -1,0 +1,59 @@
+// The dev build's Wi-Fi link (PD_DEV only, never in a player's build): tools/pdlink.py pushes a new build, moves
+// files in the dev folder, presses buttons, taps and takes screenshots from a computer. See README.md.
+#ifndef DEVLINK_H
+#define DEVLINK_H
+
+#include <stdbool.h>
+#include <stdint.h>
+
+#ifdef PD_DEV
+
+#define DEVLINK_PORT 17498
+#define DEVLINK_BEACON_PORT 17499
+#define DEVLINK_SELF "/3ds/pokedaisy-dev.3dsx"
+
+// What the main thread reports each second, for `stat`.
+struct devlink_stats {
+    unsigned frames;      // game frames run in the last second
+    unsigned coreUs;      // of that second: running the core
+    unsigned uiUs;        // the snapshot and the companion's drawing
+    unsigned drawUs;      // gpu_draw, including its wait for the refresh
+    unsigned worstUs;     // the longest whole loop
+    unsigned late;        // loops over a refresh (16.7 ms)
+};
+
+void devlink_start(void);
+void devlink_stop(void);
+// This loop's injected keys (hidKeysHeld's bits), to OR in.
+uint32_t devlink_keys(void);
+// A touch to act on: true with its position while one is held.
+bool devlink_touch(int* x, int* y);
+// A game to open from the list ("" none): taken once.
+bool devlink_take_launch(char* out, unsigned outLen);
+// True when the running game should be left (`leave`).
+bool devlink_take_leave(void);
+// True when a new build waits: leave everything and run it.
+bool devlink_restart_wanted(void);
+// After the frame is on screen: serves a waiting screenshot.
+void devlink_after_frame(void);
+void devlink_report(const struct devlink_stats* s);
+// A line for the `log` command.
+void devlink_log(const char* format, ...) __attribute__((format(printf, 1, 2)));
+// Asks the Homebrew Launcher's loader for this build next (Rosalina's hb:ldr). False if it can't.
+bool devlink_chainload(void);
+// This console's address, for the splash ("" before Wi-Fi is up).
+const char* devlink_address(void);
+
+#else
+
+static inline void devlink_start(void) {}
+static inline void devlink_stop(void) {}
+static inline uint32_t devlink_keys(void) { return 0; }
+static inline bool devlink_touch(int* x, int* y) { (void) x; (void) y; return false; }
+static inline bool devlink_take_launch(char* out, unsigned outLen) { (void) out; (void) outLen; return false; }
+static inline bool devlink_take_leave(void) { return false; }
+static inline bool devlink_restart_wanted(void) { return false; }
+static inline void devlink_after_frame(void) {}
+
+#endif
+#endif

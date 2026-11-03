@@ -832,7 +832,8 @@ def c_target(path, configs, records, schema):
             for name in attached.values():
                 if records.get(name, {}).get("kind") != "record":
                     fail(where, f"{name} isn't a record in gamedata/gen3/records/")
-            wanted.append((key, entries["name"][0], entries["parts"][0], tab["lead"], where, attached))
+            wanted.append((key, entries["name"][0], entries["parts"][0], tab["lead"], where, attached,
+                           entries.get("values", ({}, 0))[0]))
         else:
             fail(where, f"unexpected [{tab['name']}]")
     lists = {n: r for n, r in records.items() if r["kind"] == "list"}
@@ -846,7 +847,7 @@ def c_target(path, configs, records, schema):
         "",
         f'#include "pd_game.h"',
     ]
-    for key, cname, want, lead, where, _ in wanted:
+    for key, cname, want, lead, where, _, values in wanted:
         c = configs[key]
         out.append("")
         out += kt_comments(lead, "")
@@ -855,7 +856,10 @@ def c_target(path, configs, records, schema):
         for part in want:
             for field, spec, fwhere in parts[part]:
                 spec_path, none = (spec["path"], spec.get("none")) if isinstance(spec, dict) else (spec, None)
-                v, f = res.walk(key, spec_path, fwhere)
+                if field in values:  # a value the config doesn't hold (the app keeps it in Kotlin)
+                    v, f = values[field], {"type": "bool" if isinstance(values[field], bool) else "int"}
+                else:
+                    v, f = res.walk(key, spec_path, fwhere)
                 out.append(f"    .{field} = {c_value(v, f, names, lists, fwhere, none)},")
         out.append("};")
     out += ["", "#endif"]
