@@ -9,6 +9,7 @@
   pdlink.py [-a IP] launch FILE           open a game from the list
   pdlink.py [-a IP] press KEYS [FRAMES]   KEYS: a+b+up ... (libctru's bits)
   pdlink.py [-a IP] tap X Y [FRAMES] | drag X0 Y0 X1 Y1 [FRAMES]
+  pdlink.py [-a IP] opt SCREEN ASPECT     set them while playing (-1 leaves one alone; not saved)
   pdlink.py [-a IP] wild SPECIES LEVEL    a scripted wild battle, on the field of a GBA game
   pdlink.py [-a IP] shot OUT.png          both screens, stacked as the console shows them
   pdlink.py [-a IP] push BUILD.3dsx       the new build, then restart into it
@@ -125,6 +126,8 @@ def main():
         link.call(f"touch {rest[0]} {rest[1]} {rest[2] if len(rest) > 2 else 6}")
     elif cmd == "drag":
         link.call(f"drag {rest[0]} {rest[1]} {rest[2]} {rest[3]} {rest[4] if len(rest) > 4 else 30}")
+    elif cmd == "opt":
+        link.call(f"opt {rest[0]} {rest[1]}")
     elif cmd == "wild":
         link.call(f"wild {rest[0]} {rest[1]}")
     elif cmd == "shot":

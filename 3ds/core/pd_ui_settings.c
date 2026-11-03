@@ -10,7 +10,7 @@
 #define TITLE_H 24
 #define LIST_Y (CONTENT_Y + TITLE_H + 4)
 
-static const char* const SCREEN_NAMES[PD_SCREEN_MODES] = { "PIXEL 1x", "SHARP 1.5x", "STRETCH" };
+static const char* const SCREEN_NAMES[PD_SCREEN_MODES] = { "PIXEL 1x", "SHARP 1.25x", "SHARP 1.5x", "STRETCH" };
 static const char* const ASPECT_NAMES[PD_ASPECTS] = { "ORIGINAL", "EXPAND", "ZOOM OUT" };
 const char* const PD_GAME_SPEEDS[PD_GAME_SPEED_COUNT] = { "1x", "1.5x", "2x", "3x", "4x", "0.5x", "0.25x" };
 static const char* const VOLUMES[5] = { "20%", "40%", "60%", "80%", "100%" };

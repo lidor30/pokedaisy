@@ -41,6 +41,7 @@ static int dragToX, dragToY, dragTotal;
 static char launch[256];
 static volatile bool leaveWanted, restartWanted;
 static volatile int wildSpecies, wildLevel;
+static volatile int optScreen = -1, optAspect = -1;
 static struct devlink_stats stats;
 static char logRing[LOG_BYTES];
 static unsigned logEnd;
@@ -109,6 +110,14 @@ bool devlink_take_leave(void) {
 
 bool devlink_restart_wanted(void) {
     return restartWanted;
+}
+
+bool devlink_take_opt(int* screen, int* aspect) {
+    if (optScreen < 0 && optAspect < 0) return false;
+    *screen = optScreen;
+    *aspect = optAspect;
+    optScreen = optAspect = -1;
+    return true;
 }
 
 bool devlink_take_wild(int* species, int* level) {
@@ -203,6 +212,15 @@ static bool dev_path(const char* name, char* out, size_t size) {
     return true;
 }
 
+// For `get` and `ls` only: "dumps" is Luma's crash dumps, to read back a crash.
+static bool read_path(const char* name, char* out, size_t size) {
+    if (!strncmp(name, "dumps", 5) && !strstr(name, "..")) {
+        snprintf(out, size, "sdmc:/luma/dumps/arm11%s", name + 5);
+        return true;
+    }
+    return dev_path(name, out, size);
+}
+
 static void make_parents(const char* path) {
     char dir[320];
     snprintf(dir, sizeof(dir), "%s", path);
@@ -248,7 +266,7 @@ static bool cmd_put(int fd, const char* name, size_t size) {
 
 static bool cmd_get(int fd, const char* name) {
     char path[320];
-    if (!dev_path(name, path, sizeof(path))) return reply_error(fd, "outside the dev folder");
+    if (!read_path(name, path, sizeof(path))) return reply_error(fd, "outside the dev folder");
     FILE* f = fopen(path, "rb");
     if (!f) return reply_error(fd, "no such file");
     fseek(f, 0, SEEK_END);
@@ -266,7 +284,7 @@ static bool cmd_get(int fd, const char* name) {
 
 static bool cmd_ls(int fd, const char* name) {
     char path[320];
-    if (!dev_path(name, path, sizeof(path))) return reply_error(fd, "outside the dev folder");
+    if (!read_path(name, path, sizeof(path))) return reply_error(fd, "outside the dev folder");
     DIR* d = opendir(path);
     if (!d) return reply_error(fd, "no such folder");
     static char list[8192];
@@ -360,6 +378,11 @@ static bool serve(int fd, char* line) {
         return reply(fd, NULL, 0);
     }
     int species, level;
+    if (sscanf(line, "opt %d %d", &species, &level) == 2) {
+        optScreen = species;
+        optAspect = level;
+        return reply(fd, NULL, 0);
+    }
     if (sscanf(line, "wild %d %d", &species, &level) == 2) {
         wildLevel = level;
         wildSpecies = species;

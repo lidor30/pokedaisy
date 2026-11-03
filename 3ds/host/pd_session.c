@@ -37,7 +37,9 @@
 #define AUTO_RUN_BLOCKERS (PK_FIELD_LOCKED | PK_FIELD_BATTLE | PK_FIELD_BIKE)
 
 static uint32_t wideSource[PK_WIDE_W * PK_WIDE_H];
-static uint32_t wideFrame[PD_TOP_W * PD_TOP_H];
+// Two, in turn: the draw thread reads one while the next frame fills the other, with no copy between them.
+static uint32_t wideFrames[2][PD_TOP_W * PD_TOP_H];
+static int wideShown;
 static uint32_t overlayPx[PD_TOP_W * PD_TOP_H];
 
 // A Game Boy game's bus; 0x1Dxxx is D000-DFFF in that WRAM bank whatever the game has switched in there (pk_gb_read_banked).
@@ -322,6 +324,9 @@ void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* 
     core->checksum(core, &s->romCrc, mCHECKSUM_CRC32);
     cheats_load(s);
     s->wideKnown = pk_wide_configure(s->romCrc) != 0;
+    pk_wide_cache(1);
+    pk_wide_hole(1);
+    pk_wide_later(1, files->wideJoin);
     s->fieldKnown = gba && pk_field_configure(s->romCrc) != 0;
     s->wildSwitch = s->fieldKnown ? pk_wild_switch_find(s->rom, s->romSize) : 0;
     if (s->wildSwitch) pk_field_wild(s->wildSwitch, settings->wildOff);
@@ -357,7 +362,8 @@ void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* 
 static void wide_window(const struct pd_session* s, int aspect, int* w, int* h) {
     bool whole = s->settings->screenMode == PD_SCREEN_PIXEL || aspect == PD_ASPECT_ZOOM_OUT;
     int fw = pk_wide_frame_w(), fh = pk_wide_frame_h();
-    int x = whole ? PD_TOP_W : PD_TOP_W * 2 / 3, y = whole ? PD_TOP_H : PD_TOP_H * 2 / 3;
+    bool mid = s->settings->screenMode == PD_SCREEN_SHARP_125;
+    int x = whole ? PD_TOP_W : mid ? PD_TOP_W * 4 / 5 : PD_TOP_W * 2 / 3, y = whole ? PD_TOP_H : mid ? PD_TOP_H * 4 / 5 : PD_TOP_H * 2 / 3;
     if (x < fw) x = fw;
     if (y < fh) y = fh;
     *w = x - ((x - fw) & 1);
@@ -365,6 +371,17 @@ static void wide_window(const struct pd_session* s, int aspect, int* w, int* h) 
 }
 
 #define ORIGINAL_SCENE_EVERY 16
+
+// The frame that will be shown: with mGBA's renderer on its own thread (New 3DS) the last lines may still be coming,
+// and getPixels is what waits for them. EXPAND's margins are worked out meanwhile.
+static void frame_whole(void* ctx) {
+    struct pd_session* s = ctx;
+    if (!s->framePending) return;
+    s->framePending = false;
+    size_t stride;
+    const void* pixels;
+    s->core->getPixels(s->core, &pixels, &stride);
+}
 
 static void wide_tick(struct pd_session* s, bool skip) {
     s->wideReady = false;
@@ -375,26 +392,59 @@ static void wide_tick(struct pd_session* s, bool skip) {
     bool original = s->settings->aspect == PD_ASPECT_ORIGINAL;
     if (original && s->frame % ORIGINAL_SCENE_EVERY) return;
     int fw = pk_wide_frame_w(), fh = pk_wide_frame_h();
-    for (int y = 0; y < fh; y++) memcpy(wideSource + y * fw, s->video + y * PD_GAME_STRIDE, (size_t) fw * 4);
+    // A GBA frame is already the rows EXPAND reads; a Game Boy's is narrower than the buffer's.
+    const uint32_t* source = s->video;
+    if (fw != PD_GAME_STRIDE) {
+        frame_whole(s);
+        for (int y = 0; y < fh; y++) memcpy(wideSource + y * fw, s->video + y * PD_GAME_STRIDE, (size_t) fw * 4);
+        source = wideSource;
+    }
     if (skip) {
-        pk_wide_skip(s->core, wideSource);
+        pk_wide_skip(s->core, source);
         return;
     }
     if (original) {
         // A one-pixel window.
         static uint32_t px;
-        pk_wide_view(s->core, wideSource, &px, (struct PkWideView) { 0, 0, 1, 1 }, NULL);
+        pk_wide_view(s->core, source, &px, (struct PkWideView) { 0, 0, 1, 1 }, NULL);
         return;
     }
     int aspect = s->settings->aspect == PD_ASPECT_ZOOM_OUT && s->settings->autoZoom &&
         pk_wide_scene() != PK_WIDE_SCENE_FIELD ? PD_ASPECT_EXPAND : s->settings->aspect;
     wide_window(s, aspect, &s->wideW, &s->wideH);
     struct PkWideView v = { (fw - s->wideW) / 2, (fh - s->wideH) / 2, s->wideW, s->wideH };
-    pk_wide_view(s->core, wideSource, wideFrame, v, NULL);
+    wideShown ^= 1;
+    pk_wide_frame_wait(frame_whole, s);
+    pk_wide_view(s->core, source, wideFrames[wideShown], v, NULL);
+    pk_wide_frame_wait(NULL, NULL);
+    frame_whole(s);
+    if (pk_wide_due()) {
+        if (s->files.wideGo) s->files.wideGo();
+        else pk_wide_finish();
+    }
     s->wideReady = !pk_wide_fault();
+    s->wideHole = (struct pd_wide_hole) { 0 };
+    if (pk_wide_holed()) {
+        struct pd_wide_hole* h = &s->wideHole;
+        h->x = v.x < 0 ? -v.x : 0;
+        h->y = v.y < 0 ? -v.y : 0;
+        h->gameX = v.x > 0 ? v.x : 0;
+        h->gameY = v.y > 0 ? v.y : 0;
+        h->w = fw - h->gameX < v.w - h->x ? fw - h->gameX : v.w - h->x;
+        h->h = fh - h->gameY < v.h - h->y ? fh - h->gameY : v.h - h->y;
+    }
+}
+
+void pd_session_set_video(struct pd_session* s, const uint32_t* video) {
+    if (video != s->video) s->nextVideo = video;
 }
 
 void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) {
+    if (s->nextVideo) {
+        s->core->setVideoBuffer(s->core, (color_t*) s->nextVideo, PD_GAME_STRIDE);
+        s->video = s->nextVideo;
+        s->nextVideo = NULL;
+    }
     bool exclusive = false;
     uint32_t script = pd_binput_tick(&s->input, &exclusive);
     uint32_t keys = exclusive ? script : (playerKeys | script);
@@ -409,17 +459,12 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
     }
     s->core->setKeys(s->core, keys);
     s->core->runFrame(s->core);
-    // The frame that will be shown: with mGBA's renderer on its own thread (New 3DS) the last lines may still be coming,
-    // and getPixels is what waits for them.
-    if (last) {
-        size_t stride;
-        const void* pixels;
-        s->core->getPixels(s->core, &pixels, &stride);
-    }
     if (!s->game.gb) pk_rest_note(s->core);
     if (s->fieldKnown)
         s->fieldFlags = pk_field_state(s->core, s->settings->runIndoors, s->wildSwitch && s->settings->wildOff ? 0 : 100);
+    s->framePending = last;
     wide_tick(s, !last);
+    frame_whole(s);
     s->frame++;
     // What the battle waits for is read every frame: the touch controls follow it at once.
     bool stateChanged = s->input.state != s->shown.battleState;
@@ -897,8 +942,10 @@ static void overlay_update(struct pd_session* s) {
     unsigned gw = 240, gh = 160;
     s->core->desiredVideoDimensions(s->core, &gw, &gh);
     bool wide = s->wideKnown && s->settings->aspect != PD_ASPECT_ORIGINAL, pixel = s->settings->screenMode == PD_SCREEN_PIXEL;
-    int picture = s->settings->screenMode == PD_SCREEN_STRETCH || wide ? PD_TOP_W : pixel ? (int) gw : (int) gw * PD_TOP_H / (int) gh;
-    int pictureH = pixel && !wide ? (int) gh : PD_TOP_H, gameRows = wide ? (pixel ? PD_TOP_H : 160) : (int) gh;
+    bool mid = s->settings->screenMode == PD_SCREEN_SHARP_125;
+    int picture = s->settings->screenMode == PD_SCREEN_STRETCH || wide ? PD_TOP_W : pixel ? (int) gw : mid ? (int) gw * 5 / 4 : (int) gw * PD_TOP_H / (int) gh;
+    int pictureH = wide ? PD_TOP_H : pixel ? (int) gh : mid ? (int) gh * 5 / 4 : PD_TOP_H;
+    int gameRows = wide ? (pixel ? PD_TOP_H : mid ? PD_TOP_H * 4 / 5 : 160) : (int) gh;
     // The arrow's bob, frame by frame (BOB_MS' keyframes).
     static const uint8_t BOB[58] = { 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2,
                                      1, 1, 1, 1, 1, 0 };
@@ -1055,5 +1102,5 @@ const uint32_t* pd_session_overlay(struct pd_session* s) {
 
 const uint32_t* pd_session_wide(const struct pd_session* s) {
     (void) s;
-    return wideFrame;
+    return wideFrames[wideShown];
 }

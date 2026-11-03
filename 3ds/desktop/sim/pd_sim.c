@@ -34,6 +34,7 @@
 
 #include "../../../app/src/main/cpp/pk_call.h"
 #include "../../../app/src/main/cpp/pk_host.h"
+#include "../../../app/src/main/cpp/pk_wide.h"
 #include "../../core/pd_games.h"
 #include "../../core/pd_settings.h"
 #include "../../core/pd_style.h"
@@ -43,7 +44,7 @@
 
 #define GBA_W 240
 #define GBA_H 160
-#define STRIDE 256
+#define STRIDE PD_GAME_STRIDE
 
 static uint32_t video[STRIDE * GBA_H];
 static uint32_t bottomPx[PD_UI_WIDTH * PD_UI_HEIGHT];
@@ -139,6 +140,15 @@ static void shot(const char* name) {
     // SHARP 1.5x (or EXPAND's window) in nearest steps: where the game sits, not how sharp it looks.
     bool wide = session.wideReady;
     const uint32_t* src = wide ? pd_session_wide(&session) : video;
+    static uint32_t filled[400 * 240];
+    const struct pd_wide_hole* hole = &session.wideHole;
+    if (wide && hole->w) {
+        // What the console's draw thread does.
+        memcpy(filled, src, (size_t) session.wideW * session.wideH * sizeof(uint32_t));
+        for (int y = 0; y < hole->h; y++)
+            memcpy(filled + (hole->y + y) * session.wideW + hole->x, video + (hole->gameY + y) * STRIDE + hole->gameX, (size_t) hole->w * sizeof(uint32_t));
+        src = filled;
+    }
     unsigned coreW = GBA_W, coreH = GBA_H;
     session.core->desiredVideoDimensions(session.core, &coreW, &coreH);
     int sw = wide ? session.wideW : (int) coreW, sh = wide ? session.wideH : (int) coreH, stride = wide ? session.wideW : STRIDE;
@@ -232,6 +242,10 @@ static void command(char* line) {
         sscanf(args, "%63s %d", keys, &held);
         frames(held, heldKeys | parse_keys(keys));
         frames(10, heldKeys);
+    } else if (!strcmp(cmd, "cache")) {
+        pk_wide_cache(atoi(args));
+    } else if (!strcmp(cmd, "cache-hits")) {
+        printf("cache hits %d\n", pk_wide_cache_hits());
     } else if (!strcmp(cmd, "aspect")) {
         settings.aspect = atoi(args);
     } else if (!strcmp(cmd, "dark")) {

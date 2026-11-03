@@ -329,10 +329,9 @@ const struct pd_map_art* pd_map_art(const struct pd_game* g) {
         if (blob[PD_FR_REGION_GFX] && blob[PD_FR_REGION_PAL] && blob[PD_FR_KANTO_MAP]) {
             int colours = (int) pd_blob_sigs[PD_FR_REGION_PAL].size / 2;
             palette(blob[PD_FR_REGION_PAL], colours, pal);
-            static const int MAPS[PD_MAP_PAGES] = {
-                PD_FR_KANTO_MAP, PD_FR_SEVII123_MAP, PD_FR_SEVII45_MAP, PD_FR_SEVII67_MAP,
-            };
-            for (int p = 0; p < PD_MAP_PAGES && blob[MAPS[p]]; p++) {
+            // FireRed's four, whatever a hack's PD_MAP_PAGES allows: a page past them had no map and no name.
+            static const int MAPS[] = { PD_FR_KANTO_MAP, PD_FR_SEVII123_MAP, PD_FR_SEVII45_MAP, PD_FR_SEVII67_MAP };
+            for (int p = 0; p < (int) (sizeof(MAPS) / sizeof(MAPS[0])) && blob[MAPS[p]]; p++) {
                 screen_4bpp(blob[PD_FR_REGION_GFX], pd_blob_sigs[PD_FR_REGION_GFX].size, pal, colours,
                             blob[MAPS[p]], cached->page[p]);
                 cached->pages = p + 1;
@@ -498,6 +497,6 @@ const char* pd_map_page_name(const struct pd_game* g, int page) {
     if (g->entry && g->entry->regionPages) return page >= 0 && page < g->entry->regionPageCount ? g->entry->regionPages[page].label : "";
     if (cached && cached->romSections) return page == 0 ? "MAP" : "MORE";
     if (g->kind == PD_GAME_EMERALD) return "HOENN";
-    static const char* const NAMES[PD_MAP_PAGES] = { "KANTO", "SEVII 1-3", "SEVII 4-5", "SEVII 6-7" };
-    return page >= 0 && page < PD_MAP_PAGES ? NAMES[page] : "";
+    static const char* const NAMES[] = { "KANTO", "SEVII 1-3", "SEVII 4-5", "SEVII 6-7" };
+    return page >= 0 && page < (int) (sizeof(NAMES) / sizeof(NAMES[0])) ? NAMES[page] : "";
 }

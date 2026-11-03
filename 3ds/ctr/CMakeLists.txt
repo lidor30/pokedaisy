@@ -69,7 +69,7 @@ target_include_directories(pokedaisy.elf PRIVATE
     "${CMAKE_CURRENT_SOURCE_DIR}/../core"
     "${CMAKE_CURRENT_SOURCE_DIR}/../../linux")
 # mGBA's headers size its structs by these, so ours must match the library's (see the colour note above).
-target_compile_definitions(pokedaisy.elf PRIVATE M_CORE_GBA M_CORE_GB BUILD_STATIC PK_WIDE_NO_GUARD FIXED_ROM_BUFFER)
+target_compile_definitions(pokedaisy.elf PRIVATE M_CORE_GBA M_CORE_GB BUILD_STATIC PK_WIDE_NO_GUARD PK_WIDE_CACHE FIXED_ROM_BUFFER)
 target_compile_options(pokedaisy.elf PRIVATE -std=gnu11 -O2 -Wall -Wextra)
 # The dev build (make 3ds-dev): the Wi-Fi link and its own SD folder; devlink.c is empty without it.
 option(PD_DEV "the dev build" OFF)

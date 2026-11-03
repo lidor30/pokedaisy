@@ -163,6 +163,24 @@ int pk_wide_view(struct mCore* core, const uint32_t* frame, uint32_t* out, struc
 void pk_wide_skip(struct mCore* core, const uint32_t* frame);
 /** Off, the per-line record isn't kept (only the scene is wanted). On by default. */
 void pk_wide_lines(int on);
+#ifdef PK_WIDE_CACHE
+/** The margins kept between frames (a 3DS): 0 off, 1 on, 2 on with every animated cell redrawn at once. */
+void pk_wide_cache(int mode);
+/** Frames drawn from the cache so far. */
+int pk_wide_cache_hits(void);
+// On: a cached view leaves the frame's own rectangle of `out` alone and the host fills it from the frame (a 3DS's draw
+// thread, which reads every pixel anyway). pk_wide_holed: the last view did.
+void pk_wide_hole(int on);
+int pk_wide_holed(void);
+// On: a cached view only decides, and its drawing waits for pk_wide_finish, which may run on another thread beside the next
+// frame (pk_wide_due: there's some to do; `out` isn't ready until it's done). `join` waits for that finish, and is called
+// before the next frame's lines are recorded and before the next view.
+void pk_wide_later(int on, void (*join)(void));
+int pk_wide_due(void);
+void pk_wide_finish(void);
+// For the next pk_wide_view only: the frame isn't whole yet, and `wait` is called the moment its pixels are needed.
+void pk_wide_frame_wait(void (*wait)(void*), void* ctx);
+#endif
 // A Game Boy game configured with nothing to draw (EXPAND off): its scene only (pk_wide_scene), for the FIELD HUD -
 // pk_wide_gb.c's match run on a 1 x 1 window; `skip` (a fast-forwarded frame nobody sees) only notes its RAM.
 void pk_wide_probe(struct mCore* core, const uint32_t* frame, int skip);

@@ -39,6 +39,7 @@ enum pd_tab {
 // How the game fills the top screen.
 enum pd_screen_mode {
     PD_SCREEN_PIXEL,   // 1x, pixel for pixel
+    PD_SCREEN_SHARP_125, // 1.25x, sharp bilinear
     PD_SCREEN_SHARP,   // 1.5x (fills the height), sharp bilinear
     PD_SCREEN_STRETCH, // the whole 400x240, sharp bilinear
     PD_SCREEN_MODES,

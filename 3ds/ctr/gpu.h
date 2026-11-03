@@ -8,13 +8,18 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#define GPU_GAME_STRIDE 256 // the game buffer's row length in pixels
+#define GPU_GAME_STRIDE 240 // the game buffer's row length in pixels
 
 bool gpu_init(void);
 void gpu_exit(void);
 
 // mGBA's video buffer: 32-bit pixels (0xXXBBGGRR), GPU_GAME_STRIDE x 160, in linear memory.
 uint32_t* gpu_game_buffer(void);
+// Two buffers in turn, so the draw thread reads a frame where it lies while the next one is drawn. Only for a GBA game:
+// its renderer redraws every line of a new buffer, a Game Boy's leaves a blank screen's alone. No draw thread: one.
+void gpu_double_game(bool on);
+// A frame is whole and is what's shown next; the buffer the next one goes in.
+uint32_t* gpu_frame_done(void);
 // The core's picture size: 240 x 160, a Game Boy's 160 x 144.
 void gpu_set_game_size(int w, int h);
 // New canvases (0xRRGGBB): the bottom screen's 320x240, the top's 400x240.
@@ -23,12 +28,19 @@ void gpu_set_top(const uint32_t* px);
 
 // EXPAND's window for this frame (w x h, 0xXXBBGGRR, at most 400 x 240): shown instead of the game; NULL = the game.
 void gpu_set_wide(const uint32_t* px, int w, int h);
+// The window's rectangle at (x, y), w x h, that the game's frame fills from (gameX, gameY); w 0: none.
+void gpu_set_wide_hole(int x, int y, int w, int h, int gameX, int gameY);
 // The overlay over the top screen, 400x240 (0xAARRGGBB), when it changed; shown says whether there's one, dim darkens
 // the game under it.
 void gpu_set_overlay(const uint32_t* px);
 void gpu_show_overlay(bool shown, bool dim);
 // Keep showing the game's last frame (the touch controls drive its party menu behind it).
 void gpu_hold_game(bool hold);
+
+// `work` on a core of its own each time gpu_wide_go is called, the frame's draw waiting for it. False: no such core.
+bool gpu_wide_thread(void (*work)(void));
+void gpu_wide_go(void);
+void gpu_wide_join(void);
 
 // One frame: the game (in screenMode, enum pd_screen_mode) or the top canvas
 // on the top screen, the bottom canvas below. Everything is copied before it returns, so the caller can go on; it

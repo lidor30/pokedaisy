@@ -38,6 +38,7 @@
 #include "devlink.h"
 #include "../../app/src/main/cpp/pk_call.h"
 #include "gpu.h"
+#include "../../app/src/main/cpp/pk_wide.h"
 
 // The dev build keeps to a folder of its own: a test never touches the player's games and saves.
 #ifdef PD_DEV
@@ -440,6 +441,7 @@ static bool run_game(const char* file) {
     struct VFile* save = VFileOpen(savePath, O_CREAT | O_RDWR);
     if (save) core->loadSave(core, save);
     bool gb = core->platform(core) == mPLATFORM_GB;
+    gpu_double_game(!gb);
     if (gb) {
         gbAudioOn = pk_gb_audio_attach(&gbAudio, core, 32768);
     } else {
@@ -466,7 +468,9 @@ static bool run_game(const char* file) {
     struct game_files gameFiles;
     snprintf(gameFiles.base, sizeof(gameFiles.base), "%s", base);
     snprintf(gameFiles.saveSd, sizeof(gameFiles.saveSd), "%s", saveSd);
-    struct pd_session_host files = { state_path, backup_for_load, settings_changed, cheat_path, &gameFiles };
+    bool wideThread = gpu_wide_thread(pk_wide_finish);
+    struct pd_session_host files = { state_path, backup_for_load, settings_changed, cheat_path, &gameFiles,
+                                     wideThread ? gpu_wide_go : NULL, wideThread ? gpu_wide_join : NULL };
     session.host = (struct pd_host_info) { .count = 2 };
     session.host.labels[0] = "FILE";
     snprintf(session.host.values[0], sizeof(session.host.values[0]), "%s", file);
@@ -500,6 +504,12 @@ static bool run_game(const char* file) {
         lastInjected = injected;
         if (devlink_take_leave() || devlink_restart_wanted()) break;
 #ifdef PD_DEV
+        int optScreen, optAspect;
+        if (devlink_take_opt(&optScreen, &optAspect)) {
+            if (optScreen >= 0) settings.screenMode = optScreen;
+            if (optAspect >= 0) settings.aspect = optAspect;
+            session.redraw = true;
+        }
         int wildSpecies, wildLevel;
         if (!session.game.gb && pk_call_safe(core) && session.game.cfg && session.game.cfg->pcSetupScript && devlink_take_wild(&wildSpecies, &wildLevel)) {
             // setwildbattle species level item; dowildbattle; end (pd_sim's `wild`).
@@ -586,6 +596,7 @@ static bool run_game(const char* file) {
         gb_audio_pump();
         lastTick = tickNow;
         unsigned frames = session.frame - before;
+        if (frames) pd_session_set_video(&session, gpu_frame_done());
         audioMuted = session.ff;
         DEV_MARK(uiStart);
 
@@ -609,6 +620,8 @@ static bool run_game(const char* file) {
         DEV_MARK(drawStart);
         gpu_hold_game(pd_session_holds_frame(&session));
         gpu_set_wide(session.wideReady ? pd_session_wide(&session) : NULL, session.wideW, session.wideH);
+        const struct pd_wide_hole* hole = &session.wideHole;
+        gpu_set_wide_hole(hole->x, hole->y, hole->w, hole->h, hole->gameX, hole->gameY);
         if (session.overlayDirty) gpu_set_overlay(pd_session_overlay(&session));
         gpu_show_overlay(session.overlayShown, session.overlayDim);
         gpu_draw(true, settings.screenMode);
@@ -641,6 +654,7 @@ static bool run_game(const char* file) {
     if (hasSound) ndspChnWaveBufClear(0);
     if (gbAudioOn) pk_gb_audio_detach(&gbAudio, core);
     gbAudioOn = false;
+    gpu_wide_join();
     core->deinit(core);
     return appRunning;
 }

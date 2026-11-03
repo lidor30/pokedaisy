@@ -25,6 +25,6 @@ add_executable(pd_sim pd_sim.c ${HOST_SOURCES} ${CORE_SOURCES} "${REPO}/3ds/desk
     "${REPO}/linux/quick_menu.c")
 target_include_directories(pd_sim PRIVATE "${REPO}/third_party/mgba/include" "${REPO}/third_party/mgba/src"
     "${CMAKE_CURRENT_BINARY_DIR}/mgba/include" "${REPO}/3ds/core" "${REPO}/linux")
-target_compile_definitions(pd_sim PRIVATE M_CORE_GBA M_CORE_GB BUILD_STATIC)
+target_compile_definitions(pd_sim PRIVATE M_CORE_GBA M_CORE_GB BUILD_STATIC PK_WIDE_CACHE)
 target_compile_options(pd_sim PRIVATE -std=gnu11 -O2 -g -Wall -Wextra)
 target_link_libraries(pd_sim mgba m)

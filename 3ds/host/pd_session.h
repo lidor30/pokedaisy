@@ -25,7 +25,7 @@ struct mCore;
 // The top screen, where the overlay (QUICK MENU, HUD, notices) and EXPAND's window go.
 #define PD_TOP_W 400
 #define PD_TOP_H 240
-#define PD_GAME_STRIDE 256
+#define PD_GAME_STRIDE 240 // a GBA frame's own width, so EXPAND reads it without a copy
 
 // A player's buttons this loop: the GBA's (PD_KEY_*) and what the host maps to the app's own.
 struct pd_input {
@@ -45,9 +45,17 @@ struct pd_session_host {
     // The game's .cheats file (mGBA's format), by the ROM's CRC32; NULL = none here.
     void (*cheatPath)(void* ctx, uint32_t crc, char* path, size_t len);
     void* ctx;
+    // EXPAND's drawing on a thread of its own: pk_wide_finish starts there, and join waits for it. NULL: drawn in place.
+    void (*wideGo)(void);
+    void (*wideJoin)(void);
 };
 
 enum pd_job { PD_JOB_NONE, PD_JOB_GB_TAKEN, PD_JOB_PC, PD_JOB_REPEL, PD_JOB_BIKE, PD_JOB_BIKE_WAIT, PD_JOB_BIKE_RESTORE };
+
+// The window's rectangle the frame fills (w 0: none): the game's pixels from (gameX, gameY) go in at (x, y).
+struct pd_wide_hole {
+    int x, y, w, h, gameX, gameY;
+};
 
 struct pd_session {
     struct mCore* core;
@@ -80,6 +88,9 @@ struct pd_session {
     uint32_t wildSwitch;
     int fieldFlags;
     bool wideReady;       // this frame shows EXPAND's window
+    struct pd_wide_hole wideHole;
+    const uint32_t* nextVideo;
+    bool framePending;    // the core's run but the frame hasn't been waited for
     int wideW, wideH;     // ... this big, in game pixels
     int hudFieldFrames;
     int stripeIn; // the focus strip's slide, in frames
@@ -145,6 +156,8 @@ void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* 
 void pd_session_tick(struct pd_session* s, const struct pd_input* in, unsigned ms);
 // One emulated frame with the player's keys held: the battle's touch controls may take the keys over.
 void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last);
+// The next frame is drawn in this buffer (the host hands out two in turn); s->video stays the last whole frame until then.
+void pd_session_set_video(struct pd_session* s, const uint32_t* video);
 // What pd_ui_take_action handed over: true if the session has dealt with it (else it's the host's: CLOSE GAME ...).
 bool pd_session_action(struct pd_session* s, enum pd_action action);
 // X on the field: the game's buttons go to the companion (Android's bottom focus), a silver strip on the game's picture

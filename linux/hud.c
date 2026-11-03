@@ -23,7 +23,7 @@
 // The sizes: FieldHud's, or a 3DS's (hud_state.compact: its screen shows the game at 1.5x, a Linux handheld's at 3x and
 // more, so the same pixels cover twice as much of the picture). A compact tile overlaps the icon's see-through edges.
 struct hud_sizes { int pad, edge, tile, gap, mapW, mapH; };
-static const struct hud_sizes NORMAL_SIZES = { 4, 6, 30, 3, 104, 64 }, COMPACT_SIZES = { 2, 3, 22, 1, 72, 40 };
+static const struct hud_sizes NORMAL_SIZES = { 4, 6, 30, 3, 104, 64 }, COMPACT_SIZES = { 2, 3, 17, 1, 72, 40 };
 static const struct hud_sizes *sizes = &NORMAL_SIZES;
 static bool compact;
 #define PAD (sizes->pad)
@@ -32,6 +32,47 @@ static bool compact;
 #define TILE_GAP (sizes->gap)
 #define MAP_W (sizes->mapW)
 #define MAP_H (sizes->mapH)
+
+// Compact: icons and the place's name at 3/4 size. A 3DS shows this canvas pixel for pixel, and the font and icons have
+// nothing smaller. Each 4 pixels become 3, the middle one the darker of its two, so outlines and strokes stay.
+#define SHRUNK_CLEAR 0xFE000000u
+#define SHRINK_W 128
+#define SHRINK_H 32
+static uint32_t shrinkPx[SHRINK_W * SHRINK_H];
+
+static struct pd_canvas shrink_begin(void) {
+  struct pd_canvas s;
+  pd_canvas_init(&s, SHRINK_W, SHRINK_H, shrinkPx);
+  for (int i = 0; i < SHRINK_W * SHRINK_H; i++)
+    shrinkPx[i] = SHRUNK_CLEAR;
+  return s;
+}
+
+// Out 0, 1, 2 from 0, 1 and 2, 3.
+static int shrink_from(int out) { return out / 3 * 4 + out % 3 + (out % 3 == 2); }
+
+// `tint`: every pixel this colour (a text's shadow), or SHRUNK_CLEAR to keep them.
+static void shrink_draw(struct pd_canvas *c, int w, int h, int x, int y, uint32_t tint) {
+  for (int oy = 0; oy < h * 3 / 4; oy++) {
+    int sy = shrink_from(oy), ny = oy % 3 == 1 ? 2 : 1;
+    for (int ox = 0; ox < w * 3 / 4; ox++) {
+      int sx = shrink_from(ox), nx = ox % 3 == 1 ? 2 : 1;
+      uint32_t best = SHRUNK_CLEAR;
+      int dark = 1 << 30;
+      for (int j = 0; j < ny; j++)
+        for (int i = 0; i < nx; i++) {
+          uint32_t p = shrinkPx[(sy + j) * SHRINK_W + sx + i];
+          int v = (int)(p >> 16 & 0xFF) + (int)(p >> 8 & 0xFF) + (int)(p & 0xFF);
+          if (p != SHRUNK_CLEAR && v < dark) {
+            dark = v;
+            best = p;
+          }
+        }
+      if (best != SHRUNK_CLEAR)
+        pd_fill(c, x + ox, y + oy, 1, 1, tint != SHRUNK_CLEAR ? tint : best);
+    }
+  }
+}
 
 static void panel(struct pd_canvas *c, int x, int y, int w, int h) {
   pd_round_rect(c, x, y, w, h, 4, GLASS_EDGE);
@@ -68,7 +109,9 @@ static int party_width(const struct pd_snapshot *s) {
   int n = s->partyCount < PD_PARTY_SIZE ? s->partyCount : PD_PARTY_SIZE;
   return n ? 2 * PAD + 2 + n * TILE + (n - 1) * TILE_GAP : 0;
 }
-#define PARTY_H (compact ? 2 * PAD + 2 + 24 + 5 : 2 * PAD + 2 + 26 + LINE + 6)
+#define SMALL_ICON (PD_ICON * 3 / 4)
+#define COMPACT_ICON_H 18 // what shows of it: a Pokémon stands at the bottom of its picture
+#define PARTY_H (compact ? 2 * PAD + 2 + COMPACT_ICON_H + 5 : 2 * PAD + 2 + 26 + LINE + 6)
 
 static void party_row(struct pd_canvas *c, const struct pd_game *g, const struct pd_snapshot *s, int x, int y,
                       void *ctx, hud_mon_draw_fn draw) {
@@ -82,17 +125,22 @@ static void party_row(struct pd_canvas *c, const struct pd_game *g, const struct
       pd_round_rect(c, tx - 2, ty - 2, TILE + 4, PARTY_H - 2 * PAD - 2 + 4, 3, ACCENT);
       pd_round_rect(c, tx - 1, ty - 1, TILE + 2, PARTY_H - 2 * PAD - 2 + 2, 3, LEAD_FILL);
     }
-    if (draw)
+    if (draw) {
       draw(c, ctx, m, tx + (TILE - PD_ICON) / 2, ty - 5, fainted);
-    else
+    } else if (compact) {
+      struct pd_canvas small = shrink_begin();
+      pd_draw_mon_icon(&small, g, m->species, 0, 0, fainted);
+      shrink_draw(c, PD_ICON, PD_ICON, tx + (TILE - SMALL_ICON) / 2, ty - 4, SHRUNK_CLEAR);
+    } else {
       pd_draw_mon_icon(c, g, m->species, tx + (TILE - PD_ICON) / 2, ty - 5, fainted);
+    }
     if (egg)
       continue;
     const char *status = fainted ? "FNT" : pd_status_label(m->status);
     if (*status)
       status_chip(c, tx + TILE / 2, ty - 3, status);
     if (compact) { // no level: the party tab has it
-      hp_bar(c, tx, ty + 24, TILE, m->hp, m->maxHp);
+      hp_bar(c, tx, ty + COMPACT_ICON_H, TILE, m->hp, m->maxHp);
       continue;
     }
     char lv[8];
@@ -110,7 +158,8 @@ void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx,
 }
 
 #define MINIMAP_W (MAP_W + 2 * PAD)
-#define MINIMAP_H (MAP_H + 2 * PAD + 3 + LINE)
+#define NAME_H (compact ? 9 : LINE)
+#define MINIMAP_H (MAP_H + 2 * PAD + 3 + NAME_H)
 
 // The region map around the player's head (HudMiniMap): the map at 1x, its name under it.
 static bool minimap(struct pd_canvas *c, const struct pd_game *g, const struct pd_snapshot *s, int x, int y) {
@@ -151,8 +200,15 @@ static bool minimap(struct pd_canvas *c, const struct pd_game *g, const struct p
         }
   }
   if (name && *name) {
-    pd_clip(c, mx, my + MAP_H + 1, MAP_W, LINE + 4);
-    pd_text(c, mx, my + MAP_H + 1, name, INK, INK_SHADOW);
+    pd_clip(c, mx, my + MAP_H + 1, MAP_W, NAME_H + 4);
+    if (compact) {
+      struct pd_canvas small = shrink_begin();
+      pd_text(&small, 0, 0, name, INK, PD_NO_SHADOW);
+      shrink_draw(c, SHRINK_W, 16, mx + 1, my + MAP_H + 2, INK_SHADOW);
+      shrink_draw(c, SHRINK_W, 16, mx, my + MAP_H + 1, SHRUNK_CLEAR);
+    } else {
+      pd_text(c, mx, my + MAP_H + 1, name, INK, INK_SHADOW);
+    }
     pd_unclip(c);
   }
   return true;
