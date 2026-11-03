@@ -870,6 +870,7 @@ static void overlay_update(struct pd_session* s) {
         s->core->desiredVideoDimensions(s->core, &gw, &gh);
         int picture = s->settings->screenMode == PD_SCREEN_STRETCH || s->wideReady ? PD_TOP_W :
             s->settings->screenMode == PD_SCREEN_PIXEL ? (int) gw : (int) gw * PD_TOP_H / (int) gh;
+        s->hud.compact = true;
         s->hud.left = (PD_TOP_W - picture) / 2;
         s->hud.right = s->hud.left + picture;
         s->overlayShown = hud_draw(&c, &s->game, &s->shown, &s->hud, s->settings->hudHidden);

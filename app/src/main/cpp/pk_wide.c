@@ -1426,8 +1426,11 @@ static void drawRegion(const struct Snap* s, int cx, int cy, int href, int vref,
         for (int x = 0; x < w; x++) {
             int sx = x0 + x;
             if (skipFrame && onFrame(sx, y)) {
-                holeBuf[j][x] = 0;
-                takenBuf[j][x] = 1;   // no sprite drawn there either
+                // A whole row's span at once: byte by byte it took a 3DS a third of the margins' time.
+                int n = PK_WIDE_W - sx < w - x ? PK_WIDE_W - sx : w - x;
+                memset(&holeBuf[j][x], 0, (size_t) n);
+                memset(&takenBuf[j][x], 1, (size_t) n);   // no sprite drawn there either
+                x += n - 1;
                 continue;
             }
             int prio = 4, layer = 5, ci = 0;

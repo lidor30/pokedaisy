@@ -18,13 +18,20 @@
 #define INK 0x00F8F8F8u
 #define INK_SHADOW 0x00303840u
 #define MUTED 0x00A8B0C0u
-#define PAD 4
-#define EDGE 6 // CornersLayout's padding
-#define TILE 30
-#define TILE_GAP 3
-#define MAP_W 104
-#define MAP_H 64
 #define LINE 12
+
+// The sizes: FieldHud's, or a 3DS's (hud_state.compact: its screen shows the game at 1.5x, a Linux handheld's at 3x and
+// more, so the same pixels cover twice as much of the picture). A compact tile overlaps the icon's see-through edges.
+struct hud_sizes { int pad, edge, tile, gap, mapW, mapH; };
+static const struct hud_sizes NORMAL_SIZES = { 4, 6, 30, 3, 104, 64 }, COMPACT_SIZES = { 2, 3, 22, 1, 72, 40 };
+static const struct hud_sizes *sizes = &NORMAL_SIZES;
+static bool compact;
+#define PAD (sizes->pad)
+#define EDGE (sizes->edge) // CornersLayout's padding
+#define TILE (sizes->tile)
+#define TILE_GAP (sizes->gap)
+#define MAP_W (sizes->mapW)
+#define MAP_H (sizes->mapH)
 
 static void panel(struct pd_canvas *c, int x, int y, int w, int h) {
   pd_round_rect(c, x, y, w, h, 4, GLASS_EDGE);
@@ -61,7 +68,7 @@ static int party_width(const struct pd_snapshot *s) {
   int n = s->partyCount < PD_PARTY_SIZE ? s->partyCount : PD_PARTY_SIZE;
   return n ? 2 * PAD + 2 + n * TILE + (n - 1) * TILE_GAP : 0;
 }
-#define PARTY_H (2 * PAD + 2 + 26 + LINE + 6)
+#define PARTY_H (compact ? 2 * PAD + 2 + 24 + 5 : 2 * PAD + 2 + 26 + LINE + 6)
 
 static void party_row(struct pd_canvas *c, const struct pd_game *g, const struct pd_snapshot *s, int x, int y,
                       void *ctx, hud_mon_draw_fn draw) {
@@ -84,6 +91,10 @@ static void party_row(struct pd_canvas *c, const struct pd_game *g, const struct
     const char *status = fainted ? "FNT" : pd_status_label(m->status);
     if (*status)
       status_chip(c, tx + TILE / 2, ty - 3, status);
+    if (compact) { // no level: the party tab has it
+      hp_bar(c, tx, ty + 24, TILE, m->hp, m->maxHp);
+      continue;
+    }
     char lv[8];
     snprintf(lv, sizeof lv, "Lv%d", m->level);
     pd_text(c, tx + (TILE - pd_text_width(lv)) / 2, ty + 24, lv, INK, INK_SHADOW);
@@ -92,6 +103,8 @@ static void party_row(struct pd_canvas *c, const struct pd_game *g, const struct
 }
 
 void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx, hud_mon_draw_fn draw) {
+  compact = false;
+  sizes = &NORMAL_SIZES;
   if (s && s->valid && s->partyCount > 0 && draw && c->w >= party_width(s) + 2 * EDGE && c->h >= PARTY_H + 2 * EDGE)
     party_row(c, NULL, s, EDGE, c->h - EDGE - PARTY_H, ctx, draw);
 }
@@ -221,6 +234,8 @@ static void repel_panel(struct pd_canvas *c, const struct pd_game *g, const stru
 
 bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snapshot *s,
               const struct hud_state *h, int hidden) {
+  compact = h->compact;
+  sizes = compact ? &COMPACT_SIZES : &NORMAL_SIZES;
   for (int i = 0; i < c->w * c->h; i++)
     c->px[i] = QUICK_CLEAR;
   if (!s || !s->valid)

@@ -14,6 +14,7 @@ struct hud_state {
   int repel;     // the Repel's steps left (0 = none working)
   int repelFull; // the steps it started from (the smallest of 100 / 200 / 250 covering the first count seen)
   int left, right; // keeps to these columns (the game's picture); right 0 = the whole canvas
+  bool compact;    // smaller, and no level on the party (a 3DS: its game is drawn at 1.5x)
 };
 
 /* Draws the HUD's shown parts ([hidden]: a bit per enum pd_hud_part) over QUICK_CLEAR; false if nothing shows. */
