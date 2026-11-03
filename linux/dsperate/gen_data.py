@@ -16,12 +16,17 @@ def number(text, name):
 fields = {name: number(config, name) for name in
           ['saveDataPtr', 'trainerOff', 'partyOff', 'bagOff', 'locationOff', 'pokedexOff', 'nationalDexOff']}
 dex = (data / 'Gen4Dex.kt').read_text()
-fields['dexSize'] = int(re.search(r'val d = r.readCoreMemory\(body \+ off, (0x[0-9A-Fa-f]+)\)', dex)[1], 0)
+# Platinum's dex block size: the read's own, or its floor since other games' blocks came in (maxOf(size, 0x340)).
+fields['dexSize'] = int(re.search(r'val d = r.readCoreMemory\(body \+ off, (?:maxOf\(size, )?(0x[0-9A-Fa-f]+)\)', dex)[1], 0)
 fields['dexMagic'] = int(re.search(r'if \(magic != (0x[0-9A-Fa-f]+)L\)', dex)[1], 0)
-fields['dexMax'] = int(re.search(r'val seen = \(1\.\.(\d+)\)', dex)[1])
-assert 'bit(4 + 64, it)' in dex and 'bit(4, it)' in dex
+# Platinum's species count and flag size: its POKEDEX tables' nationalCount, Gen4Config's dexFlagBytes (Platinum keeps the
+# default), the seen flags after the caught ones (the reader went by config when Origin HeartGold came in).
+fields['dexMax'] = int(re.search(r'nationalCount = (\d+), regionalCount = \d+, regionName = "SINNOH"', dex)[1])
+flag_bytes = int(re.search(r'val dexFlagBytes: Int = (0x[0-9A-Fa-f]+|\d+)', reader)[1], 0)
+assert 'dexFlagBytes' not in config, 'Platinum sets its own dexFlagBytes'
+assert 'bit(4 + flagBytes, it)' in dex and 'bit(4, it)' in dex
 fields['dexCaughtBase'] = 4
-fields['dexSeenBase'] = 4 + 64
+fields['dexSeenBase'] = 4 + flag_bytes
 fields['bodyOff'] = number(reader, 'bodyOff')
 fields['monSize'] = number(reader, 'GEN4_MON_SIZE')
 fields['boxSize'] = number(reader, 'GEN4_BOX_SIZE')
