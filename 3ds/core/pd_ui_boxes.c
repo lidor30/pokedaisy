@@ -207,7 +207,6 @@ void ui_box_message(struct pd_ui* ui, struct pd_canvas* c) {
 void ui_boxes_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     const struct pd_boxes* b = ui->boxes;
     if (!b || !b->ok || b->boxCount == 0) {
-        pd_backdrop(c);
         ui_notice(c, "NO BOXES YET", "The boxes show once the game", "has loaded a save.");
         return;
     }

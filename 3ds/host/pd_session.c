@@ -333,6 +333,7 @@ void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* 
     s->host.hasExpand = true;
     s->host.expandGame = s->wideKnown;
     s->host.hasHud = true;
+    s->host.hasPerf = true;
     s->host.fullSettings = true;
     s->gbField = s->game.gb && pd_gbf_ok(s->game.gb->field, s->rom, s->romSize) ? s->game.gb->field : NULL;
     s->host.wildSupported = s->wildSwitch != 0 || s->gbField;
@@ -357,12 +358,39 @@ void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* 
     s->redraw = true;
 }
 
+static bool in_battle(const struct pd_session* s) {
+    return s->shown.inBattle || (s->wideKnown && pk_wide_scene() == PK_WIDE_SCENE_BATTLE_START);
+}
+
+int pd_session_screen(const struct pd_session* s) {
+    int mode = s->settings->screenMode;
+    if (mode == PD_SCREEN_PIXEL && s->wideKnown && s->settings->aspect != PD_ASPECT_ORIGINAL) mode = PD_SCREEN_SHARP_125;
+    if (mode != PD_SCREEN_STRETCH && in_battle(s)) mode = PD_SCREEN_SHARP;
+    return mode;
+}
+
+const uint32_t* pd_session_perf(unsigned fpsTenths, unsigned cpuPercent, int* w) {
+    static uint32_t px[PD_PERF_W * PD_PERF_H];
+    struct pd_canvas c;
+    pd_canvas_init(&c, PD_PERF_W, PD_PERF_H, px);
+    memset(px, 0, sizeof(px));
+    char text[32];
+    snprintf(text, sizeof(text), "%u.%u FPS  CPU %u%%", fpsTenths / 10, fpsTenths % 10, cpuPercent);
+    *w = pd_text_width(text) + 8;
+    pd_round_rect(&c, 0, 0, *w, PD_PERF_H - 2, 2, 0xB8121620u);
+    pd_text(&c, 4, 1, text, 0xF8F8F8, 0x303840);
+    for (int i = 0; i < PD_PERF_W * PD_PERF_H; i++)
+        if (px[i] && !(px[i] >> 24)) px[i] |= 0xFF000000u;
+    return px;
+}
+
 // EXPAND's window (Linux's wide_window): SCREEN's scale makes EXPAND's size, ZOOM OUT one whole scale less: the 3DS's
 // 1.5x fills 400 x 240 with 266 x 160 of the game, 1x with all of it.
 static void wide_window(const struct pd_session* s, int aspect, int* w, int* h) {
-    bool whole = s->settings->screenMode == PD_SCREEN_PIXEL || aspect == PD_ASPECT_ZOOM_OUT;
+    int mode = pd_session_screen(s);
+    bool whole = mode == PD_SCREEN_PIXEL || aspect == PD_ASPECT_ZOOM_OUT;
     int fw = pk_wide_frame_w(), fh = pk_wide_frame_h();
-    bool mid = s->settings->screenMode == PD_SCREEN_SHARP_125;
+    bool mid = mode == PD_SCREEN_SHARP_125;
     int x = whole ? PD_TOP_W : mid ? PD_TOP_W * 4 / 5 : PD_TOP_W * 2 / 3, y = whole ? PD_TOP_H : mid ? PD_TOP_H * 4 / 5 : PD_TOP_H * 2 / 3;
     if (x < fw) x = fw;
     if (y < fh) y = fh;
@@ -407,10 +435,11 @@ static void wide_tick(struct pd_session* s, bool skip) {
         // A one-pixel window.
         static uint32_t px;
         pk_wide_view(s->core, source, &px, (struct PkWideView) { 0, 0, 1, 1 }, NULL);
+        pk_wide_finish();
         return;
     }
-    int aspect = s->settings->aspect == PD_ASPECT_ZOOM_OUT && s->settings->autoZoom &&
-        pk_wide_scene() != PK_WIDE_SCENE_FIELD ? PD_ASPECT_EXPAND : s->settings->aspect;
+    int aspect = s->settings->aspect == PD_ASPECT_ZOOM_OUT && (in_battle(s) || (s->settings->autoZoom &&
+        pk_wide_scene() != PK_WIDE_SCENE_FIELD)) ? PD_ASPECT_EXPAND : s->settings->aspect;
     wide_window(s, aspect, &s->wideW, &s->wideH);
     struct PkWideView v = { (fw - s->wideW) / 2, (fh - s->wideH) / 2, s->wideW, s->wideH };
     wideShown ^= 1;
@@ -941,11 +970,14 @@ static void overlay_update(struct pd_session* s) {
     // The game's picture: the HUD keeps to it (FieldHud(frame)), so a change of ASPECT or SCREEN moves the HUD.
     unsigned gw = 240, gh = 160;
     s->core->desiredVideoDimensions(s->core, &gw, &gh);
-    bool wide = s->wideKnown && s->settings->aspect != PD_ASPECT_ORIGINAL, pixel = s->settings->screenMode == PD_SCREEN_PIXEL;
-    bool mid = s->settings->screenMode == PD_SCREEN_SHARP_125;
-    int picture = s->settings->screenMode == PD_SCREEN_STRETCH || wide ? PD_TOP_W : pixel ? (int) gw : mid ? (int) gw * 5 / 4 : (int) gw * PD_TOP_H / (int) gh;
+    int mode = pd_session_screen(s);
+    bool wide = s->wideKnown && s->settings->aspect != PD_ASPECT_ORIGINAL, pixel = mode == PD_SCREEN_PIXEL;
+    bool mid = mode == PD_SCREEN_SHARP_125;
+    int picture = mode == PD_SCREEN_STRETCH || wide ? PD_TOP_W : pixel ? (int) gw : mid ? (int) gw * 5 / 4 : (int) gw * PD_TOP_H / (int) gh;
     int pictureH = wide ? PD_TOP_H : pixel ? (int) gh : mid ? (int) gh * 5 / 4 : PD_TOP_H;
     int gameRows = wide ? (pixel ? PD_TOP_H : mid ? PD_TOP_H * 4 / 5 : 160) : (int) gh;
+    s->perfRight = (PD_TOP_W + picture) / 2 - 3;
+    if (hud && !(s->settings->hudHidden & 1 << PD_HUD_MAP)) s->perfRight -= hud_compact_map_width() + 3;
     // The arrow's bob, frame by frame (BOB_MS' keyframes).
     static const uint8_t BOB[58] = { 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2,
                                      1, 1, 1, 1, 1, 0 };

@@ -1478,6 +1478,7 @@ static bool ghostPalette(uint32_t tag, uint32_t alpha, uint32_t pal[16]) {
     return true;
 }
 
+static bool holeLeft;   // pk_wide_hole: the host puts the frame's own pixels in itself
 #ifdef PK_WIDE_CACHE
 // The margin cache (pk_wide_cache): the map's own pixels around the frame, kept between frames in world coordinates, so
 // a frame only draws the 8x8 cells that are new or changed - EXPAND's margins are otherwise most of a 3DS's frame, and
@@ -1502,9 +1503,10 @@ static uint16_t ringPal[256];
 static int cacheMode;                 // 0 off, 1 on, 2 on with no limit on stale cells (the same pixels as the rebuild)
 static bool ringOn;                   // this frame's sprites read the cache
 static int ringX, ringY;              // the world pixel of the window's corner
+static bool holeWanted;
 static bool cachedLast;               // the last frame came from the cache: raw holds nothing of it
 static struct PkWideView cachedView;
-static bool laterOn;
+static bool laterOn, laterFullDue;
 static struct Later {
     const struct Snap* s;
     const uint32_t* frame;
@@ -1515,7 +1517,6 @@ static struct Later {
     bool due;
 } later;
 static const uint32_t* cachedOut;   // a host may hand a different buffer each frame
-static bool holeWanted, holeLeft;   // pk_wide_hole: the host puts the frame's own pixels in itself
 static int cacheHits;
 
 int pk_wide_cache_hits(void) { return cacheHits; }
@@ -3050,6 +3051,7 @@ void pk_wide_reset(void) {
 #ifdef PK_WIDE_CACHE
     ringStamp++;
     later.due = false;
+    laterFullDue = false;
     cachedLast = false;
 #endif
     prev = -1;
@@ -3509,15 +3511,106 @@ static void cacheDraw(const struct Snap* s, const uint32_t* frame, uint32_t* out
 }
 #endif
 
+
+/** The rebuild: everything a cached view leaves out (battles, menus, text boxes, what's dissolving). `f` is what viewInner decided. */
+struct FullView {
+    const uint32_t* frame;
+    uint32_t* out;
+    uint32_t* centre;
+    struct PkWideView v;
+    bool valid, battle, menu, overlay;
+    int bestSnap, bestCx, bestCy, bestH, bestV;
+    uint32_t alpha;
+};
+
+static void fullDraw(const struct FullView* f) {
+    const uint32_t* frame = f->frame;
+    uint32_t* out = f->out;
+    uint32_t* centre = f->centre;
+    struct PkWideView v = f->v;
+    bool valid = f->valid, battle = f->battle, menu = f->menu, overlay = f->overlay;
+    int bestSnap = f->bestSnap, bestCx = f->bestCx, bestCy = f->bestCy, bestH = f->bestH, bestV = f->bestV;
+    uint32_t alpha = f->alpha;
+    if (valid || battle || menu) {
+        if (valid) {
+            const struct Snap* s = &snaps[bestSnap];
+            drawRegion(s, bestCx, bestCy, bestH, bestV, v.x, v.y, v.x + v.w, v.y + v.h, true, &raw[0][0], BUF_W, alpha);
+            if (!overlay) markBarRows(v.x, v.y, v.w, v.h);   // FireRed's map preview keeps its dimmed map around it
+        } else if (battle) {
+            drawBattleRegion(v.x, v.y, v.x + v.w, v.y + v.h, true, &raw[0][0], BUF_W, alpha);
+        } else {
+            drawMenuRegion(v.x, v.y, v.x + v.w, v.y + v.h, true, &raw[0][0], BUF_W, alpha, frame);
+        }
+        for (int j = 0; j < v.h; j++) memcpy(rawHole[j], holeBuf[j], (size_t) v.w);
+        rawView = v;
+        if (centre) {
+            if (valid) drawRegion(&snaps[bestSnap], bestCx, bestCy, bestH, bestV, 0, 0, PK_WIDE_W, PK_WIDE_H, false, centre, PK_WIDE_W, alpha);
+            else if (battle) drawBattleRegion(0, 0, PK_WIDE_W, PK_WIDE_H, false, centre, PK_WIDE_W, alpha);   // holes show the backdrop, as the PPU does
+            else drawMenuRegion(0, 0, PK_WIDE_W, PK_WIDE_H, false, centre, PK_WIDE_W, alpha, NULL);
+        }
+        mix = mix + MIX_STEP > 256 ? 256 : mix + MIX_STEP;
+    } else {
+        mix = mix - MIX_STEP < 0 ? 0 : mix - MIX_STEP;   // the last scene, frozen, dissolves into the glow
+    }
+    if (!rawView.w) mix = 0;   // nothing drawn yet
+    if (mix < 256) ambientPrepare(frame);
+    else edgeAccOk = false;    // the glow starts from the edges as they are when it's next needed
+    int reach[4] = { -v.x, v.x + v.w - PK_WIDE_W, -v.y, v.y + v.h - PK_WIDE_H };
+
+    for (int j = 0; j < v.h; j++) {
+        int Y = v.y + j;
+        uint32_t* row = out + j * v.w;
+        int ry = Y - rawView.y;
+        bool rawRow = ry >= 0 && ry < rawView.h;
+        for (int i = 0; i < v.w; i++) {
+            int X = v.x + i;
+            if (onFrame(X, Y)) {
+                // The frame itself: copied a row segment at a time - or, under a BG0 picture, dimmed but for BG0's own
+                // pixels (the map showing around and through the picture).
+                int n = (PK_WIDE_W - X) < (v.w - i) ? PK_WIDE_W - X : v.w - i;
+                if (holeLeft) {
+                    // The host's (pk_wide_hole).
+                } else if (!overlayDim) {
+                    memcpy(row + i, frame + Y * PK_WIDE_W + X, (size_t) n * sizeof(uint32_t));
+                } else {
+                    for (int k = 0; k < n; k++) {
+                        uint32_t p = frame[Y * PK_WIDE_W + X + k];
+                        row[i + k] = fromBg(p, 0) ? p : dimmed(p, overlayDim);
+                    }
+                }
+                i += n - 1;
+                continue;
+            }
+            int rx = X - rawView.x, m = mix;
+            uint32_t scene = 0;
+            if (rawRow && rx >= 0 && rx < rawView.w) {
+                // A hole goes on with the frame's nearest edge pixel as the game shows it now (so it follows fades).
+                scene = rawHole[ry][rx] ? frame[clampi(Y, 0, PK_WIDE_H - 1) * PK_WIDE_W + clampi(X, 0, PK_WIDE_W - 1)]
+                                        : raw[ry][rx];
+            } else {
+                m = 0;   // the window moved off what was last drawn: the glow
+            }
+            uint32_t o = m >= 256 ? scene : lerp(glowAt(frame, X, Y, reach, alpha), scene, m);
+            row[i] = overlayDim ? dimmed(o, overlayDim) : o;
+        }
+    }
+}
+
 #ifdef PK_WIDE_CACHE
 void pk_wide_later(int on, void (*join)(void)) {
     laterOn = on != 0;
     laterJoin = join;
 }
 
-int pk_wide_due(void) { return later.due; }
+static struct FullView laterFull;
+
+int pk_wide_due(void) { return later.due || laterFullDue; }
 
 void pk_wide_finish(void) {
+    if (laterFullDue) {
+        laterFullDue = false;
+        fullDraw(&laterFull);
+    }
     if (!later.due) return;
     later.due = false;
     cacheDraw(later.s, later.frame, later.out, later.v, later.cx, later.cy, later.enabled, later.alpha);
@@ -3663,67 +3756,18 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
         }
     }
 #endif
-    if (valid || battle || menu) {
-        if (valid) {
-            const struct Snap* s = &snaps[bestSnap];
-            drawRegion(s, bestCx, bestCy, bestH, bestV, v.x, v.y, v.x + v.w, v.y + v.h, true, &raw[0][0], BUF_W, alpha);
-            if (!overlay) markBarRows(v.x, v.y, v.w, v.h);   // FireRed's map preview keeps its dimmed map around it
-        } else if (battle) {
-            drawBattleRegion(v.x, v.y, v.x + v.w, v.y + v.h, true, &raw[0][0], BUF_W, alpha);
-        } else {
-            drawMenuRegion(v.x, v.y, v.x + v.w, v.y + v.h, true, &raw[0][0], BUF_W, alpha, frame);
-        }
-        for (int j = 0; j < v.h; j++) memcpy(rawHole[j], holeBuf[j], (size_t) v.w);
-        rawView = v;
-        if (centre) {
-            if (valid) drawRegion(&snaps[bestSnap], bestCx, bestCy, bestH, bestV, 0, 0, PK_WIDE_W, PK_WIDE_H, false, centre, PK_WIDE_W, alpha);
-            else if (battle) drawBattleRegion(0, 0, PK_WIDE_W, PK_WIDE_H, false, centre, PK_WIDE_W, alpha);   // holes show the backdrop, as the PPU does
-            else drawMenuRegion(0, 0, PK_WIDE_W, PK_WIDE_H, false, centre, PK_WIDE_W, alpha, NULL);
-        }
-        mix = mix + MIX_STEP > 256 ? 256 : mix + MIX_STEP;
-    } else {
-        mix = mix - MIX_STEP < 0 ? 0 : mix - MIX_STEP;   // the last scene, frozen, dissolves into the glow
+    struct FullView full = { frame, out, centre, v, valid, battle, menu, overlay, bestSnap, bestCx, bestCy, bestH, bestV, alpha };
+#ifdef PK_WIDE_CACHE
+    holeLeft = holeWanted && !overlayDim && !centre;
+    if (laterOn && !centre) {
+        laterFull = full;
+        laterFullDue = true;
+        if (linesWanted && lineIoFrames < 2) lineIoFrames++;
+        prev = cur;
+        return mix;
     }
-    if (!rawView.w) mix = 0;   // nothing drawn yet
-    if (mix < 256) ambientPrepare(frame);
-    else edgeAccOk = false;    // the glow starts from the edges as they are when it's next needed
-    int reach[4] = { -v.x, v.x + v.w - PK_WIDE_W, -v.y, v.y + v.h - PK_WIDE_H };
-
-    for (int j = 0; j < v.h; j++) {
-        int Y = v.y + j;
-        uint32_t* row = out + j * v.w;
-        int ry = Y - rawView.y;
-        bool rawRow = ry >= 0 && ry < rawView.h;
-        for (int i = 0; i < v.w; i++) {
-            int X = v.x + i;
-            if (onFrame(X, Y)) {
-                // The frame itself: copied a row segment at a time - or, under a BG0 picture, dimmed but for BG0's own
-                // pixels (the map showing around and through the picture).
-                int n = (PK_WIDE_W - X) < (v.w - i) ? PK_WIDE_W - X : v.w - i;
-                if (!overlayDim) {
-                    memcpy(row + i, frame + Y * PK_WIDE_W + X, (size_t) n * sizeof(uint32_t));
-                } else {
-                    for (int k = 0; k < n; k++) {
-                        uint32_t p = frame[Y * PK_WIDE_W + X + k];
-                        row[i + k] = fromBg(p, 0) ? p : dimmed(p, overlayDim);
-                    }
-                }
-                i += n - 1;
-                continue;
-            }
-            int rx = X - rawView.x, m = mix;
-            uint32_t scene = 0;
-            if (rawRow && rx >= 0 && rx < rawView.w) {
-                // A hole goes on with the frame's nearest edge pixel as the game shows it now (so it follows fades).
-                scene = rawHole[ry][rx] ? frame[clampi(Y, 0, PK_WIDE_H - 1) * PK_WIDE_W + clampi(X, 0, PK_WIDE_W - 1)]
-                                        : raw[ry][rx];
-            } else {
-                m = 0;   // the window moved off what was last drawn: the glow
-            }
-            uint32_t o = m >= 256 ? scene : lerp(glowAt(frame, X, Y, reach, alpha), scene, m);
-            row[i] = overlayDim ? dimmed(o, overlayDim) : o;
-        }
-    }
+#endif
+    fullDraw(&full);
     if (linesWanted && lineIoFrames < 2) lineIoFrames++;
     prev = cur;
     return mix;

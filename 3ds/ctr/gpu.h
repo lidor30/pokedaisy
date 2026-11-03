@@ -42,6 +42,9 @@ bool gpu_wide_thread(void (*work)(void));
 void gpu_wide_go(void);
 void gpu_wide_join(void);
 
+// FPS / CPU over everything: a new picture (128 x 16, 0xAARRGGBB) when px isn't NULL, then where it goes; w 0 hides it.
+void gpu_set_perf(const uint32_t* px, int x, int y, int w);
+
 // One frame: the game (in screenMode, enum pd_screen_mode) or the top canvas
 // on the top screen, the bottom canvas below. Everything is copied before it returns, so the caller can go on; it
 // waits for the screen's refresh only when the last frame is still being taken.

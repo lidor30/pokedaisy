@@ -17,6 +17,8 @@ struct hud_state {
   bool compact;    // smaller, and no level on the party (a 3DS: its game is drawn at 1.5x)
 };
 
+/* How wide the compact HUD's minimap is, its frame included. */
+int hud_compact_map_width(void);
 /* Draws the HUD's shown parts ([hidden]: a bit per enum pd_hud_part) over QUICK_CLEAR; false if nothing shows. */
 bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snapshot *s,
               const struct hud_state *h, int hidden);

@@ -23,7 +23,7 @@
 // The sizes: FieldHud's, or a 3DS's (hud_state.compact: its screen shows the game at 1.5x, a Linux handheld's at 3x and
 // more, so the same pixels cover twice as much of the picture). A compact tile overlaps the icon's see-through edges.
 struct hud_sizes { int pad, edge, tile, gap, mapW, mapH; };
-static const struct hud_sizes NORMAL_SIZES = { 4, 6, 30, 3, 104, 64 }, COMPACT_SIZES = { 2, 3, 17, 1, 72, 40 };
+static const struct hud_sizes NORMAL_SIZES = { 4, 6, 30, 3, 104, 64 }, COMPACT_SIZES = { 2, 3, 20, 1, 72, 40 };
 static const struct hud_sizes *sizes = &NORMAL_SIZES;
 static bool compact;
 #define PAD (sizes->pad)
@@ -33,45 +33,184 @@ static bool compact;
 #define MAP_W (sizes->mapW)
 #define MAP_H (sizes->mapH)
 
-// Compact: icons and the place's name at 3/4 size. A 3DS shows this canvas pixel for pixel, and the font and icons have
-// nothing smaller. Each 4 pixels become 3, the middle one the darker of its two, so outlines and strokes stay.
+// Compact: a 3DS shows this canvas pixel for pixel and the icons come no smaller, so they go through Scale2x (edges stay
+// clean, no pixel simply dropped) and then down to 7/8 of their size, each pixel what it covers. Dropping pixels broke the
+// shapes, and the same at 1x blurred some columns and not others.
 #define SHRUNK_CLEAR 0xFE000000u
-#define SHRINK_W 128
-#define SHRINK_H 32
-static uint32_t shrinkPx[SHRINK_W * SHRINK_H];
+static uint32_t iconPx[PD_ICON * PD_ICON], icon2x[4 * PD_ICON * PD_ICON];
 
-static struct pd_canvas shrink_begin(void) {
+static struct pd_canvas icon_begin(void) {
   struct pd_canvas s;
-  pd_canvas_init(&s, SHRINK_W, SHRINK_H, shrinkPx);
-  for (int i = 0; i < SHRINK_W * SHRINK_H; i++)
-    shrinkPx[i] = SHRUNK_CLEAR;
+  pd_canvas_init(&s, PD_ICON, PD_ICON, iconPx);
+  for (int i = 0; i < PD_ICON * PD_ICON; i++)
+    iconPx[i] = SHRUNK_CLEAR;
   return s;
 }
 
-// Out 0, 1, 2 from 0, 1 and 2, 3.
-static int shrink_from(int out) { return out / 3 * 4 + out % 3 + (out % 3 == 2); }
-
-// `tint`: every pixel this colour (a text's shadow), or SHRUNK_CLEAR to keep them.
-static void shrink_draw(struct pd_canvas *c, int w, int h, int x, int y, uint32_t tint) {
-  for (int oy = 0; oy < h * 3 / 4; oy++) {
-    int sy = shrink_from(oy), ny = oy % 3 == 1 ? 2 : 1;
-    for (int ox = 0; ox < w * 3 / 4; ox++) {
-      int sx = shrink_from(ox), nx = ox % 3 == 1 ? 2 : 1;
-      uint32_t best = SHRUNK_CLEAR;
-      int dark = 1 << 30;
-      for (int j = 0; j < ny; j++)
-        for (int i = 0; i < nx; i++) {
-          uint32_t p = shrinkPx[(sy + j) * SHRINK_W + sx + i];
-          int v = (int)(p >> 16 & 0xFF) + (int)(p >> 8 & 0xFF) + (int)(p & 0xFF);
-          if (p != SHRUNK_CLEAR && v < dark) {
-            dark = v;
-            best = p;
-          }
-        }
-      if (best != SHRUNK_CLEAR)
-        pd_fill(c, x + ox, y + oy, 1, 1, tint != SHRUNK_CLEAR ? tint : best);
+static void icon_scale2x(void) {
+  const int n = PD_ICON;
+  for (int y = 0; y < n; y++)
+    for (int x = 0; x < n; x++) {
+      uint32_t e = iconPx[y * n + x];
+      uint32_t b = iconPx[(y ? y - 1 : y) * n + x], h = iconPx[(y < n - 1 ? y + 1 : y) * n + x];
+      uint32_t d = iconPx[y * n + (x ? x - 1 : x)], f = iconPx[y * n + (x < n - 1 ? x + 1 : x)];
+      bool edge = b != h && d != f;
+      uint32_t *o = &icon2x[2 * y * 2 * n + 2 * x];
+      o[0] = edge && d == b ? d : e;
+      o[1] = edge && b == f ? f : e;
+      o[2 * n] = edge && d == h ? d : e;
+      o[2 * n + 1] = edge && h == f ? f : e;
     }
+}
+
+// Over what's there: 7/16 of the 2x picture.
+static void icon_draw(struct pd_canvas *c, int x, int y) {
+  const int n = 2 * PD_ICON, total = 16 * 16;
+  icon_scale2x();
+  for (int oy = 0; oy < PD_ICON * 7 / 8; oy++)
+    for (int ox = 0; ox < PD_ICON * 7 / 8; ox++) {
+      int X = x + ox, Y = y + oy;
+      if (X < c->cx0 || X >= c->cx1 || Y < c->cy0 || Y >= c->cy1)
+        continue;
+      // In sevenths of a source pixel, this pixel covers [16 * o, 16 * o + 16) each way.
+      int r = 0, g = 0, b = 0, cover = 0;
+      for (int sy = oy * 16 / 7; sy <= (oy * 16 + 15) / 7 && sy < n; sy++) {
+        int y0 = oy * 16 > sy * 7 ? oy * 16 : sy * 7, y1 = oy * 16 + 16 < sy * 7 + 7 ? oy * 16 + 16 : sy * 7 + 7;
+        for (int sx = ox * 16 / 7; sx <= (ox * 16 + 15) / 7 && sx < n; sx++) {
+          int x0 = ox * 16 > sx * 7 ? ox * 16 : sx * 7, x1 = ox * 16 + 16 < sx * 7 + 7 ? ox * 16 + 16 : sx * 7 + 7;
+          int part = (y1 - y0) * (x1 - x0);
+          uint32_t p = icon2x[sy * n + sx];
+          if (part <= 0 || p == SHRUNK_CLEAR)
+            continue;
+          r += part * (int)(p >> 16 & 0xFF);
+          g += part * (int)(p >> 8 & 0xFF);
+          b += part * (int)(p & 0xFF);
+          cover += part;
+        }
+      }
+      if (cover * 4 < total) // a sliver of the outline: left out, or the panel shows a halo round the Pokémon
+        continue;
+      uint32_t *d = &c->px[Y * c->w + X];
+      bool clear = *d == QUICK_CLEAR;
+      int rest = total - cover, under = clear ? 0 : *d >> 24 ? (int)(*d >> 24) : 255;
+      int dr = clear ? 0 : (int)(*d >> 16 & 0xFF), dg = clear ? 0 : (int)(*d >> 8 & 0xFF), db = clear ? 0 : (int)(*d & 0xFF);
+      int wUnder = rest * under / 255, sum = cover + wUnder;
+      int alpha = 255 - (255 - under) * rest / total;
+      uint32_t rgb = (uint32_t)((r + dr * wUnder) / sum) << 16 | (uint32_t)((g + dg * wUnder) / sum) << 8 | (uint32_t)((b + db * wUnder) / sum);
+      *d = (alpha >= 255 ? 0u : (uint32_t)(alpha ? alpha : 1) << 24) | rgb;
+    }
+}
+
+// The place's name: a font of the size it wants, whole pixels, capitals 8 tall (our own drawing; the app's Pixel Operator
+// is 9 and a line of 12, too big for the minimap). Anything else in a name falls back to that font.
+struct small_glyph {
+  unsigned char ch, w;
+  unsigned char rows[10]; // top bit first
+};
+static const struct small_glyph SMALL_FONT[] = {
+    { ' ', 3, { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } },
+    { '!', 1, { 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x80, 0x00, 0x00 } },
+    { '&', 5, { 0x60, 0x90, 0x90, 0x60, 0xA8, 0x90, 0x90, 0x68, 0x00, 0x00 } },
+    { '\'', 1, { 0x80, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } },
+    { '(', 2, { 0x40, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x40, 0x00, 0x00 } },
+    { ')', 2, { 0x80, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x80, 0x00, 0x00 } },
+    { ',', 2, { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x40, 0x80 } },
+    { '-', 3, { 0x00, 0x00, 0x00, 0x00, 0xE0, 0x00, 0x00, 0x00, 0x00, 0x00 } },
+    { '.', 1, { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00 } },
+    { '/', 4, { 0x10, 0x10, 0x20, 0x20, 0x40, 0x40, 0x80, 0x80, 0x00, 0x00 } },
+    { '0', 5, { 0x70, 0x88, 0x98, 0xA8, 0xA8, 0xC8, 0x88, 0x70, 0x00, 0x00 } },
+    { '1', 3, { 0x40, 0xC0, 0x40, 0x40, 0x40, 0x40, 0x40, 0xE0, 0x00, 0x00 } },
+    { '2', 5, { 0x70, 0x88, 0x08, 0x10, 0x20, 0x40, 0x80, 0xF8, 0x00, 0x00 } },
+    { '3', 5, { 0x70, 0x88, 0x08, 0x30, 0x08, 0x08, 0x88, 0x70, 0x00, 0x00 } },
+    { '4', 5, { 0x10, 0x30, 0x50, 0x90, 0x90, 0xF8, 0x10, 0x10, 0x00, 0x00 } },
+    { '5', 5, { 0xF8, 0x80, 0x80, 0xF0, 0x08, 0x08, 0x88, 0x70, 0x00, 0x00 } },
+    { '6', 5, { 0x70, 0x80, 0x80, 0xF0, 0x88, 0x88, 0x88, 0x70, 0x00, 0x00 } },
+    { '7', 5, { 0xF8, 0x08, 0x10, 0x10, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00 } },
+    { '8', 5, { 0x70, 0x88, 0x88, 0x70, 0x88, 0x88, 0x88, 0x70, 0x00, 0x00 } },
+    { '9', 5, { 0x70, 0x88, 0x88, 0x88, 0x78, 0x08, 0x08, 0x70, 0x00, 0x00 } },
+    { ':', 1, { 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00 } },
+    { '?', 5, { 0x70, 0x88, 0x08, 0x10, 0x20, 0x20, 0x00, 0x20, 0x00, 0x00 } },
+    { 'A', 5, { 0x70, 0x88, 0x88, 0x88, 0xF8, 0x88, 0x88, 0x88, 0x00, 0x00 } },
+    { 'B', 5, { 0xF0, 0x88, 0x88, 0xF0, 0x88, 0x88, 0x88, 0xF0, 0x00, 0x00 } },
+    { 'C', 5, { 0x70, 0x88, 0x80, 0x80, 0x80, 0x80, 0x88, 0x70, 0x00, 0x00 } },
+    { 'D', 5, { 0xF0, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0xF0, 0x00, 0x00 } },
+    { 'E', 5, { 0xF8, 0x80, 0x80, 0xF0, 0x80, 0x80, 0x80, 0xF8, 0x00, 0x00 } },
+    { 'F', 5, { 0xF8, 0x80, 0x80, 0xF0, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00 } },
+    { 'G', 5, { 0x70, 0x88, 0x80, 0x80, 0xB8, 0x88, 0x88, 0x70, 0x00, 0x00 } },
+    { 'H', 5, { 0x88, 0x88, 0x88, 0xF8, 0x88, 0x88, 0x88, 0x88, 0x00, 0x00 } },
+    { 'I', 3, { 0xE0, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0xE0, 0x00, 0x00 } },
+    { 'J', 5, { 0x38, 0x10, 0x10, 0x10, 0x10, 0x90, 0x90, 0x60, 0x00, 0x00 } },
+    { 'K', 5, { 0x88, 0x90, 0xA0, 0xC0, 0xC0, 0xA0, 0x90, 0x88, 0x00, 0x00 } },
+    { 'L', 5, { 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0xF8, 0x00, 0x00 } },
+    { 'M', 5, { 0x88, 0xD8, 0xA8, 0xA8, 0x88, 0x88, 0x88, 0x88, 0x00, 0x00 } },
+    { 'N', 5, { 0x88, 0xC8, 0xC8, 0xA8, 0xA8, 0x98, 0x98, 0x88, 0x00, 0x00 } },
+    { 'O', 5, { 0x70, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x70, 0x00, 0x00 } },
+    { 'P', 5, { 0xF0, 0x88, 0x88, 0x88, 0xF0, 0x80, 0x80, 0x80, 0x00, 0x00 } },
+    { 'Q', 5, { 0x70, 0x88, 0x88, 0x88, 0x88, 0xA8, 0x90, 0x68, 0x00, 0x00 } },
+    { 'R', 5, { 0xF0, 0x88, 0x88, 0x88, 0xF0, 0xA0, 0x90, 0x88, 0x00, 0x00 } },
+    { 'S', 5, { 0x70, 0x88, 0x80, 0x70, 0x08, 0x08, 0x88, 0x70, 0x00, 0x00 } },
+    { 'T', 5, { 0xF8, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00 } },
+    { 'U', 5, { 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x70, 0x00, 0x00 } },
+    { 'V', 5, { 0x88, 0x88, 0x88, 0x88, 0x88, 0x50, 0x50, 0x20, 0x00, 0x00 } },
+    { 'W', 5, { 0x88, 0x88, 0x88, 0x88, 0xA8, 0xA8, 0xD8, 0x88, 0x00, 0x00 } },
+    { 'X', 5, { 0x88, 0x88, 0x50, 0x20, 0x20, 0x50, 0x88, 0x88, 0x00, 0x00 } },
+    { 'Y', 5, { 0x88, 0x88, 0x50, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00 } },
+    { 'Z', 5, { 0xF8, 0x08, 0x10, 0x20, 0x40, 0x80, 0x80, 0xF8, 0x00, 0x00 } },
+    { 'a', 5, { 0x00, 0x00, 0x70, 0x08, 0x78, 0x88, 0x88, 0x78, 0x00, 0x00 } },
+    { 'b', 5, { 0x80, 0x80, 0xF0, 0x88, 0x88, 0x88, 0x88, 0xF0, 0x00, 0x00 } },
+    { 'c', 4, { 0x00, 0x00, 0x70, 0x80, 0x80, 0x80, 0x80, 0x70, 0x00, 0x00 } },
+    { 'd', 5, { 0x08, 0x08, 0x78, 0x88, 0x88, 0x88, 0x88, 0x78, 0x00, 0x00 } },
+    { 'e', 5, { 0x00, 0x00, 0x70, 0x88, 0xF8, 0x80, 0x88, 0x70, 0x00, 0x00 } },
+    { 'f', 4, { 0x30, 0x40, 0xE0, 0x40, 0x40, 0x40, 0x40, 0x40, 0x00, 0x00 } },
+    { 'g', 5, { 0x00, 0x00, 0x78, 0x88, 0x88, 0x88, 0x78, 0x08, 0x08, 0x70 } },
+    { 'h', 5, { 0x80, 0x80, 0xF0, 0x88, 0x88, 0x88, 0x88, 0x88, 0x00, 0x00 } },
+    { 'i', 1, { 0x80, 0x00, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00 } },
+    { 'j', 3, { 0x20, 0x00, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0xA0, 0x40 } },
+    { 'k', 4, { 0x80, 0x80, 0x90, 0xA0, 0xC0, 0xC0, 0xA0, 0x90, 0x00, 0x00 } },
+    { 'l', 2, { 0xC0, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x00, 0x00 } },
+    { 'm', 5, { 0x00, 0x00, 0xF0, 0xA8, 0xA8, 0xA8, 0xA8, 0xA8, 0x00, 0x00 } },
+    { 'n', 5, { 0x00, 0x00, 0xF0, 0x88, 0x88, 0x88, 0x88, 0x88, 0x00, 0x00 } },
+    { 'o', 5, { 0x00, 0x00, 0x70, 0x88, 0x88, 0x88, 0x88, 0x70, 0x00, 0x00 } },
+    { 'p', 5, { 0x00, 0x00, 0xF0, 0x88, 0x88, 0x88, 0x88, 0xF0, 0x80, 0x80 } },
+    { 'q', 5, { 0x00, 0x00, 0x78, 0x88, 0x88, 0x88, 0x88, 0x78, 0x08, 0x08 } },
+    { 'r', 3, { 0x00, 0x00, 0xA0, 0xC0, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00 } },
+    { 's', 4, { 0x00, 0x00, 0x70, 0x80, 0x60, 0x10, 0x10, 0xE0, 0x00, 0x00 } },
+    { 't', 4, { 0x40, 0x40, 0xE0, 0x40, 0x40, 0x40, 0x40, 0x30, 0x00, 0x00 } },
+    { 'u', 5, { 0x00, 0x00, 0x88, 0x88, 0x88, 0x88, 0x88, 0x78, 0x00, 0x00 } },
+    { 'v', 5, { 0x00, 0x00, 0x88, 0x88, 0x88, 0x50, 0x50, 0x20, 0x00, 0x00 } },
+    { 'w', 5, { 0x00, 0x00, 0x88, 0x88, 0xA8, 0xA8, 0xA8, 0x50, 0x00, 0x00 } },
+    { 'x', 5, { 0x00, 0x00, 0x88, 0x50, 0x20, 0x20, 0x50, 0x88, 0x00, 0x00 } },
+    { 'y', 5, { 0x00, 0x00, 0x88, 0x88, 0x88, 0x88, 0x78, 0x08, 0x08, 0x70 } },
+    { 'z', 5, { 0x00, 0x00, 0xF8, 0x10, 0x20, 0x40, 0x80, 0xF8, 0x00, 0x00 } },
+    { 0xE9, 5, { 0x20, 0x40, 0x70, 0x88, 0xF8, 0x80, 0x88, 0x70, 0x00, 0x00 } },
+};
+
+static const struct small_glyph *small_glyph(unsigned char ch) {
+  for (size_t i = 0; i < sizeof(SMALL_FONT) / sizeof(SMALL_FONT[0]); i++)
+    if (SMALL_FONT[i].ch == ch)
+      return &SMALL_FONT[i];
+  return NULL;
+}
+
+// Latin-1's letters we drew arrive as UTF-8; false if any other character is in the text.
+static bool small_text(struct pd_canvas *c, int x, int y, const char *text, uint32_t color, bool measure) {
+  for (const unsigned char *p = (const unsigned char *)text; *p; p++) {
+    unsigned char ch = *p;
+    if (ch == 0xC3 && p[1] == 0xA9) {
+      ch = 0xE9;
+      p++;
+    }
+    const struct small_glyph *g = small_glyph(ch);
+    if (!g)
+      return false;
+    if (!measure)
+      for (int j = 0; j < 10; j++)
+        for (int i = 0; i < g->w; i++)
+          if (g->rows[j] & 0x80 >> i)
+            pd_fill(c, x + i, y + j, 1, 1, color);
+    x += g->w + 1;
   }
+  return true;
 }
 
 static void panel(struct pd_canvas *c, int x, int y, int w, int h) {
@@ -109,8 +248,8 @@ static int party_width(const struct pd_snapshot *s) {
   int n = s->partyCount < PD_PARTY_SIZE ? s->partyCount : PD_PARTY_SIZE;
   return n ? 2 * PAD + 2 + n * TILE + (n - 1) * TILE_GAP : 0;
 }
-#define SMALL_ICON (PD_ICON * 3 / 4)
-#define COMPACT_ICON_H 18 // what shows of it: a Pokémon stands at the bottom of its picture
+#define SMALL_ICON (PD_ICON * 7 / 8)
+#define COMPACT_ICON_H 21 // what shows of it: a Pokémon stands at the bottom of its picture
 #define PARTY_H (compact ? 2 * PAD + 2 + COMPACT_ICON_H + 5 : 2 * PAD + 2 + 26 + LINE + 6)
 
 static void party_row(struct pd_canvas *c, const struct pd_game *g, const struct pd_snapshot *s, int x, int y,
@@ -128,9 +267,9 @@ static void party_row(struct pd_canvas *c, const struct pd_game *g, const struct
     if (draw) {
       draw(c, ctx, m, tx + (TILE - PD_ICON) / 2, ty - 5, fainted);
     } else if (compact) {
-      struct pd_canvas small = shrink_begin();
+      struct pd_canvas small = icon_begin();
       pd_draw_mon_icon(&small, g, m->species, 0, 0, fainted);
-      shrink_draw(c, PD_ICON, PD_ICON, tx + (TILE - SMALL_ICON) / 2, ty - 4, SHRUNK_CLEAR);
+      icon_draw(c, tx + (TILE - SMALL_ICON) / 2, ty - 4);
     } else {
       pd_draw_mon_icon(c, g, m->species, tx + (TILE - PD_ICON) / 2, ty - 5, fainted);
     }
@@ -158,7 +297,7 @@ void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx,
 }
 
 #define MINIMAP_W (MAP_W + 2 * PAD)
-#define NAME_H (compact ? 9 : LINE)
+#define NAME_H (compact ? 10 : LINE)
 #define MINIMAP_H (MAP_H + 2 * PAD + 3 + NAME_H)
 
 // The region map around the player's head (HudMiniMap): the map at 1x, its name under it.
@@ -201,11 +340,9 @@ static bool minimap(struct pd_canvas *c, const struct pd_game *g, const struct p
   }
   if (name && *name) {
     pd_clip(c, mx, my + MAP_H + 1, MAP_W, NAME_H + 4);
-    if (compact) {
-      struct pd_canvas small = shrink_begin();
-      pd_text(&small, 0, 0, name, INK, PD_NO_SHADOW);
-      shrink_draw(c, SHRINK_W, 16, mx + 1, my + MAP_H + 2, INK_SHADOW);
-      shrink_draw(c, SHRINK_W, 16, mx, my + MAP_H + 1, SHRUNK_CLEAR);
+    if (compact && small_text(c, 0, 0, name, 0, true)) {
+      small_text(c, mx + 1, my + MAP_H + 2, name, INK_SHADOW, false);
+      small_text(c, mx, my + MAP_H + 1, name, INK, false);
     } else {
       pd_text(c, mx, my + MAP_H + 1, name, INK, INK_SHADOW);
     }
@@ -287,6 +424,8 @@ static void repel_panel(struct pd_canvas *c, const struct pd_game *g, const stru
   pd_round_rect(c, tx, y + REPEL_H - PAD - 6, 46, 5, 1, 0x00405060);
   pd_fill(c, tx + 1, y + REPEL_H - PAD - 5, left, 3, fill);
 }
+
+int hud_compact_map_width(void) { return COMPACT_SIZES.mapW + 2 * COMPACT_SIZES.pad; }
 
 bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snapshot *s,
               const struct hud_state *h, int hidden) {

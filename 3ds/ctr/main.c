@@ -32,6 +32,7 @@
 #include "../core/pd_library.h"
 #include "../core/pd_menu.h"
 #include "../core/pd_settings.h"
+#include "../core/pd_style.h"
 #include "../host/pd_session.h"
 #include "../../app/src/main/cpp/pk_gb_audio.h"
 #include "../../app/src/main/cpp/pk_host.h"
@@ -485,6 +486,9 @@ static bool run_game(const char* file) {
 
     bool touching = false;
     unsigned fpsFrames = 0;
+    u64 busyTicks = 0;
+    const uint32_t* perfPicture = NULL;
+    int perfWidth = 0;
     u64 fpsStart = osGetTime();
     u64 lastTick = fpsStart;
 #ifdef PD_DEV
@@ -590,6 +594,7 @@ static bool run_game(const char* file) {
                                .quickMenu = (down & KEY_Y) && !uiPtr->keyFocus,
                                .ffHeld = held & KEY_ZR, .stickAngle = stick_angle() };
         DEV_MARK(coreStart);
+        u64 busyStart = svcGetSystemTick();
         u64 tickNow = osGetTime();
         unsigned before = session.frame;
         pd_session_tick(&session, &in, (unsigned) (tickNow - lastTick));
@@ -598,6 +603,7 @@ static bool run_game(const char* file) {
         unsigned frames = session.frame - before;
         if (frames) pd_session_set_video(&session, gpu_frame_done());
         audioMuted = session.ff;
+        busyTicks += svcGetSystemTick() - busyStart;
         DEV_MARK(uiStart);
 
         fpsFrames += (unsigned) frames;
@@ -606,6 +612,10 @@ static bool run_game(const char* file) {
             // Against the GBA's own 268111856 / 4481136 = 59.73 frames a second.
             unsigned pct = (unsigned) ((u64) fpsFrames * 1000 * 100 * 4481136 / ((now - fpsStart) * 268111856ULL));
             snprintf(hostPtr->values[1], sizeof(hostPtr->values[1]), "%u%% (%u FPS)", pct, fpsFrames);
+            // The game's own core, how much of the last second it was busy: 100 and the game can't keep up.
+            unsigned cpu = (unsigned) (busyTicks / (SYSCLOCK_ARM11 / 1000) * 100 / (now - fpsStart));
+            perfPicture = settings.showPerf ? pd_session_perf((unsigned) ((u64) fpsFrames * 10000 / (now - fpsStart)), cpu > 100 ? 100 : cpu, &perfWidth) : NULL;
+            busyTicks = 0;
             fpsFrames = 0;
             fpsStart = now;
             u8 battery = 0;
@@ -618,13 +628,15 @@ static bool run_game(const char* file) {
             gpu_set_bottom(bottomPx);
         }
         DEV_MARK(drawStart);
+        gpu_set_perf(perfPicture, session.perfRight - perfWidth, 3, settings.showPerf ? perfWidth : 0);
+        perfPicture = NULL;
         gpu_hold_game(pd_session_holds_frame(&session));
         gpu_set_wide(session.wideReady ? pd_session_wide(&session) : NULL, session.wideW, session.wideH);
         const struct pd_wide_hole* hole = &session.wideHole;
         gpu_set_wide_hole(hole->x, hole->y, hole->w, hole->h, hole->gameX, hole->gameY);
         if (session.overlayDirty) gpu_set_overlay(pd_session_overlay(&session));
         gpu_show_overlay(session.overlayShown, session.overlayDim);
-        gpu_draw(true, settings.screenMode);
+        gpu_draw(true, pd_session_screen(&session));
         devlink_after_frame();
 #ifdef PD_DEV
         {
@@ -679,6 +691,7 @@ static bool pick_rom(char* out, size_t outLen) {
         g->console = len > 4 && !strcasecmp(names[i] + len - 4, ".gbc") ? PD_CONSOLE_GBC
             : len > 3 && !strcasecmp(names[i] + len - 3, ".gb") ? PD_CONSOLE_GB : PD_CONSOLE_GBA;
     }
+    pd_look_apply(NULL, &settings);
     pd_library_refresh(&library);
     struct pd_canvas top, bottom;
     pd_canvas_init(&top, TOP_W, TOP_H, topPx);

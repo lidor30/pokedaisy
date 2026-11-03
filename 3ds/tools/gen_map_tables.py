@@ -2,7 +2,7 @@
 """Writes 3ds/core/pd_map_gen.c from the app's region-map tables:
 
 - the fingerprints RomArt finds art by in a ROM (RomArtSigsGen.kt - only
-  the blobs the 3DS MAP and TRAINER CARD need),
+  the blobs the 3DS MAP, TRAINER CARD and PARTY need),
 - the cursor grids (RegionMapLayoutsGen.kt),
 - every map section's page and rectangle (MapSecData*.kt).
 
@@ -36,9 +36,26 @@ BLOBS = [
     "CARD_STAR_PAL",
 ]
 
+# The party menus (RomArt's PARTIES and cfru): looked for only in the games whose style names them.
+PARTY_BLOBS = [
+    "FR_PARTY_BG_GFX", "FR_PARTY_BG_PAL", "FR_PARTY_BG_MAP", "FR_SLOT_MAIN", "FR_SLOT_NO_HP", "FR_BALL_GFX", "FR_BALL_PAL",
+    "FR_STATUS_GFX", "FR_STATUS_PAL", "FR_FONT_SMALL", "FR_HOLD_GFX", "FR_HOLD_PAL",
+    "EM_PARTY_BG_GFX", "EM_PARTY_BG_PAL", "EM_PARTY_BG_MAP", "EM_SLOT_MAIN", "EM_SLOT_NO_HP", "EM_BALL_GFX", "EM_BALL_PAL",
+    "EM_STATUS_GFX", "EM_STATUS_PAL", "EM_FONT_SMALL",
+    "CFRU_PARTY_BG_GFX", "CFRU_PARTY_BG_PAL", "CFRU_PARTY_BG_MAP", "CFRU_SLOT_MAIN", "CFRU_SLOT_NO_HP", "CFRU_SLOT_EMPTY",
+    "UB_STATUS_GFX", "UBFR_PARTY_BG_GFX", "UBFR_STATUS_GFX", "UBFR_FONT_SMALL", "RR_STATUS_GFX", "OD_STATUS_GFX", "AM_STATUS_GFX",
+    "SS_PARTY_BG_PAL", "LGO_PARTY_BG_GFX", "LGO_PARTY_BG_PAL", "LGO_PARTY_BG_MAP", "LGO_STATUS_GFX",
+    "HNS_PARTY_BG_GFX", "HNS_PARTY_BG_PAL", "HNS_PARTY_BG_MAP", "HNS_BALL_GFX", "HNS_BALL_PAL", "HNS_STATUS_GFX", "HNS_STATUS_PAL",
+    "HNS_FONT_SMALL",
+    "RE_PARTY_BG_GFX", "RE_PARTY_BG_PAL", "RE_PARTY_BG_MAP", "RE_STATUS_GFX", "RE_STATUS_PAL", "RE_FONT_SMALL",
+] + [f"{game}_{lang}_{part}" for game in ("EM", "FR") for lang in ("ES", "DE", "FR", "IT")
+     for part in ("PARTY_BG_GFX", "STATUS_GFX", "FONT_SMALL")]
+
 
 def family(name):
-    """Which ROMs a blob is looked for in: PD_BLOB_FIRERED / _EMERALD, or both."""
+    """Which ROMs a blob is looked for in: PD_BLOB_FIRERED / _EMERALD, both, or (0) the games that name it."""
+    if name in PARTY_BLOBS:
+        return "0"
     if name.startswith("FR_"):
         return "PD_BLOB_FIRERED"
     if name.startswith("EM_"):
@@ -54,12 +71,12 @@ def read(name):
 def blobs():
     text = read("RomArtSigsGen.kt")
     out = []
-    for name in BLOBS:
-        m = re.search(r"\b" + name + r"\((true|false), (\d+), (0x[0-9A-F]+)L, (\d+), (-?\d+)L, (0x[0-9A-F]+)", text)
+    for name in BLOBS + PARTY_BLOBS:
+        m = re.search(r"\b" + name + r"\((true|false), (\d+), (0x[0-9A-F]+)L, (\d+), (-?\d+)L, (0x[0-9A-F]+)(, smol = true)?\)", text)
         if not m:
             raise SystemExit(f"gen_map_tables: no {name} in RomArtSigsGen.kt")
-        lz, size, crc, head_off, head, pre = m.groups()
-        out.append((name, lz == "true", int(size), int(crc, 16), int(head_off), int(head) & (2**64 - 1), int(pre, 16)))
+        lz, size, crc, head_off, head, pre, smol = m.groups()
+        out.append((name, lz == "true", int(size), int(crc, 16), int(head_off), int(head) & (2**64 - 1), int(pre, 16), bool(smol)))
     return out
 
 
@@ -101,9 +118,9 @@ def main():
         "",
         "const struct pd_blob_sig pd_blob_sigs[PD_BLOB_COUNT] = {",
     ]
-    for name, lz, size, crc, head_off, head, pre in blobs():
+    for name, lz, size, crc, head_off, head, pre, smol in blobs():
         out.append(f"    [PD_{name}] = {{ {str(lz).lower()}, {size}, 0x{crc:08X}u, {head_off}, 0x{head:016X}ull, 0x{pre:04X}, "
-                   f"{family(name)}, false }},")
+                   f"{family(name)}, {str(smol).lower()} }},")
     out.append("};")
     out.append("")
 
@@ -140,7 +157,7 @@ def main():
 
     with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(out))
-    print(f"wrote {os.path.relpath(OUT, ROOT)}: {len(BLOBS)} blobs, "
+    print(f"wrote {os.path.relpath(OUT, ROOT)}: {len(BLOBS) + len(PARTY_BLOBS)} blobs, "
           f"{len(lay['firered'])}+{len(lay['emerald'])} layouts")
 
 

@@ -143,8 +143,11 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         else muted_row(c, ix, &y, iw, "CHEATS", "N/A");
         group(c, ix, &y, "SCREEN");
     }
+    // PIXEL 1x is ORIGINAL's: EXPAND that wide can't keep up, so there it reads as the next size (pd_session_screen).
+    ui->pixelOff = host && host->expandGame && st->aspect != PD_ASPECT_ORIGINAL;
     if (!host || !host->hideScreenMode)
-        setting(ui, c, ix, &y, iw, SETTING_SCREEN, "SCREEN", pd_screen_mode_name(st->screenMode));
+        setting(ui, c, ix, &y, iw, SETTING_SCREEN, "SCREEN",
+                pd_screen_mode_name(ui->pixelOff && st->screenMode == PD_SCREEN_PIXEL ? PD_SCREEN_SHARP_125 : st->screenMode));
     if (host && host->hasExpand) {
         if (host->expandGame) {
             setting(ui, c, ix, &y, iw, SETTING_ASPECT, "ASPECT", pd_aspect_name(st->aspect));
@@ -158,6 +161,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         }
     }
     if (host && host->hasHud) setting(ui, c, ix, &y, iw, SETTING_HUD, "HUD", st->hud ? "ON" : "OFF");
+    if (host && host->hasPerf) setting(ui, c, ix, &y, iw, SETTING_PERF, "FPS / CPU", st->showPerf ? "ON" : "OFF");
     if (full) {
         setting(ui, c, ix, &y, iw, SETTING_DARK, "DARK MODE", st->darkMode ? "ON" : "OFF");
         const char* themeName = pd_themes[0].label;
@@ -335,8 +339,11 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     static const char* const FF[PD_FF_MAX - PD_FF_MIN + 1] = { "2x", "3x", "4x" };
     switch (ui->overlay) {
     case PD_OVERLAY_PICK_SCREEN:
-        pick_list(ui, c, "SCREEN", SCREEN_NAMES, PD_SCREEN_MODES, ui->settings->screenMode);
+    {
+        int skip = ui->pixelOff ? 1 : 0, mode = ui->settings->screenMode - skip;
+        pick_list(ui, c, "SCREEN", SCREEN_NAMES + skip, PD_SCREEN_MODES - skip, mode < 0 ? 0 : mode);
         break;
+    }
     case PD_OVERLAY_PICK_ASPECT:
         pick_list(ui, c, "ASPECT", ASPECT_NAMES, PD_ASPECTS, ui->settings->aspect);
         break;

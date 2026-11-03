@@ -57,6 +57,34 @@ struct pd_party_palette {
     int emptyAlpha;   // 0-255
 };
 
+// PartySlotStyle: a game's own slot (GbaPartySlot.kt), its numbers and the blobs its art is made of (-1 = none).
+struct pd_party_style {
+    short gfx, pal, slotMain, slotNoHp, slotEmpty, ball, ballPal, status, statusPal, font;
+    bool halfWidthFont;
+    short tilesW, tilesH;
+    const unsigned char* glyphWidths; // FONT_SMALL's advances by Gen 3 code (+0x100 for the 0xF9 symbols)
+    short lvGlyph, padGlyph;
+    uint32_t text, textShadow, male, maleShadow, female, femaleShadow;
+    uint32_t hpGreenTop, hpGreen, hpYellowTop, hpYellow, hpRedTop, hpRed, hpEmptyTop, hpEmpty;
+    short slotW, slotH, nameX, nameY, levelX, levelY, genderX, genderY, hpX, maxHpX, hpY, barX, barY, barW;
+    short iconX, iconY, iconRestDx, iconRestDy, ballX, ballY, statusX, statusY;
+    short leftCol, midCol, topRow, midRow, bottomRow, visibleW, visibleH, regionX0, regionY0;
+    bool ballFollowsIcon, stretchRows, upperCaseNames, hasEmptySlot, blendOverBackdrop;
+    bool hasBand;
+    short bandTop, bandBottom, bandLeftTopX, bandLeftBottomX, bandRightTopX, bandRightBottomX, bandEmptyStripeRow;
+    const char* eggName;
+};
+
+// A game's party backdrop (buildGameBackground): the screen behind the slots, or its 32x32 cell tiled. blank: 0 = one
+// cell of the grid; 1 = the whole screen minus CANCEL; 2 = Heart and Soul's, its SEL-ORDER hint gone too. colors: the
+// three the art's stripes turn into (from, then to).
+struct pd_party_backdrop {
+    short gfx, pal, map;
+    unsigned char blank;
+    bool recolor;
+    uint32_t colors[6];
+};
+
 // BagPalette: a game's bag.
 struct pd_bag_palette {
     struct pd_layer panel[6], desc[4];
@@ -106,6 +134,9 @@ struct pd_game_entry {
     const struct pd_region_page* regionPages; // the hack's own art; NULL = retail's fingerprints
     int regionPageCount;
     bool romRegionMap; // RomRegionMap: follows FireRed 1.0's code to a hack's map
+    const struct pd_party_style* partyStyle; // NULL = the palette slot
+    const struct pd_party_backdrop* partyBackdrops;
+    int partyBackdropCount;
 };
 
 extern const struct pd_game_entry pd_game_entries[];

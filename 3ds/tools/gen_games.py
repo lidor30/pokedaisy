@@ -50,6 +50,50 @@ REGION = {
     "tr3_sevii67": ("TR3_SEVII67_GFX", "TR3_SEVII67_PAL", "TR3_SEVII67_MAP", 0, 0), "dreamstone": ("DSM_REGION_GFX", "DSM_REGION_PAL", "DSM_REGION_MAP", 0, 1),
     "monomyth": ("MMY_REGION_GFX", "MMY_REGION_PAL", "MMY_REGION_MAP", 112, 2),
 }
+# RomArt's party menus by art dir: slot tiles, their palette, the slot tilemaps (main, no HP, empty), the slot in tiles.
+PARTY_FR = ("FR_PARTY_BG_GFX", "FR_PARTY_BG_PAL", "FR_SLOT_MAIN", "FR_SLOT_NO_HP", None, 10, 7)
+PARTY_EM = ("EM_PARTY_BG_GFX", "EM_PARTY_BG_PAL", "EM_SLOT_MAIN", "EM_SLOT_NO_HP", None, 10, 7)
+PARTY_CFRU = ("CFRU_PARTY_BG_GFX", "CFRU_PARTY_BG_PAL", "CFRU_SLOT_MAIN", "CFRU_SLOT_NO_HP", "CFRU_SLOT_EMPTY", 14, 5)
+PARTY_FRAMES = {
+    "partyfr": PARTY_FR, "partyem": PARTY_EM,
+    "partyhns": ("HNS_PARTY_BG_GFX", "HNS_PARTY_BG_PAL") + PARTY_EM[2:],
+    "partyre": ("RE_PARTY_BG_GFX", "RE_PARTY_BG_PAL") + PARTY_EM[2:],
+    "partycfru": PARTY_CFRU, "partyswsh": ("CFRU_PARTY_BG_GFX", "SS_PARTY_BG_PAL") + PARTY_CFRU[2:],
+    "partycfru_fr": ("UBFR_PARTY_BG_GFX", "CFRU_PARTY_BG_PAL") + PARTY_CFRU[2:],
+    "partylg": ("LGO_PARTY_BG_GFX", "LGO_PARTY_BG_PAL") + PARTY_CFRU[2:],
+}
+# Status icons by art dir: the icons, their palette (CFRU's hacks kept FireRed's).
+PARTY_STATUS = {
+    "partyfr": ("FR_STATUS_GFX", "FR_STATUS_PAL"), "partyem": ("EM_STATUS_GFX", "EM_STATUS_PAL"),
+    "partyhns": ("HNS_STATUS_GFX", "HNS_STATUS_PAL"), "partyre": ("RE_STATUS_GFX", "RE_STATUS_PAL"),
+    "partycfru/ub": ("UB_STATUS_GFX", "FR_STATUS_PAL"), "partycfru/rr": ("RR_STATUS_GFX", "FR_STATUS_PAL"),
+    "partycfru/od": ("OD_STATUS_GFX", "FR_STATUS_PAL"), "partycfru/am": ("AM_STATUS_GFX", "FR_STATUS_PAL"),
+    "partycfru_fr": ("UBFR_STATUS_GFX", "FR_STATUS_PAL"), "partylg": ("LGO_STATUS_GFX", "FR_STATUS_PAL"),
+}
+# FONT_SMALL by art dir, and whether a glyph is two 8x8 tiles (FireRed's) rather than four (Emerald's).
+PARTY_FONT = {"partyfr": ("FR_FONT_SMALL", True), "partyem": ("EM_FONT_SMALL", False), "partyhns": ("HNS_FONT_SMALL", False),
+              "partyre": ("RE_FONT_SMALL", False), "partycfru_fr": ("UBFR_FONT_SMALL", True)}
+PARTY_BALL = {"partyfr": ("FR_BALL_GFX", "FR_BALL_PAL"), "partyem": ("EM_BALL_GFX", "EM_BALL_PAL"), "partyhns": ("HNS_BALL_GFX", "HNS_BALL_PAL")}
+for _lang in ("es", "de", "fr", "it"):
+    _up = _lang.upper()
+    PARTY_FRAMES[f"partyfr_{_lang}"] = (f"FR_{_up}_PARTY_BG_GFX",) + PARTY_FR[1:]
+    PARTY_FRAMES[f"partyem_{_lang}"] = (f"EM_{_up}_PARTY_BG_GFX",) + PARTY_EM[1:]
+    PARTY_STATUS[f"partyfr_{_lang}"] = (f"FR_{_up}_STATUS_GFX", "FR_STATUS_PAL")
+    PARTY_STATUS[f"partyem_{_lang}"] = (f"EM_{_up}_STATUS_GFX", "EM_STATUS_PAL")
+    PARTY_FONT[f"partyfr_{_lang}"] = (f"FR_{_up}_FONT_SMALL", True)
+    PARTY_FONT[f"partyem_{_lang}"] = (f"EM_{_up}_FONT_SMALL", False)
+# RomArt's backdrops: tiles, palette, tilemap, what's blanked, one 32x32 cell (the 3DS draws the whole screen otherwise).
+PARTY_BACKDROP = {
+    "partybg/firered.png": ("FR_PARTY_BG_GFX", "FR_PARTY_BG_PAL", "FR_PARTY_BG_MAP", 1),
+    "partybg/emerald.png": ("EM_PARTY_BG_GFX", "EM_PARTY_BG_PAL", "EM_PARTY_BG_MAP", 1),
+    "partybg/hns.png": ("HNS_PARTY_BG_GFX", "HNS_PARTY_BG_PAL", "HNS_PARTY_BG_MAP", 2),
+    "partybg/recharged_emerald.png": ("RE_PARTY_BG_GFX", "RE_PARTY_BG_PAL", "RE_PARTY_BG_MAP", 1),
+    "partybg/cfru_tile.png": ("CFRU_PARTY_BG_GFX", "CFRU_PARTY_BG_PAL", "CFRU_PARTY_BG_MAP", 0),
+    "partybg/swsh_tile.png": ("CFRU_PARTY_BG_GFX", "SS_PARTY_BG_PAL", "CFRU_PARTY_BG_MAP", 0),
+    "partybg/letsgo_tile.png": ("LGO_PARTY_BG_GFX", "LGO_PARTY_BG_PAL", "LGO_PARTY_BG_MAP", 0),
+}
+FIRERED_BACKDROP = [0xFF4AADA5, 0xFF398C8C, 0xFF216B63]
+EMERALD_BACKDROP = [0xFFCED67B, 0xFFB5B55A, 0xFF8C9C29]
 # A map with a head of its own: its 16x16 sprite and palette.
 REGION_HEAD = {"monomyth": ("MMY_PLAYER_GFX", "MMY_PLAYER_PAL")}
 EMERALD_LIKE = {"BPEE", "BPES", "BPED", "BPEF", "BPEI"}
@@ -313,15 +357,85 @@ def main():
         name = emit("rp_", [f"static const struct pd_region_page @[{len(rows)}] = {{ {text} }};", ""], ("rp", text))
         return f"{name}, {len(rows)}"
 
+    def blob(name):
+        return "PD_" + name if name else "-1"
+
+    def rgb(c):
+        return f"0x{int(c) & 0xFFFFFF:06X}"
+
+    def asset_dir(path):
+        return path.rsplit("/", 1)[0]
+
+    def party_style(g):
+        st = g.get("partyStyle")
+        if not st:
+            return "0"
+        gfx, pal, main, nohp, empty, tiles_w, tiles_h = PARTY_FRAMES[st["frameDir"]]
+        status, status_pal = PARTY_STATUS[asset_dir(st["statusAsset"])]
+        font, half = PARTY_FONT[asset_dir(st["fontAsset"])]
+        ball, ball_pal = PARTY_BALL[asset_dir(st["pokeballAsset"])] if st["pokeballAsset"] else (None, None)
+        widths = st["glyphWidths"]
+        assert len(widths) == 512, len(widths)
+        wname = emit("gw_", ["static const unsigned char @[512] = { " + ", ".join(str(w) for w in widths) + " };", ""], ("gw", tuple(widths)))
+        band = st["band"]
+        lines = ["static const struct pd_party_style @ = {",
+                 f"    {blob(gfx)}, {blob(pal)}, {blob(main)}, {blob(nohp)}, {blob(empty)}, {blob(ball)}, {blob(ball_pal)}, {blob(status)}, "
+                 f"{blob(status_pal)}, {blob(font)}, {'true' if half else 'false'}, {tiles_w}, {tiles_h},",
+                 f"    {wname}, {st['lvGlyph']}, {st['padGlyph']},",
+                 "    " + ", ".join(rgb(st[k]) for k in ("text", "textShadow", "male", "maleShadow", "female", "femaleShadow", "hpGreenTop", "hpGreen",
+                                                         "hpYellowTop", "hpYellow", "hpRedTop", "hpRed", "hpEmptyTop", "hpEmpty")) + ",",
+                 "    " + ", ".join(str(st[k]) for k in ("slotW", "slotH", "nameX", "nameY", "levelX", "levelY", "genderX", "genderY", "hpX", "maxHpX", "hpY",
+                                                         "barX", "barY", "barW", "iconX", "iconY", "iconRestDx", "iconRestDy", "ballX", "ballY", "statusX",
+                                                         "statusY", "leftCol", "midCol", "topRow", "midRow", "bottomRow", "visibleW", "visibleH",
+                                                         "regionX0", "regionY0")) + ",",
+                 "    " + ", ".join("true" if st[k] else "false" for k in ("ballFollowsIcon", "stretchRows", "upperCaseNames", "hasEmptySlot",
+                                                                           "blendOverBackdrop")) + ",",
+                 "    " + ("true, " + ", ".join(str(band[k]) for k in ("top", "bottom", "leftTopX", "leftBottomX", "rightTopX", "rightBottomX",
+                                                                       "emptyStripeRow")) if band else "false, 0, 0, 0, 0, 0, 0, 0") + ",",
+                 f"    {c_str(st['eggName'])},",
+                 "};", ""]
+        return "&" + emit("ps_", lines, ("ps", json.dumps(st, sort_keys=True), gfx, pal, status, status_pal, font, ball, ball_pal))
+
+    def party_backdrops(g):
+        """buildGameBackground's picks, those the player's own ROM can make; the first found wins, else the stripes."""
+        art = g.get("backdropArt")
+        if not art:
+            return "0, 0"
+        gfx, pal, bmap, blank = PARTY_BACKDROP[art[0]]
+        st = g.get("partyStyle")
+        # A translation's tiles only move the CANCEL text: its own stand in for English's, like RomArt's.
+        if st and st["frameDir"] not in ("partyhns", "partyre") and (art[0] in ("partybg/firered.png", "partybg/emerald.png", "partybg/cfru_tile.png")):
+            gfx = PARTY_FRAMES[st["frameDir"]][0]
+        back = g.get("backdrop")
+        rows = []
+
+        def row(g2, p2, m2, b2, frm, to):
+            colours = ", ".join(rgb(c) for c in (frm or [0, 0, 0]) + (to or [0, 0, 0]))
+            rows.append(f"{{ {blob(g2)}, {blob(p2)}, {blob(m2)}, {b2}, {'true' if to else 'false'}, {{ {colours} }} }}")
+
+        if g["kind"] == "TEAM_ROCKET":
+            row(gfx, pal, bmap, blank, None, None)
+            row("EM_PARTY_BG_GFX", "EM_PARTY_BG_PAL", "EM_PARTY_BG_MAP", 1, EMERALD_BACKDROP, FIRERED_BACKDROP)
+        elif back and art[0] == "partybg/firered.png":
+            # FireRed's art in the game's colours, or Emerald's where that's what the ROM kept: the same tiles and tilemap.
+            row(gfx, pal, bmap, blank, FIRERED_BACKDROP, back)
+            row("EM_PARTY_BG_GFX", "EM_PARTY_BG_PAL", "EM_PARTY_BG_MAP", 1, EMERALD_BACKDROP, back)
+        else:
+            row(gfx, pal, bmap, blank, None, None)
+        name = emit("pb_", [f"static const struct pd_party_backdrop @[{len(rows)}] = {{ " + ", ".join(rows) + " };", ""], ("pb", tuple(rows)))
+        return f"{name}, {len(rows)}"
+
     def look_of(g):
         back = g.get("backdrop")
         if not back:
-            # Art the app rebuilds from a ROM: its stripes' colours (EMERALD_BACKDROP, FIRERED_BACKDROP).
+            # Art the app rebuilds from a ROM: its stripes' colours (EMERALD_BACKDROP, FIRERED_BACKDROP); Ghost Grey's is plain white.
             emerald = g["code"][:3] in HOENN_ENGINE and g["kind"] not in ("UNBOUND",)
-            back = [0xFFCED67B, 0xFFB5B55A, 0xFF8C9C29] if emerald else [0xFF4AADA5, 0xFF398C8C, 0xFF216B63]
+            back = EMERALD_BACKDROP if emerald else FIRERED_BACKDROP
+            if not g.get("backdropArt") and not g.get("gb"):
+                back = [0xFFFFFFFF] * 3
         return ("{ &" + party_palette(g["party-light"]) + ", &" + party_palette(g["party-dark"]) + " }, { &" + bag_palette(g["bag-light"])
-                + ", &" + bag_palette(g["bag-dark"]) + " }, { " + ", ".join(f"0x{int(c) & 0xFFFFFF:06X}" for c in back) + " }, " + regions(g) + ", "
-                + ("true" if g.get("readsRomRegionMap") else "false"))
+                + ", &" + bag_palette(g["bag-dark"]) + " }, { " + ", ".join(rgb(c) for c in back) + " }, " + regions(g) + ", "
+                + ("true" if g.get("readsRomRegionMap") else "false") + ", " + party_style(g) + ", " + party_backdrops(g))
 
     def gb_config(c):
         def ints(prefix, ctype, values):

@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "pd_games.h"
+
 // --- finding blobs (RomArt.find) ---
 
 // Both hosts (the 3DS's ARM11, the desktop) are little-endian: one unaligned
@@ -138,11 +140,25 @@ void pd_romart_scan(const struct pd_game* g) {
     foundRom = rom;
     int family = g->kind == PD_GAME_FIRERED ? PD_BLOB_FIRERED : g->kind == PD_GAME_EMERALD ? PD_BLOB_EMERALD : 0;
     if (!rom || !family) return;
+    // The party's art: only what this game's slots and backdrop are made of, so a ROM that has it all stops the pass early.
+    bool party[PD_BLOB_COUNT] = { [PD_FR_HOLD_GFX] = true, [PD_FR_HOLD_PAL] = true };
+    const struct pd_game_entry* e = g->entry;
+    const struct pd_party_style* st = e ? e->partyStyle : NULL;
+    if (st) {
+        const short blobs[] = { st->gfx, st->pal, st->slotMain, st->slotNoHp, st->slotEmpty, st->ball, st->ballPal, st->status, st->statusPal, st->font };
+        for (size_t i = 0; i < sizeof(blobs) / sizeof(*blobs); i++)
+            if (blobs[i] >= 0) party[blobs[i]] = true;
+    }
+    for (int i = 0; e && i < e->partyBackdropCount; i++) {
+        party[e->partyBackdrops[i].gfx] = true;
+        party[e->partyBackdrops[i].pal] = true;
+        party[e->partyBackdrops[i].map] = true;
+    }
     int wanted[PD_BLOB_COUNT], n = 0;
     const struct pd_blob_sig* sigs[PD_BLOB_COUNT];
     static uint8_t* decoded[PD_BLOB_COUNT];
     for (int i = 0; i < PD_BLOB_COUNT; i++) {
-        if (pd_blob_sigs[i].family & family) {
+        if ((pd_blob_sigs[i].family & family) || party[i]) {
             sigs[n] = &pd_blob_sigs[i];
             wanted[n++] = i;
         }

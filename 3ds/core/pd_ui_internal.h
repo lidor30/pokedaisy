@@ -102,6 +102,7 @@ enum setting_row {
     SETTING_AUTO_ZOOM,
     SETTING_TAB_BAR,   // opens its page
     SETTING_HUD,       // hosts with hasHud: opens its page
+    SETTING_PERF,      // hosts with hasPerf: flips in place
     SETTING_FF_TOGGLE,
     SETTING_GAME_SPEED,
     SETTING_VOLUME,

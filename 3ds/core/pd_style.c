@@ -27,8 +27,19 @@ static int mix(int a, int b, int k) {
     return (a * (255 - k) + b * k) / 255;
 }
 
+bool pd_dark;
+
+// The wash and scrim over the game's backdrop right now.
+static uint32_t backdropWash = 0xFFFFFF;
+static int backdropScrim;
+
+uint32_t pd_backdrop_tint(uint32_t c) {
+    return channels(channels(c, backdropWash, multiply, 0), NIGHT, mix, backdropScrim);
+}
+
 void pd_look_apply(const struct pd_game* g, const struct pd_settings* s) {
     int dark = s && s->darkMode ? 1 : 0;
+    pd_dark = dark;
     const struct pd_theme* theme = &pd_themes[0];
     for (int i = 0; s && i < pd_theme_count; i++)
         if (pd_themes[i].id == s->theme) theme = &pd_themes[i];
@@ -48,6 +59,8 @@ void pd_look_apply(const struct pd_game* g, const struct pd_settings* s) {
     const uint32_t* base = g && g->gb ? PLAIN : e ? e->backdrop : FIRERED;
     int scrim = pd_cur->scrim;
     if (scrim && g && g->gb) scrim = 230; // Gen 1's white goes nearly black
+    backdropWash = theme->wash;
+    backdropScrim = scrim;
     for (int i = 0; i < 3; i++) {
         uint32_t c = base[i];
         if (!(g && g->gb)) c = channels(c, theme->wash, multiply, 0);

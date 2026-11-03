@@ -90,6 +90,7 @@ struct pd_session {
     bool wideReady;       // this frame shows EXPAND's window
     struct pd_wide_hole wideHole;
     const uint32_t* nextVideo;
+    int perfRight;        // FPS / CPU's right edge: the picture's, left of the HUD's minimap
     bool framePending;    // the core's run but the frame hasn't been waited for
     int wideW, wideH;     // ... this big, in game pixels
     int hudFieldFrames;
@@ -170,6 +171,12 @@ void pd_session_draw(struct pd_session* s, struct pd_canvas* bottom);
 bool pd_session_holds_frame(const struct pd_session* s);
 // The overlay's canvas (PD_TOP_W x PD_TOP_H, alpha in the top byte); redrawn when overlayDirty.
 const uint32_t* pd_session_overlay(struct pd_session* s);
+// The size the game is drawn at now (enum pd_screen_mode): SCREEN's, but never PIXEL 1x in EXPAND, and 1.5x in a battle.
+int pd_session_screen(const struct pd_session* s);
+// FPS / CPU's picture, *w x PD_PERF_H pixels in a PD_PERF_W-wide buffer (alpha in the top byte, 0 = see-through).
+#define PD_PERF_W 128
+#define PD_PERF_H 16
+const uint32_t* pd_session_perf(unsigned fpsTenths, unsigned cpuPercent, int* w);
 // EXPAND's window, s->wideW x s->wideH pixels, when s->wideReady.
 const uint32_t* pd_session_wide(const struct pd_session* s);
 // STATES: the slot's file and picture; the save state of the session's game.

@@ -18,10 +18,11 @@
 #define TILE_H (TILE_ART + 18)
 
 // The website's page, and its soft colours (DaisyBackdrop).
-#define PAGE 0xFDF7F2
-#define BLOB_PEACH 0xFCE3D6
-#define BLOB_YELLOW 0xFDF2C8
-#define BLOB_BLUE 0xDCEBFA
+// DARK MODE: the same page at night, its blobs dim glows (NIGHT_PAGE / NIGHT_BLOBS).
+#define PAGE (pd_dark ? 0x12141Cu : 0xFDF7F2u)
+#define BLOB_PEACH (pd_dark ? 0x6A2F45u : 0xFCE3D6u)
+#define BLOB_YELLOW (pd_dark ? 0x6A4418u : 0xFDF2C8u)
+#define BLOB_BLUE (pd_dark ? 0x233A7Au : 0xDCEBFAu)
 #define TILE_FRAME 0x505868
 
 struct view { const char* label; uint32_t color; };
@@ -109,15 +110,15 @@ static void backdrop(struct pd_canvas* c) {
 
 static void pill(struct pd_canvas* c, int x, int y, int w, const char* text, uint32_t color, bool on) {
     pd_round_rect(c, x, y, w, PILL_H, 3, color);
-    pd_round_rect(c, x + 1, y + 1, w - 2, PILL_H - 2, 2, on ? color : 0xFFFFFF);
-    pd_text(c, x + (w - pd_text_width(text)) / 2, y - 1, text, on ? 0xFFFFFF : color, PD_NO_SHADOW);
+    pd_round_rect(c, x + 1, y + 1, w - 2, PILL_H - 2, 2, on ? color : PD_TITLE_FILL);
+    pd_text(c, x + (w - pd_text_width(text)) / 2, y - 1, text, on || pd_dark ? 0xFFFFFF : color, PD_NO_SHADOW);
 }
 
 static void tile(struct pd_canvas* c, const struct pd_library_game* g, int x, int y, int w, bool selected) {
     uint32_t fill = g->hack ? 0xD83030 : g->console == PD_CONSOLE_GBA ? 0x6840B8 : g->console == PD_CONSOLE_GBC ? 0xF0C020 : 0x38A890;
     const char* word = g->hack ? "HACK" : g->console == PD_CONSOLE_GBA ? "GBA" : g->console == PD_CONSOLE_GBC ? "GBC" : "GB";
     pd_round_rect(c, x, y, w, TILE_H, 3, selected ? 0xF08030 : TILE_FRAME);
-    pd_round_rect(c, x + 2, y + 2, w - 4, TILE_H - 4, 2, 0xFFFFFF);
+    pd_round_rect(c, x + 2, y + 2, w - 4, TILE_H - 4, 2, PD_TITLE_FILL);
     pd_round_rect(c, x + 4, y + 4, w - 8, TILE_ART - 4, 2, fill);
     int s = 2;
     int tw = pd_text_width(word) * s;
@@ -126,9 +127,9 @@ static void tile(struct pd_canvas* c, const struct pd_library_game* g, int x, in
 }
 
 static void rail(struct pd_canvas* c) {
-    pd_fill(c, 0, 0, RAIL_W, c->h, 0xE8E8EC);
+    pd_fill(c, 0, 0, RAIL_W, c->h, pd_dark ? PD_LIST_FILL : 0xE8E8EC);
     pd_fill(c, RAIL_W - 1, 0, 1, c->h, TILE_FRAME);
-    pd_round_rect(c, 2, 4, RAIL_W - 6, 42, 3, 0xFFFFFF);
+    pd_round_rect(c, 2, 4, RAIL_W - 6, 42, 3, PD_TITLE_FILL);
     ui_art_at(c, &PD_TAB_ART[0], (RAIL_W - 18) / 2, 8, 1);
     pd_text(c, (RAIL_W - 2 - pd_text_width("GAMES")) / 2, 26, "GAMES", PD_VALUE, PD_VALUE_SHADOW);
 }

@@ -33,8 +33,11 @@ enum { PD_GB_LOOK_YELLOW, PD_GB_LOOK_RED, PD_GB_LOOK_PURE, PD_GB_LOOK_GEN2, PD_G
 extern const struct pd_look pd_gb_looks[PD_GB_LOOK_COUNT][2];
 
 extern const struct pd_look* pd_cur;
+extern bool pd_dark; // DARK MODE, as pd_look_apply last saw it
 // The backdrop's stripes and band as they stand now (a game's own, the theme's wash, dark mode's scrim).
 extern uint32_t pd_backdrop_colors[3];
+// A colour of a game's own backdrop art under the same wash and scrim.
+uint32_t pd_backdrop_tint(uint32_t rgb);
 
 struct pd_game;
 struct pd_settings;

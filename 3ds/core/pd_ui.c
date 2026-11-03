@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "pd_guide.h"
+#include "pd_party_art.h"
 #include "pd_ui_internal.h"
 
 #define CHIP_H 28
@@ -324,7 +325,7 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     ui->drawn = s;
     ui->drawnGame = g;
     ui->hostHasStates = host && host->hasStates;
-    pd_backdrop(c);
+    if (!pd_party_backdrop(c, g)) pd_backdrop(c);
     tab_bar(ui, c, g);
     // The tabs draw above the bar: the same pixels, a shorter canvas.
     struct pd_canvas full = *c, view = *c;
@@ -424,7 +425,7 @@ static void act(struct pd_ui* ui, int id) {
                     if (n++ == i) ui->settings->theme = pd_themes[k].id;
                 }
             }
-            if (ui->overlay == PD_OVERLAY_PICK_SCREEN) ui->settings->screenMode = i;
+            if (ui->overlay == PD_OVERLAY_PICK_SCREEN) ui->settings->screenMode = i + (ui->pixelOff ? 1 : 0);
             if (ui->overlay == PD_OVERLAY_PICK_FF) ui->settings->ffSpeed = PD_FF_MIN + i;
             if (ui->overlay == PD_OVERLAY_PICK_ASPECT && i < PD_ASPECTS) ui->settings->aspect = i;
             if (ui->overlay == PD_OVERLAY_PICK_SPEED) ui->settings->gameSpeed = i;
@@ -497,6 +498,9 @@ static void act(struct pd_ui* ui, int id) {
         ui->bagScroll = 0;
     } else if (id >= HIT_BAG_ROW && id < HIT_BAG_ROW + PD_POCKET_SLOTS) {
         ui->bagSelected = id - HIT_BAG_ROW;
+    } else if (id == HIT_SETTING + SETTING_PERF) {
+        ui->settings->showPerf = !ui->settings->showPerf;
+        ui->action = PD_ACTION_SETTINGS_CHANGED;
     } else if (id == HIT_SETTING + SETTING_AUTO_ZOOM) {
         ui->settings->autoZoom = !ui->settings->autoZoom;
         ui->action = PD_ACTION_SETTINGS_CHANGED;

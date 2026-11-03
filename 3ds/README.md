@@ -10,7 +10,7 @@ portable C core that re-implements the companion's reading and drawing, plus a
 **Status: preview.** It builds, every screen below has been driven on real ROMs and copies of real saves in the
 headless simulator (`make sim-test`, below), and the dev build runs on a New 3DS: FireRed, Emerald, Unbound and Monomyth
 (32 MB) and Yellow boot copies of real saves to the field with the companion, the HUD and the minimap up. At ASPECT ORIGINAL it holds
-60 FPS on the field and in battle in FireRed, Emerald and Yellow; Unbound's field and Monomyth run at about 50. EXPAND runs at 60 FPS on the field at every size in FireRed, Emerald and Monomyth (Emerald's Route 113, its ash the heaviest scene so far, 54-60 at SHARP 1.5x and 1.25x and about 50 at PIXEL 1x), its margins kept in a cache and drawn on the fourth core beside the next frame; in battle it runs at about 47-53, Unbound at about 35
+60 FPS on the field and in battle in FireRed, Emerald and Yellow; Monomyth at 52-60 and Unbound at about 57 on the field and 42 in battle. EXPAND runs at the same speeds at SHARP 1.5x and 1.25x (Emerald's Route 113, its ash the heaviest scene so far, 55-60), its drawing on the fourth core beside the next frame and the 2x picture built by the GPU; it has no PIXEL 1x, which couldn't keep up, and a battle always goes to 1.5x
 (`pdlink.py stat`). HOME and the lid work; most companion screens haven't been tried on a console.
 Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS XL / 2DS may not hold full speed
 (see "Hardware").
@@ -32,10 +32,13 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   (newest 10 per game) - the repo's "save files are sacred" rule.
 - Settings kept in `sdmc:/pokedaisy/settings.ini`.
 - The companion, in the app's FireRed OPTION-screen look:
-  - **PARTY**: the six slots in the app's FireRed-like slot (`PartySlot` /
-    `SlotGeometry`: the Poke Ball and the game's own icon from your ROM over the
-    frame's corner, name, level or a status chip, ♂ / ♀, the HP bar with its HP
-    tag and the numbers under it, empty slots faint), edge to edge like
+  - **PARTY**: two columns of three across the whole width, each card the game's own where
+    the app has its art: its own height and paddings, widened only, shown as big as three
+    rows allow (4/3 or 5/4 in sharp bilinear like the game on the top screen, 1x under the
+    battle pane's bar).
+    `pd_party_art` rebuilds the frames, Poke Ball, status icons, FONT_SMALL and the
+    backdrop from your ROM, by RomArt's fingerprints. Any other game keeps the slot in its
+    palette (`PartySlot` / `SlotGeometry`), edge to edge like
     `PartyGrid`; tap one for its summary (moves, type, PP).
   - **BATTLE**: opens by itself in a battle and goes back after it. **INFO**:
     the foe and you (with the game's own party icons, read from your ROM),
@@ -231,7 +234,7 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
 
 | Path | What |
 |---|---|
-| `core/` | Portable C, no platform code: game detection (`pd_game`, the app's `NativeConfig` addresses), the snapshot reader (`pd_snapshot`: party, battle, bag, money, place - ports `Gen3Mon.kt` / `readNativeTelemetry` / `readNativeBag`), the canvas (`pd_canvas`: pixel-stepped corners, layered OPTION frames, GBA-shadowed and wrapped text, drawn cursors), the companion (`pd_ui.c` frame + `pd_ui_party` / `_battle` (INFO, SUGGESTIONS, FOE TEAM) / `_bag` / `_map` / `_guide` / `_dex` / `_settings` / `_widgets`), the ROM readers (`pd_romart`: `RomArt`'s scan - every blob of the game in one pass; `pd_map`: the region map and heads, `RegionMapModel`'s pick, `PlayerMapTile`; `pd_dex`: the dex tables and front pics; `pd_guide`: `GuideRom.kt`'s bosses, teams and wild tables), the party icons (`pd_icon`: `DecompIconSource`'s tables), the TRAINER CARD (`pd_card`: `readTrainerCard` + `TrainerCardArt`; `pd_ui_card`), the game list (`pd_menu`) and the settings file (`pd_settings`) |
+| `core/` | Portable C, no platform code: game detection (`pd_game`, the app's `NativeConfig` addresses), the snapshot reader (`pd_snapshot`: party, battle, bag, money, place - ports `Gen3Mon.kt` / `readNativeTelemetry` / `readNativeBag`), the canvas (`pd_canvas`: pixel-stepped corners, layered OPTION frames, GBA-shadowed and wrapped text, drawn cursors), the companion (`pd_ui.c` frame + `pd_ui_party` / `_battle` (INFO, SUGGESTIONS, FOE TEAM) / `_bag` / `_map` / `_guide` / `_dex` / `_settings` / `_widgets`), the ROM readers (`pd_romart`: `RomArt`'s scan - every blob of the game in one pass; `pd_party_art`: the party's slot art and backdrop; `pd_map`: the region map and heads, `RegionMapModel`'s pick, `PlayerMapTile`; `pd_dex`: the dex tables and front pics; `pd_guide`: `GuideRom.kt`'s bosses, teams and wild tables), the party icons (`pd_icon`: `DecompIconSource`'s tables), the TRAINER CARD (`pd_card`: `readTrainerCard` + `TrainerCardArt`; `pd_ui_card`), the game list (`pd_menu`) and the settings file (`pd_settings`) |
 | `core/*_gen.c` | Generated: names / moves / type chart / map sections / item text / gender ratios from the app's Kotlin tables (`tools/gen_tables.py`), the ROM art's fingerprints (map and card) and the cursor grids (`tools/gen_map_tables.py`), the guides and area data (`tools/gen_guide.py`), Pixel Operator as a 1-bit font plus drawn ♂ ♀ (`tools/gen_font.py`) |
 | `ctr/` | The 3DS host: `main.c` (game loop, ndsp audio, HID, files, states) and `gpu.c` (citro2d: the game and canvases written into textures in the GPU's tiled order, drawn as quads), and the CMake build against the mGBA submodule |
 | `host/` | What a running game needs on any host: the session (`pd_session`), USE / GIVE / TAKE and the PC's moves (`pd_items`), the Game Boy games' field actions (`pd_gb_field`) |

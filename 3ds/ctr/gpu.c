@@ -25,10 +25,14 @@ static uint32_t* shownBuf; // the last whole frame
 static bool gameDoubled;
 // Two of each in turn: a frame is written before the wait for the screen's refresh, while the GPU may still be reading
 // the one before.
-static C3D_Tex gameTex[2], game2xTex[2];
-static C3D_Tex wideTex[2], wide2xTex[2]; // EXPAND's window at 1x (up to 400 x 240), and 2x for the smooth modes
+static C3D_Tex gameTex[2];
+static C3D_Tex wideTex[2]; // EXPAND's window (up to 400 x 240)
 static int texSide;
-static C3D_Tex bottomTex, topTex, overlayTex;
+// The smooth modes' 2x picture, drawn by the GPU from the 1x one: built by the CPU it was four times the memory traffic,
+// 5-7 ms of every frame, and the game felt it too.
+static C3D_Tex upTex;
+static C3D_RenderTarget* upTarget;
+static C3D_Tex bottomTex, topTex, overlayTex, perfTex;
 
 // A New 3DS draws on its third core, so writing the textures and waiting for the refresh come off the game's time.
 // gpu_draw hands a job over: what the frame needs is copied into the stage (the game runs on and rewrites its buffers),
@@ -42,6 +46,8 @@ struct draw_job {
     bool game;
     int screenMode;
     bool holdGame, overlayShown, overlayDim;
+    int perfX, perfY, perfW;
+    bool perfNew;
     int gameW, gameH;
     const uint32_t* gamePx;
     const uint32_t* widePx;
@@ -111,15 +117,21 @@ bool gpu_init(void) {
     if (!gameBuf) return false;
     memset(gameBuf, 0, GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t));
     gameBufs[0] = shownBuf = gameBuf;
+    if (!C3D_TexInit(&perfTex, 128, 16, GPU_RGBA8)) return false;
+    C3D_TexSetFilter(&perfTex, GPU_NEAREST, GPU_NEAREST);
+    C3D_TexSetWrap(&perfTex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
     if (!C3D_TexInit(&overlayTex, 512, 256, GPU_RGBA8)) return false;
     C3D_TexSetFilter(&overlayTex, GPU_NEAREST, GPU_NEAREST);
     C3D_TexSetWrap(&overlayTex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
     memset(overlayTex.data, 0, overlayTex.size);
     GSPGPU_FlushDataCache(overlayTex.data, overlayTex.size);
     for (int i = 0; i < 2; i++)
-        if (!(tex_init(&gameTex[i], 256, 256, GPU_NEAREST) && tex_init(&game2xTex[i], 512, 512, GPU_LINEAR) &&
-              tex_init(&wideTex[i], 512, 256, GPU_NEAREST) && tex_init(&wide2xTex[i], 1024, 512, GPU_LINEAR)))
-            return false;
+        if (!(tex_init(&gameTex[i], 256, 256, GPU_NEAREST) && tex_init(&wideTex[i], 512, 256, GPU_NEAREST))) return false;
+    if (!C3D_TexInitVRAM(&upTex, 1024, 512, GPU_RGB565)) return false;
+    C3D_TexSetFilter(&upTex, GPU_LINEAR, GPU_LINEAR);
+    C3D_TexSetWrap(&upTex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
+    upTarget = C3D_RenderTargetCreateFromTex(&upTex, GPU_TEXFACE_2D, 0, -1);
+    if (!upTarget) return false;
     if (!(tex_init(&bottomTex, 512, 256, GPU_NEAREST) && tex_init(&topTex, 512, 256, GPU_NEAREST))) return false;
     draw_thread_start();
     return true;
@@ -141,13 +153,14 @@ void gpu_exit(void) {
     }
     for (int i = 0; i < 2; i++) {
         C3D_TexDelete(&gameTex[i]);
-        C3D_TexDelete(&game2xTex[i]);
         C3D_TexDelete(&wideTex[i]);
-        C3D_TexDelete(&wide2xTex[i]);
     }
+    if (upTarget) C3D_RenderTargetDelete(upTarget);
+    C3D_TexDelete(&upTex);
     C3D_TexDelete(&bottomTex);
     C3D_TexDelete(&topTex);
     C3D_TexDelete(&overlayTex);
+    C3D_TexDelete(&perfTex);
     for (int i = 0; i < 2; i++)
         if (gameBufs[i]) linearFree(gameBufs[i]);
     C2D_Fini();
@@ -202,45 +215,48 @@ static inline uint16_t to565(uint32_t p) {
     return (uint16_t) ((p & 0xF8) << 8 | (p >> 5 & 0x7E0) | (p >> 19 & 0x1F));
 }
 
-static inline void row_1x(C3D_Tex* tex, const uint32_t* row, int x0, int x1, int y) {
-    uint16_t* t = tex->data;
-    for (int x = x0; x < x1; x++) t[tiled((u32) x, (u32) y, tex->width)] = to565(row[x]);
-}
+// In the texture's own order, a tile at a time. The hole's pixels come from the game's frame.
+static const struct wide_hole NO_HOLE;
 
-static void write_1x(C3D_Tex* tex, const uint32_t* px, int w, int h, int stride) {
-    for (int y = 0; y < h; y++) row_1x(tex, px + y * stride, 0, w, y);
-    GSPGPU_FlushDataCache(tex->data, tex->size);
-}
-
-// Each game pixel becomes a 2x2 block - in the tiled order an aligned 2x2
-// block is 4 consecutive texels, so one 64-bit store.
-static inline void row_2x(C3D_Tex* tex, const uint32_t* row, int x0, int x1, int y) {
-    uint64_t* t = tex->data;
-    for (int x = x0; x < x1; x++) {
-        uint64_t c = to565(row[x]);
-        t[tiled((u32) (2 * x), (u32) (2 * y), tex->width) >> 2] = c | c << 16 | c << 32 | c << 48;
-    }
-}
-
-static void write_2x(C3D_Tex* tex, const uint32_t* px, int w, int h, int stride) {
-    for (int y = 0; y < h; y++) row_2x(tex, px + y * stride, 0, w, y);
-    GSPGPU_FlushDataCache(tex->data, tex->size);
-}
-
-// EXPAND's window, its hole filled from the game's frame as it goes. 2x or 1x.
-static void write_wide(C3D_Tex* tex, bool twice, const uint32_t* px, int w, int h, const struct wide_hole* hole, const uint32_t* game) {
-    void (*put)(C3D_Tex*, const uint32_t*, int, int, int) = twice ? row_2x : row_1x;
-    for (int y = 0; y < h; y++) {
-        const uint32_t* row = px + y * w;
-        if (!hole->w || y < hole->y || y >= hole->y + hole->h) {
-            put(tex, row, 0, w, y);
-            continue;
+static void write_tiles(C3D_Tex* tex, const uint32_t* px, int w, int h, int stride, const struct wide_hole* hole, const uint32_t* game) {
+    static uint8_t morton[8][8];
+    if (!morton[0][1])
+        for (u32 y = 0; y < 8; y++)
+            for (u32 x = 0; x < 8; x++) morton[y][x] = (uint8_t) tiled(x, y, 8);
+    uint16_t* t16 = tex->data;
+    int across = 8;
+    u32 tiles = tex->width >> 3;
+    int tileRows = 0;
+    for (int y0 = 0; y0 < h; y0 += across, tileRows++) {
+        const uint32_t* rows[8];
+        const uint32_t* gameRows[8];
+        int down = h - y0 < across ? h - y0 : across;
+        for (int j = 0; j < down; j++) {
+            int y = y0 + j;
+            rows[j] = px + y * stride;
+            gameRows[j] = hole->w && y >= hole->y && y < hole->y + hole->h
+                              ? game + (y - hole->y + hole->gameY) * GPU_GAME_STRIDE + hole->gameX - hole->x : NULL;
         }
-        put(tex, row, 0, hole->x, y);
-        put(tex, game + (y - hole->y + hole->gameY) * GPU_GAME_STRIDE + hole->gameX - hole->x, hole->x, hole->x + hole->w, y);
-        put(tex, row, hole->x + hole->w, w, y);
+        u32 tile = (u32) tileRows * tiles << 6;
+        for (int x0 = 0; x0 < w; x0 += across, tile += 64) {
+            int wide = w - x0 < across ? w - x0 : across;
+            bool inHole = x0 >= hole->x && x0 + wide <= hole->x + hole->w, offHole = x0 + wide <= hole->x || x0 >= hole->x + hole->w;
+            for (int j = 0; j < down; j++) {
+                const uint32_t* row = rows[j];
+                const uint32_t* inGame = gameRows[j];
+                if (inGame && inHole) row = inGame;
+                if (!inGame || inHole || offHole) inGame = NULL;
+                if (inGame && offHole) inGame = NULL;
+                for (int i = 0; i < wide; i++) {
+                    int x = x0 + i;
+                    uint32_t p = inGame && x >= hole->x && x < hole->x + hole->w ? inGame[x] : row[x];
+                    t16[tile + morton[j][i]] = to565(p);
+                }
+            }
+        }
     }
-    GSPGPU_FlushDataCache(tex->data, tex->size);
+    u32 used = (u32) tileRows * tiles * 128;
+    GSPGPU_FlushDataCache(tex->data, used < tex->size ? used : tex->size);
 }
 
 static const uint32_t* widePx;
@@ -261,6 +277,30 @@ void gpu_set_wide_hole(int x, int y, int w, int h, int gameX, int gameY) {
 
 void gpu_set_overlay(const uint32_t* px) {
     pendingOverlay = px;
+}
+
+static uint32_t perfPx[128 * 16], stagePerf[128 * 16];
+static bool perfPending;
+static int perfX, perfY, perfW;
+
+void gpu_set_perf(const uint32_t* px, int x, int y, int w) {
+    if (px) {
+        memcpy(perfPx, px, sizeof(perfPx));
+        perfPending = true;
+    }
+    perfX = x;
+    perfY = y;
+    perfW = w;
+}
+
+static void write_perf(const uint32_t* px) {
+    uint32_t* t = perfTex.data;
+    for (int y = 0; y < 16; y++)
+        for (int x = 0; x < 128; x++) {
+            uint32_t p = px[y * 128 + x];
+            t[tiled((u32) x, (u32) y, perfTex.width)] = (p & 0xFF000000) >> 24 | (p & 0xFF) << 8 | (p & 0xFF00) << 8 | (p & 0xFF0000) << 8;
+        }
+    GSPGPU_FlushDataCache(perfTex.data, perfTex.size);
 }
 
 void gpu_show_overlay(bool shown, bool dim) {
@@ -304,41 +344,41 @@ static void run_job(const struct draw_job* j, bool threaded) {
         texSide ^= 1;
         if (widePx) {
             gpu_wide_join();
-            bool whole = wideW >= TOP_W;
-            write_wide(whole ? &wideTex[texSide] : &wide2xTex[texSide], !whole, widePx, wideW, wideH, &j->hole, gamePx);
-        } else if (screenMode == PD_SCREEN_PIXEL) {
-            write_1x(&gameTex[texSide], gamePx, gameW, gameH, GPU_GAME_STRIDE);
+            write_tiles(&wideTex[texSide], widePx, wideW, wideH, wideW, &j->hole, gamePx);
         } else {
-            write_2x(&game2xTex[texSide], gamePx, gameW, gameH, GPU_GAME_STRIDE);
+            write_tiles(&gameTex[texSide], gamePx, gameW, gameH, GPU_GAME_STRIDE, &NO_HOLE, NULL);
         }
     }
-    bool canvases = j->bottom || j->top || j->overlay;
+    bool canvases = j->bottom || j->top || j->overlay || j->perfNew;
     if (threaded && !canvases) LightEvent_Signal(&stageFree);
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
     if (j->bottom) write_canvas(&bottomTex, j->bottom, PD_UI_WIDTH, PD_UI_HEIGHT);
     if (j->top) write_canvas(&topTex, j->top, TOP_W, TOP_H);
     if (j->overlay) write_overlay(j->overlay);
+    if (j->perfNew) write_perf(stagePerf);
     if (threaded && canvases) LightEvent_Signal(&stageFree);
-    Tex3DS_SubTexture sub;
+    Tex3DS_SubTexture sub, upSub;
     u32 black = C2D_Color32(0, 0, 0, 0xFF);
+    // The smooth modes: the frame at 2x nearest, sampled linearly down to size (mGBA's "sharp bilinear").
+    bool sharp = game && (widePx ? wideW < TOP_W : screenMode != PD_SCREEN_PIXEL);
+    int srcW = widePx ? wideW : gameW, srcH = widePx ? wideH : gameH;
+    C3D_Tex* src = widePx ? &wideTex[texSide] : &gameTex[texSide];
+    if (sharp) {
+        C2D_SceneBegin(upTarget);
+        C2D_DrawImageAt(image(src, &sub, srcW, srcH), 0, 0, 0.5f, NULL, 2.0f, 2.0f);
+    }
     C2D_TargetClear(topTarget, black);
     C2D_SceneBegin(topTarget);
     if (!game) {
         C2D_DrawImageAt(image(&topTex, &sub, TOP_W, TOP_H), 0, 0, 0.5f, NULL, 1.0f, 1.0f);
-    } else if (widePx) {
-        // EXPAND: its window fills the screen, at 1x or sharp bilinear like the game.
-        if (wideW >= TOP_W) {
-            C2D_DrawImageAt(image(&wideTex[texSide], &sub, wideW, wideH), (TOP_W - wideW) / 2.0f, (TOP_H - wideH) / 2.0f, 0.5f, NULL, 1.0f, 1.0f);
-        } else {
-            float k = (float) TOP_H / (2 * wideH);
-            C2D_DrawImageAt(image(&wide2xTex[texSide], &sub, 2 * wideW, 2 * wideH), (TOP_W - 2 * wideW * k) / 2, 0, 0.5f, NULL, k, k);
-        }
-    } else if (screenMode == PD_SCREEN_PIXEL) {
-        C2D_DrawImageAt(image(&gameTex[texSide], &sub, gameW, gameH), (TOP_W - gameW) / 2, (TOP_H - gameH) / 2, 0.5f, NULL,
-                        1.0f, 1.0f);
+    } else if (!sharp) {
+        C2D_DrawImageAt(image(src, &sub, srcW, srcH), (TOP_W - srcW) / 2.0f, (TOP_H - srcH) / 2.0f, 0.5f, NULL, 1.0f, 1.0f);
     } else {
-        C2D_Image up = image(&game2xTex[texSide], &sub, 2 * gameW, 2 * gameH);
-        if (screenMode == PD_SCREEN_STRETCH) {
+        C2D_Image up = image(&upTex, &upSub, 2 * srcW, 2 * srcH);
+        if (widePx) {
+            float k = (float) TOP_H / (2 * wideH);
+            C2D_DrawImageAt(up, (TOP_W - 2 * wideW * k) / 2, 0, 0.5f, NULL, k, k);
+        } else if (screenMode == PD_SCREEN_STRETCH) {
             C2D_DrawImageAt(up, 0, 0, 0.5f, NULL, (float) TOP_W / (2 * gameW), (float) TOP_H / (2 * gameH));
         } else {
             // The screen's height (a GBA game at 1.5x), or 1.25x whatever the game.
@@ -350,6 +390,10 @@ static void run_job(const struct draw_job* j, bool threaded) {
     if (game && j->overlayShown) {
         Tex3DS_SubTexture osub;
         C2D_DrawImageAt(image(&overlayTex, &osub, TOP_W, TOP_H), 0, 0, 0.7f, NULL, 1.0f, 1.0f);
+    }
+    if (game && j->perfW) {
+        Tex3DS_SubTexture psub;
+        C2D_DrawImageAt(image(&perfTex, &psub, j->perfW, 16), j->perfX, j->perfY, 0.8f, NULL, 1.0f, 1.0f);
     }
 
     Tex3DS_SubTexture bottomSub;
@@ -437,14 +481,20 @@ static void draw_thread_start(void) {
 }
 
 void gpu_draw(bool game, int screenMode) {
-    struct draw_job next = { game, screenMode, holdGame, overlayShown, overlayDim, gameW, gameH, shownBuf,
+    struct draw_job next = { game, screenMode, holdGame, overlayShown, overlayDim, perfX, perfY, perfW, false, gameW, gameH, shownBuf,
                              widePx, wideW, wideH, wideHole, pendingBottom, pendingTop, pendingOverlay };
     pendingBottom = pendingTop = pendingOverlay = NULL;
     if (!drawThread) {
+        next.perfNew = perfPending;
+        if (perfPending) memcpy(stagePerf, perfPx, sizeof(stagePerf));
+        perfPending = false;
         run_job(&next, false);
         return;
     }
     LightEvent_Wait(&stageFree);
+    next.perfNew = perfPending;
+    if (perfPending) memcpy(stagePerf, perfPx, sizeof(stagePerf));
+    perfPending = false;
     // No copies of a frame the next one won't touch: the game's other buffer, the session's other window (wideFrames).
     if (!gameDoubled) {
         if (game && !holdGame && (!widePx || wideHole.w)) memcpy(stageGame, gameBuf, GPU_GAME_STRIDE * (size_t) gameH * sizeof(uint32_t));

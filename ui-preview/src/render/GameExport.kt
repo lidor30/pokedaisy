@@ -9,6 +9,7 @@ import com.pokedaisy.app.companion.ui.OptionColors
 import com.pokedaisy.app.companion.ui.PartyPalette
 import com.pokedaisy.app.companion.ui.PartySlotColors
 import com.pokedaisy.app.companion.ui.partyPaletteFor
+import com.pokedaisy.app.companion.ui.partySlotStyleFor
 import com.pokedaisy.app.companion.ui.theme.APP_THEMES
 import com.pokedaisy.app.companion.ui.theme.AppColors
 import com.pokedaisy.app.companion.ui.theme.DarkMode
@@ -254,6 +255,21 @@ private fun backdrop(kind: GameKind): Any {
     return (m.invoke(null, kind) as IntArray?)?.let { c -> JSONArray(c.map { it.toLong() and 0xFFFFFFFFL }) } ?: JSONObject.NULL
 }
 
+// buildGameBackground's picks (Theme.kt) by name: the art behind the party, whether it's one cell tiled.
+private fun backdropArt(kind: GameKind): Any? = when {
+    kind.isGameBoyGame || (kind == GameKind.FIRERED && runningGhostGrey) -> null
+    kind == GameKind.FIRERED && runningLetsGo -> JSONArray(listOf(RomArt.LETS_GO_BACKDROP, true))
+    kind == GameKind.SWORD_SHIELD -> JSONArray(listOf(RomArt.SWSH_BACKDROP, true))
+    backdrop(kind) != JSONObject.NULL -> JSONArray(listOf("partybg/firered.png", false))
+    kind == GameKind.TEAM_ROCKET -> JSONArray(listOf("partybg/firered.png", false))
+    kind == GameKind.EMERALD -> JSONArray(listOf(if (runningEmeraldHack != null) RomArt.RE_BACKDROP else "partybg/emerald.png", false))
+    kind == GameKind.HEART_AND_SOUL -> JSONArray(listOf("partybg/hns.png", false))
+    kind == GameKind.ELITE_REDUX -> JSONArray(listOf("partybg/emerald.png", false))
+    kind in setOf(GameKind.UNBOUND, GameKind.RADICAL_RED, GameKind.ODYSSEY, GameKind.AMETHYST, GameKind.GS_CHRONICLES) ->
+        JSONArray(listOf(RomArt.CFRU_BACKDROP, true))
+    else -> JSONArray(listOf("partybg/firered.png", false))
+}
+
 private val seenGuides = HashSet<GuideId>()
 
 private fun have(h: Have?): JSONArray = when (h) {
@@ -346,6 +362,8 @@ fun main(args: Array<String>) {
             entry.put("bag-$name", bagPalette(activeGame))
         }
         entry.put("backdrop", backdrop(activeGame))
+        entry.put("backdropArt", backdropArt(activeGame) ?: JSONObject.NULL)
+        entry.put("partyStyle", fields(partySlotStyleFor(activeGame)))
         entry.put("gb", gb ?: JSONObject.NULL)
         if (cfg != null || gb != null) {
             val text = tables().toString()

@@ -57,6 +57,9 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
         else if (!strcmp(key, "autozoom")) {
             int on;
             if (int_in(value, 0, 1, &on)) s->autoZoom = on;
+        } else if (!strcmp(key, "perf")) {
+            int on;
+            if (int_in(value, 0, 1, &on)) s->showPerf = on;
         } else if (!strcmp(key, "wildoff")) {
             int on;
             if (int_in(value, 0, 1, &on)) s->wildOff = on;
@@ -95,5 +98,6 @@ bool pd_settings_save(const struct pd_settings* s, const char* path) {
     fprintf(f, "dark=%d\ntheme=%d\nffnormal=%d\ncheats=%d\n", s->darkMode, s->theme, s->ffNormal, s->cheats);
     fprintf(f, "speed=%d\nvolume=%d\nnohints=%d\nonetap=%d\nmute=%d\nautorun=%d\nrunindoors=%d\n", s->gameSpeed,
             s->gameVolume, s->hideHints, s->oneTapMoves, s->gameMuted, s->autoRun, s->runIndoors);
+    fprintf(f, "perf=%d\n", s->showPerf ? 1 : 0);
     return fclose(f) == 0;
 }

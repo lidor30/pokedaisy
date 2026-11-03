@@ -66,6 +66,7 @@ struct pd_settings {
     bool autoZoom;   // AUTO ZOOM IN: ZOOM OUT steps back in off the plain overworld
     bool wildOff;    // WILD ENCOUNTERS off (hosts that can: the Linux host's quick menu)
     int tabBar;      // TAB BAR: a bit per enum pd_tab on the bar (PARTY .. DEX, CARD); the rest open from MORE
+    bool showPerf;   // FPS / CPU in the corner of the game (hosts with hasPerf)
     bool hud;        // HUD over the overworld (hosts with hasHud) ...
     int hudHidden;   // ... less these parts: a bit per enum pd_hud_part
     bool hideHints;  // BATTLE HINTS off
@@ -143,6 +144,7 @@ struct pd_host_info {
     bool hasExpand;      // Optional: the host can EXPAND (ASPECT / AUTO ZOOM IN rows) ...
     bool expandGame;     // ... and does for this game (else ASPECT reads N/A)
     bool hasHud;         // Optional: the host draws the HUD over the game (its SETTINGS row)
+    bool hasPerf;        // Optional: the host can show FPS / CPU (its SETTINGS row)
     bool hasState;      // a save state exists for LOAD STATE
     char stateWhen[24]; // when it was made, shown beside LOAD STATE
     bool fullSettings;  // Optional: SETTINGS' groups and the rows the 3DS has
@@ -191,6 +193,7 @@ enum pd_overlay {
 struct pd_binput;
 
 struct pd_ui {
+    bool pixelOff; // SCREEN doesn't offer PIXEL 1x: EXPAND can't hold its speed that wide
     struct pd_binput* battleInput; // the host's, NULL = no touch controls
     const struct pd_snapshot* drawn; // what the last pd_ui_draw showed, for the taps on it
     const struct pd_game* drawnGame;

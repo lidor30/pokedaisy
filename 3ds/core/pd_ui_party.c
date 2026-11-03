@@ -1,11 +1,13 @@
-// PARTY: the six slots in FireRed's party colours, each with the game's own
-// icon (from the ROM, pd_icon), and a summary on tap.
+// PARTY: the six slots, each with the game's own icon (from the ROM, pd_icon), and a summary on tap. A game with its own
+// art (pd_party_art) gets the game's slot, drawn like GbaPartySlot; every other one a slot in its PartyPalette.
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
 
 #include "pd_dex.h"
 #include "pd_games.h"
 #include "pd_icon.h"
+#include "pd_party_art.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
 
@@ -186,8 +188,459 @@ static void empty_slot(struct pd_canvas* c, int x, int y, int w, int h, const st
     }
 }
 
+// --- the game's own slot (GbaPartySlot.kt) ---
+
+#define GLYPH_H 13 // PartySlotLayout: DecompressGlyph_Small's height
+#define TEXT_TOP 4 // the first row of a FONT_SMALL cell capitals are drawn in
+#define ICON_BOUNCE_DOWN 1
+#define NUM_PAD 1  // stands for the game's right-align pad character in a number
+#define LV_MARK 2  // the "Lv" glyph
+#define MAX_WINDOW_SIDE 1024
+
+// Where a slot goes (GbaPartySlot's Canvas): the window at (ox, oy) in `scale` canvas pixels a game pixel, grown by the
+// stretch columns and rows to fill the cell.
+struct art_geometry {
+    const struct pd_party_style* st;
+    int scale, ox, oy, left, mid, top, midV, bottom, w, h;
+};
+
+static struct art_geometry art_geometry(const struct pd_party_style* st, int w, int h) {
+    struct art_geometry a = { .st = st };
+    int minW = st->visibleW - st->regionX0, minH = st->visibleH - st->regionY0;
+    int scale = w / minW < h / minH ? w / minW : h / minH;
+    a.scale = scale < 1 ? 1 : scale;
+    int regionW = w / a.scale, regionH = st->stretchRows ? h / a.scale : minH;
+    int extraW = regionW > minW ? regionW - minW : 0, extraH = regionH > minH ? regionH - minH : 0;
+    if (st->hasBand) extraH &= ~1; // a band frame's empty slot grows by whole stripe pairs
+    a.ox = (w - regionW * a.scale) / 2 - st->regionX0 * a.scale;
+    a.oy = (h - regionH * a.scale) / 2 - st->regionY0 * a.scale;
+    a.left = extraW / 3;
+    a.mid = extraW - extraW / 3;
+    // The extra height goes between the top padding, the gap between level and HP box, and the bottom padding.
+    a.top = extraH / 3;
+    a.midV = (extraH - a.top) / 2;
+    a.bottom = extraH - a.top - a.midV;
+    a.w = st->slotW + extraW;
+    a.h = st->slotH + extraH;
+    return a;
+}
+
+// Px.left / right / end / y / textY: a game coordinate past the stretch points.
+static int art_left(const struct art_geometry* a, int x) {
+    return x > a->st->leftCol ? x + a->left : x;
+}
+
+static int art_right(const struct art_geometry* a, int x) {
+    return art_left(a, x) + (x > a->st->midCol ? a->mid : 0);
+}
+
+static int art_end(const struct art_geometry* a, int x) {
+    return x + a->left + a->mid;
+}
+
+static int art_y(const struct art_geometry* a, int v) {
+    return v + (v > a->st->topRow ? a->top : 0) + (v > a->st->midRow ? a->midV : 0) + (v > a->st->bottomRow ? a->bottom : 0);
+}
+
+static int art_text_y(const struct art_geometry* a, int v) {
+    return art_y(a, v + TEXT_TOP) - TEXT_TOP;
+}
+
+// The window as it stands: frame, text and HP bar, at one game pixel a pixel. As big as a cell has needed.
+static uint32_t* window;
+static int windowSize;
+
+// The frame, grown by repeating its uniform columns and rows; a band frame gets its diagonals redrawn (buildBandFrame).
+static bool art_frame(const struct pd_party_art* art, enum pd_slot_frame frame, const struct art_geometry* a) {
+    static short cols[MAX_WINDOW_SIDE], rows[MAX_WINDOW_SIDE];
+    const struct pd_party_style* st = a->st;
+    const uint32_t* px = art->frames[frame];
+    int w = st->slotW, h = st->slotH;
+    if (a->w > MAX_WINDOW_SIDE || a->h > MAX_WINDOW_SIDE) return false;
+    if (a->w * a->h > windowSize) {
+        uint32_t* grown = realloc(window, (size_t) a->w * a->h * sizeof(*grown));
+        if (!grown) return false;
+        window = grown;
+        windowSize = a->w * a->h;
+    }
+    bool empty = frame == PD_SLOT_EMPTY;
+    int ow = 0, oh = 0, k = a->top + a->midV + a->bottom;
+    for (int x = 0; x < w; x++) {
+        cols[ow++] = (short) x;
+        if (x == st->leftCol) for (int i = 0; i < a->left; i++) cols[ow++] = (short) x;
+        if (x == st->midCol) for (int i = 0; i < a->mid; i++) cols[ow++] = (short) x;
+    }
+    for (int y = 0; y < h; y++) {
+        rows[oh++] = (short) y;
+        if (empty && st->hasBand) {
+            if (y == st->bandEmptyStripeRow + 1)
+                for (int i = 0; i < k / 2; i++) {
+                    rows[oh++] = st->bandEmptyStripeRow;
+                    rows[oh++] = (short) (st->bandEmptyStripeRow + 1);
+                }
+        } else {
+            if (y == st->topRow) for (int i = 0; i < a->top; i++) rows[oh++] = (short) y;
+            if (y == st->midRow) for (int i = 0; i < a->midV; i++) rows[oh++] = (short) y;
+            if (y == st->bottomRow) for (int i = 0; i < a->bottom; i++) rows[oh++] = (short) y;
+        }
+    }
+    for (int j = 0; j < oh; j++)
+        for (int i = 0; i < ow; i++) window[j * ow + i] = px[rows[j] * w + cols[i]];
+    if (!st->hasBand || empty) return true;
+    uint32_t light = px[st->bandTop * w + st->bandLeftTopX - 1], edge = px[st->bandTop * w + st->bandLeftTopX],
+             dark = px[st->bandTop * w + st->bandLeftTopX + 1];
+    int lt = art_right(a, st->bandLeftTopX), lb = art_right(a, st->bandLeftBottomX);
+    int rt = art_right(a, st->bandRightTopX), rb = art_right(a, st->bandRightBottomX);
+    int span = st->bandBottom + k - st->bandTop;
+    for (int j = st->bandTop; j <= st->bandBottom + k; j++) {
+        // Rounded like floor(a + (b - a) * t + 0.5), t = (j - top) / span.
+        int t = j - st->bandTop;
+        int xl = (2 * (lt * span + (lb - lt) * t) + span) / (2 * span), xr = (2 * (rt * span + (rb - rt) * t) + span) / (2 * span);
+        for (int i = 0; i < ow; i++) {
+            uint32_t* p = &window[j * ow + i];
+            if (*p != light && *p != edge && *p != dark) continue;
+            *p = i == xl || i == xr ? edge : i < xl || i > xr ? light : dark;
+        }
+    }
+    return true;
+}
+
+// The Western letters past ASCII in Gen 3's charmap, from 0x01 (Gen3Text); a space = none. encodeSmallFont's WESTERN_CODES.
+static const char* const WESTERN[] = { "À", "Á", "Â", "Ç", "È", "É", "Ê", "Ë", "Ì", " ", "Î", "Ï", "Ò", "Ó", "Ô", "Œ", "Ù", "Ú", "Û", "Ñ", "ß", "à", "á", " ",
+                                       "ç", "è", "é", "ê", "ë", "ì", " ", "î", "ï", "ò", "ó", "ô", "œ", "ù", "ú", "û", "ñ", "º", "ª" };
+static const struct { const char* c; int code; } OTHER_CODES[] = {
+    { "é", 0x1B }, { "É", 0x1B }, { "’", 0xB4 }, { "♂", 0xB5 }, { "♀", 0xB6 }, { "Ä", 0xF1 }, { "Ö", 0xF2 }, { "Ü", 0xF3 }, { "ä", 0xF4 },
+    { "ö", 0xF5 }, { "ü", 0xF6 }, { "¿", 0x51 }, { "¡", 0x52 }, { "Í", 0x5A }, { "â", 0x68 }, { "í", 0x6F },
+};
+
+// The next character's Gen 3 code for FONT_SMALL (encodeSmallFont); '?' for anything the font doesn't have.
+static int small_font_code(const struct pd_party_style* st, const char** s) {
+    unsigned char c = (unsigned char) **s;
+    if (c < 0x80) {
+        (*s)++;
+        switch (c) {
+        case NUM_PAD: return st->padGlyph;
+        case LV_MARK: return st->lvGlyph;
+        case ' ': return 0x00;
+        case '/': return 0xBA;
+        case '.': return 0xAD;
+        case '-': return 0xAE;
+        case '!': return 0xAB;
+        case '?': return 0xAC;
+        case '\'': return 0xB4;
+        case ':': return 0xF0;
+        case '&': return 0x2D;
+        case '+': return 0x2E;
+        case '%': return 0x5B;
+        case '(': return 0x5C;
+        case ')': return 0x5D;
+        case ',': return 0xB8;
+        default: break;
+        }
+        return c >= 'A' && c <= 'Z' ? 0xBB + c - 'A' : c >= 'a' && c <= 'z' ? 0xD5 + c - 'a' : c >= '0' && c <= '9' ? 0xA1 + c - '0' : 0xAC;
+    }
+    int len = c >= 0xF0 ? 4 : c >= 0xE0 ? 3 : 2;
+    const char* at = *s;
+    for (int i = 1; i < len && at[i]; i++) (*s)++;
+    (*s)++;
+    for (size_t i = 0; i < sizeof(OTHER_CODES) / sizeof(*OTHER_CODES); i++)
+        if (!strncmp(at, OTHER_CODES[i].c, (size_t) len)) return OTHER_CODES[i].code;
+    for (size_t i = 0; i < sizeof(WESTERN) / sizeof(*WESTERN); i++)
+        if (!strncmp(at, WESTERN[i], (size_t) len)) return (int) i + 1;
+    return 0xAC;
+}
+
+// Px.text, into the window.
+static void art_text(const struct pd_party_art* art, const struct art_geometry* a, const char* s, int x, int y, uint32_t fg, uint32_t shadow) {
+    while (*s) {
+        int g = small_font_code(art->style, &s);
+        for (int yy = 0; yy < GLYPH_H; yy++) {
+            int wy = y + yy, row = pd_party_glyph_row(art, g, yy);
+            if (wy < 0 || wy >= a->h || !row) continue;
+            for (int xx = 0; xx < 8; xx++) {
+                int wx = x + xx, p = row >> (14 - 2 * xx) & 3;
+                if ((p == 1 || p == 2) && wx >= 0 && wx < a->w) window[wy * a->w + wx] = PD_ART_OPAQUE | (p == 1 ? fg : shadow);
+            }
+        }
+        x += art->style->glyphWidths[g];
+    }
+}
+
+static void art_rect(const struct art_geometry* a, int x, int y, int w, int h, uint32_t color) {
+    for (int j = y; j < y + h && j < a->h; j++)
+        for (int i = x; i < x + w && i < a->w; i++) window[j * a->w + i] = PD_ART_OPAQUE | color;
+}
+
+// GetScaledHPFraction: floor(hp * scale / max), but never 0 while alive.
+static int scaled_hp(int hp, int maxHp, int scale) {
+    if (maxHp <= 0) return 0;
+    int r = hp * scale / maxHp;
+    return !r && hp > 0 ? 1 : r;
+}
+
+// DisplayPartyPokemonHPBar: a highlight row over a 2 px body, the rest in the window's colours. The colour goes by the
+// game's own 48 px scale (GetHPBarLevel), the fill spans the stretched bar.
+static void art_hp_bar(const struct art_geometry* a, int hp, int maxHp) {
+    const struct pd_party_style* st = a->st;
+    int level = scaled_hp(hp, maxHp, st->barW);
+    uint32_t top = st->hpGreenTop, body = st->hpGreen;
+    if (hp != maxHp && level <= st->barW * 50 / 100) {
+        bool yellow = level > st->barW * 20 / 100;
+        top = yellow ? st->hpYellowTop : st->hpRedTop;
+        body = yellow ? st->hpYellow : st->hpRed;
+    }
+    int x = art_left(a, st->barX), y = art_y(a, st->barY), w = art_right(a, st->barX + st->barW - 1) - x + 1;
+    int f = scaled_hp(hp, maxHp, w);
+    art_rect(a, x, y, f, 1, top);
+    art_rect(a, x, y + 1, f, 2, body);
+    art_rect(a, x + f, y, w - f, 1, st->hpEmptyTop);
+    art_rect(a, x + f, y + 1, w - f, 2, st->hpEmpty);
+}
+
+// Puts the window on the canvas. A game that blends its slots over the backdrop shows box + backdrop / 2; alpha < 255
+// lays it over faintly (an empty slot where the game draws none).
+static void art_window(struct pd_canvas* c, const struct art_geometry* a, int x, int y, int alpha) {
+    int s = a->scale;
+    bool blend = a->st->blendOverBackdrop;
+    for (int yy = 0; yy < a->h * s; yy++) {
+        int sy = y + a->oy + yy;
+        if (sy < c->cy0 || sy >= c->cy1) continue;
+        const uint32_t* row = window + yy / s * a->w;
+        for (int xx = 0; xx < a->w * s; xx++) {
+            int sx = x + a->ox + xx;
+            uint32_t v = row[xx / s];
+            if (!v || sx < c->cx0 || sx >= c->cx1) continue;
+            uint32_t* d = &c->px[sy * c->w + sx];
+            if (alpha != 255) {
+                uint32_t out = 0;
+                for (int sh = 0; sh <= 16; sh += 8)
+                    out |= (((v >> sh & 0xFF) * (uint32_t) alpha + (*d >> sh & 0xFF) * (255 - (uint32_t) alpha)) / 255) << sh;
+                *d = out;
+            } else if (blend) {
+                uint32_t half = *d >> 1 & 0x7F7F7F, r = (v >> 16 & 0xFF) + (half >> 16), gr = (v >> 8 & 0xFF) + (half >> 8 & 0xFF), b = (v & 0xFF) + (half & 0xFF);
+                *d = (r > 255 ? 255 : r) << 16 | (gr > 255 ? 255 : gr) << 8 | (b > 255 ? 255 : b);
+            } else {
+                *d = v & 0xFFFFFF;
+            }
+        }
+    }
+}
+
+// Px.image: part of a sprite sheet at window coordinates.
+static void art_image(struct pd_canvas* c, const struct art_geometry* a, int x, int y, const uint32_t* img, int imgW, int srcX, int srcY,
+                      int gx, int gy, int w, int h) {
+    int s = a->scale;
+    for (int yy = 0; yy < h * s; yy++) {
+        int sy = y + a->oy + gy * s + yy;
+        if (sy < c->cy0 || sy >= c->cy1) continue;
+        for (int xx = 0; xx < w * s; xx++) {
+            int sx = x + a->ox + gx * s + xx;
+            uint32_t v = img[(srcY + yy / s) * imgW + srcX + xx / s];
+            if (v && sx >= c->cx0 && sx < c->cx1) c->px[sy * c->w + sx] = v & 0xFFFFFF;
+        }
+    }
+}
+
+// Column in the status icons: PSN, PAR, SLP, FRZ, BRN, PKRS, FNT; -1 = none.
+static int status_icon(const struct pd_mon* m) {
+    if (m->hp == 0) return 6;
+    const char* s = pd_status_label(m->status);
+    return !strcmp(s, "PSN") || !strcmp(s, "TOX") ? 0 : !strcmp(s, "PAR") ? 1 : !strcmp(s, "SLP") ? 2 : !strcmp(s, "FRZ") ? 3
+        : !strcmp(s, "BRN") ? 4 : -1;
+}
+
+// The Poke Ball (open while selected), then the icon above it, then the held-item marker over the icon. The icon stands
+// on the first of the game's two bounces while selected, and rests apart while not.
+static void art_sprites(struct pd_canvas* c, const struct art_geometry* a, const struct pd_party_art* art, const struct pd_game* g, int x, int y,
+                        const struct pd_mon* m, bool selected) {
+    const struct pd_party_style* st = a->st;
+    if (art->ball) art_image(c, a, x, y, art->ball, 32, 0, selected ? 32 : 0, st->ballX, st->ballY + (st->ballFollowsIcon ? a->top : 0), 32, 32);
+    int dx = selected ? 0 : st->iconRestDx;
+    int dy = !selected ? st->iconRestDy : !m->egg && m->hp == 0 ? 0 : ICON_BOUNCE_DOWN;
+    pd_draw_mon_icon_scaled(c, g, m->species, x + a->ox + (st->iconX + dx) * a->scale, y + a->oy + (st->iconY + dy + a->top) * a->scale,
+                            a->scale, false);
+    if (!m->heldItem) return;
+    int hx = st->iconX + 16, hy = st->iconY + 22 + a->top;
+    if (art->hold) art_image(c, a, x, y, art->hold, 8, 0, m->heldItem >= 121 && m->heldItem <= 132 ? 8 : 0, hx, hy, 8, 8);
+    else held_mark(c, x + a->ox + hx * a->scale, y + a->oy + hy * a->scale);
+}
+
+static void art_slot_at(struct pd_canvas* c, const struct pd_game* g, const struct pd_party_art* art, const struct art_geometry* a, int x, int y,
+                        const struct pd_mon* m, bool selected) {
+    const struct pd_party_style* st = a->st;
+    if (!m) {
+        if (art_frame(art, st->hasEmptySlot ? PD_SLOT_EMPTY : PD_SLOT_NOHP, a)) art_window(c, a, x, y, st->hasEmptySlot ? 255 : 89);
+        return;
+    }
+    if (m->egg) {
+        // DisplayPartyPokemonData's egg branch: the no-HP box and the nickname only.
+        if (!art_frame(art, selected ? PD_SLOT_NOHP_SELECTED : PD_SLOT_NOHP, a)) return;
+        art_text(art, a, st->eggName, art_left(a, st->nameX), art_text_y(a, st->nameY), st->text, st->textShadow);
+        art_window(c, a, x, y, 255);
+        art_sprites(c, a, art, g, x, y, m, selected);
+        return;
+    }
+    bool fainted = m->hp == 0;
+    if (!art_frame(art, selected && fainted ? PD_SLOT_SELECTED_FAINTED : selected ? PD_SLOT_SELECTED : fainted ? PD_SLOT_FAINTED : PD_SLOT_NORMAL, a))
+        return;
+    char buf[40], line[16];
+    // The nickname as the game prints it; without one, the species.
+    const char* name = mon_display_name(m, buf, sizeof(buf));
+    if (!m->nickname[0] && st->upperCaseNames) {
+        if (name != buf) snprintf(buf, sizeof(buf), "%s", name);
+        for (char* p = buf; *p; p++) if (*p >= 'a' && *p <= 'z') *p = (char) (*p - 32);
+        name = buf;
+    }
+    art_text(art, a, name, art_left(a, st->nameX), art_text_y(a, st->nameY), st->text, st->textShadow);
+    // Drawn whenever known, even beside a status icon, like the game.
+    if (m->gender == PD_GENDER_MALE) art_text(art, a, "♂", art_right(a, st->genderX), art_text_y(a, st->genderY), st->male, st->maleShadow);
+    if (m->gender == PD_GENDER_FEMALE) art_text(art, a, "♀", art_right(a, st->genderX), art_text_y(a, st->genderY), st->female, st->femaleShadow);
+    int status = status_icon(m);
+    if (status < 0) {
+        snprintf(line, sizeof(line), "%c%d", LV_MARK, m->level);
+        art_text(art, a, line, art_left(a, st->levelX), art_text_y(a, st->levelY), st->text, st->textShadow);
+    }
+    // "hp/" right-aligned in 3 digits and "/max": both move with the stretched bar's right end, they share the slash.
+    snprintf(line, sizeof(line), "%3d/", m->hp);
+    for (char* p = line; *p == ' '; p++) *p = NUM_PAD;
+    art_text(art, a, line, art_end(a, st->hpX), art_text_y(a, st->hpY), st->text, st->textShadow);
+    snprintf(line, sizeof(line), "/%3d", m->maxHp);
+    for (char* p = line + 1; *p == ' '; p++) *p = NUM_PAD;
+    art_text(art, a, line, art_end(a, st->maxHpX), art_text_y(a, st->hpY), st->text, st->textShadow);
+    art_hp_bar(a, m->hp, m->maxHp);
+    art_window(c, a, x, y, 255);
+    if (status >= 0) art_image(c, a, x, y, art->status, art->statusW, status * 32, 0, art_left(a, st->statusX), art_y(a, st->statusY), 32, 8);
+    art_sprites(c, a, art, g, x, y, m, selected);
+}
+
+static void art_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_party_art* art, int x, int y, int w,
+                     int h, const struct pd_mon* m, int slot, bool selected) {
+    struct art_geometry geo = art_geometry(art->style, w, h);
+    if (m) ui_add_hit(ui, x, y, w, h, HIT_SLOT + slot);
+    art_slot_at(c, g, art, &geo, x, y, m, selected);
+}
+
+// --- the game's cards in a grid ---
+//
+// The grid is ours (two columns, three rows, the whole width like the app's), each card the game's: its own height and
+// paddings, widened by its stretch columns only. Drawn at the GBA's size and shown as big as three rows allow with a gap
+// between them: 4/3 or 5/4, sharp bilinear like the game on the top screen, else 1x (the battle's pane, under its bar, for
+// FireRed's tall card). Any other canvas keeps the slots stretched both ways.
+
+#define CARDS_CANVAS_W 320
+#define CARD_GAP 3
+
+struct window_at { short x, y; };
+struct card_scale { int num, den, extraW; };
+static const struct card_scale CARD_SCALES[] = { { 4, 3, 0 }, { 5, 4, 0 }, { 1, 1, 0 } };
+
+// The cards' windows at the size they're drawn at; false: the stretched grid.
+static bool card_grid(const struct pd_party_style* st, const struct pd_canvas* c, struct window_at at[PD_PARTY_SIZE], struct card_scale* scale) {
+    if (c->w != CARDS_CANVAS_W) return false;
+    int overhang = st->regionY0 < 0 ? -st->regionY0 : 0, rows = 0, width = 0;
+    bool fits = false;
+    for (size_t i = 0; i < sizeof(CARD_SCALES) / sizeof(*CARD_SCALES) && !fits; i++) {
+        *scale = CARD_SCALES[i];
+        rows = c->h * scale->den / scale->num;
+        width = c->w * scale->den / scale->num;
+        fits = overhang + 3 * st->visibleH + 2 * CARD_GAP <= rows;
+    }
+    if (!fits) return false;
+    int pitch = (rows - overhang - st->visibleH) / 2;
+    if (pitch > st->visibleH + 6) pitch = st->visibleH + 6;
+    int top = overhang + (rows - overhang - 2 * pitch - st->visibleH) / 2;
+    // The right column's Poke Ball hangs into the gap, the left one's into the margin.
+    int ball = st->regionX0 < 0 ? -st->regionX0 : 0, edge = 2, left = edge + ball, gap = edge + ball;
+    int cardW = (width - left - edge - gap) / 2;
+    scale->extraW = cardW > st->visibleW ? cardW - st->visibleW : 0;
+    for (int i = 0; i < PD_PARTY_SIZE; i++) {
+        at[i].x = (short) (left + i % 2 * (st->visibleW + scale->extraW + gap));
+        at[i].y = (short) (top + i / 2 * pitch);
+    }
+    return true;
+}
+
+// a * wa + b * wb over wa + wb, each channel of 0xRRGGBB.
+static uint32_t mix(uint32_t a, uint32_t b, int wa, int wb) {
+    uint32_t out = 0;
+    for (int s = 0; s <= 16; s += 8) out |= (((a >> s & 0xFF) * (uint32_t) wa + (b >> s & 0xFF) * (uint32_t) wb) / (uint32_t) (wa + wb)) << s;
+    return out;
+}
+
+// Output pixel o of a num / den enlargement covers [o * den, o * den + den) in num-ths of a source pixel: one source pixel,
+// or the end of one and the start of the next.
+static int source_of(int o, const struct card_scale* k, int* near) {
+    int at = o * k->den, i = at / k->num, end = (i + 1) * k->num;
+    *near = end - at >= k->den ? k->den : end - at;
+    return i;
+}
+
+static void widen_row(const uint32_t* src, int srcW, uint32_t* dst, int w, const struct card_scale* k) {
+    for (int x = 0; x < w; x++) {
+        int near, i = source_of(x, k, &near);
+        dst[x] = near == k->den || i + 1 >= srcW ? src[i] : mix(src[i], src[i + 1], near, k->den - near);
+    }
+}
+
+static void screen_up(struct pd_canvas* c, const uint32_t* px, int srcW, int srcH, const struct card_scale* k) {
+    static uint32_t r[2][CARDS_CANVAS_W];
+    int have[2] = { -1, -1 };
+    for (int y = 0; y < c->h; y++) {
+        int near, s = source_of(y, k, &near);
+        if (s >= srcH) break;
+        for (int i = 0; i < 2; i++) {
+            int want = s + i < srcH ? s + i : s;
+            if (have[want & 1] != want) {
+                widen_row(px + want * srcW, srcW, r[want & 1], c->w, k);
+                have[want & 1] = want;
+            }
+        }
+        const uint32_t* a = r[s & 1];
+        const uint32_t* b = r[(s + 1 < srcH ? s + 1 : s) & 1];
+        uint32_t* d = c->px + y * c->w;
+        for (int x = 0; x < c->w; x++) d[x] = near == k->den ? a[x] : mix(a[x], b[x], near, k->den - near);
+    }
+}
+
+// A card's geometry: as art_geometry grows a slot, in width only.
+static struct art_geometry card_geometry(const struct pd_party_style* st, int extraW) {
+    struct art_geometry a = { .st = st, .scale = 1, .left = extraW / 3, .mid = extraW - extraW / 3, .w = st->slotW + extraW, .h = st->slotH };
+    return a;
+}
+
+// The cards on the canvas, over its backdrop, or only the backdrop if `cards` is false. selected: which card, -1 none.
+static bool draw_cards(struct pd_canvas* c, const struct pd_game* g, const struct pd_party_art* art, const struct window_at* at,
+                       const struct card_scale* k, const struct pd_snapshot* s, int selected, bool cards) {
+    static uint32_t px[PD_UI_WIDTH * PD_UI_HEIGHT];
+    struct pd_canvas screen;
+    bool up = k->num != k->den;
+    int w = (c->w * k->den + k->num - 1) / k->num + 1, h = (c->h * k->den + k->num - 1) / k->num + 1;
+    pd_canvas_init(&screen, w, h, px);
+    if (up && !pd_party_screen(&screen, g)) return false;
+    struct art_geometry a = card_geometry(art->style, k->extraW);
+    for (int i = 0; cards && i < PD_PARTY_SIZE; i++) {
+        const struct pd_mon* m = i < s->partyCount ? &s->party[i] : NULL;
+        art_slot_at(up ? &screen : c, g, art, &a, at[i].x, at[i].y, m, m && i == selected);
+    }
+    if (up) screen_up(c, px, w, h, k);
+    return true;
+}
+
+// A card's rectangle on the canvas.
+static void card_rect(const struct pd_party_style* st, const struct window_at* at, const struct card_scale* k, int* x, int* y, int* w, int* h) {
+    *x = at->x * k->num / k->den;
+    *y = at->y * k->num / k->den;
+    *w = (st->visibleW + k->extraW) * k->num / k->den;
+    *h = st->visibleH * k->num / k->den;
+}
+
 static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, int x, int y, int w,
                        int h, const struct pd_mon* m, int slot, bool selected) {
+    const struct pd_party_art* art = pd_party_art_for(g);
+    if (art) {
+        art_slot(ui, c, g, art, x, y, w, h, m, slot, selected);
+        return;
+    }
     struct slot_geometry geo = geometry(w, h);
     int u = geo.u;
     if (!m) {
@@ -498,6 +951,29 @@ void ui_item_grid(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     int x0 = MARGIN, y0 = CONTENT_Y - 2, w = c->w - 2 * MARGIN, h = c->h - y0 - 1;
     int rows = 3;
     static uint32_t before[PD_UI_WIDTH * PD_UI_HEIGHT];
+    const struct pd_party_art* art = pd_party_art_for(g);
+    struct window_at at[PD_PARTY_SIZE];
+    struct card_scale k;
+    if (art && card_grid(art->style, c, at, &k)) {
+        // The cards; a Pokémon the item can't go on fades into the backdrop.
+        static uint32_t empty[PD_UI_WIDTH * PD_UI_HEIGHT];
+        memcpy(empty, c->px, (size_t) c->w * c->h * 4);
+        struct pd_canvas back;
+        pd_canvas_init(&back, c->w, c->h, empty);
+        if (draw_cards(&back, g, art, at, &k, s, -1, false) && draw_cards(c, g, art, at, &k, s, -1, true)) {
+            for (int i = 0; i < s->partyCount && i < PD_PARTY_SIZE; i++) {
+                int x, y, cw, ch;
+                card_rect(art->style, &at[i], &k, &x, &y, &cw, &ch);
+                if (ui->itemSlots[i].ok) {
+                    ui_add_hit(ui, x, y, cw, ch, HIT_ITEM_SLOT + i);
+                    continue;
+                }
+                for (int yy = 0; yy < ch; yy++) memcpy(before + yy * cw, empty + (y + yy) * c->w + x, (size_t) cw * 4);
+                ui_fade_rect(c, before, x, y, cw, ch, 110);
+            }
+            return;
+        }
+    }
     for (int i = 0; i < PD_PARTY_SIZE; i++) {
         int col = i % 2, row = i / 2;
         int x = x0 + w * col / 2, y = y0 + h * row / rows;
@@ -532,6 +1008,20 @@ void ui_party_grid(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* 
     if (selected < 0) selected = 0;
     for (int i = 0; i < PD_PARTY_SIZE; i++) {
         if (ui->focusId == HIT_SLOT + i || ui->pressedId == HIT_SLOT + i) selected = i;
+    }
+    const struct pd_party_art* art = pd_party_art_for(g);
+    struct window_at at[PD_PARTY_SIZE];
+    struct card_scale k;
+    if (art && card_grid(art->style, c, at, &k) && draw_cards(c, g, art, at, &k, s, selected, true)) {
+        for (int i = 0; i < s->partyCount && i < PD_PARTY_SIZE; i++) {
+            int x, y, cw, ch;
+            card_rect(art->style, &at[i], &k, &x, &y, &cw, &ch);
+            ui_add_hit(ui, x, y, cw, ch, HIT_SLOT + i);
+            // On the card's corner: the name is right under where it sits on a stretched slot.
+            if (i == best) slot_tag(c, x + 6, y - 8, cw, "BEST", 0xE8B830);
+            else if (out >> i & 1) slot_tag(c, x + 6, y - 8, cw, "OUT", PD_MUTED);
+        }
+        return;
     }
     for (int i = 0; i < PD_PARTY_SIZE; i++) {
         int col = i % cols, row = i / cols;
