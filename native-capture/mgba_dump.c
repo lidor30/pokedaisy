@@ -750,29 +750,35 @@ static bool gb_far(struct mCore* core, uint8_t bank, uint16_t addr, uint8_t a, u
 
 // Gen1LoopWatch's state: Yellow's wChannelCommandPointers, ReturnAddresses (CHAN1-4),
 // SoundIDs, NoteDelayCounters, LoopCounters.
-static void gb_music_state(struct mCore* core, uint8_t* out, bool crystal) {
+// gen2: 0 = Gen 1, 1 = Crystal (and Crystal Clear), 2 = Gold / Silver, 3 = Polished Crystal.
+static void gb_music_state(struct mCore* core, uint8_t* out, int gen2) {
     static const struct { uint16_t a; int n; } R[] = {{0xC006, 8}, {0xC016, 8}, {0xC026, 4}, {0xC0B6, 4}, {0xC0BE, 4}};
-    // Crystal's channel structs (wChannel1-4, 0x32 bytes from C101): Flags1, MusicAddress + LastMusicAddress,
-    // NoteDuration, LoopCount - Gen2Music's loop state.
+    // Crystal's channel structs (wChannel1-4, 0x32 bytes from C101; Gold's from C001): Flags1, MusicAddress +
+    // LastMusicAddress, NoteDuration, LoopCount - Gen2Music's loop state. Polished Crystal's: 0x24 bytes from CB7F.
     static const struct { uint16_t a; int n; } C[] = {{3, 1}, {6, 4}, {0x15, 1}, {0x18, 1}};
+    static const struct { uint16_t a; int n; } P[] = {{7, 1}, {3, 4}, {0x12, 1}, {0x14, 1}};
     int k = 0;
-    if (crystal) {
+    if (gen2) {
+        uint16_t base = gen2 == 3 ? 0xCB7F : gen2 == 2 ? 0xC001 : 0xC101;
+        int stride = gen2 == 3 ? 0x24 : 0x32;
         for (int ch = 0; ch < 4; ch++)
-            for (int r = 0; r < 4; r++)
-                for (int i = 0; i < C[r].n; i++) out[k++] = core->busRead8(core, (uint16_t) (0xC101 + 0x32 * ch + C[r].a + i));
+            for (int r = 0; r < 4; r++) {
+                int off = gen2 == 3 ? P[r].a : C[r].a, len = gen2 == 3 ? P[r].n : C[r].n;
+                for (int i = 0; i < len; i++) out[k++] = core->busRead8(core, (uint16_t) (base + stride * ch + off + i));
+            }
         return;
     }
     for (int r = 0; r < 5; r++) for (int i = 0; i < R[r].n; i++) out[k++] = core->busRead8(core, R[r].a + i);
 }
 
-static void gb_loop(struct mCore* core, int frames, bool crystal) {
+static void gb_loop(struct mCore* core, int frames, int gen2) {
     enum { W = 28 };
     uint8_t* states = malloc((size_t) frames * W);
     int still = 0;
     for (int f = 0; f < frames; f++) {
         core->runFrame(core);
         uint8_t* st = states + (size_t) f * W;
-        gb_music_state(core, st, crystal);
+        gb_music_state(core, st, gen2);
         if (f > 0 && !memcmp(st, st - W, W)) {
             if (++still >= 90) { printf("gbloop: still from frame %d - ended\n", f - 90); free(states); return; }
         } else still = 0;
@@ -1638,7 +1644,7 @@ int main(int argc, char** argv) {
         } else if (!strcmp(cmd, "gbloop")) {
             char what[16] = {0};
             sscanf(line, "%*s %d %15s", &n, what);
-            gb_loop(core, n, !strcmp(what, "crystal"));
+            gb_loop(core, n, !strcmp(what, "crystal") ? 1 : !strcmp(what, "gold") ? 2 : !strcmp(what, "polished") ? 3 : 0);
         } else if (!strcmp(cmd, "peek32")) {
             char a[64] = {0};
             sscanf(line, "%*s %63s", a);

@@ -501,7 +501,8 @@ int pk_wide_gb_last_torn(void) { return gbLastPalTorn; }
 
 // --- objects -------------------------------------------------------------------------------------------
 
-struct GbObj { int x, y, tile, attr, under; };   // screen pixels; under: the lower half hides in grass
+// screen pixels; under: the lower half hides in grass; over: drawn over the game's own picture too (gbObjsOffScreen)
+struct GbObj { int x, y, tile, attr, under; bool over; };
 
 #define GB_MAX_OBJS 104
 static struct GbObj gbObjs[GB_MAX_OBJS];
@@ -570,6 +571,8 @@ static void gbAddStanding(int sx, int sy, int face, int base, int attr, int lowA
     }
 }
 
+#define GB_EDGE_STEP 20   // a step (16 px) from the edge, and the few frames OAM is behind RAM once it's there
+
 /** Every NPC OAM doesn't show, standing where it stands ((ox, oy) is the screen's world pixel): the ones the game hides
  * for being off screen, and one stepping on or off it while OAM, a frame behind RAM, doesn't have it yet. Going by the
  * image index alone ($FF = hidden) made such an NPC vanish for two frames at every edge it crossed: a flicker. */
@@ -592,7 +595,14 @@ static void gbObjsOffScreen(const struct GbSnap* s, int ox, int oy) {
         int slot = b[0xE] - 1;
         int face = (a[9] >> 2) & 3, base = slot * 12;
         if (slot >= 10) { face = 0; base = slot == 11 ? 0x7C : 120; }   // one-frame sprites (item balls, boulders)
+        int first = gbNObjs;
         gbAddStanding(sx0, sy0, face, base, 0, (b[7] & 0x80) ? 0x80 : 0);
+        // Gen 1 shows an NPC only once it stands a tile inside the screen: for the step that brings it in, the game's
+        // picture has no NPC, and one drawn in the strip alone was cut at the old edge, then gone until the game drew it
+        // (GitHub #385). So one within a step of the edge goes over the picture too - never further in, where a sprite
+        // the game left out is the game's business (FLY's animation clears them).
+        if (sx0 >= GBW - GB_EDGE_STEP || sx0 <= GB_EDGE_STEP - 16 || sy0 >= GBH - GB_EDGE_STEP || sy0 <= GB_EDGE_STEP - 16)
+            for (int k = first; k < gbNObjs; k++) gbObjs[k].over = true;
     }
 }
 
@@ -706,6 +716,10 @@ static uint32_t gbRaw[GB_BUF];       // the last scene that checked out, for the
 static uint8_t gbBgIdx[GB_BUF];      // its BG colour index per pixel (| 0x80: the BG tile has priority), for objects
 static uint8_t gbObjMask[GB_BUF];    // an object already took this pixel
 static struct PkWideView gbRawView;
+static uint32_t gbOver[GB_MAX_OBJS * 64];   // gbRaw's pixels (an `over` object's) that go over the game's own picture
+static int gbNOver;
+
+static inline bool gbOnFrame(int x, int y) { return x >= 0 && x < GBW && y >= 0 && y < GBH; }
 
 /** The world from screen pixel (x0, y0) for w x h into dst (stride `stride`), then the objects over it. With
  * `screen` (the middle, for the headless check), the screen's own font tiles go over the world, as the PPU draws them:
@@ -777,6 +791,7 @@ static void gbDraw(const struct GbSnap* s, int ox, int oy, int x0, int y0, int w
                 bool behind = (o->attr & 0x80) || (gbCgb && (bg & 0x80));
                 if (behind && (bg & 3) && (!gbCgb || (gbLcdc & 0x01))) continue;
                 dst[j * stride + i] = gbObjColor((uint8_t) o->attr, idx, alpha);
+                if (o->over && !screen && gbOnFrame(x0 + i, y0 + j)) gbOver[gbNOver++] = (uint32_t) (j * stride + i);
             }
         }
     }
@@ -904,7 +919,6 @@ int pk_wide_gb_wants_close(void) { return gbLastClose; }
 int pk_wide_gb_last_mode(void) { return gbLastMode; }
 int pk_wide_gb_last_score(void) { return gbLastScore; }
 
-static inline bool gbOnFrame(int x, int y) { return x >= 0 && x < GBW && y >= 0 && y < GBH; }
 
 int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView v, uint32_t* centre) {
     if (!core || core->platform(core) != mPLATFORM_GB || !gbCfg) {
@@ -1055,6 +1069,7 @@ int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, st
         gbObjsFromOam();
         if (gbGen == 2) gbObjsOffScreenCrystal(s, ox, oy);
         else gbObjsOffScreen(s, ox, oy);
+        gbNOver = 0;
         gbDraw(s, ox, oy, v.x, v.y, v.w, v.h, gbRaw, v.w, alpha, false);
         gbRawView = v;
         if (centre) {
@@ -1091,6 +1106,7 @@ int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, st
             row[i] = m >= 256 ? scene : gbLerp(fill, scene, m);
         }
     }
+    if (valid && gbLastScene == PK_WIDE_SCENE_FIELD) for (int k = 0; k < gbNOver; k++) out[gbOver[k]] = gbRaw[gbOver[k]];
     gbPrev = cur;
     return gbMix;
 }

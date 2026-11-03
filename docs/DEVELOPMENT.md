@@ -519,7 +519,8 @@ same place (their .sym files agree on all of WRAM / HRAM). What differs from Cry
   this cart's PACK listing "?" items (RAM identical), so the save and fixtures come from single runs fed commands live. Gold's
   hROMBank is FF9F (`gbfar` writes Crystal's FF9D) and its FarCall takes a = bank, hl = address (`gbinject`'s trampoline is
   Crystal's): `gold_trainer`'s README has the trainer battle's workaround (a 15-byte trampoline poked over it).
-- **Not done**: GUIDE, STEADY FF music (Crystal's engine: a `GEN2_MUSIC_*` row with Gold / Silver's addresses), the
+- **STEADY FF music** (GitHub #390): Crystal's engine at wChannel1 C001, PlayMusic 0x3D98, the park 0x29A3 (`goldSilverMusic`; `gbloop N gold`).
+- **Not done**: GUIDE, the
   TRAINER CARD.
 
 **Polished Crystal** (Game Boy Color; Rangi42's open-source hack of Crystal; `GameKind.POLISHED_CRYSTAL`, `GEN2_POLISHED_CRYSTAL` /
@@ -615,7 +616,8 @@ no symbol file (3% of bank 0 is where Crystal has it), so:
   with the species' two icon colours (02:622C, 8 bytes each) over black; the town maps in the default RED POKéGEAR's
   colours (the player picks the gear's and the PACK's colours at the start). No player head: the character is the player's
   own model and colours.
-- **Not done**: GUIDE, the POKéMON switch, the CARD, STEADY FF music (Crystal's tables at its addresses), its own trainer data, and its features
+- **STEADY FF music** (GitHub #390): Crystal's engine and channels, PlayMusic 0x3CDC (a wrapper that can swap the song for a map's), the park 0x28C8 (`crystalClearMusic`).
+- **Not done**: GUIDE, the POKéMON switch, the CARD, its own trainer data, and its features
   (the Nuzlocke mode, following Pokémon, the character's own look).
 
 **Pokémon Prism** (Game Boy Color; RainbowDevs' Crystal-engine hack with its own regions, Naljo and Rijon, plus parts
@@ -2021,6 +2023,9 @@ ZOOM's steps are whole Game Boy pixels: 7.5 -> 6 / 5 / 4 / 3 on 1080 rows). Addr
   NPCs Gen 1 hides for being off screen (image index $FF: they freeze there), standing at `32 + 16 * MAPX` /
   `28 + 16 * MAPY` with the standing frames of `SpriteFacingAndAnimationTable` - unless `IsObjectHidden` would hide them
   (`wToggleableObjectList` / `Flags`). Checked: those positions equal the on-screen NPCs' own (C1x4 / C1x6), walking too.
+  The game shows an NPC only once it stands a tile inside the screen, so for the step that brings it in its picture has
+  none: on the plain field, a hidden NPC within `GB_EDGE_STEP` of the edge also goes over the picture (`GbObj.over`, GitHub
+  #385), or it was cut at the old edge and vanished until the game drew it. `widecheck` still compares the game's picture alone.
 - **Scenes**: FIELD; TEXT while `wFontLoaded` bit 0 (any text box, the START menu); BATTLE_START from `wIsInBattle`
   while the field still matches (a wild battle sets it before its flashes and wipe); OFF in the battle; MENU for a menu
   screen (party, Pokédex: too few map tiles); FADE on a white / black frame, and for 30 frames after the field on a

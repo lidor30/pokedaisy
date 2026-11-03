@@ -604,7 +604,8 @@ miss a one-frame press outside its menus (hold 3 frames headless); the battle me
 Battle controls ride the Gen 1 path (`battleGen1Menus`): `readGen2BattleInput` reads `_2DMenu`'s cursor and checks the ▶.
 STEADY FF music runs on Gen1MusicRenderer with Crystal's tables (`GEN2_MUSIC_CRYSTAL*`: the song is the playing channel's
 MusicID, never the stale `wMusicID`; each recorded after PlayMusic(0), since `_PlayMusic` leaves unused channels playing the
-last song). No GUIDE, CARD or trainer-battle fixture yet. The POKéMON switch: see the switch
+last song). Crystal Clear, Gold / Silver and Polished Crystal have tables too (GitHub #390; `crystalClearMusic`, `goldSilverMusic`,
+`polishedCrystalMusic`: Polished's channel struct is its own, `musicIdBack` 7); Prism's sound wrappers match none of them, so it stays SPED-UP. No GUIDE, CARD or trainer-battle fixture yet. The POKéMON switch: see the switch
 paragraph's Game Boy part (`GbPartySwitch`).
 **PC anywhere, FLY and WILD ENCOUNTERS on the Game Boy (2026-10-18, Red, Blue, Yellow in five languages, Crystal)**:
 `GbField.kt`, each the game's own way in (no GBA calls exist there; Gen 1 = `GbField.Gen1`, a config per cart): Crystal
@@ -1256,7 +1257,7 @@ while a Game Boy game is configured (same CRC lookup; frame 160x144: `pk_wide_fr
 from the overworld block array + the ROM blockset + VRAM + the renderer's Color palettes, connected maps from the ROM; the screen
 found by matching the BG map (or the full-screen window a Gen 1 text box uses) against that world, never from RAM alone;
 off-screen NPCs drawn from RAM (Gen 1's wSpriteStateData, Crystal's object structs and map objects; Crystal's connected maps' people from
-their ROM object events). Crystal (`gen` 2 rows):
+their ROM object events). Gen 1 shows an NPC only a tile inside the screen, so one within a step of the edge goes over the game's picture too (`GbObj.over`, plain field only, GitHub #385; `widecheck` still compares the picture alone). Crystal (`gen` 2 rows):
 colours from the tileset's palette map, D000-DFFF read from WRAM bank 1, its battle transition (`hVBlank` 1) as the battle's
 start. Same rule as the GBA: `widecheck` must find the middle exact (frames the game wrote VRAM or a palette in mid-frame aren't
 counted: `pk_wide_gb_last_torn`). Battles / menus get plain bars in the screen's background colour by bands of rows (the user's call: white
