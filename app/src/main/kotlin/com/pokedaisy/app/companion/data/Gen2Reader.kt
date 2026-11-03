@@ -115,6 +115,39 @@ val GEN2_CRYSTAL = Gen2Config(
 )
 
 /**
+ * Crystal Legacy v1.3.1 (cRz-Shadows/Pokemon_Crystal_Legacy, a pret/pokecrystal fork: `make pokecrystal.gbc` with rgbds 0.5.2 at
+ * tag V1.3.1 is the patched cart byte for byte, from either retail revision's patch, so its pokecrystal.sym gives every
+ * address). Crystal's structs and engine: most of WRAM bank 1 sits 11 bytes later, ITEMS holds 84, and BALLS and the PC's
+ * items moved into padding. Its TM ids start at 0xC1 (ITEM_C3 / ITEM_DC moved ahead of them). Checked headless on the retail
+ * save rewritten by scripts/convert_save_legacy.py (the `crystal_legacy*` fixtures).
+ */
+val GEN2_CRYSTAL_LEGACY = GEN2_CRYSTAL.copy(
+    partyCount = wramx(1, 0xDCE2),
+    partyMons = wramx(1, 0xDCEA),
+    numItems = wramx(1, 0xD89D),
+    numKeyItems = wramx(1, 0xD947),
+    numBalls = wramx(1, 0xD9CC),
+    tmsHms = wramx(1, 0xD864),
+    money = wramx(1, 0xD859),
+    mapGroup = wramx(1, 0xDCC0),
+    backupMapGroup = wramx(1, 0xDCB8),
+    battleMode = wramx(1, 0xD238),
+    enemyMon = wramx(1, 0xD211),
+    otPartyCount = wramx(1, 0xD28B),
+    otPartyMons = wramx(1, 0xD293),
+    playerGender = wramx(1, 0xD47D),
+    gameTime = wramx(1, 0xD4CF),
+    dexCaught = wramx(1, 0xDEA4),
+    dexSeen = wramx(1, 0xDEC4),
+    moveMenuType = wramx(1, 0xD240),
+    partyMenuAction = wramx(1, 0xD14C),
+    curBattleMon = wramx(1, 0xD0DF),
+    tmItems = gen2TmItemsCrystalLegacy,
+    pokedex = POKEDEX_CRYSTAL_LEGACY,
+    itemsMax = 84,
+)
+
+/**
  * Retail English Gold and Silver (USA, Europe): pret/pokegold's symbols (its gold and silver builds are byte-identical to
  * both carts), checked on headless captures of a new game played in each (the `gold*` / `silver*` fixtures). The two
  * keep every RAM address here at the same place; their WRAM is laid out apart from Crystal's (every address its own,
@@ -582,6 +615,7 @@ fun readGen2Telemetry(r: MemoryReader, cfg: Gen2Config): Telemetry {
         progress = when {
             cfg.polished -> runCatching { readPolishedProgress(r) }.getOrNull()
             cfg === GEN2_CRYSTAL -> runCatching { readCrystalProgress(r) }.getOrNull()
+            cfg === GEN2_CRYSTAL_LEGACY -> runCatching { readCrystalProgress(r, CRYSTAL_LEGACY_GUIDE_RAM) }.getOrNull()
             else -> null
         },
     )
@@ -592,7 +626,7 @@ val GameKind?.isGameBoyGame: Boolean get() = isGen1 || isGen2
 
 /** Crystal or a hack of it (Crystal Clear, Prism, Polished Crystal). */
 val GameKind?.isCrystalFamily: Boolean get() = this == GameKind.CRYSTAL || this == GameKind.CRYSTAL_CLEAR || this == GameKind.PRISM ||
-    this == GameKind.POLISHED_CRYSTAL
+    this == GameKind.POLISHED_CRYSTAL || this == GameKind.CRYSTAL_LEGACY
 
 /** Gold, Silver: retail Gen 2 before Crystal, one RAM layout and one look ([GEN2_GOLD]). */
 val GameKind?.isGoldSilver: Boolean get() = this == GameKind.GOLD || this == GameKind.SILVER

@@ -27,7 +27,7 @@ package com.pokedaisy.app.companion.data
 // ROM-extracted tables (*Hns.kt / *Lazarus.kt, scripts/gen_expansion_tables.py).
 enum class GameKind { FIRERED, EMERALD, UNBOUND, GAIA, RADICAL_RED, ODYSSEY, HEART_AND_SOUL, LAZARUS, ROWE, EMERALD_ROGUE, AMETHYST, EMERALD_SEAGLASS, CELIA, TMT2, SOULGOLD, YELLOW, GLAZED, IMPERIUM, QUETZAL, ORANGE_ISLANDS, RECHARGED_YELLOW, MARIOMON, SWORD_SHIELD, GS_CHRONICLES, CRYSTAL, CRYSTAL_CLEAR, PRISM,
     GOLD, SILVER, RED, BLUE, ELITE_REDUX, POLISHED_CRYSTAL, PLATINUM, HEARTGOLD, SOULSILVER, TEAM_ROCKET, BLACK, WHITE, BLACK2, WHITE2,
-    WISHES, PURE_RED, PURE_BLUE, DREAMSTONE, MONOMYTH }
+    WISHES, PURE_RED, PURE_BLUE, DREAMSTONE, MONOMYTH, YELLOW_LEGACY, CRYSTAL_LEGACY }
 
 @Volatile
 var activeGame: GameKind = GameKind.FIRERED
@@ -76,11 +76,15 @@ private inline val redBlue get() = activeGame.isRedBlue
 // PureRed / PureBlue (Vortyne/pureRGB): Gen 1's reader, tables of their own (gen_gen1_tables.py purered: its types, moves,
 // items, places). Checked before [yellow], which they also are.
 private inline val pureRgb get() = activeGame.isPureRgb
+// Yellow Legacy: Yellow's species, types, items and places (gen_gen1_tables.py checks them), its own moves and chart.
+private inline val yellowLegacy get() = activeGame == GameKind.YELLOW_LEGACY
 // Pokémon Crystal (Game Boy Color): Gen 2's own tables (gen_gen2_tables.py), keyed by National Dex number. Crystal
 // Clear kept its species, moves and types (the generator checks them against Crystal's); its items and places are its own.
 // Gold and Silver kept the same species, moves and types too; their items and landmarks are their own (one table for both).
 private inline val crystal get() = activeGame.isGen2
 private inline val crystalClear get() = activeGame == GameKind.CRYSTAL_CLEAR
+// Crystal Legacy: Crystal's species, types, chart and places (gen_gen2_tables.py checks them), its own moves and items.
+private inline val crystalLegacy get() = activeGame == GameKind.CRYSTAL_LEGACY
 private inline val goldSilver get() = activeGame.isGoldSilver
 // Pokémon Prism (a Crystal-engine hack, its own Naljo / Rijon): every table its own, keyed by its own species ids
 // (not Dex numbers), read from the ROM by gen_gen2_tables.py prism. Checked before [crystal], which it also is.
@@ -328,9 +332,11 @@ val activeMoveData: Map<Int, MoveInfo> get() = localText?.moveData ?: when {
     origin -> OriginHeartGold.data?.moveData ?: NdsArt.names?.movesMerged ?: moveDataPlatinum
     gen4 -> NdsArt.names?.movesMerged ?: moveDataPlatinum
     pureRgb -> moveDataPureRgb
+    yellowLegacy -> moveDataYellowLegacy
     yellow -> moveDataYellow
     polished -> if (faithful) moveDataPolishedCrystalFaithful else moveDataPolishedCrystal
     prism -> moveDataPrism
+    crystalLegacy -> moveDataCrystalLegacy
     crystal -> moveDataCrystal
     unbound -> moveDataUnbound
     celia -> moveDataCelia
@@ -370,6 +376,7 @@ val activeItemNames: Map<Int, String> get() = localText?.items ?: when {
     prism -> itemNamesPrism
     crystalClear -> itemNamesCrystalClear
     goldSilver -> itemNamesGoldSilver
+    crystalLegacy -> itemNamesCrystalLegacy
     crystal -> itemNamesCrystal
     unbound -> itemNamesUnbound
     amethyst -> if (amethystV141) itemNamesAmethystV141 else itemNamesAmethyst
@@ -442,6 +449,7 @@ val activeTypeEffectiveness: Map<Int, Int> get() = when {
     // Origin HeartGold: Gen 6's chart, Fairy as 9, read from its cart.
     origin -> OriginHeartGold.data?.typeChart ?: typeEffectivenessGlazed
     pureRgb -> typeEffectivenessPureRgb
+    yellowLegacy -> typeEffectivenessYellowLegacy
     yellow -> typeEffectivenessYellow
     polished -> typeEffectivenessPolishedCrystal
     prism -> typeEffectivenessPrism
@@ -472,6 +480,7 @@ val activeTypeEffectiveness: Map<Int, Int> get() = when {
 val activeTypeNames: Map<Int, String> get() = when {
     origin -> OriginHeartGold.typeNames
     pureRgb -> typeNamesPureRgb
+    yellowLegacy -> typeNamesYellowLegacy
     yellow -> typeNamesYellow
     polished -> typeNamesPolishedCrystal
     prism -> typeNamesPrism
@@ -623,11 +632,13 @@ val activeRegionMapImages: Array<String> get() = when {
     redBlue -> arrayOf(Gen1Art.RED_BLUE_TOWN_MAP_NAME)   // Red's / Blue's town map, in their own colours (Gen1Art)
     pureRgb -> arrayOf(Gen1Art.pureTownMapName(activeGame))   // PureRed's / PureBlue's, in each one's colours (Gen1Art)
     gen4 -> emptyArray()   // Sinnoh's map comes from RegionMapModel's own; Johto / Kanto's aren't read yet
+    yellowLegacy -> arrayOf(Gen1Art.YELLOW_LEGACY_TOWN_MAP_NAME)
     yellow -> arrayOf("yellow")   // its town map, rebuilt from the ROM (Gen1Art)
     polished -> Gen2Art.POLISHED_TOWN_MAPS   // Johto, Kanto and the Orange Islands, from the ROM
     prism -> Gen2Art.PRISM_TOWN_MAPS   // Naljo, Rijon, Johto, Kanto, Sevii, Tunod
     crystalClear -> Gen2Art.CRYSTAL_CLEAR_TOWN_MAPS
     goldSilver -> Gen2Art.GOLD_SILVER_TOWN_MAPS
+    crystalLegacy -> Gen2Art.CRYSTAL_LEGACY_TOWN_MAPS
     crystal -> Gen2Art.CRYSTAL_TOWN_MAPS   // the POKéGEAR's Johto and Kanto maps, rebuilt from the ROM (Gen2Art)
     unbound -> regionMapImagesUnbound
     seaglass -> regionMapImagesSeaglass
@@ -667,6 +678,7 @@ val activeMonSpriteDir: String get() = when {
     unbound -> "pokemon-unbound"
     redBlue -> Gen1Art.RED_BLUE_ICONS
     pureRgb -> Gen1Art.pureIcons(activeGame)
+    yellowLegacy -> Gen1Art.YELLOW_LEGACY_ICONS
     yellow -> Gen1Art.YELLOW_ICONS   // its own party icons, rebuilt from the ROM
     polished -> Gen2Art.POLISHED_ICONS
     black2 -> NdsArt.BLACK2_ICONS
@@ -677,6 +689,7 @@ val activeMonSpriteDir: String get() = when {
     prism -> Gen2Art.PRISM_ICONS
     crystalClear -> Gen2Art.CRYSTAL_CLEAR_ICONS
     goldSilver -> Gen2Art.GOLD_SILVER_ICONS
+    crystalLegacy -> Gen2Art.CRYSTAL_LEGACY_ICONS
     crystal -> Gen2Art.CRYSTAL_ICONS
     else -> "pokemon"
 }
@@ -741,4 +754,6 @@ fun GameKind.displayName(): String = when (this) {
     GameKind.WHITE2 -> "Pokémon White 2"
     GameKind.PURE_RED -> "Pokémon PureRed"
     GameKind.PURE_BLUE -> "Pokémon PureBlue"
+    GameKind.YELLOW_LEGACY -> "Pokémon Yellow Legacy"
+    GameKind.CRYSTAL_LEGACY -> "Pokémon Crystal Legacy"
 }

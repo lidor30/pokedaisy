@@ -42,6 +42,8 @@ class Gen2DexTables(
     /** Gold / Silver's GetDexEntryPointer: the page's bank is this one + (species - 1) / 64, no [dexEntryBanks] table
      * (-1: Crystal's table). */
     val dexEntryFirstBank: Int = -1,
+    /** Crystal Legacy: [dexEntryPointers] holds a bank and an address per species, no [dexEntryBanks] table. */
+    val dexEntryFar: Boolean = false,
     /** Gold / Silver's FixPicBank: a table of {stored bank, real bank} pairs, 0xFF-terminated - a bank not listed is
      * the real one (null: Crystal's [picsBanks] index). */
     val picBankFixes: Pair<Int, Int>? = null,
@@ -112,6 +114,23 @@ val GEN2_DEX_CRYSTAL = Gen2DexTables(
     tmItems = gen2TmItemsCrystal,
 )
 
+/** Crystal Legacy v1.3.1 (its pokecrystal.sym): its own base data, pages, palettes and text; TM01 is item 0xC1. */
+val GEN2_DEX_CRYSTAL_LEGACY = Gen2DexTables(
+    baseData = 0x14 to 0x5449,
+    dexEntryPointers = 0x11 to 0x43CD,
+    dexEntryBanks = 0x11 to 0x43CD,   // unused: [dexEntryFar]
+    picPointers = 0x48 to 0x4000,
+    unownPicPointers = 0x49 to 0x4000,
+    picsBanks = 0x14 to 0x51F9,
+    palettes = 0x02 to 0x6C83,
+    itemDescriptions = 0x72 to 0x498C,
+    tmHmMoves = 0x04 to 0x567A,
+    moveDescriptions = 0x0B to 0x4E9A,
+    firstTm = 0xC1,
+    tmItems = gen2TmItemsCrystalLegacy,
+    dexEntryFar = true,
+)
+
 /**
  * Gold and Silver (pret/pokegold): every table at the same address in both versions; the pages and front pics they point
  * at differ (each version's own dex text), so each reads its own ROM. The page's bank is computed (64 species a bank from
@@ -140,6 +159,8 @@ val POKEDEX_CRYSTAL = PokedexTables(
     speciesCount = 252, nationalCount = 251, regionalCount = 251, regionName = null,
     gen2 = GEN2_DEX_CRYSTAL,
 )
+
+val POKEDEX_CRYSTAL_LEGACY = POKEDEX_CRYSTAL.copy(gen2 = GEN2_DEX_CRYSTAL_LEGACY)
 
 /** Gold's and Silver's: the same tables over each version's own pages (two objects, so a dex cache never crosses them). */
 val POKEDEX_GOLD = POKEDEX_CRYSTAL.copy(gen2 = GEN2_DEX_GOLD_SILVER)
@@ -613,9 +634,11 @@ object Gen2Dex {
         val species = t.speciesOf(dex).takeIf { it > 0 } ?: return null
         t.polished?.let { return polishedEntry(t, it, dex, species) }
         val (pb, pa) = t.dexEntryPointers
-        val bank = if (t.dexEntryFirstBank >= 0) t.dexEntryFirstBank + ((species - 1) shr 6)
+        val far = off(pb, pa) + 3 * (species - 1)
+        val bank = if (t.dexEntryFar) u8(rom, far)
+            else if (t.dexEntryFirstBank >= 0) t.dexEntryFirstBank + ((species - 1) shr 6)
             else u8(rom, off(t.dexEntryBanks.first, t.dexEntryBanks.second) + ((species - 1) shr 6))
-        val ptr = u16(rom, off(pb, pa) + 2 * (species - 1))
+        val ptr = if (t.dexEntryFar) u16(rom, far + 1) else u16(rom, off(pb, pa) + 2 * (species - 1))
         val s = off(t.baseData.first, t.baseData.second) + t.baseDataSize * (species - 1)
         val category: String
         val description: String

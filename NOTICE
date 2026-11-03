@@ -93,8 +93,8 @@ The app shows every license below in full under Settings > LICENSES.
 - Some decoders and layouts follow the community decompilations of the games
   (pret's pokered / pokeyellow / pokegold / pokecrystal / pokefirered /
   pokeemerald / pokeruby / pokeplatinum / pokeheartgold, pokeemerald-expansion,
-  Rangi42's polishedcrystal and Vortyne's pureRGB), which publish no license of
-  their own: the Gen 1 picture decompressor (and PureRGB's icon and Pokedex
+  Rangi42's polishedcrystal, Vortyne's pureRGB and cRz-Shadows' Pokemon_Yellow_Legacy
+  and Pokemon_Crystal_Legacy), which publish no license of their own: the Gen 1 picture decompressor (and PureRGB's icon and Pokedex
   layouts), the Gen 2 LZ decompressor (with Polished
   Crystal's variant and its text compression), expansion's "smol"
   decompressor, the DS games' text, archive and picture decoding and the

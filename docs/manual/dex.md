@@ -62,8 +62,8 @@ That also means what you see depends on the game:
 
 - The **original games** (FireRed, LeafGreen, Ruby, Sapphire, Emerald) have every section.
 - **Hacks** vary. Most get the full entry; some don't have `EVOLVE`, `AREA` or the TM half of `MOVES` yet. A hack with only one dex has no regional / national button.
-- **Pokémon Red, Blue and Yellow** (and PureRed and PureBlue) show their five stats with one `SPECIAL`, and no abilities, egg groups or genders, since that generation had none.
-- **Pokémon Gold, Silver, Crystal** and **Crystal Clear** show all 251 in number order, with six stats and the gender split, but no abilities or egg groups on the page, and no `EVOLVE`, `AREA` or `MOVES` yet.
+- **Pokémon Red, Blue and Yellow** (and PureRed, PureBlue and Yellow Legacy) show their five stats with one `SPECIAL`, and no abilities, egg groups or genders, since that generation had none.
+- **Pokémon Gold, Silver, Crystal**, **Crystal Legacy** and **Crystal Clear** show all 251 in number order, with six stats and the gender split, but no abilities or egg groups on the page, and no `EVOLVE`, `AREA` or `MOVES` yet.
 - **Polished Crystal** shows its 289 in National order, with heights and weights in meters and kilograms. A regional form shows as its species there. The page lists the abilities and the hidden ability (the faithful builds show their own), but no egg groups, and no `EVOLVE`, `AREA` or `MOVES` yet.
 - **Pokémon Prism** shows its own Pokédex: its 253 Pokémon in the game's order, numbered the way the game numbers them, with heights and weights in meters and kilograms as the game shows them by default. Like Crystal, the page has no abilities or egg groups, and no `EVOLVE`, `AREA` or `MOVES` yet.
 

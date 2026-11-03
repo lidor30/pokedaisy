@@ -8,7 +8,7 @@ keywords: [items, inventory, cube, pockets, tm, hm, reusable tm, infinite tm, te
 
 The bag tab shows everything you're carrying, pocket by pocket, as the game has it right now. It's handy for a quick count before a long cave, or for reading what an item does without digging through the game's menus.
 
-The tab's name follows the game: `BAG` in most games, `ITEM` in Red, Blue, Yellow, PureRed and PureBlue, `PACK` in Gold, Silver, Crystal, Crystal Clear and Prism, `CUBE` in Unbound, `INVENTORY` in R.O.W.E. and `POCKETS` in Super Mariomon. The HUD's bag uses the same name. The screen itself is drawn like that game's bag.
+The tab's name follows the game: `BAG` in most games, `ITEM` in Red, Blue, Yellow, Yellow Legacy, PureRed and PureBlue, `PACK` in Gold, Silver, Crystal, Crystal Legacy, Crystal Clear and Prism, `CUBE` in Unbound, `INVENTORY` in R.O.W.E. and `POCKETS` in Super Mariomon. The HUD's bag uses the same name. The screen itself is drawn like that game's bag.
 
 ## Pockets and sorting
 
@@ -26,7 +26,7 @@ Tap an item to open its description at the bottom of the screen, with the item's
 
 ![SODA SPRAY selected in the bag, its icon and description in a box along the bottom](shots/companion-bag-item.png "An item's description")
 
-Descriptions are read from your own ROM, in your game's words and language. That means a hack's changed items describe themselves correctly. If an item has no text here, the game's description couldn't be found in that ROM. In Gold, Silver, Crystal, Crystal Clear, Prism and Polished Crystal a TM shows the description of the move it teaches, as those games' own TM pocket does.
+Descriptions are read from your own ROM, in your game's words and language. That means a hack's changed items describe themselves correctly. If an item has no text here, the game's description couldn't be found in that ROM. In Gold, Silver, Crystal, Crystal Legacy, Crystal Clear, Prism and Polished Crystal a TM shows the description of the move it teaches, as those games' own TM pocket does.
 
 ## Favorites
 

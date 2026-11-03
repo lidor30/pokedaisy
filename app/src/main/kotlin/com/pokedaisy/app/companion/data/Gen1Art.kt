@@ -34,6 +34,10 @@ object Gen1Art {
     const val PURE_FONT = "gen1/pure-font.ttf"
     fun pureTownMapName(game: GameKind?): String = if (game == GameKind.PURE_BLUE) "pure_blue" else "pure_red"
     fun pureIcons(game: GameKind?): String = "gen1/${pureTownMapName(game)}/pokemon"
+    /** Yellow Legacy: its font (two tiles redrawn), icons and town map ("yellow_legacy"), Yellow's colours. */
+    const val YELLOW_LEGACY_FONT = "gen1/yellow-legacy-font.ttf"
+    const val YELLOW_LEGACY_ICONS = "gen1/yellow_legacy/pokemon"
+    const val YELLOW_LEGACY_TOWN_MAP_NAME = "yellow_legacy"
     /** Bump when what [extractTo] writes changes, so a cached ROM's art is rebuilt once. */
     private const val VERSION = 3
 
@@ -63,6 +67,9 @@ object Gen1Art {
         /** PureRGB's party icons: a sheet of 8 tiles per icon (PartyMonSprites1, 32 px wide: frame 1 on the left, frame 2
          * on the right, no mirroring), [monPartyData] a byte per Dex number from MISSINGNO. at 0 ([icons]). */
         val iconSheet: Pair<Int, Int>? = null,
+        /** Yellow Legacy's party icons: an icon of 8 tiles a species, frame 1 then frame 2 (TL, TR, BL, BR each), from [iconSheet]
+         * for ids below 0x80 and this sheet above; [monPartyData] an id per Dex number from BULBASAUR at 0. */
+        val iconSheet2: Pair<Int, Int>? = null,
     )
 
     val YELLOW = Gen1ArtTables(
@@ -164,7 +171,32 @@ object Gen1Art {
     val PURE_BLUE = pure(TelemetrySampler.PURE_BLUE_V2_7_6_SHA1, "pure_blue", 0xFFFF8484.toInt(),
         intArrayOf(0xFFFFFFFF.toInt(), 0xFF63A5FF.toInt(), 0xFF0000FF.toInt(), 0xFF000000.toInt()))
 
-    private val GAMES = listOf(YELLOW, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, BLUE, PURE_RED, PURE_BLUE)
+    /**
+     * Yellow Legacy v1.0.10 (its pokeyellow.sym; a Color cart, its screens Yellow's colours, sampled headless). Its party
+     * icons are its own, one per species ([Gen1ArtTables.iconSheet2]: MonIcons / MonIcons2, MonPartyData); its town map is
+     * redrawn, Red's sprite Yellow's bytes.
+     */
+    val YELLOW_LEGACY = Gen1ArtTables(
+        sha1 = TelemetrySampler.YELLOW_LEGACY_V1_0_10_SHA1,
+        font = 0x04 to 0x4600,
+        fontPath = YELLOW_LEGACY_FONT,
+        iconPointers = 0 to 0,
+        iconPointerCount = 0,
+        monPartyData = 0x1C to 0x59D3,
+        dexCount = 151,
+        iconsDir = YELLOW_LEGACY_ICONS,
+        iconColors = YELLOW.iconColors,
+        townMap = 0x1C to 0x522A,
+        townMapTiles = 0x04 to 0x51C8,
+        townMapPath = "regionmap/$YELLOW_LEGACY_TOWN_MAP_NAME.png",
+        townMapColors = YELLOW.townMapColors,
+        playerSprite = 0x05 to 0x4605,
+        playerPath = YELLOW_PLAYER,
+        iconSheet = 0x40 to 0x4000,
+        iconSheet2 = 0x0E to 0x64BF,
+    )
+
+    private val GAMES = listOf(YELLOW, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, BLUE, PURE_RED, PURE_BLUE, YELLOW_LEGACY)
 
     private fun off(bank: Int, addr: Int) = if (bank == 0) addr else bank * 0x4000 + (addr - 0x4000)
 
@@ -190,6 +222,7 @@ object Gen1Art {
      * 4 tiles are drawn as they are).
      */
     fun icons(rom: ByteArray, t: Gen1ArtTables): Map<Int, RomArt.Image> {
+        if (t.iconSheet2 != null) return legacyIcons(rom, t)
         t.iconSheet?.let { return pureIcons(rom, t, it) }
         val vram = HashMap<Int, ByteArray>()
         val ptrBase = off(t.iconPointers.first, t.iconPointers.second)
@@ -244,6 +277,26 @@ object Gen1Art {
             RomArt.Image(16, 32).also { img ->
                 for (frame in 0 until 2) for (y in 0 until 16) for (x in 0 until 16) {
                     val tile = icon + 16 * ((y / 8) * 4 + frame * 2 + x / 8)
+                    val lo = rom[tile + 2 * (y % 8)].toInt() shr (7 - x % 8) and 1
+                    val hi = rom[tile + 2 * (y % 8) + 1].toInt() shr (7 - x % 8) and 1
+                    val v = lo or (hi shl 1)
+                    if (v != 0) img.argb[(frame * 16 + y) * 16 + x] = t.iconColors[v - 1]
+                }
+            }
+        }
+    }
+
+    /** Yellow Legacy's icons (engine/gfx/mon_icons.asm): MonPartyData[Dex number - 1] is the icon, its 8 tiles in reading order. */
+    private fun legacyIcons(rom: ByteArray, t: Gen1ArtTables): Map<Int, RomArt.Image> {
+        val first = off(t.iconSheet!!.first, t.iconSheet.second)
+        val second = off(t.iconSheet2!!.first, t.iconSheet2.second)
+        val ids = off(t.monPartyData.first, t.monPartyData.second)
+        return (1..t.dexCount).associateWith { dex ->
+            val id = rom[ids + dex - 1].toInt() and 0xFF
+            val icon = if (id < 0x80) first + 0x80 * id else second + 0x80 * (id - 0x80)
+            RomArt.Image(16, 32).also { img ->
+                for (frame in 0 until 2) for (y in 0 until 16) for (x in 0 until 16) {
+                    val tile = icon + 16 * (frame * 4 + (y / 8) * 2 + x / 8)
                     val lo = rom[tile + 2 * (y % 8)].toInt() shr (7 - x % 8) and 1
                     val hi = rom[tile + 2 * (y % 8) + 1].toInt() shr (7 - x % 8) and 1
                     val v = lo or (hi shl 1)

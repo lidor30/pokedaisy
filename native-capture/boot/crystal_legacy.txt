@@ -1,0 +1,14 @@
+# Crystal Legacy from the retail save rewritten by scripts/convert_save_legacy.py: its title and menus want A held 8 frames.
+wait 1000
+press START
+wait 200
+hold A 8
+wait 200
+hold A 8
+wait 200
+hold A 8
+wait 200
+hold A 8
+wait 200
+hold A 8
+wait 400

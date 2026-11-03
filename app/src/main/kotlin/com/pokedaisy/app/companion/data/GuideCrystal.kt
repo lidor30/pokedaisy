@@ -20,14 +20,20 @@ internal const val CR_VAR_TIME_OF_DAY = 0x10000
 /** A Crystal RAM address as the readers address it: D000-DFFF in WRAM bank 1 ([wramx]), C000-CFFF on the bus. */
 private fun crRam(addr: Int): Long = if (addr >= 0xD000) wramx(1, addr) else addr.toLong()
 
+/** Where a Crystal-engine cart keeps what the guide reads (the generated constants). */
+class CrystalGuideRam(val eventFlags: Int, val eventBytes: Int, val timeOfDay: Int, val badges: Int, val tradeFlags: Int, val tradeBytes: Int)
+
+private val CRYSTAL_GUIDE_RAM = CrystalGuideRam(CR_EVENT_FLAGS, CR_EVENT_FLAG_BYTES, CR_TIME_OF_DAY, CR_BADGES, CR_TRADE_FLAGS, CR_TRADE_FLAG_BYTES)
+internal val CRYSTAL_LEGACY_GUIDE_RAM = CrystalGuideRam(CL_EVENT_FLAGS, CL_EVENT_FLAG_BYTES, CL_TIME_OF_DAY, CL_BADGES, CL_TRADE_FLAGS, CL_TRADE_FLAG_BYTES)
+
 /** The save's event flags, badges, trade flags and clock, as the guide reads them. */
-fun readCrystalProgress(r: MemoryReader): SaveProgress {
-    val tod = r.readCoreMemory(crRam(CR_TIME_OF_DAY), 1)
+fun readCrystalProgress(r: MemoryReader, ram: CrystalGuideRam = CRYSTAL_GUIDE_RAM): SaveProgress {
+    val tod = r.readCoreMemory(crRam(ram.timeOfDay), 1)
     return SaveProgress(
-        r.readCoreMemory(crRam(CR_EVENT_FLAGS), CR_EVENT_FLAG_BYTES), ByteArray(0),
+        r.readCoreMemory(crRam(ram.eventFlags), ram.eventBytes), ByteArray(0),
         flagBanks = listOf(
-            SaveBank(CR_BADGE_FLAG, 0, 16) to r.readCoreMemory(crRam(CR_BADGES), 2),
-            SaveBank(CR_TRADE_FLAG, 0, CR_TRADE_FLAG_BYTES * 8) to r.readCoreMemory(crRam(CR_TRADE_FLAGS), CR_TRADE_FLAG_BYTES),
+            SaveBank(CR_BADGE_FLAG, 0, 16) to r.readCoreMemory(crRam(ram.badges), 2),
+            SaveBank(CR_TRADE_FLAG, 0, ram.tradeBytes * 8) to r.readCoreMemory(crRam(ram.tradeFlags), ram.tradeBytes),
         ),
         varBanks = listOf(SaveBank(CR_VAR_TIME_OF_DAY, 0, 1) to byteArrayOf(tod[0], 0)),
     )
@@ -41,9 +47,14 @@ fun SaveProgress?.crystalTimeOfDay(): Int = this?.variable(CR_VAR_TIME_OF_DAY)?.
  * the time of day, surfing up to four levels over the slot's (ChooseWildEncounter's boost), the rods' time-of-day slots by
  * day (morning and day) or night, headbutt's common and rare trees.
  */
-object CrystalWorld : GuideWorld {
-    private val wild by lazy { Gen2WildTables(CR_WILD_RAW) }
-    private val bosses by lazy { Gen2BossTables(CR_BOSSES_RAW) }
+open class CrystalEngineWorld(
+    wildRaw: List<String>,
+    bossRaw: List<String>,
+    private val grassOdds: IntArray,
+    private val waterOdds: IntArray,
+) : GuideWorld {
+    private val wild by lazy { Gen2WildTables(wildRaw) }
+    private val bosses by lazy { Gen2BossTables(bossRaw) }
 
     /** The trainer key NEXT BOSS uses for boss [name]. */
     fun trainer(name: String): Int = bosses.trainer(name)
@@ -51,13 +62,12 @@ object CrystalWorld : GuideWorld {
     override fun encounters(group: Int, num: Int, progress: SaveProgress?): MapEncounters {
         val key = group shl 8 or num
         val tod = progress.crystalTimeOfDay()
-        val grassOdds = CR_GRASS_ODDS
         fun merge(rows: List<Triple<Int, IntRange, Double>>) = wild.merge(rows)
         fun one(s: Gen2WildTables.Slot, odds: Double) = Triple(s.species, s.level..s.level, odds)
         val grass = wild.grass[key]?.takeIf { it.first[tod] > 0 }?.second?.drop(tod * grassOdds.size)?.take(grassOdds.size)
             ?.mapIndexed { i, s -> one(s, grassOdds[i].toDouble()) }?.let(::merge).orEmpty()
         val water = wild.water[key]?.takeIf { it.first > 0 }?.second
-            ?.mapIndexed { i, s -> Triple(s.species, s.level..s.level + 4, CR_WATER_ODDS[i].toDouble()) }?.let(::merge).orEmpty()
+            ?.mapIndexed { i, s -> Triple(s.species, s.level..s.level + 4, waterOdds[i].toDouble()) }?.let(::merge).orEmpty()
         val rods = wild.fishMaps[key]?.let { wild.fish[it] }.orEmpty().map { rod ->
             merge(rod.mapNotNull { s ->
                 val mon = if (s.species != 0) s
@@ -88,6 +98,11 @@ object CrystalWorld : GuideWorld {
         else -> "DAY"
     }
 }
+
+object CrystalWorld : CrystalEngineWorld(CR_WILD_RAW, CR_BOSSES_RAW, CR_GRASS_ODDS, CR_WATER_ODDS)
+
+/** Crystal Legacy v1.3.1's: GuideCrystalLegacyGen.kt, from its own build, in the same format. */
+object CrystalLegacyWorld : CrystalEngineWorld(CL_WILD_RAW, CL_BOSSES_RAW, CL_GRASS_ODDS, CL_WATER_ODDS)
 
 private fun crLeague(own: Int): (SaveProgress) -> Boolean = { p -> p.flag(CR_EVENT_BEAT_ELITE_FOUR) || p.flag(own) }
 
@@ -121,28 +136,79 @@ private val BOSSES_CRYSTAL = listOf(
     crBoss("RED", "MT. SILVER", 0, "RED") { p -> p.flag(CR_EVENT_BEAT_ELITE_FOUR) && p.flag(CR_EVENT_RED_IN_MT_SILVER) },
 )
 
+private val CRYSTAL_TIPS = page(
+    "TIPS",
+    section(
+        "WILD POKéMON",
+        entry(
+            "Why did the POKéMON on this route change?",
+            "The game's clock has three times of day: morning from 4 AM, day from 10 AM and night from 6 PM. " +
+                "Grass and caves have a list for each, and HERE shows the one for the time your game's clock says.",
+            hint = "Look at the clock.",
+        ),
+        entry(
+            "Why do some trees never have the rare POKéMON?",
+            "Each tree you HEADBUTT is common, rare or almost empty, picked from where the tree stands and your " +
+                "trainer ID. HERE lists both tables; try every tree on a route to find the rare ones.",
+            hint = "It has to do with your trainer ID.",
+        ),
+    ),
+)
+
 internal val GUIDE_CRYSTAL = GameGuide(
     verified = false,
     bosses = BOSSES_CRYSTAL,
     world = CrystalWorld,
-    pages = listOf(
-        page(
-            "TIPS",
-            section(
-                "WILD POKéMON",
-                entry(
-                    "Why did the POKéMON on this route change?",
-                    "The game's clock has three times of day: morning from 4 AM, day from 10 AM and night from 6 PM. " +
-                        "Grass and caves have a list for each, and HERE shows the one for the time your game's clock says.",
-                    hint = "Look at the clock.",
-                ),
-                entry(
-                    "Why do some trees never have the rare POKéMON?",
-                    "Each tree you HEADBUTT is common, rare or almost empty, picked from where the tree stands and your " +
-                        "trainer ID. HERE lists both tables; try every tree on a route to find the rare ones.",
-                    hint = "It has to do with your trainer ID.",
-                ),
-            ),
-        ),
-    ),
+    pages = listOf(CRYSTAL_TIPS),
+)
+
+private fun clLeague(own: Int): (SaveProgress) -> Boolean = { p -> p.flag(CL_EVENT_BEAT_ELITE_FOUR) || p.flag(own) }
+
+private fun clBoss(title: String, where: String, done: Int, key: String, doneIf: ((SaveProgress) -> Boolean)? = null) =
+    Boss(title, where, done, doneIf = doneIf) { CrystalLegacyWorld.trainer(key) }
+
+/**
+ * A gym Crystal Legacy lets you take in any order, so it scales by badge count (VAR_BADGES, Johto and Kanto's): 5 owned brings
+ * the team generated as `<key>_6`, 6 `<key>_7`, any other count [key]'s.
+ */
+private fun clScaledBoss(title: String, where: String, done: Int, key: String) = Boss(title, where, done) { p ->
+    CrystalLegacyWorld.trainer(when ((0 until 16).count { p.flag(CR_BADGE_FLAG + it) }) {
+        5 -> "${key}_6"
+        6 -> "${key}_7"
+        else -> key
+    })
+}
+
+/** Crystal's order; each boss's second team in its data is a rematch, once beaten (NEXT BOSS has moved on by then). */
+private val BOSSES_CRYSTAL_LEGACY = listOf(
+    clBoss("LEADER FALKNER", "VIOLET CITY GYM", CL_EVENT_BEAT_FALKNER, "FALKNER"),
+    clBoss("LEADER BUGSY", "AZALEA TOWN GYM", CL_EVENT_BEAT_BUGSY, "BUGSY"),
+    clBoss("LEADER WHITNEY", "GOLDENROD CITY GYM", CL_EVENT_BEAT_WHITNEY, "WHITNEY"),
+    clBoss("LEADER MORTY", "ECRUTEAK CITY GYM", CL_EVENT_BEAT_MORTY, "MORTY"),
+    clScaledBoss("LEADER CHUCK", "CIANWOOD CITY GYM", CL_EVENT_BEAT_CHUCK, "CHUCK"),
+    clScaledBoss("LEADER JASMINE", "OLIVINE CITY GYM", CL_EVENT_BEAT_JASMINE, "JASMINE"),
+    clScaledBoss("LEADER PRYCE", "MAHOGANY TOWN GYM", CL_EVENT_BEAT_PRYCE, "PRYCE"),
+    clBoss("LEADER CLAIR", "BLACKTHORN CITY GYM", CL_EVENT_BEAT_CLAIR, "CLAIR"),
+    clBoss("ELITE FOUR WILL", "POKéMON LEAGUE", 0, "WILL", clLeague(CL_EVENT_BEAT_ELITE_4_WILL)),
+    clBoss("ELITE FOUR KOGA", "POKéMON LEAGUE", 0, "KOGA", clLeague(CL_EVENT_BEAT_ELITE_4_KOGA)),
+    clBoss("ELITE FOUR BRUNO", "POKéMON LEAGUE", 0, "BRUNO", clLeague(CL_EVENT_BEAT_ELITE_4_BRUNO)),
+    clBoss("ELITE FOUR KAREN", "POKéMON LEAGUE", 0, "KAREN", clLeague(CL_EVENT_BEAT_ELITE_4_KAREN)),
+    clBoss("CHAMPION LANCE", "POKéMON LEAGUE", CL_EVENT_BEAT_ELITE_FOUR, "LANCE"),
+    clBoss("LEADER BROCK", "PEWTER CITY GYM", CL_EVENT_BEAT_BROCK, "BROCK"),
+    clBoss("LEADER MISTY", "CERULEAN CITY GYM", CL_EVENT_BEAT_MISTY, "MISTY"),
+    clBoss("LEADER LT. SURGE", "VERMILION CITY GYM", CL_EVENT_BEAT_LTSURGE, "LT_SURGE"),
+    clBoss("LEADER ERIKA", "CELADON CITY GYM", CL_EVENT_BEAT_ERIKA, "ERIKA"),
+    clBoss("LEADER JANINE", "FUCHSIA CITY GYM", CL_EVENT_BEAT_JANINE, "JANINE"),
+    clBoss("LEADER SABRINA", "SAFFRON CITY GYM", CL_EVENT_BEAT_SABRINA, "SABRINA"),
+    clBoss("LEADER BLAINE", "SEAFOAM ISLANDS GYM", CL_EVENT_BEAT_BLAINE, "BLAINE"),
+    clBoss("LEADER BLUE", "VIRIDIAN CITY GYM", CL_EVENT_BEAT_BLUE, "BLUE"),
+    // Its own flag: Legacy clears EVENT_RED_IN_MT_SILVER when he's beaten, the opposite of Crystal.
+    clBoss("RED", "MT. SILVER", CL_EVENT_DEFEATED_RED, "RED"),
+)
+
+internal val GUIDE_CRYSTAL_LEGACY = GameGuide(
+    verified = false,
+    bosses = BOSSES_CRYSTAL_LEGACY,
+    world = CrystalLegacyWorld,
+    pages = listOf(CRYSTAL_TIPS),
 )

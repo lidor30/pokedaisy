@@ -127,7 +127,7 @@ Tap a Pokémon to send it in. PokeDaisy works the game's party menu for you, and
 
 The same pane appears when the game asks you to choose, for example after one of your Pokémon faints.
 
-This works in the Game Boy games too (Red, Blue, Yellow, PureRed, PureBlue, Gold, Silver, Crystal, Crystal Clear, Prism and Polished Crystal). There the game asks what to do with the Pokémon you picked, and PokeDaisy answers its switch option for you.
+This works in the Game Boy games too (Red, Blue, Yellow, Yellow Legacy, PureRed, PureBlue, Gold, Silver, Crystal, Crystal Legacy, Crystal Clear, Prism and Polished Crystal). There the game asks what to do with the Pokémon you picked, and PokeDaisy answers its switch option for you.
 
 ![The switch pane: the party in the game's slots, one Pokémon tagged BEST, EMBERPUP tagged OUT and GALEFINCH fainted, with Choose a POKéMON. and CANCEL below](shots/companion-battle-switch.png "Choosing who to send in")
 
