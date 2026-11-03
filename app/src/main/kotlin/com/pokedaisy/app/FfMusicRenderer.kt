@@ -361,6 +361,8 @@ class FfMusicRenderer(
         }.getOrNull() ?: return null
         // Recharged Yellow's song table is ordered like Emerald's: its sFanfares[0] (FANFARE_LEVEL_UP) is 367.
         if (com.pokedaisy.app.companion.data.isRechargedYellowRom(head)) return 367
+        // Monomyth v1.1 has Emerald's game code but a song table of its own: it borrows a fanfare, like v1.0.
+        if (String(head, 0xA0, 12, Charsets.US_ASCII) == "POKEMON MONO") return null
         return when (String(head, 0xAC, 3, Charsets.US_ASCII)) {
             "BPR", "BPG", "PUV" -> 257 // PUV: Ultra Violet, FireRed's song table
             "BPE", "AXV", "AXP" -> 367

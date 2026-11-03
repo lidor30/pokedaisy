@@ -69,6 +69,7 @@ class WildEncountersTest {
         // Not found: no WILD ENCOUNTERS there. Monomyth's StandardWildEncounter (0x080B3F58) has no switch; a function of
         // the gcc shape at 0x081B3D64 loads 0xFFFF as an argument, not to compare (its byte 0x02020A44 sits at 1).
         "Pokemon Monomyth (v1.0).gba" to 0L,
+        "Pokemon Monomyth (v1.1).gba" to 0L,
         "Pokemon Emerald Rogue (v2.2.1-EX).gba" to 0L,
         "Pokemon Quetzal (Alpha 9.0) (English).gba" to 0L,
     )
