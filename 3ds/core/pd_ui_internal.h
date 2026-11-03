@@ -20,6 +20,9 @@
 enum {
     HIT_TAB = 100,         // + tab
     HIT_FF = 110,
+    HIT_SCROLL_BAR = 113,  // a list's bar: dragged, not tapped
+    HIT_SHOULDER_L = 114,  // the L / R keys at the tab bar's ends while the buttons are the companion's
+    HIT_SHOULDER_R = 115,
     HIT_MORE = 130,        // the tab bar's MORE chip
     HIT_MORE_TAB_BAR = 112, // MORE's TAB BAR button
     HIT_SLOT = 200,        // + party slot
@@ -210,5 +213,8 @@ void ui_ball(struct pd_canvas* c, int x, int y, bool caught);
 int ui_clamp_scroll(int scroll, int total, int view);
 // A thin scroll bar along a list's right edge.
 void ui_scroll_bar(struct pd_canvas* c, int x, int y, int h, int scroll, int total, uint32_t color);
+// A list's bar to drag (SETTINGS): the rail in x, y, w, h, the thumb for scroll of total with view shown.
+#define SCROLL_BAR_W 8
+void ui_scroll_rail(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, int scroll, int total, int view);
 
 #endif

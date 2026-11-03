@@ -257,6 +257,9 @@ struct pd_ui {
     bool touching, dragging, touchScroll;
     int touchX0, touchY0, touchLastY;
     int pressedId; // what the stylus went down on (-1 = nothing)
+    bool barDragging;                 // the stylus is on a list's bar
+    int barY, barH, barThumb, barMax; // that bar, as last drawn
+    bool keyFocus; // the game's buttons are on the companion: pd_ui_focus_*, L / R keys at the tab bar's ends
     int focusId;   // the hit a host's D-pad focus is on, drawn as that part's own cursor (-1 = none)
     int startId;   // set by each draw: where a D-pad starts on this screen (-1 = its first item)
     struct pd_hit hits[PD_UI_MAX_HITS];
@@ -272,6 +275,9 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
 bool pd_ui_touch(struct pd_ui* ui, int x, int y, bool down);
 // Buttons the GBA doesn't have (the 3DS's X / Y): next / previous tab, BACK.
 void pd_ui_next_tab(struct pd_ui* ui, int dir);
+// The buttons on the companion (keyFocus): a direction (0 up, 1 down, 2 left, 3 right), A on what the cursor's on.
+void pd_ui_focus_move(struct pd_ui* ui, int direction);
+void pd_ui_focus_press(struct pd_ui* ui);
 bool pd_ui_back(struct pd_ui* ui);
 // The last thing the player asked the host for (once), or PD_ACTION_NONE.
 enum pd_action pd_ui_take_action(struct pd_ui* ui);

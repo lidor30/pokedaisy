@@ -107,7 +107,7 @@ static struct slot_geometry geometry(int w, int h) {
     g.textX = g.fx + 30 * u;
     g.nameMid = g.fy + 3 * u + (int) ((g.dividerY - g.fy - 3 * u) * 0.3f);
     g.levelMid = g.fy + 3 * u + (int) ((g.dividerY - g.fy - 3 * u) * 0.74f);
-    g.hpTextMid = g.barY + 10 * u;
+    g.hpTextMid = g.barY + 10 * u + 1; // the numbers' tops clear of the bar
     return g;
 }
 
@@ -383,7 +383,7 @@ void ui_mon_summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
                     const struct pd_mon* const* column, int columnCount, int shown, bool canTake, const char* pcLabel) {
     (void) s;
     char buf[40];
-    int x = MARGIN, y = CONTENT_Y - 2, h = c->h - y - 2;
+    int x = MARGIN, y = CONTENT_Y - 2, btnH = 22, full = c->h - y - 2, h = full - btnH - 3;
     int colX = c->w - MARGIN - SUMMARY_COLUMN, w = colX - 3 - x;
     int f = pd_title_box(c, x, y, w, h, PD_TITLE_FILL);
     int ix = x + f + 4, iy = y + f + 2, iw = w - 2 * (f + 4), ih = h - 2 * (f + 2);
@@ -443,10 +443,9 @@ void ui_mon_summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         else summary_moves(c, m, rx, iy, rw, ih);
     }
 
-    // The party, the shown one framed red; Back under it, STATS over that.
-    int cell = SUMMARY_COLUMN, btnH = 24;
-    int rows = columnCount, room = h - btnH - 2 - (m->hasStats && !egg ? btnH + 2 : 0) - (pcLabel ? btnH + 2 : 0);
-    if (rows * (cell + 1) > room) cell = room / rows - 1;
+    // The party beside the window, the shown one framed red; under them a row of buttons, Back at its right end.
+    int cell = SUMMARY_COLUMN, rows = columnCount;
+    if (rows * (cell + 1) > h) cell = h / rows - 1;
     for (int i = 0; i < columnCount; i++) {
         int cy = y + i * (cell + 1);
         bool here = i == shown;
@@ -457,19 +456,20 @@ void ui_mon_summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         pd_unclip(c);
         ui_add_hit(ui, colX, cy, SUMMARY_COLUMN, cell, HIT_SUMMARY_MON + i);
     }
-    int by = y + h - btnH;
+    int by = y + full - btnH, bx = x;
     ui_platinum(ui, c, colX, by, SUMMARY_COLUMN, btnH, 0x4890D8, 0x2860A0, HIT_BACK);
     ui_mono(c, &PD_ICON_BACK, colX + (SUMMARY_COLUMN - PD_ICON_BACK.w) / 2, by + (btnH - PD_ICON_BACK.h) / 2, 1, 0xFFFFFF);
-    if (m->hasStats && !egg) {
-        by -= btnH + 2;
-        ui_platinum(ui, c, colX, by, SUMMARY_COLUMN, btnH, STATS_PURPLE, STATS_PURPLE_DARK, HIT_SUMMARY_STATS);
-        const char* label = ui->summaryStats ? "MOVE" : "STAT";
-        pd_text(c, colX + (SUMMARY_COLUMN - pd_text_width(label)) / 2, pd_text_y(by, btnH), label, 0xFFFFFF, 0x383838);
-    }
     if (pcLabel) {
-        by -= btnH + 2;
-        ui_platinum(ui, c, colX, by, SUMMARY_COLUMN, btnH, 0x58A840, 0x307020, HIT_SUMMARY_PC);
-        pd_text(c, colX + (SUMMARY_COLUMN - pd_text_width(pcLabel)) / 2, pd_text_y(by, btnH), pcLabel, 0xFFFFFF, 0x383838);
+        int bw = pd_text_width(pcLabel) + 16;
+        ui_platinum(ui, c, bx, by, bw, btnH, 0x58A840, 0x307020, HIT_SUMMARY_PC);
+        pd_text(c, bx + (bw - pd_text_width(pcLabel)) / 2, pd_text_y(by, btnH), pcLabel, 0xFFFFFF, 0x383838);
+        bx += bw + 3;
+    }
+    if (m->hasStats && !egg) {
+        const char* label = ui->summaryStats ? "MOVES" : "STATS";
+        int bw = pd_text_width("MOVES") + 16;
+        ui_platinum(ui, c, bx, by, bw, btnH, STATS_PURPLE, STATS_PURPLE_DARK, HIT_SUMMARY_STATS);
+        pd_text(c, bx + (bw - pd_text_width(label)) / 2, pd_text_y(by, btnH), label, 0xFFFFFF, 0x383838);
     }
 }
 

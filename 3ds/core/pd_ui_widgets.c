@@ -166,6 +166,21 @@ void ui_scroll_bar(struct pd_canvas* c, int x, int y, int h, int scroll, int tot
     pd_fill(c, x, ty, 2, th, color);
 }
 
+void ui_scroll_rail(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, int scroll, int total, int view) {
+    int th = h * view / total;
+    if (th < 18) th = 18;
+    int max = total - view, ty = y + (h - th) * scroll / (max > 0 ? max : 1);
+    pd_round_rect(c, x, y, w, h, 3, PD_DIVIDER);
+    pd_round_rect(c, x + 1, y + 1, w - 2, h - 2, 2, PD_LIST_FILL);
+    pd_round_rect(c, x, ty, w, th, 3, ui->barDragging ? PD_VALUE : PD_LABEL);
+    ui->barY = y;
+    ui->barH = h;
+    ui->barThumb = th;
+    ui->barMax = max;
+    // A wider target than it looks: a stylus on a 3DS is thin, a finger isn't.
+    ui_add_hit(ui, x - 6, y, w + 8, h, HIT_SCROLL_BAR);
+}
+
 void ui_format_money(long v, char* buf, size_t len) {
     if (v < 0) {
         snprintf(buf, len, "-");

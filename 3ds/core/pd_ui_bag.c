@@ -77,14 +77,16 @@ static void tabs(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
         int y = CONTENT_Y + i * (TAB_H + 3);
         bool open = i == ui->bagPocket;
         uint32_t fill = open ? p->fill : p->panel[p->tabLayers].color;
-        int f = pd_layered_box(c, x, y, w, TAB_H, 3, p->panel, p->tabLayers, fill);
-        // The open tab runs into the list: its fill across both borders.
-        if (open) pd_fill(c, x + w - f, y + f, joinX - (x + w - f), TAB_H - 2 * f, p->fill);
+        // The open tab is drawn on into the list, its top and bottom lines meeting the list's frame, and its fill carried
+        // through that frame: one shape with the list.
+        int f = pd_layered_box(c, x, y, open ? joinX + 4 - x : w, TAB_H, 3, p->panel, p->tabLayers, fill);
+        if (open) pd_fill(c, x + w - f - 1, y + f, joinX + 5 - (x + w - f - 1), TAB_H - 2 * f, p->fill);
         const char* name = v->pockets[i] < 0 ? "ALL" : pd_pocket_name(v->pockets[i]);
         int tx = x + f + 5, ty = pd_text_y(y, TAB_H);
         int tw = pd_text_fit(c, tx, ty, w - 2 * f - 8, name, open ? p->text : p->tabText,
                              open ? p->textShadow : p->tabTextShadow);
-        if (open) pd_fill(c, tx, y + TAB_H - f - 4, tw, 2, p->cursor); // the open tab's underline
+        // Under the letters, not through them: the tab's last rows.
+        if (open) pd_fill(c, tx, y + TAB_H - f - 2, tw, 2, p->cursor);
         if (ui->pressedId == HIT_BAG_TAB + i) pd_fill(c, x + f, y + f, w - 2 * f, 1, p->cursor);
         ui_add_hit(ui, x, y, w, TAB_H, HIT_BAG_TAB + i);
     }

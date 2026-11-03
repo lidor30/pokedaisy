@@ -82,6 +82,7 @@ struct pd_session {
     bool wideReady;       // this frame shows EXPAND's window
     int wideW, wideH;     // ... this big, in game pixels
     int hudFieldFrames;
+    int stripeIn; // the focus strip's slide, in frames
     struct hud_state hud;
 
     // The QUICK MENU.
@@ -146,6 +147,10 @@ void pd_session_tick(struct pd_session* s, const struct pd_input* in, unsigned m
 void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last);
 // What pd_ui_take_action handed over: true if the session has dealt with it (else it's the host's: CLOSE GAME ...).
 bool pd_session_action(struct pd_session* s, enum pd_action action);
+// X on the field: the game's buttons go to the companion (Android's bottom focus), a silver strip on the game's picture
+// pointing down at it. Leaving the field brings them back by itself.
+bool pd_session_can_focus(const struct pd_session* s);
+void pd_session_set_focus(struct pd_session* s, bool on);
 // Draws the companion on the bottom canvas.
 void pd_session_draw(struct pd_session* s, struct pd_canvas* bottom);
 // The last frame stays on screen (the battle's switch drives the game's party menu behind it).

@@ -829,13 +829,62 @@ static void overlay_clear(void) {
 }
 
 // What the top screen shows over the game, redrawn only when it changes: the QUICK MENU, else the HUD, and a notice.
+// On the field with its controls free: the HUD shows, and the buttons can go to the companion.
+static bool on_field(const struct pd_session* s) {
+    // A Game Boy game has no field read: EXPAND's scene says it (pk_wide_gb.c).
+    if (s->game.gb) return s->wideKnown && pk_wide_scene() == PK_WIDE_SCENE_FIELD && !s->shown.inBattle;
+    return (s->fieldFlags & PK_FIELD_KNOWN) && !(s->fieldFlags & (PK_FIELD_LOCKED | PK_FIELD_BATTLE)) &&
+        (!s->wideKnown || pk_wide_scene() == PK_WIDE_SCENE_FIELD) && s->flyStage == 0;
+}
+
+bool pd_session_can_focus(const struct pd_session* s) {
+    return on_field(s) && !s->quickOpen && !s->shown.inBattle;
+}
+
+void pd_session_set_focus(struct pd_session* s, bool on) {
+    if (s->ui.keyFocus == on) return;
+    s->ui.keyFocus = on;
+    s->ui.focusId = -1;
+    s->stripeIn = 0;
+    s->redraw = true;
+}
+
+// CompanionFocusStripe: down the bottom of the game's picture, in the game's own pixels. A dark edge, a shine, a silver
+// fall-off, a foot line, and an arrow bobbing down at the companion.
+#define STRIPE_ROWS 22
+#define STRIPE_SLIDE 11 // frames: its 180 ms
+static void focus_stripe(struct pd_canvas* c, int left, int right, int bottom, int height, int gameRows, int bob, int slide) {
+    static const int ARROW[9] = { 17, 15, 13, 11, 9, 7, 5, 3, 1 };
+#define ROW(r) (bottom - (STRIPE_ROWS - (r)) * height / gameRows + drop)
+    int total = STRIPE_ROWS * height / gameRows, drop = total - total * slide / STRIPE_SLIDE, w = right - left, mid = (left + right) / 2;
+    for (int r = 0; r < STRIPE_ROWS; r++) {
+        uint32_t col = r == 0 ? 0x6C7080 : r == 1 ? 0xFAFAFE : r == STRIPE_ROWS - 1 ? 0x878B98 : 0;
+        if (!col) {
+            int t = r - 2, n = STRIPE_ROWS - 4;
+            uint32_t a = 0xE4E6EC, b = 0xA6AAB6;
+            for (int sh = 0; sh <= 16; sh += 8) {
+                int ca = (a >> sh) & 0xFF, cb = (b >> sh) & 0xFF;
+                col |= (uint32_t) (ca + (cb - ca) * t / n) << sh;
+            }
+        }
+        pd_fill(c, left, ROW(r), w, ROW(r + 1) - ROW(r), col);
+    }
+    for (int pass = 0; pass < 2; pass++) {
+        for (int i = 0; i < 9; i++) {
+            int r = 5 + bob + i + (pass ? 0 : 1), half = ARROW[i] * height / gameRows / 2;
+            pd_fill(c, mid - half, ROW(r), 2 * half + 1, ROW(r + 1) - ROW(r), pass ? 0x454957 : 0xFFFFFF);
+        }
+    }
+    int below = bottom < PD_TOP_H ? bottom : PD_TOP_H;
+    if (drop > 0 && below < PD_TOP_H) pd_fill(c, left, below, w, PD_TOP_H - below, QUICK_CLEAR);
+#undef ROW
+}
+
+// What the top screen shows over the game, redrawn only when it changes: the QUICK MENU, else the HUD, and a notice.
 static void overlay_update(struct pd_session* s) {
     struct pd_canvas c;
     pd_canvas_init(&c, PD_TOP_W, PD_TOP_H, overlayPx);
-    bool field = (s->fieldFlags & PK_FIELD_KNOWN) && !(s->fieldFlags & (PK_FIELD_LOCKED | PK_FIELD_BATTLE)) &&
-        (!s->wideKnown || pk_wide_scene() == PK_WIDE_SCENE_FIELD) && s->flyStage == 0;
-    // A Game Boy game has no field read: EXPAND's scene says it (pk_wide_gb.c).
-    if (s->game.gb) field = s->wideKnown && pk_wide_scene() == PK_WIDE_SCENE_FIELD && !s->shown.inBattle;
+    bool field = on_field(s);
     s->hudFieldFrames = field ? s->hudFieldFrames + 1 : 0;
     bool hud = !s->quickOpen && s->settings->hud && s->game.cfg && s->hudFieldFrames >= HUD_AFTER_FRAMES;
     if (hud) {
@@ -844,6 +893,17 @@ static void overlay_update(struct pd_session* s) {
         else if (!s->hud.repelFull || steps > s->hud.repelFull) s->hud.repelFull = hud_repel_full(steps);
         s->hud.repel = steps > 0 ? steps : 0;
     }
+    // The game's picture: the HUD keeps to it (FieldHud(frame)), so a change of ASPECT or SCREEN moves the HUD.
+    unsigned gw = 240, gh = 160;
+    s->core->desiredVideoDimensions(s->core, &gw, &gh);
+    bool wide = s->wideKnown && s->settings->aspect != PD_ASPECT_ORIGINAL, pixel = s->settings->screenMode == PD_SCREEN_PIXEL;
+    int picture = s->settings->screenMode == PD_SCREEN_STRETCH || wide ? PD_TOP_W : pixel ? (int) gw : (int) gw * PD_TOP_H / (int) gh;
+    int pictureH = pixel && !wide ? (int) gh : PD_TOP_H, gameRows = wide ? (pixel ? PD_TOP_H : 160) : (int) gh;
+    // The arrow's bob, frame by frame (BOB_MS' keyframes).
+    static const uint8_t BOB[58] = { 0, 0, 0, 0, 0, 1, 1, 1, 1, 1, 2, 2, 2, 2, 2, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 3, 2, 2, 2, 2, 2,
+                                     1, 1, 1, 1, 1, 0 };
+    int bob = BOB[s->frame % 58];
+    if (s->ui.keyFocus && s->stripeIn < STRIPE_SLIDE) s->stripeIn++;
     uint32_t key = 0x811C9DC5u;
     if (s->quickOpen) {
         key ^= (uint32_t) (s->quickSel + 1) * 2654435761u;
@@ -852,6 +912,8 @@ static void overlay_update(struct pd_session* s) {
     } else if (hud) {
         key ^= hud_key(&s->game, &s->shown, &s->hud, s->settings->hudHidden);
     }
+    key = key * 31 + (uint32_t) picture;
+    if (s->ui.keyFocus) key = key * 31 + 0x9E37u + (uint32_t) (bob * 16 + s->stripeIn);
     for (const char* p = s->noticeFrames > 0 ? s->notice : ""; *p; p++) key = key * 33 + (uint8_t) *p;
     if (key == s->overlayKey) return;
     s->overlayKey = key;
@@ -865,15 +927,20 @@ static void overlay_update(struct pd_session* s) {
         else quick_draw(&c, &s->game, s->quick, s->quickCount, s->quickSel);
         s->overlayShown = true;
     } else if (hud) {
-        // Without EXPAND the HUD keeps to the game's picture (FieldHud(frame)).
-        unsigned gw = 240, gh = 160;
-        s->core->desiredVideoDimensions(s->core, &gw, &gh);
-        int picture = s->settings->screenMode == PD_SCREEN_STRETCH || s->wideReady ? PD_TOP_W :
-            s->settings->screenMode == PD_SCREEN_PIXEL ? (int) gw : (int) gw * PD_TOP_H / (int) gh;
         s->hud.compact = true;
         s->hud.left = (PD_TOP_W - picture) / 2;
         s->hud.right = s->hud.left + picture;
         s->overlayShown = hud_draw(&c, &s->game, &s->shown, &s->hud, s->settings->hudHidden);
+        // The buttons on the companion: the HUD fades back (hudAlpha 0.25).
+        for (int i = 0; s->ui.keyFocus && i < PD_TOP_W * PD_TOP_H; i++) {
+            uint32_t p = overlayPx[i], a = p >> 24 ? p >> 24 : 0xFF;
+            if (p != QUICK_CLEAR) overlayPx[i] = (a / 4 ? a / 4 : 1) << 24 | (p & 0xFFFFFF);
+        }
+    }
+    if (s->ui.keyFocus) {
+        int left = (PD_TOP_W - picture) / 2, bottom = (PD_TOP_H + pictureH) / 2;
+        focus_stripe(&c, left, left + picture, bottom, pictureH, gameRows, bob, s->stripeIn);
+        s->overlayShown = true;
     }
     if (s->noticeFrames > 0) {
         int w = pd_text_width(s->notice) + 12;
@@ -913,6 +980,8 @@ void pd_session_tick(struct pd_session* s, const struct pd_input* in, unsigned m
     item_jobs(s);
     box_jobs(s);
     if (s->noticeFrames > 0) s->noticeFrames--;
+    // Off the field (a battle, the PC opened from the companion) the buttons are the game's again.
+    if (s->ui.keyFocus && !pd_session_can_focus(s)) pd_session_set_focus(s, false);
     overlay_update(s);
 
     s->redraw |= pd_ui_tick(&s->ui, ms);

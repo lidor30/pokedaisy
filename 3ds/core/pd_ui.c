@@ -10,6 +10,7 @@
 #define CHIP_H 28
 #define ICON_CHIP_W 30
 #define CHIP_GAP 2
+#define SHOULDER_W 16
 // How far the stylus moves on a list before it scrolls instead of tapping.
 #define DRAG_SLOP 6
 
@@ -227,8 +228,15 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
     int n = chips(ui, g, tabs);
     bool hasMore = ui_more_tabs(ui, g, more) > 0;
     int icons = hasMore ? 2 : 1;
-    int room = c->w - 2 * MARGIN - icons * ICON_CHIP_W - (n + icons - 1) * CHIP_GAP;
+    // L / R at the ends while the buttons are the companion's (ShoulderHint).
+    int keys = ui->keyFocus ? 2 * (SHOULDER_W + CHIP_GAP) : 0;
+    int room = c->w - 2 * MARGIN - icons * ICON_CHIP_W - (n + icons - 1) * CHIP_GAP - keys;
     int x = MARGIN;
+    if (ui->keyFocus) {
+        chip(ui, c, x, SHOULDER_W, false, HIT_SHOULDER_L);
+        pd_text(c, x + (SHOULDER_W - pd_text_width("L")) / 2, pd_text_y(by, CHIP_H), "L", PD_TITLE_TEXT, PD_TITLE_SHADOW);
+        x += SHOULDER_W + CHIP_GAP;
+    }
     for (int i = 0; i < n; i++) {
         int w = room / n + (i < room % n ? 1 : 0);
         enum pd_tab t = tabs[i];
@@ -247,6 +255,66 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         x += ICON_CHIP_W + CHIP_GAP;
     }
     icon_chip(ui, c, x, &PD_ICON_GEAR, ui->tab == PD_TAB_SETTINGS && ui->overlay != PD_OVERLAY_MORE, HIT_TAB + PD_TAB_SETTINGS);
+    if (ui->keyFocus) {
+        x += ICON_CHIP_W + CHIP_GAP;
+        chip(ui, c, x, SHOULDER_W, false, HIT_SHOULDER_R);
+        pd_text(c, x + (SHOULDER_W - pd_text_width("R")) / 2, pd_text_y(by, CHIP_H), "R", PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    }
+}
+
+// What the cursor can land on (linux/main.c's focus): not the tab bar, nor a scrim, a list's drag area or its bar.
+static bool focusable(int id) {
+    return !(id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) && id != HIT_MORE && id != HIT_FF && id != HIT_SCRIM && id != HIT_BAG_LIST &&
+        id != HIT_DEX_LIST && id != HIT_GUIDE_LIST && id != HIT_SETTINGS_LIST && id != HIT_SCROLL_BAR &&
+        id != HIT_SHOULDER_L && id != HIT_SHOULDER_R;
+}
+
+static int focus_index(const struct pd_ui* ui, int id) {
+    for (int i = 0; i < ui->hitCount; i++)
+        if (ui->hits[i].id == id) return i;
+    return -1;
+}
+
+// After a draw: the cursor's hit, moved to the screen's start on a new screen, or to the nearest item if its own went.
+static int focus_resolve(struct pd_ui* ui) {
+    static int lastTab = -1, lastOverlay = -1, lastSummary = -2, lastDex = -1;
+    static struct pd_hit at;
+    bool changed = lastTab != (int) ui->tab || lastOverlay != (int) ui->overlay || lastSummary != ui->summarySlot || lastDex != ui->dexOpen;
+    lastTab = (int) ui->tab;
+    lastOverlay = (int) ui->overlay;
+    lastSummary = ui->summarySlot;
+    lastDex = ui->dexOpen;
+    int i = changed ? -1 : focus_index(ui, ui->focusId);
+    if (i >= 0 && !focusable(ui->hits[i].id)) i = -1;
+    if (i < 0 && !changed && ui->focusId >= 0) {
+        int best = 1 << 30;
+        for (int j = 0; j < ui->hitCount; j++) {
+            const struct pd_hit* h = &ui->hits[j];
+            int dx = h->x + h->w / 2 - (at.x + at.w / 2), dy = h->y + h->h / 2 - (at.y + at.h / 2);
+            if (focusable(h->id) && dx * dx + dy * dy < best) {
+                best = dx * dx + dy * dy;
+                i = j;
+            }
+        }
+    }
+    if (i < 0 && ui->startId >= 0) i = focus_index(ui, ui->startId);
+    for (int j = 0; i < 0 && j < ui->hitCount; j++)
+        if (focusable(ui->hits[j].id)) i = j;
+    ui->focusId = i >= 0 ? ui->hits[i].id : -1;
+    if (i >= 0) at = ui->hits[i];
+    return i;
+}
+
+// AppColors.focusRing, flush inside the element. A party slot shows its own selected look instead (pd_ui.focusId).
+static void focus_ring(struct pd_ui* ui, struct pd_canvas* c) {
+    int i = focus_resolve(ui);
+    if (i < 0) return;
+    const struct pd_hit* h = &ui->hits[i];
+    if (h->id >= HIT_SLOT && h->id < HIT_SLOT + PD_PARTY_SIZE) return;
+    pd_fill(c, h->x, h->y, h->w, 2, 0xFF7331);
+    pd_fill(c, h->x, h->y + h->h - 2, h->w, 2, 0xFF7331);
+    pd_fill(c, h->x, h->y, 2, h->h, 0xFF7331);
+    pd_fill(c, h->x + h->w - 2, h->y, 2, h->h, 0xFF7331);
 }
 
 void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
@@ -299,6 +367,7 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     } else if (ui->overlay != PD_OVERLAY_MORE) {
         ui_overlay(ui, c);
     }
+    if (ui->keyFocus) focus_ring(ui, c);
 }
 
 // The list a drag scrolls right now.
@@ -372,7 +441,9 @@ static void act(struct pd_ui* ui, int id) {
         }
         return;
     }
-    if (id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) {
+    if (id == HIT_SHOULDER_L || id == HIT_SHOULDER_R) {
+        pd_ui_next_tab(ui, id == HIT_SHOULDER_L ? -1 : 1);
+    } else if (id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) {
         ui->tab = (enum pd_tab) (id - HIT_TAB);
         ui->summarySlot = -1;
         ui->moreOpened = false;
@@ -455,7 +526,15 @@ bool pd_ui_touch(struct pd_ui* ui, int x, int y, bool down) {
             ui->touchY0 = y;
             ui->touchLastY = y;
             ui->pressedId = id;
-            return id != -1;
+            ui->barDragging = id == HIT_SCROLL_BAR;
+            if (!ui->barDragging) return id != -1;
+        }
+        // ... a list's bar follows the stylus: the thumb's middle under it ...
+        if (ui->barDragging) {
+            int* scroll = scroll_target(ui), span = ui->barH - ui->barThumb;
+            if (scroll && span > 0) *scroll = ui_clamp_scroll((y - ui->barY - ui->barThumb / 2) * ui->barMax / span, ui->barMax, 0);
+            ui->pressedId = -1;
+            return true;
         }
         // ... a list scrolls under a drag ...
         if (ui->touchScroll && !ui->dragging && abs(y - ui->touchY0) > DRAG_SLOP) {
@@ -478,6 +557,10 @@ bool pd_ui_touch(struct pd_ui* ui, int x, int y, bool down) {
     }
     if (!ui->touching) return false;
     ui->touching = false;
+    if (ui->barDragging) {
+        ui->barDragging = false;
+        return true;
+    }
     if (ui->dragging) {
         ui->dragging = false;
         return true;
@@ -500,6 +583,38 @@ void pd_ui_next_tab(struct pd_ui* ui, int dir) {
     ui->tab = order[(at + n + 1 + dir) % (n + 1)];
     ui->summarySlot = -1;
     ui->moreOpened = false;
+}
+
+void pd_ui_focus_move(struct pd_ui* ui, int direction) {
+    int cur = focus_index(ui, ui->focusId);
+    if (cur < 0) {
+        focus_resolve(ui);
+        return;
+    }
+    const struct pd_hit* h = &ui->hits[cur];
+    int best = -1, score = 1000000;
+    for (int i = 0; i < ui->hitCount; i++) {
+        const struct pd_hit* t = &ui->hits[i];
+        if (i == cur || !focusable(t->id)) continue;
+        int dx = (t->x + t->w / 2) - (h->x + h->w / 2), dy = (t->y + t->h / 2) - (h->y + h->h / 2);
+        int along = direction == 2 ? -dx : direction == 3 ? dx : direction == 0 ? -dy : dy;
+        int across = direction >= 2 ? abs(dy) : abs(dx);
+        if (along > 0 && along + across * 4 < score) {
+            best = i;
+            score = along + across * 4;
+        }
+    }
+    if (best >= 0) {
+        ui->focusId = ui->hits[best].id;
+    } else if (direction < 2) {
+        // Nothing further that way on this screen: the list moves on.
+        int* scroll = scroll_target(ui);
+        if (scroll) *scroll += direction == 1 ? 36 : -36;
+    }
+}
+
+void pd_ui_focus_press(struct pd_ui* ui) {
+    if (focus_index(ui, ui->focusId) >= 0) act(ui, ui->focusId);
 }
 
 bool pd_ui_back(struct pd_ui* ui) {

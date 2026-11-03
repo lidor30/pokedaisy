@@ -104,8 +104,8 @@ coloured chips, per-cheat switches.
 | A / B / START / SELECT / L / R / D-pad or circle pad | the GBA's buttons |
 | Touch screen | the companion |
 | Y | QUICK MENU (the circle pad aims the ring) |
-| X | companion back (close a summary, an entry, a pick-list, a confirm) |
-| ZL (New 3DS) | next companion tab |
+| X | on the field: the buttons go to the companion, a silver strip on the game pointing down at it (L / R step its tabs, the D-pad and A its cursor; X, START, or B with nothing left to go back from bring them back). Elsewhere companion back |
+| ZL (New 3DS) | previous companion tab |
 | ZR (New 3DS) | fast-forward while held |
 | START on the game list | quit to the Homebrew Launcher |
 

@@ -30,7 +30,8 @@ static int listTop, listBottom, lastTotal = -1;
 static void setting(struct pd_ui* ui, struct pd_canvas* c, int x, int* y, int w, enum setting_row row,
                     const char* label, const char* value) {
     ui_row(c, x, *y, w, label, value, ui->pressedId == HIT_SETTING + (int) row);
-    if (*y >= listTop && *y + ROW_H <= listBottom) ui_add_hit(ui, x - 4, *y, w + 8, ROW_H, HIT_SETTING + (int) row);
+    // A scroll hit: a tap is the row, a drag on it still scrolls the list.
+    if (*y >= listTop && *y + ROW_H <= listBottom) ui_add_scroll_hit(ui, x - 4, *y, w + 8, ROW_H, HIT_SETTING + (int) row);
     *y += ROW_H;
 }
 
@@ -87,7 +88,9 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
 
     int lh = c->h - LIST_Y - MARGIN;
     int lf = pd_list_box(c, x, LIST_Y, w, lh);
-    int ix = x + lf + 4, iw = w - 2 * (lf + 4);
+    // The bar takes its column off the rows while there's more than fits.
+    bool hasBar = lastTotal > lh - 2 * lf;
+    int ix = x + lf + 4, iw = w - 2 * (lf + 4) - (hasBar ? SCROLL_BAR_W + 2 : 0);
     // The rows scroll where they don't all fit (a drag, or the D-pad past the last one shown).
     listTop = LIST_Y + lf;
     listBottom = LIST_Y + lh - lf;
@@ -195,7 +198,11 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     int total = y + ui->settingsScroll - listTop, view = listBottom - listTop;
     lastTotal = total;
     ui->settingsScroll = ui_clamp_scroll(ui->settingsScroll, total, view);
-    if (total > view) ui_scroll_bar(c, x + w - lf - 3, listTop, view, ui->settingsScroll, total, PD_DIVIDER);
+    if (total > view) {
+        // Its own column: a thumb to drag, or a tap on the rail to jump there.
+        int bx = x + w - lf - SCROLL_BAR_W - 2;
+        ui_scroll_rail(ui, c, bx, listTop + 2, SCROLL_BAR_W, view - 4, ui->settingsScroll, total, view);
+    }
 }
 
 // --- overlays ---

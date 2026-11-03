@@ -487,7 +487,7 @@ static bool run_game(const char* file) {
     u64 devSecond = fpsStart;
 #endif
     bool appRunning = true;
-    u32 lastInjected = 0;
+    u32 lastInjected = 0, withheld = 0;
 #ifdef PD_DEV
     struct devlink_stats dev = { 0 };
     u64 loopStart = svcGetSystemTick();
@@ -511,9 +511,39 @@ static bool run_game(const char* file) {
         }
 #endif
 
-        // X is the device's BACK (the app's companion back); Y the QUICK MENU; ZL the next tab.
-        if (down & KEY_X) { pd_ui_back(uiPtr); session.redraw = true; }
-        if (down & KEY_ZL) { pd_ui_next_tab(uiPtr, 1); session.redraw = true; }
+        // X on the field sends the buttons to the companion (the app's bottom focus), elsewhere it's BACK; Y the QUICK
+        // MENU; ZL the tab before. With the buttons on the companion L / R step the tabs, the D-pad and A its cursor;
+        // X, START, or B with nothing left to go back from bring them back.
+        if (uiPtr->keyFocus) {
+            static const u32 DIRS[4] = { KEY_UP, KEY_DOWN, KEY_LEFT, KEY_RIGHT };
+            static int heldFor[4];
+            if (down & (KEY_X | KEY_START)) pd_session_set_focus(&session, false);
+            else if ((down & KEY_B) && !pd_ui_back(uiPtr)) pd_session_set_focus(&session, false);
+            else if (down & KEY_A) pd_ui_focus_press(uiPtr);
+            else if (down & (KEY_L | KEY_R)) pd_ui_next_tab(uiPtr, down & KEY_L ? -1 : 1);
+            for (int i = 0; i < 4; i++) {
+                heldFor[i] = held & DIRS[i] ? heldFor[i] + 1 : 0;
+                if ((down & DIRS[i]) || (heldFor[i] >= 24 && heldFor[i] % 6 == 0)) {
+                    pd_ui_focus_move(uiPtr, i);
+                    session.redraw = true;
+                }
+            }
+            if (down) session.redraw = true;
+            withheld |= held;
+        } else {
+            if (down & KEY_X) {
+                if (pd_session_can_focus(&session)) {
+                    pd_session_set_focus(&session, true);
+                    withheld |= held;
+                } else {
+                    pd_ui_back(uiPtr);
+                }
+                session.redraw = true;
+            }
+            if (down & KEY_ZL) { pd_ui_next_tab(uiPtr, -1); session.redraw = true; }
+        }
+        // Keys pressed on the companion stay away from the game until they're let go.
+        withheld &= held;
 
         int touchX, touchY;
         if (read_touch(held, &touchX, &touchY)) {
@@ -546,7 +576,8 @@ static bool run_game(const char* file) {
         }
         if (leave) break;
 
-        struct pd_input in = { .held = gba_keys(held), .down = gba_keys(down), .quickMenu = down & KEY_Y,
+        struct pd_input in = { .held = gba_keys(held & ~withheld), .down = gba_keys(down & ~withheld),
+                               .quickMenu = (down & KEY_Y) && !uiPtr->keyFocus,
                                .ffHeld = held & KEY_ZR, .stickAngle = stick_angle() };
         DEV_MARK(coreStart);
         u64 tickNow = osGetTime();
