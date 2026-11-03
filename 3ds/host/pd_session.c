@@ -364,17 +364,24 @@ static void wide_window(const struct pd_session* s, int aspect, int* w, int* h) 
     *h = y - ((y - fh) & 1);
 }
 
+#define ORIGINAL_SCENE_EVERY 16
+
 static void wide_tick(struct pd_session* s, bool skip) {
     s->wideReady = false;
     if (!s->wideKnown) return;
+    pk_wide_lines(s->settings->aspect != PD_ASPECT_ORIGINAL);
+    // Nothing past the picture, so only the scene is wanted (FLY's "on the field"): a look every few frames. Every frame
+    // took 7 ms of a New 3DS's 16.7, and with the game's own 9 that's one refresh too many.
+    bool original = s->settings->aspect == PD_ASPECT_ORIGINAL;
+    if (original && s->frame % ORIGINAL_SCENE_EVERY) return;
     int fw = pk_wide_frame_w(), fh = pk_wide_frame_h();
     for (int y = 0; y < fh; y++) memcpy(wideSource + y * fw, s->video + y * PD_GAME_STRIDE, (size_t) fw * 4);
     if (skip) {
         pk_wide_skip(s->core, wideSource);
         return;
     }
-    if (s->settings->aspect == PD_ASPECT_ORIGINAL) {
-        // Nothing past the picture, but the scene still read (FLY's "on the field"): a one-pixel window.
+    if (original) {
+        // A one-pixel window.
         static uint32_t px;
         pk_wide_view(s->core, wideSource, &px, (struct PkWideView) { 0, 0, 1, 1 }, NULL);
         return;
@@ -402,6 +409,13 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
     }
     s->core->setKeys(s->core, keys);
     s->core->runFrame(s->core);
+    // The frame that will be shown: with mGBA's renderer on its own thread (New 3DS) the last lines may still be coming,
+    // and getPixels is what waits for them.
+    if (last) {
+        size_t stride;
+        const void* pixels;
+        s->core->getPixels(s->core, &pixels, &stride);
+    }
     if (!s->game.gb) pk_rest_note(s->core);
     if (s->fieldKnown)
         s->fieldFlags = pk_field_state(s->core, s->settings->runIndoors, s->wildSwitch && s->settings->wildOff ? 0 : 100);
@@ -836,7 +850,7 @@ static void overlay_update(struct pd_session* s) {
         key ^= (uint32_t) ((s->flyList ? s->flySel + 100 : 0) + (s->repelList ? s->repelSel + 200 : 0)) * 40503u;
         for (int i = 0; i < s->quickCount; i++) key = key * 31 + (uint32_t) (s->quick[i].why != NULL) + (uint32_t) s->quick[i].off * 2;
     } else if (hud) {
-        key ^= hud_key(&s->shown, &s->hud, s->settings->hudHidden);
+        key ^= hud_key(&s->game, &s->shown, &s->hud, s->settings->hudHidden);
     }
     for (const char* p = s->noticeFrames > 0 ? s->notice : ""; *p; p++) key = key * 33 + (uint8_t) *p;
     if (key == s->overlayKey) return;

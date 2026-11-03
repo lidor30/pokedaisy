@@ -32,6 +32,8 @@ bool devlink_touch(int* x, int* y);
 bool devlink_take_launch(char* out, unsigned outLen);
 // True when the running game should be left (`leave`).
 bool devlink_take_leave(void);
+// A wild battle to start (`wild`): taken once.
+bool devlink_take_wild(int* species, int* level);
 // True when a new build waits: leave everything and run it.
 bool devlink_restart_wanted(void);
 // After the frame is on screen: serves a waiting screenshot.
@@ -52,6 +54,7 @@ static inline uint32_t devlink_keys(void) { return 0; }
 static inline bool devlink_touch(int* x, int* y) { (void) x; (void) y; return false; }
 static inline bool devlink_take_launch(char* out, unsigned outLen) { (void) out; (void) outLen; return false; }
 static inline bool devlink_take_leave(void) { return false; }
+static inline bool devlink_take_wild(int* species, int* level) { (void) species; (void) level; return false; }
 static inline bool devlink_restart_wanted(void) { return false; }
 static inline void devlink_after_frame(void) {}
 

@@ -266,7 +266,7 @@ bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snap
   return any;
 }
 
-uint32_t hud_key(const struct pd_snapshot *s, const struct hud_state *h, int hidden) {
+uint32_t hud_key(const struct pd_game *g, const struct pd_snapshot *s, const struct hud_state *h, int hidden) {
   uint32_t k = 2166136261u;
 #define MIX(v) (k = (k ^ (uint32_t)(v)) * 16777619u)
   MIX(hidden);
@@ -282,8 +282,13 @@ uint32_t hud_key(const struct pd_snapshot *s, const struct hud_state *h, int hid
       MIX(s->party[i].status);
     }
     MIX(s->mapsec);
-    MIX(s->posOk ? s->x : 0);
-    MIX(s->posOk ? s->y : 0);
+    // The tile the minimap shows, not every step: a redraw is several ms on a 3DS.
+    int page = -1, tx = 0, ty = 0;
+    if (pd_map_player_tile(g, s, &page, &tx, &ty)) {
+      MIX(page);
+      MIX(tx);
+      MIX(ty);
+    }
     MIX(s->gender);
     MIX(s->bagOk);
     for (int i = 0; s->bagOk && i < s->bag[PD_POCKET_BALLS].count && i < PD_POCKET_SLOTS; i++) {

@@ -39,8 +39,12 @@ set(USE_PNG             OFF CACHE BOOL "" FORCE)
 set(USE_ZLIB            OFF CACHE BOOL "" FORCE)
 set(M_CORE_GBA          ON  CACHE BOOL "" FORCE)
 set(M_CORE_GB           ON  CACHE BOOL "" FORCE)
-set(BUILD_LTO           OFF CACHE BOOL "" FORCE)
+set(BUILD_LTO           ON  CACHE BOOL "" FORCE)
 set(SKIP_INSTALL_ALL    ON  CACHE BOOL "" FORCE)
+
+# LTO, as mGBA's own release builds have it: the archive needs the plugin-aware tools.
+set(CMAKE_AR "${CMAKE_C_COMPILER}-ar" CACHE FILEPATH "" FORCE)
+set(CMAKE_RANLIB "${CMAKE_C_COMPILER}-ranlib" CACHE FILEPATH "" FORCE)
 
 add_subdirectory("${MGBA_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/mgba" EXCLUDE_FROM_ALL)
 
@@ -74,6 +78,7 @@ if(PD_DEV)
 endif()
 # citro2d draws the screens (gpu.c); citro3d and libctru come with libmgba too.
 target_link_libraries(pokedaisy.elf mgba citro2d citro3d ctru m)
+target_link_options(pokedaisy.elf PRIVATE -flto=auto -O3)
 
 if(PD_DEV)
     set(PD_TITLE "PokeDaisy dev")

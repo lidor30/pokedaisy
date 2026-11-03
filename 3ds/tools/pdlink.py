@@ -9,6 +9,7 @@
   pdlink.py [-a IP] launch FILE           open a game from the list
   pdlink.py [-a IP] press KEYS [FRAMES]   KEYS: a+b+up ... (libctru's bits)
   pdlink.py [-a IP] tap X Y [FRAMES] | drag X0 Y0 X1 Y1 [FRAMES]
+  pdlink.py [-a IP] wild SPECIES LEVEL    a scripted wild battle, on the field of a GBA game
   pdlink.py [-a IP] shot OUT.png          both screens, stacked as the console shows them
   pdlink.py [-a IP] push BUILD.3dsx       the new build, then restart into it
 
@@ -44,6 +45,7 @@ def find(timeout=30):
 class Link:
     def __init__(self, addr):
         self.s = socket.create_connection((addr, PORT), timeout=20)
+        self.s.settimeout(900)  # sendall counts the whole send: a ROM takes minutes over the 3DS's Wi-Fi
         self.f = self.s.makefile("rb")
 
     def call(self, line, payload=b""):
@@ -123,6 +125,8 @@ def main():
         link.call(f"touch {rest[0]} {rest[1]} {rest[2] if len(rest) > 2 else 6}")
     elif cmd == "drag":
         link.call(f"drag {rest[0]} {rest[1]} {rest[2]} {rest[3]} {rest[4] if len(rest) > 4 else 30}")
+    elif cmd == "wild":
+        link.call(f"wild {rest[0]} {rest[1]}")
     elif cmd == "shot":
         shot(link, rest[0])
     else:

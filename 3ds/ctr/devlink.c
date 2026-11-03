@@ -3,6 +3,7 @@
 // time. Files only go in and out of the dev folder and the dev build's own .3dsx.
 #ifdef PD_DEV
 #include "devlink.h"
+#include "gpu.h"
 
 #include <3ds.h>
 
@@ -39,6 +40,7 @@ static int touchX, touchY, touchFrames;
 static int dragToX, dragToY, dragTotal;
 static char launch[256];
 static volatile bool leaveWanted, restartWanted;
+static volatile int wildSpecies, wildLevel;
 static struct devlink_stats stats;
 static char logRing[LOG_BYTES];
 static unsigned logEnd;
@@ -107,6 +109,14 @@ bool devlink_take_leave(void) {
 
 bool devlink_restart_wanted(void) {
     return restartWanted;
+}
+
+bool devlink_take_wild(int* species, int* level) {
+    if (!wildSpecies) return false;
+    *species = wildSpecies;
+    *level = wildLevel;
+    wildSpecies = 0;
+    return true;
 }
 
 void devlink_report(const struct devlink_stats* s) {
@@ -284,10 +294,16 @@ static bool cmd_stat(int fd) {
     LightLock_Lock(&lock);
     s = stats;
     LightLock_Unlock(&lock);
+    bool isNew = false;
+    APT_CheckNew3DS(&isNew);
+    // 5 cycles an iteration: about 25 ms at the New 3DS's 804 MHz, three times that at 268.
+    u64 start = svcGetSystemTick();
+    for (u32 i = 4000000; i; i--) __asm__ volatile("");
+    unsigned clockUs = (unsigned) ((svcGetSystemTick() - start) / (SYSCLOCK_ARM11 / 1000000));
     char text[256];
     int n = snprintf(text, sizeof(text),
-                     "frames=%u core_us=%u ui_us=%u draw_us=%u worst_us=%u late=%u linear_free=%u new3ds=%d\n",
-                     s.frames, s.coreUs, s.uiUs, s.drawUs, s.worstUs, s.late, (unsigned) linearSpaceFree(), 0);
+                     "frames=%u core_us=%u ui_us=%u draw_us=%u worst_us=%u late=%u linear_free=%u new3ds=%d shown=%u clock_us=%u\n",
+                     s.frames, s.coreUs, s.uiUs, s.drawUs, s.worstUs, s.late, (unsigned) linearSpaceFree(), isNew, gpu_frames_shown(), clockUs);
     return reply(fd, text, (size_t) n);
 }
 
@@ -343,6 +359,12 @@ static bool serve(int fd, char* line) {
         restartWanted = true;
         return reply(fd, NULL, 0);
     }
+    int species, level;
+    if (sscanf(line, "wild %d %d", &species, &level) == 2) {
+        wildLevel = level;
+        wildSpecies = species;
+        return reply(fd, NULL, 0);
+    }
     if (sscanf(line, "launch %255[^\n]", name) == 1) {
         LightLock_Lock(&lock);
         snprintf(launch, sizeof(launch), "%s", name);
@@ -368,10 +390,10 @@ static void beacon(int fd, struct sockaddr_in* to) {
     sendto(fd, text, (size_t) n, 0, (struct sockaddr*) to, sizeof(*to));
 }
 
-static void link_thread(void* arg) {
-    (void) arg;
+// The listening socket, non-blocking; -1 until the Wi-Fi is back.
+static int open_server(void) {
     int server = socket(AF_INET, SOCK_STREAM, IPPROTO_IP);
-    if (server < 0) return;
+    if (server < 0) return -1;
     struct sockaddr_in here = { 0 };
     here.sin_family = AF_INET;
     here.sin_port = htons(DEVLINK_PORT);
@@ -379,9 +401,15 @@ static void link_thread(void* arg) {
     snprintf(address, sizeof(address), "%s", inet_ntoa(here.sin_addr));
     if (bind(server, (struct sockaddr*) &here, sizeof(here)) || listen(server, 2)) {
         close(server);
-        return;
+        return -1;
     }
     fcntl(server, F_SETFL, fcntl(server, F_GETFL, 0) | O_NONBLOCK);
+    return server;
+}
+
+static void link_thread(void* arg) {
+    (void) arg;
+    int server = open_server();
 
     int udp = socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
     int yes = 1;
@@ -398,10 +426,20 @@ static void link_thread(void* arg) {
             lastBeacon = now;
             beacon(udp, &everyone);
         }
+        // HOME or the lid takes the Wi-Fi away and the socket with it: it's opened again.
+        if (server < 0) {
+            server = open_server();
+            svcSleepThread(500 * 1000000LL);
+            continue;
+        }
         struct sockaddr_in peer;
         socklen_t peerLen = sizeof(peer);
         int fd = accept(server, (struct sockaddr*) &peer, &peerLen);
         if (fd < 0) {
+            if (errno != EAGAIN && errno != EWOULDBLOCK) {
+                close(server);
+                server = -1;
+            }
             svcSleepThread(50 * 1000000LL);
             continue;
         }
@@ -411,7 +449,7 @@ static void link_thread(void* arg) {
         close(fd);
     }
     if (udp >= 0) close(udp);
-    close(server);
+    if (server >= 0) close(server);
 }
 
 void devlink_start(void) {

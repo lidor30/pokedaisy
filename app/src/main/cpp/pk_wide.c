@@ -864,6 +864,16 @@ static void partnerEnd(struct GBAVideoRenderer* r);
 static int partnerOam = -1, partnerBlobOam = -1;          // this frame's OAM entries (-1: not drawn)
 static uint16_t partnerSavedOam[2][4];
 
+// Off, the frame's per-line record isn't kept: a host that only wants the scene (a 3DS at ASPECT ORIGINAL), where
+// copying and comparing 3 KB a line takes a tenth of the frame.
+static bool linesWanted = true;
+
+void pk_wide_lines(int on) {
+    if (linesWanted == (on != 0)) return;
+    linesWanted = on != 0;
+    lineIoFrames = 0;
+}
+
 static void hookDrawScanline(struct GBAVideoRenderer* r, int y) {
     if (y == 0) {
         vramTornLast = vramTorn;   // the frame before, done
@@ -871,7 +881,7 @@ static void hookDrawScanline(struct GBAVideoRenderer* r, int y) {
         if (hookGba) tintPalettes(r, hookGba->video.palette);
     }
     drawingLine = y;
-    if (hookGba && y >= 0 && y < PK_WIDE_H) {
+    if (hookGba && linesWanted && y >= 0 && y < PK_WIDE_H) {
         memcpy(lineIo[y], hookGba->memory.io, sizeof(lineIo[0]));
         const uint16_t* pal = hookGba->video.palette;
         if (y == 0) linePalN = 0;
@@ -3134,7 +3144,7 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
         hookScanlines(G);
         int cur = prev == 0 ? 1 : 0;
         take(&snaps[cur]);
-        if (lineIoFrames < 2) lineIoFrames++;
+        if (linesWanted && lineIoFrames < 2) lineIoFrames++;
         prev = cur;
         return mix;
     }
@@ -3287,7 +3297,7 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
             row[i] = overlayDim ? dimmed(o, overlayDim) : o;
         }
     }
-    if (lineIoFrames < 2) lineIoFrames++;
+    if (linesWanted && lineIoFrames < 2) lineIoFrames++;
     prev = cur;
     return mix;
 }

@@ -537,7 +537,7 @@ static void present_hud_game(const struct pd_game *g, const struct pd_snapshot *
     if (hudTexture)
       SDL_SetTextureBlendMode(hudTexture, SDL_BLENDMODE_BLEND);
   }
-  uint32_t key = hud_key(s, h, hidden) ^ (uint32_t)(w * 65599 + hh);
+  uint32_t key = hud_key(g, s, h, hidden) ^ (uint32_t)(w * 65599 + hh);
   if (hudTexture && (key != hudDrawnKey || w != hudW || hh != hudH)) {
     struct pd_canvas hc;
     pd_canvas_init(&hc, w, hh, hudPixels);

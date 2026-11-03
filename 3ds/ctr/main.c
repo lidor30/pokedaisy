@@ -19,6 +19,7 @@
 
 #include <mgba-util/vfs.h>
 #include <mgba/core/blip_buf.h>
+#include <mgba/internal/gba/gba.h>
 #include <mgba/core/config.h>
 #include <mgba/core/core.h>
 #include <mgba/core/log.h>
@@ -35,6 +36,7 @@
 #include "../../app/src/main/cpp/pk_gb_audio.h"
 #include "../../app/src/main/cpp/pk_host.h"
 #include "devlink.h"
+#include "../../app/src/main/cpp/pk_call.h"
 #include "gpu.h"
 
 // The dev build keeps to a folder of its own: a test never touches the player's games and saves.
@@ -306,8 +308,9 @@ static void show_message(const char* line1, const char* line2) {
     gpu_set_top(topPx);
     while (aptMainLoop()) {
         hidScanInput();
-        if (hidKeysDown() & (KEY_B | KEY_A)) break;
+        if ((hidKeysDown() | devlink_keys()) & (KEY_B | KEY_A) || devlink_restart_wanted()) break;
         gpu_draw(false, 0);
+        devlink_after_frame();
     }
 }
 
@@ -416,14 +419,23 @@ static bool run_game(const char* file) {
         return true;
     }
     mCoreInitConfig(core, NULL);
+    // mGBA's renderer on the New 3DS's third core, as its own 3DS front end has it.
+    bool isNew = false;
+    APT_CheckNew3DS(&isNew);
+    if (isNew) mCoreConfigSetIntValue(&core->config, "threadedVideo", 1);
     core->setVideoBuffer(core, (color_t*) gpu_game_buffer(), GPU_GAME_STRIDE);
     pk_gb_settings(core);
     core->setAudioBufferSize(core, AUDIO_SAMPLES);
-    if (!core->loadROM(core, rom)) {
+    // Into mGBA's fixed 32 MB buffer: core->loadROM maps the file with linearAlloc, and the 15 MB of linear memory the
+    // GPU leaves can't hold a 16 MB game on a real console. This closes rom.
+    if (!mCorePreloadVF(core, rom)) {
         core->deinit(core);
         show_message("The game didn't load (too big?):", file);
         return true;
     }
+    // As mGBA's own 3DS front end has it (gui-runner.c): skips the busy loops games wait in. Without it FireRed takes 19 ms
+    // a frame on a New 3DS, 30 FPS; with it 9.
+    if (core->platform(core) == mPLATFORM_GBA) ((struct GBA*) core->board)->idleOptimization = IDLE_LOOP_DETECT;
     backup_save(base, saveSd);
     struct VFile* save = VFileOpen(savePath, O_CREAT | O_RDWR);
     if (save) core->loadSave(core, save);
@@ -487,6 +499,17 @@ static bool run_game(const char* file) {
         u32 held = hidKeysHeld() | injected, down = hidKeysDown() | (injected & ~lastInjected);
         lastInjected = injected;
         if (devlink_take_leave() || devlink_restart_wanted()) break;
+#ifdef PD_DEV
+        int wildSpecies, wildLevel;
+        if (!session.game.gb && pk_call_safe(core) && session.game.cfg && session.game.cfg->pcSetupScript && devlink_take_wild(&wildSpecies, &wildLevel)) {
+            // setwildbattle species level item; dowildbattle; end (pd_sim's `wild`).
+            const struct pd_config* cfg = session.game.cfg;
+            uint8_t script[] = { 0xB6, (uint8_t) wildSpecies, (uint8_t) (wildSpecies >> 8), (uint8_t) wildLevel, 0, 0, 0xB7, 0x02 };
+            pd_session_write(&session, cfg->pcScript, script, sizeof(script));
+            uint32_t args[4] = { cfg->pcScript, 0, 0, 0 };
+            pk_call(core, cfg->pcSetupScript, args, NULL);
+        }
+#endif
 
         // X is the device's BACK (the app's companion back); Y the QUICK MENU; ZL the next tab.
         if (down & KEY_X) { pd_ui_back(uiPtr); session.redraw = true; }
@@ -701,7 +724,6 @@ int main(void) {
     audio_init();
     mcuHwcInit();
     devlink_start();
-
     char file[256];
     while (pick_rom(file, sizeof(file))) {
         if (!run_game(file)) break;

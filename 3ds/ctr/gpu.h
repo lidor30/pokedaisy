@@ -31,7 +31,10 @@ void gpu_show_overlay(bool shown, bool dim);
 void gpu_hold_game(bool hold);
 
 // One frame: the game (in screenMode, enum pd_screen_mode) or the top canvas
-// on the top screen, the bottom canvas below. Waits for the screen's refresh.
+// on the top screen, the bottom canvas below. Everything is copied before it returns, so the caller can go on; it
+// waits for the screen's refresh only when the last frame is still being taken.
 void gpu_draw(bool game, int screenMode);
+// Frames drawn since the start, whichever thread drew them.
+unsigned gpu_frames_shown(void);
 
 #endif

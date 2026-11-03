@@ -24,6 +24,36 @@ static C3D_Tex gameTex, game2xTex;
 static C3D_Tex wideTex, wide2xTex; // EXPAND's window at 1x (up to 400 x 240), and 2x for the smooth modes
 static C3D_Tex bottomTex, topTex, overlayTex;
 
+// A New 3DS draws on its third core, so writing the textures and waiting for the refresh come off the game's time.
+// gpu_draw hands a job over: what the frame needs is copied into the stage (the game runs on and rewrites its buffers),
+// and the thread takes it at the next refresh. One job at a time: a game that's ahead waits for the stage, which is
+// what paces it. Without that core gpu_draw runs the job itself.
+struct draw_job {
+    bool game;
+    int screenMode;
+    bool holdGame, overlayShown, overlayDim;
+    int gameW, gameH;
+    const uint32_t* gamePx;
+    const uint32_t* widePx;
+    int wideW, wideH;
+    const uint32_t* bottom;
+    const uint32_t* top;
+    const uint32_t* overlay;
+};
+#define DRAW_STACK (64 * 1024)
+static Thread drawThread;
+static LightEvent jobReady, stageFree;
+static volatile unsigned jobsHanded, jobsDone;
+static volatile bool drawStop;
+static struct draw_job job;
+static uint32_t* stageGame;
+static uint32_t* stageWide;
+static uint32_t* stageBottom;
+static uint32_t* stageTop;
+static uint32_t* stageOverlay;
+static aptHookCookie drawHook;
+static volatile unsigned framesShown;
+
 // Texel (x, y) of a w-wide texture in the GPU's layout: 8x8 tiles, row by
 // row, Morton (Z) order inside a tile. The first row is the image's top
 // (v = 1) - checked in Azahar, where writing rows bottom-up drew everything
@@ -53,6 +83,8 @@ static bool tex_init(C3D_Tex* tex, int w, int h, GPU_TEXTURE_FILTER_PARAM filter
     return true;
 }
 
+static void draw_thread_start(void);
+
 bool gpu_init(void) {
     gfxInitDefault();
     if (!C3D_Init(C3D_DEFAULT_CMDBUF_SIZE)) return false;
@@ -69,12 +101,22 @@ bool gpu_init(void) {
     C3D_TexSetWrap(&overlayTex, GPU_CLAMP_TO_EDGE, GPU_CLAMP_TO_EDGE);
     memset(overlayTex.data, 0, overlayTex.size);
     GSPGPU_FlushDataCache(overlayTex.data, overlayTex.size);
-    return tex_init(&gameTex, 256, 256, GPU_NEAREST) && tex_init(&game2xTex, 512, 512, GPU_LINEAR) &&
-        tex_init(&wideTex, 512, 256, GPU_NEAREST) && tex_init(&wide2xTex, 1024, 512, GPU_LINEAR) &&
-        tex_init(&bottomTex, 512, 256, GPU_NEAREST) && tex_init(&topTex, 512, 256, GPU_NEAREST);
+    if (!(tex_init(&gameTex, 256, 256, GPU_NEAREST) && tex_init(&game2xTex, 512, 512, GPU_LINEAR) &&
+          tex_init(&wideTex, 512, 256, GPU_NEAREST) && tex_init(&wide2xTex, 1024, 512, GPU_LINEAR) &&
+          tex_init(&bottomTex, 512, 256, GPU_NEAREST) && tex_init(&topTex, 512, 256, GPU_NEAREST)))
+        return false;
+    draw_thread_start();
+    return true;
 }
 
 void gpu_exit(void) {
+    if (drawThread) {
+        drawStop = true;
+        LightEvent_Signal(&jobReady);
+        threadJoin(drawThread, U64_MAX);
+        threadFree(drawThread);
+        aptUnhook(&drawHook);
+    }
     C3D_TexDelete(&gameTex);
     C3D_TexDelete(&game2xTex);
     C3D_TexDelete(&bottomTex);
@@ -192,20 +234,16 @@ void gpu_hold_game(bool hold) {
     holdGame = hold;
 }
 
-void gpu_draw(bool game, int screenMode) {
+static void run_job(const struct draw_job* j, bool threaded) {
+    bool game = j->game;
+    int screenMode = j->screenMode, gameW = j->gameW, gameH = j->gameH, wideW = j->wideW, wideH = j->wideH;
+    bool holdGame = j->holdGame;
+    const uint32_t* widePx = j->widePx;
+    const uint32_t* gamePx = j->gamePx;
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
-    if (pendingBottom) {
-        write_canvas(&bottomTex, pendingBottom, PD_UI_WIDTH, PD_UI_HEIGHT);
-        pendingBottom = NULL;
-    }
-    if (pendingTop) {
-        write_canvas(&topTex, pendingTop, TOP_W, TOP_H);
-        pendingTop = NULL;
-    }
-    if (pendingOverlay) {
-        write_overlay(pendingOverlay);
-        pendingOverlay = NULL;
-    }
+    if (j->bottom) write_canvas(&bottomTex, j->bottom, PD_UI_WIDTH, PD_UI_HEIGHT);
+    if (j->top) write_canvas(&topTex, j->top, TOP_W, TOP_H);
+    if (j->overlay) write_overlay(j->overlay);
     Tex3DS_SubTexture sub;
     u32 black = C2D_Color32(0, 0, 0, 0xFF);
     C2D_TargetClear(topTarget, black);
@@ -223,11 +261,11 @@ void gpu_draw(bool game, int screenMode) {
             C2D_DrawImageAt(image(&wide2xTex, &sub, 2 * wideW, 2 * wideH), (TOP_W - 2 * wideW * k) / 2, 0, 0.5f, NULL, k, k);
         }
     } else if (screenMode == PD_SCREEN_PIXEL) {
-        if (!holdGame) write_1x(&gameTex, gameBuf, gameW, gameH, GPU_GAME_STRIDE);
+        if (!holdGame) write_1x(&gameTex, gamePx, gameW, gameH, GPU_GAME_STRIDE);
         C2D_DrawImageAt(image(&gameTex, &sub, gameW, gameH), (TOP_W - gameW) / 2, (TOP_H - gameH) / 2, 0.5f, NULL,
                         1.0f, 1.0f);
     } else {
-        if (!holdGame) write_2x(&game2xTex, gameBuf, gameW, gameH, GPU_GAME_STRIDE);
+        if (!holdGame) write_2x(&game2xTex, gamePx, gameW, gameH, GPU_GAME_STRIDE);
         C2D_Image up = image(&game2xTex, &sub, 2 * gameW, 2 * gameH);
         if (screenMode == PD_SCREEN_STRETCH) {
             C2D_DrawImageAt(up, 0, 0, 0.5f, NULL, (float) TOP_W / (2 * gameW), (float) TOP_H / (2 * gameH));
@@ -236,8 +274,10 @@ void gpu_draw(bool game, int screenMode) {
             C2D_DrawImageAt(up, (TOP_W - 2 * gameW * s) / 2, 0, 0.5f, NULL, s, s);
         }
     }
-    if (game && overlayDim) C2D_DrawRectSolid(0, 0, 0.6f, TOP_W, TOP_H, C2D_Color32(0, 0, 0, 0x55));
-    if (game && overlayShown) {
+    // The stage has been read: the game can hand over its next frame while the GPU draws this one.
+    if (threaded) LightEvent_Signal(&stageFree);
+    if (game && j->overlayDim) C2D_DrawRectSolid(0, 0, 0.6f, TOP_W, TOP_H, C2D_Color32(0, 0, 0, 0x55));
+    if (game && j->overlayShown) {
         Tex3DS_SubTexture osub;
         C2D_DrawImageAt(image(&overlayTex, &osub, TOP_W, TOP_H), 0, 0, 0.7f, NULL, 1.0f, 1.0f);
     }
@@ -247,4 +287,70 @@ void gpu_draw(bool game, int screenMode) {
     C2D_SceneBegin(bottomTarget);
     C2D_DrawImageAt(image(&bottomTex, &bottomSub, PD_UI_WIDTH, PD_UI_HEIGHT), 0, 0, 0.5f, NULL, 1.0f, 1.0f);
     C3D_FrameEnd(0);
+    framesShown++;
+}
+
+unsigned gpu_frames_shown(void) {
+    return framesShown;
+}
+
+static void draw_main(void* arg) {
+    (void) arg;
+    for (;;) {
+        LightEvent_Wait(&jobReady);
+        if (drawStop) return;
+        // Its own copy: the stage goes free halfway through, and the next job can be written then.
+        struct draw_job mine = job;
+        run_job(&mine, true);
+        jobsDone++;
+    }
+}
+
+// HOME, the lid, closing: citro3d's own hook expects no frame under way.
+static void draw_apt_hook(APT_HookType hook, void* param) {
+    (void) param;
+    if (hook == APTHOOK_ONSUSPEND || hook == APTHOOK_ONSLEEP || hook == APTHOOK_ONEXIT)
+        while (jobsDone != jobsHanded) svcSleepThread(1000000);
+}
+
+static void draw_thread_start(void) {
+    bool isNew = false;
+    APT_CheckNew3DS(&isNew);
+    if (!isNew) return;
+    stageGame = linearAlloc(GPU_GAME_STRIDE * GBA_H * sizeof(uint32_t));
+    stageWide = linearAlloc(TOP_W * TOP_H * sizeof(uint32_t));
+    stageBottom = linearAlloc(PD_UI_WIDTH * PD_UI_HEIGHT * sizeof(uint32_t));
+    stageTop = linearAlloc(TOP_W * TOP_H * sizeof(uint32_t));
+    stageOverlay = linearAlloc(TOP_W * TOP_H * sizeof(uint32_t));
+    if (!stageGame || !stageWide || !stageBottom || !stageTop || !stageOverlay) return;
+    LightEvent_Init(&jobReady, RESET_ONESHOT);
+    LightEvent_Init(&stageFree, RESET_ONESHOT);
+    LightEvent_Signal(&stageFree);
+    s32 priority = 0x30;
+    svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
+    drawThread = threadCreate(draw_main, NULL, DRAW_STACK, priority - 1, 2, false);
+    if (drawThread) aptHook(&drawHook, draw_apt_hook, NULL);
+}
+
+void gpu_draw(bool game, int screenMode) {
+    struct draw_job next = { game, screenMode, holdGame, overlayShown, overlayDim, gameW, gameH, gameBuf,
+                             widePx, wideW, wideH, pendingBottom, pendingTop, pendingOverlay };
+    pendingBottom = pendingTop = pendingOverlay = NULL;
+    if (!drawThread) {
+        run_job(&next, false);
+        return;
+    }
+    LightEvent_Wait(&stageFree);
+    if (game && !holdGame) {
+        if (widePx) memcpy(stageWide, widePx, (size_t) wideW * wideH * sizeof(uint32_t));
+        else memcpy(stageGame, gameBuf, GPU_GAME_STRIDE * (size_t) gameH * sizeof(uint32_t));
+    }
+    next.gamePx = stageGame;
+    if (widePx) next.widePx = stageWide;
+    if (next.bottom) next.bottom = memcpy(stageBottom, next.bottom, PD_UI_WIDTH * PD_UI_HEIGHT * sizeof(uint32_t));
+    if (next.top) next.top = memcpy(stageTop, next.top, TOP_W * TOP_H * sizeof(uint32_t));
+    if (next.overlay) next.overlay = memcpy(stageOverlay, next.overlay, TOP_W * TOP_H * sizeof(uint32_t));
+    job = next;
+    jobsHanded++;
+    LightEvent_Signal(&jobReady);
 }

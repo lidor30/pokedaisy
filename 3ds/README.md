@@ -7,11 +7,13 @@ and Jetpack Compose, which the 3DS can't run - so this folder holds a small,
 portable C core that re-implements the companion's reading and drawing, plus a
 3DS host and a desktop preview tool around it.
 
-**Status: preview.** It builds and every screen below has been driven on real ROMs and copies of real
-saves in the headless simulator (`make sim-test`, below), but the `.3dsx` itself hasn't been run since the big
-rework: its GPU path (32-bit frames into RGB565 textures, the overlay, EXPAND's window) and the Wi-Fi dev link
-have only been compiled, so speed and those paths on a console are unknown. Target the **New 3DS / New 3DS XL /
-New 2DS XL** first; the original 3DS / 3DS XL / 2DS may not hold full speed (see "Hardware").
+**Status: preview.** It builds, every screen below has been driven on real ROMs and copies of real saves in the
+headless simulator (`make sim-test`, below), and the dev build runs on a New 3DS: FireRed, Emerald, Unbound (32 MB) and
+Yellow boot copies of real saves to the field with the companion, the HUD and the minimap up. At ASPECT ORIGINAL it holds
+60 FPS on the field and in battle in FireRed, Emerald and Yellow; Unbound's field runs at about 50, EXPAND at about 43
+(`pdlink.py stat`). HOME and the lid work; most companion screens haven't been tried on a console.
+Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS XL / 2DS may not hold full speed
+(see "Hardware").
 
 ## What works
 
@@ -146,7 +148,9 @@ DSP firmware. It shows that things work, not how fast they'll run on a console.
 "PokeDaisy dev"), with a small link (`ctr/devlink.c`, TCP 17498, a UDP beacon on 17499) that `tools/pdlink.py`
 talks to: `find`, `ping`, `stat`, `log`, `put` / `push` / `get` / `ls` / `rm` (only under `sdmc:/pokedaisy-dev/`),
 `press`, `tap`, `drag`, `shot`, `leave`, `restart`, `launch`. Start it once from the Homebrew Launcher (press Y
-there for its netloader and send it with `3dslink`), then `tools/pdlink.py find`. Never in a release build.
+there for its netloader and send it with `3dslink`, or copy it to `sdmc:/3ds/`), then `tools/pdlink.py find`. Its port
+17491 can take a while to open after Y, so retry `3dslink -a IP`. `push` puts the build in `sdmc:/3ds/` too, and games go
+in `roms/` (a new one shows after `restart`). Never in a release build.
 
 ## The simulator
 
