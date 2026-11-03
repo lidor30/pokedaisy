@@ -121,7 +121,12 @@ struct pd_config {
     bool staticSaveBlocks, battleStructStatic, mapSecWide;
     int monIconStride, monPalIdxStride, monPalIdxMask; // 0 = 4, 1, 0xFF
     uint32_t monIconPalettes; // a palette pointer per species at monIconStride, not the shared six
-    bool monIconPacked;       // Monomyth's own tile coder (not read here)
+    bool monIconPacked;       // Monomyth's own tile coder
+    bool monIconRecord;       // Unbound's: an entry points at the tiles with their palette behind them (UnboundIconSource)
+    bool itemPalRaw;          // the bag's palettes aren't LZ77 (itemPalCompressed false)
+    // Emerald Rogue's own items: {tiles, palette} per entry from extraItemFirst on, extraItemCount of them.
+    uint32_t extraItemIconTable;
+    int extraItemFirst, extraItemCount, extraItemStride;
     uint32_t itemDescBase;
     int itemDescStride, itemDescOff, itemDescFirst, itemDescCount;
 

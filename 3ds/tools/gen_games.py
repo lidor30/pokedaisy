@@ -565,6 +565,15 @@ def main():
         for field in ("staticSaveBlocks", "battleStructStatic", "mapSecWide", "monIconPacked"):
             if cfg[field]:
                 lines.append(f"    .{field} = true,")
+        if not cfg.get("itemPalCompressed", True):
+            lines.append("    .itemPalRaw = true,")
+        if cfg.get("extraItemIconTable"):
+            lines += [f"    .extraItemIconTable = {cfg['extraItemIconTable']}u,", f"    .extraItemFirst = {cfg['extraItemFirst']},",
+                      f"    .extraItemCount = {cfg['extraItemCount']},", f"    .extraItemStride = {cfg['extraItemStride']},"]
+        if kind == "UNBOUND":
+            # Its config keeps FireRed's tables; the app reads these through UnboundIconSource.
+            lines = [l for l in lines if not l.startswith(("    .monIconTable", "    .monIconPalette", "    .itemIconTable"))]
+            lines += [f"    .monIconTable = {0x09A217FC}u,", "    .monIconRecord = true,", f"    .itemIconTable = {0x0825A554}u,"]
         d = cfg.get("itemDescs")
         if d:
             lines += [f"    .itemDescBase = {d['base']},", f"    .itemDescStride = {d['stride']},", f"    .itemDescOff = {d['descOff']},",
