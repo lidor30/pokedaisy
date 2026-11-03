@@ -28,6 +28,8 @@
 #include <mgba/core/core.h>
 #include <mgba/core/log.h>
 #include <mgba/core/serialize.h>
+#include <mgba/gb/core.h>
+#include <mgba/internal/gb/gb.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -173,6 +175,15 @@ static void post_audio(struct mAVStream *s, blip_t *l, blip_t *r) {
 static bool read_memory(void *ctx, uint32_t a, void *out, size_t n) {
   struct mCore *c = ctx;
   unsigned char *p = out;
+  if (c->platform(c) == mPLATFORM_GB && a >= 0x10000) {
+    // WRAM bank b's D000-DFFF as (b << 16) | address: Crystal switches the window mid-frame, so read the bank itself.
+    unsigned bank = a >> 16, addr = a & 65535;
+    struct GB *gb = c->board;
+    if (bank > 7 || addr < 0xd000 || addr >= 0xe000 || n > 0xe000 - addr || !gb->memory.wram)
+      return false;
+    memcpy(p, gb->memory.wram + bank * 0x1000 + addr - 0xd000, n);
+    return true;
+  }
   if (c->platform(c) == mPLATFORM_GBA && a >= 0x08000000 && a < 0x0e000000) {
     size_t size = 0;
     const unsigned char *r = c->getMemoryBlock(c, 0x08, &size);
@@ -1386,7 +1397,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   // FLY (fly.c): the config's FLY where the ROM's code matches. flyAsk = its destinations wanted (asked for between
   // two frames the game's code can be called in), flyList = the menu shows them; flyStage 1 = start the flight,
   // 2 = the fade, then finish it.
-  const struct pd_config *flyCfg = game.cfg && fly_supported(game.cfg, romdata, (size_t)len) ? game.cfg : NULL;
+  const struct pd_config *flyCfg = game.cfg && c->platform(c) == mPLATFORM_GBA && fly_supported(game.cfg, romdata, (size_t)len) ? game.cfg : NULL;
   struct fly_targets flyT = {0};
   const char *flyNames[FLY_MAX_TOWNS];
   int flyAsk = 0, flySel = 0, flyStage = 0, flyMapsec = 0, flyWait = 0, fieldFlags = 0;
@@ -1395,7 +1406,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   // REPEL, BIKE and PC anywhere (field_items.c): offered where the ROM's code is the config's. A job waits for
   // two frames the game's code can be called between; BIKE then presses SELECT for the game (gameKeys), watches
   // the riding state flip (or the field lock) and puts the player's own registered item back 20 frames later.
-  bool itemsOk = game.cfg && field_items_supported(game.cfg, romdata, (size_t)len);
+  bool itemsOk = game.cfg && c->platform(c) == mPLATFORM_GBA && field_items_supported(game.cfg, romdata, (size_t)len);
   bool pcOk = itemsOk && pc_supported(game.cfg, romdata, (size_t)len);
   bool bikeOk = itemsOk && bike_supported(game.cfg);
   enum { JOB_NONE, JOB_PC, JOB_REPEL, JOB_BIKE, JOB_BIKE_WAIT, JOB_BIKE_RESTORE } job = JOB_NONE;

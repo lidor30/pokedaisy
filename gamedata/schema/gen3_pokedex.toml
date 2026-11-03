@@ -154,6 +154,7 @@ default = false
 [field.expansion]
 kotlin = 'SpeciesInfoDex?'
 type = 'ref'
+record = 'gen3_speciesinfo'
 default = 'none'
 
 # A Game Boy game's dex ([Gen1Dex]: read from the cart's bytes); null = a GBA one.

@@ -3,7 +3,9 @@
 #ifndef PD_TABLES_H
 #define PD_TABLES_H
 
+#include <stdbool.h>
 #include <stddef.h>
+#include <stdint.h>
 
 struct pd_move_info {
     const char* name;
@@ -14,6 +16,34 @@ struct pd_move_info {
 struct pd_type_pair {
     int atk, def, pct;
 };
+
+// A hack's own names and moves (pd_text_gen.c, from the app's Kotlin tables), dense by id; a NULL table (or an id
+// past its count, or a hole) = the hack has none there. pd_config.text NULL = retail's tables.
+struct pd_text {
+    const char* const* species;
+    int speciesCount;
+    const char* const* items;
+    int itemsCount;
+    const struct pd_move_info* moves;
+    int movesCount;
+    // Its own type numbering (expansion's Normal = 1): names by id, the chart's non-100 pairs, each species' two types.
+    const char* const* typeNames;
+    int typeNamesCount;
+    const struct pd_type_pair* typeChart;
+    int typeChartCount;
+    const uint8_t (*speciesTypes)[2];
+    int speciesTypesCount;
+    // GetMonGender's ratio byte by species id (Gen 3 games); NULL = retail's pd_gender_ratios.
+    const uint8_t* genderRatios;
+    int genderRatiosCount;
+    // Its map sections' names (the app's activeMapSecData for the game), by id; NULL = retail's names for its engine.
+    const char* const* mapsecs;
+    int mapsecsCount;
+    // A FireRed 1.0 hack whose region_map.c reads its own sMapNames (the app's RomRegionMap): those names first.
+    bool mapsecsRom;
+};
+
+struct pd_game;
 
 extern const char* const pd_species_names[];
 extern const int pd_species_names_count;
@@ -51,18 +81,20 @@ extern const unsigned char pd_hidden_power_types[16];
 #define PD_SPECIES_EGG 0x7FFF
 
 // Names in the game's own casing: FireRed / Emerald print species and moves
-// in capitals with a small é (the app's gameCase()). Writes into buf.
-const char* pd_species_name(int species, char* buf, size_t len);
-const char* pd_move_name(int move, char* buf, size_t len);
-const char* pd_type_name(int type);
-int pd_move_type(int move);
-int pd_move_power(int move);
+// in capitals with a small é (the app's gameCase()); a hack's own tables already carry theirs. Writes into buf.
+// g = the running game (NULL = retail's tables).
+const char* pd_species_name(const struct pd_game* g, int species, char* buf, size_t len);
+const char* pd_move_name(const struct pd_game* g, int move, char* buf, size_t len);
+// g NULL (or a game on retail's numbering) = retail's names; Hidden Power's type is always retail-numbered.
+const char* pd_type_name(const struct pd_game* g, int type);
+int pd_move_type(const struct pd_game* g, int move);
+int pd_move_power(const struct pd_game* g, int move);
 
 // One attacking type against a (possibly dual-typed) defender, in percent
 // (100 = 1x) - the app's typeMultiplierPct().
-int pd_type_multiplier_pct(int atk, int def1, int def2);
+int pd_type_multiplier_pct(const struct pd_game* g, int atk, int def1, int def2);
 // A species' types (the app's speciesTypeData; the same type twice for one),
 // PD_TYPE_NONE both when unknown.
-void pd_species_type_pair(int species, int* t1, int* t2);
+void pd_species_type_pair(const struct pd_game* g, int species, int* t1, int* t2);
 
 #endif

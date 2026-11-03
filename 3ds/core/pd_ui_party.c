@@ -15,10 +15,14 @@ struct slot_colors {
 };
 static const struct slot_colors SLOT_NORMAL = { 0x4A4A63, 0x84C6DE, 0x3994DE, 0x297BB5 };
 static const struct slot_colors SLOT_SELECTED = { 0xFF7331, 0xADEFFF, 0x7BD6EF, 0x4AADCE };
+// Game Boy: a white window with an ink frame; the selected one has a grey fill, a fainted one a dark grey.
+static const struct slot_colors GB_SLOT = { 0x181818, 0xFFFFFF, 0xFFFFFF, 0xE8E8E8 };
+static const struct slot_colors GB_SLOT_SELECTED = { 0x181818, 0xC8C8C8, 0xC8C8C8, 0xA8A8A8 };
+static const struct slot_colors GB_SLOT_FAINTED = { 0x181818, 0xB0B0B0, 0xB0B0B0, 0x909090 };
 static const struct slot_colors SLOT_FAINTED = { 0x4A4A63, 0xD6A521, 0xC66B10, 0xA54A00 };
 static const struct slot_colors SLOT_SELECTED_FAINTED = { 0xFF7331, 0xD6A521, 0xC66B10, 0xA54A00 };
-#define SLOT_TEXT 0xFFFFFF
-#define SLOT_TEXT_SHADOW 0x737373
+#define SLOT_TEXT PD_GB(0xFFFFFF, PD_GB_INK)
+#define SLOT_TEXT_SHADOW PD_GB(0x737373, PD_GB_PAPER)
 #define MALE 0x42CEFF
 #define MALE_SHADOW 0x006394
 #define FEMALE 0xFF9C94
@@ -64,10 +68,12 @@ static void char_bitmap(struct pd_canvas* c, const char* const* rows, int n, int
     }
 }
 
-static const char* mon_display_name(const struct pd_mon* m, char* buf, size_t len) {
+#define SHINY_MARK 0xF8C830 // a shiny mon's gold asterisk
+
+static const char* mon_display_name(const struct pd_game* g, const struct pd_mon* m, char* buf, size_t len) {
     if (m->species == PD_SPECIES_EGG) return "EGG";
     if (m->nickname[0]) return m->nickname;
-    return pd_species_name(m->species, buf, len);
+    return pd_species_name(g, m->species, buf, len);
 }
 
 // The summary's ♂ / ♀ after the name, in their own colours.
@@ -161,7 +167,7 @@ static void empty_slot(struct pd_canvas* c, int x, int y, int w, int h, const st
     struct pd_canvas t;
     pd_canvas_init(&t, w, h, scratch);
     memset(scratch, 0xFF, (size_t) w * h * sizeof(*scratch)); // 0xFFFFFFFF: nothing drawn
-    slot_frame(&t, 0, 0, g, &SLOT_NORMAL);
+    slot_frame(&t, 0, 0, g, pd_gb_look ? &GB_SLOT : &SLOT_NORMAL);
     for (int yy = 0; yy < h; yy++) {
         int sy = y + yy;
         if (sy < c->cy0 || sy >= c->cy1) continue;
@@ -191,18 +197,18 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     char buf[40];
     bool egg = m->species == PD_SPECIES_EGG;
     bool fainted = !egg && m->hp == 0;
-    const struct slot_colors* col = fainted ? (selected ? &SLOT_SELECTED_FAINTED : &SLOT_FAINTED)
-        : selected ? &SLOT_SELECTED : &SLOT_NORMAL;
+    const struct slot_colors* col = pd_gb_look ? (fainted ? &GB_SLOT_FAINTED : selected ? &GB_SLOT_SELECTED : &GB_SLOT)
+        : fainted ? (selected ? &SLOT_SELECTED_FAINTED : &SLOT_FAINTED) : selected ? &SLOT_SELECTED : &SLOT_NORMAL;
     slot_frame(c, x, y, &geo, col);
     if (!egg) hp_bar(c, x, y, &geo, m->hp, m->maxHp);
 
     // The Poke Ball, then the icon over it, resting 4 px up.
     static const uint32_t BALL_COLORS[4] = { 0x4A4A63, 0xB54200, 0xC65200, 0xB5BDCE };
     char_bitmap(c, BALL, 20, x + geo.fx - 6 * u, y + geo.fy - 4 * u, u, "KRHW", BALL_COLORS);
-    pd_draw_mon_icon_scaled(c, g, m->species, x + geo.fx - 8 * u, y + geo.fy - 4 * u, u, false);
+    pd_draw_mon_icon_shiny(c, g, m->species, m->shiny, x + geo.fx - 8 * u, y + geo.fy - 4 * u, u, false);
 
     int textW = geo.fx + geo.fw - 4 * u - geo.textX;
-    pd_text_fit(c, x + geo.textX, y + geo.nameMid - 8, textW, mon_display_name(m, buf, sizeof(buf)), SLOT_TEXT,
+    pd_text_fit(c, x + geo.textX, y + geo.nameMid - 8, textW, mon_display_name(g, m, buf, sizeof(buf)), SLOT_TEXT,
                 SLOT_TEXT_SHADOW);
     if (!egg) {
         const char* status = fainted ? "FNT" : pd_status_label(m->status);
@@ -211,7 +217,8 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         } else {
             char lv[12];
             snprintf(lv, sizeof(lv), "Lv%d", m->level);
-            pd_text(c, x + geo.textX + 6 * u, y + geo.levelMid - 8, lv, SLOT_TEXT, SLOT_TEXT_SHADOW);
+            int lw = pd_text(c, x + geo.textX + 6 * u, y + geo.levelMid - 8, lv, SLOT_TEXT, SLOT_TEXT_SHADOW);
+            if (m->shiny) pd_text(c, x + geo.textX + 6 * u + lw + 3, y + geo.levelMid - 8, "*", SHINY_MARK, SLOT_TEXT_SHADOW);
         }
         int gx = x + geo.fx + geo.fw - 14 * u, gy = y + geo.levelMid - 4 * u;
         if (m->gender == PD_GENDER_MALE || m->gender == PD_GENDER_FEMALE) {
@@ -275,8 +282,8 @@ static void summary_stats(struct pd_canvas* c, const struct pd_mon_stats* s,
     if(s->hasHiddenPower) {
         pd_text(c,x,ry+2*row,"HIDDEN POWER",PD_MUTED,PD_MUTED_SHADOW);
         if(s->hiddenPowerPower>0)
-            snprintf(buf,sizeof buf,"%s  PWR %d",pd_type_name(s->hiddenPowerType),s->hiddenPowerPower);
-        else snprintf(buf,sizeof buf,"%s",pd_type_name(s->hiddenPowerType));
+            snprintf(buf,sizeof buf,"%s  PWR %d",pd_type_name(NULL, s->hiddenPowerType),s->hiddenPowerPower);
+        else snprintf(buf,sizeof buf,"%s",pd_type_name(NULL, s->hiddenPowerType));
         pd_text_fit(c,x,ry+3*row,w,buf,PD_LABEL,PD_LABEL_SHADOW);
     }
 }
@@ -316,16 +323,17 @@ static void summary_info(struct pd_canvas* c, const struct pd_game* g, const str
         }
     }
     int t1, t2;
-    pd_species_type_pair(m->species, &t1, &t2);
+    pd_species_type_pair(g, m->species, &t1, &t2);
     static const char* const heads[3] = {"WEAK TO", "RESISTS", "IMMUNE"};
     for (int group = 0; group < 3; group++) {
         buf[0] = 0;
-        for (int t = 0; t < pd_type_names_count; t++) {
-            int pct = pd_type_multiplier_pct(t, t1, t2);
+        for (int t = 0; t < 32; t++) {
+            if (!pd_type_name(g, t)[0] || !strcmp(pd_type_name(g, t), "???")) continue;
+            int pct = pd_type_multiplier_pct(g, t, t1, t2);
             if (!((group == 0 && pct > 100) || (group == 1 && pct > 0 && pct < 100) || (group == 2 && pct == 0)))
                 continue;
             size_t n = strlen(buf);
-            snprintf(buf + n, sizeof(buf) - n, "%s%s", n ? ", " : "", pd_type_name(t));
+            snprintf(buf + n, sizeof(buf) - n, "%s%s", n ? ", " : "", pd_type_name(g, t));
         }
         if (!buf[0] || row + 13 > bottom) continue;
         pd_text(c, x, row, heads[group], PD_MUTED, PD_MUTED_SHADOW);
@@ -341,21 +349,22 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
     int ix = x + f + 6, iw = w - 2 * (f + 6);
     int ty = y + f + 2;
     // The icon left of the first two lines (name, HP).
-    if (pd_draw_mon_icon(c, g, m->species, ix - 2, ty + 2, m->species != PD_SPECIES_EGG && m->hp == 0)) {
+    if (pd_draw_mon_icon_shiny(c, g, m->species, m->shiny, ix - 2, ty + 2, 1, m->species != PD_SPECIES_EGG && m->hp == 0)) {
         ix += PD_ICON + 2;
         iw -= PD_ICON + 2;
     }
     int ix0 = x + f + 6, iw0 = w - 2 * (f + 6);
 
     bool egg = m->species == PD_SPECIES_EGG;
-    const char* name = mon_display_name(m, buf, sizeof(buf));
+    const char* name = mon_display_name(g, m, buf, sizeof(buf));
     int nameW = pd_text(c, ix, ty, name, PD_LABEL, PD_LABEL_SHADOW);
     if (!egg) {
         gender_mark(c, ix + nameW + 3, ty, m->gender);
+        if (m->shiny) pd_text(c, ix + nameW + 14, ty, "*", SHINY_MARK, PD_LABEL_SHADOW);
         char lv[12];
         snprintf(lv, sizeof(lv), "Lv%d", m->level);
         pd_text_right(c, ix + iw, ty, lv, PD_VALUE, PD_VALUE_SHADOW);
-        const char* species = pd_species_name(m->species, buf2, sizeof(buf2));
+        const char* species = pd_species_name(g, m->species, buf2, sizeof(buf2));
         if (strcmp(species, name)) pd_text(c, ix + nameW + 14, ty, species, PD_MUTED, PD_MUTED_SHADOW);
     }
     ty += 20;
@@ -377,8 +386,8 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
             summary_stats(c, &m->stats, ix, ty, iw, bottom - ty);
         } else for (int i = 0; i < PD_NUM_MOVES; i++) {
             if (!m->moves[i]) continue;
-            pd_text_fit(c, ix, ty, iw - 120, pd_move_name(m->moves[i], buf, sizeof(buf)), PD_LABEL, PD_LABEL_SHADOW);
-            pd_text(c, ix + iw - 116, ty, pd_type_name(pd_move_type(m->moves[i])), PD_MUTED, PD_MUTED_SHADOW);
+            pd_text_fit(c, ix, ty, iw - 120, pd_move_name(g, m->moves[i], buf, sizeof(buf)), PD_LABEL, PD_LABEL_SHADOW);
+            pd_text(c, ix + iw - 116, ty, pd_type_name(g, pd_move_type(g, m->moves[i])), PD_MUTED, PD_MUTED_SHADOW);
             char pp[12];
             snprintf(pp, sizeof(pp), "PP %d", m->pp[i]);
             pd_text_right(c, ix + iw, ty, pp, PD_VALUE, PD_VALUE_SHADOW);

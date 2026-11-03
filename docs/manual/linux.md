@@ -9,7 +9,10 @@ keywords: [linux, handheld, trimui, brick, smart pro, sdl, quick menu, wild enco
 You can build the initial Linux host from source. It runs Game Boy, Game Boy
 Color and Game Boy Advance games with your own ROMs and saves. Its companion
 uses the existing portable core for supported retail English Gen 3 games.
-Other games have emulation only in this foundation.
+For the ROM hacks the companion reads the DEX of most of them, the TRAINER CARD
+of Unbound, Lazarus, SoulGold and Recharged Yellow, and the GUIDE of a few,
+from your own ROM and save. `docs/ROM_FEATURES.md` lists which build of which
+game shows which tab; a build that is not listed there has emulation only.
 
 Follow `linux/README.md` in the source repository for dependencies, native and
 TrimUI builds, controls, save paths and test commands. Use a separate data

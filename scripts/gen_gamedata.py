@@ -623,6 +623,13 @@ def load_records():
             fail(f"{rel}:{tables[0]['entries'][0][4]}", "keys before the first [record.*] / [list.*]")
         for i, tab in enumerate(tables[1:]):
             where = f"{rel}:{tab['line']}"
+            sub = re.fullmatch(r"record\.([A-Za-z0-9_]+)((?:\.[A-Za-z]\w*)+)", tab["name"])
+            if sub:  # [record.NAME.field]: the record that field holds, spelled out (as under [config.key.field])
+                parent = records.get(sub.group(1))
+                if parent is None or parent["kind"] != "record":
+                    fail(where, f"[{tab['name']}] must come after [record.{sub.group(1)}]")
+                add_record(parent, sub.group(2)[1:].split("."), tab, parent["schema"], rel)
+                continue
             m = re.fullmatch(r"(record|list)\.([A-Za-z0-9_]+)", tab["name"])
             if not m or not RECORD_NAME.fullmatch(m.group(2)):
                 fail(where, f"[{tab['name']}] isn't [record.<UPPER_SNAKE>] or [list.<UPPER_SNAKE>]")
@@ -790,8 +797,73 @@ def c_value(v, f, names, lists, where, none):
     if f["type"] in ("long_list", "int_list", "int_set", "long_set", "int_map") and isinstance(v, list):
         return "{ " + ", ".join(c_value(i, {"type": "int"}, names, lists, where, None) if not isinstance(i, list)
                                 else "{ " + ", ".join(str(int(x)) for x in i) + " }" for i in v) + " }"
+    if f["type"] == "item_descs" and isinstance(v, dict) and "kotlin" not in v:  # RomItemText's ItemDescTable
+        def num(x):
+            if isinstance(x, dict):
+                n = kotlin_const_expr(x.get("ref") or x.get("kotlin") or "")
+                if n is None:
+                    fail(where, f"{x} is Kotlin; the C needs the value in gamedata/")
+                return str(n)
+            return str(int(x))
+        d = dict({"vanilla": dict(stride=44, descOff=0x14, idOff=0x0E), "japanese": dict(stride=40, descOff=0x10, idOff=0x0A)}
+                 .get(v.get("preset"), {}))
+        d.update({k: x for k, x in v.items() if k not in ("preset", "next")})
+        fields = ", ".join(f".{k} = {num(d[k])}" for k in ("base", "stride", "descOff", "idOff", "first", "count") if k in d)
+        if "idOff" not in d:
+            fields += ", .idOff = -1"
+        if v.get("next"):
+            fields += ", .next = " + c_value(v["next"], f, names, lists, where, None)
+        return "&(const struct pd_item_descs){ " + fields + " }"
     if isinstance(v, dict):
-        fail(where, f"{v} is Kotlin; the C needs the value in gamedata/")
+        expr = v.get("kotlin") or ""
+        if expr.startswith("BattleMonLayout("):  # a hack's own struct BattlePokemon, spelled out
+            kv = dict(re.findall(r"(\w+)\s*=\s*(0x[0-9A-Fa-f]+|\d+)", expr))
+            kv.setdefault("species", "0"); kv.setdefault("speciesMask", "0xFFFF")
+            fields = ["size", "species", "moves", "type1", "type2", "pp", "hp", "level", "maxHp", "status1", "speciesMask"]
+            return "&(const struct pd_battle_layout){ " + ", ".join(
+                f".{'status' if k == 'status1' else k} = {kv[k]}" for k in fields) + " }"
+        if v.get("record") == "gen3_speciesinfo":  # an expansion game's gSpeciesInfo page, spelled out as a sub-table
+            schema = load_schema("gen3_speciesinfo")
+            kv = {n: val for n, val, *_ in v["entries"]}
+            if v.get("base"):
+                fail(where, "a gSpeciesInfo page is spelled out in full (no base)")
+            return "&(const struct pd_dex_x){ " + ", ".join(
+                f".{n} = {kv[n] if n in kv else fl['default']}" for n, fl in schema["fields"].items()) + " }"
+        if expr in ("emptyList()", "emptyMap()", "null"):  # none: a NULL pointer, or an empty bank
+            return "{ 0 }" if "SaveBank" in str(f.get("kotlin", "")) else "0"
+        if expr.startswith("WildLayout("):  # a WildPokemonHeader of its own shape
+            kv = {k: int(n, 0) for k, n in re.findall(r"(\w+)\s*=\s*(0x[0-9A-Fa-f]+|\d+)", expr)}
+            d = dict(land=0, water=1, rockSmash=2, fishing=3); d.update(kv)
+            return "&(const struct pd_wild_layout){ " + ", ".join(f".{k} = {d[k]}" for k in ("stride", "land", "water", "rockSmash", "fishing")) + " }"
+        if expr.startswith("NightWild("):
+            kv = {k: n for k, n in re.findall(r"(\w+)\s*=\s*(0x[0-9A-Fa-f]+L?|-?\d+)", expr)}
+            day = re.search(r"day\s*=\s*(\d+)\.\.(\d+)", expr)
+            lo, hi = (day.group(1), day.group(2)) if day else ("7", "19")
+            return (f"&(const struct pd_night_wild){{ .hourAddr = {kv['hourAddr'].rstrip('L')}, .dayFrom = {lo}, .dayTo = {hi}, "
+                    f".skipGroup = {kv.get('skipGroup', '-1')}, .skipNum = {kv.get('skipNum', '-1')} }}")
+        if expr.startswith("listOf(SaveBank("):  # one bank (the only shape so far)
+            banks = re.findall(r"SaveBank\(firstId = (0x[0-9A-Fa-f]+|\d+), sb1Off = (0x[0-9A-Fa-f]+|\d+), count = (0x[0-9A-Fa-f]+|\d+)\)", expr)
+            if len(banks) != 1:
+                fail(where, f"{expr}: the C reads one bank")
+            return "{ " + ", ".join(banks[0]) + " }"
+        if expr.startswith("mapOf("):  # wildSetVars: (group shl 8 or num) to var
+            pairs = re.findall(r"\((\d+) shl 8 or (\d+)\) to (0x[0-9A-Fa-f]+|\d+)", expr)
+            if expr.count(" to ") != len(pairs):
+                fail(where, f"{expr} has a part the C can't read")
+            return "(const uint32_t[]){ " + ", ".join(f"0x{int(g) << 8 | int(n):X}, {v}" for g, n, v in pairs) + ", 0xFFFFFFFF }"
+        if expr.startswith("BaseStatsLayout("):  # a hack's gBaseStats shape, spelled out
+            kv = dict(re.findall(r"(\w+)\s*=\s*(0x[0-9A-Fa-f]+|\d+|true|false)", expr))
+            known = {"stride", "genderOff", "eggGroupsOff", "abilitiesOff", "abilityU16", "statsU16", "typesOff", "catchRateOff"}
+            if not set(kv) <= known or expr.count("=") != len(kv):
+                fail(where, f"{expr} has a part the C can't read")
+            kv.setdefault("stride", "28"); kv.setdefault("abilitiesOff", "0x16"); kv.setdefault("typesOff", "6")
+            kv.setdefault("abilityU16", "false"); kv.setdefault("statsU16", "false")
+            return "&(const struct pd_base_stats){ " + ", ".join(
+                f".{k} = {kv[k]}" for k in ("stride", "abilitiesOff", "typesOff", "abilityU16", "statsU16")) + " }"
+        n = kotlin_const_expr(v.get("ref") or expr)
+        if n is None:
+            fail(where, f"{v} is Kotlin; the C needs the value in gamedata/")
+        return str(n)
     if v is None or v == NONE or (none is not None and v == none):
         return "0"
     if f["type"] == "string":
@@ -803,6 +875,10 @@ def c_value(v, f, names, lists, where, none):
     if isinstance(v, int):
         return (getattr(v, "raw", None) or str(int(v))).replace("_", "")
     if isinstance(v, str):
+        if v not in lists and v.endswith("_BAG_POCKET_ORDER"):
+            ids = kotlin_pocket_order(v, lists, where)
+            if ids is not None:
+                return "{ " + ", ".join(ids) + " }"
         if v in lists:
             return "{ " + ", ".join(c_value(i, {"type": "int"}, names, lists, where, None) for i in lists[v]["items"]) + " }"
         node = names
@@ -814,11 +890,279 @@ def c_value(v, f, names, lists, where, none):
     fail(where, f"can't write {v!r} in C")
 
 
+POCKET_C = {"POCKET_ITEMS": "PD_POCKET_ITEMS", "POCKET_POKE_BALLS": "PD_POCKET_BALLS", "POCKET_TM_HM": "PD_POCKET_TMHM",
+            "POCKET_BERRIES": "PD_POCKET_BERRIES", "POCKET_KEY_ITEMS": "PD_POCKET_KEY"}
+
+
+def kotlin_const_expr(expr):
+    """`NAME`, `NAME - 1` or `NAME + 2` of a Kotlin `const val NAME = <int>` (or a number); None if it's anything else."""
+    m = re.fullmatch(r"\s*(\w+)\s*(?:([-+])\s*(\d+))?\s*", expr)
+    if not m:
+        return None
+    base = m.group(1)
+    if base.isdigit():
+        n = int(base)
+    else:
+        n = None
+        for path in sorted(glob.glob(os.path.join(DATA, "*.kt"))):
+            with open(path, encoding="utf-8") as fh:
+                c = re.search(r"^(?:internal |private )?const val " + base + r"(?:\s*:\s*\w+)?\s*=\s*(\d+)\s*$", fh.read(), re.M)
+            if c:
+                n = int(c.group(1))
+                break
+        if n is None:
+            return None
+    if m.group(2):
+        n = n + int(m.group(3)) if m.group(2) == "+" else n - int(m.group(3))
+    return n
+
+
+def kotlin_pocket_order(name, lists, where):
+    """A hack's `val NAME = listOf(POCKET_*, ...)` in the app's data/ (not a gamedata list) as the port's pocket ids."""
+    for path in sorted(glob.glob(os.path.join(DATA, "*.kt"))):
+        with open(path, encoding="utf-8") as fh:
+            m = re.search(r"^val " + name + r"\s*(?::[^=]*)?=\s*([A-Za-z_]+\(.*?\)|[A-Z_]+)\s*$", fh.read(), re.S | re.M)
+        if not m:
+            continue
+        body = m.group(1)
+        if re.fullmatch(r"[A-Z_]+", body):  # an alias of another order
+            if body in lists:
+                return [POCKET_C[i] for i in lists[body]["items"]]
+            return kotlin_pocket_order(body, lists, where)
+        ids = re.findall(r"POCKET_[A-Z_]+", body)
+        if not ids or any(i not in POCKET_C for i in ids):
+            fail(where, f"{name}: can't read {body!r} as pocket ids")
+        return [POCKET_C[i] for i in ids]
+    return None
+
+
+# --- A hack's own names (Kotlin SpeciesNames*.kt / ItemNames*.kt / MoveData*.kt) as C tables ---
+
+TEXT_KINDS = {"species": "String", "items": "String", "moves": "MoveInfo", "typeNames": "String", "typeChart": "Int",
+              "speciesTypes": "SpeciesTypes", "genderRatios": "Ratios", "mapsecs": "MapSecInfo", "mapsecsRom": "Boolean"}
+KT_MAP = re.compile(r"^(?:internal |private )?val (\w+)(?:: Map<Int, (String|MoveInfo|Int|SpeciesTypes|MapSecInfo)>)?(?: = mapOf\(| by lazy \{ mapOf\(| by lazy \{)$")
+KT_STR_ENTRY = re.compile(r'^\s*(\d+|0x[0-9A-Fa-f]+) to "((?:[^"\\]|\\.)*)",?\s*$')
+KT_INT_ENTRY = re.compile(r"^\s*(\d+|0x[0-9A-Fa-f]+) to (-?\d+),?\s*$")
+KT_TYPES_ENTRY = re.compile(r"^\s*(\d+|0x[0-9A-Fa-f]+) to SpeciesTypes\((\d+|TYPE_NONE), (\d+|TYPE_NONE)\),?\s*$")
+KT_MOVE_ENTRY = re.compile(r'^\s*(\d+|0x[0-9A-Fa-f]+) to MoveInfo\("((?:[^"\\]|\\.)*)", (\d+|TYPE_NONE), (\d+)\),?\s*$')
+# A map section's name: `N to MapSecInfo("Name", region, x, y, w, h)` (MapSecData*.kt).
+KT_MAPSEC_ENTRY = re.compile(r'^\s*(\d+|0x[0-9A-Fa-f]+) to MapSecInfo\("((?:[^"\\]|\\.)*)", -?\d+, \d+, \d+, \d+, \d+\),?\s*$')
+KT_ESCAPES = {"\\": "\\", '"': '"', "$": "$", "n": "\n", "t": "\t", "'": "'"}
+
+
+def kt_unescape(raw, where):
+    out, i = [], 0
+    while i < len(raw):
+        c = raw[i]
+        if c != "\\":
+            out.append(c)
+            i += 1
+        elif raw[i + 1] in KT_ESCAPES:
+            out.append(KT_ESCAPES[raw[i + 1]])
+            i += 2
+        elif raw[i + 1] == "u":
+            out.append(chr(int(raw[i + 2:i + 6], 16)))
+            i += 6
+        else:
+            fail(where, f"unknown escape {raw[i:i + 2]!r} in a Kotlin string")
+    return "".join(out)
+
+
+KT_UNHEX = re.compile(r'unhexRatios\("([0-9a-fA-F]*)"\)')
+
+
+def kotlin_gender_ratios(name, where):
+    """The ratios (one byte a species id) of `val genderRatiosX: IntArray by lazy { unhexRatios("..") }`, or of the
+    `genderRatios = unhexRatios("..")` inside `hackVal: HackText` (read up to that block's closing brace)."""
+    hack, _, field = name.partition(".")
+    for path in sorted(glob.glob(os.path.join(DATA, "*.kt"))):
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.read().split("\n")
+        for n, line in enumerate(lines):
+            if field:
+                if not re.match(r"^(?:internal )?val " + hack + r": HackText by lazy \{$", line):
+                    continue
+                for entry in lines[n + 1:]:
+                    if entry == "}":
+                        break
+                    if entry.strip().startswith(field + " = "):
+                        m = KT_UNHEX.search(entry)
+                        if m:
+                            return list(bytes.fromhex(m.group(1)))
+                fail(where, f"{hack} has no `{field} = unhexRatios(\"..\")`")
+            elif re.match(r"^(?:internal )?val " + name + r": IntArray by lazy \{", line):
+                m = KT_UNHEX.search(line)
+                if not m:
+                    fail(where, f"{name} isn't one `unhexRatios(\"..\")` line")
+                return list(bytes.fromhex(m.group(1)))
+    fail(where, f"no gender ratios `{name}` in the app's data/")
+
+
+def kotlin_text_table(name, kind, where):
+    """{id: name} (species, items) or {id: (name, type, power)} (moves) of the Kotlin `val name`;
+    `A + B` is A with B's entries laid over it (a language pack)."""
+    if " RENAMED " in name:  # `moveData RENAMED moveNamesX`: the base table's moves under another language's names
+        base, names = [n.strip() for n in name.split(" RENAMED ")]
+        t = kotlin_text_table(base, kind, where)
+        ren = kotlin_text_table(names, "species", where)
+        return {k: ((ren.get(k, v[0]),) + tuple(v[1:])) for k, v in t.items()}
+    if name.startswith("UPPER "):  # a game that prints its names in capitals (Config.gameCase)
+        t = kotlin_text_table(name[6:], kind, where)
+        return {k: ((v[0].upper(),) + tuple(v[1:]) if kind == "moves" else v.upper()) for k, v in t.items()}
+    if "+" in name:
+        merged = {}
+        for part in name.split("+"):
+            merged.update(kotlin_text_table(part.strip(), kind, where))
+        return merged
+    if "." in name:  # `hackVal.field`: one named table inside a HackText(...) the app lays over its base game
+        hack, field = name.split(".")
+        return kotlin_hack_table(hack, field, kind, where)
+    for path in sorted(glob.glob(os.path.join(DATA, "*.kt"))):
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.read().split("\n")
+        for n, line in enumerate(lines):
+            m = KT_MAP.match(line)
+            if not m or m.group(1) != name:
+                continue
+            if m.group(2) and m.group(2) != TEXT_KINDS[kind] and not (kind == "mapsecs" and m.group(2) == "String"):
+                fail(where, f"{name} is a Map<Int, {m.group(2)}>, not a {kind} table")
+            table = {}
+            for entry in lines[n + 1:]:
+                if entry.strip() == "mapOf(":
+                    continue
+                if entry.strip() in (")", ") }"):
+                    return table
+                if not entry.strip() or entry.strip().startswith("//"):
+                    continue
+                if kind == "typeChart":
+                    e = KT_INT_ENTRY.match(entry)
+                    if e:
+                        table[int(e.group(1), 0)] = int(e.group(2))
+                        continue
+                if kind == "speciesTypes":
+                    e = KT_TYPES_ENTRY.match(entry)
+                    if e:
+                        table[int(e.group(1), 0)] = tuple(255 if g == "TYPE_NONE" else int(g) for g in e.groups()[1:])
+                        continue
+                e = KT_MOVE_ENTRY.match(entry) if kind == "moves" else KT_STR_ENTRY.match(entry)
+                if not e and kind == "mapsecs":
+                    e = KT_MAPSEC_ENTRY.match(entry)
+                if not e and kind == "typeNames":  # several to a line (the retail table)
+                    pairs = re.findall(r'(\d+) to "([^"]*)"', entry)
+                    if pairs:
+                        table.update({int(k): v for k, v in pairs})
+                        continue
+                if not e:
+                    fail(where, f"{os.path.basename(path)}: can't read {entry.strip()!r} in {name}")
+                value = kt_unescape(e.group(2), where)
+                table[int(e.group(1), 0)] = (value, 255 if e.group(3) == "TYPE_NONE" else int(e.group(3)), int(e.group(4))) if kind == "moves" else value
+            fail(where, f"{name} in {os.path.basename(path)} never closes")
+    fail(where, f"no `val {name}` in the app's data/")
+
+
+def kotlin_hack_table(hack, field, kind, where):
+    for path in sorted(glob.glob(os.path.join(DATA, "*.kt"))):
+        with open(path, encoding="utf-8") as fh:
+            lines = fh.read().split("\n")
+        for n, line in enumerate(lines):
+            if not re.match(r"^(?:internal )?val " + hack + r": HackText by lazy \{$", line):
+                continue
+            for m in range(n + 1, len(lines)):
+                if lines[m] == "}":  # the HackText's own closing brace: another hack's table isn't this one's
+                    break
+                if lines[m].strip() != f"{field} = mapOf(":
+                    continue
+                table = {}
+                for entry in lines[m + 1:]:
+                    if entry.strip() in ("),", ")"):
+                        return table
+                    if not entry.strip() or entry.strip().startswith("//"):
+                        continue
+                    if kind == "typeChart":
+                        e = KT_INT_ENTRY.match(entry)
+                    elif kind == "speciesTypes":
+                        e = KT_TYPES_ENTRY.match(entry)
+                    else:
+                        e = (KT_MOVE_ENTRY if kind == "moves" else KT_STR_ENTRY).match(entry)
+                    if not e:
+                        fail(where, f"{os.path.basename(path)}: can't read {entry.strip()!r} in {hack}.{field}")
+                    k = int(e.group(1), 0)
+                    if kind == "typeChart":
+                        table[k] = int(e.group(2))
+                    elif kind == "speciesTypes":
+                        table[k] = tuple(255 if g == "TYPE_NONE" else int(g) for g in e.groups()[1:])
+                    elif kind == "moves":
+                        table[k] = (kt_unescape(e.group(2), where), 255 if e.group(3) == "TYPE_NONE" else int(e.group(3)), int(e.group(4)))
+                    else:
+                        table[k] = kt_unescape(e.group(2), where)
+                fail(where, f"{hack}.{field} never closes")
+            fail(where, f"{hack} has no `{field} = mapOf(`")
+    fail(where, f"no `val {hack}: HackText` in the app's data/")
+
+
+def c_string(v):
+    return '"' + v.replace("\\", "\\\\").replace('"', '\\"') + '"'
+
+
+def ident(val):
+    return re.sub(r"\W+", "_", val)
+
+
+def c_text(texts, rel):
+    """pd_text_gen.c: one dense array per Kotlin table (shared by the configs naming it), one struct pd_text per config."""
+    arrays, structs = {}, []
+    kinds = ("species", "items", "moves", "typeNames", "typeChart", "speciesTypes", "genderRatios", "mapsecs")
+    for key, (spec, where) in texts.items():
+        refs = []
+        for kind in kinds:
+            if kind not in spec:
+                refs.append(("0", "0"))
+                continue
+            val = spec[kind]
+            if val not in arrays:
+                arrays[val] = (kind, kotlin_gender_ratios(val, where) if kind == "genderRatios" else kotlin_text_table(val, kind, where))
+            table = arrays[val][1]
+            refs.append((f"pd_{ident(val)}", str(len(table) if kind in ("typeChart", "genderRatios") else max(table) + 1)))
+        structs.append((key, refs))
+    out = [
+        f"// Generated by scripts/gen_gamedata.py from the app's SpeciesNames*.kt / ItemNames*.kt / MoveData*.kt / TypeChart*.kt /",
+        f"// SpeciesTypes*.kt / MapSecData*.kt ({rel}'s [text.*]) - don't edit by hand: change the Kotlin or the TOML and run `make gamedata`.",
+        "// A hack's own names, dense by id (NULL = none); a config without one reads retail's (pd_tables.c).",
+        '#include "pd_tables.h"',
+    ]
+    for val, (kind, table) in arrays.items():
+        n = len(table) if kind in ("typeChart", "genderRatios") else max(table) + 1
+        if kind == "genderRatios":
+            out += ["", f"static const uint8_t pd_{ident(val)}[{n}] = {{"]
+            out += [f"    {', '.join(str(v) for v in table[i:i + 24])}," for i in range(0, n, 24)]
+        elif kind == "moves":
+            out += ["", f"static const struct pd_move_info pd_{ident(val)}[{n}] = {{"]
+            out += [f"    [{i}] = {{ {c_string(v[0])}, {v[1]}, {v[2]} }}," for i, v in sorted(table.items())]
+        elif kind == "typeChart":
+            out += ["", f"static const struct pd_type_pair pd_{ident(val)}[{n}] = {{"]
+            out += [f"    {{ {k // 100}, {k % 100}, {v} }}," for k, v in sorted(table.items())]
+        elif kind == "speciesTypes":
+            out += ["", f"static const uint8_t pd_{ident(val)}[{n}][2] = {{"]
+            out += [f"    [{i}] = {{ {v[0]}, {v[1]} }}," for i, v in sorted(table.items())]
+        else:
+            out += ["", f"static const char* const pd_{ident(val)}[{n}] = {{"]
+            out += [f"    [{i}] = {c_string(v)}," for i, v in sorted(table.items())]
+        out.append("};")
+    for key, refs in structs:
+        out += ["", f"const struct pd_text pd_text_{key} = {{"]
+        for field, (arr, n) in zip(kinds, refs):
+            out.append(f"    .{field} = {arr}, .{field}Count = {n},")
+        if texts[key][0].get("mapsecsRom"):
+            out.append("    .mapsecsRom = true,")
+        out.append("};")
+    return "\n".join(out) + "\n"
+
+
 def c_target(path, configs, records, schema):
     rel = os.path.relpath(path, ROOT)
     tables = read_toml(path)
     top = {k: v for k, v, *_ in tables[0]["entries"]}
-    names, parts, wanted = {}, {}, []
+    names, parts, wanted, texts = {}, {}, [], {}
     for tab in tables[1:]:
         where = f"{rel}:{tab['line']}"
         entries = {k: (v, line) for k, v, _, _, line in tab["entries"]}
@@ -827,6 +1171,14 @@ def c_target(path, configs, records, schema):
             for p in tab["name"].split(".")[1:]:
                 node = node.setdefault(p, {})
             node.update({k: v for k, (v, _) in entries.items()})
+        elif tab["name"].startswith("text."):
+            key = tab["name"][5:]
+            if key not in configs:
+                fail(where, f"{key} isn't a config")
+            for k in entries:
+                if k not in TEXT_KINDS:
+                    fail(where, f"[text.{key}]: `{k}` isn't one of species / items / moves / typeNames / typeChart / speciesTypes / genderRatios / mapsecs / mapsecsRom")
+            texts[key] = ({k: v for k, (v, _) in entries.items()}, where)
         elif tab["name"].startswith("part."):
             parts[tab["name"][5:]] = [(k, v, f"{rel}:{line}") for k, (v, line) in entries.items()]
         elif tab["name"].startswith("config."):
@@ -861,6 +1213,7 @@ def c_target(path, configs, records, schema):
         "",
         f'#include "pd_game.h"',
     ]
+    out += [f"extern const struct pd_text pd_text_{key};" for key in texts]
     for key, cname, want, lead, where, *_ in wanted:
         c = configs[key]
         out.append("")
@@ -872,9 +1225,83 @@ def c_target(path, configs, records, schema):
                 spec_path, none = (spec["path"], spec.get("none")) if isinstance(spec, dict) else (spec, None)
                 v, f = res.walk(key, spec_path, fwhere)
                 out.append(f"    .{field} = {c_value(v, f, names, lists, fwhere, none)},")
+        if key in texts:
+            out.append(f"    .text = &pd_text_{key},")
         out.append("};")
     out += ["", "#endif"]
-    return os.path.join(ROOT, top["output"]), "\n".join(out) + "\n"
+    outputs = [(os.path.join(ROOT, top["output"]), "\n".join(out) + "\n")]
+    if texts:
+        outputs.append((os.path.join(ROOT, top["text_output"]), c_text(texts, rel)))
+    return outputs
+
+
+# --- Game Boy games (3ds/core/pd_gb_gen.c): their names, type tables and the small int tables the readers use ---
+
+GB_TEXTS = {
+    # key: (species, items, moves, typeNames, typeChart, speciesTypes), as the app's ActiveTables picks them
+    "gb_yellow": ("speciesNamesYellow", "itemNamesYellow", "moveDataYellow", "typeNamesYellow",
+                  "typeEffectivenessYellow", "speciesTypeDataYellow"),
+    "gb_pure_rgb": ("speciesNamesPureRgb", "itemNamesPureRgb", "moveDataPureRgb", "typeNamesPureRgb",
+                    "typeEffectivenessPureRgb", "speciesTypeDataPureRgb"),
+    "gb_crystal": ("speciesNamesCrystal", "itemNamesCrystal", "moveDataCrystal", "typeNamesCrystal",
+                   "typeEffectivenessCrystal", "speciesTypeDataCrystal"),
+    "gb_gold_silver": ("speciesNamesCrystal", "itemNamesGoldSilver", "moveDataCrystal", "typeNamesCrystal",
+                       "typeEffectivenessCrystal", "speciesTypeDataCrystal"),
+    "gb_crystal_clear": ("speciesNamesCrystal", "itemNamesCrystalClear", "moveDataCrystal", "typeNamesCrystal",
+                         "typeEffectivenessCrystal", "speciesTypeDataCrystal"),
+    "gb_prism": ("speciesNamesPrism", "itemNamesPrism", "moveDataPrism", "typeNamesPrism",
+                 "typeEffectivenessPrism", "speciesTypeDataPrism"),
+    "gb_polished": ("speciesNamesPolishedCrystal", "itemNamesPolishedCrystal", "moveDataPolishedCrystal",
+                    "typeNamesPolishedCrystal", "typeEffectivenessPolishedCrystal", "speciesTypeDataPolishedCrystal"),
+    "gb_polished_faithful": ("speciesNamesPolishedCrystal",
+                             "itemNamesPolishedCrystal + itemNamesPolishedCrystalFaithfulChanges",
+                             "moveDataPolishedCrystal + moveDataPolishedCrystalFaithfulChanges",
+                             "typeNamesPolishedCrystal", "typeEffectivenessPolishedCrystal",
+                             "speciesTypeDataPolishedCrystal + speciesTypeDataPolishedCrystalFaithfulChanges"),
+}
+# Their place names (ActiveTables' activeMapSecData): Gen 1 by wCurMap, Gen 2 by landmark.
+GB_MAPSECS = {"gb_yellow": "mapSecDataYellow", "gb_pure_rgb": "mapSecDataPureRgb", "gb_crystal": "mapSecDataCrystal",
+              "gb_gold_silver": "mapSecDataGoldSilver", "gb_crystal_clear": "mapSecDataCrystalClear", "gb_prism": "mapSecDataPrism",
+              "gb_polished": "mapSecDataPolishedCrystal", "gb_polished_faithful": "mapSecDataPolishedCrystal"}
+GB_INT_TABLES = {  # C name: (Kotlin intArrayOf val, C element type)
+    "pd_gb_internal_to_dex_yellow": "gen1InternalToDexYellow",
+    "pd_gb_internal_to_dex_pure_rgb": "gen1InternalToDexPureRgb",
+    "pd_gb_gender_crystal": "gen2GenderRatiosCrystal",
+    "pd_gb_gender_prism": "gen2GenderRatiosPrism",
+    "pd_gb_gender_polished": "gen2GenderRatiosPolishedCrystal",
+    "pd_gb_tm_crystal": "gen2TmItemsCrystal",
+    "pd_gb_tm_prism": "gen2TmItemsPrism",
+    "pd_gb_tm_polished": "gen2TmItemsPolishedCrystal",
+    "pd_gb_polished_variants": "polishedVariantForms",
+}
+
+
+def kotlin_int_array(name):
+    for path in sorted(glob.glob(os.path.join(DATA, "*.kt"))):
+        with open(path, encoding="utf-8") as fh:
+            m = re.search(r"^val " + name + r" = intArrayOf\((.*?)^\)", fh.read(), re.S | re.M)
+        if m:
+            items = [i.strip() for i in re.sub(r"//.*", "", m.group(1)).split(",") if i.strip()]
+            for i in items:
+                if not re.fullmatch(r"-?(?:0x[0-9A-Fa-f]+|\d+)", i):
+                    fail("pd_gb_gen.c", f"`val {name}`: `{i}` isn't one number (an expression would shift the table)")
+            return [int(i, 0) for i in items]
+    fail("pd_gb_gen.c", f"no `val {name} = intArrayOf(` in the app's data/")
+
+
+def gb_output():
+    texts = {k: ({"species": v[0], "items": v[1], "moves": v[2], "typeNames": v[3], "typeChart": v[4],
+                  "speciesTypes": v[5], **({"mapsecs": GB_MAPSECS[k]} if k in GB_MAPSECS else {})},
+                 "scripts/gen_gamedata.py GB_TEXTS") for k, v in GB_TEXTS.items()}
+    text = c_text(texts, "scripts/gen_gamedata.py's GB_TEXTS")
+    out = [text.rstrip("\n"), ""]
+    for cname, kname in GB_INT_TABLES.items():
+        vals = kotlin_int_array(kname)
+        ctype = "uint32_t" if max(vals) > 0xFFFF else "uint16_t"
+        out += [f"const {ctype} {cname}[{len(vals)}] = {{"]
+        out += ["    " + ", ".join(str(v) for v in vals[i:i + 16]) + "," for i in range(0, len(vals), 16)]
+        out += ["};", f"const int {cname}_count = {len(vals)};", ""]
+    return [(os.path.join(ROOT, "3ds/core/pd_gb_gen.c"), "\n".join(out))]
 
 
 def main():
@@ -891,7 +1318,8 @@ def main():
         records = load_records()
         outputs = [(KOTLIN_OUT, kotlin(configs, schema)), (RECORDS_OUT, record_kotlin(records))]
         for target in sorted(glob.glob(os.path.join(TARGETS, "*.toml"))):
-            outputs.append(c_target(target, configs, records, schema))
+            outputs += c_target(target, configs, records, schema)
+        outputs += gb_output()
     except GameDataError as e:
         sys.exit(f"gen_gamedata: {e}")
     summary = f"{len(configs)} configs, {len(records)} records"

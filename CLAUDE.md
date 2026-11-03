@@ -64,8 +64,7 @@ lazy vals), and the 3DS port's `struct pd_config`s are generated too (`3ds/core/
 layouts: still Kotlin vals the TOML names), the games' identity and the name tables come later. Until phase 1's gate passes,
 `GameDataMigrationTest` checks the generated configs and records equal the old Kotlin ones (`LegacyNativeConfigs.kt`,
 `LegacyRetailPorts.kt`, `LegacyRecords.kt`, test sources; `scripts/convert_native_configs.py` made the first, a
-one-off), and `make -C 3ds test-configs-gen` the generated C against the old hand-written tables
-(`3ds/test/configs_gen_test.c`).
+one-off). (The 3DS C configs' own comparison test went when the hand-written tables did.)
 
 ## Feature tips (APP > TIPS, ON)
 

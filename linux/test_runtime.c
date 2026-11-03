@@ -265,7 +265,7 @@ static void test_frame(struct mCore* c,bool companion,int frame,struct pd_ui* ui
       present_quick(&game,q,9,2,"REPEL",kinds,2,1,gw,gh);shot("quick-repel");
       // The HUD over EXPAND (the screen's corners) and over the game's own picture, a Repel working.
       if(companionGame) {
-        struct hud_state hs={80,100};
+        struct hud_state hs={.repel=80,.repelFull=100,.wild=-1,.focus=-1};
         pd_snapshot_read(snap,&game,read_memory,c);
         companion_canvas();hudDrawnKey=0;
         present_hud_game(&game,snap,&hs,0,gw,gh);shot("hud");assert(hudShown);

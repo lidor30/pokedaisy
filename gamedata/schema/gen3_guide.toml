@@ -131,8 +131,8 @@ default = false
 # an empty record there falls back to [trainers], as the game does.
 [field.altTrainers]
 kotlin = 'List<Long>'
-type = 'ref'
-default = { kotlin = 'emptyList()' }
+type = 'long_list'
+default = []
 
 # A WildPokemonHeader of its own shape (Imperium's 24 bytes, Quetzal's 28); null = vanilla's / [wildSets]'.
 [field.wildLayout]

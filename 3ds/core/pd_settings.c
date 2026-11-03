@@ -57,7 +57,7 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
             int n;
             if (int_in(value, 0, 10, &n) && PD_FF_SPEEDS[pd_ff_index(n)] == n) s->ffSpeed = n;
         }
-        else if (!strcmp(key, "guide")) int_in(value, 0, 0xFFFF, &s->guideNotice);
+        else if (!strcmp(key, "guide")) int_in(value, 0, 0x7FFFFFFF, &s->guideNotice);
         else if (!strcmp(key, "aspect")) int_in(value, 0, PD_ASPECTS - 1, &s->aspect);
         else if (!strcmp(key, "autozoom")) {
             int on;

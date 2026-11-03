@@ -36,22 +36,23 @@ struct mon_view {
     uint32_t status;
     const int* moves;
     const int* pp;
+    bool shiny;
 };
 
 static struct mon_view from_battler(const struct pd_battle_mon* b) {
-    return (struct mon_view) { b->species, b->level, b->hp, b->maxHp, b->type1, b->type2, b->status, b->moves, b->pp };
+    return (struct mon_view) { b->species, b->level, b->hp, b->maxHp, b->type1, b->type2, b->status, b->moves, b->pp, b->shiny };
 }
 
-static struct mon_view from_party(const struct pd_mon* m) {
-    struct mon_view v = { m->species, m->level, m->hp, m->maxHp, PD_TYPE_NONE, PD_TYPE_NONE, m->status, m->moves, m->pp };
-    pd_species_type_pair(m->species, &v.type1, &v.type2);
+static struct mon_view from_party(const struct pd_game* g, const struct pd_mon* m) {
+    struct mon_view v = { m->species, m->level, m->hp, m->maxHp, PD_TYPE_NONE, PD_TYPE_NONE, m->status, m->moves, m->pp, m->shiny };
+    pd_species_type_pair(g, m->species, &v.type1, &v.type2);
     return v;
 }
 
-static void types_text(int t1, int t2, char* buf, size_t len) {
+static void types_text(const struct pd_game* g, int t1, int t2, char* buf, size_t len) {
     if (t1 == PD_TYPE_NONE) snprintf(buf, len, "-");
-    else if (t2 != t1 && t2 != PD_TYPE_NONE) snprintf(buf, len, "%s/%s", pd_type_name(t1), pd_type_name(t2));
-    else snprintf(buf, len, "%s", pd_type_name(t1));
+    else if (t2 != t1 && t2 != PD_TYPE_NONE) snprintf(buf, len, "%s/%s", pd_type_name(g, t1), pd_type_name(g, t2));
+    else snprintf(buf, len, "%s", pd_type_name(g, t1));
 }
 
 // A small pill of white text (VerdictPill): returns its width.
@@ -62,10 +63,18 @@ static int pill(struct pd_canvas* c, int x, int y, const char* text, uint32_t fi
     return w;
 }
 
-// The icon on the window's grey, or a ball when the ROM has no icon for it.
-static void icon(struct pd_canvas* c, const struct pd_game* g, int species, int x, int y, bool faded) {
-    pd_round_rect(c, x, y, PD_ICON + 2, PD_ICON + 2, 3, PD_LIST_FILL);
-    if (!pd_draw_mon_icon(c, g, species, x + 1, y + 1, faded)) ui_ball(c, x + 12, y + 12, true);
+// The icon on the window's grey (a shiny one in its own colours, on pale gold in a gold frame: the app's monIconBox), or a
+// ball when the ROM has no icon for it.
+#define SHINY_FRAME 0xE0A820
+#define SHINY_FILL 0xFFF4C8
+static void icon(struct pd_canvas* c, const struct pd_game* g, int species, bool shiny, int x, int y, bool faded) {
+    if (shiny) {
+        pd_round_rect(c, x, y, PD_ICON + 2, PD_ICON + 2, 3, SHINY_FRAME);
+        pd_round_rect(c, x + 1, y + 1, PD_ICON, PD_ICON, 2, SHINY_FILL);
+    } else {
+        pd_round_rect(c, x, y, PD_ICON + 2, PD_ICON + 2, 3, PD_LIST_FILL);
+    }
+    if (!pd_draw_mon_icon_shiny(c, g, species, shiny, x + 1, y + 1, 1, faded)) ui_ball(c, x + 12, y + 12, true);
 }
 
 // A card across w: icon, then [side] name ... [state] Lv on the first line,
@@ -73,7 +82,7 @@ static void icon(struct pd_canvas* c, const struct pd_game* g, int species, int 
 static void card(struct pd_canvas* c, const struct pd_game* g, int x, int y, int w, const struct mon_view* m,
                  const char* side, const char* state) {
     char buf[40];
-    icon(c, g, m->species, x, y, false);
+    icon(c, g, m->species, m->shiny, x, y, false);
     int tx = x + PD_ICON + 8, right = x + w;
     int ty = y + 1;
     int nx = tx;
@@ -86,7 +95,8 @@ static void card(struct pd_canvas* c, const struct pd_game* g, int x, int y, int
     const char* status = pd_status_label(m->status);
     int statusW = *status ? pd_text_width(status) + 6 + 4 : 0;
     int nameEnd = nx + pd_text_fit(c, nx, ty, lvx - 6 - stateW - statusW - nx,
-                                   pd_species_name(m->species, buf, sizeof(buf)), PD_LABEL, PD_LABEL_SHADOW);
+                                   pd_species_name(g, m->species, buf, sizeof(buf)), PD_LABEL, PD_LABEL_SHADOW);
+    if (m->shiny) nameEnd += pd_text(c, nameEnd + 2, ty, "*", SHINY_FRAME, PD_LABEL_SHADOW) + 2;  // the app's ShinySparkle
     if (*status) {
         ui_status_badge(c, nameEnd + 4, ty + 1, m->status);
         nameEnd += statusW;
@@ -94,7 +104,7 @@ static void card(struct pd_canvas* c, const struct pd_game* g, int x, int y, int
     if (stateW) pill(c, nameEnd + 4, ty, state, VERDICT_GREY);
 
     ty += LINE + 1;
-    types_text(m->type1, m->type2, buf, sizeof(buf));
+    types_text(g, m->type1, m->type2, buf, sizeof(buf));
     int typesW = pd_text_fit(c, tx, ty, 92, buf, PD_MUTED, PD_MUTED_SHADOW);
     char hp[16];
     snprintf(hp, sizeof(hp), "%d/%d", m->hp, m->maxHp);
@@ -117,7 +127,7 @@ static void verdict(int pct, const char** text, uint32_t* color, uint32_t* shado
 
 // A move on the window's grey: its name and PP, then its verdict on foe
 // (NULL = no foe: no verdict).
-static void move_cell(struct pd_canvas* c, int x, int y, int w, int h, int move, int pp, const struct mon_view* foe) {
+static void move_cell(struct pd_canvas* c, const struct pd_game* g, int x, int y, int w, int h, int move, int pp, const struct mon_view* foe) {
     char buf[40];
     pd_round_rect(c, x, y, w, h, 3, PD_LIST_FILL);
     if (!move) return;
@@ -126,16 +136,16 @@ static void move_cell(struct pd_canvas* c, int x, int y, int w, int h, int move,
     char ppText[12];
     snprintf(ppText, sizeof(ppText), "PP %d", pp);
     int ppW = pd_text_width(ppText);
-    pd_text_fit(c, ix, ty, iw - ppW - 6, pd_move_name(move, buf, sizeof(buf)), PD_LABEL, PD_LABEL_SHADOW);
+    pd_text_fit(c, ix, ty, iw - ppW - 6, pd_move_name(g, move, buf, sizeof(buf)), PD_LABEL, PD_LABEL_SHADOW);
     pd_text_right(c, ix + iw, ty, ppText, PD_MUTED, PD_MUTED_SHADOW);
     const char* text = "";
     uint32_t color = PD_LABEL, shadow = PD_LABEL_SHADOW;
-    if (pd_move_power(move) == 0) {
+    if (pd_move_power(g, move) == 0) {
         text = "STATUS";
         color = PD_MUTED;
         shadow = PD_MUTED_SHADOW;
     } else if (foe) {
-        verdict(pd_type_multiplier_pct(pd_move_type(move), foe->type1, foe->type2), &text, &color, &shadow);
+        verdict(pd_type_multiplier_pct(g, pd_move_type(g, move), foe->type1, foe->type2), &text, &color, &shadow);
     }
     pd_text(c, ix, ty + LINE + 1, text, color, shadow);
 }
@@ -173,8 +183,8 @@ static void foe_strip(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
         const struct pd_mon* m = &s->foes[i];
         if (!shown) {
             ui_ball(c, sx + (cell - 10) / 2, y + (cell - 10) / 2, true);
-        } else if (!pd_draw_mon_icon(c, g, m->species, sx + (cell - PD_ICON) / 2, y + (cell - PD_ICON) / 2,
-                                     m->hp == 0)) {
+        } else if (!pd_draw_mon_icon_shiny(c, g, m->species, m->shiny, sx + (cell - PD_ICON) / 2, y + (cell - PD_ICON) / 2, 1,
+                                           m->hp == 0)) {
             char lv[8];
             snprintf(lv, sizeof(lv), "%d", m->level);
             pd_text(c, sx + (cell - pd_text_width(lv)) / 2, pd_text_y(y, cell), lv,
@@ -226,16 +236,16 @@ static int by_score(const void* a, const void* b) {
 // rankSuggestions: every living party Pokémon with a usable damaging move,
 // by (its best move's power x multiplier on the foe) minus the worst the
 // foe's own types do to it.
-static int rank(const struct pd_snapshot* s, const struct mon_view* foe, struct pick* out) {
+static int rank(const struct pd_game* g, const struct pd_snapshot* s, const struct mon_view* foe, struct pick* out) {
     int n = 0;
     for (int i = 0; i < s->partyCount; i++) {
         const struct pd_mon* m = &s->party[i];
         if (m->hp <= 0 || m->species == PD_SPECIES_EGG) continue;
         int best = -1, bestValue = -1;
         for (int k = 0; k < PD_NUM_MOVES; k++) {
-            int power = m->moves[k] ? pd_move_power(m->moves[k]) : 0;
+            int power = m->moves[k] ? pd_move_power(g, m->moves[k]) : 0;
             if (power <= 0 || m->pp[k] <= 0) continue;
-            int value = power * pd_type_multiplier_pct(pd_move_type(m->moves[k]), foe->type1, foe->type2);
+            int value = power * pd_type_multiplier_pct(g, pd_move_type(g, m->moves[k]), foe->type1, foe->type2);
             if (value > bestValue) {
                 bestValue = value;
                 best = k;
@@ -243,17 +253,17 @@ static int rank(const struct pd_snapshot* s, const struct mon_view* foe, struct 
         }
         if (best < 0) continue;
         int t1, t2;
-        pd_species_type_pair(m->species, &t1, &t2);
+        pd_species_type_pair(g, m->species, &t1, &t2);
         int risk = 100;
         if (foe->type1 != PD_TYPE_NONE) {
-            risk = pd_type_multiplier_pct(foe->type1, t1, t2);
+            risk = pd_type_multiplier_pct(g, foe->type1, t1, t2);
             if (foe->type2 != PD_TYPE_NONE && foe->type2 != foe->type1) {
-                int r2 = pd_type_multiplier_pct(foe->type2, t1, t2);
+                int r2 = pd_type_multiplier_pct(g, foe->type2, t1, t2);
                 if (r2 > risk) risk = r2;
             }
         }
-        int pct = pd_type_multiplier_pct(pd_move_type(m->moves[best]), foe->type1, foe->type2);
-        out[n++] = (struct pick) { m, m->moves[best], m->pp[best], pct, pd_move_power(m->moves[best]) * pct / 100 - risk };
+        int pct = pd_type_multiplier_pct(g, pd_move_type(g, m->moves[best]), foe->type1, foe->type2);
+        out[n++] = (struct pick) { m, m->moves[best], m->pp[best], pct, pd_move_power(g, m->moves[best]) * pct / 100 - risk };
     }
     qsort(out, (size_t) n, sizeof(out[0]), by_score);
     return n;
@@ -270,7 +280,7 @@ static void suggestions(struct pd_canvas* c, const struct pd_game* g, const stru
     rule(c, ix, y, iw);
     y += RULE;
     struct pick picks[PD_PARTY_SIZE];
-    int n = rank(s, foe, picks);
+    int n = rank(g, s, foe, picks);
     if (!n) {
         pd_text_wrap(c, ix, y + 2, iw, LINE, 2, "NO USABLE DAMAGING MOVES IN YOUR PARTY", PD_MUTED, PD_MUTED_SHADOW);
         return;
@@ -287,10 +297,10 @@ static void suggestions(struct pd_canvas* c, const struct pd_game* g, const stru
         int ry = y + (rowH - ROW) / 2;
         // The Pokémon: rank and name, then its level, HP and OUT when it's in battle.
         char buf[40];
-        icon(c, g, p->mon->species, ix, ry, false);
+        icon(c, g, p->mon->species, p->mon->shiny, ix, ry, false);
         int tx = ix + PD_ICON + 8, right = ix + half;
         int nx = tx + pd_text(c, tx, ry + 1, RANKS[i], PD_VALUE, PD_VALUE_SHADOW) + 5;
-        pd_text_fit(c, nx, ry + 1, right - nx, pd_species_name(p->mon->species, buf, sizeof(buf)), PD_LABEL,
+        pd_text_fit(c, nx, ry + 1, right - nx, pd_species_name(g, p->mon->species, buf, sizeof(buf)), PD_LABEL,
                     PD_LABEL_SHADOW);
         int ty = ry + LINE + 1;
         char lv[12];
@@ -303,7 +313,7 @@ static void suggestions(struct pd_canvas* c, const struct pd_game* g, const stru
         if (barW >= 16) ui_hp_bar(c, bx, ty + 5, barW, p->mon->hp, p->mon->maxHp);
         // Its best move against the foe.
         pd_fill(c, ix + half + RULE / 2, y + 2, 1, rowH - 4, PD_DIVIDER);
-        move_cell(c, ix + half + RULE, y + 1, iw - half - RULE, rowH - 2, p->move, p->pp, foe);
+        move_cell(c, g, ix + half + RULE, y + 1, iw - half - RULE, rowH - 2, p->move, p->pp, foe);
         y += rowH;
     }
 }
@@ -326,7 +336,7 @@ static void info(struct pd_canvas* c, const struct pd_game* g, const struct pd_s
     int gap = 4;
     int bw = (iw - gap) / 2, bh = (iy + ih - y - gap) / 2;
     for (int i = 0; i < PD_NUM_MOVES; i++) {
-        move_cell(c, ix + (i % 2) * (bw + gap), y + (i / 2) * (bh + gap), bw, bh, you->moves[i], you->pp[i], foe);
+        move_cell(c, g, ix + (i % 2) * (bw + gap), y + (i / 2) * (bh + gap), bw, bh, you->moves[i], you->pp[i], foe);
     }
 }
 
@@ -342,7 +352,7 @@ void ui_battle_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* 
     struct mon_view foeView, you = from_battler(youB);
     const struct mon_view* foe = NULL;
     if (party) {
-        foeView = from_party(party);
+        foeView = from_party(g, party);
         foe = &foeView;
     } else if (s->battlers[PD_POS_OPPONENT_LEFT].species) {
         foeView = from_battler(&s->battlers[PD_POS_OPPONENT_LEFT]);

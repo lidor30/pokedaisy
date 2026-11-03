@@ -32,6 +32,7 @@ struct pd_mon {
     int moves[PD_NUM_MOVES];
     int pp[PD_NUM_MOVES];
     uint32_t personality;
+    bool shiny;       // only where the config reads it (pd_party_layout shiny*)
     // Optional live fields used by the native companions.
     bool hasExperience, hasHeldItem; // distinguish unavailable data from zero
     uint32_t experience;
@@ -48,6 +49,7 @@ struct pd_battle_mon {
     int pp[PD_NUM_MOVES];
     // Optional live Gen 2 battle fields, in Attack/Defense/Speed/Sp.Atk/Sp.Def order.
     int heldItem, stats[5];
+    bool shiny; // by its personality and OT ID, where the game's shiny check is known
 };
 
 #define PD_POS_PLAYER_LEFT 0
@@ -56,7 +58,9 @@ struct pd_battle_mon {
 // A pocket's slots: every pocket of FireRed's and Emerald's bag holds at most 64.
 #define PD_POCKET_SLOTS 256 // Emerald Legacy's ITEMS pocket holds 120
 #define PD_NATIONAL_COUNT 386
-#define PD_DEX_BYTES 52
+#define PD_DEX_BYTES 256 // 2048 national numbers; the largest game's count is 1222
+#define PD_BANK_FLAG_BYTES 0x400 // Quetzal's 0x2000 flags from 0x1000
+#define PD_BANK_VARS 0x100
 #define PD_FLAG_BYTES 0x300 // the most any game has (a hack's 767); Emerald 0x12C, Emerald Legacy 0x138
 #define PD_VAR_COUNT 0x100
 #define PD_GAME_STATS 52 // up to GAME_STAT_BERRY_CRUSH_POINTS
@@ -102,17 +106,31 @@ struct pd_snapshot {
     // readPokedexState: seen only when SaveBlock2's flags and both of
     // SaveBlock1's copies agree; caught only when also seen).
     bool dexOk, dexNational;
+    bool dexStray; // Lazarus: national 0's caught bit, out at the caught array + 0x1FFF (bit 7)
+    int dexCount; // national numbers this game's dex holds (bits 0..dexCount-1 of the arrays below)
     uint8_t dexSeen[PD_DEX_BYTES], dexCaught[PD_DEX_BYTES];
 
     // The GUIDE's save data: SaveBlock1's event flags and vars.
     bool flagsOk;
+    const struct pd_config* cfg; // the config it was read with (its flag / var banks)
     uint8_t flags[PD_FLAG_BYTES];
     uint16_t vars[PD_VAR_COUNT];
+    // cfg->flagBank / varBank's flags and vars (Quetzal's Johto and Kanto), and the game's clock hour (cfg->nightWild,
+    // -1 = not read).
+    uint8_t bankFlags[PD_BANK_FLAG_BYTES];
+    uint16_t bankVars[PD_BANK_VARS];
+    int hour;
 
     // The TRAINER CARD's (games with a cfg->cardStyle): SaveBlock2's name (the
     // game's encoding, 0xFF-ended), ID and play time; the game stats decrypted;
     // Emerald's museum paintings (each winner's species) and battle points.
     bool cardOk;
+    uint8_t achievements[16]; // SaveBlock1 + achievementBitsOff; achievementsOn = its magic (if it has one) reads 0xACE1
+    bool achievementsOn;
+    bool frontierRecordHigh; // SoulGold: any of its Battle Frontier records (SaveBlock2 +0x8B4 x16, +0x9B6 x8) past 49
+    uint8_t cardFlags[PD_FLAG_BYTES]; // the card's own reads (TrainerCard.kt flagsOff / varsOff)
+    uint16_t cardVars[PD_VAR_COUNT];
+    uint8_t cardMagic; // SaveBlock2 + cardMagicOff
     uint8_t playerName[8];
     uint16_t trainerId, playHours;
     uint8_t playMinutes;
@@ -140,6 +158,10 @@ void pd_gen3_text(const uint8_t* src, size_t maxLen, char* out, size_t outLen);
 
 // Decodes one struct Pokemon (100 bytes); false for an empty slot.
 bool pd_decode_party_mon(const uint8_t* raw, struct pd_mon* out);
+// ... by a config's layout (struct pd_party_layout; a plaintext box where the checksum fails).
+bool pd_decode_party_mon_l(const uint8_t* raw, const struct pd_party_layout* l, struct pd_mon* out);
+bool pd_decode_party_mon_c(const uint8_t* raw, const struct pd_party_layout* l, const struct pd_config* cfg,
+                           struct pd_mon* out);
 
 // The item's name / bag description in the game's own words ("" if unknown).
 const char* pd_item_name(const struct pd_game* g, int item);

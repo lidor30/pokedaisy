@@ -46,6 +46,20 @@ static const struct bag_palette EMERALD_BAG = {
     .backdropA = 0xC871F7, .backdropB = 0x5882F7,
 };
 
+// Game Boy: black on white, the games' double-line frame; the cursor is an ink bar like the menus' arrow.
+static const struct bag_palette GB_BAG = {
+    .panel = { { 0x181818, 1 }, { 0xFFFFFF, 1 }, { 0x181818, 1 } },
+    .panelLayers = 3,
+    .tabLayers = 2,
+    .fill = 0xFFFFFF, .divider = 0xC8C8C8,
+    .text = 0x181818, .textShadow = 0xFFFFFF,
+    .tabText = 0x181818, .tabTextShadow = 0xFFFFFF,
+    .cursor = 0x181818,
+    .desc = { { 0x181818, 1 } },
+    .descLayers = 1,
+    .descFill = 0xFFFFFF, .descText = 0x181818, .descTextShadow = 0xFFFFFF,
+};
+
 #define TAB_H 22
 #define BAG_ROW 17
 #define DESC_H 44
@@ -65,17 +79,30 @@ struct bag_view {
     } rows[MAX_ROWS];
 };
 
+// The game's pockets folded into PD_POCKET_*, each once, in the order the game first lists it.
+static int base_pockets(const struct pd_game* g, int out[PD_POCKET_COUNT]) {
+    int n = 0;
+    int total = g->cfg->bagCount < PD_BAG_POCKETS_MAX ? g->cfg->bagCount : PD_BAG_POCKETS_MAX;
+    for (int i = 0; i < total; i++) {
+        int pocket = g->cfg->bagOrder[i], seen = 0;
+        for (int j = 0; j < n; j++) seen |= out[j] == pocket;
+        if (!seen && n < PD_POCKET_COUNT) out[n++] = pocket;
+    }
+    return n;
+}
+
 static void gather(const struct pd_game* g, const struct pd_snapshot* s, int tab, struct bag_view* v) {
+    int order[PD_POCKET_COUNT];
+    int n = base_pockets(g, order);
     v->tabs = 0;
     v->pockets[v->tabs++] = -1;
-    for (int i = 0; i < PD_POCKET_COUNT; i++) {
-        int pocket = g->cfg->bagOrder[i];
-        if (s->bag[pocket].count > 0) v->pockets[v->tabs++] = pocket;
+    for (int i = 0; i < n; i++) {
+        if (s->bag[order[i]].count > 0) v->pockets[v->tabs++] = order[i];
     }
     if (tab < 0 || tab >= v->tabs) tab = 0;
     v->count = 0;
-    for (int i = 0; i < PD_POCKET_COUNT; i++) {
-        int pocket = g->cfg->bagOrder[i];
+    for (int i = 0; i < n; i++) {
+        int pocket = order[i];
         if (v->pockets[tab] >= 0 && pocket != v->pockets[tab]) continue;
         const struct pd_pocket_items* items = &s->bag[pocket];
         for (int j = 0; j < items->count && v->count < MAX_ROWS; j++) {
@@ -177,7 +204,7 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         ui_notice(c, "NO BAG YET", "The bag shows once the game", "has loaded a save.");
         return;
     }
-    const struct bag_palette* p = g->kind == PD_GAME_EMERALD ? &EMERALD_BAG : &FIRERED_BAG;
+    const struct bag_palette* p = g->kind == PD_GAME_GB ? &GB_BAG : g->kind == PD_GAME_EMERALD ? &EMERALD_BAG : &FIRERED_BAG;
     if (p->backdropA) {
         for (int y = 0; y < c->h; y += 8) pd_fill(c, 0, y, c->w, 8, (y / 8) % 2 ? p->backdropB : p->backdropA);
     }

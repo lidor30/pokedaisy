@@ -399,7 +399,7 @@ static bool run_game(const char* file) {
     pd_ui_init(&ui, &settings);
     // What the companion shows: read once now (RAM still blank: an empty
     // party), then every SNAPSHOT_EVERY frames.
-    struct pd_snapshot snap, shown;
+    static struct pd_snapshot snap, shown; // too big for the 3DS's small stack
     pd_snapshot_read(&shown, &game, bus_read, &mem);
     shown.frame = 0;
     struct pd_host_info host = { .count = 2 };

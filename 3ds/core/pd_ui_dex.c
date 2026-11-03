@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "pd_dex.h"
+#include "pd_gb.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
 
@@ -21,8 +22,10 @@ static bool national_view(const struct pd_ui* ui, const struct pd_snapshot* s) {
 // The list: national numbers in the order shown; returns how many.
 static int dex_list(const struct pd_game* g, bool national, int* out) {
     int n = 0;
-    if (national) {
-        for (int i = 1; i <= PD_NATIONAL_COUNT; i++) {
+    if (g->cfg->gb) {  // a Game Boy game: its one Dex, in order
+        for (int i = 1; i <= g->cfg->gb->dexCount; i++) out[n++] = i;
+    } else if (national) {
+        for (int i = 1; i <= g->cfg->nationalCount; i++) {
             if (pd_dex_species(g, i)) out[n++] = i;
         }
     } else {
@@ -45,7 +48,7 @@ static int shown_number(const struct pd_game* g, bool national, int nat) {
 
 static void title(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
                   const int* list, int n, bool national) {
-    int x = MARGIN, w = c->w - 2 * MARGIN - TOGGLE_W - 4;
+    int x = MARGIN, w = c->w - 2 * MARGIN - (g->cfg->gb ? 0 : TOGGLE_W + 4);
     int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_H, PD_TITLE_FILL);
     int ty = pd_text_y(CONTENT_Y, TITLE_H);
     pd_text(c, x + f + 6, ty, "POKéDEX", PD_TITLE_TEXT, PD_TITLE_SHADOW);
@@ -57,7 +60,8 @@ static void title(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     char counts[40];
     snprintf(counts, sizeof(counts), "SEEN %d  OWN %d", seen, caught);
     pd_text_right(c, x + w - f - 6, ty, counts, PD_VALUE, PD_VALUE_SHADOW);
-    // Which dex: tap for the other one.
+    // Which dex: tap for the other one (a Game Boy game has just the one).
+    if (g->cfg->gb) return;
     char other[24];
     snprintf(other, sizeof(other), "%s", national ? g->cfg->regionName : "NATIONAL");
     ui_button(ui, c, x + w + 4, CONTENT_Y, TOGGLE_W, TITLE_H, other, HIT_DEX_TOGGLE);
@@ -65,7 +69,7 @@ static void title(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
 
 // The list shown (rebuilt each draw), kept for the tap handler, which has no
 // game at hand: the toggle flips what shows, up / down step through it.
-static int lastList[PD_NATIONAL_COUNT], lastCount;
+static int lastList[PD_DEX_BYTES * 8], lastCount;
 static bool lastNational;
 
 static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
@@ -91,11 +95,12 @@ static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
         snprintf(num, sizeof(num), "No.%03d", shown_number(g, national, nat));
         int ty = pd_text_y(ry, DEX_ROW);
         pd_text(c, ix + 22, ty, num, PD_MUTED, PD_MUTED_SHADOW);
-        const char* name = pd_species_name(pd_dex_species(g, nat), buf, sizeof(buf));
+        const char* name = pd_species_name(g, pd_dex_species(g, nat), buf, sizeof(buf));
         pd_text(c, ix + 74, ty, name, seen ? PD_LABEL : PD_MUTED, seen ? PD_LABEL_SHADOW : PD_MUTED_SHADOW);
         int top = ry < iy ? iy : ry;
         int bottom = ry + DEX_ROW > iy + ih ? iy + ih : ry + DEX_ROW;
-        ui_add_scroll_hit(ui, ix, top, iw, bottom - top, HIT_DEX_ROW + nat);
+        // a Game Boy game's pages where its cart's are read (Gen 1: Red, Blue, Yellow)
+        if (!g->cfg->gb || pd_gb_dex_pages(g)) ui_add_scroll_hit(ui, ix, top, iw, bottom - top, HIT_DEX_ROW + nat);
     }
     pd_unclip(c);
     ui_scroll_bar(c, ix + iw - 4, iy, ih, ui->dexScroll, n * DEX_ROW, PD_MUTED);
@@ -137,19 +142,21 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     int tx = bx + PD_SPRITE + 24, tw = ix + iw - tx;
     snprintf(buf, sizeof(buf), "No.%03d", shown_number(g, national, e.national));
     pd_text(c, tx, top, buf, PD_MUTED, PD_MUTED_SHADOW);
-    int nw = pd_text(c, tx + 50, top, pd_species_name(e.species, buf2, sizeof(buf2)), PD_LABEL, PD_LABEL_SHADOW);
+    int nw = pd_text(c, tx + 50, top, pd_species_name(g, e.species, buf2, sizeof(buf2)), PD_LABEL, PD_LABEL_SHADOW);
     if (pd_dex_seen(s, e.national)) ui_ball(c, tx + 50 + nw + 6, top + 4, pd_dex_caught(s, e.national));
     snprintf(buf, sizeof(buf), "%s POKéMON", e.category);
     pd_text_fit(c, tx, top + 18, tw, buf, PD_MUTED, PD_MUTED_SHADOW);
     if (e.type2 != e.type1 && e.type2 != PD_TYPE_NONE) {
-        snprintf(buf, sizeof(buf), "%s / %s", pd_type_name(e.type1), pd_type_name(e.type2));
+        snprintf(buf, sizeof(buf), "%s / %s", pd_type_name(g, e.type1), pd_type_name(g, e.type2));
     } else {
-        snprintf(buf, sizeof(buf), "%s", pd_type_name(e.type1));
+        snprintf(buf, sizeof(buf), "%s", pd_type_name(g, e.type1));
     }
     pd_text(c, tx, top + 36, buf, PD_VALUE, PD_VALUE_SHADOW);
     char ht[16], wt[20];
     pd_dex_height(e.heightDm, ht, sizeof(ht));
     pd_dex_weight(e.weightHg, wt, sizeof(wt));
+    if (e.heightIn) snprintf(ht, sizeof(ht), "%d'%02d\"", e.heightIn / 12, e.heightIn % 12);  // the cart's own numbers
+    if (e.weightLbs10) snprintf(wt, sizeof(wt), "%d.%d lbs.", e.weightLbs10 / 10, e.weightLbs10 % 10);
     snprintf(buf, sizeof(buf), "HT %s   WT %s", ht, wt);
     pd_text_fit(c, tx, top + 54, tw, buf, PD_LABEL, PD_LABEL_SHADOW);
 
@@ -158,13 +165,21 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     pd_text_wrap(c, ix, dy, iw, 16, 3, e.description, PD_LABEL, PD_LABEL_SHADOW);
     dy += 3 * 16 + 2;
     static const char* const STAT[6] = { "HP", "ATK", "DEF", "SPA", "SPD", "SPE" };
+    static const char* const STAT1[5] = { "HP", "ATK", "DEF", "SPE", "SPC" };  // Gen 1's own five, its order
     int sx = ix;
-    for (int i = 0; i < 6; i++) {
+    for (int i = 0; i < (e.gen1Stats ? 5 : 6); i++) {
+        if (e.gen1Stats) {
+            sx += pd_text(c, sx, dy, STAT1[i], PD_MUTED, PD_MUTED_SHADOW) + 3;
+            snprintf(buf, sizeof(buf), "%d", e.stats[i]);
+            sx += pd_text(c, sx, dy, buf, PD_LABEL, PD_LABEL_SHADOW) + 9;
+            continue;
+        }
         sx += pd_text(c, sx, dy, STAT[i], PD_MUTED, PD_MUTED_SHADOW) + 3;
         snprintf(buf, sizeof(buf), "%d", e.stats[i]);
         sx += pd_text(c, sx, dy, buf, PD_LABEL, PD_LABEL_SHADOW) + 9;
     }
     dy += 18;
+    if (e.gen1Stats) goto buttons;  // no abilities in Gen 1
     if (e.ability2[0]) {
         snprintf(buf, sizeof(buf), "%s / %s", e.ability1, e.ability2);
     } else {
@@ -173,6 +188,7 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     int aw = pd_text(c, ix, dy, "ABILITY", PD_MUTED, PD_MUTED_SHADOW);
     pd_text_fit(c, ix + aw + 6, dy, iw - aw - 150, buf, PD_LABEL, PD_LABEL_SHADOW);
 
+buttons:;
     // Step through the list (wrapping) or go back to it.
     int byBtn = y + h - f - 26;
     ui_button(ui, c, x + w - f - 70 - 2 * 40, byBtn, 36, 22, "", HIT_DEX_PREV);
@@ -208,7 +224,7 @@ bool ui_dex_act(struct pd_ui* ui, int id) {
         ui->dexScroll = 0;
         return true;
     }
-    if (id >= HIT_DEX_ROW && id <= HIT_DEX_ROW + PD_NATIONAL_COUNT) {
+    if (id >= HIT_DEX_ROW && id <= HIT_DEX_ROW + PD_DEX_BYTES * 8) {
         ui->dexOpen = id - HIT_DEX_ROW;
         return true;
     }
