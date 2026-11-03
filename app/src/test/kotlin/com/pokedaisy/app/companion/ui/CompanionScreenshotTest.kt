@@ -1196,6 +1196,27 @@ open class CompanionScreenshotTest {
         cfg = if (blue) com.pokedaisy.app.companion.data.GEN1_PURE_BLUE else com.pokedaisy.app.companion.data.GEN1_PURE_RED,
         romFile = if (blue) pureBlueRom else pureRedRom, game = if (blue) GameKind.PURE_BLUE else GameKind.PURE_RED,
     )
+    // Yellow Legacy v1.0.10 and Crystal Legacy v1.3.1: retail saves, rewritten by scripts/convert_save_legacy.py.
+    private fun yellowLegacy(fixture: String, tab: String, controls: Boolean = false, dexEntry: Int? = null, guidePage: String? = null, onMap: Int? = null) = yellow(
+        fixture, tab, controls = controls, dexEntry = dexEntry, guidePage = guidePage, onMap = onMap,
+        cfg = com.pokedaisy.app.companion.data.GEN1_YELLOW_LEGACY, romFile = "Pokemon Yellow Legacy (v1.0.10).gb", game = GameKind.YELLOW_LEGACY,
+    )
+    @Test fun yellowLegacyParty() = yellowLegacy("yellow_legacy", "PARTY")
+    @Test fun yellowLegacyItems() = yellowLegacy("yellow_legacy", "ITEMS")
+    @Test fun yellowLegacyMap() = yellowLegacy("yellow_legacy", "MAP")
+    @Test fun yellowLegacyDexEntry() = yellowLegacy("yellow_legacy", "DEX", dexEntry = 25)
+    @Test fun yellowLegacyBattle() = yellowLegacy("yellow_legacy_battle", "BATTLE")
+    @Test fun yellowLegacyBattleMoves() = yellowLegacy("yellow_legacy_battle", "BATTLE", controls = true)
+    @Test fun yellowLegacyGuideRoute() = yellowLegacy("yellow_legacy", "GUIDE", guidePage = "HERE", onMap = 12)
+    @Test fun yellowLegacyGuideNextBoss() = yellowLegacy("yellow_legacy", "GUIDE", guidePage = "NEXT BOSS")
+    @Test fun crystalLegacyParty() = crystal("crystal_legacy", "PARTY", legacy = true)
+    @Test fun crystalLegacyItems() = crystal("crystal_legacy", "ITEMS", legacy = true)
+    @Test fun crystalLegacyMap() = crystal("crystal_legacy", "MAP", legacy = true)
+    @Test fun crystalLegacyDexEntry() = crystal("crystal_legacy", "DEX", dexEntry = 152, legacy = true)
+    @Test fun crystalLegacyBattle() = crystal("crystal_legacy_battle", "BATTLE", legacy = true)
+    @Test fun crystalLegacyBattleMoves() = crystal("crystal_legacy_battle", "BATTLE", controls = true, legacy = true)
+    @Test fun crystalLegacyGuideHere() = crystal("crystal_legacy", "GUIDE", guidePage = "HERE", legacy = true)
+    @Test fun crystalLegacyGuideNextBoss() = crystal("crystal_legacy", "GUIDE", guidePage = "NEXT BOSS", legacy = true)
     @Test fun pureRedParty() = pure("purered", "PARTY")
     @Test fun pureRedItems() = pure("purered", "ITEMS")
     @Test fun pureRedMap() = pure("purered", "MAP")
@@ -1411,10 +1432,10 @@ open class CompanionScreenshotTest {
     private fun crystal(fixture: String, tab: String, controls: Boolean = false, dexEntry: Int? = null, statusBar: Boolean = false,
                         clear: Boolean = false, prism: Boolean = false, gold: Boolean = false, silver: Boolean = false,
                         polished: Boolean = false, describe: Boolean = false, guidePage: String? = null,
-                        guideOpen: Pair<String, Int>? = null) {
-        val game = if (polished) GameKind.POLISHED_CRYSTAL else if (prism) GameKind.PRISM else if (clear) GameKind.CRYSTAL_CLEAR else if (gold) GameKind.GOLD
+                        guideOpen: Pair<String, Int>? = null, legacy: Boolean = false) {
+        val game = if (legacy) GameKind.CRYSTAL_LEGACY else if (polished) GameKind.POLISHED_CRYSTAL else if (prism) GameKind.PRISM else if (clear) GameKind.CRYSTAL_CLEAR else if (gold) GameKind.GOLD
             else if (silver) GameKind.SILVER else GameKind.CRYSTAL
-        var cfg = if (polished) com.pokedaisy.app.companion.data.GEN2_POLISHED_CRYSTAL
+        var cfg = if (legacy) com.pokedaisy.app.companion.data.GEN2_CRYSTAL_LEGACY else if (polished) com.pokedaisy.app.companion.data.GEN2_POLISHED_CRYSTAL
             else if (prism) com.pokedaisy.app.companion.data.GEN2_PRISM
             else if (clear) com.pokedaisy.app.companion.data.GEN2_CRYSTAL_CLEAR_V2_6_0
             else if (gold) com.pokedaisy.app.companion.data.GEN2_GOLD else if (silver) com.pokedaisy.app.companion.data.GEN2_SILVER
@@ -1424,7 +1445,8 @@ open class CompanionScreenshotTest {
         romLanguage = 'E'
         romGameCode = ""
         val rom = java.io.File(java.io.File(RETAIL_ROM_DIR).parentFile,
-            if (polished) "gbc/Pokemon Polished Crystal (v3.2.3).gbc"
+            if (legacy) "gbc/Pokemon Crystal Legacy (v1.3.1).gbc"
+            else if (polished) "gbc/Pokemon Polished Crystal (v3.2.3).gbc"
             else if (prism) "gbc/Pokemon Prism (v0.95 build 254 Hotfix 5).gbc"
             else if (gold) "gbc/Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc"
             else if (silver) "gbc/Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc"

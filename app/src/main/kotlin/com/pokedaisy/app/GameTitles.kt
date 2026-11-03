@@ -166,6 +166,8 @@ object GameTitles {
         "534876e4e4d0d79a82fef3bbe5bea11c40451727" to "Pokémon Crystal Clear",
         // Prism v0.95 build 254 (Hotfix 5).
         "752076692ae3387cf426ce5f51a98c6b60e8df6a" to "Pokémon Prism",
+        "2ac87de42afc70ef6016805acb3b206644417f97" to "Pokémon Yellow Legacy",
+        "74a6727e4406c35bc2d4f81347a5c5fdb8970663" to "Pokémon Crystal Legacy",
         // Polished Crystal 3.2.0 - 3.2.3: every official release build (normal, faithful, their debug builds).
         "6930b48af5844d373e3c9130f26d6dd1084cf4ed" to "Pokémon Polished Crystal",
         "beb8b38280af59e9ef84be12684a6ecf09021c9b" to "Pokémon Polished Crystal",

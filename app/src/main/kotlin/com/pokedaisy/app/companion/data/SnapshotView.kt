@@ -112,6 +112,8 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
         else if (activeGame == GameKind.WISHES) growthRatesWishes.getOrNull(species)?.takeIf { it <= 5 }
         // PureRGB moved 25 species to other curves: its own BaseStats' (gen_gen1_tables.py purered).
         else if (activeGame.isPureRgb) gen1GrowthRatesPureRgb.getOrNull(species)
+        // Yellow Legacy too (gen_gen1_tables.py yellow_legacy).
+        else if (activeGame == GameKind.YELLOW_LEGACY) gen1GrowthRatesYellowLegacy.getOrNull(species)
         // Dreamstone Mysteries too (expansion's curves are vanilla's; its rates from gSpeciesInfo, gen_expansion_tables.py).
         else if (activeGame == GameKind.DREAMSTONE) growthRatesDreamstone.getOrNull(species)?.takeIf { it <= 5 }
         // A randomized retail ROM's own (UPR can standardize the curves): read from its gBaseStats; and a FireRed hack's

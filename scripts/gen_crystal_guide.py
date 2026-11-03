@@ -2,6 +2,11 @@
 """Generates the GUIDE's data for retail Pokémon Crystal from pret/pokecrystal's three builds:
 
     scripts/gen_crystal_guide.py
+    scripts/gen_crystal_guide.py legacy
+
+`legacy`: Crystal Legacy v1.3.1 from $DECOMPS/pokecrystallegacy (cRz-Shadows/Pokemon_Crystal_Legacy at tag V1.3.1, its pokecrystal.gbc
+the patched cart byte for byte), one build, written to GuideCrystalLegacyGen.kt under the prefix CL_. It forked pokecrystal before
+rgbds' DEF syntax, so its text sources are read from a copy with that brought up to date ([normalized_tree]).
 
 $DECOMPS/pokecrystal (default ~/Projects/tests/my-rom-hacks/build) holds pokecrystal.gbc (rev 0), pokecrystal11.gbc (rev 1)
 and pokecrystal_au.gbc (Australia) with their .sym files; roms.sha1 there says each is byte for byte the retail ROM (checked
@@ -29,15 +34,19 @@ Writes app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideCrystalGen.kt.
 import hashlib
 import os
 import re
+import shutil
 import struct
 import sys
+import tempfile
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.dirname(HERE)
 DECOMPS = os.environ.get("DECOMPS", os.path.expanduser("~/Projects/tests/my-rom-hacks/build"))
-SRC = os.path.join(DECOMPS, "pokecrystal")
+LEGACY = sys.argv[1:] == ["legacy"]
+SRC = os.path.join(DECOMPS, "pokecrystallegacy" if LEGACY else "pokecrystal")
 DATA_DIR = os.path.join(ROOT, "app", "src", "main", "kotlin", "com", "pokedaisy", "app", "companion", "data")
-OUT = os.path.join(DATA_DIR, "GuideCrystalGen.kt")
+OUT = os.path.join(DATA_DIR, "GuideCrystalLegacyGen.kt" if LEGACY else "GuideCrystalGen.kt")
+P = "CL_" if LEGACY else "CR_"     # the generated names' prefix
 TRADE_FLAG_BASE = 0x20000   # the companion's flag id for wTradeFlags bit 0
 
 BUILDS = [("rev0", "pokecrystal"), ("rev1", "pokecrystal11"), ("au", "pokecrystal_au")]
@@ -46,6 +55,35 @@ SHA1S = {
     "pokecrystal11": "f2f52230b536214ef7c9924f483392993e226cfb",
     "pokecrystal_au": "a0fc810f1d4e124434f7be2c989ab5b5892ddf36",
 }
+if LEGACY:
+    BUILDS = [("rev0", "pokecrystal")]
+    SHA1S = {"pokecrystal": "74a6727e4406c35bc2d4f81347a5c5fdb8970663"}
+
+
+def normalized_tree(tree):
+    """A copy of a fork's sources with rgbds 0.5's `NAME EQU x`, `NAME = x`, `NAME rb` and `name: MACRO` in today's syntax;
+    the ROM and .sym stay as they are, linked in."""
+    out = tempfile.mkdtemp(prefix="crystal-guide-")
+    for top in ("constants", "data", "macros", "maps", "engine"):
+        for root, _, files in os.walk(os.path.join(tree, top)):
+            for fn in files:
+                if not fn.endswith(".asm"):
+                    continue
+                src = os.path.join(root, fn)
+                dst = os.path.join(out, os.path.relpath(src, tree))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                text = open(src, encoding="utf-8", errors="replace").read()
+                text = re.sub(r"(?m)^(\w+)\s+(EQU|=|rb|rw)\b", r"DEF \1 \2", text)
+                text = re.sub(r"(?m)^(\w+): MACRO\b", r"MACRO \1", text)
+                text = text.replace("TREEMON_SET_CITY", "TREEMON_SET_NONE")   # pret's later name: TreeMonSet_City has no data of its own
+                open(dst, "w", encoding="utf-8").write(text)
+    for fn in ("pokecrystal.gbc", "pokecrystal.sym"):
+        os.symlink(os.path.join(tree, fn), os.path.join(out, fn))
+    return out
+
+
+if LEGACY:
+    SRC = normalized_tree(SRC)
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -187,6 +225,8 @@ class Rom:
                     self.sym[m.group(3)] = (bank, addr)
                 elif addr >= 0xC000:
                     self.ramsym[m.group(3)] = (bank, addr)
+        if LEGACY:
+            self.sym["CollisionPermissionTable"] = self.sym["TileCollisionTable"]   # pret's later name
         by_bank = {}
         for name, (bank, addr) in self.sym.items():
             by_bank.setdefault(bank, set()).add(addr)
@@ -445,7 +485,44 @@ def fill_moves(r, species, level):
     return [m for m in moves if m]
 
 
+def party_legacy(r, cls, tid):
+    """Crystal Legacy's ReadTrainerParty: TrainerGroups holds a bank and an address, and the party type is flags - each Pokémon
+    is its level and species, then a nickname, DVs, stat experience, happiness, item and moves as the type says."""
+    o = r.at("TrainerGroups") + 3 * (cls - 1)
+    bank = r.d[o]
+    p = r.ptr(o + 1, bank)
+    for _ in range(tid - 1):
+        while r.d[p] != 0xFF:
+            p += 1
+        p += 1
+    name, p = text(r, p)
+    typ = r.d[p]
+    p += 1
+    has = lambda flag: typ & C.v["TRAINERTYPE_" + flag]
+    assert not has("VARIABLE") and not has("NICKNAME"), f"{name}: a boss's party type the guide doesn't read"
+    mons = []
+    while r.d[p] != 0xFF:
+        lv, sp = r.d[p:p + 2]
+        p += 2
+        p += 2 if has("DVS") else 0
+        p += 10 if has("STAT_EXP") else 0
+        p += 1 if has("HAPPINESS") else 0
+        item = 0
+        if has("ITEM"):
+            item = r.d[p]
+            p += 1
+        if has("MOVES"):
+            moves = [m for m in r.d[p:p + 4] if m]
+            p += 4
+        else:
+            moves = fill_moves(r, sp, lv)
+        mons.append((lv, sp, item, tuple(moves)))
+    return name, tuple(mons)
+
+
 def party(r, cls, tid):
+    if LEGACY:
+        return party_legacy(r, cls, tid)
     o = r.at("TrainerGroups") + 2 * (cls - 1)
     p = r.ptr(o, r.bank("TrainerGroups"))
     for _ in range(tid - 1):     # ReadTrainerParty: scan to each trainer's -1
@@ -498,6 +575,22 @@ BOSSES = [
     ("RED", "RED", "RED1"),
 ]
 EXTRA_FLAGS = ["EVENT_BEAT_ELITE_FOUR", "EVENT_RED_IN_MT_SILVER"]
+if LEGACY:
+    EXTRA_FLAGS = ["EVENT_BEAT_ELITE_FOUR", "EVENT_DEFEATED_RED"]   # it clears EVENT_RED_IN_MT_SILVER when he's beaten
+    # Crystal Legacy scales the three gyms a player can take in any order by badge count: the team for 5 badges or fewer
+    # (the key above), 6 (_6) and 7 (_7); its other second teams are rematches, after a boss is beaten. Its scripts jump to a
+    # common end before `setevent`, so the flags are named here and checked against each script's bytes.
+    BOSSES += [(f"{name}_{badges}", name, str(team)) for name in ("CHUCK", "JASMINE", "PRYCE") for badges, team in ((6, 2), (7, 3))]
+    BOSS_FLAGS = {key: f"EVENT_BEAT_{key}" for key in (
+        "FALKNER", "BUGSY", "WHITNEY", "MORTY", "CHUCK", "JASMINE", "PRYCE", "CLAIR", "BROCK", "MISTY", "ERIKA", "JANINE",
+        "SABRINA", "BLAINE", "BLUE")}
+    BOSS_FLAGS.update({"LT_SURGE": "EVENT_BEAT_LTSURGE", "WILL": "EVENT_BEAT_ELITE_4_WILL", "KOGA": "EVENT_BEAT_ELITE_4_KOGA",
+                       "BRUNO": "EVENT_BEAT_ELITE_4_BRUNO", "KAREN": "EVENT_BEAT_ELITE_4_KAREN"})
+
+
+def boss_party(tid):
+    """A boss's party number: a trainer constant, or the plain number Crystal Legacy's scripts use for later teams."""
+    return int(tid) if tid.isdigit() else C.v[tid]
 
 
 # ---------------------------------------------------------------------------------------------------------------------
@@ -747,7 +840,7 @@ def humanise(label, place):
 
 def app_landmarks():
     """MapSecDataCrystal.kt: landmark id -> name, and wMapGroup * 256 + wMapNumber -> landmark id."""
-    txt = open(os.path.join(DATA_DIR, "MapSecDataCrystal.kt"), encoding="utf-8").read()
+    txt = open(os.path.join(DATA_DIR, "MapSecDataCrystal.kt"), encoding="utf-8").read()   # Legacy's too: gen_gen2_tables.py checks it
     names = {int(i): n for i, n in re.findall(r'^\s*(\d+) to MapSecInfo\("([^"]*)"', txt, re.M)}
     part = txt.split("val mapLandmarksCrystal", 1)[1]
     lm = {int(k): int(v) for k, v in re.findall(r"^\s*(\d+) to (\d+),?\s*$", part, re.M)}
@@ -770,7 +863,7 @@ def read(r):
     w["keyitems"] = key_items(r)
     bosses = {}
     for key, cls, tid in BOSSES:
-        bosses[key] = (C.v[cls], C.v[tid]) + party(r, C.v[cls], C.v[tid])
+        bosses[key] = (C.v[cls], boss_party(tid)) + party(r, C.v[cls], boss_party(tid))
     w["bosses"] = bosses
     w["ram"] = {n: r.ramsym[n] for n in ("wEventFlags", "wTimeOfDay", "wJohtoBadges", "wKantoBadges", "wTradeFlags", "wMapGroup")}
     return w
@@ -792,9 +885,10 @@ def check_scripts(r, gift_rows, boss_rows):
                 if se not in r.d[gs:ge] and ce not in r.d[gs:ge] and se not in r.d[s - 0x200:e + 0x200]:
                     misses.append(f"{owner}: no {flag}")
     for key, cls, tid in BOSSES:
-        [(label, owner, flag)] = boss_rows[key]
+        label, owner, flag = boss_rows[key][0]
         s, e = r.span(owner)
-        assert bytes([OPS["loadtrainer"], C.v[cls], C.v[tid]]) in r.d[s:e], f"{r.label}: {owner} has no loadtrainer {cls}, {tid}"
+        assert bytes([OPS["loadtrainer"], C.v[cls], boss_party(tid)]) in r.d[s:e], f"{r.label}: {owner} has no loadtrainer {cls}, {tid}"
+        flag = BOSS_FLAGS.get(key) if LEGACY else flag
         if flag:
             gs, ge = r.global_span(owner)
             se = bytes([OPS["setevent"]]) + struct.pack("<H", C.v[flag])
@@ -839,18 +933,20 @@ def main():
         assert lm in lm_names, f"{info['label']}: landmark {lm} isn't in MapSecDataCrystal"
         assert lm_by_map.get(g * 256 + n) == lm, f"{info['label']}: header landmark {lm} vs mapLandmarksCrystal {lm_by_map.get(g * 256 + n)}"
     gen2 = open(os.path.join(DATA_DIR, "Gen2Reader.kt"), encoding="utf-8").read()
-    m = re.search(r"val GEN2_CRYSTAL = Gen2Config\((.*?)\n\)", gen2, re.S)
+    m = re.search(r"val GEN2_CRYSTAL_LEGACY = GEN2_CRYSTAL.copy\((.*?)\n\)" if LEGACY else r"val GEN2_CRYSTAL = Gen2Config\((.*?)\n\)", gen2, re.S)
     assert f"mapGroup = wramx(1, 0x{ram['wMapGroup']:04X})" in m.group(1), "wMapGroup isn't GEN2_CRYSTAL's mapGroup"
 
     # Falkner: Pidgey 7 (TACKLE, MUD_SLAP) and Pidgeotto 9 (TACKLE, MUD_SLAP, GUST).
     fk = base["bosses"]["FALKNER"]
-    assert fk[2] == "FALKNER" and fk[3] == (
-        (7, SPECIES.v["PIDGEY"], 0, (MOVES.v["TACKLE"], MOVES.v["MUD_SLAP"])),
-        (9, SPECIES.v["PIDGEOTTO"], 0, (MOVES.v["TACKLE"], MOVES.v["MUD_SLAP"], MOVES.v["GUST"]))), fk
+    assert fk[2] == "FALKNER"
+    if not LEGACY:
+        assert fk[3] == (
+            (7, SPECIES.v["PIDGEY"], 0, (MOVES.v["TACKLE"], MOVES.v["MUD_SLAP"])),
+            (9, SPECIES.v["PIDGEOTTO"], 0, (MOVES.v["TACKLE"], MOVES.v["MUD_SLAP"], MOVES.v["GUST"]))), fk
 
-    # FillMoves, on a trainer whose party has none: a Youngster's Rattata.
-    r0 = roms["rev0"]
-    assert fill_moves(r0, SPECIES.v["RATTATA"], 4) == [MOVES.v["TACKLE"], MOVES.v["TAIL_WHIP"]]
+        # FillMoves, on a trainer whose party has none: a Youngster's Rattata.
+        r0 = roms["rev0"]
+        assert fill_moves(r0, SPECIES.v["RATTATA"], 4) == [MOVES.v["TACKLE"], MOVES.v["TAIL_WHIP"]]
 
     # ---- area things, by landmark
     lm_of = {info["label"]: info["landmark"] for info in base["maps"].values()}
@@ -918,8 +1014,7 @@ def main():
         boss_lines.append(f"{key}|{c}|{t}|{name}|" + ";".join(f"{lv} {sp} {item} {','.join(map(str, mv))}" for lv, sp, item, mv in mons))
     flags = {}
     for key, cls, tid in BOSSES:
-        [(label, owner, flag)] = boss_rows[key]
-        flags[key] = flag
+        flags[key] = BOSS_FLAGS.get(key) if LEGACY else boss_rows[key][0][2]
     used = sorted({f for f in flags.values() if f} | set(EXTRA_FLAGS))
 
     def chunk(name, rows_, doc):
@@ -937,39 +1032,41 @@ def main():
         return s + ")\n"
 
     kt = ["package com.pokedaisy.app.companion.data\n",
-          "// GENERATED by scripts/gen_crystal_guide.py from pret/pokecrystal's three builds (rev 0, rev 1, Australia; each is the",
-          "// retail ROM byte for byte, every table read from all three and compared) - do not hand-edit.\n",
+          *(["// GENERATED by scripts/gen_crystal_guide.py legacy from Crystal Legacy v1.3.1's build (the patched cart byte for byte)",
+             "// - do not hand-edit.\n"] if LEGACY else
+            ["// GENERATED by scripts/gen_crystal_guide.py from pret/pokecrystal's three builds (rev 0, rev 1, Australia; each is the",
+             "// retail ROM byte for byte, every table read from all three and compared) - do not hand-edit.\n"]),
           "// RAM, the same in every build: wEventFlags (NUM_EVENTS bits), wTimeOfDay (MORN 0, DAY 1, NITE 2),",
           "// wJohtoBadges (wKantoBadges follows it), wTradeFlags (a bit per NPC trade). WRAM bank 1 (wramx).",
-          f"internal const val CR_EVENT_FLAGS = 0x{ram['wEventFlags']:04X}",
-          f"internal const val CR_EVENT_FLAG_BYTES = {(C.v['NUM_EVENTS'] + 7) // 8}",
-          f"internal const val CR_TIME_OF_DAY = 0x{ram['wTimeOfDay']:04X}",
-          f"internal const val CR_BADGES = 0x{ram['wJohtoBadges']:04X}",
-          f"internal const val CR_TRADE_FLAGS = 0x{ram['wTradeFlags']:04X}",
-          f"internal const val CR_TRADE_FLAG_BYTES = {(C.v['NUM_NPC_TRADES'] + 7) // 8}",
-          "internal const val CR_MORN = 0",
-          "internal const val CR_DAY = 1",
-          "internal const val CR_NITE = 2",
+          f"internal const val {P}EVENT_FLAGS = 0x{ram['wEventFlags']:04X}",
+          f"internal const val {P}EVENT_FLAG_BYTES = {(C.v['NUM_EVENTS'] + 7) // 8}",
+          f"internal const val {P}TIME_OF_DAY = 0x{ram['wTimeOfDay']:04X}",
+          f"internal const val {P}BADGES = 0x{ram['wJohtoBadges']:04X}",
+          f"internal const val {P}TRADE_FLAGS = 0x{ram['wTradeFlags']:04X}",
+          f"internal const val {P}TRADE_FLAG_BYTES = {(C.v['NUM_NPC_TRADES'] + 7) // 8}",
+          f"internal const val {P}MORN = 0",
+          f"internal const val {P}DAY = 1",
+          f"internal const val {P}NITE = 2",
           "",
           "// data/wild/probabilities.asm: the percent each slot is chosen with (7 grass slots, 3 water slots).",
-          "internal val CR_GRASS_ODDS = intArrayOf(" + ", ".join(map(str, base["grass_odds"])) + ")",
-          "internal val CR_WATER_ODDS = intArrayOf(" + ", ".join(map(str, base["water_odds"])) + ")",
+          f"internal val {P}GRASS_ODDS = intArrayOf(" + ", ".join(map(str, base["grass_odds"])) + ")",
+          f"internal val {P}WATER_ODDS = intArrayOf(" + ", ".join(map(str, base["water_odds"])) + ")",
           "",
           "// The event flags NEXT BOSS reads (constants/event_flags.asm; each boss's own found set by its script in every build).",
           ]
     for f in used:
-        kt.append(f"internal const val CR_{f} = {C.v[f]}")
+        kt.append(f"internal const val {P}{f} = {C.v[f]}")
     kt.append("")
-    kt.append(chunk("CR_WILD_RAW", wl,
+    kt.append(chunk(f"{P}WILD_RAW", wl,
                     "// Wild Pokémon. G|group|num|morn,day,nite rate (bytes)|21 x level:species (7 morning, 7 day, 7 night);\n"
                     "// W|group|num|rate|3 x level:species; F|group|num|fish group (a map with water in its blocks), T / R|group|num|\n"
                     "// headbutt / rock set; FG|group|old|good|super (share of 256:species:level, species 0 = TG time group\n"
                     "// <level>); TG|n|daySpecies:dayLevel|niteSpecies:niteLevel (morning counts as day); TS|set|common|rare\n"
                     "// (percent:species:level; set 0 has none). F's group is FG's index (the header's FISHGROUP_* minus 1).\n"))
-    kt.append(chunk("CR_BOSSES_RAW", boss_lines,
+    kt.append(chunk(f"{P}BOSSES_RAW", boss_lines,
                     "// Bosses: key|class|party|name|level species item moves;... (a party with no moves of its own gets the\n"
                     "// level-up moves the game gives it).\n"))
-    kt.append(chunk("GUIDE_AREAS_CRYSTAL_RAW", area,
+    kt.append(chunk("GUIDE_AREAS_CRYSTAL_LEGACY_RAW" if LEGACY else "GUIDE_AREAS_CRYSTAL_RAW", area,
                     f"// HERE's areas: {len(area)} things in {len({a.split('|')[0] for a in area})} landmarks. Line format: "
                     "landmark|kind|id|flag|qty|wants|where (GuideAreas.kt);\n// a trade's flag is 0x20000 + its wTradeFlags bit. "
                     "Item ids are Crystal's own (a TM or HM is its item id).\n"))

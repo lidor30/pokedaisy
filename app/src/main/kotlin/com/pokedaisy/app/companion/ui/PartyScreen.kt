@@ -585,12 +585,12 @@ fun partyPaletteFor(game: GameKind): PartyPalette = when (game) {
     GameKind.EMERALD_SEAGLASS -> SeaglassPartyPalette
     GameKind.ROWE -> RowePartyPalette
     GameKind.SOULGOLD -> SoulGoldPartyPalette
-    GameKind.YELLOW -> YellowPartyPalette
+    GameKind.YELLOW, GameKind.YELLOW_LEGACY -> YellowPartyPalette
     GameKind.RED, GameKind.BLUE -> RedBluePartyPalette
     GameKind.PURE_RED -> PureRedPartyPalette
     GameKind.PURE_BLUE -> PureBluePartyPalette
     // Gold's and Silver's party menu is Crystal's, pixel for pixel (sampled headless in both).
-    GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.PRISM, GameKind.GOLD, GameKind.SILVER -> CrystalPartyPalette
+    GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.PRISM, GameKind.GOLD, GameKind.SILVER, GameKind.CRYSTAL_LEGACY -> CrystalPartyPalette
     GameKind.POLISHED_CRYSTAL -> PolishedCrystalPartyPalette
     GameKind.GLAZED, GameKind.QUETZAL -> GlazedPartyPalette
     GameKind.IMPERIUM -> ImperiumPartyPalette
@@ -982,6 +982,7 @@ internal fun HeldItemMarker(itemId: Int, u: Int, x: Float, y: Float) {
         GameArt.get(context, when (com.pokedaisy.app.companion.data.activeGame) {
             com.pokedaisy.app.companion.data.GameKind.CRYSTAL -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_HOLD_ICONS
             com.pokedaisy.app.companion.data.GameKind.CRYSTAL_CLEAR -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_CLEAR_HOLD_ICONS
+            com.pokedaisy.app.companion.data.GameKind.CRYSTAL_LEGACY -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_LEGACY_HOLD_ICONS
             com.pokedaisy.app.companion.data.GameKind.PRISM -> com.pokedaisy.app.companion.data.Gen2Art.PRISM_HOLD_ICONS
             com.pokedaisy.app.companion.data.GameKind.POLISHED_CRYSTAL -> com.pokedaisy.app.companion.data.Gen2Art.POLISHED_HOLD_ICONS
             com.pokedaisy.app.companion.data.GameKind.GOLD, com.pokedaisy.app.companion.data.GameKind.SILVER ->

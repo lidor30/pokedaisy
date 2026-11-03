@@ -657,6 +657,11 @@ growth rates, one-byte text words `Gen1Charset.PURE`), its own icon sheet and de
 the Color's two-tone palettes (sampled headless), the DEX in its SGB palettes. No save of its own: the retail Red save converts
 through the game's updater on CONTINUE (`native-capture/boot/purergb.txt`: "Original Game", START, wCurMapTileset bit 7 cleared,
 NO to its Pallet warp, which froze headless). No EXPAND. PureGreen (a .bps the user has) isn't added. docs/DEVELOPMENT.md.
+**Yellow Legacy v1.0.10 / Crystal Legacy v1.3.1 (2026-11-04)**: `GameKind.YELLOW_LEGACY` / `.CRYSTAL_LEGACY` (`isGen1` / `isCrystalFamily`), cRz-Shadows' pret forks; their
+builds (`$DECOMPS/pokeyellowlegacy` rgbds 0.6.1, `pokecrystallegacy` rgbds 0.5.2) are the patched carts byte for byte, so their .sym gives every address. Only what changed
+is generated (`shares`; moves, chart, TMs, items). Retail saves don't read right in either: `scripts/convert_save_legacy.py`, and a converted Yellow save must be walked in,
+not just looked at (a stale collision pointer turns the player without moving him). Yellow Legacy's status moves are the old BIRD slot, printed NORMAL (`typeless`); SLAM really
+is DRAGON. Crystal Legacy scales Chuck / Jasmine / Pryce by badges (`clScaledBoss`) and Red's done flag is EVENT_DEFEATED_RED. docs/DEVELOPMENT.md.
 **Gold / Silver (2026-10-15)**: `GameKind.GOLD` / `.SILVER` (`isGoldSilver`, both in `isGen2` with the Crystal family),
 `GEN2_GOLD` / `GEN2_SILVER` - pret/pokegold's RAM (wBattleMon / wCurOTMon / wCurBattleMon in bank 0), Crystal's structs, menus and
 look (the party menu and PACK are Crystal's colours, sampled headless), one table set (`gen_gen2_tables.py gold_silver`). Dex pages

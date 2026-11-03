@@ -178,8 +178,27 @@ val GEN1_PURE_RED = GEN1_RED.copy(
 /** PureBlue: PureRed's addresses (its own dex tables object, so a cache never mixes the two carts' pages). */
 val GEN1_PURE_BLUE = GEN1_PURE_RED.copy(pokedex = POKEDEX_PURE_BLUE)
 
-/** Pokémon Yellow, Red or Blue (every language), PureRed or PureBlue: Gen 1's reader ([readGen1Telemetry]), tables and look. */
-val GameKind?.isGen1: Boolean get() = this == GameKind.YELLOW || isRedBlue || isPureRgb
+/**
+ * Yellow Legacy v1.0.10 (cRz-Shadows/Pokemon_Yellow_Legacy, a pret/pokeyellow fork: `make` with rgbds 0.6.1 at tag V1.0.10 is
+ * the patched cart byte for byte, so its pokeyellow.sym gives every address; 2 MB, MBC5). Yellow's structs and RAM to
+ * wBagItems; the bag holds 59 and took the padding after wGameProgressFlags, so wPlayerMoney .. the last script index
+ * sit 78 bytes later (wIsInBattle one later too). Checked headless on the retail save rewritten by
+ * scripts/convert_save_legacy.py (the `yellow_legacy*` fixtures).
+ */
+val GEN1_YELLOW_LEGACY = GEN1_YELLOW.copy(
+    bagCount = 0xD31CL,
+    money = 0xD394L,
+    badges = 0xD3A3L,
+    curMap = 0xD3ABL,
+    yCoord = 0xD3AEL,
+    xCoord = 0xD3AFL,
+    isInBattle = 0xD057L,
+    pokedex = POKEDEX_YELLOW_LEGACY,
+    bagSlots = 59,
+)
+
+/** Pokémon Yellow, Red or Blue (every language), PureRed or PureBlue, Yellow Legacy: Gen 1's reader ([readGen1Telemetry]), tables and look. */
+val GameKind?.isGen1: Boolean get() = this == GameKind.YELLOW || isRedBlue || isPureRgb || this == GameKind.YELLOW_LEGACY
 
 /** Pokémon Red or Blue: Yellow's tables, their own art, dex pages and RAM ([GEN1_RED]). */
 val GameKind?.isRedBlue: Boolean get() = this == GameKind.RED || this == GameKind.BLUE

@@ -37,7 +37,7 @@ Pick one and the map shows it with the cursor on it. This is the quickest way to
 
 ## More than one map
 
-Some games have more than one map. In FireRed and LeafGreen, for example, the Sevii Islands are on maps of their own. Those games get a region button next to `PLACES`, named after the next map (`SEVII 1-3`, `SEVII 4-5`, `SEVII 6-7`, back to `KANTO`); Gold's, Silver's, Crystal's and Crystal Clear's are `JOHTO` and `KANTO`; Prism has six, `NALJO`, `RIJON`, `JOHTO`, `KANTO`, `SEVII` and `TUNOD`; Polished Crystal has `JOHTO`, `KANTO` and `ISLANDS` (the Orange Islands); in other games the maps are numbered. Tap it to flip through them. When you're on another map than the one shown, `ME` brings you home.
+Some games have more than one map. In FireRed and LeafGreen, for example, the Sevii Islands are on maps of their own. Those games get a region button next to `PLACES`, named after the next map (`SEVII 1-3`, `SEVII 4-5`, `SEVII 6-7`, back to `KANTO`); Gold's, Silver's, Crystal's, Crystal Legacy's and Crystal Clear's are `JOHTO` and `KANTO`; Prism has six, `NALJO`, `RIJON`, `JOHTO`, `KANTO`, `SEVII` and `TUNOD`; Polished Crystal has `JOHTO`, `KANTO` and `ISLANDS` (the Orange Islands); in other games the maps are numbered. Tap it to flip through them. When you're on another map than the one shown, `ME` brings you home.
 
 In Crystal Clear you design your own character, and in Prism you pick one of six, so the map doesn't draw you: the cursor and the place name still show where you are. Polished Crystal draws you in the look you picked at the start, as its own map does.
 
@@ -51,7 +51,7 @@ The game's own rules still apply: you need the badge that allows it and you have
 
 It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire in every language and on these hacks: Unbound, Radical Red, Ultra Violet, Ghost Grey, Let's Go, Gaia, Odyssey, Amethyst, Sword and Shield Ultimate Plus, Orange Islands, Glazed (its first region), Emerald Legacy, Heart and Soul, SoulGold, Lazarus and Emerald Imperium.
 
-On the Game Boy it works in Red, Blue, Yellow (in every language), PureRed, PureBlue and Crystal. The list is the one the game's own map would give you: in Red, Blue, Yellow, PureRed and PureBlue every town you've been to, and in Crystal the towns you've been to in the region you're in (Kanto's once you've reached the Indigo Plateau).
+On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Crystal and Crystal Legacy. The list is the one the game's own map would give you: in Red, Blue, Yellow, Yellow Legacy, PureRed and PureBlue every town you've been to, and in Crystal and Crystal Legacy the towns you've been to in the region you're in (Kanto's once you've reached the Indigo Plateau).
 
 On the DS it works in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2. Black, White and their sequels ask for no badge: once someone knows the move, every town you've arrived at is on the list.
 

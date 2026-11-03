@@ -82,6 +82,8 @@ private fun rawAreas(guide: GuideId): List<String> = when (guide) {
     GuideId.RED -> G1R_AREAS_RAW
     GuideId.BLUE -> G1B_AREAS_RAW
     GuideId.CRYSTAL -> GUIDE_AREAS_CRYSTAL_RAW
+    GuideId.YELLOW_LEGACY -> G1L_AREAS_RAW
+    GuideId.CRYSTAL_LEGACY -> GUIDE_AREAS_CRYSTAL_LEGACY_RAW
 }
 
 private val hgHeaderPlaces: Map<Int, Int> by lazy {
@@ -98,11 +100,11 @@ fun areaSection(game: GameKind?, mapNum: Int, regionSec: Int): Int = when (game)
     GameKind.HEARTGOLD, GameKind.SOULSILVER -> hgHeaderPlaces[mapNum] ?: regionSec
     GameKind.BLACK, GameKind.WHITE -> mapPlaceIdsBlack[mapNum] ?: regionSec
     GameKind.BLACK2, GameKind.WHITE2 -> mapPlaceIdsBlack2[mapNum] ?: regionSec
-    GameKind.YELLOW, GameKind.RED, GameKind.BLUE -> gen1Area(mapNum)
+    GameKind.YELLOW, GameKind.RED, GameKind.BLUE, GameKind.YELLOW_LEGACY -> gen1Area(mapNum)
     else -> regionSec
 }
 
-private val GEN1_GUIDES = setOf(GuideId.YELLOW, GuideId.RED, GuideId.BLUE)
+private val GEN1_GUIDES = setOf(GuideId.YELLOW, GuideId.RED, GuideId.BLUE, GuideId.YELLOW_LEGACY)
 
 /** Whether [guide] has area data at all (then HERE shows even without the ROM tables). */
 fun hasAreaGuide(guide: GuideId?): Boolean = guide != null

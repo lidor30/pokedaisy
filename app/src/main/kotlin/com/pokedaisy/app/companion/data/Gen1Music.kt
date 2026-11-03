@@ -112,6 +112,10 @@ val GEN1_MUSIC_PURE_RED = GEN1_MUSIC_RED.copy(
 )
 val GEN1_MUSIC_PURE_BLUE = GEN1_MUSIC_PURE_RED.copy(sha1 = TelemetrySampler.PURE_BLUE_V2_7_6_SHA1)
 
+/** Yellow Legacy v1.0.10 (its pokeyellow.sym): Yellow's sound engine, songs and audio RAM; bank 0 moved PlayMusic and the park
+ * (PlaceNextChar's `jp z`, the same instruction 12 bytes on). */
+val GEN1_MUSIC_YELLOW_LEGACY = GEN1_MUSIC_YELLOW.copy(sha1 = TelemetrySampler.YELLOW_LEGACY_V1_0_10_SHA1, playMusic = 0x21AE, spin = 0x1763)
+
 /**
  * Crystal (rev 0, rev 1, Australia: pret/pokecrystal, the same addresses in all three). Gen 2's sound engine: songs are ids
  * 1..0x66 (MUSIC_TITLE .. MUSIC_MOBILE_CENTER) with their banks in its own pointer table; PlayMusic (00:3B97) takes the id in
@@ -121,10 +125,10 @@ val GEN1_MUSIC_PURE_BLUE = GEN1_MUSIC_PURE_RED.copy(sha1 = TelemetrySampler.PURE
  * the Johto wild battle 36.6 s after a 15.7 s intro, ROUTE 29 62.3 s; HEAL ends by itself - once the render core starts each
  * song from silence (Gen1MusicRenderer: _PlayMusic leaves the channels a song doesn't use playing the last one's).
  */
-private fun crystalMusic(sha1: String) = Gen1MusicTables(
+private fun crystalMusic(sha1: String, playMusic: Int = 0x3B97, spin: Int = 0x28B2) = Gen1MusicTables(
     sha1 = sha1,
-    playMusic = 0x3B97,
-    spin = 0x28B2,
+    playMusic = playMusic,
+    spin = spin,
     audioRomBank = 0L,
     channelSoundIds = 0xC101L,    // wChannel1MusicID (unused: current() reads each channel's)
     channelState = (0 until 4).flatMap { ch ->
@@ -139,10 +143,13 @@ private fun crystalMusic(sha1: String) = Gen1MusicTables(
 val GEN2_MUSIC_CRYSTAL = crystalMusic(TelemetrySampler.CRYSTAL_SHA1)
 val GEN2_MUSIC_CRYSTAL_REV1 = crystalMusic(TelemetrySampler.CRYSTAL_REV1_SHA1)
 val GEN2_MUSIC_CRYSTAL_AU = crystalMusic(TelemetrySampler.CRYSTAL_AU_SHA1)
+/** Crystal Legacy v1.3.1: Crystal's sound engine, songs and channels; bank 0 moved PlayMusic and SaveScreen's park. */
+val GEN2_MUSIC_CRYSTAL_LEGACY = crystalMusic(TelemetrySampler.CRYSTAL_LEGACY_V1_3_1_SHA1, playMusic = 0x3B62, spin = 0x287B)
 
 object Gen1Music {
     private val GAMES = listOf(GEN1_MUSIC_YELLOW, GEN1_MUSIC_YELLOW_DE, GEN1_MUSIC_YELLOW_FR, GEN1_MUSIC_YELLOW_IT, GEN1_MUSIC_YELLOW_ES,
-        GEN1_MUSIC_RED, GEN1_MUSIC_BLUE, GEN1_MUSIC_PURE_RED, GEN1_MUSIC_PURE_BLUE, GEN2_MUSIC_CRYSTAL, GEN2_MUSIC_CRYSTAL_REV1, GEN2_MUSIC_CRYSTAL_AU)
+        GEN1_MUSIC_RED, GEN1_MUSIC_BLUE, GEN1_MUSIC_PURE_RED, GEN1_MUSIC_PURE_BLUE, GEN1_MUSIC_YELLOW_LEGACY, GEN2_MUSIC_CRYSTAL, GEN2_MUSIC_CRYSTAL_REV1,
+        GEN2_MUSIC_CRYSTAL_AU, GEN2_MUSIC_CRYSTAL_LEGACY)
 
     fun forSha1(sha1: String): Gen1MusicTables? = GAMES.firstOrNull { it.sha1 == sha1 }
 

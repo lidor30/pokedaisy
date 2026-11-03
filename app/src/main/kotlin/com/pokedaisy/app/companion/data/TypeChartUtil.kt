@@ -145,9 +145,12 @@ fun itemDescription(id: Int): String = when (activeGame) {
     // its own TMs teach other moves (tmDescriptionsPureRgb).
     GameKind.PURE_RED, GameKind.PURE_BLUE -> tmDescriptionsPureRgb[id]
         ?: itemDescriptionsYellow[id]?.takeIf { itemNamesPureRgb[id] == itemNamesYellow[id] } ?: ""
+    // Yellow Legacy kept Yellow's items; its TMs teach its own moves.
+    GameKind.YELLOW_LEGACY -> tmDescriptionsYellowLegacy[id] ?: itemDescriptionsYellow[id] ?: ""
     // Crystal's own text, from the cart (a TM's: its move's), like the GBA games'.
     // (Prism's are compressed: none.)
-    GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.PRISM, GameKind.GOLD, GameKind.SILVER, GameKind.POLISHED_CRYSTAL -> activeGen2.pokedex?.gen2?.let { Gen2Dex.itemDescription(it, id) }.orEmpty()
+    GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.PRISM, GameKind.GOLD, GameKind.SILVER, GameKind.POLISHED_CRYSTAL,
+    GameKind.CRYSTAL_LEGACY -> activeGen2.pokedex?.gen2?.let { Gen2Dex.itemDescription(it, id) }.orEmpty()
     else -> RomItemText.description(id)
 }
 

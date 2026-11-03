@@ -406,6 +406,8 @@ fun rememberGameFont(game: GameKind?): FontFamily? {
             GameKind.YELLOW -> com.pokedaisy.app.companion.data.Gen1Art.yellowFont(com.pokedaisy.app.companion.data.romLanguage)
             GameKind.RED, GameKind.BLUE -> com.pokedaisy.app.companion.data.Gen1Art.RED_BLUE_FONT
             GameKind.PURE_RED, GameKind.PURE_BLUE -> com.pokedaisy.app.companion.data.Gen1Art.PURE_FONT
+            GameKind.YELLOW_LEGACY -> com.pokedaisy.app.companion.data.Gen1Art.YELLOW_LEGACY_FONT
+            GameKind.CRYSTAL_LEGACY -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_LEGACY_FONT
             GameKind.CRYSTAL -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_FONT
             GameKind.CRYSTAL_CLEAR -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_CLEAR_FONT
             GameKind.PRISM -> com.pokedaisy.app.companion.data.Gen2Art.PRISM_FONT
