@@ -283,7 +283,7 @@ fun MonView.withMovesVs(targets: List<MonView>): MonView = copy(moves = moves.ma
         val t = foe.types.map(::typeIdOf)
         val t1 = t.getOrElse(0) { TYPE_NONE }
         val t2 = t.getOrElse(1) { TYPE_NONE }
-        val pct = if (atk != TYPE_NONE && t1 != TYPE_NONE) typeMultiplierPct(atk, t1, t2) else 100
+        val pct = if (atk != TYPE_NONE && t1 != TYPE_NONE) moveMultiplierPct(mv.name, atk, t1, t2) else 100
         MoveVsFoe(foe.name, formatMultiplier(pct), pct)
     })
 })
@@ -437,7 +437,7 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
                 else {
                     val info = lookupMove(moveId)
                     val vs = opponents.map { foe ->
-                        val pct = if (info.type != TYPE_NONE) typeMultiplierPct(info.type, foe.type1, foe.type2) else 100
+                        val pct = if (info.type != TYPE_NONE) moveMultiplierPct(info.name, info.type, foe.type1, foe.type2) else 100
                         MoveVsFoe(speciesName(foe.species), formatMultiplier(pct), pct)
                     }
                     MoveView(info.name, typeName(info.type), b.pp[idx], info.power, vs, id = moveId)

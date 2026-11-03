@@ -375,7 +375,7 @@ floating bottom-right button (`PixelIcons.expand` / `shrink`, `Prefs.foeDetails`
 foe the page; the player shrinks to a strip (YOU + sprite level with the foe card's side label / icon, upright HP
 bars). The ability / item / stats offsets live on `BattleMonLayout` (vanilla / CFRU: u8 ability +0x20, item +0x2E;
 expansion, SoulGold, HnS: u16 +0x20, item +0x30; stats +0x02, stages +0x18 everywhere), checked on every `*_battle`
-fixture. A reserve foe (FOE TEAM tap) shows its party stats; its ability isn't read yet. Everything is hint-first (title, tap = hint, tap = answer) and only one entry
+fixture. A reserve foe (FOE TEAM tap) shows its party stats; its ability isn't read yet. A move's verdict goes through `moveMultiplierPct`, not the chart alone: Freeze-Dry (2x on Water), Flying Press (Fighting and Flying), Thousand Arrows (1x on Flying), by name in each game's spelling. Everything is hint-first (title, tap = hint, tap = answer) and only one entry
 is open at a time. The first GUIDE open per game shows an "AI-written, may be wrong" notice.
 Guide facts come from the game's own data (the decomp's map scripts for FireRed/Emerald),
 written in our own words — never copied from community docs; mark a guide
