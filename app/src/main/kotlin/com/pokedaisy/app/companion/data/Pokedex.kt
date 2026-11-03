@@ -686,6 +686,18 @@ val POKEDEX_MONOMYTH = PokedexTables(
     nationalMagicOff = -1,
 )
 
+/** Monomyth v1.1: v1.0's tables, the same bytes (gen_monomyth_tables.py checks them), moved. */
+val POKEDEX_MONOMYTH_V1_1 = POKEDEX_MONOMYTH.copy(
+    entries = 0x089D3BB0L,
+    frontPics = 0x0849FBA0L,
+    palettes = 0x0848855CL,
+    speciesInfo = 0x084F7244L,
+    speciesToNational = 0x084F49A8L,
+    abilityNames = 0x084EEA8BL,
+    evoLayout = EvoLayout(EvoScheme.MONOMYTH, table = 0x08500594L, perMon = 8, probeLevel = 31),
+    levelUpLearnsets = 0x08506AD4L,
+)
+
 val POKEDEX_ROWE = PokedexTables(
     entries = 0x08F592C8L,
     frontPics = 0x083E0AA4L,

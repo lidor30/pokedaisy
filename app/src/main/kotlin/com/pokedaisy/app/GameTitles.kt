@@ -133,6 +133,7 @@ object GameTitles {
         "40780347d0b4df6bf491eaf12603e5422caee677" to "Pokémon Team Rocket Edition: Dragonsden Version",
         "0d8bdaeeca0856175037a75679c1a2b73ad2b68a" to "Pokémon Team Rocket Edition 2026 (ES)",
         "ae1c4be9be8d706bb989602bc05731203d42860d" to "Pokémon Monomyth",
+        "eb660caffbc26e1f09f86714d03af4c3eccd9e4d" to "Pokémon Monomyth",
         "60182b934d2e8eb3eef226a9bbc25e5df6becd4f" to "Pokémon Wishes of Tomorrow",
         "20e91aecb3243eea7cd610659846f37062f5d709" to "Pokémon Dreamstone Mysteries",
         "20dfaea1d5317cf95fe0b493208edce7d50b865f" to "Pokémon Ghost Grey",

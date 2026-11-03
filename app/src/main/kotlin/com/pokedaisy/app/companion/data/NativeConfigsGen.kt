@@ -3898,6 +3898,26 @@ val NATIVE_MONOMYTH = NATIVE_EMERALD.copy(
     guideTables = GUIDE_TABLES_MONOMYTH,
 )
 
+// Pokémon Monomyth v1.1 (32 MB, sha1 eb660caf…): the same game rebuilt, its header's game code now BPEE, so it's found by
+// hash among the big BPEE hacks. Every pool word that points at RAM reads as in v1.0, so its RAM, structs and the user's
+// v1.0 save carry over unchanged (the party, money, map and battles read the same headless). Only the ROM moved: code by
+// -0x28 around the battle controllers, tables by 0x418 (gItems, icons) and on to 0x40C (gItemIconTable).
+val NATIVE_MONOMYTH_V1_1 = NATIVE_MONOMYTH.copy(
+    itemDescs = ItemDescTable(0x089F19E8L, 0x20, 0x18, count = 447),
+    handleInputChooseAction = 0x08048521L,
+    handleInputChooseMove = 0x08048E41L,
+    completeWhenChoseItem = 0x0804AC95L,
+    waitForMonSelection = 0x0804ABCDL,
+    handleInputChooseTarget = 0x080487F9L,
+    monIconTable = 0x089DF964L,
+    monIconPaletteIndices = 0x089DFFBCL,
+    monIconPaletteTable = 0x089E0154L,
+    itemIconTable = 0x08AAFE0CL,
+    pokedex = POKEDEX_MONOMYTH_V1_1,
+    fieldItems = FIELD_ITEMS_MONOMYTH_V1_1,
+    guideTables = GUIDE_TABLES_MONOMYTH_V1_1,
+)
+
 // ---- gamedata/gen3/hacks/odyssey.toml ----
 
 // Pokemon Odyssey (English) v4.1.1 - a 32 MB BPRE hack like the others above.

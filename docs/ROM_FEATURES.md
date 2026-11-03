@@ -62,7 +62,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ |
 | Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — |
 | Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ |
-| Monomyth | 1.0 | ✅ ²³ | ✅ | ✅ | ✅ | — | — | — | ✅ ²³ | — | — ²³ | ✅ ²³ | — | — | — |
+| Monomyth | 1.0, 1.1 | ✅ ²³ | ✅ | ✅ | ✅ | — | — | — | ✅ ²³ | — | — ²³ | ✅ ²³ | — | — | — |
 | Odyssey | 4.1.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ |
 | Orange Islands | Beta 5.7, an older beta | ◐ ³ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | — | ✅ ¹⁹ ²⁰ |
 | Quetzal | English / Spanish Alpha 9 v0 | ◐ ³ | ✅ | ✅ | ✅ | — | — | — | ◐ ⁶ | — | — | — | — | — | — |
@@ -315,6 +315,10 @@ change to any of the places listed under "Where it's decided" updates its rows h
     headless. No WILD ENCOUNTERS: its StandardWildEncounter (0x080B3F58) has no switch to hold (only an immunity-step
     counter in its caller), and `WildEncounters.find` now passes over a look-alike function there. No bag USE or FLY (its
     functions aren't retail's code), and REUSABLE TMS doesn't know its game code.
+    v1.1 (`NATIVE_MONOMYTH_V1_1`, game code BPEE) is the same game rebuilt: v1.0's RAM and save, so every row is v1.0's. Run
+    on that save headless: the five handlers read live at their new addresses, the POKéMON switch (DOWN slot 0 -> 2, SHIFT
+    sent slot 2 in), a written move cell + A (its PP 19 -> 18), BAG, the PC opened and closed (`FIELD_ITEMS_MONOMYTH_V1_1`),
+    verify_wide.py (map 440/440, battle 1064/1064 exact). `ReusableTms.find` does read BPEE there, and finds no site.
 
 23. Retail FireRed / Emerald run through Universal Pokémon Randomizer ZX 4.6.1 (`RandomizedRetail.kt`, docs/DEVELOPMENT.md's
     "Randomized ROMs"): retail's code and RAM, so retail's row. EXPAND and the field reads look it up by retail's CRC

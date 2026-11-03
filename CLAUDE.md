@@ -1650,6 +1650,11 @@ offsets, `MAX_SPRITES` 80; it doesn't rewrite DISPCNT each frame, so mgba_dump's
 anywhere is special 57 (`FIELD_ITEMS_MONOMYTH`, PC only); STEADY needed `M4aSongs`' flipped-header signature. Its StandardWildEncounter has no switch (no WILD ENCOUNTERS),
 and a look-alike gcc shape there taught `WildEncounters.gccRead` to want the HEADER_NONE compare. No FLY, bag USE, card or
 far-off characters in EXPAND.
+**Monomyth v1.1 (2026-11-04)** (`NATIVE_MONOMYTH_V1_1`, still `GameKind.MONOMYTH`): v1.0 rebuilt, the RAM and save unchanged (every pool word
+pointing at RAM reads the same; v1.0's save is its fixtures'), the ROM moved, one table set for both (`gen_monomyth_tables.py` with both ROMs
+checks it). Its header's game code is **BPEE**, so it's found by hash with the big BPEE hacks, and anything going by game code sees Emerald:
+`fanfareSongId` turns it away by its title, so it borrows a fanfare like v1.0 (it has its own song table; which song is its level-up isn't mapped). The next build: map the ROM by word pairs (v1.0 word -> the word at
+the shifted place) before anything else; if the RAM words still agree, it's a config over this one.
 **Emerald Legacy v1.1.4 (2026-10-14)**: BPEE, 16 MB, but a rebuild - its public source (`$DECOMPS/pokelegacy`, tag V1.1.4)
 built with agbcc is the release byte for byte, so take every address from that ELF (`nm`) and every struct offset / constant
 from agbcc compiling `offsetof` against its headers, never from retail. Runs as `GameKind.EMERALD` under `LEGACY_TEXT`

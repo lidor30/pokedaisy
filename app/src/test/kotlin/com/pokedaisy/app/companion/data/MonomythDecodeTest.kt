@@ -207,4 +207,67 @@ class MonomythDecodeTest {
         assertTrue(TelemetrySampler.MONOMYTH_V1_0_SHA1 in TelemetrySampler.SUPPORTED_HACK_SHA1S)
         assertTrue(TelemetrySampler.MONOMYTH_CODE in TelemetrySampler.HACK_GAME_CODES)
     }
+
+    // v1.1: the same game and RAM with v1.0's save, its ROM moved and its header's game code BPEE.
+    private val v11 = NATIVE_MONOMYTH_V1_1
+
+    @Test
+    fun `v1_1 - v1_0's save reads the same`() {
+        assertEquals(cfg.playerParty, v11.playerParty)
+        val old = decodeNative("monomyth", cfg)
+        val t = decodeNative("monomyth_v1_1", v11)
+        assertEquals(old.party.map { it.species }, t.party.map { it.species })
+        assertEquals(old.party.map { it.level to it.hp }, t.party.map { it.level to it.hp })
+        assertEquals(old.party.map { it.moves.toList() }, t.party.map { it.moves.toList() })
+    }
+
+    @Test
+    fun `v1_1 - its battle handlers are read live`() {
+        val ram = FixtureMemoryReader.load("monomyth_v1_1_battle")
+        val t = decodeNative("monomyth_v1_1_battle", v11)
+        assertTrue(t.inBattle)
+        assertEquals("Poliwag" to 5, t.battleMons[BATTLE_POS_OPPONENT_LEFT].let { speciesName(it.species) to it.level })
+        assertEquals(194, t.battleMons[BATTLE_POS_PLAYER_LEFT].species)
+        assertEquals(v11.handleInputChooseAction, u32le(ram.readCoreMemory(v11.battlerControllerFuncs, 4), 0))
+        val trainer = decodeNative("monomyth_v1_1_trainer", v11)
+        assertEquals(listOf("Spinarak", "Joltik"), trainer.enemyParty.map { speciesName(it.species) })
+        assertEquals(listOf(3, 4), trainer.enemyParty.map { it.level })
+    }
+
+    @Test
+    fun `v1_1 - its tables match the ROM`() {
+        val rom = RomFileReader.load(RETAIL_ROM_DIR + "Pokemon Monomyth (v1.1).gba") ?: return
+        val sha1 = java.security.MessageDigest.getInstance("SHA-1").digest(rom.readCoreMemory(0x08000000L, 0x2000000)).joinToString("") { "%02x".format(it) }
+        assertEquals(TelemetrySampler.MONOMYTH_V1_1_SHA1, sha1)
+        assertTrue(TelemetrySampler.MONOMYTH_V1_1_SHA1 in TelemetrySampler.SUPPORTED_HACK_SHA1S)
+        assertEquals("BPEE", String(rom.readCoreMemory(0x080000ACL, 4), Charsets.US_ASCII))
+        PokedexSource.reader = rom
+        assertTrue(pokedexMatchesRom(rom, POKEDEX_MONOMYTH_V1_1))
+        assertFalse(pokedexMatchesRom(rom, POKEDEX_MONOMYTH))
+        assertTrue(guideTablesMatchRom(rom, GUIDE_TABLES_MONOMYTH_V1_1))
+        assertFalse(guideTablesMatchRom(rom, GUIDE_TABLES_MONOMYTH))
+        assertEquals(194, PokedexSource.speciesFor(POKEDEX_MONOMYTH_V1_1, 7))
+        val e = PokedexSource.entry(POKEDEX_MONOMYTH_V1_1, 7)!!
+        assertEquals("Rookie" to (5 to 91), e.category to (e.heightDm to e.weightHg))
+        assertTrue(e.description.startsWith("Mishimizu love shiny copper objects"))
+        assertEquals(listOf("Torrent"), e.abilities)
+        assertTrue(EvoLink(194, 195, listOf(EvoReq.Level(20))) in DexDetails.family(POKEDEX_MONOMYTH_V1_1, 194)!!)
+        val moves = DexDetails.levelUp(POKEDEX_MONOMYTH_V1_1, v11.guideTables, 194)!!
+        assertTrue(LevelMove(8, 55) in moves && LevelMove(11, 229) in moves)
+        assertTrue(DexDetails.catchSpots(v11.guideTables, 183)!!.any { it.mapsec == 0x10 && it.method == WildMethod.GRASS })
+        // The packed icons, as v1.0's: MISHIMIZU's tiles.
+        val rd = { a: Long, n: Int -> rom.readCoreMemory(a, n) }
+        val tiles = MonomythIcons.unpack(rd, u32le(rd(v11.monIconTable + 194 * 4L, 4), 0))!!
+        assertEquals(0xB8E0F95FL, java.util.zip.CRC32().apply { update(tiles) }.value)
+    }
+
+    @Test
+    fun `v1_1 - PC anywhere matches the ROM, v1_0's table doesn't`() {
+        val rom = RomFileReader.load(RETAIL_ROM_DIR + "Pokemon Monomyth (v1.1).gba") ?: return
+        assertEquals(FIELD_ITEMS_MONOMYTH_V1_1, v11.fieldItems)
+        val support = fieldItemSupport(FIELD_ITEMS_MONOMYTH_V1_1) { a, n -> rom.readCoreMemory(a, n) }!!
+        assertTrue(support.canPc)
+        assertFalse(support.canFly)
+        assertNull(fieldItemSupport(FIELD_ITEMS_MONOMYTH) { a, n -> rom.readCoreMemory(a, n) })
+    }
 }

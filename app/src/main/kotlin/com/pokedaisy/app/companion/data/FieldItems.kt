@@ -277,6 +277,12 @@ val FIELD_ITEMS_MONOMYTH = FieldItemFns(
     pc = PcFns(0x08090870L, 57, 0x08298150L, 0x080C62A1L, listOf(0xEF3698BAL, 0x3DECE7E0L)),
 )
 
+/** Monomyth v1.1: v1.0's functions moved, the same code but ScriptContext_SetupScript's calls; special 57 is still the PC. */
+val FIELD_ITEMS_MONOMYTH_V1_1 = FIELD_ITEMS_MONOMYTH.copy(
+    varGet = 0x08096234L, varSet = 0x0809626CL, fieldControlsLocked = 0x080909D0L,
+    pc = PcFns(0x08090A60L, 57, 0x08298510L, 0x080C6535L, listOf(0xCC9E3CD3L, 0x3DECE7E0L)),
+)
+
 /**
  * Emerald Imperium 1.3.1 (pokeemerald-expansion 1.10.0, no source): pokeemerald-expansion's 1.10.0 tag built plain with
  * Debian's arm-none-eabi-gcc 12 as the reference, each function found in Imperium by its first instructions (literal

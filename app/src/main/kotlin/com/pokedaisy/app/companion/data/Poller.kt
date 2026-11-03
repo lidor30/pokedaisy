@@ -570,6 +570,7 @@ class TelemetrySampler {
                 TEAM_ROCKET_2026_V3_0_9_ES_SHA1 -> { kind = GameKind.TEAM_ROCKET; nativeCfg = NATIVE_TEAM_ROCKET_V3 }
                 WISHES_OF_TOMORROW_V1_2_6_SHA1 -> { kind = GameKind.WISHES; nativeCfg = NATIVE_WISHES }
                 DREAMSTONE_MYSTERIES_UNVERSIONED_SHA1 -> { kind = GameKind.DREAMSTONE; nativeCfg = NATIVE_DREAMSTONE }
+                MONOMYTH_V1_1_SHA1 -> { kind = GameKind.MONOMYTH; nativeCfg = NATIVE_MONOMYTH_V1_1 }
                 else -> {
                     kind = GameKind.EMERALD
                     unsupportedRom(reader, code, size, hash, "unrecognized Emerald-based ROM hack " +
@@ -1018,6 +1019,8 @@ class TelemetrySampler {
         // Pokémon Monomyth v1.0 (Team Monomyth; 32 MB, its own pokeemerald build under the game code MONE) - host-side
         // masked hash (GPIO bytes zero, so a plain `shasum`).
         const val MONOMYTH_V1_0_SHA1 = "ae1c4be9be8d706bb989602bc05731203d42860d"
+        // v1.1: v1.0 rebuilt under Emerald's own game code (BPEE), so it's told apart with the big BPEE hacks.
+        const val MONOMYTH_V1_1_SHA1 = "eb660caffbc26e1f09f86714d03af4c3eccd9e4d"
         const val MONOMYTH_CODE = "MONE"
 
         /** Hacks under a game code of their own that detect() reads as their base game (by hash). */
@@ -1197,7 +1200,7 @@ class TelemetrySampler {
             ELITE_REDUX_V2_65_3B_SHA1, ELITE_REDUX_V2_65_4_1B_SHA1, TEAM_ROCKET_DRAGONSDEN_V1_5_SHA1,
             TEAM_ROCKET_2026_V3_0_9_ES_SHA1,
             WISHES_OF_TOMORROW_V1_2_6_SHA1,
-            DREAMSTONE_MYSTERIES_UNVERSIONED_SHA1, MONOMYTH_V1_0_SHA1,
+            DREAMSTONE_MYSTERIES_UNVERSIONED_SHA1, MONOMYTH_V1_0_SHA1, MONOMYTH_V1_1_SHA1,
             ULTRA_VIOLET_V1_22_SHA1, SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_SHA1, SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_CASUAL_SHA1,
             SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_PERFORMANCE_SHA1, SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_CASUAL_PERFORMANCE_SHA1,
             RECHARGED_YELLOW_V1_8_0_SHA1, RECHARGED_YELLOW_V1_9_0_SHA1, RECHARGED_YELLOW_V1_9_4_SHA1,
