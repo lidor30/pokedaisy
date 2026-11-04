@@ -68,7 +68,7 @@ struct pd_area_thing {
     uint16_t mapsec;
     uint8_t kind;      // enum pd_area_kind
     uint16_t id;       // an item, or the species you get
-    uint16_t flag;     // set once it's done (0 = none known)
+    uint32_t flag;     // set once it's done (0 = none known)
     uint16_t qty;
     uint16_t wants;    // TRADE: the species they want
     const char* where; // the sub-map ("" = the area's main map)
@@ -89,7 +89,11 @@ bool pd_entry_in_area(const struct pd_guide_entry* e, const char* key);
 // Whether an area thing is done (the app's areaDone).
 bool pd_area_done(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_area_thing* t);
 
-// Whether g's ROM has the GUIDE's live tables (the probe trainer's name).
+// Whether a thing is listed under the area the player is in: Gen 1's go by the town map's name, so a town's houses
+// count with the town (gen1Area).
+bool pd_area_here(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_area_thing* t);
+
+// Whether g's ROM has the GUIDE's live tables (the probe trainer's name), or a Game Boy guide its world.
 bool pd_guide_rom_ok(const struct pd_game* g);
 
 #define PD_TEAM_MAX 6
@@ -105,7 +109,7 @@ void pd_species_types(const struct pd_game* g, int species, int* t1, int* t2);
 
 // The wild POKéMON of the player's map, merged per species (the app's
 // merge(): min of mins, max of maxes, odds summed), highest odds first.
-#define PD_WILD_METHODS 6 // grass / cave, surfing, rock smash, old / good / super rod
+#define PD_WILD_METHODS 8 // grass / cave, surfing, rock smash, old / good / super rod, headbutt, its rare trees
 #define PD_WILD_MAX 12
 struct pd_wild {
     int species, minLv, maxLv, pct;

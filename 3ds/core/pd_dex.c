@@ -3,6 +3,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "pd_gb.h"
 #include "pd_map.h"
 #include "pd_snapshot.h"
 #include "pd_tables.h"
@@ -47,16 +48,19 @@ static void build(const struct pd_game* g) {
 }
 
 bool pd_dex_available(const struct pd_game* g) {
+    if (g->gb) return g->gb->dex && g->rom;
     build(g);
     return available;
 }
 
 int pd_dex_species(const struct pd_game* g, int national) {
+    if (g->gb) return pd_gb_dex_species(g, national);
     build(g);
     return available && national >= 1 && national <= PD_NATIONAL_COUNT ? toSpecies[national] : 0;
 }
 
 int pd_dex_national(const struct pd_game* g, int species) {
+    if (g->gb) return pd_gb_dex_number(g, species);
     build(g);
     return available && species >= 1 && species < SPECIES_COUNT ? toNational[species] : 0;
 }
@@ -71,8 +75,11 @@ int pd_dex_regional(const struct pd_game* g, int i) {
 
 bool pd_dex_entry(const struct pd_game* g, int national, struct pd_dex_entry* out) {
     memset(out, 0, sizeof(*out));
+    out->heightIn = out->weightLbs10 = -1;
+    out->statCount = 6;
     const struct pd_config* cfg = g->cfg;
     if (!pd_dex_available(g)) return false;
+    if (g->gb) return pd_gb_dex_entry(g, national, out);
     const uint8_t* e = pd_rom_at(g, cfg->dexEntries + (uint32_t) national * cfg->dexEntryStride, cfg->dexEntryStride);
     if (!e) return false;
     out->national = national;
@@ -101,6 +108,7 @@ bool pd_dex_entry(const struct pd_game* g, int national, struct pd_dex_entry* ou
 
 bool pd_dex_sprite(const struct pd_game* g, int species, uint32_t* out) {
     const struct pd_config* cfg = g->cfg;
+    if (g->gb) return pd_gb_dex_sprite(g, species, out);
     if (!pd_dex_available(g) || species < 1 || species >= SPECIES_COUNT) return false;
     const uint8_t* pic = pd_rom_at(g, cfg->frontPics + (uint32_t) species * 8, 8);
     const uint8_t* pal = pd_rom_at(g, cfg->palettes + (uint32_t) species * 8, 8);
@@ -146,6 +154,24 @@ void pd_dex_weight(int hg, char* buf, int len) {
     long lbs = 100000L * hg / 4536;
     if (lbs % 10 >= 5) lbs += 10;
     snprintf(buf, (size_t) len, "%ld.%ld lbs.", lbs / 100, (lbs % 100) / 10);
+}
+
+void pd_dex_measures(const struct pd_game* g, const struct pd_dex_entry* e, char* height, int heightLen, char* weight, int weightLen) {
+    const struct pd_gb_dex* d = g->gb ? g->gb->dex : NULL;
+    if (e->heightIn >= 0) snprintf(height, (size_t) heightLen, "%d'%02d\"", e->heightIn / 12, e->heightIn % 12);
+    else if (d && d->metric) snprintf(height, (size_t) heightLen, "%d%c%d%sm", e->heightDm / 10, d->decimal, e->heightDm % 10, d->unitSpace ? " " : "");
+    else pd_dex_height(e->heightDm, height, heightLen);
+    if (e->weightLbs10 >= 0) snprintf(weight, (size_t) weightLen, "%d.%d lbs.", e->weightLbs10 / 10, e->weightLbs10 % 10);
+    else if (d && d->metric) snprintf(weight, (size_t) weightLen, "%d%c%d%skg", e->weightHg / 10, d->decimal, e->weightHg % 10, d->unitSpace ? " " : "");
+    else pd_dex_weight(e->weightHg, weight, weightLen);
+}
+
+int pd_dex_gb_count(const struct pd_game* g) {
+    return g->gb && g->gb->dex ? g->gb->dex->count : 0;
+}
+
+const char* pd_dex_category_suffix(const struct pd_game* g) {
+    return g->gb && g->gb->dex ? g->gb->dex->suffix : "POKéMON";
 }
 
 int pd_growth_rate(const struct pd_game* g, int species) {

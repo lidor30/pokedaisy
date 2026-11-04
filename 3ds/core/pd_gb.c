@@ -1,5 +1,7 @@
 #include "pd_gb.h"
 
+#include "pd_gb_guide.h"
+
 #include <stdio.h>
 #include <string.h>
 
@@ -35,7 +37,6 @@ const struct pd_config pd_gb_blank_config = {
     .bagOrder = { PD_POCKET_ITEMS, PD_POCKET_BALLS, PD_POCKET_KEY, PD_POCKET_TMHM, PD_POCKET_BERRIES },
 };
 
-static int u8(const uint8_t* b, int o) { return b[o]; }
 static int be16(const uint8_t* b, int o) { return (b[o] << 8) | b[o + 1]; }
 
 static int read8(pd_read_fn read, void* ctx, uint32_t addr) {
@@ -282,11 +283,28 @@ static int landmark_of(const struct pd_gb_config* c, int key) {
 
 static void read_dex(const struct pd_gb_config* c, pd_read_fn read, void* ctx, struct pd_snapshot* s) {
     if (!c->dexCaught || !c->dexSeen) return;
-    int bytes = c->gen == 1 ? 19 : 32;
-    uint8_t seen[PD_DEX_BYTES] = { 0 };
-    read(ctx, c->dexCaught, s->dexCaught, (size_t) bytes);
+    // A bit per species (Polished Crystal has 291): 32 bytes elsewhere in Gen 2.
+    int bytes = c->gen == 1 ? 19 : c->speciesCount > 256 ? (c->speciesCount + 7) / 8 : 32;
+    if (bytes > PD_DEX_BYTES) bytes = PD_DEX_BYTES;
+    uint8_t seen[PD_DEX_BYTES] = { 0 }, caught[PD_DEX_BYTES] = { 0 };
+    read(ctx, c->dexCaught, caught, (size_t) bytes);
     read(ctx, c->dexSeen, seen, (size_t) bytes);
-    for (int i = 0; i < bytes; i++) s->dexSeen[i] = seen[i] | s->dexCaught[i];
+    for (int i = 0; i < bytes; i++) seen[i] |= caught[i];
+    memset(s->dexSeen, 0, sizeof(s->dexSeen));
+    memset(s->dexCaught, 0, sizeof(s->dexCaught));
+    // The snapshot's bits go by the number the dex lists: where that isn't the species, by its place in the order.
+    const struct pd_gb_dex* d = c->dex;
+    if (d && d->dexOrder) {
+        for (int n = 1; n <= d->dexOrderCount && (n - 1) / 8 < PD_DEX_BYTES; n++) {
+            int i = d->dexOrder[n - 1] - 1;
+            if (i < 0 || i / 8 >= bytes) continue;
+            if (seen[i / 8] >> (i % 8) & 1) s->dexSeen[(n - 1) / 8] |= (uint8_t) (1 << (n - 1) % 8);
+            if (caught[i / 8] >> (i % 8) & 1) s->dexCaught[(n - 1) / 8] |= (uint8_t) (1 << (n - 1) % 8);
+        }
+    } else {
+        memcpy(s->dexSeen, seen, (size_t) bytes);
+        memcpy(s->dexCaught, caught, (size_t) bytes);
+    }
     s->dexOk = true;
     s->dexNational = true;
 }
@@ -428,6 +446,7 @@ void pd_gb_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read
     if (c->gen == 1) read_gen1(s, c, read, ctx);
     else read_gen2(s, c, read, ctx);
     read_dex(c, read, ctx, s);
+    if (c->guide) pd_gb_guide_read(s, c, read, ctx);
     int cursor;
     s->battleState = s->inBattle ? pd_gb_battle_menu(c, read, ctx, &cursor) : PD_BATTLE_NONE;
     s->valid = true;
@@ -627,7 +646,7 @@ static bool icon_gen1(const struct pd_game* g, const struct pd_gb_art* a, int de
 }
 
 // pret's LZ (Gen2Lz); [polished]: its variant's counts. Stops once [max] bytes are out.
-static int gen2_lz(const uint8_t* rom, size_t romSize, uint32_t start, uint8_t* out, int max, bool polished) {
+int pd_gb_lz(const uint8_t* rom, size_t romSize, uint32_t start, uint8_t* out, int max, bool polished) {
     int n = 0;
     uint32_t p = start;
     while (n < max && p < romSize) {
@@ -705,7 +724,7 @@ static bool icon_gen2(const struct pd_game* g, const struct pd_gb_art* a, int sp
     if (a->minis) {
         int mini = species > POLISHED_NUM_SPECIES ? POLISHED_NUM_SPECIES + a->cosmeticForms + (species - POLISHED_NUM_SPECIES - 1) : species;
         const uint8_t* e = rom + a->minis + 7 * mini;
-        if (gen2_lz(rom, g->romSize, rom_off(e[0], e[1] | e[2] << 8), tiles, 128, polished) < 64) return false;
+        if (pd_gb_lz(rom, g->romSize, rom_off(e[0], e[1] | e[2] << 8), tiles, 128, polished) < 64) return false;
         uint32_t p = a->monPalettes + 8u * (uint32_t) species;
         pal[1] = gbc_rgb(rom, p);
         pal[2] = gbc_rgb(rom, p + 2);
@@ -714,7 +733,7 @@ static bool icon_gen2(const struct pd_game* g, const struct pd_gb_art* a, int sp
     }
     if (a->iconFarPointers) {
         const uint8_t* e = rom + a->iconFarPointers + 3 * (species - 1);
-        if (gen2_lz(rom, g->romSize, rom_off(e[0], e[1] | e[2] << 8), tiles, 128, false) < 64) return false;
+        if (pd_gb_lz(rom, g->romSize, rom_off(e[0], e[1] | e[2] << 8), tiles, 128, false) < 64) return false;
         uint32_t p = a->iconObjPals + 8u * (rom[a->iconPalIndex + (uint32_t) species - 1] >> 4 & 7);
         for (int i = 1; i < 4; i++) pal[i] = gbc_rgb(rom, p + 2u * (uint32_t) i);
         draw_gen2(tiles, pal, out);
@@ -728,7 +747,7 @@ static bool icon_gen2(const struct pd_game* g, const struct pd_gb_art* a, int sp
             table = a->unownIcons;
             bank = a->unownBank;
         }
-        if (gen2_lz(rom, g->romSize, rom_off(bank, rom[table] | rom[table + 1] << 8), tiles, 128, false) < 64) return false;
+        if (pd_gb_lz(rom, g->romSize, rom_off(bank, rom[table] | rom[table + 1] << 8), tiles, 128, false) < 64) return false;
         uint32_t p = a->iconPalettes + 8u * (uint32_t) species;
         pal[1] = gbc_rgb(rom, p);
         pal[2] = gbc_rgb(rom, p + 2);
@@ -774,12 +793,12 @@ static bool gen2_map(const struct pd_game* g, const struct pd_gb_art* a, int reg
     const uint8_t* rom = g->rom;
     if (!a->townMapGfx || region < 0 || region >= a->townMapCount) return false;
     static uint8_t tiles[0x1000], lz[20 * 18];
-    int size = gen2_lz(rom, g->romSize, a->townMapGfx, tiles, sizeof(tiles), g->gb->polished);
+    int size = pd_gb_lz(rom, g->romSize, a->townMapGfx, tiles, sizeof(tiles), g->gb->polished);
     if (size <= 0) return false;
     int first = 0;
     const uint8_t* map = rom + a->townMaps[region];
     if (a->townMapsLz) {
-        if (gen2_lz(rom, g->romSize, a->townMaps[region], lz, 20 * 17, false) != 20 * 17) return false;
+        if (pd_gb_lz(rom, g->romSize, a->townMaps[region], lz, 20 * 17, false) != 20 * 17) return false;
         map = lz;
         first = 20;
         for (int i = 0; i < 160 * 8; i++) out[i] = gbc_rgb(rom, a->pokegearPals);
@@ -822,7 +841,7 @@ bool pd_gb_player(const struct pd_game* g, int gender, uint32_t* out, uint32_t c
         if (gender < 0 || !a->playerSprites[gender]) return false;
         tiles = g->rom + a->playerSprites[gender];
         if (a->playerLz) {
-            if (gen2_lz(g->rom, g->romSize, a->playerSprites[gender], buffer, sizeof(buffer), true) < 64) return false;
+            if (pd_gb_lz(g->rom, g->romSize, a->playerSprites[gender], buffer, sizeof(buffer), true) < 64) return false;
             tiles = buffer;
         }
         for (int i = 0; i < 4; i++) pal[i] = gbc_rgb(g->rom, a->objectPals + 8u * (uint32_t) (a->playerPalFrom + gender) + 2u * (uint32_t) i);

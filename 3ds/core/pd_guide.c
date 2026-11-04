@@ -6,6 +6,9 @@
 
 #include "pd_dex.h"
 #include "pd_games.h"
+#include "pd_gb.h"
+#include "pd_gb_guide.h"
+#include "pd_tables.h"
 
 #define TRAINER_STRIDE 0x28
 #define WILD_HEADER 20
@@ -97,7 +100,15 @@ bool pd_area_done(const struct pd_game* g, const struct pd_snapshot* s, const st
     return false;
 }
 
+bool pd_area_here(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_area_thing* t) {
+    if (t->mapsec == s->mapsec) return true;
+    if (!g->gb || g->gb->gen != 1) return false;
+    const char* here = pd_mapsec_name(g, s->mapsec);
+    return *here && !strcmp(here, pd_mapsec_name(g, t->mapsec));
+}
+
 bool pd_guide_rom_ok(const struct pd_game* g) {
+    if (g->gb) return g->gb->guide != NULL;
     const struct pd_config* cfg = g->cfg;
     if (!cfg || !cfg->trainers || !cfg->probeName) return false;
     const uint8_t* name = pd_rom_at(g, cfg->trainers + (uint32_t) cfg->probeTrainer * TRAINER_STRIDE + 4, 12);
@@ -172,6 +183,10 @@ int pd_trainer_team(const struct pd_game* g, int trainer, struct pd_team_mon* ou
 
 void pd_species_types(const struct pd_game* g, int species, int* t1, int* t2) {
     *t1 = *t2 = 255;
+    if (g->gb) {
+        pd_species_type_pair(species, t1, t2);
+        return;
+    }
     const uint8_t* b = g->cfg ? pd_rom_at(g, g->cfg->speciesInfo + (uint32_t) species * 28, 28) : NULL;
     if (!b) return;
     *t1 = b[6];
@@ -217,6 +232,7 @@ static int cmp_wild(const void* a, const void* b) {
 }
 
 bool pd_wild_here(const struct pd_game* g, const struct pd_snapshot* s, struct pd_wild_set* out) {
+    if (g->gb) return pd_gb_wild_here(g, s, out);
     memset(out, 0, sizeof(*out));
     if (!s->posOk || !pd_guide_rom_ok(g)) return false;
     for (int h = 0; h < MAX_HEADERS; h++) {
@@ -239,7 +255,7 @@ bool pd_wild_here(const struct pd_game* g, const struct pd_snapshot* s, struct p
 
 const char* pd_wild_method_name(int method) {
     static const char* const NAMES[PD_WILD_METHODS] = {
-        "GRASS / CAVE", "SURFING", "ROCK SMASH", "OLD ROD", "GOOD ROD", "SUPER ROD",
+        "GRASS / CAVE", "SURFING", "ROCK SMASH", "OLD ROD", "GOOD ROD", "SUPER ROD", "HEADBUTT", "HEADBUTT (RARE TREES)",
     };
     return method >= 0 && method < PD_WILD_METHODS ? NAMES[method] : "";
 }

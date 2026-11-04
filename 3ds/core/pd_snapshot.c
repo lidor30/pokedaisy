@@ -561,6 +561,10 @@ static void read_save_fields(struct pd_snapshot* s, const struct pd_config* cfg,
 }
 
 bool pd_flag(const struct pd_snapshot* s, int flag) {
+    if (flag >= 0x10000) {
+        int bank = (flag >> 16) - 1, bit = flag & 0xFFFF;
+        return s->flagsOk && bank < PD_FLAG_BANKS && bit / 8 < PD_FLAG_BANK_BYTES && (s->flagBanks[bank][bit / 8] >> (bit % 8) & 1);
+    }
     return s->flagsOk && flag >= 0 && flag / 8 < PD_FLAG_BYTES && (s->flags[flag / 8] >> (flag % 8) & 1);
 }
 

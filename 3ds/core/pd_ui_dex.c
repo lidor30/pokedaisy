@@ -6,6 +6,7 @@
 
 #include "pd_dex.h"
 #include "pd_dex_details.h"
+#include "pd_gb.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
 
@@ -16,13 +17,19 @@
 
 // Whether the National Dex shows: the player's pick, else the save's own.
 static bool national_view(const struct pd_ui* ui, const struct pd_snapshot* s) {
+    // (A Game Boy dex has one list: the snapshot says national.)
     return ui->dexNational >= 0 ? ui->dexNational : s->dexNational;
 }
 
 // The list: national numbers in the order shown; returns how many.
 static int dex_list(const struct pd_game* g, bool national, int* out) {
     int n = 0;
-    if (national) {
+    int gb = pd_dex_gb_count(g);
+    if (gb) {
+        for (int i = 1; i <= gb; i++) {
+            if (pd_dex_species(g, i)) out[n++] = i;
+        }
+    } else if (national) {
         for (int i = 1; i <= PD_NATIONAL_COUNT; i++) {
             if (pd_dex_species(g, i)) out[n++] = i;
         }
@@ -46,7 +53,8 @@ static int shown_number(const struct pd_game* g, bool national, int nat) {
 
 static void title(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
                   const int* list, int n, bool national) {
-    int x = MARGIN, w = c->w - 2 * MARGIN - TOGGLE_W - 4;
+    bool one = pd_dex_gb_count(g) > 0; // a Game Boy dex has the one list
+    int x = MARGIN, w = c->w - 2 * MARGIN - (one ? 0 : TOGGLE_W + 4);
     int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_H, PD_TITLE_FILL);
     int ty = pd_text_y(CONTENT_Y, TITLE_H);
     pd_text(c, x + f + 6, ty, "POKéDEX", PD_TITLE_TEXT, PD_TITLE_SHADOW);
@@ -58,6 +66,7 @@ static void title(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     char counts[40];
     snprintf(counts, sizeof(counts), "SEEN %d  OWN %d", seen, caught);
     pd_text_right(c, x + w - f - 6, ty, counts, PD_VALUE, PD_VALUE_SHADOW);
+    if (one) return;
     // Which dex: tap for the other one.
     char other[24];
     snprintf(other, sizeof(other), "%s", national ? g->cfg->regionName : "NATIONAL");
@@ -111,8 +120,18 @@ static void draw_sprite(struct pd_canvas* c, int x, int y, const uint32_t* px) {
     }
 }
 
-static void info_page(struct pd_canvas* c, const struct pd_dex_entry* e, int ix, int dy, int iw) {
-    pd_text_wrap(c, ix, dy, iw, 15, 3, e->description, PD_LABEL, PD_LABEL_SHADOW);
+// The base stats on a line of their own, spread over the page's width, and the entry's text under them.
+static void info_page(struct pd_canvas* c, const struct pd_dex_entry* e, int ix, int dy, int iw, int lines) {
+    static const char* const STAT[6] = { "HP", "AT", "DF", "SA", "SD", "SP" };
+    static const char* const STAT_GEN1[5] = { "HP", "AT", "DF", "SP", "SC" }; // one SPECIAL, in its own order
+    char buf[8];
+    for (int i = 0; i < e->statCount; i++) {
+        int sx = ix + iw * i / e->statCount;
+        sx += pd_text(c, sx, dy, e->statCount == 5 ? STAT_GEN1[i] : STAT[i], PD_MUTED, PD_MUTED_SHADOW) + 3;
+        snprintf(buf, sizeof(buf), "%d", e->stats[i]);
+        pd_text(c, sx, dy, buf, PD_LABEL, PD_LABEL_SHADOW);
+    }
+    pd_text_wrap(c, ix, dy + 16, iw, 15, lines - 1, e->description, PD_LABEL, PD_LABEL_SHADOW);
 }
 
 // A line of a section's page, kept to the page.
@@ -191,6 +210,8 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     // The sprite on the list window's grey, framed.
     int bx = ix, by = top;
     pd_list_box(c, bx, by, PD_SPRITE + 16, PD_SPRITE + 16);
+    // Dark mode on Gen 1: the picture on its own white card, or its outline vanishes (spritePaper).
+    if (spriteOk && pd_dark && g->gb && g->gb->gen == 1) pd_fill(c, bx + 8, by + 8, PD_SPRITE, PD_SPRITE, 0xFFFFFF);
     if (spriteOk) draw_sprite(c, bx + 8, by + 8, sprite);
 
     int tx = bx + PD_SPRITE + 24, tw = ix + iw - tx;
@@ -198,26 +219,20 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     pd_text(c, tx, top, buf, PD_MUTED, PD_MUTED_SHADOW);
     int nw = pd_text(c, tx + 50, top, pd_species_name(e.species, buf2, sizeof(buf2)), PD_LABEL, PD_LABEL_SHADOW);
     if (pd_dex_seen(s, e.national)) ui_ball(c, tx + 50 + nw + 6, top + 4, pd_dex_caught(s, e.national));
-    snprintf(buf, sizeof(buf), "%s POKéMON", e.category);
+    snprintf(buf, sizeof(buf), "%s %s", e.category, pd_dex_category_suffix(g));
     pd_text_fit(c, tx, top + 18, tw, buf, PD_MUTED, PD_MUTED_SHADOW);
-    if (e.type2 != e.type1 && e.type2 != PD_TYPE_NONE) {
-        snprintf(buf, sizeof(buf), "%s / %s", pd_type_name(e.type1), pd_type_name(e.type2));
+    int t1 = e.type1, t2 = e.type2;
+    if (g->gb) pd_species_type_pair(e.species, &t1, &t2); // the cart's ids, as the party's
+    if (t2 != t1 && t2 != PD_TYPE_NONE) {
+        snprintf(buf, sizeof(buf), "%s / %s", pd_type_name(t1), pd_type_name(t2));
     } else {
-        snprintf(buf, sizeof(buf), "%s", pd_type_name(e.type1));
+        snprintf(buf, sizeof(buf), "%s", pd_type_name(t1));
     }
     pd_text(c, tx, top + 36, buf, PD_VALUE, PD_VALUE_SHADOW);
     char ht[16], wt[20];
-    pd_dex_height(e.heightDm, ht, sizeof(ht));
-    pd_dex_weight(e.weightHg, wt, sizeof(wt));
+    pd_dex_measures(g, &e, ht, sizeof(ht), wt, sizeof(wt));
     snprintf(buf, sizeof(buf), "HT %s   WT %s", ht, wt);
     pd_text_fit(c, tx, top + 52, tw, buf, PD_LABEL, PD_LABEL_SHADOW);
-    static const char* const STAT[6] = { "HP", "AT", "DF", "SA", "SD", "SP" };
-    int sx = tx;
-    for (int i = 0; i < 6; i++) {
-        sx += pd_text(c, sx, top + 68, STAT[i], PD_MUTED, PD_MUTED_SHADOW) + 2;
-        snprintf(buf, sizeof(buf), "%d", e.stats[i]);
-        sx += pd_text(c, sx, top + 68, buf, PD_LABEL, PD_LABEL_SHADOW) + 6;
-    }
 
     int dy = by + PD_SPRITE + 20;
     pd_fill(c, ix, dy - 2, iw, 1, PD_DIVIDER);
@@ -236,7 +251,7 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         dy += 20;
     }
     int pageBottom = y + h - f - 28;
-    if (ui->dexSection == 0 || sectionCount == 1) info_page(c, &e, ix, dy, iw);
+    if (ui->dexSection == 0 || sectionCount == 1) info_page(c, &e, ix, dy, iw, (y + h - f - 28 - dy) / 15);
     else section_page(ui, c, g, &e, ix, dy, iw, pageBottom - dy);
 
     // Step through the list (wrapping) or go back to it.

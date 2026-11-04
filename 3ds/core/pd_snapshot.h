@@ -62,7 +62,9 @@ struct pd_battle_mon {
 #define PD_POCKET_SLOTS 64
 #define PD_NATIONAL_COUNT 386
 #define PD_DEX_BYTES 52
-#define PD_FLAG_BYTES 0x12C // Emerald's; FireRed's 0x120 fit
+#define PD_FLAG_BYTES 0x140 // Yellow's wEventFlags; Emerald's 0x12C, FireRed's 0x120 fit
+#define PD_FLAG_BANKS 4     // a Game Boy guide's flags past its event flags: id 0x10000 * (bank + 1) + bit
+#define PD_FLAG_BANK_BYTES 32
 #define PD_VAR_COUNT 0x100
 #define PD_GAME_STATS 52 // up to GAME_STAT_BERRY_CRUSH_POINTS
 
@@ -124,6 +126,8 @@ struct pd_snapshot {
     bool flagsOk;
     uint8_t flags[PD_FLAG_BYTES];
     uint16_t vars[PD_VAR_COUNT];
+    uint8_t flagBanks[PD_FLAG_BANKS][PD_FLAG_BANK_BYTES];
+    uint8_t gbTeam, timeOfDay; // Gen 1's champion's team var; Gen 2's wTimeOfDay
 
     // The TRAINER CARD's (games with a cfg->cardStyle): SaveBlock2's name (the
     // game's encoding, 0xFF-ended), ID and play time; the game stats decrypted;

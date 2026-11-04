@@ -135,6 +135,25 @@ private fun gbConfig(sampler: TelemetrySampler, sha1: String): JSONObject? {
             o.put("field", j)
         }
     }
+    gbDexTables(cfg, sha1)?.let { t ->
+        val d = JSONObject().put("count", t.nationalCount).put("metric", t.metric).put("suffix", t.categorySuffix)
+            .put("decimal", t.decimalPoint.toString()).put("unitSpace", t.unitSpace)
+        t.gen1?.let { g ->
+            d.put("gen1", fields(g)).put("chars", JSONArray((0..255).map { g.charset.chars[it] ?: "" }))
+        }
+        t.gen2?.let { g ->
+            d.put("gen2", fields(g))
+            @Suppress("UNCHECKED_CAST")
+            val chars = Gen2Dex.javaClass.getDeclaredField("CHARS").apply { isAccessible = true }.get(Gen2Dex) as Map<Int, String>
+            d.put("chars", JSONArray((0..255).map { chars[it] ?: "" }))
+            if (g.polished != null) {
+                d.put("polishedSpecies", t.speciesCount - 1)
+                val text = Class.forName("com.pokedaisy.app.companion.data.Gen2PolishedCrystalGenKt").methods.first { it.name.startsWith("getPolishedTextChars") }
+                d.put("polishedChars", JSONArray((text.invoke(null) as Array<*>).toList()))
+            }
+        }
+        o.put("dex", d)
+    }
     // Where the cart keeps its art: the art objects' tables, by this ROM's hash.
     val art = (if (cfg is Gen1Config) Gen1Art else Gen2Art).let { a ->
         @Suppress("UNCHECKED_CAST")
@@ -154,6 +173,55 @@ private fun gbConfig(sampler: TelemetrySampler, sha1: String): JSONObject? {
         o.put("art", a)
     }
     return o
+}
+
+// The POKéDEX tables of a Game Boy game's config: Polished Crystal's are per build, the Poller's pick.
+private fun gbDexTables(cfg: Any, sha1: String): PokedexTables? = when (cfg) {
+    is Gen1Config -> cfg.pokedex
+    is Gen2Config -> if (cfg.polished) polishedCrystalPokedex(sha1) else cfg.pokedex
+    else -> null
+}
+
+// Every dex page of a Game Boy cart as the app reads it, for 3ds/test/gb_check.c to hold the C port against.
+private fun gbDexCheck(out: File, cfg: Any, sha1: String, crc: Long, rom: ByteArray) {
+    val t = gbDexTables(cfg, sha1) ?: return
+    Gen1Dex.rom = rom
+    val pages = JSONArray()
+    for (dex in 1..t.nationalCount) {
+        val e = (t.gen1?.let { Gen1Dex.entry(it, dex) } ?: t.gen2?.let { Gen2Dex.entry(it, dex) }) ?: continue
+        val px = t.gen1?.let { Gen1Dex.frontPixels(it, dex) } ?: t.gen2?.let { Gen2Dex.frontPixels(it, e.species) }
+        var hash = 0
+        px?.forEach { hash = hash * 31 + it }
+        pages.put(JSONArray(listOf(dex, e.species, e.category, e.heightDm, e.weightHg, e.description, e.type1, e.type2,
+            JSONArray(e.baseStats), e.heightIn ?: -1, e.weightLbs10 ?: -1, formatDexHeight(t, e), formatDexWeight(t, e),
+            if (px == null) 0 else 1, hash.toLong() and 0xFFFFFFFFL)))
+    }
+    File(out, "gbcheck").mkdirs()
+    File(out, "gbcheck/dex-%08x.json".format(crc)).writeText(pages.toString())
+}
+
+// What HERE's world gives for every map and clock of a Game Boy guide, and each team, for the same check.
+private fun gbGuideCheck(out: File, id: GuideId) {
+    val g = gameGuide(id, false) ?: return
+    val w = g.world ?: return
+    val gen1 = id == GuideId.YELLOW || id == GuideId.RED || id == GuideId.BLUE
+    val check = JSONArray()
+    fun rows(l: List<EncounterSlot>) = JSONArray(l.map { JSONArray(listOf(it.species, it.minLevel, it.maxLevel, it.percent)) })
+    for (tod in 0..3) for (badges in listOf(0, 8, 16)) {
+        val flags = ByteArray(0x200)
+        val banks = listOf(SaveBank(0x10000, 0, 16) to byteArrayOf(((1 shl (badges.coerceAtMost(8))) - 1).toByte(), if (badges == 16) -1 else 0))
+        val p = SaveProgress(flags, ByteArray(0), flagBanks = banks,
+            varBanks = listOf(SaveBank(0x10000, 0, 1) to byteArrayOf(tod.toByte(), 0)))
+        val maps = if (gen1) (0..255).map { 0 to it } else (0..255).flatMap { a -> (0..255).map { a to it } }
+        for ((group, num) in maps) {
+            val e = w.encounters(group, num, p)
+            val lists = listOf(e.grass, e.water, e.rockSmash, e.oldRod, e.goodRod, e.superRod, e.headbutt, e.headbuttRare)
+            if (lists.all { it.isEmpty() }) continue
+            check.put(JSONArray(listOf(tod, badges, group, num, JSONArray(lists.map { rows(it) }))))
+        }
+    }
+    File(out, "gbcheck").mkdirs()
+    File(out, "gbcheck/wild-$id.json").writeText(check.toString())
 }
 
 private fun argb(c: Color?): Long = c?.toArgb()?.toLong()?.and(0xFFFFFFFFL) ?: -1L
@@ -271,6 +339,7 @@ private fun backdropArt(kind: GameKind): Any? = when {
 }
 
 private val seenGuides = HashSet<GuideId>()
+private val seenGuideChecks = HashSet<GuideId>()
 
 private fun have(h: Have?): JSONArray = when (h) {
     is Have.Flag -> JSONArray(listOf(1, h.flag))
@@ -355,6 +424,10 @@ fun main(args: Array<String>) {
         entry.put("fieldItems", fields(items))
         entry.put("boxSwap", fields(boxSwapFor(items, cfg)))
         val gb = gbConfig(sampler, entry.getString("sha1"))
+        if (gb != null) {
+            fun held(name: String): Any? = TelemetrySampler::class.java.getDeclaredField(name).apply { isAccessible = true }.get(sampler)
+            gbDexCheck(out, (held("gen1Cfg") ?: held("gen2Cfg"))!!, entry.getString("sha1"), entry.getLong("crc32"), bytes)
+        }
         OptionColors.inGame = true
         for ((name, night) in listOf("light" to false, "dark" to true)) {
             DarkMode.override = night
@@ -373,9 +446,10 @@ fun main(args: Array<String>) {
                 seenTables[id] = rom.name
             }
             entry.put("tables", id)
-            cfg?.guideTables?.guide?.let { g ->
+            (cfg?.guideTables?.guide ?: if (gb != null) guideId(activeGame, null) else null)?.let { g ->
                 entry.put("guide", g.name)
                 exportGuide(out, g)
+                if (gb != null && seenGuideChecks.add(g)) gbGuideCheck(out, g)
             }
         }
         games.put(entry)

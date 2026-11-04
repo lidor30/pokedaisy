@@ -47,6 +47,7 @@ tables:
 	python3 tools/gen_tables.py
 	python3 tools/gen_map_tables.py
 	python3 tools/gen_guide.py
+	python3 tools/gen_gb_guide.py
 	python3 tools/gen_font.py
 	python3 tools/gen_icon.py
 	python3 tools/gen_icons.py
@@ -89,6 +90,13 @@ sim-test: sim
 # The Game Boy games' script on English Yellow (its ROM in GB_ROM_DIR, its save copied first).
 GB_ROM_DIR ?= $(HOME)/Downloads/Game ROMs & Emulation/gbc
 YELLOW_NAME := Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced)
+# Every Game Boy cart's dex pages, pictures and wild lists against the app's own reading: EXPORT is a gameExport's folder.
+.PHONY: gb-check
+gb-check:
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -Icore -o $(BUILD)/gb_check $(CORE_SRC) test/gb_check.c -lm
+	python3 test/gb_check.py $(BUILD)/gb_check "$(EXPORT)" "$(HOME)/Downloads/Game ROMs & Emulation"
+
 .PHONY: sim-test-gb
 sim-test-gb: sim
 	@mkdir -p $(BUILD)/sim/out/yellow

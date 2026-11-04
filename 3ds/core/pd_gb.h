@@ -50,9 +50,38 @@ struct pd_gb_field {
     int sigCount;
 };
 
+// Where a cart keeps its POKéDEX (Gen1DexTables / Gen2DexTables), as file offsets; 0 = not on this cart.
+struct pd_gb_dex {
+    int count;  // the entries it lists
+    bool metric, unitSpace;
+    char decimal;
+    const char* suffix;       // after the category ("POKéMON", Prism's "Pokémon")
+    const char* const* chars; // the page text's characters, by byte
+    uint32_t baseData, dexEntryPointers, palettes;
+    int baseDataSize;
+    // Gen 1.
+    uint32_t colors, mewBaseStats, dexEntryData, categoryMapping, categoryStrings;
+    int picsBank, picsBankBreaks[4], fossilKabutops, fossilKabutopsBank, mewPicsBank, picBankOffset, textFar;
+    // Gen 2.
+    uint32_t dexEntryBanks, picPointers, unownPicPointers, picsBanks, textDict, picBankFixes;
+    uint32_t packedTree, packedRareChars, packedRareRanges, packedControlChars; // Prism's text engine (0 = plain text)
+    const uint16_t* dexOrder; // the species by place, where its numbers aren't the species ids
+    int dexOrderCount, unown, dexEntryFirstBank;
+    bool picBankDirect;
+    const int32_t* polished;  // Polished Crystal: this build's tables, bank << 16 | address
+    const char* const* polishedChars;
+    int polishedSpecies;      // its last species: past it, a variant form
+};
+
+struct pd_gb_guide; // pd_gb_guide.h
+
 struct pd_gb_config {
     uint8_t gen; // 1 or 2
     const struct pd_gb_art* art;
+    const struct pd_gb_dex* dex;
+    const struct pd_gb_guide* guide; // the GUIDE's world, NULL = none
+    int8_t guideShift;               // the European Yellows: its RAM this much later from wBattleMon up
+    bool polishedFaithful;
     const struct pd_gb_field* field;
     uint32_t partyCount, partyMons, money, battleMode, battleMon, enemyMon, otPartyCount, otPartyMons, otActive;
     uint32_t tileMap, moveMenuType, gameTime, outSlot, dexCaught, dexSeen;
@@ -107,5 +136,16 @@ bool pd_gb_town_map(const struct pd_game* g, int region, uint32_t* out);
 bool pd_gb_player(const struct pd_game* g, int gender, uint32_t* out, uint32_t clear);
 // A species' party icon from the cart, its first frame doubled into [out] (32 x 32, 0xRRGGBB, CLEAR = [clear]).
 bool pd_gb_icon(const struct pd_game* g, int species, uint32_t* out, uint32_t clear);
+
+// The POKéDEX (Gen1Dex.kt, Gen2Dex.kt; pd_gb_dex.c): the species listed as number [dex] and back, the page, and the
+// front sprite in pd_dex_sprite's 64 x 64 form.
+struct pd_dex_entry;
+int pd_gb_dex_species(const struct pd_game* g, int dex);
+int pd_gb_dex_number(const struct pd_game* g, int species);
+bool pd_gb_dex_entry(const struct pd_game* g, int dex, struct pd_dex_entry* out);
+bool pd_gb_dex_sprite(const struct pd_game* g, int species, uint32_t* out);
+
+// pret's LZ (Gen2Lz); [polished]: its variant's counts. Stops once [max] bytes are out, returns how many are.
+int pd_gb_lz(const uint8_t* rom, size_t romSize, uint32_t start, uint8_t* out, int max, bool polished);
 
 #endif

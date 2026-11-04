@@ -62,11 +62,20 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     save's progress checked off), hint first, then the answer. HERE is the
     current area: its to-dos, wild POKéMON (from the ROM, with odds), gifts,
     trades and items (a ball = done). BOSS is the next unbeaten gym leader /
-    Elite Four / champion with their team from the ROM. A first-open notice
-    says the guide is AI-written and may be wrong, as in the app.
+    Elite Four / champion with their team from the ROM. A game with no WHERE IS
+    of its own gets one built from its area data: HMs, key items, gift POKéMON.
+    Red, Blue, Yellow in five languages, Crystal and Polished Crystal have it from
+    the app's generated world (`core/pd_gb_guide_gen.c`): HERE follows the game's
+    clock and, on Polished Crystal, your badges; the champion's teams show side by
+    side until the save settles one. A first-open notice says the guide is
+    AI-written and may be wrong, as in the app.
   - **POKéDEX**: seen / caught from the save, in Kanto / Hoenn or National
     order (the save's own, or the other with a tap); an entry has the game's
-    picture, category, types, height / weight, text, base stats and ability.
+    picture, category, types, height / weight, text and base stats. On every Game
+    Boy game too, one list each, read from the cart (`core/pd_gb_dex.c`: Gen 1's
+    sprite compression, Gen 2's LZ, Crystal Clear's dictionary, Prism's packed text,
+    Polished Crystal's Huffman). `make gb-check EXPORT=<a gameExport>` holds every
+    page, picture and wild list of every cart against the app's own reading.
   - **SETTINGS** (the gear): place, money, file and speed, then SCREEN and
     FAST-FORWARD (pick-lists), TAB BAR (which tabs sit on the bar, at most five;
     the rest open from a MORE chip), SAVE STATE / LOAD STATE / LEAVE GAME
@@ -95,7 +104,7 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   town maps, **STATES** with ten slots, thumbnails and UNDO, **DARK MODE**, **THEME**, **FF MODE**, **CHEATS**
   (mGBA's format, `sdmc:/pokedaisy/cheats/<CRC32>.cheats`, one master switch).
 
-Not here yet: the Game Boy games' DEX and GUIDE, GUIDE's live pages on hacks with their own tables, the hacks'
+Not here yet: GUIDE's live pages on hacks with their own tables, the hacks'
 evolutions and learnsets in DEX, Quetzal v1's BAG4, the game's own font on the Game Boy games, Japanese text
 (kana), REWIND, STEADY music, shaders, ACHIEVEMENTS, Nuzlocke, co-op, translated UI, seasonal themes, RAINBOW's
 coloured chips, per-cheat switches.

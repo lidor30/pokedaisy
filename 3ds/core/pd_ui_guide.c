@@ -3,10 +3,14 @@
 // the app's GuideScreen. Hint first: a tap shows the hint, the next the
 // answer; one entry open at a time. The first visit per game shows the app's
 // "written with AI" notice.
+#include <ctype.h>
 #include <stdio.h>
+#include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include "pd_dex.h"
+#include "pd_gb_guide.h"
 #include "pd_guide.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
@@ -34,7 +38,7 @@ struct view_section {
     int first, count;
 };
 
-enum page_kind { PAGE_HERE, PAGE_BOSS, PAGE_STATIC };
+enum page_kind { PAGE_HERE, PAGE_BOSS, PAGE_STATIC, PAGE_WHERE };
 struct page_ref {
     enum page_kind kind;
     int index; // the guide's page, for PAGE_STATIC
@@ -76,16 +80,52 @@ static const char* page_label(const char* title) {
     return title;
 }
 
+// An HM by its name in the game's language: HM01, CS01 (French), VM01 (German), MN01 (Italian), MO01 (Spanish).
+static bool is_hm(const char* name) {
+    static const char* const WORDS[] = { "HM", "CS", "VM", "MN", "MO" };
+    for (int i = 0; i < 5; i++) {
+        if (strncasecmp(name, WORDS[i], 2)) continue;
+        const char* p = name + 2;
+        if (*p == ' ') p++;
+        if (isdigit((unsigned char) *p)) return true;
+    }
+    return false;
+}
+
+enum where_section { WHERE_HM, WHERE_KEY, WHERE_MON, WHERE_NONE };
+
+// Which WHERE IS section a thing goes in.
+static enum where_section where_of(const struct pd_game* g, const struct pd_area_thing* t) {
+    if (t->kind == PD_AREA_MON || t->kind == PD_AREA_EGG) return WHERE_MON;
+    bool gift = t->kind == PD_AREA_GIFT || t->kind == PD_AREA_KEY;
+    if (!gift && t->kind != PD_AREA_ITEM) return WHERE_NONE;
+    bool hm = is_hm(pd_item_name(g, t->id));
+    if (hm) return WHERE_HM;
+    return t->kind == PD_AREA_KEY ? WHERE_KEY : WHERE_NONE;
+}
+
+// No hand-written WHERE IS (the hacks, the Game Boy games): one is built from the area data (generatedWhereIs).
+static bool has_where(const struct pd_game* g, const struct pd_guide* gd) {
+    for (int i = 0; i < gd->pageCount; i++)
+        if (!strcmp(gd->pages[i].title, "WHERE IS")) return false;
+    int n;
+    const struct pd_area_thing* things = pd_areas_for(g, &n);
+    for (int i = 0; i < n; i++)
+        if (where_of(g, &things[i]) != WHERE_NONE) return true;
+    return false;
+}
+
 static void build_pages(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_guide* gd) {
     pageCount = 0;
     int areaCount;
     pd_areas_for(g, &areaCount);
     bool rom = pd_guide_rom_ok(g);
     if (areaCount || rom) pages[pageCount++] = (struct page_ref) { PAGE_HERE, 0, "HERE" };
-    if (rom && s->flagsOk && gd->bossCount) pages[pageCount++] = (struct page_ref) { PAGE_BOSS, 0, "NEXT BOSS" };
+    if (rom && s->flagsOk && (gd->bossCount || pd_gb_boss_count(g))) pages[pageCount++] = (struct page_ref) { PAGE_BOSS, 0, "NEXT BOSS" };
     for (int i = 0; i < gd->pageCount && pageCount < MAX_PAGES; i++) {
         pages[pageCount++] = (struct page_ref) { PAGE_STATIC, i, page_label(gd->pages[i].title) };
     }
+    if (pageCount < MAX_PAGES && has_where(g, gd)) pages[pageCount++] = (struct page_ref) { PAGE_WHERE, 0, "WHERE IS" };
 }
 
 // --- the pages ---
@@ -206,13 +246,17 @@ static void build_here(const struct pd_game* g, const struct pd_snapshot* s, con
     bool hasWild = pd_wild_here(g, s, &wild);
     for (int m = 0; hasWild && m < PD_WILD_METHODS; m++) {
         if (!wild.count[m]) continue;
-        add_section(pd_wild_method_name(m), NULL);
+        // Grass follows the game's clock: which list this is.
+        const char* clock = m == 0 ? pd_gb_clock(g, s) : NULL;
+        char note[48];
+        if (clock) snprintf(note, sizeof(note), "For your game's clock: %s.", clock);
+        add_section(pd_wild_method_name(m), clock ? note : NULL);
         for (int i = 0; i < wild.count[m]; i++) {
             const struct pd_wild* w = &wild.mons[m][i];
             struct view_entry* e = add_entry();
             if (!e) break;
-            char name[40];
-            pd_species_name(w->species, name, sizeof(name));
+            char buf[40];
+            const char* name = pd_species_name(w->species, buf, sizeof(buf));
             if (w->minLv == w->maxLv) {
                 snprintf(e->detail, sizeof(e->detail), "LV%d  %d%%", w->minLv, w->pct);
             } else {
@@ -239,7 +283,7 @@ static void build_here(const struct pd_game* g, const struct pd_snapshot* s, con
             for (int i = 0; i < n; i++) {
                 const struct pd_area_thing* t = &things[i];
                 bool isItem = t->kind == PD_AREA_ITEM || t->kind == PD_AREA_HIDDEN;
-                if (t->mapsec != s->mapsec || isItem == people) continue;
+                if (!pd_area_here(g, s, t) || isItem == people) continue;
                 if (pd_area_done(g, s, t) != (pass == 1)) continue;
                 area_entry(g, s, t, place);
             }
@@ -253,10 +297,75 @@ static void build_here(const struct pd_game* g, const struct pd_snapshot* s, con
     }
 }
 
+// A boss's team under its heading: each POKéMON an entry, its type the hint, its moves the answer.
+static void team_section(const struct pd_game* g, const char* title, const char* where, bool first, int best,
+                         const struct pd_team_mon* team, int n) {
+    int ace = 0;
+    for (int i = 0; i < n; i++) ace = team[i].level > ace ? team[i].level : ace;
+    char heading[72], note[120];
+    snprintf(heading, sizeof(heading), first ? "NEXT: %s" : "%s", title);
+    snprintf(note, sizeof(note), "%s - %d POKéMON - UP TO LV%d - YOUR BEST LV%d", where, n, ace, best);
+    add_section(heading, note);
+    for (int i = 0; i < n; i++) {
+        struct view_entry* e = add_entry();
+        if (!e) break;
+        snprintf(e->title, sizeof(e->title), "POKéMON %d", i + 1);
+        snprintf(e->detail, sizeof(e->detail), "LV%d", team[i].level);
+        int t1, t2;
+        pd_species_types(g, team[i].species, &t1, &t2);
+        if (t2 != t1 && t2 != PD_TYPE_NONE) {
+            snprintf(e->hintBuf, sizeof(e->hintBuf), "%s / %s", pd_type_name(t1), pd_type_name(t2));
+        } else {
+            snprintf(e->hintBuf, sizeof(e->hintBuf), "%s", pd_type_name(t1));
+        }
+        e->hint = e->hintBuf;
+        char name[40], move[32];
+        int len = snprintf(e->answerBuf, sizeof(e->answerBuf), "%s:", pd_species_name(team[i].species, name, sizeof(name)));
+        bool none = true;
+        for (int k = 0; k < 4 && len < (int) sizeof(e->answerBuf); k++) {
+            if (!team[i].moves[k]) continue;
+            len += snprintf(e->answerBuf + len, sizeof(e->answerBuf) - (size_t) len, "%s %s", none ? "" : ",",
+                            pd_move_name(team[i].moves[k], move, sizeof(move)));
+            none = false;
+        }
+        if (team[i].item && len < (int) sizeof(e->answerBuf)) {
+            snprintf(e->answerBuf + len, sizeof(e->answerBuf) - (size_t) len, ". HOLDS %s", pd_item_name(g, team[i].item));
+        }
+        e->answer = e->answerBuf;
+    }
+}
+
+// A Game Boy guide's bosses: what's ahead in the game's order; the champion's teams side by side until the save picks one.
+static void build_gb_bosses(const struct pd_game* g, const struct pd_snapshot* s, int best) {
+    int shown = 0;
+    for (int b = 0; b < pd_gb_boss_count(g) && shown < MAX_BOSSES_SHOWN; b++) {
+        const struct pd_gb_boss* boss = pd_gb_boss_at(g, b);
+        if (pd_gb_boss_done(s, boss)) continue;
+        int teams = pd_gb_boss_teams(s, boss);
+        for (int k = 0; k < teams; k++) {
+            struct pd_team_mon team[PD_TEAM_MAX];
+            int n = pd_gb_boss_team(g, s, boss, k, team);
+            char where[72], name[40];
+            int top = 0;
+            for (int i = 1; i < n; i++) top = team[i].level > team[top].level ? i : top;
+            // The heading is long enough as it is: what tells the teams apart goes first under it.
+            if (teams > 1) snprintf(where, sizeof(where), "WITH %s - %s", pd_species_name(team[top].species, name, sizeof(name)), boss->where);
+            else snprintf(where, sizeof(where), "%s", boss->where);
+            team_section(g, boss->title, where, !shown, best, team, n);
+            shown++;
+        }
+    }
+    if (!shown) add_section("ALL DONE", "Every boss is beaten.");
+}
+
 static void build_bosses(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_guide* gd) {
     int best = 0;
     for (int i = 0; i < s->partyCount; i++) {
         if (!s->party[i].egg && s->party[i].level > best) best = s->party[i].level;
+    }
+    if (g->gb) {
+        build_gb_bosses(g, s, best);
+        return;
     }
     int shown = 0;
     for (int b = 0; b < gd->bossCount && shown < MAX_BOSSES_SHOWN; b++) {
@@ -264,44 +373,71 @@ static void build_bosses(const struct pd_game* g, const struct pd_snapshot* s, c
         if (pd_flag(s, boss->doneFlag)) continue;
         struct pd_team_mon team[PD_TEAM_MAX];
         int n = pd_trainer_team(g, pd_boss_trainer(gd, boss, s), team);
-        int ace = 0;
-        for (int i = 0; i < n; i++) ace = team[i].level > ace ? team[i].level : ace;
-        char heading[56], note[120];
-        snprintf(heading, sizeof(heading), shown ? "%s" : "NEXT: %s", boss->title);
-        snprintf(note, sizeof(note), "%s - %d POKéMON - UP TO LV%d - YOUR BEST LV%d", boss->where, n, ace, best);
-        add_section(heading, note);
-        for (int i = 0; i < n; i++) {
-            struct view_entry* e = add_entry();
-            if (!e) break;
-            snprintf(e->title, sizeof(e->title), "POKéMON %d", i + 1);
-            snprintf(e->detail, sizeof(e->detail), "LV%d", team[i].level);
-            int t1, t2;
-            pd_species_types(g, team[i].species, &t1, &t2);
-            if (t2 != t1 && t2 != PD_TYPE_NONE) {
-                snprintf(e->hintBuf, sizeof(e->hintBuf), "%s / %s", pd_type_name(t1), pd_type_name(t2));
-            } else {
-                snprintf(e->hintBuf, sizeof(e->hintBuf), "%s", pd_type_name(t1));
-            }
-            e->hint = e->hintBuf;
-            char name[40], move[32];
-            int len = snprintf(e->answerBuf, sizeof(e->answerBuf), "%s:",
-                               pd_species_name(team[i].species, name, sizeof(name)));
-            bool first = true;
-            for (int k = 0; k < 4 && len < (int) sizeof(e->answerBuf); k++) {
-                if (!team[i].moves[k]) continue;
-                len += snprintf(e->answerBuf + len, sizeof(e->answerBuf) - (size_t) len, "%s %s", first ? "" : ",",
-                                pd_move_name(team[i].moves[k], move, sizeof(move)));
-                first = false;
-            }
-            if (team[i].item && len < (int) sizeof(e->answerBuf)) {
-                snprintf(e->answerBuf + len, sizeof(e->answerBuf) - (size_t) len, ". HOLDS %s",
-                         pd_item_name(g, team[i].item));
-            }
-            e->answer = e->answerBuf;
-        }
+        team_section(g, boss->title, boss->where, !shown, best, team, n);
         shown++;
     }
     if (!shown) add_section("ALL BEATEN", "Every gym leader and the League are beaten.");
+}
+
+// WHERE IS: every HM, key item and gift POKéMON someone hands out, the area the hint, the building the answer.
+#define MAX_WHERE 120
+struct where_row {
+    const struct pd_area_thing* t;
+    char title[48];
+};
+
+static int where_compare(const void* a, const void* b) {
+    return strcmp(((const struct where_row*) a)->title, ((const struct where_row*) b)->title);
+}
+
+static void build_where(const struct pd_game* g, const struct pd_snapshot* s) {
+    static const char* const HEADINGS[3] = { "HMs", "KEY ITEMS", "GIFT POKéMON" };
+    static struct where_row rows[MAX_WHERE];
+    int n;
+    const struct pd_area_thing* things = pd_areas_for(g, &n);
+    for (int sec = 0; sec < 3; sec++) {
+        int count = 0;
+        // Handed out in one place, lying in another: the first area.
+        for (int i = 0; i < n && count < MAX_WHERE; i++) {
+            const struct pd_area_thing* t = &things[i];
+            if (where_of(g, t) != (enum where_section) sec) continue;
+            struct where_row r = { t, "" };
+            char name[40];
+            if (sec == WHERE_MON) {
+                snprintf(r.title, sizeof(r.title), "%s%s", pd_species_name(t->id, name, sizeof(name)), t->kind == PD_AREA_EGG ? " (egg)" : "");
+            } else {
+                snprintf(r.title, sizeof(r.title), "%s", pd_item_name(g, t->id));
+            }
+            if (!*r.title || !strncmp(r.title, "Item#", 5) || r.title[0] == '#') continue; // no name to show
+            if (strlen(r.title) <= 4 && strspn(r.title, "0123456789abcdefABCDEF") == strlen(r.title)) continue; // a hack's unused slot
+            bool dup = false;
+            for (int k = 0; k < count && !dup; k++) dup = !strcmp(rows[k].title, r.title);
+            if (!dup) rows[count++] = r;
+        }
+        if (!count) continue;
+        qsort(rows, (size_t) count, sizeof(*rows), where_compare);
+        add_section(HEADINGS[sec], NULL);
+        for (int i = 0; i < count; i++) {
+            struct view_entry* e = add_entry();
+            if (!e) break;
+            const struct pd_area_thing* t = rows[i].t;
+            char area[40];
+            const char* place = pd_mapsec_name(g, t->mapsec);
+            if (*place) snprintf(area, sizeof(area), "%s", place);
+            else snprintf(area, sizeof(area), "AREA %d", t->mapsec);
+            snprintf(e->title, sizeof(e->title), "%s", rows[i].title);
+            snprintf(e->hintBuf, sizeof(e->hintBuf), "In %s.", area);
+            e->hint = e->hintBuf;
+            bool lying = t->kind == PD_AREA_ITEM;
+            if (t->where && *t->where) {
+                snprintf(e->answerBuf, sizeof(e->answerBuf), "%s in the %s (%s).", lying ? "Lying" : "Someone", t->where, area);
+            } else {
+                snprintf(e->answerBuf, sizeof(e->answerBuf), "%s around %s.", lying ? "Lying" : "Someone", area);
+            }
+            e->answer = e->answerBuf;
+            e->owned = pd_area_done(g, s, t);
+        }
+    }
 }
 
 // --- drawing ---
@@ -418,6 +554,7 @@ void ui_guide_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     const struct page_ref* p = &pages[ui->guidePage];
     if (p->kind == PAGE_HERE) build_here(g, s, gd);
     else if (p->kind == PAGE_BOSS) build_bosses(g, s, gd);
+    else if (p->kind == PAGE_WHERE) build_where(g, s);
     else build_static(g, s, &gd->pages[p->index]);
     if (ui->guideOpen >= entryCount) ui->guideOpen = -1;
 
