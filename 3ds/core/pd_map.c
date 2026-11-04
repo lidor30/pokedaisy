@@ -205,6 +205,8 @@ static void rom_pages(const struct pd_game* g) {
     }
     static uint32_t pal[256];
     palette(g->rom + palAt, 256, pal);
+    cached->hasBackdrop = true;
+    cached->backdrop = pal[0];
     // Hacks with one region point every slot at the same tilemap: one page each.
     uint32_t distinct[4];
     int imageOf[4], count = 0;
@@ -305,6 +307,49 @@ static void rom_pages(const struct pd_game* g) {
     cached->romSections = true;
 }
 
+static bool plain(const uint32_t* px, int x0, int y0, int w, int h, uint32_t backdrop) {
+    for (int y = y0; y < y0 + h; y++)
+        for (int x = x0; x < x0 + w; x++)
+            if (px[y * PD_MAP_W + x] != backdrop) return false;
+    return true;
+}
+
+static bool border_colour(uint32_t c) {
+    int r = c >> 16 & 0xFF, g = c >> 8 & 0xFF, b = c & 0xFF;
+    return (r < 24 && g < 24 && b < 24) || (r > 240 && g > 240 && b > 240);
+}
+
+static bool border_line(const uint32_t* px, int x0, int y0, int w, int h) {
+    for (int y = y0; y < y0 + h; y++)
+        for (int x = x0; x < x0 + w; x++)
+            if (!border_colour(px[y * PD_MAP_W + x])) return false;
+    return true;
+}
+
+// The BG's backdrop off by whole tiles (RomRegionMap.backdropCrop), then rows and columns of solid black or white
+// (regionMapContentBounds): only those, so a map edge that's all sea stays, and at most a quarter of each side goes.
+static void find_crop(const uint32_t* px, bool hasBackdrop, uint32_t backdrop, int16_t* out) {
+    int left = 0, right = 30, top = 0, bottom = 20;
+    if (hasBackdrop) {
+        while (top < 5 && plain(px, 0, top * 8, PD_MAP_W, 8, backdrop)) top++;
+        while (bottom > 15 && plain(px, 0, bottom * 8 - 8, PD_MAP_W, 8, backdrop)) bottom--;
+        while (left < 7 && plain(px, left * 8, top * 8, 8, (bottom - top) * 8, backdrop)) left++;
+        while (right > 23 && plain(px, right * 8 - 8, top * 8, 8, (bottom - top) * 8, backdrop)) right--;
+    }
+    int l0 = left * 8, t0 = top * 8, r0 = right * 8, b0 = bottom * 8;
+    int w = r0 - l0, h = b0 - t0, l = l0, r = r0, t = t0, b = b0;
+    while (l < l0 + w / 4 && border_line(px, l, t, 1, b - t)) l++;
+    while (r > r0 - w / 4 && border_line(px, r - 1, t, 1, b - t)) r--;
+    while (t < t0 + h / 4 && border_line(px, l, t, r - l, 1)) t++;
+    while (b > b0 - h / 4 && border_line(px, l, b - 1, r - l, 1)) b--;
+    out[0] = (int16_t) l;
+    out[1] = (int16_t) t;
+    out[2] = (int16_t) r;
+    out[3] = (int16_t) b;
+}
+
+static const struct pd_map_art* load_art(const struct pd_game* g);
+
 const struct pd_map_art* pd_map_art(const struct pd_game* g) {
     if (!g->rom || (g->kind != PD_GAME_FIRERED && g->kind != PD_GAME_EMERALD)) return NULL;
     if (cachedRom == pd_rom_id(g)) return cached && cached->ok ? cached : NULL;
@@ -312,6 +357,12 @@ const struct pd_map_art* pd_map_art(const struct pd_game* g) {
     cached = calloc(1, sizeof(*cached));
     cachedRom = pd_rom_id(g);
     if (!cached) return NULL;
+    const struct pd_map_art* art = load_art(g);
+    for (int i = 0; art && i < art->pages; i++) find_crop(cached->page[i], cached->hasBackdrop, cached->backdrop, cached->crop[i]);
+    return art;
+}
+
+static const struct pd_map_art* load_art(const struct pd_game* g) {
     const struct pd_game_entry* e = g->entry;
     if (e && e->regionPages) {
         hack_pages(g, e);

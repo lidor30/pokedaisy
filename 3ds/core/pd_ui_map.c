@@ -28,8 +28,10 @@ static const struct pd_game* lastGame;
 
 // Where the map is drawn this time: (x, y) w x h canvas pixels for its 240 x 160.
 static struct { int x, y, w, h; } view = { MARGIN + FRAME, MARGIN + FRAME, PD_MAP_W, PD_MAP_H };
-static int sx(int mx) { return view.x + mx * view.w / PD_MAP_W; }
-static int sy(int my) { return view.y + my * view.h / PD_MAP_H; }
+// What of the page is shown: its map, without the border around it (pd_map_art's crop).
+static struct { int l, t, r, b; } crop = { 0, 0, PD_MAP_W, PD_MAP_H };
+static int sx(int mx) { return view.x + (mx - crop.l) * view.w / (crop.r - crop.l); }
+static int sy(int my) { return view.y + (my - crop.t) * view.h / (crop.b - crop.t); }
 static int lastPlayerPage = -1, lastPlayerTx, lastPlayerTy;
 
 // --- the PLACES list (RegionMapModel.places) ---
@@ -109,11 +111,11 @@ static void frame(struct pd_canvas* c, int x, int y, int w, int h) {
 // The page scaled to the view, each canvas pixel its nearest map pixel.
 static void draw_page(struct pd_canvas* c, const uint32_t* px) {
     static int col[1024];
-    for (int x = 0; x < view.w && x < 1024; x++) col[x] = x * PD_MAP_W / view.w;
+    for (int x = 0; x < view.w && x < 1024; x++) col[x] = crop.l + x * (crop.r - crop.l) / view.w;
     for (int y = 0; y < view.h; y++) {
         int cy = view.y + y;
         if (cy < c->cy0 || cy >= c->cy1) continue;
-        const uint32_t* src = px + (y * PD_MAP_H / view.h) * PD_MAP_W;
+        const uint32_t* src = px + (crop.t + y * (crop.b - crop.t) / view.h) * PD_MAP_W;
         uint32_t* dst = c->px + cy * c->w + view.x;
         for (int x = 0; x < view.w && x < 1024; x++) dst[x] = src[col[x]];
     }
@@ -247,9 +249,14 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     // The map fills the tab: stretched to it while that's within 1.2x of its shape, else as big as fits,
     // centred (MapScreen's MAX_MAP_STRETCH).
     int aw = c->w - 2 * MARGIN - 2 * FRAME, ah = c->h - CONTENT_Y - MARGIN - 2 * FRAME;
+    crop.l = art->crop[page][0];
+    crop.t = art->crop[page][1];
+    crop.r = art->crop[page][2];
+    crop.b = art->crop[page][3];
+    int mw = crop.r - crop.l, mh = crop.b - crop.t;
     int w = aw, h = ah;
-    if ((long) aw * PD_MAP_H * MAX_STRETCH_DEN > (long) ah * PD_MAP_W * MAX_STRETCH_NUM) w = ah * PD_MAP_W / PD_MAP_H;
-    else if ((long) ah * PD_MAP_W * MAX_STRETCH_DEN > (long) aw * PD_MAP_H * MAX_STRETCH_NUM) h = aw * PD_MAP_H / PD_MAP_W;
+    if ((long) aw * mh * MAX_STRETCH_DEN > (long) ah * mw * MAX_STRETCH_NUM) w = ah * mw / mh;
+    else if ((long) ah * mw * MAX_STRETCH_DEN > (long) aw * mh * MAX_STRETCH_NUM) h = aw * mh / mw;
     view.w = w;
     view.h = h;
     view.x = MARGIN + FRAME + (aw - w) / 2;
@@ -278,7 +285,9 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         name = pd_mapsec_name(g, s->mapsec);
     }
     int gender = s->gender == 1 ? 1 : 0;
+    pd_clip(c, view.x, view.y, view.w, view.h);
     if (hasPlayer && page == playerPage && art->hasHead[gender]) draw_head(c, art->head[gender], ptx, pty);
+    pd_unclip(c);
     for (int i = 0; i < n; i++) cursor(c, &rects[i], ui->mapBlink);
     label(c, g, name, dungeon);
     ui_add_hit(ui, view.x, view.y, view.w, view.h, HIT_MAP);
@@ -393,7 +402,8 @@ bool ui_map_act(struct pd_ui* ui, int id) {
     int shown = ui->mapPage >= 0 ? ui->mapPage : lastPlayerPage >= 0 ? lastPlayerPage : 0;
     switch (id) {
     case HIT_MAP: {
-        int tx = (ui->touchX0 - view.x) * PD_MAP_W / view.w / 8, ty = (ui->touchY0 - view.y) * PD_MAP_H / view.h / 8;
+        int tx = (crop.l + (ui->touchX0 - view.x) * (crop.r - crop.l) / view.w) / 8;
+        int ty = (crop.t + (ui->touchY0 - view.y) * (crop.b - crop.t) / view.h) / 8;
         // The player's own tile: back to following the player.
         if (shown == lastPlayerPage && tx == lastPlayerTx && ty == lastPlayerTy) {
             ui->mapSel = ui->mapDungeon = -1;

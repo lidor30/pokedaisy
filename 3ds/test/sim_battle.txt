@@ -15,3 +15,4 @@ hit 203
 run 2
 press-to-state action 3000
 shot switched
+mixer

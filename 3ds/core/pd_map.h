@@ -45,6 +45,11 @@ struct pd_map_art {
     bool ok;
     int pages;
     uint32_t page[PD_MAP_PAGES][PD_MAP_W * PD_MAP_H];
+    // What of each page is map (left, top, right, bottom in its pixels): its border of black, white or the BG's
+    // backdrop left out, as the game's own frame covers it (backdropCrop, regionMapContentBounds).
+    int16_t crop[PD_MAP_PAGES][4];
+    bool hasBackdrop;
+    uint32_t backdrop;
     bool hasHead[2];
     uint32_t head[2][16 * 16]; // [0] boy, [1] girl
     // A hack whose map was read from its ROM (RomRegionMap): its sections, by id.

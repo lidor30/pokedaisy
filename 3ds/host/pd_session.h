@@ -48,6 +48,13 @@ struct pd_session_host {
     // EXPAND's drawing on a thread of its own: pk_wide_finish starts there, and join waits for it. NULL: drawn in place.
     void (*wideGo)(void);
     void (*wideJoin)(void);
+    // The dev build's clock, for where a frame goes (pd_session_prof); NULL: not counted.
+    uint64_t (*clock)(void);
+};
+
+// Clock ticks spent since the host last zeroed it: in the core, waiting for its renderer, in EXPAND, reading the snapshot.
+struct pd_session_prof {
+    uint64_t run, wait, wide, snap;
 };
 
 enum pd_job { PD_JOB_NONE, PD_JOB_GB_TAKEN, PD_JOB_PC, PD_JOB_REPEL, PD_JOB_BIKE, PD_JOB_BIKE_WAIT, PD_JOB_BIKE_RESTORE };
@@ -66,6 +73,7 @@ struct pd_session {
     struct pd_host_info host;
     struct pd_settings* settings;
     struct pd_session_host files;
+    struct pd_session_prof prof;
 
     uint8_t* ewram;
     size_t ewramSize;

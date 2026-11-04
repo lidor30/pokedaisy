@@ -2,7 +2,7 @@
 # 3DS) + the portable companion core + main.c, packed into a .3dsx.
 # Configure with mGBA's 3DS toolchain file (it sets up devkitARM and the `3DS`
 # variable mGBA keys its platform code on) - `make 3ds` in ../ does it in Docker.
-cmake_minimum_required(VERSION 3.13)
+cmake_minimum_required(VERSION 3.18)
 project(pokedaisy C)
 
 get_filename_component(MGBA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/mgba" ABSOLUTE)
@@ -47,6 +47,11 @@ set(CMAKE_AR "${CMAKE_C_COMPILER}-ar" CACHE FILEPATH "" FORCE)
 set(CMAKE_RANLIB "${CMAKE_C_COMPILER}-ranlib" CACHE FILEPATH "" FORCE)
 
 add_subdirectory("${MGBA_DIR}" "${CMAKE_CURRENT_BINARY_DIR}/mgba" EXCLUDE_FROM_ALL)
+
+# blip_add_delta costs about the same for a step of nothing, and at the GBA's 65536 samples a second four in five don't
+# change: main.c's pd_blip_delta skips those, which can't change a sample out, and gives the game's frame back about 5%.
+set_source_files_properties("${MGBA_DIR}/src/gba/audio.c" DIRECTORY "${CMAKE_CURRENT_BINARY_DIR}/mgba"
+    PROPERTIES COMPILE_DEFINITIONS "blip_add_delta=pd_blip_delta")
 
 # mGBA's 3DS frontend draws 16-bit colour; the app's EXPAND reads the renderer's 32-bit pixels (each carries its layer
 # in the top byte), so this build keeps them, like the Android and Linux ones.

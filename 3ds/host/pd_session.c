@@ -2,6 +2,7 @@
 
 #include "../core/pd_tables.h"
 #include "pd_gb_field.h"
+#include "pd_mixer.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -165,6 +166,7 @@ bool pd_session_save_state(struct pd_session* s, int slot) {
     }
     char vfPath[512], path[512], thumb[520];
     state_paths(s, slot, vfPath, sizeof(vfPath), path, sizeof(path));
+    pd_mixer_release(s->core);
     struct VFile* vf = VFileOpen(vfPath, O_CREAT | O_TRUNC | O_RDWR);
     if (!vf) return false;
     bool ok = mCoreSaveStateNamed(s->core, vf, STATE_FLAGS);
@@ -192,6 +194,7 @@ bool pd_session_save_state(struct pd_session* s, int slot) {
 static void write_state(struct pd_session* s, const char* vfPath) {
     struct VFile* vf = VFileOpen(vfPath, O_CREAT | O_TRUNC | O_RDWR);
     if (!vf) return;
+    pd_mixer_release(s->core);
     mCoreSaveStateNamed(s->core, vf, STATE_FLAGS);
     vf->close(vf);
 }
@@ -294,6 +297,7 @@ void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* 
     s->files = *files;
     bool gba = core->platform(core) == mPLATFORM_GBA;
     if (gba) {
+        pd_mixer_attach(core);
         s->ewram = core->getMemoryBlock(core, 0x02, &s->ewramSize);
         s->iwram = core->getMemoryBlock(core, 0x03, &s->iwramSize);
     }
@@ -408,7 +412,9 @@ static void frame_whole(void* ctx) {
     s->framePending = false;
     size_t stride;
     const void* pixels;
+    uint64_t start = s->files.clock ? s->files.clock() : 0;
     s->core->getPixels(s->core, &pixels, &stride);
+    if (s->files.clock) s->prof.wait += s->files.clock() - start;
 }
 
 static void wide_tick(struct pd_session* s, bool skip) {
@@ -487,13 +493,22 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
         s->gameKeyFrames--;
     }
     s->core->setKeys(s->core, keys);
+    uint64_t start = s->files.clock ? s->files.clock() : 0;
     s->core->runFrame(s->core);
-    if (!s->game.gb) pk_rest_note(s->core);
+    uint64_t ran = s->files.clock ? s->files.clock() : 0;
+    s->prof.run += ran - start;
+    if (!s->game.gb) {
+        pk_rest_note(s->core);
+        pd_mixer_frame(s->core);
+    }
     if (s->fieldKnown)
         s->fieldFlags = pk_field_state(s->core, s->settings->runIndoors, s->wildSwitch && s->settings->wildOff ? 0 : 100);
     s->framePending = last;
+    uint64_t wideStart = s->files.clock ? s->files.clock() : 0;
     wide_tick(s, !last);
     frame_whole(s);
+    uint64_t wideEnd = s->files.clock ? s->files.clock() : 0;
+    s->prof.wide += wideEnd - wideStart;
     s->frame++;
     // What the battle waits for is read every frame: the touch controls follow it at once.
     bool stateChanged = s->input.state != s->shown.battleState;
@@ -511,9 +526,24 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
         // Only a change the companion shows is worth a redraw (not the frame counter).
         s->snap.frame = 0;
         if (memcmp(&s->snap, &s->shown, sizeof(s->snap))) {
+            // A step moves the player and the game's step counters, which only MAP and GUIDE show: repainting the tab for
+            // each cost walking 8% of a second on the emulator's own core.
+            static struct pd_snapshot seen;
+            seen = s->snap;
+            if (s->ui.tab != PD_TAB_MAP) {
+                seen.x = s->shown.x;
+                seen.y = s->shown.y;
+            }
+            if (s->ui.tab != PD_TAB_GUIDE) {
+                memcpy(seen.flags, s->shown.flags, sizeof(seen.flags));
+                memcpy(seen.vars, s->shown.vars, sizeof(seen.vars));
+                memcpy(seen.flagBanks, s->shown.flagBanks, sizeof(seen.flagBanks));
+            }
+            if (s->ui.tab != PD_TAB_CARD) memcpy(seen.gameStats, s->shown.gameStats, sizeof(seen.gameStats));
+            if (memcmp(&seen, &s->shown, sizeof(seen))) s->redraw = true;
             s->shown = s->snap;
-            s->redraw = true;
         }
+        if (s->files.clock) s->prof.snap += s->files.clock() - wideEnd;
     }
 }
 

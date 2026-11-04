@@ -30,6 +30,7 @@
 #include <mgba-util/vfs.h>
 #include <mgba/core/core.h>
 #include <mgba/core/log.h>
+#include "../../host/pd_mixer.h"
 #include <mgba/internal/gba/gba.h>
 
 #include "../../../app/src/main/cpp/pk_call.h"
@@ -310,6 +311,12 @@ static void command(char* line) {
             }
             printf("\n");
         }
+    } else if (!strcmp(cmd, "mixer")) {
+        // The native mixer against the game's, run side by side on every mix so far (pd_mixer.c).
+        printf("mixer mixes=%u differed=%u reverb=%u fixed=%u resampled=%u compressed=%u reversed=%u ended=%u\n", pd_mixer_stats.mixes,
+               pd_mixer_stats.differed, pd_mixer_stats.reverb, pd_mixer_stats.fixed, pd_mixer_stats.resampled, pd_mixer_stats.compressed,
+               pd_mixer_stats.reversed, pd_mixer_stats.ended);
+        if (pd_mixer_stats.differed) failures++;
     } else if (!strcmp(cmd, "state")) {
         print_state();
     } else if (!strcmp(cmd, "expect")) {

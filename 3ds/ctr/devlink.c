@@ -320,8 +320,10 @@ static bool cmd_stat(int fd) {
     unsigned clockUs = (unsigned) ((svcGetSystemTick() - start) / (SYSCLOCK_ARM11 / 1000000));
     char text[256];
     int n = snprintf(text, sizeof(text),
-                     "frames=%u core_us=%u ui_us=%u draw_us=%u worst_us=%u late=%u linear_free=%u new3ds=%d shown=%u clock_us=%u\n",
-                     s.frames, s.coreUs, s.uiUs, s.drawUs, s.worstUs, s.late, (unsigned) linearSpaceFree(), isNew, gpu_frames_shown(), clockUs);
+                     "frames=%u core_us=%u ui_us=%u draw_us=%u worst_us=%u late=%u linear_free=%u new3ds=%d shown=%u clock_us=%u "
+                     "run_us=%u wait_us=%u wide_us=%u snap_us=%u gaps=%u drops=%u rate=%u\n",
+                     s.frames, s.coreUs, s.uiUs, s.drawUs, s.worstUs, s.late, (unsigned) linearSpaceFree(), isNew, gpu_frames_shown(), clockUs,
+                     s.runUs, s.waitUs, s.wideUs, s.snapUs, s.gaps, s.drops, s.rate);
     return reply(fd, text, (size_t) n);
 }
 

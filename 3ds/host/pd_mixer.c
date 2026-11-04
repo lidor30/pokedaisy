@@ -1,0 +1,705 @@
+// The m4a engine's SoundMainRAM in C. It's the ARM code every Pokémon game on the GBA copies to IWRAM and runs once a frame to
+// mix its sample channels, more than half the instructions of a frame in Unbound, and a New 3DS emulates a GBA instruction in
+// about 180 of its own cycles. 106 of the 136 GBA ROMs the app knows carry it byte for byte (only two literals apart), so a
+// BKPT over its first instruction hands the whole function to this file.
+//
+// Everything here is the routine's own arithmetic. `ror 8` over a word of four samples is, one output sample at a time, a
+// byte add, so the buffers are bytes here; what's left alike down to which channel fields a finished sample does or doesn't
+// write. With PD_MIXER_CHECK (pd_sim's `mixcheck`) both run on the same state and every byte of the result is compared.
+#include "pd_mixer.h"
+
+#include <stdio.h>
+#include <string.h>
+
+#include <mgba-util/crc32.h>
+#include <mgba/internal/arm/isa-inlines.h>
+#include <mgba/internal/gba/gba.h>
+
+#define HOOK 0xD7
+#define HOOK_OP (0xBE00 | HOOK)
+#define CHECK_EXIT_HOOK 0xD8
+
+// SoundMainRAM: the first instructions, its size up to its literal pool's two addresses, their CRC.
+static const uint8_t SIGNATURE[10] = { 0x43, 0x79, 0x00, 0x2B, 0x2C, 0xD0, 0x01, 0xA1, 0x08, 0x47 };
+#define CODE_SIZE 0x6FC
+#define CODE_CRC 0x4B7183D5u
+#define DELTA_TABLE_AT 0x700  // gDeltaEncodingTable's address, past the code
+#define BUFFER_LITERAL (-16)  // SoundMain's lt_SoundMainRAM_Buffer, before the routine
+#define EXIT_AT 0x3A2         // _081DD24A: the channels are done
+
+#define PCM_DMA_BUF_SIZE 0x630
+#define ID_NUMBER 0x68736D53u
+#define VCOUNT_VBLANK 160
+#define TOTAL_SCANLINES 228
+
+// struct SoundInfo.
+#define I_PCM_DMA_COUNTER 4
+#define I_REVERB 5
+#define I_MAX_CHANS 6
+#define I_MASTER_VOLUME 7
+#define I_DIV_FREQ 0x18
+#define I_CHANS 0x50
+#define I_PCM_BUFFER 0x350
+// struct SoundChannel.
+#define C_STATUS 0
+#define C_TYPE 1
+#define C_RIGHT 2
+#define C_LEFT 3
+#define C_ATTACK 4
+#define C_DECAY 5
+#define C_SUSTAIN 6
+#define C_RELEASE 7
+#define C_ENV 9
+#define C_ENV_RIGHT 0xA
+#define C_ENV_LEFT 0xB
+#define C_ECHO_VOLUME 0xC
+#define C_ECHO_LENGTH 0xD
+#define C_COUNT 0x18
+#define C_FW 0x1C
+#define C_FREQUENCY 0x20
+#define C_WAV 0x24
+#define C_POINTER 0x28
+#define C_XPI 0x3C
+#define C_SIZE 0x40
+// struct WaveData.
+#define W_TYPE 0
+#define W_FLAGS 3
+#define W_LOOP_START 8
+#define W_SIZE 0xC
+#define W_DATA 0x10
+
+#define SF_START 0x80
+#define SF_STOP 0x40
+#define SF_SPECIAL 0x20
+#define SF_LOOP 0x10
+#define SF_IEC 0x04
+#define SF_ENV 0x03
+#define SF_ENV_ATTACK 3
+#define SF_ENV_DECAY 2
+#define SF_ON (SF_START | SF_STOP | SF_IEC | SF_ENV)
+#define TYPE_FIX 0x08
+#define TYPE_REV 0x10
+#define TYPE_CMP 0x20
+#define WAVE_LOOP 0xC0
+#define FRACTION_CLEAR 0x3F800000u
+
+// Where the routine's memory is: the game's, or in a check a copy of it.
+struct mem {
+    uint8_t* ewram;
+    uint8_t* iwram;
+    const uint8_t* rom;
+    size_t romSize;
+};
+
+static uint32_t entry;     // SoundMainRAM in IWRAM
+static uint32_t deltaTable;
+static uint8_t original[4];
+static const uint8_t* code;
+static bool attached;
+static void (*forward16)(struct ARMCore* cpu, int immediate);
+
+static uint32_t le32(const uint8_t* p) {
+    return (uint32_t) p[0] | (uint32_t) p[1] << 8 | (uint32_t) p[2] << 16 | (uint32_t) p[3] << 24;
+}
+
+static void put32(uint8_t* p, uint32_t v) {
+    p[0] = (uint8_t) v;
+    p[1] = (uint8_t) (v >> 8);
+    p[2] = (uint8_t) (v >> 16);
+    p[3] = (uint8_t) (v >> 24);
+}
+
+// The RAM at [addr], and how many bytes are left of it; NULL off the two RAMs.
+static uint8_t* ram(const struct mem* m, uint32_t addr, uint32_t* left) {
+    uint32_t region = addr >> 24;
+    if (region == 2) {
+        uint32_t at = addr & 0x3FFFF;
+        *left = 0x40000 - at;
+        return m->ewram + at;
+    }
+    if (region == 3) {
+        uint32_t at = addr & 0x7FFF;
+        *left = 0x8000 - at;
+        return m->iwram + at;
+    }
+    *left = 0;
+    return NULL;
+}
+
+static uint8_t read8(const struct mem* m, uint32_t addr) {
+    uint32_t region = addr >> 24, left;
+    if (region >= 8 && region <= 0xD) {
+        uint32_t at = addr & 0x1FFFFFF;
+        return at < m->romSize ? m->rom[at] : 0;
+    }
+    const uint8_t* p = ram(m, addr, &left);
+    return p ? *p : 0;
+}
+
+static uint32_t read32(const struct mem* m, uint32_t addr) {
+    return (uint32_t) read8(m, addr) | (uint32_t) read8(m, addr + 1) << 8 | (uint32_t) read8(m, addr + 2) << 16 |
+           (uint32_t) read8(m, addr + 3) << 24;
+}
+
+// A sample stream, read straight from where it starts; anything outside goes the long way.
+struct stream {
+    const struct mem* m;
+    const uint8_t* base;
+    uint32_t low, span;
+};
+
+static void stream_at(struct stream* s, const struct mem* m, uint32_t addr) {
+    s->m = m;
+    uint32_t region = addr >> 24, left;
+    if (region >= 8 && region <= 0xD) {
+        // A 16 MB stretch at a time, so an address is an offset from its start.
+        uint32_t at = addr & 0x1000000;
+        s->base = m->rom + at;
+        s->low = addr & 0xFF000000u;
+        s->span = at < m->romSize ? (uint32_t) (m->romSize - at < 0x1000000 ? m->romSize - at : 0x1000000) : 0;
+        return;
+    }
+    const uint8_t* p = ram(m, addr, &left);
+    s->base = p;
+    s->low = addr;
+    s->span = p ? left : 0;
+}
+
+static inline int sample(const struct stream* s, uint32_t addr) {
+    uint32_t at = addr - s->low;
+    return at < s->span ? (int8_t) s->base[at] : (int8_t) read8(s->m, addr);
+}
+
+// What the channel's two volumes add to an output byte for [v]: `mul`, `bic 0xFF0000`, the add into the word's top byte.
+#define MIX(out, volume, v) ((out) = (uint8_t) ((out) + (uint8_t) (((uint32_t) (volume) * (uint32_t) (v)) >> 8)))
+
+struct channel {
+    const struct mem* m;
+    uint8_t* c;
+    uint8_t* out;
+    int count;              // output samples
+    int right, left;
+    int32_t left2;          // r2: samples of the wave left
+    uint32_t pointer, fw;   // r3, r9
+    uint32_t loopPointer;
+    int32_t loopLength;     // 0 = no loop
+    uint32_t divFreq;
+    uint8_t decoded[64];
+    int8_t delta[16];
+};
+
+#ifdef PD_MIXER_CHECK
+struct pd_mixer_stats pd_mixer_stats;
+#define COUNT(name) (pd_mixer_stats.name++)
+#else
+#define COUNT(name)
+#endif
+
+// SoundMainRAM_Unk2: a compressed wave's sample [index]; a block of 64 is decoded when the index leaves the last one.
+static int decoded(struct channel* h, uint32_t wave, uint32_t index) {
+    uint8_t* c = h->c;
+    uint32_t block = index >> 6;
+    if (block != le32(c + C_XPI)) {
+        put32(c + C_XPI, block);
+        uint32_t at = 0x21 * block + wave + 0x10;
+        uint32_t level = read8(h->m, at++);
+        uint8_t* out = h->decoded;
+        *out++ = (uint8_t) level;
+        uint32_t byte = read8(h->m, at++);
+        for (int left = 0x40;;) {
+            level += (uint32_t) (int32_t) h->delta[byte & 0xF];
+            *out++ = (uint8_t) level;
+            left -= 2;
+            if (left <= 0) break;
+            byte = read8(h->m, at++);
+            level += (uint32_t) (int32_t) h->delta[byte >> 4];
+            *out++ = (uint8_t) level;
+        }
+    }
+    return (int8_t) h->decoded[index & 0x3F];
+}
+
+// The sample's end: the channel stops (_081DD4F4's half of what's common).
+static void stop(struct channel* h) {
+    h->c[C_STATUS] = 0;
+}
+
+// SoundMainRAM_Unk1: compressed and reversed waves.
+static void mix_special(struct channel* h) {
+    uint8_t* c = h->c;
+    const struct mem* m = h->m;
+    uint32_t wave = le32(c + C_WAV);
+    uint32_t r3 = h->pointer;
+    int type = c[C_TYPE];
+    if (!(c[C_STATUS] & SF_SPECIAL)) {
+        c[C_STATUS] |= SF_SPECIAL;
+        if (type & TYPE_REV) {
+            r3 = read32(m, wave + W_SIZE) + wave * 2 + 0x20 - r3;
+            put32(c + C_POINTER, r3);
+        }
+        if ((read8(m, wave + W_TYPE) | read8(m, wave + W_TYPE + 1) << 8)) {
+            r3 = r3 - wave - 0x10;
+            put32(c + C_POINTER, r3);
+        }
+    }
+    uint32_t step = type & TYPE_FIX ? 0x800000u : h->divFreq * le32(c + C_FREQUENCY);
+    bool compressed = read8(m, wave + W_TYPE) | read8(m, wave + W_TYPE + 1) << 8;
+    bool reversed = type & TYPE_REV;
+    uint8_t* o = h->out;
+    int32_t r2 = h->left2;
+    uint32_t r9 = h->fw;
+    int32_t r0, r1;
+    struct stream s;
+    if (compressed) {
+        COUNT(compressed);
+        put32(c + C_XPI, 0xFF000000u);
+        if (reversed) {
+            r3 -= 1;
+            r0 = decoded(h, wave, r3);
+            r3 -= 1;
+            r1 = decoded(h, wave, r3) - r0;
+        } else {
+            r0 = decoded(h, wave, r3);
+            r3 += 1;
+            r1 = decoded(h, wave, r3) - r0;
+        }
+    } else {
+        if (!reversed) {
+            h->pointer = r3;
+            return;
+        }
+        COUNT(reversed);
+        stream_at(&s, m, r3);
+        r3 -= 1;
+        r0 = sample(&s, r3);
+        r1 = sample(&s, r3 - 1) - r0;
+    }
+    for (int i = 0; i < h->count; i++, o++) {
+        int32_t v = r0 + ((int32_t) (r9 * (uint32_t) r1) >> 23);
+        MIX(o[0], h->right, v);
+        MIX(o[PCM_DMA_BUF_SIZE], h->left, v);
+        r9 += step;
+        uint32_t advance = r9 >> 23;
+        if (!advance) continue;
+        r9 &= ~FRACTION_CLEAR;
+        r2 -= (int32_t) advance;
+        if (r2 <= 0) {
+            if (!compressed || reversed || !h->loopLength) {
+                r2 = 0;
+                stop(h);
+                h->pointer = r3;
+                h->left2 = r2;
+                h->fw = r9;
+                return;
+            }
+            // Looping: from the loop's start, as far past it as the step overshot.
+            r3 = read32(m, wave + W_LOOP_START);
+            uint32_t past = (uint32_t) -r2;
+            for (;;) {
+                r2 += h->loopLength;
+                if (r2 > 0) break;
+                past -= (uint32_t) h->loopLength;
+            }
+            r3 += past;
+            r0 = decoded(h, wave, r3);
+            r3 += 1;
+            r1 = decoded(h, wave, r3) - r0;
+            continue;
+        }
+        if (compressed) {
+            advance -= 1;
+            if (!advance) {
+                r0 += r1;
+            } else {
+                r3 = reversed ? r3 - advance : r3 + advance;
+                r0 = decoded(h, wave, r3);
+            }
+            r3 = reversed ? r3 - 1 : r3 + 1;
+            r1 = decoded(h, wave, r3) - r0;
+        } else {
+            r3 -= advance;
+            r0 = sample(&s, r3);
+            r1 = sample(&s, r3 - 1) - r0;
+        }
+    }
+    r3 = compressed ? (reversed ? r3 + 2 : r3 - 1) : r3 + 1;
+    h->pointer = r3;
+    h->left2 = r2;
+    h->fw = r9;
+}
+
+// TONEDATA_TYPE_FIX: a sample out for a sample in. False: the wave ended.
+static bool mix_fixed(struct channel* h) {
+    struct stream s;
+    uint32_t p = h->pointer;
+    int32_t r2 = h->left2;
+    uint8_t* o = h->out;
+    stream_at(&s, h->m, p);
+    COUNT(fixed);
+    for (int i = 0; i < h->count; i++, o++) {
+        int v = sample(&s, p++);
+        MIX(o[0], h->right, v);
+        MIX(o[PCM_DMA_BUF_SIZE], h->left, v);
+        if (--r2 == 0) {
+            if (!h->loopLength) return false;
+            r2 = h->loopLength;
+            p = h->loopPointer;
+        }
+    }
+    h->pointer = p;
+    h->left2 = r2;
+    return true;
+}
+
+// The usual channel: resampled by its frequency, a line between two samples. False: the wave ended.
+static bool mix_resampled(struct channel* h) {
+    struct stream s;
+    uint32_t r3 = h->pointer, r9 = h->fw;
+    int32_t r2 = h->left2;
+    uint32_t step = h->divFreq * le32(h->c + C_FREQUENCY);
+    uint8_t* o = h->out;
+    stream_at(&s, h->m, r3);
+    COUNT(resampled);
+    int32_t r0 = sample(&s, r3);
+    r3 += 1;
+    int32_t r1 = sample(&s, r3) - r0;
+    for (int i = 0; i < h->count; i++, o++) {
+        int32_t v = r0 + ((int32_t) (r9 * (uint32_t) r1) >> 23);
+        MIX(o[0], h->right, v);
+        MIX(o[PCM_DMA_BUF_SIZE], h->left, v);
+        r9 += step;
+        uint32_t advance = r9 >> 23;
+        if (!advance) continue;
+        r9 &= ~FRACTION_CLEAR;
+        r2 -= (int32_t) advance;
+        if (r2 <= 0) {
+            if (!h->loopLength) return false;
+            uint32_t past = (uint32_t) -r2;
+            for (;;) {
+                r2 += h->loopLength;
+                if (r2 > 0) break;
+                past -= (uint32_t) h->loopLength;
+            }
+            r3 = h->loopPointer + past;
+            r0 = sample(&s, r3);
+        } else {
+            advance -= 1;
+            if (!advance) {
+                r0 += r1;
+            } else {
+                r3 += advance;
+                r0 = sample(&s, r3);
+            }
+        }
+        r3 += 1;
+        r1 = sample(&s, r3) - r0;
+    }
+    h->pointer = r3 - 1;
+    h->left2 = r2;
+    h->fw = r9;
+    return true;
+}
+
+// The channel's envelope for this frame; false: it's off now.
+static bool envelope(uint8_t* c, const struct mem* m, uint32_t wave, const uint8_t* info) {
+    int st = c[C_STATUS];
+    uint32_t env;
+    if (st & SF_START) {
+        if (st & SF_STOP) {
+            c[C_STATUS] = 0;
+            return false;
+        }
+        st = SF_ENV_ATTACK;
+        c[C_STATUS] = (uint8_t) st;
+        uint32_t count = le32(c + C_COUNT);
+        put32(c + C_POINTER, wave + W_DATA + count);
+        put32(c + C_COUNT, read32(m, wave + W_SIZE) - count);
+        env = 0;
+        c[C_ENV] = 0;
+        put32(c + C_FW, 0);
+        if (read8(m, wave + W_FLAGS) & WAVE_LOOP) {
+            st |= SF_LOOP;
+            c[C_STATUS] = (uint8_t) st;
+        }
+        goto attack;
+    }
+    env = c[C_ENV];
+    if (st & SF_IEC) {
+        int before = c[C_ECHO_LENGTH];
+        c[C_ECHO_LENGTH] = (uint8_t) (before - 1);
+        if (before > 1) goto set;
+        c[C_STATUS] = 0;
+        return false;
+    }
+    if (st & SF_STOP) {
+        env = env * c[C_RELEASE] >> 8;
+        if (env > c[C_ECHO_VOLUME]) goto set;
+    echo:
+        env = c[C_ECHO_VOLUME];
+        if (!env) {
+            c[C_STATUS] = 0;
+            return false;
+        }
+        st |= SF_IEC;
+        c[C_STATUS] = (uint8_t) st;
+        goto set;
+    }
+    if ((st & SF_ENV) == SF_ENV_DECAY) {
+        env = env * c[C_DECAY] >> 8;
+        if (env > c[C_SUSTAIN]) goto set;
+        env = c[C_SUSTAIN];
+        if (!env) goto echo;
+        st -= 1;
+        c[C_STATUS] = (uint8_t) st;
+        goto set;
+    }
+    if ((st & SF_ENV) != SF_ENV_ATTACK) goto set;
+attack:
+    env += c[C_ATTACK];
+    if (env >= 0xFF) {
+        env = 0xFF;
+        st -= 1;
+        c[C_STATUS] = (uint8_t) st;
+    }
+set:
+    c[C_ENV] = (uint8_t) env;
+    uint32_t level = (uint32_t) (info[I_MASTER_VOLUME] + 1) * env >> 4;
+    c[C_ENV_RIGHT] = (uint8_t) (c[C_RIGHT] * level >> 8);
+    c[C_ENV_LEFT] = (uint8_t) (c[C_LEFT] * level >> 8);
+    return true;
+}
+
+// The whole of it, from SoundMainRAM's first instruction to the exit. False: nothing done (its memory isn't where it should
+// be), and the game's own code has to run.
+static bool mix(const struct mem* m, uint32_t infoAt, int dmaCounter, uint32_t buffer, int samples, int stopLine, int vcount) {
+    uint32_t left, bufferLeft;
+    uint8_t* info = ram(m, infoAt, &left);
+    uint8_t* out = ram(m, buffer, &bufferLeft);
+    if (!info || left < I_PCM_BUFFER + 2 * PCM_DMA_BUF_SIZE || !out || samples <= 0 || samples & 3 ||
+        bufferLeft < (uint32_t) PCM_DMA_BUF_SIZE + (uint32_t) samples + 16) return false;
+
+    int reverb = info[I_REVERB];
+    if (reverb) {
+        COUNT(reverb);
+        uint8_t* p = out;
+        const uint8_t* q = dmaCounter == 2 ? info + I_PCM_BUFFER : out + samples;
+        for (int i = 0; i < samples; i++, p++, q++) {
+            int32_t v = (int8_t) p[PCM_DMA_BUF_SIZE] + (int8_t) p[0] + (int8_t) q[PCM_DMA_BUF_SIZE] + (int8_t) q[0];
+            v = v * reverb >> 9;
+            if (v & 0x80) v += 1;
+            p[PCM_DMA_BUF_SIZE] = p[0] = (uint8_t) v;
+        }
+    } else {
+        int bytes = (samples & 4) + (samples & 8) + (samples >> 4 ? samples >> 4 : 1) * 16;
+        memset(out, 0, (size_t) bytes);
+        memset(out + PCM_DMA_BUF_SIZE, 0, (size_t) bytes);
+    }
+
+    static struct channel h;
+    h.m = m;
+    h.out = out;
+    h.count = samples;
+    h.divFreq = le32(info + I_DIV_FREQ);
+    for (int i = 0; i < 16; i++) h.delta[i] = (int8_t) read8(m, deltaTable + (uint32_t) i);
+    int chans = info[I_MAX_CHANS];
+    uint8_t* c = info + I_CHANS;
+    for (;;) {
+        if (stopLine) {
+            int line = vcount < VCOUNT_VBLANK ? vcount + TOTAL_SCANLINES : vcount;
+            if (line >= stopLine) break;
+        }
+        uint32_t wave = le32(c + C_WAV);
+        if ((c[C_STATUS] & SF_ON) && envelope(c, m, wave, info)) {
+            h.c = c;
+            h.loopLength = 0;
+            h.loopPointer = 0;
+            if (c[C_STATUS] & SF_LOOP) {
+                uint32_t start = read32(m, wave + W_LOOP_START);
+                h.loopPointer = wave + W_DATA + start;
+                h.loopLength = (int32_t) (read32(m, wave + W_SIZE) - start);
+            }
+            h.left2 = (int32_t) le32(c + C_COUNT);
+            h.pointer = le32(c + C_POINTER);
+            h.fw = le32(c + C_FW);
+            h.right = c[C_ENV_RIGHT];
+            h.left = c[C_ENV_LEFT];
+            int type = c[C_TYPE];
+            if (type & (TYPE_CMP | TYPE_REV)) {
+                mix_special(&h);
+                put32(c + C_FW, h.fw);
+                put32(c + C_COUNT, (uint32_t) h.left2);
+                put32(c + C_POINTER, h.pointer);
+            } else if (type & TYPE_FIX) {
+                if (mix_fixed(&h)) {
+                    put32(c + C_COUNT, (uint32_t) h.left2);
+                    put32(c + C_POINTER, h.pointer);
+                } else {
+                    stop(&h);
+                    COUNT(ended);
+                }
+            } else if (mix_resampled(&h)) {
+                put32(c + C_FW, h.fw);
+                put32(c + C_COUNT, (uint32_t) h.left2);
+                put32(c + C_POINTER, h.pointer);
+            } else {
+                stop(&h);
+                COUNT(ended);
+            }
+        }
+        if (--chans <= 0) break;
+        c += C_SIZE;
+    }
+    put32(info, ID_NUMBER);
+    return true;
+}
+
+// The registers and stack SoundMain left: what the routine works from.
+struct call {
+    uint32_t info, buffer;
+    int dmaCounter, samples, stopLine;
+};
+
+static struct call call_of(struct ARMCore* cpu, const struct mem* m) {
+    uint32_t sp = (uint32_t) cpu->gprs[ARM_SP];
+    return (struct call) { read32(m, sp + 0x18), (uint32_t) cpu->gprs[5], cpu->gprs[4], cpu->gprs[8], (int) read32(m, sp + 0x14) };
+}
+
+// The routine's last instructions: the saved registers back, and `bx` to its caller.
+static void leave(struct ARMCore* cpu, const struct mem* m) {
+    uint32_t sp = (uint32_t) cpu->gprs[ARM_SP];
+    int32_t saved[8];
+    for (int i = 0; i < 8; i++) saved[i] = (int32_t) read32(m, sp + 0x1C + 4u * (uint32_t) i);
+    uint32_t back = read32(m, sp + 0x1C + 0x20);
+    for (int i = 0; i < 4; i++) cpu->gprs[8 + i] = saved[i];
+    for (int i = 0; i < 4; i++) cpu->gprs[4 + i] = saved[4 + i];
+    cpu->gprs[0] = saved[0];
+    cpu->gprs[1] = saved[1];
+    cpu->gprs[2] = saved[2];
+    cpu->gprs[3] = (int32_t) back;
+    cpu->gprs[ARM_SP] = (int32_t) (sp + 0x1C + 0x24);
+    _ARMSetMode(cpu, back & 1 ? MODE_THUMB : MODE_ARM);
+    cpu->gprs[ARM_PC] = (int32_t) (back & ~1u);
+    if (back & 1) ThumbWritePC(cpu);
+    else ARMWritePC(cpu);
+}
+
+static void jump_thumb(struct ARMCore* cpu, uint32_t to) {
+    cpu->gprs[ARM_PC] = (int32_t) to;
+    ThumbWritePC(cpu);
+}
+
+static void put_hook(struct GBA* gba, uint32_t addr, uint16_t op) {
+    uint8_t* p = (uint8_t*) gba->memory.iwram + (addr & 0x7FFF);
+    p[0] = (uint8_t) op;
+    p[1] = (uint8_t) (op >> 8);
+}
+
+#ifdef PD_MIXER_CHECK
+static uint8_t copyEwram[0x40000], copyIwram[0x8000];
+static uint32_t checkInfo;
+
+static void check_exit(struct GBA* gba) {
+    uint32_t left;
+    struct mem real = { (uint8_t*) gba->memory.wram, (uint8_t*) gba->memory.iwram, (const uint8_t*) gba->memory.rom, gba->memory.romSize };
+    struct mem copy = { copyEwram, copyIwram, real.rom, real.romSize };
+    uint8_t* a = ram(&real, checkInfo, &left);
+    uint8_t* b = ram(&copy, checkInfo, &left);
+    pd_mixer_stats.mixes++;
+    // Past the ident: the channels the game has, then both halves of the buffer.
+    size_t chans = (size_t) a[I_MAX_CHANS] * C_SIZE;
+    bool same = !memcmp(a + I_CHANS, b + I_CHANS, chans) && !memcmp(a + I_PCM_BUFFER, b + I_PCM_BUFFER, 2 * PCM_DMA_BUF_SIZE);
+    if (!same && pd_mixer_stats.differed++ < 4) {
+        for (size_t i = 0; i < chans; i++) {
+            if (a[I_CHANS + i] != b[I_CHANS + i]) {
+                printf("mixer: channel %d +0x%02X emulated %02X native %02X (type %02X)\n", (int) (i / C_SIZE), (int) (i % C_SIZE),
+                       a[I_CHANS + i], b[I_CHANS + i], a[I_CHANS + i / C_SIZE * C_SIZE + C_TYPE]);
+                break;
+            }
+        }
+        for (int i = 0; i < 2 * PCM_DMA_BUF_SIZE; i++) {
+            if (a[I_PCM_BUFFER + i] != b[I_PCM_BUFFER + i]) {
+                printf("mixer: buffer +%d emulated %02X native %02X\n", i, a[I_PCM_BUFFER + i], b[I_PCM_BUFFER + i]);
+                break;
+            }
+        }
+    }
+}
+#endif
+
+static void hook16(struct ARMCore* cpu, int immediate) {
+    struct GBA* gba = (struct GBA*) cpu->master;
+#ifdef PD_MIXER_CHECK
+    if (immediate == CHECK_EXIT_HOOK) {
+        check_exit(gba);
+        put_hook(gba, entry + EXIT_AT, 0x9806); // its `ldr r0, [sp, 0x18]`
+        jump_thumb(cpu, entry + EXIT_AT);
+        return;
+    }
+#endif
+    if (immediate != HOOK) {
+        forward16(cpu, immediate);
+        return;
+    }
+    struct mem real = { (uint8_t*) gba->memory.wram, (uint8_t*) gba->memory.iwram, (const uint8_t*) gba->memory.rom, gba->memory.romSize };
+    struct call k = call_of(cpu, &real);
+#ifdef PD_MIXER_CHECK
+    memcpy(copyEwram, real.ewram, sizeof(copyEwram));
+    memcpy(copyIwram, real.iwram, sizeof(copyIwram));
+    struct mem copy = { copyEwram, copyIwram, real.rom, real.romSize };
+    mix(&copy, k.info, k.dmaCounter, k.buffer, k.samples, 0, gba->video.vcount);
+    checkInfo = k.info;
+    put_hook(gba, entry, (uint16_t) (original[0] | original[1] << 8));
+    put_hook(gba, entry + EXIT_AT, 0xBE00 | CHECK_EXIT_HOOK);
+    jump_thumb(cpu, entry);
+#else
+    if (mix(&real, k.info, k.dmaCounter, k.buffer, k.samples, k.stopLine, gba->video.vcount)) {
+        leave(cpu, &real);
+    } else {
+        // Not where it should be: the game's own code from here on.
+        put_hook(gba, entry, (uint16_t) (original[0] | original[1] << 8));
+        attached = false;
+        jump_thumb(cpu, entry);
+    }
+#endif
+}
+
+bool pd_mixer_attach(struct mCore* core) {
+    attached = false;
+    if (core->platform(core) != mPLATFORM_GBA) return false;
+    struct GBA* gba = core->board;
+    const uint8_t* rom = (const uint8_t*) gba->memory.rom;
+    size_t size = gba->memory.romSize;
+    if (!rom || size < 0x1000) return false;
+    for (size_t at = 0x1000; at + 0x710 < size; at += 2) {
+        if (rom[at] != SIGNATURE[0] || memcmp(rom + at, SIGNATURE, sizeof(SIGNATURE))) continue;
+        if (doCrc32(rom + at, CODE_SIZE) != CODE_CRC) continue;
+        uint32_t literal = le32(rom + at + BUFFER_LITERAL);
+        if (literal >> 24 != 3 || !(literal & 1)) return false;
+        entry = literal & ~1u;
+        deltaTable = le32(rom + at + DELTA_TABLE_AT);
+        memcpy(original, rom + at, sizeof(original));
+        code = rom + at;
+        if (gba->cpu->irqh.bkpt16 != hook16) {
+            forward16 = gba->cpu->irqh.bkpt16;
+            gba->cpu->irqh.bkpt16 = hook16;
+        }
+        attached = true;
+        return true;
+    }
+    return false;
+}
+
+void pd_mixer_frame(struct mCore* core) {
+    if (!attached) return;
+    struct GBA* gba = core->board;
+    const uint8_t* p = (const uint8_t*) gba->memory.iwram + (entry & 0x7FFF);
+    // All of it: the ROM's copy isn't always the one the game copied in (the mixer's address can be another's).
+    if (!memcmp(p, original, sizeof(original)) && !memcmp(p, code, CODE_SIZE)) put_hook(gba, entry, HOOK_OP);
+}
+
+void pd_mixer_release(struct mCore* core) {
+    if (!attached) return;
+    struct GBA* gba = core->board;
+    const uint8_t* p = (const uint8_t*) gba->memory.iwram + (entry & 0x7FFF);
+    if (p[0] == (uint8_t) HOOK_OP && p[1] == HOOK_OP >> 8) put_hook(gba, entry, (uint16_t) (original[0] | original[1] << 8));
+}

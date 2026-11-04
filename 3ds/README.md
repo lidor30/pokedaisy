@@ -9,8 +9,8 @@ portable C core that re-implements the companion's reading and drawing, plus a
 
 **Status: preview.** It builds, every screen below has been driven on real ROMs and copies of real saves in the
 headless simulator (`make sim-test`, below), and the dev build runs on a New 3DS: FireRed, Emerald, Unbound and Monomyth
-(32 MB) and Yellow boot copies of real saves to the field with the companion, the HUD and the minimap up. At ASPECT ORIGINAL it holds
-60 FPS on the field and in battle in FireRed, Emerald and Yellow; Monomyth at 52-60 and Unbound at about 57 on the field and 42 in battle. EXPAND runs at the same speeds at SHARP 1.5x and 1.25x (Emerald's Route 113, its ash the heaviest scene so far, 55-60), its drawing on the fourth core beside the next frame and the 2x picture built by the GPU; it has no PIXEL 1x, which couldn't keep up, and a battle always goes to 1.5x
+(32 MB) and Yellow boot copies of real saves to the field with the companion, the HUD and the minimap up. It holds
+60 FPS on the field and in battle in FireRed, Emerald, Monomyth and Yellow, walking included; Unbound 49-59 on the field and 43 in battle (see "Sound and speed"). EXPAND runs at the same speeds at SHARP 1.5x and 1.25x (Emerald's Route 113, its ash the heaviest scene so far, 55-60), its drawing on the fourth core beside the next frame and the 2x picture built by the GPU; it has no PIXEL 1x, which couldn't keep up, and a battle always goes to 1.5x
 (`pdlink.py stat`). HOME and the lid work; most companion screens haven't been tried on a console.
 Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS XL / 2DS may not hold full speed
 (see "Hardware").
@@ -108,6 +108,19 @@ Not here yet: GUIDE's live pages on hacks with their own tables, the hacks'
 evolutions and learnsets in DEX, Quetzal v1's BAG4, the game's own font on the Game Boy games, Japanese text
 (kana), REWIND, STEADY music, shaders, ACHIEVEMENTS, Nuzlocke, co-op, translated UI, seasonal themes, RAINBOW's
 coloured chips, per-cheat switches.
+
+## Sound and speed
+
+Half of a frame on a New 3DS is the game's own sound mixer, the m4a engine's `SoundMainRAM`. `host/pd_mixer.c` runs it natively:
+a BKPT over its first instruction in IWRAM hands it to C, on every ROM that carries the stock routine (106 of the 136 GBA ROMs the app
+knows, found by its CRC, and only once the copy in IWRAM is that code). Every sim run does both on the same state and compares every
+byte (`mixer` in a script, `make sim-test`). Saved states never hold the hook. Unbound, Odyssey and a few other hacks run ipatix's
+self-modifying high-quality mixer, Amethyst, Dreamstone Mysteries and Wishes of Tomorrow variants of the stock one: those stay emulated.
+
+Sound plays at the DSP's own 32728 Hz, a sample out for a sample in. A game under full speed can't make its sound in time, so the
+channel's rate follows how fast the chunks arrive (`audio_follow` in `ctr/main.c`): the music slows with the game rather than breaking
+up, down to 85%, and is back at exactly 1 at full speed. `stat` on the dev link reports `gaps`, `drops` and the `rate`, with where a
+frame went (`run_us` the game, `wait_us` its renderer, `wide_us` EXPAND, `snap_us` the snapshot).
 
 ## Controls
 

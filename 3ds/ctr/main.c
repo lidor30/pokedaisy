@@ -1,9 +1,8 @@
 // PokeDaisy for the Nintendo 3DS: the game (libmgba) on the top screen, the
 // companion (../core) on the bottom one. A homebrew .3dsx; see README.md.
 //
-// The screens are drawn by the GPU (gpu.c). Audio follows mGBA's own 3DS
-// frontend (src/platform/3ds/main.c): ndsp, stereo PCM16 at 32 kHz, the blip
-// buffers resampled to the 3DS's refresh rate.
+// The screens are drawn by the GPU (gpu.c). Audio is ndsp, stereo PCM16 at the DSP's own rate, the blip buffers
+// resampled to the 3DS's refresh rate.
 #include <3ds.h>
 
 #include <dirent.h>
@@ -76,10 +75,22 @@ static void noopLog(struct mLogger* log, int category, enum mLogLevel level, con
 }
 static struct mLogger silentLogger = { .log = noopLog, .filter = NULL };
 
-// --- audio (as mGBA's 3DS frontend) ---
+// --- audio ---
 
+// The DSP's own rate, 268111856 / 8192: a channel at any other one is resampled, and mGBA's frontend's 32768 through
+// NDSP_INTERP_NONE drops a sample every 800 or so, 40 small clicks a second under everything. Here a sample out is a sample
+// played.
+#define DSP_RATE 32728.4978f
 #define AUDIO_SAMPLES 384
-#define DSP_BUFFERS 4
+#define DSP_BUFFERS 8
+// How many chunks the queue keeps ahead, and how far either way it may wander before the rate moves.
+#define AUDIO_TARGET 5
+#define AUDIO_SLACK 2
+#define AUDIO_MADE_EASE 0.02f  // about 0.6 s of chunks
+#define AUDIO_RATE_EASE 0.1f
+#define AUDIO_QUEUE_PULL 0.004f
+#define AUDIO_RATE_MIN 0.85f
+#define AUDIO_RATE_MAX 1.01f
 
 static bool hasSound;
 static bool audioMuted; // while fast-forwarding
@@ -87,32 +98,82 @@ static ndspWaveBuf dspBuffer[DSP_BUFFERS];
 static int16_t* audioBuf;
 static int bufferId;
 static struct mAVStream stream;
+static float audioRate = 1.0f, audioRateSet = 1.0f, audioMade = 1.0f;
+static u64 audioLast;
+static unsigned audioGaps, audioDrops; // the queue ran dry / had no room, for the dev build's stat
+
+// A game under full speed makes its sound too slowly, and a dry queue is a hole in the music, several a second: that was
+// the crunch. So the channel follows how fast the chunks really come: the sound plays as slowly as the game runs, a slow
+// glide rather than a gap, and at full speed the rate is exactly 1 again.
+static void audio_follow(int queued) {
+    u64 now = svcGetSystemTick();
+    if (audioLast && now > audioLast) {
+        float made = (float) AUDIO_SAMPLES * (float) SYSCLOCK_ARM11 / (float) (now - audioLast) / DSP_RATE;
+        if (made < 0.3f) made = 0.3f; // a pause (the HOME menu) says nothing about the game's speed
+        if (made > 2.0f) made = 2.0f;
+        audioMade += (made - audioMade) * AUDIO_MADE_EASE;
+    }
+    audioLast = now;
+    int off = queued - AUDIO_TARGET;
+    float want = audioMade + AUDIO_QUEUE_PULL * (float) off;
+    if (want > 0.985f && off >= -AUDIO_SLACK && off <= AUDIO_SLACK) want = 1.0f;
+    if (want < AUDIO_RATE_MIN) want = AUDIO_RATE_MIN;
+    if (want > AUDIO_RATE_MAX) want = AUDIO_RATE_MAX;
+    audioRate += (want - audioRate) * AUDIO_RATE_EASE;
+    if (want == 1.0f && audioRate > 0.999f) audioRate = 1.0f;
+    float moved = audioRate - audioRateSet;
+    if (moved > 0.0005f || moved < -0.0005f || (audioRate == 1.0f && moved != 0.0f)) {
+        ndspChnSetRate(0, DSP_RATE * audioRate);
+        audioRateSet = audioRate;
+    }
+}
+
+// The next free chunk, its queue followed; NULL when every one is still queued.
+static ndspWaveBuf* audio_next(void) {
+    int queued = 0, free = -1;
+    for (int i = 0; i < DSP_BUFFERS; i++) {
+        int at = (bufferId + i) & (DSP_BUFFERS - 1);
+        if (dspBuffer[at].status == NDSP_WBUF_QUEUED || dspBuffer[at].status == NDSP_WBUF_PLAYING) queued++;
+        else if (free < 0) free = at;
+    }
+    if (free < 0) {
+        audioDrops++;
+        audio_follow(queued);
+        return NULL;
+    }
+    if (!queued) audioGaps++;
+    audio_follow(queued);
+    bufferId = free;
+    ndspWaveBuf* b = &dspBuffer[free];
+    int16_t* data = b->data_pcm16;
+    memset(b, 0, sizeof(*b));
+    b->data_pcm16 = data;
+    b->nsamples = AUDIO_SAMPLES;
+    return b;
+}
+
+static void audio_send(ndspWaveBuf* b) {
+    DSP_FlushDataCache(b->data_pcm16, AUDIO_SAMPLES * 2 * sizeof(int16_t));
+    ndspChnWaveBufAdd(0, b);
+}
+
+// mGBA's GBA sound calls this in blip_add_delta's place (CMakeLists.txt).
+void pd_blip_delta(blip_t* blip, unsigned clock, int delta) {
+    if (delta) blip_add_delta(blip, clock, delta);
+}
 
 static void post_audio(struct mAVStream* s, blip_t* left, blip_t* right) {
     (void) s;
-    if (!hasSound || audioMuted) {
+    ndspWaveBuf* b = hasSound && !audioMuted ? audio_next() : NULL;
+    if (!b) {
+        // Muted, or no room: this chunk goes rather than wait.
         blip_clear(left);
         blip_clear(right);
         return;
     }
-    int start = bufferId;
-    while (dspBuffer[bufferId].status == NDSP_WBUF_QUEUED || dspBuffer[bufferId].status == NDSP_WBUF_PLAYING) {
-        bufferId = (bufferId + 1) & (DSP_BUFFERS - 1);
-        if (bufferId == start) {
-            // Every buffer still queued: drop this chunk rather than wait.
-            blip_clear(left);
-            blip_clear(right);
-            return;
-        }
-    }
-    int16_t* data = dspBuffer[bufferId].data_pcm16;
-    memset(&dspBuffer[bufferId], 0, sizeof(dspBuffer[bufferId]));
-    dspBuffer[bufferId].data_pcm16 = data;
-    dspBuffer[bufferId].nsamples = AUDIO_SAMPLES;
-    blip_read_samples(left, data, AUDIO_SAMPLES, true);
-    blip_read_samples(right, data + 1, AUDIO_SAMPLES, true);
-    DSP_FlushDataCache(data, AUDIO_SAMPLES * 2 * sizeof(int16_t));
-    ndspChnWaveBufAdd(0, &dspBuffer[bufferId]);
+    blip_read_samples(left, b->data_pcm16, AUDIO_SAMPLES, true);
+    blip_read_samples(right, b->data_pcm16 + 1, AUDIO_SAMPLES, true);
+    audio_send(b);
 }
 
 // A Game Boy game's sound comes from pk_gb_audio (never its core's own audio channels): each full chunk into a free buffer.
@@ -127,24 +188,10 @@ static void gb_audio_pump(void) {
         have += pk_gb_audio_read(&gbAudio, chunk + have * 2, AUDIO_SAMPLES - have);
         if (have < AUDIO_SAMPLES) return;
         have = 0;
-        if (!hasSound || audioMuted) continue;
-        int start = bufferId;
-        bool full = false;
-        while (dspBuffer[bufferId].status == NDSP_WBUF_QUEUED || dspBuffer[bufferId].status == NDSP_WBUF_PLAYING) {
-            bufferId = (bufferId + 1) & (DSP_BUFFERS - 1);
-            if (bufferId == start) {
-                full = true;
-                break;
-            }
-        }
-        if (full) continue;
-        int16_t* data = dspBuffer[bufferId].data_pcm16;
-        memset(&dspBuffer[bufferId], 0, sizeof(dspBuffer[bufferId]));
-        dspBuffer[bufferId].data_pcm16 = data;
-        dspBuffer[bufferId].nsamples = AUDIO_SAMPLES;
-        memcpy(data, chunk, sizeof(chunk));
-        DSP_FlushDataCache(data, sizeof(chunk));
-        ndspChnWaveBufAdd(0, &dspBuffer[bufferId]);
+        ndspWaveBuf* b = hasSound && !audioMuted ? audio_next() : NULL;
+        if (!b) continue;
+        memcpy(b->data_pcm16, chunk, sizeof(chunk));
+        audio_send(b);
     }
 }
 
@@ -156,8 +203,11 @@ static void audio_init(void) {
     ndspSetOutputCount(1);
     ndspChnReset(0);
     ndspChnSetFormat(0, NDSP_FORMAT_STEREO_PCM16);
-    ndspChnSetInterp(0, NDSP_INTERP_NONE);
-    ndspChnSetRate(0, 0x8000);
+    // One channel at full level can't clip, and the default soft clipping bends the loud passages.
+    ndspSetClippingMode(NDSP_CLIP_NORMAL);
+    // At the DSP's rate a sample stays a sample; linear only matters while the rate follows a slow game.
+    ndspChnSetInterp(0, NDSP_INTERP_LINEAR);
+    ndspChnSetRate(0, DSP_RATE);
     ndspChnWaveBufClear(0);
     audioBuf = linearMemAlign(AUDIO_SAMPLES * DSP_BUFFERS * 2 * sizeof(int16_t), 0x80);
     if (!audioBuf) {
@@ -443,15 +493,20 @@ static bool run_game(const char* file) {
     if (save) core->loadSave(core, save);
     bool gb = core->platform(core) == mPLATFORM_GB;
     gpu_double_game(!gb);
+    // A game frame a refresh: its 59.73 frames' sound in the 59.83 the screen shows (both Game Boys' frames are the GBA's
+    // length in time). The Game Boy's had no such ratio and ran 0.17% over, a chunk thrown away every few seconds.
+    double ratio = GBAAudioCalculateRatio(1, 268111856.f / 4481136.f, 1);
+    audioRate = audioRateSet = audioMade = 1.0f;
+    audioLast = 0;
+    if (hasSound) ndspChnSetRate(0, DSP_RATE);
     if (gb) {
-        gbAudioOn = pk_gb_audio_attach(&gbAudio, core, 32768);
+        gbAudioOn = pk_gb_audio_attach(&gbAudio, core, DSP_RATE * ratio);
     } else {
         stream.postAudioBuffer = post_audio;
         core->setAVStream(core, &stream);
         if (hasSound) {
-            double ratio = GBAAudioCalculateRatio(1, 268111856.f / 4481136.f, 1);
-            blip_set_rates(core->getAudioChannel(core, 0), core->frequency(core), 32768 * ratio);
-            blip_set_rates(core->getAudioChannel(core, 1), core->frequency(core), 32768 * ratio);
+            blip_set_rates(core->getAudioChannel(core, 0), core->frequency(core), DSP_RATE * ratio);
+            blip_set_rates(core->getAudioChannel(core, 1), core->frequency(core), DSP_RATE * ratio);
         }
     }
     core->reset(core);
@@ -471,7 +526,10 @@ static bool run_game(const char* file) {
     snprintf(gameFiles.saveSd, sizeof(gameFiles.saveSd), "%s", saveSd);
     bool wideThread = gpu_wide_thread(pk_wide_finish);
     struct pd_session_host files = { state_path, backup_for_load, settings_changed, cheat_path, &gameFiles,
-                                     wideThread ? gpu_wide_go : NULL, wideThread ? gpu_wide_join : NULL };
+                                     wideThread ? gpu_wide_go : NULL, wideThread ? gpu_wide_join : NULL, NULL };
+#ifdef PD_DEV
+    files.clock = svcGetSystemTick;
+#endif
     session.host = (struct pd_host_info) { .count = 2 };
     session.host.labels[0] = "FILE";
     snprintf(session.host.values[0], sizeof(session.host.values[0]), "%s", file);
@@ -651,6 +709,15 @@ static bool run_game(const char* file) {
             dev.frames += (unsigned) frames;
             if (now - devSecond >= 1000) {
                 devSecond = now;
+                dev.runUs = TICKS_TO_US(session.prof.run);
+                dev.waitUs = TICKS_TO_US(session.prof.wait);
+                dev.wideUs = TICKS_TO_US(session.prof.wide);
+                dev.snapUs = TICKS_TO_US(session.prof.snap);
+                memset(&session.prof, 0, sizeof(session.prof));
+                dev.gaps = audioGaps;
+                dev.drops = audioDrops;
+                dev.rate = (unsigned) (audioRate * 1000);
+                audioGaps = audioDrops = 0;
                 devlink_report(&dev);
                 memset(&dev, 0, sizeof(dev));
             }
