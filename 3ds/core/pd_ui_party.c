@@ -350,8 +350,45 @@ static int small_font_code(const struct pd_party_style* st, const char** s) {
     return 0xAC;
 }
 
+// A card shown scaled keeps its text out of the scaling, which would blur it: art_text notes it down here and card_texts
+// draws it on the canvas afterwards, at whole pixels.
+struct card_text {
+    char text[24];
+    short x, y;
+    bool right;
+    uint32_t fg, shadow;
+};
+static struct card_text cardTexts[PD_PARTY_SIZE * 6];
+static int cardTextCount, cardX, cardY;
+static bool cardTextsOn;
+
+static void card_text_add(const char* s, int x, int y, bool right, uint32_t fg, uint32_t shadow) {
+    if (cardTextCount >= (int) (sizeof(cardTexts) / sizeof(*cardTexts))) return;
+    struct card_text* t = &cardTexts[cardTextCount++];
+    char* o = t->text;
+    for (; *s && o < t->text + sizeof(t->text) - 3; s++) {
+        if (*s == NUM_PAD) continue;
+        if (*s == LV_MARK) {
+            *o++ = 'L';
+            *o++ = 'v';
+            continue;
+        }
+        *o++ = *s;
+    }
+    *o = 0;
+    t->x = (short) (cardX + x);
+    t->y = (short) (cardY + y);
+    t->right = right;
+    t->fg = fg;
+    t->shadow = shadow;
+}
+
 // Px.text, into the window.
 static void art_text(const struct pd_party_art* art, const struct art_geometry* a, const char* s, int x, int y, uint32_t fg, uint32_t shadow) {
+    if (cardTextsOn) {
+        card_text_add(s, x, y, false, fg, shadow);
+        return;
+    }
     while (*s) {
         int g = small_font_code(art->style, &s);
         for (int yy = 0; yy < GLYPH_H; yy++) {
@@ -501,12 +538,19 @@ static void art_slot_at(struct pd_canvas* c, const struct pd_game* g, const stru
         art_text(art, a, line, art_left(a, st->levelX), art_text_y(a, st->levelY), st->text, st->textShadow);
     }
     // "hp/" right-aligned in 3 digits and "/max": both move with the stretched bar's right end, they share the slash.
-    snprintf(line, sizeof(line), "%3d/", m->hp);
-    for (char* p = line; *p == ' '; p++) *p = NUM_PAD;
-    art_text(art, a, line, art_end(a, st->hpX), art_text_y(a, st->hpY), st->text, st->textShadow);
-    snprintf(line, sizeof(line), "/%3d", m->maxHp);
-    for (char* p = line + 1; *p == ' '; p++) *p = NUM_PAD;
-    art_text(art, a, line, art_end(a, st->maxHpX), art_text_y(a, st->hpY), st->text, st->textShadow);
+    if (cardTextsOn) {
+        snprintf(line, sizeof(line), "%d/%d", m->hp, m->maxHp);
+        // Ending where the game's "/max" ends: its slash and three digits in FONT_SMALL's widths.
+        int end = art_end(a, st->maxHpX) + st->glyphWidths[0xBA] + 3 * st->glyphWidths[0xA1];
+        card_text_add(line, end, art_text_y(a, st->hpY), true, st->text, st->textShadow);
+    } else {
+        snprintf(line, sizeof(line), "%3d/", m->hp);
+        for (char* p = line; *p == ' '; p++) *p = NUM_PAD;
+        art_text(art, a, line, art_end(a, st->hpX), art_text_y(a, st->hpY), st->text, st->textShadow);
+        snprintf(line, sizeof(line), "/%3d", m->maxHp);
+        for (char* p = line + 1; *p == ' '; p++) *p = NUM_PAD;
+        art_text(art, a, line, art_end(a, st->maxHpX), art_text_y(a, st->hpY), st->text, st->textShadow);
+    }
     art_hp_bar(a, m->hp, m->maxHp);
     art_window(c, a, x, y, 255);
     if (status >= 0) art_image(c, a, x, y, art->status, art->statusW, status * 32, 0, art_left(a, st->statusX), art_y(a, st->statusY), 32, 8);
@@ -529,6 +573,7 @@ static void art_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
 
 #define CARDS_CANVAS_W 320
 #define CARD_GAP 3
+#define CARD_TEXT_DY (-4) // from where the game's capitals start to Pixel Operator's line
 
 struct window_at { short x, y; };
 struct card_scale { int num, den, extraW; };
@@ -618,11 +663,22 @@ static bool draw_cards(struct pd_canvas* c, const struct pd_game* g, const struc
     pd_canvas_init(&screen, w, h, px);
     if (up && !pd_party_screen(&screen, g)) return false;
     struct art_geometry a = card_geometry(art->style, k->extraW);
+    cardTextsOn = up;
+    cardTextCount = 0;
     for (int i = 0; cards && i < PD_PARTY_SIZE; i++) {
         const struct pd_mon* m = i < s->partyCount ? &s->party[i] : NULL;
+        cardX = at[i].x;
+        cardY = at[i].y;
         art_slot_at(up ? &screen : c, g, art, &a, at[i].x, at[i].y, m, m && i == selected);
     }
+    cardTextsOn = false;
     if (up) screen_up(c, px, w, h, k);
+    for (int i = 0; i < cardTextCount; i++) {
+        const struct card_text* t = &cardTexts[i];
+        int x = t->x * k->num / k->den, y = (t->y + TEXT_TOP) * k->num / k->den + CARD_TEXT_DY;
+        if (t->right) pd_text_right(c, x, y, t->text, t->fg, t->shadow);
+        else pd_text(c, x, y, t->text, t->fg, t->shadow);
+    }
     return true;
 }
 

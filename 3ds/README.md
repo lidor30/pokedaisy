@@ -35,7 +35,7 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   - **PARTY**: two columns of three across the whole width, each card the game's own where
     the app has its art: its own height and paddings, widened only, shown as big as three
     rows allow (4/3 or 5/4 in sharp bilinear like the game on the top screen, 1x under the
-    battle pane's bar).
+    battle pane's bar). A scaled card's text is drawn over it at whole pixels in Pixel Operator.
     `pd_party_art` rebuilds the frames, Poke Ball, status icons, FONT_SMALL and the
     backdrop from your ROM, by RomArt's fingerprints. Any other game keeps the slot in its
     palette (`PartySlot` / `SlotGeometry`), edge to edge like
