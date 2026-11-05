@@ -69,6 +69,8 @@ const struct pd_gb_config pd_gb_crystal = {
     .guide2Ram = &(const struct pd_gb_guide2_ram){ PD_WRAMX(1, 0xDA72), PD_WRAMX(1, 0xD269), PD_WRAMX(1, 0xD857),
                                                    PD_WRAMX(1, 0xD960), PD_WRAMX(1, 0xDCB5) },
     .teams = pd_gb_teams_crystal,
+    .mapGroup = PD_WRAMX(1, 0xDCB5), .backupMapGroup = PD_WRAMX(1, 0xDCAD), .playerGender = PD_WRAMX(1, 0xD472),
+    .landmarks = pd_gb_landmarks_crystal, .landmarkCount = &pd_gb_landmarks_crystal_count,
 };
 // Crystal Clear v2.6.0: Crystal's RAM with its own wPokedexCaught; the app keeps Crystal's wPokedexSeen (unverified on a save).
 const struct pd_gb_config pd_gb_crystal_clear = {
@@ -112,6 +114,8 @@ const struct pd_gb_config pd_gb_gold = {
     .curOTMon = 0xCB41, .genderRatios = pd_gb_gender_crystal, .tmItems = pd_gb_tm_crystal, .speciesCount = 251,
     .itemsMax = 20, .ballsMax = 12, .keyItemsMax = 25,
     .dexCaught = PD_WRAMX(1, 0xDBE4), .dexSeen = PD_WRAMX(1, 0xDC04), .dexCount = 251,
+    .mapGroup = PD_WRAMX(1, 0xDA00), .backupMapGroup = PD_WRAMX(1, 0xD9F6),
+    .landmarks = pd_gb_landmarks_gold_silver, .landmarkCount = &pd_gb_landmarks_gold_silver_count,
 };
 // Prism: Crystal's RAM but the bag, and its own 254 species ids.
 const struct pd_gb_config pd_gb_prism = {
@@ -453,6 +457,13 @@ static void fill_counts(struct pd_gb_config* c) {
     if (c->tmItems == pd_gb_tm_polished) c->tmCount = pd_gb_tm_polished_count;
 }
 
+// Map group << 8 | number -> its landmark (0 = SPECIAL, or a map the table doesn't list).
+static int gb_landmark(const struct pd_gb_config* g, int key) {
+    for (int i = 0; i < *g->landmarkCount; i++)
+        if (g->landmarks[i][0] == key) return g->landmarks[i][1];
+    return 0;
+}
+
 void pd_gb_snapshot_read(struct pd_snapshot* s, const struct pd_config* cfg, pd_read_fn read, void* ctx) {
     struct pd_gb_config copy = *cfg->gb;
     fill_counts(&copy);
@@ -540,10 +551,21 @@ void pd_gb_snapshot_read(struct pd_snapshot* s, const struct pd_config* cfg, pd_
             s->posOk = true;
             s->mapGroup = map[0];
             s->mapNum = map[1];
-            int key = map[0] << 8 | map[1];
-            for (int i = 0; i < pd_gb_landmarks_crystal_count; i++)
-                if (pd_gb_landmarks_crystal[i][0] == key) s->mapsec = pd_gb_landmarks_crystal[i][1];
         }
+    }
+
+    // --- Gen 2's place: the map's landmark, a SPECIAL one (0) named by the backup map (gen2Landmark) ---
+    if (g->landmarks && s->partyCount > 0) {
+        uint8_t map[2], backup[2];
+        if (rd(read, ctx, g->mapGroup, map, 2) && rd(read, ctx, g->backupMapGroup, backup, 2)) {
+            s->posOk = true;
+            s->mapGroup = map[0];
+            s->mapNum = map[1];
+            s->mapsec = gb_landmark(g, map[0] << 8 | map[1]);
+            if (s->mapsec == 0) s->mapsec = gb_landmark(g, backup[0] << 8 | backup[1]);
+        }
+        uint8_t gender;
+        if (g->playerGender && rd(read, ctx, g->playerGender, &gender, 1)) s->gender = gender & 1;
     }
 
     // --- POKéDEX: seen / owned bit arrays by Dex number; owned counts as seen (readGen1PokedexState) ---

@@ -329,7 +329,7 @@ int main(int argc, char** argv) {
     host.ffOn = false;
 
     // PD_PREVIEW_DEX_ONLY=1: just the POKéDEX shots (a hack's ROM has no MAP / GUIDE tables here yet).
-    if (getenv("PD_PREVIEW_DEX_ONLY") || gbFixture) goto dex_only;  // a Game Boy game has no MAP here
+    if (getenv("PD_PREVIEW_DEX_ONLY")) goto dex_only;
 
     // MAP: where the player is, a tapped place, the cursor's other size, PLACES.
     tap(&p, HIT_TAB + PD_TAB_MAP, 0);

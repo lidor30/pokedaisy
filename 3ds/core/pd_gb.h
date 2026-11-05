@@ -46,7 +46,15 @@ struct pd_gb_config {
     // Crystal's GUIDE RAM (GuideCrystalGen.kt: wEventFlags, wTimeOfDay, wJohtoBadges, wTradeFlags) and wMapGroup / wMapNumber
     const struct pd_gb_guide2_ram { uint32_t event, timeOfDay, badges, trades, mapGroup; } * guide2Ram;
     const struct pd_gb_team* teams;         // the GUIDE's boss teams, by index
+    // Gen 2's place (the app's gen2Landmark): wMapGroup / wMapNumber and wBackupMapGroup / wBackupMapNumber, each map's
+    // landmark ({group << 8 | number, landmark}); a SPECIAL one (0) is named by the backup map, as the town map does.
+    // playerGender: wPlayerGender (bit 0 = the girl), 0 = none (Gold / Silver: always the boy).
+    uint32_t mapGroup, backupMapGroup, playerGender;
+    const uint16_t (*landmarks)[2];
+    const int* landmarkCount;
 };
+extern const uint16_t pd_gb_landmarks_gold_silver[][2];
+extern const int pd_gb_landmarks_gold_silver_count;
 
 extern const uint32_t pd_gb_polished_variants[];
 extern const int pd_gb_polished_variants_count;

@@ -253,7 +253,7 @@ static bool rom_map_on(const struct pd_game* g) {
 
 
 const struct pd_map_art* pd_map_art(const struct pd_game* g) {
-    if (!g->rom || (g->kind != PD_GAME_FIRERED && g->kind != PD_GAME_EMERALD)) return NULL;
+    if (!g->rom || (g->kind != PD_GAME_FIRERED && g->kind != PD_GAME_EMERALD && g->kind != PD_GAME_GB)) return NULL;
     if (cachedRom == pd_rom_id(g)) return cached && cached->ok ? cached : NULL;
     free(cached);
     free(romMap);
@@ -261,6 +261,9 @@ const struct pd_map_art* pd_map_art(const struct pd_game* g) {
     cached = calloc(1, sizeof(*cached));
     cachedRom = pd_rom_id(g);
     if (!cached) return NULL;
+    if (g->kind == PD_GAME_GB) return pd_gb_map_draw(g, cached) ? cached : NULL;
+    cached->w = PD_MAP_W;
+    cached->h = PD_MAP_H;
     // A FireRed 1.0 hack that keeps its own map where region_map.c finds it (the hacks whose names are read that way,
     // pd_text.mapsecsRom): that map, its rects and grids; the player's head stays the fingerprinted one below.
     bool own = false;
@@ -270,6 +273,8 @@ const struct pd_map_art* pd_map_art(const struct pd_game* g) {
             free(romMap);
             romMap = NULL;
             memset(cached, 0, sizeof(*cached));
+            cached->w = PD_MAP_W;
+            cached->h = PD_MAP_H;
         }
     }
 
@@ -329,6 +334,10 @@ static const struct pd_region_layout* layouts(const struct pd_game* g, int* n) {
         *n = cached->pages;
         return romMap->layouts;
     }
+    if (g->kind == PD_GAME_GB) {  // no cursor grid: the smallest section rect (pd_map_pick)
+        *n = 0;
+        return NULL;
+    }
     if (g->kind == PD_GAME_EMERALD) {
         *n = pd_layouts_emerald_count;
         return pd_layouts_emerald;
@@ -340,6 +349,11 @@ static const struct pd_region_layout* layouts(const struct pd_game* g, int* n) {
 static const struct pd_mapsec_rect* rect_of(const struct pd_game* g, int mapsec) {
     if (rom_map_on(g))
         return mapsec >= 0 && mapsec < RRM_FIRST + RRM_SECTIONS && romMap->rects[mapsec].page >= 0 ? &romMap->rects[mapsec] : NULL;
+    if (g->kind == PD_GAME_GB) {
+        int n;
+        const struct pd_mapsec_rect* r = pd_gb_map_rects(g, &n);
+        return r && mapsec >= 0 && mapsec < n ? &r[mapsec] : NULL;
+    }
     if (g->kind == PD_GAME_EMERALD) {
         return mapsec >= 0 && mapsec < pd_mapsec_rects_emerald_count ? &pd_mapsec_rects_emerald[mapsec] : NULL;
     }
@@ -384,6 +398,19 @@ void pd_map_pick(const struct pd_game* g, int page, int tx, int ty, int* mapsec,
     int count;
     const struct pd_region_layout* ls = layouts(g, &count);
     *mapsec = *dungeon = -1;
+    if (g->kind == PD_GAME_GB) {  // the smallest rect there, the first section of that size
+        int n, best = 0;
+        const struct pd_mapsec_rect* r = pd_gb_map_rects(g, &n);
+        for (int i = 0; r && i < n; i++) {
+            if (r[i].page != page || !r[i].w || !r[i].h || !*pd_mapsec_name(g, i)) continue;
+            if (tx < r[i].x || ty < r[i].y || tx >= r[i].x + r[i].w || ty >= r[i].y + r[i].h) continue;
+            if (*mapsec < 0 || r[i].w * r[i].h < best) {
+                *mapsec = i;
+                best = r[i].w * r[i].h;
+            }
+        }
+        return;
+    }
     if (page < 0 || page >= count) return;
     *mapsec = layout_at(&ls[page], 0, tx, ty);
     *dungeon = layout_at(&ls[page], 1, tx, ty);
@@ -398,10 +425,33 @@ static bool outdoor(int mapType) {
     return mapType == 1 || mapType == 2 || mapType == 3 || mapType == 5 || mapType == 6;
 }
 
+bool pd_map_bounds(const struct pd_game* g, int page, int* minX, int* minY, int* maxX, int* maxY) {
+    const struct pd_map_art* art = pd_map_art(g);
+    if (!art || page < 0 || page >= art->pages) return false;
+    int count;
+    const struct pd_region_layout* ls = layouts(g, &count);
+    if (page < count) {
+        *minX = ls[page].offX;
+        *minY = ls[page].offY;
+        *maxX = ls[page].offX + ls[page].w - 1;
+        *maxY = ls[page].offY + ls[page].h - 1;
+    } else {
+        *minX = *minY = 0;
+        *maxX = art->w / 8 - 1;
+        *maxY = art->h / 8 - 1;
+    }
+    return true;
+}
+
+int pd_map_player_section(const struct pd_game* g, const struct pd_snapshot* s) {
+    return pd_gb_map_gen1(g) && s->posOk ? s->mapNum : s->mapsec;
+}
+
 bool pd_map_player_tile(const struct pd_game* g, const struct pd_snapshot* s, int* page, int* tx, int* ty) {
     static int lastSec = -1, lastX, lastY;
     struct pd_tile_rect r;
-    if (!s->valid || pd_map_tiles(g, s->mapsec, page, &r, 1) < 1) return false;
+    int sec = pd_map_player_section(g, s);
+    if (!s->valid || pd_map_tiles(g, sec, page, &r, 1) < 1) return false;
     if (outdoor(s->mapType) && s->posOk && s->mapW > 0 && s->mapH > 0) {
         int sw = s->mapW / r.w, sh = s->mapH / r.h;
         int dx = s->x / (sw > 1 ? sw : 1), dy = s->y / (sh > 1 ? sh : 1);
@@ -411,10 +461,10 @@ bool pd_map_player_tile(const struct pd_game* g, const struct pd_snapshot* s, in
         if (dy < 0) dy = 0;
         *tx = r.x + dx;
         *ty = r.y + dy;
-        lastSec = s->mapsec;
+        lastSec = sec;
         lastX = *tx;
         lastY = *ty;
-    } else if (lastSec == s->mapsec && lastX >= r.x && lastX < r.x + r.w && lastY >= r.y && lastY < r.y + r.h) {
+    } else if (lastSec == sec && lastX >= r.x && lastX < r.x + r.w && lastY >= r.y && lastY < r.y + r.h) {
         *tx = lastX;
         *ty = lastY;
     } else {
@@ -430,6 +480,7 @@ const char* pd_map_page_name(const struct pd_game* g, int page) {
         snprintf(name, sizeof name, "MAP %d", page + 1);
         return name;
     }
+    if (g->kind == PD_GAME_GB) return pd_gb_map_page_name(g, page);
     if (g->kind == PD_GAME_EMERALD) return "HOENN";
     static const char* const NAMES[PD_MAP_PAGES] = { "KANTO", "SEVII 1-3", "SEVII 4-5", "SEVII 6-7" };
     return page >= 0 && page < PD_MAP_PAGES ? NAMES[page] : "";

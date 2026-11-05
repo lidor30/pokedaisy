@@ -41,6 +41,7 @@ static struct {
   unsigned rom;
   int page, requestedPage, tx, ty, sel, dungeon;
   int minX, minY, maxX, maxY;
+  int mapW, mapH; // the page's pixels (240 x 160, a Game Boy's 160 x 144)
 } mapCursor;
 static void map_cursor_sync(const struct pd_ui *u, const struct pd_game *g,
                             const struct pd_snapshot *s) {
@@ -55,29 +56,25 @@ static void map_cursor_sync(const struct pd_ui *u, const struct pd_game *g,
   }
   if (focus_index(u, HIT_MAP) < 0)
     return;
-  int page = 0, tx = PD_MAP_W / 16, ty = PD_MAP_H / 16;
+  int page = 0, tx = art->w / 16, ty = art->h / 16;
   bool player = pd_map_player_tile(g, s, &page, &tx, &ty);
   int shown = u->mapPage >= 0 ? u->mapPage : player ? page : 0;
   if (shown >= art->pages) shown = 0;
-  const struct pd_region_layout *layouts = g->kind == PD_GAME_EMERALD ?
-      pd_layouts_emerald : pd_layouts_firered;
-  int pages = g->kind == PD_GAME_EMERALD ? pd_layouts_emerald_count : pd_layouts_firered_count;
-  if (shown < 0 || shown >= pages) {
+  // The page's cursor grid, else the whole page (a Game Boy town map has no grid: pd_map_pick takes the smallest
+  // section under the cursor).
+  if (!pd_map_bounds(g, shown, &mapCursor.minX, &mapCursor.minY, &mapCursor.maxX, &mapCursor.maxY)) {
     mapCursor.ready = false;
     return;
   }
-  const struct pd_region_layout *layout = &layouts[shown];
-  mapCursor.minX = layout->offX;
-  mapCursor.minY = layout->offY;
-  mapCursor.maxX = layout->offX + layout->w - 1;
-  mapCursor.maxY = layout->offY + layout->h - 1;
+  mapCursor.mapW = art->w;
+  mapCursor.mapH = art->h;
   if (mapCursor.ready && mapCursor.rom == g->loadId && mapCursor.page == shown &&
       mapCursor.requestedPage == u->mapPage &&
       mapCursor.sel == u->mapSel && mapCursor.dungeon == u->mapDungeon)
     return;
   if (!player || page != shown) {
-    tx = PD_MAP_W / 16;
-    ty = PD_MAP_H / 16;
+    tx = art->w / 16;
+    ty = art->h / 16;
   }
   if (u->mapDungeon >= 0) {
     tx = u->mapSelTx;
@@ -119,8 +116,8 @@ static void focus_activate(struct pd_ui *u) {
   if (map_cursor_active(u)) {
     // Call the map's existing selection directly: overlaid map buttons must
     // not intercept a tile in the top-right corner of the grid.
-    u->touchX0 = h->x + (mapCursor.tx * 8 + 4) * h->w / PD_MAP_W;
-    u->touchY0 = h->y + (mapCursor.ty * 8 + 4) * h->h / PD_MAP_H;
+    u->touchX0 = h->x + (mapCursor.tx * 8 + 4) * h->w / mapCursor.mapW;
+    u->touchY0 = h->y + (mapCursor.ty * 8 + 4) * h->h / mapCursor.mapH;
     ui_map_act(u, HIT_MAP);
     mapCursor.sel = u->mapSel;
     mapCursor.dungeon = u->mapDungeon;
@@ -273,10 +270,11 @@ static void focus_draw(struct pd_ui *u, int focus) {
   struct pd_hit tile;
   if (map_cursor_active(u)) {
     int x = mapCursor.tx * 8, y = mapCursor.ty * 8;
-    tile = (struct pd_hit){h->x + x * h->w / PD_MAP_W,
-                          h->y + y * h->h / PD_MAP_H,
-                          (x + 8) * h->w / PD_MAP_W - x * h->w / PD_MAP_W,
-                          (y + 8) * h->h / PD_MAP_H - y * h->h / PD_MAP_H,
+    int mw = mapCursor.mapW, mh = mapCursor.mapH;
+    tile = (struct pd_hit){h->x + x * h->w / mw,
+                          h->y + y * h->h / mh,
+                          (x + 8) * h->w / mw - x * h->w / mw,
+                          (y + 8) * h->h / mh - y * h->h / mh,
                           HIT_MAP, false};
     h = &tile;
     pd_fill(&canvas, h->x - 1, h->y - 1, h->w + 2, 1, 0x202828);

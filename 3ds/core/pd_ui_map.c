@@ -24,10 +24,11 @@
 
 static const struct pd_game* lastGame;
 
-// Where the map is drawn this time: (x, y) w x h canvas pixels for its 240 x 160.
+// Where the map is drawn this time: (x, y) w x h canvas pixels for its mapW x mapH (240 x 160, a Game Boy's 160 x 144).
 static struct { int x, y, w, h; } view = { MARGIN + FRAME, MARGIN + FRAME, PD_MAP_W, PD_MAP_H };
-static int sx(int mx) { return view.x + mx * view.w / PD_MAP_W; }
-static int sy(int my) { return view.y + my * view.h / PD_MAP_H; }
+static int mapW = PD_MAP_W, mapH = PD_MAP_H;
+static int sx(int mx) { return view.x + mx * view.w / mapW; }
+static int sy(int my) { return view.y + my * view.h / mapH; }
 static int lastPlayerPage = -1, lastPlayerTx, lastPlayerTy;
 
 // --- the PLACES list (RegionMapModel.places) ---
@@ -107,11 +108,11 @@ static void frame(struct pd_canvas* c, int x, int y, int w, int h) {
 // The page scaled to the view, each canvas pixel its nearest map pixel.
 static void draw_page(struct pd_canvas* c, const uint32_t* px) {
     static int col[1024];
-    for (int x = 0; x < view.w && x < 1024; x++) col[x] = x * PD_MAP_W / view.w;
+    for (int x = 0; x < view.w && x < 1024; x++) col[x] = x * mapW / view.w;
     for (int y = 0; y < view.h; y++) {
         int cy = view.y + y;
         if (cy < c->cy0 || cy >= c->cy1) continue;
-        const uint32_t* src = px + (y * PD_MAP_H / view.h) * PD_MAP_W;
+        const uint32_t* src = px + (y * mapH / view.h) * mapW;
         uint32_t* dst = c->px + cy * c->w + view.x;
         for (int x = 0; x < view.w && x < 1024; x++) dst[x] = src[col[x]];
     }
@@ -128,20 +129,21 @@ static void draw_head(struct pd_canvas* c, const uint32_t* head, int tx, int ty)
     }
 }
 
-// Four white L corners around a tile rect, out by 2 or 3 px (the blink).
-static void cursor(struct pd_canvas* c, const struct pd_tile_rect* r, bool big) {
+// Four white L corners around a tile rect, out by 2 or 3 px (the blink); black on a Game Boy's light town map
+// (MapLabelStyle.GEN1's cursorColor).
+static void cursor(struct pd_canvas* c, const struct pd_tile_rect* r, bool big, uint32_t colour) {
     int out = big ? 3 : 2;
     int l = sx(r->x * 8) - out, t = sy(r->y * 8) - out;
     int rr = sx((r->x + r->w) * 8) + out, b = sy((r->y + r->h) * 8) + out;
     pd_clip(c, view.x, view.y, view.w, view.h);
-    pd_fill(c, l, t, CURSOR_ARM, CURSOR_THICK, CURSOR);
-    pd_fill(c, l, t, CURSOR_THICK, CURSOR_ARM, CURSOR);
-    pd_fill(c, rr - CURSOR_ARM, t, CURSOR_ARM, CURSOR_THICK, CURSOR);
-    pd_fill(c, rr - CURSOR_THICK, t, CURSOR_THICK, CURSOR_ARM, CURSOR);
-    pd_fill(c, l, b - CURSOR_THICK, CURSOR_ARM, CURSOR_THICK, CURSOR);
-    pd_fill(c, l, b - CURSOR_ARM, CURSOR_THICK, CURSOR_ARM, CURSOR);
-    pd_fill(c, rr - CURSOR_ARM, b - CURSOR_THICK, CURSOR_ARM, CURSOR_THICK, CURSOR);
-    pd_fill(c, rr - CURSOR_THICK, b - CURSOR_ARM, CURSOR_THICK, CURSOR_ARM, CURSOR);
+    pd_fill(c, l, t, CURSOR_ARM, CURSOR_THICK, colour);
+    pd_fill(c, l, t, CURSOR_THICK, CURSOR_ARM, colour);
+    pd_fill(c, rr - CURSOR_ARM, t, CURSOR_ARM, CURSOR_THICK, colour);
+    pd_fill(c, rr - CURSOR_THICK, t, CURSOR_THICK, CURSOR_ARM, colour);
+    pd_fill(c, l, b - CURSOR_THICK, CURSOR_ARM, CURSOR_THICK, colour);
+    pd_fill(c, l, b - CURSOR_ARM, CURSOR_THICK, CURSOR_ARM, colour);
+    pd_fill(c, rr - CURSOR_ARM, b - CURSOR_THICK, CURSOR_ARM, CURSOR_THICK, colour);
+    pd_fill(c, rr - CURSOR_THICK, b - CURSOR_ARM, CURSOR_THICK, CURSOR_ARM, colour);
     pd_unclip(c);
 }
 
@@ -156,7 +158,19 @@ static void darken(struct pd_canvas* c, int x, int y, int w, int h) {
     }
 }
 
-static void label(struct pd_canvas* c, const struct pd_game* g, const char* name, const char* dungeon) {
+// Returns how far down the map the label reaches where the buttons must stay clear of it (0: they don't).
+static int label(struct pd_canvas* c, const struct pd_game* g, const char* name, const char* dungeon) {
+    if (g->kind == PD_GAME_GB) {
+        // Gen 1 / Gen 2 (MapLabelStyle.GEN1): the name in black on a white strip over the map's top row, 128 map
+        // pixels wide, as tall as a line of the game's font needs; hidden when blank. The strip reaches under the
+        // buttons on a small canvas, so they sit below it (blank or not: they don't jump as the label comes and goes).
+        int w = sx(128) - view.x, h = sy(8) - view.y;
+        if (h < 14) h = 14;
+        if (!name || !*name) return h;
+        pd_fill(c, view.x, view.y, w, h, PD_GB_PAPER);
+        pd_text_fit(c, view.x + 3, view.y + (h - 14) / 2, w - 5, name, PD_GB_INK, PD_NO_SHADOW);
+        return h;
+    }
     if (g->kind == PD_GAME_EMERALD) {
         // Emerald: a framed window bottom-right, always shown.
         int w = 130, h = 30;
@@ -164,7 +178,7 @@ static void label(struct pd_canvas* c, const struct pd_game* g, const char* name
         int f = pd_list_box(c, x, y, w, h);
         pd_fill(c, x + f, y + f, w - 2 * f, h - 2 * f, 0xFFFFFF);
         pd_text_fit(c, x + 7, pd_text_y(y, h), w - 10, name, PD_TITLE_TEXT, PD_TITLE_SHADOW);
-        return;
+        return 0;
     }
     // FireRed: a strip top-left per line, hidden when blank.
     const char* lines[2] = { name, dungeon };
@@ -174,14 +188,15 @@ static void label(struct pd_canvas* c, const struct pd_game* g, const char* name
         darken(c, view.x, view.y + i * 18, lw, 18);
         pd_text_fit(c, view.x + 5, view.y + i * 18 + 1, lw - 8, lines[i], 0xFFFFFF, FR_LABEL_SHADOW);
     }
+    return 0;
 }
 
 // The map's buttons, a row over its top right (MapScreen's), right to left.
-static int buttonRight;
+static int buttonRight, buttonTop;
 static void map_button(struct pd_ui* ui, struct pd_canvas* c, const char* text, int id) {
     int w = pd_text_width(text) + 16;
     buttonRight -= w;
-    ui_button(ui, c, buttonRight, view.y + 4, w, 22, text, id);
+    ui_button(ui, c, buttonRight, buttonTop, w, 22, text, id);
     buttonRight -= 4;
 }
 
@@ -199,13 +214,15 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     lastPlayerTy = pty;
     int page = ui->mapPage >= 0 ? ui->mapPage : hasPlayer ? playerPage : 0;
     if (page >= art->pages) page = 0;
+    mapW = art->w;
+    mapH = art->h;
 
     // The map fills the tab: stretched to it while that's within 1.2x of its shape, else as big as fits,
     // centred (MapScreen's MAX_MAP_STRETCH).
     int aw = c->w - 2 * MARGIN - 2 * FRAME, ah = c->h - CONTENT_Y - MARGIN - 2 * FRAME;
     int w = aw, h = ah;
-    if ((long) aw * PD_MAP_H * MAX_STRETCH_DEN > (long) ah * PD_MAP_W * MAX_STRETCH_NUM) w = ah * PD_MAP_W / PD_MAP_H;
-    else if ((long) ah * PD_MAP_W * MAX_STRETCH_DEN > (long) aw * PD_MAP_H * MAX_STRETCH_NUM) h = aw * PD_MAP_H / PD_MAP_W;
+    if ((long) aw * mapH * MAX_STRETCH_DEN > (long) ah * mapW * MAX_STRETCH_NUM) w = ah * mapW / mapH;
+    else if ((long) ah * mapW * MAX_STRETCH_DEN > (long) aw * mapH * MAX_STRETCH_NUM) h = aw * mapH / mapW;
     view.w = w;
     view.h = h;
     view.x = MARGIN + FRAME + (aw - w) / 2;
@@ -230,17 +247,20 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         }
     } else if (hasPlayer && page == playerPage) {
         int p;
-        n = pd_map_tiles(g, s->mapsec, &p, rects, MAX_RECTS);
+        n = pd_map_tiles(g, pd_map_player_section(g, s), &p, rects, MAX_RECTS);
         name = pd_mapsec_name(g, s->mapsec);
+    } else if (g->kind == PD_GAME_GB && !hasPlayer && s->valid && s->posOk) {
+        name = pd_mapsec_name(g, s->mapsec);  // off the map (FAST SHIP): its name, no cursor
     }
     int gender = s->gender == 1 ? 1 : 0;
     if (hasPlayer && page == playerPage && art->hasHead[gender]) draw_head(c, art->head[gender], ptx, pty);
-    for (int i = 0; i < n; i++) cursor(c, &rects[i], ui->mapBlink);
-    label(c, g, name, dungeon);
+    for (int i = 0; i < n; i++) cursor(c, &rects[i], ui->mapBlink, g->kind == PD_GAME_GB ? PD_GB_INK : CURSOR);
+    int below = label(c, g, name, dungeon);
     ui_add_hit(ui, view.x, view.y, view.w, view.h, HIT_MAP);
 
     // Over the map's top right: PLACES, ME, the other page(s) (MapScreen's order, left to right).
     buttonRight = view.x + view.w - 4;
+    buttonTop = view.y + (below ? below + 2 : 4);
     map_button(ui, c, "PLACES", HIT_MAP_PLACES);
     if (ui->mapSel >= 0 || ui->mapDungeon >= 0 || ui->mapPage >= 0) {
         map_button(ui, c, "ME", HIT_MAP_ME);
@@ -314,7 +334,7 @@ bool ui_map_act(struct pd_ui* ui, int id) {
     int shown = ui->mapPage >= 0 ? ui->mapPage : lastPlayerPage >= 0 ? lastPlayerPage : 0;
     switch (id) {
     case HIT_MAP: {
-        int tx = (ui->touchX0 - view.x) * PD_MAP_W / view.w / 8, ty = (ui->touchY0 - view.y) * PD_MAP_H / view.h / 8;
+        int tx = (ui->touchX0 - view.x) * mapW / view.w / 8, ty = (ui->touchY0 - view.y) * mapH / view.h / 8;
         // The player's own tile: back to following the player.
         if (shown == lastPlayerPage && tx == lastPlayerTx && ty == lastPlayerTy) {
             ui->mapSel = ui->mapDungeon = -1;

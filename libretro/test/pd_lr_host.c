@@ -1,5 +1,6 @@
 /* A bare libretro frontend for testing pokedaisy_libretro on the desktop: scripted buttons, option values, frame dumps.
  *   pd_lr_host CORE ROM SAVEDIR [-o key=value]... [-p FRAME:BUTTON[:HOLD]]... [-d FRAME:FILE.ppm]... [-n FRAMES] [-R FRAME: unload and load again after it] [-s SAVE.srm]
+ *   [-w FRAME:OFFSET:HEX] [-r FRAME:OFFSET:N] (system RAM poke / peek)
  * BUTTON: a b select start right left up down r l x y l2 r2 l3. -r: write the frontend's view of the last frame size. */
 #define _GNU_SOURCE
 #include "libretro.h"
@@ -14,13 +15,24 @@ static struct { const char *k, *v; } opts[64];
 static int nopts;
 static struct { int frame, button, hold; } presses[256];
 static int npress;
+/* -w FRAME:OFFSET:HEX - bytes written into the core's system RAM after that frame (a Game Boy core: Color WRAM, C000
+ * at 0 and bank N's D000 at N * 0x1000), or read: -r FRAME:OFFSET:N prints N bytes. */
+static struct { int frame; long off; char *hex; int n; } pokes[64];
+static int npoke;
 static struct { int frame; const char *file; } dumps[64];
 static int ndump;
 static int frame, lastW, lastH;
 static uint16_t shot[1024 * 768];
 static const char *saveDir;
 
+static unsigned char *gbWram; // a Game Boy core's Color WRAM (its C000 memory descriptor): -w / -r go there
 static bool env(unsigned cmd, void *data) {
+  if (cmd == RETRO_ENVIRONMENT_SET_MEMORY_MAPS) {
+    const struct retro_memory_map *mm = data;
+    for (unsigned i = 0; i < mm->num_descriptors; i++)
+      if (mm->descriptors[i].start == 0xC000 && mm->descriptors[i].ptr)
+        gbWram = (unsigned char *)mm->descriptors[i].ptr + mm->descriptors[i].offset;
+  }
   switch (cmd) {
   case RETRO_ENVIRONMENT_SET_PIXEL_FORMAT: return *(int *)data == RETRO_PIXEL_FORMAT_RGB565;
   case RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY:
@@ -86,6 +98,15 @@ int main(int argc, char **argv) {
       if (k < 0) return 2;
       presses[npress].frame = f; presses[npress].button = k; presses[npress++].hold = h;
     } else if (!strcmp(argv[i], "-d")) { char *c = strchr(argv[i + 1], ':'); *c = 0; dumps[ndump].frame = atoi(argv[i + 1]); dumps[ndump++].file = c + 1; }
+    else if (!strcmp(argv[i], "-w") || !strcmp(argv[i], "-r")) {
+      char *a = argv[i + 1], *c1 = strchr(a, ':'), *c2 = c1 ? strchr(c1 + 1, ':') : NULL;
+      if (!c2) return 2;
+      *c1 = *c2 = 0;
+      pokes[npoke].frame = atoi(a);
+      pokes[npoke].off = strtol(c1 + 1, NULL, 0);
+      if (argv[i][1] == 'w') pokes[npoke].hex = c2 + 1; else pokes[npoke].n = atoi(c2 + 1);
+      npoke++;
+    }
     else if (!strcmp(argv[i], "-n")) frames = atoi(argv[i + 1]);
     else if (!strcmp(argv[i], "-R")) reload = atoi(argv[i + 1]);
     else if (!strcmp(argv[i], "-s")) savefile = argv[i + 1];
@@ -120,6 +141,23 @@ int main(int argc, char **argv) {
   for (frame = 0; frame < frames; frame++) {
     retro_run_();
     for (int i = 0; i < ndump; i++) if (dumps[i].frame == frame) write_ppm(dumps[i].file);
+    for (int i = 0; i < npoke; i++) {
+      if (pokes[i].frame != frame) continue;
+      unsigned char *m = retro_get_memory_data_(RETRO_MEMORY_SYSTEM_RAM);
+      size_t sz = retro_get_memory_size_(RETRO_MEMORY_SYSTEM_RAM);
+      if (!m && gbWram) { m = gbWram; sz = 0x8000; }
+      if (!m) { fprintf(stderr, "no system RAM\n"); continue; }
+      if (pokes[i].hex) {
+        for (size_t k = 0; pokes[i].hex[2 * k] && pokes[i].hex[2 * k + 1]; k++) {
+          char b[3] = {pokes[i].hex[2 * k], pokes[i].hex[2 * k + 1], 0};
+          if ((size_t)pokes[i].off + k < sz) m[pokes[i].off + k] = (unsigned char)strtol(b, NULL, 16);
+        }
+      } else {
+        fprintf(stderr, "ram %d @0x%lx:", frame, pokes[i].off);
+        for (int k = 0; k < pokes[i].n && (size_t)pokes[i].off + k < sz; k++) fprintf(stderr, " %02x", m[pokes[i].off + k]);
+        fprintf(stderr, "\n");
+      }
+    }
     if (reload && frame == reload) { // unload and load the same game again in this process, as the resident frontend does
       retro_unload_game_();
       if (!retro_load_game_(&gi)) { fprintf(stderr, "reload failed\n"); return 1; }

@@ -108,6 +108,10 @@ $(BUILD)/pd_preview: $(CORE_SRC) $(wildcard core/*.h) desktop/pd_preview.c deskt
 FR_ROM ?= $(BUILD)/decomps/pokefirered/pokefirered_rev1.gba
 EM_ROM ?= $(BUILD)/decomps/pokeemerald/pokeemerald.gba
 rom_if = $(if $(wildcard $(1)),$(1),)
+# The Game Boy fixtures need their cart (the shots are skipped without it): retail Red, Blue, Yellow, Crystal, Gold,
+# Silver, linked or copied under these names (make preview GB_ROMS=<dir>).
+GB_ROMS ?= $(BUILD)/roms
+gb_preview = $(if $(wildcard $(GB_ROMS)/$(2)),$(BUILD)/pd_preview $(FIXTURES)/$(1) GB $(BUILD)/shots $(1) $(GB_ROMS)/$(2),@echo "preview: no $(GB_ROMS)/$(2), $(1) skipped")
 
 preview: $(BUILD)/pd_preview
 	@mkdir -p $(BUILD)/shots
@@ -119,6 +123,12 @@ preview: $(BUILD)/pd_preview
 	@mkdir -p $(BUILD)/fixtures/emerald_trainer
 	PD_PREVIEW_TRAINER_DIR=$(BUILD)/fixtures/emerald_trainer \
 		$(BUILD)/pd_preview $(FIXTURES)/emerald_de_battle BPEE $(BUILD)/shots emerald-battle $(call rom_if,$(EM_ROM))
+	$(call gb_preview,red,red.gb)
+	$(call gb_preview,blue,blue.gb)
+	$(call gb_preview,yellow,yellow.gb)
+	$(call gb_preview,crystal,crystal.gbc)
+	$(call gb_preview,gold,gold.gbc)
+	$(call gb_preview,silver,silver.gbc)
 
 decomps:
 	test/build_decomps.sh

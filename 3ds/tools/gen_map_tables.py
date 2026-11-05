@@ -4,7 +4,8 @@
 - the fingerprints RomArt finds art by in a ROM (RomArtSigsGen.kt - only
   the blobs the 3DS MAP and TRAINER CARD need),
 - the cursor grids (RegionMapLayoutsGen.kt),
-- every map section's page and rectangle (MapSecData*.kt).
+- every map section's page and rectangle (MapSecData*.kt), the Game Boy games' too, and Gold / Silver's
+  landmark per map (MapSecDataGoldSilver.kt).
 
     python3 3ds/tools/gen_map_tables.py
 """
@@ -109,6 +110,11 @@ def mapsecs(name, decl):
         r'(\d+) to MapSecInfo\("[^"]*", (-?\d+), (\d+), (\d+), (\d+), (\d+)\)', body)}
 
 
+GB_SECTIONS = (("gb_yellow", "MapSecDataYellow.kt", "mapSecDataYellow"),
+               ("gb_crystal", "MapSecDataCrystal.kt", "mapSecDataCrystal"),
+               ("gb_gold_silver", "MapSecDataGoldSilver.kt", "mapSecDataGoldSilver"))
+
+
 def c_bytes(data):
     lines = []
     for i in range(0, len(data), 24):
@@ -179,6 +185,30 @@ def main():
         out.append("};")
         out.append(f"const int pd_mapsec_rects_{game}_count = {top};")
         out.append("")
+
+    # The Game Boy games' places (pd_gb_map.c): each one cell (x, y in 8px tiles of the 160x144 town map), Gen 1's by
+    # wCurMap (Red / Blue share Yellow's map ids), Gen 2's by landmark; page = Johto 0 / Kanto 1, -1 = not on a map.
+    for game, name, decl in GB_SECTIONS:
+        secs = mapsecs(name, decl)
+        top = max(secs) + 1
+        out.append(f"const struct pd_mapsec_rect pd_mapsec_rects_{game}[{top}] = {{")
+        for i in range(top):
+            r, x, y, w, h = secs.get(i, (-1, 0, 0, 0, 0))
+            assert x + w <= 20 and y + h <= 18, (game, i)
+            out.append(f"    {{ {r}, {x}, {y}, {w}, {h} }},")
+        out.append("};")
+        out.append(f"const int pd_mapsec_rects_{game}_count = {top};")
+        out.append("")
+    # Gold / Silver's landmark per map (wMapGroup * 256 + wMapNumber), like gen_guide.py's Crystal one.
+    text = read("MapSecDataGoldSilver.kt")
+    body = text[text.index("val mapLandmarksGoldSilver"):]
+    body = body[body.index("\n") + 1:body.index("\n)\n")]
+    marks = sorted((int(k, 0), int(v)) for k, v in re.findall(r"(0x[0-9A-Fa-f]+|\d+) to (\d+)", body))
+    out.append("const uint16_t pd_gb_landmarks_gold_silver[][2] = {")
+    out += [f"    {{ 0x{k:04X}, {v} }}," for k, v in marks]
+    out.append("};")
+    out.append(f"const int pd_gb_landmarks_gold_silver_count = {len(marks)};")
+    out.append("")
 
     with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(out))

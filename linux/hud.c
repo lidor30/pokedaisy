@@ -200,18 +200,18 @@ static void minimap(struct hud *u, int x, int y, int mw, int mh, int lines) {
   if (has) {
     int cx = tx * 8 + 4, cy = ty * 8 + 4;
     int left = cx - mw / 2, top = cy - mh / 2;
-    if (left > PD_MAP_W - mw)
-      left = PD_MAP_W - mw;
-    if (top > PD_MAP_H - mh)
-      top = PD_MAP_H - mh;
+    if (left > a->w - mw)
+      left = a->w - mw;
+    if (top > a->h - mh)
+      top = a->h - mh;
     if (left < 0)
       left = 0;
     if (top < 0)
       top = 0;
     const uint32_t *px = a->page[page];
-    for (int yy = 0; yy < mh && top + yy < PD_MAP_H; yy++)
-      for (int xx = 0; xx < mw && left + xx < PD_MAP_W; xx++) {
-        uint32_t p = px[(top + yy) * PD_MAP_W + left + xx];
+    for (int yy = 0; yy < mh && top + yy < a->h; yy++)
+      for (int xx = 0; xx < mw && left + xx < a->w; xx++) {
+        uint32_t p = px[(top + yy) * a->w + left + xx];
         if (p != PD_MAP_CLEAR)
           pd_fill(u->c, mx + xx, my + yy, 1, 1, p & 0xFFFFFF);
       }
@@ -492,6 +492,13 @@ static void compact(struct hud *u) {
     u->button[at] = HUD_MAP_BUTTON;
     u->buttons++;
   }
+  // A picture narrower than the rows (a Game Boy game's 160 in ORIGINAL): the last buttons go first (COMPANION: X
+  // opens it anyway), then the last ball kinds, until each row fits.
+  int avail = u->c->w - 2 * EDGE;
+  while (u->buttons > 1 && buttons_w(u, false) > avail)
+    u->buttons--;
+  while (u->balls > 1 && balls_w(u, false) > avail)
+    u->balls--;
   column(u, BOTTOM_UP, 3, false, EDGE, column_w(u, BOTTOM_UP, 3, false), -1, u->c->h - EDGE, true);
 }
 
@@ -596,6 +603,16 @@ bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snap
     return false;
   struct hud u = {.c = c, .g = g, .s = s, .h = h, .st = st, .out = out,
                   .L = &LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
+  // WINDOW on a Game Boy game: the game's own black-on-white window (OptionColors' Gen 1 look), not FireRed's.
+  static struct look gbWindow;
+  if (u.L->window && pd_gb_look) {
+    gbWindow = *u.L;
+    gbWindow.fill = PD_GB_PAPER;
+    gbWindow.edge = gbWindow.text = gbWindow.muted = PD_GB_INK;
+    gbWindow.shadow = PD_GB_PAPER;
+    gbWindow.cellOn = 0xD8D8D8;
+    u.L = &gbWindow;
+  }
   u.partyN = shows(&u, PD_HUD_PARTY) ? (s->partyCount < PD_PARTY_SIZE ? s->partyCount : PD_PARTY_SIZE) : 0;
   u.balls = shows(&u, PD_HUD_BALLS) ? balls(s, u.ball) : 0;
   u.repel = shows(&u, PD_HUD_REPEL) && h->repel > 0;

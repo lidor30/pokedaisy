@@ -53,7 +53,7 @@ static const struct bag_palette GB_BAG = {
     .tabLayers = 2,
     .fill = 0xFFFFFF, .divider = 0xC8C8C8,
     .text = 0x181818, .textShadow = 0xFFFFFF,
-    .tabText = 0x181818, .tabTextShadow = 0xFFFFFF,
+    .tabText = 0xFFFFFF, .tabTextShadow = 0x181818, // the closed tabs are ink chips: white on them
     .cursor = 0x181818,
     .desc = { { 0x181818, 1 } },
     .descLayers = 1,

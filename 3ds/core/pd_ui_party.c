@@ -240,7 +240,8 @@ static void summary_stats(struct pd_canvas* c, const struct pd_mon_stats* s,
                           int x, int y, int w, int h) {
     static const int order[] = {0, 1, 2, 4, 5, 3};
     static const char* labels[] = {"HP", "ATTACK", "DEFENSE", "SPEED", "SP. ATK", "SP. DEF"};
-    int row = h / 12;
+    // Ten lines (the heading, six stats, TOTAL, NATURE, HIDDEN POWER): the last one's text ends 14 rows below its top.
+    int row = (h - 14) / 9;
     if (row > 25) row = 25;
     int statX = x + w * 46 / 100, ivX = x + w * 83 / 100;
     char buf[48];
@@ -275,16 +276,17 @@ static void summary_stats(struct pd_canvas* c, const struct pd_mon_stats* s,
     if(s->hasIvs)pd_text_right(c,ivX,ry,buf,PD_VALUE,PD_VALUE_SHADOW);
     snprintf(buf,sizeof buf,"%d",evTotal);
     if(s->hasEvs)pd_text_right(c,x+w,ry,buf,PD_VALUE,PD_VALUE_SHADOW);
-    pd_fill(c,x,ry+row-3,w,1,PD_DIVIDER);
+    pd_fill(c,x,ry+(row+18)/2,w,1,PD_DIVIDER); // between TOTAL's shadow (row 13) and NATURE's caps (row+4)
     if(s->hasNature)pd_text(c,x,ry+row,"NATURE",PD_MUTED,PD_MUTED_SHADOW);
     const char* nature=s->nature>=0&&s->nature<pd_nature_names_count?pd_nature_names[s->nature]:"?";
     if(s->hasNature)pd_text_right(c,x+w,ry+row,nature,PD_VALUE,PD_VALUE_SHADOW);
     if(s->hasHiddenPower) {
-        pd_text(c,x,ry+2*row,"HIDDEN POWER",PD_MUTED,PD_MUTED_SHADOW);
+        int lw=pd_text(c,x,ry+2*row,"HIDDEN POWER",PD_MUTED,PD_MUTED_SHADOW);
         if(s->hiddenPowerPower>0)
             snprintf(buf,sizeof buf,"%s  PWR %d",pd_type_name(NULL, s->hiddenPowerType),s->hiddenPowerPower);
         else snprintf(buf,sizeof buf,"%s",pd_type_name(NULL, s->hiddenPowerType));
-        pd_text_fit(c,x,ry+3*row,w,buf,PD_LABEL,PD_LABEL_SHADOW);
+        int vw=pd_text_width(buf); if(vw>w-lw-8)vw=w-lw-8;
+        pd_text_fit(c,x+w-vw,ry+2*row,vw,buf,PD_LABEL,PD_LABEL_SHADOW);
     }
 }
 
@@ -348,6 +350,10 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
     int f = pd_title_box(c, x, y, w, h, PD_TITLE_FILL);
     int ix = x + f + 6, iw = w - 2 * (f + 6);
     int ty = y + f + 2;
+    // A short card (a 240-row frame: the 3DS, 720x480 panels) packs the name and HP lines closer, so the INFO and
+    // STATS panes get the room they have on a 256-row frame.
+    bool shortCard = h < 210;
+    int lineH = shortCard ? 16 : 20;
     // The icon left of the first two lines (name, HP).
     if (pd_draw_mon_icon_shiny(c, g, m->species, m->shiny, ix - 2, ty + 2, 1, m->species != PD_SPECIES_EGG && m->hp == 0)) {
         ix += PD_ICON + 2;
@@ -367,22 +373,22 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         const char* species = pd_species_name(g, m->species, buf2, sizeof(buf2));
         if (strcmp(species, name)) pd_text(c, ix + nameW + 14, ty, species, PD_MUTED, PD_MUTED_SHADOW);
     }
-    ty += 20;
+    ty += lineH;
     if (!egg) {
         ui_hp_bar(c, ix, ty + 4, 96, m->hp, m->maxHp);
         char hp[16];
         snprintf(hp, sizeof(hp), "%d/%d", m->hp, m->maxHp);
         pd_text(c, ix + 120, ty, hp, PD_LABEL, PD_LABEL_SHADOW);
         ui_status_badge(c, ix + iw - 30, ty + 2, m->status);
-        ty += 20;
+        ty += lineH;
         ix = ix0;
         iw = iw0;
         pd_fill(c, ix, ty, iw, 1, PD_DIVIDER);
-        ty += 4;
+        ty += shortCard ? 3 : 4;
         int bottom = y + h - f - 30;
-        if (ui->summaryInfo && h >= 210) {
+        if (ui->summaryInfo) {
             summary_info(c, g, m, ix, ty, iw, bottom);
-        } else if (ui->summaryStats && m->stats.valid && h >= 210) {
+        } else if (ui->summaryStats && m->stats.valid) {
             summary_stats(c, &m->stats, ix, ty, iw, bottom - ty);
         } else for (int i = 0; i < PD_NUM_MOVES; i++) {
             if (!m->moves[i]) continue;
@@ -396,7 +402,7 @@ static void summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
     } else {
         pd_text(c, ix, ty, "It's an egg. It will hatch in time.", PD_MUTED, PD_MUTED_SHADOW);
     }
-    if (!egg && h >= 210) { // the 3DS's 240 rows are too short for the other panes
+    if (!egg) {
         // The two panes this isn't, as buttons right to left from BACK: the pane's own button goes back to MOVES.
         struct pane_btn { const char* label; int hit; } pane[2];
         int n = 0;

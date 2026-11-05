@@ -27,7 +27,7 @@ list(FILTER MGBA_SRC EXCLUDE REGEX "platform/libretro/libretro\\.c$") # pd_libre
 set(APP ${CMAKE_CURRENT_SOURCE_DIR}/../app/src/main/cpp)
 file(GLOB PD_CORE CONFIGURE_DEPENDS ../3ds/core/*.c)
 add_library(pokedaisy_libretro SHARED ${MGBA_SRC} pd_libretro.c pd_lr_mem.c ${PD_CORE}
-  ../linux/hud.c ../linux/quick_menu.c ../linux/fly.c ../linux/field_items.c ../linux/wild.c
+  ../linux/hud.c ../linux/quick_menu.c ../linux/fly.c ../linux/field_items.c ../linux/wild.c ../linux/gb_field.c
   ${APP}/pk_call.c ${APP}/pk_wide.c ${APP}/pk_wide_gb.c ${APP}/pk_gb_field.c)
 set_source_files_properties(${APP}/pk_wide.c ${APP}/pk_wide_gb.c PROPERTIES COMPILE_OPTIONS -Wno-unused-parameter)
 set_target_properties(pokedaisy_libretro PROPERTIES PREFIX "" COMPILE_DEFINITIONS "${MGBA_DEFS};${MGBA_DIR_DEFS};_GNU_SOURCE")
@@ -35,3 +35,8 @@ target_include_directories(pokedaisy_libretro PRIVATE ${MGBA_INC} ${MGBA}/includ
 target_link_libraries(pokedaisy_libretro PRIVATE m)
 # Only retro_* leaves the object: a second mGBA is resident beside the stock core (ADR-0006).
 target_link_options(pokedaisy_libretro PRIVATE -Wl,--exclude-libs,ALL -Wl,--version-script=${CMAKE_CURRENT_SOURCE_DIR}/retro.map)
+
+# gb_field_find over real carts (each matches only its own config, like the app's GbFieldTest): gb_field_test ROM NAME ...
+add_executable(gb_field_test EXCLUDE_FROM_ALL test/gb_field_test.c)
+set_target_properties(gb_field_test PROPERTIES COMPILE_DEFINITIONS "${MGBA_DEFS};${MGBA_DIR_DEFS};_GNU_SOURCE")
+target_include_directories(gb_field_test PRIVATE ${MGBA_INC} ${MGBA}/include ${CMAKE_CURRENT_BINARY_DIR}/mgba/include ${MGBA}/src ../3ds/core ../linux ${APP})
