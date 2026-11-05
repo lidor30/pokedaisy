@@ -155,6 +155,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "RUN SETUP" to "setup onboarding wizard first time welcome",
     "TAB BAR" to "tabs layout bar order",
     "BATTLE HINTS" to "suggestions recommendations best move tips",
+    "BATTLE INFO" to "hide battle info suggestions ratings effectiveness buttons only clean",
     "BATTLE VIEW" to "battle tab default info buttons first opens",
     "GAME NAMES" to "file name filename rom title library naming",
     "SUPPORTED ONLY" to "filter hide unsupported not supported compatible library",

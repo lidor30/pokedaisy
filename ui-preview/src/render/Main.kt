@@ -158,6 +158,9 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override fun setCoopRelayOnly(on: Boolean) { relayOnlyOn = on }
     private var oneTapOn = oneTap
     override val oneTapMoves get() = oneTapOn
+    var battleInfoOn = previewBattleInfo
+    override val battleInfo get() = battleInfoOn
+    override fun setBattleInfo(on: Boolean) { battleInfoOn = on }
     private var battleInfoFirstOn = false
     override val battleInfoFirst get() = battleInfoFirstOn
     override fun setBattleInfoFirst(on: Boolean) { battleInfoFirstOn = on }
@@ -406,6 +409,9 @@ class Shot(
     val content: () -> (@Composable () -> Unit),
     val action: SkikoComposeUiTest.() -> Unit = {},
 )
+
+/** The `*-battle-noinfo` shot: BATTLE INFO off. */
+var previewBattleInfo = true
 
 /** The companion's rebind capture (FakeSettings hands it out): the `*-capture` shots press keys into it. */
 var previewCapture = com.pokedaisy.app.companion.KeyCapture()
@@ -1633,6 +1639,7 @@ fun main(args: Array<String>) {
             onNodeWithContentDescription("Show your Pokémon").performClick()
         },
         Shot("$g-battle-trainer3", bw, bh, bd, companion("PARTY") { trainerBattle(BATTLE_INPUT_ACTION_SELECT).withBench() }),
+        Shot("$g-battle-noinfo", bw, bh, bd, { previewBattleInfo = false; companion("PARTY") { battle(BATTLE_INPUT_ACTION_SELECT) }() }, { previewBattleInfo = true }),
         Shot("$g-battle-moves", bw, bh, bd, companion("PARTY") { battle(BATTLE_INPUT_MOVE_SELECT) }),
         // SETTINGS > ONE-TAP MOVES: the action menu with the moves where FIGHT was.
         Shot("$g-battle-onetap", bw, bh, bd, companion("PARTY", oneTap = true) { battle(BATTLE_INPUT_ACTION_SELECT) }),

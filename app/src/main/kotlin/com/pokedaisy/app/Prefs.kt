@@ -262,6 +262,11 @@ class Prefs(context: Context) {
         get() = p.getBoolean("show_hints", true)
         set(v) = p.edit().putBoolean("show_hints", v).apply()
 
+    /** BATTLE INFO: off leaves only the battle buttons - no INFO, SUGGESTIONS or move ratings. On by default. */
+    var battleInfo: Boolean
+        get() = p.getBoolean("battle_info", true)
+        set(v) = p.edit().putBoolean("battle_info", v).apply()
+
     /** BATTLE VIEW: the BATTLE tab opens on INFO instead of the battle buttons (GitHub #106). Off by default. */
     var battleInfoFirst: Boolean
         get() = p.getBoolean("battle_info_first", false)

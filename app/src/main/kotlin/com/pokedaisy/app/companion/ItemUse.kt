@@ -15,6 +15,12 @@ interface ItemUse {
     /** A Repel's steps in [repelVar]'s value [v]: without a Lure's bit (SoulGold keeps one there), 0 while a Lure works. */
     fun repelSteps(v: Int): Int = v
 
+    /** The party can be reordered here (a GBA game whose party read is known): drag on PARTY, SWITCH in the summary. */
+    fun canReorderParty(): Boolean = false
+
+    /** Party slots [a] and [b] trade places, as the game's party menu does. */
+    fun reorderParty(a: Int, b: Int, done: (com.pokedaisy.app.companion.data.PartySwapResult) -> Unit) {}
+
     /** Whether [itemId] gets a USE button in this game. */
     fun canUse(itemId: Int): Boolean
 

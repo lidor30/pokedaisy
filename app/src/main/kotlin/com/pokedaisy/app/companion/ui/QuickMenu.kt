@@ -31,6 +31,9 @@ import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.drawBehind
+import kotlin.math.hypot
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Placeable
@@ -327,7 +330,14 @@ private fun quickHint(action: QuickAction, actions: QuickActions): String = when
  */
 @Composable
 fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActions, shown: Set<QuickAction>, look: FieldHudLook) {
-    if (!state.open) return
+    // 0 folded, 1 open: the ring opens and closes like a fan. It stays drawn while it folds, the keys already the game's.
+    val fan by androidx.compose.animation.core.animateFloatAsState(
+        if (state.open) 1f else 0f,
+        // Not LIGHT COMPANION's business: it moves a dozen tiles at placement, nothing composes.
+        androidx.compose.animation.core.tween(FAN_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        label = "quick-menu-fan",
+    )
+    if (!state.open && fan == 0f) return
     val items = QuickAction.entries.filter { it in shown && actions.offered(it) }
     val repelSteps = actions.repelSteps()
     state.items = items
@@ -336,10 +346,11 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
     LaunchedEffect(items.size) { state.clamp() }
     val m = rememberGbaTextMetrics(1f)
     val u = m.u
-    CompanionBackHandler { if (state.fly != null || state.repels != null) state.back() else state.close() }
+    CompanionBackHandler(enabled = state.open) { if (state.fly != null || state.repels != null) state.back() else state.close() }
     CompositionLocalProvider(LocalHudLook provides look) {
         BoxWithConstraints(
-            Modifier.fillMaxSize().background(Color(0x55000000)).pointerInput(Unit) { detectTapGestures { state.close() } },
+            Modifier.fillMaxSize().drawBehind { drawRect(Color(0x55000000).copy(alpha = 0x55 / 255f * fan)) }
+                .pointerInput(Unit) { detectTapGestures { state.close() } },
             contentAlignment = Alignment.Center,
         ) {
             val fly = state.fly
@@ -355,7 +366,7 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
             if (fly != null || repels != null || items.isEmpty() || !ring) {
                 Column(
                     // Taps on the panel stay in it (the dim around it closes the menu).
-                    Modifier.widthIn(max = maxWidth * 0.92f).hudPanel(u).pointerInput(Unit) { detectTapGestures { } }.padding(u * 6),
+                    Modifier.graphicsLayer { alpha = fan }.widthIn(max = maxWidth * 0.92f).hudPanel(u).pointerInput(Unit) { detectTapGestures { } }.padding(u * 6),
                     horizontalAlignment = Alignment.CenterHorizontally,
                     verticalArrangement = Arrangement.spacedBy(u * 4),
                 ) {
@@ -371,7 +382,7 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
                 }
             } else {
                 // The highlighted one's name (and why it's dimmed) in the middle, like a game's weapon wheel.
-                TileRing(state, items.size, gap = u * 6, maxW = maxWidth * 0.96f, maxH = maxHeight * 0.96f, tile) {
+                TileRing(state, items.size, gap = u * 6, maxW = maxWidth * 0.96f, maxH = maxHeight * 0.96f, { fan }, tile) {
                     // With names on the tiles, the middle only says why the highlighted one is dimmed (or WILD's state).
                     val name = if (state.labels) null else quickLabel(current ?: QuickAction.PC, actions)
                     val note = why ?: if (current == QuickAction.WILD) quickHint(current, actions) else null
@@ -445,7 +456,7 @@ private fun TileGrid(n: Int, gap: Dp, tile: @Composable (Int) -> Unit) {
  * same gap from the last instead. Too tall for the screen, the circle becomes an oval, wider than it is tall.
  */
 @Composable
-private fun TileRing(state: QuickMenuState, n: Int, gap: Dp, maxW: Dp, maxH: Dp, tile: @Composable (Int) -> Unit, center: @Composable () -> Unit) {
+private fun TileRing(state: QuickMenuState, n: Int, gap: Dp, maxW: Dp, maxH: Dp, fan: () -> Float, tile: @Composable (Int) -> Unit, center: @Composable () -> Unit) {
     val density = LocalDensity.current
     val (gapPx, limW, limH) = with(density) { Triple(gap.toPx(), maxW.toPx(), maxH.toPx()) }
     var places = RingPlaces(0f, 0f, FloatArray(0), FloatArray(0))
@@ -459,14 +470,36 @@ private fun TileRing(state: QuickMenuState, n: Int, gap: Dp, maxW: Dp, maxH: Dp,
         place = { tiles, w, h, extra ->
             val cx = places.rx + w / 2f
             val cy = places.ry + h / 2f
+            // Read here, in placement: the fan moves the tiles without composing them again.
+            val open = fan()
             tiles.forEachIndexed { i, p ->
-                p.place((cx + places.x[i] - w / 2f).roundToInt(), (cy + places.y[i] - h / 2f).roundToInt())
+                val (x, y) = fanned(places.x[i], places.y[i], open)
+                p.placeWithLayer((cx + x - w / 2f).roundToInt(), (cy + y - h / 2f).roundToInt()) {
+                    alpha = (open * 2f).coerceAtMost(1f)
+                    scaleX = FAN_FOLDED_SCALE + (1f - FAN_FOLDED_SCALE) * open
+                    scaleY = scaleX
+                }
             }
-            extra.forEach { e -> e.place((cx - e.width / 2f).roundToInt(), (cy - e.height / 2f).roundToInt()) }
+            extra.forEach { e -> e.placeWithLayer((cx - e.width / 2f).roundToInt(), (cy - e.height / 2f).roundToInt()) { alpha = open } }
         },
         // The hint inside the ring, clear of the tiles at its sides.
         extraWidth = { w, _ -> (2 * places.rx - w - 2 * gapPx).roundToInt() },
     )
+}
+
+/** The fan's opening and closing, and how small a folded tile is. */
+private const val FAN_MS = 260
+private const val FAN_FOLDED_SCALE = 0.7f
+
+/**
+ * A tile at ([x], [y]) from the ring's middle when the fan is [open] (0..1): at the same distance, its angle from the top
+ * that much of the way out, so the tiles fold together at the top and spread both ways round the ring.
+ */
+internal fun fanned(x: Float, y: Float, open: Float): Pair<Float, Float> {
+    if (open >= 1f) return x to y
+    val r = hypot(x, y)
+    val angle = atan2(x, -y) * open
+    return r * sin(angle) to -r * cos(angle)
 }
 
 /** Tile centres round the ring (from its middle, px), its radii, and each tile's turn from the top (0..1). */

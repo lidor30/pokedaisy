@@ -706,16 +706,23 @@ private fun homeRows(
         SettingRow(tk("FPS / CPU"), onOff(s.showPerformance), subtitle = "Speed and CPU use in the game's corner") { s.setShowPerformance(!s.showPerformance); changed() },
         groupTitle(tk("COMPANION")),
         // Move effectiveness and the foe's weak-to/resists during battle.
-        SettingRow(tk("BATTLE HINTS"), onOff(s.showHints), subtitle = "Move ratings and the best pick in battle") { s.setShowHints(!s.showHints); changed() },
+        // Off: the battle buttons alone - no INFO, SUGGESTIONS or move ratings. The rows about them go with it.
+        SettingRow(
+            tk("BATTLE INFO"), onOff(s.battleInfo), subtitle = "INFO, SUGGESTIONS and move ratings",
+            labelBadge = NewFeatures.badge(NewFeatures.BATTLE_INFO),
+        ) { s.setBattleInfo(!s.battleInfo); changed() },
+        SettingRow(tk("BATTLE HINTS"), onOff(s.showHints), subtitle = "Move ratings and the best pick in battle") { s.setShowHints(!s.showHints); changed() }
+            .takeIf { s.battleInfo },
         // The battle controls' action menu shows the moves: one tap picks FIGHT and the move.
         // What the BATTLE tab shows first: the battle buttons, or INFO (its own buttons lead back).
         SettingRow(
             tk("BATTLE VIEW"), if (s.battleInfoFirst) tk("INFO") else tk("BUTTONS"), subtitle = "What the BATTLE tab opens on",
             labelBadge = NewFeatures.badge(NewFeatures.BATTLE_VIEW),
-        ) { s.setBattleInfoFirst(!s.battleInfoFirst); changed() },
+        ) { s.setBattleInfoFirst(!s.battleInfoFirst); changed() }.takeIf { s.battleInfo },
         SettingRow(tk("ONE-TAP MOVES"), onOff(s.oneTapMoves), subtitle = "Your moves right on the battle menu") { s.setOneTapMoves(!s.oneTapMoves); changed() },
         // A STATS page in battle INFO with the foe's IVs / EVs / nature.
-        SettingRow(tk("FOE IVS"), onOff(s.showFoeIvs), subtitle = "The foe's hidden stats in battle") { s.setShowFoeIvs(!s.showFoeIvs); changed() },
+        SettingRow(tk("FOE IVS"), onOff(s.showFoeIvs), subtitle = "The foe's hidden stats in battle") { s.setShowFoeIvs(!s.showFoeIvs); changed() }
+            .takeIf { s.battleInfo },
         SettingRow(
             tk("BATTLE FOCUS"), onOff(s.battleFocus), subtitle = "Battle info on one page, no scrolling",
             labelBadge = NewFeatures.badge(NewFeatures.BATTLE_FOCUS),

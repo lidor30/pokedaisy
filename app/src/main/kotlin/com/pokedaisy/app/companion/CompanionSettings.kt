@@ -247,6 +247,10 @@ interface CompanionSettings {
     val showFoeIvs: Boolean get() = false
     fun setShowFoeIvs(on: Boolean) {}
 
+    /** BATTLE INFO - see [com.pokedaisy.app.Prefs.battleInfo]. */
+    val battleInfo: Boolean get() = true
+    fun setBattleInfo(on: Boolean) {}
+
     /** BATTLE VIEW - see [com.pokedaisy.app.Prefs.battleInfoFirst]. */
     val battleInfoFirst: Boolean get() = false
     fun setBattleInfoFirst(on: Boolean) {}

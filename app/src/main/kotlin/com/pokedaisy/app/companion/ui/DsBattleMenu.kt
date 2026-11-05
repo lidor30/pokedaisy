@@ -163,6 +163,8 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBand(look: DsLo
 fun DsBattleMenu(
     snapshot: SnapshotView, state: DsBattleMenuState, battleInput: BattleInput?, picture: Rect?, shown: Boolean, active: Boolean = true,
     gameFills: Boolean = false,
+    /** BATTLE HINTS / BATTLE INFO: the moves' multipliers. */
+    hints: Boolean = true,
 ) {
     val input = snapshot.battleInputState
     val busy = rememberBattleInputBusy(battleInput)
@@ -172,7 +174,7 @@ fun DsBattleMenu(
         input == BATTLE_INPUT_MOVE_SELECT -> 2
         else -> 0
     }
-    val moves = snapshot.battlePlayer.getOrNull(0)?.moves.orEmpty().take(4)
+    val moves = snapshot.battlePlayer.getOrNull(0)?.moves.orEmpty().take(4).map { if (hints) it else it.copy(vs = emptyList()) }
     // The game asks by the nickname: the battler's from the party (species, level and HP alike), else its species.
     val battler = snapshot.battlePlayer.getOrNull(0)?.let { b ->
         snapshot.party.firstOrNull { it.species == b.species && it.level == b.level && it.hp == b.hp }?.shownName ?: b.name

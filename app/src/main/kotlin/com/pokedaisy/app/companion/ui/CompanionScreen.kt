@@ -80,6 +80,7 @@ import com.pokedaisy.app.companion.data.withMovesVs
 import com.pokedaisy.app.companion.COMPANION_TABS
 import com.pokedaisy.app.companion.DEFAULT_COMPANION_TABS
 import com.pokedaisy.app.companion.MAX_BAR_TABS
+import com.pokedaisy.app.companion.data.isGameBoyGame
 import com.pokedaisy.app.companion.ui.theme.AppColors
 import com.pokedaisy.app.companion.ui.theme.AppTheme
 import com.pokedaisy.app.companion.ui.theme.LocalGameFont
@@ -175,7 +176,10 @@ fun CompanionScreen(
         // BATTLE tab: touch Controls (Gen 4 style) vs. info-dense Panel — see
         // BattleControlsScreen.kt. Resets to Controls each time the BATTLE tab
         // becomes available (a fresh battle), matching selectedLabel's own reset.
-        var battleShowControls by remember { mutableStateOf(settings?.battleInfoFirst != true) }
+        // BATTLE INFO off: the battle buttons alone, no INFO / SUGGESTIONS and no move ratings.
+        val battleInfo = settings?.battleInfo != false
+        val opensOnButtons = settings?.battleInfoFirst != true || !battleInfo
+        var battleShowControls by remember { mutableStateOf(opensOnButtons) }
         // BATTLE tab's SUGGESTIONS pane - see SuggestionsScreen.kt. A plain
         // flag rather than another battleInputState-driven sub-screen since
         // it's pure information (ranks the whole party, not just whoever's
@@ -306,7 +310,7 @@ fun CompanionScreen(
                     selectedLabel = preBattleTab ?: "PARTY"
                     preBattleTab = null
                 }
-                if (battle) battleShowControls = settings?.battleInfoFirst != true
+                if (battle) battleShowControls = opensOnButtons
                 showSuggestions = false; showBattleStats = false
                 seenFoes.clear(); selectedFoe = null
                 focusSeen.clear()
@@ -326,12 +330,13 @@ fun CompanionScreen(
         }
         // The window over the game (one screen): no battle controls, the game's own menu is right there.
         val canUseControls = battleInput != null && !snapshot.isDoubleBattle && isMyTurn && !LocalCompanionWindow.current
-        val showHints = settings?.showHints ?: true
+        val hintsOn = settings?.showHints ?: true
+        val showHints = hintsOn && battleInfo
         val showFoeIvs = settings?.showFoeIvs ?: false
         // The move advice (PARTY > LEARN, a TM's party row on ITEMS): the original games for now.
         val learnContext = snapshot.pokedex?.tables
             ?.takeIf { com.pokedaisy.app.companion.data.MoveLearning.available(it, snapshot.guideTables) }
-            ?.let { LearnContext(it, snapshot.guideTables, snapshot.items, showHints) }
+            ?.let { LearnContext(it, snapshot.guideTables, snapshot.items, hintsOn) }
         // FOE DETAILS: the button's last state, for every battle after.
         var foeDetails by remember { mutableStateOf(settings?.foeDetails ?: false) }
         val current = if (selectedLabel in tabs || selectedLabel in hiddenTabs) selectedLabel else tabs[0]
@@ -355,7 +360,7 @@ fun CompanionScreen(
             popupReturn = null
             if (title != current) backTab = current
             selectedLabel = title; detailIndex = null; showSuggestions = false; showBattleStats = false; dexUi.open = null
-            if (title == "BATTLE") battleShowControls = settings?.battleInfoFirst != true
+            if (title == "BATTLE") battleShowControls = opensOnButtons
         }
         // The window over the game (one screen): L / R step along the bar (round, like the game's own pages), from the gear
         // when a tab opened from MORE is up. Under everything a tab registers, so a page of its own can take them.
@@ -389,6 +394,11 @@ fun CompanionScreen(
                 AppBackdrop()
             } else {
                 GameBackdrop(game)
+                // The BATTLE tab: the DS battle screens' mint and Poké Ball (a Game Boy game keeps its own plain look).
+                val battleBackdrop by androidx.compose.animation.core.animateFloatAsState(
+                    if (current == "BATTLE" && !game.isGameBoyGame) 1f else 0f, tween(220), label = "battle-backdrop",
+                )
+                if (battleBackdrop > 0f) BattleBackdrop(Modifier.fillMaxSize().graphicsLayer { alpha = battleBackdrop })
                 AnimatedVisibility(
                     visible = current == "ITEMS" && hasItemsBackdrop(game),
                     enter = fadeIn(tween(200)), exit = fadeOut(tween(200)), label = "tab-backdrop",
@@ -631,7 +641,17 @@ fun CompanionScreen(
                             // Party slots are the game's own boxes (or FireRed-like
                             // ones) over the party-menu backdrop - no extra window
                             // behind them, and the full tab area for bigger slots.
-                            PartyScreen(snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) })
+                            var swapNotice by remember { mutableStateOf<ItemNotice?>(null) }
+                            PartyScreen(
+                                snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) },
+                                onSwap = itemUse?.takeIf { it.canReorderParty() }?.let { use ->
+                                    { a, b -> use.reorderParty(a, b) { r -> partySwapMessage(r)?.let { swapNotice = ItemNotice(0, it, ok = false) } } }
+                                },
+                            )
+                            // In a box of its own: this pane stretches what's put straight in it.
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                                ItemNoticeHost(swapNotice, rememberGbaTextMetrics(), Modifier.padding(top = 12.dp)) { swapNotice = null }
+                            }
                             // A DEPOSIT that went through plays over the party, then says so.
                             boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = { boxesUi.swapAnim = null }) }
                             BoxSwapNotice(boxesUi)
@@ -681,6 +701,9 @@ fun CompanionScreen(
                             // change, so the crossfade is also the "battle screen
                             // showing and hiding" animation.
                             val battlePane = when {
+                                // No INFO to fall back on: the buttons, waiting between turns, or - where there are none
+                                // (a double battle, the window over the game) - a word to use the game's own menu.
+                                !battleInfo -> if (battleInput != null && !snapshot.isDoubleBattle && !LocalCompanionWindow.current) "CONTROLS" else "PLAIN"
                                 showSuggestions -> "SUGGESTIONS"
                                 showBattleStats -> "STATS"
                                 canUseControls && battleShowControls -> "CONTROLS"
@@ -704,12 +727,16 @@ fun CompanionScreen(
                                         modifier = Modifier.fillMaxSize(),
                                         showHints = showHints,
                                         oneTapMoves = settings?.oneTapMoves ?: false,
+                                        battleInfo = battleInfo,
                                         onShowInfo = { battleShowControls = false },
                                         onShowSuggestions = { showSuggestions = true },
                                         foeParty = snapshot.enemyParty,
                                         foe = infoFoes.getOrNull(0),
                                         active = snapshot.battlePlayer,
                                     )
+                                    "PLAIN" -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text(tr("Use the game's own menu"), color = AppColors.muted, fontSize = 22.sp)
+                                    }
                                     "SUGGESTIONS" -> SuggestionsScreen(
                                         party = snapshot.party,
                                         foe = infoFoes.getOrNull(0),

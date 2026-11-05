@@ -608,6 +608,19 @@ class PokeDaisyActivity : Activity() {
             }
         }
 
+        override fun canReorderParty() = !romIsNds && !romIsGameBoy && ::engine.isInitialized && engine.running &&
+            com.pokedaisy.app.companion.data.activeNativeConfig != null
+        override fun reorderParty(a: Int, b: Int, done: (com.pokedaisy.app.companion.data.PartySwapResult) -> Unit) {
+            val cfg = com.pokedaisy.app.companion.data.activeNativeConfig
+            val snap = telemetry.snapshot.value
+            if (cfg == null || !::engine.isInitialized || !engine.running) return done(com.pokedaisy.app.companion.data.PartySwapResult.FAILED)
+            if (snap.inBattle) return done(com.pokedaisy.app.companion.data.PartySwapResult.IN_BATTLE)
+            engine.requestFieldItemJob(false) { calls, busy ->
+                val r = if (busy || engine.fieldLocked) com.pokedaisy.app.companion.data.PartySwapResult.NOT_NOW
+                else com.pokedaisy.app.companion.data.swapPartySlots(calls, cfg.playerParty, cfg.monStride, snap.party.size, a, b)
+                runOnUiThread { done(r) }
+            }
+        }
         override fun canSwapBox() = com.pokedaisy.app.companion.data.boxSwapFor(fieldItemSupport()?.fns, com.pokedaisy.app.companion.data.activeNativeConfig) != null
 
         override fun swapBox(
@@ -1619,6 +1632,7 @@ class PokeDaisyActivity : Activity() {
         override val showHints get() = Prefs(this@PokeDaisyActivity).showHints
         override fun setShowHints(on: Boolean) {
             Prefs(this@PokeDaisyActivity).showHints = on
+            battleHints.value = Prefs(this@PokeDaisyActivity).let { it.showHints && it.battleInfo }
         }
         override val appLanguage get() = Prefs(this@PokeDaisyActivity).appLanguage
         override fun setAppLanguage(code: String) {
@@ -1633,6 +1647,11 @@ class PokeDaisyActivity : Activity() {
         override val showFoeIvs get() = Prefs(this@PokeDaisyActivity).showFoeIvs
         override fun setShowFoeIvs(on: Boolean) {
             Prefs(this@PokeDaisyActivity).showFoeIvs = on
+        }
+        override val battleInfo get() = Prefs(this@PokeDaisyActivity).battleInfo
+        override fun setBattleInfo(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).battleInfo = on
+            battleHints.value = Prefs(this@PokeDaisyActivity).let { it.showHints && it.battleInfo }
         }
         override val battleInfoFirst get() = Prefs(this@PokeDaisyActivity).battleInfoFirst
         override fun setBattleInfoFirst(on: Boolean) { Prefs(this@PokeDaisyActivity).battleInfoFirst = on }
@@ -3221,7 +3240,7 @@ class PokeDaisyActivity : Activity() {
         hudStyle.value = prefs.fieldHudStyle
         quickShown.value = prefs.quickMenuActions
         battleButtonsOn.value = prefs.battleButtons
-        battleHints.value = prefs.showHints
+        battleHints.value = prefs.showHints && prefs.battleInfo
         hudUpright.value = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
         com.pokedaisy.app.companion.ui.CompanionStatusBar.shown = prefs.statusBar && prefs.statusBarOnCompanion
         val stageLayout = statusBar.parent as? GameStageLayout
@@ -3461,7 +3480,7 @@ class PokeDaisyActivity : Activity() {
                     ) {
                         com.pokedaisy.app.companion.ui.DsBattleMenu(
                             snap, dsBattleMenu, battleInput, coreFrame.value, shown = dsStripShown.value, active = dsStripActive.value,
-                            gameFills = dsFill.value,
+                            gameFills = dsFill.value, hints = battleHints.value,
                         )
                     }
                     // The menu's D-pad: with no plain view focused, Android takes the first press after a touch to leave

@@ -27,7 +27,7 @@ object RomArt {
     const val DIR = "rom-art"
 
     /** Bump when [OUTPUTS] grows, so ROMs scanned before get scanned again. */
-    private const val SCAN_VERSION = 26
+    private const val SCAN_VERSION = 27
 
     /** Bumped whenever new art lands on disk, so loaders can retry. */
     val updates: StateFlow<Int> get() = _updates
@@ -153,7 +153,7 @@ object RomArt {
                 "mariomon", "quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67", "quetzal_johto", "dreamstone", "wishes", "monomyth",
                 "tr3_kanto", "tr3_sevii123", "tr3_sevii45", "tr3_sevii67", "tr3_johto", "tr3_hoenn", "tr3_sinnoh").map { "regionmap/$it.png" } +
             PLAYER_ICONS.map { "regionmap/${it.first}.png" } +
-            listOf(BAG_STARS_SOULGOLD, HOLD_ICONS) +
+            listOf(BAG_STARS_SOULGOLD, HOLD_ICONS, TYPE_TAGS_FIRERED, TYPE_TAGS_EMERALD) +
             TrainerCardArt.BLOBS.map { rawPath(it) }
     }
 
@@ -373,6 +373,9 @@ object RomArt {
 
     /** The party menu's held-item marker: an item (top 8x8), Mail (bottom). */
     const val HOLD_ICONS = "partyfr/hold_icons.png"
+    /** The games' type tags: the 128x128 sheet their move lists draw 32x12 tags from (TypeBadge knows where each is). */
+    const val TYPE_TAGS_FIRERED = "typetags/firered.png"
+    const val TYPE_TAGS_EMERALD = "typetags/emerald.png"
 
     /** Where a European Emerald's party art goes: partyem_<es|de|fr|it>. */
     fun emeraldPartyDir(lang: String) = "partyem_$lang"
@@ -415,6 +418,8 @@ object RomArt {
         }
         cfru(found, out)
         // The held-item marker (an item over Mail, 8x8 each): FireRed's bytes, Emerald's the same; every slot style uses it.
+        if (has(RomBlob.FR_TYPE_TAGS_GFX, RomBlob.FR_TYPE_TAGS_PAL)) out[TYPE_TAGS_FIRERED] = sprite(d(RomBlob.FR_TYPE_TAGS_GFX), palette(d(RomBlob.FR_TYPE_TAGS_PAL)), 128, 128)
+        if (has(RomBlob.EM_TYPE_TAGS_GFX, RomBlob.EM_TYPE_TAGS_PAL)) out[TYPE_TAGS_EMERALD] = sprite(d(RomBlob.EM_TYPE_TAGS_GFX), palette(d(RomBlob.EM_TYPE_TAGS_PAL)), 128, 128)
         if (has(RomBlob.FR_HOLD_GFX, RomBlob.FR_HOLD_PAL)) out[HOLD_ICONS] = sprite(d(RomBlob.FR_HOLD_GFX), palette(d(RomBlob.FR_HOLD_PAL)), 8, 16)
         if (has(RomBlob.FR_REGION_GFX, RomBlob.FR_REGION_PAL)) {
             val tiles = d(RomBlob.FR_REGION_GFX)

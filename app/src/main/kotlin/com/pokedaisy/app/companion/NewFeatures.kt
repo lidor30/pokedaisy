@@ -134,6 +134,8 @@ object NewFeatures {
     const val COOP = "coop"
 
     /** Every feature that gets the tag. */
+    /** SETTINGS > BATTLE INFO: off, only the battle buttons. */
+    const val BATTLE_INFO = "battle_info"
     /** SETTINGS > BATTLE VIEW: the BATTLE tab opens on INFO. */
     const val BATTLE_VIEW = "battle_view"
     /** Settings > GAME NAMES: the library by file name. */
@@ -148,7 +150,7 @@ object NewFeatures {
         COMPANION_TAB, REUSABLE_TMS, SHINY_ODDS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
         GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE,
-        AUDIO_EFFECTS, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND,
+        AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND,
     )
 
     private const val DAYS = 7

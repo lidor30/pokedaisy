@@ -58,14 +58,21 @@ import androidx.compose.runtime.setValue
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.ui.focus.onFocusChanged
 import androidx.compose.foundation.interaction.MutableInteractionSource
+import androidx.compose.ui.zIndex
+import androidx.compose.ui.layout.onGloballyPositioned
+import androidx.compose.ui.layout.boundsInParent
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.foundation.gestures.detectDragGesturesAfterLongPress
 
 private const val PARTY_MAX = 6
+/** A slot picked up to drag stands a little larger. */
+private const val DRAGGED_SLOT_SCALE = 1.06f
 
 /** The PARTY tab: the lead under the cursor, a tap opens that Pokémon's summary; what each one holds on a tag in its
  * corner, as ITEMS' GIVE pick shows it. */
 @Composable
-fun PartyScreen(party: List<MonView>, onMonClick: (MonView) -> Unit) {
-    PartyGrid(party, selected = 0, onSlotClick = onMonClick) { mon ->
+fun PartyScreen(party: List<MonView>, onMonClick: (MonView) -> Unit, onSwap: ((Int, Int) -> Unit)? = null) {
+    PartyGrid(party, selected = 0, onSlotClick = onMonClick, onDragSwap = onSwap) { mon ->
         // NUZLOCKE: a Pokémon that fainted once carries a gravestone beside what it holds.
         val dead = com.pokedaisy.app.companion.Nuzlocke.isDead(mon.personality)
         if (mon.heldItemId != 0 || dead) Row(
@@ -100,9 +107,22 @@ fun PartyGrid(
     modifier: Modifier = Modifier.fillMaxSize(),
     sound: Boolean = true,
     dimmed: (MonView) -> Boolean = { false },
+    /** A long press picks a slot up and a drop on another Pokémon trades them; null = slots stay put. */
+    onDragSwap: ((Int, Int) -> Unit)? = null,
     badge: @Composable BoxScope.(MonView) -> Unit = {},
 ) {
     val slots: List<MonView?> = (0 until PARTY_MAX).map { party.getOrNull(it) }
+    // The slot being dragged, how far it has come, the slot under it, and each slot's place in the grid.
+    var dragFrom by remember { mutableStateOf(-1) }
+    var dragBy by remember { mutableStateOf(androidx.compose.ui.geometry.Offset.Zero) }
+    var dropOn by remember { mutableStateOf(-1) }
+    val places = remember { arrayOfNulls<androidx.compose.ui.geometry.Rect>(PARTY_MAX) }
+    val swap by androidx.compose.runtime.rememberUpdatedState(onDragSwap)
+    val count by androidx.compose.runtime.rememberUpdatedState(party.size)
+    fun under(i: Int): Int {
+        val centre = (places[i] ?: return -1).center + dragBy
+        return places.indices.firstOrNull { it != i && it < count && places[it]?.contains(centre) == true } ?: -1
+    }
     // FireRed/Emerald, Heart and Soul and the CFRU hacks get the game's own party-slot look
     // (drawn from the game's own data); every other game - or one whose art no
     // ROM has supplied yet (RomArt) - gets a FireRed-like slot drawn from a [PartyPalette].
@@ -121,11 +141,35 @@ fun PartyGrid(
         modifier = modifier,
         content = {
             slots.forEachIndexed { i, mon ->
-                val isSelected = (if (focused >= 0) i == focused else i == selected) && mon != null
+                val isSelected = (if (dropOn >= 0) i == dropOn else if (focused >= 0) i == focused else i == selected) && mon != null
                 val dim = mon != null && dimmed(mon)
                 val onClick = { if (!dim) mon?.let(onSlotClick); Unit }
                 Box(
                     (if (dim) Modifier.graphicsLayer { alpha = DIMMED_SLOT_ALPHA } else Modifier)
+                        .onGloballyPositioned { places[i] = it.boundsInParent() }
+                        .zIndex(if (dragFrom == i) 1f else 0f)
+                        .graphicsLayer {
+                            if (dragFrom == i) {
+                                translationX = dragBy.x
+                                translationY = dragBy.y
+                                scaleX = DRAGGED_SLOT_SCALE
+                                scaleY = DRAGGED_SLOT_SCALE
+                            }
+                        }
+                        .then(
+                            if (onDragSwap != null && mon != null) Modifier.pointerInput(i) {
+                                detectDragGesturesAfterLongPress(
+                                    onDragStart = { dragFrom = i; dragBy = androidx.compose.ui.geometry.Offset.Zero; dropOn = -1 },
+                                    onDrag = { change, by -> change.consume(); dragBy += by; dropOn = under(i) },
+                                    onDragEnd = {
+                                        val to = under(i)
+                                        dragFrom = -1; dropOn = -1
+                                        if (to >= 0) swap?.invoke(i, to)
+                                    },
+                                    onDragCancel = { dragFrom = -1; dropOn = -1 },
+                                )
+                            } else Modifier,
+                        )
                         // The D-pad starts on the selected slot.
                         .focusStart(i == selected && mon != null)
                         .onFocusChanged { if (it.hasFocus) focused = i else if (focused == i) focused = -1 },
