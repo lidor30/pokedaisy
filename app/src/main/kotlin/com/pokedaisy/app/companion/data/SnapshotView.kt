@@ -384,6 +384,20 @@ data class BoxView(val name: String, val wallpaper: Int, val mons: List<MonView?
     val count: Int get() = mons.count { it != null }
 }
 
+/** [dexHoldings]' value for a species in the party; a box is its number, from 1. */
+const val DEX_IN_PARTY = 0
+
+/** Where the save keeps each species, for the DEX's rows (GitHub discussion #312): the party first, then the first box
+ * holding one. Null where the boxes aren't read, since a Pokémon missing from the party could be in them. Eggs don't
+ * count: the entry isn't caught yet. */
+fun dexHoldings(party: List<MonView>, boxes: BoxesView?): Map<Int, Int>? {
+    if (boxes == null) return null
+    val out = HashMap<Int, Int>()
+    boxes.boxes.forEachIndexed { i, box -> box.mons.forEach { m -> if (m != null && !m.isEgg) out.putIfAbsent(m.species, i + 1) } }
+    party.forEach { if (!it.isEgg) out[it.species] = DEX_IN_PARTY }
+    return out
+}
+
 // The last boxes turned into views: the reader hands back the same PcBoxes while the storage is unchanged.
 private var lastBoxes: Pair<PcBoxes, BoxesView>? = null
 

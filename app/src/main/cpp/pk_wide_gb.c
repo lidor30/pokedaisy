@@ -1,5 +1,5 @@
-// PokeDaisy — EXPAND on the Game Boy (pk_wide_gb.c): Pokémon Yellow's and Crystal's overworld rebuilt past the 160 x 144
-// screen.
+// PokeDaisy — EXPAND on the Game Boy (pk_wide_gb.c): the overworld of Pokémon Yellow, Crystal and the hacks in GB_ROMS
+// rebuilt past the 160 x 144 screen.
 //
 // pk_wide.c hands every call over to this file while a Game Boy game is configured (pk_wide_gb_configure). The GBA's
 // rebuild reads a map of metatiles; Gen 1 and Gen 2 keep less, and all of it at hand:
@@ -64,7 +64,7 @@ enum {
                           // one less before the Pokédex); Crystal's wMenuSelection (STARTMENUITEM_*, 5 OPTION)
     GB_EVENT_FLAGS,       // wEventFlags (Gen 1: EVENT_GOT_POKEDEX is flag 37; Crystal: the connected maps' objects' flags)
     GB_PAL_MAP,           // Crystal: wTilesetPalettes, the tileset's palette map (in bank GB_PAL_BANK)
-    GB_PAL_BANK,          // Crystal: the palette maps' ROM bank
+    GB_PAL_BANK,          // Crystal: the palette maps' ROM bank; Crystal Clear: where RAM holds it (a tileset has its own)
     GB_OBJECTS,           // Crystal: wObjectStructs, 13 x 0x28 (the player first)
     GB_MAP_OBJECTS,       // Crystal: wMapObjects, 16 x 16 (the player first)
     GB_OBJECT_MASKS,      // Crystal: wObjectMasks, a byte per map object (non-zero: not shown)
@@ -76,6 +76,7 @@ enum {
     GB_HSCX,              // Crystal: hSCX (HRAM; hSCY follows): the scroll the next frame is drawn with
     GB_TIME_OF_DAY,       // Crystal: wTimeOfDay (0 morning, 1 day, 2 night)
     GB_HOURS,             // Crystal: hHours (HRAM)
+    GB_CLEAR,             // Crystal Clear (1): a byte of attributes per tile id, its own object sprites
     GB_CONFIG
 };
 
@@ -100,6 +101,17 @@ static const struct GbGame { uint32_t crc; int gen; uint32_t a[GB_CONFIG]; } GB_
     { 0x12E97FB4u, 2, { 0, 0, 0xC800, 0xD19F, 0xDCC2, 0xD1A1, 0xD1A4, 0xD1A9, 0xD1B3, 0xD1E7, 0xD1A8, 0xD238, 0xD0F8, 0, 0,
                         GB_LINEAR(0x25, 0x4000), 0, 0xCF74, 0xDA7D, 0xD1F1, 0x13, 0xD4E1, 0xD729, 0xD829, 0xD15F, 0xD839,
                         GB_LINEAR(0x05, 0x4586), GB_LINEAR(0x01, 0x4273), 0xFF9E, 0xFFCF, 0xD274, 0xFF94 } },
+    // Pokémon Crystal Clear v2.6.0 and v2.5.11, each Standard Colors and Color Filter: Crystal's RAM (scripts/port_gen1.py)
+    // but the tileset header (the palette map's bank at D1E4, its pointer a byte before Crystal's); the ROM tables from its
+    // code, the same in all four. GB_CLEAR's differences: gbPalAttr, gbCrystalSprite, gbBlock and gbLz.
+#define GB_CRYSTAL_CLEAR { 0, 0, 0xC800, 0xD194, 0xDCB7, 0xD196, 0xD199, 0xD19E, 0xD1A8, 0xD1DC, 0xD19D, 0xD22D, 0xD0ED, 0, 0, \
+                           GB_LINEAR(0x25, 0x4000), 0, 0xCF74, 0xDA72, 0xD1E5, 0xD1E4, 0xD4D6, 0xD71E, 0xD81E, 0xD154, 0xD82E, \
+                           GB_LINEAR(0x05, 0x4B92), GB_LINEAR(0x01, 0x459D), 0xFF9E, 0xFFCF, 0xD269, 0xFF94, 1 }
+    { 0x17617CDEu, 2, GB_CRYSTAL_CLEAR },
+    { 0x58F40DE1u, 2, GB_CRYSTAL_CLEAR },
+    { 0x5AF9A949u, 2, GB_CRYSTAL_CLEAR },
+    { 0xFC33D126u, 2, GB_CRYSTAL_CLEAR },
+#undef GB_CRYSTAL_CLEAR
 };
 
 #define GB_OW_MAX 1300           // wOverworldMap's size
@@ -150,6 +162,7 @@ struct GbConn {
     int offX, offY;      // the connected map's block (0, 0) is wOverworldMap's block (offX, offY)
     int w, h;
     uint32_t blocks;     // its blocks (ROM, linear)
+    int lz;              // Crystal Clear: their slot in gbLz
     uint32_t objs;       // Crystal: its object events (ROM, linear; 13 bytes each), nObjs of them
     int nObjs;
 };
@@ -189,11 +202,87 @@ static const uint8_t* gbCrystalMapHeader(int group, int number) {
     return gbRom(gbLinear((int) bank, (uint16_t) (g[0] | g[1] << 8)) + 9 * (uint32_t) (number - 1), 9);
 }
 
+// Crystal Clear's maps keep their blocks LZ-compressed in ROM (the game unpacks a map into WRAM bank 6 at D000, and a
+// connection's strip pointer is into that): the connected maps' are unpacked here, once per map. Three snapshots can
+// hold four maps each; one that lost its slot draws the background block until it's taken again.
+#define GB_LZ_SLOTS 12
+#define GB_LZ_BASE 0xD000
+
+static struct GbLz { uint32_t at; int n; uint8_t b[GB_OW_MAX]; } gbLz[GB_LZ_SLOTS];
+static int gbLzNext;
+
+/** pokecrystal's LZ (home/decompress.asm) from ROM offset `at`: the bytes written, or -1 if it isn't one that fits. */
+static int gbLzDecode(uint32_t at, uint8_t* out, int cap) {
+    const uint8_t* d = gbB->memory.rom;
+    const uint32_t size = gbB->memory.romSize;
+    int n = 0;
+    if (!d) return -1;
+    while (at + 2 < size) {
+        int c = d[at], cmd, len;
+        if (c == 0xFF) return n;
+        if ((c & 0xE0) == 0xE0) {
+            cmd = (c << 3) & 0xE0;
+            len = ((c & 3) << 8 | d[at + 1]) + 1;
+            at += 2;
+        } else {
+            cmd = c & 0xE0;
+            len = (c & 0x1F) + 1;
+            at++;
+        }
+        if (n + len > cap || at + (uint32_t) len + 2 > size) return -1;
+        switch (cmd) {
+        case 0x00:   // the bytes as they are
+            memcpy(out + n, d + at, (size_t) len);
+            at += (uint32_t) len;
+            n += len;
+            break;
+        case 0x20:   // one byte, repeated
+            memset(out + n, d[at++], (size_t) len);
+            n += len;
+            break;
+        case 0x40:   // two bytes in turn
+            for (int k = 0; k < len; k++) out[n++] = d[at + (uint32_t) (k & 1)];
+            at += 2;
+            break;
+        case 0x60:   // zeros
+            memset(out + n, 0, (size_t) len);
+            n += len;
+            break;
+        default: {   // from what's already out: as it is (0x80), its bits reversed (0xA0), backwards (0xC0)
+            int src = d[at] & 0x80 ? n - (d[at] & 0x7F) - 1 : d[at] << 8 | d[at + 1];
+            at += d[at] & 0x80 ? 1 : 2;
+            if (src < 0 || src >= n || (cmd == 0xC0 && src - len + 1 < 0)) return -1;
+            for (int k = 0; k < len; k++) {
+                uint8_t b = out[cmd == 0xC0 ? src - k : src + k];
+                if (cmd == 0xA0) {
+                    b = (uint8_t) ((b & 0xF0) >> 4 | (b & 0x0F) << 4);
+                    b = (uint8_t) ((b & 0xCC) >> 2 | (b & 0x33) << 2);
+                    b = (uint8_t) ((b & 0xAA) >> 1 | (b & 0x55) << 1);
+                }
+                out[n++] = b;
+            }
+        }
+        }
+    }
+    return -1;
+}
+
+/** The slot holding the blocks at ROM offset `at`, unpacked if none does. */
+static int gbLzLoad(uint32_t at) {
+    for (int i = 0; i < GB_LZ_SLOTS; i++)
+        if (gbLz[i].at == at) return i;
+    int i = gbLzNext;
+    gbLzNext = (gbLzNext + 1) % GB_LZ_SLOTS;
+    gbLz[i].at = at;
+    gbLz[i].n = gbLzDecode(at, gbLz[i].b, GB_OW_MAX);
+    return i;
+}
+
 /** A connected map's blocks: where its block (0, 0) sits in the overworld array, its size and its blocks in ROM.
  * `src` is the strip's first block in that map's blocks (an address in its bank), `dst` where it went in the array. */
 static void gbConnect(struct GbConn* c, const struct GbSnap* s, int bank, uint16_t blocks, int cw, int ch, uint16_t src,
                       uint16_t dst) {
-    int from = (int) src - (int) blocks;
+    int from = (int) src - (gbCfg[GB_CLEAR] ? GB_LZ_BASE : (int) blocks);
     int to = (int) dst - (int) gbCfg[GB_OVERWORLD];
     int W = s->w + 6;
     if (to < 0 || to >= W * (s->h + 6) || cw <= 0 || ch <= 0) return;
@@ -203,7 +292,18 @@ static void gbConnect(struct GbConn* c, const struct GbSnap* s, int bank, uint16
     c->w = cw;
     c->h = ch;
     c->blocks = gbLinear(bank, blocks);
-    c->on = gbRom(c->blocks, (uint32_t) (cw * ch)) != NULL;
+    if (gbCfg[GB_CLEAR]) {
+        c->lz = gbLzLoad(c->blocks);
+        c->on = gbLz[c->lz].n >= cw * ch;
+    } else {
+        c->on = gbRom(c->blocks, (uint32_t) (cw * ch)) != NULL;
+    }
+}
+
+/** A connected map's block `at`, or NULL. */
+static const uint8_t* gbConnBlock(const struct GbConn* c, int at) {
+    if (!gbCfg[GB_CLEAR]) return gbRom(c->blocks + (uint32_t) at, 1);
+    return gbLz[c->lz].at == c->blocks ? &gbLz[c->lz].b[at] : NULL;
 }
 
 static void gbTake(struct GbSnap* s) {
@@ -269,7 +369,7 @@ static void gbTake(struct GbSnap* s) {
         s->battle = s->battle || gbHram(A[GB_VBLANK_MODE]) == 1;
         s->scx = gbHram(A[GB_HSCX]);
         s->scy = gbHram(A[GB_HSCX] + 1);
-        s->palMap = gbLinear((int) A[GB_PAL_BANK], gbRam16(A[GB_PAL_MAP]));
+        s->palMap = gbLinear(A[GB_CLEAR] ? gbRam(A[GB_PAL_BANK]) : (int) A[GB_PAL_BANK], gbRam16(A[GB_PAL_MAP]));
         gbRamCopy(s->objs, A[GB_OBJECTS], (int) sizeof(s->objs));
         gbRamCopy(s->mapObjs, A[GB_MAP_OBJECTS], (int) sizeof(s->mapObjs));
         gbRamCopy(s->masks, A[GB_OBJECT_MASKS], (int) sizeof(s->masks));
@@ -277,7 +377,7 @@ static void gbTake(struct GbSnap* s) {
         gbRamCopy(s->vars, A[GB_VAR_SPRITES], (int) sizeof(s->vars));
         s->text = (gbRam(A[GB_FONT_LOADED]) >> 6) & 1;   // TEXT_STATE_F: a text box or a menu is up
         s->startItem = gbRam(A[GB_START_ITEM]);
-        s->ok = gbRom(s->blockset, 256 * 16) != NULL && gbRom(s->palMap, 128) != NULL;
+        s->ok = gbRom(s->blockset, 256 * 16) != NULL && gbRom(s->palMap, A[GB_CLEAR] ? 256 : 128) != NULL;
         return;
     }
     gbRamCopy(s->spr1, A[GB_SPRITES1], 256);
@@ -297,8 +397,9 @@ static int gbBlock(const struct GbSnap* s, int bx, int by) {
     int b = gbBlockRaw(s, bx, by);
     if (gbGen != 2) return b;
     // Crystal's LoadMetatiles: block 0 is the border block (the rows above and below a map without a connection there
-    // are left at 0), and an id wraps at 128 (its doubling into 8 bits).
-    return (b ? b : s->bgBlock) & 0x7F;
+    // are left at 0), and an id wraps at 128 (its doubling into 8 bits; Crystal Clear doubles in 16 and has all 256).
+    b = b ? b : s->bgBlock;
+    return gbCfg[GB_CLEAR] ? b : b & 0x7F;
 }
 static int gbBlockRaw(const struct GbSnap* s, int bx, int by) {
     int W = s->w + 6, H = s->h + 6;
@@ -309,7 +410,7 @@ static int gbBlockRaw(const struct GbSnap* s, int bx, int by) {
         if (!c->on || !side[d]) continue;
         int cx = bx - c->offX, cy = by - c->offY;
         if (cx < 0 || cy < 0 || cx >= c->w || cy >= c->h) continue;
-        const uint8_t* b = gbRom(c->blocks + (uint32_t) (cy * c->w + cx), 1);
+        const uint8_t* b = gbConnBlock(c, cy * c->w + cx);
         if (b) return b[0];
     }
     return s->bgBlock;
@@ -325,6 +426,23 @@ static int gbTile(const struct GbSnap* s, int tx, int ty) {
 
 /** Crystal: a tile byte's attributes, from the palette map (palette in bits 0-2, VRAM bank 1 in bit 3). */
 static inline uint8_t gbPalAttr(const struct GbSnap* s, int t) {
+    if (gbCfg[GB_CLEAR]) {
+        // A byte of attributes per tile id, but for the floor of the player's room (tile 1 of tileset $14): it takes
+        // another tile's, the carpet's (wDecoCarpet) or with none down the home's, from a table at $2E90 (00:2E3A's code;
+        // its bit 7 swaps the VRAM bank).
+        int flip = 0;
+        if (t == 1 && s->tileset == 0x14) {
+            uint8_t carpet = (uint8_t) (gbRam(0xDC10) - 7);
+            const uint8_t* home = gbRom(0x2E90u + (uint8_t) (gbRam(0xD9C2) - 0x1D), 1);
+            if (gbRam(0xDC10)) t = (uint8_t) ((carpet << 4 | carpet >> 4) + 0x0D);
+            else if (home) {
+                t = *home;
+                flip = t & 0x80 ? 8 : 0;
+            }
+        }
+        const uint8_t* b = gbRom(s->palMap + (uint32_t) t, 1);
+        return b ? (uint8_t) (*b ^ flip) : 0;
+    }
     const uint8_t* p = gbRom(s->palMap + ((uint32_t) t >> 1), 1);
     return p ? (uint8_t) ((t & 1 ? *p >> 4 : *p) & 0x0F) : 0;
 }
@@ -609,6 +727,16 @@ static void gbObjsOffScreen(const struct GbSnap* s, int ox, int oy) {
 /** Crystal: a sprite's type (1 walking, 2 standing, 3 still: one frame) and palette, as _GetSpritePalette finds them:
  * the variable sprites through wVariableSprites, a Pokémon's (SPRITE_POKEMON on) walking in palette 0. */
 static bool gbCrystalSprite(const struct GbSnap* s, int sprite, int* type, int* pal) {
+    if (gbCfg[GB_CLEAR]) {
+        // 5 bytes a sprite, no palette: palette 0 but for sprite E2 (02:4189's code). From DE up they all walk.
+        *pal = sprite == 0xE2;
+        *type = 1;
+        if (sprite >= 0xDE) return sprite != 0;
+        const uint8_t* d = sprite ? gbRom(gbCfg[GB_SPRITE_DATA] + 5 * (uint32_t) (sprite - 1), 5) : NULL;
+        if (!d) return false;
+        *type = d[4];
+        return true;
+    }
     for (int k = 0; k < 4 && sprite >= 0x8C; k++) sprite = sprite - 0x8C < (int) sizeof(s->vars) ? s->vars[sprite - 0x8C] : 0;
     if (!sprite || sprite >= 0x8C) return false;
     if (sprite >= 0x67) { *type = 1; *pal = 0; return true; }
@@ -896,6 +1024,8 @@ int pk_wide_gb_configure(uint32_t crc) {
             gbGen = GB_ROMS[i].gen;
         }
     gbAttrBlockset = 0;
+    memset(gbLz, 0, sizeof(gbLz));
+    gbLzNext = 0;
     pk_wide_gb_reset();
     return gbCfg != NULL;
 }

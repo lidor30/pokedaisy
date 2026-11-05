@@ -3,7 +3,7 @@ title: Pokédex
 summary: Your Pokédex with seen and caught marks, and full entries with stats, evolutions, where to catch each Pokémon and the moves it learns.
 section: companion
 order: 7
-keywords: [pokedex, dex, entry, seen, caught, owned, national, regional, evolution, evolve, how to evolve, where to catch, location, encounter, learnset, level up moves, tm, base stats, ability, egg group, catch rate]
+keywords: [search, find, filter, by type, by name, where is, box, boxes, pc, pokedex, dex, entry, seen, caught, owned, national, regional, evolution, evolve, how to evolve, where to catch, location, encounter, learnset, level up moves, tm, base stats, ability, egg group, catch rate]
 ---
 
 The `DEX` tab is your Pokédex, read from your save, with entries that go further than the game's own: how each Pokémon evolves, where to catch it and which moves it learns, all from your game's own data. It's the page to check when you're wondering "does this one evolve?" or "where do I find that?".
@@ -14,9 +14,13 @@ The left side shows your counts and filters:
 
 - `SEEN` and `OWNED`: how many you've seen and caught in the dex you're looking at.
 - A filter list with the count for each: `ALL`, `CAUGHT`, `SEEN ONLY` (seen but not caught yet) and `NOT SEEN`. Tap one to narrow the list.
+- `TYPE`: shows only the Pokémon of one type. A Pokémon counts once you've seen it, as in the games' own dex search.
+- `NAME`: shows only the names starting with one letter, handy for finding a Pokémon without scrolling.
 - A button that flips between the regional dex and the `NATIONAL DEX`, in games that have both. It starts on the one your save is using: regional until the game gives you the national one.
 
 The right side is the numbered list. A red ball marks a Pokémon you've caught, a grey one a Pokémon you've only seen. Ones you haven't seen are greyed out.
+
+In games with a `BOXES` tab, a Pokémon you've caught also says where it is: `PARTY`, the box holding the first one (`BOX 3`), or `MISSING` if your party and boxes have none, because it evolved or you let it go.
 
 ## An entry
 

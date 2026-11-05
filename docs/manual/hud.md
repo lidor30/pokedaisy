@@ -10,7 +10,7 @@ Modern Pokémon games keep the important things on screen while you explore: you
 
 It's on by default. Turn it off, or change how it looks, in `HUD`, in the `SCREEN` group of Settings on either screen.
 
-On the Game Boy it shows in Yellow (the English cart), Yellow Legacy, Crystal and Crystal Legacy too, with or without `EXPAND`. Those games have no pictures for their items, so your balls show as a plain drawn ball with the count, and the bag lists your items by name, the way their own bag does.
+On the Game Boy it shows in Yellow (the English cart), Yellow Legacy, Crystal, Crystal Legacy and Crystal Clear too, with or without `EXPAND`. Those games have no pictures for their items, so your balls show as a plain drawn ball with the count, and the bag lists your items by name, the way their own bag does.
 
 ## What it shows
 

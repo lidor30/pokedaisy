@@ -52,7 +52,7 @@ fun GbaPartySlot(
     val sheetImg = remember(sheet) { sheet?.asImageBitmap() }
     // The icon's two-frame animation, at the game's HP-based speed.
     val ticks = mon?.let { iconFrameTicks(st, it) } ?: 0
-    val iconPhase by rememberBlink(gbaFramesMs(ticks), enabled = ticks > 0 && CompanionTweaks[CompanionTweaks.Tweak.PARTY_ICONS_MOVE], label = "party-icon")
+    val iconPhase by rememberBlink(partyIconPoseMs(ticks), enabled = ticks > 0 && CompanionTweaks[CompanionTweaks.Tweak.PARTY_ICONS_MOVE])
     val phase = if (iconPhase) 1 else 0
 
     Canvas(modifier = modifier.slotClickable(sound, enabled = mon != null, onClick = onClick)) {

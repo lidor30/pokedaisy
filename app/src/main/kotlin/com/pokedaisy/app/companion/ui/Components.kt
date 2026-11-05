@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -169,6 +170,26 @@ fun MatchupChipRow(heading: String, list: List<TypeMatchup>) {
 }
 
 /** A type badge with its multiplier ("FIRE 2x"). */
+/** The move's category beside its [TypeBadge] ([moveKind]); nothing where the game's rule isn't known. */
+@Composable
+fun MoveKindIcon(mv: com.pokedaisy.app.companion.data.MoveView, m: GbaTextMetrics) {
+    val kind = com.pokedaisy.app.companion.data.moveKind(mv) ?: return
+    val art = when (kind) {
+        com.pokedaisy.app.companion.data.MoveKind.PHYSICAL -> PixelIcons.movePhysical
+        com.pokedaisy.app.companion.data.MoveKind.SPECIAL -> PixelIcons.moveSpecial
+        com.pokedaisy.app.companion.data.MoveKind.STATUS -> PixelIcons.moveStatus
+    }
+    val label = com.pokedaisy.app.companion.i18n.tr(kind.label)
+    Spacer(Modifier.width(m.u * 3))
+    PixelArt(art, MOVE_KIND_COLORS, Modifier.size(m.u * 11).semantics { contentDescription = label })
+}
+
+private val MOVE_KIND_COLORS = mapOf(
+    'R' to Color(0xFFC03018), 'O' to Color(0xFFF08030), 'Y' to Color(0xFFF8D030),
+    'B' to Color(0xFF2848A8), 'C' to Color(0xFF58A0F0), 'W' to Color(0xFFF0F8FF),
+    'G' to Color(0xFF686878), 'L' to Color(0xFFB8B8C8),
+)
+
 @Composable
 fun TypeBadgeWithLabel(m: TypeMatchup, modifier: Modifier = Modifier) {
     val color = AppColors.typeColors[m.type] ?: AppColors.muted

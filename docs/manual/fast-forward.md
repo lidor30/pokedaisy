@@ -3,7 +3,7 @@ title: Fast-forward and game speed
 summary: Speed through the slow parts, set a pace that sticks for each game, slow things down, and keep the music sounding right while you do.
 section: player
 order: 1
-keywords: [ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, volume, mute, quiet, silent, equalizer, eq, jamesdsp, clock, rtc, time, day, night, storage, space]
+keywords: [instant text, text speed, dialogue, ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, volume, mute, quiet, silent, equalizer, eq, jamesdsp, clock, rtc, time, day, night, storage, space]
 ---
 
 Pokémon games have a lot of walking, text and grinding. Fast-forward runs the game several times faster so you get through it quicker, and PokeDaisy tries to get out of your way when speed would be a problem: in menus, on the map, and with the music.
@@ -65,6 +65,15 @@ The `SPEED CYCLE` hotkey (L2 on a controller, or the = key) steps through `1×`,
 Each one is `SAME` (the default: it follows `GAME SPEED`, like walking around does) or `1×` up to `4×`. These apply while fast-forward is off; turn fast-forward on and it wins everywhere. A sped-up scene's music follows `FF MUSIC`, the same as fast-forward's.
 
 `TEXT SPEED` shows `N/A` on a game PokeDaisy can't read text boxes in yet. `BIKE SPEED` and `SURF SPEED` show `N/A` until you've walked around for a moment in a game, and stay that way on hacks where PokeDaisy can't tell yet whether you're riding or surfing: Heart and Soul, SoulGold, Too Many Types 2, Emerald Rogue and Quetzal.
+
+## Instant text
+
+Turn on `INSTANT TEXT` in the companion's `SETTINGS`, `GAMEPLAY` group, and the words in a text box appear at once, in conversations and in battles alike. Nothing else changes: the music and the rest of the game stay at their normal speed, and a box still waits for your press where the game would. That makes it different from `TEXT SPEED`, which runs the whole game faster while a box is up.
+
+It changes the game while it runs, never your ROM file or your save, and you can switch it off at any time.
+
+> [!NOTE]
+> `INSTANT TEXT` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire and in many hacks built on their code. Where it can't work the row shows `N/A`.
 
 ## Slow motion
 

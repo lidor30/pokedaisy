@@ -683,6 +683,7 @@ private fun MoveRow(mv: MoveView?, m: GbaTextMetrics, small: GbaTextMetrics, mod
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TypeBadge(mv.type)
+                MoveKindIcon(mv, m)
                 Spacer(Modifier.weight(1f))
                 Stat(tr("PWR"), powerLabel(mv.power), small)
                 Spacer(Modifier.width(u * 6))

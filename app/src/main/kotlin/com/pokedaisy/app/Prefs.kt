@@ -157,6 +157,11 @@ class Prefs(context: Context) {
         get() = p.getBoolean("reusable_tms", false)
         set(v) = p.edit().putBoolean("reusable_tms", v).apply()
 
+    /** INSTANT TEXT: a text box's words appear at once (InstantText.kt). */
+    var instantText: Boolean
+        get() = p.getBoolean("instant_text", false)
+        set(v) = p.edit().putBoolean("instant_text", v).apply()
+
     /** SHINY ODDS: a wild foe is shiny 1 in this many ([com.pokedaisy.app.companion.data.ShinyOdds]; NORMAL 8192 = the
      * game's own odds). Read through [com.pokedaisy.app.companion.data.ShinyOdds.choices]: a debug build's 1 in 4 / 1 in 1
      * count as NORMAL in a release build (PokeDaisyActivity.shinyOddsPref). */

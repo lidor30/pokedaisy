@@ -624,7 +624,10 @@ fun CompanionScreen(
                             BoxSwapNotice(boxesUi)
                         } else if (tab == "DEX" && dex != null) {
                             if (paneKey == "DEX/DETAIL") PokedexEntryScreen(dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables)
-                            else PokedexScreen(dex, dexUi)
+                            else PokedexScreen(
+                                dex, dexUi,
+                                holdings = remember(snapshot.party, pcBoxes) { com.pokedaisy.app.companion.data.dexHoldings(snapshot.party, pcBoxes) },
+                            )
                         } else if (tab == "GUIDE" && guide != null) {
                             if (noticeAccepted) GuideScreen(guide, guideUi, snapshot)
                             else GuideNotice(

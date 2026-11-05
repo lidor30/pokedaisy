@@ -206,7 +206,7 @@ private fun PartyListRow(palette: PartyPalette, mon: MonView, selected: Boolean,
     val icon = remember(sheet) { sheet?.asImageBitmap() }
     val ticks = if (mon.isEgg || mon.hp <= 0) 0 else PartySlotLayout.ICON_FRAME_TICKS[listHpLevel(mon.hp, mon.maxHp)]
     val moving = CompanionTweaks[CompanionTweaks.Tweak.PARTY_ICONS_MOVE]
-    val pose by rememberBlink(gbaFramesMs(ticks.coerceAtLeast(1)), enabled = ticks > 0 && moving, label = "list-icon")
+    val pose by rememberBlink(partyIconPoseMs(ticks), enabled = ticks > 0 && moving)
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
         val rowHeightPx = constraints.maxHeight.toFloat()
         // The Poké Ball as tall as the row, poking out of the slot's left edge (the game's party list); the icon at the

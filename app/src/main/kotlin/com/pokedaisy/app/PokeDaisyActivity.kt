@@ -174,6 +174,8 @@ class PokeDaisyActivity : Activity() {
 
     /** REUSABLE TMS: the ROM's spots that use a TM up ([com.pokedaisy.app.companion.data.ReusableTms]; empty = none). */
     private var tmSites: List<com.pokedaisy.app.companion.data.ReusableTms.Site> = emptyList()
+    /** INSTANT TEXT: the ROM's patch ([com.pokedaisy.app.companion.data.InstantText]; null = the row shows N/A). */
+    private var textPatch: com.pokedaisy.app.companion.data.InstantText.Patch? = null
     /** EXPAND's one-time offer is up on the companion ([CompanionSettings.expandOffer]). */
     private val expandOfferUp = androidx.compose.runtime.mutableStateOf(false)
     private var states: SaveStates? = null
@@ -1311,6 +1313,12 @@ class PokeDaisyActivity : Activity() {
             if (::engine.isInitialized) engine.setReusableTms(tmSites, on)
         }
         override val reusableTmsSupported get() = tmSites.isNotEmpty()
+        override val instantText get() = Prefs(this@PokeDaisyActivity).instantText
+        override fun setInstantText(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).instantText = on
+            if (::engine.isInitialized) engine.setInstantText(textPatch, on)
+        }
+        override val instantTextSupported get() = textPatch != null
         override val dsResolution get() = if (romIsNds) Prefs(this@PokeDaisyActivity).dsResolution else null
         override val dsGpuAvailable get() = GlCaps.gles32(this@PokeDaisyActivity) && MgbaCore.pkNdsGpuSupported() != 0
         override fun setDsResolution(scale: Int) {
@@ -2027,6 +2035,8 @@ class PokeDaisyActivity : Activity() {
         wildFlag = 0L
         tmSites = emptyList()
         if (::engine.isInitialized) engine.setReusableTms(tmSites, false)
+        textPatch = null
+        if (::engine.isInitialized) engine.setInstantText(null, false)
         shinyTarget = null
         if (::engine.isInitialized) engine.setShinyTarget(null)
         syncShinyAchievements()
@@ -2038,12 +2048,15 @@ class PokeDaisyActivity : Activity() {
             // REUSABLE TMS: the spots that use a TM up, by their code (none = the row shows N/A).
             val tms = com.pokedaisy.app.companion.data.ReusableTms.find(r)
             Log.i("pokedaisy", "reusable TMs: ${tms.size} site(s)")
+            val text = com.pokedaisy.app.companion.data.InstantText.find(r)
             runOnUiThread {
                 if (romData != r) return@runOnUiThread
                 wildFlag = flag
                 if (::engine.isInitialized) engine.wildFlag = flag
                 tmSites = tms
                 if (::engine.isInitialized) engine.setReusableTms(tms, Prefs(this).reusableTms)
+                textPatch = text
+                if (::engine.isInitialized) engine.setInstantText(text, Prefs(this).instantText)
             }
         }, "wild-encounters").start()
         Prefs(this).let { p ->
@@ -2373,6 +2386,7 @@ class PokeDaisyActivity : Activity() {
         e.ndsScale = p.dsResolution
         e.ndsCpuBoost = p.dsCpuBoost
         e.setReusableTms(tmSites, p.reusableTms)
+        e.setInstantText(textPatch, p.instantText)
         e.setShinyTarget(shinyTarget)
         e.shinyOdds = shinyOddsPref()
     }
@@ -3277,6 +3291,8 @@ class PokeDaisyActivity : Activity() {
             prefs.gbaColors && companionShaders,
             if (companionShaders) prefs.screenFilter else ScreenFilter.NONE,
             ScreenShaders.gridFor(prefs.screenFilter, prefs.gridStrength),
+            prefs.gbaColors && !com.pokedaisy.app.companion.LightCompanion.on,
+            if (com.pokedaisy.app.companion.LightCompanion.on) ScreenFilter.NONE else prefs.screenFilter,
         )
         view.screenEffect = ScreenShaders.effectFor(prefs.screenFilter)
         view.screenGrid = ScreenShaders.gridFor(prefs.screenFilter, prefs.gridStrength)

@@ -249,6 +249,7 @@ internal val trSettings: Map<String, Tr> = mapOf(
     "AUTO-RUN" to Tr(ja = "オートダッシュ", fr = "COURSE AUTO", de = "AUTO-RENNEN", it = "CORSA AUTO", es = "CORRER AUTO", br = "CORRIDA AUTO", pt = "CORRIDA AUTO"),
     "Holding B walks instead" to Tr(ja = "Bを おすと あるく", fr = "Maintenir B pour marcher", de = "B halten zum Gehen", it = "Tieni premuto B per camminare", es = "Mantén B para caminar", br = "Segure B para andar", pt = "Mantenha B para andar"),
     "RUN INDOORS" to Tr(ja = "なかでも ダッシュ", fr = "COURIR DEDANS", de = "DRINNEN RENNEN", it = "CORRERE DENTRO", es = "CORRER DENTRO", br = "CORRER DENTRO", pt = "CORRER DENTRO"),
+    "INSTANT TEXT" to Tr(ja = "もじ いっしゅん", fr = "TEXTE INSTANTANÉ", de = "SOFORT-TEXT", it = "TESTO ISTANTANEO", es = "TEXTO INSTANTÁNEO", br = "TEXTO INSTANTÂNEO", pt = "TEXTO INSTANTÂNEO"),
     "REUSABLE TMS" to Tr(ja = "マシン むげん", fr = "CT ILLIMITÉES", de = "TM BLEIBEN", it = "MT ILLIMITATE", es = "MT ILIMITADAS", br = "MT ILIMITADOS", pt = "MT ILIMITADOS"),
     "SWITCH" to Tr(ja = "いれかえ", fr = "ÉCHANGER", de = "TAUSCHEN", it = "SCAMBIA", es = "CAMBIAR", br = "TROCAR", pt = "TROCAR"),
     "Not right now" to Tr(ja = "いまは できない", fr = "Pas maintenant", de = "Gerade nicht", it = "Non ora", es = "Ahora no", br = "Agora não", pt = "Agora não"),

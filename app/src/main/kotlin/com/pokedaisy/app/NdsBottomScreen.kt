@@ -171,6 +171,8 @@ class NdsTouchScreenView(context: Context) : View(context) {
     private val paint = Paint().apply { isFilterBitmap = false }
     private val dst = Rect()
 
+    init { CompanionColors.trackGame(this) }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         NdsBottomFrame.attach(this)

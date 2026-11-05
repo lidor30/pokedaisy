@@ -550,6 +550,13 @@ private fun homeRows(
             enabled = s.wildEncountersSupported) {
             if (s.wildEncountersSupported) { s.setWildEncounters(if (s.wildEncounters == 0) 100 else 0); changed() }
         },
+        // A text box's words appear at once, nothing else sped up (InstantText.kt: the game's text routine patched).
+        SettingRow(
+            tk("INSTANT TEXT"), if (s.instantTextSupported) onOff(s.instantText) else tk("N/A"),
+            enabled = s.instantTextSupported, labelBadge = NewFeatures.badge(NewFeatures.INSTANT_TEXT),
+        ) {
+            if (s.instantTextSupported) { s.setInstantText(!s.instantText); changed() }
+        },
         // A TM stays in the bag after it teaches a move, as an HM does (ReusableTms.kt: the ROM's own check patched).
         // A game whose own TMs never run out (ReusableTms.BUILT_IN) shows ON, greyed, and says so.
         SettingRow(
