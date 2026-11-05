@@ -816,7 +816,7 @@ private class SlotGeometry(w: Float, h: Float) {
 private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, onClick: () -> Unit, modifier: Modifier = Modifier, sound: Boolean = true) {
     val density = LocalDensity.current
     // The selected icon's bob (SpriteCB_BouncePartyMonIcon): up / down every 10 frames.
-    val bobDown by rememberBlink(gbaFramesMs(10), enabled = selected && CompanionTweaks[CompanionTweaks.Tweak.PARTY_ICONS_MOVE], label = "party-bob")
+    val bobDown by rememberBlink(gbaFramesMs(10), enabled = selected && CompanionTweaks[CompanionTweaks.Tweak.PARTY_ICONS_MOVE])
     BoxWithConstraints(modifier.slotClickable(sound, enabled = mon != null, onClick = onClick)) {
         val g = with(density) { SlotGeometry(maxWidth.toPx(), maxHeight.toPx()) }
         val u = g.u

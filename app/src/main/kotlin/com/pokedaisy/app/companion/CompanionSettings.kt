@@ -69,6 +69,11 @@ interface CompanionSettings {
     val reusableTmsSupported: Boolean get() = false
     /** The game's own TMs never run out ([com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN]): the row says so. */
     val reusableTmsBuiltIn: Boolean get() = false
+    /** INSTANT TEXT - see [com.pokedaisy.app.Prefs.instantText]; [instantTextSupported]: the ROM's text code is known
+     * ([com.pokedaisy.app.companion.data.InstantText]). */
+    val instantText: Boolean get() = false
+    fun setInstantText(on: Boolean) {}
+    val instantTextSupported: Boolean get() = false
 
     /** TRADE EVOLUTIONS - see [com.pokedaisy.app.Prefs.tradeEvolutions]; [tradeEvolutionsSupported]: this game's
      * evolution code is known ([com.pokedaisy.app.companion.data.tradeEvoFor]). */

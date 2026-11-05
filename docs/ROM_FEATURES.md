@@ -16,7 +16,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Gold / Silver (GBC) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — |
 | Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — |
 | Crystal Legacy (GBC) | 1.3.1 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — |
-| Crystal Clear (GBC) | 2.5.11, 2.6.0 (4 builds) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — |
+| Crystal Clear (GBC) | 2.5.11, 2.6.0 (4 builds) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — |
 | Prism (GBC) | 0.95 build 254 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — |
 | Polished Crystal (GBC) | 3.2.0 - 3.2.3 (16 builds) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — |
 | FireRed | USA/Europe rev 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ |
@@ -164,8 +164,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
     RAM) has the same, with its own reads: the tileset's palette map for the colours, the object structs and the map's
     objects for the NPCs off screen, its battle transition for the pull-in. Checked on rev 1's save at night: Route 29 into
     New Bark Town (its name sign up), in and out of a house, the START menu, OPTION, SAVE, a wild battle and RUN: every
-    map frame exact but those the game wrote VRAM or a palette in mid-frame. The other languages' Yellows, Red / Blue,
-    Gold / Silver and the Crystal hacks aren't mapped yet (—).
+    map frame exact but those the game wrote VRAM or a palette in mid-frame. Crystal Clear (all four builds) has the same
+    over its own tables: palette maps a byte per tile, 256 blocks, its compressed connected maps, its own object sprites.
+    The other languages' Yellows, Red / Blue, Gold / Silver, Prism and Polished Crystal aren't mapped yet (—).
 13. FLY, WILD ENCOUNTERS and PC anywhere on Red / Blue, Yellow (all five languages) and Crystal (rev 0, rev 1, Australia)
     are `GbField.kt`, each the game's own way in (pret/pokered's, pokeyellow's and pokecrystal's sources; the European
     Yellows' addresses mapped by scripts/port_gen1.py; each cart's code checked in it first: `GbFieldTest` finds every Gen 1
@@ -394,6 +395,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 - **Bike / surf**: SCENE SPEEDS' BIKE / SURF SPEED, from the game's own player state (and AUTO-RUN's bike check).
 - **Wild encounters**: CONTROLS > WILD ENCOUNTERS (`WildEncounters.kt`).
 - **PC anywhere**: the BAG's `PC` button (`Pc.kt`).
+- **Instant text**: GAMEPLAY > INSTANT TEXT, a text box's words at once, nothing else sped up (`InstantText.kt`). FireRed / LeafGreen / Emerald in every language and the hacks on agbcc's build of their text code: RenderFont rewritten in its own 40 bytes; Ruby / Sapphire: one branch in UpdateWindowText. gcc builds (expansion, Recharged) show N/A. Played headless with `rompatch` on FireRed, Emerald and Ruby: pages, scrolling, a wild battle's messages.
 - **Reusable TMs**: GAMEPLAY > REUSABLE TMS, a TM kept in the bag after it teaches a move (`ReusableTms.kt`).
 - **Shiny odds**: GAMEPLAY > SHINY ODDS, a new wild foe made shiny at the odds picked (`ShinyOdds.kt`).
 - **Player look**: MAKEOVER > PLAYER LOOK, the player as another game's hero (`PlayerLook.kt`); RIVAL LOOK dresses the rival too (Emerald, Ruby, Sapphire).

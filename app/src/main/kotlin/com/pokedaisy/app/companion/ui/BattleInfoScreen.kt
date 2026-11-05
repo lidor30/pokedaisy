@@ -468,6 +468,7 @@ internal fun BattleMoveRow(
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TypeBadge(mv.type)
+                MoveKindIcon(mv, m)
                 if (wideFont && showHints && foeCount <= 1) {
                     Spacer(Modifier.width(u * 4))
                     MoveVerdict(mv, foeCount, short = true, threat = threat)

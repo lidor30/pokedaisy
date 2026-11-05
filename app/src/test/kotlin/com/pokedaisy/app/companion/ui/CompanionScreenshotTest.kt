@@ -677,6 +677,19 @@ open class CompanionScreenshotTest {
         snapshot { CompanionScreen(shot, SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = "DEX") }
     }
 
+    /** A caught row says where the save keeps it: PARTY, BOX 3, MISSING. */
+    @Test
+    fun dexHoldingsEmerald() {
+        val shot = emeraldDex() ?: return
+        fun mon(species: Int) = com.pokedaisy.app.companion.data.MonView(species, "", 5, 1, 1, "", emptyList(), null)
+        val boxes = com.pokedaisy.app.companion.data.BoxesView(
+            0, List(3) { i -> com.pokedaisy.app.companion.data.BoxView("BOX ${i + 1}", 0, if (i == 2) listOf(mon(280)) else emptyList()) },
+        )
+        snapshot {
+            CompanionScreen(shot.copy(party = listOf(mon(277)), pcBoxes = boxes), SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = "DEX")
+        }
+    }
+
     @Test
     fun dexEntryEmerald() {
         val shot = emeraldDex() ?: return

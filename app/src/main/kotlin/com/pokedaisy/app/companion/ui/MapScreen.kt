@@ -448,7 +448,7 @@ private fun RegionMap(
     // FireRed's region-map cursor (graphics/region_map/cursor.png) swaps
     // between its two frames every 20 game frames. Read only while drawing,
     // so a swap redraws the map without recomposing it.
-    val bigCursor = rememberBlink(CURSOR_FRAME_MS, enabled = CompanionTweaks[CompanionTweaks.Tweak.MAP_CURSOR_BLINK], label = "map-cursor")
+    val bigCursor = rememberBlink(CURSOR_FRAME_MS, enabled = CompanionTweaks[CompanionTweaks.Tweak.MAP_CURSOR_BLINK])
 
     val image = remember(bitmap) { bitmap.asImageBitmap() }
     val headImage = remember(head) { head?.asImageBitmap() }
@@ -950,7 +950,7 @@ private fun PokegearMapView(
     val image = remember(bitmap) { bitmap.asImageBitmap() }
     val headImage = remember(head) { head?.asImageBitmap() }
     val cursorImages = remember(cursorSprite) { cursorSprite?.let { (a, b) -> a.asImageBitmap() to b.asImageBitmap() } }
-    val bigCursor = rememberBlink(CURSOR_FRAME_MS, enabled = CompanionTweaks[CompanionTweaks.Tweak.MAP_CURSOR_BLINK], label = "map-cursor")
+    val bigCursor = rememberBlink(CURSOR_FRAME_MS, enabled = CompanionTweaks[CompanionTweaks.Tweak.MAP_CURSOR_BLINK])
     val mapW = bitmap.width.toFloat()
     val mapH = bitmap.height.toFloat()
     fun centreOf(c: Pair<Int, Int>) = Offset(c.first * tile + tile / 2f, c.second * tile + tile / 2f)

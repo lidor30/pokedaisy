@@ -38,7 +38,7 @@ Elite Redux has no bag in its battle menu, so there the tab shows `RUN` and `POK
 
 In the original FireRed, LeafGreen and Emerald in English, type tags are the game's own, read from your ROM.
 
-Each move card shows its name, type, power (`PWR`) and `PP` left, plus a verdict against the foe in plain words (status moves deal no damage, so they have none):
+Each move card shows its name, type, an icon for physical, special or status where the game's split is known, power (`PWR`) and `PP` left, plus a verdict against the foe in plain words (status moves deal no damage, so they have none):
 
 | Verdict | Meaning |
 | --- | --- |

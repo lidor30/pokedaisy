@@ -15,6 +15,32 @@ val movesAreVanilla: Boolean get() =
     (activeGame == GameKind.FIRERED && runningFireRedHack?.moves.isNullOrEmpty()) ||
         (activeGame == GameKind.EMERALD && runningEmeraldHack == null)
 
+/** A move's category, the icon beside its type (GitHub #90). */
+enum class MoveKind(val label: String) { PHYSICAL("PHYSICAL"), SPECIAL("SPECIAL"), STATUS("STATUS") }
+
+/** The types Gen 1 to 3 hit physically with; every other is special. */
+private val PHYSICAL_TYPES = setOf("Normal", "Fighting", "Flying", "Poison", "Ground", "Rock", "Bug", "Ghost", "Steel")
+
+/** Games whose moves go by type like the originals' (a hack with a split of its own would read wrong: no icon there). */
+private val BY_TYPE = setOf(
+    GameKind.YELLOW, GameKind.RED, GameKind.BLUE, GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.GOLD, GameKind.SILVER,
+)
+
+/** [mv]'s category, null where the game's rule isn't known. Gen 4 and 5 keep one on each move ([dsSpecialMoves],
+ * [dsStatusMoves]); before that it went by the move's type. */
+fun moveKind(mv: MoveView): MoveKind? = when {
+    activeGame.isDsGame -> when {
+        originHeartGold || mv.id !in 1..559 -> null
+        mv.id in dsStatusMoves -> MoveKind.STATUS
+        mv.id in dsSpecialMoves -> MoveKind.SPECIAL
+        else -> MoveKind.PHYSICAL
+    }
+    !movesAreVanilla && activeGame !in BY_TYPE -> null
+    mv.power == 0 -> MoveKind.STATUS
+    mv.type in PHYSICAL_TYPES -> MoveKind.PHYSICAL
+    else -> MoveKind.SPECIAL
+}
+
 /** [id]'s [MoveStats]; null where the running game's moves aren't the original games'. A randomized retail ROM's
  * ([runningRandomized]) are its own, read from it. */
 fun moveStats(id: Int): MoveStats? = if (!movesAreVanilla) null

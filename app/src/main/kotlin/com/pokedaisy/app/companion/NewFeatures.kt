@@ -142,6 +142,8 @@ object NewFeatures {
     const val GAME_NAMES = "game_names"
     /** Settings > SUPPORTED ONLY: the library without the games the companion can't read. */
     const val SUPPORTED_ONLY = "supported_only"
+    /** SETTINGS > INSTANT TEXT: a text box's words at once (companion.data.InstantText). */
+    const val INSTANT_TEXT = "instant_text"
     /** SETTINGS > LOOK AROUND: EXPAND's right stick switched off. */
     const val LOOK_AROUND = "look_around"
 
@@ -150,7 +152,7 @@ object NewFeatures {
         COMPANION_TAB, REUSABLE_TMS, SHINY_ODDS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
         GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE,
-        AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND,
+        AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT,
     )
 
     private const val DAYS = 7

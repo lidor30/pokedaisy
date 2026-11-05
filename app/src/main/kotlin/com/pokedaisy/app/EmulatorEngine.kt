@@ -145,6 +145,17 @@ class EmulatorEngine(
         tmPatchDirty = true
     }
 
+    /** INSTANT TEXT: the ROM's patch ([com.pokedaisy.app.companion.data.InstantText]; null = none known) and whether it's
+     * in; with REUSABLE TMS's on the next frame boundary. */
+    @Volatile private var textPatch: com.pokedaisy.app.companion.data.InstantText.Patch? = null
+    @Volatile private var instantText = false
+
+    fun setInstantText(patch: com.pokedaisy.app.companion.data.InstantText.Patch?, on: Boolean) {
+        textPatch = patch
+        instantText = on
+        tmPatchDirty = true
+    }
+
     /** SHINY ODDS ([com.pokedaisy.app.companion.data.ShinyOdds]): the game's foe party watched every frame, a new wild foe
      * made shiny at 1 in [shinyOdds] ([com.pokedaisy.app.companion.data.ShinyOdds.NORMAL] = the game's own odds, nothing
      * done); null = a game it doesn't know. */
@@ -1733,18 +1744,29 @@ class EmulatorEngine(
         runCatching { RetroAchievements.setCheatsActive(n > 0) }
     }
 
-    /** REUSABLE TMS onto the ROM (emu thread): the sites patched, or the file's bytes back. */
+    /** REUSABLE TMS and INSTANT TEXT onto the ROM (emu thread): what's on patched, the rest the file's bytes. */
     private fun applyTmPatch() {
         tmPatchDirty = false
         MgbaCore.pkRomUnpatch()
+        if (!gba) return
+        val text = textPatch.takeIf { instantText }
+        // All or none, each: a ROM that only matched in part would still use TMs up on the other paths, and half a text
+        // routine can't run. pkRomUnpatch takes everything, so text that fails puts the TMs' back.
         val sites = tmSites
-        if (!gba || !reusableTms || sites.isEmpty()) return
-        val all = sites.all {
+        val tms = reusableTms && sites.isNotEmpty() && sites.all {
             MgbaCore.pkRomPatch(it.at, it.expect, it.branch, com.pokedaisy.app.companion.data.ReusableTms.ALWAYS_SKIP)
         }
-        // All or none: a ROM that only matched in part would still use TMs up on the other paths.
-        if (!all) MgbaCore.pkRomUnpatch()
-        Log.i("pokedaisy", "reusable TMs: ${if (all) "${sites.size} site(s) patched" else "code didn't match"}")
+        if (reusableTms && sites.isNotEmpty()) {
+            if (!tms) MgbaCore.pkRomUnpatch()
+            Log.i("pokedaisy", "reusable TMs: ${if (tms) "${sites.size} site(s) patched" else "code didn't match"}")
+        }
+        if (text != null && !text.writes.all { MgbaCore.pkRomPatch(it.addr, it.expect, it.addr, it.value) }) {
+            MgbaCore.pkRomUnpatch()
+            if (tms) sites.forEach {
+                MgbaCore.pkRomPatch(it.at, it.expect, it.branch, com.pokedaisy.app.companion.data.ReusableTms.ALWAYS_SKIP)
+            }
+            Log.i("pokedaisy", "instant text: code didn't match")
+        } else if (text != null) Log.i("pokedaisy", "instant text: ${text.writes.size} piece(s) patched")
     }
 
     /** PLAYER LOOK onto the ROM (emu thread): the last look's blocks out, this one's in (all or none), then the palettes. */

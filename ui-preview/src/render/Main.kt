@@ -2321,6 +2321,10 @@ fun main(args: Array<String>) {
         Shot("library-sort", tw, th, td, activity { LibraryActivity().also { datedLibrary() } }) {
             onNodeWithContentDescription("Sort").performClick()
         },
+        // The header's SEARCH: its window, and the list it leaves.
+        Shot("library-search", tw, th, td, activity { LibraryActivity().also { datedLibrary() } }) {
+            onNodeWithContentDescription("SEARCH").performClick()
+        },
         // The header's +: ADD A ROM FILE / ADD A ROMS FOLDER / MANAGE ROMS FOLDERS.
         Shot("library-add-menu", tw, th, td, activity { LibraryActivity() }) {
             onNodeWithContentDescription("Add games").performClick()
@@ -2340,7 +2344,7 @@ fun main(args: Array<String>) {
         Shot("library-list-menu", tw, th, td, activity { favoriteLibrary(); LibraryActivity() }) {
             onAllNodesWithText("Pokémon Radical Red")[0].performSemanticsAction(SemanticsActions.OnLongClick)
         },
-        // A phone held upright has no room for two: one column, scrolling.
+        // A phone held upright: two columns sharing its width.
         Shot("library-list-menu-phone", 1080, 2400, 2.625f, activity { favoriteLibrary(); LibraryActivity() }) {
             onAllNodesWithText("Pokémon Radical Red")[0].performSemanticsAction(SemanticsActions.OnLongClick)
         },

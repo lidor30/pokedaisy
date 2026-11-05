@@ -1998,7 +1998,7 @@ only keeps a 256x256 ring of tiles in VRAM (`field_camera.c`), so the rest would
   pixel for pixel on both games (2026-10-09). Not covered yet: weather drawn over the field (rain sprites, fog on
   BG0) stops at the GBA's edges; scanline effects aren't extended.
 
-### WIDE on the Game Boy (`pk_wide_gb.c`, Pokémon Yellow, Crystal and their Legacy hacks)
+### WIDE on the Game Boy (`pk_wide_gb.c`, Pokémon Yellow, Crystal, their Legacy hacks and Crystal Clear)
 
 Since 2026-10-18 English Yellow (CRC32 `7d527d62`) has EXPAND, ZOOM and the look-around too. `pk_wide.c` hands every call
 to `pk_wide_gb.c` while a Game Boy game is configured (`pk_wide_gb_knows` / `_configure`, same CRC lookup); the frame is
@@ -2091,9 +2091,33 @@ ZOOM's steps are whole Game Boy pixels: 7.5 -> 6 / 5 / 4 / 3 on 1080 rows). Addr
     out (FIELD / FADE only), the START menu, OPTION, SAVE's prompt, a wild battle from the grass to RUN and back - every
     map frame exact but those written mid-frame (opening / closing the START menu loads the font and copies the screen
     back in thirds); no NPC blinks in the strips standing or walking (the water / flowers animate, as in the middle).
+- **Crystal Clear** (2026-11-05, GitHub #143; v2.6.0 and v2.5.11, Standard Colors and Color Filter, CRC32 `17617cde` /
+  `58f40de1` / `5af9a949` / `fc33d126`; one row, `GB_CLEAR` set). No symbol file: `scripts/port_gen1.py` gives Crystal's RAM,
+  what it can't vote on (the tables below) comes from reading the cart's code, the same in all four builds. What the hack
+  rebuilt:
+  - Colours: the tileset header holds the palette map's bank (D1E4: each tileset has its own) and pointer (D1E5, a byte
+    before Crystal's), and the map is a byte of attributes per tile id, not a nibble (`gbPalAttr`; BG priority comes with
+    it). The floor of the player's room (tile 1 of tileset $14) takes another tile's: `wDecoCarpet`'s, or with none down
+    the table at 00:2E90 by D9C2, which picks the home too (poked to $1E, the stairs led to another room).
+  - Blocks: `LoadMetatiles` doubles a block id in 16 bits, so all 256 are there, no wrap at 128 (`gbBlock`). Route 37's fruit
+    trees are such blocks; with the wrap they read as flowers.
+  - Connections: a map's blocks are LZ-compressed in ROM. The game unpacks a map into WRAM bank 6 at D000, and a
+    connection's strip pointer is an address there (`GB_LZ_BASE`), so the connected maps go through `gbLzDecode`, kept in
+    `gbLz` by ROM address. Every real map unpacks to width x height (`GB_OW_MAX` is plenty: the largest is 888).
+  - Objects: `OverworldSprites` is 5 bytes a sprite with no palette (05:4B92, type at +4): palette 0, 1 for sprite E2, unless
+    the object has its own, and from DE up they all walk (02:4189, 05:486A).
+  - Checked headless on all four: Route 29 into New Bark Town (the sign up), the START menu, OPTION, a house, the stairs, the
+    room (1733 of 1733 frames exact, those written mid-frame aside) and wild battles and back; on v2.6.0 also a carpet
+    poked in and the room reloaded. A sweep over the cart's 488 maps (the game's own `warp` poked: wMapGroup at DA3A,
+    wYCoord, D001 = -1, hMapEntryMethod $F1, wMapStatus D432 = 1, then four steps): about 148,000 map frames on each build,
+    41 tilesets, every one exact but the wave transition below. No NPC blinks in the strips on 600 frames around New Bark;
+    a connected map's strip in a 640 x 384 view is the map you arrive in, pixel for pixel but the people and the water.
+    Not counted as a fault: a battle's wave transition (per-line SCX, LYOverrides) can't match the
+    middle, for about 40 frames on the way into a battle indoors. Retail does the same (rev 1, Union Cave: 44 frames,
+    `gbMarkTorn` sees no VRAM or palette write there), so `widecheck` lists them on every Crystal.
 - **Not yet**: the other languages' Yellows (their RAM is English's + 5 from 0xD018: a `GB_ROMS` row each, plus
   `MapHeaderPointers`), Red / Blue (Yellow's + 1 from 0xCF1B, SGB palettes: `palette` takes `sgbAttributes` there), Gold /
-  Silver and the Crystal hacks (Crystal's engine, their own addresses), battles past the edges, walking frames for Gen 1's
+  Silver, Prism and Polished Crystal (Crystal's engine, their own addresses), battles past the edges, walking frames for Gen 1's
   off-screen NPCs.
 
 ## PC, FLY and WILD ENCOUNTERS on the Game Boy (`GbField.kt`)

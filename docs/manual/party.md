@@ -28,7 +28,7 @@ Tap any slot to open that Pokémon's summary. It fills the tab:
 
 - **Top left**: name, gender (a nicknamed Pokémon's kind comes after its name), icon, level, status, types, the HP bar, and an EXP bar. `NEXT` is how much experience it still needs for the next level (`MAX` at level 100).
 - **Bottom left**: `WEAK TO`, `RESISTS` and `IMMUNE TO`, with the multiplier on each type (2x, ½x, 0x and so on). It's the quickest way to see what to keep this Pokémon away from.
-- **Right**: its four moves, each with its type, power (`PWR`) and remaining `PP`.
+- **Right**: its four moves, each with its type, power (`PWR`) and remaining `PP`. An icon beside the type tells a physical move (a burst) from a special one (rings) and a status move (a grey dot), in the games where PokeDaisy knows the split.
 
 ![EMBERPUP's summary: level, HP and EXP on the left above its weaknesses and resistances, its four moves on the right](shots/companion-summary.png "A Pokémon's summary")
 
