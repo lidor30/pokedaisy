@@ -1,10 +1,10 @@
 name: Linux foundation
 on:
   pull_request:
-    paths: ['linux/**', '3ds/core/**', '3ds/test/host_display_test.c', '3ds/Makefile', '3ds/desktop/pd_png.*', 'app/src/main/cpp/pk_savevf.*', 'third_party/mgba', '.github/workflows/linux.yml', 'gamedata/**']
+    paths: ['linux/**', 'libretro/**', '3ds/core/**', '3ds/test/host_display_test.c', '3ds/Makefile', '3ds/desktop/pd_png.*', 'app/src/main/cpp/pk_savevf.*', 'third_party/mgba', '.github/workflows/linux.yml', 'gamedata/**']
   push:
-    branches: [main, dev]
-    paths: ['linux/**', '3ds/**', 'app/src/main/cpp/pk_savevf.*', 'third_party/mgba', '.github/workflows/linux.yml', 'gamedata/**']
+    branches: [main, dev, feat/libretro-core]
+    paths: ['linux/**', 'libretro/**', '3ds/**', 'app/src/main/cpp/pk_savevf.*', 'third_party/mgba', '.github/workflows/linux.yml', 'gamedata/**']
   workflow_dispatch:
 permissions:
   contents: read
