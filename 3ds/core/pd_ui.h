@@ -81,7 +81,11 @@ struct pd_settings {
     bool runIndoors; // RUN INDOORS: every map lets the player run
     bool lcdFilter;  // optional host LCD display mask
     bool quickGrid;  // hosts with hasQuickMenu: false = RING, true = GRID
+    // Hosts with hasButtonRows: the pad buttons for the quick menu, the companion and the HUD cursor (enum pd_button).
+    int quickBtn, companionBtn, hudBtn;
 };
+
+enum pd_button { PD_BTN_X, PD_BTN_Y, PD_BTN_L2, PD_BTN_R2, PD_BTN_NONE, PD_BUTTONS };
 
 // TAB BAR: at most this many tabs beside the gear (the app's MAX_BAR_TABS).
 #define PD_MAX_BAR_TABS 5
@@ -120,6 +124,8 @@ struct pd_host_info {
     bool hasHud;         // Optional: the host draws the HUD over the game (its SETTINGS row)
     bool hasDisplayFilter; // host implements OFF / LCD
     bool hasQuickMenu;   // host implements the selectable RING / GRID quick menu
+    bool hasButtonRows;  // Optional: QUICK MENU / COMPANION / HUD CURSOR button rows (the host reads settings.*Btn)
+    bool frontendOwnsPlayback; // Optional: the frontend runs fast-forward, save states and leaving the game: no such rows
     bool hasState;      // a save state exists for LOAD STATE
     char stateWhen[24]; // when it was made, shown beside LOAD STATE
 };

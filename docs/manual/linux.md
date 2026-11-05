@@ -59,3 +59,39 @@ This early version does not include the Polished Crystal companion, the longer
 summaries or firmware power handling. Earlier
 builds ran on the Brick and Smart Pro, but this separated foundation still
 needs fresh device testing. Other Linux handhelds are not verified.
+
+## As a core inside a launcher
+
+On plorpOS, PokeDaisy can also run as a core of the launcher's own emulator.
+The save is the same file the mGBA core uses, and the launcher owns save
+states, fast-forward, rewind, shaders and leaving the game. Pick PokeDaisy in
+the Core row of a Game Boy shelf.
+
+In this form the quick menu (Y) keeps PC, FLY, REPEL, BIKE, WILD ENCOUNTERS and
+COMPANION, adds a HUD tile that puts the cursor on the HUD, and the game pauses
+while it is open. X opens the companion. SETTINGS lists only what the core does
+itself: ASPECT, HUD, QUICK MENU, three button rows and TAB BAR. QUICK MENU BUTTON,
+COMPANION BUTTON and HUD CURSOR BUTTON step through X, Y, L2 and R2 (and NONE for
+the cursor) when you press A on them, and a button another action already uses
+swaps over to it. L2 and R2 reach the core on every shelf (for other Game Boy
+Advance cores the launcher still keeps them back). The settings file sits in the
+`pokedaisy` folder inside the launcher's save folder.
+
+### The picture in the launcher
+
+The core sizes its picture to the screen so the game is always shown at a whole
+scale. On the Brick (1024x768) `EXPAND` draws the game at 4x with the map rebuilt
+out to the screen's edges, and `ZOOM OUT` at 3x, so you see more of the map.
+`ORIGINAL` shows the game on its own. The companion and the quick menu always use
+the 3x picture.
+
+`AUTO ZOOM IN` (Settings) works as in the app: with `ZOOM OUT` chosen, anything
+but the plain overworld (menus, the START menu, battles, text boxes) steps in to
+the `EXPAND` picture, and it steps back out when you return to the field.
+Building interiors are the overworld, so nothing steps in there. Turn `AUTO ZOOM
+IN` off to stay zoomed out through menus.
+
+Fast-forward and rewind don't rebuild the map (that is what keeps fast-forward
+fast): the game picture sits over a blurred glow spread from its own edges, the
+same one the menus show past the screen. Fast-forward is silent. Rewind keeps the
+aspect you chose, so `ZOOM OUT` stays zoomed out while you rewind.

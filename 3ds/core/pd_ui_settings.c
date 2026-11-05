@@ -35,7 +35,8 @@ static void setting(struct pd_ui* ui, struct pd_canvas* c, int x, int* y, int w,
 // A row shown, not tappable (LOAD STATE with none yet, ASPECT N/A).
 static void muted_row(struct pd_canvas* c, int x, int* y, int w, const char* label, const char* value) {
     pd_text(c, x, pd_text_y(*y, ROW_H), label, PD_MUTED, PD_MUTED_SHADOW);
-    pd_text(c, x + w * 42 / 100, pd_text_y(*y, ROW_H), value, PD_MUTED, PD_MUTED_SHADOW);
+    int vx = x + w * 42 / 100, past = x + pd_text_width(label) + 8;
+    pd_text(c, vx < past ? past : vx, pd_text_y(*y, ROW_H), value, PD_MUTED, PD_MUTED_SHADOW);
     *y += ROW_H;
 }
 
@@ -96,7 +97,8 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         snprintf(buf, sizeof(buf), "%dx", ui->settings->ffSpeed);
     else
         snprintf(buf, sizeof(buf), "MAX");
-    setting(ui, c, ix, &y, iw, SETTING_FF, "FAST-FORWARD", buf);
+    if (!host || !host->frontendOwnsPlayback)
+        setting(ui, c, ix, &y, iw, SETTING_FF, "FAST-FORWARD", buf);
     if (host && host->hasExpand) {
         if (host->expandGame) {
             setting(ui, c, ix, &y, iw, SETTING_ASPECT, "ASPECT", pd_aspect_name(ui->settings->aspect));
@@ -114,16 +116,24 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         setting(ui, c, ix, &y, iw, SETTING_FILTER, "FILTER", ui->settings->lcdFilter ? "LCD" : "OFF");
     if (host && host->hasQuickMenu)
         setting(ui, c, ix, &y, iw, SETTING_QUICK_MENU, "QUICK MENU", ui->settings->quickGrid ? "GRID" : "RING");
+    if (host && host->hasButtonRows) {
+        static const char* const NAMES[PD_BUTTONS] = {"X", "Y", "L2", "R2", "NONE"};
+        setting(ui, c, ix, &y, iw, SETTING_QUICK_BTN, "QUICK MENU BUTTON", NAMES[ui->settings->quickBtn]);
+        setting(ui, c, ix, &y, iw, SETTING_COMPANION_BTN, "COMPANION BUTTON", NAMES[ui->settings->companionBtn]);
+        if (host->hasHud) setting(ui, c, ix, &y, iw, SETTING_HUD_BTN, "HUD CURSOR BUTTON", NAMES[ui->settings->hudBtn]);
+    }
     snprintf(buf, sizeof(buf), "%d TABS", ui_bar_count(ui));
     setting(ui, c, ix, &y, iw, SETTING_TAB_BAR, "TAB BAR", buf);
-    setting(ui, c, ix, &y, iw, SETTING_SAVE_STATE, "SAVE STATE", NULL);
-    if (host && host->hasState) {
-        setting(ui, c, ix, &y, iw, SETTING_LOAD_STATE, "LOAD STATE", host->stateWhen);
-    } else {
-        // Nothing to load: shown, not tappable.
-        muted_row(c, ix, &y, iw, "LOAD STATE", "none yet");
+    if (!host || !host->frontendOwnsPlayback) {
+        setting(ui, c, ix, &y, iw, SETTING_SAVE_STATE, "SAVE STATE", NULL);
+        if (host && host->hasState) {
+            setting(ui, c, ix, &y, iw, SETTING_LOAD_STATE, "LOAD STATE", host->stateWhen);
+        } else {
+            // Nothing to load: shown, not tappable.
+            muted_row(c, ix, &y, iw, "LOAD STATE", "none yet");
+        }
+        setting(ui, c, ix, &y, iw, SETTING_LEAVE, "LEAVE GAME", NULL);
     }
-    setting(ui, c, ix, &y, iw, SETTING_LEAVE, "LEAVE GAME", NULL);
     pd_unclip(c);
     int total = y + ui->settingsScroll - listTop, view = listBottom - listTop;
     lastTotal = total;

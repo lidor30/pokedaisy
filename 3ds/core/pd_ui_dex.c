@@ -82,6 +82,11 @@ static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
     int f = pd_list_box(c, x, LIST_Y, w, c->h - LIST_Y - MARGIN);
     int ix = x + f, iy = LIST_Y + f + 1, iw = w - 2 * f, ih = c->h - LIST_Y - MARGIN - 2 * f - 2;
     ui_add_scroll_hit(ui, ix, iy, iw, ih, HIT_DEX_LIST);
+    // The row a host's D-pad cursor moves onto comes wholly into view (a row cut at the window's edge).
+    static int seenFocus = -1;
+    for (int i = 0; ui->focusId != seenFocus && i < n; i++)
+        if (ui->focusId == HIT_DEX_ROW + list[i]) ui->dexScroll = ui_scroll_to(ui->dexScroll, i * DEX_ROW, DEX_ROW, ih);
+    seenFocus = ui->focusId;
     ui->dexScroll = ui_clamp_scroll(ui->dexScroll, n * DEX_ROW, ih);
     pd_clip(c, ix, iy, iw, ih);
     char buf[40], num[16];

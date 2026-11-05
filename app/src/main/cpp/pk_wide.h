@@ -158,6 +158,11 @@ int pk_wide_view(struct mCore* core, const uint32_t* frame, uint32_t* out, struc
 /** Instead of pk_wide_view, for a frame that won't be shown (fast-forward runs several per screen refresh): keeps the
  * game's RAM after it, as the next frame drawn needs, without drawing anything - most of WIDE's cost. */
 void pk_wide_skip(struct mCore* core, const uint32_t* frame);
+
+/** pk_wide_skip for a fast-forwarded frame that IS shown: the RAM history kept, and `out` (view.w x view.h) gets the frame
+ * with the ambient glow (the blur rewind and the menus show) around it instead of the rebuilt scene - cheap, no map read.
+ * Returns 0 and draws nothing for an unconfigured game. A Game Boy game's glow is the bars its menus have. */
+int pk_wide_glow(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView view);
 // A Game Boy game configured with nothing to draw (EXPAND off): its scene only (pk_wide_scene), for the FIELD HUD -
 // pk_wide_gb.c's match run on a 1 x 1 window; `skip` (a fast-forwarded frame nobody sees) only notes its RAM.
 void pk_wide_probe(struct mCore* core, const uint32_t* frame, int skip);
@@ -227,6 +232,8 @@ int pk_wide_gb_configure(uint32_t crc);
 void pk_wide_gb_reset(void);
 /** pk_wide_view's twin; `out` NULL = pk_wide_skip's (only the RAM after the frame is kept). */
 int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView view, uint32_t* centre);
+/** pk_wide_glow's twin for a Game Boy game: the frame over its menus' bars. */
+int pk_wide_gb_glow(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView view);
 int pk_wide_gb_scene(void);
 int pk_wide_gb_wants_close(void);
 int pk_wide_gb_last_mode(void);

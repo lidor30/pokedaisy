@@ -6,6 +6,8 @@
 
 #include "pd_ui_internal.h"
 
+static void cycle_button(struct pd_settings* s, int row);
+
 #define CHIP_H 22
 #define FF_W 28
 #define GEAR_W 24
@@ -388,6 +390,9 @@ static void act(struct pd_ui* ui, int id) {
     } else if (id == HIT_SETTING + SETTING_QUICK_MENU) {
         ui->settings->quickGrid = !ui->settings->quickGrid;
         ui->action = PD_ACTION_SETTINGS_CHANGED;
+    } else if (id >= HIT_SETTING + SETTING_QUICK_BTN && id <= HIT_SETTING + SETTING_HUD_BTN) {
+        cycle_button(ui->settings, id - HIT_SETTING);
+        ui->action = PD_ACTION_SETTINGS_CHANGED;
     } else if (id == HIT_SETTING + SETTING_AUTO_ZOOM) {
         ui->settings->autoZoom = !ui->settings->autoZoom;
         ui->action = PD_ACTION_SETTINGS_CHANGED;
@@ -401,6 +406,25 @@ static void act(struct pd_ui* ui, int id) {
             [SETTING_ASPECT] = PD_OVERLAY_PICK_ASPECT,
         };
         ui->overlay = OPENS[id - HIT_SETTING];
+    }
+}
+
+/* A BUTTON row: the next button (X, Y, L2, R2; the HUD's also NONE). A button another action already uses goes to
+ * this one's old button, so no two actions ever share one; the HUD's NONE can't be handed to the other two. */
+static void cycle_button(struct pd_settings* s, int row) {
+    int* mine = row == SETTING_QUICK_BTN ? &s->quickBtn : row == SETTING_COMPANION_BTN ? &s->companionBtn : &s->hudBtn;
+    int* all[3] = {&s->quickBtn, &s->companionBtn, &s->hudBtn};
+    int old = *mine;
+    for (int step = 1; step <= PD_BUTTONS; step++) {
+        int next = (old + step) % PD_BUTTONS;
+        if (next == PD_BTN_NONE && mine != &s->hudBtn) continue;
+        int* other = NULL;
+        for (int i = 0; i < 3; i++)
+            if (all[i] != mine && *all[i] == next && next != PD_BTN_NONE) other = all[i];
+        if (other && old == PD_BTN_NONE) continue;   // nothing to hand over
+        if (other) *other = old;
+        *mine = next;
+        return;
     }
 }
 

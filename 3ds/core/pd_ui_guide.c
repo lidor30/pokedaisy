@@ -411,14 +411,20 @@ static int entry_height(const struct pd_ui* ui, int i, int w) {
 }
 
 static void draw_list(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h) {
-    int total = 0;
+    int total = 0, focusTop = -1, focusH = 0;
     for (int si = 0; si < sectionCount; si++) {
         total += ROW + LINE * note_lines(sections[si].note, w - 12);
         for (int i = sections[si].first; i < sections[si].first + sections[si].count; i++) {
-            total += entry_height(ui, i, w - 30);
+            int eh = entry_height(ui, i, w - 30);
+            if (ui->focusId == HIT_GUIDE_ROW + i) focusTop = total, focusH = eh;
+            total += eh;
         }
         total += 4;
     }
+    // The entry a host's D-pad cursor moves onto comes wholly into view (one taller than the window: from its top).
+    static int seenFocus = -1;
+    if (focusTop >= 0 && ui->focusId != seenFocus) ui->guideScroll = ui_scroll_to(ui->guideScroll, focusTop, focusH, h);
+    seenFocus = ui->focusId;
     ui->guideScroll = ui_clamp_scroll(ui->guideScroll, total, h);
     ui_add_scroll_hit(ui, x, y, w, h, HIT_GUIDE_LIST);
     pd_clip(c, x, y, w, h);

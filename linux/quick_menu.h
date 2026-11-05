@@ -6,7 +6,8 @@
 #include "pd_game.h"
 #include <stdbool.h>
 
-enum quick_action { QUICK_PC, QUICK_FLY, QUICK_REPEL, QUICK_BIKE, QUICK_WILD, QUICK_SAVE_STATE, QUICK_LOAD_STATE, QUICK_FF, QUICK_COMPANION, QUICK_COUNT };
+enum quick_action { QUICK_PC, QUICK_FLY, QUICK_REPEL, QUICK_BIKE, QUICK_WILD, QUICK_SAVE_STATE, QUICK_LOAD_STATE, QUICK_FF, QUICK_COMPANION, QUICK_HUD, QUICK_COUNT };
+/* QUICK_HUD: the HUD cursor (the libretro core, which has no hotkey of its own to reach it). */
 
 struct quick_item {
   enum quick_action action;

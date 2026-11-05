@@ -127,7 +127,11 @@ static void tabs(struct pd_ui* ui, struct pd_canvas* c, const struct bag_palette
         int tx = x + f + 5, ty = pd_text_y(y, TAB_H);
         int tw = pd_text_fit(c, tx, ty, w - 2 * f - 8, name, open ? p->text : p->tabText,
                              open ? p->textShadow : p->tabTextShadow);
-        if (open) pd_fill(c, tx, y + TAB_H - f - 4, tw, 2, p->cursor); // the open tab's underline
+        if (open) { // the open tab's underline: under the text's shadow (caps rows 4-12, shadow 13), inside the border
+            int uy = ty + 14, uh = y + TAB_H - f - uy;
+            if (uh > 2) uh = 2;
+            if (uh > 0) pd_fill(c, tx, uy, tw, uh, p->cursor);
+        }
         if (ui->pressedId == HIT_BAG_TAB + i) pd_fill(c, x + f, y + f, w - 2 * f, 1, p->cursor);
         ui_add_hit(ui, x, y, w, TAB_H, HIT_BAG_TAB + i);
     }
@@ -144,12 +148,15 @@ static void list(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     }
     int maxScroll = v->count * BAG_ROW - ih;
     if (maxScroll < 0) maxScroll = 0;
-    // Keep the selected row in view (the D-pad walks down past the window).
-    if (ui->bagSelected >= 0) {
-        int top = ui->bagSelected * BAG_ROW;
-        if (top < ui->bagScroll) ui->bagScroll = top;
-        if (top + BAG_ROW > ui->bagScroll + ih) ui->bagScroll = top + BAG_ROW - ih;
-    }
+    // The selected row, and the row a host's D-pad cursor is on, come wholly into view when they change (a row cut at
+    // the window's edge); after that the list scrolls freely (the D-pad walks on past the window).
+    static int seenSel = -1, seenFocus = -1;
+    if (ui->bagSelected >= 0 && ui->bagSelected != seenSel)
+        ui->bagScroll = ui_scroll_to(ui->bagScroll, ui->bagSelected * BAG_ROW, BAG_ROW, ih);
+    if (ui->focusId != seenFocus && ui->focusId >= HIT_BAG_ROW && ui->focusId < HIT_BAG_ROW + v->count)
+        ui->bagScroll = ui_scroll_to(ui->bagScroll, (ui->focusId - HIT_BAG_ROW) * BAG_ROW, BAG_ROW, ih);
+    seenSel = ui->bagSelected;
+    seenFocus = ui->focusId;
     if (ui->bagScroll > maxScroll) ui->bagScroll = maxScroll;
     if (ui->bagScroll < 0) ui->bagScroll = 0;
 

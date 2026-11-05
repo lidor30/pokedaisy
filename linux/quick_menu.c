@@ -60,6 +60,11 @@ const char *const quick_icon_companion[] = {
     ".11.....", "..11....", "...11...", "....11..", ".....11.", "......11", NULL,
 };
 
+const char *const quick_icon_hud[] = {
+    "11111..11111", "1..........1", "1..........1", "1....11....1", "1....11....1", "1..........1", "1..........1",
+    "11111..11111", NULL,
+};
+
 const char *quick_label(enum quick_action a) {
   switch (a) {
   case QUICK_PC: return "PC";
@@ -71,6 +76,7 @@ const char *quick_label(enum quick_action a) {
   case QUICK_LOAD_STATE: return "LOAD STATE";
   case QUICK_FF: return "FF";
   case QUICK_COMPANION: return "COMPANION";
+  case QUICK_HUD: return "HUD";
   default: return "";
   }
 }
@@ -92,7 +98,7 @@ static uint32_t icon_color(enum quick_action a, char ch) {
 static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int scale, bool dim) {
   const char *const *rows = a == QUICK_PC ? quick_icon_pc : a == QUICK_WILD ? quick_icon_grass : a == QUICK_SAVE_STATE ? SAVE_STATE
                           : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : a == QUICK_REPEL ? REPEL
-                          : a == QUICK_BIKE ? BIKE : quick_icon_companion;
+                          : a == QUICK_BIKE ? BIKE : a == QUICK_HUD ? quick_icon_hud : quick_icon_companion;
   int h = 0, w = (int)strlen(rows[0]);
   while (rows[h])
     h++;

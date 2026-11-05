@@ -23,6 +23,9 @@ void pd_settings_defaults(struct pd_settings* s) {
     s->runIndoors = false;
     s->quickGrid = false;
     s->lcdFilter = false;
+    s->quickBtn = PD_BTN_Y;
+    s->companionBtn = PD_BTN_X;
+    s->hudBtn = PD_BTN_NONE;
 }
 
 const int PD_FF_SPEEDS[PD_FF_CHOICES] = {2, 3, 4, 5, 6, 8, 10, 0};
@@ -84,6 +87,9 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
         else if (!strcmp(key, "hudlook")) int_in(value, 0, PD_HUD_LOOKS - 1, &s->hudLook);
         else if (!strcmp(key, "hudsize")) int_in(value, 0, PD_HUD_SIZES - 1, &s->hudSize);
         else if (!strcmp(key, "scaling")) int_in(value, 0, PD_SCALINGS - 1, &s->scaling);
+        else if (!strcmp(key, "quickbtn")) int_in(value, 0, PD_BTN_L2 + 1, &s->quickBtn);
+        else if (!strcmp(key, "companionbtn")) int_in(value, 0, PD_BTN_L2 + 1, &s->companionBtn);
+        else if (!strcmp(key, "hudbtn")) int_in(value, 0, PD_BUTTONS - 1, &s->hudBtn);
         else {
             int on;
             bool* b = !strcmp(key, "ffaudio") ? &s->ffAudio : !strcmp(key, "rewind") ? &s->rewind
@@ -107,6 +113,7 @@ bool pd_settings_save(const struct pd_settings* s, const char* path) {
     fprintf(f, "hudlayout=%d\nhudlook=%d\nhudsize=%d\n", s->hudLayout, s->hudLook, s->hudSize);
     fprintf(f, "scaling=%d\nffaudio=%d\nrewind=%d\nrunindoors=%d\n", s->scaling, s->ffAudio ? 1 : 0,
             s->rewind ? 1 : 0, s->runIndoors ? 1 : 0);
+    fprintf(f, "quickbtn=%d\ncompanionbtn=%d\nhudbtn=%d\n", s->quickBtn, s->companionBtn, s->hudBtn);
     if (fclose(f) != 0) return false;
     return rename(tmp, path) == 0;
 }

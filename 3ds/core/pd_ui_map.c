@@ -259,6 +259,11 @@ void ui_places_overlay(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     int lf = pd_list_box(c, x, y, w, c->h - y - MARGIN);
     int ix = x + lf, iy = y + lf + 1, iw = w - 2 * lf, ih = c->h - y - MARGIN - 2 * lf - 2;
     ui_add_scroll_hit(ui, ix, iy, iw, ih, HIT_SCRIM);
+    // The row a host's D-pad cursor moves onto comes wholly into view (a row cut at the window's edge).
+    static int seenFocus = -1;
+    if (ui->focusId != seenFocus && ui->focusId >= HIT_PLACE && ui->focusId < HIT_PLACE + placeCount)
+        ui->placesScroll = ui_scroll_to(ui->placesScroll, (ui->focusId - HIT_PLACE) * PLACE_ROW, PLACE_ROW, ih);
+    seenFocus = ui->focusId;
     ui->placesScroll = ui_clamp_scroll(ui->placesScroll, placeCount * PLACE_ROW, ih);
     pd_clip(c, ix, iy, iw, ih);
     for (int i = ui->placesScroll / PLACE_ROW; i < placeCount; i++) {
