@@ -855,6 +855,57 @@ static void hud_focus_start(void) {
     }
 }
 
+/* What a HUD part does when pressed (the HUD cursor's A, or a tap): its companion tab, or the game's PC. */
+static void hud_press(int id) {
+  if (id >= HUD_SLOT && id < HUD_SLOT + PD_PARTY_SIZE) {
+    ui.tab = PD_TAB_PARTY;
+    ui.summarySlot = id - HUD_SLOT;
+  } else if (id == HUD_MAP || id == HUD_MAP_BUTTON) {
+    ui.tab = PD_TAB_MAP;
+    ui.mapPage = -1;
+  } else if (id == HUD_BALLS || id == HUD_REPEL || id == HUD_BAG) {
+    ui.tab = PD_TAB_BAG;
+  } else if (id == HUD_WILD) {
+    ui.tab = PD_TAB_GUIDE;
+    ui.guidePage = 0;
+    ui.guideOpen = -1;
+  } else if (id == HUD_PC) {
+    job = JOB_PC; // the game's own PC, as the quick menu's
+    jobFrames = 0;
+  }
+  if (id != HUD_PC)
+    companion = true;
+}
+
+/* A touch panel's finger (the RG Rotate passes it as the libretro pointer over the whole picture), in canvas pixels:
+ * where it is, where it went down, and last frame's state. */
+static bool touchDown, touchWas;
+static int touchX, touchY, touchX0, touchY0;
+static void touch_poll(void) {
+  touchWas = touchDown;
+  touchDown = realInput && realInput(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED);
+  if (!touchDown)
+    return;
+  int x = realInput(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_X);
+  int y = realInput(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_Y);
+  touchX = (int)((x + 0x7fff) * (long)CW / 0xfffe);
+  touchY = (int)((y + 0x7fff) * (long)CH / 0xfffe);
+  touchX = touchX < 0 ? 0 : touchX >= CW ? CW - 1 : touchX;
+  touchY = touchY < 0 ? 0 : touchY >= CH ? CH - 1 : touchY;
+  if (!touchWas) {
+    touchX0 = touchX;
+    touchY0 = touchY;
+  }
+}
+static bool touch_tapped(void) { return touchWas && !touchDown; }
+static int hud_hit_at(int x, int y) {
+  for (int i = 0; i < hudHits.n; i++)
+    if (x >= hudHits.at[i].x && x < hudHits.at[i].x + hudHits.at[i].w && y >= hudHits.at[i].y &&
+        y < hudHits.at[i].y + hudHits.at[i].h)
+      return hudHits.at[i].id;
+  return -1;
+}
+
 RETRO_API void retro_run(void) {
   if (!haveGame) {
     mgba_retro_run();
@@ -872,6 +923,29 @@ RETRO_API void retro_run(void) {
   companionBtn = key_of(settings.companionBtn);
   hudBtn = key_of(settings.hudBtn);
   poll_keys();
+  touch_poll();
+  // A tap on the quick menu: a tile (or a FLY / REPEL list row) is picked as A picks it; outside, the list or the menu
+  // closes as B. On the field, a tap that starts and ends on one HUD part presses it; the game picture itself does nothing.
+  if (touch_tapped() && quickOpen && !companion) {
+    int i = (flyList || repelList) ? quick_list_hit(touchX, touchY) : quick_hit(touchX, touchY);
+    if (i >= 0) {
+      if (flyList)
+        flySel = i;
+      else if (repelList)
+        repelSel = i;
+      else
+        quickSel = i;
+      pressedKeys |= 1u << A;
+    } else
+      pressedKeys |= 1u << B;
+  } else if (touch_tapped() && !quickOpen && !companion && hudShown) {
+    int id = hud_hit_at(touchX0, touchY0);
+    if (id >= 0 && id == hud_hit_at(touchX, touchY)) {
+      hudFocus = false;
+      hudState.focus = -1;
+      hud_press(id);
+    }
+  }
   bool wasCompanion = companion;
   if (down(companionBtn) && !hudFocus) {
     companion = !companion;
@@ -900,24 +974,7 @@ RETRO_API void retro_run(void) {
       int id = hudState.focus;
       hudFocus = false;
       hudState.focus = -1;
-      if (id >= HUD_SLOT && id < HUD_SLOT + PD_PARTY_SIZE) {
-        ui.tab = PD_TAB_PARTY;
-        ui.summarySlot = id - HUD_SLOT;
-      } else if (id == HUD_MAP || id == HUD_MAP_BUTTON) {
-        ui.tab = PD_TAB_MAP;
-        ui.mapPage = -1;
-      } else if (id == HUD_BALLS || id == HUD_REPEL || id == HUD_BAG) {
-        ui.tab = PD_TAB_BAG;
-      } else if (id == HUD_WILD) {
-        ui.tab = PD_TAB_GUIDE;
-        ui.guidePage = 0;
-        ui.guideOpen = -1;
-      } else if (id == HUD_PC) {
-        job = JOB_PC; // the game's own PC, as the quick menu's
-        jobFrames = 0;
-      }
-      if (id != HUD_PC)
-        companion = true;
+      hud_press(id);
     } else {
       int dir = down(UP) ? UP : down(DOWN) ? DOWN : down(LEFT) ? LEFT : down(RIGHT) ? RIGHT : -1;
       if (dir >= 0)
@@ -1050,6 +1107,11 @@ RETRO_API void retro_run(void) {
   }
 
   if (companion) {
+    // The finger over the companion, as the 3DS's stylus: down every frame it's held (drags scroll), then up.
+    if (touchDown)
+      pd_ui_touch(&ui, touchX, touchY, true);
+    else if (touchWas)
+      pd_ui_touch(&ui, 0, 0, false);
     if (down(B) && !map_cursor_back(&ui) && !pd_ui_back(&ui))
       companion = false;
     if (down(L) || down(R))

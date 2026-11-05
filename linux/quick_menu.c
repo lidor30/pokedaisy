@@ -123,6 +123,22 @@ static void glass(struct pd_canvas *c, int x, int y, int w, int h) {
 /* GRID (QuickMenuStyle.GRID; Keegan Whitacre's layout, pokedaisy-brick): the width fitted, rows balanced, the short
  * last row centred, room kept under the tiles for the selected action's name. */
 static bool gridMode;
+/* Where the last draw put each tile / list row (canvas pixels), for a touch to find (quick_hit / quick_list_hit). */
+#define QUICK_MAX_HITS 32
+static struct { int x, y, w, h, i; } lastHit[QUICK_MAX_HITS];
+static int lastHits;
+static void hit_add(int x, int y, int w, int h, int i) {
+  if (lastHits < QUICK_MAX_HITS)
+    lastHit[lastHits++] = (__typeof__(lastHit[0])){x, y, w, h, i};
+}
+static int hit_find(int px, int py) {
+  for (int k = 0; k < lastHits; k++)
+    if (px >= lastHit[k].x && px < lastHit[k].x + lastHit[k].w && py >= lastHit[k].y && py < lastHit[k].y + lastHit[k].h)
+      return lastHit[k].i;
+  return -1;
+}
+int quick_hit(int x, int y) { return hit_find(x, y); }
+int quick_list_hit(int x, int y) { return hit_find(x, y); }
 void quick_set_grid(bool grid) { gridMode = grid; }
 static void grid_shape(int n, int w, int *cols, int *rows) {
   int fit = (w - 24 + 6) / (TILE_W + 6);
@@ -188,9 +204,11 @@ bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick
     return false;
   for (int i = 0; i < c->w * c->h; i++)
     c->px[i] = QUICK_CLEAR;
+  lastHits = 0;
   for (int i = 0; i < n; i++) {
     int x, y;
     place(n, i, c->w, c->h, &x, &y);
+    hit_add(x, y, TILE_W, TILE_H, i);
     if (i == sel)
       pd_round_rect(c, x - 2, y - 2, TILE_W + 4, TILE_H + 4, 5, FOCUS);
     glass(c, x, y, TILE_W, TILE_H);
@@ -256,8 +274,10 @@ void quick_list_draw(struct pd_canvas *c, const char *title, const char *const *
   int h = PAD + ROW + 4 + shown * ROW + PAD, x = (c->w - w) / 2, y = (c->h - h) / 2;
   glass(c, x, y, w, h);
   pd_text(c, x + (w - pd_text_width(title)) / 2, y + PAD - 2, title, FOCUS, INK_SHADOW);
+  lastHits = 0;
   for (int r = 0; r < shown; r++) {
     int i = top + r, ry = y + PAD + ROW + 4 + r * ROW;
+    hit_add(x + PAD, ry, w - 2 * PAD, ROW, i);
     if (i == sel)
       pd_round_rect(c, x + PAD, ry, w - 2 * PAD, ROW, 3, FOCUS);
     pd_text(c, x + 2 * PAD + 3, ry - 1, rows[i], INK, i == sel ? 0x00803010u : INK_SHADOW);

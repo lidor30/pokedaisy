@@ -64,8 +64,21 @@ static void video(const void *d, unsigned w, unsigned h, size_t pitch) {
 static void audio_one(int16_t l, int16_t r) { (void)l; (void)r; }
 static size_t audio(const int16_t *d, size_t n) { (void)d; return n; }
 static void poll(void) {}
+/* -t FRAME:FX:FY[:HOLD] - a finger at (FX, FY), 0..1 of the picture, from FRAME for HOLD frames (default 3): the libretro
+ * pointer, as the RG Rotate's diatom passes its panel. */
+static struct { int frame, hold; double fx, fy; } touches[64];
+static int ntouch;
 static int16_t input(unsigned port, unsigned dev, unsigned idx, unsigned id) {
   (void)idx;
+  if (!port && dev == RETRO_DEVICE_POINTER) {
+    for (int i = 0; i < ntouch; i++)
+      if (frame >= touches[i].frame && frame < touches[i].frame + touches[i].hold) {
+        if (id == RETRO_DEVICE_ID_POINTER_PRESSED || id == RETRO_DEVICE_ID_POINTER_COUNT) return 1;
+        if (id == RETRO_DEVICE_ID_POINTER_X) return (int16_t)((touches[i].fx * 2 - 1) * 0x7fff);
+        if (id == RETRO_DEVICE_ID_POINTER_Y) return (int16_t)((touches[i].fy * 2 - 1) * 0x7fff);
+      }
+    return 0;
+  }
   if (port || dev != RETRO_DEVICE_JOYPAD) return 0;
   int16_t m = 0;
   for (int i = 0; i < npress; i++)
@@ -106,6 +119,11 @@ int main(int argc, char **argv) {
       pokes[npoke].off = strtol(c1 + 1, NULL, 0);
       if (argv[i][1] == 'w') pokes[npoke].hex = c2 + 1; else pokes[npoke].n = atoi(c2 + 1);
       npoke++;
+    }
+    else if (!strcmp(argv[i], "-t")) {
+      int hold = 3;
+      if (sscanf(argv[i + 1], "%d:%lf:%lf:%d", &touches[ntouch].frame, &touches[ntouch].fx, &touches[ntouch].fy, &hold) < 3) return 2;
+      touches[ntouch++].hold = hold;
     }
     else if (!strcmp(argv[i], "-n")) frames = atoi(argv[i + 1]);
     else if (!strcmp(argv[i], "-R")) reload = atoi(argv[i + 1]);
