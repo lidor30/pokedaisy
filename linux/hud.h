@@ -44,6 +44,10 @@ struct hud_hits {
  * (nullable): where each target landed. */
 bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snapshot *s, const struct hud_state *h,
               const struct pd_settings *st, struct hud_hits *out);
+/* A backend with its own species art can draw the shared party row independently. */
+typedef void (*hud_mon_draw_fn)(struct pd_canvas *, void *, const struct pd_mon *, int x, int y, bool faded);
+void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx, hud_mon_draw_fn draw, int look);
+
 /* A number that changes whenever what the HUD shows does (so the host redraws it only then). */
 uint32_t hud_key(const struct pd_snapshot *s, const struct hud_state *h, const struct pd_settings *st);
 /* REPEL STEPS' full bar for a count first seen as [steps] (FieldHud's repelFull). */

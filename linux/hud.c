@@ -42,6 +42,8 @@ struct hud {
   const struct pd_settings *st;
   const struct look *L;
   struct hud_hits *out;
+  hud_mon_draw_fn monDraw;
+  void *monCtx;
   int partyN;           // party members shown (0: PARTY off)
   struct pd_item ball[3];
   int balls;            // ball kinds shown, most first
@@ -113,7 +115,11 @@ static void status_chip(struct pd_canvas *c, int cx, int y, const char *label) {
 // One member's icon at (x, y) in a TILE-wide slot: faded when fainted, its status chip over the top.
 static void mon_icon(struct hud *u, const struct pd_mon *m, int x, int y) {
   bool egg = m->species == PD_SPECIES_EGG, fainted = !egg && m->hp == 0;
-  pd_draw_mon_icon_shiny(u->c, u->g, m->species, m->shiny, x + (TILE - PD_ICON) / 2, y - 5, 1, fainted);
+  int ix = x + (TILE - PD_ICON) / 2;
+  if (u->monDraw)
+    u->monDraw(u->c, u->monCtx, m, ix, y - 5, fainted);
+  else
+    pd_draw_mon_icon_shiny(u->c, u->g, m->species, m->shiny, ix, y - 5, 1, fainted);
   const char *status = egg ? "" : fainted ? "FNT" : pd_status_label(m->status);
   if (*status)
     status_chip(u->c, x + TILE / 2, y - 3, status);
@@ -154,6 +160,16 @@ static void party_row(struct hud *u, int x, int y) {
 }
 
 // RAILS' party: a row each (HudMonRow), the icon then Lv over the HP bar.
+void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx, hud_mon_draw_fn draw, int look) {
+  if (!s->valid || s->partyCount <= 0 || !draw)
+    return;
+  if (look < 0 || look >= PD_HUD_LOOKS)
+    look = 0;
+  struct hud u = {.c = c, .s = s, .L = &LOOKS[look], .monDraw = draw, .monCtx = ctx,
+                  .partyN = s->partyCount <= 6 ? s->partyCount : 6};
+  party_row(&u, EDGE, c->h - EDGE - PARTY_H);
+}
+
 static int party_column_h(const struct hud *u) {
   return u->partyN ? 2 * PAD + 2 + u->partyN * MON_ROW_H + (u->partyN - 1) * GAP : 0;
 }

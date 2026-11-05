@@ -114,7 +114,10 @@ static void draw_page(struct pd_canvas* c, const uint32_t* px) {
         if (cy < c->cy0 || cy >= c->cy1) continue;
         const uint32_t* src = px + (y * mapH / view.h) * mapW;
         uint32_t* dst = c->px + cy * c->w + view.x;
-        for (int x = 0; x < view.w && x < 1024; x++) dst[x] = src[col[x]];
+        for (int x = 0; x < view.w && x < 1024; x++) {
+            int cx = view.x + x;
+            if (cx >= c->cx0 && cx < c->cx1) dst[x] = src[col[x]];
+        }
     }
 }
 
@@ -131,10 +134,10 @@ static void draw_head(struct pd_canvas* c, const uint32_t* head, int tx, int ty)
 
 // Four white L corners around a tile rect, out by 2 or 3 px (the blink); black on a Game Boy's light town map
 // (MapLabelStyle.GEN1's cursorColor).
-static void cursor(struct pd_canvas* c, const struct pd_tile_rect* r, bool big, uint32_t colour) {
+static void cursor_pixels(struct pd_canvas* c, int x, int y, int w, int h, bool big, uint32_t colour) {
     int out = big ? 3 : 2;
-    int l = sx(r->x * 8) - out, t = sy(r->y * 8) - out;
-    int rr = sx((r->x + r->w) * 8) + out, b = sy((r->y + r->h) * 8) + out;
+    int l = sx(x) - out, t = sy(y) - out;
+    int rr = sx(x + w) + out, b = sy(y + h) + out;
     pd_clip(c, view.x, view.y, view.w, view.h);
     pd_fill(c, l, t, CURSOR_ARM, CURSOR_THICK, colour);
     pd_fill(c, l, t, CURSOR_THICK, CURSOR_ARM, colour);
@@ -149,8 +152,8 @@ static void cursor(struct pd_canvas* c, const struct pd_tile_rect* r, bool big, 
 
 // Darkens a strip of the map (FireRed's label: black at 6/16).
 static void darken(struct pd_canvas* c, int x, int y, int w, int h) {
-    for (int yy = y; yy < y + h; yy++) {
-        for (int xx = x; xx < x + w; xx++) {
+    for (int yy = y < c->cy0 ? c->cy0 : y; yy < y + h && yy < c->cy1; yy++) {
+        for (int xx = x < c->cx0 ? c->cx0 : x; xx < x + w && xx < c->cx1; xx++) {
             uint32_t p = c->px[yy * c->w + xx];
             uint32_t r = (p >> 16 & 0xFF) * 10 / 16, g = (p >> 8 & 0xFF) * 10 / 16, b = (p & 0xFF) * 10 / 16;
             c->px[yy * c->w + xx] = r << 16 | g << 8 | b;
@@ -200,6 +203,21 @@ static void map_button(struct pd_ui* ui, struct pd_canvas* c, const char* text, 
     buttonRight -= 4;
 }
 
+static void layout(struct pd_canvas* c, int width, int height) {
+    mapW = width;
+    mapH = height;
+    // The map fills the tab: stretched to it while that's within 1.2x of its shape, else as big as fits,
+    // centred (MapScreen's MAX_MAP_STRETCH).
+    int aw = c->w - 2 * MARGIN - 2 * FRAME, ah = c->h - CONTENT_Y - MARGIN - 2 * FRAME;
+    int w = aw, h = ah;
+    if ((long) aw * mapH * MAX_STRETCH_DEN > (long) ah * mapW * MAX_STRETCH_NUM) w = ah * mapW / mapH;
+    else if ((long) ah * mapW * MAX_STRETCH_DEN > (long) aw * mapH * MAX_STRETCH_NUM) h = aw * mapH / mapW;
+    view.w = w > 0 ? w : 1;
+    view.h = h > 0 ? h : 1;
+    view.x = MARGIN + FRAME + (aw - w) / 2;
+    view.y = CONTENT_Y + FRAME + (ah - h) / 2;
+}
+
 void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     lastGame = g;
     const struct pd_map_art* art = pd_map_art(g);
@@ -214,20 +232,8 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     lastPlayerTy = pty;
     int page = ui->mapPage >= 0 ? ui->mapPage : hasPlayer ? playerPage : 0;
     if (page >= art->pages) page = 0;
-    mapW = art->w;
-    mapH = art->h;
-
-    // The map fills the tab: stretched to it while that's within 1.2x of its shape, else as big as fits,
-    // centred (MapScreen's MAX_MAP_STRETCH).
-    int aw = c->w - 2 * MARGIN - 2 * FRAME, ah = c->h - CONTENT_Y - MARGIN - 2 * FRAME;
-    int w = aw, h = ah;
-    if ((long) aw * mapH * MAX_STRETCH_DEN > (long) ah * mapW * MAX_STRETCH_NUM) w = ah * mapW / mapH;
-    else if ((long) ah * mapW * MAX_STRETCH_DEN > (long) aw * mapH * MAX_STRETCH_NUM) h = aw * mapH / mapW;
-    view.w = w;
-    view.h = h;
-    view.x = MARGIN + FRAME + (aw - w) / 2;
-    view.y = CONTENT_Y + FRAME + (ah - h) / 2;
-    frame(c, view.x - FRAME, view.y - FRAME, w + 2 * FRAME, h + 2 * FRAME);
+    layout(c, art->w, art->h);
+    frame(c, view.x - FRAME, view.y - FRAME, view.w + 2 * FRAME, view.h + 2 * FRAME);
     draw_page(c, art->page[page]);
 
     // What the cursor and label show: the tapped place, else where the player is.
@@ -254,7 +260,7 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     }
     int gender = s->gender == 1 ? 1 : 0;
     if (hasPlayer && page == playerPage && art->hasHead[gender]) draw_head(c, art->head[gender], ptx, pty);
-    for (int i = 0; i < n; i++) cursor(c, &rects[i], ui->mapBlink, g->kind == PD_GAME_GB ? PD_GB_INK : CURSOR);
+    for (int i = 0; i < n; i++) cursor_pixels(c, rects[i].x * 8, rects[i].y * 8, rects[i].w * 8, rects[i].h * 8, ui->mapBlink, g->kind == PD_GAME_GB ? PD_GB_INK : CURSOR);
     int below = label(c, g, name, dungeon);
     ui_add_hit(ui, view.x, view.y, view.w, view.h, HIT_MAP);
 
@@ -364,4 +370,24 @@ bool ui_map_act(struct pd_ui* ui, int id) {
     default:
         return false;
     }
+}
+
+// The same map frame, bounded stretch, nearest-neighbour scaling, label and cursor
+// for another backend's already-composed art. The normal GBA path still builds its
+// own page, head and selection above.
+void pd_ui_map_view(struct pd_canvas* c, const struct pd_map_source* source) {
+    pd_backdrop(c);
+    if (!source || !source->pixels || source->width < 1 || source->height < 1 ||
+        source->width > 4096 || source->height > 4096 || c->w < 32 || c->h < 32 || c->w > 1024) {
+        ui_notice(c, "NO MAP", "The region map's art wasn't found", "in this ROM.");
+        return;
+    }
+    layout(c, source->width, source->height);
+    frame(c, view.x - FRAME, view.y - FRAME, view.w + 2 * FRAME, view.h + 2 * FRAME);
+    draw_page(c, source->pixels);
+    if (source->cursorX >= 0 && source->cursorY >= 0 && source->cursorW > 0 && source->cursorH > 0 &&
+        source->cursorX <= mapW - source->cursorW && source->cursorY <= mapH - source->cursorH)
+        cursor_pixels(c, source->cursorX, source->cursorY, source->cursorW, source->cursorH, false, CURSOR);
+    const struct pd_game game = {0};
+    label(c, &game, source->name, NULL);
 }

@@ -45,7 +45,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     int x = MARGIN, w = c->w - 2 * MARGIN;
     int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_H, PD_TITLE_FILL);
     int ty = pd_text_y(CONTENT_Y, TITLE_H);
-    pd_text(c, x + f + 6, ty, "SETTINGS", PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    pd_text(c, x + f + 6, ty, ui->optionSource ? ui->optionSource->title : "SETTINGS", PD_TITLE_TEXT, PD_TITLE_SHADOW);
     int right = x + w - f - 6;
     // The TRAINER CARD opens from here (the list below is full): a grey chip at
     // the title window's right, white while pressed, like the tab bar's.
@@ -72,6 +72,29 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     listTop = LIST_Y + lf;
     listBottom = LIST_Y + lh - lf;
     ui_add_scroll_hit(ui, x, listTop, w, listBottom - listTop, HIT_SETTINGS_LIST);
+    if(ui->optionSource){
+        int n=ui->optionSource->count;
+        if(n<0)n=0;
+        if(n>64)n=64;
+        int view=listBottom-listTop,selected=ui->optionSelected;
+        if(selected>=n)selected=n-1;
+        if(selected>=0){
+            int top=selected*ROW_H;
+            if(top<ui->settingsScroll)ui->settingsScroll=top;
+            if(top+ROW_H>ui->settingsScroll+view)ui->settingsScroll=top+ROW_H-view;
+        }
+        ui->settingsScroll=ui_clamp_scroll(ui->settingsScroll,n*ROW_H,view);
+        pd_clip(c,x+lf,listTop,w-2*lf,view);
+        for(int i=0;i<n;i++){
+            int ry=listTop+i*ROW_H-ui->settingsScroll;
+            if(ry+ROW_H<=listTop || ry>=listBottom)continue;
+            const struct pd_option_row* row=&ui->optionSource->rows[i];
+            ui_row(c,ix,ry,iw,row->label,row->value,i==selected);
+        }
+        pd_unclip(c);
+        ui_scroll_bar(c,x+w-lf-3,listTop,view,ui->settingsScroll,n*ROW_H,PD_DIVIDER);
+        return;
+    }
     pd_clip(c, x + lf, listTop, w - 2 * lf, listBottom - listTop);
     if (lastTotal >= 0) ui->settingsScroll = ui_clamp_scroll(ui->settingsScroll, lastTotal, listBottom - listTop);
     int y = listTop - ui->settingsScroll;
@@ -294,4 +317,15 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     default:
         break;
     }
+}
+
+void pd_ui_options_view(struct pd_ui* ui,struct pd_canvas* c,const struct pd_game* g,const struct pd_snapshot* s){
+    ui->hitCount=0;pd_backdrop(c);ui_settings_tab(ui,c,g,s,NULL);
+}
+
+void pd_ui_choices_view(struct pd_canvas* c,const char* title,const char* const* choices,int count,int selected){
+    if(count<1 || count>8)return;
+    struct pd_ui ui={0};ui.pressedId=-1;
+    pd_dim(c,230);
+    pick_list(&ui,c,title,choices,count,selected);
 }
