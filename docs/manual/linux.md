@@ -67,7 +67,7 @@ The save is the same file the mGBA core uses, and the launcher owns save
 states, fast-forward, rewind, shaders and leaving the game. Pick PokeDaisy in
 the Core row of a Game Boy shelf.
 
-In this form the quick menu (Y) keeps PC, FLY, REPEL, BIKE, WILD ENCOUNTERS and
+In this form the quick menu (Y) keeps PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS and
 COMPANION, adds a HUD tile that puts the cursor on the HUD, and the game pauses
 while it is open. X opens the companion. SETTINGS lists only what the core does
 itself: ASPECT, HUD, QUICK MENU, three button rows and TAB BAR. QUICK MENU BUTTON,
@@ -108,3 +108,9 @@ screen gameplay with automatic touch and menu windows. R2 cycles to the bottom
 or top screen manually. Hold Select and press R2 to toggle a floating touch
 panel in One Screen or Picture in Picture. Select + D-pad moves the stylus and
 Select + A taps. Use NXRedux's menus and shortcuts for saves, states and speed.
+
+Turn on `BATTLE STRIP` in the companion settings to choose battle commands
+with the D-pad. A selects a command or move, and B goes back from the move
+list. The move cards show the game's current and maximum PP. The bag and
+party open in the game's own floating panels. Doubles use the native battle
+controls.

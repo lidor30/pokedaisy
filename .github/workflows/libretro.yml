@@ -1,0 +1,50 @@
+name: libretro core
+
+# The PokeDaisy libretro core (libretro/) and the shared C companion it draws (3ds/core, linux/ pieces): built on x86
+# with the desktop test host and cross-built for aarch64 (a compile check; release cores come from plorpOS's
+# mk/build-pokedaisy-core.sh in its toolchain image), only retro_* exported, and the shared UI previews rendered.
+on:
+  pull_request:
+  push:
+    branches: [main, feat/libretro-core]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: libretro-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+jobs:
+  core:
+    name: libretro core (x86 + aarch64, exports)
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: mGBA submodule
+        run: git submodule update --init --depth 1 third_party/mgba
+      - name: Toolchains
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross
+      - name: Core (x86) + test hosts
+        run: |
+          cmake -S libretro -B build/x86 -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
+          cmake --build build/x86 -j"$(nproc)" --target pokedaisy_libretro gb_field_test
+          gcc -I third_party/mgba/src/platform/libretro -o build/x86/pd_lr_host libretro/test/pd_lr_host.c -ldl -lm
+          sh libretro/test/check_exports.sh build/x86/pokedaisy_libretro.so
+      - name: Core (aarch64, Cortex-A53)
+        run: |
+          cmake -S libretro -B build/arm -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
+            -DCMAKE_TOOLCHAIN_FILE="$PWD/libretro/aarch64.cmake"
+          cmake --build build/arm -j"$(nproc)" --target pokedaisy_libretro
+          NM=aarch64-linux-gnu-nm sh libretro/test/check_exports.sh build/arm/pokedaisy_libretro.so
+
+  previews:
+    name: Shared UI previews
+    runs-on: ubuntu-24.04
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+      - name: make -C 3ds preview (fixtures; the ROM-backed lines skip without ROMs)
+        run: make -C 3ds preview

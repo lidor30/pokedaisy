@@ -1077,8 +1077,9 @@ static void focus_move(struct pd_ui *u, int direction) {
     if (i == cur)
       continue;
     struct pd_hit *t = &u->hits[i];
-    if (t->id == HIT_SCRIM || t->id == HIT_BAG_LIST || t->id == HIT_DEX_LIST || t->id == HIT_GUIDE_LIST ||
-        t->id == HIT_SETTINGS_LIST)
+    // Never onto what focus_resolve can't land on either (the tab chips: L / R own the bar).
+    if (!focusable(t->id) || t->id == HIT_SCRIM || t->id == HIT_BAG_LIST || t->id == HIT_DEX_LIST ||
+        t->id == HIT_GUIDE_LIST || t->id == HIT_SETTINGS_LIST)
       continue;
     int dx = (t->x + t->w / 2) - (h->x + h->w / 2),
         dy = (t->y + t->h / 2) - (h->y + h->h / 2);

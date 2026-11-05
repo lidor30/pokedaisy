@@ -3,7 +3,7 @@ on:
   pull_request:
     paths: ['linux/**', '3ds/core/**', '3ds/test/host_display_test.c', '3ds/Makefile', '3ds/desktop/pd_png.*', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
   push:
-    branches: [main, dev]
+    branches: [main, dev, feat/libretro-core]
     paths: ['linux/**', '3ds/**', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
   workflow_dispatch:
 permissions:
