@@ -178,6 +178,12 @@ fun DsBattleMenu(
         snapshot.party.firstOrNull { it.species == b.species && it.level == b.level && it.hp == b.hp }?.shownName ?: b.name
     }.orEmpty()
     val wild = snapshot.enemyParty.isEmpty()
+    // A move (or RUN) picked: the strip goes at once, so it never covers what the game says next (a Discord report: it
+    // stayed over the foe's next Pokémon). Back after a moment if the game said no (a move it won't let you use).
+    var leaving by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(leaving) {
+        if (leaving) { kotlinx.coroutines.delay(LEAVE_MS); leaving = false }
+    }
     SideEffect {
         if (state.mode != mode) {
             // The moves open on the first; the actions keep their place, as the game's do.
@@ -186,8 +192,8 @@ fun DsBattleMenu(
         }
         state.actionEnabled = { it != 3 || wild }
         state.moveEnabled = { moves.getOrNull(it)?.let { m -> m.pp > 0 } == true }
-        state.pickAction = { if (!busy) battleInput?.selectAction(it) }
-        state.pickMove = { if (!busy) battleInput?.selectMove(it) }
+        state.pickAction = { if (!busy) { if (it == 3) leaving = true; battleInput?.selectAction(it) } }
+        state.pickMove = { if (!busy) { leaving = true; battleInput?.selectMove(it) } }
         state.back = { if (!busy) battleInput?.back() }
     }
     // What the strip shows: the menu up, or - the keys the game's meanwhile - the last one held while the battle's bag or
@@ -197,9 +203,9 @@ fun DsBattleMenu(
     val holding = input == BATTLE_INPUT_BAG_OPEN || input == BATTLE_INPUT_PARTY_OPEN
     androidx.compose.runtime.LaunchedEffect(mode, holding) {
         if (mode != 0) held.intValue = mode
-        else if (!holding) { kotlinx.coroutines.delay(HOLD_MS); held.intValue = 0 }
+        else if (!holding) { if (!leaving) kotlinx.coroutines.delay(HOLD_MS); held.intValue = 0 }
     }
-    val shownMode = if (mode != 0) mode else if (shown && picture != null) held.intValue else 0
+    val shownMode = if (leaving) 0 else if (mode != 0) mode else if (shown && picture != null) held.intValue else 0
     if (shownMode == 0 || picture == null) return
     val idle = busy || mode == 0
     val look = DsLook.of(snapshot.game)
@@ -351,6 +357,8 @@ private const val GAME_MESSAGE_END = 0.62f
 
 /** How long the strip stays after its menu goes (not to the bag / party): FIGHT's panel slides in meanwhile. */
 private const val HOLD_MS = 300L
+/** How long a picked strip stays away with the game still on its menu. */
+private const val LEAVE_MS = 1000L
 
 /** The cursor's pulse: out this many GBA pixels and back over [PULSE_MS] each way. */
 private const val PULSE_PX = 2

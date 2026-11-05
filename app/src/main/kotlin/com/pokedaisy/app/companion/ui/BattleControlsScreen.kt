@@ -219,6 +219,23 @@ fun BattleControlsScreen(
     }
 }
 
+/** The game's cursor in the battle menu on screen, for a button to show where it is - once the player has moved it (a
+ * ring on FIGHT every turn would say nothing). -1 till then. Polled like [rememberBattleInputBusy]. */
+@Composable
+internal fun rememberBattleCursor(battleInput: BattleInput?): Int {
+    var shown by remember(battleInput) { mutableStateOf(-1) }
+    androidx.compose.runtime.LaunchedEffect(battleInput) {
+        var first = -1
+        while (battleInput != null) {
+            androidx.compose.runtime.withFrameMillis { }
+            val now = battleInput.menuCursor
+            if (first < 0) first = now
+            if (now >= 0 && (shown >= 0 || now != first)) shown = now
+        }
+    }
+    return shown
+}
+
 /** Polls [BattleInput.busy] into Compose state - it's a plain field updated
  * from the emulator thread, not a Flow/State, so this is the one spot that
  * needs to notice it change moment-to-moment. 60fps-ish is plenty for a
@@ -314,6 +331,7 @@ private fun ActionButtons(
 ) {
     val enabled = battleInput != null && !busy
     if (gen1Buttons) return Gen1ActionButtons(activeMon, battleInput, enabled, onPokemon, modifier)
+    val cursor = rememberBattleCursor(battleInput).takeIf { !busy } ?: -1
     // Platinum's layout: a big FIGHT box centred up top, BAG and POKéMON in
     // the bottom corners with RUN between them, set a little lower.
     Column(
@@ -338,7 +356,7 @@ private fun ActionButtons(
             fill = FightRed, frame = FightRedDark,
             // The D-pad (the companion's window) starts on FIGHT, like the game's cursor.
             modifier = Modifier.focusStart(true).fillMaxWidth(0.76f).weight(1.6f),
-            enabled = enabled,
+            enabled = enabled, highlighted = cursor == 0,
             pressesGame = onFight == null, onClick = { onFight?.invoke() ?: battleInput?.selectAction(0) },
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -359,17 +377,17 @@ private fun ActionButtons(
             if (com.pokedaisy.app.companion.data.battleHasBag) PlatinumButton(
                 fill = BagOrange, frame = BagOrangeDark,
                 modifier = Modifier.weight(1f).fillMaxHeight().padding(bottom = drop),
-                enabled = enabled, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(1) },
+                enabled = enabled, highlighted = cursor == 1, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(1) },
             ) { ButtonLabel(tr("BAG"), 36.sp, bold = true) }
             PlatinumButton(
                 fill = RunBlue, frame = RunBlueDark,
                 modifier = Modifier.weight(1f).fillMaxHeight().padding(top = drop),
-                enabled = enabled, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(3) },
+                enabled = enabled, highlighted = cursor == 3, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(3) },
             ) { ButtonLabel(tr("RUN"), 36.sp, bold = true) }
             PlatinumButton(
                 fill = MonGreen, frame = MonGreenDark,
                 modifier = Modifier.weight(1f).fillMaxHeight().padding(bottom = drop),
-                enabled = enabled, contentPadding = side, pressesGame = onPokemon == null,
+                enabled = enabled, highlighted = cursor == 2, contentPadding = side, pressesGame = onPokemon == null,
                 onClick = { onPokemon?.invoke() ?: battleInput?.selectAction(2) },
             ) { ButtonLabel(tr("POKéMON"), 30.sp, bold = true) }
         }
@@ -390,6 +408,7 @@ internal fun MoveGrid(
 ) {
     CompanionBackHandler(enabled = battleInput != null && !busy) { onCancel?.invoke() ?: battleInput?.back() }
     if (gen1Buttons) return Gen1MoveList(moves, battleInput, busy, showHints, modifier, onCancel)
+    val cursor = rememberBattleCursor(battleInput).takeIf { !busy } ?: -1
     Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         for (row in 0..1) {
             Row(
@@ -399,7 +418,7 @@ internal fun MoveGrid(
                 for (col in 0..1) {
                     val idx = row * 2 + col
                     // The D-pad (the companion's window) starts on the first move.
-                    MoveCard(moves.getOrNull(idx), battleInput, idx, busy, showHints, modifier = Modifier.focusStart(idx == 0).weight(1f).fillMaxHeight(), compact = compact)
+                    MoveCard(moves.getOrNull(idx), battleInput, idx, busy, showHints, modifier = Modifier.focusStart(idx == 0).weight(1f).fillMaxHeight(), compact = compact, highlighted = cursor == idx)
                 }
             }
         }
@@ -485,6 +504,8 @@ internal fun MoveCard(
     modifier: Modifier = Modifier,
     /** Two lines (ONE-TAP MOVES, under the action buttons): the type joins the power / PP line. */
     compact: Boolean = false,
+    /** The game's cursor is on this move ([rememberBattleCursor]). */
+    highlighted: Boolean = false,
 ) {
     val enabled = mv != null && mv.pp > 0 && battleInput != null && !busy
     // Whole-card color keyed by move type (fill stays a constant pale card
@@ -498,6 +519,7 @@ internal fun MoveCard(
         frame = frame,
         modifier = modifier,
         enabled = enabled,
+        highlighted = highlighted,
         // Clear of the bevel's side bands.
         contentPadding = PaddingValues(horizontal = 26.dp, vertical = 4.dp),
         pressesGame = true, onClick = { battleInput?.selectMove(moveIndex) },
@@ -564,6 +586,8 @@ internal fun PlatinumButton(
     frame: Color,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /** The game's own cursor is on this button: the D-pad's ring. */
+    highlighted: Boolean = false,
     pressesGame: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(8.dp),
     /** The near-black outline's width. */
@@ -580,7 +604,7 @@ internal fun PlatinumButton(
         modifier = modifier
             .alpha(if (enabled) 1f else 0.45f)
             // The D-pad's focus (the companion's window), over the bevel and the content.
-            .gbaFocusRing(focused, shape)
+            .gbaFocusRing(focused || highlighted, shape)
             .then(
                 // Gen 1 (Yellow): a button is its text box - white inside the double line.
                 if (gen1Buttons) Modifier.drawBehind {

@@ -567,7 +567,7 @@ fun battle(state: Int): SnapshotView {
     val foe = s.party[1].copy(moves = emptyList())
     val me = s.party[0].let { m ->
         m.copy(moves = m.moves.map { mv ->
-            mv.copy(vs = listOf(MoveVsFoe(foe.name, "1x", 100)))
+            if (mv.power == 0) mv else mv.copy(vs = listOf(MoveVsFoe(foe.name, "1x", 100)))
         })
     }
     return s.copy(

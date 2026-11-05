@@ -157,6 +157,9 @@ class BattleButtonsPhoneScreenshotTest {
     @After fun reset() = setup.reset()
 
     @Test fun original() = paparazzi.snapshot { BattleScene(expand = false, width = 2400) }
+
+    /** Between the touch controls' rows: the words stay whole. */
+    @Test fun squeezed() = paparazzi.snapshot { BattleScene(expand = false, width = 2400, clearTop = 131, clearBottom = 549) }
 }
 
 @Composable
@@ -165,6 +168,8 @@ internal fun BattleScene(
     window: BattleButtonsWindow? = null,
     snap: SnapshotView = BattleButtonsScreenshotTest.battle,
     width: Int = 1920,
+    clearTop: Int = 0,
+    clearBottom: Int = 0,
 ) {
     val left = (width - 1620) / 2f
     Box(Modifier.fillMaxSize().background(Color.Black)) {
@@ -172,7 +177,7 @@ internal fun BattleScene(
         BattleButtons(
             snap, shown = true, BattleButtonsScreenshotTest.input, showHints = true,
             core = if (expand) null else Rect(left, 0f, left + 1620f, 1080f),
-            initialWindow = window,
+            initialWindow = window, clearTop = clearTop, clearBottom = clearBottom,
         )
     }
 }

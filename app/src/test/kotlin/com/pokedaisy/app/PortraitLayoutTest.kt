@@ -108,6 +108,24 @@ class PortraitLayoutTest {
     }
 
     @Test
+    fun hiddenLeavesOnlyTheGripAlongTheBottom() {
+        val grip = 60
+        val a = PortraitLayout.arrange(w, h, game, grip, PortraitLayout.DEFAULT_RATIO, underGame = false, hidden = true)
+        assertEquals(0, a.companionHeight)
+        assertEquals(h - grip, a.gripTop)
+        assertEquals(game, a.gameBottom)
+        assertEquals(game, a.padTop)      // the touch controls take the room under the game
+        assertEquals(h - grip, a.padBottom)
+        // EXPAND: the game takes it all, the grip at the bottom.
+        val wide = PortraitLayout.arrange(w, h, h, grip, PortraitLayout.DEFAULT_RATIO, underGame = false, expand = true, hidden = true)
+        assertEquals(h - grip, wide.gameAreaBottom)
+        // EXPAND + UNDER GAME: the touch controls keep their strip, under the grip.
+        val strip = PortraitLayout.arrange(w, h, h, grip, PortraitLayout.DEFAULT_RATIO, underGame = true, expand = true, padStrip = 300, hidden = true)
+        assertEquals(h - 300, strip.padTop)
+        assertEquals(h - 300 - grip, strip.gripTop)
+    }
+
+    @Test
     fun diagonalKeysPressBothDirections() {
         val input = GbaInput()
         input.onKey(android.view.KeyEvent.KEYCODE_DPAD_UP_LEFT, true)

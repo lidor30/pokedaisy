@@ -60,7 +60,7 @@ object PortraitLayout {
         }
     }
 
-    /** A tap on the grip: smallest, the Thor's shape, everything under the game, round again. */
+    /** A tap on the grip: smallest, the Thor's shape, everything under the game, round again ([PortraitPanel] hides it between). */
     fun next(w: Int, h: Int, gameH: Int, ratio: Float, reserve: Int = 0): Float {
         val max = maxRatio(w, h, gameH, reserve)
         val stops = listOf(MIN_RATIO, DEFAULT_RATIO, max).filter { it <= max }.distinct().sorted()
@@ -101,7 +101,16 @@ object PortraitLayout {
      * always along the bottom, a Galaxy Z Fold's battle move cards lost their
      * PWR / PP line - GitHub #136.)
      */
-    fun arrange(w: Int, h: Int, gameH: Int, gripH: Int, ratio: Float, underGame: Boolean, expand: Boolean = false, padStrip: Int = 0): Arrangement {
+    fun arrange(w: Int, h: Int, gameH: Int, gripH: Int, ratio: Float, underGame: Boolean, expand: Boolean = false, padStrip: Int = 0, hidden: Boolean = false): Arrangement {
+        // Hidden: no companion, only its grip along the bottom (over the touch controls' own strip, if they have one).
+        if (hidden) {
+            val strip = if (expand && underGame && padStrip > 0) minOf(padStrip, h / 3) else 0
+            val gripTop = h - strip - gripH
+            val gameBottom = minOf(gameH, gripTop)
+            val inGap = !expand && padInGap(w, gripTop - gameBottom)
+            val padTop = if (strip > 0) h - strip else if (inGap) gameBottom else 0
+            return Arrangement(gameBottom, gripTop, h - strip, 0, Grip.ABOVE, gripTop, padTop, if (strip > 0) h else gripTop)
+        }
         // WIDE ([expand]): the game takes everything above the companion, so right under the game and along the
         // bottom would be the same place. UNDER GAME there gives the touch controls a strip of their own along the
         // screen's bottom instead ([padStrip] tall, 0 = no touch controls: the same as along the bottom), the

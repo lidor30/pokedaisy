@@ -352,6 +352,7 @@ class PokeDaisyActivity : Activity() {
      * (a move, a switch, RUN, or BAG / POKéMON opening the game's own screen) closes the one-screen companion's window,
      * so the player sees it play out; FIGHT keeps it open, for the move list in it. */
     private val battleInput = object : com.pokedaisy.app.companion.BattleInput {
+        override val menuCursor get() = if (::engine.isInitialized) engine.battleMenuCursor else -1
         override val busy get() = if (::engine.isInitialized) engine.battleInputBusy else false
         override val gameSilent get() = ::engine.isInitialized && engine.gameAudioPaused
         override fun selectAction(actionIndex: Int) {
@@ -1896,7 +1897,9 @@ class PokeDaisyActivity : Activity() {
         portraitPanel = PortraitPanel(root, view, touchControls, Prefs(this), portraitBack, playClick) {
             dsOrCompanion {
                 val snap by telemetry.snapshot.collectAsState()
-                CompanionScreen(snap, stateSlots, companionSettings, battleInput, back = portraitBack, clickSound = playClick, achievements = RetroAchievements, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort)
+                CompanionFocusHost(bottomFocus.value, bottomKeys) {
+                    CompanionScreen(snap, stateSlots, companionSettings, battleInput, back = portraitBack, keys = bottomKeys, clickSound = playClick, achievements = RetroAchievements, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort)
+                }
             }
         }
         // Two screens: the game stays on the landscape top one. One screen (a phone): it turns
@@ -2396,6 +2399,7 @@ class PokeDaisyActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        presentation?.let { SecondScreenHolder.open(this, it.display) }
         tipsResumed = true
         coopOn = FeatureFlags.coop(this)
         if (movePause) {
@@ -2926,6 +2930,7 @@ class PokeDaisyActivity : Activity() {
         runCatching { unregisterReceiver(batteryReceiver) }
         presentation?.let { it.dismiss(); it.releaseContent() }
         presentation = null
+        SecondScreenHolder.close()
         ffMusicPlayer.release()
         if (::engine.isInitialized && romKey.isNotEmpty()) {
             Prefs(this).setSpeedIndexFor(romKey, engine.speedIndex)
@@ -3023,6 +3028,7 @@ class PokeDaisyActivity : Activity() {
             setBottomFocus(false)
             presentation?.let { it.dismiss(); it.releaseContent() }
             presentation = null
+            SecondScreenHolder.close()
             showStage()
             // Closed while swapped, the game on the second screen: the companion opens over it there, as on one screen.
             // It fills that screen (the companion's own, on a device like the Thor), whatever COMPANION VIEW says.
@@ -3041,6 +3047,7 @@ class PokeDaisyActivity : Activity() {
         setBottomFocus(false)
         current?.let { it.dismiss(); it.releaseContent() }
         presentation = null
+        SecondScreenHolder.close()
         dsBottom = null
         syncOrientation(target != null)
         // One screen and a DS game: its touch screen takes the companion's place, the side panel locked beside the game.
@@ -3059,6 +3066,7 @@ class PokeDaisyActivity : Activity() {
                     DualScreenPresentation.companionView(
                         ctx, telemetry, stateSlots, companionSettings, battleInput, companionBack, playClick, RetroAchievements,
                         initialTab = companionStartTab, initialSettingsRow = companionStartRow, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort,
+                        keys = bottomKeys, focus = { bottomFocus.value },
                     )
                 }, Prefs(this).dsBottomCompanion) { on -> Prefs(this).dsBottomCompanion = on }.also { dsBottom = it }
                 else DualScreenPresentation.companionView(
@@ -3068,6 +3076,7 @@ class PokeDaisyActivity : Activity() {
                 )
             }.also { it.show() }
         }.onFailure { Log.w("pokedaisy", "presentation failed", it) }.getOrNull()
+        if (presentation != null) SecondScreenHolder.open(this, target)
         companionStartTab = "PARTY"
         companionStartRow = null
         if (presentation == null && swap) {
@@ -3648,7 +3657,7 @@ class PokeDaisyActivity : Activity() {
                 // field (a battle, its PC opened from the companion) wants them back.
                 val focused = bottomFocus.value
                 androidx.compose.runtime.LaunchedEffect(focused, onField, snap.inBattle) {
-                    if (focused && (!onField || snap.inBattle)) setBottomFocus(false)
+                    if (focused && !romIsNds && (!onField || snap.inBattle)) setBottomFocus(false)
                 }
                 CompanionFocusStripe(
                     focused, hudFrame.value, if (engine?.gba == false && engine?.nds == false) GB_ROWS else GBA_ROWS,
@@ -3939,11 +3948,15 @@ class PokeDaisyActivity : Activity() {
     /** The joystick's D-pad / stick directions while [bottomFocus], so a new one is a press. */
     private var bottomHat = 0
 
+    /** A DS game with the companion on the second screen's switch, where the game's buttons can reach it (not SWAP SCREENS'). */
+    private fun dsCompanionKeyed() = romIsNds && dsBottom != null && presentation?.isShowing == true && !Prefs(this).swapScreens
+
     /** TO COMPANION can take the buttons down now: a GBA / Game Boy game on the field with its controls free (no text box, script or
      * START menu, where the field read knows), the companion on the other screen, nothing else holding the buttons. */
     private fun canFocusBottom(): Boolean {
         if (romIsNds || debugMirror || companionClosed || companionOverGame.value) return false
-        if (presentation?.isShowing != true) return false
+        // The other screen, or the companion under the game on a phone held upright (GitHub discussion #308).
+        if (presentation?.isShowing != true && !(::portraitPanel.isInitialized && portraitPanel.enabled)) return false
         if (!::engine.isInitialized || !engine.onField.value || engine.fieldLocked) return false
         if (quickMenu.open || touchEditor != null || keyCapture.request != null) return false
         if (::sidePanel.isInitialized && sidePanel.windowOpen) return false
@@ -3954,6 +3967,9 @@ class PokeDaisyActivity : Activity() {
     private fun setBottomFocus(on: Boolean) {
         if (bottomFocus.value == on) return
         bottomFocus.value = on
+        // A DS game's second screen goes back to its touch screen with the buttons; a hidden upright companion comes up.
+        if (!on && romIsNds) dsBottom?.show(false)
+        if (on && ::portraitPanel.isInitialized && portraitPanel.enabled) portraitPanel.reveal()
         // The player's held keys let go in the game (which runs on), and the other way round.
         input.releaseAll()
         bottomHat = 0
@@ -3974,7 +3990,7 @@ class PokeDaisyActivity : Activity() {
             menuHeld.add(code)
             return true
         }
-        if (::hotkeys.isInitialized && hotkeysOn) for (e in hotkeys.onKey(code, down)) if (!e.pressed) handleHotkey(e)
+        if (::hotkeys.isInitialized && hotkeysOn) for (e in hotkeys.onKey(code, down)) if (!e.pressed || e.action == Hotkeys.Action.COMPANION) handleHotkey(e)
         if (code == KeyEvent.KEYCODE_BUTTON_MODE) {
             if (!down && !event.isCanceled) companionBackTap()
             return true
@@ -4353,7 +4369,17 @@ class PokeDaisyActivity : Activity() {
                 // One screen: COMPANION BUTTON can hide the edge tab, so this is the way in. Closed on a device with a
                 // second screen (CLOSE COMPANION), it comes back to its own.
                 if (companionClosed) reopenCompanion()
+                else if (dsCompanionKeyed()) {
+                    // A DS game's second screen: the game's touch screen or the companion, the buttons going with it.
+                    val on = dsBottom?.showingCompanion != true || !bottomFocus.value
+                    dsBottom?.show(on)
+                    setBottomFocus(on)
+                }
                 else if (::sidePanel.isInitialized && sidePanel.enabled) sidePanel.openPanel()
+                else if (::portraitPanel.isInitialized && portraitPanel.enabled && !romIsNds) {
+                    portraitPanel.toggleHidden()
+                    if (portraitPanel.hidden) setBottomFocus(false)
+                }
             }
             Hotkeys.Action.QUICK_MENU -> triggerQuickMenu(e.pressed)
             Hotkeys.Action.MUTE -> if (e.pressed) {

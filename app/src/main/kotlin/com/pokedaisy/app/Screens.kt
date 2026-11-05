@@ -16,11 +16,13 @@ object Screens {
      * presentation display. Other dual-screen handhelds (Retroid Pocket Duo /
      * Duo Lite) may expose theirs as a plain secondary display without that
      * flag, so fall back to any valid public display other than the built-in
-     * main one.
+     * main one. Never the main display itself: the AYANEO Pocket DS marks both of
+     * its screens as presentation displays, and the companion went over the game.
      */
     fun second(context: Context): Display? {
         val displays = context.getSystemService(DisplayManager::class.java) ?: return null
-        return displays.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION).firstOrNull { it.isValid }
+        return displays.getDisplays(DisplayManager.DISPLAY_CATEGORY_PRESENTATION)
+            .firstOrNull { it.isValid && it.displayId != Display.DEFAULT_DISPLAY }
             ?: displays.displays.firstOrNull {
                 it.isValid && it.displayId != Display.DEFAULT_DISPLAY && (it.flags and Display.FLAG_PRIVATE) == 0
             }

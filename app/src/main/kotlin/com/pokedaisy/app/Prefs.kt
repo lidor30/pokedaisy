@@ -617,6 +617,11 @@ class Prefs(context: Context) {
         set(v) = p.edit().putFloat("portrait_ds_ratio", v).apply()
 
     /** A phone held upright: the companion's height, as a ratio of the screen's width (see [PortraitPanel]). */
+    /** Upright: the companion hidden under its grip, the game alone (GitHub #125). */
+    var portraitCompanionHidden: Boolean
+        get() = p.getBoolean("portrait_companion_hidden", false)
+        set(v) = p.edit().putBoolean("portrait_companion_hidden", v).apply()
+
     var portraitCompanionRatio: Float
         // PortraitLayout.DEFAULT_RATIO: the Thor bottom screen's shape (spelled out: ui-preview's data module has no UI).
         get() = p.getFloat("portrait_companion_ratio", 1080f / 1240f)

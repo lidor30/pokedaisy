@@ -270,6 +270,8 @@ class EmulatorEngine(
     /** True while a queued battle-menu button sequence hasn't fully drained —
      * the touch battle UI should disable further taps while this is true. */
     val battleInputBusy: Boolean get() = if (nds) ndsTaps.busy else battleInput.isBusy
+    /** The game's cursor in the open battle menu ([BattleInputController.menuCursor]). */
+    val battleMenuCursor: Int get() = if (nds) -1 else battleInput.menuCursor
 
     /** Keep showing the last frame: an automated switch is in the game's party menu (see [BattleInputController.holdFrame]). */
     val holdFrame: Boolean get() = battleInput.holdFrame

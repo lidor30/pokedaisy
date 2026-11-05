@@ -146,7 +146,7 @@ private fun SuggestionRow(
     small: GbaTextMetrics,
     modifier: Modifier,
 ) {
-    val move = s.bestMove.copy(vs = listOf(MoveVsFoe(foe.name, formatMultiplier(s.movePct), s.movePct)))
+    val move = if (s.bestMove.power == 0) s.bestMove.copy(vs = emptyList()) else s.bestMove.copy(vs = listOf(MoveVsFoe(foe.name, formatMultiplier(s.movePct), s.movePct)))
     Row(modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f).padding(end = gap)) {
             BattlerCard(s.mon, compact = false, side = RankLabels[index], state = if (out) tk("OUT") else "", m, small, threats = listOf(foe))

@@ -49,6 +49,8 @@ Each move card shows its name, type, power (`PWR`) and `PP` left, plus a verdict
 
 ![The move grid: PAW SWIPE, WARY GLARE, CINDER SPIT and IRON NIP, each with its type, power, PP and verdict, and a CANCEL bar below](shots/companion-battle-moves.png "Picking a move")
 
+When you move the game's cursor with your buttons, the battle buttons show where it is with a ring. In Game Boy games and games without one-press picks, they don't.
+
 ### BATTLE VIEW
 
 The `BATTLE` tab opens on your battle buttons. If you'd rather read about the fight first and use the game's own menu, set `BATTLE VIEW` to `INFO` in SETTINGS (COMPANION group). `BACK` on `INFO` still brings the buttons up.
