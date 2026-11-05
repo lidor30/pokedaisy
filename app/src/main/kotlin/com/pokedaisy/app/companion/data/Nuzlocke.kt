@@ -115,6 +115,10 @@ data class NuzlockeSample(
     val foeName: String,
     val party: List<NuzlockePartyMon>,
     val caught: Set<Int>?,
+    /** The battle's menu is up, so the foe read is this battle's: as a battle opens, its memory still holds the last one's. */
+    val menuUp: Boolean = true,
+    /** The foe's number in [caught], which goes by national dex number, not the game's own species id (they part at Hoenn's). */
+    val foeDex: Int = foeSpecies,
 ) {
     companion object {
         fun of(s: SnapshotView): NuzlockeSample {
@@ -130,6 +134,9 @@ data class NuzlockeSample(
                 foeName = foe?.name.orEmpty(),
                 party = s.party.map { NuzlockePartyMon(it.personality, it.species, it.shownName, it.level, it.hp, it.maxHp, it.isEgg) },
                 caught = s.pokedex?.caught,
+                menuUp = s.battleInputState == BATTLE_INPUT_ACTION_SELECT || s.battleInputState == BATTLE_INPUT_MOVE_SELECT ||
+                    s.battleInputState == BATTLE_INPUT_BAG_OPEN || s.battleInputState == BATTLE_INPUT_PARTY_OPEN,
+                foeDex = foe?.species?.let { species -> s.pokedex?.let { PokedexSource.nationalOf(it.tables, species) } } ?: foe?.species ?: 0,
             )
         }
     }
@@ -174,10 +181,13 @@ class NuzlockeTracker(run: NuzlockeRun = NuzlockeRun()) {
     // The encounter this battle decides: its area, and the party / caught flags from before it.
     private var pendingArea: Int? = null
     private var pendingSpecies = 0
+    private var pendingDex = 0
     private var pendingFoe = ""
     private var partyBefore: Set<Long> = emptySet()
     private var caughtBefore: Set<Int>? = null
     private var settleLeft = 0
+    // Samples of this battle so far, for a game whose battle menu isn't read.
+    private var battleSamples = 0
     private val zeroHp = mutableMapOf<Long, Int>()
     private val lastHp = mutableMapOf<Long, Int>()
 
@@ -201,19 +211,24 @@ class NuzlockeTracker(run: NuzlockeRun = NuzlockeRun()) {
         }
         if (mons !== run.mons) run = run.copy(mons = mons)
 
-        if (s.inBattle && !wasInBattle) battleJudged = false
-        // A wild battle's first foe, once read: the area's encounter, if it hasn't had one.
-        if (s.inBattle && !battleJudged && s.foeSpecies != 0 && s.trainer != null) {
+        if (s.inBattle && !wasInBattle) { battleJudged = false; battleSamples = 0 }
+        if (s.inBattle) battleSamples++
+        // A wild battle's first foe: the area's encounter, if it hasn't had one. Not on the battle's first samples: it opens
+        // with the last battle's foe still in memory, and an encounter judged on that named the wrong Pokémon and then
+        // never saw it caught (a player's report: every encounter MISSED). So at its menu, or after a few samples without one.
+        val foeIsThisBattles = s.menuUp || battleSamples > FOE_SAMPLES
+        if (s.inBattle && !battleJudged && foeIsThisBattles && s.foeSpecies != 0 && s.trainer != null) {
             battleJudged = true
             party.filter { run.isDead(it.personality) && it.hp > 0 }.forEach { events += NuzlockeEvent.DeadInParty(it.name) }
             if (s.trainer == false) {
                 when {
                     run.encounterAt(s.area) != null -> events += NuzlockeEvent.AreaUsed(s.areaName)
-                    run.rules.dupes && s.caught?.contains(s.foeSpecies) == true -> events += NuzlockeEvent.Dupe(s.foeName)
+                    run.rules.dupes && s.caught?.contains(s.foeDex) == true -> events += NuzlockeEvent.Dupe(s.foeName)
                     else -> {
                         run = run.copy(encounters = run.encounters + NuzlockeEncounter(s.area, s.areaName, s.foeSpecies, NuzlockeOutcome.NOW))
                         pendingArea = s.area
                         pendingSpecies = s.foeSpecies
+                        pendingDex = s.foeDex
                         pendingFoe = s.foeName
                         partyBefore = s.party.map { it.personality }.toSet()
                         caughtBefore = s.caught
@@ -250,7 +265,7 @@ class NuzlockeTracker(run: NuzlockeRun = NuzlockeRun()) {
 
     private fun settle(area: Int, s: NuzlockeSample, events: MutableList<NuzlockeEvent>) {
         val joined = s.party.firstOrNull { it.personality != 0L && it.personality !in partyBefore && it.species == pendingSpecies }
-        val toPc = caughtBefore?.contains(pendingSpecies) == false && s.caught?.contains(pendingSpecies) == true
+        val toPc = caughtBefore?.contains(pendingDex) == false && s.caught?.contains(pendingDex) == true
         val outcome = when {
             joined != null || toPc -> NuzlockeOutcome.CAUGHT
             s.inBattle -> return
@@ -271,5 +286,7 @@ class NuzlockeTracker(run: NuzlockeRun = NuzlockeRun()) {
     companion object {
         const val FAINT_SAMPLES = 2
         const val SETTLE_SAMPLES = 4
+        /** A battle's samples before its foe is trusted with no menu read. */
+        const val FOE_SAMPLES = 4
     }
 }
