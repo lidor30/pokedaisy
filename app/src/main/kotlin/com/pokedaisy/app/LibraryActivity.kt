@@ -509,7 +509,7 @@ class LibraryActivity : ComponentActivity() {
         @Suppress("UNUSED_EXPRESSION") revision
         val m = rememberGbaTextMetrics()
         val small = rememberGbaTextMetrics(textScale = 1f)
-        val library = remember(revision, sort) { sortLibrary(this@LibraryActivity, prefs, listRoms(), sort) }
+        val library = remember(revision, sort, unsupportedRoms) { sortLibrary(this@LibraryActivity, prefs, shownRoms(), sort) }
         // Each game's console (a hack's is its base game's), once per revision: the quick views filter on it.
         val views = remember(revision, library) { quickViewsOf(library) }
         val view = views.open(quickView)
@@ -1470,6 +1470,11 @@ class LibraryActivity : ComponentActivity() {
     /** Imported ROMs plus the linked folders' supported ones (from their last scan). */
     /** The library, alphabetical. Every ROM it lists for the first time is dated ([RomAdded]): NEW
      * unless setup is running or a newly linked folder's first scan brought it in. Any thread. */
+    /** [listRoms] as the library shows it: SUPPORTED ONLY leaves out what the companion can't read. */
+    private fun shownRoms(): List<File> = listRoms().let { roms ->
+        if (prefs.librarySupportedOnly) roms.filterNot { it.absolutePath in unsupportedRoms } else roms
+    }
+
     private fun listRoms(): List<File> = RomFolder.libraryRoms(this, prefs).also { roms ->
         RomAdded.record(this, roms, initial = setup != null || linkingFolder)
     }
@@ -1826,7 +1831,7 @@ class LibraryActivity : ComponentActivity() {
     /** The launcher's games: the open quick view of the library in its order (favorites first), the last played
      * selected at first. */
     private fun refreshLauncherGames() {
-        val views = quickViewsOf(sortLibrary(this, prefs, listRoms(), sort))
+        val views = quickViewsOf(sortLibrary(this, prefs, shownRoms(), sort))
         launcherViews = views
         launcher.views = views.shown
         val open = views.open(quickView)

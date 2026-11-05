@@ -16,6 +16,9 @@ interface BattleInput {
      * should disable further taps while this is true. */
     val busy: Boolean
 
+    /** The game's cursor in the open battle menu (the same numbers as [selectAction] / [selectMove]); -1 unknown. */
+    val menuCursor: Int get() = -1
+
     /** actionIndex: 0=FIGHT, 1=BAG, 2=POKEMON, 3=RUN. */
     fun selectAction(actionIndex: Int)
 

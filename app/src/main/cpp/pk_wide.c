@@ -2071,7 +2071,7 @@ int pk_wide_knows(uint32_t crc) {
 // SCENE SPEEDS, AUTO-RUN and RUN INDOORS (GitHub #43 / #85): the field read through this game's WIDE table whether or
 // not WIDE is drawing - its own copy of the few addresses they need, so WIDE's state is left alone.
 static struct {
-    uint32_t locked, main, inBattleOff, objects, mapHeader, questLog, wild, avatar, sprites, gfxInfo;
+    uint32_t locked, main, inBattleOff, objects, mapHeader, questLog, wild, avatar, sprites, gfxInfo, spriteIdOff;
     uint32_t saveBlock1, sb1Pos;   // co-op presence: the SaveBlock1 pointer (the block itself where saveStatic) and pos's offset
     bool saveStatic;
     int family;
@@ -2111,6 +2111,7 @@ int pk_field_configure(uint32_t crc) {
     F.sb1Pos = (uint32_t) rom->a[PK_WIDE_SB1_POS];
     F.saveStatic = FAMILIES[rom->family][PK_WIDE_SAVE_STATIC - PK_WIDE_ADDRS] != 0;
     F.family = rom->family;
+    F.spriteIdOff = (uint32_t) FAMILIES[rom->family][PK_WIDE_SPRITE_ID_OFF - PK_WIDE_ADDRS];
     return F.locked != 0;
 }
 
@@ -2218,7 +2219,7 @@ static bool followPlayer(int* cx, int* cy, int* px, int* py, uint32_t* spriteId)
     int k = playerObject();
     const uint8_t* oe = k < 0 ? NULL : mem(F.objects + 0x24u * (uint32_t) k, 0x24);
     if (!oe) return false;
-    *spriteId = oe[4];
+    *spriteId = oe[F.spriteIdOff];   // 4, expansion 0x23
     *cx = (int16_t) le16(oe + 0x10); *cy = (int16_t) le16(oe + 0x12);
     *px = (int16_t) le16(oe + 0x14); *py = (int16_t) le16(oe + 0x16);
     return true;
@@ -2265,7 +2266,7 @@ static void playerBox(const uint16_t* oam, int base, struct PlayerBox* b) {
 static void followBegin(struct GBAVideoRenderer* r) {
     followOam = followSlot = -1;
     followShown[0] = followShown[1] = -1;
-    if (!followOn || !followHave || !hookGba || !F.objects || F.family == PK_WIDE_FAMILY_EX || F.family == PK_WIDE_FAMILY_FR_EX) { followWhy = 1; return; }
+    if (!followOn || !followHave || !hookGba || !F.objects) { followWhy = 1; return; }
     G = hookGba;
     int cx, cy, px, py;
     uint32_t spriteId;
@@ -2696,7 +2697,8 @@ static int surfing(void) {
     if (a) return (r8(a) & AVATAR_SURF) != 0;
     if (F.family != PK_WIDE_FAMILY_RS && F.family != PK_WIDE_FAMILY_RS_JA) return -1;
     int g = playerGraphics();
-    return g == 2 || g == 92;
+    // Under the sea too (GitHub #338): no avatar flags here, and the diving sprites are their own. MAP_TYPE_UNDERWATER.
+    return g == 2 || g == 92 || (F.mapHeader && r8(F.mapHeader + 0x17) == 5);
 }
 
 /** Co-op presence: the map (SaveBlock1's location, the bytes Telemetry reads), the player's object's tile, eased between

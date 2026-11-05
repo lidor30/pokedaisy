@@ -52,7 +52,7 @@ object GbaControls {
         val subtitle: String? get() = when (this) {
             START_2 -> "A second START"
             SELECT_2 -> "A second SELECT"
-            TO_COMPANION -> "Two screens, on the field: your buttons go to the companion"
+            TO_COMPANION -> "On the field: your buttons go to the companion"
             else -> null
         }
         /** Every game needs the GBA's buttons and the DS its X / Y; the rest start unbound or can go back to it. */

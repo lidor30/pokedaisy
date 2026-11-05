@@ -417,6 +417,9 @@ GAMES = {
         ("FR_STATUS_PAL", "gStatusPal_Icons", True),
         ("FR_FONT_SMALL", "sFontSmallLatinGlyphs", False),
         # The held-item marker by a party slot's icon: an item, then Mail (8x8 each), and its palette (the same in Emerald).
+        # The type tags (a 128x128 sheet, the games' own list of 32x12 tags) and their colours.
+        ("FR_TYPE_TAGS_GFX", "gMenuInfoElements_Gfx", False),
+        ("FR_TYPE_TAGS_PAL", "gMenuInfoElements2_Pal", False),
         ("FR_HOLD_GFX", "sHeldItemGfx", False),
         ("FR_HOLD_PAL", "sHeldItemPalette", False),
         ("FR_REGION_GFX", "sRegionMap_Gfx", True),
@@ -457,6 +460,8 @@ GAMES = {
         ("FR_FONT_NORMAL_WIDTHS", "sFontNormalLatinGlyphWidths", False),
     ]),
     "EM": ("pokeemerald/pokeemerald.gba", "pokeemerald/pokeemerald.elf", [
+        ("EM_TYPE_TAGS_GFX", "gMenuInfoElements_Gfx", False),
+        ("EM_TYPE_TAGS_PAL", "gMenuInfoElements2_Pal", False),
         ("EM_PARTY_BG_GFX", "gPartyMenuBg_Gfx", True),
         ("EM_PARTY_BG_PAL", "gPartyMenuBg_Pal", True),
         ("EM_PARTY_BG_MAP", "gPartyMenuBg_Tilemap", True),

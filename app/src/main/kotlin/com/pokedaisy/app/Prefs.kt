@@ -230,7 +230,7 @@ class Prefs(context: Context) {
                 } ?: d.extras,
                 eightWay = p.getBoolean("touch_eight_way", d.eightWay),
                 fadeIdle = p.getBoolean("touch_fade_idle", d.fadeIdle),
-                vibration = p.getBoolean("touch_vibration", d.vibration),
+                vibration = p.getInt("touch_vibration_level", if (p.getBoolean("touch_vibration", false)) 1 else d.vibration),
                 useCustom = p.getBoolean("touch_use_custom", d.useCustom),
                 portrait = com.pokedaisy.app.companion.TouchLayout.decode(p.getString("touch_layout_portrait", null)),
                 landscape = com.pokedaisy.app.companion.TouchLayout.decode(p.getString("touch_layout_landscape", null)),
@@ -246,7 +246,7 @@ class Prefs(context: Context) {
                 .putString("touch_extras", v.extras.joinToString(",") { it.name })
                 .putBoolean("touch_eight_way", v.eightWay)
                 .putBoolean("touch_fade_idle", v.fadeIdle)
-                .putBoolean("touch_vibration", v.vibration)
+                .putInt("touch_vibration_level", v.vibration)
                 .putBoolean("touch_use_custom", v.useCustom)
                 .putString("touch_layout_portrait", v.portrait.encode())
                 .putString("touch_layout_landscape", v.landscape.encode())
@@ -261,6 +261,31 @@ class Prefs(context: Context) {
     var showHints: Boolean
         get() = p.getBoolean("show_hints", true)
         set(v) = p.edit().putBoolean("show_hints", v).apply()
+
+    /** BATTLE INFO: off leaves only the battle buttons - no INFO, SUGGESTIONS or move ratings. On by default. */
+    var battleInfo: Boolean
+        get() = p.getBoolean("battle_info", true)
+        set(v) = p.edit().putBoolean("battle_info", v).apply()
+
+    /** BATTLE VIEW: the BATTLE tab opens on INFO instead of the battle buttons (GitHub #106). Off by default. */
+    var battleInfoFirst: Boolean
+        get() = p.getBoolean("battle_info_first", false)
+        set(v) = p.edit().putBoolean("battle_info_first", v).apply()
+
+    /** GAME NAMES: the library names games by their file (GitHub #124); a RENAME still wins. Off by default. */
+    var libraryFileNames: Boolean
+        get() = p.getBoolean("library_file_names", false)
+        set(v) = p.edit().putBoolean("library_file_names", v).apply()
+
+    /** SUPPORTED ONLY: the library leaves out games the companion can't read (GitHub discussion #302). Off by default. */
+    var librarySupportedOnly: Boolean
+        get() = p.getBoolean("library_supported_only", false)
+        set(v) = p.edit().putBoolean("library_supported_only", v).apply()
+
+    /** LOOK AROUND: EXPAND's right stick moves the view (GitHub #109). On by default. */
+    var lookAround: Boolean
+        get() = p.getBoolean("look_around", true)
+        set(v) = p.edit().putBoolean("look_around", v).apply()
 
     /** ONE-TAP MOVES: the battle controls' action menu shows the moves where FIGHT is, a tap
      * picking FIGHT and the move in one go. Off by default. */
@@ -597,6 +622,11 @@ class Prefs(context: Context) {
         set(v) = p.edit().putFloat("portrait_ds_ratio", v).apply()
 
     /** A phone held upright: the companion's height, as a ratio of the screen's width (see [PortraitPanel]). */
+    /** Upright: the companion hidden under its grip, the game alone (GitHub #125). */
+    var portraitCompanionHidden: Boolean
+        get() = p.getBoolean("portrait_companion_hidden", false)
+        set(v) = p.edit().putBoolean("portrait_companion_hidden", v).apply()
+
     var portraitCompanionRatio: Float
         // PortraitLayout.DEFAULT_RATIO: the Thor bottom screen's shape (spelled out: ui-preview's data module has no UI).
         get() = p.getFloat("portrait_companion_ratio", 1080f / 1240f)

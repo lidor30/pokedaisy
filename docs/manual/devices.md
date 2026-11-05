@@ -52,6 +52,8 @@ Rather play on one screen, so the other is free for good? Turn on `SINGLE SCREEN
 
 Flipped from the companion, it switches right away and the window opens so you can see where it went. Turn it off and the companion goes back to the second screen. While it's on, `SWAP SCREENS` and `CLOSE COMPANION` step aside, and `COMPANION VIEW` and `BATTLE BUTTONS` show up, as on a one-screen device.
 
+On an AYANEO handheld, PokeDaisy also opens an empty window on the bottom screen when a game starts, so AYANEO's own panel steps aside for the companion. Your buttons stay with the game.
+
 ## DS games
 
 A DS has two screens, and so does a dual-screen handheld, so a DS game uses both the way the DS does: its top screen on your top screen, its touch screen on the bottom one. Tap the bottom screen with your finger wherever the game wants the stylus.
@@ -131,10 +133,11 @@ Hold `BACK` to leave the game, as always.
 
 ## Phones held upright
 
-Hold a phone upright and the game sits across the top of the screen, with the companion docked below it and the touch controls under that. It's always open: there's nothing to slide in. In a DS game the touch screen takes the companion's place, between the top screen and the buttons.
+Hold a phone upright and the game sits across the top of the screen, with the companion docked below it and the touch controls under that. It's open until you hide it: there's nothing to slide in. In a DS game the touch screen takes the companion's place, between the top screen and the buttons.
 
 - **Change its height:** drag the grip on the companion's top edge up or down. It snaps to the default size (the shape of the Thor's bottom screen) and to the largest size (everything under the game).
-- **Step through sizes:** tap the grip to go from small, to the default, to everything under the game, and round again.
+- **Step through sizes:** tap the grip to go from small, to the default, to everything under the game, then to hidden, and round again.
+- **Hide it:** with the companion hidden, the game has the screen to itself and only the grip stays, along the bottom. Tap it, drag it, or press the `COMPANION` hotkey to bring the companion back.
 - **Touch controls:** they get the space at the bottom of the screen, under the companion. With the companion `AT BOTTOM` (below) they go in the gap between the game and the companion when there's room, and lie over the game when there isn't. The phone held upright has its own layout, and `POSITION` on the `TOUCH CONTROLS` page puts the buttons at the top, middle or bottom of their space; see [Touch controls](controls.md#touch-controls).
 
 The `COMPANION` setting (on the `DISPLAY OPTIONS` page of the `SCREEN` group, on single-screen devices) picks where the companion sits on a phone held upright:

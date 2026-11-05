@@ -105,6 +105,8 @@ fun BattleInfoScreen(
     seenFoes: Set<Int> = emptySet(),
     shownFoe: Int = -1,
     foeHeading: String = "FOE",
+    /** The player has this species: the foe's card carries a ball, as the games' own battle box does (GitHub discussion #305). */
+    isCaught: (Int) -> Boolean = { false },
     onSelectFoe: (Int) -> Unit = {},
     onShowStats: (() -> Unit)? = null,
     foeDetails: Boolean = false,
@@ -135,7 +137,7 @@ fun BattleInfoScreen(
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                     PlayerStripSprites(player, m, small, strip.fillMaxHeight().padding(end = gap))
                     Separator(m, Modifier.fillMaxHeight(), vertical = true)
-                    BattlerCards(foeHeading, foes, m, small, Modifier.weight(1f).padding(start = gap))
+                    BattlerCards(foeHeading, foes, m, small, Modifier.weight(1f).padding(start = gap), isCaught = isCaught)
                 }
                 Row(Modifier.fillMaxWidth().weight(1f)) {
                     PlayerStripHp(player, m, small, strip.fillMaxHeight().padding(end = gap, top = m.u * 4))
@@ -152,7 +154,7 @@ fun BattleInfoScreen(
                     BattlerCards(tk("YOU"), player, m, small, Modifier.weight(1f).padding(end = gap),
                         threats = if (showHints) opponent else emptyList())
                     Separator(m, Modifier.fillMaxHeight(), vertical = true)
-                    BattlerCards(foeHeading, foes, m, small, Modifier.weight(1f).padding(start = gap))
+                    BattlerCards(foeHeading, foes, m, small, Modifier.weight(1f).padding(start = gap), isCaught = isCaught)
                 }
                 Separator(m, Modifier.fillMaxWidth().padding(vertical = m.u * 2))
                 // 2 + 3. What to do about it.
@@ -336,13 +338,14 @@ private fun BattlerCards(
     modifier: Modifier,
     /** The other side's Pokémon, for the [ThreatPill] (player side, hints on). */
     threats: List<MonView> = emptyList(),
+    isCaught: (Int) -> Boolean = { false },
 ) {
     val side = heading.substringBefore(" · ")
     val state = heading.substringAfter(" · ", "")
     Column(modifier, verticalArrangement = Arrangement.spacedBy(m.u * 3)) {
         if (mons.isEmpty()) GbaText(tr(side), OptionColors.value, OptionColors.valueShadow, small)
         mons.forEachIndexed { i, mon ->
-            BattlerCard(mon, compact = mons.size > 1, if (i == 0) side else null, state, m, small, threats)
+            BattlerCard(mon, compact = mons.size > 1, if (i == 0) side else null, state, m, small, threats, caught = isCaught(mon.species))
         }
     }
 }
@@ -358,6 +361,7 @@ internal fun BattlerCard(
     m: GbaTextMetrics,
     small: GbaTextMetrics,
     threats: List<MonView>,
+    caught: Boolean = false,
 ) {
     val u = m.u
     val icon = if (compact) 22 else 36
@@ -378,6 +382,7 @@ internal fun BattlerCard(
                     GbaText(mon.name, OptionColors.label, OptionColors.labelShadow, if (compact) small else m, modifier = Modifier.weight(1f, fill = false))
                     GenderMark(mon.genderSymbol, if (compact) small else m, Modifier.padding(start = u * 2))
                     if (mon.shiny) ShinySparkle(if (compact) small else m, Modifier.padding(start = u * 3))
+                    if (caught) PixelArt(PixelIcons.pokeBall, caughtBall, Modifier.padding(start = u * 3).size(u * 9))
                     if (compact) {
                         Spacer(Modifier.width(u * 4))
                         Stat(tr("Lv"), "${mon.level}", small)

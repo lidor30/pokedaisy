@@ -117,6 +117,8 @@ PokeDaisy recognizes the games it supports and shows their proper names ("Pokém
 
 To call a game something else, use `RENAME` in its menu. It only changes what the library shows; the file keeps its name, so its save is still found.
 
+Prefer your own file names? Set `GAME NAMES` to `FILE NAME` in Settings, in the `LIBRARY` group.
+
 ## Sorting and favorites
 
 Tap the sort button and pick under `SORT BY`:
@@ -219,6 +221,8 @@ Every game plays, but the companion only reads the games it knows. The library t
 
 From a linked folder, the library lists the supported games plus any unsupported hacks of FireRed, LeafGreen, Emerald, Ruby or Sapphire (tagged), so you can try them. When PokeDaisy can't tell which game a ROM is built on, `INFO` has `PICK A GAME` to tell it, and `FORGET MATCH` to undo a match. [Supported games](supported-games.md) has the full list and explains how matching works.
 
+Turn on `SUPPORTED ONLY` in Settings, in the `LIBRARY` group, to leave games the companion can't read out of the library.
+
 ## Supporting PokeDaisy
 
 PokeDaisy is free, has no ads and is made by one person. After you've played for a good while, the library asks once whether you'd like to support it, with `BUY ME A COFFEE`, `PATREON` and `KO-FI`. Pick one and your browser opens that page. `REMIND ME LATER` (or BACK) asks again a few hours of play later, and `NO THANKS` means it never asks again. Picking a site counts as an answer too.
@@ -232,6 +236,8 @@ The library works without touching the screen. Move with the D-pad; the selected
 ## Launching from a frontend
 
 If you use a frontend like **ES-DE**, **iiSU** or **Cocoon** to browse all your games, it can start your GBA games straight in PokeDaisy, skipping the library. When you leave the game (hold `BACK`, or the exit hotkey), you're back in the frontend.
+
+Cocoon doesn't hand zipped games to PokeDaisy: it stops with its own `Incompatible Player` notice, so keep the games you start from Cocoon unzipped.
 
 In the frontend, add PokeDaisy as a custom or standalone emulator for GBA with these values:
 

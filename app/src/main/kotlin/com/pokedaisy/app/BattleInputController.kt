@@ -124,6 +124,23 @@ class BattleInputController(
     @Volatile
     var cursorAddrs: CursorAddrs? = null
 
+    /** The open menu's cursor, read each frame ([BattleInput.menuCursor]); -1 = no such menu, or a game whose cursor isn't known. */
+    @Volatile
+    var menuCursor = -1
+        private set
+
+    private fun readMenuCursorLocked() {
+        val addrs = cursorAddrs?.takeIf { it.menus == MenuCells.GEN3 }
+        val at = when (lastKnownState) {
+            BATTLE_INPUT_ACTION_SELECT -> addrs?.action
+            BATTLE_INPUT_MOVE_SELECT -> addrs?.move
+            else -> null
+        }
+        menuCursor = at?.let { a ->
+            runCatching { reader.readCoreMemory(a + lastBattler, 1)[0].toInt() and 0xFF }.getOrNull()?.takeIf { it in 0..3 }
+        } ?: -1
+    }
+
     /** Set once the running game is known to support [switchTo]; null = it doesn't. */
     @Volatile
     var switchAddrs: SwitchAddrs? = null
@@ -244,6 +261,7 @@ class BattleInputController(
     /** Call once per real emulated frame, before MgbaCore.pkSetKeys. */
     fun tick() {
         val (bitsToSend, exclusive) = synchronized(lock) {
+            readMenuCursorLocked()
             if (gbPickCell >= 0) gbPickFrames++
             // The closed-loop steps (party cursor, RUN's B) queue their next
             // presses only once the last ones have played out.

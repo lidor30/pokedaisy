@@ -36,7 +36,9 @@ Elite Redux has no bag in its battle menu, so there the tab shows `RUN` and `POK
 
 ## Moves and their verdicts
 
-Each move card shows its name, type, power (`PWR`) and `PP` left, plus a verdict against the foe in plain words:
+In the original FireRed, LeafGreen and Emerald in English, type tags are the game's own, read from your ROM.
+
+Each move card shows its name, type, power (`PWR`) and `PP` left, plus a verdict against the foe in plain words (status moves deal no damage, so they have none):
 
 | Verdict | Meaning |
 | --- | --- |
@@ -48,6 +50,16 @@ Each move card shows its name, type, power (`PWR`) and `PP` left, plus a verdict
 | `NO PP` | Out of uses. You can't pick it. |
 
 ![The move grid: PAW SWIPE, WARY GLARE, CINDER SPIT and IRON NIP, each with its type, power, PP and verdict, and a CANCEL bar below](shots/companion-battle-moves.png "Picking a move")
+
+When you move the game's cursor with your buttons, the battle buttons show where it is with a ring. In Game Boy games and games without one-press picks, they don't.
+
+### BATTLE INFO
+
+Want to work the battle out yourself? Turn off `BATTLE INFO` in SETTINGS (COMPANION group). The `BATTLE` tab then has only your battle buttons: no `INFO`, no `SUGGESTIONS` and no ratings on your moves. In a double battle, or in the window over the game, it just reminds you to use the game's own menu.
+
+### BATTLE VIEW
+
+The `BATTLE` tab opens on your battle buttons. If you'd rather read about the fight first and use the game's own menu, set `BATTLE VIEW` to `INFO` in SETTINGS (COMPANION group). `BACK` on `INFO` still brings the buttons up.
 
 ### ONE-TAP MOVES
 

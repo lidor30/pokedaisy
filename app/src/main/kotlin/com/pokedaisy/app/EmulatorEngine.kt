@@ -109,6 +109,8 @@ class EmulatorEngine(
 
     /** AUTO-RUN: B held for the player while walking on the field (holding B walks); never on a bike or in a menu. */
     @Volatile var autoRun = false
+    /** The running game runs by itself ([com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN]): flipping B there walks. */
+    private val ownAutoRun get() = com.pokedaisy.app.companion.data.activeGame in com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN
 
     /** With AUTO-RUN off: frames the player walked on the field where it would have run for them, and of those the ones
      *  B was held (AUTO-RUN's tip: someone who runs everywhere). Emu thread writes, the UI reads and resets. */
@@ -268,6 +270,8 @@ class EmulatorEngine(
     /** True while a queued battle-menu button sequence hasn't fully drained —
      * the touch battle UI should disable further taps while this is true. */
     val battleInputBusy: Boolean get() = if (nds) ndsTaps.busy else battleInput.isBusy
+    /** The game's cursor in the open battle menu ([BattleInputController.menuCursor]). */
+    val battleMenuCursor: Int get() = if (nds) -1 else battleInput.menuCursor
 
     /** Keep showing the last frame: an automated switch is in the game's party menu (see [BattleInputController.holdFrame]). */
     val holdFrame: Boolean get() = battleInput.holdFrame
@@ -1075,10 +1079,10 @@ class EmulatorEngine(
                 // battle, a menu screen (B leaves it) or on a bike (the Acro Bike's wheelie is B). Nor with A held: the
                 // expansion's DexNav creeps on A (Seaglass & co.), but checks B's run first, so a held B scared the
                 // Pokémon off. A while walking does nothing in the other games.
-                if (autoRun && (gba || nds) && keys and DIRECTIONS != 0 && keys and MgbaCore.Key.A == 0 &&
+                if (autoRun && !ownAutoRun && (gba || nds) && keys and DIRECTIONS != 0 && keys and MgbaCore.Key.A == 0 &&
                     fieldState and AUTO_RUN_BLOCKERS == MgbaCore.FIELD_KNOWN && fieldScreen
                 ) keys = keys xor MgbaCore.Key.B
-                else if (!autoRun && (gba || nds) && keys and DIRECTIONS != 0 &&
+                else if (!autoRun && !ownAutoRun && (gba || nds) && keys and DIRECTIONS != 0 &&
                     fieldState and AUTO_RUN_BLOCKERS == MgbaCore.FIELD_KNOWN && fieldScreen
                 ) {
                     walkFrames++
@@ -2030,7 +2034,8 @@ class EmulatorEngine(
         const val DS_MUSIC_FADE_FRAMES = 30
         const val DS_MUSIC_MAX_FRAMES = 4
         /** pkFieldState's bits that keep AUTO-RUN off: a script holding the field, a battle, a bike (known must be set). */
-        const val AUTO_RUN_BLOCKERS = MgbaCore.FIELD_KNOWN or MgbaCore.FIELD_LOCKED or MgbaCore.FIELD_BATTLE or MgbaCore.FIELD_BIKE
+        const val AUTO_RUN_BLOCKERS = MgbaCore.FIELD_KNOWN or MgbaCore.FIELD_LOCKED or MgbaCore.FIELD_BATTLE or MgbaCore.FIELD_BIKE or
+            MgbaCore.FIELD_SURF   // under the sea B is what surfaces (TrySetupDiveEmergeScript): GitHub #338
         /** The D-pad's bits: one held = the player walking (the look-around glides back). */
         const val DIRECTIONS = MgbaCore.Key.UP or MgbaCore.Key.DOWN or MgbaCore.Key.LEFT or MgbaCore.Key.RIGHT
     }

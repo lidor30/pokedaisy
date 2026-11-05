@@ -345,7 +345,9 @@ fun FieldHud(
     var pcNotice by remember { mutableStateOf<ItemNotice?>(null) }
     // Gone (the game closed): SETTINGS no longer hears of a screen too small for it.
     DisposableEffect(Unit) { onDispose { FieldHudFit.tight = false } }
-    LaunchedEffect(shown) { if (!shown) panel = null }
+    // WILD's KEEP OPEN: no dim, the game plays on under it, and it's back after a battle.
+    var wildKept by remember { mutableStateOf(false) }
+    LaunchedEffect(shown) { if (!shown) panel = null else if (wildKept) panel = FieldHudPanel.WILD }
     LaunchedEffect(closePanels) { if (closePanels != 0) panel = null }
     LaunchedEffect(openTick) {
         val (p, i) = openPanel ?: return@LaunchedEffect
@@ -472,7 +474,7 @@ fun FieldHud(
             when (panel) {
                 FieldHudPanel.MAP -> HudMapPanel(snapshot, m, fly, close)
                 FieldHudPanel.BAG -> HudBagPanel(snapshot, m, itemUse, dock, top, inset, bagPocket, close)
-                FieldHudPanel.WILD -> HudWildPanel(snapshot, wildHere.orEmpty(), m, dock, top, inset, close)
+                FieldHudPanel.WILD -> HudWildPanel(snapshot, wildHere.orEmpty(), m, dock, top, inset, wildKept, { wildKept = !wildKept }) { wildKept = false; close() }
                 FieldHudPanel.SUMMARY -> HudSummaryPanel(snapshot, summary, { summary = it }, m, itemUse, close)
                 null -> Unit
             }
@@ -1102,26 +1104,31 @@ private const val HEAD = 16
  * window, which keeps the taps inside it; everything around that is the dim. The game keeps running.
  */
 @Composable
-internal fun HudPanelScrim(onClose: () -> Unit, alignment: Alignment, content: @Composable (window: Modifier) -> Unit) {
-    CompanionBackHandler(onBack = onClose)
+internal fun HudPanelScrim(onClose: () -> Unit, alignment: Alignment, clear: Boolean = false, content: @Composable (window: Modifier) -> Unit) {
+    // [clear]: the panel alone, no dim, and BACK and taps beside it stay the game's.
+    if (!clear) CompanionBackHandler(onBack = onClose)
     // Silent: a tap on a panel's empty part does nothing, so it makes no click either.
     val keep = Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
+    val tapSource = remember { MutableInteractionSource() }
     Box(
-        Modifier.fillMaxSize().background(Color(0x66000000))
-            .soundClickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose),
+        Modifier.fillMaxSize().then(
+            if (clear) Modifier
+            else Modifier.background(Color(0x66000000)).soundClickable(interactionSource = tapSource, indication = null, onClick = onClose),
+        ),
         contentAlignment = alignment,
     ) { content(keep) }
 }
 
 /** A panel's first line: its icon, title and CLOSE. */
 @Composable
-private fun PanelHeading(icon: List<String>, colors: Map<Char, Color>, title: String, m: GbaTextMetrics, onClose: () -> Unit) {
+private fun PanelHeading(icon: List<String>, colors: Map<Char, Color>, title: String, m: GbaTextMetrics, onClose: () -> Unit, extra: @Composable () -> Unit = {}) {
     val u = m.u
     val small = rememberGbaTextMetrics(0.75f)
     Row(verticalAlignment = Alignment.CenterVertically) {
         PixelArt(icon, colors, Modifier.size(u * 12))
         Spacer(Modifier.width(u * 4))
         GbaText(tr(title), ink.accent, ink.accentShadow, m, Modifier.weight(1f))
+        extra()
         GbaText(tr("CLOSE"), ink.muted, ink.shadow, small, Modifier.soundClickable(onClick = onClose).padding(u * 2))
     }
 }
@@ -1399,15 +1406,20 @@ private fun HudBagPanel(
 
 /** WILD: this map's wild Pokémon by method - icon, name (??? until seen), levels, how often, a ball once caught. */
 @Composable
-private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaTextMetrics, dock: Boolean, top: Boolean, inset: PaddingValues, onClose: () -> Unit) {
+private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaTextMetrics, dock: Boolean, top: Boolean, inset: PaddingValues, kept: Boolean, onKeep: () -> Unit, onClose: () -> Unit) {
     val u = m.u
     val small = rememberGbaTextMetrics(0.75f)
     val icon = hudIconSize(m)
     val (align, place) = panelPlace(dock, top, u, inset)
     val c = ink
-    HudPanelScrim(onClose, align) { window ->
+    HudPanelScrim(onClose, align, clear = kept) { window ->
         Column(place.width(u * 200).hudPanel(u).then(window).padding(u * 6), verticalArrangement = Arrangement.spacedBy(u * 2)) {
-            PanelHeading(GRASS_ICON, GRASS_COLORS, tk("WILD POKéMON"), m, onClose)
+            PanelHeading(GRASS_ICON, GRASS_COLORS, tk("WILD POKéMON"), m, onClose) {
+                GbaText(
+                    tr("KEEP OPEN"), if (kept) c.accent else c.muted, if (kept) c.accentShadow else c.shadow, small,
+                    Modifier.soundClickable(onClick = onKeep).padding(u * 2),
+                )
+            }
             GbaText(gameCase(snapshot.location.mapSecName).uppercase().replace('É', 'é'), c.muted, c.shadow, small)
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(u)) {
                 if (wild.isEmpty()) GbaText(tr("No wild POKéMON on this map."), c.text, c.shadow, small)

@@ -279,6 +279,8 @@ fun MonView.withMovesVs(foe: MonView): MonView = withMovesVs(listOf(foe))
 /** [withMovesVs] against every one of [targets] (a double battle's two). */
 fun MonView.withMovesVs(targets: List<MonView>): MonView = copy(moves = moves.map { mv ->
     val atk = typeIdOf(mv.type)
+    // A status move's verdict says nothing: the chart only rates damage (GitHub #90).
+    if (mv.power == 0) return@map mv.copy(vs = emptyList())
     mv.copy(vs = targets.map { foe ->
         val t = foe.types.map(::typeIdOf)
         val t1 = t.getOrElse(0) { TYPE_NONE }
@@ -436,7 +438,7 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
                 if (moveId == 0) null
                 else {
                     val info = lookupMove(moveId)
-                    val vs = opponents.map { foe ->
+                    val vs = if (info.power == 0) emptyList() else opponents.map { foe ->
                         val pct = if (info.type != TYPE_NONE) moveMultiplierPct(info.name, info.type, foe.type1, foe.type2) else 100
                         MoveVsFoe(speciesName(foe.species), formatMultiplier(pct), pct)
                     }

@@ -29,6 +29,10 @@
          chose to SHARE (BestEffortShare: one Firestore write, the fields it showed). ASK FOR SUPPORT and
          the footer links only open a browser. Co-op (below) is the only other use. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- SecondScreenHolder: the game's task back in front (and the buttons with it) after an AYANEO screen is held. -->
+    <uses-permission android:name="android.permission.REORDER_TASKS" />
+    <!-- TOUCH CONTROLS > VIBRATION's MEDIUM and STRONG: a press's buzz, stronger than the phone's own tick. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
     <!-- Co-op: QUIC to the paired partner, the co-op relay, and mDNS on the local network, and the BY IP hello (a small exchange with the device at the address the player typed), only while CO-OP is in use. -->
     <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
     <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
@@ -98,6 +102,15 @@
             android:noHistory="true"
             android:taskAffinity=""
             android:theme="@style/Theme.PokeDaisy.Launch" />
+
+        <!-- AYANEO's bottom screen: an app opened there, so its launcher's panel steps aside for the companion. -->
+        <activity
+            android:name=".SecondScreenHolder"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.PokeDaisy" />
 
         <!-- Co-op invite links (pokedaisy://coop/<ticket>): parsed, handed to Settings' pairing; reads nothing else (see CoopLinkActivity). -->
         <activity

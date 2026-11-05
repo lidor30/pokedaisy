@@ -102,6 +102,8 @@ fun MonDetailScreen(
     onWithdraw: (() -> Unit)? = null,
     /** Open with TRADE EVOLUTIONS' question up (screenshot tests). */
     initialEvolveAsk: Boolean = false,
+    /** It's the party on show, not a box: SWITCH trades two of its Pokémon. */
+    partyOrder: Boolean = true,
 ) {
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
@@ -111,6 +113,9 @@ fun MonDetailScreen(
     // The picked CAN LEARN option, by move id (0 = none); kept while cycling through the party.
     var learnPick by remember { mutableStateOf(initialLearnPick ?: 0) }
     val canLearn = learn != null && com.pokedaisy.app.companion.data.MoveLearning.available(learn.tables, learn.guide)
+    // SWITCH: the next Pokémon tapped in the column trades places with this one, as in the game's party menu.
+    val reorders = itemUse?.takeIf { partyOrder && it.canReorderParty() && party.size > 1 }
+    var switching by remember { mutableStateOf(false) }
     // What each Pokémon holds, asked of the game whenever the party read changes (TAKE).
     val takes = itemUse?.takeIf { it.canTake() }
     var held by remember { mutableStateOf<List<com.pokedaisy.app.companion.data.PartyTarget>>(emptyList()) }
@@ -194,19 +199,28 @@ fun MonDetailScreen(
         val stats = party.getOrNull(index)?.stats != null && !showLearn
         val learns = canLearn && party.getOrNull(index)?.isEgg == false
         val evolve = evolves != null && evoTarget != null && !showLearn
-        if (stats || learns || evolve || onDeposit != null || onWithdraw != null) {
+        if (stats || learns || evolve || reorders != null || onDeposit != null || onWithdraw != null) {
             Row(Modifier.height(SummaryButtonSize), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(8.dp)) {
                 val size = SummaryButtonSize
                 if (stats) TextNavButton(if (showStats) tr("MOVES") else tr("STATS"), StatsPurple, StatsPurpleDark, size) { showStats = !showStats }
                 if (learns) TextNavButton(if (showLearn) tr("MOVES") else tr("LEARN"), SuggestGold, SuggestGoldDark, size) { showLearn = !showLearn; learnPick = 0 }
                 if (evolve) TextNavButton(tr("EVOLVE"), EvolveBlue, EvolveBlueDark, size) { evolveResult = null; evolveAsk = true }
+                if (reorders != null) TextNavButton(if (switching) tr("CANCEL") else tr("SWITCH"), RunBlue, RunBlueDark, size) { switching = !switching }
                 if (onDeposit != null) TextNavButton(tr("DEPOSIT"), PcGreen, PcGreenDark, size, onClick = onDeposit)
                 if (onWithdraw != null) TextNavButton(tr("WITHDRAW"), PcGreen, PcGreenDark, size, onClick = onWithdraw)
             }
         }
     }
     Column(Modifier.width(SummaryButtonSize).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        PartyColumn(party, index, onIndexChange, small, Modifier.weight(1f).fillMaxWidth())
+        PartyColumn(party, index, { i ->
+            if (switching && reorders != null) {
+                switching = false
+                if (i != index) reorders.reorderParty(index, i) { r ->
+                    if (r == com.pokedaisy.app.companion.data.PartySwapResult.SWAPPED) onIndexChange(i)
+                    else partySwapMessage(r)?.let { notice = ItemNotice(0, it, ok = false) }
+                }
+            } else onIndexChange(i)
+        }, small, Modifier.weight(1f).fillMaxWidth())
         BackNavButton(onBack, SummaryButtonSize)
     }
     }
@@ -267,6 +281,14 @@ private fun TakeDialog(
     } else {
         OptionConfirm(tk("TAKE"), result, tk("OK"), m, onConfirm = onClose, onDismiss = onClose, cancelLabel = null)
     }
+}
+
+/** Why the party couldn't be reordered, in the companion's words; null = it was. */
+internal fun partySwapMessage(r: com.pokedaisy.app.companion.data.PartySwapResult): String? = when (r) {
+    com.pokedaisy.app.companion.data.PartySwapResult.SWAPPED -> null
+    com.pokedaisy.app.companion.data.PartySwapResult.IN_BATTLE -> tr("Not during a battle")
+    com.pokedaisy.app.companion.data.PartySwapResult.NOT_NOW -> tr("Not right now")
+    com.pokedaisy.app.companion.data.PartySwapResult.FAILED -> tr("That didn't work")
 }
 
 /** Why TRADE EVOLUTIONS didn't evolve [mon], in the companion's words. */

@@ -134,12 +134,23 @@ object NewFeatures {
     const val COOP = "coop"
 
     /** Every feature that gets the tag. */
+    /** SETTINGS > BATTLE INFO: off, only the battle buttons. */
+    const val BATTLE_INFO = "battle_info"
+    /** SETTINGS > BATTLE VIEW: the BATTLE tab opens on INFO. */
+    const val BATTLE_VIEW = "battle_view"
+    /** Settings > GAME NAMES: the library by file name. */
+    const val GAME_NAMES = "game_names"
+    /** Settings > SUPPORTED ONLY: the library without the games the companion can't read. */
+    const val SUPPORTED_ONLY = "supported_only"
+    /** SETTINGS > LOOK AROUND: EXPAND's right stick switched off. */
+    const val LOOK_AROUND = "look_around"
+
     val ALL = listOf(
         HUD, BATTLE_BUTTONS, GAME_HOTKEYS, COMPANION_WINDOW, HUD_PC, QUICK_MENU, HUD_REPEL, SINGLE_SCREEN, MORE_TAB, TOUCH_CONTROLS,
         COMPANION_TAB, REUSABLE_TMS, SHINY_ODDS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
         GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE,
-        AUDIO_EFFECTS,
+        AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND,
     )
 
     private const val DAYS = 7

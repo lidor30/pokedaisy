@@ -593,7 +593,13 @@ private fun homeRows(
             if (s.nuzlockeSupported) { s.setNuzlocke(!s.nuzlocke); changed() }
         },
         // B held for the player while walking on the field; holding it walks. Never on a bike or in a menu.
-        SettingRow(tk("AUTO-RUN"), if (s.fieldReadable) onOff(s.autoRun) else tk("N/A"), enabled = s.fieldReadable) { if (s.fieldReadable) { s.setAutoRun(!s.autoRun); changed() } },
+        // A game that runs by itself (GAMES_WITH_OWN_AUTO_RUN) shows ON, greyed, and says so: flipping B there would walk.
+        SettingRow(
+            tk("AUTO-RUN"),
+            when { s.autoRunBuiltIn -> tk("ON"); s.fieldReadable -> onOff(s.autoRun); else -> tk("N/A") },
+            enabled = s.fieldReadable && !s.autoRunBuiltIn,
+            subtitle = if (s.autoRunBuiltIn) "This game has its own auto-run" else null,
+        ) { if (s.fieldReadable) { s.setAutoRun(!s.autoRun); changed() } },
         // Every map lets the player run (buildings too); FireRed / Emerald engines.
         SettingRow(tk("RUN INDOORS"), if (s.runIndoorsSupported) onOff(s.runIndoors) else tk("N/A"), enabled = s.runIndoorsSupported) { if (s.runIndoorsSupported) { s.setRunIndoors(!s.runIndoors); changed() } },
         // This game's cheats on / off (the codes are typed or imported in the top screen's Settings).
@@ -612,6 +618,12 @@ private fun homeRows(
         },
         // EXPAND only: whether a conversation, sign, menu or picture over the field pulls the zoom in (battles always do).
         SettingRow(tk("AUTO ZOOM IN"), onOff(s.expandZoomOnText)) { s.setExpandZoomOnText(!s.expandZoomOnText); changed() }
+            .takeIf { s.gameAspect == GameAspect.WIDE },
+        // EXPAND only: the right stick moves the view.
+        SettingRow(
+            tk("LOOK AROUND"), onOff(s.lookAround), subtitle = "The right stick moves the view",
+            labelBadge = NewFeatures.badge(NewFeatures.LOOK_AROUND),
+        ) { s.setLookAround(!s.lookAround); changed() }
             .takeIf { s.gameAspect == GameAspect.WIDE },
         // A DS game: its 3D at 2x to 8x the DS's own on the GPU, or ORIGINAL (the CPU's, pixel for pixel).
         s.dsResolution?.let { scale ->
@@ -694,11 +706,23 @@ private fun homeRows(
         SettingRow(tk("FPS / CPU"), onOff(s.showPerformance), subtitle = "Speed and CPU use in the game's corner") { s.setShowPerformance(!s.showPerformance); changed() },
         groupTitle(tk("COMPANION")),
         // Move effectiveness and the foe's weak-to/resists during battle.
-        SettingRow(tk("BATTLE HINTS"), onOff(s.showHints), subtitle = "Move ratings and the best pick in battle") { s.setShowHints(!s.showHints); changed() },
+        // Off: the battle buttons alone - no INFO, SUGGESTIONS or move ratings. The rows about them go with it.
+        SettingRow(
+            tk("BATTLE INFO"), onOff(s.battleInfo), subtitle = "INFO, SUGGESTIONS and move ratings",
+            labelBadge = NewFeatures.badge(NewFeatures.BATTLE_INFO),
+        ) { s.setBattleInfo(!s.battleInfo); changed() },
+        SettingRow(tk("BATTLE HINTS"), onOff(s.showHints), subtitle = "Move ratings and the best pick in battle") { s.setShowHints(!s.showHints); changed() }
+            .takeIf { s.battleInfo },
         // The battle controls' action menu shows the moves: one tap picks FIGHT and the move.
+        // What the BATTLE tab shows first: the battle buttons, or INFO (its own buttons lead back).
+        SettingRow(
+            tk("BATTLE VIEW"), if (s.battleInfoFirst) tk("INFO") else tk("BUTTONS"), subtitle = "What the BATTLE tab opens on",
+            labelBadge = NewFeatures.badge(NewFeatures.BATTLE_VIEW),
+        ) { s.setBattleInfoFirst(!s.battleInfoFirst); changed() }.takeIf { s.battleInfo },
         SettingRow(tk("ONE-TAP MOVES"), onOff(s.oneTapMoves), subtitle = "Your moves right on the battle menu") { s.setOneTapMoves(!s.oneTapMoves); changed() },
         // A STATS page in battle INFO with the foe's IVs / EVs / nature.
-        SettingRow(tk("FOE IVS"), onOff(s.showFoeIvs), subtitle = "The foe's hidden stats in battle") { s.setShowFoeIvs(!s.showFoeIvs); changed() },
+        SettingRow(tk("FOE IVS"), onOff(s.showFoeIvs), subtitle = "The foe's hidden stats in battle") { s.setShowFoeIvs(!s.showFoeIvs); changed() }
+            .takeIf { s.battleInfo },
         SettingRow(
             tk("BATTLE FOCUS"), onOff(s.battleFocus), subtitle = "Battle info on one page, no scrolling",
             labelBadge = NewFeatures.badge(NewFeatures.BATTLE_FOCUS),
