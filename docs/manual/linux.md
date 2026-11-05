@@ -95,3 +95,16 @@ Fast-forward and rewind don't rebuild the map (that is what keeps fast-forward
 fast): the game picture sits over a blurred glow spread from its own edges, the
 same one the menus show past the screen. Fast-forward is silent. Rewind keeps the
 aspect you chose, so `ZOOM OUT` stays zoomed out while you rewind.
+
+### NXRedux collection and Platinum
+
+The optional Brick package uses one PokeDaisy collection for Game Boy, Game
+Boy Color, Game Boy Advance and Nintendo DS. See
+`linux/libretro-unified/README.md` for build, install and save migration steps.
+
+On Pokémon Platinum USA revision 1, L2 opens the companion and Select + L2
+opens the quick menu. Choose **Settings → DS Layout → One Screen** for full
+screen gameplay with automatic touch and menu windows. R2 cycles to the bottom
+or top screen manually. Hold Select and press R2 to toggle a floating touch
+panel in One Screen or Picture in Picture. Select + D-pad moves the stylus and
+Select + A taps. Use NXRedux's menus and shortcuts for saves, states and speed.

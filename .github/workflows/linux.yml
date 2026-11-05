@@ -1,10 +1,10 @@
 name: Linux foundation
 on:
   pull_request:
-    paths: ['linux/**', '3ds/core/**', '3ds/test/host_display_test.c', '3ds/Makefile', '3ds/desktop/pd_png.*', 'app/src/main/cpp/pk_savevf.*', 'third_party/mgba', '.github/workflows/linux.yml', 'gamedata/**']
+    paths: ['linux/**', '3ds/core/**', '3ds/test/host_display_test.c', '3ds/Makefile', '3ds/desktop/pd_png.*', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
   push:
     branches: [main, dev]
-    paths: ['linux/**', '3ds/**', 'app/src/main/cpp/pk_savevf.*', 'third_party/mgba', '.github/workflows/linux.yml', 'gamedata/**']
+    paths: ['linux/**', '3ds/**', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
   workflow_dispatch:
 permissions:
   contents: read
@@ -26,6 +26,27 @@ jobs:
           cmake -S linux -B linux/build -DCMAKE_BUILD_TYPE=Release -DBUILD_LTO=OFF
           cmake --build linux/build -j2
           ctest --test-dir linux/build --output-on-failure
+      - name: Build and test native libretro cores
+        run: |
+          git submodule update --init --recursive third_party/dsperate-lr
+          cmake -S linux/libretro-ds -B "$RUNNER_TEMP/pd-ds" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/pd-ds" -j2
+          ctest --test-dir "$RUNNER_TEMP/pd-ds" --output-on-failure
+          cmake -S libretro -B "$RUNNER_TEMP/pd-gb" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/pd-gb" --target pokedaisy_libretro -j2
+          sh libretro/test/check_exports.sh "$RUNNER_TEMP/pd-gb/pokedaisy_libretro.so"
+          sh libretro/test/check_exports.sh "$RUNNER_TEMP/pd-ds/pokedaisy_ds_libretro.so"
+          python3 linux/libretro-unified/test_launcher.py
+          cc -I third_party/dsperate-lr/include linux/libretro-unified/test_core.c \
+            -ldl -o "$RUNNER_TEMP/pd-core-test"
+          (cd "$RUNNER_TEMP" && python3 "$GITHUB_WORKSPACE/linux/make_diagnostic.py")
+          mkdir -p "$RUNNER_TEMP/pd-saves"
+          for rom in diagnostic.gb diagnostic.gba; do
+            PD_LEGACY_FF=1 "$RUNNER_TEMP/pd-core-test" "$RUNNER_TEMP/pd-gb/pokedaisy_libretro.so" \
+              "$RUNNER_TEMP/$rom" "$RUNNER_TEMP/pd-saves"
+          done
+          PD_MODERN_THROTTLE=1 PD_LEGACY_FF=1 "$RUNNER_TEMP/pd-core-test" \
+            "$RUNNER_TEMP/pd-gb/pokedaisy_libretro.so" "$RUNNER_TEMP/diagnostic.gba" "$RUNNER_TEMP/pd-saves"
       - name: Package native artifact
         run: python3 linux/package.py linux/build/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
