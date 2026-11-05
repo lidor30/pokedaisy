@@ -198,9 +198,9 @@ object GameTitles {
     private val CODES = setOf("BPRE", "BPGE", "BPEE", "AXVE", "AXPE") + EMERALD_LOCALIZED_CODES +
         RETAIL_PORT_CODE_TITLES.keys + TelemetrySampler.HACK_GAME_CODES
 
-    /** What the library shows for [rom]: the player's RENAME, else [defaultLabel]. Cheap. */
+    /** What the library shows for [rom]: the player's RENAME, else the file's name (GAME NAMES) or [defaultLabel]. Cheap. */
     fun label(context: Context, prefs: Prefs, rom: File): String =
-        prefs.romDisplayName(rom) ?: defaultLabel(context, rom)
+        prefs.romDisplayName(rom) ?: if (prefs.libraryFileNames) RomArchive.baseName(rom) else defaultLabel(context, rom)
 
     /** [rom]'s name with no RENAME: the game's ([title]) if known, else the tidied file name. */
     fun defaultLabel(context: Context, rom: File): String =

@@ -388,6 +388,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 - **Field items**: ITEMS' USE (Repels, medicine, PP items) and GIVE / TAKE on a Pokémon (`FieldItems.kt`).
 - **FLY**: the MAP tab's FLY button (`Fly.kt`).
 - **Trainer card**: the CARD tab (`TrainerCard.kt`).
+- **AUTO-RUN**: never while surfing or diving (B surfaces: `TrySetupDiveEmergeScript`, GitHub #338; Ruby / Sapphire by the map's type). SoulGold's Autorun option and Odyssey's L are their own, on by default, so the row is ON and greyed there (`GAMES_WITH_OWN_AUTO_RUN`): our flip of B made them walk. Other hacks have one that starts off (Unbound, Radical Red, Lazarus, Seaglass, Imperium, Quetzal, R.O.W.E., Heart and Soul, Elite Redux, the Recharged games): with both on, B flips back.
 - **Field reads**: SCENE SPEEDS' TEXT SPEED, CONTROLS > AUTO-RUN and RUN INDOORS (`pk_field_state`). BATTLE / MENU
   SPEED and GUIDE > HERE's caught count need no per-ROM table: every game.
 - **Bike / surf**: SCENE SPEEDS' BIKE / SURF SPEED, from the game's own player state (and AUTO-RUN's bike check).

@@ -175,7 +175,7 @@ fun CompanionScreen(
         // BATTLE tab: touch Controls (Gen 4 style) vs. info-dense Panel — see
         // BattleControlsScreen.kt. Resets to Controls each time the BATTLE tab
         // becomes available (a fresh battle), matching selectedLabel's own reset.
-        var battleShowControls by remember { mutableStateOf(true) }
+        var battleShowControls by remember { mutableStateOf(settings?.battleInfoFirst != true) }
         // BATTLE tab's SUGGESTIONS pane - see SuggestionsScreen.kt. A plain
         // flag rather than another battleInputState-driven sub-screen since
         // it's pure information (ranks the whole party, not just whoever's
@@ -306,7 +306,7 @@ fun CompanionScreen(
                     selectedLabel = preBattleTab ?: "PARTY"
                     preBattleTab = null
                 }
-                if (battle) battleShowControls = true
+                if (battle) battleShowControls = settings?.battleInfoFirst != true
                 showSuggestions = false; showBattleStats = false
                 seenFoes.clear(); selectedFoe = null
                 focusSeen.clear()
@@ -355,7 +355,7 @@ fun CompanionScreen(
             popupReturn = null
             if (title != current) backTab = current
             selectedLabel = title; detailIndex = null; showSuggestions = false; showBattleStats = false; dexUi.open = null
-            if (title == "BATTLE") battleShowControls = true
+            if (title == "BATTLE") battleShowControls = settings?.battleInfoFirst != true
         }
         // The window over the game (one screen): L / R step along the bar (round, like the game's own pages), from the gear
         // when a tab opened from MORE is up. Under everything a tab registers, so a page of its own can take them.
@@ -752,6 +752,9 @@ fun CompanionScreen(
                                         foeTeam = snapshot.enemyParty,
                                         seenFoes = seenFoes.toSet(),
                                         shownFoe = shownFoe,
+                                        isCaught = { species ->
+                                            snapshot.pokedex?.let { d -> com.pokedaisy.app.companion.data.PokedexSource.nationalOf(d.tables, species) in d.caught } == true
+                                        },
                                         foeHeading = foeHeading,
                                         // Tapping the one shown goes back to following the battle.
                                         onSelectFoe = { selectedFoe = if (it == shownFoe && selectedFoe != null) null else it },

@@ -1,6 +1,8 @@
 package com.pokedaisy.app
 
 import android.content.Context
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.HapticFeedbackConstants
 import android.widget.FrameLayout
 import androidx.compose.foundation.layout.fillMaxSize
@@ -68,6 +70,17 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
     val clearTop: Int get() = clear().first
     val clearBottom: Int get() = clear().second
 
+    /** VIBRATION: LIGHT is the phone's own tick, which follows its touch vibration setting (too faint on some phones);
+     *  MEDIUM and STRONG drive the motor themselves. */
+    private fun buzz(level: Int) {
+        when {
+            level <= 0 -> {}
+            level == 1 -> performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            else -> context.getSystemService(Vibrator::class.java)
+                ?.vibrate(VibrationEffect.createOneShot(if (level == 2) 20L else 40L, VibrationEffect.DEFAULT_AMPLITUDE))
+        }
+    }
+
     private fun clear(): Pair<Int, Int> {
         val p = placed ?: return 0 to 0
         // The game's columns: the middle 3:2 (or 10:9) at the area's height, the whole width upright.
@@ -95,7 +108,7 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
                     input = TouchInput(
                         onKeys = { gba, turbo -> onMask?.invoke(gba, turbo) },
                         onAction = { b, down -> onAction?.invoke(b, down) },
-                        onPress = { if (style.vibration) performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY) },
+                        onPress = { buzz(style.vibration) },
                     ),
                     gameAspect = gameAspect, gameBoy = !shoulders, ffOn = ffOn, ds = dsButtons,
                     modifier = androidx.compose.ui.Modifier.fillMaxSize(),

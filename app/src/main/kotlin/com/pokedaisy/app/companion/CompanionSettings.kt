@@ -46,6 +46,8 @@ interface CompanionSettings {
 
     /** AUTO-RUN: B held while walking (holding it walks) - see [com.pokedaisy.app.Prefs.autoRun]. */
     val autoRun: Boolean get() = false
+    /** The game has its own, on by default ([com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN]): the row says so. */
+    val autoRunBuiltIn: Boolean get() = false
     fun setAutoRun(on: Boolean) {}
 
     /** RUN INDOORS - see [com.pokedaisy.app.Prefs.runIndoors]; [runIndoorsSupported]: a FireRed / Emerald engine the
@@ -245,6 +247,10 @@ interface CompanionSettings {
     val showFoeIvs: Boolean get() = false
     fun setShowFoeIvs(on: Boolean) {}
 
+    /** BATTLE VIEW - see [com.pokedaisy.app.Prefs.battleInfoFirst]. */
+    val battleInfoFirst: Boolean get() = false
+    fun setBattleInfoFirst(on: Boolean) {}
+
     /** ONE-TAP MOVES - see [Prefs.oneTapMoves]. */
     val oneTapMoves: Boolean get() = false
     fun setOneTapMoves(on: Boolean) {}
@@ -316,6 +322,10 @@ interface CompanionSettings {
 
     /** Whether WIDE knows the running game (WideScreen.gameFor); it shows as ORIGINAL otherwise. */
     val wideSupported: Boolean get() = false
+
+    /** EXPAND's LOOK AROUND - see [com.pokedaisy.app.Prefs.lookAround]. */
+    val lookAround: Boolean get() = true
+    fun setLookAround(on: Boolean) {}
 
     /** EXPAND's AUTO ZOOM IN - see [com.pokedaisy.app.Prefs.expandZoomOnText]. */
     val expandZoomOnText: Boolean get() = true

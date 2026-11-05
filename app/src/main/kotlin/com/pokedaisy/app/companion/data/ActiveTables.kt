@@ -29,6 +29,12 @@ enum class GameKind { FIRERED, EMERALD, UNBOUND, GAIA, RADICAL_RED, ODYSSEY, HEA
     GOLD, SILVER, RED, BLUE, ELITE_REDUX, POLISHED_CRYSTAL, PLATINUM, HEARTGOLD, SOULSILVER, TEAM_ROCKET, BLACK, WHITE, BLACK2, WHITE2,
     WISHES, PURE_RED, PURE_BLUE, DREAMSTONE, MONOMYTH, YELLOW_LEGACY, CRYSTAL_LEGACY }
 
+/**
+ * Games with an auto-run of their own, on by default: holding B walks there, so AUTO-RUN's flip of B walked and B ran
+ * (SoulGold's "Autorun" option, Odyssey's L: a player's report, 2026-11-04). Their own switch is the way to change it.
+ */
+val GAMES_WITH_OWN_AUTO_RUN = setOf(GameKind.SOULGOLD, GameKind.ODYSSEY)
+
 @Volatile
 var activeGame: GameKind = GameKind.FIRERED
 

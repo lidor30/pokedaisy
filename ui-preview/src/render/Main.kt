@@ -158,6 +158,9 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override fun setCoopRelayOnly(on: Boolean) { relayOnlyOn = on }
     private var oneTapOn = oneTap
     override val oneTapMoves get() = oneTapOn
+    private var battleInfoFirstOn = false
+    override val battleInfoFirst get() = battleInfoFirstOn
+    override fun setBattleInfoFirst(on: Boolean) { battleInfoFirstOn = on }
     override fun setOneTapMoves(on: Boolean) { oneTapOn = on }
     private val offer = androidx.compose.runtime.mutableStateOf(expandOffer)
     override val expandOffer get() = offer.value
@@ -221,6 +224,7 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override val shinyOddsChoices get() = com.pokedaisy.app.companion.data.ShinyOdds.DEBUG_CHOICES
     override val shinyOddsSupported get() = com.pokedaisy.app.companion.data.activeGame == com.pokedaisy.app.companion.data.GameKind.FIRERED ||
         com.pokedaisy.app.companion.data.activeGame == com.pokedaisy.app.companion.data.GameKind.EMERALD
+    override val autoRunBuiltIn get() = com.pokedaisy.app.companion.data.activeGame in com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN
     override val reusableTmsBuiltIn get() = com.pokedaisy.app.companion.data.activeGame in com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN
     // PLAYER LOOK: the other games' heroes kept, the player in their own.
     private var lookWorn: String? = null
@@ -1511,6 +1515,8 @@ fun main(args: Array<String>) {
         Shot("$g-settings-after-swap", bw, bh, bd, companion("SETTINGS", settingsRow = "SWAP SCREENS")),
         // APP > TIPS, with its NEW tag.
         Shot("$g-settings-tips", bw, bh, bd, companion("SETTINGS", settingsRow = "TIPS")),
+        Shot("$g-settings-autorun", bw, bh, bd, companion("SETTINGS", settingsRow = "AUTO-RUN")),
+        Shot("$g-settings-battleview", bw, bh, bd, companion("SETTINGS", settingsRow = "BATTLE VIEW")),
         Shot("$g-settings-battery-low", bw, bh, bd, companion("SETTINGS", battery = BatteryStatus(9, charging = false))),
         Shot("$g-settings-battery-charging", bw, bh, bd, companion("SETTINGS", battery = BatteryStatus(100, charging = true))),
         Shot("$g-card", bw, bh, bd, companion("CARD", snap = ::card)),
@@ -1685,7 +1691,7 @@ fun main(args: Array<String>) {
             val t = trainerBattle(BATTLE_INPUT_ACTION_SELECT)
             val foes = t.enemyParty.drop(1)
             val mine = listOf(t.party[0], t.party[1]).map { me ->
-                me.copy(moves = me.moves.map { mv -> mv.copy(vs = foes.map { f -> f.let { me.withMovesVs(it).moves.first { it.name == mv.name }.vs[0] } }) })
+                me.copy(moves = me.moves.map { mv -> mv.copy(vs = foes.flatMap { f -> me.withMovesVs(f).moves.first { it.name == mv.name }.vs }) })
             }
             t.copy(isDoubleBattle = true, battlePlayer = mine, battleOpponent = foes, enemyParty = emptyList(), enemyActive = -1)
         }),
@@ -2351,6 +2357,7 @@ fun main(args: Array<String>) {
         // Opened: D-pad focus on the first setting, not the search box.
         Shot("settings-home-focus", tw, th, td, activity { SettingsActivity() }),
         Shot("settings-app", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("CRASH REPORTS").performScrollTo() },
+        Shot("settings-library-names", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("GAME NAMES").performScrollTo() },
         Shot("library-grid", tw, th, td, activity { LibraryActivity() }) {
             onNodeWithContentDescription("Toggle view").performClick()
         },

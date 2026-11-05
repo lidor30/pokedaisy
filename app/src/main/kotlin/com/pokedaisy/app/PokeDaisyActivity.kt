@@ -1065,7 +1065,7 @@ class PokeDaisyActivity : Activity() {
     @Volatile private var followerLead: Int? = null
 
     /** FOLLOWER works here: a GBA game (not a Game Boy or DS one) that has no following Pokémon of its own. */
-    private fun followerSupported() = !romIsGameBoy && !romIsNds && ::engine.isInitialized &&
+    private fun followerSupported() = !romIsGameBoy && !romIsNds && ::engine.isInitialized && fieldGame != WideScreen.OFF &&
         com.pokedaisy.app.companion.data.activeGame !in FOLLOWERS_OF_THEIR_OWN
 
     /** The engine's follower: the lead's sprite while the row is on. */
@@ -1359,6 +1359,8 @@ class PokeDaisyActivity : Activity() {
             Prefs(this@PokeDaisyActivity).rivalLook = on
             lookRunner.apply()
         }
+        override val autoRunBuiltIn get() =
+            com.pokedaisy.app.companion.data.activeGame in com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN
         override val reusableTmsBuiltIn get() =
             com.pokedaisy.app.companion.data.activeGame in com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN
         override val ffToggled get() = if (::engine.isInitialized) engine.fastForwardToggled else false
@@ -1500,6 +1502,11 @@ class PokeDaisyActivity : Activity() {
             runOnUiThread { syncGameScreen() }
         }
         override val wideSupported get() = wideGame != WideScreen.OFF
+        override val lookAround get() = Prefs(this@PokeDaisyActivity).lookAround
+        override fun setLookAround(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).lookAround = on
+            view.camera.lookAround = on
+        }
         override val expandZoomOnText get() = Prefs(this@PokeDaisyActivity).expandZoomOnText
         override fun setExpandZoomOnText(on: Boolean) {
             Prefs(this@PokeDaisyActivity).expandZoomOnText = on
@@ -1626,6 +1633,8 @@ class PokeDaisyActivity : Activity() {
         override fun setShowFoeIvs(on: Boolean) {
             Prefs(this@PokeDaisyActivity).showFoeIvs = on
         }
+        override val battleInfoFirst get() = Prefs(this@PokeDaisyActivity).battleInfoFirst
+        override fun setBattleInfoFirst(on: Boolean) { Prefs(this@PokeDaisyActivity).battleInfoFirst = on }
         override val oneTapMoves get() = Prefs(this@PokeDaisyActivity).oneTapMoves
         override fun setOneTapMoves(on: Boolean) { Prefs(this@PokeDaisyActivity).oneTapMoves = on }
         override val foeDetails get() = Prefs(this@PokeDaisyActivity).foeDetails
@@ -2074,7 +2083,10 @@ class PokeDaisyActivity : Activity() {
             this.gba = gba
             this.nds = nds
             ndsGameCode = ndsCode
-            wideCamera = view.camera.also { it.zoomOnText = Prefs(this@PokeDaisyActivity).expandZoomOnText }
+            wideCamera = view.camera.also {
+                it.zoomOnText = Prefs(this@PokeDaisyActivity).expandZoomOnText
+                it.lookAround = Prefs(this@PokeDaisyActivity).lookAround
+            }
             onWideOff = { runOnUiThread { showHud(com.pokedaisy.app.companion.i18n.tr("EXPAND hit a problem and is off for this game")) } }
             gen1Music = this@PokeDaisyActivity.gen1Music
             onCoreReady = { w, h ->
@@ -4462,7 +4474,7 @@ class PokeDaisyActivity : Activity() {
             TipId.QUICK_MENU -> tipKey(Hotkeys.Action.QUICK_MENU) != null && quickShown.value.any { quickActions.offered(it) }
             TipId.HUD -> hudOn.value && !hudUpright.value
             TipId.PC -> itemUse.canPc()
-            TipId.AUTO_RUN -> !p.autoRun && companionSettings.fieldReadable
+            TipId.AUTO_RUN -> !p.autoRun && companionSettings.fieldReadable && !companionSettings.autoRunBuiltIn
             TipId.WILD -> companionSettings.wildEncountersSupported && p.wildEncounters != 0
             TipId.REUSABLE_TMS -> companionSettings.reusableTmsSupported && !companionSettings.reusableTmsBuiltIn && !p.reusableTms
             TipId.FLY -> flyAction.canFly() && telemetry.snapshot.value.party.any { m ->

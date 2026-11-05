@@ -770,6 +770,14 @@ class SettingsActivity : ComponentActivity() {
                 prefs.expandZoomOnText = !prefs.expandZoomOnText
                 revision++
             }.takeIf { prefs.gameAspect == com.pokedaisy.app.companion.GameAspect.WIDE },
+            // EXPAND only: the right stick moves the view.
+            SettingRow(
+                tk("LOOK AROUND"), onOff(prefs.lookAround), subtitle = "The right stick moves the view",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.LOOK_AROUND),
+            ) {
+                prefs.lookAround = !prefs.lookAround
+                revision++
+            }.takeIf { prefs.gameAspect == com.pokedaisy.app.companion.GameAspect.WIDE },
             // DS games: the 3D at 2x to 8x the DS's own, drawn on the GPU (nds/pk_nds_gl.h); ORIGINAL keeps the CPU's,
             // pixel for pixel. N/A without OpenGL ES 3.2.
             dsGpu.let { gpu ->
@@ -863,6 +871,22 @@ class SettingsActivity : ComponentActivity() {
             // On: a game opens where it was left. Off: at its title screen, from the save.
             SettingRow(tk("RESUME GAMES"), onOff(prefs.autoResume), subtitle = "Open a game right where you left it") {
                 prefs.autoResume = !prefs.autoResume
+                revision++
+            },
+            // The library's names: the game's own, or the file's.
+            SettingRow(
+                tk("GAME NAMES"), if (prefs.libraryFileNames) tk("FILE NAME") else tk("GAME TITLE"), subtitle = "How the library names your games",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.GAME_NAMES),
+            ) {
+                prefs.libraryFileNames = !prefs.libraryFileNames
+                revision++
+            },
+            // Leaves out what the companion can't read; the games stay in their folders.
+            SettingRow(
+                tk("SUPPORTED ONLY"), onOff(prefs.librarySupportedOnly), subtitle = "Hide games the companion can't read",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.SUPPORTED_ONLY),
+            ) {
+                prefs.librarySupportedOnly = !prefs.librarySupportedOnly
                 revision++
             },
             // Two screens: the game list on one, the game you're on (its media) on the other. X swaps them.

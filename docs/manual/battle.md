@@ -36,7 +36,7 @@ Elite Redux has no bag in its battle menu, so there the tab shows `RUN` and `POK
 
 ## Moves and their verdicts
 
-Each move card shows its name, type, power (`PWR`) and `PP` left, plus a verdict against the foe in plain words:
+Each move card shows its name, type, power (`PWR`) and `PP` left, plus a verdict against the foe in plain words (status moves deal no damage, so they have none):
 
 | Verdict | Meaning |
 | --- | --- |
@@ -48,6 +48,10 @@ Each move card shows its name, type, power (`PWR`) and `PP` left, plus a verdict
 | `NO PP` | Out of uses. You can't pick it. |
 
 ![The move grid: PAW SWIPE, WARY GLARE, CINDER SPIT and IRON NIP, each with its type, power, PP and verdict, and a CANCEL bar below](shots/companion-battle-moves.png "Picking a move")
+
+### BATTLE VIEW
+
+The `BATTLE` tab opens on your battle buttons. If you'd rather read about the fight first and use the game's own menu, set `BATTLE VIEW` to `INFO` in SETTINGS (COMPANION group). `BACK` on `INFO` still brings the buttons up.
 
 ### ONE-TAP MOVES
 

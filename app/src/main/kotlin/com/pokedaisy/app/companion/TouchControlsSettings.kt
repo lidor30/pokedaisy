@@ -142,8 +142,8 @@ data class TouchControlsStyle(
     val eightWay: Boolean = true,
     /** The controls fade to a trace after a few seconds without a touch, and come back on the next one. */
     val fadeIdle: Boolean = false,
-    /** A light tick of vibration on each press. */
-    val vibration: Boolean = false,
+    /** Vibration on each press: 0 off, 1 the phone's own light tick, 2 / 3 a stronger buzz (VIBRATION_NAMES). */
+    val vibration: Int = 0,
     /** LAYOUT is CUSTOM: EDIT LAYOUT's work below is used (else it's kept for later, and [preset] alone counts). */
     val useCustom: Boolean = false,
     /** EDIT LAYOUT's work for a phone upright and held sideways (the controls not in it follow [preset]). */
