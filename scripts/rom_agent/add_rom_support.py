@@ -191,20 +191,13 @@ def make_worktree(base: str, branch: str, path: Path) -> None:
     log(f"worktree {tilde(path)} on {branch} (from origin/{base})")
     run(["git", "worktree", "add", "-b", branch, str(path), f"origin/{base}"], cwd=REPO)
 
-    # Submodules: borrow the objects this checkout already has instead of downloading them again.
-    paths = run(["git", "config", "-f", ".gitmodules", "--get-regexp", r"submodule\..*\.path"], cwd=path,
-                check=False).stdout.split("\n")
-    for line in filter(None, paths):
-        key, sub = line.split(" ", 1)
-        name = key[len("submodule."):-len(".path")]
-        ref = REPO / ".git" / "modules" / name
-        cmd = ["git", "submodule", "update", "--init"]
-        if ref.is_dir():
-            cmd += ["--reference", str(ref)]
-        log(f"submodule {sub}")
-        res = run(cmd + ["--", sub], cwd=path, check=False, timeout=1800)
-        if res.returncode != 0:
-            log(f"  warning: submodule {sub} didn't check out ({tail(res.stdout, 3)}); native builds may fail")
+    failed = checkout_submodules(REPO, path)
+    if failed:
+        drop_worktree(path, branch)
+        die("these submodules didn't check out, and without them the agent can't build the headless capture tools:\n"
+            + "\n".join(f"  {sub}: {why}" for sub, why in failed)
+            + "\nthe worktree and branch were removed; run `make submodules` in this checkout (or fix the network) "
+              "and start again")
 
     # Untracked local setup the build needs (CLAUDE.md "Local setup on this machine").
     for name in ("local.properties", "local.mk", "keystore.properties", "app/google-services.json"):
@@ -212,6 +205,42 @@ def make_worktree(base: str, branch: str, path: Path) -> None:
         if src.exists():
             (path / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(src, path / name)
+
+
+def checkout_submodules(repo: Path, wt: Path) -> list[tuple[str, str]]:
+    """Check the worktree's submodules out, from this checkout's own copies first (no download), then from the URL
+    in .gitmodules. A checkout's .git/config can hold a submodule URL of its own (a local folder: git then refuses
+    the clone, "transport 'file' not allowed"), so both ways set the URL for the call. Returns what failed."""
+    common = Path(run(["git", "rev-parse", "--path-format=absolute", "--git-common-dir"], cwd=repo).stdout.strip())
+    entries = run(["git", "config", "-f", ".gitmodules", "--get-regexp", r"submodule\..*\.path"], cwd=wt,
+                  check=False).stdout.splitlines()
+    failed = []
+    for line in filter(None, entries):
+        key, sub = line.split(" ", 1)
+        name = key[len("submodule."):-len(".path")]
+        url = run(["git", "config", "-f", ".gitmodules", f"submodule.{name}.url"], cwd=wt, check=False).stdout.strip()
+        local = common / "modules" / name
+        ways = []
+        if (local / "HEAD").is_file():
+            ways.append(("this checkout's copy", ["-c", "protocol.file.allow=always", "-c", f"submodule.{name}.url={local}"], []))
+        if url:
+            ways.append((url, ["-c", f"submodule.{name}.url={url}"], ["--reference", str(local)] if (local / "HEAD").is_file() else []))
+        why = "no copy in this checkout and no URL in .gitmodules"
+        for label, before, after in ways:
+            res = run(["git", *before, "submodule", "update", "--init", *after, "--", sub], cwd=wt, check=False,
+                      timeout=1800)
+            if res.returncode == 0:
+                log(f"submodule {sub} (from {label})")
+                break
+            why = " ".join(tail(res.stdout, 2).split())
+        else:
+            failed.append((sub, why))
+    return failed
+
+
+def drop_worktree(path: Path, branch: str) -> None:
+    run(["git", "worktree", "remove", "--force", str(path)], cwd=REPO, check=False)
+    run(["git", "branch", "-D", branch], cwd=REPO, check=False)
 
 
 # --- 3. the agent --------------------------------------------------------------------------------------------------
