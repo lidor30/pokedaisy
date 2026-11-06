@@ -549,9 +549,18 @@ def parse_games(args) -> list[dict]:
         rom, _, save = item.partition("::")
         raw.append((unquote(rom), unquote(save), "", ""))
     if args.list:
-        lst = args.list.expanduser()
+        lst = args.list.expanduser().resolve()
         if not lst.is_file():
-            die(f"no list at {lst}")
+            stem = lst.name.split(".")[0].lower()
+            near = sorted(p.name for p in lst.parent.glob("*") if p.is_file() and p.name.lower().startswith(stem[:6]))
+            die(f"no list at {lst}\n"
+                + (f"files in {tilde(lst.parent)} with a name like it: {', '.join(near)}\n" if near else
+                   f"nothing in {tilde(lst.parent)} has a name like it\n")
+                + "a relative LIST= path is read from the repo's root (where the Makefile is); give the full path "
+                  "if the file is elsewhere, and save it as plain text (TextEdit: Format > Make Plain Text)")
+        if lst.suffix.lower() in {".rtf", ".rtfd", ".doc", ".docx", ".pages"}:
+            die(f"{lst.name} is a formatted document; save the list as plain text (TextEdit: Format > Make Plain "
+                "Text, then save as .txt)")
         for n, line in enumerate(lst.read_text(encoding="utf-8-sig").splitlines(), 1):
             if not line.strip() or line.lstrip().startswith("#"):
                 continue
