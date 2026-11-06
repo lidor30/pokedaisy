@@ -28,7 +28,9 @@ What it does, in order:
 
 Runs on the machine that has the ROMs, the decomps, Docker and the Android SDK (the Mac in CLAUDE.md's "Local
 setup"), never in a cloud session. Needs: python3 (3.9+), git, the `claude` CLI, `gh` (signed in), and
-ANTHROPIC_API_KEY (or `claude` signed in another way). Everything the run writes outside the repo goes to
+ANTHROPIC_API_KEY, which goes straight to api.anthropic.com past any gateway your own Claude settings name
+(--allow-no-key: `claude` runs on your own setup instead). A small call checks that before anything is made.
+Everything the run writes outside the repo goes to
 ~/.cache/pokedaisy-rom-agent/<sha1 prefix>/ per game (logs, the filled-in brief, report.json, a set-aside patch).
 Exit: 0 every game committed, 3 some left out or a draft PR, 2 no game made it.
 """
@@ -44,6 +46,8 @@ import shlex
 import shutil
 import subprocess
 import sys
+import tempfile
+import threading
 import time
 from datetime import datetime
 from pathlib import Path
@@ -198,13 +202,19 @@ def make_worktree(base: str, branch: str, path: Path) -> None:
         key, sub = line.split(" ", 1)
         name = key[len("submodule."):-len(".path")]
         ref = REPO / ".git" / "modules" / name
-        cmd = ["git", "submodule", "update", "--init"]
+        # .gitmodules' URL, not the one in .git/config: every worktree shares that file, and a local path there
+        # fails ("transport 'file' not allowed", git's default for submodule clones).
+        url = run(["git", "config", "-f", ".gitmodules", "--get", f"submodule.{name}.url"], cwd=path).stdout.strip()
+        cmd = ["git", "-c", f"submodule.{name}.url={url}", "submodule", "update", "--init"]
         if ref.is_dir():
             cmd += ["--reference", str(ref)]
         log(f"submodule {sub}")
         res = run(cmd + ["--", sub], cwd=path, check=False, timeout=1800)
         if res.returncode != 0:
-            log(f"  warning: submodule {sub} didn't check out ({tail(res.stdout, 3)}); native builds may fail")
+            # Without the cores the agent can't capture anything, so stop before it spends the budget finding out.
+            run(["git", "worktree", "remove", "--force", str(path)], cwd=REPO, check=False)
+            run(["git", "branch", "-D", branch], cwd=REPO, check=False)
+            die(f"submodule {sub} didn't check out:\n{tail(res.stdout, 3)}")
 
     # Untracked local setup the build needs (CLAUDE.md "Local setup on this machine").
     for name in ("local.properties", "local.mk", "keystore.properties", "app/google-services.json"):
@@ -241,25 +251,74 @@ def describe_tool(block: dict) -> str:
     return f"{name}: {detail[:110]}" if detail else name
 
 
+def agent_env() -> dict:
+    """With an API key, `claude` talks to Anthropic itself: a gateway token or URL from the shell would take the key
+    elsewhere (a 401). agent_flags() drops the same from the user's Claude settings."""
+    env = dict(os.environ)
+    env.setdefault("CLAUDE_CODE_ENTRYPOINT", "pokedaisy-rom-agent")
+    if env.get("ANTHROPIC_API_KEY"):
+        env.pop("ANTHROPIC_AUTH_TOKEN", None)
+        env["ANTHROPIC_BASE_URL"] = "https://api.anthropic.com"
+    return env
+
+
+def agent_flags() -> list[str]:
+    return ["--setting-sources", "project,local"] if os.environ.get("ANTHROPIC_API_KEY") else []
+
+
+def check_agent_auth(args) -> None:
+    """One small call, before any worktree or agent: a refused login otherwise only shows after minutes of retries."""
+    log(f"checking `claude` can reach {args.model}")
+    cmd = ["claude", "-p", "Reply with OK.", "--output-format", "stream-json", "--verbose", "--model", args.model,
+           "--tools", "", *agent_flags()]
+    # Not in the repo: its CLAUDE.md would make this a large call.
+    proc = subprocess.Popen(cmd, cwd=tempfile.gettempdir(), env=agent_env(), text=True, stdout=subprocess.PIPE,
+                            stderr=subprocess.STDOUT, bufsize=1)
+    timer = threading.Timer(120, proc.kill)
+    timer.start()
+    problem = "no answer in 2 minutes"
+    assert proc.stdout is not None
+    try:
+        for line in proc.stdout:
+            try:
+                ev = json.loads(line)
+            except json.JSONDecodeError:
+                continue
+            if ev.get("subtype") == "api_retry" and ev.get("error_status") in (401, 403):
+                problem = f"HTTP {ev['error_status']} ({ev.get('error')})"
+                break
+            if ev.get("type") == "result":
+                problem = str(ev.get("result"))[:300] if ev.get("is_error") else ""
+                break
+    finally:
+        timer.cancel()
+        proc.kill()
+        proc.wait()
+    if problem:
+        how = ("The run sends ANTHROPIC_API_KEY straight to api.anthropic.com: check the key and its credit."
+               if os.environ.get("ANTHROPIC_API_KEY") else
+               "With no ANTHROPIC_API_KEY the run uses your own `claude` setup (settings, gateway, login) as it is.")
+        die(f"`claude` can't reach {args.model}: {problem}\n{how}")
+
+
 def run_agent(prompt: str, cwd: Path, extra_dirs: list[Path], log_path: Path, args, resume: str | None) -> dict:
     """One `claude -p` run, streamed to log_path; returns its result event."""
     cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose",
            "--model", args.model, "--effort", args.effort,
            "--permission-mode", "dontAsk",
            "--allowedTools", *ALLOWED_TOOLS,
-           "--disallowedTools", *DISALLOWED_TOOLS]
+           "--disallowedTools", *DISALLOWED_TOOLS,
+           *agent_flags()]
     for d in extra_dirs:
         cmd += ["--add-dir", str(d)]
     if args.budget_per_round:
         cmd += ["--max-budget-usd", f"{args.budget_per_round:.2f}"]
     if resume:
         cmd += ["--resume", resume]
-    env = dict(os.environ)
-    env.setdefault("CLAUDE_CODE_ENTRYPOINT", "pokedaisy-rom-agent")
 
     result: dict = {}
     with log_path.open("a") as out:
-        proc = subprocess.Popen(cmd, cwd=str(cwd), env=env, text=True, stdout=subprocess.PIPE,
+        proc = subprocess.Popen(cmd, cwd=str(cwd), env=agent_env(), text=True, stdout=subprocess.PIPE,
                                 stderr=subprocess.STDOUT, bufsize=1)
         assert proc.stdout is not None
         for line in proc.stdout:
@@ -279,6 +338,9 @@ def run_agent(prompt: str, cwd: Path, extra_dirs: list[Path], log_path: Path, ar
                         print(f"   │ {first[:150]}", flush=True)
                     elif block.get("type") == "tool_use":
                         print(f"   → {describe_tool(block)}", flush=True)
+            elif ev.get("subtype") == "api_retry":
+                log(f"   API retry {ev.get('attempt')} of {ev.get('max_retries')}: "
+                    f"{ev.get('error_status')} {ev.get('error')}")
             elif kind == "result":
                 result = ev
         proc.wait()
@@ -287,6 +349,8 @@ def run_agent(prompt: str, cwd: Path, extra_dirs: list[Path], log_path: Path, ar
     cost = result.get("total_cost_usd")
     log(f"agent round done: {result.get('subtype')}, {result.get('num_turns')} turns"
         + (f", ${cost:.2f}" if isinstance(cost, (int, float)) else ""))
+    if result.get("is_error"):
+        log(f"   it ended on an error: {str(result.get('result'))[:300]}")
     return result
 
 
@@ -730,6 +794,7 @@ def preflight(args) -> None:
         die("ANTHROPIC_API_KEY isn't set (or pass --allow-no-key when `claude` is signed in another way)")
     if not PROMPT_TEMPLATE.is_file() or not FIX_TEMPLATE.is_file():
         die("scripts/rom_agent/prompt.md or fix_prompt.md is missing")
+    check_agent_auth(args)
 
 
 def main() -> int:
@@ -758,7 +823,7 @@ def main() -> int:
     ap.add_argument("--skip-tests", action="store_true", help="skip `make test-quick` in the driver's checks")
     ap.add_argument("--labels", default="", help="comma-separated labels for the PR")
     ap.add_argument("--force", action="store_true", help="also run games whose SHA-1 is already in the repo")
-    ap.add_argument("--allow-no-key", action="store_true", help="don't require ANTHROPIC_API_KEY")
+    ap.add_argument("--allow-no-key", action="store_true", help="without ANTHROPIC_API_KEY, run `claude` on your own setup (settings, gateway, login)")
     ap.add_argument("--dry-run", action="store_true", help="print each ROM's identity and brief, run nothing")
     args = ap.parse_args()
 

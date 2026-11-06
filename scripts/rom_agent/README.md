@@ -28,6 +28,10 @@ A list file has a game a line: `rom | save | name | notes`, everything but the R
 Run it on the machine with the ROMs, the decomps (`local.mk`), Docker and the Android SDK: the agent captures RAM
 headless and runs `make test-quick`. It needs `git`, the `claude` CLI, `gh` (signed in) and python3 3.9+.
 
+`ANTHROPIC_API_KEY` goes straight to `api.anthropic.com`: the run skips your user Claude settings and any
+`ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL` in your shell, so a gateway set up there isn't used. `--allow-no-key`, with
+no key set, runs `claude` on your own setup as it is. A small call checks the login before anything is made.
+
 ## What happens
 
 1. Each ROM's identity (header, size, SHA-1 / MD5 / CRC32). A SHA-1 already in the repo is skipped (`--force`); the
@@ -64,6 +68,7 @@ Per game, under `~/.cache/pokedaisy-rom-agent/<sha1 prefix>/`: `agent.jsonl` (th
 | `--budget 60` | USD per game (research + fixes), enforced by `claude --max-budget-usd` per round |
 | `--total-budget` | USD for the whole run: no game starts once it's spent |
 | `--fix-rounds 2` | times failing checks go back to the agent |
+| `--allow-no-key` | with no `ANTHROPIC_API_KEY`, use your own `claude` setup |
 | `--no-pr` | commit only; `--no-draft-on-failure`: no draft PR when no game passed |
 | `--skip-tests`, `--labels a,b`, `--branch`, `--worktree` | |
 | `--dry-run` | print each identity and brief, run nothing |
