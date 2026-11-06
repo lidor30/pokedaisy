@@ -534,20 +534,28 @@ def open_pr(wt: Path, base: str, branch: str, title: str, body: str, draft: bool
 
 # --- the games -----------------------------------------------------------------------------------------------------
 
+def unquote(field: str) -> str:
+    """A list field without its surrounding quotes: paths with spaces are often written "like this"."""
+    field = field.strip()
+    if len(field) >= 2 and field[0] == field[-1] and field[0] in "\"'":
+        field = field[1:-1].strip()
+    return field
+
+
 def parse_games(args) -> list[dict]:
     """Every game asked for: positional ROMs (ROM::SAVE pairs a save) and --list lines (rom | save | name | notes)."""
     raw: list[tuple[str, str, str, str]] = []
     for item in args.roms:
         rom, _, save = item.partition("::")
-        raw.append((rom, save, "", ""))
+        raw.append((unquote(rom), unquote(save), "", ""))
     if args.list:
         lst = args.list.expanduser()
         if not lst.is_file():
             die(f"no list at {lst}")
-        for n, line in enumerate(lst.read_text().splitlines(), 1):
+        for n, line in enumerate(lst.read_text(encoding="utf-8-sig").splitlines(), 1):
             if not line.strip() or line.lstrip().startswith("#"):
                 continue
-            parts = [p.strip() for p in line.split("|")] + ["", "", ""]
+            parts = [unquote(p) for p in line.split("|")] + ["", "", ""]
             if not parts[0]:
                 die(f"{lst}:{n}: no ROM path")
             raw.append((parts[0], parts[1], parts[2], "|".join(parts[3:]).strip("| ")))
