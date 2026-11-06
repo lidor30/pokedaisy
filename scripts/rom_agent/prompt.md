@@ -16,6 +16,7 @@ nothing that mustn't be committed), commits it and opens a PR to `{{BASE}}`. A f
 - Save: {{SAVE}}
 - What the player calls it: {{NAME_HINT}}
 - Notes from whoever started the run: {{NOTES}}
+- This run: {{BATCH}}
 - Today: {{TODAY}}. A folder of your own outside the repo, for scratch files, dumps and the report: `{{WORK_DIR}}`
 
 The ROM and the save are the player's own files: read them, never move, rename, change or copy them into the repo.

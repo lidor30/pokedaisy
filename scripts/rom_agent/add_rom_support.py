@@ -1,30 +1,36 @@
 #!/usr/bin/env python3
-"""Add PokeDaisy support for one ROM with a Claude agent, then open a PR to dev.
+"""Add PokeDaisy support for one or more ROMs with a Claude agent, then open a PR to dev.
 
-    scripts/rom_agent/add_rom_support.py ROM [--save SAVE] [options]
-    make rom-support ROM=<rom> [SAVE=<save>] [ARGS="--name 'Pokemon Foo' --budget 40"]
+    scripts/rom_agent/add_rom_support.py ROM[::SAVE] [ROM[::SAVE] ...] [--list FILE] [options]
+    make rom-support ROM=<rom> [SAVE=<save>] [LIST=<file>] [ARGS="--name 'Pokemon Foo v1.2' --budget 40"]
+
+A list file has a game a line, `rom | save | name | notes` (all but the ROM optional, `#` comments, `~` paths).
 
 What it does, in order:
 
- 1. Reads the ROM's identity (platform, header code / title / revision, size, SHA-1, MD5, CRC32) and stops if
-    the SHA-1 is already in the repo (the game is supported already; --force goes on anyway).
- 2. Makes a git worktree on a new branch off origin/<base> (dev), next to this checkout, so the run never
+ 1. Reads each ROM's identity (platform, header code / title / revision, size, SHA-1, MD5, CRC32) and skips any
+    whose SHA-1 is already in the repo (supported already; --force runs it anyway). The same ROM twice runs once.
+ 2. Makes one git worktree on a new branch off origin/<base> (dev), next to this checkout, so the run never
     touches the checkout you're working in (submodules borrowed from it, local.properties / local.mk copied).
- 3. Runs Claude Code headless (`claude -p`, billed to ANTHROPIC_API_KEY) in that worktree with the brief in
-    scripts/rom_agent/prompt.md: identify the game, capture RAM headless, map addresses, add the config /
-    tables / fixtures / tests / docs, and write a report.json describing what it did.
- 4. Checks the result itself, not the agent's word for it: the game-data generator is in step, the
+ 3. For each game in turn, runs Claude Code headless (`claude -p`, billed to ANTHROPIC_API_KEY) in that worktree
+    with the brief in scripts/rom_agent/prompt.md: identify the game, capture RAM headless, map addresses, add the
+    config / tables / fixtures / tests / docs, and write a report.json describing what it did. A later game's
+    agent sees the earlier games' commits.
+ 4. Checks each game's change itself, not the agent's word for it: the game-data generator is in step, the
     translations check, `make test-quick`, the manual check (when website/node_modules is there), and a
     guard that no ROM, save, archive, patch, absolute home path or file over 4.5 MB is in the change.
     A failing check goes back to the same agent session to fix (--fix-rounds times).
- 5. Commits (no attribution lines: the repo's commit-msg hook rejects them), pushes the branch and opens a PR
-    to <base> with `gh`. A run whose checks still fail opens it as a draft; one that couldn't add support
-    opens nothing and leaves the worktree for a look.
+ 5. A game that passes is committed (no attribution lines: the repo's commit-msg hook rejects them). One that
+    still fails is set aside as a patch in its work folder, so the next game starts clean and the others can
+    still merge. Then the branch is pushed and one PR opened to <base> with `gh`, a section per game and a list
+    of the ones left out. When no game passed, the failing ones are put back for a draft PR (nothing is lost);
+    when none could be supported at all, no PR.
 
 Runs on the machine that has the ROMs, the decomps, Docker and the Android SDK (the Mac in CLAUDE.md's "Local
 setup"), never in a cloud session. Needs: python3 (3.9+), git, the `claude` CLI, `gh` (signed in), and
 ANTHROPIC_API_KEY (or `claude` signed in another way). Everything the run writes outside the repo goes to
-~/.cache/pokedaisy-rom-agent/<sha1 prefix>/ (logs, the filled-in brief, report.json).
+~/.cache/pokedaisy-rom-agent/<sha1 prefix>/ per game (logs, the filled-in brief, report.json, a set-aside patch).
+Exit: 0 every game committed, 3 some left out or a draft PR, 2 no game made it.
 """
 from __future__ import annotations
 
@@ -381,19 +387,36 @@ def _link_node_modules(wt: Path) -> bool:
 ATTRIBUTION = re.compile(r"^(co-authored-by:.*|.*generated with .*claude.*|.*claude-session:.*)$", re.I | re.M)
 
 
-def commit(wt: Path, report: dict, rom: dict) -> None:
+def staged(wt: Path) -> list[str]:
+    run(["git", "add", "-A"], cwd=wt)
+    return [l for l in run(["git", "diff", "--cached", "--name-only"], cwd=wt).stdout.splitlines() if l.strip()]
+
+
+def commit(wt: Path, report: dict, rom: dict) -> bool:
+    """Commit everything in the worktree as this game's commit; False when there was nothing."""
     title = (report.get("commit_title") or report.get("pr_title") or f"Support {rom['file_name']}").strip()
     body = (report.get("commit_body") or report.get("summary") or "").strip()
     message = ATTRIBUTION.sub("", f"{title}\n\n{body}").strip() + "\n"
-    run(["git", "add", "-A"], cwd=wt)
-    if not run(["git", "diff", "--cached", "--name-only"], cwd=wt).stdout.strip():
-        die("the agent left no changes to commit")
+    if not staged(wt):
+        return False
     msg_file = wt.parent / f".commit-msg-{rom['sha1'][:8]}.txt"
     msg_file.write_text(message)
     try:
         run(["git", "commit", "-F", str(msg_file)], cwd=wt)
     finally:
         msg_file.unlink(missing_ok=True)
+    return True
+
+
+def set_aside(wt: Path, patch: Path, exclude: list[str] = ()) -> bool:
+    """Save the worktree's uncommitted change as a patch (minus `exclude`), then put the worktree back to HEAD."""
+    files = staged(wt)
+    if files:
+        spec = ["--", "."] + [f":(exclude){f}" for f in exclude]
+        patch.write_bytes(run(["git", "diff", "--cached", "--binary"] + spec, cwd=wt).stdout.encode())
+    run(["git", "reset", "-q", "--hard", "HEAD"], cwd=wt)
+    run(["git", "clean", "-fdq"], cwd=wt)  # untracked leftovers; ignored files (local.properties, builds) stay
+    return bool(files)
 
 
 def push(wt: Path, branch: str) -> None:
@@ -412,16 +435,20 @@ def bullet(items) -> str:
     return "\n".join(f"- {i}" for i in items) if items else "- (none)"
 
 
-def pr_body(report: dict, rom: dict, save: dict | None, checks: list[dict], cost: float, draft: bool) -> str:
-    manual = any(f.startswith("docs/manual/") for f in report.get("_files", []))
+def game_label(g: dict) -> str:
+    r = g.get("report") or {}
+    name = r.get("game_name") or g.get("name") or g["rom"]["title"] or g["rom"]["file_name"]
+    return name + (f" {r['version']}" if r.get("version") else "")
+
+
+def game_section(g: dict, level: str) -> list[str]:
+    report, rom, save, checks = g["report"], g["rom"], g["save"], g["checks"]
     failed = [c for c in checks if not c["ok"]]
     lines = [
-        "## What changed", "",
         (report.get("summary") or "").strip(), "",
         "**Works:**", bullet(report.get("what_works")), "",
         "**Not done:**", bullet(report.get("not_done")), "",
-        "## The ROM", "",
-        f"- {report.get('game_name') or rom['title']}" + (f" {report['version']}" if report.get("version") else ""),
+        f"{level} The ROM", "",
         f"- {rom['platform']} `{rom.get('code', '')}` rev {rom.get('revision', 0)}, {rom['size']} bytes",
         f"- SHA-1 `{rom['sha1']}`, CRC32 `{rom['crc32']}`",
         f"- Save: {'`' + save['file_name'] + '`' if save else 'none given (a new game was played headless, if any)'}",
@@ -429,7 +456,7 @@ def pr_body(report: dict, rom: dict, save: dict | None, checks: list[dict], cost
     if report.get("suggested_rom_filename"):
         lines.append(f"- File name by the repo's convention: `{report['suggested_rom_filename']}`")
     lines += [
-        "", "## How it was checked", "", bullet(report.get("verification")), "",
+        "", f"{level} How it was checked", "", bullet(report.get("verification")), "",
         "**Tests the agent ran:**", bullet(report.get("tests_run")), "",
         "**The driver's checks:**",
         "\n".join(f"- {'✅' if c['ok'] else '❌'} {c['name']}" for c in checks), "",
@@ -440,13 +467,46 @@ def pr_body(report: dict, rom: dict, save: dict | None, checks: list[dict], cost
             lines += [f"**{c['name']}**", "", "```", tail(c["output"], 60), "```", ""]
         lines += ["</details>", ""]
     if report.get("notes_for_reviewer"):
-        lines += ["## For the reviewer", "", str(report["notes_for_reviewer"]).strip(), ""]
+        lines += [f"{level} For the reviewer", "", str(report["notes_for_reviewer"]).strip(), ""]
+    return lines
+
+
+LEFT_OUT = {
+    "skipped": "already supported (its SHA-1 is in the repo)",
+    "not_supported": "the agent couldn't add support",
+    "failed": "checks still failed after the fix rounds; its change is saved as a patch, not in this PR",
+    "refused": "its change held files that mustn't be committed; dropped",
+    "no_report": "the agent wrote no usable report; dropped",
+    "not_run": "not run: the run's budget was spent",
+}
+
+
+def pr_body(games: list[dict], cost: float, draft: bool) -> str:
+    inside = [g for g in games if g["status"] == "committed"]
+    left = [g for g in games if g["status"] != "committed"]
+    manual = any(f.startswith("docs/manual/") for g in inside for f in g["files"])
+    lines = ["## What changed", ""]
+    if len(inside) == 1:
+        lines += game_section(inside[0], "##")
+    else:
+        lines += [f"Support for {len(inside)} games, one commit each:", ""]
+        lines += [f"- **{game_label(g)}**: {(g['report'].get('summary') or '').strip()}" for g in inside]
+        lines.append("")
+        for g in inside:
+            lines += [f"## {game_label(g)}", ""] + game_section(g, "###")
+    if left:
+        lines += ["## Not in this PR", ""]
+        for g in left:
+            why = (g.get("report") or {}).get("summary") if g["status"] == "not_supported" else ""
+            lines.append(f"- {game_label(g)} (`{g['rom']['file_name']}`): {LEFT_OUT[g['status']]}"
+                         + (f". {why.strip()}" if why else ""))
+        lines.append("")
     lines += [
         "## Checklist", "",
         f"- [{'x' if manual else ' '}] The manual (`docs/manual/`) is updated for anything a player can notice"
         + ("" if manual else ": not touched by this run, check whether supported-games.md needs the game"),
         "- [ ] New or changed screens were looked at (ui-preview / Paparazzi), and the manual's screenshots re-rendered if they changed (`make docs-shots`).",
-        f"- [ ] `make check` passes (or CI does). The run itself ran `make test-quick` only"
+        f"- [ ] `make check` passes (or CI does). The run itself ran `make test-quick` after each game"
         + (" and it **failed**: draft PR." if draft else "."),
         "",
         f"_Made by `scripts/rom_agent/add_rom_support.py` (agent cost ${cost:.2f})._",
@@ -472,6 +532,192 @@ def open_pr(wt: Path, base: str, branch: str, title: str, body: str, draft: bool
     return res.stdout.strip().splitlines()[-1]
 
 
+# --- the games -----------------------------------------------------------------------------------------------------
+
+def parse_games(args) -> list[dict]:
+    """Every game asked for: positional ROMs (ROM::SAVE pairs a save) and --list lines (rom | save | name | notes)."""
+    raw: list[tuple[str, str, str, str]] = []
+    for item in args.roms:
+        rom, _, save = item.partition("::")
+        raw.append((rom, save, "", ""))
+    if args.list:
+        lst = args.list.expanduser()
+        if not lst.is_file():
+            die(f"no list at {lst}")
+        for n, line in enumerate(lst.read_text().splitlines(), 1):
+            if not line.strip() or line.lstrip().startswith("#"):
+                continue
+            parts = [p.strip() for p in line.split("|")] + ["", "", ""]
+            if not parts[0]:
+                die(f"{lst}:{n}: no ROM path")
+            raw.append((parts[0], parts[1], parts[2], "|".join(parts[3:]).strip("| ")))
+    if not raw:
+        die("no ROM given (ROM arguments and / or --list FILE)")
+    if args.save:
+        if len(raw) != 1 or raw[0][1]:
+            die("--save goes with a single ROM; pair saves as ROM::SAVE or use --list")
+        raw[0] = (raw[0][0], str(args.save), raw[0][2], raw[0][3])
+    if args.name:
+        if len(raw) != 1:
+            die("--name goes with a single ROM; name each game in --list")
+        raw[0] = (raw[0][0], raw[0][1], args.name, raw[0][3])
+
+    games, seen = [], {}
+    for rom_s, save_s, name, notes in raw:
+        rom_path = Path(rom_s).expanduser().resolve()
+        if not rom_path.is_file():
+            die(f"no ROM at {rom_path}")
+        if rom_path.suffix.lower() in {".zip", ".7z", ".rar"}:
+            die(f"{rom_path.name}: unzip it first: the agent needs the ROM file itself")
+        save_path = Path(save_s).expanduser().resolve() if save_s else None
+        if save_path and not save_path.is_file():
+            die(f"no save at {save_path}")
+        rom = rom_identity(rom_path)
+        if rom["platform"] == "UNKNOWN":
+            die(f"{rom_path.name}: not a GBA / Game Boy / DS ROM (no header found)")
+        if rom["sha1"] in seen:
+            log(f"{rom_path.name}: the same ROM as {seen[rom['sha1']]}, listed once")
+            continue
+        seen[rom["sha1"]] = rom_path.name
+        all_notes = "; ".join(n for n in (notes, args.notes.strip()) if n)
+        work = Path.home() / ".cache" / "pokedaisy-rom-agent" / rom["sha1"][:12]
+        games.append({"rom": rom, "rom_path": rom_path, "save_path": save_path,
+                      "save": save_identity(save_path) if save_path else None,
+                      "name": name, "notes": all_notes, "work": work, "report_path": work / "report.json",
+                      "status": "pending", "report": None, "checks": [], "files": [], "cost": 0.0})
+    return games
+
+
+def brief_for(g: dict, games: list[dict], base: str) -> str:
+    rom, save = g["rom"], g["save"]
+    others = [o for o in games if o is not g and o["status"] != "skipped"]
+    if others:
+        before = [o for o in others if games.index(o) < games.index(g)]
+        batch = (f"this run handles {len(others) + 1} games one at a time on the same branch, each committed before the "
+                 "next starts; the others: " + "; ".join(f"`{o['rom']['file_name']}`" + (f" ({o['name']})" if o['name'] else "")
+                                                        for o in others) + ". "
+                 + ("The ones before yours are already committed here (or were dropped): build on their work and don't "
+                    "redo it. " if before else "")
+                 + "Do only your own ROM; if another is a version of the same game, say so in `notes_for_reviewer`.")
+    else:
+        batch = "only this game."
+    values = {
+        "ROM_PATH": rom["path"], "ROM_PATH_TILDE": rom["path_tilde"], "ROM_FILE": rom["file_name"],
+        "PLATFORM": rom["platform"], "HEADER_TITLE": rom["title"] or "-", "HEADER_CODE": rom["code"] or "-",
+        "HEADER_MAKER": rom["maker"] or "-", "REVISION": rom["revision"], "SIZE": rom["size"],
+        "SIZE_MB": f"{rom['size'] / 1048576:.1f}", "SHA1": rom["sha1"], "MD5": rom["md5"], "CRC32": rom["crc32"],
+        "SAVE": (f"`{save['path']}` (written `{save['path_tilde']}` in anything committed), {save['size']} bytes, "
+                 f"sha1 {save['sha1']}") if save else
+                "none. Start a new game headless and play it far enough to read a party (see the brief).",
+        "NAME_HINT": g["name"] or "not given: find it on the title screen / in the ROM",
+        "NOTES": g["notes"] or "none", "BATCH": batch,
+        "REPORT_PATH": str(g["report_path"]), "WORK_DIR": str(g["work"]), "BASE": base,
+        "TODAY": datetime.now().strftime("%Y-%m-%d"),
+    }
+    return fill(PROMPT_TEMPLATE.read_text(), values)
+
+
+def do_game(g: dict, games: list[dict], wt: Path, args, budget: float) -> None:
+    """One game, start to finish: the agent, the checks with fix rounds, then a commit or a set-aside patch."""
+    rom, work, report_path = g["rom"], g["work"], g["report_path"]
+    work.mkdir(parents=True, exist_ok=True)
+    prompt = brief_for(g, games, args.base)
+    (work / "prompt.md").write_text(prompt)
+    report_path.unlink(missing_ok=True)
+    agent_log = work / "agent.jsonl"
+    extra_dirs = sorted({g["rom_path"].parent, work} | ({g["save_path"].parent} if g["save_path"] else set()))
+    rounds = 1 + max(0, args.fix_rounds)
+
+    def spend(result: dict) -> None:
+        g["cost"] += float(result.get("total_cost_usd") or 0)
+
+    def left() -> float:
+        return budget - g["cost"]
+
+    log(f"agent: {args.model}, effort {args.effort}, budget ${budget:.0f} (log: {tilde(agent_log)})")
+    args.budget_per_round = left() * (0.8 if rounds > 1 else 1.0)
+    result = run_agent(prompt, wt, extra_dirs, agent_log, args, resume=None)
+    spend(result)
+    session = result.get("session_id")
+
+    report = read_report(report_path)
+    if report is None and session and left() > 1:
+        log("no valid report.json; asking the agent for it")
+        args.budget_per_round = min(left(), 5.0)
+        spend(run_agent(f"You stopped without writing a valid {report_path}. Write it now, exactly as the brief's "
+                        "last section says, for the work as it stands. Change nothing else.",
+                        wt, extra_dirs, agent_log, args, resume=session))
+        report = read_report(report_path)
+    if report is None:
+        set_aside(wt, work / "changes.patch")
+        g["status"] = "no_report"
+        log(f"no usable report; its change (if any) is in {tilde(work / 'changes.patch')}")
+        return
+    g["report"] = report
+    log(f"agent says: {report['status']}: {report.get('summary', '')[:200]}")
+
+    if report["status"] == "not_supported":
+        set_aside(wt, work / "changes.patch")
+        g["status"] = "not_supported"
+        return
+
+    checks: list[dict] = []
+    for round_no in range(1, rounds + 1):
+        checks = run_checks(wt, work, rom, g["save"], round_no, args.skip_tests)
+        failed = [c for c in checks if not c["ok"]]
+        if not failed:
+            break
+        if round_no == rounds or not session or left() < 2:
+            log("checks still failing; out of fix rounds or budget")
+            break
+        log(f"{len(failed)} check(s) failed; fix round {round_no}")
+        fix = fill(FIX_TEMPLATE.read_text(), {
+            "FAILURES": "\n\n".join(f"### {c['name']}\n\n```\n{c['output']}\n```" for c in failed),
+            "REPORT_PATH": str(report_path),
+        })
+        args.budget_per_round = left() / (rounds - round_no)
+        spend(run_agent(fix, wt, extra_dirs, agent_log, args, resume=session))
+        g["report"] = report = read_report(report_path) or report
+    g["checks"] = checks
+    g["files"] = changed_files(wt)
+
+    failed = [c for c in checks if not c["ok"]]
+    refused = guard(wt, rom, g["save"])
+    if refused:
+        bad = [line.split(":", 1)[0] for line in refused]
+        set_aside(wt, work / "changes.patch", exclude=bad)
+        g["status"] = "refused"
+        log("its change held files that mustn't be committed, so it was dropped:\n   " + "\n   ".join(refused))
+    elif failed:
+        set_aside(wt, work / "changes.patch")
+        g["status"] = "failed"
+        log(f"checks failed: the change is set aside in {tilde(work / 'changes.patch')}")
+    elif commit(wt, report, rom):
+        g["status"] = "committed"
+        log(f"committed: {game_label(g)}")
+    else:
+        g["status"] = "not_supported"
+        log("the agent left no changes")
+
+
+def recommit_failed(wt: Path, games: list[dict]) -> list[dict]:
+    """Nothing passed: put the failing games' changes back, one commit each, for a draft PR (nothing is lost)."""
+    back = []
+    for g in games:
+        patch = g["work"] / "changes.patch"
+        if g["status"] != "failed" or not patch.is_file():
+            continue
+        if run(["git", "apply", "--3way", "--index", str(patch)], cwd=wt, check=False).returncode != 0:
+            log(f"{g['rom']['file_name']}: its patch doesn't apply over the others; it stays in {tilde(patch)}")
+            run(["git", "reset", "-q", "--hard", "HEAD"], cwd=wt)
+            run(["git", "clean", "-fdq"], cwd=wt)
+            continue
+        if commit(wt, g["report"], g["rom"]):
+            g["status"] = "committed"
+            back.append(g)
+    return back
+
+
 # --- main ----------------------------------------------------------------------------------------------------------
 
 def preflight(args) -> None:
@@ -489,159 +735,104 @@ def preflight(args) -> None:
 def main() -> int:
     ap = argparse.ArgumentParser(description=__doc__.split("\n\n")[0],
                                  formatter_class=argparse.RawDescriptionHelpFormatter, epilog=__doc__)
-    ap.add_argument("rom", type=Path, help="the ROM file (.gba / .gb / .gbc / .nds, unzipped)")
-    ap.add_argument("--save", type=Path, help="a save for it (.sav / .srm / .dsv): the agent captures RAM from it")
-    ap.add_argument("--name", help="the game's name and version as the player calls it, e.g. 'Pokemon Foo v1.2'")
-    ap.add_argument("--notes", default="", help="anything else the agent should know (where it's from, what to try)")
+    ap.add_argument("roms", nargs="*", metavar="ROM[::SAVE]",
+                    help="ROM files (.gba / .gb / .gbc / .nds, unzipped); ROM::SAVE gives one its save")
+    ap.add_argument("--list", type=Path, metavar="FILE",
+                    help="a list of games, a line each: rom | save | name | notes (save, name, notes optional; # comments)")
+    ap.add_argument("--save", type=Path, help="the save for a single ROM (.sav / .srm / .dsv)")
+    ap.add_argument("--name", help="a single game's name and version as the player calls it, e.g. 'Pokemon Foo v1.2'")
+    ap.add_argument("--notes", default="", help="anything else the agent should know, for every game in the run")
     ap.add_argument("--base", default="dev", help="the branch to start from and open the PR to (default: dev)")
-    ap.add_argument("--branch", help="the branch to make (default: rom-support/<name>-<sha1 prefix>)")
-    ap.add_argument("--worktree", type=Path, help="where to make the worktree (default: ../pokedaisy-rom-agent/<slug>)")
+    ap.add_argument("--branch", help="the branch to make (default: rom-support/<name>-<sha1> or rom-support/batch-<time>)")
+    ap.add_argument("--worktree", type=Path, help="where to make the worktree (default: ../pokedaisy-rom-agent/<branch>)")
     ap.add_argument("--model", default=DEFAULT_MODEL, help=f"Claude model (default: {DEFAULT_MODEL})")
     ap.add_argument("--effort", default=DEFAULT_EFFORT, choices=["low", "medium", "high", "xhigh", "max"],
                     help=f"reasoning effort (default: {DEFAULT_EFFORT})")
     ap.add_argument("--budget", type=float, default=60.0,
-                    help="USD cap for the whole run, research + fixes (default: 60)")
+                    help="USD cap per game, research + fixes (default: 60)")
+    ap.add_argument("--total-budget", type=float, help="USD cap for the whole run: no game starts past it")
     ap.add_argument("--fix-rounds", type=int, default=2, help="times a failing check goes back to the agent (default: 2)")
-    ap.add_argument("--no-pr", action="store_true", help="stop after the commit: no push, no PR")
+    ap.add_argument("--no-pr", action="store_true", help="stop after the commits: no push, no PR")
     ap.add_argument("--no-draft-on-failure", action="store_true",
-                    help="open nothing when checks still fail (default: a draft PR)")
+                    help="when no game passes, open nothing (default: a draft PR with the failing ones)")
     ap.add_argument("--skip-tests", action="store_true", help="skip `make test-quick` in the driver's checks")
     ap.add_argument("--labels", default="", help="comma-separated labels for the PR")
-    ap.add_argument("--force", action="store_true", help="go on even when the ROM's SHA-1 is already in the repo")
+    ap.add_argument("--force", action="store_true", help="also run games whose SHA-1 is already in the repo")
     ap.add_argument("--allow-no-key", action="store_true", help="don't require ANTHROPIC_API_KEY")
-    ap.add_argument("--dry-run", action="store_true", help="print the ROM's identity and the brief, run nothing")
+    ap.add_argument("--dry-run", action="store_true", help="print each ROM's identity and brief, run nothing")
     args = ap.parse_args()
 
-    rom_path = args.rom.expanduser().resolve()
-    if not rom_path.is_file():
-        die(f"no ROM at {rom_path}")
-    if rom_path.suffix.lower() in {".zip", ".7z", ".rar"}:
-        die("unzip the ROM first: the agent needs the ROM file itself")
-    save_path = args.save.expanduser().resolve() if args.save else None
-    if save_path and not save_path.is_file():
-        die(f"no save at {save_path}")
-
-    rom = rom_identity(rom_path)
-    save = save_identity(save_path) if save_path else None
-    log(f"{rom['file_name']}: {rom['platform']} '{rom['title']}' code {rom['code'] or '-'} rev {rom['revision']}, "
-        f"{rom['size']} bytes, sha1 {rom['sha1']}")
-    if rom["platform"] == "UNKNOWN":
-        die("not a GBA / Game Boy / DS ROM (no header found)")
-
-    known = already_supported(rom["sha1"])
-    if known and not args.force:
-        log("this ROM's SHA-1 is already in the repo, so it's supported (--force to run anyway):")
-        for f in known:
-            print(f"   {f}")
+    games = parse_games(args)
+    for g in games:
+        rom = g["rom"]
+        log(f"{rom['file_name']}: {rom['platform']} '{rom['title']}' code {rom['code'] or '-'} rev {rom['revision']}, "
+            f"{rom['size']} bytes, sha1 {rom['sha1']}" + (f", save {g['save']['file_name']}" if g["save"] else ""))
+        known = already_supported(rom["sha1"])
+        if known and not args.force:
+            g["status"] = "skipped"
+            log(f"   already supported, skipped (--force runs it anyway): {', '.join(known[:3])}")
+    todo = [g for g in games if g["status"] == "pending"]
+    if not todo:
+        log("nothing to do")
         return 0
 
-    slug = slug_for(rom, args.name)
+    if len(todo) == 1:
+        slug = slug_for(todo[0]["rom"], todo[0]["name"])
+    else:
+        slug = f"batch-{datetime.now():%Y%m%d-%H%M}-{len(todo)}-games"
     branch = args.branch or f"rom-support/{slug}"
-    wt = (args.worktree or REPO.parent / "pokedaisy-rom-agent" / slug).expanduser().resolve()
-    work = Path.home() / ".cache" / "pokedaisy-rom-agent" / rom["sha1"][:12]
-    report_path = work / "report.json"
-
-    values = {
-        "ROM_PATH": rom["path"], "ROM_PATH_TILDE": rom["path_tilde"], "ROM_FILE": rom["file_name"],
-        "PLATFORM": rom["platform"], "HEADER_TITLE": rom["title"] or "-", "HEADER_CODE": rom["code"] or "-",
-        "HEADER_MAKER": rom["maker"] or "-", "REVISION": rom["revision"], "SIZE": rom["size"],
-        "SIZE_MB": f"{rom['size'] / 1048576:.1f}", "SHA1": rom["sha1"], "MD5": rom["md5"], "CRC32": rom["crc32"],
-        "SAVE": (f"`{save['path']}` (written `{save['path_tilde']}` in anything committed), {save['size']} bytes, "
-                 f"sha1 {save['sha1']}") if save else
-                "none. Start a new game headless and play it far enough to read a party (see the brief).",
-        "NAME_HINT": args.name or "not given: find it on the title screen / in the ROM",
-        "NOTES": args.notes.strip() or "none",
-        "REPORT_PATH": str(report_path), "WORK_DIR": str(work), "BASE": args.base,
-        "TODAY": datetime.now().strftime("%Y-%m-%d"),
-    }
-    prompt = fill(PROMPT_TEMPLATE.read_text(), values)
+    wt = (args.worktree or REPO.parent / "pokedaisy-rom-agent" / branch.split("/")[-1]).expanduser().resolve()
 
     if args.dry_run:
-        print(f"\nbranch {branch}\nworktree {tilde(wt)}\nwork dir {tilde(work)}\n\n{prompt}")
+        print(f"\nbranch {branch}\nworktree {tilde(wt)}")
+        for g in todo:
+            print(f"\n===== {g['rom']['file_name']} (work dir {tilde(g['work'])}) =====\n\n{brief_for(g, games, args.base)}")
         return 0
 
     preflight(args)
-    work.mkdir(parents=True, exist_ok=True)
-    (work / "prompt.md").write_text(prompt)
-    report_path.unlink(missing_ok=True)
     make_worktree(args.base, branch, wt)
-
-    extra_dirs = sorted({rom_path.parent, work} | ({save_path.parent} if save_path else set()))
-    rounds = 1 + max(0, args.fix_rounds)
     args.budget_per_round = None
     spent = 0.0
+    for i, g in enumerate(todo, 1):
+        budget = args.budget
+        if args.total_budget is not None:
+            budget = min(budget, args.total_budget - spent)
+            if budget < 2:
+                g["status"] = "not_run"
+                continue
+        log(f"===== game {i} of {len(todo)}: {g['rom']['file_name']} =====")
+        try:
+            do_game(g, games, wt, args, budget)
+        finally:
+            spent += g["cost"]
+        log(f"{g['rom']['file_name']}: {g['status']} (${g['cost']:.2f}; run so far ${spent:.2f})")
 
-    def budget_left() -> float:
-        return args.budget - spent
-
-    # Research and build.
-    log(f"agent: {args.model}, effort {args.effort}, budget ${args.budget:.0f} (log: {tilde(work / 'agent.jsonl')})")
-    args.budget_per_round = budget_left() * (0.8 if rounds > 1 else 1.0)
-    result = run_agent(prompt, wt, extra_dirs, work / "agent.jsonl", args, resume=None)
-    spent += float(result.get("total_cost_usd") or 0)
-    session = result.get("session_id")
-
-    report = read_report(report_path)
-    if report is None and session and budget_left() > 1:
-        log("no valid report.json; asking the agent for it")
-        args.budget_per_round = min(budget_left(), 5.0)
-        result = run_agent(f"You stopped without writing a valid {report_path}. Write it now, exactly as the brief's "
-                           "last section says, for the work as it stands. Change nothing else.",
-                           wt, extra_dirs, work / "agent.jsonl", args, resume=session)
-        spent += float(result.get("total_cost_usd") or 0)
-        report = read_report(report_path)
-    if report is None:
-        die(f"the agent wrote no usable report; the work is in {tilde(wt)}, its log in {tilde(work)}")
-    log(f"agent says: {report['status']}: {report.get('summary', '')[:200]}")
-
-    if report["status"] == "not_supported":
-        log(f"no support added, so no PR. Why: see {tilde(report_path)}; the worktree stays at {tilde(wt)}")
+    committed = [g for g in games if g["status"] == "committed"]
+    draft = False
+    if not committed and not args.no_draft_on_failure:
+        committed = recommit_failed(wt, games)
+        draft = bool(committed)
+    log("summary:\n" + "\n".join(f"   {g['status']:>13}  {game_label(g)} ({g['rom']['file_name']})" for g in games))
+    if not committed:
+        log(f"no game made it, so no PR. Reports and patches: ~/.cache/pokedaisy-rom-agent/; worktree {tilde(wt)}")
         return 2
-
-    # The driver's own checks, with fix rounds.
-    checks: list[dict] = []
-    for round_no in range(1, rounds + 1):
-        checks = run_checks(wt, work, rom, save, round_no, args.skip_tests)
-        failed = [c for c in checks if not c["ok"]]
-        if not failed:
-            break
-        if round_no == rounds or not session or budget_left() < 2:
-            log("checks still failing; out of fix rounds or budget")
-            break
-        log(f"{len(failed)} check(s) failed; fix round {round_no}")
-        fix = fill(FIX_TEMPLATE.read_text(), {
-            "FAILURES": "\n\n".join(f"### {c['name']}\n\n```\n{c['output']}\n```" for c in failed),
-            "REPORT_PATH": str(report_path), "ROM_PATH": rom["path"],
-        })
-        args.budget_per_round = budget_left() / (rounds - round_no)
-        result = run_agent(fix, wt, extra_dirs, work / "agent.jsonl", args, resume=session)
-        spent += float(result.get("total_cost_usd") or 0)
-        report = read_report(report_path) or report
-
-    failed = [c for c in checks if not c["ok"]]
-    if any(c["name"].startswith("nothing that mustn't") for c in failed):
-        die("the change holds files that mustn't be committed:\n" + next(
-            c["output"] for c in failed if c["name"].startswith("nothing that mustn't")) +
-            f"\nnothing committed; the worktree is at {tilde(wt)}")
-    draft = bool(failed)
-    if failed and args.no_draft_on_failure:
-        log(f"checks failed and --no-draft-on-failure: nothing committed; the worktree is at {tilde(wt)}")
-        return 3
-
-    report["_files"] = changed_files(wt)
-    commit(wt, report, rom)
-    log(f"committed on {branch}")
     if args.no_pr:
-        log(f"--no-pr: the commit stays on {branch} in {tilde(wt)}")
-        return 0 if not failed else 3
+        log(f"--no-pr: the commits stay on {branch} in {tilde(wt)}")
+        return 0 if len(committed) == len(todo) else 3
 
     push(wt, branch)
-    title = (report.get("pr_title") or report.get("commit_title") or f"Support {rom['file_name']}").strip()
+    if len(committed) == 1:
+        r = committed[0]["report"]
+        title = (r.get("pr_title") or r.get("commit_title") or f"Support {committed[0]['rom']['file_name']}").strip()
+    else:
+        names = ", ".join(game_label(g) for g in committed)
+        title = f"Support {len(committed)} games: {names}"
+        title = title if len(title) <= 120 else title[:117] + "..."
     labels = [l.strip() for l in args.labels.split(",") if l.strip()]
-    url = open_pr(wt, args.base, branch, title, pr_body(report, rom, save, checks, spent, draft), draft, labels)
+    url = open_pr(wt, args.base, branch, title, pr_body(games, spent, draft), draft, labels)
     log(f"{'draft ' if draft else ''}PR: {url}  (agent cost ${spent:.2f})")
     log(f"when it's merged: git worktree remove {shlex.quote(tilde(wt))}")
-    return 0 if not failed else 3
+    return 0 if len(committed) == len(todo) and not draft else 3
 
 
 if __name__ == "__main__":
