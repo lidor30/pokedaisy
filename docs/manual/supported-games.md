@@ -32,11 +32,11 @@ Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the compan
 
 **Nintendo DS:**
 
-- Pokémon Platinum: the USA release, revision 1.
-- Pokémon HeartGold: the USA and German releases (revision 0).
-- Pokémon SoulSilver: the USA and German releases (revision 0).
-- Pokémon Black: the USA / Europe release.
-- Pokémon White: the USA / Europe release.
+- Pokémon Platinum: the USA release (revision 1) and the French one (revision 0).
+- Pokémon HeartGold: the USA, German and French releases (revision 0).
+- Pokémon SoulSilver: the USA, German and French releases (revision 0).
+- Pokémon Black: the USA / Europe and French releases.
+- Pokémon White: the USA / Europe and French releases.
 - Pokémon Black 2: the USA / Europe release.
 - Pokémon White 2: the USA / Europe release.
 - Pokémon Origin HeartGold, the hack: version 4.0.3 with its English patch 1.0.0.

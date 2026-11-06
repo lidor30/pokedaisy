@@ -32,6 +32,9 @@ object GameTitles {
     internal val NDS_SHA1S = setOf(
         "0862ec35b24de5c7e2dcb88c9eea0873110d755c", "4fcded0e2713dc03929845de631d0932ea2b5a37", "f8dc38ea20c17541a43b58c5e6d18c1732c7e582",
         "13b6853aa93121069df1d17446d3ecb36872aecf", "576cdb7eec728c49aed85b9dd7e1e084ba1f08f9",
+        "62f9ec7a412d06bd518f7dc065e4612812e327b9", "dba64620a959d5f69ed1cf3e43fcfcf2786d417e",
+        "6ed98d446eb65861c71fc5f94bdc35691667f665", "a559da54839663d8f8f3f03382e5665a61873d22",
+        "28f075915dd445cbfd902f1e1a94d5048b03a095",
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1,
     )
 
@@ -49,6 +52,11 @@ object GameTitles {
         // German HeartGold / SoulSilver, rev 0 (the contributor's dumps; GitHub #349).
         "13b6853aa93121069df1d17446d3ecb36872aecf" to "Pokémon Goldene Edition HeartGold",
         "576cdb7eec728c49aed85b9dd7e1e084ba1f08f9" to "Pokémon Silberne Edition SoulSilver",
+        "62f9ec7a412d06bd518f7dc065e4612812e327b9" to "Pokémon Version Platine",
+        "dba64620a959d5f69ed1cf3e43fcfcf2786d417e" to "Pokémon Version Or HeartGold",
+        "6ed98d446eb65861c71fc5f94bdc35691667f665" to "Pokémon Version Argent SoulSilver",
+        "a559da54839663d8f8f3f03382e5665a61873d22" to "Pokémon Version Noire",
+        "28f075915dd445cbfd902f1e1a94d5048b03a095" to "Pokémon Version Blanche",
         // Origin HeartGold v4.0.3, the English patch 1.0.0-rc8 on the US HeartGold (OriginHeartGold).
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1 to "Pokémon Origin HeartGold",
         // Black and White (USA, Europe): the No-Intro dumps (no decomp builds them).
@@ -192,7 +200,9 @@ object GameTitles {
     )
 
     /** DS carts worth hashing (128 MB each, once per file): the DS games above. */
-    private val NDS_CODES = setOf("CPUE", "IPKE", "IPKD", "IPGE", "IPGD", "IRBO", "IRAO", "IREO", "IRDO", "IPKJ")
+    private val NDS_CODES = setOf(
+        "CPUE", "CPUF", "IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF", "IRBO", "IRBF", "IRAO", "IRAF", "IREO", "IRDO", "IPKJ",
+    )
 
     /** Only these games' ROMs (and Game Boy carts) are worth hashing: every entry above is one of them. */
     private val CODES = setOf("BPRE", "BPGE", "BPEE", "AXVE", "AXPE") + EMERALD_LOCALIZED_CODES +

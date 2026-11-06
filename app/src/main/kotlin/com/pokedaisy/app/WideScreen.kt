@@ -23,7 +23,8 @@ object WideScreen {
     /** The carts nds/pk_nds_field.cpp has a table for (keep in step with pk_nds_field_game): by header game code
      * and revision. */
     fun ndsKnows(code: String, revision: Int): Boolean =
-        code == "CPUE" && revision == 1 || code in setOf("IPKE", "IPKD", "IPGE", "IPGD", "IRBO", "IRAO", "IREO", "IRDO") && revision == 0
+        code == "CPUE" && revision == 1 ||
+            code in setOf("CPUF", "IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF", "IRBO", "IRBF", "IRAO", "IRAF", "IREO", "IRDO") && revision == 0
 
     /** What to hand [MgbaCore.pkWideConfigure] for the ROM with this CRC32 ([SaveStates.crc32]'s hex form):
      * the CRC itself if pk_wide.c knows it, else [OFF]. */

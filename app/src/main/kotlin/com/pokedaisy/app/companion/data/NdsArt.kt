@@ -131,15 +131,21 @@ object NdsArt {
         }, "pokedaisy-nds-art").apply { isDaemon = true; start() }
     }
 
+    /** Carts on Platinum's files: USA rev 1, France rev 0. */
+    private fun isPlatinum(code: String, rev: Int) = code == "CPUE" && rev == 1 || code == "CPUF" && rev == 0
+
+    /** Carts on HeartGold / SoulSilver's files: USA, Germany and France, rev 0. */
+    private fun isHgss(code: String, rev: Int) = code in setOf("IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF") && rev == 0
+
     /** Writes [rom]'s icons into [dir] if it's a cart this knows and they aren't there yet; true when it wrote any. */
     fun extractTo(rom: File, dir: File): Boolean = RandomAccessFile(rom, "r").use { f ->
         val header = f.read(0, 0x200)
         val code = String(header, 0x0C, 4, Charsets.US_ASCII)
         val rev = header[0x1E].toInt() and 0xFF
-        val platinum = code == "CPUE" && rev == 1
-        val heartGold = (code == "IPKE" || code == "IPKD" || code == "IPGE" || code == "IPGD") && rev == 0
-        val white = code == "IRAO" && rev == 0
-        val black = code == "IRBO" && rev == 0 || white
+        val platinum = isPlatinum(code, rev)
+        val heartGold = isHgss(code, rev)
+        val white = (code == "IRAO" || code == "IRAF") && rev == 0
+        val black = (code == "IRBO" || code == "IRBF") && rev == 0 || white
         val white2 = code == "IRDO" && rev == 0
         val black2 = code == "IREO" && rev == 0 || white2
         val origin = OriginHeartGold.matches { off, len -> f.read(off, len) }
@@ -193,7 +199,7 @@ object NdsArt {
         } else {
             file(f, header, "/a/1/4/4")?.let { pokegear(Narc(it), dir) }
             file(f, header, "/a/0/1/5")?.let { bagPockets(Narc(it), dir) }
-            dex(f, header, dir, if (code == "IPGE" || code == "IPGD") DEX_SOULSILVER else DEX_HEARTGOLD)
+            dex(f, header, dir, if (code.startsWith("IPG")) DEX_SOULSILVER else DEX_HEARTGOLD)
         }
         marker.parentFile?.mkdirs()
         marker.writeText(stamp)
@@ -824,7 +830,7 @@ object NdsArt {
         val code = String(header, 0x0C, 4, Charsets.US_ASCII)
         val rev = header[0x1E].toInt() and 0xFF
         val sequel = (code == "IREO" || code == "IRDO") && rev == 0
-        if ((code == "IRBO" || code == "IRAO") && rev == 0 || sequel) {
+        if (code in setOf("IRBO", "IRAO", "IRBF", "IRAF") && rev == 0 || sequel) {
             val banks = if (sequel) NAMES_BLACK2 else NAMES_BLACK
             val msg = Narc(file(f, header, banks.msg) ?: return null)
             fun lines(bank: Int) = msg.member(bank)?.let { Gen5Text.lines(it) }.orEmpty()
@@ -834,8 +840,8 @@ object NdsArt {
         }
         val banks = when {
             code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> f.read(off, len) } -> NAMES_ORIGIN
-            code == "CPUE" && rev == 1 -> NAMES_PLATINUM
-            (code == "IPKE" || code == "IPKD" || code == "IPGE" || code == "IPGD") && rev == 0 -> NAMES_HEARTGOLD
+            isPlatinum(code, rev) -> NAMES_PLATINUM
+            isHgss(code, rev) -> NAMES_HEARTGOLD
             else -> return null
         }
         val msg = Narc(file(f, header, banks.msg) ?: return null)

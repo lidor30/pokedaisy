@@ -31,10 +31,10 @@ enum class DsLayout(val id: Int, val label: String, val subtitle: String) {
         fun of(id: Int) = entries.firstOrNull { it.id == id } ?: ONE_SCREEN
 
         /** The DS games whose touch-screen moments are followed (nds/pk_nds_field.cpp's touch rules): HeartGold and
-         * SoulSilver (USA), Platinum (USA rev 1, the one supported), Black, White, Black 2 and White 2. */
+         * SoulSilver (USA, France), Platinum (USA rev 1, France), Black, White (both also France), Black 2 and White 2. */
         fun followed(gameCode: String) = gameCode in FOLLOWED
 
-        private val FOLLOWED = setOf("IPKE", "IPGE", "CPUE", "IRBO", "IRAO", "IREO", "IRDO")
+        private val FOLLOWED = setOf("IPKE", "IPKF", "IPGE", "IPGF", "CPUE", "CPUF", "IRBO", "IRBF", "IRAO", "IRAF", "IREO", "IRDO")
     }
 }
 
