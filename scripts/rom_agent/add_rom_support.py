@@ -12,8 +12,9 @@ What it does, in order:
     whose SHA-1 is already in the repo (supported already; --force runs it anyway). The same ROM twice runs once.
  2. Makes one git worktree on a new branch off origin/<base> (dev), next to this checkout, so the run never
     touches the checkout you're working in (submodules borrowed from it, local.properties / local.mk copied).
- 3. For each game in turn, runs Claude Code headless (`claude -p`, billed to ANTHROPIC_API_KEY) in that worktree
-    with the brief in scripts/rom_agent/prompt.md: identify the game, capture RAM headless, map addresses, add the
+ 3. For each game in turn, runs the agent in that worktree (with ANTHROPIC_API_KEY, api_agent.py on the Messages
+    API; otherwise, or with --engine claude, Claude Code headless, `claude -p`) with the brief in
+    scripts/rom_agent/prompt.md: identify the game, capture RAM headless, map addresses, add the
     config / tables / fixtures / tests / docs, and write a report.json describing what it did. A later game's
     agent sees the earlier games' commits.
  4. Checks each game's change itself, not the agent's word for it: the game-data generator is in step, the
@@ -27,9 +28,10 @@ What it does, in order:
     when none could be supported at all, no PR.
 
 Runs on the machine that has the ROMs, the decomps, Docker and the Android SDK (the Mac in CLAUDE.md's "Local
-setup"), never in a cloud session. Needs: python3 (3.9+), git, the `claude` CLI, `gh` (signed in), and
-ANTHROPIC_API_KEY, which goes straight to api.anthropic.com past any gateway your own Claude settings name
-(--allow-no-key: `claude` runs on your own setup instead). A small call checks that before anything is made.
+setup"), never in a cloud session. Needs: python3 (3.10+), git, `gh` (signed in), and ANTHROPIC_API_KEY with the
+`anthropic` package (requirements.txt; `make rom-support` installs it in a venv of its own), or the `claude` CLI
+(--allow-no-key: `claude` runs on your own setup; --engine claude: on the key, straight to api.anthropic.com past
+any gateway your own Claude settings name). A small call checks the login before anything is made.
 Everything the run writes outside the repo goes to
 ~/.cache/pokedaisy-rom-agent/<sha1 prefix>/ per game (logs, the filled-in brief, report.json, a set-aside patch).
 Exit: 0 every game committed, 3 some left out or a draft PR, 2 no game made it.
@@ -268,6 +270,12 @@ def agent_flags() -> list[str]:
 
 def check_agent_auth(args) -> None:
     """One small call, before any worktree or agent: a refused login otherwise only shows after minutes of retries."""
+    if args.engine == "api":
+        log(f"checking the key can use {args.model}")
+        problem = api_agent().check_auth(args.model)
+        if problem:
+            die(f"ANTHROPIC_API_KEY can't use {args.model}: {problem}")
+        return
     log(f"checking `claude` can reach {args.model}")
     cmd = ["claude", "-p", "Reply with OK.", "--output-format", "stream-json", "--verbose", "--model", args.model,
            "--tools", "", *agent_flags()]
@@ -301,8 +309,32 @@ def check_agent_auth(args) -> None:
         die(f"`claude` can't reach {args.model}: {problem}\n{how}")
 
 
+def round_done(result: dict) -> dict:
+    cost = result.get("total_cost_usd")
+    log(f"agent round done: {result.get('subtype')}, {result.get('num_turns')} turns"
+        + (f", ${cost:.2f}" if isinstance(cost, (int, float)) else ""))
+    if result.get("is_error"):
+        log(f"   it ended on an error: {str(result.get('result'))[:300]}")
+    return result
+
+
+def api_agent():
+    try:
+        import api_agent as module
+    except ImportError:
+        die("--engine api needs the `anthropic` package: run through `make rom-support`, or "
+            "`pip install -r scripts/rom_agent/requirements.txt`")
+    return module
+
+
 def run_agent(prompt: str, cwd: Path, extra_dirs: list[Path], log_path: Path, args, resume: str | None) -> dict:
-    """One `claude -p` run, streamed to log_path; returns its result event."""
+    """One round of the agent, logged to log_path; returns its result event."""
+    if args.engine == "api":
+        blocked = [m.group(1) for m in map(re.compile(r"Bash\((.+):\*\)").fullmatch, DISALLOWED_TOOLS) if m]
+        return round_done(api_agent().run(
+            prompt, cwd, [cwd, *extra_dirs], [cwd, log_path.parent], log_path, args.model, args.effort,
+            args.budget_per_round, blocked, resume, lambda line: print(line, flush=True)))
+
     cmd = ["claude", "-p", prompt, "--output-format", "stream-json", "--verbose",
            "--model", args.model, "--effort", args.effort,
            "--permission-mode", "dontAsk",
@@ -346,12 +378,7 @@ def run_agent(prompt: str, cwd: Path, extra_dirs: list[Path], log_path: Path, ar
         proc.wait()
     if not result:
         die(f"claude exited ({proc.returncode}) without a result; see {tilde(log_path)}")
-    cost = result.get("total_cost_usd")
-    log(f"agent round done: {result.get('subtype')}, {result.get('num_turns')} turns"
-        + (f", ${cost:.2f}" if isinstance(cost, (int, float)) else ""))
-    if result.get("is_error"):
-        log(f"   it ended on an error: {str(result.get('result'))[:300]}")
-    return result
+    return round_done(result)
 
 
 def read_report(path: Path) -> dict | None:
@@ -698,7 +725,7 @@ def do_game(g: dict, games: list[dict], wt: Path, args, budget: float) -> None:
     def left() -> float:
         return budget - g["cost"]
 
-    log(f"agent: {args.model}, effort {args.effort}, budget ${budget:.0f} (log: {tilde(agent_log)})")
+    log(f"agent ({args.engine}): {args.model}, effort {args.effort}, budget ${budget:.0f} (log: {tilde(agent_log)})")
     args.budget_per_round = left() * (0.8 if rounds > 1 else 1.0)
     result = run_agent(prompt, wt, extra_dirs, agent_log, args, resume=None)
     spend(result)
@@ -785,12 +812,15 @@ def recommit_failed(wt: Path, games: list[dict]) -> list[dict]:
 # --- main ----------------------------------------------------------------------------------------------------------
 
 def preflight(args) -> None:
-    for tool in ("git", "claude") + (() if args.no_pr else ("gh",)):
+    has_key = bool(os.environ.get("ANTHROPIC_API_KEY"))
+    if args.engine == "auto":
+        args.engine = "api" if has_key else "claude"
+    for tool in ("git",) + (("claude",) if args.engine == "claude" else ()) + (() if args.no_pr else ("gh",)):
         if not shutil.which(tool):
             die(f"`{tool}` isn't on PATH")
     if not args.no_pr and run(["gh", "auth", "status"], check=False).returncode != 0:
         die("gh isn't signed in (gh auth login)")
-    if not os.environ.get("ANTHROPIC_API_KEY") and not args.allow_no_key:
+    if not has_key and (args.engine == "api" or not args.allow_no_key):
         die("ANTHROPIC_API_KEY isn't set (or pass --allow-no-key when `claude` is signed in another way)")
     if not PROMPT_TEMPLATE.is_file() or not FIX_TEMPLATE.is_file():
         die("scripts/rom_agent/prompt.md or fix_prompt.md is missing")
@@ -811,6 +841,9 @@ def main() -> int:
     ap.add_argument("--branch", help="the branch to make (default: rom-support/<name>-<sha1> or rom-support/batch-<time>)")
     ap.add_argument("--worktree", type=Path, help="where to make the worktree (default: ../pokedaisy-rom-agent/<branch>)")
     ap.add_argument("--model", default=DEFAULT_MODEL, help=f"Claude model (default: {DEFAULT_MODEL})")
+    ap.add_argument("--engine", default="auto", choices=["auto", "api", "claude"],
+                    help="what runs the agent: api = api_agent.py on the Messages API, claude = `claude -p` "
+                         "(default: api with ANTHROPIC_API_KEY, else claude)")
     ap.add_argument("--effort", default=DEFAULT_EFFORT, choices=["low", "medium", "high", "xhigh", "max"],
                     help=f"reasoning effort (default: {DEFAULT_EFFORT})")
     ap.add_argument("--budget", type=float, default=60.0,

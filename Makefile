@@ -25,6 +25,7 @@ export MON_ICONS
 VERSION      := $(shell sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts)
 VERSION_CODE := $(shell sed -n 's/^ *versionCode = \([0-9]*\)/\1/p' app/build.gradle.kts)
 RELEASE_APK  := dist/PokeDaisy-$(VERSION).apk
+ROM_AGENT_VENV := $(HOME)/.cache/pokedaisy-rom-agent/venv
 
 help: ## Show this help
 	@awk 'BEGIN{FS=":.*## "} \
@@ -143,5 +144,7 @@ menu-shots: ## In-game party/pokedex/items screenshots of every ROM in host_roms
 
 rom-support: ## A Claude agent adds support for ROM=<file> [SAVE=<file>] and / or LIST=<file of games> [ARGS=...], one PR to dev (scripts/rom_agent/)
 	@test -n "$(ROM)$(LIST)" || { echo "usage: make rom-support ROM=<rom> [SAVE=<save>] | LIST=<file> [ARGS=...]"; exit 2; }
-	python3 scripts/rom_agent/add_rom_support.py $(if $(ROM),"$(ROM)") $(if $(SAVE),--save "$(SAVE)") \
+	@test -x "$(ROM_AGENT_VENV)/bin/python" || python3 -m venv "$(ROM_AGENT_VENV)"
+	@"$(ROM_AGENT_VENV)/bin/pip" install -q --disable-pip-version-check -r scripts/rom_agent/requirements.txt
+	"$(ROM_AGENT_VENV)/bin/python" scripts/rom_agent/add_rom_support.py $(if $(ROM),"$(ROM)") $(if $(SAVE),--save "$(SAVE)") \
 	    $(if $(LIST),--list "$(LIST)") $(ARGS)

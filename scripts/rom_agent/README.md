@@ -26,11 +26,21 @@ A list file has a game a line: `rom | save | name | notes`, everything but the R
 ```
 
 Run it on the machine with the ROMs, the decomps (`local.mk`), Docker and the Android SDK: the agent captures RAM
-headless and runs `make test-quick`. It needs `git`, the `claude` CLI, `gh` (signed in) and python3 3.9+.
+headless and runs `make test-quick`. It needs `git`, `gh` (signed in) and python3 3.10+. `make rom-support` installs
+`requirements.txt` into `~/.cache/pokedaisy-rom-agent/venv`.
 
-`ANTHROPIC_API_KEY` goes straight to `api.anthropic.com`: the run skips your user Claude settings and any
-`ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL` in your shell, so a gateway set up there isn't used. `--allow-no-key`, with
-no key set, runs `claude` on your own setup as it is. A small call checks the login before anything is made.
+Two engines run the agent (`--engine`), and a small call checks the login before anything is made:
+
+- `api`, the default with `ANTHROPIC_API_KEY`: `api_agent.py`, the driver's own loop on the Messages API, billed as
+  plain API calls. Some keys work there but are refused for Claude Code ("Credit balance is too low", whatever the
+  balance). It has bash, the text editor, web search and web fetch, and no subagents. `CLAUDE.md` is its system prompt,
+  cached for an hour, and a conversation over 300K tokens is compacted. The shell gets no API key or GitHub token, and
+  its `origin` can't be pushed to.
+- `claude`, the default with no key (`--allow-no-key`): `claude -p` on your own setup (settings, gateway, login). With
+  a key and `--engine claude`, the key goes straight to `api.anthropic.com`, past your user Claude settings and any
+  `ANTHROPIC_AUTH_TOKEN` / `ANTHROPIC_BASE_URL` in your shell.
+
+Neither engine is a sandbox: the blocked commands are a guard rail, so run it on a machine you'd let the agent work on.
 
 ## What happens
 
@@ -39,7 +49,7 @@ no key set, runs `claude` on your own setup as it is. A small call checks the lo
 2. One git worktree from `origin/dev`, next to this checkout (`../pokedaisy-rom-agent/<branch>`), on
    `rom-support/<name>-<sha1>` for one game or `rom-support/batch-<time>-<n>-games` for several: your checkout and
    other agents' work aren't touched.
-3. For each game in turn, `claude -p` in that worktree with `prompt.md` filled in (CLAUDE.md loads by itself; the
+3. For each game in turn, the agent in that worktree with `prompt.md` filled in (it gets CLAUDE.md too; the
    brief names the other games in the run, and a later game's agent sees the earlier ones' commits). It may read,
    edit and run anything but publish: commits, pushes, `gh`, resets and branch switches are blocked, and full test
    runs are ruled out by the brief. It ends by writing `report.json`.
@@ -54,8 +64,8 @@ no key set, runs `claude` on your own setup as it is. A small call checks the lo
    - No game passed but some failed: their changes are put back, a commit each, for a **draft** PR.
    - None could be supported at all: no PR.
 
-Per game, under `~/.cache/pokedaisy-rom-agent/<sha1 prefix>/`: `agent.jsonl` (the whole session; `claude --resume
-<session id>` from the worktree picks it up by hand), `prompt.md`, `report.json`, the checks' logs, `changes.patch`.
+Per game, under `~/.cache/pokedaisy-rom-agent/<sha1 prefix>/`: `agent.jsonl` (the whole session; with `--engine claude`,
+`claude --resume <session id>` from the worktree picks it up by hand), `prompt.md`, `report.json`, the checks' logs, `changes.patch`.
 
 ## Options
 
@@ -65,10 +75,11 @@ Per game, under `~/.cache/pokedaisy-rom-agent/<sha1 prefix>/`: `agent.jsonl` (th
 | `--notes` | anything else the agent should know, for every game in the run |
 | `--base dev` | the branch to start from and open the PR to |
 | `--model`, `--effort` | `claude-opus-5-5`, `high` by default |
-| `--budget 60` | USD per game (research + fixes), enforced by `claude --max-budget-usd` per round |
+| `--engine` | `api` or `claude`; see above |
+| `--budget 60` | USD per game (research + fixes), per round: `claude --max-budget-usd`, or `api_agent.py` adding up each response's usage (an estimate from list prices, checked after each turn, so a turn can go past it) |
 | `--total-budget` | USD for the whole run: no game starts once it's spent |
 | `--fix-rounds 2` | times failing checks go back to the agent |
-| `--allow-no-key` | with no `ANTHROPIC_API_KEY`, use your own `claude` setup |
+| `--allow-no-key` | with no `ANTHROPIC_API_KEY`, use `claude` on your own setup |
 | `--no-pr` | commit only; `--no-draft-on-failure`: no draft PR when no game passed |
 | `--skip-tests`, `--labels a,b`, `--branch`, `--worktree` | |
 | `--dry-run` | print each identity and brief, run nothing |
