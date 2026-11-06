@@ -59,7 +59,7 @@ data class Gen5Config(
  * map ([x], [y]: the touch screen's pixels, where the game centres its sprites), its [kind] (0 a town, 1 a route, 2 a
  * place, 3 Victory Road, 4 Liberty Garden, 5 Unity Tower) and its arrival flag ([flag], -1 none).
  */
-data class Gen5TownMapPlace(val zone: Int, val place: Int, val x: Int, val y: Int, val kind: Int, val flag: Int)
+data class Gen5TownMapPlace(val zone: Int, val place: Int, val x: Int, val y: Int, val kind: Int, val flag: Int, val shownBy: Int = -1)
 
 /** The Town Map's first arrival flag: [Telemetry.townsVisited]'s bit n is flag 2480 + n, as on Platinum. */
 const val GEN5_FIRST_ARRIVAL = 2480

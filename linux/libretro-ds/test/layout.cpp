@@ -19,7 +19,13 @@ int main(){
   s.reset();
   int fading=PK_NDS_FIELD_TOUCH|PK_NDS_FIELD_TOUCH_FADES;
   s.tick(fading,false,true,true);assert(s.fadeSeen&&!s.touch);
-  for(int i=0;i<12;i++){s.tick(fading,false,false,true);assert(!s.touch);}
+  s.tick(fading,false,false,true);assert(!s.touch);
+  s.tick(fading,false,false,true);assert(s.touch);
+  s.tick(fading,false,true,true);assert(!s.touch);
+  for(int i=0;i<15;i++){s.tick(fading,false,false,true);assert(!s.touch);}
+  s.tick(field,false,false,true);
+  s.tick(fading,false,true,true);
+  s.tick(fading,false,false,true);
   s.tick(fading,false,false,true);assert(s.touch);
   s.reset();for(int i=0;i<90;i++)s.tick(fading,false,false,true);
   assert(!s.touch);s.tick(fading,false,false,true);assert(s.touch); // bounded no-black fallback
@@ -50,5 +56,32 @@ int main(){
   ds_compose(out.data(),manual,top.data(),bottom.data(),top.data());
   assert(out[manual.touch.y*512+manual.touch.x]==0x0000ff);
   ds_compose(out.data(),side,top.data(),bottom.data());assert(out[96*512]==0xff0000&&out[96*512+256]==0x0000ff);
+  s.reset();
+  auto automatic=[&](int bits,bool topBlank,bool bottomBlank,bool fieldCached,bool menuFlow=false){
+    s.tick(bits,topBlank,bottomBlank,true);
+    return ds_arrange_one_screen(ds_arrange(DS_ONE,s,true),s,bits,topBlank,fieldCached,menuFlow);
+  };
+  auto boot=automatic(PK_NDS_FIELD_KNOWN,false,false,false);
+  assert(boot.top.y==0&&boot.touch.y==192); // Both lit during title/setup.
+  assert(automatic(field,false,false,false).touch.w==0);
+  auto xMenu=field|PK_NDS_FIELD_LOCKED|PK_NDS_FIELD_TOUCH;
+  assert(automatic(xMenu,false,false,true).touch.w==0);
+  auto fieldPopup=automatic(xMenu,false,false,true);
+  assert(fieldPopup.floating&&fieldPopup.useField&&ds_pen(fieldPopup,80,60).valid);
+  const int touchApp=PK_NDS_FIELD_MENU|PK_NDS_FIELD_TOUCH|PK_NDS_FIELD_TOUCH_ONLY;
+  assert(automatic(touchApp,true,true,true).useField);
+  auto touchPopup=automatic(touchApp,true,false,true);
+  assert(touchPopup.floating&&touchPopup.touch.w==352&&touchPopup.useField);
+  const int dualApp=PK_NDS_FIELD_MENU|PK_NDS_FIELD_TOUCH;
+  auto waitForOtherScreen=automatic(dualApp,true,false,true);
+  assert(waitForOtherScreen.useField&&waitForOtherScreen.touch.w==0);
+  auto bothScreens=automatic(dualApp,false,false,true);
+  assert(bothScreens.modal&&bothScreens.top.w==256&&bothScreens.touch.w==256);
+  assert(automatic(field,true,true,true,true).useField);
+  auto returned=automatic(field,false,false,true,true);
+  assert(!returned.modal&&!returned.floating&&returned.top.w==512&&returned.touch.w==0);
+  s.reset();
+  for(int i=0;i<11;++i)assert(automatic(dualApp,true,false,true).touch.w==0);
+  assert(automatic(dualApp,true,false,true).modal); // A legitimate blank screen can't block the app.
   std::puts("PASS upstream scene timing, fade timeout, HUD gates, layouts, pointer bounds and unclipped source corners");
 }

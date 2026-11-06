@@ -9,6 +9,9 @@ party icons and map art.
 See [the combined NXRedux package](../libretro-unified/README.md) for builds,
 controls and save paths.
 
+Platinum's One Screen move cards draw the game's native lettering, type badge,
+and PP at an integer scale in the 512×384 frame.
+
 ## Desktop checks
 
 ```sh

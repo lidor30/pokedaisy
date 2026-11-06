@@ -11,23 +11,32 @@ void DsScenePolicy::tick(int bits,bool topBlank,bool bottom,bool floatBattle){
   const bool both=topBlank&&bottom,afterDark=darkBefore&&!both;
   darkBefore=both;bottomBlank=bottom;
   dark=both||(menu&&topBlank);
+  const bool fades=bits&PK_NDS_FIELD_TOUCH_FADES;
+  const bool dualScreenApp=(bits&PK_NDS_FIELD_MENU)&&
+    !(bits&(PK_NDS_FIELD_BATTLE|PK_NDS_FIELD_TOUCH_ONLY|PK_NDS_FIELD_TOP_ONLY));
+  dualScreenLitFrames=dualScreenApp&&!both?std::min(12,dualScreenLitFrames+1):0;
+  if(!fades){fadeOpened=false;fadeClosed=false;}
+  if(fades&&fadeOpened&&bottom){
+    touch=false;touchFrames=0;fadeClosed=true;
+  }
   if(!both){
     bool want=(bits&PK_NDS_FIELD_TOUCH)||(floatBattle&&(bits&PK_NDS_FIELD_TOUCH_BATTLE_MENU));
-    const bool fades=bits&PK_NDS_FIELD_TOUCH_FADES;
-    if(fades&&touch&&bottom){touch=false;touchFrames=0;fadeSeen=true;fadeFrames=litFrames=0;}
+    if(fadeClosed)want=false;
     if(want&&!touch&&fades){
-      if(bottom){fadeSeen=true;litFrames=0;}else ++litFrames;
+      if(bottom)fadeSeen=true;
       ++fadeFrames;
-      if(!(fadeSeen&&litFrames>=12)&&fadeFrames<90)want=false;
-    }else if(!want){fadeSeen=false;fadeFrames=litFrames=0;}
+      // The scene debounce below already requires two lit frames. The
+      // blank frame distinguishes the new panel from the old fading one.
+      if(!(fadeSeen&&!bottom)&&fadeFrames<90)want=false;
+    }else if(!want){fadeSeen=false;fadeFrames=0;}
     auto settle=[&](bool& current,bool next,int& frames){
       if(next==current){frames=0;return;}
       if(afterDark||++frames>=(next?2:6)){current=next;frames=0;}
     };
-    const bool nextMenu=(bits&PK_NDS_FIELD_MENU)&&!(bits&(PK_NDS_FIELD_BATTLE|PK_NDS_FIELD_TOUCH_ONLY|PK_NDS_FIELD_TOP_ONLY));
     const bool nextApp=(bits&PK_NDS_FIELD_MENU)&&!(bits&PK_NDS_FIELD_BATTLE);
-    settle(touch,want,touchFrames);if(touch){fadeSeen=false;fadeFrames=litFrames=0;}
-    settle(menu,nextMenu,menuFrames);settle(app,nextApp,appFrames);
+    settle(touch,want,touchFrames);
+    if(touch){fadeSeen=false;fadeFrames=0;if(fades)fadeOpened=true;}
+    settle(menu,dualScreenApp,menuFrames);settle(app,nextApp,appFrames);
     settle(wide,bits&(PK_NDS_FIELD_SCREEN|PK_NDS_FIELD_BATTLE),wideFrames);
     const bool field=(bits&PK_NDS_FIELD_KNOWN)&&(bits&PK_NDS_FIELD_SCREEN)&&!(bits&(PK_NDS_FIELD_LOCKED|PK_NDS_FIELD_MENU|PK_NDS_FIELD_BATTLE));
     fieldFrames=field?std::min(20,fieldFrames+1):0;hud=fieldFrames>=20;
@@ -50,6 +59,41 @@ DsArrangement ds_arrange(int mode,const DsScenePolicy& s,bool followed,bool manu
   }
   return a;
 }
+
+DsArrangement ds_arrange_one_screen(DsArrangement normal,const DsScenePolicy& scene,int bits,
+                                    bool topBlank,bool fieldCached,bool fieldMenuFlow){
+  const bool field=bits&PK_NDS_FIELD_SCREEN;
+  const bool app=bits&PK_NDS_FIELD_MENU;
+  const bool battle=bits&PK_NDS_FIELD_BATTLE;
+  if(battle)return normal;
+
+  // Before the first field scene, title and setup can use both displays.
+  if(!field&&!app&&!fieldCached&&!topBlank&&!scene.bottomBlank)
+    return ds_arrange(DS_STACKED,scene,true);
+
+  const DsArrangement cachedField{{},{},false,false,true};
+  const DsArrangement liveField{{0,0,512,384},{}};
+  const DsArrangement floatingTouch{{0,0,512,384},{80,60,352,264},true,false,fieldCached};
+  if(app){
+    if(bits&PK_NDS_FIELD_TOUCH_ONLY){
+      if(scene.touch&&!scene.bottomBlank)return floatingTouch;
+    }else if(bits&PK_NDS_FIELD_TOP_ONLY){
+      if(!topBlank)return {{80,60,352,264},{},false,true,fieldCached};
+    }else if((!topBlank&&!scene.bottomBlank)||scene.dualScreenLitFrames==12){
+      return {{0,96,256,192},{256,96,256,192},false,true,fieldCached};
+    }
+    return fieldCached?cachedField:normal;
+  }
+
+  if(fieldMenuFlow&&fieldCached&&topBlank)return cachedField;
+  if(field){
+    // A closed app's debounced layout can linger while the overworld comes
+    // back. Only the current game's X menu should keep the touch view up.
+    if((bits&PK_NDS_FIELD_TOUCH)&&scene.touch&&!scene.bottomBlank)return floatingTouch;
+    return liveField;
+  }
+  return normal;
+}
 DsPen ds_pen(const DsArrangement& a,int x,int y){
   if(!a.touch.contains(x,y))return {};
   return {true,std::clamp((x-a.touch.x)*256/a.touch.w,0,255),std::clamp((y-a.touch.y)*192/a.touch.h,0,191)};
@@ -64,10 +108,17 @@ void ds_compose(uint32_t* out,const DsArrangement& a,const uint32_t* top,const u
   };
   const uint32_t* background=a.useField&&field?field:top;
   // A small box blur for exposed margins; field-backed modal scenes stay sharp.
-  if(a.top.w==512&&a.top.h==384&&!a.modal&&!a.useField)blit(top,a.top);
-  else for(int y=0;y<384;++y)for(int x=0;x<512;++x){
+  const bool fullTop=a.top.x==0&&a.top.y==0&&a.top.w==512&&a.top.h==384&&!a.modal&&!a.useField;
+  if(fullTop||(a.useField&&field)){
+    // The common One Screen layout is an exact 2× copy. Fill each source
+    // pixel once and duplicate the row instead of running two scaled blits.
+    for(int y=0;y<192;++y){
+      auto* row=out+y*1024;
+      for(int x=0;x<256;++x)row[2*x]=row[2*x+1]=background[y*256+x]&0xffffff;
+      std::copy_n(row,512,row+512);
+    }
+  }else for(int y=0;y<384;++y)for(int x=0;x<512;++x){
     int sx=x/2,sy=y/2;unsigned r=0,g=0,b=0,n=0;
-    if(a.useField&&field){out[y*512+x]=background[sy*256+sx]&0xffffff;continue;}
     for(int dy=-2;dy<=2;dy+=2)for(int dx=-2;dx<=2;dx+=2){
       uint32_t p=background[std::clamp(sy+dy,0,191)*256+std::clamp(sx+dx,0,255)];
       r+=(p>>16)&255;g+=(p>>8)&255;b+=p&255;++n;
@@ -80,9 +131,8 @@ void ds_compose(uint32_t* out,const DsArrangement& a,const uint32_t* top,const u
     pd_round_rect(&c,r.x-3,r.y-3,r.w+6,r.h+6,2,0xf8f8f8);
   };
   if(a.modal){pd_dim(&c,110);frame({a.top.x,a.top.y,a.top.w+a.touch.w,a.top.h});}
-  if(!a.floating)blit(top,a.top);
+  if(!a.floating&&!fullTop)blit(top,a.top);
   if(a.floating){
-    if(a.useField&&field)blit(field,{0,0,512,384});
     if(overlay)overlay(out);
     pd_dim(&c,130);frame(a.touch);
   }else if(a.touch.w>0&&a.top.w==512)frame(a.touch);

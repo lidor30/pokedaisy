@@ -86,6 +86,9 @@ int main(int argc,char** argv){
     mask=1u<<RETRO_DEVICE_ID_JOYPAD_A;retro_run_fn();mask=0;retro_run_fn();ppm(directory,"quick-settings");
   }
   mask=1u<<RETRO_DEVICE_ID_JOYPAD_L2;retro_run_fn();mask=0;retro_run_fn();assert(w==512&&h==384);
+  mask=1u<<RETRO_DEVICE_ID_JOYPAD_L2;for(int i=0;i<24;i++)retro_run_fn();
+  mask=0;retro_run_fn();assert(w==341&&h==256);
+  mask=1u<<RETRO_DEVICE_ID_JOYPAD_B;retro_run_fn();mask=0;retro_run_fn();assert(w==512&&h==384);
   if(getenv("PD_TEST_GRID")){
     memcpy(before,ram,ramsize);
     mask=(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT)|(1u<<RETRO_DEVICE_ID_JOYPAD_L2);retro_run_fn();mask=0;retro_run_fn();assert(w==341&&h==256);assert(!memcmp(before,ram,ramsize));ppm(directory,"quick-grid");

@@ -23,7 +23,7 @@ const char* const buttonNames[]={"L2","R2","X","Y","NONE"};
 const unsigned buttonIds[]={RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,RETRO_DEVICE_ID_JOYPAD_X,RETRO_DEVICE_ID_JOYPAD_Y};
 const char* const speedNames[]={"SLOW","NORMAL","FAST"};
 const char* const resetNames[]={"CANCEL","RESET"};
-const char* const labels[]={"DS LAYOUT","AUTO BATTLES","PARTY HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP"};
+const char* const labels[]={"DS LAYOUT","AUTO BATTLES","PARTY HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP","MINIMAL HUD","POKÉ BALLS","REPEL STEPS","MINIMAP"};
 const char* const* choices(int row){
   return row==DsCompanionUi::Layout?layoutNames:row==DsCompanionUi::PenSpeed?speedNames:
     row==DsCompanionUi::Reset?resetNames:buttonNames;
@@ -34,7 +34,7 @@ int count(int row){return row==DsCompanionUi::Layout?DS_LAYOUTS:row==DsCompanion
 void DsCompanionUi::defaults(){
   pd_settings_defaults(&settings);settings.hud=false;
   settings.tabBar=(1<<PD_TAB_PARTY)|(1<<PD_TAB_BAG)|(1<<PD_TAB_MAP)|(1<<PD_TAB_DEX);
-  layout=0;autoBattles=1;companionButton=0;screenButton=1;penSpeed=1;battleStrip=false;
+  layout=0;autoBattles=1;companionButton=0;screenButton=1;penSpeed=1;battleStrip=true;hudMinimal=false;
 }
 void DsCompanionUi::init(const std::string& directory,int legacyLayout,bool legacyHud){
   *this=DsCompanionUi{};defaults();layout=std::clamp(legacyLayout,0,4);settings.hud=legacyHud;
@@ -63,6 +63,7 @@ void DsCompanionUi::init(const std::string& directory,int legacyLayout,bool lega
       if(key=="ds_battles" && v<2)autoBattles=v;
       if(key=="ds_companionbtn" && v<4)companionButton=v;
       if(key=="ds_screenbtn" && v<5)screenButton=v;
+      if(key=="ds_hudminimal" && v<2)hudMinimal=v;
       if(key=="ds_battlestrip" && v<2)battleStrip=v;
       if(key=="ds_penspeed" && v<3)penSpeed=v;
     }
@@ -80,17 +81,28 @@ bool DsCompanionUi::save(){
   if(!pd_settings_save(&settings,temp.c_str())){error="Could not save settings";return false;}
   FILE* f=std::fopen(temp.c_str(),"a");bool ok=f;
   if(f){
-    ok=std::fprintf(f,"ds_layout=%d\nds_battles=%d\nds_companionbtn=%d\nds_screenbtn=%d\nds_penspeed=%d\nds_battlestrip=%d\n",layout,autoBattles,companionButton,screenButton,penSpeed,battleStrip)>0;
+    ok=std::fprintf(f,"ds_layout=%d\nds_battles=%d\nds_companionbtn=%d\nds_screenbtn=%d\nds_penspeed=%d\nds_battlestrip=%d\nds_hudminimal=%d\n",layout,autoBattles,companionButton,screenButton,penSpeed,battleStrip,hudMinimal)>0;
     if(std::fflush(f) || fsync(fileno(f)))ok=false;
     if(std::fclose(f))ok=false;
   }
   if(ok && std::rename(temp.c_str(),path.c_str())==0){error.clear();return true;}
   std::remove(temp.c_str());error="Could not save settings";return false;
 }
+void DsCompanionUi::set_game(DsGame value){
+  game=value;
+  if(game!=DsGame::Platinum)frame.availableTabs=(1<<PD_TAB_PARTY)|(1<<PD_TAB_BAG)|(1<<PD_TAB_MAP)|(1<<PD_TAB_DEX);
+  if(game==DsGame::Unsupported){
+    frame.availableTabs=1<<PD_TAB_PARTY;
+    frame.tab=PD_TAB_SETTINGS;
+  }
+}
 unsigned DsCompanionUi::companion_id()const{return buttonIds[companionButton];}
 int DsCompanionUi::screen_id()const{return screenButton<4?int(buttonIds[screenButton]):-1;}
 int DsCompanionUi::pen_step()const{return penSpeed==0?1:penSpeed==1?3:6;}
 int DsCompanionUi::value(int row)const{
+  if(row==HudMinimal)return hudMinimal;
+  if(row==HudMap)return !(settings.hudHidden&(1<<PD_HUD_MAP));
+  if(row==HudBalls||row==HudRepel)return !(settings.hudHidden&(1<<(row==HudBalls?PD_HUD_BALLS:PD_HUD_REPEL)));
   return row==Layout?layout:row==Battles?autoBattles:row==Hud?settings.hud:
     row==CompanionButton?companionButton:row==ScreenButton?screenButton:row==PenSpeed?penSpeed:row==QuickStyle?settings.quickGrid:row==BattleStrip?battleStrip:0;
 }
@@ -103,6 +115,9 @@ void DsCompanionUi::apply(int row,int v){
   else if(row==PenSpeed)penSpeed=v;
   else if(row==QuickStyle)settings.quickGrid=v;
   else if(row==BattleStrip)battleStrip=v;
+  else if(row==HudMinimal)hudMinimal=v;
+  else if(row==HudMap)settings.hudHidden^=1<<PD_HUD_MAP;
+  else if(row==HudBalls||row==HudRepel)settings.hudHidden^=1<<(row==HudBalls?PD_HUD_BALLS:PD_HUD_REPEL);
   else if(row==Reset && v){defaults();++displayRevision;frame.settings=&settings;options.settings=&settings;}
   save();
 }
@@ -110,8 +125,8 @@ void DsCompanionUi::draw_settings(pd_canvas* c){
   const auto& s=*snapshot;
   const std::string money=s.valid?std::to_string(s.money):"-";
   const char* values[]={layoutNames[layout],autoBattles?"ON":"OFF",settings.hud?"ON":"OFF",
-    buttonNames[companionButton],buttonNames[screenButton],speedNames[penSpeed],settings.quickGrid?"GRID":"RING","...",battleStrip?"ON":"OFF"};
-  pd_option_row rows[Rows+5]={{"TRAINER",s.valid?s.trainer.c_str():"-"},{"PLACE",s.valid?ds_place(s.map):"-"},{"MONEY",money.c_str()}};
+    buttonNames[companionButton],buttonNames[screenButton],speedNames[penSpeed],settings.quickGrid?"GRID":"RING","...",battleStrip?"ON":"OFF",hudMinimal?"ON":"OFF",value(HudBalls)?"ON":"OFF",value(HudRepel)?"ON":"OFF",value(HudMap)?"ON":"OFF"};
+  pd_option_row rows[Rows+5]={{"TRAINER",s.valid?s.trainer.c_str():"-"},{"PLACE",s.valid?ds_place(s.map,s.game):"-"},{"MONEY",money.c_str()}};
   for(int i=0;i<Rows;i++)rows[3+i]={labels[i],values[i]};
   rows[Rows+3]={"STATES / SPEED","NXRedux MENU"};
   rows[Rows+4]={"RESUME / SHADERS","NXRedux MENU"};
@@ -124,7 +139,7 @@ void DsCompanionUi::draw_body(pd_ui* u,pd_canvas* c){
   if(u->tab==PD_TAB_SETTINGS){draw_settings(c);return;}
   if(!supported || !snapshot->valid){
     pd_title_box(c,4,4,c->w-8,24,0xffffff);
-    pd_text(c,12,9,supported?"WAITING FOR SAVE DATA":"PLATINUM USA REV 1 ONLY",PD_TITLE_TEXT,PD_TITLE_SHADOW);return;
+    pd_text(c,12,9,supported?"WAITING FOR SAVE DATA":"COMPANION UNAVAILABLE FOR THIS ROM",PD_TITLE_TEXT,PD_TITLE_SHADOW);return;
   }
   if(u->tab==PD_TAB_PARTY)ds_party_view(c,*snapshot,*icons,selected,summary,page);
   if(u->tab==PD_TAB_BAG)ds_bag_view(c,*snapshot,pocket,scroll,details);
@@ -156,9 +171,9 @@ bool DsCompanionUi::control(unsigned pressed){
   }
   if(frame.tab==PD_TAB_SETTINGS){
     setting=std::clamp(setting+dy,0,int(Rows)-1);
-    if(hit(RETRO_DEVICE_ID_JOYPAD_B)){frame.tab=PD_TAB_PARTY;return false;}
+    if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(game==DsGame::Unsupported)return true;frame.tab=PD_TAB_PARTY;return false;}
     if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
-      error.clear();if(setting==Battles || setting==Hud || setting==QuickStyle || setting==BattleStrip)apply(setting,!value(setting));
+      error.clear();if(setting==Battles || setting==Hud || setting==QuickStyle || setting>=BattleStrip)apply(setting,!value(setting));
       else{picker=setting;choice=value(setting);}
     }return false;
   }
@@ -169,7 +184,7 @@ bool DsCompanionUi::control(unsigned pressed){
     if(hit(RETRO_DEVICE_ID_JOYPAD_A))summary=!summary;
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(summary)summary=false;else return true;}
   }else if(frame.tab==PD_TAB_BAG){
-    if(dx){pocket=(pocket+dx+9)%9;scroll=0;}
+    if(dx){const int tabs=ds_bag_tabs(game);pocket=(pocket+dx+tabs)%tabs;scroll=0;}
     scroll=std::clamp(scroll+dy,0,std::max(0,snapshot?ds_bag_count(*snapshot,pocket)-1:0));
     if(hit(RETRO_DEVICE_ID_JOYPAD_A))details=!details;
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(details)details=false;else return true;}
@@ -178,7 +193,9 @@ bool DsCompanionUi::control(unsigned pressed){
     scroll=std::clamp(scroll+dy+dx*8,0,std::max(0,snapshot?ds_dex_count(*snapshot,filter)-1:0));
     if(hit(RETRO_DEVICE_ID_JOYPAD_B))return true;
   }else{
-    mapX=std::clamp(mapX+dx,0,29);mapY=std::clamp(mapY+dy,0,29);
+    const int maxX=game==DsGame::Johto?46:ds_unova(game)?31:29;
+    const int maxY=game==DsGame::Johto?19:ds_unova(game)?20:29;
+    mapX=std::clamp(mapX+dx,0,maxX);mapY=std::clamp(mapY+dy,0,maxY);
     if(hit(RETRO_DEVICE_ID_JOYPAD_A) && snapshot){mapX=snapshot->mapX;mapY=snapshot->mapY;}
     if(hit(RETRO_DEVICE_ID_JOYPAD_B))return true;
   }

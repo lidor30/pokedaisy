@@ -19,11 +19,12 @@ void ds_party_view(pd_canvas* c,const DsCompanion& s,const std::vector<std::vect
   struct Context {const DsCompanion& s;const pd_snapshot& view;const std::vector<std::vector<uint32_t>>& icons;std::string text; } ctx{s,view,icons,{}};
   pd_party_source source{};source.ctx=&ctx;
   source.egg=[](void* data,const pd_mon* m){auto& x=*static_cast<Context*>(data);return x.s.party[m-x.view.party].egg;};
-  source.species=[](void*,int id){return ds_species(id);};
-  source.move=[](void*,int id){return ds_move(id);};source.moveType=[](void*,int id){return ds_move_type(id);};
+  source.species=[](void* data,int id){return ds_species(id,static_cast<Context*>(data)->s.game);};
+  source.move=[](void* data,int id){return ds_move(id,static_cast<Context*>(data)->s.game);};
+  source.moveType=[](void* data,int id){return ds_move_type(id,static_cast<Context*>(data)->s.game);};
   source.icon=[](void* data,pd_canvas* c,const pd_mon* m,int x,int y,int scale,bool faded){
     auto& ctx=*static_cast<Context*>(data);const auto& mon=ctx.s.party[m-ctx.view.party];
-    int id=mon.egg?pd_ds_data::iconEgg:mon.species;
+    int id=mon.egg?ds_egg_icon(ctx.s.game):mon.species;
     if(id<1 || size_t(id)>=ctx.icons.size() || ctx.icons[id].size()!=1024)return false;
     for(int yy=0;yy<32;yy++)for(int xx=0;xx<32;xx++){
       uint32_t px=ctx.icons[id][yy*32+xx];if(!(px>>24))continue;
@@ -33,9 +34,11 @@ void ds_party_view(pd_canvas* c,const DsCompanion& s,const std::vector<std::vect
   };
   source.info=[](void* data,const pd_mon* m,int row)->const char*{
     auto& ctx=*static_cast<Context*>(data);const auto& mon=ctx.s.party[m-ctx.view.party];
-    int a=ds_species_type(mon.species,0),b=ds_species_type(mon.species,1);
-    if(row==0)ctx.text=std::string(ds_species(mon.species))+"  "+pd_type_name(nullptr,a)+(a!=b?std::string("/")+pd_type_name(nullptr,b):"");
-    else if(row==1)ctx.text=std::string("ITEM: ")+(mon.heldItem?ds_item(mon.heldItem):"NONE");
+    const auto game=ctx.s.game;
+    int a=ds_species_type(mon.species,0,game),b=ds_species_type(mon.species,1,game);
+    if(row==0)ctx.text=std::string(ds_species(mon.species,game))+"  "+pd_type_name(nullptr,a)+(a!=b?std::string("/")+pd_type_name(nullptr,b):"");
+    else if(row==1)ctx.text=std::string("ITEM: ")+(mon.heldItem?ds_item(mon.heldItem,game):"NONE");
+    else if(ds_unova(game))ctx.text="EXP "+std::to_string(mon.experience);
     else ctx.text=std::string(ds_nature(mon.nature))+"  EXP "+std::to_string(mon.experience);
     return ctx.text.c_str();
   };

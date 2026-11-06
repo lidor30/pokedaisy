@@ -2,6 +2,7 @@
 #pragma once
 #include "companion.h"
 #include <algorithm>
+inline int ds_bag_tabs(DsGame game){return ds_unova(game)?6:9;}
 inline bool ds_in_pocket(const DsItem& item,int pocket){return pocket==0 || item.pocket==pocket-1;}
 inline int ds_bag_count(const DsCompanion& s,int pocket){
   int count=0;for(const auto& item:s.bag)count+=ds_in_pocket(item,pocket);return count;

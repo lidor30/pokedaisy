@@ -5,16 +5,14 @@ p=argparse.ArgumentParser()
 p.add_argument('gb_core',type=Path);p.add_argument('ds_core',type=Path);p.add_argument('output',type=Path)
 p.add_argument('--strip',required=True);p.add_argument('--source-ref',required=True)
 a=p.parse_args();here=Path(__file__).resolve().parent;root=here.parents[1]
-platforms=['Game Boy','Game Boy Color','Game Boy Advance','Nintendo DS']
 with tempfile.TemporaryDirectory() as temp:
  stage=Path(temp);base=stage/'Emus/tg5040';pak=base/'PDAI.pak';pak.mkdir(parents=True)
  for source,name in [(a.gb_core,'pokedaisy_libretro.so'),(a.ds_core,'pokedaisy_ds_libretro.so')]:
   subprocess.run([a.strip,'--strip-unneeded','-o',str(pak/name),str(source.resolve())],check=True)
  shutil.copyfile(here/'launch.sh',pak/'launch.sh');(pak/'launch.sh').chmod(0o755)
  shutil.copyfile(here/'default.cfg',pak/'default.cfg')
- for label in platforms:
-  folder=stage/'Roms/PokeDaisy (PDAI)'/label;folder.mkdir(parents=True)
-  (folder/'.keep').touch()
+ folder=stage/'Roms/PokeDaisy (PDAI)';folder.mkdir(parents=True)
+ (folder/'.keep').touch()
  shutil.copyfile(here/'README.md',stage/'README.md')
  notices=pak/'licenses';notices.mkdir()
  shutil.copyfile(root/'LICENSE',notices/'PokeDaisy-GPL-3.0.txt');shutil.copyfile(root/'NOTICE',notices/'PokeDaisy-NOTICE.txt')

@@ -4,8 +4,9 @@
 #include "pk_nds_field.h"
 struct DsScenePolicy {
   bool touch=false,menu=false,app=false,wide=false,dark=false,bottomBlank=false,hud=false;
-  bool darkBefore=false,fadeSeen=false;
-  int touchFrames=0,menuFrames=0,appFrames=0,wideFrames=0,fadeFrames=0,litFrames=0,fieldFrames=0;
+  bool darkBefore=false,fadeSeen=false,fadeOpened=false,fadeClosed=false;
+  int touchFrames=0,menuFrames=0,appFrames=0,wideFrames=0,fadeFrames=0,fieldFrames=0;
+  int dualScreenLitFrames=0;
   void reset(){*this=DsScenePolicy{};}
   void tick(int bits,bool topBlank,bool bottomBlank,bool floatBattle);
 };
@@ -21,6 +22,8 @@ struct DsArrangement {
 };
 struct DsPen {bool valid=false;int x=0,y=0;};
 DsArrangement ds_arrange(int mode,const DsScenePolicy&,bool followed,bool manual=false);
+DsArrangement ds_arrange_one_screen(DsArrangement normal,const DsScenePolicy&,int bits,
+                                    bool topBlank,bool fieldCached,bool fieldMenuFlow);
 DsPen ds_pen(const DsArrangement&,int x,int y);
 // 512x384 stage; sources are unmodified native 256x192 framebuffers.
 void ds_compose(uint32_t* out,const DsArrangement&,const uint32_t* top,const uint32_t* bottom,const uint32_t* field=nullptr,

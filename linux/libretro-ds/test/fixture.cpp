@@ -1,4 +1,5 @@
 #include "companion.h"
+#include "data_gen.h"
 #include "pk_nds_field.h"
 #include <cstring>
 #include "party_view.h"
@@ -11,6 +12,7 @@
 #include <cstdio>
 static std::vector<uint8_t> test_ram;
 static uint32_t read32(uint32_t a){uint32_t v=0;if(a>=0x02000000 && a<=0x023ffffc)std::memcpy(&v,test_ram.data()+a-0x02000000,4);return v;}
+static void write8(uint32_t a,uint8_t v){assert(a>=0x02000000 && a<0x02400000);test_ram[a-0x02000000]=v;}
 static void write32(uint32_t a,uint32_t v){assert(a>=0x02000000 && a<=0x023ffffc);std::memcpy(test_ram.data()+a-0x02000000,&v,4);}
 int main(int argc,char** argv){
   assert(argc==2);std::ifstream file(argv[1],std::ios::binary);
@@ -24,6 +26,20 @@ int main(int argc,char** argv){
   ds_party_view(&c,s,{},0,false,0);ds_party_view(&c,s,{},0,true,1);
   ds_bag_view(&c,s,0,0,true);ds_dex_view(&c,s,0,0);ds_map_view(&c,s,{},s.mapX,s.mapY);
   test_ram=ram;
+  using namespace pd_ds_data;
+  const uint32_t body=read32(saveDataPtr)+bodyOff;
+  const uint32_t pocket=body+bagOff;
+  write8(body+repelStepsOff,0);
+  write32(pocket,79|(1u<<16));
+  write32(pocket+4,77|(2u<<16));
+  using R=DsRepelResult;
+  auto use=[&](int item){return ds_use_repel(test_ram.data(),test_ram.size(),DsGame::Platinum,item,write8);};
+  assert(use(79)==R::Used);
+  assert(read32(pocket)==(77|(2u<<16)) && (read32(body+repelStepsOff)&255)==100);
+  assert(use(77)==R::StillActive && read32(pocket)==(77|(2u<<16)));
+  write8(body+repelStepsOff,0);
+  assert(use(77)==R::Used && read32(pocket)==(77|(1u<<16)));
+  assert((read32(body+repelStepsOff)&255)==250);
   const auto* g=pk_nds_field_game("CPUE",1);assert(g);
   uint32_t fs=0x023e0000,pm=0x023e1000;
   write32(g->fieldSystemPtr,fs);write32(fs+g->offProcessManager,pm);

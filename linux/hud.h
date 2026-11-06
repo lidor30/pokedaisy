@@ -44,9 +44,14 @@ struct hud_hits {
  * (nullable): where each target landed. */
 bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snapshot *s, const struct hud_state *h,
               const struct pd_settings *st, struct hud_hits *out);
-/* A backend with its own species art can draw the shared party row independently. */
+/* DS uses the same HUD widgets with cartridge art and the companion's controller shortcuts. */
 typedef void (*hud_mon_draw_fn)(struct pd_canvas *, void *, const struct pd_mon *, int x, int y, bool faded);
-void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx, hud_mon_draw_fn draw, int look);
+typedef bool (*hud_item_draw_fn)(struct pd_canvas *, int item, int x, int y);
+void hud_ds_draw(struct pd_canvas *, const struct pd_snapshot *, const struct hud_state *,
+                 const struct pd_settings *, void *, hud_mon_draw_fn, hud_item_draw_fn, int repelItem, bool minimal);
+
+typedef void (*hud_ds_map_fn)(struct pd_canvas *, int x, int y, int w, int h);
+void hud_ds_minimap(struct pd_canvas *, const struct pd_settings *, const char *name, hud_ds_map_fn draw);
 
 /* A number that changes whenever what the HUD shows does (so the host redraws it only then). */
 uint32_t hud_key(const struct pd_snapshot *s, const struct hud_state *h, const struct pd_settings *st);

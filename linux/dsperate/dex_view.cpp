@@ -1,4 +1,4 @@
-// GPL-3.0. National Gen 4 data for the established companion dex list.
+// GPL-3.0. National Gen 4/5 data for the established companion dex list.
 #include "dex_view.h"
 #include "browser.h"
 extern "C" {
@@ -14,7 +14,7 @@ void ds_dex_view(pd_canvas* c,const DsCompanion& s,int filter,int selected){
   source.national=[](void* data,int row){return static_cast<Context*>(data)->ids.at(row);};
   source.seen=[](void* data,int n){const auto& s=static_cast<Context*>(data)->s;return n>0 && size_t(n)<s.dexSeen.size() && s.dexSeen[n]!=0;};
   source.caught=[](void* data,int n){const auto& s=static_cast<Context*>(data)->s;return n>0 && size_t(n)<s.dexCaught.size() && s.dexCaught[n]!=0;};
-  source.name=[](void*,int n){return ds_species(n);};
+  source.name=[](void* data,int n){return ds_species(n,static_cast<Context*>(data)->s.game);};
   pd_ui ui{};ui.dexSource=&source;ui.pressedId=-1;
   pd_game game{};pd_snapshot snapshot{};
   pd_ui_dex_view(&ui,c,&game,&snapshot,selected);

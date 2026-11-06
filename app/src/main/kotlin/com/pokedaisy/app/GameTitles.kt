@@ -44,8 +44,11 @@ object GameTitles {
         "0862ec35b24de5c7e2dcb88c9eea0873110d755c" to "Pokémon Platinum",
         "4fcded0e2713dc03929845de631d0932ea2b5a37" to "Pokémon HeartGold",
         "f8dc38ea20c17541a43b58c5e6d18c1732c7e582" to "Pokémon SoulSilver",
-        // Black (USA, Europe): the No-Intro dump (no decomp builds it).
+        // Black and White (USA, Europe): the No-Intro dumps.
         "26ad0b9967aa279c4a266ee69f52b9b2332399a5" to "Pokémon Black",
+        "bc696a0dfb448c7b3a8a206f0f8214411a039208" to "Pokémon White",
+        "e51e6dfb8678a3d19dcd2a10691b96a569ca0abb" to "Pokémon Black 2",
+        "b5d7490be7b415b8f1e672a53e978a9cc667e56a" to "Pokémon White 2",
         // The other Emeralds, by their own titles (No-Intro's dumps; no decomp builds them).
         "fe1558a3dcb0360ab558969e09b690888b846dd9" to "Pokémon Edición Esmeralda",
         "61c2eb2b380b1a75f0c94b767a2d4c26cd7ce4e3" to "Pokémon Smaragd-Edition",

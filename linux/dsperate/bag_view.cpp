@@ -5,11 +5,12 @@ extern "C" {
 #include "pd_ui.h"
 }
 void ds_bag_view(pd_canvas* c,const DsCompanion& s,int pocket,int selected,bool details){
-  pd_bag_source source{};source.ctx=const_cast<DsCompanion*>(&s);source.tabs=9;
-  source.pocketName=[](void*,int tab){
-    // Gen4Reader.kt's save-pocket order; these are UI labels, not another registry.
+  pd_bag_source source{};source.ctx=const_cast<DsCompanion*>(&s);source.tabs=ds_bag_tabs(s.game);
+  source.pocketName=[](void* data,int tab){
+    const auto game=static_cast<DsCompanion*>(data)->game;
     static const char* names[]={"ALL","ITEMS","KEY ITEMS","TMs/HMs","MAIL","MEDICINE","BERRIES","BALLS","BATTLE"};
-    return tab>=0 && tab<9?names[tab]:"";
+    if(tab<0||tab>=ds_bag_tabs(game))return "";
+    return names[ds_unova(game)&&tab>=4?tab+1:tab];
   };
   source.count=[](void* data,int tab){return ds_bag_count(*static_cast<DsCompanion*>(data),tab);};
   source.item=[](void* data,int tab,int row,pd_item* out,bool* quantity){
@@ -20,7 +21,7 @@ void ds_bag_view(pd_canvas* c,const DsCompanion& s,int pocket,int selected,bool 
       out->id=item.id;out->quantity=item.count;*quantity=item.pocket!=1;return true;
     }return false;
   };
-  source.name=[](void*,int id){return ds_item(id);};
+  source.name=[](void* data,int id){return ds_item(id,static_cast<DsCompanion*>(data)->game);};
   pd_snapshot snapshot{};snapshot.bagOk=s.valid;
   pd_ui ui{};ui.bagSource=&source;ui.bagPocket=pocket;ui.bagSelected=selected;
   ui.bagDetails=details;ui.pressedId=-1;pd_game game{};

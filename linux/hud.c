@@ -43,6 +43,8 @@ struct hud {
   const struct look *L;
   struct hud_hits *out;
   hud_mon_draw_fn monDraw;
+  hud_item_draw_fn itemDraw;
+  int repelItem;
   void *monCtx;
   int partyN;           // party members shown (0: PARTY off)
   struct pd_item ball[3];
@@ -160,16 +162,6 @@ static void party_row(struct hud *u, int x, int y) {
 }
 
 // RAILS' party: a row each (HudMonRow), the icon then Lv over the HP bar.
-void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx, hud_mon_draw_fn draw, int look) {
-  if (!s->valid || s->partyCount <= 0 || !draw)
-    return;
-  if (look < 0 || look >= PD_HUD_LOOKS)
-    look = 0;
-  struct hud u = {.c = c, .s = s, .L = &LOOKS[look], .monDraw = draw, .monCtx = ctx,
-                  .partyN = s->partyCount <= 6 ? s->partyCount : 6};
-  party_row(&u, EDGE, c->h - EDGE - PARTY_H);
-}
-
 static int party_column_h(const struct hud *u) {
   return u->partyN ? 2 * PAD + 2 + u->partyN * MON_ROW_H + (u->partyN - 1) * GAP : 0;
 }
@@ -283,7 +275,8 @@ static int count_w(const struct pd_item *b) {
 
 // One ball and its count (BallCount); Ruby / Sapphire keep no item icons: a drawn ball in its place.
 static int ball_count(struct hud *u, const struct pd_item *b, int x, int y) {
-  if (!pd_draw_item_icon(u->c, u->g, b->id, x, y, false))
+  bool drawn = u->itemDraw ? u->itemDraw(u->c, b->id, x, y) : pd_draw_item_icon(u->c, u->g, b->id, x, y, false);
+  if (!drawn)
     pd_draw_party_ball(u->c, x + (PD_ITEM_ICON - 20) / 2, y + (PD_ITEM_ICON - 20) / 2);
   char t[12];
   snprintf(t, sizeof t, "x%d", b->quantity);
@@ -342,7 +335,11 @@ static int repel_w(const struct hud *u, bool narrow) { return 2 * PAD + repel_in
 // draining green / yellow / red against the steps it started from.
 static void repel_inner(struct hud *u, int x, int y, bool narrow) {
   const struct hud_state *h = u->h;
-  pd_draw_item_icon(u->c, u->g, 86, x, y + 1, false); // the plain REPEL's (the game doesn't keep which)
+  // The game tracks steps, so use the plain Repel icon.
+  if (u->itemDraw)
+    u->itemDraw(u->c, u->repelItem, x, y + 1);
+  else
+    pd_draw_item_icon(u->c, u->g, 86, x, y + 1, false);
   int tx = x + PD_ITEM_ICON + 3, bar = narrow ? 30 : 46;
   char t[12];
   snprintf(t, sizeof t, "%d", h->repel);
@@ -660,6 +657,39 @@ bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snap
       pd_fill(c, x + w - 2, y, 2, hh, u.L->accent);
     }
   return true;
+}
+
+void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct hud_state *h,
+                 const struct pd_settings *st, void *ctx, hud_mon_draw_fn monDraw,
+                 hud_item_draw_fn itemDraw, int repelItem, bool minimal) {
+  for (int i = 0; i < c->w * c->h; i++)
+    c->px[i] = QUICK_CLEAR;
+  if (!s->valid)
+    return;
+  struct hud u = {.c = c, .s = s, .h = h, .st = st, .monDraw = monDraw, .monCtx = ctx, .itemDraw = itemDraw,
+                  .repelItem = repelItem,
+                  .L = &LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
+  u.partyN = !minimal && shows(&u, PD_HUD_PARTY) ? s->partyCount : 0;
+  u.balls = shows(&u, PD_HUD_BALLS) ? balls(s, u.ball) : 0;
+  u.repel = shows(&u, PD_HUD_REPEL) && h->repel > 0;
+  if (minimal) {
+    compact(&u);
+    return;
+  }
+  if (u.partyN)
+    party_row(&u, EDGE, c->h - EDGE - PARTY_H);
+  int width = column_w(&u, BOTTOM_UP, 3, false);
+  int bottom = c->h - EDGE - (tight(&u) ? PARTY_H + GAP : 0);
+  column(&u, BOTTOM_UP, 3, false, c->w - EDGE - width, width, 1, bottom, true);
+}
+
+void hud_ds_minimap(struct pd_canvas *c, const struct pd_settings *st, const char *name, hud_ds_map_fn draw) {
+  enum { W=104, H=64 };
+  struct hud u = {.c=c, .L=&LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
+  const int x=c->w-EDGE-minimap_w(W), y=EDGE;
+  panel(&u,x,y,minimap_w(W),minimap_h(H,1));
+  draw(c,x+PAD,y+PAD,W,H);
+  pd_text_fit(c,x+PAD,y+PAD+H+1,W,name,u.L->text,u.L->shadow);
 }
 
 uint32_t hud_key(const struct pd_snapshot *s, const struct hud_state *h, const struct pd_settings *st) {

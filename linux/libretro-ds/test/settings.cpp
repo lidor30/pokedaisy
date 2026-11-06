@@ -1,6 +1,9 @@
 // Settings changes go through real controller navigation and shared rendering.
 #include "companion_ui.h"
 #include "libretro.h"
+extern "C" {
+#include "../../hud.h"
+}
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -75,6 +78,22 @@ int main(int argc,char** argv){
     for(int i=0;i<mode;++i)press(ui,RETRO_DEVICE_ID_JOYPAD_UP);
     press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.layout==0);
   }
+  ui.setting=DsCompanionUi::HudMinimal;
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  reloaded.init(path);
+  assert(reloaded.hudMinimal && (reloaded.settings.hudHidden&(1<<PD_HUD_BALLS))
+         && (reloaded.settings.hudHidden&(1<<PD_HUD_REPEL)));
+  pd_snapshot field{};
+  field.valid=true;
+  const hud_state active{250,250,false,-1,-1};
+  pd_settings hudOptions{};
+  pd_settings_defaults(&hudOptions);
+  hud_ds_draw(&c,&field,&active,&hudOptions,nullptr,nullptr,
+              [](pd_canvas*,int id,int,int){assert(id==79);return true;},79,true);
   // Hostile/old preference values never index a label/button array out of bounds.
   ui.save();
   {std::ofstream file(ui.path,std::ios::app);file<<"ds_layout=999\nds_companionbtn=-1\nds_penspeed=oops\n";}
