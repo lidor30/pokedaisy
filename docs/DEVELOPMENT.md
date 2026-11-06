@@ -1098,6 +1098,12 @@ guessing:
    bag-read throttle in `NativeReader.kt` is file-level mutable state shared
    process-wide.
 
+**With an agent**: `make rom-support ROM=<rom> [SAVE=<save>]` (`scripts/rom_agent/`, its README) runs all of the
+above unattended with Claude Code in a worktree off `dev` - the brief is `scripts/rom_agent/prompt.md` - then checks
+the change itself (game data, translations, `make test-quick`, the manual, no ROM / save / home path in it) and opens
+a PR to `dev` (a draft while a check fails). Review it like any other: the agent is told to leave out anything it
+couldn't prove, and its PR lists what it checked and how.
+
 **pokeemerald-expansion hacks** (a "PRET x RHH" boot splash) can be done with
 no device at all: `scripts/capture_fixture_headless.sh <key> --script
 native-capture/boot/rhh_splash.txt`, plus extra hand-run captures with a varied

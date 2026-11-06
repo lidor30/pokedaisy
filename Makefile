@@ -18,7 +18,8 @@ export MON_ICONS
 .DEFAULT_GOAL := help
 
 .PHONY: help docs-shots docs-check submodules apk install run test clean shots preview menu-shots capture-image \
-        check gamedata stress test-roms test-quick version bump release-apk symbols release release-local
+        check gamedata stress test-roms test-quick version bump release-apk symbols release release-local \
+        rom-support
 
 # versionName / versionCode, read from app/build.gradle.kts.
 VERSION      := $(shell sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts)
@@ -139,3 +140,7 @@ capture-image: ## Build the Docker image the capture scripts use
 
 menu-shots: ## In-game party/pokedex/items screenshots of every ROM in host_roms.conf (KEYS="a b" to pick) -> native-capture/menu-shots/
 	scripts/screenshot_menus.sh $(KEYS)
+
+rom-support: ## A Claude agent adds support for ROM=<file> [SAVE=<file>] [ARGS="--name ..."] and opens a PR to dev (scripts/rom_agent/)
+	@test -n "$(ROM)" || { echo "usage: make rom-support ROM=<rom> [SAVE=<save>] [ARGS=...]"; exit 2; }
+	python3 scripts/rom_agent/add_rom_support.py "$(ROM)" $(if $(SAVE),--save "$(SAVE)") $(ARGS)
