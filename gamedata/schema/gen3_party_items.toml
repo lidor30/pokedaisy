@@ -76,6 +76,12 @@ kotlin = 'Set<Int>'
 type = 'ref'
 default = 'PP_ALL_MOVES_ITEMS'
 
+# sizeof(struct Pokemon): 100, SoulGold's 96 (NativeConfig.monStride).
+[field.monStride]
+kotlin = 'Int'
+type = 'int'
+default = 100
+
 [field.mail]
 kotlin = 'Set<Int>'
 type = 'ref'
