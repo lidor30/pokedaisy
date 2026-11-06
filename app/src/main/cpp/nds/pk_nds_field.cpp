@@ -31,6 +31,25 @@ static const PkNdsFieldGame PLATINUM_US_REV1 = {
     0x08,         // BattleContext.command follows two four-byte battler-state arrays
 };
 
+// French Platinum, CPUF rev 0 (SHA-1 62f9ec7a…): the US cart's code with its globals 0x1E0 higher and the battle template
+// 0x88 (each word found through the US code that uses it, scripts/port_nds.py). The structs are the US cart's.
+static const PkNdsFieldGame PLATINUM_FR = {
+    "Platinum (France)",
+    0x021C09BC,   // sFieldSystem
+    0x020EA3E0,   // gBattleApplicationTemplate
+    0x00, 0x10, 0x3C, 0x68,
+    0x1C,
+    0x14, 0x920, 0x920 + 0xCC,
+    0x1C,
+    0x021D1149,   // FieldMap_Main (overlay 5)
+    0x021BECE4,   // sSoundSystem (0x02101FD8) + 0xBCD0C
+    0x021CB144,   // sSeqPlayer
+    0,
+    8,
+    0x30,
+    0x08,
+};
+
 // HeartGold / SoulSilver (USA): pret/pokeheartgold's .xMAP (the same in both games' builds, compared) and field_system.h, checked on
 // the player's saves headless. FieldSystem: processManager 0, taskman 0x10, mapEvents 0x14 (MapEvents' wildEncounters at
 // 0x920: u8 walking rate, then u8 surfing), location 0x20, playerAvatar 0x40 (PlayerAvatar.state at 0x18), runningFieldMap
@@ -66,6 +85,26 @@ static const PkNdsFieldGame HEARTGOLD_DE = {
     0x021E5BC5,   // ov01_02206378's main in German overlay 1
     0x021D0534,   // sSoundWork (0x02111938) + 0xBEBFC
     0x021DF964,   // sSeqPlayer
+    1,
+    2,
+    0x30,
+    0x08,
+};
+
+// French HeartGold / SoulSilver, IPKF / IPGF rev 0 (SHA-1 dba64620… / 6ed98d44…): the US carts' code, the same word in both
+// games, their globals and field overlays 0x20 higher, the battle template 0x1C lower (scripts/port_nds.py). The callSet 2
+// functions sit low in the ARM9, where nothing moved.
+static const PkNdsFieldGame HEARTGOLD_FR = {
+    "HeartGold / SoulSilver (France)",
+    0x021D4178,   // sFieldSysPtr
+    0x020FA468,   // gOverlayTemplate_Battle
+    0x00, 0x10, 0x40, 0x6C,
+    0x18,
+    0x14, 0x920, 0x921,
+    0x20,
+    0x021E5C05,   // ov01_02206378's main in French overlay 1
+    0x021D0574,   // sSoundWork (0x02111978) + 0xBEBFC
+    0x021DF9A4,   // sSeqPlayer
     1,
     2,
     0x30,
@@ -166,6 +205,64 @@ static const PkNdsFieldGame WHITE_US = {
     0x158,
     0x38,
     0x020AA1D0,   // the BGM stack's depth
+};
+
+// French Black / White, IRBF / IRAF rev 0 (SHA-1 a559da54… / 28f07591…): the US / Europe carts' code, their statics and
+// field overlays 0x80 lower (scripts/port_nds.py), the structs and overlay numbers the same.
+static const PkNdsFieldGame BLACK_FR = {
+    "Black (France)",
+    0x021461C8,   // the GameSystem
+    0,
+    0, 0, 0, 0,
+    0,
+    0, 0, 0,
+    0,
+    0,
+    0x020AA13C,   // the BGM stack's first song
+    0x0214DFA4,   // sSeqPlayer
+    0,
+    9,            // pk_nds_call's Gen 5 jobs
+    0, 0,
+    5,
+    0x08, 0x08, 0x04, 21, 93,
+    0x14, 0x18,
+    0x14, 0x10, 0x50, 0x0F,
+    3,
+    1,
+    0x1C,
+    0x114,
+    0x154,
+    0x158,
+    0x38,
+    0x020AA130,   // the BGM stack's depth
+};
+
+static const PkNdsFieldGame WHITE_FR = {
+    "White (France)",
+    0x021461E8,   // the GameSystem
+    0,
+    0, 0, 0, 0,
+    0,
+    0, 0, 0,
+    0,
+    0,
+    0x020AA15C,   // the BGM stack's first song
+    0x0214DFC4,   // sSeqPlayer
+    0,
+    10,            // pk_nds_call's Gen 5 jobs
+    0, 0,
+    5,
+    0x08, 0x08, 0x04, 21, 93,
+    0x14, 0x18,
+    0x14, 0x10, 0x50, 0x0F,
+    3,
+    1,
+    0x1C,
+    0x114,
+    0x154,
+    0x158,
+    0x38,
+    0x020AA150,   // the BGM stack's depth
 };
 
 // Black 2 (USA / Europe, IREO rev 0): a new build of Black's engine, so every static moved, but the GameSystem, its procs,
@@ -271,10 +368,14 @@ const PkNdsFieldGame* pk_nds_field_game_rom(const uint8_t* rom, uint32_t romLen)
 const PkNdsFieldGame* pk_nds_field_game(const char code[4], int revision)
 {
     if (memcmp(code, "CPUE", 4) == 0 && revision == 1) return &PLATINUM_US_REV1;
+    if (memcmp(code, "CPUF", 4) == 0 && revision == 0) return &PLATINUM_FR;
     if ((memcmp(code, "IPKE", 4) == 0 || memcmp(code, "IPGE", 4) == 0) && revision == 0) return &HEARTGOLD_US;
     if ((memcmp(code, "IPKD", 4) == 0 || memcmp(code, "IPGD", 4) == 0) && revision == 0) return &HEARTGOLD_DE;
+    if ((memcmp(code, "IPKF", 4) == 0 || memcmp(code, "IPGF", 4) == 0) && revision == 0) return &HEARTGOLD_FR;
     if (memcmp(code, "IRBO", 4) == 0 && revision == 0) return &BLACK_US;
     if (memcmp(code, "IRAO", 4) == 0 && revision == 0) return &WHITE_US;
+    if (memcmp(code, "IRBF", 4) == 0 && revision == 0) return &BLACK_FR;
+    if (memcmp(code, "IRAF", 4) == 0 && revision == 0) return &WHITE_FR;
     if (memcmp(code, "IREO", 4) == 0 && revision == 0) return &BLACK2_US;
     if (memcmp(code, "IRDO", 4) == 0 && revision == 0) return &WHITE2_US;
     return 0;
@@ -324,12 +425,23 @@ static const PkNdsTouchRules TOUCH_RULES[] = {
         { 0x021E5AA1, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
         { 0x021E5A9D, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
     }, 0x10C },
+    // The French carts: the US apps at their French addresses (the ARM9's the same, the overlays 0x20 higher).
+    { &HEARTGOLD_FR, 0x0203BEF1, 0x19C, 0x4D0, {
+        { 0x02078E31, 0 },                                      // the party
+        { 0x021E5921, 0 },                                      // the options
+        { 0x021E5AC1, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
+        { 0x021E5ABD, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
+    }, 0x10C },
     // Platinum (pret/pokeplatinum, headless on a new game): its X menu is on the top screen (no field task to follow), its
     // battle's touch panels are HeartGold's (BattleSystem.battleSubscreen at 0x19C, its first font OAM at 0x4D0; the
     // command selection's states the same). The party and the options are top-screen pages, their touch screen a picture.
     { &PLATINUM_US_REV1, 0, 0x19C, 0x4D0, {}, 0, {
         { 0x0207E0B9, 0 },   // the party
         { 0x021D0D81, 0 },   // the options
+    } },
+    { &PLATINUM_FR, 0, 0x19C, 0x4D0, {}, 0, {
+        { 0x0207E159, 0 },   // the party
+        { 0x021D0F61, 0 },   // the options
     } },
 };
 
@@ -380,6 +492,9 @@ static const PkNdsGen5Touch GEN5_TOUCH[] = {
     { &BLACK_US, 0x0215FD0D, { 91, 111, 68, 0 }, 0x180, 0xB0, 0x98 },
     // White: Black's code, its overlays 0x20 higher (the X menu's function checked in White's capture of the same save).
     { &WHITE_US, 0x0215FD2D, { 91, 111, 68, 0 }, 0x180, 0xB0, 0x98 },
+    // The French carts: the X menu's function 0x90 lower (overlay 10 lost 0x10 before it), the rest the same.
+    { &BLACK_FR, 0x0215FC7D, { 91, 111, 68, 0 }, 0x180, 0xB0, 0x98 },
+    { &WHITE_FR, 0x0215FC9D, { 91, 111, 68, 0 }, 0x180, 0xB0, 0x98 },
     // Black 2 (headless on the player's save, its wild battle on Route 20 / Humilau's water): the apps renumbered
     // (party 165, trainer card 186, options 140; the Pokédex, 302, and the bag, 142, both screens), btlv_scd 0x1C4 into the core,
     // btlv_input 0xBC into it, the opened screen at +0xA4; the rest Black's. White 2: Black 2's code 0x40 higher (its X

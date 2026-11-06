@@ -143,11 +143,11 @@ shows a "not supported" notice).
 | Ruby                           | ES/DE/FR/IT/JP, rev 0-1    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Sapphire                       | USA, rev 0, 1 and 2        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Sapphire                       | ES/DE/FR/IT/JP, rev 0-1    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
-| Platinum (DS)                  | USA rev 1                  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
-| HeartGold (DS)                 | USA, Germany rev 0         |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
-| SoulSilver (DS)                | USA, Germany rev 0         |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
-| Black (DS)                     | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
-| White (DS)                     | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| Platinum (DS)                  | USA rev 1, France rev 0    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| HeartGold (DS)                 | USA, DE, FR rev 0          |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
+| SoulSilver (DS)                | USA, DE, FR rev 0          |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
+| Black (DS)                     | USA/Europe, France         |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| White (DS)                     | USA/Europe, France         |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Black 2 (DS)                   | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | White 2 (DS)                   | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Origin HeartGold (DS)          | 4.0.3 English 1.0.0        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |

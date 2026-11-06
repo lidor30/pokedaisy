@@ -2016,11 +2016,11 @@ class PokeDaisyActivity : Activity() {
             // Its tables are read in the background (NdsArt.prefetch); the core may start first, so read them here then.
             { (com.pokedaisy.app.companion.data.OriginHeartGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readOrigin(r))?.wildRates ?: IntArray(0) }
         } else when (ndsCode) {
-            "CPUE" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
-            "IPKE", "IPKD" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
-            "IPGE", "IPGD" -> com.pokedaisy.app.companion.data.SOULSILVER_WORLD::wildRates
-            "IRBO" -> { { com.pokedaisy.app.companion.data.BLACK_WORLD.wildRateWords() } }
-            "IRAO" -> { { com.pokedaisy.app.companion.data.WHITE_WORLD.wildRateWords() } }
+            "CPUE", "CPUF" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
+            "IPKE", "IPKD", "IPKF" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
+            "IPGE", "IPGD", "IPGF" -> com.pokedaisy.app.companion.data.SOULSILVER_WORLD::wildRates
+            "IRBO", "IRBF" -> { { com.pokedaisy.app.companion.data.BLACK_WORLD.wildRateWords() } }
+            "IRAO", "IRAF" -> { { com.pokedaisy.app.companion.data.WHITE_WORLD.wildRateWords() } }
             "IREO" -> { { com.pokedaisy.app.companion.data.BLACK2_WORLD.wildRateWords() } }
             "IRDO" -> { { com.pokedaisy.app.companion.data.WHITE2_WORLD.wildRateWords() } }
             else -> null

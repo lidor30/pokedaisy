@@ -310,6 +310,14 @@ val GEN4_PLATINUM_US = Gen4Config(
     ),
 )
 
+/** French Platinum (CPUF rev 0, SHA-1 62f9ec7a…): the US cart's code and save layout, its globals 0x1E0 higher and the
+ * battle template 0x88 (scripts/port_nds.py; nds/pk_nds_field.cpp's PLATINUM_FR has the same). */
+val GEN4_PLATINUM_FR = GEN4_PLATINUM_US.copy(
+    saveDataPtr = 0x021C0974,
+    battle = GEN4_PLATINUM_US.battle!!.copy(fieldSystemPtr = 0x021C09BC, battleTemplate = 0x020EA3E0),
+    townMap = GEN4_PLATINUM_US.townMap!!.copy(fieldSystemPtr = 0x021C09BC),
+)
+
 /**
  * Pokémon HeartGold / SoulSilver (USA; pret/pokeheartgold builds both byte for byte, sha1 4fcded0e… / f8dc38ea…). The save
  * sections' offsets are the save file's (the body in RAM is that block): party, trainer, bag and location found in the
@@ -400,6 +408,11 @@ val GEN4_ORIGIN_HEARTGOLD = gen4HeartGoldFamily(saveDataPtr = 0x021D11B4, fieldS
 /** German SoulSilver rev 0 shares HeartGold's globals and save layout (IPGD, SHA-1 576cdb7e…). */
 val GEN4_SOULSILVER_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138, battleTemplate = 0x020FA438)
 
+/** French HeartGold / SoulSilver rev 0 (IPKF / IPGF, SHA-1 dba64620… / 6ed98d44…): the US carts' save layout, the two
+ * globals 0x20 higher, the battle template 0x1C lower (scripts/port_nds.py; pk_nds_field.cpp's HEARTGOLD_FR). */
+val GEN4_HEARTGOLD_FR = gen4HeartGoldFamily(saveDataPtr = 0x021D2248, fieldSystemPtr = 0x021D4178, battleTemplate = 0x020FA468)
+val GEN4_SOULSILVER_FR = gen4HeartGoldFamily(saveDataPtr = 0x021D2248, fieldSystemPtr = 0x021D4178, battleTemplate = 0x020FA468)
+
 /** A DS game ([readGen4Telemetry], [readGen5Telemetry]): two screens, its own look and tables. */
 val GameKind?.isDsGame: Boolean get() = this == GameKind.PLATINUM || isHgss || isGen5
 
@@ -412,9 +425,18 @@ val GameKind?.isBw2: Boolean get() = this == GameKind.BLACK2 || this == GameKind
 
 /** The Gen 4 config for [kind], or null. */
 fun gen4ConfigFor(kind: GameKind?, code: String = romGameCode): Gen4Config? = when (kind) {
-    GameKind.PLATINUM -> GEN4_PLATINUM_US
-    GameKind.HEARTGOLD -> if (originHeartGold) GEN4_ORIGIN_HEARTGOLD else if (code == "IPKD") GEN4_HEARTGOLD_DE else GEN4_HEARTGOLD_US
-    GameKind.SOULSILVER -> if (code == "IPGD") GEN4_SOULSILVER_DE else GEN4_SOULSILVER_US
+    GameKind.PLATINUM -> if (code == "CPUF") GEN4_PLATINUM_FR else GEN4_PLATINUM_US
+    GameKind.HEARTGOLD -> when {
+        originHeartGold -> GEN4_ORIGIN_HEARTGOLD
+        code == "IPKD" -> GEN4_HEARTGOLD_DE
+        code == "IPKF" -> GEN4_HEARTGOLD_FR
+        else -> GEN4_HEARTGOLD_US
+    }
+    GameKind.SOULSILVER -> when (code) {
+        "IPGD" -> GEN4_SOULSILVER_DE
+        "IPGF" -> GEN4_SOULSILVER_FR
+        else -> GEN4_SOULSILVER_US
+    }
     else -> null
 }
 

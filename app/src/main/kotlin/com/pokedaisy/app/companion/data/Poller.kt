@@ -704,12 +704,17 @@ class TelemetrySampler {
             ndsSupported(code, rev) -> when (code) {
                 "IPKE" -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_HEARTGOLD_US }
                 "IPKD" -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_HEARTGOLD_DE }
+                "IPKF" -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_HEARTGOLD_FR }
                 "IPGD" -> { kind = GameKind.SOULSILVER; gen4Cfg = GEN4_SOULSILVER_DE }
+                "IPGF" -> { kind = GameKind.SOULSILVER; gen4Cfg = GEN4_SOULSILVER_FR }
                 "IPGE" -> { kind = GameKind.SOULSILVER; gen4Cfg = GEN4_SOULSILVER_US }
                 "IRBO" -> { kind = GameKind.BLACK; gen5Cfg = GEN5_BLACK }
                 "IRAO" -> { kind = GameKind.WHITE; gen5Cfg = GEN5_WHITE }
+                "IRBF" -> { kind = GameKind.BLACK; gen5Cfg = GEN5_BLACK_FR }
+                "IRAF" -> { kind = GameKind.WHITE; gen5Cfg = GEN5_WHITE_FR }
                 "IREO" -> { kind = GameKind.BLACK2; gen5Cfg = GEN5_BLACK2 }
                 "IRDO" -> { kind = GameKind.WHITE2; gen5Cfg = GEN5_WHITE2 }
+                "CPUF" -> { kind = GameKind.PLATINUM; gen4Cfg = GEN4_PLATINUM_FR }
                 else -> { kind = GameKind.PLATINUM; gen4Cfg = GEN4_PLATINUM_US }
             }
             else -> {
@@ -1172,10 +1177,13 @@ class TelemetrySampler {
          */
         const val NDS_SUPPORT = true
 
-        /** The DS carts the companion reads, by their header's game code (0x0C) and revision (0x1E): Platinum USA rev 1,
-         * HeartGold / SoulSilver USA / Germany (rev 0), Black, White, Black 2 and White 2 (USA / Europe, rev 0). The
-         * website's ROM check gets them through compat.json. */
-        val NDS_GAMES = mapOf("CPUE" to 1, "IPKE" to 0, "IPKD" to 0, "IPGE" to 0, "IPGD" to 0, "IRBO" to 0, "IRAO" to 0, "IREO" to 0, "IRDO" to 0)
+        /** The DS carts the companion reads, by their header's game code (0x0C) and revision (0x1E): Platinum USA rev 1 and
+         * France rev 0, HeartGold / SoulSilver USA / Germany / France (rev 0), Black and White (USA / Europe, France, rev 0),
+         * Black 2 and White 2 (USA / Europe, rev 0). The website's ROM check gets them through compat.json. */
+        val NDS_GAMES = mapOf(
+            "CPUE" to 1, "CPUF" to 0, "IPKE" to 0, "IPKD" to 0, "IPKF" to 0, "IPGE" to 0, "IPGD" to 0, "IPGF" to 0,
+            "IRBO" to 0, "IRBF" to 0, "IRAO" to 0, "IRAF" to 0, "IREO" to 0, "IRDO" to 0,
+        )
 
         /** [detectDs] and the library's [com.pokedaisy.app.CompanionSupport] both ask this. */
         fun ndsSupported(code: String?, revision: Int?): Boolean =

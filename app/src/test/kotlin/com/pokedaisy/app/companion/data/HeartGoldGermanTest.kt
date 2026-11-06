@@ -27,7 +27,7 @@ class HeartGoldGermanTest {
         assertTrue(WideScreen.ndsKnows("IPKD", 0))
         assertTrue(supported("IPGD", 0))
         assertTrue(WideScreen.ndsKnows("IPGD", 0))
-        for ((code, rev) in listOf("IPKD" to 1, "IPKD" to 255, "IPKF" to 0, "CPUD" to 0, "CPUF" to 0, "IPGD" to 1, "IPGD" to 255)) {
+        for ((code, rev) in listOf("IPKD" to 1, "IPKD" to 255, "IPKI" to 0, "CPUD" to 0, "CPUI" to 0, "IPGD" to 1, "IPGD" to 255)) {
             assertFalse("$code rev $rev", supported(code, rev))
             assertFalse("$code rev $rev", WideScreen.ndsKnows(code, rev))
         }

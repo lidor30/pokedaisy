@@ -429,6 +429,21 @@ val GEN5_WHITE = GEN5_BLACK.copy(
     townMapZones = townMapZonesWhite,
 )
 
+/** French Black (IRBF rev 0, sha1 a559da54…): the US / Europe cart's code and save layout, its statics 0x80 lower
+ * (scripts/port_nds.py; pk_nds_field.cpp's BLACK_FR). */
+val GEN5_BLACK_FR = GEN5_BLACK.copy(
+    saveControlPtr = 0x020A7218,
+    gameSystemPtr = 0x021461C8,
+    battle = Gen5Battle(gameSystemPtr = 0x021461C8, offView = 0x54),
+)
+
+/** French White (IRAF rev 0, sha1 28f07591…): as [GEN5_BLACK_FR], from White's statics. */
+val GEN5_WHITE_FR = GEN5_WHITE.copy(
+    saveControlPtr = 0x020A7238,
+    gameSystemPtr = 0x021461E8,
+    battle = Gen5Battle(gameSystemPtr = 0x021461E8, offView = 0x54),
+)
+
 /**
  * Pokémon Black 2 (USA / Europe, IREO rev 0, sha1 e51e6dfb…): a new build of Black's engine, every static moved but the
  * structs kept (each found again through the code that uses it in Black and Black 2, then checked in headless captures of
@@ -474,9 +489,9 @@ val GEN5_WHITE2 = GEN5_BLACK2.copy(
 )
 
 /** The Gen 5 config for [kind], or null. */
-fun gen5ConfigFor(kind: GameKind?): Gen5Config? = when (kind) {
-    GameKind.BLACK -> GEN5_BLACK
-    GameKind.WHITE -> GEN5_WHITE
+fun gen5ConfigFor(kind: GameKind?, code: String = romGameCode): Gen5Config? = when (kind) {
+    GameKind.BLACK -> if (code == "IRBF") GEN5_BLACK_FR else GEN5_BLACK
+    GameKind.WHITE -> if (code == "IRAF") GEN5_WHITE_FR else GEN5_WHITE
     GameKind.BLACK2 -> GEN5_BLACK2
     GameKind.WHITE2 -> GEN5_WHITE2
     else -> null

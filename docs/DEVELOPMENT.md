@@ -2684,9 +2684,9 @@ RetroAchievements' views are the file.
 
 ## Nintendo DS (melonDS)
 
-Platinum (USA rev 1, `CPUE`), HeartGold / SoulSilver (USA and Germany rev 0, `IPKE` / `IPGE` / `IPKD` / `IPGD`), Black / White (USA / Europe, `IRBO` /
-`IRAO`) and Black 2 / White 2 (USA / Europe, `IREO` / `IRDO`; the Gen 5 carts are DSi enhanced and run in DS mode) run on
-melonDS, with the companion, EXPAND and STEADY music.
+Platinum (USA rev 1, `CPUE`; France rev 0, `CPUF`), HeartGold / SoulSilver (USA, Germany and France rev 0, `IPKE` / `IPGE` / `IPKD` / `IPGD` /
+`IPKF` / `IPGF`), Black / White (USA / Europe, `IRBO` / `IRAO`; France, `IRBF` / `IRAF`) and Black 2 / White 2 (USA / Europe, `IREO` / `IRDO`;
+the Gen 5 carts are DSi enhanced and run in DS mode) run on melonDS, with the companion, EXPAND and STEADY music.
 
 **The core.** `third_party/melonds` (a submodule pinned to upstream 1.1) builds its core library only, with the
 software 3D renderer (unthreaded: on the emulation thread, since melonDS's render thread raced fast-forward's frame skip
@@ -2742,6 +2742,21 @@ headlessly, with the captured state kept locally. `HeartGoldGermanTest` relocate
 to exercise the shared party, bag, dex and map layout without bundling another player's state.
 
 German SoulSilver rev 0 (`IPGD`, SHA-1 `576cdb7eec728c49aed85b9dd7e1e084ba1f08f9`) shares these globals and the call ABI. Other German generations remain outside this change.
+
+**French carts** (2026-11-06; Platinum `CPUF` rev 0, SHA-1 `62f9ec7a…`, HeartGold `IPKF` `dba64620…`, SoulSilver `IPGF` `6ed98d44…`, Black `IRBF`
+`a559da54…`, White `IRAF` `28f07591…`): the US / Europe builds with the text changed, so the same overlays, the same file paths and text banks, the same
+save layouts; only addresses moved. **Other languages** go the same way: `scripts/port_nds.py US.nds OTHER.nds w:GLOBAL c:CODE[@OVERLAY] ...`
+maps each word (name the overlay for code: overlays overlap, and overlay 10 of Black / White shifts part-way through). What moved: HG / SS's globals +0x20,
+`gOverlayTemplate_Battle` -0x1C, the field overlays +0x20, the low ARM9 functions not at all (callSet 2 serves both); Platinum's globals +0x1E0, the
+battle template +0x88, its functions by 0x14 to 0xA4 (`CallFns PLATINUM_FR`, callSet 8; its own rev 0 is the US rev 1's code as far as anything here reads);
+Black / White's statics and overlays -0x80, overlay 10's FLDSKILL and X menu -0x90 (`BLACK_FR` / `WHITE_FR`, callSets 9 / 10). The US saves load in every one
+of them (White on Black's, as in English), so each was run headless next to its US cart with one script: field bits identical frame for frame, every pointer at
+its offset. `TOUCH_RULES` and `GEN5_TOUCH` have them, so `DsLayout.followed` is on: the X menu, the party, options and Pokédex pages, the battle's panels all
+reported as on the US carts (`childInit` equal to each table's word). PC, FLY (Black and White: the platform's zone header given FLY's bit, then on to Accumula), wild battles (Platinum and
+HG through their own WildBattle commands; Black and White on Route 1) and EXPAND too: `widecheck`'s counts equal the US carts' on HG, Black and White; Platinum (warped to Floaroma, no US state to compare) by its `wideshot`. Platinum had no save, so a new game was played headless (Rowan's intro
+wants a *touch* at each yes / no: A only nags, and its next question comes after the text ends), the party given by script, VAR_PLAYER_STARTER poked so the X menu shows
+POKéMON. `FrenchDsTest` checks the configs through the US fixtures with the globals moved, and the names and art on the carts. The three French Gen 4 dumps at hand are tagged
+`[b]` in their set's naming; their code and text matched everything checked here, and the app goes by the header, so a cleaner dump runs too (only its library name would fall back to the file's). Black 2 / White 2 in French aren't added.
 
 **Origin HeartGold** (v4.0.3, English patch 1.0.0-rc8 applied to the US HeartGold; SHA-1 `a54a647599d59ed0060dfc4375c289d6e041318a`):
 Yannanfei TB's hack, rebuilt by Alex on hg-engine over the *Japanese* HeartGold, so its header is a real Japanese HeartGold's

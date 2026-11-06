@@ -68,8 +68,25 @@ const CallFns PLATINUM = {
     0, 0,
 };
 
-// pret/pokeheartgold's .xMAP: every address the same in the US HeartGold / SoulSilver builds and German
-// HeartGold / SoulSilver rev 0 (checked against its ARM9, including Task_RunScripts' calls and environment layout).
+// French Platinum (CPUF rev 0): the US cart's functions, found by their code (scripts/port_nds.py); the structs and the
+// script ids are the US cart's.
+const CallFns PLATINUM_FR = {
+    0x0203E925, 0x02050B09, 0x0203EB5D, 0x0203E8BD, 0x0200B37D, 0x02023801, 0x0203F005,
+    0x020707BD, 0x020709E5, 0x0203A9C5, 0x0207A309, 0x0207A19D, 0x020706E1, 0x02070715, 0x020509A9, 0x0202BE71, 0x0202B7C9,
+    0x0C, 0x9C,
+    0x0A, 0x0C,
+    1, 1,
+    2018,
+    11,
+    13, 7, 15, 16, 17,
+    4,
+    0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0,
+    0, 0,
+};
+
+// pret/pokeheartgold's .xMAP: every address the same in the US HeartGold / SoulSilver builds and the German and French
+// ones, rev 0 (checked against their ARM9s, including Task_RunScripts' calls and environment layout).
 const CallFns HEARTGOLD = {
     0, 0, 0,
     0x0203FE0D,   // ScriptJump
@@ -197,6 +214,40 @@ const Gen5Fns WHITE = {
     },
 };
 
+// French Black / White (IRBF / IRAF rev 0): the US / Europe functions, found by their code in the same overlays
+// (scripts/port_nds.py), overlay 21 and the start of overlay 10 0x80 lower, overlay 10 from FLDSKILL on 0x90.
+const Gen5Fns BLACK_FR = {
+    0x021461C8,
+    0x10, 0x18, 0x20,
+    0x02189FF5,
+    0x0200565D,
+    0x02012109,
+    0x021586E9,
+    10090,
+    0x0215E7B1, 0x0215E985, 0x0215E9A9,
+    4,
+    {
+        {0x02189FF4, 0xB082B5F8}, {0x021586E8, 0x1C0DB538}, {0x021588A0, 0xB083B5F0},
+        {0x0215E7B0, 0xB08AB5F8}, {0x0215E984, 0x1C02B510}, {0x0215E9A8, 0x1C03B538},
+    },
+};
+
+const Gen5Fns WHITE_FR = {
+    0x021461E8,
+    0x10, 0x18, 0x20,
+    0x0218A015,
+    0x0200565D,
+    0x02012109,
+    0x02158709,
+    10090,
+    0x0215E7D1, 0x0215E9A5, 0x0215E9C9,
+    4,
+    {
+        {0x0218A014, 0xB082B5F8}, {0x02158708, 0x1C0DB538}, {0x021588C0, 0xB083B5F0},
+        {0x0215E7D0, 0xB08AB5F8}, {0x0215E9A4, 0x1C02B510}, {0x0215E9C8, 0x1C03B538},
+    },
+};
+
 // Black 2 (IREO rev 0): Black's functions in a new build, each found by its code (BLs masked) - overlay 12 holds what
 // Black's 10 did, 36 the field's event check (Black's 21) - and checked headless on the player's save (the PC, FLY).
 const Gen5Fns BLACK2 = {
@@ -249,7 +300,13 @@ uint32_t lastResults[PK_NDS_MAX_RESULTS];
 const CallFns* fnsFor(const PkNdsFieldGame* game)
 {
     if (!game || !game->fieldMapMain) return nullptr;
-    return game->callSet == 1 ? &PLATINUM : game->callSet == 2 ? &HEARTGOLD : game->callSet == 7 ? &ORIGIN_HEARTGOLD : nullptr;
+    switch (game->callSet) {
+    case 1: return &PLATINUM;
+    case 2: return &HEARTGOLD;
+    case 7: return &ORIGIN_HEARTGOLD;
+    case 8: return &PLATINUM_FR;
+    default: return nullptr;
+    }
 }
 
 const Gen5Fns* gen5FnsFor(const PkNdsFieldGame* game)
@@ -260,6 +317,8 @@ const Gen5Fns* gen5FnsFor(const PkNdsFieldGame* game)
     case 4: return &WHITE;
     case 5: return &BLACK2;
     case 6: return &WHITE2;
+    case 9: return &BLACK_FR;
+    case 10: return &WHITE_FR;
     default: return nullptr;
     }
 }
