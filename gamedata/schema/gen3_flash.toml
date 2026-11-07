@@ -56,6 +56,31 @@ type = 'long'
 kotlin = 'List<Long>'
 type = 'long_list'
 
+# The party menu's badge check for field moves (CursorCB_FieldMove's `cmp rN, #6; bhi; FLAG_BADGE01_GET + the move;
+# bl FlagGet`), for the games with hacks edited in place on this code: 0 = not read (the retail rule). See flashBadgeRule.
+[field.badgeCheck]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# CRC32 of the 16 retail bytes at [badgeCheck].
+[field.badgeCheckCrc]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# A CFRU hack's own badge rule for field moves (bool fn(fieldMove)), found at run time by flashBadgeRule; 0 = none.
+[field.badgeFn]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# FIELD_MOVE_FLASH: the field move's number the badge rule takes.
+[field.fieldMove]
+kotlin = 'Int'
+type = 'int'
+default = 0
+
 # MOVE_FLASH.
 [field.flashMove]
 kotlin = 'Int'

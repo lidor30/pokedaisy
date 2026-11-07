@@ -354,6 +354,10 @@ fieldCallbacks = [0x080C9B74] # FieldCallback_Flash
 partyMenuSlotId = 0x0203B0A9
 mapHeader = 0x02036DFC
 codeCrcs = [0x07BEBC3A, 0x95A07BD8, 0xEFB4F176]
+# CursorCB_FieldMove's badge check (0x081245A4 + 0x78): the hacks edited into rev 0 keep it (Ash Gray, Ghost Grey, Let's Go,
+# Odyssey, Ultra Violet), patch it to "always" (Gaia, Orange Islands, Rocket Edition) or jump to CFRU's own (Unbound & co.).
+badgeCheck = 0x0812461C
+badgeCheckCrc = 0xD3F21DE4
 
 # The TM screen (TmTeach.kt) and FLASH (Flash.kt): retail LeafGreen rev 0, pret's pokefirered at the pinned commit built as
 # leafgreen (byte for byte retail, SHA1 574fa542...), and its ELF.

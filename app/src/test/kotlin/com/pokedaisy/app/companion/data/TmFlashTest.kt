@@ -191,6 +191,66 @@ class TmFlashTest {
     }
 
     @Test
+    fun noBadgeWhereTheHackTookTheCheckOut() {
+        assertEquals(FlashResult.OK, useFlash(fns, flash.copy(badgeFlag = NO_BADGE), false, flashGame().apply { badge = false }))
+    }
+
+    @Test
+    fun aHacksOwnBadgeRuleIsAsked() {
+        val rule = 0x08A0325DL
+        val asked = mutableListOf<Int>()
+        fun g(yes: Boolean): GameCalls {
+            val d = flashGame().apply { badge = false }
+            return object : GameCalls by d {
+                override fun call(fn: Long, a0: Int, a1: Int, a2: Int, a3: Int): Long =
+                    if (fn == rule) { asked += a0; if (yes) 1 else 0 } else d.call(fn, a0, a1, a2, a3)
+            }
+        }
+        val own = flash.copy(badgeFn = rule)
+        assertEquals(FlashResult.OK, useFlash(fns, own, false, g(true)))
+        assertEquals(FlashResult.NO_BADGE, useFlash(fns, own, false, g(false)))
+        assertEquals(listOf(0, 0), asked)   // FIELD_MOVE_FLASH
+    }
+
+    @Test
+    fun theHacksOnRetailCodeGoByItsTables() {
+        assertSame(TM_FIRERED_REV0, tmFnsFor(GameKind.UNBOUND, "BPRE", 0x9E, hack = false))   // Unbound FR's revision byte
+        assertSame(TM_FIRERED_REV0, tmFnsFor(GameKind.FIRERED, "PUVV", 0, hack = false))      // Ultra Violet
+        assertSame(TM_FIRERED_REV0, tmFnsFor(GameKind.FIRERED, "BPRE", 0, hack = false))      // Ghost Grey, Let's Go...
+        assertSame(TM_EMERALD, tmFnsFor(GameKind.GLAZED, "BPEE", 0, hack = false))
+        assertNull(tmFnsFor(GameKind.AMETHYST, "BPRE", 0, hack = false))
+        assertNull(tmFnsFor(GameKind.EMERALD, "BPEE", 0, hack = true))                         // Recharged Emerald, Legacy
+        assertSame(FLASH_FIRERED_REV0, flashFnsFor(GameKind.GAIA, "BPRE", 0, hack = false))
+        assertSame(FLASH_EMERALD, flashFnsFor(GameKind.GLAZED, "BPEE", 0, hack = false))
+    }
+
+    /** The party menu's badge rule read from each hack edited into FireRed rev 0 (the ROMs the user has). */
+    @Test
+    fun theBadgeRuleIsReadFromTheRom() {
+        val want = mapOf(
+            "Pokemon - FireRed Version (USA).gba" to "retail", "Pokemon Ghost Grey (v1.0.4).gba" to "retail",
+            "Pokemon Ultra Violet (v1.22).gba" to "retail", "Pokemon Odyssey (v4.1.1).gba" to "retail",
+            "Pokemon Let's Go Pikachu.gba" to "retail", "Pokemon Gaia (v3.2).gba" to "none",
+            "Pokemon Orange Islands.gba" to "none", "Pokemon FireRed Rocket Edition.gba" to "none",
+            "Pokemon Unbound (v2.1.1.1).gba" to "own 0x08A0325C", "Pokemon Radical Red (v4.1).gba" to "own 0x090B4E28",
+            "Pokemon GS Chronicles (v2.7.6).gba" to "own 0x09CBCAE8", "Pokemon Amethyst (v1.4.1).gba" to "own",
+            "Pokemon Sword and Shield Ultimate Plus (v1.2.1.2) (Casual Patch).gba" to "own 0x09484ED0",
+        ).filterKeys { File(RETAIL_ROM_DIR + it).isFile }
+        assumeTrue(want.size == 13)
+        for ((file, rule) in want) {
+            val rom = File(RETAIL_ROM_DIR + file).readBytes()
+            val got = flashBadgeRule(FLASH_FIRERED_REV0) { a, n -> val o = (a - 0x08000000L).toInt(); rom.copyOfRange(o, o + n) }
+            val seen = when {
+                got == null -> "off"
+                got.badgeFn != 0L -> if (rule == "own") "own" else "own 0x%08X".format(got.badgeFn)
+                got.badgeFlag == NO_BADGE -> "none"
+                else -> "retail"
+            }
+            assertEquals(file, rule, seen)
+        }
+    }
+
+    @Test
     fun anUnknownCallbackIsNeverCalled() {
         val g = flashGame().apply { postCallback = 0x08123457 }
         assertEquals(FlashResult.FAILED, useFlash(fns, flash, false, g))

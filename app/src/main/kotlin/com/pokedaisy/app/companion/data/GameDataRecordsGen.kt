@@ -623,6 +623,10 @@ val FLASH_FIRERED_REV0: FlashFns by lazy {
         partyMenuSlotId = 0x0203B0A9L,
         mapHeader = 0x02036DFCL,
         codeCrcs = listOf(0x07BEBC3AL, 0x95A07BD8L, 0xEFB4F176L),
+        // CursorCB_FieldMove's badge check (0x081245A4 + 0x78): the hacks edited into rev 0 keep it (Ash Gray, Ghost Grey, Let's Go,
+        // Odyssey, Ultra Violet), patch it to "always" (Gaia, Orange Islands, Rocket Edition) or jump to CFRU's own (Unbound & co.).
+        badgeCheck = 0x0812461CL,
+        badgeCheckCrc = 0xD3F21DE4L,
     )
 }
 

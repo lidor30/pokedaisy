@@ -61,7 +61,7 @@ In FireRed, LeafGreen and Emerald, `USE` on a TM or HM opens the game's own scre
 Like the other items, it only works while you're walking around, with no menu, conversation or battle open.
 
 > [!NOTE]
-> This works in FireRed, LeafGreen and Emerald, in every language PokeDaisy supports. Ruby and Sapphire would drop you back in their own bag afterwards, so there, and in other games, teach the move from the game's own bag.
+> This works in FireRed, LeafGreen and Emerald, in every language PokeDaisy supports, and in the hacks built on their code: Unbound, Radical Red, Gaia, Odyssey, Orange Islands, Ultra Violet, FireRed Rocket Edition, Ash Gray, Ghost Grey, Let's Go, Sword and Shield Ultimate Plus, GS Chronicles, Glazed, Emerald Kaizo and the randomized games. Each hack keeps its own TM rules (some never use a TM up). Ruby and Sapphire would drop you back in their own bag afterwards, so there, and in other games, teach the move from the game's own bag.
 
 ## Reusable TMs
 

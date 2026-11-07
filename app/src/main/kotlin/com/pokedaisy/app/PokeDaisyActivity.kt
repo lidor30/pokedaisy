@@ -459,10 +459,9 @@ class PokeDaisyActivity : Activity() {
 
     private fun retailFieldKey(): Pair<String, Boolean>? {
         if (romIsGameBoy || romIsNds) return null
-        // Untried on a randomized cart: kept to plain retail for now.
-        val hack = com.pokedaisy.app.companion.data.runningFireRedHack != null || com.pokedaisy.app.companion.data.runningEmeraldHack != null ||
-            com.pokedaisy.app.companion.data.runningRandomized != null ||
-            com.pokedaisy.app.companion.data.emeraldLegacy || com.pokedaisy.app.companion.data.romGameCode == com.pokedaisy.app.companion.data.KAIZO_TEXT
+        // A rebuild on retail's game code (Recharged Emerald, Emerald Legacy): none of retail's code. The hacks edited into
+        // retail in place (the FireRed ones, Kaizo, the randomized carts...) run its tables; the code CRCs decide.
+        val hack = com.pokedaisy.app.companion.data.runningEmeraldHack != null || com.pokedaisy.app.companion.data.emeraldLegacy
         return "$romCode/$romRev/${telemetry.snapshot.value.game}/${com.pokedaisy.app.companion.data.romGameCode}" to hack
     }
 
@@ -480,14 +479,20 @@ class PokeDaisyActivity : Activity() {
 
     private fun flashFns(): com.pokedaisy.app.companion.data.FlashFns? {
         val (key, hack) = retailFieldKey() ?: return null
+        // Rocket Edition / Ash Gray: their own player sprites never finish the field move's pose, so FLASH's cut-in waits
+        // forever with the controls locked (headless); their party menu's FLASH row is blank too.
+        val hackText = com.pokedaisy.app.companion.data.runningFireRedHack
+        if (hackText === com.pokedaisy.app.companion.data.fireRedHackRocketEdition || hackText === com.pokedaisy.app.companion.data.fireRedHackAshGray) return null
         val flash = com.pokedaisy.app.companion.data.flashFnsFor(telemetry.snapshot.value.game, romCode, romRev, hack) ?: return null
         flashCache?.let { (k, v) -> if (k == key) return v }
         if (!::engine.isInitialized || !engine.running) return null
-        val ok = runCatching {
-            com.pokedaisy.app.companion.data.flashCodeMatches(flash) { addr, len -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(addr, len) }
+        val read = { addr: Long, len: Int -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(addr, len) }
+        val found = runCatching {
+            if (com.pokedaisy.app.companion.data.flashCodeMatches(flash, read)) com.pokedaisy.app.companion.data.flashBadgeRule(flash, read) else null
         }.getOrElse { return null }
-        Log.i("pokedaisy", "FLASH: ${if (ok) "code found" else "code not found"}")
-        return flash.takeIf { ok }.also { flashCache = key to it }
+        Log.i("pokedaisy", "FLASH: ${when { found == null -> "code not found or badge rule unknown"; found.badgeFn != 0L -> "code found, the hack's badge rule"
+            found.badgeFlag < 0 -> "code found, no badge"; else -> "code found" }}")
+        return found.also { flashCache = key to it }
     }
 
     /** USE opens the game's TM screen for [itemId] here: the TM calls and the bag's (CheckBagHasItem, the party). */

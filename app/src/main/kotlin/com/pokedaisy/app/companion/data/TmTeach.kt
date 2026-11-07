@@ -57,11 +57,19 @@ data class TmFns(
 // TM_FIRERED_REV1 and TM_EMERALD are records in gamedata/gen3/records/ (GameDataRecordsGen.kt).
 
 /** The TM screen's calls for a ROM, by what the companion detected it as: retail FireRed rev 0 / 1, LeafGreen rev 0 / 1 and
- * Emerald, English from the records and every other language from [TM_PORTS] (scripts/port_field_items.py), not the hacks or
- * a randomized cart. Not Ruby / Sapphire: their party menu goes back to the bag by a fixed call (pokemon_menu.c's
- * sub_808B25C), with no exit to point at the field. The code CRCs still decide. */
+ * Emerald, English from the records and every other language from [TM_PORTS] (scripts/port_field_items.py), and the hacks
+ * edited into retail's code in place ([hack] false for them; true for a rebuild like Recharged Emerald or Emerald Legacy):
+ * FireRed rev 0's ([FIRERED_REV0_HACKS], Ultra Violet's PUVV, the FireRed-kind ones) and Emerald's (Glazed, Kaizo, the
+ * randomized cart). Their own TM rules (reusable, CFRU's TM51+ in the HMs' ids) are the game's. Not Ruby / Sapphire: their
+ * party menu goes back to the bag by a fixed call (pokemon_menu.c's sub_808B25C), with no exit to point at the field. The
+ * code CRCs still decide. */
 fun tmFnsFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean): TmFns? = when {
     hack -> null
+    // Amethyst keeps every function here as retail's, but CleanupOverworldWindowsAndTilemaps never came back there (headless:
+    // the game restarted at its title screen); something it calls is CFRU's own.
+    kind == GameKind.AMETHYST -> null
+    kind in FIRERED_REV0_HACKS || (kind == GameKind.FIRERED && gameCode == "PUVV") -> TM_FIRERED_REV0
+    kind == GameKind.GLAZED -> TM_EMERALD.takeIf { gameCode == "BPEE" }
     kind == GameKind.FIRERED && gameCode == "BPRE" -> when (revision) { 0 -> TM_FIRERED_REV0; 1 -> TM_FIRERED_REV1; else -> null }
     kind == GameKind.FIRERED && gameCode == "BPGE" -> when (revision) { 0 -> TM_LEAFGREEN_REV0; 1 -> TM_LEAFGREEN_REV1; else -> null }
     kind == GameKind.EMERALD && gameCode == "BPEE" -> TM_EMERALD

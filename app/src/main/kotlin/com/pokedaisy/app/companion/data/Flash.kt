@@ -17,7 +17,8 @@ package com.pokedaisy.app.companion.data
  */
 data class FlashFns(
     val flagGet: Long,
-    /** The field move's badge flag (FireRed FLAG_BADGE01_GET 0x820, Emerald FLAG_BADGE02_GET 0x868). */
+    /** The field move's badge flag (FireRed FLAG_BADGE01_GET 0x820, Emerald FLAG_BADGE02_GET 0x868); [NO_BADGE] where a hack
+     * took the party menu's badge check out ([flashBadgeRule]). */
     val badgeFlag: Int,
     /** FLAG_SYS_FLASH_ACTIVE / FLAG_SYS_USE_FLASH: set once the cave is lit (also by the game on map load). */
     val litFlag: Int,
@@ -35,6 +36,15 @@ data class FlashFns(
     val mapHeader: Long,
     /** CRC32 of each function's first 32 bytes: flagGet, setUpFieldMoveFlash, then each of [fieldCallbacks]. */
     val codeCrcs: List<Long>,
+    /** The party menu's badge check for field moves (CursorCB_FieldMove's `cmp rN, #6; bhi; FLAG_BADGE01_GET + the move;
+     * bl FlagGet`) and the CRC32 of its 16 retail bytes, on the code hacks are edited into (FireRed rev 0); 0 = not read. */
+    val badgeCheck: Long = 0,
+    val badgeCheckCrc: Long = 0,
+    /** A CFRU hack's own badge rule (`bool fn(u8 fieldMove)`, the one its party menu jumps to from [badgeCheck]), found by
+     * [flashBadgeRule]; 0 = the flag check. */
+    val badgeFn: Long = 0,
+    /** FIELD_MOVE_FLASH: what [badgeFn] is asked about (0 in FireRed and every CFRU hack seen). */
+    val fieldMove: Int = 0,
     /** MOVE_FLASH. */
     val flashMove: Int = 148,
     /** GetMonData's MON_DATA_MOVE1 / MON_DATA_IS_EGG. */
@@ -46,10 +56,18 @@ data class FlashFns(
 
 // FLASH_FIRERED_REV1 and FLASH_EMERALD are records in gamedata/gen3/records/ (GameDataRecordsGen.kt).
 
+/** [FlashFns.badgeFlag] where the party menu asks for no badge. */
+const val NO_BADGE = -1
+
 /** FLASH for a ROM, by what the companion detected it as: retail FireRed rev 0 / 1, LeafGreen rev 0 / 1, Emerald, Ruby and
- * Sapphire, English from the records and every other language from [FLASH_PORTS] (scripts/port_field_items.py). */
+ * Sapphire, English from the records and every other language from [FLASH_PORTS] (scripts/port_field_items.py); and the
+ * hacks edited into retail's code in place ([hack] false for them: a rebuild like Recharged Emerald or Emerald Legacy is
+ * true), FireRed rev 0's (Ultra Violet's PUVV and the CFRU hacks' kinds included; [flashBadgeRule] reads each one's badge rule)
+ * and Emerald's (Glazed, Kaizo, the randomized cart). The code CRCs still decide. */
 fun flashFnsFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean): FlashFns? = when {
     hack -> null
+    kind in FIRERED_REV0_HACKS || (kind == GameKind.FIRERED && gameCode == "PUVV") -> FLASH_FIRERED_REV0
+    kind == GameKind.GLAZED -> FLASH_EMERALD.takeIf { gameCode == "BPEE" }
     kind == GameKind.FIRERED && gameCode == "BPRE" -> when (revision) { 0 -> FLASH_FIRERED_REV0; 1 -> FLASH_FIRERED_REV1; else -> null }
     kind == GameKind.FIRERED && gameCode == "BPGE" -> when (revision) { 0 -> FLASH_LEAFGREEN_REV0; 1 -> FLASH_LEAFGREEN_REV1; else -> null }
     kind == GameKind.EMERALD && gameCode == "BPEE" -> FLASH_EMERALD
@@ -57,6 +75,55 @@ fun flashFnsFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean)
     kind == GameKind.EMERALD && gameCode == "AXPE" -> when (revision) { 0 -> FLASH_SAPPHIRE_REV0; 1, 2 -> FLASH_SAPPHIRE; else -> null }
     kind == GameKind.FIRERED || kind == GameKind.EMERALD -> FLASH_PORTS["$gameCode$revision"]
     else -> null
+}
+
+/** The kinds of the hacks edited into FireRed rev 0's code (the bag's tables say the same: fieldItemsForGame); FireRed's own
+ * kind covers Ultra Violet, Rocket Edition, Ash Gray, Ghost Grey and Let's Go. */
+val FIRERED_REV0_HACKS = setOf(
+    GameKind.ORANGE_ISLANDS, GameKind.UNBOUND, GameKind.RADICAL_RED, GameKind.ODYSSEY, GameKind.GAIA, GameKind.AMETHYST,
+    GameKind.SWORD_SHIELD, GameKind.GS_CHRONICLES,
+)
+
+/**
+ * The party menu's badge rule in the running ROM, read at [FlashFns.badgeCheck]:
+ * - retail's bytes: [flash] as it is (the badge flag);
+ * - the check patched to "yes" (`movs r0, #1` and nops where the flag sum and FlagGet were: Gaia, Orange Islands, Rocket
+ *   Edition): [NO_BADGE];
+ * - CFRU's hook (`ldr r0, =hook; bx r0` there, the hook `adds r0, r4, #0; bl rule; cmp r0, #0; beq; ldr r0, =ok; bx r0;
+ *   ldr r0, =no; bx r0`, ok / no being retail's own two ways on: Unbound, Radical Red, GS Chronicles, Sword and Shield,
+ *   Amethyst): the hack's rule as [FlashFns.badgeFn], asked about FIELD_MOVE_FLASH as its party menu does;
+ * - anything else: null, no FLASH.
+ */
+fun flashBadgeRule(flash: FlashFns, read: (addr: Long, len: Int) -> ByteArray): FlashFns? {
+    if (flash.badgeCheck == 0L) return flash
+    val b = read(flash.badgeCheck, 16)
+    if (java.util.zip.CRC32().apply { update(b) }.value == flash.badgeCheckCrc) return flash
+    val alwaysYes = byteArrayOf(0x01, 0x20) + ByteArray(8)
+    if (b.copyOfRange(4, 14).contentEquals(alwaysYes)) return flash.copy(badgeFlag = NO_BADGE)
+    return cfruBadgeFn(flash.badgeCheck, b, read)?.let { flash.copy(badgeFn = it) }
+}
+
+private fun u16(b: ByteArray, o: Int) = (b[o].toInt() and 0xFF) or ((b[o + 1].toInt() and 0xFF) shl 8)
+
+/** The rule CFRU's hook at [check] calls ([b]: the 16 bytes there), or null if it isn't that hook. */
+private fun cfruBadgeFn(check: Long, b: ByteArray, read: (addr: Long, len: Int) -> ByteArray): Long? {
+    if (u16(b, 0) != 0x4800 || u16(b, 2) != 0x4700) return null             // ldr r0, [pc, #0]; bx r0
+    val hook = u32(b.copyOfRange(4, 8)) and 0xFFFFFFFEL
+    if (hook !in 0x08000000L until 0x0A000000L) return null
+    val h = read(hook, 18)
+    if (u16(h, 0) != 0x1C20 || u16(h, 6) != 0x2800 || u16(h, 8) and 0xFF00 != 0xD000) return null   // adds r0, r4, #0; ...; cmp r0, #0; beq
+    val (hi, lo) = u16(h, 2) to u16(h, 4)
+    if (hi and 0xF800 != 0xF000 || lo and 0xF800 != 0xF800) return null      // bl
+    val off = (((hi and 0x7FF) shl 12) or ((lo and 0x7FF) shl 1)).let { if (it and 0x400000 != 0) it - 0x800000 else it }
+    val rule = hook + 2 + 4 + off
+    // ldr r0, =ok; bx r0; ldr r0, =no; bx r0: retail's own ways on past the check (FlagGet TRUE / the badge message).
+    fun target(at: Int): Long? {
+        val insn = u16(h, at)
+        if (insn and 0xFF00 != 0x4800 || u16(h, at + 2) != 0x4700) return null
+        val pool = ((hook + at + 4) and 0xFFFFFFFCL) + (insn and 0xFF) * 4
+        return u32(read(pool, 4)) and 0xFFFFFFFEL
+    }
+    return rule.takeIf { target(10) == check + 0x3C && target(14) == check + 0x16 && rule in 0x08000000L until 0x0A000000L }
 }
 
 /** Whether the running ROM has [flash]'s functions where they're expected. */
@@ -100,7 +167,12 @@ fun useFlash(fns: FieldItemFns, flash: FlashFns, busy: Boolean, g: GameCalls): F
             busy || g.call(fns.fieldControlsLocked) != 0L -> return FlashResult.NOT_NOW
         }
         val slot = flasher(p, flash, g) ?: return FlashResult.NO_FLASHER
-        if (g.call(flash.flagGet, flash.badgeFlag) != 1L) return FlashResult.NO_BADGE
+        val badge = when {
+            flash.badgeFn != 0L -> g.call(flash.badgeFn, flash.fieldMove) != 0L
+            flash.badgeFlag == NO_BADGE -> true
+            else -> g.call(flash.flagGet, flash.badgeFlag) == 1L
+        }
+        if (!badge) return FlashResult.NO_BADGE
         val oldCb2 = g.read(flash.menuFieldCallback, 4)
         val oldPost = g.read(flash.postMenuFieldCallback, 4)
         val oldSlot = g.read(flash.partyMenuSlotId, 1)
