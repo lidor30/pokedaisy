@@ -51,6 +51,12 @@ CLAUDE.md is already in your context. Then read, before changing anything:
 
 ## How to work
 
+0. **The repo's own process**: `.claude/skills/add-rom/SKILL.md` is how this repo adds a ROM, and you follow it. Run
+   `python3 scripts/rom_identify.py "{{ROM_PATH}}"`. It names the closest supported game, the saves to try and a playbook
+   (`.claude/skills/add-rom/playbooks/<id>.md`): read that playbook and work through it. The steps below say the same
+   things in brief. Where the skill says to ask the user or to wait for a commit, decide the way this brief says instead:
+   nobody is there, and the driver commits.
+
 1. **Identify it.** Which engine is this: a retail build (another language / revision, a collection dump, a
    randomized retail: `RetailDumps`, `RandomizedRetail`), retail code edited in place (Glazed, Kaizo, Ultra
    Violet, Rocket Edition), CFRU (Unbound, Radical Red), pokeemerald-expansion (which version: its RHHEXP block,
@@ -112,6 +118,11 @@ CLAUDE.md is already in your context. Then read, before changing anything:
 - **Budget**: you have a dollar limit. Spend it on proving addresses, not on exploring features the game is
   unlikely to get. If you're running low, finish the tier you're on, make `make test-quick` pass, and report.
   Use subagents for wide read-only searches so your own context stays on the mapping.
+
+## Before the report: the checklist
+
+Run `python3 scripts/rom_checklist.py "{{ROM_PATH}}" --no-run` (`--ds-port` for a DS language port). Fix every MISSING
+line it can fix, and look at each CHECK line. Anything you leave goes in `notes_for_reviewer` with the reason.
 
 ## When you're done: the report
 

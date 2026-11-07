@@ -19,7 +19,7 @@ export MON_ICONS
 
 .PHONY: help docs-shots docs-check submodules apk install run test clean shots preview menu-shots capture-image \
         check gamedata stress test-roms test-quick version bump release-apk symbols release release-local \
-        rom-support
+        rom-support rom-identify rom-checklist
 
 # versionName / versionCode, read from app/build.gradle.kts.
 VERSION      := $(shell sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts)
@@ -143,6 +143,14 @@ capture-image: ## Build the Docker image the capture scripts use
 
 menu-shots: ## In-game party/pokedex/items screenshots of every ROM in host_roms.conf (KEYS="a b" to pick) -> native-capture/menu-shots/
 	scripts/screenshot_menus.sh $(KEYS)
+
+rom-identify: ## What ROM=<file> is: its engine, closest supported game, saves and which add-rom playbook to follow
+	@test -n "$(ROM)" || { echo "usage: make rom-identify ROM=<rom> [ARGS=...]"; exit 2; }
+	python3 scripts/rom_identify.py "$(ROM)" $(ARGS)
+
+rom-checklist: ## Every place a newly supported ROM=<file> has to reach (detection, title, site, books, fixtures, guard)
+	@test -n "$(ROM)" || { echo "usage: make rom-checklist ROM=<rom> [ARGS=...]"; exit 2; }
+	python3 scripts/rom_checklist.py "$(ROM)" $(ARGS)
 
 rom-support: ## A Claude agent adds support for ROM=<file> [SAVE=<file>] and / or LIST=<file of games> [ARGS=...], one PR to dev (scripts/rom_agent/)
 	@test -n "$(ROM)$(LIST)" || { echo "usage: make rom-support ROM=<rom> [SAVE=<save>] | LIST=<file> [ARGS=...]"; exit 2; }
