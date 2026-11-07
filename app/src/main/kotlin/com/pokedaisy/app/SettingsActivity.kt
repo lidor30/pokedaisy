@@ -872,6 +872,7 @@ class SettingsActivity : ComponentActivity() {
             // OFF / ON / AUTO (the device's), cycled on a tap so each look shows at once: both screens switch together.
             SettingRow(tk("DARK MODE"), DarkMode.setting.label) {
                 DarkMode.set(this@SettingsActivity, DarkMode.setting.next())
+                revision++
             },
             // The game's frames per second and the app's CPU share, in the game's corner.
             SettingRow(tk("FPS / CPU"), onOff(prefs.showPerformance), subtitle = "Speed and CPU use in the game's corner") {

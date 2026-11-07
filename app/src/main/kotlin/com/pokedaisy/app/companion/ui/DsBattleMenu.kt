@@ -452,11 +452,15 @@ private fun Modifier.cursorCorners(on: Boolean, u: Dp, pulse: Float) = if (!on) 
 
 /** [cursorCorners]' brackets round this box, [px] a DS pixel (HeartGold's, headless: arms 10 long and 4 thick in a 1 px white
  * rim, 1 px out from the button and breathing a pixel further): also the companion's GEN 4 battle buttons' cursor. */
-internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawHgCursor(px: Float, pulse: Float, thick: Int = 4, arm: Int = 10) {
-    val out = (1 + pulse) * px
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawHgCursor(
+    px: Float, pulse: Float, thick: Int = 4, arm: Int = 10, insideOf: Int = -1,
+) {
+    // [insideOf] >= 0: the companion's buttons, whose brackets must stay in the button's own box (past it they ran over
+    // the tab's edge and the next button): the rim's outside on the box's edge at the pulse's widest ([insideOf]).
+    val rim = px
+    val out = if (insideOf >= 0) (pulse - insideOf) * px - rim else (1 + pulse) * px
     val t = thick * px
     val l = arm * px
-    val rim = px
     val w = size.width
     val h = size.height
     for ((cx, cy) in listOf(-1f to -1f, 1f to -1f, -1f to 1f, 1f to 1f)) {

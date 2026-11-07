@@ -105,11 +105,13 @@ fun BattleControlsScreen(
     style: com.pokedaisy.app.companion.BattleStyle = com.pokedaisy.app.companion.BattleStyle.GEN4,
     /** BATTLE INFO off: no INFO / SUGGESTIONS buttons. */
     battleInfo: Boolean = true,
+    /** RUN was picked: the pane stays up until the battle ends, with no "Waiting for your turn" (there's no turn coming). */
+    ranAway: Boolean = false,
 ) {
     if (style == com.pokedaisy.app.companion.BattleStyle.GEN5 && !gen1Buttons) {
         return Gen5BattleControls(
             activeMon, battleInput, battleInputState, party, modifier, showHints,
-            onShowInfo, onShowSuggestions, foeParty, foe, active, oneTapMoves, battleInfo,
+            onShowInfo, onShowSuggestions, foeParty, foe, active, oneTapMoves, battleInfo, ranAway,
         )
     }
     // battleInput.busy flips the instant a tap queues a synthetic press
@@ -239,7 +241,7 @@ fun BattleControlsScreen(
                         Text(tr("Confirming target…"), color = AppColors.muted, fontSize = 22.sp)
                     }
                     else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(tr("Waiting for your turn…"), color = AppColors.muted, fontSize = 22.sp)
+                        if (!ranAway) Text(tr("Waiting for your turn…"), color = AppColors.muted, fontSize = 22.sp)
                     }
                 }
             }
@@ -426,7 +428,7 @@ private fun ActionButtons(
         androidx.compose.runtime.CompositionLocalProvider(LocalHgPixel provides ds) {
         Box(
             Modifier.align(Alignment.TopCenter).fillMaxWidth().height(maxHeight - bottomRow - ds * 3)
-                .drawWithContent { drawContent(); if (panelCursor && out < 0.01f) drawHgCursor(ds.toPx(), panelPulse) },
+                .drawWithContent { drawContent(); if (panelCursor && out < 0.01f) drawHgCursor(ds.toPx(), panelPulse, insideOf = 1) },
         ) {
             Column(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - out }, verticalArrangement = Arrangement.spacedBy(ds * 2)) {
                 repeat(2) {
@@ -706,7 +708,7 @@ internal fun PlatinumButton(
             .then(
                 if (hgCursor) Modifier.drawWithContent {
                     drawContent()
-                    if (ownCursor && (focused || highlighted)) drawHgCursor(if (hgPixel.isSpecified) hgPixel.toPx() else 1.5f * gbaPixelPx(), pulse)
+                    if (ownCursor && (focused || highlighted)) drawHgCursor(if (hgPixel.isSpecified) hgPixel.toPx() else 1.5f * gbaPixelPx(), pulse, insideOf = 1)
                 } else Modifier.gbaFocusRing(focused || highlighted, shape),
             )
             .then(

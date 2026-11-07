@@ -728,6 +728,7 @@ private fun homeRows(
             val pick = DarkMode.setting.next()
             DarkMode.setting = pick
             s.setDarkMode(pick.ordinal)
+            changed()
         },
         // The game's frames per second and the app's CPU share, in the game's corner.
         SettingRow(tk("FPS / CPU"), onOff(s.showPerformance), subtitle = "Speed and CPU use in the game's corner") { s.setShowPerformance(!s.showPerformance); changed() },

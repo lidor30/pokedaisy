@@ -40,7 +40,7 @@ private const val MORE_COLUMNS = 4
 private const val TILE_FRACTION = 0.88f
 
 /** How far a tile's fill goes from a tab chip's grey toward the title window's white: lighter than the bar's chips. */
-private const val TILE_LIGHTEN = 0.55f
+private const val TILE_LIGHTEN = 0.75f
 
 /**
  * The MORE tab (left of the gear, at the bar's end): every tab this game has that isn't on the tab bar ([tabs], ids), as app

@@ -424,7 +424,12 @@ fun CompanionScreen(
                 val battleBackdrop by androidx.compose.animation.core.animateFloatAsState(
                     if (current == "BATTLE" && !game.isGameBoyGame) 1f else 0f, tween(220), label = "battle-backdrop",
                 )
-                if (battleBackdrop > 0f) BattleBackdrop(Modifier.fillMaxSize().graphicsLayer { alpha = battleBackdrop })
+                // BATTLE STYLE > GEN 5: Black's dark closed-ball screen instead, behind INFO / SUGGESTIONS too.
+                val gen5Backdrop = settings?.battleStyle == com.pokedaisy.app.companion.BattleStyle.GEN5 && !gen1Buttons
+                if (battleBackdrop > 0f) {
+                    if (gen5Backdrop) Gen5BattleBackdrop(Modifier.fillMaxSize().graphicsLayer { alpha = battleBackdrop })
+                    else BattleBackdrop(Modifier.fillMaxSize().graphicsLayer { alpha = battleBackdrop })
+                }
                 AnimatedVisibility(
                     visible = current == "ITEMS" && hasItemsBackdrop(game),
                     enter = fadeIn(tween(200)), exit = fadeOut(tween(200)), label = "tab-backdrop",
@@ -773,6 +778,7 @@ fun CompanionScreen(
                                         oneTapMoves = settings?.oneTapMoves ?: false,
                                         style = settings?.battleStyle ?: com.pokedaisy.app.companion.BattleStyle.GEN4,
                                         battleInfo = battleInfo,
+                                        ranAway = holdControls,
                                         onShowInfo = { battleShowControls = false },
                                         onShowSuggestions = { showSuggestions = true },
                                         foeParty = snapshot.enemyParty,

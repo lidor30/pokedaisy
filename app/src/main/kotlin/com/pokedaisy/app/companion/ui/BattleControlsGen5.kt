@@ -106,6 +106,8 @@ internal fun Gen5BattleControls(
     oneTapMoves: Boolean,
     /** BATTLE INFO off: no INFO / SUGGESTIONS plates. */
     battleInfo: Boolean = true,
+    /** RUN was picked: no "Waiting for your turn" band while the battle ends ([BattleControlsScreen]'s). */
+    ranAway: Boolean = false,
 ) {
     val busy = rememberBattleInputBusy(battleInput)
     var choosingMon by remember { mutableStateOf(false) }
@@ -196,6 +198,7 @@ internal fun Gen5BattleControls(
                         val message = when {
                             p == Gen5Page.BACK -> null
                             battleInputState == BATTLE_INPUT_TARGET_SELECT -> tr("Confirming target…")
+                            ranAway -> null
                             else -> tr("Waiting for your turn…")
                         }
                         if (message != null) MessageBand(g, message)
@@ -429,6 +432,16 @@ private fun DrawScope.drawPartyScreen(g: G5, alpha: Float) {
  * Between turns: the dark screen and the ball shut - dark red over grey, each half lighter inside its rim, the gap
  * between them the band's lens again (a sliver at the sides, open in the middle, the dark showing through).
  */
+/**
+ * BATTLE STYLE > GEN 5's background behind INFO / SUGGESTIONS (and the tab bar): Black's dark screen with its closed Poké
+ * Ball, as its controls show between turns, so leaving the controls for a pane doesn't drop back to HeartGold's mint.
+ */
+@Composable
+internal fun Gen5BattleBackdrop(modifier: Modifier = Modifier) {
+    // Already the night's colours: no DARK MODE scrim, like the controls themselves.
+    androidx.compose.foundation.Canvas(modifier) { drawClosedBall(G5.of(size.width, size.height), 1f) }
+}
+
 private fun DrawScope.drawClosedBall(g: G5, alpha: Float) {
     val d = g.d
     drawRect(Night, alpha = alpha)

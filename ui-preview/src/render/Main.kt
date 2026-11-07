@@ -1682,6 +1682,13 @@ fun main(args: Array<String>) {
         Shot("$g-battle-gen5-fight", bw, bh, bd, companion("PARTY", style = com.pokedaisy.app.companion.BattleStyle.GEN5) { battle(BATTLE_INPUT_ACTION_SELECT) }) {
             onNodeWithText("FIGHT!").performClick()
         },
+        // INFO / SUGGESTIONS from GEN 5's controls: Black's dark closed-ball screen behind them, not HeartGold's mint.
+        Shot("$g-battle-gen5-info", bw, bh, bd, companion("PARTY", style = com.pokedaisy.app.companion.BattleStyle.GEN5) { battle(BATTLE_INPUT_ACTION_SELECT) }) {
+            onNodeWithText("INFO").performClick()
+        },
+        Shot("$g-battle-gen5-suggestions", bw, bh, bd, companion("PARTY", style = com.pokedaisy.app.companion.BattleStyle.GEN5) { battle(BATTLE_INPUT_ACTION_SELECT) }) {
+            onNodeWithText("SUGGESTIONS").performClick()
+        },
         Shot("$g-battle-busy", bw, bh, bd, companion("PARTY", busy = true) { battle(BATTLE_INPUT_ACTION_SELECT) }),
         // A shiny wild foe: the battle screen's SHINY plate, INFO's SHINY pill and a double battle's sparkle.
         Shot("$g-battle-shiny", bw, bh, bd, companion("PARTY") { battle(BATTLE_INPUT_ACTION_SELECT).shinyFoe() }),
