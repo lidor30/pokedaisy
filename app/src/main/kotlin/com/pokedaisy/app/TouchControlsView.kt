@@ -49,6 +49,9 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
     /** A DS game: X and Y on screen too. */
     var dsButtons by mutableStateOf(false)
 
+    /** SKIN's pick for this game's system (null: the drawn buttons). */
+    var skin by mutableStateOf<com.pokedaisy.app.companion.InstalledSkin?>(null)
+
     /** Laid over a DS game's touch screen (one screen held sideways: DS LAYOUT's, PokeDaisyActivity.syncDsStage): a touch that starts on no
      * button goes on to whatever is under this view. Android splits fingers between views, so another finger can still
      * land on a button meanwhile. */
@@ -110,7 +113,7 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
                         onAction = { b, down -> onAction?.invoke(b, down) },
                         onPress = { buzz(style.vibration) },
                     ),
-                    gameAspect = gameAspect, gameBoy = !shoulders, ffOn = ffOn, ds = dsButtons,
+                    gameAspect = gameAspect, gameBoy = !shoulders, ffOn = ffOn, ds = dsButtons, skin = skin,
                     modifier = androidx.compose.ui.Modifier.fillMaxSize(),
                     onPlaced = { placed = it; onPlaced?.invoke() },
                 )

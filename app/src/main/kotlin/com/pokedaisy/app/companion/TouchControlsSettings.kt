@@ -25,6 +25,57 @@ enum class TouchPreset(val label: String) {
 
     /** [CLASSIC], smaller and pulled into the corners, START / SELECT beside the D-pad and A / B. */
     COMPACT(tk("COMPACT")),
+
+    /** [SIDES] (or [CLASSIC] where it falls back) the other way round: A / B on the left, the D-pad on the right, for
+     * left-handed players. L / R stay on their own sides. */
+    MIRRORED(tk("MIRRORED")),
+
+    /** Held sideways, [CLASSIC] with the D-pad and A / B raised to where thumbs rest, L / R right above them instead
+     * of in the top corners. Upright, [CLASSIC]. */
+    RAISED(tk("RAISED")),
+}
+
+/** How the buttons are drawn (LOOK). */
+enum class TouchLook(val label: String) {
+    /** See-through, a light edge to find them by: the HUD's GLASS. The default. */
+    GLASS(tk("GLASS")),
+    /** Filled in [TouchColors]' colour, nothing of the game showing through a button (OPACITY still applies). */
+    SOLID(tk("SOLID")),
+    /** Just the outlines and words; a press fills the button. */
+    OUTLINE(tk("OUTLINE")),
+    /** A handheld's buttons: raised, a shade under each, sinking when pressed, A / B in their colours. */
+    CONSOLE(tk("CONSOLE")),
+}
+
+/**
+ * The buttons' colours (COLORS), as ARGB: the body, its edge, the words and their shadow, and optionally A / B / X / Y
+ * in colours of their own. [fill]'s alpha is GLASS's see-through; the other looks take the colour solid.
+ */
+enum class TouchColors(
+    val label: String,
+    val fill: Long, val edge: Long, val ink: Long, val shadow: Long,
+    val a: Long? = null, val b: Long? = null, val x: Long? = null, val y: Long? = null,
+) {
+    DARK(tk("DARK"), 0xB8121620, 0xB0FFFFFF, 0xFFF4F6FA, 0xFF0C0F15),
+    LIGHT(tk("LIGHT"), 0xD0F2F3F7, 0xE0343846, 0xFF1E2130, 0xFFC4C8D2),
+    INDIGO(tk("INDIGO"), 0xD8463C8E, 0xFFB4AAF0, 0xFFFFFFFF, 0xFF1E1840),
+    GLACIER(tk("GLACIER"), 0xA06AA6D6, 0xFFE2F4FF, 0xFFFFFFFF, 0xFF1F4466),
+    SPICE(tk("SPICE"), 0xD8D9682A, 0xFFFFD2B0, 0xFFFFFFFF, 0xFF5A2408),
+    KIWI(tk("KIWI"), 0xD860A034, 0xFFDDF5C0, 0xFFFFFFFF, 0xFF24400E),
+    FUCHSIA(tk("FUCHSIA"), 0xD8C23A86, 0xFFFFC8E6, 0xFFFFFFFF, 0xFF4C0F32),
+    /** A grey body, A and B in deep berry, like the first handhelds. */
+    RETRO(tk("RETRO"), 0xE0C8C6BE, 0xE04A4A52, 0xFF2A2A30, 0xFFE8E6DE, a = 0xFF8E1F4E, b = 0xFF8E1F4E),
+    /** A dark body, A red, B yellow, X blue, Y green. */
+    PRIMARY(tk("PRIMARY"), 0xC0202028, 0xB0FFFFFF, 0xFFFFFFFF, 0xFF0C0F15, a = 0xFFD03A30, b = 0xFFE8B820, x = 0xFF3060C8, y = 0xFF2E9A48);
+
+    /** [button]'s own colour, or null for the body's. */
+    fun accent(button: TouchButton): Long? = when (button) {
+        TouchButton.A, TouchButton.TURBO_A -> a
+        TouchButton.B, TouchButton.TURBO_B -> b
+        TouchButton.X -> x
+        TouchButton.Y -> y
+        else -> null
+    }
 }
 
 /** Where the controls sit in their room with the phone upright (the gap beside the companion, or over the game). */
@@ -131,6 +182,13 @@ data class TouchControlsStyle(
     val show: TouchShow = TouchShow.AUTO,
     val preset: TouchPreset = TouchPreset.SIDES,
     val size: TouchSize = TouchSize.NORMAL,
+    /** How the buttons are drawn, and in which colours. */
+    val look: TouchLook = TouchLook.GLASS,
+    val colors: TouchColors = TouchColors.DARK,
+    /** SKIN: the imported Delta skin used for GBA games and for Game Boy games (its folder, [InstalledSkin.id]), or
+     * null for the drawn buttons. */
+    val skinGba: String? = null,
+    val skinGb: String? = null,
     /** How solid the controls are: 25 / 50 / 75 / 100 %. */
     val opacity: Int = 50,
     /** The extras switched on ([TouchButton.extra]). FF and the QUICK MENU to start with: a phone has no other way to
@@ -150,6 +208,18 @@ data class TouchControlsStyle(
     val portrait: TouchLayout = TouchLayout(),
     val landscape: TouchLayout = TouchLayout(),
 ) {
+    /** SKIN's pick for a game of [system] (DS: none yet). */
+    fun skinFor(system: SkinSystem): String? = when (system) {
+        SkinSystem.GBA -> skinGba
+        SkinSystem.GB -> skinGb
+        SkinSystem.DS -> null
+    }
+    fun withSkin(system: SkinSystem, id: String?) = when (system) {
+        SkinSystem.GBA -> copy(skinGba = id)
+        SkinSystem.GB -> copy(skinGb = id)
+        SkinSystem.DS -> this
+    }
+
     /** The moved controls in use for this orientation: none while LAYOUT is a preset. */
     fun layoutFor(portrait: Boolean) = if (!useCustom) TouchLayout() else if (portrait) this.portrait else landscape
     /** EDIT LAYOUT's DONE: [layout] for this orientation, and CUSTOM in use. */

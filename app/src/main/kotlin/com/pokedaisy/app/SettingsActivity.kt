@@ -929,7 +929,7 @@ class SettingsActivity : ComponentActivity() {
             SettingRow(tk("HOTKEYS"), onOff(prefs.hotkeysEnabled), opensPage = true, subtitle = "Button combos for states, FF and more") { screen = Screen.HOTKEYS },
             SettingRow(tk("QUICK MENU"), null, subtitle = "Actions on a held button", labelBadge = com.pokedaisy.app.companion.ui.quickMenuBadge(), opensPage = true) { screen = Screen.QUICK_MENU },
             // The on-screen buttons: when they show, layouts, size, extras, EDIT LAYOUT; the game picks it up on resume.
-            SettingRow(tk("TOUCH CONTROLS"), prefs.touchControlsStyle.show.label, labelBadge = com.pokedaisy.app.companion.ui.touchControlsBadge(), opensPage = true, subtitle = "The on-screen buttons: layout, size, extras") { screen = Screen.TOUCH },
+            SettingRow(tk("TOUCH CONTROLS"), prefs.touchControlsStyle.show.label, labelBadge = com.pokedaisy.app.companion.ui.touchControlsBadge(), opensPage = true, subtitle = "The on-screen buttons: layout, look, skins") { screen = Screen.TOUCH },
             groupTitle(tk("APP")),
             // Tap: look for a newer release on GitHub now.
             SettingRow(tk("VERSION"), if (updates.checking) tk("CHECKING…") else BuildConfig.VERSION_NAME) { updates.check(manual = true) },
@@ -1093,12 +1093,14 @@ class SettingsActivity : ComponentActivity() {
     private fun TouchScreen(m: GbaTextMetrics) {
         @Suppress("UNUSED_EXPRESSION") revision
         val style = prefs.touchControlsStyle
+        val skins = remember(revision) { skinStore.list() }
         val rows = com.pokedaisy.app.companion.ui.touchControlsRows(
             style, set = { prefs.touchControlsStyle = it; revision++ },
             onEdit = { touchEditing = true },
             underGame = prefs.portraitCompanionUnderGame.takeIf { !usesSecondScreen },
             setUnderGame = { prefs.portraitCompanionUnderGame = it; revision++ },
             expand = prefs.gameAspect == com.pokedaisy.app.companion.GameAspect.WIDE, touchShown = touchWouldShow(style),
+            skins = skins, skinUi = touchSkinUi, onImportSkin = { pickSkin.launch(arrayOf("*/*")) },
         )
         val shot by produceState<ImageBitmap?>(null) {
             value = withContext(Dispatchers.IO) {
@@ -1109,6 +1111,13 @@ class SettingsActivity : ComponentActivity() {
             touchStage(androidx.compose.ui.platform.LocalDensity.current.density), style, shot, m, Modifier.fillMaxSize(),
             underGame = prefs.portraitCompanionUnderGame, portraitRatio = prefs.portraitCompanionRatio,
             expand = prefs.gameAspect == com.pokedaisy.app.companion.GameAspect.WIDE, touchShown = touchWouldShow(style),
+            skins = skins, skinUi = touchSkinUi, setStyle = { prefs.touchControlsStyle = it; revision++ },
+            onDeleteSkin = { skin ->
+                skinStore.delete(skin.id)
+                val st = prefs.touchControlsStyle
+                prefs.touchControlsStyle = st.copy(skinGba = st.skinGba.takeIf { it != skin.id }, skinGb = st.skinGb.takeIf { it != skin.id })
+                revision++
+            },
         ) { mod ->
             OptionListWindow(m, mod) {
                 GroupedRows(rows, m, cursor = -1, onClick = { rows[it].onClick() })
@@ -1172,6 +1181,32 @@ class SettingsActivity : ComponentActivity() {
     private var removingOverlay by mutableStateOf<Pair<String, String>?>(null)
     /** REMOVE ALL's confirm is up. */
     private var removingAllOverlays by mutableStateOf(false)
+
+    /** TOUCH CONTROLS > SKINS: the imported Delta skins, their pick-lists, IMPORT SKIN's file picker. */
+    private val skinStore by lazy { com.pokedaisy.app.companion.DeltaSkinStore(java.io.File(filesDir, "skins")) }
+    private val touchSkinUi = com.pokedaisy.app.companion.ui.TouchSkinUi()
+    private val pickSkin = registerForActivityResult(ActivityResultContracts.OpenDocument()) { uri -> uri?.let { importSkin(it) } }
+
+    /** IMPORT SKIN: the picked .deltaskin (or a zip of them) into files/skins/; one new skin is picked for its system. */
+    private fun importSkin(uri: Uri) {
+        Thread {
+            val result = runCatching { contentResolver.openInputStream(uri)?.use { skinStore.import(it) } }.getOrNull()
+                ?: com.pokedaisy.app.companion.DeltaSkinStore.ImportResult(emptyList(), listOf("it couldn't be opened"))
+            runOnUiThread {
+                val added = result.added
+                if (added.size == 1) {
+                    val skin = added.first()
+                    skin.skin.system?.let { prefs.touchControlsStyle = prefs.touchControlsStyle.withSkin(it, skin.id) }
+                }
+                touchSkinUi.notice = when {
+                    added.isEmpty() -> tk("NOT A SKIN WE CAN USE") to tr("PokeDaisy reads Delta skins for GBA and Game Boy games: {0}", result.refused.joinToString("; "))
+                    added.size == 1 -> tk("SKIN ADDED") to tr("{0} is on for {1} games.", added.first().skin.name, tr(added.first().skin.system?.label ?: ""))
+                    else -> tk("SKINS ADDED") to tr("{0} skins added. Pick one under SKINS.", added.size)
+                }
+                revision++
+            }
+        }.start()
+    }
 
     private val importOverlayFiles = registerForActivityResult(ActivityResultContracts.OpenMultipleDocuments()) { uris ->
         if (uris.isNotEmpty()) importOverlays(uris, emptyList())

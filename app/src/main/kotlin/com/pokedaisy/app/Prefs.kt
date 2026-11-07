@@ -228,6 +228,10 @@ class Prefs(context: Context) {
                 show = com.pokedaisy.app.companion.TouchShow.entries.getOrElse(touchControlsMode) { d.show },
                 preset = pick(com.pokedaisy.app.companion.TouchPreset.values(), "touch_preset", d.preset),
                 size = pick(com.pokedaisy.app.companion.TouchSize.values(), "touch_size", d.size),
+                look = pick(com.pokedaisy.app.companion.TouchLook.values(), "touch_look", d.look),
+                colors = pick(com.pokedaisy.app.companion.TouchColors.values(), "touch_colors", d.colors),
+                skinGba = p.getString("touch_skin_gba", null),
+                skinGb = p.getString("touch_skin_gb", null),
                 position = pick(com.pokedaisy.app.companion.TouchPosition.values(), "touch_position", d.position),
                 opacity = p.getInt("touch_opacity", d.opacity),
                 extras = p.getString("touch_extras", null)?.let { s ->
@@ -246,6 +250,10 @@ class Prefs(context: Context) {
             p.edit()
                 .putString("touch_preset", v.preset.name)
                 .putString("touch_size", v.size.name)
+                .putString("touch_look", v.look.name)
+                .putString("touch_colors", v.colors.name)
+                .putString("touch_skin_gba", v.skinGba)
+                .putString("touch_skin_gb", v.skinGb)
                 .putString("touch_position", v.position.name)
                 .putInt("touch_opacity", v.opacity)
                 .putString("touch_extras", v.extras.joinToString(",") { it.name })

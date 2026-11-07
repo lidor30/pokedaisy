@@ -160,6 +160,9 @@ interface CompanionSettings {
     val touchStyle: TouchControlsStyle
     fun setTouchStyle(style: TouchControlsStyle)
 
+    /** TOUCH CONTROLS > SKINS: the imported Delta skins (picked here, imported on the top screen). */
+    val touchSkins: List<InstalledSkin> get() = emptyList()
+
     /** The game's screen as the touch controls see it, for TOUCH CONTROLS' preview; null = laid out like a phone's. */
     val touchStage: TouchStage? get() = null
 

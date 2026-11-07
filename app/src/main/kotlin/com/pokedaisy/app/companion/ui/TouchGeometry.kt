@@ -162,6 +162,76 @@ object TouchGeometry {
     private fun presetItems(
         style: TouchControlsStyle, buttons: List<TouchButton>, w: Float, h: Float, dp: Float,
         portrait: Boolean, gameAspect: Float,
+    ): Pair<TouchPreset, List<Item>> = when (style.preset) {
+        TouchPreset.MIRRORED -> {
+            val (_, items) = basePresetItems(style.copy(preset = TouchPreset.SIDES), buttons, w, h, dp, portrait, gameAspect)
+            TouchPreset.MIRRORED to mirrored(items, w, portrait)
+        }
+        TouchPreset.RAISED -> {
+            val (_, items) = basePresetItems(style.copy(preset = TouchPreset.CLASSIC), buttons, w, h, dp, portrait, gameAspect)
+            TouchPreset.RAISED to if (portrait) items else raised(items, h, dp)
+        }
+        else -> basePresetItems(style, buttons, w, h, dp, portrait, gameAspect)
+    }
+
+    /** MIRRORED: [items] flipped left to right, but A / B (and X / Y, and upright the TURBOs over them) moved as one
+     * block so A stays right of B, L / R left where they are and SELECT kept left of START. */
+    private fun mirrored(items: List<Item>, w: Float, portrait: Boolean): List<Item> {
+        val face = setOf(TouchButton.A, TouchButton.B, TouchButton.X, TouchButton.Y) +
+            if (portrait) setOf(TouchButton.TURBO_A, TouchButton.TURBO_B) else emptySet()
+        val cluster = items.filter { it.button in face }
+        val shift = if (cluster.isEmpty()) 0f else w - (cluster.minOf { it.left } + cluster.maxOf { it.right })
+        val flipped = items.map { item ->
+            when (item.button) {
+                TouchButton.L, TouchButton.R -> item
+                in face -> item.copy(cx = item.cx + shift)
+                else -> item.copy(cx = w - item.cx)
+            }
+        }
+        val select = flipped.firstOrNull { it.button == TouchButton.SELECT }
+        val start = flipped.firstOrNull { it.button == TouchButton.START }
+        if (select == null || start == null || select.cx < start.cx) return flipped
+        return flipped.map { when (it.button) {
+            TouchButton.SELECT -> it.copy(cx = start.cx, cy = start.cy)
+            TouchButton.START -> it.copy(cx = select.cx, cy = select.cy)
+            else -> it
+        } }
+    }
+
+    /** RAISED: CLASSIC's D-pad and A / B block lifted to about 60% down the area (no higher than the top row allows),
+     * L over the D-pad and R over A / B. Where there's no room to lift, CLASSIC as it is. */
+    private fun raised(items: List<Item>, h: Float, dp: Float): List<Item> {
+        val dpad = items.firstOrNull { it.button == TouchButton.DPAD } ?: return items
+        val faceSet = setOf(TouchButton.A, TouchButton.B, TouchButton.X, TouchButton.Y)
+        val face = items.filter { it.button in faceSet }
+        if (face.isEmpty()) return items
+        val gap = GAP * dp
+        val l = items.firstOrNull { it.button == TouchButton.L }
+        val r = items.firstOrNull { it.button == TouchButton.R }
+        val moving = faceSet + TouchButton.DPAD + TouchButton.L + TouchButton.R
+        // The top row (the extras along the top) stays: everything raised stays under it.
+        val topLimit = (items.filter { it.button !in moving && it.cy < h / 2 }.maxOfOrNull { it.bottom } ?: (EDGE * dp)) + gap
+        val shoulder = l?.h ?: 0f
+        val blockTop = minOf(dpad.top, face.minOf { it.top })
+        val minDy = topLimit + (if (l != null) shoulder + gap else 0f) - blockTop
+        val want = h * 0.6f - dpad.cy
+        val dy = maxOf(want, minDy)
+        if (dy >= -1f) return items   // nowhere to lift it to
+        val faceTop = face.minOf { it.top } + dy
+        val faceCx = (face.minOf { it.left } + face.maxOf { it.right }) / 2
+        return items.map { item ->
+            when {
+                item.button == TouchButton.DPAD || item.button in faceSet -> item.copy(cy = item.cy + dy)
+                item === l -> item.copy(cx = dpad.cx, cy = dpad.top + dy - gap - item.h / 2)
+                item === r -> item.copy(cx = faceCx, cy = faceTop - gap - item.h / 2)
+                else -> item
+            }
+        }
+    }
+
+    private fun basePresetItems(
+        style: TouchControlsStyle, buttons: List<TouchButton>, w: Float, h: Float, dp: Float,
+        portrait: Boolean, gameAspect: Float,
     ): Pair<TouchPreset, List<Item>> {
         val size = style.size.scale
         val fit = fit(w, h, dp, portrait)

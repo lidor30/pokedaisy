@@ -793,10 +793,11 @@ fun withTouch(style: com.pokedaisy.app.companion.TouchControlsStyle, make: () ->
 }
 
 /** A [w]x[h] phone at [density] with the touch controls as [style] lays them out, over the stand-in game. */
-fun touchScene(w: Int, h: Int, density: Float, style: com.pokedaisy.app.companion.TouchControlsStyle): () -> (@Composable () -> Unit) = {
+fun touchScene(w: Int, h: Int, density: Float, style: com.pokedaisy.app.companion.TouchControlsStyle, skin: Boolean = false): () -> (@Composable () -> Unit) = {
+    val installed = if (skin) DemoSkin.install(android.content.Context().filesDir) else null
     {
         val stage = com.pokedaisy.app.companion.ui.simulateTouchStage(w.toFloat(), h.toFloat(), density)
-        com.pokedaisy.app.companion.ui.TouchControlsPreview(stage, style, null, androidx.compose.ui.Modifier.fillMaxSize())
+        com.pokedaisy.app.companion.ui.TouchControlsPreview(stage, style, null, androidx.compose.ui.Modifier.fillMaxSize(), skin = installed)
     }
 }
 
@@ -2290,6 +2291,36 @@ fun main(args: Array<String>) {
         }.toTypedArray(),
         Shot("touch-all-extras-side", 2400, 1080, 2.625f, touchScene(2400, 1080, 2.625f, com.pokedaisy.app.companion.TouchControlsStyle(extras = com.pokedaisy.app.companion.TouchButton.extras.toSet()))),
         Shot("touch-all-extras-upright", 1080, 2400, 2.625f, touchScene(1080, 2400, 2.625f, com.pokedaisy.app.companion.TouchControlsStyle(extras = com.pokedaisy.app.companion.TouchButton.extras.toSet()))),
+        // LOOK (each in DARK) and COLORS (each in SOLID, PRIMARY in CONSOLE too).
+        *com.pokedaisy.app.companion.TouchLook.entries.map { l ->
+            Shot("touch-look-${l.name.lowercase()}", 2400, 1080, 2.625f, touchScene(2400, 1080, 2.625f, com.pokedaisy.app.companion.TouchControlsStyle(look = l, opacity = 100)))
+        }.toTypedArray(),
+        *com.pokedaisy.app.companion.TouchColors.entries.map { c ->
+            Shot("touch-colors-${c.name.lowercase()}", 2400, 1080, 2.625f, touchScene(2400, 1080, 2.625f, com.pokedaisy.app.companion.TouchControlsStyle(look = com.pokedaisy.app.companion.TouchLook.SOLID, colors = c, opacity = 100)))
+        }.toTypedArray(),
+        Shot("touch-console-primary-upright", 1080, 2400, 2.625f, touchScene(1080, 2400, 2.625f, com.pokedaisy.app.companion.TouchControlsStyle(look = com.pokedaisy.app.companion.TouchLook.CONSOLE, colors = com.pokedaisy.app.companion.TouchColors.PRIMARY, opacity = 100))),
+        // SKINS: a Delta skin (our own demo) sideways - the game in its screen - and upright (its buttons under the game).
+        Shot("touch-skin-side", 2400, 1080, 2.625f, touchScene(2400, 1080, 2.625f, com.pokedaisy.app.companion.TouchControlsStyle(skinGba = DemoSkin.ID), skin = true)),
+        Shot("touch-skin-16x9", 1920, 1080, 2.625f, touchScene(1920, 1080, 2.625f, com.pokedaisy.app.companion.TouchControlsStyle(skinGba = DemoSkin.ID), skin = true)),
+        Shot("touch-skin-upright", 1080, 2400, 2.625f, touchScene(1080, 2400, 2.625f, com.pokedaisy.app.companion.TouchControlsStyle(skinGba = DemoSkin.ID), skin = true)),
+        Shot("settings-touch-skin", 2400, 1080, 2.625f, activity {
+            withTouch(com.pokedaisy.app.companion.TouchControlsStyle(skinGba = DemoSkin.ID)) {
+                DemoSkin.install(android.content.Context().filesDir)
+                SettingsActivity()
+            }
+        }) {
+            onNodeWithText("TOUCH CONTROLS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText("SKINS").performScrollTo()
+        },
+        Shot("settings-touch-skin-pick", 2400, 1080, 2.625f, activity {
+            withTouch(com.pokedaisy.app.companion.TouchControlsStyle(skinGba = DemoSkin.ID)) {
+                DemoSkin.install(android.content.Context().filesDir)
+                SettingsActivity()
+            }
+        }) {
+            onNodeWithText("TOUCH CONTROLS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+            onNodeWithText("GBA SKIN").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
         Shot("touch-large-upright", 1080, 2400, 2.625f, touchScene(1080, 2400, 2.625f, com.pokedaisy.app.companion.TouchControlsStyle(size = com.pokedaisy.app.companion.TouchSize.HUGE, opacity = 100))),
         // The top screen's SPEED OPTIONS (FF MODE, FF MUSIC) and DISPLAY OPTIONS (STATUS BAR, SHADERS, OVERLAY).
         Shot("settings-speed", tw, th, td, activity { SettingsActivity() }) {

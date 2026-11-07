@@ -1421,6 +1421,7 @@ class PokeDaisyActivity : Activity() {
             Prefs(this@PokeDaisyActivity).foldLayout = on
             runOnUiThread { if (::sidePanel.isInitialized) syncSingleScreen(singleScreen) }
         }
+        override val touchSkins get() = skinStore.list()
         override fun touchPreviewShot() = newestStateShot()
         override fun editTouchLayout() = runOnUiThread { openTouchEditor() }
         override val touchRevision get() = touchRev.intValue
@@ -3920,6 +3921,7 @@ class PokeDaisyActivity : Activity() {
         touchControls.gameAspect = if (::stage.isInitialized) stage.aspect else 1.5f
         if (::engine.isInitialized) touchControls.ffOn = engine.fastForwardToggled
         touchControls.visibility = if (show) View.VISIBLE else View.GONE
+        syncTouchSkin(style, show)
         // EXPAND + UNDER GAME upright: the controls' own strip under the companion (none while they're hidden).
         if (::portraitPanel.isInitialized) {
             val prefs = Prefs(this)
@@ -3930,6 +3932,38 @@ class PokeDaisyActivity : Activity() {
         }
         syncHudClear()
         if (!show) { input.setTouchBits(0); touchHeld = 0 }
+    }
+
+    /** TOUCH CONTROLS > SKIN: the imported Delta skins (files/skins/). */
+    private val skinStore by lazy { com.pokedaisy.app.companion.DeltaSkinStore(java.io.File(filesDir, "skins")) }
+
+    /** The skin's game placement handed to the stage, kept while it's the same skin (a new lambda relays it out). */
+    private var skinGameFor: Pair<String, (Int, Int) -> androidx.compose.ui.geometry.Rect?>? = null
+
+    /** SKIN's pick for this game's system on the touch controls, and (held sideways) the game in the skin's screen. */
+    private fun syncTouchSkin(style: com.pokedaisy.app.companion.TouchControlsStyle, show: Boolean) {
+        val system = when {
+            touchControls.dsButtons -> com.pokedaisy.app.companion.SkinSystem.DS
+            !touchControls.shoulders -> com.pokedaisy.app.companion.SkinSystem.GB
+            else -> com.pokedaisy.app.companion.SkinSystem.GBA
+        }
+        val skin = if (show) style.skinFor(system)?.let { skinStore.load(it) } else null
+        touchControls.skin = skin
+        if (!::stage.isInitialized) return
+        stage.skinHost = touchControls
+        if (skin == null || touchControls.portrait) {
+            skinGameFor = null
+            stage.skinGame = null
+            return
+        }
+        val fn = skinGameFor?.takeIf { it.first == skin.id + ":" + skin.dir.lastModified() }?.second ?: run {
+            val f: (Int, Int) -> androidx.compose.ui.geometry.Rect? = { w, h ->
+                com.pokedaisy.app.companion.ui.skinFit(skin, w.toFloat(), h.toFloat(), portrait = false)?.game
+            }
+            skinGameFor = skin.id + ":" + skin.dir.lastModified() to f
+            f
+        }
+        stage.skinGame = fn
     }
 
     /** The touch controls' buttons: the game's, or the QUICK MENU's while it's open (each newly held one a press). Its
