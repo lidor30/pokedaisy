@@ -85,11 +85,12 @@ export function verdict(data, { platform, code, rev, size, sha1, retailOf, rando
     // A DS hack under a retail header, by a word of its code ([dsHackOf]; the app's OriginHeartGold.matches).
     if (dsHack) return { status: 'supported', title: dsHack.title, version: dsHack.version, family: 'Nintendo DS' };
     // By the header's code and revision, as the app takes a DS cart (CompanionSupport.isSupported).
-    const hit = (data.ds ?? []).find((g) => g.code === code);
-    if (!hit) return { status: 'unsupported', reason: 'ds' };
-    return hit.rev === rev
+    const games = (data.ds ?? []).filter((g) => g.code === code);
+    if (!games.length) return { status: 'unsupported', reason: 'ds' };
+    const hit = games.find((g) => g.rev === rev);
+    return hit
       ? { status: 'supported', title: hit.title, family: 'Nintendo DS' }
-      : { status: 'unsupported', reason: 'revision', base: hit.title };
+      : { status: 'unsupported', reason: 'revision', base: games[0].title };
   }
   if (platform !== 'gba') return { status: 'unsupported', reason: 'not-a-rom' };
 

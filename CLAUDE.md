@@ -716,6 +716,10 @@ cart with one script; everything but the addresses is shared. Another language: 
 every known pair: `--check scripts/port_nds_fns_known.txt`, `scripts/test_port_nds_fns.py`; an UNRESOLVED hint is a lead to check live,
 never an answer), docs/DEVELOPMENT.md's "French carts". Dry run (2026-11-07): B/W, B2W2 ES / DE / IT / JP / KR 13 of 14 (the BGM depth
 isn't loaded from a pool), HG / SS ES / IT / KR / Europe rev 10 all 23, Japanese 20 of 23.
+**DS language ports (2026-11-07)**: every cart after the French ones is a row of `gamedata/nds/ports.toml` (Spanish / Italian HG / SS,
+Europe rev 10 of both, German / Spanish / Italian B/W, B2/W2 in FR / DE / ES / IT), not a hand-written table: `scripts/gen_nds_ports.py`
+(`make gamedata`, `make check`) writes `pk_nds_ports_gen.h` (the native field / touch / call tables built from the US ones) and
+`NdsPortsGen.kt` (`DsPorts`: configs, detection, titles, DS LAYOUT). A new cart: its row, then headless beside its US cart (docs/DEVELOPMENT.md's "Language ports"). JP / KR next: Gen 4 JP / KR text tables, JP HG / SS menu functions.
 **DS RESOLUTION** (SCREEN group on both screens, `Prefs.dsResolution`, ORIGINAL default / 2x-8x, NEW tag; GitHub discussion #241):
 melonDS's OpenGL renderer ported to OpenGL ES in our patch (`MELONDS_GLES`; ES 3.2 or 3.0 + draw_buffers_indexed) on an EGL
 context of the emu thread (`nds/pk_nds_gl.cpp`), frames to EmulatorView through a SurfaceTexture (`gpuFrames`), our compositor

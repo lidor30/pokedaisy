@@ -222,3 +222,15 @@ test('retail randomized by Universal Pokemon Randomizer reads as retail, randomi
     assert.equal(await randomizedRetailOf(fake, readHeader(other), other), null);
   }
 });
+
+test('DS: the language ports, each at its own revision', () => {
+  const ds = (code, rev) => verdict(data, { ...readHeader(nds(code, rev)), size: 256 * MB, sha1: '0'.repeat(40) });
+  // Europe's rev 10 HeartGold / SoulSilver: the US carts' code under the same game code, a revision of its own.
+  assert.deepEqual(ds('IPKE', 10), { status: 'supported', title: 'Pokémon HeartGold', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IPGE', 10), { status: 'supported', title: 'Pokémon SoulSilver', family: 'Nintendo DS' });
+  assert.equal(ds('IPKE', 5).reason, 'revision');
+  assert.deepEqual(ds('IPKS', 0), { status: 'supported', title: 'Pokémon Edición Oro HeartGold', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IRBI', 0), { status: 'supported', title: 'Pokémon Versione Nera', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IRDD', 0), { status: 'supported', title: 'Pokémon Weiße Edition 2', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IREF', 1), { status: 'unsupported', reason: 'revision', base: 'Pokémon Version Noire 2' });
+});

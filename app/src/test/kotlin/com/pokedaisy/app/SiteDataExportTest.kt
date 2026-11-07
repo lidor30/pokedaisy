@@ -40,7 +40,8 @@ class SiteDataExportTest {
         "IPGE" to "Pokémon SoulSilver", "IPGD" to "Pokémon Silberne Edition SoulSilver", "IRBO" to "Pokémon Black",
         "IRAO" to "Pokémon White", "IREO" to "Pokémon Black 2", "IRDO" to "Pokémon White 2",
         "CPUF" to "Pokémon Version Platine", "IPKF" to "Pokémon Version Or HeartGold", "IPGF" to "Pokémon Version Argent SoulSilver",
-        "IRBF" to "Pokémon Version Noire", "IRAF" to "Pokémon Version Blanche")
+        "IRBF" to "Pokémon Version Noire", "IRAF" to "Pokémon Version Blanche") +
+        com.pokedaisy.app.companion.data.NDS_PORTS.associate { it.code to it.title }
 
     /** The base game of each hack that has a game code of its own ([TelemetrySampler.HACK_GAME_CODES]). */
     private val hackCodeBases = mapOf(TelemetrySampler.ULTRA_VIOLET_CODE to "BPRE", TelemetrySampler.MONOMYTH_CODE to "BPEE")
@@ -93,7 +94,7 @@ class SiteDataExportTest {
             .sortedWith(compareBy({ it.second }, { it.third }))
             .partition { it.second in inProgressGames }
         val gameBoy = if (TelemetrySampler.GAME_BOY_SUPPORT) TelemetrySampler.SUPPORTED_GB_SHA1S.sorted() else emptyList()
-        val ds = if (TelemetrySampler.NDS_SUPPORT) TelemetrySampler.NDS_GAMES.toSortedMap().toList() else emptyList()
+        val ds = if (TelemetrySampler.NDS_SUPPORT) TelemetrySampler.NDS_GAMES.sortedWith(compareBy({ it.first }, { it.second })) else emptyList()
         // DS carts go by their header's code and revision (`ds`), as the app takes them, not by hash.
         val titles = GameTitles.BY_SHA1.filterKeys { it !in hackSha1s && it !in gameBoy && it !in GameTitles.NDS_SHA1S }.toSortedMap()
 
@@ -180,7 +181,7 @@ class SiteDataExportTest {
 
     @Test
     fun `every DS cart has a title`() {
-        assertEquals(TelemetrySampler.NDS_GAMES.keys, dsTitles.keys)
+        assertEquals(TelemetrySampler.NDS_GAMES.map { it.first }.toSet(), dsTitles.keys)
     }
 
     @Test

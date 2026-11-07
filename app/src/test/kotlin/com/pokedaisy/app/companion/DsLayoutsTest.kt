@@ -73,7 +73,7 @@ class DsLayoutsTest {
         for (code in listOf("IPKE", "IPGE", "CPUE", "IRBO", "IRAO", "IREO", "IRDO", "IPKF", "IPGF", "CPUF", "IRBF", "IRAF")) {
             assertTrue(code, DsLayout.followed(code))
         }
-        // The German HeartGold / SoulSilver aren't followed yet.
-        for (code in listOf("IPKD", "IPGD")) assertTrue(code, !DsLayout.followed(code))
+        // German HeartGold / SoulSilver are followed since their menu functions were found (2026-11-07).
+        for (code in listOf("IPKD", "IPGD")) assertTrue(code, DsLayout.followed(code))
     }
 }

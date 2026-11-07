@@ -135,7 +135,11 @@ object NdsArt {
     private fun isPlatinum(code: String, rev: Int) = code == "CPUE" && rev == 1 || code == "CPUF" && rev == 0
 
     /** Carts on HeartGold / SoulSilver's files: USA, Germany and France, rev 0. */
-    private fun isHgss(code: String, rev: Int) = code in setOf("IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF") && rev == 0
+    private fun isHgss(code: String, rev: Int) =
+        code in setOf("IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF") && rev == 0 || DsPorts.of(code, rev)?.kind.isHgss
+
+    /** A language port running as [kind] ([NDS_PORTS]). */
+    private fun portIs(code: String, rev: Int, vararg kind: GameKind) = DsPorts.of(code, rev)?.kind in kind
 
     /** Writes [rom]'s icons into [dir] if it's a cart this knows and they aren't there yet; true when it wrote any. */
     fun extractTo(rom: File, dir: File): Boolean = RandomAccessFile(rom, "r").use { f ->
@@ -144,10 +148,10 @@ object NdsArt {
         val rev = header[0x1E].toInt() and 0xFF
         val platinum = isPlatinum(code, rev)
         val heartGold = isHgss(code, rev)
-        val white = (code == "IRAO" || code == "IRAF") && rev == 0
-        val black = (code == "IRBO" || code == "IRBF") && rev == 0 || white
-        val white2 = code == "IRDO" && rev == 0
-        val black2 = code == "IREO" && rev == 0 || white2
+        val white = (code == "IRAO" || code == "IRAF") && rev == 0 || portIs(code, rev, GameKind.WHITE)
+        val black = (code == "IRBO" || code == "IRBF") && rev == 0 || portIs(code, rev, GameKind.BLACK) || white
+        val white2 = code == "IRDO" && rev == 0 || portIs(code, rev, GameKind.WHITE2)
+        val black2 = code == "IREO" && rev == 0 || portIs(code, rev, GameKind.BLACK2) || white2
         val origin = OriginHeartGold.matches { off, len -> f.read(off, len) }
         if (!platinum && !heartGold && !black && !black2 && !origin) return false
         val marker = File(dir, when {
@@ -829,8 +833,8 @@ object NdsArt {
         val header = f.read(0, 0x200)
         val code = String(header, 0x0C, 4, Charsets.US_ASCII)
         val rev = header[0x1E].toInt() and 0xFF
-        val sequel = (code == "IREO" || code == "IRDO") && rev == 0
-        if (code in setOf("IRBO", "IRAO", "IRBF", "IRAF") && rev == 0 || sequel) {
+        val sequel = (code == "IREO" || code == "IRDO") && rev == 0 || portIs(code, rev, GameKind.BLACK2, GameKind.WHITE2)
+        if (code in setOf("IRBO", "IRAO", "IRBF", "IRAF") && rev == 0 || portIs(code, rev, GameKind.BLACK, GameKind.WHITE) || sequel) {
             val banks = if (sequel) NAMES_BLACK2 else NAMES_BLACK
             val msg = Narc(file(f, header, banks.msg) ?: return null)
             fun lines(bank: Int) = msg.member(bank)?.let { Gen5Text.lines(it) }.orEmpty()

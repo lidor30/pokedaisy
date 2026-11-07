@@ -1,0 +1,534 @@
+# DS carts in other languages (and builds) of the supported US / Europe games: the base cart's tables with these words moved.
+# scripts/gen_nds_ports.py writes the app's tables from this file (app/src/main/cpp/nds/pk_nds_ports_gen.h,
+# NdsPortsGen.kt); `make gamedata` runs it and `make check` fails while they're stale.
+#
+# Each [[port]] is one cart by its header's game code (0x0C) and revision (0x1E):
+#   kind   the GameKind it runs as;  base  whose tables it copies: heartgold (HeartGold / SoulSilver USA),
+#          black (Black / White USA / Europe: Black's overlays, White's own words), black2 (Black 2 / White 2);
+#   name   for logs and nds_dump;  title  the library's and the website's name (the cart's own title);
+#   sha1   the whole file's (the library names the game by it);  cart  its No-Intro file name, for the tools.
+# The words are named as in scripts/port_nds_fns_known.txt (what each is: pk_nds_field.cpp, pk_nds_call.cpp) and come from
+# `scripts/port_nds_fns.py US.nds OTHER.nds --file ...` with the US cart's list; every one was then checked headless
+# (docs/DEVELOPMENT.md's "Other languages"). Gen 5's BGM stack depth is BgmStack - 0xC in every build, so it isn't listed.
+# Menu functions missing (0 / left out) mean the cart's touch-screen moments aren't followed (DsLayout.followed).
+
+[[port]]
+code = "IPKE"
+rev = 10
+kind = "HEARTGOLD"
+base = "heartgold"
+name = "HeartGold (Europe, rev 10)"
+title = "Pokémon HeartGold"
+sha1 = "eb47ab4ba0326ae842135f62c7ec68cf85c9785f"
+cart = "Pokemon - HeartGold Version (Europe) (Rev 10).nds"
+sFieldSysPtr = 0x021D4158
+gOverlayTemplate_Battle = 0x020FA484
+sSoundWork = 0x02111958
+sSeqPlayer = 0x021DF984
+sSaveDataPtr = 0x021D2228
+FieldMap_Main = 0x021E5BE5
+Task_StartMenu = 0x0203BEF1
+PartyMenuApp_Init = 0x02078E31
+OptionsApp_Init = 0x021E5901
+Pokedex_Init = 0x021E5AA1
+ScriptJump = 0x0203FE0D
+MessageFormat_New_Custom = 0x0200BD19
+String_New = 0x02026355
+FieldMove_InitCheckData = 0x02067E11
+FieldMove_CheckFly = 0x0206800D
+SaveArray_Party_Get = 0x02074905
+Party_GetMonByIndex = 0x02074645
+sub_02067BF8 = 0x02067BF9
+sub_02067C30 = 0x02067C31
+FieldSystem_CreateTask = 0x020504F1
+ScriptEnvironment_New = 0x0204001D
+CreateScriptContext = 0x020400AD
+Task_RunScripts = 0x0203FF45
+
+[[port]]
+code = "IPGE"
+rev = 10
+kind = "SOULSILVER"
+base = "heartgold"
+name = "SoulSilver (Europe, rev 10)"
+title = "Pokémon SoulSilver"
+sha1 = "27a25c23aa1c0ecabe48a30a004b96c9dbc97730"
+cart = "Pokemon - SoulSilver Version (Europe) (Rev 10).nds"
+sFieldSysPtr = 0x021D4158
+gOverlayTemplate_Battle = 0x020FA484
+sSoundWork = 0x02111958
+sSeqPlayer = 0x021DF984
+sSaveDataPtr = 0x021D2228
+FieldMap_Main = 0x021E5BE5
+Task_StartMenu = 0x0203BEF1
+PartyMenuApp_Init = 0x02078E31
+OptionsApp_Init = 0x021E5901
+Pokedex_Init = 0x021E5A9D
+ScriptJump = 0x0203FE0D
+MessageFormat_New_Custom = 0x0200BD19
+String_New = 0x02026355
+FieldMove_InitCheckData = 0x02067E11
+FieldMove_CheckFly = 0x0206800D
+SaveArray_Party_Get = 0x02074905
+Party_GetMonByIndex = 0x02074645
+sub_02067BF8 = 0x02067BF9
+sub_02067C30 = 0x02067C31
+FieldSystem_CreateTask = 0x020504F1
+ScriptEnvironment_New = 0x0204001D
+CreateScriptContext = 0x020400AD
+Task_RunScripts = 0x0203FF45
+
+[[port]]
+code = "IPKS"
+rev = 0
+kind = "HEARTGOLD"
+base = "heartgold"
+name = "HeartGold (Spain)"
+title = "Pokémon Edición Oro HeartGold"
+sha1 = "29f9682b7f08f9ee94fe9fa74f2a6cb7c64b0505"
+cart = "Pokemon - Edicion Oro HeartGold (Spain) [b].nds"
+sFieldSysPtr = 0x021D4178
+gOverlayTemplate_Battle = 0x020FA46C
+sSoundWork = 0x02111978
+sSeqPlayer = 0x021DF9A4
+sSaveDataPtr = 0x021D2248
+FieldMap_Main = 0x021E5C05
+Task_StartMenu = 0x0203BEE9
+PartyMenuApp_Init = 0x02078E29
+OptionsApp_Init = 0x021E5921
+Pokedex_Init = 0x021E5AC1
+ScriptJump = 0x0203FE05
+MessageFormat_New_Custom = 0x0200BD19
+String_New = 0x02026355
+FieldMove_InitCheckData = 0x02067E09
+FieldMove_CheckFly = 0x02068005
+SaveArray_Party_Get = 0x020748FD
+Party_GetMonByIndex = 0x0207463D
+sub_02067BF8 = 0x02067BF1
+sub_02067C30 = 0x02067C29
+FieldSystem_CreateTask = 0x020504E9
+ScriptEnvironment_New = 0x02040015
+CreateScriptContext = 0x020400A5
+Task_RunScripts = 0x0203FF3D
+
+[[port]]
+code = "IPGS"
+rev = 0
+kind = "SOULSILVER"
+base = "heartgold"
+name = "SoulSilver (Spain)"
+title = "Pokémon Edición Plata SoulSilver"
+sha1 = "beaae88bb1dc7d09de5f393a67ef0559bde508c8"
+cart = "Pokemon - Edicion Plata SoulSilver (Spain).nds"
+sFieldSysPtr = 0x021D4198
+gOverlayTemplate_Battle = 0x020FA474
+sSoundWork = 0x02111998
+sSeqPlayer = 0x021DF9C4
+sSaveDataPtr = 0x021D2268
+FieldMap_Main = 0x021E5C25
+Task_StartMenu = 0x0203BEF1
+PartyMenuApp_Init = 0x02078E31
+OptionsApp_Init = 0x021E5941
+Pokedex_Init = 0x021E5ADD
+ScriptJump = 0x0203FE0D
+MessageFormat_New_Custom = 0x0200BD19
+String_New = 0x02026355
+FieldMove_InitCheckData = 0x02067E11
+FieldMove_CheckFly = 0x0206800D
+SaveArray_Party_Get = 0x02074905
+Party_GetMonByIndex = 0x02074645
+sub_02067BF8 = 0x02067BF9
+sub_02067C30 = 0x02067C31
+FieldSystem_CreateTask = 0x020504F1
+ScriptEnvironment_New = 0x0204001D
+CreateScriptContext = 0x020400AD
+Task_RunScripts = 0x0203FF45
+
+[[port]]
+code = "IPKI"
+rev = 0
+kind = "HEARTGOLD"
+base = "heartgold"
+name = "HeartGold (Italy)"
+title = "Pokémon Versione Oro HeartGold"
+sha1 = "6b7f9bff57eb58bc8d6e48e9e5c370719458c721"
+cart = "Pokemon - Versione Oro HeartGold (Italy).nds"
+sFieldSysPtr = 0x021D40F8
+gOverlayTemplate_Battle = 0x020FA3FC
+sSoundWork = 0x021118F8
+sSeqPlayer = 0x021DF924
+sSaveDataPtr = 0x021D21C8
+FieldMap_Main = 0x021E5B85
+Task_StartMenu = 0x0203BEF1
+PartyMenuApp_Init = 0x02078E31
+OptionsApp_Init = 0x021E58A1
+Pokedex_Init = 0x021E5A41
+ScriptJump = 0x0203FE0D
+MessageFormat_New_Custom = 0x0200BD19
+String_New = 0x02026355
+FieldMove_InitCheckData = 0x02067E11
+FieldMove_CheckFly = 0x0206800D
+SaveArray_Party_Get = 0x02074905
+Party_GetMonByIndex = 0x02074645
+sub_02067BF8 = 0x02067BF9
+sub_02067C30 = 0x02067C31
+FieldSystem_CreateTask = 0x020504F1
+ScriptEnvironment_New = 0x0204001D
+CreateScriptContext = 0x020400AD
+Task_RunScripts = 0x0203FF45
+
+[[port]]
+code = "IPGI"
+rev = 0
+kind = "SOULSILVER"
+base = "heartgold"
+name = "SoulSilver (Italy)"
+title = "Pokémon Versione Argento SoulSilver"
+sha1 = "e137acf711e0b14c297abf0254e5b4a9263338e7"
+cart = "Pokemon - Versione Argento SoulSilver (Italy).nds"
+sFieldSysPtr = 0x021D40F8
+gOverlayTemplate_Battle = 0x020FA3FC
+sSoundWork = 0x021118F8
+sSeqPlayer = 0x021DF924
+sSaveDataPtr = 0x021D21C8
+FieldMap_Main = 0x021E5B85
+Task_StartMenu = 0x0203BEF1
+PartyMenuApp_Init = 0x02078E31
+OptionsApp_Init = 0x021E58A1
+Pokedex_Init = 0x021E5A3D
+ScriptJump = 0x0203FE0D
+MessageFormat_New_Custom = 0x0200BD19
+String_New = 0x02026355
+FieldMove_InitCheckData = 0x02067E11
+FieldMove_CheckFly = 0x0206800D
+SaveArray_Party_Get = 0x02074905
+Party_GetMonByIndex = 0x02074645
+sub_02067BF8 = 0x02067BF9
+sub_02067C30 = 0x02067C31
+FieldSystem_CreateTask = 0x020504F1
+ScriptEnvironment_New = 0x0204001D
+CreateScriptContext = 0x020400AD
+Task_RunScripts = 0x0203FF45
+
+[[port]]
+code = "IRBS"
+rev = 0
+kind = "BLACK"
+base = "black"
+name = "Black (Spain)"
+title = "Pokémon Edición Negra"
+sha1 = "ba75914b99e1558f217ed082fbac9e86f2021a30"
+cart = "Pokemon - Edicion Negra (Spain) (NDSi Enhanced) [b].nds"
+GameSystem = 0x02146208
+BgmStack = 0x020AA17C
+sSeqPlayer = 0x0214DFE4
+SaveControl = 0x020A7258
+StartMenuEvent = 0x0215FCBD
+FieldEventCheck = 0x0218A035
+ReturnZero = 0x0200565D
+GameSystem_SetEvent = 0x02012109
+ScriptEvent = 0x02158729
+ScriptEventCheck = 0x021588E1
+FldSkill_InitCheck = 0x0215E7F1
+FldSkill_CanUse = 0x0215E9C5
+FldSkill_Use = 0x0215E9E9
+
+[[port]]
+code = "IRAS"
+rev = 0
+kind = "WHITE"
+base = "black"
+name = "White (Spain)"
+title = "Pokémon Edición Blanca"
+sha1 = "2e0eb8546fd022af29f132858661d0d538dd4d06"
+cart = "Pokemon - Edicion Blanca (Spain) (NDSi Enhanced) [b].nds"
+GameSystem = 0x02146208
+BgmStack = 0x020AA17C
+sSeqPlayer = 0x0214DFE4
+SaveControl = 0x020A7258
+StartMenuEvent = 0x0215FCBD
+FieldEventCheck = 0x0218A035
+ReturnZero = 0x0200565D
+GameSystem_SetEvent = 0x02012109
+ScriptEvent = 0x02158729
+ScriptEventCheck = 0x021588E1
+FldSkill_InitCheck = 0x0215E7F1
+FldSkill_CanUse = 0x0215E9C5
+FldSkill_Use = 0x0215E9E9
+
+[[port]]
+code = "IRBD"
+rev = 0
+kind = "BLACK"
+base = "black"
+name = "Black (Germany)"
+title = "Pokémon Schwarze Edition"
+sha1 = "d5b3930ad08a1124af982e4a7d0c9460efc6231b"
+cart = "Pokemon - Schwarze Edition (Germany) (NDSi Enhanced) [b].nds"
+GameSystem = 0x02146188
+BgmStack = 0x020AA0FC
+sSeqPlayer = 0x0214DF64
+SaveControl = 0x020A71D8
+StartMenuEvent = 0x0215FC3D
+FieldEventCheck = 0x02189FB5
+ReturnZero = 0x0200565D
+GameSystem_SetEvent = 0x02012109
+ScriptEvent = 0x021586A9
+ScriptEventCheck = 0x02158861
+FldSkill_InitCheck = 0x0215E771
+FldSkill_CanUse = 0x0215E945
+FldSkill_Use = 0x0215E969
+
+[[port]]
+code = "IRAD"
+rev = 0
+kind = "WHITE"
+base = "black"
+name = "White (Germany)"
+title = "Pokémon Weiße Edition"
+sha1 = "40f44149554f1bf8500ce6c27edaf641c4232f79"
+cart = "Pokemon - Weisse Edition (Germany) (NDSi Enhanced) [b].nds"
+GameSystem = 0x021461A8
+BgmStack = 0x020AA11C
+sSeqPlayer = 0x0214DF84
+SaveControl = 0x020A71F8
+StartMenuEvent = 0x0215FC5D
+FieldEventCheck = 0x02189FD5
+ReturnZero = 0x0200565D
+GameSystem_SetEvent = 0x02012109
+ScriptEvent = 0x021586C9
+ScriptEventCheck = 0x02158881
+FldSkill_InitCheck = 0x0215E791
+FldSkill_CanUse = 0x0215E965
+FldSkill_Use = 0x0215E989
+
+[[port]]
+code = "IRBI"
+rev = 0
+kind = "BLACK"
+base = "black"
+name = "Black (Italy)"
+title = "Pokémon Versione Nera"
+sha1 = "df84cd03dbb3d8135a731310fab3a99fdbb27c2a"
+cart = "Pokemon - Versione Nera (Italy) (NDSi Enhanced) [b].nds"
+GameSystem = 0x02146148
+BgmStack = 0x020AA0BC
+sSeqPlayer = 0x0214DF24
+SaveControl = 0x020A7198
+StartMenuEvent = 0x0215FBFD
+FieldEventCheck = 0x02189F75
+ReturnZero = 0x0200565D
+GameSystem_SetEvent = 0x02012109
+ScriptEvent = 0x02158669
+ScriptEventCheck = 0x02158821
+FldSkill_InitCheck = 0x0215E731
+FldSkill_CanUse = 0x0215E905
+FldSkill_Use = 0x0215E929
+
+[[port]]
+code = "IRAI"
+rev = 0
+kind = "WHITE"
+base = "black"
+name = "White (Italy)"
+title = "Pokémon Versione Bianca"
+sha1 = "ea9de67ef047659a1604161db848a9b557ce7fd6"
+cart = "Pokemon - Versione Bianca (Italy) (NDSi Enhanced) [b].nds"
+GameSystem = 0x02146168
+BgmStack = 0x020AA0DC
+sSeqPlayer = 0x0214DF44
+SaveControl = 0x020A71B8
+StartMenuEvent = 0x0215FC1D
+FieldEventCheck = 0x02189F95
+ReturnZero = 0x0200565D
+GameSystem_SetEvent = 0x02012109
+ScriptEvent = 0x02158689
+ScriptEventCheck = 0x02158841
+FldSkill_InitCheck = 0x0215E751
+FldSkill_CanUse = 0x0215E925
+FldSkill_Use = 0x0215E949
+
+[[port]]
+code = "IREF"
+rev = 0
+kind = "BLACK2"
+base = "black2"
+name = "Black 2 (France)"
+title = "Pokémon Version Noire 2"
+sha1 = "0722de9fe5b2f36301f37097481982afecd64fe5"
+cart = "Pokemon - Version Noire 2 (France) (NDSi Enhanced) [b].nds"
+GameSystem = 0x02141114
+BgmStack = 0x0209DAA0
+sSeqPlayer = 0x02148F04
+SaveControl = 0x0209A358
+StartMenuEvent = 0x0215A885
+FieldEventCheck = 0x0218189D
+ReturnZero = 0x020056B9
+GameSystem_SetEvent = 0x02016AED
+ScriptEvent = 0x0215368D
+ScriptEventCheck = 0x02153845
+FldSkill_InitCheck = 0x02159241
+FldSkill_CanUse = 0x0215940D
+FldSkill_Use = 0x02159431
+
+[[port]]
+code = "IRDF"
+rev = 0
+kind = "WHITE2"
+base = "black2"
+name = "White 2 (France)"
+title = "Pokémon Version Blanche 2"
+sha1 = "7da619c67a16a815659ae7f5558d8914495ad55e"
+cart = "Pokemon - Version Blanche 2 (France) (NDSi Enhanced) [b].nds"
+GameSystem = 0x02141134
+BgmStack = 0x0209DAC0
+sSeqPlayer = 0x02148F24
+SaveControl = 0x0209A378
+StartMenuEvent = 0x0215A8A5
+FieldEventCheck = 0x021818BD
+ReturnZero = 0x020056B9
+GameSystem_SetEvent = 0x02016AED
+ScriptEvent = 0x021536AD
+ScriptEventCheck = 0x02153865
+FldSkill_InitCheck = 0x02159261
+FldSkill_CanUse = 0x0215942D
+FldSkill_Use = 0x02159451
+
+[[port]]
+code = "IRES"
+rev = 0
+kind = "BLACK2"
+base = "black2"
+name = "Black 2 (Spain)"
+title = "Pokémon Edición Negra 2"
+sha1 = "e5d4e2460a64f4786ed69ae33a43f29adc56ff5e"
+cart = "Pokemon - Edicion Negra 2 (Spain) (NDSi Enhanced) [b].nds"
+GameSystem = 0x021410B4
+BgmStack = 0x0209DA40
+sSeqPlayer = 0x02148EA4
+SaveControl = 0x0209A2F8
+StartMenuEvent = 0x0215A825
+FieldEventCheck = 0x0218181D
+ReturnZero = 0x020056B9
+GameSystem_SetEvent = 0x02016AED
+ScriptEvent = 0x0215362D
+ScriptEventCheck = 0x021537E5
+FldSkill_InitCheck = 0x021591E1
+FldSkill_CanUse = 0x021593AD
+FldSkill_Use = 0x021593D1
+
+[[port]]
+code = "IRDS"
+rev = 0
+kind = "WHITE2"
+base = "black2"
+name = "White 2 (Spain)"
+title = "Pokémon Edición Blanca 2"
+sha1 = "f583ef3266f8c79cfaba197f8b3d915c5234aa9b"
+cart = "Pokemon - Edicion Blanca 2 (Spain) (NDSi Enhanced) [b].nds"
+GameSystem = 0x021410D4
+BgmStack = 0x0209DA60
+sSeqPlayer = 0x02148EC4
+SaveControl = 0x0209A318
+StartMenuEvent = 0x0215A845
+FieldEventCheck = 0x0218183D
+ReturnZero = 0x020056B9
+GameSystem_SetEvent = 0x02016AED
+ScriptEvent = 0x0215364D
+ScriptEventCheck = 0x02153805
+FldSkill_InitCheck = 0x02159201
+FldSkill_CanUse = 0x021593CD
+FldSkill_Use = 0x021593F1
+
+[[port]]
+code = "IRED"
+rev = 0
+kind = "BLACK2"
+base = "black2"
+name = "Black 2 (Germany)"
+title = "Pokémon Schwarze Edition 2"
+sha1 = "3f5322674e0d9fbc2ae4419f2b674bb544960bd6"
+cart = "Pokemon - Schwarze Edition 2 (Germany) (NDSi Enhanced) [b].nds"
+GameSystem = 0x02141034
+BgmStack = 0x0209D9C0
+sSeqPlayer = 0x02148E24
+SaveControl = 0x0209A278
+StartMenuEvent = 0x0215A7A5
+FieldEventCheck = 0x0218179D
+ReturnZero = 0x020056B9
+GameSystem_SetEvent = 0x02016AED
+ScriptEvent = 0x021535AD
+ScriptEventCheck = 0x02153765
+FldSkill_InitCheck = 0x02159161
+FldSkill_CanUse = 0x0215932D
+FldSkill_Use = 0x02159351
+
+[[port]]
+code = "IRDD"
+rev = 0
+kind = "WHITE2"
+base = "black2"
+name = "White 2 (Germany)"
+title = "Pokémon Weiße Edition 2"
+sha1 = "8af881ca55c97168020e2c65cf4865d01d32e091"
+cart = "Pokemon - Weisse Edition 2 (Germany) (NDSi Enhanced) [b].nds"
+GameSystem = 0x02141054
+BgmStack = 0x0209D9E0
+sSeqPlayer = 0x02148E44
+SaveControl = 0x0209A298
+StartMenuEvent = 0x0215A7C5
+FieldEventCheck = 0x021817BD
+ReturnZero = 0x020056B9
+GameSystem_SetEvent = 0x02016AED
+ScriptEvent = 0x021535CD
+ScriptEventCheck = 0x02153785
+FldSkill_InitCheck = 0x02159181
+FldSkill_CanUse = 0x0215934D
+FldSkill_Use = 0x02159371
+
+[[port]]
+code = "IREI"
+rev = 0
+kind = "BLACK2"
+base = "black2"
+name = "Black 2 (Italy)"
+title = "Pokémon Versione Nera 2"
+sha1 = "5f9684604a40065041fa6e9c2b424e6ed3cc9d33"
+cart = "Pokemon - Versione Nera 2 (Italy) (NDSi Enhanced) [b].nds"
+GameSystem = 0x02140FF4
+BgmStack = 0x0209D980
+sSeqPlayer = 0x02148DE4
+SaveControl = 0x0209A238
+StartMenuEvent = 0x0215A765
+FieldEventCheck = 0x0218175D
+ReturnZero = 0x020056B9
+GameSystem_SetEvent = 0x02016AED
+ScriptEvent = 0x0215356D
+ScriptEventCheck = 0x02153725
+FldSkill_InitCheck = 0x02159121
+FldSkill_CanUse = 0x021592ED
+FldSkill_Use = 0x02159311
+
+[[port]]
+code = "IRDI"
+rev = 0
+kind = "WHITE2"
+base = "black2"
+name = "White 2 (Italy)"
+title = "Pokémon Versione Bianca 2"
+sha1 = "aa399094394f0a7e3ea13e48238faa91e40a8600"
+cart = "Pokemon - Versione Bianca 2 (Italy) (NDSi Enhanced) [b].nds"
+GameSystem = 0x02141034
+BgmStack = 0x0209D9C0
+sSeqPlayer = 0x02148E24
+SaveControl = 0x0209A278
+StartMenuEvent = 0x0215A7A5
+FieldEventCheck = 0x0218179D
+ReturnZero = 0x020056B9
+GameSystem_SetEvent = 0x02016AED
+ScriptEvent = 0x021535AD
+ScriptEventCheck = 0x02153765
+FldSkill_InitCheck = 0x02159161
+FldSkill_CanUse = 0x0215932D
+FldSkill_Use = 0x02159351
+

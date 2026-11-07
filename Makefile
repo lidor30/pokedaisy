@@ -47,8 +47,9 @@ install: ## Build + install on a connected Android device (adb)
 run: install ## Build + install + launch the library screen on the connected device
 	adb shell am start -n $(PKG)/.LibraryActivity
 
-gamedata: ## Regenerate the per-game code from gamedata/ (NativeConfigsGen.kt; see gamedata/README.md)
+gamedata: ## Regenerate the per-game code from gamedata/ (NativeConfigsGen.kt, the DS ports' tables; see gamedata/README.md)
 	python3 scripts/gen_gamedata.py
+	python3 scripts/gen_nds_ports.py
 
 test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (T='*FooTest' to pick)
 	./gradlew :app:testDebugUnitTest -Pquick $(if $(T),--tests '$(T)')
@@ -64,6 +65,7 @@ clean: ## gradle clean
 check: ## Everything a PR must pass: unit tests, translations, game data, ui-preview stress + docs search, docs, debug build
 	python3 scripts/check_translations.py
 	python3 scripts/gen_gamedata.py --check
+	python3 scripts/gen_nds_ports.py --check
 	python3 scripts/check_melonds_patch.py
 	$(MAKE) -C 3ds test-configs-gen
 	./gradlew :app:testDebugUnitTest :app:assembleDebug

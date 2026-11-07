@@ -24,7 +24,8 @@ object WideScreen {
      * and revision. */
     fun ndsKnows(code: String, revision: Int): Boolean =
         code == "CPUE" && revision == 1 ||
-            code in setOf("CPUF", "IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF", "IRBO", "IRBF", "IRAO", "IRAF", "IREO", "IRDO") && revision == 0
+            code in setOf("CPUF", "IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF", "IRBO", "IRBF", "IRAO", "IRAF", "IREO", "IRDO") && revision == 0 ||
+            com.pokedaisy.app.companion.data.DsPorts.of(code, revision) != null
 
     /** What to hand [MgbaCore.pkWideConfigure] for the ROM with this CRC32 ([SaveStates.crc32]'s hex form):
      * the CRC itself if pk_wide.c knows it, else [OFF]. */

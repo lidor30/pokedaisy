@@ -2794,7 +2794,27 @@ reported as on the US carts (`childInit` equal to each table's word). PC, FLY (B
 HG through their own WildBattle commands; Black and White on Route 1) and EXPAND too: `widecheck`'s counts equal the US carts' on HG, Black and White; Platinum (warped to Floaroma, no US state to compare) by its `wideshot`. Platinum had no save, so a new game was played headless (Rowan's intro
 wants a *touch* at each yes / no: A only nags, and its next question comes after the text ends), the party given by script, VAR_PLAYER_STARTER poked so the X menu shows
 POKéMON. `FrenchDsTest` checks the configs through the US fixtures with the globals moved, and the names and art on the carts. The three French Gen 4 dumps at hand are tagged
-`[b]` in their set's naming; their code and text matched everything checked here, and the app goes by the header, so a cleaner dump runs too (only its library name would fall back to the file's). Black 2 / White 2 in French aren't added.
+`[b]` in their set's naming; their code and text matched everything checked here, and the app goes by the header, so a cleaner dump runs too (only its library name would fall back to the file's).
+
+**Language ports** (2026-11-07): the carts after the French ones aren't hand-written tables but rows of `gamedata/nds/ports.toml`, one a
+cart (header code + revision, the game it runs as, its title and SHA-1, its No-Intro file name) with its words under the names
+`scripts/port_nds_fns_known.txt` uses. `scripts/gen_nds_ports.py` (run by `make gamedata`, checked by `make check`) writes
+`app/src/main/cpp/nds/pk_nds_ports_gen.h`, from which `pk_nds_field.cpp` builds each cart's field table (a copy of `HEARTGOLD_US`,
+`BLACK_US` or `BLACK2_US` with its words; callSet 100 + n / 200 + n) and touch rules, and `pk_nds_call.cpp` its functions (a copy of
+`HEARTGOLD` / `BLACK`; every Gen 5 guard word is the same instruction in all of them); and `NdsPortsGen.kt`, from which `DsPorts`
+builds the Gen 4 / Gen 5 configs and the detection, the library, EXPAND, DS LAYOUT and the website take the cart. Gen 5's BGM stack
+depth is the stack's first song - 0xC in every build, so it isn't stored. In: Spanish / Italian HeartGold and SoulSilver, Europe's
+rev 10 of both (the US code under the same game code: only the header, the signature and one file of `/a/2/6/2` differ), German /
+Spanish / Italian Black and White, and Black 2 / White 2 in French, German, Spanish and Italian. A new one: run `port_nds_fns.py
+US.nds OTHER.nds --file <the US list>` (the lists are the known file's sections), add its row, `make gamedata`, then run it headless
+beside its US cart on the US save with one script (the field, the X menu, `widecheck`, `action 2`, `action 1`; on HeartGold /
+SoulSilver the party, options and Pokédex pages from the X menu and a wild battle through `hgwild`'s `scriptgo`) and compare the
+`fieldinfo` bits and `childInit`s. Some carts' intros are slower: Spanish and French White 2 stop at the C-Gear's "continue anyway?"
+where the US cart has gone on (one more A). Spanish HeartGold's low ARM9 sits 8 bytes lower than the others' (its own callSet row
+covers it). Spanish White and Korean White share Black's addresses outright. Japanese and Korean carts aren't in yet: their
+Gen 4 text needs its own character tables, and Japanese HeartGold / SoulSilver's X menu, options and Pokédex differ in code
+(the tool leaves them UNRESOLVED). `DsPortsTest` reads each port's save through the US fixtures with its globals moved, and
+its names and art off the cart.
 
 **Origin HeartGold** (v4.0.3, English patch 1.0.0-rc8 applied to the US HeartGold; SHA-1 `a54a647599d59ed0060dfc4375c289d6e041318a`):
 Yannanfei TB's hack, rebuilt by Alex on hg-engine over the *Japanese* HeartGold, so its header is a real Japanese HeartGold's
