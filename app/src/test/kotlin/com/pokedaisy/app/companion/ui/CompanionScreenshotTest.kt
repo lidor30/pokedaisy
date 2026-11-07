@@ -1714,7 +1714,7 @@ open class CompanionScreenshotTest {
     @Test fun portFireRedJaDexEntry() = retail("port_bprj1", port("BPRJ1"), ML_FR_JA, GameKind.FIRERED, "DEX", entry = 6)
     @Test fun portRubyJaMap() = retail("port_axvj1", port("AXVJ1"), ML_RU_JA, GameKind.EMERALD, "MAP", art = true)
     @Test fun portRubyJaDex() = retail("port_axvj1", port("AXVJ1"), ML_RU_JA, GameKind.EMERALD, "DEX")
-    @Test fun portRubyEnDex() = retail("port_en_axve1", com.pokedaisy.app.companion.data.NATIVE_RUBY, ML + "Pokemon - Ruby Version (USA, Europe) (Rev 1)/Pokemon - Ruby Version (USA, Europe) (Rev 1).gba", GameKind.EMERALD, "DEX")
+    @Test fun portRubyEnDex() = retail("port_en_axve1", com.pokedaisy.app.companion.data.NATIVE_RUBY, "Pokemon - Ruby Version (USA, Europe) (Rev 1).gba", GameKind.EMERALD, "DEX")
     @Test fun portRubyJaBattle() = retail("port_axvj1/battle", port("AXVJ1"), ML_RU_JA, GameKind.EMERALD, "BATTLE", art = true)
     @Test fun gaiaDex() = hackDex("gaia_dex", NATIVE_GAIA_V3_2, "Pokemon Gaia (v3.2).gba", GameKind.GAIA)
     @Test fun gaiaDexEntry() = hackDex("gaia_dex", NATIVE_GAIA_V3_2, "Pokemon Gaia (v3.2).gba", GameKind.GAIA, 390)
@@ -2070,18 +2070,17 @@ private const val SG12_ROM = "Pokemon SoulGold (v1.2).gba"
 private const val SG12B_ROM = "Pokemon SoulGold (v1.2) (Alt 1).gba"
 private const val SG121_ROM = "Pokemon SoulGold (v1.2.1).gba"
 private const val AM141_ROM = "Pokemon Amethyst (v1.4.1).gba"
-// The other-language ROMs: "Pokemon Multi Language" beside the retail dir, a folder per game.
-private const val ML = "../Pokemon Multi Language/"
-private const val EM_ES_ROM = ML + "Pokemon - Edicion Esmeralda (Spain)/Pokemon - Edicion Esmeralda (Spain).gba"
-private const val EM_DE_ROM = ML + "Pokemon - Smaragd-Edition (Germany)/Pokemon - Smaragd-Edition (Germany).gba"
-private const val EM_FR_ROM = ML + "Pokemon - Version Emeraude (France)/Pokemon - Version Emeraude (France).gba"
-private const val EM_IT_ROM = ML + "Pokemon - Versione Smeraldo (Italy)/Pokemon - Versione Smeraldo (Italy).gba"
-private const val EM_JA_ROM = ML + "Pocket Monsters - Emerald (Japan)/Pocket Monsters - Emerald (Japan).gba"
-private const val ML_FR_DE = ML + "Pokemon - Feuerrote Edition (Germany)/Pokemon - Feuerrote Edition (Germany).gba"
-private const val ML_LG_ES = ML + "Pokemon - Edicion Verde Hoja (Spain)/Pokemon - Edicion Verde Hoja (Spain).gba"
-private const val ML_SA_FR = ML + "Pokemon - Version Saphir (France) (Rev 1)/Pokemon - Version Saphir (France) (Rev 1).gba"
-private const val ML_FR_JA = ML + "Pocket Monsters - FireRed (Japan) (Rev 1)/Pocket Monsters - FireRed (Japan) (Rev 1).gba"
-private const val ML_RU_JA = ML + "Pocket Monsters - Ruby (Japan) (Rev 1)/Pocket Monsters - Ruby (Japan) (Rev 1).gba"
+// The other-language ROMs sit in the retail dir with the English ones.
+private const val EM_ES_ROM = "Pokemon - Edicion Esmeralda (Spain).gba"
+private const val EM_DE_ROM = "Pokemon - Smaragd-Edition (Germany).gba"
+private const val EM_FR_ROM = "Pokemon - Version Emeraude (France).gba"
+private const val EM_IT_ROM = "Pokemon - Versione Smeraldo (Italy).gba"
+private const val EM_JA_ROM = "Pocket Monsters - Emerald (Japan).gba"
+private const val ML_FR_DE = "Pokemon - Feuerrote Edition (Germany).gba"
+private const val ML_LG_ES = "Pokemon - Edicion Verde Hoja (Spain).gba"
+private const val ML_SA_FR = "Pokemon - Version Saphir (France) (Rev 1).gba"
+private const val ML_FR_JA = "Pocket Monsters - FireRed (Japan) (Rev 1).gba"
+private const val ML_RU_JA = "Pocket Monsters - Ruby (Japan) (Rev 1).gba"
 private fun port(key: String) = com.pokedaisy.app.companion.data.RETAIL_PORTS.getValue(key)()
 private const val SEAGLASS_ROM = "Pokemon Emerald Seaglass (v3.0).gba"
 private const val LAZARUS_ROM = "Pokemon Lazarus (v2.0).gba"

@@ -84,8 +84,7 @@ class InstantTextTest {
     }
 
     @Test fun `Ruby and Sapphire in every language are one branch`() {
-        val dir = File(RETAIL_ROM_DIR).parentFile?.resolve("Pokemon Multi Language") ?: return
-        val roms = dir.listFiles().orEmpty().mapNotNull { it.listFiles()?.firstOrNull { f -> f.name.endsWith(".gba") } }
+        val roms = retailRomFiles().toList()
             .filter { Regex("Rubin|Rubi|Saphir|Zafiro|Zaffiro|Rubis").containsMatchIn(it.name) && "Debug" !in it.name }
         assumeTrue("no ROMs here", roms.isNotEmpty())
         for (f in roms) assertEquals(f.name, 1, InstantText.find(f)?.writes?.size)

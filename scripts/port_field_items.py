@@ -90,7 +90,7 @@ def ref(stem, fam, **a):
 # English references, from the clean builds' ELFs (llvm-nm). PC anywhere's (Pc.kt: ScriptContext_SetupScript, the PC
 # special's function, gSpecials) were found in each retail ROM by the clean builds' code and gSpecials' entry.
 REFS = {
-    "BPRE0": ref("Pokemon - FireRed Version (USA, Europe)", FR, varGet=0x0806E568, varSet=0x0806E584,
+    "BPRE0": ref("Pokemon - FireRed Version (USA)", FR, varGet=0x0806E568, varSet=0x0806E584,
                  checkBagHasItem=0x08099F40, removeBagItem=0x0809A1D8, fieldControlsLocked=0x08069958,
                  getMonData=0x0803FBE8, setMonData=0x0804037C, itemNoEffect=0x08042414, itemEffect=0x080413C0,
                  addBagItem=0x0809A084, items=0x083DB028, party=0x02024284, partyCount=0x02024029,
@@ -102,7 +102,7 @@ REFS = {
                  addBagItem=0x0809A098, items=0x083DB098, party=0x02024284, partyCount=0x02024029,
                  medicine=0x080A16F4, ppRecovery=0x080A1710, ppUp=0x080A172C, repel=0x080A19AC,
                  setupScript=0x08069AF8, pcFn=0x0808C6BC, specials=0x0815FDD8),
-    "BPGE0": ref("Pokemon - LeafGreen Version (USA, Europe)", FR, varGet=0x0806E568, varSet=0x0806E584,
+    "BPGE0": ref("Pokemon - LeafGreen Version (USA)", FR, varGet=0x0806E568, varSet=0x0806E584,
                  checkBagHasItem=0x08099F14, removeBagItem=0x0809A1AC, fieldControlsLocked=0x08069958,
                  getMonData=0x0803FBE8, setMonData=0x0804037C, itemNoEffect=0x08042414, itemEffect=0x080413C0,
                  addBagItem=0x0809A058, items=0x083DAE64, party=0x02024284, partyCount=0x02024029,

@@ -34,7 +34,7 @@ PORTS = os.path.join(ROOT, "build", "ports")
 OUT = os.path.join(ROOT, "build", "shiny")
 CAPTURE = os.path.join(ROOT, "native-capture")
 IMAGE = "pokedaisy-capture"
-MULTI = os.path.expanduser("~/Downloads/Game ROMs & Emulation/Pokemon Multi Language")
+MULTI = os.path.expanduser("~/Downloads/Game ROMs & Emulation/gba")  # every language's retail cart, by its No-Intro name
 
 SAVES = {"BPR": "firered_vanilla", "BPG": "leafgreen_rev1", "AXV": "ruby_rev1", "AXP": "sapphire_rev1", "BPE": "emerald_vanilla"}
 OWN_SAVES = {"BPRJ": "firered_ja", "BPGJ": "leafgreen_ja"}
@@ -71,8 +71,8 @@ def conf(key):
 
 
 def multi_rom(name):
-    found = glob.glob(os.path.join(MULTI, glob.escape(name), "*.gba"))
-    return found[0] if found else None
+    path = os.path.join(MULTI, name + ".gba")
+    return path if os.path.isfile(path) else None
 
 
 _by_sha1 = None

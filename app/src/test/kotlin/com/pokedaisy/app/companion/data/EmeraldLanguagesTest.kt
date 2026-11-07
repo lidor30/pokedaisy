@@ -46,7 +46,7 @@ class EmeraldLanguagesTest {
 
     @After fun english() = select(null)
 
-    private fun romFile(l: Lang) = File(RomFileReader.EMERALD_PATH).parentFile?.let { File(it, "../Pokemon Multi Language/${l.rom.removeSuffix(".gba")}/${l.rom}") }
+    private fun romFile(l: Lang) = File(RomFileReader.EMERALD_PATH).parentFile?.let { File(it, l.rom) }
 
     @Test fun `each game code gets its config`() = langs.forEach { l ->
         assertSame(l.code, l.cfg, TelemetrySampler.otherRetailConfig(l.code, 0))

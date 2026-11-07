@@ -116,8 +116,8 @@ What it needs:
   committed as fixtures (`app/src/test/resources/fixtures/`). No decomp builds either:
   only the generator scripts and `ui-preview` use `$DECOMPS`, not the tests.
 - Your ROMs, named the way the tests expect. The tests read
-  `~/Downloads/Game ROMs & Emulation/gba/` on your Mac by default, and from beside it `gbc/`,
-  `nds/` and `Pokemon Multi Language/` (a folder per other-language game), so point
+  `~/Downloads/Game ROMs & Emulation/gba/` on your Mac by default (every language's GBA carts), and from beside it `gbc/`
+  and `nds/`, so point
   `POKEDAISY_ROM_DIR` at the `gba/` folder of that same layout.
   Any test whose ROM isn't there still skips rather than fails. Check which ones ran
   with `make test-roms ROM_DIR=<folder>` and the report at

@@ -127,8 +127,8 @@ Public readers can't see that repo, so user-facing docs don't name it or link to
 - ROMs/saves for headless captures: `scripts/host_roms.conf`. On-device paths:
   `scripts/roms.conf` (`/sdcard/Android/data/com.pokedaisy.app/files/...`).
 - The ROMs the tests read (`RETAIL_ROM_DIR`, `-DromDir` / `POKEDAISY_ROM_DIR` to move it) sit in
-  `~/Downloads/Game ROMs & Emulation/`: `gba/` (the default dir; others are found relative to it), `gbc/`, `nds/` and
-  `Pokemon Multi Language/<name>/<name>.gba` (every other-language retail build, a folder each - the only copy). Retail
+  `~/Downloads/Game ROMs & Emulation/`: `gba/` (the default dir, every language's GBA carts and the hacks, since 2026-11-07;
+  others are found relative to it: `retailRomFiles` picks the retail ones by name), `gbc/` and `nds/`. Retail
   keeps its No-Intro name; a hack is `Pokemon <Title> (v<version>) (<variant>).<ext>` (Polished Crystal's
   `Pokemon Polished Crystal (v3.2.3) (Faithful).gbc`). Nothing loose in `~/Downloads`. A test, host_roms.conf line or
   fixture README naming a ROM uses these names; renaming a file means grepping for the old one (many tests skip

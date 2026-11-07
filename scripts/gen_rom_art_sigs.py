@@ -376,12 +376,12 @@ def glazed_symbols(rom):
 # by scanning near English's offset for a blob of the same size (the palette,
 # tilemaps and Poke Ball beside them are identical), FONT_SMALL through
 # English's literal pool. RomArt writes them to partyem_<lang>/.
-# A folder per game in "Pokemon Multi Language", the ROM inside named like it.
-MULTI_LANGUAGE = os.path.expanduser("~/Downloads/Game ROMs & Emulation/Pokemon Multi Language")
+# The other languages sit in the retail ROM folder with the English ones, under their No-Intro names.
+MULTI_LANGUAGE = os.path.expanduser("~/Downloads/Game ROMs & Emulation/gba")
 
 
 def multi_language_rom(name):
-    return os.path.join(MULTI_LANGUAGE, name, name + ".gba")
+    return os.path.join(MULTI_LANGUAGE, name + ".gba")
 
 
 EMERALD_EU_ROMS = {

@@ -383,7 +383,7 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             codeCrcs = listOf(0x07BEBC3AL, 0xB9D4EE53L, 0x1E811874L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x79EE9C0CL),
         ),
     ),
-    // Pokemon - FireRed Version (USA, Europe).gba (SHA1 41cb23d8...), from BPRE0.
+    // Pokemon - FireRed Version (USA).gba (SHA1 41cb23d8...), from BPRE0.
     "BPRE0" to FieldItemFns(
         varGet = 0x0806E568L, varSet = 0x0806E584L, checkBagHasItem = 0x08099F40L, removeBagItem = 0x0809A1D8L,
         fieldControlsLocked = 0x08069958L, repelVar = 0x4020, items = 0x083DB028L,
@@ -874,7 +874,7 @@ val BOX_SWAP_PORTS: Map<String, BoxSwapFns> = mapOf(
         boxMonToMon = 0x0803E674L, boxMonRestorePP = 0x080441E4L, getBoxMonData = 0x0803FC44L, storagePtr = 0x03004F60L,
         codeCrcs = listOf(0x57F19FDFL, 0x05F9FBC2L, 0xF3E3F4DDL),
     ),
-    // Pokemon - FireRed Version (USA, Europe).gba.
+    // Pokemon - FireRed Version (USA).gba.
     "BPRE0" to BoxSwapFns(
         boxMonToMon = 0x0803E774L, boxMonRestorePP = 0x080442E4L, getBoxMonData = 0x0803FD44L, storagePtr = 0x03005010L,
         codeCrcs = listOf(0x7416AE8FL, 0x05F9FBC2L, 0xF3E3F4DDL),

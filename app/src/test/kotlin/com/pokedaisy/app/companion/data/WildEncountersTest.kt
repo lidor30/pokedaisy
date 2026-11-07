@@ -24,8 +24,8 @@ class WildEncountersTest {
         "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba" to 0x020386DCL,
         "Pokemon - Ruby Version (USA, Europe) (Rev 1).gba" to 0x0202FF7CL,
         "Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba" to 0x0202FF7CL,
-        "../Pokemon Multi Language/Pocket Monsters - Emerald (Japan)/Pocket Monsters - Emerald (Japan).gba" to 0x020388A0L,
-        "../Pokemon Multi Language/Pokemon - Smaragd-Edition (Germany)/Pokemon - Smaragd-Edition (Germany).gba" to 0x02038C00L,
+        "Pocket Monsters - Emerald (Japan).gba" to 0x020388A0L,
+        "Pokemon - Smaragd-Edition (Germany).gba" to 0x02038C00L,
         "Pokemon Glazed (v9.2.0).gba" to 0x02038C00L,
         "Pokemon Emerald Kaizo (v2.0).gba" to 0x02038C00L,
         // Emerald Legacy: its own agbcc build of Emerald's code (its ELF's sWildEncountersDisabled).
