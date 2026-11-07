@@ -69,13 +69,13 @@ If you want to skip the `FIGHT` step, turn on `ONE-TAP MOVES` in SETTINGS (COMPA
 
 ### BATTLE STYLE
 
-The battle screen comes in two looks, and both work the same way. `GEN 4` is the one shown above: big coloured buttons. `GEN 5` takes after the fifth generation's touch screen and fills the whole companion screen above the tab bar. It turns into a big ball, red on top and pale below, with `FIGHT!` on a dark hexagon across the middle and `BAG`, `RUN` and `POKéMON` as dark plates rising from the bottom edge. Your party's balls sit under `FIGHT!`, and in a trainer battle the trainer's sit at the top.
+The battle screen comes in two looks, and both work the same way. `GEN 4` is the one shown above: big coloured buttons. `GEN 5` is laid out and coloured like the fifth generation's own touch screen, and fills the whole companion screen above the tab bar. It's a big ball, red on top and pale below, with a dark band across it that swells into the `FIGHT!` button in the middle. `BAG`, `RUN` and `POKéMON` are round dark plates rising from the bottom edge, `BAG` and `POKéMON` joined to the sides and `RUN` a little lower in between. Your party's balls sit under `FIGHT!`, and in a trainer battle the trainer's sit above it. `INFO` and `SUGGESTIONS` are the two small plates in the top corners.
 
-![GEN 5: FIGHT! on a dark plate across a red and white ball, BAG, RUN and POKéMON below, the party's balls under FIGHT!](shots/companion-battle-gen5.png "BATTLE STYLE: GEN 5")
+![GEN 5: FIGHT! on the dark band across a red and white ball, round BAG, RUN and POKéMON plates below, the party's balls in between](shots/companion-battle-gen5.png "BATTLE STYLE: GEN 5")
 
-In `GEN 5`, `FIGHT!` dims the ball and lays your four moves over it, each plate edged in its move's type colour. Your Pokémon's name sits in the bar underneath, and the arrow plate at the bottom right takes you back. While the attacks play out, the tab shows a big dark ball until your next turn.
+In `GEN 5`, `FIGHT!` grows the band into a dark field with your four moves on it, each plate edged in its move's type colour: the name, the type and PP, then the move's power and, with `BATTLE HINTS` on, how well it hits. The round plate with the arrow at the bottom right takes you back. `POKéMON` opens the game's style of party screen: a plate for each of your Pokémon with its HP bar, and the one to send in marked `BEST` when `BATTLE HINTS` is on. While the attacks play out, the tab shows a closed ball in the dark until your next turn. With a controller, the cursor is a set of pink corners, as in the game.
 
-![GEN 5's moves: four dark plates edged in their type's colour, a bar with your Pokémon's name and the arrow back](shots/companion-battle-gen5-moves.png "GEN 5's moves")
+![GEN 5's moves: four dark plates edged in their type's colour over a dark field, your party's balls under them and the arrow back](shots/companion-battle-gen5-moves.png "GEN 5's moves")
 
 The first time you open PokeDaisy after this update, it asks which look you want, with both side by side. Change it any time with `BATTLE STYLE` in the companion's SETTINGS (COMPANION group). `ONE-TAP MOVES` works with either look. Yellow keeps its own black and white text boxes whichever you pick.
 

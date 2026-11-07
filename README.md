@@ -76,7 +76,8 @@ The app updates itself: it offers each new version when you open it. The full ma
   matchups, and which moves or TMs are worth learning.
 - **BAG**: every pocket with icons and descriptions, and items you can use or give from it in the games that allow it.
 - **BATTLE**: opens by itself. Your moves rated SUPER / RESISTED / NEUTRAL / IMMUNE, the foe's weaknesses,
-  ability, item and stats, suggestions for who to send out and which move to use, and the rest of the foe's team.
+  ability, item and stats, suggestions for who to send out and which move to use, and the rest of the foe's team. Its
+  touch buttons come in two looks: big coloured buttons, or a battle screen styled after the fifth generation's.
 - **MAP**: the game's region map with you on it, every place searchable, and FLY.
 - **DEX**: seen / caught, full entries, evolutions, where to catch each one and the moves it learns.
 - **GUIDE**: hints first, answers on a second tap. What's in the area you're in, the next boss's team, evolutions,

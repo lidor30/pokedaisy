@@ -18,6 +18,8 @@ internal val trCompanion: Map<String, Tr> = mapOf(
     "TRADE" to Tr(ja = "つうしんこうかん", fr = "ÉCHANGE", de = "TAUSCH", it = "SCAMBIO", es = "INTERCAMBIO", br = "TROCA", pt = "TROCA"),
     "USE AN ITEM" to Tr(ja = "どうぐを つかう", fr = "UTILISER UN OBJET", de = "ITEM BENUTZEN", it = "USA UNO STRUMENTO", es = "USAR UN OBJETO", br = "USAR UM ITEM", pt = "USAR UM ITEM"),
     "BEAUTY" to Tr(ja = "うつくしさ", fr = "BEAUTÉ", de = "SCHÖNHEIT", it = "BELLEZZA", es = "BELLEZA", br = "BELEZA", pt = "BELEZA"),
+    // GEN 5 battle screen's party slots (BattleControlsGen5).
+    "Lv.{0}" to Tr(ja = "Lv.{0}", fr = "N.{0}", de = "Lv.{0}", it = "Lv.{0}", es = "Nv.{0}", br = "Nv.{0}", pt = "Nv.{0}"),
     "LV {0}, ATTACK > DEFENSE" to Tr(ja = "Lv{0}、こうげき > ぼうぎょ", fr = "N.{0}, ATTAQUE > DÉFENSE", de = "Lv.{0}, ANGRIFF > VERTEIDIGUNG", it = "Lv.{0}, ATTACCO > DIFESA", es = "Nv.{0}, ATAQUE > DEFENSA", br = "NV. {0}, ATAQUE > DEFESA", pt = "NV. {0}, ATAQUE > DEFESA"),
     "LV {0}, ATTACK = DEFENSE" to Tr(ja = "Lv{0}、こうげき = ぼうぎょ", fr = "N.{0}, ATTAQUE = DÉFENSE", de = "Lv.{0}, ANGRIFF = VERTEIDIGUNG", it = "Lv.{0}, ATTACCO = DIFESA", es = "Nv.{0}, ATAQUE = DEFENSA", br = "NV. {0}, ATAQUE = DEFESA", pt = "NV. {0}, ATAQUE = DEFESA"),
     "LV {0}, ATTACK < DEFENSE" to Tr(ja = "Lv{0}、こうげき < ぼうぎょ", fr = "N.{0}, ATTAQUE < DÉFENSE", de = "Lv.{0}, ANGRIFF < VERTEIDIGUNG", it = "Lv.{0}, ATTACCO < DIFESA", es = "Nv.{0}, ATAQUE < DEFENSA", br = "NV. {0}, ATAQUE < DEFESA", pt = "NV. {0}, ATAQUE < DEFESA"),

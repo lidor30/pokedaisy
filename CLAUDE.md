@@ -1248,6 +1248,13 @@ slide in from the right over a fading dim (`movesIn` / `partyIn`; snapped in Pap
 `BattleList`; the side panel's edge tab steps aside meanwhile);
 RUN = `selectAction(3)`, wild battles only. `FittedGbaText` narrows a label's letters (3 tall, 3 / 2 / 1.5 / 1 wide) before it
 shrinks - measure both ways, layoutlib's measurer ignores scaleX. `BattleButtonsScreenshotTest` (+ 1:1 close-ups, a 20:9 phone).
+**BATTLE STYLE** (companion SETTINGS > COMPANION, `Prefs.battleStyle`, GEN 4 default / GEN 5, NEW tag; asked once on the Library,
+`BattleStyleIntro`): GEN 5 (`BattleControlsGen5.kt`) is Black / White's battle touch screen redrawn - colours sampled and shapes measured
+off headless frames of the player's Black (nds_dump, the Battle Subway's first battle: command menu, moves, party), never their art (its
+ball sprites are ours). Lengths are the game's pixels over the tab (`G5`: 256 x 176, placed by width / height, sized by the smaller scale,
+every edge stepped in whole screen pixels of one game pixel, `rowsPath`); the lens / field, discs (`DISC`) and plates (`PLATE`) are profile
+tables from the frames. Edge to edge: CompanionScreen eases its margin away and docks the tab bar on `Gen5Dock` while the controls are up.
+D-pad focus is the game's key cursor (magenta corner brackets). Look at it with `gradle render -Ponly=battle-gen5` beside the game's frames.
 **ASPECT** (SETTINGS on either screen, `Prefs.stretchGame`, ORIGINAL default / STRETCH): STRETCH fills
 the top screen - `EmulatorView.stretch` drops the quad's letterbox and `GameStageLayout.stretch` gives the
 game all the space under the status bar. The bottom screen flips it in place; the top-screen Settings opens
