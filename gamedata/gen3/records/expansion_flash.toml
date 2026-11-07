@@ -1,0 +1,135 @@
+# FLASH (Flash.kt) in the gcc-built Emerald hacks: written by scripts/find_flash_expansion.py from the player's ROMs
+# (each checked headless by scripts/verify_tm_flash.py).
+
+# Pokemon Lazarus (v2.0).gba: found by scripts/find_flash_expansion.py.
+[record.FLASH_LAZARUS]
+schema = 'gen3_flash'
+flagGet = 0x081148A0
+badgeFlag = 0x869
+litFlag = 0x888
+setUpFieldMoveFlash = 0x0814D2FC
+menuFieldCallback = 0x030036EC
+postMenuFieldCallback = 0x0201B6A0
+fieldCallbacks = [0x0814D368, 0x080DE6C0] # FieldCallback_Flash, then the puzzles'
+partyMenuSlotId = 0x0201B685
+mapHeader = 0x0200B06C
+codeCrcs = [0x6DE8DF3F, 0x35B71A40, 0x920FD22D, 0x36F1F74E]
+monMoveField = 20
+monEggField = 52
+
+# Pokemon Emerald Imperium (v1.3.1).gba: found by scripts/find_flash_expansion.py.
+[record.FLASH_IMPERIUM]
+schema = 'gen3_flash'
+flagGet = 0x08116E54
+badgeFlag = 0x868
+litFlag = 0x888
+setUpFieldMoveFlash = 0x08149F1C
+menuFieldCallback = 0x0300626C
+postMenuFieldCallback = 0x02037104
+fieldCallbacks = [0x08149F88, 0x080DA87C] # FieldCallback_Flash, then the puzzles'
+partyMenuSlotId = 0x020370E9
+mapHeader = 0x0200A68C
+codeCrcs = [0xF7861D9E, 0x2EC876F4, 0x7A5DE0D4, 0x16927E84]
+monMoveField = 20
+monEggField = 52
+
+# Pokemon Heart and Soul (v2.0.6).gba: found by scripts/find_flash_expansion.py.
+[record.FLASH_HEART_AND_SOUL]
+schema = 'gen3_flash'
+flagGet = 0x0811E8D4
+badgeFlag = 0x880
+litFlag = 0x865
+setUpFieldMoveFlash = 0x0815369C
+menuFieldCallback = 0x03006054
+postMenuFieldCallback = 0x02034224
+fieldCallbacks = [0x0815331C, 0x080EB184] # FieldCallback_Flash, then the puzzles'
+partyMenuSlotId = 0x02034205
+mapHeader = 0x02001D0C
+codeCrcs = [0x6DE8DF3F, 0x0E23670E, 0x10B4A155, 0xF08ADC9D]
+monMoveField = 20
+monEggField = 54
+
+# Pokemon SoulGold (v1.1.4).gba: found by scripts/find_flash_expansion.py.
+[record.FLASH_SOULGOLD]
+schema = 'gen3_flash'
+flagGet = 0x08134194
+badgeFlag = 0x993
+litFlag = 0x9B4
+setUpFieldMoveFlash = 0x08168AF0
+menuFieldCallback = 0x03005A3C
+postMenuFieldCallback = 0x02038D1C
+fieldCallbacks = [0x08168770, 0x080FDCF8, 0x0822E9A8] # FieldCallback_Flash, then the puzzles'
+partyMenuSlotId = 0x02038D2D
+mapHeader = 0x02003828
+caveOff = 0x16
+codeCrcs = [0xF7861D9E, 0x610C2F99, 0x03207743, 0xC688B823, 0x3973A4C2]
+monMoveField = 21
+monEggField = 55
+
+# Pokemon SoulGold (v1.2).gba: found by scripts/find_flash_expansion.py.
+[record.FLASH_SOULGOLD_V1_2]
+schema = 'gen3_flash'
+flagGet = 0x081348C8
+badgeFlag = 0x993
+litFlag = 0x9B4
+setUpFieldMoveFlash = 0x081691E8
+menuFieldCallback = 0x03005A3C
+postMenuFieldCallback = 0x02038D24
+fieldCallbacks = [0x08169184, 0x080FE36C, 0x0822F28C] # FieldCallback_Flash, then the puzzles'
+partyMenuSlotId = 0x02038D35
+mapHeader = 0x02003828
+caveOff = 0x16
+codeCrcs = [0xF7861D9E, 0xC10259DC, 0xA034D790, 0xA0DFF6C9, 0x8FC635EE]
+monMoveField = 21
+monEggField = 55
+
+# Pokemon SoulGold (v1.2) (Alt 1).gba: found by scripts/find_flash_expansion.py.
+[record.FLASH_SOULGOLD_V1_2B]
+schema = 'gen3_flash'
+flagGet = 0x081348B8
+badgeFlag = 0x993
+litFlag = 0x9B4
+setUpFieldMoveFlash = 0x081691D8
+menuFieldCallback = 0x03005A3C
+postMenuFieldCallback = 0x02038D24
+fieldCallbacks = [0x08169174, 0x080FE35C, 0x0822F1F4] # FieldCallback_Flash, then the puzzles'
+partyMenuSlotId = 0x02038D35
+mapHeader = 0x02003828
+caveOff = 0x16
+codeCrcs = [0xF7861D9E, 0xDDF63F0F, 0x70741303, 0xE32B39C3, 0xF44154A1]
+monMoveField = 21
+monEggField = 55
+
+# Pokemon SoulGold (v1.2) (Alt 2).gba: found by scripts/find_flash_expansion.py.
+[record.FLASH_SOULGOLD_V1_2C]
+schema = 'gen3_flash'
+flagGet = 0x08134924
+badgeFlag = 0x993
+litFlag = 0x9B4
+setUpFieldMoveFlash = 0x08169244
+menuFieldCallback = 0x03005A3C
+postMenuFieldCallback = 0x02038D24
+fieldCallbacks = [0x081691E0, 0x080FE36C, 0x0822F2EC] # FieldCallback_Flash, then the puzzles'
+partyMenuSlotId = 0x02038D35
+mapHeader = 0x02003828
+caveOff = 0x16
+codeCrcs = [0xF7861D9E, 0xDC2B8583, 0x4C0F490F, 0x2637151E, 0x5968735D]
+monMoveField = 21
+monEggField = 55
+
+# Pokemon SoulGold (v1.2.1).gba: found by scripts/find_flash_expansion.py.
+[record.FLASH_SOULGOLD_V1_2_1]
+schema = 'gen3_flash'
+flagGet = 0x08136DEC
+badgeFlag = 0x993
+litFlag = 0x9B4
+setUpFieldMoveFlash = 0x0816B680
+menuFieldCallback = 0x03005A3C
+postMenuFieldCallback = 0x02038B64
+fieldCallbacks = [0x0816B61C, 0x08100610, 0x082339CC] # FieldCallback_Flash, then the puzzles'
+partyMenuSlotId = 0x02038B75
+mapHeader = 0x02003830
+caveOff = 0x16
+codeCrcs = [0xF7861D9E, 0xB53F8889, 0x00EDF75F, 0x815BB5CA, 0xC32C92AE]
+monMoveField = 21
+monEggField = 55

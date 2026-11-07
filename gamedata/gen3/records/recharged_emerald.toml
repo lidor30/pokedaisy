@@ -1,0 +1,104 @@
+# The TM screen (TmTeach.kt) and FLASH (Flash.kt) in Recharged Emerald: written by
+# scripts/find_tm_flash_recharged_emerald.py from the player's ROMs (each checked headless by scripts/verify_tm_flash.py).
+
+# Pokemon Recharged Emerald (v2.2.5).gba: found by scripts/find_tm_flash_recharged_emerald.py.
+[record.TM_RECHARGED_EMERALD_V2_2_5]
+schema = 'gen3_tm'
+specialVarItemId = 0x0200C27C
+itemUseCb = 0x03007254
+itemUseCbTmhm = 0x08154814
+showPartyMenuForItemUse = 0x08153AC4
+partyMenu = 0x02037338
+partyMenuSlotOff = 9
+initPartyMenu = 0x0814D150
+mainCallback2 = 0x030036D8
+setMainCallback2 = 0x080005B4
+returnToField = 0x0814843C
+cleanupOverworld = 0x08147C04
+fadeScreen = 0x08105B34
+lockControls = 0x081AEF7C
+unlockControls = 0x081AEF88
+codeCrcs = [0x7F7031CE, 0x5F9D3BA5, 0x35C4C1D9, 0xEB398B2A, 0xAC389CED, 0xBD04009F, 0x4EE01A6C, 0x4522C4C5, 0xFAD9A57B]
+
+[record.FLASH_RECHARGED_EMERALD_V2_2_5]
+schema = 'gen3_flash'
+flagGet = 0x080DA680
+badgeFlag = 0x868 # FLAG_BADGE02_GET
+litFlag = 0x888 # FLAG_SYS_USE_FLASH
+setUpFieldMoveFlash = 0x0810B2C4
+menuFieldCallback = 0x0300724C
+postMenuFieldCallback = 0x0203735C
+fieldCallbacks = [0x0810B330, 0x080ACFE0] # FieldCallback_Flash, SetUpPuzzleEffectRegisteel
+partyMenuSlotId = 0x02037341
+mapHeader = 0x0200C1AC
+codeCrcs = [0x8DCF82E1, 0x7851F06C, 0x81211C3B, 0x0042DC24]
+monMoveField = 22
+monEggField = 54
+
+# Pokemon Recharged Emerald (v2.2.8).gba: found by scripts/find_tm_flash_recharged_emerald.py.
+[record.TM_RECHARGED_EMERALD_V2_2_8]
+schema = 'gen3_tm'
+specialVarItemId = 0x0200C27C
+itemUseCb = 0x03007270
+itemUseCbTmhm = 0x08155760
+showPartyMenuForItemUse = 0x08154A10
+partyMenu = 0x02037338
+partyMenuSlotOff = 9
+initPartyMenu = 0x0814E07C
+mainCallback2 = 0x030036D8
+setMainCallback2 = 0x080005A4
+returnToField = 0x08149334
+cleanupOverworld = 0x08148B10
+fadeScreen = 0x08106790
+lockControls = 0x081B0924
+unlockControls = 0x081B0930
+codeCrcs = [0x7D205FB1, 0x08D14DBD, 0xDBD80476, 0xEB398B2A, 0x29D492CF, 0x5E7C0711, 0xDB5075E4, 0x4522C4C5, 0xFAD9A57B]
+
+[record.FLASH_RECHARGED_EMERALD_V2_2_8]
+schema = 'gen3_flash'
+flagGet = 0x080DB1E4
+badgeFlag = 0x868 # FLAG_BADGE02_GET
+litFlag = 0x888 # FLAG_SYS_USE_FLASH
+setUpFieldMoveFlash = 0x0810BEE4
+menuFieldCallback = 0x03007268
+postMenuFieldCallback = 0x0203735C
+fieldCallbacks = [0x0810BF50, 0x080AD884] # FieldCallback_Flash, SetUpPuzzleEffectRegisteel
+partyMenuSlotId = 0x02037341
+mapHeader = 0x0200C1AC
+codeCrcs = [0x6DE8DF3F, 0x51093BB3, 0x4C784BF4, 0x06FAD8C3]
+monMoveField = 22
+monEggField = 54
+
+# Pokemon Recharged Emerald Rebalanced (v2.2.8).gba: found by scripts/find_tm_flash_recharged_emerald.py.
+[record.TM_RECHARGED_EMERALD_REBALANCED_V2_2_8]
+schema = 'gen3_tm'
+specialVarItemId = 0x0200C27C
+itemUseCb = 0x0300727C
+itemUseCbTmhm = 0x0815598C
+showPartyMenuForItemUse = 0x08154C3C
+partyMenu = 0x0203734C
+partyMenuSlotOff = 9
+initPartyMenu = 0x0814E290
+mainCallback2 = 0x030036D8
+setMainCallback2 = 0x080005A4
+returnToField = 0x08149548
+cleanupOverworld = 0x08148D24
+fadeScreen = 0x08106894
+lockControls = 0x081B0A40
+unlockControls = 0x081B0A4C
+codeCrcs = [0x31A404E1, 0x08D14DBD, 0xD5094F39, 0xEB398B2A, 0xFF703FF2, 0xF1822E03, 0xDB5075E4, 0x4522C4C5, 0xFAD9A57B]
+
+[record.FLASH_RECHARGED_EMERALD_REBALANCED_V2_2_8]
+schema = 'gen3_flash'
+flagGet = 0x080DB2E8
+badgeFlag = 0x868 # FLAG_BADGE02_GET
+litFlag = 0x888 # FLAG_SYS_USE_FLASH
+setUpFieldMoveFlash = 0x0810BFE8
+menuFieldCallback = 0x03007274
+postMenuFieldCallback = 0x02037370
+fieldCallbacks = [0x0810C054, 0x080AD8E4] # FieldCallback_Flash, SetUpPuzzleEffectRegisteel
+partyMenuSlotId = 0x02037355
+mapHeader = 0x0200C1AC
+codeCrcs = [0x6DE8DF3F, 0xB135D945, 0x250CAFA5, 0x6ACA142F]
+monMoveField = 22
+monEggField = 54

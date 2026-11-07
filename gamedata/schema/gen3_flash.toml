@@ -69,6 +69,12 @@ kotlin = 'Long'
 type = 'long'
 default = 0
 
+# gMapHeader's cave byte (0x15; SoulGold's 16-bit map sections push it to 0x16).
+[field.caveOff]
+kotlin = 'Int'
+type = 'int'
+default = 0x15
+
 # A CFRU hack's own badge rule for field moves (bool fn(fieldMove)), found at run time by flashBadgeRule; 0 = none.
 [field.badgeFn]
 kotlin = 'Long'

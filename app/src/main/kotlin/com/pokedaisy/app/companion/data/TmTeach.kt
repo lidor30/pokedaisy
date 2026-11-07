@@ -58,7 +58,8 @@ data class TmFns(
 
 /** The TM screen's calls for a ROM, by what the companion detected it as: retail FireRed rev 0 / 1, LeafGreen rev 0 / 1 and
  * Emerald, English from the records and every other language from [TM_PORTS] (scripts/port_field_items.py), and the hacks
- * edited into retail's code in place ([hack] false for them; true for a rebuild like Recharged Emerald or Emerald Legacy):
+ * edited into retail's code in place ([hack] false for them; true for a rebuild like Recharged Emerald; Emerald Legacy, a
+ * rebuild too, has records of its own):
  * FireRed rev 0's ([FIRERED_REV0_HACKS], Ultra Violet's PUVV, the FireRed-kind ones) and Emerald's (Glazed, Kaizo, the
  * randomized cart). Their own TM rules (reusable, CFRU's TM51+ in the HMs' ids) are the game's. Not Ruby / Sapphire: their
  * party menu goes back to the bag by a fixed call (pokemon_menu.c's sub_808B25C), with no exit to point at the field. The
@@ -72,9 +73,17 @@ fun tmFnsFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean): T
     kind == GameKind.GLAZED -> TM_EMERALD.takeIf { gameCode == "BPEE" }
     kind == GameKind.FIRERED && gameCode == "BPRE" -> when (revision) { 0 -> TM_FIRERED_REV0; 1 -> TM_FIRERED_REV1; else -> null }
     kind == GameKind.FIRERED && gameCode == "BPGE" -> when (revision) { 0 -> TM_LEAFGREEN_REV0; 1 -> TM_LEAFGREEN_REV1; else -> null }
-    kind == GameKind.EMERALD && gameCode == "BPEE" -> TM_EMERALD
+    kind == GameKind.EMERALD && gameCode == "BPEE" -> if (emeraldLegacy) TM_EMERALD_LEGACY else TM_EMERALD
     kind == GameKind.FIRERED || kind == GameKind.EMERALD -> TM_PORTS["$gameCode$revision"]
     else -> null
+}
+
+/** Every table that may fit: [tmFnsFor]'s, or for a rebuild sharing retail's kind and game code ([rebuild]: Recharged
+ * Emerald's three builds) all of its builds' - the code CRCs pick the one running. */
+fun tmCandidatesFor(kind: GameKind?, gameCode: String, revision: Int, rebuild: Boolean): List<TmFns> = when {
+    rebuild -> if (kind == GameKind.EMERALD && gameCode == "BPEE")
+        listOf(TM_RECHARGED_EMERALD_V2_2_5, TM_RECHARGED_EMERALD_V2_2_8, TM_RECHARGED_EMERALD_REBALANCED_V2_2_8) else emptyList()
+    else -> listOfNotNull(tmFnsFor(kind, gameCode, revision, hack = false))
 }
 
 /** Whether the running ROM has [tm]'s functions where they're expected. */

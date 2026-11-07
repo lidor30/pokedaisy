@@ -340,6 +340,59 @@ class TmFlashTest {
         }
     }
 
+    /** The rebuilds' records: Emerald Legacy's from its ELF, Recharged Emerald's three builds from the finder; each
+     * build's code is where its own records say and nowhere another's do (tmCandidatesFor's CRC pick). */
+    @Test
+    fun theRebuildsCodeIsWhereTheirRecordsSay() {
+        val carts = listOf(
+            "Pokemon Emerald Legacy (v1.1.4).gba" to (TM_EMERALD_LEGACY to FLASH_EMERALD_LEGACY),
+            "Pokemon Recharged Emerald (v2.2.5).gba" to (TM_RECHARGED_EMERALD_V2_2_5 to FLASH_RECHARGED_EMERALD_V2_2_5),
+            "Pokemon Recharged Emerald (v2.2.8).gba" to (TM_RECHARGED_EMERALD_V2_2_8 to FLASH_RECHARGED_EMERALD_V2_2_8),
+            "Pokemon Recharged Emerald Rebalanced (v2.2.8).gba" to
+                (TM_RECHARGED_EMERALD_REBALANCED_V2_2_8 to FLASH_RECHARGED_EMERALD_REBALANCED_V2_2_8),
+        ).filter { File(RETAIL_ROM_DIR + it.first).isFile }
+        assumeTrue(carts.size == 4)
+        val tms = carts.map { it.second.first } + TM_EMERALD
+        val flashes = carts.map { it.second.second } + FLASH_EMERALD
+        for ((file, recs) in carts) {
+            val rom = File(RETAIL_ROM_DIR + file).readBytes()
+            val read = { a: Long, n: Int -> val o = (a - 0x08000000L).toInt(); rom.copyOfRange(o, o + n) }
+            for (t in tms) assertEquals("$file ${tms.indexOf(t)}", t === recs.first, tmCodeMatches(t, read))
+            for (f in flashes) assertEquals("$file ${flashes.indexOf(f)}", f === recs.second, flashCodeMatches(f, read))
+            assertSame(recs.second, flashBadgeRule(recs.second, read))   // retail's badge rule, no check address
+        }
+        assertEquals(3, tmCandidatesFor(GameKind.EMERALD, "BPEE", 0, rebuild = true).size)
+        if (!emeraldLegacy) assertEquals(listOf(TM_EMERALD), tmCandidatesFor(GameKind.EMERALD, "BPEE", 0, rebuild = false))
+        assertEquals(22, FLASH_RECHARGED_EMERALD_V2_2_8.monMoveField)   // Recharged's MON_DATA ids sit 9 past vanilla's
+    }
+
+    /** FLASH in the gcc-built Emerald hacks (scripts/find_flash_expansion.py): each table's code in its own ROM and in no
+     * other build's; SoulGold's five go through flashCandidatesFor. */
+    @Test
+    fun theExpansionHacksFlashIsWhereTheirRecordsSay() {
+        val carts = listOf(
+            "Pokemon Lazarus (v2.0).gba" to FLASH_LAZARUS, "Pokemon Emerald Imperium (v1.3.1).gba" to FLASH_IMPERIUM,
+            "Pokemon Heart and Soul (v2.0.6).gba" to FLASH_HEART_AND_SOUL, "Pokemon SoulGold (v1.1.4).gba" to FLASH_SOULGOLD,
+            "Pokemon SoulGold (v1.2).gba" to FLASH_SOULGOLD_V1_2, "Pokemon SoulGold (v1.2) (Alt 1).gba" to FLASH_SOULGOLD_V1_2B,
+            "Pokemon SoulGold (v1.2) (Alt 2).gba" to FLASH_SOULGOLD_V1_2C, "Pokemon SoulGold (v1.2.1).gba" to FLASH_SOULGOLD_V1_2_1,
+        ).filter { File(RETAIL_ROM_DIR + it.first).isFile }
+        assumeTrue(carts.size == 8)
+        val all = carts.map { it.second }.distinct()
+        for ((file, flash) in carts) {
+            val rom = File(RETAIL_ROM_DIR + file).readBytes()
+            val read = { a: Long, n: Int -> val o = (a - 0x08000000L).toInt(); rom.copyOfRange(o, o + n) }
+            for (f in all) assertEquals("$file ${all.indexOf(f)}", f === flash, flashCodeMatches(f, read))
+        }
+        assertSame(FLASH_LAZARUS, flashFnsFor(GameKind.LAZARUS, "BPEE", 0, hack = false))
+        assertEquals(5, flashCandidatesFor(GameKind.SOULGOLD, "BPEE", 0, rebuild = false).size)
+        assertEquals(0x16, FLASH_SOULGOLD.caveOff)
+        // flashDark reads SoulGold's cave byte at +0x16
+        val ram = mapOf(FLASH_SOULGOLD.mapHeader + 0x16 to 1.toByte())
+        val read = { a: Long, n: Int -> ByteArray(n) { ram[a + it] ?: 0 } }
+        assertEquals(true, flashDark(FLASH_SOULGOLD, read) { false })
+        assertEquals(false, flashDark(FLASH_SOULGOLD, read) { true })
+    }
+
     private companion object {
         const val TM_ITEM = 289 + 5   // TM06
         const val HM_ITEM = 339 + 4   // HM05

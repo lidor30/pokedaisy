@@ -199,3 +199,37 @@ fieldCallbacks = [0x08137178, 0x08179918] # FieldCallback_Flash, SetUpPuzzleEffe
 partyMenuSlotId = 0x0203CED1
 mapHeader = 0x02037318
 codeCrcs = [0xBCF97BF3, 0x532E8E01, 0x39FAB5C6, 0x698BF3CB]
+
+# The TM screen (TmTeach.kt) and FLASH (Flash.kt) in Emerald Legacy v1.1.4: its public source (cRz-Shadows/Pokemon_Emerald_Legacy,
+# tag V1.1.4) built with agbcc is the release byte for byte (SHA1 cbd71af6...), addresses from its ELF. Retail's code and
+# field-move order; its 960 trainer flags put the system flags at 0x8C0 (FLAG_BADGE02_GET 0x8C8, FLAG_SYS_USE_FLASH 0x8E8).
+[record.TM_EMERALD_LEGACY]
+schema = 'gen3_tm'
+specialVarItemId = 0x0203D1A4
+itemUseCb = 0x03006508
+itemUseCbTmhm = 0x081BB7B0
+showPartyMenuForItemUse = 0x081BAAC0
+partyMenu = 0x0203D1F0
+partyMenuSlotOff = 9
+initPartyMenu = 0x081B4B24
+mainCallback2 = 0x030024A4
+setMainCallback2 = 0x08000544
+returnToField = 0x08087170
+cleanupOverworld = 0x08086DDC
+fadeScreen = 0x080AD118
+lockControls = 0x0809A1F0
+unlockControls = 0x0809A1FC
+codeCrcs = [0x2BB4FFA2, 0x34D2BE1C, 0x91CEF147, 0x79930E68, 0x352E62B9, 0xE0EF37E5, 0xF9959006, 0xB9FB85A7, 0xB037C8AF]
+
+[record.FLASH_EMERALD_LEGACY]
+schema = 'gen3_flash'
+flagGet = 0x0809EBFC
+badgeFlag = 0x8C8 # FLAG_BADGE02_GET
+litFlag = 0x8E8 # FLAG_SYS_USE_FLASH
+setUpFieldMoveFlash = 0x0813AB7C
+menuFieldCallback = 0x03005F90
+postMenuFieldCallback = 0x0203D214
+fieldCallbacks = [0x0813ABF8, 0x0817DA6C] # FieldCallback_Flash, SetUpPuzzleEffectRegisteel
+partyMenuSlotId = 0x0203D1F9
+mapHeader = 0x020374A4
+codeCrcs = [0xBCF97BF3, 0x8E37859E, 0x2A2B8D7C, 0xB6C3FB91]
