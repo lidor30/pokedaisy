@@ -1,9 +1,9 @@
 ---
 title: Screens and devices
-summary: How PokeDaisy uses two screens, one screen or a phone held upright, and the settings that move the game and companion around.
+summary: How PokeDaisy uses two screens, one screen, a phone held upright or a folding phone, and the settings that move the game and companion around.
 section: start
 order: 3
-keywords: [nds, nintendo ds, touch screen, stylus, platinum, heartgold, soulsilver, dual screen, two screens, thor, ayn, retroid, duo, anbernic, rg ds, single screen, pocket 6, phone, portrait, landscape, rotate, rotation, tablet, side panel, window, modal, popup, companion view, display, bottom screen, top screen]
+keywords: [nds, nintendo ds, touch screen, stylus, platinum, heartgold, soulsilver, dual screen, two screens, thor, ayn, retroid, duo, anbernic, rg ds, single screen, pocket 6, phone, portrait, landscape, rotate, rotation, tablet, side panel, window, modal, popup, companion view, display, bottom screen, top screen, foldable, folding phone, fold, flip, galaxy z fold, pixel fold, hinge, tabletop, flex mode, book, half open]
 ---
 
 PokeDaisy works with two screens or one. With two, the game is on top and the companion below. With one, the companion slides in beside the game, and on a phone held upright it sits under it. This page covers each setup and the settings that go with it.
@@ -148,6 +148,16 @@ The `COMPANION` setting (on the `DISPLAY OPTIONS` page of the `SCREEN` group, on
 With `ASPECT` set to `EXPAND`, the game fills everything above the companion, so both would look the same. There `UNDER GAME` gives the touch controls a strip of their own along the bottom of the screen, under the companion, so they don't lie over the game. When the touch controls aren't showing (you're using a controller), the setting is greyed out.
 
 ![The library on a phone held upright](shots/phone-library.png "The library on a phone")
+
+## Folding phones
+
+On a folding phone, PokeDaisy uses the fold the way a two-screen handheld uses its two screens. It switches as soon as you fold or unfold, mid-game.
+
+- **Half open like a laptop** (the fold across the screen, the bottom half resting on a table): the game is on the top half and the companion fills the bottom half. In a DS game the touch screen takes the bottom half, like on a DS, with its `COMPANION` switch to bring the companion up. With no controller, the touch controls sit on the top half, beside the game.
+- **Half open like a book** (the fold down the middle): the game is on the left page and the companion on the right. `BACK` goes back inside the companion, and the companion stays open.
+- **Fully open or closed:** the usual layouts for one screen, sideways or upright, as above.
+
+The `FOLD LAYOUT` setting (in the `SCREEN` group, on both screens) turns this on or off. It's on to start with, and it only shows up once your phone has reported a fold. Off, a half open phone gets the same layout as a flat one.
 
 ## Rotating the device
 

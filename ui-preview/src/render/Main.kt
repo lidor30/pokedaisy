@@ -2230,6 +2230,14 @@ fun main(args: Array<String>) {
         Shot("library-whats-new-rgds", 640, 480, 1.5f, activity { whatsNewLibrary() }),
         Shot("library-whats-new-tablet", 2560, 1600, 2f, activity { whatsNewLibrary() }),
         Shot("settings-phone", 1080, 2220, 3f, activity { SettingsActivity() }),
+        // A foldable (it has reported a hinge): FOLD LAYOUT in the SCREEN group.
+        Shot("settings-fold", 2176, 1812, 2.625f, activity {
+            Prefs(android.content.Context()).foldSeen = true
+            Prefs(android.content.Context()).singleScreen = true
+            SettingsActivity()
+        }) {
+            onNodeWithText("FOLD LAYOUT").performScrollTo()
+        },
         // TOUCH CONTROLS: the page with its preview, on a phone both ways, and EDIT LAYOUT over the stand-in.
         Shot("settings-touch", tw, th, td, activity { SettingsActivity() }) {
             onNodeWithText("TOUCH CONTROLS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)

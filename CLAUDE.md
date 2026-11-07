@@ -1507,6 +1507,14 @@ again on rotation (`onConfigurationChanged`); the manifest no longer locks lands
 locks it with a second screen (or the debug mirror) and follows the user's rotation (`SCREEN_ORIENTATION_USER`)
 without one. Paparazzi: `PortraitScreenshotTest` (Pixel 6, 1080x2400); ui-preview's `*-phone` shots are the
 Library at that size.
+**FOLD LAYOUT** (SCREEN group on both screens, `Prefs.foldLayout` ON, shown once the device has reported a hinge -
+`Prefs.foldSeen`; NEW tag; 2026-11-02, players' requests): Jetpack WindowManager's FoldingFeature (`androidx.window` +
+`window-java`'s callback adapter: PokeDaisyActivity is a plain Activity) -> `FoldPosture` (companion/FoldPosture.kt, pure,
+`FoldPostureTest`: half open or a separating hinge, in the stage's coordinates, not within 25% of an edge). TABLETOP (hinge
+across) = `PortraitPanel.hinge`: the game and touch controls above the hinge, the companion (a DS game's touch screen) below,
+no grip, whichever way the phone is held - the user's call: companion on the bottom, like the Thor; BOOK (hinge down) =
+`SidePanel.book`: the right page locked from the hinge, no tabs, BACK only the companion's. `syncSingleScreen` picks them;
+`foldRelayout` re-places the hinge when the stage resizes. Not tried on a foldable or its emulator yet.
 **TOUCH CONTROLS** (was TOUCH PAD; SETTINGS > CONTROLS on both screens, a page with a preview; `TouchControlsStyle` in
 `companion/TouchControlsSettings.kt`, `Prefs.touchControlsStyle`, NEW tag): one geometry for the game, the preview and the
 editor (`companion/ui/TouchGeometry.kt`: sizes in dp, presets SIDES default / CLASSIC / COMPACT, SIDES falling back to

@@ -1415,6 +1415,12 @@ class PokeDaisyActivity : Activity() {
             runOnUiThread { syncTouchControls() }
         }
         override val touchStage get() = measuredTouchStage()
+        override val foldLayout: Boolean?
+            get() = Prefs(this@PokeDaisyActivity).let { p -> if (p.foldSeen && secondScreen() == null) p.foldLayout else null }
+        override fun setFoldLayout(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).foldLayout = on
+            runOnUiThread { if (::sidePanel.isInitialized) syncSingleScreen(singleScreen) }
+        }
         override fun touchPreviewShot() = newestStateShot()
         override fun editTouchLayout() = runOnUiThread { openTouchEditor() }
         override val touchRevision get() = touchRev.intValue
@@ -1615,7 +1621,7 @@ class PokeDaisyActivity : Activity() {
         }
         override val swapScreens get() = Screens.swapped(this@PokeDaisyActivity, Prefs(this@PokeDaisyActivity))
         override val portraitUnderGame get() =
-            if (::portraitPanel.isInitialized && portraitPanel.enabled) Prefs(this@PokeDaisyActivity).portraitCompanionUnderGame else null
+            if (::portraitPanel.isInitialized && portraitPanel.enabled && !portraitPanel.tabletop) Prefs(this@PokeDaisyActivity).portraitCompanionUnderGame else null
         override val uprightUnderGame get() =
             if (secondScreen() == null) Prefs(this@PokeDaisyActivity).portraitCompanionUnderGame else null
         override fun setPortraitUnderGame(on: Boolean) {
@@ -2453,6 +2459,7 @@ class PokeDaisyActivity : Activity() {
             SecondScreenHolder.open(this, it.display)
             it.watchBars()
         }
+        listenForFold()
         tipsResumed = true
         coopOn = FeatureFlags.coop(this)
         if (movePause) {
@@ -2902,6 +2909,7 @@ class PokeDaisyActivity : Activity() {
     }
 
     override fun onDestroy() {
+        stopListeningForFold()
         samplerThread.shutdown()
         com.pokedaisy.app.companion.FeatureTips.available = { false }
         Hotkeys.dsActive = { false }
@@ -3147,21 +3155,103 @@ class PokeDaisyActivity : Activity() {
     /** The second display the companion goes on, or null: none, or SINGLE SCREEN keeps the game to this one. */
     private fun secondScreen(): Display? = Screens.second(this)?.takeIf { !Prefs(this).singleScreen }
 
-    /** The companion on the game's screen: beside the game held sideways, under it upright. */
+    /** The companion on the game's screen: beside the game held sideways, under it upright - and on a foldable half
+     * open, on the other side of the hinge (FOLD LAYOUT: below it in TABLETOP, on the right page in BOOK). */
     private fun syncSingleScreen(on: Boolean) {
         singleScreen = on
         hudSingleScreen.value = on
         val portrait = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
+        val fold = foldPosture().takeIf { on }
+        foldActive = fold
+        val tabletop = fold?.kind == com.pokedaisy.app.companion.FoldPosture.Kind.TABLETOP
+        val book = fold?.kind == com.pokedaisy.app.companion.FoldPosture.Kind.BOOK
+        // TABLETOP is the upright panel at the hinge whichever way the phone is held; BOOK the side panel at the hinge.
+        val under = tabletop || (portrait && !book)
+        portraitPanel.hinge = if (tabletop) fold!!.start..fold.end else null
+        sidePanel.book = if (book) fold!!.start..fold.end else null
         // Off first, so the two never hold the game's margins at once.
-        if (portrait) sidePanel.setEnabled(false) else portraitPanel.setEnabled(false)
-        sidePanel.setEnabled(on && !portrait)
-        portraitPanel.setEnabled(on && portrait)
+        if (under) sidePanel.setEnabled(false) else portraitPanel.setEnabled(false)
+        sidePanel.setEnabled(on && !under)
+        portraitPanel.setEnabled(on && under)
         // Upright, the game drops its overlay (and gets it back sideways); a DS game's screens are arranged for the way
         // it's held (syncGameScreen's syncDsStage).
         syncGameScreen()
         // The touch controls' own layout for the way the phone is held.
         syncTouchControls()
     }
+
+    // --- FOLD LAYOUT ---------------------------------------------------------------
+
+    /** The hinge Jetpack WindowManager last reported for this window (null: none - not a foldable, or folded shut). */
+    private var foldFeature: androidx.window.layout.FoldingFeature? = null
+
+    /** The fold layout in use since the last [syncSingleScreen] (null: the usual one-screen layouts). */
+    private var foldActive: com.pokedaisy.app.companion.FoldPosture? = null
+
+    private val foldTracker by lazy {
+        androidx.window.java.layout.WindowInfoTrackerCallbackAdapter(androidx.window.layout.WindowInfoTracker.getOrCreate(this))
+    }
+    private val foldListener = androidx.core.util.Consumer<androidx.window.layout.WindowLayoutInfo> { info -> onWindowLayout(info) }
+    private var foldListening = false
+
+    /** The stage resized with a hinge about (unfolding, a rotation): the hinge is placed again in its new size. */
+    private val foldRelayout = View.OnLayoutChangeListener { _, l, t, r, b, ol, ot, or, ob ->
+        if (foldFeature != null && (r - l != or - ol || b - t != ob - ot)) stage.post { syncSingleScreen(singleScreen) }
+    }
+
+    /** Starts listening for the hinge (onResume; it reports the current one at once). */
+    private fun listenForFold() {
+        if (foldListening) return
+        if (::stage.isInitialized) {
+            stage.removeOnLayoutChangeListener(foldRelayout)
+            stage.addOnLayoutChangeListener(foldRelayout)
+        }
+        foldListening = runCatching {
+            foldTracker.addWindowLayoutInfoListener(this, androidx.core.content.ContextCompat.getMainExecutor(this), foldListener)
+        }.onFailure { Log.w("pokedaisy", "no window layout info", it) }.isSuccess
+    }
+
+    private fun stopListeningForFold() {
+        if (!foldListening) return
+        foldListening = false
+        runCatching { foldTracker.removeWindowLayoutInfoListener(foldListener) }
+    }
+
+    /** The hinge moved, opened, closed or went flat: lay the screen out again (on the UI thread). */
+    private fun onWindowLayout(info: androidx.window.layout.WindowLayoutInfo) {
+        val f = info.displayFeatures.filterIsInstance<androidx.window.layout.FoldingFeature>().firstOrNull()
+        if (f != null) {
+            val prefs = Prefs(this)
+            if (!prefs.foldSeen) prefs.foldSeen = true
+        }
+        if (f == foldFeature) return
+        foldFeature = f
+        if (::sidePanel.isInitialized && ::portraitPanel.isInitialized) syncSingleScreen(singleScreen)
+    }
+
+    /** FOLD LAYOUT's posture now, in the stage's coordinates; null = off, no hinge, or not one to lay out around. */
+    private fun foldPosture(): com.pokedaisy.app.companion.FoldPosture? {
+        val f = foldFeature ?: return null
+        if (!::stage.isInitialized || !Prefs(this).foldLayout || debugMirror) return null
+        val at = IntArray(2)
+        stage.getLocationInWindow(at)
+        val w = stage.width.takeIf { it > 0 } ?: window.decorView.width
+        val h = stage.height.takeIf { it > 0 } ?: window.decorView.height
+        val b = f.bounds
+        return com.pokedaisy.app.companion.FoldPosture.of(
+            halfOpened = f.state == androidx.window.layout.FoldingFeature.State.HALF_OPENED,
+            separating = f.isSeparating,
+            horizontal = f.orientation == androidx.window.layout.FoldingFeature.Orientation.HORIZONTAL,
+            left = b.left, top = b.top, right = b.right, bottom = b.bottom,
+            stageX = at[0], stageY = at[1], stageW = w, stageH = h,
+        )
+    }
+
+    /** The touch controls' upright layout: a phone held upright with the companion under the game - not a foldable
+     * in TABLETOP held sideways, whose game half is landscape. */
+    private val touchUpright: Boolean
+        get() = ::portraitPanel.isInitialized && portraitPanel.enabled &&
+            (!portraitPanel.tabletop || resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT)
 
     /** Locked to landscape with a second screen (the Thor's top one); else the device's rotation decides. */
     private fun syncOrientation(twoScreens: Boolean) {
@@ -3327,7 +3417,7 @@ class PokeDaisyActivity : Activity() {
 
     /** The DS layouts are on: a DS game on one screen (or SINGLE SCREEN), held sideways, the game in this activity. */
     private val dsStageOn: Boolean
-        get() = romIsNds && secondScreen() == null && !debugMirror && !companionOverGame.value &&
+        get() = romIsNds && secondScreen() == null && !debugMirror && !companionOverGame.value && foldActive == null &&
             resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_PORTRAIT
 
     /**
@@ -3826,7 +3916,7 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.TouchShow.AUTO -> !physicalPadUsed && !Controllers.anyConnected()
         }
         touchControls.style = style
-        touchControls.portrait = ::portraitPanel.isInitialized && portraitPanel.enabled
+        touchControls.portrait = touchUpright
         touchControls.gameAspect = if (::stage.isInitialized) stage.aspect else 1.5f
         if (::engine.isInitialized) touchControls.ffOn = engine.fastForwardToggled
         touchControls.visibility = if (show) View.VISIBLE else View.GONE
@@ -3894,7 +3984,7 @@ class PokeDaisyActivity : Activity() {
         val lp = touchControls.layoutParams as android.widget.FrameLayout.LayoutParams
         val area = androidx.compose.ui.geometry.Rect(lp.leftMargin.toFloat(), lp.topMargin.toFloat(), w - lp.rightMargin, h - lp.bottomMargin)
         val aspect = stage.aspect
-        val portrait = ::portraitPanel.isInitialized && portraitPanel.enabled
+        val portrait = touchUpright
         // EXPAND: the map fills the game's whole view.
         val game = if (::portraitPanel.isInitialized && portraitPanel.expand) {
             androidx.compose.ui.geometry.Rect(view.left.toFloat(), view.top.toFloat(), view.right.toFloat(), view.bottom.toFloat())

@@ -250,6 +250,9 @@ val jdkHttpServerJar by tasks.registering(Zip::class) {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
+    // FOLD LAYOUT: a foldable's hinge and posture (WindowInfoTracker's FoldingFeature), for a plain Activity.
+    implementation("androidx.window:window:1.3.0")
+    implementation("androidx.window:window-java:1.3.0")
     implementation("androidx.activity:activity-compose:1.9.1")
     // Firebase (play-services-basement) brings androidx.fragment 1.1.0, too old for registerForActivityResult
     // (lintVitalRelease's InvalidFragmentVersionForActivityResult): ask for one that matches activity 1.9.

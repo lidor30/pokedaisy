@@ -827,6 +827,16 @@ class SettingsActivity : ComponentActivity() {
                 prefs.companionWindow = !prefs.companionWindow
                 revision++
             }.takeIf { !usesSecondScreen },
+            // A foldable half open: the game on one side of the hinge, the companion on the other (once the device has
+            // shown a hinge).
+            SettingRow(
+                tk("FOLD LAYOUT"), onOff(prefs.foldLayout),
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.FOLD_LAYOUT),
+                subtitle = "Half open: the game on one side of the fold",
+            ) {
+                prefs.foldLayout = !prefs.foldLayout
+                revision++
+            }.takeIf { prefs.foldSeen && !usesSecondScreen },
             // The white tab at the screen's right edge that opens it (BACK and the HUD's COMPANION still do).
             SettingRow(
                 tk("COMPANION BUTTON"), onOff(prefs.companionTab),
