@@ -86,19 +86,38 @@ static const struct PkWideRom* find(const struct PkWideRom* roms, size_t n, uint
 
 #define FIND(roms, crc) find(roms, sizeof(roms) / sizeof(roms[0]), crc)
 
+// A hack nothing here knows by its CRC that kept a retail build's engine (RetailEngine.kt proves it from the ROM's code):
+// its row, rebuilt from that build's row with the ROM tables the hack moved. One at a time, set before the game starts.
+static struct PkWideRom derivedRom;
+
+int pk_wide_add_derived(uint32_t crc, uint32_t baseCrc, const int32_t* a, int n) {
+    const struct PkWideRom* base = FIND(PK_WIDE_ROMS, baseCrc);
+    if (!crc || !base || n != PK_WIDE_ADDRS || FIND(PK_WIDE_ROMS, crc) || FIND(PK_FIELD_ONLY_ROMS, crc)) return 0;
+    derivedRom.crc = 0;   // not found while it's half written
+    derivedRom.family = base->family;
+    memcpy(derivedRom.a, a, sizeof(derivedRom.a));
+    derivedRom.crc = crc;
+    return 1;
+}
+
+static const struct PkWideRom* findDerived(uint32_t crc) {
+    return crc && derivedRom.crc == crc ? &derivedRom : NULL;
+}
+
 /** WIDE's table for the ROM; the pending hacks too in verify_wide.py's build (PK_WIDE_PENDING). */
 static const struct PkWideRom* lookup(uint32_t crc) {
     const struct PkWideRom* rom = FIND(PK_WIDE_ROMS, crc);
 #ifdef PK_WIDE_PENDING
     if (!rom) rom = FIND(PK_FIELD_ONLY_ROMS, crc);
 #endif
-    return rom;
+    return rom ? rom : findDerived(crc);
 }
 
 /** The field reads' table: WIDE's, or a hack WIDE doesn't draw yet (PK_FIELD_ONLY_ROMS). */
 static const struct PkWideRom* lookupField(uint32_t crc) {
     const struct PkWideRom* rom = FIND(PK_WIDE_ROMS, crc);
-    return rom ? rom : FIND(PK_FIELD_ONLY_ROMS, crc);
+    if (!rom) rom = FIND(PK_FIELD_ONLY_ROMS, crc);
+    return rom ? rom : findDerived(crc);
 }
 
 static int32_t C[PK_WIDE_CONFIG_SIZE];

@@ -45,8 +45,39 @@ object WideScreen {
             com.pokedaisy.app.companion.data.RandomizedRetail.matchStream(
                 RomIdentity.gameCode(rom), RomIdentity.revision(rom), RomArchive.romSize(rom),
             ) { RomArchive.open(rom) }
-        }.getOrNull() ?: return crc
-        return "%08x".format(hit.retailCrc)
+        }.getOrNull()
+        if (hit != null) return "%08x".format(hit.retailCrc)
+        retailEngineRow(rom, v)   // the ROM's own CRC either way: known by it now, or not at all
+        return crc
+    }
+
+    /**
+     * A FireRed / Emerald hack edited in place that nothing knows by its CRC: when [RetailEngine] proves it kept retail's
+     * engine, its own row (retail's, with the tables it moved) goes to pk_wide.c under the ROM's CRC, so WIDE and the field
+     * reads know it. Whether that happened. Blocking, but light: a few hundred small reads of [rom] (the file played,
+     * an archive already unpacked).
+     */
+    private fun retailEngineRow(rom: java.io.File, crc: Int): Boolean {
+        if (!rom.isFile || rom.length() > 0x2000000L) return false
+        val proof = runCatching {
+            java.io.RandomAccessFile(rom, "r").use { raf ->
+                val head = ByteArray(0xC0).also { raf.readFully(it) }
+                val code = String(head, 0xAC, 4, Charsets.ISO_8859_1)
+                if (code != "BPRE" && code != "BPEE") return false
+                com.pokedaisy.app.companion.data.RetailEngine.check(code, head[0xBC].toInt() and 0xFF) { off, len ->
+                    if (off < 0 || off >= raf.length()) null
+                    else ByteArray(minOf(len.toLong(), raf.length() - off).toInt()).also { raf.seek(off.toLong()); raf.readFully(it) }
+                }
+            }
+        }.getOrNull() ?: return false
+        val row = proof.wideRow
+        if (!proof.ramProven || row == null) {
+            android.util.Log.i("pokedaisy", "retail engine: ${proof.build.id} not proven for %08x: ${proof.why.take(4)}".format(crc))
+            return false
+        }
+        val ok = runCatching { MgbaCore.pkWideAddDerived(crc, proof.build.retailCrc, row) }.getOrDefault(false)
+        android.util.Log.i("pokedaisy", "retail engine: %08x keeps ${proof.build.id}'s engine, EXPAND row ${if (ok) "set" else "refused"}".format(crc))
+        return ok
     }
 
     /** The same for the field reads behind SCENE SPEEDS' TEXT, AUTO-RUN, RUN INDOORS and WILD ENCOUNTERS

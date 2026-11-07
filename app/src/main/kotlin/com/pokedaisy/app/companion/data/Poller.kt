@@ -69,6 +69,9 @@ class TelemetrySampler {
     // [nativeCfg]'s RAM is known to be this ROM's: a retail hash, or another language's retail
     // path - not an unrecognised same-size hack or a BEST EFFORT match landing on a retail config.
     private var ramVerified = false
+    // An unrecognised FireRed / Emerald hack whose code proves it kept retail's engine and RAM (RetailEngine): its
+    // battle cursors and gPartyMenu are retail's, whatever BEST EFFORT reads its names with.
+    private var retailEngine: RetailEngine.Proof? = null
 
     // BEST EFFORT (BestEffort.kt) for an unsupported ROM of a Gen 3 base game: its header code and
     // SHA-1 (what the match is kept by), the match in use and the config it was made from (the
@@ -392,7 +395,8 @@ class TelemetrySampler {
         val code = runCatching { MgbaCore.pkRomCode() }.getOrNull().orEmpty()
         val size = runCatching { MgbaCore.pkRomSize() }.getOrDefault(0L)
         romSha1 = null
-        fireRedEngine = code.startsWith("BPR") || code.startsWith("BPG")
+        retailEngine = null
+        fireRedEngine =code.startsWith("BPR") || code.startsWith("BPG")
 
         // LeafGreen / Ruby / Sapphire / the other Emeralds: retail only, read
         // natively straight away. LeafGreen looks like FireRed, the rest like
@@ -525,6 +529,7 @@ class TelemetrySampler {
                     // the file - RTC/GPIO registers mapped into the ROM's
                     // address space), so don't substitute a file-hash here.
                     android.util.Log.i("pokedaisy", "unrecognized BPRE hack: full sha1=$hash size=$size")
+                    proveRetailEngine(reader, code)
                 }
             }
             // A hash-matched hack's RAM is as vouched for as retail's: a config carrying the battle menus' cursors
@@ -577,6 +582,7 @@ class TelemetrySampler {
                         "(BPEE, ${size / (1024 * 1024)} MB, sha1 ${hash?.take(12) ?: "unknown"}…) " +
                         "- no known RAM addresses for this build")
                     android.util.Log.i("pokedaisy", "unrecognized BPEE hack: full sha1=$hash size=$size")
+                    proveRetailEngine(reader, code)
                 }
             }
             // A hash-matched hack's RAM is as vouched for as retail's: a config carrying the battle menus' cursors
@@ -627,6 +633,7 @@ class TelemetrySampler {
             unsupportedRom(reader, code, size, smallHash, "unrecognized ${if (emerald) "Emerald" else "FireRed"}-based ROM hack " +
                 "($code, ${size / (1024 * 1024)} MB, sha1 ${smallHash?.take(12) ?: "unknown"}…) - no known RAM addresses for this build")
             android.util.Log.i("pokedaisy", "unrecognized $code ROM: full sha1=$smallHash size=$size")
+            proveRetailEngine(reader, code)
             return
         }
         val rev = runCatching { reader.readCoreMemory(0x080000BCL, 1)[0].toInt() and 0xFF }.getOrDefault(1)
@@ -648,6 +655,22 @@ class TelemetrySampler {
             unsupportedHackLabel = "a randomized ${if (emerald) "Emerald" else "FireRed"} whose tables didn't read"
         }
     }
+
+    /** An unrecognised hack of retail FireRed / Emerald: whether its code proves retail's engine ([RetailEngine]). Once per ROM. */
+    private fun proveRetailEngine(reader: MemoryReader, code: String) {
+        val rev = runCatching { reader.readCoreMemory(0x080000BCL, 1)[0].toInt() and 0xFF }.getOrNull() ?: return
+        val proof = runCatching {
+            RetailEngine.check(code, rev) { off, len -> reader.readCoreMemory(0x08000000L + off, len) }
+        }.getOrNull() ?: return
+        android.util.Log.i("pokedaisy", "retail engine: ${proof.build.id} " +
+            if (proof.ramProven) "proven (EXPAND row ${if (proof.wideRow != null) "rebuilt" else "not proven"})" else "not proven: ${proof.why.take(4)}")
+        retailEngine = proof.takeIf { it.ramProven }
+    }
+
+    /** The proven engine's, while BEST EFFORT reads the hack as a retail FireRed / Emerald config (the battle input's
+     * handlers come from that config; another engine's would mean BEST EFFORT and the code disagree). */
+    private val retailEngineBuild: RetailEngineBuild?
+        get() = retailEngine?.build?.takeIf { beMatch != null && (kind == GameKind.FIRERED || kind == GameKind.EMERALD) }
 
     /** Retail with a randomizer's data (UPR ZX: [RandomizedRetail]): retail's RAM and code, so read as retail. */
     private fun randomizedDump(reader: MemoryReader, code: String, size: Long): Boolean {
@@ -763,15 +786,21 @@ class TelemetrySampler {
 
     /** The battle menus' cursors (gActionSelectionCursor, gMoveSelectionCursor), only where the RAM is
      * known to be this ROM's ([ramVerified]: a retail hash or a hash-matched hack, never a BEST EFFORT
-     * match): a wrong address that happened to hold the cell wanted would confirm the wrong choice. */
+     * match) - or proven by the ROM's code ([RetailEngine]: a hack that kept retail's engine): a wrong address that
+     * happened to hold the cell wanted would confirm the wrong choice. */
     val knownCursorAddrs: Pair<Long, Long>?
-        get() = (if (kind == GameKind.UNBOUND) nativeCfg ?: NATIVE_UNBOUND else nativeCfg)
-            ?.takeIf { ramVerified && beMatch == null && it.actionCursor != 0L && it.moveCursor != 0L }
-            ?.let { it.actionCursor to it.moveCursor }
+        get() = retailEngineBuild?.let { it.actionCursor to it.moveCursor }
+            ?: (if (kind == GameKind.UNBOUND) nativeCfg ?: NATIVE_UNBOUND else nativeCfg)
+                ?.takeIf { ramVerified && beMatch == null && it.actionCursor != 0L && it.moveCursor != 0L }
+                ?.let { it.actionCursor to it.moveCursor }
 
     /** The detected game's gPartyMenu + gPlayerParty when its config has them (SoulGold), or null. */
     val knownPartyMenu: Pair<Long, Long>?
         get() = nativeCfg?.takeIf { it.partyMenu != 0L }?.let { it.partyMenu to it.playerParty }
+
+    /** gPartyMenu + gPlayerParty of a hack whose code proves retail's engine ([RetailEngine]), for the POKéMON switch. */
+    val retailEnginePartyMenu: Pair<Long, Long>?
+        get() = retailEngineBuild?.let { it.partyMenu to it.playerParty }
 
     /** SHINY ODDS' foe party and player ID: on a config the Poller marked by its ROM's hash ([NativeConfig.shinyBelow]),
      * never a hack on retail's RAM - CFRU's plaintext boxes would be scrambled by a re-encryption. */

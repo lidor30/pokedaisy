@@ -1260,6 +1260,40 @@ retail saves (UPR keeps the save format).
 - The starters' choice isn't shown anywhere new (the game's own lab shows them).
 - LeafGreen, Ruby, Sapphire, other languages and other randomizers.
 
+## Retail engine (unknown hacks edited in place)
+
+A hack made by editing retail FireRed or Emerald in place (a map editor, a hex editor, a patch tool) keeps retail's code
+and RAM, but its hash is its own, so nothing per-ROM knows it: BEST EFFORT reads its party and names, and until now the
+features that need trusted addresses stayed off. `RetailEngine.kt` proves the engine from the ROM's code instead of its
+hash, address by address:
+
+- **RAM.** Every global those features use (EXPAND's row, the battle menus' cursors, gPartyMenu, gPlayerParty) is loaded
+  by retail's code through Thumb `ldr rN, [pc, #imm]`. `scripts/gen_retail_engine.py` keeps up to 16 such sites a global,
+  spread through the ROM: the instruction's offset, its pool word's, and the CRC32 of the 26 bytes around the instruction
+  (pool word blanked). A hack proves a global when 3 of every 4 of its sites (all of them for one or two) still match
+  and their pool words still hold the address. A rebuild (pokeemerald-expansion, gcc, Recharged, Legacy, a QoL rebuild)
+  moves the code, so nothing matches; an in-place hack doesn't move a global without changing every user.
+- **ROM tables.** EXPAND's ROM slots the same way, but a hack may have repointed a table: where the window still matches,
+  the hack's own pool word says where its table is now (the sites vote; 9 in 10 must agree). The far-off people's
+  tables (graphics info, palettes, facing, palette tags, elevation) may be dropped when they can't be followed (pk_wide.c
+  then doesn't draw those people); gMapGroups and the rest refuse EXPAND. Non-address settings (CFRU's 16-bit graphics
+  tables, a bigger primary tileset) stay retail's: pk_wide.c's own frame check fades the strips where that's wrong.
+
+What a proof unlocks: `Poller` keeps it (`proveRetailEngine`, for the unrecognised BPRE / BPEE ROMs, either size) and
+hands out retail's cursors (`knownCursorAddrs`) and gPartyMenu (`retailEnginePartyMenu` -> `switchAddrsFor`) while BEST
+EFFORT reads the hack as retail FireRed / Emerald; `WideScreen.tablesCrc` rebuilds EXPAND's row from the file and gives
+it to pk_wide.c under the ROM's own CRC (`MgbaCore.pkWideAddDerived` -> `pk_wide_add_derived`, one at a time), so EXPAND
+and the field reads know it. CFRU hacks may fail the RAM check (their battle code is rewritten in places: Odyssey's move
+cursor keeps 11 of 16 retail sites), which is safe: they're known by hash.
+
+Checking it: `RetailEngineTest` runs every ROM at hand: retail proves itself, the in-place hacks with hand-made rows
+(Kaizo, Glazed, Ghost Grey, Ultra Violet, Rocket Edition, Ash Gray, Orange Islands, Let's Go, and the CFRU ones that
+pass) rebuild their rows' address slots, the rebuilds and Unbound are refused. Headless: `scripts/gen_retail_engine.py
+--row HACK` prints the row as mgba_dump's `widerow` line; then `wideon 22` + `widecheck` as in `verify_wide.py`. On a QoL
+build of Emerald (no row of its own): map 440 / 440 and battle 1124 / 1124 frames exact, `fieldinfo` known, the action
+cursor walked by RIGHT and a written RUN + A ending the battle. Rerun the generator after touching `pk_wide_games.h`'s
+retail rows or the retail cursor / party addresses.
+
 ## Launch from a frontend (Cocoon, iiSU, ES-DE, ...)
 
 Frontends can open a game in PokeDaisy directly, with no library screen in
@@ -2745,8 +2779,12 @@ German SoulSilver rev 0 (`IPGD`, SHA-1 `576cdb7eec728c49aed85b9dd7e1e084ba1f08f9
 
 **French carts** (2026-11-06; Platinum `CPUF` rev 0, SHA-1 `62f9ec7a…`, HeartGold `IPKF` `dba64620…`, SoulSilver `IPGF` `6ed98d44…`, Black `IRBF`
 `a559da54…`, White `IRAF` `28f07591…`): the US / Europe builds with the text changed, so the same overlays, the same file paths and text banks, the same
-save layouts; only addresses moved. **Other languages** go the same way: `scripts/port_nds.py US.nds OTHER.nds w:GLOBAL c:CODE[@OVERLAY] ...`
-maps each word (name the overlay for code: overlays overlap, and overlay 10 of Black / White shifts part-way through). What moved: HG / SS's globals +0x20,
+save layouts; only addresses moved. **Other languages** go the same way: `scripts/port_nds_fns.py US.nds OTHER.nds w:GLOBAL c:CODE[@OVERLAY] ...`
+(or `--file`, a `name kind addr[@overlay]` a line) matches the two carts' functions by their instructions and calls, not their bytes, and gives each
+word with how many matched functions vote for it, or UNRESOLVED (name the overlay for code: overlays overlap, and overlay 10 of Black / White shifts
+part-way through). `--check scripts/port_nds_fns_known.txt`, run by `scripts/test_port_nds_fns.py`, tries it on every pair checked live so far (these
+carts, German HG / SS, White from Black, Origin HeartGold) and fails on any wrong answer. The older `scripts/port_nds.py` lines bytes up and always
+answers, right or not (four wrong of 21 on Origin HeartGold). What moved: HG / SS's globals +0x20,
 `gOverlayTemplate_Battle` -0x1C, the field overlays +0x20, the low ARM9 functions not at all (callSet 2 serves both); Platinum's globals +0x1E0, the
 battle template +0x88, its functions by 0x14 to 0xA4 (`CallFns PLATINUM_FR`, callSet 8; its own rev 0 is the US rev 1's code as far as anything here reads);
 Black / White's statics and overlays -0x80, overlay 10's FLDSKILL and X menu -0x90 (`BLACK_FR` / `WHITE_FR`, callSets 9 / 10). The US saves load in every one

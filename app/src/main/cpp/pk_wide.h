@@ -106,6 +106,11 @@ int pk_wide_configure(uint32_t crc);
 /** Whether WIDE has the ROM with this CRC32 (no core needed). */
 int pk_wide_knows(uint32_t crc);
 
+/** A hack proven to keep a retail build's engine (RetailEngine.kt): WIDE and the field reads know the ROM with CRC32
+ * [crc] by [a] (PK_WIDE_ADDRS values: the retail row [baseCrc] with the hack's own ROM tables), in [baseCrc]'s family.
+ * One such ROM at a time (a new one replaces it); refused (0) for a ROM the tables already have or an unknown base. */
+int pk_wide_add_derived(uint32_t crc, uint32_t baseCrc, const int32_t* a, int n);
+
 /** SCENE SPEEDS / AUTO-RUN / RUN INDOORS: load this game's addresses for [pk_field_state] (0 = none: it says nothing). */
 int pk_field_configure(uint32_t crc);
 
