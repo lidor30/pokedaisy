@@ -802,7 +802,9 @@ fun ItemsScreen(
     // alone was easy to miss (and an item used to the last leaves the bag, taking its bar with it).
     var notice by remember { mutableStateOf<ItemNotice?>(initialNotice) }
     fun report(o: ItemUseOutcome, itemId: Int, text: String) {
-        say(text)
+        // IN_GAME (a TM: the game's own teach screen) pops up only: kept in the bar, it still asked for a pick after the
+        // game's screen had closed, cancelled or not, until another item was opened.
+        if (o.result != ItemUseResult.IN_GAME) say(text)
         if (o.result == ItemUseResult.USED || o.result == ItemUseResult.GIVEN || o.result == ItemUseResult.IN_GAME) notice = ItemNotice(itemId, text)
     }
     // The party pick a USE (medicine) or GIVE opened, over the bag.
