@@ -80,6 +80,11 @@ extern const unsigned char pd_hidden_power_types[16];
 // species, so a hack's species 412 (Legacy's Deoxys forms) isn't one.
 #define PD_SPECIES_EGG 0x7FFF
 
+// How many types g's chart has names for (g NULL = retail's).
+int pd_type_count(const struct pd_game* g);
+// A species' gender ratio in g (254 all female ...), -1 where it isn't known.
+int pd_gender_ratio(const struct pd_game* g, int species);
+
 // Names in the game's own casing: FireRed / Emerald print species and moves
 // in capitals with a small é (the app's gameCase()); a hack's own tables already carry theirs. Writes into buf.
 // g = the running game (NULL = retail's tables).

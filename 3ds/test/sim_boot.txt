@@ -1,0 +1,18 @@
+# The boot to the field, on the player's save.
+run 300
+press start
+run 120
+press a
+run 120
+press a
+run 60
+press a
+run 60
+press a
+run 120
+press a
+run 120
+press b
+run 120
+press b
+run 60

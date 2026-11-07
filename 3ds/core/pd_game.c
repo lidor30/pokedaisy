@@ -1,10 +1,12 @@
 #include "pd_game.h"
 #include "pd_style.h"
 
+#include <stddef.h>
 #include <stdio.h>
 #include <string.h>
 
 #include "pd_gb.h"
+#include "pd_games.h"
 #include "pd_sha1.h"
 
 // The configs come from gamedata/ (gamedata/targets/3ds.toml picks the fields
@@ -46,6 +48,17 @@ const struct pd_battle_layout pd_battle_layout_soulgold = {
 const struct pd_battle_layout pd_battle_layout_elite_redux = {
     .size = 104, .species = 20, .moves = 32, .type1 = 68, .type2 = 69, .pp = 71, .hp = 54, .level = 75,
     .maxHp = 56, .status = 8, .speciesMask = 0xFFFF,
+};
+// Monomyth: vanilla's struct, its substructs XORed with a key of its own and its natures its own (MONOMYTH_PARTY_MON).
+const struct pd_party_layout pd_party_layout_monomyth = {
+    .size = 100, .status = 0x50, .level = 0x54, .hp = 0x56, .maxHp = 0x58, .flags = 0x13, .eggMask = 0x04,
+    .plainBox = 0x20, .plainSpeciesMask = 0xFFFF, .plainItemMask = 0xFFFF, .hpBits = 16, .statusMask = 0xFFFFFFFFu,
+    .hasStats = true, .monomythKey = true, .nicknameOff = 0x08, .nicknameLen = 10,
+};
+// Monomyth's rearranged 0x58-byte BattlePokemon (MONOMYTH_BATTLE_MON).
+const struct pd_battle_layout pd_battle_layout_monomyth = {
+    .size = 0x58, .species = 0x0C, .moves = 0x18, .type1 = 0x0F, .type2 = 0x10, .pp = 0x00, .hp = 0x2C, .level = 0x12,
+    .maxHp = 0x2E, .status = 0x30, .speciesMask = 0xFFFF, .personality = 0x40, .otId = 0x38,
 };
 // Pokemon Quetzal: a 0x68-byte plaintext struct (expansion's, bit-packed HP and status), egg flag in the IV word.
 const struct pd_party_layout pd_party_layout_quetzal = {
@@ -116,6 +129,18 @@ struct port_rom {
     enum pd_game_kind kind;
     const char* title;
 };
+// The guide a port reads (its English text over the port's own tables): the base game's, by the code's third letter.
+static enum pd_guide_id port_guide(const char* code) {
+    if (code[3] == 'J') return PD_GUIDE_NONE; // Japanese tables are laid out apart: no guide yet
+    switch (code[2]) {
+    case 'R': return PD_GUIDE_FIRERED;
+    case 'G': return PD_GUIDE_LEAFGREEN;
+    case 'E': return PD_GUIDE_EMERALD;
+    case 'V': return PD_GUIDE_RUBY;
+    case 'P': return PD_GUIDE_SAPPHIRE;
+    }
+    return PD_GUIDE_NONE;
+}
 static const struct port_rom PORT_ROMS[] = {
     {"AXPD", 0, &PD_CONFIG_PORT_AXPD0, PD_GAME_EMERALD, "Pokémon Saphir-Edition (unverified)"},
     {"AXPD", 1, &PD_CONFIG_PORT_AXPD1, PD_GAME_EMERALD, "Pokémon Saphir-Edition (unverified)"},
@@ -141,6 +166,20 @@ static const struct port_rom PORT_ROMS[] = {
     {"BPRF", 0, &PD_CONFIG_PORT_BPRF0, PD_GAME_FIRERED, "Pokémon Version Rouge Feu (unverified)"},
     {"BPRI", 0, &PD_CONFIG_PORT_BPRI0, PD_GAME_FIRERED, "Pokémon Versione Rosso Fuoco (unverified)"},
     {"BPRS", 0, &PD_CONFIG_PORT_BPRS0, PD_GAME_FIRERED, "Pokémon Edición Rojo Fuego (unverified)"},
+    // The languages' Emerald (the app's NATIVE_EMERALD_ES / _DE / _FR / _IT / _JA) and the Japanese carts (RETAIL_PORTS).
+    {"BPES", 0, &PD_CONFIG_EMERALD_ES, PD_GAME_EMERALD, "Pokémon Edición Esmeralda"},
+    {"BPED", 0, &PD_CONFIG_EMERALD_DE, PD_GAME_EMERALD, "Pokémon Smaragd-Edition"},
+    {"BPEF", 0, &PD_CONFIG_EMERALD_FR, PD_GAME_EMERALD, "Pokémon Version Émeraude"},
+    {"BPEI", 0, &PD_CONFIG_EMERALD_IT, PD_GAME_EMERALD, "Pokémon Versione Smeraldo"},
+    {"BPEJ", 0, &PD_CONFIG_EMERALD_JA, PD_GAME_EMERALD, "Pokémon Emerald (Japan)"},
+    {"BPRJ", 0, &PD_CONFIG_PORT_BPRJ0, PD_GAME_FIRERED, "Pokémon FireRed (Japan)"},
+    {"BPRJ", 1, &PD_CONFIG_PORT_BPRJ1, PD_GAME_FIRERED, "Pokémon FireRed (Japan)"},
+    {"BPGJ", 0, &PD_CONFIG_PORT_BPGJ0, PD_GAME_FIRERED, "Pokémon LeafGreen (Japan)"},
+    {"BPGJ", 1, &PD_CONFIG_PORT_BPGJ1, PD_GAME_FIRERED, "Pokémon LeafGreen (Japan)"},
+    {"AXVJ", 0, &PD_CONFIG_PORT_AXVJ0, PD_GAME_EMERALD, "Pokémon Ruby (Japan)"},
+    {"AXVJ", 1, &PD_CONFIG_PORT_AXVJ1, PD_GAME_EMERALD, "Pokémon Ruby (Japan)"},
+    {"AXPJ", 0, &PD_CONFIG_PORT_AXPJ0, PD_GAME_EMERALD, "Pokémon Sapphire (Japan)"},
+    {"AXPJ", 1, &PD_CONFIG_PORT_AXPJ1, PD_GAME_EMERALD, "Pokémon Sapphire (Japan)"},
     {NULL, 0, NULL, PD_GAME_NONE, NULL},
 };
 
@@ -150,6 +189,7 @@ void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize) {
     g->loadId = ++loads ? loads : ++loads;
     memcpy(g->code, header + 0xAC, 4);
     g->code[4] = 0;
+    g->language = (char) header[0xAF];
     g->revision = header[0xBC];
 
     if (!strcmp(g->code, "BPRE") || !strcmp(g->code, "BPGE")) {
@@ -186,6 +226,7 @@ void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize) {
             if (strcmp(r->code, g->code) || r->rev != g->revision) continue;
             g->kind = r->kind;
             g->title = r->title;
+            g->guide = port_guide(r->code);
             g->cfg = romSize > 0x1000000 ? NULL : r->cfg;
             if (!g->cfg) g->unsupported = "Not a version the companion knows";
             return;
@@ -208,7 +249,8 @@ void pd_game_detect(struct pd_game* g, const uint8_t* header, size_t romSize) {
 
 
 // Game Boy games: a config with the Gen 3 fields empty, the reader's addresses (pd_gb.c) and the game's own names.
-extern const struct pd_text pd_text_gb_yellow, pd_text_gb_pure_rgb, pd_text_gb_crystal, pd_text_gb_gold_silver,
+extern const struct pd_text pd_text_gb_yellow, pd_text_gb_yellow_de, pd_text_gb_yellow_fr, pd_text_gb_yellow_it,
+    pd_text_gb_yellow_es, pd_text_gb_yellow_legacy, pd_text_gb_pure_rgb, pd_text_gb_crystal, pd_text_gb_gold_silver,
     pd_text_gb_crystal_clear, pd_text_gb_prism, pd_text_gb_polished, pd_text_gb_polished_faithful;
 #define PD_GB_BAG { PD_POCKET_ITEMS, PD_POCKET_BALLS, PD_POCKET_TMHM, PD_POCKET_BERRIES, PD_POCKET_KEY }
 #define PD_GB_CONFIG(NAME, GB, TEXT) \
@@ -216,6 +258,11 @@ extern const struct pd_text pd_text_gb_yellow, pd_text_gb_pure_rgb, pd_text_gb_c
 PD_GB_CONFIG(RED, pd_gb_red, gb_yellow)
 PD_GB_CONFIG(BLUE, pd_gb_blue, gb_yellow)
 PD_GB_CONFIG(YELLOW, pd_gb_yellow, gb_yellow)
+PD_GB_CONFIG(YELLOW_DE, pd_gb_yellow_de, gb_yellow_de)
+PD_GB_CONFIG(YELLOW_FR, pd_gb_yellow_fr, gb_yellow_fr)
+PD_GB_CONFIG(YELLOW_IT, pd_gb_yellow_it, gb_yellow_it)
+PD_GB_CONFIG(YELLOW_ES, pd_gb_yellow_es, gb_yellow_es)
+PD_GB_CONFIG(YELLOW_LEGACY, pd_gb_yellow_legacy, gb_yellow_legacy)
 PD_GB_CONFIG(PURE_RED, pd_gb_pure_red, gb_pure_rgb)
 PD_GB_CONFIG(PURE_BLUE, pd_gb_pure_red, gb_pure_rgb)
 PD_GB_CONFIG(CRYSTAL, pd_gb_crystal, gb_crystal)
@@ -244,9 +291,6 @@ static const struct unsupported_rom UNSUPPORTED_ROMS[] = {
     {"34ca3f54ea2dbec907a4d9af92befe2771f7649c", "Pokémon Trading Card Game 2", PD_NOT_A_GAME},
     {"0f8670a583255cff3e5b7ca71b5d7454d928fc48", "Pokémon Trading Card Game", PD_NOT_A_GAME},
     {"67949d03fd3dbfcec7903857560128ae6438110b", "Pokémon Scorched Silver", PD_NO_LAYOUT},
-    // SoulGold v1.2.1 (both builds): its EWRAM moved from v1.2's (the app's NATIVE_SOULGOLD_V1_2_1), no C config yet.
-    {"32988f918ca09923466ae3bc5bbfe5f2a771c728", "Pokémon SoulGold", PD_NO_LAYOUT},
-    {"dacb6e40e7f572ddefd2dfa10e99c0da6835b062", "Pokémon SoulGold", PD_NO_LAYOUT},
     {"b8b7881eaa9856b5ada99078ad1053d31cb79827", "Pokémon Pinball: Ruby & Sapphire", PD_NOT_A_GAME},
     {"afee3b060dd5fd4a68afb1b003456aef3a2af073", "Pokémon Mystery Dungeon: Red Rescue Team", PD_NOT_A_GAME},
     {"e596e713051ca40621e028ee839fdcbe8cc8b77d", "Pokémon POKeDUEL", PD_NOT_A_GAME},
@@ -265,6 +309,11 @@ static const struct gb_rom GB_ROMS[] = {
     {"ea9bcae617fdf159b045185467ae58b2e4a48b9a", &PD_GB_CONFIG_RED, "Pokémon Red"},
     {"d7037c83e1ae5b39bde3c30787637ba1d4c48ce2", &PD_GB_CONFIG_BLUE, "Pokémon Blue"},
     {"cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1", &PD_GB_CONFIG_YELLOW, "Pokémon Yellow"},
+    {"42f3714eec6eca25200d42461ff08d57c98f6d1d", &PD_GB_CONFIG_YELLOW_DE, "Pokémon Gelbe Edition"},
+    {"0aceec0ef7aa2ca5aa831554598d91f61a925591", &PD_GB_CONFIG_YELLOW_FR, "Pokémon Version Jaune"},
+    {"05bb8e99f24d498613930949730afa8024e77d08", &PD_GB_CONFIG_YELLOW_IT, "Pokémon Versione Gialla"},
+    {"1dc242039218fba50928d1afb66b70565b6b9daf", &PD_GB_CONFIG_YELLOW_ES, "Pokémon Edición Amarilla"},
+    {"2ac87de42afc70ef6016805acb3b206644417f97", &PD_GB_CONFIG_YELLOW_LEGACY, "Pokémon Yellow Legacy"},
     {"2e94d09c1e16a57eb079404c030f26fdeeac949d", &PD_GB_CONFIG_PURE_RED, "Pokémon PureRed"},
     {"d419fe244fa17196f7df46ddab47c840e7573652", &PD_GB_CONFIG_PURE_BLUE, "Pokémon PureBlue"},
     {"f4cd194bdee0d04ca4eac29e09b8e4e9d818c133", &PD_GB_CONFIG_CRYSTAL, "Pokémon Crystal"},
@@ -341,9 +390,6 @@ static void gb_font(const struct pd_game* g, const struct pd_config* cfg) {
             if (!strcmp(p->sha1, g->sha1)) off = p->off;
     }
     pd_gb_font_use(g, off, cs);
-    bool redBlue = cfg == &PD_GB_CONFIG_RED || cfg == &PD_GB_CONFIG_BLUE;
-    pd_gb_ink = redBlue ? 0x181010 : cs == PD_GB_CHARS_PURE ? 0x000000 : 0x181818;
-    pd_gb_paper = redBlue ? 0xFFEFFF : 0xFFFFFF;
 }
 
 // The retail carts (USA / Europe) detect's configs are for: GameTitles.RETAIL.
@@ -490,6 +536,22 @@ static const struct known_rom KNOWN_ROMS[] = {
      PD_GUIDE_SOULGOLD},
     {"2be7c99aa473308debe1d03ff2015bab7d9addb5", &PD_CONFIG_SOULGOLD_V1_2C, PD_GAME_EMERALD, "Pokémon SoulGold",
      PD_GUIDE_SOULGOLD},
+    {"32988f918ca09923466ae3bc5bbfe5f2a771c728", &PD_CONFIG_SOULGOLD_V1_2_1, PD_GAME_EMERALD, "Pokémon SoulGold",
+     PD_GUIDE_SOULGOLD},
+    {"dacb6e40e7f572ddefd2dfa10e99c0da6835b062", &PD_CONFIG_SOULGOLD_V1_2_1, PD_GAME_EMERALD, "Pokémon SoulGold",
+     PD_GUIDE_SOULGOLD},
+    {"62bb900925118796fb963b7df92d02cb548c404e", &PD_CONFIG_LETS_GO_PIKACHU, PD_GAME_FIRERED, "Pokémon Let's Go Pikachu",
+     PD_GUIDE_LETS_GO},
+    {"11f6ee3890a0aaeb95903471ec73413c846e86fc", &PD_CONFIG_LETS_GO_PIKACHU, PD_GAME_FIRERED,
+     "Pokémon Let's Go Pikachu (Translation Only)", PD_GUIDE_LETS_GO},
+    {"4a41d539cbf6108cfe3344db5ba997fc5660d77d", &PD_CONFIG_LETS_GO_EEVEE, PD_GAME_FIRERED, "Pokémon Let's Go Eevee",
+     PD_GUIDE_LETS_GO},
+    {"5b6146adec1a30f88c565e8f555ab7a578825598", &PD_CONFIG_LETS_GO_EEVEE, PD_GAME_FIRERED,
+     "Pokémon Let's Go Eevee (Translation Only)", PD_GUIDE_LETS_GO},
+    {"ae1c4be9be8d706bb989602bc05731203d42860d", &PD_CONFIG_MONOMYTH, PD_GAME_EMERALD, "Pokémon Monomyth",
+     PD_GUIDE_MONOMYTH},
+    {"eb660caffbc26e1f09f86714d03af4c3eccd9e4d", &PD_CONFIG_MONOMYTH_V1_1, PD_GAME_EMERALD, "Pokémon Monomyth",
+     PD_GUIDE_MONOMYTH},
     {"79ee6df0869c1773c8c6a5f764afc1f8d833d8bb", &PD_CONFIG_HEART_AND_SOUL, PD_GAME_EMERALD, "Pokémon Heart and Soul",
      PD_GUIDE_HEART_AND_SOUL},
     {"d0658315da1e8827f66f15c3d3a000fe747e163e", &PD_CONFIG_QUETZAL_V9_0, PD_GAME_EMERALD, "Pokémon Quetzal",
@@ -554,8 +616,7 @@ static bool retail_dump(const struct pd_game* g) {
     return false;
 }
 
-void pd_game_identify(struct pd_game* g) {
-    pd_gb_look = 0;
+static void identify(struct pd_game* g) {
     pd_gb_font_use(NULL, 0, PD_GB_CHARS_GEN1);
     pd_gb_icons_use(NULL);
     pd_gb_dex_use(NULL);
@@ -577,7 +638,6 @@ void pd_game_identify(struct pd_game* g) {
     for (const struct pd_shiny_rom* r = pd_shiny_roms; r->sha1; r++)
         if (!strcmp(r->sha1, g->sha1)) g->shinyBelow = r->below;
 
-    pd_gb_look = g->kind == PD_GAME_GB;
     for (const struct unsupported_rom* u = UNSUPPORTED_ROMS; u->sha1; u++) {
         if (strcmp(u->sha1, g->sha1)) continue;
         g->cfg = NULL;
@@ -592,7 +652,9 @@ void pd_game_identify(struct pd_game* g) {
             g->cfg = r->cfg;
             g->title = r->title;
             g->guide = r->cfg == &PD_GB_CONFIG_RED ? PD_GUIDE_GB_RED : r->cfg == &PD_GB_CONFIG_BLUE ? PD_GUIDE_GB_BLUE :
-                       r->cfg == &PD_GB_CONFIG_YELLOW ? PD_GUIDE_GB_YELLOW : r->cfg == &PD_GB_CONFIG_CRYSTAL ? PD_GUIDE_GB_CRYSTAL : PD_GUIDE_NONE;
+                       r->cfg == &PD_GB_CONFIG_YELLOW || r->cfg == &PD_GB_CONFIG_YELLOW_DE || r->cfg == &PD_GB_CONFIG_YELLOW_FR ||
+                       r->cfg == &PD_GB_CONFIG_YELLOW_IT || r->cfg == &PD_GB_CONFIG_YELLOW_ES ? PD_GUIDE_GB_YELLOW : r->cfg == &PD_GB_CONFIG_CRYSTAL ? PD_GUIDE_GB_CRYSTAL :
+                       r->cfg == &PD_GB_CONFIG_POLISHED || r->cfg == &PD_GB_CONFIG_POLISHED_FAITHFUL ? PD_GUIDE_GB_POLISHED : PD_GUIDE_NONE;
             g->hackMaps = true;
             g->unsupported = NULL;
             gb_font(g, r->cfg);
@@ -622,4 +684,54 @@ void pd_game_identify(struct pd_game* g) {
     g->guide = PD_GUIDE_NONE;
     g->title = g->kind == PD_GAME_FIRERED ? "FireRed ROM hack" : "Emerald ROM hack";
     g->unsupported = "Not a version the companion knows";
+}
+
+// The app's extras for a ROM (its look, its PC's moves), by SHA-1: pd_games_gen.c's entries are sorted by it.
+const struct pd_game_entry* pd_game_entry_for(const char* sha1) {
+    int lo = 0, hi = pd_game_entry_count - 1;
+    while (lo <= hi) {
+        int mid = (lo + hi) / 2;
+        int c = strcmp(pd_game_entries[mid].sha1, sha1);
+        if (!c) return &pd_game_entries[mid];
+        if (c < 0) lo = mid + 1;
+        else hi = mid - 1;
+    }
+    return NULL;
+}
+
+// The config with the entry's field items laid over the parts gamedata's leaves empty: FLY (from flyFlagGet to the
+// field items), the field items and PC (from fieldVarGet to the end), a bag of its own, USE / GIVE / TAKE.
+static struct pd_config merged;
+
+static void overlay(struct pd_game* g, const struct pd_config* add) {
+    merged = *g->cfg;
+    if (!merged.flyFlagGet && add->flyFlagGet)
+        memcpy(&merged.flyFlagGet, &add->flyFlagGet, offsetof(struct pd_config, fieldVarGet) - offsetof(struct pd_config, flyFlagGet));
+    if (!merged.fieldVarGet && add->fieldVarGet)
+        memcpy(&merged.fieldVarGet, &add->fieldVarGet, sizeof(struct pd_config) - offsetof(struct pd_config, fieldVarGet));
+    if (!merged.bag3Off && !merged.itemFlagsOff && (add->bag3Off || add->itemFlagsOff)) {
+        merged.bag3Off = add->bag3Off;
+        merged.bag3TailOff = add->bag3TailOff;
+        merged.bag3SplitAt = add->bag3SplitAt;
+        merged.bag3KeyBit = add->bag3KeyBit;
+        merged.itemFlagsOff = add->itemFlagsOff;
+        merged.itemFlagsCount = add->itemFlagsCount;
+        merged.itemPockets = add->itemPockets;
+        merged.itemPocketCount = add->itemPocketCount;
+    }
+    if (!merged.partyFns) merged.partyFns = add->partyFns;
+    g->cfg = &merged;
+}
+
+void pd_game_identify(struct pd_game* g) {
+    g->entry = NULL;
+    identify(g);
+    if (!g->rom || !g->sha1[0]) {
+        pd_look_apply(g, NULL);
+        return;
+    }
+    g->entry = pd_game_entry_for(g->sha1);
+    if (g->entry && g->entry->language) g->language = g->entry->language;
+    if (g->entry && g->entry->fieldCfg && g->cfg && !g->cfg->gb) overlay(g, g->entry->fieldCfg);
+    pd_look_apply(g, NULL); // the game's windows until the host applies its settings
 }

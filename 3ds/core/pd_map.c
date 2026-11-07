@@ -1,6 +1,8 @@
 #include "pd_map.h"
 
 #include <stdio.h>
+
+#include "pd_games.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -40,16 +42,46 @@ static void screen_4bpp(const uint8_t* tiles, size_t tilesSize, const uint32_t* 
 }
 
 // Emerald: 8bpp tiles, a 64-wide u8 affine map, palette loaded at slot 7 (112).
-static void screen_8bpp(const uint8_t* tiles, size_t tilesSize, const uint32_t* pal, int palCount, const uint8_t* map,
-                        uint32_t* out) {
+static void screen_8bpp_from(const uint8_t* tiles, size_t tilesSize, const uint32_t* pal, int palCount, const uint8_t* map,
+                             uint32_t* out, int first) {
     for (int ty = 0; ty < 20; ty++) {
         for (int tx = 0; tx < 30; tx++) {
             int t = map[ty * 64 + tx];
             for (int y = 0; y < 8; y++) {
                 for (int x = 0; x < 8; x++) {
                     size_t at = (size_t) t * 64 + y * 8 + x;
-                    int ci = (at < tilesSize ? tiles[at] : 0) - 112;
+                    int ci = (at < tilesSize ? tiles[at] : 0) - first;
                     out[(ty * 8 + y) * PD_MAP_W + tx * 8 + x] = ci >= 0 && ci < palCount ? pal[ci] : pal[0];
+                }
+            }
+        }
+    }
+}
+
+static void screen_8bpp(const uint8_t* tiles, size_t tilesSize, const uint32_t* pal, int palCount, const uint8_t* map, uint32_t* out) {
+    screen_8bpp_from(tiles, tilesSize, pal, palCount, map, out, 112);
+}
+
+// A 32-wide u16 tilemap of 4bpp tiles (Dreamstone's TOWN MAP).
+static void screen_4bpp_wide(const uint8_t* tiles, size_t tilesSize, const uint32_t* pal, int palCount, const uint8_t* map, uint32_t* out) {
+    static uint8_t cut[30 * 20 * 2];
+    for (int ty = 0; ty < 20; ty++) memcpy(cut + ty * 60, map + ty * 64, 60);
+    screen_4bpp(tiles, tilesSize, pal, palCount, cut, out);
+}
+
+// Monomyth's ATHANTO MAP (RomArt's monomythRegionMap): 8bpp tiles loaded from tile 0x60 through a 32x32 u16 tilemap (flips
+// allowed), shown from row 2, its palette at slot 7. A pixel outside that palette stays clear.
+static void screen_monomyth(const uint8_t* tiles, size_t tilesSize, const uint32_t* pal, int palCount, const uint8_t* map, uint32_t* out) {
+    for (int i = 0; i < PD_MAP_W * PD_MAP_H; i++) out[i] = PD_MAP_CLEAR;
+    for (int ty = 0; ty < 20; ty++) {
+        for (int tx = 0; tx < 30; tx++) {
+            int o = ((ty + 2) * 32 + tx) * 2, e = map[o] | map[o + 1] << 8, t = (e & 0x3FF) - 0x60;
+            if (t < 0 || (size_t) (t + 1) * 64 > tilesSize) continue;
+            for (int y = 0; y < 8; y++) {
+                for (int x = 0; x < 8; x++) {
+                    int sx = e & 0x400 ? 7 - x : x, sy = e & 0x800 ? 7 - y : y;
+                    int v = tiles[t * 64 + sy * 8 + sx] - 112;
+                    if (v >= 0 && v < palCount) out[(ty * 8 + y) * PD_MAP_W + tx * 8 + x] = pal[v];
                 }
             }
         }
@@ -145,6 +177,8 @@ static bool read_rom_map(const struct pd_game* g, struct pd_map_art* art, struct
     bool ok = palRaw != NULL;
     uint32_t pal[256];
     if (ok) palette(palRaw, 256, pal);
+    art->hasBackdrop = ok;
+    art->backdrop = pal[0];
     // Hacks with one region point every slot at the same tilemap: one page each distinct screen.
     uint32_t distinct[4];
     int nDistinct = 0, imageOf[4];
@@ -251,6 +285,93 @@ static bool rom_map_on(const struct pd_game* g) {
     return romMap && romMap->ok && cachedRom == pd_rom_id(g);
 }
 
+// A hack's own pages, by fingerprint (RomArt's REGION blobs).
+static void hack_pages(const struct pd_game* g, const struct pd_game_entry* e) {
+    const struct pd_blob_sig* sigs[3 * PD_MAP_PAGES + 2];
+    uint8_t* blobs[3 * PD_MAP_PAGES + 2];
+    int n = e->regionPageCount < PD_MAP_PAGES ? e->regionPageCount : PD_MAP_PAGES;
+    for (int i = 0; i < n; i++) {
+        sigs[3 * i] = e->regionPages[i].gfx;
+        sigs[3 * i + 1] = e->regionPages[i].pal;
+        sigs[3 * i + 2] = e->regionPages[i].map;
+    }
+    int total = 3 * n;
+    bool head = n > 0 && e->regionPages[0].headGfx;
+    if (head) {
+        sigs[total++] = e->regionPages[0].headGfx;
+        sigs[total++] = e->regionPages[0].headPal;
+    }
+    pd_romart_find(g, sigs, total, blobs);
+    static uint32_t pal[256];
+    for (int i = 0; i < n; i++) {
+        const struct pd_region_page* p = &e->regionPages[i];
+        uint8_t *gfx = blobs[3 * i], *colours = blobs[3 * i + 1], *map = blobs[3 * i + 2];
+        // Pages can share a palette: the scan fills only the first with that fingerprint.
+        for (int k = 0; !colours && k < 3 * n; k++)
+            if (sigs[k] == p->pal) colours = blobs[k];
+        for (int k = 0; !map && k < 3 * n; k++)
+            if (sigs[k] == p->map) map = blobs[k];
+        if (!gfx || !colours || !map) break;
+        int count = (int) p->pal->size / 2;
+        if (count > 256) count = 256;
+        palette(colours, count, pal);
+        if (p->kind == 2) screen_monomyth(gfx, p->gfx->size, pal, count, map, cached->page[i]);
+        else if (p->kind == 1) screen_4bpp_wide(gfx, p->gfx->size, pal, count, map, cached->page[i]);
+        else screen_8bpp_from(gfx, p->gfx->size, pal, count, map, cached->page[i], p->firstColour);
+        cached->pages = i + 1;
+        cached->ok = true;
+    }
+    if (head && blobs[total - 2] && blobs[total - 1]) {
+        palette(blobs[total - 1], 16, pal);
+        sprite16(blobs[total - 2], pal, cached->head[0]);
+        memcpy(cached->head[1], cached->head[0], sizeof(cached->head[0]));
+        cached->hasHead[0] = cached->hasHead[1] = true;
+    }
+    for (int i = 0; i < total; i++) free(blobs[i]);
+}
+
+static bool plain(const uint32_t* px, int x0, int y0, int w, int h, uint32_t backdrop) {
+    for (int y = y0; y < y0 + h; y++)
+        for (int x = x0; x < x0 + w; x++)
+            if (px[y * PD_MAP_W + x] != backdrop) return false;
+    return true;
+}
+
+static bool border_colour(uint32_t c) {
+    int r = c >> 16 & 0xFF, g = c >> 8 & 0xFF, b = c & 0xFF;
+    return (r < 24 && g < 24 && b < 24) || (r > 240 && g > 240 && b > 240);
+}
+
+static bool border_line(const uint32_t* px, int x0, int y0, int w, int h) {
+    for (int y = y0; y < y0 + h; y++)
+        for (int x = x0; x < x0 + w; x++)
+            if (!border_colour(px[y * PD_MAP_W + x])) return false;
+    return true;
+}
+
+// The BG's backdrop off by whole tiles (RomRegionMap.backdropCrop), then rows and columns of solid black or white
+// (regionMapContentBounds): only those, so a map edge that's all sea stays, and at most a quarter of each side goes.
+static void find_crop(const uint32_t* px, bool hasBackdrop, uint32_t backdrop, int16_t* out) {
+    int left = 0, right = 30, top = 0, bottom = 20;
+    if (hasBackdrop) {
+        while (top < 5 && plain(px, 0, top * 8, PD_MAP_W, 8, backdrop)) top++;
+        while (bottom > 15 && plain(px, 0, bottom * 8 - 8, PD_MAP_W, 8, backdrop)) bottom--;
+        while (left < 7 && plain(px, left * 8, top * 8, 8, (bottom - top) * 8, backdrop)) left++;
+        while (right > 23 && plain(px, right * 8 - 8, top * 8, 8, (bottom - top) * 8, backdrop)) right--;
+    }
+    int l0 = left * 8, t0 = top * 8, r0 = right * 8, b0 = bottom * 8;
+    int w = r0 - l0, h = b0 - t0, l = l0, r = r0, t = t0, b = b0;
+    while (l < l0 + w / 4 && border_line(px, l, t, 1, b - t)) l++;
+    while (r > r0 - w / 4 && border_line(px, r - 1, t, 1, b - t)) r--;
+    while (t < t0 + h / 4 && border_line(px, l, t, r - l, 1)) t++;
+    while (b > b0 - h / 4 && border_line(px, l, b - 1, r - l, 1)) b--;
+    out[0] = (int16_t) l;
+    out[1] = (int16_t) t;
+    out[2] = (int16_t) r;
+    out[3] = (int16_t) b;
+}
+
+static const struct pd_map_art* load_art(const struct pd_game* g);
 
 const struct pd_map_art* pd_map_art(const struct pd_game* g) {
     if (!g->rom || (g->kind != PD_GAME_FIRERED && g->kind != PD_GAME_EMERALD && g->kind != PD_GAME_GB)) return NULL;
@@ -261,13 +382,27 @@ const struct pd_map_art* pd_map_art(const struct pd_game* g) {
     cached = calloc(1, sizeof(*cached));
     cachedRom = pd_rom_id(g);
     if (!cached) return NULL;
+    const struct pd_map_art* art = load_art(g);
+    for (int i = 0; art && g->kind != PD_GAME_GB && i < art->pages; i++)
+        find_crop(cached->page[i], cached->hasBackdrop, cached->backdrop, cached->crop[i]);
+    return art;
+}
+
+static const struct pd_map_art* load_art(const struct pd_game* g) {
     if (g->kind == PD_GAME_GB) return pd_gb_map_draw(g, cached) ? cached : NULL;
     cached->w = PD_MAP_W;
     cached->h = PD_MAP_H;
+    const struct pd_game_entry* e = g->entry;
+    if (e && e->regionPages) {
+        hack_pages(g, e);
+        return cached->ok ? cached : NULL;
+    }
     // A FireRed 1.0 hack that keeps its own map where region_map.c finds it (the hacks whose names are read that way,
-    // pd_text.mapsecsRom): that map, its rects and grids; the player's head stays the fingerprinted one below.
+    // pd_text.mapsecsRom, or that the app reads with RomRegionMap): that map, its rects and grids; the player's head
+    // stays the fingerprinted one below.
     bool own = false;
-    if (g->cfg && g->cfg->text && g->cfg->text->mapsecsRom && (romMap = calloc(1, sizeof(*romMap)))) {
+    bool romRegion = (g->cfg && g->cfg->text && g->cfg->text->mapsecsRom) || (e && e->romRegionMap);
+    if (romRegion && (romMap = calloc(1, sizeof(*romMap)))) {
         own = read_rom_map(g, cached, romMap);
         if (!own) {
             free(romMap);
@@ -285,10 +420,9 @@ const struct pd_map_art* pd_map_art(const struct pd_game* g) {
         if (!own && blob[PD_FR_REGION_GFX] && blob[PD_FR_REGION_PAL] && blob[PD_FR_KANTO_MAP]) {
             int colours = (int) pd_blob_sigs[PD_FR_REGION_PAL].size / 2;
             palette(blob[PD_FR_REGION_PAL], colours, pal);
-            static const int MAPS[PD_MAP_PAGES] = {
-                PD_FR_KANTO_MAP, PD_FR_SEVII123_MAP, PD_FR_SEVII45_MAP, PD_FR_SEVII67_MAP,
-            };
-            for (int p = 0; p < PD_MAP_PAGES && blob[MAPS[p]]; p++) {
+            // FireRed's four, whatever a hack's PD_MAP_PAGES allows: a page past them had no map and no name.
+            static const int MAPS[] = { PD_FR_KANTO_MAP, PD_FR_SEVII123_MAP, PD_FR_SEVII45_MAP, PD_FR_SEVII67_MAP };
+            for (int p = 0; p < (int) (sizeof(MAPS) / sizeof(MAPS[0])) && blob[MAPS[p]]; p++) {
                 screen_4bpp(blob[PD_FR_REGION_GFX], pd_blob_sigs[PD_FR_REGION_GFX].size, pal, colours,
                             blob[MAPS[p]], cached->page[p]);
                 cached->pages = p + 1;
@@ -354,6 +488,15 @@ static const struct pd_mapsec_rect* rect_of(const struct pd_game* g, int mapsec)
         const struct pd_mapsec_rect* r = pd_gb_map_rects(g, &n);
         return r && mapsec >= 0 && mapsec < n ? &r[mapsec] : NULL;
     }
+    if (g->entry && g->entry->regionPages) {
+        // A hack's own sections, from the app's MapSecData (pd_games_gen.c).
+        static struct pd_mapsec_rect r;
+        const struct pd_game_entry* e = g->entry;
+        if (mapsec < 0 || mapsec >= e->mapsecAtCount || e->mapsecAt[mapsec][0] == 255) return NULL;
+        const unsigned char* a = e->mapsecAt[mapsec];
+        r = (struct pd_mapsec_rect) { (int8_t) a[0], a[1], a[2], a[3], a[4] };
+        return &r;
+    }
     if (g->kind == PD_GAME_EMERALD) {
         return mapsec >= 0 && mapsec < pd_mapsec_rects_emerald_count ? &pd_mapsec_rects_emerald[mapsec] : NULL;
     }
@@ -376,6 +519,7 @@ int pd_map_tiles(const struct pd_game* g, int mapsec, int* page, struct pd_tile_
         out[0] = (struct pd_tile_rect) { r->x, r->y, r->w, r->h };
         return 1;
     }
+    if (g->entry && g->entry->regionPages) return 0;
     // Only on the grid (a dungeon): every cell naming it, on its page.
     int n = 0, count;
     const struct pd_region_layout* ls = layouts(g, &count);
@@ -395,6 +539,20 @@ int pd_map_tiles(const struct pd_game* g, int mapsec, int* page, struct pd_tile_
 }
 
 void pd_map_pick(const struct pd_game* g, int page, int tx, int ty, int* mapsec, int* dungeon) {
+    if (g->entry && g->entry->regionPages) {
+        // No grid for these: the smallest section under the tile.
+        int best = 1 << 30;
+        *mapsec = *dungeon = -1;
+        for (int m = 0; m < 256; m++) {
+            const struct pd_mapsec_rect* r = rect_of(g, m);
+            if (!r || r->page != page || !r->w || tx < r->x || ty < r->y || tx >= r->x + r->w || ty >= r->y + r->h) continue;
+            if (r->w * r->h < best) {
+                best = r->w * r->h;
+                *mapsec = m;
+            }
+        }
+        return;
+    }
     int count;
     const struct pd_region_layout* ls = layouts(g, &count);
     *mapsec = *dungeon = -1;
@@ -475,6 +633,7 @@ bool pd_map_player_tile(const struct pd_game* g, const struct pd_snapshot* s, in
 }
 
 const char* pd_map_page_name(const struct pd_game* g, int page) {
+    if (g->entry && g->entry->regionPages) return page >= 0 && page < g->entry->regionPageCount ? g->entry->regionPages[page].label : "";
     if (rom_map_on(g)) {  // a hack's own screens: the app's "MAP n"
         static char name[16];
         snprintf(name, sizeof name, "MAP %d", page + 1);
@@ -482,6 +641,6 @@ const char* pd_map_page_name(const struct pd_game* g, int page) {
     }
     if (g->kind == PD_GAME_GB) return pd_gb_map_page_name(g, page);
     if (g->kind == PD_GAME_EMERALD) return "HOENN";
-    static const char* const NAMES[PD_MAP_PAGES] = { "KANTO", "SEVII 1-3", "SEVII 4-5", "SEVII 6-7" };
-    return page >= 0 && page < PD_MAP_PAGES ? NAMES[page] : "";
+    static const char* const NAMES[] = { "KANTO", "SEVII 1-3", "SEVII 4-5", "SEVII 6-7" };
+    return page >= 0 && page < (int) (sizeof(NAMES) / sizeof(NAMES[0])) ? NAMES[page] : "";
 }

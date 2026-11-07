@@ -15,9 +15,10 @@ struct pd_dex_entry {
     int national, species;
     char category[24]; // "SEED"
     int heightDm, weightHg;
-    char description[240];
+    char description[320];
     int type1, type2;
-    int stats[6]; // HP, ATK, DEF, SP.ATK, SP.DEF, SPEED (the app's order)
+    int stats[6];  // HP, ATK, DEF, SP.ATK, SP.DEF, SPEED (the app's order); Gen 1: HP, ATK, DEF, SPEED, SPECIAL
+    int statCount; // stats[]' count: 5 on a Gen 1 page (gen1Stats), else 6
     char ability1[16], ability2[16];
     // A Game Boy page (Gen 1): the cart's own feet / inches and pounds x 10 (0 = from dm / hg), five stats (HP, ATTACK,
     // DEFENSE, SPEED, SPECIAL in stats[0..4]) and no abilities.
@@ -40,5 +41,16 @@ bool pd_dex_sprite(const struct pd_game* g, int species, uint32_t* out);
 // "2'04\"" and "15.2 lbs." - the app's imperial conversions.
 void pd_dex_height(int dm, char* buf, int len);
 void pd_dex_weight(int hg, char* buf, int len);
+
+// HT and WT as the game prints them (formatDexHeight / formatDexWeight).
+void pd_dex_measures(const struct pd_game* g, const struct pd_dex_entry* e, char* height, int heightLen, char* weight, int weightLen);
+// How many entries a Game Boy cart's dex lists (0 on the GBA, whose lists go by its tables), and what follows the category.
+int pd_dex_gb_count(const struct pd_game* g);
+const char* pd_dex_category_suffix(const struct pd_game* g);
+
+// The species' growth rate (gBaseStats +19: 0 medium fast ... 5 slow), -1 where the ROM's table isn't known.
+int pd_growth_rate(const struct pd_game* g, int species);
+// EXP at a level by growth rate (the games' gExperienceTables).
+long pd_exp_at(int rate, int level);
 
 #endif

@@ -170,7 +170,7 @@ static bool decode_rowe_mon(const uint8_t* raw, const struct pd_party_layout* l,
     m->hp = u16(raw + l->hp);
     m->maxHp = u16(raw + l->maxHp);
     m->status = u32(raw + l->status);
-    if (raw[l->flags] & l->eggMask) m->species = PD_SPECIES_EGG;
+    if (raw[l->flags] & l->eggMask) m->species = PD_SPECIES_EGG, m->egg = true;
     decode_name(raw + l->nicknameOff, l->nicknameLen, m->nickname, sizeof(m->nickname));
     m->gender = gender_of(cfg, m, personality);
     m->shiny = mon_shiny(raw, l);
@@ -209,7 +209,7 @@ static bool decode_er_mon(const uint8_t* raw, const struct pd_party_layout* l, c
     m->hp = u16(raw + l->hp);
     m->maxHp = u16(raw + l->maxHp);
     m->status = u32(raw + l->status);
-    if ((w14 >> 15) & 1) m->species = PD_SPECIES_EGG;
+    if ((w14 >> 15) & 1) m->species = PD_SPECIES_EGG, m->egg = true;
     decode_name(raw + l->nicknameOff, l->nicknameLen, m->nickname, sizeof(m->nickname));
     m->gender = gender_of(cfg, m, m->personality);
     m->shiny = mon_shiny(raw, l);
@@ -222,6 +222,28 @@ bool pd_decode_party_mon_l(const uint8_t* raw, const struct pd_party_layout* l, 
     return pd_decode_party_mon_c(raw, l, NULL, m);
 }
 
+// Monomyth's own key (Gen3Mon.kt's monomythKey, its box decryption at 0x08068198).
+static inline uint32_t ror32(uint32_t x, int n) {
+    return x >> n | x << (32 - n);
+}
+
+static uint32_t monomyth_key(uint32_t personality, uint32_t otId) {
+    uint32_t r = otId + ror32(personality ^ 0x690, 7);
+    r = ror32(r + ror32(personality, 11), 13);
+    r = personality + ror32(0x5A000000u ^ r ^ otId, 17);
+    return r ^ ror32(otId, 5);
+}
+
+// Its 250 flavour natures by a hash of the personality (monomythNature, its GetNature at 0x0805B214).
+static int monomyth_nature(uint32_t personality) {
+    uint32_t x = personality ^ personality >> 16;
+    x *= 0x7FEB352Du;
+    x ^= x >> 15;
+    x *= 0x846CA68Bu;
+    x ^= x >> 16;
+    return (int) (x % 250);
+}
+
 // ... and a config's masks (Config.masked): an expansion game packs more into the species, move and PP words.
 bool pd_decode_party_mon_c(const uint8_t* raw, const struct pd_party_layout* l, const struct pd_config* cfg,
                            struct pd_mon* m) {
@@ -229,7 +251,7 @@ bool pd_decode_party_mon_c(const uint8_t* raw, const struct pd_party_layout* l, 
     uint32_t personality = u32(raw);
     if (l->rowe) return decode_rowe_mon(raw, l, cfg, m);
     if (l->eliteRedux) return decode_er_mon(raw, l, cfg, m);
-    uint32_t key = personality ^ u32(raw + 4);
+    uint32_t key = l->monomythKey ? monomyth_key(personality, u32(raw + 4)) : personality ^ u32(raw + 4);
     uint16_t stored = u16(raw + 28);
 
     uint8_t block[48];
@@ -273,8 +295,8 @@ bool pd_decode_party_mon_c(const uint8_t* raw, const struct pd_party_layout* l, 
     m->heldItem = u16(growth + 2) & (sum == stored && stored != 0 ? 0xFFFF : l->plainItemMask);
     m->hasHeldItem = true;
     if (l->hasStats) {
-        int nature = (int) (personality % 25);
-        if (l->natureModifier) {
+        int nature = l->monomythKey ? PD_MONOMYTH_NATURE_BASE + monomyth_nature(personality) : (int) (personality % 25);
+        if (l->natureModifier && !l->monomythKey) {
             int n = nature ^ (raw[0x12] >> 3);
             if (n < 25) nature = n;
         }
@@ -305,11 +327,17 @@ bool pd_decode_party_mon_c(const uint8_t* raw, const struct pd_party_layout* l, 
     m->maxHp = u16(raw + l->maxHp);
     m->status = (u32(raw + l->status) >> l->statusShift) & l->statusMask;
     // The flags byte (isBadEgg, hasSpecies, isEgg): an egg shows as SPECIES_EGG, like the party menu.
-    if (l->eggInIvWord ? (ivWord >> 30) & 1 : (raw[l->flags] & l->eggMask) != 0) m->species = PD_SPECIES_EGG;
+    m->egg = l->eggInIvWord ? (ivWord >> 30) & 1 : (raw[l->flags] & l->eggMask) != 0;
+    if (m->egg) m->species = PD_SPECIES_EGG;
     decode_name(raw + l->nicknameOff, l->nicknameLen, m->nickname, sizeof(m->nickname));
     m->gender = gender_of(cfg, m, personality);
     m->shiny = mon_shiny(raw, l);
     return true;
+}
+
+bool pd_decode_party_mon_for(const struct pd_config* cfg, const uint8_t* raw, struct pd_mon* m) {
+    const struct pd_party_layout* l = cfg && cfg->partyLayout ? cfg->partyLayout : &pd_party_layout_vanilla;
+    return pd_decode_party_mon_c(raw, l, cfg, m);
 }
 
 static int battleShinyBelow; // the app's pidShiny, for the pd_snapshot_read in progress
@@ -361,6 +389,78 @@ static bool save_key(const struct pd_config* cfg, pd_read_fn read, void* ctx, ui
     return cfg->encryptionKeyOff < 0 || read_u32(read, ctx, sb2 + (uint32_t) cfg->encryptionKeyOff, key);
 }
 
+static void bag_add(struct pd_snapshot* s, int pocket, int item, int quantity) {
+    struct pd_pocket_items* p = &s->bag[pocket];
+    if (p->count >= PD_POCKET_SLOTS) return;
+    p->items[p->count].id = (uint16_t) item;
+    p->items[p->count].quantity = (uint16_t) quantity;
+    p->count++;
+}
+
+static int pocket_of(const struct pd_config* cfg, int item) {
+    return item < cfg->itemPocketCount ? cfg->itemPockets[item] : PD_POCKET_ITEMS;
+}
+
+// Elite Redux: an owned bit per item, no counts (readItemFlagsBag).
+static void read_item_flags(struct pd_snapshot* s, const struct pd_config* cfg, pd_read_fn read, void* ctx, uint32_t sb1) {
+    static uint8_t raw[1024];
+    int bytes = (cfg->itemFlagsCount + 7) / 8;
+    if (bytes > (int) sizeof(raw) || !read(ctx, sb1 + cfg->itemFlagsOff, raw, (size_t) bytes)) return;
+    for (int id = 1; id < cfg->itemFlagsCount; id++)
+        if (raw[id / 8] >> (id % 8) & 1) bag_add(s, pocket_of(cfg, id), id, 1);
+    s->bagOk = true;
+}
+
+// Quetzal's "BAG3" bit-stream (readBag3): 25-bit items from bit 0x80, key items 11 bits each.
+static void read_bag3(struct pd_snapshot* s, const struct pd_config* cfg, pd_read_fn read, void* ctx, uint32_t sb1, uint32_t sb2) {
+    static uint8_t raw[0x1000];
+    uint8_t keyBytes[4] = { 0 };
+    uint32_t split = cfg->bag3SplitAt, total = (uint32_t) (cfg->bag3KeyBit + 11 * 256) / 8 + 8;
+    if (total > sizeof(raw) || split > total) return;
+    if (!read(ctx, sb1 + cfg->bag3Off, raw, split) || !read(ctx, sb1 + cfg->bag3TailOff + split, raw + split, total - split)) return;
+    if (memcmp(raw, "BAG3", 4)) return;
+    read(ctx, sb2 + (uint32_t) cfg->encryptionKeyOff, keyBytes, 4);
+    uint32_t key = u32(keyBytes);
+    int slots = raw[0xC] | raw[0xD] << 8, keys = raw[0xE] | raw[0xF] << 8;
+    if (slots > 400) slots = 400;
+    if (keys > 256) keys = 256;
+    #define BAG3_BITS(pos, n) ((uint32_t) ((((uint64_t) raw[(pos) >> 3] | (uint64_t) raw[((pos) >> 3) + 1] << 8 | (uint64_t) raw[((pos) >> 3) + 2] << 16 | \
+        (uint64_t) raw[((pos) >> 3) + 3] << 24 | (uint64_t) raw[((pos) >> 3) + 4] << 32) >> ((pos) & 7)) & ((1u << (n)) - 1)))
+    for (int i = 0; i < slots; i++) {
+        uint32_t v = BAG3_BITS(0x80 + 25 * i, 25);
+        int id = (int) (v & 0x7FF);
+        if (id) bag_add(s, pocket_of(cfg, id), id, (int) (((v >> 11) ^ key) & 0x3FFF));
+    }
+    for (int i = 0; i < keys; i++) {
+        int id = (int) BAG3_BITS(cfg->bag3KeyBit + 11 * i, 11);
+        if (id) bag_add(s, PD_POCKET_KEY, id, 1);
+    }
+    s->bagOk = true;
+}
+
+enum pd_battle_state pd_battle_state_read(const struct pd_config* cfg, pd_read_fn read, void* ctx, int* battler) {
+    if (battler) *battler = 0;
+    if (!cfg->battlerControllerFuncs) return PD_BATTLE_NONE;
+    uint8_t flags = 0;
+    if (!read(ctx, cfg->gMain + (cfg->inBattleOff ? cfg->inBattleOff : 0x439), &flags, 1) || !(flags & 2)) return PD_BATTLE_NONE;
+    uint32_t fns[4];
+    if (!read(ctx, cfg->battlerControllerFuncs, fns, sizeof(fns))) return PD_BATTLE_NONE;
+    // The addresses are Thumb, so the low bit is masked on both sides.
+    uint32_t want[5] = { cfg->handleInputChooseAction, cfg->handleInputChooseMove, cfg->completeWhenChoseItem,
+                         cfg->waitForMonSelection, cfg->handleInputChooseTarget };
+    static const enum pd_battle_state STATES[5] = { PD_BATTLE_ACTION, PD_BATTLE_MOVE, PD_BATTLE_BAG_OPEN,
+                                                    PD_BATTLE_PARTY_OPEN, PD_BATTLE_TARGET };
+    for (int i = 0; i < 4; i++) {
+        for (int k = 0; k < 5; k++) {
+            if (want[k] && (fns[i] & ~1u) == (want[k] & ~1u)) {
+                if (battler) *battler = i;
+                return STATES[k];
+            }
+        }
+    }
+    return PD_BATTLE_BUSY;
+}
+
 void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn read, void* ctx) {
     memset(s, 0, sizeof(*s));
     s->cfg = g->cfg;
@@ -379,7 +479,7 @@ void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn
         return;
     }
     s->valid = true;
-    read_u32(read, ctx, cfg->gMain + 0x24, &s->frame);
+    read_u32(read, ctx, cfg->gMain + (cfg->frameCounterOff ? cfg->frameCounterOff : 0x24), &s->frame);
 
     // --- party ---
     uint8_t count = 0;
@@ -396,8 +496,9 @@ void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn
     // --- battle --- (gMain.inBattle is bit 1 of the byte at +0x439)
     s->foeActive = s->foeNext = -1;
     uint8_t flags = 0;
-    read(ctx, cfg->gMain + 0x439, &flags, 1);
+    read(ctx, cfg->gMain + (cfg->inBattleOff ? cfg->inBattleOff : 0x439), &flags, 1);
     s->inBattle = (flags & 0x02) != 0;
+    s->battleState = pd_battle_state_read(cfg, read, ctx, NULL);
     if (s->inBattle) {
         uint32_t type = 0;
         read_u32(read, ctx, cfg->battleTypeFlags, &type);
@@ -421,9 +522,9 @@ void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn
     }
 
     // --- location ---
-    uint8_t sec = 0;
-    read(ctx, cfg->mapHeader + MAP_HEADER_MAPSEC_OFF, &sec, 1);
-    s->mapsec = sec;
+    uint8_t sec[2] = { 0, 0 };
+    read(ctx, cfg->mapHeader + MAP_HEADER_MAPSEC_OFF, sec, cfg->mapSecWide ? 2 : 1);
+    s->mapsec = cfg->mapSecWide ? u16(sec) : sec[0];
 
     // --- money: SaveBlock1.money XOR SaveBlock2.encryptionKey ---
     uint32_t sb1 = 0, sb2 = 0, money = 0, key = 0;
@@ -434,7 +535,9 @@ void pd_snapshot_read(struct pd_snapshot* s, const struct pd_game* g, pd_read_fn
         if (v <= (cfg->maxMoney ? cfg->maxMoney : MAX_MONEY)) s->money = (long) v;
     }
 
-    // --- bag: quantities XOR the key's low half (readNativeBag) ---
+    // --- bag: quantities XOR the key's low half (readNativeBag); Quetzal's / Elite Redux's bags of their own ---
+    if (in_ram(sb1) && cfg->itemFlagsOff) read_item_flags(s, cfg, read, ctx, sb1);
+    if (in_ram(sb1) && in_ram(sb2) && cfg->bag3Off) read_bag3(s, cfg, read, ctx, sb1, sb2);
     uint8_t pockets[PD_BAG_POCKETS_MAX * 8];
     int nPockets = cfg->bagCount > PD_BAG_POCKETS_MAX ? PD_BAG_POCKETS_MAX : cfg->bagCount;
     if (haveKey && nPockets > 0 && read(ctx, cfg->bagPockets, pockets, (size_t) nPockets * 8)) {

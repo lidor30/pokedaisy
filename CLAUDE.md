@@ -168,8 +168,8 @@ POKéDEX and GUIDE read the ROM: `make -C 3ds decomps` builds pret's FireRed rev
 SHA1s, checked) into `3ds/build/decomps/`, the preview passes them in, and `fixture-roms` writes the
 fixture ROM over the decomp's start (`fixture-*-rom.gba`: the tables sit past 0x08200000) - build/ only,
 never committed. Only retail English FireRed / LeafGreen / Emerald so far (ROM table addresses for FireRed
-rev 1 and Emerald only: rev 0 / LeafGreen get MAP but no POKéDEX, and GUIDE without wild / BOSS); never run
-on a real 3DS yet. Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes the last chip in a battle: INFO /
+rev 1 and Emerald only: rev 0 / LeafGreen get MAP but no POKéDEX, and GUIDE without wild / BOSS); runs on a New 3DS
+(first tried 2026-11-04: `3ds/README.md`). Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes the last chip in a battle: INFO /
 SUGGESTIONS + the FOE TEAM, ported from BattleInfoScreen / SuggestionsScreen / CompanionScreen's foe state), and
 SETTINGS (screen mode, FF, one save state slot - states never carry the save data), with the TRAINER CARD
 under it (`pd_card`: its renders match `TrainerCardTest`'s pinned CRCs - `make preview` prints them; keep it

@@ -125,10 +125,11 @@ struct pd_gb2_wild {
     int32_t key;
     uint8_t rates[3], grass[21][2];
     uint8_t waterRate, water[3][2];
-    int8_t fishGroup, rockSet;
+    int8_t fishGroup, rockSet, treeSet; // -1 = none
 };
 struct pd_gb2_fish { int group; uint8_t rows[3][4][3]; uint8_t count[3]; };
-struct pd_gb2_rocks { int set, count; uint8_t rows[6][3]; };
+// A headbutt / rock set: its common rows (rock smash, headbutt) and its rare trees' (percent, species, level).
+struct pd_gb2_rocks { int set, count; uint8_t rows[6][3]; int rareCount; uint8_t rare[6][3]; };
 extern const struct pd_gb2_wild pd_gb_wild_crystal[];
 extern const struct pd_gb2_fish pd_gb_fish_crystal[];
 extern const struct pd_gb2_rocks pd_gb_rocks_crystal[];
@@ -140,13 +141,13 @@ extern const struct pd_gb_team pd_gb_teams_crystal[];
 
 // The app's gen1Area: the first wCurMap with the same town map name (a town's houses count with the town).
 extern const uint8_t pd_gb_gen1_area[256];
-extern const struct pd_guide pd_guide_gb_yellow, pd_guide_gb_red, pd_guide_gb_blue, pd_guide_gb_crystal;
+extern const struct pd_guide pd_guide_gb_yellow, pd_guide_gb_red, pd_guide_gb_blue, pd_guide_gb_crystal, pd_guide_gb_polished;
 
 extern const struct pd_guide pd_guide_firered, pd_guide_leafgreen, pd_guide_emerald, pd_guide_ruby, pd_guide_sapphire,
     pd_guide_emerald_legacy,
     pd_guide_rocket_edition, pd_guide_ash_gray, pd_guide_gs_chronicles, pd_guide_radical_red, pd_guide_orange_islands,
     pd_guide_odyssey, pd_guide_sword_shield, pd_guide_unbound, pd_guide_gaia, pd_guide_ghost_grey, pd_guide_celia, pd_guide_imperium, pd_guide_recharged_yellow, pd_guide_recharged_emerald,
-    pd_guide_amethyst, pd_guide_soulgold, pd_guide_quetzal_v084, pd_guide_quetzal, pd_guide_tmt2, pd_guide_seaglass, pd_guide_lazarus, pd_guide_heart_and_soul, pd_guide_glazed, pd_guide_mariomon, pd_guide_dreamstone, pd_guide_wishes, pd_guide_team_rocket, pd_guide_elite_redux, pd_guide_ultra_violet;
+    pd_guide_amethyst, pd_guide_soulgold, pd_guide_quetzal_v084, pd_guide_quetzal, pd_guide_tmt2, pd_guide_seaglass, pd_guide_lazarus, pd_guide_heart_and_soul, pd_guide_glazed, pd_guide_mariomon, pd_guide_dreamstone, pd_guide_wishes, pd_guide_team_rocket, pd_guide_elite_redux, pd_guide_ultra_violet, pd_guide_lets_go, pd_guide_monomyth;
 
 enum pd_area_kind { PD_AREA_ITEM, PD_AREA_HIDDEN, PD_AREA_GIFT, PD_AREA_KEY, PD_AREA_MON, PD_AREA_EGG, PD_AREA_TRADE };
 
@@ -163,11 +164,11 @@ struct pd_area_thing {
 extern const struct pd_area_thing pd_areas_firered[], pd_areas_leafgreen[], pd_areas_emerald[], pd_areas_ruby_sapphire[],
     pd_areas_emerald_legacy[], pd_areas_rocket_edition[], pd_areas_ash_gray[], pd_areas_gs_chronicles[], pd_areas_radical_red[], pd_areas_orange_islands[],
     pd_areas_odyssey[], pd_areas_sword_shield[], pd_areas_unbound[], pd_areas_gaia[], pd_areas_ghost_grey[], pd_areas_celia[],
-    pd_areas_amethyst[], pd_areas_recharged_yellow[], pd_areas_heart_and_soul[], pd_areas_ultra_violet[], pd_areas_amethyst_v141[], pd_areas_recharged_yellow_v180[], pd_areas_recharged_yellow_v190[], pd_areas_recharged_yellow_v194[];
+    pd_areas_amethyst[], pd_areas_recharged_yellow[], pd_areas_heart_and_soul[], pd_areas_ultra_violet[], pd_areas_lets_go[], pd_areas_amethyst_v141[], pd_areas_recharged_yellow_v180[], pd_areas_recharged_yellow_v190[], pd_areas_recharged_yellow_v194[];
 extern const int pd_areas_firered_count, pd_areas_leafgreen_count, pd_areas_emerald_count, pd_areas_ruby_sapphire_count,
     pd_areas_emerald_legacy_count, pd_areas_rocket_edition_count, pd_areas_ash_gray_count, pd_areas_gs_chronicles_count, pd_areas_radical_red_count, pd_areas_orange_islands_count,
     pd_areas_odyssey_count, pd_areas_sword_shield_count, pd_areas_unbound_count, pd_areas_gaia_count, pd_areas_ghost_grey_count, pd_areas_celia_count,
-    pd_areas_amethyst_count, pd_areas_recharged_yellow_count, pd_areas_heart_and_soul_count, pd_areas_ultra_violet_count, pd_areas_amethyst_v141_count, pd_areas_recharged_yellow_v180_count, pd_areas_recharged_yellow_v190_count, pd_areas_recharged_yellow_v194_count;
+    pd_areas_amethyst_count, pd_areas_recharged_yellow_count, pd_areas_heart_and_soul_count, pd_areas_ultra_violet_count, pd_areas_lets_go_count, pd_areas_amethyst_v141_count, pd_areas_recharged_yellow_v180_count, pd_areas_recharged_yellow_v190_count, pd_areas_recharged_yellow_v194_count;
 
 // Quetzal's campaigns: a map group's region (34-35 Johto, 36-39 Kanto / Sevii, else Hoenn) and each region's order.
 int pd_quetzal_region(int mapGroup);
@@ -190,7 +191,11 @@ bool pd_entry_in_area(const struct pd_guide_entry* e, const char* key);
 // Whether an area thing is done (the app's areaDone).
 bool pd_area_done(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_area_thing* t);
 
-// Whether g's ROM has the GUIDE's live tables (the probe trainer's name).
+// Whether a thing is listed under the area the player is in: Gen 1's go by the town map's name, so a town's houses
+// count with the town (gen1Area).
+bool pd_area_here(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_area_thing* t);
+
+// Whether g's ROM has the GUIDE's live tables (the probe trainer's name), or a Game Boy guide its world.
 bool pd_guide_rom_ok(const struct pd_game* g);
 
 #define PD_TEAM_MAX 6
@@ -206,7 +211,7 @@ void pd_species_types(const struct pd_game* g, int species, int* t1, int* t2);
 
 // The wild POKéMON of the player's map, merged per species (the app's
 // merge(): min of mins, max of maxes, odds summed), highest odds first.
-#define PD_WILD_METHODS 6 // grass / cave, surfing, rock smash, old / good / super rod
+#define PD_WILD_METHODS 8 // grass / cave, surfing, rock smash, old / good / super rod, headbutt, its rare trees
 #define PD_WILD_MAX 12
 struct pd_wild {
     int species, minLv, maxLv, pct;

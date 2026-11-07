@@ -1,11 +1,15 @@
 #include "pd_gb.h"
 #include "pd_guide.h"
+#include "pd_gb_world.h"
 
 #include <ctype.h>
 #include <stdlib.h>
 #include <string.h>
 
 #include "pd_dex.h"
+#include "pd_games.h"
+#include "pd_gb.h"
+#include "pd_tables.h"
 
 #define TRAINER_STRIDE 0x28
 #define MAX_HEADERS 512
@@ -42,6 +46,7 @@ const struct pd_guide* pd_guide_for(const struct pd_game* g) {
     case PD_GUIDE_GB_BLUE: return &pd_guide_gb_blue;
     case PD_GUIDE_GB_YELLOW: return &pd_guide_gb_yellow;
     case PD_GUIDE_GB_CRYSTAL: return &pd_guide_gb_crystal;
+    case PD_GUIDE_GB_POLISHED: return &pd_guide_gb_polished;
     case PD_GUIDE_RECHARGED_YELLOW: return &pd_guide_recharged_yellow;
     case PD_GUIDE_RECHARGED_EMERALD: return &pd_guide_recharged_emerald;
     case PD_GUIDE_AMETHYST: return &pd_guide_amethyst;
@@ -59,6 +64,8 @@ const struct pd_guide* pd_guide_for(const struct pd_game* g) {
     case PD_GUIDE_TEAM_ROCKET: return &pd_guide_team_rocket;
     case PD_GUIDE_ELITE_REDUX: return &pd_guide_elite_redux;
     case PD_GUIDE_ULTRA_VIOLET: return &pd_guide_ultra_violet;
+    case PD_GUIDE_LETS_GO: return &pd_guide_lets_go;
+    case PD_GUIDE_MONOMYTH: return &pd_guide_monomyth;
     case PD_GUIDE_AMETHYST_V141: return &pd_guide_amethyst;
     case PD_GUIDE_RECHARGED_YELLOW_V180:
     case PD_GUIDE_RECHARGED_YELLOW_V190:
@@ -98,6 +105,7 @@ const struct pd_area_thing* pd_areas_for(const struct pd_game* g, int* count) {
     case PD_GUIDE_RECHARGED_YELLOW: *count = pd_areas_recharged_yellow_count; return pd_areas_recharged_yellow;
     case PD_GUIDE_HEART_AND_SOUL: *count = pd_areas_heart_and_soul_count; return pd_areas_heart_and_soul;
     case PD_GUIDE_ULTRA_VIOLET: *count = pd_areas_ultra_violet_count; return pd_areas_ultra_violet;
+    case PD_GUIDE_LETS_GO: *count = pd_areas_lets_go_count; return pd_areas_lets_go;
     case PD_GUIDE_AMETHYST_V141: *count = pd_areas_amethyst_v141_count; return pd_areas_amethyst_v141;
     case PD_GUIDE_RECHARGED_YELLOW_V180: *count = pd_areas_recharged_yellow_v180_count; return pd_areas_recharged_yellow_v180;
     case PD_GUIDE_RECHARGED_YELLOW_V190: *count = pd_areas_recharged_yellow_v190_count; return pd_areas_recharged_yellow_v190;
@@ -182,7 +190,7 @@ static const uint8_t* trainer_record(const struct pd_game* g, int id) {
 
 bool pd_guide_rom_ok(const struct pd_game* g) {
     const struct pd_config* cfg = g->cfg;
-    if (cfg && cfg->gb) return cfg->gb->teams != NULL;  // a Game Boy guide's teams are embedded, nothing to probe
+    if (cfg && cfg->gb) return cfg->gb->teams != NULL || pd_gbw_for(g);  // a Game Boy guide's teams are embedded, nothing to probe
     if (!cfg || !cfg->trainers || !cfg->probeName) return false;
     size_t len = (size_t) (cfg->trainerStride ? cfg->trainerNameLen : 12);
     uint32_t at = cfg->trainers + (uint32_t) cfg->probeTrainer * tr_stride(cfg) + (cfg->trainerStride ? cfg->trainerNameOff : 4);
@@ -364,6 +372,10 @@ int pd_trainer_team(const struct pd_game* g, int trainer, struct pd_team_mon* ou
 
 void pd_species_types(const struct pd_game* g, int species, int* t1, int* t2) {
     *t1 = *t2 = 255;
+    if (g->cfg && g->cfg->gb) {
+        pd_species_type_pair(g, species, t1, t2);
+        return;
+    }
     const uint8_t* b = g->cfg ? pd_rom_at(g, g->cfg->speciesInfo + (uint32_t) species * 28, 28) : NULL;
     if (!b) return;
     *t1 = b[6];
@@ -406,8 +418,14 @@ static void read_table(const struct pd_game* g, uint32_t info, int first, int n,
     }
 }
 
-static int cmp_wild(const void* a, const void* b) {
-    return ((const struct pd_wild*) b)->pct - ((const struct pd_wild*) a)->pct;
+// Likeliest first, equal odds kept in the order they came: a stable sort, as the app's sortedByDescending.
+static void sort_wild(struct pd_wild* w, int n) {
+    for (int i = 1; i < n; i++) {
+        struct pd_wild x = w[i];
+        int j = i;
+        for (; j > 0 && w[j - 1].pct < x.pct; j--) w[j] = w[j - 1];
+        w[j] = x;
+    }
 }
 
 // The app's GuideRomSource: a header is 4 + wildSets * a set (4 pointers, + a word when there are several), or the
@@ -478,9 +496,15 @@ static bool crystal_wild_here(const struct pd_snapshot* s, struct pd_wild_set* o
     for (const struct pd_gb2_rocks* r = pd_gb_rocks_crystal; t->rockSet >= 0 && r->set >= 0; r++)
         if (r->set == t->rockSet)
             for (int i = 0; i < r->count; i++) gb_add(out, 2, r->rows[i][1], r->rows[i][2], r->rows[i][0], sums);
+    // Headbutt: the map's tree set, its common trees (method 6) and its rare ones (7).
+    for (const struct pd_gb2_rocks* r = pd_gb_rocks_crystal; t->treeSet >= 0 && r->set >= 0; r++)
+        if (r->set == t->treeSet) {
+            for (int i = 0; i < r->count; i++) gb_add(out, 6, r->rows[i][1], r->rows[i][2], r->rows[i][0], sums);
+            for (int i = 0; i < r->rareCount; i++) gb_add(out, 7, r->rare[i][1], r->rare[i][2], r->rare[i][0], sums);
+        }
     for (int m = 0; m < PD_WILD_METHODS; m++) {
         for (int i = 0; i < out->count[m]; i++) out->mons[m][i].pct = (int) (sums[m * PD_WILD_MAX + i] + 0.5);
-        qsort(out->mons[m], (size_t) out->count[m], sizeof(struct pd_wild), cmp_wild);
+        sort_wild(out->mons[m], out->count[m]);
     }
     return true;
 }
@@ -506,13 +530,14 @@ static bool gb_wild_here(const struct pd_game* g, const struct pd_snapshot* s, s
     }
     for (int m = 0; m < PD_WILD_METHODS; m++) {
         for (int i = 0; i < out->count[m]; i++) out->mons[m][i].pct = (int) (sums[m * PD_WILD_MAX + i] + 0.5);
-        qsort(out->mons[m], (size_t) out->count[m], sizeof(struct pd_wild), cmp_wild);
+        sort_wild(out->mons[m], out->count[m]);
     }
     return true;
 }
 
 bool pd_wild_here(const struct pd_game* g, const struct pd_snapshot* s, struct pd_wild_set* out) {
     memset(out, 0, sizeof(*out));
+    if (pd_gbw_for(g)) return pd_gbw_wild_here(g, s, out); // Polished Crystal's world
     if (g->cfg && g->cfg->gb) return gb_wild_here(g, s, out);
     if (!s->posOk || !pd_guide_rom_ok(g)) return false;
     const struct pd_config* c = g->cfg;
@@ -551,7 +576,7 @@ bool pd_wild_here(const struct pd_game* g, const struct pd_snapshot* s, struct p
         read_table(g, ptr[3], 2, 3, FISH_ODDS + 2, out, 4);
         read_table(g, ptr[3], 5, 5, FISH_ODDS + 5, out, 5);
         for (int m = 0; m < PD_WILD_METHODS; m++) {
-            qsort(out->mons[m], (size_t) out->count[m], sizeof(struct pd_wild), cmp_wild);
+            sort_wild(out->mons[m], out->count[m]);
         }
         return true;
     }
@@ -560,7 +585,16 @@ bool pd_wild_here(const struct pd_game* g, const struct pd_snapshot* s, struct p
 
 const char* pd_wild_method_name(int method) {
     static const char* const NAMES[PD_WILD_METHODS] = {
-        "GRASS / CAVE", "SURFING", "ROCK SMASH", "OLD ROD", "GOOD ROD", "SUPER ROD",
+        "GRASS / CAVE", "SURFING", "ROCK SMASH", "OLD ROD", "GOOD ROD", "SUPER ROD", "HEADBUTT", "HEADBUTT (RARE TREES)",
     };
     return method >= 0 && method < PD_WILD_METHODS ? NAMES[method] : "";
+}
+
+// Whether an area entry is the player's area: its section, or (Gen 1, whose areas are grouped by town map name) a section
+// of the same name.
+bool pd_area_here(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_area_thing* t) {
+    if (t->mapsec == s->mapsec) return true;
+    if (!g->cfg || !g->cfg->gb || g->cfg->gb->gen != 1) return false;
+    const char* here = pd_mapsec_name(g, s->mapsec);
+    return *here && !strcmp(here, pd_mapsec_name(g, t->mapsec));
 }

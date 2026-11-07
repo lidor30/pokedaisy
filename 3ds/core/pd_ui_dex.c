@@ -5,6 +5,7 @@
 #include <string.h>
 
 #include "pd_dex.h"
+#include "pd_dex_details.h"
 #include "pd_gb.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
@@ -16,14 +17,18 @@
 
 // Whether the National Dex shows: the player's pick, else the save's own.
 static bool national_view(const struct pd_ui* ui, const struct pd_snapshot* s) {
+    // (A Game Boy dex has one list: the snapshot says national.)
     return ui->dexNational >= 0 ? ui->dexNational : s->dexNational;
 }
 
 // The list: national numbers in the order shown; returns how many.
 static int dex_list(const struct pd_game* g, bool national, int* out) {
     int n = 0;
-    if (g->cfg->gb) {  // a Game Boy game: its one Dex, in order
-        for (int i = 1; i <= g->cfg->gb->dexCount; i++) out[n++] = i;
+    int gb = pd_dex_gb_count(g);
+    if (gb) {
+        for (int i = 1; i <= gb; i++) {
+            if (pd_dex_species(g, i)) out[n++] = i;
+        }
     } else if (national) {
         for (int i = 1; i <= g->cfg->nationalCount; i++) {
             if (pd_dex_species(g, i)) out[n++] = i;
@@ -48,7 +53,8 @@ static int shown_number(const struct pd_game* g, bool national, int nat) {
 
 static void title(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
                   const int* list, int n, bool national) {
-    int x = MARGIN, w = c->w - 2 * MARGIN - (!ui->dexSource && g->cfg->gb ? 0 : TOGGLE_W + 4);
+    bool one = !ui->dexSource && pd_dex_gb_count(g) > 0; // a Game Boy dex has the one list
+    int x = MARGIN, w = c->w - 2 * MARGIN - (one ? 0 : TOGGLE_W + 4);
     int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_H, PD_TITLE_FILL);
     int ty = pd_text_y(CONTENT_Y, TITLE_H);
     pd_text(c, x + f + 6, ty, "POKéDEX", PD_TITLE_TEXT, PD_TITLE_SHADOW);
@@ -61,7 +67,7 @@ static void title(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     snprintf(counts, sizeof(counts), "SEEN %d  OWN %d", seen, caught);
     pd_text_right(c, x + w - f - 6, ty, counts, PD_VALUE, PD_VALUE_SHADOW);
     // Which dex: tap for the other one (a Game Boy game has just the one).
-    if (!ui->dexSource && g->cfg->gb) return;
+    if (one) return;
     char other[24];
     snprintf(other, sizeof(other), "%s", ui->dexSource ? ui->dexSource->filterLabel : national ? g->cfg->regionName : "NATIONAL");
     ui_button(ui, c, x + w + 4, CONTENT_Y, TOGGLE_W, TITLE_H, other, HIT_DEX_TOGGLE);
@@ -122,6 +128,84 @@ static void draw_sprite(struct pd_canvas* c, int x, int y, const uint32_t* px) {
     }
 }
 
+// The base stats on a line of their own, spread over the page's width, and the entry's text under them.
+static void info_page(struct pd_canvas* c, const struct pd_dex_entry* e, int ix, int dy, int iw, int lines) {
+    static const char* const STAT[6] = { "HP", "AT", "DF", "SA", "SD", "SP" };
+    static const char* const STAT_GEN1[5] = { "HP", "AT", "DF", "SP", "SC" }; // one SPECIAL, in its own order
+    char buf[8];
+    for (int i = 0; i < e->statCount; i++) {
+        int sx = ix + iw * i / e->statCount;
+        sx += pd_text(c, sx, dy, e->statCount == 5 ? STAT_GEN1[i] : STAT[i], PD_MUTED, PD_MUTED_SHADOW) + 3;
+        snprintf(buf, sizeof(buf), "%d", e->stats[i]);
+        pd_text(c, sx, dy, buf, PD_LABEL, PD_LABEL_SHADOW);
+    }
+    // The abilities (none in Gen 1 / 2).
+    if (e->ability1[0] && !e->gen1Stats) {
+        char ab[40];
+        if (e->ability2[0]) snprintf(ab, sizeof(ab), "%s / %s", e->ability1, e->ability2);
+        else snprintf(ab, sizeof(ab), "%s", e->ability1);
+        dy += 15;
+        lines--;
+        int aw = pd_text(c, ix, dy, "ABILITY", PD_MUTED, PD_MUTED_SHADOW);
+        pd_text_fit(c, ix + aw + 6, dy, iw - aw - 6, ab, PD_LABEL, PD_LABEL_SHADOW);
+    }
+    pd_text_wrap(c, ix, dy + 16, iw, 15, lines - 1, e->description, PD_LABEL, PD_LABEL_SHADOW);
+}
+
+// A line of a section's page, kept to the page.
+static void page_line(struct pd_canvas* c, int x, int* y, int top, int bottom, int w, const char* left, const char* right, bool value) {
+    if (*y >= top - 2 && *y + 15 <= bottom + 4) {
+        pd_text_fit(c, x, *y, right ? w * 62 / 100 : w, left, value ? PD_VALUE : PD_LABEL, value ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
+        if (right) pd_text_right(c, x + w, *y, right, PD_MUTED, PD_MUTED_SHADOW);
+    }
+    *y += 15;
+}
+
+static void section_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_dex_entry* e, int x, int top, int w, int h) {
+    char left[64], right[32];
+    if (ui->dexPageScroll > ui->dexPageMax) ui->dexPageScroll = ui->dexPageMax;
+    if (ui->dexPageScroll < 0) ui->dexPageScroll = 0;
+    int bottom = top + h, y = top - ui->dexPageScroll;
+    pd_clip(c, x, top, w, h);
+    ui_add_hit(ui, x, top, w, h, HIT_DEX_PAGE);
+    if (ui->dexSection == 1) {
+        struct pd_evo evos[PD_EVO_MAX];
+        int n = pd_dex_family(g, e->species, evos, PD_EVO_MAX);
+        if (!n) page_line(c, x, &y, top, bottom, w, "Doesn't evolve.", NULL, false);
+        for (int i = 0; i < n; i++) {
+            char a[24], b[24], how[56];
+            snprintf(left, sizeof(left), "%s > %s", pd_species_name(g, evos[i].from, a, sizeof(a)), pd_species_name(g, evos[i].to, b, sizeof(b)));
+            page_line(c, x, &y, top, bottom, w, left, NULL, evos[i].from == e->species || evos[i].to == e->species);
+            pd_dex_evo_text(g, &evos[i], how, sizeof(how));
+            if (y >= top - 2 && y + 15 <= bottom + 4) pd_text_fit(c, x + 8, y, w - 8, how, PD_MUTED, PD_MUTED_SHADOW);
+            y += 15;
+        }
+    } else if (ui->dexSection == 2) {
+        static const char* const HOW[4] = { "GRASS", "SURF", "ROCK", "FISH" };
+        struct pd_spot spots[PD_SPOTS_MAX];
+        int n = pd_dex_spots(g, e->species, spots, PD_SPOTS_MAX);
+        if (!n) page_line(c, x, &y, top, bottom, w, "Not found in the wild.", NULL, false);
+        for (int i = 0; i < n; i++) {
+            snprintf(right, sizeof(right), "%s LV%d-%d", HOW[spots[i].method], spots[i].minLevel, spots[i].maxLevel);
+            page_line(c, x, &y, top, bottom, w, pd_mapsec_name(g, spots[i].mapsec), right, false);
+        }
+    } else {
+        struct pd_level_move moves[PD_LEVEL_MOVES_MAX];
+        uint16_t tms[PD_TM_MOVES_MAX];
+        int n = pd_dex_level_moves(g, e->species, moves, PD_LEVEL_MOVES_MAX);
+        for (int i = 0; i < n; i++) {
+            snprintf(right, sizeof(right), "LV %d", moves[i].level);
+            page_line(c, x, &y, top, bottom, w, pd_move_name(g, moves[i].move, left, sizeof(left)), right, false);
+        }
+        int t = pd_dex_tm_moves(g, e->species, tms, PD_TM_MOVES_MAX);
+        if (t) page_line(c, x, &y, top, bottom, w, "TM / HM", NULL, true);
+        for (int i = 0; i < t; i++) page_line(c, x, &y, top, bottom, w, pd_move_name(g, tms[i], left, sizeof(left)), NULL, false);
+    }
+    pd_unclip(c);
+    ui->dexPageMax = y + ui->dexPageScroll - top - h;
+    if (ui->dexPageMax < 0) ui->dexPageMax = 0;
+}
+
 static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     static struct pd_dex_entry e;
     static uint32_t sprite[PD_SPRITE * PD_SPRITE];
@@ -144,6 +228,8 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     // The sprite on the list window's grey, framed.
     int bx = ix, by = top;
     pd_list_box(c, bx, by, PD_SPRITE + 16, PD_SPRITE + 16);
+    // Dark mode on Gen 1: the picture on its own white card, or its outline vanishes (spritePaper).
+    if (spriteOk && pd_dark && g->cfg && g->cfg->gb && g->cfg->gb->gen == 1) pd_fill(c, bx + 8, by + 8, PD_SPRITE, PD_SPRITE, 0xFFFFFF);
     if (spriteOk) draw_sprite(c, bx + 8, by + 8, sprite);
 
     int tx = bx + PD_SPRITE + 24, tw = ix + iw - tx;
@@ -151,7 +237,7 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     pd_text(c, tx, top, buf, PD_MUTED, PD_MUTED_SHADOW);
     int nw = pd_text(c, tx + 50, top, pd_species_name(g, e.species, buf2, sizeof(buf2)), PD_LABEL, PD_LABEL_SHADOW);
     if (pd_dex_seen(s, e.national)) ui_ball(c, tx + 50 + nw + 6, top + 4, pd_dex_caught(s, e.national));
-    snprintf(buf, sizeof(buf), "%s POKéMON", e.category);
+    snprintf(buf, sizeof(buf), "%s %s", e.category, pd_dex_category_suffix(g));
     pd_text_fit(c, tx, top + 18, tw, buf, PD_MUTED, PD_MUTED_SHADOW);
     if (e.type2 != e.type1 && e.type2 != PD_TYPE_NONE) {
         snprintf(buf, sizeof(buf), "%s / %s", pd_type_name(g, e.type1), pd_type_name(g, e.type2));
@@ -160,42 +246,30 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     }
     pd_text(c, tx, top + 36, buf, PD_VALUE, PD_VALUE_SHADOW);
     char ht[16], wt[20];
-    pd_dex_height(e.heightDm, ht, sizeof(ht));
-    pd_dex_weight(e.weightHg, wt, sizeof(wt));
-    if (e.heightIn) snprintf(ht, sizeof(ht), "%d'%02d\"", e.heightIn / 12, e.heightIn % 12);  // the cart's own numbers
-    if (e.weightLbs10) snprintf(wt, sizeof(wt), "%d.%d lbs.", e.weightLbs10 / 10, e.weightLbs10 % 10);
+    pd_dex_measures(g, &e, ht, sizeof(ht), wt, sizeof(wt));
     snprintf(buf, sizeof(buf), "HT %s   WT %s", ht, wt);
-    pd_text_fit(c, tx, top + 54, tw, buf, PD_LABEL, PD_LABEL_SHADOW);
+    pd_text_fit(c, tx, top + 52, tw, buf, PD_LABEL, PD_LABEL_SHADOW);
 
     int dy = by + PD_SPRITE + 20;
     pd_fill(c, ix, dy - 2, iw, 1, PD_DIVIDER);
-    pd_text_wrap(c, ix, dy, iw, 16, 3, e.description, PD_LABEL, PD_LABEL_SHADOW);
-    dy += 3 * 16 + 2;
-    static const char* const STAT[6] = { "HP", "ATK", "DEF", "SPA", "SPD", "SPE" };
-    static const char* const STAT1[5] = { "HP", "ATK", "DEF", "SPE", "SPC" };  // Gen 1's own five, its order
-    int sx = ix;
-    for (int i = 0; i < (e.gen1Stats ? 5 : 6); i++) {
-        if (e.gen1Stats) {
-            sx += pd_text(c, sx, dy, STAT1[i], PD_MUTED, PD_MUTED_SHADOW) + 3;
-            snprintf(buf, sizeof(buf), "%d", e.stats[i]);
-            sx += pd_text(c, sx, dy, buf, PD_LABEL, PD_LABEL_SHADOW) + 9;
-            continue;
+    int sectionCount = pd_dex_has_details(g) ? 4 : 1;
+    if (sectionCount > 1) {
+        // Chips switch what fills the rest of the entry (DexSection).
+        static const char* const SECTIONS[4] = { "INFO", "EVOLVE", "AREA", "MOVES" };
+        int cw = (iw - 3 * 2) / 4;
+        for (int i = 0; i < 4; i++) {
+            int cx = ix + i * (cw + 2);
+            pd_title_box(c, cx, dy, cw, 18, i == ui->dexSection ? PD_TITLE_FILL : PD_LIST_FILL);
+            pd_text(c, cx + (cw - pd_text_width(SECTIONS[i])) / 2, pd_text_y(dy, 18), SECTIONS[i],
+                    i == ui->dexSection ? PD_VALUE : PD_LABEL, i == ui->dexSection ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
+            ui_add_hit(ui, cx, dy, cw, 18, HIT_DEX_SECTION + i);
         }
-        sx += pd_text(c, sx, dy, STAT[i], PD_MUTED, PD_MUTED_SHADOW) + 3;
-        snprintf(buf, sizeof(buf), "%d", e.stats[i]);
-        sx += pd_text(c, sx, dy, buf, PD_LABEL, PD_LABEL_SHADOW) + 9;
+        dy += 20;
     }
-    dy += 18;
-    if (e.gen1Stats) goto buttons;  // no abilities in Gen 1
-    if (e.ability2[0]) {
-        snprintf(buf, sizeof(buf), "%s / %s", e.ability1, e.ability2);
-    } else {
-        snprintf(buf, sizeof(buf), "%s", e.ability1);
-    }
-    int aw = pd_text(c, ix, dy, "ABILITY", PD_MUTED, PD_MUTED_SHADOW);
-    pd_text_fit(c, ix + aw + 6, dy, iw - aw - 150, buf, PD_LABEL, PD_LABEL_SHADOW);
+    int pageBottom = y + h - f - 28;
+    if (ui->dexSection == 0 || sectionCount == 1) info_page(c, &e, ix, dy, iw, (y + h - f - 28 - dy) / 15);
+    else section_page(ui, c, g, &e, ix, dy, iw, pageBottom - dy);
 
-buttons:;
     // Step through the list (wrapping) or go back to it.
     int byBtn = y + h - f - 26;
     ui_button(ui, c, x + w - f - 70 - 2 * 40, byBtn, 36, 22, "", HIT_DEX_PREV);
@@ -224,6 +298,11 @@ void ui_dex_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
 }
 
 bool ui_dex_act(struct pd_ui* ui, int id) {
+    if (id >= HIT_DEX_SECTION && id < HIT_DEX_SECTION + 4) {
+        ui->dexSection = id - HIT_DEX_SECTION;
+        ui->dexPageScroll = 0;
+        return true;
+    }
     if (ui->tab != PD_TAB_DEX || ui->overlay != PD_OVERLAY_NONE) return false;
     if (id == HIT_DEX_TOGGLE) {
         // Flip from what shows now (the save's default until something was picked).

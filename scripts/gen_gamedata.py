@@ -891,7 +891,8 @@ def c_value(v, f, names, lists, where, none):
 
 
 POCKET_C = {"POCKET_ITEMS": "PD_POCKET_ITEMS", "POCKET_POKE_BALLS": "PD_POCKET_BALLS", "POCKET_TM_HM": "PD_POCKET_TMHM",
-            "POCKET_BERRIES": "PD_POCKET_BERRIES", "POCKET_KEY_ITEMS": "PD_POCKET_KEY"}
+            "POCKET_BERRIES": "PD_POCKET_BERRIES", "POCKET_KEY_ITEMS": "PD_POCKET_KEY", "POCKET_MEDICINE": "PD_POCKET_MEDICINE",
+            "POCKET_MAIL": "PD_POCKET_MAIL", "POCKET_BATTLE_ITEMS": "PD_POCKET_BATTLE_ITEMS", "POCKET_MEGA_STONES": "PD_POCKET_MEGA_STONES"}
 
 
 def kotlin_const_expr(expr):
@@ -1197,8 +1198,10 @@ def c_target(path, configs, records, schema):
             for f in entries.get("set", ({}, 0))[0]:
                 if f not in schema["fields"]:
                     fail(where, f"set: `{f}` isn't a config field")
+            # `values = { cfield = value }`: a C field's value the config doesn't hold at all (the app keeps it in Kotlin:
+            # PokeDaisyActivity.switchAddrsFor's party menu grid).
             wanted.append((key, entries["name"][0], entries["parts"][0], tab["lead"], where, attached,
-                           entries.get("set", ({}, 0))[0]))
+                           entries.get("set", ({}, 0))[0], entries.get("values", ({}, 0))[0]))
         else:
             fail(where, f"unexpected [{tab['name']}]")
     lists = {n: r for n, r in records.items() if r["kind"] == "list"}
@@ -1214,7 +1217,7 @@ def c_target(path, configs, records, schema):
         f'#include "pd_game.h"',
     ]
     out += [f"extern const struct pd_text pd_text_{key};" for key in texts]
-    for key, cname, want, lead, where, *_ in wanted:
+    for key, cname, want, lead, where, _, _, values in wanted:
         c = configs[key]
         out.append("")
         out += kt_comments(lead, "")
@@ -1223,8 +1226,15 @@ def c_target(path, configs, records, schema):
         for part in want:
             for field, spec, fwhere in parts[part]:
                 spec_path, none = (spec["path"], spec.get("none")) if isinstance(spec, dict) else (spec, None)
-                v, f = res.walk(key, spec_path, fwhere)
+                if field in values:  # a value the config doesn't hold (the app keeps it in Kotlin)
+                    v, f = values[field], {"type": "bool" if isinstance(values[field], bool) else "int"}
+                else:
+                    v, f = res.walk(key, spec_path, fwhere)
                 out.append(f"    .{field} = {c_value(v, f, names, lists, fwhere, none)},")
+        done = {field for part in want for field, *_ in parts[part]}
+        for field, v in values.items():  # a value of a field no part names
+            if field not in done:
+                out.append(f"    .{field} = {c_value(v, {'type': 'bool' if isinstance(v, bool) else 'int'}, names, lists, where, None)},")
         if key in texts:
             out.append(f"    .text = &pd_text_{key},")
         out.append("};")
@@ -1241,6 +1251,20 @@ GB_TEXTS = {
     # key: (species, items, moves, typeNames, typeChart, speciesTypes), as the app's ActiveTables picks them
     "gb_yellow": ("speciesNamesYellow", "itemNamesYellow", "moveDataYellow", "typeNamesYellow",
                   "typeEffectivenessYellow", "speciesTypeDataYellow"),
+    "gb_yellow_de": ("speciesNamesYellow + speciesNamesYellowDe", "itemNamesYellow + itemNamesYellowDe",
+                    "moveDataYellow RENAMED moveNamesYellowDe", "typeNamesYellow", "typeEffectivenessYellow",
+                    "speciesTypeDataYellow"),
+    "gb_yellow_fr": ("speciesNamesYellow + speciesNamesYellowFr", "itemNamesYellow + itemNamesYellowFr",
+                    "moveDataYellow RENAMED moveNamesYellowFr", "typeNamesYellow", "typeEffectivenessYellow",
+                    "speciesTypeDataYellow"),
+    "gb_yellow_it": ("speciesNamesYellow + speciesNamesYellowIt", "itemNamesYellow + itemNamesYellowIt",
+                    "moveDataYellow RENAMED moveNamesYellowIt", "typeNamesYellow", "typeEffectivenessYellow",
+                    "speciesTypeDataYellow"),
+    "gb_yellow_es": ("speciesNamesYellow + speciesNamesYellowEs", "itemNamesYellow + itemNamesYellowEs",
+                    "moveDataYellow RENAMED moveNamesYellowEs", "typeNamesYellow", "typeEffectivenessYellow",
+                    "speciesTypeDataYellow"),
+    "gb_yellow_legacy": ("speciesNamesYellow", "itemNamesYellow", "moveDataYellowLegacy", "typeNamesYellowLegacy",
+                         "typeEffectivenessYellowLegacy", "speciesTypeDataYellow"),
     "gb_pure_rgb": ("speciesNamesPureRgb", "itemNamesPureRgb", "moveDataPureRgb", "typeNamesPureRgb",
                     "typeEffectivenessPureRgb", "speciesTypeDataPureRgb"),
     "gb_crystal": ("speciesNamesCrystal", "itemNamesCrystal", "moveDataCrystal", "typeNamesCrystal",
@@ -1260,12 +1284,15 @@ GB_TEXTS = {
                              "speciesTypeDataPolishedCrystal + speciesTypeDataPolishedCrystalFaithfulChanges"),
 }
 # Their place names (ActiveTables' activeMapSecData): Gen 1 by wCurMap, Gen 2 by landmark.
-GB_MAPSECS = {"gb_yellow": "mapSecDataYellow", "gb_pure_rgb": "mapSecDataPureRgb", "gb_crystal": "mapSecDataCrystal",
+GB_MAPSECS = {"gb_yellow": "mapSecDataYellow", "gb_yellow_legacy": "mapSecDataYellow",
+              **{f"gb_yellow_{l}": f"mapSecDataYellow + mapNamesYellow{l.capitalize()}" for l in ("de", "fr", "it", "es")},
+              "gb_pure_rgb": "mapSecDataPureRgb", "gb_crystal": "mapSecDataCrystal",
               "gb_gold_silver": "mapSecDataGoldSilver", "gb_crystal_clear": "mapSecDataCrystalClear", "gb_prism": "mapSecDataPrism",
               "gb_polished": "mapSecDataPolishedCrystal", "gb_polished_faithful": "mapSecDataPolishedCrystal"}
 GB_INT_TABLES = {  # C name: (Kotlin intArrayOf val, C element type)
     "pd_gb_internal_to_dex_yellow": "gen1InternalToDexYellow",
     "pd_gb_internal_to_dex_pure_rgb": "gen1InternalToDexPureRgb",
+    "pd_gb_internal_to_dex_yellow_legacy": "gen1InternalToDexYellowLegacy",
     "pd_gb_gender_crystal": "gen2GenderRatiosCrystal",
     "pd_gb_gender_prism": "gen2GenderRatiosPrism",
     "pd_gb_gender_polished": "gen2GenderRatiosPolishedCrystal",

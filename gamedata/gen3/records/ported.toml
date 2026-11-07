@@ -3676,3 +3676,127 @@ movesOff = 0x0C
 speciesOff = 0x14
 itemOff = 0x16
 levelOff = 0x1A
+
+# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt (POKEDEX_LETS_GO): Let's Go's tables, its dex flags
+# in EWRAM by its own numbers (to 855).
+[record.POKEDEX_LETS_GO_FLAGS]
+schema = 'gen3_dexflags'
+kotlin = false
+block = 'DexFlagBlock.FIXED'
+seen = 0x0203C0C8
+caught = 0x0203C133
+bytes = 0x6B
+
+[record.POKEDEX_LETS_GO]
+schema = 'gen3_pokedex'
+base = 'POKEDEX_ROCKET_EDITION'
+kotlin = false
+entries = 0x08AB7AF0
+frontPics = 0x08A0A6B0
+palettes = 0x08A0E460
+speciesInfo = 0x08A02B50
+speciesToNational = 0x08A9E40C
+footprints = 0x08AB6B84
+evolutions = 0x08AA19D0
+tmhmLearnsets = 0x08A9F374
+speciesCount = 987
+nationalCount = 855
+flags = 'POKEDEX_LETS_GO_FLAGS'
+
+# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt: Let's Go's tables (Eevee's own wild headers).
+[record.GUIDE_TABLES_LETS_GO_PIKACHU]
+schema = 'gen3_guide'
+base = 'GUIDE_TABLES_ULTRA_VIOLET'
+kotlin = false
+learnsets = 0x08A09744
+wildHeaders = 0x08736860
+guide = 'GuideId.LETS_GO'
+mapGroups = 0x083526A8
+probeName = 'Brock'
+
+[record.GUIDE_TABLES_LETS_GO_EEVEE]
+schema = 'gen3_guide'
+base = 'GUIDE_TABLES_LETS_GO_PIKACHU'
+kotlin = false
+wildHeaders = 0x0874AC1C
+
+# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt / GuideRom.kt (POKEDEX_MONOMYTH, GUIDE_TABLES_MONOMYTH):
+# what the 3DS / Linux companion reads of Monomyth so far - its dex flags and save offsets. Its dex pages (packed egg
+# groups, its own evolution scheme) and trainers (TrainerMon strides of its own) aren't read there yet.
+[record.POKEDEX_MONOMYTH_FLAGS]
+schema = 'gen3_dexflags'
+kotlin = false
+block = 'DexFlagBlock.SAVE_BLOCK_1'
+seen = 0x37F4
+caught = 0x3827
+bytes = 0x33
+
+[record.POKEDEX_MONOMYTH]
+schema = 'gen3_pokedex'
+kotlin = false
+entries = 0x089D3798
+frontPics = 0x0849F718
+abilityNames = 0x084EE603
+footprints = 0
+palettes = 0x084880D0
+speciesInfo = 0x084F6DBC
+speciesToNational = 0x084F4520
+speciesCount = 405
+nationalCount = 362
+regionalCount = 362
+nationalMagicOff = -1
+flags = 'POKEDEX_MONOMYTH_FLAGS'
+
+[record.POKEDEX_MONOMYTH_V1_1]
+schema = 'gen3_pokedex'
+base = 'POKEDEX_MONOMYTH'
+kotlin = false
+entries = 0x089D3BB0
+frontPics = 0x0849FBA0
+abilityNames = 0x084EEA8B
+palettes = 0x0848855C
+speciesInfo = 0x084F7244
+speciesToNational = 0x084F49A8
+
+[record.GUIDE_TABLES_MONOMYTH]
+schema = 'gen3_guide'
+kotlin = false
+trainers = 0x084B6C84
+learnsets = 0x0850664C
+learnsetPairs = true
+wildHeaders = 0x089C2E58
+mapGroups = 0x0886EED8
+sb1FlagsOff = 0x18C4
+sb1VarsOff = 0x19FC
+flagBytes = 0x138
+varCount = 0x110
+
+[record.GUIDE_TABLES_MONOMYTH_V1_1]
+schema = 'gen3_guide'
+base = 'GUIDE_TABLES_MONOMYTH'
+kotlin = false
+trainers = 0x084B710C
+learnsets = 0x08506AD4
+wildHeaders = 0x089C3284
+mapGroups = 0x0886F3A8
+
+# SoulGold v1.2.1: v1.2's dex moved.
+#
+# From app/src/main/kotlin/com/pokedaisy/app/companion/data/Pokedex.kt.
+[record.POKEDEX_SOULGOLD_V1_2_1]
+schema = 'gen3_pokedex'
+base = 'POKEDEX_SOULGOLD_V1_2'
+kotlin = false
+speciesInfo = 0x087DD964
+abilityNames = 0x08F1B3D8
+regionalOrder = 0x08F1A588
+
+# From app/src/main/kotlin/com/pokedaisy/app/companion/data/GuideRom.kt.
+[record.GUIDE_TABLES_SOULGOLD_V1_2_1]
+schema = 'gen3_guide'
+base = 'GUIDE_TABLES_SOULGOLD'
+kotlin = false
+trainers = 0x084AD384
+wildHeaders = 0x0945A8E0
+altTrainers = [0x084BBFF4]
+mapGroups = 0x095CC3A8

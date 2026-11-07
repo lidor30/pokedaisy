@@ -1,0 +1,35 @@
+# English Yellow: the boot to the field, a wild battle poked in (wCurEnemyLevel, wCurOpponent), the POKéMON pane and RUN.
+run 1700
+press start
+run 200
+press a
+run 120
+press a
+run 120
+press a
+run 300
+state
+shot party
+hit 101
+run 2
+shot bag
+hit 102
+run 2
+shot map
+hit 100
+run 2
+poke D126 05
+poke D058 24
+press-to-state action 1500
+shot action
+hit 3033
+run 2
+shot picker
+hit 202
+run 2
+press-to-state action 2500
+shot switched
+hit 3032
+run 300
+state
+shot ran

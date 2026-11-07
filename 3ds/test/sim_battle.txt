@@ -1,0 +1,18 @@
+# The battle's touch controls on a real game (after sim_boot.txt): a move against a foe that can't be finished in one
+# hit, a switch, then RUN from a weak one. Run by `make sim-test`.
+wild 143 30
+press-to-state action
+shot action
+hit 3030
+shot moves
+hit 3035
+run 2
+shot busy
+press-to-state action 3000
+hit 3033
+shot picker
+hit 203
+run 2
+press-to-state action 3000
+shot switched
+mixer

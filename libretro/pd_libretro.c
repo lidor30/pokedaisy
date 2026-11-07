@@ -539,7 +539,7 @@ static void draw_hud(void) {
     hudPixels = malloc((size_t)CANVAS_MAX_W * CANVAS_MAX_H * sizeof *hudPixels);
   if (!hudPixels)
     return;
-  uint32_t key = hud_key(&snap, &hudState, &settings) ^ (uint32_t)(w * 65599 + hh);
+  uint32_t key = hud_key(&game, &snap, &hudState, &settings) ^ (uint32_t)(w * 65599 + hh);
   if (key != hudDrawnKey || w != hudW || hh != hudH) {
     struct pd_canvas hc;
     pd_canvas_init(&hc, w, hh, hudPixels);

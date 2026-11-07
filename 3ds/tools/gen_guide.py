@@ -33,10 +33,11 @@ HACK_GUIDES = [
     ("heart_and_soul", "HeartAndSoul", "HEART_AND_SOUL"), ("glazed", "Glazed", "GLAZED"), ("mariomon", "Mariomon", "MARIOMON"),
     ("dreamstone", "Dreamstone", "DREAMSTONE"), ("wishes", "Wishes", "WISHES"), ("team_rocket", "TeamRocket", "TEAM_ROCKET"),
     ("elite_redux", "EliteRedux", "ELITE_REDUX"), ("ultra_violet", "UltraViolet", "ULTRA_VIOLET"),
+    ("lets_go", "LetsGo", "LETS_GO"), ("monomyth", "Monomyth", "MONOMYTH"),
 ]
 # Hacks whose guide has no area file in the app (their WHERE IS is empty here).
 AREAS_OPTIONAL = {"soulgold", "imperium", "quetzal", "recharged_emerald", "tmt2", "seaglass", "lazarus", "glazed", "mariomon",
-                  "dreamstone", "wishes", "team_rocket", "elite_redux"}
+                  "dreamstone", "wishes", "team_rocket", "elite_redux", "monomyth"}
 AREA_KINDS = ["ITEM", "HIDDEN", "GIFT", "KEY", "MON", "EGG", "TRADE"]
 
 
@@ -213,6 +214,14 @@ def pages_of(text, env):
         return []
     start = text.index("pages = listOf(") + len("pages = ")
     end = matching_paren(text, text.index("(", start))
+    # A page kept in a val of its own (GuideCrystal.kt's CRYSTAL_TIPS, shared by two guides): its body spliced in.
+    span = text[start:end + 1]
+    for name in re.findall(r"\b([A-Z][A-Z0-9_]+)\b", span):
+        m = re.search(r"^(?:private |internal )?val " + name + r" = (page\()", text, re.M)
+        if m:
+            body = text[m.start(1):matching_paren(text, m.end(1) - 1) + 1]
+            span = re.sub(r"\b" + name + r"\b", lambda _: body, span)
+    text, start, end = span, 0, len(span) - 1
     tree = Parser(tokenize(text, start, end + 1), env).expr()
     pages = []
     for page in tree[2]:
@@ -223,10 +232,19 @@ def pages_of(text, env):
             assert sec[1] == "section", sec[1]
             heading, *entries = sec[2]
             note = sec[3].get("note")
+            # Randomized.ONLY / HIDE (Guide.kt): the C reads unrandomized games only, so a randomized-only section or
+            # entry is left out and a HIDE one kept.
+            def marker(x):
+                return x if isinstance(x, str) else x[1] if isinstance(x, tuple) and len(x) > 1 and isinstance(x[1], str) else None
+            if entries and marker(entries[0]) == "Randomized.ONLY":
+                continue
+            entries = [e for e in entries if marker(e) not in ("Randomized.HIDE", "Randomized.ANY")]
             out_entries = []
             for e in entries:
                 assert e[1] == "entry", e[1]
                 args, kw = e[2], e[3]
+                if marker(kw.get("randomized")) == "Randomized.ONLY":
+                    continue
                 title_e, answer = args[0], args[1]
                 hint = kw.get("hint", args[2] if len(args) > 2 else None)
                 have = kw.get("have")
@@ -409,6 +427,25 @@ def expand_helpers(slug, text):
                       lambda m: f'Boss("CHAMPION WALLACE", "POKéMON LEAGUE", FLAG_IS_CHAMPION, doneAny = listOf(FLAG_SYS_GAME_CLEAR), variants = {nh(m.group(1))}) {{ {m.group(1)} }},', text)
         text = re.sub(r'(?m)^    league\((\d+), ("[^"]*"), (\d+), (\d+)\),',
                       lambda m: f'    Boss({m.group(2)}, "POKéMON LEAGUE", FLAG_DEFEATED_LORELEI + {m.group(1)}, trainer = league({m.group(3)}, {m.group(4)})) {{ {m.group(3)} }},', text)
+    elif slug == "monomyth":  # badge / league helpers, each with its Heroic mode's team (FLAG_HEROIC)
+        lams = []
+        def badge(m):
+            name = f"mmTeam{len(lams)}"
+            lams.append(f"private val {name}: (SaveProgress) -> Int = {{ p -> when {{ p.flag(FLAG_HEROIC) -> {m.group(5)}\n else -> {m.group(4)} }} }}\n}}\n")
+            return f'Boss({m.group(1)}, {m.group(2)}, FLAG_BADGE01_GET + {m.group(3)}, trainer = {name})'
+        text = re.sub(r'badge\(("[^"]*"), ("[^"]*"), (\d+), (\d+), (\d+)\)', badge, text.replace("private fun badge(", "private fun badge_unused("))
+        def league(m):
+            i, h = m.group(3), m.group(4) or m.group(3)
+            if i == h:
+                return f'Boss({m.group(1)}, {m.group(2)}, TRAINER_FLAGS_START + {i}) {{ {i} }}'
+            return (f'Boss({m.group(1)}, {m.group(2)}, TRAINER_FLAGS_START + {i}, doneAny = listOf(TRAINER_FLAGS_START + {h}), '
+                    f'variants = listOf("NORMAL" to {i}, "HEROIC" to {h})) {{ {i} }}')
+        text = re.sub(r'league\(("[^"]*"), ("[^"]*"), (\d+)(?:, (\d+))?\)', league, text.replace("private fun league(", "private fun league_unused("))
+        # HEM and LOCKE together: both teams, NORMAL and HEROIC.
+        text = re.sub(r'Boss\(\s*"LEADERS HEM AND LOCKE".*?\n    \),\n',
+                      'Boss("LEADERS HEM AND LOCKE", "FORT ELDERFLOWER", FLAG_BADGE01_GET + 7, variants = listOf("HEM" to 493, '
+                      '"LOCKE" to 498, "HEM (HEROIC)" to 558, "LOCKE (HEROIC)" to 559)) { 493 },\n', text, flags=re.S)
+        text += "\n" + "".join(lams)
     elif slug == "celia":  # BLAINE's eight one-on-one battles
         text = text.replace('(1..8).map { "BATTLE $it" to 502 + it }',
                             "listOf(" + ", ".join(f'"BATTLE {i}" to {502 + i}' for i in range(1, 9)) + ")")
@@ -809,7 +846,7 @@ def emit_crystal(out):
     out.append(f"const struct pd_guide pd_guide_gb_crystal = {{ pd_gb_crystal_pages, {len(pages)}, pd_gb_crystal_bosses, {len(bosses)}, false, 0, 0, .regionOf = NULL }};")
     out.append("")
     # wild: G|g|n|m,d,n rates|lv:sp x21; W|g|n|rate|lv:sp x3; F|g|n|group; R|g|n|set; FG|group|old|good|super; TG|group|d|n; TS|set|common|rare
-    grass, water, fishMap, rockMap, fish, timeFish, trees = {}, {}, {}, {}, {}, {}, {}
+    grass, water, fishMap, rockMap, treeMap, fish, timeFish, trees, rare = {}, {}, {}, {}, {}, {}, {}, {}, {}
     for line in raw("CR_WILD_RAW"):
         f = line.split("|")
         k = lambda: int(f[1]) << 8 | int(f[2])
@@ -821,13 +858,17 @@ def emit_crystal(out):
             fishMap[k()] = int(f[3])
         elif f[0] == "R":
             rockMap[k()] = int(f[3])
+        elif f[0] == "T":
+            treeMap[k()] = int(f[3])
         elif f[0] == "FG":
             fish[int(f[1])] = [[tuple(int(y) for y in p.split(":")) for p in r.split(" ") if p] for r in f[2:]]
         elif f[0] == "TG":
             timeFish[int(f[1])] = [tuple(int(y) for y in x.split(":")) for x in f[2:4]]
         elif f[0] == "TS":
+            # a headbutt / rock set: its common rows (rock smash, headbutt) and its rare trees'
             trees[int(f[1])] = [tuple(int(y) for y in p.split(":")) for p in f[2].split(" ") if p]
-    mapkeys = sorted(set(grass) | set(water) | set(fishMap) | set(rockMap))
+            rare[int(f[1])] = [tuple(int(y) for y in p.split(":")) for p in (f[3] if len(f) > 3 else "").split(" ") if p]
+    mapkeys = sorted(set(grass) | set(water) | set(fishMap) | set(rockMap) | set(treeMap))
     def pairs(sl, n):
         sl = (sl + [(0, 0)] * n)[:n]
         return "{ " + ", ".join(f"{{ {a}, {b} }}" for a, b in sl) + " }"
@@ -839,8 +880,8 @@ def emit_crystal(out):
         gr = grass.get(k, ([0, 0, 0], []))
         wa = water.get(k, (0, []))
         out.append(f"    {{ 0x{k:04X}, {{ {', '.join(map(str, gr[0]))} }}, {pairs(gr[1], 21)}, {wa[0]}, {pairs(wa[1], 3)}, "
-                   f"{fishMap.get(k, -1)}, {rockMap.get(k, -1)} }},")
-    out.append("    { -1, { 0, 0, 0 }, { { 0, 0 } }, 0, { { 0, 0 } }, -1, -1 },")
+                   f"{fishMap.get(k, -1)}, {rockMap.get(k, -1)}, {treeMap.get(k, -1)} }},")
+    out.append("    { -1, { 0, 0, 0 }, { { 0, 0 } }, 0, { { 0, 0 } }, -1, -1, -1 },")
     out.append("};")
     out.append("const struct pd_gb2_fish pd_gb_fish_crystal[] = {")
     for g in sorted(fish):
@@ -856,8 +897,8 @@ def emit_crystal(out):
     out.append(f"const int pd_gb_time_fish_crystal_count = {len(timeFish)};")
     out.append("const struct pd_gb2_rocks pd_gb_rocks_crystal[] = {")
     for t in sorted(trees):
-        out.append(f"    {{ {t}, {len(trees[t])}, {triples(trees[t], 6)} }},")
-    out.append("    { -1, 0, { { 0, 0, 0 } } },")
+        out.append(f"    {{ {t}, {len(trees[t])}, {triples(trees[t], 6)}, {len(rare[t])}, {triples(rare[t], 6)} }},")
+    out.append("    { -1, 0, { { 0, 0, 0 } }, 0, { { 0, 0, 0 } } },")
     out.append("};")
     # landmarks: wMapGroup * 256 + wMapNumber -> landmark (MapSecDataCrystal.kt mapLandmarksCrystal)
     ml = read("MapSecDataCrystal.kt")
@@ -876,6 +917,17 @@ def emit_crystal(out):
         things.append((int(mp), kind, int(id_), cr_flag(f) if f else 0, int(qty), int(wants), where))
     things.sort(key=lambda t: t[0])
     emit_areas(out, "pd_areas_gb_crystal", things)
+
+
+# --- Polished Crystal: its hand-written pages (GuidePolishedCrystal.kt); HERE and NEXT BOSS come from its world
+# (pd_gb_world_gen.c, 3ds/tools/gen_gb_world.py: levels by badges, the evening's lists, the faithful builds' teams) ---
+def emit_polished(out):
+    text = read("GuidePolishedCrystal.kt")
+    env = {"consts": consts(read("GuidePolishedCrystalGen.kt")), "template": lambda e: (_ for _ in ()).throw(SyntaxError(e))}
+    pages = pages_of(text, env)
+    emit_guide_pages(out, "pd_gb_polished", pages)
+    out.append(f"const struct pd_guide pd_guide_gb_polished = {{ pd_gb_polished_pages, {len(pages)}, NULL, 0, false, 0, 0, .regionOf = NULL }};")
+    out.append("")
 
 
 def emit_guide_pages(out, prefix, pages):
@@ -1013,6 +1065,7 @@ def main():
         emit_areas(out, f"pd_areas_{slug}", areas_of(f"GuideAreas{cls}Gen.kt", f"GUIDE_AREAS_{up}_RAW"))
     emit_gb(out)
     emit_crystal(out)
+    emit_polished(out)
     emit_areas(out, "pd_areas_emerald_legacy", areas_of("GuideAreasEmeraldLegacyGen.kt", "GUIDE_AREAS_EMERALD_LEGACY_RAW"))
     emit_areas(out, "pd_areas_ruby_sapphire", areas_of("GuideAreasRubySapphireGen.kt", "GUIDE_AREAS_RUBY_SAPPHIRE_RAW"))
     emit_areas(out, "pd_areas_firered", areas_of("GuideAreasFireRedGen.kt", "GUIDE_AREAS_FIRERED_RAW"))

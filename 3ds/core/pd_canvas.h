@@ -37,6 +37,8 @@ int pd_layered_box(struct pd_canvas* c, int x, int y, int w, int h, int r,
 // shadow 0xFF000000 (PD_NO_SHADOW) = none. Returns the advance in pixels.
 #define PD_NO_SHADOW 0xFF000000u
 int pd_text(struct pd_canvas* c, int x, int y, const char* utf8, uint32_t color, uint32_t shadow);
+// Each font pixel `scale` canvas pixels square, the shadow one font pixel down and right.
+int pd_text_scaled(struct pd_canvas* c, int x, int y, const char* utf8, uint32_t color, uint32_t shadow, int scale);
 int pd_text_width(const char* utf8);
 // Like pd_text, cut with "..." to fit max_w.
 int pd_text_fit(struct pd_canvas* c, int x, int y, int max_w, const char* utf8, uint32_t color, uint32_t shadow);

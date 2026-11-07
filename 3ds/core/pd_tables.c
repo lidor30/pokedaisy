@@ -76,6 +76,17 @@ const char* pd_type_name(const struct pd_game* g, int type) {
     return "";
 }
 
+int pd_type_count(const struct pd_game* g) {
+    const struct pd_text* t = hack_text(g);
+    return t && t->typeNames ? t->typeNamesCount : pd_type_names_count;
+}
+
+int pd_gender_ratio(const struct pd_game* g, int species) {
+    const struct pd_text* t = hack_text(g);
+    if (t && t->genderRatios) return species >= 0 && species < t->genderRatiosCount ? t->genderRatios[species] : -1;
+    return species >= 0 && species < pd_gender_ratios_count ? pd_gender_ratios[species] : -1;
+}
+
 int pd_move_type(const struct pd_game* g, int move) {
     const struct pd_move_info* m = move_info(g, move);
     return m ? m->type : PD_TYPE_NONE;

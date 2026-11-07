@@ -3,11 +3,14 @@
 // the app's GuideScreen. Hint first: a tap shows the hint, the next the
 // answer; one entry open at a time. The first visit per game shows the app's
 // "written with AI" notice.
+#include <ctype.h>
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include "pd_dex.h"
+#include "pd_gb_world.h"
 #include "pd_guide.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
@@ -77,14 +80,26 @@ static const char* page_label(const char* title) {
     return title;
 }
 
+// An HM by its name in the game's language: HM01, CS01 (French), VM01 (German), MN01 (Italian), MO01 (Spanish).
+static bool is_hm(const char* name) {
+    static const char* const WORDS[] = { "HM", "CS", "VM", "MN", "MO" };
+    for (int i = 0; i < 5; i++) {
+        if (strncasecmp(name, WORDS[i], 2)) continue;
+        const char* p = name + 2;
+        if (*p == ' ') p++;
+        if (isdigit((unsigned char) *p)) return true;
+    }
+    return false;
+}
+
 static void build_pages(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_guide* gd) {
     pageCount = 0;
     int areaCount;
     pd_areas_for(g, &areaCount);
     bool rom = pd_guide_rom_ok(g);
     // a Game Boy game: HERE where its wild tables and area data are generated (Gen 1)
-    if ((areaCount || rom) && (!g->cfg->gb || areaCount)) pages[pageCount++] = (struct page_ref) { PAGE_HERE, 0, "HERE" };
-    if (rom && s->flagsOk && gd->bossCount) pages[pageCount++] = (struct page_ref) { PAGE_BOSS, 0, "NEXT BOSS" };
+    if ((areaCount || rom) && (!g->cfg->gb || areaCount || pd_gbw_for(g))) pages[pageCount++] = (struct page_ref) { PAGE_HERE, 0, "HERE" };
+    if (rom && s->flagsOk && (gd->bossCount || pd_gbw_boss_count(g))) pages[pageCount++] = (struct page_ref) { PAGE_BOSS, 0, "NEXT BOSS" };
     bool whereIs = false;
     for (int i = 0; i < gd->pageCount && pageCount < MAX_PAGES; i++) {
         pages[pageCount++] = (struct page_ref) { PAGE_STATIC, i, page_label(gd->pages[i].title) };
@@ -213,7 +228,8 @@ static void build_here(const struct pd_game* g, const struct pd_snapshot* s, con
     bool hasWild = pd_wild_here(g, s, &wild);
     for (int m = 0; hasWild && m < PD_WILD_METHODS; m++) {
         if (!wild.count[m]) continue;
-        add_section(pd_wild_method_name(m), NULL);
+        // Polished Crystal's grass lists follow the clock: the first says which one it is.
+        add_section(pd_wild_method_name(m), m == 0 ? pd_gbw_clock(g, s) : NULL);
         for (int i = 0; i < wild.count[m]; i++) {
             const struct pd_wild* w = &wild.mons[m][i];
             struct view_entry* e = add_entry();
@@ -246,7 +262,7 @@ static void build_here(const struct pd_game* g, const struct pd_snapshot* s, con
             for (int i = 0; i < n; i++) {
                 const struct pd_area_thing* t = &things[i];
                 bool isItem = t->kind == PD_AREA_ITEM || t->kind == PD_AREA_HIDDEN;
-                if (t->mapsec != s->mapsec || isItem == people) continue;
+                if (!pd_area_here(g, s, t) || isItem == people) continue;
                 if (pd_area_done(g, s, t) != (pass == 1)) continue;
                 area_entry(g, s, t, place);
             }
@@ -262,10 +278,6 @@ static void build_here(const struct pd_game* g, const struct pd_snapshot* s, con
 
 // WHERE IS from the area data (GuideAreas.kt generatedWhereIs): every HM, key item and gift POKéMON someone hands
 // out, the area it's in as the hint and where in it as the answer; each named once (its first area), by name.
-static bool is_hm(const char* name) {
-    return !strncmp(name, "HM", 2) && name[2] >= '0' && name[2] <= '9';
-}
-
 static int by_title(const void* a, const void* b) {
     return strcmp(((const struct view_entry*) a)->title, ((const struct view_entry*) b)->title);
 }
@@ -322,10 +334,85 @@ static void build_where(const struct pd_game* g, const struct pd_snapshot* s) {
     }
 }
 
+// A boss team's members, one entry each: level, then types as the hint, then species, moves and item as the answer.
+static void team_entries(const struct pd_game* g, const struct pd_team_mon* team, int n) {
+    for (int i = 0; i < n; i++) {
+        struct view_entry* e = add_entry();
+        if (!e) break;
+        snprintf(e->title, sizeof(e->title), "POKéMON %d", i + 1);
+        snprintf(e->detail, sizeof(e->detail), "LV%d", team[i].level);
+        int t1, t2;
+        pd_species_types(g, team[i].species, &t1, &t2);
+        if (t1 == 255) {  // no base stats to read (a Game Boy game): no types line
+        } else if (t2 != t1 && t2 != PD_TYPE_NONE) {
+            snprintf(e->hintBuf, sizeof(e->hintBuf), "%s / %s", pd_type_name(g, t1), pd_type_name(g, t2));
+            e->hint = e->hintBuf;
+        } else {
+            snprintf(e->hintBuf, sizeof(e->hintBuf), "%s", pd_type_name(g, t1));
+            e->hint = e->hintBuf;
+        }
+        char name[40], move[32];
+        int len = snprintf(e->answerBuf, sizeof(e->answerBuf), "%s:",
+                           pd_species_name(g, team[i].species, name, sizeof(name)));
+        bool first = true;
+        for (int k = 0; k < 4 && len < (int) sizeof(e->answerBuf); k++) {
+            if (!team[i].moves[k]) continue;
+            len += snprintf(e->answerBuf + len, sizeof(e->answerBuf) - (size_t) len, "%s %s", first ? "" : ",",
+                            pd_move_name(g, team[i].moves[k], move, sizeof(move)));
+            first = false;
+        }
+        if (team[i].item && len < (int) sizeof(e->answerBuf)) {
+            snprintf(e->answerBuf + len, sizeof(e->answerBuf) - (size_t) len, ". HOLDS %s",
+                     pd_item_name(g, team[i].item));
+        }
+        e->answer = e->answerBuf;
+    }
+}
+
+// A whole team under its heading (NEXT: on the first), the note saying where, how many and how strong.
+static void team_section(const struct pd_game* g, const char* title, const char* where, bool first, int best,
+                         const struct pd_team_mon* team, int n) {
+    int ace = 0;
+    for (int i = 0; i < n; i++) ace = team[i].level > ace ? team[i].level : ace;
+    char heading[56], note[120];
+    snprintf(heading, sizeof(heading), first ? "NEXT: %s" : "%s", title);
+    snprintf(note, sizeof(note), "%s - %d POKéMON - UP TO LV%d - YOUR BEST LV%d", where, n, ace, best);
+    add_section(heading, note);
+    team_entries(g, team, n);
+}
+
+// A Game Boy world's bosses (Polished Crystal): what's ahead in the game's order; the champion's teams side by side until the
+// save picks one.
+static void build_world_bosses(const struct pd_game* g, const struct pd_snapshot* s, int best) {
+    int shown = 0;
+    for (int b = 0; b < pd_gbw_boss_count(g) && shown < MAX_BOSSES_SHOWN; b++) {
+        const struct pd_gbw_boss* boss = pd_gbw_boss_at(g, b);
+        if (pd_gbw_boss_done(s, boss)) continue;
+        int teams = pd_gbw_boss_teams(s, boss);
+        for (int k = 0; k < teams; k++) {
+            struct pd_team_mon team[PD_TEAM_MAX];
+            int n = pd_gbw_boss_team(g, s, boss, k, team);
+            char where[72], name[40];
+            int top = 0;
+            for (int i = 1; i < n; i++) top = team[i].level > team[top].level ? i : top;
+            // The heading is long enough as it is: what tells the teams apart goes first under it.
+            if (teams > 1) snprintf(where, sizeof(where), "WITH %s - %s", pd_species_name(g, team[top].species, name, sizeof(name)), boss->where);
+            else snprintf(where, sizeof(where), "%s", boss->where);
+            team_section(g, boss->title, where, !shown, best, team, n);
+            shown++;
+        }
+    }
+    if (!shown) add_section("ALL DONE", "Every boss is beaten.");
+}
+
 static void build_bosses(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_guide* gd) {
     int best = 0;
     for (int i = 0; i < s->partyCount; i++) {
-        if (s->party[i].species != PD_SPECIES_EGG && s->party[i].level > best) best = s->party[i].level;
+        if (!s->party[i].egg && s->party[i].level > best) best = s->party[i].level;
+    }
+    if (pd_gbw_boss_count(g)) {
+        build_world_bosses(g, s, best);
+        return;
     }
     int shown = 0;
     int order[256];
@@ -358,42 +445,13 @@ static void build_bosses(const struct pd_game* g, const struct pd_snapshot* s, c
         }
         snprintf(note, sizeof(note), "%s - %d POKéMON - UP TO LV%d - YOUR BEST LV%d", boss->where, n, ace, best);
         add_section(heading, note);
-        for (int i = 0; i < n; i++) {
-            struct view_entry* e = add_entry();
-            if (!e) break;
-            snprintf(e->title, sizeof(e->title), "POKéMON %d", i + 1);
-            snprintf(e->detail, sizeof(e->detail), "LV%d", team[i].level);
-            int t1, t2;
-            pd_species_types(g, team[i].species, &t1, &t2);
-            if (t1 == 255) {  // no base stats to read (a Game Boy game): no types line
-            } else if (t2 != t1 && t2 != PD_TYPE_NONE) {
-                snprintf(e->hintBuf, sizeof(e->hintBuf), "%s / %s", pd_type_name(g, t1), pd_type_name(g, t2));
-                e->hint = e->hintBuf;
-            } else {
-                snprintf(e->hintBuf, sizeof(e->hintBuf), "%s", pd_type_name(g, t1));
-                e->hint = e->hintBuf;
-            }
-            char name[40], move[32];
-            int len = snprintf(e->answerBuf, sizeof(e->answerBuf), "%s:",
-                               pd_species_name(g, team[i].species, name, sizeof(name)));
-            bool first = true;
-            for (int k = 0; k < 4 && len < (int) sizeof(e->answerBuf); k++) {
-                if (!team[i].moves[k]) continue;
-                len += snprintf(e->answerBuf + len, sizeof(e->answerBuf) - (size_t) len, "%s %s", first ? "" : ",",
-                                pd_move_name(g, team[i].moves[k], move, sizeof(move)));
-                first = false;
-            }
-            if (team[i].item && len < (int) sizeof(e->answerBuf)) {
-                snprintf(e->answerBuf + len, sizeof(e->answerBuf) - (size_t) len, ". HOLDS %s",
-                         pd_item_name(g, team[i].item));
-            }
-            e->answer = e->answerBuf;
-        }
+        team_entries(g, team, n);
         }
         shown++;
     }
     if (!shown) add_section("ALL BEATEN", "Every gym leader and the League are beaten.");
 }
+
 
 // --- drawing ---
 

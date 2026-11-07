@@ -23,11 +23,17 @@ static const struct look LOOKS[PD_HUD_LOOKS] = {
     {0xFFFFFF, 0x8C8C94, 0x575656, 0xBCBBB4, 0xCB0707, 0x8C8C94, 0xFFE9A8, true}, // the FireRed window look, whatever the game
 };
 
-#define PAD 4
-#define EDGE 6 // CornersLayout's padding
+// The sizes: FieldHud's, or a 3DS's (hud_state.compact: its screen shows the game at 1.5x, a Linux handheld's at 3x and
+// more, so the same pixels cover twice as much of the picture). A compact tile overlaps the icon's see-through edges.
+struct hud_sizes { int pad, edge, tile, gap, mapW, mapH; };
+static const struct hud_sizes NORMAL_SIZES = { 4, 6, 30, 3, 104, 64 }, COMPACT_SIZES = { 2, 3, 20, 1, 72, 40 };
+static const struct hud_sizes *sizes = &NORMAL_SIZES;
+static bool small; // hud_state.compact (not CompactLayout, the HUD without party or minimap: compact() below)
+#define PAD (sizes->pad)
+#define EDGE (sizes->edge) // CornersLayout's padding
 #define GAP 4  // between a column's windows
-#define TILE 30
-#define TILE_GAP 3
+#define TILE (sizes->tile)
+#define TILE_GAP (sizes->gap)
 #define LINE 12
 #define MON_ROW_H 30 // RAILS' party rows
 #define MON_ROW_W (TILE + 4 + 44)
@@ -36,6 +42,7 @@ static const struct look LOOKS[PD_HUD_LOOKS] = {
 
 struct hud {
   struct pd_canvas *c;
+  int x0, x1;           // the columns it keeps to (hud_state.left / right: the game's picture)
   const struct pd_game *g;
   const struct pd_snapshot *s;
   const struct hud_state *h;
@@ -52,6 +59,187 @@ struct hud {
   bool repel, map;      // REPEL STEPS showing; MINIMAP on and something to show
   int button[5], buttons; // the buttons shown, in order (enum hud_target)
 };
+
+// Compact: a 3DS shows this canvas pixel for pixel and the icons come no smaller, so they go through Scale2x (edges stay
+// clean, no pixel simply dropped) and then down to 7/8 of their size, each pixel what it covers. Dropping pixels broke the
+// shapes, and the same at 1x blurred some columns and not others.
+#define SHRUNK_CLEAR 0xFE000000u
+#define SMALL_ICON (PD_ICON * 7 / 8)
+static uint32_t iconPx[PD_ICON * PD_ICON], icon2x[4 * PD_ICON * PD_ICON];
+
+static struct pd_canvas icon_begin(void) {
+  struct pd_canvas s;
+  pd_canvas_init(&s, PD_ICON, PD_ICON, iconPx);
+  for (int i = 0; i < PD_ICON * PD_ICON; i++)
+    iconPx[i] = SHRUNK_CLEAR;
+  return s;
+}
+
+static void icon_scale2x(void) {
+  const int n = PD_ICON;
+  for (int y = 0; y < n; y++)
+    for (int x = 0; x < n; x++) {
+      uint32_t e = iconPx[y * n + x];
+      uint32_t b = iconPx[(y ? y - 1 : y) * n + x], h = iconPx[(y < n - 1 ? y + 1 : y) * n + x];
+      uint32_t d = iconPx[y * n + (x ? x - 1 : x)], f = iconPx[y * n + (x < n - 1 ? x + 1 : x)];
+      bool edge = b != h && d != f;
+      uint32_t *o = &icon2x[2 * y * 2 * n + 2 * x];
+      o[0] = edge && d == b ? d : e;
+      o[1] = edge && b == f ? f : e;
+      o[2 * n] = edge && d == h ? d : e;
+      o[2 * n + 1] = edge && h == f ? f : e;
+    }
+}
+
+// Over what's there: 7/16 of the 2x picture.
+static void icon_draw(struct pd_canvas *c, int x, int y) {
+  const int n = 2 * PD_ICON, total = 16 * 16;
+  icon_scale2x();
+  for (int oy = 0; oy < PD_ICON * 7 / 8; oy++)
+    for (int ox = 0; ox < PD_ICON * 7 / 8; ox++) {
+      int X = x + ox, Y = y + oy;
+      if (X < c->cx0 || X >= c->cx1 || Y < c->cy0 || Y >= c->cy1)
+        continue;
+      // In sevenths of a source pixel, this pixel covers [16 * o, 16 * o + 16) each way.
+      int r = 0, g = 0, b = 0, cover = 0;
+      for (int sy = oy * 16 / 7; sy <= (oy * 16 + 15) / 7 && sy < n; sy++) {
+        int y0 = oy * 16 > sy * 7 ? oy * 16 : sy * 7, y1 = oy * 16 + 16 < sy * 7 + 7 ? oy * 16 + 16 : sy * 7 + 7;
+        for (int sx = ox * 16 / 7; sx <= (ox * 16 + 15) / 7 && sx < n; sx++) {
+          int x0 = ox * 16 > sx * 7 ? ox * 16 : sx * 7, x1 = ox * 16 + 16 < sx * 7 + 7 ? ox * 16 + 16 : sx * 7 + 7;
+          int part = (y1 - y0) * (x1 - x0);
+          uint32_t p = icon2x[sy * n + sx];
+          if (part <= 0 || p == SHRUNK_CLEAR)
+            continue;
+          r += part * (int)(p >> 16 & 0xFF);
+          g += part * (int)(p >> 8 & 0xFF);
+          b += part * (int)(p & 0xFF);
+          cover += part;
+        }
+      }
+      if (cover * 4 < total) // a sliver of the outline: left out, or the panel shows a halo round the Pokémon
+        continue;
+      uint32_t *d = &c->px[Y * c->w + X];
+      bool clear = *d == QUICK_CLEAR;
+      int rest = total - cover, under = clear ? 0 : *d >> 24 ? (int)(*d >> 24) : 255;
+      int dr = clear ? 0 : (int)(*d >> 16 & 0xFF), dg = clear ? 0 : (int)(*d >> 8 & 0xFF), db = clear ? 0 : (int)(*d & 0xFF);
+      int wUnder = rest * under / 255, sum = cover + wUnder;
+      int alpha = 255 - (255 - under) * rest / total;
+      uint32_t rgb = (uint32_t)((r + dr * wUnder) / sum) << 16 | (uint32_t)((g + dg * wUnder) / sum) << 8 | (uint32_t)((b + db * wUnder) / sum);
+      *d = (alpha >= 255 ? 0u : (uint32_t)(alpha ? alpha : 1) << 24) | rgb;
+    }
+}
+
+// The place's name: a font of the size it wants, whole pixels, capitals 8 tall (our own drawing; the app's Pixel Operator
+// is 9 and a line of 12, too big for the minimap). Anything else in a name falls back to that font.
+struct small_glyph {
+  unsigned char ch, w;
+  unsigned char rows[10]; // top bit first
+};
+static const struct small_glyph SMALL_FONT[] = {
+    { ' ', 3, { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } },
+    { '!', 1, { 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x80, 0x00, 0x00 } },
+    { '&', 5, { 0x60, 0x90, 0x90, 0x60, 0xA8, 0x90, 0x90, 0x68, 0x00, 0x00 } },
+    { '\'', 1, { 0x80, 0x80, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00 } },
+    { '(', 2, { 0x40, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x40, 0x00, 0x00 } },
+    { ')', 2, { 0x80, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x80, 0x00, 0x00 } },
+    { ',', 2, { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x40, 0x40, 0x80 } },
+    { '-', 3, { 0x00, 0x00, 0x00, 0x00, 0xE0, 0x00, 0x00, 0x00, 0x00, 0x00 } },
+    { '.', 1, { 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, 0x80, 0x00, 0x00 } },
+    { '/', 4, { 0x10, 0x10, 0x20, 0x20, 0x40, 0x40, 0x80, 0x80, 0x00, 0x00 } },
+    { '0', 5, { 0x70, 0x88, 0x98, 0xA8, 0xA8, 0xC8, 0x88, 0x70, 0x00, 0x00 } },
+    { '1', 3, { 0x40, 0xC0, 0x40, 0x40, 0x40, 0x40, 0x40, 0xE0, 0x00, 0x00 } },
+    { '2', 5, { 0x70, 0x88, 0x08, 0x10, 0x20, 0x40, 0x80, 0xF8, 0x00, 0x00 } },
+    { '3', 5, { 0x70, 0x88, 0x08, 0x30, 0x08, 0x08, 0x88, 0x70, 0x00, 0x00 } },
+    { '4', 5, { 0x10, 0x30, 0x50, 0x90, 0x90, 0xF8, 0x10, 0x10, 0x00, 0x00 } },
+    { '5', 5, { 0xF8, 0x80, 0x80, 0xF0, 0x08, 0x08, 0x88, 0x70, 0x00, 0x00 } },
+    { '6', 5, { 0x70, 0x80, 0x80, 0xF0, 0x88, 0x88, 0x88, 0x70, 0x00, 0x00 } },
+    { '7', 5, { 0xF8, 0x08, 0x10, 0x10, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00 } },
+    { '8', 5, { 0x70, 0x88, 0x88, 0x70, 0x88, 0x88, 0x88, 0x70, 0x00, 0x00 } },
+    { '9', 5, { 0x70, 0x88, 0x88, 0x88, 0x78, 0x08, 0x08, 0x70, 0x00, 0x00 } },
+    { ':', 1, { 0x00, 0x00, 0x80, 0x00, 0x00, 0x80, 0x00, 0x00, 0x00, 0x00 } },
+    { '?', 5, { 0x70, 0x88, 0x08, 0x10, 0x20, 0x20, 0x00, 0x20, 0x00, 0x00 } },
+    { 'A', 5, { 0x70, 0x88, 0x88, 0x88, 0xF8, 0x88, 0x88, 0x88, 0x00, 0x00 } },
+    { 'B', 5, { 0xF0, 0x88, 0x88, 0xF0, 0x88, 0x88, 0x88, 0xF0, 0x00, 0x00 } },
+    { 'C', 5, { 0x70, 0x88, 0x80, 0x80, 0x80, 0x80, 0x88, 0x70, 0x00, 0x00 } },
+    { 'D', 5, { 0xF0, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0xF0, 0x00, 0x00 } },
+    { 'E', 5, { 0xF8, 0x80, 0x80, 0xF0, 0x80, 0x80, 0x80, 0xF8, 0x00, 0x00 } },
+    { 'F', 5, { 0xF8, 0x80, 0x80, 0xF0, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00 } },
+    { 'G', 5, { 0x70, 0x88, 0x80, 0x80, 0xB8, 0x88, 0x88, 0x70, 0x00, 0x00 } },
+    { 'H', 5, { 0x88, 0x88, 0x88, 0xF8, 0x88, 0x88, 0x88, 0x88, 0x00, 0x00 } },
+    { 'I', 3, { 0xE0, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0xE0, 0x00, 0x00 } },
+    { 'J', 5, { 0x38, 0x10, 0x10, 0x10, 0x10, 0x90, 0x90, 0x60, 0x00, 0x00 } },
+    { 'K', 5, { 0x88, 0x90, 0xA0, 0xC0, 0xC0, 0xA0, 0x90, 0x88, 0x00, 0x00 } },
+    { 'L', 5, { 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0xF8, 0x00, 0x00 } },
+    { 'M', 5, { 0x88, 0xD8, 0xA8, 0xA8, 0x88, 0x88, 0x88, 0x88, 0x00, 0x00 } },
+    { 'N', 5, { 0x88, 0xC8, 0xC8, 0xA8, 0xA8, 0x98, 0x98, 0x88, 0x00, 0x00 } },
+    { 'O', 5, { 0x70, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x70, 0x00, 0x00 } },
+    { 'P', 5, { 0xF0, 0x88, 0x88, 0x88, 0xF0, 0x80, 0x80, 0x80, 0x00, 0x00 } },
+    { 'Q', 5, { 0x70, 0x88, 0x88, 0x88, 0x88, 0xA8, 0x90, 0x68, 0x00, 0x00 } },
+    { 'R', 5, { 0xF0, 0x88, 0x88, 0x88, 0xF0, 0xA0, 0x90, 0x88, 0x00, 0x00 } },
+    { 'S', 5, { 0x70, 0x88, 0x80, 0x70, 0x08, 0x08, 0x88, 0x70, 0x00, 0x00 } },
+    { 'T', 5, { 0xF8, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00 } },
+    { 'U', 5, { 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x88, 0x70, 0x00, 0x00 } },
+    { 'V', 5, { 0x88, 0x88, 0x88, 0x88, 0x88, 0x50, 0x50, 0x20, 0x00, 0x00 } },
+    { 'W', 5, { 0x88, 0x88, 0x88, 0x88, 0xA8, 0xA8, 0xD8, 0x88, 0x00, 0x00 } },
+    { 'X', 5, { 0x88, 0x88, 0x50, 0x20, 0x20, 0x50, 0x88, 0x88, 0x00, 0x00 } },
+    { 'Y', 5, { 0x88, 0x88, 0x50, 0x20, 0x20, 0x20, 0x20, 0x20, 0x00, 0x00 } },
+    { 'Z', 5, { 0xF8, 0x08, 0x10, 0x20, 0x40, 0x80, 0x80, 0xF8, 0x00, 0x00 } },
+    { 'a', 5, { 0x00, 0x00, 0x70, 0x08, 0x78, 0x88, 0x88, 0x78, 0x00, 0x00 } },
+    { 'b', 5, { 0x80, 0x80, 0xF0, 0x88, 0x88, 0x88, 0x88, 0xF0, 0x00, 0x00 } },
+    { 'c', 4, { 0x00, 0x00, 0x70, 0x80, 0x80, 0x80, 0x80, 0x70, 0x00, 0x00 } },
+    { 'd', 5, { 0x08, 0x08, 0x78, 0x88, 0x88, 0x88, 0x88, 0x78, 0x00, 0x00 } },
+    { 'e', 5, { 0x00, 0x00, 0x70, 0x88, 0xF8, 0x80, 0x88, 0x70, 0x00, 0x00 } },
+    { 'f', 4, { 0x30, 0x40, 0xE0, 0x40, 0x40, 0x40, 0x40, 0x40, 0x00, 0x00 } },
+    { 'g', 5, { 0x00, 0x00, 0x78, 0x88, 0x88, 0x88, 0x78, 0x08, 0x08, 0x70 } },
+    { 'h', 5, { 0x80, 0x80, 0xF0, 0x88, 0x88, 0x88, 0x88, 0x88, 0x00, 0x00 } },
+    { 'i', 1, { 0x80, 0x00, 0x80, 0x80, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00 } },
+    { 'j', 3, { 0x20, 0x00, 0x20, 0x20, 0x20, 0x20, 0x20, 0x20, 0xA0, 0x40 } },
+    { 'k', 4, { 0x80, 0x80, 0x90, 0xA0, 0xC0, 0xC0, 0xA0, 0x90, 0x00, 0x00 } },
+    { 'l', 2, { 0xC0, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x40, 0x00, 0x00 } },
+    { 'm', 5, { 0x00, 0x00, 0xF0, 0xA8, 0xA8, 0xA8, 0xA8, 0xA8, 0x00, 0x00 } },
+    { 'n', 5, { 0x00, 0x00, 0xF0, 0x88, 0x88, 0x88, 0x88, 0x88, 0x00, 0x00 } },
+    { 'o', 5, { 0x00, 0x00, 0x70, 0x88, 0x88, 0x88, 0x88, 0x70, 0x00, 0x00 } },
+    { 'p', 5, { 0x00, 0x00, 0xF0, 0x88, 0x88, 0x88, 0x88, 0xF0, 0x80, 0x80 } },
+    { 'q', 5, { 0x00, 0x00, 0x78, 0x88, 0x88, 0x88, 0x88, 0x78, 0x08, 0x08 } },
+    { 'r', 3, { 0x00, 0x00, 0xA0, 0xC0, 0x80, 0x80, 0x80, 0x80, 0x00, 0x00 } },
+    { 's', 4, { 0x00, 0x00, 0x70, 0x80, 0x60, 0x10, 0x10, 0xE0, 0x00, 0x00 } },
+    { 't', 4, { 0x40, 0x40, 0xE0, 0x40, 0x40, 0x40, 0x40, 0x30, 0x00, 0x00 } },
+    { 'u', 5, { 0x00, 0x00, 0x88, 0x88, 0x88, 0x88, 0x88, 0x78, 0x00, 0x00 } },
+    { 'v', 5, { 0x00, 0x00, 0x88, 0x88, 0x88, 0x50, 0x50, 0x20, 0x00, 0x00 } },
+    { 'w', 5, { 0x00, 0x00, 0x88, 0x88, 0xA8, 0xA8, 0xA8, 0x50, 0x00, 0x00 } },
+    { 'x', 5, { 0x00, 0x00, 0x88, 0x50, 0x20, 0x20, 0x50, 0x88, 0x00, 0x00 } },
+    { 'y', 5, { 0x00, 0x00, 0x88, 0x88, 0x88, 0x88, 0x78, 0x08, 0x08, 0x70 } },
+    { 'z', 5, { 0x00, 0x00, 0xF8, 0x10, 0x20, 0x40, 0x80, 0xF8, 0x00, 0x00 } },
+    { 0xE9, 5, { 0x20, 0x40, 0x70, 0x88, 0xF8, 0x80, 0x88, 0x70, 0x00, 0x00 } },
+};
+
+static const struct small_glyph *small_glyph(unsigned char ch) {
+  for (size_t i = 0; i < sizeof(SMALL_FONT) / sizeof(SMALL_FONT[0]); i++)
+    if (SMALL_FONT[i].ch == ch)
+      return &SMALL_FONT[i];
+  return NULL;
+}
+
+// Latin-1's letters we drew arrive as UTF-8; false if any other character is in the text.
+static bool small_text(struct pd_canvas *c, int x, int y, const char *text, uint32_t color, bool measure) {
+  for (const unsigned char *p = (const unsigned char *)text; *p; p++) {
+    unsigned char ch = *p;
+    if (ch == 0xC3 && p[1] == 0xA9) {
+      ch = 0xE9;
+      p++;
+    }
+    const struct small_glyph *g = small_glyph(ch);
+    if (!g)
+      return false;
+    if (!measure)
+      for (int j = 0; j < 10; j++)
+        for (int i = 0; i < g->w; i++)
+          if (g->rows[j] & 0x80 >> i)
+            pd_fill(c, x + i, y + j, 1, 1, color);
+    x += g->w + 1;
+  }
+  return true;
+}
 
 static bool shows(const struct hud *u, int part) { return !(u->st->hudHidden >> part & 1); }
 
@@ -118,10 +306,15 @@ static void status_chip(struct pd_canvas *c, int cx, int y, const char *label) {
 static void mon_icon(struct hud *u, const struct pd_mon *m, int x, int y) {
   bool egg = m->species == PD_SPECIES_EGG, fainted = !egg && m->hp == 0;
   int ix = x + (TILE - PD_ICON) / 2;
-  if (u->monDraw)
+  if (u->monDraw) {
     u->monDraw(u->c, u->monCtx, m, ix, y - 5, fainted);
-  else
+  } else if (small) {
+    struct pd_canvas shrunk = icon_begin();
+    pd_draw_mon_icon_shiny(&shrunk, u->g, m->species, m->shiny, 0, 0, 1, fainted);
+    icon_draw(u->c, x + (TILE - SMALL_ICON) / 2, y - 4);
+  } else {
     pd_draw_mon_icon_shiny(u->c, u->g, m->species, m->shiny, ix, y - 5, 1, fainted);
+  }
   const char *status = egg ? "" : fainted ? "FNT" : pd_status_label(m->status);
   if (*status)
     status_chip(u->c, x + TILE / 2, y - 3, status);
@@ -133,7 +326,8 @@ static void lead(struct hud *u, int x, int y, int w, int h) {
   pd_round_rect(u->c, x + 1, y + 1, w - 2, h - 2, 3, u->L->cellOn);
 }
 
-#define TILE_H (26 + LINE + 6)
+#define COMPACT_ICON_H 21 // what shows of it: a Pokémon stands at the bottom of its picture
+#define TILE_H (small ? COMPACT_ICON_H + 5 : 26 + LINE + 6)
 static int tiles_width(const struct hud *u) { return u->partyN ? u->partyN * TILE + (u->partyN - 1) * TILE_GAP : 0; }
 
 // The party as tiles from (x, y) (HudMonTile): icon, then Lv and the HP bar under it.
@@ -146,6 +340,10 @@ static void party_tiles(struct hud *u, int x, int y) {
     hit(u, x - 2, y - 2, TILE + 4, TILE_H + 4, HUD_SLOT + i);
     if (m->species == PD_SPECIES_EGG)
       continue;
+    if (small) { // no level: the party tab has it
+      hp_bar(u->c, x, y + COMPACT_ICON_H, TILE, m->hp, m->maxHp);
+      continue;
+    }
     char lv[8];
     snprintf(lv, sizeof lv, "Lv%d", m->level);
     text(u, x + (TILE - pd_text_width(lv)) / 2, y + 24, lv, u->L->text);
@@ -193,7 +391,8 @@ static bool has_minimap(const struct hud *u) {
 }
 
 static int minimap_w(int mw) { return mw + 2 * PAD; }
-static int minimap_h(int mh, int lines) { return mh + 2 * PAD + 3 + lines * LINE; }
+#define NAME_H (small ? 10 : LINE)
+static int minimap_h(int mh, int lines) { return mh + 2 * PAD + 3 + lines * NAME_H; }
 
 // The region map around the player's head (HudMiniMap), mw x mh at 1x, the place's name under it ([lines]: RAILS'
 // narrow one wraps it onto two).
@@ -234,8 +433,11 @@ static void minimap(struct hud *u, int x, int y, int mw, int mh, int lines) {
         }
   }
   if (name && *name) {
-    pd_clip(u->c, mx, my + mh + 1, mw, lines * LINE + 4);
-    if (lines > 1)
+    pd_clip(u->c, mx, my + mh + 1, mw, lines * NAME_H + 4);
+    if (small && lines == 1 && small_text(u->c, 0, 0, name, 0, true)) {
+      small_text(u->c, mx + 1, my + mh + 2, name, u->L->shadow, false);
+      small_text(u->c, mx, my + mh + 1, name, u->L->text, false);
+    } else if (lines > 1)
       pd_text_wrap(u->c, mx, my + mh + 1, mw, LINE, lines, name, u->L->text, u->L->shadow);
     else
       text(u, mx, my + mh + 1, name, u->L->text);
@@ -507,16 +709,16 @@ static void compact(struct hud *u) {
   }
   // A picture narrower than the rows (a Game Boy game's 160 in ORIGINAL): the last buttons go first (COMPANION: X
   // opens it anyway), then the last ball kinds, until each row fits.
-  int avail = u->c->w - 2 * EDGE;
+  int avail = u->x1 - u->x0 - 2 * EDGE;
   while (u->buttons > 1 && buttons_w(u, false) > avail)
     u->buttons--;
   while (u->balls > 1 && balls_w(u, false) > avail)
     u->balls--;
-  column(u, BOTTOM_UP, 3, false, EDGE, column_w(u, BOTTOM_UP, 3, false), -1, u->c->h - EDGE, true);
+  column(u, BOTTOM_UP, 3, false, u->x0 + EDGE, column_w(u, BOTTOM_UP, 3, false), -1, u->c->h - EDGE, true);
 }
 
 static bool tight(const struct hud *u) {
-  return u->partyN && party_width(u) + column_w(u, BOTTOM_UP, 3, false) + 3 * EDGE > u->c->w;
+  return u->partyN && party_width(u) + column_w(u, BOTTOM_UP, 3, false) + 3 * EDGE > u->x1 - u->x0;
 }
 
 // CORNERS / CORNERS 2 ([swapped]: the minimap bottom right, the buttons top right).
@@ -525,16 +727,16 @@ static void corners(struct hud *u, bool swapped) {
     compact(u);
     return;
   }
-  int W = u->c->w, H = u->c->h;
+  int R = u->x1, H = u->c->h, mw = sizes->mapW, mh = sizes->mapH;
   if (u->map)
-    minimap(u, W - EDGE - minimap_w(104), swapped ? H - EDGE - minimap_h(64, 1) : EDGE, 104, 64, 1);
+    minimap(u, R - EDGE - minimap_w(mw), swapped ? H - EDGE - minimap_h(mh, 1) : EDGE, mw, mh, 1);
   if (u->partyN)
-    party_row(u, EDGE, H - EDGE - PARTY_H);
+    party_row(u, u->x0 + EDGE, H - EDGE - PARTY_H);
   int cw = column_w(u, BOTTOM_UP, 3, false);
   if (swapped)
-    column(u, TOP_DOWN, 3, false, W - EDGE - cw, cw, 1, EDGE, false);
+    column(u, TOP_DOWN, 3, false, R - EDGE - cw, cw, 1, EDGE, false);
   else
-    column(u, BOTTOM_UP, 3, false, W - EDGE - cw, cw, 1, H - EDGE, true);
+    column(u, BOTTOM_UP, 3, false, R - EDGE - cw, cw, 1, H - EDGE, true);
 }
 
 // RAILS: the party down the left, the minimap and the rest down the right, beside the GBA's 3:2.
@@ -614,7 +816,9 @@ bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snap
     out->n = 0;
   if (!s || !s->valid)
     return false;
-  struct hud u = {.c = c, .g = g, .s = s, .h = h, .st = st, .out = out,
+  small = h->compact;
+  sizes = small ? &COMPACT_SIZES : &NORMAL_SIZES;
+  struct hud u = {.c = c, .g = g, .s = s, .h = h, .st = st, .out = out, .x0 = h->left, .x1 = h->right ? h->right : c->w,
                   .L = &LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
   // WINDOW on a Game Boy game: the game's own black-on-white window (OptionColors' Gen 1 look), not FireRed's.
   static struct look gbWindow;
@@ -634,13 +838,17 @@ bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snap
   for (int p = 0; s->bagOk && p < PD_POCKET_COUNT; p++)
     bag |= s->bag[p].count > 0;
   // HudButtons' order: PC, BAG, WILD, then COMPANION (one screen: the side panel's button).
-  if (h->pc && shows(&u, PD_HUD_PC))
+  if (h->noButtons)
+    ;
+  else if (h->pc && shows(&u, PD_HUD_PC))
     u.button[u.buttons++] = HUD_PC;
-  if (bag && shows(&u, PD_HUD_BAG))
-    u.button[u.buttons++] = HUD_BAG;
-  if (h->wild >= 0 && shows(&u, PD_HUD_WILD))
-    u.button[u.buttons++] = HUD_WILD;
-  u.button[u.buttons++] = HUD_COMPANION;
+  if (!h->noButtons) {
+    if (bag && shows(&u, PD_HUD_BAG))
+      u.button[u.buttons++] = HUD_BAG;
+    if (h->wild >= 0 && shows(&u, PD_HUD_WILD))
+      u.button[u.buttons++] = HUD_WILD;
+    u.button[u.buttons++] = HUD_COMPANION;
+  }
   switch (st->hudLayout) {
   case PD_HUD_CORNERS_2: corners(&u, true); break;
   case PD_HUD_RAILS: rails(&u); break;
@@ -666,7 +874,9 @@ void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx,
   static const struct hud_state none = {.wild = -1, .focus = -1};
   if (!s || !s->valid || s->partyCount <= 0 || !draw)
     return;
-  struct hud u = {.c = c, .s = s, .h = &none, .st = &defaults, .monDraw = draw, .monCtx = ctx, .L = &LOOKS[0]};
+  small = false;
+  sizes = &NORMAL_SIZES;
+  struct hud u = {.c = c, .s = s, .h = &none, .st = &defaults, .monDraw = draw, .monCtx = ctx, .L = &LOOKS[0], .x1 = c->w};
   u.partyN = s->partyCount < PD_PARTY_SIZE ? s->partyCount : PD_PARTY_SIZE;
   if (c->w >= party_width(&u) + 2 * EDGE && c->h >= PARTY_H + 2 * EDGE)
     party_row(&u, EDGE, c->h - EDGE - PARTY_H);
@@ -679,7 +889,9 @@ void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct 
     c->px[i] = QUICK_CLEAR;
   if (!s->valid)
     return;
-  struct hud u = {.c = c, .s = s, .h = h, .st = st, .monDraw = monDraw, .monCtx = ctx, .itemDraw = itemDraw,
+  small = false;
+  sizes = &NORMAL_SIZES;
+  struct hud u = {.c = c, .s = s, .h = h, .st = st, .monDraw = monDraw, .monCtx = ctx, .itemDraw = itemDraw, .x1 = c->w,
                   .repelItem = repelItem,
                   .L = &LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
   u.partyN = !minimal && shows(&u, PD_HUD_PARTY) ? s->partyCount : 0;
@@ -698,14 +910,18 @@ void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct 
 
 void hud_ds_minimap(struct pd_canvas *c, const struct pd_settings *st, const char *name, hud_ds_map_fn draw) {
   enum { W=104, H=64 };
-  struct hud u = {.c=c, .L=&LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
+  small = false;
+  sizes = &NORMAL_SIZES;
+  struct hud u = {.c=c, .x1=c->w, .L=&LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
   const int x=c->w-EDGE-minimap_w(W), y=EDGE;
   panel(&u,x,y,minimap_w(W),minimap_h(H,1));
   draw(c,x+PAD,y+PAD,W,H);
   pd_text_fit(c,x+PAD,y+PAD+H+1,W,name,u.L->text,u.L->shadow);
 }
 
-uint32_t hud_key(const struct pd_snapshot *s, const struct hud_state *h, const struct pd_settings *st) {
+int hud_compact_map_width(void) { return COMPACT_SIZES.mapW + 2 * COMPACT_SIZES.pad; }
+
+uint32_t hud_key(const struct pd_game *g, const struct pd_snapshot *s, const struct hud_state *h, const struct pd_settings *st) {
   uint32_t k = 2166136261u;
 #define MIX(v) (k = (k ^ (uint32_t)(v)) * 16777619u)
   MIX(st->hudHidden);
@@ -716,6 +932,10 @@ uint32_t hud_key(const struct pd_snapshot *s, const struct hud_state *h, const s
   MIX(h->pc);
   MIX(h->wild);
   MIX(h->focus);
+  MIX(h->compact);
+  MIX(h->noButtons);
+  MIX(h->left);
+  MIX(h->right);
   if (s && s->valid) {
     MIX(s->partyCount);
     for (int i = 0; i < s->partyCount && i < PD_PARTY_SIZE; i++) {
@@ -726,8 +946,16 @@ uint32_t hud_key(const struct pd_snapshot *s, const struct hud_state *h, const s
       MIX(s->party[i].status);
     }
     MIX(s->mapsec);
-    MIX(s->posOk ? s->x : 0);
-    MIX(s->posOk ? s->y : 0);
+    // The tile the minimap shows, not every step: a redraw is several ms on a 3DS.
+    int page = -1, tx = 0, ty = 0;
+    if (g && pd_map_player_tile(g, s, &page, &tx, &ty)) {
+      MIX(page);
+      MIX(tx);
+      MIX(ty);
+    } else {
+      MIX(s->posOk ? s->x : 0);
+      MIX(s->posOk ? s->y : 0);
+    }
     MIX(s->gender);
     MIX(s->bagOk);
     for (int p = 0; s->bagOk && p < PD_POCKET_COUNT; p++)

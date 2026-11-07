@@ -168,7 +168,7 @@ FEATURES = [
     ("GB look: ROM party icons (Crystal Clear, Prism, Polished, PureRGB)", "their LZ / sheet icons", r"gb_icons_lz"),
     ("GB look: palettes", "Red / Blue tint, PureRGB ink", r"pd_gb_ink"),
     ("GB party switch", "POKéMON switch in battle (GbPartySwitch.kt)", r"pd_gb_party_switch|gb_switch"),
-    ("GB quick menu", "quick-menu field items on Game Boy", r"gb_quick|pd_gb_field"),
+    ("GB quick menu", "quick-menu field items on Game Boy", r"gb_quick|gb_field"),
     ("Hack CARD: Imperium", "IMPERIUM card style", r"PD_CARD_IMPERIUM"),
     ("European Yellow", "DE/FR/IT/ES Yellow configs (YellowLanguages.kt)", r"YELLOW_DE|YELLOW_FR"),
 ]

@@ -4,13 +4,12 @@
 #include <jni.h>
 #include <string.h>
 
+#include "pk_host.h"
 #include "pk_link.h"
 
 #define PK_LINK_SAMPLE_RATE 48000
 
 extern void (*pk_link_after_reset)(struct mCore*);
-/** pokedaisy_jni.c's RTC fix-up (a dead cartridge battery in the save), as the player's own core gets it. */
-void pk_heal_rtc(struct mCore* core);
 
 JNIEXPORT jboolean JNICALL
 Java_com_pokedaisy_app_LinkCore_pkLinkOpen(JNIEnv* env, jobject thiz, jobjectArray jRoms, jobjectArray jSaves) {
@@ -25,7 +24,7 @@ Java_com_pokedaisy_app_LinkCore_pkLinkOpen(JNIEnv* env, jobject thiz, jobjectArr
         roms[i] = (*env)->GetStringUTFChars(env, romStrings[i], NULL);
         saves[i] = (*env)->GetStringUTFChars(env, saveStrings[i], NULL);
     }
-    pk_link_after_reset = pk_heal_rtc;
+    pk_link_after_reset = pk_heal_rtc;   // the RTC fix-up, as the player's own core gets it
     bool ok = pk_link_open(n, roms, saves, PK_LINK_SAMPLE_RATE);
     for (int i = 0; i < n; i++) {
         (*env)->ReleaseStringUTFChars(env, romStrings[i], roms[i]);

@@ -10,6 +10,10 @@
 
 #include "pd_map.h"
 
+#include "pd_game.h"
+#include "pd_games.h"
+#include "pd_gb.h"
+
 #define GB_OFF(bank, addr) ((uint32_t) ((bank) * 0x4000 + ((addr) - 0x4000)))
 #define TOWN_W 160
 #define TOWN_H 144
@@ -189,8 +193,29 @@ static bool gen2(const struct pd_game* g, const struct gb_map_cart* t, struct pd
     return true;
 }
 
+// A cart the table above doesn't list, from its own art (its pd_games_gen.c entry: Polished Crystal, Prism, Crystal Clear,
+// PureRGB, the European Yellows): every town map page, the player's head; its sections' places are the entry's mapsecAt.
+static bool art_map(const struct pd_game* g, struct pd_map_art* art) {
+    int pages = pd_gb_art_maps(g);
+    if (pages > PD_MAP_PAGES) pages = PD_MAP_PAGES;
+    art->pages = 0;
+    for (int p = 0; p < pages; p++) {
+        if (!pd_gb_art_town_map(g, p, art->page[art->pages], TOWN_W)) break;
+        art->pages++;
+    }
+    if (!art->pages) return false;
+    for (int s = 0; s < 2; s++) art->hasHead[s] = pd_gb_art_player(g, s, art->head[s], PD_MAP_CLEAR);
+    return true;
+}
+
 bool pd_gb_map_draw(const struct pd_game* g, struct pd_map_art* art) {
     const struct gb_map_cart* t = cart_of(g);
+    if (!t && g->rom && g->kind == PD_GAME_GB && pd_gb_art_maps(g)) {
+        art->w = TOWN_W;
+        art->h = TOWN_H;
+        art->ok = art_map(g, art);
+        return art->ok;
+    }
     if (!t || !g->rom) return false;
     art->w = TOWN_W;
     art->h = TOWN_H;
@@ -200,17 +225,37 @@ bool pd_gb_map_draw(const struct pd_game* g, struct pd_map_art* art) {
 
 const struct pd_mapsec_rect* pd_gb_map_rects(const struct pd_game* g, int* count) {
     const struct gb_map_cart* t = cart_of(g);
+    if (!t && g->entry && g->entry->mapsecAt && pd_gb_art_maps(g)) {
+        // The entry's places (page, x, y, w, h; 255 = not on a map), as the table's rects.
+        static struct pd_mapsec_rect rects[512];
+        static const struct pd_game_entry* built;
+        int n = g->entry->mapsecAtCount < 512 ? g->entry->mapsecAtCount : 512;
+        if (built != g->entry) {
+            for (int i = 0; i < n; i++) {
+                const unsigned char* a = g->entry->mapsecAt[i];
+                rects[i] = (struct pd_mapsec_rect) { (int8_t) (a[0] == 255 ? -1 : a[0]), a[1], a[2], a[3], a[4] };
+            }
+            built = g->entry;
+        }
+        *count = n;
+        return rects;
+    }
     *count = t ? *t->rectCount : 0;
     return t ? t->rects : NULL;
 }
 
 bool pd_gb_map_gen1(const struct pd_game* g) {
     const struct gb_map_cart* t = cart_of(g);
-    return t && t->gen == 1;
+    if (!t) return g->cfg && g->cfg->gb && g->cfg->gb->gen == 1 && pd_gb_art_maps(g);
+    return t->gen == 1;
 }
 
 const char* pd_gb_map_page_name(const struct pd_game* g, int page) {
     const struct gb_map_cart* t = cart_of(g);
+    if (!t && pd_gb_art_maps(g)) {
+        if (g->cfg->gb->gen == 1) return "KANTO";
+        return page == 0 ? "JOHTO" : page == 1 ? "KANTO" : "";
+    }
     if (!t) return "";
     if (t->gen == 1) return "KANTO";
     return page == 0 ? "JOHTO" : page == 1 ? "KANTO" : "";

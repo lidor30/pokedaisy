@@ -19,7 +19,13 @@ struct hud_state {
   bool pc;       // the game's PC can open from here (pc_supported): the PC button
   int wild;      // this map's wild species not caught yet (WILD's badge); -1 = no wild data, no WILD button
   int focus;     // the focused target (enum hud_target), -1 = none: the HUD hotkey's cursor
+  int left, right; // keeps to these columns (the game's picture); right 0 = the whole canvas
+  bool compact;    // smaller, and no level on the party (a 3DS: its game is drawn at 1.5x)
+  bool noButtons;  // no PC / BAG / WILD / COMPANION buttons (a 3DS: no touch on the top screen, X opens the companion)
 };
+
+/* How wide the compact HUD's minimap is, its frame included. */
+int hud_compact_map_width(void);
 
 /* What a press on the HUD can reach: a party slot, the minimap, the balls, REPEL STEPS, a button. */
 enum hud_target {
@@ -56,7 +62,7 @@ typedef void (*hud_ds_map_fn)(struct pd_canvas *, int x, int y, int w, int h);
 void hud_ds_minimap(struct pd_canvas *, const struct pd_settings *, const char *name, hud_ds_map_fn draw);
 
 /* A number that changes whenever what the HUD shows does (so the host redraws it only then). */
-uint32_t hud_key(const struct pd_snapshot *s, const struct hud_state *h, const struct pd_settings *st);
+uint32_t hud_key(const struct pd_game *g, const struct pd_snapshot *s, const struct hud_state *h, const struct pd_settings *st);
 /* REPEL STEPS' full bar for a count first seen as [steps] (FieldHud's repelFull). */
 int hud_repel_full(int steps);
 

@@ -4,6 +4,9 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "pd_games.h"
+#include "pd_gb.h"
+
 #include "pd_gb.h"
 #include "pd_map.h"
 #include "pd_romart.h"
@@ -122,18 +125,20 @@ static void build(const struct pd_game* g) {
 }
 
 bool pd_dex_available(const struct pd_game* g) {
-    if (g->cfg->gb) return g->cfg->gb->dexCount > 0;  // a Game Boy game: the list from the save's flags only
+    if (g->cfg->gb) return g->cfg->gb->dexCount > 0 || pd_gb2_dex(g);  // a Game Boy game: the list from the save's flags
     build(g);
     return available;
 }
 
 int pd_dex_species(const struct pd_game* g, int national) {
+    if (g->cfg->gb && pd_gb2_dex(g)) return pd_gb2_dex_species(g, national); // Prism's own order, Polished's forms
     if (g->cfg->gb) return national >= 1 && national <= g->cfg->gb->dexCount ? national : 0;  // species ids are Dex numbers
     build(g);
     return available && national >= 1 && national <= g->cfg->nationalCount ? toSpecies[national] : 0;
 }
 
 int pd_dex_national(const struct pd_game* g, int species) {
+    if (g->cfg && g->cfg->gb) return pd_gb2_dex(g) ? pd_gb2_dex_number(g, species) : species;
     build(g);
     return available && species >= 1 && species < species_count(g->cfg) ? toNational[species] : 0;
 }
@@ -193,8 +198,14 @@ static bool expansion_entry(const struct pd_game* g, int national, int species, 
 
 bool pd_dex_entry(const struct pd_game* g, int national, struct pd_dex_entry* out) {
     memset(out, 0, sizeof(*out));
+    out->statCount = 6;
     const struct pd_config* cfg = g->cfg;
-    if (cfg && cfg->gb) return pd_gb_dex_entry(g, national, out);
+    if (cfg && cfg->gb) {
+        out->heightIn = out->weightLbs10 = -1; // a metric cart has no feet / pounds (the app's Gen1Dex / Gen2Dex)
+        bool ok = pd_gb_dex_entry(g, national, out);
+        if (out->gen1Stats) out->statCount = 5;
+        return ok;
+    }
     if (!pd_dex_available(g)) return false;
     int species = pd_dex_species(g, national);
     if (!species) return false;
@@ -311,4 +322,32 @@ void pd_dex_weight(int hg, char* buf, int len) {
     long lbs = 100000L * hg / 4536;
     if (lbs % 10 >= 5) lbs += 10;
     snprintf(buf, (size_t) len, "%ld.%ld lbs.", lbs / 100, (lbs % 100) / 10);
+}
+
+void pd_dex_measures(const struct pd_game* g, const struct pd_dex_entry* e, char* height, int heightLen, char* weight, int weightLen) {
+    const struct pd_gb_dex* d = g->entry ? g->entry->gbDex : NULL;
+    if (e->heightIn > 0) snprintf(height, (size_t) heightLen, "%d'%02d\"", e->heightIn / 12, e->heightIn % 12);
+    else if (d && d->metric) snprintf(height, (size_t) heightLen, "%d%c%d%sm", e->heightDm / 10, d->decimal, e->heightDm % 10, d->unitSpace ? " " : "");
+    else pd_dex_height(e->heightDm, height, heightLen);
+    if (e->weightLbs10 > 0) snprintf(weight, (size_t) weightLen, "%d.%d lbs.", e->weightLbs10 / 10, e->weightLbs10 % 10);
+    else if (d && d->metric) snprintf(weight, (size_t) weightLen, "%d%c%d%skg", e->weightHg / 10, d->decimal, e->weightHg % 10, d->unitSpace ? " " : "");
+    else pd_dex_weight(e->weightHg, weight, weightLen);
+}
+
+int pd_dex_gb_count(const struct pd_game* g) {
+    if (!g->cfg || !g->cfg->gb) return 0;
+    if (g->entry && g->entry->gbDex) return g->entry->gbDex->count;
+    return g->cfg->gb->dexCount;
+}
+
+const char* pd_dex_category_suffix(const struct pd_game* g) {
+    return g->entry && g->entry->gbDex && g->entry->gbDex->suffix ? g->entry->gbDex->suffix : "POKéMON";
+}
+
+int pd_growth_rate(const struct pd_game* g, int species) {
+    if (!g->cfg || !g->cfg->speciesInfo || species <= 0 || species >= PD_SPECIES_EGG) return -1;
+    const struct pd_base_stats* bs = g->cfg->baseStats;
+    uint8_t rate = 0;
+    uint32_t stride = bs && bs->stride ? (uint32_t) bs->stride : 28;
+    return !g->cfg->expansion && pd_rom_read(g, g->cfg->speciesInfo + (uint32_t) species * stride + 19, &rate, 1) && rate <= 5 ? rate : -1;
 }

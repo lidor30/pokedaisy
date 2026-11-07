@@ -65,6 +65,9 @@ enum pd_guide_id {
     PD_GUIDE_RECHARGED_YELLOW_V194,
     PD_GUIDE_EMERALD_KAIZO,
     PD_GUIDE_GB_CRYSTAL,
+    PD_GUIDE_LETS_GO,
+    PD_GUIDE_MONOMYTH,
+    PD_GUIDE_GB_POLISHED,
 };
 
 // struct Pokemon's party fields (the app's PartyMonLayout): the party-only fields after the
@@ -88,6 +91,7 @@ struct pd_party_layout {
     int nicknameOff, nicknameLen;
     bool rowe;              // R.O.W.E.'s bit-packed struct (no substructs, no IVs, no held item)
     bool eliteRedux;        // Elite Redux's bit-packed struct (no substructs; IVs all 31)
+    bool monomythKey;       // Monomyth: the substructs are XORed with a key of its own (MonomythKey), its natures its own
     // Shininess, for the hacks that mark it (the app's shinyBelow / shinyModifier / shinyBits): shiny when the
     // personality's shiny value is below shinyBelow, flipped by bit 6 of the byte at shinyModifier; or, when
     // shinyBitsMask is set, when that byte at shinyBits has a mask bit. All 0 = not read.
@@ -95,7 +99,39 @@ struct pd_party_layout {
     unsigned shinyBitsMask;
 };
 extern const struct pd_party_layout pd_party_layout_vanilla, pd_party_layout_quetzal, pd_party_layout_soulgold,
-    pd_party_layout_team_rocket, pd_party_layout_rowe, pd_party_layout_rogue, pd_party_layout_elite_redux;
+    pd_party_layout_team_rocket, pd_party_layout_rowe, pd_party_layout_rogue, pd_party_layout_elite_redux,
+    pd_party_layout_monomyth;
+
+// USE on a Pokémon, GIVE and TAKE (the app's PartyItemFns, gamedata's PARTY_ITEMS_* records).
+struct pd_party_fns {
+    uint32_t getMonData, setMonData, itemNoEffect, itemEffect, addBagItem, party, partyCount, scratch;
+    int itemCount;
+    uint32_t unholdablePockets; // a bit per struct Item pocket id
+    uint32_t codeCrcs[5];
+    const uint16_t* medicine;
+    int medicineCount;
+    const uint16_t* ppOne;
+    int ppOneCount;
+    const uint16_t* ppAll;
+    int ppAllCount;
+    const uint16_t* mail;
+    int mailCount;
+    const uint32_t* useFuncs;
+    int useFuncCount;
+    int hpUp, shedinja, monFieldShift;
+};
+
+// How a game keeps its PC boxes (the app's PcStorageLayout): format (enum pd_box_format, pd_boxes.h), boxes, a record's
+// size, whether pokemonStoragePtr is the storage itself; CFRU's compressed boxes: where they live, the moves table that
+// gives their PP, and boxes 20-25 elsewhere in EWRAM.
+struct pd_pc_storage {
+    int format, boxes, record;
+    bool direct;
+    uint32_t cfruStorage, cfruMoves;
+    uint32_t cfruExtra[6];
+};
+extern const struct pd_pc_storage pd_pc_vanilla, pd_pc_static, pd_pc_plain, pd_pc_soulgold, pd_pc_unbound, pd_pc_radical_red,
+    pd_pc_amethyst, pd_pc_amethyst_v141, pd_pc_sword_shield, pd_pc_gs_chronicles;
 
 // struct BattlePokemon's field offsets (the app's BattleMonLayout); a config without one is retail's.
 struct pd_battle_layout {
@@ -105,9 +141,10 @@ struct pd_battle_layout {
 };
 extern const struct pd_battle_layout pd_battle_layout_vanilla, pd_battle_layout_expansion, pd_battle_layout_tmt2,
     pd_battle_layout_team_rocket, pd_battle_layout_wishes, pd_battle_layout_rowe, pd_battle_layout_soulgold,
-    pd_battle_layout_elite_redux;
+    pd_battle_layout_elite_redux, pd_battle_layout_monomyth;
 
 struct pd_gb_config;
+struct pd_game_entry;
 
 enum { PD_DEX_SB1 = 1, PD_DEX_SB2, PD_DEX_FIXED };
 
@@ -160,6 +197,16 @@ struct pd_config {
     uint32_t battlerPartyIndexes;
     uint32_t battleStructPtr;
     uint32_t monToSwitchIntoOff;
+    // The battle's touch controls (pd_binput.h; the app's BattleInputController): gMain's inBattle byte,
+    // gBattlerControllerFuncs and the handlers each battler's function can be; the battle menus' cursors (a byte per
+    // battler; 0 = walked blind); gPartyMenu (0 = no POKéMON switch) and whether its slots sit in two columns.
+    uint32_t inBattleOff;
+    uint32_t battlerControllerFuncs;
+    uint32_t handleInputChooseAction, handleInputChooseMove, handleInputChooseTarget;
+    uint32_t completeWhenChoseItem, waitForMonSelection;
+    uint32_t actionCursor, moveCursor;
+    uint32_t partyMenu;
+    bool partyMenuGrid;
     // The party menu's icons in the ROM: gMonIconTable (a tiles pointer per
     // species), gMonIconPaletteIndices (u8) and gMonIconPaletteTable
     // ({data, tag}, 8 bytes). 0 = none.
@@ -186,6 +233,32 @@ struct pd_config {
     uint32_t bagPockets;
     uint8_t bagOrder[PD_BAG_POCKETS_MAX];
     int bagCount; // how many pockets gBagPockets holds (a hack's: up to PD_BAG_POCKETS_MAX); folded into PD_POCKET_*
+    // Bags of their own (0 / NULL = gBagPockets): Quetzal's BAG3 bit-stream (bag3Off / bag3TailOff in SaveBlock1, split at
+    // bag3SplitAt, key items from bag3KeyBit) and Elite Redux's owned bits (itemFlagsCount bits at itemFlagsOff); each item's
+    // pocket by id (itemPockets, PD_POCKET_*, itemPocketCount ids).
+    uint32_t bag3Off, bag3TailOff, itemFlagsOff;
+    int bag3SplitAt, bag3KeyBit, itemFlagsCount, itemPocketCount;
+    const uint8_t* itemPockets;
+
+
+    // The DEX's sections (DexDetails.kt), on vanilla's tables: gEvolutionTable, the TM bitfields, their moves, gMapGroups.
+    uint32_t dexEvolutions, dexTmhm, dexTmhmMoves, dexMapGroups;
+    int dexSpeciesCount;
+    // The PC (NativeConfig.pcStorage, pokemonStoragePtr): NULL / 0 = not read.
+    uint32_t pokemonStoragePtr;
+    const struct pd_pc_storage* pcStorage;
+    // USE on a Pokémon, GIVE and TAKE (the app's PartyItemFns); NULL = none.
+    const struct pd_party_fns* partyFns;
+    // Where things sit that a few games moved (NativeConfig): a party mon's stride (0 = the layout's size), SaveBlock1's
+    // pos and SaveBlock2's playerGender, gMain's frame counter; mapsec ids as u16 (SoulGold).
+    int monStride;
+    uint32_t saveBlock1PosOff, playerGenderOff, frameCounterOff;
+    bool mapSecWide;
+    bool monIconPacked;       // Monomyth's own tile coder
+    bool monIconRecord;       // Unbound's: an entry points at the tiles with their palette behind them (UnboundIconSource)
+    // Emerald Rogue's own items: {tiles, palette} per entry from extraItemFirst on, extraItemCount of them.
+    uint32_t extraItemIconTable;
+    int extraItemFirst, extraItemCount, extraItemStride;
 
     // POKéDEX (the app's PokedexTables): ROM tables ...
     uint32_t dexEntries;       // gPokedexEntries, by national number
@@ -321,6 +394,7 @@ struct pd_config {
 enum pd_card_style { PD_CARD_NONE, PD_CARD_KANTO, PD_CARD_HOENN, PD_CARD_LEGACY, PD_CARD_UNBOUND, PD_CARD_LAZARUS,
                       PD_CARD_RECHARGED_YELLOW, PD_CARD_RECHARGED_YELLOW_V1_9, PD_CARD_SOULGOLD, PD_CARD_GLAZED };
 
+
 // The bag's pockets, in a fixed order of our own (the app's POCKET_* ids).
 enum pd_pocket {
     PD_POCKET_ITEMS,
@@ -328,6 +402,10 @@ enum pd_pocket {
     PD_POCKET_TMHM,
     PD_POCKET_BERRIES,
     PD_POCKET_KEY,
+    PD_POCKET_MEDICINE,
+    PD_POCKET_MAIL,
+    PD_POCKET_BATTLE_ITEMS,
+    PD_POCKET_MEGA_STONES,
     PD_POCKET_COUNT,
 };
 
@@ -350,6 +428,9 @@ struct pd_game {
     int shinyBelow;
     // A Game Boy game: no map-section names yet (the GBA hacks' come from pd_text.mapsecs / the ROM).
     bool hackMaps;
+    // What the app shows of this ROM beyond its config (pd_games_gen.c, by SHA-1): its look, its PC's moves; NULL = none.
+    const struct pd_game_entry* entry;
+    char language; // the ROM header's language letter ('E', 'J', ...)
 };
 
 // The ROMs whose shiny check is known (pd_shiny_gen.c, from ShinyOdds.kt), NULL-terminated.

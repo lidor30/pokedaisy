@@ -26,6 +26,16 @@ void pd_settings_defaults(struct pd_settings* s) {
     s->quickBtn = PD_BTN_Y;
     s->companionBtn = PD_BTN_X;
     s->hudBtn = PD_BTN_NONE;
+    s->hideHints = false;
+    s->oneTapMoves = false;
+    s->gameSpeed = 0;
+    s->gameVolume = 100;
+    s->gameMuted = false;
+    s->autoRun = false;
+    s->darkMode = false;
+    s->ffNormal = false;
+    s->cheats = false;
+    s->theme = 8; // POKéDAISY
 }
 
 const int PD_FF_SPEEDS[PD_FF_CHOICES] = {2, 3, 4, 5, 6, 8, 10, 0};
@@ -61,10 +71,17 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
             if (int_in(value, 0, 10, &n) && PD_FF_SPEEDS[pd_ff_index(n)] == n) s->ffSpeed = n;
         }
         else if (!strcmp(key, "guide")) int_in(value, 0, 0x7FFFFFFF, &s->guideNotice);
+        else if (!strcmp(key, "dark")) s->darkMode = atoi(value) != 0;
+        else if (!strcmp(key, "ffnormal")) s->ffNormal = atoi(value) != 0;
+        else if (!strcmp(key, "cheats")) s->cheats = atoi(value) != 0;
+        else if (!strcmp(key, "theme")) int_in(value, 0, 99, &s->theme);
         else if (!strcmp(key, "aspect")) int_in(value, 0, PD_ASPECTS - 1, &s->aspect);
         else if (!strcmp(key, "autozoom")) {
             int on;
             if (int_in(value, 0, 1, &on)) s->autoZoom = on;
+        } else if (!strcmp(key, "perf")) {
+            int on;
+            if (int_in(value, 0, 1, &on)) s->showPerf = on;
         } else if (!strcmp(key, "wildoff")) {
             int on;
             if (int_in(value, 0, 1, &on)) s->wildOff = on;
@@ -90,10 +107,14 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
         else if (!strcmp(key, "quickbtn")) int_in(value, 0, PD_BTN_L2 + 1, &s->quickBtn);
         else if (!strcmp(key, "companionbtn")) int_in(value, 0, PD_BTN_L2 + 1, &s->companionBtn);
         else if (!strcmp(key, "hudbtn")) int_in(value, 0, PD_BUTTONS - 1, &s->hudBtn);
+        else if (!strcmp(key, "speed")) int_in(value, 0, PD_GAME_SPEED_COUNT - 1, &s->gameSpeed);
+        else if (!strcmp(key, "volume")) int_in(value, 20, 100, &s->gameVolume);
         else {
             int on;
             bool* b = !strcmp(key, "ffaudio") ? &s->ffAudio : !strcmp(key, "rewind") ? &s->rewind
-                    : !strcmp(key, "runindoors") ? &s->runIndoors : NULL;
+                    : !strcmp(key, "runindoors") ? &s->runIndoors : !strcmp(key, "nohints") ? &s->hideHints
+                    : !strcmp(key, "onetap") ? &s->oneTapMoves : !strcmp(key, "mute") ? &s->gameMuted
+                    : !strcmp(key, "autorun") ? &s->autoRun : NULL;
             if (b && int_in(value, 0, 1, &on)) *b = on;
         }
     }
@@ -114,6 +135,9 @@ bool pd_settings_save(const struct pd_settings* s, const char* path) {
     fprintf(f, "scaling=%d\nffaudio=%d\nrewind=%d\nrunindoors=%d\n", s->scaling, s->ffAudio ? 1 : 0,
             s->rewind ? 1 : 0, s->runIndoors ? 1 : 0);
     fprintf(f, "quickbtn=%d\ncompanionbtn=%d\nhudbtn=%d\n", s->quickBtn, s->companionBtn, s->hudBtn);
+    fprintf(f, "dark=%d\ntheme=%d\nffnormal=%d\ncheats=%d\n", s->darkMode, s->theme, s->ffNormal, s->cheats);
+    fprintf(f, "speed=%d\nvolume=%d\nnohints=%d\nonetap=%d\nmute=%d\nautorun=%d\nperf=%d\n", s->gameSpeed,
+            s->gameVolume, s->hideHints, s->oneTapMoves, s->gameMuted, s->autoRun, s->showPerf ? 1 : 0);
     if (fclose(f) != 0) return false;
     return rename(tmp, path) == 0;
 }

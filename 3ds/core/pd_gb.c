@@ -6,6 +6,8 @@
 #include <string.h>
 
 #include "pd_game.h"
+#include "pd_games.h"
+#include "pd_gb_world.h"
 #include "pd_guide.h"
 #include "pd_tables.h"
 
@@ -20,9 +22,9 @@
 #define G2_TMS 57
 
 extern const struct pd_gb_team pd_gb_teams_crystal[];
-extern const uint16_t pd_gb_internal_to_dex_yellow[], pd_gb_internal_to_dex_pure_rgb[], pd_gb_gender_crystal[],
+extern const uint16_t pd_gb_internal_to_dex_yellow[], pd_gb_internal_to_dex_pure_rgb[], pd_gb_internal_to_dex_yellow_legacy[], pd_gb_gender_crystal[],
     pd_gb_gender_prism[], pd_gb_gender_polished[], pd_gb_tm_crystal[], pd_gb_tm_prism[], pd_gb_tm_polished[];
-extern const int pd_gb_internal_to_dex_yellow_count, pd_gb_internal_to_dex_pure_rgb_count, pd_gb_gender_crystal_count,
+extern const int pd_gb_internal_to_dex_yellow_count, pd_gb_internal_to_dex_pure_rgb_count, pd_gb_internal_to_dex_yellow_legacy_count, pd_gb_gender_crystal_count,
     pd_gb_gender_prism_count, pd_gb_gender_polished_count, pd_gb_tm_crystal_count, pd_gb_tm_prism_count,
     pd_gb_tm_polished_count;
 
@@ -34,13 +36,38 @@ const struct pd_gb_config pd_gb_yellow = {
     .internalToDex = pd_gb_internal_to_dex_yellow, .bagSlots = 20,
     .dexCaught = 0xD2F6, .dexSeen = 0xD309, .dexCount = 151,
     .guideRam = &(const struct pd_gb_guide_ram){ 0xD746, 0xD5A5, 0xD6EF, 0xD736, 0xD355, 0xD714, 0xD35D }, .teams = pd_gb_teams_yellow,
+    .tileMap = 0xC3A0, .moveMenuType = 0xCCDB, .outSlot = 0xCC2F, .topMenuItemY = 0xCC24, .battleMenuLeftX = 9, .battleMenuRightX = 15, .battlePartyMenu = 2, .partyMenuType = 0xD07C,
+};
+// The German, French, Italian and Spanish Yellows (Gen1Reader.kt's GEN1_YELLOW_EUROPE): English's code with their own
+// text, everything from wBattleMon up 5 bytes later (the menus and tile map didn't move); the GUIDE's RAM shifted with it.
+#define PD_GB_YELLOW_EUROPE \
+    .gen = 1, .partyCount = 0xD167, .partyMons = 0xD16F, .numItems = 0xD321, .money = 0xD34B, .battleMode = 0xD05B, \
+    .battleMon = 0xD018, .enemyMon = 0xCFE9, .otPartyCount = 0xD8A0, .otPartyMons = 0xD8A8, .curOTMon = 0xCFEC, \
+    .internalToDex = pd_gb_internal_to_dex_yellow, .bagSlots = 20, \
+    .dexCaught = 0xD2FB, .dexSeen = 0xD30E, .dexCount = 151, \
+    .guideRam = &(const struct pd_gb_guide_ram){ 0xD74B, 0xD5AA, 0xD6F4, 0xD73B, 0xD35A, 0xD719, 0xD362 }, .teams = pd_gb_teams_yellow, \
+    .tileMap = 0xC3A0, .moveMenuType = 0xCCDB, .outSlot = 0xCC2F, .topMenuItemY = 0xCC24, .battlePartyMenu = 2, .partyMenuType = 0xD081,
+const struct pd_gb_config pd_gb_yellow_de = { PD_GB_YELLOW_EUROPE .battleMenuLeftX = 7, .battleMenuRightX = 12 };
+const struct pd_gb_config pd_gb_yellow_fr = { PD_GB_YELLOW_EUROPE .battleMenuLeftX = 7, .battleMenuRightX = 13 };
+const struct pd_gb_config pd_gb_yellow_it = { PD_GB_YELLOW_EUROPE .battleMenuLeftX = 7, .battleMenuRightX = 14 };
+const struct pd_gb_config pd_gb_yellow_es = { PD_GB_YELLOW_EUROPE .battleMenuLeftX = 9, .battleMenuRightX = 15 };
+// Yellow Legacy (GEN1_YELLOW_LEGACY): Yellow's but the bag (59 slots) pushed money and the battle mode on; its own
+// internal species order. Its GUIDE RAM (GuideGen1Gen.kt's G1L_*) gives the map its place; no GUIDE pages here yet.
+const struct pd_gb_config pd_gb_yellow_legacy = {
+    .gen = 1, .partyCount = 0xD162, .partyMons = 0xD16A, .numItems = 0xD31C, .money = 0xD394, .battleMode = 0xD057,
+    .battleMon = 0xD013, .enemyMon = 0xCFE4, .otPartyCount = 0xD89B, .otPartyMons = 0xD8A3, .curOTMon = 0xCFE7,
+    .internalToDex = pd_gb_internal_to_dex_yellow_legacy, .bagSlots = 59,
+    .dexCaught = 0xD2F6, .dexSeen = 0xD309, .dexCount = 151,
+    .guideRam = &(const struct pd_gb_guide_ram){ 0xD746, 0xD5F3, 0xD6EF, 0xD736, 0xD3A3, 0xD714, 0xD3AB },
+    .tileMap = 0xC3A0, .moveMenuType = 0xCCDB, .outSlot = 0xCC2F, .topMenuItemY = 0xCC24, .battleMenuLeftX = 9, .battleMenuRightX = 15, .battlePartyMenu = 2, .partyMenuType = 0xD07C,
 };
 #define PD_GB_RED_BASE \
     .gen = 1, .partyCount = 0xD163, .partyMons = 0xD16B, .numItems = 0xD31D, .money = 0xD347, .battleMode = 0xD057, \
     .battleMon = 0xD014, .enemyMon = 0xCFE5, .otPartyCount = 0xD89C, .otPartyMons = 0xD8A4, .curOTMon = 0xCFE8, \
     .internalToDex = pd_gb_internal_to_dex_yellow, .bagSlots = 20, \
     .dexCaught = 0xD2F7, .dexSeen = 0xD30A, .dexCount = 151, \
-    .guideRam = &(const struct pd_gb_guide_ram){ 0xD747, 0xD5A6, 0xD6F0, 0xD737, 0xD356, 0xD715, 0xD35E },
+    .guideRam = &(const struct pd_gb_guide_ram){ 0xD747, 0xD5A6, 0xD6F0, 0xD737, 0xD356, 0xD715, 0xD35E }, \
+    .tileMap = 0xC3A0, .moveMenuType = 0xCCDB, .outSlot = 0xCC2F, .topMenuItemY = 0xCC24, .battleMenuLeftX = 9, .battleMenuRightX = 15, .battlePartyMenu = 2, .partyMenuType = 0xD07D,
 const struct pd_gb_config pd_gb_red = {
     PD_GB_RED_BASE
     .teams = pd_gb_teams_red,
@@ -55,6 +82,8 @@ const struct pd_gb_config pd_gb_pure_red = {
     .enemyMon = 0xCFE3, .otPartyCount = PD_WRAMX(1, 0xD8A4), .otPartyMons = PD_WRAMX(1, 0xD8AC), .curOTMon = 0xCFE6,
     .internalToDex = pd_gb_internal_to_dex_pure_rgb, .bagSlots = 30,
     .dexCaught = PD_WRAMX(1, 0xD2FF), .dexSeen = PD_WRAMX(1, 0xD312), .dexCount = 151,
+    .tileMap = 0xC3A0, .moveMenuType = 0xCCDB, .outSlot = 0xCC2F, .topMenuItemY = 0xCC24, .battleMenuLeftX = 9, .battleMenuRightX = 15,
+    .partyMenuType = PD_WRAMX(1, 0xD07D), .battlePartyMenu = 1,
 };
 #define PD_GB_CRYSTAL_BASE \
     .gen = 2, .partyCount = PD_WRAMX(1, 0xDCD7), .partyMons = PD_WRAMX(1, 0xDCDF), .numItems = PD_WRAMX(1, 0xD892), \
@@ -62,7 +91,9 @@ const struct pd_gb_config pd_gb_pure_red = {
     .money = PD_WRAMX(1, 0xD84E), .battleMode = PD_WRAMX(1, 0xD22D), .battleMon = 0xC62C, \
     .enemyMon = PD_WRAMX(1, 0xD206), .otPartyCount = PD_WRAMX(1, 0xD280), .otPartyMons = PD_WRAMX(1, 0xD288), \
     .curOTMon = 0xC663, .genderRatios = pd_gb_gender_crystal, .tmItems = pd_gb_tm_crystal, .speciesCount = 251, \
-    .itemsMax = 20, .ballsMax = 12, .keyItemsMax = 25,
+    .itemsMax = 20, .ballsMax = 12, .keyItemsMax = 25, \
+    .tileMap = 0xC4A0, .moveMenuType = PD_WRAMX(1, 0xD235), .outSlot = PD_WRAMX(1, 0xD0D4), .menu2D = 0xCFA1, .menuCursor = 0xCFA9, \
+    .cursorTile = 0xED, .partyMenuAction = PD_WRAMX(1, 0xD141),
 const struct pd_gb_config pd_gb_crystal = {
     PD_GB_CRYSTAL_BASE
     .dexCaught = PD_WRAMX(1, 0xDE99), .dexSeen = PD_WRAMX(1, 0xDEB9), .dexCount = 251,
@@ -116,6 +147,8 @@ const struct pd_gb_config pd_gb_gold = {
     .dexCaught = PD_WRAMX(1, 0xDBE4), .dexSeen = PD_WRAMX(1, 0xDC04), .dexCount = 251,
     .mapGroup = PD_WRAMX(1, 0xDA00), .backupMapGroup = PD_WRAMX(1, 0xD9F6),
     .landmarks = pd_gb_landmarks_gold_silver, .landmarkCount = &pd_gb_landmarks_gold_silver_count,
+    .tileMap = 0xC3A0, .moveMenuType = PD_WRAMX(1, 0xD11F), .outSlot = 0xCFC6, .menu2D = 0xCED8, .menuCursor = 0xCEE0,
+    .cursorTile = 0xED, .partyMenuAction = PD_WRAMX(1, 0xD03E),
 };
 // Prism: Crystal's RAM but the bag, and its own 254 species ids.
 const struct pd_gb_config pd_gb_prism = {
@@ -125,6 +158,8 @@ const struct pd_gb_config pd_gb_prism = {
     .enemyMon = PD_WRAMX(1, 0xD206), .otPartyCount = PD_WRAMX(1, 0xD280), .otPartyMons = PD_WRAMX(1, 0xD288),
     .curOTMon = 0xC663, .genderRatios = pd_gb_gender_prism, .tmItems = pd_gb_tm_prism, .speciesCount = 254,
     .itemsMax = 40, .ballsMax = 25, .keyItemsMax = 50, .tmBits = true,
+    .tileMap = 0xC4A0, .moveMenuType = PD_WRAMX(1, 0xD235), .outSlot = PD_WRAMX(1, 0xD0D4), .menu2D = 0xCFA1, .menuCursor = 0xCFA9,
+    .cursorTile = 0xED, .partyMenuAction = PD_WRAMX(1, 0xD141),
 };
 const struct pd_gb_config pd_gb_polished = {
     .gen = 2, .partyCount = PD_WRAMX(1, 0xDCCE), .partyMons = PD_WRAMX(1, 0xDCD6), .numItems = PD_WRAMX(1, 0xD827),
@@ -136,6 +171,10 @@ const struct pd_gb_config pd_gb_polished = {
     .polished = true, .numMedicine = PD_WRAMX(1, 0xD8BF), .numBerries = PD_WRAMX(1, 0xD93F), .medicineMax = 37,
     .berriesMax = 31,
     .dexCaught = PD_WRAMX(1, 0xDE7B), .dexSeen = PD_WRAMX(1, 0xDEAD), .dexCount = POLISHED_NUM_SPECIES,
+    .tileMap = 0xC1A0, .moveMenuType = PD_WRAMX(1, 0xD239), .outSlot = PD_WRAMX(1, 0xD0DA), .menu2D = 0xCE7C, .menuCursor = 0xCE84,
+    .cursorTile = 0xF0, .partyMenuAction = PD_WRAMX(1, 0xD113),
+    .mapGroup = PD_WRAMX(1, 0xDCAC), .backupMapGroup = PD_WRAMX(1, 0xDCA7), .playerGender = PD_WRAMX(1, 0xD47A),
+    .landmarks = pd_gb_landmarks_polished, .landmarkCount = &pd_gb_landmarks_polished_count,
 };
 
 static int be16(const uint8_t* b) {
@@ -449,6 +488,7 @@ static bool read_gen2_bag(const struct pd_gb_config* g, struct pd_snapshot* s, p
 static void fill_counts(struct pd_gb_config* c) {
     if (c->internalToDex == pd_gb_internal_to_dex_yellow) c->internalCount = pd_gb_internal_to_dex_yellow_count;
     if (c->internalToDex == pd_gb_internal_to_dex_pure_rgb) c->internalCount = pd_gb_internal_to_dex_pure_rgb_count;
+    if (c->internalToDex == pd_gb_internal_to_dex_yellow_legacy) c->internalCount = pd_gb_internal_to_dex_yellow_legacy_count;
     if (c->genderRatios == pd_gb_gender_crystal) c->genderCount = pd_gb_gender_crystal_count;
     if (c->genderRatios == pd_gb_gender_prism) c->genderCount = pd_gb_gender_prism_count;
     if (c->genderRatios == pd_gb_gender_polished) c->genderCount = pd_gb_gender_polished_count;
@@ -584,11 +624,16 @@ void pd_gb_snapshot_read(struct pd_snapshot* s, const struct pd_config* cfg, pd_
         }
     }
 
+    // --- Polished Crystal's GUIDE world (pd_gb_world.c): its flags, badges, clock, champion's var and place ---
+    if (cfg->gb == &pd_gb_polished) pd_gbw_read(s, g, read, ctx);
+
     // --- battle ---
     uint8_t mode = 0;
     rd(read, ctx, g->battleMode, &mode, 1);
     s->inBattle = mode == 1 || mode == 2;
     if (!s->inBattle) return;
+    int cursor;
+    s->battleState = g->tileMap ? pd_gb_battle_menu(g, read, ctx, &cursor) : PD_BATTLE_BUSY;
     s->isTrainer = mode == 2;
     uint8_t bm[G2_BATTLE + 8];
     int bsize = g->gen == 1 ? G1_BATTLE : g->polished ? POLISHED_BATTLE : G2_BATTLE;
@@ -681,9 +726,223 @@ static int tile_px(const uint8_t* tile, int x, int y) {
     return (tile[2 * y] >> (7 - x) & 1) | (tile[2 * y + 1] >> (7 - x) & 1) << 1;
 }
 
+// --- the cart's own art (its entry's gbArt), where the core's tables don't cover the cart ---
+static const struct pd_gb_art* art_of(const struct pd_game* g) {
+    return g->entry && g->cfg && g->cfg->gb ? g->entry->gbArt : NULL;
+}
+
+static uint32_t art_off(int bank, int addr) {
+    return bank ? (uint32_t) (bank * 0x4000 + (addr - 0x4000)) : (uint32_t) addr;
+}
+
+static void put2x(uint32_t* out, int x, int y, uint32_t colour) {
+    out[y * 16 + x] = 0xFF000000u | colour; // the core's 16x16 icon (pd_gb_icon)
+}
+
+static bool icon_gen1(const struct pd_game* g, const struct pd_gb_art* a, int dex, uint32_t* out) {
+    const uint8_t* rom = g->rom;
+    if (dex < 1 || dex > a->dexCount) return false;
+    if (a->iconSheet) {
+        // PureRGB: an icon's 8 tiles as they are, OAM drawing tiles 0, 1 over 4, 5.
+        uint32_t icon = a->iconSheet + 0x80u * rom[a->monPartyData + (uint32_t) dex];
+        for (int y = 0; y < 16; y++)
+            for (int x = 0; x < 16; x++) {
+                int v = tile_px(rom + icon + 16 * ((y / 8) * 4 + x / 8), x % 8, y % 8);
+                if (v) put2x(out, x, y, a->iconColors[v - 1]);
+            }
+        return true;
+    }
+    // MonPartySpritePointers loads the shapes' tiles into VRAM; a 16 x 16 is a tile column and its mirror image.
+    int b = rom[a->monPartyData + (uint32_t) (dex - 1) / 2];
+    int type = (dex - 1) % 2 == 0 ? b >> 4 : b & 0xF;
+    int base = type << 2;
+    bool asymmetric = type == 2; // the helix: 4 tiles, no mirroring
+    static const uint8_t* vram[0x100];
+    memset(vram, 0, sizeof(vram));
+    for (int e = 0; e < a->iconPointerCount; e++) {
+        const uint8_t* o = rom + a->iconPointers + 6 * e;
+        int ptr = o[0] | o[1] << 8, count = o[2], bank = o[3];
+        int dest = ((o[4] | o[5] << 8) - 0x8000) / 16;
+        for (int k = 0; k < count && dest + k >= 0 && dest + k < 0x100; k++) vram[dest + k] = rom + art_off(bank, ptr) + 16 * k;
+    }
+    for (int y = 0; y < 16; y++)
+        for (int x = 0; x < 16; x++) {
+            int slot = asymmetric ? base + (y / 8) * 2 + x / 8 : base + (y / 8) * 2;
+            int tx = asymmetric ? x % 8 : (x < 8 ? x : 15 - x);
+            const uint8_t* tile = vram[slot];
+            int v = tile ? tile_px(tile, tx, y % 8) : 0;
+            if (v) put2x(out, x, y, a->iconColors[v - 1]);
+        }
+    return true;
+}
+
+static uint32_t gbc_rgb(const uint8_t* rom, uint32_t o) {
+    int c = rom[o] | rom[o + 1] << 8;
+    uint32_t r = c & 31, g = c >> 5 & 31, b = c >> 10 & 31;
+    return (r << 3 | r >> 2) << 16 | (g << 3 | g >> 2) << 8 | (b << 3 | b >> 2);
+}
+
+// Frame 1's four tiles (TL, TR, BL, BR) in [pal].
+static void draw_gen2(const uint8_t* tiles, const uint32_t* pal, uint32_t* out) {
+    for (int t = 0; t < 4; t++)
+        for (int y = 0; y < 8; y++)
+            for (int x = 0; x < 8; x++) {
+                int v = tile_px(tiles + 16 * t, x, y);
+                if (v) put2x(out, (t % 2) * 8 + x, (t / 2) * 8 + y, pal[v]);
+            }
+}
+
+static bool icon_gen2(const struct pd_game* g, const struct pd_gb_art* a, int species, uint32_t* out) {
+    const uint8_t* rom = g->rom;
+    bool polished = g->cfg->gb->polished;
+    uint8_t tiles[128];
+    uint32_t pal[4] = { 0, 0, 0, 0 };
+    if (a->minis) {
+        int mini = species > POLISHED_NUM_SPECIES ? POLISHED_NUM_SPECIES + a->cosmeticForms + (species - POLISHED_NUM_SPECIES - 1) : species;
+        const uint8_t* e = rom + a->minis + 7 * mini;
+        if (pd_gb_lz(rom, g->romSize, art_off(e[0], e[1] | e[2] << 8), tiles, 128, polished) < 64) return false;
+        uint32_t p = a->monPalettes + 8u * (uint32_t) species;
+        pal[1] = gbc_rgb(rom, p);
+        pal[2] = gbc_rgb(rom, p + 2);
+        draw_gen2(tiles, pal, out);
+        return true;
+    }
+    if (a->iconFarPointers) {
+        const uint8_t* e = rom + a->iconFarPointers + 3 * (species - 1);
+        if (pd_gb_lz(rom, g->romSize, art_off(e[0], e[1] | e[2] << 8), tiles, 128, false) < 64) return false;
+        uint32_t p = a->iconObjPals + 8u * (rom[a->iconPalIndex + (uint32_t) species - 1] >> 4 & 7);
+        for (int i = 1; i < 4; i++) pal[i] = gbc_rgb(rom, p + 2u * (uint32_t) i);
+        draw_gen2(tiles, pal, out);
+        return true;
+    }
+    if (a->bankLow) {
+        // Crystal Clear: by Dex number, LZ, each in its own colours (UNOWN's by letter).
+        int bank = species < 0x80 ? a->bankLow : a->bankHigh;
+        uint32_t table = a->icons + 2u * (uint32_t) species;
+        if (species == 201 && a->unownIcons) {
+            table = a->unownIcons;
+            bank = a->unownBank;
+        }
+        if (pd_gb_lz(rom, g->romSize, art_off(bank, rom[table] | rom[table + 1] << 8), tiles, 128, false) < 64) return false;
+        uint32_t p = a->iconPalettes + 8u * (uint32_t) species;
+        pal[1] = gbc_rgb(rom, p);
+        pal[2] = gbc_rgb(rom, p + 2);
+        draw_gen2(tiles, pal, out);
+        return true;
+    }
+    int id = species == PD_SPECIES_EGG ? a->eggIcon : rom[a->monMenuIcons + (uint32_t) species - 1];
+    uint32_t t = a->icons + 2u * (uint32_t) id;
+    uint32_t at = art_off(a->iconsBank, rom[t] | rom[t + 1] << 8);
+    for (int i = 0; i < 4; i++) pal[i] = gbc_rgb(rom, a->partyMenuObPals + 2u * (uint32_t) i);
+    draw_gen2(rom + at, pal, out);
+    return true;
+}
+
+// --- the town map ---
+
+static bool gen1_map(const struct pd_game* g, const struct pd_gb_art* a, uint32_t* out) {
+    const uint8_t* rom = g->rom;
+    if (!a->townMap) return false;
+    const uint8_t* tiles = rom + a->townMapTiles;
+    uint32_t o = a->townMap;
+    int cell = 0;
+    while (rom[o] && cell < 20 * 18) {
+        int b = rom[o++];
+        for (int k = 0; k < (b & 0xF) && cell < 20 * 18; k++, cell++) {
+            const uint8_t* tile = tiles + 16 * (b >> 4);
+            for (int y = 0; y < 8; y++)
+                for (int x = 0; x < 8; x++)
+                    out[((cell / 20) * 8 + y) * 160 + (cell % 20) * 8 + x] = a->townMapColors[tile_px(tile, x, y)];
+        }
+    }
+    return true;
+}
+
+static bool gen2_map(const struct pd_game* g, const struct pd_gb_art* a, int region, uint32_t* out) {
+    const uint8_t* rom = g->rom;
+    if (!a->townMapGfx || region < 0 || region >= a->townMapCount) return false;
+    static uint8_t tiles[0x1000], lz[20 * 18];
+    int size = pd_gb_lz(rom, g->romSize, a->townMapGfx, tiles, sizeof(tiles), g->cfg->gb->polished);
+    if (size <= 0) return false;
+    int first = 0;
+    const uint8_t* map = rom + a->townMaps[region];
+    if (a->townMapsLz) {
+        if (pd_gb_lz(rom, g->romSize, a->townMaps[region], lz, 20 * 17, false) != 20 * 17) return false;
+        map = lz;
+        first = 20;
+        for (int i = 0; i < 160 * 8; i++) out[i] = gbc_rgb(rom, a->pokegearPals);
+    }
+    for (int cell = first; cell < 20 * 18; cell++) {
+        int byte = map[cell - first];
+        if (byte == 0xFF) return false;
+        int tile = a->townMapFlips ? byte & 0x3F : byte;
+        bool xf = a->townMapFlips && (byte & 0x40), yf = a->townMapFlips && (byte & 0x80);
+        if (tile * 16 + 16 > size) return false;
+        int pal = tile >= a->townMapPal0From ? 0 : (rom[a->townMapPalMap + (uint32_t) tile / 2] >> (tile % 2 == 0 ? 0 : 4)) & 7;
+        if (pal >= a->townMapPalCount) return false;
+        for (int y = 0; y < 8; y++)
+            for (int x = 0; x < 8; x++) {
+                int v = tile_px(tiles + tile * 16, xf ? 7 - x : x, yf ? 7 - y : y);
+                out[((cell / 20) * 8 + y) * 160 + (cell % 20) * 8 + x] = gbc_rgb(rom, a->pokegearPals + 8u * (uint32_t) pal + 2u * (uint32_t) v);
+            }
+    }
+    return true;
+}
+
+bool pd_gb_art_town_map(const struct pd_game* g, int region, uint32_t* out, int stride) {
+    const struct pd_gb_art* a = art_of(g);
+    if (!a || !g->rom) return false;
+    static uint32_t page[160 * 144];
+    if (!(g->cfg->gb->gen == 1 ? gen1_map(g, a, page) : gen2_map(g, a, region, page))) return false;
+    for (int y = 0; y < 144; y++) memcpy(out + y * stride, page + y * 160, 160 * sizeof(uint32_t));
+    return true;
+}
+
+int pd_gb_art_maps(const struct pd_game* g) {
+    const struct pd_gb_art* a = art_of(g);
+    if (!a) return 0;
+    return g->cfg->gb->gen == 1 ? (a->townMap ? 1 : 0) : (a->townMapGfx ? a->townMapCount : 0);
+}
+
+bool pd_gb_art_player(const struct pd_game* g, int gender, uint32_t* out, uint32_t clear) {
+    const struct pd_gb_art* a = art_of(g);
+    if (!a || !g->rom) return false;
+    const struct pd_gb_config* c = g->cfg->gb;
+    const uint8_t* tiles;
+    static uint8_t buffer[128];
+    uint32_t pal[4];
+    if (c->gen == 1) {
+        if (!a->playerSprite) return false;
+        tiles = g->rom + a->playerSprite;
+        for (int i = 0; i < 4; i++) pal[i] = a->playerColors[i];
+    } else {
+        if (gender < 0 || !a->playerSprites[gender]) return false;
+        tiles = g->rom + a->playerSprites[gender];
+        if (a->playerLz) {
+            if (pd_gb_lz(g->rom, g->romSize, a->playerSprites[gender], buffer, sizeof(buffer), true) < 64) return false;
+            tiles = buffer;
+        }
+        for (int i = 0; i < 4; i++) pal[i] = gbc_rgb(g->rom, a->objectPals + 8u * (uint32_t) (a->playerPalFrom + gender) + 2u * (uint32_t) i);
+    }
+    for (int y = 0; y < 16; y++)
+        for (int x = 0; x < 16; x++) {
+            int v = tile_px(tiles + 16 * ((y / 8) * 2 + x / 8), x % 8, y % 8);
+            out[y * 16 + x] = v ? pal[v] : clear;
+        }
+    return true;
+}
+
+static bool art_icon(const struct pd_game* g, int species, uint32_t* out) {
+    const struct pd_gb_art* a = art_of(g);
+    if (!a || !g->rom || species <= 0) return false;
+    memset(out, 0, 16 * 16 * sizeof(uint32_t));
+    return g->cfg->gb->gen == 1 ? icon_gen1(g, a, species, out) : icon_gen2(g, a, species, out);
+}
+
 bool pd_gb_icon(const struct pd_game* g, int species, uint32_t* out) {
     const struct pd_gb_icons* t = gbIcons;
-    if (!t || !g->rom) return false;
+    if (!t) return art_icon(g, species, out); // the cart's own art (pd_games_gen.c), where the core has no table
+    if (!g->rom) return false;
     memset(out, 0, 16 * 16 * sizeof(uint32_t));
     if (t->gen == 1) {
         if (species == PD_SPECIES_EGG || species < 1 || species > 151) return false;
@@ -744,7 +1003,7 @@ bool pd_gb_icon(const struct pd_game* g, int species, uint32_t* out) {
 
 static const struct pd_gb_dex1* gbDex1;
 void pd_gb_dex_use(const struct pd_gb_dex1* t) { gbDex1 = t; }
-bool pd_gb_dex_pages(const struct pd_game* g) { return gbDex1 && g->rom; }
+bool pd_gb_dex_pages(const struct pd_game* g) { return (gbDex1 || pd_gb2_dex(g)) && g->rom; }
 
 static int gb_u8(const struct pd_game* g, uint32_t o) { const uint8_t* p = pd_rom_at_off(g, o, 1); return p ? p[0] : -1; }
 static int gb_u16(const struct pd_game* g, uint32_t o) { const uint8_t* p = pd_rom_at_off(g, o, 2); return p ? p[0] | p[1] << 8 : -1; }
@@ -783,10 +1042,17 @@ static void gen1_text(const struct pd_game* g, uint32_t o, char* out, size_t len
     while (n && out[n - 1] == ' ') out[--n] = 0;
 }
 
+int pd_gb_internal_count(const struct pd_gb_config* gb) {
+    return gb->internalCount ? gb->internalCount : gb->internalToDex == pd_gb_internal_to_dex_yellow ?
+        pd_gb_internal_to_dex_yellow_count : gb->internalToDex == pd_gb_internal_to_dex_pure_rgb ? pd_gb_internal_to_dex_pure_rgb_count :
+        gb->internalToDex == pd_gb_internal_to_dex_yellow_legacy ? pd_gb_internal_to_dex_yellow_legacy_count : 0;
+}
+
 static int internal_of(const struct pd_game* g, int dex) {
     const struct pd_gb_config* gb = g->cfg->gb;
     int count = gb->internalCount ? gb->internalCount : gb->internalToDex == pd_gb_internal_to_dex_yellow ?
-        pd_gb_internal_to_dex_yellow_count : gb->internalToDex == pd_gb_internal_to_dex_pure_rgb ? pd_gb_internal_to_dex_pure_rgb_count : 0;
+        pd_gb_internal_to_dex_yellow_count : gb->internalToDex == pd_gb_internal_to_dex_pure_rgb ? pd_gb_internal_to_dex_pure_rgb_count :
+        gb->internalToDex == pd_gb_internal_to_dex_yellow_legacy ? pd_gb_internal_to_dex_yellow_legacy_count : 0;
     for (int i = 1; i < count; i++)
         if (gb->internalToDex[i] == dex) return i;
     return 0;
@@ -797,6 +1063,7 @@ static uint32_t base_stats_of(const struct pd_gb_dex1* t, int dex) {
 }
 
 bool pd_gb_dex_entry(const struct pd_game* g, int dex, struct pd_dex_entry* out) {
+    if (pd_gb2_dex(g)) return pd_gb2_dex_entry(g, dex, out); // pd_gb_dex.c's pages, where the cart has its tables (either gen)
     const struct pd_gb_dex1* t = gbDex1;
     memset(out, 0, sizeof(*out));
     if (!t || !g->rom || dex < 1 || dex > 151) return false;
@@ -879,6 +1146,7 @@ static void delta(uint8_t* buf, int wT, int height) {
 }
 
 bool pd_gb_dex_sprite(const struct pd_game* g, int dex, uint32_t* out) {
+    if (pd_gb2_dex(g)) return pd_gb2_dex_sprite(g, dex, out);
     const struct pd_gb_dex1* t = gbDex1;
     if (!t || !g->rom || dex < 1 || dex > 151) return false;
     uint32_t s = base_stats_of(t, dex);
@@ -923,4 +1191,160 @@ bool pd_gb_dex_sprite(const struct pd_game* g, int dex, uint32_t* out) {
                 if (v && px >= 0 && px < PD_SPRITE && py >= 0 && py < PD_SPRITE) out[py * PD_SPRITE + px] = colors[v];
             }
     return true;
+}
+
+// The battle menus (pret's pokeyellow / pokecrystal): where each waits and its cursor.
+#define TILE_CURSOR 0xED // ▶, a menu waiting for input
+#define GEN1_BATTLE_MENU_TOP 0x0E
+#define GEN1_MOVE_MENU_TOP 0x0C
+#define GEN1_MOVE_MENU_X 0x05
+#define GEN1_SUBMENU_TOP 0x0C
+#define GEN2_BATTLE_MENU_TOP 0x0E
+#define GEN2_BATTLE_MENU_LEFT 0x09
+#define GEN2_MOVE_MENU_TOP 0x0D
+#define GEN2_MOVE_MENU_LEFT 0x05
+#define GEN2_CHOOSE_POKEMON 0
+#define GEN2_SWITCH 2
+#define GEN2_SUBMENU_TOP 0x0C
+#define POLISHED_SUBMENU_LEFT 0x0B
+
+static int read8(pd_read_fn read, void* ctx, uint32_t addr) {
+    uint8_t v = 0;
+    read(ctx, addr, &v, 1);
+    return v;
+}
+
+static bool cursor_shown(const struct pd_gb_config* c, pd_read_fn read, void* ctx, int row, int x, int tile) {
+    return row >= 0 && row < 18 && x >= 0 && x < 20 && read8(read, ctx, c->tileMap + (uint32_t) (row * 20 + x)) == tile;
+}
+
+static enum pd_battle_state gen1_battle_menu(const struct pd_gb_config* c, pd_read_fn read, void* ctx, int* cursor) {
+    int battle = read8(read, ctx, c->battleMode);
+    if (battle != 1 && battle != 2) return PD_BATTLE_NONE;
+    struct pd_gb_party_menu p = pd_gb_party_menu(c, read, ctx);
+    if (p.open) {
+        *cursor = p.cursor;
+        return PD_BATTLE_PARTY_OPEN;
+    }
+    uint8_t m[5];
+    read(ctx, c->topMenuItemY, m, 5);
+    int top = m[0], x = m[1], item = m[2], max = m[4];
+    if (top == GEN1_BATTLE_MENU_TOP && max == 1 && item <= 1 && (x == c->battleMenuLeftX || x == c->battleMenuRightX) &&
+        cursor_shown(c, read, ctx, top + 2 * item, x, TILE_CURSOR)) {
+        *cursor = (x == c->battleMenuRightX ? 1 : 0) + 2 * item;
+        return PD_BATTLE_ACTION;
+    }
+    if (top == GEN1_MOVE_MENU_TOP && x == GEN1_MOVE_MENU_X && item >= 1 && item <= 4 && read8(read, ctx, c->moveMenuType) == 0 &&
+        cursor_shown(c, read, ctx, top + item, x, TILE_CURSOR)) {
+        *cursor = item - 1;
+        return PD_BATTLE_MOVE;
+    }
+    return PD_BATTLE_BUSY;
+}
+
+static enum pd_battle_state gen2_battle_menu(const struct pd_gb_config* c, pd_read_fn read, void* ctx, int* cursor) {
+    int battle = read8(read, ctx, c->battleMode);
+    if (battle != 1 && battle != 2) return PD_BATTLE_NONE;
+    struct pd_gb_party_menu p = pd_gb_party_menu(c, read, ctx);
+    if (p.open) {
+        *cursor = p.cursor;
+        return PD_BATTLE_PARTY_OPEN;
+    }
+    uint8_t m[7], cur[2];
+    read(ctx, c->menu2D, m, 7);
+    read(ctx, c->menuCursor, cur, 2);
+    int top = m[0], left = m[1], rows = m[2], cols = m[3], spacing = m[6], y = cur[0], x = cur[1];
+    if (y < 1 || y > rows || x < 1 || x > cols) return PD_BATTLE_BUSY;
+    int tx = left + (x - 1) * (spacing & 0xF), ty = top + (y - 1) * (spacing >> 4);
+    if (!cursor_shown(c, read, ctx, ty, tx, c->cursorTile)) return PD_BATTLE_BUSY;
+    if (top == GEN2_BATTLE_MENU_TOP && left == GEN2_BATTLE_MENU_LEFT && rows == 2 && cols == 2) {
+        *cursor = (x - 1) + 2 * (y - 1);
+        return PD_BATTLE_ACTION;
+    }
+    if (top == GEN2_MOVE_MENU_TOP && left == GEN2_MOVE_MENU_LEFT && cols == 1 && rows >= 1 && rows <= 4 &&
+        read8(read, ctx, c->moveMenuType) == 0) {
+        *cursor = y - 1;
+        return PD_BATTLE_MOVE;
+    }
+    return PD_BATTLE_BUSY;
+}
+
+enum pd_battle_state pd_gb_battle_menu(const struct pd_gb_config* c, pd_read_fn read, void* ctx, int* cursor) {
+    *cursor = -1;
+    return c->gen == 1 ? gen1_battle_menu(c, read, ctx, cursor) : gen2_battle_menu(c, read, ctx, cursor);
+}
+
+static struct pd_gb_party_menu gen1_party_menu(const struct pd_gb_config* c, pd_read_fn read, void* ctx) {
+    struct pd_gb_party_menu r = { 0 };
+    if (!c->topMenuItemY || !c->partyMenuType) return r;
+    int battle = read8(read, ctx, c->battleMode);
+    if (battle != 1 && battle != 2) return r;
+    uint8_t m[5];
+    read(ctx, c->topMenuItemY, m, 5);
+    int top = m[0], x = m[1], item = m[2], max = m[4];
+    if (top == GEN1_SUBMENU_TOP && x == GEN1_SUBMENU_TOP && max == 2 && item <= 2 && cursor_shown(c, read, ctx, top + 2 * item, x, TILE_CURSOR)) {
+        r.open = r.submenu = true;
+        r.cursor = item;
+        return r;
+    }
+    if (top != 1 || x != 0 || item > max) return r;
+    int count = read8(read, ctx, c->partyCount);
+    int type = read8(read, ctx, c->partyMenuType);
+    if (count < 1 || count > PD_PARTY_SIZE || max != count - 1) return r;
+    if (type != 0 && type != c->battlePartyMenu) return r; // a Potion's "use on which?"
+    if (!cursor_shown(c, read, ctx, top + 2 * item, x, TILE_CURSOR)) return r;
+    r.open = true;
+    r.cursor = item;
+    r.forced = type == c->battlePartyMenu;
+    return r;
+}
+
+static struct pd_gb_party_menu gen2_party_menu(const struct pd_gb_config* c, pd_read_fn read, void* ctx) {
+    struct pd_gb_party_menu r = { 0 };
+    int battle = read8(read, ctx, c->battleMode);
+    if (battle != 1 && battle != 2) return r;
+    uint8_t m[7];
+    read(ctx, c->menu2D, m, 7);
+    int top = m[0], left = m[1], rows = m[2], cols = m[3], spacing = m[6];
+    int y = read8(read, ctx, c->menuCursor);
+    if (cols != 1 || spacing != 0x20 || y < 1 || y > rows) return r;
+    int ty = top + 2 * (y - 1);
+    if (ty >= 18 || left >= 20 || !cursor_shown(c, read, ctx, ty, left, c->cursorTile)) return r;
+    if (top == GEN2_SUBMENU_TOP && left == (c->polished ? POLISHED_SUBMENU_LEFT : GEN2_SUBMENU_TOP) && rows == 3) {
+        r.open = r.submenu = true;
+        r.cursor = y - 1;
+        return r;
+    }
+    if (top != 1 || left != 0) return r;
+    int count = read8(read, ctx, c->partyCount);
+    int action = read8(read, ctx, c->partyMenuAction);
+    if (count < 1 || count > PD_PARTY_SIZE || rows != count + 1) return r;
+    if (action != GEN2_CHOOSE_POKEMON && action != GEN2_SWITCH) return r;
+    r.open = true;
+    r.cursor = y == rows ? PD_GB_PARTY_CANCEL : y - 1;
+    r.forced = action == GEN2_SWITCH;
+    return r;
+}
+
+struct pd_gb_party_menu pd_gb_party_menu(const struct pd_gb_config* c, pd_read_fn read, void* ctx) {
+    return c->gen == 1 ? gen1_party_menu(c, read, ctx) : gen2_party_menu(c, read, ctx);
+}
+
+int pd_gb_party(const struct pd_gb_config* c, pd_read_fn read, void* ctx, struct pd_gb_party_mon* out) {
+    // The keys are the snapshot's personalities (decode_mon: OT ID and DVs), so a slot is found by the party read's key.
+    static uint8_t raw[PD_PARTY_SIZE * G2_MON];
+    int n = read8(read, ctx, c->partyCount);
+    if (n > PD_PARTY_SIZE) n = PD_PARTY_SIZE;
+    int stride = c->gen == 1 ? G1_MON : G2_MON;
+    rd(read, ctx, c->partyMons, raw, (size_t) (PD_PARTY_SIZE * stride));
+    for (int i = 0; i < n; i++) {
+        struct pd_mon mon;
+        out[i].key = decode_mon(c, raw + i * stride, false, &mon) ? mon.personality : 0;
+        out[i].hp = be16(raw + i * stride + (c->gen == 1 ? 1 : 34));
+    }
+    return n;
+}
+
+int pd_gb_out_slot(const struct pd_gb_config* c, pd_read_fn read, void* ctx) {
+    return read8(read, ctx, c->outSlot);
 }

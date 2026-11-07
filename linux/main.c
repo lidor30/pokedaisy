@@ -14,6 +14,7 @@
 #include "pd_dex.h"
 #include "pd_guide.h"
 #include "../app/src/main/cpp/pk_call.h"
+#include "../app/src/main/cpp/pk_host.h"
 #include "quick_menu.h"
 #include "wild.h"
 #include "../app/src/main/cpp/pk_wide.h"
@@ -759,7 +760,7 @@ static void present_hud_game(const struct pd_game *g, const struct pd_snapshot *
     if (hudTexture)
       SDL_SetTextureBlendMode(hudTexture, SDL_BLENDMODE_BLEND);
   }
-  uint32_t key = hud_key(s, h, st) ^ (uint32_t)(w * 65599 + hh);
+  uint32_t key = hud_key(g, s, h, st) ^ (uint32_t)(w * 65599 + hh);
   if (hudTexture && (key != hudDrawnKey || w != hudW || hh != hudH)) {
     struct pd_canvas hc;
     pd_canvas_init(&hc, w, hh, hudPixels);
@@ -885,6 +886,7 @@ static bool state(struct mCore *c, const char *path, bool save) {
                  : mCoreLoadStateNamed(c, f, SAVESTATE_RTC);
   if(!f->close(f))ok=false;
   if (ok && !save) {
+    pk_heal_rtc(c);
     pk_wide_reset(); // EXPAND's RAM history is from before the jump
     wideReady = false;
   }
@@ -1383,6 +1385,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   for (int i = 0; i < 2; i++)
     blip_set_rates(c->getAudioChannel(c, i), c->frequency(c), 32768);
   c->reset(c);
+  pk_heal_rtc(c);
   uint32_t crc = 0;
   c->checksum(c, &crc, mCHECKSUM_CRC32);
   wideSupported = pk_wide_configure(crc) != 0;
@@ -1434,7 +1437,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   unsigned gameKeys = 0;
   int gameKeyFrames = 0;
   // The HUD: on after 20 frames of the plain field (FieldHud's rule), off at once.
-  struct hud_state hudState = {0, 0, false, -1, -1};
+  struct hud_state hudState = { .wild = -1, .focus = -1 };
   int hudFieldFrames = 0;
   bool hudFocus = false; // the HUD hotkey's cursor is on (the game gets no keys meanwhile)
   hudDrawnKey = 0;
@@ -1447,7 +1450,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   double frameCost = 0;
   uint64_t lastStart = 0;
   struct pd_snapshot snap = {0};
-  struct pd_host_info host = {.hideScreenMode = true, .hasExpand = true, .hasQuickMenu = true, .hasDisplayFilter = true, .hasHud = c->platform(c) == mPLATFORM_GBA,
+  struct pd_host_info host = {.hideScreenMode = true, .hasExpand = true, .hasFfChip = true, .hasQuickMenu = true, .hasDisplayFilter = true, .hasHud = c->platform(c) == mPLATFORM_GBA,
                               .expandGame = wideSupported, .count = 1, .labels = {"HOST"}};
   snprintf(host.values[0], 40, "PokeDaisy Linux");
   const char *opts[] = {"Resume game",
@@ -2032,6 +2035,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
     else if (now - due > SDL_GetPerformanceFrequency() / 5)
       due = now;
   }
+  pk_finish_save(c, PK_FINISH_SAVE_FRAMES, NULL); // a save the game is writing finishes before the core stops
   if (audio)
     SDL_ClearQueuedAudio(audio);
 cleanup:

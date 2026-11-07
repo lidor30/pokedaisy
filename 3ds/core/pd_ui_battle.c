@@ -240,7 +240,7 @@ static int rank(const struct pd_game* g, const struct pd_snapshot* s, const stru
     int n = 0;
     for (int i = 0; i < s->partyCount; i++) {
         const struct pd_mon* m = &s->party[i];
-        if (m->hp <= 0 || m->species == PD_SPECIES_EGG) continue;
+        if (m->hp <= 0 || m->egg) continue;
         int best = -1, bestValue = -1;
         for (int k = 0; k < PD_NUM_MOVES; k++) {
             int power = m->moves[k] ? pd_move_power(g, m->moves[k]) : 0;
@@ -346,6 +346,11 @@ void ui_battle_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* 
         ui_notice(c, "NO BATTLE", "A battle opens this tab by itself,", "and its end takes you back.");
         return;
     }
+    bool controls = ui_battle_controls_usable(ui, s);
+    if (controls && !ui->battleInfoOpen && !ui->battlePane) {
+        ui_battle_controls(ui, c, g, s);
+        return;
+    }
     // The foe: the FOE TEAM's shown one, else the battler out.
     const char* foeState;
     const struct pd_mon* party = shown_foe(ui, s, &foeState);
@@ -373,12 +378,43 @@ void ui_battle_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* 
     int bw = pd_text_width("SUGGESTIONS") + 20;
     if (ui->battlePane) nav_button(ui, c, x, barY, bw, BAR_H, label, INFO_PURPLE, INFO_PURPLE_DARK, HIT_BATTLE_INFO);
     else nav_button(ui, c, x, barY, bw, BAR_H, label, SUGGEST_GOLD, SUGGEST_GOLD_DARK, HIT_BATTLE_SUGGEST);
-    foe_strip(ui, c, g, s, x + bw + 8, barY, x + w);
+    int right = x + w;
+    // Back to the controls, while there are any to go back to.
+    if (controls) {
+        right -= BAR_H + 2;
+        nav_button(ui, c, right + 2, barY, BAR_H, BAR_H, "<", 0x4890D8, 0x2860A0, HIT_BATTLE_CONTROLS);
+    }
+    foe_strip(ui, c, g, s, x + bw + 8, barY, right);
+}
+
+// The pick of ui_battle_tab's SUGGESTIONS, for the POKéMON pane: recommendedSwitch.
+int ui_recommended_switch(const struct pd_snapshot* s) {
+    const struct pd_battle_mon* b = &s->battlers[PD_POS_OPPONENT_LEFT];
+    if (!b->species) return -1;
+    struct mon_view foe = from_battler(b);
+    struct pick picks[PD_PARTY_SIZE];
+    int n = rank(ui_game, s, &foe, picks);
+    for (int i = 0; i < n; i++)
+        if (!is_out(picks[i].mon, s)) return (int) (picks[i].mon - s->party);
+    return -1;
+}
+
+int ui_out_slots(const struct pd_snapshot* s) {
+    int bits = 0;
+    for (int i = 0; i < s->partyCount; i++)
+        if (is_out(&s->party[i], s)) bits |= 1 << i;
+    return bits;
 }
 
 bool ui_battle_act(struct pd_ui* ui, int id) {
     if (id == HIT_BATTLE_SUGGEST || id == HIT_BATTLE_INFO) {
         ui->battlePane = id == HIT_BATTLE_SUGGEST;
+        ui->battleInfoOpen = true;
+        return true;
+    }
+    if (id == HIT_BATTLE_CONTROLS) {
+        ui->battleInfoOpen = false;
+        ui->battlePane = 0;
         return true;
     }
     if (id >= HIT_FOE_SLOT && id < HIT_FOE_SLOT + PD_PARTY_SIZE) {

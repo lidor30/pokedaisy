@@ -134,6 +134,26 @@ int pd_text(struct pd_canvas* c, int x, int y, const char* s, uint32_t color, ui
     return draw_run(c, x, y, s, color);
 }
 
+int pd_text_scaled(struct pd_canvas* c, int x, int y, const char* s, uint32_t color, uint32_t shadow, int scale) {
+    if (scale <= 1) return pd_text(c, x, y, s, color, shadow);
+    int x0 = x;
+    for (const char* p = s; *p;) {
+        const struct pd_glyph* g = pd_font_glyph(next_codepoint(&p));
+        for (int pass = shadow != PD_NO_SHADOW ? 0 : 1; pass < 2; pass++) {
+            int d = pass ? 0 : scale;
+            uint32_t col = pass ? color : shadow;
+            for (int row = 0; row < PD_FONT_HEIGHT; row++) {
+                uint16_t bits = g->rows[row];
+                for (int k = 0; bits; k++, bits >>= 1) {
+                    if (bits & 1) pd_fill(c, x + k * scale + d, y + row * scale + d, scale, scale, col);
+                }
+            }
+        }
+        x += g->advance * scale;
+    }
+    return x - x0;
+}
+
 int pd_text_width(const char* s) {
     int w = 0;
     while (*s) w += pd_font_glyph(next_codepoint(&s))->advance;

@@ -30,8 +30,9 @@ static void pk_gb_audio_frame(struct mAVStream* stream, int16_t left, int16_t ri
         blip_end_frame(a->right, a->clock);
         a->clock = 0;
     }
-    blip_add_delta(a->left, a->clock, left - a->lastLeft);
-    blip_add_delta(a->right, a->clock, right - a->lastRight);
+    // A step of nothing costs as much as any other, and most of 131072 samples a second aren't steps.
+    if (left != a->lastLeft) blip_add_delta(a->left, a->clock, left - a->lastLeft);
+    if (right != a->lastRight) blip_add_delta(a->right, a->clock, right - a->lastRight);
     a->lastLeft = left;
     a->lastRight = right;
     ++a->clock;

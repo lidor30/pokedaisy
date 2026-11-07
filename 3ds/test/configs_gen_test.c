@@ -341,6 +341,13 @@ int main(void) {
         { sizeof(((struct pd_config*) 0)->staticSaveBlocks) },
         { sizeof(((struct pd_config*) 0)->flySaveBlock2Static) },
         { sizeof(((struct pd_config*) 0)->flyMapHeader) },
+        // The 3DS's fields from 3ds.toml's battle / engine / boxes / dexsec parts and pd_games_gen.c (not in the old tables).
+        { sizeof(((struct pd_config*) 0)->pcStorage) },
+        { sizeof(((struct pd_config*) 0)->monIconRecord) },
+        { sizeof(((struct pd_config*) 0)->extraItemIconTable) },
+        { sizeof(((struct pd_config*) 0)->extraItemFirst) },
+        { sizeof(((struct pd_config*) 0)->extraItemCount) },
+        { sizeof(((struct pd_config*) 0)->extraItemStride) },
     };
     size_t sum = 0;
     for (size_t i = 0; i < sizeof(fields) / sizeof(*fields); i++) sum += fields[i].size;

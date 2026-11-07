@@ -30,6 +30,18 @@ WISHES_BATTLE_MON = '&pd_battle_layout_wishes'
 ROWE_BATTLE_MON = '&pd_battle_layout_rowe'
 SOULGOLD_BATTLE_MON = '&pd_battle_layout_soulgold'
 ELITE_REDUX_BATTLE_MON = '&pd_battle_layout_elite_redux'
+MONOMYTH_PARTY_MON = '&pd_party_layout_monomyth'
+MONOMYTH_BATTLE_MON = '&pd_battle_layout_monomyth'
+VANILLA_PC_STORAGE = '&pd_pc_vanilla'
+STATIC_PC_STORAGE = '&pd_pc_static'
+PLAIN_PC_STORAGE = '&pd_pc_plain'
+SOULGOLD_PC_STORAGE = '&pd_pc_soulgold'
+UNBOUND_PC_STORAGE = '&pd_pc_unbound'
+RADICAL_RED_PC_STORAGE = '&pd_pc_radical_red'
+AMETHYST_PC_STORAGE = '&pd_pc_amethyst'
+AMETHYST_V141_PC_STORAGE = '&pd_pc_amethyst_v141'
+SWORD_SHIELD_PC_STORAGE = '&pd_pc_sword_shield'
+GS_CHRONICLES_PC_STORAGE = '&pd_pc_gs_chronicles'
 
 [names.DexFlagBlock]
 SAVE_BLOCK_1 = 'PD_DEX_SB1'
@@ -263,6 +275,50 @@ pcFn = '@items.pc.pcFn'
 pcCrcs = '@items.pc.codeCrcs'
 pcScript = '@items.pc.script'
 
+# The battle's touch controls (BattleInputController): the handlers that say what the battle waits for, the menus'
+# cursors, gPartyMenu. The app keeps gPartyMenu and its grid in PokeDaisyActivity.switchAddrsFor where its config
+# doesn't: a config's `values` give them here. No partyMenu = no POKéMON switch on that game, as in the app.
+[part.battle]
+inBattleOff = 'inBattleOff'
+battlerControllerFuncs = 'battlerControllerFuncs'
+handleInputChooseAction = 'handleInputChooseAction'
+handleInputChooseMove = 'handleInputChooseMove'
+handleInputChooseTarget = 'handleInputChooseTarget'
+completeWhenChoseItem = 'completeWhenChoseItem'
+waitForMonSelection = 'waitForMonSelection'
+actionCursor = 'actionCursor'
+moveCursor = 'moveCursor'
+partyMenu = 'partyMenu'
+
+# Where a few games moved things the companion reads (Monomyth's gMain and save blocks, SoulGold's u16 sections, Monomyth's
+# packed icons, Emerald Rogue's own items).
+[part.engine]
+monStride = 'monStride'
+saveBlock1PosOff = 'saveBlock1PosOff'
+playerGenderOff = 'playerGenderOff'
+frameCounterOff = 'frameCounterOff'
+mapSecWide = 'mapSecWide'
+monIconPacked = 'monIconPacked'
+extraItemIconTable = 'extraItemIconTable'
+extraItemFirst = 'extraItemFirst'
+extraItemCount = 'extraItemCount'
+extraItemStride = 'extraItemStride'
+
+# BOXES: the PC's storage (NativeConfig.pokemonStoragePtr / pcStorage; retail English FireRed / Emerald's pointer is the
+# Poller's, set below).
+[part.boxes]
+pokemonStoragePtr = 'pokemonStoragePtr'
+pcStorage = 'pcStorage'
+
+# The DEX's sections (DexDetails.kt) on vanilla's tables: gEvolutionTable, the TM bitfields, their moves, gMapGroups.
+[part.dexsec]
+dexEvolutions = 'pokedex.evolutions'
+dexTmhm = 'pokedex.tmhmLearnsets'
+dexTmhmMoves = 'pokedex.tmhmMoves'
+dexSpeciesCount = 'pokedex.speciesCount'
+dexMapGroups = 'guideTables.mapGroups'
+
+
 # The configs, each with the parts the port reads for it so far (`name` is the C's: PD_CONFIG_<name>) and the
 # records `@name.` paths start from (`records`).
 # FireRed rev 0 and LeafGreen: the tabs that read RAM (and the MAP, whose art is found by fingerprint)
@@ -271,382 +327,503 @@ pcScript = '@items.pc.script'
 # quick menu from FIELD_ITEMS_PORTS["BPRE0"] (fieldItemsFor).
 [config.firered_rev1]
 name = 'FIRERED_REV1'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
 records = { items = 'FIELD_ITEMS_FIRERED_REV1' }
+values = { partyMenu = 0x0203B0A0, pokemonStoragePtr = 0x03005010 }
 
 [config.firered_rev0]
 name = 'FIRERED_REV0'
-parts = ['ram', 'icons', 'dex', 'card', 'fly', 'field']
+parts = ['ram', 'icons', 'dex', 'card', 'fly', 'field', 'battle', 'engine', 'boxes']
 records = { items = 'FIELD_ITEMS_PORTS_BPRE0' }
 set = { trainerCard = 'TRAINER_CARD_FIRERED' }
+values = { pokemonStoragePtr = 0x03005010 }
 
 [config.leafgreen_rev0]
 name = 'LEAFGREEN_REV0'
-parts = ['ram', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
+parts = ['ram', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
 records = { items = 'FIELD_ITEMS_LEAFGREEN_REV0' }
 
 [config.leafgreen_rev1]
 name = 'LEAFGREEN_REV1'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
 records = { items = 'FIELD_ITEMS_LEAFGREEN_REV1' }
 
 [config.emerald_retail]
 name = 'EMERALD'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
 records = { items = 'FIELD_ITEMS_EMERALD' }
+values = { partyMenu = 0x0203CEC8, pokemonStoragePtr = 0x03005D94 }
 
 # plorpOS's Linux port: the hacks, as their records reach gen3/records/c_hacks.toml. Emerald Legacy v1.1.4: retail's
 # structs with its own addresses, its own TrainerMon (guideTables.trainerMon).
 [config.emerald_legacy]
 name = 'EMERALD_LEGACY'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes']
 records = { items = 'FIELD_ITEMS_EMERALD_LEGACY' }
 
 # Ruby / Sapphire (USA): rev 1 and 2 share every address (the app's NATIVE_RUBY / _SAPPHIRE), rev 0 is its own
 # (RETAIL_PORTS' AXVE0 / AXPE0). Read like Emerald (the same species / item / map-section ids); no trainer card.
 [config.ruby]
 name = 'RUBY'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
 records = { items = 'FIELD_ITEMS_RUBY' }
 
 [config.sapphire]
 name = 'SAPPHIRE'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
 records = { items = 'FIELD_ITEMS_SAPPHIRE' }
 
 [config.port_axve0]
 name = 'RUBY_REV0'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
 records = { items = 'FIELD_ITEMS_PORTS_AXVE0' }
 
 [config.port_axpe0]
 name = 'SAPPHIRE_REV0'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
 records = { items = 'FIELD_ITEMS_PORTS_AXPE0' }
 
 # The retail-struct hacks whose ROMs aren't to hand: RAM-only (PARTY / BATTLE / foes, checked on the app's captured RAM);
 # the tabs that read the ROM (icons, POKéDEX, GUIDE, CARD, FLY) join once a ROM is there to check them against.
 [config.emerald_kaizo]
 name = 'EMERALD_KAIZO'
-parts = ['ram', 'foes', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'dex', 'card', 'guide', 'battle', 'icons', 'engine', 'boxes', 'dexsec']
+values = { partyMenu = 0x0203CEC8 }
 
 [config.glazed]
 name = 'GLAZED'
-parts = ['ram', 'foes', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'dex', 'card', 'guide', 'battle', 'icons', 'engine', 'boxes', 'dexsec']
+values = { partyMenu = 0x0203CEC8 }
 
 [config.celia]
 name = 'CELIA'
-parts = ['ram', 'dex', 'guide']
+parts = ['ram', 'foes', 'dex', 'guide', 'battle', 'icons', 'engine', 'boxes']
+values = { partyMenu = 0x0203B368 }
 
 [config.orange_islands]
 name = 'ORANGE_ISLANDS'
-parts = ['ram', 'foes', 'dex', 'guide']
+parts = ['ram', 'foes', 'dex', 'guide', 'battle', 'icons', 'engine', 'boxes', 'dexsec']
+values = { partyMenu = 0x0203B0A0 }
 
 [config.ultra_violet]
 name = 'ULTRA_VIOLET'
-parts = ['ram', 'foes', 'dex', 'guide']
+parts = ['ram', 'foes', 'dex', 'guide', 'battle', 'icons', 'engine', 'boxes', 'dexsec']
+values = { partyMenu = 0x0203B0A0 }
 
 [config.rocket_edition]
 name = 'ROCKET_EDITION'
-parts = ['ram', 'foes', 'dex', 'guide']
+parts = ['ram', 'foes', 'dex', 'guide', 'battle', 'icons', 'engine', 'boxes', 'dexsec']
+values = { partyMenu = 0x0203B0A0 }
 
 [config.ash_gray]
 name = 'ASH_GRAY'
-parts = ['ram', 'foes', 'dex', 'guide']
+parts = ['ram', 'foes', 'dex', 'guide', 'battle', 'icons', 'engine', 'boxes', 'dexsec']
+values = { partyMenu = 0x0203B0A0 }
 
 # Retail-like (CFRU) hacks: PARTY / BATTLE from RAM; Gaia and Sword and Shield (ROMs to hand) also party icons and the POKéDEX.
 
 [config.gaia_v3_2]
 name = 'GAIA'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203B0A0 }
 
 [config.sword_shield]
 name = 'SWORD_SHIELD'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203B0A0, partyMenuGrid = true }
 
 [config.odyssey]
 name = 'ODYSSEY'
-parts = ['ram', 'foes', 'dex', 'guide']
+parts = ['ram', 'foes', 'dex', 'guide', 'battle', 'icons', 'engine', 'boxes', 'dexsec']
+values = { partyMenu = 0x0203B0A0, partyMenuGrid = true }
 
 [config.amethyst]
 name = 'AMETHYST'
-parts = ['ram', 'foes', 'dex', 'guide']
+parts = ['ram', 'foes', 'dex', 'guide', 'battle', 'icons', 'engine', 'boxes']
+values = { partyMenu = 0x0203B0A0, partyMenuGrid = true }
 
 [config.amethyst_v1_4_1]
 name = 'AMETHYST_V1_4_1'
-parts = ['ram', 'foes', 'dex', 'guide']
+parts = ['ram', 'foes', 'dex', 'guide', 'battle', 'icons', 'engine', 'boxes']
+values = { partyMenu = 0x0203B0A0, partyMenuGrid = true }
 
 [config.gs_chronicles]
 name = 'GS_CHRONICLES'
-parts = ['ram', 'foes', 'dex', 'guide']
+parts = ['ram', 'foes', 'dex', 'guide', 'battle', 'icons', 'engine', 'boxes']
+values = { partyMenu = 0x0203B0A0, partyMenuGrid = true }
 
 [config.ghost_grey]
 name = 'GHOST_GREY'
-parts = ['ram', 'foes', 'dex', 'guide']
+parts = ['ram', 'foes', 'dex', 'guide', 'battle', 'icons', 'engine', 'boxes', 'dexsec']
+values = { partyMenu = 0x0203B0A0 }
 
 # CFRU (plaintext party boxes): Radical Red 4.1 (ROM checked: party icons, POKéDEX) and Unbound (RAM only, no ROM to hand).
 [config.radical_red_v4_1]
 name = 'RADICAL_RED'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203B0A0, partyMenuGrid = true }
 
 [config.unbound_with_dex]
 name = 'UNBOUND'
-parts = ['ram', 'foes', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'dex', 'card', 'guide', 'battle', 'icons', 'engine', 'boxes']
+values = { partyMenu = 0x0203B0A0, partyMenuGrid = true, monIconTable = 0x09A217FC, monIconRecord = true, itemIconTable = 0x0825A554 }
 
 [config.unbound_fr]
 name = 'UNBOUND_FR'
-parts = ['ram', 'foes', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'dex', 'card', 'guide', 'battle', 'icons', 'engine', 'boxes']
+values = { partyMenu = 0x0203B0A0, partyMenuGrid = true, monIconTable = 0x09A217FC, monIconRecord = true, itemIconTable = 0x0825A554 }
 
 # pokeemerald-expansion family (and Recharged Yellow): PARTY / BAG / BATTLE from RAM, party and bag icons from the ROM.
 [config.imperium]
 name = 'IMPERIUM'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x020370E0, partyMenuGrid = true }
 
 [config.tmt2]
 name = 'TMT2'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203242C }
 
 [config.recharged_yellow_v1_8_0]
 name = 'RECHARGED_YELLOW_V1_8_0'
-parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide', 'battle', 'engine', 'boxes']
 
 [config.recharged_yellow_v1_9_0]
 name = 'RECHARGED_YELLOW_V1_9_0'
-parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide', 'battle', 'engine', 'boxes']
 
 [config.recharged_yellow_v1_9_4]
 name = 'RECHARGED_YELLOW_V1_9_4'
-parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide', 'battle', 'engine', 'boxes']
 
 [config.recharged_yellow_v1_9_7]
 name = 'RECHARGED_YELLOW_V1_9_7'
-parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide', 'battle', 'engine', 'boxes']
 
 [config.emerald_seaglass]
 name = 'SEAGLASS'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x02019964 }
 
 [config.lazarus]
 name = 'LAZARUS'
-parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0201B67C, partyMenuGrid = true }
 
 [config.wishes]
 name = 'WISHES'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x02031BB0 }
 
 [config.mariomon_v1_5_2]
 name = 'MARIOMON_V1_5_2'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenuGrid = true }
 
 [config.mariomon_v1_5_1]
 name = 'MARIOMON_V1_5_1'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenuGrid = true }
 
 [config.mariomon_v1_3]
 name = 'MARIOMON_V1_3'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenuGrid = true }
 
 [config.mariomon_v1_2_2]
 name = 'MARIOMON_V1_2_2'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenuGrid = true }
 
 [config.mariomon_v1_2_1]
 name = 'MARIOMON_V1_2_1'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenuGrid = true }
 
 [config.rowe]
 name = 'ROWE'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203E774, partyMenuGrid = true }
 
 [config.team_rocket]
 name = 'TEAM_ROCKET'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203DE64 }
 
 [config.dreamstone]
 name = 'DREAMSTONE'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x02031E04, partyMenuGrid = true }
 
 [config.soulgold]
 name = 'SOULGOLD'
-parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide', 'battle', 'engine', 'boxes']
 
 [config.soulgold_v1_2]
 name = 'SOULGOLD_V1_2'
-parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide', 'battle', 'engine', 'boxes']
 
 [config.soulgold_v1_2b]
 name = 'SOULGOLD_V1_2B'
-parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide', 'battle', 'engine', 'boxes']
 
 [config.soulgold_v1_2c]
 name = 'SOULGOLD_V1_2C'
-parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide', 'battle', 'engine', 'boxes']
 
 [config.heart_and_soul]
 name = 'HEART_AND_SOUL'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x020341FC }
 
 [config.quetzal]
 name = 'QUETZAL_V9_0'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
 
 [config.quetzal_es]
 name = 'QUETZAL_V9_0_ES'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
 
 [config.quetzal_v1]
 name = 'QUETZAL_V9_1'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
 
 [config.quetzal_es_v1]
 name = 'QUETZAL_V9_1_ES'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
 
 [config.quetzal_v084]
 name = 'QUETZAL_V0_8_4'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
 
 [config.quetzal_v084_es]
 name = 'QUETZAL_V0_8_4_ES'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
 
 [config.quetzal_moemon_v084]
 name = 'MOEMON_QUETZAL_V0_8_4'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
 
 [config.quetzal_moemon_v084_es]
 name = 'MOEMON_QUETZAL_V0_8_4_ES'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
 
 # pokeemerald-expansion family (and Recharged Yellow): PARTY / BAG / BATTLE from RAM, party and bag icons from the ROM.
 [config.recharged_emerald_v2_2_5]
 name = 'RECHARGED_EMERALD_V2_2_5'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
 
 [config.recharged_emerald_v2_2_8]
 name = 'RECHARGED_EMERALD_V2_2_8'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
 
 [config.recharged_emerald_rebalanced_v2_2_8]
 name = 'RECHARGED_EMERALD_REBALANCED_V2_2_8'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
 
 # Emerald Rogue (v2.2.1 EX): vanilla's party struct grown to 104 bytes, expansion's battle struct, nine bag views.
 [config.emerald_rogue]
 name = 'EMERALD_ROGUE'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'battle', 'engine', 'boxes']
 set = { partyMonLayout = 'ROGUE_PARTY_MON' }
 
 # Elite Redux 2.65.3b / 2.65.4.1b: PARTY and BATTLE; its bag is a flag per item (not read yet).
 [config.elite_redux_v2_65_4_1b]
 name = 'ELITE_REDUX_V2_65_4_1B'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenuGrid = true }
 
 [config.elite_redux_v2_65_3b]
 name = 'ELITE_REDUX_V2_65_3B'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenuGrid = true }
 
 # Other-language FireRed / LeafGreen / Ruby / Sapphire (German, French, Italian, Spanish): the app's RETAIL_PORTS, found by game code
 # and revision. PARTY / BAG / BATTLE and the POKéDEX from RAM and the ROM, with the cart's own species, move and item names.
 [config.port_axpd0]
 name = 'PORT_AXPD0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axpd1]
 name = 'PORT_AXPD1'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axpf0]
 name = 'PORT_AXPF0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axpf1]
 name = 'PORT_AXPF1'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axpi0]
 name = 'PORT_AXPI0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axpi1]
 name = 'PORT_AXPI1'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axps0]
 name = 'PORT_AXPS0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axps1]
 name = 'PORT_AXPS1'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axvd0]
 name = 'PORT_AXVD0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axvd1]
 name = 'PORT_AXVD1'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axvf0]
 name = 'PORT_AXVF0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axvf1]
 name = 'PORT_AXVF1'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axvi0]
 name = 'PORT_AXVI0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axvi1]
 name = 'PORT_AXVI1'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axvs0]
 name = 'PORT_AXVS0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_axvs1]
 name = 'PORT_AXVS1'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_bpgd0]
 name = 'PORT_BPGD0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_bpgf0]
 name = 'PORT_BPGF0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_bpgi0]
 name = 'PORT_BPGI0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_bpgs0]
 name = 'PORT_BPGS0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_bprd0]
 name = 'PORT_BPRD0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_bprf0]
 name = 'PORT_BPRF0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_bpri0]
 name = 'PORT_BPRI0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 [config.port_bprs0]
 name = 'PORT_BPRS0'
-parts = ['ram', 'foes', 'icons', 'dex']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes', 'dexsec']
 
 # A hack's own species / item / move names (the Kotlin val of the app's data/), as ActiveTables.kt picks them; a config
 # without a [text.*] reads retail's. Not here yet: Odyssey and the in-place FireRed hacks (Ultra Violet, Rocket Edition,
 # Ash Gray, Ghost Grey) - their names are retail's with a few runtime-merged renames.
+
+
+# The languages' Emerald (the app's NATIVE_EMERALD_ES / _DE / _FR / _IT / _JA): English's RAM, their own ROM tables and names.
+[config.emerald_es]
+name = 'EMERALD_ES'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203CEC8 }
+
+[config.emerald_de]
+name = 'EMERALD_DE'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203CEC8 }
+
+[config.emerald_fr]
+name = 'EMERALD_FR'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203CEC8 }
+
+[config.emerald_it]
+name = 'EMERALD_IT'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203CEC8 }
+
+[config.emerald_ja]
+name = 'EMERALD_JA'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203CB94 }
+
+# Japanese FireRed / LeafGreen / Ruby / Sapphire (RETAIL_PORTS' BPRJ / BPGJ / AXVJ / AXPJ, written by port_retail.py).
+[config.port_bprj0]
+name = 'PORT_BPRJ0'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+
+[config.port_bprj1]
+name = 'PORT_BPRJ1'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+
+[config.port_bpgj0]
+name = 'PORT_BPGJ0'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+
+[config.port_bpgj1]
+name = 'PORT_BPGJ1'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+
+[config.port_axvj0]
+name = 'PORT_AXVJ0'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+
+[config.port_axvj1]
+name = 'PORT_AXVJ1'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+
+[config.port_axpj0]
+name = 'PORT_AXPJ0'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+
+[config.port_axpj1]
+name = 'PORT_AXPJ1'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'battle', 'engine', 'boxes']
+
+# Let's Go Pikachu / Eevee: FireRed rev 0 edited in place, a grid party menu (runningLetsGo).
+[config.lets_go_pikachu]
+name = 'LETS_GO_PIKACHU'
+parts = ['ram', 'foes', 'icons', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203B0A0, partyMenuGrid = true }
+
+[config.lets_go_eevee]
+name = 'LETS_GO_EEVEE'
+parts = ['ram', 'foes', 'icons', 'guide', 'battle', 'engine', 'boxes']
+values = { partyMenu = 0x0203B0A0, partyMenuGrid = true }
+
+[config.monomyth]
+name = 'MONOMYTH'
+parts = ['ram', 'foes', 'icons', 'battle', 'engine', 'boxes']
+values = { partyMenuGrid = true }
+
+[config.monomyth_v1_1]
+name = 'MONOMYTH_V1_1'
+parts = ['ram', 'foes', 'icons', 'battle', 'engine', 'boxes']
+values = { partyMenuGrid = true }
+
+[config.soulgold_v1_2_1]
+name = 'SOULGOLD_V1_2_1'
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide', 'battle', 'engine', 'boxes']
 
 [text.gaia_v3_2]
 species = 'speciesNamesGaia'
@@ -1251,3 +1428,128 @@ items = 'itemNamesBprs'
 moves = 'moveData RENAMED moveNamesBprs'
 mapsecs = 'mapSecData + mapSecNamesBprs'
 
+[text.emerald_es]
+species = 'speciesNamesEmeraldEs'
+items = 'itemNamesEmeraldEs'
+moves = 'moveData RENAMED moveNamesEmeraldEs'
+mapsecs = 'mapSecDataEmerald + mapSecNamesEmeraldEs'
+
+[text.emerald_de]
+species = 'speciesNamesEmeraldDe'
+items = 'itemNamesEmeraldDe'
+moves = 'moveData RENAMED moveNamesEmeraldDe'
+mapsecs = 'mapSecDataEmerald + mapSecNamesEmeraldDe'
+
+[text.emerald_fr]
+species = 'speciesNamesEmeraldFr'
+items = 'itemNamesEmeraldFr'
+moves = 'moveData RENAMED moveNamesEmeraldFr'
+mapsecs = 'mapSecDataEmerald + mapSecNamesEmeraldFr'
+
+[text.emerald_it]
+species = 'speciesNamesEmeraldIt'
+items = 'itemNamesEmeraldIt'
+moves = 'moveData RENAMED moveNamesEmeraldIt'
+mapsecs = 'mapSecDataEmerald + mapSecNamesEmeraldIt'
+
+[text.emerald_ja]
+species = 'speciesNamesEmeraldJa'
+items = 'itemNamesEmeraldJa'
+moves = 'moveData RENAMED moveNamesEmeraldJa'
+mapsecs = 'mapSecDataEmerald + mapSecNamesEmeraldJa'
+
+[text.port_bprj0]
+species = 'speciesNamesBprj'
+items = 'itemNamesBprj'
+moves = 'moveData RENAMED moveNamesBprj'
+mapsecs = 'mapSecData + mapSecNamesBprj'
+
+[text.port_bprj1]
+species = 'speciesNamesBprj'
+items = 'itemNamesBprj'
+moves = 'moveData RENAMED moveNamesBprj'
+mapsecs = 'mapSecData + mapSecNamesBprj'
+
+[text.port_bpgj0]
+species = 'speciesNamesBpgj'
+items = 'itemNamesBpgj'
+moves = 'moveData RENAMED moveNamesBpgj'
+mapsecs = 'mapSecData + mapSecNamesBpgj'
+
+[text.port_bpgj1]
+species = 'speciesNamesBpgj'
+items = 'itemNamesBpgj'
+moves = 'moveData RENAMED moveNamesBpgj'
+mapsecs = 'mapSecData + mapSecNamesBpgj'
+
+[text.port_axvj0]
+species = 'speciesNamesAxvj'
+items = 'itemNamesAxvj'
+moves = 'moveData RENAMED moveNamesAxvj'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxvj'
+
+[text.port_axvj1]
+species = 'speciesNamesAxvj'
+items = 'itemNamesAxvj'
+moves = 'moveData RENAMED moveNamesAxvj'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxvj'
+
+[text.port_axpj0]
+species = 'speciesNamesAxpj'
+items = 'itemNamesAxpj'
+moves = 'moveData RENAMED moveNamesAxpj'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxpj'
+
+[text.port_axpj1]
+species = 'speciesNamesAxpj'
+items = 'itemNamesAxpj'
+moves = 'moveData RENAMED moveNamesAxpj'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxpj'
+
+[text.lets_go_pikachu]
+species = 'fireRedHackLetsGoPikachu.species'
+items = 'fireRedHackLetsGoPikachu.items'
+moves = 'fireRedHackLetsGoPikachu.moves'
+typeNames = 'typeNames + fireRedHackLetsGoPikachu.typeNames'
+typeChart = 'typeEffectiveness + fireRedHackLetsGoPikachu.typeChart'
+speciesTypes = 'speciesTypeData + fireRedHackLetsGoPikachu.types'
+mapsecs = 'mapSecData + fireRedHackLetsGoPikachu.mapSecs'
+
+[text.lets_go_eevee]
+species = 'fireRedHackLetsGoEevee.species'
+items = 'fireRedHackLetsGoEevee.items'
+moves = 'fireRedHackLetsGoEevee.moves'
+typeNames = 'typeNames + fireRedHackLetsGoEevee.typeNames'
+typeChart = 'typeEffectiveness + fireRedHackLetsGoEevee.typeChart'
+speciesTypes = 'speciesTypeData + fireRedHackLetsGoEevee.types'
+mapsecs = 'mapSecData + fireRedHackLetsGoEevee.mapSecs'
+
+[text.monomyth]
+species = 'speciesNamesMonomyth'
+items = 'itemNamesMonomyth'
+moves = 'moveDataMonomyth'
+typeNames = 'typeNamesMonomyth'
+typeChart = 'typeEffectivenessMonomyth'
+speciesTypes = 'speciesTypeDataMonomyth'
+genderRatios = 'genderRatiosMonomyth'
+mapsecs = 'mapSecDataMonomyth'
+
+[text.monomyth_v1_1]
+species = 'speciesNamesMonomyth'
+items = 'itemNamesMonomyth'
+moves = 'moveDataMonomyth'
+typeNames = 'typeNamesMonomyth'
+typeChart = 'typeEffectivenessMonomyth'
+speciesTypes = 'speciesTypeDataMonomyth'
+genderRatios = 'genderRatiosMonomyth'
+mapsecs = 'mapSecDataMonomyth'
+
+[text.soulgold_v1_2_1]
+species = 'speciesNamesSoulGold'
+items = 'itemNamesSoulGold'
+moves = 'moveDataSoulGold'
+typeNames = 'typeNamesSoulGold'
+typeChart = 'typeEffectivenessSoulGold'
+speciesTypes = 'speciesTypeDataSoulGold'
+genderRatios = 'genderRatiosSoulGold'
+mapsecs = 'mapSecDataSoulGold'

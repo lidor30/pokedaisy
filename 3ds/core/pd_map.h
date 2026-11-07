@@ -17,7 +17,7 @@
 // The largest page (a GBA screen); a Game Boy town map is 160 x 144 (pd_map_art's w / h).
 #define PD_MAP_W 240
 #define PD_MAP_H 160
-#define PD_MAP_PAGES 4 // FireRed: Kanto + three Sevii pages; Emerald: Hoenn; Gen 2: Johto, Kanto
+#define PD_MAP_PAGES 7 // FireRed: Kanto + three Sevii pages; Emerald: Hoenn; Gen 2: Johto, Kanto; a hack up to seven
 
 struct pd_region_layout {
     int offX, offY, w, h; // the grid's place on the 30x20 screen, in tiles
@@ -50,6 +50,11 @@ struct pd_map_art {
     int pages;
     int w, h;
     uint32_t page[PD_MAP_PAGES][PD_MAP_W * PD_MAP_H];
+    // What of each page is map (left, top, right, bottom in its pixels): its border of black, white or the BG's
+    // backdrop left out, as the game's own frame covers it (backdropCrop, regionMapContentBounds).
+    int16_t crop[PD_MAP_PAGES][4];
+    bool hasBackdrop;
+    uint32_t backdrop;
     bool hasHead[2];
     uint32_t head[2][16 * 16]; // [0] boy, [1] girl
 };
