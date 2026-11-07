@@ -59,12 +59,8 @@ extern const char* const pd_mapsec_emerald[];
 extern const int pd_mapsec_emerald_count;
 extern const char* const pd_item_names_firered[];
 extern const int pd_item_names_firered_count;
-extern const char* const pd_item_desc_firered[];
-extern const int pd_item_desc_firered_count;
 extern const char* const pd_item_names_emerald[];
 extern const int pd_item_names_emerald_count;
-extern const char* const pd_item_desc_emerald[];
-extern const int pd_item_desc_emerald_count;
 // gBaseStats[species].genderRatio (FireRed's numbering, which Emerald shares).
 extern const unsigned char pd_gender_ratios[];
 extern const int pd_gender_ratios_count;

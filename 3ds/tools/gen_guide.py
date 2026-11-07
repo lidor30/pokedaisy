@@ -663,7 +663,7 @@ def lambda_bosses(slug, text, env):
 
 
 # --- Game Boy (Gen 1): GuideGen1Gen.kt's boss lines -> teams + bosses (RAM flags are packed into one array, see below) ---
-GB_GAMES = [("yellow", "G1Y"), ("red", "G1R"), ("blue", "G1B")]
+GB_GAMES = [("yellow", "G1Y"), ("red", "G1R"), ("blue", "G1B"), ("yellow_legacy", "G1L")]
 # The snapshot's flags array for a Gen 1 game: event flags, then the missable-object, hidden-item, trade and badge banks.
 GB_BANK_BIT = {0: 0, 1: 320 * 8, 2: 320 * 8 + 256, 3: 320 * 8 + 256 + 112, 4: 320 * 8 + 256 + 112 + 16}
 
@@ -793,8 +793,18 @@ def cr_flag(f):
     return CR_BANK_BIT[f >> 16] + (f & 0xFFFF)
 
 
-def emit_crystal(out):
-    gen = read("GuideCrystalGen.kt")
+class _Shift:
+    """A match read one group later (its first group is the boss function's Scaled)."""
+    def __init__(self, m):
+        self.m = m
+
+    def group(self, i):
+        return self.m.group(i + 1)
+
+
+def emit_crystal(out, slug="crystal", gen_file="GuideCrystalGen.kt", pre="CR", bosses_val="BOSSES_CRYSTAL", fn="cr"):
+    """Crystal and Crystal Legacy (the app's CrystalEngineWorld over each one's generated data)."""
+    gen = read(gen_file)
     text = read("GuideCrystal.kt")
     c = consts(gen)
 
@@ -803,7 +813,7 @@ def emit_crystal(out):
         return [l for l in m.group(1).split("\n") if l.strip()]
     # teams: KEY|class|party|Name|lv sp item m,m,m,m;...
     keys, teams = {}, []
-    for line in raw("CR_BOSSES_RAW"):
+    for line in raw(f"{pre}_BOSSES_RAW"):
         f = line.split("|")
         ms = []
         for mon in [x for x in f[4].split(";") if x.strip()]:
@@ -812,42 +822,55 @@ def emit_crystal(out):
             ms.append((int(p[0]), int(p[1]), int(p[2]), (moves + [0, 0, 0, 0])[:4]))
         keys[f[0]] = len(teams)
         teams.append(ms[:6])
-    out.append("const struct pd_gb_team pd_gb_teams_crystal[] = {")
+    out.append(f"const struct pd_gb_team pd_gb_teams_{slug}[] = {{")
     for ms in teams:
         mm = ", ".join(f"{{ {sp}, {it}, {lv}, {{ {', '.join(map(str, mv))} }} }}" for lv, sp, it, mv in ms)
         out.append(f"    {{ -1, {len(ms)}, {{ {mm} }} }},")
     out.append("    { 0, 0, { { 0, 0, 0, { 0, 0, 0, 0 } } } },")
     out.append("};")
     # bosses: crBoss("TITLE", "WHERE", FLAG or 0, "KEY"[, crLeague(OWN)]) and RED's lambda (both flags)
-    body = text[text.index("val BOSSES_CRYSTAL = listOf("):]
+    body = text[text.index(f"val {bosses_val} = listOf("):]
     body = body[:matching_paren(body, body.index("(")) + 1]
     bosses = []
-    for m in re.finditer(r'crBoss\(("[^"]*"), ("[^"]*"), (\w+), "(\w+)"(?:, crLeague\((\w+)\))?\)(?: \{ p -> p\.flag\((\w+)\) && p\.flag\((\w+)\) \})?', body):
+    for m in re.finditer(fn + r'(Scaled)?Boss\(("[^"]*"), ("[^"]*"), (\w+), "(\w+)"(?:, ' + fn + r'League\((\w+)\))?\)(?: \{ p -> p\.flag\((\w+)\) && p\.flag\((\w+)\) \})?', body):
+        scaled = bool(m.group(1))
+        m = _Shift(m)
         title, where = Parser(tokenize(m.group(1)), {"consts": {}}).expr(), Parser(tokenize(m.group(2)), {"consts": {}}).expr()
         flag = 0 if m.group(3) == "0" else c[m.group(3)]
-        any_ = [c["CR_EVENT_BEAT_ELITE_FOUR"], c[m.group(5)]] if m.group(5) else []
+        any_ = [c[f"{pre}_EVENT_BEAT_ELITE_FOUR"], c[m.group(5)]] if m.group(5) else []
         all_ = [c[m.group(6)], c[m.group(7)]] if m.group(6) else []
-        bosses.append((title, where, flag, keys[m.group(4)], any_, all_))
-    assert len(bosses) == body.count("crBoss("), "crystal: a boss not read"
-    for bi, (title, where, flag, team, any_, all_) in enumerate(bosses):
+        # A gym taken in any order scales by badge count (Crystal Legacy's clScaledBoss): 5 owned bring <key>_6, 6 <key>_7.
+        counts = [keys.get(f"{m.group(4)}_6" if n == 5 else f"{m.group(4)}_7" if n == 6 else m.group(4), keys[m.group(4)])
+                  for n in range(17)] if scaled else None
+        bosses.append((title, where, flag, keys[m.group(4)], any_, all_, counts))
+    assert len(bosses) == len(re.findall(fn + r"(?:Scaled)?Boss\(", body)), f"{slug}: a boss not read"
+    badges = ", ".join(str(cr_flag(0x10000 + i)) for i in range(16))
+    for bi, (title, where, flag, team, any_, all_, counts) in enumerate(bosses):
         if any_:
-            out.append(f"static const uint16_t pd_gb_crystal_any{bi}[] = {{ {', '.join(str(cr_flag(f)) for f in any_)}, 0 }};")
+            out.append(f"static const uint16_t pd_gb_{slug}_any{bi}[] = {{ {', '.join(str(cr_flag(f)) for f in any_)}, 0 }};")
         if all_:
-            out.append(f"static const uint16_t pd_gb_crystal_all{bi}[] = {{ {', '.join(str(cr_flag(f)) for f in all_)}, 0 }};")
-    out.append("static const struct pd_boss pd_gb_crystal_bosses[] = {")
-    for bi, (title, where, flag, team, any_, all_) in enumerate(bosses):
-        more = f", .doneAll = pd_gb_crystal_all{bi}" if all_ else ""
-        anyf = f"pd_gb_crystal_any{bi}" if any_ else "NULL"
-        out.append(f"    {{ {c_str(title)}, {c_str(where)}, {cr_flag(flag) if flag else 0}, PD_BOSS_FIXED, {team}, 0, NULL, NULL, {anyf}, .region = 0{more} }},")
+            out.append(f"static const uint16_t pd_gb_{slug}_all{bi}[] = {{ {', '.join(str(cr_flag(f)) for f in all_)}, 0 }};")
+        if counts:
+            out.append(f"static const uint16_t pd_gb_{slug}_badges{bi}[] = {{ {badges}, 0 }};")
+            out.append(f"static const uint32_t pd_gb_{slug}_counts{bi}[] = {{ {', '.join(map(str, counts))} }};")
+    out.append(f"static const struct pd_boss pd_gb_{slug}_bosses[] = {{")
+    for bi, (title, where, flag, team, any_, all_, counts) in enumerate(bosses):
+        more = f", .doneAll = pd_gb_{slug}_all{bi}" if all_ else ""
+        anyf = f"pd_gb_{slug}_any{bi}" if any_ else "NULL"
+        kind, alts = "PD_BOSS_FIXED", "NULL"
+        if counts:
+            kind, alts = "PD_BOSS_BY_COUNT", f"pd_gb_{slug}_badges{bi}"
+            more += f", .countTeams = pd_gb_{slug}_counts{bi}"
+        out.append(f"    {{ {c_str(title)}, {c_str(where)}, {cr_flag(flag) if flag else 0}, {kind}, {team}, 0, {alts}, NULL, {anyf}, .region = 0{more} }},")
     out.append("};")
     env = {"consts": {}, "template": lambda e: (_ for _ in ()).throw(SyntaxError(e))}
     pages = pages_of(text, env)
-    emit_guide_pages(out, "pd_gb_crystal", pages)
-    out.append(f"const struct pd_guide pd_guide_gb_crystal = {{ pd_gb_crystal_pages, {len(pages)}, pd_gb_crystal_bosses, {len(bosses)}, false, 0, 0, .regionOf = NULL }};")
+    emit_guide_pages(out, f"pd_gb_{slug}", pages)
+    out.append(f"const struct pd_guide pd_guide_gb_{slug} = {{ pd_gb_{slug}_pages, {len(pages)}, pd_gb_{slug}_bosses, {len(bosses)}, false, 0, 0, .regionOf = NULL }};")
     out.append("")
     # wild: G|g|n|m,d,n rates|lv:sp x21; W|g|n|rate|lv:sp x3; F|g|n|group; R|g|n|set; FG|group|old|good|super; TG|group|d|n; TS|set|common|rare
     grass, water, fishMap, rockMap, treeMap, fish, timeFish, trees, rare = {}, {}, {}, {}, {}, {}, {}, {}, {}
-    for line in raw("CR_WILD_RAW"):
+    for line in raw(f"{pre}_WILD_RAW"):
         f = line.split("|")
         k = lambda: int(f[1]) << 8 | int(f[2])
         if f[0] == "G":
@@ -875,7 +898,7 @@ def emit_crystal(out):
     def triples(sl, n):
         sl = (sl + [(0, 0, 0)] * n)[:n]
         return "{ " + ", ".join(f"{{ {a}, {b}, {cc} }}" for a, b, cc in sl) + " }"
-    out.append("const struct pd_gb2_wild pd_gb_wild_crystal[] = {")
+    out.append(f"const struct pd_gb2_wild pd_gb_wild_{slug}[] = {{")
     for k in mapkeys:
         gr = grass.get(k, ([0, 0, 0], []))
         wa = water.get(k, (0, []))
@@ -883,24 +906,33 @@ def emit_crystal(out):
                    f"{fishMap.get(k, -1)}, {rockMap.get(k, -1)}, {treeMap.get(k, -1)} }},")
     out.append("    { -1, { 0, 0, 0 }, { { 0, 0 } }, 0, { { 0, 0 } }, -1, -1, -1 },")
     out.append("};")
-    out.append("const struct pd_gb2_fish pd_gb_fish_crystal[] = {")
+    out.append(f"const struct pd_gb2_fish pd_gb_fish_{slug}[] = {{")
     for g in sorted(fish):
         rods = (fish[g] + [[], [], []])[:3]
         out.append(f"    {{ {g}, {{ {', '.join(triples(r, 4) for r in rods)} }}, {{ {', '.join(str(len(r)) for r in rods)} }} }},")
     out.append("    { -1, { { { 0, 0, 0 } } }, { 0 } },")
     out.append("};")
-    out.append("const uint8_t pd_gb_time_fish_crystal[][4] = {  // day species, level; night species, level")
+    out.append(f"const uint8_t pd_gb_time_fish_{slug}[][4] = {{  // day species, level; night species, level")
     for g in range(max(timeFish) + 1 if timeFish else 0):
         d, n = timeFish.get(g, [(0, 0), (0, 0)])
         out.append(f"    {{ {d[0]}, {d[1]}, {n[0]}, {n[1]} }},")
     out.append("};")
-    out.append(f"const int pd_gb_time_fish_crystal_count = {len(timeFish)};")
-    out.append("const struct pd_gb2_rocks pd_gb_rocks_crystal[] = {")
+    out.append(f"const int pd_gb_time_fish_{slug}_count = {len(timeFish)};")
+    out.append(f"const struct pd_gb2_rocks pd_gb_rocks_{slug}[] = {{")
     for t in sorted(trees):
         out.append(f"    {{ {t}, {len(trees[t])}, {triples(trees[t], 6)}, {len(rare[t])}, {triples(rare[t], 6)} }},")
     out.append("    { -1, 0, { { 0, 0, 0 } }, 0, { { 0, 0, 0 } } },")
     out.append("};")
-    # landmarks: wMapGroup * 256 + wMapNumber -> landmark (MapSecDataCrystal.kt mapLandmarksCrystal)
+    # landmarks: wMapGroup * 256 + wMapNumber -> landmark (MapSecDataCrystal.kt mapLandmarksCrystal; Crystal Legacy's map is Crystal's)
+    if slug != "crystal":
+        things = []
+        for line in raw(f"GUIDE_AREAS_{slug.upper()}_RAW"):
+            mp, kind, id_, flag, qty, wants, where = line.split("|", 6)
+            f = int(flag)
+            things.append((int(mp), kind, int(id_), cr_flag(f) if f else 0, int(qty), int(wants), where))
+        things.sort(key=lambda t: t[0])
+        emit_areas(out, f"pd_areas_gb_{slug}", things)
+        return
     ml = read("MapSecDataCrystal.kt")
     b = ml[ml.index("val mapLandmarksCrystal"):]
     b = b[:b.index("\n)\n")]
@@ -911,12 +943,12 @@ def emit_crystal(out):
     out.append(f"const int pd_gb_landmarks_crystal_count = {len(marks)};")
     # areas by landmark, flags packed
     things = []
-    for line in raw("GUIDE_AREAS_CRYSTAL_RAW"):
+    for line in raw(f"GUIDE_AREAS_{slug.upper()}_RAW"):
         mp, kind, id_, flag, qty, wants, where = line.split("|", 6)
         f = int(flag)
         things.append((int(mp), kind, int(id_), cr_flag(f) if f else 0, int(qty), int(wants), where))
     things.sort(key=lambda t: t[0])
-    emit_areas(out, "pd_areas_gb_crystal", things)
+    emit_areas(out, f"pd_areas_gb_{slug}", things)
 
 
 # --- Polished Crystal: its hand-written pages (GuidePolishedCrystal.kt); HERE and NEXT BOSS come from its world
@@ -1065,6 +1097,7 @@ def main():
         emit_areas(out, f"pd_areas_{slug}", areas_of(f"GuideAreas{cls}Gen.kt", f"GUIDE_AREAS_{up}_RAW"))
     emit_gb(out)
     emit_crystal(out)
+    emit_crystal(out, "crystal_legacy", "GuideCrystalLegacyGen.kt", "CL", "BOSSES_CRYSTAL_LEGACY", "cl")
     emit_polished(out)
     emit_areas(out, "pd_areas_emerald_legacy", areas_of("GuideAreasEmeraldLegacyGen.kt", "GUIDE_AREAS_EMERALD_LEGACY_RAW"))
     emit_areas(out, "pd_areas_ruby_sapphire", areas_of("GuideAreasRubySapphireGen.kt", "GUIDE_AREAS_RUBY_SAPPHIRE_RAW"))

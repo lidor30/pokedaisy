@@ -55,7 +55,7 @@ def main():
             wild_done.add(gid)
             want = {}
             for tod, badges, group, num, lists in json.load(open(wpath)):
-                if gid in ("YELLOW", "RED", "BLUE"):
+                if gid in ("YELLOW", "RED", "BLUE", "YELLOW_LEGACY"):
                     group = 0
                 key = f"{tod} {badges} {group} {num}"
                 want[key] = " ".join("|" + "".join(f" {a}:{b}:{c}:{d}" for a, b, c, d in l) for l in lists)

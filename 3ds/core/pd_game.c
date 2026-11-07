@@ -654,7 +654,9 @@ static void identify(struct pd_game* g) {
             g->guide = r->cfg == &PD_GB_CONFIG_RED ? PD_GUIDE_GB_RED : r->cfg == &PD_GB_CONFIG_BLUE ? PD_GUIDE_GB_BLUE :
                        r->cfg == &PD_GB_CONFIG_YELLOW || r->cfg == &PD_GB_CONFIG_YELLOW_DE || r->cfg == &PD_GB_CONFIG_YELLOW_FR ||
                        r->cfg == &PD_GB_CONFIG_YELLOW_IT || r->cfg == &PD_GB_CONFIG_YELLOW_ES ? PD_GUIDE_GB_YELLOW : r->cfg == &PD_GB_CONFIG_CRYSTAL ? PD_GUIDE_GB_CRYSTAL :
-                       r->cfg == &PD_GB_CONFIG_POLISHED || r->cfg == &PD_GB_CONFIG_POLISHED_FAITHFUL ? PD_GUIDE_GB_POLISHED : PD_GUIDE_NONE;
+                       r->cfg == &PD_GB_CONFIG_POLISHED || r->cfg == &PD_GB_CONFIG_POLISHED_FAITHFUL ? PD_GUIDE_GB_POLISHED :
+                       r->cfg == &PD_GB_CONFIG_YELLOW_LEGACY ? PD_GUIDE_GB_YELLOW_LEGACY :
+                       r->cfg == &PD_GB_CONFIG_CRYSTAL_LEGACY ? PD_GUIDE_GB_CRYSTAL_LEGACY : PD_GUIDE_NONE;
             g->hackMaps = true;
             g->unsupported = NULL;
             gb_font(g, r->cfg);

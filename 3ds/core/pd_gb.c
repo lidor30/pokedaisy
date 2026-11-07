@@ -21,7 +21,7 @@
 #define G2_EGG 0xFD
 #define G2_TMS 57
 
-extern const struct pd_gb_team pd_gb_teams_crystal[];
+extern const struct pd_gb_team pd_gb_teams_crystal[], pd_gb_teams_crystal_legacy[];
 extern const uint16_t pd_gb_internal_to_dex_yellow[], pd_gb_internal_to_dex_pure_rgb[], pd_gb_internal_to_dex_yellow_legacy[], pd_gb_gender_crystal[],
     pd_gb_gender_prism[], pd_gb_gender_polished[], pd_gb_tm_crystal[], pd_gb_tm_prism[], pd_gb_tm_polished[];
 extern const int pd_gb_internal_to_dex_yellow_count, pd_gb_internal_to_dex_pure_rgb_count, pd_gb_internal_to_dex_yellow_legacy_count, pd_gb_gender_crystal_count,
@@ -52,13 +52,13 @@ const struct pd_gb_config pd_gb_yellow_fr = { PD_GB_YELLOW_EUROPE .battleMenuLef
 const struct pd_gb_config pd_gb_yellow_it = { PD_GB_YELLOW_EUROPE .battleMenuLeftX = 7, .battleMenuRightX = 14 };
 const struct pd_gb_config pd_gb_yellow_es = { PD_GB_YELLOW_EUROPE .battleMenuLeftX = 9, .battleMenuRightX = 15 };
 // Yellow Legacy (GEN1_YELLOW_LEGACY): Yellow's but the bag (59 slots) pushed money and the battle mode on; its own
-// internal species order. Its GUIDE RAM (GuideGen1Gen.kt's G1L_*) gives the map its place; no GUIDE pages here yet.
+// internal species order. Its GUIDE RAM is GuideGen1Gen.kt's G1L_* (HERE, NEXT BOSS, the map's place).
 const struct pd_gb_config pd_gb_yellow_legacy = {
     .gen = 1, .partyCount = 0xD162, .partyMons = 0xD16A, .numItems = 0xD31C, .money = 0xD394, .battleMode = 0xD057,
     .battleMon = 0xD013, .enemyMon = 0xCFE4, .otPartyCount = 0xD89B, .otPartyMons = 0xD8A3, .curOTMon = 0xCFE7,
     .internalToDex = pd_gb_internal_to_dex_yellow_legacy, .bagSlots = 59,
     .dexCaught = 0xD2F6, .dexSeen = 0xD309, .dexCount = 151,
-    .guideRam = &(const struct pd_gb_guide_ram){ 0xD746, 0xD5F3, 0xD6EF, 0xD736, 0xD3A3, 0xD714, 0xD3AB },
+    .guideRam = &(const struct pd_gb_guide_ram){ 0xD746, 0xD5F3, 0xD6EF, 0xD736, 0xD3A3, 0xD714, 0xD3AB }, .teams = pd_gb_teams_yellow_legacy,
     .tileMap = 0xC3A0, .moveMenuType = 0xCCDB, .outSlot = 0xCC2F, .topMenuItemY = 0xCC24, .battleMenuLeftX = 9, .battleMenuRightX = 15, .battlePartyMenu = 2, .partyMenuType = 0xD07C,
 };
 #define PD_GB_RED_BASE \
@@ -126,6 +126,13 @@ const struct pd_gb_config pd_gb_crystal_legacy = {
     .curOTMon = 0xC663, .genderRatios = pd_gb_gender_crystal, .tmItems = pd_gb_tm_crystal, .speciesCount = 251,
     .itemsMax = 80, .ballsMax = 25, .keyItemsMax = 50,
     .dexCaught = PD_WRAMX(1, 0xDEA4), .dexSeen = PD_WRAMX(1, 0xDEC4), .dexCount = 251,
+    // Its GUIDE (GuideCrystalLegacyGen.kt's CL_*: event flags, clock, badges, trades) and place (GEN2_CRYSTAL_LEGACY), on
+    // Crystal's map.
+    .guide2Ram = &(const struct pd_gb_guide2_ram){ PD_WRAMX(1, 0xDA7D), PD_WRAMX(1, 0xD274), PD_WRAMX(1, 0xD862),
+                                                   PD_WRAMX(1, 0xD96B), PD_WRAMX(1, 0xDCC0) },
+    .teams = pd_gb_teams_crystal_legacy,
+    .mapGroup = PD_WRAMX(1, 0xDCC0), .backupMapGroup = PD_WRAMX(1, 0xDCB8), .playerGender = PD_WRAMX(1, 0xD47D),
+    .landmarks = pd_gb_landmarks_crystal, .landmarkCount = &pd_gb_landmarks_crystal_count,
 };
 // Ambrosia 1.9.0: party / battle +0xB; bag pockets of 40 items and 30 key items (D884, D8D6, D8F6), TMs D84B, money D840.
 const struct pd_gb_config pd_gb_ambrosia = {

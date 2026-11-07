@@ -64,10 +64,11 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     trades and items (a ball = done). BOSS is the next unbeaten gym leader /
     Elite Four / champion with their team from the ROM. A game with no WHERE IS
     of its own gets one built from its area data: HMs, key items, gift POKéMON.
-    Red, Blue, Yellow in five languages and Crystal have it from the app's generated
-    guide tables (`core/pd_guide_gen.c`, `tools/gen_guide.py`), Polished Crystal from
-    its own world (`core/pd_gb_world_gen.c`, `tools/gen_gb_world.py`): HERE follows
-    the game's clock and, on Polished Crystal, your badges; the champion's teams show
+    Red, Blue, Yellow in five languages, Yellow Legacy, Crystal and Crystal Legacy
+    have it from the app's generated guide tables (`core/pd_guide_gen.c`,
+    `tools/gen_guide.py`), Polished Crystal from its own world (`core/pd_gb_world_gen.c`,
+    `tools/gen_gb_world.py`): HERE follows the game's clock and, on Polished Crystal,
+    your badges (Crystal Legacy's three any-order gyms too); the champion's teams show
     side by side until the save settles one. A first-open notice says the guide is
     AI-written and may be wrong, as in the app.
   - **POKéDEX**: seen / caught from the save, in Kanto / Hoenn or National

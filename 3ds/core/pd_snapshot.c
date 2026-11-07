@@ -816,13 +816,9 @@ static const char* rom_item_description(const struct pd_game* g, int item) {
 }
 
 const char* pd_item_description(const struct pd_game* g, int item) {
-    // The game's own text from its ROM, as the app's RomItemText (no ROM: retail's bundled text below, by retail's ids).
+    // The game's own text from its ROM, as the app's RomItemText; no ROM, no text (the games' prose is never bundled).
     const char* rom = rom_item_description(g, item);
-    if (rom) return rom;
-    // Retail's texts are by retail's ids: a hack with its own item names has none of its own (none shown, none faked).
-    if (g->cfg && g->cfg->text && g->cfg->text->items) return "";
-    if (g->kind == PD_GAME_EMERALD) return item_entry(pd_item_desc_emerald, pd_item_desc_emerald_count, item);
-    return item_entry(pd_item_desc_firered, pd_item_desc_firered_count, item);
+    return rom ? rom : "";
 }
 
 const char* pd_pocket_name(int pocket) {

@@ -45,6 +45,8 @@ const struct pd_guide* pd_guide_for(const struct pd_game* g) {
     case PD_GUIDE_GB_RED: return &pd_guide_gb_red;
     case PD_GUIDE_GB_BLUE: return &pd_guide_gb_blue;
     case PD_GUIDE_GB_YELLOW: return &pd_guide_gb_yellow;
+    case PD_GUIDE_GB_YELLOW_LEGACY: return &pd_guide_gb_yellow_legacy;
+    case PD_GUIDE_GB_CRYSTAL_LEGACY: return &pd_guide_gb_crystal_legacy;
     case PD_GUIDE_GB_CRYSTAL: return &pd_guide_gb_crystal;
     case PD_GUIDE_GB_POLISHED: return &pd_guide_gb_polished;
     case PD_GUIDE_RECHARGED_YELLOW: return &pd_guide_recharged_yellow;
@@ -112,6 +114,8 @@ const struct pd_area_thing* pd_areas_for(const struct pd_game* g, int* count) {
     case PD_GUIDE_RECHARGED_YELLOW_V194: *count = pd_areas_recharged_yellow_v194_count; return pd_areas_recharged_yellow_v194;
     case PD_GUIDE_EMERALD_KAIZO: *count = pd_areas_emerald_count; return pd_areas_emerald;
     case PD_GUIDE_GB_YELLOW: *count = pd_areas_gb_yellow_count; return pd_areas_gb_yellow;
+    case PD_GUIDE_GB_YELLOW_LEGACY: *count = pd_areas_gb_yellow_legacy_count; return pd_areas_gb_yellow_legacy;
+    case PD_GUIDE_GB_CRYSTAL_LEGACY: *count = pd_areas_gb_crystal_legacy_count; return pd_areas_gb_crystal_legacy;
     case PD_GUIDE_GB_RED: *count = pd_areas_gb_red_count; return pd_areas_gb_red;
     case PD_GUIDE_GB_BLUE: *count = pd_areas_gb_blue_count; return pd_areas_gb_blue;
     case PD_GUIDE_GB_CRYSTAL: *count = pd_areas_gb_crystal_count; return pd_areas_gb_crystal;
@@ -464,11 +468,17 @@ static void gb_add(struct pd_wild_set* w, int method, int species, int level, do
 
 // Crystal (CrystalWorld.encounters): the time of day's grass slots, surfing (levels up to +4), the map's rods (a
 // time-of-day slot by the clock) and rock smash; headbutt trees aren't listed here.
-static bool crystal_wild_here(const struct pd_snapshot* s, struct pd_wild_set* out) {
+static bool crystal_wild_here(const struct pd_game* g, const struct pd_snapshot* s, struct pd_wild_set* out) {
+    // Crystal's tables, or Crystal Legacy's (the same engine, its own wild data)
+    bool legacy = g->guide == PD_GUIDE_GB_CRYSTAL_LEGACY;
+    const struct pd_gb2_fish* fishes = legacy ? pd_gb_fish_crystal_legacy : pd_gb_fish_crystal;
+    const struct pd_gb2_rocks* rocks = legacy ? pd_gb_rocks_crystal_legacy : pd_gb_rocks_crystal;
+    const uint8_t (*timeFish)[4] = legacy ? pd_gb_time_fish_crystal_legacy : pd_gb_time_fish_crystal;
+    int timeFishCount = legacy ? pd_gb_time_fish_crystal_legacy_count : pd_gb_time_fish_crystal_count;
     static const uint8_t GRASS[7] = { 30, 30, 20, 10, 5, 4, 1 }, WATER[3] = { 60, 30, 10 };
     if (!s->posOk) return false;
     int key = s->mapGroup << 8 | s->mapNum, tod = s->hour >= 0 && s->hour <= 2 ? s->hour : 1;
-    const struct pd_gb2_wild* t = pd_gb_wild_crystal;
+    const struct pd_gb2_wild* t = legacy ? pd_gb_wild_crystal_legacy : pd_gb_wild_crystal;
     for (; t->key >= 0 && t->key != key; t++) {}
     if (t->key < 0) return true;
     double sums[PD_WILD_METHODS * PD_WILD_MAX] = { 0 };
@@ -479,25 +489,25 @@ static bool crystal_wild_here(const struct pd_snapshot* s, struct pd_wild_set* o
             gb_add(out, 1, t->water[i][1], t->water[i][0], WATER[i], sums);
             gb_add(out, 1, t->water[i][1], t->water[i][0] + 4, 0, sums);
         }
-    for (const struct pd_gb2_fish* f = pd_gb_fish_crystal; t->fishGroup >= 0 && f->group >= 0; f++) {
+    for (const struct pd_gb2_fish* f = fishes; t->fishGroup >= 0 && f->group >= 0; f++) {
         if (f->group != t->fishGroup) continue;
         for (int r = 0; r < 3; r++)
             for (int i = 0; i < f->count[r]; i++) {
                 int sp = f->rows[r][i][1], lv = f->rows[r][i][2];
                 if (!sp) {  // a time-of-day slot: its group's day or night Pokémon
-                    if (lv >= pd_gb_time_fish_crystal_count) continue;
-                    const uint8_t* tf = pd_gb_time_fish_crystal[lv];
+                    if (lv >= timeFishCount) continue;
+                    const uint8_t* tf = timeFish[lv];
                     sp = tod == 2 ? tf[2] : tf[0];
                     lv = tod == 2 ? tf[3] : tf[1];
                 }
                 gb_add(out, 3 + r, sp, lv, f->rows[r][i][0] * 100.0 / 256, sums);
             }
     }
-    for (const struct pd_gb2_rocks* r = pd_gb_rocks_crystal; t->rockSet >= 0 && r->set >= 0; r++)
+    for (const struct pd_gb2_rocks* r = rocks; t->rockSet >= 0 && r->set >= 0; r++)
         if (r->set == t->rockSet)
             for (int i = 0; i < r->count; i++) gb_add(out, 2, r->rows[i][1], r->rows[i][2], r->rows[i][0], sums);
     // Headbutt: the map's tree set, its common trees (method 6) and its rare ones (7).
-    for (const struct pd_gb2_rocks* r = pd_gb_rocks_crystal; t->treeSet >= 0 && r->set >= 0; r++)
+    for (const struct pd_gb2_rocks* r = rocks; t->treeSet >= 0 && r->set >= 0; r++)
         if (r->set == t->treeSet) {
             for (int i = 0; i < r->count; i++) gb_add(out, 6, r->rows[i][1], r->rows[i][2], r->rows[i][0], sums);
             for (int i = 0; i < r->rareCount; i++) gb_add(out, 7, r->rare[i][1], r->rare[i][2], r->rare[i][0], sums);
@@ -510,12 +520,17 @@ static bool crystal_wild_here(const struct pd_snapshot* s, struct pd_wild_set* o
 }
 
 static bool gb_wild_here(const struct pd_game* g, const struct pd_snapshot* s, struct pd_wild_set* out) {
-    if (g->guide == PD_GUIDE_GB_CRYSTAL) return crystal_wild_here(s, out);
+    if (g->guide == PD_GUIDE_GB_CRYSTAL || g->guide == PD_GUIDE_GB_CRYSTAL_LEGACY) return crystal_wild_here(g, s, out);
     static const uint8_t SLOT_ODDS[10] = { 51, 51, 39, 25, 25, 25, 13, 13, 11, 3 };
-    const struct pd_gb_wild* t = g->guide == PD_GUIDE_GB_YELLOW ? pd_gb_wild_yellow : g->guide == PD_GUIDE_GB_RED ? pd_gb_wild_red :
-                                 g->guide == PD_GUIDE_GB_BLUE ? pd_gb_wild_blue : NULL;
-    const struct pd_gb_fish* old = g->guide == PD_GUIDE_GB_YELLOW ? &pd_gb_old_rod_yellow : g->guide == PD_GUIDE_GB_RED ? &pd_gb_old_rod_red : &pd_gb_old_rod_blue;
-    const struct pd_gb_fish* good = g->guide == PD_GUIDE_GB_YELLOW ? &pd_gb_good_rod_yellow : g->guide == PD_GUIDE_GB_RED ? &pd_gb_good_rod_red : &pd_gb_good_rod_blue;
+    const struct pd_gb_wild* t = NULL;
+    const struct pd_gb_fish *old = NULL, *good = NULL;
+    switch (g->guide) {
+    case PD_GUIDE_GB_YELLOW: t = pd_gb_wild_yellow; old = &pd_gb_old_rod_yellow; good = &pd_gb_good_rod_yellow; break;
+    case PD_GUIDE_GB_RED: t = pd_gb_wild_red; old = &pd_gb_old_rod_red; good = &pd_gb_good_rod_red; break;
+    case PD_GUIDE_GB_BLUE: t = pd_gb_wild_blue; old = &pd_gb_old_rod_blue; good = &pd_gb_good_rod_blue; break;
+    case PD_GUIDE_GB_YELLOW_LEGACY: t = pd_gb_wild_yellow_legacy; old = &pd_gb_old_rod_yellow_legacy; good = &pd_gb_good_rod_yellow_legacy; break;
+    default: break;
+    }
     if (!t || !s->posOk) return false;
     double sums[PD_WILD_METHODS * PD_WILD_MAX] = { 0 };
     for (; t->map >= 0 && t->map != s->mapNum; t++) {}

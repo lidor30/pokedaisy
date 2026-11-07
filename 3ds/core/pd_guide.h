@@ -104,7 +104,7 @@ struct pd_gb_team {
     int var, n;
     struct pd_gb_mon mons[6];
 };
-extern const struct pd_gb_team pd_gb_teams_yellow[], pd_gb_teams_red[], pd_gb_teams_blue[];
+extern const struct pd_gb_team pd_gb_teams_yellow[], pd_gb_teams_red[], pd_gb_teams_blue[], pd_gb_teams_yellow_legacy[];
 // Gen 1's wild Pokémon by wCurMap (GuideGen1Gen.kt's WILD tables, the app's Gen1World): grass / cave and surfing slots
 // (level, species; WildMonEncounterSlotChances' odds by slot), the super rod's (percent of a cast, species, level); the old
 // and good rods are the same everywhere there's water. map -1 ends.
@@ -114,8 +114,8 @@ struct pd_gb_wild {
     uint8_t grass[10][2], water[10][2], super[10][3];
 };
 struct pd_gb_fish { int count; uint8_t rows[10][3]; };
-extern const struct pd_gb_wild pd_gb_wild_yellow[], pd_gb_wild_red[], pd_gb_wild_blue[];
-extern const struct pd_gb_fish pd_gb_old_rod_yellow, pd_gb_good_rod_yellow, pd_gb_old_rod_red, pd_gb_good_rod_red,
+extern const struct pd_gb_wild pd_gb_wild_yellow[], pd_gb_wild_red[], pd_gb_wild_blue[], pd_gb_wild_yellow_legacy[];
+extern const struct pd_gb_fish pd_gb_old_rod_yellow_legacy, pd_gb_good_rod_yellow_legacy, pd_gb_old_rod_yellow, pd_gb_good_rod_yellow, pd_gb_old_rod_red, pd_gb_good_rod_red,
     pd_gb_old_rod_blue, pd_gb_good_rod_blue;
 // Crystal (GuideCrystalGen.kt, the app's CrystalWorld), by wMapGroup << 8 | wMapNumber: grass / cave slots per time of day
 // (morning, day, night: 7 each, rates apiece), surfing (3 slots, levels up to +4), the map's fish group and rock smash
@@ -130,18 +130,19 @@ struct pd_gb2_wild {
 struct pd_gb2_fish { int group; uint8_t rows[3][4][3]; uint8_t count[3]; };
 // A headbutt / rock set: its common rows (rock smash, headbutt) and its rare trees' (percent, species, level).
 struct pd_gb2_rocks { int set, count; uint8_t rows[6][3]; int rareCount; uint8_t rare[6][3]; };
-extern const struct pd_gb2_wild pd_gb_wild_crystal[];
-extern const struct pd_gb2_fish pd_gb_fish_crystal[];
-extern const struct pd_gb2_rocks pd_gb_rocks_crystal[];
-extern const uint8_t pd_gb_time_fish_crystal[][4];
-extern const int pd_gb_time_fish_crystal_count;
+extern const struct pd_gb2_wild pd_gb_wild_crystal[], pd_gb_wild_crystal_legacy[];
+extern const struct pd_gb2_fish pd_gb_fish_crystal[], pd_gb_fish_crystal_legacy[];
+extern const struct pd_gb2_rocks pd_gb_rocks_crystal[], pd_gb_rocks_crystal_legacy[];
+extern const uint8_t pd_gb_time_fish_crystal[][4], pd_gb_time_fish_crystal_legacy[][4];
+extern const int pd_gb_time_fish_crystal_count, pd_gb_time_fish_crystal_legacy_count;
 extern const uint16_t pd_gb_landmarks_crystal[][2];
 extern const int pd_gb_landmarks_crystal_count;
-extern const struct pd_gb_team pd_gb_teams_crystal[];
+extern const struct pd_gb_team pd_gb_teams_crystal[], pd_gb_teams_crystal_legacy[];
 
 // The app's gen1Area: the first wCurMap with the same town map name (a town's houses count with the town).
 extern const uint8_t pd_gb_gen1_area[256];
-extern const struct pd_guide pd_guide_gb_yellow, pd_guide_gb_red, pd_guide_gb_blue, pd_guide_gb_crystal, pd_guide_gb_polished;
+extern const struct pd_guide pd_guide_gb_yellow, pd_guide_gb_red, pd_guide_gb_blue, pd_guide_gb_crystal, pd_guide_gb_polished,
+    pd_guide_gb_yellow_legacy, pd_guide_gb_crystal_legacy;
 
 extern const struct pd_guide pd_guide_firered, pd_guide_leafgreen, pd_guide_emerald, pd_guide_ruby, pd_guide_sapphire,
     pd_guide_emerald_legacy,
@@ -174,8 +175,10 @@ extern const int pd_areas_firered_count, pd_areas_leafgreen_count, pd_areas_emer
 int pd_quetzal_region(int mapGroup);
 extern const uint8_t pd_quetzal_order[3][3];
 
-extern const struct pd_area_thing pd_areas_gb_yellow[], pd_areas_gb_red[], pd_areas_gb_blue[];
-extern const int pd_areas_gb_yellow_count, pd_areas_gb_red_count, pd_areas_gb_blue_count;
+extern const struct pd_area_thing pd_areas_gb_yellow[], pd_areas_gb_red[], pd_areas_gb_blue[], pd_areas_gb_yellow_legacy[],
+    pd_areas_gb_crystal_legacy[];
+extern const int pd_areas_gb_yellow_count, pd_areas_gb_red_count, pd_areas_gb_blue_count, pd_areas_gb_yellow_legacy_count,
+    pd_areas_gb_crystal_legacy_count;
 extern const struct pd_area_thing pd_areas_gb_crystal[];
 extern const int pd_areas_gb_crystal_count;
 

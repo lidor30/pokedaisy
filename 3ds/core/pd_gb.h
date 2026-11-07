@@ -150,6 +150,7 @@ struct pd_gb_dex {
     const uint16_t* dexOrder; // the species by place, where its numbers aren't the species ids
     int dexOrderCount, unown, dexEntryFirstBank;
     bool picBankDirect;
+    bool dexEntryFar;          // a 3-byte far pointer per species (Crystal Legacy), not a bank table + addresses
     const int32_t* polished;  // Polished Crystal: this build's tables, bank << 16 | address
     const char* const* polishedChars;
     int polishedSpecies;      // its last species: past it, a variant form

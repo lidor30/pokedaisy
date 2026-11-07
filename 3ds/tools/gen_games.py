@@ -326,7 +326,8 @@ def main():
                   f".baseDataSize = {t['baseDataSize']}", f".dexEntryBanks = {off(t['dexEntryBanks'])}u", f".picPointers = {off(t['picPointers'])}u",
                   f".unownPicPointers = {off(t['unownPicPointers'])}u", f".picsBanks = {off(t['picsBanks'])}u", f".textDict = {off(t.get('textDict'))}u",
                   f".picBankFixes = {off(t.get('picBankFixes'))}u", f".unown = {t['unown']}", f".dexEntryFirstBank = {t['dexEntryFirstBank']}",
-                  f".picBankDirect = {'true' if t['picBankDirect'] else 'false'}"]
+                  f".picBankDirect = {'true' if t['picBankDirect'] else 'false'}",
+                  f".dexEntryFar = {'true' if t.get('dexEntryFar') else 'false'}"]
             p = t.get("packed")
             if p:
                 a += [f".packedTree = {off(p['tree'])}u", f".packedRareChars = {off(p['rareChars'])}u", f".packedRareRanges = {off(p['rareRanges'])}u",
@@ -446,8 +447,7 @@ def main():
                 text = (f"{{ {bs['boxMonToMon']}u, {bs['boxMonRestorePP']}u, {bs['getBoxMonData']}u, {bs['storagePtr']}u, "
                         f"{{ {crcs} }} }}")
                 f.append(".boxSwap = &" + emit("bs_", [f"static const struct pd_box_swap @ = {text};", ""], ("bs", text)))
-        # Crystal Legacy's pages don't read right through these tables yet (neither branch showed them): none, rather than garbage.
-        if gbc and gbc.get("dex") and g.get("kind") != "CRYSTAL_LEGACY":
+        if gbc and gbc.get("dex"):
             def ints(prefix, ctype, values):
                 return emit(prefix + "_", [f"static const {ctype} @[{len(values)}] = {{ " + ", ".join(str(v) for v in values) + " };", ""],
                             (prefix, json.dumps(values)))

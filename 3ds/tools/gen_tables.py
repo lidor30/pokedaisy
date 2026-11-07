@@ -22,7 +22,8 @@ SOURCES = {
     "chart": "TypeChart.kt",
     "mapsec_firered": "MapSecData.kt",
     "mapsec_emerald": "MapSecDataEmerald.kt",
-    # Item names and descriptions exactly as each game's bag prints them.
+    # Item names exactly as each game's bag prints them (descriptions are the games' prose: read from the player's ROM,
+    # pd_snapshot.c's rom_item_description, as the app's RomItemText - never bundled).
     "items": "ItemTextGame.kt",
     "gender": "GenderRatiosFireRed.kt",
     "species_types": "SpeciesTypes.kt",
@@ -81,9 +82,7 @@ def main():
 
     item_tables = [
         ("pd_item_names_firered", strings("items", "itemNamesFireRedGame")),
-        ("pd_item_desc_firered", strings("items", "itemDescriptionsFireRedGame")),
         ("pd_item_names_emerald", strings("items", "itemNamesEmeraldGame")),
-        ("pd_item_desc_emerald", strings("items", "itemDescriptionsEmeraldGame")),
     ]
 
     # Each species' two types (the same twice for one type), by internal id.
@@ -149,7 +148,7 @@ def main():
         f.write("\n".join(out))
     print(f"wrote {os.path.relpath(OUT, ROOT)}: {len(species)} species, {len(moves)} moves, "
           f"{len(chart)} chart entries, {len(fr_secs)}/{len(em_secs)} map sections, "
-          f"{len(item_tables[0][1])}/{len(item_tables[2][1])} items, {len(gender)} gender ratios")
+          f"{len(item_tables[0][1])}/{len(item_tables[1][1])} items, {len(gender)} gender ratios")
 
 
 if __name__ == "__main__":

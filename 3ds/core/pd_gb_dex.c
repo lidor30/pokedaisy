@@ -507,6 +507,12 @@ static bool gen2_entry(const struct pd_game* g, int dex, struct pd_dex_entry* e)
     if (d->polished) return polished_entry(g, dex, species, e);
     int bank = d->dexEntryFirstBank >= 0 ? d->dexEntryFirstBank + ((species - 1) >> 6) : u8(g, d->dexEntryBanks + (uint32_t) ((species - 1) >> 6));
     int ptr = u16(g, d->dexEntryPointers + 2u * (uint32_t) (species - 1));
+    if (d->dexEntryFar) {
+        // Crystal Legacy: a far pointer per species (bank, then address), as the app's Gen2Dex.entry.
+        uint32_t far = d->dexEntryPointers + 3u * (uint32_t) (species - 1);
+        bank = u8(g, far);
+        ptr = u16(g, far + 1);
+    }
     uint32_t s = d->baseData + (uint32_t) d->baseDataSize * (uint32_t) (species - 1);
     if (d->packedTree) {
         // Prism: the category, then (where its done left off) HT, WT and page 1's length, then the two pages.
