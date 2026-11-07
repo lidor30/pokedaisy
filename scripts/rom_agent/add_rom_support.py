@@ -625,20 +625,39 @@ def open_pr(wt: Path, base: str, branch: str, title: str, body: str, draft: bool
 
 # --- the games -----------------------------------------------------------------------------------------------------
 
+def unquote(field: str) -> str:
+    """A list field without its surrounding quotes: paths with spaces are often written "like this"."""
+    field = field.strip()
+    if len(field) >= 2 and field[0] == field[-1] and field[0] in "\"'":
+        field = field[1:-1].strip()
+    return field
+
+
 def parse_games(args) -> list[dict]:
     """Every game asked for: positional ROMs (ROM::SAVE pairs a save) and --list lines (rom | save | name | notes)."""
     raw: list[tuple[str, str, str, str]] = []
     for item in args.roms:
         rom, _, save = item.partition("::")
-        raw.append((rom, save, "", ""))
+        raw.append((unquote(rom), unquote(save), "", ""))
     if args.list:
-        lst = args.list.expanduser()
+        lst = args.list.expanduser().resolve()
         if not lst.is_file():
-            die(f"no list at {lst}")
-        for n, line in enumerate(lst.read_text().splitlines(), 1):
+            stem = lst.name.split(".")[0].lower()
+            near = sorted(p.name for p in lst.parent.glob("*") if p.is_file() and p.name.lower().startswith(stem[:6])) \
+                if lst.parent.is_dir() else []
+            die(f"no list at {lst}\n"
+                + (f"files in {tilde(lst.parent)} with a name like it: {', '.join(near)}\n" if near else
+                   f"nothing in {tilde(lst.parent)} has a name like it\n")
+                + "a relative LIST= path is read from the repo's root (where the Makefile is); give the full path "
+                  "if the file is elsewhere, and save it as plain text (TextEdit: Format > Make Plain Text)")
+        if lst.suffix.lower() in {".rtf", ".rtfd", ".doc", ".docx", ".pages"}:
+            die(f"{lst.name} is a formatted document; save the list as plain text (TextEdit: Format > Make Plain "
+                "Text, then save as .txt)")
+        # utf-8-sig: a list saved with a byte-order mark would otherwise carry it into the first path.
+        for n, line in enumerate(lst.read_text(encoding="utf-8-sig").splitlines(), 1):
             if not line.strip() or line.lstrip().startswith("#"):
                 continue
-            parts = [p.strip() for p in line.split("|")] + ["", "", ""]
+            parts = [unquote(p) for p in line.split("|")] + ["", "", ""]
             if not parts[0]:
                 die(f"{lst}:{n}: no ROM path")
             raw.append((parts[0], parts[1], parts[2], "|".join(parts[3:]).strip("| ")))

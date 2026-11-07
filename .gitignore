@@ -63,3 +63,6 @@ __pycache__/
 # 3DS build output (3ds/README.md)
 *.3dsx
 *.smdh
+
+# ROM lists for make rom-support LIST=... (scripts/rom_agent/): local paths, never committed
+roms-to-add*.txt
