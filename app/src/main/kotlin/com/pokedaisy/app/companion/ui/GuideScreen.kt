@@ -254,7 +254,9 @@ fun GuideScreen(source: GuideSource, ui: GuideUiState, snapshot: SnapshotView, m
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     GbaText(tr("LOADING..."), OptionColors.muted, OptionColors.mutedShadow, m)
                 }
-            } else {
+            } else DenseText {
+                // The pages a font pixel smaller where there's room (the Thor): more of them on screen.
+                val m = rememberGbaTextMetrics()
                 LazyColumn(Modifier.fillMaxSize(), state = ui.list) {
                     page.sections.forEach { section ->
                         item(key = "h/${section.heading}") { SectionHeading(section, small) }

@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion.ui
 import androidx.compose.foundation.layout.Column
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
@@ -256,8 +257,9 @@ fun GroupedRows(
             opened = true
         }
         val focused: (Int) -> Unit = { i -> follow = i; onFocused?.invoke(i) }
+        val railHeight = maxHeight
         androidx.compose.foundation.layout.Row(Modifier.fillMaxSize()) {
-            GroupTabs(rows, groups, tops, scroll, follow, m, outside = railed)
+            GroupTabs(rows, groups, tops, scroll, follow, m, outside = railed, height = railHeight)
             androidx.compose.foundation.layout.Box(Modifier.weight(1f).fillMaxSize()) {
                 Card { GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, focused, tops, footer) }
             }
@@ -301,6 +303,8 @@ private fun GroupTabs(
     m: GbaTextMetrics,
     /** Beside the window ([RailedWindow]), not in it. */
     outside: Boolean = false,
+    /** The rail's height: beside the window, the tabs share it out. */
+    height: androidx.compose.ui.unit.Dp? = null,
 ) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var picked by remember { mutableStateOf(-1) }
@@ -315,7 +319,7 @@ private fun GroupTabs(
     val shown = groups.lastOrNull { (tops[it] ?: Int.MAX_VALUE) <= scroll.value + slack } ?: groups.first()
     // At the very end the last group is on screen whatever reached the top.
     val current = picked.takeIf { it >= 0 } ?: if (atEnd) groups.last() else shown
-    TabRail(groups.map { tr(rows[it].label) }, groups.indexOf(current), m, outside) { i ->
+    TabRail(groups.map { tr(rows[it].label) }, groups.indexOf(current), m, outside, height.takeIf { outside }) { i ->
         val g = groups[i]
         picked = g
         val top = tops[g] ?: return@TabRail
@@ -332,9 +336,14 @@ fun TabRail(
     labels: List<String>, selected: Int, m: GbaTextMetrics,
     /** Beside a window rather than in one: no rule, no room for a frame. */
     outside: Boolean = false,
+    /** The height to fill (SETTINGS' rail beside its window, the user's call): the tabs stretch to share it out where they fit,
+     * else they keep their own height and the rail scrolls. */
+    fill: androidx.compose.ui.unit.Dp? = null,
     onSelect: (Int) -> Unit,
 ) {
     val small = rememberGbaTextMetrics(1f)
+    val gap = m.u * if (fill != null) 3 else 2
+    val tabMin = fill?.let { ((it - gap * (labels.size - 1)) / labels.size.coerceAtLeast(1)) } ?: 0.dp
     androidx.compose.foundation.layout.Column(
         Modifier
             .width(androidx.compose.foundation.layout.IntrinsicSize.Max)
@@ -354,9 +363,9 @@ fun TabRail(
                 if (outside) Modifier.padding(end = m.u * 4)
                 else Modifier.padding(start = m.u * 4, end = m.u * 6, top = m.u * 4, bottom = m.u * 4),
             ),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(m.u * 2),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(gap),
     ) {
-        labels.forEachIndexed { i, label -> GroupTab(label, i == selected, small) { onSelect(i) } }
+        labels.forEachIndexed { i, label -> GroupTab(label, i == selected, small, tabMin) { onSelect(i) } }
     }
 }
 
@@ -374,12 +383,18 @@ fun PageHint(text: String, m: GbaTextMetrics, small: GbaTextMetrics) {
 /** One of [TabRail]'s tabs: a tab chip's frame (white with a red label when [selected], like the tab bar's) at the list's
  * smaller text. */
 @Composable
-private fun GroupTab(label: String, selected: Boolean, m: GbaTextMetrics, onClick: () -> Unit) {
+private fun GroupTab(
+    label: String, selected: Boolean, m: GbaTextMetrics,
+    /** At least this tall ([TabRail]'s fill): taller than its label needs where the rail has room. */
+    minHeight: androidx.compose.ui.unit.Dp = 0.dp,
+    onClick: () -> Unit,
+) {
     val u = m.u
     androidx.compose.foundation.layout.Box(
         contentAlignment = androidx.compose.ui.Alignment.Center,
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = minHeight)
             .drawBehind {
                 val px = u.toPx()
                 drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px, twoTone = true)

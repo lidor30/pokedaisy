@@ -87,7 +87,7 @@ import kotlin.math.sqrt
  * the four hexagon move plates, with the U-turn plate bottom right; POKéMON is the game's party screen (green-rimmed
  * slots, "Choose a POKéMON." box); between turns the closed ball in the dark. Lengths are in the game's own pixels
  * ([G5]): placed by the tab's width and height, sized by the smaller scale, every edge stepped in whole screen
- * pixels of one game pixel ([G5.d]). The D-pad's focus is the game's own key cursor, magenta corner brackets. Same
+ * pixels of one game pixel ([G5.d]). The D-pad's focus is the game's own key cursor, magenta quarter rings at the corners. Same
  * inputs and taps as [BattleControlsScreen] (which calls this). Its colours are the game's art: no dark-mode twin.
  */
 @Composable
@@ -160,6 +160,8 @@ internal fun Gen5BattleControls(
                             Gen5Button(
                                 g, Rect(g.x(48f), g.lensTop(0.5f) , g.w - g.x(48f), g.lensBottom(0.5f)),
                                 enabled = enabled, pressesGame = !movesKnown, focusFirst = true,
+                                // Black's cursor on FIGHT! frames the panel above the plates, edge to edge (headless).
+                                cursor = Rect(g.x(2f), g.y(9f), g.x(253f), g.y(127f)),
                                 onPress = { fightLit = it },
                                 onClick = { if (movesKnown) choosingMove = true else battleInput?.selectAction(0) },
                             ) {
@@ -458,8 +460,8 @@ private fun DrawScope.drawClosedBall(g: G5, alpha: Float) {
 // ---- The plates ---------------------------------------------------------------------------------------------------
 
 /**
- * A pressable area of the screen ([rect], in the tab's pixels) with the game's key cursor - magenta corner brackets
- * - on D-pad focus. [onPress] hears the finger go down / up (FIGHT! lights its lens). Clicks like [PlatinumButton]:
+ * A pressable area of the screen ([rect], in the tab's pixels) with the game's key cursor - a magenta quarter ring at
+ * each corner, white outside it ([drawUnovaCursor]) - on D-pad focus. [onPress] hears the finger go down / up (FIGHT! lights its lens). Clicks like [PlatinumButton]:
  * [pressesGame] leaves the sound to the game's own select.
  */
 @Composable
@@ -469,6 +471,8 @@ private fun Gen5Button(
     enabled: Boolean,
     pressesGame: Boolean,
     focusFirst: Boolean = false,
+    /** Where the game's cursor sits, in the tab's pixels, when it isn't round [rect] (FIGHT!'s frames the whole panel). */
+    cursor: Rect? = null,
     onPress: (Boolean) -> Unit = {},
     draw: (DrawScope.(pressed: Boolean) -> Unit)? = null,
     onClick: () -> Unit,
@@ -480,6 +484,8 @@ private fun Gen5Button(
     val pressed by interaction.collectIsPressedAsState()
     val focused by interaction.collectIsFocusedAsState()
     LaunchedEffect(pressed) { onPress(pressed) }
+    // Black / White's own key cursor, breathing out and back like the game's.
+    val pulse = if (focused) rememberDsCursorPulse(2) else 0f
     val density = LocalDensity.current
     Box(
         Modifier
@@ -489,7 +495,10 @@ private fun Gen5Button(
             .drawWithContent {
                 draw?.invoke(this, pressed)
                 drawContent()
-                if (focused) drawKeyCursor(g.d)
+                if (focused) {
+                    val c = cursor ?: rect
+                    translate(c.left - rect.left, c.top - rect.top) { drawUnovaCursor(g.d, pulse, c.size) }
+                }
             }
             .then(
                 if (enabled) Modifier.clickable(interactionSource = interaction, indication = null) {
@@ -500,28 +509,6 @@ private fun Gen5Button(
         contentAlignment = Alignment.Center,
         content = content,
     )
-}
-
-/** The game's key cursor: a magenta bracket at each corner, rimmed white. */
-private fun DrawScope.drawKeyCursor(d: Float) {
-    val arm = 7 * d
-    val t = 2 * d
-    val w = size.width
-    val h = size.height
-    for ((cx, cy) in listOf(0f to 0f, w to 0f, 0f to h, w to h)) {
-        val sx = if (cx == 0f) 1f else -1f
-        val sy = if (cy == 0f) 1f else -1f
-        fun bracket(grow: Float, c: Color) {
-            val x0 = if (sx > 0) cx - grow else cx - arm - grow
-            val y0 = if (sy > 0) cy - grow else cy - t - grow
-            drawRect(c, Offset(x0, y0), Size(arm + 2 * grow, t + 2 * grow))
-            val x1 = if (sx > 0) cx - grow else cx - t - grow
-            val y1 = if (sy > 0) cy - grow else cy - arm - grow
-            drawRect(c, Offset(x1, y1), Size(t + 2 * grow, arm + 2 * grow))
-        }
-        bracket(d, CursorRim)
-        bracket(0f, Cursor)
-    }
 }
 
 /** The plates' face: charcoal dotted lighter (a 2 x 2 dot every 5 game pixels, a softer pixel round it), darker in
@@ -574,7 +561,7 @@ private fun ActionDiscs(
     onRun: () -> Unit,
 ) {
     Disc(g, cxDs = 39.5f, cyDs = 154f, bar = -1, label = tr("BAG"), colors = BagColors, available = live, enabled = enabled, pressesGame = true, onClick = onBag)
-    Disc(g, cxDs = 127.5f, cyDs = 170f, bar = 0, label = tr("RUN"), colors = RunColors, available = live, enabled = enabled, pressesGame = true, onClick = onRun)
+    Disc(g, cxDs = 127.5f, cyDs = 170f, bar = 0, label = tr("RUN"), colors = RunColors, available = live, enabled = enabled, pressesGame = true, cursorTop = 138f, onClick = onRun)
     Disc(
         g, cxDs = 215.5f, cyDs = 154f, bar = 1, label = tr("POKéMON"), colors = MonColors,
         available = live, enabled = enabled, pressesGame = pokemonPressesGame, onClick = onPokemon,
@@ -602,6 +589,8 @@ private fun Disc(
     enabled: Boolean,
     pressesGame: Boolean,
     radius: Float = 38f,
+    /** The game's cursor box's top (this screen's game pixels): Black's sits 24 above a side plate's centre, RUN's 32. */
+    cursorTop: Float = cyDs - 24f,
     content: (@Composable BoxScope.() -> Unit)? = null,
     onClick: () -> Unit,
 ) {
@@ -618,6 +607,8 @@ private fun Disc(
     val barTop = top + g.snap(0.63f * r)
     Gen5Button(
         g, rect, enabled = enabled && available, pressesGame = pressesGame,
+        // The game's cursor box: 36.5 left of the centre to 37.5 right, down to 2 above the screen's bottom.
+        cursor = Rect(cx - g.len(radius - 1.5f), g.y(cursorTop), cx + g.len(radius - 0.5f), g.y(174f)),
         draw = { pressed ->
             val bands = if (available) RimBands else DimRimBands
             // Drawn in the button's own box: shift the screen's coordinates by its corner.
@@ -1146,8 +1137,6 @@ private val DimRim2 = Color(0xFF616161)
 private val DimRim3 = Color(0xFF797979)
 private val Face = listOf(Color(0xFF383838), Color(0xFF353535), Color(0xFF303030), Color(0xFF2A2A2A), Color(0xFF242424))
 private val DimFace = listOf(Color(0xFF202020), Color(0xFF1C1C1C), Color(0xFF181818), Color(0xFF141414))
-private val Cursor = Color(0xFFFB0092)
-private val CursorRim = Color(0xFFFBFBFB)
 private val PlateText = Color(0xFFFBFBFB)
 private val PlateTextShadow = Color(0xFF717171)
 private val PlateMuted = Color(0xFFC3C3CB)

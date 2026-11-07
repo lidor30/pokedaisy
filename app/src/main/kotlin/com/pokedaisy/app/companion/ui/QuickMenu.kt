@@ -35,6 +35,8 @@ import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawBehind
 import kotlin.math.hypot
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.geometry.Offset
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.SubcomposeLayout
@@ -663,19 +665,31 @@ private fun QuickTile(
     }
 }
 
-/** A tile as the app's buttons are now: two-tone inside a thick dark outline and a thin white ring, in the HUD's LOOK (GLASS's
- * light letters on a dark blue, the others' dark ones on the windows' white). */
+/** A tile in the HUD's LOOK ([hudPanel]'s see-through panel and pixel edge, or the OPTION title window) with the app's buttons'
+ * two-tone face: the HUD's colour a step lighter on top, its own colour under the soft split. */
 @Composable
 private fun Modifier.quickTileFace(u: Dp): Modifier {
-    val fill = if (LocalHudLook.current == FieldHudLook.GLASS) QUICK_TILE_FILL else OptionColors.titleFill
+    val look = LocalHudLook.current
     return drawBehind {
         val px = u.toPx()
-        drawLayeredBox(listOf(QUICK_TILE_EDGE to 2 * px, Color(0xFFFBFBFB) to px), fill, radius = 4 * px, twoTone = true)
+        val r = 4 * px
+        when (look) {
+            FieldHudLook.WINDOW -> drawLayeredBox(OptionColors.titleLayers.inPx(px), OptionColors.titleFill, radius = 3 * px, twoTone = true)
+            FieldHudLook.GLASS, FieldHudLook.WHITE_GLASS -> {
+                val (top, low, edge) = if (look == FieldHudLook.GLASS) HudGlassFace else HudWhiteGlassFace
+                // See-through: each band painted once (drawTwoTone paints the low colour under the top one, which doubles a
+                // translucent fill).
+                val split = size.height * 0.47f
+                fun band(c: Color, from: Float, to: Float) = clipRect(top = from, bottom = to) { drawPixelRoundRect(c, radius = r, step = px) }
+                band(top, 0f, split)
+                band(androidx.compose.ui.graphics.lerp(top, low, 0.35f), split, split + px)
+                band(androidx.compose.ui.graphics.lerp(top, low, 0.7f), split + px, split + 2 * px)
+                band(low, split + 2 * px, size.height)
+                drawPixelRoundFrame(edge, Offset.Zero, size, r, px, step = px)
+            }
+        }
     }
 }
-
-private val QUICK_TILE_FILL = Color(0xFF3F5F8F)
-private val QUICK_TILE_EDGE = Color(0xFF303030)
 
 /** A red slash with a dark edge, over an icon that's switched off. */
 private val SLASH_ICON = listOf(

@@ -220,6 +220,10 @@ private val WHITE_INK = HudInk(
     cell = Color(0x1F000000), cellOn = Color(0x4D000000), divider = WHITE_EDGE,
 )
 
+/** The quick menu's tiles in GLASS / WHITE GLASS: the two-tone face's top, its low half (the panel's own fill) and the edge. */
+internal val HudGlassFace = Triple(Color(0xC0283044), GLASS_FILL, GLASS_EDGE)
+internal val HudWhiteGlassFace = Triple(Color(0xD0FFFFFF), Color(0xC4E4E7EE), WHITE_EDGE)
+
 internal val LocalHudLook = staticCompositionLocalOf { FieldHudLook.GLASS }
 
 /** A see-through look (GLASS or WHITE GLASS), not the app's windows. */

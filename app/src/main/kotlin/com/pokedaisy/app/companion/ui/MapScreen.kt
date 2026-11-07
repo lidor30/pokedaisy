@@ -593,8 +593,11 @@ private fun RegionMap(
 private fun MapLabel(style: MapLabelStyle, label: String, dungeon: String?, crop: IntRect, sx: Float, sy: Float) {
     val density = LocalDensity.current
     val k = floor(minOf(sx, sy)).toInt().coerceAtLeast(1)
-    val m = remember(k, density) {
-        with(density) { GbaTextMetrics(k, k.toDp(), (16f * k).toSp(), k.toFloat(), (16f * k).toDp(), (20f * k).toDp()) }
+    // The name a screen pixel a font pixel smaller than the map's own where the map is drawn big (the user's call: the game's
+    // size read large on the companion); Gen 1's letters fill their row, so they keep the map's.
+    val t = if (style != MapLabelStyle.GEN1 && k >= 3) k - 1 else k
+    val m = remember(k, t, density) {
+        with(density) { GbaTextMetrics(k, k.toDp(), (16f * t).toSp(), t.toFloat(), (16f * t).toDp(), (20f * t).toDp()) }
     }
     @Composable
     fun box(row: Int, text: String) {

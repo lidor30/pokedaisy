@@ -51,7 +51,7 @@ Each move card shows its name, type, an icon for physical, special or status whe
 
 ![The move grid: PAW SWIPE, WARY GLARE, CINDER SPIT and IRON NIP, each with its type, power, PP and verdict, and a CANCEL bar below](shots/companion-battle-moves.png "Picking a move")
 
-When you move the game's cursor with your buttons, the battle buttons show where it is with a ring. In Game Boy games and games without one-press picks, they don't.
+When you move the game's cursor with your buttons, the battle buttons show where it is with the DS games' own cursor: red corner marks that pulse in and out. In Game Boy games and games without one-press picks, they don't.
 
 ### BATTLE INFO
 
@@ -73,7 +73,7 @@ The battle screen comes in two looks, and both work the same way. `GEN 4` is the
 
 ![GEN 5: FIGHT! on the dark band across a red and white ball, round BAG, RUN and POKéMON plates below, the party's balls in between](shots/companion-battle-gen5.png "BATTLE STYLE: GEN 5")
 
-In `GEN 5`, `FIGHT!` grows the band into a dark field with your four moves on it, each plate edged in its move's type colour: the name, the type and PP, then the move's power and, with `BATTLE HINTS` on, how well it hits. The round plate with the arrow at the bottom right takes you back. `POKéMON` opens the game's style of party screen: a plate for each of your Pokémon with its HP bar, and the one to send in marked `BEST` when `BATTLE HINTS` is on. While the attacks play out, the tab shows a closed ball in the dark until your next turn. With a controller, the cursor is a set of pink corners, as in the game.
+In `GEN 5`, `FIGHT!` grows the band into a dark field with your four moves on it, each plate edged in its move's type colour: the name, the type and PP, then the move's power and, with `BATTLE HINTS` on, how well it hits. The round plate with the arrow at the bottom right takes you back. `POKéMON` opens the game's style of party screen: a plate for each of your Pokémon with its HP bar, and the one to send in marked `BEST` when `BATTLE HINTS` is on. While the attacks play out, the tab shows a closed ball in the dark until your next turn. With a controller, the cursor is a set of rounded pink corners that pulse, as in the game.
 
 ![GEN 5's moves: four dark plates edged in their type's colour over a dark field, your party's balls under them and the arrow back](shots/companion-battle-gen5-moves.png "GEN 5's moves")
 

@@ -238,7 +238,9 @@ fun PokedexScreen(
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     GbaText(tr("NONE"), OptionColors.muted, OptionColors.mutedShadow, m)
                 }
-            } else {
+            } else DenseText {
+                // The list a font pixel smaller where there's room (the Thor): more entries on screen.
+                val m = rememberGbaTextMetrics()
                 // The D-pad starts on the entry last opened while it's in the list, else on the top row showing.
                 val back = ui.lastOpened?.takeIf { it in entries }
                 val top = entries.getOrNull(ui.list.firstVisibleItemIndex)
@@ -470,7 +472,9 @@ private fun EntryPage(
         Separator(m, Modifier.fillMaxHeight(), vertical = true)
         val sections = remember(t, guide) { dexSections(t, guide) }
         val section = ui.section.takeIf { it in sections } ?: DexSection.INFO
-        Column(Modifier.weight(0.58f).fillMaxHeight().padding(start = gap + u * 2)) {
+        Column(Modifier.weight(0.58f).fillMaxHeight().padding(start = gap + u * 2)) { DenseText {
+            // The pages a font pixel smaller where there's room (the Thor): more of them on screen.
+            val m = rememberGbaTextMetrics()
             if (sections.size > 1) {
                 DexSectionChips(sections, section, small) { ui.section = it }
                 Spacer(Modifier.height(u * 3))
@@ -482,7 +486,7 @@ private fun EntryPage(
                 section == DexSection.MOVES -> Box(body) { DexMovesSection(t, guide, species, m, small) }
                 else -> DexInfoSection(e, small, m, body)
             }
-        }
+        } }
     }
 }
 

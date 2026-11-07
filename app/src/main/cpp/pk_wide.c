@@ -855,6 +855,7 @@ static int followState;                      // 0 none (after a warp: until a st
 static int followFromX, followFromY, followToX, followToY;   // tiles from the player's (now) tile
 static int followPrevCx, followPrevCy, followDir;            // the player's last tile; the follower's facing (0 S 1 N 2 W 3 E)
 static int followScroll0X, followScroll0Y;                   // BG2's scroll when this step started
+static int followStepX, followStepY;                         // the player's last tile from its new one, for the whole step
 static bool followMoving;
 static int followWhy, followDbg[8];                                        // why the last frame drew none (mgba_dump's followinfo)
 static int followOam = -1, followSlot = -1;                  // this frame's OAM entry / palette slot (-1: not drawn)
@@ -2717,13 +2718,16 @@ static void followBegin(struct GBAVideoRenderer* r) {
             int mx = followToX - followFromX, my = followToY - followFromY;
             followDir = mx > 0 ? 3 : mx < 0 ? 2 : my < 0 ? 1 : 0;
             followScroll0X = sx; followScroll0Y = sy;
+            followStepX = -dx; followStepY = -dy;
             followMoving = mx || my;
         }
         followPrevCx = cx; followPrevCy = cy;
     }
     if (followState != 1) { followWhy = 3; return; }
     // How far the step has gone: the map's scroll moves 16 px a tile with the camera.
-    int moved = abs(((sx - followScroll0X + 256) & 0x1FF) - 256) + abs(((sy - followScroll0Y + 256) & 0x1FF) - 256);
+    // The field's background is 256 px square and its scroll wraps there (0 -> 254 walking left): a step is at most 16 px,
+    // so the difference is taken mod 256 - mod 512 read that wrap as a step done, and the follower jumped a tile ahead.
+    int moved = abs(((sx - followScroll0X + 128) & 0xFF) - 128) + abs(((sy - followScroll0Y + 128) & 0xFF) - 128);
     int p = moved >= 16 ? 256 : moved * 16;   // 0..256
     if (!followMoving) p = 256;
     // The player's sprite on screen: the OAM entries showing its tiles (subsprites split it), their box.
@@ -2737,7 +2741,10 @@ static void followBegin(struct GBAVideoRenderer* r) {
     if (last < 0) { followWhy = 4; return; }
     // Its place: (from + p (to - from)) - the player's own (from the last tile towards this one) in tiles, from the
     // player's feet.
-    int pfx = (px - cx) * (256 - p), pfy = (py - cy) * (256 - p);          // the player, x256, from its tile
+    // The step's own start, not the object's previous tile: the game sets that to the new tile a frame before the camera's
+    // last pixel, which put the follower a pixel off and back at the end of every step.
+    (void) px; (void) py;
+    int pfx = followStepX * (256 - p), pfy = followStepY * (256 - p);      // the player, x256, from its tile
     int fx = followFromX * 256 + (followToX - followFromX) * p, fy = followFromY * 256 + (followToY - followFromY) * p;
     int cxPix = (x0 + x1) / 2 + (fx - pfx) * 16 / 256, feet = y1 + (fy - pfy) * 16 / 256;
     int ox = cxPix - 16, oy = feet - 32;

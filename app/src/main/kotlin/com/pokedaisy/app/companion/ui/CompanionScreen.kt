@@ -3,6 +3,8 @@ package com.pokedaisy.app.companion.ui
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.ui.graphics.graphicsLayer
@@ -155,6 +157,20 @@ fun CompanionScreen(
     var popupReturn by remember { mutableStateOf<String?>(null) }
     // WHICH GAME IS THIS? over the tabs (WRONG GAME?, PICK AGAIN, SETTINGS > GAME, PICK A GAME).
     var pickerOpen by remember { mutableStateOf(false) }
+    // RUN picked here: the battle pane keeps the controls until the battle ends (or the escape fails and the menu is back),
+    // instead of INFO / SUGGESTIONS showing for the moment "Got away safely!" takes (the user's report).
+    var ranAway by remember { mutableStateOf(false) }
+    @Suppress("NAME_SHADOWING")
+    val battleInput = remember(battleInput) {
+        battleInput?.let { b ->
+            object : com.pokedaisy.app.companion.BattleInput by b {
+                override fun selectAction(actionIndex: Int) {
+                    if (actionIndex == 3) ranAway = true
+                    b.selectAction(actionIndex)
+                }
+            }
+        }
+    }
     val gameSilent = remember(battleInput) { { battleInput?.gameSilent == true } }
     CompanionScreenSize {
     CompositionLocalProvider(
@@ -330,6 +346,16 @@ fun CompanionScreen(
         }
         // The window over the game (one screen): no battle controls, the game's own menu is right there.
         val canUseControls = battleInput != null && !snapshot.isDoubleBattle && isMyTurn && !LocalCompanionWindow.current
+        // RUN's hold ends with the battle, or when the menu is back after the turn (the escape failed).
+        var ranWaited by remember { mutableStateOf(false) }
+        LaunchedEffect(battle, isMyTurn, ranAway) {
+            when {
+                !battle || !ranAway -> { ranAway = false; ranWaited = false }
+                !isMyTurn -> ranWaited = true
+                ranWaited -> { ranAway = false; ranWaited = false }
+            }
+        }
+        val holdControls = ranAway && battleInput != null && !snapshot.isDoubleBattle && !LocalCompanionWindow.current
         val hintsOn = settings?.showHints ?: true
         val showHints = hintsOn && battleInfo
         val showFoeIvs = settings?.showFoeIvs ?: false
@@ -442,29 +468,31 @@ fun CompanionScreen(
             }
             // A phone upright with no room above the companion: its grip sits in here, over the backdrop.
             val topInset = with(LocalDensity.current) { LocalCompanionTopInset.current.toDp() }
-            // BATTLE STYLE > GEN 5's controls go edge to edge: the tab area's margin eases away and the tab bar
-            // sits on a dark dock under them (only while they're up - INFO / SUGGESTIONS keep the usual frame).
+            // BATTLE STYLE > GEN 5's controls go edge to edge: they spill over the tab area's margin (`bleed`) and the tab
+            // bar sits on a dark dock under them (only while they're up - INFO / SUGGESTIONS keep the usual frame). The margin
+            // itself never changes: easing it away resized every other tab sliding in or out with them (the user's report).
             // (The same test as the BATTLE tab's pane picking "CONTROLS" below.)
             val controlsPane = if (!battleInfo) battleInput != null && !snapshot.isDoubleBattle && !LocalCompanionWindow.current
-            else !showSuggestions && !showBattleStats && canUseControls && battleShowControls
+            else !showSuggestions && !showBattleStats && ((canUseControls && battleShowControls) || holdControls)
             val gen5Full = current == "BATTLE" && controlsPane &&
                 settings?.battleStyle == com.pokedaisy.app.companion.BattleStyle.GEN5 && !gen1Buttons
             // A short screen: less margin round the tabs, every pixel of its height counts.
             val margin = if (LocalShortCompanion.current) 8.dp else 12.dp
-            val edge by androidx.compose.animation.core.animateDpAsState(if (gen5Full) 0.dp else margin, tween(220), label = "gen5-edge")
-            val dock = 1f - edge / margin
-            Column(modifier = Modifier.fillMaxSize().padding(top = topInset).padding(edge)) {
+            val dock by androidx.compose.animation.core.animateFloatAsState(if (gen5Full) 1f else 0f, tween(220), label = "gen5-dock")
+            // Nothing over the tab area: the controls spill over the top margin too.
+            val nothingAbove = topStrip == null && !(statusBar != null && CompanionStatusBar.shown) && !(loaded && !snapshot.connected)
+            Column(modifier = Modifier.fillMaxSize().padding(top = topInset).padding(margin)) {
                 if (topStrip != null) {
-                    Box(Modifier.padding(start = margin - edge, end = margin - edge, top = margin - edge)) { topStrip() }
+                    Box { topStrip() }
                     Spacer(Modifier.height(8.dp))
                 }
                 // SETTINGS > STATUS BAR on the companion: the game's strip over the tabs.
                 if (statusBar != null && CompanionStatusBar.shown) {
-                    Box(Modifier.padding(start = margin - edge, end = margin - edge, top = margin - edge)) { statusBar() }
+                    Box { statusBar() }
                     Spacer(Modifier.height(8.dp))
                 }
                 if (loaded && !snapshot.connected) {
-                    Box(Modifier.padding(horizontal = margin - edge)) { ErrorBanner(snapshot.error ?: tk("no data yet")) }
+                    ErrorBanner(snapshot.error ?: tk("no data yet"))
                     Spacer(Modifier.height(8.dp))
                 }
 
@@ -520,7 +548,7 @@ fun CompanionScreen(
                                 val forward = barIndex(targetState.substringBefore('/')) >= barIndex(initialState.substringBefore('/'))
                                 (fadeIn(tween(200)) + slideInHorizontally(tween(220)) { w -> if (forward) w / 6 else -w / 6 }) togetherWith
                                     (fadeOut(tween(150)) + slideOutHorizontally(tween(180)) { w -> if (forward) -w / 6 else w / 6 })
-                            }
+                            }.using(SizeTransform(clip = false))
                         },
                         modifier = Modifier.fillMaxSize(),
                         label = "tab-content",
@@ -720,13 +748,14 @@ fun CompanionScreen(
                                 showSuggestions -> "SUGGESTIONS"
                                 showBattleStats -> "STATS"
                                 canUseControls && battleShowControls -> "CONTROLS"
+                                holdControls -> "CONTROLS"
                                 else -> "INFO"
                             }
                             AnimatedContent(
                                 targetState = battlePane,
                                 transitionSpec = {
-                                    (fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.96f)) togetherWith
-                                        fadeOut(tween(140))
+                                    ((fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.96f)) togetherWith
+                                        fadeOut(tween(140))).using(SizeTransform(clip = false))
                                 },
                                 modifier = Modifier.fillMaxSize(),
                                 label = "battle-pane",
@@ -737,7 +766,9 @@ fun CompanionScreen(
                                         party = snapshot.party,
                                         battleInput = battleInput,
                                         battleInputState = snapshot.battleInputState,
-                                        modifier = Modifier.fillMaxSize(),
+                                        // GEN 5's go edge to edge, over the tab area's margin.
+                                        modifier = if (settings?.battleStyle == com.pokedaisy.app.companion.BattleStyle.GEN5 && !gen1Buttons)
+                                            Modifier.bleed(margin, if (nothingAbove) margin else 0.dp) else Modifier.fillMaxSize(),
                                         showHints = showHints,
                                         oneTapMoves = settings?.oneTapMoves ?: false,
                                         style = settings?.battleStyle ?: com.pokedaisy.app.companion.BattleStyle.GEN4,
@@ -811,9 +842,14 @@ fun CompanionScreen(
                 }
 
                 Box(
-                    Modifier.fillMaxWidth()
-                        .drawBehind { if (dock > 0f) drawRect(Gen5Dock.copy(alpha = dock)) }
-                        .padding(start = margin - edge, end = margin - edge, bottom = margin - edge),
+                    Modifier.fillMaxWidth().drawBehind {
+                        // Out to the screen's edges, under the margin round the bar.
+                        if (dock > 0f) {
+                            val mPx = margin.toPx()
+                            drawRect(Gen5Dock.copy(alpha = dock), androidx.compose.ui.geometry.Offset(-mPx, 0f),
+                                androidx.compose.ui.geometry.Size(size.width + 2 * mPx, size.height + mPx))
+                        }
+                    },
                 ) { tabBar() }
             }
 
@@ -1245,3 +1281,15 @@ private fun ErrorBanner(message: String) {
         Text(tr(message), color = if (OptionColors.dark) Color(0xFFF2B48E) else Color(0xFF9A4A28), fontSize = 14.sp, textAlign = TextAlign.Center)
     }
 }
+
+/** Laid out [side] wider on both sides and [top] taller upwards than its room and drawn there: spilling over a margin
+ * round it (GEN 5's battle controls over the tab area's). */
+private fun Modifier.bleed(side: androidx.compose.ui.unit.Dp, top: androidx.compose.ui.unit.Dp): Modifier =
+    this.then(Modifier.layout { measurable, c ->
+        val h = side.roundToPx()
+        val t = top.roundToPx()
+        val w = if (c.hasBoundedWidth) c.maxWidth + 2 * h else c.maxWidth
+        val ht = if (c.hasBoundedHeight) c.maxHeight + t else c.maxHeight
+        val p = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(w, ht))
+        layout(c.maxWidth, c.maxHeight) { p.place(-h, -t) }
+    })

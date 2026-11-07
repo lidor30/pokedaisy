@@ -29,6 +29,7 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
@@ -375,17 +376,17 @@ private fun ActionButtons(
     @Composable fun Bag(place: Modifier, label: TextUnit = 36.sp) = PlatinumButton(
         fill = HgOrange, frame = HgOrangeLow,
         modifier = place.graphicsLayer { translationX = -out * size.width * 1.4f },
-        enabled = enabled, highlighted = cursor == 1, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(1) },
+        enabled = enabled, battleButton = true, highlighted = cursor == 1, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(1) },
     ) { ButtonLabel(tr("BAG"), label, outlined = true) }
     @Composable fun Run(place: Modifier, label: TextUnit = 36.sp) = PlatinumButton(
         fill = HgBlue, frame = HgBlueLow,
         modifier = place.graphicsLayer { translationY = out * size.height * 1.5f },
-        enabled = enabled, highlighted = cursor == 3, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(3) },
+        enabled = enabled, battleButton = true, highlighted = cursor == 3, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(3) },
     ) { ButtonLabel(tr("RUN"), label, outlined = true) }
     @Composable fun Pokemon(place: Modifier, label: TextUnit = 30.sp) = PlatinumButton(
         fill = HgGreen, frame = HgGreenLow,
         modifier = place.graphicsLayer { translationX = out * size.width * 1.4f },
-        enabled = enabled, highlighted = cursor == 2, contentPadding = side, pressesGame = onPokemon == null,
+        enabled = enabled, battleButton = true, highlighted = cursor == 2, contentPadding = side, pressesGame = onPokemon == null,
         onClick = { onPokemon?.invoke() ?: battleInput?.selectAction(2) },
     ) { ButtonLabel(tr("POKéMON"), label, outlined = true) }
     if (oneTapMoves) {
@@ -417,7 +418,16 @@ private fun ActionButtons(
         val wide = minOf(maxWidth / HG_WIDTH, ds * HG_MAX_WIDEN)
         val runDrop = if (hasBag) ds * 8 else 0.dp
         val bottomRow = ds * 46 + runDrop
-        Box(Modifier.align(Alignment.TopCenter).fillMaxWidth().height(maxHeight - bottomRow - ds * 3)) {
+        // HeartGold's cursor on FIGHT frames the whole panel above BAG / RUN / POKéMON, edge to edge, not the button.
+        val fightInteraction = remember { MutableInteractionSource() }
+        val fightFocused by fightInteraction.collectIsFocusedAsState()
+        val panelCursor = fightFocused || cursor == 0
+        val panelPulse = if (panelCursor) rememberDsCursorPulse(1) else 0f
+        androidx.compose.runtime.CompositionLocalProvider(LocalHgPixel provides ds) {
+        Box(
+            Modifier.align(Alignment.TopCenter).fillMaxWidth().height(maxHeight - bottomRow - ds * 3)
+                .drawWithContent { drawContent(); if (panelCursor && out < 0.01f) drawHgCursor(ds.toPx(), panelPulse) },
+        ) {
             Column(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - out }, verticalArrangement = Arrangement.spacedBy(ds * 2)) {
                 repeat(2) {
                     Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(ds * 2)) {
@@ -429,9 +439,11 @@ private fun ActionButtons(
             PlatinumButton(
                 fill = HgRed, frame = HgRedLow,
                 // The D-pad (the companion's window) starts on FIGHT, like the game's cursor.
-                modifier = Modifier.align(Alignment.Center).focusStart(true).width(wide * 232).height(ds * 88)
+                // HeartGold's 208 x 88, never wider (the user's call: stretched past it, it read too wide).
+                modifier = Modifier.align(Alignment.Center).focusStart(true).width(ds * 208).height(ds * 88)
                     .graphicsLayer { translationY = -out * size.height * 1.8f },
-                enabled = enabled, highlighted = cursor == 0,
+                enabled = enabled, battleButton = true, highlighted = cursor == 0,
+                interactionSource = fightInteraction, ownCursor = false,
                 pressesGame = onFight == null, onClick = { onFight?.invoke() ?: battleInput?.selectAction(0) },
             ) {
                 Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -452,8 +464,12 @@ private fun ActionButtons(
             Run(button.align(Alignment.Bottom), fit(tr("RUN"), 36f))
             Pokemon(button.align(Alignment.Top), fit(tr("POKéMON"), 30f))
         }
+        }
     }
 }
+
+/** A DS pixel of the battle pane (HeartGold's layout), for its buttons' cursor; Unspecified outside it. */
+internal val LocalHgPixel = androidx.compose.runtime.staticCompositionLocalOf { androidx.compose.ui.unit.Dp.Unspecified }
 
 @Composable
 internal fun MoveGrid(
@@ -584,7 +600,7 @@ internal fun MoveCard(
         frame = lerp(frame, Color.Black, 0.5f),
         modifier = modifier,
         enabled = enabled,
-        highlighted = highlighted,
+        battleButton = true, highlighted = highlighted,
         contentPadding = if (LocalShortCompanion.current) PaddingValues(horizontal = 4.dp, vertical = 0.dp) else PaddingValues(horizontal = 9.dp, vertical = 4.dp),
         pressesGame = true, onClick = { battleInput?.selectMove(moveIndex) },
     ) {
@@ -663,6 +679,12 @@ internal fun PlatinumButton(
     /** The game's own cursor is on this button: the D-pad's ring. */
     highlighted: Boolean = false,
     pressesGame: Boolean = false,
+    /** One of the battle menu's buttons (FIGHT, BAG, POKéMON, RUN, a move): its cursor is HeartGold's own. */
+    battleButton: Boolean = false,
+    /** The button's interactions, from outside (FIGHT's: its cursor is drawn round the whole panel, as the game's is). */
+    interactionSource: MutableInteractionSource? = null,
+    /** False: the caller draws the cursor (FIGHT's panel). */
+    ownCursor: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(8.dp),
     onClick: () -> Unit,
     content: @Composable () -> Unit,
@@ -670,13 +692,23 @@ internal fun PlatinumButton(
     val shape = PixelRoundedShape(5.dp)
     val sound = LocalClickSound.current
     val gameSilent = LocalGameSilent.current
-    val interaction = remember { MutableInteractionSource() }
+    val interaction = interactionSource ?: remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    // A battle button's cursor is HeartGold's own: red corner brackets in a white rim, breathing out and back (the user's
+    // call, over the app's orange ring); every other button keeps the ring.
+    val hgCursor = (battleButton || pressesGame) && !gen1Buttons
+    val pulse = if (hgCursor && ownCursor && (focused || highlighted)) rememberDsCursorPulse(1) else 0f
+    val hgPixel = LocalHgPixel.current
     Box(
         modifier = modifier
             .alpha(if (enabled) 1f else 0.45f)
             // The D-pad's focus (the companion's window), over the bevel and the content.
-            .gbaFocusRing(focused || highlighted, shape)
+            .then(
+                if (hgCursor) Modifier.drawWithContent {
+                    drawContent()
+                    if (ownCursor && (focused || highlighted)) drawHgCursor(if (hgPixel.isSpecified) hgPixel.toPx() else 1.5f * gbaPixelPx(), pulse)
+                } else Modifier.gbaFocusRing(focused || highlighted, shape),
+            )
             .then(
                 // Gen 1 (Yellow): a button is its text box - white inside the double line.
                 if (gen1Buttons) Modifier.drawBehind {

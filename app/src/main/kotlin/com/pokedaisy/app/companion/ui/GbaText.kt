@@ -68,6 +68,27 @@ fun CompactTextOnSmallWindows(content: @Composable () -> Unit) {
     }
 }
 
+/**
+ * A list that should show more where the screen has room (the Thor's companion: SETTINGS, GUIDE, DEX): the main text a font
+ * pixel smaller ([LocalTextStep] -1) where that still leaves three screen pixels a font pixel - so not on a side panel's two,
+ * nor where the step is already taken (a short screen, the one-screen window). [LocalDenseText] keeps the subtitles from
+ * going below the main text's new size ([subtitleMetrics]).
+ */
+@Composable
+fun DenseText(content: @Composable () -> Unit) {
+    val density = LocalDensity.current
+    val k = with(density) { (20.dp.toPx() / 16f).roundToInt().coerceAtLeast(2) }
+    val apply = LocalTextStep.current == 0 && k >= 3
+    androidx.compose.runtime.CompositionLocalProvider(
+        LocalTextStep provides if (apply) -1 else LocalTextStep.current,
+        LocalDenseText provides apply,
+        content = content,
+    )
+}
+
+/** Inside a [DenseText] that took the step. */
+val LocalDenseText = androidx.compose.runtime.staticCompositionLocalOf { false }
+
 const val COMPACT_WINDOW_WIDTH_DP = 500
 const val COMPACT_WINDOW_HEIGHT_DP = 380
 
