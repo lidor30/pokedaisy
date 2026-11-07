@@ -152,7 +152,59 @@ enum pd_overlay {
     PD_OVERLAY_MORE,    // the tabs off the bar
 };
 
+// Optional presentation data for another emulator; IDs stay native to that backend.
+struct pd_party_source {
+    void* ctx;
+    bool (*egg)(void*, const struct pd_mon*);
+    const char* (*species)(void*, int);
+    const char* (*move)(void*, int);
+    int (*moveType)(void*, int);
+    bool (*icon)(void*, struct pd_canvas*, const struct pd_mon*, int, int, int, bool);
+    const char* (*info)(void*, const struct pd_mon*, int);
+};
+
+// Optional read-only bag presentation; item IDs remain backend-owned.
+struct pd_bag_source {
+    void* ctx;
+    int tabs;
+    const char* (*pocketName)(void*, int);
+    int (*count)(void*, int);
+    bool (*item)(void*, int, int, struct pd_item*, bool* quantity);
+    const char* (*name)(void*, int);
+};
+// A list-only dex source: no ROM entry/sprite data is implied by a name.
+struct pd_dex_source {
+    void* ctx;
+    int count, seenCount, caughtCount;
+    const char* filterLabel;
+    int (*national)(void*, int);
+    bool (*seen)(void*, int);
+    bool (*caught)(void*, int);
+    const char* (*name)(void*, int);
+};
+// Backend-composited map art in native pixels. Cursor coordinates use those same pixels.
+// No game config, ROM offsets or ownership of the supplied buffer is implied.
+struct pd_map_source {
+    const uint32_t* pixels;
+    int width, height;
+    const char* name;
+    int cursorX, cursorY, cursorW, cursorH;
+};
+// Host-owned option rows use the established Settings frame and row widgets.
+struct pd_option_row { const char* label; const char* value; };
+struct pd_option_source { const char* title; const struct pd_option_row* rows; int count; };
 struct pd_ui {
+    // Optional backend content inside the shared companion frame and tab bar.
+    unsigned availableTabs; // 0 preserves the original complete tab set.
+    void* contentCtx;
+    void (*content)(void*, struct pd_ui*, struct pd_canvas*);
+    const struct pd_option_source* optionSource;
+    int optionSelected;
+    const struct pd_dex_source* dexSource;
+    const struct pd_bag_source* bagSource;
+    bool bagDetails;
+    const struct pd_party_source* partySource;
+    int summaryPage;
     enum pd_tab tab;
     enum pd_tab tabBeforeBattle; // the tab a battle took over from
     int battleSlot;              // the bar slot BATTLE shows in, -1 = none
@@ -204,6 +256,16 @@ struct pd_ui {
     int hitCount;
 };
 
+// Shared modal choice window for backend-owned preferences (selection is host-owned).
+void pd_ui_choices_view(struct pd_canvas*, const char*, const char* const*, int, int);
+
+// Shared party body, including its original frames, HP bars, status and summary.
+void pd_ui_map_view(struct pd_canvas*, const struct pd_map_source*);
+void pd_ui_options_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*);
+void pd_ui_dex_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*,int selected);
+void pd_ui_bag_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*, const struct pd_snapshot*);
+void pd_ui_party_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*,
+                      const struct pd_snapshot*, int selected);
 void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings);
 // Follows the game: a battle opens BATTLE, its end goes back.
 void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s);

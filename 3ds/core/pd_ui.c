@@ -29,7 +29,7 @@ const char* ui_tab_label(enum pd_tab t) { return t < PD_TAB_COUNT ? TAB_LABELS[t
 static int bar_tabs(const struct pd_ui* ui, enum pd_tab out[PD_MAX_BAR_TABS]) {
     int n = 0, bits = ui->settings && ui->settings->tabBar ? ui->settings->tabBar : PD_TAB_BAR_DEFAULT;
     for (int i = 0; i < UI_BAR_CHOICES && n < PD_MAX_BAR_TABS; i++)
-        if (bits & (1 << UI_BAR_CHOICE[i])) out[n++] = UI_BAR_CHOICE[i];
+        if ((bits & (1 << UI_BAR_CHOICE[i])) && (!ui->availableTabs || (ui->availableTabs & (1u << UI_BAR_CHOICE[i])))) out[n++] = UI_BAR_CHOICE[i];
     if (!n) out[n++] = PD_TAB_PARTY;
     return n;
 }
@@ -39,6 +39,7 @@ static bool has_more(const struct pd_ui* ui) {
     enum pd_tab bar[PD_MAX_BAR_TABS];
     int n = bar_tabs(ui, bar);
     for (int i = 0; i < UI_BAR_CHOICES - 1; i++) {
+        if (ui->availableTabs && !(ui->availableTabs & (1u << UI_BAR_CHOICE[i]))) continue;
         bool on = false;
         for (int k = 0; k < n; k++) on |= bar[k] == UI_BAR_CHOICE[i];
         if (!on) return true;
@@ -55,6 +56,7 @@ int ui_more_tabs(const struct pd_ui* ui, enum pd_tab out[UI_BAR_CHOICES]) {
     enum pd_tab bar[PD_MAX_BAR_TABS];
     int n = bar_tabs(ui, bar), m = 0;
     for (int i = 0; i < UI_BAR_CHOICES; i++) {
+        if (ui->availableTabs && !(ui->availableTabs & (1u << UI_BAR_CHOICE[i]))) continue;
         bool on = false;
         for (int k = 0; k < n; k++) on |= bar[k] == UI_BAR_CHOICE[i];
         if (!on) out[m++] = UI_BAR_CHOICE[i];
@@ -223,10 +225,11 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_
     int n = bar_tabs(ui, bar);
     bool more = has_more(ui);
     int moreW = more ? GEAR_W + MARGIN : 0;
+    int ffW = ui->content && host && host->frontendOwnsPlayback ? 0 : FF_W;
     // The chips share what's left, but never wider than five would be (a short bar keeps its chips' size).
-    int w = (c->w - MARGIN * (n + 3) - FF_W - GEAR_W - moreW) / n;
+    int w = (c->w - MARGIN * (n + 3) - ffW - GEAR_W - moreW) / n;
     int five = (c->w - MARGIN * (PD_MAX_BAR_TABS + 3) - FF_W - GEAR_W - GEAR_W - MARGIN) / PD_MAX_BAR_TABS;
-    if (n < PD_MAX_BAR_TABS && w > five * 3 / 2) w = five * 3 / 2;
+    if (ffW && n < PD_MAX_BAR_TABS && w > five * 3 / 2) w = five * 3 / 2;
     int x = MARGIN;
     for (int i = 0; i < n; i++, x += w + MARGIN) {
         enum pd_tab t = slot_tab(ui, i);
@@ -245,13 +248,15 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_
         pd_bitmap(c, x + (GEAR_W - 11) / 2, by + (CHIP_H - 3) / 2, MORE_DOTS, 3, lit ? PD_VALUE : PD_TITLE_TEXT);
         x += GEAR_W + MARGIN;
     }
-    // Fast-forward: lit while on.
-    bool ff = host && host->ffOn;
-    chip(ui, c, x, FF_W, ff, HIT_FF);
-    uint32_t col = ff ? PD_VALUE : PD_TITLE_TEXT;
-    pd_triangle(c, x + 7, by + CHIP_H / 2 - 4, 5, PD_RIGHT, col);
-    pd_triangle(c, x + 13, by + CHIP_H / 2 - 4, 5, PD_RIGHT, col);
-    x += FF_W + MARGIN;
+    // Frontends own fast-forward in libretro hosts.
+    if (ffW) {
+        bool ff = host && host->ffOn;
+        chip(ui, c, x, FF_W, ff, HIT_FF);
+        uint32_t col = ff ? PD_VALUE : PD_TITLE_TEXT;
+        pd_triangle(c, x + 7, by + CHIP_H / 2 - 4, 5, PD_RIGHT, col);
+        pd_triangle(c, x + 13, by + CHIP_H / 2 - 4, 5, PD_RIGHT, col);
+        x += FF_W + MARGIN;
+    }
     // The TRAINER CARD opened from SETTINGS keeps the gear lit.
     bool open = ui->tab == PD_TAB_SETTINGS || (ui->tab == PD_TAB_CARD && !on_bar(ui, PD_TAB_CARD) && !ui->moreOpened);
     chip(ui, c, x, GEAR_W, open, HIT_TAB + PD_TAB_SETTINGS);
@@ -269,7 +274,9 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     view.h = BAR_Y(c) - 2;
     if (view.cy1 > view.h) view.cy1 = view.h;
     c = &view;
-    if (ui->tab == PD_TAB_SETTINGS) {
+    if (ui->content) {
+        ui->content(ui->contentCtx, ui, c);
+    } else if (ui->tab == PD_TAB_SETTINGS) {
         ui_settings_tab(ui, c, g, s, host);
     } else if (!g->cfg) {
         ui_notice(c, "NOT SUPPORTED", g->unsupported ? g->unsupported : "", "SETTINGS has what was detected.");

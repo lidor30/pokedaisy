@@ -1143,7 +1143,11 @@ RETRO_API void retro_run(void) {
   if (realEnv) {
     struct retro_throttle_state th = {0, 0.0f};
     bool got = realEnv(RETRO_ENVIRONMENT_GET_THROTTLE_STATE, &th);
-    ff = got && th.mode == RETRO_THROTTLE_FAST_FORWARD;
+    if (got)
+      ff = th.mode == RETRO_THROTTLE_FAST_FORWARD;
+    // Older frontends (including minarch) only expose the fast-forward flag.
+    else if (!realEnv(RETRO_ENVIRONMENT_GET_FASTFORWARDING, &ff))
+      ff = false;
     rewinding = got && th.mode == RETRO_THROTTLE_REWINDING;
   }
   bool paused = companion || hudFocus || (quickOpen && !flyAsk);
