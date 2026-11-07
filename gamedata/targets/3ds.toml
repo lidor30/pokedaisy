@@ -3,20 +3,49 @@
 # to 3ds/core/pd_configs_gen.h; pd_game.c picks one by the ROM header. The format: gamedata/README.md.
 
 output = '3ds/core/pd_configs_gen.h'
+text_output = '3ds/core/pd_text_gen.c'
 struct = 'pd_config'
 prefix = 'PD_CONFIG_'
 
 # Kotlin names a value may hold (refs, list items) -> the C the port uses for them.
 [names]
+VANILLA_BASE_STATS = '&(const struct pd_base_stats){ .stride = 28, .abilitiesOff = 0x16, .typesOff = 6 }'
 POCKET_ITEMS = 'PD_POCKET_ITEMS'
 POCKET_POKE_BALLS = 'PD_POCKET_BALLS'
 POCKET_TM_HM = 'PD_POCKET_TMHM'
 POCKET_BERRIES = 'PD_POCKET_BERRIES'
 POCKET_KEY_ITEMS = 'PD_POCKET_KEY'
+VANILLA_PARTY_MON = '&pd_party_layout_vanilla'
+QUETZAL_PARTY_MON = '&pd_party_layout_quetzal'
+SOULGOLD_PARTY_MON = '&pd_party_layout_soulgold'
+TEAM_ROCKET_PARTY_MON = '&pd_party_layout_team_rocket'
+ROWE_PARTY_MON = '&pd_party_layout_rowe'
+ROGUE_PARTY_MON = '&pd_party_layout_rogue'
+ELITE_REDUX_PARTY_MON = '&pd_party_layout_elite_redux'
+VANILLA_BATTLE_MON = '&pd_battle_layout_vanilla'
+EXPANSION_BATTLE_MON = '&pd_battle_layout_expansion'
+TMT2_BATTLE_MON = '&pd_battle_layout_tmt2'
+TEAM_ROCKET_BATTLE_MON = '&pd_battle_layout_team_rocket'
+WISHES_BATTLE_MON = '&pd_battle_layout_wishes'
+ROWE_BATTLE_MON = '&pd_battle_layout_rowe'
+SOULGOLD_BATTLE_MON = '&pd_battle_layout_soulgold'
+ELITE_REDUX_BATTLE_MON = '&pd_battle_layout_elite_redux'
+
+[names.DexFlagBlock]
+SAVE_BLOCK_1 = 'PD_DEX_SB1'
+SAVE_BLOCK_2 = 'PD_DEX_SB2'
+FIXED = 'PD_DEX_FIXED'
 
 [names.CardStyle]
 KANTO = 'PD_CARD_KANTO'
 HOENN = 'PD_CARD_HOENN'
+LEGACY = 'PD_CARD_LEGACY'
+UNBOUND = 'PD_CARD_UNBOUND'
+LAZARUS = 'PD_CARD_LAZARUS'
+RECHARGED_YELLOW = 'PD_CARD_RECHARGED_YELLOW'
+SOULGOLD = 'PD_CARD_SOULGOLD'
+GLAZED = 'PD_CARD_GLAZED'
+RECHARGED_YELLOW_V1_9 = 'PD_CARD_RECHARGED_YELLOW_V1_9'
 
 # Each part is a set of pd_config fields = a path into the config: a field, then (through a record
 # the field names) that record's field, a list's index. A record a config doesn't have counts as its
@@ -25,9 +54,15 @@ HOENN = 'PD_CARD_HOENN'
 
 # The RAM globals and the save offsets every tab reads.
 [part.ram]
+itemDescs = 'itemDescs'
 playerParty = 'playerParty'
+partyLayout = 'partyMonLayout'
 playerPartyCount = 'playerPartyCount'
+speciesMask = 'speciesMask'
+moveMask = 'moveMask'
+ppMask = 'ppMask'
 battleMons = 'battleMons'
+battleLayout = 'battleMonLayout'
 battlerPositions = 'battlerPositions'
 battlersCount = 'battlersCount'
 battleTypeFlags = 'battleTypeFlags'
@@ -37,10 +72,26 @@ saveBlock2Ptr = 'saveBlock2Ptr'
 mapHeader = 'mapHeader'
 encryptionKeyOff = 'encryptionKeyOff'
 moneyOff = 'moneyOff'
+maxMoney = 'maxMoney'
+staticSaveBlocks = 'staticSaveBlocks'
 bagPockets = 'bagPockets'
 bagOrder = 'bagPocketOrder'
+bagCount = 'bagPocketCount'
 dexSeenCopy1 = 'pokedex.flags.seenCopies.0'
 dexSeenCopy2 = 'pokedex.flags.seenCopies.1'
+dexBlock = 'pokedex.flags.block'
+dexFirstBit = 'pokedex.flags.firstBit'
+dexSeenLevels = 'pokedex.flags.seenLevels'
+dexBySpecies = 'pokedex.flags.bySpecies'
+dexSeenOrCaught = 'pokedex.flags.seenOrCaught'
+dexBytes = 'pokedex.flags.bytes'
+dexSeenOff = 'pokedex.flags.seen'
+dexCaughtOff = 'pokedex.flags.caught'
+dexCaughtRegion1 = 'pokedex.flags.caughtRegions.0'
+dexCaughtRegion2 = 'pokedex.flags.caughtRegions.1'
+dexCaughtRegion3 = 'pokedex.flags.caughtRegions.2'
+dexCaughtFromLevel = 'pokedex.flags.caughtFromLevel'
+nationalCount = 'pokedex.nationalCount'
 nationalMagicOff = 'pokedex.nationalMagicOff'
 nationalMagic = 'pokedex.nationalMagic'
 flagsOff = 'guideTables.sb1FlagsOff'
@@ -52,15 +103,25 @@ flagBytes = 'guideTables.flagBytes'
 enemyParty = 'enemyParty'
 battlerPartyIndexes = 'battlerPartyIndexes'
 battleStructPtr = 'battleStructPtr'
+battleStructStatic = 'battleStructStatic'
 monToSwitchIntoOff = 'monToSwitchIntoOff'
 
 # The party menu's icons and the bag's.
 [part.icons]
+eggSpecies = 'eggSpecies'
+speciesCount = 'pokedex.speciesCount'
 monIconTable = 'monIconTable'
 monIconPaletteIndices = 'monIconPaletteIndices'
 monIconPaletteTable = 'monIconPaletteTable'
 itemIconTable = 'itemIconTable'
 itemIconStride = 'itemIconStride'
+monIconStride = 'monIconStride'
+monPalIdxStride = 'monPalIdxStride'
+monPalIdxMask = 'monPalIdxMask'
+itemPalCompressed = 'itemPalCompressed'
+monIconPalettes = 'monIconPalettes'
+dexPalettes = 'pokedex.palettes'
+monPalettes = 'monPalettes'
 
 # POKéDEX.
 [part.dex]
@@ -73,15 +134,55 @@ frontPics = 'pokedex.frontPics'
 palettes = 'pokedex.palettes'
 regionalOrder = 'pokedex.regionalOrder'
 regionalCount = 'pokedex.regionalCount'
+regionalOrderStride = 'pokedex.regionalOrderStride'
+regionalOrderIsSpecies = 'pokedex.regionalOrderIsSpecies'
+nationalToSpecies = 'pokedex.nationalToSpecies'
+entriesBySpecies = 'pokedex.entriesBySpecies'
+entryCategoryLen = 'pokedex.entryCategoryLen'
+entryCategoryPtr = 'pokedex.entryCategoryPtr'
+entryHeightOff = 'pokedex.entryHeightOff'
+entryDescOff = 'pokedex.entryDescOff'
+descriptionPage2Off = 'pokedex.descriptionPage2Off'
+abilityNameLength = 'pokedex.abilityNameLength'
+abilityNameStride = 'pokedex.abilityNameStride'
+abilityNamePtr = 'pokedex.abilityNamePtr'
+baseStats = 'pokedex.baseStats'
+expansion = 'pokedex.expansion'
+probeCategory = 'pokedex.probeCategory'
+probeHeight = 'pokedex.probeHeight'
+probeWeight = 'pokedex.probeWeight'
+probeSpecies = 'pokedex.probeSpecies'
 regionName = 'pokedex.regionName'
 
 # GUIDE's live pages.
 [part.guide]
+trainerMonStride = 'guideTables.trainerMon.stride'
+trainerMonMovesOff = 'guideTables.trainerMon.movesOff'
+trainerMonSpeciesOff = 'guideTables.trainerMon.speciesOff'
+trainerMonItemOff = 'guideTables.trainerMon.itemOff'
+trainerMonLevelOff = 'guideTables.trainerMon.levelOff'
 trainers = 'guideTables.trainers'
+trainerStride = 'guideTables.trainerStride'
+trainerNameOff = 'guideTables.trainerNameOff'
+trainerNameLen = 'guideTables.trainerNameLen'
+trainerNamePtr = 'guideTables.trainerNamePtr'
+trainerSizeOff = 'guideTables.trainerSizeOff'
+trainerPartyOff = 'guideTables.trainerPartyOff'
+trainerHardPartyOff = 'guideTables.trainerHardPartyOff'
+altTrainers = 'guideTables.altTrainers'
 learnsets = 'guideTables.learnsets'
+learnsetCfru = 'guideTables.learnsetCfru'
+learnsetPairs = 'guideTables.learnsetPairs'
 wildHeaders = 'guideTables.wildHeaders'
 probeTrainer = 'guideTables.probeTrainer'
 probeName = 'guideTables.probeName'
+wildSets = 'guideTables.wildSets'
+wildSet = 'guideTables.wildSet'
+wildLayout = 'guideTables.wildLayout'
+wildSetVars = 'guideTables.wildSetVars'
+nightWild = 'guideTables.nightWild'
+flagBank = 'guideTables.flagBanks'
+varBank = 'guideTables.varBanks'
 
 # TRAINER CARD.
 [part.card]
@@ -89,11 +190,26 @@ cardStyle = 'trainerCard.style'
 gameStatsOff = 'trainerCard.gameStatsOff'
 badgeFlag = 'trainerCard.badgeFlag'
 pokedexFlag = 'trainerCard.pokedexFlag'
+cardMagicOff = 'trainerCard.nationalMagicOff'
+cardFlagsOff = 'trainerCard.flagsOff'
+cardVarsOff = 'trainerCard.varsOff'
+cardFlagBytes = 'trainerCard.flagBytes'
+nationalFlagOnly = 'trainerCard.nationalFlagOnly'
+linkLines = 'trainerCard.linkLines'
+allRegionalDrop = 'trainerCard.allRegionalDrop'
+iconVar = { path = 'trainerCard.iconVar', none = -1 }
+tintVar = { path = 'trainerCard.tintVar', none = -1 }
+cardIconTable = 'trainerCard.monIconTable'
+cardPaletteTable = 'trainerCard.monPaletteTable'
+achievementBitsOff = { path = 'trainerCard.achievementBitsOff', none = -1 }
+achievementMagicOff = { path = 'trainerCard.achievementMagicOff', none = -1 }
+achievementsNeeded = 'trainerCard.achievementsNeeded'
 nationalVar = 'trainerCard.nationalVar'
 nationalVarValue = 'trainerCard.nationalVarValue'
 nationalFlag = 'trainerCard.nationalFlag'
 stickerVar = { path = 'trainerCard.stickerVar', none = -1 }
 frontierSymbolFlag = { path = 'trainerCard.frontierSymbolFlag', none = -1 }
+extraStarFlag = { path = 'trainerCard.extraStarFlag', none = -1 }
 museumWinnersOff = { path = 'trainerCard.museumWinnersOff', none = -1 }
 frontierBpOff = { path = 'trainerCard.frontierBpOff', none = -1 }
 
@@ -122,6 +238,8 @@ flySpecial = '@items.fly.healWarp.special'
 flyGenderMapsec = '@items.fly.healWarp.genderMapsec'
 flyMaleHeal = '@items.fly.healWarp.maleHeal'
 flyFemaleHeal = '@items.fly.healWarp.femaleHeal'
+flySaveBlock2Static = '@items.fly.healWarp.saveBlock2Static'
+flyMapHeader = '@items.fly.mapHeader'
 
 # The Repels and PC anywhere: the same record's VarGet / VarSet / CheckBagHasItem / RemoveBagItem /
 # ArePlayerFieldControlsLocked (fieldCrcs: their first 32 bytes' CRC32, in that order), VAR_REPEL_STEP_COUNT,
@@ -148,8 +266,9 @@ pcScript = '@items.pc.script'
 # The configs, each with the parts the port reads for it so far (`name` is the C's: PD_CONFIG_<name>) and the
 # records `@name.` paths start from (`records`).
 # FireRed rev 0 and LeafGreen: the tabs that read RAM (and the MAP, whose art is found by fingerprint)
-# and the party icons; their POKéDEX and GUIDE tables aren't ported yet. The FOE TEAM's addresses
-# are known for rev 1 only.
+# and the party icons. The FOE TEAM's addresses are known for rev 1 only. Retail FireRed rev 0 as the app
+# reads it: no POKéDEX / GUIDE tables (none on file for rev 0), its trainer card set in code (Poller.kt), the
+# quick menu from FIELD_ITEMS_PORTS["BPRE0"] (fieldItemsFor).
 [config.firered_rev1]
 name = 'FIRERED_REV1'
 parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
@@ -157,19 +276,978 @@ records = { items = 'FIELD_ITEMS_FIRERED_REV1' }
 
 [config.firered_rev0]
 name = 'FIRERED_REV0'
-parts = ['ram', 'icons']
+parts = ['ram', 'icons', 'dex', 'card', 'fly', 'field']
+records = { items = 'FIELD_ITEMS_PORTS_BPRE0' }
+set = { trainerCard = 'TRAINER_CARD_FIRERED' }
 
 [config.leafgreen_rev0]
 name = 'LEAFGREEN_REV0'
-parts = ['ram', 'icons', 'card', 'fly', 'field']
+parts = ['ram', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
 records = { items = 'FIELD_ITEMS_LEAFGREEN_REV0' }
 
 [config.leafgreen_rev1]
 name = 'LEAFGREEN_REV1'
-parts = ['ram', 'foes', 'icons', 'card', 'fly', 'field']
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
 records = { items = 'FIELD_ITEMS_LEAFGREEN_REV1' }
 
 [config.emerald_retail]
 name = 'EMERALD'
 parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
 records = { items = 'FIELD_ITEMS_EMERALD' }
+
+# plorpOS's Linux port: the hacks, as their records reach gen3/records/c_hacks.toml. Emerald Legacy v1.1.4: retail's
+# structs with its own addresses, its own TrainerMon (guideTables.trainerMon).
+[config.emerald_legacy]
+name = 'EMERALD_LEGACY'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field']
+records = { items = 'FIELD_ITEMS_EMERALD_LEGACY' }
+
+# Ruby / Sapphire (USA): rev 1 and 2 share every address (the app's NATIVE_RUBY / _SAPPHIRE), rev 0 is its own
+# (RETAIL_PORTS' AXVE0 / AXPE0). Read like Emerald (the same species / item / map-section ids); no trainer card.
+[config.ruby]
+name = 'RUBY'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field']
+records = { items = 'FIELD_ITEMS_RUBY' }
+
+[config.sapphire]
+name = 'SAPPHIRE'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field']
+records = { items = 'FIELD_ITEMS_SAPPHIRE' }
+
+[config.port_axve0]
+name = 'RUBY_REV0'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field']
+records = { items = 'FIELD_ITEMS_PORTS_AXVE0' }
+
+[config.port_axpe0]
+name = 'SAPPHIRE_REV0'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field']
+records = { items = 'FIELD_ITEMS_PORTS_AXPE0' }
+
+# The retail-struct hacks whose ROMs aren't to hand: RAM-only (PARTY / BATTLE / foes, checked on the app's captured RAM);
+# the tabs that read the ROM (icons, POKéDEX, GUIDE, CARD, FLY) join once a ROM is there to check them against.
+[config.emerald_kaizo]
+name = 'EMERALD_KAIZO'
+parts = ['ram', 'foes', 'dex', 'card', 'guide']
+
+[config.glazed]
+name = 'GLAZED'
+parts = ['ram', 'foes', 'dex', 'card', 'guide']
+
+[config.celia]
+name = 'CELIA'
+parts = ['ram', 'dex', 'guide']
+
+[config.orange_islands]
+name = 'ORANGE_ISLANDS'
+parts = ['ram', 'foes', 'dex', 'guide']
+
+[config.ultra_violet]
+name = 'ULTRA_VIOLET'
+parts = ['ram', 'foes', 'dex', 'guide']
+
+[config.rocket_edition]
+name = 'ROCKET_EDITION'
+parts = ['ram', 'foes', 'dex', 'guide']
+
+[config.ash_gray]
+name = 'ASH_GRAY'
+parts = ['ram', 'foes', 'dex', 'guide']
+
+# Retail-like (CFRU) hacks: PARTY / BATTLE from RAM; Gaia and Sword and Shield (ROMs to hand) also party icons and the POKéDEX.
+
+[config.gaia_v3_2]
+name = 'GAIA'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.sword_shield]
+name = 'SWORD_SHIELD'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.odyssey]
+name = 'ODYSSEY'
+parts = ['ram', 'foes', 'dex', 'guide']
+
+[config.amethyst]
+name = 'AMETHYST'
+parts = ['ram', 'foes', 'dex', 'guide']
+
+[config.amethyst_v1_4_1]
+name = 'AMETHYST_V1_4_1'
+parts = ['ram', 'foes', 'dex', 'guide']
+
+[config.gs_chronicles]
+name = 'GS_CHRONICLES'
+parts = ['ram', 'foes', 'dex', 'guide']
+
+[config.ghost_grey]
+name = 'GHOST_GREY'
+parts = ['ram', 'foes', 'dex', 'guide']
+
+# CFRU (plaintext party boxes): Radical Red 4.1 (ROM checked: party icons, POKéDEX) and Unbound (RAM only, no ROM to hand).
+[config.radical_red_v4_1]
+name = 'RADICAL_RED'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.unbound_with_dex]
+name = 'UNBOUND'
+parts = ['ram', 'foes', 'dex', 'card', 'guide']
+
+[config.unbound_fr]
+name = 'UNBOUND_FR'
+parts = ['ram', 'foes', 'dex', 'card', 'guide']
+
+# pokeemerald-expansion family (and Recharged Yellow): PARTY / BAG / BATTLE from RAM, party and bag icons from the ROM.
+[config.imperium]
+name = 'IMPERIUM'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.tmt2]
+name = 'TMT2'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.recharged_yellow_v1_8_0]
+name = 'RECHARGED_YELLOW_V1_8_0'
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+
+[config.recharged_yellow_v1_9_0]
+name = 'RECHARGED_YELLOW_V1_9_0'
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+
+[config.recharged_yellow_v1_9_4]
+name = 'RECHARGED_YELLOW_V1_9_4'
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+
+[config.recharged_yellow_v1_9_7]
+name = 'RECHARGED_YELLOW_V1_9_7'
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+
+[config.emerald_seaglass]
+name = 'SEAGLASS'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.lazarus]
+name = 'LAZARUS'
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+
+[config.wishes]
+name = 'WISHES'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.mariomon_v1_5_2]
+name = 'MARIOMON_V1_5_2'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.mariomon_v1_5_1]
+name = 'MARIOMON_V1_5_1'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.mariomon_v1_3]
+name = 'MARIOMON_V1_3'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.mariomon_v1_2_2]
+name = 'MARIOMON_V1_2_2'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.mariomon_v1_2_1]
+name = 'MARIOMON_V1_2_1'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.rowe]
+name = 'ROWE'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.team_rocket]
+name = 'TEAM_ROCKET'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.dreamstone]
+name = 'DREAMSTONE'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.soulgold]
+name = 'SOULGOLD'
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+
+[config.soulgold_v1_2]
+name = 'SOULGOLD_V1_2'
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+
+[config.soulgold_v1_2b]
+name = 'SOULGOLD_V1_2B'
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+
+[config.soulgold_v1_2c]
+name = 'SOULGOLD_V1_2C'
+parts = ['ram', 'foes', 'icons', 'dex', 'card', 'guide']
+
+[config.heart_and_soul]
+name = 'HEART_AND_SOUL'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.quetzal]
+name = 'QUETZAL_V9_0'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.quetzal_es]
+name = 'QUETZAL_V9_0_ES'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.quetzal_v1]
+name = 'QUETZAL_V9_1'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.quetzal_es_v1]
+name = 'QUETZAL_V9_1_ES'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.quetzal_v084]
+name = 'QUETZAL_V0_8_4'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.quetzal_v084_es]
+name = 'QUETZAL_V0_8_4_ES'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.quetzal_moemon_v084]
+name = 'MOEMON_QUETZAL_V0_8_4'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.quetzal_moemon_v084_es]
+name = 'MOEMON_QUETZAL_V0_8_4_ES'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+# pokeemerald-expansion family (and Recharged Yellow): PARTY / BAG / BATTLE from RAM, party and bag icons from the ROM.
+[config.recharged_emerald_v2_2_5]
+name = 'RECHARGED_EMERALD_V2_2_5'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.recharged_emerald_v2_2_8]
+name = 'RECHARGED_EMERALD_V2_2_8'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.recharged_emerald_rebalanced_v2_2_8]
+name = 'RECHARGED_EMERALD_REBALANCED_V2_2_8'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+# Emerald Rogue (v2.2.1 EX): vanilla's party struct grown to 104 bytes, expansion's battle struct, nine bag views.
+[config.emerald_rogue]
+name = 'EMERALD_ROGUE'
+parts = ['ram', 'foes', 'icons', 'dex']
+set = { partyMonLayout = 'ROGUE_PARTY_MON' }
+
+# Elite Redux 2.65.3b / 2.65.4.1b: PARTY and BATTLE; its bag is a flag per item (not read yet).
+[config.elite_redux_v2_65_4_1b]
+name = 'ELITE_REDUX_V2_65_4_1B'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+[config.elite_redux_v2_65_3b]
+name = 'ELITE_REDUX_V2_65_3B'
+parts = ['ram', 'foes', 'icons', 'dex', 'guide']
+
+# Other-language FireRed / LeafGreen / Ruby / Sapphire (German, French, Italian, Spanish): the app's RETAIL_PORTS, found by game code
+# and revision. PARTY / BAG / BATTLE and the POKéDEX from RAM and the ROM, with the cart's own species, move and item names.
+[config.port_axpd0]
+name = 'PORT_AXPD0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axpd1]
+name = 'PORT_AXPD1'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axpf0]
+name = 'PORT_AXPF0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axpf1]
+name = 'PORT_AXPF1'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axpi0]
+name = 'PORT_AXPI0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axpi1]
+name = 'PORT_AXPI1'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axps0]
+name = 'PORT_AXPS0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axps1]
+name = 'PORT_AXPS1'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axvd0]
+name = 'PORT_AXVD0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axvd1]
+name = 'PORT_AXVD1'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axvf0]
+name = 'PORT_AXVF0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axvf1]
+name = 'PORT_AXVF1'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axvi0]
+name = 'PORT_AXVI0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axvi1]
+name = 'PORT_AXVI1'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axvs0]
+name = 'PORT_AXVS0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_axvs1]
+name = 'PORT_AXVS1'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_bpgd0]
+name = 'PORT_BPGD0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_bpgf0]
+name = 'PORT_BPGF0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_bpgi0]
+name = 'PORT_BPGI0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_bpgs0]
+name = 'PORT_BPGS0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_bprd0]
+name = 'PORT_BPRD0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_bprf0]
+name = 'PORT_BPRF0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_bpri0]
+name = 'PORT_BPRI0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+[config.port_bprs0]
+name = 'PORT_BPRS0'
+parts = ['ram', 'foes', 'icons', 'dex']
+
+# A hack's own species / item / move names (the Kotlin val of the app's data/), as ActiveTables.kt picks them; a config
+# without a [text.*] reads retail's. Not here yet: Odyssey and the in-place FireRed hacks (Ultra Violet, Rocket Edition,
+# Ash Gray, Ghost Grey) - their names are retail's with a few runtime-merged renames.
+
+[text.gaia_v3_2]
+species = 'speciesNamesGaia'
+mapsecsRom = true
+
+[text.sword_shield]
+species = 'speciesNamesSwordShield'
+items = 'itemNamesSwordShield'
+moves = 'moveDataSwordShield'
+genderRatios = 'genderRatiosSwordShield'
+mapsecs = 'mapSecDataSwordShield'
+mapsecsRom = true
+
+[text.amethyst]
+species = 'speciesNamesAmethyst'
+items = 'itemNamesAmethyst'
+moves = 'moveDataAmethyst'
+genderRatios = 'genderRatiosAmethyst'
+mapsecsRom = true
+
+[text.amethyst_v1_4_1]
+species = 'speciesNamesAmethystV141'
+items = 'itemNamesAmethystV141'
+moves = 'moveDataAmethyst'
+genderRatios = 'genderRatiosAmethystV141'
+mapsecsRom = true
+
+[text.gs_chronicles]
+species = 'speciesNamesGsChronicles'
+items = 'itemNamesGsChronicles'
+moves = 'moveDataGsChronicles'
+genderRatios = 'genderRatiosGsChronicles'
+mapsecs = 'mapSecDataGsChronicles'
+mapsecsRom = true
+
+[text.radical_red_v4_1]
+species = 'speciesNamesRadicalRed'
+items = 'itemNamesRadicalRed'
+moves = 'moveDataRadicalRed'
+genderRatios = 'genderRatiosRadicalRed'
+mapsecsRom = true
+
+[text.unbound_with_dex]
+species = 'speciesNamesUnbound'
+items = 'itemNamesUnbound'
+moves = 'moveDataUnbound'
+genderRatios = 'genderRatiosUnbound'
+mapsecs = 'mapSecDataUnbound'
+mapsecsRom = true
+
+[text.unbound_fr]
+species = 'speciesNamesUnbound'
+items = 'itemNamesUnbound'
+moves = 'moveDataUnbound'
+genderRatios = 'genderRatiosUnbound'
+mapsecs = 'mapSecDataUnbound'
+mapsecsRom = true
+
+[text.celia]
+species = 'speciesNamesCelia'
+items = 'itemNamesCelia'
+moves = 'moveDataCelia'
+mapsecsRom = true
+
+[text.glazed]
+species = 'speciesNamesGlazed'
+items = 'itemNamesGlazed'
+moves = 'moveDataGlazed'
+genderRatios = 'genderRatiosGlazed'
+mapsecs = 'mapSecDataGlazed'
+
+[text.orange_islands]
+species = 'speciesNamesOrangeIslands'
+items = 'itemNamesOrangeIslands'
+moves = 'moveDataOrangeIslands'
+genderRatios = 'genderRatiosOrangeIslands'
+mapsecs = 'mapSecDataOrangeIslands'
+mapsecsRom = true
+
+[text.imperium]
+species = 'speciesNamesImperium'
+items = 'itemNamesImperium'
+moves = 'moveDataImperium'
+typeNames = 'typeNamesImperium'
+typeChart = 'typeEffectivenessImperium'
+speciesTypes = 'speciesTypeDataImperium'
+genderRatios = 'genderRatiosImperium'
+mapsecs = 'mapSecDataImperium'
+
+[text.tmt2]
+species = 'speciesNamesTmt2'
+items = 'itemNamesTmt2'
+moves = 'moveDataTmt2'
+typeNames = 'typeNamesTmt2'
+typeChart = 'typeEffectivenessTmt2'
+speciesTypes = 'speciesTypeDataTmt2'
+
+[text.recharged_yellow_v1_8_0]
+species = 'speciesNamesRechargedYellow'
+items = 'itemNamesRechargedYellow'
+moves = 'moveDataRechargedYellow'
+mapsecs = 'mapSecData + mapSecNamesRechargedYellow'
+
+[text.recharged_yellow_v1_9_0]
+species = 'speciesNamesRechargedYellow'
+items = 'itemNamesRechargedYellow'
+moves = 'moveDataRechargedYellow'
+mapsecs = 'mapSecData + mapSecNamesRechargedYellow'
+
+[text.recharged_yellow_v1_9_4]
+species = 'speciesNamesRechargedYellow'
+items = 'itemNamesRechargedYellow'
+moves = 'moveDataRechargedYellow'
+mapsecs = 'mapSecData + mapSecNamesRechargedYellow'
+
+[text.recharged_yellow_v1_9_7]
+species = 'speciesNamesRechargedYellow'
+items = 'itemNamesRechargedYellow'
+moves = 'moveDataRechargedYellow'
+mapsecs = 'mapSecData + mapSecNamesRechargedYellow'
+
+[text.emerald_seaglass]
+species = 'speciesNamesNationalDex'
+items = 'itemNamesSeaglass'
+moves = 'moveDataSeaglass'
+typeNames = 'typeNamesHns'
+typeChart = 'typeEffectivenessHns'
+speciesTypes = 'speciesTypeDataSeaglass'
+genderRatios = 'genderRatiosSeaglass'
+
+[text.lazarus]
+species = 'speciesNamesLazarus'
+items = 'itemNamesLazarus'
+moves = 'moveDataLazarus'
+typeNames = 'typeNamesLazarus'
+typeChart = 'typeEffectivenessLazarus'
+speciesTypes = 'speciesTypeDataLazarus'
+genderRatios = 'genderRatiosLazarus'
+mapsecs = 'mapSecDataLazarus'
+
+[text.wishes]
+species = 'speciesNamesWishes'
+items = 'itemNamesWishes'
+moves = 'moveDataWishes'
+typeNames = 'typeNamesWishes'
+typeChart = 'typeEffectivenessWishes'
+speciesTypes = 'speciesTypeDataWishes'
+genderRatios = 'genderRatiosWishes'
+mapsecs = 'mapSecDataWishes'
+
+[text.mariomon_v1_5_2]
+species = 'speciesNamesMariomon'
+items = 'itemNamesMariomon'
+moves = 'moveDataMariomon'
+typeNames = 'typeNamesMariomon'
+typeChart = 'typeEffectivenessMariomon'
+speciesTypes = 'speciesTypeDataMariomon'
+genderRatios = 'genderRatiosMariomon'
+mapsecs = 'mapSecDataMariomon'
+
+[text.mariomon_v1_5_1]
+species = 'speciesNamesMariomon'
+items = 'itemNamesMariomon'
+moves = 'moveDataMariomon'
+typeNames = 'typeNamesMariomon'
+typeChart = 'typeEffectivenessMariomon'
+speciesTypes = 'speciesTypeDataMariomon'
+genderRatios = 'genderRatiosMariomon'
+mapsecs = 'mapSecDataMariomon'
+
+[text.mariomon_v1_3]
+species = 'speciesNamesMariomonV13'
+items = 'itemNamesMariomon'
+moves = 'moveDataMariomonV13'
+typeNames = 'typeNamesMariomon'
+typeChart = 'typeEffectivenessMariomon'
+speciesTypes = 'speciesTypeDataMariomonV13'
+genderRatios = 'genderRatiosMariomonV13'
+mapsecs = 'mapSecDataMariomonV13'
+
+[text.mariomon_v1_2_2]
+species = 'speciesNamesMariomonV13'
+items = 'itemNamesMariomon'
+moves = 'moveDataMariomonV13'
+typeNames = 'typeNamesMariomon'
+typeChart = 'typeEffectivenessMariomon'
+speciesTypes = 'speciesTypeDataMariomonV13'
+genderRatios = 'genderRatiosMariomonV13'
+mapsecs = 'mapSecDataMariomonV13'
+
+[text.mariomon_v1_2_1]
+species = 'speciesNamesMariomonV13'
+items = 'itemNamesMariomon'
+moves = 'moveDataMariomonV13'
+typeNames = 'typeNamesMariomon'
+typeChart = 'typeEffectivenessMariomon'
+speciesTypes = 'speciesTypeDataMariomonV13'
+genderRatios = 'genderRatiosMariomonV13'
+mapsecs = 'mapSecDataMariomonV13'
+
+[text.rowe]
+species = 'speciesNamesRowe'
+items = 'itemNamesRowe'
+moves = 'moveDataRowe'
+typeNames = 'typeNamesRowe'
+typeChart = 'typeEffectivenessRowe'
+speciesTypes = 'speciesTypeDataRowe'
+genderRatios = 'genderRatiosRowe'
+mapsecs = 'mapSecDataRowe'
+
+[text.team_rocket]
+species = 'speciesNamesTeamRocket'
+items = 'itemNamesTeamRocket'
+moves = 'moveDataTeamRocket'
+typeNames = 'typeNamesTeamRocket'
+typeChart = 'typeEffectivenessTeamRocket'
+speciesTypes = 'speciesTypeDataTeamRocket'
+genderRatios = 'genderRatiosTeamRocket'
+mapsecs = 'mapSecDataTeamRocket'
+
+[text.dreamstone]
+species = 'speciesNamesDreamstone'
+items = 'itemNamesDreamstone'
+moves = 'moveDataDreamstone'
+typeNames = 'typeNamesDreamstone'
+typeChart = 'typeEffectivenessDreamstone'
+speciesTypes = 'speciesTypeDataDreamstone'
+genderRatios = 'genderRatiosDreamstone'
+mapsecs = 'mapSecDataDreamstone'
+
+[text.soulgold]
+species = 'speciesNamesSoulGold'
+items = 'itemNamesSoulGold'
+moves = 'moveDataSoulGold'
+typeNames = 'typeNamesSoulGold'
+typeChart = 'typeEffectivenessSoulGold'
+speciesTypes = 'speciesTypeDataSoulGold'
+genderRatios = 'genderRatiosSoulGold'
+mapsecs = 'mapSecDataSoulGold'
+
+[text.soulgold_v1_2]
+species = 'speciesNamesSoulGold'
+items = 'itemNamesSoulGold'
+moves = 'moveDataSoulGold'
+typeNames = 'typeNamesSoulGold'
+typeChart = 'typeEffectivenessSoulGold'
+speciesTypes = 'speciesTypeDataSoulGold'
+genderRatios = 'genderRatiosSoulGold'
+mapsecs = 'mapSecDataSoulGold'
+
+[text.soulgold_v1_2b]
+species = 'speciesNamesSoulGold'
+items = 'itemNamesSoulGold'
+moves = 'moveDataSoulGold'
+typeNames = 'typeNamesSoulGold'
+typeChart = 'typeEffectivenessSoulGold'
+speciesTypes = 'speciesTypeDataSoulGold'
+genderRatios = 'genderRatiosSoulGold'
+mapsecs = 'mapSecDataSoulGold'
+
+[text.soulgold_v1_2c]
+species = 'speciesNamesSoulGold'
+items = 'itemNamesSoulGold'
+moves = 'moveDataSoulGold'
+typeNames = 'typeNamesSoulGold'
+typeChart = 'typeEffectivenessSoulGold'
+speciesTypes = 'speciesTypeDataSoulGold'
+genderRatios = 'genderRatiosSoulGold'
+mapsecs = 'mapSecDataSoulGold'
+
+[text.heart_and_soul]
+species = 'speciesNamesHns'
+items = 'itemNamesHns'
+moves = 'moveDataHns'
+typeNames = 'typeNamesHns'
+typeChart = 'typeEffectivenessHns'
+speciesTypes = 'speciesTypeDataHns'
+genderRatios = 'genderRatiosHns'
+mapsecs = 'mapSecDataHns'
+
+[text.quetzal]
+species = 'speciesNamesQuetzal'
+items = 'itemNamesQuetzal'
+moves = 'moveDataQuetzal'
+typeNames = 'typeNamesQuetzal'
+typeChart = 'typeEffectivenessQuetzal'
+speciesTypes = 'speciesTypeDataQuetzal'
+genderRatios = 'genderRatiosQuetzal'
+mapsecs = 'mapSecDataQuetzal'
+
+[text.quetzal_es]
+species = 'speciesNamesQuetzal + speciesNamesQuetzalEs'
+items = 'itemNamesQuetzal + itemNamesQuetzalEs'
+moves = 'moveDataQuetzal'
+typeNames = 'typeNamesQuetzal'
+typeChart = 'typeEffectivenessQuetzal'
+speciesTypes = 'speciesTypeDataQuetzal'
+genderRatios = 'genderRatiosQuetzal'
+mapsecs = 'mapSecDataQuetzal + mapSecNamesQuetzalEs'
+
+[text.quetzal_v1]
+species = 'speciesNamesQuetzal'
+items = 'itemNamesQuetzal'
+moves = 'moveDataQuetzal'
+typeNames = 'typeNamesQuetzal'
+typeChart = 'typeEffectivenessQuetzal'
+speciesTypes = 'speciesTypeDataQuetzal'
+genderRatios = 'genderRatiosQuetzal'
+mapsecs = 'mapSecDataQuetzal'
+
+[text.quetzal_es_v1]
+species = 'speciesNamesQuetzal + speciesNamesQuetzalEs'
+items = 'itemNamesQuetzal + itemNamesQuetzalEs'
+moves = 'moveDataQuetzal'
+typeNames = 'typeNamesQuetzal'
+typeChart = 'typeEffectivenessQuetzal'
+speciesTypes = 'speciesTypeDataQuetzal'
+genderRatios = 'genderRatiosQuetzal'
+mapsecs = 'mapSecDataQuetzal + mapSecNamesQuetzalEs'
+
+[text.quetzal_v084]
+species = 'speciesNamesQuetzal'
+items = 'itemNamesQuetzal'
+moves = 'moveDataQuetzal + moveDataQuetzalV084Changes'
+typeNames = 'typeNamesQuetzal'
+typeChart = 'typeEffectivenessQuetzal'
+speciesTypes = 'speciesTypeDataQuetzal'
+genderRatios = 'genderRatiosQuetzal'
+mapsecs = 'mapSecDataQuetzal'
+
+[text.quetzal_v084_es]
+species = 'speciesNamesQuetzal + speciesNamesQuetzalEs'
+items = 'itemNamesQuetzal + itemNamesQuetzalEs'
+moves = 'moveDataQuetzal + moveDataQuetzalV084Changes'
+typeNames = 'typeNamesQuetzal'
+typeChart = 'typeEffectivenessQuetzal'
+speciesTypes = 'speciesTypeDataQuetzal'
+genderRatios = 'genderRatiosQuetzal'
+mapsecs = 'mapSecDataQuetzal + mapSecNamesQuetzalEs'
+
+[text.quetzal_moemon_v084]
+species = 'speciesNamesQuetzal'
+items = 'itemNamesQuetzal'
+moves = 'moveDataQuetzal + moveDataQuetzalV084Changes'
+typeNames = 'typeNamesQuetzal'
+typeChart = 'typeEffectivenessQuetzal'
+speciesTypes = 'speciesTypeDataQuetzal'
+genderRatios = 'genderRatiosQuetzal'
+mapsecs = 'mapSecDataQuetzal'
+
+[text.quetzal_moemon_v084_es]
+species = 'speciesNamesQuetzal + speciesNamesQuetzalEs'
+items = 'itemNamesQuetzal + itemNamesQuetzalEs'
+moves = 'moveDataQuetzal + moveDataQuetzalV084Changes'
+typeNames = 'typeNamesQuetzal'
+typeChart = 'typeEffectivenessQuetzal'
+speciesTypes = 'speciesTypeDataQuetzal'
+genderRatios = 'genderRatiosQuetzal'
+mapsecs = 'mapSecDataQuetzal + mapSecNamesQuetzalEs'
+
+[text.emerald_rogue]
+species = 'speciesNamesRogue'
+items = 'itemNamesRogue'
+moves = 'moveDataRogue'
+typeNames = 'typeNamesRogue'
+typeChart = 'typeEffectivenessRogue'
+speciesTypes = 'speciesTypeDataRogue'
+mapsecs = 'mapSecDataRogue'
+
+[text.elite_redux_v2_65_4_1b]
+species = 'speciesNamesEliteRedux'
+items = 'itemNamesEliteRedux'
+moves = 'moveDataEliteRedux'
+typeNames = 'typeNamesEliteRedux'
+typeChart = 'typeEffectivenessEliteRedux'
+speciesTypes = 'speciesTypeDataEliteRedux'
+genderRatios = 'genderRatiosEliteRedux'
+mapsecs = 'mapSecDataEliteRedux'
+
+# (2.65.3b's few differing names are not applied: its tables are 4.1b's.)
+[text.elite_redux_v2_65_3b]
+species = 'speciesNamesEliteRedux'
+items = 'itemNamesEliteRedux'
+moves = 'moveDataEliteRedux'
+typeNames = 'typeNamesEliteRedux'
+typeChart = 'typeEffectivenessEliteRedux'
+speciesTypes = 'speciesTypeDataEliteRedux'
+genderRatios = 'genderRatiosEliteRedux'
+mapsecs = 'mapSecDataEliteRedux'
+
+# FireRed hacks edited in place: their own names and types over retail's (Ash Gray's few renames in capitals, like the game).
+[text.ash_gray]
+species = 'UPPER speciesNames + fireRedHackAshGray.species'
+items = 'UPPER itemNames + fireRedHackAshGray.items'
+moves = 'UPPER moveData + fireRedHackAshGray.moves'
+typeNames = 'typeNames + fireRedHackAshGray.typeNames'
+typeChart = 'typeEffectiveness + fireRedHackAshGray.typeChart'
+speciesTypes = 'speciesTypeData + fireRedHackAshGray.types'
+genderRatios = 'fireRedHackAshGray.genderRatios'
+mapsecs = 'mapSecData + fireRedHackAshGray.mapSecs'
+mapsecsRom = true
+
+[text.rocket_edition]
+species = 'fireRedHackRocketEdition.species'
+items = 'fireRedHackRocketEdition.items'
+moves = 'fireRedHackRocketEdition.moves'
+typeNames = 'typeNames + fireRedHackRocketEdition.typeNames'
+typeChart = 'typeEffectiveness + fireRedHackRocketEdition.typeChart'
+speciesTypes = 'speciesTypeData + fireRedHackRocketEdition.types'
+mapsecs = 'mapSecData + fireRedHackRocketEdition.mapSecs'
+
+[text.ghost_grey]
+species = 'fireRedHackGhostGrey.species'
+items = 'fireRedHackGhostGrey.items'
+moves = 'fireRedHackGhostGrey.moves'
+typeNames = 'typeNames + fireRedHackGhostGrey.typeNames'
+typeChart = 'typeEffectiveness + fireRedHackGhostGrey.typeChart'
+speciesTypes = 'speciesTypeData + fireRedHackGhostGrey.types'
+genderRatios = 'fireRedHackGhostGrey.genderRatios'
+mapsecs = 'mapSecData + fireRedHackGhostGrey.mapSecs'
+mapsecsRom = true
+
+[text.odyssey]
+species = 'fireRedHackOdyssey.species'
+items = 'fireRedHackOdyssey.items'
+moves = 'fireRedHackOdyssey.moves'
+typeNames = 'typeNames + fireRedHackOdyssey.typeNames'
+typeChart = 'typeEffectiveness + fireRedHackOdyssey.typeChart'
+speciesTypes = 'speciesTypeData + fireRedHackOdyssey.types'
+genderRatios = 'genderRatiosOdyssey'
+mapsecsRom = true
+
+[text.ultra_violet]
+species = 'UPPER speciesNames + speciesNamesUltraViolet'
+items = 'UPPER itemNames + itemNamesUltraViolet'
+moves = 'UPPER moveData + moveDataUltraViolet'
+typeNames = 'typeNames'
+typeChart = 'typeEffectiveness'
+speciesTypes = 'speciesTypeData + speciesTypesUltraViolet'
+mapsecs = 'mapSecData + mapSecNamesUltraViolet'
+
+# Recharged Emerald lays its renamed species / moves / items and re-typed species over Emerald's (ActiveTables' emeraldHackFor).
+[text.recharged_emerald_v2_2_5]
+species = 'speciesNames + hackTextRechargedEmerald.species'
+items = 'itemNames + hackTextRechargedEmerald.items'
+moves = 'moveData + hackTextRechargedEmerald.moves'
+speciesTypes = 'speciesTypeData + hackTextRechargedEmerald.types'
+
+[text.recharged_emerald_v2_2_8]
+species = 'speciesNames + hackTextRechargedEmerald.species'
+items = 'itemNames + hackTextRechargedEmerald.items'
+moves = 'moveData + hackTextRechargedEmerald.moves'
+speciesTypes = 'speciesTypeData + hackTextRechargedEmerald.types'
+
+[text.recharged_emerald_rebalanced_v2_2_8]
+species = 'speciesNames + hackTextRechargedEmeraldRebalanced.species'
+items = 'itemNames + hackTextRechargedEmeraldRebalanced.items'
+moves = 'moveData + hackTextRechargedEmeraldRebalanced.moves'
+speciesTypes = 'speciesTypeData + hackTextRechargedEmeraldRebalanced.types'
+
+[text.port_axpd0]
+species = 'speciesNamesAxpd'
+items = 'itemNamesAxpd'
+moves = 'moveData RENAMED moveNamesAxpd'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxpd'
+
+[text.port_axpd1]
+species = 'speciesNamesAxpd'
+items = 'itemNamesAxpd'
+moves = 'moveData RENAMED moveNamesAxpd'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxpd'
+
+[text.port_axpf0]
+species = 'speciesNamesAxpf'
+items = 'itemNamesAxpf'
+moves = 'moveData RENAMED moveNamesAxpf'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxpf'
+
+[text.port_axpf1]
+species = 'speciesNamesAxpf'
+items = 'itemNamesAxpf'
+moves = 'moveData RENAMED moveNamesAxpf'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxpf'
+
+[text.port_axpi0]
+species = 'speciesNamesAxpi'
+items = 'itemNamesAxpi'
+moves = 'moveData RENAMED moveNamesAxpi'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxpi'
+
+[text.port_axpi1]
+species = 'speciesNamesAxpi'
+items = 'itemNamesAxpi'
+moves = 'moveData RENAMED moveNamesAxpi'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxpi'
+
+[text.port_axps0]
+species = 'speciesNamesAxps'
+items = 'itemNamesAxps'
+moves = 'moveData RENAMED moveNamesAxps'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxps'
+
+[text.port_axps1]
+species = 'speciesNamesAxps'
+items = 'itemNamesAxps'
+moves = 'moveData RENAMED moveNamesAxps'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxps'
+
+[text.port_axvd0]
+species = 'speciesNamesAxvd'
+items = 'itemNamesAxvd'
+moves = 'moveData RENAMED moveNamesAxvd'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxvd'
+
+[text.port_axvd1]
+species = 'speciesNamesAxvd'
+items = 'itemNamesAxvd'
+moves = 'moveData RENAMED moveNamesAxvd'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxvd'
+
+[text.port_axvf0]
+species = 'speciesNamesAxvf'
+items = 'itemNamesAxvf'
+moves = 'moveData RENAMED moveNamesAxvf'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxvf'
+
+[text.port_axvf1]
+species = 'speciesNamesAxvf'
+items = 'itemNamesAxvf'
+moves = 'moveData RENAMED moveNamesAxvf'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxvf'
+
+[text.port_axvi0]
+species = 'speciesNamesAxvi'
+items = 'itemNamesAxvi'
+moves = 'moveData RENAMED moveNamesAxvi'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxvi'
+
+[text.port_axvi1]
+species = 'speciesNamesAxvi'
+items = 'itemNamesAxvi'
+moves = 'moveData RENAMED moveNamesAxvi'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxvi'
+
+[text.port_axvs0]
+species = 'speciesNamesAxvs'
+items = 'itemNamesAxvs'
+moves = 'moveData RENAMED moveNamesAxvs'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxvs'
+
+[text.port_axvs1]
+species = 'speciesNamesAxvs'
+items = 'itemNamesAxvs'
+moves = 'moveData RENAMED moveNamesAxvs'
+mapsecs = 'mapSecDataEmerald + mapSecNamesAxvs'
+
+[text.port_bpgd0]
+species = 'speciesNamesBpgd'
+items = 'itemNamesBpgd'
+moves = 'moveData RENAMED moveNamesBpgd'
+mapsecs = 'mapSecData + mapSecNamesBpgd'
+
+[text.port_bpgf0]
+species = 'speciesNamesBpgf'
+items = 'itemNamesBpgf'
+moves = 'moveData RENAMED moveNamesBpgf'
+mapsecs = 'mapSecData + mapSecNamesBpgf'
+
+[text.port_bpgi0]
+species = 'speciesNamesBpgi'
+items = 'itemNamesBpgi'
+moves = 'moveData RENAMED moveNamesBpgi'
+mapsecs = 'mapSecData + mapSecNamesBpgi'
+
+[text.port_bpgs0]
+species = 'speciesNamesBpgs'
+items = 'itemNamesBpgs'
+moves = 'moveData RENAMED moveNamesBpgs'
+mapsecs = 'mapSecData + mapSecNamesBpgs'
+
+[text.port_bprd0]
+species = 'speciesNamesBprd'
+items = 'itemNamesBprd'
+moves = 'moveData RENAMED moveNamesBprd'
+mapsecs = 'mapSecData + mapSecNamesBprd'
+
+[text.port_bprf0]
+species = 'speciesNamesBprf'
+items = 'itemNamesBprf'
+moves = 'moveData RENAMED moveNamesBprf'
+mapsecs = 'mapSecData + mapSecNamesBprf'
+
+[text.port_bpri0]
+species = 'speciesNamesBpri'
+items = 'itemNamesBpri'
+moves = 'moveData RENAMED moveNamesBpri'
+mapsecs = 'mapSecData + mapSecNamesBpri'
+
+[text.port_bprs0]
+species = 'speciesNamesBprs'
+items = 'itemNamesBprs'
+moves = 'moveData RENAMED moveNamesBprs'
+mapsecs = 'mapSecData + mapSecNamesBprs'
+

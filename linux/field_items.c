@@ -49,7 +49,7 @@ bool bike_supported(const struct pd_config *cfg) {
 }
 
 static uint32_t save_block1(struct mCore *core, const struct pd_config *cfg) {
-  uint32_t sb1 = core->busRead32(core, cfg->saveBlock1Ptr);
+  uint32_t sb1 = cfg->staticSaveBlocks ? cfg->saveBlock1Ptr : core->busRead32(core, cfg->saveBlock1Ptr);
   return sb1 >= 0x02000000u && sb1 < 0x02040000u ? sb1 : 0;
 }
 

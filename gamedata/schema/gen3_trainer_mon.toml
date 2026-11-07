@@ -1,0 +1,27 @@
+# TrainerMonLayout's fields (GuideRom.kt), checked against it by scripts/gen_gamedata.py: a hack's own struct
+# TrainerMon in its trainers' parties (every field at a fixed offset, whatever the party's flags say).
+# plorpOS's Linux port added this schema so the 3DS / Linux target can read GuideTables.trainerMon.
+
+version = 1
+kotlin_class = 'TrainerMonLayout'
+kotlin_file = 'GuideRom.kt'
+
+[field.stride]
+kotlin = 'Int'
+type = 'int'
+
+[field.movesOff]
+kotlin = 'Int'
+type = 'int'
+
+[field.speciesOff]
+kotlin = 'Int'
+type = 'int'
+
+[field.itemOff]
+kotlin = 'Int'
+type = 'int'
+
+[field.levelOff]
+kotlin = 'Int'
+type = 'int'

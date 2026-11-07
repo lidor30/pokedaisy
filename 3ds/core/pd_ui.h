@@ -51,6 +51,14 @@ enum pd_aspect {
 
 #define PD_FF_MIN 2
 #define PD_FF_MAX 4
+// plorpOS: the fast-forward speeds offered (the app's RATES less 1.5x), 0 = MAX: as many frames as a
+// screen refresh has time for.
+#define PD_FF_CHOICES 8
+extern const int PD_FF_SPEEDS[PD_FF_CHOICES];
+int pd_ff_index(int speed);
+
+// plorpOS: how ORIGINAL's picture fills the screen - whole pixels, the largest 3:2, or all of it.
+enum pd_scaling { PD_SCALE_INTEGER, PD_SCALE_FIT, PD_SCALE_STRETCH, PD_SCALINGS };
 
 // What the player set; the host loads and saves it (pd_settings.h).
 struct pd_settings {
@@ -63,16 +71,36 @@ struct pd_settings {
     int tabBar;      // TAB BAR: a bit per enum pd_tab on the bar (PARTY .. DEX, CARD); the rest open from MORE
     bool hud;        // HUD over the overworld (hosts with hasHud) ...
     int hudHidden;   // ... less these parts: a bit per enum pd_hud_part
+    int hudLayout;   // enum pd_hud_layout (the app's FieldHudLayout)
+    int hudLook;     // enum pd_hud_look (FieldHudLook)
+    int hudSize;     // enum pd_hud_size (FieldHudSize)
+    // plorpOS (its in-game menu writes these too):
+    int scaling;     // enum pd_scaling, ASPECT ORIGINAL's picture
+    bool ffAudio;    // the game's sound sped up under fast-forward, else silent
+    bool rewind;     // REWIND: the last ~20 s kept for the rewind hotkey
+    bool runIndoors; // RUN INDOORS: every map lets the player run
+    bool lcdFilter;  // optional host LCD display mask
+    bool quickGrid;  // hosts with hasQuickMenu: false = RING, true = GRID
+    // Hosts with hasButtonRows: the pad buttons for the quick menu, the companion and the HUD cursor (enum pd_button).
+    int quickBtn, companionBtn, hudBtn;
 };
+
+enum pd_button { PD_BTN_X, PD_BTN_Y, PD_BTN_L2, PD_BTN_R2, PD_BTN_NONE, PD_BUTTONS };
 
 // TAB BAR: at most this many tabs beside the gear (the app's MAX_BAR_TABS).
 #define PD_MAX_BAR_TABS 5
 #define PD_TAB_BAR_DEFAULT (1 << PD_TAB_PARTY | 1 << PD_TAB_BAG | 1 << PD_TAB_MAP | 1 << PD_TAB_GUIDE | 1 << PD_TAB_DEX)
 
-// The HUD's parts (the app's FieldHudPart less its buttons: with no touch screen BAG, PC and WILD are the
-// QUICK MENU's, and a tap on a party icon or the minimap has nothing to open).
-enum pd_hud_part { PD_HUD_PARTY, PD_HUD_MAP, PD_HUD_BALLS, PD_HUD_REPEL, PD_HUD_PARTS };
+// The HUD's parts (the app's FieldHudPart, in its order) and SETTINGS > HUD's LAYOUT / LOOK / SIZE
+// (FieldHudSettings.kt). The buttons (PC, BAG, WILD) are reached with the HUD hotkey on a host without touch.
+enum pd_hud_part { PD_HUD_PARTY, PD_HUD_MAP, PD_HUD_BALLS, PD_HUD_REPEL, PD_HUD_PC, PD_HUD_BAG, PD_HUD_WILD, PD_HUD_PARTS };
+enum pd_hud_layout { PD_HUD_CORNERS, PD_HUD_CORNERS_2, PD_HUD_RAILS, PD_HUD_DOCK, PD_HUD_LAYOUTS };
+enum pd_hud_look { PD_HUD_GLASS, PD_HUD_WHITE_GLASS, PD_HUD_WINDOW, PD_HUD_LOOKS };
+enum pd_hud_size { PD_HUD_SMALL, PD_HUD_NORMAL, PD_HUD_LARGE, PD_HUD_SIZES };
 const char* pd_hud_part_name(int part);
+const char* pd_hud_layout_name(int layout);
+const char* pd_hud_look_name(int look);
+const char* pd_hud_size_name(int size);
 
 enum pd_action {
     PD_ACTION_NONE,
@@ -94,6 +122,10 @@ struct pd_host_info {
     bool hasExpand;      // Optional: the host can EXPAND (ASPECT / AUTO ZOOM IN rows) ...
     bool expandGame;     // ... and does for this game (else ASPECT reads N/A)
     bool hasHud;         // Optional: the host draws the HUD over the game (its SETTINGS row)
+    bool hasDisplayFilter; // host implements OFF / LCD
+    bool hasQuickMenu;   // host implements the selectable RING / GRID quick menu
+    bool hasButtonRows;  // Optional: QUICK MENU / COMPANION / HUD CURSOR button rows (the host reads settings.*Btn)
+    bool frontendOwnsPlayback; // Optional: the frontend runs fast-forward, save states and leaving the game: no such rows
     bool hasState;      // a save state exists for LOAD STATE
     char stateWhen[24]; // when it was made, shown beside LOAD STATE
 };
@@ -120,7 +152,59 @@ enum pd_overlay {
     PD_OVERLAY_MORE,    // the tabs off the bar
 };
 
+// Optional presentation data for another emulator; IDs stay native to that backend.
+struct pd_party_source {
+    void* ctx;
+    bool (*egg)(void*, const struct pd_mon*);
+    const char* (*species)(void*, int);
+    const char* (*move)(void*, int);
+    int (*moveType)(void*, int);
+    bool (*icon)(void*, struct pd_canvas*, const struct pd_mon*, int, int, int, bool);
+    const char* (*info)(void*, const struct pd_mon*, int);
+};
+
+// Optional read-only bag presentation; item IDs remain backend-owned.
+struct pd_bag_source {
+    void* ctx;
+    int tabs;
+    const char* (*pocketName)(void*, int);
+    int (*count)(void*, int);
+    bool (*item)(void*, int, int, struct pd_item*, bool* quantity);
+    const char* (*name)(void*, int);
+};
+// A list-only dex source: no ROM entry/sprite data is implied by a name.
+struct pd_dex_source {
+    void* ctx;
+    int count, seenCount, caughtCount;
+    const char* filterLabel;
+    int (*national)(void*, int);
+    bool (*seen)(void*, int);
+    bool (*caught)(void*, int);
+    const char* (*name)(void*, int);
+};
+// Backend-composited map art in native pixels. Cursor coordinates use those same pixels.
+// No game config, ROM offsets or ownership of the supplied buffer is implied.
+struct pd_map_source {
+    const uint32_t* pixels;
+    int width, height;
+    const char* name;
+    int cursorX, cursorY, cursorW, cursorH;
+};
+// Host-owned option rows use the established Settings frame and row widgets.
+struct pd_option_row { const char* label; const char* value; };
+struct pd_option_source { const char* title; const struct pd_option_row* rows; int count; };
 struct pd_ui {
+    // Optional backend content inside the shared companion frame and tab bar.
+    unsigned availableTabs; // 0 preserves the original complete tab set.
+    void* contentCtx;
+    void (*content)(void*, struct pd_ui*, struct pd_canvas*);
+    const struct pd_option_source* optionSource;
+    int optionSelected;
+    const struct pd_dex_source* dexSource;
+    const struct pd_bag_source* bagSource;
+    bool bagDetails;
+    const struct pd_party_source* partySource;
+    int summaryPage;
     enum pd_tab tab;
     enum pd_tab tabBeforeBattle; // the tab a battle took over from
     int battleSlot;              // the bar slot BATTLE shows in, -1 = none
@@ -133,6 +217,8 @@ struct pd_ui {
     int foeSelected, foeShown;
     int lastFoeActive, lastFoeNext;
     int summarySlot; // party slot whose summary is open, -1 = none
+    bool summaryStats; // STATS replaces MOVES, as in MonDetailScreen
+    bool summaryInfo;  // INFO (EXP, held item, type matchups) replaces them
     int bagPocket;   // the open pocket tab: 0 ALL, then each pocket with items, in the game's order
     int bagSelected; // the item's row in that tab, -1 = none
     int bagScroll;   // pixels
@@ -170,6 +256,16 @@ struct pd_ui {
     int hitCount;
 };
 
+// Shared modal choice window for backend-owned preferences (selection is host-owned).
+void pd_ui_choices_view(struct pd_canvas*, const char*, const char* const*, int, int);
+
+// Shared party body, including its original frames, HP bars, status and summary.
+void pd_ui_map_view(struct pd_canvas*, const struct pd_map_source*);
+void pd_ui_options_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*);
+void pd_ui_dex_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*,int selected);
+void pd_ui_bag_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*, const struct pd_snapshot*);
+void pd_ui_party_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*,
+                      const struct pd_snapshot*, int selected);
 void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings);
 // Follows the game: a battle opens BATTLE, its end goes back.
 void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s);

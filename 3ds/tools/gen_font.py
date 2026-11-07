@@ -22,7 +22,7 @@ SIZE = 16
 # 16 px FreeType's hinting breaks diagonal strokes (é's accent got a gap).
 SCALE = 10
 # ASCII plus the few non-ASCII letters the names use (Poké Ball, Pokémon ...).
-EXTRA = "é×"
+EXTRA = "é×·"
 CHARS = [chr(c) for c in range(32, 127)] + list(EXTRA)
 
 # Pixel Operator has no gender symbols; these are drawn here, on the font's

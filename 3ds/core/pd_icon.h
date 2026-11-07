@@ -17,11 +17,16 @@
 // nothing, when the game's icon tables aren't known or don't decode.
 bool pd_draw_mon_icon(struct pd_canvas* c, const struct pd_game* g, int species, int x, int y, bool faded);
 // The same, `scale` canvas pixels a pixel (PD_ICON * scale square).
+// In its shiny colours when shiny (the app's DecompIconSource.getShiny); the normal icon where the ROM has none.
+bool pd_draw_mon_icon_shiny(struct pd_canvas* c, const struct pd_game* g, int species, bool shiny, int x, int y, int scale,
+                            bool faded);
 bool pd_draw_mon_icon_scaled(struct pd_canvas* c, const struct pd_game* g, int species, int x, int y, int scale,
                              bool faded);
 
 // An item's bag icon (24x24, from the ROM's item icon table) with its top-left at (x, y); faded = dimmed (45%).
 #define PD_ITEM_ICON 24
 bool pd_draw_item_icon(struct pd_canvas* c, const struct pd_game* g, int item, int x, int y, bool faded);
+// A plain Poke Ball, 20x20 (pd_ui_party.c), for a game without item icons.
+void pd_draw_party_ball(struct pd_canvas* c, int x, int y);
 
 #endif

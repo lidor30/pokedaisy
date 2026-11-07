@@ -19,6 +19,10 @@ struct pd_dex_entry {
     int type1, type2;
     int stats[6]; // HP, ATK, DEF, SP.ATK, SP.DEF, SPEED (the app's order)
     char ability1[16], ability2[16];
+    // A Game Boy page (Gen 1): the cart's own feet / inches and pounds x 10 (0 = from dm / hg), five stats (HP, ATTACK,
+    // DEFENSE, SPEED, SPECIAL in stats[0..4]) and no abilities.
+    int heightIn, weightLbs10;
+    bool gen1Stats;
 };
 
 // Whether g's ROM has this port's POKéDEX tables (the app's probe: entry 1

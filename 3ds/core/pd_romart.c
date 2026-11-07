@@ -3,6 +3,8 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "pd_smol.h"
+
 // --- finding blobs (RomArt.find) ---
 
 // Both hosts (the 3DS's ARM11, the desktop) are little-endian: one unaligned
@@ -73,6 +75,11 @@ size_t pd_lz77(const uint8_t* src, size_t srcLen, uint8_t* dst, size_t dstLen) {
 static bool decode(const uint8_t* rom, size_t romSize, size_t off, const struct pd_blob_sig* sig, uint8_t* out) {
     if (sig->lz) {
         return pd_lz77(rom + off, romSize - off, out, sig->size) == sig->size && pd_crc32(out, sig->size) == sig->crc;
+    }
+    if (sig->smol) {
+        size_t got = (rom[off] & 0xF) == 8 ? pd_smol_tilemap(rom + off, romSize - off, out, sig->size)
+                                           : pd_smol(rom + off, romSize - off, out, sig->size);
+        return got == sig->size && pd_crc32(out, sig->size) == sig->crc;
     }
     if (off + sig->size > romSize) return false;
     memcpy(out, rom + off, sig->size);

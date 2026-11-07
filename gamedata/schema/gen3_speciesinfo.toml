@@ -1,0 +1,84 @@
+# SpeciesInfoDex's fields (Pokedex.kt), checked against it by scripts/gen_gamedata.py.
+# A pokeemerald-expansion game keeps the dex page in gSpeciesInfo: these are the offsets inside one entry.
+# type: long | int | bool | char | string | item_descs | int_range | long_list | int_list | ref (a Kotlin
+# val's name, or a record in gamedata/gen3/records/).
+
+version = 1
+kotlin_class = 'SpeciesInfoDex'
+kotlin_file = 'Pokedex.kt'
+
+# Bytes from one entry to the next.
+[field.stride]
+kotlin = 'Int'
+type = 'int'
+
+[field.catchRateOff]
+kotlin = 'Int'
+type = 'int'
+default = 0x08
+
+[field.genderOff]
+kotlin = 'Int'
+type = 'int'
+default = 0x12
+
+[field.eggGroupsOff]
+kotlin = 'Int'
+type = 'int'
+default = 0x16
+
+# Three u16 abilities, the third the hidden one.
+[field.abilitiesOff]
+kotlin = 'Int'
+type = 'int'
+default = 0x18
+
+# categoryName, inline (13 bytes).
+[field.categoryOff]
+kotlin = 'Int'
+type = 'int'
+default = 0x1F
+
+# natDexNum, then height and weight (u16 each).
+[field.natDexOff]
+kotlin = 'Int'
+type = 'int'
+default = 0x3C
+
+[field.descriptionOff]
+kotlin = 'Int'
+type = 'int'
+default = 0x4C
+
+# frontPic (LZ77 or smol, may hold two frames).
+[field.frontPicOff]
+kotlin = 'Int'
+type = 'int'
+default = 0x58
+
+# palette: LZ77 if it starts with 0x10, else 16 raw colours.
+[field.paletteOff]
+kotlin = 'Int'
+type = 'int'
+
+# footprint (32 bytes, 1bpp); -1 = the game has none.
+[field.footprintOff]
+kotlin = 'Int'
+type = 'int'
+default = -1
+
+# levelUpLearnset, teachableLearnset and evolutions pointers; -1 = none / unknown.
+[field.levelUpOff]
+kotlin = 'Int'
+type = 'int'
+default = -1
+
+[field.teachableOff]
+kotlin = 'Int'
+type = 'int'
+default = -1
+
+[field.evolutionsOff]
+kotlin = 'Int'
+type = 'int'
+default = -1

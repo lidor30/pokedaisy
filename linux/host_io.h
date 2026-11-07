@@ -16,5 +16,7 @@ struct VFile *pocket_save_wrap(struct VFile *inner,
  * needed copy couldn't be written; no save, or an empty one, needs none. */
 #define POCKET_BACKUP_DIR "pokedaisy-backups"
 #define POCKET_BACKUP_KEEP 10
+/* plorpOS: where the copies go instead of beside the save; NULL = beside it. */
+extern const char *pocket_backup_dir;
 bool pocket_save_backup(const char *savePath, time_t now);
 #endif

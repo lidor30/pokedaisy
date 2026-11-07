@@ -90,7 +90,15 @@ static uint32_t next_codepoint(const char** s) {
     return cp;
 }
 
+static const struct pd_glyph* custom_font;
+static int custom_count;
+void pd_font_set(const struct pd_glyph* glyphs, int count) {
+    custom_font = glyphs;
+    custom_count = glyphs && count > 0 ? count : 0;
+}
 const struct pd_glyph* pd_font_glyph(uint32_t cp) {
+    for (int i = 0; i < custom_count; i++)
+        if (custom_font[i].codepoint == cp) return &custom_font[i];
     if (cp >= 32 && cp < 127) return &pd_font_glyphs[cp - 32];
     for (int i = 95; i < pd_font_glyph_count; i++) {
         if (pd_font_glyphs[i].codepoint == cp) return &pd_font_glyphs[i];
@@ -165,13 +173,14 @@ int pd_text_wrap(struct pd_canvas* c, int x, int y, int max_w, int lineH, int ma
     while (lines < maxLines) {
         while (*s == ' ') s++;
         if (!*s) break;
+        if (*s == '\n') { ++s; ++lines; continue; }
         // The longest run of whole words that fits; a single word too long
         // for the line is taken whole and cut.
         const char* end = NULL;
         const char* p = s;
         for (;;) {
             const char* wordEnd = p;
-            while (*wordEnd && *wordEnd != ' ') wordEnd++;
+            while (*wordEnd && *wordEnd != ' ' && *wordEnd != '\n') wordEnd++;
             size_t n = (size_t) (wordEnd - s);
             if (n >= sizeof(line)) break;
             memcpy(line, s, n);
@@ -180,12 +189,12 @@ int pd_text_wrap(struct pd_canvas* c, int x, int y, int max_w, int lineH, int ma
             end = wordEnd;
             p = wordEnd;
             while (*p == ' ') p++;
-            if (!*p) break;
+            if (!*p || *p == '\n') break;
         }
         bool cut = false;
         if (!end) {
             end = s;
-            while (*end && *end != ' ') end++;
+            while (*end && *end != ' ' && *end != '\n') end++;
             cut = true;
         }
         size_t n = (size_t) (end - s);
@@ -193,6 +202,7 @@ int pd_text_wrap(struct pd_canvas* c, int x, int y, int max_w, int lineH, int ma
         memcpy(line, s, n);
         line[n] = 0;
         s = end;
+        if (*s == '\n') ++s;
         while (*s == ' ') s++;
         if (lines == maxLines - 1 && *s) {
             // The last line takes the rest, cut with "...".

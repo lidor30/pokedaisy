@@ -22,7 +22,7 @@ The cursor pulses between two sizes like the game's. To keep it still, turn off 
 
 Tap anywhere on the map to move the cursor there and see what it is. The label shows the place's name and the cursor frames all of it, so tapping one end of a long route highlights the whole route. Tapping the sea or empty land shows no name.
 
-When the cursor isn't on you, a `ME` button appears. Tap it, or tap your character's head, to put the cursor back on where you are.
+When the cursor isn't on you, a `ME` button appears, including after selecting an empty tile on Linux or 3DS. Tap it, or tap your character's head, to put the cursor back on where you are.
 
 ## PLACES: find any town or route
 

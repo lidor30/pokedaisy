@@ -9,7 +9,10 @@ keywords: [linux, handheld, trimui, brick, smart pro, sdl, quick menu, wild enco
 You can build the initial Linux host from source. It runs Game Boy, Game Boy
 Color and Game Boy Advance games with your own ROMs and saves. Its companion
 uses the existing portable core for supported retail English Gen 3 games.
-Other games have emulation only in this foundation.
+For the ROM hacks the companion reads the DEX of most of them, the TRAINER CARD
+of Unbound, Lazarus, SoulGold and Recharged Yellow, and the GUIDE of a few,
+from your own ROM and save. `docs/ROM_FEATURES.md` lists which build of which
+game shows which tab; a build that is not listed there has emulation only.
 
 Follow `linux/README.md` in the source repository for dependencies, native and
 TrimUI builds, controls, save paths and test commands. Use a separate data
@@ -33,7 +36,14 @@ it or any of its parts off in the companion's `SETTINGS` > `HUD`. In
 
 Press the companion button to pause the game and open its companion. Use the
 D-pad to focus an option, A to choose it and B to go back. The shoulder buttons
-change tabs. Your game menu has cancel-first save, load and quit confirmations.
+change tabs. While a list or dialog is open, the D-pad stays inside it.
+Your game menu has cancel-first save, load and quit confirmations.
+
+In `MAP`, move the orange cursor across the grid with the D-pad. Towns, routes
+and landmarks are named as you move; empty tiles have no location name.
+B moves focus to `PLACES`. Use the D-pad to reach the other map
+buttons, then press A to choose one. Down from the buttons returns to the
+map cursor. L/R change tabs and X returns to the game.
 
 To see more of the map, set `ASPECT` in the companion's `SETTINGS` to `EXPAND`:
 the overworld reaches the edges of your screen at the same sharp scale as the
@@ -59,3 +69,59 @@ AUTO mode shows the bottom screen while choosing and the top for animations.
 DS expansion and custom battle controls are not included. The Linux companion
 and data bridge remain an initial implementation for upstream review; see
 `linux/dsperate/README.md` for scope, builds, controls and remaining testing.
+
+## As a core inside a launcher
+
+On plorpOS, PokeDaisy can also run as a core of the launcher's own emulator.
+The save is the same file the mGBA core uses, and the launcher owns save
+states, fast-forward, rewind, shaders and leaving the game. Pick PokeDaisy in
+the Core row of a Game Boy shelf.
+
+In this form the quick menu (Y) keeps PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS and
+COMPANION, adds a HUD tile that puts the cursor on the HUD, and the game pauses
+while it is open. X opens the companion. SETTINGS lists only what the core does
+itself: ASPECT, HUD, QUICK MENU, three button rows and TAB BAR. QUICK MENU BUTTON,
+COMPANION BUTTON and HUD CURSOR BUTTON step through X, Y, L2 and R2 (and NONE for
+the cursor) when you press A on them, and a button another action already uses
+swaps over to it. L2 and R2 reach the core on every shelf (for other Game Boy
+Advance cores the launcher still keeps them back). The settings file sits in the
+`pokedaisy` folder inside the launcher's save folder.
+
+### The picture in the launcher
+
+The core sizes its picture to the screen so the game is always shown at a whole
+scale. On the Brick (1024x768) `EXPAND` draws the game at 4x with the map rebuilt
+out to the screen's edges, and `ZOOM OUT` at 3x, so you see more of the map.
+`ORIGINAL` shows the game on its own. The companion and the quick menu always use
+the 3x picture.
+
+`AUTO ZOOM IN` (Settings) works as in the app: with `ZOOM OUT` chosen, anything
+but the plain overworld (menus, the START menu, battles, text boxes) steps in to
+the `EXPAND` picture, and it steps back out when you return to the field.
+Building interiors are the overworld, so nothing steps in there. Turn `AUTO ZOOM
+IN` off to stay zoomed out through menus.
+
+Fast-forward and rewind don't rebuild the map (that is what keeps fast-forward
+fast): the game picture sits over a blurred glow spread from its own edges, the
+same one the menus show past the screen. Fast-forward is silent. Rewind keeps the
+aspect you chose, so `ZOOM OUT` stays zoomed out while you rewind.
+
+### NXRedux collection and Platinum
+
+The optional Brick package uses one PokeDaisy collection for Game Boy, Game
+Boy Color, Game Boy Advance and Nintendo DS. See
+`linux/libretro-unified/README.md` for build, install and save migration steps.
+
+In Platinum (USA, revision 1), L2 opens the companion and SELECT + L2 opens
+the quick menu. Set `SETTINGS` > `DS LAYOUT` to `ONE SCREEN` to play on the
+whole screen, with the touch screen and menus floating in when the game wants
+them. R2 switches to the bottom or top screen by hand. Hold SELECT and press R2
+to show or hide a floating touch screen in `ONE SCREEN` or `PICTURE IN PICTURE`.
+SELECT + D-pad moves the stylus and SELECT + A taps. Saves, states and speed are
+NXRedux's own menus and shortcuts.
+
+Turn on `BATTLE STRIP` in the companion settings to choose battle commands
+with the D-pad. A selects a command or move, and B goes back from the move
+list. The move cards show the game's current and maximum PP. The bag and
+party open in the game's own floating panels. Doubles use the native battle
+controls.

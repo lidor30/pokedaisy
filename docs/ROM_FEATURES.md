@@ -493,3 +493,73 @@ change to any of the places listed under "Where it's decided" updates its rows h
   headless, as `unbound_battle`'s README describes).
 - The POKéMON switch for English LeafGreen and FireRed rev 0.
 - Battle buttons for Emerald Rogue; the POKéMON switch for Ruby / Sapphire (their party cursor lives in a sprite).
+
+## Linux / 3DS companion: tabs read per hack
+
+The Linux (and 3DS) companion reads each tab from the game's own data. For the ROM hacks it draws from the player's own ROM
+and save, so every row needs the exact build listed; any other build of the same hack shows the tab as unavailable rather
+than guessing. Checked: the DEX against the app's seen / caught sets for each fixture save, the CARD pixel for pixel
+against the app's recorded cards (`make -C 3ds test-card`), the GUIDE's boss teams read from the ROM (`make -C 3ds test-guide`).
+
+| Game | DEX | CARD | GUIDE |
+| ---- | :-: | :--: | :---: |
+| Unbound 2.1.1.1 (and the French fan translation) | ✅ | ✅ | ✅ ²⁶ |
+| Lazarus | ✅ | ✅ | ✅ ²⁹ |
+| Recharged Yellow 1.8.0 | ✅ | ✅ | ✅ ²⁸ |
+| Recharged Yellow 1.9.x | ✅ | ✅ | ✅ ²⁸ |
+| SoulGold | ✅ | ✅ | ✅ ²⁹ |
+| Glazed | ✅ | ✅ ²³ | ✅ |
+| Imperium | ✅ | — ²⁴ | ✅ |
+| Quetzal (Alpha 0.8.4 and 9.x, English and Spanish) | ✅ | — | ✅ ²⁹ |
+| Rocket Edition, Ash Gray, GS Chronicles, Radical Red, Orange Islands | ✅ | — | ✅ |
+| Odyssey, Sword and Shield Ultimate Plus, Gaia, Recharged Emerald ²⁸ | ✅ | — | ✅ |
+| Kaizo | ✅ | ✅ ³¹ | ✅ ²⁹ |
+| Amethyst, Heart and Soul, Seaglass, Too Many Types 2, Super Mariomon, Dreamstone Mysteries, Ultra Violet | ✅ | — | ✅ ²⁹ |
+| Wishes of Tomorrow, Team Rocket Edition, Elite Redux | ✅ | — | ◐ ³⁰ |
+| R.O.W.E., Emerald Rogue (EX) | ✅ | — | — |
+| Celia's Stupid Romhack | ◐ ²⁵ | — | ✅ |
+| Ghost Grey | ✅ | — | ✅ ²⁷ |
+
+²³ Checked against a screenshot of the game's own card (0 pixels differ), not the app's recorded output.
+²⁴ No reference render of Imperium's card exists to check against, so the tab stays off.
+²⁵ The dex probe the C reader uses (the first entry's category) does not match this ROM; whether the app's own check passes was not tested.
+
+²⁶ Boss teams with several difficulties (Unbound's four, Odyssey's NORMAL / HARD) show one section per team. Gaia's Elite Four count as beaten once the game is cleared; Celia's BLAINE shows his eight one-on-one battles.
+
+²⁸ Recharged Emerald / Yellow: every gym and Elite Four member lists NORMAL and HARD teams (the HARD party is a second pointer in the trainer record). Yellow's League shows the rematch teams once the game is cleared; Emerald's Elite Four count as beaten once champion.
+
+²⁹ The app's own rules for who comes next: Amethyst's RAINE and CHANCE by the badges held (four tables each), SoulGold's and
+Heart and Soul's CHUCK / JASMINE / PRYCE by how many of the other two are beaten and their League by its progress var,
+Lazarus's and Dreamstone's teams by the save's difficulty, Too Many Types 2's rival by the starter, Quetzal's three regions
+with the player's own first. HERE reads each game's own wild header shape, its time-of-day sets and Lazarus's night set by the
+game's clock. Kaizo uses retail Emerald's guide over its own wild table, Ultra Violet FireRed's bosses over its own maps.
+
+³¹ Retail Emerald's card, which the app gives Kaizo too (its config is retail's); drawn from Kaizo's ROM, not checked
+against a recorded render.
+
+³⁰ HERE and TIPS only, as in the app (no NEXT BOSS: their stories don't follow the badge order).
+
+²⁷ Ghost Grey's last boss, SUMMER, has a team that answers the starter; the guide shows all three (LITWICK, SPIRITLE, ROWLET) and counts her beaten when any of them is.
+
+**Game Boy**: Red, Blue and Yellow have DEX pages (sprite, category, size, text, stats from the cart), GUIDE HERE / WHERE IS
+(GuideGen1Gen.kt's wild tables and area things, regrouped by town map name) and NEXT BOSS; every Game Boy game draws in its
+own font, Red / Blue in their Super Game Boy colours, and Red, Blue, Yellow, Crystal, Gold and Silver with their own party
+icons. Crystal has the GUIDE too (NEXT BOSS incl. RED, HERE by time of day without headbutt trees, TIPS, WHERE IS). `make -C
+3ds test-gbdex ROMS=...` reads all 151 pages and sprites of each Gen 1 cart, `test-gbguide` Route 1's and Crystal's HERE.
+
+**Item descriptions**: from each game's own ROM through its config's `itemDescs` (the app's RomItemText); `make -C 3ds
+test-roms` checks every verified build gives one.
+
+**Shiny** marks and icons: by ROM hash as in the app (`3ds/tools/gen_shiny.py` from `ShinyOdds.kt`: every retail cart and
+the checked hacks, each with its own shiny value); icons recoloured from the shiny battle palette (SoulGold: its own). `make -C
+3ds test-shiny` checks retail Emerald's on the `emerald_shiny_battle` fixture.
+
+**Place names** (WHERE IS, HERE, the MAP's label): every hack the companion reads names its map sections as the app does.
+FireRed 1.0 hacks (Unbound, Radical Red, Odyssey, Gaia, Amethyst, GS Chronicles, Sword and Shield Ultimate Plus, Orange Islands,
+Ash Gray, Ghost Grey, Celia) read their own names from the ROM's region map code, where it keeps them (Celia's doesn't: FireRed's names);
+the others use the app's tables for them (Glazed, Imperium, Lazarus, SoulGold, Heart and Soul, Quetzal in English and Spanish,
+R.O.W.E., Emerald Rogue, Elite Redux, Team Rocket, Wishes, Dreamstone, Super Mariomon, Recharged Yellow, Rocket Edition, Ultra
+Violet) or their engine's retail names (Kaizo, Seaglass, Too Many Types 2, Recharged Emerald, Emerald Legacy). The
+other-language retail carts use their own language's names. `make -C 3ds test-roms` checks every ROM names at least 20 sections.
+
+Hacks that are not in the table have no DEX, CARD or GUIDE yet. The MAP tab draws the FireRed 1.0 hacks' own region maps from their ROM, as the app's RomRegionMap (Unbound, Odyssey, Gaia, Amethyst, Radical Red, GS Chronicles, Sword and Shield, Orange Islands, Ash Gray, Ghost Grey; `make -C 3ds test-roms` checks them against the app's pins), and elsewhere a region map where the ROM's art is found by fingerprint (Rocket Edition, Recharged Yellow, Ultra Violet, Kaizo, Emerald Legacy, Quetzal, Emerald Rogue, Too Many Types 2); else it says "NO MAP".

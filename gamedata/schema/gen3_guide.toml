@@ -97,6 +97,7 @@ default = 0x24
 [field.trainerMon]
 kotlin = 'TrainerMonLayout?'
 type = 'ref'
+record = 'gen3_trainer_mon'
 default = 'none'
 
 # Vanilla's party structs behind this many bytes of the game's own, each struct's size by the trainer's party flags
@@ -143,8 +144,8 @@ default = false
 # an empty record there falls back to [trainers], as the game does.
 [field.altTrainers]
 kotlin = 'List<Long>'
-type = 'ref'
-default = { kotlin = 'emptyList()' }
+type = 'long_list'
+default = []
 
 # A WildPokemonHeader of its own shape (Imperium's 24 bytes, Quetzal's 28); null = vanilla's / [wildSets]'.
 [field.wildLayout]

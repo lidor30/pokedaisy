@@ -8,6 +8,7 @@
 // writes <name>-party.png, -pressed, -summary, -battle, -bag, -bag-item,
 // -bag-scrolled, -bag-pocket, -settings, -pick-screen and -confirm-save.
 #include <stdio.h>
+#include <assert.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -18,6 +19,7 @@
 #include "../core/pd_snapshot.h"
 #include "../core/pd_ui.h"
 #include "../core/pd_ui_internal.h"
+#include "../core/pd_map.h"
 #include "pd_png.h"
 
 #define TOP_W 400
@@ -68,7 +70,21 @@ static void card_png(const char* dir, const char* name, const char* what, const 
 }
 
 // The fixture's RAM, and the ROM when one was given (ctx: the game).
+// A Game Boy fixture (the app's FixtureMemoryReader): wram.bin is C000-DFFF, wramx.bin WRAM banks 0-7 (0x1Dxxx = bank 1).
+static uint8_t gbWram[0x2000], gbWramx[0x8000];
+static bool gbFixture;
+
 static bool fixture_read(void* ctx, uint32_t addr, void* out, size_t len) {
+    if (gbFixture) {
+        if (addr >= 0x10000) {
+            uint32_t b = addr >> 16, x = (addr & 0xFFFF) - 0xD000;
+            if (b > 7 || x + len > 0x1000) return false;
+            memcpy(out, gbWramx + b * 0x1000 + x, len);
+            return true;
+        }
+        if (addr >= 0xC000 && addr + len <= 0xE000) { memcpy(out, gbWram + addr - 0xC000, len); return true; }
+        return false;
+    }
     if (pd_rom_read(ctx, addr, out, len)) return true;
     if (addr >= 0x02000000 && addr + len <= 0x02040000) {
         memcpy(out, ewram + (addr - 0x02000000), len);
@@ -201,7 +217,15 @@ int main(int argc, char** argv) {
         return 2;
     }
     const char *dir = argv[1], *code = argv[2], *out = argv[3], *name = argv[4];
-    if (!load(dir, "ewram.bin", ewram, sizeof(ewram)) || !load(dir, "iwram.bin", iwram, sizeof(iwram))) {
+    // A Game Boy fixture with its cart (code GB): the party, bag, DEX and GUIDE shots in the Game Boy look.
+    gbFixture = !strcmp(code, "GB");
+    if (gbFixture) {
+        load(dir, "wramx.bin", gbWramx, sizeof(gbWramx));
+        if (!load(dir, "wram.bin", gbWram, sizeof(gbWram)) || argc != 6) {
+            fprintf(stderr, "pd_preview: a GB fixture needs wram.bin and its ROM\n");
+            return 1;
+        }
+    } else if (!load(dir, "ewram.bin", ewram, sizeof(ewram)) || !load(dir, "iwram.bin", iwram, sizeof(iwram))) {
         fprintf(stderr, "pd_preview: %s needs ewram.bin (256 KB) and iwram.bin (32 KB)\n", dir);
         return 1;
     }
@@ -224,6 +248,7 @@ int main(int argc, char** argv) {
         pd_game_detect(&game, rom, n);
         game.rom = rom;
         game.romSize = n;
+        pd_game_identify(&game); // a hack's ROM gets its own config
     }
 
     struct pd_snapshot snap;
@@ -258,11 +283,13 @@ int main(int argc, char** argv) {
 
     // A stylus held on the second slot (the cursor's colours), then let go:
     // its summary opens.
-    press(&p, HIT_SLOT + 1, 0);
-    shot(out, name, "pressed", px);
-    release(&p);
-    shot(out, name, "summary", px);
-    tap(&p, HIT_BACK, 0);
+    if (has_hit(&p, HIT_SLOT + 1)) {  // a save with one Pokémon has no second slot
+        press(&p, HIT_SLOT + 1, 0);
+        shot(out, name, "pressed", px);
+        release(&p);
+        shot(out, name, "summary", px);
+        tap(&p, HIT_BACK, 0);
+    }
 
     // BATTLE has a chip only while a battle is on.
     ui.tab = PD_TAB_BATTLE;
@@ -278,8 +305,10 @@ int main(int argc, char** argv) {
     // arrow opens the next pocket.
     tap(&p, HIT_TAB + PD_TAB_BAG, 0);
     shot(out, name, "bag", px);
-    tap(&p, HIT_BAG_ROW + 2, 0);
-    shot(out, name, "bag-item", px);
+    if (has_hit(&p, HIT_BAG_ROW + 2)) {  // a save with fewer items in the first pocket shows none open
+        tap(&p, HIT_BAG_ROW + 2, 0);
+        shot(out, name, "bag-item", px);
+    }
     drag(&p, HIT_BAG_LIST, -60);
     shot(out, name, "bag-scrolled", px);
     tap(&p, HIT_BAG_TAB + 1, 0);
@@ -299,6 +328,9 @@ int main(int argc, char** argv) {
     printf("action %d\n", pd_ui_take_action(&ui));
     host.ffOn = false;
 
+    // PD_PREVIEW_DEX_ONLY=1: just the POKéDEX shots (a hack's ROM has no MAP / GUIDE tables here yet).
+    if (getenv("PD_PREVIEW_DEX_ONLY")) goto dex_only;
+
     // MAP: where the player is, a tapped place, the cursor's other size, PLACES.
     tap(&p, HIT_TAB + PD_TAB_MAP, 0);
     shot(out, name, "map", px);
@@ -308,6 +340,29 @@ int main(int argc, char** argv) {
         ui.mapBlink = true;
         draw(&p);
         shot(out, name, "map-blink", px);
+        // Empty tiles keep a blank label and offer ME, rather than naming the player.
+        for (int i = 0; i < ui.hitCount; i++) if (ui.hits[i].id == HIT_MAP) {
+            struct pd_hit h = ui.hits[i];
+            ui.touchX0 = h.x + 4 * h.w / PD_MAP_W;
+            ui.touchY0 = h.y + 4 * h.h / PD_MAP_H;
+            assert(ui_map_act(&ui, HIT_MAP));
+            break;
+        }
+        assert(ui.mapPage >= 0 && ui.mapSel == -1 && ui.mapDungeon == -1);
+        draw(&p);
+        assert(has_hit(&p, HIT_MAP_ME));
+        if (game.kind == PD_GAME_EMERALD) {
+            for (int i = 0; i < ui.hitCount; i++) if (ui.hits[i].id == HIT_MAP) {
+                struct pd_hit h = ui.hits[i];
+                // Inside Emerald's bottom-right label, the text area must be white.
+                for (int y = h.y + h.h - 26; y < h.y + h.h - 8; y++)
+                    for (int x = h.x + h.w - 125; x < h.x + h.w - 9; x++)
+                        assert(px[y * uiW + x] == 0xFFFFFF);
+            }
+        }
+        shot(out, name, "map-empty", px);
+        tap(&p, HIT_MAP_ME, 0);
+        assert(ui.mapPage == -1 && ui.mapSel == -1 && ui.mapDungeon == -1);
         tap(&p, HIT_MAP_PLACES, 0);
         drag(&p, HIT_SCRIM, -200);
         shot(out, name, "map-places", px);
@@ -315,22 +370,27 @@ int main(int argc, char** argv) {
         draw(&p);
     }
 
+dex_only:
     // POKéDEX: the list, scrolled, an entry, the next one, the other dex.
     // (In a battle DEX's chip is BATTLE's.)
     ui.tab = PD_TAB_DEX;
     draw(&p);
     shot(out, name, "dex", px);
-    if (game.rom && ui.tab == PD_TAB_DEX && ui.hitCount > 0) {
+    if (game.rom && ui.tab == PD_TAB_DEX && ui.hitCount > 0 && has_hit(&p, HIT_DEX_LIST)) {
         drag(&p, HIT_DEX_LIST, -120);
         shot(out, name, "dex-scrolled", px);
         ui.dexOpen = 6;
         draw(&p);
         shot(out, name, "dex-entry", px);
+    }
+    if (game.rom && ui.tab == PD_TAB_DEX && has_hit(&p, HIT_DEX_NEXT)) {
         tap(&p, HIT_DEX_NEXT, 0);
         shot(out, name, "dex-next", px);
         tap(&p, HIT_BACK, 0);
-        tap(&p, HIT_DEX_TOGGLE, 0);
-        shot(out, name, "dex-other", px);
+        if (has_hit(&p, HIT_DEX_TOGGLE)) {  // a Game Boy game has one Dex
+            tap(&p, HIT_DEX_TOGGLE, 0);
+            shot(out, name, "dex-other", px);
+        }
     }
 
     // GUIDE: the first-open notice, then each page (an entry's hint and

@@ -41,6 +41,9 @@ A few things worth knowing:
 
 In a game that doesn't support it yet, `EXPAND` shows as `ORIGINAL` and the companion's pick-list tags it `NOT YET`. You can leave it on: it kicks in for every game that has it.
 
+> [!NOTE]
+> On plorpOS, where PokeDaisy runs as a core, the picture is sized to the screen instead: see [Linux handhelds](linux.md#the-picture-in-the-launcher).
+
 > [!TIP]
 > The first time you start a game that supports it, PokeDaisy may ask whether to turn `EXPAND` on (`TURN ON` or `NOT NOW`). Either answer is fine, and you can change it any time under `ASPECT`.
 

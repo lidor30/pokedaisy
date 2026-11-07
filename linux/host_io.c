@@ -157,6 +157,7 @@ static bool same_save(const unsigned char *a, size_t an, const unsigned char *b,
 static int newest_first(const void *a, const void *b) {
   return -strcmp(*(char *const *)a, *(char *const *)b);
 }
+const char *pocket_backup_dir;
 bool pocket_save_backup(const char *savePath, time_t now) {
   size_t size;
   unsigned char *save = read_all(savePath, &size);
@@ -170,8 +171,11 @@ bool pocket_save_backup(const char *savePath, time_t now) {
   const char *file = slash ? slash + 1 : savePath;
   const char *dot = strrchr(file, '.');
   char dir[1100], stem[256], ext[32] = "sav";
-  snprintf(dir, sizeof dir, "%.*s%s", slash ? (int)(slash - savePath + 1) : 0,
-           savePath, POCKET_BACKUP_DIR);
+  if (pocket_backup_dir)
+    snprintf(dir, sizeof dir, "%s", pocket_backup_dir);
+  else
+    snprintf(dir, sizeof dir, "%.*s%s", slash ? (int)(slash - savePath + 1) : 0,
+             savePath, POCKET_BACKUP_DIR);
   snprintf(stem, sizeof stem, "%.*s.backup-", dot && dot != file ? (int)(dot - file) : (int)strlen(file), file);
   if (dot && dot != file)
     snprintf(ext, sizeof ext, "%s", dot + 1);

@@ -6,6 +6,8 @@
 
 #include "pd_ui_internal.h"
 
+static void cycle_button(struct pd_settings* s, int row);
+
 #define CHIP_H 22
 #define FF_W 28
 #define GEAR_W 24
@@ -27,7 +29,7 @@ const char* ui_tab_label(enum pd_tab t) { return t < PD_TAB_COUNT ? TAB_LABELS[t
 static int bar_tabs(const struct pd_ui* ui, enum pd_tab out[PD_MAX_BAR_TABS]) {
     int n = 0, bits = ui->settings && ui->settings->tabBar ? ui->settings->tabBar : PD_TAB_BAR_DEFAULT;
     for (int i = 0; i < UI_BAR_CHOICES && n < PD_MAX_BAR_TABS; i++)
-        if (bits & (1 << UI_BAR_CHOICE[i])) out[n++] = UI_BAR_CHOICE[i];
+        if ((bits & (1 << UI_BAR_CHOICE[i])) && (!ui->availableTabs || (ui->availableTabs & (1u << UI_BAR_CHOICE[i])))) out[n++] = UI_BAR_CHOICE[i];
     if (!n) out[n++] = PD_TAB_PARTY;
     return n;
 }
@@ -37,6 +39,7 @@ static bool has_more(const struct pd_ui* ui) {
     enum pd_tab bar[PD_MAX_BAR_TABS];
     int n = bar_tabs(ui, bar);
     for (int i = 0; i < UI_BAR_CHOICES - 1; i++) {
+        if (ui->availableTabs && !(ui->availableTabs & (1u << UI_BAR_CHOICE[i]))) continue;
         bool on = false;
         for (int k = 0; k < n; k++) on |= bar[k] == UI_BAR_CHOICE[i];
         if (!on) return true;
@@ -53,6 +56,7 @@ int ui_more_tabs(const struct pd_ui* ui, enum pd_tab out[UI_BAR_CHOICES]) {
     enum pd_tab bar[PD_MAX_BAR_TABS];
     int n = bar_tabs(ui, bar), m = 0;
     for (int i = 0; i < UI_BAR_CHOICES; i++) {
+        if (ui->availableTabs && !(ui->availableTabs & (1u << UI_BAR_CHOICE[i]))) continue;
         bool on = false;
         for (int k = 0; k < n; k++) on |= bar[k] == UI_BAR_CHOICE[i];
         if (!on) out[m++] = UI_BAR_CHOICE[i];
@@ -61,8 +65,24 @@ int ui_more_tabs(const struct pd_ui* ui, enum pd_tab out[UI_BAR_CHOICES]) {
 }
 
 const char* pd_hud_part_name(int part) {
-    static const char* const NAMES[PD_HUD_PARTS] = { "PARTY", "MINIMAP", "POKé BALLS", "REPEL STEPS" };
+    static const char* const NAMES[PD_HUD_PARTS] = { "PARTY", "MINIMAP", "POKé BALLS", "REPEL STEPS", "PC", "BAG",
+                                                     "WILD POKéMON" };
     return part >= 0 && part < PD_HUD_PARTS ? NAMES[part] : "";
+}
+
+const char* pd_hud_layout_name(int layout) {
+    static const char* const NAMES[PD_HUD_LAYOUTS] = { "CORNERS", "CORNERS 2", "RAILS", "DOCK" };
+    return layout >= 0 && layout < PD_HUD_LAYOUTS ? NAMES[layout] : "";
+}
+
+const char* pd_hud_look_name(int look) {
+    static const char* const NAMES[PD_HUD_LOOKS] = { "GLASS", "WHITE GLASS", "WINDOW" };
+    return look >= 0 && look < PD_HUD_LOOKS ? NAMES[look] : "";
+}
+
+const char* pd_hud_size_name(int size) {
+    static const char* const NAMES[PD_HUD_SIZES] = { "SMALL", "NORMAL", "LARGE" };
+    return size >= 0 && size < PD_HUD_SIZES ? NAMES[size] : "";
 }
 
 void ui_toggle_act(struct pd_ui* ui, int i) {
@@ -78,8 +98,13 @@ void ui_toggle_act(struct pd_ui* ui, int i) {
         return;
     }
     if (ui->overlay == PD_OVERLAY_HUD) {
+        // HUD, then LAYOUT / LOOK / SIZE (each cycles on a press, FieldHud.kt's fieldHudRows), then the parts.
         if (i == 0) s->hud = !s->hud;
-        else if (i <= PD_HUD_PARTS) s->hudHidden ^= 1 << (i - 1);
+        else if (!s->hud) return;
+        else if (i == 1) s->hudLayout = (s->hudLayout + 1) % PD_HUD_LAYOUTS;
+        else if (i == 2) s->hudLook = (s->hudLook + 1) % PD_HUD_LOOKS;
+        else if (i == 3) s->hudSize = (s->hudSize + 1) % PD_HUD_SIZES;
+        else if (i - 4 < PD_HUD_PARTS) s->hudHidden ^= 1 << (i - 4);
         ui->action = PD_ACTION_SETTINGS_CHANGED;
         return;
     }
@@ -200,10 +225,11 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_
     int n = bar_tabs(ui, bar);
     bool more = has_more(ui);
     int moreW = more ? GEAR_W + MARGIN : 0;
+    int ffW = ui->content && host && host->frontendOwnsPlayback ? 0 : FF_W;
     // The chips share what's left, but never wider than five would be (a short bar keeps its chips' size).
-    int w = (c->w - MARGIN * (n + 3) - FF_W - GEAR_W - moreW) / n;
+    int w = (c->w - MARGIN * (n + 3) - ffW - GEAR_W - moreW) / n;
     int five = (c->w - MARGIN * (PD_MAX_BAR_TABS + 3) - FF_W - GEAR_W - GEAR_W - MARGIN) / PD_MAX_BAR_TABS;
-    if (n < PD_MAX_BAR_TABS && w > five * 3 / 2) w = five * 3 / 2;
+    if (ffW && n < PD_MAX_BAR_TABS && w > five * 3 / 2) w = five * 3 / 2;
     int x = MARGIN;
     for (int i = 0; i < n; i++, x += w + MARGIN) {
         enum pd_tab t = slot_tab(ui, i);
@@ -222,13 +248,15 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_host_
         pd_bitmap(c, x + (GEAR_W - 11) / 2, by + (CHIP_H - 3) / 2, MORE_DOTS, 3, lit ? PD_VALUE : PD_TITLE_TEXT);
         x += GEAR_W + MARGIN;
     }
-    // Fast-forward: lit while on.
-    bool ff = host && host->ffOn;
-    chip(ui, c, x, FF_W, ff, HIT_FF);
-    uint32_t col = ff ? PD_VALUE : PD_TITLE_TEXT;
-    pd_triangle(c, x + 7, by + CHIP_H / 2 - 4, 5, PD_RIGHT, col);
-    pd_triangle(c, x + 13, by + CHIP_H / 2 - 4, 5, PD_RIGHT, col);
-    x += FF_W + MARGIN;
+    // Frontends own fast-forward in libretro hosts.
+    if (ffW) {
+        bool ff = host && host->ffOn;
+        chip(ui, c, x, FF_W, ff, HIT_FF);
+        uint32_t col = ff ? PD_VALUE : PD_TITLE_TEXT;
+        pd_triangle(c, x + 7, by + CHIP_H / 2 - 4, 5, PD_RIGHT, col);
+        pd_triangle(c, x + 13, by + CHIP_H / 2 - 4, 5, PD_RIGHT, col);
+        x += FF_W + MARGIN;
+    }
     // The TRAINER CARD opened from SETTINGS keeps the gear lit.
     bool open = ui->tab == PD_TAB_SETTINGS || (ui->tab == PD_TAB_CARD && !on_bar(ui, PD_TAB_CARD) && !ui->moreOpened);
     chip(ui, c, x, GEAR_W, open, HIT_TAB + PD_TAB_SETTINGS);
@@ -246,7 +274,9 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     view.h = BAR_Y(c) - 2;
     if (view.cy1 > view.h) view.cy1 = view.h;
     c = &view;
-    if (ui->tab == PD_TAB_SETTINGS) {
+    if (ui->content) {
+        ui->content(ui->contentCtx, ui, c);
+    } else if (ui->tab == PD_TAB_SETTINGS) {
         ui_settings_tab(ui, c, g, s, host);
     } else if (!g->cfg) {
         ui_notice(c, "NOT SUPPORTED", g->unsupported ? g->unsupported : "", "SETTINGS has what was detected.");
@@ -308,7 +338,7 @@ static void act(struct pd_ui* ui, int id) {
         return;
     }
     if (ui->overlay == PD_OVERLAY_TAB_BAR || ui->overlay == PD_OVERLAY_HUD || ui->overlay == PD_OVERLAY_MORE) {
-        if (id >= HIT_OPTION && id < HIT_OPTION + 8) {
+        if (id >= HIT_OPTION && id < HIT_OPTION + 16) {
             ui_toggle_act(ui, id - HIT_OPTION);
         } else if (id == HIT_NO || id == HIT_SCRIM) {
             close_overlay(ui, PD_ACTION_NONE);
@@ -316,10 +346,10 @@ static void act(struct pd_ui* ui, int id) {
         return;
     }
     if (ui->overlay != PD_OVERLAY_NONE) {
-        if (id >= HIT_OPTION && id < HIT_OPTION + 8) {
+        if (id >= HIT_OPTION && id < HIT_OPTION + 16) {
             int i = id - HIT_OPTION;
             if (ui->overlay == PD_OVERLAY_PICK_SCREEN) ui->settings->screenMode = i;
-            if (ui->overlay == PD_OVERLAY_PICK_FF) ui->settings->ffSpeed = PD_FF_MIN + i;
+            if (ui->overlay == PD_OVERLAY_PICK_FF && i < PD_FF_CHOICES) ui->settings->ffSpeed = PD_FF_SPEEDS[i];
             if (ui->overlay == PD_OVERLAY_PICK_ASPECT && i < PD_ASPECTS) ui->settings->aspect = i;
             close_overlay(ui, PD_ACTION_SETTINGS_CHANGED);
         } else if (id == HIT_YES) {
@@ -346,14 +376,30 @@ static void act(struct pd_ui* ui, int id) {
         ui->action = PD_ACTION_TOGGLE_FF;
     } else if (id >= HIT_SLOT && id < HIT_SLOT + PD_PARTY_SIZE) {
         ui->summarySlot = id - HIT_SLOT;
+        ui->summaryStats = ui->summaryInfo = false;
+    } else if (id == HIT_SUMMARY_STATS) {
+        ui->summaryStats = !ui->summaryStats;
+        ui->summaryInfo = false;
+    } else if (id == HIT_SUMMARY_INFO) {
+        ui->summaryInfo = !ui->summaryInfo;
+        ui->summaryStats = false;
     } else if (id == HIT_BACK) {
         pd_ui_back(ui);
     } else if (id >= HIT_BAG_TAB && id < HIT_BAG_TAB + 8) {
         ui->bagPocket = id - HIT_BAG_TAB;
         ui->bagSelected = -1;
         ui->bagScroll = 0;
-    } else if (id >= HIT_BAG_ROW && id < HIT_BAG_ROW + PD_POCKET_SLOTS) {
+    } else if (ui->tab == PD_TAB_BAG && id >= HIT_BAG_ROW && id < HIT_BAG_ROW + PD_POCKET_SLOTS) {
         ui->bagSelected = id - HIT_BAG_ROW;
+    } else if (id == HIT_SETTING + SETTING_FILTER) {
+        ui->settings->lcdFilter = !ui->settings->lcdFilter;
+        ui->action = PD_ACTION_SETTINGS_CHANGED;
+    } else if (id == HIT_SETTING + SETTING_QUICK_MENU) {
+        ui->settings->quickGrid = !ui->settings->quickGrid;
+        ui->action = PD_ACTION_SETTINGS_CHANGED;
+    } else if (id >= HIT_SETTING + SETTING_QUICK_BTN && id <= HIT_SETTING + SETTING_HUD_BTN) {
+        cycle_button(ui->settings, id - HIT_SETTING);
+        ui->action = PD_ACTION_SETTINGS_CHANGED;
     } else if (id == HIT_SETTING + SETTING_AUTO_ZOOM) {
         ui->settings->autoZoom = !ui->settings->autoZoom;
         ui->action = PD_ACTION_SETTINGS_CHANGED;
@@ -367,6 +413,25 @@ static void act(struct pd_ui* ui, int id) {
             [SETTING_ASPECT] = PD_OVERLAY_PICK_ASPECT,
         };
         ui->overlay = OPENS[id - HIT_SETTING];
+    }
+}
+
+/* A BUTTON row: the next button (X, Y, L2, R2; the HUD's also NONE). A button another action already uses goes to
+ * this one's old button, so no two actions ever share one; the HUD's NONE can't be handed to the other two. */
+static void cycle_button(struct pd_settings* s, int row) {
+    int* mine = row == SETTING_QUICK_BTN ? &s->quickBtn : row == SETTING_COMPANION_BTN ? &s->companionBtn : &s->hudBtn;
+    int* all[3] = {&s->quickBtn, &s->companionBtn, &s->hudBtn};
+    int old = *mine;
+    for (int step = 1; step <= PD_BUTTONS; step++) {
+        int next = (old + step) % PD_BUTTONS;
+        if (next == PD_BTN_NONE && mine != &s->hudBtn) continue;
+        int* other = NULL;
+        for (int i = 0; i < 3; i++)
+            if (all[i] != mine && *all[i] == next && next != PD_BTN_NONE) other = all[i];
+        if (other && old == PD_BTN_NONE) continue;   // nothing to hand over
+        if (other) *other = old;
+        *mine = next;
+        return;
     }
 }
 

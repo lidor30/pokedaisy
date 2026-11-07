@@ -26,7 +26,11 @@ def diagnostic():
     load(0, 0x06800000)
     load(1, 0x83e0)  # opaque green RGB555
     load(2, 256 * 192)
-    words += [0xe0c010b2, 0xe2522001, 0x1afffffc, 0xeafffffe]
+    words += [0xe0c010b2, 0xe2522001, 0x1afffffc]
+    # Four corner markers prove the host displays every source pixel, not a crop.
+    for pixel, color in [(0,0x801f),(255,0xfc00),(191*256,0xffff),(192*256-1,0x83ff)]:
+        load(0,0x06800000+pixel*2);load(1,color);words.append(0xe1c010b0)
+    words.append(0xeafffffe)
     for index, register, value in literals:
         distance = (len(words) - index) * 4 - 8
         words[index] = 0xe59f0000 | register << 12 | distance

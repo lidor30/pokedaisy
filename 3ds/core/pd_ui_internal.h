@@ -21,10 +21,11 @@ enum {
     HIT_MORE = 111,        // the tab bar's MORE chip
     HIT_SLOT = 200,        // + party slot
     HIT_BACK = 300,
+    HIT_SUMMARY_STATS = 301,
+    HIT_SUMMARY_INFO = 302,
     HIT_BAG_TAB = 400,     // + the bag's pocket tab (ALL first)
     HIT_BAG_LIST = 410,
     HIT_SETTINGS_LIST = 411, // the SETTINGS list (a drag scrolls it)
-    HIT_BAG_ROW = 500,     // + item index
     HIT_SETTING = 600,     // + enum setting_row
     HIT_OPTION = 700,      // + pick-list option
     HIT_YES = 800,
@@ -36,7 +37,7 @@ enum {
     HIT_MAP_PLACES = 903,
     HIT_PLACE = 1000,      // + PLACES row
     HIT_DEX_LIST = 1400,
-    HIT_DEX_ROW = 1500,    // + national number
+    HIT_DEX_ROW = 30000,   // + national number (up to 2048)
     HIT_DEX_TOGGLE = 1900,
     HIT_DEX_PREV = 1901,
     HIT_DEX_NEXT = 1902,
@@ -48,6 +49,7 @@ enum {
     HIT_BATTLE_SUGGEST = 3000,
     HIT_BATTLE_INFO = 3001,
     HIT_FOE_SLOT = 3010,   // + foe party index
+    HIT_BAG_ROW = 20000,   // + item index (up to PD_POCKET_SLOTS: a hack's pockets run past 100)
     HIT_OPEN_CARD = 3100,
     HIT_CARD = 3101,
 };
@@ -62,6 +64,11 @@ enum setting_row {
     SETTING_AUTO_ZOOM,
     SETTING_TAB_BAR,   // opens its page
     SETTING_HUD,       // hosts with hasHud: opens its page
+    SETTING_FILTER, // optional host LCD display mask
+    SETTING_QUICK_MENU, // hosts with hasQuickMenu: two styles, flips in place
+    SETTING_QUICK_BTN,  // hosts with hasButtonRows: cycle X / Y / L2 / R2
+    SETTING_COMPANION_BTN,
+    SETTING_HUD_BTN,    // also NONE
 };
 
 // The tabs TAB BAR offers, in the bar's order.
@@ -116,6 +123,8 @@ void ui_ball(struct pd_canvas* c, int x, int y, bool caught);
 
 // A scrolled list's offset clamped to its content: max(0, total - view).
 int ui_clamp_scroll(int scroll, int total, int view);
+// The scroll that keeps a row (top..top+h in list pixels) wholly in a view of [view] pixels, moved as little as can be.
+int ui_scroll_to(int scroll, int top, int h, int view);
 // A thin scroll bar along a list's right edge.
 void ui_scroll_bar(struct pd_canvas* c, int x, int y, int h, int scroll, int total, uint32_t color);
 

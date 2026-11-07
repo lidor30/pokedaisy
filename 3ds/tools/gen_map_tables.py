@@ -4,7 +4,8 @@
 - the fingerprints RomArt finds art by in a ROM (RomArtSigsGen.kt - only
   the blobs the 3DS MAP and TRAINER CARD need),
 - the cursor grids (RegionMapLayoutsGen.kt),
-- every map section's page and rectangle (MapSecData*.kt).
+- every map section's page and rectangle (MapSecData*.kt), the Game Boy games' too, and Gold / Silver's
+  landmark per map (MapSecDataGoldSilver.kt).
 
     python3 3ds/tools/gen_map_tables.py
 """
@@ -34,7 +35,30 @@ BLOBS = [
     "EM_PIC_BRENDAN", "EM_PIC_BRENDAN_PAL", "EM_PIC_MAY", "EM_PIC_MAY_PAL",
     "EM_FONT_NORMAL", "EM_FONT_NORMAL_WIDTHS",
     "CARD_STAR_PAL",
+    # Emerald Legacy's card (TrainerCardArt.kt LEGACY): HOENN's, plus the fifth star's (black) palette.
+    "LG_CARD_PAL5",
+    # Unbound's card (TrainerCardArt.kt UNBOUND): FireRed's, recoloured, with its own pics.
+    "UB_PIC_MALE", "UB_PIC_MALE_PAL", "UB_PIC_FEMALE", "UB_PIC_FEMALE_PAL",
+    # Lazarus's card (TrainerCardArt.kt LAZARUS): its own tiles, tilemaps, 0- and 1-star palettes, badges, pics and font.
+    "LZ_CARD_GFX", "LZ_CARD_FRONT", "LZ_CARD_BACK", "LZ_CARD_PAL0", "LZ_CARD_PAL1",
+    "LZ_CARD_BADGES_PAL", "LZ_CARD_BADGES_GFX",
+    "LZ_PIC_MALE", "LZ_PIC_MALE_PAL", "LZ_PIC_FEMALE", "LZ_PIC_FEMALE_PAL",
+    "LZ_FONT_NORMAL", "LZ_FONT_NORMAL_WIDTHS",
+    # Recharged Yellow's card (TrainerCardArt.kt RECHARGED_YELLOW): FireRed's with its own pics and font.
+    "RY_PIC_MALE", "RY_PIC_MALE_PAL", "RY_PIC_FEMALE", "RY_PIC_FEMALE_PAL", "RY_FONT_NORMAL", "RY_FONT_NORMAL_WIDTHS",
+    # Glazed's card (TrainerCardArt.kt GLAZED): retail Emerald's with its own badges, pics and font.
+    "GZ_CARD_BADGES_PAL", "GZ_CARD_BADGES_GFX", "GZ_PIC_MALE", "GZ_PIC_MALE_PAL", "GZ_PIC_FEMALE", "GZ_PIC_FEMALE_PAL",
+    "GZ_FONT_NORMAL",
+    # SoulGold's card (TrainerCardArt.kt SOULGOLD): its Johto art, most of it smol-compressed.
+    "SG_CARD_GFX", "SG_CARD_FRONT", "SG_CARD_BACK", "SG_CARD_BG",
+    "SG_CARD_PAL0", "SG_CARD_PAL1", "SG_CARD_PAL2", "SG_CARD_PAL3", "SG_CARD_PAL4",
+    "SG_CARD_FEMALE_PAL", "SG_CARD_BADGES_PAL", "SG_CARD_BADGES_GFX",
+    "SG_PIC_MALE", "SG_PIC_MALE_PAL", "SG_PIC_FEMALE", "SG_PIC_FEMALE_PAL", "SG_FONT_NORMAL", "SG_FONT_NORMAL_WIDTHS",
 ]
+
+# Regional dexes the card counts (TrainerCard.kt), by name: written as pd_card_dex_<lower>[].
+CARD_DEXES = ["GLAZED_REGIONAL_TO_NATIONAL", "LAZARUS_REGIONAL_TO_NATIONAL", "SOULGOLD_REGIONAL_TO_NATIONAL", "SOULGOLD_CARD_SKIPPED",
+              "SOULGOLD_ACHIEVEMENT_IDS"]
 
 
 def family(name):
@@ -55,11 +79,11 @@ def blobs():
     text = read("RomArtSigsGen.kt")
     out = []
     for name in BLOBS:
-        m = re.search(r"\b" + name + r"\((true|false), (\d+), (0x[0-9A-F]+)L, (\d+), (-?\d+)L, (0x[0-9A-F]+)", text)
+        m = re.search(r"\b" + name + r"\((true|false), (\d+), (0x[0-9A-F]+)L, (\d+), (-?\d+)L, (0x[0-9A-F]+)(, smol = true)?", text)
         if not m:
             raise SystemExit(f"gen_map_tables: no {name} in RomArtSigsGen.kt")
-        lz, size, crc, head_off, head, pre = m.groups()
-        out.append((name, lz == "true", int(size), int(crc, 16), int(head_off), int(head) & (2**64 - 1), int(pre, 16)))
+        lz, size, crc, head_off, head, pre, smol = m.groups()
+        out.append((name, lz == "true", int(size), int(crc, 16), int(head_off), int(head) & (2**64 - 1), int(pre, 16), bool(smol)))
     return out
 
 
@@ -86,11 +110,33 @@ def mapsecs(name, decl):
         r'(\d+) to MapSecInfo\("[^"]*", (-?\d+), (\d+), (\d+), (\d+), (\d+)\)', body)}
 
 
+GB_SECTIONS = (("gb_yellow", "MapSecDataYellow.kt", "mapSecDataYellow"),
+               ("gb_crystal", "MapSecDataCrystal.kt", "mapSecDataCrystal"),
+               ("gb_gold_silver", "MapSecDataGoldSilver.kt", "mapSecDataGoldSilver"))
+
+
 def c_bytes(data):
     lines = []
     for i in range(0, len(data), 24):
         lines.append("    " + ", ".join(f"0x{b:02X}" for b in data[i:i + 24]) + ",")
     return "\n".join(lines)
+
+
+def card_dexes():
+    """The regional dex tables the card counts: TrainerCard.kt's `val NAME = intArrayOf(...)`."""
+    text = read("TrainerCard.kt")
+    out = []
+    for name in CARD_DEXES:
+        m = re.search(r"val " + name + r" = intArrayOf\((.*?)\)\n", text, re.S)
+        if not m:
+            raise SystemExit(f"gen_map_tables: no {name} in TrainerCard.kt")
+        nums = [int(x) for x in re.findall(r"\d+", m.group(1))]
+        out.append(f"const uint16_t pd_card_{name.lower()}[{len(nums)}] = {{")
+        for i in range(0, len(nums), 20):
+            out.append("    " + ", ".join(map(str, nums[i:i + 20])) + ",")
+        out.append("};")
+        out.append(f"const int pd_card_{name.lower()}_count = {len(nums)};")
+    return out
 
 
 def main():
@@ -101,10 +147,12 @@ def main():
         "",
         "const struct pd_blob_sig pd_blob_sigs[PD_BLOB_COUNT] = {",
     ]
-    for name, lz, size, crc, head_off, head, pre in blobs():
+    for name, lz, size, crc, head_off, head, pre, smol in blobs():
         out.append(f"    [PD_{name}] = {{ {str(lz).lower()}, {size}, 0x{crc:08X}u, {head_off}, 0x{head:016X}ull, 0x{pre:04X}, "
-                   f"{family(name)} }},")
+                   f"{family(name)}, {str(smol).lower()} }},")
     out.append("};")
+    out.append("")
+    out.extend(card_dexes())
     out.append("")
 
     lay = layouts()
@@ -137,6 +185,30 @@ def main():
         out.append("};")
         out.append(f"const int pd_mapsec_rects_{game}_count = {top};")
         out.append("")
+
+    # The Game Boy games' places (pd_gb_map.c): each one cell (x, y in 8px tiles of the 160x144 town map), Gen 1's by
+    # wCurMap (Red / Blue share Yellow's map ids), Gen 2's by landmark; page = Johto 0 / Kanto 1, -1 = not on a map.
+    for game, name, decl in GB_SECTIONS:
+        secs = mapsecs(name, decl)
+        top = max(secs) + 1
+        out.append(f"const struct pd_mapsec_rect pd_mapsec_rects_{game}[{top}] = {{")
+        for i in range(top):
+            r, x, y, w, h = secs.get(i, (-1, 0, 0, 0, 0))
+            assert x + w <= 20 and y + h <= 18, (game, i)
+            out.append(f"    {{ {r}, {x}, {y}, {w}, {h} }},")
+        out.append("};")
+        out.append(f"const int pd_mapsec_rects_{game}_count = {top};")
+        out.append("")
+    # Gold / Silver's landmark per map (wMapGroup * 256 + wMapNumber), like gen_guide.py's Crystal one.
+    text = read("MapSecDataGoldSilver.kt")
+    body = text[text.index("val mapLandmarksGoldSilver"):]
+    body = body[body.index("\n") + 1:body.index("\n)\n")]
+    marks = sorted((int(k, 0), int(v)) for k, v in re.findall(r"(0x[0-9A-Fa-f]+|\d+) to (\d+)", body))
+    out.append("const uint16_t pd_gb_landmarks_gold_silver[][2] = {")
+    out += [f"    {{ 0x{k:04X}, {v} }}," for k, v in marks]
+    out.append("};")
+    out.append(f"const int pd_gb_landmarks_gold_silver_count = {len(marks)};")
+    out.append("")
 
     with open(OUT, "w", encoding="utf-8") as f:
         f.write("\n".join(out))

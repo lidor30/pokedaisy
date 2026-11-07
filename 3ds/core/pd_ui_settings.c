@@ -35,7 +35,8 @@ static void setting(struct pd_ui* ui, struct pd_canvas* c, int x, int* y, int w,
 // A row shown, not tappable (LOAD STATE with none yet, ASPECT N/A).
 static void muted_row(struct pd_canvas* c, int x, int* y, int w, const char* label, const char* value) {
     pd_text(c, x, pd_text_y(*y, ROW_H), label, PD_MUTED, PD_MUTED_SHADOW);
-    pd_text(c, x + w * 42 / 100, pd_text_y(*y, ROW_H), value, PD_MUTED, PD_MUTED_SHADOW);
+    int vx = x + w * 42 / 100, past = x + pd_text_width(label) + 8;
+    pd_text(c, vx < past ? past : vx, pd_text_y(*y, ROW_H), value, PD_MUTED, PD_MUTED_SHADOW);
     *y += ROW_H;
 }
 
@@ -44,7 +45,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     int x = MARGIN, w = c->w - 2 * MARGIN;
     int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_H, PD_TITLE_FILL);
     int ty = pd_text_y(CONTENT_Y, TITLE_H);
-    pd_text(c, x + f + 6, ty, "SETTINGS", PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    pd_text(c, x + f + 6, ty, ui->optionSource ? ui->optionSource->title : "SETTINGS", PD_TITLE_TEXT, PD_TITLE_SHADOW);
     int right = x + w - f - 6;
     // The TRAINER CARD opens from here (the list below is full): a grey chip at
     // the title window's right, white while pressed, like the tab bar's.
@@ -71,6 +72,29 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     listTop = LIST_Y + lf;
     listBottom = LIST_Y + lh - lf;
     ui_add_scroll_hit(ui, x, listTop, w, listBottom - listTop, HIT_SETTINGS_LIST);
+    if(ui->optionSource){
+        int n=ui->optionSource->count;
+        if(n<0)n=0;
+        if(n>64)n=64;
+        int view=listBottom-listTop,selected=ui->optionSelected;
+        if(selected>=n)selected=n-1;
+        if(selected>=0){
+            int top=selected*ROW_H;
+            if(top<ui->settingsScroll)ui->settingsScroll=top;
+            if(top+ROW_H>ui->settingsScroll+view)ui->settingsScroll=top+ROW_H-view;
+        }
+        ui->settingsScroll=ui_clamp_scroll(ui->settingsScroll,n*ROW_H,view);
+        pd_clip(c,x+lf,listTop,w-2*lf,view);
+        for(int i=0;i<n;i++){
+            int ry=listTop+i*ROW_H-ui->settingsScroll;
+            if(ry+ROW_H<=listTop || ry>=listBottom)continue;
+            const struct pd_option_row* row=&ui->optionSource->rows[i];
+            ui_row(c,ix,ry,iw,row->label,row->value,i==selected);
+        }
+        pd_unclip(c);
+        ui_scroll_bar(c,x+w-lf-3,listTop,view,ui->settingsScroll,n*ROW_H,PD_DIVIDER);
+        return;
+    }
     pd_clip(c, x + lf, listTop, w - 2 * lf, listBottom - listTop);
     if (lastTotal >= 0) ui->settingsScroll = ui_clamp_scroll(ui->settingsScroll, lastTotal, listBottom - listTop);
     int y = listTop - ui->settingsScroll;
@@ -92,8 +116,12 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
 
     if (!host || !host->hideScreenMode)
         setting(ui, c, ix, &y, iw, SETTING_SCREEN, "SCREEN", pd_screen_mode_name(ui->settings->screenMode));
-    snprintf(buf, sizeof(buf), "%dx", ui->settings->ffSpeed);
-    setting(ui, c, ix, &y, iw, SETTING_FF, "FAST-FORWARD", buf);
+    if (ui->settings->ffSpeed)
+        snprintf(buf, sizeof(buf), "%dx", ui->settings->ffSpeed);
+    else
+        snprintf(buf, sizeof(buf), "MAX");
+    if (!host || !host->frontendOwnsPlayback)
+        setting(ui, c, ix, &y, iw, SETTING_FF, "FAST-FORWARD", buf);
     if (host && host->hasExpand) {
         if (host->expandGame) {
             setting(ui, c, ix, &y, iw, SETTING_ASPECT, "ASPECT", pd_aspect_name(ui->settings->aspect));
@@ -107,16 +135,28 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         }
     }
     if (host && host->hasHud) setting(ui, c, ix, &y, iw, SETTING_HUD, "HUD", ui->settings->hud ? "ON" : "OFF");
+    if (host && host->hasDisplayFilter)
+        setting(ui, c, ix, &y, iw, SETTING_FILTER, "FILTER", ui->settings->lcdFilter ? "LCD" : "OFF");
+    if (host && host->hasQuickMenu)
+        setting(ui, c, ix, &y, iw, SETTING_QUICK_MENU, "QUICK MENU", ui->settings->quickGrid ? "GRID" : "RING");
+    if (host && host->hasButtonRows) {
+        static const char* const NAMES[PD_BUTTONS] = {"X", "Y", "L2", "R2", "NONE"};
+        setting(ui, c, ix, &y, iw, SETTING_QUICK_BTN, "QUICK MENU BUTTON", NAMES[ui->settings->quickBtn]);
+        setting(ui, c, ix, &y, iw, SETTING_COMPANION_BTN, "COMPANION BUTTON", NAMES[ui->settings->companionBtn]);
+        if (host->hasHud) setting(ui, c, ix, &y, iw, SETTING_HUD_BTN, "HUD CURSOR BUTTON", NAMES[ui->settings->hudBtn]);
+    }
     snprintf(buf, sizeof(buf), "%d TABS", ui_bar_count(ui));
     setting(ui, c, ix, &y, iw, SETTING_TAB_BAR, "TAB BAR", buf);
-    setting(ui, c, ix, &y, iw, SETTING_SAVE_STATE, "SAVE STATE", NULL);
-    if (host && host->hasState) {
-        setting(ui, c, ix, &y, iw, SETTING_LOAD_STATE, "LOAD STATE", host->stateWhen);
-    } else {
-        // Nothing to load: shown, not tappable.
-        muted_row(c, ix, &y, iw, "LOAD STATE", "none yet");
+    if (!host || !host->frontendOwnsPlayback) {
+        setting(ui, c, ix, &y, iw, SETTING_SAVE_STATE, "SAVE STATE", NULL);
+        if (host && host->hasState) {
+            setting(ui, c, ix, &y, iw, SETTING_LOAD_STATE, "LOAD STATE", host->stateWhen);
+        } else {
+            // Nothing to load: shown, not tappable.
+            muted_row(c, ix, &y, iw, "LOAD STATE", "none yet");
+        }
+        setting(ui, c, ix, &y, iw, SETTING_LEAVE, "LEAVE GAME", NULL);
     }
-    setting(ui, c, ix, &y, iw, SETTING_LEAVE, "LEAVE GAME", NULL);
     pd_unclip(c);
     int total = y + ui->settingsScroll - listTop, view = listBottom - listTop;
     lastTotal = total;
@@ -156,7 +196,7 @@ static void pick_list(struct pd_ui* ui, struct pd_canvas* c, const char* title, 
 // A page of ON / OFF rows (TAB BAR's, HUD's), each flipped by A / a tap, or a plain list (MORE's: values NULL);
 // a grey note under them. B / a tap beside it closes it.
 static void toggle_page(struct pd_ui* ui, struct pd_canvas* c, const char* title, const char* const* labels,
-                        const bool* on, const bool* muted, int n, const char* note) {
+                        const bool* on, const bool* muted, int n, const char* note, const char* const* values) {
     int x = MARGIN, w = c->w - 2 * MARGIN;
     int y = CONTENT_Y + 4;
     title_window(c, y, title);
@@ -168,11 +208,13 @@ static void toggle_page(struct pd_ui* ui, struct pd_canvas* c, const char* title
     for (int i = 0; i < n; i++) {
         bool sel = ui->pressedId == HIT_OPTION + i;
         if (on) {
-            ui_row(c, ix, ry, iw, labels[i], on[i] ? "ON" : "OFF", sel);
+            // A value of its own (HUD's LAYOUT / LOOK / SIZE), else ON / OFF.
+            const char* v = values && values[i] ? values[i] : on[i] ? "ON" : "OFF";
+            ui_row(c, ix, ry, iw, labels[i], v, sel);
             if (muted && muted[i]) {
                 // Its value while the whole thing is off: shown, greyed.
                 pd_fill(c, ix + iw * 42 / 100, ry + 1, iw - iw * 42 / 100, ROW_H - 2, sel ? PD_ROW_SELECTED : PD_LIST_FILL);
-                pd_text(c, ix + iw * 42 / 100, pd_text_y(ry, ROW_H), on[i] ? "ON" : "OFF", PD_MUTED, PD_MUTED_SHADOW);
+                pd_text(c, ix + iw * 42 / 100, pd_text_y(ry, ROW_H), v, PD_MUTED, PD_MUTED_SHADOW);
             }
         } else {
             if (sel) pd_fill(c, ix - 4, ry, iw + 8, ROW_H, PD_ROW_SELECTED);
@@ -192,18 +234,23 @@ static void tab_bar_page(struct pd_ui* ui, struct pd_canvas* c) {
         labels[i] = ui_tab_label(UI_BAR_CHOICE[i]);
         on[i] = (ui->settings->tabBar >> UI_BAR_CHOICE[i]) & 1;
     }
-    toggle_page(ui, c, "TAB BAR", labels, on, NULL, UI_BAR_CHOICES, "At most 5 on the bar; the rest open from MORE.");
+    toggle_page(ui, c, "TAB BAR", labels, on, NULL, UI_BAR_CHOICES, "At most 5 on the bar; the rest open from MORE.", NULL);
 }
 
+// FieldHud.kt's fieldHudRows: the switch, LAYOUT / LOOK / SIZE (a press cycles them), then which parts show.
 static void hud_page(struct pd_ui* ui, struct pd_canvas* c) {
-    const char* labels[1 + PD_HUD_PARTS] = { "HUD" };
-    bool on[1 + PD_HUD_PARTS] = { ui->settings->hud }, muted[1 + PD_HUD_PARTS] = { false };
+    enum { N = 4 + PD_HUD_PARTS };
+    const struct pd_settings* s = ui->settings;
+    const char* labels[N] = { "HUD", "LAYOUT", "LOOK", "SIZE" };
+    const char* values[N] = { NULL, pd_hud_layout_name(s->hudLayout), pd_hud_look_name(s->hudLook),
+                              pd_hud_size_name(s->hudSize) };
+    bool on[N] = { s->hud, true, true, true }, muted[N] = { false, !s->hud, !s->hud, !s->hud };
     for (int i = 0; i < PD_HUD_PARTS; i++) {
-        labels[1 + i] = pd_hud_part_name(i);
-        on[1 + i] = !((ui->settings->hudHidden >> i) & 1);
-        muted[1 + i] = !ui->settings->hud;
+        labels[4 + i] = pd_hud_part_name(i);
+        on[4 + i] = !((s->hudHidden >> i) & 1);
+        muted[4 + i] = !s->hud;
     }
-    toggle_page(ui, c, "HUD", labels, on, muted, 1 + PD_HUD_PARTS, "Shown over the overworld, off in menus and battles.");
+    toggle_page(ui, c, "HUD", labels, on, muted, N, "Shown over the overworld, off in menus and battles.", values);
 }
 
 static void more_page(struct pd_ui* ui, struct pd_canvas* c) {
@@ -211,7 +258,7 @@ static void more_page(struct pd_ui* ui, struct pd_canvas* c) {
     const char* labels[UI_BAR_CHOICES];
     int n = ui_more_tabs(ui, more);
     for (int i = 0; i < n; i++) labels[i] = ui_tab_label(more[i]);
-    toggle_page(ui, c, "MORE", labels, NULL, NULL, n, "Which tabs are on the bar: SETTINGS > TAB BAR.");
+    toggle_page(ui, c, "MORE", labels, NULL, NULL, n, "Which tabs are on the bar: SETTINGS > TAB BAR.", NULL);
 }
 
 static void confirm(struct pd_ui* ui, struct pd_canvas* c, const char* title, const char* text, const char* yes) {
@@ -234,7 +281,7 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     pd_dim(c, 0xE6);
     // Swallows taps beside the windows (they close the overlay).
     ui_add_hit(ui, 0, 0, c->w, c->h, HIT_SCRIM);
-    static const char* const FF[PD_FF_MAX - PD_FF_MIN + 1] = { "2x", "3x", "4x" };
+    static const char* const FF[PD_FF_CHOICES] = { "2x", "3x", "4x", "5x", "6x", "8x", "10x", "MAX" };
     switch (ui->overlay) {
     case PD_OVERLAY_PICK_SCREEN:
         pick_list(ui, c, "SCREEN", SCREEN_NAMES, PD_SCREEN_MODES, ui->settings->screenMode);
@@ -243,7 +290,7 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
         pick_list(ui, c, "ASPECT", ASPECT_NAMES, PD_ASPECTS, ui->settings->aspect);
         break;
     case PD_OVERLAY_PICK_FF:
-        pick_list(ui, c, "FAST-FORWARD", FF, PD_FF_MAX - PD_FF_MIN + 1, ui->settings->ffSpeed - PD_FF_MIN);
+        pick_list(ui, c, "FAST-FORWARD", FF, PD_FF_CHOICES, pd_ff_index(ui->settings->ffSpeed));
         break;
     case PD_OVERLAY_TAB_BAR:
         tab_bar_page(ui, c);
@@ -270,4 +317,15 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     default:
         break;
     }
+}
+
+void pd_ui_options_view(struct pd_ui* ui,struct pd_canvas* c,const struct pd_game* g,const struct pd_snapshot* s){
+    ui->hitCount=0;pd_backdrop(c);ui_settings_tab(ui,c,g,s,NULL);
+}
+
+void pd_ui_choices_view(struct pd_canvas* c,const char* title,const char* const* choices,int count,int selected){
+    if(count<1 || count>8)return;
+    struct pd_ui ui={0};ui.pressedId=-1;
+    pd_dim(c,230);
+    pick_list(&ui,c,title,choices,count,selected);
 }

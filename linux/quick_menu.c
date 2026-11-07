@@ -20,7 +20,7 @@
 #define ACCENT 0x00E83838u
 
 // QuickMenu.kt's icons: one character a pixel, '.' clear.
-static const char *const GRASS[] = {
+const char *const quick_icon_grass[] = {
     "................", "...K......K.....", "..KGK....KGK..K.", "..KGK...KGGK.KGK", ".KGLGK..KGLGKKGK",
     ".KGLGK.KGLLGKGLK", "KGLLGKKGLLGKGLLK", "KGLLGGKGLLGGGLLK", "KGLLLGGGLLLGGLLK", "KGLLLGGGLLLLGLLK",
     "KGGLLLGGLLLLGLGK", "KGGLLLLGLLLLLLGK", "KGGGLLLLLLLLLGGK", "KGGGGGLLLLLGGGGK", "KKKKKKKKKKKKKKKK",
@@ -39,15 +39,30 @@ static const char *const FF[] = {
     "11111.11111.", "1111..1111..", "111...111...", "11....11....", "1.....1.....", NULL,
 };
 // FieldHud.kt's PC_ICON.
-static const char *const PC[] = {
+const char *const quick_icon_pc[] = {
     "................", ".KKKKKKKKKKKKKK.", ".KLLLLLLLLLLLLK.", ".KLKKKKKKKKKKLK.", ".KLKSSSSSSHHKLK.",
     ".KLKSSSSSHHSKLK.", ".KLKSSSSHHSSKLK.", ".KLKSSSSSSSSKLK.", ".KLKKKKKKKKKKLK.", ".KLLLLLLLLLLGLK.",
     ".KDDDDDDDDDDDDK.", ".KKKKKKKKKKKKKK.", "......KDDK......", "....KKKKKKKK....", "...KLLLLLLLLK...",
     "...KKKKKKKKKK...", NULL,
 };
-static const char *const COMPANION[] = {
+// REPEL and BIKE where the game has no item icons to draw (Ruby / Sapphire; the app has its bundled item sprites).
+static const char *const REPEL[] = {
+    "....KKK.....", "...KLLLK.K..", "...KKKKK..K.", "..KGGGGGK.K.", "..KGLGGGK...", "..KGLGGGK...",
+    "..KGGGGGK...", "..KGGGGGK...", "..KGGGGGK...", "..KKKKKKK...", NULL,
+};
+static const char *const BIKE[] = {
+    "...........KK...", "...KKK.....K....", "....K.....K.....", "....KKKKKKK.....", "..KKK.K..K.KKK..",
+    ".K...KK.K.K...K.", "K...K.KK.K.K...K", "K...K..KK..K...K", "K.....K..K.....K", ".K...K....K...K.",
+    "..KKK......KKK..", NULL,
+};
+const char *const quick_icon_companion[] = {
     "......11", ".....11.", "....11..", "...11...", "..11....", ".11.....", "11......",
     ".11.....", "..11....", "...11...", "....11..", ".....11.", "......11", NULL,
+};
+
+const char *const quick_icon_hud[] = {
+    "11111..11111", "1..........1", "1..........1", "1....11....1", "1....11....1", "1..........1", "1..........1",
+    "11111..11111", NULL,
 };
 
 const char *quick_label(enum quick_action a) {
@@ -61,6 +76,7 @@ const char *quick_label(enum quick_action a) {
   case QUICK_LOAD_STATE: return "LOAD STATE";
   case QUICK_FF: return "FF";
   case QUICK_COMPANION: return "COMPANION";
+  case QUICK_HUD: return "HUD";
   default: return "";
   }
 }
@@ -71,6 +87,8 @@ static uint32_t icon_color(enum quick_action a, char ch) {
   if (a == QUICK_PC)
     return ch == 'K' ? 0x202838 : ch == 'L' ? 0xD8D8E0 : ch == 'D' ? 0x9098A8 : ch == 'S' ? 0x3070C8
          : ch == 'H' ? 0x90C8F8 : 0x40D040;
+  if (a == QUICK_REPEL)
+    return ch == 'K' ? 0x202838 : ch == 'L' ? 0xE8ECF4 : 0x48A848;
   if (a == QUICK_SAVE_STATE || a == QUICK_LOAD_STATE)
     return ch == 'K' ? 0x202838 : ch == 'D' ? 0x4870C0 : ch == 'L' ? 0xE8ECF4 : 0xF8C030;
   return INK;
@@ -78,8 +96,9 @@ static uint32_t icon_color(enum quick_action a, char ch) {
 
 // An icon centred at (cx, cy), `scale` canvas pixels a pixel; dim: at half strength over the glass.
 static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int scale, bool dim) {
-  const char *const *rows = a == QUICK_PC ? PC : a == QUICK_WILD ? GRASS : a == QUICK_SAVE_STATE ? SAVE_STATE
-                          : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : COMPANION;
+  const char *const *rows = a == QUICK_PC ? quick_icon_pc : a == QUICK_WILD ? quick_icon_grass : a == QUICK_SAVE_STATE ? SAVE_STATE
+                          : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : a == QUICK_REPEL ? REPEL
+                          : a == QUICK_BIKE ? BIKE : a == QUICK_HUD ? quick_icon_hud : quick_icon_companion;
   int h = 0, w = (int)strlen(rows[0]);
   while (rows[h])
     h++;
@@ -101,8 +120,51 @@ static void glass(struct pd_canvas *c, int x, int y, int w, int h) {
   pd_round_rect(c, x + 1, y + 1, w - 2, h - 2, 3, GLASS_FILL);
 }
 
+/* GRID (QuickMenuStyle.GRID; Keegan Whitacre's layout, pokedaisy-brick): the width fitted, rows balanced, the short
+ * last row centred, room kept under the tiles for the selected action's name. */
+static bool gridMode;
+/* Where the last draw put each tile / list row (canvas pixels), for a touch to find (quick_hit / quick_list_hit). */
+#define QUICK_MAX_HITS 32
+static struct { int x, y, w, h, i; } lastHit[QUICK_MAX_HITS];
+static int lastHits;
+static void hit_add(int x, int y, int w, int h, int i) {
+  if (lastHits < QUICK_MAX_HITS)
+    lastHit[lastHits++] = (__typeof__(lastHit[0])){x, y, w, h, i};
+}
+static int hit_find(int px, int py) {
+  for (int k = 0; k < lastHits; k++)
+    if (px >= lastHit[k].x && px < lastHit[k].x + lastHit[k].w && py >= lastHit[k].y && py < lastHit[k].y + lastHit[k].h)
+      return lastHit[k].i;
+  return -1;
+}
+int quick_hit(int x, int y) { return hit_find(x, y); }
+int quick_list_hit(int x, int y) { return hit_find(x, y); }
+void quick_set_grid(bool grid) { gridMode = grid; }
+static void grid_shape(int n, int w, int *cols, int *rows) {
+  int fit = (w - 24 + 6) / (TILE_W + 6);
+  if (fit < 1)
+    fit = 1;
+  if (fit > n)
+    fit = n;
+  *rows = (n + fit - 1) / fit;
+  *cols = (n + *rows - 1) / *rows;
+}
+static void grid_place(int n, int i, int w, int h, int *x, int *y) {
+  int cols, rows;
+  grid_shape(n, w, &cols, &rows);
+  int row = i / cols, count = n - row * cols;
+  if (count > cols)
+    count = cols;
+  *x = (w - (count * TILE_W + (count - 1) * 6)) / 2 + (i % cols) * (TILE_W + 6);
+  *y = (h - (rows * TILE_H + (rows - 1) * 6 + 52)) / 2 + row * (TILE_H + 6);
+}
+
 // Where tile i sits: round an ellipse that fits the canvas (a circle where it can be), the first at the top.
 static void place(int n, int i, int w, int h, int *x, int *y) {
+  if (gridMode) {
+    grid_place(n, i, w, h, x, y);
+    return;
+  }
   double rx = (w - TILE_W) / 2.0 - 4, ry = (h - TILE_H) / 2.0 - 4;
   // Close round the middle's hint, not out at the screen's edges (QuickMenu.kt's ring); wide enough that
   // nine tiles don't touch.
@@ -118,10 +180,15 @@ static void place(int n, int i, int w, int h, int *x, int *y) {
 int quick_step(int n, int sel, int dx, int dy, int w, int h) {
   if (n <= 0)
     return 0;
-  int sx, sy, best = sel, score = 1 << 30;
+  int sx, sy, best = sel, score = 1 << 30, cols = 1, rows;
   place(n, sel, w, h, &sx, &sy);
+  if (gridMode)
+    grid_shape(n, w, &cols, &rows);
   for (int i = 0; i < n; i++) {
     if (i == sel)
+      continue;
+    // GRID: left / right stay in the row, up / down go to the next one.
+    if (gridMode && (dx ? i / cols != sel / cols : i / cols != sel / cols + (dy > 0 ? 1 : -1)))
       continue;
     int x, y;
     place(n, i, w, h, &x, &y);
@@ -137,9 +204,11 @@ bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick
     return false;
   for (int i = 0; i < c->w * c->h; i++)
     c->px[i] = QUICK_CLEAR;
+  lastHits = 0;
   for (int i = 0; i < n; i++) {
     int x, y;
     place(n, i, c->w, c->h, &x, &y);
+    hit_add(x, y, TILE_W, TILE_H, i);
     if (i == sel)
       pd_round_rect(c, x - 2, y - 2, TILE_W + 4, TILE_H + 4, 5, FOCUS);
     glass(c, x, y, TILE_W, TILE_H);
@@ -172,6 +241,11 @@ bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick
     int nw = pd_text_width(name), ow = note ? pd_text_width(note) : 0;
     int w = (nw > ow ? nw : ow) + 16, h = note ? 40 : 24;
     int x = (c->w - w) / 2, y = (c->h - h) / 2;
+    if (gridMode) { // under the tiles
+      int cols, rows;
+      grid_shape(n, c->w, &cols, &rows);
+      y = (c->h - (rows * TILE_H + (rows - 1) * 6 + 52)) / 2 + rows * (TILE_H + 6) + 6;
+    }
     glass(c, x, y, w, h);
     pd_text(c, x + (w - nw) / 2, y + 4, name, INK, INK_SHADOW);
     if (note)
@@ -200,8 +274,10 @@ void quick_list_draw(struct pd_canvas *c, const char *title, const char *const *
   int h = PAD + ROW + 4 + shown * ROW + PAD, x = (c->w - w) / 2, y = (c->h - h) / 2;
   glass(c, x, y, w, h);
   pd_text(c, x + (w - pd_text_width(title)) / 2, y + PAD - 2, title, FOCUS, INK_SHADOW);
+  lastHits = 0;
   for (int r = 0; r < shown; r++) {
     int i = top + r, ry = y + PAD + ROW + 4 + r * ROW;
+    hit_add(x + PAD, ry, w - 2 * PAD, ROW, i);
     if (i == sel)
       pd_round_rect(c, x + PAD, ry, w - 2 * PAD, ROW, 3, FOCUS);
     pd_text(c, x + 2 * PAD + 3, ry - 1, rows[i], INK, i == sel ? 0x00803010u : INK_SHADOW);
