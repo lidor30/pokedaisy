@@ -80,8 +80,8 @@ int main(int argc, char** argv) {
     // Gen 1's pages from the carts (argv[2] = a folder with them): BULBASAUR's SEED page as the game prints it, MEW's (Red /
     // Blue keep it apart in bank 1), and every page and sprite reading.
     static const struct { const char* rom; const char* title; } CARTS[] = {
-        {"Pokemon - Blue Version.gb", "Blue"}, {"Pokemon - Red Version.gb", "Red"},
-        {"Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (GBC,SGB Enhanced).gb", "Yellow"},
+        {"Pokemon - Blue Version (USA, Europe) (SGB Enhanced).gb", "Blue"}, {"Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb", "Red"},
+        {"Pokemon - Yellow Version - Special Pikachu Edition (USA, Europe) (CGB+SGB Enhanced).gb", "Yellow"},
     };
     int pages = 0;
     for (size_t k = 0; argc > 2 && k < sizeof CARTS / sizeof CARTS[0]; k++) {

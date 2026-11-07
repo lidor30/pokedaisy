@@ -943,6 +943,62 @@ static void gbDraw(const struct GbSnap* s, int ox, int oy, int x0, int y0, int w
 // Pokégear and its light colour below, black in a fade to black). The GBA's glow spread from the edges looked smeared
 // against them. OPTION, opened from the START menu, keeps the field's strips (the user's call, like SAVE's prompt).
 
+#define GB_SIDE 32               // the bars' colour: the most common one in the outer 32 px each side ...
+#define GB_BAND 32               // ... of the rows 32 above and below
+#define GB_ROW_KINDS 8           // colours counted per row (a row's sides hold a few)
+
+static uint32_t gbFillRow[GBH];
+static bool gbFillSet;
+
+/** Each row's bar colour (gbFillRow): the screen's sides around it, by bands. One row's own sides striped the bars
+ * wherever an icon or a box touched an edge (the Pokégear's SWITCH button, flush with the right edge over its icons). */
+static void gbBackgroundRows(const uint32_t* frame) {
+    // Per row: its sides' colours (every other pixel of the outer 32 px, both sides), counted.
+    static uint32_t col[GBH][GB_ROW_KINDS];
+    static int cnt[GBH][GB_ROW_KINDS], kinds[GBH];
+    for (int y = 0; y < GBH; y++) {
+        kinds[y] = 0;
+        for (int x = 0; x < GB_SIDE; x += 2)
+            for (int e = 0; e < 2; e++) {
+                uint32_t c = frame[y * GBW + (e ? GBW - 1 - x : x)] & 0x00FFFFFFu;
+                int k = 0;
+                while (k < kinds[y] && col[y][k] != c) k++;
+                if (k == kinds[y]) {
+                    if (k == GB_ROW_KINDS) continue;
+                    col[y][k] = c;
+                    cnt[y][k] = 0;
+                    kinds[y]++;
+                }
+                cnt[y][k]++;
+            }
+    }
+    for (int y = 0; y < GBH; y++) {
+        uint32_t c[64];
+        int n[64], m = 0, best = 0;
+        int a = y - GB_BAND < 0 ? 0 : y - GB_BAND, b = y + GB_BAND >= GBH ? GBH - 1 : y + GB_BAND;
+        for (int r = a; r <= b; r++)
+            for (int i = 0; i < kinds[r]; i++) {
+                int k = 0;
+                while (k < m && c[k] != col[r][i]) k++;
+                if (k == m) {
+                    if (m == 64) continue;
+                    c[m] = col[r][i];
+                    n[m++] = 0;
+                }
+                n[k] += cnt[r][i];
+            }
+        for (int k = 1; k < m; k++) if (n[k] > n[best]) best = k;
+        gbFillRow[y] = m ? c[best] : 0xFFFFFFu;
+    }
+    gbFillSet = true;
+}
+
+// The libretro core (PK_WIDE_GB_GLOW=1, libretro/CMakeLists.txt) asks for a glow instead of the bars, the one
+// pk_wide.c gives a Game Boy Advance game. The app and the Linux host keep the bars.
+#ifndef PK_WIDE_GB_GLOW
+#define PK_WIDE_GB_GLOW 0
+#endif
+
 // Past the screen's edges, wherever the scene is not drawn (menus, rewind, fast-forward) the window is a glow spread from
 // the frame's own edge pixels, the same one pk_wide.c gives a Game Boy Advance game: each pixel takes its colour from the
 // nearest edge band, blurred over more of that edge the further out it is, and dimmed towards the window's edge.
@@ -1070,6 +1126,7 @@ void pk_wide_gb_reset(void) {
     gbSinceField = 1000;
     gbFromStart = false;
     gbEdgeAccOk = false;
+    gbFillSet = false;
 }
 
 int pk_wide_gb_scene(void) { return gbLastScene; }
@@ -1083,12 +1140,14 @@ int pk_wide_gb_last_score(void) { return gbLastScore; }
 int pk_wide_gb_glow(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView v) {
     if (!core || core->platform(core) != mPLATFORM_GB || !gbCfg || !out) return 0;
     uint32_t alpha = frame[0] & 0xFF000000u;
-    gbAmbientPrepare(frame);
+    if (PK_WIDE_GB_GLOW) gbAmbientPrepare(frame);
+    else gbBackgroundRows(frame);
     int reach[4] = { -v.x, v.x + v.w - GBW, -v.y, v.y + v.h - GBH };
     for (int j = 0; j < v.h; j++)
         for (int i = 0; i < v.w; i++) {
             int X = v.x + i, Y = v.y + j;
-            out[j * v.w + i] = gbOnFrame(X, Y) ? frame[Y * GBW + X] : gbGlowAt(frame, X, Y, reach, alpha);
+            out[j * v.w + i] = gbOnFrame(X, Y) ? frame[Y * GBW + X]
+                : PK_WIDE_GB_GLOW ? gbGlowAt(frame, X, Y, reach, alpha) : gbFillRow[gbClamp(Y, 0, GBH - 1)] | alpha;
         }
     return 1;
 }
@@ -1256,13 +1315,16 @@ int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, st
         gbMix = gbMix - GB_MIX_STEP < 0 ? 0 : gbMix - GB_MIX_STEP;   // the last scene, frozen, dissolves into the glow
     }
     if (!gbRawView.w) gbMix = 0;
-    if (gbMix < 256) gbAmbientPrepare(frame);
+    if (!PK_WIDE_GB_GLOW) {
+        if (!valid || !gbFillSet) gbBackgroundRows(frame);   // fading in again from a menu: from its bars
+    } else if (gbMix < 256) gbAmbientPrepare(frame);
     else gbEdgeAccOk = false;   // the glow starts from the edges as they are when it is next needed
     int reach[4] = { -v.x, v.x + v.w - GBW, -v.y, v.y + v.h - GBH };
 
     for (int j = 0; j < v.h; j++) {
         int Y = v.y + j;
         uint32_t* row = out + j * v.w;
+        uint32_t fill = gbFillRow[gbClamp(Y, 0, GBH - 1)] | alpha;   // above / below the frame: its top / bottom band
         int ry = Y - gbRawView.y;
         bool rawRow = ry >= 0 && ry < gbRawView.h;
         for (int i = 0; i < v.w; i++) {
@@ -1277,7 +1339,7 @@ int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, st
             uint32_t scene = 0;
             if (rawRow && rx >= 0 && rx < gbRawView.w) scene = gbRaw[ry * gbRawView.w + rx];
             else m = 0;
-            row[i] = m >= 256 ? scene : gbLerp(gbGlowAt(frame, X, Y, reach, alpha), scene, m);
+            row[i] = m >= 256 ? scene : gbLerp(PK_WIDE_GB_GLOW ? gbGlowAt(frame, X, Y, reach, alpha) : fill, scene, m);
         }
     }
     if (valid && gbLastScene == PK_WIDE_SCENE_FIELD) for (int k = 0; k < gbNOver; k++) out[gbOver[k]] = gbRaw[gbOver[k]];

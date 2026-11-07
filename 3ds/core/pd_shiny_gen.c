@@ -87,6 +87,8 @@ const struct pd_shiny_rom pd_shiny_roms[] = {
     {"805d880ee229fb6dc3ce03d7b03baf48f0d759d0", 256}, // SoulGold v1.2 (its own 1 in 256)
     {"5d6a036260fdbde96f85b5c1b92d0256d3aebafb", 256}, // SoulGold v1.2, second build (its own 1 in 256)
     {"2be7c99aa473308debe1d03ff2015bab7d9addb5", 256}, // SoulGold v1.2, third build (its own 1 in 256)
+    {"32988f918ca09923466ae3bc5bbfe5f2a771c728", 256}, // SoulGold v1.2.1 (its own 1 in 256)
+    {"dacb6e40e7f572ddefd2dfa10e99c0da6835b062", 256}, // SoulGold v1.2.1, second build (its own 1 in 256)
     {"40780347d0b4df6bf491eaf12603e5422caee677", 8}, // Team Rocket Edition: Dragonsden Version 1.5
     {"2f3e17e55c6afe23da97ec0f96a067eeb142ad15", 8}, // Elite Redux 2.65.4.1b (a shiny bit of its own; its roll's odds unknown)
     {"5b38a681b6924ef3e0bb9f6cfbf22426c4c4e523", 8}, // Elite Redux 2.65.3b (a shiny bit of its own; its roll's odds unknown)

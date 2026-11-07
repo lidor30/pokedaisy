@@ -21,7 +21,7 @@ with tempfile.TemporaryDirectory() as temp:
   for f in sorted(tree.rglob('*')):
    if f.is_file() and f.name.lower().startswith(('license','copying','notice')):
     dest=notices/module/f.relative_to(tree);dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(f,dest)
- (pak/'SOURCE.txt').write_text('Integration: https://github.com/thwonp/pokedaisy-lr\nRef: '+a.source_ref+'\n'
+ (pak/'SOURCE.txt').write_text('Source: https://github.com/lidor30/pokedaisy\nRef: '+a.source_ref+'\n'
   'GB/GBC/GBA: libretro/ and third_party/mgba.\n'
   'DS: third_party/dsperate-lr pinned v3.3.0-lr.1, initialized recursively.\nBuild: linux/libretro-unified/README.md\n')
  a.output.parent.mkdir(parents=True,exist_ok=True)

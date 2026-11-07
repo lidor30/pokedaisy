@@ -35,7 +35,7 @@ static uint32_t icon_crc(const struct pd_game* g, int species, bool shiny) {
 int main(int argc, char** argv) {
     if (argc < 3) return 2;
     char p[1024];
-    snprintf(p, sizeof p, "%s/Pokemon - Emerald Version.gba", argv[2]);
+    snprintf(p, sizeof p, "%s/Pokemon - Emerald Version (USA, Europe).gba", argv[2]);
     FILE* f = fopen(p, "rb");
     if (!f) { printf("skip shiny (no Emerald ROM)\n"); return 0; }
     fseek(f, 0, SEEK_END); long n = ftell(f); fseek(f, 0, SEEK_SET);

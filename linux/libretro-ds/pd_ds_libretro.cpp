@@ -35,6 +35,7 @@
 #include "pk_nds_field.h"
 #include "core/crypto/sha1.h"
 #include <fstream>
+#include <stdexcept>
 extern "C" {
 #include "pd_style.h"
 #include "pd_ui.h"
@@ -429,8 +430,8 @@ int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
     bool stylus=buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT);
     if(stylus) {
       if(id==RETRO_DEVICE_ID_POINTER_PRESSED)return !!(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_A));
-      if(id==RETRO_DEVICE_ID_POINTER_X)return cursor_x*65535/256-32767;
-      if(id==RETRO_DEVICE_ID_POINTER_Y)return cursor_y*32768/192;
+      if(id==RETRO_DEVICE_ID_POINTER_X)return (cursor_x*65535+255)/256-32767;
+      if(id==RETRO_DEVICE_ID_POINTER_Y)return (cursor_y*32768+191)/192;
     }
     if(injectBattleTap) {
       if(id==RETRO_DEVICE_ID_POINTER_PRESSED)return battleTap.down;
@@ -440,8 +441,8 @@ int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
     int x=input(p,d,i,RETRO_DEVICE_ID_POINTER_X),y=input(p,d,i,RETRO_DEVICE_ID_POINTER_Y);
     auto pen=ds_pen(arrangement,(x+32767)*512/65535,(y+32767)*384/65535);
     if(id==RETRO_DEVICE_ID_POINTER_PRESSED)return pen.valid?input(p,d,i,id):0;
-    if(id==RETRO_DEVICE_ID_POINTER_X)return pen.valid?pen.x*65535/256-32767:0;
-    if(id==RETRO_DEVICE_ID_POINTER_Y)return pen.valid?pen.y*32768/192:0;
+    if(id==RETRO_DEVICE_ID_POINTER_X)return pen.valid?(pen.x*65535+255)/256-32767:0;
+    if(id==RETRO_DEVICE_ID_POINTER_Y)return pen.valid?(pen.y*32768+191)/192:0;
   }
   return input(p,d,i,id);
 }
@@ -560,8 +561,15 @@ RETRO_API void retro_get_system_av_info(retro_system_av_info* info){
 RETRO_API bool retro_load_game(const retro_game_info* info){
   pd_ds::clear();pd_ds::width=512;pd_ds::height=384;
   if(!ds_load_game(info))return false;
-  std::ifstream f(info->path,std::ios::binary);
-  std::vector<uint8_t> rom{std::istreambuf_iterator<char>(f),{}};
+  // Read for the hash and the companion's art: a game too big for memory (or not a file) leaves the companion off
+  // rather than throwing out of a C entry point.
+  std::vector<uint8_t> rom;
+  try{
+    std::ifstream f(info->path?info->path:"",std::ios::binary|std::ios::ate);
+    if(f){auto size=f.tellg();if(size>0){rom.resize(size_t(size));f.seekg(0);
+      if(!f.read(reinterpret_cast<char*>(rom.data()),size))rom.clear();}}
+  }catch(const std::exception&){rom.clear();rom.shrink_to_fit();
+    log(RETRO_LOG_WARN,"PokeDaisy DS: couldn't read the ROM for the companion\n");}
   if(rom.size()>=512) {
     // Preserve the existing exact-ROM guard: offsets and art are rev-specific.
     uint8_t hash[20];ds::crypto::sha1(rom.data(),rom.size(),hash);
@@ -590,7 +598,19 @@ RETRO_API void retro_reset(){
 }
 RETRO_API bool retro_unserialize(const void* data,size_t n){
   pd_ds::clear_battle();
+  // A DSperate state carries the cart's save memory: loading one would put the state's (maybe older) save over the
+  // battery save the frontend then writes to its .srm. States never carry the save here, as the Linux host's
+  // (load_state_keeping_save) and the GB / GBA core's don't: the save the console held is put back, in the same buffer
+  // the frontend was given (retro_get_memory_data), still dirty if it was.
+  std::vector<uint8_t> battery;bool dirty=false;uint8_t* frontendSave=nullptr;
+  if(nds&&nds->cart){battery=nds->cart->sram();dirty=nds->cart->sram_dirty();frontendSave=nds->cart->sram().data();}
   bool ok=ds_unserialize(data,n);
+  if(ok&&nds&&nds->cart&&!battery.empty()){
+    auto& sram=nds->cart->sram();
+    if(sram.size()==battery.size())std::memcpy(sram.data(),battery.data(),battery.size());else sram=battery;
+    if(!dirty)nds->cart->clear_sram_dirty();
+    if(sram.data()!=frontendSave)log(RETRO_LOG_WARN,"PokeDaisy DS: the save buffer moved on a state load\n");
+  }
   if(ok)pd_ds::restoreGrace=4;
   if(ok){pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;}
   return ok;

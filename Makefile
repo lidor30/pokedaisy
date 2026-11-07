@@ -65,6 +65,7 @@ check: ## Everything a PR must pass: unit tests, translations, game data, ui-pre
 	python3 scripts/check_translations.py
 	python3 scripts/gen_gamedata.py --check
 	python3 scripts/check_melonds_patch.py
+	$(MAKE) -C 3ds test-configs-gen
 	./gradlew :app:testDebugUnitTest :app:assembleDebug
 	./gradlew -p ui-preview stress
 	./gradlew -p ui-preview docsSearchCheck

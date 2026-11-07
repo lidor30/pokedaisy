@@ -1,9 +1,9 @@
 name: Linux foundation
 on:
   pull_request:
-    paths: ['linux/**', '3ds/core/**', '3ds/test/host_display_test.c', '3ds/Makefile', '3ds/desktop/pd_png.*', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
+    paths: ['linux/**', '3ds/core/**', '3ds/test/host_display_test.c', '3ds/test/configs_gen_test.c', '3ds/Makefile', '3ds/desktop/pd_png.*', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
   push:
-    branches: [main, dev, feat/libretro-core]
+    branches: [main, dev]
     paths: ['linux/**', '3ds/**', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
   workflow_dispatch:
 permissions:
@@ -20,7 +20,7 @@ jobs:
       - run: git submodule update --init third_party/mgba
       - run: sudo apt-get update && sudo apt-get install -y cmake libsdl2-dev
       - name: Shared host capability and legacy previews
-        run: make -C 3ds test-host-display preview
+        run: make -C 3ds test-host-display test-configs-gen preview
       - name: Build native host and tests
         run: |
           cmake -S linux -B linux/build -DCMAKE_BUILD_TYPE=Release -DBUILD_LTO=OFF

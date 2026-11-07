@@ -104,5 +104,6 @@ if(BUILD_TESTING)
   add_test(NAME ds-companion-fixture COMMAND ds-companion-fixture ${ROOT}/app/src/test/resources/fixtures/platinum/mainram.bin)
   set(DS_FIXTURES ${ROOT}/app/src/test/resources/fixtures)
   add_test(NAME ds-companion-parity COMMAND ds-companion-parity
-    ${DS_FIXTURES}/heartgold/mainram.bin ${DS_FIXTURES}/soulsilver/mainram.bin ${DS_FIXTURES}/black/mainram.bin)
+    ${DS_FIXTURES}/heartgold/mainram.bin ${DS_FIXTURES}/soulsilver/mainram.bin ${DS_FIXTURES}/black/mainram.bin
+    ${DS_FIXTURES}/white/mainram.bin ${DS_FIXTURES}/black2/mainram.bin ${DS_FIXTURES}/white2/mainram.bin)
 endif()

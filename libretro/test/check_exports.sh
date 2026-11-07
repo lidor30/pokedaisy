@@ -8,6 +8,6 @@ retro_cheat_reset retro_cheat_set retro_load_game retro_load_game_special retro_
 retro_get_memory_data retro_get_memory_size"
 have=$(${NM:-nm} -D --defined-only "$1" | awk '{print $3}')
 for f in $want; do echo "$have" | grep -qx "$f" || { echo "missing $f" >&2; exit 1; }; done
-extra=$(echo "$have" | grep -vx -e retro_.* || true)
+extra=$(echo "$have" | grep -vx -e 'retro_.*' || true)
 [ -z "$extra" ] || { echo "exports besides retro_*: $extra" >&2; exit 1; }
 echo "exports ok"

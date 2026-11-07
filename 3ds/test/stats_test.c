@@ -169,7 +169,7 @@ int main(int argc,char** argv) {
             int w=sizes[i][0],h=sizes[i][1];pd_canvas_init(&canvas,w,h,pixels);
             ui.tab=PD_TAB_PARTY;ui.summarySlot=0;ui.summaryStats=false;
             pd_ui_draw(&ui,&canvas,&game,&snap,&host);
-            if(h<256){assert(!has(&ui,HIT_SUMMARY_STATS));continue;}
+            // Every frame has STATS, 240-row ones too (INFO and STATS fit there since the 240-row pass).
             assert(has(&ui,HIT_SUMMARY_STATS));tap(&ui,HIT_SUMMARY_STATS);
             assert(ui.summaryStats);pd_ui_draw(&ui,&canvas,&game,&snap,&host);
             char path[1024];snprintf(path,sizeof path,"%s/%s-stats-%dx%d.png",argv[3],argv[2],w,h);

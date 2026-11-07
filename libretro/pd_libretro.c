@@ -13,6 +13,7 @@
 #define retro_load_game mgba_retro_load_game
 #define retro_unload_game mgba_retro_unload_game
 #define retro_unserialize mgba_retro_unserialize
+#define retro_reset mgba_retro_reset
 #ifdef __ARM_NEON
 #include <arm_neon.h>
 #endif
@@ -26,6 +27,7 @@
 #undef retro_load_game
 #undef retro_unload_game
 #undef retro_unserialize
+#undef retro_reset
 
 #include "field_items.h"
 #include "fly.h"
@@ -92,14 +94,18 @@ static bool env_wrap(unsigned cmd, void *data) {
     size_t n = 0;
     while (us && us->definitions[n].key)
       n++;
-    struct retro_core_option_v2_definition *defs = calloc(n + PD_OPTION_COUNT + 1, sizeof *defs);
+    static struct retro_core_option_v2_definition *defs; // the last merge's, kept while the frontend may read it
+    free(defs);
+    defs = calloc(n + PD_OPTION_COUNT + 1, sizeof *defs);
     if (defs && us) {
       memcpy(defs, us->definitions, n * sizeof *defs);
       memcpy(defs + n, pdOptions, sizeof pdOptions);
       static struct retro_core_options_v2 merged;
       static struct retro_core_options_v2_intl mergedIntl;
       merged = (struct retro_core_options_v2){us->categories, defs};
-      mergedIntl = (struct retro_core_options_v2_intl){&merged, NULL};
+      // The frontend's own language keeps mGBA's translations (ours are English only).
+      mergedIntl = (struct retro_core_options_v2_intl){&merged,
+          cmd == RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL ? ((struct retro_core_options_v2_intl *)data)->local : NULL};
       return realEnv(cmd, cmd == RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL ? (void *)&mergedIntl : (void *)&merged);
     }
   }
@@ -125,7 +131,6 @@ static uint32_t *cvs;     // the companion's canvas, 0xRRGGBB
 static uint16_t *out565;  // what the frontend gets
 static struct pd_canvas canvas;
 static unsigned gameW, gameH;
-static bool gameShown;
 
 static char message[128];
 static int messageFrames;
@@ -389,6 +394,7 @@ static int heldFrames[NKEYS];
 static int quickBtn = Y, companionBtn = X, hudBtn = -1; // key indices, -1 none (from settings: key_of)
 static unsigned gameKeys; // keys the layer presses for the game (BIKE's SELECT)
 static int gameKeyFrames;
+static int hudOx, hudOy, hudScale = 1; // where draw_hud last put the HUD on the canvas (hud_hit_at)
 static bool maskGame;     // while an overlay is up the game sees no keys
 
 /* The pad buttons for the quick menu, the companion and the HUD cursor are PokeDaisy's own SETTINGS rows
@@ -543,8 +549,11 @@ static void draw_hud(void) {
     hudW = w;
     hudH = hh;
   }
+  hudOx = ax + (aw - w * scale) / 2;
+  hudOy = ay + (ah - hh * scale) / 2;
+  hudScale = scale;
   if (hudShown)
-    blend_overlay(hudPixels, w, hh, scale, ax + (aw - w * scale) / 2, ay + (ah - hh * scale) / 2);
+    blend_overlay(hudPixels, w, hh, scale, hudOx, hudOy);
 }
 
 
@@ -625,7 +634,7 @@ static void canvas_for(int fw, int fh, int kind, int *w, int *h) {
   if (kind != CANVAS_EXPAND && s > 1)
     s--;
   // The companion and its menus are laid out for 320x240 at least: a Game Boy game's ZOOM OUT on a 1024x768 panel is
-  // 256x192, where text overran its boxes (plorpOS plorpos-oe0.26). Menus step down until the canvas holds them.
+  // 256x192, where text overran its boxes. Menus step down until the canvas holds them.
   while (kind == CANVAS_MENU && s > 1 && (panelW / s < 320 || panelH / s < 240))
     s--;
   int x = panelW / s, y = panelH / s;
@@ -749,7 +758,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   if (core->platform(core) == mPLATFORM_GBA)
     pd_romart_scan(&game);
   const char *dir = NULL;
-  if (realEnv(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &dir) && dir) {
+  if (realEnv(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &dir) && dir && *dir) {
     char sub[1050];
     snprintf(sub, sizeof sub, "%s/pokedaisy", dir);
     mkdir(sub, 0755);
@@ -798,7 +807,8 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   flyAsk = flyStage = 0;
   job = JOB_NONE;
   quick_set_grid(settings.quickGrid);
-  ovPixels = calloc((size_t)CWMAX * CHMAX, sizeof *ovPixels);
+  if (!ovPixels)
+    ovPixels = calloc((size_t)CWMAX * CHMAX, sizeof *ovPixels);
   pd_ui_init(&ui, &settings);
   memset(&host, 0, sizeof host);
   host.hideScreenMode = true;
@@ -819,14 +829,30 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   return true;
 }
 
+/** After a state load or a reset the game is another one: nothing the layer had started may finish in it (a FLY's warp,
+ * the bike's registered item put back, a Game Boy action withdrawn), and EXPAND's RAM history is from before the jump. */
+static void layer_jump(void) {
+  pk_wide_reset();
+  wideReady = false;
+  snap.valid = false;
+  job = JOB_NONE;
+  flyAsk = flyStage = 0;
+  gbTake = 0;
+  gameKeyFrames = 0;
+  gbWildHeld = gbf != NULL; // a state taken while OFF carries the held rates: put back once when ON
+}
+
 RETRO_API bool retro_unserialize(const void *d, size_t n) {
   bool r = mgba_retro_unserialize(d, n);
-  if (r && haveGame) {
-    pk_wide_reset(); // EXPAND's RAM history is from before the jump
-    wideReady = false;
-    snap.valid = false;
-  }
+  if (r && haveGame)
+    layer_jump();
   return r;
+}
+
+RETRO_API void retro_reset(void) {
+  mgba_retro_reset();
+  if (haveGame)
+    layer_jump();
 }
 
 RETRO_API void retro_unload_game(void) {
@@ -899,6 +925,11 @@ static void touch_poll(void) {
 }
 static bool touch_tapped(void) { return touchWas && !touchDown; }
 static int hud_hit_at(int x, int y) {
+  // hudHits are in the HUD's own canvas, which draw_hud blends at (hudOx, hudOy), hudScale canvas pixels a pixel.
+  if (hudScale < 1 || x < hudOx || y < hudOy)
+    return -1;
+  x = (x - hudOx) / hudScale;
+  y = (y - hudOy) / hudScale;
   for (int i = 0; i < hudHits.n; i++)
     if (x >= hudHits.at[i].x && x < hudHits.at[i].x + hudHits.at[i].w && y >= hudHits.at[i].y &&
         y < hudHits.at[i].y + hudHits.at[i].h)
@@ -922,6 +953,10 @@ RETRO_API void retro_run(void) {
   quickBtn = key_of(settings.quickBtn);
   companionBtn = key_of(settings.companionBtn);
   hudBtn = key_of(settings.hudBtn);
+  // The frontend's poll, every frame: mGBA's run polls only when the game runs, and the layer pauses it (companion,
+  // quick menu, HUD cursor), where a frontend that refreshes the pad in its poll left every button frozen.
+  if (inputPollCallback)
+    inputPollCallback();
   poll_keys();
   touch_poll();
   // A tap on the quick menu: a tile (or a FLY / REPEL list row) is picked as A picks it; outside, the list or the menu
@@ -1322,7 +1357,7 @@ RETRO_API void retro_run(void) {
     pd_ui_draw(&ui, &canvas, &game, &snap, &host);
     map_cursor_sync(&ui, &game, &snap);
     focus_draw(&ui, focus_after_draw(&ui, focus_resolve(&ui)));
-  } else if (quickOpen) {
+  } else if (quickOpen && ovPixels) {
     draw_game();
     dim(0x55);
     struct pd_canvas qc;

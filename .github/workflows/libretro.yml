@@ -5,8 +5,10 @@ name: libretro core
 # mk/build-pokedaisy-core.sh in its toolchain image), only retro_* exported, and the shared UI previews rendered.
 on:
   pull_request:
+    paths: ['libretro/**', 'linux/**', '3ds/core/**', '3ds/desktop/**', '3ds/Makefile', 'app/src/main/cpp/pk_*', 'third_party/mgba', 'gamedata/**', '.github/workflows/libretro.yml']
   push:
-    branches: [main, feat/libretro-core]
+    branches: [main]
+    paths: ['libretro/**', 'linux/**', '3ds/**', 'app/src/main/cpp/pk_*', 'third_party/mgba', 'gamedata/**', '.github/workflows/libretro.yml']
   workflow_dispatch:
 
 permissions:
@@ -26,7 +28,7 @@ jobs:
       - name: mGBA submodule
         run: git submodule update --init --depth 1 third_party/mgba
       - name: Toolchains
-        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake gcc-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross
+        run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross
       - name: Core (x86) + test hosts
         run: |
           cmake -S libretro -B build/x86 -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5

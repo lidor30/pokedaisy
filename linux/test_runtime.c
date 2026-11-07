@@ -268,9 +268,9 @@ static void test_frame(struct mCore* c,bool companion,int frame,struct pd_ui* ui
         struct hud_state hs={.repel=80,.repelFull=100,.wild=-1,.focus=-1};
         pd_snapshot_read(snap,&game,read_memory,c);
         companion_canvas();hudDrawnKey=0;
-        present_hud_game(&game,snap,&hs,0,gw,gh);shot("hud");assert(hudShown);
+        present_hud_game(&game,snap,&hs,s,gw,gh);shot("hud");assert(hudShown);
         s->aspect=PD_ASPECT_ORIGINAL;wideReady=false;hudDrawnKey=0;
-        present_hud_game(&game,snap,&hs,0,gw,gh);shot("hud-original");assert(hudShown);
+        present_hud_game(&game,snap,&hs,s,gw,gh);shot("hud-original");assert(hudShown);
         s->aspect=PD_ASPECT_EXPAND;for(int i=0;i<4;i++){c->runFrame(c);wide_tick(c,false,s);}
       }
       s->aspect=keep;wideReady=false;

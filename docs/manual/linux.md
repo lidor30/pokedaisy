@@ -112,12 +112,13 @@ The optional Brick package uses one PokeDaisy collection for Game Boy, Game
 Boy Color, Game Boy Advance and Nintendo DS. See
 `linux/libretro-unified/README.md` for build, install and save migration steps.
 
-On Pokémon Platinum USA revision 1, L2 opens the companion and Select + L2
-opens the quick menu. Choose **Settings → DS Layout → One Screen** for full
-screen gameplay with automatic touch and menu windows. R2 cycles to the bottom
-or top screen manually. Hold Select and press R2 to toggle a floating touch
-panel in One Screen or Picture in Picture. Select + D-pad moves the stylus and
-Select + A taps. Use NXRedux's menus and shortcuts for saves, states and speed.
+In Platinum (USA, revision 1), L2 opens the companion and SELECT + L2 opens
+the quick menu. Set `SETTINGS` > `DS LAYOUT` to `ONE SCREEN` to play on the
+whole screen, with the touch screen and menus floating in when the game wants
+them. R2 switches to the bottom or top screen by hand. Hold SELECT and press R2
+to show or hide a floating touch screen in `ONE SCREEN` or `PICTURE IN PICTURE`.
+SELECT + D-pad moves the stylus and SELECT + A taps. Saves, states and speed are
+NXRedux's own menus and shortcuts.
 
 Turn on `BATTLE STRIP` in the companion settings to choose battle commands
 with the D-pad. A selects a command or move, and B goes back from the move

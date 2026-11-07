@@ -30,6 +30,8 @@ add_library(pokedaisy_libretro SHARED ${MGBA_SRC} pd_libretro.c pd_lr_mem.c ${PD
   ../linux/hud.c ../linux/quick_menu.c ../linux/fly.c ../linux/field_items.c ../linux/wild.c ../linux/gb_field.c
   ${APP}/pk_call.c ${APP}/pk_wide.c ${APP}/pk_wide_gb.c ${APP}/pk_gb_field.c)
 set_source_files_properties(${APP}/pk_wide.c ${APP}/pk_wide_gb.c PROPERTIES COMPILE_OPTIONS -Wno-unused-parameter)
+# The launcher core draws a Game Boy game's margins off the field as a glow; the app keeps plain bars (pk_wide_gb.c).
+set_source_files_properties(${APP}/pk_wide_gb.c PROPERTIES COMPILE_DEFINITIONS PK_WIDE_GB_GLOW=1)
 set_target_properties(pokedaisy_libretro PROPERTIES PREFIX "" COMPILE_DEFINITIONS "${MGBA_DEFS};${MGBA_DIR_DEFS};_GNU_SOURCE")
 target_include_directories(pokedaisy_libretro PRIVATE ${MGBA_INC} ${MGBA}/include ${CMAKE_CURRENT_BINARY_DIR}/mgba/include ${MGBA}/src/platform/libretro ${MGBA}/src ../3ds/core ../linux ${APP})
 target_link_libraries(pokedaisy_libretro PRIVATE m)

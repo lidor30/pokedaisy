@@ -24,13 +24,6 @@ $(BUILD)/pd_font_test: core/pd_canvas.c core/pd_canvas.h core/pd_font.h core/pd_
 test-font: $(BUILD)/pd_font_test
 	$(BUILD)/pd_font_test
 
-$(BUILD)/pd_host_test: $(CORE_SRC) $(wildcard core/*.h) test/host_test.c
-	@mkdir -p $(BUILD)
-	$(CC) $(CFLAGS) -o $@ $(CORE_SRC) test/host_test.c -lm
-
-test-host: $(BUILD)/pd_host_test
-	$(BUILD)/pd_host_test
-
 $(BUILD)/pd_stats_test: $(CORE_SRC) $(wildcard core/*.h) test/stats_test.c desktop/pd_png.c
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $(CORE_SRC) test/stats_test.c desktop/pd_png.c -lm
@@ -219,6 +212,15 @@ clean:
 $(BUILD)/pd_host_display_test: $(CORE_SRC) $(wildcard core/*.h) test/host_display_test.c
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $(CORE_SRC) test/host_display_test.c -lm
+
+# gamedata/ phase 2: the generated configs equal the hand-written ones they replaced.
+$(BUILD)/pd_configs_gen_test: $(CORE_SRC) $(wildcard core/*.h) test/configs_gen_test.c
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $(CORE_SRC) test/configs_gen_test.c -lm
+
+.PHONY: test-configs-gen
+test-configs-gen: $(BUILD)/pd_configs_gen_test
+	$(BUILD)/pd_configs_gen_test
 
 .PHONY: test-host-display
 test-host-display: $(BUILD)/pd_host_display_test

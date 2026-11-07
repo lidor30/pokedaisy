@@ -22,9 +22,9 @@ struct want {
 };
 #define W(fx, C, K, rom, ...) { fx, &PD_CONFIG_##C, K, rom, { __VA_ARGS__ } }
 static const struct want WANT[] = {
-    W("firered_vanilla", FIRERED_REV1, PD_GAME_FIRERED, "Pokemon - Fire Red Version.gba",
+    W("firered_vanilla", FIRERED_REV1, PD_GAME_FIRERED, "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba",
       { false, true, -1, "d62339db", false }, { true, true, -1, "045996a2", false }),
-    W("emerald_vanilla", EMERALD, PD_GAME_EMERALD, "Pokemon - Emerald Version.gba",
+    W("emerald_vanilla", EMERALD, PD_GAME_EMERALD, "Pokemon - Emerald Version (USA, Europe).gba",
       { false, true, 27, "f3e14960", false }, { true, true, -1, "74484c21", false }),
     W("unbound", UNBOUND, PD_GAME_FIRERED, "Pokemon Unbound (v2.1.1.1).gba",
       { false, true, -1, "be68c6aa", false }, { true, true, -1, "5155c5ba", false }),
@@ -32,27 +32,27 @@ static const struct want WANT[] = {
       { false, true, -1, "6da94bfe", false }, { true, true, -1, "74484c21", false }),
     W("emerald_legacy_stars", EMERALD_LEGACY, PD_GAME_EMERALD, "Pokemon Emerald Legacy (v1.1.4).gba",
       { false, false, -1, "19efdadd", false }, { true, true, -1, "90074f39", false }),
-    W("recharged_yellow_card", RECHARGED_YELLOW_V1_8_0, PD_GAME_FIRERED, "Pokemon Recharged v1.8.0.gba",
+    W("recharged_yellow_card", RECHARGED_YELLOW_V1_8_0, PD_GAME_FIRERED, "Pokemon Recharged Yellow (v1.8.0).gba",
       { false, true, -1, "1ff30636", false }, { true, true, -1, "f18cd53c", false }),
-    W("recharged_yellow_card_max", RECHARGED_YELLOW_V1_8_0, PD_GAME_FIRERED, "Pokemon Recharged v1.8.0.gba",
+    W("recharged_yellow_card_max", RECHARGED_YELLOW_V1_8_0, PD_GAME_FIRERED, "Pokemon Recharged Yellow (v1.8.0).gba",
       { false, true, -1, "a8c33291", false }, { true, true, -1, "3a1532af", false }),
-    W("recharged_yellow_card_tint", RECHARGED_YELLOW_V1_8_0, PD_GAME_FIRERED, "Pokemon Recharged v1.8.0.gba",
+    W("recharged_yellow_card_tint", RECHARGED_YELLOW_V1_8_0, PD_GAME_FIRERED, "Pokemon Recharged Yellow (v1.8.0).gba",
       { true, true, -1, "f2c5a87a", false }),
-    W("soulgold_card", SOULGOLD, PD_GAME_EMERALD, "Pokemon Soulgold (v1.2.1).gba",
+    W("soulgold_card", SOULGOLD, PD_GAME_EMERALD, "Pokemon SoulGold (v1.2.1).gba",
       { false, true, -1, "da0265f8", false }, { true, true, -1, "03fb2d2e", false }),
-    W("soulgold_card_1star", SOULGOLD, PD_GAME_EMERALD, "Pokemon Soulgold (v1.2.1).gba",
+    W("soulgold_card_1star", SOULGOLD, PD_GAME_EMERALD, "Pokemon SoulGold (v1.2.1).gba",
       { false, true, -1, "aceca0ed", false }),
-    W("soulgold_card_3star", SOULGOLD, PD_GAME_EMERALD, "Pokemon Soulgold (v1.2.1).gba",
+    W("soulgold_card_3star", SOULGOLD, PD_GAME_EMERALD, "Pokemon SoulGold (v1.2.1).gba",
       { false, true, -1, "2496c107", false }),
-    W("soulgold_card_max", SOULGOLD, PD_GAME_EMERALD, "Pokemon Soulgold (v1.2.1).gba",
+    W("soulgold_card_max", SOULGOLD, PD_GAME_EMERALD, "Pokemon SoulGold (v1.2.1).gba",
       { false, true, -1, "da68241d", false }, { true, true, -1, "fb5a508c", false }, { false, true, -1, "dc9b54be", true }),
-    W("soulgold_v12_card_max", SOULGOLD_V1_2, PD_GAME_EMERALD, "Pokemon Soulgold (v1.2.1).gba",
+    W("soulgold_v12_card_max", SOULGOLD_V1_2, PD_GAME_EMERALD, "Pokemon SoulGold (v1.2.1).gba",
       { false, true, -1, "da68241d", false }),
-    W("recharged_yellow_v197_card_max", RECHARGED_YELLOW_V1_9_7, PD_GAME_FIRERED, "Pokemon recharged-yellow_1.9.7.gba",
+    W("recharged_yellow_v197_card_max", RECHARGED_YELLOW_V1_9_7, PD_GAME_FIRERED, "Pokemon Recharged Yellow (v1.9.7).gba",
       { false, true, -1, "a8c33291", false }, { true, true, -1, "797f2e18", false }),
-    W("lazarus_card", LAZARUS, PD_GAME_EMERALD, "Pokemon Lazarus v2.0.gba",
+    W("lazarus_card", LAZARUS, PD_GAME_EMERALD, "Pokemon Lazarus (v2.0).gba",
       { false, true, -1, "4daa6af1", false }, { true, true, -1, "4c5a1651", false }, { false, true, -1, "cfef77a8", true }),
-    W("lazarus_card_max", LAZARUS, PD_GAME_EMERALD, "Pokemon Lazarus v2.0.gba",
+    W("lazarus_card_max", LAZARUS, PD_GAME_EMERALD, "Pokemon Lazarus (v2.0).gba",
       { false, true, -1, "f6224f73", false }, { true, true, -1, "f2eda466", false }),
 };
 
@@ -115,7 +115,7 @@ int main(int argc, char** argv) {
     // badges, the colon blinked off); the render matched that screenshot but for the colon.
     {
         char p[1024]; long n = 0;
-        snprintf(p, sizeof p, "%s/Pokemon Glazed (9.2.0).gba", argv[2]);
+        snprintf(p, sizeof p, "%s/Pokemon Glazed (v9.2.0).gba", argv[2]);
         uint8_t* rom = slurp(p, &n);
         if (!rom) printf("skip Glazed (no ROM)\n");
         else {
