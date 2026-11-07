@@ -2,6 +2,8 @@ package com.pokedaisy.app.companion.data
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
+import org.junit.Assert.assertNull
+import org.junit.Assert.assertSame
 import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
@@ -242,6 +244,39 @@ class TmFlashTest {
             val (tm, flash) = recs
             for (t in tms) assertEquals(t === tm, tmCodeMatches(t, reader(rom)))
             for (f in flashes) assertEquals(f === flash, flashCodeMatches(f, reader(rom)))
+        }
+    }
+
+    @Test
+    fun theOtherLanguagesGoByTheirPorts() {
+        assertSame(TM_PORTS.getValue("BPRF0"), tmFnsFor(GameKind.FIRERED, "BPRF", 0, hack = false))
+        assertSame(TM_PORTS.getValue("BPEJ0"), tmFnsFor(GameKind.EMERALD, "BPEJ", 0, hack = false))
+        assertSame(FLASH_PORTS.getValue("AXVD1"), flashFnsFor(GameKind.EMERALD, "AXVD", 1, hack = false))
+        assertNull(tmFnsFor(GameKind.EMERALD, "AXVD", 1, hack = false))   // Ruby / Sapphire: no TM screen
+        assertNull(tmFnsFor(GameKind.FIRERED, "BPRF", 0, hack = true))
+        assertNull(flashFnsFor(GameKind.FIRERED, "BPRF", 0, hack = true))
+        assertNull(flashFnsFor(GameKind.FIRERED, "BPRF", 1, hack = false))   // no such cart
+    }
+
+    /** Every ported cart the user has: its own table's code is where it says, and no other language's or English's is. */
+    @Test
+    fun everyPortedCartsCodeIsWhereItsTableSays() {
+        val carts = (File(RETAIL_ROM_DIR).listFiles() ?: emptyArray())
+            .filter { it.name.endsWith(".gba") && listOf("Debug", "Pirate", "Pokemon Box").none(it.name::contains) }
+            .mapNotNull { f ->
+                val head = f.inputStream().use { s -> ByteArray(0xC0).also { s.read(it) } }
+                val key = String(head, 0xAC, 4, Charsets.US_ASCII) + head[0xBC].toInt()
+                if (key in FLASH_PORTS) key to f else null
+            }
+        assumeTrue(carts.size >= 37)
+        fun reader(rom: ByteArray) = { a: Long, n: Int -> val o = (a - 0x08000000L).toInt(); rom.copyOfRange(o, o + n) }
+        val english = listOf(TM_FIRERED_REV0, TM_FIRERED_REV1, TM_LEAFGREEN_REV0, TM_LEAFGREEN_REV1, TM_EMERALD)
+        for ((key, file) in carts) {
+            val rom = file.readBytes()   // one at a time: 37 carts don't fit the test heap
+            assertTrue("$key FLASH (${file.name})", flashCodeMatches(FLASH_PORTS.getValue(key), reader(rom)))
+            TM_PORTS[key]?.let { assertTrue("$key TM (${file.name})", tmCodeMatches(it, reader(rom))) }
+            if (key.startsWith("BP")) assertTrue("$key has a TM table", key in TM_PORTS)
+            assertFalse("$key runs an English TM table", english.any { tmCodeMatches(it, reader(rom)) })
         }
     }
 

@@ -46,8 +46,8 @@ data class FlashFns(
 
 // FLASH_FIRERED_REV1 and FLASH_EMERALD are records in gamedata/gen3/records/ (GameDataRecordsGen.kt).
 
-/** FLASH for a ROM, by what the companion detected it as: retail English FireRed rev 0 / 1, LeafGreen rev 0 / 1, Emerald,
- * Ruby and Sapphire (rev 0, 1, 2), for now. */
+/** FLASH for a ROM, by what the companion detected it as: retail FireRed rev 0 / 1, LeafGreen rev 0 / 1, Emerald, Ruby and
+ * Sapphire, English from the records and every other language from [FLASH_PORTS] (scripts/port_field_items.py). */
 fun flashFnsFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean): FlashFns? = when {
     hack -> null
     kind == GameKind.FIRERED && gameCode == "BPRE" -> when (revision) { 0 -> FLASH_FIRERED_REV0; 1 -> FLASH_FIRERED_REV1; else -> null }
@@ -55,6 +55,7 @@ fun flashFnsFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean)
     kind == GameKind.EMERALD && gameCode == "BPEE" -> FLASH_EMERALD
     kind == GameKind.EMERALD && gameCode == "AXVE" -> when (revision) { 0 -> FLASH_RUBY_REV0; 1, 2 -> FLASH_RUBY; else -> null }
     kind == GameKind.EMERALD && gameCode == "AXPE" -> when (revision) { 0 -> FLASH_SAPPHIRE_REV0; 1, 2 -> FLASH_SAPPHIRE; else -> null }
+    kind == GameKind.FIRERED || kind == GameKind.EMERALD -> FLASH_PORTS["$gameCode$revision"]
     else -> null
 }
 

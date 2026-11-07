@@ -61,7 +61,7 @@ In FireRed, LeafGreen and Emerald, `USE` on a TM or HM opens the game's own scre
 Like the other items, it only works while you're walking around, with no menu, conversation or battle open.
 
 > [!NOTE]
-> This works in the English FireRed, LeafGreen and Emerald for now. Ruby and Sapphire would drop you back in their own bag afterwards, so there, and in other games, teach the move from the game's own bag.
+> This works in FireRed, LeafGreen and Emerald, in every language PokeDaisy supports. Ruby and Sapphire would drop you back in their own bag afterwards, so there, and in other games, teach the move from the game's own bag.
 
 ## Reusable TMs
 

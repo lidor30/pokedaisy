@@ -56,14 +56,16 @@ data class TmFns(
 
 // TM_FIRERED_REV1 and TM_EMERALD are records in gamedata/gen3/records/ (GameDataRecordsGen.kt).
 
-/** The TM screen's calls for a ROM, by what the companion detected it as: retail English FireRed rev 0 / 1, LeafGreen rev
- * 0 / 1 and Emerald, for now (not the hacks or a randomized cart). Not Ruby / Sapphire: their party menu goes back to the bag
- * by a fixed call (pokemon_menu.c's sub_808B25C), with no exit to point at the field. The code CRCs still decide. */
+/** The TM screen's calls for a ROM, by what the companion detected it as: retail FireRed rev 0 / 1, LeafGreen rev 0 / 1 and
+ * Emerald, English from the records and every other language from [TM_PORTS] (scripts/port_field_items.py), not the hacks or
+ * a randomized cart. Not Ruby / Sapphire: their party menu goes back to the bag by a fixed call (pokemon_menu.c's
+ * sub_808B25C), with no exit to point at the field. The code CRCs still decide. */
 fun tmFnsFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean): TmFns? = when {
     hack -> null
     kind == GameKind.FIRERED && gameCode == "BPRE" -> when (revision) { 0 -> TM_FIRERED_REV0; 1 -> TM_FIRERED_REV1; else -> null }
     kind == GameKind.FIRERED && gameCode == "BPGE" -> when (revision) { 0 -> TM_LEAFGREEN_REV0; 1 -> TM_LEAFGREEN_REV1; else -> null }
     kind == GameKind.EMERALD && gameCode == "BPEE" -> TM_EMERALD
+    kind == GameKind.FIRERED || kind == GameKind.EMERALD -> TM_PORTS["$gameCode$revision"]
     else -> null
 }
 
