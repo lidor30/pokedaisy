@@ -133,6 +133,7 @@ tables:
 	python3 tools/gen_map_tables.py
 	python3 tools/gen_guide.py
 	python3 tools/gen_gb_world.py
+	python3 tools/gen_randomized.py
 	python3 tools/gen_font.py
 	python3 tools/gen_icon.py
 	python3 tools/gen_icons.py

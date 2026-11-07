@@ -3,104 +3,108 @@
 #include "pd_guide.h"
 
 static const struct pd_guide_entry pd_guide_firered_p0_s0[] = {
-    { "In-game help", "Press L or R almost anywhere for the game's own HELP menu (OPTION: BUTTON MODE = HELP, the default).", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Running", "Hold B to run once you have the RUNNING SHOES.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Rematches", "The VS SEEKER finds trainers who want a rematch. It recharges as you walk.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "This game is randomized", "HERE, NEXT BOSS, EVOLUTIONS and the DEX read the randomizer's POKéMON, teams, moves and items from the game itself. The gift and legendary POKéMON it moved aren't listed: the guide can't know them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_firered_p0_s1[] = {
-    { "Physical or special?", "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Poison outside battle", "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "In-game help", "Press L or R almost anywhere for the game's own HELP menu (OPTION: BUTTON MODE = HELP, the default).", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Running", "Hold B to run once you have the RUNNING SHOES.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Rematches", "The VS SEEKER finds trainers who want a rematch. It recharges as you walk.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_firered_p0_s2[] = {
-    { "Which badge unlocks which HM?", "FLASH: BOULDER. CUT: CASCADE. FLY: THUNDER. STRENGTH: RAINBOW. SURF: SOUL. ROCK SMASH: MARSH. WATERFALL: VOLCANO. A POKéMON in the party must know the move too.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Getting rid of an HM move", "HM moves can't be forgotten normally. The MOVE DELETER in FUCHSIA CITY removes them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Relearning moves", "The MOVE RELEARNER on TWO ISLAND teaches a forgotten move for a BIG MUSHROOM or two TINY MUSHROOMS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Physical or special?", "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Poison outside battle", "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_firered_p0_s3[] = {
-    { "How long do I have?", "600 steps per visit. You can't use your own POKéMON - throw bait or rocks, then SAFARI BALLS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Which badge unlocks which HM?", "FLASH: BOULDER. CUT: CASCADE. FLY: THUNDER. STRENGTH: RAINBOW. SURF: SOUL. ROCK SMASH: MARSH. WATERFALL: VOLCANO. A POKéMON in the party must know the move too.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Getting rid of an HM move", "HM moves can't be forgotten normally. The MOVE DELETER in FUCHSIA CITY removes them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Relearning moves", "The MOVE RELEARNER on TWO ISLAND teaches a forgotten move for a BIG MUSHROOM or two TINY MUSHROOMS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+};
+static const struct pd_guide_entry pd_guide_firered_p0_s4[] = {
+    { "How long do I have?", "600 steps per visit. You can't use your own POKéMON - throw bait or rocks, then SAFARI BALLS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_firered_p0[] = {
-    { "CONTROLS", NULL, pd_guide_firered_p0_s0, 3 },
-    { "BATTLES", NULL, pd_guide_firered_p0_s1, 2 },
-    { "HMs", NULL, pd_guide_firered_p0_s2, 3 },
-    { "SAFARI ZONE", NULL, pd_guide_firered_p0_s3, 1 },
+    { "RANDOMIZED", NULL, pd_guide_firered_p0_s0, 1, 2 },
+    { "CONTROLS", NULL, pd_guide_firered_p0_s1, 3, 0 },
+    { "BATTLES", NULL, pd_guide_firered_p0_s2, 2, 0 },
+    { "HMs", NULL, pd_guide_firered_p0_s3, 3, 0 },
+    { "SAFARI ZONE", NULL, pd_guide_firered_p0_s4, 1, 0 },
 };
 static const struct pd_guide_entry pd_guide_firered_p1_s0[] = {
-    { "RUNNING SHOES", "PROF. OAK's AIDE gives them to you as you leave PEWTER CITY after beating BROCK.", "After the first gym.", PD_HAVE_FLAG, { 2095, 0, 0 }, "PEWTERCITY" },
-    { "BICYCLE", "Get a BIKE VOUCHER from the chairman of the POKéMON FAN CLUB in VERMILION CITY, then trade it at CERULEAN CITY's bike shop.", "Someone in VERMILION CITY loves to talk about his POKéMON.", PD_HAVE_ITEM, { 360, 0, 0 }, "VERMILIONCITY|CERULEANCITY" },
-    { "VS SEEKER", "An AIDE in the VERMILION CITY POKéMON CENTER.", "In a POKéMON CENTER.", PD_HAVE_FLAG, { 658, 0, 0 }, "VERMILIONCITY" },
-    { "OLD ROD", "The FISHING GURU in a house in VERMILION CITY.", "A port town.", PD_HAVE_ITEM, { 262, 0, 0 }, "VERMILIONCITY" },
-    { "GOOD ROD", "A fisherman's house in FUCHSIA CITY.", "The city with the SAFARI ZONE.", PD_HAVE_ITEM, { 263, 0, 0 }, "FUCHSIACITY" },
-    { "SUPER ROD", "The FISHING HOUSE on ROUTE 12.", "On the long pier south of LAVENDER TOWN.", PD_HAVE_ITEM, { 264, 0, 0 }, "ROUTE12" },
-    { "ITEMFINDER", "PROF. OAK's AIDE upstairs in the ROUTE 11 gate, once you've caught 30 kinds of POKéMON.", "An AIDE east of VERMILION CITY.", PD_HAVE_FLAG, { 594, 0, 0 }, "ROUTE11" },
-    { "EXP. SHARE", "PROF. OAK's AIDE upstairs in the ROUTE 15 gate, once you've caught 50 kinds of POKéMON.", "An AIDE west of FUCHSIA CITY.", PD_HAVE_FLAG, { 598, 0, 0 }, "ROUTE15" },
+    { "RUNNING SHOES", "PROF. OAK's AIDE gives them to you as you leave PEWTER CITY after beating BROCK.", "After the first gym.", PD_HAVE_FLAG, { 2095, 0, 0 }, "PEWTERCITY", 0 },
+    { "BICYCLE", "Get a BIKE VOUCHER from the chairman of the POKéMON FAN CLUB in VERMILION CITY, then trade it at CERULEAN CITY's bike shop.", "Someone in VERMILION CITY loves to talk about his POKéMON.", PD_HAVE_ITEM, { 360, 0, 0 }, "VERMILIONCITY|CERULEANCITY", 0 },
+    { "VS SEEKER", "An AIDE in the VERMILION CITY POKéMON CENTER.", "In a POKéMON CENTER.", PD_HAVE_FLAG, { 658, 0, 0 }, "VERMILIONCITY", 0 },
+    { "OLD ROD", "The FISHING GURU in a house in VERMILION CITY.", "A port town.", PD_HAVE_ITEM, { 262, 0, 0 }, "VERMILIONCITY", 0 },
+    { "GOOD ROD", "A fisherman's house in FUCHSIA CITY.", "The city with the SAFARI ZONE.", PD_HAVE_ITEM, { 263, 0, 0 }, "FUCHSIACITY", 0 },
+    { "SUPER ROD", "The FISHING HOUSE on ROUTE 12.", "On the long pier south of LAVENDER TOWN.", PD_HAVE_ITEM, { 264, 0, 0 }, "ROUTE12", 0 },
+    { "ITEMFINDER", "PROF. OAK's AIDE upstairs in the ROUTE 11 gate, once you've caught 30 kinds of POKéMON.", "An AIDE east of VERMILION CITY.", PD_HAVE_FLAG, { 594, 0, 0 }, "ROUTE11", 0 },
+    { "EXP. SHARE", "PROF. OAK's AIDE upstairs in the ROUTE 15 gate, once you've caught 50 kinds of POKéMON.", "An AIDE west of FUCHSIA CITY.", PD_HAVE_FLAG, { 598, 0, 0 }, "ROUTE15", 0 },
 };
 static const struct pd_guide_entry pd_guide_firered_p1_s1[] = {
-    { "HM01 CUT", "The captain of the S.S. ANNE in VERMILION CITY - visit him before the ship leaves.", "Someone seasick.", PD_HAVE_ITEM, { 339, 0, 0 }, "VERMILIONCITY|SSANNE" },
-    { "HM02 FLY", "A house on ROUTE 16, behind a small tree (use CUT).", "West of CELADON CITY.", PD_HAVE_ITEM, { 340, 0, 0 }, "ROUTE16" },
-    { "HM03 SURF", "The SECRET HOUSE deep in the SAFARI ZONE.", "In the SAFARI ZONE.", PD_HAVE_ITEM, { 341, 0, 0 }, "KANTOSAFARIZONE" },
-    { "HM04 STRENGTH", "Find the GOLD TEETH in the SAFARI ZONE's west area and return them to the WARDEN in FUCHSIA CITY.", "Someone in FUCHSIA CITY lost something in the SAFARI ZONE.", PD_HAVE_ITEM, { 342, 0, 0 }, "FUCHSIACITY|KANTOSAFARIZONE" },
-    { "HM05 FLASH", "PROF. OAK's AIDE in the building on ROUTE 2, once you've caught 10 kinds of POKéMON.", "An AIDE near DIGLETT's CAVE.", PD_HAVE_ITEM, { 343, 0, 0 }, "ROUTE2" },
-    { "HM06 ROCK SMASH", "The EMBER SPA on KINDLE ROAD (ONE ISLAND).", "A hot spring on the SEVII ISLANDS.", PD_HAVE_ITEM, { 344, 0, 0 }, "KINDLEROAD|EMBERSPA" },
-    { "HM07 WATERFALL", "Inside ICEFALL CAVE on FOUR ISLAND.", "A frozen cave on the SEVII ISLANDS.", PD_HAVE_ITEM, { 345, 0, 0 }, "ICEFALLCAVE|FOURISLAND" },
+    { "HM01 CUT", "The captain of the S.S. ANNE in VERMILION CITY - visit him before the ship leaves.", "Someone seasick.", PD_HAVE_ITEM, { 339, 0, 0 }, "VERMILIONCITY|SSANNE", 0 },
+    { "HM02 FLY", "A house on ROUTE 16, behind a small tree (use CUT).", "West of CELADON CITY.", PD_HAVE_ITEM, { 340, 0, 0 }, "ROUTE16", 0 },
+    { "HM03 SURF", "The SECRET HOUSE deep in the SAFARI ZONE.", "In the SAFARI ZONE.", PD_HAVE_ITEM, { 341, 0, 0 }, "KANTOSAFARIZONE", 0 },
+    { "HM04 STRENGTH", "Find the GOLD TEETH in the SAFARI ZONE's west area and return them to the WARDEN in FUCHSIA CITY.", "Someone in FUCHSIA CITY lost something in the SAFARI ZONE.", PD_HAVE_ITEM, { 342, 0, 0 }, "FUCHSIACITY|KANTOSAFARIZONE", 0 },
+    { "HM05 FLASH", "PROF. OAK's AIDE in the building on ROUTE 2, once you've caught 10 kinds of POKéMON.", "An AIDE near DIGLETT's CAVE.", PD_HAVE_ITEM, { 343, 0, 0 }, "ROUTE2", 0 },
+    { "HM06 ROCK SMASH", "The EMBER SPA on KINDLE ROAD (ONE ISLAND).", "A hot spring on the SEVII ISLANDS.", PD_HAVE_ITEM, { 344, 0, 0 }, "KINDLEROAD|EMBERSPA", 0 },
+    { "HM07 WATERFALL", "Inside ICEFALL CAVE on FOUR ISLAND.", "A frozen cave on the SEVII ISLANDS.", PD_HAVE_ITEM, { 345, 0, 0 }, "ICEFALLCAVE|FOURISLAND", 0 },
 };
 static const struct pd_guide_entry pd_guide_firered_p1_s2[] = {
-    { "Evolution stones", "CELADON DEPT. STORE 4F sells FIRE, THUNDER, WATER and LEAF STONES. MOON STONES are found, e.g. in MT. MOON.", "The big store.", PD_HAVE_NONE, { 0, 0, 0 }, "CELADONCITY" },
-    { "MOVE DELETER", "A house in FUCHSIA CITY.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "FUCHSIACITY" },
-    { "MOVE RELEARNER", "A house on TWO ISLAND. Bring a BIG MUSHROOM or two TINY MUSHROOMS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "TWOISLAND" },
+    { "Evolution stones", "CELADON DEPT. STORE 4F sells FIRE, THUNDER, WATER and LEAF STONES. MOON STONES are found, e.g. in MT. MOON.", "The big store.", PD_HAVE_NONE, { 0, 0, 0 }, "CELADONCITY", 1 },
+    { "MOVE DELETER", "A house in FUCHSIA CITY.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "FUCHSIACITY", 0 },
+    { "MOVE RELEARNER", "A house on TWO ISLAND. Bring a BIG MUSHROOM or two TINY MUSHROOMS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "TWOISLAND", 0 },
 };
 static const struct pd_guide_entry pd_guide_firered_p1_s3[] = {
-    { "EEVEE", "The rooftop room of the CELADON CONDOMINIUMS - reached by the back entrance.", "CELADON CITY.", PD_HAVE_CAUGHT, { 133, 0, 0 }, "CELADONCITY" },
-    { "LAPRAS", "An employee on SILPH CO. 7F, after you reach him during the ROCKET takeover.", "SAFFRON CITY.", PD_HAVE_CAUGHT, { 131, 0, 0 }, "SILPHCO" },
-    { "HITMONLEE / HITMONCHAN", "Beat the FIGHTING DOJO in SAFFRON CITY and pick one.", "Next to a gym.", PD_HAVE_CAUGHT, { 106, 107, 0 }, "SAFFRONCITY" },
-    { "Fossils", "Pick the HELIX or DOME FOSSIL in MT. MOON; the OLD AMBER is in the back of PEWTER's museum. The CINNABAR ISLAND lab revives them.", "A cave, a museum, and a lab.", PD_HAVE_CAUGHT, { 138, 140, 142 }, "MTMOON|PEWTERCITY|CINNABARISLAND" },
-    { "GAME CORNER prizes", "The prize corner next to the CELADON CITY GAME CORNER trades coins for POKéMON: ABRA Lv9 (180 coins), CLEFAIRY Lv8 (500), DRATINI Lv18 (2800), SCYTHER Lv25 (5500), PORYGON Lv26 (9999). A man in the CELADON CITY restaurant gives you the COIN CASE.", "Win coins in CELADON CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "CELADONCITY" },
+    { "EEVEE", "The rooftop room of the CELADON CONDOMINIUMS - reached by the back entrance.", "CELADON CITY.", PD_HAVE_CAUGHT, { 133, 0, 0 }, "CELADONCITY", 0 },
+    { "LAPRAS", "An employee on SILPH CO. 7F, after you reach him during the ROCKET takeover.", "SAFFRON CITY.", PD_HAVE_CAUGHT, { 131, 0, 0 }, "SILPHCO", 0 },
+    { "HITMONLEE / HITMONCHAN", "Beat the FIGHTING DOJO in SAFFRON CITY and pick one.", "Next to a gym.", PD_HAVE_CAUGHT, { 106, 107, 0 }, "SAFFRONCITY", 0 },
+    { "Fossils", "Pick the HELIX or DOME FOSSIL in MT. MOON; the OLD AMBER is in the back of PEWTER's museum. The CINNABAR ISLAND lab revives them.", "A cave, a museum, and a lab.", PD_HAVE_CAUGHT, { 138, 140, 142 }, "MTMOON|PEWTERCITY|CINNABARISLAND", 0 },
+    { "GAME CORNER prizes", "The prize corner next to the CELADON CITY GAME CORNER trades coins for POKéMON: ABRA Lv9 (180 coins), CLEFAIRY Lv8 (500), DRATINI Lv18 (2800), SCYTHER Lv25 (5500), PORYGON Lv26 (9999). A man in the CELADON CITY restaurant gives you the COIN CASE.", "Win coins in CELADON CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "CELADONCITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_firered_p1_s4[] = {
-    { "ARTICUNO", "The bottom of the SEAFOAM ISLANDS. Push boulders with STRENGTH to slow the currents.", "Between FUCHSIA CITY and CINNABAR ISLAND.", PD_HAVE_CAUGHT, { 144, 0, 0 }, "SEAFOAMISLANDS" },
-    { "ZAPDOS", "The POWER PLANT - SURF from ROUTE 10.", "An abandoned building.", PD_HAVE_CAUGHT, { 145, 0, 0 }, "POWERPLANT|ROUTE10" },
-    { "MOLTRES", "The top of MT. EMBER on ONE ISLAND.", "A volcano on the SEVII ISLANDS.", PD_HAVE_CAUGHT, { 146, 0, 0 }, "MTEMBER" },
-    { "MEWTWO", "The bottom of CERULEAN CAVE, which opens after the SEVII ISLANDS story is finished.", "Post-game, near CERULEAN CITY.", PD_HAVE_CAUGHT, { 150, 0, 0 }, "CERULEANCAVE" },
-    { "SNORLAX", "Two block ROUTE 12 and ROUTE 16. Wake them with the POKé FLUTE.", "Sleeping in the way.", PD_HAVE_CAUGHT, { 143, 0, 0 }, "ROUTE12|ROUTE16" },
+    { "ARTICUNO", "The bottom of the SEAFOAM ISLANDS. Push boulders with STRENGTH to slow the currents.", "Between FUCHSIA CITY and CINNABAR ISLAND.", PD_HAVE_CAUGHT, { 144, 0, 0 }, "SEAFOAMISLANDS", 0 },
+    { "ZAPDOS", "The POWER PLANT - SURF from ROUTE 10.", "An abandoned building.", PD_HAVE_CAUGHT, { 145, 0, 0 }, "POWERPLANT|ROUTE10", 0 },
+    { "MOLTRES", "The top of MT. EMBER on ONE ISLAND.", "A volcano on the SEVII ISLANDS.", PD_HAVE_CAUGHT, { 146, 0, 0 }, "MTEMBER", 0 },
+    { "MEWTWO", "The bottom of CERULEAN CAVE, which opens after the SEVII ISLANDS story is finished.", "Post-game, near CERULEAN CITY.", PD_HAVE_CAUGHT, { 150, 0, 0 }, "CERULEANCAVE", 0 },
+    { "SNORLAX", "Two block ROUTE 12 and ROUTE 16. Wake them with the POKé FLUTE.", "Sleeping in the way.", PD_HAVE_CAUGHT, { 143, 0, 0 }, "ROUTE12|ROUTE16", 0 },
 };
 static const struct pd_guide_section pd_guide_firered_p1[] = {
-    { "KEY ITEMS", NULL, pd_guide_firered_p1_s0, 8 },
-    { "HMs", NULL, pd_guide_firered_p1_s1, 7 },
-    { "SHOPS & SERVICES", NULL, pd_guide_firered_p1_s2, 3 },
-    { "GIFT POKéMON", NULL, pd_guide_firered_p1_s3, 5 },
-    { "LEGENDARY POKéMON", NULL, pd_guide_firered_p1_s4, 5 },
+    { "KEY ITEMS", NULL, pd_guide_firered_p1_s0, 8, 0 },
+    { "HMs", NULL, pd_guide_firered_p1_s1, 7, 0 },
+    { "SHOPS & SERVICES", NULL, pd_guide_firered_p1_s2, 3, 0 },
+    { "GIFT POKéMON", NULL, pd_guide_firered_p1_s3, 5, 1 },
+    { "LEGENDARY POKéMON", NULL, pd_guide_firered_p1_s4, 5, 1 },
 };
 static const struct pd_guide_entry pd_guide_firered_p2_s0[] = {
-    { "An old man blocks the road north of VIRIDIAN", "Pick up OAK's PARCEL at the VIRIDIAN CITY POKé MART and deliver it to PROF. OAK in PALLET TOWN. He moves after that.", "PROF. OAK is waiting for something from VIRIDIAN CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "VIRIDIANCITY|PALLETTOWN" },
-    { "VIRIDIAN CITY's gym is locked", "It's the last gym - it opens once you have the other seven badges.", "Come back much later.", PD_HAVE_NONE, { 0, 0, 0 }, "VIRIDIANCITY" },
-    { "Where's the S.S. TICKET?", "BILL gives it to you after you help him in his cottage at the end of ROUTE 25, north of CERULEAN CITY.", "Cross the bridge north of CERULEAN CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "CERULEANCITY|ROUTE25|VERMILIONCITY" },
-    { "ROCK TUNNEL is pitch black", "FLASH lights it up (HM05, see WHERE IS), but you can walk through without it.", "An HM helps, but it's optional.", PD_HAVE_NONE, { 0, 0, 0 }, "ROCKTUNNEL|ROUTE10" },
+    { "An old man blocks the road north of VIRIDIAN", "Pick up OAK's PARCEL at the VIRIDIAN CITY POKé MART and deliver it to PROF. OAK in PALLET TOWN. He moves after that.", "PROF. OAK is waiting for something from VIRIDIAN CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "VIRIDIANCITY|PALLETTOWN", 0 },
+    { "VIRIDIAN CITY's gym is locked", "It's the last gym - it opens once you have the other seven badges.", "Come back much later.", PD_HAVE_NONE, { 0, 0, 0 }, "VIRIDIANCITY", 0 },
+    { "Where's the S.S. TICKET?", "BILL gives it to you after you help him in his cottage at the end of ROUTE 25, north of CERULEAN CITY.", "Cross the bridge north of CERULEAN CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "CERULEANCITY|ROUTE25|VERMILIONCITY", 0 },
+    { "ROCK TUNNEL is pitch black", "FLASH lights it up (HM05, see WHERE IS), but you can walk through without it.", "An HM helps, but it's optional.", PD_HAVE_NONE, { 0, 0, 0 }, "ROCKTUNNEL|ROUTE10", 0 },
 };
 static const struct pd_guide_entry pd_guide_firered_p2_s1[] = {
-    { "How do I get into SAFFRON CITY?", "The gate guards are thirsty. Get TEA from the old woman on the ground floor of the CELADON CONDOMINIUMS and any guard lets you through.", "They'd like a drink - ask around CELADON CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "SAFFRONCITY|CELADONCITY|ROUTE5|ROUTE6|ROUTE7|ROUTE8" },
-    { "I can't identify the ghosts in POKéMON TOWER", "You need the SILPH SCOPE. It's on ROCKET HIDEOUT B4F, under the CELADON GAME CORNER - a switch behind a poster opens the entrance.", "TEAM ROCKET has it, somewhere in CELADON CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "POKEMONTOWER|LAVENDERTOWN|CELADONCITY|ROCKETHIDEOUT" },
-    { "The hideout's elevator won't move", "It needs the LIFT KEY, which a ROCKET on B4F drops. Take the stairs down to reach him.", "Someone downstairs has a key.", PD_HAVE_NONE, { 0, 0, 0 }, "ROCKETHIDEOUT" },
-    { "A SNORLAX blocks the road", "Rescue MR. FUJI from the top of POKéMON TOWER; he gives you the POKé FLUTE at his house in LAVENDER TOWN.", "Something in LAVENDER TOWN wakes it.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE12|ROUTE16|LAVENDERTOWN" },
-    { "How do I get to FUCHSIA CITY?", "Ride CYCLING ROAD south from CELADON CITY (BICYCLE needed), or go down ROUTES 12-15 from LAVENDER TOWN after waking the SNORLAX.", "There are two ways - one needs wheels.", PD_HAVE_NONE, { 0, 0, 0 }, "CELADONCITY|LAVENDERTOWN|ROUTE12|ROUTE16" },
-    { "SILPH CO.'s doors are locked", "Find the CARD KEY on 5F; it opens every locked door in the building.", "Somewhere in the middle floors.", PD_HAVE_NONE, { 0, 0, 0 }, "SILPHCO" },
+    { "How do I get into SAFFRON CITY?", "The gate guards are thirsty. Get TEA from the old woman on the ground floor of the CELADON CONDOMINIUMS and any guard lets you through.", "They'd like a drink - ask around CELADON CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "SAFFRONCITY|CELADONCITY|ROUTE5|ROUTE6|ROUTE7|ROUTE8", 0 },
+    { "I can't identify the ghosts in POKéMON TOWER", "You need the SILPH SCOPE. It's on ROCKET HIDEOUT B4F, under the CELADON GAME CORNER - a switch behind a poster opens the entrance.", "TEAM ROCKET has it, somewhere in CELADON CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "POKEMONTOWER|LAVENDERTOWN|CELADONCITY|ROCKETHIDEOUT", 0 },
+    { "The hideout's elevator won't move", "It needs the LIFT KEY, which a ROCKET on B4F drops. Take the stairs down to reach him.", "Someone downstairs has a key.", PD_HAVE_NONE, { 0, 0, 0 }, "ROCKETHIDEOUT", 0 },
+    { "A SNORLAX blocks the road", "Rescue MR. FUJI from the top of POKéMON TOWER; he gives you the POKé FLUTE at his house in LAVENDER TOWN.", "Something in LAVENDER TOWN wakes it.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE12|ROUTE16|LAVENDERTOWN", 1 },
+    { "How do I get to FUCHSIA CITY?", "Ride CYCLING ROAD south from CELADON CITY (BICYCLE needed), or go down ROUTES 12-15 from LAVENDER TOWN after waking the SNORLAX.", "There are two ways - one needs wheels.", PD_HAVE_NONE, { 0, 0, 0 }, "CELADONCITY|LAVENDERTOWN|ROUTE12|ROUTE16", 0 },
+    { "SILPH CO.'s doors are locked", "Find the CARD KEY on 5F; it opens every locked door in the building.", "Somewhere in the middle floors.", PD_HAVE_NONE, { 0, 0, 0 }, "SILPHCO", 0 },
 };
 static const struct pd_guide_entry pd_guide_firered_p2_s2[] = {
-    { "CINNABAR ISLAND's gym is locked", "The SECRET KEY is in the basement of the POKéMON MANSION on the same island.", "Search the burned-out building.", PD_HAVE_NONE, { 0, 0, 0 }, "CINNABARISLAND|POKEMONMANSION" },
-    { "VICTORY ROAD's boulders", "Teach STRENGTH and push boulders onto the floor switches to open the way.", "An HM moves them.", PD_HAVE_NONE, { 0, 0, 0 }, "KANTOVICTORYROAD" },
+    { "CINNABAR ISLAND's gym is locked", "The SECRET KEY is in the basement of the POKéMON MANSION on the same island.", "Search the burned-out building.", PD_HAVE_NONE, { 0, 0, 0 }, "CINNABARISLAND|POKEMONMANSION", 0 },
+    { "VICTORY ROAD's boulders", "Teach STRENGTH and push boulders onto the floor switches to open the way.", "An HM moves them.", PD_HAVE_NONE, { 0, 0, 0 }, "KANTOVICTORYROAD", 0 },
 };
 static const struct pd_guide_entry pd_guide_firered_p2_s3[] = {
-    { "How do I get the National Dex?", "Beat the POKéMON LEAGUE, catch 60 kinds of KANTO POKéMON, then talk to PROF. OAK.", "Finish the League and keep catching.", PD_HAVE_NONE, { 0, 0, 0 }, "PALLETTOWN" },
-    { "How do I reach the SEVII ISLANDS?", "After beating BLAINE, BILL is waiting at CINNABAR ISLAND and takes you to ONE ISLAND.", "After the seventh badge, someone on CINNABAR ISLAND.", PD_HAVE_NONE, { 0, 0, 0 }, "CINNABARISLAND" },
-    { "CERULEAN CAVE is guarded", "Finish the SEVII ISLANDS story: bring the RUBY (MT. EMBER) and SAPPHIRE to CELIO on ONE ISLAND.", "Two gems for CELIO.", PD_HAVE_NONE, { 0, 0, 0 }, "CERULEANCITY|ONEISLAND" },
+    { "How do I get the National Dex?", "Beat the POKéMON LEAGUE, catch 60 kinds of KANTO POKéMON, then talk to PROF. OAK.", "Finish the League and keep catching.", PD_HAVE_NONE, { 0, 0, 0 }, "PALLETTOWN", 0 },
+    { "How do I reach the SEVII ISLANDS?", "After beating BLAINE, BILL is waiting at CINNABAR ISLAND and takes you to ONE ISLAND.", "After the seventh badge, someone on CINNABAR ISLAND.", PD_HAVE_NONE, { 0, 0, 0 }, "CINNABARISLAND", 0 },
+    { "CERULEAN CAVE is guarded", "Finish the SEVII ISLANDS story: bring the RUBY (MT. EMBER) and SAPPHIRE to CELIO on ONE ISLAND.", "Two gems for CELIO.", PD_HAVE_NONE, { 0, 0, 0 }, "CERULEANCITY|ONEISLAND", 0 },
 };
 static const struct pd_guide_section pd_guide_firered_p2[] = {
-    { "EARLY GAME", NULL, pd_guide_firered_p2_s0, 4 },
-    { "MID GAME", NULL, pd_guide_firered_p2_s1, 6 },
-    { "LATE GAME", NULL, pd_guide_firered_p2_s2, 2 },
-    { "POST-GAME", NULL, pd_guide_firered_p2_s3, 3 },
+    { "EARLY GAME", NULL, pd_guide_firered_p2_s0, 4, 0 },
+    { "MID GAME", NULL, pd_guide_firered_p2_s1, 6, 0 },
+    { "LATE GAME", NULL, pd_guide_firered_p2_s2, 2, 0 },
+    { "POST-GAME", NULL, pd_guide_firered_p2_s3, 3, 0 },
 };
 static const struct pd_guide_page pd_guide_firered_pages[] = {
-    { "TIPS", pd_guide_firered_p0, 4 },
+    { "TIPS", pd_guide_firered_p0, 5 },
     { "WHERE IS", pd_guide_firered_p1, 5 },
     { "STUCK?", pd_guide_firered_p2, 4 },
 };
@@ -124,104 +128,108 @@ const struct pd_guide pd_guide_firered = {
 };
 
 static const struct pd_guide_entry pd_guide_leafgreen_p0_s0[] = {
-    { "In-game help", "Press L or R almost anywhere for the game's own HELP menu (OPTION: BUTTON MODE = HELP, the default).", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Running", "Hold B to run once you have the RUNNING SHOES.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Rematches", "The VS SEEKER finds trainers who want a rematch. It recharges as you walk.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "This game is randomized", "HERE, NEXT BOSS, EVOLUTIONS and the DEX read the randomizer's POKéMON, teams, moves and items from the game itself. The gift and legendary POKéMON it moved aren't listed: the guide can't know them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_leafgreen_p0_s1[] = {
-    { "Physical or special?", "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Poison outside battle", "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "In-game help", "Press L or R almost anywhere for the game's own HELP menu (OPTION: BUTTON MODE = HELP, the default).", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Running", "Hold B to run once you have the RUNNING SHOES.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Rematches", "The VS SEEKER finds trainers who want a rematch. It recharges as you walk.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_leafgreen_p0_s2[] = {
-    { "Which badge unlocks which HM?", "FLASH: BOULDER. CUT: CASCADE. FLY: THUNDER. STRENGTH: RAINBOW. SURF: SOUL. ROCK SMASH: MARSH. WATERFALL: VOLCANO. A POKéMON in the party must know the move too.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Getting rid of an HM move", "HM moves can't be forgotten normally. The MOVE DELETER in FUCHSIA CITY removes them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Relearning moves", "The MOVE RELEARNER on TWO ISLAND teaches a forgotten move for a BIG MUSHROOM or two TINY MUSHROOMS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Physical or special?", "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Poison outside battle", "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_leafgreen_p0_s3[] = {
-    { "How long do I have?", "600 steps per visit. You can't use your own POKéMON - throw bait or rocks, then SAFARI BALLS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Which badge unlocks which HM?", "FLASH: BOULDER. CUT: CASCADE. FLY: THUNDER. STRENGTH: RAINBOW. SURF: SOUL. ROCK SMASH: MARSH. WATERFALL: VOLCANO. A POKéMON in the party must know the move too.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Getting rid of an HM move", "HM moves can't be forgotten normally. The MOVE DELETER in FUCHSIA CITY removes them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Relearning moves", "The MOVE RELEARNER on TWO ISLAND teaches a forgotten move for a BIG MUSHROOM or two TINY MUSHROOMS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+};
+static const struct pd_guide_entry pd_guide_leafgreen_p0_s4[] = {
+    { "How long do I have?", "600 steps per visit. You can't use your own POKéMON - throw bait or rocks, then SAFARI BALLS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_leafgreen_p0[] = {
-    { "CONTROLS", NULL, pd_guide_leafgreen_p0_s0, 3 },
-    { "BATTLES", NULL, pd_guide_leafgreen_p0_s1, 2 },
-    { "HMs", NULL, pd_guide_leafgreen_p0_s2, 3 },
-    { "SAFARI ZONE", NULL, pd_guide_leafgreen_p0_s3, 1 },
+    { "RANDOMIZED", NULL, pd_guide_leafgreen_p0_s0, 1, 2 },
+    { "CONTROLS", NULL, pd_guide_leafgreen_p0_s1, 3, 0 },
+    { "BATTLES", NULL, pd_guide_leafgreen_p0_s2, 2, 0 },
+    { "HMs", NULL, pd_guide_leafgreen_p0_s3, 3, 0 },
+    { "SAFARI ZONE", NULL, pd_guide_leafgreen_p0_s4, 1, 0 },
 };
 static const struct pd_guide_entry pd_guide_leafgreen_p1_s0[] = {
-    { "RUNNING SHOES", "PROF. OAK's AIDE gives them to you as you leave PEWTER CITY after beating BROCK.", "After the first gym.", PD_HAVE_FLAG, { 2095, 0, 0 }, "PEWTERCITY" },
-    { "BICYCLE", "Get a BIKE VOUCHER from the chairman of the POKéMON FAN CLUB in VERMILION CITY, then trade it at CERULEAN CITY's bike shop.", "Someone in VERMILION CITY loves to talk about his POKéMON.", PD_HAVE_ITEM, { 360, 0, 0 }, "VERMILIONCITY|CERULEANCITY" },
-    { "VS SEEKER", "An AIDE in the VERMILION CITY POKéMON CENTER.", "In a POKéMON CENTER.", PD_HAVE_FLAG, { 658, 0, 0 }, "VERMILIONCITY" },
-    { "OLD ROD", "The FISHING GURU in a house in VERMILION CITY.", "A port town.", PD_HAVE_ITEM, { 262, 0, 0 }, "VERMILIONCITY" },
-    { "GOOD ROD", "A fisherman's house in FUCHSIA CITY.", "The city with the SAFARI ZONE.", PD_HAVE_ITEM, { 263, 0, 0 }, "FUCHSIACITY" },
-    { "SUPER ROD", "The FISHING HOUSE on ROUTE 12.", "On the long pier south of LAVENDER TOWN.", PD_HAVE_ITEM, { 264, 0, 0 }, "ROUTE12" },
-    { "ITEMFINDER", "PROF. OAK's AIDE upstairs in the ROUTE 11 gate, once you've caught 30 kinds of POKéMON.", "An AIDE east of VERMILION CITY.", PD_HAVE_FLAG, { 594, 0, 0 }, "ROUTE11" },
-    { "EXP. SHARE", "PROF. OAK's AIDE upstairs in the ROUTE 15 gate, once you've caught 50 kinds of POKéMON.", "An AIDE west of FUCHSIA CITY.", PD_HAVE_FLAG, { 598, 0, 0 }, "ROUTE15" },
+    { "RUNNING SHOES", "PROF. OAK's AIDE gives them to you as you leave PEWTER CITY after beating BROCK.", "After the first gym.", PD_HAVE_FLAG, { 2095, 0, 0 }, "PEWTERCITY", 0 },
+    { "BICYCLE", "Get a BIKE VOUCHER from the chairman of the POKéMON FAN CLUB in VERMILION CITY, then trade it at CERULEAN CITY's bike shop.", "Someone in VERMILION CITY loves to talk about his POKéMON.", PD_HAVE_ITEM, { 360, 0, 0 }, "VERMILIONCITY|CERULEANCITY", 0 },
+    { "VS SEEKER", "An AIDE in the VERMILION CITY POKéMON CENTER.", "In a POKéMON CENTER.", PD_HAVE_FLAG, { 658, 0, 0 }, "VERMILIONCITY", 0 },
+    { "OLD ROD", "The FISHING GURU in a house in VERMILION CITY.", "A port town.", PD_HAVE_ITEM, { 262, 0, 0 }, "VERMILIONCITY", 0 },
+    { "GOOD ROD", "A fisherman's house in FUCHSIA CITY.", "The city with the SAFARI ZONE.", PD_HAVE_ITEM, { 263, 0, 0 }, "FUCHSIACITY", 0 },
+    { "SUPER ROD", "The FISHING HOUSE on ROUTE 12.", "On the long pier south of LAVENDER TOWN.", PD_HAVE_ITEM, { 264, 0, 0 }, "ROUTE12", 0 },
+    { "ITEMFINDER", "PROF. OAK's AIDE upstairs in the ROUTE 11 gate, once you've caught 30 kinds of POKéMON.", "An AIDE east of VERMILION CITY.", PD_HAVE_FLAG, { 594, 0, 0 }, "ROUTE11", 0 },
+    { "EXP. SHARE", "PROF. OAK's AIDE upstairs in the ROUTE 15 gate, once you've caught 50 kinds of POKéMON.", "An AIDE west of FUCHSIA CITY.", PD_HAVE_FLAG, { 598, 0, 0 }, "ROUTE15", 0 },
 };
 static const struct pd_guide_entry pd_guide_leafgreen_p1_s1[] = {
-    { "HM01 CUT", "The captain of the S.S. ANNE in VERMILION CITY - visit him before the ship leaves.", "Someone seasick.", PD_HAVE_ITEM, { 339, 0, 0 }, "VERMILIONCITY|SSANNE" },
-    { "HM02 FLY", "A house on ROUTE 16, behind a small tree (use CUT).", "West of CELADON CITY.", PD_HAVE_ITEM, { 340, 0, 0 }, "ROUTE16" },
-    { "HM03 SURF", "The SECRET HOUSE deep in the SAFARI ZONE.", "In the SAFARI ZONE.", PD_HAVE_ITEM, { 341, 0, 0 }, "KANTOSAFARIZONE" },
-    { "HM04 STRENGTH", "Find the GOLD TEETH in the SAFARI ZONE's west area and return them to the WARDEN in FUCHSIA CITY.", "Someone in FUCHSIA CITY lost something in the SAFARI ZONE.", PD_HAVE_ITEM, { 342, 0, 0 }, "FUCHSIACITY|KANTOSAFARIZONE" },
-    { "HM05 FLASH", "PROF. OAK's AIDE in the building on ROUTE 2, once you've caught 10 kinds of POKéMON.", "An AIDE near DIGLETT's CAVE.", PD_HAVE_ITEM, { 343, 0, 0 }, "ROUTE2" },
-    { "HM06 ROCK SMASH", "The EMBER SPA on KINDLE ROAD (ONE ISLAND).", "A hot spring on the SEVII ISLANDS.", PD_HAVE_ITEM, { 344, 0, 0 }, "KINDLEROAD|EMBERSPA" },
-    { "HM07 WATERFALL", "Inside ICEFALL CAVE on FOUR ISLAND.", "A frozen cave on the SEVII ISLANDS.", PD_HAVE_ITEM, { 345, 0, 0 }, "ICEFALLCAVE|FOURISLAND" },
+    { "HM01 CUT", "The captain of the S.S. ANNE in VERMILION CITY - visit him before the ship leaves.", "Someone seasick.", PD_HAVE_ITEM, { 339, 0, 0 }, "VERMILIONCITY|SSANNE", 0 },
+    { "HM02 FLY", "A house on ROUTE 16, behind a small tree (use CUT).", "West of CELADON CITY.", PD_HAVE_ITEM, { 340, 0, 0 }, "ROUTE16", 0 },
+    { "HM03 SURF", "The SECRET HOUSE deep in the SAFARI ZONE.", "In the SAFARI ZONE.", PD_HAVE_ITEM, { 341, 0, 0 }, "KANTOSAFARIZONE", 0 },
+    { "HM04 STRENGTH", "Find the GOLD TEETH in the SAFARI ZONE's west area and return them to the WARDEN in FUCHSIA CITY.", "Someone in FUCHSIA CITY lost something in the SAFARI ZONE.", PD_HAVE_ITEM, { 342, 0, 0 }, "FUCHSIACITY|KANTOSAFARIZONE", 0 },
+    { "HM05 FLASH", "PROF. OAK's AIDE in the building on ROUTE 2, once you've caught 10 kinds of POKéMON.", "An AIDE near DIGLETT's CAVE.", PD_HAVE_ITEM, { 343, 0, 0 }, "ROUTE2", 0 },
+    { "HM06 ROCK SMASH", "The EMBER SPA on KINDLE ROAD (ONE ISLAND).", "A hot spring on the SEVII ISLANDS.", PD_HAVE_ITEM, { 344, 0, 0 }, "KINDLEROAD|EMBERSPA", 0 },
+    { "HM07 WATERFALL", "Inside ICEFALL CAVE on FOUR ISLAND.", "A frozen cave on the SEVII ISLANDS.", PD_HAVE_ITEM, { 345, 0, 0 }, "ICEFALLCAVE|FOURISLAND", 0 },
 };
 static const struct pd_guide_entry pd_guide_leafgreen_p1_s2[] = {
-    { "Evolution stones", "CELADON DEPT. STORE 4F sells FIRE, THUNDER, WATER and LEAF STONES. MOON STONES are found, e.g. in MT. MOON.", "The big store.", PD_HAVE_NONE, { 0, 0, 0 }, "CELADONCITY" },
-    { "MOVE DELETER", "A house in FUCHSIA CITY.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "FUCHSIACITY" },
-    { "MOVE RELEARNER", "A house on TWO ISLAND. Bring a BIG MUSHROOM or two TINY MUSHROOMS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "TWOISLAND" },
+    { "Evolution stones", "CELADON DEPT. STORE 4F sells FIRE, THUNDER, WATER and LEAF STONES. MOON STONES are found, e.g. in MT. MOON.", "The big store.", PD_HAVE_NONE, { 0, 0, 0 }, "CELADONCITY", 1 },
+    { "MOVE DELETER", "A house in FUCHSIA CITY.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "FUCHSIACITY", 0 },
+    { "MOVE RELEARNER", "A house on TWO ISLAND. Bring a BIG MUSHROOM or two TINY MUSHROOMS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "TWOISLAND", 0 },
 };
 static const struct pd_guide_entry pd_guide_leafgreen_p1_s3[] = {
-    { "EEVEE", "The rooftop room of the CELADON CONDOMINIUMS - reached by the back entrance.", "CELADON CITY.", PD_HAVE_CAUGHT, { 133, 0, 0 }, "CELADONCITY" },
-    { "LAPRAS", "An employee on SILPH CO. 7F, after you reach him during the ROCKET takeover.", "SAFFRON CITY.", PD_HAVE_CAUGHT, { 131, 0, 0 }, "SILPHCO" },
-    { "HITMONLEE / HITMONCHAN", "Beat the FIGHTING DOJO in SAFFRON CITY and pick one.", "Next to a gym.", PD_HAVE_CAUGHT, { 106, 107, 0 }, "SAFFRONCITY" },
-    { "Fossils", "Pick the HELIX or DOME FOSSIL in MT. MOON; the OLD AMBER is in the back of PEWTER's museum. The CINNABAR ISLAND lab revives them.", "A cave, a museum, and a lab.", PD_HAVE_CAUGHT, { 138, 140, 142 }, "MTMOON|PEWTERCITY|CINNABARISLAND" },
-    { "GAME CORNER prizes", "The prize corner next to the CELADON CITY GAME CORNER trades coins for POKéMON: ABRA Lv7 (120 coins), CLEFAIRY Lv12 (750), PINSIR Lv18 (2500), DRATINI Lv24 (4600), PORYGON Lv18 (6500). A man in the CELADON CITY restaurant gives you the COIN CASE.", "Win coins in CELADON CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "CELADONCITY" },
+    { "EEVEE", "The rooftop room of the CELADON CONDOMINIUMS - reached by the back entrance.", "CELADON CITY.", PD_HAVE_CAUGHT, { 133, 0, 0 }, "CELADONCITY", 0 },
+    { "LAPRAS", "An employee on SILPH CO. 7F, after you reach him during the ROCKET takeover.", "SAFFRON CITY.", PD_HAVE_CAUGHT, { 131, 0, 0 }, "SILPHCO", 0 },
+    { "HITMONLEE / HITMONCHAN", "Beat the FIGHTING DOJO in SAFFRON CITY and pick one.", "Next to a gym.", PD_HAVE_CAUGHT, { 106, 107, 0 }, "SAFFRONCITY", 0 },
+    { "Fossils", "Pick the HELIX or DOME FOSSIL in MT. MOON; the OLD AMBER is in the back of PEWTER's museum. The CINNABAR ISLAND lab revives them.", "A cave, a museum, and a lab.", PD_HAVE_CAUGHT, { 138, 140, 142 }, "MTMOON|PEWTERCITY|CINNABARISLAND", 0 },
+    { "GAME CORNER prizes", "The prize corner next to the CELADON CITY GAME CORNER trades coins for POKéMON: ABRA Lv7 (120 coins), CLEFAIRY Lv12 (750), PINSIR Lv18 (2500), DRATINI Lv24 (4600), PORYGON Lv18 (6500). A man in the CELADON CITY restaurant gives you the COIN CASE.", "Win coins in CELADON CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "CELADONCITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_leafgreen_p1_s4[] = {
-    { "ARTICUNO", "The bottom of the SEAFOAM ISLANDS. Push boulders with STRENGTH to slow the currents.", "Between FUCHSIA CITY and CINNABAR ISLAND.", PD_HAVE_CAUGHT, { 144, 0, 0 }, "SEAFOAMISLANDS" },
-    { "ZAPDOS", "The POWER PLANT - SURF from ROUTE 10.", "An abandoned building.", PD_HAVE_CAUGHT, { 145, 0, 0 }, "POWERPLANT|ROUTE10" },
-    { "MOLTRES", "The top of MT. EMBER on ONE ISLAND.", "A volcano on the SEVII ISLANDS.", PD_HAVE_CAUGHT, { 146, 0, 0 }, "MTEMBER" },
-    { "MEWTWO", "The bottom of CERULEAN CAVE, which opens after the SEVII ISLANDS story is finished.", "Post-game, near CERULEAN CITY.", PD_HAVE_CAUGHT, { 150, 0, 0 }, "CERULEANCAVE" },
-    { "SNORLAX", "Two block ROUTE 12 and ROUTE 16. Wake them with the POKé FLUTE.", "Sleeping in the way.", PD_HAVE_CAUGHT, { 143, 0, 0 }, "ROUTE12|ROUTE16" },
+    { "ARTICUNO", "The bottom of the SEAFOAM ISLANDS. Push boulders with STRENGTH to slow the currents.", "Between FUCHSIA CITY and CINNABAR ISLAND.", PD_HAVE_CAUGHT, { 144, 0, 0 }, "SEAFOAMISLANDS", 0 },
+    { "ZAPDOS", "The POWER PLANT - SURF from ROUTE 10.", "An abandoned building.", PD_HAVE_CAUGHT, { 145, 0, 0 }, "POWERPLANT|ROUTE10", 0 },
+    { "MOLTRES", "The top of MT. EMBER on ONE ISLAND.", "A volcano on the SEVII ISLANDS.", PD_HAVE_CAUGHT, { 146, 0, 0 }, "MTEMBER", 0 },
+    { "MEWTWO", "The bottom of CERULEAN CAVE, which opens after the SEVII ISLANDS story is finished.", "Post-game, near CERULEAN CITY.", PD_HAVE_CAUGHT, { 150, 0, 0 }, "CERULEANCAVE", 0 },
+    { "SNORLAX", "Two block ROUTE 12 and ROUTE 16. Wake them with the POKé FLUTE.", "Sleeping in the way.", PD_HAVE_CAUGHT, { 143, 0, 0 }, "ROUTE12|ROUTE16", 0 },
 };
 static const struct pd_guide_section pd_guide_leafgreen_p1[] = {
-    { "KEY ITEMS", NULL, pd_guide_leafgreen_p1_s0, 8 },
-    { "HMs", NULL, pd_guide_leafgreen_p1_s1, 7 },
-    { "SHOPS & SERVICES", NULL, pd_guide_leafgreen_p1_s2, 3 },
-    { "GIFT POKéMON", NULL, pd_guide_leafgreen_p1_s3, 5 },
-    { "LEGENDARY POKéMON", NULL, pd_guide_leafgreen_p1_s4, 5 },
+    { "KEY ITEMS", NULL, pd_guide_leafgreen_p1_s0, 8, 0 },
+    { "HMs", NULL, pd_guide_leafgreen_p1_s1, 7, 0 },
+    { "SHOPS & SERVICES", NULL, pd_guide_leafgreen_p1_s2, 3, 0 },
+    { "GIFT POKéMON", NULL, pd_guide_leafgreen_p1_s3, 5, 1 },
+    { "LEGENDARY POKéMON", NULL, pd_guide_leafgreen_p1_s4, 5, 1 },
 };
 static const struct pd_guide_entry pd_guide_leafgreen_p2_s0[] = {
-    { "An old man blocks the road north of VIRIDIAN", "Pick up OAK's PARCEL at the VIRIDIAN CITY POKé MART and deliver it to PROF. OAK in PALLET TOWN. He moves after that.", "PROF. OAK is waiting for something from VIRIDIAN CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "VIRIDIANCITY|PALLETTOWN" },
-    { "VIRIDIAN CITY's gym is locked", "It's the last gym - it opens once you have the other seven badges.", "Come back much later.", PD_HAVE_NONE, { 0, 0, 0 }, "VIRIDIANCITY" },
-    { "Where's the S.S. TICKET?", "BILL gives it to you after you help him in his cottage at the end of ROUTE 25, north of CERULEAN CITY.", "Cross the bridge north of CERULEAN CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "CERULEANCITY|ROUTE25|VERMILIONCITY" },
-    { "ROCK TUNNEL is pitch black", "FLASH lights it up (HM05, see WHERE IS), but you can walk through without it.", "An HM helps, but it's optional.", PD_HAVE_NONE, { 0, 0, 0 }, "ROCKTUNNEL|ROUTE10" },
+    { "An old man blocks the road north of VIRIDIAN", "Pick up OAK's PARCEL at the VIRIDIAN CITY POKé MART and deliver it to PROF. OAK in PALLET TOWN. He moves after that.", "PROF. OAK is waiting for something from VIRIDIAN CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "VIRIDIANCITY|PALLETTOWN", 0 },
+    { "VIRIDIAN CITY's gym is locked", "It's the last gym - it opens once you have the other seven badges.", "Come back much later.", PD_HAVE_NONE, { 0, 0, 0 }, "VIRIDIANCITY", 0 },
+    { "Where's the S.S. TICKET?", "BILL gives it to you after you help him in his cottage at the end of ROUTE 25, north of CERULEAN CITY.", "Cross the bridge north of CERULEAN CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "CERULEANCITY|ROUTE25|VERMILIONCITY", 0 },
+    { "ROCK TUNNEL is pitch black", "FLASH lights it up (HM05, see WHERE IS), but you can walk through without it.", "An HM helps, but it's optional.", PD_HAVE_NONE, { 0, 0, 0 }, "ROCKTUNNEL|ROUTE10", 0 },
 };
 static const struct pd_guide_entry pd_guide_leafgreen_p2_s1[] = {
-    { "How do I get into SAFFRON CITY?", "The gate guards are thirsty. Get TEA from the old woman on the ground floor of the CELADON CONDOMINIUMS and any guard lets you through.", "They'd like a drink - ask around CELADON CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "SAFFRONCITY|CELADONCITY|ROUTE5|ROUTE6|ROUTE7|ROUTE8" },
-    { "I can't identify the ghosts in POKéMON TOWER", "You need the SILPH SCOPE. It's on ROCKET HIDEOUT B4F, under the CELADON GAME CORNER - a switch behind a poster opens the entrance.", "TEAM ROCKET has it, somewhere in CELADON CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "POKEMONTOWER|LAVENDERTOWN|CELADONCITY|ROCKETHIDEOUT" },
-    { "The hideout's elevator won't move", "It needs the LIFT KEY, which a ROCKET on B4F drops. Take the stairs down to reach him.", "Someone downstairs has a key.", PD_HAVE_NONE, { 0, 0, 0 }, "ROCKETHIDEOUT" },
-    { "A SNORLAX blocks the road", "Rescue MR. FUJI from the top of POKéMON TOWER; he gives you the POKé FLUTE at his house in LAVENDER TOWN.", "Something in LAVENDER TOWN wakes it.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE12|ROUTE16|LAVENDERTOWN" },
-    { "How do I get to FUCHSIA CITY?", "Ride CYCLING ROAD south from CELADON CITY (BICYCLE needed), or go down ROUTES 12-15 from LAVENDER TOWN after waking the SNORLAX.", "There are two ways - one needs wheels.", PD_HAVE_NONE, { 0, 0, 0 }, "CELADONCITY|LAVENDERTOWN|ROUTE12|ROUTE16" },
-    { "SILPH CO.'s doors are locked", "Find the CARD KEY on 5F; it opens every locked door in the building.", "Somewhere in the middle floors.", PD_HAVE_NONE, { 0, 0, 0 }, "SILPHCO" },
+    { "How do I get into SAFFRON CITY?", "The gate guards are thirsty. Get TEA from the old woman on the ground floor of the CELADON CONDOMINIUMS and any guard lets you through.", "They'd like a drink - ask around CELADON CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "SAFFRONCITY|CELADONCITY|ROUTE5|ROUTE6|ROUTE7|ROUTE8", 0 },
+    { "I can't identify the ghosts in POKéMON TOWER", "You need the SILPH SCOPE. It's on ROCKET HIDEOUT B4F, under the CELADON GAME CORNER - a switch behind a poster opens the entrance.", "TEAM ROCKET has it, somewhere in CELADON CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "POKEMONTOWER|LAVENDERTOWN|CELADONCITY|ROCKETHIDEOUT", 0 },
+    { "The hideout's elevator won't move", "It needs the LIFT KEY, which a ROCKET on B4F drops. Take the stairs down to reach him.", "Someone downstairs has a key.", PD_HAVE_NONE, { 0, 0, 0 }, "ROCKETHIDEOUT", 0 },
+    { "A SNORLAX blocks the road", "Rescue MR. FUJI from the top of POKéMON TOWER; he gives you the POKé FLUTE at his house in LAVENDER TOWN.", "Something in LAVENDER TOWN wakes it.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE12|ROUTE16|LAVENDERTOWN", 1 },
+    { "How do I get to FUCHSIA CITY?", "Ride CYCLING ROAD south from CELADON CITY (BICYCLE needed), or go down ROUTES 12-15 from LAVENDER TOWN after waking the SNORLAX.", "There are two ways - one needs wheels.", PD_HAVE_NONE, { 0, 0, 0 }, "CELADONCITY|LAVENDERTOWN|ROUTE12|ROUTE16", 0 },
+    { "SILPH CO.'s doors are locked", "Find the CARD KEY on 5F; it opens every locked door in the building.", "Somewhere in the middle floors.", PD_HAVE_NONE, { 0, 0, 0 }, "SILPHCO", 0 },
 };
 static const struct pd_guide_entry pd_guide_leafgreen_p2_s2[] = {
-    { "CINNABAR ISLAND's gym is locked", "The SECRET KEY is in the basement of the POKéMON MANSION on the same island.", "Search the burned-out building.", PD_HAVE_NONE, { 0, 0, 0 }, "CINNABARISLAND|POKEMONMANSION" },
-    { "VICTORY ROAD's boulders", "Teach STRENGTH and push boulders onto the floor switches to open the way.", "An HM moves them.", PD_HAVE_NONE, { 0, 0, 0 }, "KANTOVICTORYROAD" },
+    { "CINNABAR ISLAND's gym is locked", "The SECRET KEY is in the basement of the POKéMON MANSION on the same island.", "Search the burned-out building.", PD_HAVE_NONE, { 0, 0, 0 }, "CINNABARISLAND|POKEMONMANSION", 0 },
+    { "VICTORY ROAD's boulders", "Teach STRENGTH and push boulders onto the floor switches to open the way.", "An HM moves them.", PD_HAVE_NONE, { 0, 0, 0 }, "KANTOVICTORYROAD", 0 },
 };
 static const struct pd_guide_entry pd_guide_leafgreen_p2_s3[] = {
-    { "How do I get the National Dex?", "Beat the POKéMON LEAGUE, catch 60 kinds of KANTO POKéMON, then talk to PROF. OAK.", "Finish the League and keep catching.", PD_HAVE_NONE, { 0, 0, 0 }, "PALLETTOWN" },
-    { "How do I reach the SEVII ISLANDS?", "After beating BLAINE, BILL is waiting at CINNABAR ISLAND and takes you to ONE ISLAND.", "After the seventh badge, someone on CINNABAR ISLAND.", PD_HAVE_NONE, { 0, 0, 0 }, "CINNABARISLAND" },
-    { "CERULEAN CAVE is guarded", "Finish the SEVII ISLANDS story: bring the RUBY (MT. EMBER) and SAPPHIRE to CELIO on ONE ISLAND.", "Two gems for CELIO.", PD_HAVE_NONE, { 0, 0, 0 }, "CERULEANCITY|ONEISLAND" },
+    { "How do I get the National Dex?", "Beat the POKéMON LEAGUE, catch 60 kinds of KANTO POKéMON, then talk to PROF. OAK.", "Finish the League and keep catching.", PD_HAVE_NONE, { 0, 0, 0 }, "PALLETTOWN", 0 },
+    { "How do I reach the SEVII ISLANDS?", "After beating BLAINE, BILL is waiting at CINNABAR ISLAND and takes you to ONE ISLAND.", "After the seventh badge, someone on CINNABAR ISLAND.", PD_HAVE_NONE, { 0, 0, 0 }, "CINNABARISLAND", 0 },
+    { "CERULEAN CAVE is guarded", "Finish the SEVII ISLANDS story: bring the RUBY (MT. EMBER) and SAPPHIRE to CELIO on ONE ISLAND.", "Two gems for CELIO.", PD_HAVE_NONE, { 0, 0, 0 }, "CERULEANCITY|ONEISLAND", 0 },
 };
 static const struct pd_guide_section pd_guide_leafgreen_p2[] = {
-    { "EARLY GAME", NULL, pd_guide_leafgreen_p2_s0, 4 },
-    { "MID GAME", NULL, pd_guide_leafgreen_p2_s1, 6 },
-    { "LATE GAME", NULL, pd_guide_leafgreen_p2_s2, 2 },
-    { "POST-GAME", NULL, pd_guide_leafgreen_p2_s3, 3 },
+    { "EARLY GAME", NULL, pd_guide_leafgreen_p2_s0, 4, 0 },
+    { "MID GAME", NULL, pd_guide_leafgreen_p2_s1, 6, 0 },
+    { "LATE GAME", NULL, pd_guide_leafgreen_p2_s2, 2, 0 },
+    { "POST-GAME", NULL, pd_guide_leafgreen_p2_s3, 3, 0 },
 };
 static const struct pd_guide_page pd_guide_leafgreen_pages[] = {
-    { "TIPS", pd_guide_leafgreen_p0, 4 },
+    { "TIPS", pd_guide_leafgreen_p0, 5 },
     { "WHERE IS", pd_guide_leafgreen_p1, 5 },
     { "STUCK?", pd_guide_leafgreen_p2, 4 },
 };
@@ -245,102 +253,106 @@ const struct pd_guide pd_guide_leafgreen = {
 };
 
 static const struct pd_guide_entry pd_guide_emerald_p0_s0[] = {
-    { "Running", "Hold B to run once you have the RUNNING SHOES.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Two bikes", "The MACH BIKE is the fast one - fast enough to cross cracked floors before they give way. The ACRO BIKE can hop and ride narrow rails. RYDEL in MAUVILLE CITY swaps one for the other.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Rematches", "Trainers you've beaten can register you in the POKéNAV's MATCH CALL. Once you have five badges, walking around makes some of them want a rematch.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "This game is randomized", "HERE, NEXT BOSS, EVOLUTIONS and the DEX read the randomizer's POKéMON, teams, moves and items from the game itself. The gift and legendary POKéMON it moved aren't listed: the guide can't know them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_emerald_p0_s1[] = {
-    { "Physical or special?", "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "A traded POKéMON won't listen", "Traded POKéMON obey up to Lv10 with no badges, Lv30 with the KNUCKLE BADGE, Lv50 with the HEAT BADGE, Lv70 with the FEATHER BADGE, and always with the RAIN BADGE.", "It's about badges.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Poison outside battle", "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Running", "Hold B to run once you have the RUNNING SHOES.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Two bikes", "The MACH BIKE is the fast one - fast enough to cross cracked floors before they give way. The ACRO BIKE can hop and ride narrow rails. RYDEL in MAUVILLE CITY swaps one for the other.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Rematches", "Trainers you've beaten can register you in the POKéNAV's MATCH CALL. Once you have five badges, walking around makes some of them want a rematch.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_emerald_p0_s2[] = {
-    { "Which badge unlocks which HM?", "CUT: STONE. FLASH: KNUCKLE. ROCK SMASH: DYNAMO. STRENGTH: HEAT. SURF: BALANCE. FLY: FEATHER. DIVE: MIND. WATERFALL: RAIN. A POKéMON in the party must know the move too.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Getting rid of an HM move", "HM moves can't be forgotten normally. The MOVE DELETER in LILYCOVE CITY removes them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Relearning moves", "The MOVE TUTOR in FALLARBOR TOWN teaches a forgotten move for one HEART SCALE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Physical or special?", "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "A traded POKéMON won't listen", "Traded POKéMON obey up to Lv10 with no badges, Lv30 with the KNUCKLE BADGE, Lv50 with the HEAT BADGE, Lv70 with the FEATHER BADGE, and always with the RAIN BADGE.", "It's about badges.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Poison outside battle", "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_emerald_p0_s3[] = {
-    { "How long do I have?", "500 steps per visit. You can't use your own POKéMON - throw POKéBLOCKS, then SAFARI BALLS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Which badge unlocks which HM?", "CUT: STONE. FLASH: KNUCKLE. ROCK SMASH: DYNAMO. STRENGTH: HEAT. SURF: BALANCE. FLY: FEATHER. DIVE: MIND. WATERFALL: RAIN. A POKéMON in the party must know the move too.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Getting rid of an HM move", "HM moves can't be forgotten normally. The MOVE DELETER in LILYCOVE CITY removes them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Relearning moves", "The MOVE TUTOR in FALLARBOR TOWN teaches a forgotten move for one HEART SCALE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+};
+static const struct pd_guide_entry pd_guide_emerald_p0_s4[] = {
+    { "How long do I have?", "500 steps per visit. You can't use your own POKéMON - throw POKéBLOCKS, then SAFARI BALLS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_emerald_p0[] = {
-    { "CONTROLS", NULL, pd_guide_emerald_p0_s0, 3 },
-    { "BATTLES", NULL, pd_guide_emerald_p0_s1, 3 },
-    { "HMs", NULL, pd_guide_emerald_p0_s2, 3 },
-    { "SAFARI ZONE", NULL, pd_guide_emerald_p0_s3, 1 },
+    { "RANDOMIZED", NULL, pd_guide_emerald_p0_s0, 1, 2 },
+    { "CONTROLS", NULL, pd_guide_emerald_p0_s1, 3, 0 },
+    { "BATTLES", NULL, pd_guide_emerald_p0_s2, 3, 0 },
+    { "HMs", NULL, pd_guide_emerald_p0_s3, 3, 0 },
+    { "SAFARI ZONE", NULL, pd_guide_emerald_p0_s4, 1, 0 },
 };
 static const struct pd_guide_entry pd_guide_emerald_p1_s0[] = {
-    { "RUNNING SHOES", "MOM gives them to you in LITTLEROOT TOWN, on your way out after PROF. BIRCH hands you the POKéDEX.", "Someone at home.", PD_HAVE_FLAG, { 2240, 0, 0 }, "LITTLEROOTTOWN" },
-    { "POKéNAV", "MR. STONE on DEVON CORP. 3F in RUSTBORO CITY, after you bring back the stolen DEVON GOODS.", "The company in RUSTBORO CITY.", PD_HAVE_FLAG, { 188, 0, 0 }, "RUSTBOROCITY" },
-    { "BIKE", "RYDEL's bike shop in MAUVILLE CITY - pick the MACH or the ACRO BIKE.", "A shop in MAUVILLE CITY.", PD_HAVE_FLAG, { 90, 0, 0 }, "MAUVILLECITY" },
-    { "OLD ROD", "A fisherman in DEWFORD TOWN.", "An island town.", PD_HAVE_ITEM, { 262, 0, 0 }, "DEWFORDTOWN" },
-    { "GOOD ROD", "A fisherman on ROUTE 118.", "East of MAUVILLE CITY.", PD_HAVE_ITEM, { 263, 0, 0 }, "ROUTE118" },
-    { "SUPER ROD", "A fisherman's house in MOSSDEEP CITY.", "An island city in the east.", PD_HAVE_ITEM, { 264, 0, 0 }, "MOSSDEEPCITY" },
-    { "ITEMFINDER", "Your rival gives it to you after your battle on ROUTE 110.", "North of SLATEPORT CITY.", PD_HAVE_ITEM, { 261, 0, 0 }, "ROUTE110" },
-    { "EXP. SHARE", "MR. STONE at DEVON CORP. 3F, once you've delivered his letter to STEVEN in GRANITE CAVE.", "A reward for a delivery.", PD_HAVE_FLAG, { 272, 0, 0 }, "RUSTBOROCITY|GRANITECAVE" },
-    { "GO-GOGGLES", "Your rival gives them to you in LAVARIDGE TOWN after you beat FLANNERY. The ROUTE 111 desert is closed without them.", "After the fourth gym.", PD_HAVE_ITEM, { 279, 0, 0 }, "LAVARIDGETOWN|ROUTE111" },
-    { "DEVON SCOPE", "STEVEN on ROUTE 120, after the invisible POKéMON on the bridge.", "East of FORTREE CITY.", PD_HAVE_ITEM, { 288, 0, 0 }, "ROUTE120|FORTREECITY" },
-    { "WAILMER PAIL", "The PRETTY PETAL flower shop on ROUTE 104.", "A shop between PETALBURG CITY and RUSTBORO CITY.", PD_HAVE_ITEM, { 268, 0, 0 }, "ROUTE104" },
-    { "SOOT SACK", "The GLASS WORKSHOP on ROUTE 113. Walk through the falling ash to collect it.", "Where it rains ash.", PD_HAVE_ITEM, { 270, 0, 0 }, "ROUTE113" },
-    { "COIN CASE", "A woman in a MAUVILLE CITY house trades it for a HARBOR MAIL.", "A trade in MAUVILLE CITY.", PD_HAVE_ITEM, { 260, 0, 0 }, "MAUVILLECITY" },
+    { "RUNNING SHOES", "MOM gives them to you in LITTLEROOT TOWN, on your way out after PROF. BIRCH hands you the POKéDEX.", "Someone at home.", PD_HAVE_FLAG, { 2240, 0, 0 }, "LITTLEROOTTOWN", 0 },
+    { "POKéNAV", "MR. STONE on DEVON CORP. 3F in RUSTBORO CITY, after you bring back the stolen DEVON GOODS.", "The company in RUSTBORO CITY.", PD_HAVE_FLAG, { 188, 0, 0 }, "RUSTBOROCITY", 0 },
+    { "BIKE", "RYDEL's bike shop in MAUVILLE CITY - pick the MACH or the ACRO BIKE.", "A shop in MAUVILLE CITY.", PD_HAVE_FLAG, { 90, 0, 0 }, "MAUVILLECITY", 0 },
+    { "OLD ROD", "A fisherman in DEWFORD TOWN.", "An island town.", PD_HAVE_ITEM, { 262, 0, 0 }, "DEWFORDTOWN", 0 },
+    { "GOOD ROD", "A fisherman on ROUTE 118.", "East of MAUVILLE CITY.", PD_HAVE_ITEM, { 263, 0, 0 }, "ROUTE118", 0 },
+    { "SUPER ROD", "A fisherman's house in MOSSDEEP CITY.", "An island city in the east.", PD_HAVE_ITEM, { 264, 0, 0 }, "MOSSDEEPCITY", 0 },
+    { "ITEMFINDER", "Your rival gives it to you after your battle on ROUTE 110.", "North of SLATEPORT CITY.", PD_HAVE_ITEM, { 261, 0, 0 }, "ROUTE110", 0 },
+    { "EXP. SHARE", "MR. STONE at DEVON CORP. 3F, once you've delivered his letter to STEVEN in GRANITE CAVE.", "A reward for a delivery.", PD_HAVE_FLAG, { 272, 0, 0 }, "RUSTBOROCITY|GRANITECAVE", 0 },
+    { "GO-GOGGLES", "Your rival gives them to you in LAVARIDGE TOWN after you beat FLANNERY. The ROUTE 111 desert is closed without them.", "After the fourth gym.", PD_HAVE_ITEM, { 279, 0, 0 }, "LAVARIDGETOWN|ROUTE111", 0 },
+    { "DEVON SCOPE", "STEVEN on ROUTE 120, after the invisible POKéMON on the bridge.", "East of FORTREE CITY.", PD_HAVE_ITEM, { 288, 0, 0 }, "ROUTE120|FORTREECITY", 0 },
+    { "WAILMER PAIL", "The PRETTY PETAL flower shop on ROUTE 104.", "A shop between PETALBURG CITY and RUSTBORO CITY.", PD_HAVE_ITEM, { 268, 0, 0 }, "ROUTE104", 0 },
+    { "SOOT SACK", "The GLASS WORKSHOP on ROUTE 113. Walk through the falling ash to collect it.", "Where it rains ash.", PD_HAVE_ITEM, { 270, 0, 0 }, "ROUTE113", 0 },
+    { "COIN CASE", "A woman in a MAUVILLE CITY house trades it for a HARBOR MAIL.", "A trade in MAUVILLE CITY.", PD_HAVE_ITEM, { 260, 0, 0 }, "MAUVILLECITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_emerald_p1_s1[] = {
-    { "HM01 CUT", "The CUTTER's house in RUSTBORO CITY.", "RUSTBORO CITY.", PD_HAVE_ITEM, { 339, 0, 0 }, "RUSTBOROCITY" },
-    { "HM02 FLY", "Your rival, after your battle on ROUTE 119.", "North of FORTREE CITY's route.", PD_HAVE_ITEM, { 340, 0, 0 }, "ROUTE119" },
-    { "HM03 SURF", "WALLY's father in PETALBURG CITY, after you beat NORMAN.", "After the fifth gym.", PD_HAVE_ITEM, { 341, 0, 0 }, "PETALBURGCITY" },
-    { "HM04 STRENGTH", "WANDA's boyfriend in RUSTURF TUNNEL, once you break the boulder there with ROCK SMASH.", "The tunnel east of RUSTBORO CITY.", PD_HAVE_ITEM, { 342, 0, 0 }, "RUSTURFTUNNEL" },
-    { "HM05 FLASH", "A hiker just inside GRANITE CAVE on DEWFORD's island.", "A dark cave.", PD_HAVE_ITEM, { 343, 0, 0 }, "GRANITECAVE" },
-    { "HM06 ROCK SMASH", "The ROCK SMASH GUY in a MAUVILLE CITY house.", "MAUVILLE CITY.", PD_HAVE_ITEM, { 344, 0, 0 }, "MAUVILLECITY" },
-    { "HM07 WATERFALL", "WALLACE in SOOTOPOLIS CITY, after the two ancient POKéMON are calmed.", "Late in the story, SOOTOPOLIS CITY.", PD_HAVE_ITEM, { 345, 0, 0 }, "SOOTOPOLISCITY" },
-    { "HM08 DIVE", "STEVEN at his house in MOSSDEEP CITY, after the SPACE CENTER.", "MOSSDEEP CITY.", PD_HAVE_ITEM, { 346, 0, 0 }, "MOSSDEEPCITY" },
+    { "HM01 CUT", "The CUTTER's house in RUSTBORO CITY.", "RUSTBORO CITY.", PD_HAVE_ITEM, { 339, 0, 0 }, "RUSTBOROCITY", 0 },
+    { "HM02 FLY", "Your rival, after your battle on ROUTE 119.", "North of FORTREE CITY's route.", PD_HAVE_ITEM, { 340, 0, 0 }, "ROUTE119", 0 },
+    { "HM03 SURF", "WALLY's father in PETALBURG CITY, after you beat NORMAN.", "After the fifth gym.", PD_HAVE_ITEM, { 341, 0, 0 }, "PETALBURGCITY", 0 },
+    { "HM04 STRENGTH", "WANDA's boyfriend in RUSTURF TUNNEL, once you break the boulder there with ROCK SMASH.", "The tunnel east of RUSTBORO CITY.", PD_HAVE_ITEM, { 342, 0, 0 }, "RUSTURFTUNNEL", 0 },
+    { "HM05 FLASH", "A hiker just inside GRANITE CAVE on DEWFORD's island.", "A dark cave.", PD_HAVE_ITEM, { 343, 0, 0 }, "GRANITECAVE", 0 },
+    { "HM06 ROCK SMASH", "The ROCK SMASH GUY in a MAUVILLE CITY house.", "MAUVILLE CITY.", PD_HAVE_ITEM, { 344, 0, 0 }, "MAUVILLECITY", 0 },
+    { "HM07 WATERFALL", "WALLACE in SOOTOPOLIS CITY, after the two ancient POKéMON are calmed.", "Late in the story, SOOTOPOLIS CITY.", PD_HAVE_ITEM, { 345, 0, 0 }, "SOOTOPOLISCITY", 0 },
+    { "HM08 DIVE", "STEVEN at his house in MOSSDEEP CITY, after the SPACE CENTER.", "MOSSDEEP CITY.", PD_HAVE_ITEM, { 346, 0, 0 }, "MOSSDEEPCITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_emerald_p1_s2[] = {
-    { "Evolution stones", "The TREASURE HUNTER's house on ROUTE 124 swaps shards found by DIVING: RED for a FIRE STONE, YELLOW for THUNDER, BLUE for WATER, GREEN for LEAF. Some lie around too: FIERY PATH (FIRE), ROUTE 119 (LEAF), NEW MAUVILLE (THUNDER), the ABANDONED SHIP (WATER), METEOR FALLS (MOON).", "Diving treasure.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE124" },
-    { "MOVE DELETER", "A house in LILYCOVE CITY.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "LILYCOVECITY" },
-    { "MOVE TUTOR", "A house in FALLARBOR TOWN. Bring a HEART SCALE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "FALLARBORTOWN" },
+    { "Evolution stones", "The TREASURE HUNTER's house on ROUTE 124 swaps shards found by DIVING: RED for a FIRE STONE, YELLOW for THUNDER, BLUE for WATER, GREEN for LEAF. Some lie around too: FIERY PATH (FIRE), ROUTE 119 (LEAF), NEW MAUVILLE (THUNDER), the ABANDONED SHIP (WATER), METEOR FALLS (MOON).", "Diving treasure.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE124", 1 },
+    { "MOVE DELETER", "A house in LILYCOVE CITY.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "LILYCOVECITY", 0 },
+    { "MOVE TUTOR", "A house in FALLARBOR TOWN. Bring a HEART SCALE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "FALLARBORTOWN", 0 },
 };
 static const struct pd_guide_entry pd_guide_emerald_p1_s3[] = {
-    { "CASTFORM", "The WEATHER INSTITUTE on ROUTE 119 gives it to you after you drive TEAM AQUA out.", "A research building.", PD_HAVE_CAUGHT, { 351, 0, 0 }, "ROUTE119" },
-    { "WYNAUT (egg)", "An old woman in LAVARIDGE TOWN.", "A hot-spring town.", PD_HAVE_CAUGHT, { 360, 0, 0 }, "LAVARIDGETOWN" },
-    { "LILEEP / ANORITH", "Pick the ROOT or CLAW FOSSIL at the top of the MIRAGE TOWER in the ROUTE 111 desert; DEVON CORP. 2F in RUSTBORO CITY revives it.", "A tower in the desert.", PD_HAVE_CAUGHT, { 345, 347, 0 }, "MIRAGETOWER|ROUTE111|RUSTBOROCITY" },
-    { "BELDUM", "STEVEN's house in MOSSDEEP CITY, after the HALL OF FAME.", "Post-game.", PD_HAVE_CAUGHT, { 374, 0, 0 }, "MOSSDEEPCITY" },
-    { "CHIKORITA / CYNDAQUIL / TOTODILE", "After the HALL OF FAME, catch every HOENN POKéMON (not JIRACHI or DEOXYS); PROF. BIRCH then lets you pick one.", "Post-game, and a full HOENN DEX.", PD_HAVE_CAUGHT, { 152, 155, 158 }, "LITTLEROOTTOWN" },
+    { "CASTFORM", "The WEATHER INSTITUTE on ROUTE 119 gives it to you after you drive TEAM AQUA out.", "A research building.", PD_HAVE_CAUGHT, { 351, 0, 0 }, "ROUTE119", 0 },
+    { "WYNAUT (egg)", "An old woman in LAVARIDGE TOWN.", "A hot-spring town.", PD_HAVE_CAUGHT, { 360, 0, 0 }, "LAVARIDGETOWN", 0 },
+    { "LILEEP / ANORITH", "Pick the ROOT or CLAW FOSSIL at the top of the MIRAGE TOWER in the ROUTE 111 desert; DEVON CORP. 2F in RUSTBORO CITY revives it.", "A tower in the desert.", PD_HAVE_CAUGHT, { 345, 347, 0 }, "MIRAGETOWER|ROUTE111|RUSTBOROCITY", 0 },
+    { "BELDUM", "STEVEN's house in MOSSDEEP CITY, after the HALL OF FAME.", "Post-game.", PD_HAVE_CAUGHT, { 374, 0, 0 }, "MOSSDEEPCITY", 0 },
+    { "CHIKORITA / CYNDAQUIL / TOTODILE", "After the HALL OF FAME, catch every HOENN POKéMON (not JIRACHI or DEOXYS); PROF. BIRCH then lets you pick one.", "Post-game, and a full HOENN DEX.", PD_HAVE_CAUGHT, { 152, 155, 158 }, "LITTLEROOTTOWN", 0 },
 };
 static const struct pd_guide_entry pd_guide_emerald_p1_s4[] = {
-    { "RAYQUAZA", "The top of the SKY PILLAR on ROUTE 131, once the story's SOOTOPOLIS CITY crisis is over. Some floors crack: ride the MACH BIKE across them.", "A tower in the sea near PACIFIDLOG TOWN.", PD_HAVE_CAUGHT, { 384, 0, 0 }, "SKYPILLAR|ROUTE131" },
-    { "GROUDON / KYOGRE", "After the HALL OF FAME, a scientist at the WEATHER INSTITUTE reports a drought or heavy rain on some route. A drought leads to TERRA CAVE (GROUDON), heavy rain to MARINE CAVE underwater (KYOGRE, use DIVE).", "Post-game - watch the weather reports.", PD_HAVE_CAUGHT, { 382, 383, 0 }, "ROUTE119|TERRACAVE|MARINECAVE" },
-    { "REGIROCK / REGICE / REGISTEEL", "First open the doors: put WAILORD first and RELICANTH last in your party and read the braille in the SEALED CHAMBER (DIVE on ROUTE 134). Then, after reading each ruin's braille: DESERT RUINS (ROUTE 111) - use ROCK SMASH; ANCIENT TOMB (ROUTE 120) - use FLASH; ISLAND CAVE (ROUTE 105) - walk one full lap along the walls.", "It starts under the sea, with two particular POKéMON.", PD_HAVE_CAUGHT, { 377, 378, 379 }, "SEALEDCHAMBER|ROUTE134|DESERTRUINS|ANCIENTTOMB|ISLANDCAVE" },
-    { "LATIAS / LATIOS", "After the HALL OF FAME, go home: a TV news flash asks the colour. RED makes LATIAS roam HOENN, BLUE makes LATIOS.", "Post-game, at home.", PD_HAVE_CAUGHT, { 380, 381, 0 }, "LITTLEROOTTOWN" },
-    { "KECLEON", "Invisible ones sit on ROUTES 119 and 120 and in FORTREE CITY. The DEVON SCOPE reveals them.", "You can't see it.", PD_HAVE_CAUGHT, { 352, 0, 0 }, "ROUTE119|ROUTE120|FORTREECITY" },
+    { "RAYQUAZA", "The top of the SKY PILLAR on ROUTE 131, once the story's SOOTOPOLIS CITY crisis is over. Some floors crack: ride the MACH BIKE across them.", "A tower in the sea near PACIFIDLOG TOWN.", PD_HAVE_CAUGHT, { 384, 0, 0 }, "SKYPILLAR|ROUTE131", 0 },
+    { "GROUDON / KYOGRE", "After the HALL OF FAME, a scientist at the WEATHER INSTITUTE reports a drought or heavy rain on some route. A drought leads to TERRA CAVE (GROUDON), heavy rain to MARINE CAVE underwater (KYOGRE, use DIVE).", "Post-game - watch the weather reports.", PD_HAVE_CAUGHT, { 382, 383, 0 }, "ROUTE119|TERRACAVE|MARINECAVE", 0 },
+    { "REGIROCK / REGICE / REGISTEEL", "First open the doors: put WAILORD first and RELICANTH last in your party and read the braille in the SEALED CHAMBER (DIVE on ROUTE 134). Then, after reading each ruin's braille: DESERT RUINS (ROUTE 111) - use ROCK SMASH; ANCIENT TOMB (ROUTE 120) - use FLASH; ISLAND CAVE (ROUTE 105) - walk one full lap along the walls.", "It starts under the sea, with two particular POKéMON.", PD_HAVE_CAUGHT, { 377, 378, 379 }, "SEALEDCHAMBER|ROUTE134|DESERTRUINS|ANCIENTTOMB|ISLANDCAVE", 0 },
+    { "LATIAS / LATIOS", "After the HALL OF FAME, go home: a TV news flash asks the colour. RED makes LATIAS roam HOENN, BLUE makes LATIOS.", "Post-game, at home.", PD_HAVE_CAUGHT, { 380, 381, 0 }, "LITTLEROOTTOWN", 0 },
+    { "KECLEON", "Invisible ones sit on ROUTES 119 and 120 and in FORTREE CITY. The DEVON SCOPE reveals them.", "You can't see it.", PD_HAVE_CAUGHT, { 352, 0, 0 }, "ROUTE119|ROUTE120|FORTREECITY", 0 },
 };
 static const struct pd_guide_section pd_guide_emerald_p1[] = {
-    { "KEY ITEMS", NULL, pd_guide_emerald_p1_s0, 13 },
-    { "HMs", NULL, pd_guide_emerald_p1_s1, 8 },
-    { "SHOPS & SERVICES", NULL, pd_guide_emerald_p1_s2, 3 },
-    { "GIFT POKéMON", NULL, pd_guide_emerald_p1_s3, 5 },
-    { "LEGENDARY POKéMON", NULL, pd_guide_emerald_p1_s4, 5 },
+    { "KEY ITEMS", NULL, pd_guide_emerald_p1_s0, 13, 0 },
+    { "HMs", NULL, pd_guide_emerald_p1_s1, 8, 0 },
+    { "SHOPS & SERVICES", NULL, pd_guide_emerald_p1_s2, 3, 0 },
+    { "GIFT POKéMON", NULL, pd_guide_emerald_p1_s3, 5, 1 },
+    { "LEGENDARY POKéMON", NULL, pd_guide_emerald_p1_s4, 5, 1 },
 };
 static const struct pd_guide_entry pd_guide_emerald_p2_s0[] = {
-    { "How do I get to DEWFORD TOWN?", "MR. BRINEY sails you from his cottage on ROUTE 104 once you've rescued his PEEKO from TEAM AQUA in RUSTURF TUNNEL.", "An old sailor lost his pet.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE104|RUSTURFTUNNEL" },
-    { "Where are the stolen DEVON GOODS?", "A TEAM AQUA grunt fled into RUSTURF TUNNEL, east of RUSTBORO CITY. Beat him there.", "Follow the thief east.", PD_HAVE_NONE, { 0, 0, 0 }, "RUSTBOROCITY|RUSTURFTUNNEL" },
-    { "PETALBURG CITY's gym won't let me in", "Your father NORMAN battles you once you have four badges.", "Come back with more badges.", PD_HAVE_NONE, { 0, 0, 0 }, "PETALBURGCITY" },
+    { "How do I get to DEWFORD TOWN?", "MR. BRINEY sails you from his cottage on ROUTE 104 once you've rescued his PEEKO from TEAM AQUA in RUSTURF TUNNEL.", "An old sailor lost his pet.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE104|RUSTURFTUNNEL", 0 },
+    { "Where are the stolen DEVON GOODS?", "A TEAM AQUA grunt fled into RUSTURF TUNNEL, east of RUSTBORO CITY. Beat him there.", "Follow the thief east.", PD_HAVE_NONE, { 0, 0, 0 }, "RUSTBOROCITY|RUSTURFTUNNEL", 0 },
+    { "PETALBURG CITY's gym won't let me in", "Your father NORMAN battles you once you have four badges.", "Come back with more badges.", PD_HAVE_NONE, { 0, 0, 0 }, "PETALBURGCITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_emerald_p2_s1[] = {
-    { "TEAM MAGMA blocks the cable car on ROUTE 112", "They leave after the scene at METEOR FALLS - go north from MAUVILLE CITY on ROUTE 111, then west on ROUTE 113 to FALLARBOR TOWN and ROUTE 114.", "Go around the mountain.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE112|METEORFALLS|MTCHIMNEY" },
-    { "A sandstorm keeps pushing me back on ROUTE 111", "You need the GO-GOGGLES, from your rival in LAVARIDGE TOWN after the fourth badge.", "Protect your eyes.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE111" },
-    { "Something invisible blocks FORTREE CITY's gym", "It's a KECLEON. Get the DEVON SCOPE from STEVEN on ROUTE 120, then use it on the blocked spot.", "Look east of FORTREE CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "FORTREECITY|ROUTE120" },
+    { "TEAM MAGMA blocks the cable car on ROUTE 112", "They leave after the scene at METEOR FALLS - go north from MAUVILLE CITY on ROUTE 111, then west on ROUTE 113 to FALLARBOR TOWN and ROUTE 114.", "Go around the mountain.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE112|METEORFALLS|MTCHIMNEY", 0 },
+    { "A sandstorm keeps pushing me back on ROUTE 111", "You need the GO-GOGGLES, from your rival in LAVARIDGE TOWN after the fourth badge.", "Protect your eyes.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE111", 0 },
+    { "Something invisible blocks FORTREE CITY's gym", "It's a KECLEON. Get the DEVON SCOPE from STEVEN on ROUTE 120, then use it on the blocked spot.", "Look east of FORTREE CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "FORTREECITY|ROUTE120", 0 },
 };
 static const struct pd_guide_entry pd_guide_emerald_p2_s2[] = {
-    { "How do I get into SOOTOPOLIS CITY?", "It sits inside a crater: DIVE down on ROUTE 126 and surface inside.", "From below.", PD_HAVE_NONE, { 0, 0, 0 }, "SOOTOPOLISCITY|ROUTE126" },
-    { "SOOTOPOLIS CITY's gym is closed", "Calm the two ancient POKéMON first: WALLACE sends you to the SKY PILLAR on ROUTE 131.", "Someone in SOOTOPOLIS CITY knows what to do.", PD_HAVE_NONE, { 0, 0, 0 }, "SOOTOPOLISCITY|SKYPILLAR" },
-    { "How do I reach EVER GRANDE CITY?", "It's up a waterfall: you need HM07 WATERFALL (from WALLACE) and the RAIN BADGE.", "Go up.", PD_HAVE_NONE, { 0, 0, 0 }, "EVERGRANDECITY|ROUTE128" },
+    { "How do I get into SOOTOPOLIS CITY?", "It sits inside a crater: DIVE down on ROUTE 126 and surface inside.", "From below.", PD_HAVE_NONE, { 0, 0, 0 }, "SOOTOPOLISCITY|ROUTE126", 0 },
+    { "SOOTOPOLIS CITY's gym is closed", "Calm the two ancient POKéMON first: WALLACE sends you to the SKY PILLAR on ROUTE 131.", "Someone in SOOTOPOLIS CITY knows what to do.", PD_HAVE_NONE, { 0, 0, 0 }, "SOOTOPOLISCITY|SKYPILLAR", 0 },
+    { "How do I reach EVER GRANDE CITY?", "It's up a waterfall: you need HM07 WATERFALL (from WALLACE) and the RAIN BADGE.", "Go up.", PD_HAVE_NONE, { 0, 0, 0 }, "EVERGRANDECITY|ROUTE128", 0 },
 };
 static const struct pd_guide_section pd_guide_emerald_p2[] = {
-    { "EARLY GAME", NULL, pd_guide_emerald_p2_s0, 3 },
-    { "MID GAME", NULL, pd_guide_emerald_p2_s1, 3 },
-    { "LATE GAME", NULL, pd_guide_emerald_p2_s2, 3 },
+    { "EARLY GAME", NULL, pd_guide_emerald_p2_s0, 3, 0 },
+    { "MID GAME", NULL, pd_guide_emerald_p2_s1, 3, 0 },
+    { "LATE GAME", NULL, pd_guide_emerald_p2_s2, 3, 0 },
 };
 static const struct pd_guide_page pd_guide_emerald_pages[] = {
-    { "TIPS", pd_guide_emerald_p0, 4 },
+    { "TIPS", pd_guide_emerald_p0, 5 },
     { "WHERE IS", pd_guide_emerald_p1, 5 },
     { "STUCK?", pd_guide_emerald_p2, 3 },
 };
@@ -364,98 +376,98 @@ const struct pd_guide pd_guide_emerald = {
 };
 
 static const struct pd_guide_entry pd_guide_ruby_p0_s0[] = {
-    { "Running", "Hold B to run once you have the RUNNING SHOES.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Two bikes", "The MACH BIKE is the fast one - fast enough to cross cracked floors before they give way. The ACRO BIKE can hop and ride narrow rails. RYDEL in MAUVILLE CITY swaps one for the other.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Rematches", "Trainers you've beaten are listed in the POKéNAV's TRAINER'S EYES. Once you have five badges, walking around makes some of them want a rematch.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Running", "Hold B to run once you have the RUNNING SHOES.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Two bikes", "The MACH BIKE is the fast one - fast enough to cross cracked floors before they give way. The ACRO BIKE can hop and ride narrow rails. RYDEL in MAUVILLE CITY swaps one for the other.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Rematches", "Trainers you've beaten are listed in the POKéNAV's TRAINER'S EYES. Once you have five badges, walking around makes some of them want a rematch.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_ruby_p0_s1[] = {
-    { "Physical or special?", "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "A traded POKéMON won't listen", "Traded POKéMON obey up to Lv10 with no badges, Lv30 with the KNUCKLE BADGE, Lv50 with the HEAT BADGE, Lv70 with the FEATHER BADGE, and always with the RAIN BADGE.", "It's about badges.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Poison outside battle", "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Physical or special?", "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "A traded POKéMON won't listen", "Traded POKéMON obey up to Lv10 with no badges, Lv30 with the KNUCKLE BADGE, Lv50 with the HEAT BADGE, Lv70 with the FEATHER BADGE, and always with the RAIN BADGE.", "It's about badges.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Poison outside battle", "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_ruby_p0_s2[] = {
-    { "Which badge unlocks which HM?", "CUT: STONE. FLASH: KNUCKLE. ROCK SMASH: DYNAMO. STRENGTH: HEAT. SURF: BALANCE. FLY: FEATHER. DIVE: MIND. WATERFALL: RAIN. A POKéMON in the party must know the move too.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Getting rid of an HM move", "HM moves can't be forgotten normally. The MOVE DELETER in LILYCOVE CITY removes them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Relearning moves", "The MOVE TUTOR in FALLARBOR TOWN teaches a forgotten move for one HEART SCALE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Which badge unlocks which HM?", "CUT: STONE. FLASH: KNUCKLE. ROCK SMASH: DYNAMO. STRENGTH: HEAT. SURF: BALANCE. FLY: FEATHER. DIVE: MIND. WATERFALL: RAIN. A POKéMON in the party must know the move too.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Getting rid of an HM move", "HM moves can't be forgotten normally. The MOVE DELETER in LILYCOVE CITY removes them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Relearning moves", "The MOVE TUTOR in FALLARBOR TOWN teaches a forgotten move for one HEART SCALE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_ruby_p0_s3[] = {
-    { "How long do I have?", "500 steps per visit. You can't use your own POKéMON - throw POKéBLOCKS, then SAFARI BALLS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "How long do I have?", "500 steps per visit. You can't use your own POKéMON - throw POKéBLOCKS, then SAFARI BALLS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_ruby_p0[] = {
-    { "CONTROLS", NULL, pd_guide_ruby_p0_s0, 3 },
-    { "BATTLES", NULL, pd_guide_ruby_p0_s1, 3 },
-    { "HMs", NULL, pd_guide_ruby_p0_s2, 3 },
-    { "SAFARI ZONE", NULL, pd_guide_ruby_p0_s3, 1 },
+    { "CONTROLS", NULL, pd_guide_ruby_p0_s0, 3, 0 },
+    { "BATTLES", NULL, pd_guide_ruby_p0_s1, 3, 0 },
+    { "HMs", NULL, pd_guide_ruby_p0_s2, 3, 0 },
+    { "SAFARI ZONE", NULL, pd_guide_ruby_p0_s3, 1, 0 },
 };
 static const struct pd_guide_entry pd_guide_ruby_p1_s0[] = {
-    { "RUNNING SHOES", "MOM gives them to you in LITTLEROOT TOWN, on your way out after PROF. BIRCH hands you the POKéDEX.", "Someone at home.", PD_HAVE_FLAG, { 2144, 0, 0 }, "LITTLEROOTTOWN" },
-    { "POKéNAV", "MR. STONE on DEVON CORP. 3F in RUSTBORO CITY, after you bring back the stolen DEVON GOODS.", "The company in RUSTBORO CITY.", PD_HAVE_FLAG, { 188, 0, 0 }, "RUSTBOROCITY" },
-    { "BIKE", "RYDEL's bike shop in MAUVILLE CITY - pick the MACH or the ACRO BIKE.", "A shop in MAUVILLE CITY.", PD_HAVE_FLAG, { 90, 0, 0 }, "MAUVILLECITY" },
-    { "OLD ROD", "A fisherman in DEWFORD TOWN.", "An island town.", PD_HAVE_ITEM, { 262, 0, 0 }, "DEWFORDTOWN" },
-    { "GOOD ROD", "A fisherman on ROUTE 118.", "East of MAUVILLE CITY.", PD_HAVE_ITEM, { 263, 0, 0 }, "ROUTE118" },
-    { "SUPER ROD", "A fisherman's house in MOSSDEEP CITY.", "An island city in the east.", PD_HAVE_ITEM, { 264, 0, 0 }, "MOSSDEEPCITY" },
-    { "ITEMFINDER", "Your rival gives it to you after your battle on ROUTE 110.", "North of SLATEPORT CITY.", PD_HAVE_ITEM, { 261, 0, 0 }, "ROUTE110" },
-    { "EXP. SHARE", "MR. STONE at DEVON CORP. 3F, once you've delivered his letter to STEVEN in GRANITE CAVE.", "A reward for a delivery.", PD_HAVE_FLAG, { 272, 0, 0 }, "RUSTBOROCITY|GRANITECAVE" },
-    { "GO-GOGGLES", "Your rival gives them to you in LAVARIDGE TOWN after you beat FLANNERY. The ROUTE 111 desert is closed without them.", "After the fourth gym.", PD_HAVE_ITEM, { 279, 0, 0 }, "LAVARIDGETOWN|ROUTE111" },
-    { "DEVON SCOPE", "STEVEN on ROUTE 120, after the invisible POKéMON on the bridge.", "East of FORTREE CITY.", PD_HAVE_ITEM, { 288, 0, 0 }, "ROUTE120|FORTREECITY" },
-    { "WAILMER PAIL", "The PRETTY PETAL flower shop on ROUTE 104.", "A shop between PETALBURG CITY and RUSTBORO CITY.", PD_HAVE_ITEM, { 268, 0, 0 }, "ROUTE104" },
-    { "SOOT SACK", "The GLASS WORKSHOP on ROUTE 113. Walk through the falling ash to collect it.", "Where it rains ash.", PD_HAVE_ITEM, { 270, 0, 0 }, "ROUTE113" },
-    { "COIN CASE", "A woman in a MAUVILLE CITY house trades it for a HARBOR MAIL.", "A trade in MAUVILLE CITY.", PD_HAVE_ITEM, { 260, 0, 0 }, "MAUVILLECITY" },
+    { "RUNNING SHOES", "MOM gives them to you in LITTLEROOT TOWN, on your way out after PROF. BIRCH hands you the POKéDEX.", "Someone at home.", PD_HAVE_FLAG, { 2144, 0, 0 }, "LITTLEROOTTOWN", 0 },
+    { "POKéNAV", "MR. STONE on DEVON CORP. 3F in RUSTBORO CITY, after you bring back the stolen DEVON GOODS.", "The company in RUSTBORO CITY.", PD_HAVE_FLAG, { 188, 0, 0 }, "RUSTBOROCITY", 0 },
+    { "BIKE", "RYDEL's bike shop in MAUVILLE CITY - pick the MACH or the ACRO BIKE.", "A shop in MAUVILLE CITY.", PD_HAVE_FLAG, { 90, 0, 0 }, "MAUVILLECITY", 0 },
+    { "OLD ROD", "A fisherman in DEWFORD TOWN.", "An island town.", PD_HAVE_ITEM, { 262, 0, 0 }, "DEWFORDTOWN", 0 },
+    { "GOOD ROD", "A fisherman on ROUTE 118.", "East of MAUVILLE CITY.", PD_HAVE_ITEM, { 263, 0, 0 }, "ROUTE118", 0 },
+    { "SUPER ROD", "A fisherman's house in MOSSDEEP CITY.", "An island city in the east.", PD_HAVE_ITEM, { 264, 0, 0 }, "MOSSDEEPCITY", 0 },
+    { "ITEMFINDER", "Your rival gives it to you after your battle on ROUTE 110.", "North of SLATEPORT CITY.", PD_HAVE_ITEM, { 261, 0, 0 }, "ROUTE110", 0 },
+    { "EXP. SHARE", "MR. STONE at DEVON CORP. 3F, once you've delivered his letter to STEVEN in GRANITE CAVE.", "A reward for a delivery.", PD_HAVE_FLAG, { 272, 0, 0 }, "RUSTBOROCITY|GRANITECAVE", 0 },
+    { "GO-GOGGLES", "Your rival gives them to you in LAVARIDGE TOWN after you beat FLANNERY. The ROUTE 111 desert is closed without them.", "After the fourth gym.", PD_HAVE_ITEM, { 279, 0, 0 }, "LAVARIDGETOWN|ROUTE111", 0 },
+    { "DEVON SCOPE", "STEVEN on ROUTE 120, after the invisible POKéMON on the bridge.", "East of FORTREE CITY.", PD_HAVE_ITEM, { 288, 0, 0 }, "ROUTE120|FORTREECITY", 0 },
+    { "WAILMER PAIL", "The PRETTY PETAL flower shop on ROUTE 104.", "A shop between PETALBURG CITY and RUSTBORO CITY.", PD_HAVE_ITEM, { 268, 0, 0 }, "ROUTE104", 0 },
+    { "SOOT SACK", "The GLASS WORKSHOP on ROUTE 113. Walk through the falling ash to collect it.", "Where it rains ash.", PD_HAVE_ITEM, { 270, 0, 0 }, "ROUTE113", 0 },
+    { "COIN CASE", "A woman in a MAUVILLE CITY house trades it for a HARBOR MAIL.", "A trade in MAUVILLE CITY.", PD_HAVE_ITEM, { 260, 0, 0 }, "MAUVILLECITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_ruby_p1_s1[] = {
-    { "HM01 CUT", "The CUTTER's house in RUSTBORO CITY.", "RUSTBORO CITY.", PD_HAVE_ITEM, { 339, 0, 0 }, "RUSTBOROCITY" },
-    { "HM02 FLY", "Your rival, after your battle on ROUTE 119.", "North of FORTREE CITY's route.", PD_HAVE_ITEM, { 340, 0, 0 }, "ROUTE119" },
-    { "HM03 SURF", "WALLY's father in PETALBURG CITY, after you beat NORMAN.", "After the fifth gym.", PD_HAVE_ITEM, { 341, 0, 0 }, "PETALBURGCITY" },
-    { "HM04 STRENGTH", "WANDA's boyfriend in RUSTURF TUNNEL, once you break the boulder there with ROCK SMASH.", "The tunnel east of RUSTBORO CITY.", PD_HAVE_ITEM, { 342, 0, 0 }, "RUSTURFTUNNEL" },
-    { "HM05 FLASH", "A hiker just inside GRANITE CAVE on DEWFORD's island.", "A dark cave.", PD_HAVE_ITEM, { 343, 0, 0 }, "GRANITECAVE" },
-    { "HM06 ROCK SMASH", "The ROCK SMASH GUY in a MAUVILLE CITY house.", "MAUVILLE CITY.", PD_HAVE_ITEM, { 344, 0, 0 }, "MAUVILLECITY" },
-    { "HM07 WATERFALL", "An item ball on CAVE OF ORIGIN B3F, on your way down to GROUDON.", "Under SOOTOPOLIS CITY, late in the story.", PD_HAVE_ITEM, { 345, 0, 0 }, "CAVEOFORIGIN|SOOTOPOLISCITY" },
-    { "HM08 DIVE", "STEVEN hands it to you the first time you visit his house in MOSSDEEP CITY.", "MOSSDEEP CITY.", PD_HAVE_FLAG, { 123, 0, 0 }, "MOSSDEEPCITY" },
+    { "HM01 CUT", "The CUTTER's house in RUSTBORO CITY.", "RUSTBORO CITY.", PD_HAVE_ITEM, { 339, 0, 0 }, "RUSTBOROCITY", 0 },
+    { "HM02 FLY", "Your rival, after your battle on ROUTE 119.", "North of FORTREE CITY's route.", PD_HAVE_ITEM, { 340, 0, 0 }, "ROUTE119", 0 },
+    { "HM03 SURF", "WALLY's father in PETALBURG CITY, after you beat NORMAN.", "After the fifth gym.", PD_HAVE_ITEM, { 341, 0, 0 }, "PETALBURGCITY", 0 },
+    { "HM04 STRENGTH", "WANDA's boyfriend in RUSTURF TUNNEL, once you break the boulder there with ROCK SMASH.", "The tunnel east of RUSTBORO CITY.", PD_HAVE_ITEM, { 342, 0, 0 }, "RUSTURFTUNNEL", 0 },
+    { "HM05 FLASH", "A hiker just inside GRANITE CAVE on DEWFORD's island.", "A dark cave.", PD_HAVE_ITEM, { 343, 0, 0 }, "GRANITECAVE", 0 },
+    { "HM06 ROCK SMASH", "The ROCK SMASH GUY in a MAUVILLE CITY house.", "MAUVILLE CITY.", PD_HAVE_ITEM, { 344, 0, 0 }, "MAUVILLECITY", 0 },
+    { "HM07 WATERFALL", "An item ball on CAVE OF ORIGIN B3F, on your way down to GROUDON.", "Under SOOTOPOLIS CITY, late in the story.", PD_HAVE_ITEM, { 345, 0, 0 }, "CAVEOFORIGIN|SOOTOPOLISCITY", 0 },
+    { "HM08 DIVE", "STEVEN hands it to you the first time you visit his house in MOSSDEEP CITY.", "MOSSDEEP CITY.", PD_HAVE_FLAG, { 123, 0, 0 }, "MOSSDEEPCITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_ruby_p1_s2[] = {
-    { "Evolution stones", "The TREASURE HUNTER's house on ROUTE 124 swaps shards found by DIVING: RED for a FIRE STONE, YELLOW for THUNDER, BLUE for WATER, GREEN for LEAF.", "Diving treasure.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE124" },
-    { "MOVE DELETER", "A house in LILYCOVE CITY.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "LILYCOVECITY" },
-    { "MOVE TUTOR", "A house in FALLARBOR TOWN. Bring a HEART SCALE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "FALLARBORTOWN" },
+    { "Evolution stones", "The TREASURE HUNTER's house on ROUTE 124 swaps shards found by DIVING: RED for a FIRE STONE, YELLOW for THUNDER, BLUE for WATER, GREEN for LEAF.", "Diving treasure.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE124", 0 },
+    { "MOVE DELETER", "A house in LILYCOVE CITY.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "LILYCOVECITY", 0 },
+    { "MOVE TUTOR", "A house in FALLARBOR TOWN. Bring a HEART SCALE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "FALLARBORTOWN", 0 },
 };
 static const struct pd_guide_entry pd_guide_ruby_p1_s3[] = {
-    { "CASTFORM", "The WEATHER INSTITUTE on ROUTE 119 gives it to you after you drive TEAM MAGMA out.", "A research building.", PD_HAVE_CAUGHT, { 351, 0, 0 }, "ROUTE119" },
-    { "WYNAUT (egg)", "An old woman in LAVARIDGE TOWN.", "A hot-spring town.", PD_HAVE_CAUGHT, { 360, 0, 0 }, "LAVARIDGETOWN" },
-    { "LILEEP / ANORITH", "In the ROUTE 111 desert, take the ROOT or the CLAW FOSSIL (the other sinks into the sand); DEVON CORP. 2F in RUSTBORO CITY revives it.", "Buried in the desert.", PD_HAVE_CAUGHT, { 345, 347, 0 }, "ROUTE111|RUSTBOROCITY" },
-    { "BELDUM", "STEVEN's house in MOSSDEEP CITY, after the HALL OF FAME.", "Post-game.", PD_HAVE_CAUGHT, { 374, 0, 0 }, "MOSSDEEPCITY" },
+    { "CASTFORM", "The WEATHER INSTITUTE on ROUTE 119 gives it to you after you drive TEAM MAGMA out.", "A research building.", PD_HAVE_CAUGHT, { 351, 0, 0 }, "ROUTE119", 0 },
+    { "WYNAUT (egg)", "An old woman in LAVARIDGE TOWN.", "A hot-spring town.", PD_HAVE_CAUGHT, { 360, 0, 0 }, "LAVARIDGETOWN", 0 },
+    { "LILEEP / ANORITH", "In the ROUTE 111 desert, take the ROOT or the CLAW FOSSIL (the other sinks into the sand); DEVON CORP. 2F in RUSTBORO CITY revives it.", "Buried in the desert.", PD_HAVE_CAUGHT, { 345, 347, 0 }, "ROUTE111|RUSTBOROCITY", 0 },
+    { "BELDUM", "STEVEN's house in MOSSDEEP CITY, after the HALL OF FAME.", "Post-game.", PD_HAVE_CAUGHT, { 374, 0, 0 }, "MOSSDEEPCITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_ruby_p1_s4[] = {
-    { "GROUDON", "Lv45, at the bottom of the CAVE OF ORIGIN in SOOTOPOLIS CITY - the story takes you there.", "Its cave is under SOOTOPOLIS CITY.", PD_HAVE_CAUGHT, { 383, 0, 0 }, "CAVEOFORIGIN|SOOTOPOLISCITY" },
-    { "RAYQUAZA", "Lv70, at the top of the SKY PILLAR on ROUTE 131. Some floors crack: ride the MACH BIKE across them.", "A tower in the sea near PACIFIDLOG TOWN.", PD_HAVE_CAUGHT, { 384, 0, 0 }, "SKYPILLAR|ROUTE131" },
-    { "REGIROCK / REGICE / REGISTEEL", "First open the doors: in the SEALED CHAMBER (DIVE on ROUTE 134) use DIG on the outer room's braille, then read the inner room's with RELICANTH first and WAILORD last in your party. Then, after reading each ruin's braille: DESERT RUINS (ROUTE 111) - use STRENGTH; ANCIENT TOMB (ROUTE 120) - use FLY; ISLAND CAVE (ROUTE 105) - wait two minutes without pressing anything.", "It starts under the sea, with two particular POKéMON.", PD_HAVE_CAUGHT, { 377, 378, 379 }, "SEALEDCHAMBER|ROUTE134|DESERTRUINS|ANCIENTTOMB|ISLANDCAVE" },
-    { "LATIOS", "After the HALL OF FAME, go home and watch the TV news: LATIOS starts roaming HOENN.", "Post-game, at home.", PD_HAVE_CAUGHT, { 381, 0, 0 }, "LITTLEROOTTOWN" },
-    { "KECLEON", "Invisible ones sit on ROUTES 119 and 120 and in FORTREE CITY. The DEVON SCOPE reveals them.", "You can't see it.", PD_HAVE_CAUGHT, { 352, 0, 0 }, "ROUTE119|ROUTE120|FORTREECITY" },
+    { "GROUDON", "Lv45, at the bottom of the CAVE OF ORIGIN in SOOTOPOLIS CITY - the story takes you there.", "Its cave is under SOOTOPOLIS CITY.", PD_HAVE_CAUGHT, { 383, 0, 0 }, "CAVEOFORIGIN|SOOTOPOLISCITY", 0 },
+    { "RAYQUAZA", "Lv70, at the top of the SKY PILLAR on ROUTE 131. Some floors crack: ride the MACH BIKE across them.", "A tower in the sea near PACIFIDLOG TOWN.", PD_HAVE_CAUGHT, { 384, 0, 0 }, "SKYPILLAR|ROUTE131", 0 },
+    { "REGIROCK / REGICE / REGISTEEL", "First open the doors: in the SEALED CHAMBER (DIVE on ROUTE 134) use DIG on the outer room's braille, then read the inner room's with RELICANTH first and WAILORD last in your party. Then, after reading each ruin's braille: DESERT RUINS (ROUTE 111) - use STRENGTH; ANCIENT TOMB (ROUTE 120) - use FLY; ISLAND CAVE (ROUTE 105) - wait two minutes without pressing anything.", "It starts under the sea, with two particular POKéMON.", PD_HAVE_CAUGHT, { 377, 378, 379 }, "SEALEDCHAMBER|ROUTE134|DESERTRUINS|ANCIENTTOMB|ISLANDCAVE", 0 },
+    { "LATIOS", "After the HALL OF FAME, go home and watch the TV news: LATIOS starts roaming HOENN.", "Post-game, at home.", PD_HAVE_CAUGHT, { 381, 0, 0 }, "LITTLEROOTTOWN", 0 },
+    { "KECLEON", "Invisible ones sit on ROUTES 119 and 120 and in FORTREE CITY. The DEVON SCOPE reveals them.", "You can't see it.", PD_HAVE_CAUGHT, { 352, 0, 0 }, "ROUTE119|ROUTE120|FORTREECITY", 0 },
 };
 static const struct pd_guide_section pd_guide_ruby_p1[] = {
-    { "KEY ITEMS", NULL, pd_guide_ruby_p1_s0, 13 },
-    { "HMs", NULL, pd_guide_ruby_p1_s1, 8 },
-    { "SHOPS & SERVICES", NULL, pd_guide_ruby_p1_s2, 3 },
-    { "GIFT POKéMON", NULL, pd_guide_ruby_p1_s3, 4 },
-    { "LEGENDARY POKéMON", NULL, pd_guide_ruby_p1_s4, 5 },
+    { "KEY ITEMS", NULL, pd_guide_ruby_p1_s0, 13, 0 },
+    { "HMs", NULL, pd_guide_ruby_p1_s1, 8, 0 },
+    { "SHOPS & SERVICES", NULL, pd_guide_ruby_p1_s2, 3, 0 },
+    { "GIFT POKéMON", NULL, pd_guide_ruby_p1_s3, 4, 0 },
+    { "LEGENDARY POKéMON", NULL, pd_guide_ruby_p1_s4, 5, 0 },
 };
 static const struct pd_guide_entry pd_guide_ruby_p2_s0[] = {
-    { "How do I get to DEWFORD TOWN?", "MR. BRINEY sails you from his cottage on ROUTE 104 once you've rescued his PEEKO from TEAM MAGMA in RUSTURF TUNNEL.", "An old sailor lost his pet.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE104|RUSTURFTUNNEL" },
-    { "Where are the stolen DEVON GOODS?", "A TEAM MAGMA grunt fled into RUSTURF TUNNEL, east of RUSTBORO CITY. Beat him there.", "Follow the thief east.", PD_HAVE_NONE, { 0, 0, 0 }, "RUSTBOROCITY|RUSTURFTUNNEL" },
-    { "PETALBURG CITY's gym won't let me in", "Your father NORMAN battles you once you have four badges.", "Come back with more badges.", PD_HAVE_NONE, { 0, 0, 0 }, "PETALBURGCITY" },
+    { "How do I get to DEWFORD TOWN?", "MR. BRINEY sails you from his cottage on ROUTE 104 once you've rescued his PEEKO from TEAM MAGMA in RUSTURF TUNNEL.", "An old sailor lost his pet.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE104|RUSTURFTUNNEL", 0 },
+    { "Where are the stolen DEVON GOODS?", "A TEAM MAGMA grunt fled into RUSTURF TUNNEL, east of RUSTBORO CITY. Beat him there.", "Follow the thief east.", PD_HAVE_NONE, { 0, 0, 0 }, "RUSTBOROCITY|RUSTURFTUNNEL", 0 },
+    { "PETALBURG CITY's gym won't let me in", "Your father NORMAN battles you once you have four badges.", "Come back with more badges.", PD_HAVE_NONE, { 0, 0, 0 }, "PETALBURGCITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_ruby_p2_s1[] = {
-    { "TEAM MAGMA blocks the cable car on ROUTE 112", "They leave after the scene at METEOR FALLS - go north from MAUVILLE CITY on ROUTE 111, then west on ROUTE 113 to FALLARBOR TOWN and ROUTE 114.", "Go around the mountain.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE112|METEORFALLS|MTCHIMNEY" },
-    { "A sandstorm keeps pushing me back on ROUTE 111", "You need the GO-GOGGLES, from your rival in LAVARIDGE TOWN after the fourth badge.", "Protect your eyes.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE111" },
-    { "Something invisible blocks FORTREE CITY's gym", "It's a KECLEON. Get the DEVON SCOPE from STEVEN on ROUTE 120, then use it on the blocked spot.", "Look east of FORTREE CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "FORTREECITY|ROUTE120" },
+    { "TEAM MAGMA blocks the cable car on ROUTE 112", "They leave after the scene at METEOR FALLS - go north from MAUVILLE CITY on ROUTE 111, then west on ROUTE 113 to FALLARBOR TOWN and ROUTE 114.", "Go around the mountain.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE112|METEORFALLS|MTCHIMNEY", 0 },
+    { "A sandstorm keeps pushing me back on ROUTE 111", "You need the GO-GOGGLES, from your rival in LAVARIDGE TOWN after the fourth badge.", "Protect your eyes.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE111", 0 },
+    { "Something invisible blocks FORTREE CITY's gym", "It's a KECLEON. Get the DEVON SCOPE from STEVEN on ROUTE 120, then use it on the blocked spot.", "Look east of FORTREE CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "FORTREECITY|ROUTE120", 0 },
 };
 static const struct pd_guide_entry pd_guide_ruby_p2_s2[] = {
-    { "How do I get into SOOTOPOLIS CITY?", "It sits inside a crater: DIVE down on ROUTE 126 and surface inside.", "From below.", PD_HAVE_NONE, { 0, 0, 0 }, "SOOTOPOLISCITY|ROUTE126" },
-    { "SOOTOPOLIS CITY's gym is closed", "End the crisis first: go down through the CAVE OF ORIGIN and face GROUDON at the bottom. WALLACE opens the gym afterwards.", "The cave in SOOTOPOLIS CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "SOOTOPOLISCITY|CAVEOFORIGIN" },
-    { "How do I reach EVER GRANDE CITY?", "It's up a waterfall: you need HM07 WATERFALL (in the CAVE OF ORIGIN) and the RAIN BADGE.", "Go up.", PD_HAVE_NONE, { 0, 0, 0 }, "EVERGRANDECITY|ROUTE128" },
+    { "How do I get into SOOTOPOLIS CITY?", "It sits inside a crater: DIVE down on ROUTE 126 and surface inside.", "From below.", PD_HAVE_NONE, { 0, 0, 0 }, "SOOTOPOLISCITY|ROUTE126", 0 },
+    { "SOOTOPOLIS CITY's gym is closed", "End the crisis first: go down through the CAVE OF ORIGIN and face GROUDON at the bottom. WALLACE opens the gym afterwards.", "The cave in SOOTOPOLIS CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "SOOTOPOLISCITY|CAVEOFORIGIN", 0 },
+    { "How do I reach EVER GRANDE CITY?", "It's up a waterfall: you need HM07 WATERFALL (in the CAVE OF ORIGIN) and the RAIN BADGE.", "Go up.", PD_HAVE_NONE, { 0, 0, 0 }, "EVERGRANDECITY|ROUTE128", 0 },
 };
 static const struct pd_guide_section pd_guide_ruby_p2[] = {
-    { "EARLY GAME", NULL, pd_guide_ruby_p2_s0, 3 },
-    { "MID GAME", NULL, pd_guide_ruby_p2_s1, 3 },
-    { "LATE GAME", NULL, pd_guide_ruby_p2_s2, 3 },
+    { "EARLY GAME", NULL, pd_guide_ruby_p2_s0, 3, 0 },
+    { "MID GAME", NULL, pd_guide_ruby_p2_s1, 3, 0 },
+    { "LATE GAME", NULL, pd_guide_ruby_p2_s2, 3, 0 },
 };
 static const struct pd_guide_page pd_guide_ruby_pages[] = {
     { "TIPS", pd_guide_ruby_p0, 4 },
@@ -482,98 +494,98 @@ const struct pd_guide pd_guide_ruby = {
 };
 
 static const struct pd_guide_entry pd_guide_sapphire_p0_s0[] = {
-    { "Running", "Hold B to run once you have the RUNNING SHOES.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Two bikes", "The MACH BIKE is the fast one - fast enough to cross cracked floors before they give way. The ACRO BIKE can hop and ride narrow rails. RYDEL in MAUVILLE CITY swaps one for the other.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Rematches", "Trainers you've beaten are listed in the POKéNAV's TRAINER'S EYES. Once you have five badges, walking around makes some of them want a rematch.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Running", "Hold B to run once you have the RUNNING SHOES.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Two bikes", "The MACH BIKE is the fast one - fast enough to cross cracked floors before they give way. The ACRO BIKE can hop and ride narrow rails. RYDEL in MAUVILLE CITY swaps one for the other.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Rematches", "Trainers you've beaten are listed in the POKéNAV's TRAINER'S EYES. Once you have five badges, walking around makes some of them want a rematch.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_sapphire_p0_s1[] = {
-    { "Physical or special?", "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "A traded POKéMON won't listen", "Traded POKéMON obey up to Lv10 with no badges, Lv30 with the KNUCKLE BADGE, Lv50 with the HEAT BADGE, Lv70 with the FEATHER BADGE, and always with the RAIN BADGE.", "It's about badges.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Poison outside battle", "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Physical or special?", "In this generation it's decided by the move's TYPE, not the move. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; NORMAL, FIGHTING, FLYING, POISON, GROUND, ROCK, BUG, GHOST and STEEL are physical.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "A traded POKéMON won't listen", "Traded POKéMON obey up to Lv10 with no badges, Lv30 with the KNUCKLE BADGE, Lv50 with the HEAT BADGE, Lv70 with the FEATHER BADGE, and always with the RAIN BADGE.", "It's about badges.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Poison outside battle", "Poison keeps hurting while you walk and can make a POKéMON faint. Cure it or heal at a POKéMON CENTER.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_sapphire_p0_s2[] = {
-    { "Which badge unlocks which HM?", "CUT: STONE. FLASH: KNUCKLE. ROCK SMASH: DYNAMO. STRENGTH: HEAT. SURF: BALANCE. FLY: FEATHER. DIVE: MIND. WATERFALL: RAIN. A POKéMON in the party must know the move too.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Getting rid of an HM move", "HM moves can't be forgotten normally. The MOVE DELETER in LILYCOVE CITY removes them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Relearning moves", "The MOVE TUTOR in FALLARBOR TOWN teaches a forgotten move for one HEART SCALE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Which badge unlocks which HM?", "CUT: STONE. FLASH: KNUCKLE. ROCK SMASH: DYNAMO. STRENGTH: HEAT. SURF: BALANCE. FLY: FEATHER. DIVE: MIND. WATERFALL: RAIN. A POKéMON in the party must know the move too.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Getting rid of an HM move", "HM moves can't be forgotten normally. The MOVE DELETER in LILYCOVE CITY removes them.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Relearning moves", "The MOVE TUTOR in FALLARBOR TOWN teaches a forgotten move for one HEART SCALE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_sapphire_p0_s3[] = {
-    { "How long do I have?", "500 steps per visit. You can't use your own POKéMON - throw POKéBLOCKS, then SAFARI BALLS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "How long do I have?", "500 steps per visit. You can't use your own POKéMON - throw POKéBLOCKS, then SAFARI BALLS.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_sapphire_p0[] = {
-    { "CONTROLS", NULL, pd_guide_sapphire_p0_s0, 3 },
-    { "BATTLES", NULL, pd_guide_sapphire_p0_s1, 3 },
-    { "HMs", NULL, pd_guide_sapphire_p0_s2, 3 },
-    { "SAFARI ZONE", NULL, pd_guide_sapphire_p0_s3, 1 },
+    { "CONTROLS", NULL, pd_guide_sapphire_p0_s0, 3, 0 },
+    { "BATTLES", NULL, pd_guide_sapphire_p0_s1, 3, 0 },
+    { "HMs", NULL, pd_guide_sapphire_p0_s2, 3, 0 },
+    { "SAFARI ZONE", NULL, pd_guide_sapphire_p0_s3, 1, 0 },
 };
 static const struct pd_guide_entry pd_guide_sapphire_p1_s0[] = {
-    { "RUNNING SHOES", "MOM gives them to you in LITTLEROOT TOWN, on your way out after PROF. BIRCH hands you the POKéDEX.", "Someone at home.", PD_HAVE_FLAG, { 2144, 0, 0 }, "LITTLEROOTTOWN" },
-    { "POKéNAV", "MR. STONE on DEVON CORP. 3F in RUSTBORO CITY, after you bring back the stolen DEVON GOODS.", "The company in RUSTBORO CITY.", PD_HAVE_FLAG, { 188, 0, 0 }, "RUSTBOROCITY" },
-    { "BIKE", "RYDEL's bike shop in MAUVILLE CITY - pick the MACH or the ACRO BIKE.", "A shop in MAUVILLE CITY.", PD_HAVE_FLAG, { 90, 0, 0 }, "MAUVILLECITY" },
-    { "OLD ROD", "A fisherman in DEWFORD TOWN.", "An island town.", PD_HAVE_ITEM, { 262, 0, 0 }, "DEWFORDTOWN" },
-    { "GOOD ROD", "A fisherman on ROUTE 118.", "East of MAUVILLE CITY.", PD_HAVE_ITEM, { 263, 0, 0 }, "ROUTE118" },
-    { "SUPER ROD", "A fisherman's house in MOSSDEEP CITY.", "An island city in the east.", PD_HAVE_ITEM, { 264, 0, 0 }, "MOSSDEEPCITY" },
-    { "ITEMFINDER", "Your rival gives it to you after your battle on ROUTE 110.", "North of SLATEPORT CITY.", PD_HAVE_ITEM, { 261, 0, 0 }, "ROUTE110" },
-    { "EXP. SHARE", "MR. STONE at DEVON CORP. 3F, once you've delivered his letter to STEVEN in GRANITE CAVE.", "A reward for a delivery.", PD_HAVE_FLAG, { 272, 0, 0 }, "RUSTBOROCITY|GRANITECAVE" },
-    { "GO-GOGGLES", "Your rival gives them to you in LAVARIDGE TOWN after you beat FLANNERY. The ROUTE 111 desert is closed without them.", "After the fourth gym.", PD_HAVE_ITEM, { 279, 0, 0 }, "LAVARIDGETOWN|ROUTE111" },
-    { "DEVON SCOPE", "STEVEN on ROUTE 120, after the invisible POKéMON on the bridge.", "East of FORTREE CITY.", PD_HAVE_ITEM, { 288, 0, 0 }, "ROUTE120|FORTREECITY" },
-    { "WAILMER PAIL", "The PRETTY PETAL flower shop on ROUTE 104.", "A shop between PETALBURG CITY and RUSTBORO CITY.", PD_HAVE_ITEM, { 268, 0, 0 }, "ROUTE104" },
-    { "SOOT SACK", "The GLASS WORKSHOP on ROUTE 113. Walk through the falling ash to collect it.", "Where it rains ash.", PD_HAVE_ITEM, { 270, 0, 0 }, "ROUTE113" },
-    { "COIN CASE", "A woman in a MAUVILLE CITY house trades it for a HARBOR MAIL.", "A trade in MAUVILLE CITY.", PD_HAVE_ITEM, { 260, 0, 0 }, "MAUVILLECITY" },
+    { "RUNNING SHOES", "MOM gives them to you in LITTLEROOT TOWN, on your way out after PROF. BIRCH hands you the POKéDEX.", "Someone at home.", PD_HAVE_FLAG, { 2144, 0, 0 }, "LITTLEROOTTOWN", 0 },
+    { "POKéNAV", "MR. STONE on DEVON CORP. 3F in RUSTBORO CITY, after you bring back the stolen DEVON GOODS.", "The company in RUSTBORO CITY.", PD_HAVE_FLAG, { 188, 0, 0 }, "RUSTBOROCITY", 0 },
+    { "BIKE", "RYDEL's bike shop in MAUVILLE CITY - pick the MACH or the ACRO BIKE.", "A shop in MAUVILLE CITY.", PD_HAVE_FLAG, { 90, 0, 0 }, "MAUVILLECITY", 0 },
+    { "OLD ROD", "A fisherman in DEWFORD TOWN.", "An island town.", PD_HAVE_ITEM, { 262, 0, 0 }, "DEWFORDTOWN", 0 },
+    { "GOOD ROD", "A fisherman on ROUTE 118.", "East of MAUVILLE CITY.", PD_HAVE_ITEM, { 263, 0, 0 }, "ROUTE118", 0 },
+    { "SUPER ROD", "A fisherman's house in MOSSDEEP CITY.", "An island city in the east.", PD_HAVE_ITEM, { 264, 0, 0 }, "MOSSDEEPCITY", 0 },
+    { "ITEMFINDER", "Your rival gives it to you after your battle on ROUTE 110.", "North of SLATEPORT CITY.", PD_HAVE_ITEM, { 261, 0, 0 }, "ROUTE110", 0 },
+    { "EXP. SHARE", "MR. STONE at DEVON CORP. 3F, once you've delivered his letter to STEVEN in GRANITE CAVE.", "A reward for a delivery.", PD_HAVE_FLAG, { 272, 0, 0 }, "RUSTBOROCITY|GRANITECAVE", 0 },
+    { "GO-GOGGLES", "Your rival gives them to you in LAVARIDGE TOWN after you beat FLANNERY. The ROUTE 111 desert is closed without them.", "After the fourth gym.", PD_HAVE_ITEM, { 279, 0, 0 }, "LAVARIDGETOWN|ROUTE111", 0 },
+    { "DEVON SCOPE", "STEVEN on ROUTE 120, after the invisible POKéMON on the bridge.", "East of FORTREE CITY.", PD_HAVE_ITEM, { 288, 0, 0 }, "ROUTE120|FORTREECITY", 0 },
+    { "WAILMER PAIL", "The PRETTY PETAL flower shop on ROUTE 104.", "A shop between PETALBURG CITY and RUSTBORO CITY.", PD_HAVE_ITEM, { 268, 0, 0 }, "ROUTE104", 0 },
+    { "SOOT SACK", "The GLASS WORKSHOP on ROUTE 113. Walk through the falling ash to collect it.", "Where it rains ash.", PD_HAVE_ITEM, { 270, 0, 0 }, "ROUTE113", 0 },
+    { "COIN CASE", "A woman in a MAUVILLE CITY house trades it for a HARBOR MAIL.", "A trade in MAUVILLE CITY.", PD_HAVE_ITEM, { 260, 0, 0 }, "MAUVILLECITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_sapphire_p1_s1[] = {
-    { "HM01 CUT", "The CUTTER's house in RUSTBORO CITY.", "RUSTBORO CITY.", PD_HAVE_ITEM, { 339, 0, 0 }, "RUSTBOROCITY" },
-    { "HM02 FLY", "Your rival, after your battle on ROUTE 119.", "North of FORTREE CITY's route.", PD_HAVE_ITEM, { 340, 0, 0 }, "ROUTE119" },
-    { "HM03 SURF", "WALLY's father in PETALBURG CITY, after you beat NORMAN.", "After the fifth gym.", PD_HAVE_ITEM, { 341, 0, 0 }, "PETALBURGCITY" },
-    { "HM04 STRENGTH", "WANDA's boyfriend in RUSTURF TUNNEL, once you break the boulder there with ROCK SMASH.", "The tunnel east of RUSTBORO CITY.", PD_HAVE_ITEM, { 342, 0, 0 }, "RUSTURFTUNNEL" },
-    { "HM05 FLASH", "A hiker just inside GRANITE CAVE on DEWFORD's island.", "A dark cave.", PD_HAVE_ITEM, { 343, 0, 0 }, "GRANITECAVE" },
-    { "HM06 ROCK SMASH", "The ROCK SMASH GUY in a MAUVILLE CITY house.", "MAUVILLE CITY.", PD_HAVE_ITEM, { 344, 0, 0 }, "MAUVILLECITY" },
-    { "HM07 WATERFALL", "An item ball on CAVE OF ORIGIN B3F, on your way down to KYOGRE.", "Under SOOTOPOLIS CITY, late in the story.", PD_HAVE_ITEM, { 345, 0, 0 }, "CAVEOFORIGIN|SOOTOPOLISCITY" },
-    { "HM08 DIVE", "STEVEN hands it to you the first time you visit his house in MOSSDEEP CITY.", "MOSSDEEP CITY.", PD_HAVE_FLAG, { 123, 0, 0 }, "MOSSDEEPCITY" },
+    { "HM01 CUT", "The CUTTER's house in RUSTBORO CITY.", "RUSTBORO CITY.", PD_HAVE_ITEM, { 339, 0, 0 }, "RUSTBOROCITY", 0 },
+    { "HM02 FLY", "Your rival, after your battle on ROUTE 119.", "North of FORTREE CITY's route.", PD_HAVE_ITEM, { 340, 0, 0 }, "ROUTE119", 0 },
+    { "HM03 SURF", "WALLY's father in PETALBURG CITY, after you beat NORMAN.", "After the fifth gym.", PD_HAVE_ITEM, { 341, 0, 0 }, "PETALBURGCITY", 0 },
+    { "HM04 STRENGTH", "WANDA's boyfriend in RUSTURF TUNNEL, once you break the boulder there with ROCK SMASH.", "The tunnel east of RUSTBORO CITY.", PD_HAVE_ITEM, { 342, 0, 0 }, "RUSTURFTUNNEL", 0 },
+    { "HM05 FLASH", "A hiker just inside GRANITE CAVE on DEWFORD's island.", "A dark cave.", PD_HAVE_ITEM, { 343, 0, 0 }, "GRANITECAVE", 0 },
+    { "HM06 ROCK SMASH", "The ROCK SMASH GUY in a MAUVILLE CITY house.", "MAUVILLE CITY.", PD_HAVE_ITEM, { 344, 0, 0 }, "MAUVILLECITY", 0 },
+    { "HM07 WATERFALL", "An item ball on CAVE OF ORIGIN B3F, on your way down to KYOGRE.", "Under SOOTOPOLIS CITY, late in the story.", PD_HAVE_ITEM, { 345, 0, 0 }, "CAVEOFORIGIN|SOOTOPOLISCITY", 0 },
+    { "HM08 DIVE", "STEVEN hands it to you the first time you visit his house in MOSSDEEP CITY.", "MOSSDEEP CITY.", PD_HAVE_FLAG, { 123, 0, 0 }, "MOSSDEEPCITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_sapphire_p1_s2[] = {
-    { "Evolution stones", "The TREASURE HUNTER's house on ROUTE 124 swaps shards found by DIVING: RED for a FIRE STONE, YELLOW for THUNDER, BLUE for WATER, GREEN for LEAF.", "Diving treasure.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE124" },
-    { "MOVE DELETER", "A house in LILYCOVE CITY.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "LILYCOVECITY" },
-    { "MOVE TUTOR", "A house in FALLARBOR TOWN. Bring a HEART SCALE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "FALLARBORTOWN" },
+    { "Evolution stones", "The TREASURE HUNTER's house on ROUTE 124 swaps shards found by DIVING: RED for a FIRE STONE, YELLOW for THUNDER, BLUE for WATER, GREEN for LEAF.", "Diving treasure.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE124", 0 },
+    { "MOVE DELETER", "A house in LILYCOVE CITY.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "LILYCOVECITY", 0 },
+    { "MOVE TUTOR", "A house in FALLARBOR TOWN. Bring a HEART SCALE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, "FALLARBORTOWN", 0 },
 };
 static const struct pd_guide_entry pd_guide_sapphire_p1_s3[] = {
-    { "CASTFORM", "The WEATHER INSTITUTE on ROUTE 119 gives it to you after you drive TEAM AQUA out.", "A research building.", PD_HAVE_CAUGHT, { 351, 0, 0 }, "ROUTE119" },
-    { "WYNAUT (egg)", "An old woman in LAVARIDGE TOWN.", "A hot-spring town.", PD_HAVE_CAUGHT, { 360, 0, 0 }, "LAVARIDGETOWN" },
-    { "LILEEP / ANORITH", "In the ROUTE 111 desert, take the ROOT or the CLAW FOSSIL (the other sinks into the sand); DEVON CORP. 2F in RUSTBORO CITY revives it.", "Buried in the desert.", PD_HAVE_CAUGHT, { 345, 347, 0 }, "ROUTE111|RUSTBOROCITY" },
-    { "BELDUM", "STEVEN's house in MOSSDEEP CITY, after the HALL OF FAME.", "Post-game.", PD_HAVE_CAUGHT, { 374, 0, 0 }, "MOSSDEEPCITY" },
+    { "CASTFORM", "The WEATHER INSTITUTE on ROUTE 119 gives it to you after you drive TEAM AQUA out.", "A research building.", PD_HAVE_CAUGHT, { 351, 0, 0 }, "ROUTE119", 0 },
+    { "WYNAUT (egg)", "An old woman in LAVARIDGE TOWN.", "A hot-spring town.", PD_HAVE_CAUGHT, { 360, 0, 0 }, "LAVARIDGETOWN", 0 },
+    { "LILEEP / ANORITH", "In the ROUTE 111 desert, take the ROOT or the CLAW FOSSIL (the other sinks into the sand); DEVON CORP. 2F in RUSTBORO CITY revives it.", "Buried in the desert.", PD_HAVE_CAUGHT, { 345, 347, 0 }, "ROUTE111|RUSTBOROCITY", 0 },
+    { "BELDUM", "STEVEN's house in MOSSDEEP CITY, after the HALL OF FAME.", "Post-game.", PD_HAVE_CAUGHT, { 374, 0, 0 }, "MOSSDEEPCITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_sapphire_p1_s4[] = {
-    { "KYOGRE", "Lv45, at the bottom of the CAVE OF ORIGIN in SOOTOPOLIS CITY - the story takes you there.", "Its cave is under SOOTOPOLIS CITY.", PD_HAVE_CAUGHT, { 382, 0, 0 }, "CAVEOFORIGIN|SOOTOPOLISCITY" },
-    { "RAYQUAZA", "Lv70, at the top of the SKY PILLAR on ROUTE 131. Some floors crack: ride the MACH BIKE across them.", "A tower in the sea near PACIFIDLOG TOWN.", PD_HAVE_CAUGHT, { 384, 0, 0 }, "SKYPILLAR|ROUTE131" },
-    { "REGIROCK / REGICE / REGISTEEL", "First open the doors: in the SEALED CHAMBER (DIVE on ROUTE 134) use DIG on the outer room's braille, then read the inner room's with RELICANTH first and WAILORD last in your party. Then, after reading each ruin's braille: DESERT RUINS (ROUTE 111) - use STRENGTH; ANCIENT TOMB (ROUTE 120) - use FLY; ISLAND CAVE (ROUTE 105) - wait two minutes without pressing anything.", "It starts under the sea, with two particular POKéMON.", PD_HAVE_CAUGHT, { 377, 378, 379 }, "SEALEDCHAMBER|ROUTE134|DESERTRUINS|ANCIENTTOMB|ISLANDCAVE" },
-    { "LATIAS", "After the HALL OF FAME, go home and watch the TV news: LATIAS starts roaming HOENN.", "Post-game, at home.", PD_HAVE_CAUGHT, { 380, 0, 0 }, "LITTLEROOTTOWN" },
-    { "KECLEON", "Invisible ones sit on ROUTES 119 and 120 and in FORTREE CITY. The DEVON SCOPE reveals them.", "You can't see it.", PD_HAVE_CAUGHT, { 352, 0, 0 }, "ROUTE119|ROUTE120|FORTREECITY" },
+    { "KYOGRE", "Lv45, at the bottom of the CAVE OF ORIGIN in SOOTOPOLIS CITY - the story takes you there.", "Its cave is under SOOTOPOLIS CITY.", PD_HAVE_CAUGHT, { 382, 0, 0 }, "CAVEOFORIGIN|SOOTOPOLISCITY", 0 },
+    { "RAYQUAZA", "Lv70, at the top of the SKY PILLAR on ROUTE 131. Some floors crack: ride the MACH BIKE across them.", "A tower in the sea near PACIFIDLOG TOWN.", PD_HAVE_CAUGHT, { 384, 0, 0 }, "SKYPILLAR|ROUTE131", 0 },
+    { "REGIROCK / REGICE / REGISTEEL", "First open the doors: in the SEALED CHAMBER (DIVE on ROUTE 134) use DIG on the outer room's braille, then read the inner room's with RELICANTH first and WAILORD last in your party. Then, after reading each ruin's braille: DESERT RUINS (ROUTE 111) - use STRENGTH; ANCIENT TOMB (ROUTE 120) - use FLY; ISLAND CAVE (ROUTE 105) - wait two minutes without pressing anything.", "It starts under the sea, with two particular POKéMON.", PD_HAVE_CAUGHT, { 377, 378, 379 }, "SEALEDCHAMBER|ROUTE134|DESERTRUINS|ANCIENTTOMB|ISLANDCAVE", 0 },
+    { "LATIAS", "After the HALL OF FAME, go home and watch the TV news: LATIAS starts roaming HOENN.", "Post-game, at home.", PD_HAVE_CAUGHT, { 380, 0, 0 }, "LITTLEROOTTOWN", 0 },
+    { "KECLEON", "Invisible ones sit on ROUTES 119 and 120 and in FORTREE CITY. The DEVON SCOPE reveals them.", "You can't see it.", PD_HAVE_CAUGHT, { 352, 0, 0 }, "ROUTE119|ROUTE120|FORTREECITY", 0 },
 };
 static const struct pd_guide_section pd_guide_sapphire_p1[] = {
-    { "KEY ITEMS", NULL, pd_guide_sapphire_p1_s0, 13 },
-    { "HMs", NULL, pd_guide_sapphire_p1_s1, 8 },
-    { "SHOPS & SERVICES", NULL, pd_guide_sapphire_p1_s2, 3 },
-    { "GIFT POKéMON", NULL, pd_guide_sapphire_p1_s3, 4 },
-    { "LEGENDARY POKéMON", NULL, pd_guide_sapphire_p1_s4, 5 },
+    { "KEY ITEMS", NULL, pd_guide_sapphire_p1_s0, 13, 0 },
+    { "HMs", NULL, pd_guide_sapphire_p1_s1, 8, 0 },
+    { "SHOPS & SERVICES", NULL, pd_guide_sapphire_p1_s2, 3, 0 },
+    { "GIFT POKéMON", NULL, pd_guide_sapphire_p1_s3, 4, 0 },
+    { "LEGENDARY POKéMON", NULL, pd_guide_sapphire_p1_s4, 5, 0 },
 };
 static const struct pd_guide_entry pd_guide_sapphire_p2_s0[] = {
-    { "How do I get to DEWFORD TOWN?", "MR. BRINEY sails you from his cottage on ROUTE 104 once you've rescued his PEEKO from TEAM AQUA in RUSTURF TUNNEL.", "An old sailor lost his pet.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE104|RUSTURFTUNNEL" },
-    { "Where are the stolen DEVON GOODS?", "A TEAM AQUA grunt fled into RUSTURF TUNNEL, east of RUSTBORO CITY. Beat him there.", "Follow the thief east.", PD_HAVE_NONE, { 0, 0, 0 }, "RUSTBOROCITY|RUSTURFTUNNEL" },
-    { "PETALBURG CITY's gym won't let me in", "Your father NORMAN battles you once you have four badges.", "Come back with more badges.", PD_HAVE_NONE, { 0, 0, 0 }, "PETALBURGCITY" },
+    { "How do I get to DEWFORD TOWN?", "MR. BRINEY sails you from his cottage on ROUTE 104 once you've rescued his PEEKO from TEAM AQUA in RUSTURF TUNNEL.", "An old sailor lost his pet.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE104|RUSTURFTUNNEL", 0 },
+    { "Where are the stolen DEVON GOODS?", "A TEAM AQUA grunt fled into RUSTURF TUNNEL, east of RUSTBORO CITY. Beat him there.", "Follow the thief east.", PD_HAVE_NONE, { 0, 0, 0 }, "RUSTBOROCITY|RUSTURFTUNNEL", 0 },
+    { "PETALBURG CITY's gym won't let me in", "Your father NORMAN battles you once you have four badges.", "Come back with more badges.", PD_HAVE_NONE, { 0, 0, 0 }, "PETALBURGCITY", 0 },
 };
 static const struct pd_guide_entry pd_guide_sapphire_p2_s1[] = {
-    { "TEAM AQUA blocks the cable car on ROUTE 112", "They leave after the scene at METEOR FALLS - go north from MAUVILLE CITY on ROUTE 111, then west on ROUTE 113 to FALLARBOR TOWN and ROUTE 114.", "Go around the mountain.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE112|METEORFALLS|MTCHIMNEY" },
-    { "A sandstorm keeps pushing me back on ROUTE 111", "You need the GO-GOGGLES, from your rival in LAVARIDGE TOWN after the fourth badge.", "Protect your eyes.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE111" },
-    { "Something invisible blocks FORTREE CITY's gym", "It's a KECLEON. Get the DEVON SCOPE from STEVEN on ROUTE 120, then use it on the blocked spot.", "Look east of FORTREE CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "FORTREECITY|ROUTE120" },
+    { "TEAM AQUA blocks the cable car on ROUTE 112", "They leave after the scene at METEOR FALLS - go north from MAUVILLE CITY on ROUTE 111, then west on ROUTE 113 to FALLARBOR TOWN and ROUTE 114.", "Go around the mountain.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE112|METEORFALLS|MTCHIMNEY", 0 },
+    { "A sandstorm keeps pushing me back on ROUTE 111", "You need the GO-GOGGLES, from your rival in LAVARIDGE TOWN after the fourth badge.", "Protect your eyes.", PD_HAVE_NONE, { 0, 0, 0 }, "ROUTE111", 0 },
+    { "Something invisible blocks FORTREE CITY's gym", "It's a KECLEON. Get the DEVON SCOPE from STEVEN on ROUTE 120, then use it on the blocked spot.", "Look east of FORTREE CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "FORTREECITY|ROUTE120", 0 },
 };
 static const struct pd_guide_entry pd_guide_sapphire_p2_s2[] = {
-    { "How do I get into SOOTOPOLIS CITY?", "It sits inside a crater: DIVE down on ROUTE 126 and surface inside.", "From below.", PD_HAVE_NONE, { 0, 0, 0 }, "SOOTOPOLISCITY|ROUTE126" },
-    { "SOOTOPOLIS CITY's gym is closed", "End the crisis first: go down through the CAVE OF ORIGIN and face KYOGRE at the bottom. WALLACE opens the gym afterwards.", "The cave in SOOTOPOLIS CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "SOOTOPOLISCITY|CAVEOFORIGIN" },
-    { "How do I reach EVER GRANDE CITY?", "It's up a waterfall: you need HM07 WATERFALL (in the CAVE OF ORIGIN) and the RAIN BADGE.", "Go up.", PD_HAVE_NONE, { 0, 0, 0 }, "EVERGRANDECITY|ROUTE128" },
+    { "How do I get into SOOTOPOLIS CITY?", "It sits inside a crater: DIVE down on ROUTE 126 and surface inside.", "From below.", PD_HAVE_NONE, { 0, 0, 0 }, "SOOTOPOLISCITY|ROUTE126", 0 },
+    { "SOOTOPOLIS CITY's gym is closed", "End the crisis first: go down through the CAVE OF ORIGIN and face KYOGRE at the bottom. WALLACE opens the gym afterwards.", "The cave in SOOTOPOLIS CITY.", PD_HAVE_NONE, { 0, 0, 0 }, "SOOTOPOLISCITY|CAVEOFORIGIN", 0 },
+    { "How do I reach EVER GRANDE CITY?", "It's up a waterfall: you need HM07 WATERFALL (in the CAVE OF ORIGIN) and the RAIN BADGE.", "Go up.", PD_HAVE_NONE, { 0, 0, 0 }, "EVERGRANDECITY|ROUTE128", 0 },
 };
 static const struct pd_guide_section pd_guide_sapphire_p2[] = {
-    { "EARLY GAME", NULL, pd_guide_sapphire_p2_s0, 3 },
-    { "MID GAME", NULL, pd_guide_sapphire_p2_s1, 3 },
-    { "LATE GAME", NULL, pd_guide_sapphire_p2_s2, 3 },
+    { "EARLY GAME", NULL, pd_guide_sapphire_p2_s0, 3, 0 },
+    { "MID GAME", NULL, pd_guide_sapphire_p2_s1, 3, 0 },
+    { "LATE GAME", NULL, pd_guide_sapphire_p2_s2, 3, 0 },
 };
 static const struct pd_guide_page pd_guide_sapphire_pages[] = {
     { "TIPS", pd_guide_sapphire_p0, 4 },
@@ -600,21 +612,21 @@ const struct pd_guide pd_guide_sapphire = {
 };
 
 static const struct pd_guide_entry pd_guide_emerald_legacy_p0_s0[] = {
-    { "Physical or special?", "Still decided by the move's TYPE, as in the original. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; the other types are physical.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Why is BRAWLY tougher than I remember?", "He picks his team by how far you've got: a stronger one if you've already beaten WATTSON, stronger again after FLANNERY.", "It depends on your other badges.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Who leads the last gym?", "WALLACE, in SOOTOPOLIS CITY. JUAN takes over the gym once you're in the HALL OF FAME, and the champion waiting at the end is STEVEN.", "Not the one from the original.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Physical or special?", "Still decided by the move's TYPE, as in the original. FIRE, WATER, GRASS, ELECTRIC, ICE, PSYCHIC, DRAGON and DARK moves are special; the other types are physical.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Why is BRAWLY tougher than I remember?", "He picks his team by how far you've got: a stronger one if you've already beaten WATTSON, stronger again after FLANNERY.", "It depends on your other badges.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Who leads the last gym?", "WALLACE, in SOOTOPOLIS CITY. JUAN takes over the gym once you're in the HALL OF FAME, and the champion waiting at the end is STEVEN.", "Not the one from the original.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_emerald_legacy_p0_s1[] = {
-    { "No trades needed", "The POKéMON that evolved by trading level up instead (KADABRA and HAUNTER at Lv42, MACHOKE and GRAVELER at Lv38) or use their item like a stone (ONIX and SCYTHER a METAL COAT, SEADRA a DRAGON SCALE, PORYGON an UP-GRADE, CLAMPERL a DEEPSEATOOTH or DEEPSEASCALE, POLIWHIRL and SLOWPOKE a KING'S ROCK).", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "HITMONTOP", "TYROGUE becomes HITMONTOP with a BRICK PIECE, or at Lv20 when its ATTACK equals its DEFENSE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "No trades needed", "The POKéMON that evolved by trading level up instead (KADABRA and HAUNTER at Lv42, MACHOKE and GRAVELER at Lv38) or use their item like a stone (ONIX and SCYTHER a METAL COAT, SEADRA a DRAGON SCALE, PORYGON an UP-GRADE, CLAMPERL a DEEPSEATOOTH or DEEPSEASCALE, POLIWHIRL and SLOWPOKE a KING'S ROCK).", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "HITMONTOP", "TYROGUE becomes HITMONTOP with a BRICK PIECE, or at Lv20 when its ATTACK equals its DEFENSE.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_emerald_legacy_p0_s2[] = {
-    { "New POKéMON after the story", "After the HALL OF FAME, PROF. BIRCH's visit to MOSSDEEP CITY changes the wild POKéMON in many areas. HERE always lists the ones out there now.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "New POKéMON after the story", "After the HALL OF FAME, PROF. BIRCH's visit to MOSSDEEP CITY changes the wild POKéMON in many areas. HERE always lists the ones out there now.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_emerald_legacy_p0[] = {
-    { "BATTLES", NULL, pd_guide_emerald_legacy_p0_s0, 3 },
-    { "EVOLUTION", NULL, pd_guide_emerald_legacy_p0_s1, 2 },
-    { "WILD POKéMON", NULL, pd_guide_emerald_legacy_p0_s2, 1 },
+    { "BATTLES", NULL, pd_guide_emerald_legacy_p0_s0, 3, 0 },
+    { "EVOLUTION", NULL, pd_guide_emerald_legacy_p0_s1, 2, 0 },
+    { "WILD POKéMON", NULL, pd_guide_emerald_legacy_p0_s2, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_emerald_legacy_pages[] = {
     { "TIPS", pd_guide_emerald_legacy_p0, 3 },
@@ -1107,14 +1119,14 @@ const struct pd_area_thing pd_areas_gaia[] = {
 const int pd_areas_gaia_count = 438;
 
 static const struct pd_guide_entry pd_guide_rocket_edition_p0_s0[] = {
-    { "Where does this guide come from?", "NEXT BOSS follows the game's own gym scripts: the leaders are FireRed's, but Viridian City's gym is ARIANA's. WHERE IS and HERE are read from the game's own maps.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Where does this guide come from?", "NEXT BOSS follows the game's own gym scripts: the leaders are FireRed's, but Viridian City's gym is ARIANA's. WHERE IS and HERE are read from the game's own maps.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_rocket_edition_p0_s1[] = {
-    { "Is there a FAIRY type?", "Yes. CLEFAIRY and a few others are FAIRY now. FAIRY moves hit DRAGON, DARK and FIGHTING hard, and DRAGON moves don't touch FAIRY at all; POISON and STEEL moves hit it hard.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Is there a FAIRY type?", "Yes. CLEFAIRY and a few others are FAIRY now. FAIRY moves hit DRAGON, DARK and FIGHTING hard, and DRAGON moves don't touch FAIRY at all; POISON and STEEL moves hit it hard.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_rocket_edition_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_rocket_edition_p0_s0, 1 },
-    { "TYPES", NULL, pd_guide_rocket_edition_p0_s1, 1 },
+    { "THIS GUIDE", NULL, pd_guide_rocket_edition_p0_s0, 1, 0 },
+    { "TYPES", NULL, pd_guide_rocket_edition_p0_s1, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_rocket_edition_pages[] = {
     { "TIPS", pd_guide_rocket_edition_p0, 2 },
@@ -1541,14 +1553,14 @@ const struct pd_area_thing pd_areas_rocket_edition[] = {
 const int pd_areas_rocket_edition_count = 403;
 
 static const struct pd_guide_entry pd_guide_ash_gray_p0_s0[] = {
-    { "Where does this guide come from?", "NEXT BOSS follows the game's own gym scripts. Two badges are handed to you without a battle, so only the gyms you battle in are listed. WHERE IS and HERE are read from the game's own maps.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Where does this guide come from?", "NEXT BOSS follows the game's own gym scripts. Two badges are handed to you without a battle, so only the gyms you battle in are listed. WHERE IS and HERE are read from the game's own maps.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_ash_gray_p0_s1[] = {
-    { "Why does my ELECTRIC move hit a GROUND POKéMON?", "In this game ELECTRIC moves hit GROUND for half damage instead of none at all.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why does my ELECTRIC move hit a GROUND POKéMON?", "In this game ELECTRIC moves hit GROUND for half damage instead of none at all.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_ash_gray_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_ash_gray_p0_s0, 1 },
-    { "TYPES", NULL, pd_guide_ash_gray_p0_s1, 1 },
+    { "THIS GUIDE", NULL, pd_guide_ash_gray_p0_s0, 1, 0 },
+    { "TYPES", NULL, pd_guide_ash_gray_p0_s1, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_ash_gray_pages[] = {
     { "TIPS", pd_guide_ash_gray_p0, 2 },
@@ -1896,15 +1908,15 @@ const struct pd_area_thing pd_areas_ash_gray[] = {
 const int pd_areas_ash_gray_count = 326;
 
 static const struct pd_guide_entry pd_guide_ghost_grey_p0_s0[] = {
-    { "Where does this guide come from?", "NEXT BOSS follows the game's own badge scripts: seven badges, from Pewter City's gym to the Fuji Catacombs. WHERE IS and HERE are read from the game's own maps.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Where does this guide come from?", "NEXT BOSS follows the game's own badge scripts: seven badges, from Pewter City's gym to the Fuji Catacombs. WHERE IS and HERE are read from the game's own maps.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_ghost_grey_p0_s1[] = {
-    { "Why don't my GHOST moves hit GHOST POKéMON as hard as I thought?", "In this game GHOST moves hit GHOST for 1.2x, not 2x, and hit PSYCHIC for normal damage.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Is there a FAIRY type?", "Yes. FAIRY moves hit DRAGON, DARK and FIGHTING hard. DRAGON, DARK and FIGHTING moves do half to FAIRY, and POISON and STEEL moves hit it hard.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why don't my GHOST moves hit GHOST POKéMON as hard as I thought?", "In this game GHOST moves hit GHOST for 1.2x, not 2x, and hit PSYCHIC for normal damage.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Is there a FAIRY type?", "Yes. FAIRY moves hit DRAGON, DARK and FIGHTING hard. DRAGON, DARK and FIGHTING moves do half to FAIRY, and POISON and STEEL moves hit it hard.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_ghost_grey_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_ghost_grey_p0_s0, 1 },
-    { "TYPES", NULL, pd_guide_ghost_grey_p0_s1, 2 },
+    { "THIS GUIDE", NULL, pd_guide_ghost_grey_p0_s0, 1, 0 },
+    { "TYPES", NULL, pd_guide_ghost_grey_p0_s1, 2, 0 },
 };
 static const struct pd_guide_page pd_guide_ghost_grey_pages[] = {
     { "TIPS", pd_guide_ghost_grey_p0, 2 },
@@ -2453,11 +2465,11 @@ const struct pd_area_thing pd_areas_ghost_grey[] = {
 const int pd_areas_ghost_grey_count = 524;
 
 static const struct pd_guide_entry pd_guide_gs_chronicles_p0_s0[] = {
-    { "Why does NEXT BOSS stop at the eighth gym?", "The Kanto gyms and the League keep their progress in places the guide can't read yet, so it lists the eight Johto gyms only.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Why is the leader of the Mahogany gym not who I expected?", "This game puts its own leader there. The guide shows the team the gym really uses.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why does NEXT BOSS stop at the eighth gym?", "The Kanto gyms and the League keep their progress in places the guide can't read yet, so it lists the eight Johto gyms only.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Why is the leader of the Mahogany gym not who I expected?", "This game puts its own leader there. The guide shows the team the gym really uses.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_gs_chronicles_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_gs_chronicles_p0_s0, 2 },
+    { "THIS GUIDE", NULL, pd_guide_gs_chronicles_p0_s0, 2, 0 },
 };
 static const struct pd_guide_page pd_guide_gs_chronicles_pages[] = {
     { "TIPS", pd_guide_gs_chronicles_p0, 1 },
@@ -3057,10 +3069,10 @@ const struct pd_area_thing pd_areas_gs_chronicles[] = {
 const int pd_areas_gs_chronicles_count = 576;
 
 static const struct pd_guide_entry pd_guide_radical_red_p0_s0[] = {
-    { "Why does NEXT BOSS stop at the seventh gym?", "VIRIDIAN CITY's leader gets a party put together as the battle starts, and the ELITE FOUR rooms choose between two teams in a way the guide can't read from the game, so they aren't listed.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why does NEXT BOSS stop at the seventh gym?", "VIRIDIAN CITY's leader gets a party put together as the battle starts, and the ELITE FOUR rooms choose between two teams in a way the guide can't read from the game, so they aren't listed.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_radical_red_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_radical_red_p0_s0, 1 },
+    { "THIS GUIDE", NULL, pd_guide_radical_red_p0_s0, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_radical_red_pages[] = {
     { "TIPS", pd_guide_radical_red_p0, 1 },
@@ -3700,10 +3712,10 @@ const struct pd_area_thing pd_areas_radical_red[] = {
 const int pd_areas_radical_red_count = 617;
 
 static const struct pd_guide_entry pd_guide_orange_islands_p0_s0[] = {
-    { "What is the CRYSTL type?", "A type of the game's own (CRYSTAL ONIX is CRYSTAL / GROUND). Its moves hit BUG, FLYING and ICE hard and FIGHTING, GROUND and STEEL weakly. WATER moves don't touch it at all; FIGHTING, GRASS, GROUND, STEEL and FIRE moves hit it hard.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "What is the CRYSTL type?", "A type of the game's own (CRYSTAL ONIX is CRYSTAL / GROUND). Its moves hit BUG, FLYING and ICE hard and FIGHTING, GROUND and STEEL weakly. WATER moves don't touch it at all; FIGHTING, GRASS, GROUND, STEEL and FIRE moves hit it hard.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_orange_islands_p0[] = {
-    { "TYPES", NULL, pd_guide_orange_islands_p0_s0, 1 },
+    { "TYPES", NULL, pd_guide_orange_islands_p0_s0, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_orange_islands_pages[] = {
     { "TIPS", pd_guide_orange_islands_p0, 1 },
@@ -4021,11 +4033,11 @@ const struct pd_area_thing pd_areas_orange_islands[] = {
 const int pd_areas_orange_islands_count = 297;
 
 static const struct pd_guide_entry pd_guide_odyssey_p0_s0[] = {
-    { "Why are some badges missing from NEXT BOSS?", "Three badges are handed over at the end of longer story events with several battles, so only the five fights that give a badge straight away are listed.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Which team will a boss use?", "NEXT BOSS lists both where they differ: NORMAL, and HARD for HARD MODE (chosen in the game's difficulty menu).", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why are some badges missing from NEXT BOSS?", "Three badges are handed over at the end of longer story events with several battles, so only the five fights that give a badge straight away are listed.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Which team will a boss use?", "NEXT BOSS lists both where they differ: NORMAL, and HARD for HARD MODE (chosen in the game's difficulty menu).", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_odyssey_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_odyssey_p0_s0, 2 },
+    { "THIS GUIDE", NULL, pd_guide_odyssey_p0_s0, 2, 0 },
 };
 static const struct pd_guide_page pd_guide_odyssey_pages[] = {
     { "TIPS", pd_guide_odyssey_p0, 1 },
@@ -4572,10 +4584,10 @@ const struct pd_area_thing pd_areas_odyssey[] = {
 const int pd_areas_odyssey_count = 522;
 
 static const struct pd_guide_entry pd_guide_celia_p0_s0[] = {
-    { "Why does BLAINE have eight teams?", "His gym is eight one-on-one battles in a row, each against a single POKéMON.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why does BLAINE have eight teams?", "His gym is eight one-on-one battles in a row, each against a single POKéMON.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_celia_p0[] = {
-    { "NEXT BOSS", NULL, pd_guide_celia_p0_s0, 1 },
+    { "NEXT BOSS", NULL, pd_guide_celia_p0_s0, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_celia_pages[] = {
     { "TIPS", pd_guide_celia_p0, 1 },
@@ -5078,11 +5090,11 @@ const struct pd_area_thing pd_areas_celia[] = {
 const int pd_areas_celia_count = 478;
 
 static const struct pd_guide_entry pd_guide_sword_shield_p0_s0[] = {
-    { "Why do two gyms list two leaders?", "The game has a second script for the 4th and 6th gyms with another leader, and the guide can't tell from the save which one you'll face, so it shows both teams.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Why does NEXT BOSS stop at the eighth gym?", "The League rooms still hold FireRed's ELITE FOUR teams, which the guide can't match to what the game really sends out, so they aren't listed.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why do two gyms list two leaders?", "The game has a second script for the 4th and 6th gyms with another leader, and the guide can't tell from the save which one you'll face, so it shows both teams.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Why does NEXT BOSS stop at the eighth gym?", "The League rooms still hold FireRed's ELITE FOUR teams, which the guide can't match to what the game really sends out, so they aren't listed.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_sword_shield_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_sword_shield_p0_s0, 2 },
+    { "THIS GUIDE", NULL, pd_guide_sword_shield_p0_s0, 2, 0 },
 };
 static const struct pd_guide_page pd_guide_sword_shield_pages[] = {
     { "TIPS", pd_guide_sword_shield_p0, 1 },
@@ -5654,10 +5666,10 @@ const struct pd_area_thing pd_areas_sword_shield[] = {
 const int pd_areas_sword_shield_count = 546;
 
 static const struct pd_guide_entry pd_guide_unbound_p0_s0[] = {
-    { "Why does NEXT BOSS show four teams?", "Unbound gives each gym leader a different team for each difficulty (VANILLA, DIFFICULT, EXPERT, INSANE). Look at the one you're playing on.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why does NEXT BOSS show four teams?", "Unbound gives each gym leader a different team for each difficulty (VANILLA, DIFFICULT, EXPERT, INSANE). Look at the one you're playing on.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_unbound_p0[] = {
-    { "BATTLES", NULL, pd_guide_unbound_p0_s0, 1 },
+    { "BATTLES", NULL, pd_guide_unbound_p0_s0, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_unbound_pages[] = {
     { "TIPS", pd_guide_unbound_p0, 1 },
@@ -6591,12 +6603,12 @@ const struct pd_area_thing pd_areas_unbound[] = {
 const int pd_areas_unbound_count = 902;
 
 static const struct pd_guide_entry pd_guide_amethyst_p0_s0[] = {
-    { "Why four teams per leader?", "Each leader's team depends on two choices from the start of the game: HARD MODE and the DIVERGENT Pokémon selection. NEXT BOSS lists all four.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Does the order of the middle gyms matter?", "Yes - RAINE and CHANCE bring stronger teams the more badges you hold when you challenge them. NEXT BOSS shows the teams for the badges you have now.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Why does NEXT BOSS stop at the seventh gym?", "The last gym and the POKéMON LEAGUE pick their trainers while the game runs, in a way the guide can't read.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why four teams per leader?", "Each leader's team depends on two choices from the start of the game: HARD MODE and the DIVERGENT Pokémon selection. NEXT BOSS lists all four.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Does the order of the middle gyms matter?", "Yes - RAINE and CHANCE bring stronger teams the more badges you hold when you challenge them. NEXT BOSS shows the teams for the badges you have now.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Why does NEXT BOSS stop at the seventh gym?", "The last gym and the POKéMON LEAGUE pick their trainers while the game runs, in a way the guide can't read.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_amethyst_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_amethyst_p0_s0, 3 },
+    { "THIS GUIDE", NULL, pd_guide_amethyst_p0_s0, 3, 0 },
 };
 static const struct pd_guide_page pd_guide_amethyst_pages[] = {
     { "TIPS", pd_guide_amethyst_p0, 1 },
@@ -7534,14 +7546,14 @@ const struct pd_guide pd_guide_quetzal = {
 };
 
 static const struct pd_guide_entry pd_guide_recharged_emerald_p0_s0[] = {
-    { "How do Pokémon that evolve by trading evolve here?", "With the LINKING CORD, used like an evolution stone: KADABRA, MACHOKE, GRAVELER and HAUNTER evolve with it alone. The ones that trade holding an item (POLIWHIRL and SLOWPOKE with a KING'S ROCK, ONIX and SCYTHER with a METAL COAT, SEADRA with a DRAGON SCALE, PORYGON with an UP-GRADE, CLAMPERL with a DEEPSEATOOTH or DEEPSEASCALE) need to hold that item when the cord is used. Trading still works too.", "Look for a key item.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "How do Pokémon that evolve by trading evolve here?", "With the LINKING CORD, used like an evolution stone: KADABRA, MACHOKE, GRAVELER and HAUNTER evolve with it alone. The ones that trade holding an item (POLIWHIRL and SLOWPOKE with a KING'S ROCK, ONIX and SCYTHER with a METAL COAT, SEADRA with a DRAGON SCALE, PORYGON with an UP-GRADE, CLAMPERL with a DEEPSEATOOTH or DEEPSEASCALE) need to hold that item when the cord is used. Trading still works too.", "Look for a key item.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_recharged_emerald_p0_s1[] = {
-    { "Why does NEXT BOSS show two teams?", "Every gym leader, the Elite Four and the champion have a second team for the game's HARD difficulty. NORMAL is the one you'll meet unless you picked HARD.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why does NEXT BOSS show two teams?", "Every gym leader, the Elite Four and the champion have a second team for the game's HARD difficulty. NORMAL is the one you'll meet unless you picked HARD.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_recharged_emerald_p0[] = {
-    { "EVOLUTION", NULL, pd_guide_recharged_emerald_p0_s0, 1 },
-    { "TRAINERS", NULL, pd_guide_recharged_emerald_p0_s1, 1 },
+    { "EVOLUTION", NULL, pd_guide_recharged_emerald_p0_s0, 1, 0 },
+    { "TRAINERS", NULL, pd_guide_recharged_emerald_p0_s1, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_recharged_emerald_pages[] = {
     { "TIPS", pd_guide_recharged_emerald_p0, 2 },
@@ -7584,14 +7596,14 @@ const struct pd_guide pd_guide_recharged_emerald = {
 };
 
 static const struct pd_guide_entry pd_guide_recharged_yellow_p0_s0[] = {
-    { "How do Pokémon that evolve by trading evolve here?", "With the LINKING CORD, used like an evolution stone: KADABRA, MACHOKE, GRAVELER and HAUNTER evolve with it alone. The ones that trade holding an item (POLIWHIRL and SLOWPOKE with a KING'S ROCK, ONIX and SCYTHER with a METAL COAT, SEADRA with a DRAGON SCALE, PORYGON with an UP-GRADE, CLAMPERL with a DEEPSEATOOTH or DEEPSEASCALE) need to hold that item when the cord is used. Trading still works too.", "Look for a key item.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "How do Pokémon that evolve by trading evolve here?", "With the LINKING CORD, used like an evolution stone: KADABRA, MACHOKE, GRAVELER and HAUNTER evolve with it alone. The ones that trade holding an item (POLIWHIRL and SLOWPOKE with a KING'S ROCK, ONIX and SCYTHER with a METAL COAT, SEADRA with a DRAGON SCALE, PORYGON with an UP-GRADE, CLAMPERL with a DEEPSEATOOTH or DEEPSEASCALE) need to hold that item when the cord is used. Trading still works too.", "Look for a key item.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_recharged_yellow_p0_s1[] = {
-    { "Why does NEXT BOSS show two teams?", "Every gym leader has a second team for the game's HARD difficulty - usually one Pokémon more, sometimes a stronger one. NORMAL is the one you'll meet unless you picked HARD.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why does NEXT BOSS show two teams?", "Every gym leader has a second team for the game's HARD difficulty - usually one Pokémon more, sometimes a stronger one. NORMAL is the one you'll meet unless you picked HARD.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_recharged_yellow_p0[] = {
-    { "EVOLUTION", NULL, pd_guide_recharged_yellow_p0_s0, 1 },
-    { "TRAINERS", NULL, pd_guide_recharged_yellow_p0_s1, 1 },
+    { "EVOLUTION", NULL, pd_guide_recharged_yellow_p0_s0, 1, 0 },
+    { "TRAINERS", NULL, pd_guide_recharged_yellow_p0_s1, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_recharged_yellow_pages[] = {
     { "TIPS", pd_guide_recharged_yellow_p0, 2 },
@@ -8166,15 +8178,15 @@ const struct pd_guide pd_guide_lazarus = {
 };
 
 static const struct pd_guide_entry pd_guide_heart_and_soul_p0_s0[] = {
-    { "Physical or special?", "Each move is physical or special on its own, as in newer games - not by its type.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "EXP from catching", "Catching a wild POKéMON gives your POKéMON EXP., like beating it would.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Physical or special?", "Each move is physical or special on its own, as in newer games - not by its type.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "EXP from catching", "Catching a wild POKéMON gives your POKéMON EXP., like beating it would.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_heart_and_soul_p0_s1[] = {
-    { "Different POKéMON at night?", "Yes - each area has its own morning, day, evening and night encounters. HERE lists the daytime ones.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Different POKéMON at night?", "Yes - each area has its own morning, day, evening and night encounters. HERE lists the daytime ones.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_heart_and_soul_p0[] = {
-    { "BATTLES", NULL, pd_guide_heart_and_soul_p0_s0, 2 },
-    { "WILD POKéMON", NULL, pd_guide_heart_and_soul_p0_s1, 1 },
+    { "BATTLES", NULL, pd_guide_heart_and_soul_p0_s0, 2, 0 },
+    { "WILD POKéMON", NULL, pd_guide_heart_and_soul_p0_s1, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_heart_and_soul_pages[] = {
     { "TIPS", pd_guide_heart_and_soul_p0, 2 },
@@ -8819,10 +8831,10 @@ const struct pd_guide pd_guide_mariomon = {
 };
 
 static const struct pd_guide_entry pd_guide_dreamstone_p0_s0[] = {
-    { "Where does this guide come from?", "NEXT BOSS and HERE are read from the game itself: who gives each badge, their teams for the difficulty you play on, and the wild POKéMON of the place you're in.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Where does this guide come from?", "NEXT BOSS and HERE are read from the game itself: who gives each badge, their teams for the difficulty you play on, and the wild POKéMON of the place you're in.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_dreamstone_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_dreamstone_p0_s0, 1 },
+    { "THIS GUIDE", NULL, pd_guide_dreamstone_p0_s0, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_dreamstone_pages[] = {
     { "TIPS", pd_guide_dreamstone_p0, 1 },
@@ -8847,12 +8859,12 @@ const struct pd_guide pd_guide_dreamstone = {
 };
 
 static const struct pd_guide_entry pd_guide_wishes_p0_s0[] = {
-    { "Where does this guide come from?", "HERE lists the wild POKéMON of the place you're in, read from the game itself.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "What if I play with the randomizer on?", "HERE shows the POKéMON your save really meets: the game swaps them the same way every time for one save, so the guide can follow it.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Why is there no NEXT BOSS page?", "This game's story takes you around its own region in its own order, so there's no one boss to show next yet.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Where does this guide come from?", "HERE lists the wild POKéMON of the place you're in, read from the game itself.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "What if I play with the randomizer on?", "HERE shows the POKéMON your save really meets: the game swaps them the same way every time for one save, so the guide can follow it.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Why is there no NEXT BOSS page?", "This game's story takes you around its own region in its own order, so there's no one boss to show next yet.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_wishes_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_wishes_p0_s0, 3 },
+    { "THIS GUIDE", NULL, pd_guide_wishes_p0_s0, 3, 0 },
 };
 static const struct pd_guide_page pd_guide_wishes_pages[] = {
     { "TIPS", pd_guide_wishes_p0, 1 },
@@ -8864,11 +8876,11 @@ const struct pd_guide pd_guide_wishes = {
 };
 
 static const struct pd_guide_entry pd_guide_team_rocket_p0_s0[] = {
-    { "Where does this guide come from?", "HERE lists the wild POKéMON of the place you're in, read from the game itself.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Why is there no NEXT BOSS page?", "In this game you play for Team Rocket and its story takes you around in its own order, so there's no one boss to show next yet.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Where does this guide come from?", "HERE lists the wild POKéMON of the place you're in, read from the game itself.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Why is there no NEXT BOSS page?", "In this game you play for Team Rocket and its story takes you around in its own order, so there's no one boss to show next yet.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_team_rocket_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_team_rocket_p0_s0, 2 },
+    { "THIS GUIDE", NULL, pd_guide_team_rocket_p0_s0, 2, 0 },
 };
 static const struct pd_guide_page pd_guide_team_rocket_pages[] = {
     { "TIPS", pd_guide_team_rocket_p0, 1 },
@@ -8880,11 +8892,11 @@ const struct pd_guide pd_guide_team_rocket = {
 };
 
 static const struct pd_guide_entry pd_guide_elite_redux_p0_s0[] = {
-    { "Where does this guide come from?", "HERE lists the wild POKéMON of the place you're in, read from the game itself.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Why is there no NEXT BOSS page?", "In this game every gym leader has several teams, levelled to your level cap and picked when the battle starts, so there's no one team to show.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Where does this guide come from?", "HERE lists the wild POKéMON of the place you're in, read from the game itself.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Why is there no NEXT BOSS page?", "In this game every gym leader has several teams, levelled to your level cap and picked when the battle starts, so there's no one team to show.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_elite_redux_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_elite_redux_p0_s0, 2 },
+    { "THIS GUIDE", NULL, pd_guide_elite_redux_p0_s0, 2, 0 },
 };
 static const struct pd_guide_page pd_guide_elite_redux_pages[] = {
     { "TIPS", pd_guide_elite_redux_p0, 1 },
@@ -8896,10 +8908,10 @@ const struct pd_guide pd_guide_elite_redux = {
 };
 
 static const struct pd_guide_entry pd_guide_ultra_violet_p0_s0[] = {
-    { "Where does this guide come from?", "NEXT BOSS follows the game's own gym and League trainers, which are FireRed's. WHERE IS and HERE are read from Ultra Violet's own maps, so its new places are in them too.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Where does this guide come from?", "NEXT BOSS follows the game's own gym and League trainers, which are FireRed's. WHERE IS and HERE are read from Ultra Violet's own maps, so its new places are in them too.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_ultra_violet_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_ultra_violet_p0_s0, 1 },
+    { "THIS GUIDE", NULL, pd_guide_ultra_violet_p0_s0, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_ultra_violet_pages[] = {
     { "TIPS", pd_guide_ultra_violet_p0, 1 },
@@ -9348,14 +9360,14 @@ const struct pd_area_thing pd_areas_ultra_violet[] = {
 const int pd_areas_ultra_violet_count = 420;
 
 static const struct pd_guide_entry pd_guide_lets_go_p0_s0[] = {
-    { "Where does this guide come from?", "NEXT BOSS follows the game's own gym and League trainers, which keep FireRed's order and badges, with this game's own teams. WHERE IS and HERE are read from the game's own maps, and HERE lists your version's own wild POKéMON.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Where does this guide come from?", "NEXT BOSS follows the game's own gym and League trainers, which keep FireRed's order and badges, with this game's own teams. WHERE IS and HERE are read from the game's own maps, and HERE lists your version's own wild POKéMON.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_guide_lets_go_p0_s1[] = {
-    { "Is there a FAIRY type?", "Yes. FAIRY moves hit DRAGON, DARK and FIGHTING hard. DRAGON moves can't touch FAIRY, DARK and FIGHTING moves do half to it, and POISON and STEEL moves hit it hard.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Is there a FAIRY type?", "Yes. FAIRY moves hit DRAGON, DARK and FIGHTING hard. DRAGON moves can't touch FAIRY, DARK and FIGHTING moves do half to it, and POISON and STEEL moves hit it hard.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_lets_go_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_lets_go_p0_s0, 1 },
-    { "TYPES", NULL, pd_guide_lets_go_p0_s1, 1 },
+    { "THIS GUIDE", NULL, pd_guide_lets_go_p0_s0, 1, 0 },
+    { "TYPES", NULL, pd_guide_lets_go_p0_s1, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_lets_go_pages[] = {
     { "TIPS", pd_guide_lets_go_p0, 2 },
@@ -9620,10 +9632,10 @@ const struct pd_area_thing pd_areas_lets_go[] = {
 const int pd_areas_lets_go_count = 236;
 
 static const struct pd_guide_entry pd_guide_monomyth_p0_s0[] = {
-    { "Where does this guide come from?", "NEXT BOSS and HERE are read from the game itself: who gives each badge, their teams for the difficulty you play on, and the wild POKéMON of the place you're in.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Where does this guide come from?", "NEXT BOSS and HERE are read from the game itself: who gives each badge, their teams for the difficulty you play on, and the wild POKéMON of the place you're in.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_guide_monomyth_p0[] = {
-    { "THIS GUIDE", NULL, pd_guide_monomyth_p0_s0, 1 },
+    { "THIS GUIDE", NULL, pd_guide_monomyth_p0_s0, 1, 0 },
 };
 static const struct pd_guide_page pd_guide_monomyth_pages[] = {
     { "TIPS", pd_guide_monomyth_p0, 1 },
@@ -13120,11 +13132,11 @@ static const struct pd_boss pd_gb_crystal_bosses[] = {
     { "RED", "MT. SILVER", 0, PD_BOSS_FIXED, 21, 0, NULL, NULL, NULL, .region = 0, .doneAll = pd_gb_crystal_all21 },
 };
 static const struct pd_guide_entry pd_gb_crystal_p0_s0[] = {
-    { "Why did the POKéMON on this route change?", "The game's clock has three times of day: morning from 4 AM, day from 10 AM and night from 6 PM. Grass and caves have a list for each, and HERE shows the one for the time your game's clock says.", "Look at the clock.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Why do some trees never have the rare POKéMON?", "Each tree you HEADBUTT is common, rare or almost empty, picked from where the tree stands and your trainer ID. HERE lists both tables; try every tree on a route to find the rare ones.", "It has to do with your trainer ID.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why did the POKéMON on this route change?", "The game's clock has three times of day: morning from 4 AM, day from 10 AM and night from 6 PM. Grass and caves have a list for each, and HERE shows the one for the time your game's clock says.", "Look at the clock.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Why do some trees never have the rare POKéMON?", "Each tree you HEADBUTT is common, rare or almost empty, picked from where the tree stands and your trainer ID. HERE lists both tables; try every tree on a route to find the rare ones.", "It has to do with your trainer ID.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_gb_crystal_p0[] = {
-    { "WILD POKéMON", NULL, pd_gb_crystal_p0_s0, 2 },
+    { "WILD POKéMON", NULL, pd_gb_crystal_p0_s0, 2, 0 },
 };
 static const struct pd_guide_page pd_gb_crystal_pages[] = {
     { "TIPS", pd_gb_crystal_p0, 1 },
@@ -14170,11 +14182,11 @@ static const struct pd_boss pd_gb_crystal_legacy_bosses[] = {
     { "RED", "MT. SILVER", 2001, PD_BOSS_FIXED, 21, 0, NULL, NULL, NULL, .region = 0 },
 };
 static const struct pd_guide_entry pd_gb_crystal_legacy_p0_s0[] = {
-    { "Why did the POKéMON on this route change?", "The game's clock has three times of day: morning from 4 AM, day from 10 AM and night from 6 PM. Grass and caves have a list for each, and HERE shows the one for the time your game's clock says.", "Look at the clock.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Why do some trees never have the rare POKéMON?", "Each tree you HEADBUTT is common, rare or almost empty, picked from where the tree stands and your trainer ID. HERE lists both tables; try every tree on a route to find the rare ones.", "It has to do with your trainer ID.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why did the POKéMON on this route change?", "The game's clock has three times of day: morning from 4 AM, day from 10 AM and night from 6 PM. Grass and caves have a list for each, and HERE shows the one for the time your game's clock says.", "Look at the clock.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Why do some trees never have the rare POKéMON?", "Each tree you HEADBUTT is common, rare or almost empty, picked from where the tree stands and your trainer ID. HERE lists both tables; try every tree on a route to find the rare ones.", "It has to do with your trainer ID.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_gb_crystal_legacy_p0[] = {
-    { "WILD POKéMON", NULL, pd_gb_crystal_legacy_p0_s0, 2 },
+    { "WILD POKéMON", NULL, pd_gb_crystal_legacy_p0_s0, 2, 0 },
 };
 static const struct pd_guide_page pd_gb_crystal_legacy_pages[] = {
     { "TIPS", pd_gb_crystal_legacy_p0, 1 },
@@ -14770,19 +14782,19 @@ const struct pd_area_thing pd_areas_gb_crystal_legacy[] = {
 const int pd_areas_gb_crystal_legacy_count = 415;
 
 static const struct pd_guide_entry pd_gb_polished_p0_s0[] = {
-    { "Why did the POKéMON on this route change?", "The game has four times of day on its clock: morning from 5 AM, day from 9 AM, evening from 5 PM and night from 9 PM. Grass and caves have a list for the morning, the day and the night, and the evening uses the night's. HERE shows the list for the time your game's clock says.", "Look at the clock.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Why are the wild POKéMON here close to my level?", "Some side areas set their wild POKéMON's levels by how many badges you have, among them the coasts off ROUTE 32 to 35, QUIET CAVE, YELLOW FOREST and the ORANGE ISLANDS. HERE already shows the levels for the badges you hold.", "It depends on your badges.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Why does surfing find higher levels than HERE's slot says?", "While surfing, a wild POKéMON is often one to four levels over its slot's level. HERE's levels for SURFING include that.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Why do some trees never have the rare POKéMON?", "Each tree you HEADBUTT is common, rare or almost empty, picked from where the tree stands and your trainer ID. HERE lists both tables; try every tree on a route to find the rare ones.", "It has to do with your trainer ID.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "Which rod catches what at the shore?", "On the shore's GOOD ROD and SUPER ROD lists one slot changes with the clock: CORSOLA in the morning and day, STARYU in the evening and at night. HERE shows the one for now.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL },
+    { "Why did the POKéMON on this route change?", "The game has four times of day on its clock: morning from 5 AM, day from 9 AM, evening from 5 PM and night from 9 PM. Grass and caves have a list for the morning, the day and the night, and the evening uses the night's. HERE shows the list for the time your game's clock says.", "Look at the clock.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Why are the wild POKéMON here close to my level?", "Some side areas set their wild POKéMON's levels by how many badges you have, among them the coasts off ROUTE 32 to 35, QUIET CAVE, YELLOW FOREST and the ORANGE ISLANDS. HERE already shows the levels for the badges you hold.", "It depends on your badges.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Why does surfing find higher levels than HERE's slot says?", "While surfing, a wild POKéMON is often one to four levels over its slot's level. HERE's levels for SURFING include that.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Why do some trees never have the rare POKéMON?", "Each tree you HEADBUTT is common, rare or almost empty, picked from where the tree stands and your trainer ID. HERE lists both tables; try every tree on a route to find the rare ones.", "It has to do with your trainer ID.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "Which rod catches what at the shore?", "On the shore's GOOD ROD and SUPER ROD lists one slot changes with the clock: CORSOLA in the morning and day, STARYU in the evening and at night. HERE shows the one for now.", NULL, PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_entry pd_gb_polished_p0_s1[] = {
-    { "Is the POKéMON LEAGUE harder the second time?", "With all 16 badges, the ELITE FOUR and LANCE use much stronger teams. NEXT BOSS lists them after the Kanto gyms.", "Come back with every badge.", PD_HAVE_NONE, { 0, 0, 0 }, NULL },
-    { "What does RED give me?", "After the battle in SILVER CAVE, RED hands you the MYSTICTICKET. Show it at the ferry gate in VERMILION CITY for a trip to an island with one more trainer waiting at its top.", "A key item.", PD_HAVE_ITEM, { 542, 0, 0 }, NULL },
+    { "Is the POKéMON LEAGUE harder the second time?", "With all 16 badges, the ELITE FOUR and LANCE use much stronger teams. NEXT BOSS lists them after the Kanto gyms.", "Come back with every badge.", PD_HAVE_NONE, { 0, 0, 0 }, NULL, 0 },
+    { "What does RED give me?", "After the battle in SILVER CAVE, RED hands you the MYSTICTICKET. Show it at the ferry gate in VERMILION CITY for a trip to an island with one more trainer waiting at its top.", "A key item.", PD_HAVE_ITEM, { 542, 0, 0 }, NULL, 0 },
 };
 static const struct pd_guide_section pd_gb_polished_p0[] = {
-    { "WILD POKéMON", NULL, pd_gb_polished_p0_s0, 5 },
-    { "AFTER THE LEAGUE", NULL, pd_gb_polished_p0_s1, 2 },
+    { "WILD POKéMON", NULL, pd_gb_polished_p0_s0, 5, 0 },
+    { "AFTER THE LEAGUE", NULL, pd_gb_polished_p0_s1, 2, 0 },
 };
 static const struct pd_guide_page pd_gb_polished_pages[] = {
     { "TIPS", pd_gb_polished_p0, 2 },

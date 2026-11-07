@@ -196,6 +196,7 @@ bool pd_guide_rom_ok(const struct pd_game* g) {
     const struct pd_config* cfg = g->cfg;
     if (cfg && cfg->gb) return cfg->gb->teams != NULL || pd_gbw_for(g);  // a Game Boy guide's teams are embedded, nothing to probe
     if (!cfg || !cfg->trainers || !cfg->probeName) return false;
+    if (g->randomized) return true; // retail's tables, proven by the hash; the randomizer renames the probe trainer
     size_t len = (size_t) (cfg->trainerStride ? cfg->trainerNameLen : 12);
     uint32_t at = cfg->trainers + (uint32_t) cfg->probeTrainer * tr_stride(cfg) + (cfg->trainerStride ? cfg->trainerNameOff : 4);
     if (cfg->trainerNamePtr) {

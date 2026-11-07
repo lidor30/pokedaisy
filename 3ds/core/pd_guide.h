@@ -21,6 +21,7 @@ struct pd_guide_entry {
     uint8_t haveKind;   // enum pd_have_kind: what marks it done
     uint16_t have[3];   // the flag / item / national numbers (any one)
     const char* areas;  // area keys joined by '|' (areaKey: "SSANNE"), NULL = none
+    uint8_t randomized; // Guide.kt's Randomized: 0 either way, 1 unrandomized games only, 2 randomized ones only
 };
 
 struct pd_guide_section {
@@ -28,6 +29,7 @@ struct pd_guide_section {
     const char* note;
     const struct pd_guide_entry* entries;
     int count;
+    uint8_t randomized; // as an entry's
 };
 
 struct pd_guide_page {

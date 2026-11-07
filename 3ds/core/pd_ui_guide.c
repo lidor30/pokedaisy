@@ -12,6 +12,7 @@
 #include "pd_dex.h"
 #include "pd_gb_world.h"
 #include "pd_guide.h"
+#include "pd_randomized.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
 
@@ -120,11 +121,19 @@ static void static_entry(const struct pd_game* g, const struct pd_snapshot* s, c
     e->owned = pd_guide_has(g, s, src);
 }
 
+// Guide.kt's Randomized: whether a line marked so holds on this game (the app's shownPages).
+static bool shows(const struct pd_game* g, uint8_t randomized) {
+    return randomized == 0 || (randomized == 2) == (g->randomized != NULL);
+}
+
 static void build_static(const struct pd_game* g, const struct pd_snapshot* s, const struct pd_guide_page* p) {
     for (int i = 0; i < p->count; i++) {
         const struct pd_guide_section* sec = &p->sections[i];
+        if (!shows(g, sec->randomized)) continue;
         add_section(sec->heading, sec->note);
-        for (int k = 0; k < sec->count; k++) static_entry(g, s, &sec->entries[k]);
+        for (int k = 0; k < sec->count; k++)
+            if (shows(g, sec->entries[k].randomized)) static_entry(g, s, &sec->entries[k]);
+        if (!sections[sectionCount - 1].count) sectionCount--;
     }
 }
 
@@ -211,8 +220,9 @@ static void build_here(const struct pd_game* g, const struct pd_snapshot* s, con
         if (!strcmp(gd->pages[p].title, "TIPS")) continue;
         for (int i = 0; i < gd->pages[p].count; i++) {
             const struct pd_guide_section* sec = &gd->pages[p].sections[i];
+            if (!shows(g, sec->randomized)) continue;
             for (int k = 0; k < sec->count; k++) {
-                if (!pd_entry_in_area(&sec->entries[k], key)) continue;
+                if (!pd_entry_in_area(&sec->entries[k], key) || !shows(g, sec->entries[k].randomized)) continue;
                 bool dup = false;
                 for (int e = sections[sectionCount - 1].first; e < entryCount && !dup; e++) {
                     dup = !strcmp(entries[e].title, sec->entries[k].title);
@@ -260,7 +270,9 @@ static void build_here(const struct pd_game* g, const struct pd_snapshot* s, con
         add_section(people ? "PEOPLE" : "ITEMS", people ? "Some want something done first." : NULL);
         for (int pass = 0; pass < 2; pass++) {
             for (int i = 0; i < n; i++) {
-                const struct pd_area_thing* t = &things[i];
+                struct pd_area_thing view;
+                const struct pd_area_thing* t = pd_randomized_area(g, &things[i], &view); // as a randomized ROM has it
+                if (!t) continue;
                 bool isItem = t->kind == PD_AREA_ITEM || t->kind == PD_AREA_HIDDEN;
                 if (!pd_area_here(g, s, t) || isItem == people) continue;
                 if (pd_area_done(g, s, t) != (pass == 1)) continue;
@@ -290,7 +302,9 @@ static void build_where(const struct pd_game* g, const struct pd_snapshot* s) {
         add_section(HEADINGS[sec], NULL);
         int first = entryCount;
         for (int i = 0; i < n; i++) {
-            const struct pd_area_thing* t = &things[i];
+            struct pd_area_thing view;
+            const struct pd_area_thing* t = pd_randomized_area(g, &things[i], &view);
+            if (!t) continue;
             bool gift = t->kind == PD_AREA_GIFT || t->kind == PD_AREA_KEY, mon = t->kind == PD_AREA_MON || t->kind == PD_AREA_EGG;
             char name[48], sp[40];
             if (mon) {

@@ -1,4 +1,5 @@
 #include "pd_tables.h"
+#include "pd_randomized.h"
 
 #include "pd_game.h"
 
@@ -88,16 +89,22 @@ int pd_gender_ratio(const struct pd_game* g, int species) {
 }
 
 int pd_move_type(const struct pd_game* g, int move) {
+    int type, power;
+    if (pd_randomized_move(g, move, &type, &power)) return type;
     const struct pd_move_info* m = move_info(g, move);
     return m ? m->type : PD_TYPE_NONE;
 }
 
 int pd_move_power(const struct pd_game* g, int move) {
+    int type, power;
+    if (pd_randomized_move(g, move, &type, &power)) return power;
     const struct pd_move_info* m = move_info(g, move);
     return m ? m->power : 0;
 }
 
 static int single_pct(const struct pd_game* g, int atk, int def) {
+    int pct;
+    if (pd_randomized_pct(g, atk, def, &pct)) return pct;
     const struct pd_text* t = hack_text(g);
     const struct pd_type_pair* chart = t && t->typeChart ? t->typeChart : pd_type_chart;
     int n = t && t->typeChart ? t->typeChartCount : pd_type_chart_count;
@@ -115,6 +122,7 @@ int pd_type_multiplier_pct(const struct pd_game* g, int atk, int def1, int def2)
 
 void pd_species_type_pair(const struct pd_game* g, int species, int* t1, int* t2) {
     *t1 = *t2 = PD_TYPE_NONE;
+    if (pd_randomized_types(g, species, t1, t2)) return;
     const struct pd_text* t = hack_text(g);
     if (t && t->speciesTypes) {
         if (species > 0 && species < t->speciesTypesCount) {

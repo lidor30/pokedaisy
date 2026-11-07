@@ -232,19 +232,17 @@ def pages_of(text, env):
             assert sec[1] == "section", sec[1]
             heading, *entries = sec[2]
             note = sec[3].get("note")
-            # Randomized.ONLY / HIDE (Guide.kt): the C reads unrandomized games only, so a randomized-only section or
-            # entry is left out and a HIDE one kept.
+            # Randomized.ONLY / HIDE (Guide.kt): kept as a mark (0 either way, 1 unrandomized only, 2 randomized only) that
+            # the C filters by the running game, as the app's shownPages.
             def marker(x):
                 return x if isinstance(x, str) else x[1] if isinstance(x, tuple) and len(x) > 1 and isinstance(x[1], str) else None
-            if entries and marker(entries[0]) == "Randomized.ONLY":
-                continue
-            entries = [e for e in entries if marker(e) not in ("Randomized.HIDE", "Randomized.ANY")]
+            RND = {"Randomized.ANY": 0, "Randomized.HIDE": 1, "Randomized.ONLY": 2}
+            smark = RND.get(marker(entries[0]), 0) if entries else 0
+            entries = [e for e in entries if marker(e) not in RND]
             out_entries = []
             for e in entries:
                 assert e[1] == "entry", e[1]
                 args, kw = e[2], e[3]
-                if marker(kw.get("randomized")) == "Randomized.ONLY":
-                    continue
                 title_e, answer = args[0], args[1]
                 hint = kw.get("hint", args[2] if len(args) > 2 else None)
                 have = kw.get("have")
@@ -254,8 +252,9 @@ def pages_of(text, env):
                     kind = have[1].split(".")[-1].upper()
                     have_c = (kind, have[2])
                 area_list = [a for a in areas[2]] if areas else []
-                out_entries.append(dict(title=title_e, answer=answer, hint=hint, have=have_c, areas=area_list))
-            out_sections.append((heading, note, out_entries))
+                out_entries.append(dict(title=title_e, answer=answer, hint=hint, have=have_c, areas=area_list,
+                                        rnd=RND.get(marker(kw.get("randomized")), 0)))
+            out_sections.append((heading, note, out_entries, smark))
         pages.append((title, out_sections))
     return pages
 
@@ -329,18 +328,18 @@ def area_key(name):
 
 def emit_guide(out, prefix, pages, bosses, verified, extra):
     for pi, (title, sections) in enumerate(pages):
-        for si, (heading, note, entries) in enumerate(sections):
+        for si, (heading, note, entries, smark) in enumerate(sections):
             out.append(f"static const struct pd_guide_entry {prefix}_p{pi}_s{si}[] = {{")
             for e in entries:
                 kind, vals = e["have"]
                 vals = (vals + [0, 0, 0])[:3]
                 areas = "|".join(area_key(a) for a in e["areas"])
                 out.append(f"    {{ {c_str(e['title'])}, {c_str(e['answer'])}, {c_str(e['hint'])}, "
-                           f"PD_HAVE_{kind}, {{ {vals[0]}, {vals[1]}, {vals[2]} }}, {c_str(areas or None)} }},")
+                           f"PD_HAVE_{kind}, {{ {vals[0]}, {vals[1]}, {vals[2]} }}, {c_str(areas or None)}, {e['rnd']} }},")
             out.append("};")
         out.append(f"static const struct pd_guide_section {prefix}_p{pi}[] = {{")
-        for si, (heading, note, entries) in enumerate(sections):
-            out.append(f"    {{ {c_str(heading)}, {c_str(note)}, {prefix}_p{pi}_s{si}, {len(entries)} }},")
+        for si, (heading, note, entries, smark) in enumerate(sections):
+            out.append(f"    {{ {c_str(heading)}, {c_str(note)}, {prefix}_p{pi}_s{si}, {len(entries)}, {smark} }},")
         out.append("};")
     out.append(f"static const struct pd_guide_page {prefix}_pages[] = {{")
     for pi, (title, sections) in enumerate(pages):
@@ -965,17 +964,17 @@ def emit_polished(out):
 def emit_guide_pages(out, prefix, pages):
     """The page arrays of emit_guide, alone (a Game Boy guide's TIPS)."""
     for pi, (title, sections) in enumerate(pages):
-        for si, (heading, note, entries) in enumerate(sections):
+        for si, (heading, note, entries, smark) in enumerate(sections):
             out.append(f"static const struct pd_guide_entry {prefix}_p{pi}_s{si}[] = {{")
             for e in entries:
                 kind, vals = e["have"]
                 vals = (vals + [0, 0, 0])[:3]
                 out.append(f"    {{ {c_str(e['title'])}, {c_str(e['answer'])}, {c_str(e['hint'])}, PD_HAVE_{kind}, "
-                           f"{{ {vals[0]}, {vals[1]}, {vals[2]} }}, NULL }},")
+                           f"{{ {vals[0]}, {vals[1]}, {vals[2]} }}, NULL, {e['rnd']} }},")
             out.append("};")
         out.append(f"static const struct pd_guide_section {prefix}_p{pi}[] = {{")
-        for si, (heading, note, entries) in enumerate(sections):
-            out.append(f"    {{ {c_str(heading)}, {c_str(note)}, {prefix}_p{pi}_s{si}, {len(entries)} }},")
+        for si, (heading, note, entries, smark) in enumerate(sections):
+            out.append(f"    {{ {c_str(heading)}, {c_str(note)}, {prefix}_p{pi}_s{si}, {len(entries)}, {smark} }},")
         out.append("};")
     out.append(f"static const struct pd_guide_page {prefix}_pages[] = {{")
     for pi, (title, sections) in enumerate(pages):

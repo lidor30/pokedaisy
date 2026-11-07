@@ -7,6 +7,7 @@
 
 #include "pd_gb.h"
 #include "pd_games.h"
+#include "pd_randomized.h"
 #include "pd_sha1.h"
 
 // The configs come from gamedata/ (gamedata/targets/3ds.toml picks the fields
@@ -682,6 +683,14 @@ static void identify(struct pd_game* g) {
     for (size_t i = 0; i < sizeof RETAIL_SHA1S / sizeof *RETAIL_SHA1S; i++)
         if (!strcmp(RETAIL_SHA1S[i], g->sha1)) { g->shinyBelow = 8; return; }
     if (retail_dump(g)) { g->shinyBelow = 8; return; }
+    // Retail as Universal Pokemon Randomizer ZX left it (the app's RandomizedRetail): retail's config and guide, what the
+    // randomizer changed read from the ROM.
+    g->randomized = pd_randomized_match(g);
+    if (g->randomized) {
+        g->shinyBelow = 8;
+        g->title = g->kind == PD_GAME_FIRERED ? "Pokémon FireRed (Randomized)" : "Pokémon Emerald (Randomized)";
+        return;
+    }
     g->cfg = NULL;
     g->guide = PD_GUIDE_NONE;
     g->title = g->kind == PD_GAME_FIRERED ? "FireRed ROM hack" : "Emerald ROM hack";

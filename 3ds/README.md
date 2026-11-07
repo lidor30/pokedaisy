@@ -88,11 +88,13 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     trainer pic; a tap flips it to the back (Hall of Fame debut, link battles,
     trades, FireRed's stickers ...) the way the game does. FireRed rev 1,
     LeafGreen and Emerald, as in the app.
-- **Games: what the app knows** (`core/pd_games_gen.c`, 158 ROMs by CRC32, exported from the app's own detection):
-  every retail GBA game in every language, the GBA hacks, and the Game Boy games (Red, Blue, Yellow in five
-  languages, Gold, Silver, Crystal, Crystal Clear, Prism, Polished Crystal, PureRed / PureBlue). Per game: its
-  names, moves, types and type chart, party and bag palettes, backdrop, and the companion's windows in the Game
-  Boy games' black on white. No DS: the 3DS can't run melonDS.
+- **Games: what the app knows**, found by SHA-1 (`core/pd_game.c`; configs from `gamedata/`, `core/pd_configs_gen.h`,
+  the looks the TOML doesn't hold from the app's export, `core/pd_games_gen.c`): every retail GBA game in every
+  language, collection dumps of retail, retail FireRed / Emerald as Universal Pokemon Randomizer ZX leaves them (any
+  seed: `core/pd_randomized.c`, what the randomizer changed read from the ROM), the GBA hacks, and the Game Boy games
+  (Red, Blue, Yellow in five languages, Yellow Legacy, Gold, Silver, Crystal, Crystal Clear, Crystal Legacy, Prism,
+  Polished Crystal, PureRed / PureBlue). Per game: its names, moves, types and type chart, party and bag palettes,
+  backdrop, and the companion's windows in the Game Boy games' black on white. No DS: the 3DS can't run melonDS.
 - **Library**: the app's rail, view pills and tiles.
 - **Battle controls**: FIGHT / BAG / RUN / POKéMON, the moves, the party to send in (BEST / OUT), ONE-TAP MOVES,
   on the GBA games with their handlers known and on every Game Boy game (its 2x2 menu in the cart's own words).
