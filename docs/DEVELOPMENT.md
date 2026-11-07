@@ -2857,6 +2857,30 @@ machines by its own rule (the species' `/data/tutor_moves.narc` list or its lear
 `/data/pokepic_m.narc` (member 8 x species, 160 x 80, linear, unscrambled - a 37.6 MB archive, so `NdsArt.file` takes up to
 48 MB). The save's Pokedex keeps 0xC8-byte flag arrays (`Gen4Config.dexFlagBytes`). No GUIDE (its world isn't HeartGold's).
 
+**Renegade Platinum** (Drayano's v1.3.0, SHA-1 `d4ee068b7e0a19a848436369f145e3154afe13ca`): US Platinum rev 1 edited in
+place, header and all (`CPUE` rev 1), so everything that goes by the header (the Poller's `detectDs`,
+`pk_nds_field.cpp`, `pk_nds_call.cpp`, EXPAND, STEADY) runs it as Platinum, and it should: its RAM, save layout and ARM9
+are retail's (one ARM9 word differs, the shiny odds); of the overlays only 11, 16, 21 and 73 changed. What the companion
+would show wrong is its data: types (Fairy is type 9 and every species' typing is its own), move power / type /
+category, the type chart, TMs and the party icons' palettes. `RenegadePlatinum.matches` tells it apart by battle overlay
+16's pool word at cart 0x221060 (0x021E9F81, where retail's overlay holds 0x0226ECD5): the address of the moved type
+chart (overlay 21, RAM 0x021E9F80, cart 0x2AFC00, retail's triples of attacker / defender / x10 with Fairy's rows
+added), the same word the game's own lookup loads. The battle's chart in RAM was compared with the cart's in a wild
+battle: equal. The Classic patch of the same release differs only in `pl_personal.narc`, so it passes the same check and
+reads its own types; it only needs its SHA-1 and title. The data is read from the cart at run time
+(`NdsArt.readRenegade` -> `RenegadePlatinum.Data`, never bundled): `pl_personal.narc` types at 6 / 7, `pl_waza_tbl.narc`
+(category 2, power 3, type 4), the chart, the TM table and the icon palette bytes in the ARM9 (retail's offsets:
+`tmMovesPlatinum` / `iconPalettesPlatinum` come out equal on a retail cart, which `RenegadePlatinumTest` checks), and
+each map header's wild set (+0x0E) into `pl_enc_data.narc`'s grass and surf rates for WILD ENCOUNTERS' restore.
+`ActiveTables.renegadePlatinum` (set by the Poller) switches the move / type / chart lookups and the art directories
+(`nds/renegade/`, its own icons, items and DEX pages); `GEN4_RENEGADE_PLATINUM` is Platinum's config with
+`POKEDEX_RENEGADE`. Its names come from its text like every DS cart's (`NdsArt.readNames`), which matters here: it put
+about a dozen new moves in old ones' slots (Horn Drill's is Drill Run, Submission's Play Rough), renamed a few items
+(429 Prism Scale) and writes species in mixed case. No GUIDE: its trainers and wild sets are its own, and Platinum's
+generated guide would be wrong. Its save is retail's format: a new game was played headless, saved in game and rebooted
+(the `renegade_platinum` fixtures' README); the rival's visit at the start and the walk out were skipped with a `warp`
+script (scrcmd 0xBE) for the EXPAND / FLY checks.
+
 **GUIDE.** `scripts/gen_gen4_guide.py` writes `GuideGen4PlatinumGen.kt` / `GuideGen4HeartGoldGen.kt` from the decomps,
 numbers only: every map header's wild set (Platinum's grass with its day / night pair, HG / SS's per time of day and
 each version's own branch, surf, rock smash, rods and HG / SS's night fish), the bosses' teams, and HERE's item balls

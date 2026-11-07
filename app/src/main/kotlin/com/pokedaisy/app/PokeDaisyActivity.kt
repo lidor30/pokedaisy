@@ -2019,6 +2019,10 @@ class PokeDaisyActivity : Activity() {
         dsWildRates = if (!nds) null else if (romOrigin) {
             // Its tables are read in the background (NdsArt.prefetch); the core may start first, so read them here then.
             { (com.pokedaisy.app.companion.data.OriginHeartGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readOrigin(r))?.wildRates ?: IntArray(0) }
+        } else if (ndsCode == com.pokedaisy.app.companion.data.RenegadePlatinum.CODE &&
+            com.pokedaisy.app.companion.data.RenegadePlatinum.matches(r)) {
+            // Renegade Platinum: retail Platinum's header, its own maps' rates (read from its cart, like Origin's).
+            { (com.pokedaisy.app.companion.data.RenegadePlatinum.data ?: com.pokedaisy.app.companion.data.NdsArt.readRenegade(r))?.wildRates ?: IntArray(0) }
         } else when (ndsCode) {
             "CPUE", "CPUF" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
             "IPKE", "IPKD", "IPKF" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates

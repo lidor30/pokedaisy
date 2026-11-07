@@ -40,6 +40,15 @@ val POKEDEX_PLATINUM = PokedexTables(
     gen4 = GEN4_DEX_PLATINUM, categorySuffix = "Pokémon",
 )
 
+/** Renegade Platinum's dex ([RenegadePlatinum]): Platinum's, its pages and pictures from its own cart, its machines too
+ * (five TMs teach other moves). */
+val GEN4_DEX_RENEGADE = Gen4DexTables(
+    NdsArt.RENEGADE_DEX, NdsArt.RENEGADE_FRONT, IntArray(0),
+    machineMoves = { RenegadePlatinum.data?.machines ?: IntArray(0) },
+)
+
+val POKEDEX_RENEGADE = POKEDEX_PLATINUM.copy(gen4 = GEN4_DEX_RENEGADE)
+
 /** HeartGold / SoulSilver's dex: Johto's 256 (their order from the cart, [Gen4Dex.regionalOrder]) and the National Dex's
  * 493, in feet and pounds as the US games print their pages. */
 val POKEDEX_HEARTGOLD = PokedexTables(
