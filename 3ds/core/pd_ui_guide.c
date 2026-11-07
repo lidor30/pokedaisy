@@ -35,7 +35,7 @@ struct view_entry {
 };
 
 struct view_section {
-    char heading[56], note[120];
+    char heading[56], note[160];
     int first, count;
 };
 
@@ -388,7 +388,7 @@ static void team_section(const struct pd_game* g, const char* title, const char*
                          const struct pd_team_mon* team, int n) {
     int ace = 0;
     for (int i = 0; i < n; i++) ace = team[i].level > ace ? team[i].level : ace;
-    char heading[56], note[120];
+    char heading[56], note[160];
     snprintf(heading, sizeof(heading), first ? "NEXT: %s" : "%s", title);
     snprintf(note, sizeof(note), "%s - %d POKéMON - UP TO LV%d - YOUR BEST LV%d", where, n, ace, best);
     add_section(heading, note);
@@ -449,7 +449,7 @@ static void build_bosses(const struct pd_game* g, const struct pd_snapshot* s, c
         for (int i = 0; i < n; i++) {
             if (team[i].level > ace) { ace = team[i].level; aceSpecies = team[i].species; }
         }
-        char heading[56], note[120];
+        char heading[56], note[160];
         snprintf(heading, sizeof(heading), shown || vi ? "%s" : "NEXT: %s", boss->title);
         if (var) {
             size_t hl = strlen(heading);

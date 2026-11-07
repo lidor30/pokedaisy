@@ -175,7 +175,7 @@ static bool read_rom_map(const struct pd_game* g, struct pd_map_art* art, struct
     if (!tiles || tilesSize % 32) { free(tiles); return false; }
     const uint8_t* palRaw = pd_rom_at(g, 0x08000000u + palOff, 16 * 32);
     bool ok = palRaw != NULL;
-    uint32_t pal[256];
+    uint32_t pal[256] = {0};
     if (ok) palette(palRaw, 256, pal);
     art->hasBackdrop = ok;
     art->backdrop = pal[0];

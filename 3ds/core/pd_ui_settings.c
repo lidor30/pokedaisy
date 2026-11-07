@@ -61,7 +61,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     // The TRAINER CARD opens from here (the list below is full): a grey chip at
     // the title window's right, white while pressed, like the tab bar's.
     if (host && host->batteryPct >= 0 && host->fullSettings) {
-        char pct[8];
+        char pct[16];
         snprintf(pct, sizeof(pct), "%d%%", host->batteryPct);
         right -= pd_text_width(pct);
         pd_text(c, right, ty, pct, PD_TITLE_TEXT, PD_TITLE_SHADOW);
