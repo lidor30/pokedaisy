@@ -56,6 +56,19 @@ CAVES = {"BPR": (1, 81, 0xFF, 17, 3), "BPG": (1, 81, 0xFF, 17, 3), "BPE": (24, 8
 MON_DATA_MOVE4 = 16
 # Recharged Emerald's bag tables (FieldItemsRechargedEmeraldGen.kt): GetMonData, SetMonData, AddBagItem,
 # ArePlayerFieldControlsLocked, gPlayerParty.
+# The gcc-built hacks FLY knows (FieldItems.kt's tables): GetMonData, SetMonData, ArePlayerFieldControlsLocked, gPlayerParty,
+# ScriptContext_SetupScript (PC anywhere's), how far their MON_DATA ids sit past vanilla's. FLASH only (no TM screen there):
+# no dark map is found in their map tables here, so FLASH runs where the save stands, counted as a cave.
+EXPANSION = {
+    "LAZARUS": (0x081C2F54, 0x081C36D0, 0x0820B218, 0x0201B960, 0x0820B2B0, 7),
+    "IMPERIUM": (0x081BDE00, 0x081BE590, 0x08200894, 0x020375F8, 0x08200930, 7),
+    "HEART_AND_SOUL": (0x081BE7F8, 0x081BF848, 0x08207FF8, 0x02034764, 0x08208094, 7),
+    "SOULGOLD": (0x081ED710, 0x081EDD68, 0x082363D8, 0x0203901C, 0x0823647C, 8),
+    "SOULGOLD_V1_2": (0x081EE340, 0x081EE998, 0x08236CB8, 0x02039024, 0x08236D5C, 8),
+    "SOULGOLD_V1_2B": (0x081EE2D4, 0x081EE92C, 0x08236C20, 0x02039024, 0x08236CC4, 8),
+    "SOULGOLD_V1_2C": (0x081EE3A0, 0x081EE9F8, 0x08236D18, 0x02039024, 0x08236DBC, 8),
+    "SOULGOLD_V1_2_1": (0x081F1748, 0x081F1D28, 0x0823BB60, 0x02038E68, 0x0823BC04, 8),
+}
 RECHARGED = {
     "RECHARGED_EMERALD_V2_2_5": (0x08169D20, 0x0816A2D4, 0x0811AD64, 0x081AEF94, 0x020373C8),
     "RECHARGED_EMERALD_V2_2_8": (0x0816AEDC, 0x0816B4A4, 0x0811BB44, 0x081B093C, 0x020373C8),
@@ -93,6 +106,12 @@ HACKS = {
     "Recharged Emerald 2.2.5": ("recharged_emerald_v225", "recharged_emerald.txt", "RECHARGED_EMERALD_V2_2_5"),
     "Recharged Emerald 2.2.8": ("recharged_emerald", "recharged_emerald.txt", "RECHARGED_EMERALD_V2_2_8"),
     "Recharged Emerald Rebalanced": ("recharged_emerald_rebalanced", "recharged_emerald.txt", "RECHARGED_EMERALD_REBALANCED_V2_2_8"),
+    "Lazarus": ("lazarus_srm", "default.txt", "LAZARUS"), "Emerald Imperium": ("imperium", "default.txt", "IMPERIUM"),
+    "Heart and Soul": ("heart_and_soul", "rhh_splash.txt", "HEART_AND_SOUL"),
+    "SoulGold 1.1.4": ("soulgold", "default.txt", "SOULGOLD"), "SoulGold 1.2": ("soulgold_v12", "default.txt", "SOULGOLD_V1_2"),
+    "SoulGold 1.2 Alt 1": ("soulgold_v12b", "default.txt", "SOULGOLD_V1_2B"),
+    "SoulGold 1.2 Alt 2": ("soulgold_v12c", "default.txt", "SOULGOLD_V1_2C"),
+    "SoulGold 1.2.1": ("soulgold_v121", "default.txt", "SOULGOLD_V1_2_1"),
 }
 PARTY_STRIDE = 100
 
@@ -141,13 +160,14 @@ def script(t):
         return "\n".join(o) + "\n"
     if t["cave"]:
         g, n, w, x, y = t["cave"]
-        warp = [0x39, g, n, w, x & 255, x >> 8, y & 255, y >> 8, 2]
+        # the expansion asserts unless a waitstate follows the warp
+        warp = [0x39, g, n, w, x & 255, x >> 8, y & 255, y >> 8] + ([0x27] if t.get("waitstate") else []) + [2]
         o += [f"poke8 {h(SCRATCH + i)} {h(b)}" for i, b in enumerate(warp)]
         o += [f"call {h(t['setupScript'])} {h(SCRATCH)}", "wait 500"]
     else:
         # No dark cave known on this hack's maps: the map counted as one (gMapHeader.cave), the lit flag clear as on any
         # map load. The light opening up then shows nothing, but the calls and the flag are the same.
-        o += [f"poke8 {h(f['mapHeader'] + 0x15)} 1"]
+        o += [f"poke8 {h(f['mapHeader'] + f.get('caveOff', 0x15))} 1"]
     o += [f"poke16 {h(SCRATCH + 0x20)} {FLASH}", f"call {h(t['setMonData'])} {h(t['party'])} {MON_DATA_MOVE4 + t.get('monShift', 0)} {h(SCRATCH + 0x20)}",
           f"call {h(t['getMonData'])} {h(t['party'])} {MON_DATA_MOVE4 + t.get('monShift', 0)}",
           f"call {h(lock)}", f"call {h(f['flagGet'])} {h(f['litFlag'])}", "shot flash_dark.ppm",
@@ -156,7 +176,7 @@ def script(t):
           f"poke32 {h(f['menuFieldCallback'])} 0", f"poke32 {h(f['postMenuFieldCallback'])} 0",
           f"call {h(f['fieldCallbacks'][0] | 1)}", "wait 30", "shot flash_cutin.ppm", "wait 700",
           f"call {h(f['flagGet'])} {h(f['litFlag'])}", f"call {h(lock)}", f"call {h(f['setUpFieldMoveFlash'])}",
-          "hold DOWN 30", "shot flash_lit.ppm"]
+          "shot flash_glow.ppm", "hold DOWN 30", "shot flash_lit.ppm"]
     return "\n".join(o) + "\n"
 
 
@@ -253,7 +273,10 @@ def badge_rule(path, flash):
 
 # Where retail's code loads gMapGroups from (a literal-pool word, kept in place by the hacks edited into it).
 MAP_GROUPS_POOL = dict(FR0=0x0805524C, FR1=None, EM=0x08084AA4)
-MAP_GROUPS = dict(EMERALD_LEGACY=0x084AF90C)   # a rebuild's own gMapGroups (its ELF)
+MAP_GROUPS = dict(EMERALD_LEGACY=0x084AF90C,   # a rebuild's own gMapGroups (its ELF); the expansion hacks' from their GUIDE records
+                  LAZARUS=0x08FAF098, IMPERIUM=0x08FC2F74, HEART_AND_SOUL=0x092DF5A4, SOULGOLD=0x09587364,
+                  SOULGOLD_V1_2=0x09592634, SOULGOLD_V1_2B=0x09592590, SOULGOLD_V1_2C=0x095C04C0, SOULGOLD_V1_2_1=0x095CC3A8)
+CAVE_OFF = {b: 0x16 for b in ("SOULGOLD", "SOULGOLD_V1_2", "SOULGOLD_V1_2B", "SOULGOLD_V1_2C", "SOULGOLD_V1_2_1")}
 
 
 def find_cave(path, base):
@@ -279,7 +302,7 @@ def find_cave(path, base):
             if not ok(hp) or not ok(u32(hp)) or not ok(u32(hp + 4)):
                 break
             events = u32(hp + 4)
-            if rom[hp - 0x08000000 + 0x15] == 1 and rom[events - 0x08000000 + 1] > 0:
+            if rom[hp - 0x08000000 + CAVE_OFF.get(base, 0x15)] == 1 and rom[events - 0x08000000 + 1] > 0:
                 return (g, n, 0, 0, 0)
     return None
 
@@ -306,13 +329,16 @@ def targets():
     for build, (getmon, setmon, addbag, fcl, party) in RECHARGED.items():
         bases[build] = (dict(getMonData=getmon, setMonData=setmon, addBagItem=addbag, fieldControlsLocked=fcl, party=party,
                              setupScript=None, monShift=9), build)
+    for game, (getmon, setmon, fcl, party, setup, shift) in EXPANSION.items():
+        bases[game] = (dict(getMonData=getmon, setMonData=setmon, addBagItem=None, fieldControlsLocked=fcl, party=party,
+                            setupScript=setup, monShift=shift), game)
     for name, (save_key, boot, base) in HACKS.items():
         rom, save = conf_rom(save_key), conf(save_key)
         if not os.path.isfile(rom):
             print(f"{name}: no ROM ({os.path.basename(rom)}), skipped")
             continue
         fields, rec = bases[base]
-        tm = record("TM_" + rec)
+        tm = record("TM_" + rec) if base not in EXPANSION else None
         flash, badge = badge_rule(rom, record("FLASH_" + rec))
         if name in NO_TM:
             tm = None
@@ -323,7 +349,7 @@ def targets():
                                                   "setupScript")},
                          path=rom, save=save, boot=boot, after=BOOTS["BPR" if base.startswith("FR") else "BPE"][1] if boot.endswith("default.txt") else "",
                          back=name not in TEACH_HACKS, slot=TEACH_HACKS.get(name, 0), cave=cave, tm=tm, flash=flash, badge=badge, flashOff=None if flash else badge,
-                         monShift=fields.get("monShift", 0))
+                         monShift=fields.get("monShift", 0), waitstate=base in EXPANSION)
     return out
 
 
@@ -332,7 +358,7 @@ def sheet(work, keys):
         from PIL import Image, ImageDraw
     except ImportError:
         return
-    shots = ("tm_menu", "tm_after", "flash_dark", "flash_cutin", "flash_lit")
+    shots = ("tm_menu", "tm_after", "flash_dark", "flash_cutin", "flash_glow")
     img = Image.new("RGB", (240 * len(shots) + 70, 160 * len(keys)), "white")
     d = ImageDraw.Draw(img)
     for row, key in enumerate(keys):

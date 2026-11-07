@@ -32,7 +32,7 @@ data class FlashFns(
     val fieldCallbacks: List<Long>,
     /** gPartyMenu.slotId: the Pokémon the cut-in shows. */
     val partyMenuSlotId: Long,
-    /** gMapHeader: its cave byte at +0x15, read by the quick menu to dim FLASH where it's light already. */
+    /** gMapHeader: its cave byte at [caveOff], read by the quick menu to dim FLASH where it's light already. */
     val mapHeader: Long,
     /** CRC32 of each function's first 32 bytes: flagGet, setUpFieldMoveFlash, then each of [fieldCallbacks]. */
     val codeCrcs: List<Long>,
@@ -40,6 +40,8 @@ data class FlashFns(
      * bl FlagGet`) and the CRC32 of its 16 retail bytes, on the code hacks are edited into (FireRed rev 0); 0 = not read. */
     val badgeCheck: Long = 0,
     val badgeCheckCrc: Long = 0,
+    /** gMapHeader.cave's offset: 0x15, SoulGold 0x16 (its map sections are 16 bits). */
+    val caveOff: Int = 0x15,
     /** A CFRU hack's own badge rule (`bool fn(u8 fieldMove)`, the one its party menu jumps to from [badgeCheck]), found by
      * [flashBadgeRule]; 0 = the flag check. */
     val badgeFn: Long = 0,
@@ -68,6 +70,10 @@ fun flashFnsFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean)
     hack -> null
     kind in FIRERED_REV0_HACKS || (kind == GameKind.FIRERED && gameCode == "PUVV") -> FLASH_FIRERED_REV0
     kind == GameKind.GLAZED -> FLASH_EMERALD.takeIf { gameCode == "BPEE" }
+    // The gcc-built Emerald hacks FLY knows (scripts/find_flash_expansion.py); SoulGold's builds: flashCandidatesFor.
+    kind == GameKind.LAZARUS -> FLASH_LAZARUS.takeIf { gameCode == "BPEE" }
+    kind == GameKind.IMPERIUM -> FLASH_IMPERIUM.takeIf { gameCode == "BPEE" }
+    kind == GameKind.HEART_AND_SOUL -> FLASH_HEART_AND_SOUL.takeIf { gameCode == "BPEE" }
     kind == GameKind.FIRERED && gameCode == "BPRE" -> when (revision) { 0 -> FLASH_FIRERED_REV0; 1 -> FLASH_FIRERED_REV1; else -> null }
     kind == GameKind.FIRERED && gameCode == "BPGE" -> when (revision) { 0 -> FLASH_LEAFGREEN_REV0; 1 -> FLASH_LEAFGREEN_REV1; else -> null }
     kind == GameKind.EMERALD && gameCode == "BPEE" -> if (emeraldLegacy) FLASH_EMERALD_LEGACY else FLASH_EMERALD
@@ -126,11 +132,14 @@ private fun cfruBadgeFn(check: Long, b: ByteArray, read: (addr: Long, len: Int) 
     return rule.takeIf { target(10) == check + 0x3C && target(14) == check + 0x16 && rule in 0x08000000L until 0x0A000000L }
 }
 
-/** Every table that may fit: [flashFnsFor]'s, or Recharged Emerald's three builds' for that rebuild ([rebuild]); the code
- * CRCs pick. */
+/** Every table that may fit: [flashFnsFor]'s, or for games whose builds share a kind and game code all of their builds'
+ * (Recharged Emerald's three, [rebuild]; SoulGold's five) - the code CRCs pick. */
 fun flashCandidatesFor(kind: GameKind?, gameCode: String, revision: Int, rebuild: Boolean): List<FlashFns> = when {
     rebuild -> if (kind == GameKind.EMERALD && gameCode == "BPEE")
         listOf(FLASH_RECHARGED_EMERALD_V2_2_5, FLASH_RECHARGED_EMERALD_V2_2_8, FLASH_RECHARGED_EMERALD_REBALANCED_V2_2_8) else emptyList()
+    kind == GameKind.SOULGOLD -> if (gameCode == "BPEE") listOf(
+        FLASH_SOULGOLD, FLASH_SOULGOLD_V1_2, FLASH_SOULGOLD_V1_2B, FLASH_SOULGOLD_V1_2C, FLASH_SOULGOLD_V1_2_1,
+    ) else emptyList()
     else -> listOfNotNull(flashFnsFor(kind, gameCode, revision, hack = false))
 }
 
@@ -203,7 +212,7 @@ fun useFlash(fns: FieldItemFns, flash: FlashFns, busy: Boolean, g: GameCalls): F
 /** Whether FLASH would light this place up, from RAM alone (the quick menu's dimming): a cave, the light not on.
  * [flag] reads a save flag (the snapshot's). Null = can't tell. */
 fun flashDark(flash: FlashFns, read: (addr: Long, len: Int) -> ByteArray, flag: (Int) -> Boolean?): Boolean? {
-    val cave = runCatching { read(flash.mapHeader + 0x15, 1).getOrNull(0)?.toInt() }.getOrNull() ?: return null
+    val cave = runCatching { read(flash.mapHeader + flash.caveOff, 1).getOrNull(0)?.toInt() }.getOrNull() ?: return null
     val lit = flag(flash.litFlag) ?: return null
     return cave == 1 && !lit
 }

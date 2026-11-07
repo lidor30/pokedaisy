@@ -262,6 +262,157 @@ val FLASH_EMERALD_LEGACY: FlashFns by lazy {
     )
 }
 
+// ---- gamedata/gen3/records/expansion_flash.toml ----
+
+// Pokemon Lazarus (v2.0).gba: found by scripts/find_flash_expansion.py.
+val FLASH_LAZARUS: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x081148A0L,
+        badgeFlag = 0x869,
+        litFlag = 0x888,
+        setUpFieldMoveFlash = 0x0814D2FCL,
+        menuFieldCallback = 0x030036ECL,
+        postMenuFieldCallback = 0x0201B6A0L,
+        fieldCallbacks = listOf(0x0814D368L, 0x080DE6C0L), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x0201B685L,
+        mapHeader = 0x0200B06CL,
+        codeCrcs = listOf(0x6DE8DF3FL, 0x35B71A40L, 0x920FD22DL, 0x36F1F74EL),
+        monMoveField = 20,
+        monEggField = 52,
+    )
+}
+
+// Pokemon Emerald Imperium (v1.3.1).gba: found by scripts/find_flash_expansion.py.
+val FLASH_IMPERIUM: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x08116E54L,
+        badgeFlag = 0x868,
+        litFlag = 0x888,
+        setUpFieldMoveFlash = 0x08149F1CL,
+        menuFieldCallback = 0x0300626CL,
+        postMenuFieldCallback = 0x02037104L,
+        fieldCallbacks = listOf(0x08149F88L, 0x080DA87CL), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x020370E9L,
+        mapHeader = 0x0200A68CL,
+        codeCrcs = listOf(0xF7861D9EL, 0x2EC876F4L, 0x7A5DE0D4L, 0x16927E84L),
+        monMoveField = 20,
+        monEggField = 52,
+    )
+}
+
+// Pokemon Heart and Soul (v2.0.6).gba: found by scripts/find_flash_expansion.py.
+val FLASH_HEART_AND_SOUL: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0811E8D4L,
+        badgeFlag = 0x880,
+        litFlag = 0x865,
+        setUpFieldMoveFlash = 0x0815369CL,
+        menuFieldCallback = 0x03006054L,
+        postMenuFieldCallback = 0x02034224L,
+        fieldCallbacks = listOf(0x0815331CL, 0x080EB184L), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x02034205L,
+        mapHeader = 0x02001D0CL,
+        codeCrcs = listOf(0x6DE8DF3FL, 0x0E23670EL, 0x10B4A155L, 0xF08ADC9DL),
+        monMoveField = 20,
+        monEggField = 54,
+    )
+}
+
+// Pokemon SoulGold (v1.1.4).gba: found by scripts/find_flash_expansion.py.
+val FLASH_SOULGOLD: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x08134194L,
+        badgeFlag = 0x993,
+        litFlag = 0x9B4,
+        setUpFieldMoveFlash = 0x08168AF0L,
+        menuFieldCallback = 0x03005A3CL,
+        postMenuFieldCallback = 0x02038D1CL,
+        fieldCallbacks = listOf(0x08168770L, 0x080FDCF8L, 0x0822E9A8L), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x02038D2DL,
+        mapHeader = 0x02003828L,
+        caveOff = 0x16,
+        codeCrcs = listOf(0xF7861D9EL, 0x610C2F99L, 0x03207743L, 0xC688B823L, 0x3973A4C2L),
+        monMoveField = 21,
+        monEggField = 55,
+    )
+}
+
+// Pokemon SoulGold (v1.2).gba: found by scripts/find_flash_expansion.py.
+val FLASH_SOULGOLD_V1_2: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x081348C8L,
+        badgeFlag = 0x993,
+        litFlag = 0x9B4,
+        setUpFieldMoveFlash = 0x081691E8L,
+        menuFieldCallback = 0x03005A3CL,
+        postMenuFieldCallback = 0x02038D24L,
+        fieldCallbacks = listOf(0x08169184L, 0x080FE36CL, 0x0822F28CL), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x02038D35L,
+        mapHeader = 0x02003828L,
+        caveOff = 0x16,
+        codeCrcs = listOf(0xF7861D9EL, 0xC10259DCL, 0xA034D790L, 0xA0DFF6C9L, 0x8FC635EEL),
+        monMoveField = 21,
+        monEggField = 55,
+    )
+}
+
+// Pokemon SoulGold (v1.2) (Alt 1).gba: found by scripts/find_flash_expansion.py.
+val FLASH_SOULGOLD_V1_2B: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x081348B8L,
+        badgeFlag = 0x993,
+        litFlag = 0x9B4,
+        setUpFieldMoveFlash = 0x081691D8L,
+        menuFieldCallback = 0x03005A3CL,
+        postMenuFieldCallback = 0x02038D24L,
+        fieldCallbacks = listOf(0x08169174L, 0x080FE35CL, 0x0822F1F4L), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x02038D35L,
+        mapHeader = 0x02003828L,
+        caveOff = 0x16,
+        codeCrcs = listOf(0xF7861D9EL, 0xDDF63F0FL, 0x70741303L, 0xE32B39C3L, 0xF44154A1L),
+        monMoveField = 21,
+        monEggField = 55,
+    )
+}
+
+// Pokemon SoulGold (v1.2) (Alt 2).gba: found by scripts/find_flash_expansion.py.
+val FLASH_SOULGOLD_V1_2C: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x08134924L,
+        badgeFlag = 0x993,
+        litFlag = 0x9B4,
+        setUpFieldMoveFlash = 0x08169244L,
+        menuFieldCallback = 0x03005A3CL,
+        postMenuFieldCallback = 0x02038D24L,
+        fieldCallbacks = listOf(0x081691E0L, 0x080FE36CL, 0x0822F2ECL), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x02038D35L,
+        mapHeader = 0x02003828L,
+        caveOff = 0x16,
+        codeCrcs = listOf(0xF7861D9EL, 0xDC2B8583L, 0x4C0F490FL, 0x2637151EL, 0x5968735DL),
+        monMoveField = 21,
+        monEggField = 55,
+    )
+}
+
+// Pokemon SoulGold (v1.2.1).gba: found by scripts/find_flash_expansion.py.
+val FLASH_SOULGOLD_V1_2_1: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x08136DECL,
+        badgeFlag = 0x993,
+        litFlag = 0x9B4,
+        setUpFieldMoveFlash = 0x0816B680L,
+        menuFieldCallback = 0x03005A3CL,
+        postMenuFieldCallback = 0x02038B64L,
+        fieldCallbacks = listOf(0x0816B61CL, 0x08100610L, 0x082339CCL), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x02038B75L,
+        mapHeader = 0x02003830L,
+        caveOff = 0x16,
+        codeCrcs = listOf(0xF7861D9EL, 0xB53F8889L, 0x00EDF75FL, 0x815BB5CAL, 0xC32C92AEL),
+        monMoveField = 21,
+        monEggField = 55,
+    )
+}
+
 // ---- gamedata/gen3/records/firered.toml ----
 
 // FireRed's own gBagPockets[] index order (item.c: gBagPockets[POCKET_X-1] =
