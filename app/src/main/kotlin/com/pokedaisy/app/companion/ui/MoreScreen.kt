@@ -33,14 +33,20 @@ import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.ui.theme.gbaFocusRing
 import com.pokedaisy.app.companion.i18n.tr
 
-/** Tiles a row on the MORE grid: every tab can be off the bar (9), so three rows at most. */
-private const val MORE_COLUMNS = 4
+/** A tile's smallest width, in GBA pixels: the grid takes as many columns as fit tiles this wide. */
+private const val TILE_MIN = 64
 
-/** A tile's width in its column (it's square): a little smaller than the column. */
-private const val TILE_FRACTION = 0.88f
+/** At most this many tiles a row, however wide the tab (the Thor's bottom screen fits four). */
+private const val MAX_COLUMNS = 4
+
+/** The room between two tiles, and between the tiles and the window's edge: the same everywhere, in GBA pixels. */
+private const val TILE_GAP = 6
 
 /** How far a tile's fill goes from a tab chip's grey toward the title window's white: lighter than the bar's chips. */
-private const val TILE_LIGHTEN = 0.75f
+private const val TILE_LIGHTEN = 0.9f
+
+/** How much of a button's darker lower half a tile keeps ([twoToneLow]): a lighter grey than the bar's chips. */
+private const val TILE_LOW = 0.5f
 
 /**
  * The MORE tab (left of the gear, at the bar's end): every tab this game has that isn't on the tab bar ([tabs], ids), as app
@@ -62,38 +68,38 @@ internal fun MoreScreen(
         OptionTitleWindow(tk("MORE"), m)
         Spacer(Modifier.height(m.u * 4))
         OptionListWindow(m, Modifier.fillMaxWidth().weight(1f)) {
-            // The same room on every side of the grid (the window pads its top and sides alike).
-            Column(Modifier.fillMaxSize().padding(m.u * 4)) {
-                Column(
-                    Modifier.fillMaxWidth().weight(1f).verticalScroll(rememberScrollState()),
-                    verticalArrangement = Arrangement.spacedBy(m.u * 6),
-                ) {
-                    tabs.chunked(MORE_COLUMNS).forEachIndexed { row, line ->
-                        Row(
-                            Modifier.fillMaxWidth(),
-                            horizontalArrangement = Arrangement.spacedBy(m.u * 6),
-                        ) {
-                            line.forEachIndexed { col, id ->
-                                // Square, a little inside its column, whatever the screen's shape.
-                                Box(Modifier.weight(1f), contentAlignment = Alignment.Center) {
+            // One gap everywhere: between tiles across and down, and round the grid (the window pads its top and sides
+            // alike); the tiles fill their columns, so no column slack adds to it.
+            val gap = m.u * TILE_GAP
+            Column(Modifier.fillMaxSize().padding(gap)) {
+                // Square tiles across the whole width: as many columns as fit tiles at least [TILE_MIN] wide, [MAX_COLUMNS]
+                // at most (fewer on a small screen), each stretched to share the row; the gaps stay the same, more rows scroll.
+                BoxWithConstraints(Modifier.fillMaxWidth().weight(1f)) {
+                    val columns = ((maxWidth + gap) / (m.u * TILE_MIN + gap)).toInt().coerceIn(1, MAX_COLUMNS)
+                    val tile = (maxWidth - gap * (columns - 1)) / columns
+                    Column(
+                        Modifier.fillMaxSize().verticalScroll(rememberScrollState()),
+                        verticalArrangement = Arrangement.spacedBy(gap),
+                    ) {
+                        tabs.chunked(columns).forEachIndexed { row, line ->
+                            Row(horizontalArrangement = Arrangement.spacedBy(gap)) {
+                                line.forEachIndexed { col, id ->
                                     AppTile(
                                         id, m, enabled = usable(id),
-                                        modifier = Modifier.fillMaxWidth(TILE_FRACTION).aspectRatio(1f).focusStart(row == 0 && col == 0),
+                                        modifier = Modifier.size(tile).focusStart(row == 0 && col == 0),
                                     ) { onOpen(id) }
                                 }
                             }
-                            repeat(MORE_COLUMNS - line.size) { Spacer(Modifier.weight(1f)) }
                         }
                     }
                 }
-                Separator(m, Modifier.padding(vertical = m.u * 4))
-                // The line over its button: the button's label (TAB BAR's own name) runs long in some languages.
-                Column(Modifier.fillMaxWidth(), horizontalAlignment = Alignment.End) {
+                Separator(m, Modifier.padding(vertical = gap))
+                // The line left of its button, which keeps its whole label; the line wraps in what's left.
+                Row(Modifier.fillMaxWidth(), verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(gap)) {
                     GbaText(
                         tr("Tabs that aren't on the tab bar are here. Pick the bar's tabs in TAB BAR."),
-                        OptionColors.label, OptionColors.labelShadow, small, maxLines = 3, modifier = Modifier.fillMaxWidth(),
+                        OptionColors.label, OptionColors.labelShadow, small, maxLines = 4, modifier = Modifier.weight(1f),
                     )
-                    Spacer(Modifier.height(m.u * 4))
                     OptionButton(tk("TAB BAR"), m, onClick = onConfigure, pixelIcon = PixelIcons.gear, modifier = Modifier.testTag("more-tab-bar"))
                 }
             }
@@ -116,7 +122,9 @@ private fun AppTile(id: String, m: GbaTextMetrics, enabled: Boolean, modifier: M
             .drawBehind {
                 val px = u.toPx()
                 val fill = if (focused) OptionColors.tabSelectedFill else lerp(OptionColors.tabIdleFill, OptionColors.titleFill, TILE_LIGHTEN)
-                drawLayeredBox(OptionColors.chipLayers.inPx(px), fill, radius = 3 * px, twoTone = true)
+                // The lower half half as far toward slate as a button's: a light tile, still two-tone.
+                val low = lerp(fill, twoToneLow(fill), TILE_LOW)
+                drawLayeredBox(OptionColors.chipLayers.inPx(px), fill, radius = 3 * px, twoTone = true, low = low)
             }
             .soundClickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick)
             .semantics { contentDescription = label }

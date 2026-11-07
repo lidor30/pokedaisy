@@ -237,6 +237,8 @@ fun DrawScope.drawLayeredBox(
     openLeft: Boolean = false,
     /** A button's two-tone face ([drawTwoTone]) instead of plain [fill]. */
     twoTone: Boolean = false,
+    /** The two-tone face's lower colour, if not [twoToneLow]'s. */
+    low: Color? = null,
 ) {
     val run = radius + layers.sumOf { it.second.toDouble() }.toFloat() + 1f
     val left = if (openLeft) run else 0f
@@ -257,7 +259,7 @@ fun DrawScope.drawLayeredBox(
         val at = Offset(inset - left, inset - top)
         val box = Size(size.width + extraW - 2 * inset, size.height + extraH - 2 * inset)
         if (twoTone) {
-            drawTwoTone(fill, twoToneLow(fill), layers.lastOrNull()?.second ?: 1f) { color -> drawPixelRoundRect(color, at, box, r.coerceAtLeast(0f)) }
+            drawTwoTone(fill, low ?: twoToneLow(fill), layers.lastOrNull()?.second ?: 1f) { color -> drawPixelRoundRect(color, at, box, r.coerceAtLeast(0f)) }
         } else drawPixelRoundRect(fill, at, box, r.coerceAtLeast(0f))
     }
 }
