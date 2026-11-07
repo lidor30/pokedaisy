@@ -110,13 +110,13 @@ fun CompanionFocusHost(focused: Boolean, keys: CompanionKeys, content: @Composab
 }
 
 /** The stripe's height in the game's own pixels. */
-private const val STRIPE_ROWS = 16
+private const val STRIPE_ROWS = 22
 
 /** The arrow's rows, widest first (a pixel triangle pointing down). */
-private val ARROW_ROWS = intArrayOf(13, 11, 9, 7, 5, 3, 1)
+private val ARROW_ROWS = intArrayOf(17, 15, 13, 11, 9, 7, 5, 3, 1)
 
 /** Where the arrow's top row sits in the stripe at rest, and how far it bobs down (game pixels). */
-private const val ARROW_TOP = 2
+private const val ARROW_TOP = 5
 private const val ARROW_BOB = 3
 
 private val STRIPE_EDGE = Color(0xFF6C7080)

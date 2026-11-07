@@ -89,6 +89,8 @@ import com.pokedaisy.app.companion.data.POCKET_BATTLE_ITEMS
 import com.pokedaisy.app.companion.data.NdsArt
 import com.pokedaisy.app.companion.data.lookupMove
 import com.pokedaisy.app.companion.data.tmMovesHeartGold
+import com.pokedaisy.app.companion.data.OriginHeartGold
+import com.pokedaisy.app.companion.data.originHeartGold
 import com.pokedaisy.app.companion.data.HEARTGOLD_TM01
 import com.pokedaisy.app.companion.data.activeGame
 import com.pokedaisy.app.companion.data.isHgss
@@ -99,7 +101,7 @@ import com.pokedaisy.app.companion.data.runningEmeraldHack
 import com.pokedaisy.app.companion.data.runningFireRedHack
 import com.pokedaisy.app.companion.data.localText
 import com.pokedaisy.app.companion.data.pocketLabel
-import com.pokedaisy.app.companion.data.pocketOrder
+import com.pokedaisy.app.companion.data.activePocketOrder
 import com.pokedaisy.app.companion.ui.theme.pixelFontFamily
 import com.pokedaisy.app.companion.data.isGameBoyGame
 import com.pokedaisy.app.companion.data.isGen2
@@ -259,6 +261,23 @@ private val EmeraldBag = BagPalette(
     descText = Color(0xFF000000), descTextShadow = Color(0xFFD6D6CF),
     iconBox = Color(0xFFFFFFFF), iconBoxEdge = Color(0xFF7B7B7B),
     backdrop = Color(0xFFC871F7) to Color(0xFF5882F7),
+)
+
+/**
+ * Sampled 1:1 from Pokémon Monomyth's bag screen (headless, the user's save): Emerald's layout in its own colours - a
+ * cream list in a grey line, a pale gold edge and a gold band, black text, the pocket title's orange arrows, a white
+ * description box, over pale-blue checks.
+ */
+private val MonomythBag = BagPalette(
+    panelLayers = listOf(Color(0xFF7B7B7B) to 1, Color(0xFFE7DEA5) to 1, Color(0xFFF7CE73) to 2, Color(0xFFD6B54A) to 1),
+    tabLayerCount = 3,
+    fill = Color(0xFFFFFFCE), divider = null,
+    text = Color(0xFF000000), textShadow = Color(0xFFD6D6CE),
+    tabText = Color(0xFF000000), tabTextShadow = Color(0xFFD6B54A), tabUnderline = Color(0xFFFF5200),
+    descLayers = listOf(Color(0xFF7B7B7B) to 1), descFill = Color(0xFFFFFFFF),
+    descText = Color(0xFF000000), descTextShadow = Color(0xFFD6D6CE),
+    iconBox = Color(0xFFFFFFFF), iconBoxEdge = Color(0xFF7B7B7B),
+    backdrop = Color(0xFFC6E7FF) to Color(0xFFADCEE7),
 )
 
 /**
@@ -716,19 +735,20 @@ private fun lightBagFor(game: GameKind, hgssPocket: Int = 0): BagPalette = when 
     GameKind.LAZARUS, GameKind.EMERALD_SEAGLASS -> PlainExpansionBag
     GameKind.ROWE -> RoweBag
     GameKind.SOULGOLD -> SoulGoldBag
-    GameKind.YELLOW -> YellowBag
+    GameKind.YELLOW, GameKind.YELLOW_LEGACY -> YellowBag
     GameKind.RED, GameKind.BLUE -> RedBlueBag
     GameKind.PURE_RED, GameKind.PURE_BLUE -> PureRgbBag
     // Gold's and Silver's PACK is Crystal's, pixel for pixel (sampled headless in both).
-    GameKind.CRYSTAL, GameKind.GOLD, GameKind.SILVER -> CrystalBag
+    GameKind.CRYSTAL, GameKind.GOLD, GameKind.SILVER, GameKind.CRYSTAL_LEGACY -> CrystalBag
     GameKind.CRYSTAL_CLEAR -> CrystalClearBag
     // Prism's PACK: Crystal's blue checks and text boxes.
     GameKind.PRISM -> CrystalBag
     GameKind.POLISHED_CRYSTAL -> PolishedCrystalBag
     GameKind.MARIOMON -> MariomonBag
+    GameKind.MONOMYTH -> MonomythBag
     GameKind.HEARTGOLD, GameKind.SOULSILVER -> hgssBags.getOrElse(hgssPocket) { HeartGoldBag }
     GameKind.PLATINUM -> PlatinumBag
-    GameKind.BLACK -> BlackBag
+    GameKind.BLACK, GameKind.WHITE, GameKind.BLACK2, GameKind.WHITE2 -> BlackBag
     // Too Many Types 2's, Glazed's, Imperium's and Quetzal's bags are Emerald's; Gaia's and Celia's are FireRed's.
     // Elite Redux's and Team Rocket Edition: Dragonsden's bag screens are Emerald's too.
     // Dreamstone Mysteries' is Emerald's (headless: its bag screen in battle, seven pockets).
@@ -800,7 +820,8 @@ fun ItemsScreen(
     // Only categories the bag actually has something in - an empty pocket
     // (e.g. no Key Items exported by a pre-v4 ROM) shouldn't show as a dead
     // tab with nothing behind it.
-    val categoriesPresent = pocketOrder.filter { p -> items.any { it.pocket == p } }
+    val pocketTabs = activePocketOrder
+    val categoriesPresent = pocketTabs.filter { p -> items.any { it.pocket == p } }
     val favorites = FavoriteItems.ids
     // FAVORITES under ALL, only while the bag holds a starred item.
     val hasFavorites = items.any { it.itemId in favorites }
@@ -829,7 +850,7 @@ fun ItemsScreen(
         ItemSort.NAME -> filtered.sortedBy { it.name }
         ItemSort.COUNT -> filtered.sortedWith(compareByDescending<ItemView> { it.quantity }.thenBy { it.name })
         ItemSort.TYPE -> filtered.sortedWith(
-            compareBy<ItemView> { pocketOrder.indexOf(it.pocket).let { i -> if (i < 0) Int.MAX_VALUE else i } }
+            compareBy<ItemView> { pocketTabs.indexOf(it.pocket).let { i -> if (i < 0) Int.MAX_VALUE else i } }
                 .thenBy { it.name },
         )
     }
@@ -1209,6 +1230,8 @@ private fun HgssBagBody(
 
 /** A machine in HeartGold / SoulSilver's bag: its move and number (1-92 a TM, 1-8 an HM), or null. */
 private fun hgssMachine(itemId: Int): Triple<String, Boolean, Int>? {
+    // Origin HeartGold: 130 TMs, its own moves (TM93 on are later items), from its cart.
+    if (originHeartGold) return OriginHeartGold.machine(itemId)?.let { (move, hm, n) -> Triple(lookupMove(move).name, hm, n) }
     val i = itemId - HEARTGOLD_TM01
     if (i !in tmMovesHeartGold.indices) return null
     val hm = i >= 92
@@ -1692,3 +1715,4 @@ private fun ItemNoticeWindow(n: ItemNotice, m: GbaTextMetrics, modifier: Modifie
         GbaText(n.text, OptionColors.titleText, OptionColors.titleShadow, m, maxLines = 3)
     }
 }
+

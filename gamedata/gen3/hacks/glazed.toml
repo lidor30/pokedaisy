@@ -2,6 +2,8 @@
 
 [config.glazed]
 base = 'emerald'
+# BOXES: retail's (gPokemonStoragePtr = gSaveBlock2Ptr + 4; the `glazed` capture's box names read).
+pokemonStoragePtr = 0x03005D94
 itemDescs = { preset = 'vanilla', base = 0x085839A0 }  # retail's, rewritten in place
 guideTables = 'GUIDE_TABLES_GLAZED'
 # Retail's dex tables and flags, rewritten in place in its own 1..386 numbering (No.322 is

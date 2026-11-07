@@ -14,7 +14,7 @@ This page covers both, and how PokeDaisy keeps your save file safe.
 
 Losing a 40-hour save is the worst thing an emulator can do, so PokeDaisy is careful with it:
 
-- **A backup every time you start a game.** Before the game opens its save, PokeDaisy copies it into a `pokedaisy-backups` folder next to the save. It keeps the newest 10 different copies for each game, and only makes a new one when the save has changed.
+- **A backup every time you start a game.** Before the game opens its save, PokeDaisy copies it into a `pokedaisy-backups` folder next to the save. It keeps the newest 10 different copies for each game, and only makes a new one when the save has changed. You can change all of this in Settings > `FOLDERS` > `SAVE BACKUPS` (see [Change how backups are kept](#change-how-backups-are-kept)).
 - **Resuming never overwrites a newer save.** When a game picks up where you left off, PokeDaisy first checks the save file hasn't changed since. If it has (you played it in RetroArch, copied in another save, or moved your saves folder), the old snapshot is set aside and the game starts from the save file instead.
 - **A save in progress always finishes.** If you leave the game while it says it's saving (HOME, the recent apps screen, `CLOSE GAME`), PokeDaisy lets the save finish before it stops the game, so swiping PokeDaisy away right after can't leave a half written save behind.
 - **Loading another save keeps the old one.** `LOAD SAVE` renames your current save to a dated copy before putting the new one in place.
@@ -41,7 +41,7 @@ Open Settings > `FOLDERS` > `GAME SAVES`. You'll see the current folder and the 
 
 Changing the folder doesn't move any saves. Copy them over yourself if you want them in the new place.
 
-![The FOLDERS page: a row each for ROMS FOLDERS, GAME SAVES, ALSO LOOK IN and SAVE STATES](shots/settings-folders.png "FOLDERS: a page for each kind of folder")
+![The FOLDERS page: a row each for ROMS FOLDERS, GAME SAVES, ALSO LOOK IN, SAVE BACKUPS and SAVE STATES](shots/settings-folders.png "FOLDERS: a page for each kind of folder")
 
 ### Share saves with RetroArch
 
@@ -65,6 +65,21 @@ If that folder has no save for the game yet, your current save is copied there (
 Backups go into a `pokedaisy-backups` folder beside the save, named after the game with the date and time, like `Pokemon Emerald.backup-20261007-233512.sav`. Since they sit next to your saves (not hidden in the app), a file manager reaches them, and they stay even if you uninstall PokeDaisy.
 
 To bring one back, long-press the game in the library and tap `RESTORE BACKUP`. Pick a backup by its date and time, then confirm with `LOAD`. Your current save is kept as a dated copy first, so restoring is never a one-way trip.
+
+### Change how backups are kept
+
+Open Settings > `FOLDERS` > `SAVE BACKUPS`:
+
+- `BACKUPS` turns the backup at each start on or off. It's on unless you turn it off.
+- `KEEP PER GAME` picks how many backups each game keeps: 1, 3, 5, 10 (the usual), 20 or 50. When a new backup is made, the oldest ones past that number are deleted.
+- `CHANGE FOLDER` puts every game's backups in one folder of your choice, instead of a `pokedaisy-backups` folder beside each save. `USE DEFAULT` goes back to beside each save, and `COPY PATH` copies the folder's path.
+
+Backups you already have stay where they are when you change the folder, and `RESTORE BACKUP` still lists them.
+
+![The SAVE BACKUPS page: BACKUPS ON, KEEP PER GAME 10, and the backup folder under them](shots/settings-folders-backups.png "SAVE BACKUPS")
+
+> [!WARNING]
+> With `BACKUPS` off, nothing is copied when a game starts, so `RESTORE BACKUP` has nothing new to offer if a save goes wrong. Leave it on unless you back up your saves another way.
 
 > [!TIP]
 > Cheats can break a save. Since a backup is taken every time a game starts, you can always go back to how the save was before you turned one on.

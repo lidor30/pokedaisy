@@ -1,0 +1,132 @@
+# Plan 6 Task 7: pk_coop_link_leave from any frame, not only a quiet one. Four battles in a row on the same two cores, each left
+# by both players at a different moment: (1) the setup - the VS screen / party showcase, 100 frames after begin; (2) the intro
+# text, 600 frames in, before any prompt; (3) the party screen open from the action menu (callback2 is the party menu's, with its
+# own tasks, sprites and heap blocks); (4) the action menu itself. Every time both cores come back to the field (CB2_Overworld
+# 0x08085E5D) with the field controls free (ArePlayerFieldControlsLocked 0x08098E6C returns 0), the party count the save had and
+# the heap's free bytes what they were before the first begin (what a screen held is freed). The next begin each round needs
+# nothing zeroed by hand: its gate is the field (callback2, gMain.inBattle), and the leave zeroes gBattleTypeFlags itself.
+# want: PASS linkwait 2
+pair $PARTNER_SAVE
+on b
+@boot
+wait 120
+memsave 0x020244E9 1 /work/drop_frames_count_b.bin
+heapmark
+on a
+memsave 0x020244E9 1 /work/drop_frames_count_a.bin
+heapmark
+# (1) the setup
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkrun 100
+on a
+linkleave 0
+on b
+linkleave 0
+linkrun 300
+linkstate
+on a
+expect32 0x030022C4 0x08085E5D
+expectfile 0x020244E9 /work/drop_frames_count_a.bin
+call 0x08098E6C
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+expectfile 0x020244E9 /work/drop_frames_count_b.bin
+call 0x08098E6C
+heapexpect
+# (2) the intro text
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+linkrun 600
+on a
+linkleave 0
+on b
+linkleave 0
+linkrun 300
+linkstate
+on a
+expect32 0x030022C4 0x08085E5D
+expectfile 0x020244E9 /work/drop_frames_count_a.bin
+call 0x08098E6C
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+expectfile 0x020244E9 /work/drop_frames_count_b.bin
+call 0x08098E6C
+heapexpect
+# (3) the party screen, opened on both (the action menu's POKeMON: DOWN, A)
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 120
+on b
+hold DOWN 4
+linkrun 20
+hold A 4
+linkrun 120
+shot /work/drop_party_b.ppm
+on a
+shot /work/drop_party_a.ppm
+linkleave 0
+linkrun 10
+shot /work/drop_party_a_fade.ppm
+on b
+linkleave 0
+linkrun 300
+shot /work/drop_party_b_field.ppm
+linkstate
+on a
+shot /work/drop_party_a_field.ppm
+expect32 0x030022C4 0x08085E5D
+expectfile 0x020244E9 /work/drop_frames_count_a.bin
+call 0x08098E6C
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+expectfile 0x020244E9 /work/drop_frames_count_b.bin
+call 0x08098E6C
+heapexpect
+# (4) the action menu
+on a
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+linkrun 30
+on a
+linkleave 0
+on b
+linkleave 0
+linkrun 300
+linkstate
+on a
+expect32 0x030022C4 0x08085E5D
+expectfile 0x020244E9 /work/drop_frames_count_a.bin
+call 0x08098E6C
+heapexpect
+on b
+expect32 0x030022C4 0x08085E5D
+expectfile 0x020244E9 /work/drop_frames_count_b.bin
+call 0x08098E6C
+heapexpect
+hold LEFT 20
+wait 30

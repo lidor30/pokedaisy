@@ -1,0 +1,60 @@
+# Plan 6 Task 4: a PARTNER Pokémon's level-up box closes by itself. Only the partner's MUDKIP was sent in (gSentPokesToOpponent = slot 3), so only
+# it gets EXP (642: six levels, every one a box on the master's screen) and NO key is pressed after the moves are chosen: the master draws
+# each box and closes it after the link text delay (link_entry_LVLBOX; the host's own boxes stay the game's and wait for A: link_exp).
+# Both cores end at 794 EXP, Lv 11; the host's TORCHIC (not sent in) gets nothing. Needs EMERALD_PARTNER_SAVE.
+#
+# want: PASS linkwait 2
+# want: PASS expectdelta b_p3 -> b_p3x = 642
+# want: PASS expectdelta a_p3 -> a_p3x = 642
+# want: PASS expectdelta a_h0 -> a_h0x = 0
+# want: PASS expectnum b_p3x.lv = 11
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+poke16 0x02024104 1
+poke8 0x02024106 50   # merge glue: the foes keep their own levels now (task 2); the expected EXP is a Lv 50 foe's (gBattleMons[1].level)
+monexp a_h0 0x020244EC
+monexp a_p3 0x02024618
+on b
+monexp b_p3 0x02024618
+on a
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on a
+waitmem8 0x02024490 1 4000
+poke8 0x020243FE 0x08
+linkrun 6000
+monexp a_h0x 0x020244EC
+monexp a_p3x 0x02024618
+on b
+monexp b_p3x 0x02024618
+expectdelta b_p3 b_p3x 642
+expectnum b_p3x.lv 11
+on a
+expectdelta a_p3 a_p3x 642
+expectdelta a_h0 a_h0x 0

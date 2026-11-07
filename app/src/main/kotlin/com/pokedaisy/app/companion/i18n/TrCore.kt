@@ -20,6 +20,9 @@ internal val trCore: Map<String, Tr> = mapOf(
     "INFO" to Tr(ja = "じょうほう", fr = "INFOS", de = "INFO", it = "INFO", es = "INFO", br = "INFO", pt = "INFO"),
     "POKéMON" to Tr(ja = "ポケモン", fr = "POKéMON", de = "POKéMON", it = "POKéMON", es = "POKéMON", br = "POKéMON", pt = "POKéMON"),
     // Tab chips (companionTabLabel): about as narrow as the English.
+    "PHYSICAL" to Tr(ja = "ぶつり", fr = "PHYSIQUE", de = "PHYSISCH", it = "FISICA", es = "FÍSICO", br = "FÍSICO", pt = "FÍSICO"),
+    "MISSING" to Tr(ja = "いない", fr = "ABSENT", de = "FEHLT", it = "ASSENTE", es = "AUSENTE", br = "AUSENTE", pt = "AUSENTE"),
+    "BOX {0}" to Tr(ja = "ボックス {0}", fr = "BOÎTE {0}", de = "BOX {0}", it = "BOX {0}", es = "CAJA {0}", br = "CAIXA {0}", pt = "CAIXA {0}"),
     "PARTY" to Tr(ja = "てもち", fr = "ÉQUIPE", de = "TEAM", it = "SQUADRA", es = "EQUIPO", br = "EQUIPE", pt = "EQUIPE"),
     "DEX" to Tr(ja = "ずかん", fr = "DEX", de = "DEX", it = "DEX", es = "DEX", br = "DEX", pt = "DEX"),
     "MAP" to Tr(ja = "マップ", fr = "CARTE", de = "KARTE", it = "MAPPA", es = "MAPA", br = "MAPA", pt = "MAPA"),

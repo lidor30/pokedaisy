@@ -1,0 +1,20 @@
+# `lockgo` on a held FRAME event (id 109, Route101_EventScript_HideMapNamePopup, 0x081EBCD5): the id is allowed once and the hold
+# is gone, with nothing set up here (the game's own ON_FRAME check runs the script next frame; in this test the same call
+# stands for it): that call is let through (context mode 1) and uses the allowance up, so the next one is held again.
+# want: lock: held 109 kind 2
+# want: lock: go 1
+# want: lock: held 0 kind 0
+lockinstall
+lockactive 1
+call 0x08098EF8 0x081EBCD5
+lockheld
+lockgo 109
+expect16 0x0203F404 109
+expect8 0x03000E41 0
+lockheld
+call 0x08098EF8 0x081EBCD5
+expect8 0x03000E41 1
+expect16 0x0203F404 0
+lockheld
+call 0x08098EF8 0x081EBCD5
+lockheld

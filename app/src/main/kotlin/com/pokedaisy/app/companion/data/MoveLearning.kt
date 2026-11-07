@@ -65,7 +65,8 @@ object MoveLearning {
         optionsCache[optionsKey(t, g, mon, bag)]
 
     /**
-     * [mon]'s next few level-up moves it doesn't know, then the TMs / HMs in [bag] it can learn, each
+     * [mon]'s next few level-up moves it doesn't know (its own level's too: that's the move the game is asking about while
+     * it wants another forgotten), then the TMs / HMs in [bag] it can learn, each
      * with its [MoveAdvice] - the bag's best first. Empty for an egg or where nothing applies.
      */
     fun options(t: PokedexTables, g: GuideTables?, mon: MonView, bag: List<ItemView>): List<LearnOption> {
@@ -75,9 +76,7 @@ object MoveLearning {
         val am = adviceMon(mon)
         val hms = hmMoves(t)
         fun advise(move: Int) = MoveAdvisor.advise(am, move, hms)
-        val levelUps = DexDetails.levelUp(t, g, mon.species).orEmpty()
-            .filter { it.level > mon.level && it.move !in am.moves }
-            .distinctBy { it.move }.take(UPCOMING)
+        val levelUps = upcoming(DexDetails.levelUp(t, g, mon.species).orEmpty(), mon.level, am.moves)
             .map { LearnOption(it.move, it.level, "", advise(it.move)) }
         val teach = DexDetails.teachable(t, g, mon.species).orEmpty().map { it.move }.toSet()
         val tms = bag.map { it.itemId }.filter(::isTm).distinct().sorted().mapNotNull { item ->
@@ -86,6 +85,10 @@ object MoveLearning {
         }.sortedWith(compareBy<LearnOption> { it.advice.verdict == Verdict.SKIP }.thenByDescending { it.advice.gain })
         return (levelUps + tms).also { if (optionsCache.size > 64) optionsCache.clear(); optionsCache[key] = it }
     }
+
+    /** The level-up moves still to come at [level] (its own too), [known] left out. */
+    internal fun upcoming(moves: List<LevelMove>, level: Int, known: Collection<Int>): List<LevelMove> =
+        moves.filter { it.level >= level && it.move !in known }.distinctBy { it.move }.take(UPCOMING)
 
     private fun learnersKey(t: PokedexTables, g: GuideTables?, party: List<MonView>, itemId: Int): List<Any?> =
         listOf(t, g, activeGame, itemId, party.map { listOf(it.species, it.level, it.isEgg, it.moves.map { m -> m.id }, it.stats?.stats) })

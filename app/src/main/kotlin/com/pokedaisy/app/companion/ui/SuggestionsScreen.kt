@@ -27,7 +27,7 @@ import com.pokedaisy.app.companion.data.MoveView
 import com.pokedaisy.app.companion.data.MoveVsFoe
 import com.pokedaisy.app.companion.data.TYPE_NONE
 import com.pokedaisy.app.companion.data.formatMultiplier
-import com.pokedaisy.app.companion.data.typeMultiplierPct
+import com.pokedaisy.app.companion.data.moveMultiplierPct
 import com.pokedaisy.app.companion.data.activeTypeIdByName
 import com.pokedaisy.app.companion.ui.theme.AppColors
 
@@ -75,7 +75,7 @@ fun SuggestionsScreen(
     val gap = m.u * 3
     SummaryFrame(
         m, onBack, modifier,
-        buttons = { TextNavButton(tr("INFO"), InfoPurple, InfoPurpleDark, onShowInfo) },
+        buttons = { TextNavButton(tr("INFO"), InfoPurple, InfoPurpleDark, onClick = onShowInfo) },
         middle = if (foeTeam.size > 1) ({ FoeTeamStrip(foeTeam, seenFoes, shownFoe, small, onSelectFoe) }) else null,
     ) {
         Column(Modifier.fillMaxSize()) {
@@ -146,7 +146,7 @@ private fun SuggestionRow(
     small: GbaTextMetrics,
     modifier: Modifier,
 ) {
-    val move = s.bestMove.copy(vs = listOf(MoveVsFoe(foe.name, formatMultiplier(s.movePct), s.movePct)))
+    val move = if (s.bestMove.power == 0) s.bestMove.copy(vs = emptyList()) else s.bestMove.copy(vs = listOf(MoveVsFoe(foe.name, formatMultiplier(s.movePct), s.movePct)))
     Row(modifier.height(IntrinsicSize.Min), verticalAlignment = Alignment.CenterVertically) {
         Box(Modifier.weight(1f).padding(end = gap)) {
             BattlerCard(s.mon, compact = false, side = RankLabels[index], state = if (out) tk("OUT") else "", m, small, threats = listOf(foe))
@@ -185,23 +185,23 @@ private fun rankSuggestions(party: List<MonView>, foe: MonView): List<Suggestion
         if (mon.hp <= 0) return@mapNotNull null
         val best = mon.moves
             .filter { it.power > 0 && it.pp > 0 }
-            .maxByOrNull { mv -> mv.power * matchupPct(mv.type, foeTypes) }
+            .maxByOrNull { mv -> mv.power * matchupPct(mv, foeTypes) }
             ?: return@mapNotNull null
-        val pct = matchupPct(best.type, foeTypes)
+        val pct = matchupPct(best, foeTypes)
         val risk = foeTypes.maxOfOrNull { ft -> defenseRiskFor(mon, ft) } ?: 100
         Suggestion(mon, best, pct, best.power * pct / 100, risk)
     }.sortedByDescending { it.effectivePower - it.defenseRiskPct }
 }
 
-/** Attacking-move type vs a (possibly dual-typed) defender, both given as the
+/** A move vs a (possibly dual-typed) defender, the types given as the
  * display names this app already carries end to end (MonView.types,
- * MoveView.type) - resolved back to the int type ids [typeMultiplierPct]
+ * MoveView.type) - resolved back to the int type ids [moveMultiplierPct]
  * wants via [activeTypeNames]' reverse lookup. */
-private fun matchupPct(moveTypeName: String, defTypeNames: List<String>): Int {
-    val atk = typeIdByName[moveTypeName] ?: return 100
+private fun matchupPct(move: MoveView, defTypeNames: List<String>): Int {
+    val atk = typeIdByName[move.type] ?: return 100
     val def1 = defTypeNames.getOrNull(0)?.let { typeIdByName[it] } ?: TYPE_NONE
     val def2 = defTypeNames.getOrNull(1)?.let { typeIdByName[it] } ?: TYPE_NONE
-    return typeMultiplierPct(atk, def1, def2)
+    return moveMultiplierPct(move.name, atk, def1, def2)
 }
 
 /** How hard `attackerTypeName` (one of the foe's own types) could hit `mon` -

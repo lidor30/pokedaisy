@@ -659,6 +659,19 @@ bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snap
   return true;
 }
 
+/* The party row alone, for the Linux host's DSperate backend (dsperate/frontend.cpp): the default look, its art from
+ * [draw], the canvas not cleared. */
+void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx, hud_mon_draw_fn draw) {
+  static const struct pd_settings defaults;
+  static const struct hud_state none = {.wild = -1, .focus = -1};
+  if (!s || !s->valid || s->partyCount <= 0 || !draw)
+    return;
+  struct hud u = {.c = c, .s = s, .h = &none, .st = &defaults, .monDraw = draw, .monCtx = ctx, .L = &LOOKS[0]};
+  u.partyN = s->partyCount < PD_PARTY_SIZE ? s->partyCount : PD_PARTY_SIZE;
+  if (c->w >= party_width(&u) + 2 * EDGE && c->h >= PARTY_H + 2 * EDGE)
+    party_row(&u, EDGE, c->h - EDGE - PARTY_H);
+}
+
 void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct hud_state *h,
                  const struct pd_settings *st, void *ctx, hud_mon_draw_fn monDraw,
                  hud_item_draw_fn itemDraw, int repelItem, bool minimal) {

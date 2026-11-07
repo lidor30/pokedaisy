@@ -1,0 +1,12 @@
+# The lock installed but not active (the default): ScriptContext_SetupScript behaves as the game wrote it. The OBJECT event
+# used is id 6, DewfordTown_Gym_EventScript_Brawly (script 0x081FC7C2; the hook only looks at the pointer, the call never
+# runs a frame, so nothing of the gym happens on Route 101). sGlobalScriptContext 0x03000E40: mode +1 (0 stopped, 1 bytecode).
+# want: lock: installed
+# want: lock: held 0 kind 0
+# want: returned 0x80000C1
+lockinstall
+expect8 0x03000E41 0
+call 0x08098EF8 0x081FC7C2
+expect8 0x03000E41 1
+expect32 0x03000E48 0x081FC7C2
+lockheld

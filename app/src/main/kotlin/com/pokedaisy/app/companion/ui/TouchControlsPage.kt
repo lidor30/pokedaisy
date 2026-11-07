@@ -87,8 +87,8 @@ fun touchControlsRows(
         SettingRow(tk("FADE WHEN IDLE"), onOff(style.fadeIdle), subtitle = "Fade out when not in use") {
             set(style.copy(fadeIdle = !style.fadeIdle))
         },
-        SettingRow(tk("VIBRATION"), onOff(style.vibration), subtitle = "A light tick on each press") {
-            set(style.copy(vibration = !style.vibration))
+        SettingRow(tk("VIBRATION"), listOf(tk("OFF"), tk("LIGHT"), tk("MEDIUM"), tk("STRONG"))[style.vibration.coerceIn(0, 3)], subtitle = "How strong each press feels") {
+            set(style.copy(vibration = (style.vibration + 1) % 4))
         },
         SettingRow(tk("RESET LAYOUT"), null, subtitle = "Forget CUSTOM, back to the preset") {
             set(style.copy(useCustom = false, portrait = TouchLayout(), landscape = TouchLayout()))

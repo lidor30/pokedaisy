@@ -71,6 +71,9 @@ struct Ds {
     bool drawn = true;                       // the last frame was drawn (pk_nds_frame_drawn)
     int fieldBits = 0;                       // the field read after the last frame
     bool wildOff = false;                    // WILD ENCOUNTERS OFF (pk_nds_field.cpp holds the map's rates at 0)
+    bool keepStartMenu = false;              // DS LAYOUT floats the X menu: it comes back after a screen left by touch
+    bool cpuBoost = false;                   // DS CPU BOOST: the ARM9 at twice the DS's clock (setArm9Shift)
+    int menuLitFrames = 0;                   // frames this menu screen has been lit (its closing fade comes after)
     int scaleWant = 1;                       // DS RESOLUTION: 1 = the software renderer, 2-8 the GPU's (pk_nds_gl.h)
     bool scalePending = false;
     bool presented = false;                  // the last frame went out through the GPU path's window
@@ -143,6 +146,26 @@ void setClock()
     localtime_r(&now, &t);
     ds->nds->RTC.SetDateTime(t.tm_year + 1900, t.tm_mon + 1, t.tm_mday, t.tm_hour, t.tm_min, t.tm_sec);
 }
+
+// DS CPU BOOST: the ARM9 at 2^shift times the bus clock (1 = a DS; 2 = twice that, as a DSi runs it), switched live the
+// way DSi::Set_SCFG_Clock9 does: its timestamps rescaled, its memory timings redone, and the JIT's blocks (their cycle
+// counts) dropped. A game that ran out of time in a frame (HeartGold walking: a 30 fps overworld held for 3 or 4 refreshes
+// every few steps, headless) gets its frames done; one that waits for the next frame anyway waits longer, nothing else.
+// States are always taken and read at the DS's own clock: melonDS stores the timestamps as they are.
+void setArm9Shift(u32 shift)
+{
+    NDS* n = ds->nds;
+    if (n->ARM9ClockShift == shift) return;
+    n->ARM9Timestamp >>= n->ARM9ClockShift;
+    n->ARM9Target >>= n->ARM9ClockShift;
+    n->ARM9ClockShift = shift;
+    n->ARM9Timestamp <<= shift;
+    n->ARM9Target <<= shift;
+    n->ARM9.UpdateRegionTimings(0x00000, 0x100000);
+    n->JIT.ResetBlockCache();
+}
+
+u32 boostShift() { return ds->cpuBoost ? 2 : 1; }
 
 } // namespace
 
@@ -223,12 +246,13 @@ bool pk_nds_init(const char* romPath, const char* savePath, int sampleRate)
     // still holds (~180 frames a second, HeartGold's overworld and menus, 2026-10-20).
     static_cast<SoftRenderer&>(ds->nds->GPU.GetRenderer3D()).SetThreaded(false, ds->nds->GPU);
     setClock();
+    setArm9Shift(boostShift());
     ds->nds->Start();
     if (const u8* mem = ds->nds->GetNDSSave()) ds->saveCopy.assign(mem, mem + ds->nds->GetNDSSaveLength());
     ds->audio.resize(8192 * 2);
     {
-        const auto& h = ds->nds->NDSCartSlot.GetCart()->GetHeader();
-        ds->field = pk_nds_field_game(h.GameCode, h.ROMVersion);
+        const auto* c = ds->nds->NDSCartSlot.GetCart();
+        ds->field = pk_nds_field_game_rom(c->GetROM(), c->GetROMLength());
     }
     LOGI("DS up: save %u bytes, %d Hz", ds->nds->GetNDSSaveLength(), sampleRate);
     return true;
@@ -370,7 +394,10 @@ bool pk_nds_save_state(const char* path)
 {
     if (!ds) return false;
     Savestate st;
-    if (!ds->nds->DoSavestate(&st) || st.Error) return false;
+    setArm9Shift(1);
+    bool taken = ds->nds->DoSavestate(&st) && !st.Error;
+    setArm9Shift(boostShift());
+    if (!taken) return false;
     st.Finish();
     const u8* save = ds->nds->GetNDSSave();
     u32 saveLen = ds->nds->GetNDSSaveLength();
@@ -391,7 +418,10 @@ bool pk_nds_load_state(const char* path)
     memcpy(header, data.data(), sizeof(header));
     if (header[0] != STATE_MAGIC) return false;
     Savestate st(data.data() + 16, (u32) (data.size() - 16), false);
-    if (st.Error || !ds->nds->DoSavestate(&st) || st.Error) {
+    setArm9Shift(1);
+    bool loaded = !st.Error && ds->nds->DoSavestate(&st) && !st.Error;
+    setArm9Shift(boostShift());
+    if (!loaded) {
         LOGE("loadstate failed: %s", path);
         return false;
     }
@@ -478,10 +508,31 @@ static void mainWrite32(uint32_t addr, uint32_t v)
     for (int i = 0; i < 4; i++) m[(addr + i) & mask] = (u8) (v >> (8 * i));
 }
 
+// A screen of one colour (a 16 x 12 grid of its pixels alike): black between scenes, or the top screen while a game's
+// menu is on the touch screen alone.
+static bool oneColour(const u32* px)
+{
+    const u32 first = px[0] & 0xFFFFFF;
+    for (int gy = 0; gy < 12; gy++)
+        for (int gx = 0; gx < 16; gx++)
+            if ((px[(gy * PK_NDS_H / 12 + PK_NDS_H / 24) * PK_NDS_W + gx * PK_NDS_W / 16 + PK_NDS_W / 32] & 0xFFFFFF) != first) return false;
+    return true;
+}
+
 int pk_nds_field_bits(void)
 {
     if (!ds || !ds->field) return 0;
     int bits = pk_nds_field_state(ds->field, mainRead32, mainWrite32, ds->wildOff);
+    // The top screen blank and the touch screen showing something (the main menu's CONTINUE, a question asked down
+    // there): the touch screen is what there is to see.
+    const bool darkTop = oneColour(ds->top), darkBottom = oneColour(ds->bottom);
+    if (darkTop && !darkBottom) bits |= PK_NDS_FIELD_TOUCH;
+    if (darkTop) bits |= PK_NDS_FIELD_DARK_TOP;
+    if (darkBottom) bits |= PK_NDS_FIELD_DARK_BOTTOM;
+    // A menu screen's closing fade (black after it was lit): keep the X menu it came from (pk_nds_field_keep_start_menu).
+    if (!(bits & PK_NDS_FIELD_MENU)) ds->menuLitFrames = 0;
+    else if (!darkTop || !darkBottom) ds->menuLitFrames++;
+    else if (ds->keepStartMenu && ds->menuLitFrames > 0) pk_nds_field_keep_start_menu(ds->field, mainRead32, mainWrite32);
     if ((bits & PK_NDS_FIELD_TEXT) && !pk_nds_bg3_tiles(ds->nds, ds->field->textBg ? ds->field->textBg : 3)) bits &= ~PK_NDS_FIELD_TEXT;
     if ((bits & PK_NDS_FIELD_BATTLE) && pk_nds_battle_command(ds->field, mainRead32) == pk_nds_battle_selecting(ds->field))
         bits |= PK_NDS_FIELD_BATTLE_INPUT;
@@ -497,19 +548,20 @@ int pk_nds_bgm(void)
     return (int) (mainRead32(ds->field->currentBgm + 0x1C * depth) & 0xFFFF);
 }
 
-bool pk_nds_bgm_fading(void)
+int pk_nds_bgm_state(void)
 {
-    if (!ds || !ds->field || !ds->field->seqPlayers) return false;
-    // NNSSndSeqPlayer: the fader { origin, target, counter, frame } at 0x1C, status (0 = stopped) at 0x2C. A fade is
-    // run by the ARM9 a frame at a time (NNS_SndPlayerMoveVolume), so a copy taken mid-fade would stay there.
-    for (u32 i = 0; i < 16; i++) {
-        u32 p = ds->field->seqPlayers + i * 0x44;
-        if ((mainRead32(p + 0x2C) & 0xFF) && (s32) mainRead32(p + 0x24) < (s32) mainRead32(p + 0x28)) return true;
-    }
-    return false;
+    return ds && ds->field ? pk_nds_bgm_settle(ds->field, mainRead32) : 0x7F00;
 }
 
-bool pk_nds_music_start(void) { return ds && pk_nds_music_begin(ds->nds, ds->sampleRate); }
+bool pk_nds_music_start(void)
+{
+    if (!ds) return false;
+    // (Copied at the DS's own clock, as a state is: the copy runs at it.)
+    setArm9Shift(1);
+    bool ok = pk_nds_music_begin(ds->nds, ds->sampleRate);
+    setArm9Shift(boostShift());
+    return ok;
+}
 
 int pk_nds_music_read(int16_t* out, int maxFrames) { return ds ? pk_nds_music_frame(out, maxFrames) : 0; }
 
@@ -535,6 +587,18 @@ int pk_nds_action_status(int seq)
 void pk_nds_set_wild_off(bool off)
 {
     if (ds) ds->wildOff = off;
+}
+
+void pk_nds_set_keep_start_menu(bool on)
+{
+    if (ds) ds->keepStartMenu = on;
+}
+
+void pk_nds_set_cpu_boost(bool on)
+{
+    if (!ds || ds->cpuBoost == on) return;
+    ds->cpuBoost = on;
+    setArm9Shift(boostShift());
 }
 
 void pk_nds_set_wild_rates(const int32_t* triples, int n) { pk_nds_field_set_rates(triples, n); }

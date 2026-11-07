@@ -147,10 +147,20 @@ class Prefs(context: Context) {
         get() = if (p.getInt("wild_encounters", 100) == 0) 0 else 100
         set(v) = p.edit().putInt("wild_encounters", v).apply()
 
+    /** TRADE EVOLUTIONS: a Pokémon that evolves by trading can evolve from its summary (TradeEvolution.kt). */
+    var tradeEvolutions: Boolean
+        get() = p.getBoolean("trade_evolutions", false)
+        set(v) = p.edit().putBoolean("trade_evolutions", v).apply()
+
     /** REUSABLE TMS: a TM stays in the bag after it teaches a move, as an HM does (ReusableTms.kt). */
     var reusableTms: Boolean
         get() = p.getBoolean("reusable_tms", false)
         set(v) = p.edit().putBoolean("reusable_tms", v).apply()
+
+    /** INSTANT TEXT: a text box's words appear at once (InstantText.kt). */
+    var instantText: Boolean
+        get() = p.getBoolean("instant_text", false)
+        set(v) = p.edit().putBoolean("instant_text", v).apply()
 
     /** SHINY ODDS: a wild foe is shiny 1 in this many ([com.pokedaisy.app.companion.data.ShinyOdds]; NORMAL 8192 = the
      * game's own odds). Read through [com.pokedaisy.app.companion.data.ShinyOdds.choices]: a debug build's 1 in 4 / 1 in 1
@@ -225,7 +235,7 @@ class Prefs(context: Context) {
                 } ?: d.extras,
                 eightWay = p.getBoolean("touch_eight_way", d.eightWay),
                 fadeIdle = p.getBoolean("touch_fade_idle", d.fadeIdle),
-                vibration = p.getBoolean("touch_vibration", d.vibration),
+                vibration = p.getInt("touch_vibration_level", if (p.getBoolean("touch_vibration", false)) 1 else d.vibration),
                 useCustom = p.getBoolean("touch_use_custom", d.useCustom),
                 portrait = com.pokedaisy.app.companion.TouchLayout.decode(p.getString("touch_layout_portrait", null)),
                 landscape = com.pokedaisy.app.companion.TouchLayout.decode(p.getString("touch_layout_landscape", null)),
@@ -241,7 +251,7 @@ class Prefs(context: Context) {
                 .putString("touch_extras", v.extras.joinToString(",") { it.name })
                 .putBoolean("touch_eight_way", v.eightWay)
                 .putBoolean("touch_fade_idle", v.fadeIdle)
-                .putBoolean("touch_vibration", v.vibration)
+                .putInt("touch_vibration_level", v.vibration)
                 .putBoolean("touch_use_custom", v.useCustom)
                 .putString("touch_layout_portrait", v.portrait.encode())
                 .putString("touch_layout_landscape", v.landscape.encode())
@@ -256,6 +266,31 @@ class Prefs(context: Context) {
     var showHints: Boolean
         get() = p.getBoolean("show_hints", true)
         set(v) = p.edit().putBoolean("show_hints", v).apply()
+
+    /** BATTLE INFO: off leaves only the battle buttons - no INFO, SUGGESTIONS or move ratings. On by default. */
+    var battleInfo: Boolean
+        get() = p.getBoolean("battle_info", true)
+        set(v) = p.edit().putBoolean("battle_info", v).apply()
+
+    /** BATTLE VIEW: the BATTLE tab opens on INFO instead of the battle buttons (GitHub #106). Off by default. */
+    var battleInfoFirst: Boolean
+        get() = p.getBoolean("battle_info_first", false)
+        set(v) = p.edit().putBoolean("battle_info_first", v).apply()
+
+    /** GAME NAMES: the library names games by their file (GitHub #124); a RENAME still wins. Off by default. */
+    var libraryFileNames: Boolean
+        get() = p.getBoolean("library_file_names", false)
+        set(v) = p.edit().putBoolean("library_file_names", v).apply()
+
+    /** SUPPORTED ONLY: the library leaves out games the companion can't read (GitHub discussion #302). Off by default. */
+    var librarySupportedOnly: Boolean
+        get() = p.getBoolean("library_supported_only", false)
+        set(v) = p.edit().putBoolean("library_supported_only", v).apply()
+
+    /** LOOK AROUND: EXPAND's right stick moves the view (GitHub #109). On by default. */
+    var lookAround: Boolean
+        get() = p.getBoolean("look_around", true)
+        set(v) = p.edit().putBoolean("look_around", v).apply()
 
     /** ONE-TAP MOVES: the battle controls' action menu shows the moves where FIGHT is, a tap
      * picking FIGHT and the move in one go. Off by default. */
@@ -276,11 +311,31 @@ class Prefs(context: Context) {
         get() = p.getBoolean("foe_details", false)
         set(v) = p.edit().putBoolean("foe_details", v).apply()
 
+    /** SETTINGS > BATTLE FOCUS: shows battle INFO as a single page with no scrolling (BattleFocusScreen). Off by default. */
+    var battleFocus: Boolean
+        get() = p.getBoolean("battle_focus", false)
+        set(v) = p.edit().putBoolean("battle_focus", v).apply()
+
     /** The CHEATS master switch (cheats/Cheats.kt): off, no cheat reaches the game,
      * whatever each one is set to. Off by default. */
     var cheatsEnabled: Boolean
         get() = p.getBoolean("cheats_enabled", false)
         set(v) = p.edit().putBoolean("cheats_enabled", v).apply()
+
+    /** Co-op relay override ([com.pokedaisy.app.companion.coop.CoopRelay]): null = the build's relay. */
+    var coopRelayUrl: String?
+        get() = p.getString("coop_relay_url", null)
+        set(v) = p.edit().putString("coop_relay_url", v).apply()
+
+    /** Co-op NEARBY RANGE: how many steps away a partner's battle can be joined from. */
+    var coopNearbyRange: Int
+        get() = p.getInt("coop_nearby_range", 8)
+        set(v) = p.edit().putInt("coop_nearby_range", v).apply()
+
+    /** Co-op RELAY ONLY: no direct paths, no mDNS; tickets carry the relay alone. */
+    var coopRelayOnly: Boolean
+        get() = p.getBoolean("coop_relay_only", false)
+        set(v) = p.edit().putBoolean("coop_relay_only", v).apply()
 
     /** The app's language: "AUTO" (the ROM's, or the device's in the Library) or
      * an AppLanguage code ("EN", "JA", ...) - see [com.pokedaisy.app.companion.i18n.L10n]. */
@@ -305,6 +360,21 @@ class Prefs(context: Context) {
     var clickSound: Boolean
         get() = p.getBoolean("click_sound", true)
         set(v) = p.edit().putBoolean("click_sound", v).apply()
+
+    /** SETTINGS > SOUND > GAME VOLUME ([GameVolume]): the game's loudness in percent of the device's volume, 100 default. */
+    var gameVolume: Int
+        get() = p.getInt("game_volume", 100).coerceIn(0, 100)
+        set(v) = p.edit().putInt("game_volume", v.coerceIn(0, 100)).apply()
+
+    /** SETTINGS > SOUND > MUTE GAME and the MUTE hotkey ([GameVolume]): the game silent, GAME VOLUME kept for after. */
+    var gameMuted: Boolean
+        get() = p.getBoolean("game_muted", false)
+        set(v) = p.edit().putBoolean("game_muted", v).apply()
+
+    /** SETTINGS > SOUND > AUDIO EFFECTS ([AudioEffects]): the game's sound through the device's audio effects, off by default. */
+    var audioEffects: Boolean
+        get() = p.getBoolean("audio_effects", false)
+        set(v) = p.edit().putBoolean("audio_effects", v).apply()
 
     /** Whether the emulator hotkeys ([com.pokedaisy.app.Hotkeys]) fire at all; off, every key goes to the game. */
     var hotkeysEnabled: Boolean
@@ -425,9 +495,20 @@ class Prefs(context: Context) {
 
     /** SCREEN > DS RESOLUTION: a DS game's 3D at this many times the DS's own (2-8: the GPU renderer,
      * nds/pk_nds_gl.h) or the DS's own on the CPU (1, the default: melonDS's software renderer, pixel for pixel). */
+    /** DS CPU BOOST: the emulated ARM9 at twice the DS's clock (MgbaCore.pkNdsCpuBoost), on unless turned off. */
+    var dsCpuBoost: Boolean
+        get() = p.getBoolean("ds_cpu_boost", true)
+        set(v) = p.edit().putBoolean("ds_cpu_boost", v).apply()
+
     var dsResolution: Int
         get() = p.getInt("ds_resolution", 1).coerceIn(1, DS_RESOLUTION_MAX)
         set(v) = p.edit().putInt("ds_resolution", v.coerceIn(1, DS_RESOLUTION_MAX)).apply()
+
+    /** SCREEN > DS LAYOUT: where a DS game's two screens go on one screen held sideways
+     * ([com.pokedaisy.app.companion.DsLayout] id; ONE SCREEN, the default: the game alone, its touch screen floating in). */
+    var dsLayout: com.pokedaisy.app.companion.DsLayout
+        get() = com.pokedaisy.app.companion.DsLayout.of(p.getInt("ds_layout", 0))
+        set(v) = p.edit().putInt("ds_layout", v.id).apply()
 
     /** EXPAND > AUTO ZOOM IN: whether a conversation, a sign, a menu or a picture over the field pulls the zoomed-out
      * view in to 1x (battles always do). On by default. */
@@ -462,10 +543,11 @@ class Prefs(context: Context) {
         set(v) = p.edit().putInt("light_companion", v).apply()
 
     /** LIGHT COMPANION's AUTO saw this device's buttons come late ([com.pokedaisy.app.companion.LightCompanion.noteKeyDelay]):
-     * it starts light from then on. */
+     * it starts light from then on. A new key: the old one was also set by the volume keys, which Android always holds back
+     * (a fast device read as slow). */
     var lightCompanionMeasured: Boolean
-        get() = p.getBoolean("light_companion_measured", false)
-        set(v) = p.edit().putBoolean("light_companion_measured", v).apply()
+        get() = p.getBoolean("light_companion_measured_v2", false)
+        set(v) = p.edit().putBoolean("light_companion_measured_v2", v).apply()
 
     /** Whether SHADERS (filter and GBA COLORS) also draw over the companion and status bar ([CompanionColors]). */
     var companionShaders: Boolean
@@ -545,6 +627,11 @@ class Prefs(context: Context) {
         set(v) = p.edit().putFloat("portrait_ds_ratio", v).apply()
 
     /** A phone held upright: the companion's height, as a ratio of the screen's width (see [PortraitPanel]). */
+    /** Upright: the companion hidden under its grip, the game alone (GitHub #125). */
+    var portraitCompanionHidden: Boolean
+        get() = p.getBoolean("portrait_companion_hidden", false)
+        set(v) = p.edit().putBoolean("portrait_companion_hidden", v).apply()
+
     var portraitCompanionRatio: Float
         // PortraitLayout.DEFAULT_RATIO: the Thor bottom screen's shape (spelled out: ui-preview's data module has no UI).
         get() = p.getFloat("portrait_companion_ratio", 1080f / 1240f)
@@ -593,6 +680,21 @@ class Prefs(context: Context) {
     var extraSaveDirs: List<String>
         get() = p.getString("extra_save_dirs", null)?.split('\n')?.filter { it.isNotBlank() }.orEmpty()
         set(v) = p.edit().putString("extra_save_dirs", v.distinct().joinToString("\n")).apply()
+
+    /** Settings > FOLDERS > SAVE BACKUPS: a backup of the save each time a game starts ([SaveBackups]). */
+    var saveBackups: Boolean
+        get() = p.getBoolean("save_backups", true)
+        set(v) = p.edit().putBoolean("save_backups", v).apply()
+
+    /** SAVE BACKUPS' folder for every game's backups; null = a pokedaisy-backups folder beside each save. */
+    var saveBackupsDir: String?
+        get() = p.getString("save_backups_dir", null)
+        set(v) = p.edit().putString("save_backups_dir", v).apply()
+
+    /** SAVE BACKUPS > KEEP PER GAME: how many backups a game keeps, newest first. */
+    var saveBackupsKeep: Int
+        get() = p.getInt("save_backups_keep", 10)   // SaveBackups.KEEP
+        set(v) = p.edit().putInt("save_backups_keep", v).apply()
 
     /** [file]'s own save folder (the library menu's SAVE FOLDER); null = [SavesLocation.saveFor]'s search. */
     fun romSaveDir(file: java.io.File): String? = p.getString("romsavedir_${file.name}", null)
@@ -677,11 +779,22 @@ class Prefs(context: Context) {
         get() = p.getBoolean("setup_requested", false)
         set(v) = p.edit().putBoolean("setup_requested", v).apply()
 
-    /** A ThemeSpec.id from APP_THEMES (Theme.kt): 8 = PokéDaisy (the default, DAISY_THEME_ID - spelled out:
-     * ui-preview's data module has no UI), 0 = FireRed (the default before it; kept for whoever picked it). */
+    /** A ThemeSpec.id (Theme.kt's APP_THEMES / SEASONAL_THEMES): 8 = PokéDaisy, the default (DAISY_THEME_ID - spelled
+     * out: ui-preview's data module has no UI). 0-7 were the old game-named themes (FireRed, LeafGreen, ...), which only
+     * changed the top screen's backdrop: whoever picked one is on the default now (the user's call, 2026-11-01). */
     var appTheme: Int
-        get() = p.getInt("app_theme", 8)
+        get() = p.getInt("app_theme", 8).let { if (it in 0..7) 8 else it }
         set(v) = p.edit().putInt("app_theme", v).apply()
+
+    /** The theme worn before a limited-time one was picked: back to it once that one's dates are over. */
+    var themeBeforeSeasonal: Int
+        get() = p.getInt("theme_before_seasonal", 8).let { if (it in 0..7) 8 else it }
+        set(v) = p.edit().putInt("theme_before_seasonal", v).apply()
+
+    /** Limited-time themes whose "it's here" popup has shown, as "<theme id>:<first day of its window>" (once a year each). */
+    var seasonalThemesShown: Set<String>
+        get() = p.getString("seasonal_themes_shown", null)?.split("\n")?.filter { it.isNotBlank() }?.toSet() ?: emptySet()
+        set(v) = p.edit().putString("seasonal_themes_shown", v.joinToString("\n")).apply()
 
     /** SETTINGS > DARK MODE: 0 off (the default: the OPTION screen's white windows), 1 on, 2 AUTO (the device's
      * own light / dark setting). See DarkMode (companion/ui/theme/DarkMode.kt). */

@@ -84,6 +84,14 @@ object RomFolder {
             .map { File(it.key) }.filter { it.isFile }
     }
 
+    /** Every ROM file the app knows, whatever its verdict: imported ones and the linked folders' from the last scan,
+     * hidden ones too - where PATCH A ROM looks for a patch's base ROM ([RomPatcher.findBase]). Cheap, the cache only. */
+    fun allRomFiles(context: Context, prefs: Prefs): List<File> {
+        val roots = prefs.romsFolders
+        val linked = load(context).keys.filter { path -> roots.any { under(path, it) } }.map(::File)
+        return (importedRoms(context) + linked + prefs.hiddenRoms.map(::File)).filter { it.isFile }.distinctBy { it.absolutePath }
+    }
+
     /** Whether [rom] came from a linked folder (the player's own file: HIDE only, no DELETE). */
     fun isLinked(prefs: Prefs, rom: File): Boolean =
         prefs.romsFolders.any { under(rom.absolutePath, it) }
@@ -215,7 +223,8 @@ object RomFolder {
     private val SUPPORTED = "#supported\t" + Integer.toHexString(
         (TelemetrySampler.SUPPORTED_HACK_SHA1S.sorted() + TelemetrySampler.SUPPORTED_GB_SHA1S.sorted() +
             com.pokedaisy.app.companion.data.RETAIL_DUMPS.map { it.sha1 } +
-            TelemetrySampler.NDS_GAMES.map { (code, rev) -> "$code:$rev" }.sorted()).hashCode(),
+            TelemetrySampler.NDS_GAMES.map { (code, rev) -> "$code:$rev" }.sorted() +
+            com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1).hashCode(),
     )
 
     private fun load(context: Context): Map<String, Entry> {

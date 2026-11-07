@@ -591,6 +591,20 @@ inline u32 shade(u32 r6, u32 g6, u32 b6, u32 mb)
 
 inline u32 shade(u32 c, u32 mb) { return shade(c & 0x3F, (c >> 8) & 0x3F, (c >> 16) & 0x3F, mb); }
 
+// A colour (6 bits a channel, r | g << 8 | b << 16) through BLDCNT's brightness up / down ([fx]: mode << 14 | EVY, as the
+// master brightness keeps them), still 6 bits a channel: melonDS's ColorBrightnessUp / Down with BLDCNT's biases (8, 7).
+inline u32 fx6(u32 c, u32 fx)
+{
+    u32 mode = fx >> 14, f = std::min<u32>(fx & 0x1F, 16);
+    u32 r = c & 0x3F, g = (c >> 8) & 0x3F, b = (c >> 16) & 0x3F;
+    if (mode == 1) {
+        r += ((63 - r) * f + 8) >> 4; g += ((63 - g) * f + 8) >> 4; b += ((63 - b) * f + 8) >> 4;
+    } else if (mode == 2) {
+        r -= (r * f + 7) >> 4; g -= (g * f + 7) >> 4; b -= (b * f + 7) >> 4;
+    }
+    return r | g << 8 | b << 16;
+}
+
 inline u32 toRgba(u32 argb) { return 0xFF000000u | ((argb & 0xFF) << 16) | (argb & 0xFF00) | ((argb >> 16) & 0xFF); }
 
 // Two RGBA colours within a texel's difference of each other: the slices sample textures a texel off here and there
@@ -636,6 +650,10 @@ struct Compose {
     u32 mb = 0;
     u32 backdrop = 0;   // widened
     u32 blendCnt = 0, eva = 0, evb = 0;
+    // BLDCNT's brightness up / down where nothing's over the 3D (Black 2's X menu darkens the field behind it): the mode
+    // and EVY as the master brightness keeps them (mode << 14 | EVY: 1 up, 2 down, 0 none), its first targets 3D / backdrop.
+    u32 fx = 0;
+    bool fx3D = false, fxBackdrop = false;
     struct Layer {
         int bg = 0, sx = 0, sy = 0, w = 256, h = 256;
         // Covers the screen's whole outline: a sheet over all of it (fog), carried on as it tiles. Otherwise only the
@@ -672,6 +690,14 @@ void setupCompose(Compose& k, NDS* nds, bool threeD)
     k.eva = u.EVA;
     k.evb = u.EVB;
     k.count = 0;
+    {
+        int fmode = (k.blendCnt >> 6) & 3;
+        bool windows = (u.DispCnt & 0xE000) != 0;
+        bool outsideFx = !windows || (u.WinCnt[2] & 0x20);   // WINOUT's colour-effect bit: the margins are outside
+        k.fx = threeD && outsideFx && fmode >= 2 ? (u32) (fmode - 1) << 14 | std::min<u32>(16, u.EVY) : 0;
+        k.fx3D = (k.blendCnt & 1) != 0;
+        k.fxBackdrop = (k.blendCnt & 0x20) != 0;
+    }
     // The windows aren't followed (the 3D past the screen never is): the margins go on through a window's wipe as
     // they do on any map.
     if (!threeD || ((k.blendCnt >> 6) & 3) != 1 || !(k.blendCnt & 0x100)) return;
@@ -826,6 +852,7 @@ inline u32 composed(Compose& k, int x, int y, u32 c)
     } else if (has3D && (k.blendCnt & 0x2000)) {
         out = blend5(c, k.backdrop);   // the 3D on top, see-through onto the backdrop
     }
+    if (!o && k.fx && (has3D ? k.fx3D : k.fxBackdrop)) out = fx6(out, k.fx);
     return k.finish(out);
 }
 
@@ -1422,6 +1449,8 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
         p.eva = compose.eva;
         p.evb = compose.evb;
         p.brightness = compose.mb;
+        p.fx = compose.fx;
+        p.fxTargets = (compose.fx3D ? 1u : 0u) | (compose.fxBackdrop ? 0x20u : 0u);
     }
     // The slices for the next frame: the lists swapped at this frame's VBlank are what the main renderer draws next.
     // Not for a frame no one will see: its slices would be drawn over before they're shown.

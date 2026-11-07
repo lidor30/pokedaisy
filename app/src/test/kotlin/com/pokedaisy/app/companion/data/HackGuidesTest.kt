@@ -30,7 +30,10 @@ class HackGuidesTest {
     private val ghostGrey = Game("Pokemon Ghost Grey (v1.0.4).gba", GameKind.FIRERED, NATIVE_GHOST_GREY, "ghost_grey")
     private val ghostGreyV101 = Game("Pokemon Ghost Grey (v1.0.1).gba", GameKind.FIRERED, NATIVE_GHOST_GREY_V1_0_1, "ghost_grey_v101")
     private val gsChronicles = Game("Pokemon GS Chronicles (v2.7.6).gba", GameKind.GS_CHRONICLES, NATIVE_GS_CHRONICLES, "gs_chronicles")
-    private val all = listOf(odyssey, gaia, amethyst, amethyst141, celia, uvGame, swordShield, gsChronicles, rocket, ashGray, ashGrayFork, ghostGrey, ghostGreyV101)
+    private val letsGoPikachu = Game("Pokemon Let's Go Pikachu.gba", GameKind.FIRERED, NATIVE_LETS_GO_PIKACHU, "lets_go_pikachu")
+    private val letsGoEevee = Game("Pokemon Let's Go Eevee.gba", GameKind.FIRERED, NATIVE_LETS_GO_EEVEE, "lets_go_eevee")
+    private val all = listOf(odyssey, gaia, amethyst, amethyst141, celia, uvGame, swordShield, gsChronicles, rocket, ashGray, ashGrayFork, ghostGrey, ghostGreyV101,
+        letsGoPikachu, letsGoEevee)
 
     private fun load(g: Game): RomFileReader? = RomFileReader.load(RETAIL_ROM_DIR + g.rom)?.also {
         select(g)
@@ -245,6 +248,20 @@ class HackGuidesTest {
         fireRedHack = null
     }
 
+    /** Let's Go Pikachu / Eevee: FireRed's bosses with each version's own teams (BROCK's OMANYTE or KABUTO), BROCK next on
+     * the new game; each version's own wild Pokémon. */
+    @Test fun `lets go`() {
+        for ((g, fossil) in listOf(letsGoPikachu to "Omanyte", letsGoEevee to "Kabuto")) {
+            load(g) ?: continue
+            assertEquals(listOf("Rhyhorn", "Onix", "Geodude", fossil), GuideRomSource.party(g.t, 414)!!.map { speciesName(it.species) })
+            val p = readSaveProgress(FixtureMemoryReader.load(g.fixture), g.cfg, g.t)!!
+            assertEquals("LEADER BROCK", GUIDE_LETS_GO.bosses.first { !it.isDone(p) }.title)
+            assertTrue(GuideRomSource.wildMapKeys(g.t).isNotEmpty())
+            assertNotNull(generatedWhereIs(GuideId.LETS_GO, { "AREA $it" }) { false })
+        }
+        fireRedHack = null
+    }
+
     /** Sword and Shield Ultimate Plus: its eight leaders by badge (BEA / ALLISTER and GORDIE / MELONY both listed), MILO next. */
     @Test fun `sword and shield`() {
         load(swordShield) ?: return
@@ -412,7 +429,9 @@ class HackGuidesTest {
     private val soulgold12 = Game("Pokemon SoulGold (v1.2).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2, "soulgold_v12")
     private val soulgold12b = Game("Pokemon SoulGold (v1.2) (Alt 1).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2B, "soulgold_v12b")
     private val soulgold12c = Game("Pokemon SoulGold (v1.2) (Alt 2).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2C, "soulgold_v12c")
-    private val expansion = listOf(lazarus, seaglass, tmt2, soulgold, soulgold12, soulgold12b, soulgold12c)
+    private val soulgold121 = Game("Pokemon SoulGold (v1.2.1).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2_1, "soulgold_v121")
+    private val soulgold121b = Game("Pokemon SoulGold (v1.2.1) (Alt 1).gba", GameKind.SOULGOLD, NATIVE_SOULGOLD_V1_2_1, "soulgold_v121b")
+    private val expansion = listOf(lazarus, seaglass, tmt2, soulgold, soulgold12, soulgold12b, soulgold12c, soulgold121, soulgold121b)
 
     /** The expansion hacks' tables and every team (SoulGold's Kanto BROCK has mons with no moves listed: the game fills them). */
     @Test fun `expansion hacks tables and teams`() = expansion.forEach { g ->
@@ -429,7 +448,7 @@ class HackGuidesTest {
     }
 
     /** HERE on a map each was walked on headless until a wild battle came (that foe is in the table). */
-    @Test fun `expansion hacks HERE`() = listOf(lazarus to (0 to 79), seaglass to (0 to 16), tmt2 to (0 to 32), soulgold to (0 to 16), soulgold12c to (0 to 16)).forEach { (g, map) ->
+    @Test fun `expansion hacks HERE`() = listOf(lazarus to (0 to 79), seaglass to (0 to 16), tmt2 to (0 to 32), soulgold to (0 to 16), soulgold12c to (0 to 16), soulgold121 to (0 to 16)).forEach { (g, map) ->
         load(g) ?: return@forEach
         val here = GuideRomSource.encounters(g.t, map.first, map.second)
         assertNotNull(g.fixture, here)

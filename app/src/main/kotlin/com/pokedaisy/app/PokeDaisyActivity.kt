@@ -174,6 +174,8 @@ class PokeDaisyActivity : Activity() {
 
     /** REUSABLE TMS: the ROM's spots that use a TM up ([com.pokedaisy.app.companion.data.ReusableTms]; empty = none). */
     private var tmSites: List<com.pokedaisy.app.companion.data.ReusableTms.Site> = emptyList()
+    /** INSTANT TEXT: the ROM's patch ([com.pokedaisy.app.companion.data.InstantText]; null = the row shows N/A). */
+    private var textPatch: com.pokedaisy.app.companion.data.InstantText.Patch? = null
     /** EXPAND's one-time offer is up on the companion ([CompanionSettings.expandOffer]). */
     private val expandOfferUp = androidx.compose.runtime.mutableStateOf(false)
     private var states: SaveStates? = null
@@ -204,6 +206,17 @@ class PokeDaisyActivity : Activity() {
     /** The FIELD HUD over the game (see [buildFieldHud]) and what it follows: SETTINGS > HUD, the phone's
      * orientation (none upright, for now), the touch controls' rows it keeps clear of, the engine's [EmulatorEngine.onField]. */
     private lateinit var fieldHud: ComposeView
+    /** DS LAYOUT's pieces on the stage ([syncDsStage]): the game's backdrop under the screens, the touch screen beside
+     * or inset in the game, and the floating touch window over it ([com.pokedaisy.app.companion.ui.DsTouchWindow]). */
+    private lateinit var dsBackdropView: ComposeView
+    private lateinit var dsTouchView: FrameLayout
+    private lateinit var dsWindowView: ComposeView
+    /** Pictures of the game for behind DS LAYOUT's screens ([DsShots]). */
+    private lateinit var dsShots: DsShots
+    /** The DS layouts are on (a DS game, one screen, held sideways) and the current one floats the touch screen in. */
+    private val dsFloats = androidx.compose.runtime.mutableStateOf(false)
+    /** The floating touch screen opened by hand (the TOUCH SCREEN hotkey, the HUD's TOUCH): up until its X closes it. */
+    private val dsWindowManual = androidx.compose.runtime.mutableStateOf(false)
     private val hudOn = androidx.compose.runtime.mutableStateOf(true)
     private val hudStyle = androidx.compose.runtime.mutableStateOf(com.pokedaisy.app.companion.FieldHudStyle())
     /** The QUICK MENU (companion.ui.QuickMenu, the QUICK MENU hotkey) and the actions it shows (SETTINGS > QUICK MENU). */
@@ -331,16 +344,17 @@ class PokeDaisyActivity : Activity() {
             )
         } ?: emptyList()
         override val currentIndex get() = if (::engine.isInitialized) engine.currentSlot else 0
-        override fun requestSave(index: Int) { if (::engine.isInitialized) engine.requestSaveState(index) }
-        override fun requestLoad(index: Int) { if (::engine.isInitialized) engine.requestLoadState(index) }
-        override fun requestUndoSave() { if (::engine.isInitialized) engine.requestUndoSave() }
-        override fun requestUndoLoad() { if (::engine.isInitialized) engine.requestUndoLoad() }
+        override fun requestSave(index: Int) { if (::engine.isInitialized && !coopRefuses()) engine.requestSaveState(index) }
+        override fun requestLoad(index: Int) { if (::engine.isInitialized && !coopRefuses()) engine.requestLoadState(index) }
+        override fun requestUndoSave() { if (::engine.isInitialized && !coopRefuses()) engine.requestUndoSave() }
+        override fun requestUndoLoad() { if (::engine.isInitialized && !coopRefuses()) engine.requestUndoLoad() }
     }
 
     /** Backs the bottom-screen touch battle control (see PLAN.md Phase 5). A pick that hands the turn to the game
      * (a move, a switch, RUN, or BAG / POKéMON opening the game's own screen) closes the one-screen companion's window,
      * so the player sees it play out; FIGHT keeps it open, for the move list in it. */
     private val battleInput = object : com.pokedaisy.app.companion.BattleInput {
+        override val menuCursor get() = if (::engine.isInitialized) engine.battleMenuCursor else -1
         override val busy get() = if (::engine.isInitialized) engine.battleInputBusy else false
         override val gameSilent get() = ::engine.isInitialized && engine.gameAudioPaused
         override fun selectAction(actionIndex: Int) {
@@ -416,6 +430,28 @@ class PokeDaisyActivity : Activity() {
         return support
     }
 
+    /** TRADE EVOLUTIONS' calls for the loaded ROM ([com.pokedaisy.app.companion.data.tradeEvoFor]), its code checked once
+     * per ROM; null where the game has none (a hack, another language, a Game Boy or DS game). */
+    @Volatile private var tradeEvoCache: Pair<String, com.pokedaisy.app.companion.data.TradeEvoFns?>? = null
+
+    private fun tradeEvoFns(): com.pokedaisy.app.companion.data.TradeEvoFns? {
+        if (romIsGameBoy || romIsNds) return null
+        val game = telemetry.snapshot.value.game
+        val hack = com.pokedaisy.app.companion.data.runningFireRedHack != null || com.pokedaisy.app.companion.data.runningEmeraldHack != null ||
+            com.pokedaisy.app.companion.data.emeraldLegacy || com.pokedaisy.app.companion.data.romGameCode == com.pokedaisy.app.companion.data.KAIZO_TEXT
+        val evo = com.pokedaisy.app.companion.data.tradeEvoFor(game, romCode, romRev, hack) ?: return null
+        val key = "$romCode/$romRev/$game/${com.pokedaisy.app.companion.data.romGameCode}"
+        tradeEvoCache?.let { (k, v) -> if (k == key) return v }
+        if (!::engine.isInitialized || !engine.running) return null
+        val ok = runCatching {
+            com.pokedaisy.app.companion.data.tradeEvoCodeMatches(evo) { addr, len -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(addr, len) }
+        }.getOrElse { return null }
+        Log.i("pokedaisy", "trade evolutions: ${if (ok) "code found" else "code not found"}")
+        val v = evo.takeIf { ok }
+        tradeEvoCache = key to v
+        return v
+    }
+
     /** A Game Boy game's PC / FLY / WILD ENCOUNTERS ([com.pokedaisy.app.companion.data.GbField]): English Yellow and
      * Crystal, their code checked in the cart once per ROM. */
     @Volatile private var gbFieldCache: Pair<String, com.pokedaisy.app.companion.data.GbField?>? = null
@@ -461,7 +497,7 @@ class PokeDaisyActivity : Activity() {
     }
 
     private val itemUse = object : com.pokedaisy.app.companion.ItemUse {
-        override val repelVar get() = fieldItemSupport()?.fns?.repelVar
+        override val repelVar get() = fieldItemSupport()?.fns?.repelVar?.takeIf { it != 0 }   // 0: none mapped (Monomyth: PC only)
         override fun repelSteps(v: Int) = fieldItemSupport()?.fns?.repelSteps(v) ?: v
         /** A DS game's Repels ([com.pokedaisy.app.companion.data.useGen4Repel], Black's [com.pokedaisy.app.companion.data.useGen5Repel]);
          * nothing else yet. */
@@ -574,6 +610,77 @@ class PokeDaisyActivity : Activity() {
             }
         }
 
+        override fun canReorderParty() = !romIsNds && !romIsGameBoy && ::engine.isInitialized && engine.running &&
+            com.pokedaisy.app.companion.data.activeNativeConfig != null
+        override fun reorderParty(a: Int, b: Int, done: (com.pokedaisy.app.companion.data.PartySwapResult) -> Unit) {
+            val cfg = com.pokedaisy.app.companion.data.activeNativeConfig
+            val snap = telemetry.snapshot.value
+            if (cfg == null || !::engine.isInitialized || !engine.running) return done(com.pokedaisy.app.companion.data.PartySwapResult.FAILED)
+            if (snap.inBattle) return done(com.pokedaisy.app.companion.data.PartySwapResult.IN_BATTLE)
+            engine.requestFieldItemJob(false) { calls, busy ->
+                val r = if (busy || engine.fieldLocked) com.pokedaisy.app.companion.data.PartySwapResult.NOT_NOW
+                else com.pokedaisy.app.companion.data.swapPartySlots(calls, cfg.playerParty, cfg.monStride, snap.party.size, a, b)
+                runOnUiThread { done(r) }
+            }
+        }
+        override fun canSwapBox() = com.pokedaisy.app.companion.data.boxSwapFor(fieldItemSupport()?.fns, com.pokedaisy.app.companion.data.activeNativeConfig) != null
+
+        override fun swapBox(
+            box: Int, slot: Int, boxPersonality: Long, partySlot: Int, partyPersonality: Long,
+            done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+        ) = onBoxes(done) { fields, fns, calls, busy ->
+            com.pokedaisy.app.companion.data.swapWithBox(fields, fns, box, slot, boxPersonality, partySlot, partyPersonality, busy, calls)
+        }
+
+        override fun depositToBox(
+            partySlot: Int, partyPersonality: Long, box: Int,
+            done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+        ) = onBoxes(done) { fields, fns, calls, busy ->
+            com.pokedaisy.app.companion.data.depositToBox(fields, fns, partySlot, partyPersonality, box, busy, calls)
+        }
+
+        override fun withdrawFromBox(
+            box: Int, slot: Int, boxPersonality: Long,
+            done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+        ) = onBoxes(done) { fields, fns, calls, busy ->
+            com.pokedaisy.app.companion.data.withdrawFromBox(fields, fns, box, slot, boxPersonality, busy, calls)
+        }
+
+        override fun canTradeEvolve() = Prefs(this@PokeDaisyActivity).tradeEvolutions && tradeEvoFns() != null
+
+        override fun tradeEvolveTargets(done: (Map<Long, Int>) -> Unit) {
+            val evo = tradeEvoFns()
+            if (evo == null || !Prefs(this@PokeDaisyActivity).tradeEvolutions) return done(emptyMap())
+            onGame(emptyMap(), done) { s, calls, _ -> com.pokedaisy.app.companion.data.tradeEvolveTargets(s.fns, evo, calls) }
+        }
+
+        override fun tradeEvolve(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.TradeEvoResult) -> Unit) {
+            val evo = tradeEvoFns()
+            if (evo == null || !Prefs(this@PokeDaisyActivity).tradeEvolutions) return done(com.pokedaisy.app.companion.data.TradeEvoResult.FAILED)
+            // Only from the field the player walks on: the scene takes the screen, then CB2_ReturnToField brings the field back.
+            if (!::engine.isInitialized || !engine.onField.value) return done(com.pokedaisy.app.companion.data.TradeEvoResult.NOT_NOW)
+            onGame(com.pokedaisy.app.companion.data.TradeEvoResult.FAILED, { r ->
+                // The evolution is the game's to show: the window over it goes.
+                if (r == com.pokedaisy.app.companion.data.TradeEvoResult.EVOLVING) closeCompanionWindow()
+                done(r)
+            }) { s, calls, busy -> com.pokedaisy.app.companion.data.tradeEvolve(s.fns, evo, slot, personality, busy, calls) }
+        }
+
+        /** A PC move ([move]) on the emu thread, its NOT_NOW told apart from a battle's. */
+        private fun onBoxes(
+            done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+            move: (com.pokedaisy.app.companion.data.FieldItemFns, com.pokedaisy.app.companion.data.BoxSwapFns,
+                   com.pokedaisy.app.companion.data.GameCalls, Boolean) -> com.pokedaisy.app.companion.data.BoxSwapResult,
+        ) {
+            val inBattle = telemetry.snapshot.value.inBattle
+            onGame(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED, { r ->
+                done(if (inBattle && r == com.pokedaisy.app.companion.data.BoxSwapResult.NOT_NOW) com.pokedaisy.app.companion.data.BoxSwapResult.IN_BATTLE else r)
+            }) { s, calls, busy ->
+                val fns = com.pokedaisy.app.companion.data.boxSwapFor(s.fns, com.pokedaisy.app.companion.data.activeNativeConfig) ?: return@onGame com.pokedaisy.app.companion.data.BoxSwapResult.FAILED
+                move(s.fns, fns, calls, busy)
+            }
+        }
+
         /** A DS game whose PC pk_nds_call knows (Platinum, HeartGold / SoulSilver, Black). */
         private fun dsCalls() = romIsNds && telemetry.snapshot.value.game.let {
             com.pokedaisy.app.companion.data.gen4ConfigFor(it) != null || com.pokedaisy.app.companion.data.gen5ConfigFor(it) != null
@@ -672,8 +779,8 @@ class PokeDaisyActivity : Activity() {
                 com.pokedaisy.app.companion.data.KeyItems.firstIn(snap.items, com.pokedaisy.app.companion.data.KeyItems.BIKES)?.let(::useKeyItem)
             com.pokedaisy.app.companion.QuickAction.ROD ->
                 com.pokedaisy.app.companion.data.KeyItems.firstIn(snap.items, com.pokedaisy.app.companion.data.KeyItems.RODS)?.let(::useKeyItem)
-            com.pokedaisy.app.companion.QuickAction.SAVE_STATE -> engine.requestSaveState(engine.currentSlot)
-            com.pokedaisy.app.companion.QuickAction.LOAD_STATE -> engine.requestLoadState(engine.currentSlot)
+            com.pokedaisy.app.companion.QuickAction.SAVE_STATE -> if (!coopRefuses()) engine.requestSaveState(engine.currentSlot)
+            com.pokedaisy.app.companion.QuickAction.LOAD_STATE -> if (!coopRefuses()) engine.requestLoadState(engine.currentSlot)
             com.pokedaisy.app.companion.QuickAction.FF -> engine.toggleFastForward()
             com.pokedaisy.app.companion.QuickAction.COMPANION -> if (::sidePanel.isInitialized) sidePanel.openPanel()
         }
@@ -974,7 +1081,7 @@ class PokeDaisyActivity : Activity() {
     @Volatile private var followerLead: Int? = null
 
     /** FOLLOWER works here: a GBA game (not a Game Boy or DS one) that has no following Pokémon of its own. */
-    private fun followerSupported() = !romIsGameBoy && !romIsNds && ::engine.isInitialized &&
+    private fun followerSupported() = !romIsGameBoy && !romIsNds && ::engine.isInitialized && fieldGame != WideScreen.OFF &&
         com.pokedaisy.app.companion.data.activeGame !in FOLLOWERS_OF_THEIR_OWN
 
     /** The engine's follower: the lead's sprite while the row is on. */
@@ -998,6 +1105,8 @@ class PokeDaisyActivity : Activity() {
     /** The loaded ROM's header code / revision byte, for [switchAddrsFor]. */
     @Volatile private var romCode = ""
     @Volatile private var romRev = -1
+    /** The loaded cart is Origin HeartGold's ([com.pokedaisy.app.companion.data.OriginHeartGold]: a Japanese header). */
+    @Volatile private var romOrigin = false
 
     /**
      * Where the battle POKéMON pane's switch finds the party menu: retail
@@ -1029,6 +1138,10 @@ class PokeDaisyActivity : Activity() {
         // Orange Islands is retail FireRed rev 0's RAM and party menu, edited in place.
         game == com.pokedaisy.app.companion.data.GameKind.ORANGE_ISLANDS ->
             BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L)
+        // Let's Go Pikachu / Eevee: rev 0's gPartyMenu under a two-column grid (headless in its battle: DOWN 0 -> 2 -> 4,
+        // RIGHT 0 -> 1; A, SHIFT on slot 3 sent it in).
+        game == com.pokedaisy.app.companion.data.GameKind.FIRERED && com.pokedaisy.app.companion.data.runningLetsGo ->
+            BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L, grid = true)
         // So are Ultra Violet, Rocket Edition, Ash Gray and Ghost Grey (FireRed 1.0 edited in place, ActiveTables' fireRedHack;
         // their fixtures' READMEs: a written POKéMON cell + DOWN, A, SHIFT sent party slot 1 in).
         game == com.pokedaisy.app.companion.data.GameKind.FIRERED && com.pokedaisy.app.companion.data.runningFireRedHack != null ->
@@ -1041,6 +1154,10 @@ class PokeDaisyActivity : Activity() {
             telemetry.knownPartyMenu()?.let { (menu, party) ->
                 BattleInputController.SwitchAddrs(partyMenu = menu, party = party, monStride = 0x4C, grid = true)
             }
+        // Team Rocket Edition 2026: Emerald's layout at its own gPartyMenu, from its config (NATIVE_TEAM_ROCKET_V3: the battle's
+        // POKéMON menu walked slotId 0 -> 7, CANCEL, on DOWN with one Pokémon). Before v1.5's line, which has v1.5's addresses.
+        game == com.pokedaisy.app.companion.data.GameKind.TEAM_ROCKET && com.pokedaisy.app.companion.data.teamRocketV3 ->
+            telemetry.knownPartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party) }
         // Team Rocket Edition: Dragonsden: Emerald's one-column list at its own gPartyMenu (NATIVE_TEAM_ROCKET). Headless: a
         // written POKéMON cell + A opened it, DOWN, A, SHIFT sent slot 1 in (gBattlerPartyIndexes[0] = 1).
         game == com.pokedaisy.app.companion.data.GameKind.TEAM_ROCKET ->
@@ -1086,6 +1203,10 @@ class PokeDaisyActivity : Activity() {
         // (slotId 0 -> 2), A, SHIFT put slot 2 into gBattlerPartyIndexes[0].
         game == com.pokedaisy.app.companion.data.GameKind.DREAMSTONE ->
             BattleInputController.SwitchAddrs(partyMenu = 0x02031E04L, party = 0x02032314L, grid = true)
+        // Monomyth: a two-column grid at its own gPartyMenu (NATIVE_MONOMYTH). Headless: a written POKéMON cell + A opened
+        // it, DOWN (slotId 0 -> 2), A, SHIFT put slot 2 into gBattlerPartyIndexes[0].
+        game == com.pokedaisy.app.companion.data.GameKind.MONOMYTH ->
+            BattleInputController.SwitchAddrs(partyMenu = 0x0203D8D0L, party = 0x02025908L, grid = true)
         // Glazed is retail Emerald's RAM and party menu code (NATIVE_GLAZED).
         game == com.pokedaisy.app.companion.data.GameKind.GLAZED ->
             BattleInputController.SwitchAddrs(partyMenu = 0x0203CEC8L, party = 0x020244ECL)
@@ -1181,18 +1302,38 @@ class PokeDaisyActivity : Activity() {
         }
         override val wildEncountersSupported get() = (fieldGame != WideScreen.OFF && wildFlag != 0L) || gbField() != null ||
             romIsNds && ::engine.isInitialized && engine.fieldState and MgbaCore.FIELD_KNOWN != 0
+        override val tradeEvolutions get() = Prefs(this@PokeDaisyActivity).tradeEvolutions
+        override fun setTradeEvolutions(on: Boolean) { Prefs(this@PokeDaisyActivity).tradeEvolutions = on }
+        override val tradeEvolutionsSupported get() = tradeEvoFns() != null
         override val reusableTms get() = Prefs(this@PokeDaisyActivity).reusableTms
         override fun setReusableTms(on: Boolean) {
+            if (coopRefuses()) return
             if (on) com.pokedaisy.app.companion.FeatureTips.used(TipId.REUSABLE_TMS)
             Prefs(this@PokeDaisyActivity).reusableTms = on
             if (::engine.isInitialized) engine.setReusableTms(tmSites, on)
         }
         override val reusableTmsSupported get() = tmSites.isNotEmpty()
+        override val instantText get() = Prefs(this@PokeDaisyActivity).instantText
+        override fun setInstantText(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).instantText = on
+            if (::engine.isInitialized) engine.setInstantText(textPatch, on)
+        }
+        override val instantTextSupported get() = textPatch != null
         override val dsResolution get() = if (romIsNds) Prefs(this@PokeDaisyActivity).dsResolution else null
         override val dsGpuAvailable get() = GlCaps.gles32(this@PokeDaisyActivity) && MgbaCore.pkNdsGpuSupported() != 0
         override fun setDsResolution(scale: Int) {
             Prefs(this@PokeDaisyActivity).dsResolution = scale
             if (::engine.isInitialized) engine.ndsScale = scale
+        }
+        override val dsCpuBoost get() = if (romIsNds) Prefs(this@PokeDaisyActivity).dsCpuBoost else null
+        override fun setDsCpuBoost(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).dsCpuBoost = on
+            if (::engine.isInitialized) engine.ndsCpuBoost = on
+        }
+        override val dsLayout get() = if (romIsNds && secondScreen() == null) Prefs(this@PokeDaisyActivity).dsLayout else null
+        override fun setDsLayout(layout: com.pokedaisy.app.companion.DsLayout) {
+            Prefs(this@PokeDaisyActivity).dsLayout = layout
+            runOnUiThread { syncGameScreen() }
         }
         override val nuzlockeSupported get() = telemetry.snapshot.value.let { !it.unsupported && com.pokedaisy.app.companion.Nuzlocke.supports(it.game) }
         override val nuzlocke get() = com.pokedaisy.app.companion.Nuzlocke.on
@@ -1212,12 +1353,14 @@ class PokeDaisyActivity : Activity() {
             ?: com.pokedaisy.app.companion.data.LookChar.byName(name)?.label ?: name
         override val playerLookOwn get() = lookRunner.own.value?.name
         override fun setPlayerLook(look: String?) {
+            if (coopRefuses()) return
             Prefs(this@PokeDaisyActivity).setPlayerLookFor(romKey, look)
             lookRunner.apply()
         }
         override val textLooks get() = lookRunner.textOffered.value.map { it.name }
         override val textLook get() = lookRunner.textPicked.value?.name
         override fun setTextLook(style: String?) {
+            if (coopRefuses()) return
             Prefs(this@PokeDaisyActivity).setTextLookFor(romKey, style)
             lookRunner.apply()
         }
@@ -1234,9 +1377,12 @@ class PokeDaisyActivity : Activity() {
         override val rivalLookSupported get() = lookRunner.rivalSupported
         override val rivalLook get() = Prefs(this@PokeDaisyActivity).rivalLook
         override fun setRivalLook(on: Boolean) {
+            if (coopRefuses()) return
             Prefs(this@PokeDaisyActivity).rivalLook = on
             lookRunner.apply()
         }
+        override val autoRunBuiltIn get() =
+            com.pokedaisy.app.companion.data.activeGame in com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN
         override val reusableTmsBuiltIn get() =
             com.pokedaisy.app.companion.data.activeGame in com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN
         override val ffToggled get() = if (::engine.isInitialized) engine.fastForwardToggled else false
@@ -1317,6 +1463,12 @@ class PokeDaisyActivity : Activity() {
         override fun openCompanion() = runOnUiThread { reopenCompanion() }
         override val autoResume get() = Prefs(this@PokeDaisyActivity).autoResume
         override fun setTweak(key: String, on: Boolean) = Prefs(this@PokeDaisyActivity).setTweak(key, on)
+        override val gameVolume get() = GameVolume.percent
+        override fun setGameVolume(percent: Int) = this@PokeDaisyActivity.setGameVolume(percent, GameVolume.muted)
+        override val gameMuted get() = GameVolume.muted
+        override fun setGameMuted(on: Boolean) = this@PokeDaisyActivity.setGameVolume(GameVolume.percent, on)
+        override val audioEffects get() = Prefs(this@PokeDaisyActivity).audioEffects
+        override fun setAudioEffects(on: Boolean) { Prefs(this@PokeDaisyActivity).audioEffects = on }
         override val clickSound get() = clickSoundOn
         override fun setClickSound(on: Boolean) {
             Prefs(this@PokeDaisyActivity).clickSound = on
@@ -1372,6 +1524,11 @@ class PokeDaisyActivity : Activity() {
             runOnUiThread { syncGameScreen() }
         }
         override val wideSupported get() = wideGame != WideScreen.OFF
+        override val lookAround get() = Prefs(this@PokeDaisyActivity).lookAround
+        override fun setLookAround(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).lookAround = on
+            view.camera.lookAround = on
+        }
         override val expandZoomOnText get() = Prefs(this@PokeDaisyActivity).expandZoomOnText
         override fun setExpandZoomOnText(on: Boolean) {
             Prefs(this@PokeDaisyActivity).expandZoomOnText = on
@@ -1483,6 +1640,7 @@ class PokeDaisyActivity : Activity() {
         override val showHints get() = Prefs(this@PokeDaisyActivity).showHints
         override fun setShowHints(on: Boolean) {
             Prefs(this@PokeDaisyActivity).showHints = on
+            battleHints.value = Prefs(this@PokeDaisyActivity).let { it.showHints && it.battleInfo }
         }
         override val appLanguage get() = Prefs(this@PokeDaisyActivity).appLanguage
         override fun setAppLanguage(code: String) {
@@ -1491,21 +1649,37 @@ class PokeDaisyActivity : Activity() {
         }
 
         override fun setDarkMode(v: Int) { Prefs(this@PokeDaisyActivity).darkMode = v }
+        override fun setAppTheme(id: Int) {
+            com.pokedaisy.app.companion.ui.theme.pickTheme(this@PokeDaisyActivity, com.pokedaisy.app.companion.ui.theme.themeById(id))
+        }
         override val showFoeIvs get() = Prefs(this@PokeDaisyActivity).showFoeIvs
         override fun setShowFoeIvs(on: Boolean) {
             Prefs(this@PokeDaisyActivity).showFoeIvs = on
         }
+        override val battleInfo get() = Prefs(this@PokeDaisyActivity).battleInfo
+        override fun setBattleInfo(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).battleInfo = on
+            battleHints.value = Prefs(this@PokeDaisyActivity).let { it.showHints && it.battleInfo }
+        }
+        override val battleInfoFirst get() = Prefs(this@PokeDaisyActivity).battleInfoFirst
+        override fun setBattleInfoFirst(on: Boolean) { Prefs(this@PokeDaisyActivity).battleInfoFirst = on }
         override val oneTapMoves get() = Prefs(this@PokeDaisyActivity).oneTapMoves
         override fun setOneTapMoves(on: Boolean) { Prefs(this@PokeDaisyActivity).oneTapMoves = on }
         override val foeDetails get() = Prefs(this@PokeDaisyActivity).foeDetails
         override fun setFoeDetails(on: Boolean) { Prefs(this@PokeDaisyActivity).foeDetails = on }
+        override val battleFocus get() = Prefs(this@PokeDaisyActivity).battleFocus
+        override fun setBattleFocus(on: Boolean) { Prefs(this@PokeDaisyActivity).battleFocus = on }
         override val cheats get() = cheatStore()?.load().orEmpty()
         override val cheatsEnabled get() = Prefs(this@PokeDaisyActivity).cheatsEnabled
         override fun setCheatsEnabled(on: Boolean) {
+            if (coopRefuses()) return
+            if (coopCheatsRefuse(on)) return
             Prefs(this@PokeDaisyActivity).cheatsEnabled = on
             syncCheats()
         }
         override fun setCheatEnabled(index: Int, on: Boolean) {
+            if (coopRefuses()) return
+            if (coopCheatsRefuse(on)) return
             val store = cheatStore() ?: return
             val list = store.load()
             if (index !in list.indices) return
@@ -1520,6 +1694,26 @@ class PokeDaisyActivity : Activity() {
         }
         override fun guideNoticeAccepted(game: String) = Prefs(this@PokeDaisyActivity).guideNoticeAccepted(game)
         override fun acceptGuideNotice(game: String) = Prefs(this@PokeDaisyActivity).acceptGuideNotice(game)
+        override val coopEnabled get() = coopOn
+        override val coopState get() = com.pokedaisy.app.companion.coop.CoopSession.link.state.value
+        override val coopLock get() = coopLockState.value?.ui?.value
+        override val coopLockActions get() = coopLockState.value
+        override val coopProposalHere get() = secondScreen() != null
+        override val coopPairs get() = com.pokedaisy.app.companion.coop.CoopSession.pairsList(this@PokeDaisyActivity)
+        override val coopRelayValue get() = Prefs(this@PokeDaisyActivity).let {
+            com.pokedaisy.app.companion.coop.CoopRelay.rowValue(it.coopRelayUrl, BuildConfig.COOP_RELAY_URL)
+        }
+        override val coopRelayOnly get() = Prefs(this@PokeDaisyActivity).coopRelayOnly
+        override var coopNearbyRange: Int
+            get() = Prefs(this@PokeDaisyActivity).coopNearbyRange
+            set(v) { Prefs(this@PokeDaisyActivity).coopNearbyRange = v }
+        override fun setCoopRelayOnly(on: Boolean) {
+            val prefs = Prefs(this@PokeDaisyActivity)
+            prefs.coopRelayOnly = on
+            com.pokedaisy.app.companion.coop.CoopSession.restart(this@PokeDaisyActivity, prefs)
+        }
+        override fun coopUnpair(save: com.pokedaisy.app.companion.coop.CoopSaveId) =
+            com.pokedaisy.app.companion.coop.CoopSession.unpair(this@PokeDaisyActivity, save)
     }
 
     /** Reverses [Hotkeys.keyName] — "BUTTON_A"/"Z"/etc. back to a keyCode, for the companion's GAME BUTTONS
@@ -1536,9 +1730,12 @@ class PokeDaisyActivity : Activity() {
         override fun onDisplayRemoved(displayId: Int) = syncPresentation()
         override fun onDisplayChanged(displayId: Int) = syncPresentation()
     }
+    /** FeatureFlags.coop, read at create (the settings screen asks for it often). */
+    private var coopOn = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
+        coopOn = FeatureFlags.coop(this)
         RomFolder.useBestEffortStore(this)
         BestEffortShare.flush(this)   // a shared match that couldn't go out last time
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
@@ -1603,15 +1800,33 @@ class PokeDaisyActivity : Activity() {
         debugMirror = isDebugMirrorEnabled()
 
         view = EmulatorView(this)
+        // Focusable, so a DS battle's menu can give it the focus ([dsBattleTakes]: no D-pad press lost to touch mode).
+        view.isFocusable = true
+        view.isFocusableInTouchMode = true
+        // Out of touch mode (a controller's buttons) Android draws its default focus highlight over a focused view: the
+        // whole game washed out by a ~30% white (black read 77 grey).
+        view.defaultFocusHighlightEnabled = false
         view.holdFrame = { ::engine.isInitialized && engine.holdFrame }
         // 1x frames follow the game screen's refresh (EmulatorEngine.onVsync).
         view.onVsync = { if (::engine.isInitialized) engine.onVsync() else 0L }
         // SHADERS on the companion: its grid at the game's own pixel size, so both screens match.
         view.onGamePixel = CompanionColors::setCell
         // The HUD keeps to the game's picture (ORIGINAL / STRETCH / an overlay); EXPAND = the whole view.
-        view.onGameRect = { r -> hudFrame.value = r?.let { androidx.compose.ui.geometry.Rect(it.left, it.top, it.right, it.bottom) } }
+        // DS LAYOUT lays the HUD over the whole area, the game's box somewhere in it: its rects move with the box.
+        view.onGameRect = { r ->
+            val (dx, dy) = if (::stage.isInitialized) stage.dsGameOffset else 0 to 0
+            // (A DS layout: the game's box, even where it starts at the area's corner - LARGE + SMALL's game is at 0, 0 and
+            // the HUD spread over its touch screen.)
+            val ds = ::stage.isInitialized && stage.dsArrange != null
+            dsHudClear.value = if (ds) stage.dsTouchOverGame else 0f
+            hudFrame.value = r?.let { androidx.compose.ui.geometry.Rect(it.left + dx, it.top + dy, it.right + dx, it.bottom + dy) }
+                ?: if (ds || dx != 0 || dy != 0) androidx.compose.ui.geometry.Rect(dx.toFloat(), dy.toFloat(), (dx + view.width).toFloat(), (dy + view.height).toFloat()) else null
+        }
         // BATTLE BUTTONS keep right of the GBA's own picture (EXPAND's battle included).
-        view.onCoreRect = { r -> coreFrame.value = androidx.compose.ui.geometry.Rect(r.left, r.top, r.right, r.bottom) }
+        view.onCoreRect = { r ->
+            val (dx, dy) = if (::stage.isInitialized) stage.dsGameOffset else 0 to 0
+            coreFrame.value = androidx.compose.ui.geometry.Rect(r.left + dx, r.top + dy, r.right + dx, r.bottom + dy)
+        }
         if (debugMirror) view.setZOrderMediaOverlay(true) // see EmulatorView's z-order note
         hud = TextView(this).apply {
             setTextColor(Color.WHITE)
@@ -1630,12 +1845,15 @@ class PokeDaisyActivity : Activity() {
         statusBar = buildStatusBar()
         performance = buildPerformanceOverlay()
         fieldHud = buildFieldHud()
+        buildDsStageViews()
         keyCapturePopup = ComposeView(this).apply {
             visibility = View.GONE
             setContent { com.pokedaisy.app.companion.ui.KeyCapturePopup(keyCapture) }
         }
         val root = GameStageLayout(this, view, statusBar, listOf(hud, performance), overGame = listOf(fieldHud, keyCapturePopup)).apply {
             setBackgroundColor(Color.BLACK)
+            dsBackdrop = dsBackdropView
+            dsTouch = dsTouchView
             // Shrink the game view to the left portion (instead of full-screen
             // underneath the mirror) so the whole GBA frame is actually
             // visible, aspect-fit within that narrower space, rather than half
@@ -1645,8 +1863,13 @@ class PokeDaisyActivity : Activity() {
             } else {
                 FrameLayout.LayoutParams(-1, -1)
             }
+            // DS LAYOUT: the game's backdrop under the game, the touch screen over it, the floating window under the
+            // touch controls (which stay bright and tappable over its dim).
+            addView(dsBackdropView, FrameLayout.LayoutParams(-1, -1))
             addView(view, gameParams)
+            addView(dsTouchView, FrameLayout.LayoutParams(-1, -1))
             addView(statusBar, FrameLayout.LayoutParams(-2, -2))
+            addView(dsWindowView, FrameLayout.LayoutParams(-1, -1))
             addView(touchControls, FrameLayout.LayoutParams(-1, -1))
             // Over the touch controls: a tap on the HUD is the HUD's, anywhere else falls through to the pad.
             addView(fieldHud, FrameLayout.LayoutParams(-1, -1))
@@ -1693,16 +1916,17 @@ class PokeDaisyActivity : Activity() {
         root.setViewTreeSavedStateRegistryOwner(owner)
         root.setViewTreeViewModelStoreOwner(owner)
         // Its panel and tabs above the FIELD HUD (which sits above the touch controls).
+        // A DS game's touch screen is on the stage held sideways (DS LAYOUT), so the panel is the companion alone.
         sidePanel = SidePanel(root, view, touchControls, Prefs(this), panelBack, panelKeys, playClick, under = fieldHud, onWindow = ::onCompanionWindow, companion = {
-            dsOrCompanion {
-                val snap by telemetry.snapshot.collectAsState()
-                CompanionScreen(snap, stateSlots, companionSettings, battleInput, back = panelBack, keys = panelKeys, clickSound = playClick, achievements = RetroAchievements, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort)
-            }
+            val snap by telemetry.snapshot.collectAsState()
+            CompanionScreen(snap, stateSlots, companionSettings, battleInput, back = panelBack, keys = panelKeys, clickSound = playClick, achievements = RetroAchievements, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort)
         })
         portraitPanel = PortraitPanel(root, view, touchControls, Prefs(this), portraitBack, playClick) {
             dsOrCompanion {
                 val snap by telemetry.snapshot.collectAsState()
-                CompanionScreen(snap, stateSlots, companionSettings, battleInput, back = portraitBack, clickSound = playClick, achievements = RetroAchievements, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort)
+                CompanionFocusHost(bottomFocus.value, bottomKeys) {
+                    CompanionScreen(snap, stateSlots, companionSettings, battleInput, back = portraitBack, keys = bottomKeys, clickSound = playClick, achievements = RetroAchievements, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort)
+                }
             }
         }
         // Two screens: the game stays on the landscape top one. One screen (a phone): it turns
@@ -1711,6 +1935,14 @@ class PokeDaisyActivity : Activity() {
         syncGameScreen()
 
         hotkeys = Hotkeys.load(getExternalFilesDir(null) ?: filesDir)
+        // L2 / R2 are TOUCH SCREEN / DS LAYOUT's in a DS game on one screen, SPEED CYCLE / FF HOLD's elsewhere.
+        Hotkeys.dsActive = { a ->
+            when (a) {
+                Hotkeys.Action.TOUCH_SCREEN -> dsFloats.value
+                Hotkeys.Action.DS_LAYOUT -> dsStageOn
+                else -> false
+            }
+        }
         displayManager = getSystemService(Context.DISPLAY_SERVICE) as DisplayManager
         inputManager = getSystemService(Context.INPUT_SERVICE) as android.hardware.input.InputManager
 
@@ -1745,11 +1977,12 @@ class PokeDaisyActivity : Activity() {
             this, romFile, r,
             intent?.getStringExtra(LibraryActivity.EXTRA_LAUNCHED_FROM) ?: if (fromFrontend) "frontend" else null,
         )
-        // ~50-150ms for a 16-32 MiB ROM; one-time, at launch, on the black screen.
-        val crc = SaveStates.crc32(r)
+        // Known already: the library / frontend launch worked it out off the UI thread (RomCrcs.prepare) - a 512 MB DS
+        // cart read here froze the window past Android's 5 s. Keyed by the file played, an archive's by the archive.
+        val crc = "%08x".format(RomCrcs.of(this, romFile))
         romKey = crc
         states = SaveStates(getExternalFilesDir(null) ?: filesDir, crc)
-        val ffMusicCache = FfMusicCache(getExternalFilesDir(null) ?: filesDir, crc)
+        val ffMusicCache = FfMusicCache(getExternalFilesDir(null) ?: filesDir, crc, gameBoy = RomIdentity.isGameBoy(r))
         // STEADY FF music: songs rendered on their own from this ROM, in the
         // background, as the game starts them (see FfMusicRenderer).
         // The companion's button click is rendered from this ROM the same way.
@@ -1776,21 +2009,34 @@ class PokeDaisyActivity : Activity() {
         val nds = RomIdentity.isNds(r)
         romIsNds = nds
         if (::portraitPanel.isInitialized) portraitPanel.ds = nds
-        dsWildRates = if (!nds) null else when (RomIdentity.ndsGameCode(r)) {
-            "CPUE" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
-            "IPKE" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
-            "IPGE" -> com.pokedaisy.app.companion.data.SOULSILVER_WORLD::wildRates
-            "IRBO" -> { { com.pokedaisy.app.companion.data.BLACK_WORLD.wildRateWords() } }
+        val ndsCode = if (nds) RomIdentity.ndsGameCode(r).orEmpty() else ""
+        romOrigin = nds && ndsCode == com.pokedaisy.app.companion.data.OriginHeartGold.CODE &&
+            com.pokedaisy.app.companion.data.OriginHeartGold.matches(r)
+        dsWildRates = if (!nds) null else if (romOrigin) {
+            // Its tables are read in the background (NdsArt.prefetch); the core may start first, so read them here then.
+            { (com.pokedaisy.app.companion.data.OriginHeartGold.data ?: com.pokedaisy.app.companion.data.NdsArt.readOrigin(r))?.wildRates ?: IntArray(0) }
+        } else when (ndsCode) {
+            "CPUE", "CPUF" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
+            "IPKE", "IPKD", "IPKF" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
+            "IPGE", "IPGD", "IPGF" -> com.pokedaisy.app.companion.data.SOULSILVER_WORLD::wildRates
+            "IRBO", "IRBF" -> { { com.pokedaisy.app.companion.data.BLACK_WORLD.wildRateWords() } }
+            "IRAO", "IRAF" -> { { com.pokedaisy.app.companion.data.WHITE_WORLD.wildRateWords() } }
+            "IREO" -> { { com.pokedaisy.app.companion.data.BLACK2_WORLD.wildRateWords() } }
+            "IRDO" -> { { com.pokedaisy.app.companion.data.WHITE2_WORLD.wildRateWords() } }
             else -> null
         }
         input.ds = nds
         val gba = !gameBoy && !nds
         // EXPAND: the GBA games pk_wide.c knows, and Game Boy ones pk_wide_gb.c does (Yellow, Crystal); the field reads are GBA only.
-        wideGame = if (nds) WideScreen.OFF else WideScreen.gameFor(crc)
-        fieldGame = if (!gba) WideScreen.OFF else WideScreen.fieldGameFor(crc)
+        // A randomized retail cart (RandomizedRetail) goes by retail's CRC here: retail's code, maps and sprites.
+        val tablesCrc = if (gba) WideScreen.tablesCrc(r, crc) else crc
+        wideGame = if (nds) WideScreen.OFF else WideScreen.gameFor(tablesCrc)
+        fieldGame = if (!gba) WideScreen.OFF else WideScreen.fieldGameFor(tablesCrc)
         wildFlag = 0L
         tmSites = emptyList()
         if (::engine.isInitialized) engine.setReusableTms(tmSites, false)
+        textPatch = null
+        if (::engine.isInitialized) engine.setInstantText(null, false)
         shinyTarget = null
         if (::engine.isInitialized) engine.setShinyTarget(null)
         syncShinyAchievements()
@@ -1802,12 +2048,15 @@ class PokeDaisyActivity : Activity() {
             // REUSABLE TMS: the spots that use a TM up, by their code (none = the row shows N/A).
             val tms = com.pokedaisy.app.companion.data.ReusableTms.find(r)
             Log.i("pokedaisy", "reusable TMs: ${tms.size} site(s)")
+            val text = com.pokedaisy.app.companion.data.InstantText.find(r)
             runOnUiThread {
                 if (romData != r) return@runOnUiThread
                 wildFlag = flag
                 if (::engine.isInitialized) engine.wildFlag = flag
                 tmSites = tms
                 if (::engine.isInitialized) engine.setReusableTms(tms, Prefs(this).reusableTms)
+                textPatch = text
+                if (::engine.isInitialized) engine.setInstantText(text, Prefs(this).instantText)
             }
         }, "wild-encounters").start()
         Prefs(this).let { p ->
@@ -1845,11 +2094,11 @@ class PokeDaisyActivity : Activity() {
         }.getOrNull()
         val gameCode = header?.let { String(it, 0, 4, Charsets.US_ASCII) }.orEmpty()
         romCode = gameCode
-        // AUTO = the ROM's own language (its game code's last letter).
-        com.pokedaisy.app.companion.i18n.L10n.apply(Prefs(this).appLanguage, gameCode)
+        // AUTO = the ROM's own language (its game code's last letter; Origin HeartGold's header is Japanese, its text English).
+        com.pokedaisy.app.companion.i18n.L10n.apply(Prefs(this).appLanguage, if (romOrigin) "IPKE" else gameCode)
         romRev = header?.let { it[if (nds) 0x12 else 0x10].toInt() and 0xFF } ?: -1
         // A DS cart's EXPAND: the overworld past the top screen's edges, for a cart its field read knows.
-        if (nds && WideScreen.ndsKnows(gameCode, romRev)) wideGame = WideScreen.NDS
+        if (nds && (WideScreen.ndsKnows(gameCode, romRev) || romOrigin)) wideGame = WideScreen.NDS
         view.camera.ndsMode(nds)
         // DS RESOLUTION's frames come through a SurfaceTexture the view hands the core (EmulatorView.gpuFrames).
         view.gpuFrames = nds
@@ -1864,9 +2113,15 @@ class PokeDaisyActivity : Activity() {
         engine = EmulatorEngine(input, states!!, ffMusicCache).apply {
             hudEngine.value = this
             lateFramesSource = { view.lateFrames }
+            drawStatsSource = { view.repeatedDraws to view.unshownFrames }
+            if (BuildConfig.DEBUG) audioTapDir = getExternalFilesDir("debug")
             this.gba = gba
             this.nds = nds
-            wideCamera = view.camera.also { it.zoomOnText = Prefs(this@PokeDaisyActivity).expandZoomOnText }
+            ndsGameCode = ndsCode
+            wideCamera = view.camera.also {
+                it.zoomOnText = Prefs(this@PokeDaisyActivity).expandZoomOnText
+                it.lookAround = Prefs(this@PokeDaisyActivity).lookAround
+            }
             onWideOff = { runOnUiThread { showHud(com.pokedaisy.app.companion.i18n.tr("EXPAND hit a problem and is off for this game")) } }
             gen1Music = this@PokeDaisyActivity.gen1Music
             onCoreReady = { w, h ->
@@ -1900,9 +2155,9 @@ class PokeDaisyActivity : Activity() {
             onStateResult = { action, slot, ok ->
                 val msg = when (action) {
                     Hotkeys.Action.SAVE_STATE -> if (ok) tr("Saved slot {0}", slot) else tr("Slot {0}: save failed", slot)
-                    Hotkeys.Action.LOAD_STATE -> if (ok) tr("Loaded slot {0}", slot) else tr("Slot {0}: nothing to load", slot)
+                    Hotkeys.Action.LOAD_STATE -> if (ok) tr("Loaded slot {0}", slot) else if (CoopGuards.statesBlockedBy(CoopGuards.StateBlock.LOCK)) tr("Not while you play together only") else tr("Slot {0}: nothing to load", slot)
                     Hotkeys.Action.UNDO_SAVE -> if (ok) tr("Undid save (slot {0})", slot) else tr("Nothing to undo")
-                    Hotkeys.Action.UNDO_LOAD -> if (ok) tr("Undid load") else tr("Nothing to undo")
+                    Hotkeys.Action.UNDO_LOAD -> if (ok) tr("Undid load") else if (CoopGuards.statesBlockedBy(CoopGuards.StateBlock.LOCK)) tr("Not while you play together only") else tr("Nothing to undo")
                     else -> ""
                 }
                 if (msg.isNotEmpty()) runOnUiThread { showHud(msg) }
@@ -1954,6 +2209,8 @@ class PokeDaisyActivity : Activity() {
                     }
                 // WILD ENCOUNTERS on a Game Boy game is held by the engine, frame by frame.
                 if (snap.connected && romIsGameBoy) engine.gbField = gbField()
+                // A shiny foe: RUN leaves Unbound's "Are you sure you want to run away?" to the player.
+                engine.battleRunAsksFirst = snap.battleOpponent.any { it.shiny }
                 if (snap.connected) battleGen1Menus = snap.game.isGen1 ||
                     snap.game.isGen2   // the same 2x2 menu and move column
                 // party.isNotEmpty(), not just connected: `connected` flips true as
@@ -1976,6 +2233,7 @@ class PokeDaisyActivity : Activity() {
                 com.pokedaisy.app.companion.data.SnapshotCache.write(state, telemetry.forState())
             }
             onResumeResult = { loaded -> if (!loaded) { telemetry.dropCached(); runOnUiThread { waitForPlay() } } }
+            battleStateNow = { telemetry.refreshBattleInputFast()?.second }   // the emu thread, before a RUN follow-up press
             onBattleInputSample = {   // runs on the emu thread, ~15x/sec
                 telemetry.refreshBattleInputFast()?.let { (battler, state) ->
                     setBattleMenuState(battler, state, telemetry.battleMenuCursor())
@@ -2003,6 +2261,113 @@ class PokeDaisyActivity : Activity() {
         // PLAYER LOOK: this ROM's scan and patches, in the background; the engine gets the pick once they're in.
         lookPatch = null
         lookRunner.load(r, crc, if (gba) gameCode else "", if (gba) SavesLocation.saveFor(this, Prefs(this), romFile) else null)
+        setUpCoopPresence(r, gba, gameCode)
+    }
+
+    /**
+     * Co-op presence (partner on the field): a [CoopPresence] exists only while a link is attached ([attachCoopLink], the co-op
+     * session's) and the loaded ROM is retail English Emerald (BPEE with [RETAIL_EMERALD_SHA1]); a player without co-op hashes
+     * nothing and runs nothing.
+     */
+    private var coopPresence: CoopPresence? = null
+    private var coopReceive: kotlinx.coroutines.Job? = null
+    private var coopRom: ByteArray? = null
+    private val coopArt = java.util.concurrent.ConcurrentHashMap<Pair<Boolean, com.pokedaisy.app.companion.data.LookChar?>, ByteArray>()
+    private val coopBuilding = java.util.concurrent.ConcurrentHashMap.newKeySet<Pair<Boolean, com.pokedaisy.app.companion.data.LookChar?>>()
+
+    private var coopCandidate: File? = null     // the loaded ROM when it could be retail Emerald (size and code), else null
+    private var coopGeneration = 0             // bumped by every stop / start: a late hash result checks it
+
+    private fun setUpCoopPresence(r: File, gba: Boolean, gameCode: String) {
+        stopCoopPresence()
+        coopCandidate = if (gba && gameCode == "BPEE" && r.length() == 16L * 1024 * 1024) r else null
+        startCoopPresence()
+    }
+
+    /** The presence for the loaded ROM, when a link is attached and the ROM may be retail Emerald (the hash decides, off the UI thread). */
+    private fun startCoopPresence() {
+        val r = coopCandidate ?: return
+        if (coopLink == null || coopPresence != null || !::engine.isInitialized) return
+        val generation = ++coopGeneration
+        // The 16 MB hash is off the UI thread; the presence is made once it matches (and this ROM is still the one loaded).
+        val eng = engine
+        Thread({
+            val sha1 = runCatching {
+                val md = java.security.MessageDigest.getInstance("SHA-1")
+                r.inputStream().use { s -> val b = ByteArray(1 shl 16); while (true) { val n = s.read(b); if (n < 0) break; md.update(b, 0, n) } }
+                md.digest().joinToString("") { "%02x".format(it) }
+            }.getOrNull()
+            if (sha1 == RETAIL_EMERALD_SHA1) runOnUiThread {
+                if (!isDestroyed && !isFinishing && generation == coopGeneration && ::engine.isInitialized && engine === eng &&
+                    romData == r && coopPresence == null && coopLink != null) createCoopPresence(r)
+            }
+        }, "pokedaisy-coop-sha1").start()
+    }
+
+    private fun createCoopPresence(r: File) {
+        val dir = filesDir
+        // The art is built on a background thread (it may scan the ROM, ~1 s): answered null until it's in, asked again later.
+        val presence = CoopPresence(MgbaPartnerCore, android.os.SystemClock::elapsedRealtime) { female, look ->
+            val key = female to look
+            coopArt[key] ?: run {
+                if (coopBuilding.add(key)) Thread({
+                    runCatching {
+                        val rom = coopRom ?: r.readBytes().also { coopRom = it }
+                        com.pokedaisy.app.companion.data.coop.PartnerArt.build(dir, rom, female, look)?.let { coopArt[key] = it }
+                    }
+                    coopBuilding.remove(key)
+                }, "pokedaisy-partner-art").start()
+                null
+            }
+        }
+        coopPresence = presence
+        engine.coopPresence = presence
+        applyCoopLink()
+        lookGender.launch {
+            while (coopPresence === presence) {
+                presence.myLook = lookRunner.worn.value
+                presence.myFemale = lookRunner.female ?: false
+                kotlinx.coroutines.delay(500)
+            }
+        }
+    }
+
+    /** The co-op session's link: [CoopPresence] is made (and starts sending / drawing) with it, null stops and drops it. No-op off retail Emerald. */
+    fun attachCoopLink(link: com.pokedaisy.app.companion.data.coop.CoopPresenceLink?) {
+        coopLink = link
+        if (link == null) { stopCoopPresence(); return }
+        if (coopPresence == null) startCoopPresence() else applyCoopLink()
+    }
+
+    /** The kept link is the session's: a ROM switch makes the next [CoopPresence] with it. */
+    private var coopLink: com.pokedaisy.app.companion.data.coop.CoopPresenceLink? = null
+
+    private fun applyCoopLink() {
+        val p = coopPresence ?: return
+        val link = coopLink
+        coopReceive?.cancel()
+        coopReceive = null
+        p.link = link
+        if (link == null) { runOnEmu { p.stop() }; return }
+        coopReceive = lookGender.launch { link.received.collect { p.onReceived(it) } }
+    }
+
+    private fun stopCoopPresence() {
+        coopGeneration++
+        val p = coopPresence ?: return
+        coopReceive?.cancel()
+        coopReceive = null
+        coopPresence = null
+        p.link = null
+        if (::engine.isInitialized) engine.coopPresence = null
+        coopArt.clear()
+        coopRom = null
+        runOnEmu { p.stop() }
+    }
+
+    /** [job] on the emu thread while the engine runs (the core is its alone), else here (the native calls need no core). */
+    private fun runOnEmu(job: () -> Unit) {
+        if (::engine.isInitialized && engine.running) engine.postToEmu(job) else job()
     }
 
     /** SCENE SPEEDS, AUTO-RUN, RUN INDOORS, WILD ENCOUNTERS and REUSABLE TMS onto [e], and the game whose field they read (EXPAND on or off). */
@@ -2019,7 +2384,9 @@ class PokeDaisyActivity : Activity() {
         e.wildFlag = wildFlag
         e.wildEncounters = p.wildEncounters
         e.ndsScale = p.dsResolution
+        e.ndsCpuBoost = p.dsCpuBoost
         e.setReusableTms(tmSites, p.reusableTms)
+        e.setInstantText(textPatch, p.instantText)
         e.setShinyTarget(shinyTarget)
         e.shinyOdds = shinyOddsPref()
     }
@@ -2052,7 +2419,8 @@ class PokeDaisyActivity : Activity() {
                 val running = ::engine.isInitialized && engine.running
                 if (running) {
                     view.unbindCoreBlocking()   // see restartGame
-                    states?.let { engine.stopWithSuspend(it.resumeFile) } ?: engine.stop()
+                    coopStop()
+                    stopEngineWithResume()
                 }
                 rom = next
                 telemetry.reset()
@@ -2064,7 +2432,9 @@ class PokeDaisyActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
+        presentation?.let { SecondScreenHolder.open(this, it.display) }
         tipsResumed = true
+        coopOn = FeatureFlags.coop(this)
         if (movePause) {
             // The move's pause: the game never stopped. Only the screens follow (their configuration change may have
             // come before the pause).
@@ -2111,28 +2481,309 @@ class PokeDaisyActivity : Activity() {
 
     /** Hands the engine this ROM's enabled cheats (none with the master switch off); it loads
      * them before the first frame, or on the next one while the game runs. */
+    private var coopCheatNoticed = false
+
     private fun syncCheats() {
         if (!::engine.isInitialized) return
-        val text = if (Prefs(this).cheatsEnabled) cheatStore()?.load()?.let(com.pokedaisy.app.cheats.CheatFiles::coreText).orEmpty() else ""
+        val enabled = Prefs(this).cheatsEnabled
+        val coopOn = com.pokedaisy.app.companion.coop.CoopSession.gameOn || coopLock != null
+        val text = com.pokedaisy.app.companion.coop.CoopSession.cheatsForEngine(enabled, coopOn) {
+            cheatStore()?.load()?.let(com.pokedaisy.app.cheats.CheatFiles::coreText).orEmpty()
+        }
+        if (enabled && coopOn) {
+            if (!coopCheatNoticed) { coopCheatNoticed = true; showHud(com.pokedaisy.app.companion.i18n.tr("Not while co-op is on.")) }
+        } else coopCheatNoticed = false
         engine.setCheats(text)
+    }
+
+    /** Co-op calls queue here, in order: the ROM hash can take a moment, and a stop must never overtake its start. */
+    private val coopExec = java.util.concurrent.Executors.newSingleThreadExecutor { r -> Thread(r, "pokedaisy-coop-start").apply { isDaemon = true } }
+
+    private fun coopStop() {
+        // A joined battle's games are put back first (before the engine writes any suspend state), then the hook goes.
+        if (!CoopBattles.stopNow()) coopLost = true   // fail closed: a game not confirmed put back writes no state
+        CoopBattles.detach(coopApp)
+        stopCoopLock()
+        coopExec.execute { com.pokedaisy.app.companion.coop.CoopSession.stopGame() }
+    }
+
+    // --- co-op joined battles (CoopBattles.kt) ---
+
+    /** The overlays over the game (HUD view): join prompt, waits, notices. */
+    private val coopOverlay = com.pokedaisy.app.companion.ui.CoopOverlayState()
+    private var coopHat = 0
+    @Volatile private var coopSaveId: com.pokedaisy.app.companion.coop.CoopSaveId? = null
+
+    /** A joined battle is running: the action [what] is refused with a notice (RESTART, SAVE / LOAD STATE, REWIND, PLAYER LOOK, ...). */
+    private fun coopRefuses(): Boolean {
+        if (!CoopBattles.busy) return false
+        showHud(com.pokedaisy.app.companion.i18n.tr("Not during a co-op battle."))
+        return true
+    }
+
+    /** Cheats are refused (with a notice) while co-op is on for this game: the start gate's rule, held mid-session. */
+    private fun coopCheatsRefuse(turningOn: Boolean): Boolean {
+        val on = com.pokedaisy.app.companion.coop.CoopSession.gameOn || coopLock != null
+        if (!com.pokedaisy.app.companion.coop.CoopSession.refusesCheats(turningOn, on)) return false
+        showHud(com.pokedaisy.app.companion.i18n.tr("Not while co-op is on."))
+        return true
+    }
+
+    /** The retail Emerald game has the hook once its SHA-1 is known: hash done off the UI thread by [coopStart]. */
+    private fun coopAttach(sha1: String?) {
+        if (isDestroyed || isFinishing || !::engine.isInitialized || !engine.running) return
+        val link = com.pokedaisy.app.companion.coop.CoopSession.link
+        if (!CoopBattles.mayHook(sha1, FeatureFlags.coop(this), link)) return
+        attachCoopLink(CoopPresenceChannel(link))
+        CoopBattles.attach(coopApp, link, sha1)
+    }
+
+    @Volatile private var coopPairKeyCache: Pair<com.pokedaisy.app.companion.coop.CoopSaveId, String>? = null
+    @Volatile private var coopPairKeyMissAt = -10_000L
+
+    private val catchFile by lazy { com.pokedaisy.app.companion.data.coop.FileCatchStore(File(File(filesDir, "coop"), "catches.txt")) }
+
+    private val coopApp = object : CoopApp {
+        override val coopOn get() = FeatureFlags.coop(this@PokeDaisyActivity)
+        override val emu = object : CoopEmu {
+            override fun post(job: () -> Unit) { if (::engine.isInitialized) engine.postToEmu(job) }
+            override val running get() = ::engine.isInitialized && engine.running
+        }
+        override val overlay get() = coopOverlay
+        override fun core(): com.pokedaisy.app.companion.data.coop.CoopCore =
+            MgbaCoopCore()
+        override fun setHook(hook: CoopFrameHook?) { if (::engine.isInitialized) engine.coopBattles = hook }
+        override val env = object : CoopGlueEnv {
+            override val range get() = Prefs(this@PokeDaisyActivity).coopNearbyRange
+            override fun mySpot(): com.pokedaisy.app.companion.data.coop.CoopJoinRules.Spot? {
+                val s = MgbaPartnerCore.self() ?: return null
+                if (s.size < 5 || s[0] == 0) return null
+                return com.pokedaisy.app.companion.data.coop.CoopJoinRules.Spot(s[1], s[2], s[3] / 16, s[4] / 16)
+            }
+            override fun partnerSpot(): com.pokedaisy.app.companion.data.coop.CoopJoinRules.Spot? {
+                val u = coopPresence?.lastReceived?.takeIf { it.valid } ?: return null
+                return com.pokedaisy.app.companion.data.coop.CoopJoinRules.Spot(u.mapGroup, u.mapNum, u.fineX / 16, u.fineY / 16)
+            }
+            override fun hostParty(): List<ByteArray> {
+                val n = (MgbaCore.pkReadBytes(CoopEmeraldRam.PLAYER_PARTY_COUNT, 1)?.get(0)?.toInt() ?: 0) and 0xFF
+                val all = MgbaCore.pkReadBytes(CoopEmeraldRam.PLAYER_PARTY, 6 * CoopEmeraldRam.MON_SIZE) ?: return emptyList()
+                return List(n.coerceIn(0, 6)) { all.copyOfRange(it * CoopEmeraldRam.MON_SIZE, (it + 1) * CoopEmeraldRam.MON_SIZE) }
+            }
+            override fun foeSpecies(): Int = MgbaCore.pkReadBytes(CoopEmeraldRam.ENEMY_PARTY, CoopEmeraldRam.MON_SIZE)
+                ?.let { runCatching { com.pokedaisy.app.companion.data.save.Gen3BoxMon.read(it, 0).species }.getOrNull() } ?: 0
+            override fun partnerName(): String {
+                val st = com.pokedaisy.app.companion.coop.CoopSession.link.state.value
+                val p = when (st) {
+                    is com.pokedaisy.app.companion.coop.CoopState.Connected -> st.partner
+                    is com.pokedaisy.app.companion.coop.CoopState.Connecting -> st.partner
+                    is com.pokedaisy.app.companion.coop.CoopState.Disconnected -> st.partner
+                    else -> null
+                }
+                return p?.name ?: com.pokedaisy.app.companion.i18n.tr("PARTNER")
+            }
+            private fun saveId(): com.pokedaisy.app.companion.coop.CoopSaveId? {
+                coopSaveId?.let { return it }
+                val r = rom ?: return null
+                return com.pokedaisy.app.companion.coop.CoopSaveId.read(SavesLocation.saveFor(this@PokeDaisyActivity, Prefs(this@PokeDaisyActivity), r))
+                    ?.also { coopSaveId = it }
+            }
+            override fun identity(): com.pokedaisy.app.companion.data.coop.CoopIdentity {
+                val id = saveId() ?: return com.pokedaisy.app.companion.data.coop.CoopIdentity(ByteArray(8) { 0xFF.toByte() }, 0, 0)
+                return com.pokedaisy.app.companion.data.coop.CoopIdentity(id.name, if (lookRunner.female == true) 1 else 0, (id.secretId shl 16) or id.trainerId)
+            }
+            override fun beforeSave(): Boolean {
+                val r = rom ?: return false
+                val save = SavesLocation.saveFor(this@PokeDaisyActivity, Prefs(this@PokeDaisyActivity), r)
+                return coopBackup(save)
+            }
+            override fun busyChanged(busy: Boolean) { RetroAchievements.coopBattle = busy }
+            override fun storyAt(): com.pokedaisy.app.companion.data.coop.CoopJoinRules.StoryAt {
+                // The lock's hold names the event it parks the player at; otherwise the player's own spot decides.
+                val held = (coopLock?.ui?.value?.waiting as? com.pokedaisy.app.companion.coop.lock.LockWait.AtStory)?.eventId ?: 0
+                val event = if (held != 0) com.pokedaisy.app.companion.data.coop.CoopStory.byId(held)
+                else com.pokedaisy.app.companion.data.coop.CoopStorySpots.at(mySpot())
+                return com.pokedaisy.app.companion.data.coop.CoopStorySpots.storyAt(event) { id ->
+                    com.pokedaisy.app.companion.data.coop.CoopStorySpots.trainerBeaten(id) { addr, n -> MgbaCore.pkReadBytes(addr, n) }
+                }
+            }
+            override fun playTogetherOnly() = coopLock?.ui?.value?.locked == true
+            /** Own save + the paired partner's key (never a display name: a rename or a missing name must not orphan catches). Resolved once per save. */
+            override fun pairKey(): String {
+                val sid = saveId() ?: return ""
+                coopPairKeyCache?.let { if (it.first == sid) return it.second }
+                val now = android.os.SystemClock.elapsedRealtime()
+                if (now - coopPairKeyMissAt < 5_000L) return sid.key + ":unpaired"   // the pairs file is not read every tick
+                val st = com.pokedaisy.app.companion.coop.CoopSession.link.state.value
+                val live = when (st) {
+                    is com.pokedaisy.app.companion.coop.CoopState.Connected -> st.partner
+                    is com.pokedaisy.app.companion.coop.CoopState.Connecting -> st.partner
+                    is com.pokedaisy.app.companion.coop.CoopState.Disconnected -> st.partner
+                    else -> null
+                }
+                val peer = live?.peer?.hex
+                    ?: com.pokedaisy.app.companion.coop.CoopSession.pairsList(this@PokeDaisyActivity).firstOrNull { it.ownSave == sid }?.partner?.peer?.hex
+                if (peer == null) { coopPairKeyMissAt = now; return sid.key + ":unpaired" }
+                return (sid.key + ":" + peer).also { coopPairKeyCache = sid to it }
+            }
+            override fun catchStore() = catchFile
+            override fun log(text: String) { Log.i("pokedaisy/coop", text) }
+        }
+    }
+
+    /** The running save copied into the backups folder before co-op writes to the game: true when a copy (or an equal one) is there. */
+    private fun coopBackup(save: File): Boolean {
+        val newest = SaveBackups.list(save).firstOrNull()
+        if (SaveBackups.snapshot(save) != null) return true
+        return runCatching { newest != null && SaveBackups.sameSave(newest.readBytes(), save.readBytes()) }.getOrDefault(false)
+    }
+
+    /** A co-op stop could not be confirmed (the emu thread did not answer): from then on nothing - no resume state, no sleep state -
+     * is written from what is in the engine, so the next launch boots from the save file. Cleared when a game starts. */
+    @Volatile private var coopLost = false
+
+    /** The engine stopped with its resume state, as a close always did - except after [coopLost]: then with none at all. */
+    private fun stopEngineWithResume() {
+        if (coopLost) {
+            dropResumeState()
+            engine.stop()
+            return
+        }
+        states?.let { engine.stopWithSuspend(it.resumeFile) } ?: engine.stop()
+    }
+
+    private fun dropResumeState() {
+        states?.resumeFile?.let {
+            it.delete()
+            com.pokedaisy.app.companion.data.SnapshotCache.fileFor(it).delete()
+            RetroAchievements.progressFile(it).delete()
+        }
+    }
+
+    /** A game button while a co-op overlay is up: the prompt's or wait's, kept from the game (like the QUICK MENU's). */
+    private fun coopOverlayTakes(event: KeyEvent): Boolean? {
+        if (!coopOverlay.takesKeys) return null
+        val code = event.keyCode
+        val down = event.action == KeyEvent.ACTION_DOWN
+        if (code == KeyEvent.KEYCODE_BACK) return null
+        if (::hotkeys.isInitialized && hotkeysOn) {
+            for (e in hotkeys.onKey(code, down)) handleHotkey(e)
+            if (hotkeys.consumes(code)) return true
+        }
+        val key = menuKeyFor(input.buttonFor(code) ?: 0) ?: return null
+        if (!down) {
+            menuHeld.remove(code)
+            return true
+        }
+        menuHeld.add(code)
+        CoopBattles.takeKey(key)
+        return true
+    }
+
+    /** A joystick's D-pad / stick while a co-op overlay is up: each direction that comes on is a press. */
+    private fun coopMotion(event: MotionEvent): Boolean {
+        val bits = GbaInput.motionBits(event) ?: return false
+        val pressed = bits and coopHat.inv()
+        coopHat = bits
+        menuKeyFor(pressed)?.let { CoopBattles.takeKey(it) }
+        return true
+    }
+
+    /** The co-op lock of the running game (PLAY TOGETHER ONLY), null without a pairing / off retail Emerald. The later UI reads `ui` and the actions from it. */
+    @Volatile var coopLock: CoopLock? = null
+        private set
+    /** The lock as Compose state (the overlay and the settings row follow it) and the partner it plays with. */
+    private val coopLockState = androidx.compose.runtime.mutableStateOf<CoopLock?>(null)
+    private val coopLockPartner = androidx.compose.runtime.mutableStateOf("")
+    private var coopLockReceive: kotlinx.coroutines.Job? = null
+    private val coopLockGen = java.util.concurrent.atomic.AtomicInteger()
+
+    private fun stopCoopLock() {
+        coopLockGen.incrementAndGet()
+        coopLockReceive?.cancel()
+        coopLockReceive = null
+        coopLockState.value = null
+        val lock = coopLock ?: return
+        coopLock = null
+        if (::engine.isInitialized) engine.coopLock = null
+        lock.releaseGuards()   // at once: a held game must never outlive its lock, whatever the emu thread is doing
+        runOnEmu { lock.close() }
+    }
+
+    /** One [CoopLock] for the game just started, when its save has a pairing (off the UI thread: [gen] tells a stop from a late start). */
+    private fun startCoopLock(sha1: String?, save: File, cheatsLoaded: Boolean, gen: Int) {
+        val id = com.pokedaisy.app.companion.coop.CoopSaveId.read(save) ?: return
+        if (com.pokedaisy.app.companion.coop.CoopSession.gate(sha1, id, true, cheatsLoaded) != null) return
+        val pair = com.pokedaisy.app.companion.coop.CoopSession.pairsList(this).firstOrNull { it.ownSave.key == id.key } ?: return
+        val link = com.pokedaisy.app.companion.coop.CoopSession.link
+        val lock = CoopLock(
+            link, com.pokedaisy.app.companion.coop.lock.CoopLockStore(File(File(filesDir, "coop"), "locks.json")),
+            id.key, pair.partner.save.key, MgbaLockNative,
+            {
+                val b = MgbaCore.pkReadBytes(com.pokedaisy.app.companion.data.coop.COOP_PLAYER_PARTY_COUNT, 1)
+                    ?: throw IllegalStateException("no core")
+                b[0].toInt() and 0xFF
+            },
+            android.os.SystemClock::elapsedRealtime,
+            { eventId -> CoopBattles.storyPending(eventId) },
+        )
+        runOnUiThread {
+            if (isDestroyed || coopLockGen.get() != gen || !::engine.isInitialized) { lock.releaseGuards(); return@runOnUiThread }
+            coopLock = lock
+            coopLockPartner.value = pair.partner.name
+            coopLockState.value = lock
+            lock.start()   // adopted: only now does it take its guards
+            engine.coopLock = lock
+            coopLockReceive = lookGender.launch { link.messages.collect { lock.onMessage(it) } }
+        }
+    }
+
+    /** The co-op session for the game being started: the ROM's SHA-1 (a retail dump counts as retail) off the UI thread. */
+    private fun coopStart(r: File, save: File) {
+        if (!FeatureFlags.coop(this)) return
+        val prefs = Prefs(this)
+        val cheatsLoaded = prefs.cheatsEnabled && cheatStore()?.load().orEmpty().any { it.enabled }
+        val code = romCode
+        val rev = romRev
+        stopCoopLock()
+        val gen = coopLockGen.get()
+        coopExec.execute {
+            if (!com.pokedaisy.app.companion.coop.CoopSession.mayBeRetailEmerald(code, RomArchive.romSize(r))) {
+                com.pokedaisy.app.companion.coop.CoopSession.startForGame(applicationContext, prefs, null, save, cheatsLoaded)
+                return@execute
+            }
+            val own = RomIdentity.sha1(r)
+            val sha1 = if (own == com.pokedaisy.app.companion.coop.EMERALD_COOP_SHA1) own
+                else com.pokedaisy.app.companion.data.RetailDumps.matchStream(code, rev, RomArchive.romSize(r)) { RomArchive.open(r) } ?: own
+            com.pokedaisy.app.companion.coop.CoopSession.startForGame(applicationContext, prefs, sha1, save, cheatsLoaded)
+            runOnUiThread { coopAttach(sha1) }   // joined battles + presence: retail English Emerald only
+            startCoopLock(sha1, save, cheatsLoaded, gen)
+        }
     }
 
     /** Starts the loaded ROM's engine, resuming where it was left; false with no ROM. */
     private fun startGame(): Boolean {
         val r = rom ?: return false
         val st = states ?: return false
+        AudioEffects.load(Prefs(this))
+        AudioEffectsTrack.open(this)
         val save = SavesLocation.saveFor(this, Prefs(this), r)
         // Cheats may have changed in the library's Settings since the game was last up.
         syncCheats()
         // Back from sleep: the game held on its frame (onPause) and goes on from it. The state written as it went to
         // sleep is used up, as a resume's is once loaded.
         if (engine.sleeping) {
+            CoopBattles.resume()   // [pauseGame] ended any joined battle before the sleep: battles may start again
             engine.wake()
             st.resumeFile.delete()
             com.pokedaisy.app.companion.data.SnapshotCache.fileFor(st.resumeFile).delete()
             RetroAchievements.progressFile(st.resumeFile).delete()
             return true
         }
+        CoopGuards.reset()   // a new game starts with nothing held or blocked by the last one
+        coopLost = false
+        coopPairKeyCache = null; coopPairKeyMissAt = -10_000L
+        coopSaveId = null   // identity() and ownName() follow the save of this game
+        coopStart(r, save)
         // Auto-resume from wherever was written most recently: normally that's
         // the auto-suspend snapshot from the last close, but if that session
         // ended in a crash instead of a clean close (stale/missing resumeFile),
@@ -2233,10 +2884,12 @@ class PokeDaisyActivity : Activity() {
     override fun onDestroy() {
         samplerThread.shutdown()
         com.pokedaisy.app.companion.FeatureTips.available = { false }
+        Hotkeys.dsActive = { false }
         // Gone while the game slept (onPause held it): stop it now, as a close would have.
         if (::engine.isInitialized && engine.running) {
             view.unbindCoreBlocking()
-            states?.let { engine.stopWithSuspend(it.resumeFile) } ?: engine.stop()
+            coopStop()
+            stopEngineWithResume()
         }
         ffMusicRenderer?.stop()
         ffMusicRenderer = null
@@ -2247,6 +2900,7 @@ class PokeDaisyActivity : Activity() {
         unlockSound = null
         stageRecomposer.cancel()
         stageRecomposing.cancel()
+        stopCoopPresence()
         lookGender.cancel()
         playScope.cancel()
         com.pokedaisy.app.companion.ui.GameStart.waiting = false
@@ -2302,24 +2956,31 @@ class PokeDaisyActivity : Activity() {
     /** Everything onPause does: the game stops (or holds, asleep), its listeners and the second screen go. */
     private fun pauseGame() {
         stopPlayClock()
+        AudioEffectsTrack.close(this)
         keyCapture.cancel()
         runCatching { displayManager.unregisterDisplayListener(displayListener) }
         runCatching { inputManager.unregisterInputDeviceListener(inputDeviceListener) }
         runCatching { unregisterReceiver(batteryReceiver) }
         presentation?.let { it.dismiss(); it.releaseContent() }
         presentation = null
+        SecondScreenHolder.close()
         ffMusicPlayer.release()
         if (::engine.isInitialized && romKey.isNotEmpty()) {
             Prefs(this).setSpeedIndexFor(romKey, engine.speedIndex)
         }
         // The screen went off: the game holds on its frame with the core up and goes on from there on wake
         // (EmulatorEngine.sleep; startGame wakes it). HOME, another app or closing the game stop it as before.
+        // A joined battle's games back (the partner's own game first) before any state is written; if that can't be confirmed,
+        // nothing is written at all (coopLost: no sleep, no resume state - the next launch boots from the save file).
+        if (!CoopBattles.stopNow()) coopLost = true
         val asleep = !(getSystemService(Context.POWER_SERVICE) as android.os.PowerManager).isInteractive
-        val held = asleep && states?.let { engine.sleep(it.resumeFile) } == true
+        val held = asleep && !coopLost && states?.let { engine.sleep(it.resumeFile) } == true
         if (!held) {
             // Before the engine frees the frame buffer the GL thread draws from.
             view.unbindCoreBlocking()
-            states?.let { engine.stopWithSuspend(it.resumeFile) } ?: engine.stop()
+            coopStop()
+            // (as stopEngineWithResume: no resume state after a co-op battle lost the own game)
+            if (coopLost) { dropResumeState(); engine.stop() } else states?.let { engine.stopWithSuspend(it.resumeFile) } ?: engine.stop()
         }
         view.onPause()
     }
@@ -2372,8 +3033,9 @@ class PokeDaisyActivity : Activity() {
         syncPresentation()
     }
 
-    /** A DS game with no second screen for its touch screen (GitHub #244): it goes where the companion would ([DsTouchPane]),
-     * the companion behind its COMPANION switch. Compose state, set by [syncPresentation]. */
+    /** A DS game with no second screen for its touch screen (GitHub #244): held upright it goes where the companion would
+     * ([DsTouchPane], the dock under the game), the companion behind its COMPANION switch; sideways DS LAYOUT places it
+     * ([syncDsStage]). Compose state, set by [syncPresentation]. */
     private val dsOneScreen = androidx.compose.runtime.mutableStateOf(false)
 
     @androidx.compose.runtime.Composable
@@ -2399,6 +3061,7 @@ class PokeDaisyActivity : Activity() {
             setBottomFocus(false)
             presentation?.let { it.dismiss(); it.releaseContent() }
             presentation = null
+            SecondScreenHolder.close()
             showStage()
             // Closed while swapped, the game on the second screen: the companion opens over it there, as on one screen.
             // It fills that screen (the companion's own, on a device like the Thor), whatever COMPANION VIEW says.
@@ -2417,11 +3080,11 @@ class PokeDaisyActivity : Activity() {
         setBottomFocus(false)
         current?.let { it.dismiss(); it.releaseContent() }
         presentation = null
+        SecondScreenHolder.close()
         dsBottom = null
         syncOrientation(target != null)
         // One screen and a DS game: its touch screen takes the companion's place, the side panel locked beside the game.
         dsOneScreen.value = romIsNds && target == null && !debugMirror
-        sidePanel.setDsScreen(dsOneScreen.value)
         // One screen: the companion goes in a panel beside / under the game instead
         // (not with the debug mirror, which already shows it there).
         syncSingleScreen((target == null || romIsNds) && !debugMirror)
@@ -2436,6 +3099,7 @@ class PokeDaisyActivity : Activity() {
                     DualScreenPresentation.companionView(
                         ctx, telemetry, stateSlots, companionSettings, battleInput, companionBack, playClick, RetroAchievements,
                         initialTab = companionStartTab, initialSettingsRow = companionStartRow, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort,
+                        keys = bottomKeys, focus = { bottomFocus.value },
                     )
                 }, Prefs(this).dsBottomCompanion) { on -> Prefs(this).dsBottomCompanion = on }.also { dsBottom = it }
                 else DualScreenPresentation.companionView(
@@ -2445,6 +3109,7 @@ class PokeDaisyActivity : Activity() {
                 )
             }.also { it.show() }
         }.onFailure { Log.w("pokedaisy", "presentation failed", it) }.getOrNull()
+        if (presentation != null) SecondScreenHolder.open(this, target)
         companionStartTab = "PARTY"
         companionStartRow = null
         if (presentation == null && swap) {
@@ -2466,7 +3131,8 @@ class PokeDaisyActivity : Activity() {
         if (portrait) sidePanel.setEnabled(false) else portraitPanel.setEnabled(false)
         sidePanel.setEnabled(on && !portrait)
         portraitPanel.setEnabled(on && portrait)
-        // Upright, the game drops its overlay (and gets it back sideways).
+        // Upright, the game drops its overlay (and gets it back sideways); a DS game's screens are arranged for the way
+        // it's held (syncGameScreen's syncDsStage).
         syncGameScreen()
         // The touch controls' own layout for the way the phone is held.
         syncTouchControls()
@@ -2588,7 +3254,7 @@ class PokeDaisyActivity : Activity() {
         hudStyle.value = prefs.fieldHudStyle
         quickShown.value = prefs.quickMenuActions
         battleButtonsOn.value = prefs.battleButtons
-        battleHints.value = prefs.showHints
+        battleHints.value = prefs.showHints && prefs.battleInfo
         hudUpright.value = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
         com.pokedaisy.app.companion.ui.CompanionStatusBar.shown = prefs.statusBar && prefs.statusBarOnCompanion
         val stageLayout = statusBar.parent as? GameStageLayout
@@ -2597,7 +3263,8 @@ class PokeDaisyActivity : Activity() {
         val aspect = prefs.gameAspect.let { if (it == GameAspect.WIDE && wideGame == WideScreen.OFF) GameAspect.ORIGINAL else it }
         // SCREEN > OVERLAY: not on a phone held upright, where the game is its own shape across the top, nor with
         // EXPAND, whose map fills the screen.
-        view.overlay = if (stageLayout?.topAligned == true || aspect == GameAspect.WIDE) null else when (val c = OverlayChoice.of(prefs.overlay)) {
+        // Nor on a DS game's layouts (DS LAYOUT), which put the game's own backdrop round it.
+        view.overlay = if (stageLayout?.topAligned == true || aspect == GameAspect.WIDE || dsStageOn) null else when (val c = OverlayChoice.of(prefs.overlay)) {
             OverlayChoice.None -> null
             is OverlayChoice.BuiltIn -> EmulatorView.OverlaySource.BuiltIn(c.style)
             is OverlayChoice.Imported -> overlayStore.get(c.id)?.let { EmulatorView.OverlaySource.Imported(it) }
@@ -2624,10 +3291,251 @@ class PokeDaisyActivity : Activity() {
             prefs.gbaColors && companionShaders,
             if (companionShaders) prefs.screenFilter else ScreenFilter.NONE,
             ScreenShaders.gridFor(prefs.screenFilter, prefs.gridStrength),
+            prefs.gbaColors && !com.pokedaisy.app.companion.LightCompanion.on,
+            if (com.pokedaisy.app.companion.LightCompanion.on) ScreenFilter.NONE else prefs.screenFilter,
         )
         view.screenEffect = ScreenShaders.effectFor(prefs.screenFilter)
         view.screenGrid = ScreenShaders.gridFor(prefs.screenFilter, prefs.gridStrength)
         view.smoothing = prefs.smoothing
+        syncDsStage(aspect)
+    }
+
+    /** The DS layouts are on: a DS game on one screen (or SINGLE SCREEN), held sideways, the game in this activity. */
+    private val dsStageOn: Boolean
+        get() = romIsNds && secondScreen() == null && !debugMirror && !companionOverGame.value &&
+            resources.configuration.orientation != android.content.res.Configuration.ORIENTATION_PORTRAIT
+
+    /**
+     * SETTINGS > DS LAYOUT onto the stage ([GameStageLayout.dsArrange]): where the game and its touch screen go, the
+     * game's backdrop around them ([aspect] ORIGINAL keeps the game alone at its 4:3; EXPAND / STRETCH fill), and whether
+     * the touch screen floats in ([dsFloats]). Off: the stage as for any other game.
+     */
+    private fun syncDsStage(aspect: GameAspect) {
+        if (!::stage.isInitialized || !::dsBackdropView.isInitialized) return
+        val on = dsStageOn
+        val chosen = Prefs(this).dsLayout.forGame(com.pokedaisy.app.companion.DsLayout.followed(romCode) || romOrigin)
+        // A menu screen (the party, the bag, the Pokédex...) has something to say on both screens: side by side then, not
+        // the touch screen over the top one (whose 4:3 left bars beside it in EXPAND).
+        val layout = if (dsMenuUp && chosen.floats) com.pokedaisy.app.companion.DsLayout.SIDE_BY_SIDE else chosen
+        // EXPAND / STRETCH fill the screen only where EXPAND has the scene to widen; elsewhere the backdrop's beside it.
+        val fill = aspect != GameAspect.ORIGINAL && (dsWide || aspect == GameAspect.STRETCH)
+        stage.dsArrange = if (on) dsArranger(layout, fill) else null
+        // PICTURE IN PICTURE's inset stands off the game behind a white edge.
+        val pip = layout == com.pokedaisy.app.companion.DsLayout.PICTURE_IN_PICTURE
+        val frame = if (on && pip) dp(2) else 0
+        stage.dsTouchFrame = frame
+        dsTouchView.setPadding(frame, frame, frame, frame)
+        dsTouchView.setBackgroundColor(if (pip) Color.WHITE else Color.TRANSPARENT)
+        dsBackdropView.visibility = if (on) View.VISIBLE else View.GONE
+        dsTouchView.visibility = if (on && layout != com.pokedaisy.app.companion.DsLayout.ONE_SCREEN) View.VISIBLE else View.GONE
+        dsFloats.value = on && layout.floats
+        dsPip.value = on && pip
+        dsFill.value = on && fill
+        // The X menu floats in: it comes back after a menu screen however that was left (the game closes it after touch).
+        if (::engine.isInitialized) engine.dsKeepStartMenu = on && chosen.floats
+        dsCornerTaken.value = on && (layout == com.pokedaisy.app.companion.DsLayout.LARGE_SMALL || layout == com.pokedaisy.app.companion.DsLayout.PICTURE_IN_PICTURE)
+        // Over the touch screen (beside the game, inset in it, floating over it): a tap on no button reaches it.
+        if (::touchControls.isInitialized) touchControls.passMisses = on
+        if (!dsFloats.value) dsWindowManual.value = false
+        // No stylus left down on a touch screen that went away.
+        if (!on) runCatching { MgbaCore.pkNdsTouch(false, 0, 0) }
+        // The game's box may have moved without changing size: the HUD's rects follow it after the layout.
+        view.post { view.reportGamePixel() }
+    }
+
+    /** One arranger per (layout, fill): the stage lays out again only when it changes. */
+    private var dsArrangerKey: Pair<com.pokedaisy.app.companion.DsLayout, Boolean>? = null
+    private var dsArrangerFn: ((Int, Int) -> com.pokedaisy.app.companion.DsArrangement)? = null
+    private fun dsArranger(layout: com.pokedaisy.app.companion.DsLayout, fill: Boolean): (Int, Int) -> com.pokedaisy.app.companion.DsArrangement {
+        val key = layout to fill
+        dsArrangerFn?.takeIf { dsArrangerKey == key }?.let { return it }
+        val fn = { w: Int, h: Int -> com.pokedaisy.app.companion.DsLayouts.arrange(layout, w, h, fill) }
+        dsArrangerKey = key
+        dsArrangerFn = fn
+        return fn
+    }
+
+    /** The DS LAYOUT hotkey: the next layout, saved as SETTINGS > DS LAYOUT's, and its name over the game. A game whose
+     * touch screen isn't followed skips ONE SCREEN (it would look as PICTURE IN PICTURE does there). */
+    private fun nextDsLayout() {
+        if (!dsStageOn) return
+        val prefs = Prefs(this)
+        val followed = com.pokedaisy.app.companion.DsLayout.followed(romCode) || romOrigin
+        val all = com.pokedaisy.app.companion.DsLayout.entries.filter { followed || it != com.pokedaisy.app.companion.DsLayout.ONE_SCREEN }
+        val now = prefs.dsLayout.forGame(followed)
+        val next = all[(all.indexOf(now) + 1).mod(all.size)]
+        prefs.dsLayout = next
+        syncGameScreen()
+        showHud(tr("DS LAYOUT") + ": " + tr(next.label))
+    }
+
+    /** DS LAYOUT puts the touch screen in the screen's bottom right corner (LARGE + SMALL, PICTURE IN PICTURE): the HUD
+     * keeps clear of it (FieldHud's dsCorner). */
+    private val dsCornerTaken = androidx.compose.runtime.mutableStateOf(false)
+
+    /** DS LAYOUT is PICTURE IN PICTURE now: the game's own command panel is in its inset, so a battle gets no BATTLE
+     * BUTTONS / DS battle menu over it, and that panel doesn't float in either. */
+    private val dsPip = androidx.compose.runtime.mutableStateOf(false)
+
+    /** DS LAYOUT fills the screen with the game (EXPAND, STRETCH): a battle's text box runs across it, not just the 4:3. */
+    private val dsFill = androidx.compose.runtime.mutableStateOf(false)
+
+    /** A DS battle's menu shows / takes its keys ([com.pokedaisy.app.companion.ui.DsBattleMenu]'s shown / active): set
+     * by the HUD, drawn by the floating window's view. */
+    private val dsStripShown = androidx.compose.runtime.mutableStateOf(false)
+    private val dsStripActive = androidx.compose.runtime.mutableStateOf(true)
+
+    /** The share of the game's height, from the bottom, a touch screen over it covers (PICTURE IN PICTURE): the HUD's
+     * party keeps above it. */
+    private val dsHudClear = androidx.compose.runtime.mutableStateOf(0f)
+
+    /** A DS game's menu screen is up ([EmulatorEngine.dsMenuScreen]): [syncDsStage] shows both screens side by side. */
+    private var dsMenuUp = false
+
+    /** A DS scene EXPAND widens ([EmulatorEngine.dsWideScene]); off, [syncDsStage] keeps the game at its 4:3. */
+    private var dsWide = true
+
+    /** A DS battle's menus ([com.pokedaisy.app.companion.ui.DsBattleMenu]): their cursor takes the D-pad ([dsBattleTakes]). */
+    private val dsBattleMenu = com.pokedaisy.app.companion.ui.DsBattleMenuState()
+    /** The hat's directions last seen by [dsBattleMotion] (each new one is a press). */
+    private var dsBattleHat = 0
+
+    /** A tap on the dim beside the floating touch screen: one opened by hand closes; the game's own (its X menu, a menu
+     * screen) gets B, its own way back - not in a battle, where B can answer a question. */
+    private fun dismissDsTouch() {
+        if (dsWindowManual.value) { dsWindowManual.value = false; return }
+        if (telemetry.snapshot.value.inBattle) return
+        input.setPress(MgbaCore.Key.B)
+        window.decorView.postDelayed({ input.setPress(0) }, DS_B_PRESS_MS)
+    }
+
+    /** The TOUCH SCREEN hotkey and the HUD's TOUCH: the floating touch screen opened by hand, or closed again. */
+    private fun toggleDsTouch() {
+        if (!dsFloats.value) return
+        dsWindowManual.value = !dsWindowManual.value
+    }
+
+    /** The views [syncDsStage] places: the game's backdrop, the touch screen (beside / inset), the floating window. */
+    private fun buildDsStageViews() {
+        dsShots = DsShots(view)
+        dsBackdropView = ComposeView(this).apply {
+            visibility = View.GONE
+            setContent {
+                val engine by hudEngine.collectAsState()
+                val idle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
+                val menuApp by (engine?.dsMenuApp ?: idle).collectAsState()
+                val menuScreen by (engine?.dsMenuScreen ?: idle).collectAsState()
+                val field by dsShots.field
+                val current by dsShots.latest
+                // A menu screen: the overworld it came from, its two screens framed over it like a modal. Anything else
+                // with room round the game (the title, a layout beside it): the game itself, blurred.
+                androidx.compose.foundation.layout.BoxWithConstraints(androidx.compose.ui.Modifier.fillMaxSize()) {
+                    val w = constraints.maxWidth
+                    val h = constraints.maxHeight
+                    val modal = if (menuScreen) com.pokedaisy.app.companion.DsLayouts.arrange(
+                        com.pokedaisy.app.companion.DsLayout.SIDE_BY_SIDE, w, h, false,
+                    ).let { a ->
+                        val t = a.top
+                        val b = a.touch ?: t
+                        androidx.compose.ui.geometry.Rect(t.left.toFloat(), minOf(t.top, b.top).toFloat(), b.right.toFloat(), maxOf(t.bottom, b.bottom).toFloat())
+                    } else null
+                    if (menuApp && field != null) com.pokedaisy.app.companion.ui.DsShotBackdrop(field, blurred = false, modal = modal)
+                    else com.pokedaisy.app.companion.ui.DsShotBackdrop(current, blurred = true, modal = modal)
+                }
+                // About once a second: the overworld while it's up and widened, else the game as it is (only while
+                // something shows it).
+                androidx.compose.runtime.LaunchedEffect(Unit) {
+                    while (true) {
+                        kotlinx.coroutines.delay(DS_SHOT_MS)
+                        val e = engine ?: continue
+                        if (!dsStageOn || !e.running) continue
+                        val overworld = dsWide && e.onField.value && !e.dsTouchWanted.value && !dsWindowManual.value
+                        if (overworld) dsShots.capture(intoField = true)
+                        else if (!dsWide || !Prefs(this@PokeDaisyActivity).dsLayout.floats) dsShots.capture(intoField = false)
+                    }
+                }
+            }
+        }
+        dsTouchView = FrameLayout(this).apply {
+            visibility = View.GONE
+            addView(NdsTouchScreenView(this@PokeDaisyActivity), FrameLayout.LayoutParams(-1, -1))
+        }
+        dsWindowView = ComposeView(this).apply {
+            setContent {
+                val engine by hudEngine.collectAsState()
+                val idle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
+                val wanted by (engine?.dsTouchWanted ?: idle).collectAsState()
+                val manual = dsWindowManual.value
+                val floats = dsFloats.value
+                // The game done with a window the player opened: it stays (their X closes it); the game wanting it
+                // again while it's up by hand: the game's now (no X - it goes when the game is done).
+                val menuIdle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
+                val menu by (engine?.dsMenuScreen ?: menuIdle).collectAsState()
+                val menuApp by (engine?.dsMenuApp ?: menuIdle).collectAsState()
+                val wideIdle = remember { kotlinx.coroutines.flow.MutableStateFlow(true) }
+                val wideScene by (engine?.dsWideScene ?: wideIdle).collectAsState()
+                androidx.compose.runtime.LaunchedEffect(menu, wideScene) {
+                    if (dsMenuUp != menu || dsWide != wideScene) { dsMenuUp = menu; dsWide = wideScene; syncGameScreen() }
+                }
+                // A blank touch screen (a fade, the black between two screens) never shows: the window waits it out.
+                val blank by (engine?.dsTouchBlank ?: idle).collectAsState()
+                val dark by (engine?.dsDark ?: idle).collectAsState()
+                val open = floats && (wanted || manual) && !blank
+                // PICTURE IN PICTURE: its inset goes while the touch screen is up large (the same screen twice otherwise).
+                androidx.compose.runtime.SideEffect { dsTouchView.alpha = if (open) 0f else 1f }
+                // A DS battle's menu (the HUD decides when: [dsStripShown]): kept on show behind the floating window - the
+                // bag, the party - under its dim, the keys the window's meanwhile. In the HUD's coordinates (the stage's
+                // area under the status bar).
+                if (romIsNds) androidx.compose.runtime.CompositionLocalProvider(
+                    com.pokedaisy.app.companion.ui.LocalClickSound provides playClick,
+                    com.pokedaisy.app.companion.ui.LocalGameSilent provides { battleInput.gameSilent },
+                ) {
+                    val snap by telemetry.snapshot.collectAsState()
+                    androidx.compose.foundation.layout.Box(
+                        androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer { translationY = (fieldHud.top - dsWindowView.top).toFloat() },
+                    ) {
+                        com.pokedaisy.app.companion.ui.DsBattleMenu(
+                            snap, dsBattleMenu, battleInput, coreFrame.value, shown = dsStripShown.value, active = dsStripActive.value,
+                            gameFills = dsFill.value, hints = battleHints.value,
+                        )
+                    }
+                    // The menu's D-pad: with no plain view focused, Android takes the first press after a touch to leave
+                    // touch mode (a ComposeView gets the focus) and the menu never sees it - so the game view holds it.
+                    val menuUp = dsBattleMenu.mode != 0
+                    androidx.compose.runtime.LaunchedEffect(menuUp) { if (menuUp && !view.isFocused) view.requestFocus() }
+                }
+                com.pokedaisy.app.companion.ui.DsTouchWindow(
+                    open = open,
+                    onClose = if (manual && !wanted) ({ dsWindowManual.value = false }) else null,
+                    onDismiss = ::dismissDsTouch,
+                    behind = if (menuApp) dsShots.field.value else null,
+                    // (hudClear: re-read when the touch controls move.)
+                    clearFor = { l, r -> hudClear.value.let { touchControls.clearAcross(l, r) } },
+                ) { modifier ->
+                    androidx.compose.ui.viewinterop.AndroidView({ NdsTouchScreenView(it) }, modifier)
+                }
+                // The black between a menu and the overworld (or back to the X menu): the overworld's picture over it all,
+                // as the modal's backdrop draws it, going once the game shows something again - never empty frames.
+                val field = dsShots.field.value
+                val cover = dark && field != null && (menu || menuApp || wanted || manual)
+                val coverAlpha by androidx.compose.animation.core.animateFloatAsState(
+                    if (cover) 1f else 0f,
+                    if (cover) androidx.compose.animation.core.snap() else androidx.compose.animation.core.tween(DS_COVER_FADE_MS),
+                    label = "dsCover",
+                )
+                val lastField = remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+                if (cover) lastField.value = field
+                // (On at once, the same frame the window goes: an animation's first frame would be 0, a black flash.)
+                val coverShown = if (cover) 1f else coverAlpha
+                if (coverShown > 0f) lastField.value?.let { shot ->
+                    androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer { alpha = coverShown }) {
+                        com.pokedaisy.app.companion.ui.DsShotBackdrop(shot, blurred = false, modal = null)
+                        // The game loading the next screen: something moving on the greyed-out picture.
+                        if (cover) com.pokedaisy.app.companion.ui.DsLoader()
+                    }
+                }
+            }
+        }
     }
 
     /**
@@ -2717,8 +3625,11 @@ class PokeDaisyActivity : Activity() {
             // (for BATTLE BUTTONS' party window too, which sits in that corner). As the window it stays put while the
             // window is up too (under its dim): it doesn't vanish from the HUD the player sees around it.
             val panelClosed = ::sidePanel.isInitialized && (sidePanel.closed.value || sidePanel.enabled && sidePanel.windowMode)
+            // Read here, so the tab steps aside when the DS battle menu comes up (a read in the SideEffect wouldn't redraw).
+            val dsMenuMode = dsBattleMenu.mode
             androidx.compose.runtime.SideEffect {
-                if (::sidePanel.isInitialized) sidePanel.tabInHud = shown && panelClosed || battlePicking.value
+                // (A DS battle's menu window sits in that corner too.)
+                if (::sidePanel.isInitialized) sidePanel.tabInHud = shown && panelClosed || battlePicking.value || dsMenuMode != 0
             }
             // BATTLE BUTTONS: one screen held sideways, a single battle the game's touch input can steer (its state read
             // at least once this battle - it reads NONE in games without it).
@@ -2726,8 +3637,16 @@ class PokeDaisyActivity : Activity() {
             androidx.compose.runtime.LaunchedEffect(snap.inBattle, snap.battleInputState) {
                 battleRead = snap.inBattle && (battleRead || snap.battleInputState != com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
             }
-            val buttons = battleButtonsOn.value && hudSingleScreen.value && !hudUpright.value && snap.hasData && !snap.unsupported &&
-                snap.inBattle && !snap.isDoubleBattle && battleRead
+            // A DS game: only where DS LAYOUT floats its touch screen (the others, PICTURE IN PICTURE's inset too, show the
+            // game's own panel), and out of the way while the floating touch screen is up (a bag, a party, a prompt).
+            val dsIdle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
+            val dsWanted by (engine?.dsTouchWanted ?: dsIdle).collectAsState()
+            val dsWindowUp = dsFloats.value && (dsWanted || dsWindowManual.value)
+            val buttonsWanted = battleButtonsOn.value && hudSingleScreen.value && !hudUpright.value && snap.hasData && !snap.unsupported &&
+                snap.inBattle && !snap.isDoubleBattle && (!romIsNds || dsFloats.value && !dsPip.value)
+            val buttons = buttonsWanted && battleRead && !dsWindowUp
+            // Where BATTLE BUTTONS can't stand in for a DS battle's command panel, that panel floats in too.
+            androidx.compose.runtime.SideEffect { engine?.dsBattleMenuFloats = dsFloats.value && !dsPip.value && !buttonsWanted }
             androidx.compose.runtime.CompositionLocalProvider(
                 com.pokedaisy.app.companion.ui.LocalCompanionBack provides hudBack,
                 com.pokedaisy.app.companion.ui.LocalClickSound provides playClick,
@@ -2737,18 +3656,28 @@ class PokeDaisyActivity : Activity() {
                 // The buttons on the other screen's companion (X): the HUD steps back too, under the strip pointing there.
                 val hudAlpha by androidx.compose.animation.core.animateFloatAsState(if (quickMenu.open || bottomFocus.value) 0.25f else 1f, label = "hudAlpha")
                 com.pokedaisy.app.companion.ui.FieldHud(
-                    snap, shown, hudStyle.value,
+                    snap, shown && !dsWindowUp, hudStyle.value,
                     modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
                     clearTop = hudClear.value.first, clearBottom = hudClear.value.second,
                     itemUse = itemUse, fly = flyAction,
                     onOpenCompanion = if (panelClosed) ({ sidePanel.openPanel() }) else null,
+                    onTouchScreen = if (romIsNds && dsFloats.value) ::toggleDsTouch else null,
+                    dsCorner = dsCornerTaken.value,
+                    dsClearBottom = dsHudClear.value,
                     frame = hudFrame.value,
                     closePanels = hudCloseTick.intValue,
                     openPanel = hudOpenPanel.value, openTick = hudOpenTick.intValue,
                     onTap = { com.pokedaisy.app.companion.FeatureTips.used(TipId.HUD) },
                     onPanel = { hudPanelOpen.value = it },
                 )
-                com.pokedaisy.app.companion.ui.BattleButtons(
+                // A DS game: the game's own buttons over the end of its text box, driven like Gen 3's menus.
+                if (romIsNds) {
+                    // A DS battle's menu is drawn by the floating window's view, under its dim ([buildDsStageViews]).
+                    androidx.compose.runtime.SideEffect {
+                        dsStripShown.value = buttonsWanted && battleRead
+                        dsStripActive.value = !dsWindowUp
+                    }
+                } else com.pokedaisy.app.companion.ui.BattleButtons(
                     snap, buttons, battleInput, battleHints.value,
                     modifier = androidx.compose.ui.Modifier.graphicsLayer { alpha = hudAlpha },
                     core = coreFrame.value,
@@ -2756,11 +3685,14 @@ class PokeDaisyActivity : Activity() {
                     onWindow = { battlePicking.value = it },
                 )
                 com.pokedaisy.app.companion.ui.QuickMenu(quickMenu, snap, quickActions, quickShown.value, hudStyle.value.look)
+                // Co-op joined battles: the join prompt, the waits, the notices - over the game, HUD on or off.
+                com.pokedaisy.app.companion.ui.CoopBattleOverlays(coopOverlay)
+                CoopLockLayer()
                 // X sent the buttons to the other screen's companion: the strip pointing there; the game leaving the
                 // field (a battle, its PC opened from the companion) wants them back.
                 val focused = bottomFocus.value
                 androidx.compose.runtime.LaunchedEffect(focused, onField, snap.inBattle) {
-                    if (focused && (!onField || snap.inBattle)) setBottomFocus(false)
+                    if (focused && !romIsNds && (!onField || snap.inBattle)) setBottomFocus(false)
                 }
                 CompanionFocusStripe(
                     focused, hudFrame.value, if (engine?.gba == false && engine?.nds == false) GB_ROWS else GBA_ROWS,
@@ -2789,6 +3721,37 @@ class PokeDaisyActivity : Activity() {
                     last = now
                 }
             }
+        }
+    }
+
+    /**
+     * PLAY TOGETHER ONLY over the game (in the HUD's ComposeView, so it shows with the HUD off): the waiting screen while the
+     * lock holds the game, the partner's proposal (ACCEPT / NO) where the screen over the game can be touched - one screen; with two the
+     * SETTINGS row carries it and a HUD line says so - and the lock's notices, each shown once.
+     */
+    @androidx.compose.runtime.Composable
+    private fun CoopLockLayer() {
+        val lock = coopLockState.value ?: return
+        val ui by lock.ui.collectAsState()
+        val notice by lock.notice.collectAsState()
+        val partner = coopLockPartner.value
+        val oneScreen = secondScreen() == null
+        ui.waiting?.let { w -> com.pokedaisy.app.companion.ui.CoopWaitOverlay(w, partner) { exitGame() } }
+        var dismissed by remember(ui.partnerProposed) { androidx.compose.runtime.mutableStateOf(false) }
+        if (ui.partnerProposed && oneScreen && !dismissed) {
+            com.pokedaisy.app.companion.ui.CoopLockProposal(partner, lock) { dismissed = true }
+        }
+        androidx.compose.runtime.LaunchedEffect(ui.partnerProposed) {
+            if (ui.partnerProposed && !oneScreen) showHud(tr("{0} wants to PLAY TOGETHER ONLY.", partner))
+        }
+        androidx.compose.runtime.LaunchedEffect(notice) {
+            val text = when (notice) {
+                LockNotice.PARTNER_TURNED_OFF -> tr("Your partner turned off PLAY TOGETHER ONLY.")
+                LockNotice.NO_STORY_HOLD -> tr("Story events can't wait for your partner in this game")
+                null -> return@LaunchedEffect
+            }
+            showHud(text)
+            lock.clearNotice()
         }
     }
 
@@ -2863,6 +3826,12 @@ class PokeDaisyActivity : Activity() {
         if (quickMenu.open) {
             input.setTouchBits(0)
             menuKeyFor(newly)?.let { quickMenu.key(it) }
+            return
+        }
+        // A co-op overlay (join prompt, wait, the partner's battle menu) takes the touch pad's buttons the same way.
+        if (coopOverlay.takesKeys) {
+            input.setTouchBits(0)
+            menuKeyFor(newly)?.let { CoopBattles.takeKey(it) }
             return
         }
         input.setTouchBits(gba, turbo)
@@ -2973,8 +3942,12 @@ class PokeDaisyActivity : Activity() {
         }
         val down = event.action == KeyEvent.ACTION_DOWN
         bottomFocusTakes(event)?.let { return it }
+        // The co-op prompt / waits / battle menu first: with the single-screen companion window open it would otherwise own every key
+        // and the join prompt would time out unanswered.
+        coopOverlayTakes(event)?.let { return it }
         menuKeyTakes(event)?.let { return it }
         quickMenuTakes(event)?.let { return it }
+        dsBattleTakes(event)?.let { return it }
         if (hotkeyTakes(event.keyCode, down)) return true
         if (input.onKey(event.keyCode, down)) {
             if (down && !physicalPadUsed && event.device?.isVirtual == false) {
@@ -3010,11 +3983,15 @@ class PokeDaisyActivity : Activity() {
     /** The joystick's D-pad / stick directions while [bottomFocus], so a new one is a press. */
     private var bottomHat = 0
 
+    /** A DS game with the companion on the second screen's switch, where the game's buttons can reach it (not SWAP SCREENS'). */
+    private fun dsCompanionKeyed() = romIsNds && dsBottom != null && presentation?.isShowing == true && !Prefs(this).swapScreens
+
     /** TO COMPANION can take the buttons down now: a GBA / Game Boy game on the field with its controls free (no text box, script or
      * START menu, where the field read knows), the companion on the other screen, nothing else holding the buttons. */
     private fun canFocusBottom(): Boolean {
         if (romIsNds || debugMirror || companionClosed || companionOverGame.value) return false
-        if (presentation?.isShowing != true) return false
+        // The other screen, or the companion under the game on a phone held upright (GitHub discussion #308).
+        if (presentation?.isShowing != true && !(::portraitPanel.isInitialized && portraitPanel.enabled)) return false
         if (!::engine.isInitialized || !engine.onField.value || engine.fieldLocked) return false
         if (quickMenu.open || touchEditor != null || keyCapture.request != null) return false
         if (::sidePanel.isInitialized && sidePanel.windowOpen) return false
@@ -3025,6 +4002,9 @@ class PokeDaisyActivity : Activity() {
     private fun setBottomFocus(on: Boolean) {
         if (bottomFocus.value == on) return
         bottomFocus.value = on
+        // A DS game's second screen goes back to its touch screen with the buttons; a hidden upright companion comes up.
+        if (!on && romIsNds) dsBottom?.show(false)
+        if (on && ::portraitPanel.isInitialized && portraitPanel.enabled) portraitPanel.reveal()
         // The player's held keys let go in the game (which runs on), and the other way round.
         input.releaseAll()
         bottomHat = 0
@@ -3045,7 +4025,7 @@ class PokeDaisyActivity : Activity() {
             menuHeld.add(code)
             return true
         }
-        if (::hotkeys.isInitialized && hotkeysOn) for (e in hotkeys.onKey(code, down)) if (!e.pressed) handleHotkey(e)
+        if (::hotkeys.isInitialized && hotkeysOn) for (e in hotkeys.onKey(code, down)) if (!e.pressed || e.action == Hotkeys.Action.COMPANION) handleHotkey(e)
         if (code == KeyEvent.KEYCODE_BUTTON_MODE) {
             if (!down && !event.isCanceled) companionBackTap()
             return true
@@ -3110,7 +4090,9 @@ class PokeDaisyActivity : Activity() {
      * companion had drawn the move list). A device it finds slow is remembered, and starts light from then on.
      */
     private fun noteKeyDelay(event: KeyEvent) {
-        if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount != 0) return
+        // System keys don't count: Android holds the volume keys back ~150 ms itself (it waits for a volume + power
+        // chord), which once made the Thor's AUTO turn LIGHT COMPANION on.
+        if (event.action != KeyEvent.ACTION_DOWN || event.repeatCount != 0 || event.isSystem) return
         val now = android.os.SystemClock.uptimeMillis()
         val delay = now - event.eventTime
         if (delay < com.pokedaisy.app.companion.LightCompanion.LATE_KEY_MS) return
@@ -3175,6 +4157,28 @@ class PokeDaisyActivity : Activity() {
         }
         menuHeld.add(code)
         if (quickMenu.open) quickMenu.key(key)
+        return true
+    }
+
+    /** A DS battle's Gen 3 menu is up ([dsBattleMenu]): the D-pad, A and B are its, kept from the game until let go. */
+    private fun dsBattleTakes(event: KeyEvent): Boolean? {
+        val code = event.keyCode
+        if (dsBattleMenu.mode == 0 && code !in menuHeld) return null
+        if (code == KeyEvent.KEYCODE_BACK) return null
+        val key = menuKeyFor(input.buttonFor(code) ?: 0) ?: return null
+        if (event.action != KeyEvent.ACTION_DOWN) return if (menuHeld.remove(code)) true else null
+        if (dsBattleMenu.mode == 0) return null
+        if (event.repeatCount == 0 && !dsBattleMenu.key(key)) return null
+        menuHeld.add(code)
+        return true
+    }
+
+    /** A joystick's D-pad hat while a DS battle's menu is up: each direction that comes on is a press. */
+    private fun dsBattleMotion(event: MotionEvent): Boolean {
+        val bits = GbaInput.motionBits(event) ?: return false
+        val pressed = bits and dsBattleHat.inv()
+        dsBattleHat = bits
+        menuKeyFor(pressed)?.let { dsBattleMenu.key(it) }
         return true
     }
 
@@ -3254,6 +4258,8 @@ class PokeDaisyActivity : Activity() {
     private fun companionBackTap() {
         // EDIT LAYOUT over the game: BACK is its DONE.
         if (touchEditor != null) { touchEditBack.back(); return }
+        // DS LAYOUT's touch screen opened by hand (and no companion window over it): BACK closes it first.
+        if (dsWindowManual.value && !sidePanel.windowOpen) { dsWindowManual.value = false; return }
         // The companion was closed: BACK brings it back. Not while it opens over the game instead (closed while swapped):
         // then BACK is that companion's, as on one screen, and its OPEN COMPANION puts it back on its own screen.
         if (companionClosed && !companionOverGame.value) {
@@ -3315,6 +4321,8 @@ class PokeDaisyActivity : Activity() {
         if (::sidePanel.isInitialized && sidePanel.windowOpen && menuMotion(event)) return true
         if (bottomFocus.value && bottomMotion(event)) return true
         if (quickMenu.open && quickMotion(event)) return true
+        if (dsBattleMenu.mode != 0 && dsBattleMotion(event)) return true
+        if (coopOverlay.takesKeys && coopMotion(event)) return true
         if (event.isFromSource(InputDevice.SOURCE_JOYSTICK)) {
             // The right stick: WIDE's look-around (WideCamera). Most pads report it as Z / RZ, some as RX / RY.
             fun axis(a: Int, b: Int) = event.getAxisValue(a).let { v -> if (kotlin.math.abs(v) > 0.05f) v else event.getAxisValue(b) }
@@ -3366,23 +4374,26 @@ class PokeDaisyActivity : Activity() {
     private fun handleHotkey(e: Hotkeys.Event) {
         if (!::engine.isInitialized) return
         when (e.action) {
-            Hotkeys.Action.SAVE_STATE -> if (e.pressed) engine.requestSaveState(engine.currentSlot)
-            Hotkeys.Action.LOAD_STATE -> if (e.pressed) engine.requestLoadState(engine.currentSlot)
-            Hotkeys.Action.UNDO_SAVE -> if (e.pressed) engine.requestUndoSave()
-            Hotkeys.Action.UNDO_LOAD -> if (e.pressed) engine.requestUndoLoad()
+            Hotkeys.Action.SAVE_STATE -> if (e.pressed) if (!coopRefuses()) engine.requestSaveState(engine.currentSlot)
+            Hotkeys.Action.LOAD_STATE -> if (e.pressed) if (!coopRefuses()) engine.requestLoadState(engine.currentSlot)
+            Hotkeys.Action.UNDO_SAVE -> if (e.pressed) if (!coopRefuses()) engine.requestUndoSave()
+            Hotkeys.Action.UNDO_LOAD -> if (e.pressed) if (!coopRefuses()) engine.requestUndoLoad()
             Hotkeys.Action.SLOT_NEXT -> if (e.pressed) engine.cycleSlot(+1)
             Hotkeys.Action.SLOT_PREV -> if (e.pressed) engine.cycleSlot(-1)
             Hotkeys.Action.FF_HOLD -> engine.setFastForwardHeld(e.pressed)
             Hotkeys.Action.FF_TOGGLE -> if (e.pressed) engine.toggleFastForward()
             Hotkeys.Action.SPEED_CYCLE -> if (e.pressed) engine.cycleSpeed()
             Hotkeys.Action.SLOWMO_HOLD -> engine.setSlowmoHeld(e.pressed)
-            Hotkeys.Action.REWIND_HOLD -> if (!romIsNds) {
+            Hotkeys.Action.REWIND_HOLD -> if (romIsNds) {
+                // The rewind ring is mGBA's: the hotkey would do nothing at all and look broken.
+                if (e.pressed) showHud(com.pokedaisy.app.companion.i18n.tr("Rewind doesn't work in DS games"))
+            } else {
                 if (e.pressed && !Prefs(this).rewind) showHud(com.pokedaisy.app.companion.i18n.tr("Rewind is off - turn it on in SETTINGS"))
                 else if (e.pressed) showHud(com.pokedaisy.app.companion.i18n.tr("Rewinding"))
                 engine.setRewindHeld(e.pressed)
             }
             Hotkeys.Action.ZOOM -> if (e.pressed) zoomStep()
-            Hotkeys.Action.SOFT_RESET -> if (e.pressed) {
+            Hotkeys.Action.SOFT_RESET -> if (e.pressed && !coopRefuses()) {
                 engine.softReset()
                 showHud(com.pokedaisy.app.companion.i18n.tr("Soft reset"))
             }
@@ -3393,10 +4404,35 @@ class PokeDaisyActivity : Activity() {
                 // One screen: COMPANION BUTTON can hide the edge tab, so this is the way in. Closed on a device with a
                 // second screen (CLOSE COMPANION), it comes back to its own.
                 if (companionClosed) reopenCompanion()
+                else if (dsCompanionKeyed()) {
+                    // A DS game's second screen: the game's touch screen or the companion, the buttons going with it.
+                    val on = dsBottom?.showingCompanion != true || !bottomFocus.value
+                    dsBottom?.show(on)
+                    setBottomFocus(on)
+                }
                 else if (::sidePanel.isInitialized && sidePanel.enabled) sidePanel.openPanel()
+                else if (::portraitPanel.isInitialized && portraitPanel.enabled && !romIsNds) {
+                    portraitPanel.toggleHidden()
+                    if (portraitPanel.hidden) setBottomFocus(false)
+                }
             }
             Hotkeys.Action.QUICK_MENU -> triggerQuickMenu(e.pressed)
+            Hotkeys.Action.MUTE -> if (e.pressed) {
+                val muted = !GameVolume.muted
+                setGameVolume(GameVolume.percent, muted)
+                showHud(com.pokedaisy.app.companion.i18n.tr(if (muted) "Game muted" else "Game sound on"))
+            }
+            Hotkeys.Action.TOUCH_SCREEN -> if (e.pressed) { com.pokedaisy.app.companion.FeatureTips.used(TipId.DS_TRIGGERS); toggleDsTouch() }
+            Hotkeys.Action.DS_LAYOUT -> if (e.pressed) { com.pokedaisy.app.companion.FeatureTips.used(TipId.DS_TRIGGERS); nextDsLayout() }
         }
+    }
+
+    /** SOUND > GAME VOLUME / MUTE GAME, and the MUTE hotkey: kept, and heard at once (GameVolume). */
+    private fun setGameVolume(percent: Int, muted: Boolean) {
+        val prefs = Prefs(this)
+        prefs.gameVolume = percent
+        prefs.gameMuted = muted
+        GameVolume.set(percent, muted)
     }
 
     /** ZOOM (its hotkey, or a tip's SHOW ME): EXPAND's next zoom step. */
@@ -3484,6 +4520,8 @@ class PokeDaisyActivity : Activity() {
         val mapOpen = e.regionMapOpen
         if (tipMapOpen && !mapOpen) tips.moment(TipId.FLY)
         tipMapOpen = mapOpen
+        // The DS triggers: any time a DS game runs on one screen (the tip's done once answered or a trigger is used).
+        if (dsStageOn) tips.moment(TipId.DS_TRIGGERS)
     }
 
     /** A tip's feature is there to try here, and not on already. */
@@ -3497,12 +4535,14 @@ class PokeDaisyActivity : Activity() {
             TipId.QUICK_MENU -> tipKey(Hotkeys.Action.QUICK_MENU) != null && quickShown.value.any { quickActions.offered(it) }
             TipId.HUD -> hudOn.value && !hudUpright.value
             TipId.PC -> itemUse.canPc()
-            TipId.AUTO_RUN -> !p.autoRun && companionSettings.fieldReadable
+            TipId.AUTO_RUN -> !p.autoRun && companionSettings.fieldReadable && !companionSettings.autoRunBuiltIn
             TipId.WILD -> companionSettings.wildEncountersSupported && p.wildEncounters != 0
             TipId.REUSABLE_TMS -> companionSettings.reusableTmsSupported && !companionSettings.reusableTmsBuiltIn && !p.reusableTms
             TipId.FLY -> flyAction.canFly() && telemetry.snapshot.value.party.any { m ->
                 !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLY_MOVE }
             }
+            // A DS game on one screen with the triggers on a controller (the HUD's TOUCH stands in without one).
+            TipId.DS_TRIGGERS -> dsStageOn && tipKey(Hotkeys.Action.DS_LAYOUT) != null
         }
     }
 
@@ -3527,6 +4567,11 @@ class PokeDaisyActivity : Activity() {
             tipKey(Hotkeys.Action.ZOOM)?.let { it to tr("ZOOM") }, tr("RIGHT STICK") to tr("LOOK AROUND"),
         )
         TipId.QUICK_MENU -> listOfNotNull(tipKey(Hotkeys.Action.QUICK_MENU)?.let { it to tr("QUICK MENU") })
+        // TOUCH SCREEN only where the touch screen floats in (ONE SCREEN, PICTURE IN PICTURE).
+        TipId.DS_TRIGGERS -> listOfNotNull(
+            tipKey(Hotkeys.Action.TOUCH_SCREEN)?.takeIf { dsFloats.value }?.let { it to tr("TOUCH SCREEN") },
+            tipKey(Hotkeys.Action.DS_LAYOUT)?.let { it to tr("NEXT LAYOUT") },
+        )
         else -> emptyList()
     }
 
@@ -3556,6 +4601,8 @@ class PokeDaisyActivity : Activity() {
                 triggerQuickMenu(true)
                 runQuickAction(com.pokedaisy.app.companion.QuickAction.FLY)
             }
+            // L2's touch screen floated in, else (both screens on show) R2's next layout.
+            TipId.DS_TRIGGERS -> if (dsFloats.value) toggleDsTouch() else nextDsLayout()
         }
     }
 
@@ -3640,6 +4687,7 @@ class PokeDaisyActivity : Activity() {
 
     /** RESTART GAME (SETTINGS, and its hotkey): the game booted again from its save, the resume state dropped. */
     private fun restartGame() {
+        if (coopRefuses()) return
         val r = rom ?: return
         if (!::engine.isInitialized) return
         // Unbind the GL view from the current framebuffer FIRST and wait for
@@ -3725,6 +4773,8 @@ class PokeDaisyActivity : Activity() {
     }
 
     companion object {
+        /** Retail English Emerald (BPEE): the only game co-op presence runs on. */
+        private const val RETAIL_EMERALD_SHA1 = "f3ae088181bf583e55daf962a92bb46f4f1d07b7"
         /** Games whose Pokémon follow the player already: FOLLOWER isn't offered there. */
         private val FOLLOWERS_OF_THEIR_OWN = setOf(
             com.pokedaisy.app.companion.data.GameKind.HEART_AND_SOUL, com.pokedaisy.app.companion.data.GameKind.SOULGOLD,
@@ -3733,6 +4783,12 @@ class PokeDaisyActivity : Activity() {
         )
 
         /** BIKE / ROD's SELECT presses before giving up, and the frames each waits to see it take (~3 s in all at 1x). */
+        /** How long a tap beside the floating touch screen holds B for the game (a few frames at 1x). */
+        private const val DS_B_PRESS_MS = 80L
+        /** How often [DsShots] takes the game's picture. */
+        private const val DS_SHOT_MS = 1000L
+        /** The overworld's picture over the black between a menu and the field fades out over this once the game is back. */
+        const val DS_COVER_FADE_MS = 220
         private const val SELECT_TRIES = 15
         private const val SELECT_WAIT = 10
         /** Set by [LaunchActivity]: leaving the game returns to the frontend. */

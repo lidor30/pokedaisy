@@ -3,7 +3,7 @@ title: Fast-forward and game speed
 summary: Speed through the slow parts, set a pace that sticks for each game, slow things down, and keep the music sounding right while you do.
 section: player
 order: 1
-keywords: [ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, clock, rtc, time, day, night]
+keywords: [instant text, text speed, dialogue, ff, turbo, speed up, skip, grind, grinding, slowmo, slow motion, music, audio, sound, volume, mute, quiet, silent, equalizer, eq, jamesdsp, clock, rtc, time, day, night, storage, space]
 ---
 
 Pokémon games have a lot of walking, text and grinding. Fast-forward runs the game several times faster so you get through it quicker, and PokeDaisy tries to get out of your way when speed would be a problem: in menus, on the map, and with the music.
@@ -66,6 +66,15 @@ Each one is `SAME` (the default: it follows `GAME SPEED`, like walking around do
 
 `TEXT SPEED` shows `N/A` on a game PokeDaisy can't read text boxes in yet. `BIKE SPEED` and `SURF SPEED` show `N/A` until you've walked around for a moment in a game, and stay that way on hacks where PokeDaisy can't tell yet whether you're riding or surfing: Heart and Soul, SoulGold, Too Many Types 2, Emerald Rogue and Quetzal.
 
+## Instant text
+
+Turn on `INSTANT TEXT` in the companion's `SETTINGS`, `GAMEPLAY` group, and the words in a text box appear at once, in conversations and in battles alike. Nothing else changes: the music and the rest of the game stay at their normal speed, and a box still waits for your press where the game would. That makes it different from `TEXT SPEED`, which runs the whole game faster while a box is up.
+
+It changes the game while it runs, never your ROM file or your save, and you can switch it off at any time.
+
+> [!NOTE]
+> `INSTANT TEXT` works in FireRed, LeafGreen, Emerald, Ruby and Sapphire and in many hacks built on their code. Where it can't work the row shows `N/A`.
+
 ## Slow motion
 
 Hold the `SLOWMO HOLD` hotkey and the game runs at half speed until you let go, with the sound muted. It's handy for a tricky moment, like timing a button press or watching an animation you'd otherwise miss. On a keyboard it's the minus key; it has no controller button by default, so give it one under `HOTKEYS` if you want it.
@@ -82,8 +91,20 @@ Sped-up game music turns into chipmunk noise. `FF MUSIC` picks what you hear whi
 
 `STEADY` works by preparing a clean recording of each song from your ROM, in the background. The first time you play a game, it goes through the game's songs once; a song that isn't ready yet is silent during fast-forward. Once a song is done, it's kept, so this only happens the first time you hear it.
 
+The recordings take at most 1.5 GB of your device's storage for all your games together, and less when the device is short on space. When they reach that, the songs you haven't heard for the longest time make room. A song that was removed is recorded again the next time the game plays it, so it can be silent once more for a moment.
+
 > [!NOTE]
 > If a song sounds wrong or stays silent with `STEADY`, switch to `SPED-UP`, and let us know which game and where.
+
+## Game volume and mute: SOUND
+
+The `SOUND` group, right under `FF / SPEED` in the companion's `SETTINGS` (and in the top screen's Settings), sets how loud the game is, so you can keep it down while listening to something else.
+
+- **`GAME VOLUME`** is a slider from `100%` (the default) down to `0%`: drag it, tap along it, or press left and right on the D-pad while the row is picked. `100%` is the game as loud as your device's own volume plays it; anything lower is quieter than that, and the device's volume buttons still work on top. It covers everything the game sounds like: its music and sounds, `FF MUSIC`'s songs and the click of the companion's buttons.
+- **`MUTE GAME`** turns the game's sound off completely. Your `GAME VOLUME` is kept, so turning it back on brings the same level back.
+- **`AUDIO EFFECTS`** lets equalizer apps like JamesDSP change the game's sound. It's off by default because the game's sound normally takes a faster way out that skips them. Turned on, the sound can lag a little behind the picture, so leave it off unless you use one of these apps. It starts working the next time you start a game.
+
+To mute and unmute without opening `SETTINGS`, give the `MUTE` hotkey a button under `HOTKEYS` (see [Controls](controls.md#hotkeys)). A short message on the game says which way it went.
 
 ## The real-time clock
 
@@ -95,4 +116,4 @@ A save copied off a real cartridge can carry that cartridge's clock with it, and
 
 ## Rewind
 
-Missed a jump or walked into the wrong trainer? With `REWIND` on, holding the `REWIND HOLD` hotkey plays the last 20 seconds or so backwards. It's off by default and never touches your save file. See [Saves](saves.md) for how it works.
+Missed a jump or walked into the wrong trainer? With `REWIND` on, holding the `REWIND HOLD` hotkey plays the last 20 seconds or so backwards. It's off by default and never touches your save file. It works in Game Boy, Game Boy Color and Game Boy Advance games, not DS games. See [Saves](saves.md) for how it works.

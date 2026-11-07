@@ -62,6 +62,8 @@ class LaunchActivity : Activity() {
                 Log.e("pokedaisy", "frontend launch: couldn't open $uri", t)
                 null
             }
+            // Its CRC (and an archive's unpacking) here, not on the game window's UI thread (RomCrcs).
+            if (rom != null) RomCrcs.prepare(this, rom)
             runOnUiThread {
                 if (rom != null) play(rom) else cantRead(uri)
                 close()

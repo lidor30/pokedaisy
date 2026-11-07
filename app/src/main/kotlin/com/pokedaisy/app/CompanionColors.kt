@@ -30,6 +30,10 @@ object CompanionColors {
     private var grid = floatArrayOf(0f, 0f)
     /** The grid's cell in view px: the game's own pixel on screen ([setCell]), 6.75 on the Thor. */
     private var cell = 0f
+    /** Views that are the game's own picture, a DS game's touch screen: FILTER whatever ON COMPANION says ([trackGame]). */
+    private val gameViews: MutableSet<View> = Collections.synchronizedSet(Collections.newSetFromMap(WeakHashMap()))
+    private var gameFilter = ScreenFilter.NONE
+    private var gameColors = false
 
     /** Follows [set] from now on (UI thread). */
     fun <T : View> track(view: T): T {
@@ -38,25 +42,46 @@ object CompanionColors {
         return view
     }
 
+    /** As [track], for a view showing the game itself (GitHub #443: a DS game's bottom screen had no grid): SHADERS' FILTER
+     * reaches it with ON COMPANION off too. */
+    fun <T : View> trackGame(view: T): T {
+        gameViews += view
+        apply(view)
+        return view
+    }
+
     /** The game's pixel height on screen ([EmulatorView.onGamePixel]). */
     fun setCell(px: Float) {
         if (px == cell) return
         cell = px
-        views.toList().forEach(::apply)
+        applyAll()
     }
 
-    /** GBA COLORS, and the filter to draw ([ScreenFilter.NONE] when ON COMPANION is off) at GRID's [grid]. */
-    fun set(gbaColors: Boolean, filter: ScreenFilter, grid: FloatArray) {
-        if (gbaColors == this.gbaColors && filter == this.filter && grid.contentEquals(this.grid)) return
+    /** GBA COLORS, and the filter to draw ([ScreenFilter.NONE] when ON COMPANION is off) at GRID's [grid]; [gameColors] and
+     * [gameFilter] are SHADERS' own either way, for [trackGame]'s views. */
+    fun set(gbaColors: Boolean, filter: ScreenFilter, grid: FloatArray, gameColors: Boolean, gameFilter: ScreenFilter) {
+        if (gbaColors == this.gbaColors && filter == this.filter && gameColors == this.gameColors &&
+            gameFilter == this.gameFilter && grid.contentEquals(this.grid)
+        ) return
         this.gbaColors = gbaColors
         this.filter = filter
+        this.gameColors = gameColors
+        this.gameFilter = gameFilter
         this.grid = grid
+        applyAll()
+    }
+
+    private fun applyAll() {
         views.toList().forEach(::apply)
+        gameViews.toList().forEach(::apply)
     }
 
     private fun apply(view: View) {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.TIRAMISU) return
-        if (!gbaColors && filter == ScreenFilter.NONE) {
+        val game = view in gameViews
+        val filter = if (game) gameFilter else filter
+        val colors = if (game) gameColors else gbaColors
+        if (!colors && filter == ScreenFilter.NONE) {
             view.setRenderEffect(null)
             return
         }
@@ -69,7 +94,7 @@ object CompanionColors {
         val shader = runCatching { RuntimeShader(AGSL) }
             .onFailure { Log.w("pokedaisy", "companion shader failed to compile", it) }
             .getOrNull() ?: return
-        shader.setFloatUniform("uColors", if (gbaColors) 1f else 0f)
+        shader.setFloatUniform("uColors", if (colors) 1f else 0f)
         shader.setFloatUniform("uFilter", filter.ordinal.toFloat())
         shader.setFloatUniform("uUnit", unit)
         shader.setFloatUniform("uGrid", grid[0], grid[1])

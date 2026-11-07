@@ -2,6 +2,7 @@ package com.pokedaisy.app.companion
 
 import com.pokedaisy.app.companion.TipScheduler.Companion.AGAIN_AFTER
 import com.pokedaisy.app.companion.TipScheduler.Companion.CALM_MS
+import com.pokedaisy.app.companion.TipScheduler.Companion.EARLY_SETTLE
 import com.pokedaisy.app.companion.TipScheduler.Companion.FIRST_TIP_AFTER
 import com.pokedaisy.app.companion.TipScheduler.Companion.GAP
 import com.pokedaisy.app.companion.TipScheduler.Companion.MINUTE
@@ -84,6 +85,29 @@ class TipSchedulerTest {
         s.moment(TipId.WILD)
         s.play(MINUTE + CALM_MS)
         assertEquals(TipId.WILD, s.current)
+    }
+
+    @Test fun anEarlyTipNeedsNoHalfHour() {
+        val s = scheduler(available = { it == TipId.DS_TRIGGERS })
+        s.moment(TipId.DS_TRIGGERS)
+        s.play(EARLY_SETTLE - 1000)
+        assertNull(s.current)
+        s.play(CALM_MS)
+        assertEquals(TipId.DS_TRIGGERS, s.current)
+        // Answered: never again, its moment or not.
+        s.answered(TipId.DS_TRIGGERS)
+        s.moment(TipId.DS_TRIGGERS)
+        s.play(MINUTE)
+        assertNull(s.current)
+    }
+
+    @Test fun anEarlyTipWaitsForTheField() {
+        val s = scheduler(available = { it == TipId.DS_TRIGGERS })
+        s.moment(TipId.DS_TRIGGERS)
+        s.play(MINUTE, calm = false)
+        assertNull(s.current)
+        s.play(CALM_MS)
+        assertEquals(TipId.DS_TRIGGERS, s.current)
     }
 
     @Test fun momentsGoStale() {

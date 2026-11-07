@@ -1,6 +1,8 @@
 package com.pokedaisy.app
 
 import android.content.Context
+import android.os.VibrationEffect
+import android.os.Vibrator
 import android.view.HapticFeedbackConstants
 import android.widget.FrameLayout
 import androidx.compose.foundation.layout.fillMaxSize
@@ -47,7 +49,7 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
     /** A DS game: X and Y on screen too. */
     var dsButtons by mutableStateOf(false)
 
-    /** Laid over a DS game's touch screen (one screen held sideways, SidePanel.setDsScreen): a touch that starts on no
+    /** Laid over a DS game's touch screen (one screen held sideways: DS LAYOUT's, PokeDaisyActivity.syncDsStage): a touch that starts on no
      * button goes on to whatever is under this view. Android splits fingers between views, so another finger can still
      * land on a button meanwhile. */
     var passMisses = false
@@ -68,13 +70,30 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
     val clearTop: Int get() = clear().first
     val clearBottom: Int get() = clear().second
 
+    /** VIBRATION: LIGHT is the phone's own tick, which follows its touch vibration setting (too faint on some phones);
+     *  MEDIUM and STRONG drive the motor themselves. */
+    private fun buzz(level: Int) {
+        when {
+            level <= 0 -> {}
+            level == 1 -> performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
+            else -> context.getSystemService(Vibrator::class.java)
+                ?.vibrate(VibrationEffect.createOneShot(if (level == 2) 20L else 40L, VibrationEffect.DEFAULT_AMPLITUDE))
+        }
+    }
+
     private fun clear(): Pair<Int, Int> {
         val p = placed ?: return 0 to 0
-        if (visibility != VISIBLE) return 0 to 0
         // The game's columns: the middle 3:2 (or 10:9) at the area's height, the whole width upright.
         val gameW = if (portrait) p.w else minOf(p.w, p.h * gameAspect)
         val l = (p.w - gameW) / 2
-        val r = l + gameW
+        return clearAcross(l, l + gameW)
+    }
+
+    /** As [clearTop] / [clearBottom], for the controls across the columns [l, r) (px): a DS game's floating touch
+     * screen keeps clear of only the ones it would sit under. */
+    fun clearAcross(l: Float, r: Float): Pair<Int, Int> {
+        val p = placed ?: return 0 to 0
+        if (visibility != VISIBLE) return 0 to 0
         val over = p.items.filter { it.right > l && it.left < r }
         val top = over.filter { it.cy < p.h / 2 }.maxOfOrNull { it.bottom } ?: 0f
         val bottom = over.filter { it.cy >= p.h / 2 }.minOfOrNull { it.top }?.let { p.h - it } ?: 0f
@@ -89,7 +108,7 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
                     input = TouchInput(
                         onKeys = { gba, turbo -> onMask?.invoke(gba, turbo) },
                         onAction = { b, down -> onAction?.invoke(b, down) },
-                        onPress = { if (style.vibration) performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY) },
+                        onPress = { buzz(style.vibration) },
                     ),
                     gameAspect = gameAspect, gameBoy = !shoulders, ffOn = ffOn, ds = dsButtons,
                     modifier = androidx.compose.ui.Modifier.fillMaxSize(),

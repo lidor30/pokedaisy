@@ -1,0 +1,10 @@
+# Yellow Legacy from the retail save rewritten by scripts/convert_save_legacy.py: the logos, the title, CONTINUE, the save summary.
+wait 1300
+press START
+wait 200
+press A
+wait 200
+press A
+wait 200
+press A
+wait 500

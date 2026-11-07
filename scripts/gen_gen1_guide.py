@@ -63,8 +63,10 @@ on a map the game never loads (UNUSED_MAP_6F) is left out.
 import hashlib
 import os
 import re
+import shutil
 import struct
 import sys
+import tempfile
 
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import gen_gen1_tables as g1  # noqa: E402  (CHARS)
@@ -79,7 +81,52 @@ BUILDS = [
          badges=0xD356, curmap=0xD35E, yellow=False),
     dict(p="G1B_", name="Blue", tree="pokered", base="pokeblue", sha1="d7037c83e1ae5b39bde3c30787637ba1d4c48ce2",
          badges=0xD356, curmap=0xD35E, yellow=False),
+    # Yellow Legacy v1.0.10: cRz-Shadows/Pokemon_Yellow_Legacy at tag V1.0.10, its `make` = the patched cart byte for byte.
+    dict(p="G1L_", name="Yellow Legacy", tree="pokeyellowlegacy", base="pokeyellow", sha1="2ac87de42afc70ef6016805acb3b206644417f97",
+         badges=0xD3A3, curmap=0xD3AB, yellow=True, legacy=True),
 ]
+
+# Yellow Legacy forked pokeyellow before pret's renames: what its source calls these, as the readers below expect them.
+LEGACY_RENAMES = [
+    (r"\bHS_", "TOGGLE_"), (r"\bwMissableObject", "wToggleableObject"), (r"\bMissableObjects\b", "ToggleableObjectStates"),
+    (r"\bHIDE\b", "OFF"), (r"\bSHOW\b", "ON"),
+    (r"(?m)^\s*db (\w+,\s+\w+,\s+TRADE_DIALOGSET_)", r"\tnpctrade \1"),
+]
+LEGACY_SYMBOLS = {"ToggleableObjectStates": "MissableObjects", "wToggleableObjectFlags": "wMissableObjectFlags",
+                  "wToggleableObjectFlagsEnd": "wMissableObjectFlagsEnd"}
+
+
+def normalized_tree(tree):
+    """A copy of a fork's text sources (constants, data, scripts) under pret's current names; the ROM and .sym stay [tree]'s."""
+    out = tempfile.mkdtemp(prefix="gen1-guide-")
+    for top in ("constants", "data", "scripts"):
+        for root, _, files in os.walk(os.path.join(tree, top)):
+            for fn in files:
+                if not fn.endswith(".asm"):
+                    continue
+                src = os.path.join(root, fn)
+                dst = os.path.join(out, os.path.relpath(src, tree))
+                os.makedirs(os.path.dirname(dst), exist_ok=True)
+                text = open(src, encoding="utf-8", errors="replace").read()
+                for a, b in LEGACY_RENAMES:
+                    text = re.sub(a, b, text)
+                open(dst, "w", encoding="utf-8").write(text)
+    shutil.move(os.path.join(out, "constants", "hide_show_constants.asm"), os.path.join(out, "constants", "toggle_constants.asm"))
+    # wram.asm's `flag_array 112`; pret names it now.
+    with open(os.path.join(out, "constants", "item_constants.asm"), "a", encoding="utf-8") as f:
+        f.write("\nDEF MAX_HIDDEN_ITEMS EQU 112\n")
+    # hidden_objects.asm's `hidden_object x, y, ITEM, HiddenItems` under a label its map table names, as hidden_events.asm has them.
+    text = open(os.path.join(out, "data", "events", "hidden_objects.asm"), encoding="utf-8").read()
+    maps = {label: const for const, label in re.findall(r"dbw\s+(\w+),\s+(\w+)", text)}
+    rows = []
+    for line in text.split("\n"):
+        if m := re.match(r"(\w+):\s*$", line):
+            if m.group(1) in maps:
+                rows.append(f"\thidden_events_for {maps[m.group(1)]}")
+        elif m := re.match(r"\s*hidden_object\s+(\d+),\s*(\d+),\s*(\w+),\s*HiddenItems", line):
+            rows.append(f"\thidden_event {m.group(1)}, {m.group(2)}, HiddenItems, {m.group(3)}")
+    open(os.path.join(out, "data", "events", "hidden_events.asm"), "w", encoding="utf-8").write("\n".join(rows) + "\n")
+    return out
 
 EVENT, TOGGLE, HIDDEN, TRADE, BADGE = 0, 0x10000, 0x20000, 0x30000, 0x40000
 TEAM_VAR_ID = 0x10000
@@ -117,16 +164,20 @@ class Build:
         self.rom_path = os.path.join(d, self.base + ".gbc")
         self.data = open(self.rom_path, "rb").read()
         assert hashlib.sha1(self.data).hexdigest() == self.sha1, f"{self.rom_path} isn't retail Pokémon {self.name}"
-        listed = {}
-        for line in open(os.path.join(d, "roms.sha1")):
-            sha, fn = line.split()
-            listed[fn.lstrip("*")] = sha
-        assert listed[self.base + ".gbc"] == self.sha1, f"{self.base}.gbc isn't what roms.sha1 lists"
+        if not b.get("legacy"):
+            listed = {}
+            for line in open(os.path.join(d, "roms.sha1")):
+                sha, fn = line.split()
+                listed[fn.lstrip("*")] = sha
+            assert listed[self.base + ".gbc"] == self.sha1, f"{self.base}.gbc isn't what roms.sha1 lists"
         self.sym = {}
         for line in open(os.path.join(d, self.base + ".sym")):
             m = re.match(r"([0-9a-f]{2}):([0-9a-f]{4}) (\S+)$", line.strip())
             if m and "." not in m.group(3):
                 self.sym[m.group(3)] = (int(m.group(1), 16), int(m.group(2), 16))
+        if b.get("legacy"):
+            self.sym.update({new: self.sym[old] for new, old in LEGACY_SYMBOLS.items()})
+            d = self.dir = normalized_tree(d)
         self.c = Consts(d)
         self.headers = map_headers(d)
 
@@ -354,11 +405,16 @@ def merged(entries):
 def fishing(B):
     """(old, good, super_by_map): lists of (odds percent, dex, level). Reads the rods' own routines from the ROM."""
     # OLD ROD: ItemUseOldRod = call FishingInit / jp c, ItemUseNotTime / lb bc, 5, MAGIKARP / ld a, 1
-    b, a = B.at("ItemUseOldRod")
-    code = B.bytes(b, a, 10)
-    assert code[0] == 0xCD and code[3] == 0xDA and code[6] == 0x01 and code[9] == 0x3E, "ItemUseOldRod changed"
-    old = [(100, B.dex_of(code[7]), code[8])]
-    assert old[0][1] == 129 and old[0][2] == 5   # MAGIKARP lv 5
+    if "OldRodMons" in B.sym:
+        # Yellow Legacy: the OLD ROD rolls a table like the GOOD ROD's.
+        ob, oa = B.at("OldRodMons")
+        old = [(25, B.dex_of(B.u8(ob, oa + 2 * i + 1)), B.u8(ob, oa + 2 * i)) for i in range(2)]
+    else:
+        b, a = B.at("ItemUseOldRod")
+        code = B.bytes(b, a, 10)
+        assert code[0] == 0xCD and code[3] == 0xDA and code[6] == 0x01 and code[9] == 0x3E, "ItemUseOldRod changed"
+        old = [(100, B.dex_of(code[7]), code[8])]
+        assert old[0][1] == 129 and old[0][2] == 5   # MAGIKARP lv 5
     # GOOD ROD: srl a (bit 0 set = no bite), then a 2-bit number below 2 picks a row of GoodRodMons (level, species)
     gb, ga = B.at("GoodRodMons")
     good = [(25, B.dex_of(B.u8(gb, ga + 2 * i + 1)), B.u8(gb, ga + 2 * i)) for i in range(2)]

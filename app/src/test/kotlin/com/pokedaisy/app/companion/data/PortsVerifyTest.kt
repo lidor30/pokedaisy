@@ -14,8 +14,10 @@ import java.io.File
 class PortsVerifyTest {
     private val dir = File("../build/ports")
 
+    // English FireRed's storage pointer is the Poller's (its config is the hacks' base too).
     private val english = mapOf(
-        "NATIVE_FIRERED_REV0" to NATIVE_FIRERED_REV0, "NATIVE_FIRERED_REV1" to NATIVE_FIRERED_REV1,
+        "NATIVE_FIRERED_REV0" to NATIVE_FIRERED_REV0.copy(pokemonStoragePtr = NATIVE_FIRERED_REV0.saveBlock2Ptr + 4),
+        "NATIVE_FIRERED_REV1" to NATIVE_FIRERED_REV1.copy(pokemonStoragePtr = NATIVE_FIRERED_REV1.saveBlock2Ptr + 4),
         "NATIVE_LEAFGREEN_REV0" to NATIVE_LEAFGREEN_REV0, "NATIVE_LEAFGREEN_REV1" to NATIVE_LEAFGREEN_REV1,
         "NATIVE_RUBY" to NATIVE_RUBY, "NATIVE_SAPPHIRE" to NATIVE_SAPPHIRE,
     )
@@ -52,8 +54,8 @@ class PortsVerifyTest {
     @Test fun `every port reads like english`() {
         val tsv = File(dir, "verify.tsv")
         assumeTrue("run scripts/verify_ports.py", tsv.isFile)
-        val rows = StringBuilder("| ROM | key | party | bag | money | place | dex | guide | trainer | battle | handlers | names |\n" +
-            "|---|---|---|---|---|---|---|---|---|---|---|---|\n")
+        val rows = StringBuilder("| ROM | key | party | bag | money | place | boxes | dex | guide | trainer | battle | handlers | names |\n" +
+            "|---|---|---|---|---|---|---|---|---|---|---|---|---|\n")
         var failures = 0
         tsv.readLines().filter { it.isNotBlank() }.forEach { line ->
             val f = line.split("\t")
@@ -98,6 +100,14 @@ class PortsVerifyTest {
                         "${t.items.size} vs ${e.items.size}")
                     check("money", t.money == e.money, "${t.money} vs ${e.money}")
                     check("place", t.regionMapSectionId == e.regionMapSectionId, "${t.regionMapSectionId} vs ${e.regionMapSectionId}")
+                    // BOXES: every slot the same Pokémon (species, personality, level), the same box names and wallpapers
+                    // (names but in Japanese, whose text table reads the English save's bytes as other letters).
+                    fun boxes(b: PcBoxes?) = b?.boxes?.map { box ->
+                        Triple(if (cfg.language == 'J') "" else box.name, box.wallpaper, box.mons.map { m -> m?.let { Triple(it.species, it.personality, it.level) } })
+                    }
+                    val tBoxes = boxes(t.pcBoxes)
+                    check("boxes", tBoxes != null && tBoxes == boxes(e.pcBoxes) && tBoxes.any { b -> b.third.any { it != null } },
+                        "${t.pcBoxes?.boxes?.sumOf { b -> b.mons.count { it != null } }} vs ${e.pcBoxes?.boxes?.sumOf { b -> b.mons.count { it != null } }}")
                 } else {
                     // Absolutely: real Pokémon (the box data's checksum held - decodePartyMon drops the rest),
                     // a bag of real items with sane counts, money in range, a named place.
@@ -107,6 +117,10 @@ class PortsVerifyTest {
                     check("money", (t.money ?: -1L) in 0L..999_999L, "${t.money}")
                     check("place", lookupLocation(t.regionMapSectionId).let { it.mapSecName.isNotBlank() && it.regionMapAsset != null },
                         "${t.regionMapSectionId}")
+                    // BOXES: 14 boxes of real Pokémon (decodeBoxMon drops a record whose checksum fails), some of them filled.
+                    val mons = t.pcBoxes?.boxes?.flatMap { it.mons }?.filterNotNull()
+                    check("boxes", t.pcBoxes?.boxes?.size == PC_BOXES && !mons.isNullOrEmpty() && mons.all { it.species in 1..412 && it.level in 1..100 },
+                        "${mons?.size}")
                 }
                 val dex = cfg.pokedex!!
                 val tDex = (1..dex.nationalCount).map { n ->
@@ -138,7 +152,7 @@ class PortsVerifyTest {
                 checks["sample"] = "${speciesName(t.party.first().species)} · ${itemName(t.items.first().itemId)} · ${lookupLocation(t.regionMapSectionId).mapSecName}"
             }.onFailure { checks["error"] = "❌ ${it::class.simpleName}: ${it.message}" }
             if (checks.values.any { it.startsWith("❌") }) failures++
-            val cols = listOf("party", "bag", "money", "place", "dex", "guide", "trainer", "battle", "handlers")
+            val cols = listOf("party", "bag", "money", "place", "boxes", "dex", "guide", "trainer", "battle", "handlers")
             rows.append("| $file | $key | " + cols.joinToString(" | ") { checks[it] ?: "?" } + " | ${checks["sample"] ?: checks["error"] ?: ""} |\n")
         }
         File(dir, "report.md").writeText("# Ported ROMs\n\n$failures failing\n\n$rows")

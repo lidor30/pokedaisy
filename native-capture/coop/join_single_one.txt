@@ -1,0 +1,11 @@
+# A trainer with ONE Pokemon (TRAINER_CALVIN_1 alone: 318 = 0x013E, POOCHYENA) is not joinable: join 0 (the user's call: no co-op
+# against a one-Pokemon trainer, as single_one.txt checks on the arm).
+# want: coop: installed
+# want: join 0 0 0
+poke32 0x0203F400 0x013E035C
+poke32 0x0203F404 0x7DD40000
+poke32 0x0203F408 0x00020831
+coopinstall
+call 0x08098EF8 0x0203F400
+waittask 0x080B05F0 300
+coopjoin

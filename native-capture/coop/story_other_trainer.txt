@@ -1,0 +1,18 @@
+# Task 6 fix: the story hook takes only the offered trainer. Armed for Roxanne (265), a battle with another trainer (ALLEN 333, a script of
+# `trainerbattle`, as join_single_trainer.txt) starts as the game starts it: Task_BattleStart runs, no pick script (the story state
+# stays out of PICKING: the stub saw gTrainerBattleOpponent_A 333 and finished the original function), and `storystate` then takes the
+# hook out: idle, and BattleSetup_StartTrainerBattle's own bytes are back.
+# want: story: armed 1
+# want: PASS waittask
+# want: story: state 0
+storyarm 265
+poke32 0x0203F400 0x014D035C
+poke32 0x0203F404 0x7DD40000
+poke32 0x0203F408 0x00020831
+call 0x08098EF8 0x0203F400
+waittask 0x080B05F0 300
+expect8 0x0203FA00 5
+storystate
+expect32 0x080B17E0 0x4803B510
+expect32 0x080B17E4 0x28027800
+expect8 0x0203FA00 0

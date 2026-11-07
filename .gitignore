@@ -50,11 +50,13 @@ build/
 # Headless capture tool output: mgba_dump is compiled fresh inside the
 # pokedaisy-capture image each run (a Linux ELF, not portable).
 /native-capture/mgba_dump
+/native-capture/mgba_link
 /native-capture/menu-shots/
 
 __pycache__/
 .DS_Store
 .claude/settings.local.json
+.claude/worktrees/
 
 # make release-apk output
 /dist/

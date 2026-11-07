@@ -33,6 +33,9 @@ data class Gen4Config(
     val pokedexOff: Int? = null,
     /** Its National Dex byte (Pokedex.nationalDexObtained) and the game's dex tables. */
     val nationalDexOff: Int = 0,
+    /** Bytes in each of its flag arrays (caught, seen, the genders'): a bit per species, 0x40 for 493 (Origin HeartGold's
+     * 0xC8, for 1600). */
+    val dexFlagBytes: Int = 0x40,
     val pokedexTables: PokedexTables? = null,
     /** Each map header's place name (its map label) - the English one: [placeName] reads the cart's own. */
     val mapPlaces: Map<Int, String>,
@@ -44,6 +47,8 @@ data class Gen4Config(
     val flySpots: List<FlySpot> = emptyList(),
     /** Where a battle keeps its battlers and parties; null = no battle reads. */
     val battle: Gen4Battle? = null,
+    /** A hack's own battle engine, read instead of [battle] ([Gen4ManagedBattle]). */
+    val managedBattle: Gen4ManagedBattle? = null,
     /** The Town Map ([Gen4TownMap]); null = none. */
     val townMap: Gen4TownMap? = null,
     /** HeartGold / SoulSilver: the save's event flags in the body (VarsFlags' flags, after its vars), for the flypoint
@@ -59,6 +64,11 @@ data class Gen4Config(
     /** HeartGold / SoulSilver: the Kanto badges' byte in TrainerInfo ([trainerOff] + this; the Johto / Sinnoh badges'
      * is +0x1A in both games), or -1. */
     val kantoBadgesOff: Int = -1,
+    /** The last species id a party record may hold (a bigger one is a bad read). */
+    val maxSpecies: Int = 493,
+    /** A record's species and form (block B's byte 0x18, bits 3-7) as the species id the tables use: a hack whose forms
+     * have ids of their own (Origin HeartGold); null = the species as stored. */
+    val formSpecies: ((species: Int, form: Int) -> Int)? = null,
 )
 
 /** The GUIDE's clock: the hour (0-23) the DS's clock says, as a var past the save's own (the DS games keep no time of
@@ -155,6 +165,51 @@ data class Gen4Battle(
     /** BattleContext.battleMons[4] and sizeof(BattleMon). */
     val offBattleMons: Int = 0x2D40,
     val battleMonSize: Int = 0xC0,
+    /** BattleSystem.battleInput (the touch screen's panels), 0 = its states aren't read ([readGen4BattleInput]). */
+    val offBattleInput: Int = 0,
+    /** BattleInput's text objects' first pointer: set while a panel is drawn, NULL while the turn plays (headless dumps). */
+    val offPanelShown: Int = 0x4D0,
+    /** BattleContext.command (CONTROLLER_COMMAND_*: 5 = the player chooses) and battler 0's selection step (u8 at 0). */
+    val offCommand: Int = 0x08,
+)
+
+/**
+ * A battle engine of a hack's own ([GEN4_ORIGIN_HEARTGOLD]'s: no BattleSystem / BattleContext). gOverlayTemplate_Battle runs
+ * its overlay 14's init, which makes a manager ([managerPtr]: 0x274 bytes) holding a battle object per Pokémon (0x414 bytes,
+ * its battle copy: the party record it came from, HP, item, level, stats, types, stages, moves with PP, ability) in two
+ * groups - the player's six from [offPlayerObjs], the foe's from [offFoeObjs] ([offFoeCount] of them) - each in battle
+ * order: the Pokémon out first (a switch reorders them: headless, SHIFT to SYLVEON put its object first). [offActive]
+ * points at the active slots ({ first, second or 0xFF }: a double has a second). The BattleSetup it got ([offSetup]) starts
+ * with the battle type; the parties ([offParties]: the player's, the foe's) are the save's Party struct. Found headless on
+ * Origin HeartGold (wild battles against PIDGEY and AZUMARILL, a trainer's BIDOOF): Leer took the foe's Defense stage
+ * 6 -> 5, Agility the user's Speed 6 -> 8, a Tackle its HP and PP.
+ */
+data class Gen4ManagedBattle(
+    val fieldSystemPtr: Long,
+    val battleTemplate: Long,
+    val managerPtr: Long,
+    val offSetup: Int = 0x10,
+    val offActive: Int = 0x58,
+    val offPlayerObjs: Int = 0x60,
+    val offFoeObjs: Int = 0x7C,
+    val offFoeCount: Int = 0x94,
+    val offParties: Int = 0xD0,
+    /** A battle object: species, the party record, max HP, HP, item (u16), level (u8). */
+    val objSpecies: Int = 0x00,
+    val objRecord: Int = 0x10,
+    val objMaxHp: Int = 0x1C,
+    val objHp: Int = 0x1E,
+    val objItem: Int = 0x20,
+    val objLevel: Int = 0x24,
+    /** Attack, Defense, Sp. Atk, Sp. Def, Speed (u16s), the two types, the seven stages in that order then accuracy and evasion. */
+    val objStats: Int = 0x22C,
+    val objTypes: Int = 0x236,
+    val objStages: Int = 0x240,
+    /** Four moves of [objMoveStride] bytes: the move at +2, its PP at +4. */
+    val objMoves: Int = 0x250,
+    val objMoveStride: Int = 0x12,
+    val objAbility: Int = 0x29A,
+    val objSize: Int = 0x2A0,
 )
 
 /** One of FLY's spots: the town's map header and the tile FLY lands on (its x / z, as GetSpawnIdByMapAndCoords finds it).
@@ -244,7 +299,9 @@ val GEN4_PLATINUM_US = Gen4Config(
     mapPlaceIds = mapPlaceIdsPlatinum,
     itemPockets = itemPocketsPlatinum,
     flySpots = flySpotsPlatinum,
-    battle = Gen4Battle(fieldSystemPtr = 0x021C07DC, battleTemplate = 0x020EA358),
+    // battleInput: BattleSystem.battleSubscreen, HeartGold's place (its first font OAM at 0x4D0 too: headless, set at the
+    // commands and the moves, NULL while the turn plays; battler 0's steps 1 / 4 / 8 / 10 at the commands, moves, bag, party).
+    battle = Gen4Battle(fieldSystemPtr = 0x021C07DC, battleTemplate = 0x020EA358, offBattleInput = 0x19C),
     townMap = Gen4TownMap(
         fieldSystemPtr = 0x021C07DC,
         mainMatrixHeaders = mainMatrixHeadersPlatinum,
@@ -253,13 +310,23 @@ val GEN4_PLATINUM_US = Gen4Config(
     ),
 )
 
+/** French Platinum (CPUF rev 0, SHA-1 62f9ec7a…): the US cart's code and save layout, its globals 0x1E0 higher and the
+ * battle template 0x88 (scripts/port_nds.py; nds/pk_nds_field.cpp's PLATINUM_FR has the same). */
+val GEN4_PLATINUM_FR = GEN4_PLATINUM_US.copy(
+    saveDataPtr = 0x021C0974,
+    battle = GEN4_PLATINUM_US.battle!!.copy(fieldSystemPtr = 0x021C09BC, battleTemplate = 0x020EA3E0),
+    townMap = GEN4_PLATINUM_US.townMap!!.copy(fieldSystemPtr = 0x021C09BC),
+)
+
 /**
  * Pokémon HeartGold / SoulSilver (USA; pret/pokeheartgold builds both byte for byte, sha1 4fcded0e… / f8dc38ea…). The save
  * sections' offsets are the save file's (the body in RAM is that block): party, trainer, bag and location found in the
  * player's own saves, then checked live. Their own items, pockets (101 TM / HM slots, 24 balls), map places and FLY
  * spots (the Pokégear's flypoints); the Pokégear map and battles come later.
  */
-private fun gen4HeartGoldFamily(saveDataPtr: Long) = Gen4Config(
+private fun gen4HeartGoldFamily(
+    saveDataPtr: Long, fieldSystemPtr: Long = 0x021D4158, battleTemplate: Long = 0x020FA484,
+) = Gen4Config(
     saveDataPtr = saveDataPtr,
     bodyOff = 0x10,
     trainerOff = 0x64,
@@ -289,8 +356,11 @@ private fun gen4HeartGoldFamily(saveDataPtr: Long) = Gen4Config(
     kantoBadgesOff = 0x1F,
     // SAVE_POKEGEAR's chunk (0xBAE0) + 4
     pokegearWordOff = 0xBAE4,
+    // gOverlayTemplate_Battle; BattleSystem / BattleContext laid out as Platinum's (battleMons at 0x2D40, 0xC0 each:
+    // headless dumps of a wild battle), its touch panels behind BattleSystem.battleInput (0x19C).
+    battle = Gen4Battle(fieldSystemPtr = fieldSystemPtr, battleTemplate = battleTemplate, offBattleInput = 0x19C),
     pokegear = Gen4Pokegear(
-        fieldSystemPtr = 0x021D4158,   // sFieldSysPtr
+        fieldSystemPtr = fieldSystemPtr,   // sFieldSysPtr
         mainMatrixHeaders = mainMatrixHeadersHeartGold,
         worldMap = worldMapHeartGold,
     ),
@@ -302,17 +372,71 @@ private const val HEARTGOLD_SAVE_DATA_PTR = 0x021D2228L
 val GEN4_HEARTGOLD_US = gen4HeartGoldFamily(saveDataPtr = HEARTGOLD_SAVE_DATA_PTR)
 val GEN4_SOULSILVER_US = gen4HeartGoldFamily(saveDataPtr = HEARTGOLD_SAVE_DATA_PTR)
 
+/** German HeartGold rev 0 (IPKD, SHA-1 13b6853a…): SaveData_Get and Field_NewGame_AppInit's literal pools.
+ * The save layout is shared with the US carts; its two globals moved by 0x20, gOverlayTemplate_Battle by 0x4C
+ * (nds/pk_nds_field.cpp's HEARTGOLD_DE has the same three). */
+val GEN4_HEARTGOLD_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138, battleTemplate = 0x020FA438)
+
+/**
+ * Origin HeartGold ([OriginHeartGold]): HeartGold's save, grown. Its globals were found through the US code that uses them
+ * (SaveData_Get keeps the save's pointer 4 bytes into a static block here: `ldr r0, [r0, #4]`) and checked headless on a new
+ * game; the save sections' offsets are its SaveData's own table (arrayHeaders, read live): the bag holds 151 TMs / HMs (its
+ * 130 TMs), so everything after it moved 0xC8 - the flags (VarsFlags: 0x170 vars, then a longer flag array) 0xEAC, the
+ * Location 0x1324, the Pokédex 0x13A8 (a bit per species to 1600: 0xC8 bytes an array), the roamers 0x6A48 (REPEL's steps
+ * +0x65), the Pokégear 0xBC84. Species to 1440 (forms past 1025, [OriginHeartGold.Data.formSpecies]); its DEX is the
+ * National Dex's 1025 from its cart ([POKEDEX_ORIGIN]). No GUIDE; its battles are its own engine's ([Gen4ManagedBattle]).
+ */
+val GEN4_ORIGIN_HEARTGOLD = gen4HeartGoldFamily(saveDataPtr = 0x021D11B4, fieldSystemPtr = 0x021D31F4).copy(
+    pocketSizes = intArrayOf(165, 50, 151, 12, 40, 64, 24, 30),
+    locationOff = 0x1324,
+    repelStepsOff = 0x6A48 + 0x65,
+    // Its Pokedex: HeartGold's, the four flag arrays 0xC8 bytes each and no caughtLanguages; dexEnabled 0x366 (GivePokedex
+    // set it headless), nationalDex 0x367.
+    pokedexOff = 0x13A8,
+    nationalDexOff = 0x367,
+    dexFlagBytes = 0xC8,
+    pokedexTables = POKEDEX_ORIGIN,
+    flagsOff = 0xEAC + 0x170 * 2,
+    varsFlagsOff = 0xEAC,
+    pokegearWordOff = 0xBC84 + 4,
+    battle = null,
+    managedBattle = Gen4ManagedBattle(fieldSystemPtr = 0x021D31F4, battleTemplate = 0x020F70B8, managerPtr = 0x02255BAC),
+    maxSpecies = OriginHeartGold.LAST_SPECIES,
+    formSpecies = { species, form -> OriginHeartGold.data?.formSpecies(species, form) ?: species },
+)
+
+/** German SoulSilver rev 0 shares HeartGold's globals and save layout (IPGD, SHA-1 576cdb7e…). */
+val GEN4_SOULSILVER_DE = gen4HeartGoldFamily(saveDataPtr = 0x021D2208, fieldSystemPtr = 0x021D4138, battleTemplate = 0x020FA438)
+
+/** French HeartGold / SoulSilver rev 0 (IPKF / IPGF, SHA-1 dba64620… / 6ed98d44…): the US carts' save layout, the two
+ * globals 0x20 higher, the battle template 0x1C lower (scripts/port_nds.py; pk_nds_field.cpp's HEARTGOLD_FR). */
+val GEN4_HEARTGOLD_FR = gen4HeartGoldFamily(saveDataPtr = 0x021D2248, fieldSystemPtr = 0x021D4178, battleTemplate = 0x020FA468)
+val GEN4_SOULSILVER_FR = gen4HeartGoldFamily(saveDataPtr = 0x021D2248, fieldSystemPtr = 0x021D4178, battleTemplate = 0x020FA468)
+
 /** A DS game ([readGen4Telemetry], [readGen5Telemetry]): two screens, its own look and tables. */
 val GameKind?.isDsGame: Boolean get() = this == GameKind.PLATINUM || isHgss || isGen5
 
-/** Gen 5 (Black): [readGen5Telemetry], its own tables. */
-val GameKind?.isGen5: Boolean get() = this == GameKind.BLACK
+/** Gen 5 (Black, White, Black 2, White 2): [readGen5Telemetry], their own tables (Black's for the species and moves of
+ * all four; the sequels' places, items and Town Map their own: [isBw2]). */
+val GameKind?.isGen5: Boolean get() = this == GameKind.BLACK || this == GameKind.WHITE || isBw2
+
+/** Black 2 / White 2: Black's engine rebuilt - Black's species and moves, their own zones, places, Town Map and art. */
+val GameKind?.isBw2: Boolean get() = this == GameKind.BLACK2 || this == GameKind.WHITE2
 
 /** The Gen 4 config for [kind], or null. */
-fun gen4ConfigFor(kind: GameKind?): Gen4Config? = when (kind) {
-    GameKind.PLATINUM -> GEN4_PLATINUM_US
-    GameKind.HEARTGOLD -> GEN4_HEARTGOLD_US
-    GameKind.SOULSILVER -> GEN4_SOULSILVER_US
+fun gen4ConfigFor(kind: GameKind?, code: String = romGameCode): Gen4Config? = when (kind) {
+    GameKind.PLATINUM -> if (code == "CPUF") GEN4_PLATINUM_FR else GEN4_PLATINUM_US
+    GameKind.HEARTGOLD -> when {
+        originHeartGold -> GEN4_ORIGIN_HEARTGOLD
+        code == "IPKD" -> GEN4_HEARTGOLD_DE
+        code == "IPKF" -> GEN4_HEARTGOLD_FR
+        else -> GEN4_HEARTGOLD_US
+    }
+    GameKind.SOULSILVER -> when (code) {
+        "IPGD" -> GEN4_SOULSILVER_DE
+        "IPGF" -> GEN4_SOULSILVER_FR
+        else -> GEN4_SOULSILVER_US
+    }
     else -> null
 }
 
@@ -356,8 +480,12 @@ private fun gen4Crypt(raw: ByteArray, off: Int, len: Int, seed: Long): ByteArray
  * as encrypted dropped the lead every few seconds: the game looks at it that often on the field.) HeartGold / SoulSilver
  * also hold one party Pokémon's blocks in plaintext between frames with the flags clear (slot 1 on both players' saves,
  * on the field), so whichever way the checksum adds up is taken, and likewise the party fields that make sense.
- * Gen 5 keeps the same struct (Black: [maxSpecies] 649). */
-fun decodeGen4PartyMon(raw: ByteArray, off: Int, maxSpecies: Int = 493): Mon? {
+ * Gen 5 keeps the same struct with shorter party fields (Black: [maxSpecies] 649, [size] 220: read as 236, a full
+ * party's sixth slot ran past the read and threw, and the companion showed nothing). */
+fun decodeGen4PartyMon(
+    raw: ByteArray, off: Int, maxSpecies: Int = 493, size: Int = GEN4_MON_SIZE, formSpecies: ((Int, Int) -> Int)? = null,
+): Mon? {
+    if (off < 0 || off + size > raw.size) return null
     val personality = u32(raw, off)
     val decrypted = u16(raw, off + 4)
     val checksum = u16(raw, off + 6)
@@ -378,14 +506,24 @@ fun decodeGen4PartyMon(raw: ByteArray, off: Int, maxSpecies: Int = 493): Mon? {
     if (species == 0 || species > maxSpecies) return null
     val ivWord = u32(blocks, b + 0x10)
     val flags = u8(blocks, b + 0x18)
+    // The nickname: block C's first 11 characters - the game's charmap (Gen 4), UTF-16 (Gen 5's shorter record).
+    val c = block('C')
+    val nickname = if (size == GEN4_MON_SIZE) Gen4Text.name(blocks, c, NICKNAME_CHARS)
+        else buildString {
+            for (i in 0 until NICKNAME_CHARS) {
+                val ch = u16(blocks, c + i * 2)
+                if (ch == 0xFFFF || ch == 0) break
+                append(ch.toChar())
+            }
+        }
     // The party fields carry no checksum: a level or HP no Pokémon has is a read gone wrong.
     fun sane(p: ByteArray) = u8(p, 4) in 1..100 && u16(p, 8) in 1..999 && u16(p, 6) <= u16(p, 8)
-    val plainParty = raw.copyOfRange(off + GEN4_BOX_SIZE, off + GEN4_MON_SIZE)
+    val plainParty = raw.copyOfRange(off + GEN4_BOX_SIZE, off + size)
     val party = (if (decrypted and 1 != 0) plainParty.takeIf(::sane)
-        else gen4Crypt(raw, off + GEN4_BOX_SIZE, GEN4_MON_SIZE - GEN4_BOX_SIZE, personality).takeIf(::sane)
+        else gen4Crypt(raw, off + GEN4_BOX_SIZE, size - GEN4_BOX_SIZE, personality).takeIf(::sane)
             ?: plainParty.takeIf(::sane)) ?: return null
     return Mon(
-        species = species,
+        species = formSpecies?.invoke(species, flags ushr 3) ?: species,
         level = u8(party, 4),
         hp = u16(party, 6),
         maxHp = u16(party, 8),
@@ -401,8 +539,12 @@ fun decodeGen4PartyMon(raw: ByteArray, off: Int, maxSpecies: Int = 493): Mon? {
         personality = personality,
         isEgg = (ivWord ushr 30) and 1L != 0L,
         heldItem = u16(blocks, a + 2),
+        nickname = nickname.takeIf { it.isNotBlank() },
     )
 }
+
+/** A nickname's characters in the record (POKEMON_NAME_LENGTH + 1). */
+private const val NICKNAME_CHARS = 11
 
 /** Each party slot's last read that decoded ([readGen4Telemetry]). */
 private val lastGoodParty = arrayOfNulls<Mon>(PARTY_SIZE)
@@ -442,8 +584,36 @@ private class Gen4BattleRead(
     val mons: List<BattleMon>, val personalities: List<Long>, val foes: List<Mon>, val trainer: Boolean, val doubles: Boolean,
 )
 
-/** Null when there's no battle (the field, a menu, the moments before its BattleSystem exists). */
-private fun readGen4Battle(r: MemoryReader, b: Gen4Battle): Gen4BattleRead? {
+/**
+ * The battle's input state for BATTLE BUTTONS ([BATTLE_INPUT_*]), where [Gen4Battle.offBattleInput] is known: while the
+ * controller waits for the player (command 5, SELECTION_SCREEN_INPUT), battler 0's selection step says which panel -
+ * battle_controller_player.c's SSI states: 1 / 2 the commands, 3 / 4 the moves, 7 / 8 the bag, 9 / 10 the party
+ * (headless on HeartGold: 1, 4, 8, 10) - and the touch screen's panel has to be drawn for a pick to land. Anything
+ * else in a battle is BUSY; no battle is NONE.
+ */
+fun readGen4BattleInput(r: MemoryReader, b: Gen4Battle): Int {
+    if (b.offBattleInput == 0) return BATTLE_INPUT_NONE
+    val bs = gen4BattleSystem(r, b) ?: return BATTLE_INPUT_NONE
+    val ctx = u32(r.readCoreMemory(bs + b.offBattleCtx, 4), 0)
+    if (!inMain(ctx)) return BATTLE_INPUT_NONE
+    val head = r.readCoreMemory(ctx, b.offCommand + 4)
+    if (u32(head, b.offCommand) != GEN4_COMMAND_SELECTING) return BATTLE_INPUT_BUSY
+    val input = u32(r.readCoreMemory(bs + b.offBattleInput, 4), 0)
+    val shown = inMain(input) && inMain(u32(r.readCoreMemory(input + b.offPanelShown, 4), 0))
+    return when (u8(head, 0)) {
+        1, 2 -> if (shown) BATTLE_INPUT_ACTION_SELECT else BATTLE_INPUT_BUSY
+        3, 4 -> if (shown) BATTLE_INPUT_MOVE_SELECT else BATTLE_INPUT_BUSY
+        7, 8 -> BATTLE_INPUT_BAG_OPEN
+        9, 10 -> BATTLE_INPUT_PARTY_OPEN
+        else -> BATTLE_INPUT_BUSY
+    }
+}
+
+/** CONTROLLER_COMMAND_SELECTION_SCREEN_INPUT. */
+private const val GEN4_COMMAND_SELECTING = 5L
+
+/** The running battle's BattleSystem (the field's child process's data), or null. */
+private fun gen4BattleSystem(r: MemoryReader, b: Gen4Battle): Long? {
     val fs = u32(r.readCoreMemory(b.fieldSystemPtr, 4), 0)
     if (!inMain(fs)) return null
     val pm = u32(r.readCoreMemory(fs, 4), 0)
@@ -451,8 +621,12 @@ private fun readGen4Battle(r: MemoryReader, b: Gen4Battle): Gen4BattleRead? {
     val child = u32(r.readCoreMemory(pm + b.offChild, 4), 0)
     if (!inMain(child)) return null
     if (u32(r.readCoreMemory(child, 4), 0) != u32(r.readCoreMemory(b.battleTemplate, 4), 0)) return null
-    val bs = u32(r.readCoreMemory(child + b.offAppData, 4), 0)
-    if (!inMain(bs)) return null
+    return u32(r.readCoreMemory(child + b.offAppData, 4), 0).takeIf { inMain(it) }
+}
+
+/** Null when there's no battle (the field, a menu, the moments before its BattleSystem exists). */
+private fun readGen4Battle(r: MemoryReader, b: Gen4Battle): Gen4BattleRead? {
+    val bs = gen4BattleSystem(r, b) ?: return null
     val head = r.readCoreMemory(bs + b.offBattleType, b.offParties + 16 - b.offBattleType)
     val type = u32(head, 0)
     val ctx = u32(head, b.offBattleCtx - b.offBattleType)
@@ -468,6 +642,66 @@ private fun readGen4Battle(r: MemoryReader, b: Gen4Battle): Gen4BattleRead? {
         (0 until count).mapNotNull { decodeGen4PartyMon(foeRaw, it * GEN4_MON_SIZE) }
     } else emptyList()
     return Gen4BattleRead(mons, personalities, foes, type and GEN4_BATTLE_TRAINER != 0L, type and GEN4_BATTLE_DOUBLES != 0L)
+}
+
+/** A [Gen4ManagedBattle]'s battle now, or null outside one. */
+private fun readManagedBattle(r: MemoryReader, b: Gen4ManagedBattle, cfg: Gen4Config): Gen4BattleRead? {
+    val fs = u32(r.readCoreMemory(b.fieldSystemPtr, 4), 0)
+    if (!inMain(fs)) return null
+    val child = u32(r.readCoreMemory(u32(r.readCoreMemory(fs, 4), 0) + 4, 4), 0)
+    if (!inMain(child) || u32(r.readCoreMemory(child, 4), 0) != u32(r.readCoreMemory(b.battleTemplate, 4), 0)) return null
+    val mgr = u32(r.readCoreMemory(b.managerPtr, 4), 0)
+    if (!inMain(mgr)) return null
+    val head = r.readCoreMemory(mgr, b.offParties + 8)
+    val setup = u32(head, b.offSetup)
+    val type = if (inMain(setup)) u32(r.readCoreMemory(setup, 4), 0) else 0L
+    val active = u32(head, b.offActive).let { if (inMain(it)) r.readCoreMemory(it, 2) else byteArrayOf(0, -1) }
+    fun obj(base: Int, slot: Int): Pair<BattleMon, Long>? {
+        if (slot !in 0 until PARTY_SIZE) return null
+        val p = u32(head, base + slot * 4)
+        if (!inMain(p)) return null
+        val o = r.readCoreMemory(p, b.objSize)
+        val species = u16(o, b.objSpecies)
+        if (species == 0 || species > cfg.maxSpecies) return null
+        val record = u32(o, b.objRecord)
+        val mon = if (inMain(record)) decodeGen4PartyMon(r.readCoreMemory(record, GEN4_MON_SIZE), 0, cfg.maxSpecies, formSpecies = cfg.formSpecies) else null
+        // Its order: Attack, Defense, Sp. Atk, Sp. Def, Speed - the companion's: Attack, Defense, Speed, Sp. Atk, Sp. Def.
+        val st = IntArray(5) { u16(o, b.objStats + it * 2) }
+        val sg = IntArray(7) { u8(o, b.objStages + it) }
+        return BattleMon(
+            species = species,
+            level = u8(o, b.objLevel),
+            type1 = u8(o, b.objTypes),
+            type2 = u8(o, b.objTypes + 1),
+            hp = u16(o, b.objHp),
+            maxHp = u16(o, b.objMaxHp),
+            status1 = mon?.status ?: 0L,
+            moves = IntArray(4) { u16(o, b.objMoves + it * b.objMoveStride + 2) },
+            pp = IntArray(4) { u8(o, b.objMoves + it * b.objMoveStride + 4) },
+            ability = u16(o, b.objAbility),
+            item = u16(o, b.objItem),
+            stats = intArrayOf(st[0], st[1], st[4], st[2], st[3]),
+            statStages = intArrayOf(sg[0], sg[1], sg[4], sg[2], sg[3], sg[5], sg[6]),
+        ) to (mon?.personality ?: 0L)
+    }
+    val second = u8(active, 1).takeIf { it != 0xFF }
+    val foes = u8(head, b.offFoeCount).coerceIn(0, PARTY_SIZE)
+    val battlers = listOf(
+        obj(b.offPlayerObjs, u8(active, 0)),
+        obj(b.offFoeObjs, 0),
+        second?.let { obj(b.offPlayerObjs, it) },
+        if (second != null && foes > 1) obj(b.offFoeObjs, 1) else null,
+    )
+    val foeParty = u32(head, b.offParties + 4)
+    val foeMons = if (inMain(foeParty)) {
+        val count = u32(r.readCoreMemory(foeParty + 4, 4), 0).toInt().coerceIn(0, PARTY_SIZE)
+        val raw = r.readCoreMemory(foeParty + 8, PARTY_SIZE * GEN4_MON_SIZE)
+        (0 until count).mapNotNull { decodeGen4PartyMon(raw, it * GEN4_MON_SIZE, cfg.maxSpecies, formSpecies = cfg.formSpecies) }
+    } else emptyList()
+    return Gen4BattleRead(
+        battlers.map { it?.first ?: EMPTY_BATTLE_MON }, battlers.map { it?.second ?: 0L }, foeMons,
+        type and GEN4_BATTLE_TRAINER != 0L, second != null,
+    )
 }
 
 /** Where the player is on the Town Map: their block, its place and the first-arrival flags (bit n = first arrival n). */
@@ -544,7 +778,7 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
         val off = slot * GEN4_MON_SIZE
         val personality = u32(partyRaw, off)
         val steady = (off until off + GEN4_MON_SIZE).all { partyRaw[it] == again[it] }
-        (if (steady) decodeGen4PartyMon(partyRaw, off) else null)?.also { lastGoodParty[slot] = it }
+        (if (steady) decodeGen4PartyMon(partyRaw, off, cfg.maxSpecies, formSpecies = cfg.formSpecies) else null)?.also { lastGoodParty[slot] = it }
             ?: lastGoodParty[slot]?.takeIf { it.personality == personality }
     }
     val items = readGen4Bag(r, cfg, body)
@@ -554,7 +788,7 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
     // The live map and position where the field has them (the save's Location only moves on a warp or a save).
     // (FieldSystem.location is the save's own Location, so its map id is live too; its x / z move only on a warp.)
     val mapHeader = map?.live?.first ?: u32(location, 0).toInt()
-    val battle = cfg.battle?.let { readGen4Battle(r, it) }
+    val battle = cfg.battle?.let { readGen4Battle(r, it) } ?: cfg.managedBattle?.let { readManagedBattle(r, it, cfg) }
     // HeartGold / SoulSilver: the Pokégear map - the player's cell (their block two rows down), its place, the flypoint
     // flags and the Pokégear's skin / unlock level ([PokegearMap]).
     val pgCell = if (cfg.pokegear != null) gen4PokegearBlock({ a, n -> r.readCoreMemory(a, n) }, cfg)?.let { (x, y) -> x to y + 2 } else null
@@ -578,6 +812,7 @@ fun readGen4Telemetry(r: MemoryReader, cfg: Gen4Config): Telemetry {
         frameCounter = 0,
         inBattle = battle != null,
         isDoubleBattle = battle?.doubles == true,
+        battleInputState = if (battle != null) cfg.battle?.let { readGen4BattleInput(r, it) } ?: BATTLE_INPUT_NONE else BATTLE_INPUT_NONE,
         mapGroup = 0,
         mapNum = mapHeader,
         regionMapSectionId = map?.place ?: pgCell?.let { (x, y) -> PokegearMap.placeAt(x, y) } ?: -1,

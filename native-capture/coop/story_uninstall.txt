@@ -1,0 +1,21 @@
+# Task 6 fix: a story hook still armed when the bridge goes out (linkuninstall) goes out with it. The hook's head patch jumps into the
+# bridge's ROM code area (0x08FFD000), which is erased by the uninstall: left in, the next trainer battle would jump into 0xFF bytes.
+# Armed for Roxanne (265): BattleSetup_StartTrainerBattle's first 8 bytes (0x080B17E0) are the head patch; after `linkuninstall` they are
+# the file's own again, the state is idle, and a trainer battle (ALLEN 333, a script of `trainerbattle`) starts as the game always does
+# (Task_BattleStart runs).
+# want: story: armed 1
+# want: story: state 1
+# want: story: state 0
+# want: PASS waittask
+storyarm 265
+expect32 0x080B17E0 0x47184B00
+storystate
+linkuninstall
+expect32 0x080B17E0 0x4803B510
+expect32 0x080B17E4 0x28027800
+storystate
+poke32 0x0203F400 0x014D035C
+poke32 0x0203F404 0x7DD40000
+poke32 0x0203F408 0x00020831
+call 0x08098EF8 0x0203F400
+waittask 0x080B05F0 300

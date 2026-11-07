@@ -1,0 +1,16 @@
+# Pokémon Let's Go Pikachu / Eevee: lets_go.txt (its save, CONTINUE), then a wild WOOLOO (species 315, its No. 300)
+# Lv 5: setwildbattle; dowildbattle; end (B6 3B01 05 0000 B7 02) at 0x0203F800 through rev 0's
+# ScriptContext_SetupScript (0x08069AE5, kept by the hack); dumped at the action menu.
+wait 1500
+hold START 6
+wait 150
+hold A 6
+wait 200
+hold A 6
+wait 300
+poke32 0x0203F800 0x05013BB6
+poke32 0x0203F804 0x02B70000
+call 0x08069AE5 0x0203F800
+wait 900
+hold A 4
+wait 400

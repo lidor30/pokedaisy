@@ -2,7 +2,7 @@
 title: Battles
 summary: The BATTLE tab's touch buttons, move verdicts, the INFO and SUGGESTIONS pages, the foe's team and switching Pokémon.
 section: companion
-order: 4
+order: 5
 keywords: [battle, fight, combat, trainer, wild, effectiveness, super effective, type chart, matchup, switch, swap, run, flee, foe, enemy, opponent, ability, held item, stat stages, boosts, ivs, shiny, sparkle, recommendation, best move, battle buttons, single screen, one screen, widescreen, side buttons]
 ---
 
@@ -27,7 +27,7 @@ What each button does:
 - `FIGHT` opens your four moves right away. Tap one to use it, or `CANCEL` to go back.
 - `BAG` opens the game's own bag on the top screen. Pick your item there; `BACK` on the companion backs out of it.
 - `POKéMON` opens your party on the companion to switch (see [Switching during a battle](#switching-during-a-battle)).
-- `RUN` runs away, and clears the "got away" message for you too.
+- `RUN` runs away, and clears the "got away" message for you too. Against a shiny Pokémon it only picks `RUN` and leaves the rest to you: if the game asks whether you're sure (Unbound does), answer on the game's own `YES` or `NO`. If it asks at another time, `RUN` answers yes.
 
 Elite Redux has no bag in its battle menu, so there the tab shows `RUN` and `POKéMON` side by side under `FIGHT`, with no `BAG`.
 
@@ -36,7 +36,9 @@ Elite Redux has no bag in its battle menu, so there the tab shows `RUN` and `POK
 
 ## Moves and their verdicts
 
-Each move card shows its name, type, power (`PWR`) and `PP` left, plus a verdict against the foe in plain words:
+In the original FireRed, LeafGreen and Emerald in English, type tags are the game's own, read from your ROM.
+
+Each move card shows its name, type, an icon for physical, special or status where the game's split is known, power (`PWR`) and `PP` left, plus a verdict against the foe in plain words (status moves deal no damage, so they have none):
 
 | Verdict | Meaning |
 | --- | --- |
@@ -48,6 +50,16 @@ Each move card shows its name, type, power (`PWR`) and `PP` left, plus a verdict
 | `NO PP` | Out of uses. You can't pick it. |
 
 ![The move grid: PAW SWIPE, WARY GLARE, CINDER SPIT and IRON NIP, each with its type, power, PP and verdict, and a CANCEL bar below](shots/companion-battle-moves.png "Picking a move")
+
+When you move the game's cursor with your buttons, the battle buttons show where it is with a ring. In Game Boy games and games without one-press picks, they don't.
+
+### BATTLE INFO
+
+Want to work the battle out yourself? Turn off `BATTLE INFO` in SETTINGS (COMPANION group). The `BATTLE` tab then has only your battle buttons: no `INFO`, no `SUGGESTIONS` and no ratings on your moves. In a double battle, or in the window over the game, it just reminds you to use the game's own menu.
+
+### BATTLE VIEW
+
+The `BATTLE` tab opens on your battle buttons. If you'd rather read about the fight first and use the game's own menu, set `BATTLE VIEW` to `INFO` in SETTINGS (COMPANION group). `BACK` on `INFO` still brings the buttons up.
 
 ### ONE-TAP MOVES
 
@@ -80,6 +92,19 @@ To give the foe the whole page, tap the button with the corner arrows at the bot
 ### Shiny foes
 
 When the wild Pokémon you're facing is shiny, the BATTLE tab says so with a gold `SHINY` plate at the top right, where a trainer's Poké Balls would be. On `INFO` its name gets a gold sparkle, and its icon shows in its shiny colours inside a gold frame. This works in the original FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language, and in the hacks [SHINY ODDS](controls.md#shiny-odds) lists, and goes well with it.
+
+### Battle focus
+
+Turn on `BATTLE FOCUS` in SETTINGS and `INFO` becomes one page that fits the screen, with nothing to scroll. It shows one Pokémon at a time:
+
+- Its sprite, its name with its types under it, and beside them its `ABILITY` and, under that, its `HELD ITEM`. HP and level are left out.
+- Its stats, with the same stage pills.
+- Its four moves, two by two, each with its verdict.
+- What it's `WEAK TO`, what it `RESISTS` and what it's `IMMUNE TO`.
+
+The button at the bottom right turns the page from the foe to your Pokémon and back. The column down the right of the page follows it: on the foe's side it's the trainer's team (balls until you've seen them), on yours it's your whole team, every one showing. Tap one to look at it; the one you're looking at gets the frame. Back sits under the column, so the page gets the whole height. `SUGGESTIONS` and `STATS` aren't on this page; turn `BATTLE FOCUS` off to get them back.
+
+In a trainer's double battle the page shows one foe at a time, the one on the left to start with. Both foes that are out show their icon in the column, and only the one you're looking at is framed. Tap the other to look at it, just as it is in the battle; a Pokémon that's out is never `UNSEEN`. Your side shows one of yours, the one on the left until you tap another.
 
 ### Foe IVs
 
@@ -114,7 +139,7 @@ Tap a Pokémon to send it in. PokeDaisy works the game's party menu for you, and
 
 The same pane appears when the game asks you to choose, for example after one of your Pokémon faints.
 
-This works in the Game Boy games too (Red, Blue, Yellow, PureRed, PureBlue, Gold, Silver, Crystal, Crystal Clear, Prism and Polished Crystal). There the game asks what to do with the Pokémon you picked, and PokeDaisy answers its switch option for you.
+This works in the Game Boy games too (Red, Blue, Yellow, Yellow Legacy, PureRed, PureBlue, Gold, Silver, Crystal, Crystal Legacy, Crystal Clear, Prism and Polished Crystal). There the game asks what to do with the Pokémon you picked, and PokeDaisy answers its switch option for you.
 
 ![The switch pane: the party in the game's slots, one Pokémon tagged BEST, EMBERPUP tagged OUT and GALEFINCH fainted, with Choose a POKéMON. and CANCEL below](shots/companion-battle-switch.png "Choosing who to send in")
 
@@ -127,6 +152,8 @@ On a device with one screen, held sideways, three buttons sit at the top right o
 - `RUN` runs away. It's greyed out in a trainer battle, where you can't.
 
 To close a list without picking, tap outside it or `CANCEL` under it. The buttons look like the BATTLE tab's and dim while the battle plays out. They slide in from the right edge as a battle starts, and slide away while a list is open or the game's own party or bag screen is up. They show in single battles of the games with touch buttons, and only when there's room beside the game: not with `ASPECT` on `STRETCH`, nor while the companion is locked open beside the game. To hide them, turn off `BATTLE BUTTONS` in SETTINGS (SCREEN group, on either screen).
+
+In HeartGold, SoulSilver, Platinum, Black, White, Black 2 and White 2 the battle stays wide, and its text box becomes a strip across the bottom of the screen: the game's question ("What will ... do?") at the far left, and the game's four buttons at the right, `FIGHT` and `BAG` over `POKéMON` and `RUN`. Each game keeps its own look: HeartGold's and SoulSilver's coloured buttons, Platinum's, Black's and White's dark buttons with coloured words, and Black 2's and White 2's black buttons outlined in colour, those last two's round battle panels laid out as the same four buttons. They work like the GBA games' menu: corners pulsing like the game's cursor mark your choice (red in HeartGold, SoulSilver and Platinum, pink in Black and White, white and red in Black 2 and White 2); move them with the D-pad and press A, or tap a button. `FIGHT` turns the strip into your four moves, drawn like the game's own move buttons: the name, the type and the PP, and in the corner how hard the move hits the foe (`2x`, `1x`, `½x` and so on). B, or the back button beside them, goes back. `BAG` and `POKéMON` open the game's own bag and party, floating over the battle once they've faded in, and when you're done there the buttons come back. This is while `DS LAYOUT` is on `ONE SCREEN`. With `BATTLE BUTTONS` off, or in a double battle, the game's own battle buttons float in instead. On `PICTURE IN PICTURE` the game's own buttons are already there in the corner, so you tap those.
 
 ## Turning the hints off
 

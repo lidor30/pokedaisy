@@ -1,0 +1,46 @@
+# Plan 6 Task 4: the ball rule in a joined link battle. Both wild foes are up (the AI trainers' Pokémon with the TRAINER flag cleared on
+# both cores, as in link_catch_partner): the partner picks USE on a POKé BALL in its bag and the bag says "There are two wild
+# POKéMON! You can't aim a BALL!" - the ball stays in the partner's bag (the count is the same) and the host's bag is untouched. The
+# battle goes on: no catch is recorded. Needs EMERALD_PARTNER_SAVE (`$PARTNER_SAVE`).
+#
+# want: PASS linkwait 2
+# want: PASS expectdelta b_ball -> b_ball2 = 0
+# want: PASS expectdelta a_ball -> a_ball2 = 0
+# want: link: caught by 0
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+bagqty b_ball 4
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+bagqty a_ball 4
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+poke32 0x02022FEC 0x800163
+on b
+waitmem32 0x03005D68 0x08057589 3000
+poke32 0x02022FEC 0x800163
+hold RIGHT 4
+linkrun 30
+hold A 4
+linkrun 120
+hold RIGHT 4
+linkrun 30
+hold A 4
+linkrun 30
+hold A 4
+linkrun 100
+shot /work/two_up_b.ppm
+bagqty b_ball2 4
+on a
+bagqty a_ball2 4
+linkcaught /work/none.bin
+expectdelta b_ball b_ball2 0
+expectdelta a_ball a_ball2 0

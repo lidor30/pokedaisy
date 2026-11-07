@@ -7,6 +7,7 @@ package com.pokedaisy.app.companion.data
 // Pokemon - Saphir-Edition (Germany).gba (sha1 5a087835...): English AXPE1's config, mapped.
 private val LEGACY_PORT_AXPD0 by lazy {
     LEGACY_NATIVE_SAPPHIRE.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'D',
         gameCode = "AXPD",
         trainerCard = null,
@@ -77,6 +78,7 @@ private val LEGACY_PORT_AXPD0 by lazy {
 // Pokemon - Saphir-Edition (Germany) (Rev 1).gba (sha1 7e6e034f...): English AXPE1's config, mapped.
 private val LEGACY_PORT_AXPD1 by lazy {
     LEGACY_NATIVE_SAPPHIRE.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'D',
         gameCode = "AXPD",
         trainerCard = null,
@@ -147,6 +149,7 @@ private val LEGACY_PORT_AXPD1 by lazy {
 // Pokemon - Sapphire Version (USA, Europe).gba (sha1 3ccbbd45...): English AXPE1's config, mapped.
 private val LEGACY_PORT_AXPE0 by lazy {
     LEGACY_NATIVE_SAPPHIRE.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'E',
         trainerCard = null,
         actionCursor = 0x02024E60L,
@@ -214,6 +217,7 @@ private val LEGACY_PORT_AXPE0 by lazy {
 // Pokemon - Version Saphir (France).gba (sha1 c269b569...): English AXPE1's config, mapped.
 private val LEGACY_PORT_AXPF0 by lazy {
     LEGACY_NATIVE_SAPPHIRE.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'F',
         gameCode = "AXPF",
         trainerCard = null,
@@ -284,6 +288,7 @@ private val LEGACY_PORT_AXPF0 by lazy {
 // Pokemon - Version Saphir (France) (Rev 1).gba (sha1 860e93f5...): English AXPE1's config, mapped.
 private val LEGACY_PORT_AXPF1 by lazy {
     LEGACY_NATIVE_SAPPHIRE.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'F',
         gameCode = "AXPF",
         trainerCard = null,
@@ -354,6 +359,7 @@ private val LEGACY_PORT_AXPF1 by lazy {
 // Pokemon - Versione Zaffiro (Italy).gba (sha1 f729dd57...): English AXPE1's config, mapped.
 private val LEGACY_PORT_AXPI0 by lazy {
     LEGACY_NATIVE_SAPPHIRE.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'I',
         gameCode = "AXPI",
         trainerCard = null,
@@ -425,6 +431,7 @@ private val LEGACY_PORT_AXPI0 by lazy {
 // Pokemon - Versione Zaffiro (Italy) (Rev 1).gba (sha1 73edf67b...): English AXPE1's config, mapped.
 private val LEGACY_PORT_AXPI1 by lazy {
     LEGACY_NATIVE_SAPPHIRE.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'I',
         gameCode = "AXPI",
         trainerCard = null,
@@ -496,6 +503,7 @@ private val LEGACY_PORT_AXPI1 by lazy {
 // Pocket Monsters - Sapphire (Japan).gba (sha1 3233342c...): English AXPE1's config, mapped.
 private val LEGACY_PORT_AXPJ0 by lazy {
     LEGACY_NATIVE_SAPPHIRE.copy(
+        pokemonStoragePtr = 0x0202FDBCL,
         language = 'J',
         gameCode = "AXPJ",
         trainerCard = null,
@@ -569,6 +577,7 @@ private val LEGACY_PORT_AXPJ0 by lazy {
 // Pocket Monsters - Sapphire (Japan) (Rev 1).gba (sha1 01f50967...): English AXPE1's config, mapped.
 private val LEGACY_PORT_AXPJ1 by lazy {
     LEGACY_NATIVE_SAPPHIRE.copy(
+        pokemonStoragePtr = 0x0202FDBCL,
         language = 'J',
         gameCode = "AXPJ",
         trainerCard = null,
@@ -642,6 +651,7 @@ private val LEGACY_PORT_AXPJ1 by lazy {
 // Pokemon - Edicion Zafiro (Spain).gba (sha1 3a648918...): English AXPE1's config, mapped.
 private val LEGACY_PORT_AXPS0 by lazy {
     LEGACY_NATIVE_SAPPHIRE.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'S',
         gameCode = "AXPS",
         trainerCard = null,
@@ -713,6 +723,7 @@ private val LEGACY_PORT_AXPS0 by lazy {
 // Pokemon - Edicion Zafiro (Spain) (Rev 1).gba (sha1 0fe9ad1e...): English AXPE1's config, mapped.
 private val LEGACY_PORT_AXPS1 by lazy {
     LEGACY_NATIVE_SAPPHIRE.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'S',
         gameCode = "AXPS",
         trainerCard = null,
@@ -784,6 +795,7 @@ private val LEGACY_PORT_AXPS1 by lazy {
 // Pokemon - Rubin-Edition (Germany).gba (sha1 1c2a5333...): English AXVE1's config, mapped.
 private val LEGACY_PORT_AXVD0 by lazy {
     LEGACY_NATIVE_RUBY.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'D',
         gameCode = "AXVD",
         trainerCard = null,
@@ -854,6 +866,7 @@ private val LEGACY_PORT_AXVD0 by lazy {
 // Pokemon - Rubin-Edition (Germany) (Rev 1).gba (sha1 424740be...): English AXVE1's config, mapped.
 private val LEGACY_PORT_AXVD1 by lazy {
     LEGACY_NATIVE_RUBY.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'D',
         gameCode = "AXVD",
         trainerCard = null,
@@ -924,6 +937,7 @@ private val LEGACY_PORT_AXVD1 by lazy {
 // Pokemon - Ruby Version (USA, Europe).gba (sha1 f28b6ffc...): English AXVE1's config, mapped.
 private val LEGACY_PORT_AXVE0 by lazy {
     LEGACY_NATIVE_RUBY.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'E',
         trainerCard = null,
         actionCursor = 0x02024E60L,
@@ -991,6 +1005,7 @@ private val LEGACY_PORT_AXVE0 by lazy {
 // Pokemon - Version Rubis (France).gba (sha1 a6ee9420...): English AXVE1's config, mapped.
 private val LEGACY_PORT_AXVF0 by lazy {
     LEGACY_NATIVE_RUBY.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'F',
         gameCode = "AXVF",
         trainerCard = null,
@@ -1061,6 +1076,7 @@ private val LEGACY_PORT_AXVF0 by lazy {
 // Pokemon - Version Rubis (France) (Rev 1).gba (sha1 ba888dfb...): English AXVE1's config, mapped.
 private val LEGACY_PORT_AXVF1 by lazy {
     LEGACY_NATIVE_RUBY.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'F',
         gameCode = "AXVF",
         trainerCard = null,
@@ -1131,6 +1147,7 @@ private val LEGACY_PORT_AXVF1 by lazy {
 // Pokemon - Versione Rubino (Italy).gba (sha1 2b313422...): English AXVE1's config, mapped.
 private val LEGACY_PORT_AXVI0 by lazy {
     LEGACY_NATIVE_RUBY.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'I',
         gameCode = "AXVI",
         trainerCard = null,
@@ -1202,6 +1219,7 @@ private val LEGACY_PORT_AXVI0 by lazy {
 // Pokemon - Versione Rubino (Italy) (Rev 1).gba (sha1 015a5d38...): English AXVE1's config, mapped.
 private val LEGACY_PORT_AXVI1 by lazy {
     LEGACY_NATIVE_RUBY.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'I',
         gameCode = "AXVI",
         trainerCard = null,
@@ -1273,6 +1291,7 @@ private val LEGACY_PORT_AXVI1 by lazy {
 // Pocket Monsters - Ruby (Japan).gba (sha1 5c5e5467...): English AXVE1's config, mapped.
 private val LEGACY_PORT_AXVJ0 by lazy {
     LEGACY_NATIVE_RUBY.copy(
+        pokemonStoragePtr = 0x0202FDBCL,
         language = 'J',
         gameCode = "AXVJ",
         trainerCard = null,
@@ -1346,6 +1365,7 @@ private val LEGACY_PORT_AXVJ0 by lazy {
 // Pocket Monsters - Ruby (Japan) (Rev 1).gba (sha1 971e0d67...): English AXVE1's config, mapped.
 private val LEGACY_PORT_AXVJ1 by lazy {
     LEGACY_NATIVE_RUBY.copy(
+        pokemonStoragePtr = 0x0202FDBCL,
         language = 'J',
         gameCode = "AXVJ",
         trainerCard = null,
@@ -1419,6 +1439,7 @@ private val LEGACY_PORT_AXVJ1 by lazy {
 // Pokemon - Edicion Rubi (Spain).gba (sha1 1f49f728...): English AXVE1's config, mapped.
 private val LEGACY_PORT_AXVS0 by lazy {
     LEGACY_NATIVE_RUBY.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'S',
         gameCode = "AXVS",
         trainerCard = null,
@@ -1490,6 +1511,7 @@ private val LEGACY_PORT_AXVS0 by lazy {
 // Pokemon - Edicion Rubi (Spain) (Rev 1).gba (sha1 9ac73481...): English AXVE1's config, mapped.
 private val LEGACY_PORT_AXVS1 by lazy {
     LEGACY_NATIVE_RUBY.copy(
+        pokemonStoragePtr = 0x020300A0L,
         language = 'S',
         gameCode = "AXVS",
         trainerCard = null,
@@ -1561,6 +1583,7 @@ private val LEGACY_PORT_AXVS1 by lazy {
 // Pokemon - Blattgruene Edition (Germany).gba (sha1 0802d1fb...): English BPGE0's config, mapped.
 private val LEGACY_PORT_BPGD0 by lazy {
     LEGACY_NATIVE_LEAFGREEN_REV0.copy(
+        pokemonStoragePtr = 0x03004F60L,
         language = 'D',
         gameCode = "BPGD",
         trainerCard = null,
@@ -1625,6 +1648,7 @@ private val LEGACY_PORT_BPGD0 by lazy {
 // Pokemon - Version Vert Feuille (France).gba (sha1 4b5758c1...): English BPGE0's config, mapped.
 private val LEGACY_PORT_BPGF0 by lazy {
     LEGACY_NATIVE_LEAFGREEN_REV0.copy(
+        pokemonStoragePtr = 0x03004F60L,
         language = 'F',
         gameCode = "BPGF",
         trainerCard = null,
@@ -1689,6 +1713,7 @@ private val LEGACY_PORT_BPGF0 by lazy {
 // Pokemon - Versione Verde Foglia (Italy).gba (sha1 a1dfea14...): English BPGE0's config, mapped.
 private val LEGACY_PORT_BPGI0 by lazy {
     LEGACY_NATIVE_LEAFGREEN_REV0.copy(
+        pokemonStoragePtr = 0x03004F60L,
         language = 'I',
         gameCode = "BPGI",
         trainerCard = null,
@@ -1754,6 +1779,7 @@ private val LEGACY_PORT_BPGI0 by lazy {
 // Pocket Monsters - LeafGreen (Japan).gba (sha1 5946f1b5...): English BPGE0's config, mapped.
 private val LEGACY_PORT_BPGJ0 by lazy {
     LEGACY_NATIVE_LEAFGREEN_REV0.copy(
+        pokemonStoragePtr = 0x03005050L,
         language = 'J',
         gameCode = "BPGJ",
         trainerCard = null,
@@ -1821,6 +1847,7 @@ private val LEGACY_PORT_BPGJ0 by lazy {
 // Pocket Monsters - LeafGreen (Japan) (Rev 1).gba (sha1 de9d5a84...): English BPGE0's config, mapped.
 private val LEGACY_PORT_BPGJ1 by lazy {
     LEGACY_NATIVE_LEAFGREEN_REV0.copy(
+        pokemonStoragePtr = 0x03004FB0L,
         language = 'J',
         gameCode = "BPGJ",
         trainerCard = null,
@@ -1888,6 +1915,7 @@ private val LEGACY_PORT_BPGJ1 by lazy {
 // Pokemon - Edicion Verde Hoja (Spain).gba (sha1 f9ebee5d...): English BPGE1's config, mapped.
 private val LEGACY_PORT_BPGS0 by lazy {
     LEGACY_NATIVE_LEAFGREEN_REV1.copy(
+        pokemonStoragePtr = 0x03004F60L,
         language = 'S',
         gameCode = "BPGS",
         trainerCard = null,
@@ -1958,6 +1986,8 @@ private val LEGACY_PORT_BPGS0 by lazy {
 // Pokemon - Feuerrote Edition (Germany).gba (sha1 18a3758c...): English BPRE0's config, mapped.
 private val LEGACY_PORT_BPRD0 by lazy {
     LEGACY_NATIVE_FIRERED_REV0.copy(
+        monPalettes = 0x082371DCL,
+        pokemonStoragePtr = 0x03004F60L,
         language = 'D',
         gameCode = "BPRD",
         trainerCard = null,
@@ -2022,6 +2052,8 @@ private val LEGACY_PORT_BPRD0 by lazy {
 // Pokemon - Version Rouge Feu (France).gba (sha1 fc663907...): English BPRE0's config, mapped.
 private val LEGACY_PORT_BPRF0 by lazy {
     LEGACY_NATIVE_FIRERED_REV0.copy(
+        monPalettes = 0x08231718L,
+        pokemonStoragePtr = 0x03004F60L,
         language = 'F',
         gameCode = "BPRF",
         trainerCard = null,
@@ -2086,6 +2118,8 @@ private val LEGACY_PORT_BPRF0 by lazy {
 // Pokemon - Versione Rosso Fuoco (Italy).gba (sha1 66a9d415...): English BPRE0's config, mapped.
 private val LEGACY_PORT_BPRI0 by lazy {
     LEGACY_NATIVE_FIRERED_REV0.copy(
+        monPalettes = 0x082303B0L,
+        pokemonStoragePtr = 0x03004F60L,
         language = 'I',
         gameCode = "BPRI",
         trainerCard = null,
@@ -2151,6 +2185,8 @@ private val LEGACY_PORT_BPRI0 by lazy {
 // Pocket Monsters - FireRed (Japan).gba (sha1 04139887...): English BPRE0's config, mapped.
 private val LEGACY_PORT_BPRJ0 by lazy {
     LEGACY_NATIVE_FIRERED_REV0.copy(
+        monPalettes = 0x081F68F0L,
+        pokemonStoragePtr = 0x03005050L,
         language = 'J',
         gameCode = "BPRJ",
         trainerCard = null,
@@ -2218,6 +2254,8 @@ private val LEGACY_PORT_BPRJ0 by lazy {
 // Pocket Monsters - FireRed (Japan) (Rev 1).gba (sha1 7c7107b8...): English BPRE0's config, mapped.
 private val LEGACY_PORT_BPRJ1 by lazy {
     LEGACY_NATIVE_FIRERED_REV0.copy(
+        monPalettes = 0x081F2108L,
+        pokemonStoragePtr = 0x03004FB0L,
         language = 'J',
         gameCode = "BPRJ",
         trainerCard = null,
@@ -2285,6 +2323,7 @@ private val LEGACY_PORT_BPRJ1 by lazy {
 // Pokemon - Edicion Rojo Fuego.gba (sha1 ab8f6bfe...): English BPRE1's config, mapped.
 private val LEGACY_PORT_BPRS0 by lazy {
     LEGACY_NATIVE_FIRERED_REV1.copy(
+        pokemonStoragePtr = 0x03004F60L,
         language = 'S',
         gameCode = "BPRS",
         trainerCard = null,

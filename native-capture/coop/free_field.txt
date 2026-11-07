@@ -1,0 +1,3 @@
+# pk_coop_partner_free on the free field (Route 101 after the boot): free 1, and the field flag 1.
+# want: free 1 field 1
+coopfree

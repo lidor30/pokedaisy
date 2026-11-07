@@ -1,0 +1,22 @@
+# A FRAME hold (id 109, Route101_EventScript_HideMapNamePopup) clears when the map changes: the game's own `warp` script
+# (at 0x0203F800: warp MAP_ROUTE102 (0, 17), warp id 0xFF, x 12, y 12; waitstate; end - like second_wild_water.txt's) takes the
+# player to Route 102. The warp script isn't a story event's, so the hook lets it through.
+# want: lock: held 109 kind 2
+# want: lock: held 0 kind 0
+lockinstall
+lockactive 1
+call 0x08098EF8 0x081EBCD5
+lockheld
+poke8 0x0203F800 0x39
+poke8 0x0203F801 0x00
+poke8 0x0203F802 0x11
+poke8 0x0203F803 0xFF
+poke8 0x0203F804 0x0C
+poke8 0x0203F805 0x00
+poke8 0x0203F806 0x0C
+poke8 0x0203F807 0x00
+poke8 0x0203F808 0x27
+poke8 0x0203F809 0x02
+call 0x08098EF8 0x0203F800
+wait 400
+lockheld

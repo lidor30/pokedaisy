@@ -1,0 +1,15 @@
+{$RELAY_HOST} {
+	handle /healthz {
+		reverse_proxy relay:8081
+	}
+	handle /v1/* {
+		# A client must not be able to set CF-Connecting-IP through Caddy (the relay runs TRUST_PROXY=forwarded here anyway).
+		reverse_proxy relay:8080 {
+			header_up -CF-Connecting-IP
+			header_up X-Real-IP {remote_host}
+		}
+	}
+	handle {
+		respond 404
+	}
+}

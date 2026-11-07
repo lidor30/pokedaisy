@@ -54,6 +54,9 @@ class MoneyTest {
         // Elite Redux's save in both builds: plain (it zeroes the encryption key), its trainer card shows BP instead.
         assertEquals(999_900L, money("elite_redux", NATIVE_ELITE_REDUX_V2_65_4_1B))
         assertEquals(999_900L, money("elite_redux_v2653", NATIVE_ELITE_REDUX_V2_65_3B))
+        // Monomyth's (the user's save): SaveBlock1 +0x494 XOR the key at SaveBlock2 +0x40.
+        assertEquals(1968L, money("monomyth", NATIVE_MONOMYTH))
+        assertEquals(1968L, money("monomyth_v1_1", NATIVE_MONOMYTH_V1_1))
         // Team Rocket Edition: Dragonsden's save: past 999,999 (its AddMoney caps at 99,999,999).
         assertEquals(3_000_000L, money("team_rocket", NATIVE_TEAM_ROCKET))
         // Wishes of Tomorrow's new game (its START menu: ₽3000), the randomizer one too.
@@ -65,6 +68,9 @@ class MoneyTest {
         assertEquals(163300L, money("ghost_grey", NATIVE_GHOST_GREY))
         assertEquals(163300L, money("ghost_grey_v102", NATIVE_GHOST_GREY))
         assertEquals(163300L, money("ghost_grey_v101", NATIVE_GHOST_GREY_V1_0_1))
+        // Let's Go's new game (its START menu's 3000 + a script's 3000).
+        assertEquals(6000L, money("lets_go_pikachu", NATIVE_LETS_GO_PIKACHU))
+        assertEquals(6000L, money("lets_go_eevee", NATIVE_LETS_GO_EEVEE))
         assertEquals(5000L, money("sword_shield_up", NATIVE_SWORD_SHIELD))
         assertEquals(13000L, money("gs_chronicles", NATIVE_GS_CHRONICLES))
         assertEquals(13000L, money("gs_chronicles_swapped", NATIVE_GS_CHRONICLES))

@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion.ui
 import com.pokedaisy.app.companion.data.guideId
 import com.pokedaisy.app.companion.data.gameGuide
 import com.pokedaisy.app.companion.data.isDsGame
+import com.pokedaisy.app.companion.data.isGen5
 import androidx.compose.animation.core.animateFloatAsState
 import androidx.compose.animation.core.tween
 import androidx.compose.foundation.Canvas
@@ -313,6 +314,14 @@ fun FieldHud(
     itemUse: ItemUse? = null,
     fly: FlyAction? = null,
     onOpenCompanion: (() -> Unit)? = null,
+    /** A DS game whose touch screen floats in (DS LAYOUT): TOUCH opens it by hand ([DsTouchWindow]); null = no button. */
+    onTouchScreen: (() -> Unit)? = null,
+    /** A DS game's touch screen is in the screen's bottom right corner (DS LAYOUT's LARGE + SMALL, PICTURE IN PICTURE): the
+     * corners layouts move the balls and buttons to the bottom left and the party under the minimap ([DsCornerLayout]). */
+    dsCorner: Boolean = false,
+    /** With [dsCorner]: the share of the picture's height, from its bottom, a touch screen covers there (PICTURE IN
+     * PICTURE): the party keeps above it, three to a row where two columns won't fit. */
+    dsClearBottom: Float = 0f,
     /** Where the game's picture is in this box (px; ORIGINAL / STRETCH / an overlay): the HUD stays inside it (RAILS
      * beside it). Null = the whole box (EXPAND). */
     frame: Rect? = null,
@@ -336,7 +345,9 @@ fun FieldHud(
     var pcNotice by remember { mutableStateOf<ItemNotice?>(null) }
     // Gone (the game closed): SETTINGS no longer hears of a screen too small for it.
     DisposableEffect(Unit) { onDispose { FieldHudFit.tight = false } }
-    LaunchedEffect(shown) { if (!shown) panel = null }
+    // WILD's KEEP OPEN: no dim, the game plays on under it, and it's back after a battle.
+    var wildKept by remember { mutableStateOf(false) }
+    LaunchedEffect(shown) { if (!shown) panel = null else if (wildKept) panel = FieldHudPanel.WILD }
     LaunchedEffect(closePanels) { if (closePanels != 0) panel = null }
     LaunchedEffect(openTick) {
         val (p, i) = openPanel ?: return@LaunchedEffect
@@ -404,7 +415,7 @@ fun FieldHud(
                 var repelFull by remember { mutableStateOf(0) }
                 if (repel <= 0) repelFull = 0
                 else if (repel > repelFull) repelFull = com.pokedaisy.app.companion.REPEL_KINDS.firstOrNull { it.second >= repel }?.second ?: repel
-                val parts = HudParts(snapshot, style, wildHere, m, onOpenCompanion, pc, repel, repelFull) { p, i ->
+                val parts = HudParts(snapshot, style, wildHere, m, onOpenCompanion, pc, repel, repelFull, onTouchScreen) { p, i ->
                     onTap()
                     if (p == FieldHudPanel.SUMMARY) summary = i
                     if (p == FieldHudPanel.BAG) bagPocket = i
@@ -438,8 +449,8 @@ fun FieldHud(
                             ) {
                                 Box(Modifier.fillMaxSize().hudScale(scale)) {
                                     when (style.layout) {
-                                        FieldHudLayout.CORNERS -> CornersLayout(parts, swapped = false)
-                                        FieldHudLayout.CORNERS_2 -> CornersLayout(parts, swapped = true)
+                                        FieldHudLayout.CORNERS -> if (dsCorner) DsCornerLayout(parts, dsClearBottom) else CornersLayout(parts, swapped = false)
+                                        FieldHudLayout.CORNERS_2 -> if (dsCorner) DsCornerLayout(parts, dsClearBottom) else CornersLayout(parts, swapped = true)
                                         else -> DockLayout(parts)
                                     }
                                 }
@@ -463,7 +474,7 @@ fun FieldHud(
             when (panel) {
                 FieldHudPanel.MAP -> HudMapPanel(snapshot, m, fly, close)
                 FieldHudPanel.BAG -> HudBagPanel(snapshot, m, itemUse, dock, top, inset, bagPocket, close)
-                FieldHudPanel.WILD -> HudWildPanel(snapshot, wildHere.orEmpty(), m, dock, top, inset, close)
+                FieldHudPanel.WILD -> HudWildPanel(snapshot, wildHere.orEmpty(), m, dock, top, inset, wildKept, { wildKept = !wildKept }) { wildKept = false; close() }
                 FieldHudPanel.SUMMARY -> HudSummaryPanel(snapshot, summary, { summary = it }, m, itemUse, close)
                 null -> Unit
             }
@@ -510,6 +521,8 @@ private class HudParts(
     val repel: Int,
     /** The steps it started from (the bar's whole). */
     val repelFull: Int,
+    /** Opens a DS game's touch screen over the game (DS LAYOUT); null = no button for it. */
+    val touch: (() -> Unit)?,
     /** Opens a panel; the index is the party member for SUMMARY, the pocket for BAG (-1: the first). */
     val open: (FieldHudPanel, Int) -> Unit,
 ) {
@@ -549,6 +562,45 @@ private fun CornersLayout(p: HudParts, swapped: Boolean) {
             if (p.ballsRow) HudBalls(p, vertical = false)
             if (swapped) RepelSteps(p)
             if (!swapped) HudButtons(p, vertical = false)
+        }
+    }
+}
+
+/** CORNERS with a DS game's touch screen in the bottom right corner: the minimap top right with the party under it in two
+ * columns, the balls over the buttons in the bottom left corner (the user's arrangement). Where the touch screen sits over
+ * the picture ([clearBottom], a share of its height) and two columns would reach it, the party goes three to a row. */
+@Composable
+private fun DsCornerLayout(p: HudParts, clearBottom: Float) {
+    val u = p.m.u
+    Box(Modifier.fillMaxSize().padding(u * 6)) {
+        SubcomposeLayout(Modifier.align(Alignment.TopEnd)) { c ->
+            val loose = c.copy(minWidth = 0, minHeight = 0)
+            val room = (c.maxHeight + 2 * (u * 6).roundToPx()) * (1f - clearBottom) - (u * 6).roundToPx()
+            fun column(perRow: Int) = subcompose(perRow) {
+                Column(horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(u * 4)) {
+                    if (p.map) HudMiniMap(p.snapshot, mapW = 104, mapH = 64, m = p.m) { p.open(FieldHudPanel.MAP, 0) }
+                    PartyColumns(p, perRow)
+                }
+            }.map { it.measure(loose) }
+            val two = column(2)
+            val placed = if (clearBottom > 0f && (two.maxOfOrNull { it.height } ?: 0) > room) column(3) else two
+            val w = placed.maxOfOrNull { it.width } ?: 0
+            layout(w, placed.maxOfOrNull { it.height } ?: 0) { placed.forEach { it.place(w - it.width, 0) } }
+        }
+        BallsAndButtons(p, Modifier.align(Alignment.BottomStart), alignment = Alignment.Start)
+    }
+}
+
+/** The party [perRow] to a row in a panel (a DS game's corners, [DsCornerLayout]). */
+@Composable
+private fun PartyColumns(p: HudParts, perRow: Int) {
+    if (p.party.isEmpty()) return
+    val u = p.m.u
+    Column(Modifier.hudPanel(u).padding(horizontal = u * 5, vertical = u * 4), verticalArrangement = Arrangement.spacedBy(u * 3)) {
+        p.party.withIndex().chunked(perRow).forEach { row ->
+            Row(horizontalArrangement = Arrangement.spacedBy(u * 3)) {
+                row.forEach { (i, mon) -> HudMonTile(mon, p.m, lead = i == 0) { p.open(FieldHudPanel.SUMMARY, i) } }
+            }
         }
     }
 }
@@ -655,7 +707,7 @@ private fun DockLayout(p: HudParts) {
 private fun DockBar(p: HudParts, party: Boolean, modifier: Modifier) {
     val u = p.m.u
     val mons = if (party) p.party else emptyList()
-    val buttons = p.bag || p.wildButton || p.companion != null || p.pc != null
+    val buttons = p.bag || p.wildButton || p.companion != null || p.pc != null || p.touch != null
     if (mons.isEmpty() && !p.ballsRow && p.repel <= 0 && !buttons) return
     Row(
         modifier.hudPanel(u).padding(horizontal = u * 5, vertical = u * 4),
@@ -910,6 +962,8 @@ private fun HudButtons(p: HudParts, vertical: Boolean, framed: Boolean = true, m
         }
         // The compact HUD ([CompactLayout]): no minimap, so the map from a button, right of WILD.
         if (mapButton && p.map) add { HudButton(MAP_ICON, MAP_COLORS, tk("MAP"), null, p.m, framed) { p.open(FieldHudPanel.MAP, 0) } }
+        // A DS game: its touch screen floating in over the game (the game's own one opens it by itself when it's wanted).
+        p.touch?.let { openTouch -> add { HudButton(TOUCH_ICON, TOUCH_COLORS, tk("TOUCH"), null, p.m, framed, onClick = openTouch) } }
         // One screen: the side panel's open tab, as one of these buttons while the HUD is up (SidePanel.tabInHud).
         p.companion?.let { openCompanion ->
             add { HudButton(COMPANION_ICON, mapOf('1' to ink.text), tk("COMPANION"), null, p.m, framed, onClick = openCompanion) }
@@ -963,9 +1017,9 @@ private fun HudMiniMap(
     val region = model?.sections?.get(snapshot.regionMapSectionId)?.region?.takeIf { it in model.images.indices }
     val bitmap = regionMapBitmap(region?.let { model.images[it] })
     val labelStyle = MapLabelStyle.of(snapshot.game)
-    // Black's Town Map: the player's figure, on their place's point (the reader's cell, [blackTownMap]'s points).
-    val black = snapshot.game == com.pokedaisy.app.companion.data.GameKind.BLACK
-    val head = regionMapBitmap(if (black) com.pokedaisy.app.companion.data.NdsArt.BLACK_PLAYER else labelStyle.headAsset(snapshot.playerGender, snapshot.game))
+    // Black's and White's Town Map: the player's figure, on their place's point (the reader's cell, [blackTownMap]'s points).
+    val black = snapshot.game.isGen5
+    val head = regionMapBitmap(if (black) com.pokedaisy.app.companion.data.NdsArt.gen5Player(snapshot.game) else labelStyle.headAsset(snapshot.playerGender, snapshot.game))
     val cursor = labelStyle.cursorColor
     val small = rememberGbaTextMetrics(0.75f)
     val name = snapshot.location.mapSecName
@@ -1050,26 +1104,31 @@ private const val HEAD = 16
  * window, which keeps the taps inside it; everything around that is the dim. The game keeps running.
  */
 @Composable
-internal fun HudPanelScrim(onClose: () -> Unit, alignment: Alignment, content: @Composable (window: Modifier) -> Unit) {
-    CompanionBackHandler(onBack = onClose)
+internal fun HudPanelScrim(onClose: () -> Unit, alignment: Alignment, clear: Boolean = false, content: @Composable (window: Modifier) -> Unit) {
+    // [clear]: the panel alone, no dim, and BACK and taps beside it stay the game's.
+    if (!clear) CompanionBackHandler(onBack = onClose)
     // Silent: a tap on a panel's empty part does nothing, so it makes no click either.
     val keep = Modifier.clickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = {})
+    val tapSource = remember { MutableInteractionSource() }
     Box(
-        Modifier.fillMaxSize().background(Color(0x66000000))
-            .soundClickable(interactionSource = remember { MutableInteractionSource() }, indication = null, onClick = onClose),
+        Modifier.fillMaxSize().then(
+            if (clear) Modifier
+            else Modifier.background(Color(0x66000000)).soundClickable(interactionSource = tapSource, indication = null, onClick = onClose),
+        ),
         contentAlignment = alignment,
     ) { content(keep) }
 }
 
 /** A panel's first line: its icon, title and CLOSE. */
 @Composable
-private fun PanelHeading(icon: List<String>, colors: Map<Char, Color>, title: String, m: GbaTextMetrics, onClose: () -> Unit) {
+private fun PanelHeading(icon: List<String>, colors: Map<Char, Color>, title: String, m: GbaTextMetrics, onClose: () -> Unit, extra: @Composable () -> Unit = {}) {
     val u = m.u
     val small = rememberGbaTextMetrics(0.75f)
     Row(verticalAlignment = Alignment.CenterVertically) {
         PixelArt(icon, colors, Modifier.size(u * 12))
         Spacer(Modifier.width(u * 4))
         GbaText(tr(title), ink.accent, ink.accentShadow, m, Modifier.weight(1f))
+        extra()
         GbaText(tr("CLOSE"), ink.muted, ink.shadow, small, Modifier.soundClickable(onClick = onClose).padding(u * 2))
     }
 }
@@ -1347,15 +1406,20 @@ private fun HudBagPanel(
 
 /** WILD: this map's wild Pokémon by method - icon, name (??? until seen), levels, how often, a ball once caught. */
 @Composable
-private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaTextMetrics, dock: Boolean, top: Boolean, inset: PaddingValues, onClose: () -> Unit) {
+private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaTextMetrics, dock: Boolean, top: Boolean, inset: PaddingValues, kept: Boolean, onKeep: () -> Unit, onClose: () -> Unit) {
     val u = m.u
     val small = rememberGbaTextMetrics(0.75f)
     val icon = hudIconSize(m)
     val (align, place) = panelPlace(dock, top, u, inset)
     val c = ink
-    HudPanelScrim(onClose, align) { window ->
+    HudPanelScrim(onClose, align, clear = kept) { window ->
         Column(place.width(u * 200).hudPanel(u).then(window).padding(u * 6), verticalArrangement = Arrangement.spacedBy(u * 2)) {
-            PanelHeading(GRASS_ICON, GRASS_COLORS, tk("WILD POKéMON"), m, onClose)
+            PanelHeading(GRASS_ICON, GRASS_COLORS, tk("WILD POKéMON"), m, onClose) {
+                GbaText(
+                    tr("KEEP OPEN"), if (kept) c.accent else c.muted, if (kept) c.accentShadow else c.shadow, small,
+                    Modifier.soundClickable(onClick = onKeep).padding(u * 2),
+                )
+            }
             GbaText(gameCase(snapshot.location.mapSecName).uppercase().replace('É', 'é'), c.muted, c.shadow, small)
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(u)) {
                 if (wild.isEmpty()) GbaText(tr("No wild POKéMON on this map."), c.text, c.shadow, small)
@@ -1482,6 +1546,29 @@ internal val COMPANION_ICON = listOf(
     "....11..",
     ".....11.",
     "......11",
+)
+
+/** A stylus on a touch screen: K outline, S the screen with an H glint, P the pen, T its tip. */
+internal val TOUCH_ICON = listOf(
+    "................",
+    "............KK..",
+    "...........KPPK.",
+    "..........KPPK..",
+    ".KKKKKKKKKPPKK..",
+    ".KSSSSSSSKPPKSK.",
+    ".KSHHSSSKPPKSSK.",
+    ".KSHSSSSKTKSSSK.",
+    ".KSSSSSSSKSSSSK.",
+    ".KSSSSSSSSSSSSK.",
+    ".KSSSSSSSSSSSSK.",
+    ".KSSSSSSSSSSSSK.",
+    ".KKKKKKKKKKKKKK.",
+    "................",
+    "................",
+    "................",
+)
+internal val TOUCH_COLORS = mapOf(
+    'K' to Color(0xFF202838), 'S' to Color(0xFF3070C8), 'H' to Color(0xFF90C8F8), 'P' to Color(0xFFD8D8E0), 'T' to Color(0xFFE85040),
 )
 
 /** A tuft of tall grass: K outline, G dark blades, L light ones. */

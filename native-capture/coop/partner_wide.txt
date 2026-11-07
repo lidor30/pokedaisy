@@ -1,0 +1,44 @@
+# The partner in EXPAND's margins (pk_wide.c drawPartner): the rebuild of the middle 240x160 must still equal the real frame
+# pixel for pixel while the hardware sprite is in it (widestats' "exact" count), and a partner past the screen's edge, which
+# the hardware can't hold (partnerinfo why 4), shows in the margin (wideshot, margin 40 a side: wide x = screen x + 40).
+# Player on Route 101 stands at screen x 112..128, y 56..88. Brendan's art from the user's own ROM (partner_draw.txt).
+# want: wide: 60 frames, 0 battle, 0 unverified (ambient edges), 0 with torn sprite lists; centre checked on 60: 60 exact
+# want: partnerinfo right: why 4
+# want: framediff right box 297,66-310,86
+# want: framediff left box 9,66-22,86
+# want: framediff wrap none
+# want: framediff none-past-margin none
+wideon 40
+wait 300                    # past the area-name popup (a BG0 sign the rebuild never draws: the middle differs under it by design)
+widecheck
+partnerset /repo/app/build/partner/brendan.bin
+partnernear 1 0 0 0 -1
+wait 30
+partnernear 1 0 36 0 39
+wait 30
+widestats
+savestate /work/a.ss
+partnernear 9 0 0 0 -1
+wait 2
+partnerinfo right
+wideshot /work/wide_right.ppm
+loadstate /work/a.ss
+partnernear -9 0 0 0 -1
+wait 2
+wideshot /work/wide_left.ppm
+loadstate /work/a.ss
+partnernear 30 0 0 0 -1
+wait 2
+wideshot /work/wide_far.ppm
+loadstate /work/a.ss
+partnerpos 0 0 0 0 0 -1 0
+wait 2
+wideshot /work/wide_without.ppm
+framediff /work/wide_right.ppm /work/wide_without.ppm right
+framediff /work/wide_left.ppm /work/wide_without.ppm left
+framediff /work/wide_far.ppm /work/wide_without.ppm none-past-margin
+loadstate /work/a.ss
+partnernear 24 0 0 0 -1
+wait 2
+wideshot /work/wide_wrap.ppm
+framediff /work/wide_wrap.ppm /work/wide_without.ppm wrap

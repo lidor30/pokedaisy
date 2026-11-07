@@ -105,6 +105,6 @@ object PartySlotLayout {
     // SpriteCB_BouncePartyMonIcon: the selected icon bobs y2 = -3 / +1 with its frame flips.
     const val ICON_BOUNCE_UP = -3; const val ICON_BOUNCE_DOWN = 1
     // sMonIconAnims frame durations (60Hz) by GetHPBarLevel: full, green,
-    // yellow, red; fainted = still.
+    // yellow, red; fainted = still. On screen a pose lasts longer: partyIconPoseMs.
     val ICON_FRAME_TICKS = intArrayOf(6, 8, 14, 22)
 }

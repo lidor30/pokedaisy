@@ -26,3 +26,15 @@ val POKEDEX_BLACK = PokedexTables(
     speciesCount = 650, nationalCount = 649, regionalCount = 156, regionName = "UNOVA",
     gen4 = GEN5_DEX_BLACK, categorySuffix = "Pokémon",
 )
+
+/** White's: Black's in every way but the pages' descriptions ([NdsArt.WHITE_DEX]). */
+val GEN5_DEX_WHITE = Gen4DexTables(NdsArt.WHITE_DEX, NdsArt.BLACK_FRONT, tmMovesBlack, tmCount = 95, lastSpecies = 649, gen5 = true)
+val POKEDEX_WHITE = POKEDEX_BLACK.copy(gen4 = GEN5_DEX_WHITE)
+
+/** Black 2's: its own pages and pictures from its cart ([NdsArt.BLACK2_DEX], [NdsArt.BLACK2_FRONT]: Black's machines and
+ * evolution methods) and its Unova Dex of 301 (VICTINI first, older POKéMON among them: [unovaDexBlack2]). */
+val GEN5_DEX_BLACK2 = Gen4DexTables(NdsArt.BLACK2_DEX, NdsArt.BLACK2_FRONT, tmMovesBlack, tmCount = 95, lastSpecies = 649, gen5 = true)
+val POKEDEX_BLACK2 = POKEDEX_BLACK.copy(regionalCount = 301, gen4 = GEN5_DEX_BLACK2)
+
+/** White 2's: Black 2's (the two carts' text, pictures and personal records are the same files). */
+val POKEDEX_WHITE2 = POKEDEX_BLACK2

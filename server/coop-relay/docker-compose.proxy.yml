@@ -1,0 +1,16 @@
+# For a host that already runs a reverse proxy (Nginx Proxy Manager, Traefik, ...): the relay only, no published
+# ports, on a Docker network the proxy container is also connected to. See README.md.
+services:
+  relay:
+    build: .
+    container_name: ${RELAY_CONTAINER:-coop-relay}
+    restart: unless-stopped
+    environment:
+      TRUST_PROXY: ${TRUST_PROXY:-forwarded}
+    networks:
+      - proxy
+
+networks:
+  proxy:
+    name: ${PROXY_NETWORK:?set PROXY_NETWORK to the proxy's Docker network}
+    external: true

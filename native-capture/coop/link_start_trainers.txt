@@ -1,0 +1,111 @@
+# Plan 6 Task 2: a joined two-trainer battle starts as a link battle on both games, from the field. The host (core A) walks into a
+# trainer script (trainerbattle ALLEN 333, then made the two-trainer form with CALVIN 318 as join_two_trainers.txt does) and is held
+# at Task_BattleStart's first state (linkhold = 1); on the partner's yes `linkstart 1` stops the task and starts the link battle
+# (pk_coop_link_host_go), the partner (core B) starts from its free field (`linkstart 0 2 333 318`, pk_coop_link_partner_go).
+#
+# What it checks: the host's gMain.savedCallback is CB2_EndTrainerBattle (0x080B1918 | 1) again and gTrainerBattleOpponent_A / _B are
+# the real ids 333 / 318 (begin writes them for the tower flow, which the game asks for names and pictures by id); both cores hold the
+# real trainers' parties at their own levels (ZIGZAGOON Lv 4 and TAILLOW Lv 3 at slots 0 / 1, POOCHYENA Lv 5 at slot 3: the tower's
+# "foes are Lv 50" rule is gone); gLinkPlayers[2] / [3] are the route trainers' names (ALLEN, CALVIN) on both cores and the lookups
+# the battle makes by id answer from gTrainers (picture 53, class 0x25: Youngster); a turn runs over the bridge and the party HP are the
+# same on both cores afterwards.
+#
+# want: coop: installed
+# want: link: hold 1
+# want: link: start 1
+# want: returned 0x35
+# want: returned 0x25
+# want: PASS linkwait 2
+# want: expectsame ep0 ep0b: PASS
+# want: expectsame php0 php0b: PASS
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+poke32 0x0203F400 0x014D035C
+poke32 0x0203F404 0x7DD40000
+poke32 0x0203F408 0x00020831
+coopinstall
+call 0x08098EF8 0x0203F400
+waittask 0x080B05F0 300
+poke32 0x02022FEC 0x00008009
+poke16 0x02038BCC 0x013E
+joinhold
+linkstart 1
+joinhold
+on b
+linkstart 0 2 333 318
+linkwait 2 2500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+expect32 0x030022C8 0x080B1919
+expect16 0x02038BCA 0x014D
+expect16 0x02038BCC 0x013E
+expectmonin 0x02024744 288
+expectmonin 0x020247A8 304
+expectmonin 0x02024870 286
+expect8 0x02024798 4
+expect8 0x020247FC 3
+expect8 0x020248C4 5
+expect32 0x02022A28 0xBFC6C6BB
+expect16 0x02022A2C 0xFFC8
+expect32 0x02022A44 0xD0C6BBBD
+expect16 0x02022A48 0xC8C3
+call 0x08162AA0 333
+call 0x08162BD8 318
+rangehash ep0 0x02024744 600
+on b
+waitmem32 0x03005D68 0x08057589 3000
+expectmonin 0x02024744 288
+expectmonin 0x020247A8 304
+expectmonin 0x02024870 286
+expect8 0x02024798 4
+expect32 0x02022A28 0xBFC6C6BB
+expect16 0x02022A2C 0xFFC8
+expect32 0x02022A44 0xD0C6BBBD
+expect16 0x02022A48 0xC8C3
+rangehash ep0b 0x02024744 600
+expectsame ep0 ep0b
+on a
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on a
+waitmem8 0x03005D23 1 3000
+waitmem32 0x03005D60 0x08057589 3000
+expectptr 0x020244A8 20 12 0x81
+on b
+waitmem32 0x03005D68 0x08057589 3000
+on a
+rangehash php0 0x02024542 2
+rangehash php3 0x0202466E 2
+rangehash ehp0 0x0202479A 2
+rangehash ehp1 0x020247FE 2
+rangehash ehp3 0x020248C6 2
+on b
+rangehash php0b 0x02024542 2
+rangehash php3b 0x0202466E 2
+rangehash ehp0b 0x0202479A 2
+rangehash ehp1b 0x020247FE 2
+rangehash ehp3b 0x020248C6 2
+expectsame php0 php0b
+expectsame php3 php3b
+expectsame ehp0 ehp0b
+expectsame ehp1 ehp1b
+expectsame ehp3 ehp3b
+linkinfo
+linkstate

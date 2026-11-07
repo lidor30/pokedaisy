@@ -22,12 +22,17 @@ for name in ('fieldSystemPtr', 'battleTemplate'):
 for name in ('offChild', 'offAppData', 'offBattleType', 'offBattleCtx', 'offBattleMons'):
     fields['battle_' + name] = number(battle_defaults, name)
 dex = (data / 'Gen4Dex.kt').read_text()
-fields['dexSize'] = int(re.search(r'val d = r.readCoreMemory\(body \+ off, (0x[0-9A-Fa-f]+)\)', dex)[1], 0)
+# Platinum's dex block size: the read's own, or its floor since other games' blocks came in (maxOf(size, 0x340)).
+fields['dexSize'] = int(re.search(r'val d = r.readCoreMemory\(body \+ off, (?:maxOf\(size, )?(0x[0-9A-Fa-f]+)\)', dex)[1], 0)
 fields['dexMagic'] = int(re.search(r'if \(magic != (0x[0-9A-Fa-f]+)L\)', dex)[1], 0)
-fields['dexMax'] = int(re.search(r'val seen = \(1\.\.(\d+)\)', dex)[1])
-assert 'bit(4 + 64, it)' in dex and 'bit(4, it)' in dex
+# Platinum's species count and flag size: its POKEDEX tables' nationalCount, Gen4Config's dexFlagBytes (Platinum keeps the
+# default), the seen flags after the caught ones (the reader went by config when Origin HeartGold came in).
+fields['dexMax'] = int(re.search(r'nationalCount = (\d+), regionalCount = \d+, regionName = "SINNOH"', dex)[1])
+flag_bytes = int(re.search(r'val dexFlagBytes: Int = (0x[0-9A-Fa-f]+|\d+)', reader)[1], 0)
+assert 'dexFlagBytes' not in config, 'Platinum sets its own dexFlagBytes'
+assert 'bit(4 + flagBytes, it)' in dex and 'bit(4, it)' in dex
 fields['dexCaughtBase'] = 4
-fields['dexSeenBase'] = 4 + 64
+fields['dexSeenBase'] = 4 + flag_bytes
 fields['bodyOff'] = number(reader, 'bodyOff')
 fields['monSize'] = number(reader, 'GEN4_MON_SIZE')
 fields['boxSize'] = number(reader, 'GEN4_BOX_SIZE')
@@ -154,7 +159,10 @@ pg = (data / 'PokegearMap.kt').read_text()
 pg_fields = re.search(r'data class Gen4Pokegear\((.*?)\n\)', reader, re.S)[1]
 for key in ('offPlayerAvatar','offAvatarMapObject','offObjectX','offObjectZ','offSpecialSpawn'):
     out.append(f'inline constexpr int pg_{key} = {number(pg_fields,key)};')
-out.append(f"inline constexpr int pg_fieldSystemPtr = {number(johto_config.split('pokegear =')[1], 'fieldSystemPtr')};")
+# HeartGold's sFieldSysPtr: gen4HeartGoldFamily's fieldSystemPtr parameter (its default), which its pokegear passes on.
+johto_params = reader.split('private fun gen4HeartGoldFamily(', 1)[1].split(') = Gen4Config(', 1)[0]
+assert 'fieldSystemPtr = fieldSystemPtr' in johto_config.split('pokegear =')[1]
+out.append(f"inline constexpr int pg_fieldSystemPtr = {number(johto_params, 'fieldSystemPtr')};")
 out.append(f"inline constexpr int pg_wordOff = {number(johto_config, 'pokegearWordOff')};")
 out.append(f"inline constexpr int pg_flagsOff = {number(johto_config, 'varsFlagsOff') + 2*number(johto_config, 'numVars')};")
 out.append(f"inline constexpr int pg_firstFlag = {number(pg,'FIRST_FLYPOINT_FLAG')};")
@@ -194,8 +202,15 @@ assert len(unova_species_types) == 649
 out.insert(-1, 'inline constexpr int unovaSpeciesTypes[][2] = {{-1,-1},'+
            ','.join('{%d,%d}' % unova_species_types[i] for i in range(1,650))+'};')
 generated = '\n'.join(out)+'\n'
+# --output: the libretro DS core's build writes it there; no flag: the Linux host's checked-in data_gen.h; --check: that
+# file matches (the Linux host's ds-generated-data test).
 parser = argparse.ArgumentParser()
-parser.add_argument('--output', type=Path, required=True)
+parser.add_argument('--output', type=Path)
+parser.add_argument('--check', action='store_true')
 args = parser.parse_args()
-dest = args.output
-dest.write_text(generated)
+dest = args.output or Path(__file__).with_name('data_gen.h')
+if args.check:
+    assert dest.read_text() == generated, 'Run python3 linux/dsperate/gen_data.py'
+else:
+    dest.write_text(generated)
+print('PASS DS data matches Android source declarations')

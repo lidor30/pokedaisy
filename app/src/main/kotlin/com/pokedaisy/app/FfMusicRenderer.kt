@@ -116,8 +116,11 @@ class FfMusicRenderer(
         prefetch.forEach { queue.offerLast(it) }
         if (fanfare?.hasOwn == false && fanfareSongId() != null) queue.offerFirst(FANFARE)
         if (click?.hasOwn == false) queue.offerFirst(CLICK)
+        // The click / fanfare and a song being heard come before converting old clips.
+        cache.prepare { stopped || queue.peekFirst().let { it is String || it === CLICK || it === FANFARE } }
         var prefetchLeft = prefetch.size
         var prefetchOk = true
+        var backgroundFull = false
         var core: RenderCore? = null
         try {
             while (!stopped) {
@@ -140,6 +143,13 @@ class FfMusicRenderer(
                 }
                 // A background song that failed on earlier launches too is left alone (it counts as done).
                 val givenUp = job is Int && cache.failures(job.toString()) >= MAX_SONG_FAILURES
+                // The cache's budget is full: the background pass stops for this launch, never marked done, and never
+                // pushes a song out (songs being heard still are recorded, and push out the ones played longest ago).
+                if (job is Int && songId != null && !givenUp && (backgroundFull || !cache.roomForBackground())) {
+                    if (!backgroundFull) Log.i("pokedaisy", "FF music: the cache is full - no more background songs this time")
+                    backgroundFull = true
+                    continue
+                }
                 val outcome = if (songId == null || givenUp) Outcome.CACHED
                 else (core ?: RenderCore(songs).also { core = it }).record(songs, songId, background = job is Int)
                 if (job is String && !cache.complete(job) && (songId == null || outcome == Outcome.FAILED || outcome == Outcome.ENDED)) {
@@ -291,9 +301,9 @@ class FfMusicRenderer(
         fun recordSfx(songs: M4aSongs, songId: Int, frames: Int, sink: GameClickSound?, label: String) {
             val fn = songs.songNumStart and 1L.inv()
             // MUS_DUMMY replaces whatever the title screen was playing with silence.
-            if (!MgbaCore.pkRenderForceSong(fn, MUS_DUMMY, 0)) return
+            if (!forceSong(fn, MUS_DUMMY, 0)) return
             repeat(SILENCE_FRAMES) { MgbaCore.pkRenderRunFrame(); MgbaCore.pkRenderReadAudio(scratch) }
-            if (!MgbaCore.pkRenderForceSong(fn, songId, 0)) return
+            if (!forceSong(fn, songId, 0)) return
             val buf = ShortArray(sampleRate * 2 * frames / 60 + scratch.size)
             var pos = 0
             repeat(frames) {
@@ -309,7 +319,7 @@ class FfMusicRenderer(
         /** Starts [songId] via the ROM's m4aSongNumStart; the key it plays under, once its tracks run. */
         private fun start(songs: M4aSongs, songId: Int): String? {
             val fn = songs.songNumStart and 1L.inv()
-            if (!MgbaCore.pkRenderForceSong(fn, M4aSongs.number(songId), M4aSongs.alt(songId))) return null
+            if (!forceSong(fn, M4aSongs.number(songId), M4aSongs.alt(songId))) return null
             // MPlayStart clears the player's status; the next sound tick marks its tracks playing.
             repeat(START_FRAMES) {
                 MgbaCore.pkRenderRunFrame()
@@ -317,6 +327,20 @@ class FfMusicRenderer(
                 FfMusicKey.current(reader)?.let { return it }
             }
             return null
+        }
+
+        /**
+         * Calls m4aSongNumStart, a frame at a time until the core lets it run: pk_call refuses while a frame ended inside
+         * the game's interrupt handler, not on the parked `b .` (Let's Go Pikachu's render core, after a long recording:
+         * every song after it "didn't start", 2026-11-03), as mgba_dump's `call` waits for.
+         */
+        private fun forceSong(fn: Long, number: Int, alt: Int): Boolean {
+            repeat(SAFE_CALL_FRAMES) {
+                if (MgbaCore.pkRenderForceSong(fn, number, alt)) return true
+                MgbaCore.pkRenderRunFrame()
+                MgbaCore.pkRenderReadAudio(scratch)
+            }
+            return false
         }
 
         fun close() {
@@ -337,6 +361,8 @@ class FfMusicRenderer(
         }.getOrNull() ?: return null
         // Recharged Yellow's song table is ordered like Emerald's: its sFanfares[0] (FANFARE_LEVEL_UP) is 367.
         if (com.pokedaisy.app.companion.data.isRechargedYellowRom(head)) return 367
+        // Monomyth v1.1 has Emerald's game code but a song table of its own: it borrows a fanfare, like v1.0.
+        if (String(head, 0xA0, 12, Charsets.US_ASCII) == "POKEMON MONO") return null
         return when (String(head, 0xAC, 3, Charsets.US_ASCII)) {
             "BPR", "BPG", "PUV" -> 257 // PUV: Ultra Violet, FireRed's song table
             "BPE", "AXV", "AXP" -> 367
@@ -385,6 +411,7 @@ class FfMusicRenderer(
         /** The background pass's cap: 10x real time (a frame every 1.67 ms). */
         const val BACKGROUND_FRAME_NANOS = 1_000_000_000L / 60 / 10
         const val START_FRAMES = 30                                   // up to half a second for a forced song to start
+        const val SAFE_CALL_FRAMES = 60                               // up to a second for a frame m4aSongNumStart may run in
         const val BOOT_FRAMES = 300                                   // ~5 s of game time at 60 fps
         const val MAX_BOOT_FRAMES = 1800                              // 30 s: waiting for the title music
         val WATCHDOG_FRAMES = 60 * (FfMusicCache.CAPTURE_SECONDS + 5)

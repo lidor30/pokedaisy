@@ -10,11 +10,11 @@ import java.util.zip.CRC32
 
 /** FLY's rules (Fly.kt) against a fake game, and FireRed rev 1's table against its ROM. */
 class FlyTest {
-    private class Game(tweak: (FlyFns) -> FlyFns = { it }) : GameCalls {
+    private class Game(stride: Int = 100, tweak: (FlyFns) -> FlyFns = { it }) : GameCalls {
         val zero = CRC32().apply { update(ByteArray(32)) }.value
         val fly = tweak(FLY_FIRERED_REV1.copy(codeCrcs = List(7) { zero }))
         val fns = FIELD_ITEMS_FIRERED_REV1.copy(
-            codeCrcs = List(5) { zero }, party = FIELD_ITEMS_FIRERED_REV1.party!!.copy(codeCrcs = List(5) { zero }), fly = fly,
+            codeCrcs = List(5) { zero }, party = FIELD_ITEMS_FIRERED_REV1.party!!.copy(codeCrcs = List(5) { zero }, monStride = stride), fly = fly,
         )
         val p = fns.party!!
         var locked = false
@@ -45,7 +45,9 @@ class FlyTest {
                 0
             }
             p.getMonData -> {
-                val (pid, moves, egg) = party[((a0.toLong() and 0xFFFFFFFFL) - p.party).toInt() / 100]
+                val off = ((a0.toLong() and 0xFFFFFFFFL) - p.party).toInt()
+                assertEquals("a call past the start of a Pokémon", 0, off % p.monStride)
+                val (pid, moves, egg) = party[off / p.monStride]
                 when (a1) { 0 -> pid; in 13..16 -> moves[a1 - 13].toLong(); 45 -> if (egg) 1 else 0; else -> error("field $a1") }
             }
             else -> -1
@@ -201,8 +203,10 @@ class FlyTest {
                 "Pokemon Lazarus (v2.0).gba" to GameKind.LAZARUS,
                 "Pokemon SoulGold (v1.1.4).gba" to GameKind.SOULGOLD, "Pokemon SoulGold (v1.2).gba" to GameKind.SOULGOLD,
                 "Pokemon SoulGold (v1.2) (Alt 1).gba" to GameKind.SOULGOLD,
-                "Pokemon SoulGold (v1.2) (Alt 2).gba" to GameKind.SOULGOLD)) read(name)?.let { r ->
-            // Exactly one candidate's code is in the ROM (SoulGold's four builds share the kind).
+                "Pokemon SoulGold (v1.2) (Alt 2).gba" to GameKind.SOULGOLD,
+                "Pokemon SoulGold (v1.2.1).gba" to GameKind.SOULGOLD,
+                "Pokemon SoulGold (v1.2.1) (Alt 1).gba" to GameKind.SOULGOLD)) read(name)?.let { r ->
+            // Exactly one candidate's code is in the ROM (SoulGold's builds share the kind).
             val matching = fieldItemsCandidatesForGame(kind, "BPEE", 0).filter { fieldItemCodeMatches(it, r) && flyCodeMatches(it.fly!!, r) }
             assertEquals(name, 1, matching.size)
             val t = matching.single()
@@ -261,5 +265,19 @@ class FlyTest {
             listOf("heal 7", "field", "heal 12", "field", "heal 11", "field", "heal 22", "field", "warp 0.13 -1", "field", "heal 13", "field"),
             calls,
         )
+    }
+
+    // A SoulGold player's report: FLY said nobody knew it. Its struct Pokemon is 96 bytes, and the search stepped 100.
+    @Test fun aFlyerPastTheLeadIsFoundAtTheGamesOwnStride() {
+        val g = Game(stride = 96)
+        val t = flyTargets(g.fns, busy = false, g)
+        assertEquals(FlyResult.OK, t.result)
+        assertEquals(1, t.flyerSlot)
+    }
+
+    @Test fun everySoulGoldBuildSteps96() {
+        for (f in listOf(FIELD_ITEMS_SOULGOLD, FIELD_ITEMS_SOULGOLD_V1_2, FIELD_ITEMS_SOULGOLD_V1_2B, FIELD_ITEMS_SOULGOLD_V1_2C, FIELD_ITEMS_SOULGOLD_V1_2_1)) {
+            assertEquals(NATIVE_SOULGOLD.monStride, f.party!!.monStride)
+        }
     }
 }

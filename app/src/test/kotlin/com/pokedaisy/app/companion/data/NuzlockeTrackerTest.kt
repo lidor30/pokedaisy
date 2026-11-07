@@ -15,6 +15,54 @@ class NuzlockeTrackerTest {
     private fun wild(vararg party: NuzlockePartyMon, foe: Int = 16, area: Int = 101, caught: Set<Int>? = setOf(4), trainer: Boolean? = false) =
         NuzlockeSample(true, trainer, area, "ROUTE $area", foe, "FOE$foe", party.toList(), caught)
 
+    /** A battle's first samples: the last battle's foe still in memory, the battle's menu not up yet. */
+    private fun opening(vararg party: NuzlockePartyMon, staleFoe: Int, area: Int = 101, caught: Set<Int>? = setOf(4)) =
+        wild(*party, foe = staleFoe, area = area, caught = caught).copy(menuUp = false)
+
+    @Test
+    fun theLastBattlesFoeIsNotThisBattlesEncounter() {
+        val t = NuzlockeTracker()
+        t.feed(field(starter))
+        val events = t.feed(opening(starter, staleFoe = 23))
+        assertTrue(events.isEmpty())
+        assertEquals(null, t.run.encounterAt(101))
+        t.feed(wild(starter, foe = 16))
+        assertEquals(16, t.run.encounterAt(101)?.species)
+        // The catch is seen, so it isn't marked missed (the report: every encounter MISSED).
+        t.feed(wild(starter, catch, foe = 16))
+        assertEquals(NuzlockeOutcome.CAUGHT, t.run.encounterAt(101)?.outcome)
+    }
+
+    @Test
+    fun aStaleFoeDoesNotCallTheDupesClause() {
+        val t = NuzlockeTracker(NuzlockeRun(rules = NuzlockeRules(dupes = true)))
+        t.feed(field(starter, caught = setOf(4, 23)))
+        assertTrue(t.feed(opening(starter, staleFoe = 23, caught = setOf(4, 23))).isEmpty())
+        val events = t.feed(wild(starter, foe = 16, caught = setOf(4, 23)))
+        assertFalse(events.any { it is NuzlockeEvent.Dupe })
+        assertEquals(16, t.run.encounterAt(101)?.species)
+    }
+
+    @Test
+    fun aGameWithNoBattleMenuReadStillGetsItsEncounter() {
+        val t = NuzlockeTracker()
+        t.feed(field(starter))
+        repeat(NuzlockeTracker.FOE_SAMPLES) { t.feed(opening(starter, staleFoe = 16)) }
+        assertEquals(null, t.run.encounterAt(101))
+        t.feed(opening(starter, staleFoe = 16))
+        assertEquals(16, t.run.encounterAt(101)?.species)
+    }
+
+    /** Past Gen 2 the game's species ids and the Pokédex's numbers differ: a catch sent to the PC is found by its number. */
+    @Test
+    fun aHoennCatchSentToThePcCountsByItsDexNumber() {
+        val t = NuzlockeTracker()
+        t.feed(field(starter))
+        t.feed(wild(starter, foe = 277).copy(foeDex = 252))
+        t.feed(wild(starter, foe = 277, caught = setOf(4, 252)).copy(foeDex = 252))
+        assertEquals(NuzlockeOutcome.CAUGHT, t.run.encounterAt(101)?.outcome)
+    }
+
     @Test
     fun theStartingPartyJoinsFromTheStart() {
         val t = NuzlockeTracker()

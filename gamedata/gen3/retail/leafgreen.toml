@@ -16,9 +16,13 @@ itemIconTable = 0x083D40D0
 pokedex = 'POKEDEX_LEAFGREEN_REV0'
 guideTables = 'GUIDE_TABLES_LEAFGREEN_REV0'
 trainerCard = 'TRAINER_CARD_FIRERED'
+# BOXES: FireRed's gPokemonStoragePtr (gSaveBlock2Ptr + 4), checked on both revisions' captures (every box
+# record's checksum held). Retail only: the Poller drops it for any other ROM under these codes.
+pokemonStoragePtr = 0x03005010
 
 [config.leafgreen_rev1]
 base = 'firered_rev1'
+pokemonStoragePtr = 0x03005010  # BOXES, as rev 0's
 itemDescs = { preset = 'vanilla', base = 0x083DAED4 }
 actionCursor = 0
 moveCursor = 0  # FireRed's, probably, but not checked on LeafGreen yet

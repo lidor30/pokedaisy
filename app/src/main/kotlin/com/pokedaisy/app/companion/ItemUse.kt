@@ -15,6 +15,12 @@ interface ItemUse {
     /** A Repel's steps in [repelVar]'s value [v]: without a Lure's bit (SoulGold keeps one there), 0 while a Lure works. */
     fun repelSteps(v: Int): Int = v
 
+    /** The party can be reordered here (a GBA game whose party read is known): drag on PARTY, SWITCH in the summary. */
+    fun canReorderParty(): Boolean = false
+
+    /** Party slots [a] and [b] trade places, as the game's party menu does. */
+    fun reorderParty(a: Int, b: Int, done: (com.pokedaisy.app.companion.data.PartySwapResult) -> Unit) {}
+
     /** Whether [itemId] gets a USE button in this game. */
     fun canUse(itemId: Int): Boolean
 
@@ -56,4 +62,35 @@ interface ItemUse {
 
     /** Opens the game's own PC on the field (USED = it's open; NOT_NOW / IN_BATTLE: not from here, now). */
     fun openPc(done: (ItemUseOutcome) -> Unit) = done(ItemUseOutcome(ItemUseResult.FAILED))
+
+    /** Whether the PC's moves work here (BoxSwap.kt): a box Pokémon's WITHDRAW / SWAP, a party one's DEPOSIT. */
+    fun canSwapBox(): Boolean = false
+
+    /** Swaps box [box]'s slot [slot] ([boxPersonality]) with party slot [partySlot] ([partyPersonality]) in the game. */
+    fun swapBox(
+        box: Int, slot: Int, boxPersonality: Long, partySlot: Int, partyPersonality: Long,
+        done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+    ) = done(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED)
+
+    /** DEPOSIT: party slot [partySlot] ([partyPersonality]) into box [box]'s first free slot in the game. */
+    fun depositToBox(
+        partySlot: Int, partyPersonality: Long, box: Int,
+        done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+    ) = done(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED)
+
+    /** TRADE EVOLUTIONS (TradeEvolution.kt): the setting is on and this game's evolution code is known. */
+    fun canTradeEvolve(): Boolean = false
+
+    /** The party Pokémon that would evolve by trade now, by personality: what each becomes (the game's own answer). */
+    fun tradeEvolveTargets(done: (Map<Long, Int>) -> Unit) = done(emptyMap())
+
+    /** Evolves party slot [slot] ([personality]) as a trade would: the game's evolution plays on the game's screen. */
+    fun tradeEvolve(slot: Int, personality: Long, done: (com.pokedaisy.app.companion.data.TradeEvoResult) -> Unit) =
+        done(com.pokedaisy.app.companion.data.TradeEvoResult.FAILED)
+
+    /** WITHDRAW: box [box]'s slot [slot] ([boxPersonality]) into the party in the game. */
+    fun withdrawFromBox(
+        box: Int, slot: Int, boxPersonality: Long,
+        done: (com.pokedaisy.app.companion.data.BoxSwapResult) -> Unit,
+    ) = done(com.pokedaisy.app.companion.data.BoxSwapResult.FAILED)
 }

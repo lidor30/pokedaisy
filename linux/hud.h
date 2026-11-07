@@ -47,6 +47,8 @@ bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snap
 /* DS uses the same HUD widgets with cartridge art and the companion's controller shortcuts. */
 typedef void (*hud_mon_draw_fn)(struct pd_canvas *, void *, const struct pd_mon *, int x, int y, bool faded);
 typedef bool (*hud_item_draw_fn)(struct pd_canvas *, int item, int x, int y);
+/* The party row alone in the default look, the canvas not cleared (the Linux host's DSperate backend). */
+void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx, hud_mon_draw_fn draw);
 void hud_ds_draw(struct pd_canvas *, const struct pd_snapshot *, const struct hud_state *,
                  const struct pd_settings *, void *, hud_mon_draw_fn, hud_item_draw_fn, int repelItem, bool minimal);
 

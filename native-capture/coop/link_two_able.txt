@@ -1,0 +1,35 @@
+# Plan 6 Task 2: the link battle sends a player's first three ABLE Pokemon: an egg and a fainted one never go. The partner (core B)
+# has four: MUDKIP made an egg (the box flags' egg bit), WURMPLE at 0 HP, then two ZIGZAGOON. Only the two ZIGZAGOON can fight, so
+# two go in: the partner's battle slots 3 / 4 hold ZIGZAGOON on both cores, slot 5 is empty and the egg is nowhere; after the battle
+# (`linkreset`) the partner's own party is back whole (count 4, MUDKIP the lead, still an egg). The host starts from its field as
+# coopbegin does, the partner through pk_coop_link_partner_go (`linkstart 0`).
+#
+# want: link: begin 1
+# want: link: start 1
+# want: PASS linkwait 2
+pair $PARTNER_SAVE
+on b
+@boot
+expect8 0x020244FF 2
+poke8 0x020244FF 6
+poke16 0x020245A6 0
+memcopy 0x020245B4 0x02024618 100
+poke8 0x020244E9 4
+on a
+coopbegin 1 2 333 318
+on b
+linkstart 0 2 333 318
+linkwait 2 2500
+expect8 0x020244E9 2
+expectmonin 0x02024618 288
+expectmonin 0x0202467C 288
+expectmonin 0x020246E0 0
+on a
+expectmonin 0x02024618 288
+expectmonin 0x0202467C 288
+expectmonin 0x020246E0 0
+on b
+linkreset
+expect8 0x020244E9 4
+expectmonin 0x020244EC 283
+expect8 0x020244FF 6

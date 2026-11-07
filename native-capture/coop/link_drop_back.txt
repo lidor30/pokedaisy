@@ -1,0 +1,59 @@
+# Plan 6 Task 7: a short drop. Both players pick their moves, then no block moves for 1800 frames (30 s) in either direction: the
+# game waits (no timeout, no link error: callback2 stays BattleMainCB2 0x08038421 on both cores, the bridge stays in the battle),
+# the turn does not complete. The line comes back: the queued blocks arrive in order (nothing refused), the turn completes
+# (the host's turn counter 0x03005D23 reaches 1) and both players are at the next action prompt, the battle still going.
+# (The leads get 999 HP like link_trainers.txt, so the first turn faints nobody.)
+# want: PASS linkwait 2
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+# FIGHT on both while the line is up (each game's move menu comes from the master), then the line goes down for the picks
+on a
+hold A 4
+linkrun 60
+on b
+hold A 4
+linkrun 60
+linkhold 1
+on a
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkrun 1800
+on a
+expect8 0x03005D23 0
+expect32 0x030022C4 0x08038421
+on b
+expect32 0x030022C4 0x08038421
+linkstate
+linkhold 0
+on a
+waitmem8 0x03005D23 1 3000
+waitmem32 0x03005D60 0x08057589 3000
+expect32 0x030022C4 0x08038421
+expect16 0x0203D00E 0
+on b
+waitmem32 0x03005D68 0x08057589 3000
+expect32 0x030022C4 0x08038421
+expect16 0x0203D00E 0
+linkstate
+linkinfo

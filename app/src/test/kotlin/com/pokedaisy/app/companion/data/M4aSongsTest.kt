@@ -74,6 +74,9 @@ class M4aSongsTest {
         val soulGold12b = songs(File(dir, "Pokemon SoulGold (v1.2) (Alt 1).gba").path)
         assertEquals(0x081A2915L, soulGold12b.songNumStart)
         assertEquals(0x09608658L, soulGold12b.songTable)
+        val soulGold121 = songs(File(dir, "Pokemon SoulGold (v1.2.1).gba").path)
+        assertEquals(0x081A5441L, soulGold121.songNumStart)
+        assertEquals(0x09642470L, soulGold121.songTable)
     }
 
     @Test fun heartAndSoulAlternateSoundtrack() {
@@ -91,6 +94,27 @@ class M4aSongsTest {
         assertEquals(0, M4aSongs.alt(559))
         // Both soundtracks are rendered in the background.
         assertTrue(559 in s.bgmSongIds && alt in s.bgmSongIds)
+    }
+
+    @Test fun monomyth() {
+        // Agbcc's m4aSongNumStart, but gSongTable's headers are stored top bit flipped. Headless (the user's save):
+        // CATSEAR CITY's music is the BGM player's 0x0983110C, and `call 0x08259d0c 638` on the parked render core
+        // (`park 0x0801179a`) starts it.
+        val s = songs(File(File(RomFileReader.FIRERED_REV1_PATH).parentFile, "Pokemon Monomyth (v1.0).gba").path)
+        assertEquals(0x08259D0DL, s.songNumStart)
+        assertEquals(0x08E3AE10L, s.songTable)
+        assertEquals(0x0801179AL, s.idleLoop)
+        assertEquals(638, s.songId("song_183110c"))
+        assertTrue(638 in s.bgmSongIds)
+    }
+
+    @Test fun monomythV1_1() {
+        // v1.0's sound engine and song list, moved, under Emerald's game code; the park address didn't move.
+        val s = songs(File(File(RomFileReader.FIRERED_REV1_PATH).parentFile, "Pokemon Monomyth (v1.1).gba").path)
+        assertEquals(0x0825A0CDL, s.songNumStart)
+        assertEquals(0x08E3B248L, s.songTable)
+        assertEquals(0x0801179AL, s.idleLoop)
+        assertTrue(638 in s.bgmSongIds)
     }
 
     @Test fun superMariomon() {

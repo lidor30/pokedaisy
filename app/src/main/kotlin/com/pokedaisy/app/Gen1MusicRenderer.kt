@@ -59,8 +59,10 @@ class Gen1MusicRenderer(
     private fun run() {
         val background = if (cache.prefetched) emptyList() else tables.songs.map { (b, id) -> Background(Gen1Music.key(b, id)) }
         background.forEach { queue.offerLast(it) }
+        cache.prepare { stopped || queue.peekFirst() is String }
         var left = background.size
         var allOk = true
+        var backgroundFull = false
         var core: Core? = null
         try {
             while (!stopped) {
@@ -71,6 +73,8 @@ class Gen1MusicRenderer(
                 if (job === STOP || stopped) break
                 val bg = job is Background
                 val key = if (job is Background) job.key else job as String
+                // The cache's budget is full: the background pass stops for this launch (FfMusicRenderer's rule).
+                if (bg && !cache.has(key) && (backgroundFull || !cache.roomForBackground())) { backgroundFull = true; continue }
                 // A background song that failed on earlier launches too is left alone (FfMusicRenderer's rule).
                 val outcome = if (cache.complete(key) || (bg && cache.has(key)) || (bg && cache.failures(key) >= 2)) Outcome.CACHED
                 else (core ?: Core().also { core = it }).record(key, bg)

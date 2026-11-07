@@ -33,6 +33,8 @@ const val POCKET_KEY_ITEMS = 4
 const val POCKET_MEDICINE = 5
 const val POCKET_MAIL = 6
 const val POCKET_BATTLE_ITEMS = 7
+// Team Rocket Edition 2026's own pocket (its bag's MEGAPIEDRAS): Mega Stones. It folds into ITEMS too.
+const val POCKET_MEGA_STONES = 8
 
 /** [pocket] as one of the five pockets every game has: Gen 4's MEDICINE / MAIL / BATTLE ITEMS ride with ITEMS. */
 fun basePocket(pocket: Int): Int = if (pocket >= POCKET_MEDICINE) POCKET_ITEMS else pocket
@@ -128,6 +130,10 @@ data class Telemetry(
     /** [enemyParty] index of the foe that's out, and of monToSwitchIntoId (its trainer's last pick); -1 = unknown. */
     val enemyActive: Int = -1,
     val enemyNext: Int = -1,
+    /** gBattlerPartyIndexes by battle position (BATTLE_POS_*); -1 = unknown. */
+    val battlerPartySlots: List<Int> = emptyList(),
+    /** The gEnemyParty slot of each [enemyParty] entry. They differ when empty slots were skipped. */
+    val enemyPartySlots: List<Int> = emptyList(),
     /** The player's money; null = not read for this game (see [readMoney]). */
     val money: Long? = null,
     /** The current map's size in metatiles and gMapHeader.mapType (see [readMapShape]); 0 / -1 = unknown. */
@@ -149,7 +155,15 @@ data class Telemetry(
     val townsVisited: Long? = null,
     /** HeartGold / SoulSilver: the Pokégear's skin << 2 | its map's unlock level ([PokegearMap]); null elsewhere. */
     val pokegearState: Int? = null,
+    /** The PC's boxes (the BOXES tab, [readPcBoxes]); null where the game's storage isn't mapped. */
+    val pcBoxes: PcBoxes? = null,
 )
+
+/** The PC's Pokémon storage: the box the PC opens on and every box, in order. */
+data class PcBoxes(val currentBox: Int, val boxes: List<PcBox>)
+
+/** One PC box: its name, wallpaper id and 30 slots (null = empty). */
+data class PcBox(val name: String, val wallpaper: Int, val mons: List<Mon?>)
 
 /** ROM addresses of the icon-graphics tables (0 = unknown). */
 data class IconTables(
@@ -185,6 +199,8 @@ data class IconTables(
     // gMonPaletteTable ({LZ77 palette, tag} per species), with gMonShinyPaletteTable right after it: a shared-palette icon's
     // shiny colours (decodeMonIcon). 0 = no shiny icons.
     val battlePalettes: Long = 0,
+    // gMonIconTable's entries are Monomyth's packed blobs ([MonomythIcons]), not raw tiles.
+    val monIconPacked: Boolean = false,
 ) {
     // Split per-kind: some hacks relocate one table but not the other (Gaia
     // keeps sItemIconTable at its vanilla address but moved gMonIconTable

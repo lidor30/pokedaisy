@@ -1,0 +1,23 @@
+# Uninstall with the lock active and a hold: the head patch and the block go (the ROM reads as the file, nothing of ours is left
+# at 0x08098EF8 / 0x08FFE000), the lock's RAM (0x0203F400-0x0203F4FF) is zero again, and the OBJECT script (id 6, 0x081FC7C2)
+# runs normally.
+# want: lock: held 6 kind 1
+# want: lock: uninstalled, rom patched: no
+# want: lock: held 0 kind 0
+# want: romcheck raw bus: 0 byte(s) differ
+# want: romcheck overlay: 0 byte(s) differ
+# want: romcheck swapped: 0 byte(s) differ
+lockinstall
+lockactive 1
+call 0x08098EF8 0x081FC7C2
+lockheld
+poke8 0x0203F4F0 0x77
+lockuninstall
+expect8 0x0203F400 0 256
+expect8 0x08FFE000 0xFF 16
+lockheld
+romcheck $EMERALD_ROM
+expect8 0x03000E41 0
+call 0x08098EF8 0x081FC7C2
+expect8 0x03000E41 1
+expect32 0x03000E48 0x081FC7C2

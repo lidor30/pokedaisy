@@ -32,6 +32,9 @@
 # recognizable potion-bottle icon.
 [config.amethyst]
 base = 'firered_rev0'
+# BOXES: Unbound's CFRU boxes (the game's SendMonToPC headless into boxes 1, 20, 23 and 25: `amethyst_boxes`).
+pokemonStoragePtr = 0x03005010
+pcStorage = 'AMETHYST_PC_STORAGE'
 itemDescs = { preset = 'vanilla', base = 0x0872DB0C }  # repointed; v1.4.1 keeps the address
 monIconTable = 0x09C018FC
 monIconPaletteIndices = 0x09C01408
@@ -61,6 +64,7 @@ moveCursor = 0x02023FFC
 # names / gender ratios are its own (ActiveTables' amethystV141).
 [config.amethyst_v1_4_1]
 base = 'amethyst'
+pcStorage = 'AMETHYST_V141_PC_STORAGE'  # its gBattleMoves moved
 monIconTable = 0x09AD8B50
 monIconPaletteIndices = 0x09AD8642
 pokedex = 'POKEDEX_AMETHYST_V1_4_1'

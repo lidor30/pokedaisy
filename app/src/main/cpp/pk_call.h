@@ -13,6 +13,8 @@ struct mCore;
 int pk_call(struct mCore* core, uint32_t fn, const uint32_t args[4], uint32_t* r0);
 /** Whether the game's code can be called now: parked on a `b .`, or waiting for VBlank at its main loop's depth. */
 int pk_call_safe(struct mCore* core);
+/** The step cap of this thread's pk_calls (2,000,000; the co-op save's call raises it: pk_coop_after.c); 0 = the default. */
+void pk_call_set_cap(long steps);
 /** Learns the main loop's depth: once after every frame the host runs (GBA only). */
 void pk_rest_note(struct mCore* core);
 /** Forgets it: a new game. */

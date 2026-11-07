@@ -54,6 +54,9 @@
 # other way around.
 [config.gaia_v3_2]
 base = 'firered_rev0'
+# BOXES: vanilla's 14 boxes, plaintext like its party (SendMonToPC headless into boxes 1 and 14: `gaia_boxes`).
+pokemonStoragePtr = 0x03005010
+pcStorage = 'PLAIN_PC_STORAGE'
 itemDescs = { preset = 'vanilla', base = 0x083DB028 }  # retail's address, its own text
 monIconTable = 0x0872A86C
 monIconPaletteIndices = 0x0872B870

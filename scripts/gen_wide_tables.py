@@ -164,6 +164,17 @@ HACKS = [
       for v, sha, save in [("v1.0.1", "20dfaea1d5317cf95fe0b493208edce7d50b865f", "ghost_grey_v101"),
                            ("v1.0.2", "74337272566a74625d6dedefe47d2d153eb48ec1", "ghost_grey_v102"),
                            ("v1.0.4", "0dafc0116b74406a2df491e26ccb40dd362fb0b7", "ghost_grey")]],
+    # Pokémon Let's Go Pikachu / Eevee (32 MB, each with a Translation Only build): FireRed rev 0 edited in place with rev
+    # 0's map groups, its object graphics table repointed (0x0880B9D0, the pool of rev 0's 0x0839FDB0); booted with its own
+    # new game's save (lets_go.txt: its long intro, CONTINUE).
+    *[dict(name=f"Let's Go {v}", sha1=sha, family="FR", mapped=True, save=save, boot_file="lets_go.txt",
+           a=dict(MAP_GROUPS=0x083526A8, OBJ_GFX_INFO=0x0880B9D0))
+      for v, sha, save in [("Pikachu", "62bb900925118796fb963b7df92d02cb548c404e", "lets_go_pikachu"),
+                           ("Pikachu (Translation Only)", "11f6ee3890a0aaeb95903471ec73413c846e86fc",
+                            "lets_go_pikachu_translation"),
+                           ("Eevee", "4a41d539cbf6108cfe3344db5ba997fc5660d77d", "lets_go_eevee"),
+                           ("Eevee (Translation Only)", "5b6146adec1a30f88c565e8f555ab7a578825598",
+                            "lets_go_eevee_translation")]],
     # Binary Emerald hacks: Emerald's code, mapped the same way.
     dict(name="Glazed 9.2.0", sha1="e10105d8544469c6a11ca2cf510289981df3c3b0", family="EM", mapped=True,
          save="glazed", a=dict(MAP_GROUPS=0x08486578)),
@@ -271,6 +282,25 @@ HACKS = [
           ("1.9.7", "ed60654d7525ba005bfc8f799bf0ecba2ef08a2e", "recharged_yellow", 0x081A5898, 0x030049AC,
            0x0200B6D4, 0x08B3F134, 0x03005AD0, 0x02005CD4, 0x0203BC04, 0x0203D110, 0x0203CD48,
            dict(OBJ_GFX_INFO=0x0887EE9C, CONTROLS_LOCKED=0x03005EC4, OBJ_PALETTES=0x08890458, ELEVATION_PRIO=0x088935F4, OBJ_FACING=0x0887E9C4))]],
+    # Monomyth v1.0: its own closed pokeemerald build (game code MONE), its own family (MM: Emerald's map and objects, its
+    # struct Main and camera). find_wide_addrs.py's walk (--pos 4: SaveBlock1's pos is 4 bytes in) gave the map, sprites
+    # and objects; sFieldCameraOffset 0x0203824C is four s16 (pixel x / y, tile x / y), its pans 0xC on (0 and 32 on the
+    # field); sLockFieldControls 0x0203BF67 is what its ArePlayerFieldControlsLocked (0x080907E4) reads, 1 under a scripted
+    # lockall and 0 after releaseall. gMain's callback1 0x02020618, inBattle 0x17 before it. gPlayerAvatar isn't after
+    # gObjectEvents (BIKE / SURF read N/A).
+    dict(name="Monomyth v1.0", sha1="ae1c4be9be8d706bb989602bc05731203d42860d", family="MM", save="monomyth",
+         boot_file="monomyth.txt", script=0x08090871,
+         a=dict(VMAP=0x0203823C, MAP_HEADER=0x02038210, MAP_GROUPS=0x0886EED8, SAVE_BLOCK1_PTR=0x03001240, SB1_POS=4,
+                CAMERA_OFFSET=0x0203824C, PAN_OFF=0xC, OBJECT_EVENTS=0x02038280, SPRITES=0x020214D0, COORD_OFFSET=0x02022DA8,
+                COORD_OFFSET_Y=0x02022DAA, SPRITE_ORDER=0x02022A54, GMAIN=0x02020618, CONTROLS_LOCKED=0x0203BF67,
+                METATILE_SIZE=24)),
+    # v1.1: v1.0's RAM, its map groups moved (and its ScriptContext_SetupScript).
+    dict(name="Monomyth v1.1", sha1="eb660caffbc26e1f09f86714d03af4c3eccd9e4d", family="MM", save="monomyth_v1_1",
+         boot_file="monomyth.txt", script=0x08090A61,
+         a=dict(VMAP=0x0203823C, MAP_HEADER=0x02038210, MAP_GROUPS=0x0886F3A8, SAVE_BLOCK1_PTR=0x03001240, SB1_POS=4,
+                CAMERA_OFFSET=0x0203824C, PAN_OFF=0xC, OBJECT_EVENTS=0x02038280, SPRITES=0x020214D0, COORD_OFFSET=0x02022DA8,
+                COORD_OFFSET_Y=0x02022DAA, SPRITE_ORDER=0x02022A54, GMAIN=0x02020618, CONTROLS_LOCKED=0x0203BF67,
+                METATILE_SIZE=24)),
     # pokeemerald-expansion builds: scripts/find_wide_addrs.py's dumps (gMapHeader, gSaveBlock1Ptr and gMapGroups from
     # the app's NativeConfig / GuideTables), ScriptContext_SetupScript from their battle fixtures' READMEs.
     dict(name="Lazarus v2.0", sha1="7dcdc7e280bc4631487e13dd37e6e0cea04adea6", family="EX", save="lazarus_srm",
@@ -311,6 +341,16 @@ HACKS = [
              COORD_OFFSET_Y=0x0203BABC, SPRITE_ORDER=0x0203BA78, GMAIN=0x030055C0, PAN_OFF=-4, METATILE_SIZE=24,
              METATILE_MASK=0x7FF, PRIMARY_OVERRIDE=1024, OBJ_GFX_INFO=0x084FF660, OBJ_PALETTES=0x084F7F00,
              OBJ_FACING=0x084F4860, ELEVATION_PRIO=0x084F4CD0, **SG_OBJECTS)),
+    # v1.2.1's two builds (2 bytes of item data apart): IWRAM as before, EWRAM moved (gMapHeader / gObjectEvents +8,
+    # the sprite globals -0xD8: their dumps against the third v1.2 build's), its own ROM data.
+    *[dict(name=f"SoulGold v1.2.1{n}", sha1=sha, family="EX", save=save, boot=["press B", "wait 30"] * 3, script=0x0823BC04,
+           a=dict(VMAP=0x03002F58, MAP_HEADER=0x02003830, MAP_GROUPS=0x095CC3A8, SAVE_BLOCK1_PTR=0x030040C4,
+                  CAMERA_OFFSET=0x03000CB8, OBJECT_EVENTS=0x0200331C, SPRITES=0x0203BE68, COORD_OFFSET=0x0203B9E2,
+                  COORD_OFFSET_Y=0x0203B9E4, SPRITE_ORDER=0x0203B9A0, GMAIN=0x030055C0, PAN_OFF=-4, METATILE_SIZE=24,
+                  METATILE_MASK=0x7FF, PRIMARY_OVERRIDE=1024, OBJ_GFX_INFO=0x085070EC, OBJ_PALETTES=0x084FF98C,
+                  OBJ_FACING=0x084FC2EC, ELEVATION_PRIO=0x084FC75C, **SG_OBJECTS))
+      for n, sha, save in [("", "32988f918ca09923466ae3bc5bbfe5f2a771c728", "soulgold_v121"),
+                           (" (second build)", "dacb6e40e7f572ddefd2dfa10e99c0da6835b062", "soulgold_v121b")]],
     # Elite Redux: its own gcc pokeemerald (not expansion) with expansion-like objects (a u16 graphicsId at +4,
     # spriteId +0x23; templates' graphicsId a u16 at +2, byte 1 padding - no clones) and R.O.W.E.'s maps (12-bit metatile
     # ids, 2048 primary metatiles). Its GetObjectEventGraphicsInfo (inlined): ids 271.. from VAR_OBJ_GFX_ID_* (vars at
@@ -331,7 +371,7 @@ HACKS = [
 ]
 FAMILY = {"BPR": "FR", "BPG": "FR", "BPE": "EM", "AXV": "RS", "AXP": "RS"}
 # Hacks under a game code of their own (only taken by SHA-1, as every hack).
-HACK_CODES = {"PUV"}
+HACK_CODES = {"PUV", "MON"}
 KOTLIN = os.path.join(ROOT, "app", "src", "main", "kotlin", "com", "pokedaisy", "app")
 
 

@@ -1,0 +1,12 @@
+# Task 8: pk_coop_save_game: the START menu's save steps (IncrementGameStat, PausePyramidChallenge, TrySavingData) from the field.
+# The game's in-game save lands in the save file when mgba_dump exits; `# second:` makes scripts/coop_headless_check.sh boot a
+# second time from that file (second/after_save_reboot.txt) and check the changes made here survived: trainer 100's flag set
+# (FlagGet 0x0809D790 on 0x564) and one POTION removed (2 left). `save 1` = TrySavingData answered SAVE_STATUS_OK.
+# second: after_save_reboot
+# want: save 1
+# want: flag 1
+# want: remove 1
+coopflag 100
+coopremove 13 1
+coopsave
+wait 120

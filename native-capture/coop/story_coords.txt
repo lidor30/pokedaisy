@@ -1,0 +1,10 @@
+# Plan 6 Task 8b: the coordinate system CoopStorySpots matches against. The app's own spot (pk_partner_self, pk_wide.c) is the player's
+# object event's currentCoords, which carry MAP_OFFSET (7); a story event's x / y (map.json, CoopStoryGen) do not. SaveBlock1.pos has no offset.
+# This prints both for the test save's player (gObjectEvents[0] currentCoords at +0x10 / +0x12; SaveBlock1 pos.x / pos.y at +0 / +2).
+# want: 02037360: 00190011
+# want: 02025a50: 0a
+# want: 02025a52: 12
+# Checked: currentCoords (17, 25) = SaveBlock1.pos (10, 18) + 7.
+peek32 0x02037360
+peek8p 0x03005D8C 0
+peek8p 0x03005D8C 2

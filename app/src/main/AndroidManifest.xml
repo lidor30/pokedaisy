@@ -21,14 +21,21 @@
         android:name="android.permission.WRITE_EXTERNAL_STORAGE"
         android:maxSdkVersion="29" />
 
-    <!-- Outbound HTTPS only: library cover art (Settings > Cover Art) from SteamGridDB's
+    <!-- Outbound HTTPS, and co-op's own traffic (see below): library cover art (Settings > Cover Art) from SteamGridDB's
          API with a user-supplied key (Prefs.steamGridDbApiKey / SteamGridDbClient) and
          RetroAchievements' box art; the update check against this app's GitHub releases
          (AppUpdater: api.github.com + GitHub's download host); RetroAchievements itself
          once the player signs in (achievements/RetroAchievements.kt); a BEST EFFORT match the player
          chose to SHARE (BestEffortShare: one Firestore write, the fields it showed). ASK FOR SUPPORT and
-         the footer links only open a browser. Nothing else. -->
+         the footer links only open a browser. Co-op (below) is the only other use. -->
     <uses-permission android:name="android.permission.INTERNET" />
+    <!-- SecondScreenHolder: the game's task back in front (and the buttons with it) after an AYANEO screen is held. -->
+    <uses-permission android:name="android.permission.REORDER_TASKS" />
+    <!-- TOUCH CONTROLS > VIBRATION's MEDIUM and STRONG: a press's buzz, stronger than the phone's own tick. -->
+    <uses-permission android:name="android.permission.VIBRATE" />
+    <!-- Co-op: QUIC to the paired partner, the co-op relay, and mDNS on the local network, and the BY IP hello (a small exchange with the device at the address the player typed), only while CO-OP is in use. -->
+    <uses-permission android:name="android.permission.ACCESS_NETWORK_STATE" />
+    <uses-permission android:name="android.permission.CHANGE_WIFI_MULTICAST_STATE" />
 
     <!-- In-app update: hands a downloaded release APK to Android's installer (AppUpdateFlow). -->
     <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
@@ -76,6 +83,8 @@
                 <data android:mimeType="*/*" android:pathPattern=".*\\.gbc" />
                 <!-- Nintendo DS, with TelemetrySampler.NDS_SUPPORT. -->
                 <data android:mimeType="*/*" android:pathPattern=".*\\.nds" />
+                <!-- A ROM hack's BPS patch: PATCH A ROM (RomPatchFlow). -->
+                <data android:mimeType="*/*" android:pathPattern=".*\\.bps" />
             </intent-filter>
         </activity>
 
@@ -93,6 +102,30 @@
             android:noHistory="true"
             android:taskAffinity=""
             android:theme="@style/Theme.PokeDaisy.Launch" />
+
+        <!-- AYANEO's bottom screen: an app opened there, so its launcher's panel steps aside for the companion. -->
+        <activity
+            android:name=".SecondScreenHolder"
+            android:exported="false"
+            android:launchMode="singleInstance"
+            android:excludeFromRecents="true"
+            android:taskAffinity=""
+            android:theme="@style/Theme.PokeDaisy" />
+
+        <!-- Co-op invite links (pokedaisy://coop/<ticket>): parsed, handed to Settings' pairing; reads nothing else (see CoopLinkActivity). -->
+        <activity
+            android:name=".CoopLinkActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:noHistory="true"
+            android:theme="@style/Theme.PokeDaisy.Launch">
+            <intent-filter>
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="pokedaisy" android:host="coop" />
+            </intent-filter>
+        </activity>
 
         <!-- Serves a downloaded update APK (cache/updates/) to the package installer. -->
         <provider
@@ -114,6 +147,14 @@
         <activity
             android:name=".SaveEditorActivity"
             android:exported="false"
+            android:theme="@style/Theme.PokeDaisy" />
+
+        <!-- LINK PLAY: two to four GBA games on one link cable (a game's library menu). configChanges keeps the games
+             running through a rotation or a controller connecting, as PokeDaisyActivity's. -->
+        <activity
+            android:name=".LinkActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
             android:theme="@style/Theme.PokeDaisy" />
 
         <!-- No screenOrientation: PokeDaisyActivity locks landscape itself with a second

@@ -1,0 +1,34 @@
+# Pokémon Monomyth v1.1: monomyth_trainer.txt with this build's ScriptContext_SetupScript (0x08090A61) and lose text (a
+# place name, 0x08A1663C): BUG CATCHER TIM's scripted battle on the v1.0 save, dumped at the action menu.
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press A
+wait 300
+poke32 0x0203c800 0x0001035c
+poke32 0x0203c804 0x663c0000
+poke32 0x0203c808 0x000208a1
+call 0x08090A61 0x0203c800
+wait 150
+press A
+wait 150
+press A
+wait 150
+press A
+wait 150
+press A
+wait 150

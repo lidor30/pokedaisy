@@ -1,0 +1,33 @@
+# Pokémon Monomyth v1.1: monomyth_battle.txt with this build's ScriptContext_SetupScript (0x08090A61): a scripted wild
+# POLIWAG Lv5 on the v1.0 save, dumped at the action menu.
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press A
+wait 300
+poke32 0x0203c800 0x050015b6
+poke32 0x0203c804 0x00000000
+poke32 0x0203c808 0x00000000
+poke32 0x0203c80c 0x000002b7
+call 0x08090A61 0x0203c800
+wait 150
+press A
+wait 150
+press A
+wait 150
+press A
+wait 150

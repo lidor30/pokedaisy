@@ -105,6 +105,8 @@ fun BattleInfoScreen(
     seenFoes: Set<Int> = emptySet(),
     shownFoe: Int = -1,
     foeHeading: String = "FOE",
+    /** The player has this species: the foe's card carries a ball, as the games' own battle box does (GitHub discussion #305). */
+    isCaught: (Int) -> Boolean = { false },
     onSelectFoe: (Int) -> Unit = {},
     onShowStats: (() -> Unit)? = null,
     foeDetails: Boolean = false,
@@ -122,8 +124,8 @@ fun BattleInfoScreen(
     SummaryFrame(
         m, onBack, modifier,
         buttons = {
-            TextNavButton(tr("SUGGESTIONS"), SuggestGold, SuggestGoldDark, onShowSuggestions)
-            if (onShowStats != null) TextNavButton(tr("STATS"), StatsPurple, StatsPurpleDark, onShowStats)
+            TextNavButton(tr("SUGGESTIONS"), SuggestGold, SuggestGoldDark, onClick = onShowSuggestions)
+            if (onShowStats != null) TextNavButton(tr("STATS"), StatsPurple, StatsPurpleDark, onClick = onShowStats)
         },
         middle = if (foeTeam.size > 1) ({ FoeTeamStrip(foeTeam, seenFoes, shownFoe, small, onSelectFoe) }) else null,
     ) {
@@ -135,7 +137,7 @@ fun BattleInfoScreen(
                 Row(Modifier.fillMaxWidth().height(IntrinsicSize.Min)) {
                     PlayerStripSprites(player, m, small, strip.fillMaxHeight().padding(end = gap))
                     Separator(m, Modifier.fillMaxHeight(), vertical = true)
-                    BattlerCards(foeHeading, foes, m, small, Modifier.weight(1f).padding(start = gap))
+                    BattlerCards(foeHeading, foes, m, small, Modifier.weight(1f).padding(start = gap), isCaught = isCaught)
                 }
                 Row(Modifier.fillMaxWidth().weight(1f)) {
                     PlayerStripHp(player, m, small, strip.fillMaxHeight().padding(end = gap, top = m.u * 4))
@@ -152,7 +154,7 @@ fun BattleInfoScreen(
                     BattlerCards(tk("YOU"), player, m, small, Modifier.weight(1f).padding(end = gap),
                         threats = if (showHints) opponent else emptyList())
                     Separator(m, Modifier.fillMaxHeight(), vertical = true)
-                    BattlerCards(foeHeading, foes, m, small, Modifier.weight(1f).padding(start = gap))
+                    BattlerCards(foeHeading, foes, m, small, Modifier.weight(1f).padding(start = gap), isCaught = isCaught)
                 }
                 Separator(m, Modifier.fillMaxWidth().padding(vertical = m.u * 2))
                 // 2 + 3. What to do about it.
@@ -247,26 +249,28 @@ private fun UprightHpBar(hp: Int, maxHp: Int, u: androidx.compose.ui.unit.Dp, mo
  * or lowered, and accuracy / evasion when they've moved. A Pokémon the trainer
  * hasn't sent out has no battle stats yet: its party stats stand in. Not [wide]
  * (INFO's half-width column): a line each for ability and item, stats three across.
+ * [abilityAndItem] off leaves out the ability and item (BATTLE FOCUS shows them in its header).
  */
 @Composable
-private fun FoeFacts(foe: MonView, dexTables: PokedexTables?, m: GbaTextMetrics, small: GbaTextMetrics, wide: Boolean) {
+internal fun FoeFacts(
+    foe: MonView, dexTables: PokedexTables?, m: GbaTextMetrics, small: GbaTextMetrics, wide: Boolean,
+    abilityAndItem: Boolean = true,
+) {
     val u = m.u
-    val ability = rememberLoaded(
-        foe.abilityName, dexTables, foe.abilityId,
-        cached = { foe.abilityName ?: dexTables?.let { PokedexSource.cachedAbilityName(it, foe.abilityId) } },
-        load = { dexTables?.let { PokedexSource.abilityName(it, foe.abilityId) } },
-    )
+    val ability = rememberFoeAbility(foe, dexTables).takeIf { abilityAndItem }
     // Attack, Defense, Speed, Sp. Atk, Sp. Def - the battle's, else the party struct's.
     val stats = foe.battleStats ?: foe.stats?.stats?.drop(1)
-    if (ability == null && foe.heldItem == null && stats == null) return
+    val item = foe.heldItem?.ifEmpty { tr("NONE") }?.takeIf { abilityAndItem }
+    if (ability == null && item == null && stats == null) return
     Column(verticalArrangement = Arrangement.spacedBy(u * 2)) {
-        val item = foe.heldItem?.ifEmpty { tr("NONE") }
-        if (wide) Row(verticalAlignment = Alignment.CenterVertically) {
-            ability?.let { FactPair(tr("ABILITY"), it, small, Modifier.weight(1f)) }
-            item?.let { FactPair(tr("HELD ITEM"), it, small, Modifier.weight(1f)) }
-        } else {
-            ability?.let { FactPair(tr("ABILITY"), it, small, Modifier.fillMaxWidth()) }
-            item?.let { FactPair(tr("HELD ITEM"), it, small, Modifier.fillMaxWidth()) }
+        if (abilityAndItem) {
+            if (wide) Row(verticalAlignment = Alignment.CenterVertically) {
+                ability?.let { FactPair(tr("ABILITY"), it, small, Modifier.weight(1f)) }
+                item?.let { FactPair(tr("HELD ITEM"), it, small, Modifier.weight(1f)) }
+            } else {
+                ability?.let { FactPair(tr("ABILITY"), it, small, Modifier.fillMaxWidth()) }
+                item?.let { FactPair(tr("HELD ITEM"), it, small, Modifier.fillMaxWidth()) }
+            }
         }
         if (stats != null && stats.size == 5) {
             // The summary's order: Attack, Defense, Sp. Atk, Sp. Def, Speed.
@@ -295,6 +299,14 @@ private fun FoeFacts(foe: MonView, dexTables: PokedexTables?, m: GbaTextMetrics,
         }
     }
 }
+
+/** The ability's name, read from the ROM if the battle didn't give one. */
+@Composable
+internal fun rememberFoeAbility(foe: MonView, dexTables: PokedexTables?): String? = rememberLoaded(
+    foe.abilityName, dexTables, foe.abilityId,
+    cached = { foe.abilityName ?: dexTables?.let { PokedexSource.cachedAbilityName(it, foe.abilityId) } },
+    load = { dexTables?.let { PokedexSource.abilityName(it, foe.abilityId) } },
+)
 
 @Composable
 private fun FactPair(label: String, value: String, small: GbaTextMetrics, modifier: Modifier) {
@@ -326,13 +338,14 @@ private fun BattlerCards(
     modifier: Modifier,
     /** The other side's Pokémon, for the [ThreatPill] (player side, hints on). */
     threats: List<MonView> = emptyList(),
+    isCaught: (Int) -> Boolean = { false },
 ) {
     val side = heading.substringBefore(" · ")
     val state = heading.substringAfter(" · ", "")
     Column(modifier, verticalArrangement = Arrangement.spacedBy(m.u * 3)) {
         if (mons.isEmpty()) GbaText(tr(side), OptionColors.value, OptionColors.valueShadow, small)
         mons.forEachIndexed { i, mon ->
-            BattlerCard(mon, compact = mons.size > 1, if (i == 0) side else null, state, m, small, threats)
+            BattlerCard(mon, compact = mons.size > 1, if (i == 0) side else null, state, m, small, threats, caught = isCaught(mon.species))
         }
     }
 }
@@ -348,6 +361,7 @@ internal fun BattlerCard(
     m: GbaTextMetrics,
     small: GbaTextMetrics,
     threats: List<MonView>,
+    caught: Boolean = false,
 ) {
     val u = m.u
     val icon = if (compact) 22 else 36
@@ -368,6 +382,7 @@ internal fun BattlerCard(
                     GbaText(mon.name, OptionColors.label, OptionColors.labelShadow, if (compact) small else m, modifier = Modifier.weight(1f, fill = false))
                     GenderMark(mon.genderSymbol, if (compact) small else m, Modifier.padding(start = u * 2))
                     if (mon.shiny) ShinySparkle(if (compact) small else m, Modifier.padding(start = u * 3))
+                    if (caught) PixelArt(PixelIcons.pokeBall, caughtBall, Modifier.padding(start = u * 3).size(u * 9))
                     if (compact) {
                         Spacer(Modifier.width(u * 4))
                         Stat(tr("Lv"), "${mon.level}", small)
@@ -453,6 +468,7 @@ internal fun BattleMoveRow(
             }
             Row(verticalAlignment = Alignment.CenterVertically) {
                 TypeBadge(mv.type)
+                MoveKindIcon(mv, m)
                 if (wideFont && showHints && foeCount <= 1) {
                     Spacer(Modifier.width(u * 4))
                     MoveVerdict(mv, foeCount, short = true, threat = threat)
@@ -676,7 +692,7 @@ internal fun FoeTeamStrip(
 /** One of the foe's party: its icon and level once seen (faded when fainted), else a
  * Poké Ball; [current] (the one the screen shows) gets a red frame. */
 @Composable
-private fun FoeSlot(mon: MonView, shown: Boolean, current: Boolean, small: GbaTextMetrics, cell: androidx.compose.ui.unit.Dp, onClick: () -> Unit) {
+internal fun FoeSlot(mon: MonView, shown: Boolean, current: Boolean, small: GbaTextMetrics, cell: androidx.compose.ui.unit.Dp, onClick: () -> Unit) {
     val u = small.u
     val noRipple = remember { MutableInteractionSource() }
     val focused by noRipple.collectIsFocusedAsState()

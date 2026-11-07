@@ -3,7 +3,8 @@ package com.pokedaisy.app.companion.data
 // Nintendo DS, Gen 5 (Black first): the companion's reads of the game's main RAM. There is no pret decomp for Gen 5, so
 // every address here came from headless captures of the retail cart (native-capture/nds_dump: dumps of the field, a text
 // box, the X menu, the party screen and a Battle Subway battle, diffed) and the cart's own files. The game keeps its whole
-// save image (the first 0x24000-byte copy of the save file, block for block) in one heap block and plays from it: the
+// save image (the save file's first copy, block for block: Black's 0x24000 bytes, Black 2's 0x26000) in one heap block
+// and plays from it: the
 // party, the bag, money, the Pokédex and the event flags change there as they change in the game. Its pointer is
 // save_control.c's static SaveControl -> its backup system -> the image.
 
@@ -13,6 +14,8 @@ data class Gen5Config(
     val saveControlPtr: Long,
     val offBackupSystem: Int = 0x10,
     val offImage: Int = 0x34,
+    /** The save image's size (the save file's first copy): Black / White's 0x24000, Black 2 / White 2's 0x26000. */
+    val imageSize: Int = 0x24000,
     /** Party { capacity, count, Pokemon[6] } (0xDC bytes each: Gen 4's struct and encryption). */
     val partyOff: Int = 0x18E00,
     /** The trainer block: name (UTF-16) +4, TID / SID +0x14, language +0x1E, version +0x1F, gender +0x21, play time +0x24. */
@@ -52,6 +55,13 @@ data class Gen5Config(
     val townMapZones: IntArray? = null,
     /** The Liberty Pass (its island shows on the Town Map once the bag holds it); 0 = none. */
     val libertyPass: Int = 0,
+    /** The Town Map's arrival flags: [Telemetry.townsVisited]'s bit n is flag [firstArrival] + n, for [arrivalCount]
+     * bits (Black's 2480 .. 2511; the sequels' run from 2469 to Victory Road's 2530). */
+    val firstArrival: Int = GEN5_FIRST_ARRIVAL,
+    val arrivalCount: Int = 32,
+    /** The regional dex's species (the reader's National Dex check: anything seen outside it); null = Black's Unova
+     * Dex, VICTINI .. GENESECT (494-649). */
+    val regionalDex: IntArray? = null,
 )
 
 /**
@@ -59,10 +69,25 @@ data class Gen5Config(
  * map ([x], [y]: the touch screen's pixels, where the game centres its sprites), its [kind] (0 a town, 1 a route, 2 a
  * place, 3 Victory Road, 4 Liberty Garden, 5 Unity Tower) and its arrival flag ([flag], -1 none).
  */
-data class Gen5TownMapPlace(val zone: Int, val place: Int, val x: Int, val y: Int, val kind: Int, val flag: Int, val shownBy: Int = -1)
+data class Gen5TownMapPlace(
+    val zone: Int, val place: Int, val x: Int, val y: Int, val kind: Int, val flag: Int,
+    /** Black 2 / White 2: what shows the place (its +0x20: a flag, 0xF00n one of the game's own checks); -1 always. */
+    val shownBy: Int = -1,
+)
 
 /** The Town Map's first arrival flag: [Telemetry.townsVisited]'s bit n is flag 2480 + n, as on Platinum. */
 const val GEN5_FIRST_ARRIVAL = 2480
+
+/** Black 2 / White 2's first arrival flag (Pokéstar Studios'; Nuvema Town's is 2472, Victory Road's 2530). */
+const val GEN5_BW2_FIRST_ARRIVAL = 2469
+
+/** [Telemetry.townsVisited]'s bits past the sequels' arrival flags (62 of them): the flags that show a Town Map place the
+ * story reveals (`Gen5TownMapPlace.shownBy` under 0xF000: N's Castle's 0x99F, the Abyssal Ruins' 0x9A0), in that order. */
+const val GEN5_BW2_SHOWN_BIT = 62
+
+/** The flags [GEN5_BW2_SHOWN_BIT] and on stand for, from [places]. */
+fun gen5ShownFlags(places: List<Gen5TownMapPlace>): List<Int> =
+    places.map { it.shownBy }.filter { it in 0 until 0xF000 }.distinct().sorted()
 
 /** [Telemetry.townsVisited]'s bit for the Liberty Pass in the bag (Liberty Garden's island on the Town Map). */
 const val GEN5_LIBERTY_PASS_BIT = 40
@@ -95,7 +120,65 @@ data class Gen5Battle(
      * member 0 (and 1 in a double) the ones out. */
     val offParties: Int = 0xCC,
     val partyStride: Int = 0x1C,
+    /** The main module's client 0 (the player's) and its adapter's command byte (3 while the player chooses, 5 a fainted
+     * Pokémon's party, 7 a prompt, 8 the turn playing). */
+    val offClient: Int = 0x10,
+    val offAdapter: Int = 0x50,
+    val offAdapterCommand: Int = 0x0F,
+    /** The touch screen ([readGen5BattleInput]): client -> btlv_core -> btlv_scd -> btlv_input (the heap names their source
+     * files); 0 = not read. */
+    val offView: Int = 0,
+    val offScd: Int = 0x180,
+    val offInput: Int = 0xB0,
+    /** btlv_input's slide task (non-NULL while its panel moves in or out: a tap then is lost) and its panel (1 the
+     * commands, 2 the moves, 4 a prompt); btlv_scd's "a panel is up" and the screen it opened (2 the bag, 3 the party: left
+     * as it was after, so only while the player chooses). */
+    val offSlide: Int = 0x08,
+    val offPanel: Int = 0x58,
+    val offWaiting: Int = 0x60,
+    val offSubscreen: Int = 0x98,
 )
+
+/**
+ * The battle's input state for BATTLE BUTTONS ([BATTLE_INPUT_*]), Black / White and their sequels (headless on the player's saves, frame by
+ * frame through FIGHT, CANCEL, a move, the bag, the party and a faint): while the adapter's command is the choice's (3),
+ * the commands / the moves once their panel has slid in (it takes no touch before), the bag / the party by the screen the panel opened; command 5
+ * is a fainted Pokémon's party. Anything else in a battle is BUSY; no battle is NONE.
+ */
+fun readGen5BattleInput(r: MemoryReader, b: Gen5Battle): Int {
+    if (b.offView == 0) return BATTLE_INPUT_NONE
+    fun p(a: Long) = u32(r.readCoreMemory(a, 4), 0)
+    val gs = p(b.gameSystemPtr)
+    if (!inMain(gs)) return BATTLE_INPUT_NONE
+    val ps = p(gs + b.offProcSys)
+    val proc = if (inMain(ps)) p(ps + b.offCurrentProc) else 0
+    if (!inMain(proc) || p(proc + b.offProcOverlay) != b.battleOverlay.toLong()) return BATTLE_INPUT_NONE
+    val main = p(proc + b.offProcWork)
+    val client = if (inMain(main)) p(main + b.offClient) else 0
+    val adapter = if (inMain(client)) p(client + b.offAdapter) else 0
+    if (!inMain(adapter)) return BATTLE_INPUT_BUSY
+    val command = u8(r.readCoreMemory(adapter + b.offAdapterCommand, 1), 0)
+    if (command == GEN5_ACMD_PARTY) return BATTLE_INPUT_PARTY_OPEN
+    if (command != GEN5_ACMD_SELECTING) return BATTLE_INPUT_BUSY
+    val view = p(client + b.offView)
+    val scd = if (inMain(view)) p(view + b.offScd) else 0
+    val input = if (inMain(scd)) p(scd + b.offInput) else 0
+    if (!inMain(input)) return BATTLE_INPUT_BUSY
+    val panel = u8(r.readCoreMemory(input + b.offPanel, 1), 0)
+    val s = r.readCoreMemory(scd + b.offWaiting, b.offSubscreen - b.offWaiting + 1)
+    val waiting = u8(s, 0) != 0 && p(input + b.offSlide) == 0L
+    return when {
+        panel == 1 -> if (waiting) BATTLE_INPUT_ACTION_SELECT else BATTLE_INPUT_BUSY
+        panel == 2 -> if (waiting) BATTLE_INPUT_MOVE_SELECT else BATTLE_INPUT_BUSY
+        u8(s, b.offSubscreen - b.offWaiting) == 2 -> BATTLE_INPUT_BAG_OPEN
+        u8(s, b.offSubscreen - b.offWaiting) == 3 -> BATTLE_INPUT_PARTY_OPEN
+        else -> BATTLE_INPUT_BUSY
+    }
+}
+
+/** BTL_ACMD_*: the player chooses (the commands, the moves, the bag, the party); a fainted Pokémon's replacement. */
+private const val GEN5_ACMD_SELECTING = 3
+private const val GEN5_ACMD_PARTY = 5
 
 private fun u8(b: ByteArray, o: Int) = b[o].toInt() and 0xFF
 private fun u16(b: ByteArray, o: Int) = u16le(b, o)
@@ -116,7 +199,7 @@ fun gen5Image(r: (Long, Int) -> ByteArray, cfg: Gen5Config): Long {
     val bs = u32(r(sc + cfg.offBackupSystem, 4), 0)
     if (!inMain(bs)) return -1
     val img = u32(r(bs + cfg.offImage, 4), 0)
-    return if (img in MAIN_RAM until MAIN_RAM_END - 0x24000) img else -1
+    return if (img in MAIN_RAM until MAIN_RAM_END - cfg.imageSize) img else -1
 }
 
 /** Zone [zone]'s place name in the cart's own words, else the US game's. */
@@ -173,8 +256,10 @@ fun readGen5PokedexState(r: MemoryReader, cfg: Gen5Config, img: Long): PokedexSt
     fun bit(base: Int, n: Int) = (d[base + (n - 1) / 8].toInt() shr ((n - 1) % 8)) and 1 != 0
     val caught = (1..cfg.maxSpecies).filter { bit(8, it) }.toSet()
     val seen = (1..cfg.maxSpecies).filter { n -> n in caught || (1..4).any { bit(8 + setBytes * it, n) } }.toSet()
-    // Black's Unova Dex holds only Unova's own (VICTINI .. GENESECT, 494-649): anything older seen means the National Dex.
-    val national = seen.any { it < 494 }
+    // Black's Unova Dex holds only Unova's own (VICTINI .. GENESECT, 494-649); the sequels' has 301, older ones among them:
+    // anything seen outside it means the National Dex.
+    val regional = cfg.regionalDex?.toHashSet()
+    val national = seen.any { if (regional != null) it !in regional else it < 494 }
     return PokedexState(tables, seen, caught, national)
 }
 
@@ -190,8 +275,9 @@ private fun decodeGen5BattleMon(b: ByteArray, o: Int): BattleMon {
         level = u8(b, o + 0x18),
         type1 = gen5Type(u8(b, o + 0xF8)),
         type2 = gen5Type(u8(b, o + 0xF9)),
-        hp = u16(b, o + 0x0E),
-        maxHp = u16(b, o + 0x10),
+        // Max HP first (headless: a Pokémon fainted in White read 245 then 0).
+        hp = u16(b, o + 0x10),
+        maxHp = u16(b, o + 0x0E),
         status1 = 0,
         moves = IntArray(4) { u16(b, o + 0x104 + it * 14) },
         pp = IntArray(4) { u8(b, o + 0x104 + it * 14 + 2) },
@@ -235,7 +321,7 @@ private fun readGen5Battle(r: MemoryReader, b: Gen5Battle): Gen5BattleRead? {
     val foes = if (inMain(foeParty)) {
         val count = u32(r.readCoreMemory(foeParty + 4, 4), 0).toInt().coerceIn(0, PARTY_SIZE)
         val raw = r.readCoreMemory(foeParty + 8, PARTY_SIZE * GEN5_MON_SIZE)
-        (0 until count).mapNotNull { decodeGen4PartyMon(raw, it * GEN5_MON_SIZE, 649) }
+        (0 until count).mapNotNull { decodeGen4PartyMon(raw, it * GEN5_MON_SIZE, 649, GEN5_MON_SIZE) }
     } else emptyList()
     return Gen5BattleRead(mons, foes, foeOut.takeIf { it in foes.indices } ?: -1, competitor != 0, doubles)
 }
@@ -252,7 +338,7 @@ fun readGen5Telemetry(r: MemoryReader, cfg: Gen5Config): Telemetry {
         val off = slot * GEN5_MON_SIZE
         val personality = u32(partyRaw, off)
         val steady = (off until off + GEN5_MON_SIZE).all { partyRaw[it] == again[it] }
-        (if (steady) decodeGen4PartyMon(partyRaw, off, cfg.maxSpecies) else null)?.also { lastGoodParty[slot] = it }
+        (if (steady) decodeGen4PartyMon(partyRaw, off, cfg.maxSpecies, GEN5_MON_SIZE) else null)?.also { lastGoodParty[slot] = it }
             ?: lastGoodParty[slot]?.takeIf { it.personality == personality }
     }
     val items = readGen5Bag(r, cfg, img)
@@ -271,7 +357,10 @@ fun readGen5Telemetry(r: MemoryReader, cfg: Gen5Config): Telemetry {
     val town = cfg.townMapZones?.getOrNull(zone)?.let { cfg.townMapPlaces.getOrNull(it) }
     val arrivals = progress?.let { p ->
         var bits = 0L
-        for (n in 0 until 32) if (p.flag(GEN5_FIRST_ARRIVAL + n)) bits = bits or (1L shl n)
+        for (n in 0 until cfg.arrivalCount) if (p.flag(cfg.firstArrival + n)) bits = bits or (1L shl n)
+        if (cfg.firstArrival == GEN5_BW2_FIRST_ARRIVAL) for ((k, flag) in gen5ShownFlags(cfg.townMapPlaces).withIndex()) {
+            if (GEN5_BW2_SHOWN_BIT + k < 64 && p.flag(flag)) bits = bits or (1L shl (GEN5_BW2_SHOWN_BIT + k))
+        }
         if (cfg.libertyPass != 0 && items.any { it.itemId == cfg.libertyPass }) bits = bits or (1L shl GEN5_LIBERTY_PASS_BIT)
         bits
     }
@@ -279,6 +368,7 @@ fun readGen5Telemetry(r: MemoryReader, cfg: Gen5Config): Telemetry {
         frameCounter = 0,
         inBattle = battle != null,
         isDoubleBattle = battle?.doubles == true,
+        battleInputState = if (battle != null) cfg.battle?.let { readGen5BattleInput(r, it) } ?: BATTLE_INPUT_NONE else BATTLE_INPUT_NONE,
         mapGroup = 0,
         mapNum = zone,
         regionMapSectionId = cfg.zonePlaceIds[zone] ?: -1,
@@ -321,14 +411,91 @@ val GEN5_BLACK = Gen5Config(
     repelStepsOff = 0x21B31,
     zonePlaces = mapPlacesBlack,
     zonePlaceIds = mapPlaceIdsBlack,
-    battle = Gen5Battle(gameSystemPtr = 0x02146248),
+    battle = Gen5Battle(gameSystemPtr = 0x02146248, offView = 0x54),
     townMapPlaces = townMapPlacesBlack,
     townMapZones = townMapZonesBlack,
     libertyPass = 574,
 )
 
+/** Pokémon White (USA / Europe, IRAO rev 0): Black's code with its statics 0x20 higher (the SaveControl and GameSystem
+ * pointers, found through the code that uses them in both carts and checked on White's headless captures of Black's
+ * save, which it loads), Black's save layout, its own DEX text and Town Map. */
+val GEN5_WHITE = GEN5_BLACK.copy(
+    saveControlPtr = 0x020A72B8,
+    pokedexTables = POKEDEX_WHITE,
+    gameSystemPtr = 0x02146268,
+    battle = Gen5Battle(gameSystemPtr = 0x02146268, offView = 0x54),
+    townMapPlaces = townMapPlacesWhite,
+    townMapZones = townMapZonesWhite,
+)
+
+/** French Black (IRBF rev 0, sha1 a559da54…): the US / Europe cart's code and save layout, its statics 0x80 lower
+ * (scripts/port_nds.py; pk_nds_field.cpp's BLACK_FR). */
+val GEN5_BLACK_FR = GEN5_BLACK.copy(
+    saveControlPtr = 0x020A7218,
+    gameSystemPtr = 0x021461C8,
+    battle = Gen5Battle(gameSystemPtr = 0x021461C8, offView = 0x54),
+)
+
+/** French White (IRAF rev 0, sha1 28f07591…): as [GEN5_BLACK_FR], from White's statics. */
+val GEN5_WHITE_FR = GEN5_WHITE.copy(
+    saveControlPtr = 0x020A7238,
+    gameSystemPtr = 0x021461E8,
+    battle = Gen5Battle(gameSystemPtr = 0x021461E8, offView = 0x54),
+)
+
+/**
+ * Pokémon Black 2 (USA / Europe, IREO rev 0, sha1 e51e6dfb…): a new build of Black's engine, every static moved but the
+ * structs kept (each found again through the code that uses it in Black and Black 2, then checked in headless captures of
+ * the player's saves: the field, the X menu, the party screen, the Pokédex, the bag, a wild battle on Route 21's water).
+ * Its save is bigger and its blocks moved: event work 0x1FF00 (431 vars, 3064 flags), money / badges 0x21100 / 0x21104,
+ * the Pokédex 0x21400, the Repel's steps 0x2192D (250 after a Max Repel); the party, bag, trainer and Location kept
+ * Black's places.
+ */
+val GEN5_BLACK2 = GEN5_BLACK.copy(
+    saveControlPtr = 0x0209A338,
+    imageSize = 0x26000,
+    pokedexTables = POKEDEX_BLACK2,
+    gameSystemPtr = 0x021410F4,
+    moneyOff = 0x21100,
+    badgesOff = 0x21104,
+    pokedexOff = 0x21400,
+    varsFlagsOff = 0x1FF00,
+    numVars = 0x1AF,
+    numFlags = 0xBF8,
+    repelStepsOff = 0x2192D,
+    zonePlaces = mapPlacesBlack2,
+    zonePlaceIds = mapPlaceIdsBlack2,
+    // The battle's touch screen: Black's chain, btlv_scd and btlv_input further into their structs (headless).
+    battle = Gen5Battle(gameSystemPtr = 0x021410F4, battleOverlay = 167, offView = 0x54, offScd = 0x1C4, offInput = 0xBC, offSubscreen = 0xA4),
+    townMapPlaces = townMapPlacesBlack2,
+    townMapZones = townMapZonesBlack2,
+    libertyPass = 0,
+    firstArrival = GEN5_BW2_FIRST_ARRIVAL,
+    arrivalCount = 62,
+    regionalDex = unovaDexBlack2,
+)
+
+/** Pokémon White 2 (USA / Europe, IRDO rev 0): Black 2's code with its statics 0x40 higher (found through the code that
+ * uses them in both carts, checked on White 2's headless captures of the player's save), Black 2's save layout, its own
+ * DEX text and Town Map (White Forest where Black City is). */
+val GEN5_WHITE2 = GEN5_BLACK2.copy(
+    saveControlPtr = 0x0209A378,
+    pokedexTables = POKEDEX_WHITE2,
+    gameSystemPtr = 0x02141134,
+    battle = Gen5Battle(gameSystemPtr = 0x02141134, battleOverlay = 167, offView = 0x54, offScd = 0x1C4, offInput = 0xBC, offSubscreen = 0xA4),
+    townMapPlaces = townMapPlacesWhite2,
+    townMapZones = townMapZonesWhite2,
+)
+
 /** The Gen 5 config for [kind], or null. */
-fun gen5ConfigFor(kind: GameKind?): Gen5Config? = if (kind == GameKind.BLACK) GEN5_BLACK else null
+fun gen5ConfigFor(kind: GameKind?, code: String = romGameCode): Gen5Config? = when (kind) {
+    GameKind.BLACK -> if (code == "IRBF") GEN5_BLACK_FR else GEN5_BLACK
+    GameKind.WHITE -> if (code == "IRAF") GEN5_WHITE_FR else GEN5_WHITE
+    GameKind.BLACK2 -> GEN5_BLACK2
+    GameKind.WHITE2 -> GEN5_WHITE2
+    else -> null
+}
 
 /**
  * Uses one Repel ([itemId], [steps]) the way [useGen4Repel] does on Gen 4: one off its slot in the bag's first pocket

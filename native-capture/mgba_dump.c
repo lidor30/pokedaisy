@@ -53,6 +53,16 @@
 //                        (bit 0-3 = BG0-BG3, bit 4 = OBJ; 0x1F = all, the default)
 //   follower FILE      - FOLLOWER's Pokémon: FILE = its six 32x32 frames + palette (3104 bytes); `followon 1` draws it
 //   followon 0|1       - FOLLOWER shown (needs `wideon`: the field reads' table)
+//   partnerself        - co-op presence's read of the player (pk_partner_self, taken after every frame once `wideon`
+//                        loaded the field table): "valid V map G.N fine X,Y facing F mode M step S"
+//   partnerset FILE    - the partner's art (21536 bytes: 42 32x32 4bpp frames + palette; PartnerArt's)
+//   partnerpos VIS FX FY FRAME FLIP BLOB BOB - the partner placed there (pk_partner_place); BLOB -1 = no surf blob
+//   partnernear DX DY FRAME FLIP BLOB - from now on each frame at the player's fine position + DX, DY tiles x 16
+//                        (needs `wideon`: pk_partner_self's read)
+//   partnerinfo [LABEL] - "why W oam O blobOam B slot S at X,Y frame F" (why: pk_wide.h's PK_PARTNER_*)
+//   memhash NAME       - CRC32 of EWRAM, IWRAM, VRAM, OAM and palette RAM kept as NAME; prints "memhash NAME XXXXXXXX"
+//   expectsame A B     - PASS if two memhashes are equal, else FAIL (exit status 1)
+//   framediff A B [LABEL] - the box of pixels two `shot` PPMs differ in: "framediff box X0,Y0-X1,Y1" or "framediff none"
 //   lookrefresh [PAL]  - PLAYER LOOK's refresh of the player's sprite from its record (pk_look_refresh), after
 //                        `romblocks` / `romunblock` changed the look in place; needs `wideon` (the field reads' table)
 //   tint R G B         - DAY AND NIGHT's tint from the next frame (256 each = none): the map's and sprites' palettes
@@ -87,6 +97,56 @@
 //   romcheck ROMFILE   - compare the ROM as the companion reads it (bus +
 //                        pk_cheats_overlay) and as RA hashes it (swapped) with
 //                        the file
+//   expect8/expect16/expect32 ADDR VAL [N] - check the bus holds VAL at ADDR (N values in a row: a range), printing
+//                        `PASS <addr>` or `FAIL <addr> got X want Y`; any FAIL makes mgba_dump exit 1 at the end
+//   waittask FUNC MAX  - Emerald: run frames until a gTasks entry is active with func FUNC (PASS), FAIL after MAX
+//   coopinstall        - co-op's retail check (pk_coop_install, repo builds only; it changes nothing): `coop: installed`
+//                        or `coop: refused <why>` (the first function whose code CRC didn't match, ...)
+//   coopuninstall      - forget the check (pk_coop_uninstall): `coop: uninstalled`
+//   call *TABLE [ARGS] - as `call`, the function being the pointer stored at TABLE (a game function table slot)
+//   coopfreefield      - pk_coop_on_free_field: `freefield 0|1` (field, controls free, no fade, no battle)
+//   coopstarting       - whether a battle can be armed now (pk_coop_battle_starting): `starting 0|1`
+//   lockinstall / lockuninstall / lockactive 0|1 / lockheld / lockgo ID / lockcancel - the co-op story lock (pk_coop_lock.c; coop-lock, plan 5 Task 5): `lock: installed`, `lock: held ID kind K`, `lock: go R` ...
+//   pair SAVE          - a second core of the same ROM with its own save (a disposable copy), from reset; from now on every frame run
+//                        (`wait`, `press`, the waits inside commands) runs both cores, A then B, and moves the link bridge's blocks
+//   on a|b             - which core the next commands drive (keys, pokes, expects, calls...); the other one keeps playing frames
+//   waitmem8/16/32 ADDR VAL MAX - frames until the bus holds VAL at ADDR: `PASS waitmem` / FAIL after MAX
+//   waitchange32 ADDR MAX - frames until the bus word at ADDR is no longer what it is now: `PASS waitchange` / FAIL after MAX
+//   linkrun N          - N frames, as `wait` (both cores, blocks moved after each)
+//   linkdelay F        - blocks arrive F frames after they were sent (0 = the next pump)
+//   linkstate          - `linkstate a S b S` (PK_COOP_LINK_*: 0 idle, 1 setup, 2 battle, 3 ended)
+//   linkwait STATE MAX - frames until every core is in link state STATE: `PASS linkwait` / FAIL after MAX
+//   coopbegin MASTER KIND TA TB - pk_coop_link_begin on the current core (kind 1 wild, 2 trainers, 3 single, 4 story; TA / TB the AI
+//                        trainers' gTrainers ids), installing the bridge first: `link: begin 1 (after N frame(s))` or `link: begin 0 refused WHY`
+//   joinhold           - task 2: `link: hold R` (pk_coop_link_host_hold on the current core: its Task_BattleStart held, a joined battle offered)
+//   linkstart MASTER [KIND TA TB] - task 2: MASTER 1 = pk_coop_link_host_go (the held battle starts as the link battle, frames wait for a pk_call-safe one), 0 = pk_coop_link_partner_go with KIND / TA / TB: `link: start 1 (after N frame(s))` or `link: start 0 refused WHY`
+//   storyarm TRAINER / storystate / storywait STATE MAX / storygo MASTER / storycancel - task 6 (story battles, pk_coop_link_story.c): arm the
+//                        hook at the trainer script's `dotrainerbattle` (`story: armed 1`), the state of each core (0 idle, 1 armed, 2 picking,
+//                        3 ready, 4 cancelled), frames until every core is in STATE (`PASS storywait`), begin the link battle with the picked
+//                        team (`story: go 1 (after N frame(s))`), or let the game's own solo battle start (`story: cancel 1`)
+//   storydisarm / coopreleasescript - a dropped story join (plan 6 final fix): the hook out without the solo battle / the held script let go
+//   linkend / linkreset / linkuninstall - pk_coop_link_end / _reset / _uninstall on the current core
+//   linkhold 0|1 / linkleave 0|1 / corereset - task 7: no block arrives (0 = the line is up again) / pk_coop_link_leave (1 = blackout) / this core restarts
+//   linkinfo           - each core's bridge counters (sent, received, refused, dropped, overrun, seqs)
+//   linkresult LABEL / linkresultwait MAX [a|b] / linkresultclear / linkdrained - (task 5) the end's result (pk_coop_link_result), waiting for it, the outbox
+//   linkmoneymark N / linkmoneyexpect N DELTA / linkflag ID WANT - (task 5) money marks per core, trainer flags
+//   never32 ADDR VAL LABEL / linkdelayend F / linkafterend - (task 5) FAIL if the word is ever VAL; ENDLINKBATTLE's block F frames late; blocks sent after ENDED
+//   linkgiveseed SEQ|next [LABEL] - pk_coop_link_give a well-formed seed block of that seq (next = the expected one): `link: give R status B -> A LABEL`
+//   monexp NAME ADDR / bagqty NAME ITEM / peeknum NAME ADDR WIDTH - keep a number (EXP + .lv .hp .sp; a bag count; a bus value); expectnum NAME VAL / expectdelta A B N / expectge NAME VAL check them (plan 6 Task 4)
+//   linkcaught FILE - pk_coop_link_caught: `link: caught by 0|1|2`, the Pokemon's 100 bytes (re-keyed to the catcher) in FILE; expectotname MON
+//   linkgivehex KIND LABEL HEX / linkgivemon KIND SPECIES MOVE PP ITEM LABEL - pk_coop_link_give of a forged block (kind a number, payload hex / an unencrypted Pokemon with those fields), the next seq: `link: give R status B -> A LABEL`
+//   rangehash NAME ADDR LEN - CRC32 of LEN bus bytes at ADDR kept under NAME (for `expectsame`, across `on a` / `on b`)
+//   expectmon ADDR OTID SPECIES [GENDER] - a struct Pokémon at ADDR: OT ID, decrypted species, checksum (and the OT-gender bit when given) valid: PASS / FAIL
+//   memsave ADDR LEN FILE - write LEN bytes of RAM to FILE (e.g. a save's own party slots, to compare later with expectfile)
+//   expectspecies ADDR MONADDR - the halfword at ADDR equals the (encrypted) mon struct at MONADDR's species
+//   expectin16 ADDR VAL... - check the bus halfword at ADDR is one of the values (`PASS` / `FAIL`)
+//   expectmonin ADDR SPECIES... - check the (encrypted) Pokémon struct at ADDR has one of these species (Task 5: the second wild
+//                        Pokémon is in the map's table): `PASS <addr> species N` or a FAIL line
+//   reown MON OTID     - give the struct Pokemon at MON another OT ID, its encrypted substructures re-keyed (a co-op
+//                        partner's Pokémon of another trainer than the host)
+//   expectframecrc X Y W H CRC - check the current frame's region (R G B bytes) has this CRC32 (hex): `PASS framecrc`
+//                        or a FAIL line that shows the CRC it got
+//   expectfile ADDR FILE - check the bus holds FILE's bytes from ADDR: `PASS <addr> (N bytes)` or a FAIL line
 //
 // Usage: mgba_dump <rom.gba> [save.sav] < commands.txt
 
@@ -129,12 +189,34 @@
 #if __has_include("../app/src/main/cpp/pk_cheats.c")
 #include "../app/src/main/cpp/pk_cheats.c"
 #define HAVE_PK_CHEATS 1
+#if __has_include("../app/src/main/cpp/pk_coop.c")
+#include "../app/src/main/cpp/pk_coop.c"
+#include "../app/src/main/cpp/pk_coop_field.c"
+#include "../app/src/main/cpp/pk_coop_after.c"
+// coop-field (plan 4 Task 7)
+// coop-after (plan 4 Task 8)
+// romcheck's last counts (and the mark romchecksame compares to)
+static int lastRomDiffs[3], markRomDiffs[3];
+#include "../app/src/main/cpp/pk_coop_lock.c"   // coop-lock (plan 5 Task 5)
+#include "../app/src/main/cpp/pk_coop_link.c"   // the link bridge (plan 6 Task 1)
+#include "../app/src/main/cpp/pk_coop_link_start.c"   // task 2: a joined trainer battle starts as a link battle
+#include "../app/src/main/cpp/pk_coop_link_wild.c"   // task 3: wild as a link battle
+#include "../app/src/main/cpp/pk_coop_link_story.c"   // task 6: story battles
+#include "../app/src/main/cpp/pk_coop_link_drop.c"   // a dropped link (plan 6 Task 7)
+#include "../app/src/main/cpp/pk_coop_link_rewards.c"   // task 4: EXP, the BAG and catching in a link battle
+#include "../app/src/main/cpp/pk_coop_link_end.c"   // task 5: the end of a joined link battle
+#define HAVE_PK_COOP 1
+#endif
 #endif
 #if __has_include("../app/src/main/cpp/pk_wide.c")
 #include "../app/src/main/cpp/pk_wide.c"
 #include "../app/src/main/cpp/pk_wide_gb.c"
 #include "../app/src/main/cpp/pk_gb_field.c"
 #define HAVE_PK_WIDE 1
+#endif
+#if __has_include("../app/src/main/cpp/pk_gb_audio.c")
+#include "../app/src/main/cpp/pk_gb_audio.c"
+#define HAVE_PK_GB_AUDIO 1
 #endif
 #endif
 
@@ -150,6 +232,7 @@ enum {
 #define SAMPLE_RATE 48000
 
 static struct mCore* core;
+static int expectFailures;   // `expect*` / `waittask` FAILs so far: the exit status
 static color_t* video;
 static unsigned videoW, videoH;
 
@@ -249,8 +332,53 @@ static void wideAfterFrame(void) {
 static void wideAfterFrame(void) {}
 #endif
 
+// `memhash NAME`'s results (the newest 64), for `expectsame`.
+#define MEM_HASHES 64
+static struct { char name[64]; uint32_t crc; } memHashes[MEM_HASHES];
+static int memHashCount;
+
+// task 4's numbers (`monexp`, `bagqty`, `peeknum`: EXP, levels, HP, bag counts), kept by name for `expectnum` / `expectdelta`.
+#define NUM_STORE 128
+static struct { char name[80]; long v; } numStore[NUM_STORE];
+static int numCount;
+static void numSet(const char* name, long v) {
+    for (int i = 0; i < numCount; i++) {
+        if (!strcmp(numStore[i].name, name)) {
+            numStore[i].v = v;
+            return;
+        }
+    }
+    if (numCount < NUM_STORE) {
+        snprintf(numStore[numCount].name, sizeof(numStore[0].name), "%s", name);
+        numStore[numCount++].v = v;
+    }
+}
+static long numGet(const char* name) {
+    for (int i = 0; i < numCount; i++) {
+        if (!strcmp(numStore[i].name, name)) return numStore[i].v;
+    }
+    return -999999;
+}
+
 // `wild ADDR KEEP`: WILD ENCOUNTERS' roll before every frame, as the app runs it (-1 = off).
 static int wildKeep = -1;
+
+#ifdef HAVE_PK_WIDE
+// Co-op presence: pk_partner_self read after every frame once `wideon` has loaded the field table, as the app reads it
+// (the step's progress needs every frame); `partnerself` prints the last read.
+static bool partnerTrack;
+static int partnerOk;
+static int32_t partnerSelf[PK_PARTNER_SELF_N];
+// `partnernear` runs: the partner follows the player by (partnerDx, partnerDy) tiles, placed after every frame's read.
+static int partnerNear, partnerDx, partnerDy, partnerFrame, partnerFlip, partnerBlob;
+static void partnerApplyNear(void) {
+    if (!partnerNear) return;
+    if (partnerOk && partnerSelf[PK_PARTNER_SELF_VALID])
+        pk_partner_place(core, 1, partnerSelf[PK_PARTNER_SELF_FX] + partnerDx * 16, partnerSelf[PK_PARTNER_SELF_FY] + partnerDy * 16,
+                         partnerFrame, partnerFlip, partnerBlob, 0);
+    else pk_partner_place(core, 0, 0, 0, 0, 0, -1, 0);
+}
+#endif
 
 // Where the game's main loop waits for VBlank, as a stack depth: the System-mode stack pointer most frames end with
 // (the game in its wait - a spin on gMain.intrCheck in FireRed, VBlankIntrWait in Emerald - with nothing of its own
@@ -294,13 +422,31 @@ static uint32_t pk_rest_sp(void) {
     return pkRestCount[best] >= 30 ? pkRestSp[best] : 0;
 }
 
-static void runFrame(void) {
+static void pairAfterFrame(void);   // `pair` mode (below): the other core's frame and the link bridge's blocks
+
+static void frameOne(void) {
 #ifdef HAVE_PK_WIDE
     if (wildKeep >= 0) pk_field_state(core, 0, wildKeep);
 #endif
     core->runFrame(core);
+#ifdef HAVE_PK_COOP
+    pk_coop_lock_tick(core);   // coop-lock (plan 5 Task 5)
+    pk_coop_link_tick(core);   // task 5
+#endif
     if (core->platform(core) == mPLATFORM_GBA) pk_rest_note(core);
+#ifdef HAVE_PK_WIDE
+    if (partnerTrack) {
+        partnerOk = pk_partner_self(core, partnerSelf);
+        partnerApplyNear();
+    }
+#endif
     wideAfterFrame();
+}
+
+// One frame of the active core - and, in `pair` mode, of the other one and the link bridge's blocks between them.
+static void runFrame(void) {
+    frameOne();
+    pairAfterFrame();
 }
 
 // mGBA's default logger is noisy (every unmapped I/O register write, DMA,
@@ -382,6 +528,12 @@ static void cmdShot(const char* path) {
 
 // Runs `frames` frames and writes what the APU played meanwhile as a 16-bit
 // stereo WAV (what the app's render core records, e.g. for the click sound).
+#ifdef HAVE_PK_GB_AUDIO
+// A Game Boy game's sound as the app resamples it (pk_gb_audio.c), not through mGBA's own blip_buf; `gbaudio 0`
+// records mGBA's own path again, for a before / after.
+static struct pk_gb_audio gbAudio;
+#endif
+
 static void cmdWav(const char* path, int frames) {
     struct blip_t* l = core->getAudioChannel(core, 0);
     struct blip_t* r = core->getAudioChannel(core, 1);
@@ -389,12 +541,31 @@ static void cmdWav(const char* path, int frames) {
     blip_clear(r);
     size_t cap = (size_t) frames * (SAMPLE_RATE / 20) * 2, pos = 0;
     int16_t* pcm = calloc(cap, sizeof(int16_t));
+#ifdef HAVE_PK_GB_AUDIO
+    if (gbAudio.left) {
+        // What piled up before (nothing reads it between commands): read away, so the level carries on.
+        while (pk_gb_audio_read(&gbAudio, pcm, (int) (cap / 2)) > 0) {}
+    }
+#endif
     // Audio made per runFrame: the app plays one frame a display refresh, so a frame much shorter or longer than
     // the core's frame rate (a Game Boy game turning its screen off or on restarts mGBA's frame) is a gap or a glut.
     int least = 1 << 30, most = 0, uneven = 0;
     const double expect = SAMPLE_RATE * (double) core->frameCycles(core) / core->frequency(core);
     for (int i = 0; i < frames; i++) {
         core->runFrame(core);
+#ifdef HAVE_PK_GB_AUDIO
+        if (gbAudio.left) {
+            int n = pk_gb_audio_read(&gbAudio, pcm + pos, (int) ((cap - pos) / 2));
+            if (n < least) least = n;
+            if (n > most) most = n;
+            if (n < expect * 0.9 || n > expect * 1.1) {
+                if (uneven < 40) printf("wav: frame %d made %d samples (%.0f%%)\n", i, n, 100.0 * n / expect);
+                uneven++;
+            }
+            pos += (size_t) n * 2;
+            continue;
+        }
+#endif
         int n = blip_samples_avail(l);
         if (n < least) least = n;
         if (n > most) most = n;
@@ -579,29 +750,35 @@ static bool gb_far(struct mCore* core, uint8_t bank, uint16_t addr, uint8_t a, u
 
 // Gen1LoopWatch's state: Yellow's wChannelCommandPointers, ReturnAddresses (CHAN1-4),
 // SoundIDs, NoteDelayCounters, LoopCounters.
-static void gb_music_state(struct mCore* core, uint8_t* out, bool crystal) {
+// gen2: 0 = Gen 1, 1 = Crystal (and Crystal Clear), 2 = Gold / Silver, 3 = Polished Crystal.
+static void gb_music_state(struct mCore* core, uint8_t* out, int gen2) {
     static const struct { uint16_t a; int n; } R[] = {{0xC006, 8}, {0xC016, 8}, {0xC026, 4}, {0xC0B6, 4}, {0xC0BE, 4}};
-    // Crystal's channel structs (wChannel1-4, 0x32 bytes from C101): Flags1, MusicAddress + LastMusicAddress,
-    // NoteDuration, LoopCount - Gen2Music's loop state.
+    // Crystal's channel structs (wChannel1-4, 0x32 bytes from C101; Gold's from C001): Flags1, MusicAddress +
+    // LastMusicAddress, NoteDuration, LoopCount - Gen2Music's loop state. Polished Crystal's: 0x24 bytes from CB7F.
     static const struct { uint16_t a; int n; } C[] = {{3, 1}, {6, 4}, {0x15, 1}, {0x18, 1}};
+    static const struct { uint16_t a; int n; } P[] = {{7, 1}, {3, 4}, {0x12, 1}, {0x14, 1}};
     int k = 0;
-    if (crystal) {
+    if (gen2) {
+        uint16_t base = gen2 == 3 ? 0xCB7F : gen2 == 2 ? 0xC001 : 0xC101;
+        int stride = gen2 == 3 ? 0x24 : 0x32;
         for (int ch = 0; ch < 4; ch++)
-            for (int r = 0; r < 4; r++)
-                for (int i = 0; i < C[r].n; i++) out[k++] = core->busRead8(core, (uint16_t) (0xC101 + 0x32 * ch + C[r].a + i));
+            for (int r = 0; r < 4; r++) {
+                int off = gen2 == 3 ? P[r].a : C[r].a, len = gen2 == 3 ? P[r].n : C[r].n;
+                for (int i = 0; i < len; i++) out[k++] = core->busRead8(core, (uint16_t) (base + stride * ch + off + i));
+            }
         return;
     }
     for (int r = 0; r < 5; r++) for (int i = 0; i < R[r].n; i++) out[k++] = core->busRead8(core, R[r].a + i);
 }
 
-static void gb_loop(struct mCore* core, int frames, bool crystal) {
+static void gb_loop(struct mCore* core, int frames, int gen2) {
     enum { W = 28 };
     uint8_t* states = malloc((size_t) frames * W);
     int still = 0;
     for (int f = 0; f < frames; f++) {
         core->runFrame(core);
         uint8_t* st = states + (size_t) f * W;
-        gb_music_state(core, st, crystal);
+        gb_music_state(core, st, gen2);
         if (f > 0 && !memcmp(st, st - W, W)) {
             if (++still >= 90) { printf("gbloop: still from frame %d - ended\n", f - 90); free(states); return; }
         } else still = 0;
@@ -640,6 +817,7 @@ static int pk_call_safe(struct mCore* core) {
 }
 
 static uint32_t pk_call_r0; // what the last pk_call returned in r0
+static long pk_call_steps = 2000000, pk_call_used; // the step cap of one call (`calllimit N` raises it), and what the last call used
 
 static bool pk_call(struct mCore* core, uint32_t fn, const uint32_t args[4]) {
     if (!pk_call_safe(core)) return false;
@@ -676,13 +854,15 @@ static bool pk_call(struct mCore* core, uint32_t fn, const uint32_t args[4]) {
     _ARMSetMode(cpu, MODE_THUMB);
     ThumbWritePC(cpu);
     bool ok = false;
-    for (int i = 0; i < 2000000; i++) {
+    long used = 0;
+    for (; used < pk_call_steps; used++) {
         if (cpu->executionMode == MODE_THUMB && (uint32_t) cpu->gprs[ARM_PC] - WORD_SIZE_THUMB == PK_CALL_SENTINEL) {
             ok = true;
             break;
         }
         core->step(core);
     }
+    pk_call_used = used;
     pk_call_r0 = (uint32_t) cpu->gprs[0];
     cpu->regs = saved; // the banked registers too: the mode's own SP / LR are back as they were
     cpu->privilegeMode = priv;
@@ -847,6 +1027,222 @@ static void cmdRomBlocks(const char* path) {
            pk_cheats_rom_patched() ? "yes" : "no");
 }
 
+#ifdef HAVE_PK_COOP
+// pk_coop's way to call the game (pk_coop_call_fn): mgba_dump's own pk_call, r0 back, 0xFFFFFFFF if it never returned.
+static uint32_t coopCall(struct mCore* c, uint32_t fn, const uint32_t args[4]) {
+    return pk_call(c, fn, args) ? pk_call_r0 : 0xFFFFFFFFu;
+}
+
+// coop-after (plan 4 Task 8): helpers for the coop* result writers' commands.
+// The writers call the game (pk_call): frames run until a call can, like `call` - except while the game isn't free on
+// the field, where they answer -1 at once and wait for nothing (what the not-free checks look at).
+static void afterCap(long steps) {   // the app's pk_coop_cap: the game's save runs ~16M steps
+    pk_call_steps = steps > 0 ? steps : 2000000;
+}
+
+static void afterWaitSafe(struct mCore* c) {
+    pk_coop_after_set_call(coopCall);
+    pk_coop_after_set_cap(afterCap);
+    if (!pk_coop_on_free_field(c)) return;
+    int waited = 0;
+    for (; waited < 60 && !pk_call_safe(c); waited++) runFrame();
+    if (waited) printf("coop: waited %d frame(s) for a safe point\n", waited);
+}
+
+static uint32_t afterHash(struct mCore* c, uint32_t addr, uint32_t len) {   // FNV-1a over the bus bytes
+    uint32_t h = 2166136261u;
+    for (uint32_t i = 0; i < len; i++) h = (h ^ (uint8_t) c->busRead8(c, addr + i)) * 16777619u;
+    return h;
+}
+
+static uint32_t afterMoney(struct mCore* c) {   // the game's own GetMoney(&gSaveBlock1Ptr->money)
+    const uint32_t args[4] = { (uint32_t) c->busRead32(c, COOP_EM_gSaveBlock1Ptr) + COOP_EM_OFF_SB1_MONEY, 0, 0, 0 };
+    return pk_call(c, 0x080E5114u, args) ? pk_call_r0 : 0xFFFFFFFFu;
+}
+
+// --- `pair` mode (plan 6 Task 1): two cores of the same ROM in one process, a game each, the link bridge's blocks moved between
+// them every frame. The tool's globals (`core`, the video buffer, pk_cheats' ROM patch lists, the pk_call rest depth, the bridge's
+// own state) belong to one core at a time: `on a` / `on b` swaps them, so every command works on whichever core is current
+// (the same pk_* code runs on both, as it would in two apps). In pair mode every frame run - `wait`, `press`, the waits inside
+// commands - runs both cores (A, then B) and then moves the blocks.
+struct pairCtx {
+    struct mCore* core;
+    color_t* video;
+    struct pk_fix fixes[PK_MAX_FIXES];
+    int fixCount;
+    struct pk_fix options[PK_MAX_OPTIONS];
+    int optionCount;
+    struct pk_block blocks[PK_MAX_BLOCKS];
+    int blockCount;
+    uint32_t restSp[PK_REST_SLOTS], restCount[PK_REST_SLOTS];
+    struct pk_link_ctx link;
+    struct lstart_state start;   // task 2
+    struct pk_story_ctx story;   // task 6
+    struct lend_ctx linkEnd;   // task 5
+};
+static struct pairCtx pairSaved[2];   // a core's state while it is not the current one
+static bool pairOn;
+static int pairCur;                   // 0 = a, 1 = b: whose state is in the globals
+
+static void pairSwap(int to) {
+    if (!pairOn || to == pairCur) return;
+    struct pairCtx* s = &pairSaved[pairCur];
+    s->core = core;
+    s->video = video;
+    memcpy(s->fixes, sFixes, sizeof(sFixes));
+    s->fixCount = sFixCount;
+    memcpy(s->options, sOptions, sizeof(sOptions));
+    s->optionCount = sOptionCount;
+    memcpy(s->blocks, sBlocks, sizeof(sBlocks));
+    s->blockCount = sBlockCount;
+    memcpy(s->restSp, pkRestSp, sizeof(pkRestSp));
+    memcpy(s->restCount, pkRestCount, sizeof(pkRestCount));
+    s->link = sLink;
+    s->start = sStart;
+    s->story = sStory;
+    s->linkEnd = sEnd;   // task 5
+    s = &pairSaved[to];
+    core = s->core;
+    video = s->video;
+    memcpy(sFixes, s->fixes, sizeof(sFixes));
+    sFixCount = s->fixCount;
+    memcpy(sOptions, s->options, sizeof(sOptions));
+    sOptionCount = s->optionCount;
+    memcpy(sBlocks, s->blocks, sizeof(sBlocks));
+    sBlockCount = s->blockCount;
+    memcpy(pkRestSp, s->restSp, sizeof(pkRestSp));
+    memcpy(pkRestCount, s->restCount, sizeof(pkRestCount));
+    sLink = s->link;
+    sStart = s->start;
+    sStory = s->story;
+    sEnd = s->linkEnd;   // task 5
+    pairCur = to;
+}
+
+// The blocks in flight, per direction (index = the sending core): delivered when `due` frames have passed (`linkdelay F`).
+#define PAIR_Q 128
+struct pairMsg { unsigned due; int size, reported; uint8_t d[PK_COOP_LINK_WIRE_HEADER + PK_COOP_LINK_BLOCK_MAX]; };
+static struct pairMsg pairQ[2][PAIR_Q];
+static int pairQHead[2], pairQCount[2];
+static unsigned pairFrame, pairDelay;
+static int pairHold;          // task 7: 1 = no block is delivered (`linkhold`)
+static int pairStuck[2];      // consecutive frames the head block of a direction was refused
+static long pairMoved[2];     // blocks delivered, per sending core
+// task 5: blocks a core's game sent once its bridge said ENDED, blocks dropped because the receiver had ended, `never32` watches
+static long pairSentAfterEnd[2], pairDroppedLate[2];
+static struct { int core; uint32_t addr, val; int hit; char label[32]; } pairNeverW[8];
+static int pairNever;
+static int pairErrNoted[2];
+static int pairNoErr;   // `linknoerror 1`: a block the bridge calls malformed (PK_COOP_LINK_ERROR) is a FAIL, with the block
+static unsigned pairEndDelay;   // `linkdelayend F`
+
+static void pairPump(void) {
+    pairFrame++;
+    int cur = pairCur;
+    uint8_t buf[PK_COOP_LINK_WIRE_HEADER + PK_COOP_LINK_BLOCK_MAX];
+    for (int c = 0; c < 2; c++) {
+        pairSwap(c);
+        int n;
+        // task 5: `never32 ADDR VAL LABEL` watches (per core): a frame that has the word there is a FAIL, once
+        for (int w = 0; w < pairNever; w++) {
+            if (pairNeverW[w].core == c && !pairNeverW[w].hit && (uint32_t) core->busRead32(core, pairNeverW[w].addr) == pairNeverW[w].val) {
+                pairNeverW[w].hit = 1;
+                printf("FAIL never %s: %08X held 0x%X on core %c\n", pairNeverW[w].label, pairNeverW[w].addr, pairNeverW[w].val, 'a' + c);
+                expectFailures++;
+            }
+        }
+        if (pk_coop_link_state(core) == PK_COOP_LINK_ERROR && !pairErrNoted[c]) {   // an unclassifiable block the game's own send made (take) also lands here
+            uint8_t bb[4 * (6 + PK_COOP_LINK_WIRE_HEADER + PK_COOP_LINK_BLOCK_MAX)];
+            int bn = pk_coop_link_bad_blocks(bb, sizeof(bb));
+            if (bn >= 6 && bb[2] == 2) {
+                pairErrNoted[c] = 1;
+                printf("%s link: core %c's game sent a block the bridge cannot classify (src %02x%02x%02x%02x)\n", pairNoErr ? "FAIL" : "note", 'a' + c, bb[9], bb[8], bb[7], bb[6]);
+                if (pairNoErr) expectFailures++;
+            }
+        }
+        while ((n = pk_coop_link_take(core, buf, sizeof(buf))) > 0) {
+            if (pk_coop_link_state(core) == PK_COOP_LINK_ENDED) pairSentAfterEnd[c]++;
+            if (pairQCount[c] >= PAIR_Q) {
+                printf("FAIL link: the blocks from core %c pile up\n", 'a' + c);
+                expectFailures++;
+                break;
+            }
+            struct pairMsg* m = &pairQ[c][(pairQHead[c] + pairQCount[c]++) % PAIR_Q];
+            m->due = pairFrame + pairDelay;
+            m->reported = 0;
+            // task 5: the block that carries CONTROLLER_ENDLINKBATTLE (a controller message, TO_CONTROLLER) arrives pairEndDelay frames later
+            // still: that player's game is held back while the other one ends (`linkdelayend F`)
+            if (buf[0] == PK_COOP_LINKB_BUFFER && n > PK_COOP_LINK_WIRE_HEADER + 8 && buf[PK_COOP_LINK_WIRE_HEADER] == COOP_EM_B_COMM_TO_CONTROLLER
+                && buf[PK_COOP_LINK_WIRE_HEADER + 8] == COOP_EM_CONTROLLER_CMDS_COUNT - 2) {
+                m->due += pairEndDelay;
+            }
+            m->size = n;
+            memcpy(m->d, buf, (size_t) n);
+        }
+    }
+    for (int c = 0; c < 2; c++) {
+        pairSwap(1 - c);
+        if (pairHold) continue;   // task 7: `linkhold 1`, the line is down: blocks pile up in the queues, none arrives
+        while (pairQCount[c] && pairQ[c][pairQHead[c]].due <= pairFrame) {
+            struct pairMsg* m = &pairQ[c][pairQHead[c]];
+            if (!pk_coop_link_give(core, m->d, m->size)) {
+                if (pk_coop_link_state(core) == PK_COOP_LINK_ERROR && !m->reported) {
+                    uint8_t bb[4 * (6 + PK_COOP_LINK_WIRE_HEADER + PK_COOP_LINK_BLOCK_MAX)];
+                    int bn = pk_coop_link_bad_blocks(bb, sizeof(bb));
+                    printf("%s link: core %c refused a block as malformed (check line %d):", pairNoErr ? "FAIL" : "note", 'a' + (1 - c), bn >= 2 ? bb[0] | bb[1] << 8 : -1);
+                    for (int b = 0; b < m->size && b < 120; b++) printf(" %02x", m->d[b]);
+                    printf("\n");
+                    if (pairNoErr) expectFailures++;
+                    m->reported = 1;
+                }
+                if (pk_coop_link_state(core) == PK_COOP_LINK_ENDED) {
+                    // task 5: the receiver's battle is over: a late block (the partner's trailing IS_DONE) is dropped, as the app does
+                    pairDroppedLate[c]++;
+                    pairStuck[c] = 0;
+                    pairQHead[c] = (pairQHead[c] + 1) % PAIR_Q;
+                    pairQCount[c]--;
+                    continue;
+                }
+                if (++pairStuck[c] == 900) {
+                    printf("FAIL link: core %c's block (kind %d seq %d size %d) refused for 900 frames:", 'a' + (1 - c), m->d[0], m->d[1], m->size);
+                    for (int b = 0; b < m->size && b < 40; b++) printf(" %02x", m->d[b]);
+                    printf("\n");
+                    expectFailures++;
+                }
+                break;
+            }
+            pairStuck[c] = 0;
+            pairMoved[c]++;
+            pairQHead[c] = (pairQHead[c] + 1) % PAIR_Q;
+            pairQCount[c]--;
+        }
+    }
+    pairSwap(cur);
+}
+
+static int pairNoPump;   // task 7: `linkpump 0` = the app's state / take poll is skipped (a slow pump)
+static void pairAfterFrame(void) {
+    if (!pairOn) return;
+    int cur = pairCur;
+    pairSwap(1 - cur);
+    core->runFrame(core);
+    if (core->platform(core) == mPLATFORM_GBA) pk_rest_note(core);
+    pk_coop_link_tick(core);   // task 5
+    pairSwap(cur);
+    if (!pairNoPump) pairPump();
+}
+
+static int pairState(int c) {
+    int cur = pairCur, s;
+    pairSwap(c);
+    s = pk_coop_link_state(core);
+    pairSwap(cur);
+    return s;
+}
+#else
+static void pairAfterFrame(void) {}
+#endif
+
 static void cmdRomCheck(const char* path) {
     FILE* f = fopen(path, "rb");
     if (!f) {
@@ -859,10 +1255,10 @@ static void cmdRomCheck(const char* path) {
     uint8_t* file = malloc(size);
     if (fread(file, 1, size, f) != size) size = 0;
     fclose(f);
-    printf("romcheck raw bus: %d byte(s) differ\n", romDiffs(file, size, false));
-    printf("romcheck overlay: %d byte(s) differ\n", romDiffs(file, size, true));
+    printf("romcheck raw bus: %d byte(s) differ\n", lastRomDiffs[0] = romDiffs(file, size, false));
+    printf("romcheck overlay: %d byte(s) differ\n", lastRomDiffs[1] = romDiffs(file, size, true));
     pk_cheats_swap_rom(core);
-    printf("romcheck swapped: %d byte(s) differ\n", romDiffs(file, size, false));
+    printf("romcheck swapped: %d byte(s) differ\n", lastRomDiffs[2] = romDiffs(file, size, false));
     pk_cheats_swap_rom(core);
     printf("romcheck swapped back: %d byte(s) differ\n", romDiffs(file, size, false));
     free(file);
@@ -920,6 +1316,9 @@ int main(int argc, char** argv) {
     core->setAudioBufferSize(core, 2048);
     blip_set_rates(core->getAudioChannel(core, 0), core->frequency(core), SAMPLE_RATE);
     blip_set_rates(core->getAudioChannel(core, 1), core->frequency(core), SAMPLE_RATE);
+#ifdef HAVE_PK_GB_AUDIO
+    pk_gb_audio_attach(&gbAudio, core, SAMPLE_RATE);
+#endif
 
     if (!core->loadROM(core, rom)) {
         fprintf(stderr, "mgba_dump: core->loadROM failed\n");
@@ -998,6 +1397,16 @@ int main(int argc, char** argv) {
         } else if (!strcmp(cmd, "vdump")) {
             sscanf(line, "%*s %255s", arg1);
             cmdVdump(arg1);
+        } else if (!strcmp(cmd, "money")) {
+            // money: retail Emerald's money (SaveBlock1 +0x490 ^ SaveBlock2's encryption key +0xAC), printed as "money N".
+            uint32_t sb1 = core->busRead32(core, 0x03005D8C), sb2 = core->busRead32(core, 0x03005D90);
+            printf("money %u\n", core->busRead32(core, sb1 + 0x490) ^ core->busRead32(core, sb2 + 0xAC));
+        } else if (!strcmp(cmd, "flag")) {
+            // flag ID: retail Emerald's event flag ID (SaveBlock1 +0x1270), printed as "flag ID 0|1".
+            char a[64] = {0};
+            sscanf(line, "%*s %63s", a);
+            uint32_t id = (uint32_t) strtoul(a, NULL, 0), sb1 = core->busRead32(core, 0x03005D8C);
+            printf("flag %u %d\n", id, (core->busRead8(core, sb1 + 0x1270 + id / 8) >> (id % 8)) & 1);
         } else if (!strcmp(cmd, "poke8p") || !strcmp(cmd, "peek8p")) {
             // poke8p PTR OFF VAL / peek8p PTR OFF: the byte at *(u32 *)PTR + OFF -
             // for save-block fields, since Emerald moves its save blocks on every load.
@@ -1006,7 +1415,7 @@ int main(int argc, char** argv) {
             uint32_t addr = core->busRead32(core, (uint32_t) strtoul(p, NULL, 0)) + (uint32_t) strtoul(o, NULL, 0);
             if (cmd[1] == 'o') core->busWrite8(core, addr, (uint8_t) strtoul(v, NULL, 0));
             else printf("%08x: %02x\n", addr, core->busRead8(core, addr));
-        } else if (!strncmp(cmd, "poke", 4)) {
+        } else if (!strncmp(cmd, "poke", 4) && strcmp(cmd, "pokelog")) {
             char a[64] = {0}, v[64] = {0};
             sscanf(line, "%*s %63s %63s", a, v);
             uint32_t addr = (uint32_t) strtoul(a, NULL, 0), val = (uint32_t) strtoul(v, NULL, 0);
@@ -1014,6 +1423,10 @@ int main(int argc, char** argv) {
             else if (!strcmp(cmd, "poke16")) core->busWrite16(core, addr, (uint16_t) val);
             else if (!strcmp(cmd, "poke32")) core->busWrite32(core, addr, val);
             else fprintf(stderr, "mgba_dump: unknown command '%s'\n", cmd);
+        } else if (!strcmp(cmd, "calllimit")) {
+            // calllimit N: the step cap of one pk_call (2,000,000 by default; the game's save runs far longer)
+            sscanf(line, "%*s %ld", &pk_call_steps);
+            printf("calllimit %ld\n", pk_call_steps);
         } else if (!strcmp(cmd, "call")) {
             // call ADDR [ARG0 [ARG1 [ARG2 [ARG3]]]]: run Thumb function ADDR with
             // r0-r3 = the args (0 when left out) to its return, then resume exactly
@@ -1027,7 +1440,12 @@ int main(int argc, char** argv) {
             int waited = 0;
             for (; waited < 60 && !pk_call_safe(core); waited++) runFrame();
             if (waited) printf("call: waited %d frame(s) for a safe point\n", waited);
-            bool ok = pk_call(core, (uint32_t) strtoul(a, NULL, 0), args);
+            // `*TABLE`: the function is the pointer stored at TABLE (a game's function table entry - one of co-op's hooks
+            // sits wherever the code area puts it, so its test names the table slot instead of an address)
+            uint32_t fnAddr = a[0] == '*' ? (uint32_t) core->busRead32(core, (uint32_t) strtoul(a + 1, NULL, 0))
+                                          : (uint32_t) strtoul(a, NULL, 0);
+            bool ok = pk_call(core, fnAddr, args);
+            if (pk_call_steps != 2000000) printf("call: %ld steps (the cap is %ld)\n", pk_call_used, pk_call_steps);
             if (ok) printf("call %s(%s %s %s %s): returned 0x%X\n", a, v[0], v[1], v[2], v[3], pk_call_r0);
             else printf("call %s(%s %s %s %s): DID NOT RETURN\n", a, v[0], v[1], v[2], v[3]);
         } else if (!strcmp(cmd, "cpu")) {
@@ -1040,6 +1458,26 @@ int main(int argc, char** argv) {
                    c->privilegeMode == MODE_IRQ ? (uint32_t) c->gprs[ARM_SP] : (uint32_t) c->bankedRegisters[BANK_IRQ][0],
                    c->privilegeMode == MODE_SUPERVISOR ? (uint32_t) c->gprs[ARM_SP] : (uint32_t) c->bankedRegisters[BANK_SUPERVISOR][0],
                    (c->privilegeMode == MODE_SYSTEM || c->privilegeMode == MODE_USER) ? (uint32_t) c->gprs[ARM_SP] : (uint32_t) c->bankedRegisters[BANK_NONE][0]);
+        } else if (!strcmp(cmd, "watch8")) {
+            // watch8 ADDR MAXSTEPS: single-steps the current core (the other one stands still) until the byte at ADDR changes: prints
+            // `watch8 ADDR OLD -> NEW pc PC lr LR r0 R0` (the instruction that wrote it has just run), or `watch8 ADDR unchanged`
+            char a[64] = {0};
+            long max = 0;
+            sscanf(line, "%*s %63s %ld", a, &max);
+            uint32_t addr = (uint32_t) strtoul(a, NULL, 0);
+            uint8_t old = core->busRead8(core, addr);
+            struct ARMCore* cpu = (struct ARMCore*) core->cpu;
+            long i = 0;
+            for (; i < max; i++) {
+                core->step(core);
+                uint8_t now = core->busRead8(core, addr);
+                if (now != old) {
+                    printf("watch8 %08X %02X -> %02X pc %08X lr %08X r0 %08X after %ld step(s)\n", addr, old, now,
+                           (uint32_t) cpu->gprs[ARM_PC], (uint32_t) cpu->gprs[ARM_LR], (uint32_t) cpu->gprs[0], i);
+                    break;
+                }
+            }
+            if (i == max) printf("watch8 %08X unchanged\n", addr);
         } else if (!strcmp(cmd, "stepinto")) {
             // stepinto REGION: step the CPU until it runs code in that memory region (0 = BIOS, 3 = IWRAM: the
             // interrupt handler) - a frame that ends there is what a pk_call must come back to.
@@ -1069,6 +1507,31 @@ int main(int argc, char** argv) {
             sscanf(line, "%*s %63s %63s %u", a, d, &len);
             uint32_t src = (uint32_t) strtoul(a, NULL, 0), dst = (uint32_t) strtoul(d, NULL, 0);
             for (uint32_t i = 0; i < len; i++) core->busWrite8(core, dst + i, core->busRead8(core, src + i));
+        } else if (!strcmp(cmd, "memsave")) {
+            // memsave ADDR LEN FILE: write LEN bytes of RAM to FILE - a save's own party slots as a co-op partner's
+            // Pokémon, made in the work dir and never committed.
+            char a[64] = {0};
+            uint32_t len = 0;
+            sscanf(line, "%*s %63s %u %255s", a, &len, arg1);
+            uint32_t src = (uint32_t) strtoul(a, NULL, 0);
+            FILE* f = fopen(arg1, "wb");
+            for (uint32_t i = 0; f && i < len; i++) fputc(core->busRead8(core, src + i), f);
+            if (f) fclose(f);
+            printf("memsave %08x (%u bytes) -> %s%s\n", src, len, arg1, f ? "" : ": cannot write");
+        } else if (!strcmp(cmd, "reown")) {
+            // reown MON OTID: give a struct Pokemon (100 bytes in RAM) another OT ID, keeping its data valid - the
+            // 48 substructure bytes (+0x20) are XORed with personality ^ OT ID, so every word is XORed with old ^ new.
+            char a[64] = {0}, o[64] = {0};
+            sscanf(line, "%*s %63s %63s", a, o);
+            uint32_t mon = (uint32_t) strtoul(a, NULL, 0), id = (uint32_t) strtoul(o, NULL, 0);
+            // the old OT ID XOR the new one over the 48 encrypted bytes (the checksum, a sum of the decrypted words, stays valid); only the OT ID changes
+            uint32_t old = 0;
+            for (int i = 0; i < 4; i++) old |= (uint32_t) core->busRead8(core, mon + 4u + (uint32_t) i) << (8 * i);
+            for (int i = 0; i < 48; i++) {
+                core->busWrite8(core, mon + 0x20u + (uint32_t) i, (uint8_t) (core->busRead8(core, mon + 0x20u + (uint32_t) i) ^ (uint8_t) ((old ^ id) >> (8 * (i & 3)))));
+            }
+            for (int i = 0; i < 4; i++) core->busWrite8(core, mon + 4u + (uint32_t) i, (uint8_t) (id >> (8 * i)));
+            printf("reown %08x -> OT ID %08x\n", mon, id);
         } else if (!strcmp(cmd, "memsnap") || !strcmp(cmd, "memrestore")) {
             // memsnap ADDR LEN / memrestore: copy LEN bytes (up to 256) and write them back later -
             // FieldItems' dry run of a party Pokémon's item effect (call, then put its struct back).
@@ -1181,7 +1644,7 @@ int main(int argc, char** argv) {
         } else if (!strcmp(cmd, "gbloop")) {
             char what[16] = {0};
             sscanf(line, "%*s %d %15s", &n, what);
-            gb_loop(core, n, !strcmp(what, "crystal"));
+            gb_loop(core, n, !strcmp(what, "crystal") ? 1 : !strcmp(what, "gold") ? 2 : !strcmp(what, "polished") ? 3 : 0);
         } else if (!strcmp(cmd, "peek32")) {
             char a[64] = {0};
             sscanf(line, "%*s %63s", a);
@@ -1200,6 +1663,14 @@ int main(int argc, char** argv) {
             mCoreConfigSetIntValue(&core->config, "volume", n);
             core->reloadConfigOption(core, "volume", &core->config);
             printf("volume: %d\n", n);
+#ifdef HAVE_PK_GB_AUDIO
+        } else if (!strcmp(cmd, "gbaudio")) {
+            // 1 (the default) = a Game Boy game's sound resampled as the app does (pk_gb_audio.c); 0 = mGBA's own.
+            sscanf(line, "%*s %d", &n);
+            pk_gb_audio_detach(&gbAudio, core);
+            if (n) pk_gb_audio_attach(&gbAudio, core, SAMPLE_RATE);
+            printf("gbaudio: %s\n", gbAudio.left ? "the app's" : "mGBA's own");
+#endif
         } else if (!strcmp(cmd, "wav")) {
             sscanf(line, "%*s %255s %d", arg1, &n);
             cmdWav(arg1, n);
@@ -1229,12 +1700,15 @@ int main(int argc, char** argv) {
 #endif
 #ifdef HAVE_PK_WIDE
         } else if (!strcmp(cmd, "wideon")) {
-            sscanf(line, "%*s %d", &n);
+            unsigned crcArg = 0;
+            sscanf(line, "%*s %d %x", &n, &crcArg);
             // The game by its ROM's CRC32, as the app picks it (pk_wide_games.h): the file's bytes. Not the ROM in
             // memory - mGBA keeps a cart's GPIO registers (the RTC of Emerald, Unbound...) inside its ROM buffer at
             // 0xC4, so once the game has read its clock the buffer (and the bus) no longer hash as the file does.
-            uint32_t crc = 0;
-            FILE* rf = fopen(romPath, "rb");
+            // A CRC after the margin is used instead: the retail one the app hands over for a randomized retail cart
+            // (WideScreen.tablesCrc).
+            uint32_t crc = crcArg;
+            FILE* rf = crc ? NULL : fopen(romPath, "rb");
             if (rf) {
                 fseek(rf, 0, SEEK_END);
                 long fsz = ftell(rf);
@@ -1245,7 +1719,8 @@ int main(int argc, char** argv) {
                 fclose(rf);
             }
             wideOn = pk_wide_configure(crc);
-            pk_field_configure(crc);   // fieldinfo's reads: the same table
+            partnerTrack = pk_field_configure(crc) != 0;   // fieldinfo's reads: the same table
+            partnerOk = partnerTrack ? pk_partner_self(core, partnerSelf) : 0;
             wideView = (struct PkWideView) { -n, 0, pk_wide_frame_w() + 2 * n, pk_wide_frame_h() };
             memset(&wideStats, 0, sizeof(wideStats));
             printf("wideon: ROM %08x %s, margin %d\n", crc, wideOn ? "known" : "NOT KNOWN (WIDE off)", n);
@@ -1364,6 +1839,95 @@ int main(int argc, char** argv) {
             printf("fieldinfo: frame %u known %d locked %d battle %d text %d bike %d surf %d avatar %d\n",
                    core->frameCounter(core), !!(fs & PK_FIELD_KNOWN), !!(fs & PK_FIELD_LOCKED), !!(fs & PK_FIELD_BATTLE),
                    !!(fs & PK_FIELD_TEXT), !!(fs & PK_FIELD_BIKE), !!(fs & PK_FIELD_SURF), !!(fs & PK_FIELD_AVATAR));
+        } else if (!strcmp(cmd, "partnerself")) {
+            // Co-op presence: this frame's pk_partner_self (map, fine position x16 + pixels, facing, mode, step count).
+            if (!partnerOk) printf("partnerself: none (no field table: `wideon` first)\n");
+            else printf("partnerself: valid %d map %d.%d fine %d,%d facing %d mode %d step %d\n",
+                        partnerSelf[PK_PARTNER_SELF_VALID], partnerSelf[PK_PARTNER_SELF_GROUP], partnerSelf[PK_PARTNER_SELF_NUM],
+                        partnerSelf[PK_PARTNER_SELF_FX], partnerSelf[PK_PARTNER_SELF_FY], partnerSelf[PK_PARTNER_SELF_FACING],
+                        partnerSelf[PK_PARTNER_SELF_MODE], partnerSelf[PK_PARTNER_SELF_STEP]);
+        } else if (!strcmp(cmd, "partnerset")) {
+            sscanf(line, "%*s %255s", arg1);
+            static uint8_t art[PK_PARTNER_ART_BYTES];
+            FILE* f = fopen(arg1, "rb");
+            if (f && fread(art, 1, sizeof(art), f) == sizeof(art) && fgetc(f) == EOF) pk_partner_set(art);
+            else { fprintf(stderr, "mgba_dump: partnerset: can't read %d bytes from %s\n", PK_PARTNER_ART_BYTES, arg1); pk_partner_set(NULL); }
+            if (f) fclose(f);
+        } else if (!strcmp(cmd, "partnerpos")) {
+            int vis = 0, fx = 0, fy = 0, frame = 0, flip = 0, blob = -1, bob = 0;
+            sscanf(line, "%*s %d %d %d %d %d %d %d", &vis, &fx, &fy, &frame, &flip, &blob, &bob);
+            partnerNear = 0;
+            pk_partner_place(core, vis, fx, fy, frame, flip, blob, bob);
+        } else if (!strcmp(cmd, "partnernear")) {
+            partnerDx = partnerDy = partnerFrame = partnerFlip = 0;
+            partnerBlob = -1;
+            sscanf(line, "%*s %d %d %d %d %d", &partnerDx, &partnerDy, &partnerFrame, &partnerFlip, &partnerBlob);
+            partnerNear = 1;
+            partnerApplyNear();   // from the last frame's read; each frame after it follows
+        } else if (!strcmp(cmd, "partnerinfo")) {
+            char info[200], label[64] = {0};
+            sscanf(line, "%*s %63s", label);   // an optional label: each case of a test is then its own line
+            pk_partner_info(info, sizeof(info));
+            printf("partnerinfo%s%s: %s\n", label[0] ? " " : "", label, info);
+        } else if (!strcmp(cmd, "memhash")) {
+            // EWRAM, IWRAM, VRAM, OAM and palette RAM of a GBA core: what a co-op partner must never leave behind.
+            char name[64] = {0};
+            sscanf(line, "%*s %63s", name);
+            struct GBA* gba = (struct GBA*) core->board;
+            uint32_t h = doCrc32(gba->memory.wram, SIZE_WORKING_RAM);   // each region's CRC32, folded in
+            h = (h << 5 | h >> 27) ^ doCrc32(gba->memory.iwram, SIZE_WORKING_IRAM);
+            h = (h << 5 | h >> 27) ^ doCrc32(gba->video.vram, SIZE_VRAM);
+            h = (h << 5 | h >> 27) ^ doCrc32(gba->video.oam.raw, SIZE_OAM);
+            h = (h << 5 | h >> 27) ^ doCrc32(gba->video.palette, SIZE_PALETTE_RAM);
+            memHashes[memHashCount % MEM_HASHES].crc = h;
+            snprintf(memHashes[memHashCount % MEM_HASHES].name, sizeof(memHashes[0].name), "%s", name);
+            memHashCount++;
+            printf("memhash %s %08X\n", name, h);
+        } else if (!strcmp(cmd, "expectsame")) {
+            char a[64] = {0}, b[64] = {0};
+            sscanf(line, "%*s %63s %63s", a, b);
+            const uint32_t* ha = NULL;
+            const uint32_t* hb = NULL;
+            for (int i = 0; i < memHashCount && i < MEM_HASHES; i++) {   // the newest of each name
+                int k = (memHashCount - 1 - i) % MEM_HASHES;
+                if (!ha && !strcmp(memHashes[k].name, a)) ha = &memHashes[k].crc;
+                if (!hb && !strcmp(memHashes[k].name, b)) hb = &memHashes[k].crc;
+            }
+            if (ha && hb && *ha == *hb) printf("expectsame %s %s: PASS\n", a, b);
+            else {
+                printf("expectsame %s %s: FAIL memhash %s != %s\n", a, b, a, b);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "framediff")) {
+            // The box of pixels two `shot` PPMs (P6, same size) differ in.
+            char pa[256] = {0}, pb[256] = {0}, label[64] = {0}, tag[80];
+            sscanf(line, "%*s %255s %255s %63s", pa, pb, label);   // an optional label, as partnerinfo's
+            snprintf(tag, sizeof(tag), "framediff%s%s", label[0] ? " " : "", label);
+            int x0 = 1 << 20, y0 = 1 << 20, x1 = -1, y1 = -1;
+            FILE* fa = fopen(pa, "rb");
+            FILE* fb = fopen(pb, "rb");
+            unsigned wa = 0, ha = 0, wb = 0, hb = 0;
+            if (fa && fb && fscanf(fa, "P6 %u %u 255", &wa, &ha) == 2 && fscanf(fb, "P6 %u %u 255", &wb, &hb) == 2 && wa == wb && ha == hb &&
+                fgetc(fa) != EOF && fgetc(fb) != EOF) {
+                for (unsigned y = 0; y < ha; y++)
+                    for (unsigned x = 0; x < wa; x++) {
+                        uint8_t ca[3], cb[3];
+                        if (fread(ca, 1, 3, fa) != 3 || fread(cb, 1, 3, fb) != 3) { y = ha; break; }
+                        if (memcmp(ca, cb, 3)) {
+                            if ((int) x < x0) x0 = (int) x;
+                            if ((int) x > x1) x1 = (int) x;
+                            if ((int) y < y0) y0 = (int) y;
+                            if ((int) y > y1) y1 = (int) y;
+                        }
+                    }
+                if (x1 < 0) printf("%s none\n", tag);
+                else printf("%s box %d,%d-%d,%d\n", tag, x0, y0, x1, y1);
+            } else {
+                printf("framediff: FAIL can't compare %s with %s\n", pa, pb);
+                expectFailures++;
+            }
+            if (fa) fclose(fa);
+            if (fb) fclose(fb);
         } else if (!strcmp(cmd, "wild")) {
             // wild ADDR KEEP: WILD ENCOUNTERS on the game `wideon` picked - its switch (sWildEncountersDisabled, as
             // WildEncounters.kt finds it) rolled before every frame with KEEP percent of encounters left (100 puts
@@ -1398,6 +1962,982 @@ int main(int argc, char** argv) {
                 }
                 fclose(f);
             }
+#endif
+        } else if (!strcmp(cmd, "expectspecies")) {
+            // expectspecies ADDR MONADDR: the halfword at ADDR (a gBattleMons species) equals the species of the
+            // (encrypted) Pokémon struct at MONADDR (decrypted as expectmonin does).
+            char a[64] = {0}, m[64] = {0};
+            sscanf(line, "%*s %63s %63s", a, m);
+            uint32_t addr = (uint32_t) strtoul(a, NULL, 0), mon = (uint32_t) strtoul(m, NULL, 0);
+            uint32_t pers = (uint32_t) core->busRead32(core, mon), otid = (uint32_t) core->busRead32(core, mon + 4);
+            static const uint8_t growthPos[24] = {0, 0, 0, 0, 0, 0, 1, 1, 2, 3, 2, 3, 1, 1, 2, 3, 2, 3, 1, 1, 2, 3, 2, 3};
+            uint32_t want = ((uint32_t) core->busRead32(core, mon + 0x20 + 12u * growthPos[pers % 24]) ^ pers ^ otid) & 0xFFFF;
+            uint32_t got = (uint32_t) core->busRead16(core, addr) & 0xFFFF;
+            if (got == want && want) printf("PASS %08X species %u == %08X\n", addr, got, mon);
+            else {
+                printf("FAIL %08X species %u, %08X has %u\n", addr, got, mon, want);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "expectin16")) {
+            // expectin16 ADDR VAL...: the halfword at ADDR must be one of the listed values (`PASS` / `FAIL`).
+            char a[64] = {0};
+            sscanf(line, "%*s %63s", a);
+            uint32_t addr = (uint32_t) strtoul(a, NULL, 0);
+            uint32_t got = (uint32_t) core->busRead16(core, addr) & 0xFFFF;
+            bool in = false;
+            const char* p = strstr(line, a);
+            for (char* tok = p ? (char*) p + strlen(a) : NULL; tok && *tok;) {
+                char* end = NULL;
+                unsigned long v = strtoul(tok, &end, 0);
+                if (end == tok) break;
+                if ((uint32_t) v == got) in = true;
+                tok = end;
+            }
+            if (in) printf("PASS %08X 0x%X\n", addr, got);
+            else {
+                printf("FAIL %08X got 0x%X not in the list\n", addr, got);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "expectmonin")) {
+            // expectmonin ADDR SPECIES...: the Gen 3 Pokémon struct at ADDR (decrypted here: personality ^ OT ID keys the
+            // four 12-byte substructs, whose order is personality % 24; the species is the Growth one's first halfword)
+            // must be one of the listed species: `PASS <addr> species N` or `FAIL <addr> species N not in ...`.
+            char a[64] = {0};
+            char* rest = NULL;
+            sscanf(line, "%*s %63s", a);
+            uint32_t addr = (uint32_t) strtoul(a, NULL, 0);
+            uint32_t pers = (uint32_t) core->busRead32(core, addr), otid = (uint32_t) core->busRead32(core, addr + 4);
+            // where each personality % 24 puts the Growth substruct (G A M E orders, pret's sSubstructOrder)
+            static const uint8_t growthAt[24] = {0, 0, 0, 0, 0, 0, 1, 1, 2, 3, 2, 3, 1, 1, 2, 3, 2, 3, 1, 1, 2, 3, 2, 3};
+            uint32_t species = ((uint32_t) core->busRead32(core, addr + 0x20 + 12u * growthAt[pers % 24]) ^ pers ^ otid)
+                               & 0xFFFF;
+            bool in = false;
+            const char* p = strstr(line, a);
+            rest = p ? (char*) p + strlen(a) : NULL;
+            for (char* tok = rest; tok && *tok;) {
+                char* end = NULL;
+                unsigned long v = strtoul(tok, &end, 0);
+                if (end == tok) break;
+                if ((uint32_t) v == species) in = true;
+                tok = end;
+            }
+            if (in) printf("PASS %08X species %u\n", addr, species);
+            else {
+                printf("FAIL %08X species %u not in:%s\n", addr, species, rest ? rest : "");
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "expectframecrc")) {
+            // expectframecrc X Y W H CRC: CRC32 of the current frame's X,Y,W,H pixels (R G B bytes, row by row) must be
+            // CRC (hex): a pinned picture - a text box - without committing the picture. `PASS framecrc` or a FAIL
+            // line that shows the CRC it got.
+            unsigned x = 0, y = 0, w = 0, h = 0;
+            char c[32] = {0};
+            sscanf(line, "%*s %u %u %u %u %31s", &x, &y, &w, &h, c);
+            uint32_t want = (uint32_t) strtoul(c, NULL, 16), got = 0;
+            if (w && h && x + w <= videoW && y + h <= videoH) {
+                uint8_t* rgb = malloc((size_t) w * h * 3);
+                for (unsigned i = 0; i < w * h; i++) {
+                    uint32_t px = (uint32_t) video[(y + i / w) * videoW + x + i % w];
+                    rgb[3 * i] = (uint8_t) px;
+                    rgb[3 * i + 1] = (uint8_t) (px >> 8);
+                    rgb[3 * i + 2] = (uint8_t) (px >> 16);
+                }
+                got = 0xFFFFFFFFu;
+                for (size_t i = 0; i < (size_t) w * h * 3; i++) {
+                    got ^= rgb[i];
+                    for (int b = 0; b < 8; b++) got = (got >> 1) ^ (0xEDB88320u & (0u - (got & 1u)));
+                }
+                got = ~got;
+                free(rgb);
+            }
+            if (got == want) {
+                printf("PASS framecrc %u,%u %ux%u\n", x, y, w, h);
+            } else {
+                printf("FAIL framecrc %u,%u %ux%u got 0x%08X want 0x%08X\n", x, y, w, h, got, want);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "expectfile")) {
+            // expectfile ADDR FILE: the bus must hold FILE's bytes from ADDR (`PASS <addr> (N bytes)` or the first
+            // byte that differs as a FAIL; any FAIL makes the exit status 1).
+            char a[64] = {0};
+            sscanf(line, "%*s %63s %255s", a, arg1);
+            uint32_t addr = (uint32_t) strtoul(a, NULL, 0);
+            FILE* f = fopen(arg1, "rb");
+            if (!f) {
+                printf("FAIL expectfile: cannot open %s\n", arg1);
+                expectFailures++;
+            } else {
+                int c, i = 0;
+                bool ok = true;
+                for (; ok && (c = fgetc(f)) != EOF; i++) {
+                    uint32_t got = (uint32_t) core->busRead8(core, addr + (uint32_t) i);
+                    if (got != (uint32_t) c) {
+                        printf("FAIL %08X got 0x%X want 0x%X\n", addr + (uint32_t) i, got, (unsigned) c);
+                        ok = false;
+                    }
+                }
+                fclose(f);
+                if (ok) printf("PASS %08X (%d bytes)\n", addr, i);
+                else expectFailures++;
+            }
+        } else if (!strcmp(cmd, "expect8") || !strcmp(cmd, "expect16") || !strcmp(cmd, "expect32")) {
+            // expectW ADDR VAL [N]: the bus must hold VAL at ADDR (N of them in a row, W bits apart) - the co-op
+            // checks' assertions. One line per command; any FAIL makes the exit status 1.
+            char a[64] = {0}, v[64] = {0};
+            int count = 1;
+            sscanf(line, "%*s %63s %63s %d", a, v, &count);
+            int width = cmd[6] == '8' ? 1 : cmd[6] == '1' ? 2 : 4;
+            uint32_t addr = (uint32_t) strtoul(a, NULL, 0), want = (uint32_t) strtoul(v, NULL, 0);
+            if (width < 4) want &= (1u << (8 * width)) - 1;
+            bool ok = true;
+            for (int k = 0; k < count && ok; k++) {
+                uint32_t at = addr + (uint32_t) (k * width);
+                uint32_t got = width == 1 ? (uint32_t) core->busRead8(core, at)
+                             : width == 2 ? (uint32_t) core->busRead16(core, at) : (uint32_t) core->busRead32(core, at);
+                if (width < 4) got &= (1u << (8 * width)) - 1;
+                if (got != want) {
+                    printf("FAIL %08X got 0x%X want 0x%X\n", at, got, want);
+                    ok = false;
+                }
+            }
+            if (ok) printf("PASS %08X\n", addr);
+            else expectFailures++;
+        } else if (!strcmp(cmd, "waitmem8") || !strcmp(cmd, "waitmem16") || !strcmp(cmd, "waitmem32")) {
+            // waitmemW ADDR VAL MAX: frames until the bus holds VAL at ADDR (PASS waitmem), FAIL after MAX frames
+            char a[64] = {0}, v[64] = {0};
+            int max = 0, frames = 0, width = cmd[7] == '8' ? 1 : cmd[7] == '1' ? 2 : 4;
+            sscanf(line, "%*s %63s %63s %d", a, v, &max);
+            uint32_t addr = (uint32_t) strtoul(a, NULL, 0), want = (uint32_t) strtoul(v, NULL, 0), got = 0;
+            for (;;) {
+                got = width == 1 ? (uint32_t) core->busRead8(core, addr) : width == 2 ? (uint32_t) core->busRead16(core, addr)
+                                                                                      : (uint32_t) core->busRead32(core, addr);
+                if (got == want || frames >= max) break;
+                runFrame();
+                frames++;
+            }
+            if (got == want) printf("PASS waitmem %08X after %d frame(s)\n", addr, frames);
+            else {
+                printf("FAIL waitmem %08X got 0x%X want 0x%X after %d frame(s)\n", addr, got, want, frames);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "waitchange32")) {
+            // waitchange32 ADDR MAX: frames until the bus word at ADDR differs from what it holds now (PASS waitchange), FAIL after MAX
+            char a[64] = {0};
+            int max = 0, frames = 0;
+            sscanf(line, "%*s %63s %d", a, &max);
+            uint32_t addr = (uint32_t) strtoul(a, NULL, 0), was = core->busRead32(core, addr), got = was;
+            while (frames < max && (got = core->busRead32(core, addr)) == was) {
+                runFrame();
+                frames++;
+            }
+            if (got != was) printf("PASS waitchange %08X 0x%X -> 0x%X after %d frame(s)\n", addr, was, got, frames);
+            else {
+                printf("FAIL waitchange %08X still 0x%X after %d frame(s)\n", addr, was, frames);
+                expectFailures++;
+            }
+#ifdef HAVE_PK_COOP
+        } else if (!strcmp(cmd, "waittask")) {
+            // waittask FUNC MAX: frames until one of Emerald's 16 gTasks is active running FUNC (Thumb bit ignored).
+            char a[64] = {0};
+            int max = 0;
+            sscanf(line, "%*s %63s %d", a, &max);
+            uint32_t fn = (uint32_t) strtoul(a, NULL, 0) & ~1u;
+            bool found = false;
+            int frames = 0;
+            for (;;) {
+                for (int t = 0; t < 16 && !found; t++) {
+                    uint32_t task = COOP_EM_gTasks + (uint32_t) (t * COOP_EM_OFF_TASK_SIZE);
+                    found = core->busRead8(core, task + COOP_EM_OFF_TASK_IS_ACTIVE)
+                         && ((uint32_t) core->busRead32(core, task + COOP_EM_OFF_TASK_FUNC) & ~1u) == fn;
+                }
+                if (found || frames >= max) break;
+                runFrame();
+                frames++;
+            }
+            if (found) printf("PASS waittask %08X after %d frame(s)\n", fn, frames);
+            else {
+                printf("FAIL waittask %08X not active after %d frame(s)\n", fn, frames);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "coopinstall")) {
+            if (pk_coop_install(core)) printf("coop: installed\n");
+            else printf("coop: refused %s\n", pk_coop_refused());
+        } else if (!strcmp(cmd, "coopuninstall")) {
+            pk_coop_uninstall(core);
+            printf("coop: uninstalled, rom patched: %s\n", pk_cheats_rom_patched() ? "yes" : "no");
+        } else if (!strcmp(cmd, "coopfreefield")) {
+            printf("freefield %d\n", pk_coop_on_free_field(core));
+        } else if (!strcmp(cmd, "coopjoin")) {
+            // prints `join K A B`: pk_coop_join_kind and pk_coop_join_trainers
+            int ids[2];
+            int kind = pk_coop_join_kind(core);
+            pk_coop_join_trainers(core, ids);
+            printf("join %d %d %d\n", kind, ids[0], ids[1]);
+        } else if (!strcmp(cmd, "coopfree")) {
+            // prints `free F field G`: pk_coop_partner_free, pk_coop_on_free_field
+            printf("free %d field %d\n", pk_coop_partner_free(core), pk_coop_on_free_field(core));
+        // coop-field (plan 4 Task 7)
+        // coop-after (plan 4 Task 8)
+        } else if (!strcmp(cmd, "coopgive") || !strcmp(cmd, "coopwritemon")) {
+            // coopgive FILE / coopwritemon SLOT FILE: the 100 bytes of FILE given to the game (party, else PC) or put
+            // into party slot SLOT. Prints `give R` / `writemon R` (pk_coop_after.h's results).
+            int slot = 0;
+            uint8_t mon[100];
+            memset(mon, 0, sizeof(mon));
+            if (cmd[4] == 'w') sscanf(line, "%*s %d %255s", &slot, arg1);
+            else sscanf(line, "%*s %255s", arg1);
+            FILE* f = fopen(arg1, "rb");
+            if (!f || fread(mon, 1, sizeof(mon), f) != sizeof(mon)) fprintf(stderr, "mgba_dump: %s: can't read %s\n", cmd, arg1);
+            if (f) fclose(f);
+            afterWaitSafe(core);
+            int r = cmd[4] == 'w' ? pk_coop_write_party_mon(core, slot, mon) : pk_coop_give_mon(core, mon);
+            printf("%s %d\n", cmd[4] == 'w' ? "writemon" : "give", r);
+        } else if (!strcmp(cmd, "coopremove")) {
+            int item = 0, count = 0;
+            sscanf(line, "%*s %i %i", &item, &count);
+            afterWaitSafe(core);
+            printf("remove %d\n", pk_coop_remove_item(core, item, count));
+        } else if (!strcmp(cmd, "coopflag")) {
+            int id = 0;
+            sscanf(line, "%*s %i", &id);
+            afterWaitSafe(core);
+            printf("flag %d\n", pk_coop_set_trainer_flag(core, id));
+        } else if (!strcmp(cmd, "coopprize")) {
+            int id = 0;
+            char single[16] = {0};
+            sscanf(line, "%*s %i %15s", &id, single);   // coopprize ID [single]: a one-trainer battle's prize
+            printf("prize %d\n", single[0] ? pk_coop_prize_single(core, id) : pk_coop_prize(core, id));
+        } else if (!strcmp(cmd, "coopmoney")) {
+            int amount = 0;
+            sscanf(line, "%*s %i", &amount);
+            afterWaitSafe(core);
+            printf("money %d\n", pk_coop_add_money(core, amount));
+        } else if (!strcmp(cmd, "coopwhiteout")) {
+            afterWaitSafe(core);
+            printf("whiteout %d\n", pk_coop_white_out(core));
+        } else if (!strcmp(cmd, "coopevolve")) {
+            int slot = 0;
+            sscanf(line, "%*s %i", &slot);
+            afterWaitSafe(core);
+            printf("evolve %d\n", pk_coop_evolve(core, slot));
+        } else if (!strcmp(cmd, "coopsave")) {
+            afterWaitSafe(core);
+            printf("save %d\n", pk_coop_save_game(core));
+        } else if (!strcmp(cmd, "coopmoneymark") || !strcmp(cmd, "coopmoneyexpect")) {
+            // coopmoneymark: remember the game's money (its own GetMoney). coopmoneyexpect delta N / half: the money now is
+            // the mark + N / the mark halved (CB2_WhiteOut's SetMoney(money / 2)): PASS / FAIL.
+            static uint32_t mark;
+            pk_coop_after_set_call(coopCall);
+            int waited = 0;
+            for (; waited < 60 && !pk_call_safe(core); waited++) runFrame();
+            uint32_t now = afterMoney(core);
+            if (cmd[9] == 'm') {
+                mark = now;
+                printf("money mark %u\n", now);
+            } else {
+                char mode[16] = {0};
+                int n = 0;
+                sscanf(line, "%*s %15s %d", mode, &n);
+                uint32_t want = mode[0] == 'h' ? mark / 2 : mark + (uint32_t) n;
+                if (now == want) printf("PASS money %u (mark %u)\n", now, mark);
+                else { printf("FAIL money %u want %u (mark %u)\n", now, want, mark); expectFailures++; }
+            }
+        } else if (!strcmp(cmd, "afterhash") || !strcmp(cmd, "afterexpecthash")) {
+            // afterhash SLOT ADDR LEN: remember a hash of LEN bus bytes; afterexpecthash SLOT ADDR LEN: the same bytes hash the same.
+            static uint32_t hashes[8];
+            char a[64] = {0};
+            int slot = 0;
+            uint32_t len = 0;
+            sscanf(line, "%*s %d %63s %i", &slot, a, (int*) &len);
+            uint32_t h = afterHash(core, (uint32_t) strtoul(a, NULL, 0), len);
+            slot &= 7;
+            if (cmd[5] == 'h') {
+                hashes[slot] = h;
+                printf("memhash %d %08x\n", slot, h);
+            } else if (h == hashes[slot]) {
+                printf("PASS hash %d unchanged (%08x)\n", slot, h);
+            } else {
+                printf("FAIL hash %d is %08x want %08x\n", slot, h, hashes[slot]);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "expect8p")) {
+            // expect8p PTR OFF VAL: the byte at *(u32 *)PTR + OFF is VAL (a save block's field: those move).
+            char p[64] = {0}, o[64] = {0}, v[64] = {0};
+            sscanf(line, "%*s %63s %63s %63s", p, o, v);
+            uint32_t addr = (uint32_t) core->busRead32(core, (uint32_t) strtoul(p, NULL, 0)) + (uint32_t) strtoul(o, NULL, 0);
+            uint32_t got = core->busRead8(core, addr), want = (uint32_t) strtoul(v, NULL, 0) & 0xFF;
+            if (got == want) printf("PASS %08X\n", addr);
+            else { printf("FAIL %08X got 0x%X want 0x%X\n", addr, got, want); expectFailures++; }
+        } else if (!strcmp(cmd, "coopexpectfree")) {
+            // coopexpectfree 0|1: pk_coop_on_free_field is that (PASS / FAIL, unlike `coopfreefield`'s plain print).
+            int want = 1;
+            sscanf(line, "%*s %d", &want);
+            int got = pk_coop_on_free_field(core);
+            if (got == want) printf("PASS freefield %d\n", got);
+            else { printf("FAIL freefield %d want %d\n", got, want); expectFailures++; }
+        } else if (!strcmp(cmd, "expectfilep")) {
+            // expectfilep PTR OFF FILE N: the first N bytes of FILE are on the bus at *(u32 *)PTR + OFF (a save block's or
+            // the PC storage's field: those move).
+            char p[64] = {0}, o[64] = {0};
+            int n = 0;
+            sscanf(line, "%*s %63s %63s %255s %d", p, o, arg1, &n);
+            uint32_t addr = (uint32_t) core->busRead32(core, (uint32_t) strtoul(p, NULL, 0)) + (uint32_t) strtoul(o, NULL, 0);
+            FILE* f = fopen(arg1, "rb");
+            bool ok = f != NULL;
+            for (int i = 0; ok && i < n; i++) {
+                int c = fgetc(f);
+                if (c == EOF || (uint8_t) c != core->busRead8(core, addr + (uint32_t) i)) {
+                    printf("FAIL expectfilep %08X byte %d\n", addr, i);
+                    ok = false;
+                }
+            }
+            if (!f) printf("FAIL expectfilep: cannot open %s\n", arg1);
+            if (f) fclose(f);
+            if (ok) printf("PASS expectfilep %08X (%d bytes)\n", addr, n);
+            else expectFailures++;
+        } else if (!strcmp(cmd, "afterexpectsame")) {
+            // expectsame A B LEN: the bus holds the same LEN bytes at A and at B.
+            char a[64] = {0}, b[64] = {0};
+            uint32_t len = 0;
+            sscanf(line, "%*s %63s %63s %i", a, b, (int*) &len);
+            uint32_t pa = (uint32_t) strtoul(a, NULL, 0), pb = (uint32_t) strtoul(b, NULL, 0);
+            if (afterHash(core, pa, len) == afterHash(core, pb, len)) printf("PASS same %08X %08X\n", pa, pb);
+            else { printf("FAIL %08X and %08X differ\n", pa, pb); expectFailures++; }
+        } else if (!strcmp(cmd, "romcheckmark")) {
+            memcpy(markRomDiffs, lastRomDiffs, sizeof(markRomDiffs));
+            printf("romcheckmark: %d / %d / %d\n", markRomDiffs[0], markRomDiffs[1], markRomDiffs[2]);
+        } else if (!strcmp(cmd, "romchecksame")) {
+            // romchecksame: PASS / FAIL on the last romcheck's three counts equalling the marked ones.
+            int ok = !memcmp(markRomDiffs, lastRomDiffs, sizeof(markRomDiffs));
+            printf("%s romchecksame: %d / %d / %d (marked %d / %d / %d)\n", ok ? "PASS" : "FAIL", lastRomDiffs[0],
+                   lastRomDiffs[1], lastRomDiffs[2], markRomDiffs[0], markRomDiffs[1], markRomDiffs[2]);
+            if (!ok) expectFailures++;
+        } else if (!strcmp(cmd, "coopstarting")) {
+            printf("starting %d\n", pk_coop_battle_starting(core));
+        // coop-lock (plan 5 Task 5): the story lock (pk_coop_lock.c), tests in coop/lock_*.txt
+        } else if (!strcmp(cmd, "lockinstall")) {
+            if (pk_coop_lock_install(core, coopCall)) printf("lock: installed\n");
+            else printf("lock: refused %s\n", pk_coop_lock_refused());
+        } else if (!strcmp(cmd, "lockuninstall")) {
+            pk_coop_lock_uninstall(core);
+            printf("lock: uninstalled, rom patched: %s\n", pk_cheats_rom_patched() ? "yes" : "no");
+        } else if (!strcmp(cmd, "lockactive")) {
+            sscanf(line, "%*s %d", &n);
+            pk_coop_lock_set_active(core, n);
+            printf("lock: active %d\n", n ? 1 : 0);
+        } else if (!strcmp(cmd, "lockheld")) {
+            int kind = 0;
+            int held = pk_coop_lock_held(core, &kind);
+            printf("lock: held %d kind %d\n", held, kind);
+        } else if (!strcmp(cmd, "lockgo")) {
+            // lockgo ID: pk_coop_lock_go, which calls the game (pk_call): wait, like `call`, for a frame that is safe
+            sscanf(line, "%*s %d", &n);
+            int waited = 0;
+            for (; waited < 60 && !pk_call_safe(core); waited++) runFrame();
+            if (waited) printf("lock: waited %d frame(s) for a safe point\n", waited);
+            printf("lock: go %d\n", pk_coop_lock_go(core, n));
+        } else if (!strcmp(cmd, "lockcancel")) {
+            pk_coop_lock_cancel(core);
+            printf("lock: cancelled\n");
+        // The link bridge (plan 6 Task 1; pk_coop_link.c) and `pair` mode: two cores, tests in coop/link_*.txt
+        } else if (!strcmp(cmd, "pair")) {
+            // pair SAVE: a second core of the same ROM with its own save (a disposable copy, like the first: the game writes to it)
+            // that runs beside the first from now on; `on b` / `on a` say which one the commands drive. The second starts from reset.
+            sscanf(line, "%*s %255s", arg1);
+            struct VFile* rom2 = pairOn ? NULL : VFileOpen(romPath, O_RDONLY);
+            struct mCore* c2 = rom2 ? mCoreFindVF(rom2) : NULL;
+            if (!c2 || !c2->init(c2)) {
+                printf("FAIL pair: cannot make the second core\n");
+                expectFailures++;
+            } else {
+                mCoreInitConfig(c2, NULL);
+                color_t* video2 = calloc((size_t) videoW * videoH, sizeof(color_t));
+                c2->setVideoBuffer(c2, video2, videoW);
+                c2->setAudioBufferSize(c2, 2048);
+                blip_set_rates(c2->getAudioChannel(c2, 0), c2->frequency(c2), SAMPLE_RATE);
+                blip_set_rates(c2->getAudioChannel(c2, 1), c2->frequency(c2), SAMPLE_RATE);
+                bool ok = c2->loadROM(c2, rom2);
+                struct VFile* sv2 = VFileOpen(arg1, O_RDWR);
+                if (sv2) c2->loadSave(c2, sv2);
+                else printf("pair: warning: cannot open save %s\n", arg1);
+                c2->reset(c2);
+                memset(pairSaved, 0, sizeof(pairSaved));
+                pairSaved[1].core = c2;
+                pairSaved[1].video = video2;
+                pairSaved[1].link.refused = "";
+                pairOn = true;
+                pairCur = 0;
+                printf("pair: %s\n", ok ? "ready" : "FAILED");
+            }
+        } else if (!strcmp(cmd, "on")) {
+            sscanf(line, "%*s %255s", arg1);
+            if (!pairOn || (strcmp(arg1, "a") && strcmp(arg1, "b"))) {
+                printf("FAIL on: needs `pair` first and a or b\n");
+                expectFailures++;
+            } else {
+                pairSwap(arg1[0] == 'b');
+                printf("on %s\n", arg1);
+            }
+        } else if (!strcmp(cmd, "linknoerror")) {
+            sscanf(line, "%*s %d", &pairNoErr);
+            printf("linknoerror %d\n", pairNoErr);
+        } else if (!strcmp(cmd, "linkdelay")) {
+            sscanf(line, "%*s %u", &pairDelay);
+            printf("linkdelay %u\n", pairDelay);
+        // task 7 (a dropped link; pk_coop_link_drop.c): the line goes down / up, a core leaves its battle, a core restarts
+        } else if (!strcmp(cmd, "linkhold")) {
+            // linkhold 0|1: 1 = every block in flight (and every later one) stays in its queue; 0 = the line is up again
+            sscanf(line, "%*s %d", &pairHold);
+            pairHold = pairHold ? 1 : 0;
+            printf("linkhold %d\n", pairHold);
+        } else if (!strcmp(cmd, "linkleave")) {
+            // linkleave 0|1: pk_coop_link_leave on the current core (1 = blackout); prints the bridge state after
+            sscanf(line, "%*s %d", &n);
+            pk_coop_link_leave(core, n);
+            printf("link: left (blackout %d), state %d\n", n ? 1 : 0, pk_coop_link_state(core));
+        } else if (!strcmp(cmd, "linkpump")) {
+            // linkpump 0|1: 0 = the pump (take / give / the tidy-up tick) does not run after frames; 1 = it does
+            int on = 1;
+            sscanf(line, "%*s %d", &on);
+            pairNoPump = !on;
+            printf("linkpump %d\n", on ? 1 : 0);
+        } else if (!strcmp(cmd, "dropleaks")) {
+            printf("dropleaks %d\n", pk_coop_link_drop_leaks(core));
+        } else if (!strcmp(cmd, "heapmark")|| !strcmp(cmd, "heapexpect")) {
+            // heapmark: remember the game heap's free bytes (malloc.c's block ring from sHeapStart) for this core; heapexpect: the
+            // free bytes now equal the mark (PASS / FAIL): nothing a screen allocated is still held
+            static uint32_t heapMark[2];
+            uint32_t start = core->busRead32(core, COOP_EM_sHeapStart), pos = start, freeBytes = 0, used = 0;
+            for (int i = 0; i < 1024; i++) {
+                if (core->busRead16(core, pos) == 0) freeBytes += core->busRead32(core, pos + 4);
+                else used++;
+                pos = core->busRead32(core, pos + 12);
+                if (pos == start) break;
+            }
+            if (cmd[4] == 'm') {
+                heapMark[pairCur] = freeBytes;
+                printf("heap mark: free %u used blocks %u\n", freeBytes, used);
+            } else if (freeBytes == heapMark[pairCur]) {
+                printf("PASS heap free %u (used blocks %u)\n", freeBytes, used);
+            } else {
+                printf("FAIL heap free %u want %u (used blocks %u)\n", freeBytes, heapMark[pairCur], used);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "corereset")) {
+            // corereset: this core's game restarts from its save (the app was closed mid-battle): the bridge's patches go first
+            // (a restart takes the app's ROM changes with it), no blocks leave it afterwards
+            pk_coop_link_uninstall(core);
+            pk_coop_link_forget();
+            core->reset(core);
+            printf("link: core reset\n");
+        } else if (!strcmp(cmd, "linkrun")) {
+            sscanf(line, "%*s %d", &n);
+            for (int i = 0; i < n; i++) runFrame();
+        } else if (!strcmp(cmd, "linkstate")) {
+            if (pairOn) printf("linkstate a %d b %d\n", pairState(0), pairState(1));
+            else printf("linkstate %d\n", pk_coop_link_state(core));
+        } else if (!strcmp(cmd, "linkwait")) {
+            // linkwait STATE MAX: frames until every core is in link state STATE (PK_COOP_LINK_*)
+            int want = 0, max = 0, frames = 0;
+            sscanf(line, "%*s %d %d", &want, &max);
+            while ((pairState(0) != want || (pairOn && pairState(1) != want)) && frames < max) {
+                runFrame();
+                frames++;
+            }
+            if (pairState(0) == want && (!pairOn || pairState(1) == want)) printf("PASS linkwait %d after %d frame(s)\n", want, frames);
+            else {
+                printf("FAIL linkwait %d: a %d b %d after %d frame(s)\n", want, pairState(0), pairOn ? pairState(1) : -1, frames);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "coopbegin")) {
+            // coopbegin MASTER KIND TRAINERA TRAINERB: pk_coop_link_begin on the current core (installing the bridge first). The
+            // other player is the other core when paired (its save's name, gender and OT id), else a stand-in. Frames run (both
+            // cores) until the game is on a pk_call-safe one: `link: begin 1 (after N frame(s))`.
+            int master = 0, kind = 0, ta = 0, tb = 0;
+            sscanf(line, "%*s %d %d %i %i", &master, &kind, &ta, &tb);
+            struct pk_coop_link_setup setup;
+            memset(&setup, 0, sizeof(setup));
+            setup.master = (uint8_t) master;
+            setup.kind = (uint8_t) kind;
+            setup.trainerA = (uint16_t) ta;
+            setup.trainerB = (uint16_t) tb;
+            memset(setup.partnerName, 0xFF, sizeof(setup.partnerName));
+            if (pairOn) {
+                int cur = pairCur;
+                pairSwap(1 - cur);
+                uint32_t sb2 = core->busRead32(core, COOP_EM_gSaveBlock2Ptr);
+                for (int b = 0; b < 8; b++) setup.partnerName[b] = core->busRead8(core, sb2 + COOP_EM_OFF_SB2_PLAYER_NAME + (uint32_t) b);
+                setup.partnerGender = core->busRead8(core, sb2 + COOP_EM_OFF_SB2_PLAYER_GENDER);
+                for (int b = 0; b < 4; b++) setup.partnerOtId |= (uint32_t) core->busRead8(core, sb2 + COOP_EM_OFF_SB2_PLAYER_TRAINER_ID + (uint32_t) b) << (8 * b);   // (byte reads: an unaligned word comes back rotated)
+                pairSwap(cur);
+            }
+            pk_coop_after_set_call(coopCall);   // task 5: the end's prize / flags / evolutions run through the game's own functions
+            pk_coop_after_set_cap(afterCap);
+            if (!pk_coop_link_installed() && !pk_coop_link_install(core, coopCall)) {
+                printf("link: refused %s\n", pk_coop_link_refused());
+            } else {
+                int tries = 0, began = 0;
+                while (!(began = pk_coop_link_begin(core, &setup)) && tries < 120) {
+                    if (strcmp(pk_coop_link_refused(), "no safe frame")) break;
+                    runFrame();
+                    tries++;
+                }
+                if (began) printf("link: begin 1 (after %d frame(s))\n", tries);
+                else printf("link: begin 0 refused %s\n", pk_coop_link_refused());
+            }
+        } else if (!strcmp(cmd, "expectptr")) {
+            // expectptr ADDR OFF1 OFF2 VAL: p = u32 at ADDR + OFF1, q = u32 at p + OFF2, the u32 at q must be VAL (e.g. the AI's
+            // flags: gBattleResources -> ai -> aiFlags): `PASS <addr>` / `FAIL`
+            char a[64] = {0}, o1[64] = {0}, o2[64] = {0}, v[64] = {0};
+            sscanf(line, "%*s %63s %63s %63s %63s", a, o1, o2, v);
+            uint32_t p = (uint32_t) core->busRead32(core, (uint32_t) strtoul(a, NULL, 0)) + (uint32_t) strtoul(o1, NULL, 0);
+            uint32_t q = (uint32_t) core->busRead32(core, p) + (uint32_t) strtoul(o2, NULL, 0);
+            uint32_t got = (uint32_t) core->busRead32(core, q), want = (uint32_t) strtoul(v, NULL, 0);
+            if (got == want) printf("PASS %s ptr\n", a);
+            else { printf("FAIL %s ptr got 0x%X want 0x%X\n", a, got, want); expectFailures++; }
+        } else if (!strcmp(cmd, "linkforcefail")) {
+            // linkforcefail 0|1: pk_coop_link_begin refuses (after writing everything) while it is 1
+            pk_coop_link_test_fail = atoi(line + 13);
+            printf("link: forcefail %d\n", pk_coop_link_test_fail);
+        } else if (!strcmp(cmd, "joinhold")) {
+            printf("link: hold %d\n", pk_coop_link_host_hold(core));
+        } else if (!strcmp(cmd, "linkstart")) {
+            // linkstart MASTER [KIND TA TB]: task 2's start (see the list above). The other player is the other core when paired.
+            int master = 0, kind = 0, ta = 0, tb = 0;
+            sscanf(line, "%*s %d %d %i %i", &master, &kind, &ta, &tb);
+            struct pk_coop_link_setup setup;
+            memset(&setup, 0, sizeof(setup));
+            setup.master = (uint8_t) master;
+            setup.kind = (uint8_t) kind;
+            setup.trainerA = (uint16_t) ta;
+            setup.trainerB = (uint16_t) tb;
+            memset(setup.partnerName, 0xFF, sizeof(setup.partnerName));
+            if (pairOn) {
+                int cur = pairCur;
+                pairSwap(1 - cur);
+                uint32_t sb2 = core->busRead32(core, COOP_EM_gSaveBlock2Ptr);
+                for (int b = 0; b < 8; b++) setup.partnerName[b] = core->busRead8(core, sb2 + COOP_EM_OFF_SB2_PLAYER_NAME + (uint32_t) b);
+                setup.partnerGender = core->busRead8(core, sb2 + COOP_EM_OFF_SB2_PLAYER_GENDER);
+                setup.partnerOtId = core->busRead32(core, sb2 + COOP_EM_OFF_SB2_PLAYER_TRAINER_ID);
+                pairSwap(cur);
+            }
+            if (!pk_coop_link_installed() && !pk_coop_link_install(core, coopCall)) {
+                printf("link: refused %s\n", pk_coop_link_refused());
+            } else {
+                int tries = 0, began = 0;
+                while ((began = master ? pk_coop_link_host_go(core, &setup) : pk_coop_link_partner_go(core, &setup)) != 1 && tries < 120) {
+                    if (master) break;   // the host stays held: a frame would start the transition
+                    if (began == 0 && strcmp(pk_coop_link_refused(), "no safe frame")) break;   // -1 = the field is not free yet
+                    runFrame();
+                    tries++;
+                }
+                if (began == 1) printf("link: start 1 (after %d frame(s))\n", tries);
+                else printf("link: start 0 refused %s\n", began < 0 ? "field not free" : pk_coop_link_refused());
+            }
+        } else if (!strcmp(cmd, "storyarm")) {
+            // storyarm: task 6, pk_coop_story_arm on the current core (installing the bridge first): the next `dotrainerbattle` runs
+            // the team pick first. `story: armed 1` / `story: armed 0`.
+            int trainer = 0;
+            sscanf(line, "%*s %i", &trainer);
+            int ok = (pk_coop_link_installed() || pk_coop_link_install(core, coopCall)) && pk_coop_story_arm(core, coopCall, (uint16_t) trainer);
+            printf("story: armed %d\n", ok);
+        } else if (!strcmp(cmd, "storystate")) {
+            // storystate: `story: state a S b S` (PK_COOP_STORY_*: 0 idle, 1 armed, 2 picking, 3 ready, 4 cancelled)
+            if (pairOn) {
+                int cur = pairCur, st[2];
+                for (int c = 0; c < 2; c++) { pairSwap(c); st[c] = pk_coop_story_state(core); }
+                pairSwap(cur);
+                printf("story: state a %d b %d\n", st[0], st[1]);
+            } else printf("story: state %d\n", pk_coop_story_state(core));
+        } else if (!strcmp(cmd, "storywait")) {
+            // storywait STATE MAX: frames (both cores) until every core's story state is STATE: PASS / FAIL
+            int want = 0, max = 0, frames = 0, all = 0;
+            sscanf(line, "%*s %d %d", &want, &max);
+            for (;;) {
+                int cur = pairCur, ok = 1;
+                for (int c = 0; c < (pairOn ? 2 : 1); c++) { pairSwap(c); ok &= pk_coop_story_state(core) == want; }
+                pairSwap(cur);
+                all = ok;
+                if (all || frames >= max) break;
+                runFrame();
+                frames++;
+            }
+            if (all) printf("PASS storywait %d after %d frame(s)\n", want, frames);
+            else { printf("FAIL storywait %d after %d frame(s)\n", want, frames); expectFailures++; }
+        } else if (!strcmp(cmd, "storygo")) {
+            // storygo MASTER: pk_coop_story_go on the current core (the other player = the other core when paired): `story: go 1
+            // (after N frame(s))` / `story: go 0`. Frames run until the game is on a pk_call-safe one.
+            int master = 0;
+            sscanf(line, "%*s %d", &master);
+            struct pk_coop_link_setup setup;
+            memset(&setup, 0, sizeof(setup));
+            setup.master = (uint8_t) master;
+            memset(setup.partnerName, 0xFF, sizeof(setup.partnerName));
+            if (pairOn) {
+                int cur = pairCur;
+                pairSwap(1 - cur);
+                uint32_t sb2 = core->busRead32(core, COOP_EM_gSaveBlock2Ptr);
+                for (int b = 0; b < 8; b++) setup.partnerName[b] = core->busRead8(core, sb2 + COOP_EM_OFF_SB2_PLAYER_NAME + (uint32_t) b);
+                setup.partnerGender = core->busRead8(core, sb2 + COOP_EM_OFF_SB2_PLAYER_GENDER);
+                setup.partnerOtId = core->busRead32(core, sb2 + COOP_EM_OFF_SB2_PLAYER_TRAINER_ID);
+                pairSwap(cur);
+            }
+            int tries = 0, began = 0;
+            while (!(began = pk_coop_story_go(core, &setup)) && tries < 120 && pk_coop_story_state(core) == PK_COOP_STORY_READY) {
+                runFrame();
+                tries++;
+            }
+            if (began) printf("story: go 1 (after %d frame(s))\n", tries);
+            else printf("story: go 0 (link: %s)\n", pk_coop_link_refused());
+        } else if (!strcmp(cmd, "storydisarm")) {
+            // storydisarm: pk_coop_story_disarm on the current core (a dropped join: the hook out WITHOUT the game's own battle): `story: disarm, state S`
+            pk_coop_story_disarm(core);
+            printf("story: disarm, state %d\n", pk_coop_story_state(core));
+        } else if (!strcmp(cmd, "coopreleasescript")) {
+            // coopreleasescript: pk_coop_release_script (-1 the game is not on its field, 0 no script was held, 1 let go): `release R`
+            pk_coop_after_set_call(coopCall);   // the held script keeps the controls locked: no safe-frame wait, only the call hook
+            printf("release %d\n", pk_coop_release_script(core));
+        } else if (!strcmp(cmd, "storycancel")) {
+            printf("story: cancel %d\n", pk_coop_story_cancel(core));
+        } else if (!strcmp(cmd, "linkend")) {
+            pk_coop_link_end(core);
+            printf("link: ended\n");
+        } else if (!strcmp(cmd, "linkreset")) {
+            pk_coop_link_reset(core);
+            printf("link: reset, state %d\n", pk_coop_link_state(core));
+        } else if (!strcmp(cmd, "linkuninstall")) {
+            pk_coop_link_uninstall(core);
+            printf("link: uninstalled, rom patched: %s\n", pk_cheats_rom_patched() ? "yes" : "no");
+        } else if (!strcmp(cmd, "linkinfo")) {
+            // linkinfo: the bridge's counters of each core (blocks sent / received / refused / dropped, overruns, the seqs)
+            for (int c = 0; c < (pairOn ? 2 : 1); c++) {
+                int cur = pairCur;
+                pairSwap(c);
+                printf("linkinfo %c: sent %u recv %u refused %u dropped %u overrun %u tx %u rx %u head %u tail %u\n", 'a' + c,
+                       core->busRead16(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, sent)),
+                       core->busRead16(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, received)),
+                       core->busRead16(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, refused)),
+                       core->busRead16(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, dropped)),
+                       core->busRead16(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, overrun)),
+                       core->busRead8(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, txSeq)),
+                       core->busRead8(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, rxSeq)),
+                       core->busRead8(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, head)),
+                       core->busRead8(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, tail)));
+                pairSwap(cur);
+            }
+        // --- task 5: the end of a joined link battle (pk_coop_link_end.c) ---
+        } else if (!strcmp(cmd, "linkresult")) {
+            // linkresult LABEL: pk_coop_link_result of the current core: `link: result LABEL N <hex>` (N 0 = not ready)
+            char label[32] = {0};
+            sscanf(line, "%*s %31s", label);
+            uint8_t r[PK_COOP_LINK_RESULT_SIZE];
+            int n = pk_coop_link_result(core, r, sizeof(r));
+            printf("link: result %s %d", label, n);
+            for (int b = 0; b < n; b++) printf(" %02X", r[b]);
+            printf("\n");
+        } else if (!strcmp(cmd, "linkresultwait")) {
+            // linkresultwait MAX [a|b]: frames until every core's (or that one's) result is ready: `PASS linkresultwait after N frame(s)` / FAIL
+            int max = 0, frames = 0;
+            char only[8] = {0};
+            sscanf(line, "%*s %d %7s", &max, only);
+            for (;;) {
+                int ready = 1;
+                uint8_t r[PK_COOP_LINK_RESULT_SIZE];
+                for (int c = 0; c < (pairOn ? 2 : 1); c++) {
+                    if (only[0] && only[0] - 'a' != c) continue;
+                    int cur = pairCur;
+                    pairSwap(c);
+                    if (pk_coop_link_result(core, r, sizeof(r)) != PK_COOP_LINK_RESULT_SIZE) ready = 0;
+                    pairSwap(cur);
+                }
+                if (ready || frames >= max) {
+                    if (ready) printf("PASS linkresultwait after %d frame(s)\n", frames);
+                    else { printf("FAIL linkresultwait: not ready after %d frame(s)\n", frames); expectFailures++; }
+                    break;
+                }
+                runFrame();
+                frames++;
+            }
+        } else if (!strcmp(cmd, "linkresultclear")) {
+            pk_coop_link_result_clear(core);
+            printf("link: result cleared\n");
+        } else if (!strcmp(cmd, "never32")) {
+            // never32 ADDR VAL LABEL: from now on a frame that has this word at ADDR on the current core is a FAIL (checked each pump)
+            char a[32] = {0}, v[32] = {0};
+            if (pairNever < 8) {
+                sscanf(line, "%*s %31s %31s %31s", a, v, pairNeverW[pairNever].label);
+                pairNeverW[pairNever].core = pairCur;
+                pairNeverW[pairNever].addr = (uint32_t) strtoul(a, NULL, 0);
+                pairNeverW[pairNever].val = (uint32_t) strtoul(v, NULL, 0);
+                pairNeverW[pairNever].hit = 0;
+                pairNever++;
+            }
+        } else if (!strcmp(cmd, "linkafterend")) {
+            // linkafterend: how many blocks each game sent after its bridge said ENDED, and late blocks dropped at an ended receiver
+            printf("linkafterend a %ld b %ld dropped a->b %ld b->a %ld\n", pairSentAfterEnd[0], pairSentAfterEnd[1], pairDroppedLate[0], pairDroppedLate[1]);
+        } else if (!strcmp(cmd, "linkmoneymark") || !strcmp(cmd, "linkmoneyexpect")) {
+            // linkmoneymark N: remember this core's money in slot N (0-7); linkmoneyexpect N DELTA: it is the mark + DELTA now (PASS / FAIL)
+            static uint32_t marks[2][8];
+            int n = 0;
+            long delta = 0;
+            sscanf(line, "%*s %d %ld", &n, &delta);
+            n &= 7;
+            uint32_t sb1 = core->busRead32(core, 0x03005D8C), sb2 = core->busRead32(core, 0x03005D90);
+            uint32_t now = core->busRead32(core, sb1 + 0x490) ^ core->busRead32(core, sb2 + 0xAC);
+            if (cmd[9] == 'm') {
+                marks[pairCur][n] = now;
+                printf("link: money mark %d %u\n", n, now);
+            } else if (now == marks[pairCur][n] + (uint32_t) delta) {
+                printf("PASS link money %u (mark %u + %ld)\n", now, marks[pairCur][n], delta);
+            } else {
+                printf("FAIL link money %u want %u (mark %u + %ld)\n", now, marks[pairCur][n] + (uint32_t) delta, marks[pairCur][n], delta);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "linkflag")) {
+            // linkflag ID WANT: trainer ID's flag (0x500 + ID, SaveBlock1 +0x1270) on the current core is WANT (0 / 1): PASS / FAIL
+            int id = 0, want = 0;
+            sscanf(line, "%*s %i %d", &id, &want);
+            uint32_t sb1 = core->busRead32(core, 0x03005D8C), flag = 0x500u + (uint32_t) id;
+            int got = (core->busRead8(core, sb1 + 0x1270 + flag / 8) >> (flag % 8)) & 1;
+            if (got == want) printf("PASS linkflag %d = %d (core %c)\n", id, got, 'a' + pairCur);
+            else { printf("FAIL linkflag %d = %d want %d (core %c)\n", id, got, want, 'a' + pairCur); expectFailures++; }
+        } else if (!strcmp(cmd, "flagexpect")) {
+            // flagexpect ID WANT: event flag ID (SaveBlock1 +0x1270) on the current core is WANT (0 / 1): `PASS flagexpect ID = N (core c)` / FAIL
+            int id = 0, want = 0;
+            sscanf(line, "%*s %i %d", &id, &want);
+            uint32_t sb1 = core->busRead32(core, 0x03005D8C);
+            int got = (core->busRead8(core, sb1 + 0x1270 + (uint32_t) id / 8) >> (id % 8)) & 1;
+            if (got == want) printf("PASS flagexpect %d = %d (core %c)\n", id, got, 'a' + pairCur);
+            else { printf("FAIL flagexpect %d = %d want %d (core %c)\n", id, got, want, 'a' + pairCur); expectFailures++; }
+        } else if (!strcmp(cmd, "linkdelayend")) {
+            sscanf(line, "%*s %u", &pairEndDelay);
+            printf("linkdelayend %u\n", pairEndDelay);
+        } else if (!strcmp(cmd, "linkdrained")) {
+            printf("link: drained %d\n", pk_coop_link_drained(core));
+        } else if (!strcmp(cmd, "linkgiveseed")) {
+            // linkgiveseed SEQ|next [LABEL]: pk_coop_link_give with a well-formed 4-byte seed block of that seq (`next` = the one the
+            // bridge expects), on the current core - for the refusal checks (a block while idle, a stale seq, one after the end).
+            // Prints `link: give R status B -> A LABEL`: the result and the other player's received flag before / after (a refused
+            // block never changes it).
+            char sq[32] = {0}, label[64] = {0};
+            sscanf(line, "%*s %31s %63s", sq, label);
+            int seq = !strcmp(sq, "next") ? core->busRead8(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, rxSeq)) : atoi(sq);
+            uint8_t blk[PK_COOP_LINK_WIRE_HEADER + 4] = { PK_COOP_LINKB_SEED, (uint8_t) seq, 4, 0, 0, 0, 0, 0 };
+            int other = 1 - core->busRead8(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, myId));
+            int before = core->busRead8(core, COOP_EM_gBlockReceivedStatus + (uint32_t) other);
+            int given = pk_coop_link_give(core, blk, (int) sizeof(blk));
+            printf("link: give %d status %d -> %d %s\n", given, before, core->busRead8(core, COOP_EM_gBlockReceivedStatus + (uint32_t) other), label);
+        } else if (!strcmp(cmd, "linkgivehex")) {
+            // linkgivehex KIND LABEL HEX: pk_coop_link_give of a block of that kind (a number: PK_COOP_LINKB_*) with the next seq and these
+            // payload bytes (hex), on the current core - for forged blocks. `link: give R status B -> A LABEL`.
+            char kd[16] = {0}, label[64] = {0}, hex[600] = {0};
+            sscanf(line, "%*s %15s %63s %599s", kd, label, hex);
+            uint8_t blk[PK_COOP_LINK_WIRE_HEADER + 300];
+            int len = hexBytes(hex, blk + PK_COOP_LINK_WIRE_HEADER, 300);
+            blk[0] = (uint8_t) atoi(kd);
+            blk[1] = core->busRead8(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, rxSeq));
+            blk[2] = (uint8_t) len;
+            blk[3] = (uint8_t) (len >> 8);
+            int other = 1 - core->busRead8(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, myId));
+            int before = core->busRead8(core, COOP_EM_gBlockReceivedStatus + (uint32_t) other);
+            int given = pk_coop_link_give(core, blk, PK_COOP_LINK_WIRE_HEADER + len);
+            printf("link: give %d status %d -> %d %s\n", given, before, core->busRead8(core, COOP_EM_gBlockReceivedStatus + (uint32_t) other), label);
+        } else if (!strcmp(cmd, "linkgivemon")) {
+            // linkgivemon KIND SPECIES MOVE PP ITEM LABEL: pk_coop_link_give of a one-Pokemon block (an unencrypted struct Pokemon, personality 0:
+            // level 5, 20 / 20 HP, the checksum right) with this species, first move, its PP and held item (numbers) and the next seq.
+            char kd[16] = {0}, label[64] = {0};
+            int species = 0, move = 0, pp = 0, item = 0;
+            sscanf(line, "%*s %15s %i %i %i %i %63s", kd, &species, &move, &pp, &item, label);
+            uint8_t blk[PK_COOP_LINK_WIRE_HEADER + 100];
+            memset(blk, 0, sizeof(blk));
+            uint8_t* m = blk + PK_COOP_LINK_WIRE_HEADER;
+            m[0x13] = 0x02;   // hasSpecies
+            m[0x20] = (uint8_t) species; m[0x21] = (uint8_t) (species >> 8);   // growth substruct first (personality 0: G A E M)
+            m[0x22] = (uint8_t) item; m[0x23] = (uint8_t) (item >> 8);
+            m[0x2C] = (uint8_t) move; m[0x2D] = (uint8_t) (move >> 8);        // attacks substruct
+            m[0x34] = (uint8_t) pp;
+            m[0x54] = 5; m[0x56] = 20; m[0x58] = 20;
+            uint32_t sum = 0;
+            for (int w = 0; w < 24; w++) sum += m[0x20 + 2 * w] | m[0x21 + 2 * w] << 8;
+            m[0x1C] = (uint8_t) sum; m[0x1D] = (uint8_t) (sum >> 8);
+            blk[0] = (uint8_t) atoi(kd);
+            blk[1] = core->busRead8(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, rxSeq));
+            blk[2] = 100;
+            int other = 1 - core->busRead8(core, PK_COOP_LINK_RAM + offsetof(struct pk_coop_link_ram, myId));
+            int before = core->busRead8(core, COOP_EM_gBlockReceivedStatus + (uint32_t) other);
+            int given = pk_coop_link_give(core, blk, (int) sizeof(blk));
+            printf("link: give %d status %d -> %d %s\n", given, before, core->busRead8(core, COOP_EM_gBlockReceivedStatus + (uint32_t) other), label);
+        } else if (!strcmp(cmd, "rangehash")) {
+            // rangehash NAME ADDR LEN: CRC32 of LEN bus bytes at ADDR, kept under NAME for `expectsame` (across `on a` / `on b`)
+            char name[64] = {0}, a[64] = {0}, l[64] = {0};
+            sscanf(line, "%*s %63s %63s %63s", name, a, l);
+            uint32_t addr = (uint32_t) strtoul(a, NULL, 0), len = (uint32_t) strtoul(l, NULL, 0), h = 0xFFFFFFFFu;
+            for (uint32_t b = 0; b < len; b++) {
+                h ^= core->busRead8(core, addr + b);
+                for (int k = 0; k < 8; k++) h = (h >> 1) ^ (0xEDB88320u & (0u - (h & 1u)));
+            }
+            h = ~h;
+            memHashes[memHashCount % MEM_HASHES].crc = h;
+            snprintf(memHashes[memHashCount % MEM_HASHES].name, sizeof(memHashes[0].name), "%s", name);
+            memHashCount++;
+            printf("rangehash %s %08X\n", name, h);
+        // task 4's numbers: kept under a name, checked with expectnum / expectdelta (EXP, levels, HP, bag counts)
+        } else if (!strcmp(cmd, "monexp")) {
+            // monexp NAME ADDR: the struct Pokémon at ADDR: its EXP (decrypted from the Growth substructure) as NAME, its level as
+            // NAME.lv, its HP as NAME.hp, its species as NAME.sp
+            char nm[64] = {0}, a[64] = {0}, key[80];
+            sscanf(line, "%*s %63s %63s", nm, a);
+            uint32_t mon = (uint32_t) strtoul(a, NULL, 0);
+            uint32_t pers = (uint32_t) core->busRead32(core, mon), otid = (uint32_t) core->busRead32(core, mon + 4);
+            static const uint8_t growthAt[24] = {0, 0, 0, 0, 0, 0, 1, 1, 2, 3, 2, 3, 1, 1, 2, 3, 2, 3, 1, 1, 2, 3, 2, 3};
+            uint32_t g = mon + 0x20 + 12u * growthAt[pers % 24];
+            uint32_t species = ((uint32_t) core->busRead32(core, g) ^ pers ^ otid) & 0xFFFF;
+            uint32_t exp = (uint32_t) core->busRead32(core, g + 4) ^ pers ^ otid;
+            numSet(nm, (long) exp);
+            snprintf(key, sizeof(key), "%s.lv", nm);
+            numSet(key, core->busRead8(core, mon + 0x54));
+            snprintf(key, sizeof(key), "%s.hp", nm);
+            numSet(key, core->busRead16(core, mon + 0x56));
+            snprintf(key, sizeof(key), "%s.sp", nm);
+            numSet(key, (long) species);
+            printf("monexp %s species %u exp %u level %u hp %u\n", nm, species, exp, (unsigned) core->busRead8(core, mon + 0x54),
+                   (unsigned) core->busRead16(core, mon + 0x56));
+        } else if (!strcmp(cmd, "bagqty")) {
+            // bagqty NAME ITEM: how many of the item the game's bag holds (all pockets, the quantity decrypted by the save's key)
+            char nm[64] = {0};
+            unsigned item = 0;
+            sscanf(line, "%*s %63s %u", nm, &item);
+            uint32_t sb1 = (uint32_t) core->busRead32(core, COOP_EM_gSaveBlock1Ptr), sb2 = (uint32_t) core->busRead32(core, COOP_EM_gSaveBlock2Ptr);
+            uint32_t xorKey = (uint32_t) core->busRead32(core, sb2 + COOP_EM_OFF_SB2_ENCRYPTION_KEY) & 0xFFFF;
+            long qty = 0;
+            for (uint32_t o = COOP_EM_OFF_SB1_BAG_START; o < COOP_EM_OFF_SB1_BAG_END; o += 4) {
+                if (core->busRead16(core, sb1 + o) == item) qty += (long) ((uint32_t) core->busRead16(core, sb1 + o + 2) ^ xorKey);
+            }
+            numSet(nm, qty);
+            printf("bagqty %s item %u = %ld\n", nm, item, qty);
+        } else if (!strcmp(cmd, "bagset")) {
+            // bagset ITEM QTY: the first slot of the Items pocket becomes QTY of ITEM (the quantity encrypted by the save's key)
+            unsigned item = 0, qty = 0;
+            sscanf(line, "%*s %u %u", &item, &qty);
+            uint32_t sb1 = (uint32_t) core->busRead32(core, COOP_EM_gSaveBlock1Ptr), sb2 = (uint32_t) core->busRead32(core, COOP_EM_gSaveBlock2Ptr);
+            uint32_t xorKey = (uint32_t) core->busRead32(core, sb2 + COOP_EM_OFF_SB2_ENCRYPTION_KEY) & 0xFFFF;
+            core->busWrite16(core, sb1 + COOP_EM_OFF_SB1_BAG_START, (uint16_t) item);
+            core->busWrite16(core, sb1 + COOP_EM_OFF_SB1_BAG_START + 2, (uint16_t) (qty ^ xorKey));
+            printf("bagset %u x %u\n", item, qty);
+        } else if (!strcmp(cmd, "peeknum")) {
+            // peeknum NAME ADDR WIDTH: the 1, 2 or 4 byte bus value at ADDR, kept as NAME
+            char nm[64] = {0}, a[64] = {0};
+            int w = 4;
+            sscanf(line, "%*s %63s %63s %d", nm, a, &w);
+            uint32_t addr = (uint32_t) strtoul(a, NULL, 0);
+            long v = w == 1 ? core->busRead8(core, addr) : w == 2 ? core->busRead16(core, addr) : (long) (uint32_t) core->busRead32(core, addr);
+            numSet(nm, v);
+            printf("peeknum %s %08X = %ld\n", nm, addr, v);
+        } else if (!strcmp(cmd, "expectnum")) {
+            // expectnum NAME VALUE: the number kept under NAME is VALUE
+            char nm[64] = {0};
+            long want = 0;
+            sscanf(line, "%*s %63s %ld", nm, &want);
+            long got = numGet(nm);
+            if (got == want) printf("PASS expectnum %s = %ld\n", nm, got);
+            else {
+                printf("FAIL expectnum %s = %ld, wanted %ld\n", nm, got, want);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "expectdelta")) {
+            // expectdelta A B N: B - A == N (numbers kept by monexp / bagqty / peeknum)
+            char a[64] = {0}, b[64] = {0};
+            long want = 0;
+            sscanf(line, "%*s %63s %63s %ld", a, b, &want);
+            long da = numGet(a), db = numGet(b);
+            if (db - da == want) printf("PASS expectdelta %s -> %s = %ld\n", a, b, db - da);
+            else {
+                printf("FAIL expectdelta %s (%ld) -> %s (%ld) = %ld, wanted %ld\n", a, da, b, db, db - da, want);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "expectge")) {
+            // expectge NAME VALUE: the number kept under NAME is at least VALUE
+            char nm[64] = {0};
+            long want = 0;
+            sscanf(line, "%*s %63s %ld", nm, &want);
+            long got = numGet(nm);
+            if (got >= want) printf("PASS expectge %s = %ld >= %ld\n", nm, got, want);
+            else {
+                printf("FAIL expectge %s = %ld, wanted at least %ld\n", nm, got, want);
+                expectFailures++;
+            }
+        } else if (!strcmp(cmd, "linkcaught")) {
+            // linkcaught FILE: what the battle's ball caught (pk_coop_link_caught: who threw it, the Pokemon's 100 bytes written to FILE)
+            char f[256] = {0};
+            sscanf(line, "%*s %255s", f);
+            uint8_t mon[100];
+            int who = pk_coop_link_caught(core, mon);
+            if (who) {
+                FILE* o = fopen(f, "wb");
+                if (o) {
+                    fwrite(mon, 1, sizeof(mon), o);
+                    fclose(o);
+                }
+            }
+            printf("link: caught by %d\n", who);
+        } else if (!strcmp(cmd, "expectotname")) {
+            // expectotname MON: the struct Pokemon at MON has the current game's trainer name as its OT name (7 bytes at +0x14)
+            char a[64] = {0};
+            sscanf(line, "%*s %63s", a);
+            uint32_t mon = (uint32_t) strtoul(a, NULL, 0), sb2 = (uint32_t) core->busRead32(core, COOP_EM_gSaveBlock2Ptr);
+            int same = 1;
+            for (uint32_t b = 0; b < 7; b++) {
+                if (core->busRead8(core, mon + 0x14 + b) != core->busRead8(core, sb2 + COOP_EM_OFF_SB2_PLAYER_NAME + b)) same = 0;
+            }
+            printf("%s expectotname %08X\n", same ? "PASS" : "FAIL", mon);
+            if (!same) expectFailures++;
+        } else if (!strcmp(cmd, "expectmon")) {
+            // expectmon ADDR OTID SPECIES: the struct Pokémon at ADDR has OT ID OTID and (decrypted with its personality ^
+            // OT ID) species SPECIES, and its checksum (+0x1C: the sum of the 24 decrypted u16 words) is valid.
+            char a[64] = {0}, o[64] = {0}, sp[64] = {0}, ge[64] = {0};
+            sscanf(line, "%*s %63s %63s %63s %63s", a, o, sp, ge);
+            uint32_t mon = (uint32_t) strtoul(a, NULL, 0), id = (uint32_t) strtoul(o, NULL, 0);
+            uint32_t want = (uint32_t) strtoul(sp, NULL, 0);
+            {   // task 4: OTID `own` / GENDER `own` = this game's trainer (its save block's OT ID and gender)
+                uint32_t sb2 = (uint32_t) core->busRead32(core, COOP_EM_gSaveBlock2Ptr);
+                if (!strcmp(o, "own")) { id = 0; for (int b = 0; b < 4; b++) id |= (uint32_t) core->busRead8(core, sb2 + COOP_EM_OFF_SB2_PLAYER_TRAINER_ID + (uint32_t) b) << (8 * b); }
+                if (!strcmp(ge, "own")) snprintf(ge, sizeof(ge), "%d", core->busRead8(core, sb2 + COOP_EM_OFF_SB2_PLAYER_GENDER));
+            }
+            // byte reads: the Pokémon may sit at an odd address (the co-op result's caught slot), and the bus rotates
+            // an unaligned word
+#define RD8(o) ((uint32_t) core->busRead8(core, mon + (o)))
+#define RD32(o) (RD8(o) | RD8((o) + 1) << 8 | RD8((o) + 2) << 16 | RD8((o) + 3) << 24)
+            uint32_t pid = RD32(0), ot = RD32(4), key = pid ^ ot, stored = RD8(0x1C) | RD8(0x1D) << 8;
+            uint32_t sum = 0, w[12];
+            for (int i = 0; i < 12; i++) {
+                w[i] = RD32(0x20 + 4 * i) ^ key;
+                sum += (w[i] & 0xFFFF) + (w[i] >> 16);
+            }
+            // growth substructure position: pid % 24 indexes the lexicographic permutations of G A E M
+            int perm = (int) (pid % 24), order[4];
+            {
+                int avail[4] = {0, 1, 2, 3}, left = 4, fact = 6;
+                for (int i = 0; i < 4; i++) {
+                    int pick = perm / fact;
+                    perm %= fact;
+                    order[i] = avail[pick];
+                    for (int j = pick; j < left - 1; j++) avail[j] = avail[j + 1];
+                    left--;
+                    if (i < 3) fact /= (3 - i);
+                }
+            }
+            int growthPos = 0;
+            for (int i = 0; i < 4; i++) if (order[i] == 0) growthPos = i;
+            uint32_t species = w[growthPos * 3] & 0xFFFF;
+            int miscPos = 0;
+            for (int i = 0; i < 4; i++) if (order[i] == 3) miscPos = i;
+            int gender = (int) (w[miscPos * 3] >> 31);   // the Misc substructure's origins half-word, bit 15: the OT gender
+            int ok = ot == id && species == want && (sum & 0xFFFF) == stored && (!ge[0] || gender == atoi(ge));
+            printf("%s expectmon %08x: OT ID %08x species %u checksum %04x (stored %04x) OT gender %d\n", ok ? "PASS" : "FAIL",
+                   mon, ot, species, sum & 0xFFFF, stored, gender);
+            if (!ok) expectFailures++;
+#undef RD8
+#undef RD32
 #endif
         } else if (!strcmp(cmd, "layers")) {
             char m[64] = {0};
@@ -1447,7 +2987,14 @@ int main(int argc, char** argv) {
         fflush(stderr);
     }
 
+#ifdef HAVE_PK_COOP
+    if (pairOn) {   // the other core of a pair, too (its save is written back as the first one's is)
+        struct pairCtx* o = &pairSaved[1 - pairCur];
+        o->core->deinit(o->core);
+        free(o->video);
+    }
+#endif
     core->deinit(core);
     free(video);
-    return 0;
+    return expectFailures ? 1 : 0;
 }

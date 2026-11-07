@@ -1,0 +1,50 @@
+# Plan 6 Task 3: a joined WILD battle as a link battle (pk_coop_link_wild.c) looks like a wild one. The host (core A, the co-op test
+# save on Route 101: a land table of WURMPLE / POOCHYENA / ZIGZAGOON) is the link master and rolls two wild Pokemon from the
+# map's table itself (gEnemyParty slots 0 and 3, the rest zero); the partner (core B) gets them as the link battle's own
+# enemy-party blocks. Kind 1 = PK_COOP_LINK_WILD; no trainers (0 0).
+# Needs EMERALD_PARTNER_SAVE (`$PARTNER_SAVE`; scripts/coop_headless_check.sh).
+#
+# Checked: gBattleTypeFlags (0x02022FEC) is DOUBLE 1 | LINK 2 | LINK_IN_BATTLE 0x20 | MULTI 0x40 | BATTLE_TOWER 0x100, plus IS_MASTER 4 on
+# the host (0x800167 / 0x800163) and has no TRAINER bit (8): FindLinkBattleMaster's trainer bit is left off by our stub; both foes are
+# in the Route 101 table (Emerald's ids POOCHYENA 286, ZIGZAGOON 288, WURMPLE 290) and are the very same Pokemon on both
+# cores (the two 100-byte structs hash equal at the first prompt); the battle music is the wild one on both (gMPlayInfo_BGM's
+# song header, 0x03007420, is gSongTable[474]'s, MUS_VS_WILD, not [476]'s trainer song); the intro text on both cores starts
+# "Wild" (gDisplayedStringBattle 0x02022E2C: W i l d in Emerald's charset, little endian 0xD8E0DDD1) and both shots were read:
+# "Wild WURMPLE and WURMPLE appeared!", no VS screen before the battle, no trainer pictures on the foe side, the foes keep
+# their level (Lv 2 / 3: the facility's Lv 50 is skipped), then "NED sent out MUDKIP! Go! TORCHIC!" and the action prompt.
+#
+# want: PASS linkwait 2
+# want: expectsame wild0 wild0b: PASS
+# want: expectsame wild3 wild3b: PASS
+pair $PARTNER_SAVE
+on b
+@boot
+on a
+coopbegin 1 1 0 0
+on b
+coopbegin 0 1 0 0
+linkwait 2 1500
+on a
+expect32 0x02022FEC 0x00800167
+expectmonin 0x02024744 286 288 290
+expectmonin 0x02024870 286 288 290
+expect32 0x03007420 0x0895F6E0
+on b
+expect32 0x02022FEC 0x00800163
+expect32 0x03007420 0x0895F6E0
+on a
+waitmem32 0x02022E2C 0xD8E0DDD1 3000
+shot /work/link_wild_intro_a.ppm
+on b
+waitmem32 0x02022E2C 0xD8E0DDD1 600
+shot /work/link_wild_intro_b.ppm
+on a
+waitmem32 0x03005D60 0x08057589 3000
+rangehash wild0 0x02024744 100
+rangehash wild3 0x02024870 100
+on b
+waitmem32 0x03005D68 0x08057589 3000
+rangehash wild0b 0x02024744 100
+rangehash wild3b 0x02024870 100
+expectsame wild0 wild0b
+expectsame wild3 wild3b

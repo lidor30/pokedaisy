@@ -1,5 +1,8 @@
 import com.google.firebase.crashlytics.buildtools.gradle.CrashlyticsExtension
 import java.util.Properties
+import java.net.URI
+import java.nio.file.FileSystems
+import java.nio.file.Files
 
 plugins {
     id("com.android.application")
@@ -33,15 +36,17 @@ fun signingSecret(name: String): String? =
         p.inputStream.bufferedReader().readText().trim().takeIf { p.waitFor() == 0 && it.isNotEmpty() }
     }.getOrNull()
 
-// ScreenScraper's developer credentials (ScreenScraperClient: every API call carries the app's own
-// as well as the player's account). Never in this public repo: from the untracked local.properties
-// (screenscraper.devId / screenscraper.devPassword) or the environment (SCREENSCRAPER_DEV_ID /
-// SCREENSCRAPER_DEV_PASSWORD - the release workflow's secrets). Without them a build still sends the
-// player's account alone, and the sign-in says what the server answered.
+// Values a build takes from outside this public repo: the untracked local.properties, else the
+// environment (the release workflow's secrets), escaped for a BuildConfig string; empty without either.
+// - ScreenScraper's developer credentials (ScreenScraperClient: every API call carries the app's own
+//   as well as the player's account): screenscraper.devId / screenscraper.devPassword, or
+//   SCREENSCRAPER_DEV_ID / SCREENSCRAPER_DEV_PASSWORD. Without them a build still sends the player's
+//   account alone, and the sign-in says what the server answered.
+// - The co-op relay: coop.relayUrl, or COOP_RELAY_URL. Without it co-op is LAN and BY IP only.
 val localProps = rootProject.file("local.properties").takeIf { it.isFile }?.let { f ->
     Properties().apply { f.inputStream().use(::load) }
 }
-fun screenScraperSecret(prop: String, env: String): String =
+fun buildSecret(prop: String, env: String): String =
     (localProps?.getProperty(prop) ?: System.getenv(env)).orEmpty()
         .replace("\\", "\\\\").replace("\"", "\\\"")
 
@@ -49,6 +54,10 @@ fun screenScraperSecret(prop: String, env: String): String =
 // key in local.properties. A marker file on the device turns them on for an APK already installed.
 fun featureFlag(name: String): Boolean =
     (findProperty("pokedaisy.$name") ?: localProps?.getProperty("pokedaisy.$name"))?.toString()?.trim()?.toBoolean() == true
+
+// The ABIs every native library is built for: arm64 always, x86_64 too for the emulator
+// (`-Ppokedaisy.x86_64=true`).
+val nativeAbis = listOf("arm64-v8a") + if (featureFlag("x86_64")) listOf("x86_64") else emptyList()
 
 android {
     namespace = "com.pokedaisy.app"
@@ -61,21 +70,23 @@ android {
         targetSdk = 34
         // Bump both for every GitHub release: the updater compares versionName
         // against the release tag (v<versionName>), Android needs versionCode to grow.
-        versionCode = 16
-        versionName = "1.3.3"
+        versionCode = 18
+        versionName = "1.4.0"
         // Whether this build can send crash reports at all (CrashReports.available).
         buildConfigField("boolean", "CRASHLYTICS", crashlytics.toString())
-        buildConfigField("String", "SCREENSCRAPER_DEV_ID", "\"${screenScraperSecret("screenscraper.devId", "SCREENSCRAPER_DEV_ID")}\"")
-        buildConfigField("String", "SCREENSCRAPER_DEV_PASSWORD", "\"${screenScraperSecret("screenscraper.devPassword", "SCREENSCRAPER_DEV_PASSWORD")}\"")
-        // PC BOXES (the save editor): off unless the build or the device asks (FeatureFlags.saveEditor).
-        buildConfigField("boolean", "FEATURE_SAVE_EDITOR", featureFlag("saveEditor").toString())
+        buildConfigField("String", "SCREENSCRAPER_DEV_ID", "\"${buildSecret("screenscraper.devId", "SCREENSCRAPER_DEV_ID")}\"")
+        buildConfigField("String", "SCREENSCRAPER_DEV_PASSWORD", "\"${buildSecret("screenscraper.devPassword", "SCREENSCRAPER_DEV_PASSWORD")}\"")
+        // The co-op relay this build starts on (empty = no relay: LAN and BY IP only); Settings can override it.
+        buildConfigField("String", "COOP_RELAY_URL", "\"${buildSecret("coop.relayUrl", "COOP_RELAY_URL")}\"")
         // ScreenScraper (game media, its setup step and the update's popup): off until the app has its developer login
         // (FeatureFlags.screenScraper).
         buildConfigField("boolean", "FEATURE_SCREENSCRAPER", featureFlag("screenScraper").toString())
+        // CO-OP (the connection to a paired partner): off until the feature ships (FeatureFlags.coop).
+        buildConfigField("boolean", "FEATURE_COOP", featureFlag("coop").toString())
 
         ndk {
             // Thor is arm64; add armeabi-v7a later only if a target device needs it.
-            abiFilters += "arm64-v8a"
+            abiFilters += nativeAbis
         }
         externalNativeBuild {
             cmake {
@@ -144,7 +155,7 @@ android {
 
     sourceSets["main"].java.srcDirs("src/main/kotlin")
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/licenses"))
-    sourceSets["test"].java.srcDirs("src/test/kotlin")
+    sourceSets["test"].java.srcDirs("src/test/kotlin", "../server/coop-relay/src/main/kotlin")
 
     testOptions {
         unitTests.isIncludeAndroidResources = false
@@ -173,9 +184,10 @@ val licensesAsset by tasks.registering {
         "PixelMplus - M+ FONT LICENSE" to "app/src/main/assets/fonts/LICENSE-PixelMplus.txt",
         "Atkinson Hyperlegible - SIL Open Font License 1.1" to "app/src/main/assets/fonts/LICENSE-AtkinsonHyperlegible.txt",
         "PokeAPI data - BSD 3-Clause" to "third_party/licenses/PokeAPI-BSD-3-Clause.txt",
-        "AndroidX, Jetpack Compose, Kotlin, Apache Commons Compress / IO / Codec / Lang, Firebase Crashlytics - Apache License 2.0" to "third_party/licenses/Apache-2.0.txt",
+        "AndroidX, Jetpack Compose, Kotlin, Apache Commons Compress / IO / Codec / Lang, Firebase Crashlytics, ZXing, OkHttp, Okio - Apache License 2.0" to "third_party/licenses/Apache-2.0.txt",
         "Apache Commons - NOTICE" to "third_party/licenses/Apache-Commons-NOTICE.txt",
         "XZ for Java - BSD Zero Clause" to "third_party/licenses/XZ-Java-0BSD.txt",
+        "Bouncy Castle (co-op) - MIT" to "third_party/licenses/BouncyCastle-MIT.txt",
     ).map { (name, path) -> name to rootProject.file(path) }
     inputs.files(parts.map { it.second })
     val out = layout.buildDirectory.file("generated/licenses/licenses.txt")
@@ -199,6 +211,41 @@ tasks.withType<Test> {
     // Tests that read real ROMs skip without them (Assume). Point them at a folder of
     // the player's own dumps with POKEDAISY_ROM_DIR (the release workflow's runner does).
     System.getenv("POKEDAISY_ROM_DIR")?.takeIf { it.isNotBlank() }?.let { systemProperty("romDir", it) }
+    // `make test-quick` (-Pquick): the everyday run. The Paparazzi renders assert nothing and were 86% of the
+    // full run's time; BestEffortTest scans 26 whole ROMs. The forks run side by side (still one class each).
+    if (project.hasProperty("quick")) {
+        filter {
+            excludeTestsMatching("*ScreenshotTest")
+            excludeTestsMatching("*BestEffortTest")
+        }
+        maxParallelForks = (Runtime.getRuntime().availableProcessors() / 2).coerceAtLeast(1)
+    }
+}
+
+// Test-only: copies the JDK's com.sun.net.httpserver classes (from the running JDK's jrt image) into a jar, since android.jar hides them.
+val jdkHttpServerStub by tasks.registering {
+    val out = layout.buildDirectory.dir("jdk-httpserver")
+    outputs.dir(out)
+    inputs.property("jdk", System.getProperty("java.version"))
+    doLast {
+        val root = out.get().asFile
+        root.deleteRecursively()
+        val jrt = FileSystems.getFileSystem(URI.create("jrt:/"))
+        val src = jrt.getPath("/modules/jdk.httpserver/com/sun/net/httpserver")
+        Files.walk(src).use { paths ->
+            paths.filter { Files.isRegularFile(it) }.forEach {
+                val dest = root.toPath().resolve("com/sun/net/httpserver").resolve(src.relativize(it).toString())
+                Files.createDirectories(dest.parent)
+                Files.copy(it, dest)
+            }
+        }
+    }
+}
+val jdkHttpServerJar by tasks.registering(Zip::class) {
+    dependsOn(jdkHttpServerStub)
+    from(layout.buildDirectory.dir("jdk-httpserver"))
+    archiveFileName.set("jdk-httpserver.jar")
+    destinationDirectory.set(layout.buildDirectory)
 }
 
 dependencies {
@@ -225,6 +272,9 @@ dependencies {
     implementation("org.apache.commons:commons-compress:1.28.0")
     implementation("org.tukaani:xz:1.12")
 
+    // QR codes for co-op invites (encoding only).
+    implementation("com.google.zxing:core:3.5.3")
+
     // Crash reports, opt-in (CrashReports.kt). -ndk catches native crashes too (mGBA, JNI),
     // which is where most of this app's crashes have been.
     implementation(platform("com.google.firebase:firebase-bom:33.5.1"))
@@ -236,4 +286,14 @@ dependencies {
     testImplementation("junit:junit:4.13.2")
     // The real org.json (android.jar's is a stub in unit tests): ScreenScraperTest and DocsSearchTest parse JSON.
     testImplementation("org.json:json:20240303")
+    // The co-op relay server (its sources are on the test path) for CoopRelayIntegrationTest.
+    testImplementation("org.java-websocket:Java-WebSocket:1.5.7")
+    testImplementation("org.slf4j:slf4j-nop:2.0.13")
+    // The relay uses the JDK's HttpServer, which android.jar hides at compile time (the JDK has it at run time).
+    testImplementation(files(jdkHttpServerJar))
+    // Co-op transport crypto: X25519 (rfc7748) for keys and the Noise IK handshake (MIT).
+    implementation("org.bouncycastle:bcprov-jdk18on:1.79")
+    // The relay WebSocket (Apache 2.0, with Okio).
+    implementation("com.squareup.okhttp3:okhttp:4.12.0")
 }
+

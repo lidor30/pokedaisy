@@ -9,8 +9,9 @@ plugins {
 
 val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
 val appIncludes = listOf(
-    "companion/ui/**", "SettingsActivity.kt", "LibraryActivity.kt", "SavesLocation.kt",
-    "CoverArtSync.kt", "CoverSync.kt", "DocsApi.kt", "DocsSearch.kt", "RomFolder.kt", "StorageAccess.kt", "SetupScreen.kt", "AppUpdater.kt", "AppUpdate.kt", "GameSaves.kt", "SaveBackups.kt", "GameInfo.kt", "LibraryOrder.kt", "RomSupportRequest.kt", "RomIntake.kt", "BestEffortShare.kt", "SaveStates.kt", "RomIdentity.kt", "RomArchive.kt", "CompanionSupport.kt", "CoverPicker.kt", "SteamGridDbGames.kt", "SteamGridDbClient.kt", "GameTitles.kt", "SaveEditorActivity.kt", "SaveFileEdits.kt", "FeatureFlags.kt",
+    "companion/ui/**", "SettingsActivity.kt", "CoopSettingsPages.kt", "LibraryActivity.kt", "SavesLocation.kt",
+    "CoverArtSync.kt", "CoverSync.kt", "DocsApi.kt", "DocsSearch.kt", "RomFolder.kt", "StorageAccess.kt", "SetupScreen.kt", "AppUpdater.kt", "AppUpdate.kt", "GameSaves.kt", "SaveBackups.kt", "GameInfo.kt", "LibraryOrder.kt", "RomSupportRequest.kt", "RomIntake.kt", "BestEffortShare.kt", "SaveStates.kt", "RomIdentity.kt", "RomArchive.kt", "CompanionSupport.kt", "CoverPicker.kt", "SteamGridDbGames.kt", "SteamGridDbClient.kt", "GameTitles.kt", "SaveEditorActivity.kt", "SaveFileEdits.kt",
+    "BpsPatch.kt", "RomPatcher.kt", "RomPatchFlow.kt", "RomCrcs.kt",
     "ScreenScraperClient.kt", "ScreenScraperUi.kt", "GameMedia.kt", "LauncherScreen.kt",
     "achievements/**", "overlay/Overlays.kt", "overlay/OverlayLabels.kt",
 )
@@ -64,6 +65,8 @@ tasks.register<JavaExec>("render") {
     systemProperty("lang", (project.findProperty("lang") as String?) ?: "")
     // -Pdark=true: every screen in DARK MODE (pair with -Pout=build/shots-dark).
     systemProperty("dark", (project.findProperty("dark") as String?) ?: "")
+    // -Ptheme=CHERRY: every screen in that THEME (its English name; limited-time ones too, whatever the date).
+    systemProperty("theme", (project.findProperty("theme") as String?) ?: "")
     // -PcompanionW=960 [-PcompanionH=1080]: the companion as a single-screen device's side panel
     // of that size, at the density the app gives it there (sidePanelDensity).
     systemProperty("companionW", (project.findProperty("companionW") as String?) ?: "")
@@ -79,6 +82,9 @@ tasks.register<JavaExec>("render") {
     // (NdsArt), the snapshot read from that save fixture (app/src/test/resources/fixtures/<name>/mainram.bin).
     systemProperty("ndsRom", (project.findProperty("ndsRom") as String?) ?: "")
     systemProperty("ndsFixture", (project.findProperty("ndsFixture") as String?) ?: "")
+    // -PdsBattleShots=<dir>: the ds-battle-* shots over that folder's <game>.png (a DS top screen, 256x192, e.g. nds_dump's
+    // battle frames cropped) instead of a plain stand-in. Game art: look at the PNGs, never commit them.
+    systemProperty("dsBattleShots", (project.findProperty("dsBattleShots") as String?) ?: "")
     systemProperty("decomps", System.getenv("DECOMPS").orEmpty())
     // Asset paths are opened relative to workingDir, so pass the icon dir relative to it.
     val monIcons = (project.findProperty("monIcons") as String?) ?: System.getenv("MON_ICONS").orEmpty()

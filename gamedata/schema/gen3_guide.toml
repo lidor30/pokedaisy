@@ -100,6 +100,19 @@ type = 'ref'
 record = 'gen3_trainer_mon'
 default = 'none'
 
+# Vanilla's party structs behind this many bytes of the game's own, each struct's size by the trainer's party flags
+# (none, custom moves, held item, both) - Monomyth's: a u32 first, then vanilla's fields, 12 / 20 / 12 / 24 bytes.
+# Null = vanilla's 8 / 16.
+[field.trainerMonStrides]
+kotlin = 'List<Int>?'
+type = 'ref'
+default = 'none'
+
+[field.trainerMonHeader]
+kotlin = 'Int'
+type = 'int'
+default = 0
+
 # WildPokemonHeader: expansion keeps one set of four tables per time of day.
 [field.wildSets]
 kotlin = 'Int'

@@ -1,0 +1,23 @@
+# Task 8: pk_coop_give_mon with a free party slot: GiveMonToPlayer puts the Pokemon in party slot 3 (give 0, count 3 -> 4) and
+# the Pokedex's SEEN and CAUGHT are set for its species. The Pokemon is a copy of slot 2 turned into species 1 (SetMonData, which
+# keeps the checksum): never seen before, so GetSetPokedexFlag(1, FLAG_GET_SEEN / CAUGHT) goes 0 -> 1 (the two calls before
+# write the species as `1`, the two after as `0x1`, so the log tells them apart). Addresses: gPlayerParty 0x020244EC (slot 2 =
+# 0x020245B4, slot 3 = 0x02024618), gPlayerPartyCount 0x020244E9, SetMonData 0x0806ACAC, GetSetPokedexFlag 0x080C0664.
+# want: give 0
+# want: call 0x080C0664(1 0  ): returned 0x0
+# want: call 0x080C0664(1 1  ): returned 0x0
+# want: call 0x080C0664(0x1 0  ): returned 0x1
+# want: call 0x080C0664(0x1 1  ): returned 0x1
+expect8 0x020244E9 3
+memcopy 0x020245B4 0x0203F900 100
+poke16 0x0203F9F0 1
+call 0x0806ACAC 0x0203F900 11 0x0203F9F0
+memsave 0x0203F900 100 /work/give_mon.bin
+call 0x080C0664 1 0
+call 0x080C0664 1 1
+coopgive /work/give_mon.bin
+expect8 0x020244E9 4
+call 0x080C0664 0x1 0
+call 0x080C0664 0x1 1
+# slot 3 holds it (the game puts its own OT on it, so only the personality is compared)
+afterexpectsame 0x02024618 0x0203F900 4

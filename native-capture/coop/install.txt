@@ -1,0 +1,19 @@
+# pk_coop_install / pk_coop_uninstall on the field (scripts/coop_headless_check.sh runs boot/emerald_coop.txt first:
+# the co-op test save on Route 101, controls free). Install is only the retail check (every function's code CRC): it changes
+# nothing, so the ROM reads as the file before, after install and after uninstall, and the game's RAM is never touched.
+# want: coop: installed
+# want: coop: uninstalled, rom patched: no
+# want: romcheck raw bus: 0 byte(s) differ
+# want: romcheck overlay: 0 byte(s) differ
+# want: romcheck swapped: 0 byte(s) differ
+poke32 0x0203F000 0x12345678
+poke32 0x0203F3FC 0x9ABCDEF0
+coopinstall
+expect32 0x0203F000 0x12345678
+expect32 0x0203F3FC 0x9ABCDEF0
+expect8 0x08FFF000 0xFF 16
+romcheck $EMERALD_ROM
+coopuninstall
+expect32 0x0203F000 0x12345678
+romcheck $EMERALD_ROM
+wait 60

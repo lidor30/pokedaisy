@@ -156,6 +156,21 @@ object PixelIcons {
         "...1...1...",
     )
 
+    /** Two arrows in a circle: BATTLE FOCUS's button to switch between the foe and your Pokémon. */
+    val rotate = listOf(
+        "...11111...",
+        "..1.....1.1",
+        ".1.......11",
+        "1.......111",
+        "1..........",
+        "1.........1",
+        "..........1",
+        "111.......1",
+        "11.......1.",
+        "1.1.....1..",
+        "...11111...",
+    )
+
     /** A funnel: a list's filter (ACHIEVEMENTS' ALL / LOCKED / UNLOCKED). Cap-height of the pixel font. */
     val filter = listOf(
         "111111111",
@@ -515,6 +530,47 @@ object PixelIcons {
     ) + lockBody()
 
     /** An open eye: a password field's SHOW (what's typed is hidden). */
+    /** A move's category (MoveKindIcon): our own marks, a burst, rings and a dot. */
+    val movePhysical = listOf(
+        ".....R.....",
+        ".R...R...R.",
+        "..R.ROR.R..",
+        "...ROOOR...",
+        ".RROOYOORR.",
+        "RROOYYYOORR",
+        ".RROOYOORR.",
+        "...ROOOR...",
+        "..R.ROR.R..",
+        ".R...R...R.",
+        ".....R.....",
+    )
+    val moveSpecial = listOf(
+        "...BBBBB...",
+        ".BBCCCCCBB.",
+        ".BCCBBBCCB.",
+        "BCCBBWBBCCB",
+        "BCBBWWWBBCB",
+        "BCBWWWWWBCB",
+        "BCBBWWWBBCB",
+        "BCCBBWBBCCB",
+        ".BCCBBBCCB.",
+        ".BBCCCCCBB.",
+        "...BBBBB...",
+    )
+    val moveStatus = listOf(
+        "...GGGGG...",
+        ".GGLLLLLGG.",
+        ".GLLLLLLLG.",
+        "GLLGGGGGLLG",
+        "GLLGWWWGLLG",
+        "GLLGWWWGLLG",
+        "GLLGWWWGLLG",
+        "GLLGGGGGLLG",
+        ".GLLLLLLLG.",
+        ".GGLLLLLGG.",
+        "...GGGGG...",
+    )
+
     /** A magnifying glass: a round lens, the handle down to the right (a search box). */
     val search = listOf(
         "................",

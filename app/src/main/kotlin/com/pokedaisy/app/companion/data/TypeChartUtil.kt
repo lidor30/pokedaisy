@@ -26,6 +26,47 @@ fun typeMultiplierPct(atkType: Int, defType1: Int, defType2: Int): Int {
     return pct
 }
 
+/** A move's name with its case, accents and punctuation gone, for [moveMultiplierPct]'s lists. */
+private fun moveKey(name: String): String =
+    java.text.Normalizer.normalize(name, java.text.Normalizer.Form.NFD).uppercase().filter { it in 'A'..'Z' }
+
+// As the games spell them: Unbound FR cuts its name short, Team Rocket Edition 2026's ROM has "Lioflización".
+private val FREEZE_DRY = setOf("FREEZEDRY", "LYOPHILISAT", "LYOPHILISATION", "LIOFILIZACION", "LIOFLIZACION")
+private val FLYING_PRESS = setOf("FLYINGPRESS", "PLANCHAVOLADORA", "PLVOLADORA")
+private val THOUSAND_ARROWS = setOf("THOUSANDARROWS", "MILFLECHAS")
+
+private fun typeIdIgnoringCase(name: String): Int =
+    activeTypeNames.entries.firstOrNull { it.value.equals(name, ignoreCase = true) }?.key ?: TYPE_NONE
+
+/**
+ * [typeMultiplierPct] for a move, with the moves whose hit the type chart can't tell (a player's report: Freeze-Dry read RESISTED on
+ * a Water foe in Seaglass): Freeze-Dry is 2x against Water whatever Ice does there, Flying Press counts as Fighting and
+ * Flying at once, Thousand Arrows is 1x against anything Flying. They only exist in the hacks; by name, because every hack
+ * numbers its moves its own way.
+ */
+fun moveMultiplierPct(moveName: String, atkType: Int, defType1: Int, defType2: Int): Int {
+    val key = moveKey(moveName)
+    return when (key) {
+        in FREEZE_DRY -> {
+            val water = typeIdIgnoringCase("Water")
+            fun vs(def: Int) = if (water != TYPE_NONE && def == water) 200 else singleTypeMultiplierPct(atkType, def)
+            if (defType2 != TYPE_NONE && defType2 != defType1) vs(defType1) * vs(defType2) / 100 else vs(defType1)
+        }
+        in FLYING_PRESS -> {
+            val fighting = typeIdIgnoringCase("Fighting")
+            val flying = typeIdIgnoringCase("Flying")
+            if (fighting == TYPE_NONE || flying == TYPE_NONE) typeMultiplierPct(atkType, defType1, defType2)
+            else typeMultiplierPct(fighting, defType1, defType2) * typeMultiplierPct(flying, defType1, defType2) / 100
+        }
+        in THOUSAND_ARROWS -> {
+            val flying = typeIdIgnoringCase("Flying")
+            if (flying != TYPE_NONE && (defType1 == flying || defType2 == flying)) 100
+            else typeMultiplierPct(atkType, defType1, defType2)
+        }
+        else -> typeMultiplierPct(atkType, defType1, defType2)
+    }
+}
+
 /** [typeName]'s inverse: the running game's type id for a displayed name, or TYPE_NONE. */
 fun typeIdOf(name: String): Int = activeTypeNames.entries.firstOrNull { it.value == name }?.key ?: TYPE_NONE
 
@@ -145,15 +186,23 @@ fun itemDescription(id: Int): String = when (activeGame) {
     // its own TMs teach other moves (tmDescriptionsPureRgb).
     GameKind.PURE_RED, GameKind.PURE_BLUE -> tmDescriptionsPureRgb[id]
         ?: itemDescriptionsYellow[id]?.takeIf { itemNamesPureRgb[id] == itemNamesYellow[id] } ?: ""
+    // Yellow Legacy kept Yellow's items; its TMs teach its own moves.
+    GameKind.YELLOW_LEGACY -> tmDescriptionsYellowLegacy[id] ?: itemDescriptionsYellow[id] ?: ""
     // Crystal's own text, from the cart (a TM's: its move's), like the GBA games'.
     // (Prism's are compressed: none.)
-    GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.PRISM, GameKind.GOLD, GameKind.SILVER, GameKind.POLISHED_CRYSTAL -> activeGen2.pokedex?.gen2?.let { Gen2Dex.itemDescription(it, id) }.orEmpty()
+    GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.PRISM, GameKind.GOLD, GameKind.SILVER, GameKind.POLISHED_CRYSTAL,
+    GameKind.CRYSTAL_LEGACY -> activeGen2.pokedex?.gen2?.let { Gen2Dex.itemDescription(it, id) }.orEmpty()
     else -> RomItemText.description(id)
 }
 
 // Display order/labels for Item.pocket (POCKET_* in Telemetry.kt), matching
 // the in-game bag's own tab order.
 val pocketOrder: List<Int> = listOf(POCKET_ITEMS, POCKET_POKE_BALLS, POCKET_TM_HM, POCKET_BERRIES, POCKET_KEY_ITEMS)
+
+/** The running game's bag tabs: [pocketOrder], or a game's own pockets where its bag shows more of them apart (Team Rocket
+ * Edition 2026's eight, in its gBagPockets' order: [TEAM_ROCKET_V3_BAG_POCKET_ORDER]). */
+val activePocketOrder: List<Int> get() =
+    if (activeGame == GameKind.TEAM_ROCKET && teamRocketV3) TEAM_ROCKET_V3_BAG_POCKET_ORDER else pocketOrder
 
 fun pocketLabel(pocket: Int): String = when (pocket) {
     POCKET_ITEMS -> "Items"
@@ -164,6 +213,7 @@ fun pocketLabel(pocket: Int): String = when (pocket) {
     POCKET_MEDICINE -> "Medicine"
     POCKET_MAIL -> "Mail"
     POCKET_BATTLE_ITEMS -> "Battle Items"
+    POCKET_MEGA_STONES -> "Mega Stones"
     else -> "Items"
 }
 

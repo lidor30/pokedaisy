@@ -259,6 +259,7 @@ class TrainerCardTest {
     @Test fun `every build of the three finds its card art`() {
         for ((rom, style) in listOf(
             "Pokemon SoulGold (v1.2) (Alt 1).gba" to CardStyle.SOULGOLD, "Pokemon SoulGold (v1.2) (Alt 2).gba" to CardStyle.SOULGOLD,
+            "Pokemon SoulGold (v1.2.1).gba" to CardStyle.SOULGOLD, "Pokemon SoulGold (v1.2.1) (Alt 1).gba" to CardStyle.SOULGOLD,
             "Pokemon Recharged Yellow (v1.9.0).gba" to CardStyle.RECHARGED_YELLOW_V1_9,
             "Pokemon Recharged Yellow (v1.9.4).gba" to CardStyle.RECHARGED_YELLOW_V1_9,
         )) {

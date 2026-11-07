@@ -24,6 +24,9 @@ gMain = 0x03001770
 saveBlock1Ptr = 0x02025734  # gSaveBlock1 itself
 saveBlock2Ptr = 0x02024EA4  # gSaveBlock2 itself
 staticSaveBlocks = true
+# BOXES: gPokemonStorage itself (static like the save blocks; the `ruby_rev1` / `sapphire_rev1` captures' boxes read).
+pokemonStoragePtr = 0x020300A0
+pcStorage = 'STATIC_PC_STORAGE'
 objectEvents = 0x030048A0
 mapHeader = 0x0202E828
 bagPockets = 0x083C1634

@@ -123,6 +123,9 @@ AMETHYST_ROM = GBA_DIR + "Pokemon Amethyst (v1.3.0).gba"  # v1.4.1's status icon
 # Sword and Shield Ultimate Plus kept CFRU's party tiles, backdrop tilemap and slot tilemaps byte for
 # byte; only its palette (Galar red / charcoal) is its own (its status icons are Odyssey's).
 SWORD_SHIELD_ROM = GBA_DIR + "Pokemon Sword and Shield Ultimate Plus (v1.2.1.2).gba"
+# Let's Go Pikachu / Eevee kept CFRU's party menu code and slot tilemaps (its literal pools at CFRU's offsets) with its own
+# tiles, palette, backdrop tilemap and status icons, the same bytes in both versions.
+LETS_GO_ROM = GBA_DIR + "Pokemon Let's Go Pikachu.gba"
 
 
 def unbound_fr_symbols(rom):
@@ -240,6 +243,38 @@ def wishes_symbols(rom):
     return {"RegionGfx": (0xCE59A8, 0), "RegionMap": (0xCE5880, 0), "RegionPal": (0xCE77C8, 0x60)}
 
 
+# Pokemon Team Rocket Edition 2026, Spanish (v3.0.9, sha1 0d8bdaee...): Wishes' kind of screen (8bpp smol tiles, a 64x64
+# one-byte smol tilemap, a 48-colour palette) for each of its seven region maps. 0x08192D44 turns the map section into a
+# region (1 Kanto 0x7A-0xE6, 2-4 the Sevii Islands 1-3 / 4-5 / 6-7, 5 Johto 0x13D-0x190, 6 Hoenn 0x00-0x79, 7 Sinnoh
+# 0x191-0x1EE) and the map code's switches (jump tables 0x08E69B28 / B68 / B88) load that region's tilemap, tiles and
+# palette - Kanto's, Hoenn's and Sinnoh's palette at BG palette 7 like Emerald's, the other four at BG palette 0.
+TEAM_ROCKET_V3_ROM = os.path.expanduser("~/Downloads/Game ROMs & Emulation/gba/Pokemon Team Rocket Edition 2026 (Spanish).gba")
+
+
+def team_rocket_v3_symbols(rom):
+    out = {}
+    for name, (gfx, tilemap, pal) in {
+        "Kanto": (0xE70B68, 0xE7097C, 0xE69F6C), "Sevii123": (0xE6FB48, 0xE6FA94, 0xE6A02C),
+        "Sevii45": (0xE6F8DC, 0xE69EF4, 0xE6A06C), "Sevii67": (0xE6F544, 0xE6F46C, 0xE6A08C),
+        "Johto": (0xE70090, 0xE6FE44, 0xE69FAC), "Hoenn": (0xE7168C, 0xE7147C, 0xE69FEC),
+        "Sinnoh": (0xE6E9A4, 0xE6E764, 0xE6A0AC),
+    }.items():
+        out.update({f"{name}Gfx": (gfx, 0), f"{name}Map": (tilemap, 0), f"{name}Pal": (pal, 0x60)})
+    return out
+
+
+# Pokemon Monomyth v1.0 (sha1 ae1c4be9...), its own closed pokeemerald build: the PokeNav's ATHANTO MAP, a mode-0 screen -
+# 8bpp tiles (LZ77, loaded from tile 0x60), a 32x32 u16 text tilemap (LZ77; the game shows rows 2..21) and a 48-colour
+# palette at BG palette 7 - and the one player head its map code loads (0x08117950's pool: the same for either gender).
+# Headless, the ATHANTO MAP's VRAM (BG2), palette RAM and OBJ tiles matched them.
+MONOMYTH_ROM = os.path.expanduser("~/Downloads/Game ROMs & Emulation/gba/Pokemon Monomyth (v1.0).gba")
+
+
+def monomyth_symbols(rom):
+    return {"RegionGfx": (0xA12550, 0), "RegionMap": (0xA1582C, 0), "RegionPal": (0xA124F0, 0x60),
+            "PlayerGfx": (0xA15DA8, 0), "PlayerPal": (0xA15D88, 0x20)}
+
+
 # Pokemon Quetzal English Alpha 9 v0 (sha1 d0658315...): FireRed's Kanto / Sevii maps (pixel for
 # pixel, 3 tiles left and 2 up of FireRed's screen) redrawn for Emerald's region_map.c - 8bpp
 # tiles and a 64x64 affine tilemap per map (LZ77), FireRed's palette loaded at BG palette 7. Its
@@ -248,7 +283,7 @@ QUETZAL_ROM = os.path.expanduser("~/Downloads/Game ROMs & Emulation/gba/Pokemon 
 
 
 def quetzal_symbols(rom):
-    return {"RegionPal": (0x121EA1C, 0x40),
+    return {"RegionPal": (0x121EA1C, 0x40), "JohtoGfx": (0x121DC04, 0), "JohtoMap": (0x121E6A0, 0),
             "KantoGfx": (0x121EA5C, 0), "Sevii123Gfx": (0x121F84C, 0), "Sevii45Gfx": (0x1220428, 0), "Sevii67Gfx": (0x1220F38, 0),
             "KantoMap": (0x121F51C, 0), "Sevii123Map": (0x12201EC, 0), "Sevii45Map": (0x1220D14, 0), "Sevii67Map": (0x1221920, 0)}
 
@@ -382,6 +417,9 @@ GAMES = {
         ("FR_STATUS_PAL", "gStatusPal_Icons", True),
         ("FR_FONT_SMALL", "sFontSmallLatinGlyphs", False),
         # The held-item marker by a party slot's icon: an item, then Mail (8x8 each), and its palette (the same in Emerald).
+        # The type tags (a 128x128 sheet, the games' own list of 32x12 tags) and their colours.
+        ("FR_TYPE_TAGS_GFX", "gMenuInfoElements_Gfx", False),
+        ("FR_TYPE_TAGS_PAL", "gMenuInfoElements2_Pal", False),
         ("FR_HOLD_GFX", "sHeldItemGfx", False),
         ("FR_HOLD_PAL", "sHeldItemPalette", False),
         ("FR_REGION_GFX", "sRegionMap_Gfx", True),
@@ -422,6 +460,8 @@ GAMES = {
         ("FR_FONT_NORMAL_WIDTHS", "sFontNormalLatinGlyphWidths", False),
     ]),
     "EM": ("pokeemerald/pokeemerald.gba", "pokeemerald/pokeemerald.elf", [
+        ("EM_TYPE_TAGS_GFX", "gMenuInfoElements_Gfx", False),
+        ("EM_TYPE_TAGS_PAL", "gMenuInfoElements2_Pal", False),
         ("EM_PARTY_BG_GFX", "gPartyMenuBg_Gfx", True),
         ("EM_PARTY_BG_PAL", "gPartyMenuBg_Pal", True),
         ("EM_PARTY_BG_MAP", "gPartyMenuBg_Tilemap", True),
@@ -481,6 +521,12 @@ GAMES = {
     "AM": (AMETHYST_ROM, None, [("AM_STATUS_GFX", "StatusGfx", True)]),
     # (its status icons are Odyssey's bytes: OD_STATUS_GFX finds them)
     "SS": (SWORD_SHIELD_ROM, None, [("SS_PARTY_BG_PAL", "PartyBgPal", True)]),
+    "LGO": (LETS_GO_ROM, None, [
+        ("LGO_PARTY_BG_GFX", "PartyBgGfx", True),
+        ("LGO_PARTY_BG_PAL", "PartyBgPal", True),
+        ("LGO_PARTY_BG_MAP", "PartyBgMap", True),
+        ("LGO_STATUS_GFX", "StatusGfx", True),
+    ]),
     "LZ": (LAZARUS_ROM, None, [
         ("LZ_REGION_GFX", "RegionGfx", True),
         ("LZ_REGION_PAL", "RegionPal", False),
@@ -518,6 +564,18 @@ GAMES = {
         ("WSH_REGION_MAP", "RegionMap", "smol"),
         ("WSH_REGION_PAL", "RegionPal", False),
     ]),
+    "TR3": (TEAM_ROCKET_V3_ROM, None, [
+        row for region in ("KANTO", "SEVII123", "SEVII45", "SEVII67", "JOHTO", "HOENN", "SINNOH")
+        for row in ((f"TR3_{region}_GFX", f"{region.title()}Gfx", "smol"), (f"TR3_{region}_MAP", f"{region.title()}Map", "smol"),
+                    (f"TR3_{region}_PAL", f"{region.title()}Pal", False))
+    ]),
+    "MMY": (MONOMYTH_ROM, None, [
+        ("MMY_REGION_GFX", "RegionGfx", True),
+        ("MMY_REGION_MAP", "RegionMap", True),
+        ("MMY_REGION_PAL", "RegionPal", False),
+        ("MMY_PLAYER_GFX", "PlayerGfx", True),
+        ("MMY_PLAYER_PAL", "PlayerPal", False),
+    ]),
     "RW": (ROWE_ROM, None, [
         ("RW_REGION_PAL", "RegionPal", False),
         ("RW_REGION_GFX", "RegionGfx", True),
@@ -549,6 +607,8 @@ GAMES = {
         ("QTZ_SEVII45_MAP", "Sevii45Map", True),
         ("QTZ_SEVII67_GFX", "Sevii67Gfx", True),
         ("QTZ_SEVII67_MAP", "Sevii67Map", True),
+        ("QTZ_JOHTO_GFX", "JohtoGfx", True),
+        ("QTZ_JOHTO_MAP", "JohtoMap", True),
     ]),
     "GZ": (GLAZED_ROM, None, [
         ("GZ_REGION_GFX", "RegionGfx", True),
@@ -666,8 +726,8 @@ def fireRed_symbols(p):
 
 
 # The binary hacks' made-up symbols (no ELF).
-ROM_SYMBOLS = {"RY": recharged_yellow_symbols, "UB": unbound_symbols, "UBFR": unbound_fr_symbols, "RR": cfru_symbols, "OD": cfru_symbols, "AM": cfru_symbols, "SS": cfru_symbols, "LZ": lazarus_symbols, "SGL": seaglass_symbols, "SG": soulgold_symbols,
-               "GZ": glazed_symbols, "IMP": imperium_symbols, "DSM": dreamstone_symbols, "WSH": wishes_symbols, "QTZ": quetzal_symbols, "HNS": hns_symbols, "RW": rowe_symbols, "MM": mariomon_symbols, "RE": recharged_emerald_symbols,
+ROM_SYMBOLS = {"RY": recharged_yellow_symbols, "UB": unbound_symbols, "UBFR": unbound_fr_symbols, "RR": cfru_symbols, "OD": cfru_symbols, "AM": cfru_symbols, "SS": cfru_symbols, "LGO": cfru_symbols, "LZ": lazarus_symbols, "SGL": seaglass_symbols, "SG": soulgold_symbols,
+               "GZ": glazed_symbols, "IMP": imperium_symbols, "DSM": dreamstone_symbols, "WSH": wishes_symbols, "MMY": monomyth_symbols, "TR3": team_rocket_v3_symbols, "QTZ": quetzal_symbols, "HNS": hns_symbols, "RW": rowe_symbols, "MM": mariomon_symbols, "RE": recharged_emerald_symbols,
                **{"EM" + lang: emerald_eu_symbols(lang) for lang in EMERALD_EU_ROMS},
                **{"FR" + lang: fireRed_symbols(p) for lang, p in fireRed_ports().items()}}
 

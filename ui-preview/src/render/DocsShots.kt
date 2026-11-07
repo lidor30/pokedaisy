@@ -255,7 +255,7 @@ fun docsShots(all: List<Shot>, bw: Int, bh: Int, bd: Float, tw: Int, th: Int, td
     val reuse = linkedMapOf(
         "library-views" to "library-list", "library-views-gbc" to "library-views", "library-grid" to "library-grid", "library-list-menu" to "library-menu",
         "library-info" to "library-info", "library-sort" to "library-sort", "library-cover-picker" to "library-cover-picker",
-        "library-update" to "library-update", "library-list-phone" to "phone-library",
+        "library-update" to "library-update", "library-list-phone" to "phone-library", "library-tools-open" to "library-tools",
         "setup-roms" to "setup-roms", "setup-saves" to "setup-saves", "setup-buttons" to "setup-buttons", "setup-covers" to "setup-covers",
         "setup-buttons-capture" to "setup-buttons-capture", "game-capture-hotkey" to "game-capture",
         "settings-home" to "settings-home", "settings-search" to "settings-search", "settings-aspect" to "settings-aspect",
@@ -263,8 +263,10 @@ fun docsShots(all: List<Shot>, bw: Int, bh: Int, bd: Float, tw: Int, th: Int, td
         "settings-cheats" to "settings-cheats", "settings-cheats-add" to "settings-cheats-add",
         "settings-retroachievements" to "settings-retroachievements", "settings-coverart" to "settings-coverart",
         "settings-overlay" to "settings-overlay", "settings-theme" to "settings-theme", "overlay-daisy" to "overlay-daisy",
+        "library-theme-cherry" to "library-theme-cherry", "library-seasonal-popup" to "library-seasonal-popup",
         "overlay-bezel" to "overlay-bezel",
         "settings-touch-phone" to "settings-touch-phone", "settings-touch-edit" to "settings-touch-edit",
+        "settings-folders-backups" to "settings-folders-backups",
     )
     val byName = all.associateBy { it.name }
     val top = reuse.mapNotNull { (from, to) ->

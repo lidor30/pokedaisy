@@ -46,6 +46,8 @@ interface CompanionSettings {
 
     /** AUTO-RUN: B held while walking (holding it walks) - see [com.pokedaisy.app.Prefs.autoRun]. */
     val autoRun: Boolean get() = false
+    /** The game has its own, on by default ([com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN]): the row says so. */
+    val autoRunBuiltIn: Boolean get() = false
     fun setAutoRun(on: Boolean) {}
 
     /** RUN INDOORS - see [com.pokedaisy.app.Prefs.runIndoors]; [runIndoorsSupported]: a FireRed / Emerald engine the
@@ -67,12 +69,31 @@ interface CompanionSettings {
     val reusableTmsSupported: Boolean get() = false
     /** The game's own TMs never run out ([com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN]): the row says so. */
     val reusableTmsBuiltIn: Boolean get() = false
+    /** INSTANT TEXT - see [com.pokedaisy.app.Prefs.instantText]; [instantTextSupported]: the ROM's text code is known
+     * ([com.pokedaisy.app.companion.data.InstantText]). */
+    val instantText: Boolean get() = false
+    fun setInstantText(on: Boolean) {}
+    val instantTextSupported: Boolean get() = false
+
+    /** TRADE EVOLUTIONS - see [com.pokedaisy.app.Prefs.tradeEvolutions]; [tradeEvolutionsSupported]: this game's
+     * evolution code is known ([com.pokedaisy.app.companion.data.tradeEvoFor]). */
+    val tradeEvolutions: Boolean get() = false
+    fun setTradeEvolutions(on: Boolean) {}
+    val tradeEvolutionsSupported: Boolean get() = false
 
     /** DS RESOLUTION ([com.pokedaisy.app.Prefs.dsResolution]): the scale, null when the game isn't a DS one (no row);
      * [dsGpuAvailable] false = this device can't run the GPU renderer (no OpenGL ES 3.2), so the DS's own it is. */
     val dsResolution: Int? get() = null
     val dsGpuAvailable: Boolean get() = true
     fun setDsResolution(scale: Int) {}
+
+    /** DS CPU BOOST ([com.pokedaisy.app.Prefs.dsCpuBoost]): null when the game isn't a DS one (no row). */
+    val dsCpuBoost: Boolean? get() = null
+    fun setDsCpuBoost(on: Boolean) {}
+
+    /** DS LAYOUT ([com.pokedaisy.app.Prefs.dsLayout]): null when there's no row (not a DS game, or one on two screens). */
+    val dsLayout: DsLayout? get() = null
+    fun setDsLayout(layout: DsLayout) {}
 
     /** NUZLOCKE ([Nuzlocke]): [nuzlockeSupported] = a GBA game whose party and battles are read; the switch is per game. */
     val nuzlockeSupported: Boolean get() = false
@@ -224,9 +245,20 @@ interface CompanionSettings {
     /** Saves DARK MODE (an ordinal of DarkModeSetting, see [Prefs.darkMode]); the look itself is DarkMode's state. */
     fun setDarkMode(v: Int) {}
 
+    /** Saves THEME (a ThemeSpec.id, see [Prefs.appTheme]; ui.theme.pickTheme); the screen puts the theme on itself. */
+    fun setAppTheme(id: Int) {}
+
     /** Whether battle INFO has a STATS page with the foe's IVs - see [Prefs.showFoeIvs]. */
     val showFoeIvs: Boolean get() = false
     fun setShowFoeIvs(on: Boolean) {}
+
+    /** BATTLE INFO - see [com.pokedaisy.app.Prefs.battleInfo]. */
+    val battleInfo: Boolean get() = true
+    fun setBattleInfo(on: Boolean) {}
+
+    /** BATTLE VIEW - see [com.pokedaisy.app.Prefs.battleInfoFirst]. */
+    val battleInfoFirst: Boolean get() = false
+    fun setBattleInfoFirst(on: Boolean) {}
 
     /** ONE-TAP MOVES - see [Prefs.oneTapMoves]. */
     val oneTapMoves: Boolean get() = false
@@ -235,6 +267,10 @@ interface CompanionSettings {
     /** Whether battle INFO shows FOE DETAILS - see [Prefs.foeDetails]. */
     val foeDetails: Boolean get() = false
     fun setFoeDetails(on: Boolean) {}
+
+    /** See [Prefs.battleFocus]. */
+    val battleFocus: Boolean get() = false
+    fun setBattleFocus(on: Boolean) {}
 
     /** Whether a launch picks up where the game was left - see [Prefs.autoResume]; off, CLOSE GAME warns. */
     val autoResume: Boolean get() = true
@@ -275,6 +311,16 @@ interface CompanionSettings {
     val quickMenuLabels: Boolean get() = true
     fun setQuickMenuLabels(on: Boolean) {}
 
+    /** SOUND > GAME VOLUME, in percent of the device's volume (100 = the device's) - see [Prefs.gameVolume]. */
+    val gameVolume: Int get() = 100
+    fun setGameVolume(percent: Int) {}
+    /** SOUND > MUTE GAME (also the MUTE hotkey) - see [Prefs.gameMuted]. */
+    val gameMuted: Boolean get() = false
+    fun setGameMuted(on: Boolean) {}
+    /** SOUND > AUDIO EFFECTS: the device's audio effects on the game's sound, from its next start - see [Prefs.audioEffects]. */
+    val audioEffects: Boolean get() = false
+    fun setAudioEffects(on: Boolean) {}
+
     /** FPS / CPU over the game's corner - see [Prefs.showPerformance]. */
     val showPerformance: Boolean get() = false
     fun setShowPerformance(on: Boolean) {}
@@ -285,6 +331,10 @@ interface CompanionSettings {
 
     /** Whether WIDE knows the running game (WideScreen.gameFor); it shows as ORIGINAL otherwise. */
     val wideSupported: Boolean get() = false
+
+    /** EXPAND's LOOK AROUND - see [com.pokedaisy.app.Prefs.lookAround]. */
+    val lookAround: Boolean get() = true
+    fun setLookAround(on: Boolean) {}
 
     /** EXPAND's AUTO ZOOM IN - see [com.pokedaisy.app.Prefs.expandZoomOnText]. */
     val expandZoomOnText: Boolean get() = true
@@ -410,13 +460,34 @@ interface CompanionSettings {
      * (a [com.pokedaisy.app.companion.data.GameKind] name). */
     fun guideNoticeAccepted(game: String): Boolean
     fun acceptGuideNotice(game: String)
+
+    /** CO-OP shows only while its feature flag is on (read once by the activity, never per recomposition). */
+    val coopEnabled: Boolean get() = false
+    /** SETTINGS re-reads the link once a second while it shows (LINK's retry countdown); previews turn it off so they can go idle. */
+    val coopLiveRefresh: Boolean get() = true
+    /** CO-OP (see [com.pokedaisy.app.companion.coop.CoopSession]): the link's state, the pairings, the relay and its RELAY ONLY switch. */
+    val coopState: com.pokedaisy.app.companion.coop.CoopState get() = com.pokedaisy.app.companion.coop.CoopState.Off()
+    val coopPairs: List<com.pokedaisy.app.companion.coop.CoopPair> get() = emptyList()
+    val coopRelayValue: String get() = ""
+    val coopRelayOnly: Boolean get() = false
+    fun setCoopRelayOnly(on: Boolean) {}
+    /** NEARBY RANGE in steps (2 / 4 / 8 / 16 / 32): how close a partner's battle must be to join; the activity reads Prefs. */
+    var coopNearbyRange: Int
+        get() = 8
+        set(_) {}
+    fun coopUnpair(save: com.pokedaisy.app.companion.coop.CoopSaveId) {}
+    /** PLAY TOGETHER ONLY: the running game's lock state and actions (null = the row is hidden). */
+    val coopLock: com.pokedaisy.app.companion.coop.lock.CoopLockUi? get() = null
+    val coopLockActions: com.pokedaisy.app.companion.coop.lock.CoopLockActions? get() = null
+    /** Show the partner's PLAY TOGETHER ONLY proposal on the companion itself (two screens: the game screen can't be touched). */
+    val coopProposalHere: Boolean get() = false
 }
 
 /** Every tab the player can show or hide, in tab-bar order. BATTLE (while a
  * battle runs) and SETTINGS (the way to the hidden ones) are always there.
  * CARD (the TRAINER CARD) and ACHIEVEMENTS (RetroAchievements) start off the
  * bar, under the MORE tab. */
-val COMPANION_TABS = listOf("PARTY", "DEX", "MAP", "ITEMS", "GUIDE", "NUZLOCKE", "CARD", "STATES", "ACHIEVEMENTS")
+val COMPANION_TABS = listOf("PARTY", "DEX", "MAP", "ITEMS", "BOXES", "GUIDE", "NUZLOCKE", "CARD", "STATES", "ACHIEVEMENTS")
 val DEFAULT_COMPANION_TABS = listOf("PARTY", "DEX", "MAP", "ITEMS", "GUIDE")
 
 /** Tabs next to SETTINGS: six chips in all is as many as fit. During a

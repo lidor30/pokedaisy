@@ -1,0 +1,33 @@
+# Task 8: every writer answers -1 while the game isn't free on the field (here a text box: sLockFieldControls 0x03000F2C = 1) and
+# touches nothing: EWRAM and IWRAM hash the same before and after the whole run of calls (no frame runs in between). prize
+# reads the ROM only, so it answers on any frame. Then the lock is let go and one writer (money) works again.
+# want: give -1
+# want: remove -1
+# want: flag -1
+# want: money -1
+# want: writemon -1
+# want: whiteout -1
+# want: evolve -1
+# want: save -1
+# want: prize 1500
+# want: PASS hash 0 unchanged
+# want: PASS hash 1 unchanged
+# want: money 1
+memcopy 0x020245B4 0x0203F900 100
+memsave 0x0203F900 100 /work/give_mon.bin
+poke8 0x03000F2C 1
+afterhash 0 0x02000000 262144
+afterhash 1 0x03000000 32768
+coopgive /work/give_mon.bin
+coopremove 13 1
+coopflag 100
+coopmoney 10
+coopwritemon 0 /work/give_mon.bin
+coopwhiteout
+coopevolve 0
+coopsave
+coopprize 265
+afterexpecthash 0 0x02000000 262144
+afterexpecthash 1 0x03000000 32768
+poke8 0x03000F2C 0
+coopmoney 10

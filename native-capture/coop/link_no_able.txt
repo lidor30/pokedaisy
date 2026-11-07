@@ -1,0 +1,13 @@
+# Plan 6 Task 1 (fix round): a link battle needs a Pokemon that can fight. With every Pokemon of the party fainted pk_coop_link_begin
+# refuses and changes nothing: no battle flags, the field's callback still the game's, the bridge idle, the party as it was.
+#
+# want: link: begin 0 refused no able Pokemon
+# want: linkstate 0
+poke16 0x02024542 0
+poke16 0x020245A6 0
+poke16 0x0202460A 0
+coopbegin 1 2 333 318
+linkstate
+expect32 0x02022FEC 0
+expect32 0x030022C4 0x08085E5D
+expect8 0x020244E9 3

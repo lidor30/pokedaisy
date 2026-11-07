@@ -28,7 +28,7 @@ typedef struct PkNdsFieldGame {
     uint32_t seqPlayers;       // NitroSystem's sSeqPlayer[16] (NNSSndSeqPlayer, 0x44 bytes): a volume fade running (STEADY waits it out)
     int rateBytes;             // the encounter rates are u8s (HeartGold / SoulSilver's EncounterData), not Platinum's u32s
     int callSet;               // pk_nds_call's functions for this game: 0 none, 1 Platinum's, 2 HeartGold / SoulSilver's, 3 Black's, 4 White's,
-                               // 5 Black 2's, 6 White 2's, 7 Origin HeartGold's
+                               // 5 Black 2's, 6 White 2's, 7 Origin HeartGold's, 8 French Platinum's, 9 French Black's, 10 French White's
     int offBattleContext;      // BattleSystem.ctx (the battle process's data is the BattleSystem), 0 = unknown
     int offCommand;            // BattleContext.command: the battle controller's step (constants/battle.h's CONTROLLER_COMMAND_*)
     // Gen 5 (Black): no FieldSystem. fieldSystemPtr is then the static GameSystem pointer, and the scene comes from it:

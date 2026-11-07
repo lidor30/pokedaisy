@@ -346,6 +346,17 @@ class HackPokedexTest {
     }
 
     @Test
+    fun `SoulGold v1_2_1 entries and the Johto order`() = listOf("Pokemon SoulGold (v1.2.1).gba", "Pokemon SoulGold (v1.2.1) (Alt 1).gba").forEach { rom ->
+        roms(rom, GameKind.SOULGOLD, POKEDEX_SOULGOLD_V1_2_1) { t ->
+            val pikachu = PokedexSource.entry(t, 25)!!
+            assertEquals(listOf("Static"), pikachu.abilities)
+            assertEquals("Lightning Rod", pikachu.hiddenAbility)
+            assertEquals("Fire Mouse", PokedexSource.entry(t, 155)!!.category)
+            assertEquals(136, PokedexSource.regionalOrder(t)!!.indexOf(155) + 1)
+        }
+    }
+
+    @Test
     fun `Seaglass entries`() = roms("Pokemon Emerald Seaglass (v3.0).gba", GameKind.EMERALD_SEAGLASS, POKEDEX_EMERALD_SEAGLASS) { t ->
         assertEquals(252, PokedexSource.speciesFor(t, 1)) // TREECKO
         assertEquals(1, PokedexSource.speciesFor(t, 141)) // BULBASAUR
@@ -479,6 +490,21 @@ class HackPokedexTest {
             assertEquals(12, PokedexSource.entry(t, 12)!!.species)
             assertTrue(rowlet.abilities.isNotEmpty())
         }
+
+    /** Let's Go Pikachu / Eevee: FireRed's dex shapes over 987 species, its own numbers (WOOLOO No. 300 is species 315). */
+    @Test
+    fun `Let's Go entries - its tables past 16 MB, its own numbers`() {
+        for (file in listOf("Pokemon Let's Go Pikachu.gba", "Pokemon Let's Go Eevee.gba")) {
+            roms(file, GameKind.FIRERED, POKEDEX_LETS_GO) { t ->
+                val pikachu = PokedexSource.entry(t, 25)!!
+                assertEquals(25 to "Mouse", pikachu.species to pikachu.category)
+                assertEquals(4 to 60, pikachu.heightDm to pikachu.weightHg)
+                assertEquals(315, PokedexSource.speciesFor(t, 300))
+                assertEquals(1, PokedexSource.speciesFor(t, 1))
+                assertTrue(pikachu.abilities.isNotEmpty())
+            }
+        }
+    }
 
     @Test
     fun `Ash Gray entries - rev 0's tables`() = roms("Pokemon Ash Gray (v4.5.3).gba", GameKind.FIRERED, POKEDEX_ULTRA_VIOLET) { t ->

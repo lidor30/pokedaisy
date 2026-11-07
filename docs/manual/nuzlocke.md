@@ -12,11 +12,11 @@ It only keeps score. It never changes your game or your save: nothing stops you 
 
 ## Turning it on
 
-Open the companion's `SETTINGS` and turn on `NUZLOCKE` in the `GAMEPLAY` group. It's per game, so a run in one game doesn't touch another. A `NUZLOCKE` tab shows up in `MORE` (add it to the tab bar in `SETTINGS`, `TAB BAR`, if you'd like it one tap away).
+Open the `NUZLOCKE` tab under `MORE` and tap `TURN ON`, or turn on `NUZLOCKE` in the `GAMEPLAY` group of the companion's `SETTINGS`. It's per game, so a run in one game doesn't touch another. Add the tab to the tab bar in `SETTINGS`, `TAB BAR`, if you'd like it one tap away.
 
 The run starts from the party you have when you turn it on. If you're starting a new game, turn it on before you pick your first Pokémon.
 
-Turning `NUZLOCKE` off hides the tab and pauses the tracking. Your run is kept, and picks up where it was when you turn it back on.
+Turning `NUZLOCKE` off pauses the tracking, and the tab goes back to its `TURN ON` page. Your run is kept, and picks up where it was when you turn it back on.
 
 ## What it tracks
 

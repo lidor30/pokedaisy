@@ -94,6 +94,14 @@ private val GEN1_DEX_PURE_RED = GEN1_DEX_YELLOW.copy(
     textFar = 0x15,   // dex_entry's text_far_end
 )
 
+/** Yellow Legacy v1.0.10 (its pokeyellow.sym): its own base data, pages and palettes. */
+private val GEN1_DEX_YELLOW_LEGACY = GEN1_DEX_YELLOW.copy(
+    baseStats = 0x3B to 0x5272,
+    dexEntryPointers = 0x10 to 0x46D3,
+    monsterPalettes = 0x1C to 0x68B5,
+    cgbPalettes = 0x1C to 0x6A8D,   // GBCBasePalettes
+)
+
 /** The European Yellows: English's tables but for the dex pages' text and palettes (port_gen1.py, checked by contents). */
 private val GEN1_DEX_YELLOW_DE = GEN1_DEX_YELLOW.copy(dexEntryPointers = 0x10 to 0x4507, monsterPalettes = 0x1C to 0x6900,
     cgbPalettes = 0x1C to 0x6AD8, owned = 0xD2FBL, seen = 0xD30EL, metric = true, charset = Gen1Charset.DF)
@@ -118,6 +126,8 @@ val POKEDEX_YELLOW_ES = POKEDEX_YELLOW_METRIC.copy(gen1 = GEN1_DEX_YELLOW_ES)
 /** Red's and Blue's: one set of tables over each cart's own bytes (two objects, so a dex cache never crosses them). */
 val POKEDEX_RED = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_RED)
 val POKEDEX_BLUE = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_RED.copy())
+/** Yellow Legacy's. */
+val POKEDEX_YELLOW_LEGACY = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_YELLOW_LEGACY)
 /** PureRed's and PureBlue's, likewise. */
 val POKEDEX_PURE_RED = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_PURE_RED)
 val POKEDEX_PURE_BLUE = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_PURE_RED.copy())

@@ -1,0 +1,29 @@
+# `lockgo` on a held OBJECT event (id 6, DewfordTown_Gym_EventScript_Brawly, 0x081FC7C2): the talked-to object comes back
+# (gSpecialVar_LastTalked 0x020375F2 = 7, gSelectedObjectEvent 0x03005DF0 = 3, as they were when the hold began), the script is
+# set up (context mode 1, scriptPtr = the script) and the hold is gone. The id is allowed once: calling the same script
+# again is held again. A wrong id is refused (go 0) and nothing changes.
+# want: lock: held 6 kind 1
+# want: lock: go 0
+# want: lock: go 1
+# want: lock: held 0 kind 0
+poke16 0x020375F2 7
+poke8 0x03005DF0 3
+lockinstall
+lockactive 1
+call 0x08098EF8 0x081FC7C2
+lockheld
+lockgo 5
+expect8 0x03000E41 0
+lockheld
+poke16 0x020375F2 0
+poke8 0x03005DF0 0
+lockgo 6
+expect8 0x03000E41 1
+expect32 0x03000E48 0x081FC7C2
+expect16 0x020375F2 7
+expect8 0x03005DF0 3
+expect16 0x0203F404 0
+lockheld
+call 0x08098EF8 0x081FC7C2
+lockheld
+expect16 0x0203F402 6

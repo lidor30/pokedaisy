@@ -1,0 +1,144 @@
+# pk_partner_self (pk_wide.c): the player's map, fine position (object-event coords x 16 + the step's progress by the
+# map's scroll), facing, movement mode and step count, read the way the app reads it every frame (mgba_dump calls it
+# after every frame once `wideon` has picked the game's field table). From the co-op test save's Route 101 tile
+# (map 0.16, object-event tile 17,25, facing north), whose save has no Running Shoes: FLAG_SYS_B_DASH (0x8C0, SaveBlock1
+# + 0x1388 bit 0) is poked in for the run. The bike / surf modes are gPlayerAvatar.flags (0x02037590, 0x21 on foot)
+# poked to MACH_BIKE and SURFING for a frame and back: only the read is checked, the game isn't ridden.
+# want: partnerself: valid 1 map 0.16 fine 272,400 facing 2 mode 0 step 0
+# want: partnerself: valid 1 map 0.16 fine 272,400 facing 4 mode 0 step 0
+# want: partnerself: valid 1 map 0.16 fine 276,400 facing 4 mode 0 step 1
+# want: partnerself: valid 1 map 0.16 fine 288,400 facing 4 mode 0 step 1
+# want: partnerself: valid 1 map 0.16 fine 278,400 facing 3 mode 1 step 2
+# want: partnerself: valid 1 map 0.16 fine 272,400 facing 3 mode 0 step 2
+# want: partnerself: valid 1 map 0.16 fine 272,400 facing 3 mode 2 step 2
+# want: partnerself: valid 1 map 0.16 fine 272,400 facing 3 mode 4 step 2
+# want: partnerself: valid 1 map 0.16 fine 272,416 facing 1 mode 0 step 4
+# want: partnerself: valid 1 map 0.9 fine 272,96 facing 1 mode 0 step 4
+# want: partnerself: valid 1 map 0.9 fine 272,128 facing 1 mode 0 step 5
+wideon 0
+# standing on the start tile, facing north
+partnerself
+# a tap turns east without a step
+hold RIGHT 4
+partnerself
+# mid-step: fine x strictly between 17 x 16 and 18 x 16
+wait 30
+hold RIGHT 4
+partnerself
+# standing on the next tile: one step counted
+wait 30
+partnerself
+# running back west (turn, then 2 px a frame): mode 1 mid-run
+poke8p 0x03005D8C 0x1388 1
+keys B,LEFT
+wait 14
+partnerself
+keys NONE
+wait 30
+partnerself
+# MACH_BIKE, then SURFING (+ CONTROLLABLE), then on foot again
+poke8 0x02037590 0x23
+wait 1
+partnerself
+poke8 0x02037590 0x29
+wait 1
+partnerself
+poke8 0x02037590 0x21
+wait 1
+partnerself
+# south across Route 101's connection into Littleroot (map 0.9, Route 101 20 tiles tall): read every frame. The step
+# onto the connected row still says Route 101 (the coords are its own until the next frame shifts them by -20 tiles);
+# the shift is neither a step nor a new step (the fine y goes on from 416 - 320 = 96). Steps 3, 4 (onto the
+# connection) and 5 (Littleroot's row 8).
+keys DOWN
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+wait 1
+partnerself
+keys NONE
+wait 30
+partnerself

@@ -172,6 +172,19 @@ val PC_EMERALD: PcFns by lazy {
     )
 }
 
+// TRADE EVOLUTIONS (TradeEvolution.kt's TradeEvoFns): retail Emerald, where the pinned pokeemerald build has them
+// (its ELF). Headless on the user's save: KADABRA to ALAKAZAM from the field, the field back after.
+val TRADE_EVO_EMERALD: TradeEvoFns by lazy {
+    TradeEvoFns(
+        getEvolutionTarget = 0x0806D098L,
+        beginEvolutionScene = 0x0813DA40L,
+        afterEvolution = 0x030061E8L,
+        returnToField = 0x080860C8L,
+        lockControls = 0x08098E54L,
+        codeCrcs = listOf(0xA970F637L, 0x74E72426L, 0x224FD691L, 0xB9FB85A7L),
+    )
+}
+
 // ---- gamedata/gen3/records/firered.toml ----
 
 // FireRed's own gBagPockets[] index order (item.c: gBagPockets[POCKET_X-1] =
@@ -459,5 +472,42 @@ val PC_LEAFGREEN_REV1: PcFns by lazy {
         specials = 0x0815FDB4L,
         pcFn = 0x0808C691L,
         codeCrcs = listOf(0xAAC00946L, 0x5333E53EL),
+    )
+}
+
+// TRADE EVOLUTIONS (TradeEvolution.kt's TradeEvoFns): retail FireRed rev 1 / LeafGreen rev 0 / rev 1. The functions
+// found in each retail ROM by the pinned pokefirered build's code (calls and literal pools masked: that build sits off
+// retail), gCB2_AfterEvolution from the pool word after the same code in retail. Headless on the user's FireRed save:
+// KADABRA to ALAKAZAM from the field, the field back after.
+val TRADE_EVO_FIRERED_REV1: TradeEvoFns by lazy {
+    TradeEvoFns(
+        getEvolutionTarget = 0x08042ED8L,
+        beginEvolutionScene = 0x080CDDBCL,
+        afterEvolution = 0x0300537CL,
+        returnToField = 0x080567F0L,
+        lockControls = 0x08069954L,
+        codeCrcs = listOf(0xA970F637L, 0xB9EDBA19L, 0x95CA9A3EL, 0x0111A86EL),
+    )
+}
+
+val TRADE_EVO_LEAFGREEN_REV0: TradeEvoFns by lazy {
+    TradeEvoFns(
+        getEvolutionTarget = 0x08042EC4L,
+        beginEvolutionScene = 0x080CDD7CL,
+        afterEvolution = 0x0300537CL,
+        returnToField = 0x080567DCL,
+        lockControls = 0x08069940L,
+        codeCrcs = listOf(0xA970F637L, 0x8B13D433L, 0xB892BBB7L, 0x0111A86EL),
+    )
+}
+
+val TRADE_EVO_LEAFGREEN_REV1: TradeEvoFns by lazy {
+    TradeEvoFns(
+        getEvolutionTarget = 0x08042ED8L,
+        beginEvolutionScene = 0x080CDD90L,
+        afterEvolution = 0x0300537CL,
+        returnToField = 0x080567F0L,
+        lockControls = 0x08069954L,
+        codeCrcs = listOf(0xA970F637L, 0x8B13D433L, 0x95CA9A3EL, 0x0111A86EL),
     )
 }

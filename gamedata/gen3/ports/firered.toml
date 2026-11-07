@@ -27,6 +27,7 @@ mapHeader = 0x02036DFC
 monIconPaletteIndices = 0x083D3794
 monIconPaletteTable = 0x083D394C
 monIconTable = 0x083D30B4
+monPalettes = 0x082371DC
 objectEvents = 0x02036E38
 playerParty = 0x02024284
 playerPartyCount = 0x02024029
@@ -35,6 +36,7 @@ saveBlock2Ptr = 0x03004F5C
 waitForMonSelection = 0x08030584
 itemDescs = { preset = 'vanilla', base = 0x083DA518 }
 partyMenu = 0x0203B0A0
+pokemonStoragePtr = 0x03004F60
 
 [config.port_bprd0.pokedex]
 base = 'POKEDEX_FIRERED_REV1'
@@ -94,6 +96,7 @@ mapHeader = 0x02036DFC
 monIconPaletteIndices = 0x083CDCC0
 monIconPaletteTable = 0x083CDE78
 monIconTable = 0x083CD5E0
+monPalettes = 0x08231718
 objectEvents = 0x02036E38
 playerParty = 0x02024284
 playerPartyCount = 0x02024029
@@ -102,6 +105,7 @@ saveBlock2Ptr = 0x03004F5C
 waitForMonSelection = 0x0803055C
 itemDescs = { preset = 'vanilla', base = 0x083D3324 }
 partyMenu = 0x0203B0A0
+pokemonStoragePtr = 0x03004F60
 
 [config.port_bprf0.pokedex]
 base = 'POKEDEX_FIRERED_REV1'
@@ -161,6 +165,7 @@ mapHeader = 0x02036DFC
 monIconPaletteIndices = 0x083CC950
 monIconPaletteTable = 0x083CCB08
 monIconTable = 0x083CC270
+monPalettes = 0x082303B0
 objectEvents = 0x02036E38
 playerParty = 0x02024284
 playerPartyCount = 0x02024029
@@ -169,6 +174,7 @@ saveBlock2Ptr = 0x03004F5C
 waitForMonSelection = 0x08030570
 itemDescs = { preset = 'vanilla', base = 0x083D1EE8 }
 partyMenu = 0x0203B0A0
+pokemonStoragePtr = 0x03004F60
 
 [config.port_bpri0.pokedex]
 base = 'POKEDEX_FIRERED_REV1'
@@ -229,6 +235,7 @@ mapHeader = 0x02036D30
 monIconPaletteIndices = 0x0839C388
 monIconPaletteTable = 0x0839C540
 monIconTable = 0x0839BCA8
+monPalettes = 0x081F68F0
 objectEvents = 0x02036D6C
 playerParty = 0x020241E4
 playerPartyCount = 0x02023F89
@@ -237,6 +244,7 @@ saveBlock2Ptr = 0x0300504C
 waitForMonSelection = 0x0802FE04
 itemDescs = { preset = 'japanese', base = 0x083A06F8 }
 partyMenu = 0x0203B014
+pokemonStoragePtr = 0x03005050
 
 [config.port_bprj0.pokedex]
 base = 'POKEDEX_FIRERED_REV1'
@@ -299,6 +307,7 @@ mapHeader = 0x02036D30
 monIconPaletteIndices = 0x08397B48
 monIconPaletteTable = 0x08397D00
 monIconTable = 0x08397468
+monPalettes = 0x081F2108
 objectEvents = 0x02036D6C
 playerParty = 0x020241E4
 playerPartyCount = 0x02023F89
@@ -307,6 +316,7 @@ saveBlock2Ptr = 0x03004FAC
 waitForMonSelection = 0x0802FD70
 itemDescs = { preset = 'japanese', base = 0x0839BEB8 }
 partyMenu = 0x0203B014
+pokemonStoragePtr = 0x03004FB0
 
 [config.port_bprj1.pokedex]
 base = 'POKEDEX_FIRERED_REV1'
@@ -382,6 +392,7 @@ saveBlock2Ptr = 0x03004F5C
 waitForMonSelection = 0x08030570
 itemDescs = { preset = 'vanilla', base = 0x083D4F50 }
 partyMenu = 0x0203B0A0
+pokemonStoragePtr = 0x03004F60
 
 [config.port_bprs0.pokedex]
 base = 'POKEDEX_FIRERED_REV1'

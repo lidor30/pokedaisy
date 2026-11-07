@@ -33,6 +33,9 @@ import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -95,6 +98,8 @@ fun BattleControlsScreen(
     active: List<MonView> = emptyList(),
     /** ONE-TAP MOVES (SETTINGS): the action menu shows the moves where FIGHT is. */
     oneTapMoves: Boolean = false,
+    /** BATTLE INFO off: no INFO / SUGGESTIONS buttons. */
+    battleInfo: Boolean = true,
 ) {
     // battleInput.busy flips the instant a tap queues a synthetic press
     // sequence and back once the game has actually caught up (see
@@ -139,7 +144,7 @@ fun BattleControlsScreen(
             // INFO / SUGGESTIONS centred above FIGHT, in every state but the
             // POKéMON pane: not part of the in-game menu, they only open their
             // own panes (no synthetic input), so they never wait on `busy`.
-            if (!picking) Row(
+            if (!picking && battleInfo) Row(
                 modifier = Modifier.fillMaxWidth().height(40.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             ) {
@@ -154,9 +159,10 @@ fun BattleControlsScreen(
                     onClick = onShowSuggestions,
                 ) { ButtonLabel(tr("SUGGESTIONS"), 22.sp) }
             }
-            if (!picking) Spacer(Modifier.height(8.dp))
+            if (!picking && battleInfo) Spacer(Modifier.height(8.dp))
             AnimatedContent(
-                targetState = battleInputState,
+                // The action menu and the moves are one pane: the buttons slide away over the moves (below).
+                targetState = if (battleInputState == BATTLE_INPUT_MOVE_SELECT) BATTLE_INPUT_ACTION_SELECT else battleInputState,
                 // LIGHT COMPANION: a cut, so a slow device draws one pane, not two crossfading for 180 ms.
                 transitionSpec = {
                     if (com.pokedaisy.app.companion.LightCompanion.on) EnterTransition.None togetherWith ExitTransition.None
@@ -166,24 +172,41 @@ fun BattleControlsScreen(
                 label = "battle-controls-state",
             ) { state ->
                 when (state) {
-                    BATTLE_INPUT_MOVE_SELECT -> MoveGrid(
-                        activeMon?.moves.orEmpty(), battleInput, busy, showHints,
-                        modifier = Modifier.fillMaxSize(),
-                    )
                     BATTLE_INPUT_ACTION_SELECT -> if (choosingMon) {
                         PartyPicker(party, foe, active, battleInput, busy, showHints, onBack = { choosingMon = false })
-                    } else if (choosingMove) {
-                        MoveGrid(
-                            activeMon?.moves.orEmpty(), battleInput, busy, showHints,
-                            modifier = Modifier.fillMaxSize(), onCancel = { choosingMove = false },
-                        )
                     } else {
-                        ActionButtons(
-                            activeMon, battleInput, busy, showHints, oneTapMoves,
-                            onFight = if (movesKnown) ({ choosingMove = true }) else null,
-                            onPokemon = if (canSwitch) ({ choosingMon = true }) else null,
-                            modifier = Modifier.fillMaxSize(),
+                        // FIGHT: the buttons leave by the nearest edge and the moves are there underneath. The game's own
+                        // FIGHT (a real button) opens them the same way.
+                        val open = choosingMove || battleInputState == BATTLE_INPUT_MOVE_SELECT
+                        val opened by androidx.compose.animation.core.animateFloatAsState(
+                            if (open) 1f else 0f,
+                            if (com.pokedaisy.app.companion.LightCompanion.on || androidx.compose.ui.platform.LocalInspectionMode.current) androidx.compose.animation.core.snap()
+                            else tween(MENU_SLIDE_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                            label = "battle-menu",
                         )
+                        Box(Modifier.fillMaxSize().clipToBounds()) {
+                            if (open || opened > 0f) MoveGrid(
+                                activeMon?.moves.orEmpty(), battleInput, busy, showHints,
+                                modifier = Modifier.fillMaxSize().graphicsLayer {
+                                    alpha = opened
+                                    scaleX = 0.94f + 0.06f * opened
+                                    scaleY = 0.94f + 0.06f * opened
+                                },
+                                onCancel = if (battleInputState == BATTLE_INPUT_ACTION_SELECT) ({ choosingMove = false }) else null,
+                            )
+                            if (opened < 1f) ActionButtons(
+                                activeMon, battleInput, busy, showHints, oneTapMoves,
+                                onFight = if (movesKnown) ({ choosingMove = true }) else null,
+                                onPokemon = if (canSwitch) ({ choosingMon = true }) else null,
+                                modifier = Modifier.fillMaxSize(), out = opened,
+                            )
+                            // No taps while they slide: a disabled button would dim on its way out.
+                            if (opened > 0f && opened < 1f) Box(
+                                Modifier.fillMaxSize().pointerInput(Unit) {
+                                    awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
+                                },
+                            )
+                        }
                     }
                     // The game's own party screen (opened by a pick here, by the
                     // game after a faint, or from the game itself): pick from ours.
@@ -217,6 +240,26 @@ fun BattleControlsScreen(
             modifier = Modifier.align(Alignment.Center),
         ) { ProcessingBall() }
     }
+}
+
+/** The action buttons sliding off over the moves. */
+private const val MENU_SLIDE_MS = 280
+
+/** The game's cursor in the battle menu on screen, for a button to show where it is - once the player has moved it (a
+ * ring on FIGHT every turn would say nothing). -1 till then. Polled like [rememberBattleInputBusy]. */
+@Composable
+internal fun rememberBattleCursor(battleInput: BattleInput?): Int {
+    var shown by remember(battleInput) { mutableStateOf(-1) }
+    androidx.compose.runtime.LaunchedEffect(battleInput) {
+        var first = -1
+        while (battleInput != null) {
+            androidx.compose.runtime.withFrameMillis { }
+            val now = battleInput.menuCursor
+            if (first < 0) first = now
+            if (now >= 0 && (shown >= 0 || now != first)) shown = now
+        }
+    }
+    return shown
 }
 
 /** Polls [BattleInput.busy] into Compose state - it's a plain field updated
@@ -311,9 +354,12 @@ private fun ActionButtons(
     /** POKéMON opens the companion's party pane instead of the game's; null = the game's. */
     onPokemon: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    /** 0..1: how far the buttons have slid off, each by its nearest edge (FIGHT opening the moves). */
+    out: Float = 0f,
 ) {
     val enabled = battleInput != null && !busy
-    if (gen1Buttons) return Gen1ActionButtons(activeMon, battleInput, enabled, onPokemon, modifier)
+    if (gen1Buttons) return Gen1ActionButtons(activeMon, battleInput, enabled, onPokemon, modifier.graphicsLayer { alpha = 1f - out })
+    val cursor = rememberBattleCursor(battleInput).takeIf { !busy } ?: -1
     // Platinum's layout: a big FIGHT box centred up top, BAG and POKéMON in
     // the bottom corners with RUN between them, set a little lower.
     Column(
@@ -337,8 +383,8 @@ private fun ActionButtons(
         PlatinumButton(
             fill = FightRed, frame = FightRedDark,
             // The D-pad (the companion's window) starts on FIGHT, like the game's cursor.
-            modifier = Modifier.focusStart(true).fillMaxWidth(0.76f).weight(1.6f),
-            enabled = enabled,
+            modifier = Modifier.focusStart(true).fillMaxWidth(0.76f).weight(1.6f).graphicsLayer { translationY = -out * size.height * 1.3f },
+            enabled = enabled, highlighted = cursor == 0,
             pressesGame = onFight == null, onClick = { onFight?.invoke() ?: battleInput?.selectAction(0) },
         ) {
             Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
@@ -358,18 +404,18 @@ private fun ActionButtons(
             // Elite Redux's battle menu has no BAG (FIGHT / INFO over POKéMON / RUN).
             if (com.pokedaisy.app.companion.data.battleHasBag) PlatinumButton(
                 fill = BagOrange, frame = BagOrangeDark,
-                modifier = Modifier.weight(1f).fillMaxHeight().padding(bottom = drop),
-                enabled = enabled, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(1) },
+                modifier = Modifier.weight(1f).fillMaxHeight().padding(bottom = drop).graphicsLayer { translationX = -out * size.width * 1.4f },
+                enabled = enabled, highlighted = cursor == 1, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(1) },
             ) { ButtonLabel(tr("BAG"), 36.sp, bold = true) }
             PlatinumButton(
                 fill = RunBlue, frame = RunBlueDark,
-                modifier = Modifier.weight(1f).fillMaxHeight().padding(top = drop),
-                enabled = enabled, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(3) },
+                modifier = Modifier.weight(1f).fillMaxHeight().padding(top = drop).graphicsLayer { translationY = out * size.height * 1.5f },
+                enabled = enabled, highlighted = cursor == 3, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(3) },
             ) { ButtonLabel(tr("RUN"), 36.sp, bold = true) }
             PlatinumButton(
                 fill = MonGreen, frame = MonGreenDark,
-                modifier = Modifier.weight(1f).fillMaxHeight().padding(bottom = drop),
-                enabled = enabled, contentPadding = side, pressesGame = onPokemon == null,
+                modifier = Modifier.weight(1f).fillMaxHeight().padding(bottom = drop).graphicsLayer { translationX = out * size.width * 1.4f },
+                enabled = enabled, highlighted = cursor == 2, contentPadding = side, pressesGame = onPokemon == null,
                 onClick = { onPokemon?.invoke() ?: battleInput?.selectAction(2) },
             ) { ButtonLabel(tr("POKéMON"), 30.sp, bold = true) }
         }
@@ -390,6 +436,7 @@ internal fun MoveGrid(
 ) {
     CompanionBackHandler(enabled = battleInput != null && !busy) { onCancel?.invoke() ?: battleInput?.back() }
     if (gen1Buttons) return Gen1MoveList(moves, battleInput, busy, showHints, modifier, onCancel)
+    val cursor = rememberBattleCursor(battleInput).takeIf { !busy } ?: -1
     Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         for (row in 0..1) {
             Row(
@@ -399,7 +446,7 @@ internal fun MoveGrid(
                 for (col in 0..1) {
                     val idx = row * 2 + col
                     // The D-pad (the companion's window) starts on the first move.
-                    MoveCard(moves.getOrNull(idx), battleInput, idx, busy, showHints, modifier = Modifier.focusStart(idx == 0).weight(1f).fillMaxHeight(), compact = compact)
+                    MoveCard(moves.getOrNull(idx), battleInput, idx, busy, showHints, modifier = Modifier.focusStart(idx == 0).weight(1f).fillMaxHeight(), compact = compact, highlighted = cursor == idx)
                 }
             }
         }
@@ -485,6 +532,8 @@ internal fun MoveCard(
     modifier: Modifier = Modifier,
     /** Two lines (ONE-TAP MOVES, under the action buttons): the type joins the power / PP line. */
     compact: Boolean = false,
+    /** The game's cursor is on this move ([rememberBattleCursor]). */
+    highlighted: Boolean = false,
 ) {
     val enabled = mv != null && mv.pp > 0 && battleInput != null && !busy
     // Whole-card color keyed by move type (fill stays a constant pale card
@@ -498,6 +547,7 @@ internal fun MoveCard(
         frame = frame,
         modifier = modifier,
         enabled = enabled,
+        highlighted = highlighted,
         // Clear of the bevel's side bands.
         contentPadding = PaddingValues(horizontal = 26.dp, vertical = 4.dp),
         pressesGame = true, onClick = { battleInput?.selectMove(moveIndex) },
@@ -564,6 +614,8 @@ internal fun PlatinumButton(
     frame: Color,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /** The game's own cursor is on this button: the D-pad's ring. */
+    highlighted: Boolean = false,
     pressesGame: Boolean = false,
     contentPadding: PaddingValues = PaddingValues(8.dp),
     /** The near-black outline's width. */
@@ -580,7 +632,7 @@ internal fun PlatinumButton(
         modifier = modifier
             .alpha(if (enabled) 1f else 0.45f)
             // The D-pad's focus (the companion's window), over the bevel and the content.
-            .gbaFocusRing(focused, shape)
+            .gbaFocusRing(focused || highlighted, shape)
             .then(
                 // Gen 1 (Yellow): a button is its text box - white inside the double line.
                 if (gen1Buttons) Modifier.drawBehind {

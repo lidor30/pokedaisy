@@ -66,7 +66,8 @@ class CoverSync {
             val roms = RomFolder.libraryRoms(activity, prefs)
             val ss = CoverArtSync.ScreenScraperPass.of(prefs)
             roms.forEachIndexed { i, rom ->
-                val label = GameTitles.label(activity, prefs, rom)
+                // The game's own name to search by, whatever GAME NAMES shows.
+                val label = prefs.romDisplayName(rom) ?: GameTitles.defaultLabel(activity, rom)
                 val status = CoverArtSync.fetchOne(
                     rom, File(coversDir, "${rom.name}.png"), prefs, replace, ss = ss,
                     mediaRoot = GameMedia.root(activity), label = label,

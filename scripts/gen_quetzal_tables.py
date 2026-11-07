@@ -84,10 +84,13 @@ ITEMS = 0x091E0594           # 0x1C-byte entries: description ptr +0xC
 ITEM_COUNT = 890
 TYPE_CHART = 0x0852DA8C      # [20][20] u32 uq4.12
 TYPE_COUNT = 20
-REGION_MAP_ENTRIES = 0x09229558  # {names**, x, y, w, h}
+REGION_MAP_ENTRIES = 0x09229558  # each {x, y, w, h, names**}'s names**: the table starts 4 bytes before
 JOHTO_MAP_ENTRIES = 0x0922A7E8   # Johto's maps' own: {x, y, w, h, names**}
 JOHTO_MAPSEC_BASE = 0x100        # where the app keeps them (NATIVE_QUETZAL.altMapSecGroups)
 MAPSEC_COUNT = 0xD5
+FIRST_KANTO_MAPSEC = 0x58        # below it the main table's sections are Hoenn's
+HOENN_IMAGE, JOHTO_IMAGE = 4, 5  # regionMapImagesQuetzalOnMap
+MAP_SCREEN_DX, MAP_SCREEN_DY = 1, 2   # the boxes' tile (0, 0) on the map's screen
 
 TYPE_NAMES = {0: "Normal", 1: "Fighting", 2: "Flying", 3: "Poison", 4: "Ground", 5: "Rock", 6: "Bug", 7: "Ghost",
               8: "Steel", 10: "Fire", 11: "Water", 12: "Grass", 13: "Electric", 14: "Psychic", 15: "Ice",
@@ -560,6 +563,13 @@ def main():
           "".join(f"    {k} to {v},\n" for k, v in sorted(chart.items())) + ")\n")
 
     mapsecs = {}
+    rects = {}   # Hoenn's and Johto's boxes, on their own maps: (image, x, y, w, h)
+
+    def rect(i, image, at):
+        x, y, w, h = rom[at - 0x08000000:at - 0x08000000 + 4]
+        if w and h and (x or y):   # 0, 0 = off the map
+            rects[i] = (image, x + MAP_SCREEN_DX, y + MAP_SCREEN_DY, w, h)
+
     for i in range(MAPSEC_COUNT):
         p = u32(rom, REGION_MAP_ENTRIES + 8 * i)
         if not is_ptr(rom, p):
@@ -568,6 +578,8 @@ def main():
         s = text(rom, en, 30) if is_ptr(rom, en) else None
         if s:
             mapsecs[i] = title(s)
+            if i < FIRST_KANTO_MAPSEC:
+                rect(i, HOENN_IMAGE, REGION_MAP_ENTRIES + 8 * i - 4)
     assert all(mapsecs.get(i) == n for i, n in CHECKS["mapsecs"].items()), "map sections are wrong"
     # Johto's map groups (34-35) name their sections from a table of their own (Violet City is 2 there).
     for i in range(MAPSEC_COUNT):
@@ -578,13 +590,19 @@ def main():
         s = text(rom, en, 30) if is_ptr(rom, en) else None
         if s:
             mapsecs[JOHTO_MAPSEC_BASE + i] = title(s)
+            rect(JOHTO_MAPSEC_BASE + i, JOHTO_IMAGE, JOHTO_MAP_ENTRIES + 8 * i)
     assert mapsecs[JOHTO_MAPSEC_BASE + 2] == "Violet City" and mapsecs[JOHTO_MAPSEC_BASE + 0x58] == "Route 29"
-    write("MapSecDataQuetzal.kt", header("gRegionMapEntries' English names by mapsec id, region -1\n"
-          "// here: ActiveTables puts them on its Kanto / Sevii maps with FireRed's rects. 0x100+: Johto's own\n"
+    # Hoenn is retail Emerald's map and places: Littleroot Town, Oldale Town, Rustboro City as MapSecDataEmerald has them.
+    assert (rects[0], rects[1], rects[10]) == ((HOENN_IMAGE, 5, 13, 1, 1), (HOENN_IMAGE, 5, 11, 1, 1), (HOENN_IMAGE, 1, 7, 1, 2)), "Hoenn's boxes are wrong"
+    assert rects[JOHTO_MAPSEC_BASE + 2] == (JOHTO_IMAGE, 13, 6, 1, 1), "Johto's boxes are wrong"
+    write("MapSecDataQuetzal.kt", header("gRegionMapEntries' English names by mapsec id. Kanto's and Sevii's have region -1\n"
+          "// here: ActiveTables puts them on its Kanto / Sevii maps with FireRed's rects. Hoenn's and Johto's keep the ROM's\n"
+          "// boxes, on images 4 and 5 of regionMapImagesQuetzalOnMap. 0x100+: Johto's own\n"
           "// table's (its map groups 34-35 read their sections as 0x100 + id).\n") +
           "val regionMapImagesQuetzal = arrayOf<String>()\n\n" +
           "val mapSecDataQuetzal: Map<Int, MapSecInfo> = mapOf(\n" +
-          "".join(f"    {i} to MapSecInfo({kstr(s)}, -1, 0, 0, 0, 0),\n" for i, s in sorted(mapsecs.items())) + ")\n")
+          "".join(f"    {i} to MapSecInfo({kstr(s)}, {', '.join(map(str, rects.get(i, (-1, 0, 0, 0, 0))))}),\n"
+                  for i, s in sorted(mapsecs.items())) + ")\n")
     print(f"{len(names)} species ({len(skipped)} unreadable: {skipped[:20]}), {len(moves)} moves, {len(items)} items, "
           f"{len(chart)} chart pairs, {len(mapsecs)} map sections")
 

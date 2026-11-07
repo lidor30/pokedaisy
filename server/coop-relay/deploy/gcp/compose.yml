@@ -1,0 +1,36 @@
+# The relay on the Google Cloud VM: deploy.sh copies this to /opt/coop-relay beside caddy/Caddyfile and a .env
+# naming the image and the domain. The same two services as ../../docker-compose.yml, but the relay's image comes
+# from Artifact Registry instead of a build on the VM.
+x-logging: &logging
+  driver: local
+  options:
+    max-size: 10m
+
+services:
+  relay:
+    image: ${RELAY_IMAGE:?set RELAY_IMAGE}
+    restart: unless-stopped
+    environment:
+      TRUST_PROXY: forwarded
+    logging: *logging
+
+  caddy:
+    image: caddy:2
+    restart: unless-stopped
+    ports:
+      - "80:80"
+      - "443:443"
+    environment:
+      RELAY_HOST: ${RELAY_HOST:?set RELAY_HOST}
+    volumes:
+      # The folder, not the file: a replaced Caddyfile is a new file, which a single-file mount would never see.
+      - ./caddy:/etc/caddy:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    depends_on:
+      - relay
+    logging: *logging
+
+volumes:
+  caddy_data:
+  caddy_config:

@@ -45,6 +45,11 @@ enum class DsPattern(internal val tile: List<String>, internal val colors: Map<C
         List(8) { y -> if (y == 0) "LLLLLLLL" else "L......." },
         mapOf('.' to Color(0xFF08B279), 'L' to Color(0xFF008261)),
     ),
+    /** Black 2's and White 2's Pokédex: Black's grid in red (headless, its list screen). */
+    BLACK2_DEX(
+        List(8) { y -> if (y == 0) "LLLLLLLL" else "L......." },
+        mapOf('.' to Color(0xFFBA2010), 'L' to Color(0xFF821808)),
+    ),
     /** HeartGold / SoulSilver's Pokédex: white, a grey line every 40 pixels. */
     HGSS_DEX(
         List(40) { y -> if (y == 0) "L".repeat(40) else "L" + ".".repeat(39) },
@@ -58,14 +63,15 @@ enum class DsPattern(internal val tile: List<String>, internal val colors: Map<C
 
 /** The party screen's pattern behind every tab of [game], or null for its art / stripes ([GameBackdrop]). */
 fun dsPartyPattern(game: GameKind): DsPattern? = when (game) {
-    GameKind.BLACK -> DsPattern.BLACK_PARTY
+    GameKind.BLACK, GameKind.WHITE, GameKind.BLACK2, GameKind.WHITE2 -> DsPattern.BLACK_PARTY
     GameKind.PLATINUM -> DsPattern.PLATINUM_PARTY
     else -> null
 }
 
 /** The Pokédex's own pattern over the party one while DEX is open (Black's green grid, HG / SS's white one), or null. */
 fun dsDexPattern(game: GameKind): DsPattern? = when (game) {
-    GameKind.BLACK -> DsPattern.BLACK_DEX
+    GameKind.BLACK, GameKind.WHITE -> DsPattern.BLACK_DEX
+    GameKind.BLACK2, GameKind.WHITE2 -> DsPattern.BLACK2_DEX
     GameKind.HEARTGOLD, GameKind.SOULSILVER -> DsPattern.HGSS_DEX
     else -> null
 }
@@ -99,3 +105,51 @@ private fun tileBrush(pattern: DsPattern, px: Int): ShaderBrush {
         override fun createShader(size: Size) = shader
     }
 }
+
+private val BATTLE_MINT = Color(0xFFCBFBF3)
+private val BATTLE_RING = Color(0xFFBADBCB)
+private val BATTLE_THIN = Color(0xFFC3E3D3)
+private val BATTLE_PEACH = Color(0xFFF3D3B2)
+private val BATTLE_BANDS = listOf(16 to Color(0xFFAAAA9A), 2 to Color(0xFFB2C3A2), 2 to Color(0xFFBADBB2))
+
+/**
+ * The BATTLE tab's background, in the DS battle screens' manner (colours and proportions sampled from HeartGold's, drawn
+ * here, no game art): pale mint between grey bands, a big faint Poké Ball in the middle. In whole DS-sized pixels.
+ */
+@Composable
+fun BattleBackdrop(modifier: Modifier = Modifier.fillMaxSize()) {
+    val scrim = OptionColors.backdropScrim
+    val wash = com.pokedaisy.app.companion.ui.theme.AppColors.theme.gameWash
+    Canvas(modifier) {
+        val k = kotlin.math.floor(size.height / DS_ROWS).coerceAtLeast(1f)
+        drawRect(BATTLE_MINT)
+        var edge = 0f
+        for ((rows, color) in BATTLE_BANDS) {
+            val h = rows * k
+            drawRect(color, Offset(0f, edge), Size(size.width, h))
+            drawRect(color, Offset(0f, size.height - edge - h), Size(size.width, h))
+            edge += h
+        }
+        val cx = (size.width / 2 / k).toInt() * k
+        val cy = (size.height / 2 / k).toInt() * k
+        fun row(dy: Int, half: Int, color: Color) {
+            if (half > 0) drawRect(color, Offset(cx - half * k, cy + dy * k), Size(half * 2 * k, k))
+        }
+        fun half(r: Int, dy: Int) = if (dy * dy >= r * r) 0 else kotlin.math.sqrt((r * r - dy * dy).toFloat()).toInt()
+        for (dy in -BALL_R..BALL_R) {
+            row(dy, half(BALL_R, dy), BATTLE_RING)
+            row(dy, half(BALL_R - 5, dy), if (dy < -BALL_BAND) BATTLE_PEACH else if (dy > BALL_BAND) BATTLE_MINT else BATTLE_RING)
+            row(dy, half(20, dy), BATTLE_RING)
+            row(dy, half(15, dy), BATTLE_MINT)
+            row(dy, half(10, dy), BATTLE_THIN)
+            row(dy, half(8, dy), BATTLE_MINT)
+        }
+        wash?.let { drawRect(it, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
+        if (scrim > 0f) drawRect(NIGHT.copy(alpha = scrim))
+    }
+}
+
+/** The DS screen's height, the ball's radius and half its middle band, in DS pixels. */
+private const val DS_ROWS = 192f
+private const val BALL_R = 56
+private const val BALL_BAND = 5

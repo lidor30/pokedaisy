@@ -152,3 +152,14 @@ special = 63
 specials = 0x081DBA64
 pcFn = 0x080C7579
 codeCrcs = [0xEF3698BA, 0x81188148]
+
+# TRADE EVOLUTIONS (TradeEvolution.kt's TradeEvoFns): retail Emerald, where the pinned pokeemerald build has them
+# (its ELF). Headless on the user's save: KADABRA to ALAKAZAM from the field, the field back after.
+[record.TRADE_EVO_EMERALD]
+schema = 'gen3_trade_evo'
+getEvolutionTarget = 0x0806D098
+beginEvolutionScene = 0x0813DA40
+afterEvolution = 0x030061E8
+returnToField = 0x080860C8
+lockControls = 0x08098E54
+codeCrcs = [0xA970F637, 0x74E72426, 0x224FD691, 0xB9FB85A7]

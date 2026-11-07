@@ -1,7 +1,9 @@
 package com.pokedaisy.app
 
+import com.pokedaisy.app.companion.data.RANDOMIZED_RETAIL
 import com.pokedaisy.app.companion.data.RETAIL_DUMPS
 import com.pokedaisy.app.companion.data.RETAIL_PORT_CODE_TITLES
+import com.pokedaisy.app.companion.data.OriginHeartGold
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -34,10 +36,14 @@ class SiteDataExportTest {
     )
 
     /** The DS carts' titles by game code ([TelemetrySampler.NDS_GAMES]). */
-    private val dsTitles = mapOf("CPUE" to "Pokémon Platinum", "IPKE" to "Pokémon HeartGold", "IPGE" to "Pokémon SoulSilver", "IRBO" to "Pokémon Black")
+    private val dsTitles = mapOf("CPUE" to "Pokémon Platinum", "IPKE" to "Pokémon HeartGold", "IPKD" to "Pokémon Goldene Edition HeartGold",
+        "IPGE" to "Pokémon SoulSilver", "IPGD" to "Pokémon Silberne Edition SoulSilver", "IRBO" to "Pokémon Black",
+        "IRAO" to "Pokémon White", "IREO" to "Pokémon Black 2", "IRDO" to "Pokémon White 2",
+        "CPUF" to "Pokémon Version Platine", "IPKF" to "Pokémon Version Or HeartGold", "IPGF" to "Pokémon Version Argent SoulSilver",
+        "IRBF" to "Pokémon Version Noire", "IRAF" to "Pokémon Version Blanche")
 
     /** The base game of each hack that has a game code of its own ([TelemetrySampler.HACK_GAME_CODES]). */
-    private val hackCodeBases = mapOf(TelemetrySampler.ULTRA_VIOLET_CODE to "BPRE")
+    private val hackCodeBases = mapOf(TelemetrySampler.ULTRA_VIOLET_CODE to "BPRE", TelemetrySampler.MONOMYTH_CODE to "BPEE")
 
     /** `LAZARUS_V2_0_SHA1` -> v2.0, `EMERALD_ROGUE_V2_2_1_EX_SHA1` -> v2.2.1-EX, `SOULGOLD_V1_2B_SHA1` -> v1.2b,
      * `QUETZAL_V9_0_ALPHA_ES_SHA1` -> v9.0-ALPHA-ES, `MARIOMON_V1_5_2_Anniversary_SHA1` -> v1.5.2-Anniversary (a tag
@@ -118,11 +124,27 @@ class SiteDataExportTest {
                     "], \"sha1\": ${q(d.sha1)}, \"retailSha1\": ${q(d.retailSha1)}}"
             })
             append("\n  ],\n")
+            // Retail FireRed / Emerald randomized by Universal Pokemon Randomizer ZX (RandomizedRetail): their names
+            // upper-cased (fold), the randomizer's sites (mask, "start:len[:count:stride]" in hex) and the dump ranges zeroed.
+            append("  \"randomizedRetail\": [\n")
+            append(RANDOMIZED_RETAIL.joinToString(",\n") { r ->
+                "    {\"code\": ${q(r.code)}, \"rev\": ${r.rev}, \"end\": ${r.end}, \"fold\": ${q(r.fold)}, \"mask\": ${q(r.mask)}, " +
+                    "\"sha1\": ${q(r.sha1)}, \"retailSha1\": ${q(r.retailSha1)}}"
+            })
+            append("\n  ],\n")
             append("  \"gameBoy\": [\n")
             append(gameBoy.joinToString(",\n") { "    {\"sha1\": ${q(it)}, \"title\": ${q(GameTitles.BY_SHA1.getValue(it))}}" })
             append("\n  ],\n")
             append("  \"ds\": [\n")
             append(ds.joinToString(",\n") { (code, rev) -> "    {\"code\": ${q(code)}, \"rev\": $rev, \"title\": ${q(dsTitles.getValue(code))}}" })
+            append("\n  ],\n")
+            // DS hacks under a retail header (OriginHeartGold: a Japanese HeartGold's), told apart by a word of their code.
+            append("  \"dsHacks\": [\n")
+            if (TelemetrySampler.NDS_SUPPORT) append(
+                "    {\"code\": ${q(OriginHeartGold.CODE)}, \"rev\": 0, \"offset\": ${OriginHeartGold.SIG_OFFSET}, " +
+                    "\"word\": ${OriginHeartGold.SIG}, \"title\": ${q(GameTitles.BY_SHA1.getValue(OriginHeartGold.V4_0_3_EN_RC8_SHA1))}, " +
+                    "\"version\": \"v4.0.3 English 1.0.0\"}",
+            )
             append("\n  ],\n")
             append("  \"titles\": {\n")
             append(titles.entries.joinToString(",\n") { (sha1, title) -> "    ${q(sha1)}: ${q(title)}" })

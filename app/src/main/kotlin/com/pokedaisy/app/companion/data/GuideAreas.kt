@@ -53,6 +53,7 @@ private fun rawAreas(guide: GuideId): List<String> = when (guide) {
     GuideId.ROCKET_EDITION -> GUIDE_AREAS_ROCKET_EDITION_RAW
     GuideId.ASH_GRAY -> GUIDE_AREAS_ASH_GRAY_RAW
     GuideId.GHOST_GREY -> GUIDE_AREAS_GHOST_GREY_RAW
+    GuideId.LETS_GO -> GUIDE_AREAS_LETS_GO_RAW
     GuideId.SWORD_SHIELD -> GUIDE_AREAS_SWORD_SHIELD_RAW
     GuideId.GS_CHRONICLES -> GUIDE_AREAS_GS_CHRONICLES_RAW
     // Each Recharged Yellow release moved items and gifts around: its own data.
@@ -65,17 +66,24 @@ private fun rawAreas(guide: GuideId): List<String> = when (guide) {
     GuideId.MARIOMON, GuideId.RECHARGED_EMERALD, GuideId.ELITE_REDUX, GuideId.TEAM_ROCKET,
     GuideId.WISHES -> emptyList()
     GuideId.DREAMSTONE -> emptyList()
+    GuideId.MONOMYTH -> emptyList()
     // The DS games: item balls and hidden items (scripts/gen_gen4_guide.py), keyed by place - see [areaSection].
     GuideId.PLATINUM -> PT_AREAS_RAW
     GuideId.HEARTGOLD, GuideId.SOULSILVER -> HG_AREAS_RAW
-    // Black's item balls (scripts/gen_gen5_guide.py), keyed by the zone's place.
-    GuideId.BLACK -> BW_AREAS_RAW
+    // Black's and White's item balls (scripts/gen_gen5_guide.py), keyed by the zone's place.
+    GuideId.BLACK -> BLACK_AREAS_RAW
+    GuideId.WHITE -> WHITE_AREAS_RAW
+    // Black 2's and White 2's (the same item balls; their places are mapPlaceIdsBlack2's).
+    GuideId.BLACK2 -> BLACK2_AREAS_RAW
+    GuideId.WHITE2 -> WHITE2_AREAS_RAW
     // The Game Boy games (scripts/gen_gen1_guide.py, gen_crystal_guide.py): Gen 1's keyed by wCurMap, regrouped by
     // [gen1Area]; Crystal's by landmark, like Polished Crystal's.
     GuideId.YELLOW -> G1Y_AREAS_RAW
     GuideId.RED -> G1R_AREAS_RAW
     GuideId.BLUE -> G1B_AREAS_RAW
     GuideId.CRYSTAL -> GUIDE_AREAS_CRYSTAL_RAW
+    GuideId.YELLOW_LEGACY -> G1L_AREAS_RAW
+    GuideId.CRYSTAL_LEGACY -> GUIDE_AREAS_CRYSTAL_LEGACY_RAW
 }
 
 private val hgHeaderPlaces: Map<Int, Int> by lazy {
@@ -90,12 +98,13 @@ private val hgHeaderPlaces: Map<Int, Int> by lazy {
 fun areaSection(game: GameKind?, mapNum: Int, regionSec: Int): Int = when (game) {
     GameKind.PLATINUM -> mapPlaceIdsPlatinum[mapNum] ?: regionSec
     GameKind.HEARTGOLD, GameKind.SOULSILVER -> hgHeaderPlaces[mapNum] ?: regionSec
-    GameKind.BLACK -> mapPlaceIdsBlack[mapNum] ?: regionSec
-    GameKind.YELLOW, GameKind.RED, GameKind.BLUE -> gen1Area(mapNum)
+    GameKind.BLACK, GameKind.WHITE -> mapPlaceIdsBlack[mapNum] ?: regionSec
+    GameKind.BLACK2, GameKind.WHITE2 -> mapPlaceIdsBlack2[mapNum] ?: regionSec
+    GameKind.YELLOW, GameKind.RED, GameKind.BLUE, GameKind.YELLOW_LEGACY -> gen1Area(mapNum)
     else -> regionSec
 }
 
-private val GEN1_GUIDES = setOf(GuideId.YELLOW, GuideId.RED, GuideId.BLUE)
+private val GEN1_GUIDES = setOf(GuideId.YELLOW, GuideId.RED, GuideId.BLUE, GuideId.YELLOW_LEGACY)
 
 /** Whether [guide] has area data at all (then HERE shows even without the ROM tables). */
 fun hasAreaGuide(guide: GuideId?): Boolean = guide != null
@@ -104,8 +113,34 @@ fun hasAreaGuide(guide: GuideId?): Boolean = guide != null
 fun areaThings(guide: GuideId?, mapsec: Int): List<AreaThing> =
     if (guide == null) emptyList() else allAreaThings(guide)[mapsec].orEmpty()
 
-/** Every area of [guide]'s game: region map section -> what's in it. */
+/** Every area of [guide]'s game: region map section -> what's in it. On a randomized game ([runningRandomized]) the
+ * randomizer's items, trades and gift Pokémon ([randomizedAreas]). */
 fun allAreaThings(guide: GuideId): Map<Int, List<AreaThing>> {
+    val r = runningRandomized?.randomizedGuide ?: return retailAreaThings(guide)
+    randomizedCache?.let { (g, id, m) -> if (g === r && id == guide) return m }
+    return randomizedAreas(retailAreaThings(guide), r).also { randomizedCache = Triple(r, guide, it) }
+}
+
+@Volatile private var randomizedCache: Triple<RandomizedGuide, GuideId, Map<Int, List<AreaThing>>>? = null
+
+/**
+ * [areas] as the randomized ROM [r] has them: an item ball's or hidden item's item read where the game keeps it (its
+ * place and flag are retail's), a trade's two species and a gift Pokémon's from the ROM. What [r] can't place is left
+ * out rather than shown as retail's; NPC item gifts and key items are kept (no randomizer touches them).
+ */
+internal fun randomizedAreas(areas: Map<Int, List<AreaThing>>, r: RandomizedGuide): Map<Int, List<AreaThing>> =
+    areas.mapValues { (_, things) ->
+        things.mapNotNull { t ->
+            when (t.kind) {
+                AreaKind.ITEM, AreaKind.HIDDEN -> r.items[t.flag]?.let { t.copy(id = it) }
+                AreaKind.TRADE -> r.trades["${t.id}/${t.wants}"]?.let { (given, wanted) -> t.copy(id = given, wants = wanted) }
+                AreaKind.MON, AreaKind.EGG -> r.statics[t.id]?.let { t.copy(id = it) }
+                AreaKind.GIFT, AreaKind.KEY -> t
+            }
+        }
+    }.filterValues { it.isNotEmpty() }
+
+private fun retailAreaThings(guide: GuideId): Map<Int, List<AreaThing>> {
     val raw = rawAreas(guide)
     return areaCache.getOrPut(guide) {
         raw.asSequence().flatMap { it.lineSequence() }.filter { it.isNotBlank() }.mapNotNull { line ->

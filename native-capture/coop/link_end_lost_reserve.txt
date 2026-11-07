@@ -1,0 +1,102 @@
+# Plan 6 Task 5 (the ledger's blackout ruling): a LOST joined battle where the battle's three Pokemon are all down but the rest of the
+# party can still fight is NO blackout - the game's own CB2_EndWildBattle would white out on LOST, so the end tells it the battle was
+# a run (gBattleOutcome 4) and the player walks on, money untouched, the trainers unbeaten, no prize. Each core's two set-aside
+# Pokemon (slots 3 and 4 before the battle, HP 999) are able; the battle's own six slots are at 0 HP. The result still says outcome 2.
+#
+# Task 2's savedCallback is simulated: gMain.savedCallback = CB2_EndTrainerBattle and a host script held by its trainerbattle
+# (sGlobalScriptContextStatus WAITING, field controls locked) are poked in at the action prompt. The end puts the no-side-effect
+# callback in (CB2_EndWildBattle), so no trainer flag is set, and lets the script go (context shut down, controls free): the player is free
+# on the field and a second joined battle with the same trainers begins.
+# want: PASS linkwait 2
+# want: PASS linkresultwait
+# want: link: result a 16 01 02 02 00 00 00 00 00 00 00 00 00 00 00 00 00
+# want: link: result b 16 01 02 02 00 00 00 00 00 00 00 00 00 00 00 00 00
+# want: PASS link money 3000 (mark 3000 + 0)
+# want: PASS linkflag 333 = 0 (core a)
+# want: PASS linkflag 318 = 0 (core b)
+pair $PARTNER_SAVE
+on b
+@boot
+poke16 0x02024542 999
+poke16 0x02024544 999
+memcopy 0x020244EC 0x02024618 100
+memcopy 0x020244EC 0x0202467C 100
+reown 0x02024618 0x1111AAAA
+reown 0x0202467C 0x2222BBBB
+poke8 0x020244E9 5
+on a
+poke16 0x02024542 999
+poke16 0x02024544 999
+memcopy 0x020244EC 0x02024618 100
+memcopy 0x020244EC 0x0202467C 100
+reown 0x02024618 0x3333CCCC
+reown 0x0202467C 0x4444DDDD
+poke8 0x020244E9 5
+linkmoneymark 0
+coopbegin 1 2 333 318
+on b
+linkmoneymark 0
+coopbegin 0 2 333 318
+linkwait 2 1500
+on a
+waitmem32 0x03005D60 0x08057589 3000
+on b
+waitmem32 0x03005D68 0x08057589 3000
+poke16 0x02024542 0
+poke16 0x020245A6 0
+poke16 0x0202460A 0
+poke32 0x030022C8 0x080B1919
+poke8 0x03000E38 1
+poke8 0x03000F2C 1
+on a
+poke16 0x02024542 0
+poke16 0x020245A6 0
+poke16 0x0202460A 0
+poke32 0x030022C8 0x080B1919
+poke8 0x03000E38 1
+poke8 0x03000F2C 1
+poke8 0x0202433A 2
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+on b
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+hold A 4
+linkrun 40
+linkresultwait 5000
+on a
+linkresult a
+expect8 0x020244E9 5
+linkmoneyexpect 0 0
+linkflag 333 0
+linkflag 318 0
+coopexpectfree 1
+expect32 0x030022C8 0x080B0AF9
+expect8 0x03000E38 2
+expect8 0x03000F2C 0
+on b
+linkresult b
+expect8 0x020244E9 5
+linkmoneyexpect 0 0
+linkflag 333 0
+linkflag 318 0
+coopexpectfree 1
+expect32 0x030022C8 0x080B0AF9
+expect8 0x03000E38 2
+expect8 0x03000F2C 0
+# a second battle with the same two trainers starts: reset, begin again, both cores reach the battle state
+linkresultclear
+linkreset
+on a
+linkresultclear
+linkreset
+coopbegin 1 2 333 318
+on b
+coopbegin 0 2 333 318
+linkwait 2 1500

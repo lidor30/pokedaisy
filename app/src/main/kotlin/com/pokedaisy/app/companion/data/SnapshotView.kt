@@ -73,7 +73,7 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
     if (activeGame != GameKind.FIRERED && activeGame != GameKind.EMERALD && !activeGame.isGen1 &&
         activeGame != GameKind.ORANGE_ISLANDS && activeGame != GameKind.RECHARGED_YELLOW &&
         activeGame != GameKind.MARIOMON && activeGame != GameKind.TEAM_ROCKET && activeGame != GameKind.WISHES &&
-        activeGame != GameKind.DREAMSTONE &&
+        activeGame != GameKind.DREAMSTONE && activeGame != GameKind.MONOMYTH &&
         // Crystal's growth rates for its 251 are Gen 3's, byte for byte, and its curves the same formulas (CrystalDecodeTest);
         // Crystal Clear, Gold and Silver kept Crystal's base data (gen_gen2_tables.py checks it).
         !activeGame.isGen2) return null
@@ -93,20 +93,32 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
         val start = table[level].toLong()
         return ExpProgress(exp, start, if (level < 100) table[level + 1].toLong() else start)
     }
+    // Pokémon Monomyth: its species' rates numbered by its own gExperienceTables' five rows, which leave vanilla's curves
+    // past Lv70 (gen_monomyth_tables.py).
+    if (activeGame == GameKind.MONOMYTH) {
+        val table = growthRatesMonomyth.getOrNull(species)?.let { expTablesMonomyth.getOrNull(it) } ?: return null
+        val start = table[level].toLong()
+        return ExpProgress(exp, start, if (level < 100) table[level + 1].toLong() else start)
+    }
     // Recharged Yellow kept FireRed's growth rates and gExperienceTables (both checked byte for byte).
     // Orange Islands kept FireRed's growth rates but for its CRYSTAL ONIX slots.
     if (activeGame == GameKind.ORANGE_ISLANDS && species >= 409) return null
     // Super Mariomon keeps vanilla's curves; its species' rates come from its own gBaseStats.
     // So does Team Rocket Edition: Dragonsden (its species are National Dex ids, past Gen 3's).
     val rate = if (activeGame == GameKind.MARIOMON) (if (mariomonV13) growthRatesMariomonV13 else growthRatesMariomon).getOrNull(species)
-        else if (activeGame == GameKind.TEAM_ROCKET) growthRatesTeamRocket.getOrNull(species)?.takeIf { it <= 5 }
+        else if (activeGame == GameKind.TEAM_ROCKET)
+            (if (teamRocketV3) growthRatesTeamRocketV3 else growthRatesTeamRocket).getOrNull(species)?.takeIf { it <= 5 }
         // Wishes of Tomorrow (expansion 1.15.3): vanilla's curves, its gSpeciesInfo's rates (gen_expansion_tables.py).
         else if (activeGame == GameKind.WISHES) growthRatesWishes.getOrNull(species)?.takeIf { it <= 5 }
         // PureRGB moved 25 species to other curves: its own BaseStats' (gen_gen1_tables.py purered).
         else if (activeGame.isPureRgb) gen1GrowthRatesPureRgb.getOrNull(species)
+        // Yellow Legacy too (gen_gen1_tables.py yellow_legacy).
+        else if (activeGame == GameKind.YELLOW_LEGACY) gen1GrowthRatesYellowLegacy.getOrNull(species)
         // Dreamstone Mysteries too (expansion's curves are vanilla's; its rates from gSpeciesInfo, gen_expansion_tables.py).
         else if (activeGame == GameKind.DREAMSTONE) growthRatesDreamstone.getOrNull(species)?.takeIf { it <= 5 }
-        else gen3GrowthRates.getOrNull(species)?.toInt()
+        // A randomized retail ROM's own (UPR can standardize the curves): read from its gBaseStats; and a FireRed hack's
+        // that grew the species list (Let's Go: 987 ids).
+        else (runningRandomized?.growthRates ?: runningFireRedHack?.growthRates ?: gen3GrowthRates).getOrNull(species)?.toInt()
     if (rate == null) return null
     val table = gen3ExperienceTables.getOrNull(rate) ?: return null
     val start = table[level].toLong()
@@ -186,6 +198,8 @@ data class SnapshotView(
      * id itself. Used to look up the FF-music table (see FfMusicPlayer). */
     val regionMapSectionId: Int = 0,
     val party: List<MonView> = emptyList(),
+    /** The PC's boxes (the BOXES tab); null = not read for this game. */
+    val pcBoxes: BoxesView? = null,
     val battlePlayer: List<MonView> = emptyList(),
     val battleOpponent: List<MonView> = emptyList(),
     val items: List<ItemView> = emptyList(),
@@ -224,6 +238,17 @@ data class SnapshotView(
     val enemyActive: Int = -1,
     /** [Telemetry.isTrainerBattle]: in a battle, whether it's a trainer's (null = not read). */
     val isTrainerBattle: Boolean? = null,
+    // The fields below are only used by BATTLE FOCUS.
+    /** [enemyParty] index of each [battleOpponent]; -1 = unknown. */
+    val enemyBattlers: List<Int> = emptyList(),
+    /** [party] index of each [battlePlayer]; -1 = unknown. */
+    val playerBattlers: List<Int> = emptyList(),
+    /** [battlePlayer] plus ability, item, battle stats and matchups, like the foe gets. */
+    val focusPlayer: List<MonView> = emptyList(),
+    /** [enemyActive] and [enemyNext] as [enemyParty] indexes. The originals are gEnemyParty slots,
+     * which are off by one or more when a two-trainer battle has a gap. */
+    val focusEnemyActive: Int = -1,
+    val focusEnemyNext: Int = -1,
     /** The foe the trainer is about to send in ("... is about to use X"):
      * set only while the one that's out has fainted; -1 = none. */
     val enemyNext: Int = -1,
@@ -254,11 +279,13 @@ fun MonView.withMovesVs(foe: MonView): MonView = withMovesVs(listOf(foe))
 /** [withMovesVs] against every one of [targets] (a double battle's two). */
 fun MonView.withMovesVs(targets: List<MonView>): MonView = copy(moves = moves.map { mv ->
     val atk = typeIdOf(mv.type)
+    // A status move's verdict says nothing: the chart only rates damage (GitHub #90).
+    if (mv.power == 0) return@map mv.copy(vs = emptyList())
     mv.copy(vs = targets.map { foe ->
         val t = foe.types.map(::typeIdOf)
         val t1 = t.getOrElse(0) { TYPE_NONE }
         val t2 = t.getOrElse(1) { TYPE_NONE }
-        val pct = if (atk != TYPE_NONE && t1 != TYPE_NONE) typeMultiplierPct(atk, t1, t2) else 100
+        val pct = if (atk != TYPE_NONE && t1 != TYPE_NONE) moveMultiplierPct(mv.name, atk, t1, t2) else 100
         MoveVsFoe(foe.name, formatMultiplier(pct), pct)
     })
 })
@@ -310,6 +337,76 @@ fun spriteAsset(kind: String, id: Int): String? {
 /** A shiny Pokémon's party icon: `<dir>/shiny/<id>.png`, drawn in its species' shiny palette (DecompIconSource). */
 fun shinyIconAsset(species: Int): String? = spriteAsset("pokemon", species)?.let { it.substringBeforeLast('/') + "/shiny/" + it.substringAfterLast('/') }
 
+/** A party (or PC box) Pokémon as the PARTY tab and the summary show it. */
+fun partyMonView(m: Mon): MonView {
+    val st = activeSpeciesTypeData[m.species]
+    val type1 = st?.type1 ?: TYPE_NONE
+    val type2 = st?.type2 ?: TYPE_NONE
+    val matchups = typeMatchups(type1, type2)
+    val moves = m.moves.toList().mapIndexedNotNull { idx, moveId ->
+        if (moveId == 0) null
+        else {
+            val info = lookupMove(moveId)
+            MoveView(info.name, typeName(info.type), m.pp[idx], info.power, id = moveId)
+        }
+    }
+    val isEgg = m.isEgg || isVanillaEgg(m.species)
+    return MonView(
+        species = m.species,
+        name = if (isEgg) gameCase("Egg") else speciesName(m.species),
+        isEgg = isEgg,
+        level = m.level,
+        hp = m.hp,
+        maxHp = m.maxHp,
+        status = statusLabel(m.status),
+        types = monTypes(type1, type2),
+        // A DS game's eggs keep their species: the egg's own icon is NdsArt's 494.
+        iconAsset = if (m.shiny && !isEgg) shinyIconAsset(m.species) else spriteAsset("pokemon", if (isEgg && activeGame.isGen5) NdsArt.BLACK_EGG else if (isEgg && originHeartGold) NdsArt.ORIGIN_EGG else if (isEgg && activeGame.isDsGame) 494 else m.species),
+        genderSymbol = m.genderSymbol,
+        moves = moves,
+        exp = if (isEgg) null else expProgress(m.species, m.level, m.exp),
+        personality = m.personality,
+        stats = if (isEgg) null else m.stats,
+        heldItemId = m.heldItem,
+        nickname = if (isEgg) null else m.nickname,
+        shiny = m.shiny && !isEgg,
+        weaknesses = matchups.weaknesses,
+        resistances = matchups.resistances,
+        immunities = matchups.immunities,
+    )
+}
+
+/** The PC's boxes as the BOXES tab shows them. */
+data class BoxesView(val currentBox: Int, val boxes: List<BoxView>)
+
+/** One box: its name (and the game's bytes for it), wallpaper and 30 slots (null = empty). */
+data class BoxView(val name: String, val wallpaper: Int, val mons: List<MonView?>) {
+    val count: Int get() = mons.count { it != null }
+}
+
+/** [dexHoldings]' value for a species in the party; a box is its number, from 1. */
+const val DEX_IN_PARTY = 0
+
+/** Where the save keeps each species, for the DEX's rows (GitHub discussion #312): the party first, then the first box
+ * holding one. Null where the boxes aren't read, since a Pokémon missing from the party could be in them. Eggs don't
+ * count: the entry isn't caught yet. */
+fun dexHoldings(party: List<MonView>, boxes: BoxesView?): Map<Int, Int>? {
+    if (boxes == null) return null
+    val out = HashMap<Int, Int>()
+    boxes.boxes.forEachIndexed { i, box -> box.mons.forEach { m -> if (m != null && !m.isEgg) out.putIfAbsent(m.species, i + 1) } }
+    party.forEach { if (!it.isEgg) out[it.species] = DEX_IN_PARTY }
+    return out
+}
+
+// The last boxes turned into views: the reader hands back the same PcBoxes while the storage is unchanged.
+private var lastBoxes: Pair<PcBoxes, BoxesView>? = null
+
+private fun boxesView(b: PcBoxes): BoxesView = synchronized(PcBoxes::class) {
+    lastBoxes?.takeIf { it.first === b }?.let { return it.second }
+    BoxesView(b.currentBox, b.boxes.map { box -> BoxView(box.name, box.wallpaper, box.mons.map { it?.let(::partyMonView) }) })
+        .also { lastBoxes = b to it }
+}
+
 fun buildSnapshotView(t: Telemetry): SnapshotView {
     // v2 ROMs export the icon-graphics table addresses; hand them to the live
     // sprite reader so nothing has to be bundled.
@@ -317,47 +414,19 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
     // HeartGold / SoulSilver's Pokégear map follows the save's state (PokegearMap).
     t.pokegearState?.let { PokegearMap.state = it to (t.townsVisited ?: 0L) }
 
-    val party = (0 until t.partyCount.coerceAtMost(PARTY_SIZE)).map { i ->
-        val m = t.party[i]
-        val st = activeSpeciesTypeData[m.species]
-        val type1 = st?.type1 ?: TYPE_NONE
-        val type2 = st?.type2 ?: TYPE_NONE
-        val matchups = typeMatchups(type1, type2)
-        val moves = m.moves.toList().mapIndexedNotNull { idx, moveId ->
-            if (moveId == 0) null
-            else {
-                val info = lookupMove(moveId)
-                MoveView(info.name, typeName(info.type), m.pp[idx], info.power, id = moveId)
-            }
-        }
-        val isEgg = m.isEgg || isVanillaEgg(m.species)
-        MonView(
-            species = m.species,
-            name = if (isEgg) gameCase("Egg") else speciesName(m.species),
-            isEgg = isEgg,
-            level = m.level,
-            hp = m.hp,
-            maxHp = m.maxHp,
-            status = statusLabel(m.status),
-            types = monTypes(type1, type2),
-            // A DS game's eggs keep their species: the egg's own icon is NdsArt's 494.
-            iconAsset = if (m.shiny && !isEgg) shinyIconAsset(m.species) else spriteAsset("pokemon", if (isEgg && activeGame.isGen5) NdsArt.BLACK_EGG else if (isEgg && activeGame.isDsGame) 494 else m.species),
-            genderSymbol = m.genderSymbol,
-            moves = moves,
-            exp = if (isEgg) null else expProgress(m.species, m.level, m.exp),
-            personality = m.personality,
-            stats = if (isEgg) null else m.stats,
-            heldItemId = m.heldItem,
-            nickname = if (isEgg) null else m.nickname,
-            shiny = m.shiny && !isEgg,
-            weaknesses = matchups.weaknesses,
-            resistances = matchups.resistances,
-            immunities = matchups.immunities,
-        )
-    }
+    val party = (0 until t.partyCount.coerceAtMost(PARTY_SIZE)).map { i -> partyMonView(t.party[i]) }
+    val pcBoxes = t.pcBoxes?.let(::boxesView)
 
     var battlePlayer = emptyList<MonView>()
     var battleOpponent = emptyList<MonView>()
+    // gEnemyParty slot -> enemyParty index
+    fun foeIndex(slot: Int): Int = if (slot < 0) -1
+        else if (t.enemyPartySlots.isEmpty()) slot.takeIf { it in t.enemyParty.indices } ?: -1
+        else t.enemyPartySlots.indexOf(slot)
+    val focusActive = foeIndex(t.enemyActive)
+    var enemyBattlers = emptyList<Int>()
+    var playerBattlers = emptyList<Int>()
+    var focusPlayer = emptyList<MonView>()
     if (t.inBattle) {
         val opponents = listOf(BATTLE_POS_OPPONENT_LEFT, BATTLE_POS_OPPONENT_RIGHT)
             .map { t.battleMons[it] }
@@ -383,8 +452,8 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
                 if (moveId == 0) null
                 else {
                     val info = lookupMove(moveId)
-                    val vs = opponents.map { foe ->
-                        val pct = if (info.type != TYPE_NONE) typeMultiplierPct(info.type, foe.type1, foe.type2) else 100
+                    val vs = if (info.power == 0) emptyList() else opponents.map { foe ->
+                        val pct = if (info.type != TYPE_NONE) moveMultiplierPct(info.name, info.type, foe.type1, foe.type2) else 100
                         MoveVsFoe(speciesName(foe.species), formatMultiplier(pct), pct)
                     }
                     MoveView(info.name, typeName(info.type), b.pp[idx], info.power, vs, id = moveId)
@@ -397,6 +466,20 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
                 iconAsset = if (b.shiny) shinyIconAsset(b.species) else spriteAsset("pokemon", b.species),
                 moves = moves,
                 stats = statsFor(b, t.party, usedParty),
+            )
+        }
+
+        // Kept separate from battlePlayer so the normal INFO page doesn't change.
+        fun focusCopy(b: BattleMon, mon: MonView): MonView {
+            val matchups = typeMatchups(b.type1, b.type2)
+            return mon.copy(
+                abilityId = b.ability,
+                heldItem = if (b.stats == null) null else if (b.item == 0) "" else itemName(b.item),
+                battleStats = b.stats?.toList(),
+                statStages = b.statStages?.map { it - 6 },
+                weaknesses = matchups.weaknesses,
+                resistances = matchups.resistances,
+                immunities = matchups.immunities,
             )
         }
 
@@ -427,11 +510,19 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
             buildPlayerMon(t.battleMons[BATTLE_POS_PLAYER_LEFT]),
             buildPlayerMon(t.battleMons[BATTLE_POS_PLAYER_RIGHT]),
         )
+        focusPlayer = listOf(BATTLE_POS_PLAYER_LEFT, BATTLE_POS_PLAYER_RIGHT).map { t.battleMons[it] }
+            .filter { it.species != 0 }.zip(battlePlayer, ::focusCopy)
         battleOpponent = listOfNotNull(
             // The left foe is gEnemyParty[enemyActive] in a trainer battle.
             buildOpponentMon(t.battleMons[BATTLE_POS_OPPONENT_LEFT], prefer = t.enemyActive),
             buildOpponentMon(t.battleMons[BATTLE_POS_OPPONENT_RIGHT]),
         )
+        // Party slots in the same order as battlePlayer / battleOpponent.
+        fun slots(vararg pos: Int, size: Int) = pos.filter { t.battleMons[it].species != 0 }
+            .map { p -> t.battlerPartySlots.getOrNull(p)?.takeIf { it in 0 until size } ?: -1 }
+        playerBattlers = slots(BATTLE_POS_PLAYER_LEFT, BATTLE_POS_PLAYER_RIGHT, size = t.partyCount.coerceAtMost(PARTY_SIZE))
+        if (t.enemyParty.isNotEmpty()) enemyBattlers = slots(BATTLE_POS_OPPONENT_LEFT, BATTLE_POS_OPPONENT_RIGHT, size = PARTY_SIZE)
+            .map(::foeIndex)
     }
 
     val items = (0 until t.itemCount.coerceAtMost(t.items.size)).map { i ->
@@ -457,6 +548,7 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
         location = lookupLocation(t.regionMapSectionId).let { l -> t.mapSecName?.let { l.copy(mapSecName = it) } ?: l },
         regionMapSectionId = t.regionMapSectionId,
         party = party,
+        pcBoxes = pcBoxes,
         battlePlayer = battlePlayer,
         battleOpponent = battleOpponent,
         items = items,
@@ -489,6 +581,14 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
         },
         enemyActive = t.enemyActive,
         isTrainerBattle = t.isTrainerBattle,
+        enemyBattlers = enemyBattlers,
+        playerBattlers = playerBattlers,
+        focusPlayer = focusPlayer,
+        focusEnemyActive = focusActive,
+        focusEnemyNext = foeIndex(t.enemyNext).takeIf { next ->
+            next != focusActive && t.enemyParty.getOrNull(next)?.hp?.let { it > 0 } == true &&
+                t.enemyParty.getOrNull(focusActive)?.hp == 0
+        } ?: -1,
         // Only meaningful once the foe that's out is down and a live one is picked.
         enemyNext = t.enemyNext.takeIf { next ->
             next != t.enemyActive && t.enemyParty.getOrNull(next)?.hp?.let { it > 0 } == true &&

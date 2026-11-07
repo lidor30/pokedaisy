@@ -1,0 +1,22 @@
+# Pokémon Monomyth v1.0 with the user's save (~/Documents/RetroArch/saves/mGBA/Pokemon Monomyth (v1.0).srm): its warnings
+# and intro (START eight times past them, each well apart), then CONTINUE: the field in a CATSEAR CITY building (mapsec
+# 0x01). Checked headless 2026-10-31.
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press START
+wait 300
+press A
+wait 300

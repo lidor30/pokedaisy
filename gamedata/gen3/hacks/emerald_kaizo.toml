@@ -17,5 +17,7 @@
 # code, RAM and save, so everything retail reads; its own moves (KAIZO_TEXT) and wild table (GUIDE_TABLES_EMERALD_KAIZO).
 [config.emerald_kaizo]
 base = 'emerald_retail'
+# BOXES: retail's (gPokemonStoragePtr = gSaveBlock2Ptr + 4; the `emerald_kaizo` capture's boxes read, checksums good).
+pokemonStoragePtr = 0x03005D94
 gameCode = { ref = 'KAIZO_TEXT' }
 guideTables = 'GUIDE_TABLES_EMERALD_KAIZO'

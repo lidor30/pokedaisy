@@ -27,7 +27,7 @@ object RomArt {
     const val DIR = "rom-art"
 
     /** Bump when [OUTPUTS] grows, so ROMs scanned before get scanned again. */
-    private const val SCAN_VERSION = 22
+    private const val SCAN_VERSION = 27
 
     /** Bumped whenever new art lands on disk, so loaders can retry. */
     val updates: StateFlow<Int> get() = _updates
@@ -118,6 +118,8 @@ object RomArt {
         // Recharged Emerald redrew both heads for its own map.
         "player_brendan_re" to (RomBlob.RE_PLAYER_BRENDAN_GFX to RomBlob.RE_PLAYER_BRENDAN_PAL),
         "player_may_re" to (RomBlob.RE_PLAYER_MAY_GFX to RomBlob.RE_PLAYER_MAY_PAL),
+        // Monomyth's map code loads one head, whichever gender the player is.
+        "player_monomyth" to (RomBlob.MMY_PLAYER_GFX to RomBlob.MMY_PLAYER_PAL),
     )
 
     /**
@@ -146,10 +148,12 @@ object RomArt {
             (slots + "empty").map { "$UNBOUND_FR_PARTY_DIR/slot_$it.png" } +
             listOf("$UNBOUND_FR_PARTY_DIR/status_icons.png", "$UNBOUND_FR_PARTY_DIR/font_small.png") +
             listOf(SWSH_BACKDROP) + (slots + "empty").map { "$SWSH_PARTY_DIR/slot_$it.png" } +
+            listOf(LETS_GO_BACKDROP, "$LETS_GO_PARTY_DIR/status_icons.png") + (slots + "empty").map { "$LETS_GO_PARTY_DIR/slot_$it.png" } +
             listOf("kanto", "sevii123", "sevii45", "sevii67", "hoenn", "seaglass", "lazarus", "soulgold", "glazed", "imperium", "hns", "recharged_emerald", "rowe_hoenn", "rowe_kanto", "rowe_sevii",
-                "mariomon", "quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67", "dreamstone", "wishes").map { "regionmap/$it.png" } +
+                "mariomon", "quetzal_kanto", "quetzal_sevii123", "quetzal_sevii45", "quetzal_sevii67", "quetzal_johto", "dreamstone", "wishes", "monomyth",
+                "tr3_kanto", "tr3_sevii123", "tr3_sevii45", "tr3_sevii67", "tr3_johto", "tr3_hoenn", "tr3_sinnoh").map { "regionmap/$it.png" } +
             PLAYER_ICONS.map { "regionmap/${it.first}.png" } +
-            listOf(BAG_STARS_SOULGOLD, HOLD_ICONS) +
+            listOf(BAG_STARS_SOULGOLD, HOLD_ICONS, TYPE_TAGS_FIRERED, TYPE_TAGS_EMERALD) +
             TrainerCardArt.BLOBS.map { rawPath(it) }
     }
 
@@ -319,6 +323,10 @@ object RomArt {
     const val SWSH_PARTY_DIR = "partyswsh"
     const val SWSH_BACKDROP = "partybg/swsh_tile.png"
 
+    /** Let's Go Pikachu / Eevee's party menu: CFRU's code and slot tilemaps with its own tiles, palette, backdrop and status icons. */
+    const val LETS_GO_PARTY_DIR = "partylg"
+    const val LETS_GO_BACKDROP = "partybg/letsgo_tile.png"
+
     /** The European FireReds' (LeafGreen's are the same bytes): scripts/port_retail.py found them. */
     private val FIRERED_LANGUAGE_PARTIES = listOf(
         Triple("es", RomBlob.FR_ES_PARTY_BG_GFX, RomBlob.FR_ES_STATUS_GFX to RomBlob.FR_ES_FONT_SMALL),
@@ -365,6 +373,9 @@ object RomArt {
 
     /** The party menu's held-item marker: an item (top 8x8), Mail (bottom). */
     const val HOLD_ICONS = "partyfr/hold_icons.png"
+    /** The games' type tags: the 128x128 sheet their move lists draw 32x12 tags from (TypeBadge knows where each is). */
+    const val TYPE_TAGS_FIRERED = "typetags/firered.png"
+    const val TYPE_TAGS_EMERALD = "typetags/emerald.png"
 
     /** Where a European Emerald's party art goes: partyem_<es|de|fr|it>. */
     fun emeraldPartyDir(lang: String) = "partyem_$lang"
@@ -407,6 +418,8 @@ object RomArt {
         }
         cfru(found, out)
         // The held-item marker (an item over Mail, 8x8 each): FireRed's bytes, Emerald's the same; every slot style uses it.
+        if (has(RomBlob.FR_TYPE_TAGS_GFX, RomBlob.FR_TYPE_TAGS_PAL)) out[TYPE_TAGS_FIRERED] = sprite(d(RomBlob.FR_TYPE_TAGS_GFX), palette(d(RomBlob.FR_TYPE_TAGS_PAL)), 128, 128)
+        if (has(RomBlob.EM_TYPE_TAGS_GFX, RomBlob.EM_TYPE_TAGS_PAL)) out[TYPE_TAGS_EMERALD] = sprite(d(RomBlob.EM_TYPE_TAGS_GFX), palette(d(RomBlob.EM_TYPE_TAGS_PAL)), 128, 128)
         if (has(RomBlob.FR_HOLD_GFX, RomBlob.FR_HOLD_PAL)) out[HOLD_ICONS] = sprite(d(RomBlob.FR_HOLD_GFX), palette(d(RomBlob.FR_HOLD_PAL)), 8, 16)
         if (has(RomBlob.FR_REGION_GFX, RomBlob.FR_REGION_PAL)) {
             val tiles = d(RomBlob.FR_REGION_GFX)
@@ -419,6 +432,10 @@ object RomArt {
         // Dreamstone Mysteries' Cormoria TOWN MAP: FireRed's kind of screen (4bpp tiles, a 32-wide u16 tilemap, BG palette 0).
         if (has(RomBlob.DSM_REGION_GFX, RomBlob.DSM_REGION_PAL, RomBlob.DSM_REGION_MAP)) {
             out["regionmap/dreamstone.png"] = screen(d(RomBlob.DSM_REGION_GFX), palette(d(RomBlob.DSM_REGION_PAL)), d(RomBlob.DSM_REGION_MAP), 32)
+        }
+        // Monomyth's ATHANTO MAP (its PokeNav's): a mode-0 text screen of its own.
+        if (has(RomBlob.MMY_REGION_GFX, RomBlob.MMY_REGION_PAL, RomBlob.MMY_REGION_MAP)) {
+            out["regionmap/monomyth.png"] = monomythRegionMap(d(RomBlob.MMY_REGION_GFX), palette(d(RomBlob.MMY_REGION_PAL)), d(RomBlob.MMY_REGION_MAP))
         }
         // Emerald's region map, and Seaglass's / Lazarus's / SoulGold's / Glazed's / Imperium's own (same region_map.c, their own art).
         listOf(
@@ -448,9 +465,26 @@ object RomArt {
             "quetzal_sevii123" to Triple(RomBlob.QTZ_SEVII123_GFX, RomBlob.QTZ_REGION_PAL, RomBlob.QTZ_SEVII123_MAP),
             "quetzal_sevii45" to Triple(RomBlob.QTZ_SEVII45_GFX, RomBlob.QTZ_REGION_PAL, RomBlob.QTZ_SEVII45_MAP),
             "quetzal_sevii67" to Triple(RomBlob.QTZ_SEVII67_GFX, RomBlob.QTZ_REGION_PAL, RomBlob.QTZ_SEVII67_MAP),
+            // Its Johto, on Emerald's palette (its Hoenn is Emerald's map, byte for byte: "emerald" below).
+            "quetzal_johto" to Triple(RomBlob.QTZ_JOHTO_GFX, RomBlob.EM_REGION_PAL, RomBlob.QTZ_JOHTO_MAP),
+            // Team Rocket Edition 2026's Kanto, Hoenn and Sinnoh (smol, Wishes' kind of screen).
+            "tr3_kanto" to Triple(RomBlob.TR3_KANTO_GFX, RomBlob.TR3_KANTO_PAL, RomBlob.TR3_KANTO_MAP),
+            "tr3_hoenn" to Triple(RomBlob.TR3_HOENN_GFX, RomBlob.TR3_HOENN_PAL, RomBlob.TR3_HOENN_MAP),
+            "tr3_sinnoh" to Triple(RomBlob.TR3_SINNOH_GFX, RomBlob.TR3_SINNOH_PAL, RomBlob.TR3_SINNOH_MAP),
         ).forEach { (name, blobs) ->
             if (has(blobs.first, blobs.second, blobs.third)) {
                 out["regionmap/$name.png"] = emeraldRegionMap(d(blobs.first), palette(d(blobs.second)), d(blobs.third))
+            }
+        }
+        // Its Johto and Sevii maps: the same screen, their palette loaded at BG palette 0 (colours 0-15 of their tiles).
+        listOf(
+            "tr3_johto" to Triple(RomBlob.TR3_JOHTO_GFX, RomBlob.TR3_JOHTO_PAL, RomBlob.TR3_JOHTO_MAP),
+            "tr3_sevii123" to Triple(RomBlob.TR3_SEVII123_GFX, RomBlob.TR3_SEVII123_PAL, RomBlob.TR3_SEVII123_MAP),
+            "tr3_sevii45" to Triple(RomBlob.TR3_SEVII45_GFX, RomBlob.TR3_SEVII45_PAL, RomBlob.TR3_SEVII45_MAP),
+            "tr3_sevii67" to Triple(RomBlob.TR3_SEVII67_GFX, RomBlob.TR3_SEVII67_PAL, RomBlob.TR3_SEVII67_MAP),
+        ).forEach { (name, blobs) ->
+            if (has(blobs.first, blobs.second, blobs.third)) {
+                out["regionmap/$name.png"] = emeraldRegionMap(d(blobs.first), palette(d(blobs.second)), d(blobs.third), firstColour = 0)
             }
         }
         for ((name, blobs) in PLAYER_ICONS) {
@@ -470,16 +504,39 @@ object RomArt {
      * affine map; the palette is loaded at BG palette 7, so colour index 112
      * is its first entry. A cell past the tiles the ROM has (Super Mariomon's
      * map names 21 of them in its bottom-right corner - whatever VRAM holds
-     * there, under the game's own text box) stays transparent.
+     * there, under the game's own text box) stays transparent. [firstColour]: where the game loads the palette (Team
+     * Rocket Edition 2026's Johto and Sevii maps load theirs at BG palette 0).
      */
-    private fun emeraldRegionMap(tiles: ByteArray, pal: IntArray, map: ByteArray): Image {
+    private fun emeraldRegionMap(tiles: ByteArray, pal: IntArray, map: ByteArray, firstColour: Int = 112): Image {
         val img = Image(240, 160)
         for (ty in 0 until 20) for (tx in 0 until 30) {
             val t = map[ty * 64 + tx].toInt() and 0xFF
             if ((t + 1) * 64 > tiles.size) continue
             for (y in 0 until 8) for (x in 0 until 8) {
-                val v = (tiles[t * 64 + y * 8 + x].toInt() and 0xFF) - 112
+                val v = (tiles[t * 64 + y * 8 + x].toInt() and 0xFF) - firstColour
                 img.argb[(ty * 8 + y) * 240 + tx * 8 + x] = pal.getOrElse(v) { pal[0] }
+            }
+        }
+        return img
+    }
+
+    /**
+     * Monomyth's ATHANTO MAP: 8bpp tiles loaded from tile 0x60 through a 32x32 u16 text tilemap (flips allowed), shown
+     * from row 2 (BG2's vertical scroll of 16), its 48-colour palette at BG palette 7 like Emerald's. Pixels outside that
+     * palette (the blank tile's, under the game's CANCEL bar) stay transparent.
+     */
+    private fun monomythRegionMap(tiles: ByteArray, pal: IntArray, map: ByteArray): Image {
+        val img = Image(240, 160)
+        for (ty in 0 until 20) for (tx in 0 until 30) {
+            val o = ((ty + 2) * 32 + tx) * 2
+            val e = (map[o].toInt() and 0xFF) or ((map[o + 1].toInt() and 0xFF) shl 8)
+            val t = (e and 0x3FF) - 0x60
+            if (t < 0 || (t + 1) * 64 > tiles.size) continue
+            for (y in 0 until 8) for (x in 0 until 8) {
+                val sx = if (e and 0x400 != 0) 7 - x else x
+                val sy = if (e and 0x800 != 0) 7 - y else y
+                val v = (tiles[t * 64 + sy * 8 + sx].toInt() and 0xFF) - 112
+                if (v in pal.indices) img.argb[(ty * 8 + y) * 240 + tx * 8 + x] = pal[v]
             }
         }
         return img
@@ -496,18 +553,22 @@ object RomArt {
         cfruMenu(found, found[RomBlob.SS_PARTY_BG_PAL], SWSH_PARTY_DIR, SWSH_BACKDROP, out)
         // Unbound FR: its own tiles under CFRU's palette and tilemaps (the backdrop is the same: no cell of its own).
         cfruMenu(found, found[RomBlob.CFRU_PARTY_BG_PAL], UNBOUND_FR_PARTY_DIR, null, out, gfxBlob = RomBlob.UBFR_PARTY_BG_GFX)
+        // Let's Go: CFRU's slot tilemaps over its own tiles, palette and backdrop tilemap.
+        cfruMenu(found, found[RomBlob.LGO_PARTY_BG_PAL], LETS_GO_PARTY_DIR, LETS_GO_BACKDROP, out,
+            gfxBlob = RomBlob.LGO_PARTY_BG_GFX, mapBlob = RomBlob.LGO_PARTY_BG_MAP)
         found[RomBlob.UBFR_FONT_SMALL]?.let { out["$UNBOUND_FR_PARTY_DIR/font_small.png"] = font(it, halfWidth = true) }
         val statusPal = found[RomBlob.FR_STATUS_PAL]?.let { palette(it) } ?: return
         for ((dir, blob) in CFRU_STATUS) {
             found[blob]?.let { out["partycfru/$dir/status_icons.png"] = sprite(it, statusPal, 7 * 32, 8) { tx, _ -> tx } }
         }
         found[RomBlob.UBFR_STATUS_GFX]?.let { out["$UNBOUND_FR_PARTY_DIR/status_icons.png"] = sprite(it, statusPal, 7 * 32, 8) { tx, _ -> tx } }
+        found[RomBlob.LGO_STATUS_GFX]?.let { out["$LETS_GO_PARTY_DIR/status_icons.png"] = sprite(it, statusPal, 7 * 32, 8) { tx, _ -> tx } }
     }
 
     /** The CFRU party menu's slot frames into [dir] and its backdrop cell as [backdrop], in [palBytes]. */
     private fun cfruMenu(
         found: Map<RomBlob, ByteArray>, palBytes: ByteArray?, dir: String, backdrop: String?, out: MutableMap<String, Image>,
-        gfxBlob: RomBlob = RomBlob.CFRU_PARTY_BG_GFX,
+        gfxBlob: RomBlob = RomBlob.CFRU_PARTY_BG_GFX, mapBlob: RomBlob = RomBlob.CFRU_PARTY_BG_MAP,
     ) {
         val gfx = found[gfxBlob] ?: return
         val pal = palBytes?.let { palette(it) } ?: return
@@ -517,7 +578,7 @@ object RomArt {
         if (main != null && noHp != null && empty != null) {
             slots(gfx, pal, main, noHp, empty, tilesW = 14, tilesH = 5).forEach { (k, v) -> out["$dir/$k"] = v }
         }
-        if (backdrop != null) found[RomBlob.CFRU_PARTY_BG_MAP]?.let { map ->
+        if (backdrop != null) found[mapBlob]?.let { map ->
             // The cell at (32, 32): clear of the zig-zags between the slot columns, in the
             // screen's own phase, so tiling it from (0, 0) redraws the grid.
             val full = screen(gfx, pal, map, 32, tilesW = 32, tilesH = 32)

@@ -10,7 +10,7 @@ Modern Pokémon games keep the important things on screen while you explore: you
 
 It's on by default. Turn it off, or change how it looks, in `HUD`, in the `SCREEN` group of Settings on either screen.
 
-On the Game Boy it shows in Yellow (the English cart) and Crystal too, with or without `EXPAND`. Those games have no pictures for their items, so your balls show as a plain drawn ball with the count, and the bag lists your items by name, the way their own bag does.
+On the Game Boy it shows in Yellow (the English cart), Yellow Legacy, Crystal, Crystal Legacy and Crystal Clear too, with or without `EXPAND`. Those games have no pictures for their items, so your balls show as a plain drawn ball with the count, and the bag lists your items by name, the way their own bag does.
 
 ## What it shows
 
@@ -20,9 +20,9 @@ On the Game Boy it shows in Yellow (the English cart) and Crystal too, with or w
 | Minimap | The region map around you, with your head on the spot you're in and the place's name under it. | Open the whole map, with `PLACES` and `FLY`, always in the map's own shape. |
 | Poké Balls | The balls in your bag and how many of each (Elite Redux keeps no counts, so just the balls there). | Open the bag on its `POKé BALLS` pocket. |
 | Steps left | While an item that keeps wild Pokémon away is working, a window by your balls shows its icon and the steps it has left, counting down as you walk, over a bar that drains from green to yellow to red. The count turns gold for the last 20 steps, and the window goes when the effect wears off. It shows for the games whose [bag](bag.md) can use those items. | Open the bag. |
-| `PC` | Your game's own PC, opened right where you stand, so you can withdraw or deposit Pokémon without walking to a Pokémon Center. The small arrow on its corner means it opens the game's own screen, not one of the HUD's. It shows for the games whose [bag](bag.md) has the `PC` button. | |
+| `PC` | Your game's own PC, opened right where you stand, so you can reach your Pokémon and stored items without walking to a Pokémon Center. The small arrow on its corner means it opens the game's own screen, not one of the HUD's. It shows for the games whose [bag](bag.md) has the `PC` button. | |
 | `BAG` | A compact bag: the pockets as tabs and your items as a grid with counts. Pick an item to read about it, and `USE` it where the companion can. The button and the bag carry the game's own name for it, like the [bag tab](bag.md) (`PACK`, `CUBE`, `ITEM`...). | |
-| `WILD` | This area's wild Pokémon: by grass, water, fishing rod or rock, with their levels and how often they show up. Ones you haven't seen stay `???`, and a ball marks the ones you've caught. The red number on the button counts the ones you haven't caught yet. | |
+| `WILD` | This area's wild Pokémon: by grass, water, fishing rod or rock, with their levels and how often they show up. Ones you haven't seen stay `???`, and a ball marks the ones you've caught. `KEEP OPEN` leaves the list up without dimming the game, so it follows you from map to map until you close it. The red number on the button counts the ones you haven't caught yet. | |
 
 The game keeps running while the map, bag, wild list or a summary is open. Tap anywhere around it, or press `BACK`, to close it. With the `GLASS` and `WHITE GLASS` looks these open in see-through panels too.
 
@@ -35,6 +35,8 @@ Only while you're walking around. The first time you play a game, it shows up on
 Without `EXPAND`, the HUD stays on the game's picture, not in the bars beside it (except `RAILS`, which is made for those bars). If the touch controls are showing, the HUD moves its corners in so it never covers their buttons over the game.
 
 When the game's picture is too narrow for your party beside the buttons, for example with the companion's side panel locked beside the game, the HUD gets smaller: the party and the minimap step aside, and your balls and the buttons sit in the bottom left corner, with a `MAP` button after `WILD`. The party is still a tap away in the companion. `LAYOUT` can't be changed meanwhile: it says it's not available because the screen is too small.
+
+In a DS game on one screen, a `TOUCH` button joins them while `DS LAYOUT` floats the touch screen in: it brings the touch screen up over the game, and a second tap closes it (see [DS layout](devices.md#ds-layout-two-screens-on-one)).
 
 On a device with one screen, the button that opens the companion joins `BAG` and `WILD` as `COMPANION` while the HUD is up, instead of sitting on the screen's edge. It stays there while the companion's window is open. When the HUD steps aside (in a battle or a menu), the edge tab is back.
 

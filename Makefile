@@ -18,12 +18,14 @@ export MON_ICONS
 .DEFAULT_GOAL := help
 
 .PHONY: help docs-shots docs-check submodules apk install run test clean shots preview menu-shots capture-image \
-        check gamedata stress test-roms version bump release-apk symbols release release-local
+        check gamedata stress test-roms test-quick version bump release-apk symbols release release-local \
+        rom-support
 
 # versionName / versionCode, read from app/build.gradle.kts.
 VERSION      := $(shell sed -n 's/^ *versionName = "\(.*\)"/\1/p' app/build.gradle.kts)
 VERSION_CODE := $(shell sed -n 's/^ *versionCode = \([0-9]*\)/\1/p' app/build.gradle.kts)
 RELEASE_APK  := dist/PokeDaisy-$(VERSION).apk
+ROM_AGENT_VENV := $(HOME)/.cache/pokedaisy-rom-agent/venv
 
 help: ## Show this help
 	@awk 'BEGIN{FS=":.*## "} \
@@ -48,7 +50,10 @@ run: install ## Build + install + launch the library screen on the connected dev
 gamedata: ## Regenerate the per-game code from gamedata/ (NativeConfigsGen.kt; see gamedata/README.md)
 	python3 scripts/gen_gamedata.py
 
-test: ## JVM unit tests (fixture decode tests, UI logic)
+test-quick: ## Everyday unit tests: no Paparazzi renders or BestEffortTest, forks in parallel (T='*FooTest' to pick)
+	./gradlew :app:testDebugUnitTest -Pquick $(if $(T),--tests '$(T)')
+
+test: ## All JVM unit tests, Paparazzi renders included (CLAUDE.md: agents ask first)
 	./gradlew :app:testDebugUnitTest
 
 clean: ## gradle clean
@@ -59,6 +64,7 @@ clean: ## gradle clean
 check: ## Everything a PR must pass: unit tests, translations, game data, ui-preview stress + docs search, docs, debug build
 	python3 scripts/check_translations.py
 	python3 scripts/gen_gamedata.py --check
+	python3 scripts/check_melonds_patch.py
 	./gradlew :app:testDebugUnitTest :app:assembleDebug
 	./gradlew -p ui-preview stress
 	./gradlew -p ui-preview docsSearchCheck
@@ -134,3 +140,10 @@ capture-image: ## Build the Docker image the capture scripts use
 
 menu-shots: ## In-game party/pokedex/items screenshots of every ROM in host_roms.conf (KEYS="a b" to pick) -> native-capture/menu-shots/
 	scripts/screenshot_menus.sh $(KEYS)
+
+rom-support: ## A Claude agent adds support for ROM=<file> [SAVE=<file>] and / or LIST=<file of games> [ARGS=...], one PR to dev (scripts/rom_agent/)
+	@test -n "$(ROM)$(LIST)" || { echo "usage: make rom-support ROM=<rom> [SAVE=<save>] | LIST=<file> [ARGS=...]"; exit 2; }
+	@test -x "$(ROM_AGENT_VENV)/bin/python" || python3 -m venv "$(ROM_AGENT_VENV)"
+	@"$(ROM_AGENT_VENV)/bin/pip" install -q --disable-pip-version-check -r scripts/rom_agent/requirements.txt
+	"$(ROM_AGENT_VENV)/bin/python" scripts/rom_agent/add_rom_support.py $(if $(ROM),"$(ROM)") $(if $(SAVE),--save "$(SAVE)") \
+	    $(if $(LIST),--list "$(LIST)") $(ARGS)
