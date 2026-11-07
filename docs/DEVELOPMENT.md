@@ -2779,8 +2779,12 @@ German SoulSilver rev 0 (`IPGD`, SHA-1 `576cdb7eec728c49aed85b9dd7e1e084ba1f08f9
 
 **French carts** (2026-11-06; Platinum `CPUF` rev 0, SHA-1 `62f9ec7a…`, HeartGold `IPKF` `dba64620…`, SoulSilver `IPGF` `6ed98d44…`, Black `IRBF`
 `a559da54…`, White `IRAF` `28f07591…`): the US / Europe builds with the text changed, so the same overlays, the same file paths and text banks, the same
-save layouts; only addresses moved. **Other languages** go the same way: `scripts/port_nds.py US.nds OTHER.nds w:GLOBAL c:CODE[@OVERLAY] ...`
-maps each word (name the overlay for code: overlays overlap, and overlay 10 of Black / White shifts part-way through). What moved: HG / SS's globals +0x20,
+save layouts; only addresses moved. **Other languages** go the same way: `scripts/port_nds_fns.py US.nds OTHER.nds w:GLOBAL c:CODE[@OVERLAY] ...`
+(or `--file`, a `name kind addr[@overlay]` a line) matches the two carts' functions by their instructions and calls, not their bytes, and gives each
+word with how many matched functions vote for it, or UNRESOLVED (name the overlay for code: overlays overlap, and overlay 10 of Black / White shifts
+part-way through). `--check scripts/port_nds_fns_known.txt`, run by `scripts/test_port_nds_fns.py`, tries it on every pair checked live so far (these
+carts, German HG / SS, White from Black, Origin HeartGold) and fails on any wrong answer. The older `scripts/port_nds.py` lines bytes up and always
+answers, right or not (four wrong of 21 on Origin HeartGold). What moved: HG / SS's globals +0x20,
 `gOverlayTemplate_Battle` -0x1C, the field overlays +0x20, the low ARM9 functions not at all (callSet 2 serves both); Platinum's globals +0x1E0, the
 battle template +0x88, its functions by 0x14 to 0xA4 (`CallFns PLATINUM_FR`, callSet 8; its own rev 0 is the US rev 1's code as far as anything here reads);
 Black / White's statics and overlays -0x80, overlay 10's FLDSKILL and X menu -0x90 (`BLACK_FR` / `WHITE_FR`, callSets 9 / 10). The US saves load in every one

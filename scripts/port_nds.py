@@ -7,7 +7,8 @@ WORD is a global: every literal-pool word of that value in the US ARM9 and overl
 code around it, votes for the other cart's word (the US `sFieldSysPtr` -> the French one). ADDR is code: its bytes aligned
 in the same module (ARM9 or, after @, the overlay it's in: overlays overlap, so name it), printed with how much matched.
 Give a global as `w:0x021D4158`, code as `c:0x0203BEF1` or `c:0x0215E841@10`. Reads the two ROMs only; print, then check
-each address live in nds_dump (docs/DEVELOPMENT.md's "Other languages").
+each address live in nds_dump (docs/DEVELOPMENT.md's "Other languages"). scripts/port_nds_fns.py matches functions instead
+and says UNRESOLVED where this one would answer wrong: try it first.
 """
 import collections
 import struct
@@ -52,19 +53,25 @@ class Cart:
     """Its ARM9 and overlays, unpacked: {module: (RAM address, bytes)}; the ARM9 is "arm9"."""
 
     def __init__(self, path):
-        self.d = open(path, "rb").read()
-        self.mods = {"arm9": self.arm9()}
-        h = self.d
-        fat, table, size = u32(h, 0x48), u32(h, 0x50), u32(h, 0x54)
-        for i in range(size // 32):
-            oid, ram, _, _, _, _, fid, flags = struct.unpack_from("<8I", h, table + i * 32)
-            d = h[u32(h, fat + fid * 8):u32(h, fat + fid * 8 + 4)]
-            self.mods[oid] = (ram, blz(d) if flags >> 24 & 1 else d)
+        # Only the header, ARM9, overlay table and overlay files are read (the Gen 5 carts are 256 / 512 MB).
+        with open(path, "rb") as f:
+            def read(off, n):
+                f.seek(off)
+                return f.read(n)
+            h = self.header = read(0, 0x200)
+            self.mods = {"arm9": self.arm9(read)}
+            fat, table, size = u32(h, 0x48), u32(h, 0x50), u32(h, 0x54)
+            t = read(table, size)
+            for i in range(size // 32):
+                oid, ram, _, _, _, _, fid, flags = struct.unpack_from("<8I", t, i * 32)
+                start, end = struct.unpack("<2I", read(fat + fid * 8, 8))
+                d = read(start, end - start)
+                self.mods[oid] = (ram, blz(d) if flags >> 24 & 1 else d)
 
-    def arm9(self):
-        h = self.d
+    def arm9(self, read):
+        h = self.header
         off, ram, size = u32(h, 0x20), u32(h, 0x28), u32(h, 0x2C)
-        d = h[off:off + size]
+        d = read(off, size)
         # crt0 points at the module params; their +0x14 is where the compressed part ends (0: not compressed).
         for o in range(0, 0x1000, 4):
             w = u32(d, o)

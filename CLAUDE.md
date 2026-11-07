@@ -712,7 +712,10 @@ panel locked at half the screen sideways, `SidePanel.setDsScreen`, the dock unde
 `scripts/gen_gen4_guide.py` writes the wild sets, boss teams and HERE's items from the decomps; gym leaders go by badge -
 HG / SS clears the leaders' trainer flags for rematches; `readGen4Progress` adds the badges and the DS clock's hour).
 **French DS carts (2026-11-06)**: Platinum rev 0, HeartGold / SoulSilver, Black, White (`CPUF`, `IPKF`, `IPGF`, `IRBF`, `IRAF`): the US builds at other addresses, each run headless beside its US
-cart with one script; everything but the addresses is shared. Another language: `scripts/port_nds.py`, docs/DEVELOPMENT.md's "French carts".
+cart with one script; everything but the addresses is shared. Another language: `scripts/port_nds_fns.py` (functions matched by structure and call anchors, wrong = 0 on
+every known pair: `--check scripts/port_nds_fns_known.txt`, `scripts/test_port_nds_fns.py`; an UNRESOLVED hint is a lead to check live,
+never an answer), docs/DEVELOPMENT.md's "French carts". Dry run (2026-11-07): B/W, B2W2 ES / DE / IT / JP / KR 13 of 14 (the BGM depth
+isn't loaded from a pool), HG / SS ES / IT / KR / Europe rev 10 all 23, Japanese 20 of 23.
 **DS RESOLUTION** (SCREEN group on both screens, `Prefs.dsResolution`, ORIGINAL default / 2x-8x, NEW tag; GitHub discussion #241):
 melonDS's OpenGL renderer ported to OpenGL ES in our patch (`MELONDS_GLES`; ES 3.2 or 3.0 + draw_buffers_indexed) on an EGL
 context of the emu thread (`nds/pk_nds_gl.cpp`), frames to EmulatorView through a SurfaceTexture (`gpuFrames`), our compositor
