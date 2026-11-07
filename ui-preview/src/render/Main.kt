@@ -291,6 +291,11 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     private var aspect = if (expand) com.pokedaisy.app.companion.GameAspect.WIDE else com.pokedaisy.app.companion.GameAspect.ORIGINAL
     override val gameAspect get() = aspect
     override fun setGameAspect(aspect: com.pokedaisy.app.companion.GameAspect) { this.aspect = aspect }
+    // The Thor's top screen: 6.75 px a GBA pixel at 1x, then 5 / 4 / 3 (WideCamera.levelsFor).
+    private var zoom = 1
+    override val zoomSteps get() = listOf(1f, 1.35f, 1.6875f, 2.25f)
+    override val zoomLevel get() = zoom
+    override fun setZoomLevel(level: Int) { zoom = level }
     private var colors = false
     override val gbaColors get() = colors
     override fun setGbaColors(on: Boolean) { colors = on }
@@ -1816,6 +1821,10 @@ fun main(args: Array<String>) {
         Shot("$g-settings-expand", bw, bh, bd, companion("SETTINGS", expand = true)) {
             onNodeWithText("AUTO ZOOM IN").performScrollTo()
         },
+        // SETTINGS > ZOOM's pick-list (no right stick needed).
+        Shot("$g-settings-zoom", bw, bh, bd, companion("SETTINGS", expand = true)) {
+            onNodeWithText("ZOOM").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
+        },
         Shot("$g-settings-ffspeed", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("FF SPEED").performClick() },
         // SOUND: GAME VOLUME's slider (70%), then moved to 35% through its semantics (what a drag or LEFT / RIGHT call).
         Shot("$g-settings-sound", bw, bh, bd, companion("SETTINGS")) { onNodeWithText("AUDIO EFFECTS").performScrollTo() },
@@ -2282,6 +2291,11 @@ fun main(args: Array<String>) {
         Shot("settings-touch", tw, th, td, activity { SettingsActivity() }) {
             onNodeWithText("TOUCH CONTROLS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
+        // TOUCH CONTROLS: VIBRATION on, its STRENGTH row under it.
+        Shot("settings-touch-vibration", tw, th, td, activity {
+            Prefs(android.content.Context()).touchControlsStyle = com.pokedaisy.app.companion.TouchControlsStyle(vibrate = true)
+            SettingsActivity()
+        }) { onNodeWithText("TOUCH CONTROLS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick); onNodeWithText("STRENGTH").performScrollTo() },
         Shot("settings-touch-phone", 1080, 2400, 2.625f, activity { SettingsActivity() }) {
             onNodeWithText("TOUCH CONTROLS").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },

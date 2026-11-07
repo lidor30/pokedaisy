@@ -184,13 +184,102 @@ internal class PadPaint(val look: TouchLook, val colors: TouchColors) {
 private const val IDLE_MS = 4000L
 private const val IDLE_ALPHA = 0.18f
 
-/** The on-screen state a draw needs: what's held, the D-pad's directions, FF on. */
-private class Pressed {
+/** The on-screen state a draw needs: what's held, the D-pad's directions. Written from any thread (the touch input
+ * windows' own, com.pokedaisy.app.TouchInputWindows): Compose state, so the drawn buttons follow when they can. */
+class TouchPressed {
     var buttons by mutableIntStateOf(0)
     var dpad by mutableIntStateOf(0)
     /** A skin's items held, by index. */
     var skinItems by mutableStateOf(0L)
     fun has(b: TouchButton) = buttons and (1 shl b.ordinal) != 0
+}
+
+/** What the fingers on the controls hold: [TouchButton] bits ([held]), the D-pad's directions, a skin's items. */
+class TouchHits(val held: Int, val dpad: Int, val skin: Long) {
+    companion object { val NONE = TouchHits(0, 0, 0L) }
+}
+
+/** Where the buttons are, for a hit test off the UI thread: the drawn ones ([placed]) or a skin's ([fit]). */
+class TouchHitModel(val placed: TouchGeometry.Placed, val fit: SkinFit?, val eightWay: Boolean)
+
+/** The [n] fingers at ([xs], [ys]) (the controls' own pixels) on [model]'s buttons. */
+fun touchHits(model: TouchHitModel, xs: FloatArray, ys: FloatArray, n: Int): TouchHits {
+    val p = model.placed
+    val slop = 10 * p.dp
+    var held = 0
+    var dpad = 0
+    var skinHeld = 0L
+    val sf = model.fit
+    for (k in 0 until n) {
+        val x = xs[k]
+        val y = ys[k]
+        if (sf != null) {
+            val (b, d) = sf.touch(x, y, model.eightWay)
+            held = held or b
+            dpad = dpad or d
+            sf.items.forEachIndexed { i, it ->
+                if (i < 64 && x >= it.touch.left && x <= it.touch.right && y >= it.touch.top && y <= it.touch.bottom) skinHeld = skinHeld or (1L shl i)
+            }
+            continue
+        }
+        for (item in TouchGeometry.hits(p, x, y, slop)) {
+            held = held or (1 shl item.button.ordinal)
+            if (item.button == TouchButton.DPAD) {
+                dpad = dpad or TouchGeometry.dpadBits(x - item.cx, y - item.cy, item.w / 2, model.eightWay)
+            }
+        }
+    }
+    return TouchHits(held, dpad, skinHeld)
+}
+
+/**
+ * The fingers' presses turned into the game's: every source's hits ([SOURCE_DRAWN], the Compose canvas; [SOURCE_WINDOWS],
+ * TouchInputWindows) held together, a new press a tick ([TouchInput.onPress]), the extras pressed and let go, the GBA
+ * buttons whenever they change. Called from either source's thread; the callbacks run on the caller's.
+ */
+class TouchPressTracker(val pressed: TouchPressed) {
+    @Volatile var input = TouchInput()
+    private val bySource = arrayOf(TouchHits.NONE, TouchHits.NONE)
+    private var gbaWas = 0
+    private var turboWas = 0
+    private var heldWas = 0
+    private var dpadWas = 0
+
+    fun update(source: Int, hits: TouchHits) = synchronized(this) {
+        bySource[source] = hits
+        val held = bySource[0].held or bySource[1].held
+        val dpad = bySource[0].dpad or bySource[1].dpad
+        val skin = bySource[0].skin or bySource[1].skin
+        val input = input
+        // Newly pressed: a tick; the extras' presses / let-gos.
+        if (held and heldWas.inv() != 0 || dpad and dpadWas.inv() != 0) input.onPress()
+        for (b in TouchButton.entries) {
+            val bit = 1 shl b.ordinal
+            if (b.extra && b != TouchButton.TURBO_A && b != TouchButton.TURBO_B && (held xor heldWas) and bit != 0) {
+                input.onAction(b, held and bit != 0)
+            }
+        }
+        heldWas = held
+        dpadWas = dpad
+        if (pressed.buttons != held) pressed.buttons = held
+        if (pressed.dpad != dpad) pressed.dpad = dpad
+        if (pressed.skinItems != skin) pressed.skinItems = skin
+        var gba = dpad
+        var turbo = 0
+        for (b in TouchButton.entries) if (held and (1 shl b.ordinal) != 0) {
+            if (b == TouchButton.TURBO_A || b == TouchButton.TURBO_B) turbo = turbo or b.gba
+            else gba = gba or b.gba
+        }
+        if (gba != gbaWas || turbo != turboWas) {
+            gbaWas = gba; turboWas = turbo
+            input.onKeys(gba, turbo)
+        }
+    }
+
+    companion object {
+        const val SOURCE_DRAWN = 0
+        const val SOURCE_WINDOWS = 1
+    }
 }
 
 /**
@@ -212,6 +301,10 @@ fun TouchControls(
     /** A Delta skin in place of the drawn buttons (SKIN), when it has a picture for the way the phone is held. */
     skin: InstalledSkin? = null,
     onPlaced: (TouchGeometry.Placed) -> Unit = {},
+    /** The presses, shared with another source of fingers (com.pokedaisy.app.TouchInputWindows); null = its own. */
+    tracker: TouchPressTracker? = null,
+    /** Where the buttons are now, whenever that changes (the input windows' hit test). */
+    onHitModel: (TouchHitModel) -> Unit = {},
 ) {
     val density = LocalDensity.current
     var measured by remember { mutableStateOf(IntSize.Zero) }
@@ -221,12 +314,14 @@ fun TouchControls(
             ?: TouchGeometry.place(style, measured.width.toFloat(), measured.height.toFloat(), density.density, portrait, gameAspect, gameBoy, ds = ds)
     }
     LaunchedEffect(placed) { onPlaced(placed) }
+    LaunchedEffect(placed, fit, style.eightWay) { onHitModel(TouchHitModel(placed, fit, style.eightWay)) }
     val skinImage by rememberSkinImage(skin, fit)
-    val pressed = remember { Pressed() }
+    val presses = tracker ?: remember { TouchPressTracker(TouchPressed()) }
+    presses.input = input
+    val pressed = presses.pressed
     val currentFit by rememberUpdatedState(fit)
     val currentPlaced by rememberUpdatedState(placed)
     val currentStyle by rememberUpdatedState(style)
-    val currentInput by rememberUpdatedState(input)
     // FADE WHEN IDLE: counts touches down; a few seconds after the last let-go, faint.
     var touches by remember { mutableIntStateOf(0) }
     var idle by remember { mutableStateOf(false) }
@@ -247,61 +342,18 @@ fun TouchControls(
             .graphicsLayer { alpha = (if (fit != null && !fit.rep.translucent) 1f else style.opacity / 100f) * fade }
             .pointerInput(Unit) {
                 awaitPointerEventScope {
-                    var gbaWas = 0
-                    var turboWas = 0
+                    val xs = FloatArray(16)
+                    val ys = FloatArray(16)
                     while (true) {
                         val event = awaitPointerEvent()
-                        val p = currentPlaced
-                        val st = currentStyle
-                        val slop = 10 * p.dp
-                        var held = 0
-                        var dpad = 0
-                        var skinHeld = 0L
-                        val sf = currentFit
-                        for (c in event.changes) {
-                            if (!c.pressed) continue
-                            if (sf != null) {
-                                val (b, d) = sf.touch(c.position.x, c.position.y, st.eightWay)
-                                held = held or b
-                                dpad = dpad or d
-                                sf.items.forEachIndexed { i, it ->
-                                    if (i < 64 && c.position.x >= it.touch.left && c.position.x <= it.touch.right &&
-                                        c.position.y >= it.touch.top && c.position.y <= it.touch.bottom) skinHeld = skinHeld or (1L shl i)
-                                }
-                                continue
-                            }
-                            for (item in TouchGeometry.hits(p, c.position.x, c.position.y, slop)) {
-                                held = held or (1 shl item.button.ordinal)
-                                if (item.button == TouchButton.DPAD) {
-                                    dpad = dpad or TouchGeometry.dpadBits(c.position.x - item.cx, c.position.y - item.cy, item.w / 2, st.eightWay)
-                                }
-                            }
-                        }
+                        var n = 0
+                        for (c in event.changes) if (c.pressed && n < xs.size) { xs[n] = c.position.x; ys[n] = c.position.y; n++ }
                         if (event.changes.any { it.pressed && !it.previousPressed }) touches++
                         event.changes.forEach { it.consume() }
-                        val before = pressed.buttons
-                        // Newly pressed: a tick; the extras' presses / let-gos.
-                        val newly = held and before.inv()
-                        if (newly != 0 || (dpad and pressed.dpad.inv()) != 0) currentInput.onPress()
-                        for (b in TouchButton.entries) {
-                            val bit = 1 shl b.ordinal
-                            if (b.extra && b != TouchButton.TURBO_A && b != TouchButton.TURBO_B && (held xor before) and bit != 0) {
-                                currentInput.onAction(b, held and bit != 0)
-                            }
-                        }
-                        pressed.buttons = held
-                        pressed.dpad = dpad
-                        pressed.skinItems = skinHeld
-                        var gba = dpad
-                        var turbo = 0
-                        for (b in TouchButton.entries) if (held and (1 shl b.ordinal) != 0) {
-                            if (b == TouchButton.TURBO_A || b == TouchButton.TURBO_B) turbo = turbo or b.gba
-                            else gba = gba or b.gba
-                        }
-                        if (gba != gbaWas || turbo != turboWas) {
-                            gbaWas = gba; turboWas = turbo
-                            currentInput.onKeys(gba, turbo)
-                        }
+                        presses.update(
+                            TouchPressTracker.SOURCE_DRAWN,
+                            touchHits(TouchHitModel(currentPlaced, currentFit, currentStyle.eightWay), xs, ys, n),
+                        )
                     }
                 }
             },
@@ -331,7 +383,7 @@ fun skinFit(skin: InstalledSkin?, w: Float, h: Float, portrait: Boolean): SkinFi
 private fun DrawScope.drawTouchControls(
     placed: TouchGeometry.Placed,
     paint: PadPaint,
-    pressed: Pressed?,
+    pressed: TouchPressed?,
     ffOn: Boolean,
     measurer: TextMeasurer,
     font: FontFamily,

@@ -15,16 +15,16 @@ class GbaInput : Hotkeys.GameKeys {
     var mask: Int = 0
         private set
 
-    private var buttonBits = 0   // from key events: the bits of every key in heldKeys
+    @Volatile private var buttonBits = 0   // from key events: the bits of every key in heldKeys
     private var turboBits = 0    // TURBO A / B held: pulsed by the engine ([turboMask])
     private val turboKeys = HashMap<Int, Int>()
     // Per key, not per bit: START and X are two keys for one bit, and
     // letting go of one mustn't release the other.
     private val heldKeys = HashMap<Int, Int>()
-    private var hatBits = 0      // from D-pad HAT / analog axes
-    private var touchBits = 0    // from the on-screen TouchControlsView
-    private var scriptBits = 0   // synthetic presses (BattleInputController)
-    private var scriptExclusive = false
+    @Volatile private var hatBits = 0      // from D-pad HAT / analog axes
+    @Volatile private var touchBits = 0    // from the on-screen TouchControlsView (any thread: TouchInputWindows)
+    @Volatile private var scriptBits = 0   // synthetic presses (BattleInputController)
+    @Volatile private var scriptExclusive = false
 
     @Volatile
     private var gbaControls: Map<Int, Int> = DEFAULT_CONTROLS
@@ -141,6 +141,9 @@ class GbaInput : Hotkeys.GameKeys {
         return true
     }
 
+    // Synchronized: the touch controls' input windows set their bits from a thread of their own (TouchInputWindows), the
+    // battle scripts from the emu thread, the keys from the UI thread - each recompute must see the others' latest.
+    @Synchronized
     private fun recompute() {
         mask = (if (scriptExclusive) scriptBits else buttonBits or hatBits or touchBits or scriptBits) or pressBits
     }

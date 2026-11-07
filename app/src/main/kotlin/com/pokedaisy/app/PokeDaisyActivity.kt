@@ -1649,6 +1649,10 @@ class PokeDaisyActivity : Activity() {
             Prefs(this@PokeDaisyActivity).lookAround = on
             view.camera.lookAround = on
         }
+        override fun feelVibration(level: Int) = TouchHaptics.buzz(this@PokeDaisyActivity, level)
+        override val zoomSteps get() = view.camera.levels().indices.map { view.camera.factor(it) }
+        override val zoomLevel get() = view.camera.level
+        override fun setZoomLevel(level: Int) { runOnUiThread { zoomTo(level) } }
         override val expandZoomOnText get() = Prefs(this@PokeDaisyActivity).expandZoomOnText
         override fun setExpandZoomOnText(on: Boolean) {
             Prefs(this@PokeDaisyActivity).expandZoomOnText = on
@@ -1959,8 +1963,9 @@ class PokeDaisyActivity : Activity() {
             visibility = View.GONE
         }
         touchControls = TouchControlsView(this).apply {
-            onMask = ::onTouchKeys
+            onMask = ::onTouchKeysAnyThread
             onAction = ::onTouchAction
+            inputAllowed = ::touchWindowsAllowed
             onPlaced = { syncHudClear() }
             visibility = View.GONE
         }
@@ -3021,6 +3026,7 @@ class PokeDaisyActivity : Activity() {
     }
 
     override fun onDestroy() {
+        if (::touchControls.isInitialized) touchControls.releaseInputWindows()
         stopListeningForFold()
         samplerThread.shutdown()
         com.pokedaisy.app.companion.FeatureTips.available = { false }
@@ -4097,6 +4103,27 @@ class PokeDaisyActivity : Activity() {
         input.setTouchBits(gba, turbo)
     }
 
+    /** The touch controls' buttons from either thread: the input windows' own (TouchInputWindows) set the game's at once;
+     * anything a menu over the game takes (the QUICK MENU, a co-op prompt) goes through the UI thread as before. */
+    private fun onTouchKeysAnyThread(gba: Int, turbo: Int) {
+        if (android.os.Looper.myLooper() == mainLooper) return onTouchKeys(gba, turbo)
+        if (quickMenu.open || coopOverlay.takesKeys) { runOnUiThread { onTouchKeys(gba, turbo) }; return }
+        touchHeld = gba
+        input.setTouchBits(gba, turbo)
+    }
+
+    /** Nothing a touch could be meant for is open over the game (UI thread): the touch controls' input windows may take
+     * the fingers on the buttons ([TouchInputWindows]); else the drawn pad does, under whatever is open. */
+    private fun touchWindowsAllowed(): Boolean {
+        if (touchEditor != null || keyCapture.request != null || quickMenu.open || hudPanelOpen.value || battlePicking.value) return false
+        if (::sidePanel.isInitialized && sidePanel.overGame) return false
+        if (coopOverlay.takesKeys || coopOverlay.linkWait != null) return false
+        if (coopLockState.value?.ui?.value?.let { it.waiting != null || it.partnerProposed } == true) return false
+        if (expandOfferUp.value || bottomFocus.value || companionOverGame.value) return false
+        if (!tipsOnCompanion.value && com.pokedaisy.app.companion.FeatureTips.scheduler?.current != null) return false
+        return true
+    }
+
     /** When the touch controls' FF went down: a short tap turns FF on / off, a longer press is FF while held. */
     private var touchFfDownAt = 0L
 
@@ -4698,12 +4725,16 @@ class PokeDaisyActivity : Activity() {
     /** ZOOM (its hotkey, or a tip's SHOW ME): EXPAND's next zoom step. */
     private fun zoomStep() = runCatching {
         if (!view.wide) showHud(com.pokedaisy.app.companion.i18n.tr("Zoom needs ASPECT > EXPAND"))
-        else {
-            com.pokedaisy.app.companion.FeatureTips.used(TipId.ZOOM)
-            val step = view.camera.cycle()
-            if (romKey.isNotEmpty()) Prefs(this).setZoomLevelFor(romKey, step)
-            showHud(com.pokedaisy.app.companion.i18n.tr("Zoom {0}", "%.1fx".format(java.util.Locale.ROOT, view.camera.factor(step)).replace(".0x", "x")))
-        }
+        else zoomTo((view.camera.level + 1) % view.camera.levels().size.coerceAtLeast(1))
+    }
+
+    /** EXPAND's zoom step [step] (the hotkey's next one, or SETTINGS > ZOOM's pick), kept for this game. */
+    private fun zoomTo(step: Int) {
+        if (!view.wide) return
+        com.pokedaisy.app.companion.FeatureTips.used(TipId.ZOOM)
+        view.camera.level = step.coerceIn(0, (view.camera.levels().size - 1).coerceAtLeast(0))
+        if (romKey.isNotEmpty()) Prefs(this).setZoomLevelFor(romKey, view.camera.level)
+        showHud(com.pokedaisy.app.companion.i18n.tr("Zoom {0}", com.pokedaisy.app.companion.zoomLabel(view.camera.factor(view.camera.level))))
     }
 
     /** The QUICK MENU's key went down ([pressed]) or up: it opens or closes. */

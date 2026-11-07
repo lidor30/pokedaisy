@@ -126,6 +126,10 @@ class SidePanel(
         if (enabled) { open = book != null || (!isWindow && isDocked); apply() }
     }
 
+    /** Over the game where a touch could land on it: the window, or a panel slid in unlocked (a locked one sits beside
+     * the game, the touch controls moved clear of it). TouchInputWindows step aside meanwhile. */
+    val overGame: Boolean get() = enabled && open && (isWindow || !isDocked)
+
     /** The window is up: the game's buttons are the companion's ([menuKey]). */
     var windowOpen = false
         private set

@@ -40,7 +40,7 @@ val CUSTOM_LAYOUT = tk("CUSTOM")
 
 /**
  * SETTINGS > TOUCH CONTROLS' rows, shared by both screens: when they show, the layout (a preset or CUSTOM), EDIT
- * LAYOUT, where they sit upright, SIZE, OPACITY, the D-pad, FADE WHEN IDLE, VIBRATION, RESET LAYOUT, then the extra
+ * LAYOUT, where they sit upright, SIZE, OPACITY, the D-pad, FADE WHEN IDLE, VIBRATION and its STRENGTH, RESET LAYOUT, then the extra
  * buttons, each on or off. Every row steps to its next value on a tap, no pick-list (the user's call: each change shows
  * in the preview at once). [underGame] is the upright companion's place (null: no such place on this device), shared
  * with DISPLAY OPTIONS' COMPANION; [onEdit] opens EDIT LAYOUT.
@@ -60,6 +60,8 @@ fun touchControlsRows(
     skinUi: TouchSkinUi? = null,
     skinSystem: SkinSystem = SkinSystem.GBA,
     onImportSkin: (() -> Unit)? = null,
+    /** VIBRATION / STRENGTH just changed: one buzz at the new strength (0 = off), com.pokedaisy.app.TouchHaptics. */
+    feel: (Int) -> Unit = {},
 ): List<SettingRow> {
     fun onOff(b: Boolean) = if (b) tk("ON") else tk("OFF")
     fun <T> List<T>.after(t: T): T = this[(indexOf(t) + 1) % size]
@@ -107,9 +109,20 @@ fun touchControlsRows(
         SettingRow(tk("FADE WHEN IDLE"), onOff(style.fadeIdle), subtitle = "Fade out when not in use") {
             set(style.copy(fadeIdle = !style.fadeIdle))
         },
-        SettingRow(tk("VIBRATION"), listOf(tk("OFF"), tk("LIGHT"), tk("MEDIUM"), tk("STRONG"))[style.vibration.coerceIn(0, 3)], subtitle = "How strong each press feels") {
-            set(style.copy(vibration = (style.vibration + 1) % 4))
+        SettingRow(
+            tk("VIBRATION"), onOff(style.vibrate), subtitle = "A buzz on each press",
+            labelBadge = NewFeatures.badge(NewFeatures.TOUCH_VIBRATION),
+        ) {
+            val next = style.copy(vibrate = !style.vibrate)
+            set(next)
+            feel(next.vibration)
         },
+        // Only while VIBRATION is on; each step buzzes once, so the player feels what they picked.
+        SettingRow(tk("STRENGTH"), listOf(tk("LIGHT|vibration"), tk("MEDIUM"), tk("STRONG"))[style.vibrationStrength.coerceIn(1, 3) - 1], subtitle = "How strong each press feels") {
+            val next = style.copy(vibrationStrength = style.vibrationStrength.coerceIn(1, 3) % 3 + 1)
+            set(next)
+            feel(next.vibration)
+        }.takeIf { style.vibrate },
         SettingRow(tk("RESET LAYOUT"), null, subtitle = "Forget CUSTOM, back to the preset") {
             set(style.copy(useCustom = false, portrait = TouchLayout(), landscape = TouchLayout()))
         }.takeIf { style.hasCustom },

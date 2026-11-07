@@ -128,6 +128,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "BATTLE BUTTONS" to "battle buttons moves fight switch run flee side touch single screen one screen expand widescreen",
     "HUD" to "field hud heads up display overlay party minimap mini map balls bag wild encounters overworld legends single screen",
     "ASPECT" to "stretch ratio fullscreen full screen size scale 3:2 wide widescreen 16:9 expand zoom",
+    "ZOOM" to "expand wide zoom out see further map farther camera distance no right stick r3 touch",
     "AUTO ZOOM IN" to "expand wide zoom close-up closeup dialogue conversation sign menu text box pull in automatic",
     "DS CPU BOOST" to "overclock cpu clock speed boost faster lag slowdown slow stutter stuttering smooth smoother frame rate fps 30fps 60fps choppy laggy nintendo ds heartgold soulsilver platinum black white",
     "DS RESOLUTION" to "internal resolution upscale upscaling scale scaling hd high definition sharp sharper crisp 3d render renderer gpu opengl 2x 4x 6x 8x jaggies jagged blurry nintendo ds platinum heartgold soulsilver",

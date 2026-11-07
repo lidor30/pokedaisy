@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion.ui
 import com.pokedaisy.app.companion.SkinSystem
 
 import com.pokedaisy.app.companion.NewFeatures
+import com.pokedaisy.app.companion.zoomLabel
 
 import com.pokedaisy.app.companion.data.LookChar
 import com.pokedaisy.app.companion.ui.theme.DarkMode
@@ -243,6 +244,7 @@ fun CompanionSettingsScreen(
                         expand = settings.gameAspect == GameAspect.WIDE && settings.wideSupported, touchShown = settings.touchControlsShown,
                         skins = touchSkins, skinUi = touchSkinUi,
                         skinSystem = settings.touchStage?.let { if (it.ds) SkinSystem.DS else if (it.gameBoy) SkinSystem.GB else SkinSystem.GBA } ?: SkinSystem.GBA,
+                        feel = settings::feelVibration,
                     ) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.SPEED -> speedRows(settings, { tick++ }, { selector = it }) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.DISPLAY -> displayRows(settings, { tick++ }, { page = it }, { selector = it }) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
@@ -635,6 +637,15 @@ private fun homeRows(
                     badge = { l -> wideBadge(s, aspects.first { it.label == l }) },
                 ) { l -> s.setGameAspect(aspects.first { it.label == l }) },
             )
+        },
+        // EXPAND only: the zoom step from a list, for a device with no right stick (R3 is the ZOOM hotkey).
+        s.zoomSteps.takeIf { s.gameAspect == GameAspect.WIDE && it.size > 1 }?.let { steps ->
+            val labels = steps.map(::zoomLabel)
+            val now = labels.getOrElse(s.zoomLevel) { labels[0] }
+            SettingRow(
+                tk("ZOOM"), now, subtitle = "How much of the map you see",
+                labelBadge = NewFeatures.badge(NewFeatures.ZOOM_SETTING),
+            ) { select(Selector(tk("ZOOM"), labels, now) { l -> s.setZoomLevel(labels.indexOf(l)); changed() }) }
         },
         // EXPAND only: whether a conversation, sign, menu or picture over the field pulls the zoom in (battles always do).
         SettingRow(tk("AUTO ZOOM IN"), onOff(s.expandZoomOnText)) { s.setExpandZoomOnText(!s.expandZoomOnText); changed() }

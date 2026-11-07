@@ -1,9 +1,6 @@
 package com.pokedaisy.app
 
 import android.content.Context
-import android.os.VibrationEffect
-import android.os.Vibrator
-import android.view.HapticFeedbackConstants
 import android.widget.FrameLayout
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.runtime.getValue
@@ -24,7 +21,8 @@ import com.pokedaisy.app.companion.ui.TouchInput
  */
 class TouchControlsView(context: Context) : FrameLayout(context) {
 
-    /** The GBA buttons held and TURBO A / B held, on the UI thread, whenever either changes. */
+    /** The GBA buttons held and TURBO A / B held, whenever either changes: on the UI thread from the drawn pad, on the
+     * input windows' thread from theirs ([TouchInputWindows]). */
     var onMask: ((gba: Int, turbo: Int) -> Unit)? = null
 
     /** FF, QUICK MENU, SAVE / LOAD STATE pressed (true) and let go (false). */
@@ -73,17 +71,6 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
     val clearTop: Int get() = clear().first
     val clearBottom: Int get() = clear().second
 
-    /** VIBRATION: LIGHT is the phone's own tick, which follows its touch vibration setting (too faint on some phones);
-     *  MEDIUM and STRONG drive the motor themselves. */
-    private fun buzz(level: Int) {
-        when {
-            level <= 0 -> {}
-            level == 1 -> performHapticFeedback(HapticFeedbackConstants.VIRTUAL_KEY)
-            else -> context.getSystemService(Vibrator::class.java)
-                ?.vibrate(VibrationEffect.createOneShot(if (level == 2) 20L else 40L, VibrationEffect.DEFAULT_AMPLITUDE))
-        }
-    }
-
     private fun clear(): Pair<Int, Int> {
         val p = placed ?: return 0 to 0
         // The game's columns: the middle 3:2 (or 10:9) at the area's height, the whole width upright.
@@ -103,19 +90,67 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
         return top.toInt() to bottom.toInt().coerceAtLeast(0)
     }
 
+    /** The presses, from the drawn pad's fingers and the input windows' alike ([TouchInputWindows]). */
+    private val tracker = com.pokedaisy.app.companion.ui.TouchPressTracker(com.pokedaisy.app.companion.ui.TouchPressed())
+    private var hitModel: com.pokedaisy.app.companion.ui.TouchHitModel? = null
+    private var inputWindows: TouchInputWindows? = null
+    private val mainHandler = android.os.Handler(android.os.Looper.getMainLooper())
+
+    /** Nothing is open over the game (UI thread, asked before every draw): the input windows may take the fingers. */
+    var inputAllowed: () -> Boolean = { false }
+
+    /** Before each draw of the window this is in: the input windows follow the buttons, and step aside under an overlay. */
+    private val preDraw = android.view.ViewTreeObserver.OnPreDrawListener { syncInputWindows(); true }
+    private var observer: android.view.ViewTreeObserver? = null
+
+    override fun onAttachedToWindow() {
+        super.onAttachedToWindow()
+        observer = viewTreeObserver.also { it.addOnPreDrawListener(preDraw) }
+    }
+
+    override fun onDetachedFromWindow() {
+        observer?.takeIf { it.isAlive }?.removeOnPreDrawListener(preDraw)
+        observer = null
+        super.onDetachedFromWindow()
+        // Moved to another window (SWAP SCREENS) or gone: the windows follow at the next draw, none meanwhile.
+        inputWindows?.sync(null, false)
+    }
+
+    /** UI thread: the input windows as the buttons and the screen are now. */
+    fun syncInputWindows() {
+        val show = visibility == VISIBLE && isAttachedToWindow
+        if (!show && inputWindows == null) return
+        val windows = inputWindows ?: TouchInputWindows(this, tracker).also { inputWindows = it }
+        windows.sync(hitModel.takeIf { show }, show && inputAllowed())
+    }
+
+    /** UI thread: the activity is going - its windows with it. */
+    fun releaseInputWindows() {
+        inputWindows?.release()
+        inputWindows = null
+    }
+
+    /** [action] on the UI thread: at once there, else posted (an input window's finger). */
+    private fun onMain(action: () -> Unit) {
+        if (android.os.Looper.myLooper() == android.os.Looper.getMainLooper()) action() else mainHandler.post(action)
+    }
+
     init {
         addView(ComposeView(context).apply {
             setContent {
                 TouchControls(
                     style, portrait,
                     input = TouchInput(
+                        // Any thread: the activity's onMask sets the game's buttons from where it's called.
                         onKeys = { gba, turbo -> onMask?.invoke(gba, turbo) },
-                        onAction = { b, down -> onAction?.invoke(b, down) },
-                        onPress = { buzz(style.vibration) },
+                        onAction = { b, down -> onMain { onAction?.invoke(b, down) } },
+                        onPress = { TouchHaptics.buzz(context, style.vibration) },
                     ),
                     gameAspect = gameAspect, gameBoy = !shoulders, ffOn = ffOn, ds = dsButtons, skin = skin,
                     modifier = androidx.compose.ui.Modifier.fillMaxSize(),
                     onPlaced = { placed = it; onPlaced?.invoke() },
+                    tracker = tracker,
+                    onHitModel = { hitModel = it; syncInputWindows() },
                 )
             }
         }, LayoutParams(-1, -1))

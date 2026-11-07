@@ -343,6 +343,16 @@ interface CompanionSettings {
     val lookAround: Boolean get() = true
     fun setLookAround(on: Boolean) {}
 
+    /** EXPAND's ZOOM steps, as how much more of the map each shows (1x first, [com.pokedaisy.app.WideCamera.factor]),
+     * picked from SETTINGS > ZOOM - a device with no right stick has no R3 to step them; empty with no game view. */
+    val zoomSteps: List<Float> get() = emptyList()
+    /** The step picked on this game ([com.pokedaisy.app.Prefs.zoomLevelFor]). */
+    val zoomLevel: Int get() = 0
+    fun setZoomLevel(level: Int) {}
+
+    /** TOUCH CONTROLS > VIBRATION / STRENGTH changed: one buzz at [level] (com.pokedaisy.app.TouchHaptics). */
+    fun feelVibration(level: Int) {}
+
     /** EXPAND's AUTO ZOOM IN - see [com.pokedaisy.app.Prefs.expandZoomOnText]. */
     val expandZoomOnText: Boolean get() = true
     fun setExpandZoomOnText(on: Boolean) {}
@@ -611,3 +621,6 @@ enum class BattleStyle(val id: Int, val label: String) {
         fun of(id: Int): BattleStyle = entries.firstOrNull { it.id == id } ?: GEN4
     }
 }
+
+/** An EXPAND zoom step as the HUD and SETTINGS > ZOOM show it: how much more of the map it shows ("1x", "1.4x"). */
+fun zoomLabel(factor: Float): String = "%.1fx".format(java.util.Locale.ROOT, factor).replace(".0x", "x")

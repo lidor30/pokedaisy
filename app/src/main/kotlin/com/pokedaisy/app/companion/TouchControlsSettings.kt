@@ -200,14 +200,19 @@ data class TouchControlsStyle(
     val eightWay: Boolean = true,
     /** The controls fade to a trace after a few seconds without a touch, and come back on the next one. */
     val fadeIdle: Boolean = false,
-    /** Vibration on each press: 0 off, 1 the phone's own light tick, 2 / 3 a stronger buzz (VIBRATION_NAMES). */
-    val vibration: Int = 0,
+    /** VIBRATION: a buzz on each press (off to start with), at [vibrationStrength]. */
+    val vibrate: Boolean = false,
+    /** STRENGTH, kept while VIBRATION is off: 1 LIGHT, 2 MEDIUM, 3 STRONG. */
+    val vibrationStrength: Int = 2,
     /** LAYOUT is CUSTOM: EDIT LAYOUT's work below is used (else it's kept for later, and [preset] alone counts). */
     val useCustom: Boolean = false,
     /** EDIT LAYOUT's work for a phone upright and held sideways (the controls not in it follow [preset]). */
     val portrait: TouchLayout = TouchLayout(),
     val landscape: TouchLayout = TouchLayout(),
 ) {
+    /** The buzz a press gets: 0 none, else [vibrationStrength] (com.pokedaisy.app.TouchHaptics). */
+    val vibration: Int get() = if (vibrate) vibrationStrength.coerceIn(1, 3) else 0
+
     /** SKIN's pick for a game of [system] (DS: none yet). */
     fun skinFor(system: SkinSystem): String? = when (system) {
         SkinSystem.GBA -> skinGba

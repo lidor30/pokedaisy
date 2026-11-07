@@ -1974,8 +1974,13 @@ once); CompanionTweaks' motion tweaks read OFF (their rows keep the player's cho
 crossfading; ON COMPANION's shaders are off. AUTO = `DevicePerformance.looksWeak` (low-RAM flag, < 3 GB, no core over 2.3 GHz:
 the RK3568's A55s top out at 2.0) or a button handled 150 ms+ late 3 times in a minute (`noteKeyDelay`, logged as
 `pokedaisy/perf`; remembered in `Prefs.lightCompanionMeasured`). ui-preview's `stress` times the BATTLE tab's samples and menu
-flips with it off and on. The cure for every device would be game keys off the UI thread (a focused window on its own
-Looper) - not done: it changes how every key arrives (two-screen focus, BACK, the Thor's focus modes).
+flips with it off and on. **Touch controls' fingers are off the UI thread** (`TouchInputWindows`, 2026-11-08, a Galaxy Tab A: a
+companion tab switch held the UI thread 150-850 ms and the pad's presses waited behind it): see-through windows of their own
+over the buttons' clusters, added from the `pokedaisy-touch` thread, the drawn pad's hit test (`touchHits`) into one
+`TouchPressTracker` with the drawn pad's; they let every touch through (`NOT_TOUCHABLE`) while anything is open over the game
+(`PokeDaisyActivity.touchWindowsAllowed`: a HUD panel, the QUICK MENU, the companion window, a tip, the editor...), and the
+drawn pad takes the fingers as before - a new overlay over the game goes on that list. Physical keys still arrive on the UI
+thread (a focused window on its own Looper would change how every key arrives: two-screen focus, BACK, the Thor's focus modes).
 **Heat**: the STEADY background pass runs at most 10x real time (`BACKGROUND_FRAME_NANOS`; songs being heard go flat
 out), and gives up on a song that failed on 2 launches (`FfMusicCache.failures`) - a failing song kept the pass, and a
 second core, running on every launch.

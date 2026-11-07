@@ -127,6 +127,14 @@ android {
     }
 
     buildTypes {
+        // The release build's code (not debuggable, so ART compiles it and installs the libraries' baseline profiles)
+        // under the debug key, so it installs over a debug build: for timing a device (`assembleBenchmark`).
+        create("benchmark") {
+            initWith(getByName("debug"))
+            isDebuggable = false
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
         release {
             isMinifyEnabled = false
             if (keystoreProps != null) signingConfig = signingConfigs.getByName("release")

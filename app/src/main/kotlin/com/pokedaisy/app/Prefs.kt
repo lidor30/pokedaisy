@@ -224,6 +224,7 @@ class Prefs(context: Context) {
         get() {
             val d = com.pokedaisy.app.companion.TouchControlsStyle()
             fun <T : Enum<T>> pick(all: Array<T>, key: String, default: T) = p.getString(key, null)?.let { n -> all.firstOrNull { it.name == n } } ?: default
+            val oldVibration = p.getInt("touch_vibration_level", if (p.getBoolean("touch_vibration", false)) 1 else 0)
             return com.pokedaisy.app.companion.TouchControlsStyle(
                 show = com.pokedaisy.app.companion.TouchShow.entries.getOrElse(touchControlsMode) { d.show },
                 preset = pick(com.pokedaisy.app.companion.TouchPreset.values(), "touch_preset", d.preset),
@@ -239,7 +240,9 @@ class Prefs(context: Context) {
                 } ?: d.extras,
                 eightWay = p.getBoolean("touch_eight_way", d.eightWay),
                 fadeIdle = p.getBoolean("touch_fade_idle", d.fadeIdle),
-                vibration = p.getInt("touch_vibration_level", if (p.getBoolean("touch_vibration", false)) 1 else d.vibration),
+                // VIBRATION was one row of OFF / LIGHT / MEDIUM / STRONG (touch_vibration_level), and a switch before that.
+                vibrate = p.getBoolean("touch_vibrate", oldVibration > 0),
+                vibrationStrength = p.getInt("touch_vibration_strength", if (oldVibration > 0) oldVibration else d.vibrationStrength),
                 useCustom = p.getBoolean("touch_use_custom", d.useCustom),
                 portrait = com.pokedaisy.app.companion.TouchLayout.decode(p.getString("touch_layout_portrait", null)),
                 landscape = com.pokedaisy.app.companion.TouchLayout.decode(p.getString("touch_layout_landscape", null)),
@@ -259,7 +262,8 @@ class Prefs(context: Context) {
                 .putString("touch_extras", v.extras.joinToString(",") { it.name })
                 .putBoolean("touch_eight_way", v.eightWay)
                 .putBoolean("touch_fade_idle", v.fadeIdle)
-                .putInt("touch_vibration_level", v.vibration)
+                .putBoolean("touch_vibrate", v.vibrate)
+                .putInt("touch_vibration_strength", v.vibrationStrength)
                 .putBoolean("touch_use_custom", v.useCustom)
                 .putString("touch_layout_portrait", v.portrait.encode())
                 .putString("touch_layout_landscape", v.landscape.encode())

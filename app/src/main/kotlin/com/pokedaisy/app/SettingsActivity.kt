@@ -1102,6 +1102,7 @@ class SettingsActivity : ComponentActivity() {
             setUnderGame = { prefs.portraitCompanionUnderGame = it; revision++ },
             expand = prefs.gameAspect == com.pokedaisy.app.companion.GameAspect.WIDE, touchShown = touchWouldShow(style),
             skins = skins, skinUi = touchSkinUi, onImportSkin = { pickSkin.launch(arrayOf("*/*")) },
+            feel = { TouchHaptics.buzz(this, it) },
         )
         val shot by produceState<ImageBitmap?>(null) {
             value = withContext(Dispatchers.IO) {
