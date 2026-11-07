@@ -3,7 +3,9 @@
 #include "libretro.h"
 extern "C" {
 #include "../../hud.h"
+#include "pd_style.h"
 }
+#include <algorithm>
 #include <cassert>
 #include <cstdio>
 #include <cstring>
@@ -23,9 +25,9 @@ int main(int argc,char** argv){
   auto s=ds_read_companion(ram.data(),ram.size());assert(s.valid);
   std::vector<uint32_t> px(341*256);pd_canvas c;pd_canvas_init(&c,341,256,px.data());
   auto draw=[&](){ui.draw(&c,s,true,{},{});};draw();
-  // The actual shared bar contains only the four implemented tabs and gear.
+  // The actual shared bar contains only the five implemented tabs and gear.
   int tabs=0;for(int i=0;i<ui.frame.hitCount;i++)if(ui.frame.hits[i].id>=100 && ui.frame.hits[i].id<108)++tabs;
-  assert(tabs==5);
+  assert(tabs==6);
   s.party.resize(6,s.party[0]);draw();
   press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);assert(ui.selected==2);
   press(ui,RETRO_DEVICE_ID_JOYPAD_RIGHT);assert(ui.selected==3);
@@ -87,6 +89,41 @@ int main(int argc,char** argv){
   reloaded.init(path);
   assert(reloaded.hudMinimal && (reloaded.settings.hudHidden&(1<<PD_HUD_BALLS))
          && (reloaded.settings.hudHidden&(1<<PD_HUD_REPEL)));
+  ui.setting=DsCompanionUi::DarkMode;
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  assert(ui.darkMode);
+  reloaded.init(path);
+  assert(reloaded.darkMode);
+  ui.frame.tab=PD_TAB_DEX;
+  draw();
+  assert(!pd_dark_look && px[0]==0x1F202C);
+  assert(std::count(px.begin(),px.end(),0x1D2128)>100);
+  ui.frame.tab=PD_TAB_SETTINGS;
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  reloaded.init(path);
+  assert(!reloaded.darkMode);
+  ui.set_game(DsGame::Platinum);
+  ui.setting=DsCompanionUi::AutoRun;
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  reloaded.init(path);
+  assert(ui.autoRun && reloaded.autoRun);
+  ui.setting=DsCompanionUi::TabBar;
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  assert(ui.frame.overlay==PD_OVERLAY_TAB_BAR && pd_ui_tab_menu_count(&ui.frame)==5);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  assert(!(ui.settings.tabBar & (1<<PD_TAB_MAP)));
+  draw();ppm((std::string(argv[2])+"/shared-tab-bar.ppm").c_str(),px);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_B);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  assert(ui.frame.overlay==PD_OVERLAY_MORE && pd_ui_tab_menu_count(&ui.frame)==1);
+  draw();ppm((std::string(argv[2])+"/shared-more.ppm").c_str(),px);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  assert(ui.frame.tab==PD_TAB_MAP);
+  reloaded.init(path);
+  assert(!(reloaded.settings.tabBar & (1<<PD_TAB_MAP)) && (reloaded.frame.availableTabs & (1<<PD_TAB_MAP)));
   pd_snapshot field{};
   field.valid=true;
   const hud_state active{250,250,false,-1,-1};

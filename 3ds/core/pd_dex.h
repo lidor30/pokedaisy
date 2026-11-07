@@ -38,6 +38,17 @@ bool pd_dex_entry(const struct pd_game* g, int national, struct pd_dex_entry* ou
 // The front sprite, 64x64 0xRRGGBB with PD_MAP_CLEAR-style see-through
 // (0xFF000000); false if it can't be decoded.
 bool pd_dex_sprite(const struct pd_game* g, int species, uint32_t* out);
+struct pd_dex_evolution { int from, to, method, parameter; };
+// Stock Gen 3 direct family links. -1 means the cartridge table is unavailable.
+int pd_dex_evolutions(const struct pd_game*, int species, struct pd_dex_evolution*, int capacity);
+struct pd_level_move { int move, level; };
+// Uses the cartridge layout already mapped by the Guide. Returns 0 for unknown tables.
+int pd_level_moves(const struct pd_game*, int species, struct pd_level_move*, int capacity);
+// -1 when the Dex has no learnset mapping; prefers the expansion game's species data.
+int pd_dex_level_moves(const struct pd_game*, int species, struct pd_level_move*, int capacity);
+struct pd_machine_move { int move, number; bool hm; };
+// -1 when the ROM's table is unmapped or does not pass Android's probes.
+int pd_machine_moves(const struct pd_game*, int species, struct pd_machine_move*, int capacity);
 // "2'04\"" and "15.2 lbs." - the app's imperial conversions.
 void pd_dex_height(int dm, char* buf, int len);
 void pd_dex_weight(int hg, char* buf, int len);

@@ -1,10 +1,12 @@
 // GPL-3.0. Reuses the shared frame, row widgets, pick-list and Platinum views.
 #include "companion_ui.h"
+#include "companion_style.h"
 #include "layout.h"
 #include "party_view.h"
 #include "bag_view.h"
 #include "dex_view.h"
 #include "map_view.h"
+#include "guide_view.h"
 #include "browser.h"
 #include "libretro.h"
 #include <algorithm>
@@ -18,12 +20,13 @@ extern "C" {
 #include "pd_style.h"
 }
 namespace {
+constexpr int dsTabs=(1<<PD_TAB_PARTY)|(1<<PD_TAB_BAG)|(1<<PD_TAB_MAP)|(1<<PD_TAB_GUIDE)|(1<<PD_TAB_DEX);
 const char* const layoutNames[]={"ONE SCREEN","TOP","BOTTOM","SIDE BY SIDE","STACKED","LARGE + SMALL","PICTURE IN PICTURE"};
 const char* const buttonNames[]={"L2","R2","X","Y","NONE"};
 const unsigned buttonIds[]={RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,RETRO_DEVICE_ID_JOYPAD_X,RETRO_DEVICE_ID_JOYPAD_Y};
 const char* const speedNames[]={"SLOW","NORMAL","FAST"};
 const char* const resetNames[]={"CANCEL","RESET"};
-const char* const labels[]={"DS LAYOUT","AUTO BATTLES","PARTY HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP","MINIMAL HUD","POKÉ BALLS","REPEL STEPS","MINIMAP"};
+const char* const labels[]={"DS LAYOUT","AUTO BATTLES","PARTY HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP","MINIMAL HUD","POKÉ BALLS","REPEL STEPS","MINIMAP","DARK MODE","AUTO-RUN","TAB BAR","MORE TABS"};
 const char* const* choices(int row){
   return row==DsCompanionUi::Layout?layoutNames:row==DsCompanionUi::PenSpeed?speedNames:
     row==DsCompanionUi::Reset?resetNames:buttonNames;
@@ -33,8 +36,8 @@ int count(int row){return row==DsCompanionUi::Layout?DS_LAYOUTS:row==DsCompanion
 }
 void DsCompanionUi::defaults(){
   pd_settings_defaults(&settings);settings.hud=false;
-  settings.tabBar=(1<<PD_TAB_PARTY)|(1<<PD_TAB_BAG)|(1<<PD_TAB_MAP)|(1<<PD_TAB_DEX);
-  layout=0;autoBattles=1;companionButton=0;screenButton=1;penSpeed=1;battleStrip=true;hudMinimal=false;
+  settings.tabBar=dsTabs;
+  layout=0;autoBattles=1;companionButton=0;screenButton=1;penSpeed=1;battleStrip=true;hudMinimal=false;darkMode=false;autoRun=false;
 }
 void DsCompanionUi::init(const std::string& directory,int legacyLayout,bool legacyHud){
   *this=DsCompanionUi{};defaults();layout=std::clamp(legacyLayout,0,4);settings.hud=legacyHud;
@@ -65,13 +68,17 @@ void DsCompanionUi::init(const std::string& directory,int legacyLayout,bool lega
       if(key=="ds_screenbtn" && v<5)screenButton=v;
       if(key=="ds_hudminimal" && v<2)hudMinimal=v;
       if(key=="ds_battlestrip" && v<2)battleStrip=v;
+      if(key=="ds_darkmode" && v<2)darkMode=v;
+      if(key=="ds_autorun" && v<2)autoRun=v;
       if(key=="ds_penspeed" && v<3)penSpeed=v;
     }
   }
   if(companionButton==screenButton)screenButton=(companionButton+1)%4;
-  settings.tabBar=(1<<PD_TAB_PARTY)|(1<<PD_TAB_BAG)|(1<<PD_TAB_MAP)|(1<<PD_TAB_DEX);
+  settings.tabBar &= dsTabs;
+  if (!settings.tabBar) settings.tabBar=dsTabs;
   pd_ui_init(&frame,&settings);pd_ui_init(&options,&settings);
-  frame.availableTabs=settings.tabBar;
+  frame.availableTabs=dsTabs;
+  frame.guideController=true;
   frame.contentCtx=this;frame.content=[](void* ctx,pd_ui* u,pd_canvas* c){static_cast<DsCompanionUi*>(ctx)->draw_body(u,c);};
   (void)loaded;
 }
@@ -81,16 +88,17 @@ bool DsCompanionUi::save(){
   if(!pd_settings_save(&settings,temp.c_str())){error="Could not save settings";return false;}
   FILE* f=std::fopen(temp.c_str(),"a");bool ok=f;
   if(f){
-    ok=std::fprintf(f,"ds_layout=%d\nds_battles=%d\nds_companionbtn=%d\nds_screenbtn=%d\nds_penspeed=%d\nds_battlestrip=%d\nds_hudminimal=%d\n",layout,autoBattles,companionButton,screenButton,penSpeed,battleStrip,hudMinimal)>0;
+    ok=std::fprintf(f,"ds_layout=%d\nds_battles=%d\nds_companionbtn=%d\nds_screenbtn=%d\nds_penspeed=%d\nds_battlestrip=%d\nds_hudminimal=%d\nds_darkmode=%d\nds_autorun=%d\n",layout,autoBattles,companionButton,screenButton,penSpeed,battleStrip,hudMinimal,darkMode,autoRun)>0;
     if(std::fflush(f) || fsync(fileno(f)))ok=false;
     if(std::fclose(f))ok=false;
   }
   if(ok && std::rename(temp.c_str(),path.c_str())==0){error.clear();return true;}
   std::remove(temp.c_str());error="Could not save settings";return false;
 }
-void DsCompanionUi::set_game(DsGame value){
+void DsCompanionUi::set_game(DsGame value,bool soulSilverVersion){
   game=value;
-  if(game!=DsGame::Platinum)frame.availableTabs=(1<<PD_TAB_PARTY)|(1<<PD_TAB_BAG)|(1<<PD_TAB_MAP)|(1<<PD_TAB_DEX);
+  soulSilver=soulSilverVersion;
+  frame.availableTabs=dsTabs;
   if(game==DsGame::Unsupported){
     frame.availableTabs=1<<PD_TAB_PARTY;
     frame.tab=PD_TAB_SETTINGS;
@@ -100,6 +108,8 @@ unsigned DsCompanionUi::companion_id()const{return buttonIds[companionButton];}
 int DsCompanionUi::screen_id()const{return screenButton<4?int(buttonIds[screenButton]):-1;}
 int DsCompanionUi::pen_step()const{return penSpeed==0?1:penSpeed==1?3:6;}
 int DsCompanionUi::value(int row)const{
+  if(row==DarkMode)return darkMode;
+  if(row==AutoRun)return autoRun;
   if(row==HudMinimal)return hudMinimal;
   if(row==HudMap)return !(settings.hudHidden&(1<<PD_HUD_MAP));
   if(row==HudBalls||row==HudRepel)return !(settings.hudHidden&(1<<(row==HudBalls?PD_HUD_BALLS:PD_HUD_REPEL)));
@@ -116,6 +126,11 @@ void DsCompanionUi::apply(int row,int v){
   else if(row==QuickStyle)settings.quickGrid=v;
   else if(row==BattleStrip)battleStrip=v;
   else if(row==HudMinimal)hudMinimal=v;
+  else if(row==DarkMode)darkMode=v;
+  else if(row==AutoRun){
+    if(game==DsGame::Unsupported){error="Auto-Run unavailable for this ROM";return;}
+    autoRun=v;
+  }
   else if(row==HudMap)settings.hudHidden^=1<<PD_HUD_MAP;
   else if(row==HudBalls||row==HudRepel)settings.hudHidden^=1<<(row==HudBalls?PD_HUD_BALLS:PD_HUD_REPEL);
   else if(row==Reset && v){defaults();++displayRevision;frame.settings=&settings;options.settings=&settings;}
@@ -125,7 +140,8 @@ void DsCompanionUi::draw_settings(pd_canvas* c){
   const auto& s=*snapshot;
   const std::string money=s.valid?std::to_string(s.money):"-";
   const char* values[]={layoutNames[layout],autoBattles?"ON":"OFF",settings.hud?"ON":"OFF",
-    buttonNames[companionButton],buttonNames[screenButton],speedNames[penSpeed],settings.quickGrid?"GRID":"RING","...",battleStrip?"ON":"OFF",hudMinimal?"ON":"OFF",value(HudBalls)?"ON":"OFF",value(HudRepel)?"ON":"OFF",value(HudMap)?"ON":"OFF"};
+    buttonNames[companionButton],buttonNames[screenButton],speedNames[penSpeed],settings.quickGrid?"GRID":"RING","...",battleStrip?"ON":"OFF",hudMinimal?"ON":"OFF",value(HudBalls)?"ON":"OFF",value(HudRepel)?"ON":"OFF",value(HudMap)?"ON":"OFF",darkMode?"ON":"OFF",game==DsGame::Unsupported?"N/A":autoRun?"ON":"OFF",game==DsGame::Unsupported?"N/A":"EDIT",
+    (settings.tabBar & dsTabs)==dsTabs?"NONE HIDDEN":"OPEN"};
   pd_option_row rows[Rows+5]={{"TRAINER",s.valid?s.trainer.c_str():"-"},{"PLACE",s.valid?ds_place(s.map,s.game):"-"},{"MONEY",money.c_str()}};
   for(int i=0;i<Rows;i++)rows[3+i]={labels[i],values[i]};
   rows[Rows+3]={"STATES / SPEED","NXRedux MENU"};
@@ -135,31 +151,120 @@ void DsCompanionUi::draw_settings(pd_canvas* c){
   pd_game game{};pd_snapshot state{};
   pd_ui_options_view(&options,c,&game,&state);options.optionSource=nullptr;
 }
+const std::vector<int>* DsCompanionUi::dex_order() const{
+  if(dexArt.regional.empty() || !snapshot)return nullptr;
+  if(dexMode>=0)return dexMode?nullptr:&dexArt.regional;
+  if(snapshot->nationalDex)return nullptr;
+  if(ds_unova(game)){
+    // Android infers the National Dex from seeing a species outside Unova.
+    std::array<bool,650> member{};
+    for(int species:dexArt.regional)member[species]=true;
+    for(size_t i=1;i<snapshot->dexSeen.size() && i<member.size();++i)
+      if(snapshot->dexSeen[i] && !member[i])return nullptr;
+  }
+  return &dexArt.regional;
+}
+
 void DsCompanionUi::draw_body(pd_ui* u,pd_canvas* c){
   if(u->tab==PD_TAB_SETTINGS){draw_settings(c);return;}
   if(!supported || !snapshot->valid){
-    pd_title_box(c,4,4,c->w-8,24,0xffffff);
+    pd_title_box(c,4,4,c->w-8,24,PD_TITLE_FILL);
     pd_text(c,12,9,supported?"WAITING FOR SAVE DATA":"COMPANION UNAVAILABLE FOR THIS ROM",PD_TITLE_TEXT,PD_TITLE_SHADOW);return;
   }
-  if(u->tab==PD_TAB_PARTY)ds_party_view(c,*snapshot,*icons,selected,summary,page);
+  if(u->tab==PD_TAB_PARTY)
+    ds_party_view(c,*snapshot,*icons,selected,summary,page,&dexArt,learnRow,&learnLast);
   if(u->tab==PD_TAB_BAG)ds_bag_view(c,*snapshot,pocket,scroll,details);
-  if(u->tab==PD_TAB_DEX)ds_dex_view(c,*snapshot,filter,scroll);
-  if(u->tab==PD_TAB_MAP)ds_map_view(c,*snapshot,*art,mapX,mapY);
+  if(u->tab==PD_TAB_DEX){
+    const auto* regional=dex_order();
+    if(dexEntry){
+      const auto entries=ds_dex_rows(*snapshot,filter,regional);
+      if(dexCachedSpecies!=dexEntry){
+        dexPage=ds_dex_page(dexArt,game,dexEntry);
+        dexEvolutions=ds_dex_evolutions(dexArt,dexEntry);
+        dexSpots.clear();
+        dexSpotsReady=false;
+        dexCachedSpecies=dexEntry;
+      }
+      if(dexSection==DsDexSection::Area && !dexSpotsReady){
+        dexSpots=ds_guide_spots(game,dexEntry,soulSilver);
+        dexSpotsReady=true;
+      }
+      const auto* details=size_t(dexEntry)<dexArt.details.size()?&dexArt.details[dexEntry]:nullptr;
+      const int number=dexRow<int(entries.size())?entries[dexRow].number:dexEntry;
+      ds_dex_entry(c,*snapshot,dexEntry,number,*icons,details,dexPage,dexEvolutions,dexSpots,
+                   dexRow,int(entries.size()),dexSection,dexDetailRow);
+    }else{
+      const char* label=dexArt.regional.empty()?nullptr:!regional?"NATIONAL DEX":
+        game==DsGame::Platinum?"SINNOH DEX":game==DsGame::Johto?"JOHTO DEX":"UNOVA DEX";
+      ds_dex_view(c,*snapshot,filter,dexRow,dexFilterFocus,icons,regional,label);
+    }
+  }
+  if(u->tab==PD_TAB_GUIDE){
+    if(guideMap!=snapshot->map){
+      guideMap=snapshot->map;
+      guideLoadedPage=-1;
+      if(u->guidePage==int(GuidePage::Here))pd_ui_guide_reset(u);
+    }
+    if(guideLoadedPage!=u->guidePage){
+      guideLoadedPage=u->guidePage;
+      guideRows=ds_guide_rows(*snapshot,static_cast<GuidePage>(u->guidePage),soulSilver);
+    }
+    ds_guide_view(u,c,*snapshot,guideRows,soulSilver);
+  }
+  if(u->tab==PD_TAB_MAP){
+    pd_canvas mapCanvas=*c;
+    mapCanvas.h-=26;
+    mapCanvas.cy1=std::min(mapCanvas.cy1,mapCanvas.h);
+    ds_map_view(&mapCanvas,*snapshot,*art,mapX,mapY);
+    ds_map_actions(c,mapAction);
+  }
 }
 void DsCompanionUi::draw(pd_canvas* c,const DsCompanion& s,bool match,const DsMapArt& map,const std::vector<std::vector<uint32_t>>& monIcons){
   snapshot=&s;art=&map;icons=&monIcons;supported=match;
+  settings.darkMode=darkMode;
+  pd_look_apply(nullptr,&settings);
   pd_game game{};pd_snapshot state{};pd_host_info host{};host.frontendOwnsPlayback=true;
+  frame.keepBackdrop=true;
+  ds_companion_backdrop(c,this->game,frame.tab,pocket);
+  pd_ui_tab_menu_focus(&frame,choice);
   pd_ui_draw(&frame,c,&game,&state,&host);
+  pd_ui_tab_menu_focus(&frame,-1);
+  if(frame.tab==PD_TAB_MAP && placeRow>=0){
+    const int count=std::min(8,int(mapPlaces.size()));
+    const int first=std::clamp(placeRow-count/2,0,int(mapPlaces.size())-count);
+    const char* names[8];
+    for(int i=0;i<count;++i)names[i]=mapPlaces[first+i].name;
+    pd_ui_choices_view(c,"PLACES",names,count,placeRow-first);
+  }
   if(picker>=0)pd_ui_choices_view(c,labels[picker],choices(picker),count(picker),choice);
   if(!error.empty()){
     pd_fill(c,4,c->h-41,c->w-8,16,0x602020);
     pd_text_fit(c,8,c->h-43,c->w-16,error.c_str(),0xffffff,PD_NO_SHADOW);
   }
+  pd_look_apply(nullptr,nullptr);
 }
 bool DsCompanionUi::control(unsigned pressed){
   auto hit=[&](unsigned id){return bool(pressed&(1u<<id));};
   int dy=hit(RETRO_DEVICE_ID_JOYPAD_DOWN)-hit(RETRO_DEVICE_ID_JOYPAD_UP);
   int dx=hit(RETRO_DEVICE_ID_JOYPAD_RIGHT)-hit(RETRO_DEVICE_ID_JOYPAD_LEFT);
+  if(frame.overlay==PD_OVERLAY_TAB_BAR || frame.overlay==PD_OVERLAY_MORE){
+    choice=std::clamp(choice+dy,0,std::max(0,pd_ui_tab_menu_count(&frame)-1));
+    if(hit(RETRO_DEVICE_ID_JOYPAD_B))pd_ui_back(&frame);
+    else if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
+      pd_ui_tab_menu_choose(&frame,choice);
+      if(pd_ui_take_action(&frame)==PD_ACTION_SETTINGS_CHANGED)save();
+      if(frame.overlay==PD_OVERLAY_NONE){
+        summary=details=false;dexEntry=0;placeRow=mapAction=-1;
+      }
+    }
+    return false;
+  }
+  if(frame.overlay==PD_OVERLAY_GUIDE_NOTICE){
+    if(hit(RETRO_DEVICE_ID_JOYPAD_B))pd_ui_back(&frame);
+    else pd_ui_guide_control(&frame,dx,dy,hit(RETRO_DEVICE_ID_JOYPAD_A));
+    if(pd_ui_take_action(&frame)==PD_ACTION_SETTINGS_CHANGED)save();
+    return false;
+  }
   if(picker>=0){
     choice=std::clamp(choice+dy,0,count(picker)-1);
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){picker=-1;return false;}
@@ -167,21 +272,41 @@ bool DsCompanionUi::control(unsigned pressed){
   }
   if(hit(RETRO_DEVICE_ID_JOYPAD_L) || hit(RETRO_DEVICE_ID_JOYPAD_R)){
     pd_ui_next_tab(&frame,hit(RETRO_DEVICE_ID_JOYPAD_R)?1:-1);
-    scroll=0;summary=details=false;error.clear();return false;
+    pd_ui_guide_reset(&frame);
+    scroll=dexEntry=0;placeRow=mapAction=dexFilterFocus=-1;summary=details=false;error.clear();return false;
   }
   if(frame.tab==PD_TAB_SETTINGS){
     setting=std::clamp(setting+dy,0,int(Rows)-1);
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(game==DsGame::Unsupported)return true;frame.tab=PD_TAB_PARTY;return false;}
     if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
-      error.clear();if(setting==Battles || setting==Hud || setting==QuickStyle || setting>=BattleStrip)apply(setting,!value(setting));
+      error.clear();
+      if(setting==TabBar || setting==MoreTabs){
+        if(game!=DsGame::Unsupported){
+          frame.overlay=setting==TabBar?PD_OVERLAY_TAB_BAR:PD_OVERLAY_MORE;
+          choice=0;
+          if(!pd_ui_tab_menu_count(&frame))frame.overlay=PD_OVERLAY_NONE;
+        }
+      }else if(setting==Battles || setting==Hud || setting==QuickStyle || setting>=BattleStrip)apply(setting,!value(setting));
       else{picker=setting;choice=value(setting);}
     }return false;
   }
   if(frame.tab==PD_TAB_PARTY){
     int n=snapshot?int(snapshot->party.size()):0;
+    const int oldSelected=selected;
     selected=std::clamp(selected+dy*(summary?1:2)+(summary?0:dx),0,std::max(0,n-1));
-    if(summary && dx)page=1-page;
-    if(hit(RETRO_DEVICE_ID_JOYPAD_A))summary=!summary;
+    const bool confirm=hit(RETRO_DEVICE_ID_JOYPAD_A);
+    if(summary){
+      if(oldSelected!=selected)learnRow=0;
+      if(n>0 && !snapshot->party[selected].egg){
+        if(hit(RETRO_DEVICE_ID_JOYPAD_SELECT)){page=page==2?0:2;learnRow=0;}
+        else if(confirm)page=page==0?1:0;
+        else if(dx && page!=2)page=1-page;
+        else if(dx)learnRow=std::clamp(learnRow+dx,0,learnLast);
+      }
+    }else if(confirm && n>0){
+      summary=true;
+      page=0;
+    }
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(summary)summary=false;else return true;}
   }else if(frame.tab==PD_TAB_BAG){
     if(dx){const int tabs=ds_bag_tabs(game);pocket=(pocket+dx+tabs)%tabs;scroll=0;}
@@ -189,15 +314,93 @@ bool DsCompanionUi::control(unsigned pressed){
     if(hit(RETRO_DEVICE_ID_JOYPAD_A))details=!details;
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(details)details=false;else return true;}
   }else if(frame.tab==PD_TAB_DEX){
-    if(hit(RETRO_DEVICE_ID_JOYPAD_SELECT)){filter=(filter+1)%3;scroll=0;}
-    scroll=std::clamp(scroll+dy+dx*8,0,std::max(0,snapshot?ds_dex_count(*snapshot,filter)-1:0));
+    const auto* regional=dex_order();
+    if(dexEntry){
+      if(hit(RETRO_DEVICE_ID_JOYPAD_B)){dexEntry=0;return false;}
+      if(hit(RETRO_DEVICE_ID_JOYPAD_SELECT)){
+        dexSection=static_cast<DsDexSection>((int(dexSection)+1)%int(DsDexSection::Count));dexDetailRow=0;
+      }
+      const int machineRow=pd_ui_dex_machine_row(int(dexPage.moves.size()));
+      int rows=0;
+      if(dexSection==DsDexSection::Evolve)rows=int(dexEvolutions.size());
+      if(dexSection==DsDexSection::Area)rows=int(dexSpots.size());
+      if(dexSection==DsDexSection::Moves){
+        rows=machineRow+1+int(dexPage.machines.size());
+        if(hit(RETRO_DEVICE_ID_JOYPAD_A))dexDetailRow=dexDetailRow<machineRow?machineRow:0;
+      }
+      dexDetailRow=std::clamp(dexDetailRow+dy,0,std::max(0,rows-1));
+      if(dx && snapshot){
+        const auto entries=ds_dex_rows(*snapshot,filter,regional);
+        for(int row=dexRow+dx;row>=0 && row<int(entries.size());row+=dx){
+          const int species=entries[row].species;
+          if(snapshot->dexSeen[species]){
+            dexEntry=species;dexRow=row;dexDetailRow=0;
+            break;
+          }
+        }
+      }
+      return false;
+    }
+    if(hit(RETRO_DEVICE_ID_JOYPAD_SELECT)){filter=(filter+1)%4;dexRow=0;dexFilterFocus=-1;}
+    if(dexFilterFocus>=0){
+      const int last=dexArt.regional.empty()?3:4;
+      dexFilterFocus=std::clamp(dexFilterFocus+dy,0,last);
+      if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
+        if(dexFilterFocus==4)dexMode=regional?1:0;
+        else filter=dexFilterFocus;
+        dexRow=0;dexFilterFocus=-1;
+      }else if(dx>0 || hit(RETRO_DEVICE_ID_JOYPAD_B))dexFilterFocus=-1;
+      return false;
+    }
+    if(dx<0){dexFilterFocus=filter;return false;}
+    if(snapshot && (dy || hit(RETRO_DEVICE_ID_JOYPAD_A))){
+      const auto entries=ds_dex_rows(*snapshot,filter,regional);
+      dexRow=std::clamp(dexRow+dy,0,std::max(0,int(entries.size())-1));
+      if(hit(RETRO_DEVICE_ID_JOYPAD_A) && !entries.empty()){
+        const int species=entries[dexRow].species;
+        if(snapshot->dexSeen[species]){dexEntry=species;dexDetailRow=0;}
+      }
+    }
     if(hit(RETRO_DEVICE_ID_JOYPAD_B))return true;
-  }else{
-    const int maxX=game==DsGame::Johto?46:ds_unova(game)?31:29;
-    const int maxY=game==DsGame::Johto?19:ds_unova(game)?20:29;
-    mapX=std::clamp(mapX+dx,0,maxX);mapY=std::clamp(mapY+dy,0,maxY);
-    if(hit(RETRO_DEVICE_ID_JOYPAD_A) && snapshot){mapX=snapshot->mapX;mapY=snapshot->mapY;}
-    if(hit(RETRO_DEVICE_ID_JOYPAD_B))return true;
+  }else if(frame.tab==PD_TAB_GUIDE){
+    if(hit(RETRO_DEVICE_ID_JOYPAD_B))return !pd_ui_back(&frame);
+    pd_ui_guide_control(&frame,dx,dy,hit(RETRO_DEVICE_ID_JOYPAD_A));
+  }else if(frame.tab==PD_TAB_MAP){
+    auto openPlaces=[&](){
+      if(!snapshot)return;
+      mapPlaces=ds_map_places(*snapshot);
+      if(!mapPlaces.empty())placeRow=0;
+    };
+    auto recenter=[&](){
+      if(snapshot){mapX=snapshot->mapX;mapY=snapshot->mapY;}
+    };
+    if(placeRow>=0){
+      placeRow=std::clamp(placeRow+dy+dx*8,0,int(mapPlaces.size())-1);
+      if(hit(RETRO_DEVICE_ID_JOYPAD_B))placeRow=-1;
+      else if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
+        const auto pos=mapPlaces[placeRow].position;
+        mapX=pos.x;mapY=pos.y;placeRow=mapAction=-1;
+      }
+      return false;
+    }
+    if(mapAction>=0){
+      mapAction=std::clamp(mapAction+dx,0,1);
+      if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
+        if(mapAction==0)openPlaces();
+        else{recenter();mapAction=-1;}
+      }else if(hit(RETRO_DEVICE_ID_JOYPAD_B)){
+        mapAction=-1;
+        if(!snapshot || (mapX==snapshot->mapX && mapY==snapshot->mapY))return true;
+        recenter();
+      }else if(dy<0)mapAction=-1;
+      return false;
+    }
+    const auto bounds=ds_map_cursor_max(game);
+    mapX=std::clamp(mapX+dx,0,bounds.x);
+    mapY=std::clamp(mapY+dy,0,bounds.y);
+    if(hit(RETRO_DEVICE_ID_JOYPAD_A))recenter();
+    if(hit(RETRO_DEVICE_ID_JOYPAD_SELECT))openPlaces();
+    if(hit(RETRO_DEVICE_ID_JOYPAD_B))mapAction=0;
   }
   return false;
 }

@@ -12,6 +12,9 @@
 
 #define PD_ICON 32
 
+// Borrowed icon pixels, 0xFF000000 transparent. Use before the next icon lookup.
+const uint32_t* pd_mon_icon_pixels(const struct pd_game* g, int species, bool shiny);
+
 // Draws species' icon with its top-left at (x, y); faded = a fainted Pokémon
 // (35% over what's behind it, like the app's FOE TEAM). False, drawing
 // nothing, when the game's icon tables aren't known or don't decode.

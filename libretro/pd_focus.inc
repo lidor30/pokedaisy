@@ -8,11 +8,11 @@
 static int focusId = -1;
 static struct pd_hit focusAt;
 struct screen {
-  int tab, overlay, summarySlot, dexOpen;
+  int tab, overlay, summarySlot, dexOpen, dexPage;
 };
-static struct screen lastScreen = {-1, -1, -1, -1};
+static struct screen lastScreen = {-1, -1, -1, -1, -1};
 static struct screen screen_of(const struct pd_ui *u) {
-  return (struct screen){u->tab, u->overlay, u->summarySlot, u->dexOpen};
+  return (struct screen){u->tab, u->overlay, u->summarySlot, u->dexOpen, u->dexOpen ? u->dexPage : -1};
 }
 static void focus_new_screen(void) { lastScreen.tab = -1; }
 // What the cursor can land on: not the tab bar, nor a scrim or a list's drag area.
@@ -282,6 +282,11 @@ static void focus_draw(struct pd_ui *u, int focus) {
     pd_fill(&canvas, h->x - 1, h->y, 1, h->h, 0x202828);
     pd_fill(&canvas, h->x + h->w, h->y, 1, h->h, 0x202828);
   }
+  if (u->handheldDex && u->tab == PD_TAB_DEX &&
+      ((h->id >= HIT_DEX_ROW && h->id <= HIT_DEX_ROW + PD_DEX_BYTES * 8) ||
+       (h->id >= HIT_DEX_READ_ONLY && h->id <= HIT_DEX_READ_ONLY + PD_DEX_BYTES * 8) ||
+       (u->dexOpen && h->id == HIT_DEX_PAGE + u->dexPage)))
+    return; // these Dex indicators are drawn by the shared view
   if (h->id >= HIT_SLOT && h->id < HIT_SLOT + PD_PARTY_SIZE)
     return; // a party slot shows its own selected look (pd_ui.focusId)
   pd_fill(&canvas, h->x, h->y, h->w, 2, 0xff7331);

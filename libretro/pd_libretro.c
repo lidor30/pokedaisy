@@ -810,6 +810,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   if (!ovPixels)
     ovPixels = calloc((size_t)CWMAX * CHMAX, sizeof *ovPixels);
   pd_ui_init(&ui, &settings);
+  ui.handheldDex = ui.handheldParty = ui.guideController = true;
   memset(&host, 0, sizeof host);
   host.hideScreenMode = true;
   host.hasQuickMenu = true;
@@ -886,6 +887,8 @@ static void hud_press(int id) {
   if (id >= HUD_SLOT && id < HUD_SLOT + PD_PARTY_SIZE) {
     ui.tab = PD_TAB_PARTY;
     ui.summarySlot = id - HUD_SLOT;
+    ui.summaryLearnRow = 0;
+    ui.summaryLearn = ui.summaryInfo = ui.summaryStats = false;
   } else if (id == HUD_MAP || id == HUD_MAP_BUTTON) {
     ui.tab = PD_TAB_MAP;
     ui.mapPage = -1;
@@ -894,7 +897,7 @@ static void hud_press(int id) {
   } else if (id == HUD_WILD) {
     ui.tab = PD_TAB_GUIDE;
     ui.guidePage = 0;
-    ui.guideOpen = -1;
+    pd_ui_guide_reset(&ui);
   } else if (id == HUD_PC) {
     job = JOB_PC; // the game's own PC, as the quick menu's
     jobFrames = 0;
@@ -1151,11 +1154,52 @@ RETRO_API void retro_run(void) {
       companion = false;
     if (down(L) || down(R))
       pd_ui_next_tab(&ui, down(R) ? 1 : -1);
-    for (int k = RIGHT; k <= DOWN; k++)
-      if (down(k))
-        focus_move(&ui, k);
-    if (down(A))
-      focus_activate(&ui);
+    if (ui.tab == PD_TAB_DEX && !ui.dexOpen && ui.overlay == PD_OVERLAY_NONE && down(SELECT)) {
+      ui_dex_next_filter(&ui);
+      focus_new_screen();
+    }
+    if (ui.tab == PD_TAB_DEX && ui.dexOpen && ui.overlay == PD_OVERLAY_NONE) {
+      if (down(SELECT)) ui_dex_act(&ui, HIT_DEX_CYCLE);
+      if (down(LEFT) || down(RIGHT)) ui_dex_act(&ui, down(RIGHT) ? HIT_DEX_NEXT : HIT_DEX_PREV);
+      if (ui.dexPage == PD_DEX_MOVES) {
+        const int machine = pd_ui_dex_machine_row(ui.dexLevelCount);
+        if (down(A)) ui.dexDetailRow = ui.dexDetailRow < machine ? machine : 0;
+        ui.dexDetailRow += down(DOWN) - down(UP);
+        if (ui.dexDetailRow < 0) ui.dexDetailRow = 0;
+        if (ui.dexDetailRow > machine + ui.dexMachineCount) ui.dexDetailRow = machine + ui.dexMachineCount;
+      } else if (ui.dexPage == PD_DEX_EVOLVE || ui.dexPage == PD_DEX_AREA) {
+        ui.dexDetailRow += down(DOWN) - down(UP);
+        const int count = ui.dexPage == PD_DEX_AREA ? ui.dexSpotCount : ui.dexLinkCount;
+        const int last = count > 0 ? count - 1 : 0;
+        if (ui.dexDetailRow < 0) ui.dexDetailRow = 0;
+        if (ui.dexDetailRow > last) ui.dexDetailRow = last;
+      }
+    }
+    const bool partySummary = ui.tab == PD_TAB_PARTY && ui.summarySlot >= 0 && ui.overlay == PD_OVERLAY_NONE;
+    if (partySummary && down(SELECT) && ui_summary_learn(&ui)) focus_new_screen();
+    if (partySummary && ui.summaryLearn) {
+      ui.summaryLearnRow += down(RIGHT) - down(LEFT);
+      if (ui.summaryLearnRow < 0) ui.summaryLearnRow = 0;
+      if (ui.summaryLearnRow > ui.summaryLearnLast) ui.summaryLearnRow = ui.summaryLearnLast;
+    }
+    const bool guideInput = ui.tab == PD_TAB_GUIDE && (ui.overlay == PD_OVERLAY_NONE || ui.overlay == PD_OVERLAY_GUIDE_NOTICE);
+    if (guideInput && !down(B))
+      pd_ui_guide_control(&ui, down(RIGHT) - down(LEFT), down(DOWN) - down(UP), down(A));
+    for (int k = RIGHT; !guideInput && k <= DOWN; k++) {
+      if (!down(k)) continue;
+      if (ui.tab == PD_TAB_DEX && ui.dexOpen && (ui.dexPage != PD_DEX_INFO || k == LEFT || k == RIGHT)) continue;
+      if (partySummary && (k == UP || k == DOWN)) {
+        const int next = ui.summarySlot + (k == DOWN ? 1 : -1);
+        if (next >= 0 && next < snap.partyCount) {
+          ui.summarySlot = next;
+          ui.summaryLearnRow = 0;
+        }
+      } else if (!partySummary || !ui.summaryLearn) focus_move(&ui, k);
+    }
+    if (!guideInput && down(A) && !(ui.tab == PD_TAB_DEX && ui.dexOpen && ui.dexPage == PD_DEX_MOVES)) {
+      if (partySummary && ui.summaryLearn) ui_summary_learn(&ui);
+      else focus_activate(&ui);
+    }
     switch (pd_ui_take_action(&ui)) {
     case PD_ACTION_SETTINGS_CHANGED:
       pd_settings_save(&settings, settingsPath);
@@ -1356,7 +1400,8 @@ RETRO_API void retro_run(void) {
     memset(cvs, 0, (size_t)CW * CH * sizeof *cvs);
     pd_ui_draw(&ui, &canvas, &game, &snap, &host);
     map_cursor_sync(&ui, &game, &snap);
-    focus_draw(&ui, focus_after_draw(&ui, focus_resolve(&ui)));
+    if (ui.tab != PD_TAB_GUIDE || (ui.overlay != PD_OVERLAY_NONE && ui.overlay != PD_OVERLAY_GUIDE_NOTICE))
+      focus_draw(&ui, focus_after_draw(&ui, focus_resolve(&ui)));
   } else if (quickOpen && ovPixels) {
     draw_game();
     dim(0x55);

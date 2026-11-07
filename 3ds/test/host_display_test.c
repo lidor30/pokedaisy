@@ -1,4 +1,6 @@
 /* Optional host scaling capability; default 3DS UI stays unchanged. */
+#include "../core/pd_dex.h"
+#include "../core/pd_gb.h"
 #include "../core/pd_settings.h"
 #include "../core/pd_ui_internal.h"
 #include <assert.h>
@@ -16,7 +18,88 @@ static void tap(struct pd_ui* ui,int id) {
     }
     assert(!"no such hit");
 }
+static void test_dex_machine_tables(void) {
+    static const uint8_t bulbasaur[] = {0x20, 0x07, 0x35, 0x84, 0x08, 0x1E, 0xE4, 0};
+    uint8_t rom[256] = {0x08, 0x01, 0x51, 0x01, 0x60, 0x01, 0x5b, 0x01};
+    rom[100] = 15; // HM01 CUT
+    rom[10] = 92;  // TM06 TOXIC
+    memcpy(rom + 136, bulbasaur, sizeof bulbasaur);
+    struct pd_config cfg = {.dexTmhmMoves=0x08000000, .dexTmhm=0x08000080};
+    struct pd_game game = {.rom=rom, .romSize=sizeof rom, .cfg=&cfg};
+    struct pd_machine_move machines[58];
+    assert(pd_machine_moves(&game, 1, machines, 58) == 19);
+    assert(machines[0].number == 6 && !machines[0].hm && machines[0].move == 92);
+    assert(machines[15].number == 1 && machines[15].hm && machines[15].move == 15);
+    rom[100] = 0;
+    assert(pd_machine_moves(&game, 1, machines, 58) == -1);
+
+    const struct pd_dex_x layout = {.stride=8, .levelUpOff=0, .teachableOff=4};
+    cfg.expansion = &layout;
+    cfg.speciesInfo = 0x08000090;
+    const uint8_t ptrs[] = {0xA0, 0, 0, 8, 0xB0, 0, 0, 8};
+    const uint8_t level[] = {33, 0, 1, 0, 0xff, 0xff, 0, 0};
+    const uint8_t teach[] = {15, 0, 15, 0, 92, 0, 0xff, 0xff};
+    memcpy(rom + 0x98, ptrs, sizeof ptrs);
+    memcpy(rom + 0xA0, level, sizeof level);
+    memcpy(rom + 0xB0, teach, sizeof teach);
+    struct pd_level_move learn[2];
+    assert(pd_dex_level_moves(&game, 1, learn, 2) == 1);
+    assert(learn[0].move == 33 && learn[0].level == 1);
+    assert(pd_machine_moves(&game, 1, machines, 58) == 2);
+    assert(machines[0].move == 15 && machines[0].number == 0 && machines[1].move == 92);
+}
+
+static void test_dex_evolutions(void) {
+    uint8_t rom[160] = {[40]=4, [42]=16, [44]=2, [80]=4, [82]=32, [84]=3};
+    struct pd_config cfg = {.dexEvolutions=0x08000000, .speciesCount=4};
+    struct pd_game game = {.rom=rom, .romSize=sizeof rom, .cfg=&cfg, .guide=PD_GUIDE_EMERALD};
+    struct pd_dex_evolution links[4];
+    assert(pd_dex_evolutions(&game, 2, links, 4) == 2);
+    assert(links[0].from == 1 && links[0].to == 2 && links[0].parameter == 16);
+    assert(links[1].from == 2 && links[1].to == 3 && links[1].parameter == 32);
+    game.guide = PD_GUIDE_EMERALD_LEGACY;
+    assert(pd_dex_evolutions(&game, 2, links, 4) == -1);
+    game.guide = PD_GUIDE_EMERALD;
+    rom[42] = 15;
+    assert(pd_dex_evolutions(&game, 2, links, 4) == -1);
+}
+
+static void test_crystal_guide(void) {
+    struct pd_settings settings = {0};
+    struct pd_ui ui;
+    pd_ui_init(&ui, &settings);
+    ui.tab = PD_TAB_GUIDE;
+    ui.guideController = true;
+    const struct pd_config cfg = {.gb=&pd_gb_crystal};
+    const struct pd_game game = {.cfg=&cfg, .kind=PD_GAME_GB, .guide=PD_GUIDE_GB_CRYSTAL};
+    const struct pd_snapshot snap = {.valid=true, .flagsOk=true};
+    struct pd_canvas canvas;
+    pd_canvas_init(&canvas, 341, 256, pixels);
+    pd_ui_draw(&ui, &canvas, &game, &snap, &noHost);
+    assert(ui.overlay == PD_OVERLAY_GUIDE_NOTICE);
+    pd_ui_guide_control(&ui, 1, 0, true);
+    assert(ui.overlay == PD_OVERLAY_NONE && settings.guideNotice);
+    pd_ui_guide_control(&ui, 0, 1, false);
+    assert(ui.guidePage == 0 && ui.guidePageFocus == 1);
+    pd_ui_guide_control(&ui, 0, 0, true);
+    assert(ui.guidePage == 1 && ui.guideRowFocus == -1);
+    pd_ui_draw(&ui, &canvas, &game, &snap, &noHost);
+    assert(has(&ui, HIT_GUIDE_ROW));
+    pd_ui_guide_control(&ui, 1, 0, false);
+    pd_ui_guide_control(&ui, 0, 0, true);
+    assert(ui.guideOpen == 0 && ui.guideLevel == 1);
+    assert(pd_ui_back(&ui) && ui.guideOpen == -1);
+    // The default touch host still uses the same guide page and row hit targets.
+    ui.guideController = false;
+    pd_ui_draw(&ui, &canvas, &game, &snap, &noHost);
+    tap(&ui, HIT_GUIDE_PAGE);
+    assert(ui.guidePage == 0);
+}
+
 int main(void) {
+    test_crystal_guide();
+    test_dex_evolutions();
+    test_dex_machine_tables();
     struct pd_settings settings={.ffSpeed=2};struct pd_ui ui;
     pd_ui_init(&ui,&settings);ui.tab=PD_TAB_SETTINGS;
     struct pd_snapshot snap={0};struct pd_game game={0};
@@ -83,5 +166,21 @@ int main(void) {
     int solid=0;
     for(int y=cell[0].y+cell[0].h;y<240;y++)for(int x=0;x<426;x++)solid+=partyPx[y*426+x]==0x4A4A63;
     assert(solid==0);
+    // The open Bag tab must leave the backdrop between the two frames.
+    struct pd_game bagGame=fr;
+    party.bagOk=true;
+    for(int gb=0;gb<2;gb++){
+        if(gb)bagGame.kind=PD_GAME_GB;
+        pd_ui_init(&ui,&settings);
+        ui.tab=PD_TAB_BAG;
+        pd_backdrop(&c);
+        const int panelX=MARGIN+c.w*27/100;
+        const int y=CONTENT_Y+11;
+        uint32_t gap[4];
+        memcpy(gap,partyPx+y*c.w+panelX-4,sizeof gap);
+        pd_ui_bag_view(&ui,&c,&bagGame,&party);
+        assert(!memcmp(gap,partyPx+y*c.w+panelX-4,sizeof gap));
+        assert(has(&ui,HIT_BAG_TAB) && has(&ui,HIT_BAG_LIST));
+    }
     puts("PASS default/null host, optional scaling row, remaining settings and FF interaction, EXPAND rows, party grid");
 }

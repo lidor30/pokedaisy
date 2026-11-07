@@ -142,7 +142,7 @@ static void ball_row(struct pd_canvas* c, const struct pd_mon* mons, int count, 
 
 // What a move does to the foe, as a chip (MultiplierChip).
 static int mult_chip(struct pd_canvas* c, int x, int y, int pct) {
-    char text[8];
+    char text[16];
     if (pct == 0) snprintf(text, sizeof(text), "0x");
     else if (pct == 25) snprintf(text, sizeof(text), "1/4x");
     else if (pct == 50) snprintf(text, sizeof(text), "1/2x");
