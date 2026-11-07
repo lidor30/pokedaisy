@@ -1425,7 +1425,7 @@ private fun SortButton(label: String, pal: BagPalette, m: GbaTextMetrics, width:
             .width(width)
             .gbaFocusRing(focused, PixelRoundedShape(u * 6))
             .drawBehind {
-                drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = 6 * u.toPx())
+                drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = 6 * u.toPx(), twoTone = true)
             }
             .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick)
             .padding(horizontal = u * 6, vertical = u * 6),
@@ -1449,7 +1449,7 @@ private fun PcButton(pal: BagPalette, m: GbaTextMetrics, width: Dp, onClick: () 
             .padding(start = u * 2)
             .width(width)
             .gbaFocusRing(focused, PixelRoundedShape(u * 6))
-            .drawBehind { drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = 6 * u.toPx()) }
+            .drawBehind { drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = 6 * u.toPx(), twoTone = true) }
             .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick)
             .padding(horizontal = u * 6, vertical = u * 6),
     ) {

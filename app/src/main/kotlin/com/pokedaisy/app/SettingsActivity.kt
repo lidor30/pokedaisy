@@ -104,6 +104,7 @@ import com.pokedaisy.app.companion.ui.OptionConfirm
 import com.pokedaisy.app.companion.ui.KeyBindRow
 import com.pokedaisy.app.companion.ui.OptionLine
 import com.pokedaisy.app.companion.ui.OptionListWindow
+import com.pokedaisy.app.companion.ui.RailedWindow
 import com.pokedaisy.app.companion.ui.OptionRows
 import com.pokedaisy.app.companion.ui.OptionSelector
 import com.pokedaisy.app.companion.FfMode
@@ -989,7 +990,7 @@ class SettingsActivity : ComponentActivity() {
                 leadingIcon = PixelIcons.search,
             )
             Spacer(Modifier.height(m.u * 4))
-            OptionListWindow(m, Modifier.fillMaxWidth().weight(1f)) {
+            RailedWindow(m, Modifier.fillMaxWidth().weight(1f), rail = shown.isNotEmpty()) {
                 if (shown.isEmpty()) {
                     GbaText(
                         tr("NOTHING MATCHES \"{0}\"", searchQuery.trim()), OptionColors.muted, OptionColors.mutedShadow, m,

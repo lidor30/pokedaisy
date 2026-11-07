@@ -1097,8 +1097,8 @@ private fun TabChipShell(
                 // Idle tabs take the list window's frame + grey; the selected
                 // one the title window's white, like the OPTION screen's cursor row.
                 val px = u.toPx()
-                if (rainbow != null) drawLayeredBox((if (selected) rainbow.selectedFrame else rainbow.frame).inPx(px), rainbow.fill, radius = 3 * px)
-                else drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px)
+                if (rainbow != null) drawLayeredBox((if (selected) rainbow.selectedFrame else rainbow.frame).inPx(px), rainbow.fill, radius = 3 * px, twoTone = true)
+                else drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px, twoTone = true)
             }
             .soundClickable(interactionSource = noRipple, indication = null, enabled = enabled, onClick = onClick)
             .padding(horizontal = if (LocalGameFont.current != null) u else u * 2, vertical = u * 6),

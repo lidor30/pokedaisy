@@ -330,11 +330,12 @@ private fun quickHint(action: QuickAction, actions: QuickActions): String = when
  */
 @Composable
 fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActions, shown: Set<QuickAction>, look: FieldHudLook) {
-    // 0 folded, 1 open: the ring opens and closes like a fan. It stays drawn while it folds, the keys already the game's.
+    // 0 closed, 1 open: the tiles come out of the middle one by one ([tileOut]) and go back the same way, the last one first.
+    // It stays drawn while they go, the keys already the game's.
     val fan by androidx.compose.animation.core.animateFloatAsState(
         if (state.open) 1f else 0f,
         // Not LIGHT COMPANION's business: it moves a dozen tiles at placement, nothing composes.
-        androidx.compose.animation.core.tween(FAN_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+        androidx.compose.animation.core.tween(if (state.open) RING_OPEN_MS else RING_CLOSE_MS, easing = androidx.compose.animation.core.LinearEasing),
         label = "quick-menu-fan",
     )
     if (!state.open && fan == 0f) return
@@ -470,13 +471,13 @@ private fun TileRing(state: QuickMenuState, n: Int, gap: Dp, maxW: Dp, maxH: Dp,
         place = { tiles, w, h, extra ->
             val cx = places.rx + w / 2f
             val cy = places.ry + h / 2f
-            // Read here, in placement: the fan moves the tiles without composing them again.
+            // Read here, in placement: the tiles move without being composed again.
             val open = fan()
             tiles.forEachIndexed { i, p ->
-                val (x, y) = fanned(places.x[i], places.y[i], open)
-                p.placeWithLayer((cx + x - w / 2f).roundToInt(), (cy + y - h / 2f).roundToInt()) {
-                    alpha = (open * 2f).coerceAtMost(1f)
-                    scaleX = FAN_FOLDED_SCALE + (1f - FAN_FOLDED_SCALE) * open
+                val out = tileOut(open, i, n)
+                p.placeWithLayer((cx + places.x[i] * out - w / 2f).roundToInt(), (cy + places.y[i] * out - h / 2f).roundToInt()) {
+                    alpha = (out * 3f).coerceAtMost(1f)
+                    scaleX = TILE_START_SCALE + (1f - TILE_START_SCALE) * out
                     scaleY = scaleX
                 }
             }
@@ -487,19 +488,21 @@ private fun TileRing(state: QuickMenuState, n: Int, gap: Dp, maxW: Dp, maxH: Dp,
     )
 }
 
-/** The fan's opening and closing, and how small a folded tile is. */
-private const val FAN_MS = 260
-private const val FAN_FOLDED_SCALE = 0.7f
+/** How long the ring takes to open and to close, how small a tile starts, and how much of that time one tile's trip takes. */
+private const val RING_OPEN_MS = 300
+private const val RING_CLOSE_MS = 220
+private const val TILE_START_SCALE = 0.3f
+private const val TILE_TRIP = 0.4f
 
 /**
- * A tile at ([x], [y]) from the ring's middle when the fan is [open] (0..1): at the same distance, its angle from the top
- * that much of the way out, so the tiles fold together at the top and spread both ways round the ring.
+ * How far tile [i] of [n] is on its way from the ring's middle to its place when the ring is [open] (0..1), 0 to 1: each
+ * leaves a little after the one before it and slows as it arrives, so closing, the same run backwards, takes the last one in
+ * first.
  */
-internal fun fanned(x: Float, y: Float, open: Float): Pair<Float, Float> {
-    if (open >= 1f) return x to y
-    val r = hypot(x, y)
-    val angle = atan2(x, -y) * open
-    return r * sin(angle) to -r * cos(angle)
+internal fun tileOut(open: Float, i: Int, n: Int): Float {
+    val start = if (n > 1) i * (1f - TILE_TRIP) / (n - 1) else 0f
+    val t = ((open - start) / TILE_TRIP).coerceIn(0f, 1f)
+    return 1f - (1f - t) * (1f - t) * (1f - t)
 }
 
 /** Tile centres round the ring (from its middle, px), its radii, and each tile's turn from the top (0..1). */
@@ -634,13 +637,13 @@ private fun QuickTile(
     val noRipple = remember { MutableInteractionSource() }
     val off = action == QuickAction.WILD && actions.wildEncounters() == 0
     Box(
-        Modifier.fillMaxSize().gbaFocusRing(selected, PixelRoundedShape(u * 3)).hudPanel(u)
+        Modifier.fillMaxSize().gbaFocusRing(selected, PixelRoundedShape(u * 4)).quickTileFace(u)
             .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             // Icons alone: a bigger icon and more room round it, so the tiles stay easy to see and tap without names.
-            Modifier.widthIn(min = if (label) u * 38 else 0.dp).padding(u * if (label) 3 else 7).alpha(if (blocked) 0.45f else 1f),
+            Modifier.widthIn(min = if (label) u * 38 else 0.dp).padding(u * if (label) 5 else 8).alpha(if (blocked) 0.45f else 1f),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             val icon = u * if (label) 20 else 24
@@ -659,6 +662,20 @@ private fun QuickTile(
         if (off && !label) PixelArt(SLASH_ICON, SLASH_COLORS, Modifier.size(u * 24))
     }
 }
+
+/** A tile as the app's buttons are now: two-tone inside a thick dark outline and a thin white ring, in the HUD's LOOK (GLASS's
+ * light letters on a dark blue, the others' dark ones on the windows' white). */
+@Composable
+private fun Modifier.quickTileFace(u: Dp): Modifier {
+    val fill = if (LocalHudLook.current == FieldHudLook.GLASS) QUICK_TILE_FILL else OptionColors.titleFill
+    return drawBehind {
+        val px = u.toPx()
+        drawLayeredBox(listOf(QUICK_TILE_EDGE to 2 * px, Color(0xFFFBFBFB) to px), fill, radius = 4 * px, twoTone = true)
+    }
+}
+
+private val QUICK_TILE_FILL = Color(0xFF3F5F8F)
+private val QUICK_TILE_EDGE = Color(0xFF303030)
 
 /** A red slash with a dark edge, over an icon that's switched off. */
 private val SLASH_ICON = listOf(

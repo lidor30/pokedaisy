@@ -103,7 +103,7 @@
             android:taskAffinity=""
             android:theme="@style/Theme.PokeDaisy.Launch" />
 
-        <!-- AYANEO's bottom screen: an app opened there, so its launcher's panel steps aside for the companion. -->
+        <!-- An app under the companion (its bars can't be hidden from a Presentation), and AYANEO's bottom screen: an app opened there, so its launcher's panel steps aside for the companion. -->
         <activity
             android:name=".SecondScreenHolder"
             android:exported="false"

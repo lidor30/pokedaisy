@@ -283,7 +283,7 @@ fun CompanionSettingsScreen(
                             GroupedRows(rows, m, cursor, onClick = { i -> moveCursor(i); rows[i].onClick() }, onFocused = ::moveCursor)
                         }
                     }
-                } else OptionListWindow(m, Modifier.fillMaxWidth().weight(1f)) {
+                } else RailedWindow(m, Modifier.fillMaxWidth().weight(1f), rail = page == Page.HOME) {
                     // Rows share out the window's height (big touch targets) down
                     // to a floor, past which the list scrolls instead.
                     // SHADERS too: OptionRows shares the window out, so its 4 rows came out taller than SETTINGS'.

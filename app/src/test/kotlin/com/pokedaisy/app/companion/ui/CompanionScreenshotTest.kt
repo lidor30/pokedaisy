@@ -397,6 +397,12 @@ open class CompanionScreenshotTest {
     }
 
     /** TAKE (FieldItems.kt): CHARMANDER holds a LEFTOVERS, so the summary's bottom row has TAKE with its icon... */
+    /** SWITCH: the party in the summary's place, the Pokémon being moved selected. */
+    @Test fun partyDetailSwitch() = snapshot {
+        val use = object : com.pokedaisy.app.companion.ItemUse by takeUse { override fun canReorderParty() = true }
+        AppTheme { MonDetailScreen(takeParty, 0, {}, {}, itemUse = use, initialSwitching = true) }
+    }
+
     @Test fun partyDetailTake() = snapshot { AppTheme { MonDetailScreen(takeParty, 0, {}, {}, itemUse = takeUse) } }
 
     /** ...and pops up what it did, like the bag's USE / GIVE. */
