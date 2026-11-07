@@ -1,0 +1,88 @@
+# TmFns's fields (TmTeach.kt), checked against it by scripts/gen_gamedata.py.
+# type: long | int | bool | char | string | item_descs | int_range | long_list | int_list | int_set |
+# long_set | int_map | ref (a Kotlin val's name);
+# record names the schema of a value a config may spell out as a sub-table.
+
+version = 1
+kotlin_class = 'TmFns'
+kotlin_file = 'TmTeach.kt'
+
+# gSpecialVar_ItemId (u16): the item the party menu uses.
+[field.specialVarItemId]
+kotlin = 'Long'
+type = 'long'
+
+# gItemUseCB and ItemUseCB_TMHM, the party menu's action for the picked Pokémon.
+[field.itemUseCb]
+kotlin = 'Long'
+type = 'long'
+
+[field.itemUseCbTmhm]
+kotlin = 'Long'
+type = 'long'
+
+# CB2_ShowPartyMenuForItemUse: InitPartyMenu(FIELD, SINGLE, USE_ITEM, keep the cursor, TEACH_WHICH_MON, ...).
+[field.showPartyMenuForItemUse]
+kotlin = 'Long'
+type = 'long'
+
+# gPartyMenu: exitCallback at +0, the cursor (slotId) at [partyMenuSlotOff].
+[field.partyMenu]
+kotlin = 'Long'
+type = 'long'
+
+[field.partyMenuSlotOff]
+kotlin = 'Int'
+type = 'int'
+
+# CB2_InitPartyMenu: gMain.callback2 once the party menu is on its way.
+[field.initPartyMenu]
+kotlin = 'Long'
+type = 'long'
+
+# gMain.callback2 (gMain + 4).
+[field.mainCallback2]
+kotlin = 'Long'
+type = 'long'
+
+[field.setMainCallback2]
+kotlin = 'Long'
+type = 'long'
+
+[field.returnToField]
+kotlin = 'Long'
+type = 'long'
+
+[field.cleanupOverworld]
+kotlin = 'Long'
+type = 'long'
+
+# FadeScreen(mode, delay): FADE_TO_BLACK 1, FADE_FROM_BLACK 0.
+[field.fadeScreen]
+kotlin = 'Long'
+type = 'long'
+
+[field.lockControls]
+kotlin = 'Long'
+type = 'long'
+
+[field.unlockControls]
+kotlin = 'Long'
+type = 'long'
+
+# CRC32 of each function's first 32 bytes: itemUseCbTmhm, showPartyMenuForItemUse, initPartyMenu, setMainCallback2,
+# returnToField, cleanupOverworld, fadeScreen, lockControls, unlockControls.
+[field.codeCrcs]
+kotlin = 'List<Long>'
+type = 'long_list'
+
+# ITEM_TM01 and HM08: the same in every Gen 3 game.
+[field.firstTm]
+kotlin = 'Int'
+type = 'int'
+default = 289
+
+[field.lastHm]
+kotlin = 'Int'
+type = 'int'
+default = 346

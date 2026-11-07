@@ -803,7 +803,7 @@ fun ItemsScreen(
     var notice by remember { mutableStateOf<ItemNotice?>(initialNotice) }
     fun report(o: ItemUseOutcome, itemId: Int, text: String) {
         say(text)
-        if (o.result == ItemUseResult.USED || o.result == ItemUseResult.GIVEN) notice = ItemNotice(itemId, text)
+        if (o.result == ItemUseResult.USED || o.result == ItemUseResult.GIVEN || o.result == ItemUseResult.IN_GAME) notice = ItemNotice(itemId, text)
     }
     // The party pick a USE (medicine) or GIVE opened, over the bag.
     var pick by remember { mutableStateOf<ItemPick?>(null) }
@@ -1679,6 +1679,7 @@ internal fun itemUseMessage(o: ItemUseOutcome, mon: String = "", item: String = 
     ItemUseResult.BAG_FULL -> tr("The bag is full: {0} can't go back in it.", bagItemName(held))
     ItemUseResult.PARTY_CHANGED -> tr("The party has changed. Try again.")
     ItemUseResult.TAKEN -> tr("Received {0} from {1}.", bagItemName(o.swapped), mon)
+    ItemUseResult.IN_GAME -> tr("Pick a POKéMON on the game's screen.")
 }
 
 /** What a USE / GIVE did, popped up over the bag ([ItemNoticeWindow]). */

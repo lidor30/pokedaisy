@@ -1,0 +1,253 @@
+package com.pokedaisy.app.companion.data
+
+import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
+import org.junit.Assert.assertTrue
+import org.junit.Assume.assumeTrue
+import org.junit.Test
+import java.io.File
+import java.util.zip.CRC32
+
+/**
+ * TmTeach.kt's and Flash.kt's rules against a fake game (what the game's functions return), and their addresses against
+ * the retail ROMs (checked live headless on the user's saves: HM05 taught through the game's own TM screen, FLASH in Rock
+ * Tunnel / Granite Cave).
+ */
+class TmFlashTest {
+    private val zeroCrc = CRC32().apply { update(ByteArray(32)) }.value
+
+    private val fns = FIELD_ITEMS_FIRERED_REV1.let { f ->
+        f.copy(codeCrcs = f.codeCrcs.map { zeroCrc }, party = f.party!!.copy(codeCrcs = f.party!!.codeCrcs.map { zeroCrc }))
+    }
+    private val tm = TM_FIRERED_REV1.copy(codeCrcs = TM_FIRERED_REV1.codeCrcs.map { zeroCrc })
+    private val flash = FLASH_FIRERED_REV1.copy(codeCrcs = FLASH_FIRERED_REV1.codeCrcs.map { zeroCrc })
+
+    /** The game: a party, a bag, the field, FLASH's map. */
+    private inner class FakeGame : GameCalls {
+        inner class Mon(var personality: Long, var species: Int, val moves: IntArray, var egg: Boolean = false)
+
+        val p = fns.party!!
+        var locked = false
+        val bag = mutableMapOf(TM_ITEM to 1, HM_ITEM to 1)
+        val party = mutableListOf<Mon>()
+        val fades = mutableListOf<Int>()
+        var cleaned = false
+        var noRoom = false
+
+        // FLASH's side.
+        var badge = true
+        var cave = true
+        var lit = false
+        val ram = mutableMapOf<Long, Byte>()
+        val called = mutableListOf<Long>()
+
+        private fun mon(addr: Int) = party[((addr.toLong() and 0xFFFFFFFFL) - p.party).toInt() / 100]
+
+        override fun call(fn: Long, a0: Int, a1: Int, a2: Int, a3: Int): Long {
+            called += fn
+            return when (fn) {
+                fns.fieldControlsLocked -> if (locked) 1 else 0
+                fns.checkBagHasItem -> if ((bag[a0] ?: 0) >= a1) 1 else 0
+                fns.removeBagItem -> if ((bag[a0] ?: 0) >= a1) { bag[a0] = bag[a0]!! - a1; if (bag[a0] == 0) bag.remove(a0); 1 } else 0
+                p.getMonData -> mon(a0).let { m ->
+                    when (a1) {
+                        0 -> m.personality
+                        11 -> m.species.toLong()
+                        12 -> 0
+                        in 13..16 -> m.moves[a1 - 13].toLong()
+                        45 -> if (m.egg) 1 else 0
+                        else -> error("field $a1")
+                    }
+                }
+                tm.lockControls -> { locked = true; 0x080000C1 }
+                tm.unlockControls -> { locked = false; 0x080000C1 }
+                tm.fadeScreen -> { fades += a0; 0x080000C1 }
+                tm.cleanupOverworld -> { cleaned = true; 0x080000C1 }
+                tm.showPartyMenuForItemUse -> {
+                    // InitPartyMenu: the bag as its way out, the party menu on its way (or straight out with no room).
+                    write(tm.partyMenu, word(BAG_EXIT))
+                    write(tm.mainCallback2, word(if (noRoom) BAG_EXIT else tm.initPartyMenu or 1))
+                    0x080000C1
+                }
+                tm.setMainCallback2 -> { write(tm.mainCallback2, word(a0.toLong() and 0xFFFFFFFFL)); 0x080000C1 }
+                flash.flagGet -> when (a0) {
+                    flash.badgeFlag -> if (badge) 1 else 0
+                    flash.litFlag -> if (lit) 1 else 0
+                    else -> 0
+                }
+                flash.setUpFieldMoveFlash -> if (cave && !lit) {
+                    // The party menu's callbacks, as the game sets them.
+                    write(flash.menuFieldCallback, word(0x08056A39))
+                    write(flash.postMenuFieldCallback, word(postCallback))
+                    1
+                } else 0
+                flash.fieldCallbacks[0] or 1 -> { lit = true; 0x080000C1 }
+                else -> -1
+            }
+        }
+
+        var postCallback = flash.fieldCallbacks[0] or 1
+
+        override fun read(addr: Long, len: Int): ByteArray = when {
+            addr == p.partyCount -> byteArrayOf(party.size.toByte())
+            addr == flash.mapHeader + 0x15 -> byteArrayOf(if (cave) 1 else 0)
+            addr >= 0x08000000L -> ByteArray(len)
+            else -> ByteArray(len) { ram[addr + it] ?: 0 }
+        }
+
+        override fun write(addr: Long, bytes: ByteArray): Boolean {
+            bytes.forEachIndexed { i, b -> ram[addr + i] = b }
+            return true
+        }
+
+        fun word(v: Long) = ByteArray(4) { (v shr (8 * it)).toByte() }
+        fun u32(addr: Long) = read(addr, 4).let { b -> (0..3).fold(0L) { v, i -> v or ((b[i].toLong() and 0xFF) shl (8 * i)) } }
+    }
+
+    /** A party: slot 1 has CUT, an egg last; nobody knows FLASH until [flashGame]. */
+    private fun game() = FakeGame().apply {
+        party += Mon(0x11, species = 1, moves = intArrayOf(33, 45, 0, 0))
+        party += Mon(0x22, species = 2, moves = intArrayOf(33, 15, 45, 98))
+        party += Mon(0x33, species = 3, moves = intArrayOf(33, 45, 0, 0))
+        party += Mon(0x55, species = 1, moves = intArrayOf(0, 0, 0, 0), egg = true)
+    }
+
+    @Test
+    fun aTmOpensTheGamesOwnScreenAndComesBackToTheField() {
+        val g = game()
+        assertEquals(ItemUseResult.USED, tmStart(fns, tm, TM_ITEM, false, g))
+        assertTrue(g.locked)
+        assertEquals(listOf(1), g.fades) // to black
+        assertTrue(tmFinish(tm, TM_ITEM, g))
+        assertTrue(g.cleaned)
+        // The bag's way in: the TM, the party menu's action, the cursor on the first slot.
+        assertEquals(TM_ITEM, g.read(tm.specialVarItemId, 2).let { (it[0].toInt() and 0xFF) or ((it[1].toInt() and 0xFF) shl 8) })
+        assertEquals(tm.itemUseCbTmhm or 1, g.u32(tm.itemUseCb))
+        assertEquals(0, g.read(tm.partyMenu + tm.partyMenuSlotOff, 1)[0].toInt())
+        // ... and out to the field, not to a bag that never opened.
+        assertEquals(tm.returnToField or 1, g.u32(tm.partyMenu))
+        assertEquals(tm.initPartyMenu or 1, g.u32(tm.mainCallback2))
+        // The game's screen does the rest: nothing taught, nothing used up here.
+        assertEquals(1, g.bag[TM_ITEM])
+    }
+
+    @Test
+    fun noRoomForTheMenuGoesToTheFieldInstead() {
+        val g = game().apply { noRoom = true }
+        tmStart(fns, tm, TM_ITEM, false, g)
+        assertTrue(tmFinish(tm, TM_ITEM, g))
+        assertEquals(tm.returnToField or 1, g.u32(tm.mainCallback2))
+    }
+
+    @Test
+    fun theFieldComesBackIfTheGameLeftItDuringTheFade() {
+        val g = game()
+        tmStart(fns, tm, TM_ITEM, false, g)
+        assertFalse(tmFinish(tm, TM_ITEM, g, leftField = true))
+        assertFalse(tm.showPartyMenuForItemUse in g.called)
+    }
+
+    @Test
+    fun theTmScreenWaitsForTheField() {
+        assertEquals(ItemUseResult.NOT_NOW, tmStart(fns, tm, TM_ITEM, false, game().apply { locked = true }))
+        assertEquals(ItemUseResult.NOT_NOW, tmStart(fns, tm, TM_ITEM, true, game()))
+        assertEquals(ItemUseResult.FAILED, tmStart(fns, tm, 13, false, game())) // a Potion isn't a TM
+        assertEquals(ItemUseResult.NONE_LEFT, tmStart(fns, tm, TM_ITEM, false, game().apply { bag.clear() }))
+        assertEquals(ItemUseResult.FAILED, tmStart(fns, tm, TM_ITEM, false, game().apply { party.clear() }))
+        // Nothing locked or faded by a refusal.
+        val g = game().apply { bag.clear() }
+        tmStart(fns, tm, TM_ITEM, false, g)
+        assertFalse(g.locked)
+        assertTrue(g.fades.isEmpty())
+    }
+
+    private fun flashGame() = game().apply { party[1].moves[2] = flash.flashMove }
+
+    @Test
+    fun flashRunsTheGamesFieldMoveAndLeavesNoMenuCallbacks() {
+        val g = flashGame()
+        g.write(flash.menuFieldCallback, g.word(0))
+        g.write(flash.postMenuFieldCallback, g.word(0))
+        assertEquals(FlashResult.OK, useFlash(fns, flash, false, g))
+        assertTrue(g.lit)
+        // The cut-in shows the Pokémon that knows it; the party menu's callbacks are gone again.
+        assertEquals(1, g.read(flash.partyMenuSlotId, 1)[0].toInt())
+        assertEquals(0L, g.u32(flash.menuFieldCallback))
+        assertEquals(0L, g.u32(flash.postMenuFieldCallback))
+        assertEquals(FlashResult.ALREADY_LIT, useFlash(fns, flash, false, g))
+    }
+
+    @Test
+    fun flashSaysWhyNot() {
+        assertEquals(FlashResult.NO_FLASHER, useFlash(fns, flash, false, game()))
+        assertEquals(FlashResult.NO_BADGE, useFlash(fns, flash, false, flashGame().apply { badge = false }))
+        assertEquals(FlashResult.NOT_NOW, useFlash(fns, flash, false, flashGame().apply { locked = true }))
+        assertEquals(FlashResult.NOT_NOW, useFlash(fns, flash, true, flashGame()))
+        val outside = flashGame().apply { cave = false }
+        assertEquals(FlashResult.CANT_USE_HERE, useFlash(fns, flash, false, outside))
+        assertFalse(outside.lit)
+    }
+
+    @Test
+    fun anUnknownCallbackIsNeverCalled() {
+        val g = flashGame().apply { postCallback = 0x08123457 }
+        assertEquals(FlashResult.FAILED, useFlash(fns, flash, false, g))
+        assertFalse(0x08123457L in g.called)
+    }
+
+    @Test
+    fun flashDarkReadsTheCaveAndTheLight() {
+        val g = flashGame()
+        assertEquals(true, flashDark(flash, g::read) { false })
+        assertEquals(false, flashDark(flash, g::read) { true })
+        assertEquals(false, flashDark(flash, flashGame().apply { cave = false }::read) { false })
+        assertEquals(null, flashDark(flash, g::read) { null })
+    }
+
+    @Test
+    fun retailCodeIsWhereTheRecordsSay() {
+        val fr = File(RomFileReader.FIRERED_REV1_PATH).takeIf { it.isFile }?.readBytes()
+        val em = File(RomFileReader.EMERALD_PATH).takeIf { it.isFile }?.readBytes()
+        assumeTrue(fr != null && em != null)
+        fun reader(rom: ByteArray) = { a: Long, n: Int -> val o = (a - 0x08000000L).toInt(); rom.copyOfRange(o, o + n) }
+        assertTrue(tmCodeMatches(TM_FIRERED_REV1, reader(fr!!)))
+        assertTrue(flashCodeMatches(FLASH_FIRERED_REV1, reader(fr)))
+        assertTrue(tmCodeMatches(TM_EMERALD, reader(em!!)))
+        assertTrue(flashCodeMatches(FLASH_EMERALD, reader(em)))
+        assertFalse(tmCodeMatches(TM_EMERALD, reader(fr)))
+        assertFalse(flashCodeMatches(FLASH_FIRERED_REV1, reader(em)))
+    }
+
+    /** Every record against its own retail cart (each built byte for byte by pret's decomps), and never against another. */
+    @Test
+    fun everyCartsCodeIsWhereItsRecordsSay() {
+        val carts = listOf(
+            "Pokemon - FireRed Version (USA).gba" to (TM_FIRERED_REV0 to FLASH_FIRERED_REV0),
+            "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba" to (TM_FIRERED_REV1 to FLASH_FIRERED_REV1),
+            "Pokemon - LeafGreen Version (USA).gba" to (TM_LEAFGREEN_REV0 to FLASH_LEAFGREEN_REV0),
+            "Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba" to (TM_LEAFGREEN_REV1 to FLASH_LEAFGREEN_REV1),
+            "Pokemon - Emerald Version (USA, Europe).gba" to (TM_EMERALD to FLASH_EMERALD),
+            "Pokemon - Ruby Version (USA, Europe).gba" to (null to FLASH_RUBY_REV0),
+            "Pokemon - Ruby Version (USA, Europe) (Rev 1).gba" to (null to FLASH_RUBY),
+            "Pokemon - Ruby Version (USA, Europe) (Rev 2).gba" to (null to FLASH_RUBY),
+            "Pokemon - Sapphire Version (USA, Europe).gba" to (null to FLASH_SAPPHIRE_REV0),
+            "Pokemon - Sapphire Version (USA, Europe) (Rev 1).gba" to (null to FLASH_SAPPHIRE),
+            "Pokemon - Sapphire Version (USA, Europe) (Rev 2).gba" to (null to FLASH_SAPPHIRE),
+        ).mapNotNull { (file, recs) -> File(RETAIL_ROM_DIR + file).takeIf { it.isFile }?.let { it.readBytes() to recs } }
+        assumeTrue(carts.size == 11)
+        fun reader(rom: ByteArray) = { a: Long, n: Int -> val o = (a - 0x08000000L).toInt(); rom.copyOfRange(o, o + n) }
+        val tms = carts.mapNotNull { it.second.first }.distinct()
+        val flashes = carts.map { it.second.second }.distinct()
+        for ((rom, recs) in carts) {
+            val (tm, flash) = recs
+            for (t in tms) assertEquals(t === tm, tmCodeMatches(t, reader(rom)))
+            for (f in flashes) assertEquals(f === flash, flashCodeMatches(f, reader(rom)))
+        }
+    }
+
+    private companion object {
+        const val TM_ITEM = 289 + 5   // TM06
+        const val HM_ITEM = 339 + 4   // HM05
+        const val BAG_EXIT = 0x08124E19L
+    }
+}

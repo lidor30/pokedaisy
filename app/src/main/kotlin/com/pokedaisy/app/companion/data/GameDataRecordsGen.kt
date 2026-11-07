@@ -185,6 +185,45 @@ val TRADE_EVO_EMERALD: TradeEvoFns by lazy {
     )
 }
 
+// TMs / HMs from the ITEMS tab (TmTeach.kt's TmFns): USE opens the game's own TM screen. pret's build at the pinned
+// commit, clean (byte for byte retail, SHA1 f3ae0881...), and its ELF.
+val TM_EMERALD: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0203CE7CL,
+        itemUseCb = 0x03006328L,
+        itemUseCbTmhm = 0x081B6DC4L,
+        showPartyMenuForItemUse = 0x081B617CL,
+        partyMenu = 0x0203CEC8L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x081B01E0L,
+        mainCallback2 = 0x030022C4L,
+        setMainCallback2 = 0x08000540L,
+        returnToField = 0x080860C8L,
+        cleanupOverworld = 0x08085D34L,
+        fadeScreen = 0x080ABCD0L,
+        lockControls = 0x08098E54L,
+        unlockControls = 0x08098E60L,
+        codeCrcs = listOf(0xF253CF6EL, 0x34D2BE1CL, 0x99B75656L, 0x6228571DL, 0x224FD691L, 0x4A3D66F5L, 0xF9959006L, 0xB9FB85A7L, 0xB037C8AFL),
+    )
+}
+
+// FLASH from the QUICK MENU (Flash.kt's FlashFns): the same build. FIELD_MOVE_FLASH is field move 1, so the Knuckle Badge;
+// SetUpFieldMove_Flash also opens the Ancient Tomb's sealed wall (SetUpPuzzleEffectRegisteel).
+val FLASH_EMERALD: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0809D790L,
+        badgeFlag = 0x868, // FLAG_BADGE02_GET
+        litFlag = 0x888, // FLAG_SYS_USE_FLASH
+        setUpFieldMoveFlash = 0x081370FCL,
+        menuFieldCallback = 0x03005DB0L,
+        postMenuFieldCallback = 0x0203CEECL,
+        fieldCallbacks = listOf(0x08137178L, 0x08179918L), // FieldCallback_Flash, SetUpPuzzleEffectRegisteel
+        partyMenuSlotId = 0x0203CED1L,
+        mapHeader = 0x02037318L,
+        codeCrcs = listOf(0xBCF97BF3L, 0x532E8E01L, 0x39FAB5C6L, 0x698BF3CBL),
+    )
+}
+
 // ---- gamedata/gen3/records/firered.toml ----
 
 // FireRed's own gBagPockets[] index order (item.c: gBagPockets[POCKET_X-1] =
@@ -509,5 +548,212 @@ val TRADE_EVO_LEAFGREEN_REV1: TradeEvoFns by lazy {
         returnToField = 0x080567F0L,
         lockControls = 0x08069954L,
         codeCrcs = listOf(0xA970F637L, 0x8B13D433L, 0x95CA9A3EL, 0x0111A86EL),
+    )
+}
+
+// TMs / HMs from the ITEMS tab (TmTeach.kt's TmFns): USE opens the game's own TM screen. pret's build at the pinned
+// commit, firered_rev1 (byte for byte retail, SHA1 dd5945db...), and its ELF.
+val TM_FIRERED_REV1: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0203AD30L,
+        itemUseCb = 0x03005E98L,
+        itemUseCbTmhm = 0x08125BB8L,
+        showPartyMenuForItemUse = 0x08124D04L,
+        partyMenu = 0x0203B0A0L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x0811EC48L,
+        mainCallback2 = 0x030030F4L,
+        setMainCallback2 = 0x08000558L,
+        returnToField = 0x080567F0L,
+        cleanupOverworld = 0x08056404L,
+        fadeScreen = 0x0807A82CL,
+        lockControls = 0x08069954L,
+        unlockControls = 0x08069960L,
+        codeCrcs = listOf(0xEA99DF01L, 0xAA3B20FFL, 0x1655AE08L, 0x7FD43C20L, 0x95CA9A3EL, 0xCE27BF5AL, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL),
+    )
+}
+
+// FLASH from the QUICK MENU (Flash.kt's FlashFns): the same build. FIELD_MOVE_FLASH is field move 0, so the Boulder Badge.
+val FLASH_FIRERED_REV1: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0806E6E4L,
+        badgeFlag = 0x820, // FLAG_BADGE01_GET
+        litFlag = 0x806, // FLAG_SYS_FLASH_ACTIVE
+        setUpFieldMoveFlash = 0x080C9B40L,
+        menuFieldCallback = 0x03005024L,
+        postMenuFieldCallback = 0x0203B0C4L,
+        fieldCallbacks = listOf(0x080C9B88L), // FieldCallback_Flash
+        partyMenuSlotId = 0x0203B0A9L,
+        mapHeader = 0x02036DFCL,
+        codeCrcs = listOf(0x07BEBC3AL, 0x95A07BD8L, 0x99857EDDL),
+    )
+}
+
+// The TM screen (TmTeach.kt) and FLASH (Flash.kt): retail FireRed rev 0, pret's pokefirered at the pinned commit built as
+// firered (byte for byte retail rev 0, SHA1 41cb23d8...), and its ELF.
+val TM_FIRERED_REV0: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0203AD30L,
+        itemUseCb = 0x03005E98L,
+        itemUseCbTmhm = 0x08125B40L,
+        showPartyMenuForItemUse = 0x08124C8CL,
+        partyMenu = 0x0203B0A0L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x0811EBD0L,
+        mainCallback2 = 0x030030F4L,
+        setMainCallback2 = 0x08000544L,
+        returnToField = 0x080567DCL,
+        cleanupOverworld = 0x080563F0L,
+        fadeScreen = 0x0807A818L,
+        lockControls = 0x08069940L,
+        unlockControls = 0x0806994CL,
+        codeCrcs = listOf(0x9CA850AAL, 0xAA3B20FFL, 0x3099DC9BL, 0x7FD43C20L, 0xB892BBB7L, 0xE67BC364L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL),
+    )
+}
+
+val FLASH_FIRERED_REV0: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0806E6D0L,
+        badgeFlag = 0x820, // FLAG_BADGE01_GET
+        litFlag = 0x806, // FLAG_SYS_FLASH_ACTIVE
+        setUpFieldMoveFlash = 0x080C9B2CL,
+        menuFieldCallback = 0x03005024L,
+        postMenuFieldCallback = 0x0203B0C4L,
+        fieldCallbacks = listOf(0x080C9B74L), // FieldCallback_Flash
+        partyMenuSlotId = 0x0203B0A9L,
+        mapHeader = 0x02036DFCL,
+        codeCrcs = listOf(0x07BEBC3AL, 0x95A07BD8L, 0xEFB4F176L),
+    )
+}
+
+// The TM screen (TmTeach.kt) and FLASH (Flash.kt): retail LeafGreen rev 0, pret's pokefirered at the pinned commit built as
+// leafgreen (byte for byte retail, SHA1 574fa542...), and its ELF.
+val TM_LEAFGREEN_REV0: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0203AD30L,
+        itemUseCb = 0x03005E98L,
+        itemUseCbTmhm = 0x08125B18L,
+        showPartyMenuForItemUse = 0x08124C64L,
+        partyMenu = 0x0203B0A0L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x0811EBA8L,
+        mainCallback2 = 0x030030F4L,
+        setMainCallback2 = 0x08000544L,
+        returnToField = 0x080567DCL,
+        cleanupOverworld = 0x080563F0L,
+        fadeScreen = 0x0807A7ECL,
+        lockControls = 0x08069940L,
+        unlockControls = 0x0806994CL,
+        codeCrcs = listOf(0x679AE1F0L, 0xAA3B20FFL, 0x1DE165E1L, 0x7FD43C20L, 0xB892BBB7L, 0xAD9CEAC8L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL),
+    )
+}
+
+val FLASH_LEAFGREEN_REV0: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0806E6D0L,
+        badgeFlag = 0x820, // FLAG_BADGE01_GET
+        litFlag = 0x806, // FLAG_SYS_FLASH_ACTIVE
+        setUpFieldMoveFlash = 0x080C9B00L,
+        menuFieldCallback = 0x03005024L,
+        postMenuFieldCallback = 0x0203B0C4L,
+        fieldCallbacks = listOf(0x080C9B48L), // FieldCallback_Flash
+        partyMenuSlotId = 0x0203B0A9L,
+        mapHeader = 0x02036DFCL,
+        codeCrcs = listOf(0x07BEBC3AL, 0xDA630667L, 0xEA609AF5L),
+    )
+}
+
+// The TM screen (TmTeach.kt) and FLASH (Flash.kt): retail LeafGreen rev 1, pret's pokefirered at the pinned commit built as
+// leafgreen_rev1 (byte for byte retail, SHA1 7862c67b...), and its ELF.
+val TM_LEAFGREEN_REV1: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0203AD30L,
+        itemUseCb = 0x03005E98L,
+        itemUseCbTmhm = 0x08125B90L,
+        showPartyMenuForItemUse = 0x08124CDCL,
+        partyMenu = 0x0203B0A0L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x0811EC20L,
+        mainCallback2 = 0x030030F4L,
+        setMainCallback2 = 0x08000558L,
+        returnToField = 0x080567F0L,
+        cleanupOverworld = 0x08056404L,
+        fadeScreen = 0x0807A800L,
+        lockControls = 0x08069954L,
+        unlockControls = 0x08069960L,
+        codeCrcs = listOf(0xAB261E3BL, 0xAA3B20FFL, 0xBF379CB9L, 0x7FD43C20L, 0x95CA9A3EL, 0xD3AF9AFEL, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL),
+    )
+}
+
+val FLASH_LEAFGREEN_REV1: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0806E6E4L,
+        badgeFlag = 0x820, // FLAG_BADGE01_GET
+        litFlag = 0x806, // FLAG_SYS_FLASH_ACTIVE
+        setUpFieldMoveFlash = 0x080C9B14L,
+        menuFieldCallback = 0x03005024L,
+        postMenuFieldCallback = 0x0203B0C4L,
+        fieldCallbacks = listOf(0x080C9B5CL), // FieldCallback_Flash
+        partyMenuSlotId = 0x0203B0A9L,
+        mapHeader = 0x02036DFCL,
+        codeCrcs = listOf(0x07BEBC3AL, 0xDA630667L, 0x80A86C54L),
+    )
+}
+
+// ---- gamedata/gen3/records/ported.toml ----
+
+// FLASH (Flash.kt): retail Ruby rev 1 and rev 2 (the same addresses and code), pret's pokeruby built as ruby_rev1 /
+// ruby_rev2 (byte for byte retail) and its ELF. FLASH is field move 1 here as in Emerald: the Knuckle Badge. Its party
+// menu sets gFieldCallback (not a gFieldCallback2), and the cut-in reads gLastFieldPokeMenuOpened.
+val FLASH_RUBY: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x08069360L,
+        badgeFlag = 0x808, // FLAG_BADGE02_GET
+        litFlag = 0x828, // FLAG_SYS_USE_FLASH
+        setUpFieldMoveFlash = 0x0810CBD4L,
+        menuFieldCallback = 0x0300485CL,
+        postMenuFieldCallback = 0x03005CE4L,
+        fieldCallbacks = listOf(0x0810CC1CL), // sub_810CBFC, its FieldCallback_Flash
+        partyMenuSlotId = 0x03005CE0L,
+        mapHeader = 0x0202E828L,
+        codeCrcs = listOf(0xAC4D17B2L, 0xC9BC4238L, 0xA460DEAEL),
+    )
+}
+
+// FLASH (Flash.kt): retail Sapphire rev 1 and rev 2 (the same addresses and code), pret's pokeruby built as sapphire_rev1 /
+// sapphire_rev2 (byte for byte retail) and its ELF. FLASH is field move 1 here as in Emerald: the Knuckle Badge. Its party
+// menu sets gFieldCallback (not a gFieldCallback2), and the cut-in reads gLastFieldPokeMenuOpened.
+val FLASH_SAPPHIRE: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x08069364L,
+        badgeFlag = 0x808, // FLAG_BADGE02_GET
+        litFlag = 0x828, // FLAG_SYS_USE_FLASH
+        setUpFieldMoveFlash = 0x0810CBD4L,
+        menuFieldCallback = 0x0300485CL,
+        postMenuFieldCallback = 0x03005CE4L,
+        fieldCallbacks = listOf(0x0810CC1CL), // sub_810CBFC, its FieldCallback_Flash
+        partyMenuSlotId = 0x03005CE0L,
+        mapHeader = 0x0202E828L,
+        codeCrcs = listOf(0xAC4D17B2L, 0x19F9C4F9L, 0xA460DEAEL),
+    )
+}
+
+// FLASH: retail Ruby rev 0, pret's pokeruby built as ruby (byte for byte retail, SHA1 f28b6ffc...): rev 1's code a few bytes earlier.
+val FLASH_RUBY_REV0: FlashFns by lazy {
+    FLASH_RUBY.copy(
+        flagGet = 0x08069340L,
+        setUpFieldMoveFlash = 0x0810CBB4L,
+        fieldCallbacks = listOf(0x0810CBFCL),
+        codeCrcs = listOf(0xAC4D17B2L, 0xC9BC4238L, 0xA460DEAEL),
+    )
+}
+
+// FLASH: retail Sapphire rev 0, pret's pokeruby built as sapphire (byte for byte retail, SHA1 3ccbbd45...): rev 1's code a few bytes earlier.
+val FLASH_SAPPHIRE_REV0: FlashFns by lazy {
+    FLASH_SAPPHIRE.copy(
+        flagGet = 0x08069344L,
+        setUpFieldMoveFlash = 0x0810CBB4L,
+        fieldCallbacks = listOf(0x0810CBFCL),
+        codeCrcs = listOf(0xAC4D17B2L, 0x19F9C4F9L, 0xA460DEAEL),
     )
 }

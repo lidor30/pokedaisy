@@ -163,3 +163,39 @@ afterEvolution = 0x030061E8
 returnToField = 0x080860C8
 lockControls = 0x08098E54
 codeCrcs = [0xA970F637, 0x74E72426, 0x224FD691, 0xB9FB85A7]
+
+
+# TMs / HMs from the ITEMS tab (TmTeach.kt's TmFns): USE opens the game's own TM screen. pret's build at the pinned
+# commit, clean (byte for byte retail, SHA1 f3ae0881...), and its ELF.
+[record.TM_EMERALD]
+schema = 'gen3_tm'
+specialVarItemId = 0x0203CE7C
+itemUseCb = 0x03006328
+itemUseCbTmhm = 0x081B6DC4
+showPartyMenuForItemUse = 0x081B617C
+partyMenu = 0x0203CEC8
+partyMenuSlotOff = 9
+initPartyMenu = 0x081B01E0
+mainCallback2 = 0x030022C4
+setMainCallback2 = 0x08000540
+returnToField = 0x080860C8
+cleanupOverworld = 0x08085D34
+fadeScreen = 0x080ABCD0
+lockControls = 0x08098E54
+unlockControls = 0x08098E60
+codeCrcs = [0xF253CF6E, 0x34D2BE1C, 0x99B75656, 0x6228571D, 0x224FD691, 0x4A3D66F5, 0xF9959006, 0xB9FB85A7, 0xB037C8AF]
+
+# FLASH from the QUICK MENU (Flash.kt's FlashFns): the same build. FIELD_MOVE_FLASH is field move 1, so the Knuckle Badge;
+# SetUpFieldMove_Flash also opens the Ancient Tomb's sealed wall (SetUpPuzzleEffectRegisteel).
+[record.FLASH_EMERALD]
+schema = 'gen3_flash'
+flagGet = 0x0809D790
+badgeFlag = 0x868 # FLAG_BADGE02_GET
+litFlag = 0x888 # FLAG_SYS_USE_FLASH
+setUpFieldMoveFlash = 0x081370FC
+menuFieldCallback = 0x03005DB0
+postMenuFieldCallback = 0x0203CEEC
+fieldCallbacks = [0x08137178, 0x08179918] # FieldCallback_Flash, SetUpPuzzleEffectRegisteel
+partyMenuSlotId = 0x0203CED1
+mapHeader = 0x02037318
+codeCrcs = [0xBCF97BF3, 0x532E8E01, 0x39FAB5C6, 0x698BF3CB]

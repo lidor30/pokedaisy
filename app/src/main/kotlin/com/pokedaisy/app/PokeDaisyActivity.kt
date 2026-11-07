@@ -452,6 +452,48 @@ class PokeDaisyActivity : Activity() {
         return v
     }
 
+    /** The TM screen's calls ([com.pokedaisy.app.companion.data.tmFnsFor]) and FLASH's ([com.pokedaisy.app.companion.data.flashFnsFor])
+     * for the loaded ROM, each one's code checked once per ROM, the way [tradeEvoFns] is; null where the game has none. */
+    @Volatile private var tmCache: Pair<String, com.pokedaisy.app.companion.data.TmFns?>? = null
+    @Volatile private var flashCache: Pair<String, com.pokedaisy.app.companion.data.FlashFns?>? = null
+
+    private fun retailFieldKey(): Pair<String, Boolean>? {
+        if (romIsGameBoy || romIsNds) return null
+        // Untried on a randomized cart: kept to plain retail for now.
+        val hack = com.pokedaisy.app.companion.data.runningFireRedHack != null || com.pokedaisy.app.companion.data.runningEmeraldHack != null ||
+            com.pokedaisy.app.companion.data.runningRandomized != null ||
+            com.pokedaisy.app.companion.data.emeraldLegacy || com.pokedaisy.app.companion.data.romGameCode == com.pokedaisy.app.companion.data.KAIZO_TEXT
+        return "$romCode/$romRev/${telemetry.snapshot.value.game}/${com.pokedaisy.app.companion.data.romGameCode}" to hack
+    }
+
+    private fun tmFns(): com.pokedaisy.app.companion.data.TmFns? {
+        val (key, hack) = retailFieldKey() ?: return null
+        val tm = com.pokedaisy.app.companion.data.tmFnsFor(telemetry.snapshot.value.game, romCode, romRev, hack) ?: return null
+        tmCache?.let { (k, v) -> if (k == key) return v }
+        if (!::engine.isInitialized || !engine.running) return null
+        val ok = runCatching {
+            com.pokedaisy.app.companion.data.tmCodeMatches(tm) { addr, len -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(addr, len) }
+        }.getOrElse { return null }
+        Log.i("pokedaisy", "TMs: ${if (ok) "code found" else "code not found"}")
+        return tm.takeIf { ok }.also { tmCache = key to it }
+    }
+
+    private fun flashFns(): com.pokedaisy.app.companion.data.FlashFns? {
+        val (key, hack) = retailFieldKey() ?: return null
+        val flash = com.pokedaisy.app.companion.data.flashFnsFor(telemetry.snapshot.value.game, romCode, romRev, hack) ?: return null
+        flashCache?.let { (k, v) -> if (k == key) return v }
+        if (!::engine.isInitialized || !engine.running) return null
+        val ok = runCatching {
+            com.pokedaisy.app.companion.data.flashCodeMatches(flash) { addr, len -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(addr, len) }
+        }.getOrElse { return null }
+        Log.i("pokedaisy", "FLASH: ${if (ok) "code found" else "code not found"}")
+        return flash.takeIf { ok }.also { flashCache = key to it }
+    }
+
+    /** USE opens the game's TM screen for [itemId] here: the TM calls and the bag's (CheckBagHasItem, the party). */
+    private fun tmSupport(itemId: Int): Boolean =
+        tmFns()?.teaches(itemId) == true && fieldItemSupport()?.fns?.party != null && fieldItemSupport()?.fns?.bagActions == true
+
     /** A Game Boy game's PC / FLY / WILD ENCOUNTERS ([com.pokedaisy.app.companion.data.GbField]): English Yellow and
      * Crystal, their code checked in the cart once per ROM. */
     @Volatile private var gbFieldCache: Pair<String, com.pokedaisy.app.companion.data.GbField?>? = null
@@ -502,9 +544,9 @@ class PokeDaisyActivity : Activity() {
         /** A DS game's Repels ([com.pokedaisy.app.companion.data.useGen4Repel], Black's [com.pokedaisy.app.companion.data.useGen5Repel]);
          * nothing else yet. */
         private fun dsRepel(itemId: Int) = dsRepelKnown() && com.pokedaisy.app.companion.data.GEN4_REPEL_KINDS.any { it.first == itemId }
-        override fun canUse(itemId: Int) = dsRepel(itemId) || fieldItemSupport()?.canUse(itemId) == true
+        override fun canUse(itemId: Int) = dsRepel(itemId) || tmSupport(itemId) || fieldItemSupport()?.canUse(itemId) == true
         override fun canGive(itemId: Int) = fieldItemSupport()?.canGive(itemId) == true
-        override fun marked(itemId: Int) = dsRepel(itemId) || fieldItemSupport()?.marked(itemId) == true
+        override fun marked(itemId: Int) = dsRepel(itemId) || tmSupport(itemId) || fieldItemSupport()?.marked(itemId) == true
         override fun picksMon(itemId: Int) = fieldItemSupport()?.picksMon(itemId) == true
         override fun picksMove(itemId: Int) = fieldItemSupport()?.picksMove(itemId) == true
 
@@ -557,6 +599,7 @@ class PokeDaisyActivity : Activity() {
                 }
                 return
             }
+            if (tmSupport(itemId)) return openTmScreen(itemId, done)
             onGame(failed, done) { s, calls, busy -> com.pokedaisy.app.companion.data.useFieldItem(s.fns, itemId, busy, calls) }
         }
 
@@ -564,6 +607,30 @@ class PokeDaisyActivity : Activity() {
             onGame(com.pokedaisy.app.companion.data.PartyTargets(com.pokedaisy.app.companion.data.ItemUseResult.FAILED), done) { s, calls, busy ->
                 com.pokedaisy.app.companion.data.partyTargets(s, itemId, give, busy, calls)
             }
+
+        /** A TM / HM: the game's own TM screen (TmTeach.kt), in two steps like FLY - the checks, the controls locked and
+         * the fade to black, then once it's black the game's party menu, sent back to the field when it closes. */
+        private fun openTmScreen(itemId: Int, done: (com.pokedaisy.app.companion.data.ItemUseOutcome) -> Unit) {
+            val tm = tmFns() ?: return done(failed)
+            onGame(failed, { o ->
+                // The teaching is the game's to show: a companion window over it goes.
+                if (o.result == com.pokedaisy.app.companion.data.ItemUseResult.IN_GAME) closeCompanionWindow()
+                done(o)
+            }) { s, calls, busy ->
+                val r = com.pokedaisy.app.companion.data.tmStart(s.fns, tm, itemId, busy, calls)
+                if (r == com.pokedaisy.app.companion.data.ItemUseResult.USED) {
+                    engine.requestFieldItemJob(false, com.pokedaisy.app.companion.data.TM_FADE_FRAMES) { c, leftField ->
+                        val ok = com.pokedaisy.app.companion.data.tmFinish(tm, itemId, c, leftField)
+                        Log.i("pokedaisy", "TM screen for $itemId: ${when {
+                            ok -> "open"
+                            leftField -> "the game left the field during the fade, not taken"
+                            else -> "failed, field handed back"
+                        }}")
+                    }
+                    com.pokedaisy.app.companion.data.ItemUseOutcome(com.pokedaisy.app.companion.data.ItemUseResult.IN_GAME)
+                } else com.pokedaisy.app.companion.data.ItemUseOutcome(r)
+            }
+        }
 
         override fun useOn(itemId: Int, target: com.pokedaisy.app.companion.data.PartyTarget, moveIndex: Int, done: (com.pokedaisy.app.companion.data.ItemUseOutcome) -> Unit) =
             onGame(failed, done) { s, calls, busy -> com.pokedaisy.app.companion.data.useOnMon(s, itemId, target, moveIndex, busy, calls) }
@@ -724,6 +791,9 @@ class PokeDaisyActivity : Activity() {
         override fun offered(action: com.pokedaisy.app.companion.QuickAction) = when (action) {
             com.pokedaisy.app.companion.QuickAction.PC -> itemUse.canPc()
             com.pokedaisy.app.companion.QuickAction.FLY -> flyAction.canFly()
+            // Only while a party Pokémon knows it (the snapshot's moves): the tile isn't there otherwise.
+            com.pokedaisy.app.companion.QuickAction.FLASH -> flashFns() != null && fieldItemSupport()?.fns?.party != null &&
+                telemetry.snapshot.value.party.any { m -> !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLASH_MOVE } }
             com.pokedaisy.app.companion.QuickAction.REPEL ->
                 dsRepelKnown() ||
                     fieldItemSupport()?.let { s -> s.fns.repelItems.any { s.canUse(it) } } == true
@@ -745,6 +815,14 @@ class PokeDaisyActivity : Activity() {
 
         override fun wildEncounters() = Prefs(this@PokeDaisyActivity).wildEncounters
 
+        override fun flashDark(): Boolean? {
+            val flash = flashFns() ?: return null
+            val progress = telemetry.snapshot.value.progress
+            return com.pokedaisy.app.companion.data.flashDark(flash, { a, n -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(a, n) }) { f ->
+                progress?.flag(f)
+            }
+        }
+
         override fun repelSteps() = telemetry.snapshot.value.repelSteps
             ?: itemUse.repelVar?.let { telemetry.snapshot.value.progress?.variable(it) }?.let(itemUse::repelSteps) ?: 0
     }
@@ -763,6 +841,7 @@ class PokeDaisyActivity : Activity() {
                     showHud(com.pokedaisy.app.companion.ui.flyMessage(t.result))
                 }
             }
+            com.pokedaisy.app.companion.QuickAction.FLASH -> useFlash()
             // The menu picks the kind (QuickMenuState.onRepel): here only if asked straight, the weakest one held.
             com.pokedaisy.app.companion.QuickAction.REPEL ->
                 com.pokedaisy.app.companion.ui.repelKindsIn(snap).firstOrNull()?.let { quickMenu.onRepel(it) }
@@ -783,6 +862,28 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.QuickAction.LOAD_STATE -> if (!coopRefuses()) engine.requestLoadState(engine.currentSlot)
             com.pokedaisy.app.companion.QuickAction.FF -> engine.toggleFastForward()
             com.pokedaisy.app.companion.QuickAction.COMPANION -> if (::sidePanel.isInitialized) sidePanel.openPanel()
+        }
+    }
+
+    /** FLASH (Flash.kt): the party menu's checks and the field move on the emu thread; the game does the rest (the cut-in, the
+     * light). Anything that kept it from starting says why on the HUD. */
+    private fun useFlash() {
+        val flash = flashFns()
+        val fns = fieldItemSupport()?.fns
+        if (flash == null || fns == null || !::engine.isInitialized || !engine.running) {
+            return showHud(com.pokedaisy.app.companion.ui.flashMessage(com.pokedaisy.app.companion.data.FlashResult.FAILED))
+        }
+        val inBattle = telemetry.snapshot.value.inBattle
+        engine.requestFieldItemJob(inBattle) { calls, busy ->
+            val r = com.pokedaisy.app.companion.data.useFlash(fns, flash, busy, calls).let {
+                if (inBattle && it == com.pokedaisy.app.companion.data.FlashResult.NOT_NOW) com.pokedaisy.app.companion.data.FlashResult.IN_BATTLE else it
+            }
+            Log.i("pokedaisy", "flash: $r")
+            runOnUiThread {
+                // The field move is the game's to show: a companion window over it goes.
+                if (r == com.pokedaisy.app.companion.data.FlashResult.OK) closeCompanionWindow()
+                else showHud(com.pokedaisy.app.companion.ui.flashMessage(r))
+            }
         }
     }
 
