@@ -6,6 +6,12 @@ on:
     branches: [main, dev]
     paths: ['linux/**', '3ds/**', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit / branch to test (Nightly passes dev's head); empty = the event's own ref
+        type: string
+        default: ''
 permissions:
   contents: read
 concurrency:
@@ -17,6 +23,8 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.ref }}
       - run: git submodule update --init third_party/mgba
       - run: sudo apt-get update && sudo apt-get install -y cmake libsdl2-dev
       - name: Shared host capability and legacy previews
@@ -59,6 +67,8 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.ref }}
       - run: git submodule update --init third_party/mgba
       - run: sudo apt-get update && sudo apt-get install -y cmake qemu-user-static
       - name: Prepare checksum-pinned toolchain and SDK
