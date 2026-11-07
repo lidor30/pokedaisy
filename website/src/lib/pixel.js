@@ -605,6 +605,12 @@ SPRITES.walker = {
   rows: ['..KKKKKK..', '.KGGGGGWK.', 'KGGGGGGGGK', 'KKKKKKKKKK', '.KSSSSSSK.', '.KSKSSKSK.', '.KSSSSSSK.', '..KKKKKK..',
     '.KYYYYYYK.', 'KSKYYYYKSK', 'KSKYYYYKSK', '.KKYYYYKK.', '..KNNNNK..', '..KNKKNK..', '..KK..KK..'],
 };
+// The games table's search box: a magnifying glass.
+SPRITES.search = {
+  pal: { K: INK, W: '#d8f0ff', L: '#ffffff' },
+  rows: ['..KKKK.....', '.KWWWWK....', 'KWLLWWWK...', 'KWLWWWWK...', 'KWWWWWWK...', 'KWWWWWWK...', '.KWWWWK....',
+    '..KKKKKK...', '......KKK..', '.......KKK.', '........KK.'],
+};
 // The language picker's globe.
 SPRITES.globe = {
   pal: { K: INK, B: '#58a0f0', G: '#58c058', W: '#d8f0ff' },

@@ -55,7 +55,15 @@ while the checked-in file is stale. After adding a game to the app:
 UPDATE_SITE_DATA=1 ./gradlew :app:testDebugUnitTest --tests '*SiteDataExportTest'
 ```
 
-## Deploy
+## A game's details
+
+A tap on a game in the games table (`src/components/Matrix.astro`, on the home page and the ROM check) opens a window
+with everything that works in it, version by version: the companion's tabs from `compat.json`, then every column of
+`docs/ROM_FEATURES.md`'s first table, read when the site is built (`src/lib/romFeatures.js`; its footnotes are
+developers' notes and stay out). `test/romFeatures.test.js` fails when that doc gains a column the site has no label
+for, or a game the two tables don't share (Emerald Kaizo is in the doc but not README's Supported games table yet).
+
+
 
 Firebase Hosting, project `pokedaisy` → https://pokedaisy.com (`firebase.json`, `.firebaserc`).
 `.github/workflows/website.yml` deploys the live site only when an app version is released: publishing a
