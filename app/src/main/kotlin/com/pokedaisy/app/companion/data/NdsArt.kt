@@ -135,7 +135,11 @@ object NdsArt {
     private fun isPlatinum(code: String, rev: Int) = code == "CPUE" && rev == 1 || code == "CPUF" && rev == 0
 
     /** Carts on HeartGold / SoulSilver's files: USA, Germany and France, rev 0. */
-    private fun isHgss(code: String, rev: Int) = code in setOf("IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF") && rev == 0
+    private fun isHgss(code: String, rev: Int) =
+        code in setOf("IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF") && rev == 0 || DsPorts.of(code, rev)?.kind.isHgss
+
+    /** A language port running as [kind] ([NDS_PORTS]). */
+    private fun portIs(code: String, rev: Int, vararg kind: GameKind) = DsPorts.of(code, rev)?.kind in kind
 
     /** Writes [rom]'s icons into [dir] if it's a cart this knows and they aren't there yet; true when it wrote any. */
     fun extractTo(rom: File, dir: File): Boolean = RandomAccessFile(rom, "r").use { f ->
@@ -144,10 +148,10 @@ object NdsArt {
         val rev = header[0x1E].toInt() and 0xFF
         val platinum = isPlatinum(code, rev)
         val heartGold = isHgss(code, rev)
-        val white = (code == "IRAO" || code == "IRAF") && rev == 0
-        val black = (code == "IRBO" || code == "IRBF") && rev == 0 || white
-        val white2 = code == "IRDO" && rev == 0
-        val black2 = code == "IREO" && rev == 0 || white2
+        val white = (code == "IRAO" || code == "IRAF") && rev == 0 || portIs(code, rev, GameKind.WHITE)
+        val black = (code == "IRBO" || code == "IRBF") && rev == 0 || portIs(code, rev, GameKind.BLACK) || white
+        val white2 = code == "IRDO" && rev == 0 || portIs(code, rev, GameKind.WHITE2)
+        val black2 = code == "IREO" && rev == 0 || portIs(code, rev, GameKind.BLACK2) || white2
         val origin = OriginHeartGold.matches { off, len -> f.read(off, len) }
         if (!platinum && !heartGold && !black && !black2 && !origin) return false
         val marker = File(dir, when {
@@ -168,7 +172,9 @@ object NdsArt {
             return true
         }
         if (black || black2) {
-            val files = if (black2) GEN5_BLACK2_FILES else if (white) GEN5_WHITE_FILES else GEN5_BLACK_FILES
+            val files = (if (black2) GEN5_BLACK2_FILES else if (white) GEN5_WHITE_FILES else GEN5_BLACK_FILES)
+                // Japanese Black / White: one bank fewer before the moves, so the categories are 257 (the rest as the US carts').
+                .let { if (!black2 && code[3] == 'J') it.copy(category = 257) else it }
             if (!extractGen5(f, header, dir, files)) return false
             marker.parentFile?.mkdirs()
             marker.writeText(stamp)
@@ -199,7 +205,12 @@ object NdsArt {
         } else {
             file(f, header, "/a/1/4/4")?.let { pokegear(Narc(it), dir) }
             file(f, header, "/a/0/1/5")?.let { bagPockets(Narc(it), dir) }
-            dex(f, header, dir, if (code.startsWith("IPG")) DEX_SOULSILVER else DEX_HEARTGOLD)
+            val soulSilver = code.startsWith("IPG")
+            dex(f, header, dir, when (code[3]) {
+                'K' -> if (soulSilver) DEX_SOULSILVER_KO else DEX_HEARTGOLD_KO
+                'J' -> if (soulSilver) DEX_SOULSILVER_JA else DEX_HEARTGOLD_JA
+                else -> if (soulSilver) DEX_SOULSILVER else DEX_HEARTGOLD
+            })
         }
         marker.parentFile?.mkdirs()
         marker.writeText(stamp)
@@ -411,7 +422,7 @@ object NdsArt {
      * Where a Gen 5 cart keeps what [extractGen5] reads, and where it goes. Black and White share their art (White writes
      * Black's paths) but for the DEX's descriptions; Black 2 and White 2 share theirs whole.
      */
-    private class Gen5Files(
+    private data class Gen5Files(
         val icons: String, val items: String, val dex: String, val front: String,
         val iconPalettes: ByteArray, val itemIcons: Map<Int, Int>,
         /** The Town Map's NARC; its picture, the sprite each kind of place gets ([townCells]: kind -> cells), the player
@@ -813,6 +824,12 @@ object NdsArt {
     private class NameBanks(val msg: String, val species: Int, val moves: Int, val items: Int, val places: Int, val types: Int)
     private val NAMES_PLATINUM = NameBanks("/msgdata/pl_msg.narc", 412, 647, 392, 433, 624)
     private val NAMES_HEARTGOLD = NameBanks("/a/0/2/7", 237, 750, 222, 279, 735)
+    // The Korean HeartGold / SoulSilver's: renumbered (one species bank, not the Western carts' two, and banks fewer before
+    // the rest: 233 species, 743 moves, 220 items, 274 places, 728 types; found by their line counts, read off the carts).
+    private val NAMES_HEARTGOLD_KO = NameBanks("/a/0/2/7", 233, 743, 220, 274, 728)
+    // The Japanese ones: Origin HeartGold's numbering (it's built on the Japanese cart): 232 species, 739 moves, 219 items,
+    // 272 places, 724 types.
+    private val NAMES_HEARTGOLD_JA = NameBanks("/a/0/2/7", 232, 739, 219, 272, 724)
     // Origin HeartGold's (a Japanese HeartGold's archive, renumbered, its banks grown: 232 species and forms, 739 moves,
     // 219 items, 272 places, 724 types).
     private val NAMES_ORIGIN = NameBanks("/a/0/2/7", 232, 739, 219, 272, 724)
@@ -821,17 +838,21 @@ object NdsArt {
     private val NAMES_BLACK = NameBanks("/a/0/0/2", 70, 203, 54, 89, 199)
     // Black 2's and White 2's: the same message archive, renumbered (90 species, 403 moves, 64 items, 109 places, 398 types).
     private val NAMES_BLACK2 = NameBanks("/a/0/0/2", 90, 403, 64, 109, 398)
+    // Japanese Black / White's: one bank fewer before the moves (204: 203 is their descriptions there).
+    private val NAMES_BLACK_JA = NameBanks("/a/0/0/2", 70, 204, 54, 89, 199)
     /** Each language's FIGHTING (the type names' line 1), as the games print it. */
-    private val FIGHTING = mapOf("FIGHTING" to 'E', "COMBAT" to 'F', "KAMPF" to 'D', "LOTTA" to 'I', "LUCHA" to 'S')
+    private val FIGHTING = mapOf(
+        "FIGHTING" to 'E', "COMBAT" to 'F', "KAMPF" to 'D', "LOTTA" to 'I', "LUCHA" to 'S', "かくとう" to 'J', "격투" to 'K',
+    )
 
     /** [rom]'s own names ([Names]), or null for a cart this doesn't read. */
     fun readNames(rom: File): Names? = RandomAccessFile(rom, "r").use { f ->
         val header = f.read(0, 0x200)
         val code = String(header, 0x0C, 4, Charsets.US_ASCII)
         val rev = header[0x1E].toInt() and 0xFF
-        val sequel = (code == "IREO" || code == "IRDO") && rev == 0
-        if (code in setOf("IRBO", "IRAO", "IRBF", "IRAF") && rev == 0 || sequel) {
-            val banks = if (sequel) NAMES_BLACK2 else NAMES_BLACK
+        val sequel = (code == "IREO" || code == "IRDO") && rev == 0 || portIs(code, rev, GameKind.BLACK2, GameKind.WHITE2)
+        if (code in setOf("IRBO", "IRAO", "IRBF", "IRAF") && rev == 0 || portIs(code, rev, GameKind.BLACK, GameKind.WHITE) || sequel) {
+            val banks = if (sequel) NAMES_BLACK2 else if (code[3] == 'J') NAMES_BLACK_JA else NAMES_BLACK
             val msg = Narc(file(f, header, banks.msg) ?: return null)
             fun lines(bank: Int) = msg.member(bank)?.let { Gen5Text.lines(it) }.orEmpty()
             val types = lines(banks.types)
@@ -841,7 +862,7 @@ object NdsArt {
         val banks = when {
             code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> f.read(off, len) } -> NAMES_ORIGIN
             isPlatinum(code, rev) -> NAMES_PLATINUM
-            isHgss(code, rev) -> NAMES_HEARTGOLD
+            isHgss(code, rev) -> when (code[3]) { 'K' -> NAMES_HEARTGOLD_KO; 'J' -> NAMES_HEARTGOLD_JA; else -> NAMES_HEARTGOLD }
             else -> return null
         }
         val msg = Narc(file(f, header, banks.msg) ?: return null)
@@ -863,6 +884,16 @@ object NdsArt {
     private val DEX_HEARTGOLD = DexFiles("/a/0/2/7", 803, 816, 720, "/a/0/7/4", "/a/0/0/2", "/a/1/3/8", "/a/0/3/3",
         "/a/0/3/4", "/a/0/0/4", HEARTGOLD_DEX, HEARTGOLD_FRONT)
     private val DEX_SOULSILVER = DexFiles("/a/0/2/7", 804, 816, 720, "/a/0/7/4", "/a/0/0/2", "/a/1/3/8", "/a/0/3/3",
+        "/a/0/3/4", "/a/0/0/4", HEARTGOLD_DEX, HEARTGOLD_FRONT)
+    // The Korean carts: the same archive with seven banks fewer before these (796 / 797 descriptions, 809 categories, 715 abilities).
+    private val DEX_HEARTGOLD_KO = DexFiles("/a/0/2/7", 796, 809, 715, "/a/0/7/4", "/a/0/0/2", "/a/1/3/8", "/a/0/3/3",
+        "/a/0/3/4", "/a/0/0/4", HEARTGOLD_DEX, HEARTGOLD_FRONT)
+    // The Japanese ones: 791 / 792 descriptions, 803 categories (804 is the species in English), 711 abilities.
+    private val DEX_HEARTGOLD_JA = DexFiles("/a/0/2/7", 791, 803, 711, "/a/0/7/4", "/a/0/0/2", "/a/1/3/8", "/a/0/3/3",
+        "/a/0/3/4", "/a/0/0/4", HEARTGOLD_DEX, HEARTGOLD_FRONT)
+    private val DEX_SOULSILVER_JA = DexFiles("/a/0/2/7", 792, 803, 711, "/a/0/7/4", "/a/0/0/2", "/a/1/3/8", "/a/0/3/3",
+        "/a/0/3/4", "/a/0/0/4", HEARTGOLD_DEX, HEARTGOLD_FRONT)
+    private val DEX_SOULSILVER_KO = DexFiles("/a/0/2/7", 797, 809, 715, "/a/0/7/4", "/a/0/0/2", "/a/1/3/8", "/a/0/3/3",
         "/a/0/3/4", "/a/0/0/4", HEARTGOLD_DEX, HEARTGOLD_FRONT)
     // pret/pokeplatinum (platinum.us/filesys.csv, generated/text_banks.h): pl_msg's 706 descriptions (the US entries),
     // 711 categories, 610 abilities; zukan_data_gira (Giratina's Altered Forme, the dex's default); the Sinnoh numbers

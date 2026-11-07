@@ -31,10 +31,13 @@ enum class DsLayout(val id: Int, val label: String, val subtitle: String) {
         fun of(id: Int) = entries.firstOrNull { it.id == id } ?: ONE_SCREEN
 
         /** The DS games whose touch-screen moments are followed (nds/pk_nds_field.cpp's touch rules): HeartGold and
-         * SoulSilver (USA, France), Platinum (USA rev 1, France), Black, White (both also France), Black 2 and White 2. */
-        fun followed(gameCode: String) = gameCode in FOLLOWED
+         * SoulSilver (USA, Germany, France), Platinum (USA rev 1, France), Black, White (both also France), Black 2 and
+         * White 2, and the language ports whose menu functions are known ([com.pokedaisy.app.companion.data.NdsPort.followed]). */
+        fun followed(gameCode: String) =
+            gameCode in FOLLOWED || com.pokedaisy.app.companion.data.NDS_PORTS.any { it.code == gameCode && it.followed }
 
-        private val FOLLOWED = setOf("IPKE", "IPKF", "IPGE", "IPGF", "CPUE", "CPUF", "IRBO", "IRBF", "IRAO", "IRAF", "IREO", "IRDO")
+        private val FOLLOWED =
+            setOf("IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF", "CPUE", "CPUF", "IRBO", "IRBF", "IRAO", "IRAF", "IREO", "IRDO")
     }
 }
 

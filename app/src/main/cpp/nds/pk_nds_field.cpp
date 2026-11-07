@@ -4,11 +4,13 @@
 // (linux/dsperate/); the one read of melonDS itself, pk_nds_bg3_tiles, is in pk_nds_field_gpu.cpp.
 
 #include "pk_nds_field.h"
+#include "pk_nds_ports_gen.h"
 
 #include <string.h>
 
 #include <unordered_map>
 #include <utility>
+#include <vector>
 
 static const PkNdsFieldGame PLATINUM_US_REV1 = {
     "Platinum (USA, rev 1)",
@@ -365,6 +367,8 @@ const PkNdsFieldGame* pk_nds_field_game_rom(const uint8_t* rom, uint32_t romLen)
     return pk_nds_field_game((const char*) rom + 0xC, rom[0x1E]);
 }
 
+static const PkNdsFieldGame* portGame(const char code[4], int revision);
+
 const PkNdsFieldGame* pk_nds_field_game(const char code[4], int revision)
 {
     if (memcmp(code, "CPUE", 4) == 0 && revision == 1) return &PLATINUM_US_REV1;
@@ -378,7 +382,7 @@ const PkNdsFieldGame* pk_nds_field_game(const char code[4], int revision)
     if (memcmp(code, "IRAF", 4) == 0 && revision == 0) return &WHITE_FR;
     if (memcmp(code, "IREO", 4) == 0 && revision == 0) return &BLACK2_US;
     if (memcmp(code, "IRDO", 4) == 0 && revision == 0) return &WHITE2_US;
-    return 0;
+    return portGame(code, revision);
 }
 
 static int inMainRam(uint32_t p) { return p >= 0x02000000u && p < 0x02400000u; }
@@ -424,6 +428,13 @@ static const PkNdsTouchRules TOUCH_RULES[] = {
         { 0x021E5901, 0 },                                      // the options
         { 0x021E5AA1, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
         { 0x021E5A9D, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
+    }, 0x10C },
+    // German HeartGold / SoulSilver: the US apps, their overlays 0x20 lower (scripts/port_nds_fns.py, checked headless).
+    { &HEARTGOLD_DE, 0x0203BEF1, 0x19C, 0x4D0, {
+        { 0x02078E31, 0 },                                      // the party
+        { 0x021E58E1, 0 },                                      // the options
+        { 0x021E5A81, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (HeartGold)
+        { 0x021E5A7D, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) },   // the Pokédex (SoulSilver)
     }, 0x10C },
     // The French carts: the US apps at their French addresses (the ARM9's the same, the overlays 0x20 higher).
     { &HEARTGOLD_FR, 0x0203BEF1, 0x19C, 0x4D0, {
@@ -503,6 +514,82 @@ static const PkNdsGen5Touch GEN5_TOUCH[] = {
     { &WHITE2_US, 0x0215A8B5, { 165, 186, 140, 0 }, 0x1C4, 0xBC, 0xA4 },
 };
 
+// The language ports (gamedata/nds/ports.toml, pk_nds_ports_gen.h): each its base cart's tables with its own words. Built
+// once; callSet 100 + n / 200 + n is the n-th port of each kind (pk_nds_call.cpp builds its functions from the same rows).
+struct PortTables {
+    std::vector<PkNdsFieldGame> games4, games5;
+    std::vector<PkNdsTouchRules> touch4;
+    std::vector<PkNdsGen5Touch> touch5;
+};
+
+static const PortTables& ports()
+{
+    static const PortTables t = [] {
+        PortTables p;
+        p.games4.reserve(PK_NDS_PORTS4_COUNT);
+        p.games5.reserve(PK_NDS_PORTS5_COUNT);
+        for (int i = 0; i < PK_NDS_PORTS4_COUNT; i++) {
+            const PkNdsPort4& r = PK_NDS_PORTS4[i];
+            PkNdsFieldGame g = HEARTGOLD_US;
+            g.name = r.name;
+            g.fieldSystemPtr = r.fieldSystemPtr;
+            g.battleTemplate = r.battleTemplate;
+            g.fieldMapMain = r.fieldMapMain;
+            g.currentBgm = r.soundWork + 0xBEBFC;
+            g.seqPlayers = r.seqPlayer;
+            g.callSet = 100 + i;
+            p.games4.push_back(g);
+        }
+        for (int i = 0; i < PK_NDS_PORTS5_COUNT; i++) {
+            const PkNdsPort5& r = PK_NDS_PORTS5[i];
+            PkNdsFieldGame g = r.sequel ? BLACK2_US : BLACK_US;
+            g.name = r.name;
+            g.fieldSystemPtr = r.gameSystem;
+            g.currentBgm = r.bgmStack;
+            g.seqPlayers = r.seqPlayer;
+            g.callSet = 200 + i;
+            g.bgmDepth = r.bgmStack - 0xC;
+            p.games5.push_back(g);
+        }
+        // After both reserves, so these pointers stay put.
+        for (int i = 0; i < PK_NDS_PORTS4_COUNT; i++) {
+            const PkNdsPort4& r = PK_NDS_PORTS4[i];
+            if (!r.startMenu || !r.partyInit || !r.optionsInit || !r.dexInit) continue;
+            PkNdsTouchRules t = {};
+            t.game = &p.games4[i];
+            t.startMenuTask = r.startMenu;
+            t.offBattleInput = 0x19C;
+            t.offPanelShown = 0x4D0;
+            t.touchOnly[0] = { r.partyInit, 0 };
+            t.touchOnly[1] = { r.optionsInit, 0 };
+            t.touchOnly[2] = { r.dexInit, (1u << 0) | (1u << 2) | (1u << 5) | (1u << 6) };
+            t.offMenuInputState = 0x10C;
+            p.touch4.push_back(t);
+        }
+        for (int i = 0; i < PK_NDS_PORTS5_COUNT; i++) {
+            const PkNdsPort5& r = PK_NDS_PORTS5[i];
+            if (!r.startMenuEvent) continue;
+            PkNdsGen5Touch t = r.sequel ? PkNdsGen5Touch{ nullptr, 0, { 165, 186, 140, 0 }, 0x1C4, 0xBC, 0xA4 }
+                                        : PkNdsGen5Touch{ nullptr, 0, { 91, 111, 68, 0 }, 0x180, 0xB0, 0x98 };
+            t.game = &p.games5[i];
+            t.startMenuEvent = r.startMenuEvent;
+            p.touch5.push_back(t);
+        }
+        return p;
+    }();
+    return t;
+}
+
+static const PkNdsFieldGame* portGame(const char code[4], int revision)
+{
+    const PortTables& p = ports();
+    for (int i = 0; i < PK_NDS_PORTS4_COUNT; i++)
+        if (memcmp(code, PK_NDS_PORTS4[i].code, 4) == 0 && revision == PK_NDS_PORTS4[i].revision) return &p.games4[i];
+    for (int i = 0; i < PK_NDS_PORTS5_COUNT; i++)
+        if (memcmp(code, PK_NDS_PORTS5[i].code, 4) == 0 && revision == PK_NDS_PORTS5[i].revision) return &p.games5[i];
+    return 0;
+}
+
 static const int GEN5_OFF_VIEW = 0x54;
 static const int GEN5_OFF_SLIDE = 0x08, GEN5_OFF_PANEL = 0x58, GEN5_OFF_WAITING = 0x60;
 static const int GEN5_ACMD_PARTY = 5;
@@ -510,6 +597,8 @@ static const int GEN5_ACMD_PARTY = 5;
 static const PkNdsGen5Touch* gen5Touch(const PkNdsFieldGame* g)
 {
     for (const PkNdsGen5Touch& t : GEN5_TOUCH)
+        if (t.game == g) return &t;
+    for (const PkNdsGen5Touch& t : ports().touch5)
         if (t.game == g) return &t;
     return nullptr;
 }
@@ -534,6 +623,8 @@ static int gen5BattlePanel(const PkNdsFieldGame* g, const PkNdsGen5Touch* t, uin
 static const PkNdsTouchRules* touchRules(const PkNdsFieldGame* g)
 {
     for (const PkNdsTouchRules& r : TOUCH_RULES)
+        if (r.game == g) return &r;
+    for (const PkNdsTouchRules& r : ports().touch4)
         if (r.game == g) return &r;
     return nullptr;
 }

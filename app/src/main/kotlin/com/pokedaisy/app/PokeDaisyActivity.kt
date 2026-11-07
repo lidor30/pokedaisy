@@ -2027,7 +2027,16 @@ class PokeDaisyActivity : Activity() {
             "IRAO", "IRAF" -> { { com.pokedaisy.app.companion.data.WHITE_WORLD.wildRateWords() } }
             "IREO" -> { { com.pokedaisy.app.companion.data.BLACK2_WORLD.wildRateWords() } }
             "IRDO" -> { { com.pokedaisy.app.companion.data.WHITE2_WORLD.wildRateWords() } }
-            else -> null
+            // A language port: its game's world (the same maps and encounter tables).
+            else -> when (com.pokedaisy.app.companion.data.DsPorts.byCode(ndsCode)?.kind) {
+                com.pokedaisy.app.companion.data.GameKind.HEARTGOLD -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates
+                com.pokedaisy.app.companion.data.GameKind.SOULSILVER -> com.pokedaisy.app.companion.data.SOULSILVER_WORLD::wildRates
+                com.pokedaisy.app.companion.data.GameKind.BLACK -> { { com.pokedaisy.app.companion.data.BLACK_WORLD.wildRateWords() } }
+                com.pokedaisy.app.companion.data.GameKind.WHITE -> { { com.pokedaisy.app.companion.data.WHITE_WORLD.wildRateWords() } }
+                com.pokedaisy.app.companion.data.GameKind.BLACK2 -> { { com.pokedaisy.app.companion.data.BLACK2_WORLD.wildRateWords() } }
+                com.pokedaisy.app.companion.data.GameKind.WHITE2 -> { { com.pokedaisy.app.companion.data.WHITE2_WORLD.wildRateWords() } }
+                else -> null
+            }
         }
         input.ds = nds
         val gba = !gameBoy && !nds

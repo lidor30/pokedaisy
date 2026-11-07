@@ -490,10 +490,10 @@ val GEN5_WHITE2 = GEN5_BLACK2.copy(
 
 /** The Gen 5 config for [kind], or null. */
 fun gen5ConfigFor(kind: GameKind?, code: String = romGameCode): Gen5Config? = when (kind) {
-    GameKind.BLACK -> if (code == "IRBF") GEN5_BLACK_FR else GEN5_BLACK
-    GameKind.WHITE -> if (code == "IRAF") GEN5_WHITE_FR else GEN5_WHITE
-    GameKind.BLACK2 -> GEN5_BLACK2
-    GameKind.WHITE2 -> GEN5_WHITE2
+    GameKind.BLACK -> if (code == "IRBF") GEN5_BLACK_FR else DsPorts.byCode(code)?.let(DsPorts::gen5Config) ?: GEN5_BLACK
+    GameKind.WHITE -> if (code == "IRAF") GEN5_WHITE_FR else DsPorts.byCode(code)?.let(DsPorts::gen5Config) ?: GEN5_WHITE
+    GameKind.BLACK2 -> DsPorts.byCode(code)?.let(DsPorts::gen5Config) ?: GEN5_BLACK2
+    GameKind.WHITE2 -> DsPorts.byCode(code)?.let(DsPorts::gen5Config) ?: GEN5_WHITE2
     else -> null
 }
 

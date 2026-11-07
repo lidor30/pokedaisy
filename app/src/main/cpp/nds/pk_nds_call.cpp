@@ -7,7 +7,10 @@
 #include <stddef.h>
 #include <string.h>
 
+#include <vector>
+
 #include "NDS.h"
+#include "pk_nds_ports_gen.h"
 #include "pk_nds_stub_gen.h"
 
 using namespace melonDS;
@@ -297,6 +300,59 @@ Pending pending = {};
 int lastDone = 0, lastFailed = 0;
 uint32_t lastResults[PK_NDS_MAX_RESULTS];
 
+// The language ports' functions (pk_nds_ports_gen.h): HeartGold's and Black's tables with each port's addresses. Black 2's
+// structs and script ids are Black's, and every guard word below is the same instruction in all of them.
+const CallFns* portFns(int n)
+{
+    static const std::vector<CallFns> fns = [] {
+        std::vector<CallFns> v;
+        for (int i = 0; i < PK_NDS_PORTS4_COUNT; i++) {
+            const PkNdsPort4& r = PK_NDS_PORTS4[i];
+            CallFns f = HEARTGOLD;
+            f.scriptContextJump = r.scriptJump;
+            f.stringTemplateNew = r.messageFormatNew;
+            f.stringInit = r.stringNew;
+            f.fieldMovesSetUsableMoves = r.fieldMoveInit;
+            f.fieldMovesCheckFly = r.fieldMoveCheckFly;
+            f.saveDataGetParty = r.partyGet;
+            f.partyGetPokemonBySlotIndex = r.partyGetMon;
+            f.flyContextNew = r.flyNew;
+            f.fieldMovesFlyTask = r.flyTask;
+            f.fieldSystemCreateTask = r.createTask;
+            f.scriptEnvironmentNew = r.scriptEnvNew;
+            f.createScriptContext = r.createScriptContext;
+            f.taskRunScripts = r.taskRunScripts;
+            v.push_back(f);
+        }
+        return v;
+    }();
+    return n >= 0 && n < (int) fns.size() ? &fns[n] : nullptr;
+}
+
+const Gen5Fns* portGen5Fns(int n)
+{
+    static const std::vector<Gen5Fns> fns = [] {
+        std::vector<Gen5Fns> v;
+        for (int i = 0; i < PK_NDS_PORTS5_COUNT; i++) {
+            const PkNdsPort5& r = PK_NDS_PORTS5[i];
+            Gen5Fns f = BLACK;
+            f.gameSystemPtr = r.gameSystem;
+            f.eventCheck = r.eventCheck;
+            f.returnZero = r.returnZero;
+            f.setEvent = r.setEvent;
+            f.scriptEvent = r.scriptEvent;
+            f.skillInitCheck = r.skillInitCheck;
+            f.skillCanUse = r.skillCanUse;
+            f.skillUse = r.skillUse;
+            const u32 at[6] = { r.eventCheck, r.scriptEvent, r.scriptEventCheck, r.skillInitCheck, r.skillCanUse, r.skillUse };
+            for (int k = 0; k < 6; k++) f.code[k].addr = at[k] & ~1u;
+            v.push_back(f);
+        }
+        return v;
+    }();
+    return n >= 0 && n < (int) fns.size() ? &fns[n] : nullptr;
+}
+
 const CallFns* fnsFor(const PkNdsFieldGame* game)
 {
     if (!game || !game->fieldMapMain) return nullptr;
@@ -305,7 +361,7 @@ const CallFns* fnsFor(const PkNdsFieldGame* game)
     case 2: return &HEARTGOLD;
     case 7: return &ORIGIN_HEARTGOLD;
     case 8: return &PLATINUM_FR;
-    default: return nullptr;
+    default: return game->callSet >= 100 && game->callSet < 200 ? portFns(game->callSet - 100) : nullptr;
     }
 }
 
@@ -319,7 +375,7 @@ const Gen5Fns* gen5FnsFor(const PkNdsFieldGame* game)
     case 6: return &WHITE2;
     case 9: return &BLACK_FR;
     case 10: return &WHITE_FR;
-    default: return nullptr;
+    default: return game->callSet >= 200 ? portGen5Fns(game->callSet - 200) : nullptr;
     }
 }
 

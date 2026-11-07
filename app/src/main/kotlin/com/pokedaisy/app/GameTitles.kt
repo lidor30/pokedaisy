@@ -22,7 +22,12 @@ import java.io.File
  */
 object GameTitles {
 
-    val BY_SHA1: Map<String, String> by lazy { RETAIL + HACKS + RETAIL_PORT_TITLES }
+    val BY_SHA1: Map<String, String> by lazy { RETAIL + HACKS + RETAIL_PORT_TITLES + NDS_PORT_TITLES }
+
+    /** The DS language ports' own titles ([com.pokedaisy.app.companion.data.NDS_PORTS]). */
+    private val NDS_PORT_TITLES: Map<String, String> by lazy {
+        com.pokedaisy.app.companion.data.NDS_PORTS.associate { it.sha1 to it.title }
+    }
 
     /** A retail cart's SHA-1 (any language and revision), not a hack's. */
     fun isRetail(sha1: String): Boolean = sha1 in RETAIL || sha1 in RETAIL_PORT_TITLES
@@ -36,7 +41,7 @@ object GameTitles {
         "6ed98d446eb65861c71fc5f94bdc35691667f665", "a559da54839663d8f8f3f03382e5665a61873d22",
         "28f075915dd445cbfd902f1e1a94d5048b03a095",
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1,
-    )
+    ) + com.pokedaisy.app.companion.data.NDS_PORTS.map { it.sha1 }
 
     private val RETAIL: Map<String, String> = mapOf(
         // Retail (USA, Europe), every revision: pret's pokefirered / pokeemerald / pokeruby.
@@ -202,7 +207,7 @@ object GameTitles {
     /** DS carts worth hashing (128 MB each, once per file): the DS games above. */
     private val NDS_CODES = setOf(
         "CPUE", "CPUF", "IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF", "IRBO", "IRBF", "IRAO", "IRAF", "IREO", "IRDO", "IPKJ",
-    )
+    ) + com.pokedaisy.app.companion.data.DsPorts.codes
 
     /** Only these games' ROMs (and Game Boy carts) are worth hashing: every entry above is one of them. */
     private val CODES = setOf("BPRE", "BPGE", "BPEE", "AXVE", "AXPE") + EMERALD_LOCALIZED_CODES +

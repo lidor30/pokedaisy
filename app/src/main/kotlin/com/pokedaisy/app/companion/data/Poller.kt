@@ -724,6 +724,12 @@ class TelemetrySampler {
         dsOrigin = code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
         when {
             dsOrigin && NDS_SUPPORT -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_ORIGIN_HEARTGOLD }
+            ndsSupported(code, rev) && DsPorts.of(code, rev) != null -> {
+                val port = DsPorts.of(code, rev)!!
+                kind = port.kind
+                gen4Cfg = DsPorts.gen4Config(port)
+                gen5Cfg = DsPorts.gen5Config(port)
+            }
             ndsSupported(code, rev) -> when (code) {
                 "IPKE" -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_HEARTGOLD_US }
                 "IPKD" -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_HEARTGOLD_DE }
@@ -1208,15 +1214,18 @@ class TelemetrySampler {
 
         /** The DS carts the companion reads, by their header's game code (0x0C) and revision (0x1E): Platinum USA rev 1 and
          * France rev 0, HeartGold / SoulSilver USA / Germany / France (rev 0), Black and White (USA / Europe, France, rev 0),
-         * Black 2 and White 2 (USA / Europe, rev 0). The website's ROM check gets them through compat.json. */
-        val NDS_GAMES = mapOf(
+         * Black 2 and White 2 (USA / Europe, rev 0), then the language ports ([NDS_PORTS]: gamedata/nds/ports.toml). The
+         * website's ROM check gets them through compat.json. */
+        val NDS_GAMES: List<Pair<String, Int>> = listOf(
             "CPUE" to 1, "CPUF" to 0, "IPKE" to 0, "IPKD" to 0, "IPKF" to 0, "IPGE" to 0, "IPGD" to 0, "IPGF" to 0,
             "IRBO" to 0, "IRBF" to 0, "IRAO" to 0, "IRAF" to 0, "IREO" to 0, "IRDO" to 0,
-        )
+        ) + NDS_PORTS.map { it.code to it.revision }
+
+        private val NDS_GAME_SET by lazy { NDS_GAMES.toSet() }
 
         /** [detectDs] and the library's [com.pokedaisy.app.CompanionSupport] both ask this. */
         fun ndsSupported(code: String?, revision: Int?): Boolean =
-            NDS_SUPPORT && revision != null && NDS_GAMES[code] == revision
+            NDS_SUPPORT && code != null && revision != null && (code to revision) in NDS_GAME_SET
 
         /** Every hack detect() has RAM addresses for - the >16 MB ones it
          * hashes, plus Seaglass, Emerald Kaizo, Emerald Legacy, Orange Islands, Recharged Yellow / Emerald and Ultra Violet (16 MB). [CompanionSupport] checks imports against it. */

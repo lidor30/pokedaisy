@@ -238,3 +238,32 @@ FieldSystem_CreateTask       c 0x020504F1     0x0204F979
 ScriptEnvironment_New        c 0x0204001D     0x0203F725
 CreateScriptContext          c 0x020400AD     0x0203F7B5
 Task_RunScripts              c 0x0203FF45     0x0203F64D
+
+# Spanish HeartGold (gamedata/nds/ports.toml's IPKS): its low ARM9 8 bytes lower than every other build's, checked headless
+# beside the US cart (the PC, FLY's checks, the X menu's pages, EXPAND, a wild battle).
+[heartgold_es]
+us = Pokemon - HeartGold Version (USA).nds
+other = Pokemon - Edicion Oro HeartGold (Spain) [b].nds
+sFieldSysPtr                 w 0x021D4158       0x021D4178
+gOverlayTemplate_Battle      w 0x020FA484       0x020FA46C
+sSoundWork                   w 0x02111958       0x02111978
+sSeqPlayer                   w 0x021DF984       0x021DF9A4
+sSaveDataPtr                 w 0x021D2228       0x021D2248
+FieldMap_Main                c 0x021E5BE5@1     0x021E5C05
+Task_StartMenu               c 0x0203BEF1       0x0203BEE9
+PartyMenuApp_Init            c 0x02078E31       0x02078E29
+OptionsApp_Init              c 0x021E5901@54    0x021E5921
+Pokedex_Init                 c 0x021E5AA1@18    0x021E5AC1
+ScriptJump                   c 0x0203FE0D       0x0203FE05
+MessageFormat_New_Custom     c 0x0200BD19       0x0200BD19
+String_New                   c 0x02026355       0x02026355
+FieldMove_InitCheckData      c 0x02067E11       0x02067E09
+FieldMove_CheckFly           c 0x0206800D       0x02068005
+SaveArray_Party_Get          c 0x02074905       0x020748FD
+Party_GetMonByIndex          c 0x02074645       0x0207463D
+sub_02067BF8                 c 0x02067BF9       0x02067BF1
+sub_02067C30                 c 0x02067C31       0x02067C29
+FieldSystem_CreateTask       c 0x020504F1       0x020504E9
+ScriptEnvironment_New        c 0x0204001D       0x02040015
+CreateScriptContext          c 0x020400AD       0x020400A5
+Task_RunScripts              c 0x0203FF45       0x0203FF3D

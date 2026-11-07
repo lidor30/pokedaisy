@@ -48,7 +48,7 @@ jobs:
 
       # The per-game code generated from gamedata/ must match it (gamedata/README.md).
       - name: Game data
-        run: python3 scripts/gen_gamedata.py --check
+        run: python3 scripts/gen_gamedata.py --check && python3 scripts/gen_nds_ports.py --check
 
       # ROM-backed tests skip here (no ROMs in CI - they run on the release runner);
       # fixtures, guards, Paparazzi renders and everything else run.

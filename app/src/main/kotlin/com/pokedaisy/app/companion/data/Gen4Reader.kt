@@ -324,7 +324,7 @@ val GEN4_PLATINUM_FR = GEN4_PLATINUM_US.copy(
  * player's own saves, then checked live. Their own items, pockets (101 TM / HM slots, 24 balls), map places and FLY
  * spots (the Pokégear's flypoints); the Pokégear map and battles come later.
  */
-private fun gen4HeartGoldFamily(
+internal fun gen4HeartGoldFamily(
     saveDataPtr: Long, fieldSystemPtr: Long = 0x021D4158, battleTemplate: Long = 0x020FA484,
 ) = Gen4Config(
     saveDataPtr = saveDataPtr,
@@ -430,12 +430,12 @@ fun gen4ConfigFor(kind: GameKind?, code: String = romGameCode): Gen4Config? = wh
         originHeartGold -> GEN4_ORIGIN_HEARTGOLD
         code == "IPKD" -> GEN4_HEARTGOLD_DE
         code == "IPKF" -> GEN4_HEARTGOLD_FR
-        else -> GEN4_HEARTGOLD_US
+        else -> DsPorts.byCode(code)?.let(DsPorts::gen4Config) ?: GEN4_HEARTGOLD_US
     }
     GameKind.SOULSILVER -> when (code) {
         "IPGD" -> GEN4_SOULSILVER_DE
         "IPGF" -> GEN4_SOULSILVER_FR
-        else -> GEN4_SOULSILVER_US
+        else -> DsPorts.byCode(code)?.let(DsPorts::gen4Config) ?: GEN4_SOULSILVER_US
     }
     else -> null
 }
