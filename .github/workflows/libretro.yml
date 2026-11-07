@@ -10,6 +10,12 @@ on:
     branches: [main]
     paths: ['libretro/**', 'linux/**', '3ds/**', 'app/src/main/cpp/pk_*', 'third_party/mgba', 'gamedata/**', '.github/workflows/libretro.yml']
   workflow_dispatch:
+  workflow_call:
+    inputs:
+      ref:
+        description: Commit / branch to test (Nightly passes dev's head); empty = the event's own ref
+        type: string
+        default: ''
 
 permissions:
   contents: read
@@ -25,6 +31,8 @@ jobs:
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.ref }}
       - name: mGBA submodule
         run: git submodule update --init --depth 1 third_party/mgba
       - name: Toolchains
@@ -48,5 +56,7 @@ jobs:
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.ref }}
       - name: make -C 3ds preview (fixtures; the ROM-backed lines skip without ROMs)
         run: make -C 3ds preview

@@ -1,0 +1,125 @@
+# The full suite on dev, once a night: everything CI runs on a PR (unit tests with every Paparazzi render, the debug
+# APK, ui-preview stress / docs search / keyed state, the manual), the Linux and libretro builds whatever paths
+# changed, and what no PR job runs (the 3DS port's generated configs, every ui-preview render). A night with no new
+# commit on dev is skipped; a manual run (Actions > Nightly > Run workflow) always runs, on dev or any branch named.
+#
+# GitHub starts scheduled runs from the default branch's copy of this file only, so it fires once it's on main. The
+# workflows it calls are dev's own copies (@dev, not main's older ones), and every job checks out dev's head by its
+# SHA, so they all test the same commit. The ROM-backed tests aren't here: the ROM
+# runner takes only the owner's releases (scripts/runner_job_check.sh). A failed night mails whoever last edited
+# the cron line below.
+name: Nightly
+
+on:
+  schedule:
+    - cron: '0 1 * * *' # 01:00 UTC = 03:00 / 04:00 Israel time
+  workflow_dispatch:
+    inputs:
+      branch:
+        description: Branch to test
+        default: dev
+        type: string
+
+concurrency:
+  group: nightly
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  target:
+    name: dev's head
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    outputs:
+      sha: ${{ steps.head.outputs.sha }}
+      run: ${{ steps.head.outputs.run }}
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ inputs.branch || 'dev' }}
+          fetch-depth: 0
+      - id: head
+        env:
+          BRANCH: ${{ inputs.branch || 'dev' }}
+        run: |
+          sha="$(git rev-parse HEAD)"
+          echo "sha=${sha}" >> "$GITHUB_OUTPUT"
+          # A scheduled night runs only when something landed since the last one (25 h: the cron drifts).
+          if [ "${GITHUB_EVENT_NAME}" = schedule ] && [ -z "$(git log -1 --since='25 hours ago' --format=%H)" ]; then
+            echo "run=false" >> "$GITHUB_OUTPUT"
+            echo "::notice::No new commit on ${BRANCH} in the last 25 h: nothing to test"
+          else
+            echo "run=true" >> "$GITHUB_OUTPUT"
+            echo "::notice::Testing ${BRANCH} at ${sha}"
+          fi
+
+  ci:
+    name: CI
+    needs: target
+    if: needs.target.outputs.run == 'true'
+    uses: lidor30/pokedaisy/.github/workflows/ci.yml@dev
+    with:
+      ref: ${{ needs.target.outputs.sha }}
+
+  linux:
+    name: Linux
+    needs: target
+    if: needs.target.outputs.run == 'true'
+    uses: lidor30/pokedaisy/.github/workflows/linux.yml@dev
+    with:
+      ref: ${{ needs.target.outputs.sha }}
+
+  libretro:
+    name: libretro
+    needs: target
+    if: needs.target.outputs.run == 'true'
+    uses: lidor30/pokedaisy/.github/workflows/libretro.yml@dev
+    with:
+      ref: ${{ needs.target.outputs.sha }}
+
+  # make check's 3DS step: the generated C configs equal the old hand-written tables (3ds/test/configs_gen_test.c).
+  configs-3ds:
+    name: 3DS configs
+    needs: target
+    if: needs.target.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ needs.target.outputs.sha }}
+      - run: make -C 3ds test-configs-gen
+
+  # Every ui-preview screen (`make preview`): too long for a PR job, and the only run that composes all of them.
+  # Nothing compares the PNGs; they're kept a week to look at.
+  render:
+    name: UI preview render
+    needs: target
+    if: needs.target.outputs.run == 'true'
+    runs-on: ubuntu-latest
+    timeout-minutes: 120
+    steps:
+      - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
+        with:
+          ref: ${{ needs.target.outputs.sha }}
+
+      - uses: actions/setup-java@cf277c60eb25467037889841efdb72551f06f6c3 # v4.9.1
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@748248ddd2a24f49513d8f472f81c3a07d4d50e1 # v4.4.4
+
+      - name: Render
+        run: ./gradlew -p ui-preview render --stacktrace
+
+      - name: Shots
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ui-preview-shots
+          path: ui-preview/build/shots/
+          retention-days: 7
+          if-no-files-found: ignore
