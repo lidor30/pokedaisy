@@ -63,8 +63,9 @@ class WideCamera {
     /** A direction is held: the player is walking (or trying to). */
     @Volatile var walking = false
 
-    /** SETTINGS > AUTO ZOOM IN: whether a text box or a menu screen pulls in to 1x ([SCENE_TEXT], [SCENE_MENU]);
-     * battles and anything else off the map always do, a picture over the field never. */
+    /** SETTINGS > AUTO ZOOM IN: whether a text box pulls in to 1x ([SCENE_TEXT]); battles, the game's menu screens
+     * ([SCENE_MENU]: a zoomed-out one sat small in the middle) and anything else off the map always do, a picture over
+     * the field never. */
     @Volatile var zoomOnText = true
     /** LOOK AROUND off: the right stick does nothing. */
     @Volatile var lookAround = true
@@ -128,7 +129,7 @@ class WideCamera {
 
         val wantsClose = when (scene) {
             SCENE_FIELD -> false
-            SCENE_TEXT, SCENE_MENU -> zoomOnText
+            SCENE_TEXT -> zoomOnText
             else -> true
         }
         // A fade decides nothing; nor does a picture over the field (FireRed's map preview, ~2 s): a pull-in and a

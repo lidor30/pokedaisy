@@ -106,13 +106,13 @@ class WideCameraTest {
         assertEquals(6.75f, cam.run(1f, start = 5_000_000_000L, scene = WideCamera.SCENE_FADE).scale, 0.001f)
     }
 
-    @Test fun zoomInOnTextOffLeavesTextAndMenusZoomedOutButNotBattles() {
+    @Test fun zoomInOnTextOffLeavesTextZoomedOutButNotMenusOrBattles() {
         val cam = thor()
         cam.level = 3
         cam.zoomOnText = false
         cam.run(1.5f)
         assertEquals(3f, cam.run(1f, start = 2_000_000_000L, scene = WideCamera.SCENE_TEXT).scale, 0.001f)
-        assertEquals(3f, cam.run(1f, start = 3_000_000_000L, scene = WideCamera.SCENE_MENU).scale, 0.001f)
+        assertEquals(6.75f, cam.run(1f, start = 3_000_000_000L, scene = WideCamera.SCENE_MENU).scale, 0.001f)
         assertEquals(6.75f, cam.run(1f, start = 5_000_000_000L, scene = WideCamera.SCENE_BATTLE_START).scale, 0.001f)
     }
 

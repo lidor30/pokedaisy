@@ -318,6 +318,8 @@ New screens should reuse these rather than
 summary, battle INFO / SUGGESTIONS) use `SummaryFrame` (`MonDetailScreen.kt`): one white
 window split by `Separator`s over a row of square `PlatinumButton`s with Back bottom-right.
 
+**SETTINGS' group tabs sit outside the card** (both screens, the user's call): `RailedWindow` leaves the window to the `GroupedRows` inside, which draws it round the list alone, the `TabRail` on the backdrop beside it.
+**Buttons are HeartGold's two-tone (2026-11-05, the user's call)**: every companion button is a face in two colours with two soft lines between them (`drawTwoTone`, GbaText.kt): `PlatinumButton` (a thick dark outline, a thin white ring, `fill` over `frame`) and, through `drawLayeredBox(twoTone = true)`, `OptionButton`, the tab chips, SETTINGS' group chips, the DEX's sections, MORE's tiles and the bag's PC and sort; the quick menu's tiles (`quickTileFace`) add a thick outline. The BATTLE tab takes HeartGold's layout by proportion (`ActionButtons`' `ds`: a DS pixel from the pane's width, so a tall pane leaves room rather than stretching the buttons), `BattlePlaceholder`'s four move places behind FIGHT, and its move cards (`hgMovePanel`); RUN stays whole, not cut by the screen's edge as in the game.
 **DARK MODE** (SETTINGS on either screen, SCREEN group; `Prefs.darkMode` OFF default / ON / AUTO = the device's uiMode;
 `DarkMode` in `theme/DarkMode.kt`, Compose state, `override` for Paparazzi / ui-preview): every `OptionColors` getter has a
 dark twin - the same window build (dark outer line, lighter inner band, lilac edge) in slate, light text with its GBA
@@ -1283,7 +1285,7 @@ attributes per tile id from the tileset's own bank, 256 blocks with no wrap, LZ-
 **Transitions (2026-10-12, FireRed first)**: FireRed's map preview (a BG0 picture over the field on entering a forest /
 cave) dims the map around it, frame and margins (`overlayDim`; mGBA's output pixels carry their layer in the top byte,
 `fromBg`, so BG0's own pixels are left alone). **AUTO ZOOM IN** (SETTINGS on either screen, under ASPECT, shown only on EXPAND; `Prefs.expandZoomOnText`, ON):
-OFF leaves text boxes and menu screens (SCENE_MENU) zoomed out; battles always pull in, their POKéMON / BAG screens with
+OFF leaves text boxes zoomed out; menu screens (SCENE_MENU: the user's call, a zoomed-out one sat small) and battles always pull in, their POKéMON / BAG screens with
 them (gMain.inBattle set = the battle's scene, not SCENE_MENU: they used to zoom out mid-battle); a picture over the field (the
 map preview) never moves the camera, and its dim follows the card's alpha blend out (`overlayStrength`). A fade between maps (black / white frame: `fadedFrame`) is SCENE_FADE, which the camera holds through; FireRed's
 quest-log replay ("Previously on your quest", `PK_WIDE_QUEST_LOG`) is OFF (1x) until the field is the player's. Other games get no early battle pull-in until their `TRANSITION_PTR` is
@@ -1407,7 +1409,7 @@ Every Compose view on the stage runs on `stageRecomposer` (the activity's own, s
 a ComposeView keeps the coroutine scope of the first window recomposer it met, the stage changes windows on every
 HOME / sleep / lid close while swapped, and once that first one was cancelled every tap handler on the stage (HUD, touch
 controls, BATTLE BUTTONS) started dead - the views swallowed touches and nothing happened. Never let a view that moves
-between windows fall back to the window's recomposer. CLOSE COMPANION works swapped too: the activity itself moves to the
+between windows fall back to the window's recomposer. An app left on the second screen (Chrome on the Thor's bottom one, the user's report 2026-11-05) has the say over that screen's bars: `hide` from a Presentation, which can't take focus, does nothing, and the white gesture handle sits on the companion. The Presentation watches its insets (`watchBars`, nav bar still visible after 1.5 s = no swipe) and `SecondScreenHolder.coverApp` puts its window over the app, hiding the bars; `uncoverApp` in `onPause`. With the launcher there the bar reads hidden, so nothing opens. CLOSE COMPANION works swapped too: the activity itself moves to the
 second display (`Screens.moveToDisplay`, the game its content, the main screen Android's; Android 10+ keeps both screens'
 activities resumed); meanwhile the companion opens over the game there as on one screen (`companionOverGame`:
 `syncSingleScreen(true)`, the side panel's tab / window, BACK opens it) and its SETTINGS shows OPEN COMPANION

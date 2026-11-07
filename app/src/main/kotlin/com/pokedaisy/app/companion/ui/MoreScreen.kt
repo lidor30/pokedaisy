@@ -116,7 +116,7 @@ private fun AppTile(id: String, m: GbaTextMetrics, enabled: Boolean, modifier: M
             .drawBehind {
                 val px = u.toPx()
                 val fill = if (focused) OptionColors.tabSelectedFill else lerp(OptionColors.tabIdleFill, OptionColors.titleFill, TILE_LIGHTEN)
-                drawLayeredBox(OptionColors.chipLayers.inPx(px), fill, radius = 3 * px)
+                drawLayeredBox(OptionColors.chipLayers.inPx(px), fill, radius = 3 * px, twoTone = true)
             }
             .soundClickable(interactionSource = interaction, indication = null, enabled = enabled, onClick = onClick)
             .semantics { contentDescription = label }

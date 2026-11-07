@@ -214,6 +214,8 @@ fun DrawScope.drawLayeredBox(
     openBottom: Boolean = false,
     openTop: Boolean = false,
     openLeft: Boolean = false,
+    /** A button's two-tone face ([drawTwoTone]) instead of plain [fill]. */
+    twoTone: Boolean = false,
 ) {
     val run = radius + layers.sumOf { it.second.toDouble() }.toFloat() + 1f
     val left = if (openLeft) run else 0f
@@ -231,11 +233,28 @@ fun DrawScope.drawLayeredBox(
             inset += width
             r -= width
         }
-        drawPixelRoundRect(
-            fill, Offset(inset - left, inset - top), Size(size.width + extraW - 2 * inset, size.height + extraH - 2 * inset),
-            r.coerceAtLeast(0f),
-        )
+        val at = Offset(inset - left, inset - top)
+        val box = Size(size.width + extraW - 2 * inset, size.height + extraH - 2 * inset)
+        if (twoTone) {
+            drawTwoTone(fill, twoToneLow(fill), layers.lastOrNull()?.second ?: 1f) { color -> drawPixelRoundRect(color, at, box, r.coerceAtLeast(0f)) }
+        } else drawPixelRoundRect(fill, at, box, r.coerceAtLeast(0f))
     }
+}
+
+/** A two-tone button's lower colour, for a window-coloured one: [fill] a step down, on a light or a dark look alike. */
+fun twoToneLow(fill: Color): Color = androidx.compose.ui.graphics.lerp(fill, Color(0xFF40485A), 0.3f)
+
+/**
+ * HeartGold's button face, every companion button's: [top] down to just under half way, two lines stepping between the
+ * colours ([line] tall each) so the edge looks soft, then [low]. [paint] fills the button's shape in a colour, so the rounded
+ * corners stay the shape's.
+ */
+fun DrawScope.drawTwoTone(top: Color, low: Color, line: Float, paint: DrawScope.(Color) -> Unit) {
+    val split = size.height * 0.47f
+    paint(low)
+    clipRect(bottom = split) { paint(top) }
+    clipRect(top = split, bottom = split + line) { paint(androidx.compose.ui.graphics.lerp(top, low, 0.35f)) }
+    clipRect(top = split + line, bottom = split + line * 2) { paint(androidx.compose.ui.graphics.lerp(top, low, 0.7f)) }
 }
 
 /**

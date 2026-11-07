@@ -45,7 +45,7 @@ The `SPEED OPTIONS` page:
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
 | `ASPECT` | **`ORIGINAL`**, `STRETCH`, `EXPAND` | The GBA's 3:2, stretched to fill the screen, or more of the map drawn past the game's edges. Opens a preview to pick from. | [Screen](screen.md) |
-| `AUTO ZOOM IN` | **`ON`**, `OFF` | Only with `ASPECT` on `EXPAND`: conversations, signs and menus ease the zoom back in. Battles always do. | [Screen](screen.md) |
+| `AUTO ZOOM IN` | **`ON`**, `OFF` | Only with `ASPECT` on `EXPAND`: conversations and signs ease the zoom back in. Battles and the game's menu screens always do. | [Screen](screen.md) |
 | `LOOK AROUND` | **`ON`**, `OFF` | Only with `ASPECT` on `EXPAND`: the right stick moves the view. | [Screen](screen.md) |
 | `DS RESOLUTION` | **`ORIGINAL`**, `2x` to `8x` | The DS games' 3D drawn sharper by your device's graphics chip. `N/A` on a device that can't. | [Screen](screen.md#ds-resolution-sharper-3d) |
 | `DS CPU BOOST` | `OFF`, **`ON`** | The DS's processor twice as fast, so the games' own slow frames go. | [Screen](screen.md#ds-cpu-boost-fewer-slowdowns) |

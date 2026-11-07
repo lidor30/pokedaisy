@@ -20,7 +20,7 @@ The slots are your game's own party screen: FireRed and Emerald use their real s
 
 The icons bounce like they do in the game. If you'd rather they stood still, turn off `PARTY ICONS MOVE` in SETTINGS > `TWEAKS`.
 
-To change the order, press and hold a Pokémon, drag it onto another one and let go: they trade places, in your game too. The summary's `SWITCH` does the same: tap it, then tap the Pokémon to trade with in the column on the right. This works in the Game Boy Advance games while you're free to walk around, not in a battle or a conversation.
+To change the order, press and hold a Pokémon, drag it onto another one and let go: they trade places, in your game too. The summary's `SWITCH` does the same: tap it, your party opens, and tap the Pokémon to trade with. `CANCEL` or BACK goes back to the summary. This works in the Game Boy Advance games while you're free to walk around, not in a battle or a conversation.
 
 ## The summary
 

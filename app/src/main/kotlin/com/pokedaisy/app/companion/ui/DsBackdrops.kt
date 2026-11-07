@@ -1,10 +1,14 @@
 package com.pokedaisy.app.companion.ui
 
 import androidx.compose.foundation.Canvas
+import androidx.compose.foundation.background
+import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
+import androidx.compose.foundation.layout.padding
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -14,6 +18,7 @@ import androidx.compose.ui.graphics.ImageShader
 import androidx.compose.ui.graphics.Paint
 import androidx.compose.ui.graphics.ShaderBrush
 import androidx.compose.ui.graphics.TileMode
+import androidx.compose.ui.unit.dp
 import com.pokedaisy.app.companion.data.GameKind
 
 /**
@@ -147,6 +152,20 @@ fun BattleBackdrop(modifier: Modifier = Modifier.fillMaxSize()) {
         wash?.let { drawRect(it, blendMode = androidx.compose.ui.graphics.BlendMode.Multiply) }
         if (scrim > 0f) drawRect(NIGHT.copy(alpha = scrim))
     }
+}
+
+/** One of HeartGold's four pale move places (sampled, drawn here): behind FIGHT, and where a Pokémon has no fourth move. */
+@Composable
+fun BattlePlaceholder(modifier: Modifier = Modifier) {
+    val scrim = OptionColors.backdropScrim
+    fun night(c: Color) = androidx.compose.ui.graphics.lerp(c, NIGHT, scrim)
+    val shape = PixelRoundedShape(5.dp)
+    Box(
+        modifier.clip(shape).background(night(Color(0xFFBADFD7))).padding(3.dp)
+            .clip(shape).background(night(Color(0xFFFFFFFF))).padding(1.5.dp)
+            .clip(shape).background(night(Color(0xFFD3F3F7))).padding(1.5.dp)
+            .clip(shape).background(night(Color(0xFFDFFFFF))),
+    )
 }
 
 /** The DS screen's height, the ball's radius and half its middle band, in DS pixels. */

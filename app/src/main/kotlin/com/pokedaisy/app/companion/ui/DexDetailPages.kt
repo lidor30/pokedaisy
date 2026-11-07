@@ -91,7 +91,7 @@ internal fun DexSectionChips(sections: List<DexSection>, selected: DexSection, s
                     .gbaFocusRing(focused, PixelRoundedShape(u * 3))
                     .drawBehind {
                         val px = u.toPx()
-                        drawLayeredBox(OptionColors.chipLayers.inPx(px), if (on) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px)
+                        drawLayeredBox(OptionColors.chipLayers.inPx(px), if (on) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px, twoTone = true)
                     }
                     .soundClickable(interactionSource = noRipple, indication = null) { onPick(s) }
                     .padding(vertical = u * 4, horizontal = u * 2),

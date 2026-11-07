@@ -2445,7 +2445,10 @@ class PokeDaisyActivity : Activity() {
 
     override fun onResume() {
         super.onResume()
-        presentation?.let { SecondScreenHolder.open(this, it.display) }
+        presentation?.let {
+            SecondScreenHolder.open(this, it.display)
+            it.watchBars()
+        }
         tipsResumed = true
         coopOn = FeatureFlags.coop(this)
         if (movePause) {
@@ -2930,6 +2933,8 @@ class PokeDaisyActivity : Activity() {
         if (moving) { movePause = true; return }
         setBottomFocus(false)
         pauseGame()
+        // An app covered on the second screen comes back while the game isn't up.
+        SecondScreenHolder.uncoverApp()
     }
 
     override fun onStop() {
@@ -3120,7 +3125,10 @@ class PokeDaisyActivity : Activity() {
                     initialTab = companionStartTab, initialSettingsRow = companionStartRow, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort,
                     keys = bottomKeys, focus = { bottomFocus.value },
                 )
-            }.also { it.show() }
+            }.also { p ->
+                p.onBarsShowing = { SecondScreenHolder.coverApp(this, target) }
+                p.show()
+            }
         }.onFailure { Log.w("pokedaisy", "presentation failed", it) }.getOrNull()
         if (presentation != null) SecondScreenHolder.open(this, target)
         companionStartTab = "PARTY"

@@ -224,13 +224,18 @@ fun GroupedRows(
     footer: @Composable () -> Unit = {},
 ) {
     val groups = if (groupTabs) rows.indices.filter { rows[it].header } else emptyList()
+    // Inside [RailedWindow] the list draws the window itself, so the group tabs can stay out of it.
+    val railed = LocalRailedWindow.current
+    @Composable fun Card(content: @Composable () -> Unit) {
+        if (railed) OptionListWindow(m, Modifier.fillMaxSize(), content = content) else content()
+    }
     if (groups.size < MIN_GROUP_TABS) {
-        GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, onFocused, null, footer)
+        Card { GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, onFocused, null, footer) }
         return
     }
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
         if (maxWidth < GROUP_TABS_MIN_WIDTH || maxWidth < maxHeight) {
-            GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, onFocused, null, footer)
+            Card { GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, onFocused, null, footer) }
             return@BoxWithConstraints
         }
         // Each group title's top in the list (content pixels), as laid out.
@@ -246,11 +251,27 @@ fun GroupedRows(
         }
         val focused: (Int) -> Unit = { i -> follow = i; onFocused?.invoke(i) }
         androidx.compose.foundation.layout.Row(Modifier.fillMaxSize()) {
-            GroupTabs(rows, groups, tops, scroll, follow, m)
+            GroupTabs(rows, groups, tops, scroll, follow, m, outside = railed)
             androidx.compose.foundation.layout.Box(Modifier.weight(1f).fillMaxSize()) {
-                GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, focused, tops, footer)
+                Card { GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, focused, tops, footer) }
             }
         }
+    }
+}
+
+/** [GroupedRows] is inside a [RailedWindow]. */
+private val LocalRailedWindow = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/**
+ * The window round a settings page. With [rail] it's left to the [GroupedRows] inside, which draws it round the list alone, the
+ * group tabs on the page's backdrop beside it (the user's call: buttons, not part of the card); any other page, a plain
+ * [OptionListWindow].
+ */
+@Composable
+fun RailedWindow(m: GbaTextMetrics, modifier: Modifier, rail: Boolean, content: @Composable () -> Unit) {
+    if (!rail) return OptionListWindow(m, modifier, content = content)
+    androidx.compose.foundation.layout.Box(modifier) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalRailedWindow provides true, content = content)
     }
 }
 
@@ -272,6 +293,8 @@ private fun GroupTabs(
     scroll: ScrollState,
     follow: Int,
     m: GbaTextMetrics,
+    /** Beside the window ([RailedWindow]), not in it. */
+    outside: Boolean = false,
 ) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var picked by remember { mutableStateOf(-1) }
@@ -286,7 +309,7 @@ private fun GroupTabs(
     val shown = groups.lastOrNull { (tops[it] ?: Int.MAX_VALUE) <= scroll.value + slack } ?: groups.first()
     // At the very end the last group is on screen whatever reached the top.
     val current = picked.takeIf { it >= 0 } ?: if (atEnd) groups.last() else shown
-    TabRail(groups.map { tr(rows[it].label) }, groups.indexOf(current), m) { i ->
+    TabRail(groups.map { tr(rows[it].label) }, groups.indexOf(current), m, outside) { i ->
         val g = groups[i]
         picked = g
         val top = tops[g] ?: return@TabRail
@@ -299,13 +322,19 @@ private fun GroupTabs(
  * [GroupedRows]' group tabs, and pages split into panes (CO-OP's PAIR). [labels] are drawn as given (translated).
  */
 @Composable
-fun TabRail(labels: List<String>, selected: Int, m: GbaTextMetrics, onSelect: (Int) -> Unit) {
+fun TabRail(
+    labels: List<String>, selected: Int, m: GbaTextMetrics,
+    /** Beside a window rather than in one: no rule, no room for a frame. */
+    outside: Boolean = false,
+    onSelect: (Int) -> Unit,
+) {
     val small = rememberGbaTextMetrics(1f)
     androidx.compose.foundation.layout.Column(
         Modifier
             .width(androidx.compose.foundation.layout.IntrinsicSize.Max)
             .fillMaxHeight()
             .drawBehind {
+                if (outside) return@drawBehind
                 // A dashed rule between the tabs and the list, like the rows' dividers.
                 val px = m.u.toPx()
                 var y = 4 * px
@@ -315,7 +344,10 @@ fun TabRail(labels: List<String>, selected: Int, m: GbaTextMetrics, onSelect: (I
                 }
             }
             .verticalScroll(rememberScrollState())
-            .padding(start = m.u * 4, end = m.u * 6, top = m.u * 4, bottom = m.u * 4),
+            .then(
+                if (outside) Modifier.padding(end = m.u * 4)
+                else Modifier.padding(start = m.u * 4, end = m.u * 6, top = m.u * 4, bottom = m.u * 4),
+            ),
         verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(m.u * 2),
     ) {
         labels.forEachIndexed { i, label -> GroupTab(label, i == selected, small) { onSelect(i) } }
@@ -344,7 +376,7 @@ private fun GroupTab(label: String, selected: Boolean, m: GbaTextMetrics, onClic
             .fillMaxWidth()
             .drawBehind {
                 val px = u.toPx()
-                drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px)
+                drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px, twoTone = true)
             }
             .focusProperties { canFocus = false }
             .soundClickable(onClick = onClick)

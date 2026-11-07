@@ -104,6 +104,8 @@ fun MonDetailScreen(
     initialEvolveAsk: Boolean = false,
     /** It's the party on show, not a box: SWITCH trades two of its Pokémon. */
     partyOrder: Boolean = true,
+    /** Open on SWITCH's party (screenshot tests). */
+    initialSwitching: Boolean = false,
 ) {
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
@@ -113,9 +115,10 @@ fun MonDetailScreen(
     // The picked CAN LEARN option, by move id (0 = none); kept while cycling through the party.
     var learnPick by remember { mutableStateOf(initialLearnPick ?: 0) }
     val canLearn = learn != null && com.pokedaisy.app.companion.data.MoveLearning.available(learn.tables, learn.guide)
-    // SWITCH: the next Pokémon tapped in the column trades places with this one, as in the game's party menu.
+    // SWITCH: the party takes the summary's place and the Pokémon tapped there trades places with this one, as in the game's
+    // party menu (the column beside the summary only steps through the Pokémon).
     val reorders = itemUse?.takeIf { partyOrder && it.canReorderParty() && party.size > 1 }
-    var switching by remember { mutableStateOf(false) }
+    var switching by remember { mutableStateOf(initialSwitching) }
     // What each Pokémon holds, asked of the game whenever the party read changes (TAKE).
     val takes = itemUse?.takeIf { it.canTake() }
     var held by remember { mutableStateOf<List<com.pokedaisy.app.companion.data.PartyTarget>>(emptyList()) }
@@ -142,6 +145,26 @@ fun MonDetailScreen(
     val evoTarget = party.getOrNull(index)?.takeIf { !it.isEgg }?.let { tradeTargets[it.personality] }
     var evolveAsk by remember { mutableStateOf(initialEvolveAsk) }
     var evolveResult by remember { mutableStateOf<String?>(null) }
+    if (switching && reorders != null) {
+        CompanionBackHandler { switching = false }
+        Column(modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(6.dp)) {
+            PartyGrid(
+                party, selected = index, modifier = Modifier.fillMaxWidth().weight(1f),
+                onSlotClick = { mon ->
+                    val i = party.indexOfFirst { it === mon }
+                    switching = false
+                    if (i >= 0 && i != index) reorders.reorderParty(index, i) { r ->
+                        if (r == com.pokedaisy.app.companion.data.PartySwapResult.SWAPPED) onIndexChange(i)
+                        else partySwapMessage(r)?.let { notice = ItemNotice(0, it, ok = false) }
+                    }
+                },
+            )
+            OptionTitleWindow(tr("Choose a POKéMON."), m) {
+                OptionButton(tr("CANCEL"), m, onClick = { switching = false })
+            }
+        }
+        return
+    }
     Row(modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
     Column(Modifier.weight(1f).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         AnimatedContent(
@@ -205,22 +228,14 @@ fun MonDetailScreen(
                 if (stats) TextNavButton(if (showStats) tr("MOVES") else tr("STATS"), StatsPurple, StatsPurpleDark, size) { showStats = !showStats }
                 if (learns) TextNavButton(if (showLearn) tr("MOVES") else tr("LEARN"), SuggestGold, SuggestGoldDark, size) { showLearn = !showLearn; learnPick = 0 }
                 if (evolve) TextNavButton(tr("EVOLVE"), EvolveBlue, EvolveBlueDark, size) { evolveResult = null; evolveAsk = true }
-                if (reorders != null) TextNavButton(if (switching) tr("CANCEL") else tr("SWITCH"), RunBlue, RunBlueDark, size) { switching = !switching }
+                if (reorders != null) TextNavButton(tr("SWITCH"), RunBlue, RunBlueDark, size) { switching = true }
                 if (onDeposit != null) TextNavButton(tr("DEPOSIT"), PcGreen, PcGreenDark, size, onClick = onDeposit)
                 if (onWithdraw != null) TextNavButton(tr("WITHDRAW"), PcGreen, PcGreenDark, size, onClick = onWithdraw)
             }
         }
     }
     Column(Modifier.width(SummaryButtonSize).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        PartyColumn(party, index, { i ->
-            if (switching && reorders != null) {
-                switching = false
-                if (i != index) reorders.reorderParty(index, i) { r ->
-                    if (r == com.pokedaisy.app.companion.data.PartySwapResult.SWAPPED) onIndexChange(i)
-                    else partySwapMessage(r)?.let { notice = ItemNotice(0, it, ok = false) }
-                }
-            } else onIndexChange(i)
-        }, small, Modifier.weight(1f).fillMaxWidth())
+        PartyColumn(party, index, onIndexChange, small, Modifier.weight(1f).fillMaxWidth())
         BackNavButton(onBack, SummaryButtonSize)
     }
     }

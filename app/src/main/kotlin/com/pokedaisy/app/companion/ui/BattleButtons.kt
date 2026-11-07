@@ -219,7 +219,7 @@ private fun ActionButton(
     val u = m.u
     PlatinumButton(
         fill = fill, frame = frame, modifier = Modifier.fillMaxWidth().height(h),
-        enabled = enabled, pressesGame = pressesGame, outline = u + 1.dp,
+        enabled = enabled, pressesGame = pressesGame,
         // Clear of the bevel's side bands.
         contentPadding = PaddingValues(start = u * 3, end = u * 3 + edge, top = u * 2, bottom = u * 2), onClick = onClick,
     ) {

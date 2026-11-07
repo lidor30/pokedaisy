@@ -663,6 +663,7 @@ fun OptionButton(
                         else -> OptionColors.titleFill
                     },
                     radius = 3 * u.toPx(),
+                    twoTone = true,
                 )
             }
             .soundClickable(enabled = enabled, interactionSource = interaction, indication = null, onClick = { stack?.lastClicked = self; onClick() })
