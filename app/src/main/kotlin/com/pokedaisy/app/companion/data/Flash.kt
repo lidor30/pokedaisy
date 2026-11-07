@@ -61,8 +61,8 @@ const val NO_BADGE = -1
 
 /** FLASH for a ROM, by what the companion detected it as: retail FireRed rev 0 / 1, LeafGreen rev 0 / 1, Emerald, Ruby and
  * Sapphire, English from the records and every other language from [FLASH_PORTS] (scripts/port_field_items.py); and the
- * hacks edited into retail's code in place ([hack] false for them: a rebuild like Recharged Emerald or Emerald Legacy is
- * true), FireRed rev 0's (Ultra Violet's PUVV and the CFRU hacks' kinds included; [flashBadgeRule] reads each one's badge rule)
+ * hacks edited into retail's code in place ([hack] false for them: a rebuild like Recharged Emerald is true; Emerald
+ * Legacy, a rebuild too, has records of its own), FireRed rev 0's (Ultra Violet's PUVV and the CFRU hacks' kinds included; [flashBadgeRule] reads each one's badge rule)
  * and Emerald's (Glazed, Kaizo, the randomized cart). The code CRCs still decide. */
 fun flashFnsFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean): FlashFns? = when {
     hack -> null
@@ -70,7 +70,7 @@ fun flashFnsFor(kind: GameKind?, gameCode: String, revision: Int, hack: Boolean)
     kind == GameKind.GLAZED -> FLASH_EMERALD.takeIf { gameCode == "BPEE" }
     kind == GameKind.FIRERED && gameCode == "BPRE" -> when (revision) { 0 -> FLASH_FIRERED_REV0; 1 -> FLASH_FIRERED_REV1; else -> null }
     kind == GameKind.FIRERED && gameCode == "BPGE" -> when (revision) { 0 -> FLASH_LEAFGREEN_REV0; 1 -> FLASH_LEAFGREEN_REV1; else -> null }
-    kind == GameKind.EMERALD && gameCode == "BPEE" -> FLASH_EMERALD
+    kind == GameKind.EMERALD && gameCode == "BPEE" -> if (emeraldLegacy) FLASH_EMERALD_LEGACY else FLASH_EMERALD
     kind == GameKind.EMERALD && gameCode == "AXVE" -> when (revision) { 0 -> FLASH_RUBY_REV0; 1, 2 -> FLASH_RUBY; else -> null }
     kind == GameKind.EMERALD && gameCode == "AXPE" -> when (revision) { 0 -> FLASH_SAPPHIRE_REV0; 1, 2 -> FLASH_SAPPHIRE; else -> null }
     kind == GameKind.FIRERED || kind == GameKind.EMERALD -> FLASH_PORTS["$gameCode$revision"]
@@ -124,6 +124,14 @@ private fun cfruBadgeFn(check: Long, b: ByteArray, read: (addr: Long, len: Int) 
         return u32(read(pool, 4)) and 0xFFFFFFFEL
     }
     return rule.takeIf { target(10) == check + 0x3C && target(14) == check + 0x16 && rule in 0x08000000L until 0x0A000000L }
+}
+
+/** Every table that may fit: [flashFnsFor]'s, or Recharged Emerald's three builds' for that rebuild ([rebuild]); the code
+ * CRCs pick. */
+fun flashCandidatesFor(kind: GameKind?, gameCode: String, revision: Int, rebuild: Boolean): List<FlashFns> = when {
+    rebuild -> if (kind == GameKind.EMERALD && gameCode == "BPEE")
+        listOf(FLASH_RECHARGED_EMERALD_V2_2_5, FLASH_RECHARGED_EMERALD_V2_2_8, FLASH_RECHARGED_EMERALD_REBALANCED_V2_2_8) else emptyList()
+    else -> listOfNotNull(flashFnsFor(kind, gameCode, revision, hack = false))
 }
 
 /** Whether the running ROM has [flash]'s functions where they're expected. */

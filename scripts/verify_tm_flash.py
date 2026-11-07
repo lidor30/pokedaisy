@@ -54,6 +54,13 @@ BACK_OUT = ["wait 150"] + ["press B", "wait 120"] * 4 + ["wait 200"]
 CAVES = {"BPR": (1, 81, 0xFF, 17, 3), "BPG": (1, 81, 0xFF, 17, 3), "BPE": (24, 8, 0, 0, 0), "AXV": (24, 8, 0, 0, 0),
          "AXP": (24, 8, 0, 0, 0)}
 MON_DATA_MOVE4 = 16
+# Recharged Emerald's bag tables (FieldItemsRechargedEmeraldGen.kt): GetMonData, SetMonData, AddBagItem,
+# ArePlayerFieldControlsLocked, gPlayerParty.
+RECHARGED = {
+    "RECHARGED_EMERALD_V2_2_5": (0x08169D20, 0x0816A2D4, 0x0811AD64, 0x081AEF94, 0x020373C8),
+    "RECHARGED_EMERALD_V2_2_8": (0x0816AEDC, 0x0816B4A4, 0x0811BB44, 0x081B093C, 0x020373C8),
+    "RECHARGED_EMERALD_REBALANCED_V2_2_8": (0x0816B1F0, 0x0816B7B8, 0x0811BC6C, 0x081B0A58, 0x020373DC),
+}
 # The hacks edited into retail's code in place (TmTeach.kt's tmFnsFor, Flash.kt's flashFnsFor): their host_roms.conf save,
 # boot script and the retail code they run (FireRed rev 0 / 1's or Emerald's tables). Their saves' parties and maps are their
 # own, so the TM screen is backed out of with B, and FLASH goes to the first dark map in the hack's own map table
@@ -62,6 +69,8 @@ MON_DATA_MOVE4 = 16
 # player sprites never finish the field move's pose: the cut-in waits forever, the controls locked).
 NO_FLASH = {"Rocket Edition", "Ash Gray", "Ash Gray Fork"}
 NO_TM = {"Amethyst 1.3.0", "Amethyst 1.4.1"}
+# Hacks whose saves hold a Pokemon that can learn HM05 (party slot): taught through the game's screens like the ports.
+TEACH_HACKS = {"Emerald Legacy": 0, "Recharged Emerald 2.2.5": 0, "Recharged Emerald 2.2.8": 0, "Recharged Emerald Rebalanced": 0}
 HACKS = {
     "Ultra Violet": ("ultra_violet", "default.txt", "FR0"), "Rocket Edition": ("rocket_edition", "firered_hack.txt", "FR0"),
     "Ash Gray": ("ash_gray", "firered_hack.txt", "FR0"), "Ash Gray Fork": ("ash_gray_fork", "firered_hack.txt", "FR0"),
@@ -80,6 +89,10 @@ HACKS = {
     "FireRed Randomized rev 1": ("firered_randomized", "default.txt", "FR1"),
     "Glazed": ("glazed", "default.txt", "EM"), "Emerald Kaizo": ("emerald_kaizo", "default.txt", "EM"),
     "Emerald Randomized": ("emerald_randomized", "default.txt", "EM"),
+    "Emerald Legacy": ("emerald_legacy", "default.txt", "EMERALD_LEGACY"),
+    "Recharged Emerald 2.2.5": ("recharged_emerald_v225", "recharged_emerald.txt", "RECHARGED_EMERALD_V2_2_5"),
+    "Recharged Emerald 2.2.8": ("recharged_emerald", "recharged_emerald.txt", "RECHARGED_EMERALD_V2_2_8"),
+    "Recharged Emerald Rebalanced": ("recharged_emerald_rebalanced", "recharged_emerald.txt", "RECHARGED_EMERALD_REBALANCED_V2_2_8"),
 }
 PARTY_STRIDE = 100
 
@@ -112,7 +125,7 @@ def script(t):
         tm = t["tm"]
         slot, presses = (0, BACK_OUT) if t["back"] else (t["slot"], TEACH)
         mon = t["party"] + slot * PARTY_STRIDE
-        o += [f"poke16 {h(SCRATCH + 0x20)} 0", f"call {h(t['setMonData'])} {h(mon)} {MON_DATA_MOVE4} {h(SCRATCH + 0x20)}",
+        o += [f"poke16 {h(SCRATCH + 0x20)} 0", f"call {h(t['setMonData'])} {h(mon)} {MON_DATA_MOVE4 + t.get('monShift', 0)} {h(SCRATCH + 0x20)}",
               f"call {h(t['addBagItem'])} {HM05} 1",
               f"call {h(tm['lockControls'])}", f"call {h(tm['fadeScreen'])} 1 0", "wait 30", f"call {h(tm['cleanupOverworld'])}",
               f"poke16 {h(tm['specialVarItemId'])} {HM05}", f"poke32 {h(tm['itemUseCb'])} {h(tm['itemUseCbTmhm'] | 1)}",
@@ -121,7 +134,7 @@ def script(t):
               "shot tm_menu.ppm"]
         o += ["press DOWN", "wait 20"] * slot
         o += presses + ["shot tm_after.ppm"]
-        o += [f"call {h(gmd)} {h(mon)} {m}" for m in range(MON_DATA_MOVE4 - 3, MON_DATA_MOVE4 + 1)]
+        o += [f"call {h(gmd)} {h(mon)} {m}" for m in range(MON_DATA_MOVE4 - 3 + t.get('monShift', 0), MON_DATA_MOVE4 + 1 + t.get('monShift', 0))]
         o += [f"peek32 {h(tm['mainCallback2'])}", f"call {h(lock)}"]
     f = t.get("flash")
     if not f:
@@ -135,8 +148,8 @@ def script(t):
         # No dark cave known on this hack's maps: the map counted as one (gMapHeader.cave), the lit flag clear as on any
         # map load. The light opening up then shows nothing, but the calls and the flag are the same.
         o += [f"poke8 {h(f['mapHeader'] + 0x15)} 1"]
-    o += [f"poke16 {h(SCRATCH + 0x20)} {FLASH}", f"call {h(t['setMonData'])} {h(t['party'])} {MON_DATA_MOVE4} {h(SCRATCH + 0x20)}",
-          f"call {h(t['getMonData'])} {h(t['party'])} {MON_DATA_MOVE4}",
+    o += [f"poke16 {h(SCRATCH + 0x20)} {FLASH}", f"call {h(t['setMonData'])} {h(t['party'])} {MON_DATA_MOVE4 + t.get('monShift', 0)} {h(SCRATCH + 0x20)}",
+          f"call {h(t['getMonData'])} {h(t['party'])} {MON_DATA_MOVE4 + t.get('monShift', 0)}",
           f"call {h(lock)}", f"call {h(f['flagGet'])} {h(f['litFlag'])}", "shot flash_dark.ppm",
           *([f"call {h(f['badgeFn'] | 1)} 0"] if f.get("badgeFn") else []),
           f"poke8 {h(f['partyMenuSlotId'])} 0", f"call {h(f['setUpFieldMoveFlash'])}", f"peek32 {h(f['postMenuFieldCallback'])}",
@@ -240,6 +253,7 @@ def badge_rule(path, flash):
 
 # Where retail's code loads gMapGroups from (a literal-pool word, kept in place by the hacks edited into it).
 MAP_GROUPS_POOL = dict(FR0=0x0805524C, FR1=None, EM=0x08084AA4)
+MAP_GROUPS = dict(EMERALD_LEGACY=0x084AF90C)   # a rebuild's own gMapGroups (its ELF)
 
 
 def find_cave(path, base):
@@ -248,9 +262,9 @@ def find_cave(path, base):
     u32 = lambda a: struct.unpack_from("<I", rom, a - 0x08000000)[0]
     ok = lambda v: 0x08000000 <= v < 0x08000000 + len(rom) - 0x20
     pool = MAP_GROUPS_POOL.get(base)
-    if not pool:
+    if not pool and base not in MAP_GROUPS:
         return None
-    groups = u32(pool)
+    groups = MAP_GROUPS.get(base) or u32(pool)
     starts = []
     for g in range(64):
         v = u32(groups + 4 * g) if ok(groups + 4 * g) else 0
@@ -283,7 +297,15 @@ def targets():
         out[key] = dict(p, setupScript=p["pc"]["setupScript"], save=conf(OWN_SAVES.get(key[:4], SAVES[fam])), boot=boot,
                         after=after, back=own, slot=TEACH_SLOT.get(fam, 0), cave=CAVES[fam])
     fr0 = dict(ports["BPRE0"], setupScript=ports["BPRE0"]["pc"]["setupScript"])
-    bases = dict(FR0=(fr0, "FIRERED_REV0"), FR1=(REFS["BPRE1"]["a"], "FIRERED_REV1"), EM=(REFS["BPEE0"]["a"], "EMERALD"))
+    legacy = dict(record("FIELD_ITEMS_EMERALD_LEGACY_PARTY"), fieldControlsLocked=record("FIELD_ITEMS_EMERALD_LEGACY")["fieldControlsLocked"],
+                  party=0x020244EC, setupScript=0x0809A294)   # gPlayerParty and ScriptContext_SetupScript from its ELF
+    bases = dict(FR0=(fr0, "FIRERED_REV0"), FR1=(REFS["BPRE1"]["a"], "FIRERED_REV1"), EM=(REFS["BPEE0"]["a"], "EMERALD"),
+                 EMERALD_LEGACY=(legacy, "EMERALD_LEGACY"))
+    # Recharged Emerald (FieldItemsRechargedEmeraldGen.kt's tables): no ScriptContext_SetupScript known, so no warp
+    # (setupScript None: FLASH where the save stands, counted as a cave); its MON_DATA ids 9 past vanilla's.
+    for build, (getmon, setmon, addbag, fcl, party) in RECHARGED.items():
+        bases[build] = (dict(getMonData=getmon, setMonData=setmon, addBagItem=addbag, fieldControlsLocked=fcl, party=party,
+                             setupScript=None, monShift=9), build)
     for name, (save_key, boot, base) in HACKS.items():
         rom, save = conf_rom(save_key), conf(save_key)
         if not os.path.isfile(rom):
@@ -296,10 +318,12 @@ def targets():
             tm = None
         if name in NO_FLASH:
             flash, badge = None, "FLASH off: the cut-in never finishes"
+        cave = None if fields["setupScript"] is None else find_cave(rom, base) if base != "FR1" else CAVES["BPR"]
         out[name] = dict({k: fields[k] for k in ("party", "setMonData", "getMonData", "addBagItem", "fieldControlsLocked",
                                                   "setupScript")},
-                         path=rom, save=save, boot=boot, after=BOOTS["BPE" if base == "EM" else "BPR"][1] if boot.endswith("default.txt") else "",
-                         back=True, slot=0, cave=find_cave(rom, base) if base != "FR1" else CAVES["BPR"], tm=tm, flash=flash, badge=badge, flashOff=None if flash else badge)
+                         path=rom, save=save, boot=boot, after=BOOTS["BPR" if base.startswith("FR") else "BPE"][1] if boot.endswith("default.txt") else "",
+                         back=name not in TEACH_HACKS, slot=TEACH_HACKS.get(name, 0), cave=cave, tm=tm, flash=flash, badge=badge, flashOff=None if flash else badge,
+                         monShift=fields.get("monShift", 0))
     return out
 
 

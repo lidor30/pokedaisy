@@ -459,22 +459,23 @@ class PokeDaisyActivity : Activity() {
 
     private fun retailFieldKey(): Pair<String, Boolean>? {
         if (romIsGameBoy || romIsNds) return null
-        // A rebuild on retail's game code (Recharged Emerald, Emerald Legacy): none of retail's code. The hacks edited into
-        // retail in place (the FireRed ones, Kaizo, the randomized carts...) run its tables; the code CRCs decide.
-        val hack = com.pokedaisy.app.companion.data.runningEmeraldHack != null || com.pokedaisy.app.companion.data.emeraldLegacy
+        // A rebuild on retail's game code (Recharged Emerald): none of retail's code, its builds' own records (the CRCs pick
+        // the build). Emerald Legacy has records of its own; the hacks edited into retail in place (the FireRed ones, Kaizo,
+        // the randomized carts...) run its tables. The code CRCs decide.
+        val hack = com.pokedaisy.app.companion.data.runningEmeraldHack != null
         return "$romCode/$romRev/${telemetry.snapshot.value.game}/${com.pokedaisy.app.companion.data.romGameCode}" to hack
     }
 
     private fun tmFns(): com.pokedaisy.app.companion.data.TmFns? {
         val (key, hack) = retailFieldKey() ?: return null
-        val tm = com.pokedaisy.app.companion.data.tmFnsFor(telemetry.snapshot.value.game, romCode, romRev, hack) ?: return null
+        val tms = com.pokedaisy.app.companion.data.tmCandidatesFor(telemetry.snapshot.value.game, romCode, romRev, hack)
+        if (tms.isEmpty()) return null
         tmCache?.let { (k, v) -> if (k == key) return v }
         if (!::engine.isInitialized || !engine.running) return null
-        val ok = runCatching {
-            com.pokedaisy.app.companion.data.tmCodeMatches(tm) { addr, len -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(addr, len) }
-        }.getOrElse { return null }
-        Log.i("pokedaisy", "TMs: ${if (ok) "code found" else "code not found"}")
-        return tm.takeIf { ok }.also { tmCache = key to it }
+        val read = { addr: Long, len: Int -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(addr, len) }
+        val found = runCatching { tms.firstOrNull { com.pokedaisy.app.companion.data.tmCodeMatches(it, read) } }.getOrElse { return null }
+        Log.i("pokedaisy", "TMs: ${if (found != null) "code found" else "code not found"}")
+        return found.also { tmCache = key to it }
     }
 
     private fun flashFns(): com.pokedaisy.app.companion.data.FlashFns? {
@@ -483,12 +484,14 @@ class PokeDaisyActivity : Activity() {
         // forever with the controls locked (headless); their party menu's FLASH row is blank too.
         val hackText = com.pokedaisy.app.companion.data.runningFireRedHack
         if (hackText === com.pokedaisy.app.companion.data.fireRedHackRocketEdition || hackText === com.pokedaisy.app.companion.data.fireRedHackAshGray) return null
-        val flash = com.pokedaisy.app.companion.data.flashFnsFor(telemetry.snapshot.value.game, romCode, romRev, hack) ?: return null
+        val flashes = com.pokedaisy.app.companion.data.flashCandidatesFor(telemetry.snapshot.value.game, romCode, romRev, hack)
+        if (flashes.isEmpty()) return null
         flashCache?.let { (k, v) -> if (k == key) return v }
         if (!::engine.isInitialized || !engine.running) return null
         val read = { addr: Long, len: Int -> com.pokedaisy.app.companion.data.InProcessReader.readCoreMemory(addr, len) }
         val found = runCatching {
-            if (com.pokedaisy.app.companion.data.flashCodeMatches(flash, read)) com.pokedaisy.app.companion.data.flashBadgeRule(flash, read) else null
+            flashes.firstOrNull { com.pokedaisy.app.companion.data.flashCodeMatches(it, read) }
+                ?.let { com.pokedaisy.app.companion.data.flashBadgeRule(it, read) }
         }.getOrElse { return null }
         Log.i("pokedaisy", "FLASH: ${when { found == null -> "code not found or badge rule unknown"; found.badgeFn != 0L -> "code found, the hack's badge rule"
             found.badgeFlag < 0 -> "code found, no badge"; else -> "code found" }}")
