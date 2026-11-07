@@ -408,8 +408,10 @@ change to any of the places listed under "Where it's decided" updates its rows h
     HeartGold / SoulSilver the party, options and Pokédex pages (their touch moments) and a wild battle's command menu too.
     Korean HeartGold / SoulSilver took the USA save with its footer's magic word changed (0x20070903 for 0x20060623; the
     checksums don't cover it); Japanese HeartGold / SoulSilver's X menu, options and Pokédex functions were read off the running
-    game (the tool leaves them UNRESOLVED). Not
-    yet: a Gen 5 battle on these carts, FLY flown on them, and a check on a device.
+    game (the tool leaves them UNRESOLVED). Then every one flew and fought headless: Black / White from the
+    platform (its zone record given FLY's bit) to Accumula Town and Black 2 / White 2 from Humilau City, then onto Route 1's grass
+    into a wild battle, its command menu read (adapter command 3) as on the USA carts; HeartGold / SoulSilver from Goldenrod to
+    Pallet Town, landing on the USA cart's picture. Not yet: a check on a device.
 
 ## What each column is
 
