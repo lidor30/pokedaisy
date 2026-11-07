@@ -5,7 +5,11 @@
 //
 // Everything here is the routine's own arithmetic. `ror 8` over a word of four samples is, one output sample at a time, a
 // byte add, so the buffers are bytes here; what's left alike down to which channel fields a finished sample does or doesn't
-// write. With PD_MIXER_CHECK (pd_sim's `mixcheck`) both run on the same state and every byte of the result is compared.
+// write. With PD_MIXER_CHECK (pd_sim) both run on the same state and every byte of the result is compared.
+//
+// Unbound, Odyssey, GS Chronicles and Rocket Edition carry another mixer in its place, ipatix's high quality one: it mixes
+// both sides at once into 32-bit words (left in the low half, right in the high), writes a loop for the channel's pitch over its
+// own code, and copies samples to the stack by DMA, all to be fast on a GBA. Here that's three loops and a plain read: hq_*.
 #include "pd_mixer.h"
 
 #include <stdio.h>
@@ -17,6 +21,7 @@
 
 #define HOOK 0xD7
 #define HOOK_OP (0xBE00 | HOOK)
+#define FIRST_OP 0x7943 // both mixers' `ldrb r3, [r0, 5]`
 #define CHECK_EXIT_HOOK 0xD8
 
 // SoundMainRAM: the first instructions, its size up to its literal pool's two addresses, their CRC.
@@ -26,6 +31,15 @@ static const uint8_t SIGNATURE[10] = { 0x43, 0x79, 0x00, 0x2B, 0x2C, 0xD0, 0x01,
 #define DELTA_TABLE_AT 0x700  // gDeltaEncodingTable's address, past the code
 #define BUFFER_LITERAL (-16)  // SoundMain's lt_SoundMainRAM_Buffer, before the routine
 #define EXIT_AT 0x3A2         // _081DD24A: the channels are done
+
+// The high quality mixer, all of it through its delta table (the same in every ROM that has it).
+static const uint8_t HQ_SIGNATURE[10] = { 0x43, 0x79, 0x9B, 0x08, 0x40, 0xD0, 0x01, 0xA1, 0x08, 0x47 };
+#define HQ_SIZE 0xB24
+#define HQ_CRC 0x7bed3b06u
+#define HQ_STABLE 0x18C        // the part of it that doesn't rewrite itself in IWRAM
+#define HQ_DELTA_TABLE 0xB14
+#define HQ_EXIT_AT 0x62A
+#define HQ_MAX_SAMPLES 1600
 
 #define PCM_DMA_BUF_SIZE 0x630
 #define ID_NUMBER 0x68736D53u
@@ -91,10 +105,13 @@ struct mem {
     size_t romSize;
 };
 
-static uint32_t entry;     // SoundMainRAM in IWRAM
+enum mixer { MIXER_NONE, MIXER_STOCK, MIXER_HQ };
+
+static uint32_t entry;           // SoundMainRAM in IWRAM
 static uint32_t deltaTable;
-static uint8_t original[4];
-static const uint8_t* code;
+static const uint8_t* stock;     // the mixers' code in the ROM, NULL = this game doesn't have it
+static const uint8_t* hq;
+static enum mixer running;       // which of them IWRAM holds
 static bool attached;
 static void (*forward16)(struct ARMCore* cpu, int immediate);
 
@@ -401,7 +418,7 @@ static bool mix_resampled(struct channel* h) {
 }
 
 // The channel's envelope for this frame; false: it's off now.
-static bool envelope(uint8_t* c, const struct mem* m, uint32_t wave, const uint8_t* info) {
+static bool envelope(uint8_t* c, const struct mem* m, uint32_t wave, const uint8_t* info, bool volumes) {
     int st = c[C_STATUS];
     uint32_t env;
     if (st & SF_START) {
@@ -463,6 +480,7 @@ attack:
     }
 set:
     c[C_ENV] = (uint8_t) env;
+    if (!volumes) return true;
     uint32_t level = (uint32_t) (info[I_MASTER_VOLUME] + 1) * env >> 4;
     c[C_ENV_RIGHT] = (uint8_t) (c[C_RIGHT] * level >> 8);
     c[C_ENV_LEFT] = (uint8_t) (c[C_LEFT] * level >> 8);
@@ -509,7 +527,7 @@ static bool mix(const struct mem* m, uint32_t infoAt, int dmaCounter, uint32_t b
             if (line >= stopLine) break;
         }
         uint32_t wave = le32(c + C_WAV);
-        if ((c[C_STATUS] & SF_ON) && envelope(c, m, wave, info)) {
+        if ((c[C_STATUS] & SF_ON) && envelope(c, m, wave, info, true)) {
             h.c = c;
             h.loopLength = 0;
             h.loopPointer = 0;
@@ -548,6 +566,359 @@ static bool mix(const struct mem* m, uint32_t infoAt, int dmaCounter, uint32_t b
         }
         if (--chans <= 0) break;
         c += C_SIZE;
+    }
+    put32(info, ID_NUMBER);
+    return true;
+}
+
+// --- the high quality mixer ---
+
+static uint32_t hqWords[HQ_MAX_SAMPLES + 16];
+
+// A channel's two volumes, packed, to its scale for a sample doubled: `lsrs; adc 0x8000; bic 0xFF00`.
+static uint32_t hq_half(uint32_t fp) {
+    uint32_t carry = fp & 1;
+    return ((fp >> 1) + 0x8000 + carry) & ~0xFF00u;
+}
+
+// TONEDATA_TYPE_FIX. False: the wave ended, the channel is off and its fields stay.
+static bool hq_fixed(struct channel* h, uint32_t fp, int count) {
+    struct stream s;
+    uint32_t p = h->pointer;
+    int32_t r2 = h->left2;
+    stream_at(&s, h->m, p);
+    COUNT(fixed);
+    for (int i = 0; i < count; i++) {
+        hqWords[i] += fp * (uint32_t) sample(&s, p++);
+        if (--r2 == 0) {
+            if (!h->loopLength) return false;
+            r2 = h->loopLength;
+            p = h->loopPointer;
+        }
+    }
+    h->pointer = p;
+    h->left2 = r2;
+    return true;
+}
+
+// A wave built from its header's bytes, by the type in its second: pulse, saw, triangle. [p] is that byte's address.
+static void hq_synth(struct channel* h, uint32_t fp, uint32_t step, int kind, uint32_t p, int count) {
+    uint32_t r7 = h->fw;
+    int32_t r2 = h->left2;
+    const struct mem* m = h->m;
+    uint32_t delta = step << 3;
+    if (kind == 0) {
+        r2 = (int32_t) ((uint32_t) r2 + ((uint32_t) read8(m, p + 2) << 24));
+        uint32_t r6 = (uint32_t) r2 + ((uint32_t) read8(m, p + 4) << 24);
+        if ((int32_t) r6 < 0) r6 = ~r6;
+        uint32_t edge = (r6 >> 8) * read8(m, p + 3) + ((uint32_t) read8(m, p + 1) << 24);
+        uint32_t level = fp << 6;
+        for (int i = 0; i < (count + 7) / 8 * 8; i++) {
+            if (r7 < edge) hqWords[i] += level;
+            else hqWords[i] -= level;
+            r7 += delta;
+        }
+    } else if (kind == 1) {
+        uint32_t f = (fp >> 1) & ~0xFF00u;
+        for (int i = 0; i < (count + 3) / 4 * 4; i++) {
+            r7 += delta;
+            int32_t v = (int32_t) (r7 >> 24) - 0x70 - (int32_t) ((r7 << 1) >> 27);
+            r2 = v + (r2 >> 1);
+            hqWords[i] += f * (uint32_t) r2;
+        }
+    } else {
+        for (int i = 0; i < (count + 3) / 4 * 4; i++) {
+            r7 += delta;
+            int32_t v = (int32_t) r7 >= 0 ? ((int32_t) r7 >> 23) - 0x80 : 0x180 - (int32_t) (r7 >> 23);
+            hqWords[i] += fp * (uint32_t) v;
+        }
+    }
+    h->fw = r7;
+    h->left2 = r2;
+}
+
+// The usual channel. False: the wave ended, the channel is off and its fields stay.
+static bool hq_resampled(struct channel* h, uint32_t fp, int count) {
+    uint8_t* c = h->c;
+    struct stream s;
+    uint32_t r3 = h->pointer, r7 = h->fw;
+    int32_t r2 = h->left2;
+    int type = c[C_TYPE];
+    if (!r2) {
+        type |= 0x40;
+        c[C_TYPE] = (uint8_t) type;
+    }
+    uint32_t step = h->divFreq * le32(c + C_FREQUENCY);
+    stream_at(&s, h->m, r3);
+    int32_t r6 = sample(&s, r3);
+    r3 += 1;
+    int32_t ip = sample(&s, r3);
+    if (type & 0x40) {
+        hq_synth(h, fp, step, ip == 0 ? 0 : ip == 1 ? 1 : 2, r3, count);
+        h->pointer = r3 - 1;
+        return true;
+    }
+    ip -= r6;
+    COUNT(resampled);
+    uint32_t f = hq_half(fp);
+    // How far the frame takes it: `umlal` over the type byte the code leaves in the top word.
+    uint64_t reach = ((uint64_t) (uint32_t) type << 32 | r7) + (uint64_t) step * (uint32_t) count;
+    uint32_t need = (uint32_t) ((uint32_t) reach >> 23) | (uint32_t) ((uint32_t) (reach >> 32) << 9);
+    if (r2 <= (int32_t) need) {
+        // The wave may end inside this frame: a sample at a time.
+        for (int i = 0; i < count; i++) {
+            int32_t v = ((int32_t) (r7 * (uint32_t) ip) >> 22) + r6 * 2;
+            hqWords[i] += f * (uint32_t) v;
+            r7 += step;
+            uint32_t advance = r7 >> 23;
+            if (!advance) continue;
+            r2 -= (int32_t) advance;
+            if (r2 <= 0) {
+                if (!h->loopLength) return false;
+                r3 = h->loopPointer;
+                uint32_t past = (uint32_t) -r2;
+                r2 += h->loopLength;
+                r3 += past;
+                r6 = sample(&s, r3);
+            } else {
+                advance -= 1;
+                if (!advance) {
+                    r6 += ip;
+                } else {
+                    r3 += advance;
+                    r6 = sample(&s, r3);
+                }
+            }
+            r3 += 1;
+            ip = sample(&s, r3) - r6;
+            r7 &= ~FRACTION_CLEAR;
+        }
+        h->pointer = r3 - 1;
+        h->left2 = r2;
+        h->fw = r7;
+        return true;
+    }
+    // The three loops the code writes over itself, by the channel's pitch: under a sample out per sample in, under two, and past.
+    // All but the first of eight multiplies are `mulne` on the flags the last sample's `subs` left, so where two samples are
+    // equal the multiply is skipped and the last value goes through the shift in its place, which is -1 for a negative one.
+    uint32_t end = r3 + need - 1;
+    r2 -= (int32_t) need;
+    int32_t rest = (int32_t) step - 0x800000;
+    int loops = (count + 7) / 8 * 8;
+    int32_t r9 = 0;
+    bool same = false;
+    if (rest < 0) {
+        for (int i = 0; i < loops; i++) {
+            if (!(i & 7) || !same) r9 = (int32_t) (r7 * (uint32_t) ip);
+            r9 = (r9 >> 22) + r6 * 2;
+            hqWords[i] += f * (uint32_t) r9;
+            r7 += (uint32_t) rest;
+            same = false;
+            if ((int32_t) r7 >= 0) {
+                r6 += ip;
+                r3 += 1;
+                ip = sample(&s, r3) - r6;
+                same = !ip;
+            }
+            r7 &= 0x7FFFFF;
+        }
+    } else {
+        f <<= 1;
+        rest -= 0x800000;
+        if (rest < 0) {
+            for (int i = 0; i < loops; i++) {
+                if (!(i & 7) || !same) r9 = (int32_t) (r7 * (uint32_t) ip);
+                r9 = (r9 >> 23) + r6;
+                hqWords[i] += f * (uint32_t) r9;
+                r6 += ip;
+                r7 += (uint32_t) rest;
+                if ((int32_t) r7 >= 0) {
+                    r3 += 1;
+                    r6 = sample(&s, r3);
+                }
+                r3 += 1;
+                ip = sample(&s, r3) - r6;
+                same = !ip;
+                r7 &= 0x7FFFFF;
+            }
+        } else {
+            rest += 0x800000;
+            for (int i = 0; i < loops; i++) {
+                if (!(i & 7) || !same) r9 = (int32_t) (r7 * (uint32_t) ip);
+                r9 = (r9 >> 23) + r6;
+                hqWords[i] += f * (uint32_t) r9;
+                r7 += (uint32_t) rest;
+                r3 += r7 >> 23;
+                r6 = sample(&s, r3);
+                r3 += 1;
+                ip = sample(&s, r3) - r6;
+                same = !ip;
+                r7 &= 0x7FFFFF;
+            }
+        }
+    }
+    h->pointer = end;
+    h->left2 = r2;
+    h->fw = r7;
+    return true;
+}
+
+// Compressed and reversed waves. False: the wave ended, the channel is off and its fields stay.
+static bool hq_special(struct channel* h, uint32_t fp, int count) {
+    uint8_t* c = h->c;
+    const struct mem* m = h->m;
+    uint32_t wave = le32(c + C_WAV);
+    uint32_t r3 = h->pointer;
+    int type = c[C_TYPE];
+    if (!(c[C_STATUS] & SF_SPECIAL)) {
+        c[C_STATUS] |= SF_SPECIAL;
+        if (type & TYPE_REV) {
+            r3 = read32(m, wave + W_SIZE) + wave * 2 + 0x20 - r3;
+            put32(c + C_POINTER, r3);
+        }
+        if (read8(m, wave + W_TYPE) | read8(m, wave + W_TYPE + 1) << 8) {
+            r3 = r3 - wave - 0x10;
+            put32(c + C_POINTER, r3);
+        }
+    }
+    uint32_t f = hq_half(fp);
+    uint32_t r7 = h->fw;
+    uint32_t step = type & TYPE_FIX ? 0x800000u : h->divFreq * le32(c + C_FREQUENCY);
+    bool compressed = read8(m, wave + W_TYPE) | read8(m, wave + W_TYPE + 1) << 8;
+    bool reversed = type & TYPE_REV;
+    int32_t r2 = h->left2;
+    int32_t r6, ip;
+    struct stream s;
+    if (compressed) {
+        COUNT(compressed);
+        put32(c + C_XPI, 0xFF000000u);
+        r3 = reversed ? r3 - 1 : r3;
+        r6 = decoded(h, wave, r3);
+        r3 = reversed ? r3 - 1 : r3 + 1;
+        ip = decoded(h, wave, r3) - r6;
+    } else {
+        if (!reversed) {
+            h->pointer = r3 - 1;
+            return true;
+        }
+        COUNT(reversed);
+        stream_at(&s, m, r3);
+        r3 -= 1;
+        r6 = sample(&s, r3);
+        ip = sample(&s, r3 - 1) - r6;
+    }
+    for (int i = 0; i < count; i++) {
+        int32_t v = ((int32_t) (r7 * (uint32_t) ip) >> 22) + r6 * 2;
+        hqWords[i] += f * (uint32_t) v;
+        r7 += step;
+        uint32_t advance = r7 >> 23;
+        if (!advance) continue;
+        r2 -= (int32_t) advance;
+        bool wrapped = false;
+        uint32_t past = 0;
+        if (r2 <= 0) {
+            if (!h->loopLength) return false;
+            r3 = h->loopPointer;
+            past = (uint32_t) -r2;
+            r2 += h->loopLength;
+            wrapped = true;
+        }
+        if (!compressed) {
+            uint32_t by = wrapped ? past : advance;
+            r3 -= by;
+            r6 = sample(&s, r3);
+            ip = sample(&s, r3 - 1) - r6;
+        } else {
+            uint32_t by = wrapped ? past : advance - 1;
+            if (!wrapped && !by) {
+                r6 += ip;
+            } else {
+                r3 = reversed ? r3 - by : r3 + by;
+                r6 = decoded(h, wave, r3);
+            }
+            r3 = reversed ? r3 - 1 : r3 + 1;
+            ip = decoded(h, wave, r3) - r6;
+        }
+        r7 &= ~FRACTION_CLEAR;
+    }
+    h->pointer = compressed ? (reversed ? r3 + 2 : r3 - 1) : r3 + 1;
+    h->left2 = r2;
+    h->fw = r7;
+    return true;
+}
+
+// A word's half to the buffer's byte: clamped to 15 bits, the top 8 of them.
+static uint8_t hq_byte(int32_t v) {
+    if (v >= 0x4000) v = 0x3F80;
+    if (v < -0x4000) v = -0x4000;
+    return (uint8_t) (v >> 7);
+}
+
+static bool hq_mix(const struct mem* m, uint32_t infoAt, int dmaCounter, uint32_t buffer, int samples) {
+    uint32_t left, bufferLeft;
+    uint8_t* info = ram(m, infoAt, &left);
+    uint8_t* out = ram(m, buffer, &bufferLeft);
+    if (!info || left < I_PCM_BUFFER + 2 * PCM_DMA_BUF_SIZE || !out || samples <= 0 || samples > HQ_MAX_SAMPLES || samples & 3 ||
+        bufferLeft < (uint32_t) PCM_DMA_BUF_SIZE + (uint32_t) samples + 16) return false;
+
+    int reverb = info[I_REVERB] >> 2;
+    if (reverb) {
+        COUNT(reverb);
+        uint32_t both = (uint32_t) reverb | (uint32_t) reverb << 16;
+        const uint8_t* p = out;
+        const uint8_t* q = dmaCounter == 2 ? info + I_PCM_BUFFER : out + samples;
+        for (int i = 0; i < samples; i++, p++, q++) {
+            int32_t v = (int8_t) p[PCM_DMA_BUF_SIZE] + (int8_t) p[0] + (int8_t) q[PCM_DMA_BUF_SIZE] + (int8_t) q[0];
+            if (v < 0) v += 4;
+            hqWords[i] = both * (uint32_t) v;
+        }
+    } else {
+        int words = (samples & 4) + (samples & 8) + (samples >> 4 ? samples >> 4 : 1) * 16;
+        memset(hqWords, 0, (size_t) words * sizeof(*hqWords));
+    }
+
+    static struct channel h;
+    h.m = m;
+    h.divFreq = le32(info + I_DIV_FREQ);
+    for (int i = 0; i < 16; i++) h.delta[i] = (int8_t) read8(m, deltaTable + (uint32_t) i);
+    int chans = info[I_MAX_CHANS];
+    uint8_t* c = info + I_CHANS;
+    for (;;) {
+        uint32_t wave = le32(c + C_WAV);
+        if ((c[C_STATUS] & SF_ON) && envelope(c, m, wave, info, false)) {
+            uint32_t level = (uint32_t) (info[I_MASTER_VOLUME] + 1) * c[C_ENV];
+            uint32_t fp = (c[C_LEFT] * level >> 13) | (c[C_RIGHT] * level >> 13) << 16;
+            if (fp) {
+                h.c = c;
+                h.loopLength = 0;
+                h.loopPointer = 0;
+                if (c[C_STATUS] & SF_LOOP) {
+                    uint32_t start = read32(m, wave + W_LOOP_START);
+                    h.loopPointer = wave + W_DATA + start;
+                    h.loopLength = (int32_t) (read32(m, wave + W_SIZE) - start);
+                }
+                h.left2 = (int32_t) le32(c + C_COUNT);
+                h.pointer = le32(c + C_POINTER);
+                h.fw = le32(c + C_FW);
+                int type = c[C_TYPE];
+                bool fixed = type & TYPE_FIX;
+                bool on = fixed ? hq_fixed(&h, fp, samples) : type & (TYPE_CMP | TYPE_REV) ? hq_special(&h, fp, samples) : hq_resampled(&h, fp, samples);
+                if (!on) {
+                    stop(&h);
+                    COUNT(ended);
+                } else {
+                    if (!fixed) put32(c + C_FW, h.fw);
+                    put32(c + C_COUNT, (uint32_t) h.left2);
+                    put32(c + C_POINTER, h.pointer);
+                }
+            }
+        }
+        if (--chans <= 0) break;
+        c += C_SIZE;
+    }
+    for (int i = 0; i < samples; i++) {
+        out[PCM_DMA_BUF_SIZE + i] = hq_byte((int16_t) hqWords[i]);
+        out[i] = hq_byte((int16_t) (hqWords[i] >> 16));
     }
     put32(info, ID_NUMBER);
     return true;
@@ -631,8 +1002,9 @@ static void hook16(struct ARMCore* cpu, int immediate) {
 #ifdef PD_MIXER_CHECK
     if (immediate == CHECK_EXIT_HOOK) {
         check_exit(gba);
-        put_hook(gba, entry + EXIT_AT, 0x9806); // its `ldr r0, [sp, 0x18]`
-        jump_thumb(cpu, entry + EXIT_AT);
+        uint32_t at = entry + (running == MIXER_HQ ? HQ_EXIT_AT : EXIT_AT);
+        put_hook(gba, at, 0x9806); // its `ldr r0, [sp, 0x18]`
+        jump_thumb(cpu, at);
         return;
     }
 #endif
@@ -646,60 +1018,84 @@ static void hook16(struct ARMCore* cpu, int immediate) {
     memcpy(copyEwram, real.ewram, sizeof(copyEwram));
     memcpy(copyIwram, real.iwram, sizeof(copyIwram));
     struct mem copy = { copyEwram, copyIwram, real.rom, real.romSize };
-    mix(&copy, k.info, k.dmaCounter, k.buffer, k.samples, 0, gba->video.vcount);
+    if (running == MIXER_HQ) hq_mix(&copy, k.info, k.dmaCounter, k.buffer, k.samples);
+    else mix(&copy, k.info, k.dmaCounter, k.buffer, k.samples, 0, gba->video.vcount);
     checkInfo = k.info;
-    put_hook(gba, entry, (uint16_t) (original[0] | original[1] << 8));
-    put_hook(gba, entry + EXIT_AT, 0xBE00 | CHECK_EXIT_HOOK);
+    put_hook(gba, entry, FIRST_OP);
+    put_hook(gba, entry + (running == MIXER_HQ ? HQ_EXIT_AT : EXIT_AT), 0xBE00 | CHECK_EXIT_HOOK);
     jump_thumb(cpu, entry);
 #else
-    if (mix(&real, k.info, k.dmaCounter, k.buffer, k.samples, k.stopLine, gba->video.vcount)) {
+    bool done = running == MIXER_HQ ? hq_mix(&real, k.info, k.dmaCounter, k.buffer, k.samples)
+                                    : mix(&real, k.info, k.dmaCounter, k.buffer, k.samples, k.stopLine, gba->video.vcount);
+    if (done) {
         leave(cpu, &real);
     } else {
         // Not where it should be: the game's own code from here on.
-        put_hook(gba, entry, (uint16_t) (original[0] | original[1] << 8));
+        put_hook(gba, entry, FIRST_OP);
         attached = false;
         jump_thumb(cpu, entry);
     }
 #endif
 }
 
+static const uint8_t* find_code(const uint8_t* rom, size_t size, const uint8_t* signature, size_t length, uint32_t crc) {
+    for (size_t at = 0x1000; at + length < size; at += 2) {
+        if (rom[at] == signature[0] && rom[at + 2] == signature[2] && !memcmp(rom + at, signature, 10) && doCrc32(rom + at, length) == crc) return rom + at;
+    }
+    return NULL;
+}
+
 bool pd_mixer_attach(struct mCore* core) {
     attached = false;
+    running = MIXER_NONE;
+    stock = hq = NULL;
     if (core->platform(core) != mPLATFORM_GBA) return false;
     struct GBA* gba = core->board;
     const uint8_t* rom = (const uint8_t*) gba->memory.rom;
     size_t size = gba->memory.romSize;
     if (!rom || size < 0x1000) return false;
-    for (size_t at = 0x1000; at + 0x710 < size; at += 2) {
-        if (rom[at] != SIGNATURE[0] || memcmp(rom + at, SIGNATURE, sizeof(SIGNATURE))) continue;
-        if (doCrc32(rom + at, CODE_SIZE) != CODE_CRC) continue;
-        uint32_t literal = le32(rom + at + BUFFER_LITERAL);
-        if (literal >> 24 != 3 || !(literal & 1)) return false;
-        entry = literal & ~1u;
-        deltaTable = le32(rom + at + DELTA_TABLE_AT);
-        memcpy(original, rom + at, sizeof(original));
-        code = rom + at;
-        if (gba->cpu->irqh.bkpt16 != hook16) {
-            forward16 = gba->cpu->irqh.bkpt16;
-            gba->cpu->irqh.bkpt16 = hook16;
+    // SoundMain's literal pool: where the game copies its mixer, whichever it is.
+    entry = 0;
+    for (size_t at = 0x1000; at + 16 < size; at += 4) {
+        if (le32(rom + at) == ID_NUMBER && le32(rom + at + 8) == 0x04000006 && le32(rom + at + 12) == I_PCM_BUFFER) {
+            uint32_t literal = le32(rom + at + 4);
+            if (literal >> 24 == 3 && literal & 1) entry = literal & ~1u;
+            break;
         }
-        attached = true;
-        return true;
     }
-    return false;
+    if (!entry) return false;
+    stock = find_code(rom, size, SIGNATURE, CODE_SIZE, CODE_CRC);
+    hq = find_code(rom, size, HQ_SIGNATURE, HQ_SIZE, HQ_CRC);
+    if (!stock && !hq) return false;
+    if (gba->cpu->irqh.bkpt16 != hook16) {
+        forward16 = gba->cpu->irqh.bkpt16;
+        gba->cpu->irqh.bkpt16 = hook16;
+    }
+    attached = true;
+    return true;
 }
 
 void pd_mixer_frame(struct mCore* core) {
     if (!attached) return;
     struct GBA* gba = core->board;
     const uint8_t* p = (const uint8_t*) gba->memory.iwram + (entry & 0x7FFF);
-    // All of it: the ROM's copy isn't always the one the game copied in (the mixer's address can be another's).
-    if (!memcmp(p, original, sizeof(original)) && !memcmp(p, code, CODE_SIZE)) put_hook(gba, entry, HOOK_OP);
+    if ((p[0] | p[1] << 8) != FIRST_OP) return;
+    // All of it: which mixer the game copied in isn't the ROM's to say. (The high quality one rewrites itself past its start.)
+    if (stock && !memcmp(p, stock, CODE_SIZE)) {
+        running = MIXER_STOCK;
+        deltaTable = le32(stock + DELTA_TABLE_AT);
+    } else if (hq && !memcmp(p, hq, HQ_STABLE)) {
+        running = MIXER_HQ;
+        deltaTable = (uint32_t) (entry + HQ_DELTA_TABLE);
+    } else {
+        return;
+    }
+    put_hook(gba, entry, HOOK_OP);
 }
 
 void pd_mixer_release(struct mCore* core) {
     if (!attached) return;
     struct GBA* gba = core->board;
     const uint8_t* p = (const uint8_t*) gba->memory.iwram + (entry & 0x7FFF);
-    if (p[0] == (uint8_t) HOOK_OP && p[1] == HOOK_OP >> 8) put_hook(gba, entry, (uint16_t) (original[0] | original[1] << 8));
+    if (p[0] == (uint8_t) HOOK_OP && p[1] == HOOK_OP >> 8) put_hook(gba, entry, FIRST_OP);
 }

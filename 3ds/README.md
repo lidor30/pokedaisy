@@ -114,8 +114,9 @@ coloured chips, per-cheat switches.
 Half of a frame on a New 3DS is the game's own sound mixer, the m4a engine's `SoundMainRAM`. `host/pd_mixer.c` runs it natively:
 a BKPT over its first instruction in IWRAM hands it to C, on every ROM that carries the stock routine (106 of the 136 GBA ROMs the app
 knows, found by its CRC, and only once the copy in IWRAM is that code). Every sim run does both on the same state and compares every
-byte (`mixer` in a script, `make sim-test`). Saved states never hold the hook. Unbound, Odyssey and a few other hacks run ipatix's
-self-modifying high-quality mixer, Amethyst, Dreamstone Mysteries and Wishes of Tomorrow variants of the stock one: those stay emulated.
+byte (`mixer` in a script, `make sim-test`). Saved states never hold the hook. Unbound (both builds), Odyssey and Rocket Edition run
+ipatix's self-modifying high-quality mixer in its place, ported the same way (`hq_*`), down to its skipped multiplies. GS Chronicles
+runs another build of that one; Amethyst, Dreamstone Mysteries and Wishes of Tomorrow variants of the stock one: those stay emulated.
 
 Sound plays at the DSP's own 32728 Hz, a sample out for a sample in. A game under full speed can't make its sound in time, so the
 channel's rate follows how fast the chunks arrive (`audio_follow` in `ctr/main.c`): the music slows with the game rather than breaking
