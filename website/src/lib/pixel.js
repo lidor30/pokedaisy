@@ -605,6 +605,12 @@ SPRITES.walker = {
   rows: ['..KKKKKK..', '.KGGGGGWK.', 'KGGGGGGGGK', 'KKKKKKKKKK', '.KSSSSSSK.', '.KSKSSKSK.', '.KSSSSSSK.', '..KKKKKK..',
     '.KYYYYYYK.', 'KSKYYYYKSK', 'KSKYYYYKSK', '.KKYYYYKK.', '..KNNNNK..', '..KNKKNK..', '..KK..KK..'],
 };
+// The language picker's globe.
+SPRITES.globe = {
+  pal: { K: INK, B: '#58a0f0', G: '#58c058', W: '#d8f0ff' },
+  rows: ['....KKKK....', '..KKBBGGKK..', '.KWBBGGGGBK.', '.KWGBBGGBBK.', 'KGGGGBBBBBBK', 'KGGGBBBBBBBK',
+    'KBGBBBBGGBBK', 'KBBBBBGGGGBK', '.KBBBBGGGBK.', '.KBBBBBGGBK.', '..KKBBBBKK..', '....KKKK....'],
+};
 SPRITES.bird = { pal: { K: '#3a3a48' }, rows: ['K...K', '.K.K.', '..K..'] };
 // The homepage's quality-of-life cards: a PC, the keep-away spray, grass with no encounters, a TM, running, zoom.
 SPRITES.pc = {

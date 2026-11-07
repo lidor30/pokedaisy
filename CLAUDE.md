@@ -2183,6 +2183,11 @@ The site's game matrix is README's Supported games table; a row of all "—" mea
 so the export lists it under `inProgress` - off the matrix, and "in progress" in the ROM check (none since R.O.W.E.
 got its companion, 2026-10-09).
 The site's demos and art never use real Pokémon / move / item names or the games' art (the user's rule).
+**Website languages** (2026-11-07, website/README.md's "Languages"): the app's eight (EN / JA / FR / DE / IT / ES / pt-BR / pt-PT),
+English at the root, the rest under `/<code>/` (`src/views/` drawn by `src/pages/` and `src/pages/[lang]/`); the manual and
+release notes stay English. Site text goes through `tr()` / `msg()` with its seven translations in `src/i18n/<code>.json`
+(same writing rules: no dashes), else `test/i18n.test.js` fails; Japanese needs `website/scripts/gen_site_jp_font.py` for a
+new character. The picker's choice is `localStorage` `pd-lang`, else the browser's language (on English pages only).
 **Website analytics** (`website/src/lib/analytics.js`, website/README.md's "Analytics"): anonymous GA4 counts, no cookies, a fixed
 event list checked per value, live site only. gtag.js sends nothing without its cookie, so the page posts gtag's own hit itself;
 `MEASUREMENT_ID` empty turns it off. A new tracked action goes on `EVENTS` with its allowed values (and the README's list).

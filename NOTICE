@@ -70,9 +70,10 @@ The app shows every license below in full under Settings > LICENSES.
 - Atkinson Hyperlegible (app/src/main/assets/fonts, website/public/fonts: the manual's
   reading text), Copyright 2020 Braille Institute of America, Inc., SIL Open Font
   License 1.1 (app/src/main/assets/fonts/LICENSE-AtkinsonHyperlegible.txt).
-- PixelMplus10 (app/src/main/assets/fonts/PixelMplusJP.ttf), by itouhiro,
-  M+ FONT LICENSE (app/src/main/assets/fonts/LICENSE-PixelMplus.txt); cut to
-  Japanese and rescaled by scripts/gen_jp_font.py.
+- PixelMplus10 (app/src/main/assets/fonts/PixelMplusJP.ttf; website/public/fonts/PixelMplusJP-site.ttf:
+  the website's Japanese), by itouhiro, M+ FONT LICENSE (app/src/main/assets/fonts/LICENSE-PixelMplus.txt);
+  cut to Japanese and rescaled by scripts/gen_jp_font.py, cut again to the site's characters by
+  website/scripts/gen_site_jp_font.py.
 - PokeAPI (https://pokeapi.co), BSD 3-Clause: the National Dex species list
   (third_party/licenses/PokeAPI-BSD-3-Clause.txt).
 - AndroidX, Jetpack Compose, Kotlin, kotlinx.coroutines and Apache Commons

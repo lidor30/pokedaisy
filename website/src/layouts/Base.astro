@@ -6,33 +6,48 @@ import { frameCss, spriteSvg } from '../lib/pixel.js';
 import { THEMES, themeCss } from '../lib/themes.js';
 import { REPO_URL } from '../lib/releases.js';
 import { REDDIT_URL, DISCORD_URL, KOFI_URL, PATREON_URL, COFFEE_URL } from '../lib/links.js';
+import { LANGUAGES, language, localePath, stripLang, trFor, msg } from '../i18n/index.js';
 
-/** [image]: the link preview's picture (og:image), a path on this site. [theme]: a look of its own (themes.js). */
-interface Props { title: string; description: string; noindex?: boolean; image?: string; theme?: string }
-const { title, description, noindex = false, image = '/og.png', theme } = Astro.props;
+/**
+ * [image]: the link preview's picture (og:image), a path on this site. [theme]: a look of its own (themes.js).
+ * [localized]: the page comes in every language (src/i18n); the docs are English only, so they pass false.
+ */
+interface Props { title: string; description: string; noindex?: boolean; image?: string; theme?: string; localized?: boolean }
+const { title, description, noindex = false, image = '/og.png', theme, localized = true } = Astro.props;
+const tr = trFor(Astro.url);
+const lang = language(tr.lang);
 const themed = theme ? THEMES[theme] : undefined;
 const site = Astro.site ?? new URL('https://pokedaisy.com');
 const ogImage = new URL(image, site).href;
 const favicon = `data:image/svg+xml,${encodeURIComponent(spriteSvg('logo').svg)}`;
 const path = Astro.url.pathname;
+const canonical = new URL(path, site).href;
+// The page in every language (hreflang alternates, the picker, the redirect below). A page that isn't translated
+// offers each language's home instead, and is no one's alternate.
+const here = stripLang(path);
+const versions = LANGUAGES.map((l) => ({ ...l, href: localePath(l.code, localized ? here : '/') }));
+const alternates = localized ? versions : [];
 const nav = [
-  ['FEATURES', '/#features'],
-  ['GAMES', '/#games'],
-  ['DOCS', '/docs/'],
-  ['ROM CHECK', '/compatibility/'],
-  ['RELEASES', '/releases/'],
+  [msg('FEATURES'), '/#features'],
+  [msg('GAMES'), '/#games'],
+  [msg('DOCS'), '/docs/'],
+  [msg('ROM CHECK'), '/compatibility/'],
+  [msg('RELEASES'), '/releases/'],
 ];
 // Petals drifting behind the page: [left %, top %, size, delay s, duration s].
 const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 78, 2, 2, 28], [46, 92, 1, 6, 25], [95, 70, 1, 12, 30]];
 ---
 <!doctype html>
-<html lang="en" data-theme={themed ? theme : undefined}>
+<html lang={localized ? lang.hreflang : 'en'} data-theme={themed ? theme : undefined}>
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
     <title>{title}</title>
     <meta name="description" content={description} />
     {noindex && <meta name="robots" content="noindex" />}
+    <link rel="canonical" href={canonical} />
+    {alternates.map((l) => <link rel="alternate" hreflang={l.hreflang} href={new URL(l.href, site).href} />)}
+    {alternates.length > 0 && <link rel="alternate" hreflang="x-default" href={new URL(versions[0].href, site).href} />}
     <meta name="theme-color" content={themed?.themeColor ?? '#f7f6fb'} />
     <link rel="icon" href={favicon} />
     <link rel="preload" href="/fonts/PixelOperator.ttf" as="font" type="font/ttf" crossorigin />
@@ -40,7 +55,31 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     <meta property="og:title" content={title} />
     <meta property="og:description" content={description} />
     <meta property="og:image" content={ogImage} />
+    <meta property="og:locale" content={localized ? lang.og : 'en_US'} />
     <meta name="twitter:card" content="summary_large_image" />
+    {alternates.length > 0 && (
+      <script is:inline define:vars={{ hrefs: Object.fromEntries(versions.map((l) => [l.code, l.href])), current: tr.lang }}>
+        // The visitor's language: the one they picked (the picker below remembers it in this browser), else, on an
+        // English page, the first supported one their browser asks for. Only with working storage, so a pick of
+        // English always sticks. Before anything draws, so the page doesn't flash in the wrong language.
+        (function () {
+          var want = null;
+          try {
+            want = localStorage.getItem('pd-lang');
+            if (!want && current === 'en') {
+              var asked = navigator.languages && navigator.languages.length ? navigator.languages : [navigator.language];
+              for (var i = 0; i < asked.length && !want; i++) {
+                var parts = String(asked[i]).toLowerCase().split(/[-_]/);
+                if (parts[0] === 'en') break;
+                if (parts[0] === 'pt') want = parts[1] === 'br' ? 'pt-br' : 'pt';
+                else if (hrefs[parts[0]]) want = parts[0];
+              }
+            }
+          } catch (e) { return; }
+          if (want && want !== current && hrefs[want]) location.replace(hrefs[want] + location.search + location.hash);
+        })();
+      </script>
+    )}
     <script is:inline>
       // Pixel Operator's pixel is 1/16 em: it's pixel-perfect only where size x device pixel ratio is a
       // multiple of 16, and at 110% zoom on a 2x screen those sizes are 14.5 / 21.8 / 29.1... - too coarse
@@ -97,22 +136,38 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
 
     <header class="topbar">
       <div class="container bar">
-        <a class="brand" href="/" aria-label="PokeDaisy home">
+        <a class="brand" href={tr.path('/')} aria-label={tr('PokeDaisy home')}>
           <span class="brand-mark"><Pixel name="logo" scale={0.5} /></span>
           <span class="brand-name"><span class="red">POKE</span>DAISY</span>
         </a>
-        <nav class="links" aria-label="Main">
+        <nav class="links" aria-label={tr('Main')}>
           {nav.map(([label, href]) => (
-            <a href={href} aria-current={path === href || (href === '/docs/' && path.startsWith('/docs/')) ? 'page' : undefined}>{label}</a>
+            <a href={tr.path(href)} aria-current={here === href || (href === '/docs/' && path.startsWith('/docs/')) ? 'page' : undefined}>{tr(label)}</a>
           ))}
-          <a href={DISCORD_URL} class="icon-link" aria-label="PokeDaisy on Discord"><Pixel name="discord" scale={0.5} /></a>
+          <a href={DISCORD_URL} class="icon-link" aria-label={tr('PokeDaisy on Discord')}><Pixel name="discord" scale={0.5} /></a>
           <a href={REPO_URL} class="icon-link" aria-label="GitHub"><Pixel name="github" scale={0.5} /></a>
         </nav>
         <!-- Phones: GitHub beside COFFEE, bigger, instead of squeezed onto the end of the scrolling links (Discord stays there: no room). -->
         <a href={REPO_URL} class="icon-link gh-top" aria-label="GitHub"><Pixel name="github" scale={0.75} /></a>
-        <a class="btn f-coffee h-coffeeHot small coffee-nav" href={COFFEE_URL}>
-          <Pixel name="cup" scale={0.5} /> <span>COFFEE</span>
+        <a class="btn f-coffee h-coffeeHot small coffee-nav" href={COFFEE_URL} aria-label={tr('BUY ME A COFFEE')}>
+          <Pixel name="cup" scale={0.5} /> <span class="coffee-label">{tr('COFFEE')}</span>
         </a>
+        <!-- The language picker: a pick is remembered in this browser (the redirect in <head> reads it). -->
+        <details class="lang-pick" data-lang-pick>
+          <summary class="lang-btn" aria-label={tr('Language')} title={tr('Language')}>
+            <Pixel name="globe" scale={0.5} /><span class="lang-code">{(localized ? lang.code : 'en').replace('-br', '').toUpperCase()}</span>
+          </summary>
+          <ul class="lang-list f-card" role="list">
+            {versions.map((l) => (
+              <li>
+                <a href={l.href} hreflang={l.hreflang} lang={l.hreflang} data-lang={l.code}
+                  aria-current={(localized ? tr.lang : 'en') === l.code ? 'true' : undefined}>
+                  {(localized ? tr.lang : 'en') === l.code && <span class="lang-cur"><Pixel name="cursor" scale={0.667} /></span>}{l.name}
+                </a>
+              </li>
+            ))}
+          </ul>
+        </details>
       </div>
     </header>
 
@@ -124,36 +179,42 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
           <Pixel name="logo" scale={1} />
           <div>
             <p class="foot-name"><span class="red">POKE</span>DAISY</p>
-            <p class="muted tiny">Free and open source, GPL v3. No ads, no accounts, no cookies. The site only counts visits, anonymously.</p>
+            <p class="muted tiny">{tr('Free and open source, GPL v3. No ads, no accounts, no cookies. The site only counts visits, anonymously.')}</p>
           </div>
         </div>
         <div class="foot-links tiny">
-          <a href={`${REPO_URL}/releases/latest`}>DOWNLOAD</a>
-          <a href="/docs/">DOCS</a>
-          <a href="/compatibility/">ROM CHECK</a>
-          <a href="/releases/">RELEASES</a>
-          <a href="/feedback/#bug">REPORT A BUG</a>
+          <a href={`${REPO_URL}/releases/latest`}>{tr('DOWNLOAD')}</a>
+          <a href="/docs/">{tr('DOCS')}</a>
+          <a href={tr.path('/compatibility/')}>{tr('ROM CHECK')}</a>
+          <a href={tr.path('/releases/')}>{tr('RELEASES')}</a>
+          <a href={tr.path('/feedback/#bug')}>{tr('REPORT A BUG')}</a>
           <a href={REPO_URL}>GITHUB</a>
           <a href={REDDIT_URL}>REDDIT</a>
           <a href={DISCORD_URL}>DISCORD</a>
           <a href={KOFI_URL}>KO-FI</a>
           <a href={PATREON_URL}>PATREON</a>
-          <a href={COFFEE_URL}>BUY ME A COFFEE</a>
+          <a href={COFFEE_URL}>{tr('BUY ME A COFFEE')}</a>
         </div>
-        <p class="legal tiny muted">
-          PokeDaisy is a fan project, not affiliated with or endorsed by Nintendo, Game Freak, Creatures or
-          The Pokémon Company. Pokémon and all related names are trademarks of their respective owners; Game Boy,
-          Game Boy Color, Game Boy Advance and Nintendo DS are trademarks of Nintendo. Device names belong to their makers, and
-          ScreenScraper, RetroAchievements and SteamGridDB are independent services. ROM hacks belong to their creators. No games
-          are included: use your own legally dumped ROMs. Games run on{' '}
-          <a href="https://mgba.io">mGBA</a> and <a href="https://melonds.kuribo64.net">melonDS</a>; fonts: Pixel Operator by Jayvee Enaguas (CC0) and Atkinson Hyperlegible by the Braille Institute (OFL).
-        </p>
+        <p class="legal tiny muted" set:html={tr('PokeDaisy is a fan project, not affiliated with or endorsed by Nintendo, Game Freak, Creatures or The Pokémon Company. Pokémon and all related names are trademarks of their respective owners; Game Boy, Game Boy Color, Game Boy Advance and Nintendo DS are trademarks of Nintendo. Device names belong to their makers, and ScreenScraper, RetroAchievements and SteamGridDB are independent services. ROM hacks belong to their creators. No games are included: use your own legally dumped ROMs. Games run on <a href="https://mgba.io">mGBA</a> and <a href="https://melonds.kuribo64.net">melonDS</a>; fonts: Pixel Operator by Jayvee Enaguas (CC0), PixelMplus by Itouhiro (M+ FONT LICENSE) and Atkinson Hyperlegible by the Braille Institute (OFL).')} />
       </div>
     </footer>
 
     <script>
       import { startAnalytics } from '../lib/analytics.js';
       startAnalytics();
+    </script>
+    <script>
+      // The language picker: remember the pick (the <head> redirect reads it), close on a click elsewhere.
+      for (const pick of document.querySelectorAll<HTMLDetailsElement>('[data-lang-pick]')) {
+        pick.addEventListener('click', (e) => {
+          const a = (e.target as HTMLElement).closest<HTMLAnchorElement>('a[data-lang]');
+          if (!a) return;
+          try { localStorage.setItem('pd-lang', a.dataset.lang!); } catch {}
+          if (location.hash) a.href = a.href.split('#')[0] + location.hash;
+        });
+        document.addEventListener('click', (e) => { if (!pick.contains(e.target as Node)) pick.open = false; });
+        pick.addEventListener('keydown', (e) => { if (e.key === 'Escape') { pick.open = false; pick.querySelector('summary')!.focus(); } });
+      }
     </script>
     <script>
       // Windows open as they scroll into view, a few at a time.
@@ -174,6 +235,14 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     font-family: 'Pixel Operator';
     src: url('/fonts/PixelOperator.ttf') format('truetype');
     font-display: block;
+  }
+  /* Japanese, glyph by glyph, like the app's PixelTypeface: PixelMplus at Pixel Operator's pixel, cut to the
+     characters the site's Japanese uses (scripts/gen_site_jp_font.py). Only fetched where one is drawn. */
+  @font-face {
+    font-family: 'PixelMplus JP';
+    src: url('/fonts/PixelMplusJP-site.ttf') format('truetype');
+    font-display: swap;
+    unicode-range: U+3000-30FF, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF;
   }
   :root {
     /* One GBA pixel on screen, and the text sizes - the script in <head> snaps them to whole device
@@ -199,6 +268,19 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     --hard-shadow: drop-shadow(calc(var(--px) * 2) calc(var(--px) * 2) 0 rgba(29, 27, 38, 0.14));
     --step: steps(4, end);
   }
+  /* Between the phone layout and a wide window, a tighter nav: the longest language's labels (Spanish), the coffee
+     button and the language picker then fit in one row from 900px up. */
+  @media (min-width: 901px) and (max-width: 1120px) {
+    .topbar .bar { gap: 14px; }
+    .topbar .links { font-size: var(--t-xs); gap: 0; }
+    .topbar .links a { padding: 6px 7px; }
+  }
+  /* Narrow phones: logo, GitHub, the coffee cup and the language chip share the first row (with COFFEE's word,
+     the language chip went to a row of its own). */
+  @media (max-width: 480px) {
+    .topbar .bar { column-gap: 8px; }
+    .coffee-label { display: none; }
+  }
   @media (max-width: 560px) {
     .topbar .links { font-size: var(--t-xs); }
     .topbar .links a { padding: 6px 6px; }
@@ -211,7 +293,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
   html, body { margin: 0; }
   body {
     min-height: 100vh;
-    font-family: 'Pixel Operator', monospace;
+    font-family: 'Pixel Operator', 'PixelMplus JP', monospace;
     font-size: var(--t-m);
     line-height: 1.5;
     color: var(--ink);
@@ -220,6 +302,8 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     -webkit-font-smoothing: antialiased;
     overflow-x: hidden;
   }
+  /* Japanese: never a small kana, ー or closing mark at a line's start. */
+  :lang(ja) { line-break: strict; }
   ::selection { background: var(--yellow); color: var(--ink); }
   a { color: inherit; }
   img { max-width: 100%; }
@@ -264,13 +348,31 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
   .brand-mark { display: inline-flex; transition: transform 0.4s var(--step); }
   .brand:hover .brand-mark { transform: rotate(-90deg); }
   .links { display: flex; align-items: center; gap: 4px; margin-left: auto; font-size: var(--t-s); }
-  .links a { text-decoration: none; padding: 6px 10px; position: relative; }
+  .links a { text-decoration: none; padding: 6px 10px; position: relative; white-space: nowrap; }
   .links a::after {
     content: ''; position: absolute; left: 10px; right: 10px; bottom: 2px; height: var(--px);
     background: var(--red); transform: scaleX(0); transform-origin: left; transition: transform 0.2s var(--step);
   }
   .links a:hover::after, .links a[aria-current='page']::after { transform: scaleX(1); }
   .icon-link { display: inline-flex; }
+
+  /* Language picker: a small chip; its list drops down under it, a pixel card. */
+  .lang-pick { position: relative; }
+  .lang-btn {
+    display: inline-flex; align-items: center; gap: 6px; cursor: pointer; list-style: none;
+    font-size: var(--t-s); min-height: 44px; padding: 0 4px;
+  }
+  .lang-btn::-webkit-details-marker { display: none; }
+  .lang-btn:hover .pixel { transform: translateY(calc(var(--px) * -1)); }
+  .lang-btn:focus-visible { outline: var(--px) dashed var(--red); outline-offset: var(--px); }
+  .lang-list {
+    position: absolute; right: 0; top: calc(100% + 6px); z-index: 60; margin: 0; list-style: none;
+    display: grid; gap: 2px; min-width: 15em; padding: calc(var(--px) * 3); font-size: var(--t-s);
+  }
+  .lang-list a { display: flex; align-items: center; gap: 8px; text-decoration: none; padding: 4px 8px 4px 22px; position: relative; white-space: nowrap; }
+  .lang-list a:hover, .lang-list a:focus-visible { color: var(--red); outline: none; }
+  .lang-list a[aria-current] { padding-left: 22px; }
+  .lang-cur { position: absolute; left: 4px; display: inline-flex; }
   .gh-top { display: none; }
   .coffee-nav { white-space: nowrap; }
   @media (max-width: 900px) {

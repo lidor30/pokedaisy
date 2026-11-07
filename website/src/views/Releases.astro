@@ -1,0 +1,68 @@
+---
+import Base from '../layouts/Base.astro';
+import Pixel from '../components/Pixel.astro';
+import { REPO_URL, formatDate, getReleases, markdown } from '../lib/releases.js';
+
+const releases = await getReleases();
+import { trFor } from '../i18n/index.js';
+
+const tr = trFor(Astro.url);
+---
+<Base
+  title={tr('Releases · PokeDaisy')}
+  description={tr('Every PokeDaisy release and what changed in it. The app checks for updates itself and installs them for you.')}
+>
+  <section class="block container narrow">
+    <div class="section-head">
+      <span class="eyebrow">{tr('RELEASES')}</span>
+      <h1 class="heading">{tr('What\'s new in PokeDaisy')}</h1>
+      <p class="lead">{tr('The app checks for a new version each time you open it and installs it for you. You can also check from Settings > VERSION.')}</p>
+      {tr.lang !== 'en' && <p class="lead small">{tr('The notes for each release are in English.')}</p>}
+    </div>
+
+    {releases.length === 0 && (
+      <article class="f-card rel">
+        <p set:html={tr('See every release on <a href="{url}">GitHub</a>.', { url: `${REPO_URL}/releases` })} />
+      </article>
+    )}
+
+    <ol class="timeline">
+      {releases.map((r, i) => (
+        <li class="entry" data-reveal style={`--i:${Math.min(i, 3)}`}>
+          <span class="dot" aria-hidden="true"><Pixel name={i === 0 ? 'logo' : 'spark'} scale={i === 0 ? 0.667 : 1} /></span>
+          <article class="f-card rel">
+            <header class="rel-head">
+              <h2 class="rel-ver">{r.version}</h2>
+              {i === 0 && <span class="chip f-pillGreen">{tr('LATEST')}</span>}
+              <span class="small muted">{formatDate(r.date, tr.locale)}</span>
+            </header>
+            <div class="notes" lang="en" set:html={markdown(r.body)} />
+            <div class="cta">
+              {r.apk && <a class="btn f-primary h-primaryHot primary small" href={r.apk}><Pixel name="download" scale={0.667} /> APK</a>}
+              <a class="btn f-btn h-btnHot small" href={r.url}>{tr('ON GITHUB')}</a>
+            </div>
+          </article>
+        </li>
+      ))}
+    </ol>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 900px; }
+  .timeline { list-style: none; margin: 0; padding: 0 0 0 48px; position: relative; display: grid; gap: 36px; }
+  .timeline::before { content: ''; position: absolute; left: 18px; top: 12px; bottom: 12px; width: var(--px); background: repeating-linear-gradient(var(--ink) 0 calc(var(--px) * 2), transparent calc(var(--px) * 2) calc(var(--px) * 4)); }
+  .entry { position: relative; }
+  .dot { position: absolute; left: -48px; top: 10px; width: 40px; display: flex; justify-content: center; }
+  .rel { filter: var(--hard-shadow); display: grid; gap: 16px; padding: calc(var(--px) * 9); }
+  .rel-head { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 16px; }
+  .rel-ver { font-size: var(--t-xl); text-shadow: var(--bold); letter-spacing: 0.0625em; }
+  .notes { font-size: var(--t-s); color: var(--ink-2); display: grid; gap: 8px; }
+  .notes :global(h4) { font-size: var(--t-m); color: #cb0707; margin-top: 8px; }
+  .notes :global(ul) { margin: 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .notes :global(li) { position: relative; padding-left: calc(var(--px) * 6); }
+  .notes :global(li)::before { content: ''; position: absolute; left: 0; top: 0.65em; width: calc(var(--px) * 2); height: calc(var(--px) * 2); background: var(--red); }
+  .notes :global(strong) { color: var(--ink); font-weight: normal; }
+  .notes :global(code) { font-family: inherit; background: #efeef4; padding: 0 4px; }
+  .cta { display: flex; flex-wrap: wrap; gap: 16px; }
+</style>

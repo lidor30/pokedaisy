@@ -1,0 +1,12 @@
+---
+// src/views/GamePage.astro in each language but English (src/i18n).
+import GamePage from '../../../views/GamePage.astro';
+import { GAME_PAGES } from '../../../lib/gamePages.js';
+import { PREFIXED } from '../../../i18n/index.js';
+
+export function getStaticPaths() {
+  return PREFIXED.flatMap((lang) => GAME_PAGES.map((page) => ({ params: { lang, slug: page.slug }, props: { page } })));
+}
+const { page } = Astro.props;
+---
+<GamePage page={page} />

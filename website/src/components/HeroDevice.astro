@@ -13,6 +13,9 @@ import HeroScene from './HeroScene.astro';
 interface Props { still?: boolean }
 const { still = false } = Astro.props;
 const at = (x: number, y: number, w?: number, h?: number) => `--x:${x};--y:${y}` + (w ? `;--w:${w};--h:${h}` : '');
+import { trFor } from '../i18n/index.js';
+
+const tr = trFor(Astro.url);
 ---
 <div class="hh-box">
   <div class:list={['handheld', 'thor', still && 'still']} data-handheld data-units="160">
@@ -20,7 +23,7 @@ const at = (x: number, y: number, w?: number, h?: number) => `--x:${x};--y:${y}`
       <span class="hh-shell f-thorLid"></span>
       <div class="hh-part glass f-glass" style={at(3, 3, 154, 94)}></div>
       <div class="hh-part topscreen" style={at(8, 9, 144, 81)}>
-        <slot name="top"><HeroScene lines={['Your party is on the bottom screen.', 'So are the map, the bag and your dex.', 'In a battle, every matchup is a glance away.']} /></slot>
+        <slot name="top"><HeroScene lines={[tr('Your party is on the bottom screen.'), tr('So are the map, the bag and your dex.'), tr('In a battle, every matchup is a glance away.')]} /></slot>
       </div>
     </div>
     <div class="hh-part thor-hinge" style={at(5, 100, 150, 7)}><i></i><i></i></div>

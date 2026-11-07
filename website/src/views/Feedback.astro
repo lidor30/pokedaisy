@@ -1,0 +1,235 @@
+---
+// Feedback without a GitHub account: a game request, a bug report or a feature idea, written straight to
+// Firestore (write-only, firestore.rules) and posted on GitHub by functions/index.js (requests and ideas as
+// discussions, bugs as issues). The fields and checks come from functions/feedback-form.js, shared with that
+// function and mirroring the GitHub forms. The ROM check links here with its readings in the URL's #hash (never sent to the server).
+import Base from '../layouts/Base.astro';
+import Pixel from '../components/Pixel.astro';
+import { FORMS, DEVICES, CONTACT_MAX } from '../../functions/feedback-form.js';
+import { REPO_URL } from '../lib/releases.js';
+import { DISCORD_URL } from '../lib/links.js';
+import { trFor, msg } from '../i18n/index.js';
+
+const tr = trFor(Astro.url);
+// The forms' words (functions/feedback-form.js) stay English in what's sent and posted; the page shows them in
+// its language. test/i18n.test.js checks every label and hint there has its translations.
+const fieldText = (s?: string) => (s ? tr(s) : s);
+// The checks' messages (feedback-form.js's validate) and the script's own, for the browser.
+const strings = {
+  'Needed.': tr('Needed.'),
+  'Pick one.': tr('Pick one.'),
+  'A number of bytes.': tr('A number of bytes.'),
+  '40 hex digits - the ROM check shows it.': tr('40 hex digits: the ROM check shows it.'),
+  "Pick what you're sending.": tr("Pick what you're sending."),
+  atMost: tr('At most {n} characters.'),
+  look: tr('Some fields need a look.'),
+  sending: tr('SENDING…'),
+  failed: tr("It didn't go through. Check the connection and try again."),
+};
+
+// The kind's own GitHub form, for people with an account, and where a sent one shows up.
+const kinds = [
+  ['game', msg('REQUEST A GAME'), 'logo', 0.334, 'discussions/new?category=game-requests', 'discussions/categories/game-requests'],
+  ['bug', msg('REPORT A BUG'), 'bug', 0.667, 'issues/new?template=bug_report.yml', 'issues'],
+  ['feature', msg('SUGGEST A FEATURE'), 'guide', 0.5, 'discussions/new?category=ideas', 'discussions/categories/ideas'],
+] as const;
+---
+<Base
+  title={tr('Feedback · PokeDaisy')}
+  description={tr('Request a game, report a bug or suggest a feature for PokeDaisy. No GitHub account needed.')}
+>
+  <section class="block container narrow">
+    <div class="section-head">
+      <span class="eyebrow">{tr('FEEDBACK')}</span>
+      <h1 class="heading">{tr('Tell PokeDaisy what you need')}</h1>
+      <p class="lead" set:html={tr('Ask for a game, report a bug or share an idea. No GitHub account needed: what you send here goes up on <a href="{repo}">PokeDaisy\'s GitHub</a>, where anyone can follow it. Game requests and ideas land in <a href="{discussions}">Discussions</a>, where people upvote the ones they want. Want a quick answer or to chat? Ask on <a href="{discord}">PokeDaisy\'s Discord</a>.', { repo: REPO_URL, discussions: `${REPO_URL}/discussions`, discord: DISCORD_URL })} />
+    </div>
+
+    <form class="feedback" data-feedback novalidate data-where={JSON.stringify(Object.fromEntries(kinds.map((k) => [k[0], `${REPO_URL}/${k[5]}`])))} data-t={JSON.stringify(strings)}>
+      <div class="kinds" role="radiogroup" aria-label={tr('What are you sending?')}>
+        {kinds.map(([kind, label, icon, scale], i) => (
+          <label class="kind btn f-btn h-btnHot">
+            <input type="radio" name="kind" value={kind} checked={i === 0} />
+            <Pixel name={icon} scale={scale} /> {tr(label)}
+          </label>
+        ))}
+      </div>
+
+      <div class="f-card sheet">
+        {kinds.map(([kind, , , , form]) => (
+          <fieldset class="fields" data-kind={kind} hidden={kind !== 'game'}>
+            <legend class="sr">{tr(FORMS[kind].title)}</legend>
+            {kind === 'game' && (
+              <p class="note small"><Pixel name="logo" scale={0.334} /> <Fragment set:html={tr('Support is added per exact version, found by the ROM\'s SHA-1. <a href="{check}">The ROM check</a> fills these in for you.', { check: tr.path('/compatibility/') })} /></p>
+            )}
+            {FORMS[kind].fields.map((f) => (
+              <label class="field">
+                <span class="flabel">{tr(f.label)}{f.required && <span class="req" aria-hidden="true"> *</span>}</span>
+                {f.hint && <span class="fhint tiny muted">{fieldText(f.hint)}</span>}
+                {f.type === 'textarea'
+                  ? <textarea class="f-btn h-btnHot" name={f.id} maxlength={f.max} rows={f.id === 'logs' ? 6 : 4} placeholder={f.id === 'steps' ? tr(f.placeholder) : f.placeholder} required={f.required} />
+                  : f.type === 'select'
+                    ? <select class="f-btn h-btnHot" name={f.id} required={f.required}>
+                        <option value="">{tr('Pick one…')}</option>
+                        {DEVICES.map((d) => <option value={d}>{d.startsWith('A') ? tr(d) : d}</option>)}
+                      </select>
+                    : <input class="f-btn h-btnHot" name={f.id} maxlength={f.max} placeholder={f.placeholder} required={f.required} autocomplete="off" spellcheck={f.id === 'sha1' || f.id === 'size' ? 'false' : undefined} />}
+                <span class="ferr tiny" data-error={f.id}></span>
+              </label>
+            ))}
+            <p class="tiny muted" set:html={tr('Have a GitHub account? <a href="{url}">Post it on GitHub</a> instead.', { url: `${REPO_URL}/${form}` })} />
+          </fieldset>
+        ))}
+
+        <label class="field contact">
+          <span class="flabel">{tr('How to reach you')} <span class="muted">{tr('(optional)')}</span></span>
+          <span class="fhint tiny muted">{tr("An email or a Discord name, in case there's a question. Never published: only the maintainer sees it.")}</span>
+          <input class="f-btn h-btnHot" name="contact" maxlength={CONTACT_MAX} autocomplete="email" />
+          <span class="ferr tiny" data-error="contact"></span>
+        </label>
+        <!-- Left empty by people; filled in by form-filling bots, which then get a polite nothing. -->
+        <label class="trap" aria-hidden="true">Website <input name="website" tabindex="-1" autocomplete="off" /></label>
+
+        <p class="warn small"><Pixel name="no" scale={0.5} /> {tr('Never attach or link a ROM: name the game and its version instead.')}</p>
+        <div class="send">
+          <button class="btn f-primary h-primaryHot primary big" type="submit" data-send>{tr('SEND')}</button>
+          <span class="status small" data-status aria-live="polite"></span>
+        </div>
+      </div>
+    </form>
+
+    <div class="f-card sheet thanks" data-thanks hidden>
+      <span class="thanks-art"><Pixel name="logo" scale={2} /></span>
+      <h2 class="heading">{tr('Thanks!')}</h2>
+      <p class="lead" set:html={tr('It\'s on its way. It shows up on <a data-where href="{url}">PokeDaisy\'s GitHub</a> in a minute or two.', { url: `${REPO_URL}/${kinds[0][5]}` })} />
+      <button class="btn f-btn h-btnHot small" type="button" data-again>{tr('SEND ANOTHER')}</button>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 900px; }
+  /* The grids below would otherwise show what the script hides (the other kinds' fields, the thanks). */
+  [hidden] { display: none !important; }
+  .feedback { display: grid; gap: 28px; }
+  .kinds { display: flex; flex-wrap: wrap; gap: 16px; }
+  .kind { font-size: var(--t-s); }
+  .kind input { position: absolute; opacity: 0; pointer-events: none; }
+  .kind:has(input:checked) { color: #fff; text-shadow: var(--px) var(--px) 0 #8a1410; border-image-source: none; background: var(--red); outline: var(--px) solid var(--ink); }
+  .kind:has(input:focus-visible) { outline: var(--px) dashed var(--red); outline-offset: calc(var(--px) * 2); }
+  .sheet { filter: var(--hard-shadow); display: grid; gap: 22px; padding: calc(var(--px) * 8); }
+  .fields { display: grid; gap: 22px; border: 0; margin: 0; padding: 0; min-width: 0; }
+  .field { display: grid; gap: 6px; }
+  .flabel { font-size: var(--t-s); text-shadow: var(--bold); letter-spacing: 0.0625em; }
+  .req { color: var(--red); }
+  .field input, .field textarea, .field select {
+    font: inherit; font-size: var(--t-s); color: var(--ink); width: 100%;
+    padding: calc(var(--px) * 1) calc(var(--px) * 2); outline: none; resize: vertical;
+  }
+  .field textarea { line-height: 1.4; }
+  .field select { appearance: none; cursor: pointer; }
+  .field ::placeholder { color: #a8a6b6; }
+  .ferr { color: var(--red-ink); min-height: 0; }
+  .ferr:empty { display: none; }
+  .field.bad input, .field.bad textarea, .field.bad select { background: #fff1ef; }
+  .note { color: var(--ink-2); }
+  .note :global(.pixel) { display: inline-block; vertical-align: middle; margin-right: 8px; }
+  .warn { display: flex; align-items: center; gap: 10px; color: var(--red-ink); }
+  .send { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .status { color: var(--muted); }
+  .status.error { color: var(--red-ink); }
+  .trap { position: absolute; left: -9999px; width: 1px; height: 1px; overflow: hidden; }
+  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  .thanks { justify-items: center; text-align: center; padding: calc(var(--px) * 14) calc(var(--px) * 8); }
+  .thanks .lead { margin-top: 0; max-width: 38ch; }
+  @media (max-width: 760px) { .kinds { display: grid; } .sheet { padding: calc(var(--px) * 6); } }
+</style>
+
+<script>
+  import { clean, validate, toFirestore } from '../../functions/feedback-form.js';
+  import { track } from '../lib/analytics.js';
+  import { fill } from '../i18n/fill.js';
+
+  const ENDPOINT = 'https://firestore.googleapis.com/v1/projects/pokedaisy/databases/(default)/documents/feedback';
+  const form = document.querySelector<HTMLFormElement>('[data-feedback]')!;
+  const t: Record<string, string> = JSON.parse(form.dataset.t!);
+  // validate()'s messages are English (they're shared with the Cloud Function): shown in the page's language.
+  const say = (m: string) => t[m] ?? (/^At most (\d+) characters\.$/.test(m) ? fill(t.atMost, { n: m.match(/\d+/)![0] }) : m);
+  const thanks = document.querySelector<HTMLElement>('[data-thanks]')!;
+  const status = form.querySelector<HTMLElement>('[data-status]')!;
+  const send = form.querySelector<HTMLButtonElement>('[data-send]')!;
+
+  const kind = () => form.querySelector<HTMLInputElement>('input[name=kind]:checked')!.value;
+  const showKind = (k: string) => {
+    for (const fs of form.querySelectorAll<HTMLFieldSetElement>('fieldset[data-kind]')) {
+      const on = fs.dataset.kind === k;
+      fs.hidden = !on;
+      fs.disabled = !on;   // only the chosen kind's fields are read (and required)
+    }
+  };
+  form.addEventListener('change', (e) => {
+    if ((e.target as HTMLInputElement).name === 'kind') showKind(kind());
+  });
+
+  // The ROM check (and links) can pick the kind and fill fields: #game&sha1=...&size=...
+  const hash = new URLSearchParams(location.hash.slice(1));
+  const start = ['game', 'bug', 'feature'].find((k) => hash.has(k)) ?? 'game';
+  form.querySelector<HTMLInputElement>(`input[name=kind][value=${start}]`)!.checked = true;
+  showKind(start);
+  for (const [k, v] of hash) {
+    const el = form.querySelector<HTMLInputElement>(`fieldset[data-kind=${start}] [name="${CSS.escape(k)}"]`);
+    if (el && v) el.value = v;
+  }
+
+  const showErrors = (errors: Record<string, string>) => {
+    for (const el of form.querySelectorAll<HTMLElement>('[data-error]')) {
+      const fieldset = el.closest('fieldset');
+      const msg = fieldset && fieldset.hidden ? '' : say(errors[el.dataset.error!] ?? '');
+      el.textContent = msg;
+      el.closest('.field')?.classList.toggle('bad', !!msg);
+    }
+  };
+
+  form.addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const raw = Object.fromEntries(new FormData(form)) as Record<string, string>;
+    // A bot filled the hidden field: thank it and send nothing.
+    if (raw.website) { form.hidden = true; thanks.hidden = false; return; }
+    const sub = clean(kind(), raw)!;
+    const errors = validate(sub);
+    showErrors(errors);
+    if (Object.keys(errors).length) {
+      status.textContent = t.look;
+      status.className = 'status small error';
+      form.querySelector<HTMLElement>('.field.bad input, .field.bad textarea, .field.bad select')?.focus();
+      return;
+    }
+    send.disabled = true;
+    status.textContent = t.sending;
+    status.className = 'status small';
+    try {
+      const res = await fetch(ENDPOINT, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(toFirestore(sub)) });
+      if (!res.ok) throw new Error(String(res.status));
+      track('feedback_sent', { kind: sub.kind, ok: 'yes' });  // the kind only, nothing typed
+      form.reset();
+      form.querySelector<HTMLInputElement>(`input[name=kind][value=${sub.kind}]`)!.checked = true;
+      thanks.querySelector<HTMLAnchorElement>('[data-where]')!.href = JSON.parse(form.dataset.where!)[sub.kind];
+      form.hidden = true;
+      thanks.hidden = false;
+      thanks.scrollIntoView({ behavior: 'smooth', block: 'center' });
+      status.textContent = '';
+    } catch {
+      track('feedback_sent', { kind: sub.kind, ok: 'no' });
+      status.textContent = t.failed;
+      status.className = 'status small error';
+    } finally {
+      send.disabled = false;
+    }
+  });
+
+  thanks.querySelector('[data-again]')!.addEventListener('click', () => {
+    thanks.hidden = true;
+    form.hidden = false;
+    showKind(kind());
+  });
+</script>

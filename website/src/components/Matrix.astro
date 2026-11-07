@@ -3,9 +3,12 @@
 // exported into compat.json by SiteDataExportTest.
 import Pixel from './Pixel.astro';
 import data from '../data/compat.json';
+import { trFor, msg } from '../i18n/index.js';
+
+const tr = trFor(Astro.url);
 
 const ICONS: Record<string, string> = { Party: 'orb', Bag: 'bag', Battle: 'battle', Map: 'map', Dex: 'dex', Guide: 'guide' };
-const LABELS: Record<string, string> = { Party: 'PARTY', Bag: 'BAG', Battle: 'BATTLE', Map: 'MAP', Dex: 'DEX', Guide: 'GUIDE' };
+const LABELS: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Battle: tr('BATTLE'), Map: tr('MAP'), Dex: tr('DEX'), Guide: tr('GUIDE') };
 const RETAIL = ['FireRed', 'LeafGreen', 'Emerald', 'Ruby', 'Sapphire'];
 // README's rows name their console in brackets: (GB) / (GBC) for the Game Boy games, (DS) for the DS ones.
 const kind = (game: string) =>
@@ -15,21 +18,22 @@ const rows = data.matrix.rows.map((r) => ({ ...r, kind: kind(r.game), name: r.ga
   .sort((a, b) => Number(b.kind === 'gb') - Number(a.kind === 'gb'));
 const counts = { all: rows.length, retail: 0, hack: 0, gb: 0, ds: 0 } as Record<string, number>;
 rows.forEach((r) => counts[r.kind]++);
-const filters = [['all', 'ALL'], ['retail', 'ORIGINALS'], ['hack', 'ROM HACKS'], ['gb', 'GAME BOY'], ['ds', 'DS']];
-const KIND_LABEL: Record<string, string> = { retail: 'ORIGINAL', hack: 'ROM HACK', gb: 'GAME BOY', ds: 'NINTENDO DS' };
+const filters = [['all', msg('ALL')], ['retail', msg('ORIGINALS')], ['hack', msg('ROM HACKS')], ['gb', msg('GAME BOY')], ['ds', 'DS']];
+const KIND_LABEL: Record<string, string> = { retail: tr('ORIGINAL'), hack: tr('ROM HACK'), gb: tr('GAME BOY'), ds: 'NINTENDO DS' };
+const STATE: Record<string, string> = { yes: tr('works'), part: tr('partly'), no: tr('not yet') };
 ---
 <div class="matrix">
-  <div class="filters" role="tablist" aria-label="Filter games">
+  <div class="filters" role="tablist" aria-label={tr('Filter games')}>
     {filters.map(([key, label], i) => (
       <button class:list={['chip', 'filter', i === 0 ? 'f-chipOn' : 'f-chip']} role="tab" aria-selected={i === 0 ? 'true' : 'false'} data-filter={key}>
-        {label} <span class="count">{counts[key]}</span>
+        {tr(label)} <span class="count">{counts[key]}</span>
       </button>
     ))}
   </div>
 
   <div class="table f-card">
     <div class="tr head">
-      <span class="game-col small muted">GAME</span>
+      <span class="game-col small muted">{tr('GAME')}</span>
       {data.matrix.columns.map((c) => (
         <span class="cell" title={LABELS[c]}>
           <Pixel name={ICONS[c]} scale={0.667} />
@@ -44,8 +48,8 @@ const KIND_LABEL: Record<string, string> = { retail: 'ORIGINAL', hack: 'ROM HACK
           <span class="g-meta small"><span class:list={['kind', `k-${r.kind}`]}>{KIND_LABEL[r.kind]}</span> {r.version}</span>
         </span>
         {r.cells.map((c, j) => (
-          <span class="cell" title={`${LABELS[data.matrix.columns[j]]}: ${c === 'yes' ? 'works' : c === 'part' ? 'partly' : 'not yet'}`}>
-            <Pixel name={c} scale={1} label={c === 'yes' ? 'works' : c === 'part' ? 'partly' : 'not yet'} />
+          <span class="cell" title={`${LABELS[data.matrix.columns[j]]}: ${STATE[c]}`}>
+            <Pixel name={c} scale={1} label={STATE[c]} />
           </span>
         ))}
       </div>
@@ -53,13 +57,12 @@ const KIND_LABEL: Record<string, string> = { retail: 'ORIGINAL', hack: 'ROM HACK
   </div>
 
   <div class="legend small">
-    <span><Pixel name="yes" scale={0.667} /> WORKS</span>
-    <span><Pixel name="part" scale={0.667} /> PARTLY</span>
-    <span><Pixel name="no" scale={0.667} /> NOT YET</span>
+    <span><Pixel name="yes" scale={0.667} /> {tr('WORKS')}</span>
+    <span><Pixel name="part" scale={0.667} /> {tr('PARTLY')}</span>
+    <span><Pixel name="no" scale={0.667} /> {tr('NOT YET')}</span>
   </div>
   <p class="small muted notes">
-    Any Game Boy, Color, Advance or DS game plays; the companion needs one of these, in the exact version listed. MAP partly = place names
-    without the map picture. BATTLE partly = the battle panes work but haven't been checked in every kind of battle.
+    {tr("Any Game Boy, Color, Advance or DS game plays; the companion needs one of these, in the exact version listed. MAP partly = place names without the map picture. BATTLE partly = the battle panes work but haven't been checked in every kind of battle.")}
   </p>
 </div>
 
