@@ -33,6 +33,7 @@ object GameTitles {
         "0862ec35b24de5c7e2dcb88c9eea0873110d755c", "4fcded0e2713dc03929845de631d0932ea2b5a37", "f8dc38ea20c17541a43b58c5e6d18c1732c7e582",
         "13b6853aa93121069df1d17446d3ecb36872aecf", "576cdb7eec728c49aed85b9dd7e1e084ba1f08f9",
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1,
+        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1,
     )
 
     private val RETAIL: Map<String, String> = mapOf(
@@ -51,6 +52,8 @@ object GameTitles {
         "576cdb7eec728c49aed85b9dd7e1e084ba1f08f9" to "Pokémon Silberne Edition SoulSilver",
         // Origin HeartGold v4.0.3, the English patch 1.0.0-rc8 on the US HeartGold (OriginHeartGold).
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1 to "Pokémon Origin HeartGold",
+        // Renegade Platinum v1.3.0, retail Platinum (USA rev 1) edited in place (RenegadePlatinum).
+        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1 to "Pokémon Renegade Platinum",
         // Black and White (USA, Europe): the No-Intro dumps (no decomp builds them).
         "26ad0b9967aa279c4a266ee69f52b9b2332399a5" to "Pokémon Black",
         "bc696a0dfb448c7b3a8a206f0f8214411a039208" to "Pokémon White",

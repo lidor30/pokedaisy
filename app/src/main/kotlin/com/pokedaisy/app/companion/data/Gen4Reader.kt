@@ -311,6 +311,13 @@ val GEN4_PLATINUM_US = Gen4Config(
 )
 
 /**
+ * Renegade Platinum ([RenegadePlatinum]): retail Platinum edited in place, its RAM and save unchanged (party, bag, money,
+ * place, Pokédex and a wild battle read headless on a new game, also after an in-game save and a reboot). Only its DEX
+ * differs: its pages, pictures and machines from its own cart ([POKEDEX_RENEGADE]).
+ */
+val GEN4_RENEGADE_PLATINUM = GEN4_PLATINUM_US.copy(pokedexTables = POKEDEX_RENEGADE)
+
+/**
  * Pokémon HeartGold / SoulSilver (USA; pret/pokeheartgold builds both byte for byte, sha1 4fcded0e… / f8dc38ea…). The save
  * sections' offsets are the save file's (the body in RAM is that block): party, trainer, bag and location found in the
  * player's own saves, then checked live. Their own items, pockets (101 TM / HM slots, 24 balls), map places and FLY
@@ -412,7 +419,7 @@ val GameKind?.isBw2: Boolean get() = this == GameKind.BLACK2 || this == GameKind
 
 /** The Gen 4 config for [kind], or null. */
 fun gen4ConfigFor(kind: GameKind?, code: String = romGameCode): Gen4Config? = when (kind) {
-    GameKind.PLATINUM -> GEN4_PLATINUM_US
+    GameKind.PLATINUM -> if (renegadePlatinum) GEN4_RENEGADE_PLATINUM else GEN4_PLATINUM_US
     GameKind.HEARTGOLD -> if (originHeartGold) GEN4_ORIGIN_HEARTGOLD else if (code == "IPKD") GEN4_HEARTGOLD_DE else GEN4_HEARTGOLD_US
     GameKind.SOULSILVER -> if (code == "IPGD") GEN4_SOULSILVER_DE else GEN4_SOULSILVER_US
     else -> null

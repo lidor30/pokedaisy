@@ -121,6 +121,12 @@ private inline val black2 get() = activeGame.isBw2
 var originHeartGold = false
 private inline val origin get() = originHeartGold && activeGame == GameKind.HEARTGOLD
 
+/** Renegade Platinum is running (it runs as PLATINUM, its tables from its cart: [RenegadePlatinum.data]). Set with
+ * [activeGame] by the Poller. */
+@Volatile
+var renegadePlatinum = false
+private inline val renegade get() = renegadePlatinum && activeGame == GameKind.PLATINUM
+
 /** SoulGold v1.2 runs on v1.1.4's tables (byte for byte the same) but for one TM: its
  * TM75 teaches Agility, not Swords Dance. Set with [activeGame] by the Poller. */
 var soulGoldV12 = false
@@ -336,6 +342,7 @@ val activeSpeciesNames: Map<Int, String> get() = localText?.species ?: when {
 val activeMoveData: Map<Int, MoveInfo> get() = localText?.moveData ?: when {
     black -> NdsArt.names?.movesMerged ?: moveDataBlack
     origin -> OriginHeartGold.data?.moveData ?: NdsArt.names?.movesMerged ?: moveDataPlatinum
+    renegade -> RenegadePlatinum.data?.moveData ?: NdsArt.names?.movesMerged ?: moveDataPlatinum
     gen4 -> NdsArt.names?.movesMerged ?: moveDataPlatinum
     pureRgb -> moveDataPureRgb
     yellowLegacy -> moveDataYellowLegacy
@@ -414,6 +421,7 @@ val activeItemNames: Map<Int, String> get() = localText?.items ?: when {
 val activeSpeciesTypeData: Map<Int, SpeciesTypes> get() = when {
     black -> speciesTypesBlack
     origin -> OriginHeartGold.data?.speciesTypes ?: speciesTypesPlatinum
+    renegade -> RenegadePlatinum.data?.speciesTypes ?: speciesTypesPlatinum
     gen4 -> speciesTypesPlatinum
     pureRgb -> speciesTypeDataPureRgb
     yellow -> speciesTypeDataYellow
@@ -454,6 +462,8 @@ private const val SPECIES_DEOXYS = 410
 val activeTypeEffectiveness: Map<Int, Int> get() = when {
     // Origin HeartGold: Gen 6's chart, Fairy as 9, read from its cart.
     origin -> OriginHeartGold.data?.typeChart ?: typeEffectivenessGlazed
+    // Renegade Platinum: Gen 6's chart too, Fairy as 9, read from its cart.
+    renegade -> RenegadePlatinum.data?.typeChart ?: typeEffectivenessGlazed
     pureRgb -> typeEffectivenessPureRgb
     yellowLegacy -> typeEffectivenessYellowLegacy
     yellow -> typeEffectivenessYellow
@@ -485,6 +495,7 @@ val activeTypeEffectiveness: Map<Int, Int> get() = when {
 }
 val activeTypeNames: Map<Int, String> get() = when {
     origin -> OriginHeartGold.typeNames
+    renegade -> RenegadePlatinum.typeNames
     pureRgb -> typeNamesPureRgb
     yellowLegacy -> typeNamesYellowLegacy
     yellow -> typeNamesYellow
@@ -690,6 +701,7 @@ val activeMonSpriteDir: String get() = when {
     polished -> Gen2Art.POLISHED_ICONS
     black2 -> NdsArt.BLACK2_ICONS
     black -> NdsArt.BLACK_ICONS
+    renegade -> NdsArt.RENEGADE_ICONS
     platinum -> NdsArt.PLATINUM_ICONS   // the cart's icon archive, rebuilt from it (NdsArt)
     origin -> NdsArt.ORIGIN_ICONS
     heartGold -> NdsArt.HEARTGOLD_ICONS
@@ -707,6 +719,7 @@ val activeItemSpriteDir: String? get() = when {
     black -> NdsArt.BLACK_ITEMS
     origin -> NdsArt.ORIGIN_ITEMS
     heartGold -> NdsArt.HEARTGOLD_ITEMS   // the cart's item_icon.narc, rebuilt from it (NdsArt)
+    renegade -> NdsArt.RENEGADE_ITEMS
     platinum -> NdsArt.PLATINUM_ITEMS
     crystal -> null   // nor has Gen 2
     else -> "items"

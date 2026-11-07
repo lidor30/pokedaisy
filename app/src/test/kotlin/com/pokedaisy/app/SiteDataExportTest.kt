@@ -4,6 +4,7 @@ import com.pokedaisy.app.companion.data.RANDOMIZED_RETAIL
 import com.pokedaisy.app.companion.data.RETAIL_DUMPS
 import com.pokedaisy.app.companion.data.RETAIL_PORT_CODE_TITLES
 import com.pokedaisy.app.companion.data.OriginHeartGold
+import com.pokedaisy.app.companion.data.RenegadePlatinum
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -141,7 +142,11 @@ class SiteDataExportTest {
             if (TelemetrySampler.NDS_SUPPORT) append(
                 "    {\"code\": ${q(OriginHeartGold.CODE)}, \"rev\": 0, \"offset\": ${OriginHeartGold.SIG_OFFSET}, " +
                     "\"word\": ${OriginHeartGold.SIG}, \"title\": ${q(GameTitles.BY_SHA1.getValue(OriginHeartGold.V4_0_3_EN_RC8_SHA1))}, " +
-                    "\"version\": \"v4.0.3 English 1.0.0\"}",
+                    "\"version\": \"v4.0.3 English 1.0.0\"},\n" +
+                    // Renegade Platinum (RenegadePlatinum): the retail Platinum's header.
+                    "    {\"code\": ${q(RenegadePlatinum.CODE)}, \"rev\": ${RenegadePlatinum.REV}, \"offset\": ${RenegadePlatinum.SIG_OFFSET}, " +
+                    "\"word\": ${RenegadePlatinum.SIG}, \"title\": ${q(GameTitles.BY_SHA1.getValue(RenegadePlatinum.V1_3_0_SHA1))}, " +
+                    "\"version\": \"v1.3.0\"}",
             )
             append("\n  ],\n")
             append("  \"titles\": {\n")

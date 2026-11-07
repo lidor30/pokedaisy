@@ -27,6 +27,12 @@ object NdsArt {
     /** Its DEX pages and front pictures ([dexOrigin]), as [HEARTGOLD_DEX] / [HEARTGOLD_FRONT] are HeartGold's. */
     const val ORIGIN_DEX = "nds/originhg/dex.tsv"
     const val ORIGIN_FRONT = "nds/originhg/front"
+    /** Renegade Platinum ([RenegadePlatinum]): Platinum's archives with its own icons (in its own palettes), item icons,
+     * DEX pages and pictures, kept apart from a retail Platinum's. */
+    const val RENEGADE_ICONS = "nds/renegade/pokemon"
+    const val RENEGADE_ITEMS = "nds/renegade/items"
+    const val RENEGADE_DEX = "nds/renegade/dex.tsv"
+    const val RENEGADE_FRONT = "nds/renegade/front"
     /** HeartGold / SoulSilver's bag pocket buttons ([bagPockets]): pocket 0-7 in the game's order, open or not. */
     fun heartGoldPocket(pocket: Int, open: Boolean) = "nds/heartgold/bag/pocket_${pocket}_${if (open) "on" else "off"}"
     /** The DEX pages from the cart ([dex]): a line a species, tab-separated (see [Gen4Dex]). */
@@ -112,11 +118,14 @@ object NdsArt {
     fun prefetch(filesDir: File, rom: File) {
         names = null
         OriginHeartGold.data = null
+        RenegadePlatinum.data = null
         Thread({
             // The names first (a few text banks): the companion's first samples use them.
             runCatching { names = readNames(rom) }.onFailure { android.util.Log.w("pokedaisy", "NdsArt: names failed", it) }
             runCatching { OriginHeartGold.data = if (OriginHeartGold.matches(rom)) readOrigin(rom) else null }
                 .onFailure { android.util.Log.w("pokedaisy", "NdsArt: Origin HeartGold's tables failed", it) }
+            runCatching { RenegadePlatinum.data = if (RenegadePlatinum.matches(rom)) readRenegade(rom) else null }
+                .onFailure { android.util.Log.w("pokedaisy", "NdsArt: Renegade Platinum's tables failed", it) }
             names?.let { n ->
                 if (activeGame.isDsGame) {
                     romLanguage = n.language
@@ -143,9 +152,11 @@ object NdsArt {
         val white2 = code == "IRDO" && rev == 0
         val black2 = code == "IREO" && rev == 0 || white2
         val origin = OriginHeartGold.matches { off, len -> f.read(off, len) }
+        val renegade = platinum && RenegadePlatinum.matches { off, len -> f.read(off, len) }
         if (!platinum && !heartGold && !black && !black2 && !origin) return false
         val marker = File(dir, when {
             origin -> "nds/originhg-built"
+            renegade -> "nds/renegade-built"
             white2 -> "nds/white2-built"
             black2 -> "nds/black2-built"
             white -> "nds/white-built"
@@ -169,8 +180,10 @@ object NdsArt {
             return true
         }
         val iconPath = if (platinum) "/poketool/icongra/pl_poke_icon.narc" else "/a/0/2/0"
-        val iconPalettes = if (platinum) iconPalettesPlatinum else iconPalettesHeartGold
-        val iconDir = if (platinum) PLATINUM_ICONS else HEARTGOLD_ICONS
+        // Renegade Platinum's icons take palettes of their own (its ARM9's table, [RenegadePlatinum.ICON_PALETTES_OFFSET]).
+        val iconPalettes = if (renegade) f.read(RenegadePlatinum.ICON_PALETTES_OFFSET, RenegadePlatinum.ICON_PALETTES_SIZE)
+            else if (platinum) iconPalettesPlatinum else iconPalettesHeartGold
+        val iconDir = if (renegade) RENEGADE_ICONS else if (platinum) PLATINUM_ICONS else HEARTGOLD_ICONS
         val narc = Narc(file(f, header, iconPath) ?: return false)
         val palettes = palettes(narc.member(0))
         for (species in 1..EGG) {
@@ -180,7 +193,7 @@ object NdsArt {
         }
         // The bag's item icons: each its own NCGR (32 x 32) and NCLR (one 16-colour palette).
         file(f, header, if (platinum) "/itemtool/itemdata/item_icon.narc" else "/a/0/1/8")?.let { Narc(it) }?.let { items ->
-            val itemDir = if (platinum) PLATINUM_ITEMS else HEARTGOLD_ITEMS
+            val itemDir = if (renegade) RENEGADE_ITEMS else if (platinum) PLATINUM_ITEMS else HEARTGOLD_ITEMS
             for ((item, packed) in if (platinum) itemIconsPlatinum else itemIconsHeartGold) {
                 val pal = palettes(items.member(packed and 0xFFFF)).firstOrNull() ?: continue
                 val icon = icon(items.member(packed ushr 16), pal, height = 32) ?: continue
@@ -189,7 +202,7 @@ object NdsArt {
         }
         if (platinum) {
             file(f, header, "/graphic/tmap_gra.narc")?.let { townMap(Narc(it), dir) }
-            dex(f, header, dir, DEX_PLATINUM)
+            dex(f, header, dir, if (renegade) DEX_RENEGADE else DEX_PLATINUM)
         } else {
             file(f, header, "/a/1/4/4")?.let { pokegear(Narc(it), dir) }
             file(f, header, "/a/0/1/5")?.let { bagPockets(Narc(it), dir) }
@@ -363,6 +376,55 @@ object NdsArt {
             if (e != null && e.size >= 2) rates += listOf(map, u8(e, 0), u8(e, 1))
         }
         OriginHeartGold.Data(types, moves, chart, forms, machines, rates.toIntArray())
+    }
+
+    /**
+     * Renegade Platinum's tables from its cart ([RenegadePlatinum.Data]): each species' types (Platinum's 44-byte personal
+     * records, types at 6 and 7), each move's category, power and type (`pl_waza_tbl.narc`, 16 bytes a move: 2, 3, 4) under
+     * the cart's move names, its type chart (overlay 21's triples), its machines, its icon palettes and each map's wild
+     * encounter rates (the map header's set in `pl_enc_data.narc`: the walking rate a u32 at 0, the surfing rate at 0xCC).
+     */
+    fun readRenegade(rom: File): RenegadePlatinum.Data? = RandomAccessFile(rom, "r").use { f ->
+        val header = f.read(0, 0x200)
+        val personal = Narc(file(f, header, "/poketool/personal/pl_personal.narc") ?: return null)
+        val types = HashMap<Int, SpeciesTypes>()
+        for (id in 1 until personal.size) {
+            val p = personal.member(id) ?: continue
+            if (p.size >= 8) types[id] = SpeciesTypes(u8(p, 6), u8(p, 7))
+        }
+        val moveNames = readNames(rom)?.moves.orEmpty()
+        val moveRecords = Narc(file(f, header, "/poketool/waza/pl_waza_tbl.narc") ?: return null)
+        val moves = HashMap<Int, MoveInfo>()
+        val categories = HashMap<Int, Int>()
+        for (id in 1 until moveRecords.size) {
+            val m = moveRecords.member(id) ?: continue
+            if (m.size < 5) continue
+            val name = moveNames.getOrNull(id)?.takeIf { it.isNotBlank() } ?: moveDataPlatinum[id]?.name ?: continue
+            moves[id] = MoveInfo(name, u8(m, 4), u8(m, 3))
+            categories[id] = u8(m, 2)
+        }
+        val chart = HashMap<Int, Int>()
+        val c = f.read(RenegadePlatinum.TYPE_CHART_OFFSET, 0x400)
+        var i = 0
+        while (i + 3 <= c.size && u8(c, i) != 0xFF) {
+            val atk = u8(c, i)
+            val def = u8(c, i + 1)
+            val pct = u8(c, i + 2) * 10
+            if (atk != 0xFE && pct != 100) chart[atk * 100 + def] = pct
+            i += 3
+        }
+        val tms = f.read(RenegadePlatinum.TM_MOVES_OFFSET, 100 * 2)
+        val machines = IntArray(100) { u16(tms, it * 2) }
+        val iconPalettes = f.read(RenegadePlatinum.ICON_PALETTES_OFFSET, RenegadePlatinum.ICON_PALETTES_SIZE)
+        val headers = f.read(RenegadePlatinum.MAP_HEADERS_OFFSET, RenegadePlatinum.MAP_HEADER_COUNT * 24)
+        val encounters = file(f, header, "/fielddata/encountdata/pl_enc_data.narc")?.let { Narc(it) }
+        val rates = ArrayList<Int>()
+        for (map in 0 until RenegadePlatinum.MAP_HEADER_COUNT) {
+            val set = u16(headers, map * 24 + 0x0E)
+            val e = if (set == 0xFFFF) null else encounters?.member(set)
+            if (e != null && e.size >= 0xD0) rates += listOf(map, u32(e, 0).toInt(), u32(e, 0xCC).toInt())
+        }
+        RenegadePlatinum.Data(types, moves, categories, chart, machines, iconPalettes, rates.toIntArray())
     }
 
     /**
@@ -865,6 +927,12 @@ object NdsArt {
         "/application/zukanlist/zkn_data/zukan_data_gira.narc", "/poketool/personal/pl_personal.narc",
         "/poketool/pl_pokezukan.narc", "/poketool/personal/wotbl.narc", "/poketool/personal/evo.narc",
         "/poketool/pokegra/pl_pokegra.narc", PLATINUM_DEX, PLATINUM_FRONT)
+
+    /** Renegade Platinum's: Platinum's files, its own pages and pictures under rom-art. */
+    private val DEX_RENEGADE = DexFiles("/msgdata/pl_msg.narc", 706, 711, 610,
+        "/application/zukanlist/zkn_data/zukan_data_gira.narc", "/poketool/personal/pl_personal.narc",
+        "/poketool/pl_pokezukan.narc", "/poketool/personal/wotbl.narc", "/poketool/personal/evo.narc",
+        "/poketool/pokegra/pl_pokegra.narc", RENEGADE_DEX, RENEGADE_FRONT)
 
     /**
      * The DEX pages ([DexFiles.pages]) and front pictures ([DexFiles.fronts]), all from the cart ([DexFiles] has where):

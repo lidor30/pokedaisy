@@ -44,6 +44,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Black 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | White 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — |
 | Origin HeartGold (DS) | 4.0.3 English 1.0.0 | ✅ ¹⁴ | — ²⁹ | — | — | — | ✅ ²⁹ | — | ✅ ²⁹ | ✅ ¹⁴ | ✅ ²⁹ | ✅ ²⁹ | — | n/a | — |
+| Renegade Platinum (DS) | 1.3.0 | ✅ ³⁰ | ✅ ³⁰ | — | — | — | ✅ ³⁰ | — | ✅ ³⁰ | ◐ ³⁰ | ◐ ³⁰ | ✅ ³⁰ | — | n/a | — |
 | Amethyst | 1.3.0, 1.4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ |
 | Ash Gray | 4.5.3, Fork Bug Fix 1.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ |
 | Celia's Stupid Romhack | 1.1.4 | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | ✅ ¹⁵ | — | — |
@@ -375,6 +376,15 @@ change to any of the places listed under "Where it's decided" updates its rows h
     battle buttons (its panels aren't HeartGold's): DS LAYOUT floats the game's
     touch screen in while its battle UI's input handler is set (+0x238 -> +0x10: the commands, the moves, the party), and
     SMART FF slows down then. EXPAND and STEADY music work as HeartGold's (widecheck's overlap as US HeartGold's).
+30. Renegade Platinum (Drayano's, 1.3.0) is US Platinum rev 1 edited in place: the same header (`CPUE` rev 1) and RAM,
+    its ARM9 retail's but one word (the shiny odds), so the native side runs it as Platinum (`pk_nds_field.cpp` /
+    `pk_nds_call.cpp` go by the header). The app tells it apart by a word of battle overlay 16 that points at its moved
+    type chart (`RenegadePlatinum.matches`: cart 0x221060) and reads its types, moves, chart, TMs, icon palettes and the
+    maps' wild rates from the cart (`NdsArt.readRenegade`). Checked headless on a save made in it: PC anywhere opened
+    the storage system; FLY's job flew to Sandgem Town (its check refused for the missing badge, as the game would);
+    EXPAND outdoors in Twinleaf Town, with `widecheck`'s overlap differences the same as retail Platinum's on the same
+    save and warp; a wild battle's input state read and FIGHT pressed through the touch screen. Bike / surf (not ridden)
+    and WILD ENCOUNTERS (not walked) are retail Platinum's code, untried here.
 
 ## What each column is
 
