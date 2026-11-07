@@ -565,13 +565,12 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         char size[48] = "", category[48] = "", abilities[48];
         const bool dual = e.type1 != e.type2 && e.type2 != PD_TYPE_NONE;
         snprintf(buf, sizeof buf, "%s%s%s", pd_type_name(g, e.type1), dual ? " / " : "", dual ? pd_type_name(g, e.type2) : "");
-        if (e.heightIn || e.weightLbs10) {
+        if (e.heightIn > 0 || e.weightLbs10 > 0 || e.heightDm || e.weightHg) {
+            // The game's own units, as the 3DS page: a metric cart's heightIn / weightLbs10 are -1.
             char ht[16], wt[20];
-            pd_dex_height(e.heightDm, ht, sizeof ht);
-            pd_dex_weight(e.weightHg, wt, sizeof wt);
+            pd_dex_measures(g, &e, ht, sizeof ht, wt, sizeof wt);
             snprintf(size, sizeof size, "%s  %s", ht, wt);
-        } else if (e.heightDm || e.weightHg)
-            snprintf(size, sizeof size, "%d.%d m  %d.%d kg", e.heightDm / 10, e.heightDm % 10, e.weightHg / 10, e.weightHg % 10);
+        }
         if (*e.category) snprintf(category, sizeof category, "%s Pokémon", e.category);
         snprintf(abilities, sizeof abilities, "%s%s%s", e.ability1, *e.ability2 ? " / " : "", e.ability2);
         int row = 0;

@@ -166,7 +166,7 @@ int main(void) {
     int solid=0;
     for(int y=cell[0].y+cell[0].h;y<240;y++)for(int x=0;x<426;x++)solid+=partyPx[y*426+x]==0x4A4A63;
     assert(solid==0);
-    // The open Bag tab must leave the backdrop between the two frames.
+    // The open Bag tab runs on into the list (one shape, like the app's bag): no backdrop left between the two frames.
     struct pd_game bagGame=fr;
     party.bagOk=true;
     for(int gb=0;gb<2;gb++){
@@ -174,12 +174,12 @@ int main(void) {
         pd_ui_init(&ui,&settings);
         ui.tab=PD_TAB_BAG;
         pd_backdrop(&c);
-        const int panelX=MARGIN+c.w*27/100;
+        const int panelX=MARGIN+c.w*27/100-3;
         const int y=CONTENT_Y+11;
         uint32_t gap[4];
         memcpy(gap,partyPx+y*c.w+panelX-4,sizeof gap);
         pd_ui_bag_view(&ui,&c,&bagGame,&party);
-        assert(!memcmp(gap,partyPx+y*c.w+panelX-4,sizeof gap));
+        assert(memcmp(gap,partyPx+y*c.w+panelX-4,sizeof gap));
         assert(has(&ui,HIT_BAG_TAB) && has(&ui,HIT_BAG_LIST));
     }
     puts("PASS default/null host, optional scaling row, remaining settings and FF interaction, EXPAND rows, party grid");
