@@ -21,9 +21,13 @@ git commit -am "Version 1.2.0" && git push   # or through a PR, like any change
 make release               # tags v1.2.0 on main and pushes the tag
 ```
 
-Then follow the **Release** run in the repo's Actions tab. The release shows up on
-GitHub when it's green, with `PokeDaisy-1.2.0.apk` attached, and the in-app updater
-offers it on the next library open.
+Then follow the **Release** run in the repo's Actions tab. Its last job waits for you:
+**Review deployments → release → Approve**. The release shows up on GitHub when it's
+green, with `PokeDaisy-1.2.0.apk` attached, and the in-app updater offers it on the next
+library open.
+
+- Releases are immutable once published: a broken APK can't be swapped, only followed
+  by a new version.
 
 - A version with a suffix (`1.2.0-rc.1`) goes out as a **pre-release**, which the
   in-app updater skips. Use that for test builds.
@@ -60,14 +64,46 @@ Protect the release tags too, so only you can trigger a release:
 Fork PRs: in **Settings → Actions → General**, set "Approval for running fork pull
 request workflows" to **Require approval for all external contributors**.
 
+### Collaborators with write access
+
+A repo owned by a personal account has one collaborator level: write. Write lets
+someone push branches, tags and releases and run any workflow, so these are set up
+(2026-10-25) to leave them only branches and PRs that you approve:
+
+| Rule | What it stops |
+| --- | --- |
+| Ruleset **Review before merge (main, dev)**: a PR with 1 approval, the code owner's (`.github/CODEOWNERS`: you), approvals dropped on a new push, the last pusher can't approve | merging, or pushing to `main` / `dev`, without you |
+| Tag ruleset **Only the owner makes tags**: every tag, create / update / delete restricted | starting a release (`v*`), or a release on a new tag of any name |
+| `release` environment: `v*` tags only, **you as required reviewer** | the signing key and `google-services.json` reaching anything but your release. Each release waits for one click (the run's **Review deployments**) |
+| `website` environment: `v*` tags only, holding `FIREBASE_SERVICE_ACCOUNT_POKEDAISY` | a workflow on a pushed branch reading the Firebase key (a repo-level secret would reach it). So there are no PR preview channels |
+| **Immutable releases** (Settings → General → Releases) | anyone changing or deleting a published release's APK or tag. Only releases published after it was turned on |
+| The ROM runner's job check (section 3) | a pushed branch's workflow running on your Mac |
+
+You bypass both rulesets (the repository admin role), so pushing to `dev` and
+`make release` work as before. A collaborator can still push their own branches, run CI
+on them, and triage issues and PRs.
+
+The Firebase key moves into the `website` environment once by hand (a secret can't be
+read back, so make a new key: Firebase console → Project settings → Service accounts →
+Generate new private key):
+
+```bash
+gh secret set FIREBASE_SERVICE_ACCOUNT_POKEDAISY --env website < ~/Downloads/pokedaisy-firebase-key.json
+gh secret delete FIREBASE_SERVICE_ACCOUNT_POKEDAISY      # the repo-level copy
+rm ~/Downloads/pokedaisy-firebase-key.json
+```
+
+Then delete the old key in Google Cloud (IAM → Service accounts → the Firebase
+service account → Keys).
+
 ### 2. The `release` environment: signing key and Firebase config
 
 The release job reads its secrets from an environment called `release`:
 
 1. Go to **Settings → Environments → New environment**, and name it `release`.
 2. Under **Deployment branches and tags**, choose "Selected", then add the tag rule `v*`.
-3. Optional: add yourself as a **Required reviewer**. Each release then waits for your
-   click before the key is used.
+3. Add yourself as a **Required reviewer**. Each release then waits for your click
+   before the key is used (on since 2026-10-25, see "Collaborators with write access").
 
 Add these **environment secrets**. With the GitHub CLI, from the repo folder on your
 Mac:
@@ -135,7 +171,16 @@ Set it up once:
    ANDROID_HOME=/Users/<you>/Library/Android/sdk
    JAVA_HOME=/Library/Java/JavaVirtualMachines/<jdk-17>/Contents/Home
    ```
-3. Turn the job on: `gh variable set ROM_RUNNER --body true`.
+3. Install the job check, so the runner only takes your releases (anyone with write
+   access could otherwise push a branch whose workflow asks for this runner):
+   ```bash
+   cp scripts/runner_job_check.sh ~/actions-runner/job_check.sh
+   chmod +x ~/actions-runner/job_check.sh
+   echo "ACTIONS_RUNNER_HOOK_JOB_STARTED=$HOME/actions-runner/job_check.sh" >> ~/actions-runner/.env
+   ```
+   It fails any job that isn't the Release workflow on a `v*` tag you pushed. Restart the
+   runner after changing `.env`.
+4. Turn the job on: `gh variable set ROM_RUNNER --body true`.
    - Until you do, releases skip the ROM tests, and the release notes say so.
    - Once it's on, a release **waits** for the runner, so it must be online.
 
@@ -143,7 +188,7 @@ Set it up once:
 This setup keeps that narrow:
 
 - Only the Release workflow targets it, and only tags you can push trigger it (the
-  tag ruleset above).
+  tag ruleset above). The job check (step 3) refuses anything else that asks for it.
 - CI never uses it. Fork PRs need your approval to run anything (step 1).
 - Simplest of all: don't run it as a service. Start it with `./run.sh` when you
   release, and stop it after (Ctrl+C). The ROM job waits in the queue until it's up.
