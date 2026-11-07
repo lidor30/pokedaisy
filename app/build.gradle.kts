@@ -56,8 +56,10 @@ fun featureFlag(name: String): Boolean =
     (findProperty("pokedaisy.$name") ?: localProps?.getProperty("pokedaisy.$name"))?.toString()?.trim()?.toBoolean() == true
 
 // The ABIs every native library is built for: arm64 always, x86_64 too for the emulator
-// (`-Ppokedaisy.x86_64=true`).
-val nativeAbis = listOf("arm64-v8a") + if (featureFlag("x86_64")) listOf("x86_64") else emptyList()
+// (`-Ppokedaisy.x86_64=true`), 32-bit ARM for a device running a 32-bit Android (`-Ppokedaisy.armv7=true`).
+val nativeAbis = listOf("arm64-v8a") +
+    (if (featureFlag("x86_64")) listOf("x86_64") else emptyList()) +
+    (if (featureFlag("armv7")) listOf("armeabi-v7a") else emptyList())
 
 android {
     namespace = "com.pokedaisy.app"
@@ -85,7 +87,7 @@ android {
         buildConfigField("boolean", "FEATURE_COOP", featureFlag("coop").toString())
 
         ndk {
-            // Thor is arm64; add armeabi-v7a later only if a target device needs it.
+            // Thor is arm64; armeabi-v7a (a 32-bit Android) only with the armv7 flag above.
             abiFilters += nativeAbis
         }
         externalNativeBuild {
