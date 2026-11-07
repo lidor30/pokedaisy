@@ -117,9 +117,23 @@ class DsPortsTest {
                 // Europe rev 10 HeartGold / SoulSilver are English (the header's E is the US build's code).
                 assertEquals(p.code, if (p.code[3] == 'E') 'E' else p.code[3], n!!.language)
                 val bulbasaur = n.species(1)
-                val expected = mapOf('D' to "bisasam", 'F' to "bulbizarre").getOrDefault(p.code[3], "bulbasaur")
+                val expected = mapOf('D' to "bisasam", 'F' to "bulbizarre", 'J' to "フシギダネ", 'K' to "이상해씨").getOrDefault(p.code[3], "bulbasaur")
                 assertEquals(p.code, expected, bulbasaur?.lowercase())
-                assertTrue(p.code, NdsArt.extractTo(rom, dir))
+                assertEquals(p.code, mapOf('D' to "Meisterball", 'J' to "マスターボール", 'K' to "마스터볼").getOrDefault(p.code[3], "Master Ball"), n.item(1))
+                // Each cart's art goes to its own folder here, so one cart's pages never stand for another's.
+                val out = File(dir, "${p.code}-${p.revision}").apply { mkdirs() }
+                assertTrue(p.code, NdsArt.extractTo(rom, out))
+                val dex = when (p.kind) {
+                    GameKind.HEARTGOLD, GameKind.SOULSILVER -> NdsArt.HEARTGOLD_DEX
+                    GameKind.BLACK -> NdsArt.BLACK_DEX
+                    GameKind.WHITE -> NdsArt.WHITE_DEX
+                    else -> NdsArt.BLACK2_DEX
+                }
+                // BULBASAUR's category, in the cart's language: the DEX's text banks are the cart's.
+                val seed = mapOf('E' to "Seed", 'S' to "Semilla", 'I' to "Seme", 'D' to "Samen", 'F' to "Graine", 'J' to "たね", 'K' to "씨앗")
+                val bulbasaurPage = File(out, dex).readLines().first { it.startsWith("1\t") }.split('\t')
+                assertTrue("${p.code}: ${bulbasaurPage[1]}", bulbasaurPage[1].contains(seed.getValue(p.code[3])))
+                assertTrue("${p.code}: no description", bulbasaurPage[2].isNotBlank())
             }
         } finally { dir.deleteRecursively() }
     }

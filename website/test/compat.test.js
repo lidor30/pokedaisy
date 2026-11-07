@@ -79,7 +79,7 @@ test('DS: Platinum rev 1, HeartGold / SoulSilver, by the header', () => {
   assert.equal(ds('ADAE', 0).reason, 'ds');
 });
 
-test('DS: Origin HeartGold by its code word, not a Japanese HeartGold', () => {
+test('DS: Origin HeartGold by its code word; without it, a Japanese HeartGold', () => {
   const hack = data.dsHacks.find((h) => h.code === 'IPKJ');
   const cart = (word) => {
     const b = new Uint8Array(hack.offset + 4);
@@ -89,8 +89,9 @@ test('DS: Origin HeartGold by its code word, not a Japanese HeartGold', () => {
   };
   const check = (bytes) => verdict(data, { ...readHeader(bytes), size: bytes.length, sha1: '0'.repeat(40), dsHack: dsHackOf(data, readHeader(bytes), bytes) });
   assert.deepEqual(check(cart(hack.word)), { status: 'supported', title: 'Pokémon Origin HeartGold', version: hack.version, family: 'Nintendo DS' });
-  assert.equal(check(cart(0)).reason, 'ds');
-  assert.equal(check(nds('IPKJ', 0)).reason, 'ds');
+  const japanese = { status: 'supported', title: 'ポケットモンスター ハートゴールド', family: 'Nintendo DS' };
+  assert.deepEqual(check(cart(0)), japanese);
+  assert.deepEqual(check(nds('IPKJ', 0)), japanese);
 });
 
 test('Game Boy: Yellow only', () => {
@@ -233,4 +234,13 @@ test('DS: the language ports, each at its own revision', () => {
   assert.deepEqual(ds('IRBI', 0), { status: 'supported', title: 'Pokémon Versione Nera', family: 'Nintendo DS' });
   assert.deepEqual(ds('IRDD', 0), { status: 'supported', title: 'Pokémon Weiße Edition 2', family: 'Nintendo DS' });
   assert.deepEqual(ds('IREF', 1), { status: 'unsupported', reason: 'revision', base: 'Pokémon Version Noire 2' });
+});
+
+test('DS: the Japanese and Korean carts', () => {
+  const ds = (code, rev) => verdict(data, { ...readHeader(nds(code, rev)), size: 128 * MB, sha1: '0'.repeat(40) });
+  assert.deepEqual(ds('IPKK', 0), { status: 'supported', title: '포켓몬스터 하트골드', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IRBJ', 0), { status: 'supported', title: 'ポケットモンスター ブラック', family: 'Nintendo DS' });
+  // Japanese Black 2 / White 2: revision 1 only.
+  assert.deepEqual(ds('IREJ', 1), { status: 'supported', title: 'ポケットモンスター ブラック2', family: 'Nintendo DS' });
+  assert.equal(ds('IREJ', 0).reason, 'revision');
 });

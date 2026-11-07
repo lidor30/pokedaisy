@@ -2803,17 +2803,23 @@ cart (header code + revision, the game it runs as, its title and SHA-1, its No-I
 `BLACK_US` or `BLACK2_US` with its words; callSet 100 + n / 200 + n) and touch rules, and `pk_nds_call.cpp` its functions (a copy of
 `HEARTGOLD` / `BLACK`; every Gen 5 guard word is the same instruction in all of them); and `NdsPortsGen.kt`, from which `DsPorts`
 builds the Gen 4 / Gen 5 configs and the detection, the library, EXPAND, DS LAYOUT and the website take the cart. Gen 5's BGM stack
-depth is the stack's first song - 0xC in every build, so it isn't stored. In: Spanish / Italian HeartGold and SoulSilver, Europe's
-rev 10 of both (the US code under the same game code: only the header, the signature and one file of `/a/2/6/2` differ), German /
-Spanish / Italian Black and White, and Black 2 / White 2 in French, German, Spanish and Italian. A new one: run `port_nds_fns.py
+depth is the stack's first song - 0xC in every build, so it isn't stored. In: Spanish / Italian / Japanese / Korean HeartGold and
+SoulSilver, Europe's rev 10 of both (the US code under the same game code: only the header, the signature and one file of `/a/2/6/2`
+differ), German / Spanish / Italian / Japanese / Korean Black and White, and Black 2 / White 2 in French, German, Spanish, Italian,
+Korean and Japanese (rev 1). A new one: run `port_nds_fns.py
 US.nds OTHER.nds --file <the US list>` (the lists are the known file's sections), add its row, `make gamedata`, then run it headless
 beside its US cart on the US save with one script (the field, the X menu, `widecheck`, `action 2`, `action 1`; on HeartGold /
 SoulSilver the party, options and Pokédex pages from the X menu and a wild battle through `hgwild`'s `scriptgo`) and compare the
 `fieldinfo` bits and `childInit`s. Some carts' intros are slower: Spanish and French White 2 stop at the C-Gear's "continue anyway?"
 where the US cart has gone on (one more A). Spanish HeartGold's low ARM9 sits 8 bytes lower than the others' (its own callSet row
-covers it). Spanish White and Korean White share Black's addresses outright. Japanese and Korean carts aren't in yet: their
-Gen 4 text needs its own character tables, and Japanese HeartGold / SoulSilver's X menu, options and Pokédex differ in code
-(the tool leaves them UNRESOLVED). `DsPortsTest` reads each port's save through the US fixtures with its globals moved, and
+covers it). Spanish White and Korean White share Black's addresses outright. **Japanese and Korean carts**: the US saves load in all of them but Korean HeartGold /
+SoulSilver, whose save footer's magic is 0x20070903 (the US / Japanese carts' 0x20060623, outside the checksums: change the word
+and the US save loads). Japanese HeartGold / SoulSilver's X menu, options and Pokédex differ in code (the tool leaves them
+UNRESOLVED): read off the running game (the X menu's field task +4, each page's child init). Their text banks are numbered their own
+way (`NdsArt`'s `NAMES_*_JA` / `_KO`, `DEX_*_JA` / `_KO`, Japanese Black / White's moves and categories): found by lining the banks'
+line counts up against the US cart's, then read (neighbouring banks often have the same count: Japanese HeartGold's 804 is the
+species in English, not the categories). Gen 4's Japanese long vowel is 0xF1, which pret's charmap writes as a full-width hyphen
+(`Gen4Text` puts ー there). The text reads in each cart's language: `NdsArt.readNames` tells it by the FIGHTING type's name. `DsPortsTest` reads each port's save through the US fixtures with its globals moved, and
 its names and art off the cart.
 
 **Origin HeartGold** (v4.0.3, English patch 1.0.0-rc8 applied to the US HeartGold; SHA-1 `a54a647599d59ed0060dfc4375c289d6e041318a`):
