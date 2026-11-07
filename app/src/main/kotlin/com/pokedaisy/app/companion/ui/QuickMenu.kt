@@ -93,6 +93,9 @@ interface QuickActions {
 
     /** Steps left on the REPEL in effect (0 = none). */
     fun repelSteps(): Int = 0
+
+    /** FLASH would light this place up (a dark cave, the light not on yet); false = it's light here, null = can't tell. */
+    fun flashDark(): Boolean? = null
 }
 
 /**
@@ -283,13 +286,19 @@ fun repelKindsIn(s: SnapshotView): List<Int> =
     REPEL_KINDS.map { it.first }.filter { id -> s.items.any { it.itemId == id && it.quantity > 0 } }
 
 /** Why [action] can't run now in [s]; null = it can. The game-side checks (a menu up, fields locked) answer when it runs. */
-fun quickBlocked(action: QuickAction, s: SnapshotView, repelSteps: Int = 0): String? {
+fun quickBlocked(action: QuickAction, s: SnapshotView, repelSteps: Int = 0, dark: Boolean? = null): String? {
     val field = !s.inBattle
     return when (action) {
         QuickAction.PC -> if (!field) tr("Not during a battle") else null
         QuickAction.FLY -> when {
             !field -> tr("Not during a battle")
             s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } -> tr("No one in your party knows FLY")
+            else -> null
+        }
+        QuickAction.FLASH -> when {
+            !field -> tr("Not during a battle")
+            s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLASH_MOVE } } -> tr("No one in your party knows FLASH")
+            dark == false -> tr("It isn't dark here")
             else -> null
         }
         QuickAction.REPEL -> when {
@@ -310,6 +319,17 @@ fun quickBlocked(action: QuickAction, s: SnapshotView, repelSteps: Int = 0): Str
         }
         else -> null
     }
+}
+
+/** Why FLASH didn't start, in the companion's words (the HUD's notice). */
+internal fun flashMessage(r: com.pokedaisy.app.companion.data.FlashResult): String = when (r) {
+    com.pokedaisy.app.companion.data.FlashResult.NOT_NOW -> tr("Not now: close the game's menus and battles first.")
+    com.pokedaisy.app.companion.data.FlashResult.IN_BATTLE -> tr("You can't do that during a battle.")
+    com.pokedaisy.app.companion.data.FlashResult.NO_BADGE -> tr("FLASH needs a new BADGE first.")
+    com.pokedaisy.app.companion.data.FlashResult.NO_FLASHER -> tr("No one in your party knows FLASH")
+    com.pokedaisy.app.companion.data.FlashResult.CANT_USE_HERE -> tr("It isn't dark here")
+    com.pokedaisy.app.companion.data.FlashResult.ALREADY_LIT -> tr("This place is lit already.")
+    else -> tr("It can't be used here.")
 }
 
 /** A tile's text under its icon. */
@@ -343,8 +363,9 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
     if (!state.open && fan == 0f) return
     val items = QuickAction.entries.filter { it in shown && actions.offered(it) }
     val repelSteps = actions.repelSteps()
+    val dark = if (QuickAction.FLASH in shown) actions.flashDark() else null
     state.items = items
-    state.blocked = { quickBlocked(it, snapshot, repelSteps) }
+    state.blocked = { quickBlocked(it, snapshot, repelSteps, dark) }
     state.repelKinds = repelKindsIn(snapshot)
     LaunchedEffect(items.size) { state.clamp() }
     val m = rememberGbaTextMetrics(1f)
@@ -359,12 +380,12 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
             val fly = state.fly
             val repels = state.repels
             val current = items.getOrNull(state.index)
-            val why = current?.let { quickBlocked(it, snapshot, repelSteps) }
+            val why = current?.let { quickBlocked(it, snapshot, repelSteps, dark) }
             val hint = current?.let { why ?: quickHint(it, actions) }
             val ring = state.ring
             val tile: @Composable (Int) -> Unit = { i ->
                 val a = items[i]
-                QuickTile(a, snapshot, actions, selected = i == state.index, blocked = quickBlocked(a, snapshot, repelSteps) != null, m, label = state.labels) { state.tap(i) }
+                QuickTile(a, snapshot, actions, selected = i == state.index, blocked = quickBlocked(a, snapshot, repelSteps, dark) != null, m, label = state.labels) { state.tap(i) }
             }
             if (fly != null || repels != null || items.isEmpty() || !ring) {
                 Column(
@@ -725,6 +746,7 @@ private fun QuickIcon(action: QuickAction, s: SnapshotView, actions: QuickAction
         QuickAction.BIKE -> item(KeyItems.BIKES)
         QuickAction.ROD -> item(KeyItems.RODS)
         QuickAction.WILD -> PixelArt(GRASS_ICON, GRASS_COLORS, Modifier.size(size * 0.8f))
+        QuickAction.FLASH -> PixelArt(FLASH_ICON, FLASH_COLORS, Modifier.size(size * 0.8f))
         QuickAction.SAVE_STATE -> PixelArt(SAVE_STATE_ICON, STATE_COLORS, Modifier.size(size * 0.8f))
         QuickAction.LOAD_STATE -> PixelArt(LOAD_STATE_ICON, STATE_COLORS, Modifier.size(size * 0.8f))
         QuickAction.FF -> PixelIcon(FF_ICON, ink.text, Modifier.size(size * 0.8f))
@@ -750,12 +772,35 @@ fun quickMenuRows(
         SettingRow(tk("LABELS"), onOff(labels), subtitle = "Each action's name under its icon") { setLabels(!labels) },
         groupTitle(tk("SHOW")),
     ) + QuickAction.entries.map { a ->
-        SettingRow(a.label, onOff(a in shown)) { setShown(if (a in shown) shown - a else shown + a) }
+        SettingRow(a.label, onOff(a in shown), labelBadge = if (a == QuickAction.FLASH) NewFeatures.badge(NewFeatures.QUICK_FLASH) else null) {
+            setShown(if (a in shown) shown - a else shown + a)
+        }
     }
 }
 
 /** SETTINGS' row for the page. */
-fun quickMenuBadge(): String? = NewFeatures.badge(NewFeatures.QUICK_MENU)
+fun quickMenuBadge(): String? = NewFeatures.badge(NewFeatures.QUICK_MENU) ?: NewFeatures.badge(NewFeatures.QUICK_FLASH)
+
+/** MOVE_FLASH (the quick menu's FLASH tile, the party check). */
+internal const val FLASH_MOVE = 148
+
+/** FLASH: a burst of light, K outline, Y its glow, W the white middle. */
+private val FLASH_ICON = listOf(
+    ".....KK.....",
+    ".K...KK...K.",
+    "..K.KYYK.K..",
+    "...KYWWYK...",
+    "..KYWWWWYK..",
+    "KKYWWWWWWYKK",
+    "KKYWWWWWWYKK",
+    "..KYWWWWYK..",
+    "...KYWWYK...",
+    "..K.KYYK.K..",
+    ".K...KK...K.",
+    ".....KK.....",
+)
+
+private val FLASH_COLORS = mapOf('K' to Color(0xFF584818), 'Y' to Color(0xFFF8D030), 'W' to Color(0xFFFFFFF0))
 
 /** A disk with an arrow into it: K outline, D the disk, L its label, A the arrow. */
 private val SAVE_STATE_ICON = listOf(

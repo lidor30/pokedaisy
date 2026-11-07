@@ -3800,3 +3800,53 @@ trainers = 0x084AD384
 wildHeaders = 0x0945A8E0
 altTrainers = [0x084BBFF4]
 mapGroups = 0x095CC3A8
+
+# FLASH (Flash.kt): retail Ruby rev 1 and rev 2 (the same addresses and code), pret's pokeruby built as ruby_rev1 /
+# ruby_rev2 (byte for byte retail) and its ELF. FLASH is field move 1 here as in Emerald: the Knuckle Badge. Its party
+# menu sets gFieldCallback (not a gFieldCallback2), and the cut-in reads gLastFieldPokeMenuOpened.
+[record.FLASH_RUBY]
+schema = 'gen3_flash'
+flagGet = 0x08069360
+badgeFlag = 0x808 # FLAG_BADGE02_GET
+litFlag = 0x828 # FLAG_SYS_USE_FLASH
+setUpFieldMoveFlash = 0x0810CBD4
+menuFieldCallback = 0x0300485C
+postMenuFieldCallback = 0x03005CE4
+fieldCallbacks = [0x0810CC1C] # sub_810CBFC, its FieldCallback_Flash
+partyMenuSlotId = 0x03005CE0
+mapHeader = 0x0202E828
+codeCrcs = [0xAC4D17B2, 0xC9BC4238, 0xA460DEAE]
+
+# FLASH (Flash.kt): retail Sapphire rev 1 and rev 2 (the same addresses and code), pret's pokeruby built as sapphire_rev1 /
+# sapphire_rev2 (byte for byte retail) and its ELF. FLASH is field move 1 here as in Emerald: the Knuckle Badge. Its party
+# menu sets gFieldCallback (not a gFieldCallback2), and the cut-in reads gLastFieldPokeMenuOpened.
+[record.FLASH_SAPPHIRE]
+schema = 'gen3_flash'
+flagGet = 0x08069364
+badgeFlag = 0x808 # FLAG_BADGE02_GET
+litFlag = 0x828 # FLAG_SYS_USE_FLASH
+setUpFieldMoveFlash = 0x0810CBD4
+menuFieldCallback = 0x0300485C
+postMenuFieldCallback = 0x03005CE4
+fieldCallbacks = [0x0810CC1C] # sub_810CBFC, its FieldCallback_Flash
+partyMenuSlotId = 0x03005CE0
+mapHeader = 0x0202E828
+codeCrcs = [0xAC4D17B2, 0x19F9C4F9, 0xA460DEAE]
+
+# FLASH: retail Ruby rev 0, pret's pokeruby built as ruby (byte for byte retail, SHA1 f28b6ffc...): rev 1's code a few bytes earlier.
+[record.FLASH_RUBY_REV0]
+schema = 'gen3_flash'
+base = 'FLASH_RUBY'
+flagGet = 0x08069340
+setUpFieldMoveFlash = 0x0810CBB4
+fieldCallbacks = [0x0810CBFC]
+codeCrcs = [0xAC4D17B2, 0xC9BC4238, 0xA460DEAE]
+
+# FLASH: retail Sapphire rev 0, pret's pokeruby built as sapphire (byte for byte retail, SHA1 3ccbbd45...): rev 1's code a few bytes earlier.
+[record.FLASH_SAPPHIRE_REV0]
+schema = 'gen3_flash'
+base = 'FLASH_SAPPHIRE'
+flagGet = 0x08069344
+setUpFieldMoveFlash = 0x0810CBB4
+fieldCallbacks = [0x0810CBFC]
+codeCrcs = [0xAC4D17B2, 0x19F9C4F9, 0xA460DEAE]

@@ -21,8 +21,8 @@ import os
 import re
 import statistics
 import struct
-import struct
 import sys
+import tomllib
 import zlib
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -81,6 +81,30 @@ BOX = {
     "BPEE0": dict(boxMonToMon=0x08069004, boxMonRestorePP=0x0806E930, getBoxMonData=0x0806A674, storage=0x03005D94),
 }
 BOX_FROM = {"BPRE0": "BPRE1"}
+
+# USE on a TM / HM (TmTeach.kt: the game's own TM screen) and FLASH from the QUICK MENU (Flash.kt), from the English records in
+# gamedata/gen3/records/ (TM_* / FLASH_*), mapped like FLY's: functions by code, RAM globals through the literal pools. No TM
+# screen on Ruby / Sapphire (their party menu has no exit to point at the field).
+RECORDS = os.path.join(HERE, "..", "gamedata", "gen3", "records")
+TM_REC = {"BPRE0": "TM_FIRERED_REV0", "BPRE1": "TM_FIRERED_REV1", "BPGE0": "TM_LEAFGREEN_REV0", "BPGE1": "TM_LEAFGREEN_REV1",
+          "BPEE0": "TM_EMERALD"}
+FLASH_REC = {"BPRE0": "FLASH_FIRERED_REV0", "BPRE1": "FLASH_FIRERED_REV1", "BPGE0": "FLASH_LEAFGREEN_REV0",
+             "BPGE1": "FLASH_LEAFGREEN_REV1", "BPEE0": "FLASH_EMERALD", "AXVE0": "FLASH_RUBY_REV0", "AXVE1": "FLASH_RUBY",
+             "AXPE0": "FLASH_SAPPHIRE_REV0", "AXPE1": "FLASH_SAPPHIRE"}
+TM_FUNCS = ("itemUseCbTmhm", "showPartyMenuForItemUse", "initPartyMenu", "setMainCallback2", "returnToField", "cleanupOverworld",
+            "fadeScreen", "lockControls", "unlockControls")   # TmFns.functions' order (its codeCrcs)
+
+
+def record(name, _cache={}):
+    """A gamedata record by name, its `base` merged in."""
+    if not _cache:
+        for f in sorted(os.listdir(RECORDS)):
+            if f.endswith(".toml"):
+                with open(os.path.join(RECORDS, f), "rb") as fh:
+                    _cache.update(tomllib.load(fh).get("record", {}))
+    r = dict(_cache[name])
+    base = r.pop("base", None)
+    return {**record(base), **r} if base else r
 
 
 def ref(stem, fam, **a):
@@ -235,7 +259,81 @@ def port(rom, refs, key):
     fly_key = key if key in FLY else FLY_FROM.get(key)
     out["fly"] = port_fly(refs[fly_key], rom, fly_key, shift) if fly_key else None
     out["box"] = port_box(src, rom, key, shift) if key in BOX else None
+    out["tm"] = port_tm(src, rom, key, shift) if key in TM_REC else None
+    out["flash"] = port_flash(src, rom, key, shift) if key in FLASH_REC else None
     return out, None
+
+
+def port_fn(src, rom, a, shift):
+    """A function mapped by its code: exact, else masked near the shift, else its short code alone; or None."""
+    v = map_code(src, rom, a)
+    if v is None:
+        v = map_code_masked(src, rom, a, a + shift, radius=0x10000)
+    if v is None:
+        v = short_code(src, rom, a, a + shift)
+    return v
+
+
+def port_ram(src, rom, a, anchors=()):
+    """A RAM global through the literal pools that load it, or None (not EWRAM / IWRAM). [anchors]: (English, mapped)
+    functions of the feature: where the pools don't line up, the word at the same place in a mapped function's own pool
+    (the first 0x80 bytes after its start) as the English function keeps [a] in."""
+    v, _ = map_literal(src, rom, a)
+    if v is None:
+        want = struct.pack("<I", a)
+        for s_fn, d_fn in anchors:
+            so, do = (s_fn & ~1) - B, (d_fn & ~1) - B
+            k = next((k for k in range(0, 0x80, 4) if src.d[so + k:so + k + 4] == want), None) if so % 4 == do % 4 else None
+            if k is not None:
+                v = struct.unpack_from("<I", rom.d, do + k)[0]
+                break
+    return v if v is not None and 0x02000000 <= v < 0x03008000 else None
+
+
+def port_tm(src, rom, key, shift):
+    """The TM screen's addresses mapped from English [key]'s record, or None. gMain.callback2 goes as gMain (+4), the party
+    cursor as gPartyMenu (+partyMenuSlotOff), the way the pools load them."""
+    r = record(TM_REC[key])
+    got = dict(partyMenuSlotOff=r["partyMenuSlotOff"])
+    for n in TM_FUNCS:
+        got[n] = port_fn(src, rom, r[n], shift)
+        if got[n] is None:
+            return None
+    anchors = [(r[n], got[n]) for n in TM_FUNCS]
+    for n in ("specialVarItemId", "itemUseCb", "partyMenu"):
+        got[n] = port_ram(src, rom, r[n], anchors)
+        if got[n] is None:
+            return None
+    main = port_ram(src, rom, r["mainCallback2"] - 4, anchors)
+    if main is None:
+        return None
+    got["mainCallback2"] = main + 4
+    return got
+
+
+def port_flash(src, rom, key, shift):
+    """FLASH's addresses mapped from English [key]'s record, or None. FireRed / Emerald's cursor goes as gPartyMenu + 9,
+    Ruby / Sapphire's is gLastFieldPokeMenuOpened itself."""
+    r = record(FLASH_REC[key])
+    got = dict(badgeFlag=r["badgeFlag"], litFlag=r["litFlag"])
+    for n in ("flagGet", "setUpFieldMoveFlash"):
+        got[n] = port_fn(src, rom, r[n], shift)
+        if got[n] is None:
+            return None
+    got["fieldCallbacks"] = [port_fn(src, rom, a, shift) for a in r["fieldCallbacks"]]
+    if None in got["fieldCallbacks"]:
+        return None
+    anchors = [(r["setUpFieldMoveFlash"], got["setUpFieldMoveFlash"])] + list(zip(r["fieldCallbacks"], got["fieldCallbacks"]))
+    for n in ("menuFieldCallback", "postMenuFieldCallback", "mapHeader"):
+        got[n] = port_ram(src, rom, r[n], anchors)
+        if got[n] is None:
+            return None
+    rs = key[:3] in ("AXV", "AXP")
+    slot = port_ram(src, rom, r["partyMenuSlotId"] if rs else r["partyMenuSlotId"] - 9, anchors)
+    if slot is None:
+        return None
+    got["partyMenuSlotId"] = slot if rs else slot + 9
+    return got
 
 
 def port_box(src, rom, key, shift):
@@ -373,6 +471,28 @@ def fly_kt(rom, fly):
     return (f"\n        fly = FLY_FIRERED_REV1.copy(\n            {common}setFlyWarpDestination = {h(fly['setFlyWarpDestination'])},\n"
             f"            codeCrcs = listOf({crcs}),\n        ),")
 
+def tm_kt(rom, tm):
+    h = lambda v: f"0x{v:08X}L"
+    fns = ", ".join(f"{n} = {h(tm[n])}" for n in ("itemUseCbTmhm", "showPartyMenuForItemUse", "initPartyMenu", "setMainCallback2",
+                                                 "returnToField", "cleanupOverworld", "fadeScreen", "lockControls", "unlockControls"))
+    return (f'    // {os.path.basename(rom.path)}.\n    "{rom.code}{rom.rev}" to TmFns(\n'
+            f"        specialVarItemId = {h(tm['specialVarItemId'])}, itemUseCb = {h(tm['itemUseCb'])}, partyMenu = {h(tm['partyMenu'])}, "
+            f"partyMenuSlotOff = {tm['partyMenuSlotOff']}, mainCallback2 = {h(tm['mainCallback2'])},\n        {fns},\n"
+            f"        codeCrcs = listOf({', '.join(f'0x{crc(rom, tm[n]):08X}L' for n in TM_FUNCS)}),\n    ),")
+
+
+def flash_kt(rom, fl):
+    h = lambda v: f"0x{v:08X}L"
+    fns = [fl["flagGet"], fl["setUpFieldMoveFlash"]] + fl["fieldCallbacks"]
+    return (f'    // {os.path.basename(rom.path)}.\n    "{rom.code}{rom.rev}" to FlashFns(\n'
+            f"        flagGet = {h(fl['flagGet'])}, badgeFlag = 0x{fl['badgeFlag']:X}, litFlag = 0x{fl['litFlag']:X}, "
+            f"setUpFieldMoveFlash = {h(fl['setUpFieldMoveFlash'])},\n"
+            f"        menuFieldCallback = {h(fl['menuFieldCallback'])}, postMenuFieldCallback = {h(fl['postMenuFieldCallback'])}, "
+            f"fieldCallbacks = listOf({', '.join(h(v) for v in fl['fieldCallbacks'])}),\n"
+            f"        partyMenuSlotId = {h(fl['partyMenuSlotId'])}, mapHeader = {h(fl['mapHeader'])},\n"
+            f"        codeCrcs = listOf({', '.join(f'0x{crc(rom, v):08X}L' for v in fns)}),\n    ),")
+
+
 def box_kt(rom, box):
     h = lambda v: f"0x{v:08X}L"
     return (f'    // {os.path.basename(rom.path)}.\n    "{rom.code}{rom.rev}" to BoxSwapFns(\n'
@@ -409,7 +529,7 @@ def main():
         if box is None:
             sys.exit(f"{key}: the box functions didn't map from {fr}")
         BOX[key] = box
-    blocks, box_blocks, done, js = [], [], set(), {}
+    blocks, box_blocks, tm_blocks, flash_blocks, done, js = [], [], [], [], set(), {}
     for p in sorted(paths):
         name = os.path.basename(p)
         if any(x in name for x in ("Pirate", "Debug", "Pokemon Box")):
@@ -441,11 +561,16 @@ def main():
         blocks.append(kt(rom, ref_key, m))
         if m.get("box"):
             box_blocks.append(box_kt(rom, m["box"]))
+        if m.get("tm"):
+            tm_blocks.append(tm_kt(rom, m["tm"]))
+        if m.get("flash"):
+            flash_blocks.append(flash_kt(rom, m["flash"]))
         js[key] = dict(path=os.path.abspath(p), ref=ref_key, family=rom.code[:3], **{k: v for k, v in m.items() if k != "how"})
         masked = [n for n, v in m["how"].items() if v == "masked"]
         print(f"{key:6} {name[:48]:48} from {ref_key}  items {m['items']:#x} x{m['name_len'] + 30}"
               f"  party {m['party']:#x}{'  masked ' + ','.join(masked) if masked else ''}{'' if m.get('pc') else '  NO PC'}{'' if m.get('fly') else '  NO FLY'}"
-              f"{'' if m.get('box') else '  NO BOX MOVES'}")
+              f"{'' if m.get('box') else '  NO BOX MOVES'}{'' if m.get('tm') or rom.code[:3] in ('AXV', 'AXP') or rom.lang == 'E' else '  NO TM'}"
+              f"{'' if m.get('flash') or rom.lang == 'E' else '  NO FLASH'}")
     # The hand-written English tables' FLY (FieldItems.kt), checked the same way: printed for FLY_RUBY's file.
     for key in ("AXVE1", "AXPE1"):
         if key in refs:
@@ -463,7 +588,7 @@ def main():
 
 // Generated by scripts/port_field_items.py from the user's ROMs - don't edit by hand.
 // USE / GIVE / TAKE's tables (FieldItems.kt), with PC anywhere's (Pc.kt) and FLY's (Fly.kt), for the other-language releases and English
-// FireRed / Ruby / Sapphire rev 0, by game code + revision; each checked headless.
+// FireRed / Ruby / Sapphire rev 0, by game code + revision; each checked headless. Then the BOXES moves', the TM screen's and FLASH's.
 
 val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
 """ + "\n".join(blocks) + """
@@ -471,7 +596,17 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
 
 /** The BOXES tab's moves (BoxSwap.kt) for the same games, by the same keys (scripts/verify_box_swap.py checks them). */
 val BOX_SWAP_PORTS: Map<String, BoxSwapFns> = mapOf(
-""" + "\n".join(box_blocks) + "\n)\n")
+""" + "\n".join(box_blocks) + """
+)
+
+/** USE on a TM / HM (TmTeach.kt) for the same games, by the same keys (scripts/verify_tm_flash.py checks them). */
+val TM_PORTS: Map<String, TmFns> = mapOf(
+""" + "\n".join(tm_blocks) + """
+)
+
+/** FLASH from the QUICK MENU (Flash.kt) for the same games, by the same keys (scripts/verify_tm_flash.py checks them). */
+val FLASH_PORTS: Map<String, FlashFns> = mapOf(
+""" + "\n".join(flash_blocks) + "\n)\n")
     print("wrote", os.path.relpath(OUT), len(blocks), "tables")
 
 

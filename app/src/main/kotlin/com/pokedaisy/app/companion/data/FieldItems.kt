@@ -565,6 +565,8 @@ enum class ItemUseResult {
     PARTY_CHANGED,
     /** TAKE: the held item ([ItemUseOutcome.swapped]) is in the bag now. */
     TAKEN,
+    /** A TM / HM: the game's own TM screen is opening (TmTeach.kt); the rest happens there. */
+    IN_GAME,
 }
 
 /** What using [itemId] did and, for a Repel, how many steps it lasts; a GIVE's item held before ([swapped]). */

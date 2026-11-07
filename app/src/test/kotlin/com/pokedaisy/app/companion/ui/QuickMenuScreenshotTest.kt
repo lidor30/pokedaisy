@@ -48,6 +48,7 @@ class QuickMenuScreenshotTest {
     private fun shot(
         look: FieldHudLook = FieldHudLook.GLASS, moves: Int = 0, fly: FlyTargets? = null, ring: Boolean = false, labels: Boolean = true,
         actions: QuickActions = Actions(), repels: List<Int>? = null, shown: Set<QuickAction> = QuickAction.entries.toSet(),
+        snapshot: com.pokedaisy.app.companion.data.SnapshotView = FieldHudScreenshotTest.snapshot,
     ) = paparazzi.snapshot {
         val state = QuickMenuState().apply {
             trigger(true)
@@ -61,7 +62,7 @@ class QuickMenuScreenshotTest {
         }
         Box(Modifier.fillMaxSize().background(Color.Black)) {
             FieldHudScene(FieldHudStyle(look = look), FieldHudScreenshotTest.wild)
-            QuickMenu(state, FieldHudScreenshotTest.snapshot, actions, shown, look)
+            QuickMenu(state, snapshot, actions, shown, look)
         }
     }
 
@@ -71,8 +72,18 @@ class QuickMenuScreenshotTest {
     /** On FLY, which nobody knows: dimmed, saying why. */
     @Test fun dimmed() = shot(moves = 1)
 
+    /** On FLASH, which nobody knows: dimmed, saying why. */
+    @Test fun flash() = shot(moves = 2)
+
+    /** On FLASH in a dark cave, a party Pokémon knowing it (the tile only shows then). */
+    @Test fun flashDark() = shot(moves = 2, actions = object : QuickActions by Actions() {
+        override fun flashDark() = true
+    }, snapshot = FieldHudScreenshotTest.snapshot.let { s ->
+        s.copy(party = s.party.mapIndexed { i, m -> if (i == 1) m.copy(moves = m.moves + com.pokedaisy.app.companion.data.MoveView("FLASH", "Normal", 20, 0, id = 148)) else m })
+    })
+
     /** On the bike: the bag's own icon. */
-    @Test fun bike() = shot(moves = 3)
+    @Test fun bike() = shot(moves = 4)
 
     @Test fun whiteGlass() = shot(FieldHudLook.WHITE_GLASS, moves = 4)
 

@@ -1,9 +1,9 @@
 ---
 title: Bag
-summary: Every pocket of your bag with icons and descriptions, favorite items, which Pokémon can use a TM, reusable TMs, and using an item from the bottom screen.
+summary: Every pocket of your bag with icons and descriptions, favorite items, which Pokémon can use a TM, teaching a TM or HM, reusable TMs, and using an item from the bottom screen.
 section: companion
 order: 4
-keywords: [items, inventory, cube, pockets, tm, hm, reusable tm, infinite tm, technical machine, description, sort, use item, berries, key items, star, starred, pin, favourite]
+keywords: [items, inventory, cube, pockets, tm, hm, reusable tm, infinite tm, technical machine, hidden machine, teach move, learn move, forget move, description, sort, use item, berries, key items, star, starred, pin, favourite]
 ---
 
 The bag tab shows everything you're carrying, pocket by pocket, as the game has it right now. It's handy for a quick count before a long cave, or for reading what an item does without digging through the game's menus.
@@ -53,6 +53,15 @@ Under the icons, a line names the best fit and, if its moves are full, which mov
 
 > [!NOTE]
 > The TM party row works in FireRed, LeafGreen, Ruby, Sapphire and Emerald (the original games) so far.
+
+## Teaching a TM or HM
+
+In FireRed, LeafGreen and Emerald, `USE` on a TM or HM opens the game's own screen for it, as if you'd picked it from the game's bag: the screen fades and the game asks "Teach which POKéMON?" with each Pokémon marked `ABLE` or `NOT ABLE`. From there it's all the game: forgetting a move to make room, the tune when it's learned, and a TM leaving your bag (unless `REUSABLE TMS` is on). When you're done, you're back on the field where you were. With two screens, the companion stays up and tells you to pick the Pokémon on the game's screen; the companion window on one screen gets out of the way.
+
+Like the other items, it only works while you're walking around, with no menu, conversation or battle open.
+
+> [!NOTE]
+> This works in FireRed, LeafGreen and Emerald, in every language PokeDaisy supports, and in the hacks built on their code: Unbound, Radical Red, Gaia, Odyssey, Orange Islands, Ultra Violet, FireRed Rocket Edition, Ash Gray, Ghost Grey, Let's Go, Sword and Shield Ultimate Plus, GS Chronicles, Glazed, Emerald Kaizo and the randomized games. Each hack keeps its own TM rules (some never use a TM up). Ruby and Sapphire would drop you back in their own bag afterwards, so there, and in other games, teach the move from the game's own bag.
 
 ## Reusable TMs
 
