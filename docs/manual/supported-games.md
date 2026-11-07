@@ -112,6 +112,15 @@ What happens next depends on how well a game fits:
 
 The match is remembered for that ROM. To undo it, long-press the game in the library, open `INFO` and tap `FORGET MATCH`.
 
+### Hacks that kept FireRed or Emerald's own code
+
+Many hacks are made by editing the English FireRed or Emerald directly, with a map editor or a patch tool, and leave the game's own code alone. PokeDaisy checks the code of such a ROM against the original game's when it starts. If it still holds what the features below need, the hack gets them even though PokeDaisy doesn't know it by name:
+
+- [EXPAND](screen.md#expand-more-of-the-map) and the field features that read the overworld (TEXT and the other scene speeds, AUTO-RUN, RUN INDOORS). If the hack moved the tables of the people standing further off, those people aren't drawn past the screen's edge.
+- Quick battle taps (a tap on `FIGHT`, `BAG`, `RUN` or a move goes straight to it) and [switching during a battle](battle.md#switching-during-a-battle), once best effort reads the game as FireRed or Emerald.
+
+A hack that rebuilt the game from its source code doesn't pass this check, and nothing changes for it.
+
 ## WHICH GAME IS THIS?
 
 When more than one game could fit, or none fits clearly, the companion shows **WHICH GAME IS THIS?** in place of your party. The likely ones come first, tagged `LIKELY`. Pick the game your ROM is a version of, or the base game the hack was built on.

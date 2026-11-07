@@ -675,6 +675,19 @@ Java_com_pokedaisy_app_MgbaCore_pkWideKnows(JNIEnv* env, jobject thiz, jint crc)
     return pk_wide_knows((uint32_t) crc) ? JNI_TRUE : JNI_FALSE;
 }
 
+// WIDE and the field reads: a hack RetailEngine.kt proved to keep a retail build's engine, by its own row. Any thread, no core
+// needed; before the game is configured.
+JNIEXPORT jboolean JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkWideAddDerived(JNIEnv* env, jobject thiz, jint crc, jint baseCrc, jintArray row) {
+    if (!row) return JNI_FALSE;
+    jsize n = (*env)->GetArrayLength(env, row);
+    jint* a = (*env)->GetIntArrayElements(env, row, NULL);
+    if (!a) return JNI_FALSE;
+    int ok = pk_wide_add_derived((uint32_t) crc, (uint32_t) baseCrc, (const int32_t*) a, (int) n);
+    (*env)->ReleaseIntArrayElements(env, row, a, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
+}
+
 // WIDE: the window to draw from the next frame on, in the frame's pixels (its top-left (0, 0)); w 0 = none.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkWideSetView(JNIEnv* env, jobject thiz, jint x, jint y, jint w, jint h) {

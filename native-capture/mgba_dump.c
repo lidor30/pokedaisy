@@ -1724,6 +1724,30 @@ int main(int argc, char** argv) {
             wideView = (struct PkWideView) { -n, 0, pk_wide_frame_w() + 2 * n, pk_wide_frame_h() };
             memset(&wideStats, 0, sizeof(wideStats));
             printf("wideon: ROM %08x %s, margin %d\n", crc, wideOn ? "known" : "NOT KNOWN (WIDE off)", n);
+        } else if (!strcmp(cmd, "widerow")) {
+            // A hack proven to keep a retail engine (RetailEngine.kt): its row as the app hands it to pk_wide.c, by the
+            // file's CRC32 - `scripts/gen_retail_engine.py --row HACK` prints the line. Then `wideon` as usual.
+            unsigned base = 0;
+            char list[2048] = { 0 };
+            int32_t row[PK_WIDE_ADDRS];
+            int count = 0;
+            if (sscanf(line, "%*s %x %2047s", &base, list) == 2) {
+                for (char* t = strtok(list, ","); t && count < PK_WIDE_ADDRS; t = strtok(NULL, ","))
+                    row[count++] = (int32_t) strtol(t, NULL, 16);
+            }
+            uint32_t crc = 0;
+            FILE* rf = fopen(romPath, "rb");
+            if (rf) {
+                fseek(rf, 0, SEEK_END);
+                long fsz = ftell(rf);
+                fseek(rf, 0, SEEK_SET);
+                uint8_t* fb = fsz > 0 ? malloc((size_t) fsz) : NULL;
+                if (fb && fread(fb, 1, (size_t) fsz, rf) == (size_t) fsz) crc = doCrc32(fb, (size_t) fsz);
+                free(fb);
+                fclose(rf);
+            }
+            int ok = pk_wide_add_derived(crc, base, row, count);
+            printf("widerow: ROM %08x on %08x's engine, %d values: %s\n", crc, base, count, ok ? "set" : "REFUSED");
         } else if (!strcmp(cmd, "widefuzz")) {
             // widefuzz N SEED: N frames of abuse for pk_wide - a random window each frame (empty, huge, far off) and
             // random bytes / pointers written over the RAM it reads (VMap, gMapHeader, the camera, object events,

@@ -63,6 +63,9 @@ object MgbaCore {
     external fun pkWideConfigure(crc: Int)
     /** WIDE: whether pk_wide.c has tables for the ROM with this CRC32 (pk_wide_games.h). Any thread. */
     external fun pkWideKnows(crc: Int): Boolean
+    /** WIDE and the field reads: know the ROM with CRC32 [crc] by [row] (a hack [com.pokedaisy.app.companion.data.RetailEngine]
+     * proved to keep the retail build [baseCrc]'s engine). One at a time. Any thread, before the game is configured. */
+    external fun pkWideAddDerived(crc: Int, baseCrc: Int, row: IntArray): Boolean
     /** SCENE SPEEDS / AUTO-RUN / RUN INDOORS / WILD ENCOUNTERS: read the field with WIDE's tables for the ROM with
      * this CRC32, WIDE on or off (0 = none), and its wild-encounter switch at [wildFlag] ([WildEncounters.find]; 0 =
      * none). Emu thread. */

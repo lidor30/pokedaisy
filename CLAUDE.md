@@ -2154,6 +2154,13 @@ guide's probe trainer name: UPR renames BROCK). Hand-written guide lines naming 
 `Randomized.HIDE` (gifts, legendaries, stones), TIPS has a `Randomized.ONLY` line; `gameGuide(id)` filters. EXPAND / field
 reads go by retail's CRC (`WideScreen.tablesCrc`; mgba_dump `wideon MARGIN CRC`). Library: "Pokémon FireRed (Randomized)";
 website: `compat.json`'s `randomizedRetail`. docs/DEVELOPMENT.md's "Randomized ROMs" (and how to redo it for a new UPR).
+**Retail engine (2026-11-07)**: an unrecognised BPRE (rev 0 / 1) / BPEE hack edited in place is proven by its code, not its hash
+(`RetailEngine.kt`, `RetailEngineGen.kt` from `scripts/gen_retail_engine.py`: per RAM global up to 16 retail `ldr pc` sites, CRC32 of
+the code around each, pool word must still hold the address; CRCs and offsets only). Proven: retail's cursors (`knownCursorAddrs`) and
+gPartyMenu (`retailEnginePartyMenu`) while BEST EFFORT reads it as retail FireRed / Emerald, and EXPAND / field reads by a row rebuilt
+from retail's with its repointed ROM tables followed (`WideScreen.tablesCrc` -> `pkWideAddDerived`; the far-off people's tables may
+drop to 0). Rerun the generator after touching retail's rows in pk_wide_games.h; `--row HACK` + mgba_dump's `widerow` checks one
+headless. `RetailEngineTest` rebuilds every in-place hack's hand-made row and refuses the rebuilds. docs/DEVELOPMENT.md's "Retail engine".
 **Unsupported ROMs**: `CompanionSupport.isSupported(file)` (FireRed/Emerald game code, ≤16 MB,
 retail LeafGreen rev 0/1 / Ruby / Sapphire rev 1/2 — `TelemetrySampler.OTHER_RETAIL_CODES`,
 read as FireRed / Emerald — or a >16 MB hack whose SHA1 is in `TelemetrySampler.SUPPORTED_HACK_SHA1S`) mirrors the

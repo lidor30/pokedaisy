@@ -1119,6 +1119,10 @@ class PokeDaisyActivity : Activity() {
         // Yellow and the Gen 2 games: their own party menus, read through GbPartySwitch (no gPartyMenu, no personality).
         game.isGen1 || game.isGen2 ->
             telemetry.gbPartySwitch()?.let { BattleInputController.SwitchAddrs(gb = it) }
+        // A hack nothing knows by its hash whose code proves it kept retail's engine (RetailEngine): retail's gPartyMenu and
+        // list, read through BEST EFFORT as retail FireRed / Emerald.
+        telemetry.retailEnginePartyMenu() != null ->
+            telemetry.retailEnginePartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party) }
         game == com.pokedaisy.app.companion.data.GameKind.FIRERED && romCode == "BPRE" && romRev == 1 ->
             BattleInputController.SwitchAddrs(partyMenu = 0x0203B0A0L, party = 0x02024284L)
         // Recharged Emerald runs as Emerald (BPEE) but is a rebuild with its own RAM: its config carries gPartyMenu (Emerald's
