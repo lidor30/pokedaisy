@@ -2123,7 +2123,7 @@ class PokeDaisyActivity : Activity() {
         )
         // Known already: the library / frontend launch worked it out off the UI thread (RomCrcs.prepare) - a 512 MB DS
         // cart read here froze the window past Android's 5 s. Keyed by the file played, an archive's by the archive.
-        val crc = "%08x".format(RomCrcs.of(this, romFile))
+        val crc = "%08x".format(RomCrcs.of(this, romFile, r))
         romKey = crc
         states = SaveStates(getExternalFilesDir(null) ?: filesDir, crc)
         val ffMusicCache = FfMusicCache(getExternalFilesDir(null) ?: filesDir, crc, gameBoy = RomIdentity.isGameBoy(r))

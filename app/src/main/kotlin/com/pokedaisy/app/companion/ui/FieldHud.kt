@@ -56,6 +56,7 @@ import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.graphics.drawscope.translate
 import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.SubcomposeLayout
@@ -202,7 +203,8 @@ internal class HudInk(
     val cell: Color, val cellOn: Color, val divider: Color,
 )
 
-private val GLASS_FILL = Color(0xB8121620)
+// A little more see-through than it was (0xB8, the user's call with the HP box look, 2026-11-09).
+private val GLASS_FILL = Color(0xA0121620)
 private val GLASS_EDGE = Color(0x66FFFFFF)
 
 private val GLASS_INK = HudInk(
@@ -213,7 +215,7 @@ private val GLASS_INK = HudInk(
 )
 
 /** WHITE GLASS: the same see-through panel in white, dark text with a light shadow (the OPTION text's way round). */
-private val WHITE_FILL = Color(0xC4F6F7FA)
+private val WHITE_FILL = Color(0xACF6F7FA)
 private val WHITE_EDGE = Color(0x59000000)
 
 private val WHITE_INK = HudInk(
@@ -223,9 +225,29 @@ private val WHITE_INK = HudInk(
     cell = Color(0x1F000000), cellOn = Color(0x4D000000), divider = WHITE_EDGE,
 )
 
-/** The quick menu's tiles in GLASS / WHITE GLASS: the two-tone face's top, its low half (the panel's own fill) and the edge. */
-internal val HudGlassFace = Triple(Color(0xC0283044), GLASS_FILL, GLASS_EDGE)
-internal val HudWhiteGlassFace = Triple(Color(0xD0FFFFFF), Color(0xC4E4E7EE), WHITE_EDGE)
+/** The quick menu's tiles in GLASS / WHITE GLASS: the two-tone face's top, its low half and the edge (a step more solid
+ * than the panels, so a tile reads over the game). */
+internal val HudGlassFace = Triple(Color(0xC8283044), Color(0xAA121620), GLASS_EDGE)
+internal val HudWhiteGlassFace = Triple(Color(0xD8FFFFFF), Color(0xC8E4E7EE), WHITE_EDGE)
+
+/** A button inside a HUD panel (USE's row, BAG's pockets, WILD's KEEP OPEN, a panel's close): nearly solid, so it reads
+ * over the map and the game behind a see-through panel (the user's call). */
+private val HudGlassButton = Triple(Color(0xEC283044), Color(0xE0121620), Color(0x78FFFFFF))
+private val HudWhiteGlassButton = Triple(Color(0xF0FFFFFF), Color(0xE8E4E7EE), Color(0x64000000))
+
+/** The HUD's "this one": the party screen's selected slot's orange (FireRed / Emerald), one GBA pixel inside the edge. */
+internal val HUD_SELECTED = Color(0xFFF07038)
+
+/** How far the HP box's shadow reaches down and right of a HUD window (GBA pixels): the battle HP box's tail. */
+internal const val HUD_SHADOW = 3
+
+/** The shadow's colour in this look: dark under the glass, the window's own outer line under WINDOW's white. */
+@Composable
+private fun hudShadow(look: FieldHudLook): Color = when (look) {
+    FieldHudLook.GLASS -> Color(0x80060810)
+    FieldHudLook.WHITE_GLASS -> Color(0x4C141820)
+    FieldHudLook.WINDOW -> OptionColors.titleLayers.first().first
+}
 
 internal val LocalHudLook = staticCompositionLocalOf { FieldHudLook.GLASS }
 
@@ -244,12 +266,18 @@ internal val ink: HudInk
         )
     }
 
-/** A HUD window behind [this]: the OPTION title window, or a see-through dark panel with a light pixel edge. */
+/**
+ * A HUD window behind [this], shaped like the games' battle HP box (the user's pick of five looks, 2026-11-09): its shadow
+ * [HUD_SHADOW] GBA pixels down and to the right, then the look's window - the OPTION title window, or a see-through panel
+ * with a pixel edge. The shadow is drawn past the window's box: keep that much room on its right and bottom.
+ */
 @Composable
-internal fun Modifier.hudPanel(u: Dp, radius: Int = 3): Modifier {
+internal fun Modifier.hudPanel(u: Dp, radius: Int = 3, shadow: Boolean = true): Modifier {
     val look = LocalHudLook.current
+    val shade = hudShadow(look)
     return drawBehind {
         val px = u.toPx()
+        if (shadow) drawPixelRoundRect(shade, Offset(HUD_SHADOW * px, HUD_SHADOW * px), size, radius = (radius + 1) * px, step = px)
         when (look) {
             FieldHudLook.WINDOW -> drawLayeredBox(OptionColors.titleLayers.inPx(px), OptionColors.titleFill, radius = radius * px)
             FieldHudLook.GLASS -> {
@@ -263,6 +291,70 @@ internal fun Modifier.hudPanel(u: Dp, radius: Int = 3): Modifier {
         }
     }
 }
+
+/**
+ * The app's two-tone button face in the HUD's LOOK (the OPTION window's, or the glass's: its colour a step lighter on top,
+ * the soft split, its own colour under it) behind [this]. [solid]: a button inside a panel, nearly opaque so it reads over
+ * the map; else the quick menu's tile, as see-through as the HUD. [shadow]: the HP box's, like the HUD's windows.
+ * [selected]: the party screen's orange, a GBA pixel inside the edge.
+ */
+@Composable
+internal fun Modifier.hudButtonFace(u: Dp, selected: Boolean = false, solid: Boolean = true, shadow: Boolean = false): Modifier {
+    val look = LocalHudLook.current
+    val shade = hudShadow(look)
+    return drawBehind {
+        val px = u.toPx()
+        val r = 4 * px
+        if (shadow) drawPixelRoundRect(shade, Offset(HUD_SHADOW * px, HUD_SHADOW * px), size, radius = r, step = px)
+        when (look) {
+            FieldHudLook.WINDOW -> drawLayeredBox(OptionColors.titleLayers.inPx(px), OptionColors.titleFill, radius = 3 * px, twoTone = true)
+            FieldHudLook.GLASS, FieldHudLook.WHITE_GLASS -> {
+                val (top, low, edge) = when {
+                    look == FieldHudLook.GLASS -> if (solid) HudGlassButton else HudGlassFace
+                    else -> if (solid) HudWhiteGlassButton else HudWhiteGlassFace
+                }
+                // See-through: each band painted once (drawTwoTone paints the low colour under the top one, which doubles a
+                // translucent fill).
+                val split = size.height * 0.47f
+                fun band(c: Color, from: Float, to: Float) = clipRect(top = from, bottom = to) { drawPixelRoundRect(c, radius = r, step = px) }
+                band(top, 0f, split)
+                band(androidx.compose.ui.graphics.lerp(top, low, 0.35f), split, split + px)
+                band(androidx.compose.ui.graphics.lerp(top, low, 0.7f), split + px, split + 2 * px)
+                band(low, split + 2 * px, size.height)
+                drawPixelRoundFrame(edge, Offset.Zero, size, r, px, step = px)
+            }
+        }
+        if (selected) drawPixelRoundFrame(HUD_SELECTED, Offset(px, px), Size(size.width - 2 * px, size.height - 2 * px), r - px, px, step = px)
+    }
+}
+
+/** The picked one of a panel's cells (BAG's item): the party screen's orange round its edge. */
+private fun Modifier.hudPicked(u: Dp, picked: Boolean): Modifier = if (!picked) this else drawBehind {
+    val px = u.toPx()
+    drawPixelRoundFrame(HUD_SELECTED, Offset.Zero, size, 3 * px, px, step = px)
+}
+
+/** A small button inside a HUD panel: [label] (or [icon]) on [hudButtonFace]. */
+@Composable
+private fun HudPanelButton(
+    label: String?, m: GbaTextMetrics, modifier: Modifier = Modifier, selected: Boolean = false, icon: List<String>? = null, onClick: () -> Unit,
+) {
+    val u = m.u
+    val small = rememberGbaTextMetrics(0.75f)
+    Box(
+        modifier.hudButtonFace(u, selected).soundClickable(onClick = onClick)
+            .heightIn(min = small.lineHeight + u * 6).padding(horizontal = u * 5, vertical = u * 3),
+        contentAlignment = Alignment.Center,
+    ) {
+        if (icon != null) ShadowedPixelIcon(icon, ink.text, ink.shadow, m)
+        if (label != null) GbaText(label, ink.text, ink.shadow, small, bold = gameBoldLabels())
+    }
+}
+
+/** How much deeper the look's window edge reaches in than the glass's one GBA pixel: WINDOW's frame layers. Content
+ * against an edge (the minimap's name, a button's label) adds it, so it keeps the same room in every look. */
+@Composable
+internal fun hudEdge(u: Dp): Dp = if (LocalHudLook.current == FieldHudLook.WINDOW) u * 2 else 0.dp
 
 /** Whole screen pixels per party-icon pixel: one a GBA pixel (3 on the Thor). */
 private fun hudIconScale(m: GbaTextMetrics): Int = max(1, m.px)
@@ -571,6 +663,9 @@ private class HudParts(
     val pc = pcOpen?.takeIf { style.shows(FieldHudPart.PC) }
     /** The balls' window shows. */
     val ballsRow = balls.isNotEmpty()
+    /** Someone has a status tag (or fainted): the party's tiles get a row for the tags over their icons, and the party's
+     * window is that much taller; with none it's shorter (the user's call). */
+    val tagRow = party.any { !it.isEgg && (it.hp == 0 || it.status.isNotEmpty()) }
 }
 
 // ---- Layouts ------------------------------------------------------------------------------------
@@ -711,7 +806,7 @@ private fun PartyColumns(p: HudParts, perRow: Int) {
     Column(Modifier.hudPanel(u).padding(horizontal = u * 5, vertical = u * 4), verticalArrangement = Arrangement.spacedBy(u * 3)) {
         p.party.withIndex().chunked(perRow).forEach { row ->
             Row(horizontalArrangement = Arrangement.spacedBy(u * 3)) {
-                row.forEach { (i, mon) -> HudMonTile(mon, p.m, lead = i == 0) { p.open(FieldHudPanel.SUMMARY, i) } }
+                row.forEach { (i, mon) -> HudMonTile(mon, p.m, p.tagRow) { p.open(FieldHudPanel.SUMMARY, i) } }
             }
         }
     }
@@ -725,7 +820,7 @@ private fun PartyRow(p: HudParts, modifier: Modifier) {
     Row(
         modifier.hudPanel(u).padding(horizontal = u * 5, vertical = u * 4),
         horizontalArrangement = Arrangement.spacedBy(u * 3),
-    ) { p.party.forEachIndexed { i, mon -> HudMonTile(mon, p.m, lead = i == 0) { p.open(FieldHudPanel.SUMMARY, i) } } }
+    ) { p.party.forEachIndexed { i, mon -> HudMonTile(mon, p.m, p.tagRow) { p.open(FieldHudPanel.SUMMARY, i) } } }
 }
 
 /** CORNERS' bottom-right corner: the balls over the buttons. */
@@ -778,7 +873,7 @@ private fun RailsLayout(p: HudParts, left: Dp, right: Dp) {
                 Modifier.align(Alignment.CenterStart).padding(u * 2).width(IntrinsicSize.Max).widthIn(min = side - u * 4)
                     .hudPanel(u).padding(top = u * 6, bottom = u * 3, start = u, end = u * 2),
                 verticalArrangement = Arrangement.spacedBy(u * 4),
-            ) { p.party.forEachIndexed { i, mon -> HudMonRow(mon, p.m, lead = i == 0) { p.open(FieldHudPanel.SUMMARY, i) } } }
+            ) { p.party.forEachIndexed { i, mon -> HudMonRow(mon, p.m) { p.open(FieldHudPanel.SUMMARY, i) } } }
         }
         Column(
             Modifier.align(Alignment.TopEnd).width(side).fillMaxHeight().padding(u * 2),
@@ -826,7 +921,7 @@ private fun DockBar(p: HudParts, party: Boolean, modifier: Modifier) {
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(u * 3),
     ) {
-        mons.forEachIndexed { i, mon -> HudMonTile(mon, p.m, lead = i == 0) { p.open(FieldHudPanel.SUMMARY, i) } }
+        mons.forEachIndexed { i, mon -> HudMonTile(mon, p.m, p.tagRow) { p.open(FieldHudPanel.SUMMARY, i) } }
         if (p.ballsRow) {
             if (mons.isNotEmpty()) DockDivider(p.m)
             HudBallsInline(p)
@@ -849,73 +944,69 @@ private fun DockDivider(m: GbaTextMetrics) {
 
 // ---- Party --------------------------------------------------------------------------------------
 
-/** One party member as a tile: its icon (a status chip over it), then Lv and the HP bar under it. A tap opens its summary. */
+/**
+ * One party member as a tile: its status tag (in a row of its own over the icon, [tagRow]: when anyone in the party has
+ * one), its icon, the HP bar under it. No level and no lit lead: the party at a glance (the user's call with the HP box
+ * look). A tap opens its summary.
+ */
 @Composable
-private fun HudMonTile(mon: MonView, m: GbaTextMetrics, lead: Boolean, onClick: () -> Unit) {
+private fun HudMonTile(mon: MonView, m: GbaTextMetrics, tagRow: Boolean, onClick: () -> Unit) {
     val u = m.u
     val icon = hudIconSize(m)
-    val small = rememberGbaTextMetrics(0.75f)
-    // As wide as the icon or its Lv, whichever is wider (SMALL's icon is narrower than "Lv24").
-    val c = ink
     Column(
-        Modifier.width(IntrinsicSize.Max).widthIn(min = icon + u * 2)
-            // The lead (the one that goes out first): a lit tile with an accent edge.
-            .then(if (lead) Modifier.drawBehind {
-                val px = u.toPx()
-                drawPixelRoundRect(c.cellOn, Offset(-2 * px, -2 * px), Size(size.width + 4 * px, size.height + 4 * px), radius = 3 * px, step = px)
-                drawPixelRoundFrame(c.accent, Offset(-2 * px, -2 * px), Size(size.width + 4 * px, size.height + 4 * px), 3 * px, px, step = px)
-            } else Modifier)
-            .soundClickable(onClick = onClick),
+        Modifier.width(icon + u * 2).soundClickable(onClick = onClick),
         horizontalAlignment = Alignment.CenterHorizontally,
     ) {
-        HudMonIcon(mon, icon, u)
+        if (tagRow) {
+            HudMonTag(mon, u)
+            Spacer(Modifier.height(u * 2))
+        }
+        HudMonIcon(mon, icon, u, tag = false)
         if (!mon.isEgg) {
-            // Room under the sprite (it spills past its slot) before the level.
+            // Room under the sprite (it spills past its slot) before the bar.
             Spacer(Modifier.height(u * 3))
-            GbaText(tr("Lv{0}", mon.level), ink.text, ink.shadow, small)
-            Spacer(Modifier.height(u))
             HudHpBar(mon.hp, mon.maxHp, Modifier.fillMaxWidth().height(u * 5))
         }
     }
 }
 
-/** One party member as a row (RAILS): the icon, then Lv over the HP bar. */
+/** One party member as a row (RAILS): the icon, then its status tag (if any) over the HP bar. */
 @Composable
-private fun HudMonRow(mon: MonView, m: GbaTextMetrics, lead: Boolean, onClick: () -> Unit) {
+private fun HudMonRow(mon: MonView, m: GbaTextMetrics, onClick: () -> Unit) {
     val u = m.u
-    val small = rememberGbaTextMetrics(0.75f)
-    val c = ink
-    Row(
-        Modifier
-            .then(if (lead) Modifier.drawBehind {
-                val px = u.toPx()
-                drawPixelRoundRect(c.cellOn, Offset(-px, -px), Size(size.width + 2 * px, size.height + 2 * px), radius = 3 * px, step = px)
-                drawPixelRoundFrame(c.accent, Offset(-px, -px), Size(size.width + 2 * px, size.height + 2 * px), 3 * px, px, step = px)
-            } else Modifier)
-            .soundClickable(onClick = onClick),
-        verticalAlignment = Alignment.CenterVertically,
-    ) {
-        HudMonIcon(mon, hudIconSize(m), u)
+    Row(Modifier.soundClickable(onClick = onClick), verticalAlignment = Alignment.CenterVertically) {
+        HudMonIcon(mon, hudIconSize(m), u, tag = false)
         if (!mon.isEgg) {
-            Column(Modifier.padding(start = u).width(IntrinsicSize.Max).widthIn(min = u * 22)) {
-                GbaText(tr("Lv{0}", mon.level), ink.text, ink.shadow, small)
-                Spacer(Modifier.height(u * 2))
+            Column(Modifier.padding(start = u).width(u * 26), verticalArrangement = Arrangement.spacedBy(u * 2)) {
+                if (mon.hp == 0 || mon.status.isNotEmpty()) HudMonTag(mon, u)
                 HudHpBar(mon.hp, mon.maxHp, Modifier.fillMaxWidth().height(u * 5))
             }
         }
     }
 }
 
-/** The party icon; fainted ones faded with FNT on them, a status chip (PSN, SLP, ...) over its top, NUZLOCKE's gravestone. */
+/** [mon]'s status tag (PSN, SLP, FNT...), or its room kept empty: every tile in a party with a tag row lines up. */
 @Composable
-internal fun HudMonIcon(mon: MonView, size: Dp, u: Dp) {
+private fun HudMonTag(mon: MonView, u: Dp) {
+    val density = LocalDensity.current
+    val upx = with(density) { u.roundToPx() }
+    val status = if (!mon.isEgg && mon.hp == 0) "FNT" else if (mon.isEgg) "" else mon.status
+    Box(Modifier.alpha(if (status.isEmpty()) 0f else 1f)) {
+        HudStatusChip(status.ifEmpty { "FNT" }, u, slotTextMetrics(density, max(1, (upx * 0.6f).roundToInt())))
+    }
+}
+
+/** The party icon; fainted ones faded with FNT on them, a status chip (PSN, SLP, ...) over its top ([tag]: the HUD's party
+ * puts it in a row of its own instead), NUZLOCKE's gravestone. */
+@Composable
+internal fun HudMonIcon(mon: MonView, size: Dp, u: Dp, tag: Boolean = true) {
     val density = LocalDensity.current
     val upx = with(density) { u.roundToPx() }
     val fainted = !mon.isEgg && mon.hp == 0
     Box(Modifier.size(size)) {
         HudSpecies(mon.iconAsset, size, Modifier.alpha(if (fainted) 0.4f else 1f))
         val status = if (fainted) "FNT" else mon.status
-        if (!mon.isEgg && status.isNotEmpty()) {
+        if (tag && !mon.isEgg && status.isNotEmpty()) {
             // Over the icon's top edge, as wide as it needs (the icon box is narrower than "PSN" at some sizes).
             Box(Modifier.align(Alignment.TopCenter).wrapContentSize(unbounded = true).offset(y = -u * 2)) {
                 HudStatusChip(status, u, slotTextMetrics(density, max(1, (upx * 0.6f).roundToInt())))
@@ -1029,7 +1120,8 @@ private fun RepelSteps(p: HudParts, framed: Boolean = true, narrow: Boolean = fa
     val small = rememberGbaTextMetrics(0.75f)
     Row(
         (if (framed) Modifier.hudPanel(u) else Modifier).soundClickable { p.open(FieldHudPanel.BAG, -1) }
-            .padding(horizontal = if (framed) u * 4 else 0.dp, vertical = if (framed) u * 3 else 0.dp),
+            // Even room on both sides as drawn: the spray's icon has empty pixels round its picture, the text none.
+            .padding(start = if (framed) u * 2 else 0.dp, end = if (framed) u * 5 else 0.dp, top = if (framed) u * 3 else 0.dp, bottom = if (framed) u * 3 else 0.dp),
         verticalAlignment = Alignment.CenterVertically,
         horizontalArrangement = Arrangement.spacedBy(u * if (narrow) 2 else 3),
     ) {
@@ -1097,11 +1189,12 @@ private fun HudButton(
     Box {
         Column(
             (if (framed) Modifier.hudPanel(u) else Modifier).soundClickable(onClick = onClick)
-                .widthIn(min = u * 34).padding(horizontal = u * 3, vertical = u * 3),
+                .widthIn(min = u * 34).padding(horizontal = u * 3).padding(top = u * 4, bottom = u * 4 + hudEdge(u)),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             PixelArt(icon, colors, Modifier.size(u * 16))
-            Spacer(Modifier.height(u))
+            // The label in the room under the icon, with as much under it (not pressed against the button's edge).
+            Spacer(Modifier.height(u * 2))
             GbaText(tr(label), ink.text, ink.shadow, small, bold = gameBoldLabels())
         }
         if (inGame) {
@@ -1136,7 +1229,10 @@ private fun HudMiniMap(
     val small = rememberGbaTextMetrics(0.75f)
     val name = snapshot.location.mapSecName
     if ((model == null || bitmap == null) && name.isEmpty()) return
-    Column(modifier.hudPanel(u).soundClickable(onClick = onClick).padding(u * 4), horizontalAlignment = Alignment.CenterHorizontally) {
+    Column(
+        modifier.hudPanel(u).soundClickable(onClick = onClick).padding(u * 4 + hudEdge(u)).padding(bottom = u),
+        horizontalAlignment = Alignment.CenterHorizontally,
+    ) {
         if (model != null && bitmap != null) {
             val tile = (if (black) snapshot.regionMapTile else null)
                 ?: PlayerMapTile.of(model, snapshot.regionMapSectionId, snapshot.x, snapshot.y, snapshot.mapWidth, snapshot.mapHeight, snapshot.mapType)
@@ -1231,17 +1327,17 @@ internal fun HudPanelScrim(onClose: () -> Unit, alignment: Alignment, clear: Boo
     ) { content(keep) }
 }
 
-/** A panel's first line: its icon, title and CLOSE. */
+/** A panel's first line: its icon, title, [extra] buttons and a close X, each a button of its own. */
 @Composable
 private fun PanelHeading(icon: List<String>, colors: Map<Char, Color>, title: String, m: GbaTextMetrics, onClose: () -> Unit, extra: @Composable () -> Unit = {}) {
     val u = m.u
-    val small = rememberGbaTextMetrics(0.75f)
     Row(verticalAlignment = Alignment.CenterVertically) {
         PixelArt(icon, colors, Modifier.size(u * 12))
         Spacer(Modifier.width(u * 4))
         GbaText(tr(title), ink.accent, ink.accentShadow, m, Modifier.weight(1f))
         extra()
-        GbaText(tr("CLOSE"), ink.muted, ink.shadow, small, Modifier.soundClickable(onClick = onClose).padding(u * 2))
+        Spacer(Modifier.width(u * 4))
+        HudPanelButton(null, m, icon = PixelIcons.close, onClick = onClose)
     }
 }
 
@@ -1415,15 +1511,8 @@ private fun HudBagPanel(
     HudPanelScrim(onClose, align) { window ->
         Column(place.width(u * 300).hudPanel(u).then(window).padding(u * 7), verticalArrangement = Arrangement.spacedBy(u * 4)) {
             PanelHeading(BAG_ICON, BAG_COLORS, companionTabLabel("ITEMS"), m, onClose)
-            FlowRow(horizontalArrangement = Arrangement.spacedBy(u * 2), verticalArrangement = Arrangement.spacedBy(u * 2)) {
-                pockets.forEach { pk ->
-                    val on = pk == pocket
-                    Box(
-                        Modifier.background(if (on) c.accent else Color.Transparent, PixelRoundedShape(u * 2))
-                            .soundClickable { pocket = pk }
-                            .padding(horizontal = u * 4, vertical = u * 2),
-                    ) { GbaText(pocketLabel(pk), if (on) c.onAccent else c.text, if (on) Color.Transparent else c.shadow, small) }
-                }
+            FlowRow(horizontalArrangement = Arrangement.spacedBy(u * 3), verticalArrangement = Arrangement.spacedBy(u * 3)) {
+                pockets.forEach { pk -> HudPanelButton(pocketLabel(pk), m, selected = pk == pocket) { pocket = pk } }
             }
             // A whole screen pixel per GBA pixel, like the party icons (the HUD's corners use 2/3 of that).
             val icon = with(LocalDensity.current) { (24 * hudIconScale(m)).toDp() }
@@ -1437,6 +1526,7 @@ private fun HudBagPanel(
                         Row(
                             Modifier.fillMaxWidth()
                                 .background(if (item.itemId == pickedId) c.cellOn else c.cell, PixelRoundedShape(u * 3))
+                                .hudPicked(u, item.itemId == pickedId)
                                 .soundClickable { pickedId = item.itemId }
                                 .padding(horizontal = u * 5, vertical = u * 3),
                             verticalAlignment = Alignment.CenterVertically,
@@ -1455,6 +1545,7 @@ private fun HudBagPanel(
                             Box(
                                 Modifier.size(u * 46)
                                     .background(if (item.itemId == pickedId) c.cellOn else c.cell, PixelRoundedShape(u * 3))
+                                    .hudPicked(u, item.itemId == pickedId)
                                     .soundClickable { pickedId = item.itemId },
                             ) {
                                 HudItemIcon(item.iconAsset, icon, Modifier.align(Alignment.Center).offset(y = -u * 2))
@@ -1474,7 +1565,7 @@ private fun HudBagPanel(
                 Row(Modifier.fillMaxWidth().height(maxOf(m.rowHeight, m.lineHeight + u * 8)), verticalAlignment = Alignment.CenterVertically) {
                     picked?.let { item ->
                         GbaText(bagItemName(item.itemId), c.accent, c.accentShadow, m, Modifier.weight(1f))
-                        if (use != null) OptionButton(tk("USE"), m, onClick = {
+                        if (use != null) HudPanelButton(tr("USE"), m, onClick = {
                             if (use.picksMon(item.itemId)) {
                                 use.targets(item.itemId, give = false) { t ->
                                     if (t.result == ItemUseResult.USED) targets = t.targets
@@ -1529,10 +1620,8 @@ private fun HudWildPanel(snapshot: SnapshotView, wild: List<HudWild>, m: GbaText
     HudPanelScrim(onClose, align, clear = kept) { window ->
         Column(place.width(u * 200).hudPanel(u).then(window).padding(u * 6), verticalArrangement = Arrangement.spacedBy(u * 2)) {
             PanelHeading(GRASS_ICON, GRASS_COLORS, tk("WILD POKéMON"), m, onClose) {
-                GbaText(
-                    tr("KEEP OPEN"), if (kept) c.accent else c.muted, if (kept) c.accentShadow else c.shadow, small,
-                    Modifier.soundClickable(onClick = onKeep).padding(u * 2),
-                )
+                // On: the party screen's orange, like a picked pocket.
+                HudPanelButton(tr("KEEP OPEN"), m, selected = kept, onClick = onKeep)
             }
             GbaText(gameCase(snapshot.location.mapSecName).uppercase().replace('É', 'é'), c.muted, c.shadow, small)
             Column(Modifier.verticalScroll(rememberScrollState()), verticalArrangement = Arrangement.spacedBy(u)) {

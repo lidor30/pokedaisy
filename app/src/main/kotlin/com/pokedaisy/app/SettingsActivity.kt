@@ -1494,6 +1494,8 @@ class SettingsActivity : ComponentActivity() {
      * worked out, and its cheats (cheats/Cheats.kt). */
     private var cheatRom by mutableStateOf<File?>(null)
     private var cheatCrc by mutableStateOf<String?>(null)
+    /** The CHEATS page's game is a DS cart: Action Replay DS codes, checked as such (cheats.DsCheats). */
+    private var cheatDs by mutableStateOf(false)
     private var cheatList by mutableStateOf<List<Cheat>>(emptyList())
     private var cheatRemoveMode by mutableStateOf(false)
     private var removingCheat by mutableStateOf<Int?>(null)
@@ -1522,6 +1524,7 @@ class SettingsActivity : ComponentActivity() {
             cheatCrc = null
             cheatList = emptyList()
             val crc = rom?.let { withContext(Dispatchers.IO) { cheatCrcOf(it) } }
+            cheatDs = rom != null && withContext(Dispatchers.IO) { runCatching { RomIdentity.isNds(rom) }.getOrDefault(false) }
             cheatCrc = crc
             cheatList = crc?.let { c -> withContext(Dispatchers.IO) { CheatStore.forCrc(filesDir, c).load() } }.orEmpty()
         }
@@ -1582,7 +1585,7 @@ class SettingsActivity : ComponentActivity() {
             val text = runCatching {
                 contentResolver.openInputStream(uri)?.use { it.readBytes().takeIf { b -> b.size <= MAX_CHEAT_FILE } }
             }.getOrNull()?.toString(Charsets.UTF_8)?.removePrefix("\uFEFF")
-            val result = text?.let { store.import(it, name) }
+            val result = text?.let { store.import(it, name, ds = cheatDs) }
             val list = store.load()
             runOnUiThread {
                 cheatList = list
@@ -1599,7 +1602,8 @@ class SettingsActivity : ComponentActivity() {
         var error by remember { mutableStateOf<String?>(null) }
         Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             Hint(
-                tr("Type or paste a GameShark, Action Replay or CodeBreaker code, one line or many. AUTO works out which it is; pick the type when a code doesn't take."),
+                if (cheatDs) tr("Type or paste an Action Replay DS code, one line or many.")
+                else tr("Type or paste a GameShark, Action Replay or CodeBreaker code, one line or many. AUTO works out which it is; pick the type when a code doesn't take."),
                 m, small,
             )
             OptionListWindow(m, Modifier.fillMaxWidth()) {
@@ -1610,8 +1614,8 @@ class SettingsActivity : ComponentActivity() {
                     GbaText(tr("CODE"), OptionColors.label, OptionColors.labelShadow, m, Modifier.padding(vertical = m.u * 2))
                     OptionTextField(code, { code = it.uppercase(); error = null }, small, placeholder = "XXXXXXXX YYYYYYYY", minLines = 3, code = true)
                     Spacer(Modifier.height(m.u * 2))
-                    // Back by the list row's own inset, so TYPE lines up with NAME and CODE.
-                    OptionLine(tk("TYPE"), type.label, selected = false, m, Modifier.offset(x = -m.u * 4), height = m.rowHeight * 1.2f) {
+                    // Back by the list row's own inset, so TYPE lines up with NAME and CODE. A DS game has one kind of code.
+                    if (!cheatDs) OptionLine(tk("TYPE"), type.label, selected = false, m, Modifier.offset(x = -m.u * 4), height = m.rowHeight * 1.2f) {
                         val types = CheatType.entries
                         selector = Selector(tk("TYPE"), types.map { it.label }, type.label) { l -> type = types.first { it.label == l }; error = null }
                     }
@@ -1623,11 +1627,12 @@ class SettingsActivity : ComponentActivity() {
                         OptionButton(tk("ADD"), m, emphasis = true, enabled = code.isNotBlank(), onClick = {
                             val lines = CheatCodes.normalize(code)
                             val label = name.trim().ifEmpty { tr("CHEAT {0}", cheatList.size + 1) }
-                            val r = CheatCheck.check(Cheat(label, lines), type)
+                            val r = CheatCheck.check(Cheat(label, lines), type, ds = cheatDs)
                             val ok = r.cheat
                             if (ok == null) {
                                 error = when {
                                     r.bad.isEmpty() -> tr("That isn't a code.")
+                                    cheatDs -> tr("{0} isn't an Action Replay DS line.", r.bad.joinToString(", "))
                                     type == CheatType.AUTO -> tr("mGBA can't read {0}.", r.bad.joinToString(", "))
                                     else -> tr("mGBA can't read {0} as a {1} code.", r.bad.joinToString(", "), tr(type.label))
                                 }
@@ -2002,7 +2007,7 @@ class SettingsActivity : ComponentActivity() {
                             Spacer(Modifier.width(m.u * 4))
                             OptionButton(tk("REMOVE"), small, enabled = !romsScanning, onClick = {
                                 prefs.romsFolders = prefs.romsFolders - d
-                                RomFolder.forget(this@SettingsActivity, d)
+                                RomFolder.forgetLater(this@SettingsActivity, d)
                                 folderTick++
                             })
                         }
@@ -2212,17 +2217,25 @@ class SettingsActivity : ComponentActivity() {
         extraButtons: @Composable () -> Unit = {},
     ) {
         val ctx = LocalContext.current
-        val files = remember(tick, dir) {
-            // Hidden folders skipped: a synced saves folder's .stversions / .stfolder hold every old copy.
-            dir.walkTopDown().onEnter { it == dir || !it.name.startsWith(".") }
-                .filter { it.isFile && !it.name.startsWith(".") }.sortedBy { it.relativeToOrSelf(dir).path }.toList()
+        // Listed off the UI thread, sizes with it: a big synced saves folder walked during composition (and every file's
+        // size read again on each recomposition) froze Settings until Android called it not responding (Crashlytics, 1.3.3).
+        val listing by produceState<List<Pair<File, Long>>?>(null, tick, dir) {
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                // Hidden folders skipped: a synced saves folder's .stversions / .stfolder hold every old copy.
+                dir.walkTopDown().onEnter { it == dir || !it.name.startsWith(".") }
+                    .filter { it.isFile && !it.name.startsWith(".") }.sortedBy { it.relativeToOrSelf(dir).path }
+                    .map { it to it.length() }.toList()
+            }
         }
-        val total = files.sumOf { it.length() }
+        val files = listing.orEmpty()
+        val total = files.sumOf { it.second }
         OptionListWindow(m, Modifier.fillMaxWidth()) {
             Column(Modifier.padding(horizontal = m.u * 4)) {
                 title?.let { GbaText(it, OptionColors.label, OptionColors.labelShadow, m) }
                 GbaText(dir.absolutePath, OptionColors.muted, OptionColors.mutedShadow, small, maxLines = 3)
-                GbaText(tr("{0} FILE(S) · {1}", files.size, humanSize(total)), OptionColors.muted, OptionColors.mutedShadow, small)
+                if (listing != null) {
+                    GbaText(tr("{0} FILE(S) · {1}", files.size, humanSize(total)), OptionColors.muted, OptionColors.mutedShadow, small)
+                }
                 Row(
                     modifier = Modifier.padding(vertical = m.u * 4),
                     horizontalArrangement = Arrangement.spacedBy(m.u * 4),
@@ -2231,16 +2244,18 @@ class SettingsActivity : ComponentActivity() {
                     extraButtons()
                 }
 
-                if (files.isEmpty()) {
+                if (listing == null) {
+                    // Still listing: nothing yet.
+                } else if (files.isEmpty()) {
                     GbaText(tr("(EMPTY)"), OptionColors.muted, OptionColors.mutedShadow, small)
                 } else {
-                    files.forEach { f ->
+                    files.forEach { (f, size) ->
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(top = m.u * 2),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             GbaText(f.relativeToOrSelf(dir).path, OptionColors.label, OptionColors.labelShadow, small, Modifier.weight(1f))
-                            GbaText(humanSize(f.length()), OptionColors.muted, OptionColors.mutedShadow, small)
+                            GbaText(humanSize(size), OptionColors.muted, OptionColors.mutedShadow, small)
                             Box(
                                 modifier = Modifier.clip(PixelRoundedShape(4.dp))
                                     .clickable { deletingFile = f }.padding(6.dp),

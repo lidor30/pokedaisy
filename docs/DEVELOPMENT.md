@@ -1329,8 +1329,9 @@ What `LaunchActivity` does with the ROM:
   suspended first, as on exit); the same game just comes back.
 
 Step-by-step setup: [iiSU](iisu/README.md), [ES-DE](es-de/README.md). Cocoon only
-lists emulators from its own platform files, so PokeDaisy has to be added there by
-its developer.
+lists emulators from its own platform files (inssekt/CocoonFE's `android/*.yaml`): PokeDaisy
+is in `gba`, `gb`, `gbc` and `nds` (`LaunchActivity`, `game: uri`, files with `zip` / `7z`),
+so a player only needs Cocoon's "Refetch platforms".
 
 To try it without a frontend:
 
@@ -1371,8 +1372,8 @@ its hotkey, press it once and check `adb logcat -s pokedaisy` for an
 
 ## Cheats
 
-GameShark / Action Replay (v1-v3) / CodeBreaker / VBA codes on mGBA's own cheat engine,
-GBA only. Where they live: top-screen Settings > CHEATS (also a game's library menu > CHEATS)
+GameShark / Action Replay (v1-v3) / CodeBreaker / VBA codes on mGBA's own cheat engine for GBA
+games, Action Replay DS codes on melonDS's for DS games (below). Where they live: top-screen Settings > CHEATS (also a game's library menu > CHEATS)
 adds them - typed (ADD CODE: NAME, CODE, TYPE AUTO / GAMESHARK / ACTION REPLAY / CODEBREAKER)
 or imported (IMPORT FILE: RetroArch's libretro `.cht` or mGBA's `.cheats`) - and turns them on
 and off; the companion's SETTINGS > CHEATS only toggles (no keyboard there). Typed codes start
@@ -1404,6 +1405,13 @@ ON, imported ones OFF. `Prefs.cheatsEnabled` is the master switch (off by defaul
   for a game with a set, and the ACHIEVEMENTS tab shows PAUSED: CHEATS ON.
 - **Savestates** don't carry cheats (`SAVESTATE_CHEATS` isn't in the flags); a state made with a
   cheat on does carry the memory it wrote, like any emulator.
+- **DS games** take Action Replay DS codes on melonDS's own engine (`AREngine`, which runs the
+  enabled codes when the ARM7 takes its VBlank interrupt, the way the real device hooked it). Same
+  store and file; a code line is two 8-digit words, checked in Kotlin (`CheatCheck.checkDs`: mGBA's
+  parser is GBA only), no TYPE / directive. `EmulatorEngine.applyCheats` turns the enabled ones into
+  words (`DsCheats`) for `MgbaCore.pkNdsCheats` -> `pk_nds_set_cheats`, which replaces
+  `AREngine.Cheats` between frames. melonDS states don't keep them either; STEADY's second melonDS
+  never gets them. Game Boy games take none.
 
 ## PLAYER LOOK (another game's hero)
 
