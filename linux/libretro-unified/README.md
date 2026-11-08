@@ -61,6 +61,12 @@ The D-pad moves within the current tab. In Party, A opens the highlighted
 Pokémon and switches between Moves and Stats. Up/Down changes Pokémon,
 Select opens or closes Learn where the game supplies it, and Left/Right
 scrolls the learnset. B returns to the highlighted Pokémon in the grid.
+
+In Bag, Left/Right cycles **All** and occupied pockets, Up/Down selects an
+item, A opens its details, and B returns to the list. Press Select while
+browsing to cycle **Default**, **Name**, and **Count** (highest first).
+Sorting only changes the companion display.
+
 The DS map uses the space above the tab bar, with **Places** and **Me**
 overlaid on the map. Press B to focus those controls.
 

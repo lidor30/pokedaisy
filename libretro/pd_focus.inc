@@ -16,7 +16,11 @@ static struct screen screen_of(const struct pd_ui *u) {
 }
 static void focus_new_screen(void) { lastScreen.tab = -1; }
 // What the cursor can land on: not the tab bar, nor a scrim or a list's drag area.
-static bool focusable(int id) {
+static bool bag_browsing(const struct pd_ui *u) {
+  return u->tab == PD_TAB_BAG && u->overlay == PD_OVERLAY_NONE && !u->itemPicking && u->bagSelected < 0;
+}
+static bool focusable(const struct pd_ui *u, int id) {
+  if (bag_browsing(u)) return id >= HIT_BAG_ROW && id < HIT_BAG_ROW_END;
   return !(id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) && id != HIT_MORE && id != HIT_FF && id != HIT_SCRIM &&
          id != HIT_SHOULDER_L && id != HIT_SHOULDER_R && id != HIT_SCROLL_BAR &&
          id != HIT_BAG_LIST && id != HIT_DEX_LIST && id != HIT_GUIDE_LIST && id != HIT_SETTINGS_LIST;
@@ -111,7 +115,7 @@ static bool map_cursor_back(struct pd_ui *u) {
 }
 static void focus_activate(struct pd_ui *u) {
   int at = focus_index(u, focusId);
-  if (at < 0 || !focusable(focusId))
+  if (at < 0 || !focusable(u, focusId))
     return;
   const struct pd_hit *h = &u->hits[at];
   if (map_cursor_active(u)) {
@@ -140,7 +144,7 @@ static int focus_resolve(struct pd_ui *u) {
   lastScreen = now;
   int floor = modal_floor(u);
   int i = changed && !partyBack ? -1 : focus_index(u, focusId);
-  if (i >= 0 && i < floor)
+  if (i >= 0 && (i < floor || !focusable(u, u->hits[i].id)))
     i = -1;
   if (i < 0 && !changed && focusId >= 0) { // gone: the nearest item to where it was
     int best = 1 << 30;
@@ -148,16 +152,16 @@ static int focus_resolve(struct pd_ui *u) {
       const struct pd_hit *h = &u->hits[j];
       int dx = h->x + h->w / 2 - (focusAt.x + focusAt.w / 2),
           dy = h->y + h->h / 2 - (focusAt.y + focusAt.h / 2);
-      if (focusable(h->id) && dx * dx + dy * dy < best)
+      if (focusable(u, h->id) && dx * dx + dy * dy < best)
         best = dx * dx + dy * dy, i = j;
     }
   }
   if (i < 0 && u->startId >= 0)
     i = focus_index(u, u->startId);
-  if (i >= 0 && i < floor)
+  if (i >= 0 && (i < floor || !focusable(u, u->hits[i].id)))
     i = -1;
   for (int j = floor; i < 0 && j < u->hitCount; j++)
-    if (focusable(u->hits[j].id))
+    if (focusable(u, u->hits[j].id))
       i = j;
   focusId = i >= 0 ? u->hits[i].id : -1;
   if (i >= 0)
@@ -227,7 +231,7 @@ static bool focus_step(struct pd_ui *u, int direction, bool scroll) {
     if (i == cur)
       continue;
     struct pd_hit *t = &u->hits[i];
-    if (!focusable(t->id))
+    if (!focusable(u, t->id))
       continue;
     int dx = (t->x + t->w / 2) - (h->x + h->w / 2),
         dy = (t->y + t->h / 2) - (h->y + h->h / 2);

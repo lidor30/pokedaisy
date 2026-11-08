@@ -276,10 +276,9 @@ struct pd_bag_palette;
 // Optional read-only bag presentation; item IDs remain backend-owned.
 struct pd_bag_source {
     void* ctx;
-    int tabs;
+    int tabs, count;
     const char* (*pocketName)(void*, int);
-    int (*count)(void*, int);
-    bool (*item)(void*, int, int, struct pd_item*, bool* quantity);
+    bool (*item)(void*, int row, int* pocket, struct pd_item*, bool* quantity);
     const char* (*name)(void*, int);
 };
 // A list-only dex source: no ROM entry/sprite data is implied by a name.
@@ -420,7 +419,9 @@ struct pd_ui {
     int boxShown, boxSlot, boxSummary, boxPartySlot, boxTarget;
     bool boxSwapPick, boxDepositing;
     char boxMessage[64];
-    int bagPocket;   // the open pocket tab: 0 ALL, then each pocket with items, in the game's order
+    int bagPocket;   // the open pocket tab (native ID for bagSource, 0 is always ALL)
+    int bagTabCount;
+    unsigned bagPocketMask; // bagSource: occupied native pocket IDs plus ALL
     int bagSelected; // the item's row in that tab, -1 = none
     int bagScroll;   // pixels
     // USE / GIVE on the open item: the host's answer, the pick (itemPicking), a move's pick for that slot (-1 = none).
@@ -486,6 +487,7 @@ void pd_ui_guide_reset(struct pd_ui*);
 void pd_ui_guide_control(struct pd_ui*, int dx, int dy, bool confirm);
 void pd_ui_guide_boss_note(char*, size_t, const char* place, int count, int ace, int best);
 void pd_ui_dex_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*,int selected);
+void pd_ui_bag_cycle_sort(struct pd_ui*);
 void pd_ui_bag_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*, const struct pd_snapshot*);
 void pd_ui_party_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*,
                       const struct pd_snapshot*, int selected);

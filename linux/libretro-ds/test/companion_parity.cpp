@@ -183,7 +183,16 @@ int main(int argc,char**argv) {
     assert(ui.frame.tab==PD_TAB_BAG);
     draw();
     press(RETRO_DEVICE_ID_JOYPAD_LEFT);
-    assert(ui.pocket==(expect.game==G::Johto?8:5));
+    int lastPocket=0;
+    for(const auto& item:s.bag)lastPocket=std::max(lastPocket,item.pocket+1);
+    assert(lastPocket>0 && ui.pocket==lastPocket);
+    press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+    assert(ui.pocket==0);
+    for(int sort:{1,2,0}){
+      press(RETRO_DEVICE_ID_JOYPAD_SELECT);
+      assert(ui.frame.bagSort==sort && ui.scroll==0);
+      draw();
+    }
     press(RETRO_DEVICE_ID_JOYPAD_A);
     assert(ui.details);
     draw();

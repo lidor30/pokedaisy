@@ -42,31 +42,30 @@ constexpr pd_bag_palette unovaNight{
   0x19222E,0xB6B6B6,0x3A3F43,0,0
 };
 }
-void ds_bag_view(pd_canvas* c,const DsCompanion& s,int pocket,int selected,bool details){
-  pd_bag_source source{};source.ctx=const_cast<DsCompanion*>(&s);source.tabs=ds_bag_tabs(s.game);
+DsBagPockets ds_bag_view(pd_canvas* c,const DsCompanion& s,int pocket,int selected,bool details,int sort){
+  pd_bag_source source{};source.ctx=const_cast<DsCompanion*>(&s);source.tabs=ds_bag_tabs(s.game);source.count=int(s.bag.size());
   source.pocketName=[](void* data,int tab){
     const auto game=static_cast<DsCompanion*>(data)->game;
     static const char* names[]={"ALL","ITEMS","KEY ITEMS","TMs/HMs","MAIL","MEDICINE","BERRIES","BALLS","BATTLE"};
     if(tab<0||tab>=ds_bag_tabs(game))return "";
     return names[ds_unova(game)&&tab>=4?tab+1:tab];
   };
-  source.count=[](void* data,int tab){return ds_bag_count(*static_cast<DsCompanion*>(data),tab);};
-  source.item=[](void* data,int tab,int row,pd_item* out,bool* quantity){
-    if(row<0)return false;
+  source.item=[](void* data,int row,int* pocket,pd_item* out,bool* quantity){
     const auto& bag=static_cast<DsCompanion*>(data)->bag;
-    for(const auto& item:bag)if(ds_in_pocket(item,tab)){
-      if(row--!=0)continue;
-      out->id=item.id;out->quantity=item.count;*quantity=item.pocket!=1;return true;
-    }return false;
+    if(row<0||size_t(row)>=bag.size())return false;
+    const auto& item=bag[row];
+    *pocket=item.pocket+1;out->id=item.id;out->quantity=item.count;*quantity=item.pocket!=1;
+    return true;
   };
   source.name=[](void* data,int id){return ds_item(id,static_cast<DsCompanion*>(data)->game);};
   pd_snapshot snapshot{};snapshot.bagOk=s.valid;
   pd_ui ui{};ui.bagSource=&source;ui.bagPocket=pocket;ui.bagSelected=selected;
-  ui.bagDetails=details;ui.pressedId=-1;pd_game game{};
+  ui.bagDetails=details;ui.bagSort=sort;ui.shoulderTabs=true;ui.pressedId=-1;ui.focusId=-1;pd_game game{};
   if(ds_unova(s.game))ui.bagPalette=pd_dark_look?&unovaNight:&unova;
   else if(s.game==DsGame::Johto)ui.bagPalette=pd_dark_look?&johtoNight:&johto;
   else ui.bagPalette=pd_dark_look?&platinumNight:&platinum;
   ui.keepBackdrop=true;
   ds_companion_backdrop(c,s.game,PD_TAB_BAG,pocket);
   pd_ui_bag_view(&ui,c,&game,&snapshot);
+  return {ui.bagPocket,ui.bagPocketMask};
 }

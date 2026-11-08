@@ -18,6 +18,7 @@ struct DsCompanionUi {
   int selected=0,page=0,scroll=0,pocket=0,filter=0,mapX=0,mapY=0;
   int learnRow=0, learnLast=0;
   bool summary=false,details=false;
+  unsigned bagPockets=1;
   int dexEntry=0,dexRow=0,dexFilterFocus=-1;
   int placeRow=-1,mapAction=-1;
   int guideLoadedPage=-1,guideMap=-1;

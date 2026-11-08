@@ -96,6 +96,25 @@ static void test_crystal_guide(void) {
     assert(ui.guidePage == 0);
 }
 
+static const char* test_pocket_name(void* ctx, int pocket) {
+    (void) ctx;
+    const char* names[] = {"ALL", "KEY", "ITEMS", "BALLS"};
+    return names[pocket];
+}
+
+static const char* test_bag_name(void* ctx, int item) {
+    (void) ctx;
+    const char* names[] = {"", "Antidote", "Potion", "X Attack"};
+    return names[item];
+}
+
+static bool test_bag_item(void* ctx, int row, int* pocket, struct pd_item* out, bool* quantity) {
+    *out = ((const struct pd_item*)ctx)[row];
+    *pocket = row == 2 ? 3 : 2;
+    *quantity = true;
+    return true;
+}
+
 int main(void) {
     test_crystal_guide();
     test_dex_evolutions();
@@ -218,6 +237,45 @@ int main(void) {
         pd_ui_bag_view(&ui,&c,&bagGame,&party);
         assert(memcmp(gap,partyPx+y*c.w+panelX-4,sizeof gap));
         assert(has(&ui,HIT_BAG_TAB) && has(&ui,HIT_BAG_LIST));
+    }
+    // The DS inventory uses the shared Bag sort and hides empty pockets.
+    struct pd_item bagItems[] = {{2, 8}, {1, 1}, {3, 12}};
+    const struct pd_bag_source bagSource = {
+        .ctx=bagItems, .tabs=4, .count=3, .pocketName=test_pocket_name,
+        .item=test_bag_item, .name=test_bag_name,
+    };
+    pd_ui_init(&ui,&settings);
+    ui.shoulderTabs = true;
+    ui.bagSource = &bagSource;
+    ui.bagDetails = true;
+    ui.bagPocket = 1; // empty, with occupied pockets 2 and 3
+    pd_ui_bag_view(&ui,&c,&fr,&party);
+    assert(ui.bagPocket == 0 && ui.bagTabCount == 3 && ui.bagPocketMask == 13);
+    assert(has(&ui,HIT_BAG_SORT));
+    const int first[] = {2, 1, 3, 2};
+    for (int i=0;i<4;i++) {
+        ui.bagDetails = true;
+        ui.bagSelected = 0;
+        pd_ui_bag_view(&ui,&c,&fr,&party);
+        assert(ui.bagItemShown == first[i]);
+        pd_ui_bag_cycle_sort(&ui);
+    }
+    struct pd_bag_source empty = bagSource;
+    empty.count = 0;
+    ui.bagSource = &empty;
+    pd_ui_bag_view(&ui,&c,&fr,&party);
+    assert(ui.bagTabCount == 1 && ui.bagPocketMask == 1 && !has(&ui,HIT_BAG_TAB+1));
+    // Native GBA pockets also use the common sorting and keep cartridge order in Default.
+    ui.bagSource = NULL;
+    party.bag[PD_POCKET_BALLS].count = 3;
+    memcpy(party.bag[PD_POCKET_BALLS].items,bagItems,sizeof bagItems);
+    ui.bagSort = 0;
+    const int gbaFirst[] = {2, 3, 3, 2}; // Ultra Ball, Great Ball, Great Ball, Ultra Ball
+    for (int i=0;i<4;i++) {
+        ui.bagSelected = 0;
+        pd_ui_bag_view(&ui,&c,&fr,&party);
+        assert(ui.bagTabCount == 2 && ui.bagItemShown == gbaFirst[i]);
+        pd_ui_bag_cycle_sort(&ui);
     }
     puts("PASS default/null host, optional scaling row, remaining settings and FF interaction, EXPAND rows, party grid");
 }

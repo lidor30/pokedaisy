@@ -83,7 +83,8 @@ enum {
     HIT_BATTLE_SUGGEST = 3000,
     HIT_BATTLE_INFO = 3001,
     HIT_FOE_SLOT = 3010,   // + foe party index
-    HIT_BAG_ROW = 20000,   // + item index (up to PD_POCKET_SLOTS: a hack's pockets run past 100)
+    HIT_BAG_ROW = 20000,   // + item index
+    HIT_BAG_ROW_END = HIT_BAG_ROW + PD_POCKET_COUNT * PD_POCKET_SLOTS,
     HIT_BATTLE_CONTROLS = 3020, // INFO / SUGGESTIONS' way back to the controls
     HIT_BATTLE_FIGHT = 3030,
     HIT_BATTLE_BAG = 3031,

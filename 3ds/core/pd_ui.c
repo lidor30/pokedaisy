@@ -583,11 +583,11 @@ static void act(struct pd_ui* ui, int id) {
         ui->action = PD_ACTION_ITEM_TAKE;
     } else if (id == HIT_BACK) {
         pd_ui_back(ui);
-    } else if (id >= HIT_BAG_TAB && id < HIT_BAG_TAB + 8) {
+    } else if (id >= HIT_BAG_TAB && id < HIT_BAG_LIST) {
         ui->bagPocket = id - HIT_BAG_TAB;
         ui->bagSelected = -1;
         ui->bagScroll = 0;
-    } else if (id >= HIT_BAG_ROW && id < HIT_BAG_ROW + PD_POCKET_SLOTS) {
+    } else if (id >= HIT_BAG_ROW && id < HIT_BAG_ROW_END) {
         ui->bagSelected = id - HIT_BAG_ROW;
     } else if (id == HIT_SETTING + SETTING_FILTER) {
         ui->settings->lcdFilter = !ui->settings->lcdFilter;

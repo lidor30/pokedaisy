@@ -1184,6 +1184,22 @@ RETRO_API void retro_run(void) {
           ui.summarySlot < snap.partyCount && ui.overlay == PD_OVERLAY_NONE;
       if (partySummary) {
         pd_ui_party_summary_control(&ui, &snap, down(RIGHT) - down(LEFT), down(DOWN) - down(UP), down(A), down(SELECT));
+      } else if (bag_browsing(&ui)) {
+        const int dx = down(RIGHT) - down(LEFT);
+        if (down(SELECT)) {
+          pd_ui_bag_cycle_sort(&ui);
+          focusId = -1;
+          focus_new_screen();
+        } else if (dx && ui.bagTabCount > 1) {
+          ui.bagPocket = (ui.bagPocket + dx + ui.bagTabCount) % ui.bagTabCount;
+          ui.bagScroll = 0;
+          focusId = -1;
+          focus_new_screen();
+        } else {
+          if (down(UP)) focus_move(&ui, UP);
+          if (down(DOWN)) focus_move(&ui, DOWN);
+          if (down(A)) focus_activate(&ui);
+        }
       } else if (ui.tab == PD_TAB_GUIDE && (ui.overlay == PD_OVERLAY_NONE || ui.overlay == PD_OVERLAY_GUIDE_NOTICE)) {
         pd_ui_guide_control(&ui, down(RIGHT) - down(LEFT), down(DOWN) - down(UP), down(A));
       } else {

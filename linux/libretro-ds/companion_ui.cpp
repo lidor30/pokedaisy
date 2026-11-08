@@ -181,7 +181,11 @@ void DsCompanionUi::draw_body(pd_ui* u,pd_canvas* c){
   }
   if(u->tab==PD_TAB_PARTY)
     ds_party_view(c,*snapshot,*icons,selected,summary,page,&dexArt,learnRow,&learnLast);
-  if(u->tab==PD_TAB_BAG)ds_bag_view(c,*snapshot,pocket,scroll,details);
+  if(u->tab==PD_TAB_BAG){
+    const auto visible=ds_bag_view(c,*snapshot,pocket,scroll,details,frame.bagSort);
+    bagPockets=visible.occupied;
+    if(pocket!=visible.active){pocket=visible.active;scroll=0;details=false;}
+  }
   if(u->tab==PD_TAB_DEX){
     const auto* regional=dex_order();
     if(dexEntry){
@@ -348,9 +352,18 @@ bool DsCompanionUi::control(unsigned pressed){
     }
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(summary)summary=false;else return true;}
   }else if(frame.tab==PD_TAB_BAG){
-    if(dx){const int tabs=ds_bag_tabs(game);pocket=(pocket+dx+tabs)%tabs;scroll=0;}
-    scroll=std::clamp(scroll+dy,0,std::max(0,snapshot?ds_bag_count(*snapshot,pocket)-1:0));
-    if(hit(RETRO_DEVICE_ID_JOYPAD_A))details=!details;
+    if(!details && hit(RETRO_DEVICE_ID_JOYPAD_SELECT)){
+      pd_ui_bag_cycle_sort(&frame);
+      scroll=0;
+    }
+    if(!details && dx){
+      const int tabs=ds_bag_tabs(game);
+      do pocket=(pocket+dx+tabs)%tabs; while(!(bagPockets&(1u<<pocket)));
+      scroll=0;
+    }
+    const int count=snapshot?ds_bag_count(*snapshot,pocket):0;
+    scroll=std::clamp(scroll+dy,0,std::max(0,count-1));
+    if(count>0 && hit(RETRO_DEVICE_ID_JOYPAD_A))details=!details;
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(details)details=false;else return true;}
   }else if(frame.tab==PD_TAB_DEX){
     const auto* regional=dex_order();
