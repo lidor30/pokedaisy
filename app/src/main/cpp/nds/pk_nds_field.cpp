@@ -593,6 +593,11 @@ static const PkNdsFieldGame* portGame(const char code[4], int revision)
 static const int GEN5_OFF_VIEW = 0x54;
 static const int GEN5_OFF_SLIDE = 0x08, GEN5_OFF_PANEL = 0x58, GEN5_OFF_WAITING = 0x60;
 static const int GEN5_ACMD_PARTY = 5;
+// "Will you switch your Pokémon?" after a foe faints (SHIFT style): the prompt (panel 4), then on SWITCH POKéMON the party,
+// both under this one command with the panel at 0 for the party and nothing in btlv_scd's opened screen; KEEP BATTLING
+// leaves the command ~12 frames on (headless, Black 2 on the player's state at that prompt, 2026-11-09).
+static const int GEN5_ACMD_SWITCH_ASK = 4;
+static int gen5SwitchAsked;   // the prompt was up during this GEN5_ACMD_SWITCH_ASK
 
 static const PkNdsGen5Touch* gen5Touch(const PkNdsFieldGame* g)
 {
@@ -735,6 +740,15 @@ static int gen5BattleCommand(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_
     return (int) ((read32(a & ~3u) >> ((a & 3) * 8)) & 0xFF);
 }
 
+int pk_nds_gen5_battle_panel(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), int out[3])
+{
+    const PkNdsGen5Touch* t = g && g->gen == 5 ? gen5Touch(g) : nullptr;
+    uint32_t gs = t ? read32(g->fieldSystemPtr) : 0;
+    uint32_t proc = inMainRam(gs) ? gen5Proc(g, read32, gs) : 0;
+    if (!proc || (int) read32(proc + g->offProcOverlay) != g->battleOverlay) return 0;
+    return gen5BattlePanel(g, t, read32, proc, &out[0], &out[1], &out[2]);
+}
+
 // Gen 5's touch bits in a battle (proc: the battle's): the commands and the moves are the battle buttons' own while their
 // panel takes touches; the bag and the party (and a fainted Pokémon's party) are screens of their own, faded in; any
 // other panel (a prompt) is the touch screen's.
@@ -749,6 +763,11 @@ static int gen5BattleTouch(const PkNdsFieldGame* g, const PkNdsGen5Touch* t, uin
         return 0;
     }
     if (command == GEN5_ACMD_PARTY) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
+    // The switch prompt's party: after the prompt, no panel (the party's own screen, faded in - the engine waits the fade
+    // out, so KEEP BATTLING's few frames never float anything in).
+    if (command != GEN5_ACMD_SWITCH_ASK) gen5SwitchAsked = 0;
+    else if (panel == 4) gen5SwitchAsked = 1;
+    else if (gen5SwitchAsked && panel == 0) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
     return panel >= 3 ? PK_NDS_FIELD_TOUCH : 0;
 }
 
@@ -760,6 +779,7 @@ static int holding5;
 void pk_nds_field_reset_wild(void)
 {
     holding = holding5 = checked = 0;
+    gen5SwitchAsked = 0;
 }
 
 static void gen5Wild(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), void (*write32)(uint32_t, uint32_t),
@@ -780,6 +800,7 @@ static int gen5FieldState(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t),
     const PkNdsGen5Touch* touch = gen5Touch(g);
     if (overlay == g->battleOverlay)
         return bits | PK_NDS_FIELD_BATTLE | PK_NDS_FIELD_LOCKED | (touch ? gen5BattleTouch(g, touch, read32, proc) : 0);
+    gen5SwitchAsked = 0;
     if (overlay != g->fieldOverlay || !inMainRam(fieldMap)) {
         bits |= PK_NDS_FIELD_MENU | PK_NDS_FIELD_LOCKED;
         if (touch) {
