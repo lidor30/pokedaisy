@@ -691,6 +691,18 @@ int pk_nds_wide_scene(void)
     return (b & PK_NDS_FIELD_TEXT) ? 1 : 0;
 }
 
+static int fadeFactor(u16 mb)
+{
+    const int mode = mb >> 14, k = mb & 0x1F;
+    return (mode == 1 || mode == 2) ? (k > 16 ? 16 : k) : 0;
+}
+
+int pk_nds_fade(void)
+{
+    if (!ds) return 0;
+    return fadeFactor(ds->nds->GPU.GPU2D_A.MasterBrightness) | (fadeFactor(ds->nds->GPU.GPU2D_B.MasterBrightness) << 8);
+}
+
 bool pk_nds_rom_code(char out[5])
 {
     if (!ds) return false;

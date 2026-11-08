@@ -285,7 +285,7 @@ class EmulatorEngine(
     val battleMenuCursor: Int get() = if (nds) -1 else battleInput.menuCursor
 
     /** Keep showing the last frame: an automated switch is in the game's party menu (see [BattleInputController.holdFrame]). */
-    val holdFrame: Boolean get() = battleInput.holdFrame
+    val holdFrame: Boolean get() = battleInput.holdFrame || dsHeld
 
     /** actionIndex: 0=FIGHT, 1=BAG, 2=POKEMON, 3=RUN. Call from the UI thread. */
     fun battleSelectAction(actionIndex: Int) = if (nds) ndsTaps.selectAction(actionIndex) else battleInput.selectAction(actionIndex)
@@ -462,6 +462,19 @@ class EmulatorEngine(
 
     /** A DS game's touch screen is one colour (a fade, an evolution): the floating window hides meanwhile. Emu thread. */
     val dsTouchBlank = kotlinx.coroutines.flow.MutableStateFlow(false)
+
+    /** One screen's DS LAYOUT is up (the activity's): a menu's way in and out goes by under [dsHold]. */
+    @Volatile var dsQuickLoads = false
+
+    /** DS LAYOUT's transition hold ([DsTransitionHold]): from a menu transition's first faded frame until the next screen
+     * is lit, both screens keep the picture before it (the touch screen's [NdsBottomFrame.held], the top's [holdFrame])
+     * and the game runs flat out, muted (at FF's speed with its music while FF is on), the player's keys and taps held
+     * back. Emu thread. */
+    private val dsHold = DsTransitionHold()
+    @Volatile private var dsHeld = false
+
+    /** [dsHold]'s, for the UI (the window's frozen picture, its shade and dots). Set on the emu thread. */
+    val dsHolding = kotlinx.coroutines.flow.MutableStateFlow(false)
     private var darkBefore = false
     private var fadeSeen = false
     private var fadeFrames = 0
@@ -614,10 +627,35 @@ class EmulatorEngine(
         // there, so it runs flat out (muted) and the battle comes back in a fraction of a second.
         if (battleInput.holdFrame) return Float.POSITIVE_INFINITY
         val s = requestedSpeed()
+        // A DS game going to its next screen behind the held pictures (dsHold): the same, nothing to see or hear - unless
+        // FF is on, whose music plays through it (muting it cut the FF music and skipped it ahead): FF's speed then, never
+        // SMART's 1x (nothing to steer behind a held picture).
+        if (dsHeld) return if (s > 1f) s else Float.POSITIVE_INFINITY
         // SMART: menus and the region map's cursor can't be steered sped up -
         // 1x while one is up, and FF (still on) picks up again when it closes.
         // A battle runs fast but where it waits for the player (its menus, bag and party).
         return if (ffMode == FfMode.SMART && s > 1f && smartSlows(battleInput.gameState, menuOpen, mapOpen, battleWaiting)) 1f else s
+    }
+
+    /** No hold carried past a core (a held touch screen would stay frozen in the next game). */
+    private fun endDsHold() {
+        dsHold.release()
+        dsHeld = false
+        NdsBottomFrame.held = false
+        dsHolding.value = false
+    }
+
+    /** One frame of [dsHold], right after it ran. Emu thread. */
+    private fun stepDsHold() {
+        val held = dsHold.step(
+            MgbaCore.pkNdsFade(), fieldState, dsTouchWanted.value || dsMenuScreen.value || dsMenuApp.value, dsQuickLoads,
+        )
+        if (held == dsHeld) return
+        val ran = dsHold.frames
+        dsHeld = held
+        NdsBottomFrame.held = held
+        dsHolding.value = held
+        if (BuildConfig.DEBUG) Log.i("pokedaisy", if (held) "DS hold: on" else "DS hold: off after $ran frames")
     }
 
     private fun speedTag(s: Float): String = if (s.isInfinite()) "ff" else "${s}x"
@@ -892,6 +930,7 @@ class EmulatorEngine(
         followerShown = false
         tintNow.fill(256f)
         tintSent.fill(256)
+        endDsHold()
         onCoreReady?.invoke(vw, vh)
 
         // A state carries the save as it was when it was made, and loading it writes
@@ -1140,6 +1179,8 @@ class EmulatorEngine(
                     }
                     keys = coopKeys
                 }
+                // Behind DS LAYOUT's held pictures the player can't see what a key would do.
+                if (dsHeld) keys = 0
                 MgbaCore.pkSetKeys(keys)
                 if (nds) {
                     if (ndsScale != ndsScaleSet) {
@@ -1150,9 +1191,16 @@ class EmulatorEngine(
                     // EXPAND's slices (drawn after a frame, for the next) only come before a shown one - drawing them for
                     // every frame was two thirds of a DS frame's cost, and at 3x the group outran the refresh (stutter).
                     val ff = ffPerTick > 0
-                    MgbaCore.pkNdsSetDraw(!ff || ffGroup <= 1, !ff || (if (ffGroup > 1) ffGroup <= 2 else ffFit.size <= 1))
+                    if (dsHeld) {
+                        // Held: nothing is seen, so most frames skip their drawing (the hold still reads every
+                        // DsTransitionHold.DRAW_EVERY-th, to see the next screen lit).
+                        val n = dsHold.frames + 1
+                        MgbaCore.pkNdsSetDraw(n % DsTransitionHold.DRAW_EVERY == 0, (n + 1) % DsTransitionHold.DRAW_EVERY == 0)
+                    } else MgbaCore.pkNdsSetDraw(!ff || ffGroup <= 1, !ff || (if (ffGroup > 1) ffGroup <= 2 else ffFit.size <= 1))
                 }
                 MgbaCore.pkRunFrame()
+                // Before the frame is shown: the frame a menu transition starts fading on is never seen.
+                if (nds) stepDsHold()
                 onFrame?.invoke()
                 coop?.afterFrame()
                 framesRun++
@@ -1443,7 +1491,7 @@ class EmulatorEngine(
                 // only as SPED-UP (which STEADY falls back to only for a song or ROM it can't
                 // render). Slow-mo stays muted.
                 val spedUp = speed > 1f && clip == null && mode != FfMusicMode.OFF && !awaitingClip && !dsMusicOn
-                val wantPaused = rewinding || battleInput.holdFrame ||
+                val wantPaused = rewinding || battleInput.holdFrame || dsHeld && !ffWanted ||
                     !((speed == 1f && clip == null) || spedUp || dsMusicOn)
                 // Refreshes per frame when the display paces 1x; 0 = the timer and blocking audio.
                 // A screen whose ticks don't follow its refresh (VsyncCheck, GitHub #350): the timer and blocking writes,
@@ -1752,6 +1800,7 @@ class EmulatorEngine(
             if (nds) runCatching { MgbaCore.pkNdsMusicStop() }
             runCatching { RetroAchievements.onCoreStopping() }
             // The GL thread lets go of the frame buffer before pkDeinit frees it.
+            endDsHold()
             runCatching { onCoreStopping?.invoke() }.onFailure { Log.e("pokedaisy", "core stopping hook failed", it) }
             videoBuf = null
             runCatching { finishSave() }
@@ -2054,6 +2103,7 @@ class EmulatorEngine(
 
         /** ...and frames it must stay lit first: the battle's own redraw between the bag and its commands lasts 5. */
         const val FADE_LIT_FRAMES = 12
+
 
         /** FIELD HUD: frames of plain field before [onField] comes on (~1/3 s at 1x). */
         const val FIELD_SETTLE_FRAMES = 20

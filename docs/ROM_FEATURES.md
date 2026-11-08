@@ -370,7 +370,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
     client 0 -> btlv_core (+0x54) -> btlv_scd (+0x180) -> btlv_input (+0xB0); the panel's kind at input +0x58 (1 the
     commands, 2 the moves, 4 a prompt), its slide task at input +0x08 (a tap lands only once it's NULL: the moves 10 frames
     after +0x58 says 2, the commands 12 after CANCEL), scd +0x60 a panel up, scd +0x98 the bag (2) / party (3) it opened
-    while the adapter's command is 3; command 5 is a fainted Pokémon's party, 7 a prompt (`readGen5BattleInput`,
+    while the adapter's command is 3; command 5 is a fainted Pokémon's party, 7 a prompt, 4 "Will you switch your Pokémon?" after a foe faints (its prompt, then on SWITCH POKéMON its party with the panel at 0 and no opened screen: Black 2 headless on the player's state, 2026-11-09) (`readGen5BattleInput`,
     `pk_nds_field.cpp`'s `gen5BattleTouch`). Their buttons are elsewhere (`NdsBattleTaps.GEN5`), each tap checked. The strip
     is drawn in their look, the round panel made a 2 x 2 (`DsLook.UNOVA`, the user's call). Black 2 / White 2 (2026-11-02): the
     same, with btlv_scd at core +0x1C4, btlv_input at scd +0xBC and the opened screen at scd +0xA4 (headless in Black 2's wild

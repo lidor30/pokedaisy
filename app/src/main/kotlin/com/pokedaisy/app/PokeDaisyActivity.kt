@@ -3593,6 +3593,8 @@ class PokeDaisyActivity : Activity() {
         dsFill.value = on && fill
         // The X menu floats in: it comes back after a menu screen however that was left (the game closes it after touch).
         if (::engine.isInitialized) engine.dsKeepStartMenu = on && chosen.floats
+        // The black between a menu screen and the field goes by flat out (the overworld's picture covers it).
+        if (::engine.isInitialized) engine.dsQuickLoads = on
         dsCornerTaken.value = on && (layout == com.pokedaisy.app.companion.DsLayout.LARGE_SMALL || layout == com.pokedaisy.app.companion.DsLayout.PICTURE_IN_PICTURE)
         // Over the touch screen (beside the game, inset in it, floating over it): a tap on no button reaches it.
         if (::touchControls.isInitialized) touchControls.passMisses = on
@@ -3724,23 +3726,50 @@ class PokeDaisyActivity : Activity() {
             setContent {
                 val engine by hudEngine.collectAsState()
                 val idle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
-                val wanted by (engine?.dsTouchWanted ?: idle).collectAsState()
+                val wantedLive by (engine?.dsTouchWanted ?: idle).collectAsState()
                 val manual = dsWindowManual.value
                 val floats = dsFloats.value
                 // The game done with a window the player opened: it stays (their X closes it); the game wanting it
                 // again while it's up by hand: the game's now (no X - it goes when the game is done).
                 val menuIdle = remember { kotlinx.coroutines.flow.MutableStateFlow(false) }
-                val menu by (engine?.dsMenuScreen ?: menuIdle).collectAsState()
-                val menuApp by (engine?.dsMenuApp ?: menuIdle).collectAsState()
+                val menuLive by (engine?.dsMenuScreen ?: menuIdle).collectAsState()
+                val menuAppLive by (engine?.dsMenuApp ?: menuIdle).collectAsState()
                 val wideIdle = remember { kotlinx.coroutines.flow.MutableStateFlow(true) }
-                val wideScene by (engine?.dsWideScene ?: wideIdle).collectAsState()
+                val wideLive by (engine?.dsWideScene ?: wideIdle).collectAsState()
+                // A blank touch screen (a fade, the black between two screens) never shows: the window waits it out.
+                val blankLive by (engine?.dsTouchBlank ?: idle).collectAsState()
+                val darkLive by (engine?.dsDark ?: idle).collectAsState()
+                // A menu transition held (EmulatorEngine.dsHold): both screens keep their picture from before it, so the
+                // stage keeps its arrangement too - the window, the layout - until the next screen is up, then all at once.
+                val holding by (engine?.dsHolding ?: idle).collectAsState()
+                val latched = remember { arrayOfNulls<BooleanArray>(1) }
+                if (!holding || latched[0] == null) latched[0] = booleanArrayOf(wantedLive, menuLive, menuAppLive, wideLive, blankLive, darkLive)
+                val (wanted, menu, menuApp, wideScene) = latched[0]!!
+                val blank = latched[0]!![4]
+                val dark = latched[0]!![5]
                 androidx.compose.runtime.LaunchedEffect(menu, wideScene) {
                     if (dsMenuUp != menu || dsWide != wideScene) { dsMenuUp = menu; dsWide = wideScene; syncGameScreen() }
                 }
-                // A blank touch screen (a fade, the black between two screens) never shows: the window waits it out.
-                val blank by (engine?.dsTouchBlank ?: idle).collectAsState()
-                val dark by (engine?.dsDark ?: idle).collectAsState()
-                val open = floats && (wanted || manual) && !blank
+                // The held touch screen's picture: drawn over the live one as the hold ends, fading out (a crossfade).
+                val frozen = remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+                androidx.compose.runtime.LaunchedEffect(holding) {
+                    if (holding) frozen.value = runCatching { NdsBottomFrame.snapshot().asImageBitmap() }.getOrNull()
+                }
+                // (A page for both screens goes side by side, not in the window: at once, before the layout follows.)
+                val wantedNow = floats && (wanted || manual) && !menu
+                // A window already up when its touch screen goes black (the X menu into the party, the party back out) stays
+                // up with a loader in it - one modal loading its next page, not one closing and another opening a moment
+                // later. Only through the black between two screens, or a short blank: a touch screen left one colour
+                // longer (a picture of its own) isn't a wait.
+                val wasOpen = remember { booleanArrayOf(false) }
+                var blankLong by remember { androidx.compose.runtime.mutableStateOf(false) }
+                androidx.compose.runtime.LaunchedEffect(blank) {
+                    blankLong = false
+                    if (blank) { kotlinx.coroutines.delay(DS_BLANK_WAIT_MS); blankLong = true }
+                }
+                val loading = wantedNow && blank && wasOpen[0] && (dark || !blankLong)
+                val open = wantedNow && !blank || loading
+                androidx.compose.runtime.SideEffect { wasOpen[0] = open }
                 // PICTURE IN PICTURE: its inset goes while the touch screen is up large (the same screen twice otherwise).
                 androidx.compose.runtime.SideEffect { dsTouchView.alpha = if (open) 0f else 1f }
                 // A DS battle's menu (the HUD decides when: [dsStripShown]): kept on show behind the floating window - the
@@ -3764,18 +3793,9 @@ class PokeDaisyActivity : Activity() {
                     val menuUp = dsBattleMenu.mode != 0
                     androidx.compose.runtime.LaunchedEffect(menuUp) { if (menuUp && !view.isFocused) view.requestFocus() }
                 }
-                com.pokedaisy.app.companion.ui.DsTouchWindow(
-                    open = open,
-                    onClose = if (manual && !wanted) ({ dsWindowManual.value = false }) else null,
-                    onDismiss = ::dismissDsTouch,
-                    behind = if (menuApp) dsShots.field.value else null,
-                    // (hudClear: re-read when the touch controls move.)
-                    clearFor = { l, r -> hudClear.value.let { touchControls.clearAcross(l, r) } },
-                ) { modifier ->
-                    androidx.compose.ui.viewinterop.AndroidView({ NdsTouchScreenView(it) }, modifier)
-                }
                 // The black between a menu and the overworld (or back to the X menu): the overworld's picture over it all,
-                // as the modal's backdrop draws it, going once the game shows something again - never empty frames.
+                // as the modal's backdrop draws it, going once the game shows something again - never empty frames. Under
+                // a window kept up through it (its loader is in the window then).
                 val field = dsShots.field.value
                 val cover = dark && field != null && (menu || menuApp || wanted || manual)
                 val coverAlpha by androidx.compose.animation.core.animateFloatAsState(
@@ -3791,9 +3811,50 @@ class PokeDaisyActivity : Activity() {
                     androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer { alpha = coverShown }) {
                         com.pokedaisy.app.companion.ui.DsShotBackdrop(shot, blurred = false, modal = null)
                         // The game loading the next screen: something moving on the greyed-out picture.
-                        if (cover) com.pokedaisy.app.companion.ui.DsLoader()
+                        if (cover && !open) com.pokedaisy.app.companion.ui.DsLoader(ball = false)
                     }
                 }
+                // Behind a window the game opened (not in a battle, whose own picture and buttons stay on show): the game as
+                // it was when the menus began, until the game is back on the field with nothing up - not the stage changing
+                // underneath as the game moves between its pages (EXPAND's field, the 4:3 of a menu page, a page on both
+                // screens and back: the user's report). Taken once, fresh, as the first window opens (full size, also the
+                // overworld the two-screen pages sit on), live until it's in; never again on the way back from a two-screen
+                // page, where the stage is still changing shape (a copy then caught it half resized, black round it).
+                val inBattle by remember { androidx.compose.runtime.derivedStateOf { telemetry.snapshot.value.inBattle } }
+                val sessionShot = remember { androidx.compose.runtime.mutableStateOf<androidx.compose.ui.graphics.ImageBitmap?>(null) }
+                val inSession = (open || wanted || menu || menuApp) && !inBattle
+                val freezeBehind = open && (wanted || menuApp) && !inBattle
+                androidx.compose.runtime.LaunchedEffect(inSession) { if (!inSession) sessionShot.value = null }
+                androidx.compose.runtime.LaunchedEffect(freezeBehind) {
+                    if (!freezeBehind || sessionShot.value != null) return@LaunchedEffect
+                    // (The companion's battle flag can be a sample behind: the field read's is this frame's.)
+                    if ((engine?.fieldState ?: 0) and MgbaCore.FIELD_BATTLE != 0) return@LaunchedEffect
+                    // A menu page already: the overworld it was opened from. Else the game now (the field under the X menu).
+                    if (menuApp) { sessionShot.value = dsShots.field.value; return@LaunchedEffect }
+                    repeat(DS_FREEZE_TRIES) {
+                        if (dsShots.capture(intoField = true, full = true) { if (sessionShot.value == null) sessionShot.value = it }) return@LaunchedEffect
+                        kotlinx.coroutines.delay(16)
+                    }
+                }
+                val frozenBehind = if (freezeBehind) sessionShot.value else null
+                com.pokedaisy.app.companion.ui.DsTouchWindow(
+                    open = open,
+                    onClose = if (manual && !wanted) ({ dsWindowManual.value = false }) else null,
+                    onDismiss = ::dismissDsTouch,
+                    behind = frozenBehind ?: if (menuApp) dsShots.field.value else null,
+                    loading = loading,
+                    // Over the cover: it's already the dimmed overworld.
+                    backdrop = !cover,
+                    held = holding,
+                    frozen = frozen.value,
+                    // (hudClear: re-read when the touch controls move.)
+                    clearFor = { l, r -> hudClear.value.let { touchControls.clearAcross(l, r) } },
+                ) { modifier ->
+                    androidx.compose.ui.viewinterop.AndroidView({ NdsTouchScreenView(it) }, modifier)
+                }
+                // Held with no window up (a page side by side, on its way back to the field): the same shade and dots
+                // over the stage's held pictures.
+                com.pokedaisy.app.companion.ui.DsHeldShade(holding && !open)
             }
         }
     }
@@ -5175,7 +5236,14 @@ class PokeDaisyActivity : Activity() {
         /** How often [DsShots] takes the game's picture. */
         private const val DS_SHOT_MS = 1000L
         /** The overworld's picture over the black between a menu and the field fades out over this once the game is back. */
-        const val DS_COVER_FADE_MS = 220
+        const val DS_COVER_FADE_MS = 150
+
+        /** How long a floating window kept up through a blank touch screen waits for it ([DsTouchWindow]'s loading),
+         * unless both screens are black: past it, the window goes until the touch screen shows something. */
+        private const val DS_BLANK_WAIT_MS = 1000L
+
+        /** Tries (a frame apart) at the game's picture as a floating window opens, while another copy is on its way. */
+        private const val DS_FREEZE_TRIES = 10
         private const val SELECT_TRIES = 15
         private const val SELECT_WAIT = 10
         /** Set by [LaunchActivity]: leaving the game returns to the frontend. */

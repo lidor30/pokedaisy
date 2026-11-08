@@ -488,6 +488,8 @@ static void fieldInfo()
                gs ? read32(gs + g->offFieldMap) : 0, gs ? read32(gs + g->offEvent) : 0, pk_nds_bg3_tiles(nds, 0),
                pk_nds_bg3_tiles(nds, 1), pk_nds_bg3_tiles(nds, 2), pk_nds_bg3_tiles(nds, 3), pk_nds_battle_command(g, read32),
                pk_nds_field_state(g, read32, write32, wildOff));
+        int panel[3];
+        if (pk_nds_gen5_battle_panel(g, read32, panel)) printf("  battle panel %d waiting %d screen %d\n", panel[0], panel[1], panel[2]);
         fflush(stdout);
         return;
     }

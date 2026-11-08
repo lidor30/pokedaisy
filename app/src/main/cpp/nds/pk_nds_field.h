@@ -119,6 +119,9 @@ int pk_nds_origin_heartgold(const uint8_t* rom, uint32_t romLen);
 
 /** The battle controller's step (BattleContext.command: CONTROLLER_COMMAND_*) while a battle runs, else -1. */
 int pk_nds_battle_command(const PkNdsFieldGame* game, uint32_t (*read32)(uint32_t addr));
+/** Gen 5's battle touch screen as the touch rules read it: [out] = the panel's kind, whether it takes taps, the screen
+ * btlv_scd opened (2 the bag, 3 the party). 0 when there's no battle panel (not Gen 5, no battle). nds_dump's fieldinfo. */
+int pk_nds_gen5_battle_panel(const PkNdsFieldGame* game, uint32_t (*read32)(uint32_t addr), int out[3]);
 
 /** CONTROLLER_COMMAND_SELECTION_SCREEN_INPUT: the battle waits for the player's command (FIGHT / BAG / POKéMON / RUN, a
  * move, a target - and the bag or party opened from there). */
