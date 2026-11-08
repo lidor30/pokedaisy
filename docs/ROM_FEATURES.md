@@ -492,7 +492,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
   `NativeConfig.partyMenu` for the games it reads from their config (SoulGold, Recharged Yellow, Recharged Emerald, Super
   Mariomon, the FireRed / LeafGreen ports); the Game Boy games through `TelemetrySampler.gbPartySwitch` (Yellow in every
   language, the Crystal family), with their addresses on `Gen1Config` / `Gen2Config` (`partyMenuType` /
-  `playerMonNumber`, `partyMenuAction` / `curBattleMon`).
+  `playerMonNumber`, `partyMenuAction` / `curBattleMon`). A menu whose shape is the player's option reads it at every step
+  (`NativeConfig.partyMenuStyleOff` -> `SwitchAddrs.gridOption`): SoulGold's OPTIONS > PARTY MENU, CUSTOM a list, HGSS / BW a
+  two-column grid (GitHub #316: steered as a list on HGSS, the cursor bounced between two slots).
 - **Field items**: `fieldItemsForGame` in `FieldItems.kt` (retail tables + `FieldItemsPortsGen.kt`), or the config's
   own `NativeConfig.fieldItems` for a rebuild that shares retail's game code (Recharged Emerald:
   `FieldItemsRechargedEmeraldGen.kt` from `scripts/find_field_items_recharged_emerald.py`), each gated on its

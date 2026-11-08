@@ -965,8 +965,10 @@ trainer-only for FOE TEAM). Hidden Power's power shows only on FIRERED/EMERALD k
 on FireRed rev 1 / Emerald (`switchAddrsFor`in`PokeDaisyActivity`; gPartyMenu
 FR `0x0203B0A0`/ EM`0x0203CEC8`, slotId at +9) and the hacks listed there (Unbound since
 2026-10-13: FireRed's addresses under CFRU's two-column grid, `grid = true` like Amethyst - DOWN from slot 0 lands on 2;
-SoulGold's config entry, a plain list, checked headless the same day - both with the lead copied into slots 2-3, A + SHIFT
-on slot 2 put 2 into gBattlerPartyIndexes[0]), POKéMON opens the PARTY tab's own slots
+SoulGold's config entry, checked headless the same day - both with the lead copied into slots 2-3, A + SHIFT
+on slot 2 put 2 into gBattlerPartyIndexes[0]; SoulGold's shape is its OPTIONS > PARTY MENU, read at every step: CUSTOM a list
+of six with no CANCEL row, HGSS / BW a two-column grid - `partyMenuStyleOff`, SaveBlock1 +0x348C, `SwitchAddrs.gridOption`;
+steered as a list on HGSS it bounced between two slots, GitHub #316), POKéMON opens the PARTY tab's own slots
 (`PartyGrid`, shared with `PartyScreen`; taps leave the sound to the game, as above) - the game's cursor and a BEST tag on
 `recommendedSwitch`= SUGGESTIONS' top pick with BATTLE HINTS on, else the cursor on the battler (tagged OUT), and a
 "Choose a POKéMON." window with CANCEL below, full height (no ball strips or INFO / SUGGESTIONS over it); it also replaces the game's party screen whenever that's open (after a faint). A tap runs`switchTo(personality)`:
@@ -1025,7 +1027,7 @@ Batch 2 (2026-10-13, same checks, fixtures `radical_red_battle` / `gaia_battle` 
 Glazed retail Emerald's, Lazarus's sit +0x10 / +0x14 past its gBattleStruct pointer (0x0200083C / 0x02000840). The other CFRU
 hacks very likely share FireRed's and the expansion hacks need a dump diff each; add them the same way. Party menus seen so
 far: CFRU's two-column grid on Unbound / Radical Red / Amethyst / Odyssey / Sword and Shield, FireRed's own list on Gaia
-(DOWN 0 -> 1), a list on SoulGold / Glazed / Seaglass / TMT2 / Heart and Soul, a grid on Lazarus. Batch 3 (same day):
+(DOWN 0 -> 1), a list on Glazed / Seaglass / TMT2 / Heart and Soul, a grid on Lazarus, SoulGold's by its option. Batch 3 (same day):
 Odyssey, Amethyst, Sword and Shield keep FireRed's cursors; Seaglass's are Lazarus's layout 8 bytes earlier (0x02000834 /
 0x02000838); TMT2's 0x02000414 / 0x02000418 (dump diff). **Heart and Soul** had no battle input at all: its controller
 funcs (0x03002F54) and the action / move / bag / party handlers came from diffing dumps of one Route 29 battle (no

@@ -155,6 +155,7 @@ class TelemetryStore {
 
     /** The detected game's gPartyMenu + gPlayerParty, when its config has them. */
     fun knownPartyMenu(): Pair<Long, Long>? = sampler.knownPartyMenu
+    fun knownPartyMenuStyle(): Pair<Long, Int>? = sampler.knownPartyMenuStyle
     fun retailEnginePartyMenu(): Pair<Long, Long>? = sampler.retailEnginePartyMenu
 
     /** The detected game's own USE / GIVE / TAKE tables, when its config has them (FieldItems.kt). */

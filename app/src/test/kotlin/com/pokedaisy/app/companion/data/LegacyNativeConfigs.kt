@@ -696,6 +696,7 @@ val LEGACY_NATIVE_SOULGOLD = LEGACY_NATIVE_EMERALD.copy(
     waitForMonSelection = 0x0805FB09L,
     handleInputChooseTarget = 0x0805FEA5L,
     partyMenu = 0x02038D24L,
+    partyMenuStyleOff = 0x348C,
     eggSpecies = 1578,
     monIconTable = 0x087D4514L,           // gSpeciesInfo[0].iconSprite
     monIconStride = 0x118,
