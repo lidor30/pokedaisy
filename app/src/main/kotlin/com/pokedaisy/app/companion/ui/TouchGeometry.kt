@@ -490,6 +490,26 @@ object TouchGeometry {
      */
     fun hits(placed: Placed, x: Float, y: Float, slop: Float): List<Item> = placed.items.filter { it.contains(x, y, slop) }
 
+    /**
+     * The FIELD HUD's room to keep clear of the controls over the columns [[l], [r]) (px): down to the bottom of the
+     * top row, up from the bottom to the top of the bottom row. A row is the controls along that edge, within
+     * [HUD_ROW_GAP] of it (every preset's L / R, extras, D-pad, A / B and SELECT / START). A control a CUSTOM layout or
+     * RAISED puts further in (FF or the D-pad halfway up the side, GitHub #493) is left alone: keeping clear of it
+     * squeezed the HUD into a strip and lost its minimap.
+     */
+    fun hudClear(placed: Placed, l: Float, r: Float): Pair<Int, Int> {
+        val over = placed.items.filter { it.right > l && it.left < r }
+        val h = placed.h
+        val near = HUD_ROW_GAP * placed.dp
+        val top = over.filter { it.cy < h / 2 && it.top <= near }.maxOfOrNull { it.bottom } ?: 0f
+        val bottom = over.filter { it.cy >= h / 2 && h - it.bottom <= near }.minOfOrNull { it.top }?.let { h - it } ?: 0f
+        return top.toInt().coerceAtLeast(0) to bottom.toInt().coerceAtLeast(0)
+    }
+
+    /** How far from the top or bottom edge (dp) a control still counts as that edge's row for the HUD ([hudClear]):
+     * past every preset's (CLASSIC's A at HUGE, 14 + 2 x 12 x 1.4), short of a button moved up the side. */
+    const val HUD_ROW_GAP = 64f
+
     fun Item.contains(x: Float, y: Float, slop: Float): Boolean = when (shape) {
         Shape.CROSS -> hypot(x - cx, y - cy) <= w / 2 * 1.4f
         Shape.ROUND -> hypot(x - cx, y - cy) <= w / 2 * 1.25f + slop * 0.25f

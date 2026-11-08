@@ -5,7 +5,7 @@ Two GitHub Actions workflows guard `main` and the releases:
 | Workflow | Runs on | What it does |
 | --- | --- | --- |
 | **CI** (`.github/workflows/ci.yml`) | every PR, every push to `main` | translations check, all JVM unit tests, the debug APK (Kotlin + native mGBA/rcheevos build), `ui-preview`'s tab-switch `stress` budgets (which compile it) and docs search check; no screen render (`make preview` locally) |
-| **Release** (`.github/workflows/release.yml`) | a pushed `v<versionName>` tag | checks the tag, runs CI again on that commit, runs the ROM-backed tests on your ROM runner, builds and signs the APK, checks the signing key, uploads native symbols to Crashlytics, publishes the GitHub release, then starts the **Website** workflow for that tag (not for a pre-release) |
+| **Release** (`.github/workflows/release.yml`) | a pushed `v<versionName>` tag | checks the tag, runs CI again on that commit, runs the ROM-backed tests on your ROM runner, builds and signs the APK (arm64 and 32-bit ARM in one), checks the signing key and that both ABIs' libraries are in it, uploads native symbols to Crashlytics, publishes the GitHub release, then starts the **Website** workflow for that tag (not for a pre-release) |
 
 `make check` runs the same thing as CI locally. For the everyday loop, `make test-quick` (about a minute) runs the
 unit tests without the Paparazzi renders and `BestEffortTest`, its forks side by side; `make test-quick
@@ -37,6 +37,17 @@ library open.
 - Without CI (e.g. GitHub Actions down): `make release-local` builds, signs, uploads
   the symbols and publishes with the `gh` CLI from your Mac. A release published that way
   fires the Website workflow by itself.
+
+## One APK for arm64 and 32-bit ARM
+
+The release APK carries the native code for both arm64 (the Thor, the Retroid Pocket, phones) and 32-bit ARM
+(`-Ppokedaisy.armv7=true`), so a device running a 32-bit Android (a Galaxy Tab A SM-T510, older tablets) installs
+the same `PokeDaisy-<version>.apk` as everyone else, from the website, the release page or the in-app updater
+(every updater, old ones too). The cost is the 32-bit libraries: about 5 MB more in every APK (they're stored
+uncompressed, so Android maps them straight from the APK). One APK per ABI was tried and dropped (the owner's call,
+2026-11-08): players would have had to find the right file, and updaters before it take the first `.apk` of a
+release. The 32-bit build has no melonDS JIT (melonDS has none for 32-bit ARM), so DS games run on its interpreter
+there. Debug builds stay arm64 only unless they pass the flag.
 
 ## One-time setup
 

@@ -3,7 +3,7 @@ title: Install and first setup
 summary: Download the app, install it, go through the five setup steps and keep it up to date.
 section: start
 order: 2
-keywords: [download, apk, sideload, setup, first time, onboarding, permission, storage, update, upgrade, new version, unknown sources, wizard]
+keywords: [download, apk, sideload, 32-bit, armv7, older tablet, setup, first time, onboarding, permission, storage, update, upgrade, new version, unknown sources, wizard]
 ---
 
 PokeDaisy isn't on the Play Store. You install it from its GitHub page as an APK file, and the app then keeps itself up to date. The whole thing takes a few minutes.
@@ -11,7 +11,7 @@ PokeDaisy isn't on the Play Store. You install it from its GitHub page as an APK
 ## Download and install the APK
 
 1. On the device, open the [latest release](https://github.com/lidor30/pokedaisy/releases/latest) in a browser.
-2. Under **Assets**, tap `PokeDaisy-<version>.apk` to download it.
+2. Under **Assets**, tap `PokeDaisy-<version>.apk` to download it. The same file works on every device, including older tablets running a 32-bit Android.
 3. Open the downloaded file (from the browser's download notice, or your file manager's Downloads folder).
 4. If Android says it isn't allowed to install apps from this source, tap through to its settings, allow it for your browser or file manager, and go back. Then tap **Install**.
 5. Open PokeDaisy.

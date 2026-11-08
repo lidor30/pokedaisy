@@ -100,10 +100,10 @@ bump: ## Set versionName to V=<x.y.z> and versionCode + 1
 	rm -f app/build.gradle.kts.bak
 	@$(MAKE) --no-print-directory version
 
-release-apk: ## Signed release APK -> dist/PokeDaisy-<version>.apk (needs keystore.properties)
+release-apk: ## Signed release APK (arm64 + 32-bit ARM) -> dist/PokeDaisy-<version>.apk (needs keystore.properties)
 	@test -f keystore.properties || { echo "keystore.properties is missing: release builds would be unsigned"; exit 1; }
 	@test -f app/google-services.json || echo "!! no app/google-services.json: this build can't send crash reports"
-	./gradlew :app:assembleRelease
+	./gradlew :app:assembleRelease -Ppokedaisy.armv7=true
 	mkdir -p dist
 	cp app/build/outputs/apk/release/app-release.apk $(RELEASE_APK)
 	@echo ">> $(RELEASE_APK)"

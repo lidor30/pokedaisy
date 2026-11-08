@@ -29,6 +29,7 @@ import androidx.compose.foundation.lazy.LazyListState
 import androidx.compose.foundation.lazy.rememberLazyListState
 import androidx.compose.foundation.lazy.itemsIndexed
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.DisposableEffect
 import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
@@ -534,11 +535,34 @@ private fun Message(
 }
 
 /**
+ * Which popup host shows a popup: the companion's, on whichever screen the player sees it, else the one over the game.
+ * A DS game's touch screen sits where the companion goes on a GBA game (and one screen keeps the companion closed in its
+ * window or panel), so its popups played out unseen on a hidden companion: GitHub #500. Main thread (the hosts collect on
+ * Compose's dispatcher).
+ */
+object AchievementPopupRoute {
+    /** A host's view is on a screen the player sees (the app: its View's isShown); previews and tests: always. */
+    var shownProbe: @Composable () -> (() -> Boolean) = { { true } }
+
+    private val companions = LinkedHashSet<() -> Boolean>()
+
+    internal fun add(shown: () -> Boolean) { companions += shown }
+    internal fun remove(shown: () -> Boolean) { companions -= shown }
+
+    /** A companion's popup host is on screen now. */
+    fun companionSeen(): Boolean = companions.any { it() }
+
+    /** Whether a host takes a popup: the companion's while it's seen, the game's ([overGame]) while none is. */
+    fun takes(overGame: Boolean, shown: () -> Boolean): Boolean = if (overGame) !companionSeen() else shown()
+}
+
+/**
  * Popups over the whole companion, top center, one at a time: unlocks,
  * mastery, the "achievements loaded" note, progress, leaderboards and
  * connection notices. Tap one to dismiss it early - an unlock (or its progress)
  * also opens it in the ACHIEVEMENTS list, mastery the list ([onOpen]). [initial]
- * shows one right away (screenshot tests).
+ * shows one right away (screenshot tests). [overGame]: the host over the game, which shows them while no companion is
+ * on screen ([AchievementPopupRoute]).
  */
 @Composable
 fun AchievementPopupHost(
@@ -546,6 +570,7 @@ fun AchievementPopupHost(
     modifier: Modifier = Modifier,
     initial: AchievementPopup? = null,
     onOpen: ((AchievementPopup) -> Unit)? = null,
+    overGame: Boolean = false,
 ) {
     if (initial != null) {
         // Screenshot tests: shown as is, no timers.
@@ -557,8 +582,16 @@ fun AchievementPopupHost(
     val dismiss = remember { Channel<Unit>(Channel.CONFLATED) }
     var current by remember { mutableStateOf<AchievementPopup?>(null) }
     var visible by remember { mutableStateOf(false) }
+    val shown = AchievementPopupRoute.shownProbe()
+    if (!overGame) {
+        DisposableEffect(shown) {
+            AchievementPopupRoute.add(shown)
+            onDispose { AchievementPopupRoute.remove(shown) }
+        }
+    }
     LaunchedEffect(achievements) {
         achievements?.popups?.collect { p ->
+            if (!AchievementPopupRoute.takes(overGame, shown)) return@collect
             // A newer progress update replaces one still waiting.
             if (p.kind == AchievementPopup.Kind.PROGRESS) queue.removeAll { it.kind == p.kind && it.title == p.title }
             queue.add(p)

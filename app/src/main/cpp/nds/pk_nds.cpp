@@ -523,6 +523,7 @@ int pk_nds_field_bits(void)
 {
     if (!ds || !ds->field) return 0;
     int bits = pk_nds_field_state(ds->field, mainRead32, mainWrite32, ds->wildOff);
+    bits |= pk_nds_field_screen_touch(ds->field, bits, ds->nds->GPU.GPU2D_A.DispCnt);   // the intro's naming screen
     // The top screen blank and the touch screen showing something (the main menu's CONTINUE, a question asked down
     // there): the touch screen is what there is to see.
     const bool darkTop = oneColour(ds->top), darkBottom = oneColour(ds->bottom);

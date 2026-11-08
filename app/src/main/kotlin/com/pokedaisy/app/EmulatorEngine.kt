@@ -814,12 +814,21 @@ class EmulatorEngine(
      * game's). Latched until the core stops - flipping back and forth would skip / repeat a frame each time. */
     @Volatile private var slowFrames = false
 
+    /** The game screen's fastest display mode (Hz, 0 = unknown), for [VsyncCheck]: asked on the GL thread once a second. */
+    @Volatile var displayMaxHz: () -> Float = { 0f }
+    /** GL thread: whether its ticks follow the refresh at all (GitHub #350: the RG DS swaps without waiting for it). */
+    private val vsyncCheck = VsyncCheck()
+
     /** GL thread: the game's screen just refreshed (EmulatorView.onVsync). Returns how long the draw may
      * wait for the frame this refresh starts (~60% of a refresh), or 0 when none is due. */
     fun onVsync(): Long {
         val now = System.nanoTime()
         val d = now - lastVsyncNanos
         lastVsyncNanos = now
+        if (vsyncUnreliable == null && vsyncCheck.tick(now, displayMaxHz)) {
+            vsyncUnreliable = vsyncCheck.reason ?: "unreliable"
+            Log.w("pokedaisy", "pacing: the screen's ticks don't follow its refresh (${vsyncUnreliable}); the timer paces from now on")
+        }
         // A gap (the view paused, a dropped refresh) isn't a period.
         if (d in 4_000_000L..34_000_000L) {
             val p = vsyncPeriodNanos
@@ -846,7 +855,7 @@ class EmulatorEngine(
     /** Refreshes per game frame while the display paces 1x, or 0 for timer pacing. */
     private fun vsyncsPerFrame(): Int {
         val p = vsyncPeriodNanos
-        if (p == 0.0 || System.nanoTime() - lastVsyncNanos > 100_000_000L) return 0
+        if (p == 0.0 || System.nanoTime() - lastVsyncNanos > 100_000_000L || vsyncUnreliable != null) return 0
         val hz = 1e9 / p
         val n = (hz / GBA_FPS).roundToInt()
         // Within 1.5% of the GBA's own rate (60 / 120 Hz: +0.46%); a 90 Hz screen would judder either way.
@@ -1009,6 +1018,11 @@ class EmulatorEngine(
         var fpsDropped = 0
         var fpsCatchUps = 0
         var fpsHolds = 0
+        // ... and the timer's blocking writes: how many, their total and longest wait (a device whose audio takes
+        // writes in big chunks holds the loop for several frames, then it runs them back to back: GitHub #350).
+        var fpsBlocks = 0
+        var fpsBlockSum = 0L
+        var fpsBlockMax = 0L
         // Fast-forward at a whole number of game frames per refresh (2x / 3x / 4x on 60 Hz): the group of frames
         // for this refresh, run back to back on its tick, the last one drawn. Timer-paced frames with EXPAND's
         // window drawn every 12 ms gave the 60 Hz screen steps of 3, 3, 5 game frames: a judder RetroArch hasn't.
@@ -1432,6 +1446,9 @@ class EmulatorEngine(
                 val wantPaused = rewinding || battleInput.holdFrame ||
                     !((speed == 1f && clip == null) || spedUp || dsMusicOn)
                 // Refreshes per frame when the display paces 1x; 0 = the timer and blocking audio.
+                // A screen whose ticks don't follow its refresh (VsyncCheck, GitHub #350): the timer and blocking writes,
+                // like the audio's own fallback - vsync pacing on its made-up rate flipped on and off, 25-60 fps at 1x.
+                if (!vsyncFallback && vsyncUnreliable != null) vsyncFallback = true
                 val perFrame = if (speed == 1f && track != null && bufferFrames > 0 && !vsyncFallback) vsyncsPerFrame() else 0
                 pacedPerFrame = perFrame
                 val ffPer = ffFramesPerRefresh(speed, vsyncsPerFrame())
@@ -1563,7 +1580,12 @@ class EmulatorEngine(
                         queuedAfter = (framesWritten - played).toInt()
                         lastQueued = queuedAfter
                     } else if (speed == 1f) {
+                        val blockStart = System.nanoTime()
                         val w = track.write(scratch, 0, n)   // blocking → real-time pacing at 1x
+                        val blocked = System.nanoTime() - blockStart
+                        fpsBlocks++
+                        fpsBlockSum += blocked
+                        if (blocked > fpsBlockMax) fpsBlockMax = blocked
                         if (w > 0) framesWritten += w / 2
                         tap.frame(scratch, n, w, sampleRate.toDouble(), -1, 'b')
                     } else {
@@ -1612,7 +1634,9 @@ class EmulatorEngine(
                         fpsCatchUps, fpsHolds, fpsDropped, lastQueued, bufferFrames,
                         fpsAudioMade, fpsAudioTaken,
                         (track?.playbackHeadPosition?.toLong()?.and(0xFFFFFFFFL) ?: 0L).let { p -> if (fpsPlayedAt < 0) -1 else p - fpsPlayedAt },
-                        if (vsyncFallback) " fallback" else "") +
+                        if (vsyncFallback) (if (vsyncUnreliable != null) " fallback (ticks don't follow the refresh)" else " fallback") else "") +
+                        " ticks=%.0f/s".format(vsyncCheck.lastRate) +
+                        (if (fpsBlocks > 0) " block=%.1f/%.1fms".format(fpsBlockSum / fpsBlocks / 1e6, fpsBlockMax / 1e6) else "") +
                         (drawStatsSource?.invoke()?.let { (r, u) ->
                             val line = " repeats=%d unshown=%d".format(r - fpsRepeats, u - fpsUnshown)
                             fpsRepeats = r; fpsUnshown = u
@@ -1624,6 +1648,9 @@ class EmulatorEngine(
                     dsMusicFrames = 0
                     fpsCatchUps = 0
                     fpsHolds = 0
+                    fpsBlocks = 0
+                    fpsBlockSum = 0L
+                    fpsBlockMax = 0L
                     fpsDropped = 0
                     // [slowFrames]: 3+ late draws in two windows of 1x frames (a single one can be the device's hiccup).
                     if (!slowFrames && pacedPerFrame > 0 && speed == 1f && fpsLate >= 0 && late - fpsLate >= SLOW_LATE_FRAMES &&
@@ -2037,6 +2064,9 @@ class EmulatorEngine(
         /** Late draws in a 120-frame window, in this many windows, that make a game's frames [slowFrames]. */
         private const val SLOW_LATE_FRAMES = 3
         private const val SLOW_WINDOWS = 2
+        /** [VsyncCheck]'s finding, once made: kept for the process (the device doesn't change), so a game started again
+         * doesn't spend its first seconds on vsync pacing's made-up rate. Null = the ticks follow the refresh. */
+        @Volatile private var vsyncUnreliable: String? = null
         /** Dynamic rate control's most the audio is stretched or squeezed (RetroArch's default). */
         const val DRC_MAX = 0.005
         /** Vsync pacing: frames run at once in a row at most, when the audio buffer runs low ([vsyncPace]). */
