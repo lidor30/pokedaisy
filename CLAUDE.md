@@ -720,7 +720,7 @@ never an answer), docs/DEVELOPMENT.md's "French carts". Dry run (2026-11-07): B/
 isn't loaded from a pool), HG / SS ES / IT / KR / Europe rev 10 all 23, Japanese 20 of 23.
 **DS language ports (2026-11-07)**: every cart after the French ones is a row of `gamedata/nds/ports.toml` (Spanish / Italian HG / SS,
 Europe rev 10 of both, Japanese / Korean HG / SS, German / Spanish / Italian / Japanese / Korean B/W, B2/W2 in FR / DE / ES / IT / KR and
-JP rev 1), not a hand-written table: `scripts/gen_nds_ports.py`
+JP rev 1, Spanish Platinum: bases `heartgold` / `platinum` / `black` / `black2`, callSet 100 / 300 / 200 + n), not a hand-written table: `scripts/gen_nds_ports.py`
 (`make gamedata`, `make check`) writes `pk_nds_ports_gen.h` (the native field / touch / call tables built from the US ones) and
 `NdsPortsGen.kt` (`DsPorts`: configs, detection, titles, DS LAYOUT). A new cart: its row, then headless beside its US cart (docs/DEVELOPMENT.md's "Language ports"). Korean HG / SS saves have their own
 footer magic (0x20070903); JP / KR text banks are numbered their own way (`NdsArt`'s `*_JA` / `*_KO`).

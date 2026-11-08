@@ -32,7 +32,7 @@ Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the compan
 
 **Nintendo DS:**
 
-- Pokémon Platinum: the USA release (revision 1) and the French one (revision 0).
+- Pokémon Platinum: the USA release (revision 1), and the French and Spanish ones (revision 0).
 - Pokémon HeartGold: the USA, German, French, Spanish, Italian, Japanese and Korean releases (revision 0), and the English one sold in Europe (revision 10).
 - Pokémon SoulSilver: the USA, German, French, Spanish, Italian, Japanese and Korean releases (revision 0), and the English one sold in Europe (revision 10).
 - Pokémon Black: the USA / Europe, French, German, Spanish, Italian, Japanese and Korean releases.
@@ -42,7 +42,7 @@ Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the compan
 
 The companion shows each game's Pokémon, moves, items and places in your cart's own language, read from the cart.
 - Pokémon Origin HeartGold, the hack: version 4.0.3 with its English patch 1.0.0.
-- Pokémon Renegade Platinum, the hack: version 1.3.0.
+- Pokémon Renegade Platinum, the hack: versions 1.2.0 and 1.3.0, and 1.3.0 with its Classic patch.
 
 The companion reads their party, bag, map, Pokédex and guide, with pictures, Pokédex pages and the map read from your cart. The battles of Platinum, Black, White, Black 2 and White 2 show in the `BATTLE` tab; HeartGold's and SoulSilver's don't yet. In Black, White, Black 2 and White 2 the `MAP` is the game's own Town Map: the towns you've arrived at marked as the game marks them, the others left plain. `PARTY`, `BAG` and `DEX` take each game's own colours: the cut-corner slots on a navy grid of Black, White and their sequels, Black's and White's green Pokédex grid, Black 2's and White 2's red one, Platinum's blue slots on slate stripes. Origin HeartGold has its own species (every region's, and their forms), moves, Fairy type and battle system: the companion reads its party, bag, map and Pokédex (all 1,025, with its own stats, evolutions and moves) with the names, types and pictures from your cart, and its battles show in the `BATTLE` tab (`INFO` and `SUGGESTIONS`; you choose your moves on the game's own touch screen). It has no guide yet. Renegade Platinum plays as Platinum does, with its own types (the Fairy type among them), moves and type chart read from your cart, so the `BATTLE` tab's advice and the `DEX` follow the hack's changes; it has no guide yet either. [Screens and devices](devices.md#ds-games) has how a DS game uses your screens.
 
@@ -77,6 +77,7 @@ The companion reads their party, bag, map, Pokédex and guide, with pictures, Po
 | Moemon Quetzal | English and Spanish Alpha 0.8.4 Hotfix |
 | Super Mariomon | 1.2.1 to 1.3, 1.5.1 and 1.5.2 |
 | Pokémon Recharged Emerald | 2.2.5 and 2.2.8, and Rebalanced 2.2.8 |
+| Pokémon Modern Emerald | 3.6 (types follow the settings you picked when you started your game) |
 | Pokémon Elite Redux | 2.65.3b and 2.65.4.1b |
 | Pokémon Team Rocket Edition: Dragonsden Version | 1.5, and the 2026 edition's 3.0.9 in Spanish (its START menu shows the version) |
 | Pokémon Wishes of Tomorrow | 1.2.6 |

@@ -1,0 +1,29 @@
+# Pokémon Modern Emerald v3.6: its save's field (modern_emerald.txt), then a wild ZIGZAGOON Lv5 through the game's own
+# script commands - setwildbattle (0xB6 species level item) + dowildbattle (0xB7) + end, poked into free EWRAM (past the
+# build's last symbol, sWindowSize 0x0203FC20) and run by ScriptContext_SetupScript (0x081D940D: the build's 0x081DA891
+# moved 0x1484, both its literal pools found). Two A presses past the intro text: the action menu, TREECKO out.
+wait 300
+press START
+wait 90
+press A
+wait 200
+press A
+wait 60
+press A
+wait 60
+press A
+wait 200
+poke8 0x0203FD00 0xB6
+poke8 0x0203FD01 0x20
+poke8 0x0203FD02 0x01
+poke8 0x0203FD03 0x05
+poke8 0x0203FD04 0x00
+poke8 0x0203FD05 0x00
+poke8 0x0203FD06 0xB7
+poke8 0x0203FD07 0x02
+call 0x081D940D 0x0203FD00
+wait 900
+press A
+wait 120
+press A
+wait 120

@@ -4,13 +4,51 @@
 #
 # Each [[port]] is one cart by its header's game code (0x0C) and revision (0x1E):
 #   kind   the GameKind it runs as;  base  whose tables it copies: heartgold (HeartGold / SoulSilver USA),
-#          black (Black / White USA / Europe: Black's overlays, White's own words), black2 (Black 2 / White 2);
+#          platinum (Platinum USA rev 1), black (Black / White USA / Europe: Black's overlays, White's own words),
+#          black2 (Black 2 / White 2);
 #   name   for logs and nds_dump;  title  the library's and the website's name (the cart's own title);
 #   sha1   the whole file's (the library names the game by it);  cart  its No-Intro file name, for the tools.
 # The words are named as in scripts/port_nds_fns_known.txt (what each is: pk_nds_field.cpp, pk_nds_call.cpp) and come from
 # `scripts/port_nds_fns.py US.nds OTHER.nds --file ...` with the US cart's list; every one was then checked headless
 # (docs/DEVELOPMENT.md's "Other languages"). Gen 5's BGM stack depth is BgmStack - 0xC in every build, so it isn't listed.
 # Menu functions missing (0 / left out) mean the cart's touch-screen moments aren't followed (DsLayout.followed).
+
+# Spanish Platinum: the French cart's functions at the same addresses (rev 0 both), its globals and field overlays 0x20
+# higher, the battle template 0xC. A new game played headless (its own intro, the US save isn't Platinum's).
+[[port]]
+code = "CPUS"
+rev = 0
+kind = "PLATINUM"
+base = "platinum"
+name = "Platinum (Spain)"
+title = "Pokémon Edición Platino"
+sha1 = "12faf0dbcf0fb558438e464afbfe7c5b5e79e8c6"
+cart = "Pokemon - Edicion Platino (Spain).nds"
+sFieldSystem = 0x021C09DC
+gBattleApplicationTemplate = 0x020EA3EC
+sSoundSystem = 0x02101FF8
+sSeqPlayer = 0x021CB164
+sSaveDataPtr = 0x021C0994
+FieldMap_Main = 0x021D1169
+PartyMenu_Init = 0x0207E159
+OptionsMenu_Init = 0x021D0F81
+ScriptManager_Set = 0x0203E925
+FieldTask_GetEnv = 0x02050B09
+ScriptContext_CreateAndStart = 0x0203EB5D
+ScriptContext_Jump = 0x0203E8BD
+StringTemplate_New = 0x0200B37D
+String_Init = 0x02023801
+ScriptManager_GetMemberPtr = 0x0203F005
+FieldMoves_SetUsableMoves = 0x020707BD
+FieldMoves_CheckFly = 0x020709E5
+CheckFlyLocationUnlocked = 0x0203A9C5
+SaveData_GetParty = 0x0207A309
+Party_GetPokemonBySlotIndex = 0x0207A19D
+FlyContext_New = 0x020706E1
+FieldMoves_FlyTask = 0x02070715
+FieldSystem_CreateTask = 0x020509A9
+Journal_CreateEventUsedMove = 0x0202BE71
+Journal_SaveData = 0x0202B7C9
 
 [[port]]
 code = "IPKE"

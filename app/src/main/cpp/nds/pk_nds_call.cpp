@@ -330,6 +330,38 @@ const CallFns* portFns(int n)
     return n >= 0 && n < (int) fns.size() ? &fns[n] : nullptr;
 }
 
+// The Platinum ports' functions: the US rev 1 table (its structs and script ids) with each port's addresses.
+const CallFns* portPlatinumFns(int n)
+{
+    static const std::vector<CallFns> fns = [] {
+        std::vector<CallFns> v;
+        for (int i = 0; i < PK_NDS_PORTS4P_COUNT; i++) {
+            const PkNdsPort4P& r = PK_NDS_PORTS4P[i];
+            CallFns f = PLATINUM;
+            f.scriptManagerSet = r.scriptManagerSet;
+            f.fieldTaskGetEnv = r.fieldTaskGetEnv;
+            f.scriptContextCreateAndStart = r.scriptContextCreateAndStart;
+            f.scriptContextJump = r.scriptContextJump;
+            f.stringTemplateNew = r.stringTemplateNew;
+            f.stringInit = r.stringInit;
+            f.scriptManagerGetMemberPtr = r.scriptManagerGetMemberPtr;
+            f.fieldMovesSetUsableMoves = r.fieldMovesSetUsableMoves;
+            f.fieldMovesCheckFly = r.fieldMovesCheckFly;
+            f.checkFlyLocationUnlocked = r.checkFlyLocationUnlocked;
+            f.saveDataGetParty = r.saveDataGetParty;
+            f.partyGetPokemonBySlotIndex = r.partyGetPokemonBySlotIndex;
+            f.flyContextNew = r.flyContextNew;
+            f.fieldMovesFlyTask = r.fieldMovesFlyTask;
+            f.fieldSystemCreateTask = r.fieldSystemCreateTask;
+            f.journalCreateEventUsedMove = r.journalCreateEventUsedMove;
+            f.journalSaveData = r.journalSaveData;
+            v.push_back(f);
+        }
+        return v;
+    }();
+    return n >= 0 && n < (int) fns.size() ? &fns[n] : nullptr;
+}
+
 const Gen5Fns* portGen5Fns(int n)
 {
     static const std::vector<Gen5Fns> fns = [] {
@@ -362,7 +394,10 @@ const CallFns* fnsFor(const PkNdsFieldGame* game)
     case 2: return &HEARTGOLD;
     case 7: return &ORIGIN_HEARTGOLD;
     case 8: return &PLATINUM_FR;
-    default: return game->callSet >= 100 && game->callSet < 200 ? portFns(game->callSet - 100) : nullptr;
+    default:
+        if (game->callSet >= 100 && game->callSet < 200) return portFns(game->callSet - 100);
+        if (game->callSet >= 300 && game->callSet < 400) return portPlatinumFns(game->callSet - 300);
+        return nullptr;
     }
 }
 
@@ -376,7 +411,7 @@ const Gen5Fns* gen5FnsFor(const PkNdsFieldGame* game)
     case 6: return &WHITE2;
     case 9: return &BLACK_FR;
     case 10: return &WHITE_FR;
-    default: return game->callSet >= 200 ? portGen5Fns(game->callSet - 200) : nullptr;
+    default: return game->callSet >= 200 && game->callSet < 300 ? portGen5Fns(game->callSet - 200) : nullptr;
     }
 }
 

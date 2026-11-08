@@ -720,7 +720,7 @@ fun partySlotStyleFor(game: GameKind): PartySlotStyle? = when (game) {
         else -> localPartyStyle(FireRedPartyStyle, fireRed = true)
     }
     GameKind.EMERALD -> when {
-        com.pokedaisy.app.companion.data.runningEmeraldHack != null -> RechargedEmeraldPartyStyle
+        com.pokedaisy.app.companion.data.runningRechargedEmerald -> RechargedEmeraldPartyStyle
         romGameCode.isEmpty() -> EmeraldPartyStyle
         else -> localPartyStyle(EmeraldPartyStyle, fireRed = false)
     }

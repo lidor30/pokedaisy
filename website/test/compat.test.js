@@ -244,6 +244,7 @@ test('DS: the language ports, each at its own revision', () => {
   assert.deepEqual(ds('IPGE', 10), { status: 'supported', title: 'Pokémon SoulSilver', family: 'Nintendo DS' });
   assert.equal(ds('IPKE', 5).reason, 'revision');
   assert.deepEqual(ds('IPKS', 0), { status: 'supported', title: 'Pokémon Edición Oro HeartGold', family: 'Nintendo DS' });
+  assert.deepEqual(ds('CPUS', 0), { status: 'supported', title: 'Pokémon Edición Platino', family: 'Nintendo DS' });
   assert.deepEqual(ds('IRBI', 0), { status: 'supported', title: 'Pokémon Versione Nera', family: 'Nintendo DS' });
   assert.deepEqual(ds('IRDD', 0), { status: 'supported', title: 'Pokémon Weiße Edition 2', family: 'Nintendo DS' });
   assert.deepEqual(ds('IREF', 1), { status: 'unsupported', reason: 'revision', base: 'Pokémon Version Noire 2' });

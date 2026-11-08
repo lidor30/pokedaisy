@@ -1,0 +1,13 @@
+# Pokémon Modern Emerald v3.6 from its save (~/Documents/RetroArch/saves/mGBA/Pokemon Modern Emerald (v3.6).sav): the
+# title, CONTINUE, then the moving truck with the field free (~frame 920). See the modern_emerald fixture's README.
+wait 300
+press START
+wait 90
+press A
+wait 200
+press A
+wait 60
+press A
+wait 60
+press A
+wait 200

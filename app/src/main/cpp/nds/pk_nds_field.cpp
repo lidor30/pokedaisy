@@ -517,7 +517,7 @@ static const PkNdsGen5Touch GEN5_TOUCH[] = {
 // The language ports (gamedata/nds/ports.toml, pk_nds_ports_gen.h): each its base cart's tables with its own words. Built
 // once; callSet 100 + n / 200 + n is the n-th port of each kind (pk_nds_call.cpp builds its functions from the same rows).
 struct PortTables {
-    std::vector<PkNdsFieldGame> games4, games5;
+    std::vector<PkNdsFieldGame> games4, games4p, games5;
     std::vector<PkNdsTouchRules> touch4;
     std::vector<PkNdsGen5Touch> touch5;
 };
@@ -527,6 +527,7 @@ static const PortTables& ports()
     static const PortTables t = [] {
         PortTables p;
         p.games4.reserve(PK_NDS_PORTS4_COUNT);
+        p.games4p.reserve(PK_NDS_PORTS4P_COUNT);
         p.games5.reserve(PK_NDS_PORTS5_COUNT);
         for (int i = 0; i < PK_NDS_PORTS4_COUNT; i++) {
             const PkNdsPort4& r = PK_NDS_PORTS4[i];
@@ -539,6 +540,19 @@ static const PortTables& ports()
             g.seqPlayers = r.seqPlayer;
             g.callSet = 100 + i;
             p.games4.push_back(g);
+        }
+        // Platinum builds: the US rev 1 table, callSet 300 + n (pk_nds_call.cpp's portPlatinumFns).
+        for (int i = 0; i < PK_NDS_PORTS4P_COUNT; i++) {
+            const PkNdsPort4P& r = PK_NDS_PORTS4P[i];
+            PkNdsFieldGame g = PLATINUM_US_REV1;
+            g.name = r.name;
+            g.fieldSystemPtr = r.fieldSystemPtr;
+            g.battleTemplate = r.battleTemplate;
+            g.fieldMapMain = r.fieldMapMain;
+            g.currentBgm = r.soundSystem + 0xBCD0C;
+            g.seqPlayers = r.seqPlayer;
+            g.callSet = 300 + i;
+            p.games4p.push_back(g);
         }
         for (int i = 0; i < PK_NDS_PORTS5_COUNT; i++) {
             const PkNdsPort5& r = PK_NDS_PORTS5[i];
@@ -566,6 +580,18 @@ static const PortTables& ports()
             t.offMenuInputState = 0x10C;
             p.touch4.push_back(t);
         }
+        // Platinum's: no X menu task to follow, HeartGold's battle panels, the party and options as top-screen pages.
+        for (int i = 0; i < PK_NDS_PORTS4P_COUNT; i++) {
+            const PkNdsPort4P& r = PK_NDS_PORTS4P[i];
+            if (!r.partyInit || !r.optionsInit) continue;
+            PkNdsTouchRules t = {};
+            t.game = &p.games4p[i];
+            t.offBattleInput = 0x19C;
+            t.offPanelShown = 0x4D0;
+            t.topOnly[0] = { r.partyInit, 0 };
+            t.topOnly[1] = { r.optionsInit, 0 };
+            p.touch4.push_back(t);
+        }
         for (int i = 0; i < PK_NDS_PORTS5_COUNT; i++) {
             const PkNdsPort5& r = PK_NDS_PORTS5[i];
             if (!r.startMenuEvent) continue;
@@ -585,6 +611,8 @@ static const PkNdsFieldGame* portGame(const char code[4], int revision)
     const PortTables& p = ports();
     for (int i = 0; i < PK_NDS_PORTS4_COUNT; i++)
         if (memcmp(code, PK_NDS_PORTS4[i].code, 4) == 0 && revision == PK_NDS_PORTS4[i].revision) return &p.games4[i];
+    for (int i = 0; i < PK_NDS_PORTS4P_COUNT; i++)
+        if (memcmp(code, PK_NDS_PORTS4P[i].code, 4) == 0 && revision == PK_NDS_PORTS4P[i].revision) return &p.games4p[i];
     for (int i = 0; i < PK_NDS_PORTS5_COUNT; i++)
         if (memcmp(code, PK_NDS_PORTS5[i].code, 4) == 0 && revision == PK_NDS_PORTS5[i].revision) return &p.games5[i];
     return 0;

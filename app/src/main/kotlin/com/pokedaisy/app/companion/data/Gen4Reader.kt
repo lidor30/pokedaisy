@@ -435,7 +435,7 @@ fun gen4ConfigFor(kind: GameKind?, code: String = romGameCode): Gen4Config? = wh
     GameKind.PLATINUM -> when {
         renegadePlatinum -> GEN4_RENEGADE_PLATINUM
         code == "CPUF" -> GEN4_PLATINUM_FR
-        else -> GEN4_PLATINUM_US
+        else -> DsPorts.byCode(code)?.let(DsPorts::gen4Config) ?: GEN4_PLATINUM_US
     }
     GameKind.HEARTGOLD -> when {
         originHeartGold -> GEN4_ORIGIN_HEARTGOLD

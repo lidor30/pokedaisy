@@ -12,6 +12,15 @@ struct PkNdsPort4 {
     uint32_t fieldSystemPtr, battleTemplate, soundWork, seqPlayer, saveDataPtr, fieldMapMain, startMenu, partyInit, optionsInit, dexInit, scriptJump, messageFormatNew, stringNew, fieldMoveInit, fieldMoveCheckFly, partyGet, partyGetMon, flyNew, flyTask, createTask, scriptEnvNew, createScriptContext, taskRunScripts;
 };
 
+// A Platinum build: the US rev 1 tables (pk_nds_field.cpp's PLATINUM_US_REV1, pk_nds_call.cpp's PLATINUM) with
+// these words. partyInit / optionsInit 0 = those top-screen pages aren't followed.
+struct PkNdsPort4P {
+    char code[5];
+    int revision;
+    const char* name;
+    uint32_t fieldSystemPtr, battleTemplate, soundSystem, seqPlayer, saveDataPtr, fieldMapMain, partyInit, optionsInit, scriptManagerSet, fieldTaskGetEnv, scriptContextCreateAndStart, scriptContextJump, stringTemplateNew, stringInit, scriptManagerGetMemberPtr, fieldMovesSetUsableMoves, fieldMovesCheckFly, checkFlyLocationUnlocked, saveDataGetParty, partyGetPokemonBySlotIndex, flyContextNew, fieldMovesFlyTask, fieldSystemCreateTask, journalCreateEventUsedMove, journalSaveData;
+};
+
 // A Black / White build (sequel 0) or Black 2 / White 2 (sequel 1): the US tables with these words; the BGM stack's
 // depth is bgmStack - 0xC. startMenuEvent 0 = the touch-screen moments aren't followed.
 struct PkNdsPort5 {
@@ -45,6 +54,12 @@ static const PkNdsPort4 PK_NDS_PORTS4[] = {
       0x021D3698, 0x020F9C34, 0x02110E90, 0x021DEEC4, 0x021D1768, 0x021E5125, 0x0203BAA9, 0x020788C1, 0x021E4E41, 0x021E4FA9, 0x0203FB59, 0x0200BC31, 0x02025F75, 0x02067871, 0x02067A6D, 0x0207439D, 0x020740DD, 0x02067659, 0x02067691, 0x0204FF89, 0x0203FD69, 0x0203FDF9, 0x0203FC91 },
 };
 static const int PK_NDS_PORTS4_COUNT = (int) (sizeof PK_NDS_PORTS4 / sizeof PK_NDS_PORTS4[0]);
+
+static const PkNdsPort4P PK_NDS_PORTS4P[] = {
+    { "CPUS", 0, "Platinum (Spain)",
+      0x021C09DC, 0x020EA3EC, 0x02101FF8, 0x021CB164, 0x021C0994, 0x021D1169, 0x0207E159, 0x021D0F81, 0x0203E925, 0x02050B09, 0x0203EB5D, 0x0203E8BD, 0x0200B37D, 0x02023801, 0x0203F005, 0x020707BD, 0x020709E5, 0x0203A9C5, 0x0207A309, 0x0207A19D, 0x020706E1, 0x02070715, 0x020509A9, 0x0202BE71, 0x0202B7C9 },
+};
+static const int PK_NDS_PORTS4P_COUNT = (int) (sizeof PK_NDS_PORTS4P / sizeof PK_NDS_PORTS4P[0]);
 
 static const PkNdsPort5 PK_NDS_PORTS5[] = {
     { "IRBS", 0, "Black (Spain)", 0,

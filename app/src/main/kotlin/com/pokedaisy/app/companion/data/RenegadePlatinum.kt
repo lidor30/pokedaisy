@@ -22,6 +22,11 @@ object RenegadePlatinum {
     const val REV = 1
     /** The build mapped. */
     const val V1_3_0_SHA1 = "d4ee068b7e0a19a848436369f145e3154afe13ca"
+    /** v1.3.0 with its "Classic" patch: only the species' data differs (pl_personal.narc). */
+    const val V1_3_0_CLASSIC_SHA1 = "8b9d933ed88dd5bffed1e96e229db568b5dad237"
+    /** v1.2.0: v1.3.0's ARM9 and every place below byte for byte, one data byte apart in overlay 16 and 12 data files
+     * (species, moves, trainers, encounters...) of its own, which [NdsArt.readRenegade] reads through the file system. */
+    const val V1_2_0_SHA1 = "381f9eef44564602a5f6469ee8c390fbb8ebac3a"
 
     /** Overlay 16 (cart 0x207200, RAM 0x0223B140) at RAM 0x02254FA0: the first of its type chart's pointers, Thumb-tagged. */
     const val SIG_OFFSET = 0x221060L

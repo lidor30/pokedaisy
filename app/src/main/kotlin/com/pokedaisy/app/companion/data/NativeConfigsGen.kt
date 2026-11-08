@@ -3818,6 +3818,60 @@ val NATIVE_MARIOMON_V1_2_1 = NATIVE_MARIOMON_V1_2_2.copy(
     guideTables = GUIDE_TABLES_MARIOMON_V1_2_1,
 )
 
+// ---- gamedata/gen3/hacks/modern_emerald.toml ----
+
+// Pokémon Modern Emerald v3.6 (resetes12's pokeemerald fork, BPEE, 32 MB, sha1 ab3bc012…): its source is public
+// (github.com/resetes12/pokeemerald, tag Release3.6; cloned into $DECOMPS/pokemodernemerald). The release was built
+// with `make modern` (gcc), so a build of the tag isn't it byte for byte, but every RAM symbol the code references is
+// referenced as often in the release (1000 of 1000 checked), so the RAM below is the build's `nm`; ROM tables were
+// found in the release by their bytes (ROM pointers and calls masked), the battle handlers read live in each menu of a
+// scripted wild battle (ScriptContext_SetupScript 0x081D940D: the build's 0x081DA891 - 0x1484, both of its literal
+// pools agree). Struct offsets by `offsetof` compiled against the tag's headers: vanilla's 100-byte party mons and
+// 0x58-byte BattlePokemon, but SaveBlock1's Items pocket holds 90 (Key Items +0x6C8, Poké Balls +0x740, TMs +0x780,
+// Berries +0x880; party +0x238 and money +0x490 are retail's) and SaveBlock2's encryption key is at +0xBC (retail
+// +0xAC). The save's own settings (SaveBlock1 +0x3D9D..: MODERN TYPES, FAIRY TYPE, TYPE CHART, the randomizer's
+// types) pick its types and chart: ModernEmerald.kt. Retail Emerald's save doesn't load ("erased due to corruption"):
+// a new game played headless (`modern_emerald` fixtures' README).
+val NATIVE_MODERN_EMERALD = NativeConfig(
+    itemDescs = vanillaItems(0x088A89A4L),
+    playerParty = 0x0201D9CCL,
+    playerPartyCount = 0x0201D9C9L,
+    battleMons = 0x0200143CL,
+    battlerPositions = 0x0200142CL,
+    battlersCount = 0x02001420L,
+    battleTypeFlags = 0x020003A0L,
+    gMain = 0x03001574L,
+    saveBlock1Ptr = 0x030036F0L,
+    saveBlock2Ptr = 0x030036F4L,
+    objectEvents = 0x0200682CL,
+    mapHeader = 0x0200C22CL,
+    bagPockets = 0x0200C298L,
+    bagPocketCount = 5,
+    bagPocketOrder = EMERALD_BAG_POCKET_ORDER,
+    encryptionKeyOff = 0xBCL,
+    moneyOff = 0x490L,
+    // The release's own (the build's + 0x124C .. 0xFC4: each found by its bytes or its neighbour's).
+    monIconTable = 0x088FC758L,
+    monIconPaletteIndices = 0x088FCF00L,
+    monIconPaletteTable = 0x088FD0ECL,
+    itemIconTable = 0x088B13ECL,
+    battlerControllerFuncs = 0x03002364L,
+    // gBattlerControllerFuncs[0] read in each menu of the scripted battle; the target handler from the move one's pool.
+    handleInputChooseAction = 0x0804E8E1L,
+    handleInputChooseMove = 0x0804F069L,
+    completeWhenChoseItem = 0x08050E81L,
+    waitForMonSelection = 0x08050DA9L,
+    handleInputChooseTarget = 0x0804ECB9L,
+    enemyParty = 0x0201DE7CL,
+    battlerPartyIndexes = 0x02001424L,
+    battleStructPtr = 0x02001860L,
+    monToSwitchIntoOff = 0x5C,
+    actionCursor = 0x02001870L,
+    moveCursor = 0x02001874L,
+    partyMenu = 0x0201D7BCL,
+    eggSpecies = 462,
+)
+
 // ---- gamedata/gen3/hacks/monomyth.toml ----
 
 // Pokémon Monomyth v1.0 (32 MB, game code MONE, sha1 ae1c4be9…; Team Monomyth, monomyth.jp): the Athanto region on its

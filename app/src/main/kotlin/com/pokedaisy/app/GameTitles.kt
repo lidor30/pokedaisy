@@ -39,9 +39,11 @@ object GameTitles {
         "13b6853aa93121069df1d17446d3ecb36872aecf", "576cdb7eec728c49aed85b9dd7e1e084ba1f08f9",
         "62f9ec7a412d06bd518f7dc065e4612812e327b9", "dba64620a959d5f69ed1cf3e43fcfcf2786d417e",
         "6ed98d446eb65861c71fc5f94bdc35691667f665", "a559da54839663d8f8f3f03382e5665a61873d22",
-        "28f075915dd445cbfd902f1e1a94d5048b03a095",
+        "28f075915dd445cbfd902f1e1a94d5048b03a095", "e5db5b8f79e8ae819be7d60e9e1006221d80ffab",
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1,
+        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_CLASSIC_SHA1,
+        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1,
     ) + com.pokedaisy.app.companion.data.NDS_PORTS.map { it.sha1 }
 
     private val RETAIL: Map<String, String> = mapOf(
@@ -67,12 +69,17 @@ object GameTitles {
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1 to "Pokémon Origin HeartGold",
         // Renegade Platinum v1.3.0, retail Platinum (USA rev 1) edited in place (RenegadePlatinum).
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1 to "Pokémon Renegade Platinum",
+        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_CLASSIC_SHA1 to "Pokémon Renegade Platinum",
+        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1 to "Pokémon Renegade Platinum",
         // Black and White (USA, Europe): the No-Intro dumps (no decomp builds them).
         "26ad0b9967aa279c4a266ee69f52b9b2332399a5" to "Pokémon Black",
         "bc696a0dfb448c7b3a8a206f0f8214411a039208" to "Pokémon White",
         // Black 2 and White 2 (USA, Europe): the No-Intro dumps.
         "e51e6dfb8678a3d19dcd2a10691b96a569ca0abb" to "Pokémon Black 2",
         "b5d7490be7b415b8f1e672a53e978a9cc667e56a" to "Pokémon White 2",
+        // Japanese Black, the "5216" release: No-Intro's cart (gamedata/nds/ports.toml's IRBJ) with 512 bytes of overlay 12
+        // changed, which nothing here reads; headless it ran screen for screen as the No-Intro cart on the same save.
+        "e5db5b8f79e8ae819be7d60e9e1006221d80ffab" to "ポケットモンスター ブラック",
         // The other Emeralds, by their own titles (No-Intro's dumps; no decomp builds them).
         "fe1558a3dcb0360ab558969e09b690888b846dd9" to "Pokémon Edición Esmeralda",
         "61c2eb2b380b1a75f0c94b767a2d4c26cd7ce4e3" to "Pokémon Smaragd-Edition",
@@ -144,6 +151,7 @@ object GameTitles {
         "033d05374ae34eb84fae62c693ca8f3da23dd1bd" to "Pokémon FireRed Rocket Edition",
         "1ee1557db1e4c2e0e94c6306efcc40506bc40cc9" to "Pokémon Ash Gray",
         "92ed82145c013069472153391c7aab1cfbf37b75" to "Pokémon Ash Gray Fork Bug Fix",
+        "ab3bc012598d73dce965450df79893aeff97c834" to "Pokémon Modern Emerald",
         "5b38a681b6924ef3e0bb9f6cfbf22426c4c4e523" to "Pokémon Elite Redux",
         "2f3e17e55c6afe23da97ec0f96a067eeb142ad15" to "Pokémon Elite Redux",
         "40780347d0b4df6bf491eaf12603e5422caee677" to "Pokémon Team Rocket Edition: Dragonsden Version",
