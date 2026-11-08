@@ -314,9 +314,18 @@ bool pd_decode_party_mon_c(const uint8_t* raw, const struct pd_party_layout* l, 
         m->stats.hiddenPowerType = pd_hidden_power_type(&m->stats);
         m->stats.hiddenPowerPower = pd_hidden_power_power(&m->stats);
     }
+    bool packed = l->packedAttacks && !(sum == stored && stored != 0);
+    uint32_t ppWord = u32(attacks + 8);
     for (int i = 0; i < PD_NUM_MOVES; i++) {
-        m->moves[i] = u16(attacks + i * 2);
-        m->pp[i] = attacks[8 + i];
+        if (packed) {
+            // SoulGold v1.2.1: move 4's 11 bits run across the third and fourth u16, the PP are 7-bit fields of a u32.
+            unsigned w = i < 3 ? u16(attacks + i * 2) : ((unsigned) u16(attacks + 4) >> 11) | ((unsigned) u16(attacks + 6) << 5);
+            m->moves[i] = (uint16_t) (w & 0x7FF);
+            m->pp[i] = (uint8_t) ((ppWord >> (7 * i)) & 0x7F);
+        } else {
+            m->moves[i] = u16(attacks + i * 2);
+            m->pp[i] = attacks[8 + i];
+        }
         if (masked) {
             m->moves[i] &= (uint16_t) cfg->moveMask;
             m->pp[i] &= (uint8_t) cfg->ppMask;

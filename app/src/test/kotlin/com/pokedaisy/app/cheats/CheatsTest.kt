@@ -98,4 +98,35 @@ class CheatsTest {
         store.save(emptyList())
         assertTrue(!store.file.exists())
     }
+
+    @Test
+    fun `DS codes - two 8-digit words a line, checked without mGBA, sent as words per cheat`() {
+        val lines = CheatCodes.normalize("94000130 fcff0000\n02000000000003e7 d2000000 00000000")
+        assertEquals(listOf("94000130 FCFF0000", "02000000 000003E7", "D2000000 00000000"), lines)
+        val ok = CheatCheck.checkDs(Cheat("MONEY", lines))
+        assertEquals(lines, ok.cheat?.lines)
+        assertTrue(ok.bad.isEmpty())
+        // A GBA-style line (8 + 4 digits) isn't an Action Replay DS line.
+        val bad = CheatCheck.check(Cheat("X", listOf("82025838 FFFF")), ds = true)
+        assertEquals(null, bad.cheat)
+        assertEquals(listOf("82025838 FFFF"), bad.bad)
+
+        val off = Cheat("OFF", listOf("12345678 00000001"), enabled = false)
+        val text = CheatFiles.write(listOf(ok.cheat!!.copy(enabled = true), off))
+        val w = DsCheats.fromText(CheatFiles.coreText(CheatFiles.parseMgba(text.lines(), "CHEAT")))
+        assertEquals(listOf(6), w.lengths.toList())
+        assertEquals(0x94000130.toInt(), w.words[0])
+        assertEquals(0xFCFF0000.toInt(), w.words[1])
+        assertEquals(0x3E7, w.words[3])
+    }
+
+    @Test
+    fun `DS import - a cht's DS codes come in, GBA ones are left out`() {
+        val store = CheatStore(tmp.newFile("ds.cheats").also { it.delete() })
+        val cht = "cheats = 2\ncheat0_desc = \"MONEY\"\ncheat0_code = \"02000000 000003E7\"\ncheat1_desc = \"GBA\"\ncheat1_code = \"82025838 FFFF\"\n"
+        val r = store.import(cht, "X", ds = true)
+        assertEquals(1, r.added)
+        assertEquals(1, r.badCheats)
+        assertEquals(listOf("MONEY"), store.load().map { it.name })
+    }
 }

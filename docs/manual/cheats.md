@@ -1,12 +1,12 @@
 ---
 title: Cheats
-summary: Add GameShark, Action Replay and CodeBreaker codes to a GBA game, and switch them on and off while you play.
+summary: Add GameShark, Action Replay and CodeBreaker codes to a GBA game, or Action Replay codes to a DS game, and switch them on and off while you play.
 section: player
 order: 5
-keywords: [gameshark, action replay, codebreaker, codes, cht, ar, gs, money, shiny, walk through walls]
+keywords: [gameshark, action replay, codebreaker, codes, cht, ar, ards, action replay ds, nds cheats, ds cheats, gs, money, shiny, walk through walls]
 ---
 
-Cheat codes let you skip a grind, try something the game normally won't allow, or get past a bug in a hack. PokeDaisy reads the classic GBA cheat devices: **GameShark**, **Action Replay** and **CodeBreaker**. They work on GBA games only, not on Game Boy games.
+Cheat codes let you skip a grind, try something the game normally won't allow, or get past a bug in a hack. PokeDaisy reads the classic GBA cheat devices: **GameShark**, **Action Replay** and **CodeBreaker**, and **Action Replay** codes for DS games. Game Boy games don't take cheats.
 
 Cheats are off until you turn them on. You add codes on the top screen (that's where the keyboard is), and switch them on and off from either screen, live, while the game runs.
 
@@ -36,12 +36,18 @@ A code you type in starts switched on, so it's ready the next time the game runs
 > [!NOTE]
 > GameShark codes cover Action Replay v1 and v2 as well (they use the same format). Pick `ACTION REPLAY` for Action Replay v3 codes.
 
+### DS games
+
+A DS game takes Action Replay DS codes: every line is two groups of eight digits and letters, like `94000130 FCFF0000`. There's no `TYPE` row for a DS game, since that's the only kind. Paste the whole code, every line of it, as one cheat.
+
 ## Import a cheat file
 
 If you have cheat files from another emulator, there's no need to type anything. On the same page, tap `IMPORT FILE` and pick:
 
 - a RetroArch `.cht` file, or
 - an mGBA `.cheats` file.
+
+For a DS game, a RetroArch `.cht` for its DS core works the same way.
 
 PokeDaisy tells you how many cheats came in. Imported cheats start switched off, since a file often holds dozens you won't want all at once. Tap the ones you want to turn them on.
 

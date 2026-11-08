@@ -75,6 +75,13 @@ const struct pd_party_layout pd_party_layout_soulgold = {
     .hasStats = false, .natureModifier = true, .nicknameOff = 0x08, .nicknameLen = 12,
     .shinyBelow = 256, .shinyModifier = 0x1F,
 };
+// SoulGold v1.2.1: v1.2's struct with its attacks bit-packed (Gen3Mon.kt SOULGOLD_V1_2_1_PARTY_MON).
+const struct pd_party_layout pd_party_layout_soulgold_v121 = {
+    .size = 96, .status = 0x4C, .level = 0x50, .hp = 0x52, .maxHp = 0x54, .flags = 0x15, .eggMask = 0x04,
+    .plainBox = 0x20, .plainSpeciesMask = 0x07FF, .plainItemMask = 0x03FF, .hpBits = 16, .statusMask = 0xFFFFFFFFu,
+    .hasStats = false, .natureModifier = true, .nicknameOff = 0x08, .nicknameLen = 12,
+    .shinyBelow = 256, .shinyModifier = 0x1F, .packedAttacks = true,
+};
 // Team Rocket Edition (Dragonsden): retail's struct, the flags in the language byte, no Mints.
 const struct pd_party_layout pd_party_layout_team_rocket = {
     .size = 100, .status = 0x50, .level = 0x54, .hp = 0x56, .maxHp = 0x58, .flags = 0x12, .eggMask = 0x20,

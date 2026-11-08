@@ -190,6 +190,19 @@ object CheatCodes {
 object CheatCheck {
     class Result(val cheat: Cheat?, val bad: List<String>)
 
+    private val DS_LINE = Regex("^[0-9A-F]{8} [0-9A-F]{8}$")
+
+    /** [check] for a DS game ([ds]): Action Replay DS codes, two 8-digit words a line ([DsCheats]), checked here. */
+    fun check(cheat: Cheat, type: CheatType = CheatType.AUTO, ds: Boolean): Result =
+        if (!ds) check(cheat, type) else checkDs(cheat)
+
+    /** An Action Replay DS code: every line two 8-digit hex words (melonDS's AREngine runs them). No directive. */
+    fun checkDs(cheat: Cheat): Result {
+        if (cheat.lines.isEmpty()) return Result(null, emptyList())
+        val bad = cheat.lines.filterNot { DS_LINE.matches(it) }
+        return Result(if (bad.isEmpty()) cheat.copy(directive = "") else null, bad)
+    }
+
     fun check(cheat: Cheat, type: CheatType = CheatType.AUTO): Result {
         if (cheat.lines.isEmpty()) return Result(null, emptyList())
         val answer = CheatsNative.check(cheat.lines.joinToString("\n"), type.native, cheat.directive)
@@ -228,15 +241,16 @@ class CheatStore(val file: File) {
      * read across [badCheats] cheats left out, [duplicates] already in the list. */
     class Import(val added: Int, val badCheats: Int, val badLines: Int, val duplicates: Int)
 
-    /** Adds [text]'s cheats (a `.cht` / `.cheats` file), checked line by line, after the ones here. */
-    fun import(text: String, fallbackName: String): Import {
+    /** Adds [text]'s cheats (a `.cht` / `.cheats` file), checked line by line ([ds]: as Action Replay DS codes), after the
+     * ones here. */
+    fun import(text: String, fallbackName: String, ds: Boolean = false): Import {
         val have = load()
         var badCheats = 0
         var badLines = 0
         var duplicates = 0
         val added = mutableListOf<Cheat>()
         for (c in CheatFiles.parse(text, fallbackName)) {
-            val r = CheatCheck.check(c)
+            val r = CheatCheck.check(c, ds = ds)
             val ok = r.cheat
             if (ok == null) { badCheats++; badLines += r.bad.size; continue }
             if ((have + added).any { it.name == ok.name && it.lines == ok.lines }) { duplicates++; continue }
@@ -251,4 +265,31 @@ class CheatStore(val file: File) {
         fun dir(filesDir: File) = File(filesDir, "cheats")
         fun forCrc(filesDir: File, crc: String) = CheatStore(File(dir(filesDir), "$crc.cheats"))
     }
+}
+
+/**
+ * Action Replay DS codes for melonDS's own engine (AREngine, run on the ARM7's VBlank): each enabled cheat's lines as
+ * 32-bit words, two a line, and how many words each cheat has. Kept in the same `.cheats` file as a GBA game's, with no
+ * directive.
+ */
+object DsCheats {
+    class Words(val words: IntArray, val lengths: IntArray)
+
+    fun words(cheats: List<Cheat>): Words {
+        val words = mutableListOf<Int>()
+        val lengths = mutableListOf<Int>()
+        for (c in cheats) {
+            if (!c.enabled) continue
+            val w = c.lines.flatMap { line -> line.split(' ').filter { it.isNotEmpty() } }
+                .mapNotNull { it.toLongOrNull(16)?.takeIf { v -> v <= 0xFFFFFFFFL }?.toInt() }
+            // A code is whole lines (an even count); anything else never reached the store (CheatCheck.checkDs).
+            if (w.isEmpty() || w.size % 2 != 0) continue
+            words += w
+            lengths += w.size
+        }
+        return Words(words.toIntArray(), lengths.toIntArray())
+    }
+
+    /** [words] from the engine's text (CheatFiles.coreText: the enabled cheats as `.cheats`). */
+    fun fromText(text: String): Words = words(CheatFiles.parseMgba(text.lines(), "CHEAT"))
 }

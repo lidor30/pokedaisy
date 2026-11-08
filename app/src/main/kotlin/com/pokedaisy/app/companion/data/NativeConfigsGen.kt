@@ -4889,6 +4889,9 @@ val NATIVE_SOULGOLD_V1_2C = NATIVE_SOULGOLD_V1_2.copy(
 // globals -0x1BC / -0x1C0. ROM data moved 0x7A38 (gItemsInfo), 0x7BA0 (gSpeciesInfo) or 0xB61C - 0xBEE8
 // (dex, wild and map tables). Its tables are byte for byte v1.2's, TM75 included.
 val NATIVE_SOULGOLD_V1_2_1 = NATIVE_SOULGOLD_V1_2.copy(
+    // Its Pokemon's attacks are bit-packed (SOULGOLD_V1_2_1_PARTY_MON: the 4th move across two u16s, the PP 7-bit fields of
+    // a u32), found with the game's own SetMonData headless.
+    partyMonLayout = SOULGOLD_V1_2_1_PARTY_MON,
     itemDescs = ItemDescTable(0x0875B360L, 0x2C, -8),
     guideTables = GUIDE_TABLES_SOULGOLD_V1_2_1,
     playerParty = 0x02038E68L,

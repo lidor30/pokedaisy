@@ -2603,7 +2603,7 @@ class LibraryActivity : ComponentActivity() {
     /** Setup's REMOVE on a linked folder: its games leave the library, the files stay where they are. */
     private fun unlinkRomsFolder(path: String) {
         prefs.romsFolders = prefs.romsFolders - path
-        RomFolder.forget(this, path)
+        RomFolder.forgetLater(this, path)
         setup?.let { s ->
             s.romsFolders = prefs.romsFolders
             s.found = RomFolder.found(this, prefs).map(::romLabel)

@@ -49,6 +49,7 @@ X Y`, joined with commas (`A,UP`), or `NONE`.
 | `savestate FILE` / `loadstate FILE` | A melonDS state. |
 | `savefile FILE` | The cart's save memory as it is now. |
 | `peek8/16/32 ADDR`, `poke8/16/32 ADDR V` | The ARM9's bus. |
+| `ards W W ...` | One Action Replay DS cheat (hex words, two a line) in melonDS's AREngine, replacing the ones before, as CHEATS does (`pk_nds_set_cheats`); `ards` alone takes it out. |
 | `fieldinfo` | The field read (`pk_nds_field_state`) and the pointers behind it (Black, White and their sequels: the GameSystem's proc, its overlay, field map and event, engine A's BG tiles, the battle adapter's command). |
 | `trace N` | N frames, each one's field bits, master brightness, DISPCNT and BG3's tiles. |
 | `battlemenu N` | The battle controller's command (`pk_nds_battle_command`) each frame for N frames, as it changes. |
