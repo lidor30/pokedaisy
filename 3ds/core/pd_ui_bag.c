@@ -134,8 +134,9 @@ static void tabs(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
         bool open = i == v->active;
         uint32_t fill = open ? p->fill : p->panel[p->tabLayers].color;
         // The open tab carries its fill across the list frame.
-        int f = pd_layered_box(c, x, y, open ? joinX + 4 - x : w, TAB_H, 3, p->panel, p->tabLayers, fill);
-        if (open) pd_fill(c, x + w - f - 1, y + f, joinX + 5 - (x + w - f - 1), TAB_H - 2 * f, p->fill);
+        const bool joined = open && !ui->shoulderTabs;
+        int f = pd_layered_box(c, x, y, joined ? joinX + 4 - x : w, TAB_H, 3, p->panel, p->tabLayers, fill);
+        if (joined) pd_fill(c, x + w - f - 1, y + f, joinX + 5 - (x + w - f - 1), TAB_H - 2 * f, p->fill);
         const char* name = ui->bagSource ? ui->bagSource->pocketName(ui->bagSource->ctx,v->pockets[i]) : v->pockets[i] < 0 ? "ALL" : pd_pocket_name(v->pockets[i]);
         int tx = x + f + 5, ty = pd_text_y(y, TAB_H);
         int tw = pd_text_fit(c, tx, ty, w - 2 * f - 8, name, open ? p->text : p->tabText,
@@ -328,7 +329,7 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     if (ui->bagSort == 1) qsort(v.rows, (size_t) v.count, sizeof(v.rows[0]), by_name);
     else if (ui->bagSort == 2) qsort(v.rows, (size_t) v.count, sizeof(v.rows[0]), by_count);
     if (ui->bagSelected >= v.count) ui->bagSelected = -1;
-    int tabW = c->w * 27 / 100, panelX = MARGIN + tabW - 3;
+    int tabW = c->w * 27 / 100, panelX = MARGIN + tabW - (ui->shoulderTabs ? 0 : 3);
     bool details = ui->bagSelected >= 0 && (!ui->bagSource || ui->bagDetails);
     int bottom = details ? c->h - MARGIN - DESC_H - 4 : c->h - MARGIN;
     list(ui, c, p, &v, panelX, CONTENT_Y, c->w - MARGIN - panelX, bottom - CONTENT_Y);
@@ -342,7 +343,11 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         static const char* const SORTS[3] = { "DEFAULT", "NAME", "COUNT" };
         int sy = sortY, sw = tabW - 4;
         pd_layered_box(c, MARGIN, sy, sw, 22, 3, p->desc, p->descLayers, p->descFill);
-        pd_text(c, MARGIN + (sw - pd_text_width(SORTS[ui->bagSort])) / 2, pd_text_y(sy, 22), SORTS[ui->bagSort], p->descText, p->descTextShadow);
+        const char* sortLabel = SORTS[ui->bagSort];
+        char hint[16];
+        snprintf(hint, sizeof hint, "SEL %s", sortLabel);
+        if (ui->shoulderTabs && pd_text_width(hint) <= sw - 8) sortLabel = hint;
+        pd_text(c, MARGIN + (sw - pd_text_width(sortLabel)) / 2, pd_text_y(sy, 22), sortLabel, p->descText, p->descTextShadow);
         ui_add_hit(ui, MARGIN, sy, sw, 22, HIT_BAG_SORT);
     }
     if (details) {

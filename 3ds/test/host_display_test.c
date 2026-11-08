@@ -316,7 +316,12 @@ int main(void) {
     struct pd_bag_source empty = bagSource;
     empty.count = 0;
     ui.bagSource = &empty;
+    const int seam = MARGIN + c.w * 27 / 100 - 4, seamY = CONTENT_Y + 11;
+    pd_backdrop(&c);
+    uint32_t handheldGap[4];
+    memcpy(handheldGap, partyPx + seamY * c.w + seam, sizeof handheldGap);
     pd_ui_bag_view(&ui,&c,&fr,&party);
+    assert(!memcmp(handheldGap, partyPx + seamY * c.w + seam, sizeof handheldGap));
     assert(ui.bagTabCount == 1 && ui.bagPocketMask == 1 && !has(&ui,HIT_BAG_TAB+1));
     // Native GBA pockets also use the common sorting and keep cartridge order in Default.
     ui.bagSource = NULL;
