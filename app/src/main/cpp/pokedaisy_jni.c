@@ -1973,6 +1973,20 @@ Java_com_pokedaisy_app_MgbaCore_pkNdsCpuBoost(JNIEnv* env, jobject thiz, jboolea
     if (pk_nds_active()) pk_nds_set_cpu_boost(on == JNI_TRUE);
 }
 
+// A DS game's Action Replay codes (cheats/Cheats.kt DsCheats): words, and how many belong to each cheat. Emu thread.
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsCheats(JNIEnv* env, jobject thiz, jintArray jWords, jintArray jLengths) {
+    if (!pk_nds_active()) return -1;
+    jsize nWords = (*env)->GetArrayLength(env, jWords);
+    jsize nCheats = (*env)->GetArrayLength(env, jLengths);
+    jint* words = (*env)->GetIntArrayElements(env, jWords, NULL);
+    jint* lengths = (*env)->GetIntArrayElements(env, jLengths, NULL);
+    int n = pk_nds_set_cheats((const uint32_t*) words, nWords, (const int32_t*) lengths, nCheats);
+    (*env)->ReleaseIntArrayElements(env, jLengths, lengths, JNI_ABORT);
+    (*env)->ReleaseIntArrayElements(env, jWords, words, JNI_ABORT);
+    return n;
+}
+
 // DS LAYOUT floats the X menu on one screen: it comes back after a menu screen left by touch. Emu thread.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkNdsKeepStartMenu(JNIEnv* env, jobject thiz, jboolean on) {

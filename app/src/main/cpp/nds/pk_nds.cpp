@@ -24,6 +24,7 @@
 #include <RTC.h>
 #include <Savestate.h>
 #include <Args.h>
+#include <AREngine.h>
 
 #include <android/log.h>
 
@@ -603,6 +604,26 @@ void pk_nds_set_cpu_boost(bool on)
 }
 
 void pk_nds_set_wild_rates(const int32_t* triples, int n) { pk_nds_field_set_rates(triples, n); }
+
+int pk_nds_set_cheats(const uint32_t* words, int nWords, const int32_t* lengths, int nCheats)
+{
+    if (!ds) return -1;
+    std::vector<ARCode> codes;
+    int at = 0;
+    for (int i = 0; i < nCheats; i++) {
+        int len = lengths[i];
+        if (len <= 0 || (len & 1) || at + len > nWords) break;   // whole lines only (Cheats.kt never sends less)
+        ARCode c{};
+        c.Parent = nullptr;
+        c.Enabled = true;
+        c.Code.assign(words + at, words + at + len);
+        at += len;
+        codes.push_back(std::move(c));
+    }
+    int n = (int) codes.size();
+    ds->nds->AREngine.Cheats = std::move(codes);
+    return n;
+}
 
 void pk_nds_set_draw(bool draw, bool drawNext)
 {

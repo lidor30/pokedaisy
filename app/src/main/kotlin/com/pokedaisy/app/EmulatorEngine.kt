@@ -1771,8 +1771,12 @@ class EmulatorEngine(
     /** Loads [cheatText] into the core (emu thread). Achievements pause while any is in. */
     private fun applyCheats() {
         cheatsDirty = false
-        val text = if (gba) cheatText else ""
-        val n = MgbaCore.pkCheatsApply(text)
+        // A DS game: Action Replay DS codes, into melonDS's own engine (cheats.DsCheats).
+        val text = if (gba || nds) cheatText else ""
+        val n = if (nds) {
+            val w = com.pokedaisy.app.cheats.DsCheats.fromText(text)
+            MgbaCore.pkNdsCheats(w.words, w.lengths)
+        } else MgbaCore.pkCheatsApply(text)
         if (n < 0) Log.w("pokedaisy", "cheats didn't load")
         else if (text.isNotEmpty()) Log.i("pokedaisy", "cheats loaded: $n")
         runCatching { RetroAchievements.setCheatsActive(n > 0) }
