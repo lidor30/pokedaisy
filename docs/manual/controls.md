@@ -220,6 +220,8 @@ Held sideways, the skin fills the screen and the game moves into the skin's own 
 - **`RESET`** puts every button back where the ready-made layout has it.
 - **`DONE`**, or `BACK`, keeps your layout and makes `LAYOUT` read `CUSTOM`.
 
+While you edit, the [HUD](hud.md) stays where it is. It makes room only for buttons along the top and bottom edges, so moving one up the side of the screen won't push it around.
+
 A phone held upright and held sideways each get their own layout: you edit the one for the way you're holding the phone, so turn it to edit the other. A layout stays put on another phone or with the status bar on: each button keeps its distance from the nearest edge.
 
 ## Running: AUTO-RUN and RUN INDOORS
