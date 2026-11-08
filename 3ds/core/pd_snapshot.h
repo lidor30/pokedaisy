@@ -41,6 +41,8 @@ struct pd_mon {
     bool hasExperience, hasHeldItem; // distinguish unavailable data from zero
     uint32_t experience;
     int heldItem;
+    bool hasFriendship;
+    int friendship;
     struct pd_mon_stats stats; // optional: valid only for verified decoders
     bool egg;         // shown as PD_SPECIES_EGG; the box's isEgg flag
 };

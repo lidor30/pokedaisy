@@ -23,14 +23,24 @@ find_package(Python3 COMPONENTS Interpreter REQUIRED)
 set(DS_DATA ${CMAKE_CURRENT_BINARY_DIR}/data_gen.h)
 set(DATA_READER ${ROOT}/linux/dsperate/gen_data.py)
 set(DATA_INPUTS ${KOTLIN}/GameTitles.kt)
-foreach(name Gen4Reader Gen4TablesPlatinum Gen4TablesHeartGold Gen4Dex Gen4TownMapPlatinum Gen4TownMapHeartGold PokegearMap Gen5TownMapBlack Gen5TownMapBlack2 Gen5Reader Gen5TablesBlack Gen5ItemsBlack Gen5TablesBlack2 NdsArt RegionMapModel MonStats Gen4Charmap)
+foreach(name Gen4Reader Gen4TablesPlatinum Gen4TablesHeartGold Gen4Dex Gen4MachinesPlatinum Gen4TownMapPlatinum Gen4TownMapHeartGold PokegearMap Gen5TownMapBlack Gen5TownMapBlack2 Gen5Reader Gen5DexBlack Gen5TablesBlack Gen5ItemsBlack Gen5TablesBlack2 NdsArt RegionMapModel MonStats Gen4Charmap)
   list(APPEND DATA_INPUTS ${KOTLIN}/companion/data/${name}.kt)
 endforeach()
 add_custom_command(OUTPUT ${DS_DATA}
   COMMAND ${Python3_EXECUTABLE} ${DATA_READER} --output ${DS_DATA}
   DEPENDS ${DATA_READER} ${DATA_INPUTS}
   VERBATIM)
-add_custom_target(ds-app-data DEPENDS ${DS_DATA})
+set(GUIDE_DATA ${CMAKE_CURRENT_BINARY_DIR}/guide_gen.h)
+set(GUIDE_READER ${ROOT}/linux/dsperate/gen_guide.py)
+set(GUIDE_INPUTS ${KOTLIN}/companion/data/GuideGen4.kt ${KOTLIN}/companion/data/GuideGen5.kt)
+foreach(name GuideGen4PlatinumGen GuideGen4HeartGoldGen GuideGen5BlackGen GuideGen5WhiteGen GuideGen5Black2Gen GuideGen5White2Gen GuidePlatinum GuideHeartGold GuideBlack GuideBlack2 Gen4TownMapPlatinum Gen4TablesPlatinum Gen4TownMapHeartGold Gen5TownMapWhite Gen5TownMapWhite2 Gen5TablesBlack Gen5TablesBlack2 Gen4Reader Gen5Reader)
+  list(APPEND GUIDE_INPUTS ${KOTLIN}/companion/data/${name}.kt)
+endforeach()
+add_custom_command(OUTPUT ${GUIDE_DATA}
+  COMMAND ${Python3_EXECUTABLE} ${GUIDE_READER} ${KOTLIN}/companion/data ${GUIDE_DATA}
+  DEPENDS ${GUIDE_READER} ${GUIDE_INPUTS}
+  VERBATIM)
+add_custom_target(ds-app-data DEPENDS ${DS_DATA} ${GUIDE_DATA})
 file(GLOB PD_CORE CONFIGURE_DEPENDS ${ROOT}/3ds/core/*.c)
 add_library(pd_ds_presentation STATIC companion_ui.cpp layout.cpp battle_strip.cpp battle_style.cpp ${PD_CORE}
   ${ROOT}/linux/hud.c
@@ -39,6 +49,7 @@ add_library(pd_ds_presentation STATIC companion_ui.cpp layout.cpp battle_strip.c
   ${ROOT}/linux/dsperate/party_view.cpp
   ${ROOT}/linux/dsperate/bag_view.cpp
   ${ROOT}/linux/dsperate/dex_view.cpp
+  ${ROOT}/linux/dsperate/guide_view.cpp
   ${ROOT}/linux/dsperate/map_art.cpp
   ${ROOT}/linux/dsperate/map_view.cpp
   ${APP}/pk_nds_field.cpp)
@@ -47,7 +58,7 @@ target_include_directories(pd_ds_presentation PUBLIC ${CMAKE_CURRENT_BINARY_DIR}
   ${ROOT}/3ds/core ${ROOT}/linux/dsperate ${APP})
 target_link_libraries(pd_ds_presentation PUBLIC m)
 
-add_library(pokedaisy_ds_libretro SHARED pd_ds_libretro.cpp)
+add_library(pokedaisy_ds_libretro SHARED pd_ds_libretro.cpp ${APP}/pk_nds_call.cpp)
 set_target_properties(pokedaisy_ds_libretro PROPERTIES PREFIX "")
 target_include_directories(pokedaisy_ds_libretro PRIVATE ${LR} ${DS}/src)
 target_link_libraries(pokedaisy_ds_libretro PRIVATE pd_ds_presentation dsperate_core pthread dl)
@@ -63,10 +74,10 @@ endif()
 
 include(CTest)
 if(BUILD_TESTING)
-  add_executable(ds-layout-test test/layout.cpp layout.cpp ${ROOT}/3ds/core/pd_canvas.c ${ROOT}/3ds/core/pd_font_gen.c ${ROOT}/3ds/core/pd_style.c)
+  add_executable(ds-layout-test test/layout.cpp)
   target_include_directories(ds-layout-test PRIVATE . ${APP} ${ROOT}/3ds/core)
   target_compile_options(ds-layout-test PRIVATE -UNDEBUG)
-  target_link_libraries(ds-layout-test PRIVATE m)
+  target_link_libraries(ds-layout-test PRIVATE pd_ds_presentation)
   add_test(NAME ds-layout-policy COMMAND ds-layout-test)
   add_executable(ds-libretro-host test/host.c)
   target_include_directories(ds-libretro-host PRIVATE ${LR}/include)

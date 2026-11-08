@@ -1,6 +1,7 @@
 // The companion's frame: the tab bar, the open tab, overlays, and the stylus.
 // Each tab draws itself in its own file (pd_ui_party.c, _battle, _bag,
 // _settings); pd_ui_internal.h has what they share.
+#include "pd_font.h"
 #include <stdlib.h>
 #include <string.h>
 
@@ -58,32 +59,49 @@ bool ui_tab_available(const struct pd_ui* ui, const struct pd_game* g, enum pd_t
 
 // The chips of the chosen tabs this game has, then - while there's room - its others, in the tabs' own order. Without
 // a game known yet (g NULL) the choice as it stands.
+static enum pd_tab bar_choice(const struct pd_ui* ui, int i) {
+    static const enum pd_tab hostOrder[UI_BAR_CHOICES] = {
+        PD_TAB_PARTY, PD_TAB_BAG, PD_TAB_MAP, PD_TAB_GUIDE, PD_TAB_DEX,
+        PD_TAB_BOXES, PD_TAB_NUZLOCKE, PD_TAB_CARD, PD_TAB_STATES, PD_TAB_ACHIEVEMENTS,
+    };
+    return ui->content ? hostOrder[i] : UI_BAR_CHOICE[i];
+}
+
 static int bar_tabs(const struct pd_ui* ui, const struct pd_game* g, enum pd_tab out[PD_MAX_BAR_TABS]) {
     int bits = ui->settings && ui->settings->tabBar ? ui->settings->tabBar : PD_TAB_BAR_DEFAULT;
     int room = ui->battleOnBar ? PD_MAX_BAR_TABS - 1 : PD_MAX_BAR_TABS;
     bool picked[UI_BAR_CHOICES] = { false };
     int n = 0;
     for (int i = 0; i < UI_BAR_CHOICES && n < room; i++) {
-        if ((bits >> UI_BAR_CHOICE[i] & 1) && ui_tab_available(ui, g, UI_BAR_CHOICE[i])) {
+        if ((bits >> bar_choice(ui, i) & 1) && ui_tab_available(ui, g, bar_choice(ui, i))) {
             picked[i] = true;
             n++;
         }
     }
     for (int i = 0; i < UI_BAR_CHOICES && n < room; i++) {
-        if (!picked[i] && ui_tab_available(ui, g, UI_BAR_CHOICE[i]) && UI_BAR_CHOICE[i] != PD_TAB_NUZLOCKE) {
+        if (!ui->content && !picked[i] && ui_tab_available(ui, g, bar_choice(ui, i)) && bar_choice(ui, i) != PD_TAB_NUZLOCKE) {
             picked[i] = true;
             n++;
         }
     }
     int m = 0;
     for (int i = 0; i < UI_BAR_CHOICES; i++)
-        if (picked[i]) out[m++] = UI_BAR_CHOICE[i];
+        if (picked[i]) out[m++] = bar_choice(ui, i);
     return m;
 }
 
 int ui_bar_count(const struct pd_ui* ui) {
     int bits = ui->settings && ui->settings->tabBar ? ui->settings->tabBar : PD_TAB_BAR_DEFAULT, n = 0;
-    for (int i = 0; i < UI_BAR_CHOICES; i++) n += bits >> UI_BAR_CHOICE[i] & 1;
+    for (int i = 0; i < UI_BAR_CHOICES; i++) n += bits >> bar_choice(ui, i) & 1;
+    return n;
+}
+
+int ui_configurable_tabs(const struct pd_ui* ui, enum pd_tab out[UI_BAR_CHOICES]) {
+    int n = 0;
+    for (int i = 0; i < UI_BAR_CHOICES; i++) {
+        const enum pd_tab tab = bar_choice(ui, i);
+        if (!ui->availableTabs || (ui->availableTabs & (1u << tab))) out[n++] = tab;
+    }
     return n;
 }
 
@@ -92,8 +110,8 @@ int ui_more_tabs(const struct pd_ui* ui, const struct pd_game* g, enum pd_tab ou
     int n = bar_tabs(ui, g, bar), m = 0;
     for (int i = 0; i < UI_BAR_CHOICES; i++) {
         bool on = false;
-        for (int k = 0; k < n; k++) on |= bar[k] == UI_BAR_CHOICE[i];
-        if (!on && ui_tab_available(ui, g, UI_BAR_CHOICE[i])) out[m++] = UI_BAR_CHOICE[i];
+        for (int k = 0; k < n; k++) on |= bar[k] == bar_choice(ui, i);
+        if (!on && ui_tab_available(ui, g, bar_choice(ui, i))) out[m++] = bar_choice(ui, i);
     }
     return m;
 }
@@ -143,10 +161,12 @@ void ui_toggle_act(struct pd_ui* ui, int i) {
         return;
     }
     // TAB BAR: never more than PD_MAX_BAR_TABS on, never none.
-    if (i >= UI_BAR_CHOICES) return;
-    int bit = 1 << UI_BAR_CHOICE[i];
+    enum pd_tab tabs[UI_BAR_CHOICES];
+    const int n = ui_configurable_tabs(ui, tabs);
+    if (i < 0 || i >= n) return;
+    int bit = 1 << tabs[i];
     int on = 0;
-    for (int k = 0; k < UI_BAR_CHOICES; k++) on += (s->tabBar >> UI_BAR_CHOICE[k]) & 1;
+    for (int k = 0; k < n; k++) on += (s->tabBar >> tabs[k]) & 1;
     if (s->tabBar & bit) {
         if (on <= 1) return;
     } else if (on >= PD_MAX_BAR_TABS) {
@@ -154,7 +174,7 @@ void ui_toggle_act(struct pd_ui* ui, int i) {
     }
     s->tabBar ^= bit;
     // A tab taken off the bar while it's open stays open (from MORE now).
-    if (!(s->tabBar & bit) && ui->tab == UI_BAR_CHOICE[i]) ui->moreOpened = true;
+    if (!(s->tabBar & bit) && ui->tab == tabs[i]) ui->moreOpened = true;
     ui->action = PD_ACTION_SETTINGS_CHANGED;
 }
 
@@ -169,7 +189,7 @@ void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings) {
     ui->mapPage = -1;
     ui->mapSel = -1;
     ui->mapDungeon = -1;
-    ui->guideOpen = -1;
+    pd_ui_guide_reset(ui);
     ui->foeSelected = ui->foeShown = -1;
     ui->itemMoveSlot = -1;
     ui->lastFoeActive = ui->lastFoeNext = -1;
@@ -360,13 +380,20 @@ const struct pd_game* ui_game;
 
 void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
                 const struct pd_snapshot* s, const struct pd_host_info* host) {
+    const bool dexFont = ui->handheldDex && ui->tab == PD_TAB_DEX;
+    const struct pd_glyph* glyphs;
+    int glyphCount;
+    if (dexFont) {
+        pd_font_get(&glyphs, &glyphCount);
+        pd_font_set(NULL, 0);
+    }
     ui_game = g;
     ui->hitCount = 0;
     ui->startId = -1;
     ui->drawn = s;
     ui->drawnGame = g;
     ui->hostHasStates = host && host->hasStates;
-    if (!pd_party_backdrop(c, g)) pd_backdrop(c);
+    if (!ui->keepBackdrop && !pd_party_backdrop(c, g)) pd_backdrop(c);
     tab_bar(ui, c, g, host);
     // The tabs draw above the bar: the same pixels, a shorter canvas.
     struct pd_canvas full = *c, view = *c;
@@ -375,7 +402,7 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     c = &view;
     if (ui->overlay == PD_OVERLAY_MORE) {
         ui_more_page(ui, c, g);
-    } else if (ui->content && ui->tab != PD_TAB_SETTINGS) {
+    } else if (ui->content) {
         // A backend's own tab content (libretro's DS companion) inside the shared frame and bar.
         ui->content(ui->contentCtx, ui, c);
     } else if (ui->tab == PD_TAB_SETTINGS) {
@@ -408,11 +435,12 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     } else if (ui->overlay == PD_OVERLAY_FLY) {
         ui_fly_overlay(ui, c);
     } else if (ui->overlay == PD_OVERLAY_GUIDE_NOTICE) {
-        ui_guide_notice(ui, c, g);
+        ui_guide_notice(ui, c);
     } else if (ui->overlay != PD_OVERLAY_MORE) {
         ui_overlay(ui, c);
     }
     if (ui->keyFocus) focus_ring(ui, c);
+    if (dexFont) pd_font_set(glyphs, glyphCount);
 }
 
 // The list a drag scrolls right now.
@@ -440,6 +468,14 @@ bool pd_ui_tick(struct pd_ui* ui, unsigned ms) {
 static void close_overlay(struct pd_ui* ui, enum pd_action action) {
     ui->overlay = PD_OVERLAY_NONE;
     if (action != PD_ACTION_NONE) ui->action = action;
+}
+
+bool ui_summary_learn(struct pd_ui* ui) {
+    if (!ui->handheldParty || ui->summarySlot < 0 || !ui->summaryCanLearn) return false;
+    ui->summaryLearn = !ui->summaryLearn;
+    ui->summaryStats = ui->summaryInfo = false;
+    ui->summaryLearnRow = 0;
+    return true;
 }
 
 static void act(struct pd_ui* ui, int id) {
@@ -528,15 +564,19 @@ static void act(struct pd_ui* ui, int id) {
         ui->action = PD_ACTION_TOGGLE_FF;
     } else if (id >= HIT_SLOT && id < HIT_SLOT + PD_PARTY_SIZE) {
         ui->summarySlot = id - HIT_SLOT;
-        ui->summaryStats = ui->summaryInfo = false;
+        ui->summaryStats = ui->summaryInfo = ui->summaryLearn = false;
+        ui->summaryLearnRow = 0;
     } else if (id >= HIT_SUMMARY_MON && id < HIT_SUMMARY_MON + PD_PARTY_SIZE) {
         ui->summarySlot = id - HIT_SUMMARY_MON;
+        ui->summaryLearnRow = 0;
+    } else if (id == HIT_SUMMARY_LEARN) {
+        ui_summary_learn(ui);
     } else if (id == HIT_SUMMARY_STATS) {
         ui->summaryStats = !ui->summaryStats;
-        ui->summaryInfo = false;
+        ui->summaryInfo = ui->summaryLearn = false;
     } else if (id == HIT_SUMMARY_INFO) {
         ui->summaryInfo = !ui->summaryInfo;
-        ui->summaryStats = false;
+        ui->summaryStats = ui->summaryLearn = false;
     } else if (id == HIT_SUMMARY_TAKE) {
         ui->action = PD_ACTION_ITEM_TAKE;
     } else if (id == HIT_BACK) {
@@ -653,6 +693,21 @@ bool pd_ui_touch(struct pd_ui* ui, int x, int y, bool down) {
     return true;
 }
 
+int pd_ui_tab_menu_count(const struct pd_ui* ui) {
+    enum pd_tab tabs[UI_BAR_CHOICES];
+    if (ui->overlay == PD_OVERLAY_MORE) return ui_more_tabs(ui, NULL, tabs);
+    if (ui->overlay == PD_OVERLAY_TAB_BAR) return ui_configurable_tabs(ui, tabs);
+    return 0;
+}
+
+void pd_ui_tab_menu_focus(struct pd_ui* ui, int row) {
+    ui->pressedId = row >= 0 && row < pd_ui_tab_menu_count(ui) ? HIT_OPTION + row : -1;
+}
+
+void pd_ui_tab_menu_choose(struct pd_ui* ui, int row) {
+    if (row >= 0 && row < pd_ui_tab_menu_count(ui)) ui_toggle_act(ui, row);
+}
+
 void pd_ui_next_tab(struct pd_ui* ui, int dir) {
     if (ui->overlay != PD_OVERLAY_NONE) return;
     // The bar's order, then the gear (a tab MORE opened steps on from the gear).
@@ -731,6 +786,7 @@ bool pd_ui_back(struct pd_ui* ui) {
         return true;
     }
     if (ui->tab == PD_TAB_DEX && ui->dexOpen) {
+        if (ui->handheldDex) ui->dexReturn = ui->dexOpen;
         ui->dexOpen = 0;
         return true;
     }

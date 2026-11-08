@@ -172,6 +172,13 @@ int pd_gb_art_maps(const struct pd_game* g); // its pages, 0 = no town map in th
 int pd_gb_internal_count(const struct pd_gb_config* gb);
 // pret's LZ (Gen2Lz); [polished]: its variant's counts. Stops once [max] bytes are out, returns how many are.
 int pd_gb_lz(const uint8_t* rom, size_t romSize, uint32_t start, uint8_t* out, int max, bool polished);
+struct pd_gb_polished_learn {
+    const char* sha1;
+    uint32_t base, learnPointers, learnData;
+};
+struct pd_level_move;
+int pd_polished_level_moves(const struct pd_game*, int, struct pd_level_move*, int capacity);
+int pd_polished_growth(const struct pd_game*, int species); // normalized to the shared EXP table
 
 struct pd_config;
 void pd_gb_snapshot_read(struct pd_snapshot* s, const struct pd_config* cfg, pd_read_fn read, void* ctx);

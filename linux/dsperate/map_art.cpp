@@ -192,6 +192,274 @@ void ds_map_update(DsMapArt& art,const DsCompanion& s){
 int ds_map_section(int x,int y){if(x<0 || x>=30 || y<0 || y>=30)return -1;int s=pd_ds_data::mapGrid[y*30+x];return s==65535?-1:s;}
 const char* ds_map_name(int s){return s>=0 && size_t(s)<std::size(pd_ds_data::mapSections)?pd_ds_data::mapSections[s]:"";}
 
+namespace {
+// The LZ10/LZ11 front-picture members use the same format as Android's Gen5Lz.
+Bytes unpack_picture(const Bytes& packed){
+  const int type=packed.at(0);
+  if(type!=0x10 && type!=0x11)return {};
+  size_t len=u32(packed,0)>>8,pos=4;
+  if(!len){len=u32(packed,4);pos=8;}
+  if(!len || len>65536)return {};
+  Bytes out;
+  out.reserve(len);
+  while(out.size()<len){
+    const int flags=packed.at(pos++);
+    for(int bit=7;bit>=0 && out.size()<len;--bit){
+      const int a=packed.at(pos++);
+      if(!(flags&(1<<bit))){out.push_back(a);continue;}
+      int n=(a>>4)+1,offset=a&15;
+      if(type==0x10)n+=2;
+      else if((a>>4)==0){
+        const int b=packed.at(pos++);
+        n=offset*16+(b>>4)+0x11;offset=b&15;
+      }else if((a>>4)==1){
+        const int b=packed.at(pos++),c=packed.at(pos++);
+        n=offset*4096+b*16+(c>>4)+0x111;offset=c&15;
+      }
+      const size_t back=offset*256+packed.at(pos++)+1;
+      if(back>out.size())return {};
+      for(int i=0;i<n && out.size()<len;++i)out.push_back(out[out.size()-back]);
+    }
+  }
+  return out;
+}
+
+void read_regional(DsDexArt& art,const Bytes& numbers,bool unova,int speciesCount){
+  std::vector<int> order(unova?speciesCount:speciesCount+1);
+  int last=0;
+  for(int species=1;species<=speciesCount && size_t(species*2+2)<=numbers.size();++species){
+    const int number=u16(numbers,species*2);
+    if(number>=int(order.size()) || (!unova && number==0))continue;
+    if(order[number])return; // inconsistent numbering
+    order[number]=species;
+    last=std::max(last,number);
+  }
+  const auto first=order.begin()+(!unova);
+  const auto end=order.begin()+last+1;
+  if(last>0 && std::find(first,end,0)==end){
+    order.resize(last+1);
+    art.regional=std::move(order);
+  }
+}
+
+// Message-bank formats from Android's Gen4Text.kt and Gen5Text.kt.
+std::vector<std::string> dex_text(const Bytes& bank,bool unova,int speciesCount){
+  const size_t count=std::min<int>(u16(bank,unova?2:0),speciesCount+1);
+  const size_t section=unova?u32(bank,12):0;
+  const unsigned key=unova?0:u16(bank,2);
+  std::vector<std::string> lines(count);
+  for(size_t i=0;i<count;++i){
+    const size_t record=section+4+i*8;
+    if(record+8>bank.size())break;
+    const uint32_t mask=(765u*(i+1)*key)&0xffff;
+    const uint32_t repeated=mask|(mask<<16);
+    const size_t start=section+(u32(bank,record)^repeated);
+    const size_t length=unova?u16(bank,record+4):u32(bank,record+4)^repeated;
+    if(!length || start>bank.size() || length>(bank.size()-start)/2)continue;
+    std::vector<uint16_t> codes(length);
+    if(unova){
+      uint16_t seed=u16(bank,start+2*(length-1))^0xffff;
+      for(size_t j=length;j>0;--j){
+        codes[j-1]=u16(bank,start+2*(j-1))^seed;
+        seed=(seed>>3)|(seed<<13);
+      }
+    }else{
+      uint16_t seed=(i+1)*596947u;
+      for(size_t j=0;j<length;++j,seed+=18749)
+        codes[j]=u16(bank,start+2*j)^seed;
+    }
+    auto& out=lines[i];
+    for(size_t j=0;j<length;){
+      const uint16_t code=codes[j++];
+      if(code==0xffff)break;
+      if(code==(unova?0xf000:0xfffe)){
+        if(j+1>=length)break;
+        j+=2+codes[j+1];
+        continue;
+      }
+      if(code==(unova?0xfffe:0xe000)){
+        if(!out.empty() && out.back()!=' ')out+=' ';
+      }else if(unova){
+        if(code>=32 && code<127)out+=char(code);
+        else if(code==0x2019)out+='\'';
+        else if(code==0x00e9)out+="é";
+        else if(code==0x246d || code==0x246e)out+=code==0x246d?"♂":"♀";
+      }else{
+        if(code==0x188){out+="é";continue;}
+        if(code==0x1b3){out+='\'';continue;}
+        if(code==0x1b4 || code==0x1b5){out+='"';continue;}
+        if(code==0x1bb || code==0x1bc){out+=code==0x1bb?"♂":"♀";continue;}
+        for(const auto& c:pd_ds_data::chars)if(c.code==code){out+=c.text;break;}
+      }
+    }
+  }
+  return lines;
+}
+}
+
+DsDexArt ds_dex_art(const std::vector<uint8_t>& rom,DsGame game){
+  DsDexArt art;
+  if(game==DsGame::Unsupported)return art;
+  const bool unova=ds_unova(game),johto=game==DsGame::Johto;
+  const int count=unova?649:493;
+  try{
+    // The same archives and member indices used by Android's NdsArt.kt.
+    const auto personal=file(rom,unova?"/a/0/1/6":johto?"/a/0/0/2":"/poketool/personal/pl_personal.narc");
+    Bytes heights,weights;
+    if(!unova){
+      try{
+        const auto zukan=file(rom,johto?"/a/0/7/4":"/application/zukanlist/zkn_data/zukan_data_gira.narc");
+        heights=member(zukan,0);weights=member(zukan,1);
+      }catch(const std::exception&){}
+    }
+    std::vector<DsDexDetails> details(count+1);
+    for(int species=1;species<=count;++species){
+      const auto record=member(personal,species);
+      if(record.size()<6)throw std::runtime_error("short personal record");
+      auto& entry=details[species];
+      std::copy_n(record.begin(),6,entry.stats.begin());
+      const size_t growthOffset=unova?0x15:0x13;
+      if(record.size()>growthOffset && record[growthOffset]<6)entry.growth=record[growthOffset];
+      const size_t machineOffset=unova?0x28:0x1c;
+      if(record.size()>=machineOffset+entry.machineBits.size()){
+        std::copy_n(record.begin()+machineOffset,entry.machineBits.size(),entry.machineBits.begin());
+        entry.hasMachines=true;
+      }
+      if(unova && record.size()>=0x28){
+        entry.heightDm=u16(record,0x24);entry.weightHg=u16(record,0x26);
+      }else if(!unova && size_t(species*4+4)<=std::min(heights.size(),weights.size())){
+        entry.heightDm=u32(heights,species*4);entry.weightHg=u32(weights,species*4);
+      }
+    }
+    art.details=std::move(details);
+    const auto numbers=unova?member(personal,ds_unova_sequel(game)?709:668):
+      member(file(rom,johto?"/a/1/3/8":"/poketool/pl_pokezukan.narc"),0);
+    read_regional(art,numbers,unova,count);
+  }catch(const std::exception&){}
+  if(!art.details.empty()){
+    try{
+      const auto messages=file(rom,unova?"/a/0/0/2":johto?"/a/0/2/7":"/msgdata/pl_msg.narc");
+      const bool soulSilver=johto && rom.size()>0x0e && rom[0x0d]=='P' && rom[0x0e]=='G';
+      const bool sequel=ds_unova_sequel(game);
+      const int description=sequel?442:unova?(game==DsGame::White?236:235):johto?(soulSilver?804:803):706;
+      const int category=sequel?464:unova?260:johto?816:711;
+      auto descriptions=dex_text(member(messages,description),unova,count);
+      auto categories=dex_text(member(messages,category),unova,count);
+      for(size_t i=1;i<art.details.size();++i){
+        if(i<descriptions.size())art.details[i].description=std::move(descriptions[i]);
+        if(i<categories.size())art.details[i].category=std::move(categories[i]);
+      }
+    }catch(const std::exception&){}
+  }
+  try{art.pictures=file(rom,unova||johto?"/a/0/0/4":"/poketool/pokegra/pl_pokegra.narc");}
+  catch(const std::exception&){}
+  try{art.learnsets=file(rom,unova?"/a/0/1/8":johto?"/a/0/3/3":"/poketool/personal/wotbl.narc");}
+  catch(const std::exception&){}
+  try{
+    const auto evo=file(rom,unova?"/a/0/1/9":johto?"/a/0/3/4":"/poketool/personal/evo.narc");
+    std::vector<DsDexEvolution> entries;
+    for(int species=1;species<=count;++species){
+      const auto record=member(evo,species);
+      for(size_t i=0;i+6<=record.size() && i<42;i+=6){
+        const int method=u16(record,i),param=u16(record,i+2),to=u16(record,i+4);
+        if(method && to>0 && to<=count && to!=species)entries.push_back({species,to,method,param});
+      }
+    }
+    if(unova){
+      // The two Gen 5 trade-pair species are stored without their partner ID.
+      std::vector<int> pair;
+      for(const auto& link:entries)
+        if(link.method==7 && std::find(pair.begin(),pair.end(),link.from)==pair.end())pair.push_back(link.from);
+      if(pair.size()==2)for(auto& link:entries)
+        if(link.method==7 && !link.param)link.param=link.from==pair[0]?pair[1]:pair[0];
+    }
+    art.evolutions=std::move(entries);
+  }catch(const std::exception&){}
+  return art;
+}
+
+std::vector<DsDexEvolution> ds_dex_evolutions(const DsDexArt& art,int species){
+  std::vector<DsDexEvolution> links;
+  for(const auto& evo:art.evolutions)
+    if(evo.from==species || evo.to==species)links.push_back(evo);
+  return links;
+}
+
+std::vector<DsDexMove> ds_level_moves(const DsDexArt& art,DsGame game,int species){
+  std::vector<DsDexMove> moves;
+  const bool unova=ds_unova(game);
+  if(species<=0 || species>(unova?649:493))return moves;
+  try{
+    const auto record=member(art.learnsets,species);
+    const size_t stride=unova?4:2;
+    for(size_t i=0;i+stride<=record.size();i+=stride){
+      const int word=u16(record,i);
+      if(word==0xffff)break;
+      const int move=unova?word:word&0x1ff,level=unova?u16(record,i+2):word>>9;
+      if(move && level<=100)moves.push_back({level,move});
+    }
+  }catch(const std::exception&){}
+  return moves;
+}
+
+DsDexPage ds_dex_page(const DsDexArt& art,DsGame game,int species){
+  DsDexPage page;
+  const bool unova=ds_unova(game);
+  if(species<=0 || species>(unova?649:493))return page;
+  if(size_t(species)<art.details.size() && art.details[species].hasMachines){
+    const auto& bits=art.details[species].machineBits;
+    const int* moves=unova?pd_ds_data::tmMovesBlack:
+      game==DsGame::Johto?pd_ds_data::tmMovesHeartGold:pd_ds_data::tmMovesPlatinum;
+    const int total=unova?101:100,tmCount=unova?95:92;
+    for(int i=0;i<total;++i){
+      if(!(bits[i/8]&(1u<<(i%8))))continue;
+      const bool hm=i>=tmCount;
+      page.machines.push_back({hm,hm?i-tmCount+1:i+1,moves[i]});
+    }
+  }
+  page.moves=ds_level_moves(art,game,species);
+  try{
+    const int base=species*(unova?20:6);
+    const auto pal=palette(member(art.pictures,base+(unova?18:4)));
+    if(pal.size()<16)return page;
+    Bytes chars;
+    // Try the primary picture, then the alternate gender slot if it is empty.
+    for(int id : {unova?0:3,unova?1:2}){
+      try{
+        auto image=member(art.pictures,base+id);
+        if(unova)image=unpack_picture(image);
+        chars=tiles(image);
+        if(chars.size()>=(unova?4608:6400))break;
+      }catch(const std::exception&){chars.clear();}
+    }
+    const int side=unova?96:80;
+    if(chars.size()<(unova?4608:6400))return page;
+    page.sprite.resize(side*side);
+    page.side=side;
+    if(unova){
+      constexpr int blocks[][4]={{0,0,64,64},{64,0,32,64},{0,64,64,32},{64,64,32,32}};
+      int tile=0;
+      for(const auto& b:blocks)for(int ty=0;ty<b[3];ty+=8)for(int tx=0;tx<b[2];tx+=8,++tile)
+        for(int y=0;y<8;++y)for(int x=0;x<8;++x){
+          const int color=pixel(chars,tile,x,y);
+          if(color)page.sprite[(b[1]+ty+y)*side+b[0]+tx+x]=pal[color];
+        }
+    }else{
+      uint32_t seed=u16(chars,0);
+      for(int i=0;i<6400;i+=2){
+        const auto v=u16(chars,i)^uint16_t(seed);
+        chars[i]=v;chars[i+1]=v>>8;
+        seed=seed*1103515245u+24691u;
+      }
+      for(int y=0;y<side;++y)for(int x=0;x<side;++x){
+        const int color=(chars[y*side+x/2]>>(x%2*4))&15;
+        if(color)page.sprite[y*side+x]=pal[color];
+      }
+    }
+  }catch(const std::exception&){page.sprite.clear();page.side=0;}
+  return page;
+}
+
 std::vector<std::vector<uint32_t>> ds_party_icons(const std::vector<uint8_t>& rom,DsGame game){
   using namespace pd_ds_data;
   try{

@@ -84,9 +84,9 @@ static int by_count(const void* a, const void* b) {
     return d ? d : by_name(a, b);
 }
 
-// The pocket tabs down the left, the open one joined to the list.
+// The pocket tabs down the left. Keep the two frames separate at every canvas size.
 static void tabs(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_palette* p, const struct bag_view* v,
-                 int x, int w, int joinX) {
+                 int x, int w) {
     int visible=(c->h-CONTENT_Y)/(TAB_H+3);
     int first=ui->bagSource && ui->bagPocket>=visible ? ui->bagPocket-visible+1:0;
     for (int i = first; i < v->tabs; i++) {
@@ -94,11 +94,8 @@ static void tabs(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
         if(ui->bagSource && y+TAB_H>c->h)break;
         bool open = i == ui->bagPocket;
         uint32_t fill = open ? p->fill : p->panel[p->tabLayers].color;
-        // The open tab is drawn on into the list, its top and bottom lines meeting the list's frame, and its fill carried
-        // through that frame: one shape with the list.
-        int f = pd_layered_box(c, x, y, open ? joinX + 4 - x : w, TAB_H, 3, p->panel, p->tabLayers, fill);
-        if (open) pd_fill(c, x + w - f - 1, y + f, joinX + 5 - (x + w - f - 1), TAB_H - 2 * f, p->fill);
-        const char* name = ui->bagSource ? ui->bagSource->pocketName(ui->bagSource->ctx, i) : v->pockets[i] < 0 ? "ALL" : pd_pocket_name(v->pockets[i]);
+        int f = pd_layered_box(c, x, y, w, TAB_H, 3, p->panel, p->tabLayers, fill);
+        const char* name = ui->bagSource ? ui->bagSource->pocketName(ui->bagSource->ctx,i) : v->pockets[i] < 0 ? "ALL" : pd_pocket_name(v->pockets[i]);
         int tx = x + f + 5, ty = pd_text_y(y, TAB_H);
         int tw = pd_text_fit(c, tx, ty, w - 2 * f - 8, name, open ? p->text : p->tabText,
                              open ? p->textShadow : p->tabTextShadow);
@@ -280,7 +277,7 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         ui_notice(c, "NO BAG YET", "The bag shows once the game", "has loaded a save.");
         return;
     }
-    const struct pd_bag_palette* p = pd_bag_cur;
+    const struct pd_bag_palette* p = ui->bagPalette ? ui->bagPalette : pd_bag_cur;
     if (p->hasBackdrop) {
         for (int y = 0; y < c->h; y += 8) pd_fill(c, 0, y, c->w, 8, (y / 8) % 2 ? p->backdropB : p->backdropA);
     }
@@ -291,13 +288,11 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     else if (ui->bagSort == 2) qsort(v.rows, (size_t) v.count, sizeof(v.rows[0]), by_count);
     if (ui->bagPocket < 0 || ui->bagPocket >= v.tabs) ui->bagPocket = 0;
     if (ui->bagSelected >= v.count) ui->bagSelected = -1;
-    int tabW = c->w * 27 / 100, panelX = MARGIN + tabW - 3;
+    int tabW = c->w * 27 / 100, panelX = MARGIN + tabW;
     bool details = ui->bagSelected >= 0 && (!ui->bagSource || ui->bagDetails);
     int bottom = details ? c->h - MARGIN - DESC_H - 4 : c->h - MARGIN;
     list(ui, c, g, p, &v, panelX, CONTENT_Y, c->w - MARGIN - panelX, bottom - CONTENT_Y);
-    int frame = 0;
-    for (int i = 0; i < p->panelLayers; i++) frame += p->panel[i].width;
-    tabs(ui, c, p, &v, MARGIN, tabW - 4, panelX + frame);
+    tabs(ui, c, p, &v, MARGIN, tabW - 4);
     if (ui->bagSelected < 0 && !ui->bagSource) {
         // SORT: under the tabs, like the description bar's corner.
         static const char* const SORTS[3] = { "DEFAULT", "NAME", "COUNT" };
@@ -322,6 +317,6 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
 
 void pd_ui_bag_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     ui->hitCount = 0;
-    pd_backdrop(c);
+    if (!ui->keepBackdrop) pd_backdrop(c);
     ui_bag_tab(ui, c, g, s, NULL);
 }

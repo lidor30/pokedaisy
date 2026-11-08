@@ -6,7 +6,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
-#include "pd_game.h"
+#include "pd_dex.h"
 
 #define PD_EVO_MAX 12
 #define PD_LEVEL_MOVES_MAX 40
@@ -15,10 +15,6 @@
 
 struct pd_evo {
     int from, to, method, param;
-};
-
-struct pd_level_move {
-    int level, move;
 };
 
 enum pd_spot_method { PD_SPOT_GRASS, PD_SPOT_SURF, PD_SPOT_ROCK, PD_SPOT_FISH };

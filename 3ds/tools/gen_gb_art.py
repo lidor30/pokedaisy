@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Writes 3ds/core/pd_gb_art_gen.c: Polished Crystal's font address per release build, from the app's
+"""Writes 3ds/core/pd_gb_art_gen.c: Polished Crystal's font and learnset addresses per release build, from the app's
 Gen2PolishedCrystalGen.kt (Gen2Art.POLISHED_CRYSTAL's font = at(0)). The other carts' font addresses are fixed per game
 (pd_game.c, from Gen1Art.kt / Gen2Art.kt).
 
@@ -27,6 +27,19 @@ def main():
         off = addr if bank == 0 else bank * 0x4000 + (addr - 0x4000)
         out.append(f'    {{"{sha}", 0x{off:X}}}, // {name}')
     out += ["    {NULL, 0},", "};", ""]
+    def rom_offset(a):
+        v = int(a, 16)
+        bank, addr = v >> 16, v & 0xFFFF
+        return addr if bank == 0 else bank * 0x4000 + addr - 0x4000
+
+    dex = re.findall(r'"([0-9a-f]{40})" to intArrayOf\(([^\n]+?)\),\s*// (\S+)', src)
+    assert len(dex) == len(rows)
+    out += ["const struct pd_gb_polished_learn pd_gb_polished_learn_tables[] = {"]
+    for sha, fields, name in dex:
+        a = fields.split(",")
+        values = ", ".join(f"0x{rom_offset(a[i]):X}" for i in (15, 26, 27))
+        out.append(f'    {{"{sha}", {values}}}, // {name}')
+    out += ["    {0},", "};", ""]
     data = "\n".join(out)
     if "--check" in sys.argv:
         if open(OUT, encoding="utf-8").read() != data:

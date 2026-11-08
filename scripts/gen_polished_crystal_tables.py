@@ -305,7 +305,7 @@ def main():
            "PokegearOBPals", "ChrisSpriteGFX", "KrisSpriteGFX", "CrysSpriteGFX", "ItemDescriptions", "KeyItemDescriptions",
            "MoveDescriptions", "AbilityNames", "TMHMMoves",
            # The Huffman tree of its compressed text (<CTXT>: home/text.asm's ReadHuffmanChar).
-           "TextCompressionHuffmanTree"]
+           "TextCompressionHuffmanTree", "EvosAttacksPointers", "EvosAttacks"]
     rows = []
     for b in builds:
         cosmetic = (b.sym["VariantSpeciesAndFormTable"][1] - b.sym["CosmeticSpeciesAndFormTable"][1]) // 2

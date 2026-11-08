@@ -102,7 +102,17 @@ maps['unovaItems'] = string_map('itemNamesBlack', source=unova_items)
 maps['sequelItems'] = string_map('itemNamesBlack2Added', source=sequels)
 
 johto_config = reader.split(') = Gen4Config(', 1)[1].split('\n)', 1)[0]
+fields['johto_kantoBadgesOff'] = number(johto_config, 'kantoBadgesOff')
 gen5 = (data / 'Gen5Reader.kt').read_text()
+flag_bits, divisor = map(int, re.search(r'GEN4_FLAG_BYTES = (\d+) / (\d+)', reader).groups())
+fields['gen4FlagBytes'] = flag_bits // divisor
+gen5_defaults = gen5.split('data class Gen5Config(', 1)[1].split('\n)', 1)[0]
+gen5_sequel = gen5.split('varsFlagsOff = 0x1FF00', 1)[1].split('\n)', 1)[0]
+gen5_sequel = 'varsFlagsOff = 0x1FF00' + gen5_sequel
+for prefix, source in [('unova_', gen5_defaults), ('sequel_', gen5_sequel)]:
+    fields[prefix+'varsOff'] = number(source, 'varsFlagsOff')
+    fields[prefix+'flagsOff'] = number(source, 'varsFlagsOff') + 2*number(source, 'numVars')
+    fields[prefix+'flagBytes'] = number(source, 'numFlags') // 8
 for name in ('bodyOff', 'partyOff', 'trainerOff', 'bagOff', 'locationOff', 'pokedexOff', 'nationalDexOff', 'repelStepsOff'):
     fields['johto_' + name] = number(johto_config, name)
 fields['johto_saveDataPtr'] = number(reader, 'HEARTGOLD_SAVE_DATA_PTR')
@@ -160,7 +170,7 @@ pg_fields = re.search(r'data class Gen4Pokegear\((.*?)\n\)', reader, re.S)[1]
 for key in ('offPlayerAvatar','offAvatarMapObject','offObjectX','offObjectZ','offSpecialSpawn'):
     out.append(f'inline constexpr int pg_{key} = {number(pg_fields,key)};')
 # HeartGold's sFieldSysPtr: gen4HeartGoldFamily's fieldSystemPtr parameter (its default), which its pokegear passes on.
-johto_params = reader.split('private fun gen4HeartGoldFamily(', 1)[1].split(') = Gen4Config(', 1)[0]
+johto_params = reader.split('fun gen4HeartGoldFamily(', 1)[1].split(') = Gen4Config(', 1)[0]
 assert 'fieldSystemPtr = fieldSystemPtr' in johto_config.split('pokegear =')[1]
 out.append(f"inline constexpr int pg_fieldSystemPtr = {number(johto_params, 'fieldSystemPtr')};")
 out.append(f"inline constexpr int pg_wordOff = {number(johto_config, 'pokegearWordOff')};")
@@ -194,13 +204,23 @@ type_meta = {int(i):(int(a),int(b)) for i,a,b in re.findall(r'(\d+) to SpeciesTy
 assert len(move_meta)==467 and len(type_meta)==493
 out.insert(-1, 'inline constexpr int moveMeta[][2] = {'+', '.join('{'+str(move_meta.get(i,(-1,0))[0])+','+str(move_meta.get(i,(-1,0))[1])+'}' for i in range(max(move_meta)+1))+'};')
 out.insert(-1, 'inline constexpr int speciesTypes[][2] = {'+', '.join('{'+str(type_meta.get(i,(-1,-1))[0])+','+str(type_meta.get(i,(-1,-1))[1])+'}' for i in range(max(type_meta)+1))+'};')
-unova_types = {int(i): int(t) for i,t in re.findall(r'(\d+) to MoveInfo\("(?:\\.|[^"\\])*", (\d+), \d+\)', unova)}
+unova_meta = {int(i):(int(t),int(p)) for i,t,p in re.findall(r'(\d+) to MoveInfo\("(?:\\.|[^"\\])*", (\d+), (\d+)\)', unova)}
+unova_types = {i:t for i,(t,_) in unova_meta.items()}
+out.insert(-1, 'inline constexpr int unovaPower[] = {'+', '.join(str(unova_meta.get(i,(-1,0))[1]) for i in range(max(unova_meta)+1))+'};')
 assert len(unova_types) == len(maps['unovaMoves']) == 559
 out.insert(-1, 'inline constexpr int unovaTypes[] = {'+', '.join(str(unova_types.get(i,-1)) for i in range(max(unova_types)+1))+'};')
 unova_species_types = {int(i):(int(a),int(b)) for i,a,b in re.findall(r'(\d+) to SpeciesTypes\((\d+), (\d+)\)', unova)}
 assert len(unova_species_types) == 649
 out.insert(-1, 'inline constexpr int unovaSpeciesTypes[][2] = {{-1,-1},'+
            ','.join('{%d,%d}' % unova_species_types[i] for i in range(1,650))+'};')
+for suffix, source, count in (
+        ('Platinum', (data / 'Gen4MachinesPlatinum.kt').read_text(), 100),
+        ('HeartGold', johto, 100),
+        ('Black', (data / 'Gen5DexBlack.kt').read_text(), 101)):
+    moves = re.search(r'val tmMoves'+suffix+r': IntArray = intArrayOf\((.*?)\n\)', source, re.S)[1]
+    ids = re.findall(r'\d+', moves)
+    assert len(ids) == count
+    out.insert(-1, f'inline constexpr int tmMoves{suffix}[] = {{'+', '.join(ids)+'};')
 generated = '\n'.join(out)+'\n'
 # --output: the libretro DS core's build writes it there; no flag: the Linux host's checked-in data_gen.h; --check: that
 # file matches (the Linux host's ds-generated-data test).

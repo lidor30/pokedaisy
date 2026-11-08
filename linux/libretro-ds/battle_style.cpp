@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 // Platinum palette and pixel geometry adapted from upstream DsBattleMenu.kt.
 #include "battle_strip.h"
-#include "companion.h"
+#include "companion_style.h"
 #include "data_gen.h"
 #include <algorithm>
 #include <array>
@@ -379,12 +379,8 @@ void native_move_card(pd_canvas& canvas,Rect dst,const uint32_t* lower,int slot)
 }
 
 void move_card(pd_canvas& canvas,Rect r,int move,int pp,bool enabled,DsBattleLook look){
-  // Same Gen 4 order as the app's move type IDs.
-  static constexpr uint32_t types[]={0xa8a878,0xc03028,0xa890f0,0xa040a0,0xe0c068,0xb8a038,
-    0xa8b820,0x705898,0xb8b8d0,0x68a090,0xf08030,0x6890f0,0x78c850,0xf8d030,
-    0xf85888,0x98d8d8,0x7038f8,0x705848};
-  const int type=unova(look)?(move>0?pd_ds_data::unovaTypes[move]:-1):ds_move_type(move);
-  const uint32_t color=type>=0 && type<int(std::size(types))?types[type]:0x8a8a8a;
+  const int type=ds_move_type(move,unova(look)?DsGame::Black:DsGame::Platinum);
+  const uint32_t color=ds_type_color(type);
   const unsigned tone=enabled?100:55;
   if(look!=DsBattleLook::Platinum){
     // The native card frame and the type badge are separate palettes.

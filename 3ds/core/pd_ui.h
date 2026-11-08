@@ -224,6 +224,14 @@ enum pd_overlay {
 };
 
 // Optional presentation data for another emulator; IDs stay native to that backend.
+struct pd_party_slot_colors {
+    uint32_t outline, light, fill, shade, band, stripe;
+};
+struct pd_party_source_palette {
+    struct pd_party_slot_colors normal, selected, fainted, selectedFainted, empty;
+    uint32_t text, shadow, hpFrame, hpInner, hpLabel, hpLabelShade, ball[4];
+    bool hideBall, chamfer;
+};
 struct pd_party_source {
     void* ctx;
     bool (*egg)(void*, const struct pd_mon*);
@@ -232,7 +240,38 @@ struct pd_party_source {
     int (*moveType)(void*, int);
     bool (*icon)(void*, struct pd_canvas*, const struct pd_mon*, int, int, int, bool);
     const char* (*info)(void*, const struct pd_mon*, int);
+    const struct pd_party_source_palette* palette;
 };
+
+enum pd_summary_page { PD_SUMMARY_MOVES, PD_SUMMARY_STATS, PD_SUMMARY_LEARN };
+struct pd_summary_learn_row { int level; const char* name; };
+struct pd_summary_learn {
+    const void* ctx;
+    struct pd_summary_learn_row (*row)(const void*, int index, char* scratch, size_t capacity);
+    int count, first;
+};
+struct pd_summary_move { const char* name; int type, power, pp; };
+struct pd_summary_view {
+    const struct pd_game* game; // type names and effectiveness; NULL for standard DS types
+    void* ctx;
+    bool (*icon)(void*, struct pd_canvas*, int slot, int x, int y, bool small);
+    const char* name;
+    const char* primary;
+    const char* secondary;
+    bool secondaryLearn;
+    const char* speciesName;
+    const char* heldItem;
+    int friendship; // -1 for unavailable
+    const struct pd_mon_stats* stats;
+    bool dvs, gen1;
+    const struct pd_summary_learn* learn;
+    int selected, count, level, hp, maxHp, type1, type2;
+    uint32_t status, experience, toNext;
+    int expPercent; // -1 when only the current EXP is known
+    bool egg, hasExperience;
+    struct pd_summary_move moves[PD_NUM_MOVES];
+};
+struct pd_bag_palette;
 
 // Optional read-only bag presentation; item IDs remain backend-owned.
 struct pd_bag_source {
@@ -264,6 +303,65 @@ struct pd_map_source {
 // Host-owned option rows use the established Settings frame and row widgets.
 struct pd_option_row { const char* label; const char* value; };
 struct pd_option_source { const char* title; const struct pd_option_row* rows; int count; };
+struct pd_guide_row {
+    const char *title, *detail, *hint, *answer;
+    bool owned, heading;
+};
+struct pd_guide_source {
+    const char* const* pages;
+    int pageCount;
+    const struct pd_guide_row* rows;
+    int rowCount;
+    int noticeBit;
+    bool verified;
+};
+// The handheld Dex Moves pane. Providers keep cartridge ids and decoding local.
+struct pd_dex_move_row {
+    int number; // level, or the TM / HM number
+    bool hm;
+    char name[48], type[24];
+};
+struct pd_dex_moves_source {
+    const void* ctx;
+    int levels, machines;
+    bool hasLevels;
+    const char* machinesLabel; // NULL when the cartridge has no compatibility mapping
+    void (*row)(const void*, bool machine, int index, struct pd_dex_move_row*);
+};
+enum pd_dex_section { PD_DEX_INFO, PD_DEX_EVOLVE, PD_DEX_AREA, PD_DEX_MOVES, PD_DEX_SECTIONS };
+struct pd_dex_card {
+    const char *name, *types, *measurements, *category, *abilities;
+    const uint32_t* pixels;
+    int pictureSize, pictureScale;
+    uint32_t clear;
+    int number, row, count;
+    bool caught;
+    unsigned pages;
+    enum pd_dex_section page;
+};
+struct pd_dex_link_row { char name[64], requirement[80]; };
+struct pd_dex_links {
+    const void* ctx;
+    void (*row)(const void*, int index, struct pd_dex_link_row*);
+    int count;
+};
+struct pd_dex_pane { int x, y, w, h; };
+struct pd_ui;
+int pd_ui_summary_learn_last(int canvasHeight, int count); // canvas above the tab bar
+void pd_ui_summary_page(struct pd_canvas*, const struct pd_summary_view*, enum pd_summary_page);
+void pd_ui_summary_footer(struct pd_ui*, struct pd_canvas*, const struct pd_summary_view*, bool stats);
+// Draw the four Dex filters and return the x origin of the list beside them.
+int pd_ui_dex_filters(struct pd_ui*, struct pd_canvas*, const int counts[4],
+                      int active, int focus, const char* region);
+struct pd_dex_pane pd_ui_dex_card(struct pd_ui*, struct pd_canvas*, const struct pd_dex_card*);
+void pd_ui_dex_links(struct pd_canvas*, struct pd_dex_pane, const struct pd_dex_links*, int selected);
+void pd_ui_dex_info(struct pd_canvas*, struct pd_dex_pane, const char* text, const int* stats, bool gen1);
+void pd_ui_dex_list_row(struct pd_canvas*, int x, int y, int w, int number, const char* name,
+                        bool seen, bool caught, bool selected, const uint32_t* icon, uint32_t clear);
+int pd_ui_dex_machine_row(int levels);
+void pd_ui_dex_moves(struct pd_canvas*, int x, int y, int w, int h,
+                     const struct pd_dex_moves_source*, int selected);
+
 struct pd_ui {
     // Optional backend content inside the shared companion frame and tab bar.
     unsigned availableTabs; // 0 preserves the original complete tab set.
@@ -273,7 +371,10 @@ struct pd_ui {
     int optionSelected;
     const struct pd_dex_source* dexSource;
     const struct pd_bag_source* bagSource;
+    const struct pd_bag_palette* bagPalette;
+    bool keepBackdrop;
     bool bagDetails;
+    bool handheldDex, handheldParty;
     const struct pd_party_source* partySource;
     int summaryPage;
     bool pixelOff; // SCREEN doesn't offer PIXEL 1x: EXPAND can't hold its speed that wide
@@ -296,6 +397,8 @@ struct pd_ui {
     int foeSelected, foeShown;
     int lastFoeActive, lastFoeNext;
     int summarySlot; // party slot whose summary is open, -1 = none
+    bool summaryLearn, summaryCanLearn;
+    int summaryLearnRow, summaryLearnLast;
     bool summaryStats; // STATS replaces MOVES, as in MonDetailScreen
     bool summaryInfo;  // INFO (EXP, held item, type matchups) replaces them
     // BOXES: what the host read (NULL = the tab isn't here), the box asked for, the picked slot and the box summary.
@@ -319,6 +422,9 @@ struct pd_ui {
     int dexScroll, dexOpen, dexNational;
     int bagSort; // the bag's SORT: DEFAULT, NAME, COUNT
     int dexSection, dexPageScroll, dexPageMax; // the entry's INFO / EVOLVE / AREA / MOVES
+    int dexReturn; // national number to focus on return, or -1 for the first filtered row
+    unsigned dexPages;
+    int dexFilter, dexPage, dexDetailRow, dexLevelCount, dexMachineCount, dexLinkCount, dexSpotCount;
     // MAP: the page shown (-1 = the player's), the tapped place, the cursor's blink.
     int mapPage, mapSel, mapDungeon, mapSelTx, mapSelTy;
     bool mapBlink;
@@ -328,7 +434,8 @@ struct pd_ui {
     int flyCount, flyPick;
     // GUIDE: the page, its scroll, the open entry and how far it's revealed.
     int guidePage, guideScroll, guideOpen, guideLevel;
-    bool guideNoticeShown;
+    bool guideController, guideFollow, guideNoticeConfirm, guideVerified;
+    int guidePageCount, guidePageFocus, guideRowFocus, guideNoticeBit;
     // TRAINER CARD: the side shown, a flip running (ms into it, 0 = none) and
     // the play time's blinking colon.
     bool cardBack, cardColon;
@@ -360,6 +467,10 @@ void pd_ui_choices_view(struct pd_canvas*, const char*, const char* const*, int,
 // Shared party body, including its original frames, HP bars, status and summary.
 void pd_ui_map_view(struct pd_canvas*, const struct pd_map_source*);
 void pd_ui_options_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*);
+void pd_ui_guide_view(struct pd_ui*, struct pd_canvas*, const struct pd_guide_source*);
+void pd_ui_guide_reset(struct pd_ui*);
+void pd_ui_guide_control(struct pd_ui*, int dx, int dy, bool confirm);
+void pd_ui_guide_boss_note(char*, size_t, const char* place, int count, int ace, int best);
 void pd_ui_dex_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*,int selected);
 void pd_ui_bag_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*, const struct pd_snapshot*);
 void pd_ui_party_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*,
@@ -372,6 +483,10 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
 // Stylus: down / held / up at (x, y). Returns true if the screen needs a redraw.
 bool pd_ui_touch(struct pd_ui* ui, int x, int y, bool down);
 // Buttons the GBA doesn't have (the 3DS's X / Y): next / previous tab, BACK.
+// Controller access to the same TAB BAR / MORE overlays used by touch hosts.
+int pd_ui_tab_menu_count(const struct pd_ui*);
+void pd_ui_tab_menu_focus(struct pd_ui*, int row);
+void pd_ui_tab_menu_choose(struct pd_ui*, int row);
 void pd_ui_next_tab(struct pd_ui* ui, int dir);
 // The buttons on the companion (keyFocus): a direction (0 up, 1 down, 2 left, 3 right), A on what the cursor's on.
 void pd_ui_focus_move(struct pd_ui* ui, int direction);

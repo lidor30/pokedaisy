@@ -8,8 +8,23 @@ inline int ds_bag_count(const DsCompanion& s,int pocket){
   int count=0;for(const auto& item:s.bag)count+=ds_in_pocket(item,pocket);return count;
 }
 inline bool ds_dex_visible(const DsCompanion& s,size_t n,int filter){
-  return n>0 && n<s.dexSeen.size() && (!filter || (filter==1?s.dexSeen[n]:n<s.dexCaught.size() && s.dexCaught[n]));
+  if(!n || n>=s.dexSeen.size())return false;
+  const bool seen=s.dexSeen[n],caught=n<s.dexCaught.size() && s.dexCaught[n];
+  switch(filter){
+    case 1:return caught;
+    case 2:return seen && !caught;
+    case 3:return !seen;
+    default:return true;
+  }
 }
-inline int ds_dex_count(const DsCompanion& s,int filter){
-  int count=0;for(size_t n=1;n<s.dexSeen.size();n++)count+=ds_dex_visible(s,n,filter);return count;
+struct DsDexRow { int species,number; };
+inline std::vector<DsDexRow> ds_dex_rows(const DsCompanion& s,int filter,const std::vector<int>* regional){
+  std::vector<DsDexRow> rows;
+  const size_t size=regional?regional->size():s.dexSeen.size();
+  rows.reserve(size);
+  for(size_t number=0;number<size;++number){
+    const int species=regional?(*regional)[number]:int(number);
+    if(ds_dex_visible(s,species,filter))rows.push_back({species,int(number)});
+  }
+  return rows;
 }

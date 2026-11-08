@@ -26,6 +26,26 @@ static uint32_t u32(const uint8_t* p) {
     return (uint32_t) p[0] | (uint32_t) p[1] << 8 | (uint32_t) p[2] << 16 | (uint32_t) p[3] << 24;
 }
 
+int pd_level_moves(const struct pd_game* g,int species,struct pd_level_move* out,int capacity){
+    const struct pd_config* cfg=g->cfg;
+    if(!cfg || !cfg->learnsets || species<=0)return 0;
+    const uint8_t* ptr=pd_rom_at(g,cfg->learnsets+(uint32_t)species*4,4);
+    if(!ptr)return 0;
+    const uint32_t at=u32(ptr);
+    const int stride=cfg->learnsetPairs?4:cfg->learnsetCfru?3:2;
+    int count=0;
+    for(;count<capacity && count<64;count++){
+        const uint8_t* e=pd_rom_at(g,at+(uint32_t)count*stride,(size_t)stride);
+        if(!e)break;
+        const int word=u16(e);
+        const int move=stride==2?word&0x1ff:word;
+        const int level=cfg->learnsetPairs?u16(e+2):cfg->learnsetCfru?e[2]:word>>9;
+        if((cfg->learnsetCfru && level==0xff) || (!cfg->learnsetCfru && word==0xffff))break;
+        out[count]=(struct pd_level_move){move,level};
+    }
+    return count;
+}
+
 // species -> national and back, built once per ROM.
 static unsigned tablesRom;
 static uint16_t toNational[SPECIES_MAX];
@@ -35,6 +55,94 @@ static bool available;
 // The generated 0 means retail's 412 species.
 static int species_count(const struct pd_config* cfg) {
     return cfg->speciesCount ? cfg->speciesCount : 412;
+}
+
+int pd_dex_evolutions(const struct pd_game* g, int species, struct pd_dex_evolution* out, int capacity) {
+    const struct pd_config* cfg = g->cfg;
+    if (!cfg || !cfg->dexEvolutions || species <= 0 || species >= species_count(cfg)) return -1;
+    switch (g->guide) {
+        case PD_GUIDE_FIRERED: case PD_GUIDE_LEAFGREEN: case PD_GUIDE_EMERALD: case PD_GUIDE_RUBY: case PD_GUIDE_SAPPHIRE: break;
+        default: return -1;
+    }
+    enum { STRIDE = 40, RECORD = 8 };
+    const int limit = species_count(cfg);
+    const uint8_t* table = pd_rom_at(g, cfg->dexEvolutions, (size_t)limit * STRIDE);
+    if (!table || u16(table + STRIDE) != 4 || u16(table + STRIDE + 2) != 16 || u16(table + STRIDE + 4) != 2)
+        return -1; // Android's stock evolution table probe: Bulbasaur -> Ivysaur at Lv16.
+    int count = 0;
+    for (int from = 1; from < limit && count < capacity; from++) {
+        const uint8_t* row = table + from * STRIDE;
+        for (int i = 0; i < STRIDE && count < capacity; i += RECORD) {
+            const int method = u16(row + i), target = u16(row + i + 4);
+            if (method < 1 || method > 15 || target < 1 || target >= limit ||
+                (from != species && target != species)) continue;
+            const int parameter = u16(row + i + 2);
+            out[count++] = (struct pd_dex_evolution){from, target, method, parameter};
+        }
+    }
+    return count;
+}
+
+static uint32_t expansion_dex_pointer(const struct pd_game* g, int species, int field) {
+    const struct pd_dex_x* x = g->cfg->expansion;
+    if (field < 0 || field > x->stride - 4) return 0;
+    const uint8_t* ptr = pd_rom_at(g, g->cfg->speciesInfo + (uint32_t) species * x->stride + field, 4);
+    return ptr ? u32(ptr) : 0;
+}
+
+int pd_dex_level_moves(const struct pd_game* g, int species, struct pd_level_move* out, int capacity) {
+    const struct pd_config* cfg = g->cfg;
+    if (!cfg || species <= 0) return -1;
+    if (cfg->gb) return pd_polished_level_moves(g, species, out, capacity);
+    if (species >= species_count(cfg)) return -1;
+    const struct pd_dex_x* x = cfg->expansion;
+    if (!x || x->levelUpOff < 0)
+        return cfg->learnsets ? pd_level_moves(g, species, out, capacity) : -1;
+    const uint32_t ptr = expansion_dex_pointer(g, species, x->levelUpOff);
+    int count = 0;
+    for (int i = 0; i < 100 && count < capacity; i++) {
+        const uint8_t* row = pd_rom_at(g, ptr + (uint32_t) i * 4, 4);
+        if (!row || !u16(row) || u16(row) == 0xffff) break;
+        const int level = u16(row + 2);
+        if (level <= 100) out[count++] = (struct pd_level_move){u16(row), level};
+    }
+    return count;
+}
+
+int pd_machine_moves(const struct pd_game* g, int species, struct pd_machine_move* out, int capacity) {
+    const struct pd_config* cfg = g->cfg;
+    if (!cfg || species <= 0 || species >= species_count(cfg)) return -1;
+    const struct pd_dex_x* x = cfg->expansion;
+    if (x && x->teachableOff >= 0) {
+        const uint32_t ptr = expansion_dex_pointer(g, species, x->teachableOff);
+        int count = 0;
+        for (int i = 0; i < 400 && count < capacity; i++) {
+            const uint8_t* row = pd_rom_at(g, ptr + (uint32_t) i * 2, 2);
+            if (!row || !u16(row) || u16(row) == 0xffff) break;
+            const int move = u16(row);
+            bool duplicate = false;
+            for (int j = 0; j < count; j++) duplicate |= out[j].move == move;
+            if (!duplicate) out[count++] = (struct pd_machine_move){move, 0, false};
+        }
+        return count;
+    }
+    if (!cfg->dexTmhm || !cfg->dexTmhmMoves) return -1;
+    const uint8_t* moves = pd_rom_at(g, cfg->dexTmhmMoves, 58 * 2);
+    const uint8_t* probe = pd_rom_at(g, cfg->dexTmhm + 8, 8);
+    const uint8_t* bits = pd_rom_at(g, cfg->dexTmhm + (uint32_t) species * 8, 8);
+    if (!moves || !probe || !bits) return -1;
+    // DexDetails.tmhmChecks: the first four TMs, Cut and Bulbasaur's compatibility.
+    static const uint8_t bulbasaur[] = {0x20, 0x07, 0x35, 0x84, 0x08, 0x1E, 0xE4, 0};
+    if (u16(moves) != 264 || u16(moves + 2) != 337 || u16(moves + 4) != 352 ||
+        u16(moves + 6) != 347 || u16(moves + 100) != 15 || memcmp(probe, bulbasaur, 8))
+        return -1;
+    int count = 0;
+    for (int i = 0; i < 58 && count < capacity; i++) {
+        if (!(bits[i / 8] & (1 << (i % 8)))) continue;
+        const bool hm = i >= 50;
+        out[count++] = (struct pd_machine_move){u16(moves + i * 2), hm ? i - 49 : i + 1, hm};
+    }
+    return count;
 }
 
 static bool in_rom(const struct pd_game* g, uint32_t addr) {
