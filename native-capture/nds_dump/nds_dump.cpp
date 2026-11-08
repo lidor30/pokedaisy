@@ -11,6 +11,7 @@
 #include <GPU.h>
 #include <Savestate.h>
 #include <Args.h>
+#include <AREngine.h>
 #include <GPU3D_Soft.h>
 
 #include "pk_nds_platform.h"
@@ -618,6 +619,24 @@ int main(int argc, char** argv)
             if (!strcmp(cmd, "poke8")) nds->ARM9Write8(addr, (u8) v);
             else if (!strcmp(cmd, "poke16")) nds->ARM9Write16(addr, (u16) v);
             else nds->ARM9Write32(addr, v);
+        } else if (!strcmp(cmd, "ards")) {
+            // ards W W ...: one Action Replay DS cheat (hex words, two a line), replacing the ones before, the way the
+            // app's CHEATS do (pk_nds_set_cheats); "ards" alone takes them out. melonDS runs them on the ARM7's VBlank.
+            ARCode code{};
+            code.Parent = nullptr;
+            code.Enabled = true;
+            const char* p = line + 4;
+            char* end = nullptr;
+            for (;;) {
+                unsigned long w = strtoul(p, &end, 16);
+                if (end == p) break;
+                code.Code.push_back((u32) w);
+                p = end;
+            }
+            nds->AREngine.Cheats.clear();
+            if (!code.Code.empty()) nds->AREngine.Cheats.push_back(code);
+            printf("ards: %zu words\n", code.Code.size());
+            fflush(stdout);
         } else if (!strcmp(cmd, "look")) {
             // look DX DY: from here on the window moves DX, DY DS pixels a frame (look 0 0 stops it where it is)
             lookDX = (int) num(a);
