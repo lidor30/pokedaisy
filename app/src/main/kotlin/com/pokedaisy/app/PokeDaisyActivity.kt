@@ -1875,6 +1875,11 @@ class PokeDaisyActivity : Activity() {
         RetroAchievements.init(this)
         RetroAchievements.onUnlockSound = { unlockSound?.play() }
         AchievementBadges.dir = java.io.File(cacheDir, "ra-badges")
+        // A popup goes to the companion the player can see, else over the game (a DS game's touch screen hides it: #500).
+        com.pokedaisy.app.companion.ui.AchievementPopupRoute.shownProbe = {
+            val v = androidx.compose.ui.platform.LocalView.current
+            remember(v) { { v.isShown } }
+        }
         lookGender.launch {
             telemetry.snapshot.map { it.playerGender }.distinctUntilChanged().collect { lookRunner.onGender(it) }
         }
@@ -3966,6 +3971,24 @@ class PokeDaisyActivity : Activity() {
                         cardModifier = androidx.compose.ui.Modifier.width(maxWidth * if (narrow) 0.94f else 0.54f),
                         maxWidth = maxWidth, keys = ::tipKeys, onTry = ::tryTip,
                     )
+                    // RetroAchievements' popups and challenge / tracker indicators, while no companion is on screen (a DS
+                    // game's touch screen in its place, one screen's closed window): GitHub #500.
+                    com.pokedaisy.app.companion.ui.AchievementPopupHost(
+                        RetroAchievements, androidx.compose.ui.Modifier.padding(top = clearTop + 8.dp), overGame = true,
+                    )
+                    val companionSeen by androidx.compose.runtime.produceState(true) {
+                        while (true) {
+                            value = com.pokedaisy.app.companion.ui.AchievementPopupRoute.companionSeen()
+                            kotlinx.coroutines.delay(500)
+                        }
+                    }
+                    if (!companionSeen) {
+                        val clearBottom = with(androidx.compose.ui.platform.LocalDensity.current) { hudClear.value.second.toDp() }
+                        com.pokedaisy.app.companion.ui.AchievementIndicators(
+                            RetroAchievements,
+                            androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomEnd).padding(end = 8.dp, bottom = clearBottom + 8.dp),
+                        )
+                    }
                 }
             }
             // Tips' clock: field play time, the moments, whether the field is calm ([tickTips]).

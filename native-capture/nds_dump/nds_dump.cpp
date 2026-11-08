@@ -901,6 +901,7 @@ int main(int argc, char** argv)
             for (int i = 0; i < frames; i++) {
                 runFrames(1, heldKeys);
                 int bits = g ? pk_nds_field_state(g, read32, nullptr, 0) : 0;
+                bits |= pk_nds_field_screen_touch(g, bits, nds->GPU.GPU2D_A.DispCnt);   // as pk_nds_field_bits adds it
                 // Each screen of one colour (the app's oneColour: a 16 x 12 grid alike), as T / B.
                 char flat[3] = "--";
                 for (int sc = 0; sc < 2; sc++) {
@@ -911,9 +912,9 @@ int main(int argc, char** argv)
                             one = (px[(gy * 16 + 8) * 256 + gx * 16 + 8] & 0xFFFFFF) == (px[8 * 256 + 8] & 0xFFFFFF);
                     if (one) flat[sc] = sc ? 'B' : 'T';
                 }
-                printf("trace %llu: bits %04X brightA %04X brightB %04X flat %s dispA %08X bg3 %d\n", (unsigned long long) frameCount, bits,
+                printf("trace %llu: bits %04X brightA %04X brightB %04X flat %s dispA %08X bg3 %d dispB %08X\n", (unsigned long long) frameCount, bits,
                     nds->GPU.GPU2D_A.MasterBrightness, nds->GPU.GPU2D_B.MasterBrightness, flat, nds->GPU.GPU2D_A.DispCnt,
-                    pk_nds_bg3_tiles(nds));
+                    pk_nds_bg3_tiles(nds), nds->GPU.GPU2D_B.DispCnt);
             }
             fflush(stdout);
         } else if (!strcmp(cmd, "arm9shift")) {
