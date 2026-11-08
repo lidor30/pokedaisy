@@ -339,7 +339,7 @@ internal enum class MapLabelStyle(val width: Int, val height: Int) {
         // Monomyth's ATHANTO MAP has one head of its own for either gender.
         EMERALD -> if (game == GameKind.DREAMSTONE || game == GameKind.TEAM_ROCKET) null
             else if (game == GameKind.MONOMYTH) "player_monomyth"
-            else if (com.pokedaisy.app.companion.data.runningEmeraldHack != null) { if (gender == 1) "player_may_re" else "player_brendan_re" }
+            else if (com.pokedaisy.app.companion.data.runningRechargedEmerald) { if (gender == 1) "player_may_re" else "player_brendan_re" }
             else if (gender == 1) "player_may" else if (game == GameKind.MARIOMON) "player_mario" else "player_brendan"
         // Red's standing sprite (Gen1Art), Crystal's CHRIS / KRIS or Gold / Silver's boy (Gen2Art), from the ROM.
         // Crystal Clear's player is the player's own (model, skin, colours): none drawn.

@@ -75,6 +75,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ |
 | Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — | — | ✅ ³³ |
 | Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | ✅ ³³ |
+| Modern Emerald | 3.6 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — |
 | Monomyth | 1.0, 1.1 | ✅ ²³ | ✅ | ✅ | ✅ | — | — | — | ✅ ²³ | — | — ²³ | ✅ ²³ | — | — | — | — | — |
 | Odyssey | 4.1.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ |
 | Orange Islands | Beta 5.7, an older beta | ◐ ³ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | — | ✅ ¹⁹ ²⁰ | ✅ | ✅ ³³ |

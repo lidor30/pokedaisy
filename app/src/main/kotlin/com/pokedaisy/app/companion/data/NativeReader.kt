@@ -912,7 +912,9 @@ private fun Mon.withNativeGender(raw: ByteArray, off: Int, layout: PartyMonLayou
         // Emerald shares FireRed's internal Gen3 species ids and base-stat gender ratios; so does
         // Recharged Yellow (gen_recharged_yellow_tables.py checks its gBaseStats against FireRed's).
         GameKind.FIRERED -> runningFireRedHack?.genderRatios ?: genderRatiosFireRed
-        GameKind.EMERALD, GameKind.RECHARGED_YELLOW -> genderRatiosFireRed
+        // Modern Emerald grew the list to 461 (its gSpeciesInfo's own, ModernEmeraldGen.kt).
+        GameKind.EMERALD -> runningEmeraldHack?.genderRatios ?: genderRatiosFireRed
+        GameKind.RECHARGED_YELLOW -> genderRatiosFireRed
         GameKind.UNBOUND -> genderRatiosUnbound
         GameKind.RADICAL_RED -> genderRatiosRadicalRed
         GameKind.ODYSSEY -> genderRatiosOdyssey

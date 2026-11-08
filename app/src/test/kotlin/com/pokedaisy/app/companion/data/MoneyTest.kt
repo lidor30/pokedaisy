@@ -81,6 +81,8 @@ class MoneyTest {
         assertEquals(185092L, money("recharged_emerald_v225", NATIVE_RECHARGED_EMERALD_V2_2_5))
         assertEquals(185092L, money("recharged_emerald", NATIVE_RECHARGED_EMERALD_V2_2_8))
         assertEquals(185092L, money("recharged_emerald_rebalanced", NATIVE_RECHARGED_EMERALD_REBALANCED_V2_2_8))
+        // Modern Emerald: SaveBlock1+0x490 under SaveBlock2's key at +0xBC (retail +0xAC); a new game's 3000.
+        assertEquals(3000L, money("modern_emerald", NATIVE_MODERN_EMERALD))
         // Super Mariomon: vanilla's offsets in every release (its card says P3100).
         for ((key, cfg) in listOf("mariomon_v1_5_2" to NATIVE_MARIOMON_V1_5_2, "mariomon_v1_5_1" to NATIVE_MARIOMON_V1_5_1,
                 "mariomon_v1_3" to NATIVE_MARIOMON_V1_3, "mariomon_v1_2_2" to NATIVE_MARIOMON_V1_2_2, "mariomon_v1_2_1" to NATIVE_MARIOMON_V1_2_1)) {

@@ -185,6 +185,7 @@ shows a "not supported" notice).
 | Moemon Quetzal                 | Alpha 0.8.4 Hotfix (EN/ES) |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Super Mariomon                 | 1.2.1-1.3, 1.5.1, 1.5.2    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Recharged Emerald              | 2.2.5, 2.2.8, Rebalanced   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
+| Modern Emerald                 | 3.6                        |  ✅   | ✅  |   ◐    |  ◐  |    —    |   —   |
 | Elite Redux                    | 2.65.3b, 2.65.4.1b         |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Team Rocket Dragonsden         | 1.5                        |  ✅   | ✅  |   ◐    |  ◐  |    —    |   ◐   |
 | Team Rocket Dragonsden         | 2026 3.0.9 (Spanish)       |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |

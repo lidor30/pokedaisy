@@ -546,7 +546,7 @@ fun rememberGameBackground(game: GameKind): GameBackground? {
     val context = LocalContext.current
     val gen = rememberArtGeneration()
     // Recharged Emerald runs as EMERALD and Ghost Grey and Let's Go as FIRERED, each with its own backdrop.
-    val hack = com.pokedaisy.app.companion.data.runningEmeraldHack != null || com.pokedaisy.app.companion.data.runningGhostGrey ||
+    val hack = com.pokedaisy.app.companion.data.runningRechargedEmerald || com.pokedaisy.app.companion.data.runningGhostGrey ||
         com.pokedaisy.app.companion.data.runningLetsGo
     return remember(game, gen, hack) {
         // Kept across visits: the ITEMS backdrop crossfade unmounts this one, and
@@ -594,7 +594,7 @@ private fun buildGameBackground(context: android.content.Context, game: GameKind
     }
     val (asset, tiled) = when (game) {
         // Recharged Emerald's own (teal stripes), from its ROM.
-        GameKind.EMERALD -> (if (com.pokedaisy.app.companion.data.runningEmeraldHack != null) com.pokedaisy.app.companion.data.RomArt.RE_BACKDROP
+        GameKind.EMERALD -> (if (com.pokedaisy.app.companion.data.runningRechargedEmerald) com.pokedaisy.app.companion.data.RomArt.RE_BACKDROP
             else "partybg/emerald.png") to false
         GameKind.HEART_AND_SOUL -> "partybg/hns.png" to false
         // Elite Redux kept Emerald's party backdrop (and its ROM has the art).

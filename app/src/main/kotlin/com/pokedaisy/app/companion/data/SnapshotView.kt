@@ -118,7 +118,8 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
         else if (activeGame == GameKind.DREAMSTONE) growthRatesDreamstone.getOrNull(species)?.takeIf { it <= 5 }
         // A randomized retail ROM's own (UPR can standardize the curves): read from its gBaseStats; and a FireRed hack's
         // that grew the species list (Let's Go: 987 ids).
-        else (runningRandomized?.growthRates ?: runningFireRedHack?.growthRates ?: gen3GrowthRates).getOrNull(species)?.toInt()
+        else (runningRandomized?.growthRates ?: runningFireRedHack?.growthRates ?: runningEmeraldHack?.growthRates ?: gen3GrowthRates)
+            .getOrNull(species)?.toInt()
     if (rate == null) return null
     val table = gen3ExperienceTables.getOrNull(rate) ?: return null
     val start = table[level].toLong()

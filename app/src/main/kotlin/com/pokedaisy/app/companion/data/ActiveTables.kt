@@ -222,6 +222,12 @@ var emeraldHack: HackText? = null
 /** The running game is an Emerald hack with its own text ([emeraldHack]), laid over Emerald's. */
 val runningEmeraldHack: HackText? get() = emeraldHack?.takeIf { activeGame == GameKind.EMERALD }
 
+/** Recharged Emerald is running: its own party menu, backdrop, region map and map heads (RomArt's RE_*). Modern Emerald,
+ * the other Emerald rebuild with its own text, kept Emerald's art. */
+val runningRechargedEmerald: Boolean get() = runningEmeraldHack.let {
+    it != null && (it === hackTextRechargedEmerald || it === hackTextRechargedEmeraldRebalanced)
+}
+
 /** Retail FireRed / Emerald randomized by Universal Pokémon Randomizer ZX ([RandomizedRetail]): the types, moves, type
  * chart and growth rates read from its ROM, laid over retail's. Kept apart from [fireRedHack] / [emeraldHack]: it is
  * retail's code and look (party art, POKéMON switch, bag), only its data differ. Set with [activeGame] by the Poller. */
@@ -661,7 +667,7 @@ val activeRegionMapImages: Array<String> get() = when {
     unbound -> regionMapImagesUnbound
     seaglass -> regionMapImagesSeaglass
     // Recharged Emerald's own Hoenn (RomArt's RE_REGION_*), on Emerald's layout: Emerald's boxes and cursor grid.
-    emerald && runningEmeraldHack != null -> regionMapImagesRechargedEmerald
+    emerald && runningRechargedEmerald -> regionMapImagesRechargedEmerald
     emerald || tmt2 || eliteRedux -> regionMapImagesEmerald
     hns -> regionMapImagesHns
     lazarus -> regionMapImagesLazarus

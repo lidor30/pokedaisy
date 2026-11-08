@@ -337,7 +337,10 @@ class TelemetrySampler {
             originHeartGold = dsOrigin
             renegadePlatinum = dsRenegade
             fireRedHack = fireRedHackFor(base)
-            emeraldHack = emeraldHackFor(base)
+            // Modern Emerald's tables follow the save's settings (a few bytes a sample).
+            emeraldHack = if (base === NATIVE_MODERN_EMERALD) {
+                ModernEmerald.text(runCatching { ModernEmerald.read(reader, base) }.getOrDefault(ModernEmerald.Settings()))
+            } else emeraldHackFor(base)
             randomizedRetail = randomizedText
             mariomonV13 = base === NATIVE_MARIOMON_V1_3 || base === NATIVE_MARIOMON_V1_2_2 || base === NATIVE_MARIOMON_V1_2_1
             quetzalV084 = base?.quetzalV084 == true
@@ -579,6 +582,9 @@ class TelemetrySampler {
                 WISHES_OF_TOMORROW_V1_2_6_SHA1 -> { kind = GameKind.WISHES; nativeCfg = NATIVE_WISHES }
                 DREAMSTONE_MYSTERIES_UNVERSIONED_SHA1 -> { kind = GameKind.DREAMSTONE; nativeCfg = NATIVE_DREAMSTONE }
                 MONOMYTH_V1_1_SHA1 -> { kind = GameKind.MONOMYTH; nativeCfg = NATIVE_MONOMYTH_V1_1 }
+                // Modern Emerald: a gcc build of pokeemerald on Emerald's ids, run as Emerald with its own RAM and tables
+                // (ModernEmerald: its types follow the save's settings).
+                ModernEmerald.V3_6_SHA1 -> { kind = GameKind.EMERALD; nativeCfg = NATIVE_MODERN_EMERALD }
                 else -> {
                     kind = GameKind.EMERALD
                     unsupportedRom(reader, code, size, hash, "unrecognized Emerald-based ROM hack " +
@@ -1096,6 +1102,9 @@ class TelemetrySampler {
         const val RECHARGED_EMERALD_V2_2_8_SHA1 = "56c9777215f5be627f7c3099e68985aefc10f2b7"
         const val RECHARGED_EMERALD_REBALANCED_V2_2_8_SHA1 = "08b9c7903ae4c4e26d80ef945a90c004ae1e0ebb"
 
+        // Pokémon Modern Emerald (resetes12; BPEE, 32 MB, a pokeemerald build with its source public): NATIVE_MODERN_EMERALD.
+        const val MODERN_EMERALD_V3_6_SHA1 = "ab3bc012598d73dce965450df79893aeff97c834"
+
         /** Recharged Emerald's config for a build's hash; null for any other ROM. */
         fun rechargedEmeraldConfig(hash: String?): NativeConfig? = when (hash) {
             RECHARGED_EMERALD_V2_2_5_SHA1 -> NATIVE_RECHARGED_EMERALD_V2_2_5
@@ -1261,6 +1270,7 @@ class TelemetrySampler {
             RECHARGED_YELLOW_V1_8_0_SHA1, RECHARGED_YELLOW_V1_9_0_SHA1, RECHARGED_YELLOW_V1_9_4_SHA1,
             RECHARGED_YELLOW_V1_9_7_SHA1,
             RECHARGED_EMERALD_V2_2_5_SHA1, RECHARGED_EMERALD_V2_2_8_SHA1, RECHARGED_EMERALD_REBALANCED_V2_2_8_SHA1,
+            ModernEmerald.V3_6_SHA1,
             MARIOMON_V1_2_1_SHA1, MARIOMON_V1_2_2_SHA1, MARIOMON_V1_3_SHA1, MARIOMON_V1_5_1_Anniversary_SHA1,
             MARIOMON_V1_5_2_Anniversary_SHA1,
             GS_CHRONICLES_V2_7_6_SHA1,

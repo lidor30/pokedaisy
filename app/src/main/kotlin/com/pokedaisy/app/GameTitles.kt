@@ -151,6 +151,7 @@ object GameTitles {
         "033d05374ae34eb84fae62c693ca8f3da23dd1bd" to "Pokémon FireRed Rocket Edition",
         "1ee1557db1e4c2e0e94c6306efcc40506bc40cc9" to "Pokémon Ash Gray",
         "92ed82145c013069472153391c7aab1cfbf37b75" to "Pokémon Ash Gray Fork Bug Fix",
+        "ab3bc012598d73dce965450df79893aeff97c834" to "Pokémon Modern Emerald",
         "5b38a681b6924ef3e0bb9f6cfbf22426c4c4e523" to "Pokémon Elite Redux",
         "2f3e17e55c6afe23da97ec0f96a067eeb142ad15" to "Pokémon Elite Redux",
         "40780347d0b4df6bf491eaf12603e5422caee677" to "Pokémon Team Rocket Edition: Dragonsden Version",
