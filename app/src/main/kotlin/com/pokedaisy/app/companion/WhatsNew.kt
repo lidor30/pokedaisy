@@ -23,6 +23,36 @@ object WhatsNew {
     /** Newest first. */
     val RELEASES: List<Notes> = listOf(
         Notes(
+            "1.5.0",
+            listOf(
+                Section(
+                    NEW,
+                    listOf(
+                        "New games: Monomyth v1.1, Yellow Legacy, Crystal Legacy and Renegade Platinum.",
+                        "DS in more languages: HeartGold to White 2 in French, German, Spanish, Italian, Japanese and Korean.",
+                        "INSTANT TEXT: the GBA games' dialogue shows all at once.",
+                        "BATTLE STYLE: a Gen 5 battle screen for the companion, beside the Gen 4 one.",
+                        "Field moves: teach TMs from the bag, FLASH from the quick menu, and the whole PC menu anywhere.",
+                        "Library: search your games, show SUPPORTED ONLY, and ADD TO HOME for a game's own icon.",
+                        "DEX: filter by name and type, and see where the Pokémon you own are kept.",
+                        "FOLD LAYOUT: a half open foldable puts the game and the companion on either side of the hinge.",
+                        "Touch controls: new layouts, looks and colours, X and Y buttons, and Delta skins.",
+                        "AUDIO EFFECTS: the game's sound through your device's equalizer apps.",
+                        "EXPAND: now on Crystal Clear too.",
+                        "32-bit devices: the same APK now installs on 32-bit Android.",
+                    ),
+                ),
+                Section(
+                    FIXES,
+                    listOf(
+                        "SoulGold: switching Pokémon from the companion follows your PARTY MENU option.",
+                        "Smoother play: steadier frames on the RG DS and other screens that tick unevenly.",
+                        "Unbound: no more white box behind the text boxes with EXPAND on.",
+                    ),
+                ),
+            ),
+        ),
+        Notes(
             "1.4.0",
             listOf(
                 Section(
