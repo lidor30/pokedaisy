@@ -21,7 +21,7 @@ is scoped under `.app` - global class names like `.bar` once collided with the s
 
 ## Languages
 
-The site comes in every language the app's own text does (English, Japanese, French, German, Italian, Spanish,
+The site comes in every language the app's own text does (English, Japanese, Korean, French, German, Italian, Spanish,
 Portuguese for Brazil and for Portugal), which covers every language a supported ROM comes in. English lives at
 the root (`/compatibility/`), the others under a prefix (`/fr/compatibility/`, `/pt-br/`, `/pt/`): each page's
 body is a view in `src/views/`, drawn once per language by `src/pages/` (English) and `src/pages/[lang]/`. The
@@ -34,7 +34,8 @@ browser script gets its strings already translated in a `data-t` attribute (`src
 `npm test` (`test/i18n.test.js`) fails while a language lacks a string, keeps one nothing uses, loses a
 `{placeholder}` or a link, or uses a dash. After adding or changing text, `node scripts/i18n-keys.mjs fr` lists
 what `fr.json` lacks. Japanese draws with PixelMplus cut to the characters it uses: rerun
-`python3 scripts/gen_site_jp_font.py` (fonttools) when the test says a character is missing.
+`python3 scripts/gen_site_jp_font.py` (fonttools) when the test says a character is missing; Korean draws with Galmuri
+the same way (`python3 scripts/gen_site_ko_font.py`).
 
 A visitor's language: the one they picked in the top bar's picker (kept in this browser's `localStorage` as
 `pd-lang`, never a cookie), else, on an English page, the first supported one their browser asks for. Base.astro's

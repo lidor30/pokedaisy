@@ -17,7 +17,7 @@ class PerformanceGuardsTest {
 
     @Test
     fun `fonts are only built by PixelTypeface, once per process`() {
-        // Building one loads the 1 MB PixelMplusJP; v1.1.0 built one per GbaText,
+        // Building one loads the 1 MB PixelMplusJP and 1.5 MB GalmuriKO; v1.1.0 built one per GbaText,
         // tens of MB per tab switch, and crashed when tabs were switched quickly.
         val builders = listOf("Font.Builder(", "CustomFallbackBuilder(", "Typeface.createFrom", "ComposeFont(", "Font(\"fonts/")
         val offenders = kotlinFiles().filter { it.name != "PixelTypeface.kt" }.flatMap { f ->

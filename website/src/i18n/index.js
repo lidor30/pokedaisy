@@ -1,6 +1,6 @@
 // The site's languages: every language the app's own text comes in (companion/i18n/L10n.kt's AppLanguage),
 // which also covers every language a supported ROM comes in (English, Japanese, French, German, Italian,
-// Spanish). English lives at the root (/compatibility/), the others under their prefix (/fr/compatibility/).
+// Spanish, and Korean for the Korean DS carts). English lives at the root (/compatibility/), the others under their prefix (/fr/compatibility/).
 //
 // Text is looked up by its English, like the app's tr(): `tr("ROM CHECK")` on a page, msg() to mark a
 // string kept in a table and translated where it's drawn. src/i18n/<code>.json maps each English string to the
@@ -9,6 +9,7 @@
 // uses a dash. `pt` (Portugal) falls back to `pt-br` string by string, as the app's PT does to BR's game words.
 import { fill } from './fill.js';
 import ja from './ja.json' with { type: 'json' };
+import ko from './ko.json' with { type: 'json' };
 import fr from './fr.json' with { type: 'json' };
 import de from './de.json' with { type: 'json' };
 import it from './it.json' with { type: 'json' };
@@ -23,6 +24,7 @@ import pt from './pt.json' with { type: 'json' };
 export const LANGUAGES = [
   { code: 'en', hreflang: 'en', name: 'English', locale: 'en-US', og: 'en_US' },
   { code: 'ja', hreflang: 'ja', name: '日本語', locale: 'ja-JP', og: 'ja_JP' },
+  { code: 'ko', hreflang: 'ko', name: '한국어', locale: 'ko-KR', og: 'ko_KR' },
   { code: 'fr', hreflang: 'fr', name: 'Français', locale: 'fr-FR', og: 'fr_FR' },
   { code: 'de', hreflang: 'de', name: 'Deutsch', locale: 'de-DE', og: 'de_DE' },
   { code: 'it', hreflang: 'it', name: 'Italiano', locale: 'it-IT', og: 'it_IT' },
@@ -37,7 +39,7 @@ export const PREFIXED = CODES.filter((c) => c !== DEFAULT_LANG);
 export const language = (code) => LANGUAGES.find((l) => l.code === code) ?? LANGUAGES[0];
 
 export { fill };
-export const TABLES = { ja, fr, de, it, es, 'pt-br': ptBr, pt };
+export const TABLES = { ja, ko, fr, de, it, es, 'pt-br': ptBr, pt };
 
 /** The page's language, from its path's first segment ('/fr/docs/' -> 'fr'), else English. */
 export function langOfPath(pathname) {

@@ -195,7 +195,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
           <a href={PATREON_URL}>PATREON</a>
           <a href={COFFEE_URL}>{tr('BUY ME A COFFEE')}</a>
         </div>
-        <p class="legal tiny muted" set:html={tr('PokeDaisy is a fan project, not affiliated with or endorsed by Nintendo, Game Freak, Creatures or The Pokémon Company. Pokémon and all related names are trademarks of their respective owners; Game Boy, Game Boy Color, Game Boy Advance and Nintendo DS are trademarks of Nintendo. Device names belong to their makers, and ScreenScraper, RetroAchievements and SteamGridDB are independent services. ROM hacks belong to their creators. No games are included: use your own legally dumped ROMs. Games run on <a href="https://mgba.io">mGBA</a> and <a href="https://melonds.kuribo64.net">melonDS</a>; fonts: Pixel Operator by Jayvee Enaguas (CC0), PixelMplus by Itouhiro (M+ FONT LICENSE) and Atkinson Hyperlegible by the Braille Institute (OFL).')} />
+        <p class="legal tiny muted" set:html={tr('PokeDaisy is a fan project, not affiliated with or endorsed by Nintendo, Game Freak, Creatures or The Pokémon Company. Pokémon and all related names are trademarks of their respective owners; Game Boy, Game Boy Color, Game Boy Advance and Nintendo DS are trademarks of Nintendo. Device names belong to their makers, and ScreenScraper, RetroAchievements and SteamGridDB are independent services. ROM hacks belong to their creators. No games are included: use your own legally dumped ROMs. Games run on <a href="https://mgba.io">mGBA</a> and <a href="https://melonds.kuribo64.net">melonDS</a>; fonts: Pixel Operator by Jayvee Enaguas (CC0), PixelMplus by Itouhiro (M+ FONT LICENSE), Galmuri by Lee Minseo (OFL) and Atkinson Hyperlegible by the Braille Institute (OFL).')} />
       </div>
     </footer>
 
@@ -243,6 +243,14 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     src: url('/fonts/PixelMplusJP-site.ttf') format('truetype');
     font-display: swap;
     unicode-range: U+3000-30FF, U+3400-4DBF, U+4E00-9FFF, U+FF00-FFEF;
+  }
+  /* Korean the same way: Galmuri at Pixel Operator's pixel (the app's GalmuriKO), cut to the site's Korean
+     (scripts/gen_site_ko_font.py). */
+  @font-face {
+    font-family: 'Galmuri KO';
+    src: url('/fonts/GalmuriKO-site.ttf') format('truetype');
+    font-display: swap;
+    unicode-range: U+3131-318E, U+AC00-D7A3;
   }
   :root {
     /* One GBA pixel on screen, and the text sizes - the script in <head> snaps them to whole device
@@ -293,7 +301,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
   html, body { margin: 0; }
   body {
     min-height: 100vh;
-    font-family: 'Pixel Operator', 'PixelMplus JP', monospace;
+    font-family: 'Pixel Operator', 'PixelMplus JP', 'Galmuri KO', monospace;
     font-size: var(--t-m);
     line-height: 1.5;
     color: var(--ink);
@@ -304,6 +312,8 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
   }
   /* Japanese: never a small kana, ー or closing mark at a line's start. */
   :lang(ja) { line-break: strict; }
+  /* Korean: break between words (spaces), never inside one, as Korean text is set. */
+  :lang(ko) { word-break: keep-all; overflow-wrap: anywhere; }
   ::selection { background: var(--yellow); color: var(--ink); }
   a { color: inherit; }
   img { max-width: 100%; }

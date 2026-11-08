@@ -2,7 +2,7 @@
 """Checks the app's translation tables against the code.
 
 Every tr("...") / tk("...") literal under app/src/main/kotlin must be a key in
-one of companion/i18n/Tr*.kt, with all seven translations non-empty and the
+one of companion/i18n/Tr*.kt, with all eight translations non-empty and the
 same {0}-style placeholders as the English. Keys must be plain literals: an
 interpolated "$x" key can't be looked up. Also lists table entries nothing uses
 (-v). TranslationsTest runs the same check on the JVM. Usage:
@@ -21,7 +21,7 @@ CALL = re.compile(r'\bt[rk]\(\s*' + STR)
 ENTRY = re.compile(
     STR + r'\s+to\s+Tr\(\s*ja\s*=\s*' + STR + r'\s*,\s*fr\s*=\s*' + STR + r'\s*,\s*de\s*=\s*' + STR
     + r'\s*,\s*it\s*=\s*' + STR + r'\s*,\s*es\s*=\s*' + STR
-    + r'\s*,\s*br\s*=\s*' + STR + r'\s*,\s*pt\s*=\s*' + STR + r'\s*,?\s*\)'
+    + r'\s*,\s*br\s*=\s*' + STR + r'\s*,\s*pt\s*=\s*' + STR + r'\s*,\s*ko\s*=\s*' + STR + r'\s*,?\s*\)'
 )
 PH = re.compile(r'\{\d+\}')
 # String literals first, so a "*/*" or "//" inside one isn't taken for a comment.
@@ -64,7 +64,7 @@ def main():
                 errors.append(f"{where}: no translation for {key!r}")
     for key, (fname, langs) in table.items():
         want = sorted(PH.findall(key))
-        for lang, s in zip(("ja", "fr", "de", "it", "es", "br", "pt"), langs):
+        for lang, s in zip(("ja", "fr", "de", "it", "es", "br", "pt", "ko"), langs):
             if not s.strip():
                 errors.append(f"{fname}: {key!r} has an empty {lang}")
             elif sorted(PH.findall(s)) != want:

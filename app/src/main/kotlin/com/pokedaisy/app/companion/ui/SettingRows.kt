@@ -155,7 +155,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "HIDDEN GAMES" to "hide unhide library show",
     "CHEATS" to "gameshark action replay codebreaker codes",
     "RetroAchievements" to "achievements cheevos ra login account trophies",
-    "LANGUAGE" to "language translation locale english japanese french german italian spanish portuguese português brazil brasil portugal idioma",
+    "LANGUAGE" to "language translation locale english japanese french german italian spanish portuguese português brazil brasil portugal idioma korean 한국어 언어",
     "VERSION" to "update upgrade check release about",
     "CRASH REPORTS" to "crash report bug crashlytics privacy diagnostics send",
     "LICENSES" to "license legal open source credits notices about",
