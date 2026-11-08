@@ -1020,7 +1020,7 @@ RETRO_API void retro_run(void) {
   poll_keys();
   shortcutBlocked &= held;
   const bool fieldRunning = polishedActions && polishedInput.field.result == PD_FIELD_RUNNING;
-  const bool inputRunning = polishedActions && pd_binput_busy(&polishedInput);
+  const bool inputRunning = polishedActions && pd_binput_exclusive(&polishedInput);
   if (fieldRunning && down(B)) {
     pd_binput_cancel(&polishedInput);
     notice(pd_field_input_message(&polishedInput.field));
@@ -1154,8 +1154,10 @@ RETRO_API void retro_run(void) {
       repelList = false;
     else if (down(A)) {
       quickOpen = repelList = false;
-      if (polishedActions)
+      if (polishedActions) {
+        shortcutBlocked |= held; // the A that picked it stays out of the game
         polished_use(repelKinds[repelSel]);
+      }
       else {
         job = JOB_REPEL;
         jobItem = repelKinds[repelSel];
@@ -1184,6 +1186,7 @@ RETRO_API void retro_run(void) {
     if (down(A) && !quick[quickSel].why && quick[quickSel].action == QUICK_FLY) {
       if (polishedActions) {
         quickOpen = false;
+        shortcutBlocked |= held; // the A that picked it stays out of the game
         if (!pd_binput_field_start(&polishedInput, PD_FIELD_FLY, 0, 0))
           notice(pd_field_input_message(&polishedInput.field));
       } else
@@ -1417,7 +1420,7 @@ RETRO_API void retro_run(void) {
         pd_binput_cancel(&polishedInput);
       else
         shortcutKeys = pd_binput_tick(&polishedInput, &shortcutExclusive);
-      shortcutExclusive |= inputRunning || (!rewinding && (shortcutKeys || pd_binput_busy(&polishedInput)));
+      shortcutExclusive |= inputRunning || (!rewinding && (shortcutKeys || pd_binput_exclusive(&polishedInput)));
       if (rewinding)
         shortcutKeys = 0;
       if (shortcutExclusive)

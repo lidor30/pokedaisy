@@ -16,13 +16,13 @@
 struct hud_state {
   int repel;     // the Repel's steps left (0 = none working)
   int repelFull; // the steps it started from (the smallest of 100 / 200 / 250 covering the first count seen)
-  int repelItem; // override the plain Repel icon when the cartridge uses another item ID
   bool pc;       // the game's PC can open from here (pc_supported): the PC button
   int wild;      // this map's wild species not caught yet (WILD's badge); -1 = no wild data, no WILD button
   int focus;     // the focused target (enum hud_target), -1 = none: the HUD hotkey's cursor
   int left, right; // keeps to these columns (the game's picture); right 0 = the whole canvas
   bool compact;    // smaller, and no level on the party (a 3DS: its game is drawn at 1.5x)
   bool noButtons;  // no PC / BAG / WILD / COMPANION buttons (a 3DS: no touch on the top screen, X opens the companion)
+  int repelItem;   // the item the REPEL STEPS icon shows, 0 = the plain Repel (last, so positional initializers leave it 0)
 };
 
 /* How wide the compact HUD's minimap is, its frame included. */

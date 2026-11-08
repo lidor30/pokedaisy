@@ -87,6 +87,11 @@ swaps over to it. L2 and R2 reach the core on every shelf (for other Game Boy
 Advance cores the launcher still keeps them back). The settings file sits in the
 `pokedaisy` folder inside the launcher's save folder.
 
+In Polished Crystal 3.2.3 (the normal build) the core also has `EXPAND` and
+`ZOOM OUT`, and the quick menu gets PC, FLY, the keep-away spray, BIKE and WILD
+ENCOUNTERS, each done through the game's own menus. In a battle, X opens the
+companion's BATTLE tab: a command or move you pick there plays out in the game.
+
 ### The picture in the launcher
 
 The core sizes its picture to the screen so the game is always shown at a whole

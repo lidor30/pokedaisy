@@ -79,6 +79,10 @@ static bool exclusive(const struct pd_binput* b) {
     return b->queueCount > 0 || b->framesLeft > 0 || b->switchTarget || b->runPresses > 0 || b->pickCell >= 0 || b->gbPickCell >= 0;
 }
 
+bool pd_binput_exclusive(const struct pd_binput* b) {
+    return b->field.result == PD_FIELD_RUNNING || exclusive(b);
+}
+
 bool pd_binput_busy(const struct pd_binput* b) {
     return b->field.result == PD_FIELD_RUNNING || exclusive(b) || b->pendingMove >= 0 || b->awaitingTarget;
 }

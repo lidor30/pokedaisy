@@ -76,6 +76,9 @@ bool pd_binput_can_switch(const struct pd_binput* b);
 uint32_t pd_binput_tick(struct pd_binput* b, bool* exclusive);
 enum pd_battle_state pd_binput_state(const struct pd_binput* b);
 // A sequence hasn't drained, or a move waits for its menu: taps wait.
+// Presses playing or a closed loop steering (a field shortcut too): the player's keys stay out. Not the passive watches
+// pd_binput_busy also counts (a pending move, a target confirm), which must never lock the player out.
+bool pd_binput_exclusive(const struct pd_binput* b);
 bool pd_binput_busy(const struct pd_binput* b);
 
 // The field and battle actions use the same key queue and cannot run concurrently.
