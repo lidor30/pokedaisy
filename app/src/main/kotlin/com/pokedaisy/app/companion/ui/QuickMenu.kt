@@ -36,7 +36,6 @@ import androidx.compose.ui.draw.drawBehind
 import kotlin.math.hypot
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.geometry.Offset
-import androidx.compose.ui.graphics.drawscope.clipRect
 import androidx.compose.ui.input.pointer.pointerInput
 import androidx.compose.ui.layout.Placeable
 import androidx.compose.ui.layout.SubcomposeLayout
@@ -399,14 +398,14 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
                         repels != null -> RepelKinds(state, repels, snapshot, m)
                         items.isEmpty() -> GbaText(tr("Nothing to show: pick actions in SETTINGS > QUICK MENU"), ink.text, ink.shadow, m, maxLines = 2)
                         else -> {
-                            TileGrid(items.size, gap = u * 3, tile)
+                            TileGrid(items.size, gap = u * 5, tile)
                             if (hint != null) GbaText(hint, ink.text, ink.shadow, rememberGbaTextMetrics(0.75f), maxLines = 2)
                         }
                     }
                 }
             } else {
                 // The highlighted one's name (and why it's dimmed) in the middle, like a game's weapon wheel.
-                TileRing(state, items.size, gap = u * 6, maxW = maxWidth * 0.96f, maxH = maxHeight * 0.96f, { fan }, tile) {
+                TileRing(state, items.size, gap = u * 10, maxW = maxWidth * 0.96f, maxH = maxHeight * 0.96f, { fan }, tile) {
                     // With names on the tiles, the middle only says why the highlighted one is dimmed (or WILD's state).
                     val name = if (state.labels) null else quickLabel(current ?: QuickAction.PC, actions)
                     val note = why ?: if (current == QuickAction.WILD) quickHint(current, actions) else null
@@ -660,13 +659,14 @@ private fun QuickTile(
     val noRipple = remember { MutableInteractionSource() }
     val off = action == QuickAction.WILD && actions.wildEncounters() == 0
     Box(
-        Modifier.fillMaxSize().gbaFocusRing(selected, PixelRoundedShape(u * 4)).quickTileFace(u)
+        Modifier.fillMaxSize().hudButtonFace(u, selected, solid = false, shadow = true)
             .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick),
         contentAlignment = Alignment.Center,
     ) {
         Column(
             // Icons alone: a bigger icon and more room round it, so the tiles stay easy to see and tap without names.
-            Modifier.widthIn(min = if (label) u * 38 else 0.dp).padding(u * if (label) 5 else 8).alpha(if (blocked) 0.45f else 1f),
+            // With names, taller than they were (5u a side): about square, the user's call with the HP box look.
+            Modifier.widthIn(min = if (label) u * 38 else 0.dp).padding(horizontal = u * if (label) 5 else 8, vertical = u * 8).alpha(if (blocked) 0.45f else 1f),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
             val icon = u * if (label) 20 else 24
@@ -683,32 +683,6 @@ private fun QuickTile(
             }
         }
         if (off && !label) PixelArt(SLASH_ICON, SLASH_COLORS, Modifier.size(u * 24))
-    }
-}
-
-/** A tile in the HUD's LOOK ([hudPanel]'s see-through panel and pixel edge, or the OPTION title window) with the app's buttons'
- * two-tone face: the HUD's colour a step lighter on top, its own colour under the soft split. */
-@Composable
-private fun Modifier.quickTileFace(u: Dp): Modifier {
-    val look = LocalHudLook.current
-    return drawBehind {
-        val px = u.toPx()
-        val r = 4 * px
-        when (look) {
-            FieldHudLook.WINDOW -> drawLayeredBox(OptionColors.titleLayers.inPx(px), OptionColors.titleFill, radius = 3 * px, twoTone = true)
-            FieldHudLook.GLASS, FieldHudLook.WHITE_GLASS -> {
-                val (top, low, edge) = if (look == FieldHudLook.GLASS) HudGlassFace else HudWhiteGlassFace
-                // See-through: each band painted once (drawTwoTone paints the low colour under the top one, which doubles a
-                // translucent fill).
-                val split = size.height * 0.47f
-                fun band(c: Color, from: Float, to: Float) = clipRect(top = from, bottom = to) { drawPixelRoundRect(c, radius = r, step = px) }
-                band(top, 0f, split)
-                band(androidx.compose.ui.graphics.lerp(top, low, 0.35f), split, split + px)
-                band(androidx.compose.ui.graphics.lerp(top, low, 0.7f), split + px, split + 2 * px)
-                band(low, split + 2 * px, size.height)
-                drawPixelRoundFrame(edge, Offset.Zero, size, r, px, step = px)
-            }
-        }
     }
 }
 
