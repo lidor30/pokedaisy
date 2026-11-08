@@ -67,19 +67,6 @@ std::vector<DsMapPlace> ds_map_places(const DsCompanion& s){
   return places;
 }
 
-void ds_map_actions(pd_canvas* c,int selected){
-  const int y=c->h-25;
-  const char* labels[]={"PLACES","ME"};
-  const int start=c->w-119;
-  for(int i=0;i<2;i++){
-    const int x=start+(i?77:0),w=i?38:73;
-    pd_title_box(c,x,y,w,23,selected==i?PD_ROW_SELECTED:PD_TITLE_FILL);
-    if(selected==i)pd_fill(c,x+3,y+19,w-6,2,PD_VALUE);
-    pd_text(c,x+(w-pd_text_width(labels[i]))/2,y+3,labels[i],selected==i?PD_VALUE:PD_TITLE_TEXT,PD_TITLE_SHADOW);
-  }
-  pd_text(c,10,y+3,selected<0?"B  ACTIONS":"A  SELECT",PD_ON_BACKDROP,PD_ON_BACKDROP_SHADOW);
-}
-
 DsMapPosition ds_map_position(const DsCompanion& s){
   using namespace pd_ds_data;
   if(s.mapX<0||s.mapY<0)return {};
@@ -95,7 +82,19 @@ DsMapPosition ds_map_position(const DsCompanion& s){
   return {s.mapX*8+4,s.mapY*8+4};
 }
 
-void ds_map_view(pd_canvas* c,const DsCompanion& s,const DsMapArt& art,int mapX,int mapY){
+static void map_actions(pd_canvas* c,pd_map_viewport view,int selected){
+  const int y=view.y+20, right=view.x+view.w-4;
+  const char* labels[]={"PLACES","ME"};
+  const int widths[]={pd_text_width(labels[0])+16,pd_text_width(labels[1])+16};
+  for(int i=0;i<2;++i){
+    const int x=right-widths[1]-(i?0:widths[0]+4), w=widths[i];
+    pd_title_box(c,x,y,w,22,selected==i?PD_ROW_SELECTED:PD_TITLE_FILL);
+    if(selected==i)pd_fill(c,x+3,y+18,w-6,2,PD_VALUE);
+    pd_text(c,x+8,pd_text_y(y,22),labels[i],selected==i?PD_VALUE:PD_TITLE_TEXT,PD_TITLE_SHADOW);
+  }
+}
+
+void ds_map_view(pd_canvas* c,const DsCompanion& s,const DsMapArt& art,int mapX,int mapY,int action){
   ds_companion_backdrop(c,s.game,PD_TAB_MAP);
   if(!has_art(art)){pd_ui_map_view(c,nullptr);return;}
   auto pixels=art.background;
@@ -119,7 +118,7 @@ void ds_map_view(pd_canvas* c,const DsCompanion& s,const DsMapArt& art,int mapX,
   }
   pd_map_source source{pixels.data(),art.width,art.height,*label?label:"No location",
     art.cursor.empty()?x:-1,art.cursor.empty()?y:-1,tile,tile};
-  pd_ui_map_view(c,&source);
+  map_actions(c,pd_ui_map_view(c,&source),action);
 }
 
 void ds_draw_minimap(pd_canvas* c,const DsCompanion& s,const DsMapArt& art,int x,int y,int w,int h){

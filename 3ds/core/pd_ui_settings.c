@@ -90,7 +90,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     int lh = c->h - LIST_Y - MARGIN;
     int lf = pd_list_box(c, x, LIST_Y, w, lh);
     // The bar takes its column off the rows while there's more than fits.
-    bool hasBar = lastTotal > lh - 2 * lf;
+    bool hasBar = (ui->optionSource ? ui->optionSource->count * ROW_H : lastTotal) > lh - 2 * lf;
     int ix = x + lf + 4, iw = w - 2 * (lf + 4) - (hasBar ? SCROLL_BAR_W + 2 : 0);
     // The rows scroll where they don't all fit (a drag, or the D-pad past the last one shown).
     listTop = LIST_Y + lf;
@@ -113,10 +113,22 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
             int ry=listTop+i*ROW_H-ui->settingsScroll;
             if(ry+ROW_H<=listTop || ry>=listBottom)continue;
             const struct pd_option_row* row=&ui->optionSource->rows[i];
-            ui_row(c,ix,ry,iw,row->label,row->value,i==selected);
+            if (row->heading) {
+                int groupY=ry-3;
+                group(c,ix,&groupY,row->label);
+            } else {
+                ui_row(c,ix,ry,iw,row->label,row->value,false);
+                if (i==selected) {
+                    pd_fill(c,ix-4,ry,iw+8,2,PD_VALUE);
+                    pd_fill(c,ix-4,ry+ROW_H-2,iw+8,2,PD_VALUE);
+                    pd_fill(c,ix-4,ry,2,ROW_H,PD_VALUE);
+                    pd_fill(c,ix+iw+2,ry,2,ROW_H,PD_VALUE);
+                }
+            }
         }
         pd_unclip(c);
-        ui_scroll_bar(c,x+w-lf-3,listTop,view,ui->settingsScroll,n*ROW_H,PD_DIVIDER);
+        if (n*ROW_H > view)
+            ui_scroll_rail(ui,c,x+w-lf-SCROLL_BAR_W-2,listTop+2,SCROLL_BAR_W,view-4,ui->settingsScroll,n*ROW_H,view);
         return;
     }
     pd_clip(c, x + lf, listTop, w - 2 * lf, listBottom - listTop);

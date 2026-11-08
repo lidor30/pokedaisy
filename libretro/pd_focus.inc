@@ -17,7 +17,8 @@ static struct screen screen_of(const struct pd_ui *u) {
 static void focus_new_screen(void) { lastScreen.tab = -1; }
 // What the cursor can land on: not the tab bar, nor a scrim or a list's drag area.
 static bool focusable(int id) {
-  return !(id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) && id != HIT_FF && id != HIT_SCRIM &&
+  return !(id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) && id != HIT_MORE && id != HIT_FF && id != HIT_SCRIM &&
+         id != HIT_SHOULDER_L && id != HIT_SHOULDER_R && id != HIT_SCROLL_BAR &&
          id != HIT_BAG_LIST && id != HIT_DEX_LIST && id != HIT_GUIDE_LIST && id != HIT_SETTINGS_LIST;
 }
 // A window over the screen (the guide's notice, a picker, PLACES) starts with its scrim: the cursor stays on what
@@ -110,7 +111,7 @@ static bool map_cursor_back(struct pd_ui *u) {
 }
 static void focus_activate(struct pd_ui *u) {
   int at = focus_index(u, focusId);
-  if (at < 0)
+  if (at < 0 || !focusable(focusId))
     return;
   const struct pd_hit *h = &u->hits[at];
   if (map_cursor_active(u)) {
@@ -122,6 +123,9 @@ static void focus_activate(struct pd_ui *u) {
     mapCursor.sel = u->mapSel;
     mapCursor.dungeon = u->mapDungeon;
     mapCursor.requestedPage = u->mapPage;
+  } else if (h->id >= HIT_SLOT && h->id < HIT_SLOT + PD_PARTY_SIZE) {
+    u->focusId = h->id;
+    pd_ui_focus_press(u);
   } else {
     pd_ui_touch(u, h->x + h->w / 2, h->y + h->h / 2, true);
     pd_ui_touch(u, h->x + h->w / 2, h->y + h->h / 2, false);
@@ -131,9 +135,11 @@ static void focus_activate(struct pd_ui *u) {
 static int focus_resolve(struct pd_ui *u) {
   struct screen now = screen_of(u);
   bool changed = memcmp(&now, &lastScreen, sizeof now) != 0;
+  const bool partyBack = now.tab == PD_TAB_PARTY && now.overlay == PD_OVERLAY_NONE &&
+      now.summarySlot < 0 && lastScreen.tab == PD_TAB_PARTY && lastScreen.summarySlot >= 0;
   lastScreen = now;
   int floor = modal_floor(u);
-  int i = changed ? -1 : focus_index(u, focusId);
+  int i = changed && !partyBack ? -1 : focus_index(u, focusId);
   if (i >= 0 && i < floor)
     i = -1;
   if (i < 0 && !changed && focusId >= 0) { // gone: the nearest item to where it was
@@ -221,8 +227,7 @@ static bool focus_step(struct pd_ui *u, int direction, bool scroll) {
     if (i == cur)
       continue;
     struct pd_hit *t = &u->hits[i];
-    if (t->id == HIT_SCRIM || t->id == HIT_BAG_LIST || t->id == HIT_DEX_LIST || t->id == HIT_GUIDE_LIST ||
-        t->id == HIT_SETTINGS_LIST)
+    if (!focusable(t->id))
       continue;
     int dx = (t->x + t->w / 2) - (h->x + h->w / 2),
         dy = (t->y + t->h / 2) - (h->y + h->h / 2);

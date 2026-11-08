@@ -79,7 +79,7 @@ static int bar_tabs(const struct pd_ui* ui, const struct pd_game* g, enum pd_tab
         }
     }
     for (int i = 0; i < UI_BAR_CHOICES && n < room; i++) {
-        if (!ui->content && !picked[i] && ui_tab_available(ui, g, bar_choice(ui, i)) && bar_choice(ui, i) != PD_TAB_NUZLOCKE) {
+        if (!ui->content && (!ui->shoulderTabs || !n) && !picked[i] && ui_tab_available(ui, g, bar_choice(ui, i)) && bar_choice(ui, i) != PD_TAB_NUZLOCKE) {
             picked[i] = true;
             n++;
         }
@@ -697,7 +697,7 @@ bool pd_ui_touch(struct pd_ui* ui, int x, int y, bool down) {
 
 int pd_ui_tab_menu_count(const struct pd_ui* ui) {
     enum pd_tab tabs[UI_BAR_CHOICES];
-    if (ui->overlay == PD_OVERLAY_MORE) return ui_more_tabs(ui, NULL, tabs);
+    if (ui->overlay == PD_OVERLAY_MORE) return ui_more_tabs(ui, ui->drawnGame, tabs);
     if (ui->overlay == PD_OVERLAY_TAB_BAR) return ui_configurable_tabs(ui, tabs);
     return 0;
 }
@@ -711,14 +711,22 @@ void pd_ui_tab_menu_choose(struct pd_ui* ui, int row) {
 }
 
 void pd_ui_next_tab(struct pd_ui* ui, int dir) {
-    if (ui->overlay != PD_OVERLAY_NONE) return;
-    // The bar's order, then the gear (a tab MORE opened steps on from the gear).
-    enum pd_tab order[PD_MAX_BAR_TABS + 2];
-    int n = chips(ui, ui->drawnGame, order), at = n;
+    if (ui->overlay != PD_OVERLAY_NONE &&
+        !(ui->shoulderTabs && ui->overlay == PD_OVERLAY_MORE)) return;
+    enum pd_tab order[PD_MAX_BAR_TABS + 3];
+    int n = chips(ui, ui->drawnGame, order);
+    enum pd_tab more[UI_BAR_CHOICES];
+    const bool hasMore = ui->shoulderTabs && ui_more_tabs(ui, ui->drawnGame, more) > 0;
+    const enum pd_tab current = hasMore && (ui->overlay == PD_OVERLAY_MORE || ui->moreOpened)
+        ? PD_TAB_COUNT : ui->tab;
+    if (hasMore) order[n++] = PD_TAB_COUNT;
+    order[n++] = PD_TAB_SETTINGS;
+    int at = n - 1;
     for (int i = 0; i < n; i++)
-        if (order[i] == ui->tab) at = i;
-    order[n] = PD_TAB_SETTINGS;
-    ui->tab = order[(at + n + 1 + dir) % (n + 1)];
+        if (order[i] == current) at = i;
+    const enum pd_tab next = order[(at + n + dir) % n];
+    ui->overlay = next == PD_TAB_COUNT ? PD_OVERLAY_MORE : PD_OVERLAY_NONE;
+    ui->tab = next == PD_TAB_COUNT ? PD_TAB_SETTINGS : next;
     ui->summarySlot = -1;
     ui->moreOpened = false;
 }

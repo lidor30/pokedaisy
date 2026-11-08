@@ -1247,6 +1247,32 @@ static struct pd_summary_learn_row native_learn_row(const void* data, int i, cha
     return (struct pd_summary_learn_row){move.level, pd_move_name(source->game, move.move, scratch, n)};
 }
 
+void pd_ui_party_summary_control(struct pd_ui* ui, const struct pd_snapshot* s, int dx, int dy,
+                                 bool confirm, bool select) {
+    if (ui->summarySlot < 0 || ui->summarySlot >= s->partyCount) return;
+    const int next = ui->summarySlot + dy;
+    if (next >= 0 && next < s->partyCount && next != ui->summarySlot) {
+        ui->summarySlot = next;
+        ui->summaryLearnRow = 0;
+    }
+    const struct pd_mon* mon = &s->party[ui->summarySlot];
+    if (party_egg(ui, mon)) return;
+    if (select) {
+        if (ui->summaryInfo) ui->summaryInfo = false;
+        else if (!ui_summary_learn(ui)) {
+            ui->summaryInfo = true;
+            ui->summaryStats = false;
+        }
+    } else if (confirm || (!ui->summaryLearn && dx)) {
+        ui->summaryStats = !ui->summaryLearn && !ui->summaryInfo && !ui->summaryStats && mon->stats.valid;
+        ui->summaryLearn = ui->summaryInfo = false;
+    } else if (ui->summaryLearn) {
+        ui->summaryLearnRow += dx;
+        if (ui->summaryLearnRow < 0) ui->summaryLearnRow = 0;
+        if (ui->summaryLearnRow > ui->summaryLearnLast) ui->summaryLearnRow = ui->summaryLearnLast;
+    }
+}
+
 static void native_summary_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     const struct pd_mon* m = &s->party[ui->summarySlot];
     char name[40], species[40], moveNames[PD_NUM_MOVES][40];
@@ -1265,14 +1291,19 @@ static void native_summary_view(struct pd_ui* ui, struct pd_canvas* c, const str
     if (ui->summaryLearnRow > ui->summaryLearnLast) ui->summaryLearnRow = ui->summaryLearnLast;
     const struct pd_summary_learn learn = {&learnset, native_learn_row, count, ui->summaryLearnRow};
     if (!m->stats.valid) ui->summaryStats = false;
-    const bool secondaryLearn = ui->summaryLearn || (!ui->summaryStats && !ui->summaryInfo && ui->summaryCanLearn);
+    const bool secondaryLearn = ui->summaryLearn || (!ui->summaryInfo && ui->summaryCanLearn &&
+        (ui->shoulderTabs || !ui->summaryStats));
     const bool gb = g->cfg->gb != NULL;
     struct native_summary ctx = {g, s};
     struct pd_summary_view view = {
         .game = g, .ctx = &ctx, .icon = native_summary_icon,
         .name = mon_display_name(ui, g, m, name, sizeof name),
-        .primary = m->stats.valid ? (ui->summaryStats ? "MOVES" : "STATS") : NULL,
-        .secondary = ui->summaryInfo || ui->summaryLearn ? "MOVES" : secondaryLearn ? "LEARN" : "INFO",
+        .primary = ui->shoulderTabs
+            ? (ui->summaryStats || ui->summaryLearn || ui->summaryInfo ? "A MOVES" : m->stats.valid ? "A STATS" : NULL)
+            : m->stats.valid ? (ui->summaryStats ? "MOVES" : "STATS") : NULL,
+        .secondary = ui->shoulderTabs
+            ? (ui->summaryInfo || ui->summaryLearn ? "SEL MOVES" : secondaryLearn ? "SEL LEARN" : "SEL INFO")
+            : ui->summaryInfo || ui->summaryLearn ? "MOVES" : secondaryLearn ? "LEARN" : "INFO",
         .secondaryLearn = secondaryLearn, .speciesName = party_species(ui, g, m->species, species, sizeof species),
         .heldItem = m->hasHeldItem ? (m->heldItem ? pd_item_name(g, m->heldItem) : "NONE") : NULL,
         .friendship = m->hasFriendship ? m->friendship : -1, .stats = &m->stats,

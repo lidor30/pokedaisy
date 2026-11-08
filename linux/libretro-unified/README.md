@@ -54,6 +54,16 @@ This package defaults to DSperate Auto frameskip and 512×384 battle output.
 Auto only skips rendering when the frontend reports that its audio buffer
 is running low. Reload the ROM after changing frameskip.
 
+### Companion navigation on both cores
+
+Use L1/R1 to cycle the tab bar, including **More** when a card is hidden.
+The D-pad moves within the current tab. In Party, A opens the highlighted
+Pokémon and switches between Moves and Stats. Up/Down changes Pokémon,
+Select opens or closes Learn where the game supplies it, and Left/Right
+scrolls the learnset. B returns to the highlighted Pokémon in the grid.
+The DS map uses the space above the tab bar, with **Places** and **Me**
+overlaid on the map. Press B to focus those controls.
+
 ### DS Battle companion
 
 Tap the companion button (L2 by default) during a supported single battle to open

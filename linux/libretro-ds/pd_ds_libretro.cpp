@@ -845,7 +845,7 @@ void controls() {
     return;
   }
   unsigned previous_layout=shell.displayRevision;
-  if(shell.control(edge))companion=false;
+  if(shell.control(edge) && (!shell.frame.moreOpened || !pd_ui_back(&shell.frame)))companion=false;
   if(shell.displayRevision!=previous_layout){screen_override=0;manualTouch=false;}
 
 }

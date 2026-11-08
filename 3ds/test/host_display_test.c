@@ -166,6 +166,43 @@ int main(void) {
     int solid=0;
     for(int y=cell[0].y+cell[0].h;y<240;y++)for(int x=0;x<426;x++)solid+=partyPx[y*426+x]==0x4A4A63;
     assert(solid==0);
+    // The handheld shoulders include More, with disabled cards off the bar.
+    pd_ui_init(&ui,&settings);
+    ui.shoulderTabs = ui.handheldParty = true;
+    settings.tabBar = (1 << PD_TAB_PARTY) | (1 << PD_TAB_BAG);
+    pd_ui_draw(&ui,&c,&fr,&party,&noHost);
+    assert(!has(&ui,HIT_TAB + PD_TAB_MAP) && has(&ui,HIT_MORE));
+    pd_ui_next_tab(&ui,1);
+    assert(ui.tab == PD_TAB_BAG && ui.overlay == PD_OVERLAY_NONE);
+    pd_ui_next_tab(&ui,1);
+    assert(ui.overlay == PD_OVERLAY_MORE && pd_ui_tab_menu_count(&ui) >= 1);
+    pd_ui_next_tab(&ui,1);
+    assert(ui.tab == PD_TAB_SETTINGS && ui.overlay == PD_OVERLAY_NONE);
+    pd_ui_next_tab(&ui,-1);
+    assert(ui.overlay == PD_OVERLAY_MORE);
+    pd_ui_tab_menu_choose(&ui,0);
+    assert(ui.moreOpened && ui.overlay == PD_OVERLAY_NONE);
+    pd_ui_next_tab(&ui,-1);
+    assert(ui.tab == PD_TAB_BAG && !ui.moreOpened);
+
+    // A and Select act on the open Pokémon regardless of the last cursor hit.
+    ui.tab = PD_TAB_PARTY;
+    ui.summarySlot = 0;
+    ui.focusId = HIT_TAB + PD_TAB_MAP;
+    party.party[0].stats.valid = party.party[1].stats.valid = true;
+    pd_ui_party_summary_control(&ui,&party,0,0,true,false);
+    assert(ui.tab == PD_TAB_PARTY && ui.summaryStats);
+    ui.summaryCanLearn = true;
+    ui.summaryLearnLast = 5;
+    pd_ui_party_summary_control(&ui,&party,0,0,false,true);
+    assert(ui.summaryLearn && !ui.summaryStats);
+    pd_ui_party_summary_control(&ui,&party,1,0,false,false);
+    assert(ui.summaryLearnRow == 1);
+    pd_ui_party_summary_control(&ui,&party,0,1,false,false);
+    assert(ui.summarySlot == 1 && ui.summaryLearnRow == 0);
+    pd_ui_party_summary_control(&ui,&party,0,0,true,false);
+    assert(!ui.summaryLearn && !ui.summaryStats);
+    settings.tabBar = PD_TAB_BAR_DEFAULT;
     // The open Bag tab runs on into the list (one shape, like the app's bag): no backdrop left between the two frames.
     struct pd_game bagGame=fr;
     party.bagOk=true;

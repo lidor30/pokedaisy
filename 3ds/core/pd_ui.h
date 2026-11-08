@@ -301,7 +301,7 @@ struct pd_map_source {
     int cursorX, cursorY, cursorW, cursorH;
 };
 // Host-owned option rows use the established Settings frame and row widgets.
-struct pd_option_row { const char* label; const char* value; };
+struct pd_option_row { const char* label; const char* value; bool heading; };
 struct pd_option_source { const char* title; const struct pd_option_row* rows; int count; };
 struct pd_guide_row {
     const char *title, *detail, *hint, *answer;
@@ -386,6 +386,7 @@ struct pd_ui {
     bool keepBackdrop;
     bool bagDetails;
     bool handheldDex, handheldParty;
+    bool shoulderTabs; // handheld tab cycle includes More, without D-pad tab focus
     const struct pd_party_source* partySource;
     int summaryPage;
     bool pixelOff; // SCREEN doesn't offer PIXEL 1x: EXPAND can't hold its speed that wide
@@ -477,7 +478,8 @@ struct pd_ui {
 void pd_ui_choices_view(struct pd_canvas*, const char*, const char* const*, int, int);
 
 // Shared party body, including its original frames, HP bars, status and summary.
-void pd_ui_map_view(struct pd_canvas*, const struct pd_map_source*);
+struct pd_map_viewport { int x, y, w, h; };
+struct pd_map_viewport pd_ui_map_view(struct pd_canvas*, const struct pd_map_source*);
 void pd_ui_options_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*);
 void pd_ui_guide_view(struct pd_ui*, struct pd_canvas*, const struct pd_guide_source*);
 void pd_ui_guide_reset(struct pd_ui*);
@@ -500,6 +502,7 @@ int pd_ui_tab_menu_count(const struct pd_ui*);
 void pd_ui_tab_menu_focus(struct pd_ui*, int row);
 void pd_ui_tab_menu_choose(struct pd_ui*, int row);
 void pd_ui_next_tab(struct pd_ui* ui, int dir);
+void pd_ui_party_summary_control(struct pd_ui*, const struct pd_snapshot*, int dx, int dy, bool confirm, bool select);
 // The buttons on the companion (keyFocus): a direction (0 up, 1 down, 2 left, 3 right), A on what the cursor's on.
 void pd_ui_focus_move(struct pd_ui* ui, int direction);
 void pd_ui_focus_press(struct pd_ui* ui);

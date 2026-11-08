@@ -122,6 +122,17 @@ int main(int argc,char** argv){
   draw();ppm((std::string(argv[2])+"/shared-more.ppm").c_str(),px);
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   assert(ui.frame.tab==PD_TAB_MAP);
+  // Hidden cards occupy the More position when using the shoulder buttons.
+  press(ui,RETRO_DEVICE_ID_JOYPAD_R);
+  assert(ui.frame.tab==PD_TAB_SETTINGS && ui.frame.overlay==PD_OVERLAY_NONE);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_L);
+  assert(ui.frame.overlay==PD_OVERLAY_MORE);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_L);
+  assert(ui.frame.tab==PD_TAB_DEX && ui.frame.overlay==PD_OVERLAY_NONE);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_R);
+  assert(ui.frame.overlay==PD_OVERLAY_MORE);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  assert(ui.frame.tab==PD_TAB_MAP && ui.frame.moreOpened);
   reloaded.init(path);
   assert(!(reloaded.settings.tabBar & (1<<PD_TAB_MAP)) && (reloaded.frame.availableTabs & (1<<PD_TAB_MAP)));
   pd_snapshot field{};
