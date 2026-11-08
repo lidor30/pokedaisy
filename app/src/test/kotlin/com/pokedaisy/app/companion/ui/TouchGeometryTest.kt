@@ -59,6 +59,63 @@ class TouchGeometryTest {
         assertEquals(TouchPreset.CLASSIC, TouchGeometry.place(TouchControlsStyle(), narrow.area.width, narrow.area.height, dp, false).preset)
     }
 
+    /** The old rule (every control over the picture), for comparing: what the HUD kept clear of before GitHub #493. */
+    private fun everyControlClear(p: TouchGeometry.Placed, l: Float, r: Float): Pair<Int, Int> {
+        val over = p.items.filter { it.right > l && it.left < r }
+        val top = over.filter { it.cy < p.h / 2 }.maxOfOrNull { it.bottom } ?: 0f
+        val bottom = over.filter { it.cy >= p.h / 2 }.minOfOrNull { it.top }?.let { p.h - it } ?: 0f
+        return top.toInt() to bottom.toInt().coerceAtLeast(0)
+    }
+
+    /** The HUD keeps clear of the rows along the edges only: never more than of every control over the picture, and the
+     * same as before wherever the presets' rows are all there is (SIDES, CLASSIC at NORMAL). */
+    @Test fun hudClearKeepsToTheEdgeRows() {
+        for ((w, h) in screens.filter { it.first > it.second }) for (preset in TouchPreset.entries) for (size in TouchSize.entries)
+            for (extras in listOf(TouchControlsStyle().extras, allExtras.extras)) for ((gameBoy, ds) in listOf(false to false, true to false, false to true)) {
+            val style = TouchControlsStyle(preset = preset, size = size, extras = extras)
+            val p = TouchGeometry.place(style, w, h, dp, false, gameBoy = gameBoy, ds = ds)
+            val gw = minOf(w, h * 1.5f); val l = (w - gw) / 2
+            val old = everyControlClear(p, l, l + gw); val new = TouchGeometry.hudClear(p, l, l + gw)
+            val what = "$preset $size ${w.toInt()}x${h.toInt()} extras=${extras.size} gb=$gameBoy ds=$ds"
+            assertTrue("$what: $new over $old", new.first <= old.first && new.second <= old.second)
+            if (p.preset == TouchPreset.SIDES || (p.preset == TouchPreset.CLASSIC && size == TouchSize.NORMAL && !ds)) assertEquals(what, old, new)
+        }
+    }
+
+    /** GitHub #493's layout (2460x1080): FF and A / B halfway up the right side no longer squeeze the HUD into a strip. */
+    @Test fun hudClearLeavesTheReportedLayoutRoom() {
+        val w = 2460f; val h = 1080f
+        val style = TouchControlsStyle(size = TouchSize.LARGE, extras = setOf(TouchButton.FF, TouchButton.QUICK_MENU, TouchButton.SAVE_STATE, TouchButton.LOAD_STATE))
+        val at = mapOf(
+            TouchButton.L to (530f to 75f), TouchButton.R to (1860f to 95f), TouchButton.QUICK_MENU to (210f to 197f),
+            TouchButton.SAVE_STATE to (210f to 297f), TouchButton.LOAD_STATE to (210f to 395f), TouchButton.DPAD to (360f to 665f),
+            TouchButton.FF to (2010f to 512f), TouchButton.B to (2050f to 685f), TouchButton.A to (2240f to 610f),
+            TouchButton.SELECT to (1555f to 990f), TouchButton.START to (1820f to 990f),
+        )
+        val preset = TouchGeometry.place(style, w, h, dp, false)
+        val layout = TouchLayout(preset.items.mapNotNull { i -> at[i.button]?.let { (x, y) -> i.button to TouchGeometry.placeOf(i.copy(cx = x, cy = y), w, h, dp, 1f) } }.toMap())
+        val p = TouchGeometry.place(style.withLayout(false, layout), w, h, dp, false)
+        val gw = h * 1.5f; val l = (w - gw) / 2
+        val old = everyControlClear(p, l, l + gw)
+        assertTrue("the old rule squeezed it: $old", h - old.first - old.second < 100)
+        val (top, bottom) = TouchGeometry.hudClear(p, l, l + gw)
+        assertEquals("down to the bottom of R", p.item(TouchButton.R)!!.bottom.toInt(), top)
+        assertEquals("up to the top of SELECT / START", (h - p.item(TouchButton.SELECT)!!.top).toInt(), bottom)
+        assertTrue("room left: ${h - top - bottom}", h - top - bottom > 700)
+    }
+
+    /** The HUD's own room: clearances that would leave less are cut back by the same share. */
+    @Test fun hudKeepsItsRoom() {
+        // Enough room: untouched (past the picture's own insets).
+        assertEquals(100f to 200f, hudClears(150f, 230f, 50f, 30f, 1080f, 500f))
+        // A big pad near both edges (115 / 610 of 1080) with a 506 px HUD: 574 px between them, in the same proportion.
+        val (t, b) = hudClears(115f, 610f, 0f, 0f, 1080f, 506f)
+        assertEquals(574f, t + b, 0.5f)
+        assertEquals(115f / 610f, t / b, 0.001f)
+        // A picture smaller than the room: no clearance at all.
+        assertEquals(0f to 0f, hudClears(100f, 100f, 0f, 0f, 400f, 506f))
+    }
+
     @Test fun positionMovesTheBlockUpright() {
         // UNDER GAME on a tall phone: a big gap at the screen's bottom.
         val stage = simulateTouchStage(1080f, 2400f, dp, underGame = true)

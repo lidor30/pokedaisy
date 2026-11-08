@@ -406,6 +406,11 @@ fun FieldHud(
             val inB = frame?.let { (boxH - it.bottom).coerceAtLeast(0f) } ?: 0f
             CompositionLocalProvider(LocalDensity provides hudDensity) {
                 val m = rememberGbaTextMetrics(1f)
+                // The touch controls' rows to keep clear of, cut back where they'd leave the HUD less than its own room
+                // (a big D-pad and A / B along the bottom, GitHub #493): on the picture, and RAILS' whole box.
+                val minRoom = with(hudDensity) { m.u.toPx() } * HUD_MIN_ROOM * scale
+                val (padT, padB) = hudClears(clearTop.toFloat(), clearBottom.toFloat(), inT, inB, boxH, minRoom)
+                val (railT, railB) = hudClears(clearTop.toFloat(), clearBottom.toFloat(), 0f, 0f, boxH, minRoom)
                 val pc = itemUse?.takeIf { it.canPc() }?.let { use ->
                     {
                         onTap()
@@ -435,13 +440,13 @@ fun FieldHud(
                             Box(
                                 Modifier.fillMaxSize()
                                     .padding(start = inL.toDp(), top = inT.toDp(), end = inR.toDp(), bottom = inB.toDp())
-                                    .padding(top = (clearTop - inT).coerceAtLeast(0f).toDp(), bottom = (clearBottom - inB).coerceAtLeast(0f).toDp()),
+                                    .padding(top = padT.toDp(), bottom = padB.toDp()),
                             ) {
                                 Box(Modifier.fillMaxSize().hudScale(scale)) { CompactLayout(parts) }
                             }
                         } else if (style.layout == FieldHudLayout.RAILS) {
                             // RAILS use the room beside the picture: the whole box, told where the picture's sides are.
-                            Box(Modifier.fillMaxSize().padding(top = clearTop.toDp(), bottom = clearBottom.toDp()).hudScale(scale)) {
+                            Box(Modifier.fillMaxSize().padding(top = railT.toDp(), bottom = railB.toDp()).hudScale(scale)) {
                                 RailsLayout(parts, (inL / scale).toDp(), (inR / scale).toDp())
                             }
                         } else {
@@ -449,7 +454,7 @@ fun FieldHud(
                             Box(
                                 Modifier.fillMaxSize()
                                     .padding(start = inL.toDp(), top = inT.toDp(), end = inR.toDp(), bottom = inB.toDp())
-                                    .padding(top = (clearTop - inT).coerceAtLeast(0f).toDp(), bottom = (clearBottom - inB).coerceAtLeast(0f).toDp()),
+                                    .padding(top = padT.toDp(), bottom = padB.toDp()),
                             ) {
                                 Box(Modifier.fillMaxSize().hudScale(scale)) {
                                     when (style.layout) {
@@ -495,6 +500,25 @@ object FieldHudFit {
 /** Every SIZE drawn 12.5% bigger than its whole GBA pixel (the user's call: a whole pixel more was too much; NORMAL
  * 3 -> 3.375 on the RP6, liked over 3.5), so the HUD's pixels are no longer whole screen pixels. */
 private const val HUD_SCALE = 1.125f
+
+/** The height the HUD keeps for itself between the touch controls' rows (HUD GBA pixels, before [HUD_SCALE]): CORNERS'
+ * minimap over its balls and buttons, with their margins. */
+private const val HUD_MIN_ROOM = 150
+
+/**
+ * The room the HUD keeps clear at the top and bottom of the picture (px, past its own insets [inT] / [inB]) for touch
+ * controls reaching [clearTop] / [clearBottom] down / up from the box's edges: both cut back by the same share where
+ * they'd leave less than [minRoom] between them (or all the picture has, if less), so the HUD never squeezes into a strip.
+ */
+internal fun hudClears(clearTop: Float, clearBottom: Float, inT: Float, inB: Float, boxH: Float, minRoom: Float): Pair<Float, Float> {
+    val t = (clearTop - inT).coerceAtLeast(0f)
+    val b = (clearBottom - inB).coerceAtLeast(0f)
+    val picture = (boxH - inT - inB).coerceAtLeast(0f)
+    val allowed = (picture - minRoom).coerceAtLeast(0f)
+    if (t + b <= allowed) return t to b
+    val k = allowed / (t + b)
+    return t * k to b * k
+}
 
 /** Lays the content out in this box shrunk by [scale], then draws it scaled back up from the top left: the parts keep
  * their places (corners stay corners) and taps still land (Compose hit-tests through the layer). */

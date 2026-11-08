@@ -69,17 +69,31 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
     private var placed: TouchGeometry.Placed? = null
 
     /** The FIELD HUD's room to keep clear while this shows (px): down to the top row's bottom (L / R, extras), and up
-     * from the bottom to the top of the controls along it - only those over the game, not in the margins beside it. Both
-     * 0 while hidden. */
+     * from the bottom to the top of the controls along it - only those over the game, not in the margins beside it, and
+     * only the rows along the edges ([TouchGeometry.hudClear]). Both 0 while hidden. */
     val clearTop: Int get() = clear().first
     val clearBottom: Int get() = clear().second
 
     private fun clear(): Pair<Int, Int> {
         val p = placed ?: return 0 to 0
-        // The game's columns: the middle 3:2 (or 10:9) at the area's height, the whole width upright.
+        if (visibility != VISIBLE) return 0 to 0
+        val (l, r) = columns(p)
+        return TouchGeometry.hudClear(p, l, r)
+    }
+
+    /** The game's columns: the middle 3:2 (or 10:9) at the area's height, the whole width upright. */
+    private fun columns(p: TouchGeometry.Placed): Pair<Float, Float> {
         val gameW = if (portrait) p.w else minOf(p.w, p.h * gameAspect)
         val l = (p.w - gameW) / 2
-        return clearAcross(l, l + gameW)
+        return l to l + gameW
+    }
+
+    /** Held sideways while this shows: the columns (px, this view's) the FIELD HUD keeps to, the game's own, which
+     * [clearTop] / [clearBottom] are measured over. EXPAND's HUD would otherwise spread under the buttons beside them. */
+    fun hudColumns(): Pair<Float, Float>? {
+        val p = placed ?: return null
+        if (visibility != VISIBLE || portrait) return null
+        return columns(p).takeIf { (l, r) -> r - l < p.w - 1f }
     }
 
     /** As [clearTop] / [clearBottom], for the controls across the columns [l, r) (px): a DS game's floating touch
