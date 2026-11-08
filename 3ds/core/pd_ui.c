@@ -59,13 +59,6 @@ bool ui_tab_available(const struct pd_ui* ui, const struct pd_game* g, enum pd_t
 
 // The chips of the chosen tabs this game has, then - while there's room - its others, in the tabs' own order. Without
 // a game known yet (g NULL) the choice as it stands.
-static enum pd_tab bar_choice(const struct pd_ui* ui, int i) {
-    static const enum pd_tab hostOrder[UI_BAR_CHOICES] = {
-        PD_TAB_PARTY, PD_TAB_BAG, PD_TAB_MAP, PD_TAB_GUIDE, PD_TAB_DEX,
-        PD_TAB_BOXES, PD_TAB_NUZLOCKE, PD_TAB_CARD, PD_TAB_STATES, PD_TAB_ACHIEVEMENTS,
-    };
-    return ui->content ? hostOrder[i] : UI_BAR_CHOICE[i];
-}
 
 static int bar_tabs(const struct pd_ui* ui, const struct pd_game* g, enum pd_tab out[PD_MAX_BAR_TABS]) {
     int bits = ui->settings && ui->settings->tabBar ? ui->settings->tabBar : PD_TAB_BAR_DEFAULT;
@@ -73,33 +66,33 @@ static int bar_tabs(const struct pd_ui* ui, const struct pd_game* g, enum pd_tab
     bool picked[UI_BAR_CHOICES] = { false };
     int n = 0;
     for (int i = 0; i < UI_BAR_CHOICES && n < room; i++) {
-        if ((bits >> bar_choice(ui, i) & 1) && ui_tab_available(ui, g, bar_choice(ui, i))) {
+        if ((bits >> UI_BAR_CHOICE[i] & 1) && ui_tab_available(ui, g, UI_BAR_CHOICE[i])) {
             picked[i] = true;
             n++;
         }
     }
     for (int i = 0; i < UI_BAR_CHOICES && n < room; i++) {
-        if (!ui->content && (!ui->shoulderTabs || !n) && !picked[i] && ui_tab_available(ui, g, bar_choice(ui, i)) && bar_choice(ui, i) != PD_TAB_NUZLOCKE) {
+        if (!ui->content && (!ui->shoulderTabs || !n) && !picked[i] && ui_tab_available(ui, g, UI_BAR_CHOICE[i]) && UI_BAR_CHOICE[i] != PD_TAB_NUZLOCKE) {
             picked[i] = true;
             n++;
         }
     }
     int m = 0;
     for (int i = 0; i < UI_BAR_CHOICES; i++)
-        if (picked[i]) out[m++] = bar_choice(ui, i);
+        if (picked[i]) out[m++] = UI_BAR_CHOICE[i];
     return m;
 }
 
 int ui_bar_count(const struct pd_ui* ui) {
     int bits = ui->settings && ui->settings->tabBar ? ui->settings->tabBar : PD_TAB_BAR_DEFAULT, n = 0;
-    for (int i = 0; i < UI_BAR_CHOICES; i++) n += bits >> bar_choice(ui, i) & 1;
+    for (int i = 0; i < UI_BAR_CHOICES; i++) n += bits >> UI_BAR_CHOICE[i] & 1;
     return n;
 }
 
 int ui_configurable_tabs(const struct pd_ui* ui, enum pd_tab out[UI_BAR_CHOICES]) {
     int n = 0;
     for (int i = 0; i < UI_BAR_CHOICES; i++) {
-        const enum pd_tab tab = bar_choice(ui, i);
+        const enum pd_tab tab = UI_BAR_CHOICE[i];
         if (!ui->availableTabs || (ui->availableTabs & (1u << tab))) out[n++] = tab;
     }
     return n;
@@ -110,8 +103,8 @@ int ui_more_tabs(const struct pd_ui* ui, const struct pd_game* g, enum pd_tab ou
     int n = bar_tabs(ui, g, bar), m = 0;
     for (int i = 0; i < UI_BAR_CHOICES; i++) {
         bool on = false;
-        for (int k = 0; k < n; k++) on |= bar[k] == bar_choice(ui, i);
-        if (!on && ui_tab_available(ui, g, bar_choice(ui, i))) out[m++] = bar_choice(ui, i);
+        for (int k = 0; k < n; k++) on |= bar[k] == UI_BAR_CHOICE[i];
+        if (!on && ui_tab_available(ui, g, UI_BAR_CHOICE[i])) out[m++] = UI_BAR_CHOICE[i];
     }
     return m;
 }
@@ -180,6 +173,7 @@ void ui_toggle_act(struct pd_ui* ui, int i) {
 
 void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings) {
     memset(ui, 0, sizeof(*ui));
+    ui->settingsNavId = -1;
     ui->tab = PD_TAB_PARTY;
     ui->summarySlot = -1;
     ui->bagSelected = -1;
@@ -620,6 +614,17 @@ static void act(struct pd_ui* ui, int id) {
         };
         ui->overlay = OPENS[id - HIT_SETTING];
     }
+}
+
+bool pd_ui_settings_control(struct pd_ui* ui, int dy, bool accept) {
+    int count = ui->settingsNavCount, index = 0;
+    while (index < count && ui->settingsNav[index].id != ui->settingsNavId) ++index;
+    if (index == count) return false;
+    index = pd_ui_list_step(index, count, dy);
+    ui->settingsNavId = ui->settingsNav[index].id;
+    ui->settingsScroll = ui_settings_follow(ui->settingsScroll, ui->settingsNav[index].top, ui->settingsNavHeight);
+    if (accept) act(ui, ui->settingsNavId);
+    return true;
 }
 
 /* A BUTTON row: the next button (X, Y, L2, R2; the HUD's also NONE). A button another action already uses goes to

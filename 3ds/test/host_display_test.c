@@ -115,7 +115,44 @@ static bool test_bag_item(void* ctx, int row, int* pocket, struct pd_item* out, 
     return true;
 }
 
+static void test_handheld_navigation(void) {
+    struct pd_settings settings;
+    pd_settings_defaults(&settings);
+    struct pd_ui ui;
+    pd_ui_init(&ui, &settings);
+    ui.shoulderTabs = true;
+    ui.tab = PD_TAB_SETTINGS;
+    struct pd_game game = {0};
+    struct pd_snapshot snap = {.valid=true};
+    struct pd_host_info host = {
+        .batteryPct=-1, .hideScreenMode=true, .frontendOwnsPlayback=true,
+        .hasExpand=true, .expandGame=true, .hasHud=true, .hasQuickMenu=true, .hasButtonRows=true,
+    };
+    struct pd_canvas canvas;
+    pd_canvas_init(&canvas, 240, 180, pixels);
+    pd_ui_draw(&ui, &canvas, &game, &snap, &host);
+    assert(ui.settingsNavId == HIT_SETTING + SETTING_ASPECT);
+    assert(pd_ui_settings_control(&ui, 1, false));
+    assert(ui.settingsNavId == HIT_SETTING + SETTING_HUD);
+    assert(pd_ui_settings_control(&ui, 20, false));
+    assert(ui.settingsNavId == HIT_SETTING + SETTING_TAB_BAR && ui.settingsScroll > 0);
+    pd_ui_draw(&ui, &canvas, &game, &snap, &host);
+    assert(has(&ui, ui.settingsNavId));
+    assert(pd_ui_settings_control(&ui, 0, true) && ui.overlay == PD_OVERLAY_TAB_BAR);
+    assert(pd_ui_back(&ui));
+    assert(pd_ui_settings_control(&ui, -20, false) && ui.settingsScroll == 0);
+
+    int button = -1;
+    assert(pd_ui_map_control(&button, 2, 1, 0, false, false, false) == PD_MAP_MOVE);
+    assert(pd_ui_map_control(&button, 2, 0, 0, false, true, false) == PD_MAP_IDLE && button == 0);
+    assert(pd_ui_map_control(&button, 2, 1, 0, false, false, false) == PD_MAP_IDLE && button == 1);
+    assert(pd_ui_map_control(&button, 2, 0, 0, true, false, false) == PD_MAP_CHOOSE);
+    assert(pd_ui_map_control(&button, 2, 0, -1, false, false, false) == PD_MAP_IDLE && button == -1);
+    assert(pd_ui_map_control(&button, 2, 0, 0, false, false, true) == PD_MAP_OPEN_PLACES);
+}
+
 int main(void) {
+    test_handheld_navigation();
     test_crystal_guide();
     test_dex_evolutions();
     test_dex_machine_tables();

@@ -134,7 +134,7 @@ int main(int argc,char** argv){
   press(ui,RETRO_DEVICE_ID_JOYPAD_L);
   assert(ui.frame.overlay==PD_OVERLAY_MORE);
   press(ui,RETRO_DEVICE_ID_JOYPAD_L);
-  assert(ui.frame.tab==PD_TAB_DEX && ui.frame.overlay==PD_OVERLAY_NONE);
+  assert(ui.frame.tab==PD_TAB_GUIDE && ui.frame.overlay==PD_OVERLAY_NONE);
   press(ui,RETRO_DEVICE_ID_JOYPAD_R);
   assert(ui.frame.overlay==PD_OVERLAY_MORE);
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);

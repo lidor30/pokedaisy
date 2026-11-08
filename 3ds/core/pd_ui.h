@@ -458,6 +458,8 @@ struct pd_ui {
 
     enum pd_overlay overlay;
     bool moreOpened; // the open tab came from MORE (BACK doesn't send the CARD to SETTINGS then)
+    int settingsNavId, settingsNavCount, settingsNavHeight;
+    struct { int id, top; } settingsNav[PD_UI_MAX_HITS];
     int settingsScroll; // SETTINGS' list, in canvas pixels
     struct pd_settings* settings;
     enum pd_action action;
@@ -481,6 +483,13 @@ void pd_ui_choices_view(struct pd_canvas*, const char*, const char* const*, int,
 // Shared party body, including its original frames, HP bars, status and summary.
 struct pd_map_viewport { int x, y, w, h; };
 struct pd_map_viewport pd_ui_map_view(struct pd_canvas*, const struct pd_map_source*);
+enum pd_map_input {
+    PD_MAP_IDLE, PD_MAP_MOVE, PD_MAP_CENTER, PD_MAP_OPEN_PLACES, PD_MAP_CHOOSE, PD_MAP_CLOSE,
+};
+// action is -1 on the grid, or the index of the focused button.
+enum pd_map_input pd_ui_map_control(int* action, int count, int dx, int dy, bool accept, bool back, bool places);
+int pd_ui_list_step(int selected, int count, int step);
+bool pd_ui_settings_control(struct pd_ui*, int dy, bool accept);
 void pd_ui_format_money(long, char*, size_t);
 void pd_ui_options_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*);
 void pd_ui_guide_view(struct pd_ui*, struct pd_canvas*, const struct pd_guide_source*);

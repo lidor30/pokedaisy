@@ -133,6 +133,8 @@ enum setting_row {
     SETTING_RESTART,
 };
 
+int ui_settings_follow(int scroll, int y, int height);
+
 // The tabs TAB BAR offers, in the bar's order.
 #define UI_BAR_CHOICES 10
 extern const enum pd_tab UI_BAR_CHOICE[UI_BAR_CHOICES];

@@ -288,12 +288,18 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     // Over the map's top right: PLACES, ME, the other page(s) (MapScreen's order, left to right).
     buttonRight = view.x + view.w - 4;
     buttonTop = view.y + (below ? below + 2 : 4);
-    map_button(ui, c, "PLACES", HIT_MAP_PLACES);
-    if (host && host->flyReady) map_button(ui, c, "FLY", HIT_MAP_FLY);
-    if (ui->mapSel >= 0 || ui->mapDungeon >= 0 || (ui->mapPage >= 0 && ui->mapPage != playerPage)) {
+    if (ui->shoulderTabs) {
+        if (art->pages > 1) map_button(ui, c, pd_map_page_name(g, (page + 1) % art->pages), HIT_MAP_REGION);
+        if (host && host->flyReady) map_button(ui, c, "FLY", HIT_MAP_FLY);
         map_button(ui, c, "ME", HIT_MAP_ME);
+        map_button(ui, c, "PLACES", HIT_MAP_PLACES);
+    } else {
+        map_button(ui, c, "PLACES", HIT_MAP_PLACES);
+        if (host && host->flyReady) map_button(ui, c, "FLY", HIT_MAP_FLY);
+        if (ui->mapSel >= 0 || ui->mapDungeon >= 0 || (ui->mapPage >= 0 && ui->mapPage != playerPage))
+            map_button(ui, c, "ME", HIT_MAP_ME);
+        if (art->pages > 1) map_button(ui, c, pd_map_page_name(g, (page + 1) % art->pages), HIT_MAP_REGION);
     }
-    if (art->pages > 1) map_button(ui, c, pd_map_page_name(g, (page + 1) % art->pages), HIT_MAP_REGION);
 }
 
 // MAP's FLY: the towns the game would fly to.
@@ -440,6 +446,24 @@ bool ui_map_act(struct pd_ui* ui, int id) {
 // The same map frame, bounded stretch, nearest-neighbour scaling, label and cursor
 // for another backend's already-composed art. The normal GBA path still builds its
 // own page, head and selection above.
+enum pd_map_input pd_ui_map_control(int* action, int count, int dx, int dy, bool accept, bool back, bool places) {
+    if (*action >= count) *action = -1;
+    if (back) {
+        if (*action >= 0 || count == 0) return PD_MAP_CLOSE;
+        *action = 0;
+        return PD_MAP_IDLE;
+    }
+    if (*action >= 0) {
+        *action = pd_ui_list_step(*action, count, dx);
+        if (accept) return PD_MAP_CHOOSE;
+        if (dy < 0) *action = -1;
+        return PD_MAP_IDLE;
+    }
+    if (places && count) return PD_MAP_OPEN_PLACES;
+    if (accept) return PD_MAP_CENTER;
+    return dx || dy ? PD_MAP_MOVE : PD_MAP_IDLE;
+}
+
 struct pd_map_viewport pd_ui_map_view(struct pd_canvas* c, const struct pd_map_source* source) {
     if (!source || !source->pixels || source->width < 1 || source->height < 1 ||
         source->width > 4096 || source->height > 4096 || c->w < 32 || c->h < 32 || c->w > 1024) {

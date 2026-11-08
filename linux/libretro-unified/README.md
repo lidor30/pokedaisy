@@ -68,8 +68,18 @@ item, A opens its details, and B returns to the list. Press Select while
 browsing to cycle **Default**, **Name**, and **Count** (highest first).
 Sorting only changes the companion display.
 
-The DS map uses the space above the tab bar, with **Places** and **Me**
-overlaid on the map. Press B to focus those controls.
+The shared tab order is **Party, Dex, Map, Bag, Guide**, with **More** and
+**Settings** at the end when available. **Battle** takes the Party slot
+during a supported battle.
+
+In Settings, Up/Down follows the available rows as the list scrolls. Press
+A to select and B to back out. Each core exposes its own supported settings.
+
+On either map, use the D-pad to move and A to recenter. B moves focus to
+**Places** and **Me**, then Left/Right chooses a button. Up returns to the
+map, and a second B closes it. Select opens Places directly from the map.
+In Places, Up/Down picks a location, A goes there, and B returns to the
+map buttons.
 
 ### DS Battle companion
 

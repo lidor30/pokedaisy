@@ -1152,9 +1152,16 @@ RETRO_API void retro_run(void) {
       pd_ui_touch(&ui, 0, 0, false);
     const bool backing = down(B);
     const bool shoulder = down(L) || down(R);
-    if (backing) {
+    bool closeMap = false;
+    const bool mapHandled = (backing || !shoulder) &&
+        map_control(&ui, down(RIGHT) - down(LEFT), down(DOWN) - down(UP), down(A), backing, down(SELECT), &closeMap);
+    if (mapHandled) {
+      if (closeMap) companion = false;
+    } else if (backing) {
+      const bool places = ui.overlay == PD_OVERLAY_PLACES;
       const int slot = ui.tab == PD_TAB_PARTY ? ui.summarySlot : -1;
-      if (!map_cursor_back(&ui) && !pd_ui_back(&ui)) companion = false;
+      if (!pd_ui_back(&ui)) companion = false;
+      if (places) focusId = HIT_MAP_PLACES;
       if (slot >= 0 && ui.summarySlot < 0) focusId = HIT_SLOT + slot;
     } else if (shoulder) {
       pd_ui_next_tab(&ui, down(R) ? 1 : -1);
@@ -1202,14 +1209,19 @@ RETRO_API void retro_run(void) {
         }
       } else if (ui.tab == PD_TAB_GUIDE && (ui.overlay == PD_OVERLAY_NONE || ui.overlay == PD_OVERLAY_GUIDE_NOTICE)) {
         pd_ui_guide_control(&ui, down(RIGHT) - down(LEFT), down(DOWN) - down(UP), down(A));
+      } else if (ui.tab == PD_TAB_SETTINGS && ui.overlay == PD_OVERLAY_NONE) {
+        pd_ui_settings_control(&ui, down(DOWN) - down(UP), down(A));
       } else {
         for (int k = RIGHT; k <= DOWN; k++) {
-          if (!down(k)) continue;
+          if (!down(k) || (ui.overlay == PD_OVERLAY_PLACES && (k == LEFT || k == RIGHT))) continue;
           if (ui.tab == PD_TAB_DEX && ui.dexOpen && (ui.dexPage != PD_DEX_INFO || k == LEFT || k == RIGHT)) continue;
           focus_move(&ui, k);
         }
-        if (down(A) && !(ui.tab == PD_TAB_DEX && ui.dexOpen && ui.dexPage == PD_DEX_MOVES))
+        if (down(A) && !(ui.tab == PD_TAB_DEX && ui.dexOpen && ui.dexPage == PD_DEX_MOVES)) {
+          const bool places = ui.overlay == PD_OVERLAY_PLACES;
           focus_activate(&ui);
+          if (places && ui.overlay == PD_OVERLAY_NONE) focusId = HIT_MAP;
+        }
       }
     }
     switch (pd_ui_take_action(&ui)) {
@@ -1414,7 +1426,8 @@ RETRO_API void retro_run(void) {
     map_cursor_sync(&ui, &game, &snap);
     if (ui.tab != PD_TAB_GUIDE || (ui.overlay != PD_OVERLAY_NONE && ui.overlay != PD_OVERLAY_GUIDE_NOTICE)) {
       const int focus = focus_after_draw(&ui, focus_resolve(&ui));
-      if (ui.tab != PD_TAB_PARTY || ui.summarySlot < 0 || ui.overlay != PD_OVERLAY_NONE)
+      if (ui.overlay != PD_OVERLAY_NONE ||
+          (ui.tab != PD_TAB_SETTINGS && (ui.tab != PD_TAB_PARTY || ui.summarySlot < 0)))
         focus_draw(&ui, focus);
     }
   } else if (quickOpen && ovPixels) {

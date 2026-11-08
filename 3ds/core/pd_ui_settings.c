@@ -27,11 +27,45 @@ const char* pd_screen_mode_name(int mode) {
 // (the scroll is clamped to it before drawing, so a D-pad's step past the end never draws an empty list).
 static int listTop, listBottom, lastTotal = -1;
 
+int pd_ui_list_step(int selected, int count, int step) {
+    if (count <= 0) return -1;
+    int next = selected + step;
+    return next < 0 ? 0 : next >= count ? count - 1 : next;
+}
+
+static void settings_nav_row(struct pd_ui* ui, int id, int y) {
+    if (!ui->shoulderTabs || ui->settingsNavCount >= PD_UI_MAX_HITS) return;
+    int i = ui->settingsNavCount++;
+    ui->settingsNav[i].id = id;
+    ui->settingsNav[i].top = y;
+    if (ui->settingsNavId < 0) ui->settingsNavId = id;
+}
+
+int ui_settings_follow(int scroll, int y, int height) {
+    // At the first setting keep the game's context (place, money and host) visible.
+    return y <= 0 ? 0 : ui_scroll_to(scroll, y, ROW_H, height);
+}
+
+static void settings_outline(struct pd_canvas* c, int x, int y, int w, int h) {
+    pd_fill(c, x, y, w, 2, PD_VALUE);
+    pd_fill(c, x, y+h-2, w, 2, PD_VALUE);
+    pd_fill(c, x, y, 2, h, PD_VALUE);
+    pd_fill(c, x+w-2, y, 2, h, PD_VALUE);
+}
+
 static void setting(struct pd_ui* ui, struct pd_canvas* c, int x, int* y, int w, enum setting_row row,
                     const char* label, const char* value) {
+    if (ui->shoulderTabs) {
+        int top = *y + ui->settingsScroll - listTop;
+        settings_nav_row(ui, HIT_SETTING + row, ui->settingsNavCount == 0 ? 0 : top);
+    }
     ui_row(c, x, *y, w, label, value, ui->pressedId == HIT_SETTING + (int) row);
     // A scroll hit: a tap is the row, a drag on it still scrolls the list.
-    if (*y >= listTop && *y + ROW_H <= listBottom) ui_add_scroll_hit(ui, x - 4, *y, w + 8, ROW_H, HIT_SETTING + (int) row);
+    if (*y >= listTop && *y + ROW_H <= listBottom) {
+        ui_add_scroll_hit(ui, x - 4, *y, w + 8, ROW_H, HIT_SETTING + (int) row);
+        if (ui->shoulderTabs && ui->overlay == PD_OVERLAY_NONE && ui->settingsNavId == HIT_SETTING + (int) row)
+            settings_outline(c, x - 4, *y, w + 8, ROW_H);
+    }
     *y += ROW_H;
 }
 
@@ -53,6 +87,7 @@ static void group(struct pd_canvas* c, int x, int* y, const char* title) {
 
 void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
                      const struct pd_host_info* host) {
+    ui->settingsNavCount = 0;
     int x = MARGIN, w = c->w - 2 * MARGIN;
     int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_H, PD_TITLE_FILL);
     int ty = pd_text_y(CONTENT_Y, TITLE_H);
@@ -78,6 +113,9 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         pd_title_box(c, bx, by, bw, bh, ui->pressedId == HIT_OPEN_CARD ? PD_TITLE_FILL : PD_LIST_FILL);
         pd_text(c, bx + 6, pd_text_y(by, bh), label, PD_TITLE_TEXT, PD_TITLE_SHADOW);
         ui_add_hit(ui, bx, by, bw, bh, HIT_OPEN_CARD);
+        settings_nav_row(ui, HIT_OPEN_CARD, 0);
+        if (ui->shoulderTabs && ui->overlay == PD_OVERLAY_NONE && ui->settingsNavId == HIT_OPEN_CARD)
+            settings_outline(c, bx, by, bw, bh);
         right = bx - 8;
     }
     if (g->title) {
@@ -98,13 +136,14 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     // The rows scroll where they don't all fit (a drag, or the D-pad past the last one shown).
     listTop = LIST_Y + lf;
     listBottom = LIST_Y + lh - lf;
+    ui->settingsNavHeight = listBottom - listTop;
     ui_add_scroll_hit(ui, x, listTop, w, listBottom - listTop, HIT_SETTINGS_LIST);
     if (ui->optionSource) {
         const int n = ui->optionSource->count, view = listBottom - listTop;
         const int selected = ui->optionSelected;
-        if (selected == infoCount) ui->settingsScroll = 0;
-        else if (selected >= 0 && selected < n)
-            ui->settingsScroll = ui_scroll_to(ui->settingsScroll, selected * ROW_H + separator, ROW_H, view);
+        if (selected >= infoCount && selected < n)
+            ui->settingsScroll = ui_settings_follow(ui->settingsScroll,
+                selected == infoCount ? 0 : selected * ROW_H + separator, view);
         ui->settingsScroll = ui_clamp_scroll(ui->settingsScroll, totalOptions, view);
         pd_clip(c, x + lf, listTop, w - 2 * lf, view);
         if (separator) pd_fill(c, ix, listTop + infoCount * ROW_H - ui->settingsScroll + 1, iw, 1, PD_DIVIDER);
@@ -113,12 +152,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
             if (ry + ROW_H <= listTop || ry >= listBottom) continue;
             const struct pd_option_row* row = &ui->optionSource->rows[i];
             ui_row(c, ix, ry, iw, row->label, row->value, false);
-            if (i == selected) {
-                pd_fill(c, ix-4, ry, iw+8, 2, PD_VALUE);
-                pd_fill(c, ix-4, ry+ROW_H-2, iw+8, 2, PD_VALUE);
-                pd_fill(c, ix-4, ry, 2, ROW_H, PD_VALUE);
-                pd_fill(c, ix+iw+2, ry, 2, ROW_H, PD_VALUE);
-            }
+            if (i == selected) settings_outline(c, ix - 4, ry, iw + 8, ROW_H);
         }
         pd_unclip(c);
         if (hasBar)

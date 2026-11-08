@@ -104,15 +104,6 @@ static bool map_cursor_active(const struct pd_ui *u) {
   return mapCursor.ready && u->tab == PD_TAB_MAP &&
          u->overlay == PD_OVERLAY_NONE && focusId == HIT_MAP;
 }
-// B leaves the grid for PLACES / ME / region buttons; another B is normal Back.
-static bool map_cursor_back(struct pd_ui *u) {
-  int i = focus_index(u, HIT_MAP_PLACES);
-  if (!map_cursor_active(u) || i < 0)
-    return false;
-  focusId = HIT_MAP_PLACES;
-  focusAt = u->hits[i];
-  return true;
-}
 static void focus_activate(struct pd_ui *u) {
   int at = focus_index(u, focusId);
   if (at < 0 || !focusable(u, focusId))
@@ -135,15 +126,64 @@ static void focus_activate(struct pd_ui *u) {
     pd_ui_touch(u, h->x + h->w / 2, h->y + h->h / 2, false);
   }
 }
+// The map art and hit IDs are native to this core; the grid/button transitions
+// are the same as the DS companion.
+static bool map_control(struct pd_ui *u, int dx, int dy, bool accept, bool back, bool places, bool *close) {
+  if (u->tab != PD_TAB_MAP || u->overlay != PD_OVERLAY_NONE || !mapCursor.ready)
+    return false;
+  const int buttons[] = {HIT_MAP_PLACES, HIT_MAP_ME, HIT_MAP_FLY, HIT_MAP_REGION};
+  int ids[sizeof buttons / sizeof buttons[0]], count = 0, action = -1;
+  for (unsigned i = 0; i < sizeof buttons / sizeof buttons[0]; ++i) {
+    if (focus_index(u, buttons[i]) < 0) continue;
+    if (focusId == buttons[i]) action = count;
+    ids[count++] = buttons[i];
+  }
+  switch (pd_ui_map_control(&action, count, dx, dy, accept, back, places)) {
+  case PD_MAP_CLOSE:
+    if (u->moreOpened) u->overlay = PD_OVERLAY_MORE;
+    else *close = true;
+    action = -1;
+    break;
+  case PD_MAP_OPEN_PLACES:
+    ui_map_act(u, HIT_MAP_PLACES);
+    break;
+  case PD_MAP_CHOOSE:
+    ui_map_act(u, ids[action]);
+    if (ids[action] != HIT_MAP_PLACES && u->overlay == PD_OVERLAY_NONE)
+      action = -1;
+    break;
+  case PD_MAP_CENTER:
+    ui_map_act(u, HIT_MAP_ME);
+    break;
+  case PD_MAP_MOVE:
+    mapCursor.tx += dx;
+    mapCursor.ty += dy;
+    if (mapCursor.tx < mapCursor.minX) mapCursor.tx = mapCursor.minX;
+    if (mapCursor.tx > mapCursor.maxX) mapCursor.tx = mapCursor.maxX;
+    if (mapCursor.ty < mapCursor.minY) mapCursor.ty = mapCursor.minY;
+    if (mapCursor.ty > mapCursor.maxY) mapCursor.ty = mapCursor.maxY;
+    focus_activate(u);
+    break;
+  case PD_MAP_IDLE:
+    break;
+  }
+  focusId = action < 0 ? HIT_MAP : ids[action];
+  return true;
+}
+
 // After a draw: where the cursor is now (an index into u->hits, -1 = none).
 static int focus_resolve(struct pd_ui *u) {
   struct screen now = screen_of(u);
   bool changed = memcmp(&now, &lastScreen, sizeof now) != 0;
   const bool partyBack = now.tab == PD_TAB_PARTY && now.overlay == PD_OVERLAY_NONE &&
       now.summarySlot < 0 && lastScreen.tab == PD_TAB_PARTY && lastScreen.summarySlot >= 0;
-  lastScreen = now;
   int floor = modal_floor(u);
-  int i = changed && !partyBack ? -1 : focus_index(u, focusId);
+  const bool settings = now.tab == PD_TAB_SETTINGS && now.overlay == PD_OVERLAY_NONE;
+  const bool mapBack = now.tab == PD_TAB_MAP && now.overlay == PD_OVERLAY_NONE &&
+      lastScreen.tab == PD_TAB_MAP;
+  int i = settings ? focus_index(u, u->settingsNavId)
+                   : changed && !partyBack && !mapBack ? -1 : focus_index(u, focusId);
+  lastScreen = now;
   if (i >= 0 && (i < floor || !focusable(u, u->hits[i].id)))
     i = -1;
   if (i < 0 && !changed && focusId >= 0) { // gone: the nearest item to where it was
@@ -212,14 +252,6 @@ static int focus_after_draw(struct pd_ui *u, int at) {
 }
 /* The cursor's step; false when there was nothing that way and the list scrolled one row instead. */
 static bool focus_step(struct pd_ui *u, int direction, bool scroll) {
-  if (map_cursor_active(u)) {
-    if (direction == LEFT && mapCursor.tx > mapCursor.minX) mapCursor.tx--;
-    if (direction == RIGHT && mapCursor.tx < mapCursor.maxX) mapCursor.tx++;
-    if (direction == UP && mapCursor.ty > mapCursor.minY) mapCursor.ty--;
-    if (direction == DOWN && mapCursor.ty < mapCursor.maxY) mapCursor.ty++;
-    focus_activate(u); // Name the location immediately, like the game's map.
-    return true;
-  }
   int cur = focus_index(u, focusId);
   if (cur < 0) {
     focus_resolve(u);

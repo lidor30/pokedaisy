@@ -327,8 +327,8 @@ bool DsCompanionUi::control(unsigned pressed){
   }
   if(frame.tab==PD_TAB_SETTINGS){
     const int index=int(std::find(std::begin(settingsOrder),std::end(settingsOrder),setting)-std::begin(settingsOrder));
-    setting=settingsOrder[std::clamp(index+dy,0,int(Rows)-1)];
-    if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(game==DsGame::Unsupported)return true;frame.tab=PD_TAB_PARTY;return false;}
+    setting=settingsOrder[pd_ui_list_step(index,Rows,dy)];
+    if(hit(RETRO_DEVICE_ID_JOYPAD_B))return true;
     if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
       error.clear();
       if(setting==TabBar || setting==MoreTabs){
@@ -442,32 +442,38 @@ bool DsCompanionUi::control(unsigned pressed){
       if(snapshot){mapX=snapshot->mapX;mapY=snapshot->mapY;}
     };
     if(placeRow>=0){
-      placeRow=std::clamp(placeRow+dy+dx*8,0,int(mapPlaces.size())-1);
-      if(hit(RETRO_DEVICE_ID_JOYPAD_B))placeRow=-1;
+      placeRow=pd_ui_list_step(placeRow,int(mapPlaces.size()),dy);
+      if(hit(RETRO_DEVICE_ID_JOYPAD_B)){placeRow=-1;mapAction=0;}
       else if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
         const auto pos=mapPlaces[placeRow].position;
         mapX=pos.x;mapY=pos.y;placeRow=mapAction=-1;
       }
       return false;
     }
-    if(mapAction>=0){
-      mapAction=std::clamp(mapAction+dx,0,1);
-      if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
+    switch(pd_ui_map_control(&mapAction,2,dx,dy,hit(RETRO_DEVICE_ID_JOYPAD_A),
+                             hit(RETRO_DEVICE_ID_JOYPAD_B),hit(RETRO_DEVICE_ID_JOYPAD_SELECT))){
+      case PD_MAP_CLOSE:
+        mapAction=-1;
+        if(frame.moreOpened){
+          frame.overlay=PD_OVERLAY_MORE;
+          choice=0;
+          return false;
+        }
+        return true;
+      case PD_MAP_OPEN_PLACES: openPlaces(); break;
+      case PD_MAP_CHOOSE:
         if(mapAction==0)openPlaces();
         else{recenter();mapAction=-1;}
-      }else if(hit(RETRO_DEVICE_ID_JOYPAD_B)){
-        mapAction=-1;
-        if(!snapshot || (mapX==snapshot->mapX && mapY==snapshot->mapY))return true;
-        recenter();
-      }else if(dy<0)mapAction=-1;
-      return false;
+        break;
+      case PD_MAP_CENTER: recenter(); break;
+      case PD_MAP_MOVE:{
+        const auto bounds=ds_map_cursor_max(game);
+        mapX=std::clamp(mapX+dx,0,bounds.x);
+        mapY=std::clamp(mapY+dy,0,bounds.y);
+        break;
+      }
+      case PD_MAP_IDLE: break;
     }
-    const auto bounds=ds_map_cursor_max(game);
-    mapX=std::clamp(mapX+dx,0,bounds.x);
-    mapY=std::clamp(mapY+dy,0,bounds.y);
-    if(hit(RETRO_DEVICE_ID_JOYPAD_A))recenter();
-    if(hit(RETRO_DEVICE_ID_JOYPAD_SELECT))openPlaces();
-    if(hit(RETRO_DEVICE_ID_JOYPAD_B))mapAction=0;
   }
   return false;
 }

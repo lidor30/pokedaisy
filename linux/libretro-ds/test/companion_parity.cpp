@@ -197,6 +197,10 @@ int main(int argc,char**argv) {
     draw();
     press(RETRO_DEVICE_ID_JOYPAD_B);
     press(RETRO_DEVICE_ID_JOYPAD_R);
+    assert(ui.frame.tab==PD_TAB_DEX);
+    press(RETRO_DEVICE_ID_JOYPAD_R);
+    assert(ui.frame.tab==PD_TAB_MAP);
+    press(RETRO_DEVICE_ID_JOYPAD_R);
     assert(ui.frame.tab==PD_TAB_BAG);
     draw();
     press(RETRO_DEVICE_ID_JOYPAD_LEFT);
@@ -214,7 +218,7 @@ int main(int argc,char**argv) {
     assert(ui.details);
     draw();
     press(RETRO_DEVICE_ID_JOYPAD_B);
-    press(RETRO_DEVICE_ID_JOYPAD_R);
+    press(RETRO_DEVICE_ID_JOYPAD_L);
     assert(ui.frame.tab==PD_TAB_MAP && s.mapX>=0 && s.mapY>=0);
     draw();
     press(RETRO_DEVICE_ID_JOYPAD_A);
@@ -223,6 +227,12 @@ int main(int argc,char**argv) {
     assert(ui.mapAction==0 && ui.placeRow<0);
     press(RETRO_DEVICE_ID_JOYPAD_A);
     assert(ui.placeRow==0 && !ui.mapPlaces.empty());
+    press(RETRO_DEVICE_ID_JOYPAD_B);
+    assert(ui.placeRow<0 && ui.mapAction==0);
+    press(RETRO_DEVICE_ID_JOYPAD_UP);
+    assert(ui.mapAction<0);
+    press(RETRO_DEVICE_ID_JOYPAD_SELECT);
+    assert(ui.placeRow==0);
     draw();
     press(RETRO_DEVICE_ID_JOYPAD_DOWN);
     const auto place=ui.mapPlaces[ui.placeRow].position;
@@ -234,12 +244,14 @@ int main(int argc,char**argv) {
     press(RETRO_DEVICE_ID_JOYPAD_A);
     assert(ui.mapAction<0 && ui.mapX==s.mapX && ui.mapY==s.mapY);
     press(RETRO_DEVICE_ID_JOYPAD_R);
+    assert(ui.frame.tab==PD_TAB_BAG);
+    press(RETRO_DEVICE_ID_JOYPAD_R);
     assert(ui.frame.tab==PD_TAB_GUIDE);
     draw();
     assert(ui.frame.overlay==PD_OVERLAY_GUIDE_NOTICE);
     press(RETRO_DEVICE_ID_JOYPAD_B);
     assert(ui.frame.tab==PD_TAB_PARTY && !ui.settings.guideNotice);
-    for(int p=0;p<3;++p)press(RETRO_DEVICE_ID_JOYPAD_R);
+    for(int p=0;p<4;++p)press(RETRO_DEVICE_ID_JOYPAD_R);
     draw();
     assert(ui.frame.overlay==PD_OVERLAY_GUIDE_NOTICE);
     press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
@@ -283,7 +295,7 @@ int main(int argc,char**argv) {
     const int known=expect.game==G::Johto?7:6;
     assert(ds_guide_here(expect.game,known,12,1).count>0);
     assert(ds_guide_here(expect.game,-1,12,1).count==0);
-    press(RETRO_DEVICE_ID_JOYPAD_R);
+    for(int p=0;p<3;++p)press(RETRO_DEVICE_ID_JOYPAD_L);
     assert(ui.frame.tab==PD_TAB_DEX);
     draw();
     press(RETRO_DEVICE_ID_JOYPAD_LEFT);
@@ -346,7 +358,8 @@ int main(int argc,char**argv) {
     assert(ui.dexDetailRow==0);
     press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
     assert(ui.dexEntry==first && ui.dexSection==DsDexSection::Moves);
-    press(RETRO_DEVICE_ID_JOYPAD_R);
+    press(RETRO_DEVICE_ID_JOYPAD_L);
+    press(RETRO_DEVICE_ID_JOYPAD_L);
     assert(ui.frame.tab==PD_TAB_SETTINGS && ui.dexEntry==0);
     draw();
     press(RETRO_DEVICE_ID_JOYPAD_R);
