@@ -15,7 +15,7 @@ import java.io.File
  * renegade_platinum fixtures' READMEs), and its tables read from the cart (skips without the ROM: `-DromDir=`'s ../nds/).
  */
 class RenegadePlatinumTest {
-    private val rom = File(File(RETAIL_ROM_DIR).parentFile, "nds/RNGPLAT  (v1.3.0).nds")
+    private val rom = File(File(RETAIL_ROM_DIR).parentFile, "nds/Pokemon Renegade Platinum (v1.3.0).nds")
     private val retail = File(File(RETAIL_ROM_DIR).parentFile, "nds/Pokemon - Platinum Version (USA) (Rev 1).nds")
 
     private fun read(fixture: String = "renegade_platinum"): Telemetry {

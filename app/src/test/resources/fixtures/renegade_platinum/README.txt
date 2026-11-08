@@ -2,7 +2,7 @@ captured: 2026-11-06 (headless native-capture/nds_dump, by hand; mainram.bin = t
   zeroed but for what Gen4Reader reads: 0x021C0000-0x021C0FFF (sSaveDataPtr 0x021C0794, sFieldSystem 0x021C07DC), the
   SaveData at 0x0227E19C (+0x21000) and the few FieldSystem / player words it reads (each read range kept, rounded to
   16 bytes)) - the rest is unrelated memory, and zeros keep the file tiny in git.
-rom: RNGPLAT  (v1.3.0) (~/Downloads/Game ROMs & Emulation/nds/, sha1 d4ee068b..., Renegade Platinum v1.3.0: its title
+rom: Pokemon Renegade Platinum (v1.3.0).nds (~/Downloads/Game ROMs & Emulation/nds/, sha1 d4ee068b..., Renegade Platinum v1.3.0: its title
   screen and intro name it), CPUE rev 1 like the retail cart.
 save: a new game played headless (the user had no save): the player AAAAAAA (boy), given through the game's own script
   commands from the player's room (GivePokemon, AddItem, GiveMoney, GivePokedex, GiveRunningShoes, run by nds_dump's
