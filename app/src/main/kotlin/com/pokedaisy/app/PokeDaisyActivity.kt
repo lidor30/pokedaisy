@@ -2266,6 +2266,8 @@ class PokeDaisyActivity : Activity() {
         engine = EmulatorEngine(input, states!!, ffMusicCache).apply {
             hudEngine.value = this
             lateFramesSource = { view.lateFrames }
+            // The game screen's fastest mode, which no tick that waits for the refresh can outrun (VsyncCheck, GitHub #350).
+            displayMaxHz = { view.display?.supportedModes?.maxOfOrNull { it.refreshRate } ?: 0f }
             drawStatsSource = { view.repeatedDraws to view.unshownFrames }
             if (BuildConfig.DEBUG) audioTapDir = getExternalFilesDir("debug")
             this.gba = gba
