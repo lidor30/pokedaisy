@@ -5,7 +5,7 @@ Two GitHub Actions workflows guard `main` and the releases:
 | Workflow | Runs on | What it does |
 | --- | --- | --- |
 | **CI** (`.github/workflows/ci.yml`) | every PR, every push to `main` | translations check, all JVM unit tests, the debug APK (Kotlin + native mGBA/rcheevos build), `ui-preview`'s tab-switch `stress` budgets (which compile it) and docs search check; no screen render (`make preview` locally) |
-| **Release** (`.github/workflows/release.yml`) | a pushed `v<versionName>` tag | checks the tag, runs CI again on that commit, runs the ROM-backed tests on your ROM runner, builds and signs the APK (arm64 and 32-bit ARM in one), checks the signing key and that both ABIs' libraries are in it, uploads native symbols to Crashlytics, publishes the GitHub release, then starts the **Website** workflow for that tag (not for a pre-release) |
+| **Release** (`.github/workflows/release.yml`) | a pushed `v<versionName>` tag | checks the tag, runs CI again on that commit, runs the ROM-backed tests on your ROM runner, builds and signs the APK (arm64 and 32-bit ARM in one), checks the signing key and that both ABIs' libraries are in it, uploads native symbols to Crashlytics and puts the GitHub release up as a **draft**. Publishing that draft (you) starts the **Website** workflow for the tag (not for a pre-release) |
 
 `make check` runs the same thing as CI locally. For the everyday loop, `make test-quick` (about a minute) runs the
 unit tests without the Paparazzi renders and `BestEffortTest`, its forks side by side; `make test-quick
@@ -22,12 +22,15 @@ make release               # tags v1.2.0 on main and pushes the tag
 ```
 
 Then follow the **Release** run in the repo's Actions tab. Its last job waits for you:
-**Review deployments → release → Approve**. The release shows up on GitHub when it's
-green, with `PokeDaisy-1.2.0.apk` attached, and the in-app updater offers it on the next
-library open.
+**Review deployments → release → Approve**. When it's green the release is on GitHub as a
+**draft**, with `PokeDaisy-1.2.0.apk` attached. Only you see it. Edit its notes, add any other
+platform's files (`gh release upload v1.2.0 <files>`: the Linux packages, the 3DS `.3dsx`; the
+APK stays the release's first `.apk`), then publish it: **Publish release** on its page, or
+`gh release edit v1.2.0 --draft=false`. Publishing starts the **Website** workflow (a full
+release only), and the in-app updater offers the version on the next library open.
 
-- Releases are immutable once published: a broken APK can't be swapped, only followed
-  by a new version.
+- Releases are immutable once published: a broken APK can't be swapped, nor a file added,
+  only followed by a new version. Everything goes onto the draft.
 
 - A version with a suffix (`1.2.0-rc.1`) goes out as a **pre-release**, which the
   in-app updater skips. Use that for test builds.
@@ -35,8 +38,9 @@ library open.
   (`git push --delete origin v1.2.0 && git tag -d v1.2.0`), and run `make release`
   again.
 - Without CI (e.g. GitHub Actions down): `make release-local` builds, signs, uploads
-  the symbols and publishes with the `gh` CLI from your Mac. A release published that way
-  fires the Website workflow by itself.
+  the symbols and puts the release up as a draft with the `gh` CLI from your Mac; publish it
+  the same way. Its tag push starts the Release workflow too: cancel that run (`gh run cancel`)
+  rather than approve it.
 
 ## One APK for arm64 and 32-bit ARM
 

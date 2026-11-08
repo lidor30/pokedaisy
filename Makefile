@@ -120,13 +120,14 @@ release: ## Tag v<version> on an up-to-date main and push it: the Release workfl
 	@! git rev-parse -q --verify "refs/tags/v$(VERSION)" >/dev/null || { echo "v$(VERSION) is already tagged: make bump V=... first"; exit 1; }
 	git tag -a "v$(VERSION)" -m "PokeDaisy $(VERSION)"
 	git push origin "v$(VERSION)"
-	@echo ">> pushed v$(VERSION): follow it in the repo's Actions tab (Release workflow)"
+	@echo ">> pushed v$(VERSION): follow it in the repo's Actions tab (Release workflow); it ends with a draft release to publish"
 
-release-local: release-apk symbols ## Without CI: build, upload symbols, tag and publish with the gh CLI
+release-local: release-apk symbols ## Without CI: build, upload symbols, tag and put up a draft release with the gh CLI
 	@command -v gh >/dev/null || { echo "needs the GitHub CLI (gh)"; exit 1; }
 	git tag -a "v$(VERSION)" -m "PokeDaisy $(VERSION)"
 	git push origin "v$(VERSION)"
-	gh release create "v$(VERSION)" $(RELEASE_APK) --title "PokeDaisy $(VERSION)" --generate-notes
+	gh release create "v$(VERSION)" $(RELEASE_APK) --draft --title "PokeDaisy $(VERSION)" --generate-notes
+	@echo ">> v$(VERSION) is a draft: publish it with gh release edit v$(VERSION) --draft=false (cancel the Release run the tag started)"
 
 ##@ Looking at the UI
 
