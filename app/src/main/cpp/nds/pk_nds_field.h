@@ -135,6 +135,11 @@ int pk_nds_battle_3d(const PkNdsFieldGame* game);
 /** [game]'s battle command while the player chooses (Gen 4's PK_NDS_BATTLE_SELECTING; Gen 5's adapter has its own). */
 int pk_nds_battle_selecting(const PkNdsFieldGame* game);
 
+/** Before the overworld exists ([bits] only PK_NDS_FIELD_KNOWN: the title, the main menu, the new game's intro), the touch
+ * screen a Gen 4 game wants there: its naming screen (the player's and the rival's names), known by engine A's DISPCNT
+ * ([dispCntA]), since nothing the field read follows runs yet (GitHub #490). PK_NDS_FIELD_TOUCH or 0. */
+int pk_nds_field_screen_touch(const PkNdsFieldGame* game, int bits, uint32_t dispCntA);
+
 /** STEADY FF music: whether the song the game plays can be copied now (pk_nds_music copies what's playing, frozen):
  * -1 while it can't - a volume fade runs, or (Gen 5) the song's own sequence player is missing (not started yet), paused
  * or not yet back to its volume (a song resumed after a battle: paused at 0 for a few frames, then a short fade in) - else

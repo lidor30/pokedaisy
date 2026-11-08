@@ -652,6 +652,11 @@ static int battleTouch(const PkNdsFieldGame* g, const PkNdsTouchRules* t, uint32
     if (!inMainRam(bs)) return 0;
     uint32_t ctx = read32(bs + g->offBattleContext);
     uint32_t input = read32(bs + t->offBattleInput);
+    // BattleInput's first word is the BattleSystem while the battle's own touch screen is up. A screen of its own takes
+    // that block meanwhile - the party (also the one a fainted Pokémon forces, outside the command selection), the bag,
+    // the move to forget for a new one, the naming screen after a catch - and the word is then something else (HeartGold
+    // and Platinum headless, GitHub #490).
+    if (inMainRam(input) && read32(input) != bs) return PK_NDS_FIELD_TOUCH | PK_NDS_FIELD_TOUCH_FADES;
     bool panel = inMainRam(input) && inMainRam(read32(input + t->offPanelShown));
     if (inMainRam(ctx) && read32(ctx + g->offCommand) == PK_NDS_BATTLE_SELECTING) {
         int step = (int) (read32(ctx) & 0xFF);
@@ -696,6 +701,16 @@ int pk_nds_battle_margins(const PkNdsFieldGame* g) { return g && g->gen != 5; }
 int pk_nds_battle_3d(const PkNdsFieldGame* g) { return g && g->gen == 5; }
 
 int pk_nds_battle_selecting(const PkNdsFieldGame* g) { return g && g->battleSelecting ? g->battleSelecting : PK_NDS_BATTLE_SELECTING; }
+
+// The naming screen's engine A DISPCNT (BG0-2, OBJ, window 0, no 3D): the same in HeartGold and Platinum, in a battle and in
+// the new game's intro (headless).
+static const uint32_t NAMING_SCREEN_DISPCNT = 0x00013710;
+
+int pk_nds_field_screen_touch(const PkNdsFieldGame* g, int bits, uint32_t dispCntA)
+{
+    if (!g || g->gen == 5 || !touchRules(g)) return 0;
+    return bits == PK_NDS_FIELD_KNOWN && dispCntA == NAMING_SCREEN_DISPCNT ? PK_NDS_FIELD_TOUCH : 0;
+}
 
 // Gen 5: the GameSystem's running proc, or 0.
 static uint32_t gen5Proc(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), uint32_t gs)

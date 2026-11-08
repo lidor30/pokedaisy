@@ -359,6 +359,13 @@ change to any of the places listed under "Where it's decided" updates its rows h
     (`GEN4_PLATINUM_US`'s `offBattleInput`). Checked headless on a new game given two Pokémon and a wild battle through its
     own script commands (GivePokemon, StartWildBattle): FIGHT, a move tapped from 6 frames after FIGHT on, BAG, POKéMON.
     The strip is drawn in Platinum's look (`DsLook.PLATINUM`).
+    Screens a Gen 4 battle opens over its own touch screen (GitHub #490, HeartGold and Platinum headless): the party (also the
+    one a fainted Pokémon forces, outside the command selection, which read as nothing), the bag, the move to forget for a
+    new one and the naming screen after a catch all take BattleInput's block, whose first word is the BattleSystem only while
+    the battle's own touch screen is up. Anything else there floats the touch screen in (`battleTouch`).
+    The new game's naming screen (the player's, the rival's) comes before any FieldSystem, so nothing the field read follows
+    runs; it's known by engine A's DISPCNT, 0x00013710, the naming app's in both games and in a battle too
+    (`pk_nds_field_screen_touch`, only while the read has nothing else: the title, the menu and Rowan's speech never show it).
 27. Black / White's battle panels (no decomp: headless in White's Route 1 wild battle on the player's save, frame by frame):
     client 0 -> btlv_core (+0x54) -> btlv_scd (+0x180) -> btlv_input (+0xB0); the panel's kind at input +0x58 (1 the
     commands, 2 the moves, 4 a prompt), its slide task at input +0x08 (a tap lands only once it's NULL: the moves 10 frames
