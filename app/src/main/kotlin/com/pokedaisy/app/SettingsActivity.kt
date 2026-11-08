@@ -2002,7 +2002,7 @@ class SettingsActivity : ComponentActivity() {
                             Spacer(Modifier.width(m.u * 4))
                             OptionButton(tk("REMOVE"), small, enabled = !romsScanning, onClick = {
                                 prefs.romsFolders = prefs.romsFolders - d
-                                RomFolder.forget(this@SettingsActivity, d)
+                                RomFolder.forgetLater(this@SettingsActivity, d)
                                 folderTick++
                             })
                         }
@@ -2212,17 +2212,25 @@ class SettingsActivity : ComponentActivity() {
         extraButtons: @Composable () -> Unit = {},
     ) {
         val ctx = LocalContext.current
-        val files = remember(tick, dir) {
-            // Hidden folders skipped: a synced saves folder's .stversions / .stfolder hold every old copy.
-            dir.walkTopDown().onEnter { it == dir || !it.name.startsWith(".") }
-                .filter { it.isFile && !it.name.startsWith(".") }.sortedBy { it.relativeToOrSelf(dir).path }.toList()
+        // Listed off the UI thread, sizes with it: a big synced saves folder walked during composition (and every file's
+        // size read again on each recomposition) froze Settings until Android called it not responding (Crashlytics, 1.3.3).
+        val listing by produceState<List<Pair<File, Long>>?>(null, tick, dir) {
+            value = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                // Hidden folders skipped: a synced saves folder's .stversions / .stfolder hold every old copy.
+                dir.walkTopDown().onEnter { it == dir || !it.name.startsWith(".") }
+                    .filter { it.isFile && !it.name.startsWith(".") }.sortedBy { it.relativeToOrSelf(dir).path }
+                    .map { it to it.length() }.toList()
+            }
         }
-        val total = files.sumOf { it.length() }
+        val files = listing.orEmpty()
+        val total = files.sumOf { it.second }
         OptionListWindow(m, Modifier.fillMaxWidth()) {
             Column(Modifier.padding(horizontal = m.u * 4)) {
                 title?.let { GbaText(it, OptionColors.label, OptionColors.labelShadow, m) }
                 GbaText(dir.absolutePath, OptionColors.muted, OptionColors.mutedShadow, small, maxLines = 3)
-                GbaText(tr("{0} FILE(S) · {1}", files.size, humanSize(total)), OptionColors.muted, OptionColors.mutedShadow, small)
+                if (listing != null) {
+                    GbaText(tr("{0} FILE(S) · {1}", files.size, humanSize(total)), OptionColors.muted, OptionColors.mutedShadow, small)
+                }
                 Row(
                     modifier = Modifier.padding(vertical = m.u * 4),
                     horizontalArrangement = Arrangement.spacedBy(m.u * 4),
@@ -2231,16 +2239,18 @@ class SettingsActivity : ComponentActivity() {
                     extraButtons()
                 }
 
-                if (files.isEmpty()) {
+                if (listing == null) {
+                    // Still listing: nothing yet.
+                } else if (files.isEmpty()) {
                     GbaText(tr("(EMPTY)"), OptionColors.muted, OptionColors.mutedShadow, small)
                 } else {
-                    files.forEach { f ->
+                    files.forEach { (f, size) ->
                         Row(
                             modifier = Modifier.fillMaxWidth().padding(top = m.u * 2),
                             verticalAlignment = Alignment.CenterVertically,
                         ) {
                             GbaText(f.relativeToOrSelf(dir).path, OptionColors.label, OptionColors.labelShadow, small, Modifier.weight(1f))
-                            GbaText(humanSize(f.length()), OptionColors.muted, OptionColors.mutedShadow, small)
+                            GbaText(humanSize(size), OptionColors.muted, OptionColors.mutedShadow, small)
                             Box(
                                 modifier = Modifier.clip(PixelRoundedShape(4.dp))
                                     .clickable { deletingFile = f }.padding(6.dp),
