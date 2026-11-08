@@ -2208,7 +2208,7 @@ debug APK, ui-preview stress + docs search - no render: its PNGs are for looking
 Collaborators get write access, the only level a personal repo has, so everything else is held back (2026-10-25,
 RELEASING.md's "Collaborators with write access"): main / dev need the owner's review (CODEOWNERS), only the owner makes
 tags, the release waits for the owner's approval, the Firebase key sits in a `website` environment that only runs on `v*`
-tags (no PR previews), releases are immutable (a pre-release goes up as a draft first), and the ROM runner's job check
+tags (no PR previews), releases are immutable (every release goes up as a draft, which the owner publishes: notes and other platforms' files go on before), and the ROM runner's job check
 (`scripts/runner_job_check.sh`) refuses all but the owner's release. Never move a secret back to repo level.
 **Collection dumps of retail** (`RetailDumps`, `RetailDumpsGen.kt` from `scripts/gen_retail_dumps.py`): English
 FireRed rev 0 / 1 and Emerald with the end's padding trimmed and / or a flash-cart patch (flash code + its chip descriptors,
