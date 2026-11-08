@@ -267,6 +267,15 @@ object PixelIcons {
         "1....",
     )
 
+    /** An X: close (a HUD panel's close button). Two pixels thick, cap-height. */
+    val close = listOf(
+        "11...11",
+        ".11.11.",
+        "..111..",
+        ".11.11.",
+        "11...11",
+    )
+
     /** A tick: something the companion did in the game went through (USE / GIVE). Cap-height like [star]. */
     val check = listOf(
         "........1",

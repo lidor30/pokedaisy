@@ -16,13 +16,13 @@ On the Game Boy it shows in Yellow (the English cart), Yellow Legacy, Crystal, C
 
 | Part | What you see | Tap it to |
 | --- | --- | --- |
-| Party | Each Pokémon's icon, level and HP bar. A status like `PSN` or `SLP` sits on the icon, and a fainted Pokémon is faded with `FNT`. | Open that Pokémon's summary, the same one the `PARTY` tab shows. Up and down step through your team. |
+| Party | Each Pokémon's icon and HP bar. A status like `PSN` or `SLP` sits in a row over the icons, and a fainted Pokémon is faded with `FNT`. The party's window only grows that row while someone has a status. | Open that Pokémon's summary, the same one the `PARTY` tab shows. Up and down step through your team. |
 | Minimap | The region map around you, with your head on the spot you're in and the place's name under it. | Open the whole map, with `PLACES` and `FLY`, always in the map's own shape. |
 | Poké Balls | The balls in your bag and how many of each (Elite Redux keeps no counts, so just the balls there). | Open the bag on its `POKé BALLS` pocket. |
 | Steps left | While an item that keeps wild Pokémon away is working, a window by your balls shows its icon and the steps it has left, counting down as you walk, over a bar that drains from green to yellow to red. The count turns gold for the last 20 steps, and the window goes when the effect wears off. It shows for the games whose [bag](bag.md) can use those items. | Open the bag. |
 | `PC` | Your game's own PC, opened right where you stand, so you can reach your Pokémon and stored items without walking to a Pokémon Center. The small arrow on its corner means it opens the game's own screen, not one of the HUD's. It shows for the games whose [bag](bag.md) has the `PC` button. | |
 | `BAG` | A compact bag: the pockets as tabs and your items as a grid with counts. Pick an item to read about it, and `USE` it where the companion can. The button and the bag carry the game's own name for it, like the [bag tab](bag.md) (`PACK`, `CUBE`, `ITEM`...). | |
-| `WILD` | This area's wild Pokémon: by grass, water, fishing rod or rock, with their levels and how often they show up. Ones you haven't seen stay `???`, and a ball marks the ones you've caught. `KEEP OPEN` leaves the list up without dimming the game, so it follows you from map to map until you close it. The red number on the button counts the ones you haven't caught yet. | |
+| `WILD` | This area's wild Pokémon: by grass, water, fishing rod or rock, with their levels and how often they show up. Ones you haven't seen stay `???`, and a ball marks the ones you've caught. `KEEP OPEN` leaves the list up without dimming the game, so it follows you from map to map until you close it with its X. The red number on the button counts the ones you haven't caught yet. | |
 
 The game keeps running while the map, bag, wild list or a summary is open. Tap anywhere around it, or press `BACK`, to close it. With the `GLASS` and `WHITE GLASS` looks these open in see-through panels too.
 
@@ -48,6 +48,6 @@ Tap `LAYOUT`, `LOOK` or `SIZE` to step to the next choice. The HUD changes right
 | --- | --- | --- |
 | `HUD` | **`ON`**, `OFF` | The whole HUD. |
 | `LAYOUT` | **`CORNERS`**, `CORNERS 2`, `RAILS`, `DOCK` | `CORNERS` puts the minimap top right (the games show a new area's name at the top left), your party bottom left and the rest bottom right. `CORNERS 2` swaps the right side: the minimap bottom right, the balls and buttons top right. `RAILS` lines everything up in two columns at the sides of the screen, in the bars beside the game (or over the extra map with `EXPAND`), so the game's own picture is never covered. `DOCK` puts your party, balls and buttons in one bar along the bottom, and the minimap top right. |
-| `LOOK` | **`GLASS`**, `WHITE GLASS`, `WINDOW` | `GLASS` is a dark see-through panel that lets the game show through, with light text. `WHITE GLASS` is the same in white, with dark text. `WINDOW` uses the white windows the rest of the app has. |
+| `LOOK` | **`GLASS`**, `WHITE GLASS`, `WINDOW` | `GLASS` is a dark see-through panel that lets the game show through, with light text. `WHITE GLASS` is the same in white, with dark text. `WINDOW` uses the white windows the rest of the app has. In every look the windows are shaped like the games' battle HP boxes, with a shadow below and to the right, and whatever is picked (a pocket, an item, `KEEP OPEN`) gets an orange edge, like the chosen slot on the games' party screen. |
 | `SIZE` | `SMALL`, **`NORMAL`**, `LARGE` | How big it is, from small to large. |
 | `PARTY`, `MINIMAP`, `POKé BALLS`, the steps left, `PC`, `BAG`, `WILD POKéMON` | **`ON`**, `OFF` | Show or hide each part. |

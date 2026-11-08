@@ -1179,10 +1179,10 @@ bytes), -1 = unknown); values over 999,999 are dropped.
 `MoneyTest` pins every fixture.
 **HUD** (SETTINGS > HUD on either screen - the code calls it FieldHud; a page: `fieldHudRows`, shared; `Prefs.fieldHud` ON default, also with a
 second screen - the user's call; `Prefs.fieldHudStyle`): a Legends-Arceus-style HUD over the overworld (`companion/ui/FieldHud.kt`) -
-party icons with Lv / HP bar / status chip (a tap opens `MonDetailScreen` over the game), a region-map minimap (a tap opens `MapScreen`
+party icons with HP bar / status chip (no Lv; the tags get a row of their own over the icons only while someone has one) (a tap opens `MonDetailScreen` over the game), a region-map minimap (a tap opens `MapScreen`
 with FLY), the bag's Poké Balls, BAG (a compact grid with USE through `ItemUse`, PP items left to the BAG tab), PC (left of BAG, `ItemUse.openPc`, where the BAG tab has it; a corner ↗ `PixelIcons.inGame` = opens the game's own screen; a "not now" pops up as an `ItemNotice`; the companion window closes on its own once the PC is up) and WILD (`hudWild`
 over `GuideRomSource.encounters`, like GUIDE > HERE). LAYOUT CORNERS (default; its minimap top-right - FireRed / Emerald slide a new area's name in top-left) / CORNERS 2 (its right side swapped: minimap bottom-right, balls and buttons top-right, BAG / WILD open from the top) / RAILS (columns beside the middle 3:2) / DOCK, LOOK
-GLASS (default, see-through dark) / WINDOW (OPTION windows), SIZE SMALL / NORMAL / LARGE = the GBA pixel one whole screen pixel down /
+GLASS (default, see-through dark) / WINDOW (OPTION windows), every window shaped like the battle HP box (`hudPanel`: its shadow `HUD_SHADOW` down-right; buttons inside panels and the quick menu's tiles `hudButtonFace`, the picked one `HUD_SELECTED` orange - the user's pick of five looks, 2026-11-09), SIZE SMALL / NORMAL / LARGE = the GBA pixel one whole screen pixel down /
 up (a `Density` of `k * 16 / 20` under the HUD; its panels stay at the companion's size), then every size drawn 12.5% bigger (`HUD_SCALE`,
 `hudScale`: 3 -> 3.375 on the RP6, liked over 3.5; laid out shrunk, drawn scaled from the top left - the user's call, a whole pixel
 up was too big, so its pixels aren't whole screen pixels), each part hideable (`FieldHudPart`). A picture too narrow for CORNERS' party row beside its balls + buttons
