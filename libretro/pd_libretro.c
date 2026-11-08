@@ -202,7 +202,7 @@ enum { PF_RUN, PF_WIDE, PF_DRAW, PF_PRESENT, PF_TOTAL, PF_CONV, PF_VIEW };
 #endif
 
 /* EXPAND (the game-code layer, below): the window it rebuilt past the game's edges, when this frame has one. */
-static bool wideSupported, wideReady, wideHave, fieldKnown; // wideHave: wideFrame holds a window (from the last full frame)
+static bool wideSupported, wideReady, fieldKnown;
 static unsigned wideW, wideH;
 static uint32_t wideSource[240 * 160], wideFrame[PK_WIDE_MAX_VIEW_W * PK_WIDE_MAX_VIEW_H];
 static uint32_t wildSwitch;
@@ -373,7 +373,8 @@ static void dim(int alpha) {
 }
 
 /* Convert and hand the finished canvas to the frontend. */
-static bool haveFrame; // a picture has gone to the frontend: a late frame may repeat it
+// Only a gameplay frame at the current geometry may be repeated.
+static bool canDupe, haveGameFrame, repeatedFrame;
 static void present(void) {
   if (messageFrames > 0) {
     pd_fill(&canvas, 4, CH - 50, CW - 8, 24, 0x181818);
@@ -385,7 +386,7 @@ static void present(void) {
       out565[i] = to565(cvs[i]);
   realVideo(out565, (unsigned)CW, (unsigned)CH, (size_t)CW * 2);
   direct565 = false;
-  haveFrame = true;
+  repeatedFrame = false;
 }
 
 /* ---- input ---- */
@@ -585,21 +586,9 @@ static struct PkWideView wide_rect(unsigned fw, unsigned fh) {
   return (struct PkWideView){((int)fw - (int)wideW) / 2, ((int)fh - (int)wideH) / 2, (int)wideW, (int)wideH};
 }
 
-/* A fast-forwarded frame: no window rebuild (that is the cost), but the picture over pk_wide's ambient glow, as rewind and
- * the menus show it, rather than over black (a Game Boy game: over its menus' bars). */
-static void wide_glow_tick(void) {
-  unsigned fw = (unsigned)pk_wide_frame_w(), fh = (unsigned)pk_wide_frame_h();
-  for (unsigned y = 0; y < fh; y++)
-    for (unsigned x = 0; x < fw; x++)
-      wideSource[y * fw + x] = to_xbgr(outputBuffer[y * 256 + x]);
-  struct PkWideView v = wide_rect(fw, fh);
-  wideReady = pk_wide_glow(core, wideSource, wideFrame, v) && !pk_wide_fault();
-  wideHave = false;   // not a rebuilt window: the next full frame starts from the map again
-}
-
 /* After every game frame: pk_wide's RAM history, and (wideReady) this frame's window. */
 static void wide_tick(void) {
-  wideReady = wideHave = false;
+  wideReady = false;
   if (!wideSupported)
     return;
   unsigned fw = (unsigned)pk_wide_frame_w(), fh = (unsigned)pk_wide_frame_h();
@@ -621,7 +610,6 @@ static void wide_tick(void) {
   PF_T(vw1);
   pf_add(PF_VIEW, vw1 - vw0);
   wideReady = !pk_wide_fault();
-  wideHave = wideReady;
 }
 
 /* The canvas for a fw x fh game on the panel: the panel over the game's whole scale (one less for ZOOM OUT), so the
@@ -687,6 +675,7 @@ static void canvas_update(bool notify) {
     return;
   CW = w;
   CH = h;
+  haveGameFrame = false;
   if (cvs)
     pd_canvas_init(&canvas, CW, CH, cvs);
   hudDrawnKey = 0;
@@ -771,7 +760,9 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   memset(&hudState, 0, sizeof hudState);
   hudState.wild = hudState.focus = -1;
   memset(&hudHits, 0, sizeof hudHits);
-  haveFrame = wideHave = false;
+  haveGameFrame = repeatedFrame = false;
+  canDupe = false;
+  realEnv(RETRO_ENVIRONMENT_GET_CAN_DUPE, &canDupe);
   hudDrawnKey = 0;
   hudW = hudH = 0;
   hudShown = hudFocus = false;
@@ -834,6 +825,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
  * the bike's registered item put back, a Game Boy action withdrawn), and EXPAND's RAM history is from before the jump. */
 static void layer_jump(void) {
   pk_wide_reset();
+  haveGameFrame = repeatedFrame = false;
   wideReady = false;
   snap.valid = false;
   job = JOB_NONE;
@@ -1235,8 +1227,8 @@ RETRO_API void retro_run(void) {
 #endif
   bool late = frameLate;
   frameLate = false;
-  // Fast-forward leaves a fraction of the normal frame budget (2x: half), which EXPAND's window cannot fit: while the
-  // frontend says it is fast-forwarding, the game is drawn as in ORIGINAL (the RAM history EXPAND needs still advances).
+  // Fast-forward uses the same reconstructed view. If the frontend signals audio pressure, repeat a whole
+  // gameplay frame rather than drawing a sharp center over soft margins.
   bool ff = false;
   if (realEnv) {
     struct retro_throttle_state th = {0, 0.0f};
@@ -1249,6 +1241,9 @@ RETRO_API void retro_run(void) {
     rewinding = got && th.mode == RETRO_THROTTLE_REWINDING;
   }
   bool paused = companion || hudFocus || (quickOpen && !flyAsk);
+  const bool expanded = wideSupported && settings.aspect != PD_ASPECT_ORIGINAL;
+  const bool repeat = late && canDupe && haveGameFrame && !paused && !quickOpen &&
+                      (!ff || (expanded && !repeatedFrame));
   maskGame = paused;
   if (!paused) {
     PF_T(pa);
@@ -1272,14 +1267,9 @@ RETRO_API void retro_run(void) {
                  gb_field_release_wild(core, gbf, romData, romLen))
         gbWildHeld = false;
     }
-    if (ff && wideSupported && settings.aspect != PD_ASPECT_ORIGINAL) {
-      wide_glow_tick();
-    } else if (late && wideSupported && settings.aspect != PD_ASPECT_ORIGINAL) {
-      // Behind schedule: only the RAM history EXPAND needs (as for a fast-forwarded frame), no window, and the frame below
-      // repeats the last picture whole (a stale margin around a live middle showed as a seam).
-      pk_wide_skip(core, wideSource);
-      wideReady = wideHave = false;
-    } else
+    if (repeat && expanded)
+      pk_wide_skip(core, wideSource); // Keep the RAM history current for the next drawn frame.
+    else
       wide_tick();
     PF_T(pc);
     pf_add(PF_WIDE, pc - pb);
@@ -1404,8 +1394,9 @@ RETRO_API void retro_run(void) {
   }
 
 
-  if (late && !ff && !paused && !companion && !quickOpen && haveFrame && !wideHave) {
-    realVideo(NULL, (unsigned)CW, (unsigned)CH, (size_t)CW * 2); // the same picture again: nothing drawn
+  if (repeat) {
+    repeatedFrame = true;
+    realVideo(NULL, (unsigned)CW, (unsigned)CH, (size_t)CW * 2);
     PF_SKIPPED();
     pf_frame();
     return;
@@ -1467,6 +1458,7 @@ RETRO_API void retro_run(void) {
   PF_T(td1);
   pf_add(PF_DRAW, td1 - td0);
   present();
+  haveGameFrame = !companion && !quickOpen && !hudFocus;
   PF_T(td2);
   pf_add(PF_PRESENT, td2 - td1);
   pf_add(PF_TOTAL, td2 - t0);
