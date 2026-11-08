@@ -123,6 +123,10 @@ data class NativeConfig(
     // gPartyMenu, for the battle POKéMON pane's switch where the activity takes
     // it from the config (SoulGold's releases); 0 = not here.
     val partyMenu: Long = 0,
+    // Where SaveBlock1 keeps a PARTY MENU option that changes the battle party menu's shape (SoulGold's byte: 0 = its
+    // own one-column list, 1 = BW, 2 = HGSS, both a two-column grid - BattleInputController.SwitchAddrs.gridOption);
+    // -1 = none, the shape is fixed.
+    val partyMenuStyleOff: Int = -1,
     // USE / GIVE / TAKE's functions (FieldItems.kt) for a build with no retail code to key them on (Recharged
     // Emerald's gcc rebuilds); null = by game kind and header code (fieldItemsForGame).
     val fieldItems: FieldItemFns? = null,
@@ -908,7 +912,9 @@ private fun Mon.withNativeGender(raw: ByteArray, off: Int, layout: PartyMonLayou
         // Emerald shares FireRed's internal Gen3 species ids and base-stat gender ratios; so does
         // Recharged Yellow (gen_recharged_yellow_tables.py checks its gBaseStats against FireRed's).
         GameKind.FIRERED -> runningFireRedHack?.genderRatios ?: genderRatiosFireRed
-        GameKind.EMERALD, GameKind.RECHARGED_YELLOW -> genderRatiosFireRed
+        // Modern Emerald grew the list to 461 (its gSpeciesInfo's own, ModernEmeraldGen.kt).
+        GameKind.EMERALD -> runningEmeraldHack?.genderRatios ?: genderRatiosFireRed
+        GameKind.RECHARGED_YELLOW -> genderRatiosFireRed
         GameKind.UNBOUND -> genderRatiosUnbound
         GameKind.RADICAL_RED -> genderRatiosRadicalRed
         GameKind.ODYSSEY -> genderRatiosOdyssey

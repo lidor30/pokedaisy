@@ -147,17 +147,19 @@ fun BattleButtons(
             Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(gap)) {
                 // FIGHT, with the battling Pokémon's icon (like the companion's): our move grid from the moves already
                 // read - none yet (a launch's first moments) = it waits, rather than pressing the game's FIGHT blind.
+                // Short buttons (a wide phone's, between the touch controls' rows): its icon the size of the others'.
+                val fightIcon = if (h >= u * (24 + WORD_ROOM)) u * 24 else u * 16
                 ActionButton(
-                    tr("FIGHT"), { HudSpecies(active?.iconAsset, u * 24) }, FightRed, FightRedDark, m, h,
+                    tr("FIGHT"), fightIcon, { HudSpecies(active?.iconAsset, fightIcon) }, FightRed, FightRedDark, m, h,
                     enabled = enabled && moves.isNotEmpty() && (actions || state == BATTLE_INPUT_MOVE_SELECT), pressesGame = false, edge = u * EDGE,
                 ) { window = BattleButtonsWindow.MOVES }
                 ActionButton(
-                    tr("POKéMON"), { PixelArt(PixelIcons.pokeBall, POKE_BALL, Modifier.size(u * 16)) }, MonGreen, MonGreenDark, m, h,
+                    tr("POKéMON"), u * 16, { PixelArt(PixelIcons.pokeBall, POKE_BALL, Modifier.size(u * 16)) }, MonGreen, MonGreenDark, m, h,
                     enabled = enabled && actions && battleInput?.canSwitch == true && snapshot.party.size > 1,
                     pressesGame = false, edge = u * EDGE,
                 ) { window = BattleButtonsWindow.PARTY }
                 ActionButton(
-                    tr("RUN"), { PixelArt(RUN_ICON, RUN_COLORS, Modifier.size(u * 16)) }, RunBlue, RunBlueDark, m, h,
+                    tr("RUN"), u * 16, { PixelArt(RUN_ICON, RUN_COLORS, Modifier.size(u * 16)) }, RunBlue, RunBlueDark, m, h,
                     enabled = enabled && actions && wild, edge = u * EDGE,
                 ) { battleInput?.selectAction(3) }
             }
@@ -193,6 +195,8 @@ private const val PARTY_GAP = 3
 
 /** Below this much room (GBA pixels) right of the picture, no buttons. */
 private const val MIN_ROOM = 40
+/** What a button needs beside its icon (GBA pixels): its word, the bevel and the padding. */
+private const val WORD_ROOM = 18
 
 /** The narrowest the column gets (GBA pixels), however little room is beside the picture: POKéMON at full width. */
 private const val MIN_WIDTH = 64
@@ -206,7 +210,7 @@ private const val MAX_BUTTON = 56
 /** FIGHT / POKéMON / RUN: the companion's battle button in [fill] / [frame], an icon over the word. */
 @Composable
 private fun ActionButton(
-    label: String, icon: @Composable () -> Unit, fill: Color, frame: Color, m: GbaTextMetrics, h: Dp,
+    label: String, iconH: Dp, icon: @Composable () -> Unit, fill: Color, frame: Color, m: GbaTextMetrics, h: Dp,
     enabled: Boolean, pressesGame: Boolean = true,
     /** How far it runs past the screen's right edge: its content keeps clear of that part. */
     edge: Dp = 0.dp,
@@ -215,12 +219,13 @@ private fun ActionButton(
     val u = m.u
     PlatinumButton(
         fill = fill, frame = frame, modifier = Modifier.fillMaxWidth().height(h),
-        enabled = enabled, pressesGame = pressesGame, outline = u + 1.dp,
+        enabled = enabled, pressesGame = pressesGame,
         // Clear of the bevel's side bands.
         contentPadding = PaddingValues(start = u * 3, end = u * 3 + edge, top = u * 2, bottom = u * 2), onClick = onClick,
     ) {
         Column(Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceEvenly, horizontalAlignment = Alignment.CenterHorizontally) {
-            icon()
+            // Squeezed between the touch controls' rows (a wide phone): the word alone, not a word cut in half.
+            if (h >= iconH + u * WORD_ROOM) icon()
             FittedGbaText(label, buttonContent, if (buttonContent == Color.White) ButtonShadow else Color.Transparent, m)
         }
     }

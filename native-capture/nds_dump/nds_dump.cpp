@@ -11,6 +11,7 @@
 #include <GPU.h>
 #include <Savestate.h>
 #include <Args.h>
+#include <AREngine.h>
 #include <GPU3D_Soft.h>
 
 #include "pk_nds_platform.h"
@@ -487,6 +488,8 @@ static void fieldInfo()
                gs ? read32(gs + g->offFieldMap) : 0, gs ? read32(gs + g->offEvent) : 0, pk_nds_bg3_tiles(nds, 0),
                pk_nds_bg3_tiles(nds, 1), pk_nds_bg3_tiles(nds, 2), pk_nds_bg3_tiles(nds, 3), pk_nds_battle_command(g, read32),
                pk_nds_field_state(g, read32, write32, wildOff));
+        int panel[3];
+        if (pk_nds_gen5_battle_panel(g, read32, panel)) printf("  battle panel %d waiting %d screen %d\n", panel[0], panel[1], panel[2]);
         fflush(stdout);
         return;
     }
@@ -618,6 +621,24 @@ int main(int argc, char** argv)
             if (!strcmp(cmd, "poke8")) nds->ARM9Write8(addr, (u8) v);
             else if (!strcmp(cmd, "poke16")) nds->ARM9Write16(addr, (u16) v);
             else nds->ARM9Write32(addr, v);
+        } else if (!strcmp(cmd, "ards")) {
+            // ards W W ...: one Action Replay DS cheat (hex words, two a line), replacing the ones before, the way the
+            // app's CHEATS do (pk_nds_set_cheats); "ards" alone takes them out. melonDS runs them on the ARM7's VBlank.
+            ARCode code{};
+            code.Parent = nullptr;
+            code.Enabled = true;
+            const char* p = line + 4;
+            char* end = nullptr;
+            for (;;) {
+                unsigned long w = strtoul(p, &end, 16);
+                if (end == p) break;
+                code.Code.push_back((u32) w);
+                p = end;
+            }
+            nds->AREngine.Cheats.clear();
+            if (!code.Code.empty()) nds->AREngine.Cheats.push_back(code);
+            printf("ards: %zu words\n", code.Code.size());
+            fflush(stdout);
         } else if (!strcmp(cmd, "look")) {
             // look DX DY: from here on the window moves DX, DY DS pixels a frame (look 0 0 stops it where it is)
             lookDX = (int) num(a);
@@ -901,6 +922,7 @@ int main(int argc, char** argv)
             for (int i = 0; i < frames; i++) {
                 runFrames(1, heldKeys);
                 int bits = g ? pk_nds_field_state(g, read32, nullptr, 0) : 0;
+                bits |= pk_nds_field_screen_touch(g, bits, nds->GPU.GPU2D_A.DispCnt);   // as pk_nds_field_bits adds it
                 // Each screen of one colour (the app's oneColour: a 16 x 12 grid alike), as T / B.
                 char flat[3] = "--";
                 for (int sc = 0; sc < 2; sc++) {
@@ -911,9 +933,9 @@ int main(int argc, char** argv)
                             one = (px[(gy * 16 + 8) * 256 + gx * 16 + 8] & 0xFFFFFF) == (px[8 * 256 + 8] & 0xFFFFFF);
                     if (one) flat[sc] = sc ? 'B' : 'T';
                 }
-                printf("trace %llu: bits %04X brightA %04X brightB %04X flat %s dispA %08X bg3 %d\n", (unsigned long long) frameCount, bits,
+                printf("trace %llu: bits %04X brightA %04X brightB %04X flat %s dispA %08X bg3 %d dispB %08X\n", (unsigned long long) frameCount, bits,
                     nds->GPU.GPU2D_A.MasterBrightness, nds->GPU.GPU2D_B.MasterBrightness, flat, nds->GPU.GPU2D_A.DispCnt,
-                    pk_nds_bg3_tiles(nds));
+                    pk_nds_bg3_tiles(nds), nds->GPU.GPU2D_B.DispCnt);
             }
             fflush(stdout);
         } else if (!strcmp(cmd, "arm9shift")) {

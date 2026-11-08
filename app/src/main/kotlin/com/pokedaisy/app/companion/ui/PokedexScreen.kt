@@ -59,7 +59,11 @@ import com.pokedaisy.app.companion.data.activeGame
 import com.pokedaisy.app.companion.data.PokedexSource
 import com.pokedaisy.app.companion.data.PokedexState
 import com.pokedaisy.app.companion.data.PokedexTables
+import com.pokedaisy.app.companion.data.DEX_IN_PARTY
+import com.pokedaisy.app.companion.data.activeSpeciesTypeData
 import com.pokedaisy.app.companion.data.dexCategoryLine
+import com.pokedaisy.app.companion.data.monTypes
+import com.pokedaisy.app.companion.data.typeLabel
 import com.pokedaisy.app.companion.data.formatDexHeight
 import com.pokedaisy.app.companion.data.formatDexWeight
 import com.pokedaisy.app.companion.data.speciesName
@@ -82,6 +86,11 @@ enum class DexFilter(val label: String) { ALL(tk("ALL")), CAUGHT(tk("CAUGHT")), 
 @Stable
 class DexUiState(val list: LazyListState) {
     var filter by mutableStateOf(DexFilter.ALL)
+    /** TYPE (GitHub #128): only entries seen with this type (English, as [MonView.types]); null = any. */
+    var type by mutableStateOf<String?>(null)
+    /** NAME: only names starting with this letter ([dexInitial]); null = any. A pick-list, not a search box: the
+     * companion's screen can't host a keyboard. */
+    var letter by mutableStateOf<Char?>(null)
     /** null = follow the save (national once it's unlocked). */
     var national by mutableStateOf<Boolean?>(null)
     /** National dex number of the open entry; null = the list. */
@@ -93,19 +102,30 @@ class DexUiState(val list: LazyListState) {
 
     fun showsNational(dex: PokedexState) = !dex.tables.hasRegional || (national ?: dex.national)
 
-    /** The dex numbers the list shows: [order] (the whole dex, see
-     * [rememberDexOrder]) through the filter. */
-    fun entries(dex: PokedexState, order: DexOrder): List<Int> {
+    /** The dex numbers the list shows: [order] (the whole dex, see [rememberDexOrder]) through the filters. [species]: dex
+     * number -> species id, without which TYPE and NAME can't filter yet. */
+    fun entries(dex: PokedexState, order: DexOrder, species: IntArray?): List<Int> {
+        val type = type.takeIf { species != null }
+        val letter = letter.takeIf { species != null }
         return order.nationals.filter { n ->
-            when (filter) {
+            val status = when (filter) {
                 DexFilter.ALL -> true
                 DexFilter.CAUGHT -> n in dex.caught
                 DexFilter.SEEN -> n in dex.seen && n !in dex.caught
                 DexFilter.UNSEEN -> n !in dex.seen
             }
+            val id = species?.getOrElse(n) { 0 } ?: 0
+            // An entry's type is only known once it's been seen, as in the games' own dex search.
+            status && (type == null || (n in dex.seen && type in dexTypes(id))) && (letter == null || dexInitial(id) == letter)
         }
     }
 }
+
+private fun dexTypes(species: Int): List<String> = activeSpeciesTypeData[species]?.let { monTypes(it.type1, it.type2) }.orEmpty()
+
+/** The letter a species' name is filed under, accents gone; null for no name. */
+private fun dexInitial(species: Int): Char? = if (species <= 0) null else
+    java.text.Normalizer.normalize(speciesName(species), java.text.Normalizer.Form.NFD).firstOrNull { it.isLetter() }?.uppercaseChar()
 
 /**
  * The dex being shown, as national numbers in its own order - national, or the
@@ -153,7 +173,11 @@ private fun rememberSpeciesMap(t: PokedexTables): IntArray? =
  * row opens its [PokedexEntryScreen].
  */
 @Composable
-fun PokedexScreen(dex: PokedexState, ui: DexUiState, modifier: Modifier = Modifier) {
+fun PokedexScreen(
+    dex: PokedexState, ui: DexUiState, modifier: Modifier = Modifier,
+    /** Where the save keeps each species ([dexHoldings]), null where the boxes aren't read. */
+    holdings: Map<Int, Int>? = null,
+) {
     // Dense pages sized to Pixel Operator: a game font keeps its metrics here.
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
@@ -163,10 +187,13 @@ fun PokedexScreen(dex: PokedexState, ui: DexUiState, modifier: Modifier = Modifi
     val seen = dex.seen.count { it in order }
     val caught = dex.caught.count { it in order }
     val species = rememberSpeciesMap(dex.tables)
-    val entries = ui.entries(dex, order)
+    val entries = ui.entries(dex, order, species)
     val u = m.u
+    var pickingType by remember { mutableStateOf(false) }
+    var pickingLetter by remember { mutableStateOf(false) }
 
-    Row(modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+    Box(modifier.fillMaxSize()) {
+    Row(Modifier.fillMaxSize(), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
         Column(Modifier.fillMaxHeight().weight(0.36f), verticalArrangement = Arrangement.spacedBy(u * 4)) {
             OptionTitleWindow(tk("POKéDEX"), m)
             OptionListWindow(m, Modifier.fillMaxWidth()) {
@@ -182,8 +209,12 @@ fun PokedexScreen(dex: PokedexState, ui: DexUiState, modifier: Modifier = Modifi
                     DexFilter.SEEN to seen - caught,
                     DexFilter.UNSEEN to last - seen,
                 )
+                // TYPE and NAME are rows of the same list, which scrolls: as buttons they squeezed it away on a short screen.
                 OptionRows(
-                    DexFilter.entries.map { f -> Triple(f.label, "${counts[f]}", { ui.filter = f }) },
+                    DexFilter.entries.map { f -> Triple<String, String?, () -> Unit>(f.label, "${counts[f]}", { ui.filter = f }) } + listOf(
+                        Triple(tr("TYPE") + ": " + (ui.type?.let(::typeLabel) ?: tr("ALL")), null, { pickingType = true }),
+                        Triple(tr("NAME") + ": " + (ui.letter?.toString() ?: tr("ALL")), null, { pickingLetter = true }),
+                    ),
                     small,
                     Modifier.fillMaxSize(),
                     selected = ui.filter.ordinal,
@@ -207,7 +238,9 @@ fun PokedexScreen(dex: PokedexState, ui: DexUiState, modifier: Modifier = Modifi
                 Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
                     GbaText(tr("NONE"), OptionColors.muted, OptionColors.mutedShadow, m)
                 }
-            } else {
+            } else DenseText {
+                // The list a font pixel smaller where there's room (the Thor): more entries on screen.
+                val m = rememberGbaTextMetrics()
                 // The D-pad starts on the entry last opened while it's in the list, else on the top row showing.
                 val back = ui.lastOpened?.takeIf { it in entries }
                 val top = entries.getOrNull(ui.list.firstVisibleItemIndex)
@@ -216,11 +249,41 @@ fun PokedexScreen(dex: PokedexState, ui: DexUiState, modifier: Modifier = Modifi
                         DexRow(
                             order.number(n), species?.getOrNull(n) ?: 0, n in dex.caught, n in dex.seen, m, small,
                             start = n == (back ?: top),
+                            holding = holdingLabel(species?.getOrNull(n) ?: 0, n in dex.caught, holdings),
                         ) { ui.lastOpened = n; ui.open = n }
                     }
                 }
             }
         }
+    }
+    if (pickingType && species != null) {
+        val types = remember(dex.seen, species) { dex.seen.flatMap { n -> dexTypes(species.getOrElse(n) { 0 }) }.distinct().sortedBy(::typeLabel) }
+        OptionSelector(
+            tr("TYPE"), listOf<String?>(null) + types, ui.type, { it?.let(::typeLabel) ?: tr("ALL") }, m,
+            onPick = { ui.type = it; pickingType = false },
+            onDismiss = { pickingType = false },
+        )
+    }
+    if (pickingLetter && species != null) {
+        val letters = remember(order, species) { order.nationals.mapNotNull { dexInitial(species.getOrElse(it) { 0 }) }.distinct().sorted() }
+        OptionSelector(
+            tr("NAME"), listOf<Char?>(null) + letters, ui.letter, { it?.toString() ?: tr("ALL") }, m,
+            onPick = { ui.letter = it; pickingLetter = false },
+            onDismiss = { pickingLetter = false },
+        )
+    }
+    }
+}
+
+/** Where a caught entry is, for its row: PARTY, BOX 3, or MISSING for one caught that's in neither (it evolved, or it's
+ * gone). Null with nothing to say: not caught, or the boxes aren't read here. */
+@Composable
+private fun holdingLabel(species: Int, caught: Boolean, holdings: Map<Int, Int>?): String? {
+    if (holdings == null || !caught || species <= 0) return null
+    return when (val at = holdings[species]) {
+        null -> tr("MISSING")
+        DEX_IN_PARTY -> tr("PARTY")
+        else -> tr("BOX {0}", at)
     }
 }
 
@@ -240,6 +303,8 @@ private fun DexRow(
     m: GbaTextMetrics, small: GbaTextMetrics,
     /** Where the D-pad starts in the list (the companion's window). */
     start: Boolean = false,
+    /** Where the save keeps it ([holdingLabel]). */
+    holding: String? = null,
     onClick: () -> Unit,
 ) {
     val u = m.u
@@ -271,6 +336,7 @@ private fun DexRow(
             if (seen) OptionColors.labelShadow else OptionColors.mutedShadow,
             m, Modifier.weight(1f),
         )
+        holding?.let { GbaText(it, OptionColors.muted, OptionColors.mutedShadow, small) }
     }
 }
 
@@ -312,7 +378,7 @@ fun PokedexEntryScreen(dex: PokedexState, ui: DexUiState, current: Int, modifier
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
     val order = rememberDexOrder(dex, ui.showsNational(dex))
-    val entries = ui.entries(dex, order)
+    val entries = ui.entries(dex, order, rememberSpeciesMap(dex.tables))
     val index = entries.indexOf(current)
     val step = { d: Int ->
         if (entries.isNotEmpty()) {
@@ -406,7 +472,9 @@ private fun EntryPage(
         Separator(m, Modifier.fillMaxHeight(), vertical = true)
         val sections = remember(t, guide) { dexSections(t, guide) }
         val section = ui.section.takeIf { it in sections } ?: DexSection.INFO
-        Column(Modifier.weight(0.58f).fillMaxHeight().padding(start = gap + u * 2)) {
+        Column(Modifier.weight(0.58f).fillMaxHeight().padding(start = gap + u * 2)) { DenseText {
+            // The pages a font pixel smaller where there's room (the Thor): more of them on screen.
+            val m = rememberGbaTextMetrics()
             if (sections.size > 1) {
                 DexSectionChips(sections, section, small) { ui.section = it }
                 Spacer(Modifier.height(u * 3))
@@ -418,7 +486,7 @@ private fun EntryPage(
                 section == DexSection.MOVES -> Box(body) { DexMovesSection(t, guide, species, m, small) }
                 else -> DexInfoSection(e, small, m, body)
             }
-        }
+        } }
     }
 }
 

@@ -1,0 +1,7 @@
+# RUN from a weak foe: the battle ends with no other press.
+wild 19 2
+press-to-state action
+hit 3032
+run 900
+expect inbattle 0
+mixer

@@ -3,20 +3,21 @@ title: Your game library
 summary: Add games, sort and favorite them, set covers, and use each game's menu for saves, info, cheats and more.
 section: start
 order: 4
-keywords: [support, donate, donation, tip, patreon, ko-fi, kofi, buy me a coffee, games list, add rom, import, folder, folders, multiple folders, several folders, add folder, zip, 7z, archive, cover, box art, artwork, icon, steamgriddb, rename, delete, hide, favourite, star, sort, grid, list view, frontend, es-de, esde, iisu, cocoon, launcher, filter, tabs, recently played, history, hacks, game boy, gbc, gba, console, platform, patch, patching, bps, apply patch, base rom, checksum, crc32, rom hack patch, tools, toolbox, rail, bottom bar, where is settings]
+keywords: [shortcut, home screen, launcher icon, search, find a game, filter, support, donate, donation, tip, patreon, ko-fi, kofi, buy me a coffee, games list, add rom, import, folder, folders, multiple folders, several folders, add folder, zip, 7z, archive, cover, box art, artwork, icon, steamgriddb, rename, delete, hide, favourite, star, sort, grid, list view, frontend, es-de, esde, iisu, cocoon, launcher, filter, tabs, recently played, history, hacks, game boy, gbc, gba, console, platform, patch, patching, bps, apply patch, base rom, checksum, crc32, rom hack patch, tools, toolbox, rail, bottom bar, where is settings]
 ---
 
 The library is the first thing you see when you open PokeDaisy: every game you've added, in the order you pick. Tap a game to play it.
 
 The first time you play a big game, like a DS game or one in a `.zip`, PokeDaisy reads it through before it starts, which can take a few seconds. The library dims and a little red and white ball rocks in the middle until the game opens; nothing else can be tapped meanwhile.
 
-![The library in list view: GAMES, TOOLS and SETTINGS down the left, the header's sort, view, add, refresh and help buttons, a row of coloured quick views (ALL, FAVORITES, RECENT, GB, GBC, GBA, DS, HACKS) and the games under them](shots/library-list.png "The library in list view")
+![The library in list view: GAMES, TOOLS and SETTINGS down the left, the header's sort, search, view, add, refresh and help buttons, a row of coloured quick views (ALL, FAVORITES, RECENT, GB, GBC, GBA, DS, HACKS) and the games under them](shots/library-list.png "The library in list view")
 
 The buttons in the header, from left to right:
 
 | Button | What it does |
 | --- | --- |
 | Sort | Picks the order of your games (see [Sorting](#sorting-and-favorites)). |
+| Search | Finds a game by its name or file name (see [Searching](#searching)). |
 | List / grid | Switches between a list (one game per row, with its file path) and a grid of covers. |
 | `+` | Adds games: `ADD A ROM FILE`, `ADD A ROMS FOLDER`, `MANAGE ROMS FOLDERS` or `PATCH A ROM` (see [Adding games](#adding-games)). |
 | Refresh | Looks through your ROMs folders again and tells you what it found. |
@@ -117,6 +118,14 @@ PokeDaisy recognizes the games it supports and shows their proper names ("Pokém
 
 To call a game something else, use `RENAME` in its menu. It only changes what the library shows; the file keeps its name, so its save is still found.
 
+Prefer your own file names? Set `GAME NAMES` to `FILE NAME` in Settings, in the `LIBRARY` group.
+
+## Searching
+
+Tap the search button in the header and start typing. The games behind the window follow what you type, by the name the library shows or by the file name. Case and accents don't matter, and the words can come in any order, so `red fire` finds FireRed.
+
+Tap `DONE` to go through what's left, and the search stays on top of the list. Tap `CLEAR` there or press BACK to see all your games again.
+
 ## Sorting and favorites
 
 Tap the sort button and pick under `SORT BY`:
@@ -150,12 +159,13 @@ Long-press a game, in the list or the grid, to open its menu. In list view, the 
 | `SAVE FOLDER` | Gives this game its own save folder, such as another emulator's. |
 | `DEFAULT SAVE FOLDER` | Goes back to the usual save folders. Only shows after you set a `SAVE FOLDER`. |
 | `CHEATS` | Opens the game's cheat codes in Settings. See [Cheats](cheats.md). |
+| `ADD TO HOME` | Puts a shortcut to the game on your device's home screen. A tap on it starts the game straight away. |
 | `HIDE` | Takes the game off the library without touching any files. |
 | `DELETE` | Deletes the game file. Saves and save states are kept. Only for imported games, never your linked folder's. |
 
 `LOAD SAVE`, `RESTORE BACKUP` and `SAVE FOLDER` are explained in [Saves, backups and save states](saves.md#load-a-save-file).
 
-If the menu doesn't fit the screen's height, it spreads over two columns.
+With the device held upright, or if the menu doesn't fit the screen's height, it spreads over two columns.
 
 ## Hidden games
 
@@ -219,6 +229,8 @@ Every game plays, but the companion only reads the games it knows. The library t
 
 From a linked folder, the library lists the supported games plus any unsupported hacks of FireRed, LeafGreen, Emerald, Ruby or Sapphire (tagged), so you can try them. When PokeDaisy can't tell which game a ROM is built on, `INFO` has `PICK A GAME` to tell it, and `FORGET MATCH` to undo a match. [Supported games](supported-games.md) has the full list and explains how matching works.
 
+Turn on `SUPPORTED ONLY` in Settings, in the `LIBRARY` group, to leave games the companion can't read out of the library.
+
 ## Supporting PokeDaisy
 
 PokeDaisy is free, has no ads and is made by one person. After you've played for a good while, the library asks once whether you'd like to support it, with `BUY ME A COFFEE`, `PATREON` and `KO-FI`. Pick one and your browser opens that page. `REMIND ME LATER` (or BACK) asks again a few hours of play later, and `NO THANKS` means it never asks again. Picking a site counts as an answer too.
@@ -231,9 +243,11 @@ The library works without touching the screen. Move with the D-pad; the selected
 
 ## Launching from a frontend
 
-If you use a frontend like **ES-DE**, **iiSU** or **Cocoon** to browse all your games, it can start your GBA games straight in PokeDaisy, skipping the library. When you leave the game (hold `BACK`, or the exit hotkey), you're back in the frontend.
+If you use a frontend like **ES-DE**, **iiSU** or **Cocoon** to browse all your games, it can start your games straight in PokeDaisy, skipping the library. When you leave the game (hold `BACK`, or the exit hotkey), you're back in the frontend.
 
-In the frontend, add PokeDaisy as a custom or standalone emulator for GBA with these values:
+Cocoon already knows PokeDaisy for GBA, Game Boy, Game Boy Color and DS games, zipped ones too. If it isn't offered, or Cocoon says `Incompatible Player` for a zipped game, refresh Cocoon's platforms (in its settings, under Library & Data) and pick PokeDaisy as the player.
+
+In other frontends, add PokeDaisy as a custom or standalone emulator for each system with these values:
 
 | Field | Value |
 | --- | --- |
@@ -248,4 +262,4 @@ A few things to know:
 - Saves are found by the ROM's file name in your save folders, as usual. To share saves with the frontend's emulator, add its save folder in Settings > `FOLDERS` (see [Saves, backups and save states](saves.md#where-your-saves-live)).
 - Starting another game from the frontend while one is open switches to it; the open one is suspended first.
 
-There are step-by-step guides for [ES-DE](https://github.com/lidor30/pokedaisy/blob/main/docs/es-de/README.md) and [iiSU](https://github.com/lidor30/pokedaisy/blob/main/docs/iisu/README.md). Cocoon only lists emulators from its own list, so PokeDaisy shows up there once Cocoon adds it.
+There are step-by-step guides for [ES-DE](https://github.com/lidor30/pokedaisy/blob/main/docs/es-de/README.md) and [iiSU](https://github.com/lidor30/pokedaisy/blob/main/docs/iisu/README.md).

@@ -11,6 +11,7 @@ import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.lazy.grid.GridCells
 import androidx.compose.foundation.lazy.grid.LazyVerticalGrid
@@ -18,6 +19,10 @@ import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.graphics.asImageBitmap
+import androidx.compose.ui.semantics.semantics
+import androidx.compose.ui.semantics.contentDescription
+import androidx.compose.foundation.layout.size
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -35,8 +40,53 @@ import com.pokedaisy.app.companion.data.TypeMatchup
 import com.pokedaisy.app.companion.ui.theme.AppColors
 import com.pokedaisy.app.companion.ui.theme.pixelFontFamily
 
+/** Where each type's tag starts in the games' sheet, in 8x8 tiles from its top left, 16 to a row (sMenuInfoIcons). */
+private val TYPE_TAG_TILES = mapOf(
+    "Normal" to 0x20, "Fire" to 0x24, "Water" to 0x28, "Grass" to 0x2C, "Electric" to 0x40, "Rock" to 0x44, "Ground" to 0x48,
+    "Ice" to 0x4C, "Flying" to 0x60, "Fighting" to 0x64, "Ghost" to 0x68, "Bug" to 0x6C, "Poison" to 0x80, "Psychic" to 0x84,
+    "Steel" to 0x88, "Dark" to 0x8C, "Dragon" to 0xA0, "???" to 0xA4,
+)
+private const val TYPE_TAG_W = 32
+private const val TYPE_TAG_H = 12
+/** Each this much of a badge's font size is one more pixel of tag per GBA pixel: 12 sp 1x, a move card's 16 sp 2x. */
+private const val TYPE_TAG_SP = 8f
+
+/** The running game's sheet of type tags, read from its ROM: the original FireRed / Emerald engines in English (the
+ * words are in the picture, so a hack's own types or another language keep the drawn badge). Null = draw it. */
+@Composable
+private fun rememberTypeTags(): androidx.compose.ui.graphics.ImageBitmap? {
+    val game = com.pokedaisy.app.companion.data.activeGame
+    val path = when {
+        com.pokedaisy.app.companion.data.romLanguage != 'E' -> null
+        com.pokedaisy.app.companion.data.runningFireRedHack != null || com.pokedaisy.app.companion.data.runningEmeraldHack != null -> null
+        game == com.pokedaisy.app.companion.data.GameKind.FIRERED -> com.pokedaisy.app.companion.data.RomArt.TYPE_TAGS_FIRERED
+        game == com.pokedaisy.app.companion.data.GameKind.EMERALD -> com.pokedaisy.app.companion.data.RomArt.TYPE_TAGS_EMERALD
+        else -> null
+    } ?: return null
+    val context = androidx.compose.ui.platform.LocalContext.current
+    val generation = rememberArtGeneration()
+    return androidx.compose.runtime.remember(path, generation) {
+        GameArt.get(context, path)?.let { it.asImageBitmap() }
+    }
+}
+
 @Composable
 fun TypeBadge(type: String, modifier: Modifier = Modifier, fontSize: TextUnit = 12.sp) {
+    val tags = rememberTypeTags()
+    val tile = TYPE_TAG_TILES[type]
+    if (tags != null && tile != null) {
+        // Whole pixels of the tag per GBA pixel, as large as the words the badge would have had.
+        val u = rememberGbaTextMetrics().u * (fontSize.value / TYPE_TAG_SP).toInt().coerceAtLeast(1)
+        androidx.compose.foundation.Canvas(modifier.size(u * TYPE_TAG_W, u * TYPE_TAG_H).semantics { contentDescription = com.pokedaisy.app.companion.data.typeLabel(type) }) {
+            drawImage(
+                tags, srcOffset = androidx.compose.ui.unit.IntOffset(tile % 16 * 8, tile / 16 * 8),
+                srcSize = androidx.compose.ui.unit.IntSize(TYPE_TAG_W, TYPE_TAG_H),
+                dstSize = androidx.compose.ui.unit.IntSize(size.width.toInt(), size.height.toInt()),
+                filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+            )
+        }
+        return
+    }
     val color = AppColors.typeColors[type] ?: AppColors.muted
     Box(
         modifier = modifier
@@ -120,6 +170,26 @@ fun MatchupChipRow(heading: String, list: List<TypeMatchup>) {
 }
 
 /** A type badge with its multiplier ("FIRE 2x"). */
+/** The move's category beside its [TypeBadge] ([moveKind]); nothing where the game's rule isn't known. */
+@Composable
+fun MoveKindIcon(mv: com.pokedaisy.app.companion.data.MoveView, m: GbaTextMetrics) {
+    val kind = com.pokedaisy.app.companion.data.moveKind(mv) ?: return
+    val art = when (kind) {
+        com.pokedaisy.app.companion.data.MoveKind.PHYSICAL -> PixelIcons.movePhysical
+        com.pokedaisy.app.companion.data.MoveKind.SPECIAL -> PixelIcons.moveSpecial
+        com.pokedaisy.app.companion.data.MoveKind.STATUS -> PixelIcons.moveStatus
+    }
+    val label = com.pokedaisy.app.companion.i18n.tr(kind.label)
+    Spacer(Modifier.width(m.u * 3))
+    PixelArt(art, MOVE_KIND_COLORS, Modifier.size(m.u * 11).semantics { contentDescription = label })
+}
+
+private val MOVE_KIND_COLORS = mapOf(
+    'R' to Color(0xFFC03018), 'O' to Color(0xFFF08030), 'Y' to Color(0xFFF8D030),
+    'B' to Color(0xFF2848A8), 'C' to Color(0xFF58A0F0), 'W' to Color(0xFFF0F8FF),
+    'G' to Color(0xFF686878), 'L' to Color(0xFFB8B8C8),
+)
+
 @Composable
 fun TypeBadgeWithLabel(m: TypeMatchup, modifier: Modifier = Modifier) {
     val color = AppColors.typeColors[m.type] ?: AppColors.muted

@@ -1,0 +1,269 @@
+# Known address pairs for scripts/port_nds_fns.py --check: each US / Europe cart's address and the other cart's, every one
+# checked live (headless) before it went into the app's tables. Names are ours (app/src/main/cpp/nds/pk_nds_field.cpp,
+# pk_nds_call.cpp, the Kotlin Gen4Config / Gen5Config); structure offsets and small numbers are left out.
+#
+#   name  kind  us_addr[@overlay]  other_addr       kind: w = a RAM / data word, c = a function (odd = Thumb)
+#
+# A pair equal in both carts is listed too (the low ARM9 of HeartGold / SoulSilver didn't move). The sound globals are their
+# bases (the tables keep base + an offset). Platinum's and HeartGold's options init is the first function of every overlay
+# loaded at that address (the app's rule matches them all): the overlay named here is one of them.
+
+[platinum]
+us = Pokemon - Platinum Version (USA) (Rev 1).nds
+other = Pokemon - Version Platine (France).nds
+sFieldSystem                 w 0x021C07DC     0x021C09BC
+gBattleApplicationTemplate   w 0x020EA358     0x020EA3E0
+sSoundSystem                 w 0x02101DF8     0x02101FD8
+sSeqPlayer                   w 0x021CAF64     0x021CB144
+sSaveDataPtr                 w 0x021C0794     0x021C0974
+FieldMap_Main                c 0x021D0F69@5   0x021D1149
+PartyMenu_Init               c 0x0207E0B9     0x0207E159
+OptionsMenu_Init             c 0x021D0D81@74  0x021D0F61
+ScriptManager_Set            c 0x0203E881     0x0203E925
+FieldTask_GetEnv             c 0x02050A65     0x02050B09
+ScriptContext_CreateAndStart c 0x0203EAB9     0x0203EB5D
+ScriptContext_Jump           c 0x0203E819     0x0203E8BD
+StringTemplate_New           c 0x0200B369     0x0200B37D
+String_Init                  c 0x02023791     0x02023801
+ScriptManager_GetMemberPtr   c 0x0203EF61     0x0203F005
+FieldMoves_SetUsableMoves    c 0x02070729     0x020707BD
+FieldMoves_CheckFly          c 0x02070951     0x020709E5
+CheckFlyLocationUnlocked     c 0x0203A921     0x0203A9C5
+SaveData_GetParty            c 0x0207A269     0x0207A309
+Party_GetPokemonBySlotIndex  c 0x0207A0FD     0x0207A19D
+FlyContext_New               c 0x0207064D     0x020706E1
+FieldMoves_FlyTask           c 0x02070681     0x02070715
+FieldSystem_CreateTask       c 0x02050905     0x020509A9
+Journal_CreateEventUsedMove  c 0x0202BE01     0x0202BE71
+Journal_SaveData             c 0x0202B759     0x0202B7C9
+
+[heartgold]
+us = Pokemon - HeartGold Version (USA).nds
+other = Pokemon - Version Or HeartGold (France).nds
+sFieldSysPtr                 w 0x021D4158     0x021D4178
+gOverlayTemplate_Battle      w 0x020FA484     0x020FA468
+sSoundWork                   w 0x02111958     0x02111978
+sSeqPlayer                   w 0x021DF984     0x021DF9A4
+sSaveDataPtr                 w 0x021D2228     0x021D2248
+FieldMap_Main                c 0x021E5BE5@1   0x021E5C05
+Task_StartMenu               c 0x0203BEF1     0x0203BEF1
+PartyMenuApp_Init            c 0x02078E31     0x02078E31
+OptionsApp_Init              c 0x021E5901@54  0x021E5921
+Pokedex_Init                 c 0x021E5AA1@18  0x021E5AC1
+ScriptJump                   c 0x0203FE0D     0x0203FE0D
+MessageFormat_New_Custom     c 0x0200BD19     0x0200BD19
+String_New                   c 0x02026355     0x02026355
+FieldMove_InitCheckData      c 0x02067E11     0x02067E11
+FieldMove_CheckFly           c 0x0206800D     0x0206800D
+SaveArray_Party_Get          c 0x02074905     0x02074905
+Party_GetMonByIndex          c 0x02074645     0x02074645
+sub_02067BF8                 c 0x02067BF9     0x02067BF9
+sub_02067C30                 c 0x02067C31     0x02067C31
+FieldSystem_CreateTask       c 0x020504F1     0x020504F1
+ScriptEnvironment_New        c 0x0204001D     0x0204001D
+CreateScriptContext          c 0x020400AD     0x020400AD
+Task_RunScripts              c 0x0203FF45     0x0203FF45
+
+[soulsilver]
+us = Pokemon - SoulSilver Version (USA).nds
+other = Pokemon - Version Argent SoulSilver (France).nds
+sFieldSysPtr                 w 0x021D4158     0x021D4178
+gOverlayTemplate_Battle      w 0x020FA484     0x020FA468
+sSoundWork                   w 0x02111958     0x02111978
+sSeqPlayer                   w 0x021DF984     0x021DF9A4
+sSaveDataPtr                 w 0x021D2228     0x021D2248
+FieldMap_Main                c 0x021E5BE5@1   0x021E5C05
+Task_StartMenu               c 0x0203BEF1     0x0203BEF1
+PartyMenuApp_Init            c 0x02078E31     0x02078E31
+OptionsApp_Init              c 0x021E5901@54  0x021E5921
+Pokedex_Init                 c 0x021E5A9D@18  0x021E5ABD
+ScriptJump                   c 0x0203FE0D     0x0203FE0D
+MessageFormat_New_Custom     c 0x0200BD19     0x0200BD19
+String_New                   c 0x02026355     0x02026355
+FieldMove_InitCheckData      c 0x02067E11     0x02067E11
+FieldMove_CheckFly           c 0x0206800D     0x0206800D
+SaveArray_Party_Get          c 0x02074905     0x02074905
+Party_GetMonByIndex          c 0x02074645     0x02074645
+sub_02067BF8                 c 0x02067BF9     0x02067BF9
+sub_02067C30                 c 0x02067C31     0x02067C31
+FieldSystem_CreateTask       c 0x020504F1     0x020504F1
+ScriptEnvironment_New        c 0x0204001D     0x0204001D
+CreateScriptContext          c 0x020400AD     0x020400AD
+Task_RunScripts              c 0x0203FF45     0x0203FF45
+
+[black]
+us = Pokemon - Black Version (USA, Europe) (NDSi Enhanced).nds
+other = Pokemon - Version Noire (France) (NDSi Enhanced).nds
+GameSystem                   w 0x02146248     0x021461C8
+BgmStack                     w 0x020AA1BC     0x020AA13C
+BgmStackDepth                w 0x020AA1B0     0x020AA130
+sSeqPlayer                   w 0x0214E024     0x0214DFA4
+SaveControl                  w 0x020A7298     0x020A7218
+StartMenuEvent               c 0x0215FD0D@10  0x0215FC7D
+FieldEventCheck              c 0x0218A075@21  0x02189FF5
+ReturnZero                   c 0x0200565D     0x0200565D
+GameSystem_SetEvent          c 0x02012109     0x02012109
+ScriptEvent                  c 0x02158769@10  0x021586E9
+ScriptEventCheck             c 0x02158921@10  0x021588A1
+FldSkill_InitCheck           c 0x0215E841@10  0x0215E7B1
+FldSkill_CanUse              c 0x0215EA15@10  0x0215E985
+FldSkill_Use                 c 0x0215EA39@10  0x0215E9A9
+
+[white]
+us = Pokemon - White Version (USA, Europe) (NDSi Enhanced).nds
+other = Pokemon - Version Blanche (France) (NDSi Enhanced).nds
+GameSystem                   w 0x02146268     0x021461E8
+BgmStack                     w 0x020AA1DC     0x020AA15C
+BgmStackDepth                w 0x020AA1D0     0x020AA150
+sSeqPlayer                   w 0x0214E044     0x0214DFC4
+SaveControl                  w 0x020A72B8     0x020A7238
+StartMenuEvent               c 0x0215FD2D@10  0x0215FC9D
+FieldEventCheck              c 0x0218A095@21  0x0218A015
+ReturnZero                   c 0x0200565D     0x0200565D
+GameSystem_SetEvent          c 0x02012109     0x02012109
+ScriptEvent                  c 0x02158789@10  0x02158709
+ScriptEventCheck             c 0x02158941@10  0x021588C1
+FldSkill_InitCheck           c 0x0215E861@10  0x0215E7D1
+FldSkill_CanUse              c 0x0215EA35@10  0x0215E9A5
+FldSkill_Use                 c 0x0215EA59@10  0x0215E9C9
+
+# German HeartGold / SoulSilver (HEARTGOLD_DE): a second check, US -> another language.
+[heartgold_de]
+us = Pokemon - HeartGold Version (USA).nds
+other = Pokemon - Goldene Edition HeartGold (Germany).nds
+sFieldSysPtr                 w 0x021D4158     0x021D4138
+gOverlayTemplate_Battle      w 0x020FA484     0x020FA438
+sSoundWork                   w 0x02111958     0x02111938
+sSeqPlayer                   w 0x021DF984     0x021DF964
+sSaveDataPtr                 w 0x021D2228     0x021D2208
+FieldMap_Main                c 0x021E5BE5@1   0x021E5BC5
+ScriptJump                   c 0x0203FE0D     0x0203FE0D
+MessageFormat_New_Custom     c 0x0200BD19     0x0200BD19
+String_New                   c 0x02026355     0x02026355
+FieldMove_InitCheckData      c 0x02067E11     0x02067E11
+FieldMove_CheckFly           c 0x0206800D     0x0206800D
+SaveArray_Party_Get          c 0x02074905     0x02074905
+Party_GetMonByIndex          c 0x02074645     0x02074645
+sub_02067BF8                 c 0x02067BF9     0x02067BF9
+sub_02067C30                 c 0x02067C31     0x02067C31
+FieldSystem_CreateTask       c 0x020504F1     0x020504F1
+ScriptEnvironment_New        c 0x0204001D     0x0204001D
+CreateScriptContext          c 0x020400AD     0x020400AD
+Task_RunScripts              c 0x0203FF45     0x0203FF45
+
+[soulsilver_de]
+us = Pokemon - SoulSilver Version (USA).nds
+other = Pokemon - Silberne Edition SoulSilver (Germany).nds
+sFieldSysPtr                 w 0x021D4158     0x021D4138
+gOverlayTemplate_Battle      w 0x020FA484     0x020FA438
+sSoundWork                   w 0x02111958     0x02111938
+sSeqPlayer                   w 0x021DF984     0x021DF964
+sSaveDataPtr                 w 0x021D2228     0x021D2208
+FieldMap_Main                c 0x021E5BE5@1   0x021E5BC5
+ScriptJump                   c 0x0203FE0D     0x0203FE0D
+MessageFormat_New_Custom     c 0x0200BD19     0x0200BD19
+String_New                   c 0x02026355     0x02026355
+FieldMove_InitCheckData      c 0x02067E11     0x02067E11
+FieldMove_CheckFly           c 0x0206800D     0x0206800D
+SaveArray_Party_Get          c 0x02074905     0x02074905
+Party_GetMonByIndex          c 0x02074645     0x02074645
+sub_02067BF8                 c 0x02067BF9     0x02067BF9
+sub_02067C30                 c 0x02067C31     0x02067C31
+FieldSystem_CreateTask       c 0x020504F1     0x020504F1
+ScriptEnvironment_New        c 0x0204001D     0x0204001D
+CreateScriptContext          c 0x020400AD     0x020400AD
+Task_RunScripts              c 0x0203FF45     0x0203FF45
+
+# The other version in the same language (WHITE_US = Black's code, its statics and overlays 0x20 higher; WHITE2_US = Black 2's,
+# 0x40 higher): a check too, though not a language port.
+[black_to_white]
+us = Pokemon - Black Version (USA, Europe) (NDSi Enhanced).nds
+other = Pokemon - White Version (USA, Europe) (NDSi Enhanced).nds
+GameSystem                   w 0x02146248     0x02146268
+BgmStack                     w 0x020AA1BC     0x020AA1DC
+BgmStackDepth                w 0x020AA1B0     0x020AA1D0
+sSeqPlayer                   w 0x0214E024     0x0214E044
+SaveControl                  w 0x020A7298     0x020A72B8
+StartMenuEvent               c 0x0215FD0D@10  0x0215FD2D
+FieldEventCheck              c 0x0218A075@21  0x0218A095
+ReturnZero                   c 0x0200565D     0x0200565D
+GameSystem_SetEvent          c 0x02012109     0x02012109
+ScriptEvent                  c 0x02158769@10  0x02158789
+ScriptEventCheck             c 0x02158921@10  0x02158941
+FldSkill_InitCheck           c 0x0215E841@10  0x0215E861
+FldSkill_CanUse              c 0x0215EA15@10  0x0215EA35
+FldSkill_Use                 c 0x0215EA39@10  0x0215EA59
+
+[black2_to_white2]
+us = Pokemon - Black Version 2 (USA, Europe) (NDSi Enhanced).nds
+other = Pokemon - White Version 2 (USA, Europe) (NDSi Enhanced).nds
+GameSystem                   w 0x021410F4     0x02141134
+BgmStack                     w 0x0209DA80     0x0209DAC0
+BgmStackDepth                w 0x0209DA74     0x0209DAB4
+sSeqPlayer                   w 0x02148EE4     0x02148F24
+SaveControl                  w 0x0209A338     0x0209A378
+StartMenuEvent               c 0x0215A875@12  0x0215A8B5
+FieldEventCheck              c 0x0218185D@36  0x0218189D
+ReturnZero                   c 0x020056B9     0x020056B9
+GameSystem_SetEvent          c 0x02016AED     0x02016AED
+ScriptEvent                  c 0x0215366D@12  0x021536AD
+ScriptEventCheck             c 0x02153825@12  0x02153865
+FldSkill_InitCheck           c 0x02159231@12  0x02159271
+FldSkill_CanUse              c 0x021593FD@12  0x0215943D
+FldSkill_Use                 c 0x02159421@12  0x02159461
+
+# A hard one: Origin HeartGold (ORIGIN_HEARTGOLD), an hg-engine rebuild over the Japanese HeartGold, its words found again
+# through the US code that uses them. Its SaveData_Get loads a static block whose +4 is the save's pointer: that block's word.
+[heartgold_to_origin]
+us = Pokemon - HeartGold Version (USA).nds
+other = Pokemon Origin HeartGold (v4.0.3) (EN 1.0.0-rc8).nds
+sFieldSysPtr                 w 0x021D4158     0x021D31F4
+gOverlayTemplate_Battle      w 0x020FA484     0x020F70B8
+sSoundWork                   w 0x02111958     0x021107A0
+sSeqPlayer                   w 0x021DF984     0x021DEA04
+sSaveDataPtr                 w 0x021D2228     0x021D11B0
+FieldMap_Main                c 0x021E5BE5@1   0x021E4C51
+Task_StartMenu               c 0x0203BEF1     0x0203B3E9
+PartyMenuApp_Init            c 0x02078E31     0x02076E9D
+ScriptJump                   c 0x0203FE0D     0x0203F515
+MessageFormat_New_Custom     c 0x0200BD19     0x0200BCB9
+String_New                   c 0x02026355     0x02026865
+FieldMove_InitCheckData      c 0x02067E11     0x020670AD
+FieldMove_CheckFly           c 0x0206800D     0x020672A9
+SaveArray_Party_Get          c 0x02074905     0x0207365D
+Party_GetMonByIndex          c 0x02074645     0x0207339D
+sub_02067BF8                 c 0x02067BF9     0x02066E95
+sub_02067C30                 c 0x02067C31     0x02066ECD
+FieldSystem_CreateTask       c 0x020504F1     0x0204F979
+ScriptEnvironment_New        c 0x0204001D     0x0203F725
+CreateScriptContext          c 0x020400AD     0x0203F7B5
+Task_RunScripts              c 0x0203FF45     0x0203F64D
+
+# Spanish HeartGold (gamedata/nds/ports.toml's IPKS): its low ARM9 8 bytes lower than every other build's, checked headless
+# beside the US cart (the PC, FLY's checks, the X menu's pages, EXPAND, a wild battle).
+[heartgold_es]
+us = Pokemon - HeartGold Version (USA).nds
+other = Pokemon - Edicion Oro HeartGold (Spain) [b].nds
+sFieldSysPtr                 w 0x021D4158       0x021D4178
+gOverlayTemplate_Battle      w 0x020FA484       0x020FA46C
+sSoundWork                   w 0x02111958       0x02111978
+sSeqPlayer                   w 0x021DF984       0x021DF9A4
+sSaveDataPtr                 w 0x021D2228       0x021D2248
+FieldMap_Main                c 0x021E5BE5@1     0x021E5C05
+Task_StartMenu               c 0x0203BEF1       0x0203BEE9
+PartyMenuApp_Init            c 0x02078E31       0x02078E29
+OptionsApp_Init              c 0x021E5901@54    0x021E5921
+Pokedex_Init                 c 0x021E5AA1@18    0x021E5AC1
+ScriptJump                   c 0x0203FE0D       0x0203FE05
+MessageFormat_New_Custom     c 0x0200BD19       0x0200BD19
+String_New                   c 0x02026355       0x02026355
+FieldMove_InitCheckData      c 0x02067E11       0x02067E09
+FieldMove_CheckFly           c 0x0206800D       0x02068005
+SaveArray_Party_Get          c 0x02074905       0x020748FD
+Party_GetMonByIndex          c 0x02074645       0x0207463D
+sub_02067BF8                 c 0x02067BF9       0x02067BF1
+sub_02067C30                 c 0x02067C31       0x02067C29
+FieldSystem_CreateTask       c 0x020504F1       0x020504E9
+ScriptEnvironment_New        c 0x0204001D       0x02040015
+CreateScriptContext          c 0x020400AD       0x020400A5
+Task_RunScripts              c 0x0203FF45       0x0203FF3D

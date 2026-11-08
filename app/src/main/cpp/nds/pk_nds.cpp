@@ -24,6 +24,7 @@
 #include <RTC.h>
 #include <Savestate.h>
 #include <Args.h>
+#include <AREngine.h>
 
 #include <android/log.h>
 
@@ -523,6 +524,7 @@ int pk_nds_field_bits(void)
 {
     if (!ds || !ds->field) return 0;
     int bits = pk_nds_field_state(ds->field, mainRead32, mainWrite32, ds->wildOff);
+    bits |= pk_nds_field_screen_touch(ds->field, bits, ds->nds->GPU.GPU2D_A.DispCnt);   // the intro's naming screen
     // The top screen blank and the touch screen showing something (the main menu's CONTINUE, a question asked down
     // there): the touch screen is what there is to see.
     const bool darkTop = oneColour(ds->top), darkBottom = oneColour(ds->bottom);
@@ -603,6 +605,26 @@ void pk_nds_set_cpu_boost(bool on)
 
 void pk_nds_set_wild_rates(const int32_t* triples, int n) { pk_nds_field_set_rates(triples, n); }
 
+int pk_nds_set_cheats(const uint32_t* words, int nWords, const int32_t* lengths, int nCheats)
+{
+    if (!ds) return -1;
+    std::vector<ARCode> codes;
+    int at = 0;
+    for (int i = 0; i < nCheats; i++) {
+        int len = lengths[i];
+        if (len <= 0 || (len & 1) || at + len > nWords) break;   // whole lines only (Cheats.kt never sends less)
+        ARCode c{};
+        c.Parent = nullptr;
+        c.Enabled = true;
+        c.Code.assign(words + at, words + at + len);
+        at += len;
+        codes.push_back(std::move(c));
+    }
+    int n = (int) codes.size();
+    ds->nds->AREngine.Cheats = std::move(codes);
+    return n;
+}
+
 void pk_nds_set_draw(bool draw, bool drawNext)
 {
     if (!ds) return;
@@ -667,6 +689,18 @@ int pk_nds_wide_scene(void)
     if (b & PK_NDS_FIELD_MENU) return 6;
     if (!(b & PK_NDS_FIELD_SCREEN)) return 4;
     return (b & PK_NDS_FIELD_TEXT) ? 1 : 0;
+}
+
+static int fadeFactor(u16 mb)
+{
+    const int mode = mb >> 14, k = mb & 0x1F;
+    return (mode == 1 || mode == 2) ? (k > 16 ? 16 : k) : 0;
+}
+
+int pk_nds_fade(void)
+{
+    if (!ds) return 0;
+    return fadeFactor(ds->nds->GPU.GPU2D_A.MasterBrightness) | (fadeFactor(ds->nds->GPU.GPU2D_B.MasterBrightness) << 8);
 }
 
 bool pk_nds_rom_code(char out[5])

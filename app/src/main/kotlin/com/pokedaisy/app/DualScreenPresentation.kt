@@ -14,6 +14,7 @@ import android.widget.FrameLayout
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.ui.platform.ComposeView
+import androidx.core.view.ViewCompat
 import androidx.core.view.WindowCompat
 import androidx.core.view.WindowInsetsCompat
 import androidx.core.view.WindowInsetsControllerCompat
@@ -85,6 +86,23 @@ class DualScreenPresentation(
         }
     }
 
+    /** The bars are still up after [BARS_SETTLE_MS], so they aren't a swipe's: another app has the say over them. */
+    var onBarsShowing: (() -> Unit)? = null
+
+    private val checkBars = Runnable {
+        val decor = window?.decorView ?: return@Runnable
+        if (isShowing && ViewCompat.getRootWindowInsets(decor)?.isVisible(WindowInsetsCompat.Type.navigationBars()) == true) {
+            onBarsShowing?.invoke()
+        }
+    }
+
+    /** Looks at the bars again in a moment (the game came back to the front, say). */
+    fun watchBars() {
+        val decor = window?.decorView ?: return
+        decor.removeCallbacks(checkBars)
+        decor.postDelayed(checkBars, BARS_SETTLE_MS)
+    }
+
     /**
      * Keys belong to the game: once the bottom screen is touched it holds key
      * focus, and a Dialog's own BACK would dismiss the companion while the game
@@ -98,6 +116,13 @@ class DualScreenPresentation(
     override fun onStart() {
         super.onStart()
         goFullScreen()
+        window?.decorView?.let { decor ->
+            ViewCompat.setOnApplyWindowInsetsListener(decor) { v, insets ->
+                if (insets.isVisible(WindowInsetsCompat.Type.navigationBars())) watchBars()
+                ViewCompat.onApplyWindowInsets(v, insets)
+            }
+        }
+        watchBars()
         owner.resume()
         android.util.Log.i("pokedaisy", "companion presentation shown on display ${display.displayId} (${display.name}, type ${Screens.typeOf(display)})")
     }
@@ -108,6 +133,8 @@ class DualScreenPresentation(
     }
 
     companion object {
+        private const val BARS_SETTLE_MS = 1500L
+
         /** The companion, for a second screen (or the main one, swapped). */
         fun companionView(
             context: Context,

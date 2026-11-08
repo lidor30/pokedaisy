@@ -28,7 +28,8 @@ typedef struct PkNdsFieldGame {
     uint32_t seqPlayers;       // NitroSystem's sSeqPlayer[16] (NNSSndSeqPlayer, 0x44 bytes): a volume fade running (STEADY waits it out)
     int rateBytes;             // the encounter rates are u8s (HeartGold / SoulSilver's EncounterData), not Platinum's u32s
     int callSet;               // pk_nds_call's functions for this game: 0 none, 1 Platinum's, 2 HeartGold / SoulSilver's, 3 Black's, 4 White's,
-                               // 5 Black 2's, 6 White 2's, 7 Origin HeartGold's
+                               // 5 Black 2's, 6 White 2's, 7 Origin HeartGold's, 8 French Platinum's, 9 French Black's, 10 French White's,
+                               // 100 + n / 200 + n / 300 + n the n-th HeartGold / Gen 5 / Platinum language port (pk_nds_ports_gen.h)
     int offBattleContext;      // BattleSystem.ctx (the battle process's data is the BattleSystem), 0 = unknown
     int offCommand;            // BattleContext.command: the battle controller's step (constants/battle.h's CONTROLLER_COMMAND_*)
     // Gen 5 (Black): no FieldSystem. fieldSystemPtr is then the static GameSystem pointer, and the scene comes from it:
@@ -118,6 +119,9 @@ int pk_nds_origin_heartgold(const uint8_t* rom, uint32_t romLen);
 
 /** The battle controller's step (BattleContext.command: CONTROLLER_COMMAND_*) while a battle runs, else -1. */
 int pk_nds_battle_command(const PkNdsFieldGame* game, uint32_t (*read32)(uint32_t addr));
+/** Gen 5's battle touch screen as the touch rules read it: [out] = the panel's kind, whether it takes taps, the screen
+ * btlv_scd opened (2 the bag, 3 the party). 0 when there's no battle panel (not Gen 5, no battle). nds_dump's fieldinfo. */
+int pk_nds_gen5_battle_panel(const PkNdsFieldGame* game, uint32_t (*read32)(uint32_t addr), int out[3]);
 
 /** CONTROLLER_COMMAND_SELECTION_SCREEN_INPUT: the battle waits for the player's command (FIGHT / BAG / POKéMON / RUN, a
  * move, a target - and the bag or party opened from there). */
@@ -134,6 +138,11 @@ int pk_nds_battle_3d(const PkNdsFieldGame* game);
 /** [game]'s battle command while the player chooses (Gen 4's PK_NDS_BATTLE_SELECTING; Gen 5's adapter has its own). */
 int pk_nds_battle_selecting(const PkNdsFieldGame* game);
 
+/** Before the overworld exists ([bits] only PK_NDS_FIELD_KNOWN: the title, the main menu, the new game's intro), the touch
+ * screen a Gen 4 game wants there: its naming screen (the player's and the rival's names), known by engine A's DISPCNT
+ * ([dispCntA]), since nothing the field read follows runs yet (GitHub #490). PK_NDS_FIELD_TOUCH or 0. */
+int pk_nds_field_screen_touch(const PkNdsFieldGame* game, int bits, uint32_t dispCntA);
+
 /** STEADY FF music: whether the song the game plays can be copied now (pk_nds_music copies what's playing, frozen):
  * -1 while it can't - a volume fade runs, or (Gen 5) the song's own sequence player is missing (not started yet), paused
  * or not yet back to its volume (a song resumed after a battle: paused at 0 for a few frames, then a short fade in) - else
@@ -146,6 +155,9 @@ int pk_nds_bgm_settle(const PkNdsFieldGame* game, uint32_t (*read32)(uint32_t ad
  * Gen4World.wildRates). WILD ENCOUNTERS back on puts a map's rates back from here when they're still 0 - a hold this
  * process no longer remembers, from a resume state taken while it was off. Emu thread. */
 void pk_nds_field_set_rates(const int32_t* triples, int n);
+
+/** Forget the previous RAM image's held rates after reset or state load. Emu thread. */
+void pk_nds_field_reset_wild(void);
 
 /** This frame's bits for [game], reading main RAM through [read32] (0 = unreadable). With [wildOff], WILD ENCOUNTERS
  * OFF: while the field is free, the current map's grass and surf encounter rates are held at 0 through [write32] (the

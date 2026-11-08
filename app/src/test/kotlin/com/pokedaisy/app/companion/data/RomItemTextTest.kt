@@ -20,7 +20,6 @@ class RomItemTextTest {
         val rom: String, val kind: GameKind, val cfg: NativeConfig?, val expect: Map<Int, String>,
     )
 
-    private val multiLanguage = System.getProperty("user.home") + "/Downloads/Game ROMs & Emulation/Pokemon Multi Language/"
 
     private val cases = listOf(
         // FireRed's TMs point at their moves' descriptions (TM01 = FOCUS PUNCH's).
@@ -35,12 +34,12 @@ class RomItemTextTest {
         // With no config (a table that isn't where its config says): gItems is found by its shape.
         Case("Pokemon - FireRed Version (USA, Europe) (Rev 1).gba", GameKind.FIRERED, null, mapOf(13 to "20 points", 289 to "executed last")),
         Case("Pokemon - Emerald Version (USA, Europe).gba", GameKind.EMERALD, null, mapOf(13 to "20 points")),
-        Case("../Pokemon Multi Language/Pokemon - Edicion Esmeralda (Spain)/Pokemon - Edicion Esmeralda (Spain).gba", GameKind.EMERALD, NATIVE_EMERALD_ES,
+        Case("Pokemon - Edicion Esmeralda (Spain).gba", GameKind.EMERALD, NATIVE_EMERALD_ES,
             mapOf(13 to "Restaura 20 PS", 310 to "2.º turno")),
-        Case("../Pokemon Multi Language/Pokemon - Smaragd-Edition (Germany)/Pokemon - Smaragd-Edition (Germany).gba", GameKind.EMERALD, NATIVE_EMERALD_DE, mapOf(13 to "um 20 Punkte")),
-        Case("../Pokemon Multi Language/Pokemon - Version Emeraude (France)/Pokemon - Version Emeraude (France).gba", GameKind.EMERALD, NATIVE_EMERALD_FR, mapOf(13 to "de 20 points")),
-        Case("../Pokemon Multi Language/Pokemon - Versione Smeraldo (Italy)/Pokemon - Versione Smeraldo (Italy).gba", GameKind.EMERALD, NATIVE_EMERALD_IT, mapOf(13 to "20 PS")),
-        Case("../Pokemon Multi Language/Pocket Monsters - Emerald (Japan)/Pocket Monsters - Emerald (Japan).gba", GameKind.EMERALD, NATIVE_EMERALD_JA, mapOf(13 to "20　かいふく")),
+        Case("Pokemon - Smaragd-Edition (Germany).gba", GameKind.EMERALD, NATIVE_EMERALD_DE, mapOf(13 to "um 20 Punkte")),
+        Case("Pokemon - Version Emeraude (France).gba", GameKind.EMERALD, NATIVE_EMERALD_FR, mapOf(13 to "de 20 points")),
+        Case("Pokemon - Versione Smeraldo (Italy).gba", GameKind.EMERALD, NATIVE_EMERALD_IT, mapOf(13 to "20 PS")),
+        Case("Pocket Monsters - Emerald (Japan).gba", GameKind.EMERALD, NATIVE_EMERALD_JA, mapOf(13 to "20　かいふく")),
         Case("Pokemon Unbound (v2.1.1.1).gba", GameKind.UNBOUND, NATIVE_UNBOUND_WITH_DEX, mapOf(16 to "frostbite")),
         Case("Pokemon Gaia (v3.2).gba", GameKind.GAIA, NATIVE_GAIA_V3_2, mapOf(13 to "20 points")),
         Case("Pokemon Odyssey (v4.1.1).gba", GameKind.ODYSSEY, NATIVE_ODYSSEY, mapOf(13 to "restores 50 HP")),
@@ -106,6 +105,7 @@ class RomItemTextTest {
         Case("Pokemon Wishes of Tomorrow (v1.2.6).gba", GameKind.WISHES, NATIVE_WISHES, mapOf(28 to "by 20 points")),
         // Monomyth's REPEL and ANTIDOTE, as its bag screen prints them (its own item ids, 32-byte gItems).
         Case("Pokemon Monomyth (v1.0).gba", GameKind.MONOMYTH, NATIVE_MONOMYTH, mapOf(93 to "for 100 steps", 33 to "poisoned")),
+        Case("Pokemon Monomyth (v1.1).gba", GameKind.MONOMYTH, NATIVE_MONOMYTH_V1_1, mapOf(93 to "for 100 steps", 33 to "poisoned")),
         // Dreamstone Mysteries' REPEL, as its bag shows it, and its own LAB PACKAGE ("Just a bunch of notes and things.").
         Case("Pokemon Dreamstone Mysteries.gba", GameKind.DREAMSTONE, NATIVE_DREAMSTONE, mapOf(114 to "for 100 steps", 829 to "notes and things")),
     )
@@ -148,7 +148,7 @@ class RomItemTextTest {
 
     /** scripts/port_retail.py's configs carry their ROM's table too. */
     @Test fun `ported languages`() {
-        val roms = File(multiLanguage).walkTopDown().filter { it.isFile && it.name.endsWith(".gba") }.toList()
+        val roms = retailRomFiles().toList()
         val ports = mapOf("BPRD0" to "um 20 Punkte", "AXVJ1" to "20　かいふく", "BPGS0" to "20 PS")
         var checked = 0
         for ((key, want) in ports) {

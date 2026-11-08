@@ -36,7 +36,9 @@ guide, all drawn in the game's own menu style.
 - **Two screens** (AYN Thor, Retroid Pocket Duo, ...): the game on top, the companion on the bottom screen.
 - **One screen** (Retroid Pocket 6, phones, ...): the companion opens as a window over the game or a panel beside
   it, and a HUD, a quick menu and battle buttons keep the essentials on the game screen.
-- **DS games** (Platinum, HeartGold, SoulSilver, Black, White, Black 2, White 2, and the Origin HeartGold hack): the touch screen
+- **Folding phones** (Galaxy Z Fold, Pixel Fold, ...): half open, the game goes above the fold and the companion below it,
+  like a two-screen handheld (or on facing pages when held like a book).
+- **DS games** (Platinum, HeartGold, SoulSilver, Black, White, Black 2, White 2, and the Origin HeartGold and Renegade Platinum hacks): the touch screen
   goes on the bottom screen, one tap swaps it for the companion.
 
 ## Devices
@@ -74,7 +76,8 @@ The app updates itself: it offers each new version when you open it. The full ma
   matchups, and which moves or TMs are worth learning.
 - **BAG**: every pocket with icons and descriptions, and items you can use or give from it in the games that allow it.
 - **BATTLE**: opens by itself. Your moves rated SUPER / RESISTED / NEUTRAL / IMMUNE, the foe's weaknesses,
-  ability, item and stats, suggestions for who to send out and which move to use, and the rest of the foe's team.
+  ability, item and stats, suggestions for who to send out and which move to use, and the rest of the foe's team. Its
+  touch buttons come in two looks: big coloured buttons, or a battle screen styled after the fifth generation's.
 - **MAP**: the game's region map with you on it, every place searchable, and FLY.
 - **DEX**: seen / caught, full entries, evolutions, where to catch each one and the moves it learns.
 - **GUIDE**: hints first, answers on a second tap. What's in the area you're in, the next boss's team, evolutions,
@@ -97,7 +100,7 @@ The app updates itself: it offers each new version when you open it. The full ma
   rewind, a real-time clock, save states, turbo buttons.
 - Shaders (LCD, scanlines, CRT, GBA colours, edge smoothing), overlays, and your own RetroArch overlays.
 - Makeovers: play one game as another game's hero, a Pokemon following you, day and night tints.
-- Remappable controls and hotkeys, touch controls you can lay out yourself, Bluetooth and USB controllers.
+- Remappable controls and hotkeys, touch controls you can lay out yourself (with several looks and colors, or a Delta `.deltaskin` controller skin), Bluetooth and USB controllers.
 - **Link play**: two to four GBA games at once on one link cable, to trade (trade evolutions too), battle and
   mix records between your games or two saves of one.
 - **PC boxes and save trades**: rearrange a game's PC, change its bag and moves, or trade Pokemon between two of your
@@ -107,7 +110,7 @@ The app updates itself: it offers each new version when you open it. The full ma
   launcher, and launching from frontends like
   ES-DE, Cocoon and iiSU ([iiSU](docs/iisu/README.md), [ES-DE](docs/es-de/README.md) setup).
 - Standard `.sav` / `.srm` saves, shared with mGBA and RetroArch. Every start keeps a backup of your save.
-- English, Japanese, French, German, Italian, Spanish and Portuguese.
+- English, Japanese, Korean, French, German, Italian, Spanish and Portuguese.
 
 Everything is explained in the [manual](https://pokedaisy.com/docs/).
 
@@ -125,8 +128,10 @@ shows a "not supported" notice).
 | PureRed / PureBlue (GB)        | 2.7.6                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Yellow (GB)                    | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Yellow (GB)                    | DE / FR / IT / ES          |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| Yellow Legacy (GB)             | 1.0.10                     |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ✅   |
 | Gold / Silver (GBC)            | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Crystal (GBC)                  | USA, USA/Europe rev 1, AU  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| Crystal Legacy (GBC)           | 1.3.1                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ✅   |
 | Crystal Clear (GBC)            | 2.5.11, 2.6.0 (4 builds)   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Prism (GBC)                    | 0.95 build 254             |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Polished Crystal (GBC)         | 3.2.0-3.2.3 (16 builds)    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
@@ -141,14 +146,15 @@ shows a "not supported" notice).
 | Ruby                           | ES/DE/FR/IT/JP, rev 0-1    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Sapphire                       | USA, rev 0, 1 and 2        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Sapphire                       | ES/DE/FR/IT/JP, rev 0-1    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
-| Platinum (DS)                  | USA rev 1                  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
-| HeartGold (DS)                 | USA, Germany rev 0         |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
-| SoulSilver (DS)                | USA, Germany rev 0         |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
-| Black (DS)                     | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
-| White (DS)                     | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
-| Black 2 (DS)                   | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
-| White 2 (DS)                   | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| Platinum (DS)                  | USA rev 1, FR/ES rev 0     |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| HeartGold (DS)                 | USA, EU, every language    |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
+| SoulSilver (DS)                | USA, EU, every language    |  ✅   | ✅  |   —    | ✅  |   ✅    |  ✅   |
+| Black (DS)                     | USA/Europe, every language |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| White (DS)                     | USA/Europe, every language |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| Black 2 (DS)                   | USA/Europe, every language |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| White 2 (DS)                   | USA/Europe, every language |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Origin HeartGold (DS)          | 4.0.3 English 1.0.0        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
+| Renegade Platinum (DS)         | 1.2.0, 1.3.0 (+ Classic)   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Unbound                        | 2.1.1.1                    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Unbound                        | 2.1.1.1 French             |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Radical Red                    | 4.1                        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
@@ -179,12 +185,13 @@ shows a "not supported" notice).
 | Moemon Quetzal                 | Alpha 0.8.4 Hotfix (EN/ES) |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Super Mariomon                 | 1.2.1-1.3, 1.5.1, 1.5.2    |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Recharged Emerald              | 2.2.5, 2.2.8, Rebalanced   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
+| Modern Emerald                 | 3.6                        |  ✅   | ✅  |   ◐    |  ◐  |    —    |   —   |
 | Elite Redux                    | 2.65.3b, 2.65.4.1b         |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Team Rocket Dragonsden         | 1.5                        |  ✅   | ✅  |   ◐    |  ◐  |    —    |   ◐   |
 | Team Rocket Dragonsden         | 2026 3.0.9 (Spanish)       |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Wishes of Tomorrow             | 1.2.6                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Dreamstone Mysteries           | the one release            |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
-| Monomyth                       | 1.0                        |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
+| Monomyth                       | 1.0, 1.1                   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Emerald Rogue                  | 2.2.1-EX                   |  ✅   | ✅  |   ✅   | ✅  |   ✅    |   —   |
 | SoulGold                       | 1.1.4, 1.2 (3), 1.2.1 (2)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | R.O.W.E.                       | 2.1.9.1 Experimental       |  ✅   | ✅  |   ◐    | ✅  |    ◐    |   —   |
@@ -197,7 +204,8 @@ when it isn't sure. Map ◐ means place names only,
 without the map picture. Guide ◐ means the live pages only (the wild encounters here and the next boss). Battle ◐
 means the battle panes work but haven't been checked in every kind of battle. On the DS, HeartGold's and SoulSilver's
 battles aren't read yet. Origin HeartGold's battle system is its own: the battle panes read it, but their buttons
-can't press its menus, and it has no guide yet. Team Rocket Dragonsden is DragonsdenTV's Team Rocket Edition, not FireRed Rocket Edition.
+can't press its menus, and it has no guide yet. Renegade Platinum reads as Platinum with its own types (Fairy among them),
+moves and type chart; its trainers and wild Pokémon are its own, so it has no guide yet. Team Rocket Dragonsden is DragonsdenTV's Team Rocket Edition, not FireRed Rocket Edition.
 FireRed (rev 0 and 1) and Emerald randomized with Universal Pokemon Randomizer ZX 4.6.1 work with any settings and
 seed: the companion reads the randomized types, moves, teams, wild Pokémon and items from the ROM, and the guide leaves
 out the gift and legendary Pokémon it can't know. Monomyth's natures are its own: the summary names them, and they change no stat.
@@ -254,9 +262,10 @@ This project may use AI-assisted development tools, such as Claude Code, to help
 - [Pixel Operator](https://www.dafont.com/pixel-operator.font) font by Jayvee Enaguas (CC0), and
   [Atkinson Hyperlegible](https://www.brailleinstitute.org/freefont/) by the Braille Institute (OFL 1.1) for the manual's text.
 - [PixelMplus](https://github.com/itouhiro/PixelMplus) (M+ FONT LICENSE, M+ FONTS PROJECT) for Japanese text, converted to Pixel Operator's pixel grid by `scripts/gen_jp_font.py`.
+- [Galmuri](https://github.com/quiple/galmuri) by Lee Minseo (OFL 1.1) for Korean text, converted to Pixel Operator's pixel grid by `scripts/gen_ko_font.py`.
 - The [pret](https://github.com/pret) decompilation projects (pokered, pokeyellow, pokegold, pokecrystal, pokefirered,
   pokeemerald, pokeruby, pokeplatinum, pokeheartgold), [pokeemerald-expansion](https://github.com/rh-hideout/pokeemerald-expansion)
-  and [Polished Crystal](https://github.com/Rangi42/polishedcrystal)'s and [PureRGB](https://github.com/Vortyne/pureRGB)'s source, which the game data and guides were checked against.
+  and [Polished Crystal](https://github.com/Rangi42/polishedcrystal)'s, [PureRGB](https://github.com/Vortyne/pureRGB)'s, [Yellow Legacy](https://github.com/cRz-Shadows/Pokemon_Yellow_Legacy)'s and [Crystal Legacy](https://github.com/cRz-Shadows/Pokemon_Crystal_Legacy)'s source, which the game data and guides were checked against.
 - Screen shaders: LCD and scanlines from mGBA's (MIT), the GBA colours by Pokefan531 and hunterk, LCD PAPER after
   RetroArch's simpletex_lcd and zfast_lcd (GPL 2.0+), and libretro's xBR, xBRZ and ScaleFX for edge smoothing
   (MIT, xBRZ GPL 3.0).

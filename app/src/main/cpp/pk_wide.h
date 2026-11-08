@@ -106,6 +106,11 @@ int pk_wide_configure(uint32_t crc);
 /** Whether WIDE has the ROM with this CRC32 (no core needed). */
 int pk_wide_knows(uint32_t crc);
 
+/** A hack proven to keep a retail build's engine (RetailEngine.kt): WIDE and the field reads know the ROM with CRC32
+ * [crc] by [a] (PK_WIDE_ADDRS values: the retail row [baseCrc] with the hack's own ROM tables), in [baseCrc]'s family.
+ * One such ROM at a time (a new one replaces it); refused (0) for a ROM the tables already have or an unknown base. */
+int pk_wide_add_derived(uint32_t crc, uint32_t baseCrc, const int32_t* a, int n);
+
 /** SCENE SPEEDS / AUTO-RUN / RUN INDOORS: load this game's addresses for [pk_field_state] (0 = none: it says nothing). */
 int pk_field_configure(uint32_t crc);
 
@@ -161,6 +166,32 @@ int pk_wide_view(struct mCore* core, const uint32_t* frame, uint32_t* out, struc
 /** Instead of pk_wide_view, for a frame that won't be shown (fast-forward runs several per screen refresh): keeps the
  * game's RAM after it, as the next frame drawn needs, without drawing anything - most of WIDE's cost. */
 void pk_wide_skip(struct mCore* core, const uint32_t* frame);
+
+/** pk_wide_skip for a fast-forwarded frame that IS shown: the RAM history kept, and `out` (view.w x view.h) gets the frame
+ * with the ambient glow (the blur rewind and the menus show) around it instead of the rebuilt scene - cheap, no map read.
+ * Returns 0 and draws nothing for an unconfigured game. A Game Boy game gets the bars its menus have (the glow too
+ * where PK_WIDE_GB_GLOW is set: the libretro core). */
+int pk_wide_glow(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView view);
+/** Off, the per-line record isn't kept (only the scene is wanted). On by default. */
+void pk_wide_lines(int on);
+#ifdef PK_WIDE_CACHE
+/** The margins kept between frames (a 3DS): 0 off, 1 on, 2 on with every animated cell redrawn at once. */
+void pk_wide_cache(int mode);
+/** Frames drawn from the cache so far. */
+int pk_wide_cache_hits(void);
+// On: a cached view leaves the frame's own rectangle of `out` alone and the host fills it from the frame (a 3DS's draw
+// thread, which reads every pixel anyway). pk_wide_holed: the last view did.
+void pk_wide_hole(int on);
+int pk_wide_holed(void);
+// On: a cached view only decides, and its drawing waits for pk_wide_finish, which may run on another thread beside the next
+// frame (pk_wide_due: there's some to do; `out` isn't ready until it's done). `join` waits for that finish, and is called
+// before the next frame's lines are recorded and before the next view.
+void pk_wide_later(int on, void (*join)(void));
+int pk_wide_due(void);
+void pk_wide_finish(void);
+// For the next pk_wide_view only: the frame isn't whole yet, and `wait` is called the moment its pixels are needed.
+void pk_wide_frame_wait(void (*wait)(void*), void* ctx);
+#endif
 // A Game Boy game configured with nothing to draw (EXPAND off): its scene only (pk_wide_scene), for the FIELD HUD -
 // pk_wide_gb.c's match run on a 1 x 1 window; `skip` (a fast-forwarded frame nobody sees) only notes its RAM.
 void pk_wide_probe(struct mCore* core, const uint32_t* frame, int skip);
@@ -269,6 +300,8 @@ int pk_wide_gb_configure(uint32_t crc);
 void pk_wide_gb_reset(void);
 /** pk_wide_view's twin; `out` NULL = pk_wide_skip's (only the RAM after the frame is kept). */
 int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView view, uint32_t* centre);
+/** pk_wide_glow's twin for a Game Boy game: the frame over its menus' bars. */
+int pk_wide_gb_glow(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView view);
 int pk_wide_gb_scene(void);
 int pk_wide_gb_wants_close(void);
 int pk_wide_gb_last_mode(void);

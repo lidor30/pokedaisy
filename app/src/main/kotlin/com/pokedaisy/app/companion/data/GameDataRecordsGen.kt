@@ -185,6 +185,234 @@ val TRADE_EVO_EMERALD: TradeEvoFns by lazy {
     )
 }
 
+// TMs / HMs from the ITEMS tab (TmTeach.kt's TmFns): USE opens the game's own TM screen. pret's build at the pinned
+// commit, clean (byte for byte retail, SHA1 f3ae0881...), and its ELF.
+val TM_EMERALD: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0203CE7CL,
+        itemUseCb = 0x03006328L,
+        itemUseCbTmhm = 0x081B6DC4L,
+        showPartyMenuForItemUse = 0x081B617CL,
+        partyMenu = 0x0203CEC8L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x081B01E0L,
+        mainCallback2 = 0x030022C4L,
+        setMainCallback2 = 0x08000540L,
+        returnToField = 0x080860C8L,
+        cleanupOverworld = 0x08085D34L,
+        fadeScreen = 0x080ABCD0L,
+        lockControls = 0x08098E54L,
+        unlockControls = 0x08098E60L,
+        codeCrcs = listOf(0xF253CF6EL, 0x34D2BE1CL, 0x99B75656L, 0x6228571DL, 0x224FD691L, 0x4A3D66F5L, 0xF9959006L, 0xB9FB85A7L, 0xB037C8AFL),
+    )
+}
+
+// FLASH from the QUICK MENU (Flash.kt's FlashFns): the same build. FIELD_MOVE_FLASH is field move 1, so the Knuckle Badge;
+// SetUpFieldMove_Flash also opens the Ancient Tomb's sealed wall (SetUpPuzzleEffectRegisteel).
+val FLASH_EMERALD: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0809D790L,
+        badgeFlag = 0x868, // FLAG_BADGE02_GET
+        litFlag = 0x888, // FLAG_SYS_USE_FLASH
+        setUpFieldMoveFlash = 0x081370FCL,
+        menuFieldCallback = 0x03005DB0L,
+        postMenuFieldCallback = 0x0203CEECL,
+        fieldCallbacks = listOf(0x08137178L, 0x08179918L), // FieldCallback_Flash, SetUpPuzzleEffectRegisteel
+        partyMenuSlotId = 0x0203CED1L,
+        mapHeader = 0x02037318L,
+        codeCrcs = listOf(0xBCF97BF3L, 0x532E8E01L, 0x39FAB5C6L, 0x698BF3CBL),
+    )
+}
+
+// The TM screen (TmTeach.kt) and FLASH (Flash.kt) in Emerald Legacy v1.1.4: its public source (cRz-Shadows/Pokemon_Emerald_Legacy,
+// tag V1.1.4) built with agbcc is the release byte for byte (SHA1 cbd71af6...), addresses from its ELF. Retail's code and
+// field-move order; its 960 trainer flags put the system flags at 0x8C0 (FLAG_BADGE02_GET 0x8C8, FLAG_SYS_USE_FLASH 0x8E8).
+val TM_EMERALD_LEGACY: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0203D1A4L,
+        itemUseCb = 0x03006508L,
+        itemUseCbTmhm = 0x081BB7B0L,
+        showPartyMenuForItemUse = 0x081BAAC0L,
+        partyMenu = 0x0203D1F0L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x081B4B24L,
+        mainCallback2 = 0x030024A4L,
+        setMainCallback2 = 0x08000544L,
+        returnToField = 0x08087170L,
+        cleanupOverworld = 0x08086DDCL,
+        fadeScreen = 0x080AD118L,
+        lockControls = 0x0809A1F0L,
+        unlockControls = 0x0809A1FCL,
+        codeCrcs = listOf(0x2BB4FFA2L, 0x34D2BE1CL, 0x91CEF147L, 0x79930E68L, 0x352E62B9L, 0xE0EF37E5L, 0xF9959006L, 0xB9FB85A7L, 0xB037C8AFL),
+    )
+}
+
+val FLASH_EMERALD_LEGACY: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0809EBFCL,
+        badgeFlag = 0x8C8, // FLAG_BADGE02_GET
+        litFlag = 0x8E8, // FLAG_SYS_USE_FLASH
+        setUpFieldMoveFlash = 0x0813AB7CL,
+        menuFieldCallback = 0x03005F90L,
+        postMenuFieldCallback = 0x0203D214L,
+        fieldCallbacks = listOf(0x0813ABF8L, 0x0817DA6CL), // FieldCallback_Flash, SetUpPuzzleEffectRegisteel
+        partyMenuSlotId = 0x0203D1F9L,
+        mapHeader = 0x020374A4L,
+        codeCrcs = listOf(0xBCF97BF3L, 0x8E37859EL, 0x2A2B8D7CL, 0xB6C3FB91L),
+    )
+}
+
+// ---- gamedata/gen3/records/expansion_flash.toml ----
+
+// Pokemon Lazarus (v2.0).gba: found by scripts/find_flash_expansion.py.
+val FLASH_LAZARUS: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x081148A0L,
+        badgeFlag = 0x869,
+        litFlag = 0x888,
+        setUpFieldMoveFlash = 0x0814D2FCL,
+        menuFieldCallback = 0x030036ECL,
+        postMenuFieldCallback = 0x0201B6A0L,
+        fieldCallbacks = listOf(0x0814D368L, 0x080DE6C0L), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x0201B685L,
+        mapHeader = 0x0200B06CL,
+        codeCrcs = listOf(0x6DE8DF3FL, 0x35B71A40L, 0x920FD22DL, 0x36F1F74EL),
+        monMoveField = 20,
+        monEggField = 52,
+    )
+}
+
+// Pokemon Emerald Imperium (v1.3.1).gba: found by scripts/find_flash_expansion.py.
+val FLASH_IMPERIUM: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x08116E54L,
+        badgeFlag = 0x868,
+        litFlag = 0x888,
+        setUpFieldMoveFlash = 0x08149F1CL,
+        menuFieldCallback = 0x0300626CL,
+        postMenuFieldCallback = 0x02037104L,
+        fieldCallbacks = listOf(0x08149F88L, 0x080DA87CL), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x020370E9L,
+        mapHeader = 0x0200A68CL,
+        codeCrcs = listOf(0xF7861D9EL, 0x2EC876F4L, 0x7A5DE0D4L, 0x16927E84L),
+        monMoveField = 20,
+        monEggField = 52,
+    )
+}
+
+// Pokemon Heart and Soul (v2.0.6).gba: found by scripts/find_flash_expansion.py.
+val FLASH_HEART_AND_SOUL: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0811E8D4L,
+        badgeFlag = 0x880,
+        litFlag = 0x865,
+        setUpFieldMoveFlash = 0x0815369CL,
+        menuFieldCallback = 0x03006054L,
+        postMenuFieldCallback = 0x02034224L,
+        fieldCallbacks = listOf(0x0815331CL, 0x080EB184L), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x02034205L,
+        mapHeader = 0x02001D0CL,
+        codeCrcs = listOf(0x6DE8DF3FL, 0x0E23670EL, 0x10B4A155L, 0xF08ADC9DL),
+        monMoveField = 20,
+        monEggField = 54,
+    )
+}
+
+// Pokemon SoulGold (v1.1.4).gba: found by scripts/find_flash_expansion.py.
+val FLASH_SOULGOLD: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x08134194L,
+        badgeFlag = 0x993,
+        litFlag = 0x9B4,
+        setUpFieldMoveFlash = 0x08168AF0L,
+        menuFieldCallback = 0x03005A3CL,
+        postMenuFieldCallback = 0x02038D1CL,
+        fieldCallbacks = listOf(0x08168770L, 0x080FDCF8L, 0x0822E9A8L), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x02038D2DL,
+        mapHeader = 0x02003828L,
+        caveOff = 0x16,
+        codeCrcs = listOf(0xF7861D9EL, 0x610C2F99L, 0x03207743L, 0xC688B823L, 0x3973A4C2L),
+        monMoveField = 21,
+        monEggField = 55,
+    )
+}
+
+// Pokemon SoulGold (v1.2).gba: found by scripts/find_flash_expansion.py.
+val FLASH_SOULGOLD_V1_2: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x081348C8L,
+        badgeFlag = 0x993,
+        litFlag = 0x9B4,
+        setUpFieldMoveFlash = 0x081691E8L,
+        menuFieldCallback = 0x03005A3CL,
+        postMenuFieldCallback = 0x02038D24L,
+        fieldCallbacks = listOf(0x08169184L, 0x080FE36CL, 0x0822F28CL), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x02038D35L,
+        mapHeader = 0x02003828L,
+        caveOff = 0x16,
+        codeCrcs = listOf(0xF7861D9EL, 0xC10259DCL, 0xA034D790L, 0xA0DFF6C9L, 0x8FC635EEL),
+        monMoveField = 21,
+        monEggField = 55,
+    )
+}
+
+// Pokemon SoulGold (v1.2) (Alt 1).gba: found by scripts/find_flash_expansion.py.
+val FLASH_SOULGOLD_V1_2B: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x081348B8L,
+        badgeFlag = 0x993,
+        litFlag = 0x9B4,
+        setUpFieldMoveFlash = 0x081691D8L,
+        menuFieldCallback = 0x03005A3CL,
+        postMenuFieldCallback = 0x02038D24L,
+        fieldCallbacks = listOf(0x08169174L, 0x080FE35CL, 0x0822F1F4L), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x02038D35L,
+        mapHeader = 0x02003828L,
+        caveOff = 0x16,
+        codeCrcs = listOf(0xF7861D9EL, 0xDDF63F0FL, 0x70741303L, 0xE32B39C3L, 0xF44154A1L),
+        monMoveField = 21,
+        monEggField = 55,
+    )
+}
+
+// Pokemon SoulGold (v1.2) (Alt 2).gba: found by scripts/find_flash_expansion.py.
+val FLASH_SOULGOLD_V1_2C: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x08134924L,
+        badgeFlag = 0x993,
+        litFlag = 0x9B4,
+        setUpFieldMoveFlash = 0x08169244L,
+        menuFieldCallback = 0x03005A3CL,
+        postMenuFieldCallback = 0x02038D24L,
+        fieldCallbacks = listOf(0x081691E0L, 0x080FE36CL, 0x0822F2ECL), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x02038D35L,
+        mapHeader = 0x02003828L,
+        caveOff = 0x16,
+        codeCrcs = listOf(0xF7861D9EL, 0xDC2B8583L, 0x4C0F490FL, 0x2637151EL, 0x5968735DL),
+        monMoveField = 21,
+        monEggField = 55,
+    )
+}
+
+// Pokemon SoulGold (v1.2.1).gba: found by scripts/find_flash_expansion.py.
+val FLASH_SOULGOLD_V1_2_1: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x08136DECL,
+        badgeFlag = 0x993,
+        litFlag = 0x9B4,
+        setUpFieldMoveFlash = 0x0816B680L,
+        menuFieldCallback = 0x03005A3CL,
+        postMenuFieldCallback = 0x02038B64L,
+        fieldCallbacks = listOf(0x0816B61CL, 0x08100610L, 0x082339CCL), // FieldCallback_Flash, then the puzzles'
+        partyMenuSlotId = 0x02038B75L,
+        mapHeader = 0x02003830L,
+        caveOff = 0x16,
+        codeCrcs = listOf(0xF7861D9EL, 0xB53F8889L, 0x00EDF75FL, 0x815BB5CAL, 0xC32C92AEL),
+        monMoveField = 21,
+        monEggField = 55,
+    )
+}
+
 // ---- gamedata/gen3/records/firered.toml ----
 
 // FireRed's own gBagPockets[] index order (item.c: gBagPockets[POCKET_X-1] =
@@ -509,5 +737,332 @@ val TRADE_EVO_LEAFGREEN_REV1: TradeEvoFns by lazy {
         returnToField = 0x080567F0L,
         lockControls = 0x08069954L,
         codeCrcs = listOf(0xA970F637L, 0x8B13D433L, 0x95CA9A3EL, 0x0111A86EL),
+    )
+}
+
+// TMs / HMs from the ITEMS tab (TmTeach.kt's TmFns): USE opens the game's own TM screen. pret's build at the pinned
+// commit, firered_rev1 (byte for byte retail, SHA1 dd5945db...), and its ELF.
+val TM_FIRERED_REV1: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0203AD30L,
+        itemUseCb = 0x03005E98L,
+        itemUseCbTmhm = 0x08125BB8L,
+        showPartyMenuForItemUse = 0x08124D04L,
+        partyMenu = 0x0203B0A0L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x0811EC48L,
+        mainCallback2 = 0x030030F4L,
+        setMainCallback2 = 0x08000558L,
+        returnToField = 0x080567F0L,
+        cleanupOverworld = 0x08056404L,
+        fadeScreen = 0x0807A82CL,
+        lockControls = 0x08069954L,
+        unlockControls = 0x08069960L,
+        codeCrcs = listOf(0xEA99DF01L, 0xAA3B20FFL, 0x1655AE08L, 0x7FD43C20L, 0x95CA9A3EL, 0xCE27BF5AL, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL),
+    )
+}
+
+// FLASH from the QUICK MENU (Flash.kt's FlashFns): the same build. FIELD_MOVE_FLASH is field move 0, so the Boulder Badge.
+val FLASH_FIRERED_REV1: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0806E6E4L,
+        badgeFlag = 0x820, // FLAG_BADGE01_GET
+        litFlag = 0x806, // FLAG_SYS_FLASH_ACTIVE
+        setUpFieldMoveFlash = 0x080C9B40L,
+        menuFieldCallback = 0x03005024L,
+        postMenuFieldCallback = 0x0203B0C4L,
+        fieldCallbacks = listOf(0x080C9B88L), // FieldCallback_Flash
+        partyMenuSlotId = 0x0203B0A9L,
+        mapHeader = 0x02036DFCL,
+        codeCrcs = listOf(0x07BEBC3AL, 0x95A07BD8L, 0x99857EDDL),
+    )
+}
+
+// The TM screen (TmTeach.kt) and FLASH (Flash.kt): retail FireRed rev 0, pret's pokefirered at the pinned commit built as
+// firered (byte for byte retail rev 0, SHA1 41cb23d8...), and its ELF.
+val TM_FIRERED_REV0: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0203AD30L,
+        itemUseCb = 0x03005E98L,
+        itemUseCbTmhm = 0x08125B40L,
+        showPartyMenuForItemUse = 0x08124C8CL,
+        partyMenu = 0x0203B0A0L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x0811EBD0L,
+        mainCallback2 = 0x030030F4L,
+        setMainCallback2 = 0x08000544L,
+        returnToField = 0x080567DCL,
+        cleanupOverworld = 0x080563F0L,
+        fadeScreen = 0x0807A818L,
+        lockControls = 0x08069940L,
+        unlockControls = 0x0806994CL,
+        codeCrcs = listOf(0x9CA850AAL, 0xAA3B20FFL, 0x3099DC9BL, 0x7FD43C20L, 0xB892BBB7L, 0xE67BC364L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL),
+    )
+}
+
+val FLASH_FIRERED_REV0: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0806E6D0L,
+        badgeFlag = 0x820, // FLAG_BADGE01_GET
+        litFlag = 0x806, // FLAG_SYS_FLASH_ACTIVE
+        setUpFieldMoveFlash = 0x080C9B2CL,
+        menuFieldCallback = 0x03005024L,
+        postMenuFieldCallback = 0x0203B0C4L,
+        fieldCallbacks = listOf(0x080C9B74L), // FieldCallback_Flash
+        partyMenuSlotId = 0x0203B0A9L,
+        mapHeader = 0x02036DFCL,
+        codeCrcs = listOf(0x07BEBC3AL, 0x95A07BD8L, 0xEFB4F176L),
+        // CursorCB_FieldMove's badge check (0x081245A4 + 0x78): the hacks edited into rev 0 keep it (Ash Gray, Ghost Grey, Let's Go,
+        // Odyssey, Ultra Violet), patch it to "always" (Gaia, Orange Islands, Rocket Edition) or jump to CFRU's own (Unbound & co.).
+        badgeCheck = 0x0812461CL,
+        badgeCheckCrc = 0xD3F21DE4L,
+    )
+}
+
+// The TM screen (TmTeach.kt) and FLASH (Flash.kt): retail LeafGreen rev 0, pret's pokefirered at the pinned commit built as
+// leafgreen (byte for byte retail, SHA1 574fa542...), and its ELF.
+val TM_LEAFGREEN_REV0: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0203AD30L,
+        itemUseCb = 0x03005E98L,
+        itemUseCbTmhm = 0x08125B18L,
+        showPartyMenuForItemUse = 0x08124C64L,
+        partyMenu = 0x0203B0A0L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x0811EBA8L,
+        mainCallback2 = 0x030030F4L,
+        setMainCallback2 = 0x08000544L,
+        returnToField = 0x080567DCL,
+        cleanupOverworld = 0x080563F0L,
+        fadeScreen = 0x0807A7ECL,
+        lockControls = 0x08069940L,
+        unlockControls = 0x0806994CL,
+        codeCrcs = listOf(0x679AE1F0L, 0xAA3B20FFL, 0x1DE165E1L, 0x7FD43C20L, 0xB892BBB7L, 0xAD9CEAC8L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL),
+    )
+}
+
+val FLASH_LEAFGREEN_REV0: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0806E6D0L,
+        badgeFlag = 0x820, // FLAG_BADGE01_GET
+        litFlag = 0x806, // FLAG_SYS_FLASH_ACTIVE
+        setUpFieldMoveFlash = 0x080C9B00L,
+        menuFieldCallback = 0x03005024L,
+        postMenuFieldCallback = 0x0203B0C4L,
+        fieldCallbacks = listOf(0x080C9B48L), // FieldCallback_Flash
+        partyMenuSlotId = 0x0203B0A9L,
+        mapHeader = 0x02036DFCL,
+        codeCrcs = listOf(0x07BEBC3AL, 0xDA630667L, 0xEA609AF5L),
+    )
+}
+
+// The TM screen (TmTeach.kt) and FLASH (Flash.kt): retail LeafGreen rev 1, pret's pokefirered at the pinned commit built as
+// leafgreen_rev1 (byte for byte retail, SHA1 7862c67b...), and its ELF.
+val TM_LEAFGREEN_REV1: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0203AD30L,
+        itemUseCb = 0x03005E98L,
+        itemUseCbTmhm = 0x08125B90L,
+        showPartyMenuForItemUse = 0x08124CDCL,
+        partyMenu = 0x0203B0A0L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x0811EC20L,
+        mainCallback2 = 0x030030F4L,
+        setMainCallback2 = 0x08000558L,
+        returnToField = 0x080567F0L,
+        cleanupOverworld = 0x08056404L,
+        fadeScreen = 0x0807A800L,
+        lockControls = 0x08069954L,
+        unlockControls = 0x08069960L,
+        codeCrcs = listOf(0xAB261E3BL, 0xAA3B20FFL, 0xBF379CB9L, 0x7FD43C20L, 0x95CA9A3EL, 0xD3AF9AFEL, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL),
+    )
+}
+
+val FLASH_LEAFGREEN_REV1: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x0806E6E4L,
+        badgeFlag = 0x820, // FLAG_BADGE01_GET
+        litFlag = 0x806, // FLAG_SYS_FLASH_ACTIVE
+        setUpFieldMoveFlash = 0x080C9B14L,
+        menuFieldCallback = 0x03005024L,
+        postMenuFieldCallback = 0x0203B0C4L,
+        fieldCallbacks = listOf(0x080C9B5CL), // FieldCallback_Flash
+        partyMenuSlotId = 0x0203B0A9L,
+        mapHeader = 0x02036DFCL,
+        codeCrcs = listOf(0x07BEBC3AL, 0xDA630667L, 0x80A86C54L),
+    )
+}
+
+// ---- gamedata/gen3/records/ported.toml ----
+
+// FLASH (Flash.kt): retail Ruby rev 1 and rev 2 (the same addresses and code), pret's pokeruby built as ruby_rev1 /
+// ruby_rev2 (byte for byte retail) and its ELF. FLASH is field move 1 here as in Emerald: the Knuckle Badge. Its party
+// menu sets gFieldCallback (not a gFieldCallback2), and the cut-in reads gLastFieldPokeMenuOpened.
+val FLASH_RUBY: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x08069360L,
+        badgeFlag = 0x808, // FLAG_BADGE02_GET
+        litFlag = 0x828, // FLAG_SYS_USE_FLASH
+        setUpFieldMoveFlash = 0x0810CBD4L,
+        menuFieldCallback = 0x0300485CL,
+        postMenuFieldCallback = 0x03005CE4L,
+        fieldCallbacks = listOf(0x0810CC1CL), // sub_810CBFC, its FieldCallback_Flash
+        partyMenuSlotId = 0x03005CE0L,
+        mapHeader = 0x0202E828L,
+        codeCrcs = listOf(0xAC4D17B2L, 0xC9BC4238L, 0xA460DEAEL),
+    )
+}
+
+// FLASH (Flash.kt): retail Sapphire rev 1 and rev 2 (the same addresses and code), pret's pokeruby built as sapphire_rev1 /
+// sapphire_rev2 (byte for byte retail) and its ELF. FLASH is field move 1 here as in Emerald: the Knuckle Badge. Its party
+// menu sets gFieldCallback (not a gFieldCallback2), and the cut-in reads gLastFieldPokeMenuOpened.
+val FLASH_SAPPHIRE: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x08069364L,
+        badgeFlag = 0x808, // FLAG_BADGE02_GET
+        litFlag = 0x828, // FLAG_SYS_USE_FLASH
+        setUpFieldMoveFlash = 0x0810CBD4L,
+        menuFieldCallback = 0x0300485CL,
+        postMenuFieldCallback = 0x03005CE4L,
+        fieldCallbacks = listOf(0x0810CC1CL), // sub_810CBFC, its FieldCallback_Flash
+        partyMenuSlotId = 0x03005CE0L,
+        mapHeader = 0x0202E828L,
+        codeCrcs = listOf(0xAC4D17B2L, 0x19F9C4F9L, 0xA460DEAEL),
+    )
+}
+
+// FLASH: retail Ruby rev 0, pret's pokeruby built as ruby (byte for byte retail, SHA1 f28b6ffc...): rev 1's code a few bytes earlier.
+val FLASH_RUBY_REV0: FlashFns by lazy {
+    FLASH_RUBY.copy(
+        flagGet = 0x08069340L,
+        setUpFieldMoveFlash = 0x0810CBB4L,
+        fieldCallbacks = listOf(0x0810CBFCL),
+        codeCrcs = listOf(0xAC4D17B2L, 0xC9BC4238L, 0xA460DEAEL),
+    )
+}
+
+// FLASH: retail Sapphire rev 0, pret's pokeruby built as sapphire (byte for byte retail, SHA1 3ccbbd45...): rev 1's code a few bytes earlier.
+val FLASH_SAPPHIRE_REV0: FlashFns by lazy {
+    FLASH_SAPPHIRE.copy(
+        flagGet = 0x08069344L,
+        setUpFieldMoveFlash = 0x0810CBB4L,
+        fieldCallbacks = listOf(0x0810CBFCL),
+        codeCrcs = listOf(0xAC4D17B2L, 0x19F9C4F9L, 0xA460DEAEL),
+    )
+}
+
+// ---- gamedata/gen3/records/recharged_emerald.toml ----
+
+// Pokemon Recharged Emerald (v2.2.5).gba: found by scripts/find_tm_flash_recharged_emerald.py.
+val TM_RECHARGED_EMERALD_V2_2_5: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0200C27CL,
+        itemUseCb = 0x03007254L,
+        itemUseCbTmhm = 0x08154814L,
+        showPartyMenuForItemUse = 0x08153AC4L,
+        partyMenu = 0x02037338L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x0814D150L,
+        mainCallback2 = 0x030036D8L,
+        setMainCallback2 = 0x080005B4L,
+        returnToField = 0x0814843CL,
+        cleanupOverworld = 0x08147C04L,
+        fadeScreen = 0x08105B34L,
+        lockControls = 0x081AEF7CL,
+        unlockControls = 0x081AEF88L,
+        codeCrcs = listOf(0x7F7031CEL, 0x5F9D3BA5L, 0x35C4C1D9L, 0xEB398B2AL, 0xAC389CEDL, 0xBD04009FL, 0x4EE01A6CL, 0x4522C4C5L, 0xFAD9A57BL),
+    )
+}
+
+val FLASH_RECHARGED_EMERALD_V2_2_5: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x080DA680L,
+        badgeFlag = 0x868, // FLAG_BADGE02_GET
+        litFlag = 0x888, // FLAG_SYS_USE_FLASH
+        setUpFieldMoveFlash = 0x0810B2C4L,
+        menuFieldCallback = 0x0300724CL,
+        postMenuFieldCallback = 0x0203735CL,
+        fieldCallbacks = listOf(0x0810B330L, 0x080ACFE0L), // FieldCallback_Flash, SetUpPuzzleEffectRegisteel
+        partyMenuSlotId = 0x02037341L,
+        mapHeader = 0x0200C1ACL,
+        codeCrcs = listOf(0x8DCF82E1L, 0x7851F06CL, 0x81211C3BL, 0x0042DC24L),
+        monMoveField = 22,
+        monEggField = 54,
+    )
+}
+
+// Pokemon Recharged Emerald (v2.2.8).gba: found by scripts/find_tm_flash_recharged_emerald.py.
+val TM_RECHARGED_EMERALD_V2_2_8: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0200C27CL,
+        itemUseCb = 0x03007270L,
+        itemUseCbTmhm = 0x08155760L,
+        showPartyMenuForItemUse = 0x08154A10L,
+        partyMenu = 0x02037338L,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x0814E07CL,
+        mainCallback2 = 0x030036D8L,
+        setMainCallback2 = 0x080005A4L,
+        returnToField = 0x08149334L,
+        cleanupOverworld = 0x08148B10L,
+        fadeScreen = 0x08106790L,
+        lockControls = 0x081B0924L,
+        unlockControls = 0x081B0930L,
+        codeCrcs = listOf(0x7D205FB1L, 0x08D14DBDL, 0xDBD80476L, 0xEB398B2AL, 0x29D492CFL, 0x5E7C0711L, 0xDB5075E4L, 0x4522C4C5L, 0xFAD9A57BL),
+    )
+}
+
+val FLASH_RECHARGED_EMERALD_V2_2_8: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x080DB1E4L,
+        badgeFlag = 0x868, // FLAG_BADGE02_GET
+        litFlag = 0x888, // FLAG_SYS_USE_FLASH
+        setUpFieldMoveFlash = 0x0810BEE4L,
+        menuFieldCallback = 0x03007268L,
+        postMenuFieldCallback = 0x0203735CL,
+        fieldCallbacks = listOf(0x0810BF50L, 0x080AD884L), // FieldCallback_Flash, SetUpPuzzleEffectRegisteel
+        partyMenuSlotId = 0x02037341L,
+        mapHeader = 0x0200C1ACL,
+        codeCrcs = listOf(0x6DE8DF3FL, 0x51093BB3L, 0x4C784BF4L, 0x06FAD8C3L),
+        monMoveField = 22,
+        monEggField = 54,
+    )
+}
+
+// Pokemon Recharged Emerald Rebalanced (v2.2.8).gba: found by scripts/find_tm_flash_recharged_emerald.py.
+val TM_RECHARGED_EMERALD_REBALANCED_V2_2_8: TmFns by lazy {
+    TmFns(
+        specialVarItemId = 0x0200C27CL,
+        itemUseCb = 0x0300727CL,
+        itemUseCbTmhm = 0x0815598CL,
+        showPartyMenuForItemUse = 0x08154C3CL,
+        partyMenu = 0x0203734CL,
+        partyMenuSlotOff = 9,
+        initPartyMenu = 0x0814E290L,
+        mainCallback2 = 0x030036D8L,
+        setMainCallback2 = 0x080005A4L,
+        returnToField = 0x08149548L,
+        cleanupOverworld = 0x08148D24L,
+        fadeScreen = 0x08106894L,
+        lockControls = 0x081B0A40L,
+        unlockControls = 0x081B0A4CL,
+        codeCrcs = listOf(0x31A404E1L, 0x08D14DBDL, 0xD5094F39L, 0xEB398B2AL, 0xFF703FF2L, 0xF1822E03L, 0xDB5075E4L, 0x4522C4C5L, 0xFAD9A57BL),
+    )
+}
+
+val FLASH_RECHARGED_EMERALD_REBALANCED_V2_2_8: FlashFns by lazy {
+    FlashFns(
+        flagGet = 0x080DB2E8L,
+        badgeFlag = 0x868, // FLAG_BADGE02_GET
+        litFlag = 0x888, // FLAG_SYS_USE_FLASH
+        setUpFieldMoveFlash = 0x0810BFE8L,
+        menuFieldCallback = 0x03007274L,
+        postMenuFieldCallback = 0x02037370L,
+        fieldCallbacks = listOf(0x0810C054L, 0x080AD8E4L), // FieldCallback_Flash, SetUpPuzzleEffectRegisteel
+        partyMenuSlotId = 0x02037355L,
+        mapHeader = 0x0200C1ACL,
+        codeCrcs = listOf(0x6DE8DF3FL, 0xB135D945L, 0x250CAFA5L, 0x6ACA142FL),
+        monMoveField = 22,
+        monEggField = 54,
     )
 }

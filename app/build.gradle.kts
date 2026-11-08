@@ -56,8 +56,10 @@ fun featureFlag(name: String): Boolean =
     (findProperty("pokedaisy.$name") ?: localProps?.getProperty("pokedaisy.$name"))?.toString()?.trim()?.toBoolean() == true
 
 // The ABIs every native library is built for: arm64 always, x86_64 too for the emulator
-// (`-Ppokedaisy.x86_64=true`).
-val nativeAbis = listOf("arm64-v8a") + if (featureFlag("x86_64")) listOf("x86_64") else emptyList()
+// (`-Ppokedaisy.x86_64=true`), 32-bit ARM for a device running a 32-bit Android (`-Ppokedaisy.armv7=true`).
+val nativeAbis = listOf("arm64-v8a") +
+    (if (featureFlag("x86_64")) listOf("x86_64") else emptyList()) +
+    (if (featureFlag("armv7")) listOf("armeabi-v7a") else emptyList())
 
 android {
     namespace = "com.pokedaisy.app"
@@ -70,8 +72,8 @@ android {
         targetSdk = 34
         // Bump both for every GitHub release: the updater compares versionName
         // against the release tag (v<versionName>), Android needs versionCode to grow.
-        versionCode = 18
-        versionName = "1.4.0"
+        versionCode = 19
+        versionName = "1.5.0"
         // Whether this build can send crash reports at all (CrashReports.available).
         buildConfigField("boolean", "CRASHLYTICS", crashlytics.toString())
         buildConfigField("String", "SCREENSCRAPER_DEV_ID", "\"${buildSecret("screenscraper.devId", "SCREENSCRAPER_DEV_ID")}\"")
@@ -85,7 +87,7 @@ android {
         buildConfigField("boolean", "FEATURE_COOP", featureFlag("coop").toString())
 
         ndk {
-            // Thor is arm64; add armeabi-v7a later only if a target device needs it.
+            // Thor is arm64; armeabi-v7a (a 32-bit Android) only with the armv7 flag above.
             abiFilters += nativeAbis
         }
         externalNativeBuild {
@@ -125,6 +127,14 @@ android {
     }
 
     buildTypes {
+        // The release build's code (not debuggable, so ART compiles it and installs the libraries' baseline profiles)
+        // under the debug key, so it installs over a debug build: for timing a device (`assembleBenchmark`).
+        create("benchmark") {
+            initWith(getByName("debug"))
+            isDebuggable = false
+            signingConfig = signingConfigs.getByName("debug")
+            matchingFallbacks += listOf("release")
+        }
         release {
             isMinifyEnabled = false
             if (keystoreProps != null) signingConfig = signingConfigs.getByName("release")
@@ -182,6 +192,7 @@ val licensesAsset by tasks.registering {
         "LCD and Scanlines shaders - MIT" to "third_party/licenses/mGBA-shaders-MIT.txt",
         "xBR, xBRZ and ScaleFX shaders (libretro glsl-shaders) - MIT, xBRZ also GNU GPL 3.0" to "third_party/licenses/libretro-shaders.txt",
         "PixelMplus - M+ FONT LICENSE" to "app/src/main/assets/fonts/LICENSE-PixelMplus.txt",
+        "Galmuri - SIL Open Font License 1.1" to "app/src/main/assets/fonts/LICENSE-Galmuri.txt",
         "Atkinson Hyperlegible - SIL Open Font License 1.1" to "app/src/main/assets/fonts/LICENSE-AtkinsonHyperlegible.txt",
         "PokeAPI data - BSD 3-Clause" to "third_party/licenses/PokeAPI-BSD-3-Clause.txt",
         "AndroidX, Jetpack Compose, Kotlin, Apache Commons Compress / IO / Codec / Lang, Firebase Crashlytics, ZXing, OkHttp, Okio - Apache License 2.0" to "third_party/licenses/Apache-2.0.txt",
@@ -250,6 +261,9 @@ val jdkHttpServerJar by tasks.registering(Zip::class) {
 
 dependencies {
     implementation("androidx.core:core-ktx:1.13.1")
+    // FOLD LAYOUT: a foldable's hinge and posture (WindowInfoTracker's FoldingFeature), for a plain Activity.
+    implementation("androidx.window:window:1.3.0")
+    implementation("androidx.window:window-java:1.3.0")
     implementation("androidx.activity:activity-compose:1.9.1")
     // Firebase (play-services-basement) brings androidx.fragment 1.1.0, too old for registerForActivityResult
     // (lintVitalRelease's InvalidFragmentVersionForActivityResult): ask for one that matches activity 1.9.

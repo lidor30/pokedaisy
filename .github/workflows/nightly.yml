@@ -1,7 +1,8 @@
 # The full suite on dev, once a night: everything CI runs on a PR (unit tests with every Paparazzi render, the debug
 # APK, ui-preview stress / docs search / keyed state, the manual), the Linux and libretro builds whatever paths
-# changed, and what no PR job runs (the 3DS port's generated configs, every ui-preview render). A night with no new
-# commit on dev is skipped; a manual run (Actions > Nightly > Run workflow) always runs, on dev or any branch named.
+# changed, and what no PR job runs (the 3DS port's generated configs; every ui-preview render, off for now). A night
+# with no new commit on dev is skipped; a manual run (Actions > Nightly > Run workflow) always runs, on dev or any
+# branch named.
 #
 # GitHub starts scheduled runs from the default branch's copy of this file only, so it fires once it's on main. The
 # workflows it calls are dev's own copies (@dev, not main's older ones), and every job checks out dev's head by its
@@ -12,7 +13,9 @@ name: Nightly
 
 on:
   schedule:
-    - cron: '0 1 * * *' # 01:00 UTC = 03:00 / 04:00 Israel time
+    # 00:47 UTC = 02:47 Israel in winter (03:47 in summer). Off the hour on purpose: GitHub queues scheduled runs and
+    # the top of the hour is when it's busiest - '0 1' started at 06:51 UTC on its first night (2026-11-08).
+    - cron: '47 0 * * *'
   workflow_dispatch:
     inputs:
       branch:
@@ -93,11 +96,12 @@ jobs:
       - run: make -C 3ds test-configs-gen
 
   # Every ui-preview screen (`make preview`): too long for a PR job, and the only run that composes all of them.
-  # Nothing compares the PNGs; they're kept a week to look at.
+  # Nothing compares the PNGs; they're kept a week to look at. Off for now (2026-11-08, the user's call: over an
+  # hour a night); turn it back on by dropping the `false &&` below.
   render:
     name: UI preview render
     needs: target
-    if: needs.target.outputs.run == 'true'
+    if: false && needs.target.outputs.run == 'true'
     runs-on: ubuntu-latest
     timeout-minutes: 120
     steps:

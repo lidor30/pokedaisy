@@ -14,9 +14,10 @@
 #include "pd_romart.h"
 #include "pd_snapshot.h"
 
+// The largest page (a GBA screen); a Game Boy town map is 160 x 144 (pd_map_art's w / h).
 #define PD_MAP_W 240
 #define PD_MAP_H 160
-#define PD_MAP_PAGES 4 // FireRed: Kanto + three Sevii pages; Emerald: Hoenn
+#define PD_MAP_PAGES 7 // FireRed: Kanto + three Sevii pages; Emerald: Hoenn; Gen 2: Johto, Kanto; a hack up to seven
 
 struct pd_region_layout {
     int offX, offY, w, h; // the grid's place on the 30x20 screen, in tiles
@@ -26,7 +27,7 @@ struct pd_region_layout {
 
 struct pd_mapsec_rect {
     int8_t page; // -1 = not on the map
-    uint8_t x, y, w, h; // in 8px tiles of the 240x160 page; 0 x 0 = only on the grid
+    uint8_t x, y, w, h; // in 8px tiles of the page; 0 x 0 = only on the grid
 };
 
 extern const struct pd_region_layout pd_layouts_firered[];
@@ -37,14 +38,23 @@ extern const struct pd_mapsec_rect pd_mapsec_rects_firered[];
 extern const int pd_mapsec_rects_firered_count;
 extern const struct pd_mapsec_rect pd_mapsec_rects_emerald[];
 extern const int pd_mapsec_rects_emerald_count;
+// The Game Boy games' places (pd_gb_map.c): Gen 1 by wCurMap (Red / Blue / Yellow), Gen 2 by landmark.
+extern const struct pd_mapsec_rect pd_mapsec_rects_gb_yellow[], pd_mapsec_rects_gb_crystal[], pd_mapsec_rects_gb_gold_silver[];
+extern const int pd_mapsec_rects_gb_yellow_count, pd_mapsec_rects_gb_crystal_count, pd_mapsec_rects_gb_gold_silver_count;
 
-// The art, built once per ROM (pd_map_art). Pixels are 0xRRGGBB; the heads'
-// transparent pixels are PD_MAP_CLEAR.
+// The art, built once per ROM (pd_map_art). Pixels are 0xRRGGBB, w x h a page (rows w apart: 240 x 160 on the GBA,
+// 160 x 144 on the Game Boy); the heads' transparent pixels are PD_MAP_CLEAR.
 #define PD_MAP_CLEAR 0xFF000000u
 struct pd_map_art {
     bool ok;
     int pages;
+    int w, h;
     uint32_t page[PD_MAP_PAGES][PD_MAP_W * PD_MAP_H];
+    // What of each page is map (left, top, right, bottom in its pixels): its border of black, white or the BG's
+    // backdrop left out, as the game's own frame covers it (backdropCrop, regionMapContentBounds).
+    int16_t crop[PD_MAP_PAGES][4];
+    bool hasBackdrop;
+    uint32_t backdrop;
     bool hasHead[2];
     uint32_t head[2][16 * 16]; // [0] boy, [1] girl
 };
@@ -62,12 +72,25 @@ struct pd_tile_rect {
 // The section's page, and its rectangles (the rect from MapSecData, else every
 // grid cell naming it - a dungeon). Returns how many (0 = not on the map).
 int pd_map_tiles(const struct pd_game* g, int mapsec, int* page, struct pd_tile_rect* out, int max);
-// What's under tile (tx, ty) of a page: the section and the dungeon there (-1 = none).
+// What's under tile (tx, ty) of a page: the section and the dungeon there (-1 = none). A map without a cursor grid
+// (the Game Boy's) gives the smallest section rect there (RegionMapModel.pick).
 void pd_map_pick(const struct pd_game* g, int page, int tx, int ty, int* mapsec, int* dungeon);
+// The tiles a cursor can stand on, on a page: its grid's box, else the whole page. False with no map.
+bool pd_map_bounds(const struct pd_game* g, int page, int* minX, int* minY, int* maxX, int* maxY);
+// The section the player's head and cursor go by: the snapshot's mapsec, but Gen 1's own map (wCurMap: a town's gates
+// sit apart from it on the town map) where mapsec is the place's first map.
+int pd_map_player_section(const struct pd_game* g, const struct pd_snapshot* s);
 // The tile the game puts the player's head on (region_map.c's
 // GetPlayerPositionOnRegionMap); false when the section isn't on the map.
 bool pd_map_player_tile(const struct pd_game* g, const struct pd_snapshot* s, int* page, int* tx, int* ty);
 // The page's name for the region button ("KANTO", "SEVII 1-3" ...).
 const char* pd_map_page_name(const struct pd_game* g, int page);
+
+// The Game Boy games' maps (pd_gb_map.c), from the cart's bytes, found by its SHA1: Gen 1's town map, Gen 2's Pokégear
+// Johto / Kanto. pd_gb_map_draw fills art (pages, w / h, heads); the rest are NULL / "" for a cart it doesn't know.
+bool pd_gb_map_draw(const struct pd_game* g, struct pd_map_art* art);
+const struct pd_mapsec_rect* pd_gb_map_rects(const struct pd_game* g, int* count);
+const char* pd_gb_map_page_name(const struct pd_game* g, int page);
+bool pd_gb_map_gen1(const struct pd_game* g);
 
 #endif

@@ -43,6 +43,15 @@ object NewFeatures {
     /** SETTINGS > TOUCH CONTROLS: layouts, size, opacity, extra buttons and EDIT LAYOUT (companion.ui.TouchControls). */
     const val TOUCH_CONTROLS = "touch_controls"
 
+    /** SETTINGS > FOLD LAYOUT: a foldable half open puts the game on one side of its hinge, the companion on the other. */
+    const val FOLD_LAYOUT = "fold_layout"
+
+    /** TOUCH CONTROLS > LOOK / COLORS (and the MIRRORED / RAISED layouts): how the drawn buttons look. */
+    const val TOUCH_STYLES = "touch_styles"
+
+    /** TOUCH CONTROLS > SKINS: Delta skins (.deltaskin) in place of the drawn buttons (companion.DeltaSkin). */
+    const val TOUCH_SKINS = "touch_skins"
+
     /** SETTINGS > COMPANION BUTTON: hide the edge button that opens the companion on one screen (SidePanel). */
     const val COMPANION_TAB = "companion_tab"
 
@@ -106,6 +115,9 @@ object NewFeatures {
     /** SETTINGS > SOUND: GAME VOLUME, MUTE GAME and HOTKEYS > MUTE (GameVolume). */
     const val GAME_VOLUME = "game_volume"
 
+    /** SETTINGS > SOUND > AUDIO EFFECTS: the device's audio effects on the game's sound (AudioEffects). */
+    const val AUDIO_EFFECTS = "audio_effects"
+
     /** Settings > LIBRARY > PATCH A ROM and the library's + menu: a .bps patch applied to a ROM the library has (RomPatchFlow). */
     const val ROM_PATCH = "rom_patch"
     /** Settings > TOOLS > LINK PLAY (and a GBA game's library menu): two to four GBA games on one link cable (LinkActivity). */
@@ -131,11 +143,36 @@ object NewFeatures {
     const val COOP = "coop"
 
     /** Every feature that gets the tag. */
+    /** SETTINGS > BATTLE INFO: off, only the battle buttons. */
+    const val BATTLE_INFO = "battle_info"
+    /** SETTINGS > BATTLE VIEW: the BATTLE tab opens on INFO. */
+    const val BATTLE_VIEW = "battle_view"
+    /** Settings > GAME NAMES: the library by file name. */
+    const val GAME_NAMES = "game_names"
+    /** Settings > SUPPORTED ONLY: the library without the games the companion can't read. */
+    const val SUPPORTED_ONLY = "supported_only"
+    /** SETTINGS > INSTANT TEXT: a text box's words at once (companion.data.InstantText). */
+    const val INSTANT_TEXT = "instant_text"
+    /** SETTINGS > LOOK AROUND: EXPAND's right stick switched off. */
+    const val LOOK_AROUND = "look_around"
+    /** SETTINGS > BATTLE STYLE: the Gen 5 battle buttons (companion.ui.BattleControlsGen5). */
+    const val BATTLE_STYLE = "battle_style"
+    /** QUICK MENU > FLASH: the field move from the quick menu (companion.data.Flash); the QUICK MENU row carries it too. */
+    const val QUICK_FLASH = "quick_flash"
+    /** SETTINGS > ZOOM: EXPAND's zoom picked from a list, without a right stick. */
+    const val ZOOM_SETTING = "zoom_setting"
+    /** TOUCH CONTROLS > VIBRATION as a switch with its STRENGTH under it (TouchHaptics). */
+    const val TOUCH_VIBRATION = "touch_vibration"
+    /** TOUCH CONTROLS' ZOOM / REWIND extras and X AND Y for GBA / Game Boy games. */
+    const val TOUCH_MORE_BUTTONS = "touch_more_buttons"
+
     val ALL = listOf(
         HUD, BATTLE_BUTTONS, GAME_HOTKEYS, COMPANION_WINDOW, HUD_PC, QUICK_MENU, HUD_REPEL, SINGLE_SCREEN, MORE_TAB, TOUCH_CONTROLS,
         COMPANION_TAB, REUSABLE_TMS, SHINY_ODDS, UNLIT_SCREEN, LIGHT_COMPANION, X_COMPANION, PLAYER_LOOK, RIVAL_LOOK, TEXT_LOOK, DAY_NIGHT,
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
-        GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE,
+        GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE, FOLD_LAYOUT, TOUCH_STYLES, TOUCH_SKINS,
+        AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
+        QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS,
     )
 
     private const val DAYS = 7

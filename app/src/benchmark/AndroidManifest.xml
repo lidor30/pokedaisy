@@ -1,0 +1,7 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- The benchmark build (release code, debug key): profileable from adb, so simpleperf can sample it on a device. -->
+<manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <application>
+        <profileable android:shell="true" />
+    </application>
+</manifest>

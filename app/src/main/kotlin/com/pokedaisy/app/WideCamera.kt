@@ -63,9 +63,12 @@ class WideCamera {
     /** A direction is held: the player is walking (or trying to). */
     @Volatile var walking = false
 
-    /** SETTINGS > AUTO ZOOM IN: whether a text box or a menu screen pulls in to 1x ([SCENE_TEXT], [SCENE_MENU]);
-     * battles and anything else off the map always do, a picture over the field never. */
+    /** SETTINGS > AUTO ZOOM IN: whether a text box pulls in to 1x ([SCENE_TEXT]); battles, the game's menu screens
+     * ([SCENE_MENU]: a zoomed-out one sat small in the middle) and anything else off the map always do, a picture over
+     * the field never. */
     @Volatile var zoomOnText = true
+    /** LOOK AROUND off: the right stick does nothing. */
+    @Volatile var lookAround = true
 
     /** What the screen shows: the window pk_wide drew ([x], [y], [w], [h] in the frame's GBA pixels), placed on the
      * view at ([offX], [offY]) screen pixels from its top-left (<= 0: the window's whole pixels reach past the
@@ -126,7 +129,7 @@ class WideCamera {
 
         val wantsClose = when (scene) {
             SCENE_FIELD -> false
-            SCENE_TEXT, SCENE_MENU -> zoomOnText
+            SCENE_TEXT -> zoomOnText
             else -> true
         }
         // A fade decides nothing; nor does a picture over the field (FireRed's map preview, ~2 s): a pull-in and a
@@ -155,8 +158,8 @@ class WideCamera {
 
         val fw = vw / scale
         val fh = vh / scale
-        val sx = deadZone(stickX)
-        val sy = deadZone(stickY)
+        val sx = if (lookAround) deadZone(stickX) else 0f
+        val sy = if (lookAround) deadZone(stickY) else 0f
         val stick = sx != 0f || sy != 0f
         when {
             close -> spring(0f, 0f, dt, LOOK_TAU)

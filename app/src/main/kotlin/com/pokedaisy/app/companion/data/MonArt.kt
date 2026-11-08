@@ -266,6 +266,7 @@ object MonArt {
             tmp.renameTo(f)
             kept++
         }
+        if (kept > 0) availableCache = null
         return kept
     }
 
@@ -284,9 +285,16 @@ object MonArt {
 
     /** The national numbers kept, from any source. */
     fun available(filesDir: File?): Set<Int> {
+        availableCache?.takeIf { it.first == filesDir?.path }?.let { return it.second }
         migrate(filesDir)
-        return Source.entries.flatMap { s -> dir(filesDir, s).list()?.mapNotNull { it.removeSuffix(".bin").toIntOrNull() }.orEmpty() }.toSet()
+        val found = Source.entries.flatMap { s -> dir(filesDir, s).list()?.mapNotNull { it.removeSuffix(".bin").toIntOrNull() }.orEmpty() }.toSet()
+        availableCache = filesDir?.path to found
+        return found
     }
+
+    /** [available]'s last answer: SETTINGS asks it while it composes (FOLLOWER's row), and listing the folders there held a
+     * weak tablet's tab switch up. Forgotten whenever a scan keeps something new. */
+    @Volatile private var availableCache: Pair<String?, Set<Int>>? = null
 
     /** The sources with something kept. */
     fun sources(filesDir: File?): Set<Source> = Source.entries.filter { dir(filesDir, it).list()?.any { n -> n.endsWith(".bin") } == true }.toSet()

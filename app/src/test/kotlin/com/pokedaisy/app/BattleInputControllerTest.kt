@@ -25,11 +25,15 @@ class BattleInputControllerTest {
         // gActionSelectionCursor / gMoveSelectionCursor, a cell (column + 2 x row) per battler.
         val actionCursor = IntArray(4)
         val moveCursor = IntArray(4)
+        // SoulGold's OPTIONS > PARTY MENU, at gSaveBlock1Ptr + 0x348C: 0 its own list, 1 BW, 2 HGSS.
+        var partyMenuStyle = 0
 
         fun pid(i: Int, v: Long) { for (k in 0 until 4) party[i * 100 + k] = (v shr (8 * k)).toByte() }
 
         override fun readCoreMemory(addr: Long, size: Int): ByteArray = when (addr) {
             MENU + 9 -> byteArrayOf(slot.toByte())
+            SB1_PTR -> byteArrayOf((SB1 and 0xFF).toByte(), (SB1 shr 8 and 0xFF).toByte(), (SB1 shr 16 and 0xFF).toByte(), (SB1 shr 24).toByte())
+            SB1 + 0x348C -> byteArrayOf(partyMenuStyle.toByte())
             PARTY -> party.copyOf(size)
             in ACTION_CURSOR until ACTION_CURSOR + 4 -> byteArrayOf(actionCursor[(addr - ACTION_CURSOR).toInt()].toByte())
             in MOVE_CURSOR until MOVE_CURSOR + 4 -> byteArrayOf(moveCursor[(addr - MOVE_CURSOR).toInt()].toByte())
@@ -136,6 +140,62 @@ class BattleInputControllerTest {
         }
         assertEquals(listOf("RIGHT", "DOWN", "DOWN", "A", "A"), game.presses)
         assertEquals(5, game.slot)
+    }
+
+    /** SoulGold's battle party menu as walked headless: CUSTOM one column of [count] (DOWN / UP wrap, no CANCEL row); HGSS /
+     * BW 0 1 / 2 3 / 4 5, DOWN 0 -> 2 -> 4 -> 5 -> CANCEL 7 -> 0, UP 0 -> 7 -> 5 -> 3, RIGHT / LEFT across a row. */
+    private fun soulGoldStep(slot: Int, key: String, count: Int): Int = if (game.partyMenuStyle == 0) when (key) {
+        "DOWN" -> (slot + 1) % count
+        "UP" -> (slot + count - 1) % count
+        else -> slot
+    } else when (key) {
+        "RIGHT" -> if (slot % 2 == 0 && slot + 1 < count) slot + 1 else slot
+        "LEFT" -> if (slot % 2 == 1) slot - 1 else slot
+        "DOWN" -> when {
+            slot == 7 -> 0
+            slot + 2 < count -> slot + 2
+            slot % 2 == 0 && slot + 1 < count -> slot + 1
+            else -> 7
+        }
+        "UP" -> when {
+            slot == 7 -> count - 1
+            slot >= 2 -> slot - 2
+            else -> 7
+        }
+        else -> slot
+    }
+
+    private fun soulGoldSwitch(style: Int, from: Int, to: Int, count: Int = 6): List<String> {
+        game.partyMenuStyle = style
+        game.slot = from
+        game.presses.clear()
+        c.onState(0, BATTLE_INPUT_PARTY_OPEN)
+        c.switchTo(0x1000L + to)
+        run(400) { key -> game.slot = soulGoldStep(game.slot, key, count) }
+        assertEquals(to, game.slot)
+        return game.presses.toList()
+    }
+
+    @Test fun soulGoldsPartyMenuFollowsItsOption() {
+        // The player's video (GitHub #316): on HGSS the menu opened on slot 4 and slot 3 was wanted. Steered as a list
+        // that was UP (4 -> 2), DOWN (2 -> 4), ... until it gave up.
+        c.switchAddrs = BattleInputController.SwitchAddrs(
+            partyMenu = MENU, party = PARTY, monStride = 100, gridOption = BattleInputController.GridOption(SB1_PTR, 0x348C),
+        )
+        assertEquals(listOf("RIGHT", "UP", "A", "A"), soulGoldSwitch(style = 2, from = 4, to = 3))   // HGSS
+        assertEquals(listOf("LEFT", "DOWN", "DOWN", "A", "A"), soulGoldSwitch(style = 1, from = 1, to = 4))   // BW
+        // CUSTOM: its list, read again at every switch - the player may change it mid-game.
+        assertEquals(listOf("UP", "A", "A"), soulGoldSwitch(style = 0, from = 4, to = 3))
+        assertEquals(listOf("UP", "A", "A"), soulGoldSwitch(style = 0, from = 0, to = 5))
+    }
+
+    @Test fun aGridWithNobodyBesideGoesAlongTheColumnFirst() {
+        // Five Pokémon: nothing right of slot 4, so up a row before going across.
+        game.pid(5, 0)
+        c.switchAddrs = BattleInputController.SwitchAddrs(
+            partyMenu = MENU, party = PARTY, gridOption = BattleInputController.GridOption(SB1_PTR, 0x348C),
+        )
+        assertEquals(listOf("UP", "RIGHT", "A", "A"), soulGoldSwitch(style = 1, from = 4, to = 3, count = 5))
     }
 
     @Test fun theScreenIsHeldThroughASwitchAndLetGoAfter() {
@@ -541,6 +601,8 @@ class BattleInputControllerTest {
         const val PARTY = 0x02024284L
         const val ACTION_CURSOR = 0x02023FF8L
         const val MOVE_CURSOR = 0x02023FFCL
+        const val SB1_PTR = 0x030040C4L
+        const val SB1 = 0x020166C4L
         val KEYS = listOf(
             MgbaCore.Key.A to "A", MgbaCore.Key.B to "B", MgbaCore.Key.LEFT to "LEFT",
             MgbaCore.Key.RIGHT to "RIGHT", MgbaCore.Key.UP to "UP", MgbaCore.Key.DOWN to "DOWN",

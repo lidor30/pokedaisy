@@ -207,7 +207,15 @@ object RomFolder {
         com.pokedaisy.app.companion.data.BestEffortStore.onChanged = { forgetUnsupported(app) }
     }
 
-    /** Forgets [folder]'s cached verdicts (it was unlinked): linked again, it is read from scratch. */
+    /** [forget] on a thread of its own: a running [scan] holds the lock while it hashes ROMs, and REMOVE waiting for it
+     * on the UI thread froze Settings until Android called it not responding (Crashlytics, 1.3.3). The folder's games
+     * leave the library at once anyway: they're listed by the linked folders. */
+    fun forgetLater(context: Context, folder: String) {
+        val app = context.applicationContext
+        Thread({ runCatching { forget(app, folder) } }, "pokedaisy-rom-forget").start()
+    }
+
+    /** Forgets [folder]'s cached verdicts (it was unlinked): linked again, it is read from scratch. Blocking. */
     @Synchronized
     fun forget(context: Context, folder: String) {
         val old = load(context)

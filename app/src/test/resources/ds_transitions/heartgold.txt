@@ -1,0 +1,27 @@
+# heartgold: X menu > POKEMON, then B back out (nds_dump `trace`, both runs one after the other). count fade(hex: top | touch << 8) flat(T/B)
+5 0000 --
+2 0202 --
+2 0505 --
+2 0707 --
+2 0A0A --
+2 0D0D --
+1 1010 --
+32 1010 TB
+1 0000 TB
+16 0000 -B
+97 0000 --
+2 0200 --
+2 0500 --
+2 0700 --
+2 0A00 --
+2 0D00 --
+1 1000 --
+3 1000 TB
+80 1010 TB
+1 0D0D TB
+1 0D0D --
+2 0A0A --
+2 0808 --
+2 0505 --
+2 0202 --
+34 0000 --

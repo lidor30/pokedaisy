@@ -178,8 +178,8 @@ enum class GuideId {
     POLISHED_CRYSTAL,
     // The DS games: HeartGold and SoulSilver share their text, not their wild Pokémon.
     PLATINUM, HEARTGOLD, SOULSILVER,
-    // The Game Boy games: Yellow (all five languages), Red, Blue, retail Crystal.
-    YELLOW, RED, BLUE, CRYSTAL,
+    // The Game Boy games: Yellow (all five languages), Red, Blue, retail Crystal, and the Legacy hacks.
+    YELLOW, RED, BLUE, CRYSTAL, YELLOW_LEGACY, CRYSTAL_LEGACY,
     // Gen 5 (Gen5World, from the cart).
     BLACK, WHITE, BLACK2, WHITE2,
 }
@@ -194,8 +194,11 @@ fun guideId(game: GameKind?, live: GuideTables?): GuideId? = live?.guide ?: when
     GameKind.RED -> GuideId.RED
     GameKind.BLUE -> GuideId.BLUE
     GameKind.CRYSTAL -> GuideId.CRYSTAL
+    GameKind.YELLOW_LEGACY -> GuideId.YELLOW_LEGACY
+    GameKind.CRYSTAL_LEGACY -> GuideId.CRYSTAL_LEGACY
     // A DS game: its guide carries its own tables too (Gen4World).
-    GameKind.PLATINUM -> GuideId.PLATINUM
+    // Renegade Platinum runs as PLATINUM, but its wild Pokémon and trainers are its own: no guide.
+    GameKind.PLATINUM -> if (renegadePlatinum) null else GuideId.PLATINUM
     // Origin HeartGold runs as HEARTGOLD, but its world isn't HeartGold's (its own wild Pokémon, trainers, story): no guide.
     GameKind.HEARTGOLD -> if (originHeartGold) null else GuideId.HEARTGOLD
     GameKind.SOULSILVER -> GuideId.SOULSILVER
@@ -267,6 +270,8 @@ private fun wholeGuide(id: GuideId?): GameGuide? = when (id) {
     GuideId.RED -> GUIDE_RED
     GuideId.BLUE -> GUIDE_BLUE
     GuideId.CRYSTAL -> GUIDE_CRYSTAL
+    GuideId.YELLOW_LEGACY -> GUIDE_YELLOW_LEGACY
+    GuideId.CRYSTAL_LEGACY -> GUIDE_CRYSTAL_LEGACY
     null -> null
 }
 

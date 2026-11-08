@@ -75,9 +75,9 @@ The options come in groups, the ones you change while playing first:
 
 - **MAKEOVER**: `PLAYER LOOK`, `RIVAL LOOK`, `TEXT LOOK`, `FOLLOWER` and `DAY AND NIGHT`, fresh looks for your game. It sits at the top in a blue frame of its own, and only shows in a game it works in. See [MAKEOVER](#makeover) below.
 - **FF / SPEED**: `FF`, `FF SPEED`, `GAME SPEED`, `REWIND` and `SPEED OPTIONS` (a page with `SCENE SPEEDS`, `FF MODE` and `FF MUSIC`). See [Fast-forward](fast-forward.md).
-- **GAMEPLAY**: `WILD ENCOUNTERS`, `REUSABLE TMS`, `TRADE EVOS`, `SHINY ODDS`, `NUZLOCKE`, `AUTO-RUN`, `RUN INDOORS` and `CHEATS`. See [Controls](controls.md), [Party](party.md#trade-evolutions), [Bag](bag.md), [Nuzlocke](nuzlocke.md) and [Cheats](cheats.md).
+- **GAMEPLAY**: `WILD ENCOUNTERS`, `INSTANT TEXT`, `REUSABLE TMS`, `TRADE EVOS`, `SHINY ODDS`, `NUZLOCKE`, `AUTO-RUN`, `RUN INDOORS` and `CHEATS`. See [Controls](controls.md), [Party](party.md#trade-evolutions), [Bag](bag.md), [Nuzlocke](nuzlocke.md) and [Cheats](cheats.md).
 - **SCREEN**: `ASPECT`, `HUD`, `DISPLAY OPTIONS` (a page with `STATUS BAR`, `SHADERS`, `OVERLAY` and `LIGHT COMPANION`), `THEME`, `DARK MODE`, `FPS / CPU` and, depending on your device, `BATTLE BUTTONS`, `COMPANION VIEW`, `COMPANION BUTTON`, `SWAP SCREENS` or `SINGLE SCREEN`. See [Screen and display](screen.md).
-- **COMPANION**: `BATTLE HINTS`, `ONE-TAP MOVES`, `FOE IVS`, `BATTLE FOCUS`, `TAB BAR`, `CLICK SOUND` and `TWEAKS`.
+- **COMPANION**: `BATTLE INFO`, `BATTLE HINTS`, `BATTLE VIEW`, `ONE-TAP MOVES`, `BATTLE STYLE`, `FOE IVS`, `BATTLE FOCUS`, `TAB BAR`, `CLICK SOUND` and `TWEAKS`.
 - **CONTROLS**: `GAME BUTTONS`, `HOTKEYS`, `QUICK MENU` and `TOUCH CONTROLS`. See [Controls](controls.md).
 - **APP**: `TIPS`, `LANGUAGE` and `HELP` (this manual).
 
@@ -156,9 +156,9 @@ A card only shows while you're walking around the field, never in a battle, a me
 
 ### LANGUAGE
 
-The app's own text comes in English, Japanese, French, German, Italian, Spanish and Portuguese, with Brazil's and Portugal's Portuguese as two choices. `LANGUAGE` starts on `AUTO`, which follows the game's language; pick another and both screens switch at once.
+The app's own text comes in English, Japanese, Korean, French, German, Italian, Spanish and Portuguese, with Brazil's and Portugal's Portuguese as two choices. `LANGUAGE` starts on `AUTO`, which follows the game's language; pick another and both screens switch at once.
 
-No game came out in Portuguese, so on a phone or handheld set to Portuguese, `AUTO` shows Portuguese over an English game too. The GUIDE's written pages stay in English in Portuguese.
+No game came out in Portuguese, so on a phone or handheld set to Portuguese, `AUTO` shows Portuguese over an English game too. A Korean DS game picks Korean by itself; on a device set to Korean, the library and settings are in Korean too. The GUIDE's written pages stay in English in Portuguese and Korean.
 
 This only changes PokeDaisy's words (buttons, labels, hints). Pokémon, move and item names stay as your game has them, so a French game shows its French names whatever you pick, and an English game keeps its English ones.
 

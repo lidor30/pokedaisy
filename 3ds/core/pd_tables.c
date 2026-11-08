@@ -1,4 +1,7 @@
 #include "pd_tables.h"
+#include "pd_randomized.h"
+
+#include "pd_game.h"
 
 #include <stdio.h>
 #include <string.h>
@@ -14,53 +17,121 @@ static const char* game_case(const char* src, char* buf, size_t len) {
     return buf;
 }
 
-const char* pd_species_name(int species, char* buf, size_t len) {
+// Emerald Legacy numbers DEOXYS's other forms 412-414 (its egg 415): named and typed as DEOXYS (the game's own
+// names, EmeraldTextLegacyGen.kt). No retail game has a species there (an egg is PD_SPECIES_EGG by its flag).
+static int form_base(int species) {
+    return species >= 412 && species <= 414 ? 410 : species;
+}
+
+static const struct pd_text* hack_text(const struct pd_game* g) {
+    return g && g->cfg ? g->cfg->text : NULL;
+}
+
+const char* pd_species_name(const struct pd_game* g, int species, char* buf, size_t len) {
     if (species == 0) return "-";
     if (species == PD_SPECIES_EGG) return "EGG";
-    if (species > 0 && species < pd_species_names_count && pd_species_names[species]) {
-        return game_case(pd_species_names[species], buf, len);
+    const struct pd_text* t = hack_text(g);
+    if (t && t->species) {
+        if (species > 0 && species < t->speciesCount && t->species[species]) {
+            snprintf(buf, len, "%s", t->species[species]);
+            return buf;
+        }
+    } else {
+        species = form_base(species);
+        if (species > 0 && species < pd_species_names_count && pd_species_names[species]) {
+            return game_case(pd_species_names[species], buf, len);
+        }
     }
     snprintf(buf, len, "#%d", species);
     return buf;
 }
 
-const char* pd_move_name(int move, char* buf, size_t len) {
+// The move a hack's table (when it has one) or retail's names; NULL = none.
+static const struct pd_move_info* move_info(const struct pd_game* g, int move) {
+    const struct pd_text* t = hack_text(g);
+    int count = t && t->moves ? t->movesCount : pd_moves_count;
+    const struct pd_move_info* table = t && t->moves ? t->moves : pd_moves;
+    return move > 0 && move < count && table[move].name ? &table[move] : NULL;
+}
+
+const char* pd_move_name(const struct pd_game* g, int move, char* buf, size_t len) {
     if (move <= 0) return "-";
-    if (move < pd_moves_count && pd_moves[move].name) return game_case(pd_moves[move].name, buf, len);
+    const struct pd_move_info* m = move_info(g, move);
+    if (m) {
+        if (hack_text(g) && hack_text(g)->moves) {
+            snprintf(buf, len, "%s", m->name);
+            return buf;
+        }
+        return game_case(m->name, buf, len);
+    }
     snprintf(buf, len, "MOVE#%d", move);
     return buf;
 }
 
-const char* pd_type_name(int type) {
+const char* pd_type_name(const struct pd_game* g, int type) {
+    const struct pd_text* t = hack_text(g);
+    if (t && t->typeNames) {
+        return type >= 0 && type < t->typeNamesCount && t->typeNames[type] ? t->typeNames[type] : "";
+    }
     if (type >= 0 && type < pd_type_names_count && pd_type_names[type]) return pd_type_names[type];
     return "";
 }
 
-int pd_move_type(int move) {
-    if (move > 0 && move < pd_moves_count && pd_moves[move].name) return pd_moves[move].type;
-    return PD_TYPE_NONE;
+int pd_type_count(const struct pd_game* g) {
+    const struct pd_text* t = hack_text(g);
+    return t && t->typeNames ? t->typeNamesCount : pd_type_names_count;
 }
 
-int pd_move_power(int move) {
-    if (move > 0 && move < pd_moves_count && pd_moves[move].name) return pd_moves[move].power;
-    return 0;
+int pd_gender_ratio(const struct pd_game* g, int species) {
+    const struct pd_text* t = hack_text(g);
+    if (t && t->genderRatios) return species >= 0 && species < t->genderRatiosCount ? t->genderRatios[species] : -1;
+    return species >= 0 && species < pd_gender_ratios_count ? pd_gender_ratios[species] : -1;
 }
 
-static int single_pct(int atk, int def) {
-    for (int i = 0; i < pd_type_chart_count; i++) {
-        if (pd_type_chart[i].atk == atk && pd_type_chart[i].def == def) return pd_type_chart[i].pct;
+int pd_move_type(const struct pd_game* g, int move) {
+    int type, power;
+    if (pd_randomized_move(g, move, &type, &power)) return type;
+    const struct pd_move_info* m = move_info(g, move);
+    return m ? m->type : PD_TYPE_NONE;
+}
+
+int pd_move_power(const struct pd_game* g, int move) {
+    int type, power;
+    if (pd_randomized_move(g, move, &type, &power)) return power;
+    const struct pd_move_info* m = move_info(g, move);
+    return m ? m->power : 0;
+}
+
+static int single_pct(const struct pd_game* g, int atk, int def) {
+    int pct;
+    if (pd_randomized_pct(g, atk, def, &pct)) return pct;
+    const struct pd_text* t = hack_text(g);
+    const struct pd_type_pair* chart = t && t->typeChart ? t->typeChart : pd_type_chart;
+    int n = t && t->typeChart ? t->typeChartCount : pd_type_chart_count;
+    for (int i = 0; i < n; i++) {
+        if (chart[i].atk == atk && chart[i].def == def) return chart[i].pct;
     }
     return 100;
 }
 
-int pd_type_multiplier_pct(int atk, int def1, int def2) {
-    int pct = single_pct(atk, def1);
-    if (def2 != PD_TYPE_NONE && def2 != def1) pct = pct * single_pct(atk, def2) / 100;
+int pd_type_multiplier_pct(const struct pd_game* g, int atk, int def1, int def2) {
+    int pct = single_pct(g, atk, def1);
+    if (def2 != PD_TYPE_NONE && def2 != def1) pct = pct * single_pct(g, atk, def2) / 100;
     return pct;
 }
 
-void pd_species_type_pair(int species, int* t1, int* t2) {
+void pd_species_type_pair(const struct pd_game* g, int species, int* t1, int* t2) {
     *t1 = *t2 = PD_TYPE_NONE;
+    if (pd_randomized_types(g, species, t1, t2)) return;
+    const struct pd_text* t = hack_text(g);
+    if (t && t->speciesTypes) {
+        if (species > 0 && species < t->speciesTypesCount) {
+            *t1 = t->speciesTypes[species][0];
+            *t2 = t->speciesTypes[species][1];
+        }
+        return;
+    }
+    species = form_base(species);
     if (species <= 0 || species >= pd_species_type_table_count) return;
     *t1 = pd_species_type_table[species][0];
     *t2 = pd_species_type_table[species][1];

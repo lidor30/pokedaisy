@@ -70,8 +70,10 @@ class DsLayoutsTest {
         assertEquals(DsLayout.PICTURE_IN_PICTURE, DsLayout.ONE_SCREEN.forGame(followed = false))
         assertEquals(DsLayout.ONE_SCREEN, DsLayout.ONE_SCREEN.forGame(followed = true))
         assertEquals(DsLayout.STACKED, DsLayout.STACKED.forGame(followed = false))
-        for (code in listOf("IPKE", "IPGE", "CPUE", "IRBO", "IRAO", "IREO", "IRDO")) assertTrue(code, DsLayout.followed(code))
-        // The German HeartGold / SoulSilver aren't followed yet.
-        for (code in listOf("IPKD", "IPGD")) assertTrue(code, !DsLayout.followed(code))
+        for (code in listOf("IPKE", "IPGE", "CPUE", "IRBO", "IRAO", "IREO", "IRDO", "IPKF", "IPGF", "CPUF", "IRBF", "IRAF")) {
+            assertTrue(code, DsLayout.followed(code))
+        }
+        // German HeartGold / SoulSilver are followed since their menu functions were found (2026-11-07).
+        for (code in listOf("IPKD", "IPGD")) assertTrue(code, DsLayout.followed(code))
     }
 }

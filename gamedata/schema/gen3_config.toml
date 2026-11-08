@@ -313,6 +313,14 @@ kotlin = 'Long'
 type = 'long'
 default = 0
 
+# Where SaveBlock1 keeps a PARTY MENU option that changes the battle party menu's shape (SoulGold's byte: 0 = its
+# own one-column list, 1 = BW, 2 = HGSS, both a two-column grid - BattleInputController.SwitchAddrs.gridOption);
+# -1 = none, the shape is fixed.
+[field.partyMenuStyleOff]
+kotlin = 'Int'
+type = 'int'
+default = -1
+
 # USE / GIVE / TAKE's functions (FieldItems.kt) for a build with no retail code to key them on (Recharged
 # Emerald's gcc rebuilds); null = by game kind and header code (fieldItemsForGame).
 [field.fieldItems]

@@ -90,10 +90,12 @@ object TouchGeometry {
         style: TouchControlsStyle, w: Float, h: Float, dp: Float, portrait: Boolean,
         gameAspect: Float = 1.5f, gameBoy: Boolean = false, layout: TouchLayout? = style.layoutFor(portrait),
         ds: Boolean = false,
+        /** Extras switched on that do nothing in this game now ([TouchControlsStyle.shown]). */
+        unavailable: Set<TouchButton> = emptySet(),
     ): Placed {
         if (w <= 0f || h <= 0f) return Placed(w, h, emptyList(), style.preset, dp)
-        val buttons = style.shown(gameBoy, ds)
-        val (preset, presetItems) = presetItems(style, buttons, w, h, dp, portrait, gameAspect)
+        val buttons = style.shown(gameBoy, ds, unavailable)
+        val (preset, presetItems) = presetItems(style, buttons, w, h, dp, portrait, gameAspect, ds)
         val custom = layout?.places.orEmpty()
         if (custom.isEmpty()) return Placed(w, h, presetItems, preset, dp)
         // A moved control keeps the preset's size times its own (SIZE and the area's fit still apply).
@@ -147,9 +149,10 @@ object TouchGeometry {
 
     // ---- presets --------------------------------------------------------------------------------------------------
 
-    private class Builder(val w: Float, val h: Float, val dp: Float, val s: Float) {
+    private class Builder(val w: Float, val h: Float, val dp: Float, val s: Float, val dsGame: Boolean = false) {
         val items = ArrayList<Item>()
         fun size(b: TouchButton) = baseSize(b).let { (bw, bh) -> bw * s * dp to bh * s * dp }
+        fun shape(b: TouchButton) = TouchGeometry.shape(b)
         /** [b] centred [x] / [y] px from the left / top. */
         fun at(b: TouchButton, x: Float, y: Float) {
             val (iw, ih) = size(b)
@@ -161,13 +164,83 @@ object TouchGeometry {
 
     private fun presetItems(
         style: TouchControlsStyle, buttons: List<TouchButton>, w: Float, h: Float, dp: Float,
-        portrait: Boolean, gameAspect: Float,
+        portrait: Boolean, gameAspect: Float, dsGame: Boolean,
+    ): Pair<TouchPreset, List<Item>> = when (style.preset) {
+        TouchPreset.MIRRORED -> {
+            val (_, items) = basePresetItems(style.copy(preset = TouchPreset.SIDES), buttons, w, h, dp, portrait, gameAspect, dsGame)
+            TouchPreset.MIRRORED to mirrored(items, w, portrait, dsGame)
+        }
+        TouchPreset.RAISED -> {
+            val (_, items) = basePresetItems(style.copy(preset = TouchPreset.CLASSIC), buttons, w, h, dp, portrait, gameAspect, dsGame)
+            TouchPreset.RAISED to if (portrait) items else raised(items, h, dp, dsGame)
+        }
+        else -> basePresetItems(style, buttons, w, h, dp, portrait, gameAspect, dsGame)
+    }
+
+    /** MIRRORED: [items] flipped left to right, but A / B (and X / Y, and upright the TURBOs over them) moved as one
+     * block so A stays right of B, L / R left where they are and SELECT kept left of START. */
+    private fun mirrored(items: List<Item>, w: Float, portrait: Boolean, dsGame: Boolean): List<Item> {
+        val face = setOf(TouchButton.A, TouchButton.B, TouchButton.X, TouchButton.Y) +
+            if (portrait) setOf(TouchButton.TURBO_A, TouchButton.TURBO_B) else emptySet()
+        val cluster = items.filter { it.button in face }
+        val shift = if (cluster.isEmpty()) 0f else w - (cluster.minOf { it.left } + cluster.maxOf { it.right })
+        val flipped = items.map { item ->
+            when (item.button) {
+                TouchButton.L, TouchButton.R -> item
+                in face -> item.copy(cx = item.cx + shift)
+                else -> item.copy(cx = w - item.cx)
+            }
+        }
+        val select = flipped.firstOrNull { it.button == TouchButton.SELECT }
+        val start = flipped.firstOrNull { it.button == TouchButton.START }
+        if (select == null || start == null || select.cx < start.cx) return flipped
+        return flipped.map { when (it.button) {
+            TouchButton.SELECT -> it.copy(cx = start.cx, cy = start.cy)
+            TouchButton.START -> it.copy(cx = select.cx, cy = select.cy)
+            else -> it
+        } }
+    }
+
+    /** RAISED: CLASSIC's D-pad and A / B block lifted to about 60% down the area (no higher than the top row allows),
+     * L over the D-pad and R over A / B. Where there's no room to lift, CLASSIC as it is. */
+    private fun raised(items: List<Item>, h: Float, dp: Float, dsGame: Boolean): List<Item> {
+        val dpad = items.firstOrNull { it.button == TouchButton.DPAD } ?: return items
+        val faceSet = setOf(TouchButton.A, TouchButton.B, TouchButton.X, TouchButton.Y)
+        val face = items.filter { it.button in faceSet }
+        if (face.isEmpty()) return items
+        val gap = GAP * dp
+        val l = items.firstOrNull { it.button == TouchButton.L }
+        val r = items.firstOrNull { it.button == TouchButton.R }
+        val moving = faceSet + TouchButton.DPAD + TouchButton.L + TouchButton.R
+        // The top row (the extras along the top) stays: everything raised stays under it.
+        val topLimit = (items.filter { it.button !in moving && it.cy < h / 2 }.maxOfOrNull { it.bottom } ?: (EDGE * dp)) + gap
+        val shoulder = l?.h ?: 0f
+        val blockTop = minOf(dpad.top, face.minOf { it.top })
+        val minDy = topLimit + (if (l != null) shoulder + gap else 0f) - blockTop
+        val want = h * 0.6f - dpad.cy
+        val dy = maxOf(want, minDy)
+        if (dy >= -1f) return items   // nowhere to lift it to
+        val faceTop = face.minOf { it.top } + dy
+        val faceCx = (face.minOf { it.left } + face.maxOf { it.right }) / 2
+        return items.map { item ->
+            when {
+                item.button == TouchButton.DPAD || item.button in faceSet -> item.copy(cy = item.cy + dy)
+                item === l -> item.copy(cx = dpad.cx, cy = dpad.top + dy - gap - item.h / 2)
+                item === r -> item.copy(cx = faceCx, cy = faceTop - gap - item.h / 2)
+                else -> item
+            }
+        }
+    }
+
+    private fun basePresetItems(
+        style: TouchControlsStyle, buttons: List<TouchButton>, w: Float, h: Float, dp: Float,
+        portrait: Boolean, gameAspect: Float, dsGame: Boolean,
     ): Pair<TouchPreset, List<Item>> {
         val size = style.size.scale
         val fit = fit(w, h, dp, portrait)
         // A DS game held sideways: its two screens fill the width, so no margins to put SIDES' columns in - the D-pad and
         // A / B / X / Y in the bottom corners instead, SELECT / START just inside them (the user's call).
-        if (style.preset == TouchPreset.SIDES && !portrait && TouchButton.X !in buttons) {
+        if (style.preset == TouchPreset.SIDES && !portrait && !dsGame) {
             // The margins beside the game, the game as tall as the area.
             val margin = (w - h * gameAspect) / 2 / dp
             val sidesFit = min(1f, (margin - 2 * GAP) / (DPAD * size))
@@ -181,12 +254,13 @@ object TouchGeometry {
             val shoulders = if (TouchButton.L in buttons) 2 * SHOULDER_W else 0f
             s = min(s, (w / dp - 2 * EDGE - 3 * GAP) / (shoulders + 2 * PILL_W))
         }
+        val withExtras = { t: TouchButton -> t.extra }
         // The bottom row - the D-pad, upright CLASSIC's extras column, A and B - never wider than the area either.
-        val column = if (portrait && !compact && buttons.any { it.extra }) EXTRA_W * 0.8f + GAP else 0f
+        val column = if (portrait && !compact && buttons.any(withExtras)) EXTRA_W * 0.8f + GAP else 0f
         s = min(s, (w / dp - 2 * EDGE - GAP) / (DPAD + FACE + 2 * FACE_DX + column))
         // The left column top to bottom (the top row, COMPACT's SELECT, the D-pad): never taller than the area. The top
         // row holds the extras too, but upright in CLASSIC (their own column there).
-        val extrasRow = if (buttons.none { it.extra }) 0f
+        val extrasRow = if (buttons.none(withExtras)) 0f
             else max(EXTRA_H, if (TouchButton.TURBO_A in buttons || TouchButton.TURBO_B in buttons) TURBO else 0f)
         val topRow = when {
             portrait && !compact -> max(SHOULDER_H, PILL_H)
@@ -194,7 +268,7 @@ object TouchGeometry {
         }
         val gaps = (if (topRow > 0f) GAP else 0f) + (if (compact) GAP else 0f)
         s = min(s, (h / dp - 2 * EDGE - gaps) / (topRow + DPAD + if (compact) PILL_H else 0f))
-        val b = Builder(w, h, dp, s)
+        val b = Builder(w, h, dp, s, dsGame)
         val e = b.px(EDGE)
         val has = { t: TouchButton -> t in buttons }
 
@@ -215,8 +289,9 @@ object TouchGeometry {
         b.at(TouchButton.DPAD, dpadX, dpadY)
         val faceX = w - e - faceR - b.sc(FACE_DX)
         val faceY = dpadY + dpadR - faceR - b.sc(FACE_DY)
-        val ds = has(TouchButton.X)
-        if (ds) diamond(b, w - e - dpadR, dpadY)
+        // X / Y on (a DS game's, or a GBA / Game Boy game's with X AND Y): A / B / X / Y in the DS's diamond.
+        val diamondFace = has(TouchButton.X)
+        if (diamondFace) diamond(b, w - e - dpadR, dpadY)
         else {
             b.at(TouchButton.A, faceX + b.sc(FACE_DX), faceY - b.sc(FACE_DY))
             b.at(TouchButton.B, faceX - b.sc(FACE_DX), faceY + b.sc(FACE_DY))
@@ -225,12 +300,12 @@ object TouchGeometry {
             b.at(TouchButton.L, e + shoulderW / 2, e + shoulderH / 2)
             b.at(TouchButton.R, w - e - shoulderW / 2, e + shoulderH / 2)
         }
-        val faceTop = if (ds) dpadY - dpadR else faceY - b.sc(FACE_DY) - faceR
+        val faceTop = if (diamondFace) dpadY - dpadR else faceY - b.sc(FACE_DY) - faceR
         when {
             compact -> {
                 // Over the D-pad and over A / B.
                 b.at(TouchButton.SELECT, dpadX, dpadY - dpadR - b.px(GAP) - pillH / 2)
-                b.at(TouchButton.START, if (ds) w - e - dpadR else faceX, faceTop - b.px(GAP) - pillH / 2)
+                b.at(TouchButton.START, if (diamondFace) w - e - dpadR else faceX, faceTop - b.px(GAP) - pillH / 2)
             }
             portrait -> {
                 // The top row's middle, between L and R.
@@ -238,7 +313,7 @@ object TouchGeometry {
                 b.at(TouchButton.SELECT, w / 2 - b.px(GAP) / 2 - pillW / 2, y)
                 b.at(TouchButton.START, w / 2 + b.px(GAP) / 2 + pillW / 2, y)
             }
-            ds -> {
+            dsGame -> {
                 // Along the bottom, a little in from the D-pad and the diamond (the touch screen's COMPANION switch goes
                 // above it sideways, DsTouchPane, out of START's way).
                 val y = h - e - pillH / 2
@@ -251,7 +326,7 @@ object TouchGeometry {
                 b.at(TouchButton.START, w / 2 + b.px(GAP) / 2 + pillW / 2, y)
             }
         }
-        val extras = buttons.filter { it.extra }
+        val extras = buttons.filter(withExtras)
         if (extras.isNotEmpty()) {
             val shouldersEnd = if (has(TouchButton.L)) e + shoulderW + b.px(GAP) else e
             if (portrait && !compact) {
@@ -263,8 +338,8 @@ object TouchGeometry {
                     Triple(TouchButton.TURBO_B, faceX - b.sc(FACE_DX), faceY + b.sc(FACE_DY)),
                 )) {
                     if (turbo !in extras) continue
-                    if (ds) {
-                        // A DS game's X sits over A: TURBO A / B take the diamond's empty corners by A and by B.
+                    if (diamondFace) {
+                        // The diamond's X sits over A: TURBO A / B take the diamond's empty corners by A and by B.
                         val d = b.sc(DS_FACE)
                         val cx = w - e - dpadR
                         val (tx, ty) = if (turbo == TouchButton.TURBO_A) cx + d to dpadY - d else cx - d to dpadY + d
@@ -279,14 +354,14 @@ object TouchGeometry {
                 }
                 // The rest in the column between the D-pad and A / B, under the top row, centred on the D-pad's height.
                 val left = e + dpadR * 2 + gap
-                val right = (if (ds) w - e - 2 * dpadR else faceX - b.sc(FACE_DX) - faceR) - gap
+                val right = (if (diamondFace) w - e - 2 * dpadR else faceX - b.sc(FACE_DX) - faceR) - gap
                 val half = max(dpadR, min(dpadY - rowBottom - gap, h - e - dpadY))
                 flow(b, column, left, dpadY - half, right, dpadY + half)
             } else {
                 // A row along the top, between L and R (CLASSIC's START / SELECT have the bottom's middle). A DS game held
                 // sideways keeps them over its top screen: the touch screen's COMPANION switch is above that one.
                 val top = e
-                val rowEnd = if (ds && !portrait) w / 2 - b.px(GAP) else w - shouldersEnd
+                val rowEnd = if (dsGame && !portrait) w / 2 - b.px(GAP) else w - shouldersEnd
                 flow(b, extras, shouldersEnd, top, rowEnd, top + b.sc(extrasRow))
             }
         }
@@ -374,7 +449,8 @@ object TouchGeometry {
         while (true) {
             cols = max(1, floor((boxW + gap) / (cellW * k + gap)).toInt()).coerceAtMost(list.size)
             rows = ceil(list.size / cols.toFloat()).toInt()
-            if ((rows * (cellH * k + gap) - gap <= boxH && cellW * k <= boxW) || k <= 0.5f) break
+            // Down to a third: every extra on with X / Y, SIZE X-LARGE, COMPACT upright wraps them into two short rows.
+            if ((rows * (cellH * k + gap) - gap <= boxH && cellW * k <= boxW) || k <= 0.35f) break
             k -= 0.05f
         }
         val usedH = rows * (cellH * k + gap) - gap
@@ -386,7 +462,7 @@ object TouchGeometry {
             val x = left + (boxW - rowW) / 2 + col * (cellW * k + gap) + cellW * k / 2
             val y = top + (boxH - usedH) / 2 + row * (cellH * k + gap) + cellH * k / 2
             val (iw, ih) = sizes[i]
-            b.items += Item(t, x, y, iw * k, ih * k, shape(t))
+            b.items += Item(t, x, y, iw * k, ih * k, b.shape(t))
         }
     }
 
@@ -413,6 +489,26 @@ object TouchGeometry {
      * of its radius, the rest by [slop] px - so a thumb a little off still presses it; between A and B, both.
      */
     fun hits(placed: Placed, x: Float, y: Float, slop: Float): List<Item> = placed.items.filter { it.contains(x, y, slop) }
+
+    /**
+     * The FIELD HUD's room to keep clear of the controls over the columns [[l], [r]) (px): down to the bottom of the
+     * top row, up from the bottom to the top of the bottom row. A row is the controls along that edge, within
+     * [HUD_ROW_GAP] of it (every preset's L / R, extras, D-pad, A / B and SELECT / START). A control a CUSTOM layout or
+     * RAISED puts further in (FF or the D-pad halfway up the side, GitHub #493) is left alone: keeping clear of it
+     * squeezed the HUD into a strip and lost its minimap.
+     */
+    fun hudClear(placed: Placed, l: Float, r: Float): Pair<Int, Int> {
+        val over = placed.items.filter { it.right > l && it.left < r }
+        val h = placed.h
+        val near = HUD_ROW_GAP * placed.dp
+        val top = over.filter { it.cy < h / 2 && it.top <= near }.maxOfOrNull { it.bottom } ?: 0f
+        val bottom = over.filter { it.cy >= h / 2 && h - it.bottom <= near }.minOfOrNull { it.top }?.let { h - it } ?: 0f
+        return top.toInt().coerceAtLeast(0) to bottom.toInt().coerceAtLeast(0)
+    }
+
+    /** How far from the top or bottom edge (dp) a control still counts as that edge's row for the HUD ([hudClear]):
+     * past every preset's (CLASSIC's A at HUGE, 14 + 2 x 12 x 1.4), short of a button moved up the side. */
+    const val HUD_ROW_GAP = 64f
 
     fun Item.contains(x: Float, y: Float, slop: Float): Boolean = when (shape) {
         Shape.CROSS -> hypot(x - cx, y - cy) <= w / 2 * 1.4f

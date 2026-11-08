@@ -27,7 +27,7 @@ class BestEffortTest {
         Game("Pokemon - FireRed Version (USA, Europe) (Rev 1).gba", "firered_vanilla", "BPRE", "FIRERED_REV1"),
         Game("Pokemon - LeafGreen Version (USA, Europe) (Rev 1).gba", "leafgreen_rev1", "BPGE", "LEAFGREEN_REV1"),
         Game("Pokemon - Emerald Version (USA, Europe).gba", "emerald_vanilla", "BPEE", "EMERALD"),
-        Game("../Pokemon Multi Language/Pokemon - Edicion Esmeralda (Spain)/Pokemon - Edicion Esmeralda (Spain).gba", "emerald_es", "BPES", "EMERALD_ES"),
+        Game("Pokemon - Edicion Esmeralda (Spain).gba", "emerald_es", "BPES", "EMERALD_ES"),
         Game("Pokemon - Ruby Version (USA, Europe) (Rev 1).gba", "ruby_rev1", "AXVE", "RUBY"),
         Game("Pokemon Unbound (v2.1.1.1).gba", "unbound", "BPRE", "UNBOUND"),
         Game("Pokemon Unbound (v2.1.1.1) (French).gba", "unbound_fr", "BPRE", "UNBOUND_FR"),

@@ -1,0 +1,10 @@
+---
+// src/views/Home.astro in each language but English (src/i18n).
+import Home from '../../views/Home.astro';
+import { PREFIXED } from '../../i18n/index.js';
+
+export function getStaticPaths() {
+  return PREFIXED.map((lang) => ({ params: { lang } }));
+}
+---
+<Home />

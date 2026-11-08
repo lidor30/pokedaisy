@@ -1,0 +1,52 @@
+# Gen 3 configs (hacks). The format and the commands: gamedata/README.md.
+
+# Pokémon Modern Emerald v3.6 (resetes12's pokeemerald fork, BPEE, 32 MB, sha1 ab3bc012…): its source is public
+# (github.com/resetes12/pokeemerald, tag Release3.6; cloned into $DECOMPS/pokemodernemerald). The release was built
+# with `make modern` (gcc), so a build of the tag isn't it byte for byte, but every RAM symbol the code references is
+# referenced as often in the release (1000 of 1000 checked), so the RAM below is the build's `nm`; ROM tables were
+# found in the release by their bytes (ROM pointers and calls masked), the battle handlers read live in each menu of a
+# scripted wild battle (ScriptContext_SetupScript 0x081D940D: the build's 0x081DA891 - 0x1484, both of its literal
+# pools agree). Struct offsets by `offsetof` compiled against the tag's headers: vanilla's 100-byte party mons and
+# 0x58-byte BattlePokemon, but SaveBlock1's Items pocket holds 90 (Key Items +0x6C8, Poké Balls +0x740, TMs +0x780,
+# Berries +0x880; party +0x238 and money +0x490 are retail's) and SaveBlock2's encryption key is at +0xBC (retail
+# +0xAC). The save's own settings (SaveBlock1 +0x3D9D..: MODERN TYPES, FAIRY TYPE, TYPE CHART, the randomizer's
+# types) pick its types and chart: ModernEmerald.kt. Retail Emerald's save doesn't load ("erased due to corruption"):
+# a new game played headless (`modern_emerald` fixtures' README).
+[config.modern_emerald]
+itemDescs = { preset = 'vanilla', base = 0x088A89A4 }
+playerParty = 0x0201D9CC
+playerPartyCount = 0x0201D9C9
+battleMons = 0x0200143C
+battlerPositions = 0x0200142C
+battlersCount = 0x02001420
+battleTypeFlags = 0x020003A0
+gMain = 0x03001574
+saveBlock1Ptr = 0x030036F0
+saveBlock2Ptr = 0x030036F4
+objectEvents = 0x0200682C
+mapHeader = 0x0200C22C
+bagPockets = 0x0200C298
+bagPocketCount = 5
+bagPocketOrder = 'EMERALD_BAG_POCKET_ORDER'
+encryptionKeyOff = 0xBC
+moneyOff = 0x490
+# The release's own (the build's + 0x124C .. 0xFC4: each found by its bytes or its neighbour's).
+monIconTable = 0x088FC758
+monIconPaletteIndices = 0x088FCF00
+monIconPaletteTable = 0x088FD0EC
+itemIconTable = 0x088B13EC
+battlerControllerFuncs = 0x03002364
+# gBattlerControllerFuncs[0] read in each menu of the scripted battle; the target handler from the move one's pool.
+handleInputChooseAction = 0x0804E8E1
+handleInputChooseMove = 0x0804F069
+completeWhenChoseItem = 0x08050E81
+waitForMonSelection = 0x08050DA9
+handleInputChooseTarget = 0x0804ECB9
+enemyParty = 0x0201DE7C
+battlerPartyIndexes = 0x02001424
+battleStructPtr = 0x02001860
+monToSwitchIntoOff = 0x5C
+actionCursor = 0x02001870
+moveCursor = 0x02001874
+partyMenu = 0x0201D7BC
+eggSpecies = 462

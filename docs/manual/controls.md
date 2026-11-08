@@ -3,7 +3,7 @@ title: Controls, hotkeys and touch
 summary: Remap the game's buttons, set up turbo, change or turn off the hotkeys, set up the touch controls or an external controller, and what the BACK button does.
 section: player
 order: 2
-keywords: [remap, rebind, keybind, key bindings, buttons, mapping, controller, gamepad, joystick, bluetooth, 8bitdo, gamesir, xbox, keyboard, shortcut, chord, combo, turbo, autofire, rapid fire, triggers, l2, r2, on screen controls, virtual pad, touch pad, touch controls, layout editor, move buttons, resize buttons, opacity, haptics, vibration, wild encounters, encounter rate, random battles, shiny, shiny odds, shiny hunting, rare colors]
+keywords: [flash, dark cave, light up cave, remap, rebind, keybind, key bindings, buttons, mapping, controller, gamepad, joystick, bluetooth, 8bitdo, gamesir, xbox, keyboard, shortcut, chord, combo, turbo, autofire, rapid fire, triggers, l2, r2, on screen controls, virtual pad, touch pad, touch controls, layout editor, move buttons, resize buttons, left handed, lefty, button colors, button style, skin, skins, deltaskin, delta, controller skin, opacity, haptics, vibration, wild encounters, encounter rate, random battles, shiny, shiny odds, shiny hunting, rare colors]
 ---
 
 PokeDaisy works out of the box on handhelds like the AYN Thor: the face buttons, shoulders, START and SELECT are the GBA's, and a few button combinations do emulator things like saving a state. Everything here is about changing that: which button presses what, which shortcuts exist, and what happens when you plug in a controller or play by touch.
@@ -43,7 +43,7 @@ The D-pad and the analog stick always move; they can't be remapped. First-time s
 
 ## X takes your buttons to the companion
 
-On a handheld with two screens, press `X` (the `TO COMPANION` button in `GAME BUTTONS`) while you walk around in a GBA or Game Boy game and your buttons move down to the companion, like the menu on a DS game's touch screen. A silver strip slides up along the bottom of the game with an arrow pointing down at the companion, and `L` and `R` slide in at the ends of the companion's tab bar.
+On a handheld with two screens, or a phone held upright with a controller, press `X` (the `TO COMPANION` button in `GAME BUTTONS`) while you walk around in a GBA or Game Boy game and your buttons move down to the companion, like the menu on a DS game's touch screen. A silver strip slides up along the bottom of the game with an arrow pointing down at the companion, and `L` and `R` slide in at the ends of the companion's tab bar.
 
 While your buttons are down there, the game keeps running but doesn't see them:
 
@@ -89,7 +89,7 @@ When SELECT or START is part of a chord, the game gets it when you let go rather
 | `RESTART GAME` | Starts the game again from its save, like `RESTART GAME` in the companion's `SETTINGS` | | |
 | `CLOSE APP` | Leaves the game (it saves as usual) and closes PokeDaisy completely, so it's gone from your recent apps | | |
 | `QUICK MENU` | Opens the [quick menu](#the-quick-menu), or closes it | L3 (shown as `THUMBL`) | |
-| `COMPANION` | Opens the companion over the game on one screen, where you can hide its edge button with `COMPANION BUTTON`. Also brings it back after `CLOSE COMPANION` | | |
+| `COMPANION` | Opens the companion over the game on one screen, where you can hide its edge button with `COMPANION BUTTON`. Also brings it back after `CLOSE COMPANION`. On a phone held upright it hides the companion or brings it back. In a DS game with two screens it swaps the second screen between the touch screen and the companion, and your buttons go with it | | |
 | `MUTE` | Mutes the game, or brings its sound back (`MUTE GAME` in [SOUND](fast-forward.md#game-volume-and-mute-sound)) | | |
 | `TOUCH SCREEN` | In a DS game on one screen: brings its touch screen up over the game, or closes it (see [DS layout](devices.md#ds-layout-two-screens-on-one)) | L2 | T |
 | `DS LAYOUT` | In a DS game on one screen held sideways: steps to the next `DS LAYOUT` (`ONE SCREEN`, `SIDE BY SIDE`, `LARGE + SMALL`, `PICTURE IN PICTURE`, `STACKED`, then round again), its name showing on the game for a moment | R2 | |
@@ -133,6 +133,7 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 | --- | --- |
 | `PC` | Opens your game's own PC right where you stand, as in the [bag](bag.md). |
 | `FLY` | Lists the places you can fly to; pick one and off you go. Needs a Pokémon in your party that knows the move. |
+| `FLASH` | Lights up a dark cave, the way the move does from the game's party menu: the Pokémon that knows it shows up and the cave lights up. It only shows while a Pokémon in your party knows `FLASH`, and it's greyed out where it isn't dark. In Emerald it also opens the sealed wall in the ancient tomb when you stand where the game asks. It needs the same badge as in the game. |
 | The keep-away spray | Uses an item from your bag that keeps wild Pokémon away (the tile shows its icon and name). With more than one kind in your bag, it lists them with how many you have and how many steps each lasts, so you pick. While one is still working it's greyed out and says how many steps are left. |
 | `BIKE` | Gets on your bike. While you're riding it says `GET OFF` and gets you off. |
 | `ROD` | Casts your best fishing rod. Face the water first. |
@@ -143,7 +144,7 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 
 Press L3 and the menu stays open: move with the D-pad or the left stick (on the ring, point the stick at an action), press `A` to use it, and `B` (or L3 again) closes it. You can also tap an action on the screen. While the menu is open your buttons work it, not the game, and the game keeps running underneath.
 
-An action you can't use right now is greyed out and says why, like a battle going on or nothing for it in your bag. `BIKE` and `ROD` use the game's own way of using a registered item, so the game decides the rest: where you can't ride or fish, it tells you so. They work in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in Emerald Kaizo and Ultra Violet, which run on those games, and in SoulGold, through its own `SELECT` wheel (it borrows the wheel's bottom slot for a moment, then puts back what you had there). `PC`, `FLY` and the spray show only in games where the [bag](bag.md) and [map](map.md) offer them.
+An action you can't use right now is greyed out and says why, like a battle going on or nothing for it in your bag. `BIKE` and `ROD` use the game's own way of using a registered item, so the game decides the rest: where you can't ride or fish, it tells you so. They work in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in Emerald Kaizo and Ultra Violet, which run on those games, and in SoulGold, through its own `SELECT` wheel (it borrows the wheel's bottom slot for a moment, then puts back what you had there). `PC`, `FLY` and the spray show only in games where the [bag](bag.md) and [map](map.md) offer them. `FLASH` works in FireRed, LeafGreen, Ruby, Sapphire and Emerald, in every language PokeDaisy supports, and in Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Ultra Violet, Ghost Grey, Gaia, Odyssey, Orange Islands, Let's Go, Glazed, Emerald Kaizo, Emerald Legacy, Recharged Emerald, Lazarus, Emerald Imperium, Heart and Soul, SoulGold and the randomized games. It asks for the badge the game's own menu asks for (Unbound, Gaia and Orange Islands ask for none).
 
 Pick which actions show, and turn the rest off, in `QUICK MENU` (in the `CONTROLS` group of Settings on either screen). Its `STYLE` picks how they're laid out (tap it to switch):
 
@@ -165,6 +166,8 @@ To use another button, change the `QUICK MENU` hotkey.
   - `SIDES` (the default): everything in the black bars beside the game when you hold the phone sideways, so nothing covers the picture. When the bars are too narrow for the buttons (an older 16:9 phone, or a phone held upright) it works like `CLASSIC`.
   - `CLASSIC`: the D-pad bottom left, A and B bottom right, `START` and `SELECT` in the middle, L and R in the top corners.
   - `COMPACT`: like `CLASSIC`, smaller and tucked into the corners, with `SELECT` above the D-pad and `START` above A and B.
+  - `MIRRORED`: `SIDES` (or `CLASSIC`, where `SIDES` doesn't fit) the other way round, for left hands: A and B on the left, the D-pad on the right. L and R stay on their own sides.
+  - `RAISED`: like `CLASSIC`, but held sideways the D-pad and A and B sit higher, where your thumbs rest, with L and R right above them instead of in the top corners.
   - `CUSTOM`: the one you made in `EDIT LAYOUT`. It shows up once you've made one, and picking a ready-made layout keeps it for later.
 - **`EDIT LAYOUT`**: move the buttons yourself (see below).
 
@@ -172,10 +175,12 @@ In a DS game the buttons get X and Y too, around A and B the way the DS has them
 - **`POSITION`**: with the phone held upright, where the buttons sit in their space: `TOP`, `MIDDLE` (the default) or `BOTTOM`. Their space is the gap between the game and the companion, or the game itself when there's no gap. It doesn't move a `CUSTOM` layout, which keeps your own places. With `EXPAND` and `UNDER GAME` the buttons get a space that fits them exactly, so it's greyed out then.
 - **`COMPANION`**: with the phone held upright, the companion right `UNDER GAME` (the default), which leaves the space at the bottom of the screen for the buttons, or `AT BOTTOM` of the screen. It's the same setting as the one in `DISPLAY OPTIONS`, and only on phones and other one-screen devices. With `EXPAND` on, the game fills everything above the companion, so `UNDER GAME` gives the buttons a strip of their own along the bottom of the screen instead, under the companion, where they never cover the game. With no touch controls on screen there's nothing to choose then, and the setting is greyed out.
 - **`SIZE`**: `SMALL`, `NORMAL`, `LARGE` or `X-LARGE`, for every button at once.
+- **`LOOK`**: how the buttons are drawn. `GLASS` (the default) is see-through with a light edge, `SOLID` fills them in, `OUTLINE` draws only their edges and words (a press fills one in), `CONSOLE` makes them look like a handheld's: raised, sinking a little when you press them, and `MODERN` draws smooth round buttons with plain lettering instead of pixels.
+- **`COLORS`**: the buttons' colors. `DARK` (the default), `LIGHT`, `INDIGO`, `GLACIER`, `SPICE`, `KIWI` and `FUCHSIA` color every button; `RETRO` is a grey body with berry A and B, `PRIMARY` a dark body with a red A, a yellow B, a blue X and a green Y, and `OLD SCHOOL` an old console's light grey with a red A, a blue B, a green X and a yellow Y.
 - **`OPACITY`**: how solid the buttons are, from 25% to 100%. 50% to start with.
 - **`D-PAD`**: `8-WAY` (the default) lets you press diagonals; `4-WAY` presses one direction at a time, which helps if you keep walking the wrong way in a menu.
 - **`FADE WHEN IDLE`**: the buttons fade to a faint outline a few seconds after you stop touching them, and come back with your next touch.
-- **`VIBRATION`**: a light tick each time you press something. Off to start with. It follows your phone's own touch vibration setting.
+- **`VIBRATION`**: a buzz each time you press something, `OFF` to start with. Turn it on and **`STRENGTH`** shows under it: `LIGHT`, `MEDIUM` (the default) or `STRONG`. Each tap on `STRENGTH` buzzes once, so you feel what you picked.
 - **`RESET LAYOUT`**: forgets `CUSTOM` and goes back to the ready-made layout. Only there once you've made one.
 
 On a phone held upright the buttons sit between the game and the companion when there's room; see [Devices](devices.md). Your thumb can slide from one button to the next without lifting: from one direction to another on the D-pad, or from B onto A. Touching between A and B presses both.
@@ -188,6 +193,19 @@ The `EXTRA BUTTONS` group adds buttons the GBA doesn't have. Turn each one on or
 - **`QUICK MENU`** (on to start with): opens the [quick menu](#the-quick-menu). A phone has no button for it otherwise. Tap a tile to run it; a tap anywhere else closes it.
 - **`TURBO A`** and **`TURBO B`**: press A or B over and over while you hold them, like the [turbo buttons](#turbo-a-and-b).
 - **`SAVE STATE`** and **`LOAD STATE`**: save or load a state in the current slot, like the hotkeys. If you load one by mistake, the `UNDO LOAD` hotkey takes you back.
+- **`ZOOM`** (on to start with): steps the view out and back in, like the `ZOOM` hotkey. It only shows while `ASPECT` is on `EXPAND`, since that's when there's more map to see.
+- **`REWIND`** (on to start with): rewinds the game for as long as you hold it, in GBA and Game Boy games. Turn `REWIND` on in Settings first; until then a press tells you where.
+- **`X AND Y`** (on to start with): X and Y buttons in GBA and Game Boy games, which have none of their own, round A, B, X and Y as on a DS: X on top, A right, B below, Y left. They work like a controller's X and Y, so they do whatever you put on them: by default X is `START 2` and `TO COMPANION`, Y is `SELECT 2`, and you can give them a hotkey under `HOTKEYS`. A DS game always shows its own X and Y.
+
+### Skins
+
+A skin replaces the drawn buttons with a picture of a whole controller. PokeDaisy reads skins made for the Delta emulator: `.deltaskin` files, which you can find on skin sites for Delta. Use ones made for the GBA or the Game Boy Color (a Game Boy Color skin is used for Game Boy games too). DS skins don't work yet.
+
+- **`IMPORT SKIN`** (on the top screen's Settings only): pick a `.deltaskin` file, or a zip with several in it. A single new skin is switched on for its games right away. Importing a skin you already have again updates it.
+- **`GBA SKIN`** and **`GAME BOY SKIN`**: which skin those games use, or `NONE` for the drawn buttons. You can pick them from the companion too.
+- **`DELETE SKIN`**: removes a skin from PokeDaisy. The file you imported it from isn't touched.
+
+Held sideways, the skin fills the screen and the game moves into the skin's own screen. Held upright, the game and the companion keep their places and only the button part of the skin shows, in the space for the buttons. A skin that has no picture for the way you hold your device gives way to the drawn buttons. While a skin is on, the settings that change the drawn buttons (`LAYOUT`, `LOOK`, `COLORS`, `SIZE` and the extra buttons) are greyed out. `OPACITY` works on skins that allow it; the others are always solid around the game. A skin's menu button opens the [quick menu](#the-quick-menu), and its fast-forward, quick save and quick load buttons work like the extra buttons.
 
 ### Moving and resizing buttons: EDIT LAYOUT
 
@@ -202,11 +220,13 @@ The `EXTRA BUTTONS` group adds buttons the GBA doesn't have. Turn each one on or
 - **`RESET`** puts every button back where the ready-made layout has it.
 - **`DONE`**, or `BACK`, keeps your layout and makes `LAYOUT` read `CUSTOM`.
 
+While you edit, the [HUD](hud.md) stays where it is. It makes room only for buttons along the top and bottom edges, so moving one up the side of the screen won't push it around.
+
 A phone held upright and held sideways each get their own layout: you edit the one for the way you're holding the phone, so turn it to edit the other. A layout stays put on another phone or with the status bar on: each button keeps its distance from the nearest edge.
 
 ## Running: AUTO-RUN and RUN INDOORS
 
-`AUTO-RUN` runs for you. Once your game lets you run, walking on the field runs without you holding B, and holding B walks instead. Holding A walks too, so in a game whose DexNav creeps up on a Pokémon while you hold A (Seaglass, for one), that still works. It leaves B alone everywhere else: menus, battles, conversations, and while you ride a bike, where B does something of its own. The first time you play a game it starts working after you've walked around for a few seconds. On Heart and Soul, SoulGold, Too Many Types 2, Emerald Rogue, Quetzal and Monomyth it can't always tell yet that you're on a bike. Elite Redux has an auto run of its own on the R button: use that one or this one, not both.
+`AUTO-RUN` runs for you. Once your game lets you run, walking on the field runs without you holding B, and holding B walks instead. It stays out of the way while you surf or dive, since B is what brings you back up. SoulGold and Odyssey run by themselves, so the row reads `ON` and is greyed out there: use the game's own option instead. Holding A walks too, so in a game whose DexNav creeps up on a Pokémon while you hold A (Seaglass, for one), that still works. It leaves B alone everywhere else: menus, battles, conversations, and while you ride a bike, where B does something of its own. The first time you play a game it starts working after you've walked around for a few seconds. On Heart and Soul, SoulGold, Too Many Types 2, Emerald Rogue, Quetzal and Monomyth it can't always tell yet that you're on a bike. Elite Redux has an auto run of its own on the R button: use that one or this one, not both.
 
 `RUN INDOORS` lets you run inside buildings too, where the games normally make you walk. It works on games built on FireRed or Emerald. On Ruby and Sapphire it shows `N/A`: those games decide where you can run in a way PokeDaisy can't change safely.
 
@@ -221,7 +241,7 @@ Both show `N/A` on a game PokeDaisy can't read the field of yet.
 
 Only random encounters change. Fishing, moves that lure wild Pokémon out and battles the story sets up still happen, and items that keep wild Pokémon away work as usual on top. The change applies at once, no restart needed.
 
-It works on the Game Boy Advance originals in every language and on almost every supported hack, including the ones rebuilt from newer source code like SoulGold, Lazarus and Recharged Yellow. On the Game Boy it works in Red, Blue, Yellow (in every language), PureRed, PureBlue and Crystal. On Emerald Rogue, Quetzal, Monomyth and the other Game Boy games it shows `N/A`.
+It works on the Game Boy Advance originals in every language and on almost every supported hack, including the ones rebuilt from newer source code like SoulGold, Lazarus and Recharged Yellow. On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Crystal and Crystal Legacy. On Emerald Rogue, Quetzal, Monomyth and the other Game Boy games it shows `N/A`.
 
 ## SHINY ODDS
 

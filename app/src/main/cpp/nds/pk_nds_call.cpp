@@ -2,15 +2,19 @@
 // function there is Thumb, so they're called with bit 0 set. Black's (Gen 5, no decomp) were traced in the running game:
 // see BLACK below.
 
-#include "pk_nds_call.h"
+#include "pk_nds_call_memory.h"
 
 #include <stddef.h>
 #include <string.h>
 
-#include "NDS.h"
+#include <vector>
+
+#include "pk_nds_ports_gen.h"
 #include "pk_nds_stub_gen.h"
 
-using namespace melonDS;
+using u8 = uint8_t;
+using u16 = uint16_t;
+using u32 = uint32_t;
 
 namespace {
 
@@ -68,8 +72,25 @@ const CallFns PLATINUM = {
     0, 0,
 };
 
-// pret/pokeheartgold's .xMAP: every address the same in the US HeartGold / SoulSilver builds and German
-// HeartGold / SoulSilver rev 0 (checked against its ARM9, including Task_RunScripts' calls and environment layout).
+// French Platinum (CPUF rev 0): the US cart's functions, found by their code (scripts/port_nds.py); the structs and the
+// script ids are the US cart's.
+const CallFns PLATINUM_FR = {
+    0x0203E925, 0x02050B09, 0x0203EB5D, 0x0203E8BD, 0x0200B37D, 0x02023801, 0x0203F005,
+    0x020707BD, 0x020709E5, 0x0203A9C5, 0x0207A309, 0x0207A19D, 0x020706E1, 0x02070715, 0x020509A9, 0x0202BE71, 0x0202B7C9,
+    0x0C, 0x9C,
+    0x0A, 0x0C,
+    1, 1,
+    2018,
+    11,
+    13, 7, 15, 16, 17,
+    4,
+    0, 0, 0, 0,
+    0, 0, 0, 0, 0, 0, 0,
+    0, 0,
+};
+
+// pret/pokeheartgold's .xMAP: every address the same in the US HeartGold / SoulSilver builds and the German and French
+// ones, rev 0 (checked against their ARM9s, including Task_RunScripts' calls and environment layout).
 const CallFns HEARTGOLD = {
     0, 0, 0,
     0x0203FE0D,   // ScriptJump
@@ -197,6 +218,40 @@ const Gen5Fns WHITE = {
     },
 };
 
+// French Black / White (IRBF / IRAF rev 0): the US / Europe functions, found by their code in the same overlays
+// (scripts/port_nds.py), overlay 21 and the start of overlay 10 0x80 lower, overlay 10 from FLDSKILL on 0x90.
+const Gen5Fns BLACK_FR = {
+    0x021461C8,
+    0x10, 0x18, 0x20,
+    0x02189FF5,
+    0x0200565D,
+    0x02012109,
+    0x021586E9,
+    10090,
+    0x0215E7B1, 0x0215E985, 0x0215E9A9,
+    4,
+    {
+        {0x02189FF4, 0xB082B5F8}, {0x021586E8, 0x1C0DB538}, {0x021588A0, 0xB083B5F0},
+        {0x0215E7B0, 0xB08AB5F8}, {0x0215E984, 0x1C02B510}, {0x0215E9A8, 0x1C03B538},
+    },
+};
+
+const Gen5Fns WHITE_FR = {
+    0x021461E8,
+    0x10, 0x18, 0x20,
+    0x0218A015,
+    0x0200565D,
+    0x02012109,
+    0x02158709,
+    10090,
+    0x0215E7D1, 0x0215E9A5, 0x0215E9C9,
+    4,
+    {
+        {0x0218A014, 0xB082B5F8}, {0x02158708, 0x1C0DB538}, {0x021588C0, 0xB083B5F0},
+        {0x0215E7D0, 0xB08AB5F8}, {0x0215E9A4, 0x1C02B510}, {0x0215E9C8, 0x1C03B538},
+    },
+};
+
 // Black 2 (IREO rev 0): Black's functions in a new build, each found by its code (BLs masked) - overlay 12 holds what
 // Black's 10 did, 36 the field's event check (Black's 21) - and checked headless on the player's save (the PC, FLY).
 const Gen5Fns BLACK2 = {
@@ -246,10 +301,104 @@ Pending pending = {};
 int lastDone = 0, lastFailed = 0;
 uint32_t lastResults[PK_NDS_MAX_RESULTS];
 
+// The language ports' functions (pk_nds_ports_gen.h): HeartGold's and Black's tables with each port's addresses. Black 2's
+// structs and script ids are Black's, and every guard word below is the same instruction in all of them.
+const CallFns* portFns(int n)
+{
+    static const std::vector<CallFns> fns = [] {
+        std::vector<CallFns> v;
+        for (int i = 0; i < PK_NDS_PORTS4_COUNT; i++) {
+            const PkNdsPort4& r = PK_NDS_PORTS4[i];
+            CallFns f = HEARTGOLD;
+            f.scriptContextJump = r.scriptJump;
+            f.stringTemplateNew = r.messageFormatNew;
+            f.stringInit = r.stringNew;
+            f.fieldMovesSetUsableMoves = r.fieldMoveInit;
+            f.fieldMovesCheckFly = r.fieldMoveCheckFly;
+            f.saveDataGetParty = r.partyGet;
+            f.partyGetPokemonBySlotIndex = r.partyGetMon;
+            f.flyContextNew = r.flyNew;
+            f.fieldMovesFlyTask = r.flyTask;
+            f.fieldSystemCreateTask = r.createTask;
+            f.scriptEnvironmentNew = r.scriptEnvNew;
+            f.createScriptContext = r.createScriptContext;
+            f.taskRunScripts = r.taskRunScripts;
+            v.push_back(f);
+        }
+        return v;
+    }();
+    return n >= 0 && n < (int) fns.size() ? &fns[n] : nullptr;
+}
+
+// The Platinum ports' functions: the US rev 1 table (its structs and script ids) with each port's addresses.
+const CallFns* portPlatinumFns(int n)
+{
+    static const std::vector<CallFns> fns = [] {
+        std::vector<CallFns> v;
+        for (int i = 0; i < PK_NDS_PORTS4P_COUNT; i++) {
+            const PkNdsPort4P& r = PK_NDS_PORTS4P[i];
+            CallFns f = PLATINUM;
+            f.scriptManagerSet = r.scriptManagerSet;
+            f.fieldTaskGetEnv = r.fieldTaskGetEnv;
+            f.scriptContextCreateAndStart = r.scriptContextCreateAndStart;
+            f.scriptContextJump = r.scriptContextJump;
+            f.stringTemplateNew = r.stringTemplateNew;
+            f.stringInit = r.stringInit;
+            f.scriptManagerGetMemberPtr = r.scriptManagerGetMemberPtr;
+            f.fieldMovesSetUsableMoves = r.fieldMovesSetUsableMoves;
+            f.fieldMovesCheckFly = r.fieldMovesCheckFly;
+            f.checkFlyLocationUnlocked = r.checkFlyLocationUnlocked;
+            f.saveDataGetParty = r.saveDataGetParty;
+            f.partyGetPokemonBySlotIndex = r.partyGetPokemonBySlotIndex;
+            f.flyContextNew = r.flyContextNew;
+            f.fieldMovesFlyTask = r.fieldMovesFlyTask;
+            f.fieldSystemCreateTask = r.fieldSystemCreateTask;
+            f.journalCreateEventUsedMove = r.journalCreateEventUsedMove;
+            f.journalSaveData = r.journalSaveData;
+            v.push_back(f);
+        }
+        return v;
+    }();
+    return n >= 0 && n < (int) fns.size() ? &fns[n] : nullptr;
+}
+
+const Gen5Fns* portGen5Fns(int n)
+{
+    static const std::vector<Gen5Fns> fns = [] {
+        std::vector<Gen5Fns> v;
+        for (int i = 0; i < PK_NDS_PORTS5_COUNT; i++) {
+            const PkNdsPort5& r = PK_NDS_PORTS5[i];
+            Gen5Fns f = BLACK;
+            f.gameSystemPtr = r.gameSystem;
+            f.eventCheck = r.eventCheck;
+            f.returnZero = r.returnZero;
+            f.setEvent = r.setEvent;
+            f.scriptEvent = r.scriptEvent;
+            f.skillInitCheck = r.skillInitCheck;
+            f.skillCanUse = r.skillCanUse;
+            f.skillUse = r.skillUse;
+            const u32 at[6] = { r.eventCheck, r.scriptEvent, r.scriptEventCheck, r.skillInitCheck, r.skillCanUse, r.skillUse };
+            for (int k = 0; k < 6; k++) f.code[k].addr = at[k] & ~1u;
+            v.push_back(f);
+        }
+        return v;
+    }();
+    return n >= 0 && n < (int) fns.size() ? &fns[n] : nullptr;
+}
+
 const CallFns* fnsFor(const PkNdsFieldGame* game)
 {
     if (!game || !game->fieldMapMain) return nullptr;
-    return game->callSet == 1 ? &PLATINUM : game->callSet == 2 ? &HEARTGOLD : game->callSet == 7 ? &ORIGIN_HEARTGOLD : nullptr;
+    switch (game->callSet) {
+    case 1: return &PLATINUM;
+    case 2: return &HEARTGOLD;
+    case 7: return &ORIGIN_HEARTGOLD;
+    case 8: return &PLATINUM_FR;
+    default:
+        if (game->callSet >= 100 && game->callSet < 200) return portFns(game->callSet - 100);
+        if (game->callSet >= 300 && game->callSet < 400) return portPlatinumFns(game->callSet - 300);
+        return nullptr;
+    }
 }
 
 const Gen5Fns* gen5FnsFor(const PkNdsFieldGame* game)
@@ -260,67 +409,61 @@ const Gen5Fns* gen5FnsFor(const PkNdsFieldGame* game)
     case 4: return &WHITE;
     case 5: return &BLACK2;
     case 6: return &WHITE2;
-    default: return nullptr;
+    case 9: return &BLACK_FR;
+    case 10: return &WHITE_FR;
+    default: return game->callSet >= 200 && game->callSet < 300 ? portGen5Fns(game->callSet - 200) : nullptr;
     }
 }
 
-u32 rd32(NDS* nds, u32 a)
+u32 rd32(const PkNdsCallMemory& mem, u32 a)
 {
-    if ((a & 0xFF000000u) != 0x02000000u) return 0;
-    u32 v = 0;
-    for (int i = 0; i < 4; i++) v |= (u32) nds->MainRAM[(a + i) & nds->MainRAMMask] << (8 * i);
-    return v;
+    return (a & 0xFF000000u) == 0x02000000u ? mem.read32(mem.context, a) : 0;
 }
 
-void wr32(NDS* nds, u32 a, u32 v)
+void wr32(const PkNdsCallMemory& mem, u32 a, u32 v)
 {
-    if ((a & 0xFF000000u) != 0x02000000u) return;
-    for (int i = 0; i < 4; i++) nds->MainRAM[(a + i) & nds->MainRAMMask] = (u8) (v >> (8 * i));
+    if ((a & 0xFF000000u) == 0x02000000u) mem.write32(mem.context, a, v);
 }
 
 bool inMain(u32 p) { return p >= 0x02000000u && p < 0x02400000u; }
 
-// The ITCM, written as the CPU would (melonDS's JIT drops what it compiled from those words).
-void itcmWrite(NDS* nds, u32 addr, const void* src, u32 len)
+void itcmWrite(const PkNdsCallMemory& mem, u32 addr, const void* src, u32 len)
 {
-    const u8* s = (const u8*) src;
-    for (u32 i = 0; i < len; i++) nds->ARM9.ITCM[(addr + i) & (ITCMPhysicalSize - 1)] = s[i];
-    for (u32 a = addr & ~3u; a < addr + len; a += 4) nds->JIT.CheckAndInvalidate<0, ARMJIT_Memory::memregion_ITCM>(a);
+    mem.writeItcm(mem.context, addr, src, len);
 }
 
-void itcmRead(NDS* nds, u32 addr, void* dst, u32 len)
+void itcmRead(const PkNdsCallMemory& mem, u32 addr, void* dst, u32 len)
 {
-    u8* d = (u8*) dst;
-    for (u32 i = 0; i < len; i++) d[i] = nds->ARM9.ITCM[(addr + i) & (ITCMPhysicalSize - 1)];
+    mem.readItcm(mem.context, addr, dst, len);
 }
 
 // The field map's ApplicationManager when the field is free to start something (field_system.c's HandleFieldInput:
 // no pause, the map running, no task; no child process), else 0.
-u32 freeFieldParent(NDS* nds, const PkNdsFieldGame* g)
+u32 freeFieldParent(const PkNdsCallMemory& mem, const PkNdsFieldGame* g)
 {
-    u32 fs = rd32(nds, g->fieldSystemPtr);
+    u32 fs = rd32(mem, g->fieldSystemPtr);
     if (!inMain(fs)) return 0;
-    u32 pm = rd32(nds, fs + g->offProcessManager);
+    u32 pm = rd32(mem, fs + g->offProcessManager);
     if (!inMain(pm)) return 0;
-    u32 parent = rd32(nds, pm), child = rd32(nds, pm + 4), pause = rd32(nds, pm + 8);
+    u32 parent = rd32(mem, pm), child = rd32(mem, pm + 4), pause = rd32(mem, pm + 8);
     if (!inMain(parent) || child || pause) return 0;
-    if (rd32(nds, fs + g->offTask) || !rd32(nds, fs + g->offRunningFieldMap)) return 0;
+    if (rd32(mem, fs + g->offTask) || !rd32(mem, fs + g->offRunningFieldMap)) return 0;
     return parent;
 }
 
 // Gen 5: the GameSystem when its field is up and free - the field map's proc running with a field map, no event, the
 // field's own event check in place and overlays 10 / 21 holding the code the jobs call - else 0.
-u32 gen5FreeField(NDS* nds, const PkNdsFieldGame* g, const Gen5Fns& f)
+u32 gen5FreeField(const PkNdsCallMemory& mem, const PkNdsFieldGame* g, const Gen5Fns& f)
 {
-    u32 gs = rd32(nds, f.gameSystemPtr);
+    u32 gs = rd32(mem, f.gameSystemPtr);
     if (!inMain(gs)) return 0;
-    u32 ps = rd32(nds, gs + g->offProcSys);
-    u32 proc = inMain(ps) ? rd32(nds, ps + g->offCurrentProc) : 0;
-    if (!inMain(proc) || (int) rd32(nds, proc + g->offProcOverlay) != g->fieldOverlay) return 0;
-    if (rd32(nds, gs + f.offEvent) || !inMain(rd32(nds, gs + f.offFieldMap)) || !inMain(rd32(nds, gs + g->offFieldMap))) return 0;
-    if (rd32(nds, gs + f.offEventCheck) != f.eventCheck) return 0;
+    u32 ps = rd32(mem, gs + g->offProcSys);
+    u32 proc = inMain(ps) ? rd32(mem, ps + g->offCurrentProc) : 0;
+    if (!inMain(proc) || (int) rd32(mem, proc + g->offProcOverlay) != g->fieldOverlay) return 0;
+    if (rd32(mem, gs + f.offEvent) || !inMain(rd32(mem, gs + f.offFieldMap)) || !inMain(rd32(mem, gs + g->offFieldMap))) return 0;
+    if (rd32(mem, gs + f.offEventCheck) != f.eventCheck) return 0;
     for (const auto& c : f.code)
-        if (c.addr && rd32(nds, c.addr) != c.word) return 0;
+        if (c.addr && rd32(mem, c.addr) != c.word) return 0;
     return gs;
 }
 
@@ -392,18 +535,23 @@ void scriptJob(Ops& o, const CallFns& f, u32 fs, const PkNdsFieldGame& g)
 
 }   // namespace
 
+bool pk_nds_call_supported(const PkNdsFieldGame* game)
+{
+    return fnsFor(game) || gen5FnsFor(game);
+}
+
 // The ops into the job, the hook into [slot] (holding [orig]): it runs them the next time the game calls it, then goes
 // on into [then] (orig, or a stand-in: Gen 5's event jobs). [script] (len bytes) is written to PK_NDS_SCRIPT_ADDR first.
-static int postAt(NDS* nds, u32 parent, u32 slot, u32 orig, u32 then, Ops& o, const unsigned char* script, u32 scriptLen)
+static int postAt(const PkNdsCallMemory& mem, u32 parent, u32 slot, u32 orig, u32 then, Ops& o, const unsigned char* script, u32 scriptLen)
 {
-    if (rd32(nds, slot) != orig) return 0;
+    if (rd32(mem, slot) != orig) return 0;
     if (o.n < PK_NDS_MAX_OPS) o.add(PK_NDS_OP_END);
 
     // The code only when it isn't there already (a state from before, a reset): rewriting it drops the JIT's blocks.
     u8 have[sizeof(PK_NDS_HOOK_CODE)];
-    itcmRead(nds, PK_NDS_HOOK_ADDR, have, sizeof(have));
-    if (memcmp(have, PK_NDS_HOOK_CODE, sizeof(have))) itcmWrite(nds, PK_NDS_HOOK_ADDR, PK_NDS_HOOK_CODE, sizeof(have));
-    if (script) itcmWrite(nds, PK_NDS_SCRIPT_ADDR, script, scriptLen);
+    itcmRead(mem, PK_NDS_HOOK_ADDR, have, sizeof(have));
+    if (memcmp(have, PK_NDS_HOOK_CODE, sizeof(have))) itcmWrite(mem, PK_NDS_HOOK_ADDR, PK_NDS_HOOK_CODE, sizeof(have));
+    if (script) itcmWrite(mem, PK_NDS_SCRIPT_ADDR, script, scriptLen);
 
     int seq = nextSeq++;
     PkNdsJob job = {};
@@ -411,23 +559,23 @@ static int postAt(NDS* nds, u32 parent, u32 slot, u32 orig, u32 then, Ops& o, co
     job.slot = slot;
     job.orig = then;
     memcpy(job.ops, o.op, sizeof(PkNdsOp) * (size_t) o.n);
-    itcmWrite(nds, PK_NDS_JOB, &job, sizeof(job));
-    wr32(nds, slot, PK_NDS_HOOK_ADDR);
+    itcmWrite(mem, PK_NDS_JOB, &job, sizeof(job));
+    wr32(mem, slot, PK_NDS_HOOK_ADDR);
     pending = {seq, parent, slot, orig, 0, 0};
     return seq;
 }
 
 // Gen 4: the hook into the field map's main (ApplicationManager.template.main).
-static int post(NDS* nds, const PkNdsFieldGame* game, u32 parent, Ops& o, const unsigned char* script, u32 scriptLen)
+static int post(const PkNdsCallMemory& mem, const PkNdsFieldGame* game, u32 parent, Ops& o, const unsigned char* script, u32 scriptLen)
 {
-    return postAt(nds, parent, parent + 4, game->fieldMapMain, game->fieldMapMain, o, script, scriptLen);
+    return postAt(mem, parent, parent + 4, game->fieldMapMain, game->fieldMapMain, o, script, scriptLen);
 }
 
 // Gen 5's jobs (see Gen5Fns): the hook in the event check's place. [startsEvent]: the ops set an event of their own, so
 // the check is stored back first and the hook goes on into returnZero instead of it.
-static int postGen5(NDS* nds, const Gen5Fns& f, u32 gs, Ops& o, bool startsEvent)
+static int postGen5(const PkNdsCallMemory& mem, const Gen5Fns& f, u32 gs, Ops& o, bool startsEvent)
 {
-    if (!startsEvent) return postAt(nds, gs, gs + f.offEventCheck, f.eventCheck, f.eventCheck, o, nullptr, 0);
+    if (!startsEvent) return postAt(mem, gs, gs + f.offEventCheck, f.eventCheck, f.eventCheck, o, nullptr, 0);
     Ops all;
     all.add(PK_NDS_OP_STORE32, gs, (u32) f.offEventCheck, f.eventCheck);
     for (int i = 0; i < o.n && all.n < PK_NDS_MAX_OPS; i++) {
@@ -437,29 +585,29 @@ static int postGen5(NDS* nds, const Gen5Fns& f, u32 gs, Ops& o, bool startsEvent
             if ((a & ~(u32) (PK_NDS_MAX_RESULTS - 1)) == PK_NDS_RESULT_REF) a += 1;
         all.op[all.n++] = op;
     }
-    return postAt(nds, gs, gs + f.offEventCheck, f.eventCheck, f.returnZero, all, nullptr, 0);
+    return postAt(mem, gs, gs + f.offEventCheck, f.eventCheck, f.returnZero, all, nullptr, 0);
 }
 
 // Black's actions (pk_nds_call_action's, Gen 5's way). Results are the ops' (postGen5 puts its own op first when the
 // job starts an event: the event made is then result 1, 0 when none was - FLY from a place the game says no to).
-static int gen5Action(NDS* nds, const PkNdsFieldGame* game, const Gen5Fns& f, int action, const uint32_t args[4])
+static int gen5Action(const PkNdsCallMemory& mem, const PkNdsFieldGame* game, const Gen5Fns& f, int action, const uint32_t args[4])
 {
-    u32 gs = gen5FreeField(nds, game, f);
+    u32 gs = gen5FreeField(mem, game, f);
     if (!gs) return 0;
-    u32 fieldMap = rd32(nds, gs + f.offFieldMap);
+    u32 fieldMap = rd32(mem, gs + f.offFieldMap);
     Ops o;
     switch (action) {
     case PK_NDS_ACTION_PC: {
         int ev = o.add(f.scriptEvent, gs, f.pcScript, 0, 0);
         o.add(f.setEvent, gs, Ops::res(ev));
-        return postGen5(nds, f, gs, o, true);
+        return postGen5(mem, f, gs, o, true);
     }
     case PK_NDS_ACTION_FLY_CHECK: {
         // result 1 = the skill's test (0 = may fly from here), as Gen 4's; which towns the app reads from the flags
         constexpr u32 CHECK = PK_NDS_SKILL_ADDR + offsetof(PkNdsSkill, check);
         o.add(f.skillInitCheck, fieldMap, CHECK);
         o.add(f.skillCanUse, f.skillFly, CHECK);
-        return postGen5(nds, f, gs, o, false);
+        return postGen5(mem, f, gs, o, false);
     }
     case PK_NDS_ACTION_FLY: {
         // arg0 = the party slot of the Pokémon that flies, arg1 = the zone to fly to
@@ -472,12 +620,12 @@ static int gen5Action(NDS* nds, const PkNdsFieldGame* game, const Gen5Fns& f, in
         sk.paramSkill = (u16) f.skillFly;
         sk.paramArg = args[1];
         u8 have[sizeof(PK_NDS_SKILL_CODE)];
-        itcmRead(nds, PK_NDS_HELPER_ADDR, have, sizeof(have));
-        if (memcmp(have, PK_NDS_SKILL_CODE, sizeof(have))) itcmWrite(nds, PK_NDS_HELPER_ADDR, PK_NDS_SKILL_CODE, sizeof(have));
-        itcmWrite(nds, PK_NDS_SKILL_ADDR, &sk, sizeof(sk));
+        itcmRead(mem, PK_NDS_HELPER_ADDR, have, sizeof(have));
+        if (memcmp(have, PK_NDS_SKILL_CODE, sizeof(have))) itcmWrite(mem, PK_NDS_HELPER_ADDR, PK_NDS_SKILL_CODE, sizeof(have));
+        itcmWrite(mem, PK_NDS_SKILL_ADDR, &sk, sizeof(sk));
         int ev = o.add(PK_NDS_HELPER_ADDR, PK_NDS_SKILL_ADDR, fieldMap);
         o.add(f.setEvent, gs, Ops::res(ev));
-        return postGen5(nds, f, gs, o, true);
+        return postGen5(mem, f, gs, o, true);
     }
     default:
         return 0;
@@ -487,15 +635,15 @@ static int gen5Action(NDS* nds, const PkNdsFieldGame* game, const Gen5Fns& f, in
 // Scratch for structs a job hands the game (a FieldMoveContext): past the script, in the same unused ITCM.
 constexpr u32 SCRATCH = PK_NDS_SCRIPT_ADDR + PK_NDS_SCRIPT_MAX;
 
-int pk_nds_call_action(NDS* nds, const PkNdsFieldGame* game, int action, const uint32_t args[4])
+int pk_nds_call_action(const PkNdsCallMemory& mem, const PkNdsFieldGame* game, int action, const uint32_t args[4])
 {
-    if (const Gen5Fns* g5 = gen5FnsFor(game)) return nds && !(pending.seq && pending.state == 0) ? gen5Action(nds, game, *g5, action, args) : 0;
+    if (const Gen5Fns* g5 = gen5FnsFor(game)) return !(pending.seq && pending.state == 0) ? gen5Action(mem, game, *g5, action, args) : 0;
     const CallFns* f = fnsFor(game);
-    if (!nds || !f || (pending.seq && pending.state == 0)) return 0;
-    u32 parent = freeFieldParent(nds, game);
+    if (!f || (pending.seq && pending.state == 0)) return 0;
+    u32 parent = freeFieldParent(mem, game);
     if (!parent) return 0;
-    if (rd32(nds, parent + 4) != game->fieldMapMain) return 0;
-    u32 fs = rd32(nds, game->fieldSystemPtr);
+    if (rd32(mem, parent + 4) != game->fieldMapMain) return 0;
+    u32 fs = rd32(mem, game->fieldSystemPtr);
 
     Ops o;
     const unsigned char* script = nullptr;
@@ -540,7 +688,7 @@ int pk_nds_call_action(NDS* nds, const PkNdsFieldGame* game, int action, const u
     default:
         return 0;
     }
-    return post(nds, game, parent, o, script, scriptLen);
+    return post(mem, game, parent, o, script, scriptLen);
 }
 
 int pk_nds_call_status(int seq)
@@ -557,68 +705,68 @@ bool pk_nds_call_results(int seq, uint32_t* out)
     return true;
 }
 
-void pk_nds_call_frame(NDS* nds, const PkNdsFieldGame* game)
+void pk_nds_call_frame(const PkNdsCallMemory& mem, const PkNdsFieldGame* game)
 {
-    if (!nds || !pending.seq || pending.state != 0) return;
+    if (!pending.seq || pending.state != 0) return;
     u32 done;
-    itcmRead(nds, PK_NDS_JOB + offsetof(PkNdsJob, done), &done, 4);
+    itcmRead(mem, PK_NDS_JOB + offsetof(PkNdsJob, done), &done, 4);
     if (done == (u32) pending.seq) {
         pending.state = 1;
         lastDone = pending.seq;
-        itcmRead(nds, PK_NDS_JOB + offsetof(PkNdsJob, res), lastResults, sizeof(lastResults));
+        itcmRead(mem, PK_NDS_JOB + offsetof(PkNdsJob, res), lastResults, sizeof(lastResults));
         return;
     }
     if (++pending.frames < 8) return;
     // Not called: put the field map's main back if it's still the same manager holding our hook (Gen 5: the event
     // check, if it's still the same GameSystem's).
     if (const Gen5Fns* g5 = gen5FnsFor(game)) {
-        if (rd32(nds, g5->gameSystemPtr) == pending.parent && rd32(nds, pending.slot) == PK_NDS_HOOK_ADDR)
-            wr32(nds, pending.slot, pending.orig);
+        if (rd32(mem, g5->gameSystemPtr) == pending.parent && rd32(mem, pending.slot) == PK_NDS_HOOK_ADDR)
+            wr32(mem, pending.slot, pending.orig);
         pending.state = -1;
         lastFailed = pending.seq;
         return;
     }
-    u32 fs = game ? rd32(nds, game->fieldSystemPtr) : 0;
-    u32 pm = inMain(fs) ? rd32(nds, fs + game->offProcessManager) : 0;
-    if (inMain(pm) && rd32(nds, pm) == pending.parent && rd32(nds, pending.slot) == PK_NDS_HOOK_ADDR)
-        wr32(nds, pending.slot, pending.orig);
+    u32 fs = game ? rd32(mem, game->fieldSystemPtr) : 0;
+    u32 pm = inMain(fs) ? rd32(mem, fs + game->offProcessManager) : 0;
+    if (inMain(pm) && rd32(mem, pm) == pending.parent && rd32(mem, pending.slot) == PK_NDS_HOOK_ADDR)
+        wr32(mem, pending.slot, pending.orig);
     pending.state = -1;
     lastFailed = pending.seq;
 }
 
-int pk_nds_call_ops(NDS* nds, const PkNdsFieldGame* game, const PkNdsOp* ops, int n)
+int pk_nds_call_ops(const PkNdsCallMemory& mem, const PkNdsFieldGame* game, const PkNdsOp* ops, int n)
 {
     if (const Gen5Fns* g5 = gen5FnsFor(game)) {
-        if (!nds || (pending.seq && pending.state == 0) || n <= 0 || n > PK_NDS_MAX_OPS) return 0;
-        u32 gs = gen5FreeField(nds, game, *g5);
+        if ((pending.seq && pending.state == 0) || n <= 0 || n > PK_NDS_MAX_OPS) return 0;
+        u32 gs = gen5FreeField(mem, game, *g5);
         if (!gs) return 0;
         Ops o;
         for (int i = 0; i < n; i++) o.op[o.n++] = ops[i];
-        return postGen5(nds, *g5, gs, o, false);
+        return postGen5(mem, *g5, gs, o, false);
     }
-    if (!nds || !fnsFor(game) || (pending.seq && pending.state == 0) || n <= 0 || n > PK_NDS_MAX_OPS) return 0;
-    u32 parent = freeFieldParent(nds, game);
+    if (!fnsFor(game) || (pending.seq && pending.state == 0) || n <= 0 || n > PK_NDS_MAX_OPS) return 0;
+    u32 parent = freeFieldParent(mem, game);
     if (!parent) return 0;
     Ops o;
     for (int i = 0; i < n; i++) o.op[o.n++] = ops[i];
-    return post(nds, game, parent, o, nullptr, 0);
+    return post(mem, game, parent, o, nullptr, 0);
 }
 
-int pk_nds_call_script(NDS* nds, const PkNdsFieldGame* game, const uint8_t* bytes, uint32_t len)
+int pk_nds_call_script(const PkNdsCallMemory& mem, const PkNdsFieldGame* game, const uint8_t* bytes, uint32_t len)
 {
     const CallFns* f = fnsFor(game);
-    if (!nds || !f || (pending.seq && pending.state == 0) || !bytes || len == 0 || len > PK_NDS_SCRIPT_MAX) return 0;
-    u32 parent = freeFieldParent(nds, game);
+    if (!f || (pending.seq && pending.state == 0) || !bytes || len == 0 || len > PK_NDS_SCRIPT_MAX) return 0;
+    u32 parent = freeFieldParent(mem, game);
     if (!parent) return 0;
     Ops o;
-    if (f->scriptEnvironmentNew) hgScriptJob(o, *f, rd32(nds, game->fieldSystemPtr), *game);
-    else scriptJob(o, *f, rd32(nds, game->fieldSystemPtr), *game);
-    return post(nds, game, parent, o, bytes, len);
+    if (f->scriptEnvironmentNew) hgScriptJob(o, *f, rd32(mem, game->fieldSystemPtr), *game);
+    else scriptJob(o, *f, rd32(mem, game->fieldSystemPtr), *game);
+    return post(mem, game, parent, o, bytes, len);
 }
 
-void pk_nds_call_itcm_write(NDS* nds, uint32_t addr, const void* src, uint32_t len)
+void pk_nds_call_itcm_write(const PkNdsCallMemory& mem, uint32_t addr, const void* src, uint32_t len)
 {
-    if (addr >= PK_NDS_SCRIPT_ADDR && addr + len <= 0x02000000u) itcmWrite(nds, addr, src, len);
+    if (addr >= PK_NDS_SCRIPT_ADDR && addr + len <= 0x02000000u) itcmWrite(mem, addr, src, len);
 }
 
 void pk_nds_call_reset(void)

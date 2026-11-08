@@ -20,13 +20,15 @@ The slots are your game's own party screen: FireRed and Emerald use their real s
 
 The icons bounce like they do in the game. If you'd rather they stood still, turn off `PARTY ICONS MOVE` in SETTINGS > `TWEAKS`.
 
+To change the order, press and hold a Pokémon, drag it onto another one and let go: they trade places, in your game too. The summary's `SWITCH` does the same: tap it, your party opens, and tap the Pokémon to trade with. `CANCEL` or BACK goes back to the summary. This works in the Game Boy Advance games while you're free to walk around, not in a battle or a conversation.
+
 ## The summary
 
 Tap any slot to open that Pokémon's summary. It fills the tab:
 
 - **Top left**: name, gender (a nicknamed Pokémon's kind comes after its name), icon, level, status, types, the HP bar, and an EXP bar. `NEXT` is how much experience it still needs for the next level (`MAX` at level 100).
 - **Bottom left**: `WEAK TO`, `RESISTS` and `IMMUNE TO`, with the multiplier on each type (2x, ½x, 0x and so on). It's the quickest way to see what to keep this Pokémon away from.
-- **Right**: its four moves, each with its type, power (`PWR`) and remaining `PP`.
+- **Right**: its four moves, each with its type, power (`PWR`) and remaining `PP`. An icon beside the type tells a physical move (a burst) from a special one (rings) and a status move (a grey dot), in the games where PokeDaisy knows the split.
 
 ![EMBERPUP's summary: level, HP and EXP on the left above its weaknesses and resistances, its four moves on the right](shots/companion-summary.png "A Pokémon's summary")
 

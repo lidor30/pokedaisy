@@ -152,5 +152,9 @@ class BlackDecodeTest {
         assertEquals(listOf(381, 245, 639, 521, 612, 381), t.party.map { it.species })
         assertEquals(302 to 302, t.party[5].hp to t.party[5].maxHp)
         assertEquals(684_260L, t.money)
+        // And the companion's whole view of it (a throw anywhere left it on LOADING, with no EXPAND or FF: Discord, 1.3.3).
+        val view = buildSnapshotView(t)
+        assertEquals(6, view.party.size)
+        assertEquals(381, view.party[5].species)
     }
 }

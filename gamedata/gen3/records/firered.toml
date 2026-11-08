@@ -286,3 +286,141 @@ afterEvolution = 0x0300537C
 returnToField = 0x080567F0
 lockControls = 0x08069954
 codeCrcs = [0xA970F637, 0x8B13D433, 0x95CA9A3E, 0x0111A86E]
+
+
+# TMs / HMs from the ITEMS tab (TmTeach.kt's TmFns): USE opens the game's own TM screen. pret's build at the pinned
+# commit, firered_rev1 (byte for byte retail, SHA1 dd5945db...), and its ELF.
+[record.TM_FIRERED_REV1]
+schema = 'gen3_tm'
+specialVarItemId = 0x0203AD30
+itemUseCb = 0x03005E98
+itemUseCbTmhm = 0x08125BB8
+showPartyMenuForItemUse = 0x08124D04
+partyMenu = 0x0203B0A0
+partyMenuSlotOff = 9
+initPartyMenu = 0x0811EC48
+mainCallback2 = 0x030030F4
+setMainCallback2 = 0x08000558
+returnToField = 0x080567F0
+cleanupOverworld = 0x08056404
+fadeScreen = 0x0807A82C
+lockControls = 0x08069954
+unlockControls = 0x08069960
+codeCrcs = [0xEA99DF01, 0xAA3B20FF, 0x1655AE08, 0x7FD43C20, 0x95CA9A3E, 0xCE27BF5A, 0xF9959006, 0x0111A86E, 0xBAB654BA]
+
+# FLASH from the QUICK MENU (Flash.kt's FlashFns): the same build. FIELD_MOVE_FLASH is field move 0, so the Boulder Badge.
+[record.FLASH_FIRERED_REV1]
+schema = 'gen3_flash'
+flagGet = 0x0806E6E4
+badgeFlag = 0x820 # FLAG_BADGE01_GET
+litFlag = 0x806 # FLAG_SYS_FLASH_ACTIVE
+setUpFieldMoveFlash = 0x080C9B40
+menuFieldCallback = 0x03005024
+postMenuFieldCallback = 0x0203B0C4
+fieldCallbacks = [0x080C9B88] # FieldCallback_Flash
+partyMenuSlotId = 0x0203B0A9
+mapHeader = 0x02036DFC
+codeCrcs = [0x07BEBC3A, 0x95A07BD8, 0x99857EDD]
+
+# The TM screen (TmTeach.kt) and FLASH (Flash.kt): retail FireRed rev 0, pret's pokefirered at the pinned commit built as
+# firered (byte for byte retail rev 0, SHA1 41cb23d8...), and its ELF.
+[record.TM_FIRERED_REV0]
+schema = 'gen3_tm'
+specialVarItemId = 0x0203AD30
+itemUseCb = 0x03005E98
+itemUseCbTmhm = 0x08125B40
+showPartyMenuForItemUse = 0x08124C8C
+partyMenu = 0x0203B0A0
+partyMenuSlotOff = 9
+initPartyMenu = 0x0811EBD0
+mainCallback2 = 0x030030F4
+setMainCallback2 = 0x08000544
+returnToField = 0x080567DC
+cleanupOverworld = 0x080563F0
+fadeScreen = 0x0807A818
+lockControls = 0x08069940
+unlockControls = 0x0806994C
+codeCrcs = [0x9CA850AA, 0xAA3B20FF, 0x3099DC9B, 0x7FD43C20, 0xB892BBB7, 0xE67BC364, 0xF9959006, 0x0111A86E, 0xBAB654BA]
+
+[record.FLASH_FIRERED_REV0]
+schema = 'gen3_flash'
+flagGet = 0x0806E6D0
+badgeFlag = 0x820 # FLAG_BADGE01_GET
+litFlag = 0x806 # FLAG_SYS_FLASH_ACTIVE
+setUpFieldMoveFlash = 0x080C9B2C
+menuFieldCallback = 0x03005024
+postMenuFieldCallback = 0x0203B0C4
+fieldCallbacks = [0x080C9B74] # FieldCallback_Flash
+partyMenuSlotId = 0x0203B0A9
+mapHeader = 0x02036DFC
+codeCrcs = [0x07BEBC3A, 0x95A07BD8, 0xEFB4F176]
+# CursorCB_FieldMove's badge check (0x081245A4 + 0x78): the hacks edited into rev 0 keep it (Ash Gray, Ghost Grey, Let's Go,
+# Odyssey, Ultra Violet), patch it to "always" (Gaia, Orange Islands, Rocket Edition) or jump to CFRU's own (Unbound & co.).
+badgeCheck = 0x0812461C
+badgeCheckCrc = 0xD3F21DE4
+
+# The TM screen (TmTeach.kt) and FLASH (Flash.kt): retail LeafGreen rev 0, pret's pokefirered at the pinned commit built as
+# leafgreen (byte for byte retail, SHA1 574fa542...), and its ELF.
+[record.TM_LEAFGREEN_REV0]
+schema = 'gen3_tm'
+specialVarItemId = 0x0203AD30
+itemUseCb = 0x03005E98
+itemUseCbTmhm = 0x08125B18
+showPartyMenuForItemUse = 0x08124C64
+partyMenu = 0x0203B0A0
+partyMenuSlotOff = 9
+initPartyMenu = 0x0811EBA8
+mainCallback2 = 0x030030F4
+setMainCallback2 = 0x08000544
+returnToField = 0x080567DC
+cleanupOverworld = 0x080563F0
+fadeScreen = 0x0807A7EC
+lockControls = 0x08069940
+unlockControls = 0x0806994C
+codeCrcs = [0x679AE1F0, 0xAA3B20FF, 0x1DE165E1, 0x7FD43C20, 0xB892BBB7, 0xAD9CEAC8, 0xF9959006, 0x0111A86E, 0xBAB654BA]
+
+[record.FLASH_LEAFGREEN_REV0]
+schema = 'gen3_flash'
+flagGet = 0x0806E6D0
+badgeFlag = 0x820 # FLAG_BADGE01_GET
+litFlag = 0x806 # FLAG_SYS_FLASH_ACTIVE
+setUpFieldMoveFlash = 0x080C9B00
+menuFieldCallback = 0x03005024
+postMenuFieldCallback = 0x0203B0C4
+fieldCallbacks = [0x080C9B48] # FieldCallback_Flash
+partyMenuSlotId = 0x0203B0A9
+mapHeader = 0x02036DFC
+codeCrcs = [0x07BEBC3A, 0xDA630667, 0xEA609AF5]
+
+# The TM screen (TmTeach.kt) and FLASH (Flash.kt): retail LeafGreen rev 1, pret's pokefirered at the pinned commit built as
+# leafgreen_rev1 (byte for byte retail, SHA1 7862c67b...), and its ELF.
+[record.TM_LEAFGREEN_REV1]
+schema = 'gen3_tm'
+specialVarItemId = 0x0203AD30
+itemUseCb = 0x03005E98
+itemUseCbTmhm = 0x08125B90
+showPartyMenuForItemUse = 0x08124CDC
+partyMenu = 0x0203B0A0
+partyMenuSlotOff = 9
+initPartyMenu = 0x0811EC20
+mainCallback2 = 0x030030F4
+setMainCallback2 = 0x08000558
+returnToField = 0x080567F0
+cleanupOverworld = 0x08056404
+fadeScreen = 0x0807A800
+lockControls = 0x08069954
+unlockControls = 0x08069960
+codeCrcs = [0xAB261E3B, 0xAA3B20FF, 0xBF379CB9, 0x7FD43C20, 0x95CA9A3E, 0xD3AF9AFE, 0xF9959006, 0x0111A86E, 0xBAB654BA]
+
+[record.FLASH_LEAFGREEN_REV1]
+schema = 'gen3_flash'
+flagGet = 0x0806E6E4
+badgeFlag = 0x820 # FLAG_BADGE01_GET
+litFlag = 0x806 # FLAG_SYS_FLASH_ACTIVE
+setUpFieldMoveFlash = 0x080C9B14
+menuFieldCallback = 0x03005024
+postMenuFieldCallback = 0x0203B0C4
+fieldCallbacks = [0x080C9B5C] # FieldCallback_Flash
+partyMenuSlotId = 0x0203B0A9
+mapHeader = 0x02036DFC
+codeCrcs = [0x07BEBC3A, 0xDA630667, 0x80A86C54]

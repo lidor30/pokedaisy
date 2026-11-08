@@ -18,11 +18,10 @@ interface Props {
 }
 const { title, description, docs, current, toc = [], jsonLd = [], search = true } = Astro.props;
 const pageTitle = (slug: string) => docs.pages.find((p: any) => p.slug === slug)?.title ?? slug;
-const canonical = new URL(Astro.url.pathname, Astro.site ?? 'https://pokedaisy.com').href;
 ---
-<Base title={title} description={description}>
+<!-- English only for now (src/i18n's isLocalizedPath): the language picker offers each language's home. -->
+<Base title={title} description={description} localized={false}>
   <Fragment slot="head">
-    <link rel="canonical" href={canonical} />
     <link rel="preload" href="/fonts/AtkinsonHyperlegible-Regular.ttf" as="font" type="font/ttf" crossorigin />
     {jsonLd.map((j) => <script type="application/ld+json" set:html={JSON.stringify(j)} />)}
   </Fragment>

@@ -1,0 +1,74 @@
+---
+import Base from '../layouts/Base.astro';
+import Matrix from '../components/Matrix.astro';
+import RomCheck from '../components/RomCheck.astro';
+import data from '../data/compat.json';
+
+const hacks = data.hacks;
+const retail = [...Object.entries(data.baseCodes).map(([code, title]) => ({ code, title, revs: null as number[] | null })), ...data.retail];
+import { trFor } from '../i18n/index.js';
+
+const tr = trFor(Astro.url);
+---
+<Base
+  title={tr('ROM check · PokeDaisy')}
+  description={tr("Check whether PokeDaisy's companion screen can read your Pokémon ROM. The file is checked in your browser and never uploaded.")}
+>
+  <section class="block container narrow">
+    <div class="section-head">
+      <span class="eyebrow">{tr('ROM CHECK')}</span>
+      <h1 class="heading">{tr('Is your ROM supported?')}</h1>
+      <p class="lead">{tr('Drop a ROM to see which game and version it is, and whether the companion can read it. The file is checked right here, in your browser. It\'s never uploaded.')}</p>
+    </div>
+    <RomCheck />
+  </section>
+
+  <section class="block container">
+    <div class="section-head">
+      <span class="eyebrow">{tr('SUPPORTED GAMES')}</span>
+      <h2 class="heading">{tr('What works in each game')}</h2>
+    </div>
+    <div data-reveal="fade"><Matrix /></div>
+  </section>
+
+  <section class="block container">
+    <div class="section-head">
+      <span class="eyebrow">{tr('EXACT VERSIONS')}</span>
+      <h2 class="heading">{tr('The builds the companion knows')}</h2>
+      <p class="lead">{tr('ROM hacks are recognised by the whole file\'s SHA-1, so another version of the same hack needs its own support.')}</p>
+    </div>
+    <div class="versions">
+      <article class="f-card vcard" data-reveal>
+        <h3 class="vtitle">{tr('ROM HACKS')}</h3>
+        <ul class="vlist">
+          {hacks.map((h) => (
+            <li><span>{h.title.replace(/^Pokémon /, '')}</span><span class="vval">{h.version}</span></li>
+          ))}
+        </ul>
+      </article>
+      <article class="f-card vcard" data-reveal style="--i:1">
+        <h3 class="vtitle">{tr('ORIGINAL GAMES')}</h3>
+        <p class="small muted">{tr('Retail dumps.')}</p>
+        <ul class="vlist">
+          {data.gameBoy.map((g) => <li><span>{g.title}</span><span class="vval">{tr('GAME BOY')}</span></li>)}
+          {data.ds.map((g) => <li><span>{g.title}</span><span class="vval">DS · {g.code} · {tr('REV {n}', { n: g.rev })}</span></li>)}
+          {retail.map((r) => (
+            <li><span>{r.title}</span><span class="vval">{r.code}{r.revs && ` · ${tr('REV {n}', { n: r.revs.join('/') })}`}</span></li>
+          ))}
+        </ul>
+      </article>
+    </div>
+  </section>
+</Base>
+
+<style>
+  .narrow { max-width: 900px; }
+  .versions { display: grid; grid-template-columns: 1fr 1.2fr; gap: 28px; align-items: start; }
+  .vcard { filter: var(--hard-shadow); display: grid; gap: 12px; padding: calc(var(--px) * 8); }
+  .vtitle { font-size: var(--t-l); color: #cb0707; letter-spacing: 0.0625em; text-shadow: var(--bold), var(--px) var(--px) 0 #f0c8a0, calc(var(--px) + 0.0625em) var(--px) 0 #f0c8a0; }
+  .vlist { list-style: none; margin: 0; padding: 0; font-size: var(--t-s); }
+  .vlist li { display: flex; justify-content: space-between; gap: 16px; padding: 6px 4px; border-top: var(--px) solid #ecebf2; }
+  .vlist li:hover { background: #fff7d6; }
+  .vval { color: var(--muted); white-space: nowrap; }
+  @media (max-width: 860px) { .versions { grid-template-columns: 1fr; } }
+</style>

@@ -15,6 +15,12 @@
 #define PD_CARD_W 240
 #define PD_CARD_H 160
 
+struct pd_card_icon {
+    bool ok;
+    uint8_t tiles[0x200];
+    uint32_t pal[16];
+};
+
 // What the card prints, as SetPlayerCardData gathers it (TrainerCardInfo).
 struct pd_card_info {
     int style;           // PD_CARD_*
@@ -26,6 +32,9 @@ struct pd_card_info {
     int dexCaught;       // regional until the National Dex; -1 = no POKéDEX yet
     int badges;          // bit i = badge i+1
     int stars;
+    // Recharged Yellow's back: six icons (first frame's 16 tiles, 16 colours), ok = there.
+    struct pd_card_icon icons[6];
+    int drawnStars;      // the stars drawn (Lazarus counts them by a rule of its own)
     int hofDebut;        // h << 16 | m << 8 | s of the first Hall of Fame; 0 = none
     int linkWins, linkLosses, trades, unionRoom, berryCrush, linkContests, linkPokeblocks, battlePoints;
     int stickers[3];     // FireRed's Sticker Man: a level 1-4 each, 0 = none

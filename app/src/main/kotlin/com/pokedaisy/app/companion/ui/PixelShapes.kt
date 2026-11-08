@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.ui
 
+import androidx.compose.ui.draw.clip
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Color
@@ -94,7 +95,20 @@ class PixelRoundedShape(private val radius: Dp) : Shape {
 
     override fun equals(other: Any?) = other is PixelRoundedShape && other.radius == radius
     override fun hashCode() = radius.hashCode()
+
+    /** The same corners smooth: a rounded rectangle, which every renderer clips to on the GPU ([pixelClip]). */
+    val smooth: Shape get() = if (radius == Dp.Infinity) androidx.compose.foundation.shape.RoundedCornerShape(50) else androidx.compose.foundation.shape.RoundedCornerShape(radius)
 }
+
+/**
+ * Clips to [shape], but while LIGHT COMPANION is on to its smooth twin ([PixelRoundedShape.smooth]). Android 11's
+ * renderer can't clip to a path on the GPU: each redraw drew the clip as a mask on the CPU and uploaded it - the whole
+ * companion window's took a Galaxy Tab A 160 ms a frame (2026-11-08). A rounded rectangle it clips without one.
+ * Backgrounds that only need the shape's corners draw it ([androidx.compose.foundation.background] with the shape) and
+ * clip nothing.
+ */
+fun androidx.compose.ui.Modifier.pixelClip(shape: Shape): androidx.compose.ui.Modifier =
+    clip(if (shape is PixelRoundedShape && com.pokedaisy.app.companion.LightCompanion.on) shape.smooth else shape)
 
 /** A pixel pill (or circle, when square) - replaces `CircleShape` / `RoundedCornerShape(50)`. */
 val PixelPillShape = PixelRoundedShape(Dp.Infinity)

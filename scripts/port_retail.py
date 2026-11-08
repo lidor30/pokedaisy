@@ -54,9 +54,9 @@ FC_ARGS = [0, 1, 1, 1, 3, 1, 1, 0, 1, 0, 0, 2, 1, 1, 1, 0, 2, 1, 1, 1, 1, 0, 0, 
 # No-Intro names it) and the Kotlin configs that hold its addresses. FireRed rev 0
 # has no dex / guide tables of its own: rev 1's are mapped from rev 1's ROM.
 ENGLISH = {
-    "BPRE0": ("Pokemon - FireRed Version (USA, Europe)", "NATIVE_FIRERED_REV0", ("BPRE1", "POKEDEX_FIRERED_REV1", "GUIDE_TABLES_FIRERED_REV1")),
+    "BPRE0": ("Pokemon - FireRed Version (USA)", "NATIVE_FIRERED_REV0", ("BPRE1", "POKEDEX_FIRERED_REV1", "GUIDE_TABLES_FIRERED_REV1")),
     "BPRE1": ("Pokemon - FireRed Version (USA, Europe) (Rev 1)", "NATIVE_FIRERED_REV1", ("BPRE1", "POKEDEX_FIRERED_REV1", "GUIDE_TABLES_FIRERED_REV1")),
-    "BPGE0": ("Pokemon - LeafGreen Version (USA, Europe)", "NATIVE_LEAFGREEN_REV0", ("BPGE0", "POKEDEX_LEAFGREEN_REV0", "GUIDE_TABLES_LEAFGREEN_REV0")),
+    "BPGE0": ("Pokemon - LeafGreen Version (USA)", "NATIVE_LEAFGREEN_REV0", ("BPGE0", "POKEDEX_LEAFGREEN_REV0", "GUIDE_TABLES_LEAFGREEN_REV0")),
     "BPGE1": ("Pokemon - LeafGreen Version (USA, Europe) (Rev 1)", "NATIVE_LEAFGREEN_REV1", ("BPGE1", "POKEDEX_LEAFGREEN_REV1", "GUIDE_TABLES_LEAFGREEN_REV1")),
     "AXVE1": ("Pokemon - Ruby Version (USA, Europe) (Rev 1)", "NATIVE_RUBY", ("AXVE1", "POKEDEX_RUBY", "GUIDE_TABLES_RUBY")),
     "AXVE2": ("Pokemon - Ruby Version (USA, Europe) (Rev 2)", "NATIVE_RUBY", ("AXVE2", "POKEDEX_RUBY", "GUIDE_TABLES_RUBY")),

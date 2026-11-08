@@ -94,6 +94,7 @@ import androidx.compose.material.icons.filled.Save
 import androidx.compose.material.icons.filled.Search
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material.icons.filled.VideogameAsset
+import androidx.compose.material.icons.filled.Home
 import androidx.compose.material.icons.filled.VisibilityOff
 import androidx.compose.material3.DropdownMenu
 import androidx.compose.material3.DropdownMenuItem
@@ -334,6 +335,8 @@ class LibraryActivity : ComponentActivity() {
         ssIntro = ScreenScraperClient.enabled && !prefs.screenScraperAsked && prefs.screenScraperAccount == null
         // EXPAND's introduction, once: to everyone not already on it (first-time setup goes first).
         expandIntro = !prefs.expandIntroSeen && prefs.gameAspect != com.pokedaisy.app.companion.GameAspect.WIDE
+        // BATTLE STYLE's pick, once: to everyone (first-time setup and EXPAND's introduction go first).
+        battleStyleIntro = !prefs.battleStyleAsked
         // WHAT'S NEW, once after an update to a version with notes. A fresh install has nothing to tell: its version
         // counts as seen, so the next update's notes are the first.
         val updated = runCatching {
@@ -501,6 +504,15 @@ class LibraryActivity : ComponentActivity() {
     /** The open quick view's pill: where D-pad UP from the games' top row lands. */
     private val quickViewFocus = FocusRequester()
 
+    /** The header's SEARCH (GitHub #123): what the games are filtered by, [shownRoms]; [searching] = its window is up. */
+    private var searchQuery by mutableStateOf("")
+    private var searching by mutableStateOf(false)
+
+    private fun search(query: String) {
+        searchQuery = query
+        if (launcherOn) refreshLauncherGames()
+    }
+
     private var renaming by mutableStateOf<File?>(null)
     private var deleting by mutableStateOf<File?>(null)
 
@@ -509,7 +521,7 @@ class LibraryActivity : ComponentActivity() {
         @Suppress("UNUSED_EXPRESSION") revision
         val m = rememberGbaTextMetrics()
         val small = rememberGbaTextMetrics(textScale = 1f)
-        val library = remember(revision, sort) { sortLibrary(this@LibraryActivity, prefs, listRoms(), sort) }
+        val library = remember(revision, sort, unsupportedRoms, searchQuery) { sortLibrary(this@LibraryActivity, prefs, shownRoms(), sort) }
         // Each game's console (a hack's is its base game's), once per revision: the quick views filter on it.
         val views = remember(revision, library) { quickViewsOf(library) }
         val view = views.open(quickView)
@@ -528,6 +540,8 @@ class LibraryActivity : ComponentActivity() {
         val section = if (toolsOpen) com.pokedaisy.app.companion.ui.LibrarySection.TOOLS else com.pokedaisy.app.companion.ui.LibrarySection.GAMES
         // BACK on TOOLS goes back to the games, not out of the app.
         BackHandler(enabled = toolsOpen) { toolsOpen = false }
+        // BACK with a search on shows the whole library again.
+        BackHandler(enabled = !toolsOpen && searchQuery.isNotEmpty()) { search("") }
         androidx.compose.foundation.layout.BoxWithConstraints(modifier = Modifier.fillMaxSize().onSizeChanged { screenSize = with(density) { DpSize(it.width.toDp(), it.height.toDp()) } }) {
             // The window's own shape from the first frame (screenSize is only known after one: an upright phone showed the
             // rail for a frame before its bar).
@@ -552,6 +566,7 @@ class LibraryActivity : ComponentActivity() {
                         headerFirstAttached = true
                         onDispose { headerFirstAttached = false }
                     }
+                    HeaderIcon(Icons.Filled.Search, tr("SEARCH"), m) { searching = true }
                     HeaderIcon(if (gridView) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.GridView, tr("Toggle view"), m) {
                         gridView = !gridView
                     }
@@ -565,6 +580,7 @@ class LibraryActivity : ComponentActivity() {
                     // SETTINGS is the rail's / bar's.
                 }
                 Spacer(Modifier.height(m.u * (if (library.isNotEmpty() || toolsOpen) 8 else 4)))
+                SearchStrip(m)
 
                 if (library.isNotEmpty() && !toolsOpen) {
                     com.pokedaisy.app.companion.ui.QuickViewPills(
@@ -597,7 +613,7 @@ class LibraryActivity : ComponentActivity() {
                 } else if (roms.isEmpty()) {
                     OptionListWindow(m, Modifier.fillMaxWidth().padding(horizontal = SCREEN_MARGIN)) {
                         GbaText(
-                            tr(
+                            if (searchQuery.isNotBlank()) tr("No games match your search.") else tr(
                                 "No ROMs yet. Tap + to add a ROM file (a .gba, .zip or .7z) or your ROMs folders, or drop files into {0}",
                                 "Android/data/$packageName/files/roms/",
                             ),
@@ -710,6 +726,7 @@ class LibraryActivity : ComponentActivity() {
                     badge = { if (it == AddChoice.PATCH) com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.ROM_PATCH) else null },
                 )
             }
+            if (searching) SearchWindow(m, small)
             if (pickingSort) {
                 OptionSelector(
                     tr("SORT BY"), LibrarySort.entries.toList(), sort, { tr(it.label) }, m,
@@ -860,6 +877,15 @@ class LibraryActivity : ComponentActivity() {
                 )
             }
 
+            // After EXPAND's, one at a time: which battle screen.
+            if (battleStyleIntroShown) {
+                com.pokedaisy.app.companion.ui.BattleStyleIntro(
+                    m, small, com.pokedaisy.app.companion.BattleStyle.of(prefs.battleStyle),
+                    onPick = { prefs.battleStyle = it.id; prefs.battleStyleAsked = true; battleStyleIntro = false },
+                    onDismiss = { prefs.battleStyleAsked = true; battleStyleIntro = false },
+                )
+            }
+
             backupPick?.let { b ->
                 OptionSelector(
                     tr("RESTORE BACKUP"), b.files.indices.toList(), -1, { backupLabel(b.files[it]) }, m,
@@ -957,6 +983,7 @@ class LibraryActivity : ComponentActivity() {
     private fun launcherHeader(): List<HeaderButton> = listOfNotNull(
         // TOOLS has no games to sort, show, add or refresh: HELP alone.
         HeaderButton(Icons.AutoMirrored.Filled.Sort, tr("Sort")) { pickingSort = true }.takeIf { !toolsOpen },
+        HeaderButton(Icons.Filled.Search, tr("SEARCH")) { searching = true }.takeIf { !toolsOpen },
         HeaderButton(if (gridView) Icons.AutoMirrored.Filled.ViewList else Icons.Filled.GridView, tr("Toggle view")) { gridView = !gridView }.takeIf { !toolsOpen },
         HeaderButton(Icons.Filled.Add, tr("Add games")) { addMenu = true }.takeIf { !toolsOpen },
         HeaderButton(Icons.Filled.Refresh, tr("Refresh")) { refreshLibrary() }.takeIf { !toolsOpen },
@@ -1111,6 +1138,8 @@ class LibraryActivity : ComponentActivity() {
 
     /** About a menu column's width (Material's menus are 112-280 dp). */
     private val MENU_COLUMN_WIDTH = 280.dp
+    /** Held upright, the narrowest screen that still shows a label in each of two columns. */
+    private val MENU_UPRIGHT_MIN_WIDTH = 320.dp
     private val NARROW_HEADER = 600.dp
 
     /** The library screen's size, for a game's menu to pick one or two columns. */
@@ -1183,6 +1212,12 @@ class LibraryActivity : ComponentActivity() {
             add(RomMenuItem(tr("CHEATS"), Icons.Filled.Code, opens = true) {
                 startActivity(Intent(this@LibraryActivity, SettingsActivity::class.java).putExtra(SettingsActivity.EXTRA_CHEATS_ROM, rom.absolutePath))
             })
+            // A shortcut straight into the game, on Android's home screen (GitHub #182).
+            add(RomMenuItem(tr("ADD TO HOME"), Icons.Filled.Home) {
+                if (!HomeShortcut.request(this@LibraryActivity, rom, romLabel(rom), coverFile(rom))) {
+                    Toast.makeText(this@LibraryActivity, tr("Your home screen can't add shortcuts"), Toast.LENGTH_LONG).show()
+                }
+            })
             add(RomMenuItem(tr("HIDE"), Icons.Filled.VisibilityOff) { hideRom(rom) })
             // A linked folder's ROM is the player's own file: it can be hidden, never deleted.
             if (!RomFolder.isLinked(prefs, rom)) {
@@ -1205,11 +1240,14 @@ class LibraryActivity : ComponentActivity() {
                 onClick = { onDismiss(); item.onClick() },
             )
         }
-        // Two columns where one would run off the screen and two fit across it (a wide screen):
-        // the list had grown past a landscape screen's height.
+        // Two columns where they fit across the screen and one would run off it, or fill it: the list had grown past a
+        // landscape screen's height, and held upright it took the whole screen (the user's call).
         val itemHeight = maxOf(MENU_ITEM_MIN_HEIGHT, m.lineHeight + 16.dp)
-        val twoColumns = screenSize.width >= MENU_COLUMN_WIDTH * 2 + 32.dp &&
-            itemHeight * items.size + 16.dp > screenSize.height - 32.dp
+        // Upright the columns share the screen's width (a phone has no room for two of MENU_COLUMN_WIDTH).
+        val upright = screenSize.height > screenSize.width && screenSize.width >= MENU_UPRIGHT_MIN_WIDTH
+        val twoColumns = upright || (
+            screenSize.width >= MENU_COLUMN_WIDTH * 2 + 32.dp && itemHeight * items.size + 16.dp > screenSize.height - 32.dp
+            )
         // Square corners on the popup's own surface (its shape must be a
         // CornerBasedShape - no pixel steps possible), and a subtle 1u frame
         // just inside it rather than Material's smooth-rounded edge.
@@ -1229,10 +1267,12 @@ class LibraryActivity : ComponentActivity() {
                 } else {
                     // Down the first column, then the second (DELETE last, bottom right); a 1u rule between.
                     val half = (items.size + 1) / 2
-                    Row(Modifier.height(IntrinsicSize.Min)) {
-                        Column(Modifier.width(IntrinsicSize.Max)) { items.take(half).forEach { MenuItem(it) } }
+                    val rowWidth = if (upright) Modifier.width(screenSize.width - 32.dp) else Modifier
+                    Row(rowWidth.height(IntrinsicSize.Min)) {
+                        val column = if (upright) Modifier.weight(1f) else Modifier.width(IntrinsicSize.Max)
+                        Column(column) { items.take(half).forEach { MenuItem(it) } }
                         Box(Modifier.fillMaxHeight().padding(vertical = u * 4).width(u).background(MenuBorder))
-                        Column(Modifier.width(IntrinsicSize.Max)) { items.drop(half).forEach { MenuItem(it) } }
+                        Column(column) { items.drop(half).forEach { MenuItem(it) } }
                     }
                 }
             }
@@ -1438,6 +1478,45 @@ class LibraryActivity : ComponentActivity() {
     /** A card in the launcher: its cursor, a tap (the cursor onto it, then play), a long press / ⋮ (the launcher's menu). */
     private class LauncherCard(val cursor: Boolean, val onTap: () -> Unit, val onMenu: () -> Unit)
 
+    /** The header's SEARCH: the games behind it follow what's typed. A window, so the launcher (every key its own) can
+     * have it too: while one is up keys go to Compose. */
+    @Composable
+    private fun SearchWindow(m: GbaTextMetrics, small: GbaTextMetrics) {
+        val focus = remember { FocusRequester() }
+        // A text field taking the focus brings the keyboard up by itself.
+        LaunchedEffect(Unit) { runCatching { focus.requestFocus() } }
+        OptionOverlay({ searching = false }, Modifier.widthIn(max = 520.dp)) {
+            Column {
+                OptionTitleWindow(tr("SEARCH"), m)
+                Spacer(Modifier.height(m.u * 4))
+                OptionListWindow(m, Modifier.fillMaxWidth()) {
+                    Column {
+                        OptionTextField(
+                            searchQuery, ::search, small,
+                            Modifier.padding(horizontal = m.u * 8, vertical = m.u * 2).focusRequester(focus),
+                            placeholder = tr("SEARCH GAMES"), leadingIcon = com.pokedaisy.app.companion.ui.PixelIcons.search,
+                        )
+                        OptionLine(tr("CLEAR"), null, selected = false, m, height = m.rowHeight * 1.3f) { search(""); searching = false }
+                        OptionLine(tr("DONE"), null, selected = true, m, height = m.rowHeight * 1.3f) { searching = false }
+                    }
+                }
+            }
+        }
+    }
+
+    /** What the library is filtered by, over the games: a tap opens SEARCH again, CLEAR shows them all. */
+    @Composable
+    private fun SearchStrip(m: GbaTextMetrics) {
+        if (searchQuery.isBlank() || toolsOpen) return
+        Row(
+            Modifier.fillMaxWidth().padding(horizontal = SCREEN_MARGIN).padding(bottom = m.u * 4),
+            horizontalArrangement = Arrangement.spacedBy(m.u * 4),
+        ) {
+            OptionButton(tr("SEARCH") + ": " + searchQuery, m, modifier = Modifier.weight(1f, fill = false), onClick = { searching = true })
+            OptionButton(tr("CLEAR"), m, onClick = { search("") })
+        }
+    }
+
     @Composable
     private fun RenameDialog(
         current: String,
@@ -1470,6 +1549,14 @@ class LibraryActivity : ComponentActivity() {
     /** Imported ROMs plus the linked folders' supported ones (from their last scan). */
     /** The library, alphabetical. Every ROM it lists for the first time is dated ([RomAdded]): NEW
      * unless setup is running or a newly linked folder's first scan brought it in. Any thread. */
+    /** [listRoms] as the library shows it: SUPPORTED ONLY leaves out what the companion can't read. */
+    private fun shownRoms(): List<File> = listRoms().let { roms ->
+        if (prefs.librarySupportedOnly) roms.filterNot { it.absolutePath in unsupportedRoms } else roms
+    }.let { roms ->
+        val query = searchQuery
+        if (query.isBlank()) roms else roms.filter { matchesSearch(query, listOf(romLabel(it), it.name)) }
+    }
+
     private fun listRoms(): List<File> = RomFolder.libraryRoms(this, prefs).also { roms ->
         RomAdded.record(this, roms, initial = setup != null || linkingFolder)
     }
@@ -1826,7 +1913,7 @@ class LibraryActivity : ComponentActivity() {
     /** The launcher's games: the open quick view of the library in its order (favorites first), the last played
      * selected at first. */
     private fun refreshLauncherGames() {
-        val views = quickViewsOf(sortLibrary(this, prefs, listRoms(), sort))
+        val views = quickViewsOf(sortLibrary(this, prefs, shownRoms(), sort))
         launcherViews = views
         launcher.views = views.shown
         val open = views.open(quickView)
@@ -1837,9 +1924,9 @@ class LibraryActivity : ComponentActivity() {
 
     /** Every window over the main screen (pass keys to them, not the launcher). */
     private val libraryDialogOpen
-        get() = pickingSort || addMenu || renaming != null || deleting != null || gameInfo != null || coverPickerFor != null ||
+        get() = searching || pickingSort || addMenu || renaming != null || deleting != null || gameInfo != null || coverPickerFor != null ||
             pendingImport != null || patcher.step != null || saveLoad != null || backupPick != null || updates.release != null || crashAsk ||
-            (expandIntro && !crashAsk) || ssIntroShown || whatsNewShown || supportShown || seasonalShown
+            (expandIntro && !crashAsk) || battleStyleIntroShown || ssIntroShown || whatsNewShown || supportShown || seasonalShown
 
     /** BACK for the library's windows (OptionOverlay & co.): the newest open one closes. */
     private val libraryBack = com.pokedaisy.app.companion.ui.CompanionBack()
@@ -2172,6 +2259,7 @@ class LibraryActivity : ComponentActivity() {
                 }
                 val library = views?.library.orEmpty()
                 Spacer(Modifier.height(m.u * (if (library.isNotEmpty() || toolsOpen) 8 else 4)))
+                SearchStrip(m)
                 if (views != null && library.isNotEmpty() && !toolsOpen) {
                     com.pokedaisy.app.companion.ui.QuickViewPills(
                         views.shown, launcher.view, views.counts, m, small,
@@ -2192,7 +2280,7 @@ class LibraryActivity : ComponentActivity() {
                 } else if (games.isEmpty()) {
                     OptionListWindow(m, Modifier.fillMaxWidth().padding(horizontal = SCREEN_MARGIN)) {
                         GbaText(
-                            if (library.isNotEmpty()) emptyViewText(launcher.view) else tr(
+                            if (library.isNotEmpty()) emptyViewText(launcher.view) else if (searchQuery.isNotBlank()) tr("No games match your search.") else tr(
                                 "No ROMs yet. Tap + to add a ROM file (a .gba, .zip or .7z) or your ROMs folders, or drop files into {0}",
                                 "Android/data/$packageName/files/roms/",
                             ),
@@ -2324,11 +2412,15 @@ class LibraryActivity : ComponentActivity() {
 
     /** The update's one-time "set up ScreenScraper?" window: wanted (set in onCreate), then shown once nothing else is up. */
     internal var ssIntro by mutableStateOf(false)
-    private val ssIntroShown get() = ssIntro && setup == null && !crashAsk && updates.release == null && !expandIntro && !whatsNewShown && !supportShown && !seasonalShown
+    private val ssIntroShown get() = ssIntro && setup == null && !crashAsk && updates.release == null && !expandIntro && !battleStyleIntro && !whatsNewShown && !supportShown && !seasonalShown
     /** WHAT'S NEW is up: after any update offer, never over setup. */
     private val whatsNewShown get() = whatsNew != null && setup == null && updates.release == null
     /** The support window is up: after any update offer and WHAT'S NEW, never over setup. */
     private val supportShown get() = supportAsk && setup == null && updates.release == null && !whatsNewShown
+
+    /** BATTLE STYLE's one-time pick ([com.pokedaisy.app.companion.ui.BattleStyleIntro]): wanted (set in onCreate), shown once nothing else is up. */
+    internal var battleStyleIntro by mutableStateOf(false)
+    private val battleStyleIntroShown get() = battleStyleIntro && setup == null && !crashAsk && updates.release == null && !expandIntro && !whatsNewShown && !supportShown && !seasonalShown
 
     /** A limited-time theme to announce ([com.pokedaisy.app.companion.ui.theme.seasonalThemeToAnnounce]; internal for ui-preview). */
     internal var seasonalTheme by mutableStateOf<com.pokedaisy.app.companion.ui.theme.ThemeSpec?>(null)
@@ -2511,7 +2603,7 @@ class LibraryActivity : ComponentActivity() {
     /** Setup's REMOVE on a linked folder: its games leave the library, the files stay where they are. */
     private fun unlinkRomsFolder(path: String) {
         prefs.romsFolders = prefs.romsFolders - path
-        RomFolder.forget(this, path)
+        RomFolder.forgetLater(this, path)
         setup?.let { s ->
             s.romsFolders = prefs.romsFolders
             s.found = RomFolder.found(this, prefs).map(::romLabel)

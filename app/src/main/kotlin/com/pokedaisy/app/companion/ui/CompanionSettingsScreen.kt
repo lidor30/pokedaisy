@@ -1,6 +1,9 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.SkinSystem
+
 import com.pokedaisy.app.companion.NewFeatures
+import com.pokedaisy.app.companion.zoomLabel
 
 import com.pokedaisy.app.companion.data.LookChar
 import com.pokedaisy.app.companion.ui.theme.DarkMode
@@ -38,6 +41,7 @@ import com.pokedaisy.app.companion.data.WildEncounters
 import com.pokedaisy.app.companion.COMPANION_TABS
 import com.pokedaisy.app.companion.CompanionSettings
 import com.pokedaisy.app.companion.KeyCapture
+import com.pokedaisy.app.companion.BattleStyle
 import com.pokedaisy.app.companion.FfMode
 import com.pokedaisy.app.companion.GameAspect
 import com.pokedaisy.app.companion.hasGrid
@@ -106,6 +110,9 @@ fun CompanionSettingsScreen(
     DisposableEffect(page, capture) { onDispose { capture?.cancel() } }
     var confirm by remember { mutableStateOf<Confirm?>(null) }
     var selector by remember { mutableStateOf<Selector?>(null) }
+    // TOUCH CONTROLS > SKINS: the imported skins (read on the way in) and their pick-list.
+    val touchSkinUi = remember { TouchSkinUi() }
+    val touchSkins = remember(settings, page) { if (page == Page.TOUCH) settings?.touchSkins.orEmpty() else emptyList() }
 
     // The games' own spelling: "POKéMON", not "POKÉMON".
     val gameName = settings?.gameName?.uppercase()?.replace('É', 'é') ?: ""
@@ -235,6 +242,9 @@ fun CompanionSettingsScreen(
                         onEdit = settings::editTouchLayout,
                         underGame = settings.uprightUnderGame, setUnderGame = { settings.setPortraitUnderGame(it); tick++ },
                         expand = settings.gameAspect == GameAspect.WIDE && settings.wideSupported, touchShown = settings.touchControlsShown,
+                        skins = touchSkins, skinUi = touchSkinUi,
+                        skinSystem = settings.touchStage?.let { if (it.ds) SkinSystem.DS else if (it.gameBoy) SkinSystem.GB else SkinSystem.GBA } ?: SkinSystem.GBA,
+                        feel = settings::feelVibration,
                     ) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.SPEED -> speedRows(settings, { tick++ }, { selector = it }) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
                     Page.DISPLAY -> displayRows(settings, { tick++ }, { page = it }, { selector = it }) + SettingRow(tk("CANCEL"), null) { page = Page.HOME }
@@ -278,12 +288,16 @@ fun CompanionSettingsScreen(
                     TouchControlsPage(
                         stage, style, shot, m, Modifier.fillMaxWidth().weight(1f), underGame = settings.uprightUnderGame == true,
                         expand = settings.gameAspect == GameAspect.WIDE && settings.wideSupported, touchShown = settings.touchControlsShown,
+                        skins = touchSkins, skinUi = touchSkinUi, setStyle = { settings.setTouchStyle(it); tick++ },
                     ) { mod ->
                         OptionListWindow(m, mod) {
                             GroupedRows(rows, m, cursor, onClick = { i -> moveCursor(i); rows[i].onClick() }, onFocused = ::moveCursor)
                         }
                     }
-                } else OptionListWindow(m, Modifier.fillMaxWidth().weight(1f)) {
+                } else DenseText {
+                    // The lists a font pixel smaller where there's room (the Thor): more rows on screen. The title keeps its size.
+                    val m = rememberGbaTextMetrics()
+                    RailedWindow(m, Modifier.fillMaxWidth().weight(1f), rail = page == Page.HOME) {
                     // Rows share out the window's height (big touch targets) down
                     // to a floor, past which the list scrolls instead.
                     // SHADERS too: OptionRows shares the window out, so its 4 rows came out taller than SETTINGS'.
@@ -346,6 +360,7 @@ fun CompanionSettingsScreen(
                             onFocused = ::moveCursor,
                         )
                     }
+                }
                 }
             }
         }
@@ -540,11 +555,22 @@ private fun homeRows(
         },
         SettingRow(tk("MUTE GAME"), onOff(s.gameMuted),
             labelBadge = NewFeatures.badge(NewFeatures.GAME_VOLUME)) { s.setGameMuted(!s.gameMuted); changed() },
+        // Equalizer apps and the like on the game's sound (AudioEffects): the game's tracks take it at their next start.
+        SettingRow(tk("AUDIO EFFECTS"), onOff(s.audioEffects),
+            labelBadge = NewFeatures.badge(NewFeatures.AUDIO_EFFECTS),
+            subtitle = "For equalizer apps, on the next start") { s.setAudioEffects(!s.audioEffects); changed() },
         groupTitle(tk("GAMEPLAY")),
         // The game's own switch for random encounters (WildEncounters.kt): ON (the game's rate) or OFF.
         SettingRow(tk("WILD ENCOUNTERS"), if (s.wildEncountersSupported) wildEncountersLabel(s.wildEncounters) else tk("N/A"),
             enabled = s.wildEncountersSupported) {
             if (s.wildEncountersSupported) { s.setWildEncounters(if (s.wildEncounters == 0) 100 else 0); changed() }
+        },
+        // A text box's words appear at once, nothing else sped up (InstantText.kt: the game's text routine patched).
+        SettingRow(
+            tk("INSTANT TEXT"), if (s.instantTextSupported) onOff(s.instantText) else tk("N/A"),
+            enabled = s.instantTextSupported, labelBadge = NewFeatures.badge(NewFeatures.INSTANT_TEXT),
+        ) {
+            if (s.instantTextSupported) { s.setInstantText(!s.instantText); changed() }
         },
         // A TM stays in the bag after it teaches a move, as an HM does (ReusableTms.kt: the ROM's own check patched).
         // A game whose own TMs never run out (ReusableTms.BUILT_IN) shows ON, greyed, and says so.
@@ -589,7 +615,13 @@ private fun homeRows(
             if (s.nuzlockeSupported) { s.setNuzlocke(!s.nuzlocke); changed() }
         },
         // B held for the player while walking on the field; holding it walks. Never on a bike or in a menu.
-        SettingRow(tk("AUTO-RUN"), if (s.fieldReadable) onOff(s.autoRun) else tk("N/A"), enabled = s.fieldReadable) { if (s.fieldReadable) { s.setAutoRun(!s.autoRun); changed() } },
+        // A game that runs by itself (GAMES_WITH_OWN_AUTO_RUN) shows ON, greyed, and says so: flipping B there would walk.
+        SettingRow(
+            tk("AUTO-RUN"),
+            when { s.autoRunBuiltIn -> tk("ON"); s.fieldReadable -> onOff(s.autoRun); else -> tk("N/A") },
+            enabled = s.fieldReadable && !s.autoRunBuiltIn,
+            subtitle = if (s.autoRunBuiltIn) "This game has its own auto-run" else null,
+        ) { if (s.fieldReadable) { s.setAutoRun(!s.autoRun); changed() } },
         // Every map lets the player run (buildings too); FireRed / Emerald engines.
         SettingRow(tk("RUN INDOORS"), if (s.runIndoorsSupported) onOff(s.runIndoors) else tk("N/A"), enabled = s.runIndoorsSupported) { if (s.runIndoorsSupported) { s.setRunIndoors(!s.runIndoors); changed() } },
         // This game's cheats on / off (the codes are typed or imported in the top screen's Settings).
@@ -606,8 +638,23 @@ private fun homeRows(
                 ) { l -> s.setGameAspect(aspects.first { it.label == l }) },
             )
         },
+        // EXPAND only: the zoom step from a list, for a device with no right stick (R3 is the ZOOM hotkey).
+        s.zoomSteps.takeIf { s.gameAspect == GameAspect.WIDE && it.size > 1 }?.let { steps ->
+            val labels = steps.map(::zoomLabel)
+            val now = labels.getOrElse(s.zoomLevel) { labels[0] }
+            SettingRow(
+                tk("ZOOM"), now, subtitle = "How much of the map you see",
+                labelBadge = NewFeatures.badge(NewFeatures.ZOOM_SETTING),
+            ) { select(Selector(tk("ZOOM"), labels, now) { l -> s.setZoomLevel(labels.indexOf(l)); changed() }) }
+        },
         // EXPAND only: whether a conversation, sign, menu or picture over the field pulls the zoom in (battles always do).
         SettingRow(tk("AUTO ZOOM IN"), onOff(s.expandZoomOnText)) { s.setExpandZoomOnText(!s.expandZoomOnText); changed() }
+            .takeIf { s.gameAspect == GameAspect.WIDE },
+        // EXPAND only: the right stick moves the view.
+        SettingRow(
+            tk("LOOK AROUND"), onOff(s.lookAround), subtitle = "The right stick moves the view",
+            labelBadge = NewFeatures.badge(NewFeatures.LOOK_AROUND),
+        ) { s.setLookAround(!s.lookAround); changed() }
             .takeIf { s.gameAspect == GameAspect.WIDE },
         // A DS game: its 3D at 2x to 8x the DS's own on the GPU, or ORIGINAL (the CPU's, pixel for pixel).
         s.dsResolution?.let { scale ->
@@ -653,6 +700,13 @@ private fun homeRows(
                 labelBadge = NewFeatures.badge(NewFeatures.COMPANION_WINDOW), subtitle = "A window over the game, or a side panel",
             ) { s.setCompanionWindow(!window); changed() }
         },
+        // A foldable half open: the game on one side of the hinge, the companion on the other.
+        s.foldLayout?.let { fold ->
+            SettingRow(
+                tk("FOLD LAYOUT"), onOff(fold), labelBadge = NewFeatures.badge(NewFeatures.FOLD_LAYOUT),
+                subtitle = "Half open: the game on one side of the fold",
+            ) { s.setFoldLayout(!fold); changed() }
+        },
         // The white tab at the screen's right edge that opens it (BACK and the HUD's COMPANION still do).
         s.companionTab?.let { tab ->
             SettingRow(
@@ -685,16 +739,37 @@ private fun homeRows(
             val pick = DarkMode.setting.next()
             DarkMode.setting = pick
             s.setDarkMode(pick.ordinal)
+            changed()
         },
         // The game's frames per second and the app's CPU share, in the game's corner.
         SettingRow(tk("FPS / CPU"), onOff(s.showPerformance), subtitle = "Speed and CPU use in the game's corner") { s.setShowPerformance(!s.showPerformance); changed() },
         groupTitle(tk("COMPANION")),
         // Move effectiveness and the foe's weak-to/resists during battle.
-        SettingRow(tk("BATTLE HINTS"), onOff(s.showHints), subtitle = "Move ratings and the best pick in battle") { s.setShowHints(!s.showHints); changed() },
+        // Off: the battle buttons alone - no INFO, SUGGESTIONS or move ratings. The rows about them go with it.
+        SettingRow(
+            tk("BATTLE INFO"), onOff(s.battleInfo), subtitle = "INFO, SUGGESTIONS and move ratings",
+            labelBadge = NewFeatures.badge(NewFeatures.BATTLE_INFO),
+        ) { s.setBattleInfo(!s.battleInfo); changed() },
+        SettingRow(tk("BATTLE HINTS"), onOff(s.showHints), subtitle = "Move ratings and the best pick in battle") { s.setShowHints(!s.showHints); changed() }
+            .takeIf { s.battleInfo },
         // The battle controls' action menu shows the moves: one tap picks FIGHT and the move.
+        // What the BATTLE tab shows first: the battle buttons, or INFO (its own buttons lead back).
+        SettingRow(
+            tk("BATTLE VIEW"), if (s.battleInfoFirst) tk("INFO") else tk("BUTTONS"), subtitle = "What the BATTLE tab opens on",
+            labelBadge = NewFeatures.badge(NewFeatures.BATTLE_VIEW),
+        ) { s.setBattleInfoFirst(!s.battleInfoFirst); changed() }.takeIf { s.battleInfo },
         SettingRow(tk("ONE-TAP MOVES"), onOff(s.oneTapMoves), subtitle = "Your moves right on the battle menu") { s.setOneTapMoves(!s.oneTapMoves); changed() },
+        // The battle buttons' look: GEN 4 (coloured buttons) or GEN 5 (dark plates round a red and white ball).
+        SettingRow(
+            tk("BATTLE STYLE"), s.battleStyle.label, subtitle = "The battle buttons' look",
+            labelBadge = NewFeatures.badge(NewFeatures.BATTLE_STYLE),
+        ) {
+            val styles = BattleStyle.entries
+            select(Selector(tk("BATTLE STYLE"), styles.map { it.label }, s.battleStyle.label) { l -> s.setBattleStyle(styles.first { it.label == l }) })
+        },
         // A STATS page in battle INFO with the foe's IVs / EVs / nature.
-        SettingRow(tk("FOE IVS"), onOff(s.showFoeIvs), subtitle = "The foe's hidden stats in battle") { s.setShowFoeIvs(!s.showFoeIvs); changed() },
+        SettingRow(tk("FOE IVS"), onOff(s.showFoeIvs), subtitle = "The foe's hidden stats in battle") { s.setShowFoeIvs(!s.showFoeIvs); changed() }
+            .takeIf { s.battleInfo },
         SettingRow(
             tk("BATTLE FOCUS"), onOff(s.battleFocus), subtitle = "Battle info on one page, no scrolling",
             labelBadge = NewFeatures.badge(NewFeatures.BATTLE_FOCUS),
@@ -711,7 +786,7 @@ private fun homeRows(
         // PC, FLY, a Repel, the bike, a rod, states, FF... on a held button (L3 by default): its own page.
         SettingRow(tk("QUICK MENU"), null, subtitle = "Actions on a held button", labelBadge = quickMenuBadge(), opensPage = true) { navigate(Page.QUICK_MENU) },
         // The on-screen buttons: when they show, layouts, size, extras, EDIT LAYOUT - its own page, with a preview.
-        SettingRow(tk("TOUCH CONTROLS"), s.touchStyle.show.label, labelBadge = touchControlsBadge(), opensPage = true, subtitle = "The on-screen buttons: layout, size, extras") { navigate(Page.TOUCH) },
+        SettingRow(tk("TOUCH CONTROLS"), s.touchStyle.show.label, labelBadge = touchControlsBadge(), opensPage = true, subtitle = "The on-screen buttons: layout, look, skins") { navigate(Page.TOUCH) },
         groupTitle(tk("APP")),
         // A card now and then about a feature the player hasn't found (FeatureTips).
         tipsRow(s.tips) { s.setTips(it); changed() },

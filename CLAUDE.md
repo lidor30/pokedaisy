@@ -127,8 +127,8 @@ Public readers can't see that repo, so user-facing docs don't name it or link to
 - ROMs/saves for headless captures: `scripts/host_roms.conf`. On-device paths:
   `scripts/roms.conf` (`/sdcard/Android/data/com.pokedaisy.app/files/...`).
 - The ROMs the tests read (`RETAIL_ROM_DIR`, `-DromDir` / `POKEDAISY_ROM_DIR` to move it) sit in
-  `~/Downloads/Game ROMs & Emulation/`: `gba/` (the default dir; others are found relative to it), `gbc/`, `nds/` and
-  `Pokemon Multi Language/<name>/<name>.gba` (every other-language retail build, a folder each - the only copy). Retail
+  `~/Downloads/Game ROMs & Emulation/`: `gba/` (the default dir, every language's GBA carts and the hacks, since 2026-11-07;
+  others are found relative to it: `retailRomFiles` picks the retail ones by name), `gbc/` and `nds/`. Retail
   keeps its No-Intro name; a hack is `Pokemon <Title> (v<version>) (<variant>).<ext>` (Polished Crystal's
   `Pokemon Polished Crystal (v3.2.3) (Faithful).gbc`). Nothing loose in `~/Downloads`. A test, host_roms.conf line or
   fixture README naming a ROM uses these names; renaming a file means grepping for the old one (many tests skip
@@ -168,8 +168,8 @@ POKéDEX and GUIDE read the ROM: `make -C 3ds decomps` builds pret's FireRed rev
 SHA1s, checked) into `3ds/build/decomps/`, the preview passes them in, and `fixture-roms` writes the
 fixture ROM over the decomp's start (`fixture-*-rom.gba`: the tables sit past 0x08200000) - build/ only,
 never committed. Only retail English FireRed / LeafGreen / Emerald so far (ROM table addresses for FireRed
-rev 1 and Emerald only: rev 0 / LeafGreen get MAP but no POKéDEX, and GUIDE without wild / BOSS); never run
-on a real 3DS yet. Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes the last chip in a battle: INFO /
+rev 1 and Emerald only: rev 0 / LeafGreen get MAP but no POKéDEX, and GUIDE without wild / BOSS); runs on a New 3DS
+(first tried 2026-11-04: `3ds/README.md`). Its tabs: PARTY, BAG, MAP, GUIDE, POKéDEX (BATTLE takes the last chip in a battle: INFO /
 SUGGESTIONS + the FOE TEAM, ported from BattleInfoScreen / SuggestionsScreen / CompanionScreen's foe state), and
 SETTINGS (screen mode, FF, one save state slot - states never carry the save data), with the TRAINER CARD
 under it (`pd_card`: its renders match `TrainerCardTest`'s pinned CRCs - `make preview` prints them; keep it
@@ -311,13 +311,15 @@ window (`seasonalThemeToAnnounce`, `Prefs.seasonalThemesShown` keyed `id:windowS
 after any update offer / WHAT'S NEW / support window). TRY IT or a pick remembers the theme before (`pickTheme`,
 `Prefs.themeBeforeSeasonal`); `loadTheme` (AppTheme, Library resume) puts it back once the dates are over (`themeToWear`).
 `ThemesTest`; ui-preview `-Ptheme=CHERRY` (any theme by English name) and `library-theme-*`, `library-seasonal-popup*`,
-`settings-theme*` shots. A new theme: a `ThemeSpec` with a new id, its name's seven translations (TrSettings), the manual's
+`settings-theme*` shots. A new theme: a `ThemeSpec` with a new id, its name's eight translations (TrSettings), the manual's
 THEME section and SETTING_KEYWORDS' "THEME" words.
 New screens should reuse these rather than
 `GbaWindow`/`GbaButton` (the older cream-window look). Full-tab detail views (the Pokémon
 summary, battle INFO / SUGGESTIONS) use `SummaryFrame` (`MonDetailScreen.kt`): one white
 window split by `Separator`s over a row of square `PlatinumButton`s with Back bottom-right.
 
+**SETTINGS' group tabs sit outside the card** (both screens, the user's call): `RailedWindow` leaves the window to the `GroupedRows` inside, which draws it round the list alone, the `TabRail` on the backdrop beside it.
+**Buttons are HeartGold's two-tone (2026-11-05, the user's call)**: every companion button is a face in two colours with two soft lines between them (`drawTwoTone`, GbaText.kt): `PlatinumButton` (a thick dark outline, a thin white ring, `fill` over `frame`) and, through `drawLayeredBox(twoTone = true)`, `OptionButton`, the tab chips, SETTINGS' group chips, the DEX's sections, MORE's tiles and the bag's PC and sort; the quick menu's tiles (`quickTileFace`) add a thick outline. The BATTLE tab takes HeartGold's layout by proportion (`ActionButtons`' `ds`: a DS pixel from the pane's width, so a tall pane leaves room rather than stretching the buttons), `BattlePlaceholder`'s four move places behind FIGHT, and its move cards (`hgMovePanel`); RUN stays whole, not cut by the screen's edge as in the game.
 **DARK MODE** (SETTINGS on either screen, SCREEN group; `Prefs.darkMode` OFF default / ON / AUTO = the device's uiMode;
 `DarkMode` in `theme/DarkMode.kt`, Compose state, `override` for Paparazzi / ui-preview): every `OptionColors` getter has a
 dark twin - the same window build (dark outer line, lighter inner band, lilac edge) in slate, light text with its GBA
@@ -375,7 +377,7 @@ floating bottom-right button (`PixelIcons.expand` / `shrink`, `Prefs.foeDetails`
 foe the page; the player shrinks to a strip (YOU + sprite level with the foe card's side label / icon, upright HP
 bars). The ability / item / stats offsets live on `BattleMonLayout` (vanilla / CFRU: u8 ability +0x20, item +0x2E;
 expansion, SoulGold, HnS: u16 +0x20, item +0x30; stats +0x02, stages +0x18 everywhere), checked on every `*_battle`
-fixture. A reserve foe (FOE TEAM tap) shows its party stats; its ability isn't read yet. Everything is hint-first (title, tap = hint, tap = answer) and only one entry
+fixture. A reserve foe (FOE TEAM tap) shows its party stats; its ability isn't read yet. A move's verdict goes through `moveMultiplierPct`, not the chart alone: Freeze-Dry (2x on Water), Flying Press (Fighting and Flying), Thousand Arrows (1x on Flying), by name in each game's spelling. Everything is hint-first (title, tap = hint, tap = answer) and only one entry
 is open at a time. The first GUIDE open per game shows an "AI-written, may be wrong" notice.
 Guide facts come from the game's own data (the decomp's map scripts for FireRed/Emerald),
 written in our own words — never copied from community docs; mark a guide
@@ -604,7 +606,8 @@ miss a one-frame press outside its menus (hold 3 frames headless); the battle me
 Battle controls ride the Gen 1 path (`battleGen1Menus`): `readGen2BattleInput` reads `_2DMenu`'s cursor and checks the ▶.
 STEADY FF music runs on Gen1MusicRenderer with Crystal's tables (`GEN2_MUSIC_CRYSTAL*`: the song is the playing channel's
 MusicID, never the stale `wMusicID`; each recorded after PlayMusic(0), since `_PlayMusic` leaves unused channels playing the
-last song). No GUIDE, CARD or trainer-battle fixture yet. The POKéMON switch: see the switch
+last song). Crystal Clear, Gold / Silver and Polished Crystal have tables too (GitHub #390; `crystalClearMusic`, `goldSilverMusic`,
+`polishedCrystalMusic`: Polished's channel struct is its own, `musicIdBack` 7); Prism's sound wrappers match none of them, so it stays SPED-UP. No GUIDE, CARD or trainer-battle fixture yet. The POKéMON switch: see the switch
 paragraph's Game Boy part (`GbPartySwitch`).
 **PC anywhere, FLY and WILD ENCOUNTERS on the Game Boy (2026-10-18, Red, Blue, Yellow in five languages, Crystal)**:
 `GbField.kt`, each the game's own way in (no GBA calls exist there; Gen 1 = `GbField.Gen1`, a config per cart): Crystal
@@ -657,6 +660,11 @@ growth rates, one-byte text words `Gen1Charset.PURE`), its own icon sheet and de
 the Color's two-tone palettes (sampled headless), the DEX in its SGB palettes. No save of its own: the retail Red save converts
 through the game's updater on CONTINUE (`native-capture/boot/purergb.txt`: "Original Game", START, wCurMapTileset bit 7 cleared,
 NO to its Pallet warp, which froze headless). No EXPAND. PureGreen (a .bps the user has) isn't added. docs/DEVELOPMENT.md.
+**Yellow Legacy v1.0.10 / Crystal Legacy v1.3.1 (2026-11-04)**: `GameKind.YELLOW_LEGACY` / `.CRYSTAL_LEGACY` (`isGen1` / `isCrystalFamily`), cRz-Shadows' pret forks; their
+builds (`$DECOMPS/pokeyellowlegacy` rgbds 0.6.1, `pokecrystallegacy` rgbds 0.5.2) are the patched carts byte for byte, so their .sym gives every address. Only what changed
+is generated (`shares`; moves, chart, TMs, items). Retail saves don't read right in either: `scripts/convert_save_legacy.py`, and a converted Yellow save must be walked in,
+not just looked at (a stale collision pointer turns the player without moving him). Yellow Legacy's status moves are the old BIRD slot, printed NORMAL (`typeless`); SLAM really
+is DRAGON. Crystal Legacy scales Chuck / Jasmine / Pryce by badges (`clScaledBoss`) and Red's done flag is EVENT_DEFEATED_RED. docs/DEVELOPMENT.md.
 **Gold / Silver (2026-10-15)**: `GameKind.GOLD` / `.SILVER` (`isGoldSilver`, both in `isGen2` with the Crystal family),
 `GEN2_GOLD` / `GEN2_SILVER` - pret/pokegold's RAM (wBattleMon / wCurOTMon / wCurBattleMon in bank 0), Crystal's structs, menus and
 look (the party menu and PACK are Crystal's colours, sampled headless), one table set (`gen_gen2_tables.py gold_silver`). Dex pages
@@ -705,6 +713,17 @@ panel locked at half the screen sideways, `SidePanel.setDsScreen`, the dock unde
 `_HEARTGOLD`, pages from the cart); GUIDE on both (`GuidePlatinum.kt`, `GuideHeartGold.kt` over `Gen4World`:
 `scripts/gen_gen4_guide.py` writes the wild sets, boss teams and HERE's items from the decomps; gym leaders go by badge -
 HG / SS clears the leaders' trainer flags for rematches; `readGen4Progress` adds the badges and the DS clock's hour).
+**French DS carts (2026-11-06)**: Platinum rev 0, HeartGold / SoulSilver, Black, White (`CPUF`, `IPKF`, `IPGF`, `IRBF`, `IRAF`): the US builds at other addresses, each run headless beside its US
+cart with one script; everything but the addresses is shared. Another language: `scripts/port_nds_fns.py` (functions matched by structure and call anchors, wrong = 0 on
+every known pair: `--check scripts/port_nds_fns_known.txt`, `scripts/test_port_nds_fns.py`; an UNRESOLVED hint is a lead to check live,
+never an answer), docs/DEVELOPMENT.md's "French carts". Dry run (2026-11-07): B/W, B2W2 ES / DE / IT / JP / KR 13 of 14 (the BGM depth
+isn't loaded from a pool), HG / SS ES / IT / KR / Europe rev 10 all 23, Japanese 20 of 23.
+**DS language ports (2026-11-07)**: every cart after the French ones is a row of `gamedata/nds/ports.toml` (Spanish / Italian HG / SS,
+Europe rev 10 of both, Japanese / Korean HG / SS, German / Spanish / Italian / Japanese / Korean B/W, B2/W2 in FR / DE / ES / IT / KR and
+JP rev 1, Spanish Platinum: bases `heartgold` / `platinum` / `black` / `black2`, callSet 100 / 300 / 200 + n), not a hand-written table: `scripts/gen_nds_ports.py`
+(`make gamedata`, `make check`) writes `pk_nds_ports_gen.h` (the native field / touch / call tables built from the US ones) and
+`NdsPortsGen.kt` (`DsPorts`: configs, detection, titles, DS LAYOUT). A new cart: its row, then headless beside its US cart (docs/DEVELOPMENT.md's "Language ports"). Korean HG / SS saves have their own
+footer magic (0x20070903); JP / KR text banks are numbered their own way (`NdsArt`'s `*_JA` / `*_KO`).
 **DS RESOLUTION** (SCREEN group on both screens, `Prefs.dsResolution`, ORIGINAL default / 2x-8x, NEW tag; GitHub discussion #241):
 melonDS's OpenGL renderer ported to OpenGL ES in our patch (`MELONDS_GLES`; ES 3.2 or 3.0 + draw_buffers_indexed) on an EGL
 context of the emu thread (`nds/pk_nds_gl.cpp`), frames to EmulatorView through a SurfaceTexture (`gpuFrames`), our compositor
@@ -720,6 +739,13 @@ It runs as `GameKind.HEARTGOLD` with `originHeartGold` set (`GEN4_ORIGIN_HEARTGO
 Fairy = 9, its type chart, icons, its DEX's pages): never bundled. Its battle engine is its own: the BATTLE tab reads its
 battle objects (`Gen4ManagedBattle`), no battle buttons, the touch screen floats in while its battle waits (`battleManagerPtr`).
 No GUIDE. Fixtures `origin_heartgold(_battle, _trainer)`; docs/DEVELOPMENT.md's "Origin HeartGold".
+**Renegade Platinum v1.3.0 (2026-11-06)**: Drayano's hack, US Platinum rev 1 edited in place (header, RAM, save and ARM9 retail's,
+but the shiny odds' word), so it runs as `GameKind.PLATINUM` everywhere the header decides (native side included).
+`RenegadePlatinum.matches` (overlay 16's pointer to its moved type chart, cart 0x221060) sets `renegadePlatinum` (ActiveTables, by
+the Poller): its types (Fairy = 9), moves, chart, TMs, icon palettes and wild rates are read from the cart (`NdsArt.readRenegade`,
+never bundled), names from its text as every DS cart's, its art under `nds/renegade/`; no GUIDE (`Guide.kt`). Its Classic patch
+differs only in `pl_personal.narc` and matches the same check. Fixtures `renegade_platinum(_battle)`; docs/DEVELOPMENT.md's
+"Renegade Platinum".
 **DS LAYOUT (one screen held sideways, 2026-11-01; SETTINGS > SCREEN on both screens, `Prefs.dsLayout`, NEW tag)**: ONE SCREEN
 (default) / SIDE BY SIDE / LARGE + SMALL / PICTURE IN PICTURE / STACKED, picked from drawn miniatures (`DsLayoutPicker`); the
 stage places the screens (`GameStageLayout.dsArrange`, `DsLayouts.arrange`, edge to edge) over the game's own picture (`DsShots`:
@@ -745,7 +771,19 @@ both screens black (`PK_NDS_FIELD_DARK_TOP` / `_BOTTOM`, `EmulatorEngine.dsDark`
 decides at once; the window hides while the touch screen is blank (`dsTouchBlank`); a menu's way back to the field is covered by
 the overworld's picture (the window view's cover); the battle's bag / party (`PK_NDS_FIELD_TOUCH_FADES`) float in only after
 their fade (black, then 12 lit frames) and end at their first black (the battle redraws a Poké Ball for 5 frames at the bag's
-step). The cover carries `DsLoader` (`RockingPokeBall`, three dots; after 160 ms). HG closes its X menu after a screen left by touch
+step). The cover carries `DsLoader` (three dots; after 160 ms). **Menu transitions are held** (2026-11-09, players found DS loads long; `DsTransitionHold`, `EmulatorEngine.dsHold`,
+one-screen DS stage only): from a menu flow's first faded frame (`pkNdsFade`: master brightness, read right after the
+frame and before it's published) until the touch screen has been lit 12 frames with no fade, both screens keep their last
+picture (`NdsBottomFrame.held`, the top's `holdFrame`), the window keeps its layout (the activity latches the flows), shaded
+with the dots (`DsLoader(ball = false)`), and the game runs flat out, muted (at FF's speed with its music while FF is on),
+drawing every 4th frame, keys and taps held back; the held picture then crossfades out. Never in a battle (its own rules).
+`DsTransitionHoldTest` replays HeartGold's and Black 2's real traces (`resources/ds_transitions/`: Black 2's party keeps its
+top screen one colour, so the touch screen decides). Without a hold, a window up when its touch screen goes black stays
+with the dots in it (`DsTouchWindow(loading)`). Behind a window the game opened (not in a battle) the stage is frozen: one
+full-size `DsShots.capture(full = true)` as the menus' first window opens on the field (also `field`, the two-screen pages' backdrop),
+kept for every window until the game is back on the field with nothing up - the live stage jumped between EXPAND, a menu page's 4:3
+and the two-screen layout under it (the user's report); a fresh copy on the way back from a two-screen page caught the stage half
+resized (the game in a corner, black round it), so it's never retaken mid-session. HG closes its X menu after a screen left by touch
 (start_menu.c's WaitApp: FieldSystem.menuInputState +0x10C TOUCH): floating, the screen's closing fade sets it to buttons
 (`pk_nds_field_keep_start_menu`, `MgbaCore.pkNdsKeepStartMenu`), so the X menu comes back. The strip is drawn by the window's view (under its dim) and holds behind the bag / party; the game view holds the focus
 while it's up (else Android eats the first D-pad press after a touch). Gen 4 / 5 party nicknames are read (block C).
@@ -795,7 +833,7 @@ set: FireRed +0x19 bit 1, Emerald / expansion +0x1A bit 2; Ruby / Sapphire test 
 field read is `pk_field_state` (pk_wide.c): WIDE's table for the ROM, EXPAND on or off, its own copy of the addresses
 (controls locked, gMain, object events, gMapHeader); `mgba_dump`'s `fieldinfo [run]` prints it. TEXT = locked + BG0 text
 outside battles: it speeds the whole game while a box is up, not just the printing. GUIDE > HERE says "N of M caught
-here" (the DexNav). PC anywhere (BAG's `PC`, `Pc.kt`): `lockall; special ShowPokemonStorageSystemPC; waitstate;
+here" (the DexNav). PC anywhere (BAG's `PC`, `Pc.kt`; on retail the game's whole PC menu, items too: `PcMenuScript` copies its script graph to 0x0203FD00 at run time, found through the storage special, the exit's AnimatePcTurnOff blanked - left in, it stamps a PC tile on the map; hacks and anything of another shape keep the storage alone): `lockall; special ShowPokemonStorageSystemPC; waitstate;
 releaseall; end` written to 0x0203FFF4 and run by ScriptContext_SetupScript - special 60 (FireRed / LeafGreen) / 63
 (Emerald), traced from each retail ROM's script command table (ScrCmd_special's literal pool: the pokeemerald .map's
 gSpecials symbol sat 0x14 off and gave a wrong index once). Debug builds log every scene / speed change and AUTO-RUN's ready / blocked.
@@ -836,6 +874,7 @@ EVOLVE runs the game's own GetEvolutionTargetSpecies(mon, EVO_MODE_TRADE) + Begi
 CB2_ReturnToField, controls locked first, from the field only. Which Pokémon get the button: the same call on each slot with its 100
 bytes put back (a held-item evolution's item would be spent otherwise). Records `TRADE_EVO_*` in gamedata (retail English FireRed
 rev 1, LeafGreen rev 0 / 1 - found in retail by the shifted `$DECOMPS` build's masked code - and Emerald); hacks / Kaizo / Legacy off.
+**INSTANT TEXT** (GitHub #111, GAMEPLAY on the companion, `Prefs.instantText` OFF, NEW tag; `InstantText.kt`): a game-option patch like REUSABLE TMS (`pkRomPatch` in 4-byte pieces, `EmulatorEngine.applyTmPatch` does both). RenderFont rewritten in its own 40 bytes (no free ROM): it goes on past RENDER_PRINT until a control code, textSpeed 0; Ruby / Sapphire: UpdateWindowText's delay turned into a `b` back to PrintNextChar. A delay of 0 (the game's own instant path) would lose everything after a page break. Found in the ROM's first 64 KB by code; gcc builds: N/A. TEXT SPEED stays: it's the emulator's speed, stops at what the device runs.
 **PLAYER LOOK** (2026-10-22, the companion's MAKEOVER group - first, a blue-framed `featuredGroupTitle`, only in a game it works in; per ROM: `Prefs.playerLookFor`, NEW tag; `PlayerLook.kt`,
 `PlayerLookRunner.kt`, docs/DEVELOPMENT.md's "PLAYER LOOK"): play retail FireRed / LeafGreen / Ruby / Sapphire / Emerald (and Kaizo, Legacy, Imperium, Ultra
 Violet: `PlayerLook.HACKS`) as another game's hero, picked from tiles of the heroes walking (`PlayerLookPicker`),
@@ -938,8 +977,10 @@ trainer-only for FOE TEAM). Hidden Power's power shows only on FIRERED/EMERALD k
 on FireRed rev 1 / Emerald (`switchAddrsFor`in`PokeDaisyActivity`; gPartyMenu
 FR `0x0203B0A0`/ EM`0x0203CEC8`, slotId at +9) and the hacks listed there (Unbound since
 2026-10-13: FireRed's addresses under CFRU's two-column grid, `grid = true` like Amethyst - DOWN from slot 0 lands on 2;
-SoulGold's config entry, a plain list, checked headless the same day - both with the lead copied into slots 2-3, A + SHIFT
-on slot 2 put 2 into gBattlerPartyIndexes[0]), POKéMON opens the PARTY tab's own slots
+SoulGold's config entry, checked headless the same day - both with the lead copied into slots 2-3, A + SHIFT
+on slot 2 put 2 into gBattlerPartyIndexes[0]; SoulGold's shape is its OPTIONS > PARTY MENU, read at every step: CUSTOM a list
+of six with no CANCEL row, HGSS / BW a two-column grid - `partyMenuStyleOff`, SaveBlock1 +0x348C, `SwitchAddrs.gridOption`;
+steered as a list on HGSS it bounced between two slots, GitHub #316), POKéMON opens the PARTY tab's own slots
 (`PartyGrid`, shared with `PartyScreen`; taps leave the sound to the game, as above) - the game's cursor and a BEST tag on
 `recommendedSwitch`= SUGGESTIONS' top pick with BATTLE HINTS on, else the cursor on the battler (tagged OUT), and a
 "Choose a POKéMON." window with CANCEL below, full height (no ball strips or INFO / SUGGESTIONS over it); it also replaces the game's party screen whenever that's open (after a faint). A tap runs`switchTo(personality)`:
@@ -998,7 +1039,7 @@ Batch 2 (2026-10-13, same checks, fixtures `radical_red_battle` / `gaia_battle` 
 Glazed retail Emerald's, Lazarus's sit +0x10 / +0x14 past its gBattleStruct pointer (0x0200083C / 0x02000840). The other CFRU
 hacks very likely share FireRed's and the expansion hacks need a dump diff each; add them the same way. Party menus seen so
 far: CFRU's two-column grid on Unbound / Radical Red / Amethyst / Odyssey / Sword and Shield, FireRed's own list on Gaia
-(DOWN 0 -> 1), a list on SoulGold / Glazed / Seaglass / TMT2 / Heart and Soul, a grid on Lazarus. Batch 3 (same day):
+(DOWN 0 -> 1), a list on Glazed / Seaglass / TMT2 / Heart and Soul, a grid on Lazarus, SoulGold's by its option. Batch 3 (same day):
 Odyssey, Amethyst, Sword and Shield keep FireRed's cursors; Seaglass's are Lazarus's layout 8 bytes earlier (0x02000834 /
 0x02000838); TMT2's 0x02000414 / 0x02000418 (dump diff). **Heart and Soul** had no battle input at all: its controller
 funcs (0x03002F54) and the action / move / bag / party handlers came from diffing dumps of one Route 29 battle (no
@@ -1139,6 +1180,7 @@ render core headless with `native-capture/mgba_dump`'s `call` / `park` / `bgm` /
 SETTINGS title also shows the device battery (`BatteryIndicator`, fed by the activity through
 `DeviceBattery`).
 
+**AUDIO EFFECTS** (SOUND on both screens, `Prefs.audioEffects` OFF, NEW tag; GitHub #336): low-latency tracks skip the device's audio effects, so JamesDSP never touched the game (and since 1.4.0 not STEADY's clips either). On, `AudioEffectsTrack` builds the game's and the clips' tracks as media with no low latency, on one shared session announced by Android's open / close broadcasts; from the next game start (a track keeps what it was built with). The Thor's own system-wide equalizer applies then too. Not yet tried on a device.
 **STATUS BAR** (SETTINGS on either screen, `Prefs.statusBar`, off by default, live-toggled): a
 white title-window strip on top of the game, exactly as wide as it (`GameStatusBar`, laid out by
 `GameStageLayout`, which shrinks the game to 3:2 under it and moves the HUD down) - the ROM's
@@ -1149,10 +1191,10 @@ bytes), -1 = unknown); values over 999,999 are dropped.
 `MoneyTest` pins every fixture.
 **HUD** (SETTINGS > HUD on either screen - the code calls it FieldHud; a page: `fieldHudRows`, shared; `Prefs.fieldHud` ON default, also with a
 second screen - the user's call; `Prefs.fieldHudStyle`): a Legends-Arceus-style HUD over the overworld (`companion/ui/FieldHud.kt`) -
-party icons with Lv / HP bar / status chip (a tap opens `MonDetailScreen` over the game), a region-map minimap (a tap opens `MapScreen`
+party icons with HP bar / status chip (no Lv; the tags get a row of their own over the icons only while someone has one) (a tap opens `MonDetailScreen` over the game), a region-map minimap (a tap opens `MapScreen`
 with FLY), the bag's Poké Balls, BAG (a compact grid with USE through `ItemUse`, PP items left to the BAG tab), PC (left of BAG, `ItemUse.openPc`, where the BAG tab has it; a corner ↗ `PixelIcons.inGame` = opens the game's own screen; a "not now" pops up as an `ItemNotice`; the companion window closes on its own once the PC is up) and WILD (`hudWild`
 over `GuideRomSource.encounters`, like GUIDE > HERE). LAYOUT CORNERS (default; its minimap top-right - FireRed / Emerald slide a new area's name in top-left) / CORNERS 2 (its right side swapped: minimap bottom-right, balls and buttons top-right, BAG / WILD open from the top) / RAILS (columns beside the middle 3:2) / DOCK, LOOK
-GLASS (default, see-through dark) / WINDOW (OPTION windows), SIZE SMALL / NORMAL / LARGE = the GBA pixel one whole screen pixel down /
+GLASS (default, see-through dark) / WINDOW (OPTION windows), every window shaped like the battle HP box (`hudPanel`: its shadow `HUD_SHADOW` down-right; buttons inside panels and the quick menu's tiles `hudButtonFace`, the picked one `HUD_SELECTED` orange - the user's pick of five looks, 2026-11-09), SIZE SMALL / NORMAL / LARGE = the GBA pixel one whole screen pixel down /
 up (a `Density` of `k * 16 / 20` under the HUD; its panels stay at the companion's size), then every size drawn 12.5% bigger (`HUD_SCALE`,
 `hudScale`: 3 -> 3.375 on the RP6, liked over 3.5; laid out shrunk, drawn scaled from the top left - the user's call, a whole pixel
 up was too big, so its pixels aren't whole screen pixels), each part hideable (`FieldHudPart`). A picture too narrow for CORNERS' party row beside its balls + buttons
@@ -1220,6 +1262,13 @@ slide in from the right over a fading dim (`movesIn` / `partyIn`; snapped in Pap
 `BattleList`; the side panel's edge tab steps aside meanwhile);
 RUN = `selectAction(3)`, wild battles only. `FittedGbaText` narrows a label's letters (3 tall, 3 / 2 / 1.5 / 1 wide) before it
 shrinks - measure both ways, layoutlib's measurer ignores scaleX. `BattleButtonsScreenshotTest` (+ 1:1 close-ups, a 20:9 phone).
+**BATTLE STYLE** (companion SETTINGS > COMPANION, `Prefs.battleStyle`, GEN 4 default / GEN 5, NEW tag; asked once on the Library,
+`BattleStyleIntro`): GEN 5 (`BattleControlsGen5.kt`) is Black / White's battle touch screen redrawn - colours sampled and shapes measured
+off headless frames of the player's Black (nds_dump, the Battle Subway's first battle: command menu, moves, party), never their art (its
+ball sprites are ours). Lengths are the game's pixels over the tab (`G5`: 256 x 176, placed by width / height, sized by the smaller scale,
+every edge stepped in whole screen pixels of one game pixel, `rowsPath`); the lens / field, discs (`DISC`) and plates (`PLATE`) are profile
+tables from the frames. Edge to edge: CompanionScreen eases its margin away and docks the tab bar on `Gen5Dock` while the controls are up.
+D-pad focus is the game's key cursor (magenta corner brackets). Look at it with `gradle render -Ponly=battle-gen5` beside the game's frames.
 **ASPECT** (SETTINGS on either screen, `Prefs.stretchGame`, ORIGINAL default / STRETCH): STRETCH fills
 the top screen - `EmulatorView.stretch` drops the quad's letterbox and `GameStageLayout.stretch` gives the
 game all the space under the status bar. The bottom screen flips it in place; the top-screen Settings opens
@@ -1251,16 +1300,20 @@ while a Game Boy game is configured (same CRC lookup; frame 160x144: `pk_wide_fr
 from the overworld block array + the ROM blockset + VRAM + the renderer's Color palettes, connected maps from the ROM; the screen
 found by matching the BG map (or the full-screen window a Gen 1 text box uses) against that world, never from RAM alone;
 off-screen NPCs drawn from RAM (Gen 1's wSpriteStateData, Crystal's object structs and map objects; Crystal's connected maps' people from
-their ROM object events). Crystal (`gen` 2 rows):
+their ROM object events). Gen 1 shows an NPC only a tile inside the screen, so one within a step of the edge goes over the game's picture too (`GbObj.over`, plain field only, GitHub #385; `widecheck` still compares the picture alone). Crystal (`gen` 2 rows):
 colours from the tileset's palette map, D000-DFFF read from WRAM bank 1, its battle transition (`hVBlank` 1) as the battle's
 start. Same rule as the GBA: `widecheck` must find the middle exact (frames the game wrote VRAM or a palette in mid-frame aren't
 counted: `pk_wide_gb_last_torn`). Battles / menus get plain bars in the screen's background colour by bands of rows (the user's call: white
 in Yellow - the trainer card too - no glow; black beside the Pokégear's top part), SAVE's prompt and OPTION keep the map (OPTION in the field's last colours).
 docs/DEVELOPMENT.md's "WIDE on the Game Boy".
+**EXPAND on Crystal Clear (2026-11-05, GitHub #143)**: all four builds, one `GB_ROMS` row with `GB_CLEAR` set: Crystal's RAM, but a byte of
+attributes per tile id from the tileset's own bank, 256 blocks with no wrap, LZ-compressed blocks (a connected map goes through
+`gbLz`), 5-byte object sprites with no palette. `widecheck` proved it on a sweep of every map, warped to by poking the game's own
+`warp`: docs/DEVELOPMENT.md's "WIDE on the Game Boy".
 **Transitions (2026-10-12, FireRed first)**: FireRed's map preview (a BG0 picture over the field on entering a forest /
 cave) dims the map around it, frame and margins (`overlayDim`; mGBA's output pixels carry their layer in the top byte,
 `fromBg`, so BG0's own pixels are left alone). **AUTO ZOOM IN** (SETTINGS on either screen, under ASPECT, shown only on EXPAND; `Prefs.expandZoomOnText`, ON):
-OFF leaves text boxes and menu screens (SCENE_MENU) zoomed out; battles always pull in, their POKéMON / BAG screens with
+OFF leaves text boxes zoomed out; menu screens (SCENE_MENU: the user's call, a zoomed-out one sat small) and battles always pull in, their POKéMON / BAG screens with
 them (gMain.inBattle set = the battle's scene, not SCENE_MENU: they used to zoom out mid-battle); a picture over the field (the
 map preview) never moves the camera, and its dim follows the card's alpha blend out (`overlayStrength`). A fade between maps (black / white frame: `fadedFrame`) is SCENE_FADE, which the camera holds through; FireRed's
 quest-log replay ("Previously on your quest", `PK_WIDE_QUEST_LOG`) is OFF (1x) until the field is the player's. Other games get no early battle pull-in until their `TRANSITION_PTR` is
@@ -1384,7 +1437,7 @@ Every Compose view on the stage runs on `stageRecomposer` (the activity's own, s
 a ComposeView keeps the coroutine scope of the first window recomposer it met, the stage changes windows on every
 HOME / sleep / lid close while swapped, and once that first one was cancelled every tap handler on the stage (HUD, touch
 controls, BATTLE BUTTONS) started dead - the views swallowed touches and nothing happened. Never let a view that moves
-between windows fall back to the window's recomposer. CLOSE COMPANION works swapped too: the activity itself moves to the
+between windows fall back to the window's recomposer. An app left on the second screen (Chrome on the Thor's bottom one, the user's report 2026-11-05) has the say over that screen's bars: `hide` from a Presentation, which can't take focus, does nothing, and the white gesture handle sits on the companion. The Presentation watches its insets (`watchBars`, nav bar still visible after 1.5 s = no swipe) and `SecondScreenHolder.coverApp` puts its window over the app, hiding the bars; `uncoverApp` in `onPause`. With the launcher there the bar reads hidden, so nothing opens. CLOSE COMPANION works swapped too: the activity itself moves to the
 second display (`Screens.moveToDisplay`, the game its content, the main screen Android's; Android 10+ keeps both screens'
 activities resumed); meanwhile the companion opens over the game there as on one screen (`companionOverGame`:
 `syncSingleScreen(true)`, the side panel's tab / window, BACK opens it) and its SETTINGS shows OPEN COMPANION
@@ -1475,6 +1528,14 @@ again on rotation (`onConfigurationChanged`); the manifest no longer locks lands
 locks it with a second screen (or the debug mirror) and follows the user's rotation (`SCREEN_ORIENTATION_USER`)
 without one. Paparazzi: `PortraitScreenshotTest` (Pixel 6, 1080x2400); ui-preview's `*-phone` shots are the
 Library at that size.
+**FOLD LAYOUT** (SCREEN group on both screens, `Prefs.foldLayout` ON, shown once the device has reported a hinge -
+`Prefs.foldSeen`; NEW tag; 2026-11-02, players' requests): Jetpack WindowManager's FoldingFeature (`androidx.window` +
+`window-java`'s callback adapter: PokeDaisyActivity is a plain Activity) -> `FoldPosture` (companion/FoldPosture.kt, pure,
+`FoldPostureTest`: half open or a separating hinge, in the stage's coordinates, not within 25% of an edge). TABLETOP (hinge
+across) = `PortraitPanel.hinge`: the game and touch controls above the hinge, the companion (a DS game's touch screen) below,
+no grip, whichever way the phone is held - the user's call: companion on the bottom, like the Thor; BOOK (hinge down) =
+`SidePanel.book`: the right page locked from the hinge, no tabs, BACK only the companion's. `syncSingleScreen` picks them;
+`foldRelayout` re-places the hinge when the stage resizes. Not tried on a foldable or its emulator yet.
 **TOUCH CONTROLS** (was TOUCH PAD; SETTINGS > CONTROLS on both screens, a page with a preview; `TouchControlsStyle` in
 `companion/TouchControlsSettings.kt`, `Prefs.touchControlsStyle`, NEW tag): one geometry for the game, the preview and the
 editor (`companion/ui/TouchGeometry.kt`: sizes in dp, presets SIDES default / CLASSIC / COMPACT, SIDES falling back to
@@ -1490,6 +1551,15 @@ whole block within its room (`shiftTo`), and the page repeats DISPLAY OPTIONS' C
 upright preview shows only the screen's part around the controls. EXPAND upright fills everything above the companion, so
 there UNDER GAME = the controls' own strip along the bottom (`PortraitLayout.arrange(padStrip)`, `TouchGeometry.naturalHeight`,
 set by `syncTouchControls`), and COMPANION / POSITION grey out with a reason where they'd do nothing (`uprightCompanionRow`). ui-preview `touch-*` / `settings-touch*` shots.
+LOOK (GLASS / SOLID / OUTLINE / CONSOLE) and COLORS (`TouchColors`, ARGB + optional A / B / X / Y accents) are drawn through
+`PadPaint` (TouchControls.kt); MIRRORED / RAISED are transforms of SIDES / CLASSIC (`TouchGeometry.mirrored` / `raised`). **SKINS**
+(NEW tag `TOUCH_SKINS`): Delta's `.deltaskin` (zip: info.json + PDF / PNG) read by our own parser (`companion/DeltaSkin.kt`: the
+representation closest in shape, `SkinFit`: sideways the whole picture with the game moved into its screen through
+`GameStageLayout.skinGame`; upright only the part under its screen, from its topmost button, in the controls' area), imported on the
+top screen only (`DeltaSkinStore`, files/skins/<identifier>/: entry names checked, size / count capped), pictures decoded by
+`SkinImages.decode` (the app's `SkinBitmaps`: PdfRenderer / BitmapFactory; ui-preview's PNG-only `DemoSkin`). GBA and GBC skins
+only (a GBC skin for Game Boy games); DS skins are refused for now. **No third-party skin is ever bundled, linked or shown in our
+shots** (the overlays' rule): ui-preview's demo skin is drawn in code. `DeltaSkinTest`.
 **External controllers** (8BitDo, GameSir, ...): `configChanges` includes `keyboard` (many controller modes
 register as a keyboard, and connecting one recreated the activity mid-game); diagonal D-pad keycodes press
 both bits; joystick motion is taken in `dispatchGenericMotionEvent` before a focused ComposeView in the same
@@ -1532,7 +1602,7 @@ SaveBlock1 layout and a "BAG3" bit-stream bag (`Bag3Layout`) instead of gBagPock
 Pokémon walk the grass (no random encounters): script a battle (setwildbattle takes a second mon's fields;
 ScriptContext_SetupScript 0x080DB9CC). Its Town Map is FireRed's Kanto / Sevii art, pixel for pixel, redrawn for Emerald's
 region_map.c (8bpp affine, `QTZ_*`) 3 tiles left / 2 up of FireRed's screen, and its mapsec ids are FireRed's: FireRed's
-rects and grids, shifted (`mapSecDataQuetzalOnMap`). Glazed's and Quetzal's party menus are Emerald's slots on TMT2's olive stripes.
+rects and grids, shifted (`mapSecDataQuetzalOnMap`). Its Hoenn is Emerald's map byte for byte and its Johto its own (`QTZ_JOHTO_*`, Emerald's palette; the game loads them at 0x0818A7xx): the ROM's boxes +1, +2 (gRegionMapEntries is `{x, y, w, h, names**}` from 0x09229554), images 4 and 5, a tap goes by the boxes (no cursor grid read). Glazed's and Quetzal's party menus are Emerald's slots on TMT2's olive stripes.
 DEX: Glazed is `POKEDEX_EMERALD` (retail's tables rewritten in place, its own 1..386); Imperium's is gSpeciesInfo-based;
 Quetzal's needed new shapes (`entryCategoryPtr`, `BaseStatsLayout`, `DexFlags.seenLevels` / `caughtRegions`). CARD:
 `CardStyle.GLAZED` (its badges / pics / font, 7-digit money, `NativeConfig.maxMoney` 9,999,999) and `.IMPERIUM` (its font,
@@ -1643,6 +1713,11 @@ offsets, `MAX_SPRITES` 80; it doesn't rewrite DISPCNT each frame, so mgba_dump's
 anywhere is special 57 (`FIELD_ITEMS_MONOMYTH`, PC only); STEADY needed `M4aSongs`' flipped-header signature. Its StandardWildEncounter has no switch (no WILD ENCOUNTERS),
 and a look-alike gcc shape there taught `WildEncounters.gccRead` to want the HEADER_NONE compare. No FLY, bag USE, card or
 far-off characters in EXPAND.
+**Monomyth v1.1 (2026-11-04)** (`NATIVE_MONOMYTH_V1_1`, still `GameKind.MONOMYTH`): v1.0 rebuilt, the RAM and save unchanged (every pool word
+pointing at RAM reads the same; v1.0's save is its fixtures'), the ROM moved, one table set for both (`gen_monomyth_tables.py` with both ROMs
+checks it). Its header's game code is **BPEE**, so it's found by hash with the big BPEE hacks, and anything going by game code sees Emerald:
+`fanfareSongId` turns it away by its title, so it borrows a fanfare like v1.0 (it has its own song table; which song is its level-up isn't mapped). The next build: map the ROM by word pairs (v1.0 word -> the word at
+the shifted place) before anything else; if the RAM words still agree, it's a config over this one.
 **Emerald Legacy v1.1.4 (2026-10-14)**: BPEE, 16 MB, but a rebuild - its public source (`$DECOMPS/pokelegacy`, tag V1.1.4)
 built with agbcc is the release byte for byte, so take every address from that ELF (`nm`) and every struct offset / constant
 from agbcc compiling `offsetof` against its headers, never from retail. Runs as `GameKind.EMERALD` under `LEGACY_TEXT`
@@ -1913,8 +1988,13 @@ once); CompanionTweaks' motion tweaks read OFF (their rows keep the player's cho
 crossfading; ON COMPANION's shaders are off. AUTO = `DevicePerformance.looksWeak` (low-RAM flag, < 3 GB, no core over 2.3 GHz:
 the RK3568's A55s top out at 2.0) or a button handled 150 ms+ late 3 times in a minute (`noteKeyDelay`, logged as
 `pokedaisy/perf`; remembered in `Prefs.lightCompanionMeasured`). ui-preview's `stress` times the BATTLE tab's samples and menu
-flips with it off and on. The cure for every device would be game keys off the UI thread (a focused window on its own
-Looper) - not done: it changes how every key arrives (two-screen focus, BACK, the Thor's focus modes).
+flips with it off and on. **Touch controls' fingers are off the UI thread** (`TouchInputWindows`, 2026-11-08, a Galaxy Tab A: a
+companion tab switch held the UI thread 150-850 ms and the pad's presses waited behind it): see-through windows of their own
+over the buttons' clusters, added from the `pokedaisy-touch` thread, the drawn pad's hit test (`touchHits`) into one
+`TouchPressTracker` with the drawn pad's; they let every touch through (`NOT_TOUCHABLE`) while anything is open over the game
+(`PokeDaisyActivity.touchWindowsAllowed`: a HUD panel, the QUICK MENU, the companion window, a tip, the editor...), and the
+drawn pad takes the fingers as before - a new overlay over the game goes on that list. Physical keys still arrive on the UI
+thread (a focused window on its own Looper would change how every key arrives: two-screen focus, BACK, the Thor's focus modes).
 **Heat**: the STEADY background pass runs at most 10x real time (`BACKGROUND_FRAME_NANOS`; songs being heard go flat
 out), and gives up on a song that failed on 2 launches (`FfMusicCache.failures`) - a failing song kept the pass, and a
 second core, running on every launch.
@@ -2107,6 +2187,14 @@ stress` switches the companion's tabs every 2 frames and fails over its memory /
 skips desktop Compose 1.5's own OnPositionedDispatcher NPE, which the app's 1.6.8 doesn't have) - CI runs
 it; after touching anything a tab composes, ask the user before running it yourself. Per-visit work belongs in process-wide caches (slot art,
 backdrops, card renders, state thumbnails), not `remember`, which a tab loses each time it leaves.
+**Weak devices (a Galaxy Tab A, Android 11, Mali-G71, 2026-11-08: tab switches went from 150-1450 ms to 75-150 ms)**: `GbaText`
+is one Text node drawing its three shadow copies from its own layout (`drawBehind` + `drawText`; four Text nodes laid every word out four
+times). Never `clip()` a large area to a pixel shape: Android 11's renderer draws a path clip as a CPU mask every frame (the companion
+window's cost 160 ms a frame) - `pixelClip` (smooth while LIGHT COMPANION is on), and layered backgrounds draw `background(color, shape)`
+instead of clipping. Composition must not touch the disk or a system service (`MonArt.available` is cached, `secondScreen()` kept half a
+second): SETTINGS' getters run row by row. The touch pad (and, with LIGHT COMPANION, the companion window) sits in an offscreen layer
+the renderer keeps. A view over the stage keeps a fixed size (`WRAP_CONTENT` with changing text re-measured the whole stage). The
+`benchmark` build is profileable from adb; profile a debug build with simpleperf's `app_profiler.py` (`-e task-clock` on that tablet).
 **Crash reports** (`CrashReports.kt`, Firebase Crashlytics + -ndk): opt-in, off by default (manifest
 `firebase_crashlytics_collection_enabled=false`); on via Settings > CRASH REPORTS or the Library's one-time ask
 (`CrashReports.shouldAsk`: third app open - `PokeDaisyApp` counts process starts - and 48 h after
@@ -2117,6 +2205,11 @@ forks / PR builds have `BuildConfig.CRASHLYTICS = false` and no row or ask. ui-p
 debug APK, ui-preview stress + docs search - no render: its PNGs are for looking at, `make preview`); ROM-backed tests skip there and run on the release's self-hosted
 `pokedaisy-roms` runner (`POKEDAISY_ROM_DIR`, forwarded to the test JVM as `romDir`). `release.yml` fires on a
 `v<versionName>` tag from `make release`, checks the signing cert against `RELEASE_CERT_SHA256` and publishes.
+Collaborators get write access, the only level a personal repo has, so everything else is held back (2026-10-25,
+RELEASING.md's "Collaborators with write access"): main / dev need the owner's review (CODEOWNERS), only the owner makes
+tags, the release waits for the owner's approval, the Firebase key sits in a `website` environment that only runs on `v*`
+tags (no PR previews), releases are immutable (every release goes up as a draft, which the owner publishes: notes and other platforms' files go on before), and the ROM runner's job check
+(`scripts/runner_job_check.sh`) refuses all but the owner's release. Never move a secret back to repo level.
 **Collection dumps of retail** (`RetailDumps`, `RetailDumpsGen.kt` from `scripts/gen_retail_dumps.py`): English
 FireRed rev 0 / 1 and Emerald with the end's padding trimmed and / or a flash-cart patch (flash code + its chip descriptors,
 Emerald's siirtc, the save warnings reworded, AgbMain's WAITCNT value) and things of a repack's own in retail's empty space
@@ -2135,6 +2228,13 @@ guide's probe trainer name: UPR renames BROCK). Hand-written guide lines naming 
 `Randomized.HIDE` (gifts, legendaries, stones), TIPS has a `Randomized.ONLY` line; `gameGuide(id)` filters. EXPAND / field
 reads go by retail's CRC (`WideScreen.tablesCrc`; mgba_dump `wideon MARGIN CRC`). Library: "Pokémon FireRed (Randomized)";
 website: `compat.json`'s `randomizedRetail`. docs/DEVELOPMENT.md's "Randomized ROMs" (and how to redo it for a new UPR).
+**Retail engine (2026-11-07)**: an unrecognised BPRE (rev 0 / 1) / BPEE hack edited in place is proven by its code, not its hash
+(`RetailEngine.kt`, `RetailEngineGen.kt` from `scripts/gen_retail_engine.py`: per RAM global up to 16 retail `ldr pc` sites, CRC32 of
+the code around each, pool word must still hold the address; CRCs and offsets only). Proven: retail's cursors (`knownCursorAddrs`) and
+gPartyMenu (`retailEnginePartyMenu`) while BEST EFFORT reads it as retail FireRed / Emerald, and EXPAND / field reads by a row rebuilt
+from retail's with its repointed ROM tables followed (`WideScreen.tablesCrc` -> `pkWideAddDerived`; the far-off people's tables may
+drop to 0). Rerun the generator after touching retail's rows in pk_wide_games.h; `--row HACK` + mgba_dump's `widerow` checks one
+headless. `RetailEngineTest` rebuilds every in-place hack's hand-made row and refuses the rebuilds. docs/DEVELOPMENT.md's "Retail engine".
 **Unsupported ROMs**: `CompanionSupport.isSupported(file)` (FireRed/Emerald game code, ≤16 MB,
 retail LeafGreen rev 0/1 / Ruby / Sapphire rev 1/2 — `TelemetrySampler.OTHER_RETAIL_CODES`,
 read as FireRed / Emerald — or a >16 MB hack whose SHA1 is in `TelemetrySampler.SUPPORTED_HACK_SHA1S`) mirrors the
@@ -2154,6 +2254,11 @@ The site's game matrix is README's Supported games table; a row of all "—" mea
 so the export lists it under `inProgress` - off the matrix, and "in progress" in the ROM check (none since R.O.W.E.
 got its companion, 2026-10-09).
 The site's demos and art never use real Pokémon / move / item names or the games' art (the user's rule).
+**Website languages** (2026-11-07, website/README.md's "Languages"): the app's nine (EN / JA / KO / FR / DE / IT / ES / pt-BR / pt-PT),
+English at the root, the rest under `/<code>/` (`src/views/` drawn by `src/pages/` and `src/pages/[lang]/`); the manual and
+release notes stay English. Site text goes through `tr()` / `msg()` with its eight translations in `src/i18n/<code>.json`
+(same writing rules: no dashes), else `test/i18n.test.js` fails; Japanese needs `website/scripts/gen_site_jp_font.py` for a
+new character, Korean `website/scripts/gen_site_ko_font.py` for a new syllable. The picker's choice is `localStorage` `pd-lang`, else the browser's language (on English pages only).
 **Website analytics** (`website/src/lib/analytics.js`, website/README.md's "Analytics"): anonymous GA4 counts, no cookies, a fixed
 event list checked per value, live site only. gtag.js sends nothing without its cookie, so the page posts gtag's own hit itself;
 `MEASUREMENT_ID` empty turns it off. A new tracked action goes on `EVENTS` with its allowed values (and the README's list).
@@ -2305,7 +2410,8 @@ The app's only font is **Pixel Operator** (`assets/fonts/PixelOperator.ttf`, CC0
 back, glyph by glyph, to `PixelMplusJP.ttf` (`PixelTypeface.kt`, Typeface.CustomFallbackBuilder,
 Android 10+): PixelMplus10 (M+ FONT LICENSE) re-declared at Pixel Operator's 1600 upm by
 `scripts/gen_jp_font.py`, so both share the 100-unit pixel, and cut to Japanese only - anything
-else Pixel Operator lacks (½, ◀) still falls to the system font, as before.
+else Pixel Operator lacks (½, ◀) still falls to the system font, as before. Hangul falls to `GalmuriKO.ttf` after it the same
+way (Galmuri9, OFL, by `scripts/gen_ko_font.py`: its syllables are 9 pixels, Pixel Operator's caps' height).
 
 **European Emeralds** (BPES / BPED / BPEF / BPEI; `NATIVE_EMERALD_ES` / `_DE` / `_FR` / `_IT`): English's RAM and
 save layout, their own ROM tables, and **names in the game's language** (the user's call): species / moves / items /
@@ -2328,7 +2434,7 @@ Sapphire config. `GameText` (EmeraldLanguages.kt) is keyed by game code (`Native
 `localText`). Japanese FireRed / LeafGreen can't read the English saves: verify_ports boots them with Japanese
 ones (`firered_ja` / `leafgreen_ja`) and checks them absolutely.
 
-**Languages** (`companion/i18n/`): the app's own text in EN / JA / FR / DE / IT / ES / BR / PT - not game
+**Languages** (`companion/i18n/`): the app's own text in EN / JA / FR / DE / IT / ES / BR / PT / KO - not game
 data (species / moves / items / types / statuses, which come from each ROM in its own language).
 **GUIDE text** (issue #35: a French game's guide was half English) is translated for the games that come in
 other languages - FireRed / LeafGreen, Emerald, Ruby / Sapphire, Unbound (FR), Quetzal (ES): `trGuide()`
@@ -2348,7 +2454,9 @@ language letter (BPR**E**/F/D/I/S/J - every ROM the companion supports today is 
 device's in the Library / Settings. **Portuguese** (GitHub #61) is two languages, BR (Brazil) and PT (Portugal), picked by
 the device's region (`ofLocale`); no ROM is in Portuguese (`romLetter` null), so a Portuguese device's AUTO wins over an
 English game too. Both use the Brazilian games' terms (MOCHILA, GOLPES, PS, MT); PT only swaps everyday words (ECRÃ,
-GUARDAR, FICHEIRO, DEFINIÇÕES). Japanese is kana only, like Gen 3's; translations use the
+GUARDAR, FICHEIRO, DEFINIÇÕES). **Korean** (KO, 2026-11-09): rom letter K, so the Korean DS carts pick it; the Korean games'
+terms (가방, 도감, 기술), labels as nouns, sentences in 해요체, no particle right after a `{0}`; GUIDE text stays English
+(`Tr.ko` optional there, like BR / PT). Japanese is kana only, like Gen 3's; translations use the
 localized games' own words and stay about as short as the English (chips and buttons are sized
 for it - `LocalizedScreenshotTest` renders the main screens per language). New UI text: wrap it
-and add its seven translations in the area's table.
+and add its eight translations in the area's table.

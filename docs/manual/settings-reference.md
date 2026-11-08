@@ -38,13 +38,15 @@ The `SPEED OPTIONS` page:
 | --- | --- | --- | --- |
 | `GAME VOLUME` | a slider, **`100%`** down to `0%` | How loud the game is. `100%` is your device's own volume; the rest are quieter than that. Drag it, tap along it, or use left and right on the D-pad. Covers the game's music and sounds, `FF MUSIC` and the companion's click. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
 | `MUTE GAME` | `ON`, **`OFF`** | No game sound at all, keeping your `GAME VOLUME` for when you turn it back on. The `MUTE` hotkey flips it too. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
+| `AUDIO EFFECTS` | `ON`, **`OFF`** | Lets equalizer apps like JamesDSP change the game's sound, with a little delay. Works from the next game start. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
 
 ### Screen
 
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
 | `ASPECT` | **`ORIGINAL`**, `STRETCH`, `EXPAND` | The GBA's 3:2, stretched to fill the screen, or more of the map drawn past the game's edges. Opens a preview to pick from. | [Screen](screen.md) |
-| `AUTO ZOOM IN` | **`ON`**, `OFF` | Only with `ASPECT` on `EXPAND`: conversations, signs and menus ease the zoom back in. Battles always do. | [Screen](screen.md) |
+| `AUTO ZOOM IN` | **`ON`**, `OFF` | Only with `ASPECT` on `EXPAND`: conversations and signs ease the zoom back in. Battles and the game's menu screens always do. | [Screen](screen.md) |
+| `LOOK AROUND` | **`ON`**, `OFF` | Only with `ASPECT` on `EXPAND`: the right stick moves the view. | [Screen](screen.md) |
 | `DS RESOLUTION` | **`ORIGINAL`**, `2x` to `8x` | The DS games' 3D drawn sharper by your device's graphics chip. `N/A` on a device that can't. | [Screen](screen.md#ds-resolution-sharper-3d) |
 | `DS CPU BOOST` | `OFF`, **`ON`** | The DS's processor twice as fast, so the games' own slow frames go. | [Screen](screen.md#ds-cpu-boost-fewer-slowdowns) |
 | `DS LAYOUT` | **`ONE SCREEN`**, `SIDE BY SIDE`, `LARGE + SMALL`, `PICTURE IN PICTURE`, `STACKED` | Only on a device with one screen (or with `SINGLE SCREEN` on): where a DS game's two screens go when you hold it sideways. Opens a list with a picture of each. | [Devices](devices.md#ds-layout-two-screens-on-one) |
@@ -52,6 +54,7 @@ The `SPEED OPTIONS` page:
 | `BATTLE BUTTONS` | **`ON`**, `OFF` | Only on a device with one screen (or with `SINGLE SCREEN` on): `FIGHT`, `POKéMON` and `RUN` at the top right, beside the battle. | [Battle](battle.md) |
 | `DISPLAY OPTIONS` | a page | `STATUS BAR`, `SHADERS`, `OVERLAY`, `LIGHT COMPANION` and, on a phone, `COMPANION`; see the next table. | [Screen](screen.md) |
 | `COMPANION VIEW` | **`WINDOW`**, `SIDE PANEL` | Only on a device with one screen (or with `SINGLE SCREEN` on): the companion as a window in the middle, over the game, or as a panel on the right, when you hold it sideways. | [Devices](devices.md) |
+| `FOLD LAYOUT` | **`ON`**, `OFF` | Only on a folding phone: half open, the game goes on one side of the fold and the companion on the other. | [Devices](devices.md#folding-phones) |
 | `COMPANION BUTTON` | **`ON`**, `OFF` | Where `COMPANION VIEW` shows: the small button at the bottom of the screen's right edge that opens the companion. Off, `BACK` and the HUD's `COMPANION` button still do. | [Devices](devices.md) |
 | `SWAP SCREENS` | `ON`, **`OFF`** | Only on a device with two screens: the game on the second screen and the companion on the main one. With a TV as the second screen it starts `ON`: the game on the TV. | [Devices](devices.md) |
 | `SINGLE SCREEN` | `ON`, **`OFF`** | Only on a device with two screens: play on one, the second screen free for other apps and the companion as a window over the game. | [Devices](devices.md#single-screen) |
@@ -85,6 +88,8 @@ The `SHADERS` page:
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
 | `RESUME GAMES` | **`ON`**, `OFF` | On, a game opens right where you left it. Off, it starts at the title screen and loads your save. | [Saves](saves.md) |
+| `GAME NAMES` | **`GAME TITLE`**, `FILE NAME` | How the library names your games. A name you gave a game with `RENAME` stays. | [Library](library.md#game-names) |
+| `SUPPORTED ONLY` | `ON`, **`OFF`** | Leaves games the companion can't read out of the library. Your files stay where they are. | [Library](library.md) |
 | `DUAL-SCREEN LAUNCHER` | **`ON`**, `OFF` | With two screens, the library shows the game list on one and the selected game's media on the other. Off, the plain library. | [Library](library.md#the-dual-screen-launcher) |
 | `COVER ART` | `ON` once a key is saved, else **`OFF`** (a page) | Your own free keys for RetroAchievements box art and SteamGridDB icons (`GET KEY` opens the page to make one). `REPLACE ALL` fetches every cover again. | [Library](library.md) |
 | `FOLDERS` | a page | A page for each: `ROMS FOLDERS`, your linked ROMs folders (`ADD FOLDER`, `RESCAN`, `REMOVE`); `GAME SAVES`, the folder saves go to (`CHANGE FOLDER`, `USE DEFAULT`); `ALSO LOOK IN`, other emulators' save folders; `SAVE BACKUPS`, the backup taken each time a game starts (`BACKUPS` on or off, `KEEP PER GAME`, and a folder for all of them); `SAVE STATES`, where save states are kept. | [Library](library.md), [Saves](saves.md) |
@@ -104,7 +109,7 @@ The `SHADERS` page:
 | `GAME BUTTONS` | a page | Which button presses A, B, L, R, `START`, `SELECT`, `TURBO A` and `TURBO B` in every game, the DS games' `X` and `Y`, and the GBA and Game Boy games' `START 2`, `SELECT 2` and `TO COMPANION`. Press the button you want on each row. | [Controls](controls.md) |
 | `HOTKEYS` | **`ON`**, `OFF` (a page) | Shortcuts for save states, fast-forward, slow motion, rewind, `ZOOM`, muting the game, opening the companion and leaving the game. Each can be a combination of buttons, or cleared with `CLEAR`. Off, every button goes to the game. | [Controls](controls.md) |
 | `QUICK MENU` | a page | Its `STYLE` (**`RING`**, `GRID`), `LABELS` (**`ON`**, `OFF`) and which actions it shows (all of them to start with). Its button is the `QUICK MENU` hotkey. | [Controls](controls.md) |
-| `TOUCH CONTROLS` | a page | The on-screen buttons: `SHOW` (**`AUTO`**, `ALWAYS`, `NEVER`), `LAYOUT` (**`SIDES`**, `CLASSIC`, `COMPACT`, `CUSTOM`), `EDIT LAYOUT`, `POSITION` (`TOP`, **`MIDDLE`**, `BOTTOM`), `COMPANION` (upright, one-screen devices), `SIZE`, `OPACITY`, `D-PAD`, `FADE WHEN IDLE`, `VIBRATION` and the extra buttons (`FF`, `QUICK MENU`, turbo, save and load state). A preview shows the result. | [Controls](controls.md#touch-controls) |
+| `TOUCH CONTROLS` | a page | The on-screen buttons: `SHOW` (**`AUTO`**, `ALWAYS`, `NEVER`), `LAYOUT` (**`SIDES`**, `CLASSIC`, `COMPACT`, `MIRRORED`, `RAISED`, `CUSTOM`), `EDIT LAYOUT`, `POSITION` (`TOP`, **`MIDDLE`**, `BOTTOM`), `COMPANION` (upright, one-screen devices), `SIZE`, `LOOK` (**`GLASS`**, `SOLID`, `OUTLINE`, `CONSOLE`), `COLORS` (**`DARK`** and eight more), `OPACITY`, `D-PAD`, `FADE WHEN IDLE`, `VIBRATION` (and its `STRENGTH` while it's on), the skins (`GBA SKIN`, `GAME BOY SKIN`, `IMPORT SKIN`, `DELETE SKIN`) and the extra buttons (`FF`, `QUICK MENU`, turbo, save and load state, `ZOOM`, `REWIND`, `X AND Y`). A preview shows the result. | [Controls](controls.md#touch-controls) |
 
 ### App
 
@@ -115,7 +120,7 @@ The `SHADERS` page:
 | `CRASH REPORTS` | `ON`, **`OFF`** | Sends a short report when the app crashes, only if you turn it on. Only in official builds. | [Troubleshooting](troubleshooting.md#what-does-pokedaisy-send-over-the-internet) |
 | `TIPS` | **`ON`**, `OFF` | Now and then, a card about a feature you haven't tried yet, shown in a game while you walk around. | [The companion](companion.md#tips) |
 | `LICENSES` | a page | The licenses of PokeDaisy and everything it includes. | |
-| `LANGUAGE` | **`AUTO`**, `ENGLISH`, `日本語`, `FRANÇAIS`, `DEUTSCH`, `ITALIANO`, `ESPAÑOL` | The app's own text. `AUTO` follows the game's language in game and the device's in the library. Game names (Pokémon, moves, items) stay as the game has them. | [The companion](companion.md) |
+| `LANGUAGE` | **`AUTO`**, `ENGLISH`, `日本語`, `FRANÇAIS`, `DEUTSCH`, `ITALIANO`, `ESPAÑOL`, `PORTUGUÊS (BR)`, `PORTUGUÊS (PT)`, `한국어` | The app's own text. `AUTO` follows the game's language in game and the device's in the library. Game names (Pokémon, moves, items) stay as the game has them. | [The companion](companion.md) |
 | `DISCORD` | | Opens PokeDaisy's Discord server, where you can get help, report a bug, share an idea or just chat. The `Discord` link under the list opens it too. | [Troubleshooting](troubleshooting.md#how-do-i-report-a-bug-or-ask-for-a-game) |
 | `HELP` | a page | This manual, with a search box. It keeps a copy for reading offline. | [Welcome](welcome.md) |
 
@@ -153,6 +158,7 @@ The `SPEED OPTIONS` page:
 | --- | --- | --- | --- |
 | `GAME VOLUME` | as on the top screen | How loud the game is, from your device's volume (`100%`) down. You hear it change right away. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
 | `MUTE GAME` | as on the top screen | The game's sound off, or back on. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
+| `AUDIO EFFECTS` | as on the top screen | Equalizer apps on the game's sound, from the next game start. | [Fast-forward](fast-forward.md#game-volume-and-mute-sound) |
 
 ### Makeover
 
@@ -171,11 +177,12 @@ At the top of SETTINGS, in a blue frame, in the games where any of it works.
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
 | `WILD ENCOUNTERS` | **`ON`**, `OFF` | Wild Pokémon jumping out in grass, caves and water, or none. `N/A` in a game where it can't work. | [Controls](controls.md) |
+| `INSTANT TEXT` | `ON`, **`OFF`** | Words in a text box appear at once, and nothing else speeds up. `N/A` where it can't work. | [Fast-forward](fast-forward.md#instant-text) |
 | `REUSABLE TMS` | `ON`, **`OFF`** | A TM stays in your bag after it teaches a move, like an HM. `ON` and greyed out where the game already keeps its TMs, `N/A` where it can't work. | [Bag](bag.md) |
 | `TRADE EVOS` | `ON`, **`OFF`** | A Pokémon that evolves by trading can evolve from its summary's `EVOLVE` button, through the game's own evolution. `N/A` where it can't work. | [Party](party.md#trade-evolutions) |
 | `SHINY ODDS` | **`NORMAL`**, `1 IN 4096`, `1 IN 1024`, `1 IN 512`, `1 IN 128` | How often a wild Pokémon is shiny. Pauses achievements while raised. `N/A` where it can't work. | [Controls](controls.md#shiny-odds) |
 | `NUZLOCKE` | `ON`, **`OFF`** | Keeps score of a Nuzlocke run in this game: one catch per area, a faint is final. Adds the `NUZLOCKE` tab. `N/A` in the Game Boy and DS games, and in Emerald Rogue. | [Nuzlocke](nuzlocke.md) |
-| `AUTO-RUN` | `ON`, **`OFF`** | Walking on the field runs without holding B; holding B walks instead. | [Controls](controls.md) |
+| `AUTO-RUN` | `ON`, **`OFF`** | Walking on the field runs without holding B; holding B walks instead. Greyed out in games with their own. | [Controls](controls.md) |
 | `RUN INDOORS` | `ON`, **`OFF`** | Lets you run inside buildings too. `N/A` on Ruby and Sapphire. | [Controls](controls.md) |
 | `CHEATS` | **`OFF`**, or how many are on (a page) | The master switch, then this game's cheats, each flipped live. Codes are added on the top screen. | [Cheats](cheats.md) |
 
@@ -184,7 +191,9 @@ At the top of SETTINGS, in a blue frame, in the games where any of it works.
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
 | `ASPECT` | as on the top screen | A pick-list here. `EXPAND` is tagged `NOT YET` in a game that doesn't have it. | [Screen](screen.md) |
+| `ZOOM` | **`1x`**, then each step out (`1.4x`, `1.7x`...) | Only with `ASPECT` on `EXPAND`: how much of the map you see, the same steps as the `ZOOM` hotkey. Each game keeps its own. | [Screen](screen.md) |
 | `AUTO ZOOM IN` | as on the top screen | Only with `ASPECT` on `EXPAND`. | [Screen](screen.md) |
+| `LOOK AROUND` | as on the top screen | Only with `ASPECT` on `EXPAND`. | [Screen](screen.md) |
 | `DS RESOLUTION` | as on the top screen | Only while a DS game is running. Changes the game straight away. | [Screen](screen.md#ds-resolution-sharper-3d) |
 | `DS CPU BOOST` | as on the top screen | Only while a DS game is running. Changes the game straight away. | [Screen](screen.md#ds-cpu-boost-fewer-slowdowns) |
 | `DS LAYOUT` | as on the top screen | Only while a DS game is running on one screen. Changes the game straight away. | [Devices](devices.md#ds-layout-two-screens-on-one) |
@@ -192,6 +201,7 @@ At the top of SETTINGS, in a blue frame, in the games where any of it works.
 | `BATTLE BUTTONS` | as on the top screen | Only on a device with one screen (or with `SINGLE SCREEN` on): `FIGHT`, `POKéMON` and `RUN` beside the battle. | [Battle](battle.md) |
 | `DISPLAY OPTIONS` | a page | As on the top screen. | [Screen](screen.md) |
 | `COMPANION VIEW` | as on the top screen | Only on one screen held sideways (or with `SINGLE SCREEN` on). Switches right away. | [Devices](devices.md) |
+| `FOLD LAYOUT` | as on the top screen | Only on a folding phone. Switches right away. | [Devices](devices.md#folding-phones) |
 | `COMPANION BUTTON` | as on the top screen | With `COMPANION VIEW`. Switches right away. | [Devices](devices.md) |
 | `SWAP SCREENS` | as on the top screen | Only with two screens. | [Devices](devices.md) |
 | `SINGLE SCREEN` | as on the top screen | Only with two screens. Switches right away, and the companion opens over the game. | [Devices](devices.md#single-screen) |
@@ -212,8 +222,11 @@ The `DISPLAY OPTIONS` page:
 
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
+| `BATTLE INFO` | **`ON`**, `OFF` | Off, the `BATTLE` tab has only your battle buttons: no `INFO`, `SUGGESTIONS` or move ratings. | [Battle](battle.md) |
 | `BATTLE HINTS` | **`ON`**, `OFF` | Move ratings, the foe's weaknesses and suggestions during battles. | [Battle](battle.md) |
+| `BATTLE VIEW` | **`BUTTONS`**, `INFO` | What the `BATTLE` tab opens on. | [Battle](battle.md) |
 | `ONE-TAP MOVES` | `ON`, **`OFF`** | Puts your moves on the battle's first menu, so one tap picks FIGHT and the move. | [Battle](battle.md) |
+| `BATTLE STYLE` | **`GEN 4`**, `GEN 5` | The battle buttons' look: big coloured buttons, or dark plates round a red and white ball. Both work the same way. | [Battle](battle.md#battle-style) |
 | `FOE IVS` | `ON`, **`OFF`** | A STATS page in battle with the foe's IVs, EVs and nature. | [Battle](battle.md) |
 | `BATTLE FOCUS` | `ON`, **`OFF`** | Battle `INFO` as one page with no scrolling: one Pokémon's ability, item, stats, moves and matchups, a button to turn from the foe to yours, the foe's team down the side. No `SUGGESTIONS` or `STATS` there. | [Battle](battle.md) |
 | `TAB BAR` | **5 tabs** (a page) | Which tabs sit next to the gear: up to 5, `SHOWN` or `HIDDEN`. By default `PARTY`, `DEX`, `MAP`, `BAG` and `GUIDE`. A tab the game doesn't have gives its place to another of the game's tabs. The rest open from `MORE`, left of the gear. | [The companion](companion.md) |
@@ -227,7 +240,7 @@ The `DISPLAY OPTIONS` page:
 | `GAME BUTTONS` | a page | As on the top screen: press the button you want on each row. | [Controls](controls.md) |
 | `HOTKEYS` | a page | As on the top screen: turn hotkeys on or off, and press new buttons for each. | [Controls](controls.md) |
 | `QUICK MENU` | a page | As on the top screen. | [Controls](controls.md) |
-| `TOUCH CONTROLS` | a page | As on the top screen; its `EDIT LAYOUT` opens over the game. | [Controls](controls.md#touch-controls) |
+| `TOUCH CONTROLS` | a page | As on the top screen; its `EDIT LAYOUT` opens over the game. Skins are picked here but imported from the top screen. | [Controls](controls.md#touch-controls) |
 
 ### App
 

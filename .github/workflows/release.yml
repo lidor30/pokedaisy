@@ -3,7 +3,8 @@
 #   - the tag is on main and matches versionName in app/build.gradle.kts,
 #   - the whole CI suite passes on the tagged commit,
 #   - the ROM-backed tests pass on the self-hosted ROM runner (once ROM_RUNNER is on),
-#   - the APK is signed with the release key (its certificate matches RELEASE_CERT_SHA256).
+#   - the APK is signed with the release key (its certificate matches RELEASE_CERT_SHA256),
+#   - the APK holds the native code for both arm64 and 32-bit ARM (one APK for every device).
 # Setup (secrets, variables, the runner, branch protection): docs/RELEASING.md.
 name: Release
 
@@ -77,7 +78,7 @@ jobs:
           retention-days: 7
 
   publish:
-    name: Build, sign and publish
+    name: Build, sign and draft
     needs: [verify, checks, rom-tests]
     if: >-
       always() && needs.verify.result == 'success' && needs.checks.result == 'success' &&
@@ -87,8 +88,6 @@ jobs:
     environment: release
     permissions:
       contents: write
-      # To start the Website workflow (below).
-      actions: write
     timeout-minutes: 45
     env:
       VERSION: ${{ needs.verify.outputs.version }}
@@ -152,9 +151,10 @@ jobs:
           if [ -z "${COOP_RELAY_URL}" ]; then
             echo "::notice::COOP_RELAY_URL isn't set: this release's co-op works on the same Wi-Fi and BY IP only"
           fi
-          ./gradlew :app:assembleRelease --stacktrace
+          # One APK for every device: arm64 and 32-bit ARM (a 32-bit Android, such as the Galaxy Tab A).
+          ./gradlew :app:assembleRelease -Ppokedaisy.armv7=true --stacktrace
 
-      - name: Signed with the release key
+      - name: Signed with the release key, both ABIs inside
         env:
           RELEASE_CERT_SHA256: ${{ vars.RELEASE_CERT_SHA256 }}
         run: |
@@ -170,6 +170,12 @@ jobs:
           else
             echo "::warning::RELEASE_CERT_SHA256 isn't set: the signing key wasn't checked"
           fi
+          # A 32-bit device can't install an APK without armeabi-v7a, nor any device one missing the app's own library.
+          files="$(unzip -Z1 "${apk}")"
+          echo "ABIs: $(echo "${files}" | sed -n 's|^lib/\([^/]*\)/.*|\1|p' | sort -u | tr '\n' ' ')"
+          for abi in arm64-v8a armeabi-v7a; do
+            grep -qx "lib/${abi}/libpokedaisy.so" <<< "${files}" || { echo "::error::APK has no lib/${abi}/libpokedaisy.so"; exit 1; }
+          done
           mkdir -p dist
           cp "${apk}" "dist/PokeDaisy-${VERSION}.apk"
 
@@ -177,23 +183,20 @@ jobs:
         if: hashFiles('app/google-services.json') != ''
         run: ./gradlew :app:uploadCrashlyticsSymbolFileRelease --stacktrace
 
-      - name: Publish the GitHub release
+      # Every release goes up as a draft and stays one: the owner reads it, adds the notes and any other
+      # platform's files (Linux, 3DS), and publishes it (docs/RELEASING.md). Releases are immutable once
+      # published, so nothing can be added after. Publishing the draft with the owner's own token fires
+      # website.yml's `released` trigger (a full release only), which puts the site live with it.
+      - name: Put up the draft release
         uses: softprops/action-gh-release@3bb12739c298aeb8a4eeaf626c5b8d85266b0e65 # v2.6.2
         with:
           name: PokeDaisy ${{ env.VERSION }}
           files: dist/PokeDaisy-${{ env.VERSION }}.apk
           generate_release_notes: true
           prerelease: ${{ needs.verify.outputs.prerelease == 'true' }}
+          draft: true
           body: |
             ${{ needs.rom-tests.result == 'skipped' && '> Released without the ROM-backed tests (no ROM runner configured).' || '' }}
-
-      # The site goes live with the release (website.yml). A release published with this
-      # job's token doesn't fire other workflows' `release` trigger, so start it by hand.
-      - name: Deploy the website
-        if: needs.verify.outputs.prerelease != 'true'
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: gh workflow run website.yml --repo "${GITHUB_REPOSITORY}" --ref "${GITHUB_REF_NAME}" -f tag="${GITHUB_REF_NAME}"
 
       - name: Clean up the key
         if: always()

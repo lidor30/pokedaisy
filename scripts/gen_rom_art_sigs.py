@@ -283,7 +283,7 @@ QUETZAL_ROM = os.path.expanduser("~/Downloads/Game ROMs & Emulation/gba/Pokemon 
 
 
 def quetzal_symbols(rom):
-    return {"RegionPal": (0x121EA1C, 0x40),
+    return {"RegionPal": (0x121EA1C, 0x40), "JohtoGfx": (0x121DC04, 0), "JohtoMap": (0x121E6A0, 0),
             "KantoGfx": (0x121EA5C, 0), "Sevii123Gfx": (0x121F84C, 0), "Sevii45Gfx": (0x1220428, 0), "Sevii67Gfx": (0x1220F38, 0),
             "KantoMap": (0x121F51C, 0), "Sevii123Map": (0x12201EC, 0), "Sevii45Map": (0x1220D14, 0), "Sevii67Map": (0x1221920, 0)}
 
@@ -376,12 +376,12 @@ def glazed_symbols(rom):
 # by scanning near English's offset for a blob of the same size (the palette,
 # tilemaps and Poke Ball beside them are identical), FONT_SMALL through
 # English's literal pool. RomArt writes them to partyem_<lang>/.
-# A folder per game in "Pokemon Multi Language", the ROM inside named like it.
-MULTI_LANGUAGE = os.path.expanduser("~/Downloads/Game ROMs & Emulation/Pokemon Multi Language")
+# The other languages sit in the retail ROM folder with the English ones, under their No-Intro names.
+MULTI_LANGUAGE = os.path.expanduser("~/Downloads/Game ROMs & Emulation/gba")
 
 
 def multi_language_rom(name):
-    return os.path.join(MULTI_LANGUAGE, name, name + ".gba")
+    return os.path.join(MULTI_LANGUAGE, name + ".gba")
 
 
 EMERALD_EU_ROMS = {
@@ -417,6 +417,9 @@ GAMES = {
         ("FR_STATUS_PAL", "gStatusPal_Icons", True),
         ("FR_FONT_SMALL", "sFontSmallLatinGlyphs", False),
         # The held-item marker by a party slot's icon: an item, then Mail (8x8 each), and its palette (the same in Emerald).
+        # The type tags (a 128x128 sheet, the games' own list of 32x12 tags) and their colours.
+        ("FR_TYPE_TAGS_GFX", "gMenuInfoElements_Gfx", False),
+        ("FR_TYPE_TAGS_PAL", "gMenuInfoElements2_Pal", False),
         ("FR_HOLD_GFX", "sHeldItemGfx", False),
         ("FR_HOLD_PAL", "sHeldItemPalette", False),
         ("FR_REGION_GFX", "sRegionMap_Gfx", True),
@@ -457,6 +460,8 @@ GAMES = {
         ("FR_FONT_NORMAL_WIDTHS", "sFontNormalLatinGlyphWidths", False),
     ]),
     "EM": ("pokeemerald/pokeemerald.gba", "pokeemerald/pokeemerald.elf", [
+        ("EM_TYPE_TAGS_GFX", "gMenuInfoElements_Gfx", False),
+        ("EM_TYPE_TAGS_PAL", "gMenuInfoElements2_Pal", False),
         ("EM_PARTY_BG_GFX", "gPartyMenuBg_Gfx", True),
         ("EM_PARTY_BG_PAL", "gPartyMenuBg_Pal", True),
         ("EM_PARTY_BG_MAP", "gPartyMenuBg_Tilemap", True),
@@ -602,6 +607,8 @@ GAMES = {
         ("QTZ_SEVII45_MAP", "Sevii45Map", True),
         ("QTZ_SEVII67_GFX", "Sevii67Gfx", True),
         ("QTZ_SEVII67_MAP", "Sevii67Map", True),
+        ("QTZ_JOHTO_GFX", "JohtoGfx", True),
+        ("QTZ_JOHTO_MAP", "JohtoMap", True),
     ]),
     "GZ": (GLAZED_ROM, None, [
         ("GZ_REGION_GFX", "RegionGfx", True),

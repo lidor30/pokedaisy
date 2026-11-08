@@ -112,11 +112,14 @@ fun expProgress(species: Int, level: Int, exp: Long?): ExpProgress? {
         else if (activeGame == GameKind.WISHES) growthRatesWishes.getOrNull(species)?.takeIf { it <= 5 }
         // PureRGB moved 25 species to other curves: its own BaseStats' (gen_gen1_tables.py purered).
         else if (activeGame.isPureRgb) gen1GrowthRatesPureRgb.getOrNull(species)
+        // Yellow Legacy too (gen_gen1_tables.py yellow_legacy).
+        else if (activeGame == GameKind.YELLOW_LEGACY) gen1GrowthRatesYellowLegacy.getOrNull(species)
         // Dreamstone Mysteries too (expansion's curves are vanilla's; its rates from gSpeciesInfo, gen_expansion_tables.py).
         else if (activeGame == GameKind.DREAMSTONE) growthRatesDreamstone.getOrNull(species)?.takeIf { it <= 5 }
         // A randomized retail ROM's own (UPR can standardize the curves): read from its gBaseStats; and a FireRed hack's
         // that grew the species list (Let's Go: 987 ids).
-        else (runningRandomized?.growthRates ?: runningFireRedHack?.growthRates ?: gen3GrowthRates).getOrNull(species)?.toInt()
+        else (runningRandomized?.growthRates ?: runningFireRedHack?.growthRates ?: runningEmeraldHack?.growthRates ?: gen3GrowthRates)
+            .getOrNull(species)?.toInt()
     if (rate == null) return null
     val table = gen3ExperienceTables.getOrNull(rate) ?: return null
     val start = table[level].toLong()
@@ -277,11 +280,13 @@ fun MonView.withMovesVs(foe: MonView): MonView = withMovesVs(listOf(foe))
 /** [withMovesVs] against every one of [targets] (a double battle's two). */
 fun MonView.withMovesVs(targets: List<MonView>): MonView = copy(moves = moves.map { mv ->
     val atk = typeIdOf(mv.type)
+    // A status move's verdict says nothing: the chart only rates damage (GitHub #90).
+    if (mv.power == 0) return@map mv.copy(vs = emptyList())
     mv.copy(vs = targets.map { foe ->
         val t = foe.types.map(::typeIdOf)
         val t1 = t.getOrElse(0) { TYPE_NONE }
         val t2 = t.getOrElse(1) { TYPE_NONE }
-        val pct = if (atk != TYPE_NONE && t1 != TYPE_NONE) typeMultiplierPct(atk, t1, t2) else 100
+        val pct = if (atk != TYPE_NONE && t1 != TYPE_NONE) moveMultiplierPct(mv.name, atk, t1, t2) else 100
         MoveVsFoe(foe.name, formatMultiplier(pct), pct)
     })
 })
@@ -380,6 +385,20 @@ data class BoxView(val name: String, val wallpaper: Int, val mons: List<MonView?
     val count: Int get() = mons.count { it != null }
 }
 
+/** [dexHoldings]' value for a species in the party; a box is its number, from 1. */
+const val DEX_IN_PARTY = 0
+
+/** Where the save keeps each species, for the DEX's rows (GitHub discussion #312): the party first, then the first box
+ * holding one. Null where the boxes aren't read, since a Pokémon missing from the party could be in them. Eggs don't
+ * count: the entry isn't caught yet. */
+fun dexHoldings(party: List<MonView>, boxes: BoxesView?): Map<Int, Int>? {
+    if (boxes == null) return null
+    val out = HashMap<Int, Int>()
+    boxes.boxes.forEachIndexed { i, box -> box.mons.forEach { m -> if (m != null && !m.isEgg) out.putIfAbsent(m.species, i + 1) } }
+    party.forEach { if (!it.isEgg) out[it.species] = DEX_IN_PARTY }
+    return out
+}
+
 // The last boxes turned into views: the reader hands back the same PcBoxes while the storage is unchanged.
 private var lastBoxes: Pair<PcBoxes, BoxesView>? = null
 
@@ -434,8 +453,8 @@ fun buildSnapshotView(t: Telemetry): SnapshotView {
                 if (moveId == 0) null
                 else {
                     val info = lookupMove(moveId)
-                    val vs = opponents.map { foe ->
-                        val pct = if (info.type != TYPE_NONE) typeMultiplierPct(info.type, foe.type1, foe.type2) else 100
+                    val vs = if (info.power == 0) emptyList() else opponents.map { foe ->
+                        val pct = if (info.type != TYPE_NONE) moveMultiplierPct(info.name, info.type, foe.type1, foe.type2) else 100
                         MoveVsFoe(speciesName(foe.species), formatMultiplier(pct), pct)
                     }
                     MoveView(info.name, typeName(info.type), b.pp[idx], info.power, vs, id = moveId)

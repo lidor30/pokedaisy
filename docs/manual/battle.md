@@ -36,7 +36,9 @@ Elite Redux has no bag in its battle menu, so there the tab shows `RUN` and `POK
 
 ## Moves and their verdicts
 
-Each move card shows its name, type, power (`PWR`) and `PP` left, plus a verdict against the foe in plain words:
+In the original FireRed, LeafGreen and Emerald in English, type tags are the game's own, read from your ROM.
+
+Each move card shows its name, type, an icon for physical, special or status where the game's split is known, power (`PWR`) and `PP` left, plus a verdict against the foe in plain words (status moves deal no damage, so they have none):
 
 | Verdict | Meaning |
 | --- | --- |
@@ -49,11 +51,33 @@ Each move card shows its name, type, power (`PWR`) and `PP` left, plus a verdict
 
 ![The move grid: PAW SWIPE, WARY GLARE, CINDER SPIT and IRON NIP, each with its type, power, PP and verdict, and a CANCEL bar below](shots/companion-battle-moves.png "Picking a move")
 
+When you move the game's cursor with your buttons, the battle buttons show where it is with the DS games' own cursor: red corner marks that pulse in and out. In Game Boy games and games without one-press picks, they don't.
+
+### BATTLE INFO
+
+Want to work the battle out yourself? Turn off `BATTLE INFO` in SETTINGS (COMPANION group). The `BATTLE` tab then has only your battle buttons: no `INFO`, no `SUGGESTIONS` and no ratings on your moves. In a double battle, or in the window over the game, it just reminds you to use the game's own menu.
+
+### BATTLE VIEW
+
+The `BATTLE` tab opens on your battle buttons. If you'd rather read about the fight first and use the game's own menu, set `BATTLE VIEW` to `INFO` in SETTINGS (COMPANION group). `BACK` on `INFO` still brings the buttons up.
+
 ### ONE-TAP MOVES
 
 If you want to skip the `FIGHT` step, turn on `ONE-TAP MOVES` in SETTINGS (COMPANION group). Your four moves then sit right on your turn's screen, where `FIGHT` was, with `BAG`, `RUN` and `POKéMON` in a row underneath. One tap picks `FIGHT` and the move together.
 
 ![ONE-TAP MOVES on: the four move cards fill the top of the screen, BAG, RUN and POKéMON in a row below](shots/companion-battle-onetap.png "ONE-TAP MOVES")
+
+### BATTLE STYLE
+
+The battle screen comes in two looks, and both work the same way. `GEN 4` is the one shown above: big coloured buttons. `GEN 5` is laid out and coloured like the fifth generation's own touch screen, and fills the whole companion screen above the tab bar. It's a big ball, red on top and pale below, with a dark band across it that swells into the `FIGHT!` button in the middle. `BAG`, `RUN` and `POKéMON` are round dark plates rising from the bottom edge, `BAG` and `POKéMON` joined to the sides and `RUN` a little lower in between. Your party's balls sit under `FIGHT!`, and in a trainer battle the trainer's sit above it. `INFO` and `SUGGESTIONS` are the two small plates in the top corners.
+
+![GEN 5: FIGHT! on the dark band across a red and white ball, round BAG, RUN and POKéMON plates below, the party's balls in between](shots/companion-battle-gen5.png "BATTLE STYLE: GEN 5")
+
+In `GEN 5`, `FIGHT!` grows the band into a dark field with your four moves on it, each plate edged in its move's type colour: the name, the type and PP, then the move's power and, with `BATTLE HINTS` on, how well it hits. The round plate with the arrow at the bottom right takes you back. `POKéMON` opens the game's style of party screen: a plate for each of your Pokémon with its HP bar, and the one to send in marked `BEST` when `BATTLE HINTS` is on. While the attacks play out, the tab shows a closed ball in the dark until your next turn. With a controller, the cursor is a set of rounded pink corners that pulse, as in the game.
+
+![GEN 5's moves: four dark plates edged in their type's colour over a dark field, your party's balls under them and the arrow back](shots/companion-battle-gen5-moves.png "GEN 5's moves")
+
+The first time you open PokeDaisy after this update, it asks which look you want, with both side by side. Change it any time with `BATTLE STYLE` in the companion's SETTINGS (COMPANION group). `ONE-TAP MOVES` works with either look. Yellow keeps its own black and white text boxes whichever you pick.
 
 ## INFO: the whole matchup on one page
 
@@ -127,7 +151,7 @@ Tap a Pokémon to send it in. PokeDaisy works the game's party menu for you, and
 
 The same pane appears when the game asks you to choose, for example after one of your Pokémon faints.
 
-This works in the Game Boy games too (Red, Blue, Yellow, PureRed, PureBlue, Gold, Silver, Crystal, Crystal Clear, Prism and Polished Crystal). There the game asks what to do with the Pokémon you picked, and PokeDaisy answers its switch option for you.
+This works in the Game Boy games too (Red, Blue, Yellow, Yellow Legacy, PureRed, PureBlue, Gold, Silver, Crystal, Crystal Legacy, Crystal Clear, Prism and Polished Crystal). There the game asks what to do with the Pokémon you picked, and PokeDaisy answers its switch option for you.
 
 ![The switch pane: the party in the game's slots, one Pokémon tagged BEST, EMBERPUP tagged OUT and GALEFINCH fainted, with Choose a POKéMON. and CANCEL below](shots/companion-battle-switch.png "Choosing who to send in")
 

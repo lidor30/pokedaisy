@@ -3,6 +3,8 @@ package com.pokedaisy.app.companion.ui
 import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
 import androidx.compose.animation.AnimatedContent
+import androidx.compose.animation.SizeTransform
+import androidx.compose.ui.layout.layout
 import androidx.compose.foundation.layout.requiredSize
 import androidx.compose.foundation.layout.wrapContentWidth
 import androidx.compose.ui.graphics.graphicsLayer
@@ -80,6 +82,7 @@ import com.pokedaisy.app.companion.data.withMovesVs
 import com.pokedaisy.app.companion.COMPANION_TABS
 import com.pokedaisy.app.companion.DEFAULT_COMPANION_TABS
 import com.pokedaisy.app.companion.MAX_BAR_TABS
+import com.pokedaisy.app.companion.data.isGameBoyGame
 import com.pokedaisy.app.companion.ui.theme.AppColors
 import com.pokedaisy.app.companion.ui.theme.AppTheme
 import com.pokedaisy.app.companion.ui.theme.LocalGameFont
@@ -154,6 +157,20 @@ fun CompanionScreen(
     var popupReturn by remember { mutableStateOf<String?>(null) }
     // WHICH GAME IS THIS? over the tabs (WRONG GAME?, PICK AGAIN, SETTINGS > GAME, PICK A GAME).
     var pickerOpen by remember { mutableStateOf(false) }
+    // RUN picked here: the battle pane keeps the controls until the battle ends (or the escape fails and the menu is back),
+    // instead of INFO / SUGGESTIONS showing for the moment "Got away safely!" takes (the user's report).
+    var ranAway by remember { mutableStateOf(false) }
+    @Suppress("NAME_SHADOWING")
+    val battleInput = remember(battleInput) {
+        battleInput?.let { b ->
+            object : com.pokedaisy.app.companion.BattleInput by b {
+                override fun selectAction(actionIndex: Int) {
+                    if (actionIndex == 3) ranAway = true
+                    b.selectAction(actionIndex)
+                }
+            }
+        }
+    }
     val gameSilent = remember(battleInput) { { battleInput?.gameSilent == true } }
     CompanionScreenSize {
     CompositionLocalProvider(
@@ -175,7 +192,10 @@ fun CompanionScreen(
         // BATTLE tab: touch Controls (Gen 4 style) vs. info-dense Panel — see
         // BattleControlsScreen.kt. Resets to Controls each time the BATTLE tab
         // becomes available (a fresh battle), matching selectedLabel's own reset.
-        var battleShowControls by remember { mutableStateOf(true) }
+        // BATTLE INFO off: the battle buttons alone, no INFO / SUGGESTIONS and no move ratings.
+        val battleInfo = settings?.battleInfo != false
+        val opensOnButtons = settings?.battleInfoFirst != true || !battleInfo
+        var battleShowControls by remember { mutableStateOf(opensOnButtons) }
         // BATTLE tab's SUGGESTIONS pane - see SuggestionsScreen.kt. A plain
         // flag rather than another battleInputState-driven sub-screen since
         // it's pure information (ranks the whole party, not just whoever's
@@ -306,7 +326,7 @@ fun CompanionScreen(
                     selectedLabel = preBattleTab ?: "PARTY"
                     preBattleTab = null
                 }
-                if (battle) battleShowControls = true
+                if (battle) battleShowControls = opensOnButtons
                 showSuggestions = false; showBattleStats = false
                 seenFoes.clear(); selectedFoe = null
                 focusSeen.clear()
@@ -326,12 +346,23 @@ fun CompanionScreen(
         }
         // The window over the game (one screen): no battle controls, the game's own menu is right there.
         val canUseControls = battleInput != null && !snapshot.isDoubleBattle && isMyTurn && !LocalCompanionWindow.current
-        val showHints = settings?.showHints ?: true
+        // RUN's hold ends with the battle, or when the menu is back after the turn (the escape failed).
+        var ranWaited by remember { mutableStateOf(false) }
+        LaunchedEffect(battle, isMyTurn, ranAway) {
+            when {
+                !battle || !ranAway -> { ranAway = false; ranWaited = false }
+                !isMyTurn -> ranWaited = true
+                ranWaited -> { ranAway = false; ranWaited = false }
+            }
+        }
+        val holdControls = ranAway && battleInput != null && !snapshot.isDoubleBattle && !LocalCompanionWindow.current
+        val hintsOn = settings?.showHints ?: true
+        val showHints = hintsOn && battleInfo
         val showFoeIvs = settings?.showFoeIvs ?: false
         // The move advice (PARTY > LEARN, a TM's party row on ITEMS): the original games for now.
         val learnContext = snapshot.pokedex?.tables
             ?.takeIf { com.pokedaisy.app.companion.data.MoveLearning.available(it, snapshot.guideTables) }
-            ?.let { LearnContext(it, snapshot.guideTables, snapshot.items, showHints) }
+            ?.let { LearnContext(it, snapshot.guideTables, snapshot.items, hintsOn) }
         // FOE DETAILS: the button's last state, for every battle after.
         var foeDetails by remember { mutableStateOf(settings?.foeDetails ?: false) }
         val current = if (selectedLabel in tabs || selectedLabel in hiddenTabs) selectedLabel else tabs[0]
@@ -355,7 +386,7 @@ fun CompanionScreen(
             popupReturn = null
             if (title != current) backTab = current
             selectedLabel = title; detailIndex = null; showSuggestions = false; showBattleStats = false; dexUi.open = null
-            if (title == "BATTLE") battleShowControls = true
+            if (title == "BATTLE") battleShowControls = opensOnButtons
         }
         // The window over the game (one screen): L / R step along the bar (round, like the game's own pages), from the gear
         // when a tab opened from MORE is up. Under everything a tab registers, so a page of its own can take them.
@@ -389,6 +420,16 @@ fun CompanionScreen(
                 AppBackdrop()
             } else {
                 GameBackdrop(game)
+                // The BATTLE tab: the DS battle screens' mint and Poké Ball (a Game Boy game keeps its own plain look).
+                val battleBackdrop by androidx.compose.animation.core.animateFloatAsState(
+                    if (current == "BATTLE" && !game.isGameBoyGame) 1f else 0f, tween(220), label = "battle-backdrop",
+                )
+                // BATTLE STYLE > GEN 5: Black's dark closed-ball screen instead, behind INFO / SUGGESTIONS too.
+                val gen5Backdrop = settings?.battleStyle == com.pokedaisy.app.companion.BattleStyle.GEN5 && !gen1Buttons
+                if (battleBackdrop > 0f) {
+                    if (gen5Backdrop) Gen5BattleBackdrop(Modifier.fillMaxSize().graphicsLayer { alpha = battleBackdrop })
+                    else BattleBackdrop(Modifier.fillMaxSize().graphicsLayer { alpha = battleBackdrop })
+                }
                 AnimatedVisibility(
                     visible = current == "ITEMS" && hasItemsBackdrop(game),
                     enter = fadeIn(tween(200)), exit = fadeOut(tween(200)), label = "tab-backdrop",
@@ -432,15 +473,27 @@ fun CompanionScreen(
             }
             // A phone upright with no room above the companion: its grip sits in here, over the backdrop.
             val topInset = with(LocalDensity.current) { LocalCompanionTopInset.current.toDp() }
+            // BATTLE STYLE > GEN 5's controls go edge to edge: they spill over the tab area's margin (`bleed`) and the tab
+            // bar sits on a dark dock under them (only while they're up - INFO / SUGGESTIONS keep the usual frame). The margin
+            // itself never changes: easing it away resized every other tab sliding in or out with them (the user's report).
+            // (The same test as the BATTLE tab's pane picking "CONTROLS" below.)
+            val controlsPane = if (!battleInfo) battleInput != null && !snapshot.isDoubleBattle && !LocalCompanionWindow.current
+            else !showSuggestions && !showBattleStats && ((canUseControls && battleShowControls) || holdControls)
+            val gen5Full = current == "BATTLE" && controlsPane &&
+                settings?.battleStyle == com.pokedaisy.app.companion.BattleStyle.GEN5 && !gen1Buttons
             // A short screen: less margin round the tabs, every pixel of its height counts.
-            Column(modifier = Modifier.fillMaxSize().padding(top = topInset).padding(if (LocalShortCompanion.current) 8.dp else 12.dp)) {
+            val margin = if (LocalShortCompanion.current) 8.dp else 12.dp
+            val dock by androidx.compose.animation.core.animateFloatAsState(if (gen5Full) 1f else 0f, tween(220), label = "gen5-dock")
+            // Nothing over the tab area: the controls spill over the top margin too.
+            val nothingAbove = topStrip == null && !(statusBar != null && CompanionStatusBar.shown) && !(loaded && !snapshot.connected)
+            Column(modifier = Modifier.fillMaxSize().padding(top = topInset).padding(margin)) {
                 if (topStrip != null) {
-                    topStrip()
+                    Box { topStrip() }
                     Spacer(Modifier.height(8.dp))
                 }
                 // SETTINGS > STATUS BAR on the companion: the game's strip over the tabs.
                 if (statusBar != null && CompanionStatusBar.shown) {
-                    statusBar()
+                    Box { statusBar() }
                     Spacer(Modifier.height(8.dp))
                 }
                 if (loaded && !snapshot.connected) {
@@ -500,7 +553,7 @@ fun CompanionScreen(
                                 val forward = barIndex(targetState.substringBefore('/')) >= barIndex(initialState.substringBefore('/'))
                                 (fadeIn(tween(200)) + slideInHorizontally(tween(220)) { w -> if (forward) w / 6 else -w / 6 }) togetherWith
                                     (fadeOut(tween(150)) + slideOutHorizontally(tween(180)) { w -> if (forward) -w / 6 else w / 6 })
-                            }
+                            }.using(SizeTransform(clip = false))
                         },
                         modifier = Modifier.fillMaxSize(),
                         label = "tab-content",
@@ -614,7 +667,10 @@ fun CompanionScreen(
                             BoxSwapNotice(boxesUi)
                         } else if (tab == "DEX" && dex != null) {
                             if (paneKey == "DEX/DETAIL") PokedexEntryScreen(dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables)
-                            else PokedexScreen(dex, dexUi)
+                            else PokedexScreen(
+                                dex, dexUi,
+                                holdings = remember(snapshot.party, pcBoxes) { com.pokedaisy.app.companion.data.dexHoldings(snapshot.party, pcBoxes) },
+                            )
                         } else if (tab == "GUIDE" && guide != null) {
                             if (noticeAccepted) GuideScreen(guide, guideUi, snapshot)
                             else GuideNotice(
@@ -631,7 +687,17 @@ fun CompanionScreen(
                             // Party slots are the game's own boxes (or FireRed-like
                             // ones) over the party-menu backdrop - no extra window
                             // behind them, and the full tab area for bigger slots.
-                            PartyScreen(snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) })
+                            var swapNotice by remember { mutableStateOf<ItemNotice?>(null) }
+                            PartyScreen(
+                                snapshot.party, onMonClick = { detailIndex = snapshot.party.indexOf(it) },
+                                onSwap = itemUse?.takeIf { it.canReorderParty() }?.let { use ->
+                                    { a, b -> use.reorderParty(a, b) { r -> partySwapMessage(r)?.let { swapNotice = ItemNotice(0, it, ok = false) } } }
+                                },
+                            )
+                            // In a box of its own: this pane stretches what's put straight in it.
+                            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.TopCenter) {
+                                ItemNoticeHost(swapNotice, rememberGbaTextMetrics(), Modifier.padding(top = 12.dp)) { swapNotice = null }
+                            }
                             // A DEPOSIT that went through plays over the party, then says so.
                             boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = { boxesUi.swapAnim = null }) }
                             BoxSwapNotice(boxesUi)
@@ -681,16 +747,20 @@ fun CompanionScreen(
                             // change, so the crossfade is also the "battle screen
                             // showing and hiding" animation.
                             val battlePane = when {
+                                // No INFO to fall back on: the buttons, waiting between turns, or - where there are none
+                                // (a double battle, the window over the game) - a word to use the game's own menu.
+                                !battleInfo -> if (battleInput != null && !snapshot.isDoubleBattle && !LocalCompanionWindow.current) "CONTROLS" else "PLAIN"
                                 showSuggestions -> "SUGGESTIONS"
                                 showBattleStats -> "STATS"
                                 canUseControls && battleShowControls -> "CONTROLS"
+                                holdControls -> "CONTROLS"
                                 else -> "INFO"
                             }
                             AnimatedContent(
                                 targetState = battlePane,
                                 transitionSpec = {
-                                    (fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.96f)) togetherWith
-                                        fadeOut(tween(140))
+                                    ((fadeIn(tween(220)) + scaleIn(tween(220), initialScale = 0.96f)) togetherWith
+                                        fadeOut(tween(140))).using(SizeTransform(clip = false))
                                 },
                                 modifier = Modifier.fillMaxSize(),
                                 label = "battle-pane",
@@ -701,15 +771,23 @@ fun CompanionScreen(
                                         party = snapshot.party,
                                         battleInput = battleInput,
                                         battleInputState = snapshot.battleInputState,
-                                        modifier = Modifier.fillMaxSize(),
+                                        // GEN 5's go edge to edge, over the tab area's margin.
+                                        modifier = if (settings?.battleStyle == com.pokedaisy.app.companion.BattleStyle.GEN5 && !gen1Buttons)
+                                            Modifier.bleed(margin, if (nothingAbove) margin else 0.dp) else Modifier.fillMaxSize(),
                                         showHints = showHints,
                                         oneTapMoves = settings?.oneTapMoves ?: false,
+                                        style = settings?.battleStyle ?: com.pokedaisy.app.companion.BattleStyle.GEN4,
+                                        battleInfo = battleInfo,
+                                        ranAway = holdControls,
                                         onShowInfo = { battleShowControls = false },
                                         onShowSuggestions = { showSuggestions = true },
                                         foeParty = snapshot.enemyParty,
                                         foe = infoFoes.getOrNull(0),
                                         active = snapshot.battlePlayer,
                                     )
+                                    "PLAIN" -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                                        Text(tr("Use the game's own menu"), color = AppColors.muted, fontSize = 22.sp)
+                                    }
                                     "SUGGESTIONS" -> SuggestionsScreen(
                                         party = snapshot.party,
                                         foe = infoFoes.getOrNull(0),
@@ -752,6 +830,9 @@ fun CompanionScreen(
                                         foeTeam = snapshot.enemyParty,
                                         seenFoes = seenFoes.toSet(),
                                         shownFoe = shownFoe,
+                                        isCaught = { species ->
+                                            snapshot.pokedex?.let { d -> com.pokedaisy.app.companion.data.PokedexSource.nationalOf(d.tables, species) in d.caught } == true
+                                        },
                                         foeHeading = foeHeading,
                                         // Tapping the one shown goes back to following the battle.
                                         onSelectFoe = { selectedFoe = if (it == shownFoe && selectedFoe != null) null else it },
@@ -766,7 +847,16 @@ fun CompanionScreen(
                     AchievementIndicators(achievements, Modifier.align(Alignment.BottomEnd).padding(8.dp))
                 }
 
-                tabBar()
+                Box(
+                    Modifier.fillMaxWidth().drawBehind {
+                        // Out to the screen's edges, under the margin round the bar.
+                        if (dock > 0f) {
+                            val mPx = margin.toPx()
+                            drawRect(Gen5Dock.copy(alpha = dock), androidx.compose.ui.geometry.Offset(-mPx, 0f),
+                                androidx.compose.ui.geometry.Size(size.width + 2 * mPx, size.height + mPx))
+                        }
+                    },
+                ) { tabBar() }
             }
 
             // Unlocks and the like, over every tab.
@@ -871,8 +961,8 @@ internal fun companionTabLabel(id: String): String = when (id) {
         GameKind.UNBOUND -> "CUBE"
         GameKind.ROWE -> "INVENTORY"
         GameKind.MARIOMON -> "POCKETS"
-        GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.PRISM, GameKind.GOLD, GameKind.SILVER -> "PACK"
-        GameKind.YELLOW, GameKind.RED, GameKind.BLUE, GameKind.PURE_RED, GameKind.PURE_BLUE -> tr("ITEM")   // Gen 1's START menu (the European carts' own word)
+        GameKind.CRYSTAL, GameKind.CRYSTAL_CLEAR, GameKind.PRISM, GameKind.GOLD, GameKind.SILVER, GameKind.CRYSTAL_LEGACY -> "PACK"
+        GameKind.YELLOW, GameKind.RED, GameKind.BLUE, GameKind.PURE_RED, GameKind.PURE_BLUE, GameKind.YELLOW_LEGACY -> tr("ITEM")   // Gen 1's START menu (the European carts' own word)
         else -> tr("BAG")
     }
     else -> id
@@ -1064,8 +1154,8 @@ private fun TabChipShell(
                 // Idle tabs take the list window's frame + grey; the selected
                 // one the title window's white, like the OPTION screen's cursor row.
                 val px = u.toPx()
-                if (rainbow != null) drawLayeredBox((if (selected) rainbow.selectedFrame else rainbow.frame).inPx(px), rainbow.fill, radius = 3 * px)
-                else drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px)
+                if (rainbow != null) drawLayeredBox((if (selected) rainbow.selectedFrame else rainbow.frame).inPx(px), rainbow.fill, radius = 3 * px, twoTone = true)
+                else drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px, twoTone = true)
             }
             .soundClickable(interactionSource = noRipple, indication = null, enabled = enabled, onClick = onClick)
             .padding(horizontal = if (LocalGameFont.current != null) u else u * 2, vertical = u * 6),
@@ -1197,3 +1287,15 @@ private fun ErrorBanner(message: String) {
         Text(tr(message), color = if (OptionColors.dark) Color(0xFFF2B48E) else Color(0xFF9A4A28), fontSize = 14.sp, textAlign = TextAlign.Center)
     }
 }
+
+/** Laid out [side] wider on both sides and [top] taller upwards than its room and drawn there: spilling over a margin
+ * round it (GEN 5's battle controls over the tab area's). */
+private fun Modifier.bleed(side: androidx.compose.ui.unit.Dp, top: androidx.compose.ui.unit.Dp): Modifier =
+    this.then(Modifier.layout { measurable, c ->
+        val h = side.roundToPx()
+        val t = top.roundToPx()
+        val w = if (c.hasBoundedWidth) c.maxWidth + 2 * h else c.maxWidth
+        val ht = if (c.hasBoundedHeight) c.maxHeight + t else c.maxHeight
+        val p = measurable.measure(androidx.compose.ui.unit.Constraints.fixed(w, ht))
+        layout(c.maxWidth, c.maxHeight) { p.place(-h, -t) }
+    })

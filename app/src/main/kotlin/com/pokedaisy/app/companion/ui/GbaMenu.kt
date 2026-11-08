@@ -530,7 +530,9 @@ private const val SLIDER_MAX = 110
 /** [OptionLine]'s subtitle text: 0.8 of the row's - [m] already holds a game font's larger size, so not scaled again (it
  * came out as large as the label in Yellow, and was cut off). */
 @Composable
-fun subtitleMetrics(m: GbaTextMetrics): GbaTextMetrics = rememberGbaTextMetrics(0.8f * m.fontPixel / m.px, gameScaled = false)
+fun subtitleMetrics(m: GbaTextMetrics): GbaTextMetrics =
+    // [DenseText] took the main text down to 1x: the subtitles stay there too (0.8 of it was two screen pixels a font pixel).
+    rememberGbaTextMetrics(if (LocalDenseText.current) maxOf(1f, 0.8f * m.fontPixel / m.px) else 0.8f * m.fontPixel / m.px, gameScaled = false)
 
 /** A small tag on a row ("BETA" on a feature that isn't finished): white on the value red, pill-shaped. */
 @Composable
@@ -663,6 +665,7 @@ fun OptionButton(
                         else -> OptionColors.titleFill
                     },
                     radius = 3 * u.toPx(),
+                    twoTone = true,
                 )
             }
             .soundClickable(enabled = enabled, interactionSource = interaction, indication = null, onClick = { stack?.lastClicked = self; onClick() })

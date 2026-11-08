@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion.ui
 import androidx.compose.foundation.layout.Column
 import kotlinx.coroutines.launch
 import androidx.compose.ui.unit.dp
+import androidx.compose.foundation.layout.heightIn
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.foundation.layout.fillMaxHeight
 import androidx.compose.foundation.layout.height
@@ -115,14 +116,19 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "FF MODE" to "smart fast forward menus battles normal",
     "FF MUSIC" to "fast forward audio sound music steady sped up mute",
     "REWIND" to "rewind undo go back time",
-    "TOUCH CONTROLS" to "touch controls on screen controls virtual gamepad overlay touch buttons layout edit move resize size scale opacity transparency see through haptic haptics vibration vibrate turbo dpad d-pad fade hide phone",
+    "TOUCH CONTROLS" to "touch controls on screen controls virtual gamepad overlay touch buttons layout edit move resize size scale opacity transparency see through haptic haptics vibration vibrate turbo dpad d-pad fade hide phone look colors colours style theme skin skins deltaskin delta left handed lefty mirrored",
+    "LOOK" to "style appearance glass solid outline console window touch controls buttons hud",
+    "COLORS" to "touch controls buttons colours color theme dark light indigo glacier spice kiwi fuchsia retro primary",
+    "GBA SKIN" to "touch controls skin skins deltaskin delta controller picture",
+    "IMPORT SKIN" to "touch controls skin skins deltaskin delta add install controller picture",
     "GAME BUTTONS" to "key bindings keybinds keybinding controls remap remapping rebind mapping input controller gamepad buttons turbo start 2 select 2 x y ds nds game boy gba to companion",
     "HOTKEYS" to "shortcuts combos save state load state slot rewind fast forward key bindings restart close quit exit app companion open panel window",
-    "QUICK MENU" to "radial ring wheel circle grid style labels names icons only shortcut actions pc fly repel super max bike bicycle get off dismount rod fishing wild encounters save load state fast forward l3 thumb stick",
+    "QUICK MENU" to "radial ring wheel circle grid style labels names icons only shortcut actions pc fly flash dark cave light repel super max bike bicycle get off dismount rod fishing wild encounters save load state fast forward l3 thumb stick",
     "STATUS BAR" to "clock time battery money location top bar",
     "BATTLE BUTTONS" to "battle buttons moves fight switch run flee side touch single screen one screen expand widescreen",
     "HUD" to "field hud heads up display overlay party minimap mini map balls bag wild encounters overworld legends single screen",
     "ASPECT" to "stretch ratio fullscreen full screen size scale 3:2 wide widescreen 16:9 expand zoom",
+    "ZOOM" to "expand wide zoom out see further map farther camera distance no right stick r3 touch",
     "AUTO ZOOM IN" to "expand wide zoom close-up closeup dialogue conversation sign menu text box pull in automatic",
     "DS CPU BOOST" to "overclock cpu clock speed boost faster lag slowdown slow stutter stuttering smooth smoother frame rate fps 30fps 60fps choppy laggy nintendo ds heartgold soulsilver platinum black white",
     "DS RESOLUTION" to "internal resolution upscale upscaling scale scaling hd high definition sharp sharper crisp 3d render renderer gpu opengl 2x 4x 6x 8x jaggies jagged blurry nintendo ds platinum heartgold soulsilver",
@@ -134,6 +140,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "OVERLAY" to "overlay overlays border borders bezel bezels frame skin retroarch background wallpaper decoration",
     "COMPANION" to "portrait phone bottom position layout",
     "COMPANION VIEW" to "single screen one screen window modal popup middle center side panel docked layout",
+    "FOLD LAYOUT" to "foldable fold folding flip galaxy z fold pixel fold hinge tabletop flex mode book half open dual screen two screens",
     "COMPANION BUTTON" to "companion tab arrow edge tab open button hide white corner bottom right",
     "SWAP SCREENS" to "dual screen display switch top bottom tv cast mirror mirroring smart view hdmi external",
     "SINGLE SCREEN" to "one screen single screen dual screen multitask multitasking second screen free other apps window modal popup",
@@ -148,18 +155,25 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "HIDDEN GAMES" to "hide unhide library show",
     "CHEATS" to "gameshark action replay codebreaker codes",
     "RetroAchievements" to "achievements cheevos ra login account trophies",
-    "LANGUAGE" to "language translation locale english japanese french german italian spanish portuguese português brazil brasil portugal idioma",
+    "LANGUAGE" to "language translation locale english japanese french german italian spanish portuguese português brazil brasil portugal idioma korean 한국어 언어",
     "VERSION" to "update upgrade check release about",
     "CRASH REPORTS" to "crash report bug crashlytics privacy diagnostics send",
     "LICENSES" to "license legal open source credits notices about",
     "RUN SETUP" to "setup onboarding wizard first time welcome",
     "TAB BAR" to "tabs layout bar order",
     "BATTLE HINTS" to "suggestions recommendations best move tips",
+    "BATTLE STYLE" to "battle screen look theme gen 4 gen 5 platinum black white buttons design",
+    "BATTLE INFO" to "hide battle info suggestions ratings effectiveness buttons only clean",
+    "BATTLE VIEW" to "battle tab default info buttons first opens",
+    "GAME NAMES" to "file name filename rom title library naming",
+    "SUPPORTED ONLY" to "filter hide unsupported not supported compatible library",
+    "LOOK AROUND" to "right stick freecam free camera look pan view",
     "FOE IVS" to "enemy opponent ivs stats",
     "BATTLE FOCUS" to "battle info compact one page no scrolling layout enemy opponent ability held item",
     "CLICK SOUND" to "sound effects button click audio",
     "GAME VOLUME" to "volume sound audio loudness quieter louder level percent music sfx",
     "MUTE GAME" to "mute unmute silent silence quiet sound off audio volume hotkey",
+    "AUDIO EFFECTS" to "equalizer equaliser eq jamesdsp james dsp viper sound audio bass speaker enhancer",
     "TWEAKS" to "animations bounce blink cursor jump to battle effects motion",
     "SCENE SPEEDS" to "battle speed text speed instant text fast text menu speed overworld speed faster battles quality of life qol bike speed surf speed faster bike faster surfing",
     "AUTO-RUN" to "auto run autorun running shoes run sprint dash always run hold b",
@@ -172,6 +186,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "PLAYER LOOK" to "player look hero heroine character protagonist trainer costume outfit skin sprite appearance swap play as another game red leaf brendan may",
     "NUZLOCKE" to "nuzlocke challenge hardcore run tracker encounter first catch per route area death dead faint permadeath graveyard dupes clause",
     "TRADE EVOS" to "trade evolutions trading evolve evolves evolution evolutions traded link cable friend second game without trading held item",
+    "INSTANT TEXT" to "instant text speed fast dialogue dialog words letters message box skip immediately faster",
     "REUSABLE TMS" to "reusable tm tms technical machine machines reuse infinite unlimited keep tm single use consumed used up teach moves",
     "SHINY ODDS" to "shiny shinies shiny odds shiny rate shiny hunting hunt shiny charm sparkle rare color colour chance",
     "TIPS" to "tips hints help popup pop up feature discovery introduce new features suggestions what can it do",
@@ -217,13 +232,18 @@ fun GroupedRows(
     footer: @Composable () -> Unit = {},
 ) {
     val groups = if (groupTabs) rows.indices.filter { rows[it].header } else emptyList()
+    // Inside [RailedWindow] the list draws the window itself, so the group tabs can stay out of it.
+    val railed = LocalRailedWindow.current
+    @Composable fun Card(content: @Composable () -> Unit) {
+        if (railed) OptionListWindow(m, Modifier.fillMaxSize(), content = content) else content()
+    }
     if (groups.size < MIN_GROUP_TABS) {
-        GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, onFocused, null, footer)
+        Card { GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, onFocused, null, footer) }
         return
     }
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
         if (maxWidth < GROUP_TABS_MIN_WIDTH || maxWidth < maxHeight) {
-            GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, onFocused, null, footer)
+            Card { GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, onFocused, null, footer) }
             return@BoxWithConstraints
         }
         // Each group title's top in the list (content pixels), as laid out.
@@ -238,12 +258,29 @@ fun GroupedRows(
             opened = true
         }
         val focused: (Int) -> Unit = { i -> follow = i; onFocused?.invoke(i) }
+        val railHeight = maxHeight
         androidx.compose.foundation.layout.Row(Modifier.fillMaxSize()) {
-            GroupTabs(rows, groups, tops, scroll, follow, m)
+            GroupTabs(rows, groups, tops, scroll, follow, m, outside = railed, height = railHeight)
             androidx.compose.foundation.layout.Box(Modifier.weight(1f).fillMaxSize()) {
-                GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, focused, tops, footer)
+                Card { GroupedRowsList(rows, m, cursor, onClick, scroll, labelWeight, reveal, onRevealed, firstRowFocus, focused, tops, footer) }
             }
         }
+    }
+}
+
+/** [GroupedRows] is inside a [RailedWindow]. */
+private val LocalRailedWindow = androidx.compose.runtime.staticCompositionLocalOf { false }
+
+/**
+ * The window round a settings page. With [rail] it's left to the [GroupedRows] inside, which draws it round the list alone, the
+ * group tabs on the page's backdrop beside it (the user's call: buttons, not part of the card); any other page, a plain
+ * [OptionListWindow].
+ */
+@Composable
+fun RailedWindow(m: GbaTextMetrics, modifier: Modifier, rail: Boolean, content: @Composable () -> Unit) {
+    if (!rail) return OptionListWindow(m, modifier, content = content)
+    androidx.compose.foundation.layout.Box(modifier) {
+        androidx.compose.runtime.CompositionLocalProvider(LocalRailedWindow provides true, content = content)
     }
 }
 
@@ -265,6 +302,10 @@ private fun GroupTabs(
     scroll: ScrollState,
     follow: Int,
     m: GbaTextMetrics,
+    /** Beside the window ([RailedWindow]), not in it. */
+    outside: Boolean = false,
+    /** The rail's height: beside the window, the tabs share it out. */
+    height: androidx.compose.ui.unit.Dp? = null,
 ) {
     val scope = androidx.compose.runtime.rememberCoroutineScope()
     var picked by remember { mutableStateOf(-1) }
@@ -279,7 +320,7 @@ private fun GroupTabs(
     val shown = groups.lastOrNull { (tops[it] ?: Int.MAX_VALUE) <= scroll.value + slack } ?: groups.first()
     // At the very end the last group is on screen whatever reached the top.
     val current = picked.takeIf { it >= 0 } ?: if (atEnd) groups.last() else shown
-    TabRail(groups.map { tr(rows[it].label) }, groups.indexOf(current), m) { i ->
+    TabRail(groups.map { tr(rows[it].label) }, groups.indexOf(current), m, outside, height.takeIf { outside }) { i ->
         val g = groups[i]
         picked = g
         val top = tops[g] ?: return@TabRail
@@ -292,13 +333,24 @@ private fun GroupTabs(
  * [GroupedRows]' group tabs, and pages split into panes (CO-OP's PAIR). [labels] are drawn as given (translated).
  */
 @Composable
-fun TabRail(labels: List<String>, selected: Int, m: GbaTextMetrics, onSelect: (Int) -> Unit) {
+fun TabRail(
+    labels: List<String>, selected: Int, m: GbaTextMetrics,
+    /** Beside a window rather than in one: no rule, no room for a frame. */
+    outside: Boolean = false,
+    /** The height to fill (SETTINGS' rail beside its window, the user's call): the tabs stretch to share it out where they fit,
+     * else they keep their own height and the rail scrolls. */
+    fill: androidx.compose.ui.unit.Dp? = null,
+    onSelect: (Int) -> Unit,
+) {
     val small = rememberGbaTextMetrics(1f)
+    val gap = m.u * if (fill != null) 3 else 2
+    val tabMin = fill?.let { ((it - gap * (labels.size - 1)) / labels.size.coerceAtLeast(1)) } ?: 0.dp
     androidx.compose.foundation.layout.Column(
         Modifier
             .width(androidx.compose.foundation.layout.IntrinsicSize.Max)
             .fillMaxHeight()
             .drawBehind {
+                if (outside) return@drawBehind
                 // A dashed rule between the tabs and the list, like the rows' dividers.
                 val px = m.u.toPx()
                 var y = 4 * px
@@ -308,10 +360,13 @@ fun TabRail(labels: List<String>, selected: Int, m: GbaTextMetrics, onSelect: (I
                 }
             }
             .verticalScroll(rememberScrollState())
-            .padding(start = m.u * 4, end = m.u * 6, top = m.u * 4, bottom = m.u * 4),
-        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(m.u * 2),
+            .then(
+                if (outside) Modifier.padding(end = m.u * 4)
+                else Modifier.padding(start = m.u * 4, end = m.u * 6, top = m.u * 4, bottom = m.u * 4),
+            ),
+        verticalArrangement = androidx.compose.foundation.layout.Arrangement.spacedBy(gap),
     ) {
-        labels.forEachIndexed { i, label -> GroupTab(label, i == selected, small) { onSelect(i) } }
+        labels.forEachIndexed { i, label -> GroupTab(label, i == selected, small, tabMin) { onSelect(i) } }
     }
 }
 
@@ -329,15 +384,21 @@ fun PageHint(text: String, m: GbaTextMetrics, small: GbaTextMetrics) {
 /** One of [TabRail]'s tabs: a tab chip's frame (white with a red label when [selected], like the tab bar's) at the list's
  * smaller text. */
 @Composable
-private fun GroupTab(label: String, selected: Boolean, m: GbaTextMetrics, onClick: () -> Unit) {
+private fun GroupTab(
+    label: String, selected: Boolean, m: GbaTextMetrics,
+    /** At least this tall ([TabRail]'s fill): taller than its label needs where the rail has room. */
+    minHeight: androidx.compose.ui.unit.Dp = 0.dp,
+    onClick: () -> Unit,
+) {
     val u = m.u
     androidx.compose.foundation.layout.Box(
         contentAlignment = androidx.compose.ui.Alignment.Center,
         modifier = Modifier
             .fillMaxWidth()
+            .heightIn(min = minHeight)
             .drawBehind {
                 val px = u.toPx()
-                drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px)
+                drawLayeredBox(OptionColors.chipLayers.inPx(px), if (selected) OptionColors.tabSelectedFill else OptionColors.tabIdleFill, radius = 3 * px, twoTone = true)
             }
             .focusProperties { canFocus = false }
             .soundClickable(onClick = onClick)
@@ -375,6 +436,7 @@ private fun GroupedRowsList(
     val gameScale = com.pokedaisy.app.companion.ui.theme.LocalGameTextScale.current
     val rowHeight = m.rowHeight * 1.2f / gameScale
     val subtitleLine = if (gameScale == 1f) m.lineHeight else subtitleMetrics(m).lineHeight + m.u * 2
+    fun heightOf(row: SettingRow) = if (row.subtitle != null) rowHeight + subtitleLine else rowHeight + m.u * ONE_LINE_ROW_EXTRA
     Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
         rows.forEachIndexed { i, row ->
             if (row.header && row.featured) {
@@ -392,7 +454,7 @@ private fun GroupedRowsList(
                         .focusStart(i == cursor),
                     // A one-line row's letters sit low in their line (room above the capitals, none under): a little more
                     // under them, so the space below matches the space above.
-                    height = if (row.subtitle != null) rowHeight + subtitleLine else rowHeight + m.u * ONE_LINE_ROW_EXTRA,
+                    height = heightOf(row),
                     bottomPadding = if (row.subtitle != null) 0.dp else m.u * ONE_LINE_ROW_EXTRA,
                     divider = rows.getOrNull(i + 1)?.header == false, labelBadge = row.labelBadge, labelIcon = row.labelIcon,
                     valueBadge = row.badge, enabled = row.enabled, subtitle = row.subtitle, labelWeight = row.labelWeight ?: labelWeight,

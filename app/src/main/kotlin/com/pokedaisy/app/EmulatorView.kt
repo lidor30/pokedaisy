@@ -432,6 +432,8 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
         // GL context; each is copied into [gpuTarget] at its own size and goes on from there like an uploaded frame.
         @Volatile var gpuFrames = false
         private var gpuTexture: SurfaceTexture? = null
+        /** A core was bound since the window was handed over: hand it over again (GL thread, [draw]). */
+        @Volatile private var gpuRehand = false
         private var gpuSurface: android.view.Surface? = null
         private var oesTex = 0
         private var oesProgram: Program? = null
@@ -493,6 +495,9 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
             shownWin = null
             texW = w
             texH = h
+            // A DS core lets go of the window it was handed when it ends (pk_nds_gl_end): a new one (RESTART GAME, which
+            // keeps this GL context) gets it again, else its frames - EXPAND's, ZOOM's - had nowhere to go.
+            gpuRehand = true
             texAllocated = false
             dirtyGeometry = true
         }
@@ -686,6 +691,10 @@ class EmulatorView(context: Context) : GLSurfaceView(context) {
         }
 
         private fun draw() {
+            if (gpuRehand) {
+                gpuRehand = false
+                dropGpuTexture()
+            }
             if (gpuFrames && gpuTexture == null && oesTex != 0) makeGpuTexture()
             else if (!gpuFrames && gpuTexture != null) dropGpuTexture()
             GLES20.glBindFramebuffer(GLES20.GL_FRAMEBUFFER, 0)

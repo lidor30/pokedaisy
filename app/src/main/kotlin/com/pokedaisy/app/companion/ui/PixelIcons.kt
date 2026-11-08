@@ -267,6 +267,15 @@ object PixelIcons {
         "1....",
     )
 
+    /** An X: close (a HUD panel's close button). Two pixels thick, cap-height. */
+    val close = listOf(
+        "11...11",
+        ".11.11.",
+        "..111..",
+        ".11.11.",
+        "11...11",
+    )
+
     /** A tick: something the companion did in the game went through (USE / GIVE). Cap-height like [star]. */
     val check = listOf(
         "........1",
@@ -530,6 +539,47 @@ object PixelIcons {
     ) + lockBody()
 
     /** An open eye: a password field's SHOW (what's typed is hidden). */
+    /** A move's category (MoveKindIcon): our own marks, a burst, rings and a dot. */
+    val movePhysical = listOf(
+        ".....R.....",
+        ".R...R...R.",
+        "..R.ROR.R..",
+        "...ROOOR...",
+        ".RROOYOORR.",
+        "RROOYYYOORR",
+        ".RROOYOORR.",
+        "...ROOOR...",
+        "..R.ROR.R..",
+        ".R...R...R.",
+        ".....R.....",
+    )
+    val moveSpecial = listOf(
+        "...BBBBB...",
+        ".BBCCCCCBB.",
+        ".BCCBBBCCB.",
+        "BCCBBWBBCCB",
+        "BCBBWWWBBCB",
+        "BCBWWWWWBCB",
+        "BCBBWWWBBCB",
+        "BCCBBWBBCCB",
+        ".BCCBBBCCB.",
+        ".BBCCCCCBB.",
+        "...BBBBB...",
+    )
+    val moveStatus = listOf(
+        "...GGGGG...",
+        ".GGLLLLLGG.",
+        ".GLLLLLLLG.",
+        "GLLGGGGGLLG",
+        "GLLGWWWGLLG",
+        "GLLGWWWGLLG",
+        "GLLGWWWGLLG",
+        "GLLGGGGGLLG",
+        ".GLLLLLLLG.",
+        ".GGLLLLLGG.",
+        "...GGGGG...",
+    )
+
     /** A magnifying glass: a round lens, the handle down to the right (a search box). */
     val search = listOf(
         "................",

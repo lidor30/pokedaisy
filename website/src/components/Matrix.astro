@@ -3,9 +3,13 @@
 // exported into compat.json by SiteDataExportTest.
 import Pixel from './Pixel.astro';
 import data from '../data/compat.json';
+import { trFor, msg } from '../i18n/index.js';
+import { FEATURE_GROUPS, FEATURE_COLUMNS, loadRomFeatures, rowsFor, shortVersion } from '../lib/romFeatures.js';
+
+const tr = trFor(Astro.url);
 
 const ICONS: Record<string, string> = { Party: 'orb', Bag: 'bag', Battle: 'battle', Map: 'map', Dex: 'dex', Guide: 'guide' };
-const LABELS: Record<string, string> = { Party: 'PARTY', Bag: 'BAG', Battle: 'BATTLE', Map: 'MAP', Dex: 'DEX', Guide: 'GUIDE' };
+const LABELS: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Battle: tr('BATTLE'), Map: tr('MAP'), Dex: tr('DEX'), Guide: tr('GUIDE') };
 const RETAIL = ['FireRed', 'LeafGreen', 'Emerald', 'Ruby', 'Sapphire'];
 // README's rows name their console in brackets: (GB) / (GBC) for the Game Boy games, (DS) for the DS ones.
 const kind = (game: string) =>
@@ -15,21 +19,51 @@ const rows = data.matrix.rows.map((r) => ({ ...r, kind: kind(r.game), name: r.ga
   .sort((a, b) => Number(b.kind === 'gb') - Number(a.kind === 'gb'));
 const counts = { all: rows.length, retail: 0, hack: 0, gb: 0, ds: 0 } as Record<string, number>;
 rows.forEach((r) => counts[r.kind]++);
-const filters = [['all', 'ALL'], ['retail', 'ORIGINALS'], ['hack', 'ROM HACKS'], ['gb', 'GAME BOY'], ['ds', 'DS']];
-const KIND_LABEL: Record<string, string> = { retail: 'ORIGINAL', hack: 'ROM HACK', gb: 'GAME BOY', ds: 'NINTENDO DS' };
+const filters = [['all', msg('ALL')], ['retail', msg('ORIGINALS')], ['hack', msg('ROM HACKS')], ['gb', msg('GAME BOY')], ['ds', 'DS']];
+const KIND_LABEL: Record<string, string> = { retail: tr('ORIGINAL'), hack: tr('ROM HACK'), gb: tr('GAME BOY'), ds: 'NINTENDO DS' };
+const STATE: Record<string, string> = { yes: tr('works'), part: tr('partly'), no: tr('not yet') };
+
+// The details window a row opens: the companion's tabs per games-table row, then everything else the game can do
+// per version, from docs/ROM_FEATURES.md (src/lib/romFeatures.js). Kept short (a letter a cell) and drawn by the
+// script below.
+const features = loadRomFeatures();
+const LETTER: Record<string, string> = { yes: 'y', part: 'p', no: 'n', na: 'a' };
+const details = Object.fromEntries([...new Set(rows.map((r) => r.game))].map((game) => {
+  const own = rows.filter((r) => r.game === game);
+  return [game, {
+    name: own[0].name,
+    kind: own[0].kind,
+    tabs: own.map((r) => [shortVersion(r.version), r.cells.map((c: string) => LETTER[c]).join('')]),
+    feats: rowsFor(features, game).map((f) => [shortVersion(f.version), FEATURE_COLUMNS.map((c) => LETTER[f.cells[c]]).join('')]),
+  }];
+}));
+const sheetText = {
+  tabs: data.matrix.columns.map((c: string) => LABELS[c]),
+  groups: FEATURE_GROUPS.map(([title, list]) => [tr(title), list.map(([, label, what]) => [tr(label), tr(what)])]),
+  kinds: KIND_LABEL,
+  states: { y: tr('works'), p: tr('partly'), n: tr('not yet'), a: tr('n/a') },
+  tabsTitle: tr('COMPANION TABS'),
+};
 ---
 <div class="matrix">
-  <div class="filters" role="tablist" aria-label="Filter games">
+  <div class="filters">
+    <div class="chips" role="tablist" aria-label={tr('Filter games')}>
     {filters.map(([key, label], i) => (
       <button class:list={['chip', 'filter', i === 0 ? 'f-chipOn' : 'f-chip']} role="tab" aria-selected={i === 0 ? 'true' : 'false'} data-filter={key}>
-        {label} <span class="count">{counts[key]}</span>
+        {tr(label)} <span class="count">{counts[key]}</span>
       </button>
     ))}
+    </div>
+    <label class="games-search-box">
+      <span class="games-search-icon" aria-hidden="true"><Pixel name="search" scale={0.667} /></span>
+      <input class="games-search f-btn h-btnHot" type="search" data-games-search placeholder={tr('Search games')}
+        aria-label={tr('Search games')} autocomplete="off" spellcheck="false" />
+    </label>
   </div>
 
   <div class="table f-card">
     <div class="tr head">
-      <span class="game-col small muted">GAME</span>
+      <span class="game-col small muted">{tr('GAME')}</span>
       {data.matrix.columns.map((c) => (
         <span class="cell" title={LABELS[c]}>
           <Pixel name={ICONS[c]} scale={0.667} />
@@ -38,38 +72,73 @@ const KIND_LABEL: Record<string, string> = { retail: 'ORIGINAL', hack: 'ROM HACK
       ))}
     </div>
     {rows.map((r, i) => (
-      <div class="tr row" data-kind={r.kind} style={`--i:${i}`}>
+      <div class="tr row" data-kind={r.kind} data-game={r.game} data-q={`${r.name} ${r.version} ${KIND_LABEL[r.kind]}`} style={`--i:${i}`}>
         <span class="game-col">
-          <span class="g-name">{r.name}</span>
+          <button type="button" class="g-name" aria-haspopup="dialog">{r.name}<span class="g-more" aria-hidden="true"><Pixel name="cursor" scale={0.667} /></span></button>
           <span class="g-meta small"><span class:list={['kind', `k-${r.kind}`]}>{KIND_LABEL[r.kind]}</span> {r.version}</span>
         </span>
         {r.cells.map((c, j) => (
-          <span class="cell" title={`${LABELS[data.matrix.columns[j]]}: ${c === 'yes' ? 'works' : c === 'part' ? 'partly' : 'not yet'}`}>
-            <Pixel name={c} scale={1} label={c === 'yes' ? 'works' : c === 'part' ? 'partly' : 'not yet'} />
+          <span class="cell" title={`${LABELS[data.matrix.columns[j]]}: ${STATE[c]}`}>
+            <Pixel name={c} scale={1} label={STATE[c]} />
           </span>
         ))}
       </div>
     ))}
+    <p class="small muted games-none" data-games-none hidden>{tr('Nothing matches.')}</p>
   </div>
 
   <div class="legend small">
-    <span><Pixel name="yes" scale={0.667} /> WORKS</span>
-    <span><Pixel name="part" scale={0.667} /> PARTLY</span>
-    <span><Pixel name="no" scale={0.667} /> NOT YET</span>
+    <span><Pixel name="yes" scale={0.667} /> {tr('WORKS')}</span>
+    <span><Pixel name="part" scale={0.667} /> {tr('PARTLY')}</span>
+    <span><Pixel name="no" scale={0.667} /> {tr('NOT YET')}</span>
   </div>
   <p class="small muted notes">
-    Any Game Boy, Color, Advance or DS game plays; the companion needs one of these, in the exact version listed. MAP partly = place names
-    without the map picture. BATTLE partly = the battle panes work but haven't been checked in every kind of battle.
+    {tr('Tap a game to see everything that works in it, version by version.')}
+    {tr("Any Game Boy, Color, Advance or DS game plays; the companion needs one of these, in the exact version listed. MAP partly = place names without the map picture. BATTLE partly = the battle panes work but haven't been checked in every kind of battle.")}
   </p>
+
+  <dialog class="game-sheet" data-sheet aria-labelledby="sheet-name" data-t={JSON.stringify(sheetText)} data-games={JSON.stringify(details)}>
+    <div class="sheet f-card">
+      <div class="sheet-head">
+        <div>
+          <h3 class="sheet-name" id="sheet-name" data-name></h3>
+          <p class="small" data-meta></p>
+        </div>
+        <button type="button" class="btn f-btn h-btnHot small" data-close>{tr('CLOSE')}</button>
+      </div>
+      <div class="sheet-body" data-body></div>
+      <div class="legend small">
+        <span><Pixel name="yes" scale={0.667} /> {tr('WORKS')}</span>
+        <span><Pixel name="part" scale={0.667} /> {tr('PARTLY')}</span>
+        <span><Pixel name="no" scale={0.667} /> {tr('NOT YET')}</span>
+        <span><span class="na">{tr('n/a')}</span> {tr("DOESN'T APPLY")}</span>
+      </div>
+    </div>
+    <template data-icons>
+      <Pixel name="yes" scale={0.667} /><Pixel name="part" scale={0.667} /><Pixel name="no" scale={0.667} />
+    </template>
+  </dialog>
 </div>
 
 <style is:global>
   .matrix { display: grid; gap: 20px; }
-  .filters { display: flex; flex-wrap: wrap; gap: 12px; }
+  .filters, .chips { display: flex; flex-wrap: wrap; gap: 12px; }
   .filter { font: inherit; font-size: var(--t-s); cursor: pointer; background: none; color: var(--ink); transition: transform 0.12s steps(2); }
   .filter:hover { transform: translateY(calc(var(--px) * -1)); }
   .filter.f-chipOn { color: #fff; }
   .filter .count { opacity: 0.6; }
+  /* The games' quick search: at the end of the chips, the rest of their row (its own row on a phone). */
+  .games-search-box { flex: 1 1 220px; min-width: 0; position: relative; display: flex; }
+  /* The glass inside the box, left of the words. */
+  .games-search-icon { position: absolute; left: calc(var(--px) * 3); top: 50%; transform: translateY(-50%); display: inline-flex; pointer-events: none; }
+  .games-search {
+    flex: 1; min-width: 0; font: inherit; font-size: var(--t-s); color: var(--ink); background: none;
+    padding: calc(var(--px) * 1) calc(var(--px) * 2) calc(var(--px) * 1) calc(var(--px) * 10); outline: none;
+  }
+  .games-search::placeholder { color: #a8a6b6; }
+  .games-search:focus-visible { outline: var(--px) dashed var(--red); outline-offset: var(--px); }
+  .games-none { padding: 14px calc(var(--px) * 5); }
+  .games-none[hidden] { display: none; }
   .table { filter: var(--hard-shadow); padding: calc(var(--px) * 2) 0; }
   .tr { display: grid; grid-template-columns: minmax(0, 1fr) repeat(6, 76px); align-items: center; padding: 10px calc(var(--px) * 5); }
   .tr.head { border-bottom: var(--px) solid var(--ink); padding-bottom: 12px; }
@@ -82,7 +151,52 @@ const KIND_LABEL: Record<string, string> = { retail: 'ORIGINAL', hack: 'ROM HACK
   .cell { display: grid; justify-items: center; gap: 4px; }
   .col-label { color: var(--ink-2); }
   .game-col { display: grid; gap: 2px; min-width: 0; }
-  .g-name { font-size: var(--t-m); text-shadow: var(--bold); letter-spacing: 0.0625em; }
+  .g-name {
+    font: inherit; font-size: var(--t-m); text-shadow: var(--bold); letter-spacing: 0.0625em; color: inherit;
+    background: none; border: 0; padding: 0; text-align: left; cursor: pointer; display: inline-flex; align-items: center; gap: 8px;
+  }
+  .g-name:focus-visible { outline: var(--px) dashed var(--red); outline-offset: var(--px); }
+  .g-more { display: inline-flex; opacity: 0; transition: opacity 0.1s steps(1); }
+  .tr.row { cursor: pointer; }
+  .tr.row:hover .g-more, .g-name:focus-visible .g-more { opacity: 1; }
+
+  /* The details window: the page dimmed, a white pixel card, its tables scrolling sideways on a phone. */
+  html:has(.game-sheet[open]) { overflow: hidden; }
+  .game-sheet { border: 0; padding: 0; background: none; width: min(780px, 100% - 24px); max-height: 88vh; overflow: visible; color: var(--ink); }
+  .game-sheet::backdrop { background: rgba(29, 27, 38, 0.55); }
+  .game-sheet[open] { animation: open 0.3s var(--step); }
+  .sheet { filter: var(--hard-shadow); display: grid; gap: 12px; padding: calc(var(--px) * 7); max-height: 88vh; overflow: auto; overscroll-behavior: contain; }
+  /* The title and CLOSE stay at the top while the tables scroll under them. */
+  .sheet-head {
+    display: flex; flex-wrap: wrap; align-items: flex-start; justify-content: space-between; gap: 10px 16px;
+    position: sticky; top: calc(var(--px) * -7); z-index: 1; background: #fff;
+    margin: calc(var(--px) * -7) calc(var(--px) * -2) 0; padding: calc(var(--px) * 7) calc(var(--px) * 2) 10px;
+    border-bottom: var(--px) solid #ecebf2;
+  }
+  @media (max-width: 760px) {
+    .sheet-head { top: calc(var(--px) * -5); margin-top: calc(var(--px) * -5); padding-top: calc(var(--px) * 5); }
+  }
+  .sheet-name { font-size: var(--t-l); text-shadow: var(--bold); letter-spacing: 0.0625em; line-height: 1.1; }
+  .sheet-body { display: grid; gap: 14px; }
+  .sheet-scroll { overflow-x: auto; }
+  .feats { border-collapse: collapse; width: 100%; font-size: var(--t-s); }
+  .feats th, .feats td { padding: 3px 8px; text-align: left; vertical-align: middle; }
+  .feats thead th { color: var(--ink-2); font-weight: normal; border-bottom: var(--px) solid var(--ink); }
+  .feats thead th.v { text-align: center; font-size: var(--t-xs); min-width: 72px; line-height: 1.2; padding-bottom: 6px; }
+  .feats tbody tr + tr td, .feats tbody tr + tr th { border-top: var(--px) solid #ecebf2; }
+  .feats .group th { color: var(--red); text-shadow: var(--bold); letter-spacing: 0.0625em; padding-top: 10px; border-top: 0 !important; }
+  .feats .f-name { text-shadow: var(--bold); letter-spacing: 0.0625em; }
+  .feats .f-what { display: block; color: var(--muted); font-size: var(--t-xs); line-height: 1.2; max-width: 46ch; }
+  .feats td.c { text-align: center; }
+  .feats td.c .pixel { vertical-align: middle; }
+  .na { color: var(--muted); font-size: var(--t-xs); }
+  @media (max-width: 760px) {
+    .game-sheet { width: calc(100% - 16px); max-height: 92vh; }
+    .sheet { padding: calc(var(--px) * 5); max-height: 92vh; }
+    .feats thead th.v { min-width: 64px; }
+    /* Names keep their width and stay put while the versions scroll sideways under them. */
+    .feats th[scope='row'], .feats th[scope='rowgroup'] { min-width: 56vw; position: sticky; left: 0; z-index: 0; background: #fff; }
+  }
   .g-meta { color: var(--muted); }
   .kind { color: var(--ink); margin-right: 6px; }
   .k-retail { color: var(--blue); }
@@ -99,30 +213,138 @@ const KIND_LABEL: Record<string, string> = { retail: 'ORIGINAL', hack: 'ROM HACK
 </style>
 
 <script>
+  // The details window: built from the data the page carries (data-games, data-t), in the page's language.
+  type Game = { name: string; kind: string; tabs: [string, string][]; feats: [string, string][] };
+  for (const sheet of document.querySelectorAll<HTMLDialogElement>('[data-sheet]')) {
+    const t = JSON.parse(sheet.dataset.t!);
+    const games: Record<string, Game> = JSON.parse(sheet.dataset.games!);
+    const icons = sheet.querySelector<HTMLTemplateElement>('[data-icons]')!.content.children;
+    const ICON: Record<string, number> = { y: 0, p: 1, n: 2 };
+    const el = (tag: string, cls?: string, text?: string) => {
+      const e = document.createElement(tag);
+      if (cls) e.className = cls;
+      if (text != null) e.textContent = text;
+      return e;
+    };
+    const cell = (c: string) => {
+      const td = el('td', 'c');
+      td.title = t.states[c];
+      if (c === 'a') td.append(el('span', 'na', t.states.a));
+      else {
+        const icon = icons[ICON[c]].cloneNode(true) as HTMLElement;
+        icon.setAttribute('role', 'img');
+        icon.setAttribute('aria-label', t.states[c]);
+        td.append(icon);
+      }
+      return td;
+    };
+    // One table: a column per version (no header when there's one), rows of [label, what it does, letters].
+    const table = (versions: string[], sections: [string | null, [string, string | null, string][]][]) => {
+      const tab = el('table', 'feats');
+      if (versions.length > 1) {
+        const head = el('tr');
+        head.append(el('th', '', ''), ...versions.map((v) => Object.assign(el('th', 'v', v), { scope: 'col' })));
+        const thead = el('thead');
+        thead.append(head);
+        tab.append(thead);
+      }
+      const body = el('tbody');
+      for (const [title, rows] of sections) {
+        // A line that doesn't apply to any version is left out; so is a group left empty.
+        const shown = rows.filter(([, , cs]) => [...cs].some((c) => c !== 'a'));
+        if (!shown.length) continue;
+        if (title) {
+          const tr = el('tr', 'group');
+          // The title in the names' column (pinned there on a phone), the versions' cells left empty.
+          tr.append(Object.assign(el('th', '', title), { scope: 'rowgroup' }), Object.assign(el('td'), { colSpan: versions.length }));
+          body.append(tr);
+        }
+        for (const [label, what, cs] of shown) {
+          const tr = el('tr');
+          const th = Object.assign(el('th'), { scope: 'row' });
+          th.append(el('span', 'f-name', label));
+          if (what) th.append(el('span', 'f-what', what));
+          tr.append(th, ...[...cs].map(cell));
+          body.append(tr);
+        }
+      }
+      tab.append(body);
+      const wrap = el('div', 'sheet-scroll');
+      wrap.append(tab);
+      return wrap;
+    };
+
+    const open = (key: string) => {
+      const g = games[key];
+      if (!g) return;
+      sheet.querySelector('[data-name]')!.textContent = g.name;
+      sheet.querySelector('[data-meta]')!.replaceChildren(
+        el('span', `kind k-${g.kind}`, t.kinds[g.kind]), document.createTextNode(' ' + g.tabs.map((x) => x[0]).join(' · ')));
+      const tabRows: [string, string | null, string][] = t.tabs.map((label: string, i: number) => [label, null, g.tabs.map((x) => x[1][i]).join('')]);
+      let at = 0;
+      const featSections = t.groups.map(([title, list]: [string, [string, string][]]) =>
+        [title, list.map(([label, what]) => { const i = at++; return [label, what, g.feats.map((x) => x[1][i]).join('')]; })]);
+      const body = sheet.querySelector('[data-body]')!;
+      body.replaceChildren(
+        table(g.tabs.map((x) => x[0]), [[t.tabsTitle, tabRows]]),
+        table(g.feats.map((x) => x[0]), featSections),
+      );
+      sheet.showModal();
+      sheet.querySelector<HTMLElement>('.sheet')!.scrollTop = 0;
+    };
+
+    const matrix = sheet.closest('.matrix')!;
+    matrix.addEventListener('click', (e) => {
+      const row = (e.target as HTMLElement).closest<HTMLElement>('.tr.row');
+      if (row) open(row.dataset.game!);
+    });
+    sheet.querySelector('[data-close]')!.addEventListener('click', () => sheet.close());
+    // A click on the dim around the card closes it.
+    sheet.addEventListener('click', (e) => { if (e.target === sheet) sheet.close(); });
+  }
+
   for (const m of document.querySelectorAll<HTMLElement>('.matrix')) {
     const buttons = [...m.querySelectorAll<HTMLButtonElement>('[data-filter]')];
     const rows = [...m.querySelectorAll<HTMLElement>('.tr.row')];
+    const search = m.querySelector<HTMLInputElement>('[data-games-search]')!;
+    const none = m.querySelector<HTMLElement>('[data-games-none]')!;
+    // Lower case, accents off: "pokemon" finds Pokémon, "fire red" FireRed's row.
+    const fold = (text: string) => text.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase();
+    const squash = (text: string) => fold(text).replace(/[^a-z0-9]/g, '');
+    for (const r of rows) { r.dataset.q = fold(r.dataset.q!); r.dataset.qs = squash(r.dataset.q); }
+    let kind = 'all';
+    // A row shows when it's the chip's kind and has every word typed (spaces and punctuation aside, so "firered"
+    // and "fire red" both find it).
+    const apply = (animate: boolean) => {
+      const words = fold(search.value).split(/\s+/).filter(Boolean);
+      const whole = squash(search.value);
+      let n = 0;
+      for (const r of rows) {
+        const show = (kind === 'all' || r.dataset.kind === kind)
+          && (words.every((w) => r.dataset.q!.includes(w)) || (whole !== '' && r.dataset.qs!.includes(whole)));
+        r.hidden = !show;
+        r.classList.remove('pop');
+        if (show && animate) {
+          r.style.setProperty('--n', String(n));
+          void r.offsetWidth;
+          r.classList.add('pop');
+        }
+        if (show) n++;
+      }
+      none.hidden = n > 0;
+    };
     for (const b of buttons) {
       b.addEventListener('click', () => {
-        const key = b.dataset.filter;
+        kind = b.dataset.filter!;
         for (const o of buttons) {
           const on = o === b;
           o.classList.toggle('f-chipOn', on);
           o.classList.toggle('f-chip', !on);
           o.setAttribute('aria-selected', String(on));
         }
-        let n = 0;
-        for (const r of rows) {
-          const show = key === 'all' || r.dataset.kind === key;
-          r.hidden = !show;
-          r.classList.remove('pop');
-          if (show) {
-            r.style.setProperty('--n', String(n++));
-            void r.offsetWidth;
-            r.classList.add('pop');
-          }
-        }
+        apply(true);
       });
     }
+    search.addEventListener('input', () => apply(false));
   }
 </script>

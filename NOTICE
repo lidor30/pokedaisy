@@ -40,6 +40,12 @@ The app shows every license below in full under Settings > LICENSES.
   (src/core/cart/miniz/LICENSE). Its DSi font tables have the Noto Sans OFL 1.1
   and WenQuanYi Micro Hei GPL-3+ font-exception notices under
   src/core/io/dsi_font. Experiment packages include these license texts.
+- The Linux DS libretro core (linux/libretro-ds, NXRedux collection only):
+  dsperate-lr (third_party/dsperate-lr), DSperate's libretro wrapper,
+  Copyright (C) 2026 dsperate-lr contributors, GNU GPL 3.0 or later -
+  https://github.com/thwonp/dsperate-lr. It carries DSperate v3.3.0 as its own
+  submodule, under the DSperate terms above; the collection package includes
+  every license text in that tree.
 - melonDS (third_party/melonds), Copyright (c) melonDS team, GNU GPL 3.0 -
   https://github.com/melonDS-emu/melonDS (source: the submodule's pinned commit,
   with PokeDaisy's changes in third_party/patches/melonds-pokedaisy.patch). Built
@@ -64,9 +70,14 @@ The app shows every license below in full under Settings > LICENSES.
 - Atkinson Hyperlegible (app/src/main/assets/fonts, website/public/fonts: the manual's
   reading text), Copyright 2020 Braille Institute of America, Inc., SIL Open Font
   License 1.1 (app/src/main/assets/fonts/LICENSE-AtkinsonHyperlegible.txt).
-- PixelMplus10 (app/src/main/assets/fonts/PixelMplusJP.ttf), by itouhiro,
-  M+ FONT LICENSE (app/src/main/assets/fonts/LICENSE-PixelMplus.txt); cut to
-  Japanese and rescaled by scripts/gen_jp_font.py.
+- PixelMplus10 (app/src/main/assets/fonts/PixelMplusJP.ttf; website/public/fonts/PixelMplusJP-site.ttf:
+  the website's Japanese), by itouhiro, M+ FONT LICENSE (app/src/main/assets/fonts/LICENSE-PixelMplus.txt);
+  cut to Japanese and rescaled by scripts/gen_jp_font.py, cut again to the site's characters by
+  website/scripts/gen_site_jp_font.py.
+- Galmuri9 (app/src/main/assets/fonts/GalmuriKO.ttf; website/public/fonts/GalmuriKO-site.ttf: the website's
+  Korean), Copyright (c) 2019-2025 Lee Minseo (https://github.com/quiple/galmuri), SIL Open Font License 1.1
+  (app/src/main/assets/fonts/LICENSE-Galmuri.txt); cut to Hangul and rescaled by scripts/gen_ko_font.py, cut
+  again to the site's characters by website/scripts/gen_site_ko_font.py.
 - PokeAPI (https://pokeapi.co), BSD 3-Clause: the National Dex species list
   (third_party/licenses/PokeAPI-BSD-3-Clause.txt).
 - AndroidX, Jetpack Compose, Kotlin, kotlinx.coroutines and Apache Commons
@@ -93,8 +104,8 @@ The app shows every license below in full under Settings > LICENSES.
 - Some decoders and layouts follow the community decompilations of the games
   (pret's pokered / pokeyellow / pokegold / pokecrystal / pokefirered /
   pokeemerald / pokeruby / pokeplatinum / pokeheartgold, pokeemerald-expansion,
-  Rangi42's polishedcrystal and Vortyne's pureRGB), which publish no license of
-  their own: the Gen 1 picture decompressor (and PureRGB's icon and Pokedex
+  Rangi42's polishedcrystal, Vortyne's pureRGB and cRz-Shadows' Pokemon_Yellow_Legacy
+  and Pokemon_Crystal_Legacy), which publish no license of their own: the Gen 1 picture decompressor (and PureRGB's icon and Pokedex
   layouts), the Gen 2 LZ decompressor (with Polished
   Crystal's variant and its text compression), expansion's "smol"
   decompressor, the DS games' text, archive and picture decoding and the

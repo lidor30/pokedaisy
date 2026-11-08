@@ -1,0 +1,465 @@
+---
+import Base from '../layouts/Base.astro';
+import Pixel from '../components/Pixel.astro';
+import Matrix from '../components/Matrix.astro';
+import RomCheck from '../components/RomCheck.astro';
+import HeroDevice from '../components/HeroDevice.astro';
+import HeroSingleDevice from '../components/HeroSingleDevice.astro';
+import BattleDemo from '../components/BattleDemo.astro';
+import PartyDemo from '../components/PartyDemo.astro';
+import data from '../data/compat.json';
+import { REPO_URL, formatDate, getReleases, getDownloads, highlights } from '../lib/releases.js';
+import { REDDIT_URL, DISCORD_URL, KOFI_URL, PATREON_URL, COFFEE_URL } from '../lib/links.js';
+import { trFor, msg } from '../i18n/index.js';
+
+const tr = trFor(Astro.url);
+
+const releases = await getReleases();
+const latest = releases[0];
+const download = latest?.apk ?? `${REPO_URL}/releases/latest`;
+const downloads = await getDownloads();
+
+const gameCount = new Set(data.matrix.rows.map((r) => r.game)).size;
+const hackCount = new Set(data.hacks.map((h) => h.title)).size;
+
+const companion = [
+  ['orb', msg('PARTY'), msg('Your team in your game\'s own party screen. Tap a Pokémon for its stats, moves, IVs and EVs.')],
+  ['bag', msg('BAG'), msg('Every pocket, with the game\'s item icons and descriptions.')],
+  ['battle', msg('BATTLE'), msg('Opens by itself in a fight: every matchup, the best pick, the foe\'s whole team.')],
+  ['map', msg('MAP'), msg('The region map with you on it. Tap a place to name it, or jump to any town.')],
+  ['dex', msg('DEX'), msg('Seen and caught marks, with full entries: types, stats, abilities and dex text.')],
+  ['guide', msg('GUIDE'), msg('Hints first, answers on a second tap: what\'s here, the next boss, evolutions.')],
+  ['card', msg('CARD'), msg('Your trainer card, drawn exactly like the game\'s, front and back.')],
+  ['states', msg('STATES'), msg('Ten save-state slots with screenshots, and undo.')],
+];
+const player = [
+  ['ff', msg('SMART FAST-FORWARD'), msg('Full speed on the road, normal speed in menus and on the map. Battles stay fast.')],
+  ['music', msg('FF MUSIC'), msg('The song keeps its normal tempo while the game runs fast. No chipmunks.')],
+  ['tv', msg('SHADERS'), msg('An LCD grid, scanlines or a CRT, plus the colours the GBA\'s screen really showed, unlit backing and all.')],
+  ['clock', msg('STATUS BAR'), msg('Game, place, money, clock and battery in a strip above the game.')],
+  ['dpad', msg('CONTROLS'), msg('Remap every button and hotkey. Touch controls when no pad is connected.')],
+  ['star', msg('ACHIEVEMENTS'), msg('RetroAchievements while you play, with the game\'s own level-up fanfare.')],
+];
+const onGame = [
+  ['orb', msg('HUD'), msg('Your party, a minimap, your Poké Balls, the Repel\'s steps left and PC / BAG / WILD buttons on the game screen as you walk, like a modern Pokémon game. Tap any of it.')],
+  ['zoom', msg('EXPAND, ZOOM, LOOK AROUND'), msg('The map drawn past the game\'s edges to fill a wide screen, rebuilt every frame from the game itself. ZOOM steps out to see more of the area, and the right stick looks around.')],
+  ['ring', msg('QUICK MENU'), msg('One button opens a ring of shortcuts: your PC, FLY, REPEL, BIKE, ROD, wild encounters on and off, save states, fast-forward. Aim with the stick.')],
+  ['battle', msg('BATTLE INFO'), msg('Your moves rated against the foe and the best switch tagged: beside the battle on one screen, in the companion\'s BATTLE tab on two.')],
+  ['single', msg('COMPANION WINDOW'), msg('On one screen, every tab in a window over the game, or a panel locked beside it. The D-pad and A work it like the game\'s menus.')],
+  ['phone', msg('PHONES, UPRIGHT'), msg('The game across the top, the companion docked under it. Drag its edge to pick the size.')],
+];
+const qol = [
+  ['pc', msg('PC ANYWHERE'), msg('Open your PC boxes from the bag, the HUD or the quick menu, wherever you stand. No walk back to a Pokémon Center.')],
+  ['feather', msg('QUICK FLY'), msg('Pick a town on the companion\'s map or in the quick menu, and your Pokémon flies you there with the game\'s own animation.')],
+  ['spray', msg('REPEL IN ONE PRESS'), msg('Use a Repel from the quick menu or the bag in one press. The HUD counts down the steps it has left.')],
+  ['grassOff', msg('WILD ENCOUNTERS OFF'), msg('One switch stops random encounters in the grass and on the water. Fishing and the story\'s battles still happen; switch it back any time.')],
+  ['tmDisc', msg('REUSABLE TMS'), msg('A TM stays in your bag after it teaches a move, so one is enough for the whole team.')],
+  ['run', msg('AUTO-RUN'), msg('Run without holding B, and run inside buildings too.')],
+];
+const deviceList = [
+  ['dual', 'AYN THOR', msg('Made for it, tested daily.'), msg('TESTED'), 'f-pillGreen'],
+  ['dual', 'RETROID POCKET DUO LITE', msg('Its 4:3 bottom screen gets a layout of its own. The original Duo should work too.'), msg('SUPPORTED'), 'f-pillGreen'],
+  ['dual', 'ANBERNIC RG DS', msg('SWAP SCREENS puts the game on its top display.'), msg('SHOULD WORK'), 'f-pillYellow'],
+  ['single', msg('ONE SCREEN'), msg('The companion opens as a window over the game or a panel beside it, with the HUD and quick menu on the game. Tested on the Retroid Pocket 6.'), msg('TESTED'), 'f-pillBlue'],
+  ['phone', msg('PHONES, UPRIGHT'), msg('Hold an Android phone upright: the game on top, the companion under it. New: so far checked in screenshots only.'), msg('NEW'), 'f-pillRed'],
+  ['moreDevice', msg('COMING SOON'), msg('More handhelds, tablets and foldables. Want yours supported? Ask for it below.'), msg('SOON'), 'f-pillGrey'],
+];
+const ticker = ['GB · GBC · GBA · DS', msg('TWO SCREENS OR ONE'), msg('PARTY'), msg('BAG'), msg('BATTLE'), msg('MAP'), msg('DEX'), msg('GUIDE'), msg('TRAINER CARD'), msg('SAVE STATES'), msg('HUD'), msg('QUICK MENU'), msg('EXPAND'), msg('PC ANYWHERE'), msg('QUICK FLY'), msg('FAST-FORWARD'), msg('SHADERS'), msg('ACHIEVEMENTS')]
+  .map((t) => tr(t)).concat(tr('{n} GAMES', { n: gameCount }));
+const title = 'POKEDAISY'.split('');
+---
+<Base
+  title={tr('PokeDaisy: Game Boy Pokémon with a live companion')}
+  description={tr('A free player for Game Boy, Game Boy Color, Game Boy Advance and Nintendo DS Pokémon games on Android handhelds with two screens or one: the game, and a live companion with your party, battles, map, dex and guide on the second screen or right beside it, plus a HUD and a quick menu on the game screen.')}
+>
+  <!-- Hero -->
+  <section class="hero container">
+    <div class="hero-copy" data-track-where="hero">
+      <div class="hero-head">
+        <div class="hero-mark">
+          <span class="mark-ball"><Pixel name="logo" scale={1} label="PokeDaisy" /></span>
+          {[0, 1, 2].map((i) => <span class={`twinkle t${i}`}><Pixel name="spark" scale={1} /></span>)}
+        </div>
+        <h1 class="hero-title" aria-label="PokeDaisy">
+          {title.map((ch, i) => <span class:list={['drop-letter', i < 4 && 'red']} style={`--d:${i}`} aria-hidden="true">{ch}</span>)}
+        </h1>
+      </div>
+      <p class="hero-lead">{tr('Pokémon, played better. Game Boy to DS, with a live companion, a widescreen overworld, a HUD and quick menu, and every chore one button away.')}</p>
+      <div class="cta">
+        <a class="btn f-primary h-primaryHot primary big" href={download}>
+          <Pixel name="download" scale={1} /> {tr('DOWNLOAD')}{latest && <span class="ver">v{latest.version}</span>}
+        </a>
+      </div>
+      <!-- The community: the Discord for help and chat, the subreddit. -->
+      <div class="cta community">
+        <a class="btn f-discord h-discordHot" href={DISCORD_URL}><Pixel name="discord" scale={0.667} /> {tr('JOIN THE DISCORD')}</a>
+        <a class="btn f-reddit h-redditHot" href={REDDIT_URL}><Pixel name="reddit" scale={0.667} /> r/POKEDAISY</a>
+      </div>
+      <a class="downloads" href={`${REPO_URL}/releases`} data-downloads hidden={!downloads}>
+        <Pixel name="download" scale={1} />
+        <span class="dl-count" data-downloads-count>{downloads.toLocaleString(tr.locale)}</span>
+        <span class="dl-label">{tr('DOWNLOADS')}</span>
+      </a>
+      <p class="hero-meta small muted"><span>Android 8.0+</span><span>{tr('Free and open source')}</span><span>{tr('No ads')}</span></p>
+    </div>
+    <div class="hero-art">
+      <div class="glow"></div>
+      <!-- Both at once: the Thor at the back, a one-screen handheld in front, its companion in a window over the game. -->
+      <div class="duo">
+        <div class="duo-dual">
+          <HeroDevice />
+        </div>
+        <div class="duo-single">
+          <HeroSingleDevice />
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Ticker -->
+  <div class="ticker" aria-hidden="true">
+    <div class="ticker-track">
+      {[0, 1].map(() => ticker.map((t) => <span class="tick">{t}<Pixel name="spark" scale={1} /></span>))}
+    </div>
+  </div>
+
+  <!-- On the game screen: on two screens or one -->
+  <section class="block container">
+    <div class="section-head center">
+      <span class="eyebrow">{tr('ON THE GAME SCREEN')}</span>
+      <h2 class="heading">{tr('Everything at hand, right on the game')}</h2>
+      <p class="lead">{tr('Your team, a minimap and your bag on the game as you walk, the map drawn past the screen\'s edges, and every shortcut one button away. On two screens or one.')}</p>
+    </div>
+    <div class="player-grid">
+      {onGame.map(([icon, name, text], i) => (
+        <article class="player-item" data-reveal style={`--i:${i % 3}`}>
+          <span class="player-icon f-card"><Pixel name={icon} scale={1} /></span>
+          <div>
+            <h3 class="player-name">{tr(name)}</h3>
+            <p class="small muted">{tr(text)}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <!-- Companion -->
+  <section class="block container" id="features">
+    <div class="section-head center">
+      <span class="eyebrow">{tr('THE COMPANION')}</span>
+      <h2 class="heading">{tr('A live companion that reads your game')}</h2>
+      <p class="lead">{tr('On the bottom screen, or in a window over the game on one. Everything is read straight from the game as you play, and drawn in its own menu style. No typing, no alt-tabbing to a wiki.')}</p>
+    </div>
+    <div class="feature-grid">
+      {companion.map(([icon, name, text], i) => (
+        <article class="feature f-card" data-reveal style={`--i:${i % 4}`}>
+          <span class="feature-icon"><Pixel name={icon} scale={1.334} /></span>
+          <h3 class="feature-name"><span class="fcur"><Pixel name="cursor" scale={1} /></span>{tr(name)}</h3>
+          <p class="small feature-text">{tr(text)}</p>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <!-- Quality of life -->
+  <section class="block container">
+    <div class="section-head center">
+      <span class="eyebrow">{tr('QUALITY OF LIFE')}</span>
+      <h2 class="heading">{tr('Less walking back, more playing')}</h2>
+      <p class="lead">{tr('The chores of a long playthrough, one press away, each the game\'s own way of doing it. The switches are in the companion\'s SETTINGS, and the manual lists the games each one works in.')}</p>
+    </div>
+    <div class="player-grid">
+      {qol.map(([icon, name, text], i) => (
+        <article class="player-item" data-reveal style={`--i:${i % 3}`}>
+          <span class="player-icon f-card"><Pixel name={icon} scale={1} /></span>
+          <div>
+            <h3 class="player-name">{tr(name)}</h3>
+            <p class="small muted">{tr(text)}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <!-- Party -->
+  <section class="block container demo-block">
+    <div class="demo-art" data-reveal="fade"><PartyDemo /></div>
+    <div class="demo-copy" data-reveal="fade" style="--i:1">
+      <span class="eyebrow">{tr('PARTY')}</span>
+      <h2 class="heading">{tr('Your whole team, always in view')}</h2>
+      <p class="lead">{tr('HP, levels and status for every Pokémon, in your game\'s own party screen. Tap one for its summary: stats and moves, EXP to the next level, and what it\'s weak to or resists.')}</p>
+      <p class="lead small">{tr('STATS shows its exact IVs and EVs, nature and Hidden Power.')}</p>
+    </div>
+  </section>
+
+  <!-- Battle -->
+  <section class="block container demo-block flip">
+    <div class="demo-copy" data-reveal="fade">
+      <span class="eyebrow">{tr('IN BATTLE')}</span>
+      <h2 class="heading">{tr('Know every matchup at a glance')}</h2>
+      <p class="lead">{tr('When a fight starts the companion jumps to BATTLE. FIGHT shows each move\'s effect on the foe, INFO both Pokémon with the foe\'s weaknesses, and SUGGESTIONS the best Pokémon and move for this fight.')}</p>
+      <p class="lead small">{tr('On FireRed and Emerald the buttons play the battle for you: fight, switch or run without reaching for the controls.')}</p>
+    </div>
+    <div class="demo-art" data-reveal="fade" style="--i:1"><BattleDemo /></div>
+  </section>
+
+  <!-- Player -->
+  <section class="block container">
+    <div class="section-head center">
+      <span class="eyebrow">{tr('THE PLAYER')}</span>
+      <h2 class="heading">{tr('A Game Boy player built for Pokémon')}</h2>
+      <p class="lead">{tr('mGBA and melonDS under the hood play Game Boy, Color, Advance and DS, tuned for the long grind: fast where it\'s dull, normal where it matters.')}</p>
+    </div>
+    <div class="player-grid">
+      {player.map(([icon, name, text], i) => (
+        <article class="player-item" data-reveal style={`--i:${i % 3}`}>
+          <span class="player-icon f-card"><Pixel name={icon} scale={1} /></span>
+          <div>
+            <h3 class="player-name">{tr(name)}</h3>
+            <p class="small muted">{tr(text)}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <!-- Devices -->
+  <section class="block container">
+    <div class="section-head">
+      <span class="eyebrow">{tr('DEVICES')}</span>
+      <h2 class="heading">{tr('Two screens or one')}</h2>
+      <p class="lead">{tr('On a dual-screen handheld the companion gets a screen of its own. On one screen it opens in a window over the game or a panel beside it, or under it on a phone held upright. On a dual-screen handheld, SINGLE SCREEN plays it that way and frees the second screen for other apps.')}</p>
+    </div>
+    <div class="device-grid">
+      {deviceList.map(([icon, name, text, status, frame], i) => (
+        <article class:list={['device f-card', icon === 'moreDevice' && 'soon']} data-reveal style={`--i:${i}`}>
+          <Pixel name={icon} scale={1.334} />
+          <h3 class="device-name">{tr(name)}</h3>
+          <p class="small muted">{tr(text)}</p>
+          <span class={`chip ${frame}`}>{tr(status)}</span>
+          {icon === 'moreDevice' && <a class="btn f-btn h-btnHot small" href={tr.path('/feedback/#feature')}>{tr('REQUEST A DEVICE')}</a>}
+        </article>
+      ))}
+    </div>
+  </section>
+
+  <!-- Games -->
+  <section class="block container" id="games">
+    <div class="section-head">
+      <span class="eyebrow">{tr('SUPPORTED GAMES')}</span>
+      <h2 class="heading">{tr('{n} games and counting', { n: gameCount })}</h2>
+      <p class="lead">{tr('Red to Crystal on the Game Boy, FireRed, LeafGreen, Emerald, Ruby and Sapphire in six languages, Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2 on the DS, and {n} ROM hacks, with more on the way.', { n: hackCount })}</p>
+    </div>
+    <div data-reveal="fade"><Matrix /></div>
+  </section>
+
+  <!-- ROM check -->
+  <section class="block container check-block" id="check">
+    <div class="section-head">
+      <span class="eyebrow">{tr('ROM CHECK')}</span>
+      <h2 class="heading">{tr('Is your ROM supported?')}</h2>
+      <p class="lead">{tr('Hacks are recognised by their exact file. Drop yours in to see which game and version it is, and what the companion can do with it.')}</p>
+    </div>
+    <div data-reveal="fade"><RomCheck /></div>
+  </section>
+
+  <!-- What's new -->
+  {latest && (
+    <section class="block container">
+      <div class="section-head">
+        <span class="eyebrow">{tr('WHAT\'S NEW')}</span>
+        <h2 class="heading">PokeDaisy {latest.version}</h2>
+        <p class="lead small">{formatDate(latest.date, tr.locale)} · {tr('updates install from inside the app')}</p>
+      </div>
+      <article class="release f-card" data-reveal>
+        <ul class="highlights" lang="en">
+          {highlights(latest.body).map((h) => <li set:html={h} />)}
+        </ul>
+        <div class="cta" data-track-where="latest">
+          <a class="btn f-primary h-primaryHot primary" href={download}><Pixel name="download" scale={0.667} /> {tr('DOWNLOAD APK')}</a>
+          <a class="btn f-btn h-btnHot" href={tr.path('/releases/')}>{tr('ALL RELEASES')}</a>
+        </div>
+      </article>
+    </section>
+  )}
+
+  <!-- Support -->
+  <section class="block container" id="support">
+    <div class="support f-card" data-reveal>
+      <div class="cup-art" aria-hidden="true">
+        <span class="steam"><Pixel name="steam" scale={4} /></span>
+        <Pixel name="cup" scale={4} />
+      </div>
+      <div class="support-copy">
+        <span class="eyebrow">{tr('SUPPORT POKEDAISY')}</span>
+        <h2 class="heading">{tr('Free, no ads, nothing locked')}</h2>
+        <p class="lead">{tr('If PokeDaisy made a playthrough better, you can support it on Ko-fi or Patreon, or buy me a coffee. It\'s completely optional and doesn\'t unlock anything; it helps cover the time that goes into mapping new games and ROM hacks.')}</p>
+        <div class="cta">
+          <a class="btn f-kofi h-kofiHot big" href={KOFI_URL}><Pixel name="kofi" scale={0.667} /> KO-FI</a>
+          <a class="btn f-patreon h-patreonHot big" href={PATREON_URL}><Pixel name="patreon" scale={0.667} /> PATREON</a>
+          <a class="btn f-coffee h-coffeeHot big" href={COFFEE_URL}><Pixel name="cup" scale={0.667} /> {tr('BUY ME A COFFEE')}</a>
+        </div>
+        <p class="small muted">{tr('Bug reports, game requests and a star help just as much:')}</p>
+        <div class="cta">
+          <a class="btn f-btn h-btnHot small" href="/docs/"><Pixel name="guide" scale={0.5} /> {tr('READ THE MANUAL')}</a>
+          <a class="btn f-btn h-btnHot small" href={tr.path('/feedback/#bug')}><Pixel name="bug" scale={0.667} /> {tr('REPORT A BUG')}</a>
+          <a class="btn f-btn h-btnHot small" href={tr.path('/feedback/#game')}><Pixel name="logo" scale={0.334} /> {tr('REQUEST A GAME')}</a>
+          <a class="btn f-btn h-btnHot small" href="/feedback/#feature"><Pixel name="guide" scale={0.5} /> {tr('SUGGEST A FEATURE')}</a>
+          <a class="btn f-btn h-btnHot small" href={REPO_URL}><Pixel name="star" scale={0.667} /> {tr('STAR ON GITHUB')}</a>
+          <a class="btn f-reddit h-redditHot small" href={REDDIT_URL}><Pixel name="reddit" scale={0.5} /> {tr('JOIN r/POKEDAISY')}</a>
+          <a class="btn f-discord h-discordHot small" href={DISCORD_URL}><Pixel name="discord" scale={0.5} /> {tr('JOIN THE DISCORD')}</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  /* Hero */
+  .hero { display: grid; grid-template-columns: 1fr 1.05fr; gap: 48px; align-items: center; padding: 64px 0 56px; }
+  .hero-head { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; }
+  .hero-mark { position: relative; width: max-content; }
+  .mark-ball { display: inline-block; transform-origin: 50% 85%; animation: capture 3.2s steps(1) infinite 1.2s; }
+  @keyframes capture {
+    0%, 52%, 100% { transform: rotate(0); }
+    56% { transform: rotate(-20deg); }
+    62% { transform: rotate(10deg); }
+    68% { transform: rotate(-10deg); }
+    74% { transform: rotate(20deg); }
+    80% { transform: rotate(-10deg); }
+    86% { transform: rotate(0); }
+  }
+  .twinkle { position: absolute; opacity: 0; animation: twinkle 3.2s steps(1) infinite 1.2s; }
+  .t0 { right: -20px; top: 4px; }
+  .t1 { right: -36px; top: 52px; animation-delay: 1.35s; }
+  .t2 { left: -24px; top: 30px; animation-delay: 1.5s; }
+  @keyframes twinkle { 0%, 86% { opacity: 0; transform: scale(0.5); } 88% { opacity: 1; transform: scale(1); } 94% { opacity: 1; transform: scale(1.4); } 98% { opacity: 0; } }
+
+  .hero-title { font-size: var(--t-xxl); line-height: 1; letter-spacing: 0.0625em; text-shadow: var(--bold), calc(var(--px) * 2) calc(var(--px) * 2) 0 rgba(29, 27, 38, 0.15), calc(var(--px) * 2 + 0.0625em) calc(var(--px) * 2) 0 rgba(29, 27, 38, 0.15); }
+  .drop-letter { display: inline-block; }
+  :global(.js) .drop-letter { animation: drop 0.6s var(--step) both; animation-delay: calc(0.15s + var(--d) * 60ms); }
+  @keyframes drop {
+    0% { transform: translateY(-80px); opacity: 0; }
+    60% { transform: translateY(8px); opacity: 1; }
+    80% { transform: translateY(-4px); }
+    100% { transform: none; opacity: 1; }
+  }
+  .hero-lead { margin: 24px 0 32px; max-width: 30em; font-size: var(--t-l); line-height: 1.4; color: var(--ink-2); text-shadow: var(--bold); text-wrap: pretty; }
+  @keyframes bob { 50% { transform: translateY(var(--px)); } }
+  .cta { display: flex; flex-wrap: wrap; gap: 16px 20px; align-items: center; }
+  .ver { opacity: 0.85; font-size: var(--t-m); margin-left: 4px; }
+  .community { margin-top: 18px; }
+  /* Every APK download from GitHub releases: counted at build, refreshed in the browser. Big: it's the proof. */
+  .downloads { display: inline-flex; align-items: center; gap: 14px; margin-top: 36px; text-decoration: none; color: var(--ink); }
+  .downloads[hidden] { display: none; }
+  .dl-count { font-size: calc(var(--t-xl) * 0.85); line-height: 1; text-shadow: var(--bold); letter-spacing: 0.0625em; }
+  .dl-label { font-size: var(--t-m); color: var(--muted); letter-spacing: 0.0625em; }
+  .downloads:hover .dl-count { color: var(--red); }
+  /* The facts under it, each behind a small red square (so a wrapped line still reads as a list). */
+  .hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; margin-top: 14px; }
+  .hero-meta > * { display: inline-flex; align-items: center; gap: 8px; }
+  .hero-meta > *::before { content: ''; width: var(--px); height: var(--px); padding: calc(var(--px) * 0.5); background: var(--red); }
+
+  .hero-art { position: relative; }
+  /* Both handhelds at once: the Thor at the back on the right, the Retroid Pocket 5 in front, lower left,
+     over only the Thor's bottom edge so both sets of controls show. */
+  .duo { position: relative; display: grid; }
+  .duo-dual { position: relative; width: 66%; margin-left: auto; }
+  .duo-single { position: relative; width: 82%; margin-top: -6%; z-index: 2; }
+  .glow { position: absolute; inset: -6% -4%; background: radial-gradient(closest-side, rgba(232, 48, 40, 0.18), rgba(61, 111, 224, 0.12) 60%, transparent); filter: blur(30px); }
+
+  /* Ticker */
+  .ticker { background: var(--ink); color: #fff; overflow: hidden; border-block: var(--px) solid var(--ink); }
+  .ticker-track { display: flex; width: max-content; animation: scroll 46s linear infinite; }
+  .tick { display: inline-flex; align-items: center; gap: 24px; padding: 14px 12px 14px 24px; font-size: var(--t-m); white-space: nowrap; }
+  @keyframes scroll { to { transform: translateX(-50%); } }
+
+  /* Companion features */
+  .feature-grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 24px; }
+  .feature { display: grid; align-content: start; gap: 12px; padding: calc(var(--px) * 7); filter: var(--hard-shadow); transition: transform 0.15s steps(2), filter 0.15s steps(2); }
+  .feature:hover { transform: translateY(calc(var(--px) * -2)); filter: drop-shadow(calc(var(--px) * 3) calc(var(--px) * 4) 0 rgba(29, 27, 38, 0.18)); }
+  .feature-icon { display: inline-flex; height: calc(var(--px) * 22); align-items: center; }
+  .feature:hover .feature-icon { animation: hop 0.4s steps(2); }
+  @keyframes hop { 50% { transform: translateY(calc(var(--px) * -3)); } }
+  .feature-name { font-size: var(--t-l); color: #cb0707; letter-spacing: 0.0625em; text-shadow: var(--bold), var(--px) var(--px) 0 #f0c8a0, calc(var(--px) + 0.0625em) var(--px) 0 #f0c8a0; display: flex; align-items: center; gap: 8px; }
+  .fcur { display: inline-flex; width: 0; overflow: hidden; transition: width 0.1s steps(1); }
+  .feature:hover .fcur { width: calc(var(--px) * 5); animation: blink 0.6s steps(1) infinite; }
+  @keyframes blink { 50% { opacity: 0; } }
+  .feature-text { color: var(--ink-2); }
+
+  /* App demos */
+  .demo-block { display: grid; grid-template-columns: minmax(0, 560px) 1fr; gap: 56px; align-items: center; }
+  .demo-block.flip { grid-template-columns: 1fr minmax(0, 560px); }
+  .demo-art { filter: drop-shadow(calc(var(--px) * 3) calc(var(--px) * 3) 0 rgba(29, 27, 38, 0.18)); }
+
+  /* Player */
+  .player-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px 32px; }
+  .player-item { display: flex; gap: 20px; align-items: flex-start; }
+  .player-icon { display: inline-flex; padding: calc(var(--px) * 3); filter: var(--hard-shadow); transition: transform 0.2s steps(2); }
+  .player-item:hover .player-icon { transform: rotate(-8deg) translateY(calc(var(--px) * -2)); }
+  .player-name { font-size: var(--t-m); margin-bottom: 6px; text-shadow: var(--bold); letter-spacing: 0.0625em; }
+
+  /* Devices */
+  .device-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 330px), 1fr)); gap: 24px; }
+  .device { display: grid; gap: 10px; align-content: start; justify-items: start; filter: var(--hard-shadow); padding: calc(var(--px) * 7); }
+  .device.soon { background: none; }
+  .device.soon .device-name { color: var(--muted); }
+  .device-name { font-size: var(--t-m); text-shadow: var(--bold); letter-spacing: 0.0625em; }
+
+  /* Release */
+  .release { filter: var(--hard-shadow); display: grid; gap: 24px; padding: calc(var(--px) * 9); }
+  .highlights { margin: 0; padding: 0; list-style: none; display: grid; gap: 14px; font-size: var(--t-s); color: var(--ink-2); }
+  .highlights li { position: relative; padding-left: calc(var(--px) * 7); }
+  .highlights li::before { content: ''; position: absolute; left: 0; top: 0.6em; width: calc(var(--px) * 3); height: calc(var(--px) * 3); background: var(--red); }
+  .highlights :global(strong) { color: var(--ink); font-weight: normal; }
+
+  /* Support */
+  .support { display: grid; grid-template-columns: auto 1fr; gap: 48px; align-items: center; filter: var(--hard-shadow); padding: calc(var(--px) * 12); background: none; }
+  .support-copy { display: grid; gap: 20px; justify-items: start; }
+  .support .lead { margin-top: 0; }
+  .cup-art { display: grid; justify-items: start; }
+  .steam { animation: steam 1.2s steps(1) infinite; }
+  @keyframes steam { 50% { transform: translate(calc(var(--px) * 4), calc(var(--px) * -4)); } }
+
+  @media (max-width: 1080px) {
+    .feature-grid { grid-template-columns: repeat(2, 1fr); }
+    .player-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 960px) {
+    .hero, .demo-block, .demo-block.flip { grid-template-columns: 1fr; }
+    .demo-block.flip .demo-copy { order: -1; }
+    .hero { padding-top: 40px; }
+    .support { grid-template-columns: 1fr; padding: calc(var(--px) * 8); }
+  }
+  @media (max-width: 760px) {
+    .hero-lead { font-size: var(--t-m); }
+  }
+  @media (max-width: 560px) {
+    .feature-grid, .player-grid { grid-template-columns: 1fr; }
+  }
+</style>
+
+<script>
+  import { apkDownloads } from '../lib/releases.js';
+
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // The one-screen handheld's companion window opens and closes as its demo plays (CompanionDemo); without
+  // motion it just stays open.
+  if (reduce) document.querySelector<HTMLElement>('[data-single-device]')?.classList.add('open');
+
+  // The download count, fresh from GitHub (the build's number stays if that fails or is rate-limited).
+  const dl = document.querySelector<HTMLElement>('[data-downloads]');
+  fetch('https://api.github.com/repos/lidor30/pokedaisy/releases?per_page=100', { headers: { Accept: 'application/vnd.github+json' } })
+    .then((r) => (r.ok ? r.json() : Promise.reject(r.status)))
+    .then((list: any[]) => {
+      const n = apkDownloads(list);
+      if (dl && n > Number(dl.querySelector('[data-downloads-count]')!.textContent!
+        .replace(/\D/g, ''))) {
+        dl.querySelector('[data-downloads-count]')!.textContent = n.toLocaleString(document.documentElement.lang);
+        dl.hidden = false;
+      }
+    })
+    .catch(() => {});
+
+</script>

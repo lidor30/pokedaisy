@@ -20,16 +20,22 @@ object RomCrcs {
     /** [rom]'s CRC32 if it's known (an archive's: the ROM inside). */
     fun cached(context: Context, rom: File): Long? = cache(context).get(rom)
 
-    /** [rom]'s CRC32, worked out and kept when it isn't known. Blocking: off the UI thread where it may not be. */
-    fun of(context: Context, rom: File): Long = cached(context, rom) ?: RomPatcher.crcOf(rom).also { cache(context).put(rom, it) }
+    /**
+     * [rom]'s CRC32, worked out and kept when it isn't known. Blocking: off the UI thread where it may not be. For an
+     * archive, [unpacked] (its ROM already extracted, [RomArchive.playable]) is read instead of the archive: the same
+     * bytes, without decompressing it a second time - a .7z's LZMA2 asks for its whole dictionary (128 MB) and ran a
+     * phone out of memory on the UI thread (Crashlytics, 1.4.0).
+     */
+    fun of(context: Context, rom: File, unpacked: File? = null): Long = cached(context, rom)
+        ?: RomPatcher.crcOf(unpacked?.takeIf { it != rom && it.isFile } ?: rom).also { cache(context).put(rom, it) }
 
     /** Whether opening [rom] would read or unpack it whole first: [prepare] it off the UI thread. */
     fun needsPrepare(context: Context, rom: File): Boolean = RomArchive.isArchive(rom) || cached(context, rom) == null
 
     /** Off the UI thread, before a launch: an archive unpacked ([RomArchive.playable]) and the CRC known. */
     fun prepare(context: Context, rom: File) {
-        runCatching { RomArchive.playable(rom, context.cacheDir) }
-        runCatching { of(context, rom) }
+        val unpacked = runCatching { RomArchive.playable(rom, context.cacheDir) }.getOrNull()
+        runCatching { of(context, rom, unpacked) }
     }
 
     /** A ROM big enough that [prepare] takes a noticeable moment (a DS cart): say so while it runs. */

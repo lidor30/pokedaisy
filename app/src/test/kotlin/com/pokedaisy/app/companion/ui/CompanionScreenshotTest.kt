@@ -397,6 +397,12 @@ open class CompanionScreenshotTest {
     }
 
     /** TAKE (FieldItems.kt): CHARMANDER holds a LEFTOVERS, so the summary's bottom row has TAKE with its icon... */
+    /** SWITCH: the party in the summary's place, the Pokémon being moved selected. */
+    @Test fun partyDetailSwitch() = snapshot {
+        val use = object : com.pokedaisy.app.companion.ItemUse by takeUse { override fun canReorderParty() = true }
+        AppTheme { MonDetailScreen(takeParty, 0, {}, {}, itemUse = use, initialSwitching = true) }
+    }
+
     @Test fun partyDetailTake() = snapshot { AppTheme { MonDetailScreen(takeParty, 0, {}, {}, itemUse = takeUse) } }
 
     /** ...and pops up what it did, like the bag's USE / GIVE. */
@@ -455,6 +461,30 @@ open class CompanionScreenshotTest {
                 listOf(you.withMovesVs(foes[1])), listOf(foes[1]), isDouble = false, showHints = true,
                 onBack = {}, onShowSuggestions = {}, onShowStats = {},
                 foeTeam = foes, seenFoes = setOf(0, 1), shownFoe = 1,
+            )
+        }
+    }
+
+    /** BATTLE STYLE > GEN 5: your turn, then the move plates (the same states the GEN 4 buttons have). */
+    @Test fun battleControlsGen5() = gen5Shot(com.pokedaisy.app.companion.data.BATTLE_INPUT_ACTION_SELECT)
+
+    @Test fun battleControlsGen5Moves() = gen5Shot(com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT)
+
+    @Test fun battleControlsGen5Waiting() = gen5Shot(0)
+
+    private fun gen5Shot(state: Int) = paparazzi.snapshot {
+        AppTheme {
+            val party = SampleCompanion.snapshot.party
+            val input = object : com.pokedaisy.app.companion.BattleInput {
+                override val busy = false
+                override fun selectAction(actionIndex: Int) {}
+                override fun selectMove(moveIndex: Int) {}
+                override fun back() {}
+            }
+            BattleControlsScreen(
+                activeMon = party[0].withMovesVs(party[1]), battleInput = input, battleInputState = state, party = party,
+                modifier = Modifier.padding(12.dp), foeParty = party.take(3),
+                style = com.pokedaisy.app.companion.BattleStyle.GEN5,
             )
         }
     }
@@ -675,6 +705,19 @@ open class CompanionScreenshotTest {
     fun dexEmerald() {
         val shot = emeraldDex() ?: return
         snapshot { CompanionScreen(shot, SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = "DEX") }
+    }
+
+    /** A caught row says where the save keeps it: PARTY, BOX 3, MISSING. */
+    @Test
+    fun dexHoldingsEmerald() {
+        val shot = emeraldDex() ?: return
+        fun mon(species: Int) = com.pokedaisy.app.companion.data.MonView(species, "", 5, 1, 1, "", emptyList(), null)
+        val boxes = com.pokedaisy.app.companion.data.BoxesView(
+            0, List(3) { i -> com.pokedaisy.app.companion.data.BoxView("BOX ${i + 1}", 0, if (i == 2) listOf(mon(280)) else emptyList()) },
+        )
+        snapshot {
+            CompanionScreen(shot.copy(party = listOf(mon(277)), pcBoxes = boxes), SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = "DEX")
+        }
     }
 
     @Test
@@ -1196,6 +1239,27 @@ open class CompanionScreenshotTest {
         cfg = if (blue) com.pokedaisy.app.companion.data.GEN1_PURE_BLUE else com.pokedaisy.app.companion.data.GEN1_PURE_RED,
         romFile = if (blue) pureBlueRom else pureRedRom, game = if (blue) GameKind.PURE_BLUE else GameKind.PURE_RED,
     )
+    // Yellow Legacy v1.0.10 and Crystal Legacy v1.3.1: retail saves, rewritten by scripts/convert_save_legacy.py.
+    private fun yellowLegacy(fixture: String, tab: String, controls: Boolean = false, dexEntry: Int? = null, guidePage: String? = null, onMap: Int? = null) = yellow(
+        fixture, tab, controls = controls, dexEntry = dexEntry, guidePage = guidePage, onMap = onMap,
+        cfg = com.pokedaisy.app.companion.data.GEN1_YELLOW_LEGACY, romFile = "Pokemon Yellow Legacy (v1.0.10).gb", game = GameKind.YELLOW_LEGACY,
+    )
+    @Test fun yellowLegacyParty() = yellowLegacy("yellow_legacy", "PARTY")
+    @Test fun yellowLegacyItems() = yellowLegacy("yellow_legacy", "ITEMS")
+    @Test fun yellowLegacyMap() = yellowLegacy("yellow_legacy", "MAP")
+    @Test fun yellowLegacyDexEntry() = yellowLegacy("yellow_legacy", "DEX", dexEntry = 25)
+    @Test fun yellowLegacyBattle() = yellowLegacy("yellow_legacy_battle", "BATTLE")
+    @Test fun yellowLegacyBattleMoves() = yellowLegacy("yellow_legacy_battle", "BATTLE", controls = true)
+    @Test fun yellowLegacyGuideRoute() = yellowLegacy("yellow_legacy", "GUIDE", guidePage = "HERE", onMap = 12)
+    @Test fun yellowLegacyGuideNextBoss() = yellowLegacy("yellow_legacy", "GUIDE", guidePage = "NEXT BOSS")
+    @Test fun crystalLegacyParty() = crystal("crystal_legacy", "PARTY", legacy = true)
+    @Test fun crystalLegacyItems() = crystal("crystal_legacy", "ITEMS", legacy = true)
+    @Test fun crystalLegacyMap() = crystal("crystal_legacy", "MAP", legacy = true)
+    @Test fun crystalLegacyDexEntry() = crystal("crystal_legacy", "DEX", dexEntry = 152, legacy = true)
+    @Test fun crystalLegacyBattle() = crystal("crystal_legacy_battle", "BATTLE", legacy = true)
+    @Test fun crystalLegacyBattleMoves() = crystal("crystal_legacy_battle", "BATTLE", controls = true, legacy = true)
+    @Test fun crystalLegacyGuideHere() = crystal("crystal_legacy", "GUIDE", guidePage = "HERE", legacy = true)
+    @Test fun crystalLegacyGuideNextBoss() = crystal("crystal_legacy", "GUIDE", guidePage = "NEXT BOSS", legacy = true)
     @Test fun pureRedParty() = pure("purered", "PARTY")
     @Test fun pureRedItems() = pure("purered", "ITEMS")
     @Test fun pureRedMap() = pure("purered", "MAP")
@@ -1411,10 +1475,10 @@ open class CompanionScreenshotTest {
     private fun crystal(fixture: String, tab: String, controls: Boolean = false, dexEntry: Int? = null, statusBar: Boolean = false,
                         clear: Boolean = false, prism: Boolean = false, gold: Boolean = false, silver: Boolean = false,
                         polished: Boolean = false, describe: Boolean = false, guidePage: String? = null,
-                        guideOpen: Pair<String, Int>? = null) {
-        val game = if (polished) GameKind.POLISHED_CRYSTAL else if (prism) GameKind.PRISM else if (clear) GameKind.CRYSTAL_CLEAR else if (gold) GameKind.GOLD
+                        guideOpen: Pair<String, Int>? = null, legacy: Boolean = false) {
+        val game = if (legacy) GameKind.CRYSTAL_LEGACY else if (polished) GameKind.POLISHED_CRYSTAL else if (prism) GameKind.PRISM else if (clear) GameKind.CRYSTAL_CLEAR else if (gold) GameKind.GOLD
             else if (silver) GameKind.SILVER else GameKind.CRYSTAL
-        var cfg = if (polished) com.pokedaisy.app.companion.data.GEN2_POLISHED_CRYSTAL
+        var cfg = if (legacy) com.pokedaisy.app.companion.data.GEN2_CRYSTAL_LEGACY else if (polished) com.pokedaisy.app.companion.data.GEN2_POLISHED_CRYSTAL
             else if (prism) com.pokedaisy.app.companion.data.GEN2_PRISM
             else if (clear) com.pokedaisy.app.companion.data.GEN2_CRYSTAL_CLEAR_V2_6_0
             else if (gold) com.pokedaisy.app.companion.data.GEN2_GOLD else if (silver) com.pokedaisy.app.companion.data.GEN2_SILVER
@@ -1424,7 +1488,8 @@ open class CompanionScreenshotTest {
         romLanguage = 'E'
         romGameCode = ""
         val rom = java.io.File(java.io.File(RETAIL_ROM_DIR).parentFile,
-            if (polished) "gbc/Pokemon Polished Crystal (v3.2.3).gbc"
+            if (legacy) "gbc/Pokemon Crystal Legacy (v1.3.1).gbc"
+            else if (polished) "gbc/Pokemon Polished Crystal (v3.2.3).gbc"
             else if (prism) "gbc/Pokemon Prism (v0.95 build 254 Hotfix 5).gbc"
             else if (gold) "gbc/Pokemon - Gold Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc"
             else if (silver) "gbc/Pokemon - Silver Version (USA, Europe) (SGB Enhanced) (GB Compatible).gbc"
@@ -1679,7 +1744,7 @@ open class CompanionScreenshotTest {
     @Test fun portFireRedJaDexEntry() = retail("port_bprj1", port("BPRJ1"), ML_FR_JA, GameKind.FIRERED, "DEX", entry = 6)
     @Test fun portRubyJaMap() = retail("port_axvj1", port("AXVJ1"), ML_RU_JA, GameKind.EMERALD, "MAP", art = true)
     @Test fun portRubyJaDex() = retail("port_axvj1", port("AXVJ1"), ML_RU_JA, GameKind.EMERALD, "DEX")
-    @Test fun portRubyEnDex() = retail("port_en_axve1", com.pokedaisy.app.companion.data.NATIVE_RUBY, ML + "Pokemon - Ruby Version (USA, Europe) (Rev 1)/Pokemon - Ruby Version (USA, Europe) (Rev 1).gba", GameKind.EMERALD, "DEX")
+    @Test fun portRubyEnDex() = retail("port_en_axve1", com.pokedaisy.app.companion.data.NATIVE_RUBY, "Pokemon - Ruby Version (USA, Europe) (Rev 1).gba", GameKind.EMERALD, "DEX")
     @Test fun portRubyJaBattle() = retail("port_axvj1/battle", port("AXVJ1"), ML_RU_JA, GameKind.EMERALD, "BATTLE", art = true)
     @Test fun gaiaDex() = hackDex("gaia_dex", NATIVE_GAIA_V3_2, "Pokemon Gaia (v3.2).gba", GameKind.GAIA)
     @Test fun gaiaDexEntry() = hackDex("gaia_dex", NATIVE_GAIA_V3_2, "Pokemon Gaia (v3.2).gba", GameKind.GAIA, 390)
@@ -2035,18 +2100,17 @@ private const val SG12_ROM = "Pokemon SoulGold (v1.2).gba"
 private const val SG12B_ROM = "Pokemon SoulGold (v1.2) (Alt 1).gba"
 private const val SG121_ROM = "Pokemon SoulGold (v1.2.1).gba"
 private const val AM141_ROM = "Pokemon Amethyst (v1.4.1).gba"
-// The other-language ROMs: "Pokemon Multi Language" beside the retail dir, a folder per game.
-private const val ML = "../Pokemon Multi Language/"
-private const val EM_ES_ROM = ML + "Pokemon - Edicion Esmeralda (Spain)/Pokemon - Edicion Esmeralda (Spain).gba"
-private const val EM_DE_ROM = ML + "Pokemon - Smaragd-Edition (Germany)/Pokemon - Smaragd-Edition (Germany).gba"
-private const val EM_FR_ROM = ML + "Pokemon - Version Emeraude (France)/Pokemon - Version Emeraude (France).gba"
-private const val EM_IT_ROM = ML + "Pokemon - Versione Smeraldo (Italy)/Pokemon - Versione Smeraldo (Italy).gba"
-private const val EM_JA_ROM = ML + "Pocket Monsters - Emerald (Japan)/Pocket Monsters - Emerald (Japan).gba"
-private const val ML_FR_DE = ML + "Pokemon - Feuerrote Edition (Germany)/Pokemon - Feuerrote Edition (Germany).gba"
-private const val ML_LG_ES = ML + "Pokemon - Edicion Verde Hoja (Spain)/Pokemon - Edicion Verde Hoja (Spain).gba"
-private const val ML_SA_FR = ML + "Pokemon - Version Saphir (France) (Rev 1)/Pokemon - Version Saphir (France) (Rev 1).gba"
-private const val ML_FR_JA = ML + "Pocket Monsters - FireRed (Japan) (Rev 1)/Pocket Monsters - FireRed (Japan) (Rev 1).gba"
-private const val ML_RU_JA = ML + "Pocket Monsters - Ruby (Japan) (Rev 1)/Pocket Monsters - Ruby (Japan) (Rev 1).gba"
+// The other-language ROMs sit in the retail dir with the English ones.
+private const val EM_ES_ROM = "Pokemon - Edicion Esmeralda (Spain).gba"
+private const val EM_DE_ROM = "Pokemon - Smaragd-Edition (Germany).gba"
+private const val EM_FR_ROM = "Pokemon - Version Emeraude (France).gba"
+private const val EM_IT_ROM = "Pokemon - Versione Smeraldo (Italy).gba"
+private const val EM_JA_ROM = "Pocket Monsters - Emerald (Japan).gba"
+private const val ML_FR_DE = "Pokemon - Feuerrote Edition (Germany).gba"
+private const val ML_LG_ES = "Pokemon - Edicion Verde Hoja (Spain).gba"
+private const val ML_SA_FR = "Pokemon - Version Saphir (France) (Rev 1).gba"
+private const val ML_FR_JA = "Pocket Monsters - FireRed (Japan) (Rev 1).gba"
+private const val ML_RU_JA = "Pocket Monsters - Ruby (Japan) (Rev 1).gba"
 private fun port(key: String) = com.pokedaisy.app.companion.data.RETAIL_PORTS.getValue(key)()
 private const val SEAGLASS_ROM = "Pokemon Emerald Seaglass (v3.0).gba"
 private const val LAZARUS_ROM = "Pokemon Lazarus (v2.0).gba"

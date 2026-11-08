@@ -3,6 +3,9 @@
 #include <stdlib.h>
 #include <string.h>
 
+#include "pd_smol.h"
+#include "pd_games.h"
+
 // --- finding blobs (RomArt.find) ---
 
 // Both hosts (the 3DS's ARM11, the desktop) are little-endian: one unaligned
@@ -74,26 +77,31 @@ static bool decode(const uint8_t* rom, size_t romSize, size_t off, const struct 
     if (sig->lz) {
         return pd_lz77(rom + off, romSize - off, out, sig->size) == sig->size && pd_crc32(out, sig->size) == sig->crc;
     }
+    if (sig->smol) {
+        size_t got = (rom[off] & 0xF) == 8 ? pd_smol_tilemap(rom + off, romSize - off, out, sig->size)
+                                           : pd_smol(rom + off, romSize - off, out, sig->size);
+        return got == sig->size && pd_crc32(out, sig->size) == sig->crc;
+    }
     if (off + sig->size > romSize) return false;
     memcpy(out, rom + off, sig->size);
     return pd_crc32(out, sig->size) == sig->crc;
 }
 
 // Scans the ROM once for every wanted blob; each found one is decoded into
-// out[blob] (malloc'd, sig.size bytes), the rest left NULL.
-static void find_blobs(const uint8_t* rom, size_t size, const int* wanted, int n, uint8_t** out) {
+// out[i] (malloc'd, sig.size bytes), the rest left NULL.
+static void find_blobs(const uint8_t* rom, size_t size, const struct pd_blob_sig* const* sigs, int n, uint8_t** out) {
     static uint64_t bits[1024];
     memset(bits, 0, sizeof(bits));
     for (int i = 0; i < n; i++) {
-        uint16_t p = pd_blob_sigs[wanted[i]].pre;
+        uint16_t p = sigs[i]->pre;
         bits[p >> 6] |= 1ull << (p & 63);
-        out[wanted[i]] = NULL;
+        out[i] = NULL;
     }
     // A run of zero bytes hashes to 0 and passes the prefilter of a blob whose
     // window starts with eight zeros (Emerald's girl's card palette): skip
     // those runs unless a blob's whole window is zeros.
     bool zeroHead = false;
-    for (int i = 0; i < n; i++) zeroHead |= pd_blob_sigs[wanted[i]].head == 0;
+    for (int i = 0; i < n; i++) zeroHead |= sigs[i]->head == 0;
     int left = n;
     for (size_t i = 0; i + 16 <= size && left > 0; i++) {
         uint64_t a = u64le(rom + i);
@@ -102,18 +110,21 @@ static void find_blobs(const uint8_t* rom, size_t size, const int* wanted, int n
         if (!a && !zeroHead && !u64le(rom + i + 8)) continue;
         uint64_t h = head_hash(rom + i);
         for (int k = 0; k < n; k++) {
-            int b = wanted[k];
-            const struct pd_blob_sig* sig = &pd_blob_sigs[b];
-            if (out[b] || sig->head != h || i < sig->headOff) continue;
+            const struct pd_blob_sig* sig = sigs[k];
+            if (out[k] || sig->head != h || i < sig->headOff) continue;
             uint8_t* buf = malloc(sig->size);
             if (buf && decode(rom, size, i - sig->headOff, sig, buf)) {
-                out[b] = buf;
+                out[k] = buf;
                 left--;
             } else {
                 free(buf);
             }
         }
     }
+}
+
+void pd_romart_find(const struct pd_game* g, const struct pd_blob_sig* const* sigs, int n, uint8_t** out) {
+    find_blobs(g->rom, g->romSize, sigs, n, out);
 }
 
 // --- the cache: every blob of the game's family, found in one pass ---
@@ -131,14 +142,35 @@ void pd_romart_scan(const struct pd_game* g) {
     foundRom = rom;
     int family = g->kind == PD_GAME_FIRERED ? PD_BLOB_FIRERED : g->kind == PD_GAME_EMERALD ? PD_BLOB_EMERALD : 0;
     if (!rom || !family) return;
-    int wanted[PD_BLOB_COUNT], n = 0;
-    for (int i = 0; i < PD_BLOB_COUNT; i++) {
-        if (pd_blob_sigs[i].family & family) wanted[n++] = i;
+    // The party's art: only what this game's slots and backdrop are made of, so a ROM that has it all stops the pass early.
+    bool party[PD_BLOB_COUNT] = { [PD_FR_HOLD_GFX] = true, [PD_FR_HOLD_PAL] = true };
+    const struct pd_game_entry* e = g->entry;
+    const struct pd_party_style* st = e ? e->partyStyle : NULL;
+    if (st) {
+        const short blobs[] = { st->gfx, st->pal, st->slotMain, st->slotNoHp, st->slotEmpty, st->ball, st->ballPal, st->status, st->statusPal, st->font };
+        for (size_t i = 0; i < sizeof(blobs) / sizeof(*blobs); i++)
+            if (blobs[i] >= 0) party[blobs[i]] = true;
     }
-    find_blobs(g->rom, g->romSize, wanted, n, found);
+    for (int i = 0; e && i < e->partyBackdropCount; i++) {
+        party[e->partyBackdrops[i].gfx] = true;
+        party[e->partyBackdrops[i].pal] = true;
+        party[e->partyBackdrops[i].map] = true;
+    }
+    int wanted[PD_BLOB_COUNT], n = 0;
+    const struct pd_blob_sig* sigs[PD_BLOB_COUNT];
+    static uint8_t* decoded[PD_BLOB_COUNT];
+    for (int i = 0; i < PD_BLOB_COUNT; i++) {
+        if ((pd_blob_sigs[i].family & family) || party[i]) {
+            sigs[n] = &pd_blob_sigs[i];
+            wanted[n++] = i;
+        }
+    }
+    find_blobs(g->rom, g->romSize, sigs, n, decoded);
+    for (int i = 0; i < n; i++) found[wanted[i]] = decoded[i];
 }
 
 const uint8_t* pd_romart_blob(const struct pd_game* g, enum pd_blob b) {
     pd_romart_scan(g);
     return b >= 0 && b < PD_BLOB_COUNT ? found[b] : NULL;
 }
+

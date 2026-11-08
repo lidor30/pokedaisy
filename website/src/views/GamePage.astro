@@ -1,0 +1,310 @@
+---
+// A game's page, pokedaisy.com/g/<slug>/ (src/lib/gamePages.js): the real app on that game - a player's save drawn
+// by the app itself (scripts/promo_shots.py) - on a one-screen handheld and the Thor up top, as on the homepage,
+// then the game screen's tricks one by one, the companion's tabs, everything that works on it and the versions it
+// knows. Made to be linked from a post.
+import { existsSync } from 'node:fs';
+import { join } from 'node:path';
+import Base from '../layouts/Base.astro';
+import Pixel from '../components/Pixel.astro';
+import HeroDevice from '../components/HeroDevice.astro';
+import HeroSingleDevice from '../components/HeroSingleDevice.astro';
+import CompanionDemo from '../components/CompanionDemo.astro';
+import data from '../data/compat.json';
+import { FEATURES, TOP_SHOTS, COMPANION_SHOTS } from '../lib/gamePages.js';
+import { REPO_URL, getReleases } from '../lib/releases.js';
+import { REDDIT_URL, DISCORD_URL } from '../lib/links.js';
+import { trFor } from '../i18n/index.js';
+
+const { page } = Astro.props;
+const tr = trFor(Astro.url);
+// gamePages.js keeps its text in English: a string, or [text, its {placeholders}].
+const say = (x: string | [string, Record<string, string>]) => (Array.isArray(x) ? tr(x[0], x[1]) : tr(x));
+const releases = await getReleases();
+const latest = releases[0];
+const download = latest?.apk ?? `${REPO_URL}/releases/latest`;
+
+const dir = `/g/${page.slug}`;
+// Only the pictures made so far (promo_shots.py: the game frames need no app build, the app's screens do).
+const made = (id: string) => existsSync(join(process.cwd(), 'public', dir, `${id}.webp`));
+const top = page.top.filter(made).map((id: string) => ({ id, src: `${dir}/${id}.webp`, label: tr(TOP_SHOTS[id][0]), caption: tr(TOP_SHOTS[id][1]) }));
+const companion = page.companion.filter(made).map((id: string) => ({
+  id, src: `${dir}/${id}.webp`, label: page.labels?.[id] ?? tr(COMPANION_SHOTS[id][0]), caption: tr(COMPANION_SHOTS[id][1]),
+}));
+const features = page.features.map((f: string | string[]) => (Array.isArray(f) ? f : FEATURES[f])).map(([icon, name, text]: string[]) => [icon, tr(name), tr(text)]);
+// The game screen's tricks after the ORIGINAL / EXPAND comparison, which has a slider of its own.
+const tricks = top.filter((s: { id: string }) => s.id !== 'top-original' && s.id !== 'top-expand');
+const original = top.find((s: { id: string }) => s.id === 'top-original');
+const expand = top.find((s: { id: string }) => s.id === 'top-expand');
+// The one-screen handheld in front: the game screen with the app's tricks, never the GBA's black bars.
+const single = top.filter((s: { id: string }) => s.id !== 'top-original');
+
+const columns: string[] = data.matrix.columns;
+const rows = data.matrix.rows.filter((r: { game: string }) => r.game === page.matrixGame);
+const versions = page.versions?.map((v: string) => tr(v)) ?? [...new Set(data.hacks.filter((h: { title: string }) => h.title === page.hackTitle).map((h: { version: string }) => h.version))];
+const cell = { yes: ['check', 'f-pillGreen', 'YES'], part: ['half', 'f-pillYellow', 'PARTLY'], no: ['cross', 'f-pillGrey', 'NO'] } as Record<string, string[]>;
+const COLUMN: Record<string, string> = { Party: tr('PARTY'), Bag: tr('BAG'), Battle: tr('BATTLE'), Map: tr('MAP'), Dex: tr('DEX'), Guide: tr('GUIDE') };
+---
+<Base title={tr('{game} on PokeDaisy', { game: page.title })} description={say(page.description)} image={`${dir}/og.png`} theme={page.theme}>
+  <section class="hero container">
+    <div class="hero-copy" data-track-where="hero">
+      <span class="eyebrow">{page.eyebrow}</span>
+      <h1 class="hero-title">{say(page.headline)}</h1>
+      <p class="hero-lead">{say(page.lead)}</p>
+      <div class="cta">
+        <a class="btn f-primary h-primaryHot primary big" href={download}>
+          <Pixel name="download" scale={1} /> {tr('DOWNLOAD')}{latest && <span class="ver">v{latest.version}</span>}
+        </a>
+        <a class="btn f-btn h-btnHot" href={tr.path('/compatibility/')}>{tr('CHECK YOUR ROM')}</a>
+      </div>
+      <!-- The community, as on the homepage: the Discord for help and chat, the subreddit. -->
+      <div class="cta community">
+        <a class="btn f-discord h-discordHot" href={DISCORD_URL}><Pixel name="discord" scale={0.667} /> {tr('JOIN THE DISCORD')}</a>
+        <a class="btn f-reddit h-redditHot" href={REDDIT_URL}><Pixel name="reddit" scale={0.667} /> r/POKEDAISY</a>
+      </div>
+      <p class="hero-meta small muted">
+        {versions.map((v) => <span>{v}</span>)}
+        <span>Android 8.0+</span><span>{tr('Free, no ads')}</span>
+      </p>
+    </div>
+    <div class="hero-art">
+      <div class="glow"></div>
+      <!-- As on the homepage: a one-screen handheld in front (the game screen's tricks are the point), the Thor
+           at the back with the companion on its bottom screen. -->
+      <div class="duo">
+        <div class="duo-dual">
+          <HeroDevice>
+            <div slot="top" class="screen-shots" data-cycle="3200" data-offset="1600">
+              {top.map((s: { src: string; label: string }, i: number) => <img src={s.src} alt={tr('{game} on PokeDaisy: {shot}', { game: page.title, shot: s.label })} class:list={[i === 0 && 'on']} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />)}
+            </div>
+            <!-- Until the companion's shots are made, its drawn demo (the homepage's). -->
+            <div slot="bottom" class="screen-shots" data-cycle="3200">
+              {companion.length > 0
+                ? companion.map((s: { src: string; label: string }, i: number) => <img src={s.src} alt={tr('The companion\'s {tab}', { tab: s.label })} class:list={[i === 0 && 'on']} loading="lazy" decoding="async" />)
+                : <CompanionDemo />}
+            </div>
+          </HeroDevice>
+        </div>
+        <div class="duo-single">
+          <HeroSingleDevice>
+            <div slot="screen" class="screen-shots" data-cycle="3200">
+              {single.map((s: { src: string; label: string }, i: number) => <img src={s.src} alt={tr('{game} on PokeDaisy: {shot}', { game: page.title, shot: s.label })} class:list={[i === 0 && 'on']} loading={i === 0 ? 'eager' : 'lazy'} decoding="async" />)}
+            </div>
+          </HeroSingleDevice>
+        </div>
+      </div>
+      <p class="tiny muted shot-note">{companion.length > 0
+        ? tr('Real screenshots of PokeDaisy on a player\'s {game} save.', { game: page.title })
+        : tr('Real screenshots of PokeDaisy on a player\'s {game} save. The companion is the homepage\'s demo.', { game: page.title })}</p>
+    </div>
+  </section>
+
+  {original && expand && (
+    <section class="block container">
+      <div class="section-head center">
+        <span class="eyebrow">{tr('EXPAND')}</span>
+        <h2 class="heading">{tr('The whole screen, not black bars')}</h2>
+        <p class="lead">{tr('A wide screen gets the map past the GBA\'s edges, rebuilt every frame from the game itself. Drag to compare.')}</p>
+      </div>
+      <div class="compare f-card" data-compare data-reveal="fade">
+        <img src={expand.src} alt={tr('{game} with EXPAND', { game: page.title })} loading="lazy" decoding="async" />
+        <div class="compare-before"><img src={original.src} alt={tr('{game} as the GBA drew it', { game: page.title })} loading="lazy" decoding="async" /></div>
+        <span class="compare-tag left chip f-pillGrey">{tr('ORIGINAL')}</span>
+        <span class="compare-tag right chip f-pillGreen">{tr('EXPAND')}</span>
+        <span class="compare-line" aria-hidden="true"><i></i></span>
+        <input type="range" min="0" max="100" value="50" aria-label={tr('Compare ORIGINAL and EXPAND')} />
+      </div>
+    </section>
+  )}
+
+  {tricks.length > 0 && <section class="block container">
+    <div class="section-head center">
+      <span class="eyebrow">{tr('ON THE GAME SCREEN')}</span>
+      <h2 class="heading">{tr('Everything at hand, right on the game')}</h2>
+    </div>
+    <div class="viewer" data-viewer data-reveal="fade">
+      <div class="viewer-tabs" role="tablist">
+        {tricks.map((s: { label: string }, i: number) => <button type="button" role="tab" class:list={['btn f-btn h-btnHot small', i === 0 && 'on']} aria-selected={i === 0 ? 'true' : 'false'}>{s.label}</button>)}
+      </div>
+      <div class="viewer-screen f-card">
+        {tricks.map((s: { src: string; label: string }, i: number) => <img src={s.src} alt={tr('{game} on PokeDaisy: {shot}', { game: page.title, shot: s.label })} class:list={[i === 0 && 'on']} loading="lazy" decoding="async" />)}
+      </div>
+      {tricks.map((s: { caption: string }, i: number) => <p class:list={['viewer-caption small muted', i === 0 && 'on']}>{s.caption}</p>)}
+    </div>
+  </section>}
+
+  {companion.length > 0 && <section class="block container">
+    <div class="section-head center">
+      <span class="eyebrow">{tr('THE COMPANION')}</span>
+      <h2 class="heading">{tr('Your game, live beside it')}</h2>
+      <p class="lead">{tr('Read straight from the game as you play, in its own menu style: in a window over the game on one screen, or on the second screen of a dual-screen handheld.')}</p>
+    </div>
+    <div class="gallery">
+      {companion.map((s: { src: string; label: string; caption: string }, i: number) => (
+        <figure class="shot" data-reveal style={`--i:${i % 3}`}>
+          <a class="shot-frame f-card" href={s.src}><img src={s.src} alt={tr('The companion\'s {tab} on {game}', { tab: s.label, game: page.title })} loading="lazy" decoding="async" /></a>
+          <figcaption><span class="shot-name">{s.label}</span><span class="small muted">{s.caption}</span></figcaption>
+        </figure>
+      ))}
+    </div>
+  </section>}
+
+  <section class="block container">
+    <div class="section-head">
+      <span class="eyebrow">{tr('WHAT WORKS')}</span>
+      <h2 class="heading">{tr('Everything, on {game}', { game: page.title.replace('Pokémon ', '') })}</h2>
+    </div>
+    <div class="player-grid">
+      {features.map(([icon, name, text]: string[], i: number) => (
+        <article class="player-item" data-reveal style={`--i:${i % 3}`}>
+          <span class="player-icon f-card"><Pixel name={icon} scale={1} /></span>
+          <div>
+            <h3 class="player-name">{name}</h3>
+            <p class="small muted">{text}</p>
+          </div>
+        </article>
+      ))}
+    </div>
+    {page.notes?.length > 0 && <ul class="notes small muted">{page.notes.map((n: string) => <li>{tr(n)}</li>)}</ul>}
+  </section>
+
+  <section class="block container">
+    <div class="support f-card" data-reveal>
+      <div class="support-copy">
+        <span class="eyebrow">{tr('SUPPORTED VERSIONS')}</span>
+        <h2 class="heading">{page.title} {versions.join(', ')}</h2>
+        {rows.map((r: { version: string; cells: string[] }) => (
+          <div class="row-cells">
+            <span class="small muted">{r.version}</span>
+            {r.cells.map((c, i) => <span class={`chip ${cell[c][1]}`}>{COLUMN[columns[i]] ?? columns[i].toUpperCase()}</span>)}
+          </div>
+        ))}
+        <p class="small muted">{page.hackTitle ? tr('Hacks are recognised by their exact file.') : tr('Every official release is recognised by its exact file.')} {tr('Not sure yours is one of these? The ROM check tells you in your browser, without uploading it.')}</p>
+        <div class="cta" data-track-where="page">
+          <a class="btn f-primary h-primaryHot primary" href={download}><Pixel name="download" scale={0.667} /> {tr('DOWNLOAD')}</a>
+          <a class="btn f-btn h-btnHot" href={tr.path('/compatibility/')}>{tr('CHECK YOUR ROM')}</a>
+          <a class="btn f-btn h-btnHot" href={tr.path('/')}>{tr('ALL FEATURES')}</a>
+        </div>
+        <div class="cta">
+          <a class="btn f-discord h-discordHot small" href={DISCORD_URL}><Pixel name="discord" scale={0.5} /> {tr('JOIN THE DISCORD')}</a>
+          <a class="btn f-reddit h-redditHot small" href={REDDIT_URL}><Pixel name="reddit" scale={0.5} /> r/POKEDAISY</a>
+        </div>
+      </div>
+    </div>
+  </section>
+</Base>
+
+<style>
+  /* The homepage's hero (index.astro), with the game's headline in place of the logo. */
+  .hero { display: grid; grid-template-columns: 1fr 1.05fr; gap: 48px; align-items: center; padding: 64px 0 56px; }
+  .hero-title { margin-top: 14px; font-size: var(--t-xl); line-height: 1.1; letter-spacing: 0.0625em; text-wrap: balance; text-shadow: var(--bold), calc(var(--px) * 2) calc(var(--px) * 2) 0 rgba(29, 27, 38, 0.15), calc(var(--px) * 2 + 0.0625em) calc(var(--px) * 2) 0 rgba(29, 27, 38, 0.15); }
+  .hero-lead { margin: 24px 0 32px; max-width: 30em; font-size: var(--t-l); line-height: 1.4; color: var(--ink-2); text-shadow: var(--bold); text-wrap: pretty; }
+  .cta { display: flex; flex-wrap: wrap; gap: 16px 20px; align-items: center; }
+  .ver { opacity: 0.85; font-size: var(--t-m); margin-left: 4px; }
+  .community { margin-top: 18px; }
+  .hero-meta { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 22px; margin-top: 24px; }
+  .hero-meta > * { display: inline-flex; align-items: center; gap: 8px; }
+  .hero-meta > *::before { content: ''; width: var(--px); height: var(--px); padding: calc(var(--px) * 0.5); background: var(--red); }
+  .hero-art { position: relative; }
+  .duo { position: relative; display: grid; }
+  .duo-dual { position: relative; width: 66%; margin-left: auto; }
+  .duo-single { position: relative; width: 82%; margin-top: -6%; z-index: 2; }
+  .glow { position: absolute; inset: -6% -4%; background: radial-gradient(closest-side, rgba(232, 48, 40, 0.18), rgba(61, 111, 224, 0.12) 60%, transparent); filter: blur(30px); }
+  .shot-note { position: relative; text-align: center; margin-top: 14px; }
+
+  /* The device's screens: the shots stacked, one shown at a time, crossfading. */
+  .screen-shots { position: absolute; inset: 0; }
+  .screen-shots img { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; opacity: 0; transition: opacity 0.5s ease; }
+  .screen-shots img.on { opacity: 1; }
+
+  /* ORIGINAL against EXPAND: the original over the expanded one, cut at the slider. */
+  .compare { position: relative; max-width: 1000px; margin: 0 auto; padding: calc(var(--px) * 3); filter: var(--hard-shadow); --cut: 50%; }
+  .compare > img, .compare-before img { display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; }
+  .compare-before { position: absolute; inset: calc(var(--px) * 3); clip-path: inset(0 calc(100% - var(--cut)) 0 0); }
+  .compare-before img { height: 100%; }
+  .compare-line { position: absolute; top: calc(var(--px) * 3); bottom: calc(var(--px) * 3); left: calc(var(--px) * 3 + (100% - var(--px) * 6) * var(--cut-n, 0.5)); width: var(--px); background: #fff; box-shadow: 0 0 0 var(--px) var(--ink); pointer-events: none; }
+  .compare-line i { position: absolute; top: 50%; left: 50%; width: calc(var(--px) * 8); height: calc(var(--px) * 8); transform: translate(-50%, -50%); background: #fff; box-shadow: 0 0 0 var(--px) var(--ink); }
+  .compare input { position: absolute; inset: 0; width: 100%; height: 100%; margin: 0; opacity: 0; cursor: ew-resize; }
+  .compare-tag { position: absolute; top: calc(var(--px) * 7); pointer-events: none; }
+  .compare-tag.left { left: calc(var(--px) * 7); }
+  .compare-tag.right { right: calc(var(--px) * 7); }
+
+  /* The game screen's other tricks, one at a time under tabs. */
+  .viewer { max-width: 1000px; margin: 0 auto; display: grid; gap: 18px; }
+  .viewer-tabs { display: flex; flex-wrap: wrap; justify-content: center; gap: 14px; }
+  .viewer-tabs .btn.on { color: var(--red); text-shadow: var(--bold); }
+  .viewer-screen { display: grid; padding: calc(var(--px) * 3); filter: var(--hard-shadow); }
+  .viewer-screen img { grid-area: 1 / 1; display: block; width: 100%; aspect-ratio: 16 / 9; object-fit: cover; opacity: 0; transition: opacity 0.3s ease; }
+  .viewer-screen img.on { opacity: 1; }
+  .viewer-caption { display: none; text-align: center; }
+  .viewer-caption.on { display: block; }
+
+  /* The companion's tabs */
+  .gallery { display: grid; grid-template-columns: repeat(3, 1fr); gap: 32px 28px; }
+  .shot { margin: 0; display: grid; gap: 12px; align-content: start; }
+  .shot-frame { display: block; padding: calc(var(--px) * 3); filter: var(--hard-shadow); transition: transform 0.15s steps(2); }
+  .shot-frame:hover { transform: translateY(calc(var(--px) * -2)); }
+  .shot-frame img { display: block; width: 100%; aspect-ratio: 1240 / 1080; }
+  .shot figcaption { display: grid; gap: 4px; }
+  .shot-name { font-size: var(--t-m); text-shadow: var(--bold); letter-spacing: 0.0625em; }
+
+  .player-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 36px 32px; }
+  .player-item { display: flex; gap: 20px; align-items: flex-start; }
+  .player-icon { display: inline-flex; padding: calc(var(--px) * 3); filter: var(--hard-shadow); }
+  .player-name { font-size: var(--t-m); margin-bottom: 6px; text-shadow: var(--bold); letter-spacing: 0.0625em; }
+  .notes { margin: 40px 0 0; padding: 0; list-style: none; display: grid; gap: 8px; }
+  .notes li { position: relative; padding-left: calc(var(--px) * 7); }
+  .notes li::before { content: ''; position: absolute; left: 0; top: 0.6em; width: calc(var(--px) * 3); height: calc(var(--px) * 3); background: var(--red); }
+
+  .support { filter: var(--hard-shadow); padding: calc(var(--px) * 12); background: none; }
+  .support-copy { display: grid; gap: 20px; justify-items: start; }
+  .support .heading { font-size: var(--t-l); }
+  .row-cells { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .row-cells > .small { min-width: 9em; }
+
+  @media (max-width: 1080px) {
+    .gallery, .player-grid { grid-template-columns: repeat(2, 1fr); }
+  }
+  @media (max-width: 960px) {
+    .hero { grid-template-columns: 1fr; padding-top: 40px; }
+  }
+  @media (max-width: 760px) {
+    .hero-lead { font-size: var(--t-m); }
+  }
+  @media (max-width: 560px) {
+    .gallery, .player-grid { grid-template-columns: 1fr; }
+    .support { padding: calc(var(--px) * 7); }
+  }
+</style>
+
+<script>
+  const reduce = matchMedia('(prefers-reduced-motion: reduce)').matches;
+
+  // The device's screens step through their shots, the bottom one half a beat after the top.
+  for (const box of document.querySelectorAll<HTMLElement>('[data-cycle]')) {
+    const imgs = [...box.querySelectorAll('img')];
+    if (reduce || imgs.length < 2) continue;
+    let at = 0;
+    const step = () => { imgs[at].classList.remove('on'); at = (at + 1) % imgs.length; imgs[at].classList.add('on'); };
+    setTimeout(() => setInterval(step, Number(box.dataset.cycle)), Number(box.dataset.offset ?? 0));
+  }
+
+  // ORIGINAL / EXPAND: the slider moves the cut.
+  for (const box of document.querySelectorAll<HTMLElement>('[data-compare]')) {
+    const input = box.querySelector('input')!;
+    const set = () => { box.style.setProperty('--cut', `${input.value}%`); box.style.setProperty('--cut-n', String(Number(input.value) / 100)); };
+    input.addEventListener('input', set);
+    set();
+  }
+
+  // The tabs over the game screen's tricks.
+  for (const viewer of document.querySelectorAll<HTMLElement>('[data-viewer]')) {
+    const tabs = [...viewer.querySelectorAll<HTMLButtonElement>('[role=tab]')];
+    const imgs = [...viewer.querySelectorAll('.viewer-screen img')];
+    const captions = [...viewer.querySelectorAll('.viewer-caption')];
+    tabs.forEach((tab, i) => tab.addEventListener('click', () => {
+      for (const list of [tabs, imgs, captions]) list.forEach((el, j) => el.classList.toggle('on', i === j));
+      tabs.forEach((t, j) => t.setAttribute('aria-selected', String(i === j)));
+    }));
+  }
+</script>

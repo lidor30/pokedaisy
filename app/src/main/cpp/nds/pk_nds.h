@@ -69,6 +69,9 @@ void pk_nds_set_wild_off(bool off);
 void pk_nds_set_keep_start_menu(bool on);
 /** DS CPU BOOST: the ARM9 at twice the DS's clock (fewer of a game's own slow frames). Emu thread, between frames. */
 void pk_nds_set_cpu_boost(bool on);
+// Action Replay DS codes into melonDS's AREngine (it runs them on the ARM7's VBlank), replacing the ones before:
+// [lengths] words of [words] per cheat, [nCheats] cheats (0 = none). The count loaded; -1 with no DS game. Emu thread.
+int pk_nds_set_cheats(const uint32_t* words, int nWords, const int32_t* lengths, int nCheats);
 // The cart's grass / surf rates by map header id, [map, grass, surf] x n (pk_nds_field_set_rates). Emu thread.
 void pk_nds_set_wild_rates(const int32_t* triples, int n);
 
@@ -102,6 +105,9 @@ bool pk_nds_frame_drawn(void);
 bool pk_nds_wide_draw(uint32_t* out, int x, int y, int w, int h);
 // The camera's scene (WideCamera.SCENE_*) from the field read: field, text box, a menu screen, off (a battle, no map).
 int pk_nds_wide_scene(void);
+/** Both engines' master brightness while it fades towards black or white (mode 1 / 2): its factor 0-16, engine A (the top
+ * screen) in bits 0-7, B in bits 8-15; 0 = no fade. The games fade between two screens this way. Emu thread. */
+int pk_nds_fade(void);
 // The camera's window (pkWideSetView), so the slices draw only what it shows.
 void pk_nds_wide_window(int x, int y, int w, int h);
 

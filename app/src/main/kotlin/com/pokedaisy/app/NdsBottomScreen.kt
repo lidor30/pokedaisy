@@ -51,13 +51,18 @@ object NdsBottomFrame {
     private val views = CopyOnWriteArrayList<NdsTouchScreenView>()
 
     /** Emu thread, once the DS core is up. */
-    fun bind(buffer: ByteBuffer?) = synchronized(lock) { source = buffer }
+    fun bind(buffer: ByteBuffer?) = synchronized(lock) { source = buffer; held = false }
 
     /** Emu thread, before the core frees its buffer. */
-    fun unbind() = synchronized(lock) { source = null }
+    fun unbind() = synchronized(lock) { source = null; held = false }
+
+    /** DS LAYOUT's transition hold (EmulatorEngine.dsHold): the last frame stays, new ones aren't taken, and taps don't
+     * reach the game (it's behind the held picture). Emu thread. */
+    @Volatile var held = false
 
     /** Emu thread, after each frame the screen shows. */
     fun publish() {
+        if (held) return
         synchronized(lock) {
             val src = source ?: return
             src.rewind()
@@ -82,6 +87,9 @@ object NdsBottomFrame {
         }
         return true
     }
+
+    /** A copy of the frame shown now (the held one while [held]). */
+    fun snapshot(): Bitmap = Bitmap.createBitmap(W, H, Bitmap.Config.ARGB_8888).also { copyInto(it) }
 
     internal fun copyInto(bitmap: Bitmap) = synchronized(lock) {
         pixels.rewind()
@@ -171,6 +179,8 @@ class NdsTouchScreenView(context: Context) : View(context) {
     private val paint = Paint().apply { isFilterBitmap = false }
     private val dst = Rect()
 
+    init { CompanionColors.trackGame(this) }
+
     override fun onAttachedToWindow() {
         super.onAttachedToWindow()
         NdsBottomFrame.attach(this)
@@ -198,6 +208,11 @@ class NdsTouchScreenView(context: Context) : View(context) {
     @SuppressLint("ClickableViewAccessibility")
     override fun onTouchEvent(event: MotionEvent): Boolean {
         if (dst.isEmpty) return false
+        // A held picture (DS LAYOUT's transition hold): the game behind it isn't what's shown.
+        if (NdsBottomFrame.held) {
+            MgbaCore.pkNdsTouch(false, 0, 0)
+            return true
+        }
         val x = ((event.x - dst.left) * NdsBottomFrame.W / dst.width()).toInt()
         val y = ((event.y - dst.top) * NdsBottomFrame.H / dst.height()).toInt()
         when (event.actionMasked) {

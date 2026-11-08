@@ -1,0 +1,9 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Debug builds only: plain HTTP to this device itself, for a co-op relay reached through `adb reverse tcp:8080 tcp:8080`
+     (COOP_RELAY_URL=http://127.0.0.1:8080). Everything else stays HTTPS-only, as in release builds. -->
+<network-security-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="false">127.0.0.1</domain>
+        <domain includeSubdomains="false">localhost</domain>
+    </domain-config>
+</network-security-config>

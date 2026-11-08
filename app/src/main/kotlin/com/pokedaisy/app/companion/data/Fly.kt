@@ -199,7 +199,6 @@ data class FlyTargets(
     val flyerPersonality: Long = 0,
 )
 
-private const val MON_SIZE_FLY = 100
 private const val GET_MON_PERSONALITY = 0
 
 /** The first party Pokémon that knows Fly (not an egg): its slot and personality, or null. */
@@ -207,7 +206,7 @@ private fun flyer(fns: FieldItemFns, fly: FlyFns, g: GameCalls): Pair<Int, Long>
     val p = fns.party ?: return null
     val count = (g.read(p.partyCount, 1)[0].toInt() and 0xFF).coerceAtMost(6)
     for (slot in 0 until count) {
-        val mon = (p.party + slot * MON_SIZE_FLY).toInt()
+        val mon = (p.party + slot * p.monStride).toInt()
         if (g.call(p.getMonData, mon, fly.monEggField) != 0L) continue
         if ((0 until 4).any { g.call(p.getMonData, mon, fly.monMoveField + it) == fly.flyMove.toLong() }) {
             return slot to g.call(p.getMonData, mon, GET_MON_PERSONALITY)

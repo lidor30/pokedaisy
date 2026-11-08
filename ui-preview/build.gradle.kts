@@ -10,7 +10,7 @@ plugins {
 val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
 val appIncludes = listOf(
     "companion/ui/**", "SettingsActivity.kt", "CoopSettingsPages.kt", "LibraryActivity.kt", "SavesLocation.kt",
-    "CoverArtSync.kt", "CoverSync.kt", "DocsApi.kt", "DocsSearch.kt", "RomFolder.kt", "StorageAccess.kt", "SetupScreen.kt", "AppUpdater.kt", "AppUpdate.kt", "GameSaves.kt", "SaveBackups.kt", "GameInfo.kt", "LibraryOrder.kt", "RomSupportRequest.kt", "RomIntake.kt", "BestEffortShare.kt", "SaveStates.kt", "RomIdentity.kt", "RomArchive.kt", "CompanionSupport.kt", "CoverPicker.kt", "SteamGridDbGames.kt", "SteamGridDbClient.kt", "GameTitles.kt", "SaveEditorActivity.kt", "SaveFileEdits.kt",
+    "CoverArtSync.kt", "CoverSync.kt", "DocsApi.kt", "DocsSearch.kt", "RomFolder.kt", "StorageAccess.kt", "SetupScreen.kt", "AppUpdater.kt", "AppUpdate.kt", "GameSaves.kt", "RzipSave.kt", "SaveBackups.kt", "GameInfo.kt", "LibraryOrder.kt", "RomSupportRequest.kt", "RomIntake.kt", "BestEffortShare.kt", "SaveStates.kt", "RomIdentity.kt", "RomArchive.kt", "CompanionSupport.kt", "CoverPicker.kt", "SteamGridDbGames.kt", "SteamGridDbClient.kt", "GameTitles.kt", "SaveEditorActivity.kt", "SaveFileEdits.kt",
     "BpsPatch.kt", "RomPatcher.kt", "RomPatchFlow.kt", "RomCrcs.kt",
     "ScreenScraperClient.kt", "ScreenScraperUi.kt", "GameMedia.kt", "LauncherScreen.kt",
     "achievements/**", "overlay/Overlays.kt", "overlay/OverlayLabels.kt",
@@ -30,6 +30,8 @@ val prepSrc = tasks.register<Sync>("prepSrc") {
 }
 sourceSets["main"].kotlin.srcDir("src/render")
 sourceSets["main"].kotlin.srcDir("src/shims")
+// GameExport.kt needs -PgameExport's stubbed core (data/build.gradle.kts).
+if (!project.hasProperty("gameExport")) sourceSets["main"].kotlin.exclude("**/GameExport.kt")
 tasks.withType<KotlinCompile>().configureEach {
     source(files(layout.buildDirectory.dir("appsrc")).builtBy(prepSrc))
     kotlinOptions.jvmTarget = "17"
@@ -47,6 +49,17 @@ dependencies {
     implementation("org.jetbrains.compose.ui:ui-test-junit4-desktop:1.5.12")
 }
 
+// The game data the 3DS port builds from, with -PgameExport: every ROM under -Proms through the app's own detection.
+tasks.register<JavaExec>("gameExport") {
+    description = "Writes every ROM's detected config and tables as JSON (see src/render/GameExport.kt); needs -PgameExport."
+    classpath = sourceSets["main"].runtimeClasspath
+    mainClass.set("render.GameExportKt")
+    args = listOf((project.findProperty("roms") as String?) ?: "", (project.findProperty("out") as String?) ?: "")
+    workingDir = rootDir.resolve("../app/src/main/assets")
+    maxHeapSize = "3g"
+    systemProperty("java.awt.headless", "true")
+}
+
 tasks.register<JavaExec>("render") {
     description = "Renders every screen to build/shots (or -Pout=DIR); -Ponly=a,b filters by name, -Pgame=EMERALD picks the game, -Prom=PATH feeds the GUIDE's live pages."
     classpath = sourceSets["main"].runtimeClasspath
@@ -61,7 +74,7 @@ tasks.register<JavaExec>("render") {
     systemProperty("game", (project.findProperty("game") as String?) ?: "FIRERED")
     // -PgameText=EMERALD_LEGACY: a hack that runs as -Pgame's kind under its own names and config (romGameCode).
     systemProperty("gameText", (project.findProperty("gameText") as String?) ?: "")
-    // -Plang=JA / FR / DE / IT / ES / BR / PT: the app's text in that language.
+    // -Plang=JA / FR / DE / IT / ES / BR / PT / KO: the app's text in that language.
     systemProperty("lang", (project.findProperty("lang") as String?) ?: "")
     // -Pdark=true: every screen in DARK MODE (pair with -Pout=build/shots-dark).
     systemProperty("dark", (project.findProperty("dark") as String?) ?: "")

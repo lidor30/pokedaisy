@@ -17,7 +17,7 @@ class PerformanceGuardsTest {
 
     @Test
     fun `fonts are only built by PixelTypeface, once per process`() {
-        // Building one loads the 1 MB PixelMplusJP; v1.1.0 built one per GbaText,
+        // Building one loads the 1 MB PixelMplusJP and 1.5 MB GalmuriKO; v1.1.0 built one per GbaText,
         // tens of MB per tab switch, and crashed when tabs were switched quickly.
         val builders = listOf("Font.Builder(", "CustomFallbackBuilder(", "Typeface.createFrom", "ComposeFont(", "Font(\"fonts/")
         val offenders = kotlinFiles().filter { it.name != "PixelTypeface.kt" }.flatMap { f ->
@@ -60,7 +60,9 @@ class PerformanceGuardsTest {
         val engine = read("EmulatorEngine.kt")
         assertTrue(
             "EmulatorEngine must publish right after each pkRunFrame",
-            "MgbaCore.pkRunFrame()\n                onFrame?.invoke()" in engine,
+            // (DS LAYOUT's transition hold decides first whether that frame is shown: DsTransitionHold.)
+            "MgbaCore.pkRunFrame()\n                onFrame?.invoke()" in engine ||
+                Regex("""MgbaCore\.pkRunFrame\(\)\n(\s*//[^\n]*\n)*\s*if \(nds\) stepDsHold\(\)\n\s*onFrame\?\.invoke\(\)""").containsMatchIn(engine),
         )
         assertTrue("the activity must wire onFrame to the view's publish", "view.publishFrame()" in lambda(read("PokeDaisyActivity.kt"), "onFrame = {"))
     }

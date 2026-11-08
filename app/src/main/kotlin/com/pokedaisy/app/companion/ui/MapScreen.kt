@@ -339,7 +339,7 @@ internal enum class MapLabelStyle(val width: Int, val height: Int) {
         // Monomyth's ATHANTO MAP has one head of its own for either gender.
         EMERALD -> if (game == GameKind.DREAMSTONE || game == GameKind.TEAM_ROCKET) null
             else if (game == GameKind.MONOMYTH) "player_monomyth"
-            else if (com.pokedaisy.app.companion.data.runningEmeraldHack != null) { if (gender == 1) "player_may_re" else "player_brendan_re" }
+            else if (com.pokedaisy.app.companion.data.runningRechargedEmerald) { if (gender == 1) "player_may_re" else "player_brendan_re" }
             else if (gender == 1) "player_may" else if (game == GameKind.MARIOMON) "player_mario" else "player_brendan"
         // Red's standing sprite (Gen1Art), Crystal's CHRIS / KRIS or Gold / Silver's boy (Gen2Art), from the ROM.
         // Crystal Clear's player is the player's own (model, skin, colours): none drawn.
@@ -349,7 +349,7 @@ internal enum class MapLabelStyle(val width: Int, val height: Int) {
             else if (game == GameKind.GOLD || game == GameKind.SILVER) com.pokedaisy.app.companion.data.Gen2Art.GOLD_SILVER_PLAYER
             else if (game == GameKind.RED || game == GameKind.BLUE) "player_red_blue"
             else if (game == GameKind.PURE_RED || game == GameKind.PURE_BLUE) "player_${com.pokedaisy.app.companion.data.Gen1Art.pureTownMapName(game)}"
-            else if (game != GameKind.CRYSTAL) "player_yellow"
+            else if (game != GameKind.CRYSTAL && game != GameKind.CRYSTAL_LEGACY) "player_yellow"
             else if (gender == 1) com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_PLAYER_F
             else com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_PLAYER
     }
@@ -394,6 +394,12 @@ private fun regionName(images: Array<String>, i: Int): String = when (images[i])
     "polished_crystal_johto" -> "JOHTO"
     "polished_crystal_kanto" -> "KANTO"
     "polished_crystal_orange" -> "ISLANDS"   // the game's own label on that map
+    "quetzal_kanto" -> "KANTO"
+    "quetzal_sevii123" -> "SEVII 1-3"
+    "quetzal_sevii45" -> "SEVII 4-5"
+    "quetzal_sevii67" -> "SEVII 6-7"
+    "hoenn" -> "HOENN"   // Quetzal's fifth map: Emerald's, which alone never needs a name
+    "quetzal_johto" -> "JOHTO"
     "tr3_kanto" -> "KANTO"
     "tr3_sevii123" -> "SEVII 1-3"
     "tr3_sevii45" -> "SEVII 4-5"
@@ -442,7 +448,7 @@ private fun RegionMap(
     // FireRed's region-map cursor (graphics/region_map/cursor.png) swaps
     // between its two frames every 20 game frames. Read only while drawing,
     // so a swap redraws the map without recomposing it.
-    val bigCursor = rememberBlink(CURSOR_FRAME_MS, enabled = CompanionTweaks[CompanionTweaks.Tweak.MAP_CURSOR_BLINK], label = "map-cursor")
+    val bigCursor = rememberBlink(CURSOR_FRAME_MS, enabled = CompanionTweaks[CompanionTweaks.Tweak.MAP_CURSOR_BLINK])
 
     val image = remember(bitmap) { bitmap.asImageBitmap() }
     val headImage = remember(head) { head?.asImageBitmap() }
@@ -488,7 +494,7 @@ private fun RegionMap(
                 }
             }
             .focusable(interactionSource = keys)
-            .clip(shape)
+            .pixelClip(shape)
             .drawWithContent {
                 drawContent()
                 val px = (MAP_FRAME / 5).toPx().coerceAtLeast(1f)
@@ -587,8 +593,11 @@ private fun RegionMap(
 private fun MapLabel(style: MapLabelStyle, label: String, dungeon: String?, crop: IntRect, sx: Float, sy: Float) {
     val density = LocalDensity.current
     val k = floor(minOf(sx, sy)).toInt().coerceAtLeast(1)
-    val m = remember(k, density) {
-        with(density) { GbaTextMetrics(k, k.toDp(), (16f * k).toSp(), k.toFloat(), (16f * k).toDp(), (20f * k).toDp()) }
+    // The name a screen pixel a font pixel smaller than the map's own where the map is drawn big (the user's call: the game's
+    // size read large on the companion); Gen 1's letters fill their row, so they keep the map's.
+    val t = if (style != MapLabelStyle.GEN1 && k >= 3) k - 1 else k
+    val m = remember(k, t, density) {
+        with(density) { GbaTextMetrics(k, k.toDp(), (16f * t).toSp(), t.toFloat(), (16f * t).toDp(), (20f * t).toDp()) }
     }
     @Composable
     fun box(row: Int, text: String) {
@@ -944,7 +953,7 @@ private fun PokegearMapView(
     val image = remember(bitmap) { bitmap.asImageBitmap() }
     val headImage = remember(head) { head?.asImageBitmap() }
     val cursorImages = remember(cursorSprite) { cursorSprite?.let { (a, b) -> a.asImageBitmap() to b.asImageBitmap() } }
-    val bigCursor = rememberBlink(CURSOR_FRAME_MS, enabled = CompanionTweaks[CompanionTweaks.Tweak.MAP_CURSOR_BLINK], label = "map-cursor")
+    val bigCursor = rememberBlink(CURSOR_FRAME_MS, enabled = CompanionTweaks[CompanionTweaks.Tweak.MAP_CURSOR_BLINK])
     val mapW = bitmap.width.toFloat()
     val mapH = bitmap.height.toFloat()
     fun centreOf(c: Pair<Int, Int>) = Offset(c.first * tile + tile / 2f, c.second * tile + tile / 2f)
@@ -1030,7 +1039,7 @@ private fun PokegearMapView(
                 .gbaFocusRing(focused, shape)
                 .focusRequester(self)
                 .focusable(interactionSource = keys)
-                .clip(shape)
+                .pixelClip(shape)
                 .drawWithContent {
                     drawContent()
                     val px = (MAP_FRAME / 5).toPx().coerceAtLeast(1f)

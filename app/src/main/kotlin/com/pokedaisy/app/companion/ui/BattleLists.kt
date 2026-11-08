@@ -91,7 +91,7 @@ private fun MoveListRow(
         fill = if (mv == null) AppColors.slotFillDark else MoveCardFill,
         // The callback's cursor row: a gold frame (the party list's cursor is its selected colours).
         frame = if (cursor && mv != null) SuggestGold else mv?.let { AppColors.typeColors[it.type] } ?: AppColors.slotFrame,
-        modifier = modifier, enabled = enabled, pressesGame = onPick == null, outline = u,
+        modifier = modifier, enabled = enabled, pressesGame = onPick == null,
         // Clear of the bevel's side bands.
         contentPadding = PaddingValues(start = u * 9, end = u * 4 + edge, top = u * 2, bottom = u * 2),
         onClick = { if (onPick != null) onPick(index) else battleInput?.selectMove(index) },
@@ -175,7 +175,7 @@ private fun ListCancel(enabled: Boolean, h: Dp, edge: Dp, onClick: () -> Unit) {
     val m = rememberGbaTextMetrics(1f)
     PlatinumButton(
         fill = RunBlue, frame = RunBlueDark, modifier = Modifier.fillMaxWidth().height(h),
-        enabled = enabled, pressesGame = false, outline = m.u, contentPadding = PaddingValues(end = edge), onClick = onClick,
+        enabled = enabled, pressesGame = false, contentPadding = PaddingValues(end = edge), onClick = onClick,
     ) { GbaText(tr("CANCEL"), buttonContent, if (buttonContent == Color.White) Color(0xFF383838) else Color.Transparent, m, bold = gameBoldLabels()) }
 }
 
@@ -206,7 +206,7 @@ private fun PartyListRow(palette: PartyPalette, mon: MonView, selected: Boolean,
     val icon = remember(sheet) { sheet?.asImageBitmap() }
     val ticks = if (mon.isEgg || mon.hp <= 0) 0 else PartySlotLayout.ICON_FRAME_TICKS[listHpLevel(mon.hp, mon.maxHp)]
     val moving = CompanionTweaks[CompanionTweaks.Tweak.PARTY_ICONS_MOVE]
-    val pose by rememberBlink(gbaFramesMs(ticks.coerceAtLeast(1)), enabled = ticks > 0 && moving, label = "list-icon")
+    val pose by rememberBlink(partyIconPoseMs(ticks), enabled = ticks > 0 && moving)
     androidx.compose.foundation.layout.BoxWithConstraints(Modifier.fillMaxSize()) {
         val rowHeightPx = constraints.maxHeight.toFloat()
         // The Poké Ball as tall as the row, poking out of the slot's left edge (the game's party list); the icon at the

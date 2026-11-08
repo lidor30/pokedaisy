@@ -22,24 +22,29 @@ Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the compan
 - Pokémon Red and Blue: the USA / Europe releases, drawn in the game's own look: the colours they show on a Super Game Boy.
 - PureRed and PureBlue, the PureRGB hack of Red and Blue: version 2.7.6, drawn in the game's own look (the colours of its default OG setting), with its own types, moves, items, places and Pokédex. A save from the original Red or Blue works too, once the game itself has updated it: pick CONTINUE and answer its questions.
 - Pokémon Yellow: the USA / Europe release and the German, French, Italian and Spanish ones, drawn in the game's own look. A German, French, Italian or Spanish copy shows its own names and Pokédex text. Item descriptions are only shown in the English one, as these games have none of their own.
+- Pokémon Yellow Legacy: version 1.0.10, drawn in the game's own look, with its own moves, trainers, wild Pokémon, party icons and town map. Make it from your English Yellow with `PATCH A ROM` and the release's patch. Start a new game: a save from the original Yellow doesn't load correctly in it.
 - Pokémon Gold and Silver: the USA / Europe releases, drawn in the game's own look.
 - Pokémon Crystal: the USA release, the USA / Europe revision 1 and the Australian one, drawn in the game's own look.
+- Pokémon Crystal Legacy: version 1.3.1, drawn in the game's own look, with its own moves, items, trainers, wild Pokémon, coloured party icons and maps. Make it from your Crystal (the USA release or revision 1) with `PATCH A ROM` and the release's matching patch. A save from the original Crystal starts, but its bag comes out wrong, so start a new game.
 - Pokémon Crystal Clear, the open world hack of Crystal: versions 2.5.11 and 2.6.0, each in its Standard Colors and its Color Filter build, drawn in the game's own look.
 - Pokémon Prism, built on Crystal with regions of its own: version 0.95 build 254 (Hotfix 5), drawn in the game's own look, with its own Pokédex.
 - Polished Crystal: versions 3.2.0 to 3.2.3, each in its normal and its faithful build (and their debug builds), drawn in the game's own look, with its own Pokédex. The faithful builds keep the original types and moves, and the companion shows them that way.
 
 **Nintendo DS:**
 
-- Pokémon Platinum: the USA release, revision 1.
-- Pokémon HeartGold: the USA and German releases (revision 0).
-- Pokémon SoulSilver: the USA and German releases (revision 0).
-- Pokémon Black: the USA / Europe release.
-- Pokémon White: the USA / Europe release.
-- Pokémon Black 2: the USA / Europe release.
-- Pokémon White 2: the USA / Europe release.
-- Pokémon Origin HeartGold, the hack: version 4.0.3 with its English patch 1.0.0.
+- Pokémon Platinum: the USA release (revision 1), and the French and Spanish ones (revision 0).
+- Pokémon HeartGold: the USA, German, French, Spanish, Italian, Japanese and Korean releases (revision 0), and the English one sold in Europe (revision 10).
+- Pokémon SoulSilver: the USA, German, French, Spanish, Italian, Japanese and Korean releases (revision 0), and the English one sold in Europe (revision 10).
+- Pokémon Black: the USA / Europe, French, German, Spanish, Italian, Japanese and Korean releases.
+- Pokémon White: the USA / Europe, French, German, Spanish, Italian, Japanese and Korean releases.
+- Pokémon Black 2: the USA / Europe, French, German, Spanish, Italian and Korean releases, and the Japanese one (revision 1).
+- Pokémon White 2: the USA / Europe, French, German, Spanish, Italian and Korean releases, and the Japanese one (revision 1).
 
-The companion reads their party, bag, map, Pokédex and guide, with pictures, Pokédex pages and the map read from your cart. The battles of Platinum, Black, White, Black 2 and White 2 show in the `BATTLE` tab; HeartGold's and SoulSilver's don't yet. In Black, White, Black 2 and White 2 the `MAP` is the game's own Town Map: the towns you've arrived at marked as the game marks them, the others left plain. `PARTY`, `BAG` and `DEX` take each game's own colours: the cut-corner slots on a navy grid of Black, White and their sequels, Black's and White's green Pokédex grid, Black 2's and White 2's red one, Platinum's blue slots on slate stripes. Origin HeartGold has its own species (every region's, and their forms), moves, Fairy type and battle system: the companion reads its party, bag, map and Pokédex (all 1,025, with its own stats, evolutions and moves) with the names, types and pictures from your cart, and its battles show in the `BATTLE` tab (`INFO` and `SUGGESTIONS`; you choose your moves on the game's own touch screen). It has no guide yet. [Screens and devices](devices.md#ds-games) has how a DS game uses your screens.
+The companion shows each game's Pokémon, moves, items and places in your cart's own language, read from the cart.
+- Pokémon Origin HeartGold, the hack: version 4.0.3 with its English patch 1.0.0.
+- Pokémon Renegade Platinum, the hack: versions 1.2.0 and 1.3.0, and 1.3.0 with its Classic patch.
+
+The companion reads their party, bag, map, Pokédex and guide, with pictures, Pokédex pages and the map read from your cart. The battles of Platinum, Black, White, Black 2 and White 2 show in the `BATTLE` tab; HeartGold's and SoulSilver's don't yet. In Black, White, Black 2 and White 2 the `MAP` is the game's own Town Map: the towns you've arrived at marked as the game marks them, the others left plain. `PARTY`, `BAG` and `DEX` take each game's own colours: the cut-corner slots on a navy grid of Black, White and their sequels, Black's and White's green Pokédex grid, Black 2's and White 2's red one, Platinum's blue slots on slate stripes. Origin HeartGold has its own species (every region's, and their forms), moves, Fairy type and battle system: the companion reads its party, bag, map and Pokédex (all 1,025, with its own stats, evolutions and moves) with the names, types and pictures from your cart, and its battles show in the `BATTLE` tab (`INFO` and `SUGGESTIONS`; you choose your moves on the game's own touch screen). It has no guide yet. Renegade Platinum plays as Platinum does, with its own types (the Fairy type among them), moves and type chart read from your cart, so the `BATTLE` tab's advice and the `DEX` follow the hack's changes; it has no guide yet either. [Screens and devices](devices.md#ds-games) has how a DS game uses your screens.
 
 **ROM hacks**, each in the versions listed:
 
@@ -72,11 +77,12 @@ The companion reads their party, bag, map, Pokédex and guide, with pictures, Po
 | Moemon Quetzal | English and Spanish Alpha 0.8.4 Hotfix |
 | Super Mariomon | 1.2.1 to 1.3, 1.5.1 and 1.5.2 |
 | Pokémon Recharged Emerald | 2.2.5 and 2.2.8, and Rebalanced 2.2.8 |
+| Pokémon Modern Emerald | 3.6 (types follow the settings you picked when you started your game) |
 | Pokémon Elite Redux | 2.65.3b and 2.65.4.1b |
 | Pokémon Team Rocket Edition: Dragonsden Version | 1.5, and the 2026 edition's 3.0.9 in Spanish (its START menu shows the version) |
 | Pokémon Wishes of Tomorrow | 1.2.6 |
 | Pokémon Dreamstone Mysteries | its one release (the game shows no version) |
-| Pokémon Monomyth | 1.0 |
+| Pokémon Monomyth | 1.0 and 1.1 |
 | Emerald Rogue | 2.2.1-EX |
 | Pokémon SoulGold | 1.1.4, three builds of 1.2, and two of 1.2.1 |
 | Pokémon R.O.W.E. | 2.1.9.1 Experimental |
@@ -109,6 +115,15 @@ What happens next depends on how well a game fits:
 - **No clear winner.** The companion asks you (see below).
 
 The match is remembered for that ROM. To undo it, long-press the game in the library, open `INFO` and tap `FORGET MATCH`.
+
+### Hacks that kept FireRed or Emerald's own code
+
+Many hacks are made by editing the English FireRed or Emerald directly, with a map editor or a patch tool, and leave the game's own code alone. PokeDaisy checks the code of such a ROM against the original game's when it starts. If it still holds what the features below need, the hack gets them even though PokeDaisy doesn't know it by name:
+
+- [EXPAND](screen.md#expand-more-of-the-map) and the field features that read the overworld (TEXT and the other scene speeds, AUTO-RUN, RUN INDOORS). If the hack moved the tables of the people standing further off, those people aren't drawn past the screen's edge.
+- Quick battle taps (a tap on `FIGHT`, `BAG`, `RUN` or a move goes straight to it) and [switching during a battle](battle.md#switching-during-a-battle), once best effort reads the game as FireRed or Emerald.
+
+A hack that rebuilt the game from its source code doesn't pass this check, and nothing changes for it.
 
 ## WHICH GAME IS THIS?
 

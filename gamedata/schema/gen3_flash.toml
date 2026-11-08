@@ -1,0 +1,105 @@
+# FlashFns's fields (Flash.kt), checked against it by scripts/gen_gamedata.py.
+# type: long | int | bool | char | string | item_descs | int_range | long_list | int_list | int_set |
+# long_set | int_map | ref (a Kotlin val's name);
+# record names the schema of a value a config may spell out as a sub-table.
+
+version = 1
+kotlin_class = 'FlashFns'
+kotlin_file = 'Flash.kt'
+
+[field.flagGet]
+kotlin = 'Long'
+type = 'long'
+
+# The field move's badge flag (FireRed FLAG_BADGE01_GET 0x820, Emerald FLAG_BADGE02_GET 0x868).
+[field.badgeFlag]
+kotlin = 'Int'
+type = 'int'
+
+# FLAG_SYS_FLASH_ACTIVE / FLAG_SYS_USE_FLASH: set once the cave is lit (also by the game on map load).
+[field.litFlag]
+kotlin = 'Int'
+type = 'int'
+
+# SetUpFieldMove_Flash: TRUE where FLASH does something here, the callbacks set.
+[field.setUpFieldMoveFlash]
+kotlin = 'Long'
+type = 'long'
+
+# The field callback the party menu sets for its way back (FireRed / Emerald gFieldCallback2, Ruby / Sapphire
+# gFieldCallback) and gPostMenuFieldCallback: pointers, both put back after the check.
+[field.menuFieldCallback]
+kotlin = 'Long'
+type = 'long'
+
+[field.postMenuFieldCallback]
+kotlin = 'Long'
+type = 'long'
+
+# The post-menu callbacks SetUpFieldMove_Flash may set: FieldCallback_Flash (+ Emerald's SetUpPuzzleEffectRegisteel).
+[field.fieldCallbacks]
+kotlin = 'List<Long>'
+type = 'long_list'
+
+# gPartyMenu.slotId: the Pokémon the cut-in shows.
+[field.partyMenuSlotId]
+kotlin = 'Long'
+type = 'long'
+
+# gMapHeader: its cave byte at +0x15, read by the quick menu to dim FLASH where it's light already.
+[field.mapHeader]
+kotlin = 'Long'
+type = 'long'
+
+# CRC32 of each function's first 32 bytes: flagGet, setUpFieldMoveFlash, then each of [fieldCallbacks].
+[field.codeCrcs]
+kotlin = 'List<Long>'
+type = 'long_list'
+
+# The party menu's badge check for field moves (CursorCB_FieldMove's `cmp rN, #6; bhi; FLAG_BADGE01_GET + the move;
+# bl FlagGet`), for the games with hacks edited in place on this code: 0 = not read (the retail rule). See flashBadgeRule.
+[field.badgeCheck]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# CRC32 of the 16 retail bytes at [badgeCheck].
+[field.badgeCheckCrc]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# gMapHeader's cave byte (0x15; SoulGold's 16-bit map sections push it to 0x16).
+[field.caveOff]
+kotlin = 'Int'
+type = 'int'
+default = 0x15
+
+# A CFRU hack's own badge rule for field moves (bool fn(fieldMove)), found at run time by flashBadgeRule; 0 = none.
+[field.badgeFn]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# FIELD_MOVE_FLASH: the field move's number the badge rule takes.
+[field.fieldMove]
+kotlin = 'Int'
+type = 'int'
+default = 0
+
+# MOVE_FLASH.
+[field.flashMove]
+kotlin = 'Int'
+type = 'int'
+default = 148
+
+# GetMonData's MON_DATA_MOVE1 / MON_DATA_IS_EGG.
+[field.monMoveField]
+kotlin = 'Int'
+type = 'int'
+default = 13
+
+[field.monEggField]
+kotlin = 'Int'
+type = 'int'
+default = 45

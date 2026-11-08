@@ -735,11 +735,11 @@ private fun lightBagFor(game: GameKind, hgssPocket: Int = 0): BagPalette = when 
     GameKind.LAZARUS, GameKind.EMERALD_SEAGLASS -> PlainExpansionBag
     GameKind.ROWE -> RoweBag
     GameKind.SOULGOLD -> SoulGoldBag
-    GameKind.YELLOW -> YellowBag
+    GameKind.YELLOW, GameKind.YELLOW_LEGACY -> YellowBag
     GameKind.RED, GameKind.BLUE -> RedBlueBag
     GameKind.PURE_RED, GameKind.PURE_BLUE -> PureRgbBag
     // Gold's and Silver's PACK is Crystal's, pixel for pixel (sampled headless in both).
-    GameKind.CRYSTAL, GameKind.GOLD, GameKind.SILVER -> CrystalBag
+    GameKind.CRYSTAL, GameKind.GOLD, GameKind.SILVER, GameKind.CRYSTAL_LEGACY -> CrystalBag
     GameKind.CRYSTAL_CLEAR -> CrystalClearBag
     // Prism's PACK: Crystal's blue checks and text boxes.
     GameKind.PRISM -> CrystalBag
@@ -802,8 +802,10 @@ fun ItemsScreen(
     // alone was easy to miss (and an item used to the last leaves the bag, taking its bar with it).
     var notice by remember { mutableStateOf<ItemNotice?>(initialNotice) }
     fun report(o: ItemUseOutcome, itemId: Int, text: String) {
-        say(text)
-        if (o.result == ItemUseResult.USED || o.result == ItemUseResult.GIVEN) notice = ItemNotice(itemId, text)
+        // IN_GAME (a TM: the game's own teach screen) pops up only: kept in the bar, it still asked for a pick after the
+        // game's screen had closed, cancelled or not, until another item was opened.
+        if (o.result != ItemUseResult.IN_GAME) say(text)
+        if (o.result == ItemUseResult.USED || o.result == ItemUseResult.GIVEN || o.result == ItemUseResult.IN_GAME) notice = ItemNotice(itemId, text)
     }
     // The party pick a USE (medicine) or GIVE opened, over the bag.
     var pick by remember { mutableStateOf<ItemPick?>(null) }
@@ -1425,7 +1427,7 @@ private fun SortButton(label: String, pal: BagPalette, m: GbaTextMetrics, width:
             .width(width)
             .gbaFocusRing(focused, PixelRoundedShape(u * 6))
             .drawBehind {
-                drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = 6 * u.toPx())
+                drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = 6 * u.toPx(), twoTone = true)
             }
             .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick)
             .padding(horizontal = u * 6, vertical = u * 6),
@@ -1449,7 +1451,7 @@ private fun PcButton(pal: BagPalette, m: GbaTextMetrics, width: Dp, onClick: () 
             .padding(start = u * 2)
             .width(width)
             .gbaFocusRing(focused, PixelRoundedShape(u * 6))
-            .drawBehind { drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = 6 * u.toPx()) }
+            .drawBehind { drawLayeredBox(pal.descLayers.inPx(u.toPx()), pal.descFill, radius = 6 * u.toPx(), twoTone = true) }
             .soundClickable(interactionSource = noRipple, indication = null, onClick = onClick)
             .padding(horizontal = u * 6, vertical = u * 6),
     ) {
@@ -1679,6 +1681,7 @@ internal fun itemUseMessage(o: ItemUseOutcome, mon: String = "", item: String = 
     ItemUseResult.BAG_FULL -> tr("The bag is full: {0} can't go back in it.", bagItemName(held))
     ItemUseResult.PARTY_CHANGED -> tr("The party has changed. Try again.")
     ItemUseResult.TAKEN -> tr("Received {0} from {1}.", bagItemName(o.swapped), mon)
+    ItemUseResult.IN_GAME -> tr("Pick a POKéMON on the game's screen.")
 }
 
 /** What a USE / GIVE did, popped up over the bag ([ItemNoticeWindow]). */

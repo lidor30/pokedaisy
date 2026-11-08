@@ -7,7 +7,8 @@
          exported=false in every real build; only this debug-variant overlay
          changes it, via Gradle's manifest merger, so the flag never ships in
          a release build). -->
-    <application>
+    <!-- Debug only: plain HTTP to 127.0.0.1 / localhost, for a local co-op relay over `adb reverse`. -->
+    <application android:networkSecurityConfig="@xml/network_security_config_debug">
         <activity
             android:name=".PokeDaisyActivity"
             android:exported="true"

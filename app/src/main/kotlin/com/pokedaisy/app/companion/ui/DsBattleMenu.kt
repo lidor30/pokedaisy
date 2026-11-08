@@ -163,6 +163,8 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawBand(look: DsLo
 fun DsBattleMenu(
     snapshot: SnapshotView, state: DsBattleMenuState, battleInput: BattleInput?, picture: Rect?, shown: Boolean, active: Boolean = true,
     gameFills: Boolean = false,
+    /** BATTLE HINTS / BATTLE INFO: the moves' multipliers. */
+    hints: Boolean = true,
 ) {
     val input = snapshot.battleInputState
     val busy = rememberBattleInputBusy(battleInput)
@@ -172,12 +174,18 @@ fun DsBattleMenu(
         input == BATTLE_INPUT_MOVE_SELECT -> 2
         else -> 0
     }
-    val moves = snapshot.battlePlayer.getOrNull(0)?.moves.orEmpty().take(4)
+    val moves = snapshot.battlePlayer.getOrNull(0)?.moves.orEmpty().take(4).map { if (hints) it else it.copy(vs = emptyList()) }
     // The game asks by the nickname: the battler's from the party (species, level and HP alike), else its species.
     val battler = snapshot.battlePlayer.getOrNull(0)?.let { b ->
         snapshot.party.firstOrNull { it.species == b.species && it.level == b.level && it.hp == b.hp }?.shownName ?: b.name
     }.orEmpty()
     val wild = snapshot.enemyParty.isEmpty()
+    // A move (or RUN) picked: the strip goes at once, so it never covers what the game says next (a Discord report: it
+    // stayed over the foe's next Pokémon). Back after a moment if the game said no (a move it won't let you use).
+    var leaving by remember { mutableStateOf(false) }
+    androidx.compose.runtime.LaunchedEffect(leaving) {
+        if (leaving) { kotlinx.coroutines.delay(LEAVE_MS); leaving = false }
+    }
     SideEffect {
         if (state.mode != mode) {
             // The moves open on the first; the actions keep their place, as the game's do.
@@ -186,8 +194,8 @@ fun DsBattleMenu(
         }
         state.actionEnabled = { it != 3 || wild }
         state.moveEnabled = { moves.getOrNull(it)?.let { m -> m.pp > 0 } == true }
-        state.pickAction = { if (!busy) battleInput?.selectAction(it) }
-        state.pickMove = { if (!busy) battleInput?.selectMove(it) }
+        state.pickAction = { if (!busy) { if (it == 3) leaving = true; battleInput?.selectAction(it) } }
+        state.pickMove = { if (!busy) { leaving = true; battleInput?.selectMove(it) } }
         state.back = { if (!busy) battleInput?.back() }
     }
     // What the strip shows: the menu up, or - the keys the game's meanwhile - the last one held while the battle's bag or
@@ -197,9 +205,9 @@ fun DsBattleMenu(
     val holding = input == BATTLE_INPUT_BAG_OPEN || input == BATTLE_INPUT_PARTY_OPEN
     androidx.compose.runtime.LaunchedEffect(mode, holding) {
         if (mode != 0) held.intValue = mode
-        else if (!holding) { kotlinx.coroutines.delay(HOLD_MS); held.intValue = 0 }
+        else if (!holding) { if (!leaving) kotlinx.coroutines.delay(HOLD_MS); held.intValue = 0 }
     }
-    val shownMode = if (mode != 0) mode else if (shown && picture != null) held.intValue else 0
+    val shownMode = if (leaving) 0 else if (mode != 0) mode else if (shown && picture != null) held.intValue else 0
     if (shownMode == 0 || picture == null) return
     val idle = busy || mode == 0
     val look = DsLook.of(snapshot.game)
@@ -351,6 +359,17 @@ private const val GAME_MESSAGE_END = 0.62f
 
 /** How long the strip stays after its menu goes (not to the bag / party): FIGHT's panel slides in meanwhile. */
 private const val HOLD_MS = 300L
+/** How long a picked strip stays away with the game still on its menu. */
+private const val LEAVE_MS = 1000L
+
+/** The DS cursors' pulse in whole pixels (0 .. [PULSE_PX]), breathing out and back: for the companion's battle buttons. */
+@Composable
+internal fun rememberDsCursorPulse(max: Int = PULSE_PX): Float {
+    val pulse by rememberInfiniteTransition(label = "dsCursor").animateFloat(
+        0f, max + 0.99f, infiniteRepeatable(tween(PULSE_MS, easing = LinearEasing), RepeatMode.Reverse), label = "dsCursorPulse",
+    )
+    return kotlin.math.floor(pulse)
+}
 
 /** The cursor's pulse: out this many GBA pixels and back over [PULSE_MS] each way. */
 private const val PULSE_PX = 2
@@ -427,11 +446,21 @@ private fun Grid(look: DsLook, cursor: Int, u: Dp, pulse: Float, cell: @Composab
 /** HeartGold's red corner brackets round the cursor's button, thick, in a white rim, [pulse] GBA pixels out from its edges. */
 private fun Modifier.cursorCorners(on: Boolean, u: Dp, pulse: Float) = if (!on) this else drawWithContent {
     drawContent()
-    val px = u.toPx()
-    val out = (1 + pulse) * px
-    val t = 3 * px
-    val l = 9 * px
+    // The strip's buttons are a quarter of the game's height: its brackets a little lighter.
+    drawHgCursor(u.toPx(), pulse, thick = 3, arm = 9)
+}
+
+/** [cursorCorners]' brackets round this box, [px] a DS pixel (HeartGold's, headless: arms 10 long and 4 thick in a 1 px white
+ * rim, 1 px out from the button and breathing a pixel further): also the companion's GEN 4 battle buttons' cursor. */
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawHgCursor(
+    px: Float, pulse: Float, thick: Int = 4, arm: Int = 10, insideOf: Int = -1,
+) {
+    // [insideOf] >= 0: the companion's buttons, whose brackets must stay in the button's own box (past it they ran over
+    // the tab's edge and the next button): the rim's outside on the box's edge at the pulse's widest ([insideOf]).
     val rim = px
+    val out = if (insideOf >= 0) (pulse - insideOf) * px - rim else (1 + pulse) * px
+    val t = thick * px
+    val l = arm * px
     val w = size.width
     val h = size.height
     for ((cx, cy) in listOf(-1f to -1f, 1f to -1f, -1f to 1f, 1f to 1f)) {
@@ -614,13 +643,17 @@ private fun Modifier.ptCursor(on: Boolean, u: Dp, pulse: Float) = if (!on) this 
  * [pulse] px out. Drawn a pixel at a time, so its curve steps like the game's. */
 private fun Modifier.unovaCursor(on: Boolean, u: Dp, pulse: Float) = if (!on) this else drawWithContent {
     drawContent()
-    val px = u.toPx()
+    drawUnovaCursor(u.toPx(), pulse, r = 9)
+}
+
+/** [unovaCursor]'s rings round a [box] at this scope's origin, [px] a game pixel: Black's, headless, are 3 thick on a
+ * radius of 13 and breathe 2 px out. Also the companion's GEN 5 battle screen's cursor. */
+internal fun androidx.compose.ui.graphics.drawscope.DrawScope.drawUnovaCursor(px: Float, pulse: Float, box: Size = size, r: Int = 13) {
     val out = (1 + pulse) * px
-    val r = 9
     for ((cx, cy) in listOf(-1f to -1f, 1f to -1f, -1f to 1f, 1f to 1f)) {
         // The ring's centre r pixels in from the corner's outer point, the ring r - 3 .. r from it (r + 1: the rim).
-        val ox = if (cx < 0) -out else size.width + out
-        val oy = if (cy < 0) -out else size.height + out
+        val ox = if (cx < 0) -out else box.width + out
+        val oy = if (cy < 0) -out else box.height + out
         for (j in 0..r) for (k in 0..r) {
             val dx = r - j + 0.5f
             val dy = r - k + 0.5f

@@ -505,13 +505,13 @@ class FieldItemsTest {
 
     /** The generated tables (scripts/port_field_items.py) against the other-language ROMs they came from: each
      * matches its own ROM's code and gItems, and is the only table that does. -DmultiRomDir=..., else the
-     * user's "Pokemon Multi Language" folder; skipped without it. */
+     * retail ROM dir; skipped without it. */
     @Test
     fun `each ported table matches its ROM`() {
-        val dir = File(System.getProperty("multiRomDir") ?: (System.getProperty("user.home") + "/Downloads/Game ROMs & Emulation/Pokemon Multi Language"))
+        val dir = File(System.getProperty("multiRomDir") ?: RETAIL_ROM_DIR)
         assumeTrue(dir.isDirectory)
         // By header only (~50 ROMs of up to 16 MB): each one read whole when its table comes up.
-        val roms = dir.walk().filter { it.isFile && it.extension == "gba" && listOf("Pirate", "Debug", "Pokemon Box").none { x -> x in it.name } }
+        val roms = retailRomFiles(dir).filter { listOf("Pirate", "Debug", "Pokemon Box").none { x -> x in it.name } }
             .associateBy { f -> f.inputStream().use { val h = ByteArray(0xC0); it.read(h); "${String(h, 0xAC, 4)}${h[0xBC].toInt()}" } }
         var checked = 0
         for ((key, fns) in FIELD_ITEMS_PORTS) {

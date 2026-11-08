@@ -22,7 +22,12 @@ import java.io.File
  */
 object GameTitles {
 
-    val BY_SHA1: Map<String, String> by lazy { RETAIL + HACKS + RETAIL_PORT_TITLES }
+    val BY_SHA1: Map<String, String> by lazy { RETAIL + HACKS + RETAIL_PORT_TITLES + NDS_PORT_TITLES }
+
+    /** The DS language ports' own titles ([com.pokedaisy.app.companion.data.NDS_PORTS]). */
+    private val NDS_PORT_TITLES: Map<String, String> by lazy {
+        com.pokedaisy.app.companion.data.NDS_PORTS.associate { it.sha1 to it.title }
+    }
 
     /** A retail cart's SHA-1 (any language and revision), not a hack's. */
     fun isRetail(sha1: String): Boolean = sha1 in RETAIL || sha1 in RETAIL_PORT_TITLES
@@ -32,8 +37,14 @@ object GameTitles {
     internal val NDS_SHA1S = setOf(
         "0862ec35b24de5c7e2dcb88c9eea0873110d755c", "4fcded0e2713dc03929845de631d0932ea2b5a37", "f8dc38ea20c17541a43b58c5e6d18c1732c7e582",
         "13b6853aa93121069df1d17446d3ecb36872aecf", "576cdb7eec728c49aed85b9dd7e1e084ba1f08f9",
+        "62f9ec7a412d06bd518f7dc065e4612812e327b9", "dba64620a959d5f69ed1cf3e43fcfcf2786d417e",
+        "6ed98d446eb65861c71fc5f94bdc35691667f665", "a559da54839663d8f8f3f03382e5665a61873d22",
+        "28f075915dd445cbfd902f1e1a94d5048b03a095", "e5db5b8f79e8ae819be7d60e9e1006221d80ffab",
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1,
-    )
+        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1,
+        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_CLASSIC_SHA1,
+        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1,
+    ) + com.pokedaisy.app.companion.data.NDS_PORTS.map { it.sha1 }
 
     private val RETAIL: Map<String, String> = mapOf(
         // Retail (USA, Europe), every revision: pret's pokefirered / pokeemerald / pokeruby.
@@ -49,14 +60,26 @@ object GameTitles {
         // German HeartGold / SoulSilver, rev 0 (the contributor's dumps; GitHub #349).
         "13b6853aa93121069df1d17446d3ecb36872aecf" to "Pokémon Goldene Edition HeartGold",
         "576cdb7eec728c49aed85b9dd7e1e084ba1f08f9" to "Pokémon Silberne Edition SoulSilver",
+        "62f9ec7a412d06bd518f7dc065e4612812e327b9" to "Pokémon Version Platine",
+        "dba64620a959d5f69ed1cf3e43fcfcf2786d417e" to "Pokémon Version Or HeartGold",
+        "6ed98d446eb65861c71fc5f94bdc35691667f665" to "Pokémon Version Argent SoulSilver",
+        "a559da54839663d8f8f3f03382e5665a61873d22" to "Pokémon Version Noire",
+        "28f075915dd445cbfd902f1e1a94d5048b03a095" to "Pokémon Version Blanche",
         // Origin HeartGold v4.0.3, the English patch 1.0.0-rc8 on the US HeartGold (OriginHeartGold).
         com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1 to "Pokémon Origin HeartGold",
+        // Renegade Platinum v1.3.0, retail Platinum (USA rev 1) edited in place (RenegadePlatinum).
+        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1 to "Pokémon Renegade Platinum",
+        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_CLASSIC_SHA1 to "Pokémon Renegade Platinum",
+        com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1 to "Pokémon Renegade Platinum",
         // Black and White (USA, Europe): the No-Intro dumps (no decomp builds them).
         "26ad0b9967aa279c4a266ee69f52b9b2332399a5" to "Pokémon Black",
         "bc696a0dfb448c7b3a8a206f0f8214411a039208" to "Pokémon White",
         // Black 2 and White 2 (USA, Europe): the No-Intro dumps.
         "e51e6dfb8678a3d19dcd2a10691b96a569ca0abb" to "Pokémon Black 2",
         "b5d7490be7b415b8f1e672a53e978a9cc667e56a" to "Pokémon White 2",
+        // Japanese Black, the "5216" release: No-Intro's cart (gamedata/nds/ports.toml's IRBJ) with 512 bytes of overlay 12
+        // changed, which nothing here reads; headless it ran screen for screen as the No-Intro cart on the same save.
+        "e5db5b8f79e8ae819be7d60e9e1006221d80ffab" to "ポケットモンスター ブラック",
         // The other Emeralds, by their own titles (No-Intro's dumps; no decomp builds them).
         "fe1558a3dcb0360ab558969e09b690888b846dd9" to "Pokémon Edición Esmeralda",
         "61c2eb2b380b1a75f0c94b767a2d4c26cd7ce4e3" to "Pokémon Smaragd-Edition",
@@ -128,11 +151,13 @@ object GameTitles {
         "033d05374ae34eb84fae62c693ca8f3da23dd1bd" to "Pokémon FireRed Rocket Edition",
         "1ee1557db1e4c2e0e94c6306efcc40506bc40cc9" to "Pokémon Ash Gray",
         "92ed82145c013069472153391c7aab1cfbf37b75" to "Pokémon Ash Gray Fork Bug Fix",
+        "ab3bc012598d73dce965450df79893aeff97c834" to "Pokémon Modern Emerald",
         "5b38a681b6924ef3e0bb9f6cfbf22426c4c4e523" to "Pokémon Elite Redux",
         "2f3e17e55c6afe23da97ec0f96a067eeb142ad15" to "Pokémon Elite Redux",
         "40780347d0b4df6bf491eaf12603e5422caee677" to "Pokémon Team Rocket Edition: Dragonsden Version",
         "0d8bdaeeca0856175037a75679c1a2b73ad2b68a" to "Pokémon Team Rocket Edition 2026 (ES)",
         "ae1c4be9be8d706bb989602bc05731203d42860d" to "Pokémon Monomyth",
+        "eb660caffbc26e1f09f86714d03af4c3eccd9e4d" to "Pokémon Monomyth",
         "60182b934d2e8eb3eef226a9bbc25e5df6becd4f" to "Pokémon Wishes of Tomorrow",
         "20e91aecb3243eea7cd610659846f37062f5d709" to "Pokémon Dreamstone Mysteries",
         "20dfaea1d5317cf95fe0b493208edce7d50b865f" to "Pokémon Ghost Grey",
@@ -166,6 +191,8 @@ object GameTitles {
         "534876e4e4d0d79a82fef3bbe5bea11c40451727" to "Pokémon Crystal Clear",
         // Prism v0.95 build 254 (Hotfix 5).
         "752076692ae3387cf426ce5f51a98c6b60e8df6a" to "Pokémon Prism",
+        "2ac87de42afc70ef6016805acb3b206644417f97" to "Pokémon Yellow Legacy",
+        "74a6727e4406c35bc2d4f81347a5c5fdb8970663" to "Pokémon Crystal Legacy",
         // Polished Crystal 3.2.0 - 3.2.3: every official release build (normal, faithful, their debug builds).
         "6930b48af5844d373e3c9130f26d6dd1084cf4ed" to "Pokémon Polished Crystal",
         "beb8b38280af59e9ef84be12684a6ecf09021c9b" to "Pokémon Polished Crystal",
@@ -189,15 +216,17 @@ object GameTitles {
     )
 
     /** DS carts worth hashing (128 MB each, once per file): the DS games above. */
-    private val NDS_CODES = setOf("CPUE", "IPKE", "IPKD", "IPGE", "IPGD", "IRBO", "IRAO", "IREO", "IRDO", "IPKJ")
+    private val NDS_CODES = setOf(
+        "CPUE", "CPUF", "IPKE", "IPKD", "IPKF", "IPGE", "IPGD", "IPGF", "IRBO", "IRBF", "IRAO", "IRAF", "IREO", "IRDO", "IPKJ",
+    ) + com.pokedaisy.app.companion.data.DsPorts.codes
 
     /** Only these games' ROMs (and Game Boy carts) are worth hashing: every entry above is one of them. */
     private val CODES = setOf("BPRE", "BPGE", "BPEE", "AXVE", "AXPE") + EMERALD_LOCALIZED_CODES +
         RETAIL_PORT_CODE_TITLES.keys + TelemetrySampler.HACK_GAME_CODES
 
-    /** What the library shows for [rom]: the player's RENAME, else [defaultLabel]. Cheap. */
+    /** What the library shows for [rom]: the player's RENAME, else the file's name (GAME NAMES) or [defaultLabel]. Cheap. */
     fun label(context: Context, prefs: Prefs, rom: File): String =
-        prefs.romDisplayName(rom) ?: defaultLabel(context, rom)
+        prefs.romDisplayName(rom) ?: if (prefs.libraryFileNames) RomArchive.baseName(rom) else defaultLabel(context, rom)
 
     /** [rom]'s name with no RENAME: the game's ([title]) if known, else the tidied file name. */
     fun defaultLabel(context: Context, rom: File): String =

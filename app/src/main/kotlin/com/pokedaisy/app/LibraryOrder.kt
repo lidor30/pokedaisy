@@ -86,6 +86,16 @@ enum class LibrarySort(val id: Int, val label: String) {
     }
 }
 
+/** The library's SEARCH: every word of [query] is in one of [names], whatever the case or accents ("poke red" finds
+ * "Pokémon FireRed"). */
+fun matchesSearch(query: String, names: List<String>): Boolean {
+    val all = names.map(::searchable)
+    return searchable(query).split(' ').filter { it.isNotEmpty() }.all { word -> all.any { word in it } }
+}
+
+private fun searchable(s: String) =
+    java.text.Normalizer.normalize(s, java.text.Normalizer.Form.NFD).replace(Regex("\\p{M}+"), "").lowercase()
+
 /**
  * [roms] (alphabetical, as [RomFolder.libraryRoms] lists them) in [sort]'s order, the player's
  * favorites ([Prefs.favoriteRoms]) first - each part in that order. LAST PLAYED: by

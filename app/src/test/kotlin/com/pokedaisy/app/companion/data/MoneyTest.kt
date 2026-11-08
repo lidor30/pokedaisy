@@ -56,6 +56,7 @@ class MoneyTest {
         assertEquals(999_900L, money("elite_redux_v2653", NATIVE_ELITE_REDUX_V2_65_3B))
         // Monomyth's (the user's save): SaveBlock1 +0x494 XOR the key at SaveBlock2 +0x40.
         assertEquals(1968L, money("monomyth", NATIVE_MONOMYTH))
+        assertEquals(1968L, money("monomyth_v1_1", NATIVE_MONOMYTH_V1_1))
         // Team Rocket Edition: Dragonsden's save: past 999,999 (its AddMoney caps at 99,999,999).
         assertEquals(3_000_000L, money("team_rocket", NATIVE_TEAM_ROCKET))
         // Wishes of Tomorrow's new game (its START menu: ₽3000), the randomizer one too.
@@ -80,6 +81,8 @@ class MoneyTest {
         assertEquals(185092L, money("recharged_emerald_v225", NATIVE_RECHARGED_EMERALD_V2_2_5))
         assertEquals(185092L, money("recharged_emerald", NATIVE_RECHARGED_EMERALD_V2_2_8))
         assertEquals(185092L, money("recharged_emerald_rebalanced", NATIVE_RECHARGED_EMERALD_REBALANCED_V2_2_8))
+        // Modern Emerald: SaveBlock1+0x490 under SaveBlock2's key at +0xBC (retail +0xAC); a new game's 3000.
+        assertEquals(3000L, money("modern_emerald", NATIVE_MODERN_EMERALD))
         // Super Mariomon: vanilla's offsets in every release (its card says P3100).
         for ((key, cfg) in listOf("mariomon_v1_5_2" to NATIVE_MARIOMON_V1_5_2, "mariomon_v1_5_1" to NATIVE_MARIOMON_V1_5_1,
                 "mariomon_v1_3" to NATIVE_MARIOMON_V1_3, "mariomon_v1_2_2" to NATIVE_MARIOMON_V1_2_2, "mariomon_v1_2_1" to NATIVE_MARIOMON_V1_2_1)) {

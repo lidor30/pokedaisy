@@ -60,14 +60,14 @@ class ReusableTmsTest {
         if (rom.isFile) assertEquals("%08X".format(FIELD_ITEMS_EMERALD_LEGACY.removeBagItem), "%08X".format(ReusableTms.find(rom).single().calls))
     }
 
-    /** Every retail cart in the user's "Pokemon Multi Language" folder (-DmultiRomDir=...): as many sites as its engine
+    /** Every retail cart in the retail ROM dir (-DmultiRomDir=...): as many sites as its engine
      * has, each calling the RemoveBagItem of that build's field-item table. */
     @Test
     fun everyRetailBuild() {
-        val dir = File(System.getProperty("multiRomDir") ?: (System.getProperty("user.home") + "/Downloads/Game ROMs & Emulation/Pokemon Multi Language"))
+        val dir = File(System.getProperty("multiRomDir") ?: RETAIL_ROM_DIR)
         assumeTrue(dir.isDirectory)
         var checked = 0
-        for (f in dir.walk().filter { it.isFile && it.extension == "gba" && listOf("Pirate", "Debug").none { x -> x in it.name } }) {
+        for (f in retailRomFiles(dir).filter { listOf("Pirate", "Debug").none { x -> x in it.name } }) {
             val h = f.inputStream().use { ByteArray(0xC0).also { b -> it.read(b) } }
             val code = String(h, 0xAC, 4)
             val sites = ReusableTms.find(f)

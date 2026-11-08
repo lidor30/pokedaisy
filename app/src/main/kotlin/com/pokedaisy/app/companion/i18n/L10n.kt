@@ -6,7 +6,7 @@ import androidx.compose.runtime.setValue
 import java.util.Locale
 
 /**
- * The app's own text in eight languages. Game data (Pokémon / move / item / type
+ * The app's own text in nine languages. Game data (Pokémon / move / item / type
  * names, GUIDE pages) isn't translated here - it comes from the game's tables.
  *
  * Text is keyed by its English: `tr("CLOSE GAME")` returns the current
@@ -30,6 +30,9 @@ enum class AppLanguage(val code: String, val romLetter: Char?, val locale: Strin
     // (GitHub #61). Brazil's is the official games' Portuguese; Portugal's keeps those game words, its own everyday ones.
     BR("BR", null, "pt-BR", "PORTUGUÊS (BR)"),
     PT("PT", null, "pt", "PORTUGUÊS (PT)"),
+    // No Gen 3 game came out in Korean; the Korean DS carts (HG / SS, B / W, B2 / W2: game codes ending in K) pick it,
+    // else the device's language or the LANGUAGE row. Hangul draws in GalmuriKO (PixelTypeface.kt).
+    KO("KO", 'K', "ko", "한국어"),
     ;
 
     companion object {
@@ -50,12 +53,12 @@ enum class AppLanguage(val code: String, val romLetter: Char?, val locale: Strin
 const val LANGUAGE_AUTO = "AUTO"
 
 /**
- * One English string's translations. [br] (Brazilian Portuguese) and [pt] (Portugal's) are required in the
- * app's own tables (`TranslationsTest`), optional in the GUIDE's, which show English in Portuguese.
+ * One English string's translations. [br] (Brazilian Portuguese), [pt] (Portugal's) and [ko] (Korean) are required
+ * in the app's own tables (`TranslationsTest`), optional in the GUIDE's, which show English in those languages.
  */
 data class Tr(
     val ja: String, val fr: String, val de: String, val it: String, val es: String,
-    val br: String? = null, val pt: String? = null,
+    val br: String? = null, val pt: String? = null, val ko: String? = null,
 ) {
     fun of(lang: AppLanguage): String? = when (lang) {
         AppLanguage.EN -> null
@@ -66,6 +69,7 @@ data class Tr(
         AppLanguage.ES -> es
         AppLanguage.BR -> br
         AppLanguage.PT -> pt
+        AppLanguage.KO -> ko
     }
 }
 

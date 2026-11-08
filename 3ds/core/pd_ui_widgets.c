@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "pd_tables.h"
 #include "pd_ui_internal.h"
 
 #define HP_FRAME 0x525252
@@ -31,6 +32,41 @@ void ui_add_hit(struct pd_ui* ui, int x, int y, int w, int h, int id) {
 
 void ui_add_scroll_hit(struct pd_ui* ui, int x, int y, int w, int h, int id) {
     add(ui, x, y, w, h, id, true);
+}
+
+void ui_mono(struct pd_canvas* c, const struct pd_mono* icon, int x, int y, int scale, uint32_t color) {
+    for (int r = 0; r < icon->h; r++)
+        for (int col = 0; icon->rows[r][col]; col++)
+            if (icon->rows[r][col] == '1') pd_fill(c, x + col * scale, y + r * scale, scale, scale, color);
+}
+
+void ui_art(struct pd_canvas* c, const struct pd_art* art, int x, int y, int scale) {
+    for (int r = 0; r < art->h; r++) {
+        for (int col = 0; art->rows[r][col]; col++) {
+            const char* k = strchr(art->keys, art->rows[r][col]);
+            if (k && art->rows[r][col] != '.') pd_fill(c, x + col * scale, y + r * scale, scale, scale, art->colors[k - art->keys]);
+        }
+    }
+}
+
+uint32_t ui_type_color(int type) {
+    static const uint32_t COLORS[18] = {
+        0xA8A878, 0xC03028, 0xA890F0, 0xA040A0, 0xE0C068, 0xB8A038, 0xA8B820, 0x705898, 0xB8B8D0,
+        0x68A090, 0xF08030, 0x6890F0, 0x78C850, 0xF8D030, 0xF85888, 0x98D8D8, 0x7038F8, 0x705848,
+    };
+    return type >= 0 && type < 18 ? COLORS[type] : PD_MUTED;
+}
+
+int ui_type_badge(struct pd_canvas* c, int x, int y, int type) {
+    char text[12];
+    const char* name = pd_type_name(ui_game, type);
+    int n = 0;
+    for (; name[n] && n < 11; n++) text[n] = name[n] >= 'a' && name[n] <= 'z' ? (char) (name[n] - 32) : name[n];
+    text[n] = 0;
+    int w = pd_text_width(text) + 6;
+    pd_round_rect(c, x, y, w, 12, 1, ui_type_color(type));
+    pd_text(c, x + 3, y - 2, text, 0xFFFFFF, PD_NO_SHADOW);
+    return w;
 }
 
 void ui_button(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, const char* label, int id) {
@@ -94,7 +130,9 @@ void ui_row(struct pd_canvas* c, int x, int y, int w, const char* label, const c
     int ty = pd_text_y(y, ROW_H);
     pd_text(c, x, ty, label, PD_LABEL, PD_LABEL_SHADOW);
     if (value) {
-        int vx = x + w * 42 / 100;
+        // The value column, or past a label too long for it (a Game Boy font's QUICK MENU BUTTON ran under its value).
+        int vx = x + w * 42 / 100, past = x + pd_text_width(label) + 8;
+        if (vx < past) vx = past;
         pd_text_fit(c, vx, ty, x + w - vx, value, PD_VALUE, PD_VALUE_SHADOW);
     }
 }
@@ -116,6 +154,12 @@ void ui_ball(struct pd_canvas* c, int x, int y, bool caught) {
     }
 }
 
+int ui_scroll_to(int scroll, int top, int h, int view) {
+    if (top + h > scroll + view) scroll = top + h - view;
+    if (top < scroll) scroll = top;
+    return scroll;
+}
+
 int ui_clamp_scroll(int scroll, int total, int view) {
     int max = total - view;
     if (max < 0) max = 0;
@@ -130,7 +174,22 @@ void ui_scroll_bar(struct pd_canvas* c, int x, int y, int h, int scroll, int tot
     pd_fill(c, x, ty, 2, th, color);
 }
 
-void ui_format_money(long v, char* buf, size_t len) {
+void ui_scroll_rail(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, int scroll, int total, int view) {
+    int th = h * view / total;
+    if (th < 18) th = 18;
+    int max = total - view, ty = y + (h - th) * scroll / (max > 0 ? max : 1);
+    pd_round_rect(c, x, y, w, h, 3, PD_DIVIDER);
+    pd_round_rect(c, x + 1, y + 1, w - 2, h - 2, 2, PD_LIST_FILL);
+    pd_round_rect(c, x, ty, w, th, 3, ui->barDragging ? PD_VALUE : PD_LABEL);
+    ui->barY = y;
+    ui->barH = h;
+    ui->barThumb = th;
+    ui->barMax = max;
+    // A wider target than it looks: a stylus on a 3DS is thin, a finger isn't.
+    ui_add_hit(ui, x - 6, y, w + 8, h, HIT_SCROLL_BAR);
+}
+
+void pd_ui_format_money(long v, char* buf, size_t len) {
     if (v < 0) {
         snprintf(buf, len, "-");
     } else if (v >= 1000) {

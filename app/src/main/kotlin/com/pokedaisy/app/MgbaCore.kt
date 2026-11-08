@@ -63,6 +63,9 @@ object MgbaCore {
     external fun pkWideConfigure(crc: Int)
     /** WIDE: whether pk_wide.c has tables for the ROM with this CRC32 (pk_wide_games.h). Any thread. */
     external fun pkWideKnows(crc: Int): Boolean
+    /** WIDE and the field reads: know the ROM with CRC32 [crc] by [row] (a hack [com.pokedaisy.app.companion.data.RetailEngine]
+     * proved to keep the retail build [baseCrc]'s engine). One at a time. Any thread, before the game is configured. */
+    external fun pkWideAddDerived(crc: Int, baseCrc: Int, row: IntArray): Boolean
     /** SCENE SPEEDS / AUTO-RUN / RUN INDOORS / WILD ENCOUNTERS: read the field with WIDE's tables for the ROM with
      * this CRC32, WIDE on or off (0 = none), and its wild-encounter switch at [wildFlag] ([WildEncounters.find]; 0 =
      * none). Emu thread. */
@@ -215,8 +218,15 @@ object MgbaCore {
      * closes it then: HeartGold / SoulSilver's menuInputState). Emu thread. */
     external fun pkNdsKeepStartMenu(on: Boolean)
 
+    /** A DS game's screens fading by master brightness (towards black or white): the factor 0-16, the top screen's in
+     * bits 0-7, the touch screen's in 8-15; 0 = no fade. Emu thread, after [pkRunFrame]. */
+    external fun pkNdsFade(): Int
+
     /** DS CPU BOOST: the emulated ARM9 at twice the DS's clock - a game's own slow frames (HeartGold walking) go. Emu thread. */
     external fun pkNdsCpuBoost(on: Boolean)
+    /** A DS game's Action Replay codes ([words], [lengths] words per cheat: cheats.DsCheats) into melonDS's AREngine,
+     * replacing the ones before; none = no cheats. Emu thread, between frames. The count loaded, -1 with no DS game. */
+    external fun pkNdsCheats(words: IntArray, lengths: IntArray): Int
 
     /** DS RESOLUTION (nds/pk_nds_gl.h): the 3D at [scale] times the DS's on the GPU (2-8), or the DS's own on the CPU
      * (1). Taken before the next frame. Emu thread. */

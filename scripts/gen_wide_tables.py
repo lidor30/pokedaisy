@@ -294,6 +294,13 @@ HACKS = [
                 CAMERA_OFFSET=0x0203824C, PAN_OFF=0xC, OBJECT_EVENTS=0x02038280, SPRITES=0x020214D0, COORD_OFFSET=0x02022DA8,
                 COORD_OFFSET_Y=0x02022DAA, SPRITE_ORDER=0x02022A54, GMAIN=0x02020618, CONTROLS_LOCKED=0x0203BF67,
                 METATILE_SIZE=24)),
+    # v1.1: v1.0's RAM, its map groups moved (and its ScriptContext_SetupScript).
+    dict(name="Monomyth v1.1", sha1="eb660caffbc26e1f09f86714d03af4c3eccd9e4d", family="MM", save="monomyth_v1_1",
+         boot_file="monomyth.txt", script=0x08090A61,
+         a=dict(VMAP=0x0203823C, MAP_HEADER=0x02038210, MAP_GROUPS=0x0886F3A8, SAVE_BLOCK1_PTR=0x03001240, SB1_POS=4,
+                CAMERA_OFFSET=0x0203824C, PAN_OFF=0xC, OBJECT_EVENTS=0x02038280, SPRITES=0x020214D0, COORD_OFFSET=0x02022DA8,
+                COORD_OFFSET_Y=0x02022DAA, SPRITE_ORDER=0x02022A54, GMAIN=0x02020618, CONTROLS_LOCKED=0x0203BF67,
+                METATILE_SIZE=24)),
     # pokeemerald-expansion builds: scripts/find_wide_addrs.py's dumps (gMapHeader, gSaveBlock1Ptr and gMapGroups from
     # the app's NativeConfig / GuideTables), ScriptContext_SetupScript from their battle fixtures' READMEs.
     dict(name="Lazarus v2.0", sha1="7dcdc7e280bc4631487e13dd37e6e0cea04adea6", family="EX", save="lazarus_srm",

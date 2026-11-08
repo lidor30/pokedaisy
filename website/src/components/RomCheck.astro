@@ -2,14 +2,45 @@
 // The ROM check: reads a dropped ROM in the browser (never uploaded) and judges it with
 // src/lib/compat.js - the app's CompanionSupport rules over compat.json.
 import Pixel from './Pixel.astro';
+import { trFor } from '../i18n/index.js';
+
+const tr = trFor(Astro.url);
+// What the script below writes, already in the page's language ({name}s filled in there).
+const strings = {
+  'supported-version': tr('The companion knows this exact version of {title}. Party, battles, map and more, on a second screen or beside the game.'),
+  supported: tr('The companion reads {title}. Party, battles, map and more, on a second screen or beside the game.'),
+  'unknown-hack': tr('A {base}-based ROM hack we don\'t know yet. It still plays, but the companion screen only says "not supported". Ask for it below!'),
+  'in-progress': tr('{title} {version} plays in PokeDaisy, but its companion is still being built. It\'s coming!'),
+  'retail-hack': tr('A ROM hack built on {base}. Only the original game is supported so far.'),
+  revision: tr('{base} revision {rev} isn\'t supported yet.'),
+  'other-game': tr('Not a game the companion reads (game code {code}). PokeDaisy still plays it, without the companion.'),
+  gb: tr('A Game Boy game the companion doesn\'t read yet. It reads Pokémon Red, Blue, Yellow, Gold, Silver, Crystal, Crystal Clear, Prism and Polished Crystal so far.'),
+  ds: tr('A DS game the companion doesn\'t read yet. It reads Pokémon Platinum, HeartGold and SoulSilver so far.'),
+  '7z': tr('Unpack the .7z first, then drop the ROM (or a .zip of it).'),
+  'empty-zip': tr('There\'s no .gba, .gb, .gbc or .nds file in that zip.'),
+  'not-a-rom': tr('This doesn\'t look like a Game Boy, GBA or DS ROM.'),
+  error: tr('Couldn\'t read that file: {error}'),
+  SUPPORTED: tr('SUPPORTED'),
+  'NOT YET': tr('NOT YET'),
+  ERROR: tr('ERROR'),
+  'BASED ON': tr('BASED ON'),
+  FILE: tr('FILE'),
+  'GAME CODE': tr('GAME CODE'),
+  REV: tr('REV {n}'),
+  SIZE: tr('SIZE'),
+  MB: tr('{n} MB'),
+  'ASK FOR SUPPORT': tr('ASK FOR SUPPORT'),
+  CHECKING: tr('CHECKING…'),
+  AGAIN: tr('DROP ANOTHER ROM'),
+};
 ---
-<div class="romcheck">
+<div class="romcheck" data-t={JSON.stringify(strings)} data-feedback={tr.path('/feedback/')}>
   <label class="drop f-card" data-drop>
     <input type="file" accept=".gba,.gb,.gbc,.nds,.zip,.7z" hidden data-file />
     <span class="drop-art"><Pixel name="logo" scale={2} /></span>
-    <span class="drop-title" data-drop-text>DROP A ROM HERE</span>
-    <span class="drop-sub small muted">or tap to pick one: .gba, .gb, .gbc, .nds or a .zip of one</span>
-    <span class="drop-lock small"><Pixel name="states" scale={0.667} /> Checked right here in your browser. Never uploaded.</span>
+    <span class="drop-title" data-drop-text>{tr('DROP A ROM HERE')}</span>
+    <span class="drop-sub small muted">{tr('or tap to pick one: .gba, .gb, .gbc, .nds or a .zip of one')}</span>
+    <span class="drop-lock small"><Pixel name="states" scale={0.667} /> {tr('Checked right here in your browser. Never uploaded.')}</span>
   </label>
 
   <div class="result f-list" data-result hidden aria-live="polite">
@@ -64,35 +95,24 @@ import Pixel from './Pixel.astro';
   import data from '../data/compat.json';
   import { checkFile } from '../lib/compat.js';
   import { track } from '../lib/analytics.js';
+  import { fill } from '../i18n/fill.js';
 
-  const MESSAGES: Record<string, (v: any, r: any) => string> = {
-    supported: (v) => v.version
-      ? `The companion knows this exact version of ${v.title}. Party, battles, map and more, on a second screen or beside the game.`
-      : `The companion reads ${v.title}. Party, battles, map and more, on a second screen or beside the game.`,
-    'unknown-hack': (v) => `A ${v.base}-based ROM hack we don't know yet. It still plays, but the companion screen only says "not supported". Ask for it below!`,
-    'in-progress': (v) => `${v.title} ${v.version} plays in PokeDaisy, but its companion is still being built. It's coming!`,
-    'retail-hack': (v) => `A ROM hack built on ${v.base}. Only the original game is supported so far.`,
-    revision: (v, r) => `${v.base} revision ${r.rev} isn't supported yet.`,
-    'other-game': (_, r) => `Not a game the companion reads (game code ${r.code}). PokeDaisy still plays it, without the companion.`,
-    gb: () => 'A Game Boy game the companion doesn\'t read yet. It reads Pokémon Red, Blue, Yellow, Gold, Silver, Crystal, Crystal Clear, Prism and Polished Crystal so far.',
-    ds: () => 'A DS game the companion doesn\'t read yet. It reads Pokémon Platinum, HeartGold and SoulSilver so far.',
-    '7z': () => 'Unpack the .7z first, then drop the ROM (or a .zip of it).',
-    'empty-zip': () => 'There\'s no .gba, .gb, .gbc or .nds file in that zip.',
-    'not-a-rom': () => 'This doesn\'t look like a Game Boy, GBA or DS ROM.',
-  };
+  // Which message a verdict gets (its text comes from the page: data-t).
+  const message = (v: any) => (v.status === 'unsupported' ? v.reason : v.version ? 'supported-version' : 'supported');
   const STAMPS: Record<string, [string, string]> = {
     supported: ['SUPPORTED', 'f-pillGreen'],
     unsupported: ['NOT YET', 'f-pillRed'],
   };
 
   for (const root of document.querySelectorAll<HTMLElement>('.romcheck')) {
+    const t: Record<string, string> = JSON.parse(root.dataset.t!);
     const drop = root.querySelector<HTMLElement>('[data-drop]')!;
     const input = root.querySelector<HTMLInputElement>('[data-file]')!;
     const dropText = root.querySelector<HTMLElement>('[data-drop-text]')!;
     const result = root.querySelector<HTMLElement>('[data-result]')!;
     const verdictEl = root.querySelector<HTMLElement>('[data-verdict]')!;
     const rows = root.querySelector<HTMLElement>('[data-rows]')!;
-    const message = root.querySelector<HTMLElement>('[data-message]')!;
+    const messageEl = root.querySelector<HTMLElement>('[data-message]')!;
     const actions = root.querySelector<HTMLElement>('[data-actions]')!;
 
     const row = (label: string, value: string, plain = false) => {
@@ -115,13 +135,13 @@ import Pixel from './Pixel.astro';
       });
       const a = document.createElement('a');
       a.className = 'btn f-btn h-btnHot small';
-      a.href = `/feedback/#${params}`;
-      a.textContent = 'ASK FOR SUPPORT';
+      a.href = `${root.dataset.feedback}#${params}`;
+      a.textContent = t['ASK FOR SUPPORT'];
       return a;
     };
 
     const check = async (file: File) => {
-      dropText.textContent = 'CHECKING…';
+      dropText.textContent = t.CHECKING;
       drop.classList.add('busy');
       result.hidden = true;
       result.classList.remove('in');
@@ -134,16 +154,16 @@ import Pixel from './Pixel.astro';
         const [stampText, stampFrame] = STAMPS[v.status];
         const stamp = document.createElement('span');
         stamp.className = `stamp chip ${stampFrame}`;
-        stamp.textContent = stampText;
+        stamp.textContent = t[stampText];
         const name = document.createElement('span');
         name.textContent = v.title ? (v.version ? `${v.title} ${v.version}` : v.title) : v.base ?? r.name;
         verdictEl.append(stamp, name);
-        if (v.base && v.base !== v.title) row('BASED ON', v.base);
-        row('FILE', r.name, true);
-        if (r.code) row('GAME CODE', `${r.code}  REV ${r.rev}`);
-        if (r.size) row('SIZE', `${(r.size / 1048576).toFixed(r.size % 1048576 ? 1 : 0)} MB`);
+        if (v.base && v.base !== v.title) row(t['BASED ON'], v.base);
+        row(t.FILE, r.name, true);
+        if (r.code) row(t['GAME CODE'], `${r.code}  ${fill(t.REV, { n: r.rev })}`);
+        if (r.size) row(t.SIZE, fill(t.MB, { n: (r.size / 1048576).toLocaleString(document.documentElement.lang, { maximumFractionDigits: r.size % 1048576 ? 1 : 0, minimumFractionDigits: r.size % 1048576 ? 1 : 0 }) }));
         if (r.sha1) row('SHA-1', r.sha1, true);
-        message.textContent = MESSAGES[v.status === 'unsupported' ? v.reason : v.status](v, r);
+        messageEl.textContent = fill(t[message(v)], { ...r, ...v });
         // The verdict alone: never the file's name, code or hash.
         track('rom_check', { verdict: v.status, reason: v.reason });
         if (r.sha1 && (['unknown-hack', 'retail-hack', 'revision', 'other-game', 'gb', 'ds'].includes(v.reason))) {
@@ -152,13 +172,13 @@ import Pixel from './Pixel.astro';
       } catch (e) {
         const stamp = document.createElement('span');
         stamp.className = 'stamp chip f-pillRed';
-        stamp.textContent = 'ERROR';
+        stamp.textContent = t.ERROR;
         verdictEl.append(stamp);
-        message.textContent = `Couldn't read that file: ${(e as Error).message}`;
+        messageEl.textContent = fill(t.error, { error: (e as Error).message });
         track('rom_check', { verdict: 'error' });
       }
       drop.classList.remove('busy');
-      dropText.textContent = 'DROP ANOTHER ROM';
+      dropText.textContent = t.AGAIN;
       result.hidden = false;
       result.classList.add('in');
     };

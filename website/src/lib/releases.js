@@ -64,8 +64,9 @@ export async function getDownloads() {
   return downloads;
 }
 
-export function formatDate(iso) {
-  return new Date(iso).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
+/** A release's date in the page's language ([locale]: src/i18n's; English keeps the site's 7 NOV 2026). */
+export function formatDate(iso, locale = 'en-GB') {
+  return new Date(iso).toLocaleDateString(locale === 'en-US' ? 'en-GB' : locale, { day: 'numeric', month: 'short', year: 'numeric' }).toUpperCase();
 }
 
 // Quotes too: a release body is text from GitHub, and a `"` in a link's URL would otherwise end its href.

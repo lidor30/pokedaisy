@@ -157,6 +157,11 @@ class Prefs(context: Context) {
         get() = p.getBoolean("reusable_tms", false)
         set(v) = p.edit().putBoolean("reusable_tms", v).apply()
 
+    /** INSTANT TEXT: a text box's words appear at once (InstantText.kt). */
+    var instantText: Boolean
+        get() = p.getBoolean("instant_text", false)
+        set(v) = p.edit().putBoolean("instant_text", v).apply()
+
     /** SHINY ODDS: a wild foe is shiny 1 in this many ([com.pokedaisy.app.companion.data.ShinyOdds]; NORMAL 8192 = the
      * game's own odds). Read through [com.pokedaisy.app.companion.data.ShinyOdds.choices]: a debug build's 1 in 4 / 1 in 1
      * count as NORMAL in a release build (PokeDaisyActivity.shinyOddsPref). */
@@ -213,24 +218,38 @@ class Prefs(context: Context) {
         get() = p.getInt("touch_controls", 0)
         set(v) = p.edit().putInt("touch_controls", v).apply()
 
+    /** The extras there were before ZOOM and REWIND (a set saved then didn't say which it knew). */
+    private val EXTRAS_BEFORE_ZOOM = setOf("FF", "QUICK_MENU", "TURBO_A", "TURBO_B", "SAVE_STATE", "LOAD_STATE")
+
     /** SETTINGS > TOUCH CONTROLS: when they show ([touchControlsMode]), the layout, size, opacity, extras and the
      * player's own layouts per orientation ([com.pokedaisy.app.companion.TouchLayout.encode]). */
     var touchControlsStyle: com.pokedaisy.app.companion.TouchControlsStyle
         get() {
             val d = com.pokedaisy.app.companion.TouchControlsStyle()
             fun <T : Enum<T>> pick(all: Array<T>, key: String, default: T) = p.getString(key, null)?.let { n -> all.firstOrNull { it.name == n } } ?: default
+            val oldVibration = p.getInt("touch_vibration_level", if (p.getBoolean("touch_vibration", false)) 1 else 0)
             return com.pokedaisy.app.companion.TouchControlsStyle(
                 show = com.pokedaisy.app.companion.TouchShow.entries.getOrElse(touchControlsMode) { d.show },
                 preset = pick(com.pokedaisy.app.companion.TouchPreset.values(), "touch_preset", d.preset),
                 size = pick(com.pokedaisy.app.companion.TouchSize.values(), "touch_size", d.size),
+                look = pick(com.pokedaisy.app.companion.TouchLook.values(), "touch_look", d.look),
+                colors = pick(com.pokedaisy.app.companion.TouchColors.values(), "touch_colors", d.colors),
+                skinGba = p.getString("touch_skin_gba", null),
+                skinGb = p.getString("touch_skin_gb", null),
                 position = pick(com.pokedaisy.app.companion.TouchPosition.values(), "touch_position", d.position),
                 opacity = p.getInt("touch_opacity", d.opacity),
                 extras = p.getString("touch_extras", null)?.let { s ->
-                    s.split(',').mapNotNull { n -> com.pokedaisy.app.companion.TouchButton.values().firstOrNull { it.name == n && it.extra } }.toSet()
+                    val saved = s.split(',').mapNotNull { n -> com.pokedaisy.app.companion.TouchButton.values().firstOrNull { it.name == n && it.extra } }.toSet()
+                    // Extras that came after this set was saved (ZOOM, REWIND) start as their default, on.
+                    val known = p.getString("touch_extras_known", null)?.split(',')?.toSet() ?: EXTRAS_BEFORE_ZOOM
+                    saved + d.extras.filter { it.name !in known }
                 } ?: d.extras,
+                xyButtons = p.getBoolean("touch_xy", d.xyButtons),
                 eightWay = p.getBoolean("touch_eight_way", d.eightWay),
                 fadeIdle = p.getBoolean("touch_fade_idle", d.fadeIdle),
-                vibration = p.getBoolean("touch_vibration", d.vibration),
+                // VIBRATION was one row of OFF / LIGHT / MEDIUM / STRONG (touch_vibration_level), and a switch before that.
+                vibrate = p.getBoolean("touch_vibrate", oldVibration > 0),
+                vibrationStrength = p.getInt("touch_vibration_strength", if (oldVibration > 0) oldVibration else d.vibrationStrength),
                 useCustom = p.getBoolean("touch_use_custom", d.useCustom),
                 portrait = com.pokedaisy.app.companion.TouchLayout.decode(p.getString("touch_layout_portrait", null)),
                 landscape = com.pokedaisy.app.companion.TouchLayout.decode(p.getString("touch_layout_landscape", null)),
@@ -241,12 +260,19 @@ class Prefs(context: Context) {
             p.edit()
                 .putString("touch_preset", v.preset.name)
                 .putString("touch_size", v.size.name)
+                .putString("touch_look", v.look.name)
+                .putString("touch_colors", v.colors.name)
+                .putString("touch_skin_gba", v.skinGba)
+                .putString("touch_skin_gb", v.skinGb)
                 .putString("touch_position", v.position.name)
                 .putInt("touch_opacity", v.opacity)
                 .putString("touch_extras", v.extras.joinToString(",") { it.name })
+                .putString("touch_extras_known", com.pokedaisy.app.companion.TouchButton.extras.joinToString(",") { it.name })
+                .putBoolean("touch_xy", v.xyButtons)
                 .putBoolean("touch_eight_way", v.eightWay)
                 .putBoolean("touch_fade_idle", v.fadeIdle)
-                .putBoolean("touch_vibration", v.vibration)
+                .putBoolean("touch_vibrate", v.vibrate)
+                .putInt("touch_vibration_strength", v.vibrationStrength)
                 .putBoolean("touch_use_custom", v.useCustom)
                 .putString("touch_layout_portrait", v.portrait.encode())
                 .putString("touch_layout_landscape", v.landscape.encode())
@@ -262,11 +288,46 @@ class Prefs(context: Context) {
         get() = p.getBoolean("show_hints", true)
         set(v) = p.edit().putBoolean("show_hints", v).apply()
 
+    /** BATTLE INFO: off leaves only the battle buttons - no INFO, SUGGESTIONS or move ratings. On by default. */
+    var battleInfo: Boolean
+        get() = p.getBoolean("battle_info", true)
+        set(v) = p.edit().putBoolean("battle_info", v).apply()
+
+    /** BATTLE VIEW: the BATTLE tab opens on INFO instead of the battle buttons (GitHub #106). Off by default. */
+    var battleInfoFirst: Boolean
+        get() = p.getBoolean("battle_info_first", false)
+        set(v) = p.edit().putBoolean("battle_info_first", v).apply()
+
+    /** GAME NAMES: the library names games by their file (GitHub #124); a RENAME still wins. Off by default. */
+    var libraryFileNames: Boolean
+        get() = p.getBoolean("library_file_names", false)
+        set(v) = p.edit().putBoolean("library_file_names", v).apply()
+
+    /** SUPPORTED ONLY: the library leaves out games the companion can't read (GitHub discussion #302). Off by default. */
+    var librarySupportedOnly: Boolean
+        get() = p.getBoolean("library_supported_only", false)
+        set(v) = p.edit().putBoolean("library_supported_only", v).apply()
+
+    /** LOOK AROUND: EXPAND's right stick moves the view (GitHub #109). On by default. */
+    var lookAround: Boolean
+        get() = p.getBoolean("look_around", true)
+        set(v) = p.edit().putBoolean("look_around", v).apply()
+
     /** ONE-TAP MOVES: the battle controls' action menu shows the moves where FIGHT is, a tap
      * picking FIGHT and the move in one go. Off by default. */
     var oneTapMoves: Boolean
         get() = p.getBoolean("one_tap_moves", false)
         set(v) = p.edit().putBoolean("one_tap_moves", v).apply()
+
+    /** BATTLE STYLE: the battle controls' look, a [com.pokedaisy.app.companion.BattleStyle] id (0 = GEN 4, the old one). */
+    var battleStyle: Int
+        get() = p.getInt("battle_style", 0)
+        set(v) = p.edit().putInt("battle_style", v).apply()
+
+    /** The Library's one-time BATTLE STYLE pick has been answered (or dismissed). */
+    var battleStyleAsked: Boolean
+        get() = p.getBoolean("battle_style_asked", false)
+        set(v) = p.edit().putBoolean("battle_style_asked", v).apply()
 
     /** Whether battle INFO offers the foe's IVs / EVs / nature (its STATS page).
      * Off by default - it's the one thing the game itself never tells you.
@@ -340,6 +401,11 @@ class Prefs(context: Context) {
     var gameMuted: Boolean
         get() = p.getBoolean("game_muted", false)
         set(v) = p.edit().putBoolean("game_muted", v).apply()
+
+    /** SETTINGS > SOUND > AUDIO EFFECTS ([AudioEffects]): the game's sound through the device's audio effects, off by default. */
+    var audioEffects: Boolean
+        get() = p.getBoolean("audio_effects", false)
+        set(v) = p.edit().putBoolean("audio_effects", v).apply()
 
     /** Whether the emulator hotkeys ([com.pokedaisy.app.Hotkeys]) fire at all; off, every key goes to the game. */
     var hotkeysEnabled: Boolean
@@ -584,6 +650,17 @@ class Prefs(context: Context) {
         get() = p.getBoolean("portrait_companion_under_game", true)
         set(v) = p.edit().putBoolean("portrait_companion_under_game", v).apply()
 
+    /** SETTINGS > FOLD LAYOUT: a foldable half open lays the game and the companion out on either side of its hinge
+     * (TABLETOP: game above, companion below; BOOK: game left, companion right). On by default. */
+    var foldLayout: Boolean
+        get() = p.getBoolean("fold_layout", true)
+        set(v) = p.edit().putBoolean("fold_layout", v).apply()
+
+    /** This device has reported a hinge (a foldable): FOLD LAYOUT's row shows on both screens. */
+    var foldSeen: Boolean
+        get() = p.getBoolean("fold_seen", false)
+        set(v) = p.edit().putBoolean("fold_seen", v).apply()
+
     /** A phone held upright in a DS game: the touch screen's slot (where the companion goes) as a ratio of the screen's
      * width, kept apart from [portraitCompanionRatio]. 0.76: the DS screen (4:3) over its COMPANION switch, with the touch
      * controls still getting the space below on a 18.5:9 phone (PortraitLayout.padInGap; 0.8 missed it by a few px). */
@@ -592,6 +669,11 @@ class Prefs(context: Context) {
         set(v) = p.edit().putFloat("portrait_ds_ratio", v).apply()
 
     /** A phone held upright: the companion's height, as a ratio of the screen's width (see [PortraitPanel]). */
+    /** Upright: the companion hidden under its grip, the game alone (GitHub #125). */
+    var portraitCompanionHidden: Boolean
+        get() = p.getBoolean("portrait_companion_hidden", false)
+        set(v) = p.edit().putBoolean("portrait_companion_hidden", v).apply()
+
     var portraitCompanionRatio: Float
         // PortraitLayout.DEFAULT_RATIO: the Thor bottom screen's shape (spelled out: ui-preview's data module has no UI).
         get() = p.getFloat("portrait_companion_ratio", 1080f / 1240f)

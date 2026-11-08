@@ -73,9 +73,11 @@ class RomArtTest {
     /** Monomyth's ATHANTO MAP (MMY_REGION_*: its PokeNav's, a text screen of its own) and the one head its map code
      * loads: the map matched the game's own screen headless, pixel for pixel, but for its place-name window. */
     @Test fun monomythSuppliesItsRegionMap() {
-        val images = composed(System.getProperty("user.home") + "/Downloads/Game ROMs & Emulation/gba/Pokemon Monomyth (v1.0).gba")
-        assertEquals("bed46b86", pixels(images.getValue("regionmap/monomyth.png")))
-        assertEquals("867f8756", pixels(images.getValue("regionmap/player_monomyth.png")))
+        for (v in listOf("v1.0", "v1.1")) {
+            val images = composed(System.getProperty("user.home") + "/Downloads/Game ROMs & Emulation/gba/Pokemon Monomyth ($v).gba")
+            assertEquals("bed46b86", pixels(images.getValue("regionmap/monomyth.png")))
+            assertEquals("867f8756", pixels(images.getValue("regionmap/player_monomyth.png")))
+        }
     }
 
     /** Super Mariomon's world map (MM_REGION_*, the same bytes in every release) and MARIO's head for it. */
@@ -114,6 +116,12 @@ class RomArtTest {
             listOf("eee6e9af", "307eba25", "f356dacb", "508b250a"),
             listOf("kanto", "sevii123", "sevii45", "sevii67").map { pixels(images.getValue("regionmap/quetzal_$it.png")) },
         )
+        // Its Johto is its own, on Emerald's palette; its Hoenn is Emerald's map (the same bytes, so the same image).
+        assertEquals("e649e781", pixels(images.getValue("regionmap/quetzal_johto.png")))
+        // extractTo keeps only what OUTPUTS lists: built but not listed, a player never gets it.
+        assertTrue("regionmap/quetzal_johto.png" in RomArt.OUTPUTS)
+        assertEquals(pixels(composed(RomFileReader.EMERALD_PATH).getValue("regionmap/${regionMapImagesEmerald[0]}.png")),
+                     pixels(images.getValue("regionmap/${regionMapImagesEmerald[0]}.png")))
     }
 
     /** Heart and Soul's Johto + Kanto Pokegear map (smol, HNS_REGION_*), on Emerald's palette. */
@@ -249,6 +257,7 @@ class RomArtTest {
             "partyem/pokeball.png" to "53f5f1ea", // the same ball
             "partyfr/font_small.png" to "74bc5054",
             "partyfr/hold_icons.png" to "3921cfb7",
+            "typetags/firered.png" to "72f17597",
             "partyfr/pokeball.png" to "53f5f1ea",
             "partyfr/slot_fainted.png" to "988df89d",
             "partyfr/slot_nohp_normal.png" to "0402fa82",
@@ -276,6 +285,7 @@ class RomArtTest {
             "partyem/slot_selected_fainted.png" to "b0393f12",
             "partyem/status_icons.png" to "5c0fddd3",
             "partyfr/hold_icons.png" to "3921cfb7", // the same marker
+            "typetags/emerald.png" to "d7d9220e",
             "partyfr/pokeball.png" to "53f5f1ea", // the same ball
             "regionmap/hoenn.png" to "27d88e99",
             "regionmap/player_brendan.png" to "ffb2b151",

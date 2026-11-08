@@ -3818,6 +3818,60 @@ val NATIVE_MARIOMON_V1_2_1 = NATIVE_MARIOMON_V1_2_2.copy(
     guideTables = GUIDE_TABLES_MARIOMON_V1_2_1,
 )
 
+// ---- gamedata/gen3/hacks/modern_emerald.toml ----
+
+// Pokémon Modern Emerald v3.6 (resetes12's pokeemerald fork, BPEE, 32 MB, sha1 ab3bc012…): its source is public
+// (github.com/resetes12/pokeemerald, tag Release3.6; cloned into $DECOMPS/pokemodernemerald). The release was built
+// with `make modern` (gcc), so a build of the tag isn't it byte for byte, but every RAM symbol the code references is
+// referenced as often in the release (1000 of 1000 checked), so the RAM below is the build's `nm`; ROM tables were
+// found in the release by their bytes (ROM pointers and calls masked), the battle handlers read live in each menu of a
+// scripted wild battle (ScriptContext_SetupScript 0x081D940D: the build's 0x081DA891 - 0x1484, both of its literal
+// pools agree). Struct offsets by `offsetof` compiled against the tag's headers: vanilla's 100-byte party mons and
+// 0x58-byte BattlePokemon, but SaveBlock1's Items pocket holds 90 (Key Items +0x6C8, Poké Balls +0x740, TMs +0x780,
+// Berries +0x880; party +0x238 and money +0x490 are retail's) and SaveBlock2's encryption key is at +0xBC (retail
+// +0xAC). The save's own settings (SaveBlock1 +0x3D9D..: MODERN TYPES, FAIRY TYPE, TYPE CHART, the randomizer's
+// types) pick its types and chart: ModernEmerald.kt. Retail Emerald's save doesn't load ("erased due to corruption"):
+// a new game played headless (`modern_emerald` fixtures' README).
+val NATIVE_MODERN_EMERALD = NativeConfig(
+    itemDescs = vanillaItems(0x088A89A4L),
+    playerParty = 0x0201D9CCL,
+    playerPartyCount = 0x0201D9C9L,
+    battleMons = 0x0200143CL,
+    battlerPositions = 0x0200142CL,
+    battlersCount = 0x02001420L,
+    battleTypeFlags = 0x020003A0L,
+    gMain = 0x03001574L,
+    saveBlock1Ptr = 0x030036F0L,
+    saveBlock2Ptr = 0x030036F4L,
+    objectEvents = 0x0200682CL,
+    mapHeader = 0x0200C22CL,
+    bagPockets = 0x0200C298L,
+    bagPocketCount = 5,
+    bagPocketOrder = EMERALD_BAG_POCKET_ORDER,
+    encryptionKeyOff = 0xBCL,
+    moneyOff = 0x490L,
+    // The release's own (the build's + 0x124C .. 0xFC4: each found by its bytes or its neighbour's).
+    monIconTable = 0x088FC758L,
+    monIconPaletteIndices = 0x088FCF00L,
+    monIconPaletteTable = 0x088FD0ECL,
+    itemIconTable = 0x088B13ECL,
+    battlerControllerFuncs = 0x03002364L,
+    // gBattlerControllerFuncs[0] read in each menu of the scripted battle; the target handler from the move one's pool.
+    handleInputChooseAction = 0x0804E8E1L,
+    handleInputChooseMove = 0x0804F069L,
+    completeWhenChoseItem = 0x08050E81L,
+    waitForMonSelection = 0x08050DA9L,
+    handleInputChooseTarget = 0x0804ECB9L,
+    enemyParty = 0x0201DE7CL,
+    battlerPartyIndexes = 0x02001424L,
+    battleStructPtr = 0x02001860L,
+    monToSwitchIntoOff = 0x5C,
+    actionCursor = 0x02001870L,
+    moveCursor = 0x02001874L,
+    partyMenu = 0x0201D7BCL,
+    eggSpecies = 462,
+)
+
 // ---- gamedata/gen3/hacks/monomyth.toml ----
 
 // Pokémon Monomyth v1.0 (32 MB, game code MONE, sha1 ae1c4be9…; Team Monomyth, monomyth.jp): the Athanto region on its
@@ -3896,6 +3950,26 @@ val NATIVE_MONOMYTH = NATIVE_EMERALD.copy(
     // PC anywhere (FieldItems.kt's FIELD_ITEMS_MONOMYTH: special 57 through its ScriptContext_SetupScript); no bag USE or FLY.
     fieldItems = FIELD_ITEMS_MONOMYTH,
     guideTables = GUIDE_TABLES_MONOMYTH,
+)
+
+// Pokémon Monomyth v1.1 (32 MB, sha1 eb660caf…): the same game rebuilt, its header's game code now BPEE, so it's found by
+// hash among the big BPEE hacks. Every pool word that points at RAM reads as in v1.0, so its RAM, structs and the user's
+// v1.0 save carry over unchanged (the party, money, map and battles read the same headless). Only the ROM moved: code by
+// -0x28 around the battle controllers, tables by 0x418 (gItems, icons) and on to 0x40C (gItemIconTable).
+val NATIVE_MONOMYTH_V1_1 = NATIVE_MONOMYTH.copy(
+    itemDescs = ItemDescTable(0x089F19E8L, 0x20, 0x18, count = 447),
+    handleInputChooseAction = 0x08048521L,
+    handleInputChooseMove = 0x08048E41L,
+    completeWhenChoseItem = 0x0804AC95L,
+    waitForMonSelection = 0x0804ABCDL,
+    handleInputChooseTarget = 0x080487F9L,
+    monIconTable = 0x089DF964L,
+    monIconPaletteIndices = 0x089DFFBCL,
+    monIconPaletteTable = 0x089E0154L,
+    itemIconTable = 0x08AAFE0CL,
+    pokedex = POKEDEX_MONOMYTH_V1_1,
+    fieldItems = FIELD_ITEMS_MONOMYTH_V1_1,
+    guideTables = GUIDE_TABLES_MONOMYTH_V1_1,
 )
 
 // ---- gamedata/gen3/hacks/odyssey.toml ----
@@ -4716,8 +4790,12 @@ val NATIVE_EMERALD_SEAGLASS = NATIVE_EMERALD.copy(
 // action / move / bag / party menus run 0x08061CD1 / 0x08060E21 /
 // 0x0805FAC5 / 0x0805FB09; HandleInputChooseTarget 0x0805FEA5 by code (the
 // move handler's literal pool, and it returns to the move handler on B).
-// The POKéMON switch: gPartyMenu 0x02038D24, one column (DOWN walks it),
-// SHIFT first.
+// The POKéMON switch: gPartyMenu 0x02038D24 (slotId at +9), SHIFT first. Its shape follows OPTIONS > PARTY MENU
+// (a byte at SaveBlock1 +0x348C, a copy at 0x0203847C: found by diffing RAM after the option menu's CLOSE, each style
+// set twice with other timings - SaveBlock2 +0xAC moved with them, but it's a counter): CUSTOM (0) is one column of
+// six (DOWN 0 -> 5 wraps to 0, no CANCEL row), BW (1) and HGSS (2) a two-column grid, 0 1 / 2 3 / 4 5
+// (RIGHT 0 -> 1, DOWN 0 -> 2 -> 4 -> 5 -> CANCEL 7 -> 0, UP 0 -> 7 -> 5 -> 3). A player on HGSS saw the list steering
+// bounce between two slots (Discord, 2026-11; GitHub #316).
 // - Icons: gSpeciesInfo 0x118-byte entries (iconSprite / iconPalIndex), raw
 // item palettes and smol item tiles (DecompIconSource handles both).
 // - POKéDEX: POKEDEX_SOULGOLD (Pokedex.kt).
@@ -4768,6 +4846,7 @@ val NATIVE_SOULGOLD = NATIVE_EMERALD.copy(
     waitForMonSelection = 0x0805FB09L,
     handleInputChooseTarget = 0x0805FEA5L,
     partyMenu = 0x02038D24L,
+    partyMenuStyleOff = 0x348C,
     eggSpecies = 1578,
     monIconTable = 0x087D4514L, // gSpeciesInfo[0].iconSprite
     monIconStride = 0x118,
@@ -4864,6 +4943,9 @@ val NATIVE_SOULGOLD_V1_2C = NATIVE_SOULGOLD_V1_2.copy(
 // globals -0x1BC / -0x1C0. ROM data moved 0x7A38 (gItemsInfo), 0x7BA0 (gSpeciesInfo) or 0xB61C - 0xBEE8
 // (dex, wild and map tables). Its tables are byte for byte v1.2's, TM75 included.
 val NATIVE_SOULGOLD_V1_2_1 = NATIVE_SOULGOLD_V1_2.copy(
+    // Its Pokemon's attacks are bit-packed (SOULGOLD_V1_2_1_PARTY_MON: the 4th move across two u16s, the PP 7-bit fields of
+    // a u32), found with the game's own SetMonData headless.
+    partyMonLayout = SOULGOLD_V1_2_1_PARTY_MON,
     itemDescs = ItemDescTable(0x0875B360L, 0x2C, -8),
     guideTables = GUIDE_TABLES_SOULGOLD_V1_2_1,
     playerParty = 0x02038E68L,

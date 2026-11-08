@@ -71,10 +71,15 @@ test('DS: Platinum rev 1, HeartGold / SoulSilver, by the header', () => {
   for (const code of ['IPKD', 'IPGD']) {
     for (const rev of [1, 255]) assert.equal(ds(code, rev).reason, 'revision');
   }
+  assert.deepEqual(ds('CPUF', 0), { status: 'supported', title: 'Pokémon Version Platine', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IPKF', 0), { status: 'supported', title: 'Pokémon Version Or HeartGold', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IPGF', 0), { status: 'supported', title: 'Pokémon Version Argent SoulSilver', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IRBF', 0), { status: 'supported', title: 'Pokémon Version Noire', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IRAF', 0), { status: 'supported', title: 'Pokémon Version Blanche', family: 'Nintendo DS' });
   assert.equal(ds('ADAE', 0).reason, 'ds');
 });
 
-test('DS: Origin HeartGold by its code word, not a Japanese HeartGold', () => {
+test('DS: Origin HeartGold by its code word; without it, a Japanese HeartGold', () => {
   const hack = data.dsHacks.find((h) => h.code === 'IPKJ');
   const cart = (word) => {
     const b = new Uint8Array(hack.offset + 4);
@@ -84,8 +89,22 @@ test('DS: Origin HeartGold by its code word, not a Japanese HeartGold', () => {
   };
   const check = (bytes) => verdict(data, { ...readHeader(bytes), size: bytes.length, sha1: '0'.repeat(40), dsHack: dsHackOf(data, readHeader(bytes), bytes) });
   assert.deepEqual(check(cart(hack.word)), { status: 'supported', title: 'Pokémon Origin HeartGold', version: hack.version, family: 'Nintendo DS' });
-  assert.equal(check(cart(0)).reason, 'ds');
-  assert.equal(check(nds('IPKJ', 0)).reason, 'ds');
+  const japanese = { status: 'supported', title: 'ポケットモンスター ハートゴールド', family: 'Nintendo DS' };
+  assert.deepEqual(check(cart(0)), japanese);
+  assert.deepEqual(check(nds('IPKJ', 0)), japanese);
+});
+
+test('DS: Renegade Platinum by its code word, retail Platinum by its header', () => {
+  const hack = data.dsHacks.find((h) => h.code === 'CPUE');
+  const cart = (word) => {
+    const b = new Uint8Array(hack.offset + 4);
+    b.set(nds('CPUE', 1));
+    new DataView(b.buffer).setUint32(hack.offset, word, true);
+    return b;
+  };
+  const check = (bytes) => verdict(data, { ...readHeader(bytes), size: bytes.length, sha1: '0'.repeat(40), dsHack: dsHackOf(data, readHeader(bytes), bytes) });
+  assert.deepEqual(check(cart(hack.word)), { status: 'supported', title: 'Pokémon Renegade Platinum', version: 'v1.3.0', family: 'Nintendo DS' });
+  assert.deepEqual(check(cart(0)), { status: 'supported', title: 'Pokémon Platinum', family: 'Nintendo DS' });
 });
 
 test('Game Boy: Yellow only', () => {
@@ -216,4 +235,26 @@ test('retail randomized by Universal Pokemon Randomizer reads as retail, randomi
     other[at] ^= 0x01;
     assert.equal(await randomizedRetailOf(fake, readHeader(other), other), null);
   }
+});
+
+test('DS: the language ports, each at its own revision', () => {
+  const ds = (code, rev) => verdict(data, { ...readHeader(nds(code, rev)), size: 256 * MB, sha1: '0'.repeat(40) });
+  // Europe's rev 10 HeartGold / SoulSilver: the US carts' code under the same game code, a revision of its own.
+  assert.deepEqual(ds('IPKE', 10), { status: 'supported', title: 'Pokémon HeartGold', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IPGE', 10), { status: 'supported', title: 'Pokémon SoulSilver', family: 'Nintendo DS' });
+  assert.equal(ds('IPKE', 5).reason, 'revision');
+  assert.deepEqual(ds('IPKS', 0), { status: 'supported', title: 'Pokémon Edición Oro HeartGold', family: 'Nintendo DS' });
+  assert.deepEqual(ds('CPUS', 0), { status: 'supported', title: 'Pokémon Edición Platino', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IRBI', 0), { status: 'supported', title: 'Pokémon Versione Nera', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IRDD', 0), { status: 'supported', title: 'Pokémon Weiße Edition 2', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IREF', 1), { status: 'unsupported', reason: 'revision', base: 'Pokémon Version Noire 2' });
+});
+
+test('DS: the Japanese and Korean carts', () => {
+  const ds = (code, rev) => verdict(data, { ...readHeader(nds(code, rev)), size: 128 * MB, sha1: '0'.repeat(40) });
+  assert.deepEqual(ds('IPKK', 0), { status: 'supported', title: '포켓몬스터 하트골드', family: 'Nintendo DS' });
+  assert.deepEqual(ds('IRBJ', 0), { status: 'supported', title: 'ポケットモンスター ブラック', family: 'Nintendo DS' });
+  // Japanese Black 2 / White 2: revision 1 only.
+  assert.deepEqual(ds('IREJ', 1), { status: 'supported', title: 'ポケットモンスター ブラック2', family: 'Nintendo DS' });
+  assert.equal(ds('IREJ', 0).reason, 'revision');
 });

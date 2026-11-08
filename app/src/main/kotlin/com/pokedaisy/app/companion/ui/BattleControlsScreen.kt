@@ -13,6 +13,7 @@ import androidx.compose.foundation.background
 import androidx.compose.foundation.clickable
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.Box
+import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.offset
 import androidx.compose.foundation.layout.Column
 import androidx.compose.foundation.layout.PaddingValues
@@ -28,11 +29,15 @@ import androidx.compose.foundation.layout.width
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
+import androidx.compose.ui.unit.isSpecified
 import androidx.compose.runtime.mutableStateOf
 import androidx.compose.runtime.remember
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.input.pointer.pointerInput
+import androidx.compose.ui.graphics.graphicsLayer
+import androidx.compose.ui.draw.clipToBounds
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
@@ -42,6 +47,7 @@ import androidx.compose.ui.geometry.Size
 import androidx.compose.ui.graphics.Brush
 import androidx.compose.ui.graphics.Color
 import androidx.compose.ui.graphics.Shadow
+import androidx.compose.ui.graphics.drawOutline
 import androidx.compose.ui.graphics.lerp
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.text.TextStyle
@@ -95,7 +101,19 @@ fun BattleControlsScreen(
     active: List<MonView> = emptyList(),
     /** ONE-TAP MOVES (SETTINGS): the action menu shows the moves where FIGHT is. */
     oneTapMoves: Boolean = false,
+    /** BATTLE STYLE (SETTINGS): GEN 5 draws [Gen5BattleControls] instead (never on Yellow, which keeps its own look). */
+    style: com.pokedaisy.app.companion.BattleStyle = com.pokedaisy.app.companion.BattleStyle.GEN4,
+    /** BATTLE INFO off: no INFO / SUGGESTIONS buttons. */
+    battleInfo: Boolean = true,
+    /** RUN was picked: the pane stays up until the battle ends, with no "Waiting for your turn" (there's no turn coming). */
+    ranAway: Boolean = false,
 ) {
+    if (style == com.pokedaisy.app.companion.BattleStyle.GEN5 && !gen1Buttons) {
+        return Gen5BattleControls(
+            activeMon, battleInput, battleInputState, party, modifier, showHints,
+            onShowInfo, onShowSuggestions, foeParty, foe, active, oneTapMoves, battleInfo, ranAway,
+        )
+    }
     // battleInput.busy flips the instant a tap queues a synthetic press
     // sequence and back once the game has actually caught up (see
     // BattleInputController) - polled rather than read directly since it's a
@@ -139,7 +157,7 @@ fun BattleControlsScreen(
             // INFO / SUGGESTIONS centred above FIGHT, in every state but the
             // POKéMON pane: not part of the in-game menu, they only open their
             // own panes (no synthetic input), so they never wait on `busy`.
-            if (!picking) Row(
+            if (!picking && battleInfo) Row(
                 modifier = Modifier.fillMaxWidth().height(40.dp),
                 horizontalArrangement = Arrangement.spacedBy(8.dp, Alignment.CenterHorizontally),
             ) {
@@ -154,9 +172,10 @@ fun BattleControlsScreen(
                     onClick = onShowSuggestions,
                 ) { ButtonLabel(tr("SUGGESTIONS"), 22.sp) }
             }
-            if (!picking) Spacer(Modifier.height(8.dp))
+            if (!picking && battleInfo) Spacer(Modifier.height(8.dp))
             AnimatedContent(
-                targetState = battleInputState,
+                // The action menu and the moves are one pane: the buttons slide away over the moves (below).
+                targetState = if (battleInputState == BATTLE_INPUT_MOVE_SELECT) BATTLE_INPUT_ACTION_SELECT else battleInputState,
                 // LIGHT COMPANION: a cut, so a slow device draws one pane, not two crossfading for 180 ms.
                 transitionSpec = {
                     if (com.pokedaisy.app.companion.LightCompanion.on) EnterTransition.None togetherWith ExitTransition.None
@@ -166,24 +185,41 @@ fun BattleControlsScreen(
                 label = "battle-controls-state",
             ) { state ->
                 when (state) {
-                    BATTLE_INPUT_MOVE_SELECT -> MoveGrid(
-                        activeMon?.moves.orEmpty(), battleInput, busy, showHints,
-                        modifier = Modifier.fillMaxSize(),
-                    )
                     BATTLE_INPUT_ACTION_SELECT -> if (choosingMon) {
                         PartyPicker(party, foe, active, battleInput, busy, showHints, onBack = { choosingMon = false })
-                    } else if (choosingMove) {
-                        MoveGrid(
-                            activeMon?.moves.orEmpty(), battleInput, busy, showHints,
-                            modifier = Modifier.fillMaxSize(), onCancel = { choosingMove = false },
-                        )
                     } else {
-                        ActionButtons(
-                            activeMon, battleInput, busy, showHints, oneTapMoves,
-                            onFight = if (movesKnown) ({ choosingMove = true }) else null,
-                            onPokemon = if (canSwitch) ({ choosingMon = true }) else null,
-                            modifier = Modifier.fillMaxSize(),
+                        // FIGHT: the buttons leave by the nearest edge and the moves are there underneath. The game's own
+                        // FIGHT (a real button) opens them the same way.
+                        val open = choosingMove || battleInputState == BATTLE_INPUT_MOVE_SELECT
+                        val opened by androidx.compose.animation.core.animateFloatAsState(
+                            if (open) 1f else 0f,
+                            if (com.pokedaisy.app.companion.LightCompanion.on || androidx.compose.ui.platform.LocalInspectionMode.current) androidx.compose.animation.core.snap()
+                            else tween(MENU_SLIDE_MS, easing = androidx.compose.animation.core.FastOutSlowInEasing),
+                            label = "battle-menu",
                         )
+                        Box(Modifier.fillMaxSize().clipToBounds()) {
+                            if (open || opened > 0f) MoveGrid(
+                                activeMon?.moves.orEmpty(), battleInput, busy, showHints,
+                                modifier = Modifier.fillMaxSize().graphicsLayer {
+                                    alpha = opened
+                                    scaleX = 0.94f + 0.06f * opened
+                                    scaleY = 0.94f + 0.06f * opened
+                                },
+                                onCancel = if (battleInputState == BATTLE_INPUT_ACTION_SELECT) ({ choosingMove = false }) else null,
+                            )
+                            if (opened < 1f) ActionButtons(
+                                activeMon, battleInput, busy, showHints, oneTapMoves,
+                                onFight = if (movesKnown) ({ choosingMove = true }) else null,
+                                onPokemon = if (canSwitch) ({ choosingMon = true }) else null,
+                                modifier = Modifier.fillMaxSize(), out = opened,
+                            )
+                            // No taps while they slide: a disabled button would dim on its way out.
+                            if (opened > 0f && opened < 1f) Box(
+                                Modifier.fillMaxSize().pointerInput(Unit) {
+                                    awaitPointerEventScope { while (true) awaitPointerEvent().changes.forEach { it.consume() } }
+                                },
+                            )
+                        }
                     }
                     // The game's own party screen (opened by a pick here, by the
                     // game after a faint, or from the game itself): pick from ours.
@@ -205,7 +241,7 @@ fun BattleControlsScreen(
                         Text(tr("Confirming target…"), color = AppColors.muted, fontSize = 22.sp)
                     }
                     else -> Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                        Text(tr("Waiting for your turn…"), color = AppColors.muted, fontSize = 22.sp)
+                        if (!ranAway) Text(tr("Waiting for your turn…"), color = AppColors.muted, fontSize = 22.sp)
                     }
                 }
             }
@@ -217,6 +253,26 @@ fun BattleControlsScreen(
             modifier = Modifier.align(Alignment.Center),
         ) { ProcessingBall() }
     }
+}
+
+/** The action buttons sliding off over the moves. */
+private const val MENU_SLIDE_MS = 280
+
+/** The game's cursor in the battle menu on screen, for a button to show where it is - once the player has moved it (a
+ * ring on FIGHT every turn would say nothing). -1 till then. Polled like [rememberBattleInputBusy]. */
+@Composable
+internal fun rememberBattleCursor(battleInput: BattleInput?): Int {
+    var shown by remember(battleInput) { mutableStateOf(-1) }
+    androidx.compose.runtime.LaunchedEffect(battleInput) {
+        var first = -1
+        while (battleInput != null) {
+            androidx.compose.runtime.withFrameMillis { }
+            val now = battleInput.menuCursor
+            if (first < 0) first = now
+            if (now >= 0 && (shown >= 0 || now != first)) shown = now
+        }
+    }
+    return shown
 }
 
 /** Polls [BattleInput.busy] into Compose state - it's a plain field updated
@@ -244,7 +300,7 @@ internal fun rememberBattleInputBusy(battleInput: BattleInput?): Boolean {
  * reacting (queued synthetic button presses take several real frames to
  * land - see BattleInputController), e.g. between FIGHT and the move list. */
 @Composable
-private fun ProcessingBall() {
+internal fun ProcessingBall() {
     val m = rememberGbaTextMetrics()
     Box(
         contentAlignment = Alignment.Center,
@@ -290,7 +346,7 @@ private fun PartyBallRow(party: List<MonView>, ball: Dp, modifier: Modifier = Mo
 
 /** A pixel-art Poké Ball; a fainted member's is greyed out. */
 @Composable
-private fun PokeballDot(alive: Boolean, dotSize: Dp = 26.dp) {
+internal fun PokeballDot(alive: Boolean, dotSize: Dp = 26.dp) {
     val palette = if (alive) {
         mapOf('K' to Color(0xFF202020), 'R' to Color(0xFFE83028), 'W' to Color.White, 'H' to Color(0xFFF8A8A0))
     } else {
@@ -311,70 +367,111 @@ private fun ActionButtons(
     /** POKéMON opens the companion's party pane instead of the game's; null = the game's. */
     onPokemon: (() -> Unit)? = null,
     modifier: Modifier = Modifier,
+    /** 0..1: how far the buttons have slid off, each by its nearest edge (FIGHT opening the moves). */
+    out: Float = 0f,
 ) {
     val enabled = battleInput != null && !busy
-    if (gen1Buttons) return Gen1ActionButtons(activeMon, battleInput, enabled, onPokemon, modifier)
-    // Platinum's layout: a big FIGHT box centred up top, BAG and POKéMON in
-    // the bottom corners with RUN between them, set a little lower.
-    Column(
-        modifier = modifier.fillMaxSize(),
-        verticalArrangement = Arrangement.spacedBy(12.dp),
-        horizontalAlignment = Alignment.CenterHorizontally,
-    ) {
-        // ONE-TAP MOVES: the moves themselves where FIGHT was - a tap opens FIGHT and picks
-        // the move in one go (BattleInput.selectMove from the action menu).
-        if (oneTapMoves) {
-            Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-                for (row in 0..1) Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
-                    for (col in 0..1) {
-                        val idx = row * 2 + col
-                        MoveCard(activeMon?.moves?.getOrNull(idx), battleInput, idx, busy, showHints, modifier = Modifier.focusStart(idx == 0).weight(1f).fillMaxHeight(), compact = true)
+    if (gen1Buttons) return Gen1ActionButtons(activeMon, battleInput, enabled, onPokemon, modifier.graphicsLayer { alpha = 1f - out })
+    val cursor = rememberBattleCursor(battleInput).takeIf { !busy } ?: -1
+    val hasBag = com.pokedaisy.app.companion.data.battleHasBag
+    val side = PaddingValues(horizontal = 4.dp)
+    @Composable fun Bag(place: Modifier, label: TextUnit = 36.sp) = PlatinumButton(
+        fill = HgOrange, frame = HgOrangeLow,
+        modifier = place.graphicsLayer { translationX = -out * size.width * 1.4f },
+        enabled = enabled, battleButton = true, highlighted = cursor == 1, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(1) },
+    ) { ButtonLabel(tr("BAG"), label, outlined = true) }
+    @Composable fun Run(place: Modifier, label: TextUnit = 36.sp) = PlatinumButton(
+        fill = HgBlue, frame = HgBlueLow,
+        modifier = place.graphicsLayer { translationY = out * size.height * 1.5f },
+        enabled = enabled, battleButton = true, highlighted = cursor == 3, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(3) },
+    ) { ButtonLabel(tr("RUN"), label, outlined = true) }
+    @Composable fun Pokemon(place: Modifier, label: TextUnit = 30.sp) = PlatinumButton(
+        fill = HgGreen, frame = HgGreenLow,
+        modifier = place.graphicsLayer { translationX = out * size.width * 1.4f },
+        enabled = enabled, battleButton = true, highlighted = cursor == 2, contentPadding = side, pressesGame = onPokemon == null,
+        onClick = { onPokemon?.invoke() ?: battleInput?.selectAction(2) },
+    ) { ButtonLabel(tr("POKéMON"), label, outlined = true) }
+    if (oneTapMoves) {
+        Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(12.dp)) {
+    // ONE-TAP MOVES: the moves themselves where FIGHT was - a tap opens FIGHT and picks
+    // the move in one go (BattleInput.selectMove from the action menu).
+        Column(Modifier.fillMaxWidth().weight(1f), verticalArrangement = Arrangement.spacedBy(8.dp)) {
+            for (row in 0..1) Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(8.dp)) {
+                for (col in 0..1) {
+                    val idx = row * 2 + col
+                    MoveCard(activeMon?.moves?.getOrNull(idx), battleInput, idx, busy, showHints, modifier = Modifier.focusStart(idx == 0).weight(1f).fillMaxHeight(), compact = true)
+                }
+            }
+        }
+            Row(Modifier.fillMaxWidth().height(60.dp), horizontalArrangement = Arrangement.spacedBy(14.dp)) {
+                if (hasBag) Bag(Modifier.weight(1f).fillMaxHeight())
+                Run(Modifier.weight(1f).fillMaxHeight())
+                Pokemon(Modifier.weight(1f).fillMaxHeight())
+            }
+        }
+        return
+    }
+    // HeartGold's layout and proportions, a DS pixel being [ds]: FIGHT over the four move places, BAG and POKéMON in the bottom
+    // corners, RUN between them a little lower, and not cut off by the screen's edge as the game's is. The height a button can
+    // take comes from the width, so a tall pane leaves room rather than stretching them.
+    BoxWithConstraints(modifier.fillMaxSize()) {
+        val ds = minOf(maxWidth / HG_WIDTH, maxHeight / HG_HEIGHT)
+        // Widths go on past HeartGold's where the pane has room for it (a short, wide screen), not as far as they'd stretch.
+        val wide = minOf(maxWidth / HG_WIDTH, ds * HG_MAX_WIDEN)
+        val runDrop = if (hasBag) ds * 8 else 0.dp
+        val bottomRow = ds * 46 + runDrop
+        // HeartGold's cursor on FIGHT frames the whole panel above BAG / RUN / POKéMON, edge to edge, not the button.
+        val fightInteraction = remember { MutableInteractionSource() }
+        val fightFocused by fightInteraction.collectIsFocusedAsState()
+        val panelCursor = fightFocused || cursor == 0
+        val panelPulse = if (panelCursor) rememberDsCursorPulse(1) else 0f
+        androidx.compose.runtime.CompositionLocalProvider(LocalHgPixel provides ds) {
+        Box(
+            Modifier.align(Alignment.TopCenter).fillMaxWidth().height(maxHeight - bottomRow - ds * 3)
+                .drawWithContent { drawContent(); if (panelCursor && out < 0.01f) drawHgCursor(ds.toPx(), panelPulse, insideOf = 1) },
+        ) {
+            Column(Modifier.fillMaxSize().graphicsLayer { alpha = 1f - out }, verticalArrangement = Arrangement.spacedBy(ds * 2)) {
+                repeat(2) {
+                    Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(ds * 2)) {
+                        repeat(2) { BattlePlaceholder(Modifier.weight(1f).fillMaxHeight()) }
                     }
                 }
             }
-        } else
-        // The active mon's mini icon sits to the left of the word, like the game.
-        PlatinumButton(
-            fill = FightRed, frame = FightRedDark,
-            // The D-pad (the companion's window) starts on FIGHT, like the game's cursor.
-            modifier = Modifier.focusStart(true).fillMaxWidth(0.76f).weight(1.6f),
-            enabled = enabled,
-            pressesGame = onFight == null, onClick = { onFight?.invoke() ?: battleInput?.selectAction(0) },
-        ) {
-            Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                SpeciesIcon(activeMon?.iconAsset, size = 48.dp)
-                ButtonLabel(tr("FIGHT"), 52.sp, bold = true)
+            // The active mon's mini icon sits to the left of the word, like the game.
+            PlatinumButton(
+                fill = HgRed, frame = HgRedLow,
+                // The D-pad (the companion's window) starts on FIGHT, like the game's cursor.
+                // HeartGold's 208 x 88, never wider (the user's call: stretched past it, it read too wide).
+                modifier = Modifier.align(Alignment.Center).focusStart(true).width(ds * 208).height(ds * 88)
+                    .graphicsLayer { translationY = -out * size.height * 1.8f },
+                enabled = enabled, battleButton = true, highlighted = cursor == 0,
+                interactionSource = fightInteraction, ownCursor = false,
+                pressesGame = onFight == null, onClick = { onFight?.invoke() ?: battleInput?.selectAction(0) },
+            ) {
+                Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(12.dp)) {
+                    SpeciesIcon(activeMon?.iconAsset, size = 48.dp)
+                    ButtonLabel(tr("FIGHT"), 52.sp, outlined = true)
+                }
             }
         }
-        // All three the same height; RUN sits [RunDrop] lower than its neighbours (one level, and
-        // slimmer, under ONE-TAP MOVES' cards).
         // Without a BAG (Elite Redux) RUN and POKéMON sit level.
-        val drop = if (oneTapMoves || !com.pokedaisy.app.companion.data.battleHasBag) 0.dp else RunDrop
         Row(
-            modifier = if (oneTapMoves) Modifier.fillMaxWidth().height(60.dp) else Modifier.fillMaxWidth().weight(1f),
-            horizontalArrangement = Arrangement.spacedBy(14.dp),
+            Modifier.align(Alignment.BottomCenter).width(wide * 254).height(bottomRow),
+            horizontalArrangement = if (hasBag) Arrangement.SpaceBetween else Arrangement.spacedBy(wide * 6, Alignment.CenterHorizontally),
         ) {
-            val side = PaddingValues(horizontal = 4.dp)
-            // Elite Redux's battle menu has no BAG (FIGHT / INFO over POKéMON / RUN).
-            if (com.pokedaisy.app.companion.data.battleHasBag) PlatinumButton(
-                fill = BagOrange, frame = BagOrangeDark,
-                modifier = Modifier.weight(1f).fillMaxHeight().padding(bottom = drop),
-                enabled = enabled, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(1) },
-            ) { ButtonLabel(tr("BAG"), 36.sp, bold = true) }
-            PlatinumButton(
-                fill = RunBlue, frame = RunBlueDark,
-                modifier = Modifier.weight(1f).fillMaxHeight().padding(top = drop),
-                enabled = enabled, contentPadding = side, pressesGame = true, onClick = { battleInput?.selectAction(3) },
-            ) { ButtonLabel(tr("RUN"), 36.sp, bold = true) }
-            PlatinumButton(
-                fill = MonGreen, frame = MonGreenDark,
-                modifier = Modifier.weight(1f).fillMaxHeight().padding(bottom = drop),
-                enabled = enabled, contentPadding = side, pressesGame = onPokemon == null,
-                onClick = { onPokemon?.invoke() ?: battleInput?.selectAction(2) },
-            ) { ButtonLabel(tr("POKéMON"), 30.sp, bold = true) }
+            val button = Modifier.width(wide * 82).height(ds * 46)
+            // A label narrows to its button (the RG DS's are small, and a word can be longer in another language).
+            fun fit(word: String, size: Float) = minOf(size, (wide.value * 82 - HG_LABEL_ROOM) / (word.length * PIXEL_FONT_LETTER)).sp
+            if (hasBag) Bag(button.align(Alignment.Top), fit(tr("BAG"), 36f))
+            Run(button.align(Alignment.Bottom), fit(tr("RUN"), 36f))
+            Pokemon(button.align(Alignment.Top), fit(tr("POKéMON"), 30f))
+        }
         }
     }
 }
+
+/** A DS pixel of the battle pane (HeartGold's layout), for its buttons' cursor; Unspecified outside it. */
+internal val LocalHgPixel = androidx.compose.runtime.staticCompositionLocalOf { androidx.compose.ui.unit.Dp.Unspecified }
 
 @Composable
 internal fun MoveGrid(
@@ -390,6 +487,7 @@ internal fun MoveGrid(
 ) {
     CompanionBackHandler(enabled = battleInput != null && !busy) { onCancel?.invoke() ?: battleInput?.back() }
     if (gen1Buttons) return Gen1MoveList(moves, battleInput, busy, showHints, modifier, onCancel)
+    val cursor = rememberBattleCursor(battleInput).takeIf { !busy } ?: -1
     Column(modifier = modifier.fillMaxSize(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
         for (row in 0..1) {
             Row(
@@ -399,18 +497,20 @@ internal fun MoveGrid(
                 for (col in 0..1) {
                     val idx = row * 2 + col
                     // The D-pad (the companion's window) starts on the first move.
-                    MoveCard(moves.getOrNull(idx), battleInput, idx, busy, showHints, modifier = Modifier.focusStart(idx == 0).weight(1f).fillMaxHeight(), compact = compact)
+                    MoveCard(moves.getOrNull(idx), battleInput, idx, busy, showHints, modifier = Modifier.focusStart(idx == 0).weight(1f).fillMaxHeight(), compact = compact, highlighted = cursor == idx)
                 }
             }
         }
         // Wide blue CANCEL bar, matching the in-game move-select screen's own
         // cancel button (color + label) rather than a plain generic "BACK" pill.
         PlatinumButton(
-            fill = RunBlue, frame = RunBlueDark,
-            modifier = Modifier.fillMaxWidth().height(48.dp),
+            fill = HgBlue, frame = HgBlueLow,
+            // A short screen (the RG DS) keeps the room for the cards.
+            modifier = Modifier.fillMaxWidth().height(if (LocalShortCompanion.current) 36.dp else 56.dp),
             enabled = battleInput != null && !busy,
+            contentPadding = if (LocalShortCompanion.current) PaddingValues(0.dp) else PaddingValues(8.dp),
             pressesGame = onCancel == null, onClick = { onCancel?.invoke() ?: battleInput?.back() },
-        ) { ButtonLabel(tr("CANCEL"), 34.sp) }
+        ) { ButtonLabel(tr("CANCEL"), if (LocalShortCompanion.current) 24.sp else 34.sp, outlined = true) }
     }
 }
 
@@ -468,7 +568,7 @@ private fun BackOnlyButton(battleInput: BattleInput?, busy: Boolean) {
     Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
         PlatinumButton(
             fill = AppColors.slotFillDark, frame = AppColors.slotFrame,
-            modifier = Modifier.fillMaxWidth(0.5f).height(52.dp),
+            modifier = Modifier.fillMaxWidth(0.5f).height(56.dp),
             enabled = battleInput != null && !busy,
             pressesGame = true, onClick = { battleInput?.back() },
         ) { ButtonLabel(tr("BACK"), 34.sp) }
@@ -485,6 +585,8 @@ internal fun MoveCard(
     modifier: Modifier = Modifier,
     /** Two lines (ONE-TAP MOVES, under the action buttons): the type joins the power / PP line. */
     compact: Boolean = false,
+    /** The game's cursor is on this move ([rememberBattleCursor]). */
+    highlighted: Boolean = false,
 ) {
     val enabled = mv != null && mv.pp > 0 && battleInput != null && !busy
     // Whole-card color keyed by move type (fill stays a constant pale card
@@ -492,19 +594,19 @@ internal fun MoveCard(
     // Gen 4 move-selector sheet. Reuses the same type palette TypeBadge does
     // elsewhere in the app, so a move's color here matches its badge color
     // everywhere else.
-    val frame = mv?.let { AppColors.typeColors[it.type] } ?: AppColors.slotFrame
+    // HeartGold's card: the type's colour round a panel white over beige. A move the Pokémon doesn't have is an empty place.
+    if (mv == null) return BattlePlaceholder(modifier)
+    val frame = AppColors.typeColors[mv.type] ?: AppColors.slotFrame
     PlatinumButton(
-        fill = if (mv == null) AppColors.slotFillDark else MoveCardFill,
-        frame = frame,
+        fill = frame,
+        frame = lerp(frame, Color.Black, 0.5f),
         modifier = modifier,
         enabled = enabled,
-        // Clear of the bevel's side bands.
-        contentPadding = PaddingValues(horizontal = 26.dp, vertical = 4.dp),
+        battleButton = true, highlighted = highlighted,
+        contentPadding = if (LocalShortCompanion.current) PaddingValues(horizontal = 4.dp, vertical = 0.dp) else PaddingValues(horizontal = 9.dp, vertical = 4.dp),
         pressesGame = true, onClick = { battleInput?.selectMove(moveIndex) },
     ) {
-        if (mv == null) {
-            Text("—", color = AppColors.muted, fontSize = 32.sp)
-        } else {
+        Box(Modifier.fillMaxSize().hgMovePanel(lerp(frame, Color.White, 0.4f)).padding(horizontal = 6.dp)) {
             // Name on its own line (the game's own casing, full width), the
             // type under it, then power + per-foe multipliers bottom-left and
             // PP bottom-right. Tight line heights: the three rows have to fit
@@ -530,32 +632,44 @@ internal fun MoveCard(
                     Text(tr("PWR {0}", powerLabel(mv.power)), color = AppColors.muted, fontSize = 22.sp * k, style = tight, maxLines = 1)
                     if (showHints) mv.vs.forEach { v -> MultiplierChip(v.label, v.pct, fontSize = 16.sp * k) }
                 }
-            } else Column(modifier = Modifier.fillMaxSize(), verticalArrangement = Arrangement.SpaceBetween) {
-                Text(
-                    mv.name, color = AppColors.text, fontSize = 32.sp, style = tight,
-                    maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
-                )
-                TypeBadge(mv.type, fontSize = 16.sp)
-                Row(verticalAlignment = Alignment.Bottom, modifier = Modifier.fillMaxWidth()) {
-                    Row(verticalAlignment = Alignment.CenterVertically, horizontalArrangement = Arrangement.spacedBy(6.dp), modifier = Modifier.weight(1f)) {
-                        Text(tr("PWR {0}", powerLabel(mv.power)), color = AppColors.muted, fontSize = 24.sp, style = tight)
-                        if (showHints) mv.vs.forEach { v -> MultiplierChip(v.label, v.pct, fontSize = 16.sp) }
+            } else Column(modifier = Modifier.fillMaxSize()) {
+                // HeartGold's halves: the name on the white, then type, power and PP on the beige; the verdict by the name.
+                Row(Modifier.fillMaxWidth().weight(0.47f), verticalAlignment = Alignment.CenterVertically) {
+                    FittedText(mv.name, AppColors.text, tight, maxSize = 32, minSize = 20, modifier = Modifier.weight(1f))
+                    if (showHints) Row(horizontalArrangement = Arrangement.spacedBy(4.dp)) {
+                        mv.vs.forEach { v -> MultiplierChip(v.label, v.pct, fontSize = 16.sp) }
                     }
-                    Text(tr("PP {0}", mv.pp), color = AppColors.text, fontSize = 28.sp, style = tight)
+                }
+                Row(Modifier.fillMaxWidth().weight(0.53f), verticalAlignment = Alignment.CenterVertically) {
+                    TypeBadge(mv.type, fontSize = 16.sp)
+                    Text(
+                        tr("PWR {0}", powerLabel(mv.power)), color = AppColors.muted, fontSize = 20.sp, style = tight, maxLines = 1,
+                        textAlign = androidx.compose.ui.text.style.TextAlign.Center, modifier = Modifier.weight(1f),
+                    )
+                    Text(tr("PP {0}", mv.pp), color = AppColors.text, fontSize = 20.sp, style = tight, maxLines = 1)
                 }
             }
         }
     }
 }
 
+/** HeartGold's move card's inside (sampled, drawn here): a thin [rim], white over beige with a step between them. */
+private fun Modifier.hgMovePanel(rim: Color): Modifier =
+    this.background(rim).padding(HG_PX).drawBehind {
+        val split = size.height * 0.47f
+        val step = HG_PX.toPx() * 2
+        drawRect(Color(0xFFFBFBFB), Offset.Zero, Size(size.width, split))
+        drawRect(Color(0xFFE3DBC3), Offset(0f, split), Size(size.width, step))
+        drawRect(Color(0xFFCBBAA2), Offset(0f, split + step), Size(size.width, size.height - split - step))
+    }
+
 /** [MoveCard]'s text on a short screen ([LocalShortCompanion]), against its usual sizes. */
 private const val SHORT_MOVE_TEXT = 0.7f
 
-/** A beveled, colored button in Platinum's battle-menu style (rather than
- * this app's FR/LG chrome - this screen is a distinct "touch controls" mode):
- * pixel-stepped corners, a near-black outline, a light band across the top
- * and darker bands down the sides (see [platinumBevel]). Also the summary
- * screens' square nav buttons (MonDetailScreen's SummaryFrame). Taps play
+/** A coloured button in HeartGold's battle-menu style (rather than this app's
+ * FR/LG chrome - this screen is a distinct "touch controls" mode): pixel-stepped
+ * corners, a thick dark outline, a thin white ring and a two-tone face
+ * ([drawTwoTone]). Also the summary screens' square nav buttons (MonDetailScreen's SummaryFrame). Taps play
  * the game's click, unless [pressesGame]: a button that presses the game's own
  * buttons (FIGHT, a move, BACK) leaves the sound to the game. */
 @Composable
@@ -564,35 +678,50 @@ internal fun PlatinumButton(
     frame: Color,
     modifier: Modifier = Modifier,
     enabled: Boolean = true,
+    /** The game's own cursor is on this button: the D-pad's ring. */
+    highlighted: Boolean = false,
     pressesGame: Boolean = false,
+    /** One of the battle menu's buttons (FIGHT, BAG, POKéMON, RUN, a move): its cursor is HeartGold's own. */
+    battleButton: Boolean = false,
+    /** The button's interactions, from outside (FIGHT's: its cursor is drawn round the whole panel, as the game's is). */
+    interactionSource: MutableInteractionSource? = null,
+    /** False: the caller draws the cursor (FIGHT's panel). */
+    ownCursor: Boolean = true,
     contentPadding: PaddingValues = PaddingValues(8.dp),
-    /** The near-black outline's width. */
-    outline: Dp = 2.dp,
     onClick: () -> Unit,
     content: @Composable () -> Unit,
 ) {
     val shape = PixelRoundedShape(5.dp)
     val sound = LocalClickSound.current
     val gameSilent = LocalGameSilent.current
-    val interaction = remember { MutableInteractionSource() }
+    val interaction = interactionSource ?: remember { MutableInteractionSource() }
     val focused by interaction.collectIsFocusedAsState()
+    // A battle button's cursor is HeartGold's own: red corner brackets in a white rim, breathing out and back (the user's
+    // call, over the app's orange ring); every other button keeps the ring.
+    val hgCursor = (battleButton || pressesGame) && !gen1Buttons
+    val pulse = if (hgCursor && ownCursor && (focused || highlighted)) rememberDsCursorPulse(1) else 0f
+    val hgPixel = LocalHgPixel.current
     Box(
         modifier = modifier
             .alpha(if (enabled) 1f else 0.45f)
             // The D-pad's focus (the companion's window), over the bevel and the content.
-            .gbaFocusRing(focused, shape)
+            .then(
+                if (hgCursor) Modifier.drawWithContent {
+                    drawContent()
+                    if (ownCursor && (focused || highlighted)) drawHgCursor(if (hgPixel.isSpecified) hgPixel.toPx() else 1.5f * gbaPixelPx(), pulse, insideOf = 1)
+                } else Modifier.gbaFocusRing(focused || highlighted, shape),
+            )
             .then(
                 // Gen 1 (Yellow): a button is its text box - white inside the double line.
                 if (gen1Buttons) Modifier.drawBehind {
                     drawLayeredBox(OptionColors.listLayers.inPx(gbaPixelPx()), OptionColors.listFill, radius = 3 * gbaPixelPx())
                 } else Modifier
-                    // Near-black outline, then the fill with Platinum's bevel.
-                    .clip(shape)
-                    .background(ButtonOutline)
-                    .padding(outline)
-                    .clip(shape)
-                    .background(fill)
-                    .platinumBevel(fill, frame),
+                    // HeartGold's: a thick dark outline, a thin white ring, then [fill] over [frame].
+                    // Each layer drawn in the shape, nothing clipped (a path clip is a CPU mask on older renderers: pixelClip).
+                    .background(HgOutline, shape).padding(HG_PX * 2)
+                    .background(Color(0xFFFBFBFB), shape).padding(HG_PX)
+                    .background(frame, shape).padding(HG_PX)
+                    .drawBehind { drawTwoTone(fill, frame, HG_PX.toPx() * 2) { color -> drawRoundedFill(color, shape) } },
             )
             .then(
                 if (enabled) {
@@ -608,26 +737,17 @@ internal fun PlatinumButton(
     ) { content() }
 }
 
-/** Platinum's button bevel, under the content: a light band across the top
- * (the fill mixed with white) and darker bands down the left and right edges
- * - toward [frame] at the edge, easing back toward the fill inside. */
-private fun Modifier.platinumBevel(fill: Color, frame: Color): Modifier =
-    this.drawWithContent {
-        val side = (size.width * 0.06f).coerceIn(6.dp.toPx(), 22.dp.toPx())
-        val edge = frame
-        val inner = lerp(fill, frame, 0.55f)
-        drawRect(Brush.horizontalGradient(listOf(edge, inner), 0f, side), Offset.Zero, Size(side, size.height))
-        drawRect(
-            Brush.horizontalGradient(listOf(inner, edge), size.width - side, size.width),
-            Offset(size.width - side, 0f), Size(side, size.height),
-        )
-        drawRect(lerp(fill, Color.White, 0.5f), Offset.Zero, Size(size.width, 4.dp.toPx()))
-        drawContent()
-    }
+/** [shape] filled in [color]. */
+private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawRoundedFill(color: Color, shape: androidx.compose.ui.graphics.Shape) {
+    drawOutline(shape.createOutline(size, layoutDirection, this), color)
+}
 
-/** White button text with a dark drop shadow, like the game's labels (Gen 1: plain black). */
 @Composable
-internal fun ButtonLabel(text: String, fontSize: TextUnit, bold: Boolean = false) {
+internal fun ButtonLabel(
+    text: String, fontSize: TextUnit, bold: Boolean = false,
+    /** HeartGold's lettering: cream with a dark line all round. */
+    outlined: Boolean = false,
+) {
     val density = LocalDensity.current
     val shadow = with(density) { (fontSize.toPx() / 14f).coerceAtLeast(2f) }
     // Gen 1: the game's font, condensed like every GbaText, and bold (a copy half a font pixel right).
@@ -640,6 +760,17 @@ internal fun ButtonLabel(text: String, fontSize: TextUnit, bold: Boolean = false
         textGeometricTransform = if (scaleX == 1f) null else androidx.compose.ui.text.style.TextGeometricTransform(scaleX = scaleX),
     )
     val weight = if (bold && !gen1Buttons) FontWeight.Bold else FontWeight.Normal
+    if (outlined && !gen1Buttons) {
+        val edge = kotlin.math.round(fontPixel).toInt().coerceAtLeast(1)
+        val plain = style.copy(shadow = null)
+        return Box {
+            for ((x, y) in HG_TEXT_EDGES) Text(
+                text, color = HgOutline, fontSize = fontSize, maxLines = 1, style = plain,
+                modifier = Modifier.offset { androidx.compose.ui.unit.IntOffset(x * edge, y * edge) },
+            )
+            Text(text, color = Color(0xFFFBF3E3), fontSize = fontSize, maxLines = 1, style = plain)
+        }
+    }
     Box {
         if (gen1Buttons) {
             val b = boldOffsetPx(fontPixel * scaleX)
@@ -765,7 +896,7 @@ internal val gen1Buttons get() = com.pokedaisy.app.companion.data.activeGame.isG
 /** [text] on one line at the largest whole size from [maxSize] down to [minSize] (sp) that fits the
  * width it's given; still too long at [minSize], it ends in an ellipsis. */
 @Composable
-private fun FittedText(text: String, color: Color, style: TextStyle, maxSize: Int, minSize: Int, modifier: Modifier = Modifier) {
+internal fun FittedText(text: String, color: Color, style: TextStyle, maxSize: Int, minSize: Int, modifier: Modifier = Modifier) {
     val measurer = androidx.compose.ui.text.rememberTextMeasurer()
     androidx.compose.foundation.layout.BoxWithConstraints(modifier) {
         val width = constraints.maxWidth
@@ -781,8 +912,25 @@ private fun FittedText(text: String, color: Color, style: TextStyle, maxSize: In
 /** What's drawn on a [PlatinumButton]: white, or Gen 1's black on its white box. */
 internal val buttonContent: Color get() = if (gen1Buttons) OptionColors.titleText else Color.White
 
-private val ButtonOutline = Color(0xFF202020)
-private val RunDrop = 16.dp
+// HeartGold's battle buttons, sampled headless (the colours; everything is drawn here): one of its pixels on the Thor, the dark
+// outline, each button's upper and lower colour, and its bottom screen less the rows above the buttons, RUN's lower place kept.
+private val HG_PX = 1.5.dp
+private val HgOutline = Color(0xFF414141)
+private val HgRed = Color(0xFFEB3838)
+private val HgRedLow = Color(0xFF8A4141)
+private val HgOrange = Color(0xFFE39A28)
+private val HgOrangeLow = Color(0xFF8A6938)
+private val HgBlue = Color(0xFF2892CB)
+private val HgBlueLow = Color(0xFF415971)
+private val HgGreen = Color(0xFF59B228)
+private val HgGreenLow = Color(0xFF517141)
+private const val HG_WIDTH = 256f
+private const val HG_HEIGHT = 160f
+private const val HG_MAX_WIDEN = 1.3f
+/** A button's width its label can't have, in dp (outline, ring, padding), and a pixel-font letter's width against its size. */
+private const val HG_LABEL_ROOM = 20f
+private const val PIXEL_FONT_LETTER = 0.46f
+private val HG_TEXT_EDGES = listOf(-1 to -1, 0 to -1, 1 to -1, -1 to 0, 1 to 0, -1 to 1, 0 to 1, 1 to 1)
 internal val FightRed = Color(0xFFE8483C)
 internal val FightRedDark = Color(0xFFA82820)
 private val BagOrange = Color(0xFFE0A030)

@@ -46,6 +46,8 @@ interface CompanionSettings {
 
     /** AUTO-RUN: B held while walking (holding it walks) - see [com.pokedaisy.app.Prefs.autoRun]. */
     val autoRun: Boolean get() = false
+    /** The game has its own, on by default ([com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN]): the row says so. */
+    val autoRunBuiltIn: Boolean get() = false
     fun setAutoRun(on: Boolean) {}
 
     /** RUN INDOORS - see [com.pokedaisy.app.Prefs.runIndoors]; [runIndoorsSupported]: a FireRed / Emerald engine the
@@ -67,6 +69,11 @@ interface CompanionSettings {
     val reusableTmsSupported: Boolean get() = false
     /** The game's own TMs never run out ([com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN]): the row says so. */
     val reusableTmsBuiltIn: Boolean get() = false
+    /** INSTANT TEXT - see [com.pokedaisy.app.Prefs.instantText]; [instantTextSupported]: the ROM's text code is known
+     * ([com.pokedaisy.app.companion.data.InstantText]). */
+    val instantText: Boolean get() = false
+    fun setInstantText(on: Boolean) {}
+    val instantTextSupported: Boolean get() = false
 
     /** TRADE EVOLUTIONS - see [com.pokedaisy.app.Prefs.tradeEvolutions]; [tradeEvolutionsSupported]: this game's
      * evolution code is known ([com.pokedaisy.app.companion.data.tradeEvoFor]). */
@@ -152,6 +159,9 @@ interface CompanionSettings {
     /** SETTINGS > TOUCH CONTROLS - see [com.pokedaisy.app.Prefs.touchControlsStyle]. */
     val touchStyle: TouchControlsStyle
     fun setTouchStyle(style: TouchControlsStyle)
+
+    /** TOUCH CONTROLS > SKINS: the imported Delta skins (picked here, imported on the top screen). */
+    val touchSkins: List<InstalledSkin> get() = emptyList()
 
     /** The game's screen as the touch controls see it, for TOUCH CONTROLS' preview; null = laid out like a phone's. */
     val touchStage: TouchStage? get() = null
@@ -245,9 +255,21 @@ interface CompanionSettings {
     val showFoeIvs: Boolean get() = false
     fun setShowFoeIvs(on: Boolean) {}
 
+    /** BATTLE INFO - see [com.pokedaisy.app.Prefs.battleInfo]. */
+    val battleInfo: Boolean get() = true
+    fun setBattleInfo(on: Boolean) {}
+
+    /** BATTLE VIEW - see [com.pokedaisy.app.Prefs.battleInfoFirst]. */
+    val battleInfoFirst: Boolean get() = false
+    fun setBattleInfoFirst(on: Boolean) {}
+
     /** ONE-TAP MOVES - see [Prefs.oneTapMoves]. */
     val oneTapMoves: Boolean get() = false
     fun setOneTapMoves(on: Boolean) {}
+
+    /** BATTLE STYLE - see [Prefs.battleStyle]. */
+    val battleStyle: BattleStyle get() = BattleStyle.GEN4
+    fun setBattleStyle(style: BattleStyle) {}
 
     /** Whether battle INFO shows FOE DETAILS - see [Prefs.foeDetails]. */
     val foeDetails: Boolean get() = false
@@ -302,6 +324,9 @@ interface CompanionSettings {
     /** SOUND > MUTE GAME (also the MUTE hotkey) - see [Prefs.gameMuted]. */
     val gameMuted: Boolean get() = false
     fun setGameMuted(on: Boolean) {}
+    /** SOUND > AUDIO EFFECTS: the device's audio effects on the game's sound, from its next start - see [Prefs.audioEffects]. */
+    val audioEffects: Boolean get() = false
+    fun setAudioEffects(on: Boolean) {}
 
     /** FPS / CPU over the game's corner - see [Prefs.showPerformance]. */
     val showPerformance: Boolean get() = false
@@ -313,6 +338,20 @@ interface CompanionSettings {
 
     /** Whether WIDE knows the running game (WideScreen.gameFor); it shows as ORIGINAL otherwise. */
     val wideSupported: Boolean get() = false
+
+    /** EXPAND's LOOK AROUND - see [com.pokedaisy.app.Prefs.lookAround]. */
+    val lookAround: Boolean get() = true
+    fun setLookAround(on: Boolean) {}
+
+    /** EXPAND's ZOOM steps, as how much more of the map each shows (1x first, [com.pokedaisy.app.WideCamera.factor]),
+     * picked from SETTINGS > ZOOM - a device with no right stick has no R3 to step them; empty with no game view. */
+    val zoomSteps: List<Float> get() = emptyList()
+    /** The step picked on this game ([com.pokedaisy.app.Prefs.zoomLevelFor]). */
+    val zoomLevel: Int get() = 0
+    fun setZoomLevel(level: Int) {}
+
+    /** TOUCH CONTROLS > VIBRATION / STRENGTH changed: one buzz at [level] (com.pokedaisy.app.TouchHaptics). */
+    fun feelVibration(level: Int) {}
 
     /** EXPAND's AUTO ZOOM IN - see [com.pokedaisy.app.Prefs.expandZoomOnText]. */
     val expandZoomOnText: Boolean get() = true
@@ -402,6 +441,10 @@ interface CompanionSettings {
      */
     val companionWindow: Boolean? get() = null
     fun setCompanionWindow(on: Boolean) {}
+
+    /** SETTINGS > FOLD LAYOUT ([com.pokedaisy.app.Prefs.foldLayout]); null = not a foldable (no row). */
+    val foldLayout: Boolean? get() = null
+    fun setFoldLayout(on: Boolean) {}
 
     /** SETTINGS > COMPANION BUTTON: the edge tab that opens the companion ([com.pokedaisy.app.Prefs.companionTab]). Null
      * where [companionWindow] is (no row). */
@@ -564,3 +607,20 @@ enum class FfMusicMode(val label: String) {
     /** Silent. */
     OFF(tk("OFF")),
 }
+
+/** SETTINGS > BATTLE STYLE: the battle controls' look. [label] stays English; the rows translate it. */
+enum class BattleStyle(val id: Int, val label: String) {
+    /** Platinum-like coloured buttons (BattleControlsScreen). */
+    GEN4(0, tk("GEN 4")),
+
+    /** Black-like: a Poké Ball split red / white, dark octagon plates. */
+    GEN5(1, tk("GEN 5")),
+    ;
+
+    companion object {
+        fun of(id: Int): BattleStyle = entries.firstOrNull { it.id == id } ?: GEN4
+    }
+}
+
+/** An EXPAND zoom step as the HUD and SETTINGS > ZOOM show it: how much more of the map it shows ("1x", "1.4x"). */
+fun zoomLabel(factor: Float): String = "%.1fx".format(java.util.Locale.ROOT, factor).replace(".0x", "x")

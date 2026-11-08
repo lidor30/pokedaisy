@@ -13,6 +13,9 @@ class PokeDaisyApp : Application() {
         CrashReports.apply(prefs.crashReportsEnabled)
         // SOUND > GAME VOLUME / MUTE GAME: every player of the game's sound reads it from here.
         GameVolume.load(prefs)
+        AudioEffects.load(prefs)
+        // TOUCH CONTROLS > SKIN: Delta skins' PDF / PNG pictures.
+        com.pokedaisy.app.companion.ui.SkinImages.decode = SkinBitmaps::decode
         com.pokedaisy.app.companion.data.onGameIdentified = { kind, how -> CrashReports.gameIdentified(kind, how) }
         SaveBackups.settings = SaveBackups.Settings.from(prefs)
         ScreenScraperClient.enabled = FeatureFlags.screenScraper(this)

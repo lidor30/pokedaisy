@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
@@ -83,17 +84,28 @@ fun SidePanelCompanion(compactText: Boolean = false, content: @Composable () -> 
 const val COMPACT_TEXT_INCHES = 2.5f
 
 /**
- * The companion's window over the game on a [widthPx] x [heightPx] screen: [WINDOW_HEIGHT] of its height, at least
- * the Thor bottom screen's shape (1240x1080, so every tab lays out as it was made to) and wider on a wider screen (the
- * RP6's 16:9), narrower only where the screen is. Width x height, px.
+ * The companion's window over the game on a [widthPx] x [heightPx] screen of [density]: [WINDOW_HEIGHT] of its height, at
+ * least the Thor bottom screen's shape (1240x1080, so every tab lays out as it was made to) and wider on a wider screen (the
+ * RP6's 16:9), narrower only where the screen is; never taller than [OVERLAY_MAX_HEIGHT_DP] (a tablet: the window and what's
+ * in it stay about a handheld's size, not most of a 10" screen). Width x height, px.
  */
-fun companionWindowSize(widthPx: Int, heightPx: Int): Pair<Int, Int> {
-    val h = (heightPx * WINDOW_HEIGHT).roundToInt()
+fun companionWindowSize(widthPx: Int, heightPx: Int, density: Float): Pair<Int, Int> {
+    val h = min((heightPx * WINDOW_HEIGHT).roundToInt(), overlayMaxHeight(density))
     // Wider on a wider screen (16:9 comes out ~1.39:1), never narrower than the Thor's bottom screen.
     val aspect = (widthPx.toFloat() / heightPx * WIDE_SHARE).coerceIn(THOR_BOTTOM_ASPECT, MAX_WINDOW_ASPECT)
     val w = min((widthPx * WINDOW_MAX_WIDTH).roundToInt(), (h * aspect).roundToInt())
     return w to h
 }
+
+/**
+ * The tallest a window over the game gets, dp: the companion window and the HUD's MAP and summary alike, so on a big
+ * screen they come out the same size (the user's call, 2026-11-08: on a 10" tablet all three filled the screen). The
+ * handhelds' screens are under it (the RP6's window ~320 dp, the Thor's bottom screen 411 dp), so only tablets see it.
+ */
+const val OVERLAY_MAX_HEIGHT_DP = 480f
+
+/** [OVERLAY_MAX_HEIGHT_DP] in px at [density]. */
+fun overlayMaxHeight(density: Float): Int = (OVERLAY_MAX_HEIGHT_DP * density).roundToInt()
 
 private const val THOR_BOTTOM_ASPECT = 1240f / 1080f
 /** The window's shape follows the screen's, this much of it: a 16:9 screen's game still shows either side. */
@@ -154,7 +166,7 @@ fun SidePanelHost(
         ),
     ) {
         val outer = LocalDensity.current
-        val (ww, wh) = if (fullScreen) constraints.maxWidth to constraints.maxHeight else companionWindowSize(constraints.maxWidth, constraints.maxHeight)
+        val (ww, wh) = if (fullScreen) constraints.maxWidth to constraints.maxHeight else companionWindowSize(constraints.maxWidth, constraints.maxHeight, outer.density)
         // The window's chrome (frame, X, legend) at the companion's own scale.
         val chrome = Density(sidePanelDensity(ww, wh), outer.fontScale)
         Layout(
@@ -174,7 +186,7 @@ fun SidePanelHost(
         ) { measurables, constraints ->
             val w = constraints.maxWidth
             val h = constraints.maxHeight
-            val (cw, ch) = if (window && !fullScreen) companionWindowSize(w, h) else w to h
+            val (cw, ch) = if (window && !fullScreen) companionWindowSize(w, h, density) else w to h
             val companion = measurables[0].measure(Constraints.fixed(cw, ch))
             val close = measurables.getOrNull(1)?.measure(Constraints())
             val left = (w - cw) / 2
@@ -207,7 +219,11 @@ private fun WindowFrame(window: Boolean, modifier: Modifier, content: @Composabl
                 val px = u.toPx()
                 drawPixelRoundRect(Color.Black.copy(alpha = 0.35f), Offset(0f, 3 * px), size, radius = 4 * px, step = px)
             }
-            .clip(PixelRoundedShape(u * 4))
+            .pixelClip(PixelRoundedShape(u * 4))
+            // LIGHT COMPANION: the window drawn into a layer of its own, which the renderer keeps until something in
+            // it changes - an unchanged window cost a weak tablet 40-55 ms of GPU commands on every frame anything
+            // else on screen drew (2026-11-08).
+            .then(if (com.pokedaisy.app.companion.LightCompanion.on) Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen } else Modifier)
             .drawWithContent {
                 drawContent()
                 drawLayeredFrame(OptionColors.titleLayers.inPx(u.toPx()), radius = 4 * u.toPx())

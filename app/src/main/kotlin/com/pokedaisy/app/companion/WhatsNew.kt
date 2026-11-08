@@ -23,6 +23,36 @@ object WhatsNew {
     /** Newest first. */
     val RELEASES: List<Notes> = listOf(
         Notes(
+            "1.5.0",
+            listOf(
+                Section(
+                    NEW,
+                    listOf(
+                        "New games: Monomyth v1.1, Yellow Legacy, Crystal Legacy, Renegade Platinum and Modern Emerald.",
+                        "Korean: the whole app in Korean.",
+                        "Fresh look: a refreshed HUD, quick menu and battle buttons, with new animations.",
+                        "DS in more languages: HeartGold to White 2 in French, German, Spanish, Italian, Japanese and Korean, and Platinum in Spanish.",
+                        "DS on one screen: menus load faster, behind a steady picture instead of the fades.",
+                        "CHEATS on DS: Action Replay DS codes.",
+                        "INSTANT TEXT: the GBA games' dialogue shows all at once.",
+                        "BATTLE STYLE: a Gen 5 battle screen for the companion, beside the Gen 4 one.",
+                        "Field moves: teach TMs from the bag, FLASH from the quick menu, and the whole PC menu anywhere.",
+                        "Library: search your games, show SUPPORTED ONLY, and ADD TO HOME for a game's own icon.",
+                        "FOLD LAYOUT: a half open foldable puts the game and the companion on either side of the hinge.",
+                        "Touch controls: new layouts, looks and colours, X and Y buttons, and Delta skins.",
+                    ),
+                ),
+                Section(
+                    FIXES,
+                    listOf(
+                        "SoulGold: switching Pokémon from the companion follows your PARTY MENU option.",
+                        "Smoother play: steadier frames on the RG DS and other screens that tick unevenly.",
+                        "Unbound: no more white box behind the text boxes with EXPAND on.",
+                    ),
+                ),
+            ),
+        ),
+        Notes(
             "1.4.0",
             listOf(
                 Section(

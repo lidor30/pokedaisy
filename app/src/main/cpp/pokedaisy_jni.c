@@ -11,8 +11,12 @@
 #include <pthread.h>
 #include <stdlib.h>
 #include <string.h>
+#include <stdio.h>
+#include <stdarg.h>
+#include <time.h>
 
 #include <mgba/core/core.h>
+#include <mgba/core/log.h>
 #include <mgba/core/config.h>
 #include <mgba/core/blip_buf.h>
 #include <mgba/core/serialize.h>
@@ -36,11 +40,39 @@
 #include "pk_wide.h"
 #include "pk_gb_field.h"
 #include "pk_gb_audio.h"
+#include "pk_host.h"
 #include "nds/pk_nds.h"
 
 #define LOG_TAG "pokedaisy/jni"
 #define LOGI(...) __android_log_print(ANDROID_LOG_INFO,  LOG_TAG, __VA_ARGS__)
 #define LOGE(...) __android_log_print(ANDROID_LOG_ERROR, LOG_TAG, __VA_ARGS__)
+
+// mGBA's log, for every core in the process (the player's, STEADY's render core, LINK PLAY's). With no logger mGBA
+// printf()s each message, and a game reading unmapped memory logs every byte: a hack's BIOS LZ77 copy from a bad
+// address held one frame for seconds, and RESTART GAME's wait for the emu thread became an ANR (Crashlytics, 1.4.0).
+// Only errors reach logcat, at most a few a second; game errors, stubs and the rest are dropped unformatted.
+static void pk_mgba_log(struct mLogger* logger, int category, enum mLogLevel level, const char* format, va_list args) {
+    (void) logger;
+    if (!(level & (mLOG_FATAL | mLOG_ERROR))) return;
+    static struct timespec windowStart;
+    static int inWindow;
+    struct timespec now;
+    clock_gettime(CLOCK_MONOTONIC, &now);
+    if (now.tv_sec != windowStart.tv_sec) {
+        windowStart = now;
+        inWindow = 0;
+    }
+    if (++inWindow > 5) return;
+    char line[256];
+    vsnprintf(line, sizeof(line), format, args);
+    __android_log_print(ANDROID_LOG_ERROR, "pokedaisy/mgba", "%s: %s", mLogCategoryName(category), line);
+}
+
+static struct mLogger pk_mgbaLogger = { .log = pk_mgba_log, .filter = NULL };
+
+__attribute__((constructor)) static void pk_install_mgba_logger(void) {
+    mLogSetDefaultLogger(&pk_mgbaLogger);
+}
 
 // GBA hardware key bit positions (GBA_KEY_* in mgba/gba/input.h). Kept local so
 // this file doesn't depend on the GBA-specific header.
@@ -76,31 +108,6 @@ static void pk_gb_config(struct mCore* core) {
 static int pk_is_gba(const struct mCore* core) {
     return core && core->platform(core) == mPLATFORM_GBA;
 }
-/** A clock the save file brought back broken: mGBA keeps the cart RTC's state in 16 bytes after the save data and
- * restores it on reset (GBASavedataRTCRead), so a save dumped from a real cartridge whose battery had died - its
- * power-fail flag set - or written by a tool that left the 24-hour bit off made Ruby / Sapphire / Emerald say "The
- * internal battery has run dry" on every boot (sErrorStatus 0x20 / 0x10), where emulators that ignore those bytes
- * didn't. The emulated battery never runs dry: such a clock goes back to mGBA's fresh one (24-hour, the device's
- * time), and mGBA writes it into the save with the next save. 12-hour is only undone for the Pokémon games (they
- * always set 24-hour); a state loaded from before this keeps the old byte too, hence the call after a load. */
-static void pkHealRtc(struct mCore* core) {
-    if (!pk_is_gba(core)) return;
-    struct GBA* gba = (struct GBA*) core->board;
-    struct GBARTC* rtc = &gba->memory.hw.rtc;
-    if (!(gba->memory.hw.devices & HW_RTC)) return;
-    const char* code = gba->memory.rom && gba->memory.romSize > 0xB0 ? (const char*) gba->memory.rom + 0xAC : "";
-    bool pokemon = !strncmp(code, "AXV", 3) || !strncmp(code, "AXP", 3) || !strncmp(code, "BPE", 3);
-    if (!RTCControlIsPoweroff(rtc->control) && (RTCControlIsHour24(rtc->control) || !pokemon)) return;
-    LOGI("RTC from the save: control 0x%02x (%s), reset to a running 24-hour clock", (unsigned) rtc->control,
-         RTCControlIsPoweroff(rtc->control) ? "battery dead" : "12-hour");
-    rtc->control = RTCControlFillHour24(0);
-    rtc->offset = 0;
-}
-/** pkHealRtc for LINK PLAY's games (pk_link_jni.c). */
-void pk_heal_rtc(struct mCore* core) {
-    pkHealRtc(core);
-}
-
 #define PK_AUDIO_SCRATCH_SAMPLES 8192   // per-channel; * 2 shorts for interleave
 
 static struct {
@@ -357,7 +364,7 @@ Java_com_pokedaisy_app_MgbaCore_pkInit(JNIEnv* env, jobject thiz,
     }
 
     core->reset(core);
-    pkHealRtc(core);
+    pk_heal_rtc(core);
     pk_rest_reset();   // a new game: its own main loop depth
 
     const uint8_t* romFile = NULL;
@@ -453,32 +460,17 @@ Java_com_pokedaisy_app_MgbaCore_pkSetKeys(JNIEnv* env, jobject thiz, jint mask) 
     }
 }
 
-/** The game wrote its save within the last ~15 frames: mGBA's dirty flag, cleared (and the file synced) once the
- * writes have been quiet that long. A Gen 3 save spans several frames, sector after sector. */
-static bool pkSaveDirty(struct mCore* core) {
-    if (pk_is_gba(core)) return ((struct GBA*) core->board)->memory.savedata.dirty != 0;
-    if (core->platform(core) == mPLATFORM_GB) return ((struct GB*) core->board)->sramDirty != 0;
-    return false;
+/** pkFinishSave's frames go unheard. */
+static void pkDropAudio(void) {
+    pkDrainAudio();
+    g.audioAvail = 0;
 }
 
-/** Lets a save the game is writing finish before the core stops (leaving the app, CLOSE GAME, a suspend state): the
- * loop used to stop between any two frames, so leaving mid-"SAVING..." and then removing the app from recents (no
- * resume to finish it) left the newer slot half written - the game said its save was corrupt and loaded the one
- * before. Runs frames with no keys, unheard and undrawn, until mGBA has synced the save, at most [maxFrames].
- * Emu thread, like pkRunFrame. Returns the frames run. */
 JNIEXPORT jint JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkFinishSave(JNIEnv* env, jobject thiz, jint maxFrames) {
     if (pk_nds_active()) return pk_nds_finish_save(maxFrames);
     if (!g.core) return 0;
-    int n = 0;
-    if (pkSaveDirty(g.core)) g.core->setKeys(g.core, 0);
-    while (n < maxFrames && pkSaveDirty(g.core)) {
-        g.core->runFrame(g.core);
-        pkDrainAudio();
-        g.audioAvail = 0;
-        n++;
-    }
-    return n;
+    return pk_finish_save(g.core, maxFrames, pkDropAudio);
 }
 
 // WIDE: the core's frame is the size the configured game's rebuild expects (the GBA's 240 x 160, a Game Boy's 160 x 144).
@@ -673,6 +665,19 @@ Java_com_pokedaisy_app_MgbaCore_pkFieldKnows(JNIEnv* env, jobject thiz, jint crc
 JNIEXPORT jboolean JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkWideKnows(JNIEnv* env, jobject thiz, jint crc) {
     return pk_wide_knows((uint32_t) crc) ? JNI_TRUE : JNI_FALSE;
+}
+
+// WIDE and the field reads: a hack RetailEngine.kt proved to keep a retail build's engine, by its own row. Any thread, no core
+// needed; before the game is configured.
+JNIEXPORT jboolean JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkWideAddDerived(JNIEnv* env, jobject thiz, jint crc, jint baseCrc, jintArray row) {
+    if (!row) return JNI_FALSE;
+    jsize n = (*env)->GetArrayLength(env, row);
+    jint* a = (*env)->GetIntArrayElements(env, row, NULL);
+    if (!a) return JNI_FALSE;
+    int ok = pk_wide_add_derived((uint32_t) crc, (uint32_t) baseCrc, (const int32_t*) a, (int) n);
+    (*env)->ReleaseIntArrayElements(env, row, a, JNI_ABORT);
+    return ok ? JNI_TRUE : JNI_FALSE;
 }
 
 // WIDE: the window to draw from the next frame on, in the frame's pixels (its top-left (0, 0)); w 0 = none.
@@ -1118,7 +1123,7 @@ Java_com_pokedaisy_app_MgbaCore_pkLoadState(JNIEnv* env, jobject thiz, jstring j
     }
     bool ok = mCoreLoadStateNamed(g.core, vf, SAVESTATE_SAVEDATA | SAVESTATE_RTC);
     vf->close(vf);
-    if (ok) pkHealRtc(g.core);
+    if (ok) pk_heal_rtc(g.core);
     pk_wide_reset();   // the RAM it kept from the last frame is another moment's
     return ok ? JNI_TRUE : JNI_FALSE;
 }
@@ -1968,10 +1973,30 @@ Java_com_pokedaisy_app_MgbaCore_pkNdsCpuBoost(JNIEnv* env, jobject thiz, jboolea
     if (pk_nds_active()) pk_nds_set_cpu_boost(on == JNI_TRUE);
 }
 
+// A DS game's Action Replay codes (cheats/Cheats.kt DsCheats): words, and how many belong to each cheat. Emu thread.
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsCheats(JNIEnv* env, jobject thiz, jintArray jWords, jintArray jLengths) {
+    if (!pk_nds_active()) return -1;
+    jsize nWords = (*env)->GetArrayLength(env, jWords);
+    jsize nCheats = (*env)->GetArrayLength(env, jLengths);
+    jint* words = (*env)->GetIntArrayElements(env, jWords, NULL);
+    jint* lengths = (*env)->GetIntArrayElements(env, jLengths, NULL);
+    int n = pk_nds_set_cheats((const uint32_t*) words, nWords, (const int32_t*) lengths, nCheats);
+    (*env)->ReleaseIntArrayElements(env, jLengths, lengths, JNI_ABORT);
+    (*env)->ReleaseIntArrayElements(env, jWords, words, JNI_ABORT);
+    return n;
+}
+
 // DS LAYOUT floats the X menu on one screen: it comes back after a menu screen left by touch. Emu thread.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkNdsKeepStartMenu(JNIEnv* env, jobject thiz, jboolean on) {
     if (pk_nds_active()) pk_nds_set_keep_start_menu(on == JNI_TRUE);
+}
+
+// DS LAYOUT's transition hold (EmulatorEngine.dsHold): the two screens' brightness fade (pk_nds_fade). Emu thread, after a frame.
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsFade(JNIEnv* env, jobject thiz) {
+    return pk_nds_active() ? pk_nds_fade() : 0;
 }
 
 // DS RESOLUTION (nds/pk_nds_gl.h): 1 = the software renderer, 2-8 the GPU's. Taken before the next frame. Emu thread.
