@@ -18,21 +18,31 @@
 #include <unistd.h>
 extern "C" {
 #include "pd_style.h"
+#include "pd_tables.h"
 }
 namespace {
 constexpr int dsTabs=(1<<PD_TAB_PARTY)|(1<<PD_TAB_BAG)|(1<<PD_TAB_MAP)|(1<<PD_TAB_GUIDE)|(1<<PD_TAB_DEX);
+using Companion=DsCompanionUi;
+constexpr Companion::Row settingsOrder[]={
+  Companion::Layout,Companion::Hud,Companion::QuickStyle,Companion::CompanionButton,Companion::HudButton,Companion::TabBar,Companion::MoreTabs,
+  Companion::Battles,Companion::BattleStrip,Companion::AutoRun,Companion::ScreenButton,Companion::PenSpeed,
+  Companion::HudMinimal,Companion::HudBalls,Companion::HudRepel,Companion::HudMap,Companion::DarkMode,Companion::Reset
+};
+static_assert(std::size(settingsOrder)==Companion::Rows);
 const char* const layoutNames[]={"ONE SCREEN","TOP","BOTTOM","SIDE BY SIDE","STACKED","LARGE + SMALL","PICTURE IN PICTURE"};
 const char* const buttonNames[]={"L2","R2","X","Y","NONE"};
 const unsigned buttonIds[]={RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,RETRO_DEVICE_ID_JOYPAD_X,RETRO_DEVICE_ID_JOYPAD_Y};
+const char* const hudButtonNames[]={ "X", "Y", "L2", "R2", "NONE" };
+const int hudButtonIds[]={RETRO_DEVICE_ID_JOYPAD_X,RETRO_DEVICE_ID_JOYPAD_Y,RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,-1};
 const char* const speedNames[]={"SLOW","NORMAL","FAST"};
 const char* const resetNames[]={"CANCEL","RESET"};
-const char* const labels[]={"DS LAYOUT","AUTO BATTLES","PARTY HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP","MINIMAL HUD","POKÉ BALLS","REPEL STEPS","MINIMAP","DARK MODE","AUTO-RUN","TAB BAR","MORE TABS"};
+const char* const labels[]={"DS LAYOUT","AUTO BATTLES","HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP","MINIMAL HUD","POKÉ BALLS","REPEL STEPS","MINIMAP","DARK MODE","AUTO-RUN","TAB BAR","MORE TABS","HUD CURSOR BUTTON"};
 const char* const* choices(int row){
   return row==DsCompanionUi::Layout?layoutNames:row==DsCompanionUi::PenSpeed?speedNames:
-    row==DsCompanionUi::Reset?resetNames:buttonNames;
+    row==DsCompanionUi::Reset?resetNames:row==DsCompanionUi::HudButton?hudButtonNames:buttonNames;
 }
 int count(int row){return row==DsCompanionUi::Layout?DS_LAYOUTS:row==DsCompanionUi::CompanionButton?4:
- row==DsCompanionUi::ScreenButton?5:row==DsCompanionUi::PenSpeed?3:2;}
+ row==DsCompanionUi::ScreenButton||row==DsCompanionUi::HudButton?5:row==DsCompanionUi::PenSpeed?3:2;}
 }
 void DsCompanionUi::defaults(){
   pd_settings_defaults(&settings);settings.hud=false;
@@ -74,10 +84,12 @@ void DsCompanionUi::init(const std::string& directory,int legacyLayout,bool lega
     }
   }
   if(companionButton==screenButton)screenButton=(companionButton+1)%4;
+  if(hud_id()<0)settings.hudBtn=PD_BTN_NONE;
   settings.tabBar &= dsTabs;
   if (!settings.tabBar) settings.tabBar=dsTabs;
   pd_ui_init(&frame,&settings);pd_ui_init(&options,&settings);
   frame.availableTabs=dsTabs;
+  frame.shoulderTabs=true;
   frame.guideController=true;
   frame.contentCtx=this;frame.content=[](void* ctx,pd_ui* u,pd_canvas* c){static_cast<DsCompanionUi*>(ctx)->draw_body(u,c);};
   (void)loaded;
@@ -98,6 +110,15 @@ bool DsCompanionUi::save(){
 void DsCompanionUi::set_game(DsGame value,bool soulSilverVersion){
   game=value;
   soulSilver=soulSilverVersion;
+  switch(game){
+    case DsGame::Platinum:presentation.title="Pokémon Platinum";break;
+    case DsGame::Johto:presentation.title=soulSilver?"Pokémon SoulSilver":"Pokémon HeartGold";break;
+    case DsGame::Black:presentation.title="Pokémon Black";break;
+    case DsGame::White:presentation.title="Pokémon White";break;
+    case DsGame::Black2:presentation.title="Pokémon Black 2";break;
+    case DsGame::White2:presentation.title="Pokémon White 2";break;
+    default:presentation.title=nullptr;break;
+  }
   frame.availableTabs=dsTabs;
   if(game==DsGame::Unsupported){
     frame.availableTabs=1<<PD_TAB_PARTY;
@@ -106,8 +127,13 @@ void DsCompanionUi::set_game(DsGame value,bool soulSilverVersion){
 }
 unsigned DsCompanionUi::companion_id()const{return buttonIds[companionButton];}
 int DsCompanionUi::screen_id()const{return screenButton<4?int(buttonIds[screenButton]):-1;}
+int DsCompanionUi::hud_id()const{
+  const int id=hudButtonIds[settings.hudBtn];
+  return id==int(companion_id()) || id==screen_id() ? -1 : id;
+}
 int DsCompanionUi::pen_step()const{return penSpeed==0?1:penSpeed==1?3:6;}
 int DsCompanionUi::value(int row)const{
+  if(row==HudButton)return settings.hudBtn;
   if(row==DarkMode)return darkMode;
   if(row==AutoRun)return autoRun;
   if(row==HudMinimal)return hudMinimal;
@@ -120,8 +146,22 @@ void DsCompanionUi::apply(int row,int v){
   if(row==Layout){layout=v;++displayRevision;}
   else if(row==Battles)autoBattles=v;
   else if(row==Hud)settings.hud=v;
-  else if(row==CompanionButton){if(screenButton==v)screenButton=companionButton;companionButton=v;}
-  else if(row==ScreenButton){if(companionButton==v){error="Button already opens companion";return;}screenButton=v;}
+  else if(row==CompanionButton){
+    if(int(buttonIds[v])==hud_id()){error="Button already controls HUD";return;}
+    if(screenButton==v)screenButton=companionButton;
+    companionButton=v;
+  }
+  else if(row==ScreenButton){
+    if(companionButton==v){error="Button already opens companion";return;}
+    if(v<4 && int(buttonIds[v])==hud_id()){error="Button already controls HUD";return;}
+    screenButton=v;
+  }
+  else if(row==HudButton){
+    if(v!=PD_BTN_NONE && (hudButtonIds[v]==int(companion_id()) || hudButtonIds[v]==screen_id())){
+      error="Button already opens companion or switches screens";return;
+    }
+    settings.hudBtn=v;
+  }
   else if(row==PenSpeed)penSpeed=v;
   else if(row==QuickStyle)settings.quickGrid=v;
   else if(row==BattleStrip)battleStrip=v;
@@ -138,18 +178,22 @@ void DsCompanionUi::apply(int row,int v){
 }
 void DsCompanionUi::draw_settings(pd_canvas* c){
   const auto& s=*snapshot;
-  const std::string money=s.valid?std::to_string(s.money):"-";
+  char money[32];
+  pd_ui_format_money(s.valid?s.money:-1,money,sizeof money);
   const char* values[]={layoutNames[layout],autoBattles?"ON":"OFF",settings.hud?"ON":"OFF",
     buttonNames[companionButton],buttonNames[screenButton],speedNames[penSpeed],settings.quickGrid?"GRID":"RING","...",battleStrip?"ON":"OFF",hudMinimal?"ON":"OFF",value(HudBalls)?"ON":"OFF",value(HudRepel)?"ON":"OFF",value(HudMap)?"ON":"OFF",darkMode?"ON":"OFF",game==DsGame::Unsupported?"N/A":autoRun?"ON":"OFF",game==DsGame::Unsupported?"N/A":"EDIT",
-    (settings.tabBar & dsTabs)==dsTabs?"NONE HIDDEN":"OPEN"};
-  pd_option_row rows[Rows+5]={{"TRAINER",s.valid?s.trainer.c_str():"-"},{"PLACE",s.valid?ds_place(s.map,s.game):"-"},{"MONEY",money.c_str()}};
-  for(int i=0;i<Rows;i++)rows[3+i]={labels[i],values[i]};
-  rows[Rows+3]={"STATES / SPEED","NXRedux MENU"};
-  rows[Rows+4]={"RESUME / SHADERS","NXRedux MENU"};
-  pd_option_source source{"SETTINGS",rows,Rows+5};
-  options.optionSource=&source;options.optionSelected=3+setting;
-  pd_game game{};pd_snapshot state{};
-  pd_ui_options_view(&options,c,&game,&state);options.optionSource=nullptr;
+    (settings.tabBar & dsTabs)==dsTabs?"NONE HIDDEN":"OPEN",hudButtonNames[settings.hudBtn]};
+  constexpr int infoCount=3;
+  pd_option_row rows[Rows+infoCount]={{"PLACE",s.valid?ds_place(s.map,s.game):"-"},
+    {"MONEY",money},{"HOST","PokeDaisy core"}};
+  int n=infoCount;
+  for(const int row:settingsOrder){
+    if(row==setting)options.optionSelected=n;
+    rows[n++]={labels[row],values[row]};
+  }
+  pd_option_source source{"SETTINGS",rows,n,infoCount};
+  options.optionSource=&source;
+  pd_ui_options_view(&options,c,&presentation,&battle);options.optionSource=nullptr;
 }
 const std::vector<int>* DsCompanionUi::dex_order() const{
   if(dexArt.regional.empty() || !snapshot)return nullptr;
@@ -173,7 +217,11 @@ void DsCompanionUi::draw_body(pd_ui* u,pd_canvas* c){
   }
   if(u->tab==PD_TAB_PARTY)
     ds_party_view(c,*snapshot,*icons,selected,summary,page,&dexArt,learnRow,&learnLast);
-  if(u->tab==PD_TAB_BAG)ds_bag_view(c,*snapshot,pocket,scroll,details);
+  if(u->tab==PD_TAB_BAG){
+    const auto visible=ds_bag_view(c,*snapshot,pocket,scroll,details,frame.bagSort);
+    bagPockets=visible.occupied;
+    if(pocket!=visible.active){pocket=visible.active;scroll=0;details=false;}
+  }
   if(u->tab==PD_TAB_DEX){
     const auto* regional=dex_order();
     if(dexEntry){
@@ -212,22 +260,43 @@ void DsCompanionUi::draw_body(pd_ui* u,pd_canvas* c){
     ds_guide_view(u,c,*snapshot,guideRows,soulSilver);
   }
   if(u->tab==PD_TAB_MAP){
-    pd_canvas mapCanvas=*c;
-    mapCanvas.h-=26;
-    mapCanvas.cy1=std::min(mapCanvas.cy1,mapCanvas.h);
-    ds_map_view(&mapCanvas,*snapshot,*art,mapX,mapY);
-    ds_map_actions(c,mapAction);
+    ds_map_view(c,*snapshot,*art,mapX,mapY,mapAction);
+  }
+}
+void DsCompanionUi::update_battle(){
+  const bool was=frame.battleWasOn;
+  pd_ui_update(&frame,&battle);
+  if(was!=frame.battleWasOn){
+    frame.focusId=-1;
+    picker=-1;
   }
 }
 void DsCompanionUi::draw(pd_canvas* c,const DsCompanion& s,bool match,const DsMapArt& map,const std::vector<std::vector<uint32_t>>& monIcons){
   snapshot=&s;art=&map;icons=&monIcons;supported=match;
   settings.darkMode=darkMode;
   pd_look_apply(nullptr,&settings);
-  pd_game game{};pd_snapshot state{};pd_host_info host{};host.frontendOwnsPlayback=true;
+  battleSource={
+    this,
+    [](void* ctx,int id){return ds_species(id,static_cast<DsCompanionUi*>(ctx)->game);},
+    [](void* ctx,int id){return ds_move(id,static_cast<DsCompanionUi*>(ctx)->game);},
+    [](void* ctx,int id){return ds_move_type(id,static_cast<DsCompanionUi*>(ctx)->game);},
+    [](void* ctx,int id){return ds_move_power(id,static_cast<DsCompanionUi*>(ctx)->game);},
+    [](void* ctx,int id,int* a,int* b){
+      const auto game=static_cast<DsCompanionUi*>(ctx)->game;
+      *a=ds_species_type(id,0,game);if(*a<0)*a=PD_TYPE_NONE;
+      *b=ds_species_type(id,1,game);if(*b<0)*b=PD_TYPE_NONE;
+    },
+    [](void* ctx,pd_canvas* c,int id,int x,int y,bool faded){
+      return ds_draw_party_icon(c,*static_cast<DsCompanionUi*>(ctx)->icons,id,x,y,1,faded);
+    },
+  };
+  frame.battleSource=&battleSource;
+  frame.keyFocus=frame.tab==PD_TAB_BATTLE;
+  pd_host_info host{};host.frontendOwnsPlayback=true;
   frame.keepBackdrop=true;
   ds_companion_backdrop(c,this->game,frame.tab,pocket);
   pd_ui_tab_menu_focus(&frame,choice);
-  pd_ui_draw(&frame,c,&game,&state,&host);
+  pd_ui_draw(&frame,c,&presentation,&battle,&host);
   pd_ui_tab_menu_focus(&frame,-1);
   if(frame.tab==PD_TAB_MAP && placeRow>=0){
     const int count=std::min(8,int(mapPlaces.size()));
@@ -247,8 +316,16 @@ bool DsCompanionUi::control(unsigned pressed){
   auto hit=[&](unsigned id){return bool(pressed&(1u<<id));};
   int dy=hit(RETRO_DEVICE_ID_JOYPAD_DOWN)-hit(RETRO_DEVICE_ID_JOYPAD_UP);
   int dx=hit(RETRO_DEVICE_ID_JOYPAD_RIGHT)-hit(RETRO_DEVICE_ID_JOYPAD_LEFT);
+  if(picker<0 && placeRow<0 && (frame.overlay==PD_OVERLAY_NONE || frame.overlay==PD_OVERLAY_MORE) &&
+     (hit(RETRO_DEVICE_ID_JOYPAD_L) || hit(RETRO_DEVICE_ID_JOYPAD_R))){
+    pd_ui_next_tab(&frame,hit(RETRO_DEVICE_ID_JOYPAD_R)?1:-1);
+    pd_ui_guide_reset(&frame);
+    choice=0;
+    scroll=dexEntry=0;placeRow=mapAction=dexFilterFocus=-1;summary=details=false;error.clear();return false;
+  }
   if(frame.overlay==PD_OVERLAY_TAB_BAR || frame.overlay==PD_OVERLAY_MORE){
-    choice=std::clamp(choice+dy,0,std::max(0,pd_ui_tab_menu_count(&frame)-1));
+    const int step=frame.overlay==PD_OVERLAY_MORE && dx ? dx : dy;
+    choice=std::clamp(choice+step,0,std::max(0,pd_ui_tab_menu_count(&frame)-1));
     if(hit(RETRO_DEVICE_ID_JOYPAD_B))pd_ui_back(&frame);
     else if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
       pd_ui_tab_menu_choose(&frame,choice);
@@ -270,14 +347,10 @@ bool DsCompanionUi::control(unsigned pressed){
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){picker=-1;return false;}
     if(hit(RETRO_DEVICE_ID_JOYPAD_A)){int row=picker;picker=-1;apply(row,choice);}return false;
   }
-  if(hit(RETRO_DEVICE_ID_JOYPAD_L) || hit(RETRO_DEVICE_ID_JOYPAD_R)){
-    pd_ui_next_tab(&frame,hit(RETRO_DEVICE_ID_JOYPAD_R)?1:-1);
-    pd_ui_guide_reset(&frame);
-    scroll=dexEntry=0;placeRow=mapAction=dexFilterFocus=-1;summary=details=false;error.clear();return false;
-  }
   if(frame.tab==PD_TAB_SETTINGS){
-    setting=std::clamp(setting+dy,0,int(Rows)-1);
-    if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(game==DsGame::Unsupported)return true;frame.tab=PD_TAB_PARTY;return false;}
+    const int index=int(std::find(std::begin(settingsOrder),std::end(settingsOrder),setting)-std::begin(settingsOrder));
+    setting=settingsOrder[pd_ui_list_step(index,Rows,dy)];
+    if(hit(RETRO_DEVICE_ID_JOYPAD_B))return true;
     if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
       error.clear();
       if(setting==TabBar || setting==MoreTabs){
@@ -286,22 +359,29 @@ bool DsCompanionUi::control(unsigned pressed){
           choice=0;
           if(!pd_ui_tab_menu_count(&frame))frame.overlay=PD_OVERLAY_NONE;
         }
-      }else if(setting==Battles || setting==Hud || setting==QuickStyle || setting>=BattleStrip)apply(setting,!value(setting));
+      }else if(setting==Battles || setting==Hud || setting==QuickStyle || (setting>=BattleStrip && setting<HudButton))apply(setting,!value(setting));
       else{picker=setting;choice=value(setting);}
     }return false;
+  }
+  if(frame.tab==PD_TAB_BATTLE){
+    if(hit(RETRO_DEVICE_ID_JOYPAD_B))return !pd_ui_back(&frame);
+    if(dx)pd_ui_focus_move(&frame,dx<0?2:3);
+    else if(dy)pd_ui_focus_move(&frame,dy<0?0:1);
+    if(hit(RETRO_DEVICE_ID_JOYPAD_A))pd_ui_focus_press(&frame);
+    return false;
   }
   if(frame.tab==PD_TAB_PARTY){
     int n=snapshot?int(snapshot->party.size()):0;
     const int oldSelected=selected;
-    selected=std::clamp(selected+dy*(summary?1:2)+(summary?0:dx),0,std::max(0,n-1));
+    const int step=summary?(dy?dy:page==PD_SUMMARY_LEARN?0:dx):dy*2+dx;
+    selected=std::clamp(selected+step,0,std::max(0,n-1));
     const bool confirm=hit(RETRO_DEVICE_ID_JOYPAD_A);
     if(summary){
       if(oldSelected!=selected)learnRow=0;
       if(n>0 && !snapshot->party[selected].egg){
         if(hit(RETRO_DEVICE_ID_JOYPAD_SELECT)){page=page==2?0:2;learnRow=0;}
         else if(confirm)page=page==0?1:0;
-        else if(dx && page!=2)page=1-page;
-        else if(dx)learnRow=std::clamp(learnRow+dx,0,learnLast);
+        else if(dx && page==PD_SUMMARY_LEARN)learnRow=std::clamp(learnRow+dx,0,learnLast);
       }
     }else if(confirm && n>0){
       summary=true;
@@ -309,9 +389,18 @@ bool DsCompanionUi::control(unsigned pressed){
     }
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(summary)summary=false;else return true;}
   }else if(frame.tab==PD_TAB_BAG){
-    if(dx){const int tabs=ds_bag_tabs(game);pocket=(pocket+dx+tabs)%tabs;scroll=0;}
-    scroll=std::clamp(scroll+dy,0,std::max(0,snapshot?ds_bag_count(*snapshot,pocket)-1:0));
-    if(hit(RETRO_DEVICE_ID_JOYPAD_A))details=!details;
+    if(!details && hit(RETRO_DEVICE_ID_JOYPAD_SELECT)){
+      pd_ui_bag_cycle_sort(&frame);
+      scroll=0;
+    }
+    if(!details && dx){
+      const int tabs=ds_bag_tabs(game);
+      do pocket=(pocket+dx+tabs)%tabs; while(!(bagPockets&(1u<<pocket)));
+      scroll=0;
+    }
+    const int count=snapshot?ds_bag_count(*snapshot,pocket):0;
+    scroll=std::clamp(scroll+dy,0,std::max(0,count-1));
+    if(count>0 && hit(RETRO_DEVICE_ID_JOYPAD_A))details=!details;
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(details)details=false;else return true;}
   }else if(frame.tab==PD_TAB_DEX){
     const auto* regional=dex_order();
@@ -375,32 +464,38 @@ bool DsCompanionUi::control(unsigned pressed){
       if(snapshot){mapX=snapshot->mapX;mapY=snapshot->mapY;}
     };
     if(placeRow>=0){
-      placeRow=std::clamp(placeRow+dy+dx*8,0,int(mapPlaces.size())-1);
-      if(hit(RETRO_DEVICE_ID_JOYPAD_B))placeRow=-1;
+      placeRow=pd_ui_list_step(placeRow,int(mapPlaces.size()),dy);
+      if(hit(RETRO_DEVICE_ID_JOYPAD_B)){placeRow=-1;mapAction=0;}
       else if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
         const auto pos=mapPlaces[placeRow].position;
         mapX=pos.x;mapY=pos.y;placeRow=mapAction=-1;
       }
       return false;
     }
-    if(mapAction>=0){
-      mapAction=std::clamp(mapAction+dx,0,1);
-      if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
+    switch(pd_ui_map_control(&mapAction,2,dx,dy,hit(RETRO_DEVICE_ID_JOYPAD_A),
+                             hit(RETRO_DEVICE_ID_JOYPAD_B),hit(RETRO_DEVICE_ID_JOYPAD_SELECT))){
+      case PD_MAP_CLOSE:
+        mapAction=-1;
+        if(frame.moreOpened){
+          frame.overlay=PD_OVERLAY_MORE;
+          choice=0;
+          return false;
+        }
+        return true;
+      case PD_MAP_OPEN_PLACES: openPlaces(); break;
+      case PD_MAP_CHOOSE:
         if(mapAction==0)openPlaces();
         else{recenter();mapAction=-1;}
-      }else if(hit(RETRO_DEVICE_ID_JOYPAD_B)){
-        mapAction=-1;
-        if(!snapshot || (mapX==snapshot->mapX && mapY==snapshot->mapY))return true;
-        recenter();
-      }else if(dy<0)mapAction=-1;
-      return false;
+        break;
+      case PD_MAP_CENTER: recenter(); break;
+      case PD_MAP_MOVE:{
+        const auto bounds=ds_map_cursor_max(game);
+        mapX=std::clamp(mapX+dx,0,bounds.x);
+        mapY=std::clamp(mapY+dy,0,bounds.y);
+        break;
+      }
+      case PD_MAP_IDLE: break;
     }
-    const auto bounds=ds_map_cursor_max(game);
-    mapX=std::clamp(mapX+dx,0,bounds.x);
-    mapY=std::clamp(mapY+dy,0,bounds.y);
-    if(hit(RETRO_DEVICE_ID_JOYPAD_A))recenter();
-    if(hit(RETRO_DEVICE_ID_JOYPAD_SELECT))openPlaces();
-    if(hit(RETRO_DEVICE_ID_JOYPAD_B))mapAction=0;
   }
   return false;
 }

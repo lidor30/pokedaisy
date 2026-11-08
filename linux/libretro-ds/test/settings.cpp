@@ -40,22 +40,28 @@ int main(int argc,char** argv){
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.layout==3 && ui.picker==-1);
   // Cancel does not apply a highlighted choice.
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_UP);press(ui,RETRO_DEVICE_ID_JOYPAD_B);assert(ui.layout==3);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(!ui.autoBattles);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.settings.hud);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);assert(ui.setting==DsCompanionUi::Hud);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.settings.hud);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);assert(ui.setting==DsCompanionUi::QuickStyle);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);assert(ui.setting==DsCompanionUi::CompanionButton);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   assert(ui.companion_id()==RETRO_DEVICE_ID_JOYPAD_X);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  ui.setting=DsCompanionUi::ScreenButton;
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   assert(ui.screen_id()==RETRO_DEVICE_ID_JOYPAD_R2 && !ui.error.empty());
   // Choose NONE for screen shortcut, then FAST pen speed.
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);for(int i=0;i<3;i++)press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);assert(ui.setting==DsCompanionUi::PenSpeed);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   assert(ui.screen_id()==-1 && ui.pen_step()==6);draw();ppm((std::string(argv[2])+"/settings-controls.ppm").c_str(),px);
+  ui.setting=DsCompanionUi::Battles;
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(!ui.autoBattles);
   DsCompanionUi reloaded;reloaded.init(path);
   assert(reloaded.layout==3 && !reloaded.autoBattles && reloaded.settings.hud && reloaded.companion_id()==RETRO_DEVICE_ID_JOYPAD_X && reloaded.screen_id()==-1 && reloaded.pen_step()==6);
   // A cancelled reset leaves the file and current values alone.
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.settings.quickGrid);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.choice==0);press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.layout==3);
+  ui.setting=DsCompanionUi::QuickStyle;press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.settings.quickGrid);
+  ui.setting=DsCompanionUi::Reset;press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.choice==0);press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.layout==3);
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   assert(ui.layout==0 && ui.autoBattles && !ui.settings.hud && ui.companion_id()==RETRO_DEVICE_ID_JOYPAD_L2);
   reloaded.init(path);assert(reloaded.layout==0 && !reloaded.settings.hud);
@@ -80,6 +86,18 @@ int main(int argc,char** argv){
     for(int i=0;i<mode;++i)press(ui,RETRO_DEVICE_ID_JOYPAD_UP);
     press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.layout==0);
   }
+  assert(ui.hud_id()==-1);
+  ui.setting=DsCompanionUi::HudButton;
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_UP); // R2 is already the screen switch.
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  assert(ui.hud_id()==-1 && !ui.error.empty());
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  for(int i=0;i<3;++i)press(ui,RETRO_DEVICE_ID_JOYPAD_UP);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  assert(ui.hud_id()==RETRO_DEVICE_ID_JOYPAD_Y);
+  reloaded.init(path);
+  assert(reloaded.hud_id()==RETRO_DEVICE_ID_JOYPAD_Y);
   ui.setting=DsCompanionUi::HudMinimal;
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);
@@ -122,6 +140,17 @@ int main(int argc,char** argv){
   draw();ppm((std::string(argv[2])+"/shared-more.ppm").c_str(),px);
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   assert(ui.frame.tab==PD_TAB_MAP);
+  // Hidden cards occupy the More position when using the shoulder buttons.
+  press(ui,RETRO_DEVICE_ID_JOYPAD_R);
+  assert(ui.frame.tab==PD_TAB_SETTINGS && ui.frame.overlay==PD_OVERLAY_NONE);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_L);
+  assert(ui.frame.overlay==PD_OVERLAY_MORE);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_L);
+  assert(ui.frame.tab==PD_TAB_GUIDE && ui.frame.overlay==PD_OVERLAY_NONE);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_R);
+  assert(ui.frame.overlay==PD_OVERLAY_MORE);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  assert(ui.frame.tab==PD_TAB_MAP && ui.frame.moreOpened);
   reloaded.init(path);
   assert(!(reloaded.settings.tabBar & (1<<PD_TAB_MAP)) && (reloaded.frame.availableTabs & (1<<PD_TAB_MAP)));
   pd_snapshot field{};
@@ -129,8 +158,19 @@ int main(int argc,char** argv){
   const hud_state active{250,250,false,-1,-1};
   pd_settings hudOptions{};
   pd_settings_defaults(&hudOptions);
+  hud_hits hits{};
   hud_ds_draw(&c,&field,&active,&hudOptions,nullptr,nullptr,
-              [](pd_canvas*,int id,int,int){assert(id==79);return true;},79,true);
+              [](pd_canvas*,int id,int,int){assert(id==79);return true;},79,true,c.w,&hits);
+  assert(hud_first(&hits)==HUD_REPEL);
+  hud_ds_minimap(&c,&hudOptions,"Route 201",[](pd_canvas*,int,int,int,int){},&hits);
+  assert(hud_step(&hits,HUD_REPEL,0,-1)==HUD_MAP);
+  const hud_state noRepel{0,0,false,-1,-1};
+  hud_ds_draw(&c,&field,&noRepel,&hudOptions,nullptr,nullptr,nullptr,79,true,c.w,&hits);
+  assert(hud_step(&hits,HUD_REPEL,0,-1)==-1);
+  ui.frame.tab=PD_TAB_BAG;
+  s.bag.clear();
+  draw();
+  ppm((std::string(argv[2])+"/bag-empty.ppm").c_str(),px);
   // Hostile/old preference values never index a label/button array out of bounds.
   ui.save();
   {std::ofstream file(ui.path,std::ios::app);file<<"ds_layout=999\nds_companionbtn=-1\nds_penspeed=oops\n";}

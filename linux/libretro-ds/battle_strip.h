@@ -1,9 +1,13 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #pragma once
 #include <array>
+#include <cstddef>
 #include <cstdint>
 #include <string>
 #include "pk_nds_field.h"
+
+struct DsCompanion;
+struct pd_snapshot;
 
 enum class DsBattlePanel { Native, Actions, Moves };
 enum class DsBattleLook { Platinum, HeartGold, SoulSilver, Unova, Unova2 };
@@ -19,6 +23,8 @@ struct DsBattleView {
 
 // Call only after the exact supported ROM identity has been established.
 DsBattleView ds_read_battle(const PkNdsFieldGame*,uint32_t (*read32)(uint32_t),int scene);
+void ds_read_battle_companion(const PkNdsFieldGame*,uint32_t (*read32)(uint32_t),
+                              const uint8_t* ram,size_t ramSize,const DsCompanion&,pd_snapshot&);
 const char* ds_battle_species(const DsBattleView&);
 
 struct DsBattleTap { bool down=false; int x=0,y=0; };

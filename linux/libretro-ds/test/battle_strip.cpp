@@ -1,6 +1,10 @@
 // SPDX-License-Identifier: GPL-3.0-or-later
 #include "battle_strip.h"
 #include "data_gen.h"
+#include "companion.h"
+extern "C" {
+#include "pd_snapshot.h"
+}
 #include <cassert>
 #include <fstream>
 #include <iterator>
@@ -31,11 +35,21 @@ int main(int argc,char** argv){
     return ds_read_battle(game,read32,pk_nds_field_state(game,read32,nullptr,0));
   };
   assert(view().panel==DsBattlePanel::Native);
+  // The info pane reads a busy battle too, with no actionable touch panel.
+  pd_snapshot info{};
+  const auto platinumSave=ds_read_companion(ram.data(),ram.size());
+  ds_read_battle_companion(game,read32,ram.data(),ram.size(),platinumSave,info);
+  assert(info.valid && info.inBattle && info.isTrainer && !info.isDouble);
+  assert(info.battlers[0].species==387 && info.battlers[0].pp[0]==35);
+  assert(info.battlers[1].species==390 && info.foeCount==1 && info.foeActive==0);
+  ds_read_battle_companion(game,read32,ram.data(),1,platinumSave,info);
+  assert(!info.inBattle && !info.valid);
   const auto manager=read32(read32(battle_fieldSystemPtr));
   const auto system=read32(read32(manager+battle_offChild)+battle_offAppData);
   const auto context=read32(system+battle_offBattleCtx);
   // The captured rival battle provides battlers; synthesize the transient panel.
   write32(system+0x19c,base+0x1000);
+  write32(base+0x1000,system); // BattleInput names its BattleSystem while the battle's touch screen is up
   write32(base+0x14d0,base+0x2000);
   write32(context+8,PK_NDS_BATTLE_SELECTING);
   write32(context,1);
@@ -99,6 +113,8 @@ int main(int argc,char** argv){
   write32(context,1);
   write32(system+battle_offBattleType,3);
   assert(view().panel==DsBattlePanel::Native);
+  ds_read_battle_companion(game,read32,ram.data(),ram.size(),platinumSave,info);
+  assert(!info.inBattle);
 
   // Exercise the shared Gen 4 reader with Johto's exact field profile.
   const auto* johto=pk_nds_field_game("IPKE",0);
@@ -122,6 +138,11 @@ int main(int argc,char** argv){
   ram.assign(std::istreambuf_iterator<char>(blackFile),{});
   assert(ram.size()==0x400000);
   const auto* black=pk_nds_field_game("IRBO",0);
+  const auto blackSave=ds_read_companion(ram.data(),ram.size(),DsGame::Black);
+  ds_read_battle_companion(black,read32,ram.data(),ram.size(),blackSave,info);
+  assert(info.valid && info.inBattle && !info.isTrainer && !info.isDouble);
+  assert(info.battlers[0].species==381 && info.battlers[0].type1==16);
+  assert(info.battlers[1].species==506 && info.foeCount==0);
   const auto gs=read32(black->fieldSystemPtr);
   const auto proc=read32(read32(gs+8)+8);
   const auto client=read32(read32(proc+0x14)+0x10);

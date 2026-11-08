@@ -54,6 +54,50 @@ This package defaults to DSperate Auto frameskip and 512×384 battle output.
 Auto only skips rendering when the frontend reports that its audio buffer
 is running low. Reload the ROM after changing frameskip.
 
+### Companion navigation on both cores
+
+Use L1/R1 to cycle the tab bar, including **More** when a card is hidden.
+The D-pad moves within the current tab. In Party, A opens the highlighted
+Pokémon and switches between Moves and Stats. Left/Right or Up/Down changes
+Pokémon in Moves and Stats. In Learn, Left/Right scrolls the list and
+Up/Down changes Pokémon. Select opens or closes Learn where supported.
+B returns to the highlighted Pokémon in the grid.
+
+In Bag, Left/Right cycles **All** and occupied pockets, Up/Down selects an
+item, A opens its details, and B returns to the list. Press Select while
+browsing to cycle **Default**, **Name**, and **Count** (highest first).
+Sorting only changes the companion display.
+
+To control the DS overworld HUD, turn **HUD** on and assign an unused button
+under **HUD CURSOR BUTTON** in companion Settings. The binding starts at
+**None** so native buttons keep their usual functions. Press the assigned
+button over a visible HUD, move with the D-pad, and press A to open the
+highlighted map, party summary, or Bag. Press B or the HUD button again to
+return to gameplay. The cursor is available in the overworld, with a target
+for each visible HUD part.
+
+The shared tab order is **Party, Dex, Map, Bag, Guide**, with **More** and
+**Settings** at the end when available. **Battle** takes the Party slot
+during a supported battle.
+
+In Settings, Up/Down follows the available rows as the list scrolls. Press
+A to select and B to back out. Each core exposes its own supported settings.
+
+On either map, use the D-pad to move and A to recenter. B moves focus to
+**Places** and **Me**, then Left/Right chooses a button. Up returns to the
+map, and a second B closes it. Select opens Places directly from the map.
+In Places, Up/Down picks a location, A goes there, and B returns to the
+map buttons.
+
+### DS Battle companion
+
+Tap the companion button (L2 by default) during a supported single battle to open
+**Battle Info**. It shows the active matchup, your moves and PP, and type
+effectiveness. Use the D-pad and A to choose **Suggestions**, which ranks
+party members and their usable moves. In trainer battles, previously seen
+opponents can be selected from the roster. B returns to Info or closes the
+companion. The game remains paused while you browse.
+
 ### Platinum One Screen battle strip
 
 On Platinum USA revision 1, **Battle Strip** defaults on with **One Screen**
