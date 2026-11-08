@@ -3171,6 +3171,31 @@ masked, from Black's RAM to Black 2's - and checked headless on the player's thr
   versions differ in their wild sets only.
 - Its party and bag screens are Black's; its Pokédex is red (`DsPattern.BLACK2_DEX`, sampled headless).
 
+## Frame pacing (`EmulatorEngine`)
+
+At 1x a game frame runs on the game screen's refresh: `EmulatorView`'s GL thread calls `engine.onVsync()` once per
+draw, and the loop runs one frame per refresh (60 Hz) or per two (120 Hz), the audio resampled to match with dynamic
+rate control and written non-blocking. Whole-number FF speeds run their group of frames on each refresh (`FfGroupFit`).
+Three ways out of that, each latched:
+
+- `slowFrames`: a GBA game whose frames keep missing the draw's wait is still paced by the refresh, but the GL thread
+  stops waiting for it (DS games always run that way).
+- the audio fallback (`vsyncFallback`, from `AudioTroubleWatch`): underruns that keep coming put the loop on the timer
+  (`Thread.sleep` to 1/60 s) with blocking `track.write`s, which pace it in real time.
+- `VsyncCheck` (GitHub #350): the ticks don't follow the refresh at all. The Anbernic RG DS (GammaOS, Android 14)
+  swaps without waiting for vsync: ~400 draws a second on a 60 Hz screen, the period estimate (which only keeps 4-34 ms
+  intervals) anywhere from 70 to 205 Hz, vsync pacing switching on and off on a made-up rate, 25-60 fps at 1x. The
+  check counts ticks per second; a second strikes when it's over 1.25x the display's fastest mode (250 when the display
+  reports none), or jumps 25% from the one before while one of the two is past 1.1x that mode. Two strikes out of four
+  and the process stays on the audio fallback's path (timer + blocking writes, FF on the timer too). A screen moving
+  between 60 and 120 Hz or a GL thread too busy to keep up never strikes (`VsyncCheckTest`, with recorded sequences).
+
+The `fps=` log line says which: `paced=N` (refreshes per frame, 0 = the timer), `fallback` / `fallback (ticks don't
+follow the refresh)`, `ticks=N/s` (the GL thread's last second) and, on the timer at 1x, `block=avg/max ms`, how long the
+blocking writes held the loop. A device whose audio takes writes in big chunks shows a large max there (the RG DS's
+reporter measured 60-88 ms: the loop stops for 4-5 frames, then runs them back to back); if that's what's left, the
+next step is the timer with non-blocking writes and rate control.
+
 ## Build
 
 ```bash
