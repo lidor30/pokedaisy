@@ -32,6 +32,14 @@ object DsPorts {
     val codes: Set<String> by lazy { NDS_PORTS.mapTo(LinkedHashSet()) { it.code } }
 
     fun gen4Config(p: NdsPort): Gen4Config? {
+        if (p.kind == GameKind.PLATINUM) {
+            val us = GEN4_PLATINUM_US
+            return us.copy(
+                saveDataPtr = p.saveData,
+                battle = us.battle!!.copy(fieldSystemPtr = p.system, battleTemplate = p.battleTemplate),
+                townMap = us.townMap!!.copy(fieldSystemPtr = p.system),
+            )
+        }
         val us = when (p.kind) {
             GameKind.HEARTGOLD -> GEN4_HEARTGOLD_US
             GameKind.SOULSILVER -> GEN4_SOULSILVER_US

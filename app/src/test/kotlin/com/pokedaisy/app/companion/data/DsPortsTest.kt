@@ -55,7 +55,15 @@ class DsPortsTest {
     @Test
     fun `a port's config is its game's US one with its own globals`() {
         for (p in NDS_PORTS) {
-            if (p.kind.isHgss) {
+            if (p.kind == GameKind.PLATINUM) {
+                val cfg = gen4ConfigFor(p.kind, p.code)!!
+                val us = GEN4_PLATINUM_US
+                assertEquals(p.code, p.saveData, cfg.saveDataPtr)
+                assertEquals(p.code, p.system, cfg.battle!!.fieldSystemPtr)
+                assertEquals(p.code, p.battleTemplate, cfg.battle!!.battleTemplate)
+                assertEquals(p.code, p.system, cfg.townMap!!.fieldSystemPtr)
+                assertEquals(p.code, us.copy(saveDataPtr = cfg.saveDataPtr, battle = cfg.battle, townMap = cfg.townMap).toString(), cfg.toString())
+            } else if (p.kind.isHgss) {
                 val cfg = gen4ConfigFor(p.kind, p.code)!!
                 val us = if (p.kind == GameKind.HEARTGOLD) GEN4_HEARTGOLD_US else GEN4_SOULSILVER_US
                 assertEquals(p.code, p.saveData, cfg.saveDataPtr)
@@ -80,8 +88,8 @@ class DsPortsTest {
         for (p in NDS_PORTS) withGame(p.kind, p.code) {
             val fixture = p.kind.name.lowercase()
             val us = FixtureMemoryReader.load(fixture)
-            if (p.kind.isHgss) {
-                val usCfg = gen4ConfigFor(p.kind, if (p.kind == GameKind.HEARTGOLD) "IPKE" else "IPGE")!!
+            if (p.kind == GameKind.PLATINUM || p.kind.isHgss) {
+                val usCfg = gen4ConfigFor(p.kind, when (p.kind) { GameKind.PLATINUM -> "CPUE"; GameKind.HEARTGOLD -> "IPKE"; else -> "IPGE" })!!
                 val cfg = gen4ConfigFor(p.kind, p.code)!!
                 val moved = moved(us, mapOf(cfg.saveDataPtr to usCfg.saveDataPtr, p.system to usCfg.battle!!.fieldSystemPtr))
                 assertSameSave(p.code, readGen4Telemetry(us, usCfg), readGen4Telemetry(moved, cfg))
@@ -124,6 +132,7 @@ class DsPortsTest {
                 val out = File(dir, "${p.code}-${p.revision}").apply { mkdirs() }
                 assertTrue(p.code, NdsArt.extractTo(rom, out))
                 val dex = when (p.kind) {
+                    GameKind.PLATINUM -> NdsArt.PLATINUM_DEX
                     GameKind.HEARTGOLD, GameKind.SOULSILVER -> NdsArt.HEARTGOLD_DEX
                     GameKind.BLACK -> NdsArt.BLACK_DEX
                     GameKind.WHITE -> NdsArt.WHITE_DEX

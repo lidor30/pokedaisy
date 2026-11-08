@@ -36,6 +36,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Ruby / Sapphire | JP | ✅ | ✅ | ✅ | — | ✅ | ✅ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ |
 | Platinum (DS) | USA rev 1 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
 | Platinum (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
+| Platinum (DS) | Spain rev 0 ³¹ | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ³¹ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
 | HeartGold (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
 | HeartGold (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
 | HeartGold (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
@@ -55,7 +56,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | White 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
 | White 2 (DS) | France, Germany, Spain, Italy, Korea; Japan rev 1 ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
 | Origin HeartGold (DS) | 4.0.3 English 1.0.0 | ✅ ¹⁴ | — ²⁹ | — | — | — | ✅ ²⁹ | — | ✅ ²⁹ | ✅ ¹⁴ | ✅ ²⁹ | ✅ ²⁹ | — | n/a | — | — | — |
-| Renegade Platinum (DS) | 1.3.0 | ✅ ³² | ✅ ³² | — | — | — | ✅ ³² | — | ✅ ³² | ◐ ³² | ◐ ³² | ✅ ³² | — | n/a | — | — | — |
+| Renegade Platinum (DS) | 1.3.0, 1.3.0 Classic, 1.2.0 | ✅ ³² | ✅ ³² | — | — | — | ✅ ³² | — | ✅ ³² | ◐ ³² | ◐ ³² | ✅ ³² | — | n/a | — | — | — |
 | Amethyst | 1.3.0, 1.4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — ³³ | ✅ ³³ |
 | Ash Gray | 4.5.3, Fork Bug Fix 1.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | — ³³ |
 | Celia's Stupid Romhack | 1.1.4 | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | ✅ ¹⁵ | — | — | — | — |
@@ -420,6 +421,11 @@ change to any of the places listed under "Where it's decided" updates its rows h
     platform (its zone record given FLY's bit) to Accumula Town and Black 2 / White 2 from Humilau City, then onto Route 1's grass
     into a wild battle, its command menu read (adapter command 3) as on the USA carts; HeartGold / SoulSilver from Goldenrod to
     Pallet Town, landing on the USA cart's picture. Not yet: a check on a device.
+    Spanish Platinum (rev 0, 2026-11-09) is the first Platinum port (`base = "platinum"`: the USA rev 1 tables, callSet 300 + n):
+    the French cart's functions at the same addresses, its globals and field overlays 0x20 higher. No Platinum save exists here,
+    so a new game was played headless in it (its own intro): the field read and PC anywhere checked on it, EXPAND drawn in the
+    player's room. FLY (no badge or flyer that early) wasn't tried. The "5216" Japanese Black is No-Intro's cart with 512 bytes
+    of overlay 12 changed; on the USA save it ran screen for screen as the No-Intro cart (title, CONTINUE, the field, PC).
 
 32. Renegade Platinum (Drayano's, 1.3.0) is US Platinum rev 1 edited in place: the same header (`CPUE` rev 1) and RAM,
     its ARM9 retail's but one word (the shiny odds), so the native side runs it as Platinum (`pk_nds_field.cpp` /
@@ -429,7 +435,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
     the storage system; FLY's job flew to Sandgem Town (its check refused for the missing badge, as the game would);
     EXPAND outdoors in Twinleaf Town, with `widecheck`'s overlap differences the same as retail Platinum's on the same
     save and warp; a wild battle's input state read and FIGHT pressed through the touch screen. Bike / surf (not ridden)
-    and WILD ENCOUNTERS (not walked) are retail Platinum's code, untried here.
+    and WILD ENCOUNTERS (not walked) are retail Platinum's code, untried here. Its Classic patch and v1.2.0 (2026-11-09) pass
+    the same check: v1.2.0's ARM9 and every place read are v1.3.0's byte for byte (overlay 16 one data byte apart), its own
+    species, moves, trainers and encounters in 12 data files the reader takes through the file system (`RenegadePlatinumTest`).
 33. TMs from the bag and FLASH on the hacks edited into retail's code: FireRed rev 0's tables (`tmFnsFor` /
     `flashFnsFor` by kind, `FIRERED_REV0_HACKS`) and Emerald's (Glazed, Kaizo), each checked by
     `scripts/verify_tm_flash.py` on the hack's own save (the TM screen opened and backed out of, the field back after;

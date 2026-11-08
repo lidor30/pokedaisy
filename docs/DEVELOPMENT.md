@@ -2822,7 +2822,11 @@ beside its US cart on the US save with one script (the field, the X menu, `widec
 SoulSilver the party, options and Pokédex pages from the X menu and a wild battle through `hgwild`'s `scriptgo`) and compare the
 `fieldinfo` bits and `childInit`s. Some carts' intros are slower: Spanish and French White 2 stop at the C-Gear's "continue anyway?"
 where the US cart has gone on (one more A). Spanish HeartGold's low ARM9 sits 8 bytes lower than the others' (its own callSet row
-covers it). Spanish White and Korean White share Black's addresses outright. **Japanese and Korean carts**: the US saves load in all of them but Korean HeartGold /
+covers it). Spanish White and Korean White share Black's addresses outright. **Spanish Platinum** (`CPUS` rev 0, 2026-11-09)
+brought a third base, `platinum` (`PK_NDS_PORTS4P`: the USA rev 1 field / call tables, callSet 300 + n; its party and options
+are top-screen pages, so no X menu task is listed): its functions are the French cart's, at the same addresses, its globals and
+field overlays 0x20 above French's. No Platinum save is kept here, so it was proven on a new game played in it headless (the
+intro's yes / no and the Poké Ball are touches): the field read, the save and field pointers, PC anywhere. **Japanese and Korean carts**: the US saves load in all of them but Korean HeartGold /
 SoulSilver, whose save footer's magic is 0x20070903 (the US / Japanese carts' 0x20060623, outside the checksums: change the word
 and the US save loads). Japanese HeartGold / SoulSilver's X menu, options and Pokédex differ in code (the tool leaves them
 UNRESOLVED): read off the running game (the X menu's field task +4, each page's child init). Their text banks are numbered their own
@@ -2889,7 +2893,11 @@ about a dozen new moves in old ones' slots (Horn Drill's is Drill Run, Submissio
 (429 Prism Scale) and writes species in mixed case. No GUIDE: its trainers and wild sets are its own, and Platinum's
 generated guide would be wrong. Its save is retail's format: a new game was played headless, saved in game and rebooted
 (the `renegade_platinum` fixtures' README); the rival's visit at the start and the walk out were skipped with a `warp`
-script (scrcmd 0xBE) for the EXPAND / FLY checks.
+script (scrcmd 0xBE) for the EXPAND / FLY checks. **Other builds** (2026-11-09): v1.3.0 with its Classic patch
+(`8b9d933e…`) and v1.2.0 (`381f9eef…`, dated by the release's changelog) pass the same check and read through the same
+places: v1.2.0's ARM9, overlays 16 / 21 and the four ARM9 tables are v1.3.0's byte for byte (overlay 16 one data byte
+apart), and its own 12 changed files (personal, moves, trainers, encounters...) come through the file system. Both builds
+keep the original typings of a few species v1.3.0 retyped (`RenegadePlatinumTest`'s "other builds" case).
 
 **GUIDE.** `scripts/gen_gen4_guide.py` writes `GuideGen4PlatinumGen.kt` / `GuideGen4HeartGoldGen.kt` from the decomps,
 numbers only: every map header's wild set (Platinum's grass with its day / night pair, HG / SS's per time of day and

@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion.data
 
 /** The DS language ports (gamedata/nds/ports.toml): what the Kotlin side reads of each, [DsPorts] builds the configs. */
 val NDS_PORTS: List<NdsPort> = listOf(
+    NdsPort("CPUS", 0, GameKind.PLATINUM, "Pokémon Edición Platino", "12faf0dbcf0fb558438e464afbfe7c5b5e79e8c6", saveData = 0x021C0994, system = 0x021C09DC, battleTemplate = 0x020EA3EC, followed = true),
     NdsPort("IPKE", 10, GameKind.HEARTGOLD, "Pokémon HeartGold", "eb47ab4ba0326ae842135f62c7ec68cf85c9785f", saveData = 0x021D2228, system = 0x021D4158, battleTemplate = 0x020FA484, followed = true),
     NdsPort("IPGE", 10, GameKind.SOULSILVER, "Pokémon SoulSilver", "27a25c23aa1c0ecabe48a30a004b96c9dbc97730", saveData = 0x021D2228, system = 0x021D4158, battleTemplate = 0x020FA484, followed = true),
     NdsPort("IPKS", 0, GameKind.HEARTGOLD, "Pokémon Edición Oro HeartGold", "29f9682b7f08f9ee94fe9fa74f2a6cb7c64b0505", saveData = 0x021D2248, system = 0x021D4178, battleTemplate = 0x020FA46C, followed = true),

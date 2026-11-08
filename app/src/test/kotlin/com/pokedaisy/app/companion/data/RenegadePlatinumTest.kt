@@ -145,6 +145,29 @@ class RenegadePlatinumTest {
         }
     }
 
+    /** v1.2.0 and v1.3.0's Classic patch: v1.3.0's code and table places, their own species / move files. */
+    @Test
+    fun `the other builds - the same check and tables, their own data`() {
+        for ((name, sha1) in listOf("Pokemon Renegade Platinum (v1.2.0).nds" to RenegadePlatinum.V1_2_0_SHA1,
+                "Pokemon Renegade Platinum (v1.3.0) (Classic).nds" to RenegadePlatinum.V1_3_0_CLASSIC_SHA1)) {
+            val other = File(rom.parentFile, name)
+            if (!other.isFile) continue
+            assertEquals(name, sha1, com.pokedaisy.app.RomIdentity.sha1(other))
+            assertTrue(name, RenegadePlatinum.matches(other))
+            val names = NdsArt.readNames(other)!!
+            assertEquals(name, 'E', names.language)
+            val data = NdsArt.readRenegade(other)!!
+            assertEquals(name, SpeciesTypes(9, 9), data.speciesTypes[35])            // CLEFAIRY: Fairy here too
+            assertEquals(name, SpeciesTypes(7, 7), data.speciesTypes[429])           // MISMAGIUS: Ghost alone (v1.3.0: + Fairy)
+            assertEquals(name, SpeciesTypes(4, 16), data.speciesTypes[330])          // FLYGON: Ground / Dragon (v1.3.0: Bug)
+            assertEquals(name, 9 to 95, data.moveData.getValue(461).let { it.type to it.power })
+            assertEquals(name, "Play Rough" to 9, data.moveData.getValue(66).let { it.name to it.type })
+            assertEquals(name, 467, data.moveData.keys.max())
+            assertEquals(name, listOf(344, 405, 304, 295, 239), listOf(56, 61, 82, 84, 87).map { data.machines[it] })
+            assertEquals(name, 200, data.typeChart[9 * 100 + 16])
+        }
+    }
+
     @Test
     fun `the cart reader on retail Platinum - its rates, machines and palettes are the decomp's`() {
         assumeTrue("no Platinum ROM at $retail", retail.isFile)

@@ -140,8 +140,9 @@ object NdsArt {
         }, "pokedaisy-nds-art").apply { isDaemon = true; start() }
     }
 
-    /** Carts on Platinum's files: USA rev 1, France rev 0. */
-    private fun isPlatinum(code: String, rev: Int) = code == "CPUE" && rev == 1 || code == "CPUF" && rev == 0
+    /** Carts on Platinum's files: USA rev 1, France rev 0, the Platinum language ports. */
+    private fun isPlatinum(code: String, rev: Int) =
+        code == "CPUE" && rev == 1 || code == "CPUF" && rev == 0 || portIs(code, rev, GameKind.PLATINUM)
 
     /** Carts on HeartGold / SoulSilver's files: USA, Germany and France, rev 0. */
     private fun isHgss(code: String, rev: Int) =
