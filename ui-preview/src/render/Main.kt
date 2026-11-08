@@ -2049,6 +2049,36 @@ fun main(args: Array<String>) {
                 }
             }
         }),
+        // A menu transition held (EmulatorEngine.dsHold): the window's last picture shaded, with the dots.
+        Shot("ds-touch-window-held", tw, th, td, {
+            {
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF58A048)),
+                )
+                com.pokedaisy.app.companion.ui.DsTouchWindow(open = true, onClose = null, held = true) { modifier ->
+                    androidx.compose.foundation.layout.Box(
+                        modifier.background(androidx.compose.ui.graphics.Color(0xFF1E6E3A)),
+                        contentAlignment = androidx.compose.ui.Alignment.Center,
+                    ) {
+                        androidx.compose.foundation.layout.Box(
+                            androidx.compose.ui.Modifier.fillMaxSize(0.9f).background(androidx.compose.ui.graphics.Color(0xFFD8F0DC)),
+                        )
+                    }
+                }
+            }
+        }),
+        // The window kept up through the black between two touch screens: its loader in it, over the cover (the field greyed).
+        Shot("ds-touch-window-loading", tw, th, td, {
+            {
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF58A048)),
+                )
+                com.pokedaisy.app.companion.ui.DsShotBackdrop(null, blurred = false, modal = null)
+                com.pokedaisy.app.companion.ui.DsTouchWindow(open = true, onClose = null, loading = true, backdrop = false) { modifier ->
+                    androidx.compose.foundation.layout.Box(modifier.background(androidx.compose.ui.graphics.Color.Black))
+                }
+            }
+        }),
         // A DS battle on one screen (DsBattleMenu): each game's look over its battle, the commands and the moves.
         *listOf(GameKind.HEARTGOLD, GameKind.SOULSILVER, GameKind.PLATINUM, GameKind.BLACK, GameKind.BLACK2).flatMap { dsGame ->
             listOf(BATTLE_INPUT_ACTION_SELECT to "commands", com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT to "moves").map { (state, what) ->

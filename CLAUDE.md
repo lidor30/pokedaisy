@@ -771,7 +771,19 @@ both screens black (`PK_NDS_FIELD_DARK_TOP` / `_BOTTOM`, `EmulatorEngine.dsDark`
 decides at once; the window hides while the touch screen is blank (`dsTouchBlank`); a menu's way back to the field is covered by
 the overworld's picture (the window view's cover); the battle's bag / party (`PK_NDS_FIELD_TOUCH_FADES`) float in only after
 their fade (black, then 12 lit frames) and end at their first black (the battle redraws a Poké Ball for 5 frames at the bag's
-step). The cover carries `DsLoader` (`RockingPokeBall`, three dots; after 160 ms). HG closes its X menu after a screen left by touch
+step). The cover carries `DsLoader` (three dots; after 160 ms). **Menu transitions are held** (2026-11-09, players found DS loads long; `DsTransitionHold`, `EmulatorEngine.dsHold`,
+one-screen DS stage only): from a menu flow's first faded frame (`pkNdsFade`: master brightness, read right after the
+frame and before it's published) until the touch screen has been lit 12 frames with no fade, both screens keep their last
+picture (`NdsBottomFrame.held`, the top's `holdFrame`), the window keeps its layout (the activity latches the flows), shaded
+with the dots (`DsLoader(ball = false)`), and the game runs flat out, muted (at FF's speed with its music while FF is on),
+drawing every 4th frame, keys and taps held back; the held picture then crossfades out. Never in a battle (its own rules).
+`DsTransitionHoldTest` replays HeartGold's and Black 2's real traces (`resources/ds_transitions/`: Black 2's party keeps its
+top screen one colour, so the touch screen decides). Without a hold, a window up when its touch screen goes black stays
+with the dots in it (`DsTouchWindow(loading)`). Behind a window the game opened (not in a battle) the stage is frozen: one
+full-size `DsShots.capture(full = true)` as the menus' first window opens on the field (also `field`, the two-screen pages' backdrop),
+kept for every window until the game is back on the field with nothing up - the live stage jumped between EXPAND, a menu page's 4:3
+and the two-screen layout under it (the user's report); a fresh copy on the way back from a two-screen page caught the stage half
+resized (the game in a corner, black round it), so it's never retaken mid-session. HG closes its X menu after a screen left by touch
 (start_menu.c's WaitApp: FieldSystem.menuInputState +0x10C TOUCH): floating, the screen's closing fade sets it to buttons
 (`pk_nds_field_keep_start_menu`, `MgbaCore.pkNdsKeepStartMenu`), so the X menu comes back. The strip is drawn by the window's view (under its dim) and holds behind the bag / party; the game view holds the focus
 while it's up (else Android eats the first D-pad press after a touch). Gen 4 / 5 party nicknames are read (block C).

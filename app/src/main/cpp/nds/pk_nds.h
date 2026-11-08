@@ -105,6 +105,9 @@ bool pk_nds_frame_drawn(void);
 bool pk_nds_wide_draw(uint32_t* out, int x, int y, int w, int h);
 // The camera's scene (WideCamera.SCENE_*) from the field read: field, text box, a menu screen, off (a battle, no map).
 int pk_nds_wide_scene(void);
+/** Both engines' master brightness while it fades towards black or white (mode 1 / 2): its factor 0-16, engine A (the top
+ * screen) in bits 0-7, B in bits 8-15; 0 = no fade. The games fade between two screens this way. Emu thread. */
+int pk_nds_fade(void);
 // The camera's window (pkWideSetView), so the slices draw only what it shows.
 void pk_nds_wide_window(int x, int y, int w, int h);
 

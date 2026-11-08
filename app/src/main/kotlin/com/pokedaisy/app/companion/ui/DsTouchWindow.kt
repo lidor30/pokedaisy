@@ -47,7 +47,8 @@ import com.pokedaisy.app.companion.i18n.tr
  * The window over the whole stage. [open]: shown (it scales in, the dim fading in with it; it goes at once - a window
  * shrinking away showed its empty frame a moment after the game's screen had gone); [onClose] non-null = opened by hand,
  * so it has an X. A tap on the dim beside it is [onDismiss]'s. [screen] draws the touch screen itself (the activity's
- * NdsTouchScreenView) into the box it's given.
+ * NdsTouchScreenView) into the box it's given. [loading]: the game is between two touch screens (black): the window
+ * stays where it is with a loader in it ([DsLoader]), so the next screen comes up in it rather than in a new window.
  */
 @Composable
 fun DsTouchWindow(
@@ -58,8 +59,22 @@ fun DsTouchWindow(
     onDismiss: () -> Unit = {},
     /** Drawn under the dim in place of the game (a menu screen's own top screen): the overworld it was opened from. */
     behind: androidx.compose.ui.graphics.ImageBitmap? = null,
+    loading: Boolean = false,
+    /** Its own dim and [behind]: false when something under it already is that (the activity's cover over the black). */
+    backdrop: Boolean = true,
+    /** A menu transition held (EmulatorEngine.dsHold): the touch screen keeps its last picture, shaded, with the dots,
+     * and taps go nowhere; as it ends, [frozen] (that picture) fades out over the new screen. */
+    held: Boolean = false,
+    frozen: androidx.compose.ui.graphics.ImageBitmap? = null,
     screen: @Composable (Modifier) -> Unit,
 ) {
+    // (Animated before the window may go: a hold that ends with it closed starts the next one from nothing.)
+    val freeze by androidx.compose.animation.core.animateFloatAsState(
+        if (held) 1f else 0f, if (held) androidx.compose.animation.core.snap() else tween(HELD_OUT_MS), label = "dsFrozen",
+    )
+    val shade by androidx.compose.animation.core.animateFloatAsState(
+        if (held) 1f else 0f, tween(if (held) HELD_SHADE_IN_MS else HELD_OUT_MS), label = "dsShade",
+    )
     if (!open) return
     val inspection = LocalInspectionMode.current
     val anim = remember { Animatable(if (inspection) 1f else 0f) }
@@ -68,9 +83,10 @@ fun DsTouchWindow(
     // The window's box (px), for telling a tap on the dim from one on the window.
     val box = remember { FloatArray(4) }
     val dismiss by rememberUpdatedState(onDismiss)
+    val holding by rememberUpdatedState(held)
     val m = rememberGbaTextMetrics()
     val u = m.u
-    if (behind != null) {
+    if (behind != null && backdrop) {
         androidx.compose.foundation.Image(
             behind, null, Modifier.fillMaxSize().graphicsLayer { alpha = shown },
             contentScale = androidx.compose.ui.layout.ContentScale.Crop,
@@ -78,8 +94,8 @@ fun DsTouchWindow(
     }
     // A tap on the dim (the touch controls above take theirs first) is [onDismiss]'s; the window's own go to the game.
     BoxWithConstraints(
-        Modifier.fillMaxSize().background(Color.Black.copy(alpha = DIM * shown)).pointerInput(Unit) {
-            detectTapGestures { p -> if (p.x < box[0] || p.y < box[1] || p.x > box[2] || p.y > box[3]) dismiss() }
+        Modifier.fillMaxSize().background(Color.Black.copy(alpha = if (backdrop) DIM * shown else 0f)).pointerInput(Unit) {
+            detectTapGestures { p -> if (!holding && (p.x < box[0] || p.y < box[1] || p.x > box[2] || p.y > box[3])) dismiss() }
         },
     ) {
         // The frame's band round the screen, then the largest 4:3 in what's left of the stage's share.
@@ -127,6 +143,18 @@ fun DsTouchWindow(
                 },
         ) {
             screen(Modifier.padding(frame).size(w, h))
+            // (Over the screen, which stays: taps still reach the game, and nothing is made again when it's back.)
+            if (loading) Box(Modifier.padding(frame).size(w, h).background(LOADING_FILL)) { DsLoader(ball = false) }
+            if (frozen != null && freeze > 0f) {
+                androidx.compose.foundation.Image(
+                    frozen, null, Modifier.padding(frame).size(w, h).graphicsLayer { alpha = freeze },
+                    contentScale = androidx.compose.ui.layout.ContentScale.FillBounds,
+                    filterQuality = androidx.compose.ui.graphics.FilterQuality.None,
+                )
+            }
+            if (shade > 0f) Box(Modifier.padding(frame).size(w, h).background(Color.Black.copy(alpha = HELD_SHADE * shade))) {
+                if (held) DsLoader(ball = false)
+            }
         }
         if (onClose != null) {
             // Beside the window's top right corner (on it where there's no room), as the companion window's.
@@ -140,6 +168,27 @@ fun DsTouchWindow(
         }
     }
 }
+
+/**
+ * The same shade and dots as [DsTouchWindow]'s while a menu transition is held with no window up (a page side by side on
+ * its way back to the field): over the whole stage, whose pictures are held meanwhile.
+ */
+@Composable
+fun DsHeldShade(held: Boolean) {
+    val shade by androidx.compose.animation.core.animateFloatAsState(
+        if (held) 1f else 0f, tween(if (held) HELD_SHADE_IN_MS else HELD_OUT_MS), label = "dsHeldShade",
+    )
+    if (shade <= 0f) return
+    Box(Modifier.fillMaxSize().background(Color.Black.copy(alpha = HELD_SHADE * shade))) {
+        if (held) DsLoader(ball = false)
+    }
+}
+
+/** A held transition's shade over the held picture, how fast it comes (a tap's answer, at once), and how fast it and the
+ * held picture go once the next screen is up (a crossfade into it). */
+private const val HELD_SHADE = 0.3f
+private const val HELD_SHADE_IN_MS = 90
+private const val HELD_OUT_MS = 140
 
 /** The largest 4:3 that fits [maxW] x [maxH]. */
 private fun windowSize(maxW: Dp, maxH: Dp): Pair<Dp, Dp> {
@@ -159,7 +208,10 @@ private const val FRAME = 3
 
 /** It grows from this scale as it opens. */
 private const val START_SCALE = 0.92f
-private const val OPEN_MS = 180
+private const val OPEN_MS = 130
+
+/** The window's screen while [DsTouchWindow]'s loading: the black the game shows, a shade lifted. */
+private val LOADING_FILL = Color(0xFF101418)
 
 /**
  * Behind DS LAYOUT's screens where they leave room: [shot], a picture of the game (the overworld last seen, or the game a
@@ -210,11 +262,11 @@ private fun androidx.compose.ui.graphics.drawscope.DrawScope.drawLayeredFrameSiz
 
 /**
  * Over the greyed-out game while it loads between two screens (the DS window's cover): the app's Poké Ball rocking like a
- * capture shake ([RockingPokeBall]) over its shadow, three dots under it bouncing in turn. It fades in only once the wait
- * has lasted [LOADER_DELAY_MS] (a quick fade never flashes it).
+ * capture shake ([RockingPokeBall]) over its shadow, three dots under it bouncing in turn ([ball] false: the dots alone, as
+ * in the floating window's). It fades in only once the wait has lasted [LOADER_DELAY_MS] (a quick fade never flashes it).
  */
 @Composable
-fun DsLoader(modifier: Modifier = Modifier) {
+fun DsLoader(modifier: Modifier = Modifier, ball: Boolean = true) {
     val shown = remember { Animatable(0f) }
     LaunchedEffect(Unit) {
         kotlinx.coroutines.delay(LOADER_DELAY_MS)
@@ -229,7 +281,7 @@ fun DsLoader(modifier: Modifier = Modifier) {
     val u = rememberGbaTextMetrics().u * LOADER_SCALE
     Box(modifier.fillMaxSize().graphicsLayer { alpha = shown.value }, contentAlignment = Alignment.Center) {
         androidx.compose.foundation.layout.Column(horizontalAlignment = Alignment.CenterHorizontally) {
-            Box(Modifier.size(u * 12, u * 13)) {
+            if (ball) Box(Modifier.size(u * 12, u * 13)) {
                 // Its shadow, then the ball rocking on it.
                 androidx.compose.foundation.Canvas(Modifier.fillMaxSize()) {
                     val px = kotlin.math.floor(u.toPx()).coerceAtLeast(1f)
@@ -240,7 +292,7 @@ fun DsLoader(modifier: Modifier = Modifier) {
                 }
                 RockingPokeBall(Modifier.size(u * 12))
             }
-            androidx.compose.foundation.Canvas(Modifier.padding(top = u * 3).size(u * 15, u * 6)) {
+            androidx.compose.foundation.Canvas(Modifier.padding(top = if (ball) u * 3 else 0.dp).size(u * 15, u * 6)) {
                 val px = kotlin.math.floor(u.toPx() / 1.5f).coerceAtLeast(1f)
                 // Three dots, each up a pixel or two in its turn.
                 for (i in 0..2) {

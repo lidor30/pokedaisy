@@ -60,7 +60,9 @@ class PerformanceGuardsTest {
         val engine = read("EmulatorEngine.kt")
         assertTrue(
             "EmulatorEngine must publish right after each pkRunFrame",
-            "MgbaCore.pkRunFrame()\n                onFrame?.invoke()" in engine,
+            // (DS LAYOUT's transition hold decides first whether that frame is shown: DsTransitionHold.)
+            "MgbaCore.pkRunFrame()\n                onFrame?.invoke()" in engine ||
+                Regex("""MgbaCore\.pkRunFrame\(\)\n(\s*//[^\n]*\n)*\s*if \(nds\) stepDsHold\(\)\n\s*onFrame\?\.invoke\(\)""").containsMatchIn(engine),
         )
         assertTrue("the activity must wire onFrame to the view's publish", "view.publishFrame()" in lambda(read("PokeDaisyActivity.kt"), "onFrame = {"))
     }

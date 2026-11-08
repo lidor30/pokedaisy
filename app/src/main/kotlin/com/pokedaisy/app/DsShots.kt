@@ -34,11 +34,13 @@ class DsShots(private val view: SurfaceView) {
     private var currentNext = 0
     private var busy = false
 
-    /** Copies the game's picture now into [field] ([intoField]) or [current]. UI thread; one copy at a time. */
-    fun capture(intoField: Boolean) {
-        if (busy || view.width <= 0 || view.height <= 0 || !view.holder.surface.isValid) return
-        val w = (view.width / SCALE).coerceAtLeast(1)
-        val h = (view.height / SCALE).coerceAtLeast(1)
+    /** Copies the game's picture now into [field] ([intoField]) or [current] ([full]: at the view's own size, not half);
+     * [done] gets it once it's in. UI thread; one copy at a time - false when one is still on its way (nothing taken). */
+    fun capture(intoField: Boolean, full: Boolean = false, done: ((ImageBitmap) -> Unit)? = null): Boolean {
+        if (busy || view.width <= 0 || view.height <= 0 || !view.holder.surface.isValid) return false
+        val scale = if (full) 1 else SCALE
+        val w = (view.width / scale).coerceAtLeast(1)
+        val h = (view.height / scale).coerceAtLeast(1)
         val bufs = if (intoField) fieldBufs else currentBufs
         val i = if (intoField) fieldNext else currentNext
         val bmp = bufs[i]?.takeIf { it.width == w && it.height == h }
@@ -52,8 +54,10 @@ class DsShots(private val view: SurfaceView) {
                 if (intoField) { field.value = shot; fieldNext = 1 - i }
                 else { current.value = shot; currentNext = 1 - i }
                 latest.value = shot
+                done?.invoke(shot)
             }, handler)
         }.onFailure { busy = false }
+        return true
     }
 
     /** A new game: nothing seen yet. */
