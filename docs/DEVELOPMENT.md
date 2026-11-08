@@ -2198,6 +2198,76 @@ ZOOM's steps are whole Game Boy pixels: 7.5 -> 6 / 5 / 4 / 3 on 1080 rows). Addr
   Silver, Prism and Polished Crystal (Crystal's engine, their own addresses), battles past the edges, walking frames for Gen 1's
   off-screen NPCs.
 
+## FREE FLIGHT and the scenic FLY (`pk_flight.c`, `Flight.kt`, `ScenicFly.kt`)
+
+Retail FireRed rev 1 so far (`FLIGHT_FIRERED_REV1`, every address from pret's pokefirered built clean as firered_rev1 and
+its ELF; the called functions are CRC-checked like FLY's). No ROM patch: the flight is the game's own pieces, driven after
+every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headless: `flighton`, `flight`, `flightroute`,
+`flightinfo` in native-capture/README.md).
+
+- **Moving**: LockPlayerFieldControls, then the player stepped with held movements written into its ObjectEvent
+  (ObjectEventSetHeldMovement's fields: `movementActionId`, heldMovementActive / Finished, the sprite's data[1] / [2]),
+  WALK_FAST (A held: WALK_FASTER). A held movement never checks collision, and with the controls locked nothing a step
+  triggers runs (ProcessPlayerFieldInput: wild battles, trainers' sight, warps, the START menu). The camera follows the
+  player as for any step, so CameraUpdate loads the next map across a connection and the game shows its map sign. Each
+  step's tile is checked against GetMapBorderIdAt's rule, read from RAM (VMap + gMapConnectionFlags): the world's edge
+  turns the bird instead.
+- **Drawing**: the player hidden and its localId set to the camera object's (127): DoFlaggedGroundEffects skips an
+  invisible object with that id, so no footprints, grass or ripples under the bird. The bird is the game's FLY bird
+  (`gFieldEffectObjectTemplate_Bird`, CreateSprite; anims 1 / 3 = Red / Leaf riding seen from the side, flipped going
+  east since the game's flies off west, 2 / 4 from behind going north), priority 1 (over BG1's tree tops), at a fixed
+  place on screen: the camera keeps the player there (anchored from the player's sprite at take-off, checked constant).
+- **The look on a diagonal**: the bird faces the D-pad's east / west (the route's, over its next 8 steps), and only
+  north alone shows it from behind: switching views on every step of a staircase was jumpy. Its shadow is the game's
+  large shadow sprite (`gFieldEffectObjectTemplate_ShadowLarge`, its callback swapped for SpriteCallbackDummy) on the
+  ground under the player's place, priority 2 (tree tops cover it), while the bird rides 16 px up and bobs.
+- **Diagonal speed**: a staircase covers 1.41 tiles in two steps, 71% of the straight speed at the same step time. Where
+  the trip isn't straight (the D-pad's two ways; the route's next 8 steps' net distance under their length) each step
+  takes that share of the time, picked from the game's 8 / 6 / 4 / 2 frames a tile (WALK_FAST, RIDE_WATER_CURRENT,
+  WALK_FASTER, SLIDE) by a running balance, so the average is exact (headless: 2.01 vs 2.02 px a frame).
+- **The smooth camera (EXPAND)**: the game moves in tile steps, four ways, so a diagonal scrolls in a staircase - and with
+  the step times mixed, unevenly. `pk_wide.c`'s `flyBegin` follows the camera from BG2's scroll at line 0 (continuous
+  across map connections) and moves the view at the velocity the flight means (`pk_wide_flight`'s vx / vy: the route's
+  way over its next 8 steps at the straight speed, the D-pad's, a landing's step), eased, pulled toward that camera (3%
+  a frame moving, 12% standing); the drawn window and the bird's OAM entry move by the difference (put back after line
+  159). Averaging the camera over the last steps (tried first) left a 2:1 or 3:1 staircase jumpy. Headless, Route 20 to
+  Fuchsia / Pallet / Cerulean: speed 3.9-4.3 px a frame, frame-to-frame change at most 1.4 (whole-pixel rounding),
+  never more than ~40 px off the camera. Without EXPAND the game's staircase stays. `WideCamera.flying` keeps the map
+  signs (text while the controls are locked) from pulling the zoom in. The map's name sign (BG0, the top-left corner,
+  20 tiles wide) would ride the offset: `flyLabel` paints the map back where it landed (drawRegion) and the sign where
+  it'd be with no offset, its pixels found from BG0's tilemap and the line's registers (bgPixel), not the layer tags
+  (mGBA keeps those only with the windows off; the Mac / Debian builds have none).
+- **The shadow** is drawn into each finished frame (`pk_flight_draw`: a soft oval in three bands, larger, fainter and
+  lower the higher the bird) and undone line by line first where the frame still holds it: mGBA redraws a line only when
+  something on it changed, and a still line used to darken again every frame (the blink seen on the RP6).
+- **The map grid mended (`flMend`)**: crossing into a map, FireRed copies the screen-sized area around the camera from
+  the old map's grid into the new one (MoveMapViewToBackup), so near the crossing the new grid holds the old map's
+  undefined squares - over its connections (Route 21 above Cinnabar's corner, entered along Route 20's top row) and its
+  own edge (Route 20's after Cinnabar). Walking never reaches them; a diagonal flight did, and stopped. Once per map while
+  flying, every undefined square the map's layout or a connection covers gets its square back from the ROM, and those in
+  view are drawn again (CurrentMapDrawMetatileAt).
+- **No-fly maps** (`FlightFns.noFly`, pk_flight's NO_FLY words): stand-ins the game only shows from outside - FireRed's
+  SaffronCity_Connection (3.11), Saffron seen past its gatehouses, whose tiles come out scrambled up close (EXPAND then
+  lost its match: zoom pulled in, wrong sides). The flight stops at its edge (the map's connections, `flNoFlyAt`) and
+  ScenicFly leaves it out of the world, as it does every map's undefined squares (`Placed.holes`).
+- **The HUD** closes its open panel (its map, where FLY was picked) as FLY or TAKE OFF starts (`hudCloseTick`).
+- **State lives in the game's RAM**: the marked player (localId 127 + isPlayer) and the bird's sprite id in the player's
+  fieldEffectSpriteId (the surf blob's slot: never both). A save state or REWIND taken in the air loads back flying:
+  the tick adopts a marked player (or drops its own flight when the state had none). The app re-sends the same words every
+  half second (`syncFlight`), so a resume state taken in the air is adopted as soon as the game is known.
+- **Landing**: ring by ring around the player, the nearest tile inside the current map whose collision is 0, elevation
+  not 15, behaviour on the record's `landOk` list (ground, grass, sand... never water, ledges, doors, warps) and with no
+  one on it (MapGridGet*At / GetObjectEventIdByXY called once, when B is pressed). The bird flies there, comes down,
+  the player is shown with that tile's elevation and the controls unlocked, and the bird leaves.
+- **The scenic FLY** (`ScenicFly.kt`): the maps joined to the player's by connections (gMapGroups' headers, layout size,
+  connection offsets) laid out on one grid; A* where a step between two maps must be one of their connections; the path
+  pulled into staircases (`straighten`); flown with `pk_flight_route` at WALK_FASTER while EmulatorEngine runs the game at
+  `SCENIC_SPEED` and WideCamera's `flightZoom` takes the widest EXPAND step; it lands on sMapFlyDestinations' heal
+  location. A town not joined to the player's map (Saffron: its gatehouses are warps; the Sevii Islands) goes the classic
+  way. `ScenicFlyTest` replays every Kanto route over the world from the user's save's spot. SCENIC is FLY STYLE's default;
+  the first scenic landing asks once (`FlyStyleAsk`, the tip card's look where the tips go: KEEP IT / USE CLASSIC, the bar
+  running out keeps it; `Prefs.flyStyleAsked`, also set by any FLY STYLE pick).
+
 ## PC, FLY and WILD ENCOUNTERS on the Game Boy (`GbField.kt`)
 
 The GBA's ways in (FieldItems.kt's calls between frames, ScriptContext_SetupScript, sWildEncountersDisabled) have no

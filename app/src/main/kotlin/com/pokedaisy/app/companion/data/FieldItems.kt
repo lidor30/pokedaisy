@@ -37,6 +37,8 @@ data class FieldItemFns(
     val itemNameLen: Int = 14,
     /** FLY from the MAP tab (Fly.kt); null = none. */
     val fly: FlyFns? = null,
+    /** FREE FLIGHT and the scenic FLY (Flight.kt, pk_flight.c); null = none. Needs [fly] too (its gates). */
+    val flight: FlightFns? = null,
     /** holdEffectParam's offset in struct Item where a build moved it off [itemNameLen] + 5 (Recharged Emerald dropped
      * the itemId field: 0x15 after its name[18]); null = the usual place. */
     val itemParamOffset: Int? = null,
@@ -598,6 +600,8 @@ class FieldItemSupport(
     private val usable: Set<Int> = fns.party?.usable.orEmpty() + fns.repelItems,
     /** FLY's code is where [FieldItemFns.fly] says. */
     val canFly: Boolean = false,
+    /** FREE FLIGHT (Flight.kt): FLY's code and the flight's both where expected. */
+    val canFlight: Boolean = false,
     /** PC anywhere's code is where [FieldItemFns.pc] says. */
     val canPc: Boolean = false,
 ) {
@@ -632,7 +636,8 @@ fun fieldItemSupport(fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArra
         return FieldItemSupport(fns, emptySet(), repels, canFly = fly, canPc = pc)
     }
     val items = read(fns.items, party.itemCount * fns.itemSize)
-    return FieldItemSupport(fns, holdableItems(fns, items), usableItems(fns, items), canFly = fly, canPc = pc)
+    val flight = fly && fns.flight?.let { flightCodeMatches(it, read) } == true
+    return FieldItemSupport(fns, holdableItems(fns, items), usableItems(fns, items), canFly = fly, canPc = pc, canFlight = flight)
 }
 
 /** What the bag's GIVE takes (item_menu.c's Task_ItemContext_FieldGive): importance 0 and not a key

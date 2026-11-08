@@ -62,6 +62,13 @@ interface CompanionSettings {
     fun setWildEncounters(percent: Int) {}
     val wildEncountersSupported: Boolean get() = false
 
+    /** FLY STYLE - see [com.pokedaisy.app.Prefs.flyStyleId]; [flyStyleSupported]: this game has FREE FLIGHT (Flight.kt). */
+    val flyStyle: FlyStyle get() = FlyStyle.CLASSIC
+    fun setFlyStyle(style: FlyStyle) {}
+    val flyStyleSupported: Boolean get() = false
+    /** The first scenic FLY's question (ui.FlyStyleAsk) answered: CLASSIC switches, SCENIC / null (it timed out) keeps it. */
+    fun answerFlyStyle(style: FlyStyle?) {}
+
     /** REUSABLE TMS - see [com.pokedaisy.app.Prefs.reusableTms]; [reusableTmsSupported]: the ROM's code that uses a TM
      * up is known ([com.pokedaisy.app.companion.data.ReusableTms]). */
     val reusableTms: Boolean get() = false
@@ -606,6 +613,20 @@ enum class FfMusicMode(val label: String) {
 
     /** Silent. */
     OFF(tk("OFF")),
+}
+
+/** SETTINGS > FLY STYLE: how the companion's FLY (MAP, QUICK MENU) gets there. [label] stays English; the row translates it. */
+enum class FlyStyle(val id: Int, val label: String) {
+    /** The game's own cut-in, flight and landing. */
+    CLASSIC(0, tk("CLASSIC")),
+
+    /** Up on the bird and over the field to the town (companion.data.ScenicFly), the view zoomed out on EXPAND. */
+    SCENIC(1, tk("SCENIC")),
+    ;
+
+    companion object {
+        fun of(id: Int): FlyStyle = entries.firstOrNull { it.id == id } ?: CLASSIC
+    }
 }
 
 /** SETTINGS > BATTLE STYLE: the battle controls' look. [label] stays English; the rows translate it. */

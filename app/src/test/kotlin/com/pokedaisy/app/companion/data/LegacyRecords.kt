@@ -195,6 +195,8 @@ val LEGACY_FIELD_ITEMS_FIRERED_REV1 = FieldItemFns(
         useFuncs = setOf(0x080A16F4L, 0x080A1710L, 0x080A172CL, 0x080A19ACL), // FieldUseFunc_Medicine, _Ether, _PpUp, _Repel
     ),
     fly = LEGACY_FLY_FIRERED_REV1,
+    // FREE FLIGHT came after the move to gamedata (2026-11-10): no hand-written one, the record's own.
+    flight = FLIGHT_FIRERED_REV1,
     pc = LEGACY_PC_FIRERED_REV1,
 )
 

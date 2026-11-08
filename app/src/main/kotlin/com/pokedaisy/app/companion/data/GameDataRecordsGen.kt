@@ -580,6 +580,53 @@ val FLY_LEAFGREEN_REV1: FlyFns by lazy {
     )
 }
 
+// FREE FLIGHT and the scenic FLY (Flight.kt's FlightFns, pk_flight.c): retail FireRed rev 1, pret's pokefirered built
+// clean as firered_rev1 (byte for byte retail) and its ELF. Landing behaviours: MB_NORMAL, TALL_GRASS, CAVE,
+// RUNNING_DISALLOWED, MOUNTAIN_TOP, PUDDLE, SAND, HOT_SPRINGS, ROCK_STAIRS, SAND_CAVE. Flown headless on the user's save.
+val FLIGHT_FIRERED_REV1: FlightFns by lazy {
+    FlightFns(
+        objectEvents = 0x02036E38L,
+        playerAvatar = 0x02037078L,
+        sprites = 0x0202063CL,
+        vmap = 0x03005040L,
+        connectionFlags = 0x02036E24L,
+        saveBlock1Ptr = 0x03005008L,
+        saveBlock2Ptr = 0x0300500CL,
+        main = 0x030030F0L,
+        cb2Overworld = 0x080565C8L,
+        lockByte = 0x03000F9CL,
+        paletteFade = 0x02037AB8L,
+        lockControls = 0x08069954L,
+        unlockControls = 0x08069960L,
+        createSprite = 0x08006FA0L,
+        destroySprite = 0x08007294L,
+        startSpriteAnim = 0x080083A0L,
+        birdTemplate = 0x083A5E70L,
+        behaviorAt = 0x08058F8CL,
+        collisionAt = 0x08058DD8L,
+        elevationAt = 0x08058D58L,
+        objectAt = 0x0805DFC4L,
+        playSe = 0x080722E0L,
+        seFly = 151,
+        seFailure = 26,
+        walkFast = 0x1D,
+        walkFaster = 0x35,
+        spriteOffset = 0x02021BC8L,
+        walkCurrent = 0x31,
+        walkSlide = 0x39,
+        mapHeader = 0x02036DFCL,
+        drawMetatileAt = 0x0805A8FCL,
+        landOk = setOf(0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B),
+        mapGroups = 0x08352718L,
+        mapGroupSizes = listOf(5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1),
+        healLocations = 0x083EEC68L,
+        healLocationSize = 8,
+        healLocationCount = 20,
+        noFly = listOf(0x030B),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0xCBD4DA8FL, 0x11B905BAL),
+    )
+}
+
 // USE / GIVE / TAKE, the Repels, FLY and PC anywhere (FieldItems.kt's FieldItemFns): retail FireRed rev 1 (BPRE).
 // Every address from the pret pokefirered build at the pinned commit, built as firered_rev1 (byte for byte the
 // retail ROM, SHA1 dd5945db...) and its ELF.
@@ -595,6 +642,7 @@ val FIELD_ITEMS_FIRERED_REV1: FieldItemFns by lazy {
         codeCrcs = listOf(0xE6DE47BAL, 0x6E7CC2BEL, 0xD30D656EL, 0xC40BF208L, 0x9C26CCA4L),
         party = PARTY_ITEMS_FIRERED_REV1,
         fly = FLY_FIRERED_REV1,
+        flight = FLIGHT_FIRERED_REV1,
         pc = PC_FIRERED_REV1,
     )
 }

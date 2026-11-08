@@ -42,6 +42,7 @@ import com.pokedaisy.app.companion.COMPANION_TABS
 import com.pokedaisy.app.companion.CompanionSettings
 import com.pokedaisy.app.companion.KeyCapture
 import com.pokedaisy.app.companion.BattleStyle
+import com.pokedaisy.app.companion.FlyStyle
 import com.pokedaisy.app.companion.FfMode
 import com.pokedaisy.app.companion.GameAspect
 import com.pokedaisy.app.companion.hasGrid
@@ -571,6 +572,17 @@ private fun homeRows(
             enabled = s.instantTextSupported, labelBadge = NewFeatures.badge(NewFeatures.INSTANT_TEXT),
         ) {
             if (s.instantTextSupported) { s.setInstantText(!s.instantText); changed() }
+        },
+        // The companion's FLY: the game's own (CLASSIC) or flown over the field to the town (SCENIC, Flight.kt). Two values: a tap flips it.
+        SettingRow(
+            tk("FLY STYLE"), if (s.flyStyleSupported) s.flyStyle.label else tk("N/A"),
+            enabled = s.flyStyleSupported, labelBadge = NewFeatures.badge(NewFeatures.SCENIC_FLY),
+            subtitle = "SCENIC flies you there over the map",
+        ) {
+            if (s.flyStyleSupported) {
+                s.setFlyStyle(if (s.flyStyle == FlyStyle.SCENIC) FlyStyle.CLASSIC else FlyStyle.SCENIC)
+                changed()
+            }
         },
         // A TM stays in the bag after it teaches a move, as an HM does (ReusableTms.kt: the ROM's own check patched).
         // A game whose own TMs never run out (ReusableTms.BUILT_IN) shows ON, greyed, and says so.

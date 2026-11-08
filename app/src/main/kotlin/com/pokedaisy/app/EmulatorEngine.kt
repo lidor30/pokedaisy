@@ -107,6 +107,19 @@ class EmulatorEngine(
     @Volatile var riding = false
         private set
 
+    /** FREE FLIGHT's state after the last frame (pk_flight.c: [MgbaCore.FLIGHT_IDLE] ... [MgbaCore.FLIGHT_DISMOUNT]): the
+     * QUICK MENU's TAKE OFF / LAND, the HUD. GBA games only; IDLE elsewhere. */
+    @Volatile var flightState = MgbaCore.FLIGHT_IDLE
+        private set
+
+    /** The flight is the scenic FLY's (a route to a town): EXPAND zoomed out and the game at [SCENIC_SPEED] while it's in
+     * the air. Cleared once it's down. */
+    @Volatile var scenicFlight = false
+
+    /** In the air on the scenic FLY. */
+    private val scenicAirborne: Boolean
+        get() = scenicFlight && flightState != MgbaCore.FLIGHT_IDLE && flightState != MgbaCore.FLIGHT_DISMOUNT
+
     /** AUTO-RUN: B held for the player while walking on the field (holding B walks); never on a bike or in a menu. */
     @Volatile var autoRun = false
     /** The running game runs by itself ([com.pokedaisy.app.companion.data.GAMES_WITH_OWN_AUTO_RUN]): flipping B there walks. */
@@ -627,6 +640,8 @@ class EmulatorEngine(
         // there, so it runs flat out (muted) and the battle comes back in a fraction of a second.
         if (battleInput.holdFrame) return Float.POSITIVE_INFINITY
         val s = requestedSpeed()
+        // The scenic FLY: the trip runs faster (it's a show, nothing to steer), FF's own speed when that's faster still.
+        if (scenicAirborne) return maxOf(s, SCENIC_SPEED)
         // A DS game going to its next screen behind the held pictures (dsHold): the same, nothing to see or hear - unless
         // FF is on, whose music plays through it (muting it cut the FF music and skipped it ahead): FF's speed then, never
         // SMART's 1x (nothing to steer behind a held picture).
@@ -1130,6 +1145,8 @@ class EmulatorEngine(
                         if (draw) lastWideDraw = now
                         MgbaCore.pkWideSetDraw(draw)
                         camera.walking = input.mask and DIRECTIONS != 0
+                        camera.flightZoom = scenicAirborne
+                        camera.flying = flightState != MgbaCore.FLIGHT_IDLE
                         wideScene = MgbaCore.pkWideScene()
                         val win = camera.frame(wideScene)
                         if (win != null) MgbaCore.pkWideSetView(win.x, win.y, win.w, win.h)
@@ -1212,6 +1229,11 @@ class EmulatorEngine(
                 } catch (t: Exception) {
                     if (!raFrameFailed) Log.e("pokedaisy", "achievements frame failed", t)
                     raFrameFailed = true
+                }
+                // FREE FLIGHT's state after this frame (pk_flight.c ticks inside pkRunFrame): TAKE OFF / LAND, the scenic FLY.
+                if (gba) {
+                    flightState = MgbaCore.pkFlightState()
+                    if (scenicFlight && flightState == MgbaCore.FLIGHT_IDLE) scenicFlight = false
                 }
 
                 servicePending()
@@ -2138,6 +2160,8 @@ class EmulatorEngine(
         const val CYCLE_STEPS = 5
         /** At fast-forward, a WIDE window is drawn at most this often (~80 a second: every refresh of a 60 Hz screen). */
         const val WIDE_DRAW_NANOS = 12_000_000L
+        /** The scenic FLY's pace in the air: the trip a Kanto crossing takes about 5 s at. */
+        const val SCENIC_SPEED = 2f
         /** A DS game's STEADY copy: game frames after a new song id before copying the game again (the ARM9 hands the
          * sound driver its start command at the end of its frame), and at most this long while a volume fade runs (5 s
          * of game time); copy frames for a song fading out (~0.5 s); and at most this many copy frames run per game

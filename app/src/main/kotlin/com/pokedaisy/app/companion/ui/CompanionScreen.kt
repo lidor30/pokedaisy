@@ -876,6 +876,11 @@ fun CompanionScreen(
                     modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), cardModifier = Modifier.fillMaxWidth(),
                     maxWidth = 1200.dp, keys = settings::tipKeys, onTry = settings::tryTip,
                 )
+                FlyStyleAskHost(
+                    active = settings.showsTips, roomy = true,
+                    modifier = Modifier.padding(horizontal = 16.dp, vertical = 10.dp), cardModifier = Modifier.fillMaxWidth(),
+                    maxWidth = 1200.dp, onAnswer = settings::answerFlyStyle,
+                )
             }
 
             // PLAY TOGETHER ONLY: the partner's proposal over whatever tab is open, on the touchable screen when the game screen isn't

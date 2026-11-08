@@ -1927,6 +1927,21 @@ open class CompanionScreenshotTest {
         CompanionScreen(flyer, SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = "MAP", fly = flyAction)
     }
 
+    /** FREE FLIGHT (Flight.kt): TAKE OFF under FLY, in FLY's blue... */
+    @Test fun mapTakeOff() = snapshot {
+        CompanionScreen(flyer, SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = "MAP", fly = object : com.pokedaisy.app.companion.FlyAction by flyAction {
+            override fun canFreeFlight() = true
+        })
+    }
+
+    /** ... which reads LAND while up. */
+    @Test fun mapLand() = snapshot {
+        CompanionScreen(flyer, SampleCompanion.Slots, SampleCompanion.Settings(), initialTab = "MAP", fly = object : com.pokedaisy.app.companion.FlyAction by flyAction {
+            override fun canFreeFlight() = true
+            override fun flying() = true
+        })
+    }
+
     /** ... which lists the towns visited (PALLET, VIRIDIAN, PEWTER, CERULEAN), the flyer by the title. */
     @Test fun mapFlyList() = snapshot {
         val t = com.pokedaisy.app.companion.data.FlyTargets(com.pokedaisy.app.companion.data.FlyResult.OK, listOf(0x58, 0x59, 0x5A, 0x5B), 1, 0x222)

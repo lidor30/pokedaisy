@@ -19,7 +19,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Crystal Clear (GBC) | 2.5.11, 2.6.0 (4 builds) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — |
 | Prism (GBC) | 0.95 build 254 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — |
 | Polished Crystal (GBC) | 3.2.0 - 3.2.3 (16 builds) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — |
-| FireRed | USA/Europe rev 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
+| FireRed | USA/Europe rev 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | FireRed | USA/Europe rev 0 | ✅ | ✅ | — | — | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | FireRed | ES | ✅ | ✅ | ◐ ² | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | FireRed | DE / FR / IT / JP | ✅ | ✅ | — | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
@@ -464,6 +464,14 @@ change to any of the places listed under "Where it's decided" updates its rows h
     badge from isUnlocked or the party menu (Lazarus's switch asks badge 3, 0x869). Each lit a dark cave of its own map
     table headless.
 
+34. FREE FLIGHT and the scenic FLY (`Flight.kt`, `ScenicFly.kt`, `app/src/main/cpp/pk_flight.c`; `FieldItemFns.flight`,
+    `FLIGHT_FIRERED_REV1` from pret's pokefirered built as firered_rev1): TAKE OFF / LAND on the MAP tab, the QUICK MENU and
+    the FREE FLIGHT hotkey, and FLY STYLE > SCENIC. Retail FireRed rev 1 only so far. Flown headless with mgba_dump's
+    `flighton` / `flight` / `flightroute` on the user's save: over Route 20's mountain and sea into Cinnabar Island, B landing
+    on the nearest sand, a state saved in the air loading back flying, and ScenicFly's route from Route 20 to Fuchsia City
+    (Route 19's and Fuchsia's map signs, the landing in front of its Pokemon Center). Saffron City has no map connection
+    (its gatehouses are warps), nor have the Sevii Islands to Kanto: FLY's classic way there.
+
 ## What each column is
 
 - **EXPAND**: ASPECT > EXPAND, the overworld rebuilt past the GBA's edges (`pk_wide.c`; a Game Boy game's past its
@@ -475,7 +483,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 - **POKéMON switch**: the battle POKéMON pane switches the tapped party slot in (the closed loop on gPartyMenu, or on
   a Game Boy game's own party menu).
 - **Field items**: ITEMS' USE (Repels, medicine, PP items) and GIVE / TAKE on a Pokémon (`FieldItems.kt`).
-- **FLY**: the MAP tab's FLY button (`Fly.kt`).
+- **FLY**: the MAP tab's FLY button (`Fly.kt`); ³⁴ marks FREE FLIGHT and the scenic FLY too (`Flight.kt`).
 - **Trainer card**: the CARD tab (`TrainerCard.kt`).
 - **AUTO-RUN**: never while surfing or diving (B surfaces: `TrySetupDiveEmergeScript`, GitHub #338; Ruby / Sapphire by the map's type). SoulGold's Autorun option and Odyssey's L are their own, on by default, so the row is ON and greyed there (`GAMES_WITH_OWN_AUTO_RUN`): our flip of B made them walk. Other hacks have one that starts off (Unbound, Radical Red, Lazarus, Seaglass, Imperium, Quetzal, R.O.W.E., Heart and Soul, Elite Redux, the Recharged games): with both on, B flips back.
 - **Field reads**: SCENE SPEEDS' TEXT SPEED, CONTROLS > AUTO-RUN and RUN INDOORS (`pk_field_state`). BATTLE / MENU
