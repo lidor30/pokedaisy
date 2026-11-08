@@ -31,6 +31,7 @@ enum { SWITCH_WAIT_MENU, SWITCH_NAVIGATE, SWITCH_CONFIRM, SWITCH_WAIT_CLOSE };
 
 void pd_binput_init(struct pd_binput* b, const struct pd_game* g, pd_read_fn read, pd_write_fn write, void* ctx) {
     memset(b, 0, sizeof(*b));
+    b->game = g;
     b->cfg = g->cfg;
     b->gb = g->cfg ? g->cfg->gb : NULL;
     b->gbPickCell = -1;
@@ -58,11 +59,15 @@ static void enqueue(struct pd_binput* b, int bits, int frames) {
     b->queue[at].frames = (uint16_t) frames;
 }
 
+static void pulse(struct pd_binput* b, int bit, int hold, int release) {
+    enqueue(b, bit, hold);
+    enqueue(b, 0, release);
+}
+
 // One real frame pressed, one released: JOY_NEW only fires on the frame a bit goes from unset to set, so back-to-back
 // presses of the same button need a release between them.
 static void press(struct pd_binput* b, int bit) {
-    enqueue(b, bit, 1);
-    enqueue(b, 0, 1);
+    pulse(b, bit, 1, 1);
 }
 
 static void press_and_settle(struct pd_binput* b, int bit) {
@@ -75,7 +80,7 @@ static bool exclusive(const struct pd_binput* b) {
 }
 
 bool pd_binput_busy(const struct pd_binput* b) {
-    return exclusive(b) || b->pendingMove >= 0 || b->awaitingTarget;
+    return b->field.result == PD_FIELD_RUNNING || exclusive(b) || b->pendingMove >= 0 || b->awaitingTarget;
 }
 
 enum pd_battle_state pd_binput_state(const struct pd_binput* b) {
@@ -84,7 +89,8 @@ enum pd_battle_state pd_binput_state(const struct pd_binput* b) {
 
 void pd_binput_cancel(struct pd_binput* b) {
     b->queueCount = 0;
-    b->pickCell = -1;
+    b->pickCell = b->gbPickCell = -1;
+    pd_field_input_cancel(&b->field);
     b->pendingMove = -1;
     b->awaitingTarget = false;
     b->switchTarget = 0;
@@ -281,8 +287,7 @@ static void drive_run(struct pd_binput* b) {
 
 // A Game Boy party menu's press: held and released two frames each (Prism's party menu reads keys every other frame).
 static void press_gb(struct pd_binput* b, int bit) {
-    enqueue(b, bit, GB_PRESS_FRAMES);
-    enqueue(b, 0, GB_PRESS_FRAMES);
+    pulse(b, bit, GB_PRESS_FRAMES, GB_PRESS_FRAMES);
 }
 
 static void gb_pick(struct pd_binput* b, enum pd_battle_state menu, int cell) {
@@ -471,9 +476,51 @@ static void watch_state(struct pd_binput* b) {
     }
 }
 
+static void dequeue_frame(struct pd_binput* b) {
+    if (b->framesLeft <= 0) {
+        if (b->queueCount > 0) {
+            b->currentBits = b->queue[b->queueHead].bits;
+            b->framesLeft = b->queue[b->queueHead].frames;
+            b->queueHead = (b->queueHead + 1) % PD_BINPUT_QUEUE;
+            b->queueCount--;
+        } else {
+            b->currentBits = 0;
+            b->framesLeft = 0;
+        }
+    }
+    if (b->framesLeft > 0) b->framesLeft--;
+}
+
+bool pd_binput_field_start(struct pd_binput* b, enum pd_field_request request, unsigned item, unsigned slot) {
+    if (!b->gb || pd_binput_busy(b)) return false;
+    const char* sha = b->game->sha1;
+    switch (request) {
+    case PD_FIELD_BAG: return pd_field_input_begin(&b->field, sha, b->read, b->ctx);
+    case PD_FIELD_ITEM: return pd_field_input_begin_item(&b->field, sha, item, b->read, b->ctx);
+    case PD_FIELD_USE: return pd_field_input_begin_use(&b->field, sha, item, b->read, b->ctx);
+    case PD_FIELD_HEAL: return pd_field_input_begin_heal(&b->field, sha, item, slot, b->read, b->ctx);
+    case PD_FIELD_FLY: return pd_field_input_begin_fly(&b->field, sha, b->game->rom, b->game->romSize, b->read, b->ctx);
+    }
+    return false;
+}
+
 uint32_t pd_binput_tick(struct pd_binput* b, bool* excl) {
     *excl = false;
     if (!pd_binput_available(b)) return 0;
+    if (b->field.result == PD_FIELD_RUNNING) {
+        b->field.frames++;
+        if (b->queueCount == 0 && b->framesLeft == 0) {
+            const unsigned key = pd_field_input_tick(&b->field, b->read, b->ctx);
+            // Start / Pack and text loops can miss a two-frame press depending on their polling phase.
+            if (key == PD_KEY_A || key == PD_KEY_B)
+                pulse(b, key, 3, GB_REPRESS_FRAMES + GB_SETTLE_FRAMES);
+            else if (key)
+                pulse(b, key, GB_PRESS_FRAMES, GB_PICK_SETTLE_FRAMES + GB_SETTLE_FRAMES);
+        }
+        *excl = true;
+        dequeue_frame(b);
+        return (uint32_t) b->currentBits;
+    }
     if (b->gb) {
         int cursor;
         b->state = pd_gb_battle_menu(b->gb, b->read, b->ctx, &cursor);
@@ -492,18 +539,7 @@ uint32_t pd_binput_tick(struct pd_binput* b, bool* excl) {
             drive_run(b);
         }
     }
-    if (b->framesLeft <= 0) {
-        if (b->queueCount > 0) {
-            b->currentBits = b->queue[b->queueHead].bits;
-            b->framesLeft = b->queue[b->queueHead].frames;
-            b->queueHead = (b->queueHead + 1) % PD_BINPUT_QUEUE;
-            b->queueCount--;
-        } else {
-            b->currentBits = 0;
-            b->framesLeft = 0;
-        }
-    }
-    if (b->framesLeft > 0) b->framesLeft--;
+    dequeue_frame(b);
     // A target screen follows a move's A within a few frames, and FIGHT opens as fast: a watch still unanswered after
     // that is stale.
     if (b->queueCount == 0 && b->framesLeft <= 0 && (b->awaitingTarget || b->pendingMove >= 0)) {
@@ -535,6 +571,7 @@ static void action_pick(struct pd_binput* b, enum pd_battle_action action) {
 }
 
 void pd_binput_action(struct pd_binput* b, enum pd_battle_action action) {
+    if (b->field.result == PD_FIELD_RUNNING) return;
     b->pendingMove = -1;
     action_pick(b, action);
     if (action == PD_ACT_RUN) {
@@ -546,6 +583,7 @@ void pd_binput_action(struct pd_binput* b, enum pd_battle_action action) {
 }
 
 void pd_binput_move(struct pd_binput* b, int index) {
+    if (b->field.result == PD_FIELD_RUNNING) return;
     if (b->state == PD_BATTLE_ACTION) {
         b->pendingMove = index;
         action_pick(b, PD_ACT_FIGHT);
@@ -560,6 +598,7 @@ void pd_binput_move(struct pd_binput* b, int index) {
 }
 
 void pd_binput_switch(struct pd_binput* b, uint32_t personality) {
+    if (b->field.result == PD_FIELD_RUNNING) return;
     if (!pd_binput_can_switch(b) || !personality) return;
     if (b->gb && gb_refused(b, personality)) return;
     b->pendingMove = -1;
@@ -574,6 +613,7 @@ void pd_binput_switch(struct pd_binput* b, uint32_t personality) {
 }
 
 void pd_binput_back(struct pd_binput* b) {
+    if (b->field.result == PD_FIELD_RUNNING) return;
     b->pendingMove = -1;
     if (b->gb) press_gb(b, PD_KEY_B);
     else press(b, PD_KEY_B);

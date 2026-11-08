@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "pd_game.h"
+#include "pd_field_input.h"
 #include "pd_snapshot.h"
 
 enum pd_battle_action { PD_ACT_FIGHT, PD_ACT_BAG, PD_ACT_POKEMON, PD_ACT_RUN };
@@ -27,6 +28,8 @@ typedef bool (*pd_write_fn)(void* ctx, uint32_t addr, const void* data, size_t l
 struct pd_gb_config;
 
 struct pd_binput {
+    const struct pd_game* game;
+    struct pd_field_input field;
     const struct pd_config* cfg;
     const struct pd_gb_config* gb; // a Game Boy game: its menus are read and steered instead
     pd_read_fn read;
@@ -75,6 +78,9 @@ enum pd_battle_state pd_binput_state(const struct pd_binput* b);
 // A sequence hasn't drained, or a move waits for its menu: taps wait.
 bool pd_binput_busy(const struct pd_binput* b);
 
+// The field and battle actions use the same key queue and cannot run concurrently.
+enum pd_field_request { PD_FIELD_BAG, PD_FIELD_ITEM, PD_FIELD_USE, PD_FIELD_HEAL, PD_FIELD_FLY };
+bool pd_binput_field_start(struct pd_binput* b, enum pd_field_request request, unsigned item, unsigned slot);
 void pd_binput_action(struct pd_binput* b, enum pd_battle_action action);
 void pd_binput_move(struct pd_binput* b, int index);
 void pd_binput_switch(struct pd_binput* b, uint32_t personality);

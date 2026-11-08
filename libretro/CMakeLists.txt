@@ -28,6 +28,7 @@ set(APP ${CMAKE_CURRENT_SOURCE_DIR}/../app/src/main/cpp)
 file(GLOB PD_CORE CONFIGURE_DEPENDS ../3ds/core/*.c)
 add_library(pokedaisy_libretro SHARED ${MGBA_SRC} pd_libretro.c pd_lr_mem.c ${PD_CORE}
   ../linux/hud.c ../linux/quick_menu.c ../linux/fly.c ../linux/field_items.c ../linux/wild.c ../linux/gb_field.c ../linux/polished_lz.c
+  ../linux/polished_field.c
   ${APP}/pk_call.c ${APP}/pk_wide.c ${APP}/pk_wide_gb.c ${APP}/pk_gb_field.c)
 set_source_files_properties(${APP}/pk_wide.c ${APP}/pk_wide_gb.c PROPERTIES COMPILE_OPTIONS -Wno-unused-parameter)
 # The launcher core draws a Game Boy game's margins off the field as a glow; the app keeps plain bars (pk_wide_gb.c).

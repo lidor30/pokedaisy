@@ -32,6 +32,9 @@
 #include "field_items.h"
 #include "fly.h"
 #include "gb_field.h"
+#include "polished_field.h"
+#include "pd_binput.h"
+#include "polished_action_data.h"
 #include "hud.h"
 #include "pd_guide.h"
 #include "pk_call.h"
@@ -217,6 +220,20 @@ static inline uint32_t to_xbgr(uint16_t p) {
 }
 static inline uint32_t xbgr_to_rgb(uint32_t p) { return (p & 255) << 16 | (p >> 8 & 255) << 8 | (p >> 16 & 255); }
 
+/* The Quick Menu uses a larger logical canvas on the Brick. Preserve the frozen expanded view at panel scale. */
+static void draw_wide_quick_background(void) {
+  const int w = CW * (int)wideH <= CH * (int)wideW ? CW : CH * (int)wideW / (int)wideH;
+  const int h = CW * (int)wideH <= CH * (int)wideW ? CW * (int)wideH / (int)wideW : CH;
+  const int x0 = (CW - w) / 2, y0 = (CH - h) / 2;
+  memset(cvs, 0, (size_t)CW * CH * sizeof *cvs);
+  for (int y = 0; y < h; y++) {
+    const uint32_t *src = wideFrame + (unsigned)y * wideH / (unsigned)h * wideW;
+    uint32_t *dst = cvs + (size_t)(y0 + y) * CW + x0;
+    for (int x = 0; x < w; x++)
+      dst[x] = xbgr_to_rgb(src[(unsigned)x * wideW / (unsigned)w]);
+  }
+}
+
 /* The game, whole-scale and centred, over a black canvas. */
 static void draw_game(void) {
   memset(cvs, 0, (size_t)CW * CH * sizeof *cvs);
@@ -399,6 +416,8 @@ static int quickBtn = Y, companionBtn = X, hudBtn = -1; // key indices, -1 none 
 static unsigned gameKeys; // keys the layer presses for the game (BIKE's SELECT)
 static int gameKeyFrames;
 static int hudOx, hudOy, hudScale = 1; // where draw_hud last put the HUD on the canvas (hud_hit_at)
+static unsigned shortcutKeys, shortcutBlocked;
+static bool shortcutExclusive;
 static bool maskGame;     // while an overlay is up the game sees no keys
 
 /* The pad buttons for the quick menu, the companion and the HUD cursor are PokeDaisy's own SETTINGS rows
@@ -432,22 +451,24 @@ static void poll_keys(void) {
   }
   prevHeld = held;
 }
-static bool down(int k) { return (pressedKeys >> k & 1) != 0; }
+static bool down(int k) { return k >= 0 && (pressedKeys >> k & 1) != 0; }
 
 /* What mGBA reads while its frame runs. */
 static int16_t masked_input(unsigned port, unsigned device, unsigned index, unsigned id) {
   if (port != 0 || device != RETRO_DEVICE_JOYPAD)
     return 0;
+  const unsigned keys = shortcutExclusive ? shortcutKeys :
+      ((maskGame ? 0 : held & ~shortcutBlocked) | (gameKeyFrames > 0 ? gameKeys : 0));
   if (id == RETRO_DEVICE_ID_JOYPAD_MASK) {
     int16_t m = 0;
     for (int k = A; k <= L; k++)
-      if (maskGame ? (gameKeys >> k & 1) : ((held >> k & 1) || (gameKeyFrames > 0 && (gameKeys >> k & 1))))
+      if (keys >> k & 1)
         m |= 1 << retroId[k];
     return m;
   }
   for (int k = A; k <= L; k++)
     if (retroId[k] == id)
-      return maskGame ? (gameKeyFrames > 0 && (gameKeys >> k & 1)) : ((held >> k & 1) || (gameKeyFrames > 0 && (gameKeys >> k & 1)));
+      return (keys >> k) & 1;
   return maskGame ? 0 : realInput(port, device, index, id);
 }
 
@@ -464,7 +485,7 @@ static bool companion, companionWas, haveGame;
 static int frames;
 
 /* the HUD over the overworld (B2) */
-static struct hud_state hudState = {0, 0, false, -1, -1};
+static struct hud_state hudState = {.wild = -1, .focus = -1};
 static struct hud_hits hudHits;
 static bool hudFocus, hudShown;
 static uint32_t *hudPixels;
@@ -496,6 +517,31 @@ static const struct gb_field *gbf;
 static int gbTake;
 static bool gbWildHeld;
 static size_t romLen;
+static bool polishedActions;
+static struct pd_binput polishedInput;
+
+static int polished_byte(uint32_t addr) {
+  uint8_t v = 0;
+  pd_lr_read_memory(core, addr, &v, 1);
+  return v;
+}
+
+static void polished_open_pc(void) {
+  const char *why = polished_pc_reason(game.sha1, pd_lr_read_memory, core);
+  if (why)
+    notice(why);
+  else if (!polished_pc_open(core, game.sha1, pd_lr_read_memory, core))
+    notice("Could not open the PC");
+}
+
+static void polished_use(int item) {
+  if (!pd_binput_field_start(&polishedInput, PD_FIELD_USE, item, 0))
+    notice(pd_field_input_message(&polishedInput.field));
+}
+
+static bool polished_potion(int item) {
+  return item == PD_PC_POTION;
+}
 
 
 static void snapshot(void) { pd_snapshot_read(&snap, &game, pd_lr_read_memory, core); }
@@ -806,6 +852,9 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   pcOk = itemsOk && pc_supported(game.cfg, rom, len);
   bikeOk = itemsOk && bike_supported(game.cfg);
   gbf = !gba && game.cfg ? gb_field_find(rom, len) : NULL;
+  polishedActions = !gba && game.cfg && polished_field_supported(game.sha1);
+  shortcutBlocked = 0;
+  shortcutExclusive = false;
   gbTake = 0;
   gbWildHeld = gbf != NULL; // a resume state taken while OFF carries the held rates: put back once when ON
   quickOpen = flyList = repelList = false;
@@ -816,6 +865,10 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
     ovPixels = calloc((size_t)CWMAX * CHMAX, sizeof *ovPixels);
   pd_ui_init(&ui, &settings);
   ui.handheldDex = ui.handheldParty = ui.guideController = ui.shoulderTabs = true;
+  if (polishedActions) {
+    pd_binput_init(&polishedInput, &game, pd_lr_read_memory, NULL, core);
+    ui.battleInput = &polishedInput;
+  }
   memset(&host, 0, sizeof host);
   host.hideScreenMode = true;
   host.hasQuickMenu = true;
@@ -824,6 +877,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   // The Game Boy games get the HUD where the field scene is known (English Yellow, Crystal: pk_wide_gb), as in the app.
   host.hasHud = core->platform(core) == mPLATFORM_GBA || wideSupported;
   host.hasExpand = true;
+  host.itemCanUse = polishedActions ? polished_potion : NULL;
   host.expandGame = wideSupported;
   host.count = 1;
   host.labels[0] = "HOST";
@@ -845,6 +899,12 @@ static void layer_jump(void) {
   flyAsk = flyStage = 0;
   gbTake = 0;
   gameKeyFrames = 0;
+  shortcutExclusive = false;
+  shortcutBlocked = polishedActions ? held : 0;
+  if (polishedActions) {
+    pd_binput_init(&polishedInput, &game, pd_lr_read_memory, NULL, core);
+    ui.battleChoosingMove = ui.battleChoosingMon = false;
+  }
   gbWildHeld = gbf != NULL; // a state taken while OFF carries the held rates: put back once when ON
 }
 
@@ -899,8 +959,13 @@ static void hud_press(int id) {
     ui.guidePage = 0;
     pd_ui_guide_reset(&ui);
   } else if (id == HUD_PC) {
-    job = JOB_PC; // the game's own PC, as the quick menu's
-    jobFrames = 0;
+    if (polishedActions) {
+      shortcutBlocked |= held;
+      polished_open_pc();
+    } else {
+      job = JOB_PC; // the game's own PC, as the quick menu's
+      jobFrames = 0;
+    }
   }
   if (id != HUD_PC)
     companion = true;
@@ -961,7 +1026,20 @@ RETRO_API void retro_run(void) {
   if (inputPollCallback)
     inputPollCallback();
   poll_keys();
+  shortcutBlocked &= held;
+  const bool fieldRunning = polishedActions && polishedInput.field.result == PD_FIELD_RUNNING;
+  const bool inputRunning = polishedActions && pd_binput_busy(&polishedInput);
+  if (fieldRunning && down(B)) {
+    pd_binput_cancel(&polishedInput);
+    notice(pd_field_input_message(&polishedInput.field));
+  }
+  if (inputRunning)
+    pressedKeys = 0;
   touch_poll();
+  if (inputRunning)
+    touchDown = touchWas = false;
+  if (polishedActions && down(quickBtn) && !quickOpen && !companion)
+    snapshot();
   // A tap on the quick menu: a tile (or a FLY / REPEL list row) is picked as A picks it; outside, the list or the menu
   // closes as B. On the field, a tap that starts and ends on one HUD part presses it; the game picture itself does nothing.
   if (touch_tapped() && quickOpen && !companion) {
@@ -1026,33 +1104,45 @@ RETRO_API void retro_run(void) {
   struct quick_item quick[QUICK_COUNT];
   int quickN = 0;
   char repelWhy[32] = "";
-  if (pcOk || gbf)
-    quick[quickN++] = (struct quick_item){QUICK_PC, false, false, NULL, 0, 0, NULL};
-  if (flyCfg || gbf) {
-    int flyer = fly_flyer(&snap);
-    quick[quickN++] = (struct quick_item){QUICK_FLY, false, false, flyer < 0 ? "No one in your party knows FLY" : NULL,
-                                          flyer < 0 ? 0 : snap.party[flyer].species, 0, NULL};
+  const bool pcMenu = polishedActions && (quickOpen || down(quickBtn));
+  const char *pcFieldWhy = pcMenu ? pd_field_input_reason(game.sha1, pd_lr_read_memory, core) : NULL;
+  if (pcOk || gbf || polishedActions)
+    quick[quickN++] = (struct quick_item){QUICK_PC, false, false,
+        pcMenu ? polished_pc_reason(game.sha1, pd_lr_read_memory, core) : NULL, 0, 0, NULL};
+  if (flyCfg || gbf || polishedActions) {
+    int flyer = pcMenu ? pd_field_input_flyer(game.sha1, pd_lr_read_memory, core) : fly_flyer(&snap);
+    const char *why = flyer < 0 ? "No one in your party knows FLY" : NULL;
+    if (pcMenu)
+      why = pcFieldWhy ? pcFieldWhy : pd_field_input_fly_reason(game.sha1, pd_lr_read_memory, core);
+    quick[quickN++] = (struct quick_item){QUICK_FLY, false, false, why,
+        flyer < 0 || flyer >= snap.partyCount ? 0 : snap.party[flyer].species, 0, NULL};
   }
-  if (itemsOk) {
+  if (itemsOk || polishedActions) {
     repelKindCount = 0;
-    for (int k = 0; k < REPEL_KINDS; k++)
-      if (bag_count(&snap, repel_kinds[k][0]) > 0)
-        repelKinds[repelKindCount++] = repel_kinds[k][0];
-    int left = repel_steps(core, game.cfg);
+    for (int k = 0; k < REPEL_KINDS; k++) {
+      int item = polishedActions ? (int)pd_pc_repels[k].id : repel_kinds[k][0];
+      if ((!polishedActions || pcMenu) && bag_count(&snap, item) > 0)
+        repelKinds[repelKindCount++] = item;
+    }
+    int left = pcMenu ? polished_byte(PD_PC_REPEL_STEPS) : itemsOk ? repel_steps(core, game.cfg) : 0;
     if (left)
       snprintf(repelWhy, sizeof repelWhy, "%d steps left", left);
-    quick[quickN++] = (struct quick_item){QUICK_REPEL, false, false,
-                                          left ? repelWhy : repelKindCount ? NULL : "No REPEL in your bag", 0,
-                                          repelKindCount ? repelKinds[repelKindCount - 1] : repel_kinds[0][0], NULL};
+    const char *why = pcFieldWhy ? pcFieldWhy : left ? repelWhy : repelKindCount ? NULL : "No REPEL in your bag";
+    int icon = polishedActions ? (int)pd_pc_repels[0].id : repel_kinds[0][0];
+    quick[quickN++] = (struct quick_item){QUICK_REPEL, false, false, why, 0,
+        repelKindCount ? repelKinds[repelKindCount - 1] : icon, NULL};
   }
-  if (bikeOk) {
-    int bike = bag_bike(&snap);
-    bool riding = (fieldFlags & PK_FIELD_AVATAR) && (fieldFlags & PK_FIELD_BIKE);
-    quick[quickN++] = (struct quick_item){QUICK_BIKE, false, false, bike ? NULL : "No bike in your bag", 0, bike ? bike : 360,
-                                          riding ? "GET OFF" : NULL};
+  if (bikeOk || polishedActions) {
+    int bike = polishedActions ? (pcMenu && bag_count(&snap, PD_PC_BICYCLE) ? PD_PC_BICYCLE : 0) : bag_bike(&snap);
+    bool riding = pcMenu ? polished_byte(PD_PC_PLAYER_STATE) == 1 :
+        (fieldFlags & PK_FIELD_AVATAR) && (fieldFlags & PK_FIELD_BIKE);
+    quick[quickN++] = (struct quick_item){QUICK_BIKE, false, false,
+        pcFieldWhy ? pcFieldWhy : bike ? NULL : "No bike in your bag", 0,
+        bike ? bike : polishedActions ? PD_PC_BICYCLE : 360, riding ? "GET OFF" : NULL};
   }
-  if (wildSwitch || gbf) // a game with no wild-encounter switch has no WILD entry
-    quick[quickN++] = (struct quick_item){QUICK_WILD, settings.wildOff, false, NULL, 0, 0, NULL};
+  if (wildSwitch || gbf || polishedActions)
+    quick[quickN++] = (struct quick_item){QUICK_WILD, settings.wildOff, false,
+        settings.wildOff ? NULL : pcFieldWhy, 0, 0, NULL};
   if (host.hasHud && settings.hud)
     quick[quickN++] = (struct quick_item){QUICK_HUD, false, false, hudShown && hudHits.n ? NULL : "No HUD on screen", 0, 0, NULL};
   quick[quickN++] = (struct quick_item){QUICK_COMPANION, false, false, NULL, 0, 0, NULL};
@@ -1072,9 +1162,13 @@ RETRO_API void retro_run(void) {
       repelList = false;
     else if (down(A)) {
       quickOpen = repelList = false;
-      job = JOB_REPEL;
-      jobItem = repelKinds[repelSel];
-      jobFrames = 0;
+      if (polishedActions)
+        polished_use(repelKinds[repelSel]);
+      else {
+        job = JOB_REPEL;
+        jobItem = repelKinds[repelSel];
+        jobFrames = 0;
+      }
     }
   } else if (quickOpen && flyList) {
     if (down(UP) && flyT.count)
@@ -1096,12 +1190,17 @@ RETRO_API void retro_run(void) {
     if (dx || dy)
       quickSel = quick_step(quickN, quickSel, dx, dy, CW, CH);
     if (down(A) && !quick[quickSel].why && quick[quickSel].action == QUICK_FLY) {
-      flyAsk = 1; // answered below, between two frames
+      if (polishedActions) {
+        quickOpen = false;
+        if (!pd_binput_field_start(&polishedInput, PD_FIELD_FLY, 0, 0))
+          notice(pd_field_input_message(&polishedInput.field));
+      } else
+        flyAsk = 1; // answered below, between two frames
     } else if (down(A) && !quick[quickSel].why && quick[quickSel].action == QUICK_REPEL && repelKindCount > 1) {
       for (int k = 0; k < repelKindCount; k++) {
         int steps = 0;
         for (int r = 0; r < REPEL_KINDS; r++)
-          if (repel_kinds[r][0] == repelKinds[k])
+          if ((polishedActions ? (int)pd_pc_repels[r].id : repel_kinds[r][0]) == repelKinds[k])
             steps = repel_kinds[r][1];
         snprintf(repelRows[k], sizeof repelRows[k], "%s x%d  %d steps", pd_item_name(&game, repelKinds[k]),
                  bag_count(&snap, repelKinds[k]), steps);
@@ -1111,17 +1210,31 @@ RETRO_API void retro_run(void) {
       repelSel = repelKindCount - 1;
     } else if (down(A) && !quick[quickSel].why) {
       quickOpen = false;
+      if (polishedActions)
+        shortcutBlocked |= held;
       switch (quick[quickSel].action) {
       case QUICK_PC:
-        job = JOB_PC;
-        jobFrames = 0;
+        if (polishedActions)
+          polished_open_pc();
+        else {
+          job = JOB_PC;
+          jobFrames = 0;
+        }
         break;
       case QUICK_REPEL:
-        job = JOB_REPEL;
-        jobItem = repelKinds[0];
-        jobFrames = 0;
+        if (polishedActions)
+          polished_use(repelKinds[0]);
+        else {
+          job = JOB_REPEL;
+          jobItem = repelKinds[0];
+          jobFrames = 0;
+        }
         break;
       case QUICK_BIKE:
+        if (polishedActions) {
+          polished_use(PD_PC_BICYCLE);
+          break;
+        }
         job = JOB_BIKE;
         jobItem = bag_bike(&snap);
         jobFrames = 0;
@@ -1155,12 +1268,25 @@ RETRO_API void retro_run(void) {
     bool closeMap = false;
     const bool mapHandled = (backing || !shoulder) &&
         map_control(&ui, down(RIGHT) - down(LEFT), down(DOWN) - down(UP), down(A), backing, down(SELECT), &closeMap);
-    if (mapHandled) {
+    if (polishedActions && ui.tab == PD_TAB_BAG && !ui.itemPicking && ui.overlay == PD_OVERLAY_NONE &&
+        R2 != companionBtn && R2 != quickBtn && R2 != hudBtn && down(R2)) {
+      const char *why = pd_field_input_reason(game.sha1, pd_lr_read_memory, core);
+      if (why)
+        notice(why);
+      else if (pd_binput_field_start(&polishedInput, ui.bagSelected >= 0 ? PD_FIELD_ITEM : PD_FIELD_BAG,
+                                    ui.bagItemShown, 0))
+        companion = false;
+      else
+        notice(pd_field_input_message(&polishedInput.field));
+    } else if (mapHandled) {
       if (closeMap) companion = false;
     } else if (backing) {
       const bool places = ui.overlay == PD_OVERLAY_PLACES;
       const int slot = ui.tab == PD_TAB_PARTY ? ui.summarySlot : -1;
-      if (!pd_ui_back(&ui)) companion = false;
+      if (polishedActions && ui.tab == PD_TAB_BATTLE && (ui.battleChoosingMove || ui.battleChoosingMon))
+        ui.battleChoosingMove = ui.battleChoosingMon = false;
+      else if (!pd_ui_back(&ui))
+        companion = false;
       if (places) focusId = HIT_MAP_PLACES;
       if (slot >= 0 && ui.summarySlot < 0) focusId = HIT_SLOT + slot;
     } else if (shoulder) {
@@ -1225,6 +1351,31 @@ RETRO_API void retro_run(void) {
       }
     }
     switch (pd_ui_take_action(&ui)) {
+    case PD_ACTION_ITEM_PICK:
+      if (polishedActions && polished_potion(ui.itemId) && !ui.itemGive) {
+        const char *why = pd_field_input_reason(game.sha1, pd_lr_read_memory, core);
+        bool eligible = false;
+        memset(ui.itemSlots, 0, sizeof ui.itemSlots);
+        for (int i = 0; !why && i < snap.partyCount; i++) {
+          const struct pd_mon *m = &snap.party[i];
+          ui.itemSlots[i].ok = !m->egg && m->hp > 0 && m->hp < m->maxHp;
+          eligible |= ui.itemSlots[i].ok;
+        }
+        if (eligible) {
+          ui.itemPicking = true;
+          ui.itemMoveSlot = -1;
+          focus_new_screen();
+        } else
+          notice(why ? why : "No party member can use a Potion");
+      }
+      break;
+    case PD_ACTION_ITEM_APPLY:
+      if (polishedActions && !pd_field_input_reason(game.sha1, pd_lr_read_memory, core) &&
+          pd_binput_field_start(&polishedInput, PD_FIELD_HEAL, ui.itemId, ui.itemSlot))
+        companion = false;
+      else if (polishedActions)
+        notice("Potion unavailable");
+      break;
     case PD_ACTION_SETTINGS_CHANGED:
       pd_settings_save(&settings, settingsPath);
       hudDrawnKey = 0;
@@ -1253,12 +1404,37 @@ RETRO_API void retro_run(void) {
       ff = false;
     rewinding = got && th.mode == RETRO_THROTTLE_REWINDING;
   }
+  if (polishedActions && companion && pd_binput_busy(&polishedInput))
+    companion = false; // The native battle / Bag / party resumes with the selected action.
   bool paused = companion || hudFocus || (quickOpen && !flyAsk);
   maskGame = paused;
+  shortcutExclusive = false;
   if (!paused) {
+    if (polishedActions && !rewinding && settings.wildOff &&
+        !polished_wild_hold(core, game.sha1, pd_lr_read_memory, core)) {
+      settings.wildOff = false;
+      pd_settings_save(&settings, settingsPath);
+      notice("Wild encounters restored");
+    }
+    const bool fieldStarted = polishedActions && polishedInput.field.result == PD_FIELD_RUNNING;
+    if (polishedActions) {
+      if (rewinding)
+        pd_binput_cancel(&polishedInput);
+      else
+        shortcutKeys = pd_binput_tick(&polishedInput, &shortcutExclusive);
+      shortcutExclusive |= inputRunning || (!rewinding && (shortcutKeys || pd_binput_busy(&polishedInput)));
+      if (rewinding)
+        shortcutKeys = 0;
+      if (shortcutExclusive)
+        shortcutBlocked |= held;
+    }
     PF_T(pa);
     mgba_retro_run();
     PF_T(pb);
+    if (fieldStarted && polishedInput.field.result != PD_FIELD_RUNNING && polishedInput.field.result != PD_FIELD_CANCELLED) {
+      notice(pd_field_input_message(&polishedInput.field));
+      snapshot();
+    }
     pf_add(PF_RUN, pb - pa);
     if (gameKeyFrames > 0)
       gameKeyFrames--;
@@ -1431,7 +1607,10 @@ RETRO_API void retro_run(void) {
         focus_draw(&ui, focus);
     }
   } else if (quickOpen && ovPixels) {
-    draw_game();
+    if (polishedActions && wideReady && settings.aspect != PD_ASPECT_ORIGINAL)
+      draw_wide_quick_background();
+    else
+      draw_game();
     dim(0x55);
     struct pd_canvas qc;
     pd_canvas_init(&qc, CW, CH, ovPixels);
@@ -1457,13 +1636,14 @@ RETRO_API void retro_run(void) {
                           (!wideSupported || pk_wide_scene() == PK_WIDE_SCENE_FIELD) && flyStage == 0;
     hudFieldFrames = field ? hudFieldFrames + 1 : 0;
     if (settings.hud && game.cfg && host.hasHud && hudFieldFrames >= 20) {
-      int steps = gb ? 0 : repel_steps(core, game.cfg); // the Game Boy games' Repel steps aren't read (nor in the app)
+      int steps = polishedActions ? polished_byte(PD_PC_REPEL_STEPS) : gb ? 0 : repel_steps(core, game.cfg);
       if (steps <= 0)
         hudState.repelFull = 0;
       else if (!hudState.repelFull || steps > hudState.repelFull)
         hudState.repelFull = hud_repel_full(steps);
       hudState.repel = steps > 0 ? steps : 0;
-      hudState.pc = pcOk || gbf;
+      hudState.repelItem = polishedActions ? pd_pc_repels[0].id : 0;
+      hudState.pc = pcOk || gbf || polishedActions;
       hudState.wild = hud_wild_uncaught(&game, &snap);
       draw_hud();
     } else

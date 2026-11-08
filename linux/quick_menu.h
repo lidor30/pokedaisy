@@ -38,6 +38,7 @@ int quick_list_hit(int x, int y);
 const char *quick_label(enum quick_action a);
 /* Pixel art shared with the HUD's buttons, a character a pixel ('.' clear), NULL-terminated. */
 extern const char *const quick_icon_pc[], *const quick_icon_grass[], *const quick_icon_companion[];
+extern const char *const quick_icon_repel[];
 /* After drawing: every pixel opaque but the clear ones and the glass's own alpha. */
 void quick_finish(struct pd_canvas *c);
 #endif
