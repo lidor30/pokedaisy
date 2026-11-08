@@ -218,7 +218,7 @@ void DsCompanionUi::draw_body(pd_ui* u,pd_canvas* c){
   if(u->tab==PD_TAB_PARTY)
     ds_party_view(c,*snapshot,*icons,selected,summary,page,&dexArt,learnRow,&learnLast);
   if(u->tab==PD_TAB_BAG){
-    const auto visible=ds_bag_view(c,*snapshot,pocket,scroll,details,frame.bagSort);
+    const auto visible=ds_bag_view(c,*snapshot,pocket,scroll,details,frame.bagSort,bagTabKey);
     bagPockets=visible.occupied;
     if(pocket!=visible.active){pocket=visible.active;scroll=0;details=false;}
   }
@@ -312,6 +312,22 @@ void DsCompanionUi::draw(pd_canvas* c,const DsCompanion& s,bool match,const DsMa
   }
   pd_look_apply(nullptr,nullptr);
 }
+// The party grid (two columns, row by row) as Android's focus moves over it, the GB core's focus search in cell units:
+// a press goes to the nearest slot that lies that way, one that lines up first; with none that way it stays put.
+static int party_grid_step(int selected,int n,int dx,int dy){
+  if(n<=0)return 0;
+  if(!dx && !dy)return selected;
+  int best=selected,score=1<<30;
+  for(int to=0;to<n;++to){
+    if(to==selected)continue;
+    const int cx=to%2-selected%2,cy=to/2-selected/2;
+    const int along=dx?cx*dx:cy*dy;
+    const int across=std::abs(dx?cy:cx);
+    const int cost=along+across*4+(across?100000:0);
+    if(along>0 && cost<score){best=to;score=cost;}
+  }
+  return best;
+}
 bool DsCompanionUi::control(unsigned pressed){
   auto hit=[&](unsigned id){return bool(pressed&(1u<<id));};
   int dy=hit(RETRO_DEVICE_ID_JOYPAD_DOWN)-hit(RETRO_DEVICE_ID_JOYPAD_UP);
@@ -321,7 +337,7 @@ bool DsCompanionUi::control(unsigned pressed){
     pd_ui_next_tab(&frame,hit(RETRO_DEVICE_ID_JOYPAD_R)?1:-1);
     pd_ui_guide_reset(&frame);
     choice=0;
-    scroll=dexEntry=0;placeRow=mapAction=dexFilterFocus=-1;summary=details=false;error.clear();return false;
+    scroll=dexEntry=0;placeRow=mapAction=dexFilterFocus=-1;bagTabKey=-1;summary=details=false;error.clear();return false;
   }
   if(frame.overlay==PD_OVERLAY_TAB_BAR || frame.overlay==PD_OVERLAY_MORE){
     const int step=frame.overlay==PD_OVERLAY_MORE && dx ? dx : dy;
@@ -373,8 +389,10 @@ bool DsCompanionUi::control(unsigned pressed){
   if(frame.tab==PD_TAB_PARTY){
     int n=snapshot?int(snapshot->party.size()):0;
     const int oldSelected=selected;
-    const int step=summary?(dy?dy:page==PD_SUMMARY_LEARN?0:dx):dy*2+dx;
-    selected=std::clamp(selected+step,0,std::max(0,n-1));
+    if(summary){
+      const int step=dy?dy:page==PD_SUMMARY_LEARN?0:dx;
+      selected=std::clamp(selected+step,0,std::max(0,n-1));
+    }else selected=party_grid_step(selected,n,dx,dy);
     const bool confirm=hit(RETRO_DEVICE_ID_JOYPAD_A);
     if(summary){
       if(oldSelected!=selected)learnRow=0;
@@ -389,14 +407,25 @@ bool DsCompanionUi::control(unsigned pressed){
     }
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(summary)summary=false;else return true;}
   }else if(frame.tab==PD_TAB_BAG){
+    const int tabs=ds_bag_tabs(game);
+    if(bagTabKey>=0){
+      // On the pocket tab bar: up / down walk it, A opens the pocket under the cursor, RIGHT / B go back to the list.
+      std::vector<int> keys;
+      for(int k=0;k<tabs;++k)if(bagPockets&(1u<<k))keys.push_back(k);
+      if(dy)bagTabKey=pd_ui_bag_tab_step(keys.data(),int(keys.size()),bagTabKey,dy);
+      if(hit(RETRO_DEVICE_ID_JOYPAD_A)){pocket=bagTabKey;scroll=0;details=false;bagTabKey=-1;}
+      else if(dx>0 || hit(RETRO_DEVICE_ID_JOYPAD_B))bagTabKey=-1;
+      return false;
+    }
     if(!details && hit(RETRO_DEVICE_ID_JOYPAD_SELECT)){
       pd_ui_bag_cycle_sort(&frame);
       scroll=0;
     }
-    if(!details && dx){
-      const int tabs=ds_bag_tabs(game);
-      do pocket=(pocket+dx+tabs)%tabs; while(!(bagPockets&(1u<<pocket)));
-      scroll=0;
+    if(dx<0 && __builtin_popcount(bagPockets)>1){
+      // LEFT closes an open item and goes to the tab bar in the same press, on the pocket that is open.
+      details=false;
+      bagTabKey=pocket;
+      return false;
     }
     const int count=snapshot?ds_bag_count(*snapshot,pocket):0;
     scroll=std::clamp(scroll+dy,0,std::max(0,count-1));
@@ -420,7 +449,10 @@ bool DsCompanionUi::control(unsigned pressed){
       dexDetailRow=std::clamp(dexDetailRow+dy,0,std::max(0,rows-1));
       if(dx && snapshot){
         const auto entries=ds_dex_rows(*snapshot,filter,regional);
-        for(int row=dexRow+dx;row>=0 && row<int(entries.size());row+=dx){
+        // Android's Previous / Next entry wraps round the filtered list; an unseen species stays unopenable here.
+        const int n=int(entries.size());
+        for(int i=1;i<n;++i){
+          const int row=((dexRow+dx*i)%n+n)%n;
           const int species=entries[row].species;
           if(snapshot->dexSeen[species]){
             dexEntry=species;dexRow=row;dexDetailRow=0;

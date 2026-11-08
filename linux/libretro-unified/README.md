@@ -63,10 +63,14 @@ Pokémon in Moves and Stats. In Learn, Left/Right scrolls the list and
 Up/Down changes Pokémon. Select opens or closes Learn where supported.
 B returns to the highlighted Pokémon in the grid.
 
-In Bag, Left/Right cycles **All** and occupied pockets, Up/Down selects an
-item, A opens its details, and B returns to the list. Press Select while
-browsing to cycle **Default**, **Name**, and **Count** (highest first).
-Sorting only changes the companion display.
+In Bag, Up/Down scrolls the item list and A opens an item's details. Left
+moves to the pocket bar (**All** and the occupied pockets), on the open pocket;
+with details open, Left closes them and goes to the bar in the same press. On
+the bar, Up/Down moves the cursor and stops at the first and last pocket, A
+opens the pocket under the cursor and returns to the list, and Right or B goes
+back to the list without changing pocket. In the list, B returns from details.
+Press Select while browsing to cycle **Default**, **Name**, and **Count**
+(highest first). Sorting only changes the companion display.
 
 To control the DS overworld HUD, turn **HUD** on and assign an unused button
 under **HUD CURSOR BUTTON** in companion Settings. The binding starts at
@@ -134,8 +138,8 @@ need live retail ROM testing.
 Party shows HP, EXP to the next level, type matchups, moves, power and PP.
 A opens the selected party member's summary or Bag item's details. In a party
 summary, A switches between Moves and Stats. Select opens the level-up Learn
-list and Left/Right scrolls it. Up/Down browses the party. Left/Right in Bag
-changes pockets.
+list and Left/Right scrolls it. Up/Down browses the party. In Bag, Left goes
+to the pocket bar and A picks a pocket.
 To turn on the HUD, hold L2, select HUD and press A. It appears after the
 overworld settles in a layout with only the top screen visible. The companion's
 Settings control Minimal HUD, Poké Balls, Repel Steps and the Minimap. Minimal hides the
@@ -240,8 +244,8 @@ existing companion support.
 
 In the Dex, **Select** cycles the four filters. Press **A** on a seen entry to
 open its details where supported. In a Dex entry, **Select** cycles the
-available Info, Evolve, Area and Moves pages. **Left/Right** browses seen entries
-and **Up/Down** scrolls the page. Press **A** in Moves to jump between
+available Info, Evolve, Area and Moves pages. **Left/Right** browses seen entries,
+wrapping from the last to the first, and **Up/Down** scrolls the page. Press **A** in Moves to jump between
 level-up and machine or teachable groups. Both cores share the list, portrait,
 detail tabs, footer, and evolution rows. Exact mapped Polished Crystal carts
 supply their own Dex art, Info page, and level-up moves.

@@ -12,7 +12,7 @@ The tab's name follows the game: `BAG` in most games, `ITEM` in Red, Blue, Yello
 
 ## Pockets and sorting
 
-The pockets run down the left like folder tabs. `ALL` shows everything at once; the others are the game's own pockets (items, balls, TMs and HMs, berries, key items, and whatever extra pockets a hack adds). Only pockets with something in them get a tab.
+The pockets run down the left like folder tabs. `ALL` shows everything at once; the others are the game's own pockets (items, balls, TMs and HMs, berries, key items, and whatever extra pockets a hack adds). Only pockets with something in them get a tab. With a controller, press Left to move to the pocket tabs (the one you're on is outlined, and with an item's description open the same press closes it first), Up and Down to choose one, and `A` to open it; Right or `B` goes back to the list.
 
 Each row has the item's name and how many you have. TMs and HMs show the move they teach after their number, the way the game's TM case does. In Prism and Polished Crystal TMs never run out, so each one shows a count of 1. Polished Crystal's Medicine pocket shows with your items, and so do Dreamstone Mysteries' Medicine and Battle Items pockets and Monomyth's Medicine and held items pockets. Elite Redux keeps no counts at all (an item you have can be used again and again), so its rows show names only.
 

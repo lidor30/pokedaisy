@@ -307,6 +307,26 @@ int main(void) {
     // Its tabs are keyed by its own pocket ids, so a tap opens that pocket.
     assert(has(&ui,HIT_BAG_TAB) && has(&ui,HIT_BAG_TAB+2) && has(&ui,HIT_BAG_TAB+3) && !has(&ui,HIT_BAG_TAB+1));
     assert(has(&ui,HIT_BAG_SORT));
+    {
+        // The D-pad's walk down the pocket tab bar stops at its ends, and its cursor is drawn on the tab it is on.
+        const int keys[] = {0, 2, 3};
+        assert(pd_ui_bag_tab_step(keys, 3, 0, 1) == 2 && pd_ui_bag_tab_step(keys, 3, 2, 1) == 3);
+        assert(pd_ui_bag_tab_step(keys, 3, 3, 1) == 3 && pd_ui_bag_tab_step(keys, 3, 0, -1) == 0);
+        assert(pd_ui_bag_tab_step(keys, 3, 3, -1) == 2 && pd_ui_bag_tab_step(keys, 3, 2, 0) == 2);
+        static uint32_t plain[426 * 240];
+        const size_t bytes = sizeof plain;
+        assert((size_t) c.w * c.h * sizeof(uint32_t) == bytes);
+        ui.bagTabs = false;
+        pd_ui_bag_view(&ui,&c,&fr,&party);
+        memcpy(plain, partyPx, bytes);
+        ui.bagTabs = true;
+        ui.bagTabKey = 2;
+        pd_ui_bag_view(&ui,&c,&fr,&party);
+        assert(memcmp(plain, partyPx, bytes) != 0);
+        ui.bagTabs = false;
+        pd_ui_bag_view(&ui,&c,&fr,&party);
+        assert(!memcmp(plain, partyPx, bytes));
+    }
     const int first[] = {2, 1, 3, 2};
     for (int i=0;i<4;i++) {
         ui.bagDetails = true;

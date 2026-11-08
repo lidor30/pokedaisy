@@ -13,6 +13,10 @@ int main(int argc,char**argv) {
   assert(argc==4 || argc==7);
   using G=DsGame;
   const int field=PK_NDS_FIELD_KNOWN|PK_NDS_FIELD_SCREEN;
+  assert(ds_companion_game(ds_canonical_sha1("1492557711d8cd46628fe3eeceae1dec52d33e70"))==G::Johto);
+  assert(ds_companion_game(ds_canonical_sha1("d94d02ec44c8e2dfc9b744bb888cb64c49678dc2"))==G::Black2);
+  assert(ds_companion_game(ds_canonical_sha1("4fcded0e2713dc03929845de631d0932ea2b5a37"))==G::Johto);
+  assert(ds_companion_game(ds_canonical_sha1("9d13e2623003b63e61a60d92360ccb5b84c03f39"))==G::Unsupported);
   assert(ds_auto_run(field,true,false));
   assert(!ds_auto_run(field,false,false) && !ds_auto_run(field,true,true));
   assert(!ds_auto_run(PK_NDS_FIELD_KNOWN,true,false));
@@ -196,6 +200,43 @@ int main(int argc,char**argv) {
     assert(ui.page==0);
     draw();
     press(RETRO_DEVICE_ID_JOYPAD_B);
+    {
+      // The party grid is two columns of cards with gaps between them. Android moves its focus to the nearest card
+      // that lies the way pressed (one that lines up first), and a press with none that way stays put; this is the
+      // GB core's focus search (libretro/pd_focus.inc) over card rectangles.
+      struct Box{int x,y,w,h;};
+      auto box=[](int slot){return Box{slot%2*108,slot/2*68,100,60};};
+      auto focusStep=[&](int from,int n,int dir){ // dir: 0 up, 1 down, 2 left, 3 right
+        const Box h=box(from);
+        int best=-1,score=1<<30;
+        for(int to=0;to<n;++to){
+          if(to==from)continue;
+          const Box t=box(to);
+          const int dx=t.x+t.w/2-(h.x+h.w/2),dy=t.y+t.h/2-(h.y+h.h/2);
+          const int along=dir==0?-dy:dir==1?dy:dir==2?-dx:dx;
+          const int across=dir<2?(t.x+t.w<=h.x?h.x-(t.x+t.w):t.x>=h.x+h.w?t.x-(h.x+h.w):0)
+                                :(t.y+t.h<=h.y?h.y-(t.y+t.h):t.y>=h.y+h.h?t.y-(h.y+h.h):0);
+          const int cost=along+across*4+(across>0?100000:0);
+          if(along>0 && cost<score){best=to;score=cost;}
+        }
+        return best<0?from:best;
+      };
+      const unsigned buttons[4]={RETRO_DEVICE_ID_JOYPAD_UP,RETRO_DEVICE_ID_JOYPAD_DOWN,RETRO_DEVICE_ID_JOYPAD_LEFT,RETRO_DEVICE_ID_JOYPAD_RIGHT};
+      const int before=ui.selected;
+      for(int n=1;n<=int(s.party.size());++n){
+        DsCompanion smaller=s;
+        smaller.party.resize(n);
+        ui.draw(&canvas,smaller,true,map,icons);
+        for(int from=0;from<n;++from)
+          for(int dir=0;dir<4;++dir){
+            ui.selected=from;
+            press(buttons[dir]);
+            assert(ui.selected==focusStep(from,n,dir));
+          }
+      }
+      draw();
+      ui.selected=before;
+    }
     press(RETRO_DEVICE_ID_JOYPAD_R);
     assert(ui.frame.tab==PD_TAB_DEX);
     press(RETRO_DEVICE_ID_JOYPAD_R);
@@ -203,12 +244,48 @@ int main(int argc,char**argv) {
     press(RETRO_DEVICE_ID_JOYPAD_R);
     assert(ui.frame.tab==PD_TAB_BAG);
     draw();
-    press(RETRO_DEVICE_ID_JOYPAD_LEFT);
-    int lastPocket=0;
-    for(const auto& item:s.bag)lastPocket=std::max(lastPocket,item.pocket+1);
-    assert(lastPocket>0 && ui.pocket==lastPocket);
-    press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
-    assert(ui.pocket==0);
+    {
+      // The bag's pockets are a vertical tab bar. LEFT from the list goes to it, on the open pocket; up / down walk
+      // it (stopping at the ends) without opening anything, A opens the pocket under the cursor, RIGHT / B go back.
+      std::vector<int> keys{0};
+      for(int pocket=1;pocket<=16;++pocket)
+        for(const auto& item:s.bag)if(item.pocket+1==pocket){keys.push_back(pocket);break;}
+      assert(keys.size()>2 && ui.pocket==0 && ui.bagTabKey==-1);
+      press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+      assert(ui.pocket==0 && ui.bagTabKey==-1);
+      press(RETRO_DEVICE_ID_JOYPAD_LEFT);
+      assert(ui.bagTabKey==0 && ui.pocket==0);
+      press(RETRO_DEVICE_ID_JOYPAD_UP);
+      assert(ui.bagTabKey==0);
+      press(RETRO_DEVICE_ID_JOYPAD_DOWN);
+      assert(ui.bagTabKey==keys[1] && ui.pocket==0);
+      for(size_t i=0;i<keys.size()+2;++i)press(RETRO_DEVICE_ID_JOYPAD_DOWN);
+      assert(ui.bagTabKey==keys.back() && ui.pocket==0);
+      press(RETRO_DEVICE_ID_JOYPAD_A);
+      assert(ui.pocket==keys.back() && ui.bagTabKey==-1 && !ui.details && ui.scroll==0);
+      draw();
+      press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+      assert(ui.pocket==keys.back() && ui.bagTabKey==-1);
+      press(RETRO_DEVICE_ID_JOYPAD_LEFT);
+      assert(ui.bagTabKey==keys.back());
+      press(RETRO_DEVICE_ID_JOYPAD_UP);
+      assert(ui.bagTabKey==keys[keys.size()-2] && ui.pocket==keys.back());
+      press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+      assert(ui.bagTabKey==-1 && ui.pocket==keys.back());
+      press(RETRO_DEVICE_ID_JOYPAD_LEFT);
+      press(RETRO_DEVICE_ID_JOYPAD_B);
+      assert(ui.bagTabKey==-1 && ui.pocket==keys.back() && ui.frame.tab==PD_TAB_BAG);
+      // An open item closes with the same LEFT that goes to the bar.
+      press(RETRO_DEVICE_ID_JOYPAD_A);
+      assert(ui.details && ui.bagTabKey==-1);
+      draw();
+      press(RETRO_DEVICE_ID_JOYPAD_LEFT);
+      assert(!ui.details && ui.bagTabKey==keys.back());
+      for(size_t i=0;i<keys.size();++i)press(RETRO_DEVICE_ID_JOYPAD_UP);
+      press(RETRO_DEVICE_ID_JOYPAD_A);
+      assert(ui.pocket==0 && ui.bagTabKey==-1);
+      draw();
+    }
     for(int sort:{1,2,0}){
       press(RETRO_DEVICE_ID_JOYPAD_SELECT);
       assert(ui.frame.bagSort==sort && ui.scroll==0);
@@ -307,6 +384,15 @@ int main(int argc,char**argv) {
     press(RETRO_DEVICE_ID_JOYPAD_A);
     assert(ui.dexEntry==caught.at(0).species && ui.dexEntry>0);
     draw();
+    press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+    assert(ui.dexEntry==caught.at(1).species && ui.dexRow==1);
+    // Android's Previous / Next entry wraps round the filtered list.
+    press(RETRO_DEVICE_ID_JOYPAD_LEFT);
+    assert(ui.dexEntry==caught.at(0).species && ui.dexRow==0);
+    press(RETRO_DEVICE_ID_JOYPAD_LEFT);
+    assert(ui.dexEntry==caught.back().species && ui.dexRow==int(caught.size())-1);
+    press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+    assert(ui.dexEntry==caught.at(0).species && ui.dexRow==0);
     press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
     assert(ui.dexEntry==caught.at(1).species && ui.dexRow==1);
     press(RETRO_DEVICE_ID_JOYPAD_B);

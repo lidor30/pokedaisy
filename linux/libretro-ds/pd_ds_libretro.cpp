@@ -964,7 +964,8 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
   if(rom.size()>=512) {
     // Preserve the existing exact-ROM guard: offsets and art are rev-specific.
     uint8_t hash[20];ds::crypto::sha1(rom.data(),rom.size(),hash);
-    char hex[41];for(int i=0;i<20;++i)std::sprintf(hex+2*i,"%02x",hash[i]);
+    char dump[41];for(int i=0;i<20;++i)std::sprintf(dump+2*i,"%02x",hash[i]);
+    const char* hex=ds_canonical_sha1(dump);
     pd_ds::supported=!std::strcmp(hex,pd_ds_data::sha1);
     pd_ds::companionGame=ds_companion_game(hex);
     pd_ds::soulSilver=!std::strcmp(hex,pd_ds_data::soulSilverSha1);

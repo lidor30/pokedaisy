@@ -35,7 +35,7 @@ The right side has up to four sections, switched with the chips at the top:
 
 Only the sections a game has data for appear; `INFO` is always there. The section you pick stays open as you move between entries, so you can step through the dex comparing evolutions, for example.
 
-The arrow buttons at the bottom step to the previous and next entry in the list as you've filtered it (the counter beside them shows where you are). The blue button, or BACK, returns to the list.
+The arrow buttons at the bottom step to the previous and next entry in the list as you've filtered it (the counter beside them shows where you are). Past the last entry, Next goes round to the first, and Previous from the first goes to the last. On a controller, Left and Right do the same. The blue button, or BACK, returns to the list.
 
 > [!NOTE]
 > Every entry opens, including ones you haven't seen yet. If you want to discover the dex the way the game intends, stick to the `SEEN ONLY` and `CAUGHT` filters.
