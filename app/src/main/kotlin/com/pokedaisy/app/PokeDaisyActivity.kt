@@ -781,7 +781,7 @@ class PokeDaisyActivity : Activity() {
         }
 
         /** A DS game whose PC pk_nds_call knows (Platinum, HeartGold / SoulSilver, Black). */
-        private fun dsCalls() = romIsNds && telemetry.snapshot.value.game.let {
+        private fun dsCalls() = romIsNds && !dsperate && telemetry.snapshot.value.game.let {
             com.pokedaisy.app.companion.data.gen4ConfigFor(it) != null || com.pokedaisy.app.companion.data.gen5ConfigFor(it) != null
         }
     }
@@ -1262,12 +1262,12 @@ class PokeDaisyActivity : Activity() {
         /** A DS game whose FLY pk_nds_call knows (Platinum, HeartGold / SoulSilver): its fly spots are the destinations
          * (spawn ids). */
         private fun dsConfig() = com.pokedaisy.app.companion.data.gen4ConfigFor(telemetry.snapshot.value.game)
-        private fun dsFly() = romIsNds && dsConfig()?.flySpots?.isNotEmpty() == true
+        private fun dsFly() = romIsNds && !dsperate && dsConfig()?.flySpots?.isNotEmpty() == true
 
         /** Black: pk_nds_call's FLY the party menu's way; its destinations are the towns' places (Gen5Field.kt). */
         private fun gen5Config() = com.pokedaisy.app.companion.data.gen5ConfigFor(telemetry.snapshot.value.game)
         private fun gen5Spots() = com.pokedaisy.app.companion.data.gen5FlySpots(telemetry.snapshot.value.game)
-        private fun gen5Fly() = romIsNds && gen5Config() != null && gen5Spots().isNotEmpty()
+        private fun gen5Fly() = romIsNds && !dsperate && gen5Config() != null && gen5Spots().isNotEmpty()
 
         /** Black's FLY check (the skill's own test of this place), then the towns whose arrival flag is set. */
         private fun gen5Targets(done: (com.pokedaisy.app.companion.data.FlyTargets) -> Unit) {
@@ -1515,6 +1515,9 @@ class PokeDaisyActivity : Activity() {
         com.pokedaisy.app.companion.data.activeGame !in com.pokedaisy.app.companion.data.DayNight.OWN_DAY_NIGHT
     /** The game running is a DS cart (melonDS): two screens, touch, X / Y ([loadRom]). */
     @Volatile private var romIsNds = false
+    /** A DS game on DSperate (DS CORE, companion.DsCore): no EXPAND, DS RESOLUTION, PC / FLY calls or DS CPU BOOST there.
+     * Picked as the game loads and again on RESTART GAME (pickDsCore); the core keeps it until then. */
+    @Volatile private var dsperate = false
     /** The DS game's generated world (its wild rates for WILD ENCOUNTERS), or null. */
     /** The cart's own encounter rates, by map, for WILD ENCOUNTERS back on (MgbaCore.pkNdsWildRates). */
     @Volatile private var dsWildRates: (() -> IntArray)? = null
@@ -1763,6 +1766,11 @@ class PokeDaisyActivity : Activity() {
         override val instantTextSupported get() = textPatch != null
         override val dsResolution get() = if (romIsNds) Prefs(this@PokeDaisyActivity).dsResolution else null
         override val dsGpuAvailable get() = GlCaps.gles32(this@PokeDaisyActivity) && MgbaCore.pkNdsGpuSupported() != 0
+        override val dsMelonDs get() = !dsperate
+        override val dsCore get() = if (romIsNds) Prefs(this@PokeDaisyActivity).dsCore else null
+        override fun setDsCore(core: com.pokedaisy.app.companion.DsCore) {
+            Prefs(this@PokeDaisyActivity).dsCore = core
+        }
         override fun setDsResolution(scale: Int) {
             Prefs(this@PokeDaisyActivity).dsResolution = scale
             if (::engine.isInitialized) engine.ndsScale = scale
@@ -2606,7 +2614,7 @@ class PokeDaisyActivity : Activity() {
         com.pokedaisy.app.companion.i18n.L10n.apply(Prefs(this).appLanguage, if (romOrigin) "IPKE" else gameCode)
         romRev = header?.let { it[if (nds) 0x12 else 0x10].toInt() and 0xFF } ?: -1
         // A DS cart's EXPAND: the overworld past the top screen's edges, for a cart its field read knows.
-        if (nds && (WideScreen.ndsKnows(gameCode, romRev) || romOrigin)) wideGame = WideScreen.NDS
+        pickDsCore()
         view.camera.ndsMode(nds)
         // DS RESOLUTION's frames come through a SurfaceTexture the view hands the core (EmulatorView.gpuFrames).
         view.gpuFrames = nds
@@ -3281,6 +3289,7 @@ class PokeDaisyActivity : Activity() {
         AudioEffects.load(Prefs(this))
         AudioEffectsTrack.open(this)
         val save = SavesLocation.saveFor(this, Prefs(this), r)
+        engine.ndsCore = if (dsperate) MgbaCore.NDS_CORE_DSPERATE else MgbaCore.NDS_CORE_MELONDS   // DS CORE (pickDsCore)
         // Cheats may have changed in the library's Settings since the game was last up.
         syncCheats()
         // Back from sleep: the game held on its frame (onPause) and goes on from it. The state written as it went to
@@ -3323,6 +3332,11 @@ class PokeDaisyActivity : Activity() {
             engine.start(romData ?: r, save, null)
             view.postDelayed({ (engine.lastError ?: engine.lastNotice)?.let { Toast.makeText(this, it, Toast.LENGTH_LONG).show() } }, 1500)
             return true
+        }
+        // DS CORE changed since a DS game was left: the state its core left waits beside (SaveStates.parkedResume);
+        // the core about to run takes its own back when the game has no other resume state.
+        if (romIsNds && !st.resumeFile.let { it.isFile && it.length() > 0 }) {
+            SaveStates.parkedResume(st.resumeFile, engine.ndsCore).takeIf { it.isFile }?.renameTo(st.resumeFile)
         }
         st.latestResumeSource()?.let { src ->
             if (src != st.resumeFile) runCatching {
@@ -5504,6 +5518,15 @@ class PokeDaisyActivity : Activity() {
         null
     }
 
+    /** DS CORE for the DS game that's loaded ([dsperate]), and what follows from it: EXPAND only on melonDS (a cart its
+     * field read knows). The engine starts the game on it ([startGame], [restartGame]). */
+    private fun pickDsCore() {
+        dsperate = romIsNds && Prefs(this).dsCore.runs() == MgbaCore.NDS_CORE_DSPERATE
+        if (!romIsNds) return
+        wideGame = if (!dsperate && (WideScreen.ndsKnows(romCode, romRev) || romOrigin)) WideScreen.NDS else WideScreen.OFF
+        if (::engine.isInitialized) engine.ndsCore = if (dsperate) MgbaCore.NDS_CORE_DSPERATE else MgbaCore.NDS_CORE_MELONDS
+    }
+
     /** RESTART GAME (SETTINGS, and its hotkey): the game booted again from its save, the resume state dropped. */
     private fun restartGame() {
         if (coopRefuses()) return
@@ -5523,6 +5546,12 @@ class PokeDaisyActivity : Activity() {
         val save = SavesLocation.saveFor(this, Prefs(this), r)
         syncCheats()
         waitForPlay()
+        // DS CORE changed while the game ran: the restart is on the new one.
+        if (romIsNds) {
+            val was = dsperate
+            pickDsCore()
+            if (was != dsperate) syncGameScreen()
+        }
         engine.start(romData ?: r, save, null)
         showHud(com.pokedaisy.app.companion.i18n.tr("Game restarted"))
     }

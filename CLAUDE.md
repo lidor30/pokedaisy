@@ -711,6 +711,16 @@ panel locked at half the screen sideways, `SidePanel.setDsScreen`, the dock unde
 `_HEARTGOLD`, pages from the cart); GUIDE on both (`GuidePlatinum.kt`, `GuideHeartGold.kt` over `Gen4World`:
 `scripts/gen_gen4_guide.py` writes the wild sets, boss teams and HERE's items from the decomps; gym leaders go by badge -
 HG / SS clears the leaders' trainer flags for rematches; `readGen4Progress` adds the badges and the DS clock's hour).
+**DSperate, the second DS core (DS CORE, SCREEN group on both screens, `Prefs.dsCore` AUTO / MELONDS / DSPERATE, NEW tag;
+2026-11-10)**: `third_party/dsperate` (the Linux port's submodule) is built into the APK too, for weak devices (AUTO = DSperate
+where `DevicePerformance.looksWeak` or a 32-bit process: `companion/DsCoreSettings.kt`). `nds/pk_nds_core.cpp` hands pk_nds.h's
+calls to `pk_nds.cpp` (`pk_ndsm_*`) or `pk_nds_dsp.cpp` (`pk_ndsd_*`); a new pk_nds call goes in `pk_nds_cores.h`'s list and
+both cores. `nds/dsperate.cmake` makes the NDK fixes in the build directory, never in the submodule (the Linux port builds it
+unmodified; a moved line fails the configure). On DSperate EXPAND, DS RESOLUTION, PC / FLY calls, STEADY and DS CPU BOOST are
+off and greyed out (`PokeDaisyActivity.dsperate`). States never cross cores (`pk_nds_state_matches_save` 2; the other core's
+resume is parked, `SaveStates.parkedResume`). Headless: `native-capture/dsp_dump` (nds_dump's commands, arm64 Linux only), which
+can't show 32-bit ARM's alignment faults: a byte buffer cast to `u16*` / `u32*` in DSperate's NEON code faulted on a Galaxy Tab A
+(fixed in the build copy, docs/DEVELOPMENT.md); try a new DSperate on a 32-bit device. HeartGold there: DSperate 60 fps, melonDS 16.
 **French DS carts (2026-11-06)**: Platinum rev 0, HeartGold / SoulSilver, Black, White (`CPUF`, `IPKF`, `IPGF`, `IRBF`, `IRAF`): the US builds at other addresses, each run headless beside its US
 cart with one script; everything but the addresses is shared. Another language: `scripts/port_nds_fns.py` (functions matched by structure and call anchors, wrong = 0 on
 every known pair: `--check scripts/port_nds_fns_known.txt`, `scripts/test_port_nds_fns.py`; an UNRESOLVED hint is a lead to check live,

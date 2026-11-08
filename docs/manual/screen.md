@@ -53,6 +53,22 @@ With `EXPAND` on, the `ZOOM` hotkey steps the view out so you see further around
 
 The **right stick** looks around (turn off `LOOK AROUND` in the `SCREEN` group if you'd rather it didn't). Push it and the view moves; let go and it stays put until you walk, then glides back to you. Hold it while you walk and the camera looks ahead in that direction, keeping your character on screen.
 
+## DS core: DS games on weaker devices
+
+PokeDaisy has two DS emulators. melonDS has every DS feature. DSperate needs far less from your device, so it keeps DS games at full speed on budget handhelds, older phones and tablets, and devices running 32-bit Android, where melonDS can be slow. `DS CORE` picks which one runs your DS games.
+
+| Choice | What you get |
+| --- | --- |
+| `AUTO` | DSperate on a device that looks weak or runs 32-bit Android, melonDS everywhere else. The row shows which one it picked. This is the default. |
+| `MELONDS` | Always melonDS. |
+| `DSPERATE` | Always DSperate. |
+
+A few things worth knowing:
+
+- **Some features are melonDS only for now.** On DSperate, `EXPAND`, `DS RESOLUTION` and `DS CPU BOOST` are greyed out, the companion's `PC` and `FLY` don't show for DS games, and fast-forward plays the music sped up (`FF MUSIC`'s `STEADY` needs melonDS). The companion's tabs, the touch screen, `DS LAYOUT`, `BATTLE BUTTONS`, cheats, achievements and your saves all work the same.
+- **It applies when a DS game starts.** Change it in the companion while a game is running and it takes effect at `RESTART GAME` or the next time you open the game.
+- **Save in the game before you switch.** Each emulator only reads its own save states. When you switch, the game starts from your save file, and the place you left it on the other emulator is kept: switch back and the game picks up there again, as long as you haven't saved in the game since. Save states you made in `STATES` load only on the emulator that made them.
+
 ## DS resolution: sharper 3D
 
 The DS games (Platinum, HeartGold and SoulSilver) draw their world in 3D, and the DS drew it small: 256 by 192 pixels, so on a big screen the edges look jagged. `DS RESOLUTION` draws that 3D at more pixels instead.
