@@ -96,6 +96,13 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
         return columns(p).takeIf { (l, r) -> r - l < p.w - 1f }
     }
 
+    /** Every button's box while this shows (px, this view's): the FIELD HUD moves its corners' parts off them. */
+    fun buttonRects(): List<android.graphics.RectF> {
+        val p = placed ?: return emptyList()
+        if (visibility != VISIBLE) return emptyList()
+        return p.items.map { android.graphics.RectF(it.left, it.top, it.right, it.bottom) }
+    }
+
     /** As [clearTop] / [clearBottom], for the controls across the columns [l, r) (px): a DS game's floating touch
      * screen keeps clear of only the ones it would sit under. */
     fun clearAcross(l: Float, r: Float): Pair<Int, Int> {

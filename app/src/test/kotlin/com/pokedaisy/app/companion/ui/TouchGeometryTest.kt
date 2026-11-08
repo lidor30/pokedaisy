@@ -116,6 +116,32 @@ class TouchGeometryTest {
         assertEquals(0f to 0f, hudClears(100f, 100f, 0f, 0f, 400f, 506f))
     }
 
+    /** CORNERS' parts step off the buttons the least way that's clear, and stay in their corners otherwise. */
+    @Test fun hudPartsStepOffButtons() {
+        val box = androidx.compose.ui.geometry.Rect(0f, 0f, 1000f, 500f)
+        fun spot(vararg buttons: androidx.compose.ui.geometry.Rect, taken: List<androidx.compose.ui.geometry.Rect> = emptyList()) =
+            hudCornerSpot(200f, 100f, right = false, bottom = true, box, buttons.toList(), taken, gap = 4f)
+        // Nothing there: the bottom left corner.
+        assertEquals(androidx.compose.ui.geometry.Rect(0f, 400f, 200f, 500f), spot())
+        // A D-pad over the corner, low and narrow: slid right along the edge, past it.
+        assertEquals(androidx.compose.ui.geometry.Rect(154f, 400f, 354f, 500f), spot(androidx.compose.ui.geometry.Rect(0f, 300f, 150f, 450f)))
+        // A wide one along the bottom: lifted over it.
+        assertEquals(androidx.compose.ui.geometry.Rect(0f, 246f, 200f, 346f), spot(androidx.compose.ui.geometry.Rect(0f, 350f, 900f, 500f)))
+        // Another part in the way counts too.
+        assertEquals(154f, spot(taken = listOf(androidx.compose.ui.geometry.Rect(0f, 300f, 150f, 450f)))!!.left)
+        // Nowhere clear: none.
+        assertEquals(null, spot(androidx.compose.ui.geometry.Rect(0f, 0f, 1000f, 500f)))
+        // Two parts wanting the one clear place beside a button: whichever order leaves both clear.
+        val items = listOf(HudCornerItem(200f, 100f, right = true, bottom = true), HudCornerItem(200f, 100f, right = true, bottom = false))
+        val wall = androidx.compose.ui.geometry.Rect(700f, 0f, 1000f, 500f)
+        val places = hudCornerPlaces(items, box, listOf(wall), gap = 4f)
+        assertTrue(places.toString(), places.none { it.right > 696f })
+        assertFalse(places.toString(), places[0].overlaps(places[1]))
+        // Nothing in the way: their corners.
+        assertEquals(listOf(androidx.compose.ui.geometry.Rect(800f, 400f, 1000f, 500f), androidx.compose.ui.geometry.Rect(800f, 0f, 1000f, 100f)),
+            hudCornerPlaces(items, box, emptyList(), gap = 4f))
+    }
+
     @Test fun positionMovesTheBlockUpright() {
         // UNDER GAME on a tall phone: a big gap at the screen's bottom.
         val stage = simulateTouchStage(1080f, 2400f, dp, underGame = true)

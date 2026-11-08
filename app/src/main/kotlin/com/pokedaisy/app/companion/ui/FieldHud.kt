@@ -57,7 +57,9 @@ import androidx.compose.ui.graphics.FilterQuality
 import androidx.compose.ui.graphics.TransformOrigin
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.translate
+import androidx.compose.ui.layout.Layout
 import androidx.compose.ui.layout.SubcomposeLayout
+import androidx.compose.ui.layout.layoutId
 import androidx.compose.ui.layout.layout
 import androidx.compose.ui.platform.LocalDensity
 import androidx.compose.ui.unit.Constraints
@@ -102,6 +104,7 @@ import com.pokedaisy.app.companion.i18n.tk
 import com.pokedaisy.app.companion.i18n.tr
 import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.withContext
+import kotlin.math.abs
 import kotlin.math.max
 import kotlin.math.roundToInt
 
@@ -329,6 +332,9 @@ fun FieldHud(
     /** Where the game's picture is in this box (px; ORIGINAL / STRETCH / an overlay): the HUD stays inside it (RAILS
      * beside it). Null = the whole box (EXPAND). */
     frame: Rect? = null,
+    /** The touch controls' buttons (px, this box's): CORNERS' party, minimap and balls / buttons each move off them, the
+     * least way that's clear, and stay in their corners where nothing's there (GitHub #493). */
+    avoid: List<Rect> = emptyList(),
     wild: List<HudWild>? = null,
     initialPanel: FieldHudPanel? = null,
     /** Bumped to close whatever panel is open (the QUICK MENU opening over it). */
@@ -456,10 +462,13 @@ fun FieldHud(
                                     .padding(start = inL.toDp(), top = inT.toDp(), end = inR.toDp(), bottom = inB.toDp())
                                     .padding(top = padT.toDp(), bottom = padB.toDp()),
                             ) {
+                                // The buttons in the layout's own space: from the padded box's corner, before the scale.
+                                val oy = inT + padT
+                                val obstacles = avoid.map { Rect((it.left - inL) / scale, (it.top - oy) / scale, (it.right - inL) / scale, (it.bottom - oy) / scale) }
                                 Box(Modifier.fillMaxSize().hudScale(scale)) {
                                     when (style.layout) {
-                                        FieldHudLayout.CORNERS -> if (dsCorner) DsCornerLayout(parts, dsClearBottom) else CornersLayout(parts, swapped = false)
-                                        FieldHudLayout.CORNERS_2 -> if (dsCorner) DsCornerLayout(parts, dsClearBottom) else CornersLayout(parts, swapped = true)
+                                        FieldHudLayout.CORNERS -> if (dsCorner) DsCornerLayout(parts, dsClearBottom) else CornersLayout(parts, swapped = false, obstacles)
+                                        FieldHudLayout.CORNERS_2 -> if (dsCorner) DsCornerLayout(parts, dsClearBottom) else CornersLayout(parts, swapped = true, obstacles)
                                         else -> DockLayout(parts)
                                     }
                                 }
@@ -568,30 +577,105 @@ private class HudParts(
 
 /** CORNERS (the minimap top right, the balls and buttons bottom right) and CORNERS 2 ([swapped]: the other way round). */
 @Composable
-private fun CornersLayout(p: HudParts, swapped: Boolean) {
+private fun CornersLayout(p: HudParts, swapped: Boolean, obstacles: List<Rect> = emptyList()) {
     val u = p.m.u
-    Box(Modifier.fillMaxSize().padding(u * 6)) {
-        // On the right, never top left: the games slide a new area's name in there (FireRed's and Emerald's sign).
-        if (p.map) {
-            HudMiniMap(
-                p.snapshot, mapW = 104, mapH = 64, m = p.m,
-                modifier = Modifier.align(if (swapped) Alignment.BottomEnd else Alignment.TopEnd),
-            ) { p.open(FieldHudPanel.MAP, 0) }
+    Layout(
+        content = {
+            // On the right, never top left: the games slide a new area's name in there (FireRed's and Emerald's sign).
+            if (p.map) {
+                HudMiniMap(p.snapshot, mapW = 104, mapH = 64, m = p.m, modifier = Modifier.layoutId(CornerPart.MAP)) { p.open(FieldHudPanel.MAP, 0) }
+            }
+            PartyRow(p, Modifier.layoutId(CornerPart.PARTY))
+            Column(
+                Modifier.layoutId(CornerPart.BUTTONS),
+                horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(u * 4),
+            ) {
+                // The buttons toward the screen's edge: under the balls at the bottom, over them at the top.
+                // The REPEL's steps on the far side of the balls from the buttons.
+                if (swapped) HudButtons(p, vertical = false)
+                if (!swapped) RepelSteps(p)
+                if (p.ballsRow) HudBalls(p, vertical = false)
+                if (swapped) RepelSteps(p)
+                if (!swapped) HudButtons(p, vertical = false)
+            }
+        },
+        modifier = Modifier.fillMaxSize(),
+    ) { measurables, c ->
+        val pad = (u * 6).roundToPx()
+        val gap = (u * 2).toPx()
+        val loose = c.copy(minWidth = 0, minHeight = 0)
+        val box = Rect(pad.toFloat(), pad.toFloat(), (c.maxWidth - pad).toFloat(), (c.maxHeight - pad).toFloat())
+        val parts = measurables.associate { (it.layoutId as CornerPart) to it.measure(loose) }
+        // Each part's corner as CORNERS / CORNERS 2 puts it.
+        val corners = listOf(
+            CornerPart.PARTY to (false to true),
+            CornerPart.BUTTONS to (true to !swapped),
+            CornerPart.MAP to (true to swapped),
+        ).mapNotNull { (part, corner) -> parts[part]?.let { it to corner } }
+        val at = hudCornerPlaces(corners.map { (pl, corner) -> HudCornerItem(pl.width.toFloat(), pl.height.toFloat(), corner.first, corner.second) }, box, obstacles, gap)
+        layout(c.maxWidth, c.maxHeight) { corners.forEachIndexed { i, (pl, _) -> pl.place(at[i].left.roundToInt(), at[i].top.roundToInt()) } }
+    }
+}
+
+private enum class CornerPart { MAP, PARTY, BUTTONS }
+
+/** A part of CORNERS: its size and its corner. */
+internal data class HudCornerItem(val w: Float, val h: Float, val right: Boolean, val bottom: Boolean)
+
+/**
+ * Where CORNERS' [items] go in [box] around the touch controls' buttons ([obstacles]): each in its corner where that's
+ * clear, else stepped off the buttons ([hudCornerSpot]). Placed in every order, the one that leaves the most parts clear,
+ * then moves them least, wins: one part going first can take the only clear place another had.
+ */
+internal fun hudCornerPlaces(items: List<HudCornerItem>, box: Rect, obstacles: List<Rect>, gap: Float): List<Rect> {
+    fun corner(it: HudCornerItem): Rect {
+        val x = if (it.right) box.right - it.w else box.left
+        val y = if (it.bottom) box.bottom - it.h else box.top
+        return Rect(x, y, x + it.w, y + it.h)
+    }
+    fun orders(left: List<Int>): List<List<Int>> =
+        if (left.size <= 1) listOf(left) else left.flatMap { i -> orders(left - i).map { listOf(i) + it } }
+    var best: List<Rect>? = null
+    var bestMissed = Int.MAX_VALUE
+    var bestMoved = Float.MAX_VALUE
+    for (order in orders(items.indices.toList())) {
+        val at = arrayOfNulls<Rect>(items.size)
+        var missed = 0
+        var moved = 0f
+        for (i in order) {
+            val c = corner(items[i])
+            val spot = hudCornerSpot(items[i].w, items[i].h, items[i].right, items[i].bottom, box, obstacles, at.filterNotNull(), gap)
+            if (spot == null) missed++ else moved += abs(spot.left - c.left) + abs(spot.top - c.top)
+            at[i] = spot ?: c
         }
-        PartyRow(p, Modifier.align(Alignment.BottomStart))
-        Column(
-            Modifier.align(if (swapped) Alignment.TopEnd else Alignment.BottomEnd),
-            horizontalAlignment = Alignment.End, verticalArrangement = Arrangement.spacedBy(u * 4),
-        ) {
-            // The buttons toward the screen's edge: under the balls at the bottom, over them at the top.
-            // The REPEL's steps on the far side of the balls from the buttons.
-            if (swapped) HudButtons(p, vertical = false)
-            if (!swapped) RepelSteps(p)
-            if (p.ballsRow) HudBalls(p, vertical = false)
-            if (swapped) RepelSteps(p)
-            if (!swapped) HudButtons(p, vertical = false)
+        if (missed < bestMissed || (missed == bestMissed && moved < bestMoved)) {
+            best = at.map { it!! }; bestMissed = missed; bestMoved = moved
         }
     }
+    return best ?: emptyList()
+}
+
+/**
+ * Where a [w] x [h] part of CORNERS goes: its corner of [box] ([right] / [bottom]) if nothing in [obstacles] (the touch
+ * controls) or [taken] (the parts already placed) is there, else the clear place nearest that corner - slid along its
+ * edge or in from it past the buttons in the way, [gap] from them - inside [box]. Null: nowhere clear.
+ */
+internal fun hudCornerSpot(
+    w: Float, h: Float, right: Boolean, bottom: Boolean, box: Rect, obstacles: List<Rect>, taken: List<Rect>, gap: Float,
+): Rect? {
+    val x0 = if (right) box.right - w else box.left
+    val y0 = if (bottom) box.bottom - h else box.top
+    val corner = Rect(x0, y0, x0 + w, y0 + h)
+    val hits = obstacles + taken
+    fun clear(r: Rect) = hits.none { it.left < r.right && it.right > r.left && it.top < r.bottom && it.bottom > r.top }
+    if (clear(corner)) return corner
+    // Every edge a part could stop against: the corner's, and just past each button on either side.
+    val xs = listOf(x0) + hits.flatMap { listOf(it.right + gap, it.left - gap - w) }
+    val ys = listOf(y0) + hits.flatMap { listOf(it.bottom + gap, it.top - gap - h) }
+    return xs.filter { it >= box.left - 0.5f && it + w <= box.right + 0.5f }
+        .flatMap { x -> ys.filter { it >= box.top - 0.5f && it + h <= box.bottom + 0.5f }.map { y -> Rect(x, y, x + w, y + h) } }
+        .filter(::clear)
+        .minByOrNull { abs(it.left - x0) + abs(it.top - y0) }
 }
 
 /** CORNERS with a DS game's touch screen in the bottom right corner: the minimap top right with the party under it in two

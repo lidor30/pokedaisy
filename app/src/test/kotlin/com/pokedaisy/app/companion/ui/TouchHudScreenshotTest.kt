@@ -114,6 +114,7 @@ private fun TouchHudScene(touch: TouchControlsStyle, hud: FieldHudStyle = FieldH
             wild = FieldHudScreenshotTest.wild, onOpenCompanion = {},
             // EXPAND under touch controls: the game's middle columns (PokeDaisyActivity's hudTouchFrame).
             frame = Rect(l, 0f, l + gameW, Float.MAX_VALUE),
+            avoid = placed.items.map { Rect(it.left, it.top, it.right, it.bottom) },
         )
         TouchControls(touch, portrait = false, input = TouchInput(), modifier = Modifier.fillMaxSize())
     }

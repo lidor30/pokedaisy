@@ -268,6 +268,7 @@ class PokeDaisyActivity : Activity() {
     /** Where the HUD keeps to while touch controls show held sideways, when the game's own picture gives it no frame
      * (EXPAND): the game's middle columns ([syncHudClear]). */
     private val hudTouchFrame = androidx.compose.runtime.mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+    private val hudAvoid = androidx.compose.runtime.mutableStateOf<List<androidx.compose.ui.geometry.Rect>>(emptyList())
     private val hudEngine = kotlinx.coroutines.flow.MutableStateFlow<EmulatorEngine?>(null)
     /** BATTLE BUTTONS (same view as the HUD): SETTINGS' switch, BATTLE HINTS, one screen (no second one), and where the
      * GBA's own picture is (EXPAND: the battle's middle, which [hudFrame] leaves out). */
@@ -3932,6 +3933,7 @@ class PokeDaisyActivity : Activity() {
                     dsCorner = dsCornerTaken.value,
                     dsClearBottom = dsHudClear.value,
                     frame = hudFrame.value ?: hudTouchFrame.value,
+                    avoid = hudAvoid.value,
                     closePanels = hudCloseTick.intValue,
                     openPanel = hudOpenPanel.value, openTick = hudOpenTick.intValue,
                     onTap = { com.pokedaisy.app.companion.FeatureTips.used(TipId.HUD) },
@@ -4048,13 +4050,17 @@ class PokeDaisyActivity : Activity() {
         hudClear.value = touchControls.clearTop to touchControls.clearBottom
         // EXPAND held sideways: the HUD keeps to the game's middle columns, where the clearance is measured, not under
         // the buttons in the margins beside them (GitHub #493). In the HUD's own coordinates.
-        hudTouchFrame.value = touchControls.hudColumns()?.takeIf { ::fieldHud.isInitialized }?.let { (l, r) ->
-            val at = IntArray(2).also(touchControls::getLocationInWindow)
-            val hudAt = IntArray(2).also(fieldHud::getLocationInWindow)
-            val dx = (at[0] - hudAt[0]).toFloat()
+        if (!::fieldHud.isInitialized) return
+        val at = IntArray(2).also(touchControls::getLocationInWindow)
+        val hudAt = IntArray(2).also(fieldHud::getLocationInWindow)
+        val dx = (at[0] - hudAt[0]).toFloat()
+        val dy = (at[1] - hudAt[1]).toFloat()
+        hudTouchFrame.value = touchControls.hudColumns()?.let { (l, r) ->
             // Top to bottom: only its sides matter (the HUD's box may not be measured yet).
             androidx.compose.ui.geometry.Rect(l + dx, 0f, r + dx, Float.MAX_VALUE)
         }
+        // And each button, for the HUD's parts to step off (a CUSTOM layout's, RAISED's, a big D-pad on 16:9).
+        hudAvoid.value = touchControls.buttonRects().map { androidx.compose.ui.geometry.Rect(it.left + dx, it.top + dy, it.right + dx, it.bottom + dy) }
     }
 
     /** The same status bar over the companion's tabs (SETTINGS > STATUS BAR > COMPANION). */
