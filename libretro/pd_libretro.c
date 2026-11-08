@@ -39,6 +39,8 @@
 #include "quick_menu.h"
 #include "wild.h"
 #include "pd_dex.h"
+#include "pd_font.h"
+#include "pd_gb.h"
 #include "pd_map.h"
 #include "pd_menu.h"
 #include "pd_romart.h"
@@ -1417,7 +1419,17 @@ RETRO_API void retro_run(void) {
     host.ffOn = false;
     host.hasState = false;
     memset(cvs, 0, (size_t)CW * CH * sizeof *cvs);
+    // Use the Dex's compact font throughout the GBC Companion. Restore the cart font for the in-game HUD.
+    const bool gen2 = game.cfg && game.cfg->gb && game.cfg->gb->gen == 2;
+    const struct pd_glyph *glyphs = NULL;
+    int glyphCount = 0;
+    if (gen2) {
+      pd_font_get(&glyphs, &glyphCount);
+      pd_font_set(NULL, 0);
+    }
     pd_ui_draw(&ui, &canvas, &game, &snap, &host);
+    if (gen2)
+      pd_font_set(glyphs, glyphCount);
     map_cursor_sync(&ui, &game, &snap);
     if (ui.tab != PD_TAB_GUIDE || (ui.overlay != PD_OVERLAY_NONE && ui.overlay != PD_OVERLAY_GUIDE_NOTICE)) {
       const int focus = focus_after_draw(&ui, focus_resolve(&ui));
