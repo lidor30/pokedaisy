@@ -65,7 +65,9 @@ void party_summary(pd_canvas* c,const DsCompanion& s,const std::vector<std::vect
   shared.selected = selected;
   shared.count = int(s.party.size());
   shared.primary = mon.egg ? nullptr : page ? "A MOVES" : "A STATS";
-  shared.secondary = mon.egg ? nullptr : page == 2 ? "MOVES" : "LEARN";
+  shared.secondary = mon.egg ? nullptr : page == 2 ? "SEL MOVES" : "SEL LEARN";
+  shared.handheldControls = true;
+  shared.learnPage = page == PD_SUMMARY_LEARN;
   shared.level = mon.level; shared.hp = mon.hp; shared.maxHp = mon.maxHp;
   shared.type1 = ds_species_type(mon.species, 0, s.game);
   shared.type2 = ds_species_type(mon.species, 1, s.game);

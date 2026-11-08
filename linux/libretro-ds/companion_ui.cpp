@@ -22,6 +22,13 @@ extern "C" {
 }
 namespace {
 constexpr int dsTabs=(1<<PD_TAB_PARTY)|(1<<PD_TAB_BAG)|(1<<PD_TAB_MAP)|(1<<PD_TAB_GUIDE)|(1<<PD_TAB_DEX);
+using Companion=DsCompanionUi;
+constexpr Companion::Row settingsOrder[]={
+  Companion::Layout,Companion::Hud,Companion::QuickStyle,Companion::CompanionButton,Companion::TabBar,Companion::MoreTabs,
+  Companion::Battles,Companion::BattleStrip,Companion::AutoRun,Companion::ScreenButton,Companion::PenSpeed,
+  Companion::HudMinimal,Companion::HudBalls,Companion::HudRepel,Companion::HudMap,Companion::DarkMode,Companion::Reset
+};
+static_assert(std::size(settingsOrder)==Companion::Rows);
 const char* const layoutNames[]={"ONE SCREEN","TOP","BOTTOM","SIDE BY SIDE","STACKED","LARGE + SMALL","PICTURE IN PICTURE"};
 const char* const buttonNames[]={"L2","R2","X","Y","NONE"};
 const unsigned buttonIds[]={RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,RETRO_DEVICE_ID_JOYPAD_X,RETRO_DEVICE_ID_JOYPAD_Y};
@@ -100,6 +107,15 @@ bool DsCompanionUi::save(){
 void DsCompanionUi::set_game(DsGame value,bool soulSilverVersion){
   game=value;
   soulSilver=soulSilverVersion;
+  switch(game){
+    case DsGame::Platinum:presentation.title="Pokémon Platinum";break;
+    case DsGame::Johto:presentation.title=soulSilver?"Pokémon SoulSilver":"Pokémon HeartGold";break;
+    case DsGame::Black:presentation.title="Pokémon Black";break;
+    case DsGame::White:presentation.title="Pokémon White";break;
+    case DsGame::Black2:presentation.title="Pokémon Black 2";break;
+    case DsGame::White2:presentation.title="Pokémon White 2";break;
+    default:presentation.title=nullptr;break;
+  }
   frame.availableTabs=dsTabs;
   if(game==DsGame::Unsupported){
     frame.availableTabs=1<<PD_TAB_PARTY;
@@ -140,24 +156,22 @@ void DsCompanionUi::apply(int row,int v){
 }
 void DsCompanionUi::draw_settings(pd_canvas* c){
   const auto& s=*snapshot;
-  const std::string money=s.valid?std::to_string(s.money):"-";
+  char money[32];
+  pd_ui_format_money(s.valid?s.money:-1,money,sizeof money);
   const char* values[]={layoutNames[layout],autoBattles?"ON":"OFF",settings.hud?"ON":"OFF",
     buttonNames[companionButton],buttonNames[screenButton],speedNames[penSpeed],settings.quickGrid?"GRID":"RING","...",battleStrip?"ON":"OFF",hudMinimal?"ON":"OFF",value(HudBalls)?"ON":"OFF",value(HudRepel)?"ON":"OFF",value(HudMap)?"ON":"OFF",darkMode?"ON":"OFF",game==DsGame::Unsupported?"N/A":autoRun?"ON":"OFF",game==DsGame::Unsupported?"N/A":"EDIT",
     (settings.tabBar & dsTabs)==dsTabs?"NONE HIDDEN":"OPEN"};
-  pd_option_row rows[Rows+6]={{"TRAINER",s.valid?s.trainer.c_str():"-",false},
-    {"PLACE",s.valid?ds_place(s.map,s.game):"-",false},{"MONEY",money.c_str(),false}};
-  int n=3;
-  for(int i=0;i<Rows;i++){
-    const char* heading=i==Layout?"LAYOUT & CONTROLS":i==BattleStrip?"BATTLE & HUD":
-      i==DarkMode?"COMPANION":nullptr;
-    if(heading)rows[n++]={heading,nullptr,true};
-    if(i==setting)options.optionSelected=n;
-    rows[n++]={labels[i],values[i],false};
+  constexpr int infoCount=3;
+  pd_option_row rows[Rows+infoCount]={{"PLACE",s.valid?ds_place(s.map,s.game):"-"},
+    {"MONEY",money},{"HOST","PokeDaisy core"}};
+  int n=infoCount;
+  for(const int row:settingsOrder){
+    if(row==setting)options.optionSelected=n;
+    rows[n++]={labels[row],values[row]};
   }
-  pd_option_source source{"SETTINGS",rows,n};
+  pd_option_source source{"SETTINGS",rows,n,infoCount};
   options.optionSource=&source;
-  pd_game game{};pd_snapshot state{};
-  pd_ui_options_view(&options,c,&game,&state);options.optionSource=nullptr;
+  pd_ui_options_view(&options,c,&presentation,&battle);options.optionSource=nullptr;
 }
 const std::vector<int>* DsCompanionUi::dex_order() const{
   if(dexArt.regional.empty() || !snapshot)return nullptr;
@@ -312,7 +326,8 @@ bool DsCompanionUi::control(unsigned pressed){
     if(hit(RETRO_DEVICE_ID_JOYPAD_A)){int row=picker;picker=-1;apply(row,choice);}return false;
   }
   if(frame.tab==PD_TAB_SETTINGS){
-    setting=std::clamp(setting+dy,0,int(Rows)-1);
+    const int index=int(std::find(std::begin(settingsOrder),std::end(settingsOrder),setting)-std::begin(settingsOrder));
+    setting=settingsOrder[std::clamp(index+dy,0,int(Rows)-1)];
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(game==DsGame::Unsupported)return true;frame.tab=PD_TAB_PARTY;return false;}
     if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
       error.clear();
@@ -336,15 +351,15 @@ bool DsCompanionUi::control(unsigned pressed){
   if(frame.tab==PD_TAB_PARTY){
     int n=snapshot?int(snapshot->party.size()):0;
     const int oldSelected=selected;
-    selected=std::clamp(selected+dy*(summary?1:2)+(summary?0:dx),0,std::max(0,n-1));
+    const int step=summary?(dy?dy:page==PD_SUMMARY_LEARN?0:dx):dy*2+dx;
+    selected=std::clamp(selected+step,0,std::max(0,n-1));
     const bool confirm=hit(RETRO_DEVICE_ID_JOYPAD_A);
     if(summary){
       if(oldSelected!=selected)learnRow=0;
       if(n>0 && !snapshot->party[selected].egg){
         if(hit(RETRO_DEVICE_ID_JOYPAD_SELECT)){page=page==2?0:2;learnRow=0;}
         else if(confirm)page=page==0?1:0;
-        else if(dx && page!=2)page=1-page;
-        else if(dx)learnRow=std::clamp(learnRow+dx,0,learnLast);
+        else if(dx && page==PD_SUMMARY_LEARN)learnRow=std::clamp(learnRow+dx,0,learnLast);
       }
     }else if(confirm && n>0){
       summary=true;

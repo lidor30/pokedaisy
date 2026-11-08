@@ -291,7 +291,7 @@ void choose_layout() {
   }
   if(battleActive && !scene.dark)arrangement={{0,0,512,384},{}};
   layout=mode==DS_BOTTOM?1:mode==DS_SIDE?2:mode==DS_STACKED?3:0;
-  if(scene.hud&&!scene.dark){std::memcpy(fieldFrame,nds->gpu.framebuffer(0),sizeof fieldFrame);fieldValid=true;}
+  if(scene.hud&&!scene.dark&&!(bits&PK_NDS_FIELD_LOCKED)){std::memcpy(fieldFrame,nds->gpu.framebuffer(0),sizeof fieldFrame);fieldValid=true;}
 }
 void draw_companion() {
   pd_canvas c;pd_canvas_init(&c,341,256,ui_pixels);
@@ -637,7 +637,9 @@ void present(const void* data,unsigned,unsigned,size_t) {
       if(arrangement.touch.contains(cx,cy+d))pixels[(cy+d)*w+cx]=0xffff;
     }
   }
-  if(companionGame!=DsGame::Unsupported && shell.settings.hud && scene.hud && !scene.dark && arrangement.top.w==512 && arrangement.touch.w==0) {
+  const auto& top=arrangement.top;
+  if(companionGame!=DsGame::Unsupported && shell.settings.hud && scene.hud && !scene.dark &&
+     top.w>0 && top.h>0 && !arrangement.floating && !arrangement.modal) {
     if(tick%12==0 || !snapshot.valid)refresh();
     pd_canvas c;pd_canvas_init(&c,256,192,ui_pixels);
     pd_snapshot party{};party.valid=snapshot.valid;party.partyCount=std::min(6,int(snapshot.party.size()));
@@ -657,19 +659,29 @@ void present(const void* data,unsigned,unsigned,size_t) {
     if(!steps)repelFull=0;
     else if(steps>repelFull)repelFull=hud_repel_full(steps);
     const hud_state state{steps,repelFull,false,-1,-1};
-    hud_ds_draw(&c,&party,&state,&shell.settings,&party,[](pd_canvas* c,void* ctx,const pd_mon* m,int x,int y,bool){
-      auto* p=static_cast<pd_snapshot*>(ctx);
-      const auto& mon=snapshot.party[m-p->party];
+    const bool pip=arrangement.touch.w>0 && arrangement.touch.x>top.x && arrangement.touch.x<top.x+top.w;
+    const int hudRight=pip?(arrangement.touch.x-top.x)*256/top.w:256;
+    struct HudIcons {const pd_snapshot& party;bool small;};
+    HudIcons hudIcons{party,pip};
+    hud_ds_draw(&c,&party,&state,&shell.settings,&hudIcons,[](pd_canvas* c,void* ctx,const pd_mon* m,int x,int y,bool){
+      const auto& hud=*static_cast<HudIcons*>(ctx);
+      const int slot=m-hud.party.party;
+      const auto& mon=snapshot.party[slot];
+      const int size=hud.small?20:32;
+      if(hud.small){x+=6;y+=5;}
       const int id=mon.egg?ds_egg_icon(companionGame):mon.species;
       if(id<0||size_t(id)>=icons.size()||icons[id].size()!=1024){
         if(companionGame!=DsGame::Platinum){
-          const char slot[]={char('1'+(m-p->party)),0};
-          pd_text(c,x+12,y+8,slot,0xffffff,0x282828);
+          const char number[]={char('1'+slot),0};
+          pd_text(c,x+(size-8)/2,y+8,number,0xffffff,0x282828);
         }
         return;
       }
       const auto& art=icons[id];
-      for(int j=0;j<32;++j)for(int i=0;i<32;++i){auto p=art[j*32+i];if(p>>24)pd_fill(c,x+i,y+j,1,1,p&0xffffff);}
+      for(int j=0;j<size;++j)for(int i=0;i<size;++i){
+        const auto p=art[(j*32/size)*32+i*32/size];
+        if(p>>24)pd_fill(c,x+i,y+j,1,1,p&0xffffff);
+      }
     }, [](pd_canvas* c,int id,int x,int y){
       if(id<0||size_t(id)>=hudItemIcons.size()||hudItemIcons[id].empty())return false;
       const auto& art=hudItemIcons[id];
@@ -678,21 +690,26 @@ void present(const void* data,unsigned,unsigned,size_t) {
         if(p>>24)pd_fill(c,x+col,y+row,1,1,p&0xffffff);
       }
       return true;
-    },79,shell.hudMinimal);
+    },79,shell.hudMinimal,hudRight);
     const auto player=ds_map_position(snapshot);
     if(!shell.hudMinimal&&!(shell.settings.hudHidden&(1<<PD_HUD_MAP))&&!map.background.empty()&&player.x>=0&&player.y>=0)
       hud_ds_minimap(&c,&shell.settings,ds_place(snapshot.map,companionGame),[](pd_canvas* c,int x,int y,int w,int h){
         ds_draw_minimap(c,snapshot,map,x,y,w,h);
       });
-    // Composite the shared HUD glass over the native game frame.
-    for(unsigned i=0;i<256*192;++i){
-      uint32_t p=ui_pixels[i];if(p==QUICK_CLEAR)continue;
-      unsigned a=p>>24;if(!a)a=255;
-      for(unsigned dy=0;dy<2;++dy)for(unsigned dx=0;dx<2;++dx){
-        unsigned at=((i/256)*2+dy)*512+(i%256)*2+dx;
-        uint16_t old=pixels[at];unsigned r=(old>>11&31)*255/31,g=(old>>5&63)*255/63,b=(old&31)*255/31;
+    // Scale with the top screen and keep the picture-in-picture touch screen clear.
+    const bool doubled=top.w==512 && top.h==384;
+    for(int y=0;y<top.h;++y){
+      const auto* row=ui_pixels+(doubled?y/2:y*192/top.h)*256;
+      for(int x=0;x<top.w;++x){
+        const uint32_t p=row[doubled?x/2:x*256/top.w];
+        if(p==QUICK_CLEAR || arrangement.touch.contains(top.x+x,top.y+y))continue;
+        const unsigned a=p>>24?p>>24:255;
+        const unsigned at=(top.y+y)*w+top.x+x;
+        const uint16_t old=pixels[at];
+        unsigned r=(old>>11&31)*255/31,g=(old>>5&63)*255/63,b=(old&31)*255/31;
         r=(((p>>16)&255)*a+r*(255-a))/255;
-        g=(((p>>8)&255)*a+g*(255-a))/255;b=((p&255)*a+b*(255-a))/255;
+        g=(((p>>8)&255)*a+g*(255-a))/255;
+        b=((p&255)*a+b*(255-a))/255;
         pixels[at]=ds_rgb565((r<<16)|(g<<8)|b);
       }
     }

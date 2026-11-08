@@ -8,7 +8,12 @@ int main(){
   DsScenePolicy s;
   for(int i=0;i<19;i++){s.tick(field,false,false,true);assert(!s.hud);}
   s.tick(field,false,false,true);assert(s.hud);
-  s.tick(field|PK_NDS_FIELD_LOCKED,false,false,true);assert(!s.hud);
+  s.tick(field|PK_NDS_FIELD_LOCKED,false,false,true);assert(s.hud);
+  s.tick(field|PK_NDS_FIELD_TOUCH,false,false,true);assert(!s.hud);
+  for(int i=0;i<20;i++)s.tick(field|PK_NDS_FIELD_LOCKED,false,false,true);
+  assert(s.hud);
+  s.tick(field,true,true,true);assert(!s.hud);
+  s.reset();
   s.tick(PK_NDS_FIELD_TOUCH,false,false,true);assert(!s.touch);
   s.tick(PK_NDS_FIELD_TOUCH,false,false,true);assert(s.touch);
   auto floating=ds_arrange(DS_ONE,s,true);assert(floating.floating && floating.touch.w==352);

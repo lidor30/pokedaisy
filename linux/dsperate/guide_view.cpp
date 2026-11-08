@@ -311,7 +311,7 @@ std::vector<GuideRow> ds_guide_rows(const DsCompanion& s,GuidePage page,bool sou
       rows.push_back({ds_guide_method(mon.method),{},{},{},false,true});
       previousMethod=mon.method;
     }
-    const bool seen=!s.dexValid || (mon.species<s.dexSeen.size() && s.dexSeen[mon.species]);
+    const bool seen=s.dexValid && mon.species<s.dexSeen.size() && s.dexSeen[mon.species];
     const bool caught=mon.species<s.dexCaught.size() && s.dexCaught[mon.species];
     const auto* name=ds_species(mon.species,s.game);
     char levels[32];

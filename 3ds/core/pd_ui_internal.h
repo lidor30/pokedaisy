@@ -159,7 +159,6 @@ void ui_status_badge(struct pd_canvas* c, int x, int y, uint32_t status);
 void ui_notice(struct pd_canvas* c, const char* title, const char* line1, const char* line2);
 // A LABEL  VALUE row, the value from ~42% across (OptionLine).
 void ui_row(struct pd_canvas* c, int x, int y, int w, const char* label, const char* value, bool selected);
-void ui_format_money(long v, char* buf, size_t len);
 
 bool ui_summary_learn(struct pd_ui*);
 void ui_party_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,

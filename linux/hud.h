@@ -56,7 +56,7 @@ typedef bool (*hud_item_draw_fn)(struct pd_canvas *, int item, int x, int y);
 /* The party row alone in the default look, the canvas not cleared (the Linux host's DSperate backend). */
 void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx, hud_mon_draw_fn draw);
 void hud_ds_draw(struct pd_canvas *, const struct pd_snapshot *, const struct hud_state *,
-                 const struct pd_settings *, void *, hud_mon_draw_fn, hud_item_draw_fn, int repelItem, bool minimal);
+                 const struct pd_settings *, void *, hud_mon_draw_fn, hud_item_draw_fn, int repelItem, bool minimal, int right);
 
 typedef void (*hud_ds_map_fn)(struct pd_canvas *, int x, int y, int w, int h);
 void hud_ds_minimap(struct pd_canvas *, const struct pd_settings *, const char *name, hud_ds_map_fn draw);

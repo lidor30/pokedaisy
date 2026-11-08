@@ -34,6 +34,23 @@ int main(int argc,char**argv) {
   assert(ds_fly_unlocked(johtoField,kanto));
   DsCompanion area;
   area.game=G::Platinum;area.map=3;
+  DsCompanion route;
+  route.game=G::Platinum;route.map=342; // Route 201
+  const auto encounter=ds_guide_here(route);
+  assert(encounter.count>0);
+  const int species=encounter.entries[0].species;
+  const auto* name=ds_species(species,route.game);
+  auto guide=ds_guide_rows(route,GuidePage::Here);
+  assert(std::any_of(guide.begin(),guide.end(),[&](const GuideRow& row){
+    return row.title=="???" && row.hint.empty() && row.answer==name;
+  }));
+  route.dexValid=true;
+  route.dexSeen.resize(494);
+  route.dexSeen[species]=1;
+  guide=ds_guide_rows(route,GuidePage::Here);
+  assert(std::any_of(guide.begin(),guide.end(),[&](const GuideRow& row){
+    return row.title==name && row.answer.empty();
+  }));
   const auto items=ds_guide_rows(area,GuidePage::Here);
   assert(!items.empty() && items.front().heading && items.front().title=="TO DO");
   assert(std::any_of(items.begin(),items.end(),[](const GuideRow& row){
@@ -172,7 +189,7 @@ int main(int argc,char**argv) {
     press(RETRO_DEVICE_ID_JOYPAD_DOWN);
     assert(ui.summary && ui.page==1 && ui.selected==3);
     press(RETRO_DEVICE_ID_JOYPAD_LEFT);
-    assert(ui.summary && ui.page==0);
+    assert(ui.summary && ui.page==1 && ui.selected==2);
     press(RETRO_DEVICE_ID_JOYPAD_SELECT);
     assert(ui.page==2);
     press(RETRO_DEVICE_ID_JOYPAD_SELECT);

@@ -90,45 +90,39 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     int lh = c->h - LIST_Y - MARGIN;
     int lf = pd_list_box(c, x, LIST_Y, w, lh);
     // The bar takes its column off the rows while there's more than fits.
-    bool hasBar = (ui->optionSource ? ui->optionSource->count * ROW_H : lastTotal) > lh - 2 * lf;
+    const int infoCount = ui->optionSource ? ui->optionSource->infoCount : 0;
+    const int separator = infoCount ? 4 : 0;
+    const int totalOptions = ui->optionSource ? ui->optionSource->count * ROW_H + separator : lastTotal;
+    bool hasBar = totalOptions > lh - 2 * lf;
     int ix = x + lf + 4, iw = w - 2 * (lf + 4) - (hasBar ? SCROLL_BAR_W + 2 : 0);
     // The rows scroll where they don't all fit (a drag, or the D-pad past the last one shown).
     listTop = LIST_Y + lf;
     listBottom = LIST_Y + lh - lf;
     ui_add_scroll_hit(ui, x, listTop, w, listBottom - listTop, HIT_SETTINGS_LIST);
-    if(ui->optionSource){
-        int n=ui->optionSource->count;
-        if(n<0)n=0;
-        if(n>64)n=64;
-        int view=listBottom-listTop,selected=ui->optionSelected;
-        if(selected>=n)selected=n-1;
-        if(selected>=0){
-            int top=selected*ROW_H;
-            if(top<ui->settingsScroll)ui->settingsScroll=top;
-            if(top+ROW_H>ui->settingsScroll+view)ui->settingsScroll=top+ROW_H-view;
-        }
-        ui->settingsScroll=ui_clamp_scroll(ui->settingsScroll,n*ROW_H,view);
-        pd_clip(c,x+lf,listTop,w-2*lf,view);
-        for(int i=0;i<n;i++){
-            int ry=listTop+i*ROW_H-ui->settingsScroll;
-            if(ry+ROW_H<=listTop || ry>=listBottom)continue;
-            const struct pd_option_row* row=&ui->optionSource->rows[i];
-            if (row->heading) {
-                int groupY=ry-3;
-                group(c,ix,&groupY,row->label);
-            } else {
-                ui_row(c,ix,ry,iw,row->label,row->value,false);
-                if (i==selected) {
-                    pd_fill(c,ix-4,ry,iw+8,2,PD_VALUE);
-                    pd_fill(c,ix-4,ry+ROW_H-2,iw+8,2,PD_VALUE);
-                    pd_fill(c,ix-4,ry,2,ROW_H,PD_VALUE);
-                    pd_fill(c,ix+iw+2,ry,2,ROW_H,PD_VALUE);
-                }
+    if (ui->optionSource) {
+        const int n = ui->optionSource->count, view = listBottom - listTop;
+        const int selected = ui->optionSelected;
+        if (selected == infoCount) ui->settingsScroll = 0;
+        else if (selected >= 0 && selected < n)
+            ui->settingsScroll = ui_scroll_to(ui->settingsScroll, selected * ROW_H + separator, ROW_H, view);
+        ui->settingsScroll = ui_clamp_scroll(ui->settingsScroll, totalOptions, view);
+        pd_clip(c, x + lf, listTop, w - 2 * lf, view);
+        if (separator) pd_fill(c, ix, listTop + infoCount * ROW_H - ui->settingsScroll + 1, iw, 1, PD_DIVIDER);
+        for (int i = 0; i < n; i++) {
+            const int ry = listTop + i * ROW_H + (i >= infoCount ? separator : 0) - ui->settingsScroll;
+            if (ry + ROW_H <= listTop || ry >= listBottom) continue;
+            const struct pd_option_row* row = &ui->optionSource->rows[i];
+            ui_row(c, ix, ry, iw, row->label, row->value, false);
+            if (i == selected) {
+                pd_fill(c, ix-4, ry, iw+8, 2, PD_VALUE);
+                pd_fill(c, ix-4, ry+ROW_H-2, iw+8, 2, PD_VALUE);
+                pd_fill(c, ix-4, ry, 2, ROW_H, PD_VALUE);
+                pd_fill(c, ix+iw+2, ry, 2, ROW_H, PD_VALUE);
             }
         }
         pd_unclip(c);
-        if (n*ROW_H > view)
-            ui_scroll_rail(ui,c,x+w-lf-SCROLL_BAR_W-2,listTop+2,SCROLL_BAR_W,view-4,ui->settingsScroll,n*ROW_H,view);
+        if (hasBar)
+            ui_scroll_rail(ui,c,x+w-lf-SCROLL_BAR_W-2,listTop+2,SCROLL_BAR_W,view-4,ui->settingsScroll,totalOptions,view);
         return;
     }
     pd_clip(c, x + lf, listTop, w - 2 * lf, listBottom - listTop);
@@ -139,7 +133,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         const char* place = pd_mapsec_name(g, s->mapsec);
         ui_row(c, ix, y, iw, "PLACE", *place ? place : "-", false);
         y += ROW_H;
-        ui_format_money(s->money, buf, sizeof(buf));
+        pd_ui_format_money(s->money, buf, sizeof(buf));
         ui_row(c, ix, y, iw, "MONEY", buf, false);
         y += ROW_H;
     }

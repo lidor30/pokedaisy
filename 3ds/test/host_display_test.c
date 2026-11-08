@@ -222,6 +222,22 @@ int main(void) {
     pd_ui_party_summary_control(&ui,&party,0,0,true,false);
     assert(!ui.summaryLearn && !ui.summaryStats);
     settings.tabBar = PD_TAB_BAR_DEFAULT;
+    // In handheld battles, only the Party chip changes, even with focus enabled.
+    pd_ui_init(&ui,&settings);
+    ui.shoulderTabs = true;
+    pd_ui_draw(&ui,&c,&fr,&party,&noHost);
+    bool chipsBefore[PD_TAB_COUNT];
+    for (int i=0;i<PD_TAB_COUNT;i++) chipsBefore[i]=has(&ui,HIT_TAB+i);
+    const bool moreBefore=has(&ui,HIT_MORE);
+    ui.keyFocus = ui.battleOnBar = true;
+    ui.tab = PD_TAB_BATTLE;
+    pd_ui_draw(&ui,&c,&fr,&party,&noHost);
+    assert(!has(&ui,HIT_SHOULDER_L) && !has(&ui,HIT_SHOULDER_R));
+    assert(has(&ui,HIT_TAB+PD_TAB_BATTLE) && !has(&ui,HIT_TAB+PD_TAB_PARTY));
+    for (int i=0;i<PD_TAB_COUNT;i++)
+        if (i!=PD_TAB_BATTLE && i!=PD_TAB_PARTY) assert(chipsBefore[i]==has(&ui,HIT_TAB+i));
+    assert(moreBefore==has(&ui,HIT_MORE));
+
     // The open Bag tab runs on into the list (one shape, like the app's bag): no backdrop left between the two frames.
     struct pd_game bagGame=fr;
     party.bagOk=true;

@@ -69,7 +69,7 @@ static enum pd_tab bar_choice(const struct pd_ui* ui, int i) {
 
 static int bar_tabs(const struct pd_ui* ui, const struct pd_game* g, enum pd_tab out[PD_MAX_BAR_TABS]) {
     int bits = ui->settings && ui->settings->tabBar ? ui->settings->tabBar : PD_TAB_BAR_DEFAULT;
-    int room = ui->battleOnBar ? PD_MAX_BAR_TABS - 1 : PD_MAX_BAR_TABS;
+    int room = ui->battleOnBar && !ui->shoulderTabs ? PD_MAX_BAR_TABS - 1 : PD_MAX_BAR_TABS;
     bool picked[UI_BAR_CHOICES] = { false };
     int n = 0;
     for (int i = 0; i < UI_BAR_CHOICES && n < room; i++) {
@@ -246,8 +246,12 @@ static const struct pd_hit* hit_at(const struct pd_ui* ui, int x, int y) {
 static int chips(const struct pd_ui* ui, const struct pd_game* g, enum pd_tab out[PD_MAX_BAR_TABS + 1]) {
     enum pd_tab bar[PD_MAX_BAR_TABS];
     int n = 0, m = bar_tabs(ui, g, bar);
-    if (ui->battleOnBar) out[n++] = PD_TAB_BATTLE;
-    for (int i = 0; i < m; i++) out[n++] = bar[i];
+    bool replaceParty = false;
+    if (ui->battleOnBar && ui->shoulderTabs)
+        for (int i = 0; i < m; i++) replaceParty |= bar[i] == PD_TAB_PARTY;
+    if (ui->battleOnBar && !replaceParty) out[n++] = PD_TAB_BATTLE;
+    for (int i = 0; i < m; i++)
+        out[n++] = replaceParty && bar[i] == PD_TAB_PARTY ? PD_TAB_BATTLE : bar[i];
     return n;
 }
 
@@ -278,12 +282,13 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
     bool hasMore = ui_more_tabs(ui, g, more) > 0;
     int icons = hasMore ? 2 : 1;
     // L / R at the ends while the buttons are the companion's (ShoulderHint).
-    int keys = ui->keyFocus ? 2 * (SHOULDER_W + CHIP_GAP) : 0;
+    const bool shoulderHints = ui->keyFocus && !ui->shoulderTabs;
+    int keys = shoulderHints ? 2 * (SHOULDER_W + CHIP_GAP) : 0;
     // Fast-forward's chip, on the hosts that show one (libretro frontends own fast-forward).
     int ffW = host && host->hasFfChip && !host->frontendOwnsPlayback ? FF_W + CHIP_GAP : 0;
     int room = c->w - 2 * MARGIN - icons * ICON_CHIP_W - (n + icons - 1) * CHIP_GAP - keys - ffW;
     int x = MARGIN;
-    if (ui->keyFocus) {
+    if (shoulderHints) {
         chip(ui, c, x, SHOULDER_W, false, HIT_SHOULDER_L);
         pd_text(c, x + (SHOULDER_W - pd_text_width("L")) / 2, pd_text_y(by, CHIP_H), "L", PD_TITLE_TEXT, PD_TITLE_SHADOW);
         x += SHOULDER_W + CHIP_GAP;
@@ -314,7 +319,7 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         x += FF_W + CHIP_GAP;
     }
     icon_chip(ui, c, x, &PD_ICON_GEAR, ui->tab == PD_TAB_SETTINGS && ui->overlay != PD_OVERLAY_MORE, HIT_TAB + PD_TAB_SETTINGS);
-    if (ui->keyFocus) {
+    if (shoulderHints) {
         x += ICON_CHIP_W + CHIP_GAP;
         chip(ui, c, x, SHOULDER_W, false, HIT_SHOULDER_R);
         pd_text(c, x + (SHOULDER_W - pd_text_width("R")) / 2, pd_text_y(by, CHIP_H), "R", PD_TITLE_TEXT, PD_TITLE_SHADOW);

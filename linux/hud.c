@@ -884,28 +884,31 @@ void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx,
 
 void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct hud_state *h,
                  const struct pd_settings *st, void *ctx, hud_mon_draw_fn monDraw,
-                 hud_item_draw_fn itemDraw, int repelItem, bool minimal) {
+                 hud_item_draw_fn itemDraw, int repelItem, bool minimal, int right) {
   for (int i = 0; i < c->w * c->h; i++)
     c->px[i] = QUICK_CLEAR;
   if (!s->valid)
     return;
-  small = false;
-  sizes = &NORMAL_SIZES;
-  struct hud u = {.c = c, .s = s, .h = h, .st = st, .monDraw = monDraw, .monCtx = ctx, .itemDraw = itemDraw, .x1 = c->w,
+  small = right < c->w;
+  sizes = small ? &COMPACT_SIZES : &NORMAL_SIZES;
+  struct hud u = {.c = c, .s = s, .h = h, .st = st, .monDraw = monDraw, .monCtx = ctx, .itemDraw = itemDraw, .x1 = right,
                   .repelItem = repelItem,
                   .L = &LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
   u.partyN = !minimal && shows(&u, PD_HUD_PARTY) ? s->partyCount : 0;
   u.balls = shows(&u, PD_HUD_BALLS) ? balls(s, u.ball) : 0;
   u.repel = shows(&u, PD_HUD_REPEL) && h->repel > 0;
   if (minimal) {
-    compact(&u);
+    if (!u.balls && !u.repel && shows(&u, PD_HUD_PARTY) && s->partyCount) {
+      u.partyN = 1;
+      party_row(&u, EDGE, c->h - EDGE - PARTY_H);
+    } else compact(&u);
     return;
   }
   if (u.partyN)
     party_row(&u, EDGE, c->h - EDGE - PARTY_H);
   int width = column_w(&u, BOTTOM_UP, 3, false);
   int bottom = c->h - EDGE - (tight(&u) ? PARTY_H + GAP : 0);
-  column(&u, BOTTOM_UP, 3, false, c->w - EDGE - width, width, 1, bottom, true);
+  column(&u, BOTTOM_UP, 3, false, right - EDGE - width, width, 1, bottom, true);
 }
 
 void hud_ds_minimap(struct pd_canvas *c, const struct pd_settings *st, const char *name, hud_ds_map_fn draw) {

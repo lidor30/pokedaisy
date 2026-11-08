@@ -58,9 +58,10 @@ is running low. Reload the ROM after changing frameskip.
 
 Use L1/R1 to cycle the tab bar, including **More** when a card is hidden.
 The D-pad moves within the current tab. In Party, A opens the highlighted
-Pokémon and switches between Moves and Stats. Up/Down changes Pokémon,
-Select opens or closes Learn where the game supplies it, and Left/Right
-scrolls the learnset. B returns to the highlighted Pokémon in the grid.
+Pokémon and switches between Moves and Stats. Left/Right or Up/Down changes
+Pokémon in Moves and Stats. In Learn, Left/Right scrolls the list and
+Up/Down changes Pokémon. Select opens or closes Learn where supported.
+B returns to the highlighted Pokémon in the grid.
 
 In Bag, Left/Right cycles **All** and occupied pockets, Up/Down selects an
 item, A opens its details, and B returns to the list. Press Select while

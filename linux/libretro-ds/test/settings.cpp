@@ -40,22 +40,28 @@ int main(int argc,char** argv){
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.layout==3 && ui.picker==-1);
   // Cancel does not apply a highlighted choice.
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_UP);press(ui,RETRO_DEVICE_ID_JOYPAD_B);assert(ui.layout==3);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(!ui.autoBattles);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.settings.hud);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);assert(ui.setting==DsCompanionUi::Hud);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.settings.hud);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);assert(ui.setting==DsCompanionUi::QuickStyle);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);assert(ui.setting==DsCompanionUi::CompanionButton);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   assert(ui.companion_id()==RETRO_DEVICE_ID_JOYPAD_X);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  ui.setting=DsCompanionUi::ScreenButton;
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   assert(ui.screen_id()==RETRO_DEVICE_ID_JOYPAD_R2 && !ui.error.empty());
   // Choose NONE for screen shortcut, then FAST pen speed.
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);for(int i=0;i<3;i++)press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);assert(ui.setting==DsCompanionUi::PenSpeed);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   assert(ui.screen_id()==-1 && ui.pen_step()==6);draw();ppm((std::string(argv[2])+"/settings-controls.ppm").c_str(),px);
+  ui.setting=DsCompanionUi::Battles;
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(!ui.autoBattles);
   DsCompanionUi reloaded;reloaded.init(path);
   assert(reloaded.layout==3 && !reloaded.autoBattles && reloaded.settings.hud && reloaded.companion_id()==RETRO_DEVICE_ID_JOYPAD_X && reloaded.screen_id()==-1 && reloaded.pen_step()==6);
   // A cancelled reset leaves the file and current values alone.
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.settings.quickGrid);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.choice==0);press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.layout==3);
+  ui.setting=DsCompanionUi::QuickStyle;press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.settings.quickGrid);
+  ui.setting=DsCompanionUi::Reset;press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.choice==0);press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.layout==3);
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   assert(ui.layout==0 && ui.autoBattles && !ui.settings.hud && ui.companion_id()==RETRO_DEVICE_ID_JOYPAD_L2);
   reloaded.init(path);assert(reloaded.layout==0 && !reloaded.settings.hud);
@@ -141,7 +147,7 @@ int main(int argc,char** argv){
   pd_settings hudOptions{};
   pd_settings_defaults(&hudOptions);
   hud_ds_draw(&c,&field,&active,&hudOptions,nullptr,nullptr,
-              [](pd_canvas*,int id,int,int){assert(id==79);return true;},79,true);
+              [](pd_canvas*,int id,int,int){assert(id==79);return true;},79,true,c.w);
   // Hostile/old preference values never index a label/button array out of bounds.
   ui.save();
   {std::ofstream file(ui.path,std::ios::app);file<<"ds_layout=999\nds_companionbtn=-1\nds_penspeed=oops\n";}

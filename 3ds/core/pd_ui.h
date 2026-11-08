@@ -258,7 +258,7 @@ struct pd_summary_view {
     const char* name;
     const char* primary;
     const char* secondary;
-    bool secondaryLearn;
+    bool secondaryLearn, handheldControls, learnPage;
     const char* speciesName;
     const char* heldItem;
     int friendship; // -1 for unavailable
@@ -300,8 +300,8 @@ struct pd_map_source {
     int cursorX, cursorY, cursorW, cursorH;
 };
 // Host-owned option rows use the established Settings frame and row widgets.
-struct pd_option_row { const char* label; const char* value; bool heading; };
-struct pd_option_source { const char* title; const struct pd_option_row* rows; int count; };
+struct pd_option_row { const char* label; const char* value; };
+struct pd_option_source { const char* title; const struct pd_option_row* rows; int count, infoCount; };
 struct pd_guide_row {
     const char *title, *detail, *hint, *answer;
     bool owned, heading;
@@ -481,6 +481,7 @@ void pd_ui_choices_view(struct pd_canvas*, const char*, const char* const*, int,
 // Shared party body, including its original frames, HP bars, status and summary.
 struct pd_map_viewport { int x, y, w, h; };
 struct pd_map_viewport pd_ui_map_view(struct pd_canvas*, const struct pd_map_source*);
+void pd_ui_format_money(long, char*, size_t);
 void pd_ui_options_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*);
 void pd_ui_guide_view(struct pd_ui*, struct pd_canvas*, const struct pd_guide_source*);
 void pd_ui_guide_reset(struct pd_ui*);

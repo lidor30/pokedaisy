@@ -38,9 +38,14 @@ void DsScenePolicy::tick(int bits,bool topBlank,bool bottom,bool floatBattle){
     if(touch){fadeSeen=false;fadeFrames=0;if(fades)fadeOpened=true;}
     settle(menu,dualScreenApp,menuFrames);settle(app,nextApp,appFrames);
     settle(wide,bits&(PK_NDS_FIELD_SCREEN|PK_NDS_FIELD_BATTLE),wideFrames);
-    const bool field=(bits&PK_NDS_FIELD_KNOWN)&&(bits&PK_NDS_FIELD_SCREEN)&&!(bits&(PK_NDS_FIELD_LOCKED|PK_NDS_FIELD_MENU|PK_NDS_FIELD_BATTLE));
-    fieldFrames=field?std::min(20,fieldFrames+1):0;hud=fieldFrames>=20;
   }
+  // Input locks also happen in a visible overworld, including early scripts.
+  // Only a lit field without a native menu or battle should own the HUD.
+  constexpr int fieldBits=PK_NDS_FIELD_KNOWN|PK_NDS_FIELD_SCREEN;
+  const bool field=!topBlank && (bits&fieldBits)==fieldBits &&
+    !(bits&(PK_NDS_FIELD_TOUCH|PK_NDS_FIELD_MENU|PK_NDS_FIELD_BATTLE));
+  fieldFrames=field?std::min(20,fieldFrames+1):0;
+  hud=fieldFrames>=20;
 }
 DsArrangement ds_arrange(int mode,const DsScenePolicy& s,bool followed,bool manual){
   DsArrangement a;
