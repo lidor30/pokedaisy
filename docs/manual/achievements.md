@@ -70,11 +70,13 @@ Achievement news pops up at the top of the companion, over whatever tab you're o
 
 Tap an unlock or progress popup to open the ACHIEVEMENTS tab right on that achievement, highlighted. Press `BACK` and you're returned to the tab you were on.
 
+When the companion isn't on screen (a DS game's touch screen in its place, or the companion closed on a one-screen handheld), popups show at the top of the game instead, and a tap there just closes them.
+
 ## Leaderboards and challenges
 
 Some sets have leaderboards (fastest time, highest score). When the game has any, a `LEADERBOARDS` button appears on the ACHIEVEMENTS tab. Tap a board to see the top 10 and the players around your own entry, with your row highlighted.
 
-While a leaderboard attempt is running, its current value (a timer, a count) shows in the bottom-right corner of the companion. Some achievements are challenges you have to finish without breaking a rule; while one is active, its badge sits in that corner too, so you know it's still on.
+While a leaderboard attempt is running, its current value (a timer, a count) shows in the bottom-right corner of the companion. Some achievements are challenges you have to finish without breaking a rule; while one is active, its badge sits in that corner too, so you know it's still on. With the companion off screen, they sit in the game's bottom right corner.
 
 ## Save states and achievement progress
 
