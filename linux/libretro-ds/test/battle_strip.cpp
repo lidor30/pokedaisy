@@ -49,6 +49,7 @@ int main(int argc,char** argv){
   const auto context=read32(system+battle_offBattleCtx);
   // The captured rival battle provides battlers; synthesize the transient panel.
   write32(system+0x19c,base+0x1000);
+  write32(base+0x1000,system); // BattleInput names its BattleSystem while the battle's touch screen is up
   write32(base+0x14d0,base+0x2000);
   write32(context+8,PK_NDS_BATTLE_SELECTING);
   write32(context,1);

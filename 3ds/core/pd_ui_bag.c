@@ -143,8 +143,10 @@ static void tabs(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
                              open ? p->textShadow : p->tabTextShadow);
         // Under the letters, not through them: the tab's last rows.
         if (open) pd_fill(c, tx, y + TAB_H - f - 2, tw, 2, p->cursor);
-        if (ui->pressedId == HIT_BAG_TAB + i) pd_fill(c, x + f, y + f, w - 2 * f, 1, p->cursor);
-        ui_add_hit(ui, x, y, w, TAB_H, HIT_BAG_TAB + i);
+        // A backend's bag keys its tabs by its own pocket ids (ui->bagPocket), the shared one by the tab's place.
+        const int hitId = HIT_BAG_TAB + (ui->bagSource ? v->pockets[i] : i);
+        if (ui->pressedId == hitId) pd_fill(c, x + f, y + f, w - 2 * f, 1, p->cursor);
+        ui_add_hit(ui, x, y, w, TAB_H, hitId);
     }
 }
 

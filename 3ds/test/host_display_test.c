@@ -304,6 +304,8 @@ int main(void) {
     ui.bagPocket = 1; // empty, with occupied pockets 2 and 3
     pd_ui_bag_view(&ui,&c,&fr,&party);
     assert(ui.bagPocket == 0 && ui.bagTabCount == 3 && ui.bagPocketMask == 13);
+    // Its tabs are keyed by its own pocket ids, so a tap opens that pocket.
+    assert(has(&ui,HIT_BAG_TAB) && has(&ui,HIT_BAG_TAB+2) && has(&ui,HIT_BAG_TAB+3) && !has(&ui,HIT_BAG_TAB+1));
     assert(has(&ui,HIT_BAG_SORT));
     const int first[] = {2, 1, 3, 2};
     for (int i=0;i<4;i++) {
