@@ -16,6 +16,7 @@
 struct hud_state {
   int repel;     // the Repel's steps left (0 = none working)
   int repelFull; // the steps it started from (the smallest of 100 / 200 / 250 covering the first count seen)
+  int repelItem; // override the plain Repel icon when the cartridge uses another item ID
   bool pc;       // the game's PC can open from here (pc_supported): the PC button
   int wild;      // this map's wild species not caught yet (WILD's badge); -1 = no wild data, no WILD button
   int focus;     // the focused target (enum hud_target), -1 = none: the HUD hotkey's cursor

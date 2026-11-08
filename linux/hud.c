@@ -592,8 +592,8 @@ static void repel_inner(struct hud *u, int x, int y, bool narrow) {
   // The game tracks steps, so use the plain Repel icon.
   if (u->itemDraw)
     u->itemDraw(u->c, u->repelItem, x, y + 1);
-  else
-    pd_draw_item_icon(u->c, u->g, 86, x, y + 1, false);
+  else if (!pd_draw_item_icon(u->c, u->g, h->repelItem ? h->repelItem : 86, x, y + 1, false))
+    art(u->c, quick_icon_repel, x + 1, y + 2, "KLG", (const uint32_t[]){0x182820, 0xA4F0B8, 0x48B66C}, 0);
   int tx = x + PD_ITEM_ICON + 3, bar = narrow ? 30 : 46;
   char t[12];
   snprintf(t, sizeof t, "%d", h->repel);
@@ -978,6 +978,7 @@ uint32_t hud_key(const struct pd_game *g, const struct pd_snapshot *s, const str
   MIX(st->hudLook);
   MIX(h->repel);
   MIX(h->repelFull);
+  MIX(h->repelItem);
   MIX(h->pc);
   MIX(h->wild);
   MIX(h->focus);

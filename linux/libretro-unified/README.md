@@ -209,6 +209,33 @@ confirmation. **Auto-Run** in Companion Settings follows Android's controls.
 Hold **B** while moving to walk. Menus, scripts, battles, bikes and surfing keep
 their native controls.
 
+## Polished Crystal 3.2.3
+
+The normal release supports **Expand** and **Zoom Out** in Companion Settings
+→ Aspect. From the overworld, **Y** opens the quick menu with **PC**, **Fly**,
+**Repel**, **Bike** and **Wild**. PC uses the original storage menu from any
+direction when the player is free. Fly needs the Storm Badge and a party member who knows
+Fly. Choose the destination on the game's map. Repel offers the types held
+and shows the remaining steps on the HUD. Bike uses the game's Bicycle.
+Wild Off suppresses random field encounters until turned back on. Scripted
+battles still happen.
+
+Open Companion with **X**. In its Bag, **R2** hands control to the original
+Bag or opens the action menu of the selected ordinary or key item. R2 must
+be free of other Companion button assignments. To use a Potion on a party
+member from Companion, open the item's details, choose **Use**, then pick
+the target. **B** cancels a field shortcut while it is navigating. Fly,
+Bike, Repel, Potion, and Bag use the shared input controller. It reads the
+native menu and cursor before picking a row and waits for the destination
+screen or the item effect before reporting success.
+
+In a battle, **X** opens the shared Battle tab with Fight, PKMN, Pack, Run,
+Info and Suggestions. Use the D-pad and A to choose a move or action.
+Selections that act in the game return to its native battle, party or Pack.
+The controls and shortcuts above are enabled for the exact standard 3.2.3
+ROM. Other mapped revisions, Faithful and debug builds retain their
+existing companion support.
+
 ## GB, GBC and GBA companion backport checklist
 
 In the Dex, **Select** cycles the four filters. Press **A** on a seen entry to

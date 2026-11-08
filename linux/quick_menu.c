@@ -46,7 +46,7 @@ const char *const quick_icon_pc[] = {
     "...KKKKKKKKKK...", NULL,
 };
 // REPEL and BIKE where the game has no item icons to draw (Ruby / Sapphire; the app has its bundled item sprites).
-static const char *const REPEL[] = {
+const char *const quick_icon_repel[] = {
     "....KKK.....", "...KLLLK.K..", "...KKKKK..K.", "..KGGGGGK.K.", "..KGLGGGK...", "..KGLGGGK...",
     "..KGGGGGK...", "..KGGGGGK...", "..KGGGGGK...", "..KKKKKKK...", NULL,
 };
@@ -102,7 +102,7 @@ static uint32_t icon_color(enum quick_action a, char ch) {
 // An icon centred at (cx, cy), `scale` canvas pixels a pixel; dim: at half strength over the glass.
 static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int scale, bool dim) {
   const char *const *rows = a == QUICK_PC ? quick_icon_pc : a == QUICK_WILD ? quick_icon_grass : a == QUICK_SAVE_STATE ? SAVE_STATE
-                          : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : a == QUICK_REPEL ? REPEL
+                          : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : a == QUICK_REPEL ? quick_icon_repel
                           : a == QUICK_BIKE ? BIKE : a == QUICK_FLY ? WING
                           : a == QUICK_HUD ? quick_icon_hud : quick_icon_companion;
   int h = 0, w = (int)strlen(rows[0]);

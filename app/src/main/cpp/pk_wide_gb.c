@@ -42,43 +42,7 @@
 
 /** A game's addresses (WRAM unless noted; D000-DFFF in WRAM bank 1). Gen 1's and Crystal's share where they mean the
  * same; the rest is one generation's (0 in the other's rows). */
-enum {
-    GB_SPRITES1,          // Gen 1: wSpriteStateData1, 16 x 16 bytes (picture id, image index $FF = hidden, screen Y / X, facing)
-    GB_SPRITES2,          // Gen 1: wSpriteStateData2, map Y / X + 4 at +4 / +5, grass priority +7, VRAM slot +0xE
-    GB_OVERWORLD,         // wOverworldMap(Blocks): (width + 6) x (height + 6) blocks
-    GB_VIEW_PTR,          // the screen's top-left block, in it (wCurrentTileBlockMapViewPointer / wOverworldMapAnchor)
-    GB_YCOORD,            // wYCoord (wXCoord follows)
-    GB_YBLOCK,            // wYBlockCoord / wPlayerMetatileY (X follows): which half of that block
-    GB_TILESET,           // wCurMapTileset / wMapTileset
-    GB_MAP_HEIGHT,        // wCurMapHeight / wMapHeight (the width follows)
-    GB_CONNECTIONS,       // wCurMapConnections / wMapConnections (bit 3 north .. 0 east); the four headers follow, north first
-    GB_TILESET_BANK,      // wTilesetBank / wTilesetBlocksBank (the blockset's address follows)
-    GB_BG_BLOCK,          // wMapBackgroundTile / wMapBorderBlock
-    GB_IN_BATTLE,         // wIsInBattle / wBattleMode
-    GB_FONT_LOADED,       // Gen 1: wFontLoaded, bit 0 while a text box (or the START menu) is up; Crystal: wStateFlags, bit 6
-    GB_TOGGLE_FLAGS,      // Gen 1: wToggleableObjectFlags (a bit per global object: set = hidden)
-    GB_TOGGLE_LIST,       // Gen 1: wToggleableObjectList: (sprite slot, global object) pairs, $FF-terminated
-    GB_MAP_HEADER_PTRS,   // Gen 1: MapHeaderPointers (ROM, linear offset); Crystal: MapGroupPointers
-    GB_MAP_HEADER_BANKS,  // Gen 1: MapHeaderBanks (ROM, linear offset)
-    GB_START_ITEM,        // the START menu item picked last: Gen 1's wBattleAndStartSavedMenuItem (0 POKéDEX .. 5 OPTION,
-                          // one less before the Pokédex); Crystal's wMenuSelection (STARTMENUITEM_*, 5 OPTION)
-    GB_EVENT_FLAGS,       // wEventFlags (Gen 1: EVENT_GOT_POKEDEX is flag 37; Crystal: the connected maps' objects' flags)
-    GB_PAL_MAP,           // Crystal: wTilesetPalettes, the tileset's palette map (in bank GB_PAL_BANK)
-    GB_PAL_BANK,          // Crystal: the palette maps' ROM bank; Crystal Clear: where RAM holds it (a tileset has its own)
-    GB_OBJECTS,           // Crystal: wObjectStructs, 13 x 0x28 (the player first)
-    GB_MAP_OBJECTS,       // Crystal: wMapObjects, 16 x 16 (the player first)
-    GB_OBJECT_MASKS,      // Crystal: wObjectMasks, a byte per map object (non-zero: not shown)
-    GB_USED_SPRITES,      // Crystal: wUsedSprites, (sprite, VRAM tile) pairs
-    GB_VAR_SPRITES,       // Crystal: wVariableSprites
-    GB_SPRITE_DATA,       // Crystal: OverworldSprites (ROM, linear): 6 bytes a sprite, type +4, palette +5
-    GB_MOVE_DATA,         // Crystal: SpriteMovementData (ROM, linear): 6 bytes a movement, facing +1
-    GB_VBLANK_MODE,       // Crystal: hVBlank (HRAM), VBLANK_CUTSCENE (1) through a battle's flashes and wipe
-    GB_HSCX,              // Crystal: hSCX (HRAM; hSCY follows): the scroll the next frame is drawn with
-    GB_TIME_OF_DAY,       // Crystal: wTimeOfDay (0 morning, 1 day, 2 night)
-    GB_HOURS,             // Crystal: hHours (HRAM)
-    GB_CLEAR,             // Crystal Clear (1): a byte of attributes per tile id, its own object sprites
-    GB_CONFIG
-};
+#include "pk_wide_gb_profile.h"
 
 #define GB_LINEAR(bank, addr) ((uint32_t) (bank) * 0x4000u + ((addr) - 0x4000u))
 
@@ -114,7 +78,10 @@ static const struct GbGame { uint32_t crc; int gen; uint32_t a[GB_CONFIG]; } GB_
 #undef GB_CRYSTAL_CLEAR
 };
 
-#define GB_OW_MAX 1300           // wOverworldMap's size
+static bool gbPolished;
+static pk_wide_gb_decode_fn gbDecode;
+#define GB_CRYSTAL_OW_MAX 1300   // Crystal's wOverworldMap buffer
+#define GB_OW_MAX 1326           // Polished Crystal's larger buffer
 #define GB_MAP_TILES 0x60        // tile ids below this are the map's; the font (text boxes) starts here
 #define GB_MIN_SCORE 900         // per mille of the screen's map tiles the world must match
 #define GB_MIN_MAP_TILES 120     // ... and at least this many of its 360 tiles are map tiles (else it's a menu screen)
@@ -137,8 +104,13 @@ static inline int gbClamp(int v, int lo, int hi) { return v < lo ? lo : v > hi ?
 /** WRAM, D000-DFFF always from bank 1: Crystal switches that bank mid-frame (whatever SVBK holds as the frame ends isn't
  * necessarily the game's state), and a game that never switches it (Yellow) has bank 1 there all along. */
 static uint8_t gbRam(uint32_t a) {
-    if (a >= 0xC000 && a < 0xE000) return gbB->memory.wram[a - 0xC000];
-    return 0;
+  unsigned bank = a >> 16;
+  a &= 0xffff;
+  if (a >= 0xC000 && a < 0xD000)
+    return gbB->memory.wram[a - 0xC000];
+  if (a >= 0xD000 && a < 0xE000 && bank < 8)
+    return gbB->memory.wram[(bank ? bank : 1) * 4096 + a - 0xD000];
+  return 0;
 }
 static uint8_t gbHram(uint32_t a) { return a >= 0xFF80 && a < 0xFFFF ? gbB->memory.hram[a - 0xFF80] : 0; }
 static uint16_t gbRam16(uint32_t a) { return (uint16_t) (gbRam(a) | gbRam(a + 1) << 8); }
@@ -162,7 +134,7 @@ struct GbConn {
     int offX, offY;      // the connected map's block (0, 0) is wOverworldMap's block (offX, offY)
     int w, h;
     uint32_t blocks;     // its blocks (ROM, linear)
-    int lz;              // Crystal Clear: their slot in gbLz
+    int lz;              // Crystal Clear and Polished: their slot in gbLz
     uint32_t objs;       // Crystal: its object events (ROM, linear; 13 bytes each), nObjs of them
     int nObjs;
 };
@@ -179,7 +151,9 @@ struct GbSnap {
     uint8_t spr1[256], spr2[256];
     uint8_t toggleFlags[32], toggleList[40];
     uint32_t palMap;     // Crystal: the tileset's palette map (ROM, linear), a nibble per tile id
-    uint8_t objs[13 * 0x28], mapObjs[16 * 16], masks[16], used[64], vars[16];   // Crystal's objects
+    uint8_t objs[13 * 0x28], mapObjs[21 * 16], masks[21], used[64], vars[16];   // Crystal/Polished objects
+    uint8_t tiles[4096], attrs[4096];
+    uint8_t loadedPals[8];
     uint8_t scx, scy;    // Crystal: the scroll its objects' screen positions go with (hSCX / hSCY)
     bool battle, text;
     int startItem;       // the START menu item picked last, counted with the POKéDEX row (5 = OPTION)
@@ -199,11 +173,13 @@ static const uint8_t* gbCrystalMapHeader(int group, int number) {
     const uint8_t* g = gbRom(gbCfg[GB_MAP_HEADER_PTRS] + 2 * (uint32_t) (group - 1), 2);
     if (!g) return NULL;
     uint32_t bank = gbCfg[GB_MAP_HEADER_PTRS] / 0x4000;
-    return gbRom(gbLinear((int) bank, (uint16_t) (g[0] | g[1] << 8)) + 9 * (uint32_t) (number - 1), 9);
+    return gbRom(gbLinear((int)bank, (uint16_t)(g[0] | g[1] << 8)) +
+                     (gbPolished ? 7 : 9) * (uint32_t)(number - 1),
+                 gbPolished ? 7 : 9);
 }
 
-// Crystal Clear's maps keep their blocks LZ-compressed in ROM (the game unpacks a map into WRAM bank 6 at D000, and a
-// connection's strip pointer is into that): the connected maps' are unpacked here, once per map. Three snapshots can
+// Crystal Clear and Polished keep their blocks compressed in ROM. A connection's strip pointer is into the
+// game's decompression buffer. Connected maps are unpacked here once per map. Three snapshots can
 // hold four maps each; one that lost its slot draws the background block until it's taken again.
 #define GB_LZ_SLOTS 12
 #define GB_LZ_BASE 0xD000
@@ -274,7 +250,9 @@ static int gbLzLoad(uint32_t at) {
     int i = gbLzNext;
     gbLzNext = (gbLzNext + 1) % GB_LZ_SLOTS;
     gbLz[i].at = at;
-    gbLz[i].n = gbLzDecode(at, gbLz[i].b, GB_OW_MAX);
+    gbLz[i].n = gbPolished
+        ? gbDecode(gbB->memory.rom, gbB->memory.romSize, at, gbLz[i].b, GB_OW_MAX)
+        : gbLzDecode(at, gbLz[i].b, GB_CRYSTAL_OW_MAX);
     return i;
 }
 
@@ -282,8 +260,10 @@ static int gbLzLoad(uint32_t at) {
  * `src` is the strip's first block in that map's blocks (an address in its bank), `dst` where it went in the array. */
 static void gbConnect(struct GbConn* c, const struct GbSnap* s, int bank, uint16_t blocks, int cw, int ch, uint16_t src,
                       uint16_t dst) {
-    int from = (int) src - (gbCfg[GB_CLEAR] ? GB_LZ_BASE : (int) blocks);
-    int to = (int) dst - (int) gbCfg[GB_OVERWORLD];
+    int unpacked = gbPolished ? (int)(gbCfg[PC_SCRATCH] & 0xFFFF) :
+                   gbCfg[GB_CLEAR] ? GB_LZ_BASE : blocks;
+    int from = (int)src - unpacked;
+    int to = (int)dst - (int)(gbCfg[GB_OVERWORLD] & 0xFFFF);
     int W = s->w + 6;
     if (to < 0 || to >= W * (s->h + 6) || cw <= 0 || ch <= 0) return;
     int fromRow = from >= 0 ? from / cw : -((-from + cw - 1) / cw);
@@ -292,29 +272,45 @@ static void gbConnect(struct GbConn* c, const struct GbSnap* s, int bank, uint16
     c->w = cw;
     c->h = ch;
     c->blocks = gbLinear(bank, blocks);
-    if (gbCfg[GB_CLEAR]) {
+    if (gbPolished || gbCfg[GB_CLEAR]) {
         c->lz = gbLzLoad(c->blocks);
-        c->on = gbLz[c->lz].n >= cw * ch;
+        int count = gbLz[c->lz].n;
+        c->on = gbPolished ? count == cw * ch : count >= cw * ch;
     } else {
-        c->on = gbRom(c->blocks, (uint32_t) (cw * ch)) != NULL;
+        c->on = gbRom(c->blocks, (uint32_t)(cw * ch)) != NULL;
     }
 }
 
 /** A connected map's block `at`, or NULL. */
 static const uint8_t* gbConnBlock(const struct GbConn* c, int at) {
-    if (!gbCfg[GB_CLEAR]) return gbRom(c->blocks + (uint32_t) at, 1);
+    if (!gbPolished && !gbCfg[GB_CLEAR]) return gbRom(c->blocks + (uint32_t)at, 1);
     return gbLz[c->lz].at == c->blocks ? &gbLz[c->lz].b[at] : NULL;
+}
+
+static void pcWideConnectionEvents(struct GbConn *c, const uint8_t *at) {
+    uint32_t ev = gbLinear(at[6], at[7] | at[8] << 8);
+    static const int sizes[] = {2, 3, 5, 5, 5};
+    c->nObjs = 0;
+    for (int k = 0; k < 5 && ev; k++) {
+      const uint8_t *n = gbRom(ev, 1);
+      ev = n ? ev + 1 + n[0] * (uint32_t)sizes[k] : 0;
+    }
+    const uint8_t *n = ev ? gbRom(ev, 1) : NULL;
+    if (n && n[0] <= 20 && gbRom(ev + 1, 13u * n[0])) {
+      c->objs = ev + 1;
+      c->nObjs = n[0];
+    }
 }
 
 static void gbTake(struct GbSnap* s) {
     const uint32_t* A = gbCfg;
     s->ok = false;
     int h = gbRam(A[GB_MAP_HEIGHT]), w = gbRam(A[GB_MAP_HEIGHT] + 1);
-    if (!w || !h || (w + 6) * (h + 6) > GB_OW_MAX) return;
+    if (!w || !h || (w + 6) * (h + 6) > (gbPolished ? GB_OW_MAX : GB_CRYSTAL_OW_MAX)) return;
     s->w = w;
     s->h = h;
     gbRamCopy(s->ow, A[GB_OVERWORLD], (w + 6) * (h + 6));
-    int rel = (int) gbRam16(A[GB_VIEW_PTR]) - (int) A[GB_OVERWORLD];
+    int rel = (int)gbRam16(A[GB_VIEW_PTR]) - (int)(A[GB_OVERWORLD] & 65535);
     if (rel < 0 || rel >= (w + 6) * (h + 6)) rel = 0;
     s->guessX = rel % (w + 6) * 4 + (gbRam(A[GB_YBLOCK] + 1) ? 2 : 0);
     s->guessY = rel / (w + 6) * 4 + (gbRam(A[GB_YBLOCK]) ? 2 : 0);
@@ -334,7 +330,20 @@ static void gbTake(struct GbSnap* s) {
             uint32_t hdr = A[GB_CONNECTIONS] + 1 + 12 * (uint32_t) d;
             const uint8_t* mh = gbCrystalMapHeader(gbRam(hdr), gbRam(hdr + 1));
             // Only a map drawn with the same tileset: another tileset's tiles aren't in VRAM.
-            if (!mh || mh[1] != s->tileset) continue;
+            if (!mh || mh[gbPolished ? 0 : 1] != s->tileset)
+              continue;
+            if (gbPolished) {
+              const uint8_t *at =
+                  gbRom(gbLinear(A[PC_MAP_ATTR_BANK], mh[2] | mh[3] << 8), 10);
+              if (at) {
+                gbConnect(c, s, at[3], at[4] | at[5] << 8, at[2], at[1],
+                          gbRam16(hdr + 2), gbRam16(hdr + 4));
+                // Polished combines scripts/events: counted scene (2),
+                // callback (3), warp (5), coordinate (5), background (5).
+                pcWideConnectionEvents(c, at);
+              }
+              continue;
+            }
             const uint8_t* at = gbRom(gbLinear(mh[0], (uint16_t) (mh[3] | mh[4] << 8)), 11);
             if (!at) continue;
             gbConnect(c, s, at[3], (uint16_t) (at[4] | at[5] << 8), at[2], at[1], gbRam16(hdr + 2), gbRam16(hdr + 4));
@@ -367,12 +376,32 @@ static void gbTake(struct GbSnap* s) {
     if (gbGen == 2) {
         // A wild battle's flashes run on the field before wBattleMode is set: DoBattleTransition's VBlank mode.
         s->battle = s->battle || gbHram(A[GB_VBLANK_MODE]) == 1;
+        if (gbPolished) {
+          gbRamCopy(s->tiles, A[PC_METATILES], 4096);
+          gbRamCopy(s->attrs, A[PC_ATTRIBUTES], 4096);
+          memset(s->objs, 0, sizeof s->objs);
+          for (int i = 0; i < 13; i++)
+            gbRamCopy(s->objs + i * 40, A[GB_OBJECTS] + i * 34, 34);
+          memset(s->mapObjs, 0, sizeof s->mapObjs);
+          for (int i = 0; i < 21; i++)
+            gbRamCopy(s->mapObjs + i * 16, A[GB_MAP_OBJECTS] + i * 14, 14);
+          gbRamCopy(s->masks, A[GB_OBJECT_MASKS], 21);
+          gbRamCopy(s->loadedPals, A[PC_LOADED_PALS], 8);
+          memset(s->used, 0, sizeof s->used);
+          gbRamCopy(s->vars, A[GB_VAR_SPRITES], 11);
+          s->scx = gbHram(A[GB_HSCX]);
+          s->scy = gbHram(A[GB_HSCX] + 1);
+          s->text = (gbRam(A[GB_FONT_LOADED]) >> 6) & 1;
+          s->startItem = gbRam(A[GB_START_ITEM]);
+          s->ok = true;
+          return;
+        }
         s->scx = gbHram(A[GB_HSCX]);
         s->scy = gbHram(A[GB_HSCX] + 1);
         s->palMap = gbLinear(A[GB_CLEAR] ? gbRam(A[GB_PAL_BANK]) : (int) A[GB_PAL_BANK], gbRam16(A[GB_PAL_MAP]));
         gbRamCopy(s->objs, A[GB_OBJECTS], (int) sizeof(s->objs));
-        gbRamCopy(s->mapObjs, A[GB_MAP_OBJECTS], (int) sizeof(s->mapObjs));
-        gbRamCopy(s->masks, A[GB_OBJECT_MASKS], (int) sizeof(s->masks));
+        gbRamCopy(s->mapObjs, A[GB_MAP_OBJECTS], 16 * 16);
+        gbRamCopy(s->masks, A[GB_OBJECT_MASKS], 16);
         gbRamCopy(s->used, A[GB_USED_SPRITES], (int) sizeof(s->used));
         gbRamCopy(s->vars, A[GB_VAR_SPRITES], (int) sizeof(s->vars));
         s->text = (gbRam(A[GB_FONT_LOADED]) >> 6) & 1;   // TEXT_STATE_F: a text box or a menu is up
@@ -397,9 +426,9 @@ static int gbBlock(const struct GbSnap* s, int bx, int by) {
     int b = gbBlockRaw(s, bx, by);
     if (gbGen != 2) return b;
     // Crystal's LoadMetatiles: block 0 is the border block (the rows above and below a map without a connection there
-    // are left at 0), and an id wraps at 128 (its doubling into 8 bits; Crystal Clear doubles in 16 and has all 256).
+    // are left at 0), and an id wraps at 128 (its doubling into 8 bits; Crystal Clear and Polished use all 256).
     b = b ? b : s->bgBlock;
-    return gbCfg[GB_CLEAR] ? b : b & 0x7F;
+    return gbPolished || gbCfg[GB_CLEAR] ? b : b & 0x7F;
 }
 static int gbBlockRaw(const struct GbSnap* s, int bx, int by) {
     int W = s->w + 6, H = s->h + 6;
@@ -420,6 +449,8 @@ static int gbBlockRaw(const struct GbSnap* s, int bx, int by) {
  * palette map's second half (the VRAM bank 1 tiles); the BG map holds the id without it. */
 static int gbTile(const struct GbSnap* s, int tx, int ty) {
     int blk = gbBlock(s, tx >> 2, ty >> 2);
+    if (gbPolished)
+      return s->tiles[blk * 16 + (ty & 3) * 4 + (tx & 3)];
     const uint8_t* b = gbRom(s->blockset + (uint32_t) blk * 16, 16);
     return b ? b[(ty & 3) * 4 + (tx & 3)] : 0;
 }
@@ -447,12 +478,19 @@ static inline uint8_t gbPalAttr(const struct GbSnap* s, int t) {
     return p ? (uint8_t) ((t & 1 ? *p >> 4 : *p) & 0x0F) : 0;
 }
 
+static uint8_t gbAttrAt(const struct GbSnap *s, int tx, int ty, int tile) {
+  if (gbPolished)
+    return s
+        ->attrs[gbBlock(s, tx >> 2, ty >> 2) * 16 + (ty & 3) * 4 + (tx & 3)];
+  return gbPalAttr(s, tile);
+}
 /** What the BG map holds for world tile (tx, ty), as gbScreenTile reads it: the tile id, and on Crystal its VRAM bank
  * as 0x100. */
 static inline int gbKey(const struct GbSnap* s, int tx, int ty) {
     int t = gbTile(s, tx, ty);
     if (gbGen != 2) return t;
-    return (t & 0x7F) | ((gbPalAttr(s, t) & 8) ? 0x100 : 0);
+    return (t & (gbPolished ? 0xff : 0x7f)) |
+           ((gbAttrAt(s, tx, ty, t) & 8) ? 0x100 : 0);
 }
 
 /** A map tile, not text: below the font (0x60), in either bank. */
@@ -635,6 +673,7 @@ struct GbObj { int x, y, tile, attr, under; bool over; };
 #define GB_MAX_OBJS 104
 static struct GbObj gbObjs[GB_MAX_OBJS];
 static int gbNObjs;
+static const uint8_t *gbObjectRomTiles[GB_MAX_OBJS];
 
 /** OAM as drawn, past the screen's edges too: an NPC walking off the right edge keeps its objects at x 168-176 for the
  * step (the hardware shows none of them; the strip shows all of them), one walking off the left or top edge wraps to
@@ -642,6 +681,7 @@ static int gbNObjs;
  * all-zero entry (nothing written yet). */
 static void gbObjsFromOam(void) {
     gbNObjs = 0;
+    memset(gbObjectRomTiles, 0, sizeof gbObjectRomTiles);
     if (!(gbLcdc & 0x02)) return;
     bool tall = gbLcdc & 0x04;
     for (int i = 0; i < 40 && gbNObjs < GB_MAX_OBJS; i++) {
@@ -747,6 +787,24 @@ static bool gbCrystalSprite(const struct GbSnap* s, int sprite, int* type, int* 
         *type = d[4];
         return true;
     }
+  if (gbPolished) {
+    for (int k = 0; k < 4 && sprite >= 0xf5; k++)
+      sprite = sprite <= 0xff ? s->vars[sprite - 0xf5] : 0;
+    if (!sprite || sprite >= 0xf5)
+      return false;
+    if (sprite >= 0xef) {
+      *type = 3;
+      *pal = 0;
+      return true;
+    }
+    const uint8_t *d =
+        gbRom(gbCfg[GB_SPRITE_DATA] + 4 * (uint32_t)(sprite - 1), 4);
+    if (!d)
+      return false;
+    *type = (d[3] >> 6) + 1;
+    *pal = d[3] & 7;
+    return true;
+  }
     for (int k = 0; k < 4 && sprite >= 0x8C; k++) sprite = sprite - 0x8C < (int) sizeof(s->vars) ? s->vars[sprite - 0x8C] : 0;
     if (!sprite || sprite >= 0x8C) return false;
     if (sprite >= 0x67) { *type = 1; *pal = 0; return true; }
@@ -792,6 +850,8 @@ static bool gbCrystalObjectNow(int h1, int h2, uint16_t flag) {
     return h1 < h2 ? hour >= h1 && hour <= h2 : hour >= h1 || hour <= h2;
 }
 
+#include "pk_wide_gb_polished.inc"
+
 /** Crystal: every NPC OAM doesn't show. Those in an object struct where the game would draw them (the game keeps a
  * struct for an object up to a step past the screen's edges, OFF_SCREEN); further out, the map's objects not in one,
  * standing where the game will put them when the player comes near (their own spot, facing their movement's way),
@@ -828,6 +888,10 @@ static void gbObjsOffScreenCrystal(const struct GbSnap* s, int ox, int oy) {
         if (step & 1) base += 0x80;   // a walking frame: Facings' tiles + $80 ...
         if (step == 3 && dir < 2) gbAddStanding(sx0, sy0, 3, base - 8 + dir * 4, attr, grass);   // ... down / up's 2nd mirrored
         else gbAddStanding(sx0, sy0, dir, base, attr, grass);
+    }
+    if (gbPolished) {
+      pcWideObjects(s, ox, oy, fromOam);
+      return;
     }
     for (int n = 1; n < 16; n++) {
         const uint8_t* m = &s->mapObjs[n * 16];
@@ -875,7 +939,8 @@ static void gbDraw(const struct GbSnap* s, int ox, int oy, int x0, int y0, int w
                 lastTx = tx;
                 t = gbTile(s, tx, ty);
                 if (gbGen == 2) {
-                    attr = gbPalAttr(s, t);
+                  attr = gbAttrAt(s, tx, ty, t);
+                  if (!gbPolished)
                     t &= 0x7F;
                 } else {
                     attr = gbAttrSeen[t] ? gbTileAttr[t] : gbAttrDefault;
@@ -923,6 +988,11 @@ static void gbDraw(const struct GbSnap* s, int ox, int oy, int x0, int y0, int w
                 int i = o->x + xx - x0;
                 if (i < 0 || i >= w || gbObjMask[j * w + i]) continue;
                 int idx = gbTilePixel(tbase, (o->attr & 0x20) ? 7 - xx : xx, row);
+                if (gbObjectRomTiles[k]) {
+                  int x = (o->attr & 0x20) ? 7 - xx : xx;
+                  const uint8_t *tile = gbObjectRomTiles[k] + row * 2;
+                  idx = ((tile[0] >> (7 - x)) & 1) | (((tile[1] >> (7 - x)) & 1) << 1);
+                }
                 if (!idx) continue;
                 gbObjMask[j * w + i] = 1;
                 uint8_t bg = gbBgIdx[j * w + i];
@@ -1095,9 +1165,10 @@ static int gbSinceField = 1000;   // frames since the field (or a whole black / 
 static int gbMix, gbLastScore = -1, gbLastMode = PK_WIDE_MODE_NONE, gbLastClose = 1, gbLastScene = PK_WIDE_SCENE_OFF;
 
 int pk_wide_gb_knows(uint32_t crc) {
-    for (size_t i = 0; i < sizeof(GB_ROMS) / sizeof(GB_ROMS[0]); i++)
-        if (GB_ROMS[i].crc == crc) return 1;
-    return 0;
+  for (size_t i = 0; i < sizeof(GB_ROMS) / sizeof(GB_ROMS[0]); i++)
+    if (GB_ROMS[i].crc == crc)
+      return 1;
+  return 0;
 }
 
 int pk_wide_gb_configure(uint32_t crc) {
@@ -1107,11 +1178,25 @@ int pk_wide_gb_configure(uint32_t crc) {
             gbCfg = GB_ROMS[i].a;
             gbGen = GB_ROMS[i].gen;
         }
+    gbPolished = false;
+    gbDecode = NULL;
+    pcWideSpriteCacheReset();
     gbAttrBlockset = 0;
     memset(gbLz, 0, sizeof(gbLz));
     gbLzNext = 0;
     pk_wide_gb_reset();
     return gbCfg != NULL;
+}
+
+int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG],
+                                 pk_wide_gb_decode_fn decode) {
+    pk_wide_gb_configure(0);
+    if (!addresses || !decode) return 0;
+    gbCfg = addresses;
+    gbGen = 2;
+    gbPolished = true;
+    gbDecode = decode;
+    return 1;
 }
 
 void pk_wide_gb_reset(void) {
