@@ -206,6 +206,10 @@ void refresh() {
   }
   ds_map_update(map,snapshot);
 }
+void refresh_battle_companion(){
+  ds_read_battle_companion(game,read32,nds->bus.main_ram.get(),nds->bus.main_ram_size(),snapshot,shell.battle);
+  shell.update_battle();
+}
 void choose_layout() {
   int bits=game?pk_nds_field_state(game,read32,nullptr,0):0;
   const bool inBattle=bits&PK_NDS_FIELD_BATTLE;
@@ -804,7 +808,7 @@ void controls() {
       }
       if(shortcut.action==QUICK_HUD){shell.settings.hud=!shell.settings.hud;shell.save();}
       else{
-        refresh();companion=true;
+        refresh();refresh_battle_companion();companion=true;
         shell.mapX=snapshot.mapX;shell.mapY=snapshot.mapY;
       }
       quickOpen=false;
@@ -813,7 +817,7 @@ void controls() {
   }
   if(companionTap) {
     companion=!companion;
-    if(companion){refresh();shell.mapX=snapshot.mapX;shell.mapY=snapshot.mapY;}
+    if(companion){refresh();refresh_battle_companion();shell.mapX=snapshot.mapX;shell.mapY=snapshot.mapY;}
   }
   if(!companion) {
     if(shell.screen_id()>=0 && hit(shell.screen_id())){
@@ -930,7 +934,7 @@ RETRO_API bool retro_unserialize(const void* data,size_t n){
     if(!dirty)nds->cart->clear_sram_dirty();
     if(sram.data()!=frontendSave)log(RETRO_LOG_WARN,"PokeDaisy DS: the save buffer moved on a state load\n");
   }
-  if(ok){pd_ds::stageReady=false;pd_ds::restoreGrace=4;pd_ds::set_wild_rates();}
+  if(ok){pd_ds::shell.battle={};pd_ds::shell.update_battle();pd_ds::stageReady=false;pd_ds::restoreGrace=4;pd_ds::set_wild_rates();}
   if(ok){pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;}
   return ok;
 }
@@ -942,6 +946,10 @@ RETRO_API void retro_run(){
   const bool menuWasOpen=pd_ds::companion || pd_ds::quickOpen;
   pd_ds::controls();
   const int field=pk_nds_field_state(pd_ds::game,pd_ds::read32,nullptr,0);
+  if(pd_ds::shell.frame.battleWasOn && !(field&PK_NDS_FIELD_BATTLE)){
+    pd_ds::shell.battle={};
+    pd_ds::shell.update_battle();
+  }
   pd_ds::update_battle(menuWasOpen?0:pd_ds::buttons&~previous,field);
   if(pd_ds::companion || pd_ds::quickOpen){
     if(pd_ds::quickOpen)pd_ds::draw_quick();else pd_ds::draw_companion();

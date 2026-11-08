@@ -362,6 +362,17 @@ int pd_ui_dex_machine_row(int levels);
 void pd_ui_dex_moves(struct pd_canvas*, int x, int y, int w, int h,
                      const struct pd_dex_moves_source*, int selected);
 
+// Battle readers supply their own move IDs and species data.
+struct pd_battle_source {
+    void* ctx;
+    const char* (*species)(void*, int);
+    const char* (*move)(void*, int);
+    int (*moveType)(void*, int);
+    int (*movePower)(void*, int);
+    void (*speciesTypes)(void*, int, int*, int*);
+    bool (*icon)(void*, struct pd_canvas*, int, int, int, bool);
+};
+
 struct pd_ui {
     // Optional backend content inside the shared companion frame and tab bar.
     unsigned availableTabs; // 0 preserves the original complete tab set.
@@ -378,6 +389,7 @@ struct pd_ui {
     const struct pd_party_source* partySource;
     int summaryPage;
     bool pixelOff; // SCREEN doesn't offer PIXEL 1x: EXPAND can't hold its speed that wide
+    const struct pd_battle_source* battleSource;
     struct pd_binput* battleInput; // the host's, NULL = no touch controls
     const struct pd_snapshot* drawn; // what the last pd_ui_draw showed, for the taps on it
     const struct pd_game* drawnGame;

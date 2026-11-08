@@ -54,6 +54,15 @@ This package defaults to DSperate Auto frameskip and 512×384 battle output.
 Auto only skips rendering when the frontend reports that its audio buffer
 is running low. Reload the ROM after changing frameskip.
 
+### DS Battle companion
+
+Tap the companion button (L2 by default) during a supported single battle to open
+**Battle Info**. It shows the active matchup, your moves and PP, and type
+effectiveness. Use the D-pad and A to choose **Suggestions**, which ranks
+party members and their usable moves. In trainer battles, previously seen
+opponents can be selected from the roster. B returns to Info or closes the
+companion. The game remains paused while you browse.
+
 ### Platinum One Screen battle strip
 
 On Platinum USA revision 1, **Battle Strip** defaults on with **One Screen**

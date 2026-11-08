@@ -402,6 +402,8 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     c = &view;
     if (ui->overlay == PD_OVERLAY_MORE) {
         ui_more_page(ui, c, g);
+    } else if (ui->tab == PD_TAB_BATTLE && ui->battleSource) {
+        ui_battle_tab(ui, c, g, s);
     } else if (ui->content) {
         // A backend's own tab content (libretro's DS companion) inside the shared frame and bar.
         ui->content(ui->contentCtx, ui, c);

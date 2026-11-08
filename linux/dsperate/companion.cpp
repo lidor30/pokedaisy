@@ -232,8 +232,8 @@ DsCompanion read_other_companion(const Ram& ram,DsGame game){
 }
 }
 
-bool ds_decode_mon(const uint8_t* raw,size_t size,DsMon& mon){
-  return decode_mon(raw,size,mon,DsGame::Platinum);
+bool ds_decode_mon(const uint8_t* raw,size_t size,DsMon& mon,DsGame game){
+  return decode_mon(raw,size,mon,game);
 }
 DsCompanion ds_read_companion(const uint8_t* ram,size_t size,DsGame game) {
   const Ram memory{ram,size};

@@ -37,7 +37,7 @@ struct DsCompanion {
 };
 bool ds_event_flag(const DsCompanion&,unsigned flag);
 int ds_unova_month(const uint8_t* ram,size_t size,DsGame game);
-bool ds_decode_mon(const uint8_t* raw, size_t size, DsMon& mon);
+bool ds_decode_mon(const uint8_t* raw, size_t size, DsMon& mon, DsGame game=DsGame::Platinum);
 DsCompanion ds_read_companion(const uint8_t* ram, size_t size,DsGame game=DsGame::Platinum);
 const char* ds_species(int id,DsGame game=DsGame::Platinum);
 const char* ds_move(int id,DsGame game=DsGame::Platinum);

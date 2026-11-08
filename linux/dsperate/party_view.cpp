@@ -10,6 +10,15 @@ extern "C" {
 #include "pd_stats.h"
 #include "pd_experience.h"
 }
+bool ds_draw_party_icon(pd_canvas* c,const std::vector<std::vector<uint32_t>>& icons,int id,int x,int y,int scale,bool faded,int size){
+  if(id<1 || size_t(id)>=icons.size() || icons[id].size()!=1024)return false;
+  for(int yy=0;yy<size;++yy)for(int xx=0;xx<size;++xx){
+    const auto color=icons[id][(yy*32/size)*32+xx*32/size];
+    if(color>>24)pd_fill(c,x+xx*scale,y+yy*scale,scale,scale,faded?(color&0xfefefe)>>1:color&0xffffff);
+  }
+  return true;
+}
+
 namespace {
 // Android's PlatinumPartyPalette, HeartGoldPartyPalette and BlackPartyPalette.
 constexpr pd_party_source_palette platinum{
@@ -39,15 +48,6 @@ constexpr pd_party_source_palette unova{
   0xFBFBFB,0x828282,0x303030,0x303030,0x00FB49,0x00BA20,
   {},true,true
 };
-bool draw_icon(pd_canvas* c,const std::vector<std::vector<uint32_t>>& icons,int id,int x,int y,int scale,bool faded,int size=32){
-  if(id<1 || size_t(id)>=icons.size() || icons[id].size()!=1024)return false;
-  for(int yy=0;yy<size;++yy)for(int xx=0;xx<size;++xx){
-    const auto color=icons[id][(yy*32/size)*32+xx*32/size];
-    if(color>>24)pd_fill(c,x+xx*scale,y+yy*scale,scale,scale,faded?(color&0xfefefe)>>1:color&0xffffff);
-  }
-  return true;
-}
-
 void party_summary(pd_canvas* c,const DsCompanion& s,const std::vector<std::vector<uint32_t>>& icons,int selected,
                    int page,const DsDexArt* art,int learnRow,int* learnLast){
   const auto& mon=s.party[selected];
@@ -55,7 +55,7 @@ void party_summary(pd_canvas* c,const DsCompanion& s,const std::vector<std::vect
   const auto icon = [](void* data, pd_canvas* canvas, int slot, int x, int y, bool small) {
     const auto& context = *static_cast<Context*>(data);
     const auto& member = context.s.party[slot];
-    return draw_icon(canvas, context.icons, member.egg ? ds_egg_icon(context.s.game) : member.species,
+    return ds_draw_party_icon(canvas, context.icons, member.egg ? ds_egg_icon(context.s.game) : member.species,
                      x, y, 1, false, small ? 16 : 32);
   };
   pd_summary_view shared{};
@@ -126,7 +126,7 @@ void ds_party_view(pd_canvas* c,const DsCompanion& s,const std::vector<std::vect
   source.icon=[](void* data,pd_canvas* c,const pd_mon* m,int x,int y,int scale,bool faded){
     auto& ctx=*static_cast<Context*>(data);const auto& mon=ctx.s.party[m-ctx.view.party];
     int id=mon.egg?ds_egg_icon(ctx.s.game):mon.species;
-    return draw_icon(c,ctx.icons,id,x,y,scale,faded);
+    return ds_draw_party_icon(c,ctx.icons,id,x,y,scale,faded);
   };
   pd_ui ui{};ui.partySource=&source;ui.summarySlot=-1;
   ui.pressedId=-1;pd_game game{};

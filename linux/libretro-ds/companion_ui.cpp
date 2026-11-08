@@ -18,6 +18,7 @@
 #include <unistd.h>
 extern "C" {
 #include "pd_style.h"
+#include "pd_tables.h"
 }
 namespace {
 constexpr int dsTabs=(1<<PD_TAB_PARTY)|(1<<PD_TAB_BAG)|(1<<PD_TAB_MAP)|(1<<PD_TAB_GUIDE)|(1<<PD_TAB_DEX);
@@ -219,15 +220,40 @@ void DsCompanionUi::draw_body(pd_ui* u,pd_canvas* c){
     ds_map_actions(c,mapAction);
   }
 }
+void DsCompanionUi::update_battle(){
+  const bool was=frame.battleWasOn;
+  pd_ui_update(&frame,&battle);
+  if(was!=frame.battleWasOn){
+    frame.focusId=-1;
+    picker=-1;
+  }
+}
 void DsCompanionUi::draw(pd_canvas* c,const DsCompanion& s,bool match,const DsMapArt& map,const std::vector<std::vector<uint32_t>>& monIcons){
   snapshot=&s;art=&map;icons=&monIcons;supported=match;
   settings.darkMode=darkMode;
   pd_look_apply(nullptr,&settings);
-  pd_game game{};pd_snapshot state{};pd_host_info host{};host.frontendOwnsPlayback=true;
+  battleSource={
+    this,
+    [](void* ctx,int id){return ds_species(id,static_cast<DsCompanionUi*>(ctx)->game);},
+    [](void* ctx,int id){return ds_move(id,static_cast<DsCompanionUi*>(ctx)->game);},
+    [](void* ctx,int id){return ds_move_type(id,static_cast<DsCompanionUi*>(ctx)->game);},
+    [](void* ctx,int id){return ds_move_power(id,static_cast<DsCompanionUi*>(ctx)->game);},
+    [](void* ctx,int id,int* a,int* b){
+      const auto game=static_cast<DsCompanionUi*>(ctx)->game;
+      *a=ds_species_type(id,0,game);if(*a<0)*a=PD_TYPE_NONE;
+      *b=ds_species_type(id,1,game);if(*b<0)*b=PD_TYPE_NONE;
+    },
+    [](void* ctx,pd_canvas* c,int id,int x,int y,bool faded){
+      return ds_draw_party_icon(c,*static_cast<DsCompanionUi*>(ctx)->icons,id,x,y,1,faded);
+    },
+  };
+  frame.battleSource=&battleSource;
+  frame.keyFocus=frame.tab==PD_TAB_BATTLE;
+  pd_host_info host{};host.frontendOwnsPlayback=true;
   frame.keepBackdrop=true;
   ds_companion_backdrop(c,this->game,frame.tab,pocket);
   pd_ui_tab_menu_focus(&frame,choice);
-  pd_ui_draw(&frame,c,&game,&state,&host);
+  pd_ui_draw(&frame,c,&presentation,&battle,&host);
   pd_ui_tab_menu_focus(&frame,-1);
   if(frame.tab==PD_TAB_MAP && placeRow>=0){
     const int count=std::min(8,int(mapPlaces.size()));
@@ -289,6 +315,13 @@ bool DsCompanionUi::control(unsigned pressed){
       }else if(setting==Battles || setting==Hud || setting==QuickStyle || setting>=BattleStrip)apply(setting,!value(setting));
       else{picker=setting;choice=value(setting);}
     }return false;
+  }
+  if(frame.tab==PD_TAB_BATTLE){
+    if(hit(RETRO_DEVICE_ID_JOYPAD_B))return !pd_ui_back(&frame);
+    if(dx)pd_ui_focus_move(&frame,dx<0?2:3);
+    else if(dy)pd_ui_focus_move(&frame,dy<0?0:1);
+    if(hit(RETRO_DEVICE_ID_JOYPAD_A))pd_ui_focus_press(&frame);
+    return false;
   }
   if(frame.tab==PD_TAB_PARTY){
     int n=snapshot?int(snapshot->party.size()):0;
