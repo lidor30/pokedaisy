@@ -101,7 +101,7 @@ Flipped from the companion, it switches right away.
 
 Rather not see the small button at the bottom of the screen's right edge? Turn off `COMPANION BUTTON`, right under `COMPANION VIEW`. `BACK` and the HUD's `COMPANION` button still open the companion.
 
-On a tall screen, about 2.5 inches high or more like the Retroid Pocket 6, the companion's text is a little smaller in the window, so more fits on each page.
+On a tall screen, about 2.5 inches high or more like the Retroid Pocket 6, the companion's text is a little smaller in the window, so more fits on each page. On a tablet the window stops at about a handheld's size, and so do the HUD's map and a Pokémon's summary, so the game still shows around them.
 
 ### The window
 

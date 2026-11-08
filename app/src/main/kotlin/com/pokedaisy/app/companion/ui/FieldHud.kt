@@ -1152,8 +1152,8 @@ private fun HudMapPanel(snapshot: SnapshotView, m: GbaTextMetrics, fly: FlyActio
     HudPanelScrim(onClose, Alignment.Center) { window ->
         BoxWithConstraints(Modifier.fillMaxSize().padding(u * 10), contentAlignment = Alignment.Center) {
             val gap = u * 3
-            // The title's height: a line and its 6u padding each way.
-            val mapH = maxHeight - titleM.lineHeight - titleM.u * 12 - gap
+            // The title's height: a line and its 6u padding each way. Title and map no taller than the companion window.
+            val mapH = minOf(maxHeight, OVERLAY_MAX_HEIGHT_DP.dp) - titleM.lineHeight - titleM.u * 12 - gap
             // The map at its own shape, never stretched: as tall as there's room for, or as wide.
             val mapW = minOf(maxWidth, mapH * aspect)
             Column(Modifier.width(mapW).then(window), verticalArrangement = Arrangement.spacedBy(gap)) {
@@ -1183,8 +1183,10 @@ private fun HudSummaryPanel(
     }
     HudPanelScrim(onClose, Alignment.Center) { window ->
         BoxWithConstraints(Modifier.fillMaxSize().padding(u * 10), contentAlignment = Alignment.Center) {
-            // The companion's own proportions (the Thor's bottom screen), as tall as there's room for.
-            Box(Modifier.width(minOf(maxWidth, maxHeight * 1.15f)).fillMaxHeight().then(window)) {
+            // The companion's own proportions (the Thor's bottom screen), as tall as there's room for, up to the companion
+            // window's height.
+            val h = minOf(maxHeight, OVERLAY_MAX_HEIGHT_DP.dp)
+            Box(Modifier.width(minOf(maxWidth, h * 1.15f)).height(h).then(window)) {
                 CompositionLocalProvider(LocalOptionLook provides look) {
                     MonDetailScreen(
                         snapshot.party, index.coerceIn(0, (snapshot.party.size - 1).coerceAtLeast(0)),
