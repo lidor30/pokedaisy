@@ -3341,23 +3341,35 @@ static bool bg0Across(int y) {
     return true;
 }
 
-/** The rows a full-width bar on BG0 crosses: BG0 shows at both of the screen's edges (Unbound's START menu, its quest
- * bar over the field and its icons under it). Past the edges they're holes - the row's own edge pixel goes on, as a
- * battle's text box band does - instead of the map going on beside the bar. Line by line, as the PPU drew them. */
+/** BG0 shows at both of the screen's edges on line y and is opaque all the way across it. Line y's registers. */
 static bool barRow(int y) {
     useLine(y);
     return (io(0) & 0x100) && barEdge(0, y) && barEdge(PK_WIDE_W - 1, y) && bg0Across(y);
 }
 
+/** The rows a full-width bar on BG0 crosses (Unbound's START menu, its quest bar over the field and its icons under it;
+ * FireRed's quest-log recap bars): [barRow]s running from the screen's top or bottom edge. Past the edges they're holes -
+ * the row's own edge pixel goes on, as a battle's text box band does - instead of the map going on beside the bar.
+ * Unbound's text box is BG0 across too, its white outline at both edges, but the field shows under it (rows 116-157):
+ * carried out, it was a white box behind every message (1.4.0, a Discord report), so a band that touches neither edge
+ * keeps the map beside it. Line by line, as the PPU drew them. */
+static void barRows(uint8_t bars[PK_WIDE_H]) {
+    memset(bars, 0, PK_WIDE_H);
+    int top = 0;
+    while (top < PK_WIDE_H && barRow(top)) bars[top++] = 1;
+    for (int y = PK_WIDE_H - 1; y >= top && barRow(y); y--) bars[y] = 1;
+    useLive();
+}
+
 static void markBarRows(int x0, int y0, int w, int h) {
+    uint8_t bars[PK_WIDE_H];
+    barRows(bars);
     for (int j = 0; j < h; j++) {
         int y = y0 + j;
-        if (y < 0 || y >= PK_WIDE_H) continue;
-        if (!barRow(y)) continue;
+        if (y < 0 || y >= PK_WIDE_H || !bars[y]) continue;
         for (int x = 0; x < w; x++)
             if (!onFrame(x0 + x, y)) holeBuf[j][x] = 1;
     }
-    useLive();
 }
 
 /** A screen effect is up: lines drawn with their own scroll or windows (a transition's slices, wedges, bands). */
@@ -3749,9 +3761,11 @@ static void cacheDraw(const struct Snap* s, const uint32_t* frame, uint32_t* out
     frameTaken = true;
     drawObjects(s, cx, cy, v.x, v.y, v.x + v.w, v.y + v.h, out, v.w, alpha);
     ringOn = false;
+    uint8_t bars[PK_WIDE_H];
+    barRows(bars);
     for (int j = 0; j < v.h; j++) {
         int Y = v.y + j;
-        if (Y < 0 || Y >= PK_WIDE_H || !barRow(Y)) continue;
+        if (Y < 0 || Y >= PK_WIDE_H || !bars[Y]) continue;
         needFrame();
         uint32_t* row = out + j * v.w;
         for (int x = 0; x < left; x++) row[x] = frame[Y * PK_WIDE_W];
