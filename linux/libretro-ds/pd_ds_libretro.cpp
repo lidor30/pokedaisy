@@ -30,9 +30,12 @@
 #include "bag_view.h"
 #include "dex_view.h"
 #include "map_view.h"
+#include "guide_view.h"
 #include "browser.h"
 #include "data_gen.h"
 #include "pk_nds_field.h"
+#include <ctime>
+#include "pk_nds_call_memory.h"
 #include "core/crypto/sha1.h"
 #include <fstream>
 #include <stdexcept>
@@ -51,12 +54,31 @@ retro_input_state_t input;
 const PkNdsFieldGame* game;
 const DsBattleStyle* battleStyle=nullptr;
 DsGame companionGame=DsGame::Unsupported;
+bool soulSilver=false;
 DsCompanion snapshot;
 DsMapArt map;
 std::vector<std::vector<uint32_t>> icons,hudItemIcons;
 int repelFull=0;
 bool supported=false, companion=false, quickOpen=false, swallowMenuInput=false;
 int quickSelected=0,companionHold=0;
+struct FlyDestination { int x,y; const char* name; int header=0; };
+enum class FlyStage { Idle, Menu, Party, Member, Move, Town, Release };
+struct FlyJob {
+  FlyStage stage=FlyStage::Idle;
+  unsigned started=0,ready=0,key=0,tapFrames=0;
+  int slot=0,x=0,y=0;
+  FlyDestination destination{};
+  bool active() const {return stage!=FlyStage::Idle;}
+} flyJob;
+std::vector<FlyDestination> flyDestinations;
+int flySelected=0,flySlot=-1;
+uint32_t flyPersonality=0;
+bool flyPicker=false,heldQuickConfirm=false;
+int pcJob=0,flyCallJob=0;
+bool flyChecking=false,autoRunThisFrame=false;
+const char* flyWhy=nullptr;
+constexpr size_t shortcutCapacity=6;
+bool stageReady=false;
 uint32_t quick_pixels[341*256];
 DsCompanionUi shell;
 DsScenePolicy scene;
@@ -87,6 +109,18 @@ uint32_t read32(uint32_t a) {
   if (!nds || a<0x02000000 || a>0x023ffffc) return 0;
   return nds->bus.dma_read32(ds::Cpu::ARM9,a);
 }
+void write32(uint32_t a,uint32_t value) {
+  if(nds && a>=0x02000000 && a<=0x023ffffc)nds->bus.dma_write32(ds::Cpu::ARM9,a,value);
+}
+void set_wild_rates(){
+  const auto now=std::time(nullptr);
+  const auto* local=std::localtime(&now);
+  const int savedMonth=ds_unova_month(nds->bus.main_ram.get(),nds->bus.main_ram_size(),companionGame);
+  const int month=savedMonth>=1 && savedMonth<=12?savedMonth:local?local->tm_mon+1:1;
+  const auto rates=ds_wild_rates(companionGame,month,soulSilver);
+  pk_nds_field_set_rates(rates.triples,rates.count);
+  pk_nds_field_reset_wild();
+}
 void clear_battle() {
   battleStrip={};battleTap={};drawnBattle={};battleName.clear();battlePanelArtValid=false;
   battleHeld=0;holdStrip=restoreGrace=0;battleActive=injectBattleTap=wasInBattle=false;
@@ -99,12 +133,12 @@ DsBattleView battle_view(int bits) {
   if(!wants_strip() || (buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT)))return {};
   return ds_read_battle(game,read32,bits);
 }
-void update_battle(unsigned pressed) {
+void update_battle(unsigned pressed,int field) {
   battleHeld&=buttons;
   if(!wants_strip() || (buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT))) {
     battleStrip={};battleTap={};injectBattleTap=false;return;
   }
-  const auto view=battle_view(pk_nds_field_state(game,read32,nullptr,0));
+  const auto view=battle_view(field);
   if(view.panel!=DsBattlePanel::Native)battleHeld|=buttons&battleKeys;
   if(restoreGrace>0){--restoreGrace;pressed=0;}
   auto hit=[&](unsigned id){return bool(pressed&(1u<<id));};
@@ -115,12 +149,26 @@ void update_battle(unsigned pressed) {
   injectBattleTap=battleStrip.tapFrames>0;
   battleTap=battleStrip.tick();
 }
+void clear_field_actions() {
+  pcJob=flyCallJob=0;
+  flyChecking=autoRunThisFrame=false;
+  flyWhy=nullptr;
+  pk_nds_field_reset_wild();
+  pk_nds_call_reset();
+}
+
 void clear() {
+  clear_field_actions();
+  stageReady=false;
+  pk_nds_field_set_rates(nullptr,0);
+  shell.dexArt={};shell.dexPage={};shell.dexCachedSpecies=0;
   clear_battle();
+  flyJob={};flyPicker=heldQuickConfirm=false;flyDestinations.clear();
   supported=companion=quickOpen=select_used=select_pulse=false;quickSelected=0; game=nullptr; snapshot={};map={};icons.clear();hudItemIcons.clear();repelFull=0;
   companionHold=0;
   battleStyle=nullptr;
   companionGame=DsGame::Unsupported;
+  soulSilver=false;
   old_buttons=buttons=tick=0;std::fill(held_frames,held_frames+16,0);
   screen_override=0;cursor_x=128;cursor_y=96;layout=0;
   scene.reset();arrangement={};manualTouch=fieldValid=fieldMenuFlow=false;
@@ -151,7 +199,11 @@ void refresh() {
   auto next=ds_read_companion(nds->bus.main_ram.get(),nds->bus.main_ram_size(),companionGame);
   // On the newer games an invalid transient read can occur as the game
   // decrypts a record in place. Keep the last coherent snapshot.
-  if(next.valid||companionGame==DsGame::Platinum)snapshot=std::move(next);
+  if(next.valid||companionGame==DsGame::Platinum){
+    snapshot=std::move(next);
+    shell.guideLoadedPage=-1;
+    pd_ui_guide_reset(&shell.frame);
+  }
   ds_map_update(map,snapshot);
 }
 void choose_layout() {
@@ -244,19 +296,229 @@ void draw_companion() {
   for(unsigned i=0;i<341*256;++i)pixels[i]=ds_rgb565(ui_pixels[i]);
   video(pixels,width,height,width*2);
 }
-struct DsShortcut { pd_tab tab; const char* label; quick_action action=QUICK_COMPANION; };
 constexpr int repelItems[]={79,76,77};
 int repelChoices[3],repelCount=0,repelSelected=0;
 std::string repelLabels[3];
 bool repelPicker=false;
-bool field_free(){
-  const int bits=game?pk_nds_field_state(game,read32,nullptr,0):0;
+bool field_free(int bits){
   return (bits&PK_NDS_FIELD_SCREEN)&&!(bits&(PK_NDS_FIELD_LOCKED|PK_NDS_FIELD_BATTLE|PK_NDS_FIELD_MENU));
 }
+bool field_free(){return field_free(pk_nds_field_state(game,read32,nullptr,0));}
 void quick_notice(const char* label){
   retro_message message{label,120};
   environment(RETRO_ENVIRONMENT_SET_MESSAGE,&message);
 }
+// DSperate's CPU-visible bus handles TCM mirrors and invalidates recompiled
+// code on writes. The field job and its ROM-specific recipes are shared with Android.
+PkNdsCallMemory field_call_memory(){
+  constexpr auto cpu=ds::Cpu::ARM9;
+  return {nds.get(),
+    [](void* ctx,uint32_t addr){return static_cast<ds::NDS*>(ctx)->bus.dma_read32(cpu,addr);},
+    [](void* ctx,uint32_t addr,uint32_t value){static_cast<ds::NDS*>(ctx)->bus.dma_write32(cpu,addr,value);},
+    [](void* ctx,uint32_t addr,void* dst,uint32_t len){
+      auto& bus=static_cast<ds::NDS*>(ctx)->bus;
+      auto* bytes=static_cast<uint8_t*>(dst);
+      for(uint32_t i=0;i<len;++i)bytes[i]=bus.dma_read8(cpu,addr+i);
+    },
+    [](void* ctx,uint32_t addr,const void* src,uint32_t len){
+      auto& bus=static_cast<ds::NDS*>(ctx)->bus;
+      const auto* bytes=static_cast<const uint8_t*>(src);
+      for(uint32_t i=0;i<len;++i)bus.dma_write8(cpu,addr+i,bytes[i]);
+    }};
+}
+void open_pc(){
+  if(!field_free() || !pk_nds_call_supported(game) || nds->cpu(ds::Cpu::ARM9).itcm_size<0x02000000){
+    quick_notice("PC is unavailable here.");
+    return;
+  }
+  pcJob=pk_nds_call_action(field_call_memory(),game,PK_NDS_ACTION_PC,nullptr);
+  if(!pcJob){quick_notice("PC is unavailable here.");return;}
+  heldQuickConfirm=true;
+  quickOpen=false;
+}
+void update_pc(){
+  if(!pcJob)return;
+  pk_nds_call_frame(field_call_memory(),game);
+  const int status=pk_nds_call_status(pcJob);
+  if(!status)return;
+  uint32_t results[PK_NDS_MAX_RESULTS];
+  if(status<0 || (game->gen==5 && (!pk_nds_call_results(pcJob,results) || !results[1])))
+    quick_notice("PC could not open here.");
+  pcJob=0;
+}
+
+// Verified native overlays for Black 2 USA/Europe revision 0. Use input so the
+// game checks field eligibility and owns confirmation, animation and travel.
+constexpr int BLACK2_PARTY_OVERLAY=165,BLACK2_FLY_OVERLAY=144;
+bool fly_supported(){return companionGame==DsGame::Black2 || (pk_nds_call_supported(game)&&!ds_fly_spots(companionGame).empty());}
+int field_overlay(){
+  const uint32_t system=read32(game->fieldSystemPtr);
+  const uint32_t procs=read32(system+game->offProcSys);
+  const uint32_t proc=read32(procs+game->offCurrentProc);
+  return proc>=0x02000000&&proc<0x02400000?int(read32(proc+game->offProcOverlay)):-1;
+}
+
+void open_fly(){
+  if(!field_free()){quick_notice("Fly is available in the overworld.");return;}
+  const auto current=ds_read_companion(nds->bus.main_ram.get(),nds->bus.main_ram_size(),companionGame);
+  if(!current.valid){quick_notice("Party data is unavailable.");return;}
+  const auto flyer=std::find_if(current.party.begin(),current.party.end(),[](const DsMon& mon){
+    return !mon.egg&&std::find(mon.moves.begin(),mon.moves.end(),19)!=mon.moves.end();
+  });
+  if(flyer==current.party.end()){quick_notice("No one in your party knows Fly.");return;}
+  flySlot=int(flyer-current.party.begin());
+  flyPersonality=flyer->personality;
+  flyDestinations.clear();
+  if(companionGame!=DsGame::Black2){
+    const auto& spots=ds_fly_spots(companionGame);
+    const uint32_t args[]={game->gen!=5?uint32_t(spots.size()):0,0,0,0};
+    if(nds->cpu(ds::Cpu::ARM9).itcm_size>=0x02000000)
+      flyCallJob=pk_nds_call_action(field_call_memory(),game,PK_NDS_ACTION_FLY_CHECK,args);
+    if(!flyCallJob){quick_notice("Fly is unavailable here.");return;}
+    flyChecking=true;
+    heldQuickConfirm=true;
+    quickOpen=false;
+    return;
+  }
+  for(const auto& point:pd_ds_data::sequelMapPoints){
+    const int kind=point[4],bit=point[5]-2469;
+    if((kind!=0&&kind!=3&&kind!=5)||bit<0||bit>=62||!(current.arrivals>>bit&1))continue;
+    flyDestinations.push_back({point[2],point[3],ds_place(point[0],companionGame)});
+  }
+  if(flyDestinations.empty()){quick_notice("No Fly destinations unlocked.");return;}
+  flySelected=0;
+  flyPicker=true;
+}
+
+void update_fly_call(){
+  if(!flyCallJob)return;
+  pk_nds_call_frame(field_call_memory(),game);
+  const int status=pk_nds_call_status(flyCallJob);
+  if(!status)return;
+  uint32_t results[PK_NDS_MAX_RESULTS]{};
+  const bool ok=status>0 && pk_nds_call_results(flyCallJob,results);
+  flyCallJob=0;
+  if(!flyChecking){
+    if(!ok || (game->gen==5 && !results[1]))quick_notice("Fly could not start here.");
+    return;
+  }
+  flyChecking=false;
+  if(!ok || results[1]){
+    const char* message="Fly is unavailable here.";
+    if(ok && game->gen!=5 && results[1]==2)message="You need the badge to use Fly.";
+    if(ok && game->gen!=5 && results[1]==3)message="You cannot Fly with a partner.";
+    flyWhy=message;
+    quickOpen=true;
+    return;
+  }
+  const auto current=ds_read_companion(nds->bus.main_ram.get(),nds->bus.main_ram_size(),companionGame);
+  const auto& spots=ds_fly_spots(companionGame);
+  for(size_t i=0;i<spots.size();++i){
+    const auto& spot=spots[i];
+    const bool open=companionGame==DsGame::Platinum
+      ? i+2<std::size(results) && results[i+2] : ds_fly_unlocked(current,spot);
+    if(open)flyDestinations.push_back({spot.x,spot.z,ds_place(spot.nameMap,companionGame),spot.header});
+  }
+  if(flyDestinations.empty()){
+    flyWhy="No Fly destinations unlocked";
+    quickOpen=true;
+    return;
+  }
+  flySelected=0;
+  flyPicker=quickOpen=true;
+}
+
+void confirm_fly(){
+  if(!field_free()){quick_notice("Fly is unavailable here.");return;}
+  const auto current=ds_read_companion(nds->bus.main_ram.get(),nds->bus.main_ram_size(),companionGame);
+  if(flySlot<0 || size_t(flySlot)>=current.party.size()){
+    quick_notice("Party data is unavailable.");return;
+  }
+  const auto& flyer=current.party[flySlot];
+  if(flyer.personality!=flyPersonality || flyer.egg ||
+     std::find(flyer.moves.begin(),flyer.moves.end(),19)==flyer.moves.end()){
+    quick_notice("Your Fly user has changed.");return;
+  }
+  const auto& spot=flyDestinations[flySelected];
+  if(companionGame==DsGame::Black2){
+    flyJob={};flyJob.stage=FlyStage::Menu;flyJob.started=tick;
+    flyJob.slot=flySlot;flyJob.destination=spot;
+  }else{
+    const uint32_t args[]={uint32_t(flySlot),uint32_t(spot.header),
+      game->gen!=5?uint32_t(spot.x):0,game->gen!=5?uint32_t(spot.y):0};
+    flyCallJob=pk_nds_call_action(field_call_memory(),game,PK_NDS_ACTION_FLY,args);
+    if(!flyCallJob){quick_notice("Fly is unavailable here.");return;}
+    heldQuickConfirm=true;
+  }
+  flyPicker=quickOpen=false;
+}
+
+// Match the whole native cyan Fly label so the shortcut works even when
+// other field moves change its row in the party member's submenu.
+int fly_row(const uint32_t* bottom){
+  constexpr uint16_t glyph[]={0x1f,0xc1,0x81,0x81,0x4481,0x448f,0x4481,0x4481,0x7881,0x4081,0x4000,0x3800};
+  const auto mask=[&](int y){
+    uint16_t bits=0;
+    for(int x=0;x<15;++x){
+      const auto p=bottom[y*256+162+x];
+      const int red=(p>>16)&255,green=(p>>8)&255,blue=p&255;
+      if(green>125&&blue>125&&green>red+30)bits|=1<<x;
+    }
+    return bits;
+  };
+  for(int y=45;y<177;++y){
+    if(mask(y)!=glyph[0])continue;
+    unsigned row=1;
+    while(row<std::size(glyph)&&mask(y+row)==glyph[row])++row;
+    if(row==std::size(glyph))return y+5;
+  }
+  return -1;
+}
+
+void update_fly(){
+  auto& job=flyJob;
+  if(!job.active())return;
+  job.key=0;
+  if(job.tapFrames){--job.tapFrames;return;}
+  const unsigned elapsed=tick-job.started;
+  const int bits=pk_nds_field_state(game,read32,nullptr,0);
+  const int overlay=field_overlay();
+  if(elapsed>240||(bits&PK_NDS_FIELD_BATTLE)){
+    job={};quick_notice("Fly could not open here.");return;
+  }
+  const auto advance=[&](FlyStage stage){job.stage=stage;job.started=tick;job.ready=0;};
+  const auto tap=[&](int x,int y,FlyStage stage){job.x=x;job.y=y;job.tapFrames=5;advance(stage);};
+  switch(job.stage){
+  case FlyStage::Menu:
+    if(!field_free()){job={};return;}
+    job.key=1u<<RETRO_DEVICE_ID_JOYPAD_X;
+    advance(FlyStage::Party);
+    break;
+  case FlyStage::Party:
+    if((bits&(PK_NDS_FIELD_SCREEN|PK_NDS_FIELD_TOUCH))==(PK_NDS_FIELD_SCREEN|PK_NDS_FIELD_TOUCH)
+       && elapsed>=55&&!scene.bottomBlank)tap(60,47,FlyStage::Member);
+    break;
+  case FlyStage::Member:
+    if(overlay!=BLACK2_PARTY_OVERLAY||scene.bottomBlank){job.ready=0;break;}
+    if(++job.ready>=24)tap(job.slot%2?192:64,32+(job.slot/2)*48+(job.slot%2)*8,FlyStage::Move);
+    break;
+  case FlyStage::Move:
+    if(overlay!=BLACK2_PARTY_OVERLAY||elapsed<12)break;
+    if(const int y=fly_row(nds->gpu.framebuffer(1));y>=0)tap(198,y,FlyStage::Town);
+    break;
+  case FlyStage::Town:
+    if(overlay!=BLACK2_FLY_OVERLAY||scene.bottomBlank){job.ready=0;break;}
+    if(++job.ready>=24)tap(job.destination.x,job.destination.y,FlyStage::Release);
+    break;
+  case FlyStage::Release:
+    // A held since the picker must not confirm the native map.
+    heldQuickConfirm=buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_A);
+    job={};
+    break;
+  case FlyStage::Idle: break;
+  }
+}
+
 void open_repel(){
   if(!field_free()){quick_notice("Repel is available in the overworld.");return;}
   refresh();
@@ -282,51 +544,67 @@ void use_repel(){
   quick_notice(result==R::Used?"Repel used.":result==R::StillActive?"Repel is still active.":
                result==R::NoneLeft?"No Repel in the Bag.":"Repel is unavailable here.");
 }
-int ds_shortcuts(DsShortcut (&out)[7]){
+int ds_shortcuts(quick_item (&items)[shortcutCapacity]){
   int count=0;
+  const bool field=field_free();
+  const char* fieldWhy=field?nullptr:"Overworld only";
+  const bool canCall=nds->cpu(ds::Cpu::ARM9).itcm_size>=0x02000000;
+  const bool hasRepel=std::any_of(snapshot.bag.begin(),snapshot.bag.end(),[](const DsItem& item){
+    return item.pocket==0 && item.count>0 &&
+      std::find(std::begin(repelItems),std::end(repelItems),item.id)!=std::end(repelItems);
+  });
+  const bool hasFlyer=std::any_of(snapshot.party.begin(),snapshot.party.end(),[](const DsMon& mon){
+    return !mon.egg && std::find(mon.moves.begin(),mon.moves.end(),19)!=mon.moves.end();
+  });
+  if(pk_nds_call_supported(game))
+    items[count++]={QUICK_PC,false,false,fieldWhy?fieldWhy:!canCall?"PC unavailable":nullptr};
+  if(fly_supported())
+    items[count++]={QUICK_FLY,false,false,fieldWhy?fieldWhy:!hasFlyer?"No party member knows Fly":
+      (!canCall && companionGame!=DsGame::Black2)?"Fly unavailable":flyWhy};
   if(companionGame!=DsGame::Unsupported){
-    out[count++]={PD_TAB_PARTY,"PARTY"};
-    out[count++]={PD_TAB_BAG,"BAG"};
+    items[count++]={QUICK_REPEL,false,false,fieldWhy?fieldWhy:snapshot.repelSteps?"Repel still active":
+      !hasRepel?"No Repel in the Bag":nullptr};
+    if(game)items[count++]={QUICK_WILD,shell.settings.wildOff,false,fieldWhy};
+    items[count++]={QUICK_HUD,false,shell.settings.hud,nullptr};
   }
-  if(companionGame!=DsGame::Unsupported){
-    out[count++]={PD_TAB_MAP,"MAP"};
-  }
-  if(companionGame!=DsGame::Unsupported)out[count++]={PD_TAB_DEX,"DEX"};
-  out[count++]={PD_TAB_SETTINGS,"SETTINGS"};
-  if(companionGame!=DsGame::Unsupported)out[count++]={PD_TAB_SETTINGS,"HUD",QUICK_HUD};
-  if(companionGame!=DsGame::Unsupported && field_free())out[count++]={PD_TAB_SETTINGS,"REPEL",QUICK_REPEL};
+  items[count++]={QUICK_COMPANION,false,false,nullptr};
   return count;
 }
 void draw_quick() {
   pd_canvas c;pd_canvas_init(&c,341,256,quick_pixels);
   pd_game presentation{};
-  DsShortcut shortcuts[7];
-  const int count=ds_shortcuts(shortcuts);
-  quick_item items[7]{};
-  for(int i=0;i<count;++i)
-    items[i]={shortcuts[i].action,false,
-              shortcuts[i].action==QUICK_HUD&&shell.settings.hud,nullptr,0,0,shortcuts[i].label};
+  quick_item items[shortcutCapacity]{};
+  const int count=ds_shortcuts(items);
   quick_set_grid(shell.settings.quickGrid);
   if(repelPicker){
     const char* labels[3]={repelLabels[0].c_str(),repelLabels[1].c_str(),repelLabels[2].c_str()};
     quick_list_draw(&c,"REPEL",labels,repelCount,repelSelected);
+  }else if(flyPicker){
+    std::vector<const char*> labels;
+    for(const auto& destination:flyDestinations)labels.push_back(destination.name);
+    quick_list_draw(&c,"FLY TO",labels.data(),int(labels.size()),flySelected);
   }else quick_draw(&c,&presentation,items,count,std::min(quickSelected,count-1));
   quick_finish(&c);
-  const uint32_t* src=nds->gpu.framebuffer(layout==1?1:0);
-  geometry(341,256);
-  for(unsigned y=0;y<256;++y)for(unsigned x=0;x<341;++x){
-    uint32_t base=x>=42 && x<298 && y>=32 && y<224?src[(y-32)*256+x-42]&0xffffff:0;
+  // Overlay the menu on the paused composition at the same geometry as gameplay.
+  if(!stageReady){
+    choose_layout();
+    ds_compose(stage,arrangement,nds->gpu.framebuffer(0),nds->gpu.framebuffer(1));
+    stageReady=true;
+  }
+  geometry(512,384);
+  for(unsigned y=0;y<384;++y)for(unsigned x=0;x<512;++x){
+    uint32_t base=stage[y*512+x]&0xffffff;
     base=(base&0xfefefe)>>1;
-    uint32_t p=quick_pixels[y*341+x];
+    uint32_t p=quick_pixels[(y*256/384)*341+x*341/512];
     if(p!=QUICK_CLEAR){unsigned a=p>>24;
       unsigned r=(((p>>16)&255)*a+((base>>16)&255)*(255-a))/255;
       unsigned g=(((p>>8)&255)*a+((base>>8)&255)*(255-a))/255;
       unsigned b=((p&255)*a+(base&255)*(255-a))/255;
       base=(r<<16)|(g<<8)|b;
     }
-    pixels[y*341+x]=ds_rgb565(base);
+    pixels[y*512+x]=ds_rgb565(base);
   }
-  video(pixels,341,256,341*2);
+  video(pixels,512,384,512*2);
 }
 void draw_strip(uint32_t* out){
   const int focus=drawnBattle.panel==DsBattlePanel::Moves?battleStrip.moveFocus:battleStrip.actionFocus;
@@ -344,6 +622,7 @@ void present(const void* data,unsigned,unsigned,size_t) {
   const bool showStrip=holdStrip>0 && !scene.dark && arrangement.top.w==512 && wants_strip();
   ds_compose(stage,arrangement,nds->gpu.framebuffer(0),nds->gpu.framebuffer(1),
              fieldValid?fieldFrame:nullptr,showStrip?draw_strip:nullptr);
+  stageReady=true;
   geometry(w,h);
   for(unsigned i=0;i<w*h;++i)pixels[i]=ds_rgb565(stage[i]);
   if((buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT))&&arrangement.touch.w>0){
@@ -417,12 +696,24 @@ void present(const void* data,unsigned,unsigned,size_t) {
   video(pixels,w,h,w*2);
 }
 int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
+  if(flyCallJob)return 0;
+  if(flyJob.active()){
+    if(d==RETRO_DEVICE_JOYPAD)return id<16&&!!(flyJob.key&(1u<<id));
+    if(d==RETRO_DEVICE_POINTER){
+      if(id==RETRO_DEVICE_ID_POINTER_PRESSED)return flyJob.tapFrames>2;
+      if(id==RETRO_DEVICE_ID_POINTER_X)return (flyJob.x*65535+255)/256-32767;
+      if(id==RETRO_DEVICE_ID_POINTER_Y)return (flyJob.y*32768+191)/192;
+    }
+    return 0;
+  }
   if(swallowMenuInput)return 0;
   if(d==RETRO_DEVICE_JOYPAD) {
+    if(id==RETRO_DEVICE_ID_JOYPAD_A&&heldQuickConfirm)return 0;
     if(id==RETRO_DEVICE_ID_JOYPAD_SELECT && select_pulse)return 1;
     if(companion || quickOpen || (buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT)))return 0;
     if(id<16 && (battleHeld&(1u<<id)))return 0;
     if(id==shell.companion_id() || int(id)==shell.screen_id())return 0;
+    if(p==0 && id==RETRO_DEVICE_ID_JOYPAD_B && autoRunThisFrame)return !input(p,d,i,id);
   }
   // DSperate expects a pointer over stacked screens. Reproject the current
   // layout into that convention before its input::apply receives it.
@@ -457,27 +748,40 @@ void controls() {
     if((companion || quickOpen) && held_frames[id]>15 && (held_frames[id]-15)%5==0)edge|=1u<<id;
   }
   auto hit=[&](unsigned id){return !!(edge&(1u<<id));};
+  heldQuickConfirm&=!!(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_A));
+  if(flyCallJob)return;
+  if(flyJob.active()){
+    if(hit(RETRO_DEVICE_ID_JOYPAD_B))flyJob={};
+    return;
+  }
   const bool companionDown=buttons&(1u<<shell.companion_id());
   const bool companionTap=!companionDown&&companionHold>0;
   if(!companionDown)companionHold=0;
   else if(companionHold>=0)++companionHold;
   const bool selectDown=buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT);
   if(!companion && companionHold>0 && (selectDown || (!quickOpen&&companionHold>=24))){
-    quickOpen=!quickOpen;repelPicker=false;select_used=selectDown;quickSelected=0;companionHold=-1;return;
+    quickOpen=!quickOpen;repelPicker=flyPicker=false;select_used=selectDown;quickSelected=0;companionHold=-1;
+    if(quickOpen){flyWhy=nullptr;refresh();}
+    return;
   }
   if(quickOpen){
     if(hit(RETRO_DEVICE_ID_JOYPAD_B) || hit(shell.companion_id())){
       if(companionDown)companionHold=-1;
-      if(repelPicker){repelPicker=false;return;}
+      if(repelPicker||flyPicker){repelPicker=flyPicker=false;return;}
       quickOpen=false;return;
     }
-    DsShortcut shortcuts[7];
+    quick_item shortcuts[shortcutCapacity]{};
     const int count=ds_shortcuts(shortcuts);
     int dx=hit(RETRO_DEVICE_ID_JOYPAD_RIGHT)-hit(RETRO_DEVICE_ID_JOYPAD_LEFT);
     int dy=hit(RETRO_DEVICE_ID_JOYPAD_DOWN)-hit(RETRO_DEVICE_ID_JOYPAD_UP);
     if(repelPicker){
       repelSelected=std::clamp(repelSelected+dy,0,repelCount-1);
       if(hit(RETRO_DEVICE_ID_JOYPAD_A)){use_repel();repelPicker=quickOpen=false;}
+      return;
+    }
+    if(flyPicker){
+      flySelected=std::clamp(flySelected+dy,0,int(flyDestinations.size())-1);
+      if(hit(RETRO_DEVICE_ID_JOYPAD_A))confirm_fly();
       return;
     }
     quickSelected=std::min(quickSelected,count-1);
@@ -487,11 +791,21 @@ void controls() {
     }
     if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
       const auto& shortcut=shortcuts[quickSelected];
+      if(shortcut.why)return;
+      if(shortcut.action==QUICK_PC){open_pc();return;}
+      if(shortcut.action==QUICK_FLY){open_fly();return;}
       if(shortcut.action==QUICK_REPEL){open_repel();return;}
+      if(shortcut.action==QUICK_WILD){
+        shell.settings.wildOff=!shell.settings.wildOff;
+        const bool saved=shell.save();
+        quick_notice(saved?(shell.settings.wildOff?"Wild encounters off.":"Wild encounters on."):shell.error.c_str());
+        quickOpen=false;
+        return;
+      }
       if(shortcut.action==QUICK_HUD){shell.settings.hud=!shell.settings.hud;shell.save();}
       else{
-        refresh();shell.frame.tab=shortcut.tab;shell.picker=-1;companion=true;
-        if(shortcut.tab==PD_TAB_MAP){shell.mapX=snapshot.mapX;shell.mapY=snapshot.mapY;}
+        refresh();companion=true;
+        shell.mapX=snapshot.mapX;shell.mapY=snapshot.mapY;
       }
       quickOpen=false;
     }
@@ -570,17 +884,20 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
       if(!f.read(reinterpret_cast<char*>(rom.data()),size))rom.clear();}}
   }catch(const std::exception&){rom.clear();rom.shrink_to_fit();
     log(RETRO_LOG_WARN,"PokeDaisy DS: couldn't read the ROM for the companion\n");}
+  DsDexArt dexArt;
   if(rom.size()>=512) {
     // Preserve the existing exact-ROM guard: offsets and art are rev-specific.
     uint8_t hash[20];ds::crypto::sha1(rom.data(),rom.size(),hash);
     char hex[41];for(int i=0;i<20;++i)std::sprintf(hex+2*i,"%02x",hash[i]);
     pd_ds::supported=!std::strcmp(hex,pd_ds_data::sha1);
     pd_ds::companionGame=ds_companion_game(hex);
+    pd_ds::soulSilver=!std::strcmp(hex,pd_ds_data::soulSilverSha1);
     pd_ds::battleStyle=ds_battle_style(hex);
     if(pd_ds::battleStyle)
       pd_ds::game=pk_nds_field_game(reinterpret_cast<const char*>(rom.data()+12),rom[30]);
     if(pd_ds::companionGame!=DsGame::Unsupported)pd_ds::map=ds_map_art(rom,pd_ds::companionGame);
     if(pd_ds::companionGame!=DsGame::Unsupported){
+      dexArt=ds_dex_art(rom,pd_ds::companionGame);
       pd_ds::icons=ds_party_icons(rom,pd_ds::companionGame);
       pd_ds::hudItemIcons=ds_hud_item_icons(rom,pd_ds::companionGame);
     }
@@ -588,13 +905,15 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
   const auto old_layout=opt("pokedaisy_ds_layout");
   pd_ds::shell.init(dir(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY),
     old_layout=="top"?1:old_layout=="bottom"?2:old_layout=="stacked"?4:0,opt("pokedaisy_ds_hud")=="enabled");
-  pd_ds::shell.set_game(pd_ds::companionGame);
+  pd_ds::shell.set_game(pd_ds::companionGame,pd_ds::soulSilver);
+  pd_ds::set_wild_rates();
+  pd_ds::shell.dexArt=std::move(dexArt);
   log(RETRO_LOG_INFO,"PokeDaisy DS: companion %s\n",pd_ds::companionGame!=DsGame::Unsupported?"enabled":"unavailable for this ROM");
   return true;
 }
 RETRO_API void retro_reset(){
   pd_ds::clear_battle();
-  ds_reset();pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;
+  ds_reset();pd_ds::stageReady=false;pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;
 }
 RETRO_API bool retro_unserialize(const void* data,size_t n){
   pd_ds::clear_battle();
@@ -611,8 +930,8 @@ RETRO_API bool retro_unserialize(const void* data,size_t n){
     if(!dirty)nds->cart->clear_sram_dirty();
     if(sram.data()!=frontendSave)log(RETRO_LOG_WARN,"PokeDaisy DS: the save buffer moved on a state load\n");
   }
-  if(ok)pd_ds::restoreGrace=4;
-  if(ok){pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;}
+  if(ok){pd_ds::stageReady=false;pd_ds::restoreGrace=4;pd_ds::set_wild_rates();}
+  if(ok){pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;}
   return ok;
 }
 RETRO_API void retro_unload_game(){ds_unload_game();pd_ds::clear();}
@@ -622,13 +941,23 @@ RETRO_API void retro_run(){
   const unsigned previous=pd_ds::old_buttons;
   const bool menuWasOpen=pd_ds::companion || pd_ds::quickOpen;
   pd_ds::controls();
-  pd_ds::update_battle(menuWasOpen?0:pd_ds::buttons&~previous);
+  const int field=pk_nds_field_state(pd_ds::game,pd_ds::read32,nullptr,0);
+  pd_ds::update_battle(menuWasOpen?0:pd_ds::buttons&~previous,field);
   if(pd_ds::companion || pd_ds::quickOpen){
     if(pd_ds::quickOpen)pd_ds::draw_quick();else pd_ds::draw_companion();
     static const int16_t silence[548*2]={};audio_batch_cb(silence,547);
   }else {
+    pd_ds::update_fly();
     pd_ds::swallowMenuInput=menuWasOpen;
+    if(pd_ds::field_free(field))
+      pk_nds_field_state(pd_ds::game,pd_ds::read32,pd_ds::write32,pd_ds::shell.settings.wildOff);
+    constexpr unsigned directions=(1u<<RETRO_DEVICE_ID_JOYPAD_UP)|(1u<<RETRO_DEVICE_ID_JOYPAD_DOWN)|
+      (1u<<RETRO_DEVICE_ID_JOYPAD_LEFT)|(1u<<RETRO_DEVICE_ID_JOYPAD_RIGHT);
+    pd_ds::autoRunThisFrame=pd_ds::shell.autoRun && !pd_ds::manualTouch &&
+      !pd_ds::pcJob && ds_auto_run(field,pd_ds::buttons&directions,pd_ds::buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_A));
     ds_run();
+    pd_ds::update_pc();
+    pd_ds::update_fly_call();
     pd_ds::swallowMenuInput=false;
     ++pd_ds::tick;
   }

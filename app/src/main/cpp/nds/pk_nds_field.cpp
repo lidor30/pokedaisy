@@ -742,6 +742,11 @@ static int gen5BattleTouch(const PkNdsFieldGame* g, const PkNdsGen5Touch* t, uin
 static uint32_t heldTable, heldZone5, heldRates[2];
 static int holding5;
 
+void pk_nds_field_reset_wild(void)
+{
+    holding = holding5 = checked = 0;
+}
+
 static void gen5Wild(const PkNdsFieldGame* g, uint32_t (*read32)(uint32_t), void (*write32)(uint32_t, uint32_t),
                      uint32_t gd, int wildOff, int* bits);
 

@@ -278,33 +278,14 @@ int pd_boss_trainer(const struct pd_guide* gd, const struct pd_boss* b, const st
     return id;
 }
 
-// The last four distinct moves the species learns up to level (the game's
-// default moveset for a trainer mon without its own).
-static void default_moves(const struct pd_game* g, int species, int level, int* moves) {
-    memset(moves, 0, 4 * sizeof(int));
-    const uint8_t* ptr = pd_rom_at(g, g->cfg->learnsets + (uint32_t) species * 4, 4);
-    if (!ptr) return;
-    uint32_t at = u32(ptr);
-    int n = 0;
-    const struct pd_config* cfg = g->cfg;
-    int stride = cfg->learnsetPairs ? 4 : cfg->learnsetCfru ? 3 : 2;
-    for (int i = 0; i < 64; i++) {
-        const uint8_t* e = pd_rom_at(g, at + (uint32_t) i * stride, (size_t) stride);
-        if (!e) return;
-        int move, lv;
-        if (cfg->learnsetPairs) {  // {u16 move, u16 level}, ending at move 0xFFFF
-            move = u16(e);
-            lv = u16(e + 2);
-            if (move == 0xFFFF || lv > level) return;
-        } else if (cfg->learnsetCfru) {  // {u16 move, u8 level}, ending at level 0xFF
-            move = u16(e);
-            lv = e[2];
-            if (lv == 0xFF || lv > level) return;
-        } else {
-            uint16_t v = u16(e);
-            if (v == 0xFFFF || (v >> 9) > level) return;
-            move = v & 0x1FF;
-        }
+// The last four distinct moves the species learns up to level.
+static void default_moves(const struct pd_game* g,int species,int level,int* moves){
+    memset(moves,0,4*sizeof(int));
+    struct pd_level_move learn[64];
+    const int count=pd_level_moves(g,species,learn,64);
+    int n=0;
+    for(int i=0;i<count && learn[i].level<=level;i++){
+        const int move=learn[i].move;
         bool dup = false;
         for (int k = 0; k < n; k++) dup |= moves[k] == move;
         if (dup) continue;

@@ -178,7 +178,7 @@ static bool read_rom_map(const struct pd_game* g, struct pd_map_art* art, struct
     uint32_t pal[256] = {0};
     if (ok) palette(palRaw, 256, pal);
     art->hasBackdrop = ok;
-    art->backdrop = pal[0];
+    art->backdrop = ok ? pal[0] : 0;
     // Hacks with one region point every slot at the same tilemap: one page each distinct screen.
     uint32_t distinct[4];
     int nDistinct = 0, imageOf[4];

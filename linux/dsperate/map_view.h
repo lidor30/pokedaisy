@@ -8,5 +8,9 @@ extern "C" {
 void ds_map_view(pd_canvas*,const DsCompanion&,const DsMapArt&,int,int);
 
 struct DsMapPosition { int x=-1,y=-1; };
+struct DsMapPlace { DsMapPosition position; const char* name; };
+DsMapPosition ds_map_cursor_max(DsGame);
+std::vector<DsMapPlace> ds_map_places(const DsCompanion&);
+void ds_map_actions(pd_canvas*,int selected);
 DsMapPosition ds_map_position(const DsCompanion&);
 void ds_draw_minimap(pd_canvas*,const DsCompanion&,const DsMapArt&,int,int,int,int);

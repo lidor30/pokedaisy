@@ -64,6 +64,8 @@ void pd_look_apply(const struct pd_game* g, const struct pd_settings* s);
 // Dev's Game Boy look switches, kept for the code that asks: pd_gb_look is set while a Game Boy game's windows are on
 // (pd_look_apply), and its ink / paper are that look's label and list fill.
 extern int pd_gb_look;
+// Hosts may select the dark window palette for a companion draw.
+#define pd_dark_look pd_dark
 #define PD_GB(a, b) (pd_gb_look ? (b) : (a))
 extern uint32_t pd_gb_ink, pd_gb_paper;
 #define PD_GB_INK pd_gb_ink

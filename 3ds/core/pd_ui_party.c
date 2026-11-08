@@ -8,6 +8,8 @@
 #include "pd_games.h"
 #include "pd_icon.h"
 #include "pd_party_art.h"
+#include "pd_dex.h"
+#include "pd_gb.h"
 #include "pd_tables.h"
 #include "pd_experience.h"
 #include "pd_ui_internal.h"
@@ -128,8 +130,27 @@ static struct slot_geometry geometry(int w, int h) {
     return g;
 }
 
-static void slot_frame(struct pd_canvas* c, int x, int y, const struct slot_geometry* g, const struct pd_slot_colors* col) {
+static void chamfer(struct pd_canvas* c,int x,int y,int w,int h,int cut,uint32_t color) {
+    for(int row=0;row<h;++row) {
+        int edge=cut-row, lower=cut-(h-row-1);
+        if(lower>edge)edge=lower;
+        if(edge<0)edge=0;
+        pd_fill(c,x+edge,y+row,w-2*edge,1,color);
+    }
+}
+
+static void slot_frame(struct pd_canvas* c, int x, int y, const struct slot_geometry* g, const struct pd_party_slot_colors* col, bool angled) {
     int u = g->u;
+    if(angled) {
+        int left=x+g->fx, top=y+g->fy;
+        chamfer(c,left,top,g->fw,g->fh,9*u,col->outline);
+        chamfer(c,left+u,top+u,g->fw-2*u,g->fh-2*u,8*u,col->light);
+        chamfer(c,left+2*u,top+2*u,g->fw-4*u,g->fh-4*u,7*u,col->fill);
+        if(col->stripe)
+            for(int row=4*u;row<g->fh-4*u;row+=4*u)
+                pd_fill(c,left+9*u,top+row,g->fw-18*u,u,col->stripe);
+        return;
+    }
     pd_round_rect(c, x + g->fx, y + g->fy, g->fw, g->fh, 3 * u, col->outline);
     pd_round_rect(c, x + g->fx + 2 * u, y + g->fy + 2 * u, g->fw - 4 * u, g->fh - 4 * u, u, col->light);
     pd_fill(c, x + g->fx + 3 * u, y + g->fy + 3 * u, g->fw - 6 * u, g->dividerY - g->fy - 3 * u, col->fill);
@@ -137,19 +158,19 @@ static void slot_frame(struct pd_canvas* c, int x, int y, const struct slot_geom
     pd_fill(c, x + g->fx + 2 * u, y + g->bottom - 3 * u, g->fw - 4 * u, u, col->shade);
 }
 
-static void hp_bar(struct pd_canvas* c, int x, int y, const struct slot_geometry* g, int hp, int maxHp) {
+static void hp_bar(struct pd_canvas* c, int x, int y, const struct slot_geometry* g, int hp, int maxHp, const struct pd_party_source_palette* p) {
     int u = g->u, by = y + g->barY;
     // The "HP" label box, sharing its right edge with the bar's outline.
-    pd_round_rect(c, x + g->labelX, by, g->barX - g->labelX + u, 7 * u, u, HP_FRAME);
+    pd_round_rect(c, x + g->labelX, by, g->barX - g->labelX + u, 7 * u, u, p ? p->hpFrame : HP_FRAME);
     for (int r = 0; r < 5; r++) {
         for (int col = 0; HP_LETTERS[r][col]; col++) {
             if (HP_LETTERS[r][col] == '1')
-                pd_fill(c, x + g->labelX + (1 + col) * u, by + (1 + r) * u, u, u, r < 3 ? HP_LETTER : HP_LETTER_SHADE);
+                pd_fill(c, x + g->labelX + (1 + col) * u, by + (1 + r) * u, u, u, r < 3 ? (p ? p->hpLabel : HP_LETTER) : (p ? p->hpLabelShade : HP_LETTER_SHADE));
         }
     }
     int w = g->barRight - g->barX;
-    pd_round_rect(c, x + g->barX, by, w, 7 * u, 2 * u, HP_FRAME);
-    pd_round_rect(c, x + g->barX + u, by + u, w - 2 * u, 5 * u, u, HP_INNER);
+    pd_round_rect(c, x + g->barX, by, w, 7 * u, 2 * u, p ? p->hpFrame : HP_FRAME);
+    pd_round_rect(c, x + g->barX + u, by + u, w - 2 * u, 5 * u, u, p ? p->hpInner : HP_INNER);
     int inner = w - 4 * u;
     if (hp > maxHp) hp = maxHp;
     if (hp < 0) hp = 0;
@@ -184,7 +205,9 @@ static void empty_slot(struct pd_canvas* c, int x, int y, int w, int h, const st
     struct pd_canvas t;
     pd_canvas_init(&t, w, h, scratch);
     memset(scratch, 0xFF, (size_t) w * h * sizeof(*scratch)); // 0xFFFFFFFF: nothing drawn
-    slot_frame(&t, 0, 0, g, &SLOT_NORMAL);
+    const struct pd_slot_colors* slot = &SLOT_NORMAL;
+    const struct pd_party_slot_colors colors = {slot->outline, slot->light, slot->fill, slot->shade, slot->band, 0};
+    slot_frame(&t, 0, 0, g, &colors, false);
     for (int yy = 0; yy < h; yy++) {
         int sy = y + yy;
         if (sy < c->cy0 || sy >= c->cy1) continue;
@@ -714,26 +737,32 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     }
     struct slot_geometry geo = geometry(w, h);
     int u = geo.u;
+    const struct pd_party_source_palette* p=ui->partySource?ui->partySource->palette:NULL;
     if (!m) {
-        empty_slot(c, x, y, w, h, &geo);
+        if(p)slot_frame(c,x,y,&geo,&p->empty,p->chamfer);
+        else empty_slot(c, x, y, w, h, &geo);
         return;
     }
     char buf[40];
     bool egg = party_egg(ui, m);
     bool fainted = !egg && m->hp == 0;
-    const struct pd_slot_colors* col = fainted ? (selected ? &SLOT_SELECTED_FAINTED : &SLOT_FAINTED)
+    const struct pd_slot_colors* frame = fainted ? (selected ? &SLOT_SELECTED_FAINTED : &SLOT_FAINTED)
         : selected ? &SLOT_SELECTED : &SLOT_NORMAL;
-    slot_frame(c, x, y, &geo, col);
-    if (!egg) hp_bar(c, x, y, &geo, m->hp, m->maxHp);
+    const struct pd_party_slot_colors colors = {frame->outline, frame->light, frame->fill, frame->shade, frame->band, 0};
+    const struct pd_party_slot_colors* col = p ?
+        (fainted ? (selected ? &p->selectedFainted : &p->fainted) : (selected ? &p->selected : &p->normal)) : &colors;
+    slot_frame(c, x, y, &geo, col, p && p->chamfer);
+    if (!egg) hp_bar(c, x, y, &geo, m->hp, m->maxHp, p);
+    uint32_t text=p?p->text:SLOT_TEXT, shadow=p?p->shadow:SLOT_TEXT_SHADOW;
 
     // The Poke Ball, then the icon over it, resting 4 px up.
-    char_bitmap(c, BALL, 20, x + geo.fx - 6 * u, y + geo.fy - 4 * u, u, "KRHW", PP->ball);
+    if(!p || !p->hideBall)char_bitmap(c, BALL, 20, x + geo.fx - 6 * u, y + geo.fy - 4 * u, u, "KRHW", p ? p->ball : PP->ball);
     party_icon(ui, c, g, m, x + geo.fx - 8 * u, y + geo.fy - 4 * u, u, false);
     if (m->heldItem) held_mark(c, x + geo.fx + 13 * u, y + geo.fy + 15 * u);
 
     int textW = geo.fx + geo.fw - 4 * u - geo.textX;
-    pd_text_fit(c, x + geo.textX, y + geo.nameMid - 8, textW, mon_display_name(ui, g, m, buf, sizeof(buf)), SLOT_TEXT,
-                SLOT_TEXT_SHADOW);
+    pd_text_fit(c, x + geo.textX, y + geo.nameMid - 8, textW, mon_display_name(ui, g, m, buf, sizeof(buf)), text,
+                shadow);
     if (!egg) {
         const char* status = fainted ? "FNT" : pd_status_label(m->status);
         if (*status) {
@@ -741,8 +770,8 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         } else {
             char lv[12];
             snprintf(lv, sizeof(lv), "Lv%d", m->level);
-            int lw = pd_text(c, x + geo.textX + 6 * u, y + geo.levelMid - 8, lv, SLOT_TEXT, SLOT_TEXT_SHADOW);
-            if (m->shiny) pd_text(c, x + geo.textX + 6 * u + lw + 3, y + geo.levelMid - 8, "*", SHINY_MARK, SLOT_TEXT_SHADOW);
+            int lw = pd_text(c, x + geo.textX + 6 * u, y + geo.levelMid - 8, lv, text, shadow);
+            if (m->shiny) pd_text(c, x + geo.textX + 6 * u + lw + 3, y + geo.levelMid - 8, "*", SHINY_MARK, shadow);
         }
         int gx = x + geo.fx + geo.fw - 14 * u, gy = y + geo.levelMid - 4 * u;
         if (m->gender == PD_GENDER_MALE || m->gender == PD_GENDER_FEMALE) {
@@ -754,7 +783,7 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         }
         char hp[16];
         snprintf(hp, sizeof(hp), "%d/%d", m->hp, m->maxHp);
-        pd_text_right(c, x + geo.barRight, y + geo.hpTextMid - 8, hp, SLOT_TEXT, SLOT_TEXT_SHADOW);
+        pd_text_right(c, x + geo.barRight, y + geo.hpTextMid - 8, hp, text, shadow);
     }
     ui_add_hit(ui, x + geo.fx, y + geo.fy, geo.fw, geo.fh, HIT_SLOT + slot);
 }
@@ -896,7 +925,7 @@ static void summary_stats(struct pd_canvas* c, const struct pd_mon* m, int x, in
 // INFO (dev's pane, in the window's right half here): the EXP bar, the held item and its description, the type matchups
 // (MonDetailScreen's information column, after Keegan Whitacre's Summary INFO in pokedaisy-brick).
 static void summary_info(struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m, int x, int y, int w,
-                         int bottom) {
+                         int bottom, bool describe) {
     char buf[96];
     int row = y;
     bool narrow = w < 220;
@@ -923,7 +952,7 @@ static void summary_info(struct pd_canvas* c, const struct pd_game* g, const str
         pd_text_fit(c, narrow ? x : x + 84, row, narrow ? w : w - 84, item, PD_LABEL, PD_LABEL_SHADOW);
         row += 17;
         const char* desc = m->heldItem ? pd_item_description(g, m->heldItem) : "";
-        if (desc[0] && row + 14 <= bottom) {
+        if (describe && desc[0] && row + 14 <= bottom) {
             int lines = (bottom - row - 40) / 14;
             if (lines > 2) lines = 2;
             if (lines > 0) row += pd_text_wrap(c, x, row, w, 14, lines, desc, PD_LABEL, PD_LABEL_SHADOW) * 14 + 4;
@@ -956,6 +985,324 @@ static void summary_info(struct pd_canvas* c, const struct pd_game* g, const str
         pd_text_fit(c, x + 66, row, w - 66, buf, PD_LABEL, PD_LABEL_SHADOW);
         row += 14;
     }
+}
+
+static void summary_chip(struct pd_canvas* c, int x, int y, int width, int type, const char* label) {
+    static const uint32_t colors[] = {0xa8a878,0xc03028,0xa890f0,0xa040a0,0xe0c068,0xb8a038,
+        0xa8b820,0x705898,0xb8b8d0,0x68a090,0xf08030,0x6890f0,0x78c850,0xf8d030,0xf85888,0x98d8d8,0x7038f8,0x705848};
+    if (width < 15) return;
+    uint32_t color = type >= 0 && type < (int)(sizeof colors / sizeof *colors) ? colors[type] : 0x8a8a8a;
+    const unsigned light = 3 * (color >> 16) + 6 * ((color >> 8) & 255) + (color & 255);
+    pd_round_rect(c, x, y, width, 13, 2, color);
+    pd_text_fit(c, x + 3, y - 1, width - 6, label, light >= 1220 ? 0x141820 : 0xffffff, PD_NO_SHADOW);
+}
+
+static void summary_stats_left(struct pd_canvas* c, const struct pd_summary_view* v, int w, int y, int bottom) {
+    const struct pd_mon_stats* st = v->stats;
+    if (v->speciesName && strcmp(v->speciesName, v->name) && y + 15 <= bottom) {
+        pd_text_fit(c, 13, y, w, v->speciesName, PD_LABEL, PD_LABEL_SHADOW);
+        y += 15;
+    }
+    if (st && st->hasNature && st->nature >= 0 && st->nature < pd_nature_names_count && y + 15 <= bottom) {
+        pd_text_fit(c, 13, y, w, pd_nature_names[st->nature], PD_LABEL, PD_LABEL_SHADOW);
+        y += 15;
+    }
+    if (v->friendship >= 0 && y + 15 <= bottom) {
+        char line[24];
+        snprintf(line, sizeof line, "FRIENDSHIP %d", v->friendship);
+        pd_text_fit(c, 13, y, w, line, PD_LABEL, PD_LABEL_SHADOW);
+        y += 15;
+    }
+    if (v->heldItem && y + 30 <= bottom) {
+        pd_text(c, 13, y, "HELD ITEM", PD_MUTED, PD_MUTED_SHADOW);
+        pd_text_fit(c, 13, y + 15, w, v->heldItem, PD_LABEL, PD_LABEL_SHADOW);
+    }
+}
+
+static void summary_stats_right(struct pd_canvas* c, const struct pd_summary_view* v, int x, int w, int bottom) {
+    const struct pd_mon_stats* s = v->stats;
+    pd_text(c, x, 12, "STATS", PD_MUTED, PD_MUTED_SHADOW);
+    if (!s || !s->valid) {
+        pd_text_wrap(c, x, 37, w, 15, 3, "Stats unavailable for this cartridge.", PD_LABEL, PD_LABEL_SHADOW);
+        return;
+    }
+    static const int order[] = {0,1,2,4,5,3}, gen1Order[] = {0,1,2,4,3};
+    static const char* const labels[] = {"HP","ATK","DEF","SP. ATK","SP. DEF","SPEED"};
+    static const char* const gen1Labels[] = {"HP","ATK","DEF","SPECIAL","SPEED"};
+    const int ev = x + w - 3, iv = ev - (s->hasEvs ? 30 : 0), stat = iv - (s->hasIvs ? 29 : 0);
+    const int top = 33, row = 16;
+    pd_text_right(c, stat, top, "STAT", PD_MUTED, PD_MUTED_SHADOW);
+    if (s->hasIvs) pd_text_right(c, iv, top, v->dvs ? "DV" : "IV", PD_MUTED, PD_MUTED_SHADOW);
+    if (s->hasEvs) pd_text_right(c, ev, top, "EV", PD_MUTED, PD_MUTED_SHADOW);
+    const int raised = s->hasNature ? pd_nature_raises(s->nature) : -1;
+    const int lowered = s->hasNature ? pd_nature_lowers(s->nature) : -1;
+    const int n = v->gen1 ? 5 : 6;
+    int total = 0;
+    for (int j = 0; j < n; j++) {
+        const int i = v->gen1 ? gen1Order[j] : order[j], y = top + (j + 1) * row;
+        char text[36];
+        snprintf(text, sizeof text, "%s%s", v->gen1 ? gen1Labels[j] : labels[j],
+                 i == raised ? " +" : i == lowered ? " -" : "");
+        pd_text_fit(c, x, y, stat - x - 25, text, i == raised ? 0xC03535 : i == lowered ? 0x2664BF : PD_LABEL, PD_LABEL_SHADOW);
+        snprintf(text, sizeof text, "%d", s->values[i]);
+        pd_text_right(c, stat, y, text, PD_LABEL, PD_LABEL_SHADOW);
+        if (s->hasIvs) {
+            snprintf(text, sizeof text, "%d", s->ivs[i]);
+            pd_text_right(c, iv, y, text, PD_VALUE, PD_VALUE_SHADOW);
+        }
+        if (s->hasEvs) {
+            snprintf(text, sizeof text, "%d", s->evs[i]);
+            pd_text_right(c, ev, y, text, PD_VALUE, PD_VALUE_SHADOW);
+            total += s->evs[i];
+        }
+    }
+    int y = top + (n + 1) * row;
+    char text[52];
+    if (s->hasEvs) {
+        snprintf(text, sizeof text, "EV TOTAL  %d", total);
+        pd_text_right(c, ev, y, text, PD_MUTED, PD_MUTED_SHADOW);
+        y += row;
+    }
+    if (s->hasHiddenPower && y + 15 <= bottom) {
+        const char* type = pd_type_name(NULL, s->hiddenPowerType);
+        if (s->hiddenPowerPower > 0) snprintf(text, sizeof text, "HIDDEN POWER  %s %d", type, s->hiddenPowerPower);
+        else snprintf(text, sizeof text, "HIDDEN POWER  %s", type);
+        pd_text_fit(c, x, y, w, text, PD_MUTED, PD_MUTED_SHADOW);
+    }
+}
+
+static int learn_rows(int height) {
+    const int rows = (height - 32 - 32) / 17;
+    return rows > 0 ? rows : 1;
+}
+
+int pd_ui_summary_learn_last(int height, int count) {
+    const int last = count - learn_rows(height);
+    return last > 0 ? last : 0;
+}
+
+static void summary_learn(struct pd_canvas* c, const struct pd_summary_view* v, int x, int w, int bottom) {
+    const struct pd_summary_learn* list = v->learn;
+    pd_text_fit(c, x, 12, w, "LEVEL-UP MOVES", PD_MUTED, PD_MUTED_SHADOW);
+    if (!list || list->count <= 0) {
+        pd_text_fit(c, x, 37, w, list && list->count == 0 ? "No level-up moves." : "No learnset data.", PD_LABEL, PD_LABEL_SHADOW);
+        return;
+    }
+    const int visible = learn_rows(c->h), last = pd_ui_summary_learn_last(c->h, list->count);
+    const int first = list->first < 0 ? 0 : list->first > last ? last : list->first;
+    for (int i = first; i < list->count && i < first + visible; i++) {
+        const int y = 32 + (i - first) * 17;
+        char scratch[48], level[12];
+        const struct pd_summary_learn_row move = list->row(list->ctx, i, scratch, sizeof scratch);
+        if (move.level) snprintf(level, sizeof level, "Lv%d", move.level);
+        else snprintf(level, sizeof level, "EVO.");
+        pd_text(c, x, y, level, move.level > v->level ? PD_VALUE : PD_MUTED, PD_MUTED_SHADOW);
+        pd_text_fit(c, x + 42, y, w - 47, move.name, PD_LABEL, PD_LABEL_SHADOW);
+    }
+    ui_scroll_bar(c, x + w - 2, 32, bottom - 32, first * 17, list->count * 17, PD_MUTED);
+}
+
+void pd_ui_summary_page(struct pd_canvas* c, const struct pd_summary_view* v, enum pd_summary_page page) {
+    const int w = c->w - 8, h = c->h - 32, side = w * 46 / 100, rx = side + 16, rw = c->w - rx - 12;
+    pd_title_box(c, 4, 4, w, h, PD_TITLE_FILL);
+    pd_list_box(c, 11, 13, 34, 34);
+    v->icon(v->ctx, c, v->selected, 12, 14, false);
+    pd_text_fit(c, 49, 12, side - 40, v->name, PD_LABEL, PD_LABEL_SHADOW);
+    if (v->egg) {
+        pd_text(c, 14, 58, "It will hatch in time.", PD_MUTED, PD_MUTED_SHADOW);
+        return;
+    }
+    char line[48];
+    snprintf(line, sizeof line, "Lv%d", v->level);
+    pd_text(c, 49, 28, line, PD_VALUE, PD_VALUE_SHADOW);
+    pd_text_right(c, side + 7, 28, v->hp ? pd_status_label(v->status) : "FNT", PD_VALUE, PD_VALUE_SHADOW);
+    const int types[] = {v->type1, v->type2};
+    int x = 49;
+    for (int i = 0; i < 2; i++) {
+        if (types[i] < 0 || (i && types[i] == types[0])) continue;
+        const char* label = pd_type_name(v->game, types[i]);
+        if (!*label) continue;
+        int width = pd_text_width(label) + 6;
+        if (width > side + 8 - x) width = side + 8 - x;
+        summary_chip(c, x, 45, width, types[i], label);
+        x += width + 3;
+    }
+    pd_fill(c, side + 11, 12, 1, h - 16, PD_DIVIDER);
+    const int bar = side - 4;
+    pd_text(c, 13, 60, "HP", PD_MUTED, PD_MUTED_SHADOW);
+    snprintf(line, sizeof line, "%d/%d", v->hp, v->maxHp);
+    pd_text_right(c, side + 8, 60, line, PD_LABEL, PD_LABEL_SHADOW);
+    const uint32_t color = v->hp * 5 <= v->maxHp ? 0xDA4A48 : v->hp * 2 <= v->maxHp ? 0xD8A52E : 0x4D9A58;
+    pd_fill(c, 13, 75, bar, 5, PD_DIVIDER);
+    if (v->maxHp > 0) pd_fill(c, 13, 75, bar * (v->hp < v->maxHp ? v->hp : v->maxHp) / v->maxHp, 5, color);
+    int y = 85;
+    if (v->hasExperience) {
+        pd_text(c, 13, 82, "EXP", PD_MUTED, PD_MUTED_SHADOW);
+        if (v->expPercent >= 0) {
+            if (v->level >= 100) snprintf(line, sizeof line, "MAX");
+            else snprintf(line, sizeof line, "NEXT %lu", (unsigned long)v->toNext);
+            pd_fill(c, 13, 97, bar, 5, PD_DIVIDER);
+            pd_fill(c, 13, 97, v->expPercent * bar / 100, 5, 0x5883BF);
+        } else snprintf(line, sizeof line, "%lu", (unsigned long)v->experience);
+        pd_text_right(c, side + 8, 82, line, PD_VALUE, PD_VALUE_SHADOW);
+        y = 107;
+    }
+    if (page == PD_SUMMARY_STATS) {
+        summary_stats_left(c, v, bar, y, h);
+        summary_stats_right(c, v, rx, rw, h);
+        return;
+    }
+    static const char* const headings[] = {"WEAK TO","RESISTS","IMMUNE TO"};
+    for (int group = 0; group < 3; group++) {
+        x = 13;
+        for (int type = 0; type < 32; type++) {
+            const char* label = pd_type_name(v->game, type);
+            if (!*label || v->type1 < 0) continue;
+            const int pct = pd_type_multiplier_pct(v->game, type, v->type1, v->type2);
+            if (!(group == 0 ? pct > 100 : group == 1 ? pct > 0 && pct < 100 : pct == 0)) continue;
+            if (x == 13) {
+                if (y + 27 > h) break;
+                pd_text(c, x, y, headings[group], PD_MUTED, PD_MUTED_SHADOW);
+                y += 14;
+            }
+            const char* amount = pct == 400 ? " 4x" : pct == 200 ? " 2x" : pct == 50 ? " .5x" : pct == 25 ? " .25x" : "";
+            snprintf(line, sizeof line, "%s%s", label, amount);
+            const int chip = pd_text_width(line) + 6;
+            if (x + chip > side + 9) { x = 14; y += 14; }
+            if (y + 13 > h) break;
+            summary_chip(c, x, y, chip, type, line);
+            x += chip + 3;
+        }
+        if (x != 13) y += 14;
+    }
+    if (page == PD_SUMMARY_LEARN) {
+        summary_learn(c, v, rx, rw, h);
+        return;
+    }
+    pd_text(c, rx, 12, "CURRENT MOVES", PD_MUTED, PD_MUTED_SHADOW);
+    const int step = (h - 32) / PD_NUM_MOVES;
+    for (int i = 0; i < PD_NUM_MOVES; i++) {
+        const struct pd_summary_move* move = &v->moves[i];
+        if (!move->name) continue;
+        const int top = 30 + i * step;
+        pd_text_fit(c, rx, top, rw - 3, move->name, PD_LABEL, PD_LABEL_SHADOW);
+        char power[12] = "-";
+        if (move->power == 1) snprintf(power, sizeof power, "VAR");
+        else if (move->power > 1) snprintf(power, sizeof power, "%d", move->power);
+        snprintf(line, sizeof line, "PWR %s PP %d", power, move->pp);
+        pd_text_right(c, rx + rw - 3, top + 15, line, PD_VALUE, PD_VALUE_SHADOW);
+        const char* label = pd_type_name(v->game, move->type);
+        int chip = rw - pd_text_width(line) - 8, need = pd_text_width(label) + 6;
+        if (*label) summary_chip(c, rx, top + 15, chip < need ? chip : need, move->type, label);
+        if (i != PD_NUM_MOVES - 1) pd_fill(c, rx, top + step - 4, rw, 1, PD_DIVIDER);
+    }
+}
+
+static void summary_control(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, const char* label, int hit) {
+    pd_title_box(c, x, y, w, 23, PD_TITLE_FILL);
+    pd_text_fit(c, x + 5, y + 3, w - 10, label, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    if (ui) ui_add_hit(ui, x, y, w, 23, hit);
+}
+
+void pd_ui_summary_footer(struct pd_ui* ui, struct pd_canvas* c, const struct pd_summary_view* v, bool stats) {
+    const int y = c->h - 25, bw = c->w < 334 ? 68 : 74;
+    if (v->primary) summary_control(ui, c, 4, y, bw, v->primary, HIT_SUMMARY_STATS);
+    if (v->secondary) summary_control(ui, c, 7 + bw, y, bw - 7, v->secondary, v->secondaryLearn ? HIT_SUMMARY_LEARN : HIT_SUMMARY_INFO);
+    for (int i = 0; i < v->count && i < PD_PARTY_SIZE; i++) {
+        const int x = 5 + 2 * bw + i * 19;
+        pd_title_box(c, x, y + 2, 18, 19, i == v->selected ? PD_ROW_SELECTED : PD_LIST_FILL);
+        if (!v->icon(v->ctx, c, i, x + 1, y + 3, true)) {
+            const char slot[] = {(char)('1' + i), 0};
+            pd_text(c, x + 6, y + 3, slot, PD_LABEL, PD_LABEL_SHADOW);
+        }
+        if (i == v->selected) pd_fill(c, x + 2, y + 18, 14, 2, PD_VALUE);
+        if (ui) ui_add_hit(ui, x, y + 2, 18, 19, HIT_SUMMARY_MON + i);
+    }
+    summary_control(ui, c, c->w - 66, y, 62, "B BACK", HIT_BACK);
+    if (ui) ui->startId = stats ? HIT_SUMMARY_STATS : HIT_SUMMARY_MON + v->selected;
+}
+
+struct native_summary { const struct pd_game* game; const struct pd_snapshot* snapshot; };
+static bool native_summary_icon(void* ctx, struct pd_canvas* c, int slot, int x, int y, bool small) {
+    const struct native_summary* source = ctx;
+    const struct pd_mon* mon = &source->snapshot->party[slot];
+    if (!small) return pd_draw_mon_icon_shiny(c, source->game, mon->species, mon->shiny, x, y, 1, false);
+    const uint32_t* icon = pd_mon_icon_pixels(source->game, mon->species, mon->shiny);
+    if (!icon) return false;
+    for (int row = 0; row < 16; row++)
+        for (int col = 0; col < 16; col++) {
+            uint32_t px = icon[row * 2 * PD_ICON + col * 2];
+            if (px != 0xff000000u) pd_fill(c, x + col, y + row, 1, 1, px);
+        }
+    return true;
+}
+
+struct native_learnset {
+    const struct pd_game* game;
+    struct pd_level_move moves[100];
+};
+static struct pd_summary_learn_row native_learn_row(const void* data, int i, char* scratch, size_t n) {
+    const struct native_learnset* source = data;
+    const struct pd_level_move move = source->moves[i];
+    return (struct pd_summary_learn_row){move.level, pd_move_name(source->game, move.move, scratch, n)};
+}
+
+static void native_summary_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
+    const struct pd_mon* m = &s->party[ui->summarySlot];
+    char name[40], species[40], moveNames[PD_NUM_MOVES][40];
+    static struct native_learnset learnset;
+    static unsigned rom;
+    static int cachedSpecies, count = -1;
+    if (rom != pd_rom_id(g) || cachedSpecies != m->species) {
+        count = pd_dex_level_moves(g, m->species, learnset.moves, 100);
+        rom = pd_rom_id(g);
+        cachedSpecies = m->species;
+    }
+    learnset.game = g;
+    ui->summaryCanLearn = count >= 0 && !party_egg(ui, m);
+    if (!ui->summaryCanLearn) ui->summaryLearn = false;
+    ui->summaryLearnLast = pd_ui_summary_learn_last(c->h, count);
+    if (ui->summaryLearnRow > ui->summaryLearnLast) ui->summaryLearnRow = ui->summaryLearnLast;
+    const struct pd_summary_learn learn = {&learnset, native_learn_row, count, ui->summaryLearnRow};
+    if (!m->stats.valid) ui->summaryStats = false;
+    const bool secondaryLearn = ui->summaryLearn || (!ui->summaryStats && !ui->summaryInfo && ui->summaryCanLearn);
+    const bool gb = g->cfg->gb != NULL;
+    struct native_summary ctx = {g, s};
+    struct pd_summary_view view = {
+        .game = g, .ctx = &ctx, .icon = native_summary_icon,
+        .name = mon_display_name(ui, g, m, name, sizeof name),
+        .primary = m->stats.valid ? (ui->summaryStats ? "MOVES" : "STATS") : NULL,
+        .secondary = ui->summaryInfo || ui->summaryLearn ? "MOVES" : secondaryLearn ? "LEARN" : "INFO",
+        .secondaryLearn = secondaryLearn, .speciesName = party_species(ui, g, m->species, species, sizeof species),
+        .heldItem = m->hasHeldItem ? (m->heldItem ? pd_item_name(g, m->heldItem) : "NONE") : NULL,
+        .friendship = m->hasFriendship ? m->friendship : -1, .stats = &m->stats,
+        .dvs = gb, .gen1 = gb && g->cfg->gb->gen == 1, .learn = &learn,
+        .selected = ui->summarySlot, .count = s->partyCount,
+        .level = m->level, .hp = m->hp, .maxHp = m->maxHp, .status = m->status,
+        .experience = m->experience, .expPercent = -1, .hasExperience = m->hasExperience,
+        .egg = party_egg(ui, m),
+    };
+    pd_species_type_pair(g, m->species, &view.type1, &view.type2);
+    struct pd_exp exp;
+    if (m->hasExperience && (gb
+        ? pd_exp_progress(pd_polished_growth(g, m->species), m->level, m->experience, 100, &exp)
+        : !g->hackMaps && pd_retail_exp_progress(m->species, m->level, m->experience, 100, &exp))) {
+        view.expPercent = exp.filled;
+        view.toNext = exp.toNext;
+    }
+    for (int i = 0; i < PD_NUM_MOVES; i++)
+        if (m->moves[i])
+            view.moves[i] = (struct pd_summary_move){
+                pd_move_name(g, m->moves[i], moveNames[i], sizeof moveNames[i]),
+                pd_move_type(g, m->moves[i]), pd_move_power(g, m->moves[i]), m->pp[i],
+            };
+    if (ui->summaryInfo && !view.egg) {
+        pd_title_box(c, 4, 4, c->w - 8, c->h - 32, PD_TITLE_FILL);
+        pd_text_fit(c, 13, 12, c->w - 26, view.name, PD_VALUE, PD_VALUE_SHADOW);
+        summary_info(c, g, m, 13, 34, c->w - 26, c->h - 37, true);
+    } else pd_ui_summary_page(c, &view, ui->summaryLearn ? PD_SUMMARY_LEARN : ui->summaryStats ? PD_SUMMARY_STATS : PD_SUMMARY_MOVES);
+    if (view.egg) view.primary = view.secondary = NULL;
+    pd_ui_summary_footer(ui, c, &view, view.primary != NULL);
 }
 
 static void summary_moves(const struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_mon* m, int x, int y,
@@ -1062,7 +1409,7 @@ void ui_mon_summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
                 pd_text_fit(c, rx, iy + i * 18, rw, text ? text : "", PD_LABEL, PD_LABEL_SHADOW);
             }
         } else if (ui->summaryInfo) {
-            summary_info(c, g, m, rx, iy, rw, iy + ih);
+            summary_info(c, g, m, rx, iy, rw, iy + ih, true);
         } else if (ui->summaryStats && m->stats.valid) {
             summary_stats(c, m, rx, iy, rw);
         } else {
@@ -1118,6 +1465,10 @@ static void slot_tag(struct pd_canvas* c, int x, int y, int w, const char* text,
 void ui_party_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
                   const struct pd_host_info* host) {
     if (ui->summarySlot >= 0) {
+        if (ui->handheldParty && !ui->boxMoves && !(host && host->canTake)) {
+            native_summary_view(ui, c, g, s);
+            return;
+        }
         const struct pd_mon* column[PD_PARTY_SIZE];
         for (int i = 0; i < s->partyCount; i++) column[i] = &s->party[i];
         ui_mon_summary(ui, c, g, s, &s->party[ui->summarySlot], column, s->partyCount, ui->summarySlot, host && host->canTake,
@@ -1226,5 +1577,6 @@ void pd_draw_party_ball(struct pd_canvas* c, int x, int y) {
 void pd_ui_party_view(struct pd_ui* ui,struct pd_canvas* c,const struct pd_game* g,
                       const struct pd_snapshot* s,int selected) {
     ui->hitCount=0;ui->focusId=HIT_SLOT+selected;
-    pd_backdrop(c);ui_party_tab(ui, c, g, s, NULL);
+    if (!ui->keepBackdrop) pd_backdrop(c);
+    ui_party_tab(ui, c, g, s, NULL);
 }

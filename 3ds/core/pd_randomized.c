@@ -70,7 +70,7 @@ bool pd_randomized_move(const struct pd_game* g, int move, int* type, int* power
 }
 
 bool pd_randomized_pct(const struct pd_game* g, int atk, int def, int* pct) {
-    const struct pd_randomized* r = g->randomized;
+    const struct pd_randomized* r = g ? g->randomized : NULL;
     if (!r) return false;
     *pct = 100;
     // gTypeEffectiveness' (attacker, defender, x10) triples up to 0xFF, the 0xFE marker row stepped over (the app's

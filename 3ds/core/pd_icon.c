@@ -257,6 +257,12 @@ static const struct icon* icon_for(const struct pd_game* g, int species, bool sh
     return e;
 }
 
+const uint32_t* pd_mon_icon_pixels(const struct pd_game* g, int species, bool shiny) {
+    if (!pd_rom_id(g)) return NULL;
+    const struct icon* icon = icon_for(g, species, shiny && species != PD_SPECIES_EGG);
+    return icon->ok ? icon->px : NULL;
+}
+
 bool pd_draw_mon_icon(struct pd_canvas* c, const struct pd_game* g, int species, int x, int y, bool faded) {
     return pd_draw_mon_icon_scaled(c, g, species, x, y, 1, faded);
 }

@@ -88,22 +88,6 @@ void pd_dex_evo_text(const struct pd_game* g, const struct pd_evo* e, char* out,
     }
 }
 
-int pd_dex_level_moves(const struct pd_game* g, int species, struct pd_level_move* out, int max) {
-    const struct pd_config* c = g->cfg;
-    if (!pd_dex_has_details(g) || !c->learnsets) return 0;
-    const uint8_t* ptr = pd_rom_at(g, c->learnsets + (uint32_t) species * 4, 4);
-    if (!ptr) return 0;
-    const uint8_t* w = pd_rom_at(g, u32le(ptr), 2);
-    int n = 0;
-    while (w && n < max) {
-        int v = u16le(w);
-        if (v == 0xFFFF) break;
-        out[n++] = (struct pd_level_move) { v >> 9, v & 0x1FF };
-        w += 2;
-    }
-    return n;
-}
-
 int pd_dex_tm_moves(const struct pd_game* g, int species, uint16_t* out, int max) {
     const struct pd_config* c = g->cfg;
     if (!pd_dex_has_details(g) || !c->dexTmhm || !c->dexTmhmMoves) return 0;

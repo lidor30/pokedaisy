@@ -441,7 +441,6 @@ bool ui_map_act(struct pd_ui* ui, int id) {
 // for another backend's already-composed art. The normal GBA path still builds its
 // own page, head and selection above.
 void pd_ui_map_view(struct pd_canvas* c, const struct pd_map_source* source) {
-    pd_backdrop(c);
     if (!source || !source->pixels || source->width < 1 || source->height < 1 ||
         source->width > 4096 || source->height > 4096 || c->w < 32 || c->h < 32 || c->w > 1024) {
         ui_notice(c, "NO MAP", "The region map's art wasn't found", "in this ROM.");

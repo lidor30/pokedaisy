@@ -40,10 +40,10 @@ become One Screen. Unrecognized ROMs use Picture in Picture when One Screen
 is selected. Platinum uses the USA revision 1 ROM.
 
 The native battle panel remains accessible with the stylus. The DS party HUD
-appears once the field is settled. The quick menu opens companion tabs and
-toggles the HUD. The DS core has native viewport layouts and read-only companion
-views. EXPAND, ZOOM OUT and field actions are features of the supported GB/GBA
-games.
+appears once the field is settled. The Quick Menu overlays the paused gameplay
+view and opens the Companion from a single tile. Dimmed tiles explain why an
+action cannot run. The DS core has native viewport layouts and read-only
+companion inventory views. EXPAND and ZOOM OUT are features of supported GB/GBA games.
 
 In One Screen, use Platinum's own X menu to open Bag or Pokémon in the
 overworld. Those native menus open over the field. The separate PokéDaisy
@@ -84,23 +84,68 @@ need live retail ROM testing.
 
 | Games | Exact revisions | Companion and Quick Menu |
 | --- | --- | --- |
-| HeartGold, SoulSilver | USA rev 0 | Party, read-only Bag, Map, Dex, Settings, HUD toggle |
-| Black, White, Black 2, White 2 | USA/Europe rev 0 | Party, read-only Bag, Map, Dex, Settings, HUD toggle |
+| HeartGold, SoulSilver | USA rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD toggle |
+| Black, White, Black 2, White 2 | USA/Europe rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD toggle |
 
-Party shows HP, status, moves, PP and held items. A opens the selected party
-member's summary or Bag item's details. Left and right in Bag change pockets.
+Party shows HP, EXP to the next level, type matchups, moves, power and PP.
+A opens the selected party member's summary or Bag item's details. In a party
+summary, A switches between Moves and Stats. Select opens the level-up Learn
+list and Left/Right scrolls it. Up/Down browses the party. Left/Right in Bag
+changes pockets.
 To turn on the HUD, hold L2, select HUD and press A. It appears after the
 overworld settles in a layout with only the top screen visible. The companion's
 Settings control Minimal HUD, Poké Balls, Repel Steps and the Minimap. Minimal hides the
 party cards. The ball counter shows up to three ball types by quantity and
 Repel Steps appears only while a Repel is active. The Dex lists seen and
-caught species. The Map and Minimap share the cartridge's art. Use the D-pad
-to move the cursor in Map and A to recenter on the player. The Minimap is
-hidden in Minimal HUD mode.
+caught species in a list beside Android's four filters. Press Left to focus
+the filters and the regional/National switch at the bottom. Select cycles
+filters from the list. Press A on a seen entry to open its cartridge front
+sprite, typing, height, weight, description, and base stats. Select cycles
+Info, Evolve, Area and Moves. Area lists ordinary wild encounters, with odds
+per method and applicable times or seasons. Moves includes level-up moves
+and cartridge TM/HM compatibility. Press A in Moves to jump between the two
+groups. Up/Down scrolls details, Left/Right browses seen entries in the
+current filter, and B returns to the highlighted list row. The Settings gear
+offers Dark Mode for the DS companion.
+
+The Map and Minimap share the cartridge's art. In Map, the D-pad moves the
+cursor. Press B to focus **Places**, then use Left/Right to choose **Places**
+or **Me** and A to confirm. Places jumps to a selected town or route, and Me
+recenters on the player. Select and A still open Places or recenter directly
+from the map cursor. The Minimap is hidden in Minimal HUD mode. Guide's **Here** page
+lists local To Do hints, ordinary encounters for the current map, and items for
+the surrounding area, including its buildings. Tips is available for supported
+games, and Platinum and HGSS also have a Stuck? page. The device's local time selects the
+encounter table. Picked-up items are marked Done using the save's flags.
+GB/GBC/GBA and DS share the Guide controls. Press **Up/Down** in the sidebar
+and **A** to choose **Here**, **Next Boss**, **Tips**, **Where Is**, or
+**Stuck?** where the game supplies it. Press **Right** to enter the page and
+**Left** to return to the sidebar. **Up/Down** moves through entries, and **A**
+reveals the hint and then the answer. **B** closes an open reveal before
+leaving the companion. The first visit shows the shared Guide notice.
+
+Where Is has hints for HMs and key items. Next Boss reads badges and event
+flags to start at the first unfinished battle in Android's guide order.
+Each section compares the opposing team's highest level with your party's
+highest level. A reveals a Pokémon's types, then its species, moves and held
+item. Version-specific teams and the sequels' Normal and Challenge variants
+follow Android's data and progress rules.
 
 On an open overworld, the Quick Menu has a Repel action. Select a Repel
 from the list and press A to use one. The game counts steps down and handles
 expiry. Repel cannot stack with one already active.
+
+On the supported DS revisions above, hold **L2** in the overworld and
+choose **PC** to open the game's own Pokémon Storage System. The shortcut
+uses the same computer icon as the GB/GBC/GBA Quick Menu. The game handles
+the PC menus and box changes, and the shortcut is hidden during battles
+or while another field menu is open.
+
+On Black 2 USA/Europe rev 0, the overworld Quick Menu also offers **Fly**.
+A party member must know Fly. Pick a visited destination with the D-pad
+and A. PokéDaisy opens the game's Fly map and highlights that destination.
+Check it and press A to travel, or press B to cancel. The game checks
+whether you can fly from the current location.
 
 The Party and Bag readers and companion navigation were tested against
 upstream RAM captures for all six titles. ROM icon extraction, live HUD
@@ -112,6 +157,39 @@ uses the top screen, with the native X menu and touch-only apps floating
 over it. Apps that need both screens use a side-by-side panel. Use
 **Select + R2** to open the touch screen manually and **Select + D-pad / A**
 to move or tap the stylus.
+
+From the overworld, hold **L2** to open the DS Quick Menu. **Wild** toggles
+encounter rates and shows an OFF badge while suppressed. **Fly** lists unlocked
+destinations for a party member who knows Fly. Black 2 opens the native map for
+confirmation. **Auto-Run** in Companion Settings follows Android's controls.
+Hold **B** while moving to walk. Menus, scripts, battles, bikes and surfing keep
+their native controls.
+
+## GB, GBC and GBA companion backport checklist
+
+In the Dex, **Select** cycles the four filters. Press **A** on a seen entry to
+open its details where supported. In a Dex entry, **Select** cycles the
+available Info, Evolve, Area and Moves pages. **Left/Right** browses seen entries
+and **Up/Down** scrolls the page. Press **A** in Moves to jump between
+level-up and machine or teachable groups. Both cores share the list, portrait,
+detail tabs, footer, and evolution rows. Exact mapped Polished Crystal carts
+supply their own Dex art, Info page, and level-up moves.
+
+Both cores use the same split Party summary and Pokémon switcher. **A** opens
+the summary and switches between Moves and Stats when stats are available.
+**Select** toggles Learn when the ROM supplies a learnset. **Left/Right**
+scrolls Learn and **Up/Down** changes party members. On DS, **Settings → Tab
+Bar** edits the visible tabs. **Settings → More Tabs** opens a hidden tab.
+
+| Feature | Backport and validation |
+| --- | --- |
+| Compact Party summary | Moves, Stats, Learn and the switcher share a renderer. The cores supply stats and learnsets from their own game data. |
+| Dex navigation and details | Both cores use the same list and split detail layout. Polished Crystal has its own cartridge Info reader. Other Gen 2 detail readers and the remaining tabs need adapters. |
+| Evolution and level-up Moves | Stock mapped GBA ROMs supply Evolve links. GBA level-up uses existing Guide or expansion learnsets. Exact Polished Crystal 3.2.0–3.2.3 releases supply their own level-up learnsets. The handheld Evolve page still needs adapters for GB/GBC and hack-specific GBA rules. |
+| Dex Area and TM/HM | GBA Moves shows checked cartridge TM/HM bits or the expansion game’s teachable list. Area uses the stock GBA encounter reader where the ROM maps its encounter tables. |
+| Guide | The Guide sidebar, page and row focus, completion markers, first-visit notice, and hint/answer flow are shared across both libretro cores. Here, Next Boss, Tips, Where Is, and Stuck? use each game's existing area and guide data. DS has item balls and hidden items plus authored To Do entries, with no generated NPC gift and trade data for a separate People section. |
+| Companion Dark Mode | Reuse the shared window palette. Add GB ink/paper and GBA Bag dark variants, persist the setting in the GB/GBA core, and compare each look against Android. |
+| Overworld controls | Compare the existing GB/GBA Wild and Fly actions with the DS controls. Check Auto-Run parity for games with a run button, and test Wild restoration across resume on games that support the toggle. |
 
 ## Build the Brick package
 

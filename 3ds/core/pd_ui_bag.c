@@ -280,7 +280,7 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         ui_notice(c, "NO BAG YET", "The bag shows once the game", "has loaded a save.");
         return;
     }
-    const struct pd_bag_palette* p = pd_bag_cur;
+    const struct pd_bag_palette* p = ui->bagPalette ? ui->bagPalette : pd_bag_cur;
     if (p->hasBackdrop) {
         for (int y = 0; y < c->h; y += 8) pd_fill(c, 0, y, c->w, 8, (y / 8) % 2 ? p->backdropB : p->backdropA);
     }
@@ -322,6 +322,6 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
 
 void pd_ui_bag_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     ui->hitCount = 0;
-    pd_backdrop(c);
+    if (!ui->keepBackdrop) pd_backdrop(c);
     ui_bag_tab(ui, c, g, s, NULL);
 }

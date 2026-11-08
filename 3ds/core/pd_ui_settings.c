@@ -310,11 +310,13 @@ static void toggle_page(struct pd_ui* ui, struct pd_canvas* c, const char* title
 static void tab_bar_page(struct pd_ui* ui, struct pd_canvas* c) {
     const char* labels[UI_BAR_CHOICES];
     bool on[UI_BAR_CHOICES];
-    for (int i = 0; i < UI_BAR_CHOICES; i++) {
-        labels[i] = ui_tab_label(UI_BAR_CHOICE[i]);
-        on[i] = (ui->settings->tabBar >> UI_BAR_CHOICE[i]) & 1;
+    enum pd_tab tabs[UI_BAR_CHOICES];
+    const int n = ui_configurable_tabs(ui, tabs);
+    for (int i = 0; i < n; i++) {
+        labels[i] = ui_tab_label(tabs[i]);
+        on[i] = (ui->settings->tabBar >> tabs[i]) & 1;
     }
-    toggle_page(ui, c, "TAB BAR", labels, on, NULL, UI_BAR_CHOICES, "At most 5 on the bar; the rest open from MORE.", NULL);
+    toggle_page(ui, c, "TAB BAR", labels, on, NULL, n, "At most 5 on the bar; the rest open from MORE.", NULL);
 }
 
 // FieldHud.kt's fieldHudRows: the switch, LAYOUT / LOOK / SIZE (a press cycles them), then which parts show.

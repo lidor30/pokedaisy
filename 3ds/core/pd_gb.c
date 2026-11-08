@@ -274,13 +274,25 @@ static void gen2_hidden_power(struct pd_mon_stats* st, int atk, int def, int spe
 }
 
 static void gb_stats(struct pd_mon* m, const uint8_t* raw, const struct pd_gb_config* g) {
+    if (g->polished) {
+        // v3.2.3 macros/ram.asm: six EV bytes, six packed DVs, then nature in the personality byte.
+        struct pd_mon_stats* st = &m->stats;
+        for (int i = 0; i < 6; i++) {
+            st->evs[i] = raw[11 + i];
+            st->ivs[i] = (raw[17 + i / 2] >> (i % 2 ? 0 : 4)) & 15;
+            st->values[i] = be16(raw + 36 + 2 * i);
+        }
+        st->nature = raw[20] & 31;
+        st->valid = st->hasIvs = st->hasEvs = true;
+        st->hasNature = st->nature < 25;
+        return;
+    }
     int atk, def, spe, spc, base;
     const uint8_t* dv;
     if (g->gen == 1) {
         dv = raw + 27;
         base = 34;
     } else {
-        if (g->polished) return;
         dv = raw + 21;
         base = 36;
     }
@@ -378,6 +390,8 @@ static bool decode_mon(const struct pd_gb_config* g, const uint8_t* raw, bool eg
     m->hasExperience = true;
     m->heldItem = raw[1];
     m->hasHeldItem = true;
+    m->friendship = raw[g->polished ? 26 : 27];
+    m->hasFriendship = !egg;
     if (!egg) gb_stats(m, raw, g);
     return true;
 }

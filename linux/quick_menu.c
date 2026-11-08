@@ -50,6 +50,11 @@ static const char *const REPEL[] = {
     "....KKK.....", "...KLLLK.K..", "...KKKKK..K.", "..KGGGGGK.K.", "..KGLGGGK...", "..KGLGGGK...",
     "..KGGGGGK...", "..KGGGGGK...", "..KGGGGGK...", "..KKKKKKK...", NULL,
 };
+static const char *const WING[] = {
+    "............1...", "..........111...", "........11111...", "......1111111...",
+    "....11111111....", "..111111111.....", ".111111111......", ".11111111.......",
+    "..111111........", "...1111.........", "....11..........", NULL,
+};
 static const char *const BIKE[] = {
     "...........KK...", "...KKK.....K....", "....K.....K.....", "....KKKKKKK.....", "..KKK.K..K.KKK..",
     ".K...KK.K.K...K.", "K...K.KK.K.K...K", "K...K..KK..K...K", "K.....K..K.....K", ".K...K....K...K.",
@@ -98,7 +103,8 @@ static uint32_t icon_color(enum quick_action a, char ch) {
 static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int scale, bool dim) {
   const char *const *rows = a == QUICK_PC ? quick_icon_pc : a == QUICK_WILD ? quick_icon_grass : a == QUICK_SAVE_STATE ? SAVE_STATE
                           : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : a == QUICK_REPEL ? REPEL
-                          : a == QUICK_BIKE ? BIKE : a == QUICK_HUD ? quick_icon_hud : quick_icon_companion;
+                          : a == QUICK_BIKE ? BIKE : a == QUICK_FLY ? WING
+                          : a == QUICK_HUD ? quick_icon_hud : quick_icon_companion;
   int h = 0, w = (int)strlen(rows[0]);
   while (rows[h])
     h++;
@@ -220,7 +226,7 @@ bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick
       art = pd_draw_mon_icon(c, g, items[i].species, x + (TILE_W - PD_ICON) / 2, y - 3, dim);
     else if (items[i].item)
       art = pd_draw_item_icon(c, g, items[i].item, x + (TILE_W - PD_ITEM_ICON) / 2, y + 2, dim);
-    if (!art && items[i].action != QUICK_FLY)
+    if (!art)
       icon(c, items[i].action, x + TILE_W / 2, y + 14, 1, dim || items[i].off);
     const char *label = items[i].label ? items[i].label : quick_label(items[i].action);
     int lw = pd_text_width(label);

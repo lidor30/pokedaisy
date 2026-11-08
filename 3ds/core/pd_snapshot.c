@@ -306,6 +306,8 @@ bool pd_decode_party_mon_c(const uint8_t* raw, const struct pd_party_layout* l, 
             m->stats.values[i] = u16(raw + l->maxHp + 2 * i);
         }
         m->stats.nature = nature;
+        m->hasFriendship = sum == stored && stored != 0;
+        m->friendship = growth[9];
         m->stats.valid = true;
         m->stats.hasIvs = m->stats.hasEvs = m->stats.hasNature = true;
         m->stats.hasHiddenPower = true;

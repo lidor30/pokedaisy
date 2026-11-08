@@ -32,6 +32,7 @@ struct view_entry {
     const char* answer; // "" = nothing to reveal
     char hintBuf[96], answerBuf[220];
     bool owned;
+    int revealSteps; // cached when an adapter owns the hint and answer text
 };
 
 struct view_section {
@@ -51,7 +52,7 @@ static struct view_section sections[MAX_SECTIONS];
 static int entryCount, sectionCount;
 static struct page_ref pages[MAX_PAGES];
 static int pageCount;
-static int lastKindBit;
+
 
 static struct view_section* add_section(const char* heading, const char* note) {
     if (sectionCount >= MAX_SECTIONS) return NULL;
@@ -73,7 +74,7 @@ static struct view_entry* add_entry(void) {
 }
 
 static int steps(const struct view_entry* e) {
-    return !*e->answer ? 0 : e->hint ? 2 : 1;
+    return !e->answer ? e->revealSteps : !*e->answer ? 0 : e->hint ? 2 : 1;
 }
 
 // The pages sit in a column (GuideScreen's): room for their whole names.
@@ -344,8 +345,17 @@ static void build_where(const struct pd_game* g, const struct pd_snapshot* s) {
             e->owned = pd_area_done(g, s, t);
         }
         qsort(entries + first, (size_t) (entryCount - first), sizeof(*entries), by_title);
+        // These rows own their text buffers. Sorting moves the buffers with the rows.
+        for (int i = first; i < entryCount; i++) {
+            entries[i].hint = *entries[i].hintBuf ? entries[i].hintBuf : NULL;
+            entries[i].answer = entries[i].answerBuf;
+        }
         if (!sections[sectionCount - 1].count) sectionCount--;
     }
+}
+
+void pd_ui_guide_boss_note(char* note, size_t size, const char* place, int count, int ace, int best) {
+    snprintf(note, size, "%.40s - %d POKéMON - UP TO LV%d - YOUR BEST LV%d", place, count, ace, best);
 }
 
 // A boss team's members, one entry each: level, then types as the hint, then species, moves and item as the answer.
@@ -390,7 +400,7 @@ static void team_section(const struct pd_game* g, const char* title, const char*
     for (int i = 0; i < n; i++) ace = team[i].level > ace ? team[i].level : ace;
     char heading[56], note[160];
     snprintf(heading, sizeof(heading), first ? "NEXT: %s" : "%s", title);
-    snprintf(note, sizeof(note), "%s - %d POKéMON - UP TO LV%d - YOUR BEST LV%d", where, n, ace, best);
+    pd_ui_guide_boss_note(note, sizeof note, where, n, ace, best);
     add_section(heading, note);
     team_entries(g, team, n);
 }
@@ -457,7 +467,7 @@ static void build_bosses(const struct pd_game* g, const struct pd_snapshot* s, c
             if (var->label[0]) snprintf(heading + hl, sizeof(heading) - hl, " (%s)", var->label);
             else snprintf(heading + hl, sizeof(heading) - hl, " (WITH %s)", pd_species_name(g, aceSpecies, with, sizeof(with)));
         }
-        snprintf(note, sizeof(note), "%s - %d POKéMON - UP TO LV%d - YOUR BEST LV%d", boss->where, n, ace, best);
+        pd_ui_guide_boss_note(note, sizeof note, boss->where, n, ace, best);
         add_section(heading, note);
         team_entries(g, team, n);
         }
@@ -473,30 +483,46 @@ static int note_lines(const char* note, int w) {
     return *note ? pd_text_wrap(NULL, 0, 0, w, LINE, 3, note, 0, 0) : 0;
 }
 
+static int draw_hint(struct pd_canvas* c, int x, int y, int w, const char* text) {
+    char hint[260];
+    snprintf(hint, sizeof hint, "HINT: %s", text);
+    return pd_text_wrap(c, x, y, w, LINE, 4, hint, PD_MUTED, PD_MUTED_SHADOW);
+}
+
+static void guide_focus(struct pd_canvas* c, int x, int y, int w, int h) {
+    const uint32_t color = 0xff7331;
+    pd_fill(c, x, y, w, 2, color);
+    pd_fill(c, x, y + h - 2, w, 2, color);
+    pd_fill(c, x, y, 2, h, color);
+    pd_fill(c, x + w - 2, y, 2, h, color);
+}
+
 static int entry_height(const struct pd_ui* ui, int i, int w) {
     int h = ROW;
     if (ui->guideOpen != i) return h;
     const struct view_entry* e = &entries[i];
-    if (ui->guideLevel >= 1 && e->hint) h += LINE * pd_text_wrap(NULL, 0, 0, w, LINE, 4, e->hint, 0, 0);
+    if (ui->guideLevel >= 1 && e->hint) h += LINE * draw_hint(NULL, 0, 0, w, e->hint);
     if (ui->guideLevel >= steps(e)) h += LINE * pd_text_wrap(NULL, 0, 0, w, LINE, 6, e->answer, 0, 0);
     return h + (h > ROW ? 4 : 0);
 }
 
-static void draw_list(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h) {
+static void draw_list(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, bool follow) {
+    const int focus = ui->guideController ? ui->guideRowFocus : ui->focusId - HIT_GUIDE_ROW;
     int total = 0, focusTop = -1, focusH = 0;
     for (int si = 0; si < sectionCount; si++) {
         total += ROW + LINE * note_lines(sections[si].note, w - 12);
         for (int i = sections[si].first; i < sections[si].first + sections[si].count; i++) {
             int eh = entry_height(ui, i, w - 30);
-            if (ui->focusId == HIT_GUIDE_ROW + i) focusTop = total, focusH = eh;
+            if (focus == i) focusTop = total, focusH = eh;
             total += eh;
         }
         total += 4;
     }
     // The entry a host's D-pad cursor moves onto comes wholly into view (one taller than the window: from its top).
     static int seenFocus = -1;
-    if (focusTop >= 0 && ui->focusId != seenFocus) ui->guideScroll = ui_scroll_to(ui->guideScroll, focusTop, focusH, h);
-    seenFocus = ui->focusId;
+    if (focusTop >= 0 && (follow || (!ui->guideController && ui->focusId != seenFocus)))
+        ui->guideScroll = ui_scroll_to(ui->guideScroll, focusTop, focusH, h);
+    if (!ui->guideController) seenFocus = ui->focusId;
     ui->guideScroll = ui_clamp_scroll(ui->guideScroll, total, h);
     ui_add_scroll_hit(ui, x, y, w, h, HIT_GUIDE_LIST);
     pd_clip(c, x, y, w, h);
@@ -529,13 +555,12 @@ static void draw_list(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w
                 pd_text_fit(c, x + 20, ty, right - x - 20, e->title, PD_LABEL, PD_LABEL_SHADOW);
                 int ly = cy + ROW;
                 if (open && level >= 1 && e->hint) {
-                    char hint[120];
-                    snprintf(hint, sizeof(hint), "HINT: %s", e->hint);
-                    ly += LINE * pd_text_wrap(c, x + 20, ly, w - 30, LINE, 4, hint, PD_MUTED, PD_MUTED_SHADOW);
+                    ly += LINE * draw_hint(c, x + 20, ly, w - 30, e->hint);
                 }
                 if (open && level >= st && st) {
                     pd_text_wrap(c, x + 20, ly, w - 30, LINE, 6, e->answer, PD_VALUE, PD_VALUE_SHADOW);
                 }
+                if (ui->guideController && focus == i) guide_focus(c, x, cy, w, eh);
                 int top = cy < y ? y : cy;
                 int bottom = cy + eh > y + h ? y + h : cy + eh;
                 ui_add_scroll_hit(ui, x, top, w, bottom - top, HIT_GUIDE_ROW + i);
@@ -548,21 +573,7 @@ static void draw_list(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w
     ui_scroll_bar(c, x + w - 4, y, h, ui->guideScroll, total, PD_MUTED);
 }
 
-void ui_guide_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
-    const struct pd_guide* gd = pd_guide_for(g);
-    if (!gd) {
-        ui_notice(c, "NO GUIDE", "There's no guide for this game yet.", NULL);
-        return;
-    }
-    // The first visit per game: the notice first.
-    // (A bit per game kind, as saved settings have it; the guides past Emerald's get their own.)
-    lastKindBit = g->guide >= PD_GUIDE_RUBY ? 1 << (3 + g->guide) : 1 << g->kind;  // kinds use bits 0-3, guides from 7 up (bit 26 at most)
-    if (!(ui->settings->guideNotice & lastKindBit) && ui->overlay == PD_OVERLAY_NONE) {
-        ui->overlay = PD_OVERLAY_GUIDE_NOTICE;
-    }
-    build_pages(g, s, gd);
-    if (ui->guidePage < 0 || ui->guidePage >= pageCount) ui->guidePage = 0;
-
+static int draw_pages(struct pd_ui* ui, struct pd_canvas* c, const char* const* labels, int count) {
     // The pages, in a column on the left like GuideScreen's: a GUIDE title
     // window over a list window, the open page the white row.
     int colW = c->w * 30 / 100;
@@ -570,35 +581,115 @@ void ui_guide_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
     pd_text(c, MARGIN + tf + 6, pd_text_y(CONTENT_Y, CHIP_H), "GUIDE", PD_TITLE_TEXT, PD_TITLE_SHADOW);
     int py = CONTENT_Y + CHIP_H + 4;
     int pf = pd_list_box(c, MARGIN, py, colW, c->h - py - MARGIN);
-    int rowH = (c->h - py - MARGIN - 2 * pf) / (pageCount > 0 ? pageCount : 1);
+    int rowH = (c->h - py - MARGIN - 2 * pf) / (count > 0 ? count : 1);
     if (rowH > 26) rowH = 26;
-    for (int i = 0; i < pageCount; i++) {
+    for (int i = 0; i < count; i++) {
         int rx = MARGIN + pf, ry = py + pf + i * rowH, rw = colW - 2 * pf;
         bool open = ui->guidePage == i;
         if (open || ui->pressedId == HIT_GUIDE_PAGE + i) pd_fill(c, rx, ry, rw, rowH, PD_ROW_SELECTED);
-        pd_text_fit(c, rx + 6, pd_text_y(ry, rowH), rw - 10, pages[i].label, open ? PD_VALUE : PD_LABEL,
+        pd_text_fit(c, rx + 6, pd_text_y(ry, rowH), rw - 10, labels[i], open ? PD_VALUE : PD_LABEL,
                     open ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
-        if (i < pageCount - 1) {
+        if (i < count - 1) {
             for (int dx = 4; dx < rw - 4; dx += 4) pd_fill(c, rx + dx, ry + rowH - 1, 2, 1, PD_DIVIDER);
         }
+        if (ui->guideController && ui->guideRowFocus < 0 && ui->guidePageFocus == i)
+            guide_focus(c, rx, ry, rw, rowH);
         ui_add_hit(ui, rx, ry, rw, rowH, HIT_GUIDE_PAGE + i);
     }
 
+    return colW;
+}
+
+static void guide_content(struct pd_ui* ui, struct pd_canvas* c, int colW) {
+    int x=MARGIN+colW+4, w=c->w-MARGIN-x;
+    int f=pd_list_box(c,x,CONTENT_Y,w,c->h-CONTENT_Y-MARGIN);
+    draw_list(ui,c,x+f,CONTENT_Y+f+1,w-2*f,c->h-CONTENT_Y-MARGIN-2*f-2,ui->guideFollow);
+    ui->guideFollow = false;
+}
+
+void pd_ui_guide_reset(struct pd_ui* ui) {
+    ui->guideRowFocus = ui->guideOpen = -1;
+    ui->guidePageFocus = ui->guidePage;
+    ui->guideScroll = ui->guideLevel = 0;
+    ui->guideFollow = false;
+}
+
+static void guide_begin(struct pd_ui* ui, int count, int noticeBit, bool verified) {
+    ui->guidePageCount = count;
+    ui->guideNoticeBit = noticeBit;
+    ui->guideVerified = verified;
+    if (ui->guidePage < 0 || ui->guidePage >= count) {
+        ui->guidePage = 0;
+        pd_ui_guide_reset(ui);
+    }
+    if (ui->guidePageFocus >= count) ui->guidePageFocus = ui->guidePage;
+    if (count && noticeBit && !(ui->settings->guideNotice & noticeBit) && ui->overlay == PD_OVERLAY_NONE) {
+        ui->guideNoticeConfirm = false;
+        ui->overlay = PD_OVERLAY_GUIDE_NOTICE;
+    }
+}
+
+static void guide_draw(struct pd_ui* ui, struct pd_canvas* c, const char* const* labels) {
+    if (ui->guideOpen >= entryCount) ui->guideOpen = -1;
+    if (ui->guideRowFocus >= entryCount) ui->guideRowFocus = entryCount - 1;
+    const int colW = draw_pages(ui, c, labels, ui->guidePageCount);
+    guide_content(ui, c, colW);
+}
+
+void pd_ui_guide_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_guide_source* source) {
+    guide_begin(ui, source->pageCount, source->noticeBit, source->verified);
     entryCount = sectionCount = 0;
+    for (int i = 0; i < source->rowCount; i++) {
+        const struct pd_guide_row* row = &source->rows[i];
+        if (row->heading) {
+            if (!add_section(row->title, row->detail)) break;
+            continue;
+        }
+        if (!sectionCount) add_section("", NULL);
+        struct view_entry* e = add_entry();
+        if (!e) break;
+        snprintf(e->title, sizeof e->title, "%s", row->title);
+        snprintf(e->detail, sizeof e->detail, "%s", row->detail);
+        e->hint = row->hint && *row->hint ? row->hint : NULL;
+        e->answer = row->answer ? row->answer : "";
+        e->owned = row->owned;
+    }
+    guide_draw(ui, c, source->pages);
+    // The adapter owns the strings. Input after this draw only needs the number of reveal steps.
+    for (int i = 0; i < entryCount; i++) {
+        entries[i].revealSteps = steps(&entries[i]);
+        entries[i].hint = entries[i].answer = NULL;
+    }
+}
+
+void ui_guide_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
+    const struct pd_guide* gd = pd_guide_for(g);
+    if (!gd) {
+        ui->guidePageCount = 0;
+        ui_notice(c, "NO GUIDE", "There's no guide for this game yet.", NULL);
+        return;
+    }
+    build_pages(g, s, gd);
+    const int bit = 3 + g->guide;
+    const int noticeBit = 1 << (g->guide >= PD_GUIDE_RUBY && bit < 31 ? bit : (int)g->kind);
+    guide_begin(ui, pageCount, noticeBit, gd->verified);
+    const char* labels[MAX_PAGES];
+    for (int i = 0; i < pageCount; i++) labels[i] = pages[i].label;
+
+    entryCount = sectionCount = 0;
+    if (!pageCount) {
+        ui_notice(c, "NO GUIDE", "There's no guide for this game yet.", NULL);
+        return;
+    }
     const struct page_ref* p = &pages[ui->guidePage];
     if (p->kind == PAGE_HERE) build_here(g, s, gd);
     else if (p->kind == PAGE_BOSS) build_bosses(g, s, gd);
     else if (p->kind == PAGE_WHERE) build_where(g, s);
     else build_static(g, s, &gd->pages[p->index]);
-    if (ui->guideOpen >= entryCount) ui->guideOpen = -1;
-
-    int x = MARGIN + colW + 4, lw = c->w - MARGIN - x;
-    int f = pd_list_box(c, x, CONTENT_Y, lw, c->h - CONTENT_Y - MARGIN);
-    draw_list(ui, c, x + f, CONTENT_Y + f + 1, lw - 2 * f, c->h - CONTENT_Y - MARGIN - 2 * f - 2);
+    guide_draw(ui, c, labels);
 }
 
-void ui_guide_notice(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g) {
-    const struct pd_guide* gd = pd_guide_for(g);
+void ui_guide_notice(struct pd_ui* ui, struct pd_canvas* c) {
     pd_dim(c, 0xE6);
     ui_add_hit(ui, 0, 0, c->w, c->h, HIT_SCRIM);
     int x = MARGIN, w = c->w - 2 * MARGIN, y = CONTENT_Y + 4;
@@ -609,7 +700,7 @@ void ui_guide_notice(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     snprintf(text, sizeof(text),
              "This guide was written with the help of AI, from the game's own data. It can still get details wrong "
              "or leave things out - double-check anything that matters before relying on it.%s",
-             gd && !gd->verified ? " This game's guide hasn't been checked in-game yet." : "");
+             !ui->guideVerified ? " This game's guide hasn't been checked in-game yet." : "");
     int h = 150;
     int lf = pd_list_box(c, x, y, w, h);
     int ty = y + lf + 2;
@@ -619,12 +710,14 @@ void ui_guide_notice(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     y += h + 4;
     ui_button(ui, c, x, y, 120, 24, "GO BACK", HIT_NOTICE_BACK);
     ui_button(ui, c, x + w - 140, y, 140, 24, "I UNDERSTAND", HIT_NOTICE_OK);
+    if (ui->guideController)
+        guide_focus(c, ui->guideNoticeConfirm ? x + w - 140 : x, y, ui->guideNoticeConfirm ? 140 : 120, 24);
 }
 
 bool ui_guide_act(struct pd_ui* ui, int id) {
     if (ui->overlay == PD_OVERLAY_GUIDE_NOTICE) {
         if (id == HIT_NOTICE_OK) {
-            ui->settings->guideNotice |= lastKindBit;
+            ui->settings->guideNotice |= ui->guideNoticeBit;
             ui->overlay = PD_OVERLAY_NONE;
             ui->action = PD_ACTION_SETTINGS_CHANGED;
         } else if (id == HIT_NOTICE_BACK) {
@@ -637,9 +730,7 @@ bool ui_guide_act(struct pd_ui* ui, int id) {
     if (ui->tab != PD_TAB_GUIDE || ui->overlay != PD_OVERLAY_NONE) return false;
     if (id >= HIT_GUIDE_PAGE && id < HIT_GUIDE_PAGE + MAX_PAGES) {
         ui->guidePage = id - HIT_GUIDE_PAGE;
-        ui->guideScroll = 0;
-        ui->guideOpen = -1;
-        ui->guideLevel = 0;
+        pd_ui_guide_reset(ui);
         return true;
     }
     if (id >= HIT_GUIDE_ROW && id < HIT_GUIDE_ROW + MAX_ENTRIES) {
@@ -658,4 +749,43 @@ bool ui_guide_act(struct pd_ui* ui, int id) {
         return true;
     }
     return false;
+}
+
+
+void pd_ui_guide_control(struct pd_ui* ui, int dx, int dy, bool confirm) {
+    if (ui->tab != PD_TAB_GUIDE || !ui->guidePageCount) return;
+    if (ui->overlay == PD_OVERLAY_GUIDE_NOTICE) {
+        if (dx) ui->guideNoticeConfirm = dx > 0;
+        if (confirm) ui_guide_act(ui, ui->guideNoticeConfirm ? HIT_NOTICE_OK : HIT_NOTICE_BACK);
+        return;
+    }
+    if (ui->overlay != PD_OVERLAY_NONE) return;
+    if (ui->guideRowFocus >= 0) {
+        if (dx < 0) {
+            ui->guidePageFocus = ui->guidePage;
+            ui->guideRowFocus = -1;
+            return;
+        }
+        if (dy) {
+            const int row = ui->guideRowFocus + dy;
+            if (row >= 0 && row < entryCount) {
+                ui->guideRowFocus = row;
+                ui->guideFollow = true;
+            }
+        }
+        if (confirm) {
+            ui_guide_act(ui, HIT_GUIDE_ROW + ui->guideRowFocus);
+            ui->guideFollow = true;
+        }
+        return;
+    }
+    if (dy) {
+        const int page = ui->guidePageFocus + dy;
+        if (page >= 0 && page < ui->guidePageCount) ui->guidePageFocus = page;
+    }
+    if (confirm) ui_guide_act(ui, HIT_GUIDE_PAGE + ui->guidePageFocus);
+    else if (dx > 0 && entryCount) {
+        ui->guideRowFocus = ui->guideOpen >= 0 ? ui->guideOpen : 0;
+        ui->guideFollow = true;
+    }
 }

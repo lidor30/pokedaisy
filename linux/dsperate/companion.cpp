@@ -67,7 +67,15 @@ bool decode_mon(const uint8_t* raw,size_t size,DsMon& mon,DsGame game) {
   else {crypt(party,partySize,pid);if(!sane(party)){std::memcpy(party,raw+pd_ds_data::boxSize,partySize);if(!sane(party))return false;} }
   mon={};mon.species=species;mon.personality=pid;mon.level=party[4];mon.hp=u16(party+6);mon.maxHp=u16(party+8);
   mon.status=u32(party);mon.heldItem=u16(a+2);mon.experience=u32(a+8);mon.egg=(u32(b+16)>>30)&1;
-  mon.gender=(b[24]&4)?0:(b[24]&2)?2:1;mon.nature=pid%25;
+  mon.gender=(b[24]&4)?0:(b[24]&2)?2:1;
+  mon.nature=unova?b[25]:pid%25;
+  mon.friendship=a[12]; // hatch counter for eggs, which the summary omits
+  const uint32_t ivWord=u32(b+16);
+  for(int i=0;i<6;++i){
+    mon.stats[i]=u16(party+8+2*i);
+    mon.ivs[i]=(ivWord>>(5*i))&31;
+    mon.evs[i]=a[16+i];
+  }
   mon.nickname=unova?utf16_text(c,11):text(c,11);
   if(mon.nickname.empty())mon.nickname=ds_species(species,game);
   for(int i=0;i<4;i++){mon.moves[i]=u16(b+2*i);mon.pp[i]=b[8+i];}return true;
@@ -147,10 +155,13 @@ DsCompanion read_other_companion(const Ram& ram,DsGame game){
     const uint32_t save=ram.word(johto_saveDataPtr);
     if(!ram.at(save,johto_locationOff+johto_bodyOff+4))return out;
     const uint32_t body=save+johto_bodyOff;
-    const auto* trainer=ram.at(body+johto_trainerOff,28);
+    const auto* trainer=ram.at(body+johto_trainerOff,johto_kantoBadgesOff+1);
     if(!trainer||!read_party(ram,body+johto_partyOff,out)||!read_bag(ram,body+johto_bagOff,johtoPockets,out))return {};
-    out.trainer=text(trainer,8);out.money=u32(trainer+20);out.badges=trainer[26];out.playerGender=trainer[24];
+    out.trainer=text(trainer,8);out.money=u32(trainer+20);
+    out.badges=trainer[26]|(trainer[johto_kantoBadgesOff]<<8);out.playerGender=trainer[24];
     out.map=ram.word(body+johto_locationOff);
+    if(const auto* flags=ram.at(body+pg_flagsOff,gen4FlagBytes))
+      out.eventFlags.assign(flags,flags+gen4FlagBytes);
     if(const auto* steps=ram.at(body+johto_repelStepsOff,1))out.repelSteps=*steps;
     read_dex(ram,body+johto_pokedexOff,out,johto_nationalDexOff);
     const uint32_t gear=ram.word(body+pg_wordOff);
@@ -198,7 +209,9 @@ DsCompanion read_other_companion(const Ram& ram,DsGame game){
       out.mapX=p[2]/8;out.mapY=p[3]/8;
     }
     // Gen5Reader's event-work layout (u16 vars followed by flags).
-    const uint32_t flags=save+(sequel?0x1ff00+2*0x1af:0x20100+2*0x13e);
+    const uint32_t flags=save+(sequel?sequel_flagsOff:unova_flagsOff);
+    const size_t flagBytes=sequel?sequel_flagBytes:unova_flagBytes;
+    if(const auto* bits=ram.at(flags,flagBytes))out.eventFlags.assign(bits,bits+flagBytes);
     const unsigned first=sequel?2469:2480;
     const auto flag=[&](unsigned n){
       const auto* p=ram.at(flags+n/8,1);
@@ -249,8 +262,22 @@ DsCompanion ds_read_companion(const uint8_t* ram,size_t size,DsGame game) {
   }
   if(x/32<30 && z/32<30){out.mapX=x/32;out.mapY=z/32;}
   uint32_t flags=base+pd_ds_data::map_varsOff+pd_ds_data::map_numVars*2;
+  if(const auto* bits=at(flags,pd_ds_data::gen4FlagBytes))
+    out.eventFlags.assign(bits,bits+pd_ds_data::gen4FlagBytes);
   for(unsigned i=0;i<56;i++){unsigned bit=pd_ds_data::map_firstArrivalFlag+i;auto p=at(flags+bit/8,1);if(p && ((*p>>(bit%8))&1))out.arrivals|=uint64_t(1)<<i;}
   out.valid=true;return out;
+}
+bool ds_event_flag(const DsCompanion& s,unsigned flag){
+  return flag>0 && flag/8<s.eventFlags.size() && (s.eventFlags[flag/8]&(1u<<(flag%8)));
+}
+int ds_unova_month(const uint8_t* ram,size_t size,DsGame game){
+  if(!ds_unova(game))return 0;
+  const Ram memory{ram,size};
+  const auto save=unova_save(memory,game);
+  // GuideGen5's GEN5_VAR_MONTH is variable 1 in the save's u16 event-work array.
+  const auto vars=ds_unova_sequel(game)?pd_ds_data::sequel_varsOff:pd_ds_data::unova_varsOff;
+  const auto* month=memory.at(save+vars+2,2);
+  return month?u16(month):0;
 }
 const char* ds_species(int id,DsGame game){return ds_unova(game)?name(pd_ds_data::unovaSpecies,id):name(pd_ds_data::species,id);}
 const char* ds_move(int id,DsGame game){return ds_unova(game)?name(pd_ds_data::unovaMoves,id):name(pd_ds_data::moves,id);}
@@ -283,7 +310,11 @@ int ds_move_type(int id,DsGame game){
   if(ds_unova(game))return id>0&&size_t(id)<std::size(unovaTypes)?unovaTypes[id]:-1;
   return id>0&&size_t(id)<std::size(moveMeta)?moveMeta[id][0]:-1;
 }
-int ds_move_power(int id){return id>0 && size_t(id)<std::size(pd_ds_data::moveMeta)?pd_ds_data::moveMeta[id][1]:0;}
+int ds_move_power(int id,DsGame game){
+  using namespace pd_ds_data;
+  if(ds_unova(game))return id>0 && size_t(id)<std::size(unovaPower)?unovaPower[id]:0;
+  return id>0 && size_t(id)<std::size(moveMeta)?moveMeta[id][1]:0;
+}
 int ds_species_type(int id,int slot,DsGame game){
   using namespace pd_ds_data;
   if(id<1||slot<0||slot>1)return -1;

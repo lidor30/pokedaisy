@@ -96,6 +96,10 @@ void pd_font_set(const struct pd_glyph* glyphs, int count) {
     custom_font = glyphs;
     custom_count = glyphs && count > 0 ? count : 0;
 }
+void pd_font_get(const struct pd_glyph** glyphs, int* count) {
+    *glyphs = custom_font;
+    *count = custom_count;
+}
 const struct pd_glyph* pd_font_glyph(uint32_t cp) {
     for (int i = 0; i < custom_count; i++)
         if (custom_font[i].codepoint == cp) return &custom_font[i];

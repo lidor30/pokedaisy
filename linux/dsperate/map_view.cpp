@@ -1,6 +1,8 @@
 // GPL-3.0. Reuse app-owned map data and cartridge artwork across the Map and HUD.
 #include "map_view.h"
 #include "data_gen.h"
+#include "companion_style.h"
+#include <string_view>
 #include <algorithm>
 extern "C" {
 #include "pd_ui.h"
@@ -44,6 +46,40 @@ void map_head(pd_canvas* c,const DsCompanion& s,const DsMapArt& art,int x,int y)
 }
 }
 
+DsMapPosition ds_map_cursor_max(DsGame game){
+  if(game==DsGame::Johto)return {46,19};
+  if(ds_unova(game))return {31,20};
+  return {29,29};
+}
+
+std::vector<DsMapPlace> ds_map_places(const DsCompanion& s){
+  std::vector<DsMapPlace> places;
+  const auto bounds=ds_map_cursor_max(s.game);
+  for(int y=0;y<=bounds.y;++y)for(int x=0;x<=bounds.x;++x){
+    const std::string_view name=map_label(s,x,y);
+    if(name.empty())continue;
+    const auto same=[&](const DsMapPlace& place){return name==place.name;};
+    if(std::none_of(places.begin(),places.end(),same))places.push_back({{x,y},name.data()});
+  }
+  std::sort(places.begin(),places.end(),[](const auto& a,const auto& b){
+    return std::string_view(a.name)<std::string_view(b.name);
+  });
+  return places;
+}
+
+void ds_map_actions(pd_canvas* c,int selected){
+  const int y=c->h-25;
+  const char* labels[]={"PLACES","ME"};
+  const int start=c->w-119;
+  for(int i=0;i<2;i++){
+    const int x=start+(i?77:0),w=i?38:73;
+    pd_title_box(c,x,y,w,23,selected==i?PD_ROW_SELECTED:PD_TITLE_FILL);
+    if(selected==i)pd_fill(c,x+3,y+19,w-6,2,PD_VALUE);
+    pd_text(c,x+(w-pd_text_width(labels[i]))/2,y+3,labels[i],selected==i?PD_VALUE:PD_TITLE_TEXT,PD_TITLE_SHADOW);
+  }
+  pd_text(c,10,y+3,selected<0?"B  ACTIONS":"A  SELECT",PD_ON_BACKDROP,PD_ON_BACKDROP_SHADOW);
+}
+
 DsMapPosition ds_map_position(const DsCompanion& s){
   using namespace pd_ds_data;
   if(s.mapX<0||s.mapY<0)return {};
@@ -60,6 +96,7 @@ DsMapPosition ds_map_position(const DsCompanion& s){
 }
 
 void ds_map_view(pd_canvas* c,const DsCompanion& s,const DsMapArt& art,int mapX,int mapY){
+  ds_companion_backdrop(c,s.game,PD_TAB_MAP);
   if(!has_art(art)){pd_ui_map_view(c,nullptr);return;}
   auto pixels=art.background;
   pd_canvas page;pd_canvas_init(&page,art.width,art.height,pixels.data());
