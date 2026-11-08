@@ -311,7 +311,7 @@ window (`seasonalThemeToAnnounce`, `Prefs.seasonalThemesShown` keyed `id:windowS
 after any update offer / WHAT'S NEW / support window). TRY IT or a pick remembers the theme before (`pickTheme`,
 `Prefs.themeBeforeSeasonal`); `loadTheme` (AppTheme, Library resume) puts it back once the dates are over (`themeToWear`).
 `ThemesTest`; ui-preview `-Ptheme=CHERRY` (any theme by English name) and `library-theme-*`, `library-seasonal-popup*`,
-`settings-theme*` shots. A new theme: a `ThemeSpec` with a new id, its name's seven translations (TrSettings), the manual's
+`settings-theme*` shots. A new theme: a `ThemeSpec` with a new id, its name's eight translations (TrSettings), the manual's
 THEME section and SETTING_KEYWORDS' "THEME" words.
 New screens should reuse these rather than
 `GbaWindow`/`GbaButton` (the older cream-window look). Full-tab detail views (the Pokémon
@@ -2242,11 +2242,11 @@ The site's game matrix is README's Supported games table; a row of all "—" mea
 so the export lists it under `inProgress` - off the matrix, and "in progress" in the ROM check (none since R.O.W.E.
 got its companion, 2026-10-09).
 The site's demos and art never use real Pokémon / move / item names or the games' art (the user's rule).
-**Website languages** (2026-11-07, website/README.md's "Languages"): the app's eight (EN / JA / FR / DE / IT / ES / pt-BR / pt-PT),
+**Website languages** (2026-11-07, website/README.md's "Languages"): the app's nine (EN / JA / KO / FR / DE / IT / ES / pt-BR / pt-PT),
 English at the root, the rest under `/<code>/` (`src/views/` drawn by `src/pages/` and `src/pages/[lang]/`); the manual and
-release notes stay English. Site text goes through `tr()` / `msg()` with its seven translations in `src/i18n/<code>.json`
+release notes stay English. Site text goes through `tr()` / `msg()` with its eight translations in `src/i18n/<code>.json`
 (same writing rules: no dashes), else `test/i18n.test.js` fails; Japanese needs `website/scripts/gen_site_jp_font.py` for a
-new character. The picker's choice is `localStorage` `pd-lang`, else the browser's language (on English pages only).
+new character, Korean `website/scripts/gen_site_ko_font.py` for a new syllable. The picker's choice is `localStorage` `pd-lang`, else the browser's language (on English pages only).
 **Website analytics** (`website/src/lib/analytics.js`, website/README.md's "Analytics"): anonymous GA4 counts, no cookies, a fixed
 event list checked per value, live site only. gtag.js sends nothing without its cookie, so the page posts gtag's own hit itself;
 `MEASUREMENT_ID` empty turns it off. A new tracked action goes on `EVENTS` with its allowed values (and the README's list).
@@ -2398,7 +2398,8 @@ The app's only font is **Pixel Operator** (`assets/fonts/PixelOperator.ttf`, CC0
 back, glyph by glyph, to `PixelMplusJP.ttf` (`PixelTypeface.kt`, Typeface.CustomFallbackBuilder,
 Android 10+): PixelMplus10 (M+ FONT LICENSE) re-declared at Pixel Operator's 1600 upm by
 `scripts/gen_jp_font.py`, so both share the 100-unit pixel, and cut to Japanese only - anything
-else Pixel Operator lacks (½, ◀) still falls to the system font, as before.
+else Pixel Operator lacks (½, ◀) still falls to the system font, as before. Hangul falls to `GalmuriKO.ttf` after it the same
+way (Galmuri9, OFL, by `scripts/gen_ko_font.py`: its syllables are 9 pixels, Pixel Operator's caps' height).
 
 **European Emeralds** (BPES / BPED / BPEF / BPEI; `NATIVE_EMERALD_ES` / `_DE` / `_FR` / `_IT`): English's RAM and
 save layout, their own ROM tables, and **names in the game's language** (the user's call): species / moves / items /
@@ -2421,7 +2422,7 @@ Sapphire config. `GameText` (EmeraldLanguages.kt) is keyed by game code (`Native
 `localText`). Japanese FireRed / LeafGreen can't read the English saves: verify_ports boots them with Japanese
 ones (`firered_ja` / `leafgreen_ja`) and checks them absolutely.
 
-**Languages** (`companion/i18n/`): the app's own text in EN / JA / FR / DE / IT / ES / BR / PT - not game
+**Languages** (`companion/i18n/`): the app's own text in EN / JA / FR / DE / IT / ES / BR / PT / KO - not game
 data (species / moves / items / types / statuses, which come from each ROM in its own language).
 **GUIDE text** (issue #35: a French game's guide was half English) is translated for the games that come in
 other languages - FireRed / LeafGreen, Emerald, Ruby / Sapphire, Unbound (FR), Quetzal (ES): `trGuide()`
@@ -2441,7 +2442,9 @@ language letter (BPR**E**/F/D/I/S/J - every ROM the companion supports today is 
 device's in the Library / Settings. **Portuguese** (GitHub #61) is two languages, BR (Brazil) and PT (Portugal), picked by
 the device's region (`ofLocale`); no ROM is in Portuguese (`romLetter` null), so a Portuguese device's AUTO wins over an
 English game too. Both use the Brazilian games' terms (MOCHILA, GOLPES, PS, MT); PT only swaps everyday words (ECRÃ,
-GUARDAR, FICHEIRO, DEFINIÇÕES). Japanese is kana only, like Gen 3's; translations use the
+GUARDAR, FICHEIRO, DEFINIÇÕES). **Korean** (KO, 2026-11-09): rom letter K, so the Korean DS carts pick it; the Korean games'
+terms (가방, 도감, 기술), labels as nouns, sentences in 해요체, no particle right after a `{0}`; GUIDE text stays English
+(`Tr.ko` optional there, like BR / PT). Japanese is kana only, like Gen 3's; translations use the
 localized games' own words and stay about as short as the English (chips and buttons are sized
 for it - `LocalizedScreenshotTest` renders the main screens per language). New UI text: wrap it
-and add its seven translations in the area's table.
+and add its eight translations in the area's table.

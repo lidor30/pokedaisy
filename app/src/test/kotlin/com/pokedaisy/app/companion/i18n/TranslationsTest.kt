@@ -19,7 +19,7 @@ class TranslationsTest {
     @After fun reset() = L10n.apply("EN", null)
 
     @Test
-    fun `every tr and tk literal has all five translations`() {
+    fun `every tr and tk literal has every language`() {
         val src = File("src/main/kotlin")
         assertTrue("run from the app module", src.isDirectory)
         val problems = mutableListOf<String>()
@@ -67,7 +67,12 @@ class TranslationsTest {
         assertEquals(AppLanguage.FR, L10n.language)
         L10n.apply(LANGUAGE_AUTO, "BPRE", Locale.GERMAN)
         assertEquals(AppLanguage.EN, L10n.language)
+        // Korean: the device's, a Korean DS cart's (IPKK: HeartGold), and a language the app lacks is English.
         L10n.apply(LANGUAGE_AUTO, null, Locale.forLanguageTag("ko-KR"))
+        assertEquals(AppLanguage.KO, L10n.language)
+        L10n.apply(LANGUAGE_AUTO, "IPKK", Locale.GERMAN)
+        assertEquals(AppLanguage.KO, L10n.language)
+        L10n.apply(LANGUAGE_AUTO, null, Locale.forLanguageTag("nl-NL"))
         assertEquals(AppLanguage.EN, L10n.language)
         // An override wins over the ROM.
         L10n.apply("IT", "BPRE")

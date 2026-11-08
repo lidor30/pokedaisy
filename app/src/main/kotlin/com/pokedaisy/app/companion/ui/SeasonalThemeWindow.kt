@@ -103,12 +103,13 @@ fun ThemeSwatch(theme: ThemeSpec, modifier: Modifier = Modifier) {
     }
 }
 
-/** [date] as a short day and month in the app's language ("NOV 3", "3 NOV.", "11月3日"). */
+/** [date] as a short day and month in the app's language ("NOV 3", "3 NOV.", "11月3日", "11월 3일"). */
 fun shortDate(date: LocalDate): String {
     val lang = L10n.language
     val pattern = when (lang) {
         AppLanguage.EN -> "MMM d"
         AppLanguage.JA -> "M月d日"
+        AppLanguage.KO -> "M월 d일"
         else -> "d MMM"
     }
     return DateTimeFormatter.ofPattern(pattern, Locale.forLanguageTag(lang.locale)).format(date).uppercase(Locale.forLanguageTag(lang.locale))

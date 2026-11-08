@@ -74,6 +74,10 @@ The app shows every license below in full under Settings > LICENSES.
   the website's Japanese), by itouhiro, M+ FONT LICENSE (app/src/main/assets/fonts/LICENSE-PixelMplus.txt);
   cut to Japanese and rescaled by scripts/gen_jp_font.py, cut again to the site's characters by
   website/scripts/gen_site_jp_font.py.
+- Galmuri9 (app/src/main/assets/fonts/GalmuriKO.ttf; website/public/fonts/GalmuriKO-site.ttf: the website's
+  Korean), Copyright (c) 2019-2025 Lee Minseo (https://github.com/quiple/galmuri), SIL Open Font License 1.1
+  (app/src/main/assets/fonts/LICENSE-Galmuri.txt); cut to Hangul and rescaled by scripts/gen_ko_font.py, cut
+  again to the site's characters by website/scripts/gen_site_ko_font.py.
 - PokeAPI (https://pokeapi.co), BSD 3-Clause: the National Dex species list
   (third_party/licenses/PokeAPI-BSD-3-Clause.txt).
 - AndroidX, Jetpack Compose, Kotlin, kotlinx.coroutines and Apache Commons

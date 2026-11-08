@@ -48,6 +48,16 @@ test('Japanese has the pixel font for every character it uses', () => {
   assert.deepEqual(lacking.map((c) => String.fromCodePoint(c)), [], 'run python3 website/scripts/gen_site_jp_font.py');
 });
 
+test('Korean has the pixel font for every syllable it uses', () => {
+  const font = readFileSync(new URL('../public/fonts/GalmuriKO-site.ttf', import.meta.url));
+  const have = cmap(font);
+  const text = Object.values(TABLES.ko).join('') + LANGUAGES.map((l) => l.name).join('');
+  // Base.astro's @font-face unicode-range.
+  const ko = (c) => (c >= 0x3131 && c <= 0x318e) || (c >= 0xac00 && c <= 0xd7a3);
+  const lacking = [...new Set([...text].map((c) => c.codePointAt(0)).filter(ko))].filter((c) => !have.has(c));
+  assert.deepEqual(lacking.map((c) => String.fromCodePoint(c)), [], 'run python3 website/scripts/gen_site_ko_font.py');
+});
+
 test('a browser\'s languages pick the site\'s', () => {
   assert.equal(detectLanguage(['fr-CA', 'en']), 'fr');
   assert.equal(detectLanguage(['de']), 'de');
@@ -57,7 +67,8 @@ test('a browser\'s languages pick the site\'s', () => {
   assert.equal(detectLanguage(['pt']), 'pt');
   assert.equal(detectLanguage(['nl', 'es-MX']), 'es');
   assert.equal(detectLanguage(['en-GB', 'fr']), 'en');
-  assert.equal(detectLanguage(['ko']), null);
+  assert.equal(detectLanguage(['ko-KR']), 'ko');
+  assert.equal(detectLanguage(['nl']), null);
 });
 
 test('paths in each language', () => {
