@@ -72,7 +72,7 @@ The `DISPLAY OPTIONS` page:
 | `SHADERS` | a page (shows the current filter) | `FILTER`, `GRID`, `SMOOTHING`, `GBA COLORS`, `UNLIT SCREEN` and `ON COMPANION`; see the next table. | [Screen](screen.md) |
 | `OVERLAY` | **`NONE`**, `DAISY`, `BEZEL`, your imports (a page) | A frame around the game. Import your own RetroArch overlays here with `IMPORT FILE`. | [Screen](screen.md) |
 | `LIGHT COMPANION` | **`AUTO`**, `ON`, `OFF` | For slow devices: the companion redraws less and without animations, so your buttons don't reach the game late. `AUTO` turns it on where it's needed. | [Screen](screen.md#light-companion-for-slow-devices) |
-| `COMPANION` | `AT BOTTOM`, **`UNDER GAME`** | Only on a device with one screen: where the companion sits when you hold it upright. With `EXPAND`, `UNDER GAME` gives the touch controls their own strip at the bottom, and it's greyed out without touch controls. | [Devices](devices.md) |
+| `COMPANION` | `AT BOTTOM`, **`UNDER GAME`** | Only on a device with one screen: where the companion sits when you hold it upright. `UNDER GAME` always keeps the touch controls their own space at the bottom, so they never cover the game. With `EXPAND` it's greyed out without touch controls. | [Devices](devices.md) |
 
 The `SHADERS` page:
 

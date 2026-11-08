@@ -1164,7 +1164,7 @@ class SettingsActivity : ComponentActivity() {
         val expand = prefs.gameAspect == com.pokedaisy.app.companion.GameAspect.WIDE
         val w = rootSize.width.toFloat()
         val h = rootSize.height.toFloat()
-        val strip = if (expand && h > w && prefs.portraitCompanionUnderGame && touchWouldShow(style))
+        val strip = if (h > w && prefs.portraitCompanionUnderGame && touchWouldShow(style))
             com.pokedaisy.app.companion.ui.TouchGeometry.naturalHeight(style, w, density) else 0
         return com.pokedaisy.app.companion.ui.simulateTouchStage(
             w, h, density,

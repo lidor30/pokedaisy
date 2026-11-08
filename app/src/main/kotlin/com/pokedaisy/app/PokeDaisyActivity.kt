@@ -4550,11 +4550,12 @@ class PokeDaisyActivity : Activity() {
         if (::engine.isInitialized) touchControls.ffOn = engine.fastForwardToggled
         touchControls.visibility = if (show) View.VISIBLE else View.GONE
         syncTouchSkin(style, show)
-        // EXPAND + UNDER GAME upright: the controls' own strip under the companion (none while they're hidden).
+        // UNDER GAME upright: the controls' own strip under the companion (none while they're hidden), so they never lie
+        // over the game - with EXPAND, or where nothing is left under the companion (a tablet, a DS game's 4:3).
         if (::portraitPanel.isInitialized) {
             val prefs = Prefs(this)
             val w = stage.width.takeIf { it > 0 } ?: resources.displayMetrics.widthPixels
-            portraitPanel.padStrip = if (show && portraitPanel.enabled && portraitPanel.expand && prefs.portraitCompanionUnderGame)
+            portraitPanel.padStrip = if (show && portraitPanel.enabled && prefs.portraitCompanionUnderGame)
                 com.pokedaisy.app.companion.ui.TouchGeometry.naturalHeight(style, w.toFloat(), resources.displayMetrics.density, !touchControls.shoulders, touchControls.dsButtons)
             else 0
         }
