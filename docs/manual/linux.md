@@ -92,6 +92,10 @@ In Polished Crystal 3.2.3 (the normal build) the core also has `EXPAND` and
 ENCOUNTERS, each done through the game's own menus. In a battle, X opens the
 companion's BATTLE tab: a command or move you pick there plays out in the game.
 
+In the companion's BAG, Left moves to the pocket tabs (the one you're on is
+outlined, and with an item's description open the same press closes it first),
+Up and Down choose one and `A` opens it; Right or `B` goes back to the list.
+
 ### The picture in the launcher
 
 The core sizes its picture to the screen so the game is always shown at a whole
@@ -124,6 +128,9 @@ them. R2 switches to the bottom or top screen by hand. Hold SELECT and press R2
 to show or hide a floating touch screen in `ONE SCREEN` or `PICTURE IN PICTURE`.
 SELECT + D-pad moves the stylus and SELECT + A taps. Saves, states and speed are
 NXRedux's own menus and shortcuts.
+
+In a DS game's DEX entry, Left and Right step to the previous and next entry you
+have seen, going round at either end.
 
 Turn on `BATTLE STRIP` in the companion settings to choose battle commands
 with the D-pad. A selects a command or move, and B goes back from the move
