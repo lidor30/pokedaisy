@@ -123,6 +123,10 @@ data class NativeConfig(
     // gPartyMenu, for the battle POKéMON pane's switch where the activity takes
     // it from the config (SoulGold's releases); 0 = not here.
     val partyMenu: Long = 0,
+    // Where SaveBlock1 keeps a PARTY MENU option that changes the battle party menu's shape (SoulGold's byte: 0 = its
+    // own one-column list, 1 = BW, 2 = HGSS, both a two-column grid - BattleInputController.SwitchAddrs.gridOption);
+    // -1 = none, the shape is fixed.
+    val partyMenuStyleOff: Int = -1,
     // USE / GIVE / TAKE's functions (FieldItems.kt) for a build with no retail code to key them on (Recharged
     // Emerald's gcc rebuilds); null = by game kind and header code (fieldItemsForGame).
     val fieldItems: FieldItemFns? = null,

@@ -4736,8 +4736,12 @@ val NATIVE_EMERALD_SEAGLASS = NATIVE_EMERALD.copy(
 // action / move / bag / party menus run 0x08061CD1 / 0x08060E21 /
 // 0x0805FAC5 / 0x0805FB09; HandleInputChooseTarget 0x0805FEA5 by code (the
 // move handler's literal pool, and it returns to the move handler on B).
-// The POKéMON switch: gPartyMenu 0x02038D24, one column (DOWN walks it),
-// SHIFT first.
+// The POKéMON switch: gPartyMenu 0x02038D24 (slotId at +9), SHIFT first. Its shape follows OPTIONS > PARTY MENU
+// (a byte at SaveBlock1 +0x348C, a copy at 0x0203847C: found by diffing RAM after the option menu's CLOSE, each style
+// set twice with other timings - SaveBlock2 +0xAC moved with them, but it's a counter): CUSTOM (0) is one column of
+// six (DOWN 0 -> 5 wraps to 0, no CANCEL row), BW (1) and HGSS (2) a two-column grid, 0 1 / 2 3 / 4 5
+// (RIGHT 0 -> 1, DOWN 0 -> 2 -> 4 -> 5 -> CANCEL 7 -> 0, UP 0 -> 7 -> 5 -> 3). A player on HGSS saw the list steering
+// bounce between two slots (Discord, 2026-11; GitHub #316).
 // - Icons: gSpeciesInfo 0x118-byte entries (iconSprite / iconPalIndex), raw
 // item palettes and smol item tiles (DecompIconSource handles both).
 // - POKéDEX: POKEDEX_SOULGOLD (Pokedex.kt).
@@ -4788,6 +4792,7 @@ val NATIVE_SOULGOLD = NATIVE_EMERALD.copy(
     waitForMonSelection = 0x0805FB09L,
     handleInputChooseTarget = 0x0805FEA5L,
     partyMenu = 0x02038D24L,
+    partyMenuStyleOff = 0x348C,
     eggSpecies = 1578,
     monIconTable = 0x087D4514L, // gSpeciesInfo[0].iconSprite
     monIconStride = 0x118,

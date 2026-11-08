@@ -1336,10 +1336,15 @@ class PokeDaisyActivity : Activity() {
         game == com.pokedaisy.app.companion.data.GameKind.MARIOMON ->
             telemetry.knownPartyMenu()?.let { (menu, party) -> BattleInputController.SwitchAddrs(partyMenu = menu, party = party, grid = true) }
         game == com.pokedaisy.app.companion.data.GameKind.SOULGOLD ->
-            // Two releases at different addresses: their configs carry them. A one-column list (slotId at +9: DOWN
-            // walks 0, 1, 2 and wraps to 0; A, SHIFT on slot 2 switched it in, headless on v1.1.4 with a 3-mon party).
+            // Its builds sit at different addresses: their configs carry them. Its shape is the player's OPTIONS > PARTY
+            // MENU (the config's partyMenuStyleOff): CUSTOM is one column of six (DOWN wraps 5 -> 0, no CANCEL row), HGSS
+            // and BW a two-column grid - steered as a list, the cursor bounced between two slots (GitHub #316). Headless
+            // on every build with the real controller: each style, a switch from POKéMON and the pick after a faint.
             telemetry.knownPartyMenu()?.let { (menu, party) ->
-                BattleInputController.SwitchAddrs(partyMenu = menu, party = party, monStride = 96)
+                BattleInputController.SwitchAddrs(
+                    partyMenu = menu, party = party, monStride = 96,
+                    gridOption = telemetry.knownPartyMenuStyle()?.let { (ptr, off) -> BattleInputController.GridOption(ptr, off) },
+                )
             }
         // The other-language FireRed / LeafGreen (RETAIL_PORTS): their mapped gPartyMenu, checked by
         // scripts/verify_ports.py's party step. (Ruby / Sapphire have no battle input.)

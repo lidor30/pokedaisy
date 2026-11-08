@@ -43,6 +43,8 @@ class BattleInputController(
      * FireRed / Emerald and the hacks [PokeDaisyActivity] lists (Lazarus...). [partyMenu] is gPartyMenu (`slotId` at +9), [party] gPlayerParty.
      * [grid]: the slots sit in two columns (0 2 4 | 1 3 5, Lazarus), where
      * DOWN stays in its column - else one list that DOWN walks through.
+     * [gridOption]: the shape is the player's choice (SoulGold's OPTIONS > PARTY MENU), read at every step - a grid while
+     * it's set, else [grid].
      * [gb]: a Game Boy game (Yellow, Crystal and its hacks), whose party menu is read through it instead
      * ([driveGbSwitchLocked]); the addresses above go unused then.
      */
@@ -51,8 +53,13 @@ class BattleInputController(
         val party: Long = 0,
         val monStride: Int = 100,
         val grid: Boolean = false,
+        val gridOption: GridOption? = null,
         val gb: GbPartySwitch? = null,
     )
+
+    /** A save option that makes the party menu a two-column grid: the byte at `*ptr + off` with any of [mask]'s bits set
+     * (SoulGold's PARTY MENU: gSaveBlock1Ptr, +0x348C - 0 its own list, 1 BW, 2 HGSS). */
+    data class GridOption(val ptr: Long, val off: Int, val mask: Int = 0x03)
 
     /**
      * A Gen 1 game (Yellow): its battle menu is FIGHT / PkMn over ITEM / RUN, two one-column
@@ -384,7 +391,7 @@ class BattleInputController(
                 } else if (switchPresses > MAX_CURSOR_PRESSES || switchFrames > MENU_TIMEOUT_FRAMES) {
                     endSwitchLocked("cursor didn't reach slot $want")
                 } else {
-                    pressLocked(cursorKey(addrs, slot, want, partyCount(addrs)))
+                    pressLocked(cursorKey(isGrid(addrs), slot, want, partyCount(addrs)))
                     waitFramesLocked(CURSOR_FRAMES)
                 }
             }
@@ -399,13 +406,23 @@ class BattleInputController(
         }
     }
 
+    /** Whether the party menu is a two-column grid right now ([SwitchAddrs.grid], or its [SwitchAddrs.gridOption] set). */
+    private fun isGrid(addrs: SwitchAddrs): Boolean {
+        val o = addrs.gridOption ?: return addrs.grid
+        return runCatching {
+            val base = Gfx.u32(reader.readCoreMemory(o.ptr, 4), 0)
+            (reader.readCoreMemory(base + o.off, 1)[0].toInt() and o.mask) != 0
+        }.getOrDefault(addrs.grid)
+    }
+
     /** The press that moves the party cursor from [slot] toward [want]: in a list, the shorter way round
-     * ([count] mons, then CANCEL; DOWN and UP both wrap through it). */
-    private fun cursorKey(addrs: SwitchAddrs, slot: Int, want: Int, count: Int): Int = when {
-        !addrs.grid -> listKey(slot, want, count, cancel = true)
+     * ([count] mons, then CANCEL; DOWN and UP both wrap through it). In a [grid] (0 1 / 2 3 / 4 5): across to [want]'s
+     * column, then along it - or along it first when there's no Pokémon beside [slot] (an odd party's last row). */
+    private fun cursorKey(grid: Boolean, slot: Int, want: Int, count: Int): Int = when {
+        !grid -> listKey(slot, want, count, cancel = true)
         slot !in 0 until 6 -> MgbaCore.Key.UP     // CANCEL: back into the grid
-        slot % 2 != want % 2 -> if (want % 2 == 1) MgbaCore.Key.RIGHT else MgbaCore.Key.LEFT
-        else -> if (want > slot) MgbaCore.Key.DOWN else MgbaCore.Key.UP
+        slot % 2 != want % 2 && (slot xor 1) < count -> if (want % 2 == 1) MgbaCore.Key.RIGHT else MgbaCore.Key.LEFT
+        else -> if (want / 2 > slot / 2) MgbaCore.Key.DOWN else MgbaCore.Key.UP
     }
 
     /** DOWN or UP, the shorter way from [slot] to [want] round a wrapping list of [count] mons (then CANCEL, with [cancel]). */

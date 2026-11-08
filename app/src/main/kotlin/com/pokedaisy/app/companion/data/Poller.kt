@@ -808,6 +808,11 @@ class TelemetrySampler {
     val knownPartyMenu: Pair<Long, Long>?
         get() = nativeCfg?.takeIf { it.partyMenu != 0L }?.let { it.partyMenu to it.playerParty }
 
+    /** Where the detected game's save keeps the option that shapes its battle party menu (gSaveBlock1Ptr + the offset:
+     * SoulGold's PARTY MENU), or null when the shape is fixed. */
+    val knownPartyMenuStyle: Pair<Long, Int>?
+        get() = nativeCfg?.takeIf { it.partyMenuStyleOff >= 0 }?.let { it.saveBlock1Ptr to it.partyMenuStyleOff }
+
     /** gPartyMenu + gPlayerParty of a hack whose code proves retail's engine ([RetailEngine]), for the POKéMON switch. */
     val retailEnginePartyMenu: Pair<Long, Long>?
         get() = retailEngineBuild?.let { it.partyMenu to it.playerParty }
