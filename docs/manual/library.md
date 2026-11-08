@@ -243,11 +243,11 @@ The library works without touching the screen. Move with the D-pad; the selected
 
 ## Launching from a frontend
 
-If you use a frontend like **ES-DE**, **iiSU** or **Cocoon** to browse all your games, it can start your GBA games straight in PokeDaisy, skipping the library. When you leave the game (hold `BACK`, or the exit hotkey), you're back in the frontend.
+If you use a frontend like **ES-DE**, **iiSU** or **Cocoon** to browse all your games, it can start your games straight in PokeDaisy, skipping the library. When you leave the game (hold `BACK`, or the exit hotkey), you're back in the frontend.
 
-Cocoon doesn't hand zipped games to PokeDaisy: it stops with its own `Incompatible Player` notice, so keep the games you start from Cocoon unzipped.
+Cocoon already knows PokeDaisy for GBA, Game Boy, Game Boy Color and DS games, zipped ones too. If it isn't offered, or Cocoon says `Incompatible Player` for a zipped game, refresh Cocoon's platforms (in its settings, under Library & Data) and pick PokeDaisy as the player.
 
-In the frontend, add PokeDaisy as a custom or standalone emulator for GBA with these values:
+In other frontends, add PokeDaisy as a custom or standalone emulator for each system with these values:
 
 | Field | Value |
 | --- | --- |
@@ -262,4 +262,4 @@ A few things to know:
 - Saves are found by the ROM's file name in your save folders, as usual. To share saves with the frontend's emulator, add its save folder in Settings > `FOLDERS` (see [Saves, backups and save states](saves.md#where-your-saves-live)).
 - Starting another game from the frontend while one is open switches to it; the open one is suspended first.
 
-There are step-by-step guides for [ES-DE](https://github.com/lidor30/pokedaisy/blob/main/docs/es-de/README.md) and [iiSU](https://github.com/lidor30/pokedaisy/blob/main/docs/iisu/README.md). Cocoon only lists emulators from its own list, so PokeDaisy shows up there once Cocoon adds it.
+There are step-by-step guides for [ES-DE](https://github.com/lidor30/pokedaisy/blob/main/docs/es-de/README.md) and [iiSU](https://github.com/lidor30/pokedaisy/blob/main/docs/iisu/README.md).

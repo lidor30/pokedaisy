@@ -1329,8 +1329,9 @@ What `LaunchActivity` does with the ROM:
   suspended first, as on exit); the same game just comes back.
 
 Step-by-step setup: [iiSU](iisu/README.md), [ES-DE](es-de/README.md). Cocoon only
-lists emulators from its own platform files, so PokeDaisy has to be added there by
-its developer.
+lists emulators from its own platform files (inssekt/CocoonFE's `android/*.yaml`): PokeDaisy
+is in `gba`, `gb`, `gbc` and `nds` (`LaunchActivity`, `game: uri`, files with `zip` / `7z`),
+so a player only needs Cocoon's "Refetch platforms".
 
 To try it without a frontend:
 
