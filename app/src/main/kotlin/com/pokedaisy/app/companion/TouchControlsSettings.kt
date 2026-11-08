@@ -45,6 +45,8 @@ enum class TouchLook(val label: String) {
     OUTLINE(tk("OUTLINE")),
     /** A handheld's buttons: raised, a shade under each, sinking when pressed, A / B in their colours. */
     CONSOLE(tk("CONSOLE")),
+    /** Smooth round buttons and a plain font, see-through like GLASS: nothing pixelated. */
+    MODERN(tk("MODERN")),
 }
 
 /**
@@ -66,7 +68,9 @@ enum class TouchColors(
     /** A grey body, A and B in deep berry, like the first handhelds. */
     RETRO(tk("RETRO"), 0xE0C8C6BE, 0xE04A4A52, 0xFF2A2A30, 0xFFE8E6DE, a = 0xFF8E1F4E, b = 0xFF8E1F4E),
     /** A dark body, A red, B yellow, X blue, Y green. */
-    PRIMARY(tk("PRIMARY"), 0xC0202028, 0xB0FFFFFF, 0xFFFFFFFF, 0xFF0C0F15, a = 0xFFD03A30, b = 0xFFE8B820, x = 0xFF3060C8, y = 0xFF2E9A48);
+    PRIMARY(tk("PRIMARY"), 0xC0202028, 0xB0FFFFFF, 0xFFFFFFFF, 0xFF0C0F15, a = 0xFFD03A30, b = 0xFFE8B820, x = 0xFF3060C8, y = 0xFF2E9A48),
+    /** An old console's light grey, every face button its own colour: A red, B blue, X green, Y yellow. */
+    OLD_SCHOOL(tk("OLD SCHOOL"), 0xE0CFCDC6, 0xE0585860, 0xFF2A2A30, 0xFFF0EEE8, a = 0xFFD8342C, b = 0xFF2F5FC4, x = 0xFF2E9A48, y = 0xFFE8B820);
 
     /** [button]'s own colour, or null for the body's. */
     fun accent(button: TouchButton): Long? = when (button) {
@@ -91,7 +95,8 @@ enum class TouchButton(val label: String, val gba: Int, val extra: Boolean = fal
     A("A", 1), B("B", 2),
     L("L", 512), R("R", 256),
     START(tk("START"), 8), SELECT(tk("SELECT"), 4),
-    /** The DS's own X and Y, so only shown in a DS game. */
+    /** The DS's own X and Y in a DS game; elsewhere the device's X / Y keys ([TouchControlsStyle.xyButtons]): whatever
+     * GAME BUTTONS and HOTKEYS put on them (START 2, SELECT 2, TO COMPANION, a hotkey). */
     X("X", com.pokedaisy.app.MgbaCore.Key.X), Y("Y", com.pokedaisy.app.MgbaCore.Key.Y),
     /** A tap turns FF on / off, held = fast while held. */
     FF(tk("FF"), 0, extra = true),
@@ -101,7 +106,11 @@ enum class TouchButton(val label: String, val gba: Int, val extra: Boolean = fal
     TURBO_A(tk("TURBO A"), 1, extra = true),
     TURBO_B(tk("TURBO B"), 2, extra = true),
     SAVE_STATE(tk("SAVE STATE"), 0, extra = true),
-    LOAD_STATE(tk("LOAD STATE"), 0, extra = true);
+    LOAD_STATE(tk("LOAD STATE"), 0, extra = true),
+    /** EXPAND's next zoom step (the ZOOM hotkey): a phone has no R3. Drawn only while EXPAND is on. */
+    ZOOM(tk("ZOOM"), 0, extra = true),
+    /** REWIND while held (REWIND HOLD), in a GBA / Game Boy game (with REWIND off, a press says where to turn it on). */
+    REWIND(tk("REWIND"), 0, extra = true);
 
     /** The short word drawn on the button. */
     val face: String get() = when (this) {
@@ -112,6 +121,7 @@ enum class TouchButton(val label: String, val gba: Int, val extra: Boolean = fal
         TURBO_B -> tk("TURBO") + "\nB"
         SAVE_STATE -> tk("SAVE")
         LOAD_STATE -> tk("LOAD")
+        REWIND -> tk("REWIND|button")
         else -> label
     }
 
@@ -191,9 +201,10 @@ data class TouchControlsStyle(
     val skinGb: String? = null,
     /** How solid the controls are: 25 / 50 / 75 / 100 %. */
     val opacity: Int = 50,
-    /** The extras switched on ([TouchButton.extra]). FF and the QUICK MENU to start with: a phone has no other way to
-     * open the QUICK MENU, and FF is what a player reaches for most. */
-    val extras: Set<TouchButton> = setOf(TouchButton.FF, TouchButton.QUICK_MENU),
+    /** The extras switched on ([TouchButton.extra]): [DEFAULT_EXTRAS] to start with. */
+    val extras: Set<TouchButton> = DEFAULT_EXTRAS,
+    /** X and Y in a GBA / Game Boy game too (the device's X / Y keys, [TouchButton.X]); a DS game always has its own. */
+    val xyButtons: Boolean = true,
     /** Upright, where the preset's buttons sit in their room (a CUSTOM layout keeps its own places). */
     val position: TouchPosition = TouchPosition.MIDDLE,
     /** Off = the D-pad presses one direction at a time (no diagonals). */
@@ -234,17 +245,21 @@ data class TouchControlsStyle(
     val hasCustom get() = !portrait.isEmpty || !landscape.isEmpty
 
     /** What a control-by-control layout is built from: the GBA buttons and the extras switched on. */
-    fun shown(gameBoy: Boolean, ds: Boolean = false): List<TouchButton> = TouchButton.entries.filter { b ->
+    /** The buttons on screen for a game: [unavailable] are extras switched on that do nothing in it now (ZOOM without
+     * EXPAND, REWIND with REWIND off), left off rather than drawn dead. */
+    fun shown(gameBoy: Boolean, ds: Boolean = false, unavailable: Set<TouchButton> = emptySet()): List<TouchButton> = TouchButton.entries.filter { b ->
         when {
-            b.extra -> b in extras
+            b.extra -> b in extras && b !in unavailable
             gameBoy && (b == TouchButton.L || b == TouchButton.R) -> false
-            !ds && (b == TouchButton.X || b == TouchButton.Y) -> false
+            !ds && !xyButtons && (b == TouchButton.X || b == TouchButton.Y) -> false
             else -> true
         }
     }
 
     companion object {
         val OPACITIES = listOf(25, 50, 75, 100)
+        /** FF and the QUICK MENU to start with (a phone has no other way to open it), ZOOM and REWIND (no R3, no hotkey). */
+        val DEFAULT_EXTRAS = setOf(TouchButton.FF, TouchButton.QUICK_MENU, TouchButton.ZOOM, TouchButton.REWIND)
     }
 }
 

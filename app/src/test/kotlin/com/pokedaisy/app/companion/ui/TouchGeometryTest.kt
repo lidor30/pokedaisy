@@ -95,10 +95,13 @@ class TouchGeometryTest {
         assertEquals(bottom.companion, none.companion)
     }
 
-    /** X / Y only in a DS game, around A / B as on the DS: X over B, Y left of A. */
+    /** X / Y around A / B as on the DS: X over B, Y left of A - a DS game's, and a GBA game's with X AND Y on; off, none. */
     @Test fun dsHasXAndYInItsDiamond() {
+        val off = TouchGeometry.place(TouchControlsStyle(xyButtons = false), 2400f, 1080f, dp, false)
+        assertTrue(off.items.none { it.button == TouchButton.X || it.button == TouchButton.Y })
         val gba = TouchGeometry.place(TouchControlsStyle(), 2400f, 1080f, dp, false)
-        assertTrue(gba.items.none { it.button == TouchButton.X || it.button == TouchButton.Y })
+        val gx = gba.item(TouchButton.X)!!; val gb = gba.item(TouchButton.B)!!
+        assertEquals(gx.cx, gb.cx, 0.5f); assertTrue(gx.cy < gb.cy)
         val p = TouchGeometry.place(TouchControlsStyle(), 2400f, 1080f, dp, false, gameAspect = 4f / 3f, ds = true)
         val x = p.item(TouchButton.X)!!; val y = p.item(TouchButton.Y)!!; val a = p.item(TouchButton.A)!!; val b = p.item(TouchButton.B)!!
         assertEquals(x.cx, b.cx, 0.5f); assertTrue(x.cy < b.cy)
@@ -199,7 +202,7 @@ class TouchGeometryTest {
     }
 
     @Test fun betweenAAndBPressesBoth() {
-        val p = TouchGeometry.place(TouchControlsStyle(preset = TouchPreset.CLASSIC), 2400f, 1080f, dp, false)
+        val p = TouchGeometry.place(TouchControlsStyle(preset = TouchPreset.CLASSIC, xyButtons = false), 2400f, 1080f, dp, false)
         val a = p.item(TouchButton.A)!!
         val b = p.item(TouchButton.B)!!
         val hits = TouchGeometry.hits(p, (a.cx + b.cx) / 2, (a.cy + b.cy) / 2, 10 * dp).map { it.button }.toSet()

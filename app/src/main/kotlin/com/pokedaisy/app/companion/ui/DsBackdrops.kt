@@ -161,10 +161,10 @@ fun BattlePlaceholder(modifier: Modifier = Modifier) {
     fun night(c: Color) = androidx.compose.ui.graphics.lerp(c, NIGHT, scrim)
     val shape = PixelRoundedShape(5.dp)
     Box(
-        modifier.clip(shape).background(night(Color(0xFFBADFD7))).padding(3.dp)
-            .clip(shape).background(night(Color(0xFFFFFFFF))).padding(1.5.dp)
-            .clip(shape).background(night(Color(0xFFD3F3F7))).padding(1.5.dp)
-            .clip(shape).background(night(Color(0xFFDFFFFF))),
+        modifier.background(night(Color(0xFFBADFD7)), shape).padding(3.dp)
+            .background(night(Color(0xFFFFFFFF)), shape).padding(1.5.dp)
+            .background(night(Color(0xFFD3F3F7)), shape).padding(1.5.dp)
+            .background(night(Color(0xFFDFFFFF)), shape),
     )
 }
 

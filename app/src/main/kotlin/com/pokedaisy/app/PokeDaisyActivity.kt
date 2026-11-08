@@ -1512,6 +1512,7 @@ class PokeDaisyActivity : Activity() {
         override fun setRewind(on: Boolean) {
             Prefs(this@PokeDaisyActivity).rewind = on
             if (::engine.isInitialized) engine.rewindEntries = rewindEntries(on)
+            runOnUiThread { syncTouchExtras() }
         }
         override val ffMode get() = Prefs(this@PokeDaisyActivity).ffMode
         override fun setFfMode(mode: FfMode) {
@@ -2005,8 +2006,10 @@ class PokeDaisyActivity : Activity() {
                 gravity = Gravity.TOP or Gravity.END
                 topMargin = dp(12); rightMargin = dp(12)
             })
-            // FPS / CPU: flush in the top-left corner, like other emulators.
-            addView(performance, FrameLayout.LayoutParams(-2, -2).apply { gravity = Gravity.TOP or Gravity.START })
+            // FPS / CPU: flush in the top-left corner, like other emulators. The view covers the stage (its words drawn at
+            // the corner, a touch elsewhere falling through): wrapped round its words, every reading that changed their
+            // width laid the whole stage out again, twice a second (most of a weak tablet's idle frames, 2026-11-08).
+            addView(performance, FrameLayout.LayoutParams(-1, -1))
             // Over everything on the game: the companion's rebind asking for keys.
             addView(keyCapturePopup, FrameLayout.LayoutParams(-1, -1))
             if (debugMirror) {
@@ -3271,7 +3274,13 @@ class PokeDaisyActivity : Activity() {
     }
 
     /** The second display the companion goes on, or null: none, or SINGLE SCREEN keeps the game to this one. */
-    private fun secondScreen(): Display? = Screens.second(this)?.takeIf { !Prefs(this).singleScreen }
+    private fun secondScreen(): Display? {
+        // The display service's answer, kept half a second: SETTINGS' getters ask it row by row while the page composes.
+        val now = android.os.SystemClock.uptimeMillis()
+        val second = secondScreenAsked.takeIf { now - it.first < 500 }?.second ?: Screens.second(this).also { secondScreenAsked = now to it }
+        return second?.takeIf { !Prefs(this).singleScreen }
+    }
+    private var secondScreenAsked: Pair<Long, Display?> = 0L to null
 
     /** The companion on the game's screen: beside the game held sideways, under it upright - and on a foldable half
      * open, on the other side of the hinge (FOLD LAYOUT: below it in TABLETOP, on the right page in BOOK). */
@@ -3483,6 +3492,7 @@ class PokeDaisyActivity : Activity() {
         // STATUS BAR > COMPANION: the strip goes over the companion's tabs instead.
         statusBar.visibility = if (prefs.statusBar && !prefs.statusBarOnCompanion) View.VISIBLE else View.GONE
         performance.visibility = if (prefs.showPerformance) View.VISIBLE else View.GONE
+        performanceShown.value = prefs.showPerformance
         hudOn.value = prefs.fieldHud
         hudStyle.value = prefs.fieldHudStyle
         quickShown.value = prefs.quickMenuActions
@@ -3511,6 +3521,7 @@ class PokeDaisyActivity : Activity() {
         syncTouchControls()
         view.stretch = aspect == GameAspect.STRETCH
         view.wide = aspect == GameAspect.WIDE
+        syncTouchExtras()
         if (::engine.isInitialized) {
             engine.wideGame = if (aspect == GameAspect.WIDE) wideGame else WideScreen.OFF
             // A Game Boy game's field read for the HUD is pk_wide_gb.c's scene, EXPAND or not.
@@ -3787,9 +3798,13 @@ class PokeDaisyActivity : Activity() {
     /** The battery's temperature from its broadcast (°C), for the performance panel. */
     @Volatile private var batteryTempC: Float? = null
 
+    /** FPS / CPU is on: off, the overlay composes nothing (its half-second readings went on behind a hidden view). */
+    private val performanceShown = androidx.compose.runtime.mutableStateOf(false)
+
     private fun buildPerformanceOverlay(): ComposeView = ComposeView(this).apply {
         visibility = View.GONE
         setContent {
+            if (!performanceShown.value) return@setContent
             val reading by produceState(com.pokedaisy.app.companion.ui.PerfReading()) {
                 val cpu = CpuUsage()
                 val power = getSystemService(Context.POWER_SERVICE) as android.os.PowerManager
@@ -3838,7 +3853,11 @@ class PokeDaisyActivity : Activity() {
                     at = System.nanoTime()
                 }
             }
-            com.pokedaisy.app.companion.ui.PerformanceOverlay(reading)
+            // The view fills the stage, and Compose hands its root that whole size as the least it may take: a Box
+            // takes it, so the overlay inside keeps its own size (else its tap, FPS / CPU's open / close, was everywhere).
+            androidx.compose.foundation.layout.Box(androidx.compose.ui.Modifier.fillMaxSize()) {
+                com.pokedaisy.app.companion.ui.PerformanceOverlay(reading)
+            }
         }
     }
 
@@ -4047,8 +4066,30 @@ class PokeDaisyActivity : Activity() {
                 com.pokedaisy.app.companion.ui.TouchGeometry.naturalHeight(style, w.toFloat(), resources.displayMetrics.density, !touchControls.shoulders, touchControls.dsButtons)
             else 0
         }
+        syncTouchExtras()
         syncHudClear()
         if (!show) { input.setTouchBits(0); touchHeld = 0 }
+    }
+
+    /** The touch controls' ZOOM and REWIND drawn only where they can do something: ZOOM with EXPAND on, REWIND in a GBA /
+     * Game Boy game (mGBA's rewind ring; with REWIND off a press says where to turn it on). */
+    private fun syncTouchExtras() {
+        if (!::touchControls.isInitialized || !::view.isInitialized) return
+        val off = HashSet<com.pokedaisy.app.companion.TouchButton>()
+        if (!view.wide) off += com.pokedaisy.app.companion.TouchButton.ZOOM
+        if (romIsNds) off += com.pokedaisy.app.companion.TouchButton.REWIND
+        if (touchControls.unavailable != off) touchControls.unavailable = off
+    }
+
+    /** The touch controls' X / Y in a GBA / Game Boy game: the device's X / Y keys, through the same way as theirs (GAME
+     * BUTTONS' START 2 / SELECT 2 / TO COMPANION, HOTKEYS, a rebind waiting for a key). A virtual device's, so they
+     * never count as a controller (which would hide AUTO's touch controls). */
+    private fun touchKey(keyCode: Int, down: Boolean) {
+        val now = android.os.SystemClock.uptimeMillis()
+        dispatchKeyEvent(KeyEvent(
+            now, now, if (down) KeyEvent.ACTION_DOWN else KeyEvent.ACTION_UP, keyCode, 0, 0,
+            android.view.KeyCharacterMap.VIRTUAL_KEYBOARD, 0, 0, android.view.InputDevice.SOURCE_KEYBOARD,
+        ))
     }
 
     /** TOUCH CONTROLS > SKIN: the imported Delta skins (files/skins/). */
@@ -4143,6 +4184,10 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.TouchButton.QUICK_MENU -> if (down) handleHotkey(Hotkeys.Event(Hotkeys.Action.QUICK_MENU, true))
             com.pokedaisy.app.companion.TouchButton.SAVE_STATE -> if (down) handleHotkey(Hotkeys.Event(Hotkeys.Action.SAVE_STATE, true))
             com.pokedaisy.app.companion.TouchButton.LOAD_STATE -> if (down) handleHotkey(Hotkeys.Event(Hotkeys.Action.LOAD_STATE, true))
+            com.pokedaisy.app.companion.TouchButton.ZOOM -> if (down) handleHotkey(Hotkeys.Event(Hotkeys.Action.ZOOM, true))
+            com.pokedaisy.app.companion.TouchButton.REWIND -> handleHotkey(Hotkeys.Event(Hotkeys.Action.REWIND_HOLD, down))
+            com.pokedaisy.app.companion.TouchButton.X -> touchKey(KeyEvent.KEYCODE_BUTTON_X, down)
+            com.pokedaisy.app.companion.TouchButton.Y -> touchKey(KeyEvent.KEYCODE_BUTTON_Y, down)
             else -> {}
         }
     }

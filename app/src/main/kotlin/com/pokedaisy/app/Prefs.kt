@@ -218,6 +218,9 @@ class Prefs(context: Context) {
         get() = p.getInt("touch_controls", 0)
         set(v) = p.edit().putInt("touch_controls", v).apply()
 
+    /** The extras there were before ZOOM and REWIND (a set saved then didn't say which it knew). */
+    private val EXTRAS_BEFORE_ZOOM = setOf("FF", "QUICK_MENU", "TURBO_A", "TURBO_B", "SAVE_STATE", "LOAD_STATE")
+
     /** SETTINGS > TOUCH CONTROLS: when they show ([touchControlsMode]), the layout, size, opacity, extras and the
      * player's own layouts per orientation ([com.pokedaisy.app.companion.TouchLayout.encode]). */
     var touchControlsStyle: com.pokedaisy.app.companion.TouchControlsStyle
@@ -236,8 +239,12 @@ class Prefs(context: Context) {
                 position = pick(com.pokedaisy.app.companion.TouchPosition.values(), "touch_position", d.position),
                 opacity = p.getInt("touch_opacity", d.opacity),
                 extras = p.getString("touch_extras", null)?.let { s ->
-                    s.split(',').mapNotNull { n -> com.pokedaisy.app.companion.TouchButton.values().firstOrNull { it.name == n && it.extra } }.toSet()
+                    val saved = s.split(',').mapNotNull { n -> com.pokedaisy.app.companion.TouchButton.values().firstOrNull { it.name == n && it.extra } }.toSet()
+                    // Extras that came after this set was saved (ZOOM, REWIND) start as their default, on.
+                    val known = p.getString("touch_extras_known", null)?.split(',')?.toSet() ?: EXTRAS_BEFORE_ZOOM
+                    saved + d.extras.filter { it.name !in known }
                 } ?: d.extras,
+                xyButtons = p.getBoolean("touch_xy", d.xyButtons),
                 eightWay = p.getBoolean("touch_eight_way", d.eightWay),
                 fadeIdle = p.getBoolean("touch_fade_idle", d.fadeIdle),
                 // VIBRATION was one row of OFF / LIGHT / MEDIUM / STRONG (touch_vibration_level), and a switch before that.
@@ -260,6 +267,8 @@ class Prefs(context: Context) {
                 .putString("touch_position", v.position.name)
                 .putInt("touch_opacity", v.opacity)
                 .putString("touch_extras", v.extras.joinToString(",") { it.name })
+                .putString("touch_extras_known", com.pokedaisy.app.companion.TouchButton.extras.joinToString(",") { it.name })
+                .putBoolean("touch_xy", v.xyButtons)
                 .putBoolean("touch_eight_way", v.eightWay)
                 .putBoolean("touch_fade_idle", v.fadeIdle)
                 .putBoolean("touch_vibrate", v.vibrate)

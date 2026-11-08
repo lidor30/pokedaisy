@@ -26,6 +26,7 @@ import androidx.compose.runtime.rememberUpdatedState
 import androidx.compose.runtime.setValue
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.geometry.CornerRadius
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Rect
 import androidx.compose.ui.geometry.Size
@@ -133,11 +134,13 @@ internal class PadPaint(val look: TouchLook, val colors: TouchColors) {
     val shadow = Color(colors.shadow)
     val outline get() = look == TouchLook.OUTLINE
     val raised get() = look == TouchLook.CONSOLE
+    /** MODERN: smooth shapes and a plain font, nothing stepped in pixels. */
+    val modern get() = look == TouchLook.MODERN
 
     /** [b]'s own colour: its accent, else the body - solid but in GLASS. */
     fun base(b: TouchButton): Color {
         val c = colors.accent(b)?.let { Color(it) } ?: body
-        return if (look == TouchLook.GLASS) c else c.copy(alpha = 1f)
+        return if (look == TouchLook.GLASS || look == TouchLook.MODERN) c else c.copy(alpha = 1f)
     }
 
     /** [b]'s face, held or not: lighter when held on a dark colour, darker on a light one; OUTLINE fills only held. */
@@ -171,7 +174,7 @@ internal class PadPaint(val look: TouchLook, val colors: TouchColors) {
 
     /** The faint disc under the cross. */
     val disc: Color get() = when (look) {
-        TouchLook.GLASS -> body.copy(alpha = body.alpha * 0.35f)
+        TouchLook.GLASS, TouchLook.MODERN -> body.copy(alpha = body.alpha * 0.35f)
         TouchLook.OUTLINE -> Color.Transparent
         else -> lerp(body.copy(alpha = 1f), Color.Black, 0.18f).copy(alpha = 0.55f)
     }
@@ -239,6 +242,9 @@ fun touchHits(model: TouchHitModel, xs: FloatArray, ys: FloatArray, n: Int): Tou
  */
 class TouchPressTracker(val pressed: TouchPressed) {
     @Volatile var input = TouchInput()
+    /** X / Y are the device's X / Y keys (a GBA / Game Boy game, [TouchButton.X]): pressed and let go through
+     * [TouchInput.onAction], never the game's own buttons. */
+    @Volatile var xyKeys = false
     private val bySource = arrayOf(TouchHits.NONE, TouchHits.NONE)
     private var gbaWas = 0
     private var turboWas = 0
@@ -253,11 +259,11 @@ class TouchPressTracker(val pressed: TouchPressed) {
         val input = input
         // Newly pressed: a tick; the extras' presses / let-gos.
         if (held and heldWas.inv() != 0 || dpad and dpadWas.inv() != 0) input.onPress()
+        val xy = xyKeys
         for (b in TouchButton.entries) {
             val bit = 1 shl b.ordinal
-            if (b.extra && b != TouchButton.TURBO_A && b != TouchButton.TURBO_B && (held xor heldWas) and bit != 0) {
-                input.onAction(b, held and bit != 0)
-            }
+            val action = b.extra && b != TouchButton.TURBO_A && b != TouchButton.TURBO_B || xy && (b == TouchButton.X || b == TouchButton.Y)
+            if (action && (held xor heldWas) and bit != 0) input.onAction(b, held and bit != 0)
         }
         heldWas = held
         dpadWas = dpad
@@ -268,7 +274,7 @@ class TouchPressTracker(val pressed: TouchPressed) {
         var turbo = 0
         for (b in TouchButton.entries) if (held and (1 shl b.ordinal) != 0) {
             if (b == TouchButton.TURBO_A || b == TouchButton.TURBO_B) turbo = turbo or b.gba
-            else gba = gba or b.gba
+            else if (!(xy && (b == TouchButton.X || b == TouchButton.Y))) gba = gba or b.gba
         }
         if (gba != gbaWas || turbo != turboWas) {
             gbaWas = gba; turboWas = turbo
@@ -305,13 +311,15 @@ fun TouchControls(
     tracker: TouchPressTracker? = null,
     /** Where the buttons are now, whenever that changes (the input windows' hit test). */
     onHitModel: (TouchHitModel) -> Unit = {},
+    /** Extras switched on that do nothing in this game now: not drawn ([TouchControlsStyle.shown]). */
+    unavailable: Set<TouchButton> = emptySet(),
 ) {
     val density = LocalDensity.current
     var measured by remember { mutableStateOf(IntSize.Zero) }
     val fit = remember(skin, portrait, measured) { skinFit(skin, measured.width.toFloat(), measured.height.toFloat(), portrait) }
-    val placed = remember(style, portrait, measured, gameAspect, gameBoy, ds, density.density, fit) {
+    val placed = remember(style, portrait, measured, gameAspect, gameBoy, ds, density.density, fit, unavailable) {
         fit?.let { skinPlaced(it, density.density) }
-            ?: TouchGeometry.place(style, measured.width.toFloat(), measured.height.toFloat(), density.density, portrait, gameAspect, gameBoy, ds = ds)
+            ?: TouchGeometry.place(style, measured.width.toFloat(), measured.height.toFloat(), density.density, portrait, gameAspect, gameBoy, ds = ds, unavailable = unavailable)
     }
     LaunchedEffect(placed) { onPlaced(placed) }
     LaunchedEffect(placed, fit, style.eightWay) { onHitModel(TouchHitModel(placed, fit, style.eightWay)) }
@@ -339,7 +347,12 @@ fun TouchControls(
         modifier
             .onSizeChanged { measured = it }
             // A solid skin is drawn whole (the game shows where its screen is); a translucent one takes OPACITY.
-            .graphicsLayer { alpha = (if (fit != null && !fit.rep.translucent) 1f else style.opacity / 100f) * fade }
+            // A layer of its own, kept by the renderer until a press or a change redraws it: its pixel-stepped paths were
+            // drawn again on every frame anything else on screen drew (a CPU job on older renderers: Android 11, 2026-11-08).
+            .graphicsLayer {
+                alpha = (if (fit != null && !fit.rep.translucent) 1f else style.opacity / 100f) * fade
+                compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen
+            }
             .pointerInput(Unit) {
                 awaitPointerEventScope {
                     val xs = FloatArray(16)
@@ -366,7 +379,7 @@ fun TouchControls(
         if (skin != null && measured == IntSize.Zero) return@Canvas
         // The first frame draws before onSizeChanged's size has come round: place from the canvas's own.
         val p = if (placed.w == size.width && placed.h == size.height) placed
-        else TouchGeometry.place(style, size.width, size.height, density.density, portrait, gameAspect, gameBoy, ds = ds)
+        else TouchGeometry.place(style, size.width, size.height, density.density, portrait, gameAspect, gameBoy, ds = ds, unavailable = unavailable)
         drawTouchControls(p, PadPaint(style), pressed, ffOn, measurer, font)
     }
 }
@@ -401,6 +414,38 @@ private fun DrawScope.drawTouchControls(
     }
     // The controls' pixel: the companion's GBA pixel at this density (a whole screen pixel or more, but in a preview).
     val step = max(1f, (placed.dp * 1.25f).roundToInt().toFloat())
+    // Pills of one size share one word size, the largest every one of their words fits (SELECT and START alike).
+    val pillSize = placed.items.filter { it.shape == TouchGeometry.Shape.PILL }
+        .groupBy { it.w.roundToInt() to it.h.roundToInt() }
+        .mapValues { (_, group) -> group.minOf { labelSize(it, measurer, font, paint.modern) } }
+    fun sizeFor(item: TouchGeometry.Item) =
+        if (item.shape == TouchGeometry.Shape.PILL) pillSize[item.w.roundToInt() to item.h.roundToInt()] else null
+    if (paint.modern) {
+        for (item in placed.items) {
+            val on = pressed?.has(item.button) == true
+            if (item.shape == TouchGeometry.Shape.CROSS) drawSmoothCross(item, paint, placed.dp, pressed?.dpad ?: 0)
+            else {
+                val b = item.button
+                val stroke = max(1f, 1.5f * placed.dp)
+                if (item.shape == TouchGeometry.Shape.ROUND) {
+                    val r = min(item.w, item.h) / 2
+                    drawCircle(paint.fill(b, on), r, Offset(item.cx, item.cy))
+                    drawCircle(paint.edge, r - stroke / 2, Offset(item.cx, item.cy), style = Stroke(stroke))
+                } else {
+                    val corner = CornerRadius(item.h / 2, item.h / 2)
+                    drawRoundRect(paint.fill(b, on), Offset(item.left, item.top), Size(item.w, item.h), corner)
+                    drawRoundRect(
+                        paint.edge, Offset(item.left + stroke / 2, item.top + stroke / 2), Size(item.w - stroke, item.h - stroke),
+                        CornerRadius(item.h / 2 - stroke / 2, item.h / 2 - stroke / 2), style = Stroke(stroke),
+                    )
+                }
+                val lit = b == TouchButton.FF && ffOn
+                drawLabel(item, measurer, font, if (lit) PAD_ON else paint.inkOn(b), paint.shadowOn(b), step, modern = true, size = sizeFor(item))
+            }
+            drawEditMark(item, selected, editing, step)
+        }
+        return
+    }
     for (item in placed.items) {
         val on = pressed?.has(item.button) == true
         when (item.shape) {
@@ -424,18 +469,81 @@ private fun DrawScope.drawTouchControls(
                     drawPixelRoundFrame(paint.edge, tl, sz, r, if (paint.outline) 2 * step else step, step)
                 }
                 val lit = b == TouchButton.FF && ffOn
-                drawLabel(item.copy(cy = item.cy - (depth - sink) / 2), measurer, font, if (lit) PAD_ON else paint.inkOn(b), paint.shadowOn(b), step)
+                drawLabel(item.copy(cy = item.cy - (depth - sink) / 2), measurer, font, if (lit) PAD_ON else paint.inkOn(b), paint.shadowOn(b), step, size = sizeFor(item))
             }
         }
-        if (editing) {
-            val frame = if (item.button == selected) PAD_SELECT else Color(0x99FFFFFF)
-            val pad = 3 * step
-            drawRect(
-                frame, Offset(item.left - pad, item.top - pad), Size(item.w + 2 * pad, item.h + 2 * pad),
-                style = Stroke(width = if (item.button == selected) 2 * step else step, pathEffect = PathEffect.dashPathEffect(floatArrayOf(3 * step, 2 * step))),
-            )
-        }
+        drawEditMark(item, selected, editing, step)
     }
+}
+
+/** EDIT LAYOUT's dashed frame round [item] (brighter round the one picked). */
+private fun DrawScope.drawEditMark(item: TouchGeometry.Item, selected: TouchButton?, editing: Boolean, step: Float) {
+    if (!editing) return
+    val frame = if (item.button == selected) PAD_SELECT else Color(0x99FFFFFF)
+    val pad = 3 * step
+    drawRect(
+        frame, Offset(item.left - pad, item.top - pad), Size(item.w + 2 * pad, item.h + 2 * pad),
+        style = Stroke(width = if (item.button == selected) 2 * step else step, pathEffect = PathEffect.dashPathEffect(floatArrayOf(3 * step, 2 * step))),
+    )
+}
+
+/** MODERN's D-pad: a smooth rounded cross over a faint disc, smooth arrows, a held arm lit. */
+private fun DrawScope.drawSmoothCross(item: TouchGeometry.Item, paint: PadPaint, dp: Float, dirs: Int) {
+    val d = item.w
+    val arm = d * 0.36f
+    val cx = item.cx; val cy = item.cy
+    val corner = arm * 0.22f
+    drawCircle(paint.disc, d / 2, Offset(cx, cy))
+    fun rr(l: Float, t: Float, w: Float, h: Float) = Path().apply {
+        addRoundRect(androidx.compose.ui.geometry.RoundRect(l, t, l + w, t + h, CornerRadius(corner, corner)))
+    }
+    val cross = Path().apply { op(rr(cx - arm / 2, item.top, arm, d), rr(item.left, cy - arm / 2, d, arm), PathOperation.Union) }
+    drawPath(cross, paint.cross(false))
+    val half = d / 2 - arm / 2
+    fun lit(bit: Int, l: Float, t: Float, w: Float, h: Float) {
+        if (dirs and bit != 0) drawPath(Path().apply { op(cross, Path().apply { addRect(Rect(l, t, l + w, t + h)) }, PathOperation.Intersect) }, paint.cross(true))
+    }
+    lit(TouchGeometry.KEY_UP, cx - arm / 2, item.top, arm, half + arm / 2)
+    lit(TouchGeometry.KEY_DOWN, cx - arm / 2, cy, arm, half + arm / 2)
+    lit(TouchGeometry.KEY_LEFT, item.left, cy - arm / 2, half + arm / 2, arm)
+    lit(TouchGeometry.KEY_RIGHT, cx, cy - arm / 2, half + arm / 2, arm)
+    drawPath(cross, paint.edge, style = Stroke(max(1f, 1.5f * dp)))
+    // Arrows: a small smooth triangle near each arm's end, pointing out.
+    val s = arm * 0.2f
+    val reach = d / 2 - arm * 0.42f
+    fun arrow(dx: Int, dy: Int) {
+        val tx = cx + dx * reach
+        val ty = cy + dy * reach
+        val path = Path().apply {
+            if (dx != 0) { moveTo(tx, ty); lineTo(tx - dx * s, ty - s); lineTo(tx - dx * s, ty + s) }
+            else { moveTo(tx, ty); lineTo(tx - s, ty - dy * s); lineTo(tx + s, ty - dy * s) }
+            close()
+        }
+        drawPath(path, paint.arrow)
+    }
+    arrow(0, -1); arrow(0, 1); arrow(-1, 0); arrow(1, 0)
+}
+
+/** The plain font MODERN's words are in. */
+private val MODERN_TEXT = TextStyle(fontWeight = androidx.compose.ui.text.font.FontWeight.Bold, textAlign = TextAlign.Center)
+
+/** [item]'s word size on its own: whole font pixels (the pixel font), or px for MODERN's plain one - as big as the
+ * button allows, smaller until the word fits. */
+private fun DrawScope.labelSize(item: TouchGeometry.Item, measurer: TextMeasurer, font: FontFamily, modern: Boolean): Int {
+    val text = tr(item.button.face)
+    if (text.isEmpty()) return Int.MAX_VALUE
+    val round = item.shape == TouchGeometry.Shape.ROUND
+    val room = item.w * (if (round) 0.78f else 0.86f)
+    val lines = text.count { it == '\n' } + 1
+    if (modern) {
+        var px = (if (lines > 1) item.h * 0.55f / lines else item.h * (if (round) 0.42f else 0.5f)).roundToInt()
+        while (px > 6 && measurer.measure(text, MODERN_TEXT.copy(fontSize = px.toSp(), lineHeight = (px * 1.05f).toSp())).size.width > room) px--
+        return px
+    }
+    var fp = max(1, if (lines > 1) (item.h * 0.5f / lines / 9f).toInt() else ((item.h * if (round) 0.34f else 0.44f) / 9f).roundToInt())
+    fun width() = measurer.measure(text, TextStyle(fontFamily = font, fontSize = (16f * fp).toSp(), lineHeight = (11f * fp).toSp(), textAlign = TextAlign.Center)).size.width
+    while (fp > 1 && width() > room) fp--
+    return fp
 }
 
 /** The D-pad: a pixel cross over a faint disc, an arrow on each arm, a held arm lit. */
@@ -492,24 +600,28 @@ private fun DrawScope.drawCross(item: TouchGeometry.Item, paint: PadPaint, step:
     arrow(0, -1); arrow(0, 1); arrow(-1, 0); arrow(1, 0)
 }
 
-/** A button's word, in whole font pixels, with the games' three-way shadow; smaller until it fits. */
-private fun DrawScope.drawLabel(item: TouchGeometry.Item, measurer: TextMeasurer, font: FontFamily, ink: Color, shadow: Color, step: Float) {
+/** A button's word, with the games' three-way shadow in the pixel font (MODERN: the plain font, a soft one-way shadow),
+ * at [size] ([labelSize]'s; null = its own). Caps are 9 font pixels of a 16 em: about a third of a round button's
+ * height, nearly half a pill's; two lines (TURBO over its letter) share half the height. */
+private fun DrawScope.drawLabel(
+    item: TouchGeometry.Item, measurer: TextMeasurer, font: FontFamily, ink: Color, shadow: Color, step: Float,
+    modern: Boolean = false, size: Int? = null,
+) {
     val text = tr(item.button.face)
     if (text.isEmpty()) return
-    val round = item.shape == TouchGeometry.Shape.ROUND
-    // Caps are 9 font pixels of a 16 em: about a third of a round button's height, nearly half a pill's; two lines
-    // (TURBO over its letter) share half the height.
-    val lines = text.count { it == '\n' } + 1
-    var fp = max(1, if (lines > 1) (item.h * 0.5f / lines / 9f).toInt() else ((item.h * if (round) 0.34f else 0.44f) / 9f).roundToInt())
-    fun measure() = measurer.measure(
+    val n = size ?: labelSize(item, measurer, font, modern)
+    if (modern) {
+        val layout = measurer.measure(text, MODERN_TEXT.copy(color = ink, fontSize = n.toSp(), lineHeight = (n * 1.05f).toSp()))
+        val tl = Offset(item.cx - layout.size.width / 2f, item.cy - layout.size.height / 2f)
+        drawText(layout, color = shadow.copy(alpha = 0.5f), topLeft = tl + Offset(0f, max(1f, n / 14f)))
+        drawText(layout, color = ink, topLeft = tl)
+        return
+    }
+    val fp = n
+    val layout = measurer.measure(
         text,
         TextStyle(fontFamily = font, fontSize = (16f * fp).toSp(), color = ink, lineHeight = (11f * fp).toSp(), textAlign = TextAlign.Center),
     )
-    var layout = measure()
-    while (fp > 1 && layout.size.width > item.w * (if (round) 0.78f else 0.86f)) {
-        fp--
-        layout = measure()
-    }
     val x = (item.cx - layout.size.width / 2f).roundToInt().toFloat()
     val y = (item.cy - layout.size.height / 2f).roundToInt().toFloat()
     val k = fp.toFloat()

@@ -2173,6 +2173,14 @@ stress` switches the companion's tabs every 2 frames and fails over its memory /
 skips desktop Compose 1.5's own OnPositionedDispatcher NPE, which the app's 1.6.8 doesn't have) - CI runs
 it; after touching anything a tab composes, ask the user before running it yourself. Per-visit work belongs in process-wide caches (slot art,
 backdrops, card renders, state thumbnails), not `remember`, which a tab loses each time it leaves.
+**Weak devices (a Galaxy Tab A, Android 11, Mali-G71, 2026-11-08: tab switches went from 150-1450 ms to 75-150 ms)**: `GbaText`
+is one Text node drawing its three shadow copies from its own layout (`drawBehind` + `drawText`; four Text nodes laid every word out four
+times). Never `clip()` a large area to a pixel shape: Android 11's renderer draws a path clip as a CPU mask every frame (the companion
+window's cost 160 ms a frame) - `pixelClip` (smooth while LIGHT COMPANION is on), and layered backgrounds draw `background(color, shape)`
+instead of clipping. Composition must not touch the disk or a system service (`MonArt.available` is cached, `secondScreen()` kept half a
+second): SETTINGS' getters run row by row. The touch pad (and, with LIGHT COMPANION, the companion window) sits in an offscreen layer
+the renderer keeps. A view over the stage keeps a fixed size (`WRAP_CONTENT` with changing text re-measured the whole stage). The
+`benchmark` build is profileable from adb; profile a debug build with simpleperf's `app_profiler.py` (`-e task-clock` on that tablet).
 **Crash reports** (`CrashReports.kt`, Firebase Crashlytics + -ndk): opt-in, off by default (manifest
 `firebase_crashlytics_collection_enabled=false`); on via Settings > CRASH REPORTS or the Library's one-time ask
 (`CrashReports.shouldAsk`: third app open - `PokeDaisyApp` counts process starts - and 48 h after

@@ -25,6 +25,7 @@ import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.draw.drawWithContent
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.onFocusChanged
@@ -207,7 +208,11 @@ private fun WindowFrame(window: Boolean, modifier: Modifier, content: @Composabl
                 val px = u.toPx()
                 drawPixelRoundRect(Color.Black.copy(alpha = 0.35f), Offset(0f, 3 * px), size, radius = 4 * px, step = px)
             }
-            .clip(PixelRoundedShape(u * 4))
+            .pixelClip(PixelRoundedShape(u * 4))
+            // LIGHT COMPANION: the window drawn into a layer of its own, which the renderer keeps until something in
+            // it changes - an unchanged window cost a weak tablet 40-55 ms of GPU commands on every frame anything
+            // else on screen drew (2026-11-08).
+            .then(if (com.pokedaisy.app.companion.LightCompanion.on) Modifier.graphicsLayer { compositingStrategy = androidx.compose.ui.graphics.CompositingStrategy.Offscreen } else Modifier)
             .drawWithContent {
                 drawContent()
                 drawLayeredFrame(OptionColors.titleLayers.inPx(u.toPx()), radius = 4 * u.toPx())

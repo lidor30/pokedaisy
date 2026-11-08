@@ -8,6 +8,8 @@ import androidx.compose.runtime.Composable
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.layout.layout
+import androidx.compose.ui.draw.drawBehind
+import androidx.compose.ui.text.drawText
 import androidx.compose.ui.unit.Constraints
 import androidx.compose.ui.geometry.Offset
 import androidx.compose.ui.geometry.Size
@@ -129,7 +131,9 @@ fun gbaTextStyle(font: FontFamily, m: GbaTextMetrics, scaleX: Float = 1f) = Text
 /**
  * GBA-style text: the game draws its shadow one pixel right, down AND
  * diagonally (a thick bottom-right edge), which a single Compose Shadow can't
- * do - so three offset copies sit under the text.
+ * do - so three offset copies sit under the text. They're drawn from the text's own
+ * layout ([drawBehind]): three more Text nodes laid the same string out three more times,
+ * most of a weak tablet's time opening a tab (2026-11-08).
  */
 @Composable
 fun GbaText(
@@ -148,20 +152,20 @@ fun GbaText(
     val style = gbaTextStyle(pixelFontFamily(), m, scaleX)
     val k = m.fontPixel.roundToInt()
     val b = if (bold) boldOffsetPx(m.fontPixel * scaleX) else 0
+    // The layout the text was given, for its copies; set before each draw (layout comes first), read only there.
+    val laid = remember { arrayOfNulls<androidx.compose.ui.text.TextLayoutResult>(1) }
     Box(modifier) {
-        if (shadow.alpha > 0f) for ((dx, dy) in listOf(k to 0, 0 to k, k to k)) {
-            Text(
-                text, color = shadow, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.offset { IntOffset(dx + b, dy) },
-            )
-        }
-        if (b > 0) {
-            Text(
-                text, color = color, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis,
-                modifier = Modifier.offset { IntOffset(b, 0) },
-            )
-        }
-        Text(text, color = color, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis)
+        Text(
+            text, color = color, style = style, maxLines = maxLines, overflow = TextOverflow.Ellipsis,
+            onTextLayout = { laid[0] = it },
+            modifier = Modifier.drawBehind {
+                val layout = laid[0] ?: return@drawBehind
+                if (shadow.alpha > 0f) for ((dx, dy) in listOf(k to 0, 0 to k, k to k)) {
+                    drawText(layout, color = shadow, topLeft = Offset((dx + b).toFloat(), dy.toFloat()))
+                }
+                if (b > 0) drawText(layout, color = color, topLeft = Offset(b.toFloat(), 0f))
+            },
+        )
     }
 }
 

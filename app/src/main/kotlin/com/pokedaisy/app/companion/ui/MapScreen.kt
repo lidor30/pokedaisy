@@ -494,7 +494,7 @@ private fun RegionMap(
                 }
             }
             .focusable(interactionSource = keys)
-            .clip(shape)
+            .pixelClip(shape)
             .drawWithContent {
                 drawContent()
                 val px = (MAP_FRAME / 5).toPx().coerceAtLeast(1f)
@@ -1039,7 +1039,7 @@ private fun PokegearMapView(
                 .gbaFocusRing(focused, shape)
                 .focusRequester(self)
                 .focusable(interactionSource = keys)
-                .clip(shape)
+                .pixelClip(shape)
                 .drawWithContent {
                     drawContent()
                     val px = (MAP_FRAME / 5).toPx().coerceAtLeast(1f)

@@ -717,9 +717,10 @@ internal fun PlatinumButton(
                     drawLayeredBox(OptionColors.listLayers.inPx(gbaPixelPx()), OptionColors.listFill, radius = 3 * gbaPixelPx())
                 } else Modifier
                     // HeartGold's: a thick dark outline, a thin white ring, then [fill] over [frame].
-                    .clip(shape).background(HgOutline).padding(HG_PX * 2)
-                    .clip(shape).background(Color(0xFFFBFBFB)).padding(HG_PX)
-                    .clip(shape).background(frame).padding(HG_PX)
+                    // Each layer drawn in the shape, nothing clipped (a path clip is a CPU mask on older renderers: pixelClip).
+                    .background(HgOutline, shape).padding(HG_PX * 2)
+                    .background(Color(0xFFFBFBFB), shape).padding(HG_PX)
+                    .background(frame, shape).padding(HG_PX)
                     .drawBehind { drawTwoTone(fill, frame, HG_PX.toPx() * 2) { color -> drawRoundedFill(color, shape) } },
             )
             .then(

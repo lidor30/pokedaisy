@@ -127,10 +127,18 @@ fun touchControlsRows(
             set(style.copy(useCustom = false, portrait = TouchLayout(), landscape = TouchLayout()))
         }.takeIf { style.hasCustom },
     ) + skinRows(style, skins, skinUi, onImportSkin) + listOf(groupTitle(tk("EXTRA BUTTONS"))) + TouchButton.extras.map { b ->
-        SettingRow(b.label, onOff(b in style.extras), enabled = !skinned, subtitle = if (skinned) skinNote else extraSubtitle(b)) {
+        SettingRow(
+            b.label, onOff(b in style.extras), enabled = !skinned, subtitle = if (skinned) skinNote else extraSubtitle(b),
+            labelBadge = NewFeatures.badge(NewFeatures.TOUCH_MORE_BUTTONS).takeIf { b == TouchButton.ZOOM || b == TouchButton.REWIND },
+        ) {
             if (!skinned) set(style.copy(extras = if (b in style.extras) style.extras - b else style.extras + b))
         }
-    }
+    } + SettingRow(
+        // A GBA / Game Boy game's X and Y: the device's X / Y keys (a DS game always has its own).
+        tk("X AND Y"), onOff(style.xyButtons), enabled = !skinned,
+        subtitle = if (skinned) skinNote else "GBA and Game Boy: X and Y keys for GAME BUTTONS and HOTKEYS",
+        labelBadge = NewFeatures.badge(NewFeatures.TOUCH_MORE_BUTTONS),
+    ) { if (!skinned) set(style.copy(xyButtons = !style.xyButtons)) }
 }
 
 /** SKINS: a skin for GBA games and one for Game Boy games (a pick-list each), IMPORT SKIN and DELETE SKIN. */
@@ -215,6 +223,8 @@ private fun extraSubtitle(b: TouchButton): String? = when (b) {
     TouchButton.TURBO_A, TouchButton.TURBO_B -> "Presses it over and over while held"
     TouchButton.SAVE_STATE -> "Saves a state to the current slot"
     TouchButton.LOAD_STATE -> "Loads the current slot's state"
+    TouchButton.ZOOM -> "EXPAND's zoom. Shows while EXPAND is on"
+    TouchButton.REWIND -> "Rewinds while held, once REWIND is on"
     else -> null
 }
 

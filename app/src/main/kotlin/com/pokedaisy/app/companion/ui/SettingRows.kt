@@ -436,6 +436,7 @@ private fun GroupedRowsList(
     val gameScale = com.pokedaisy.app.companion.ui.theme.LocalGameTextScale.current
     val rowHeight = m.rowHeight * 1.2f / gameScale
     val subtitleLine = if (gameScale == 1f) m.lineHeight else subtitleMetrics(m).lineHeight + m.u * 2
+    fun heightOf(row: SettingRow) = if (row.subtitle != null) rowHeight + subtitleLine else rowHeight + m.u * ONE_LINE_ROW_EXTRA
     Column(Modifier.fillMaxSize().verticalScroll(scroll)) {
         rows.forEachIndexed { i, row ->
             if (row.header && row.featured) {
@@ -453,7 +454,7 @@ private fun GroupedRowsList(
                         .focusStart(i == cursor),
                     // A one-line row's letters sit low in their line (room above the capitals, none under): a little more
                     // under them, so the space below matches the space above.
-                    height = if (row.subtitle != null) rowHeight + subtitleLine else rowHeight + m.u * ONE_LINE_ROW_EXTRA,
+                    height = heightOf(row),
                     bottomPadding = if (row.subtitle != null) 0.dp else m.u * ONE_LINE_ROW_EXTRA,
                     divider = rows.getOrNull(i + 1)?.header == false, labelBadge = row.labelBadge, labelIcon = row.labelIcon,
                     valueBadge = row.badge, enabled = row.enabled, subtitle = row.subtitle, labelWeight = row.labelWeight ?: labelWeight,

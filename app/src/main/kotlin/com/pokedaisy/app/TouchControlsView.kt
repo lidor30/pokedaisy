@@ -47,6 +47,9 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
     /** A DS game: X and Y on screen too. */
     var dsButtons by mutableStateOf(false)
 
+    /** Extras switched on that do nothing in this game now (ZOOM without EXPAND, REWIND off or a DS game): not drawn. */
+    var unavailable by mutableStateOf<Set<TouchButton>>(emptySet())
+
     /** SKIN's pick for this game's system (null: the drawn buttons). */
     var skin by mutableStateOf<com.pokedaisy.app.companion.InstalledSkin?>(null)
 
@@ -149,8 +152,9 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
                     gameAspect = gameAspect, gameBoy = !shoulders, ffOn = ffOn, ds = dsButtons, skin = skin,
                     modifier = androidx.compose.ui.Modifier.fillMaxSize(),
                     onPlaced = { placed = it; onPlaced?.invoke() },
-                    tracker = tracker,
+                    tracker = tracker.also { it.xyKeys = !dsButtons },
                     onHitModel = { hitModel = it; syncInputWindows() },
+                    unavailable = unavailable,
                 )
             }
         }, LayoutParams(-1, -1))
