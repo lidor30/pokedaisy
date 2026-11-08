@@ -101,10 +101,10 @@ the `EXPAND` picture, and it steps back out when you return to the field.
 Building interiors are the overworld, so nothing steps in there. Turn `AUTO ZOOM
 IN` off to stay zoomed out through menus.
 
-Fast-forward and rewind don't rebuild the map (that is what keeps fast-forward
-fast): the game picture sits over a blurred glow spread from its own edges, the
-same one the menus show past the screen. Fast-forward is silent. Rewind keeps the
-aspect you chose, so `ZOOM OUT` stays zoomed out while you rewind.
+Fast-forward rebuilds the map as normal play does, so the picture stays sharp
+out to the edges. When the device can't keep up, a frame now and then shows the
+last picture again instead. Fast-forward is silent. Rewind keeps the aspect you
+chose, so `ZOOM OUT` stays zoomed out while you rewind.
 
 ### NXRedux collection and Platinum
 
