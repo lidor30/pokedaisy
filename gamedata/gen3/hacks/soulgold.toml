@@ -187,6 +187,9 @@ pokedex = 'POKEDEX_SOULGOLD_V1_2C'
 # (dex, wild and map tables). Its tables are byte for byte v1.2's, TM75 included.
 [config.soulgold_v1_2_1]
 base = 'soulgold_v1_2'
+# Its Pokemon's attacks are bit-packed (SOULGOLD_V1_2_1_PARTY_MON: the 4th move across two u16s, the PP 7-bit fields of
+# a u32), found with the game's own SetMonData headless.
+partyMonLayout = 'SOULGOLD_V1_2_1_PARTY_MON'
 itemDescs = { base = 0x0875B360, stride = 0x2C, descOff = -8 }
 guideTables = 'GUIDE_TABLES_SOULGOLD_V1_2_1'
 playerParty = 0x02038E68

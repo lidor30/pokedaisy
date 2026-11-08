@@ -15972,7 +15972,7 @@ static const struct pd_config PD_CONFIG_MONOMYTH_V1_1 = {
 static const struct pd_config PD_CONFIG_SOULGOLD_V1_2_1 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 141931360, .stride = 44, .descOff = -8, .idOff = -1 },
     .playerParty = 0x02038E68,
-    .partyLayout = &pd_party_layout_soulgold,
+    .partyLayout = &pd_party_layout_soulgold_v121,
     .playerPartyCount = 0x02038C1D,
     .speciesMask = 0x07FF,
     .moveMask = 0x07FF,

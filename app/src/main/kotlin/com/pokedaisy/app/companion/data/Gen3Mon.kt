@@ -92,6 +92,9 @@ data class PartyMonLayout(
     val shinyBitsMask: Int = 0,
     /** The substructs' key is Monomyth's ([monomythKey]) rather than personality ^ OT ID. */
     val monomythKey: Boolean = false,
+    /** A plaintext box's attacks are bit fields ([plainAttacks]): SoulGold v1.2.1's four 11-bit moves at bits 0, 16, 32
+     * and 43 (move 4 across the third and fourth u16), and the PP four 7-bit fields of the u32 after them. */
+    val packedAttacks: Boolean = false,
 )
 
 val VANILLA_PARTY_MON = PartyMonLayout()
@@ -241,6 +244,23 @@ val SOULGOLD_PARTY_MON = PartyMonLayout(
     plainItemMask = 0x03FF,   // heldItem:10 - Cyndaquil's 0x0400 read as an "Item#1024" tag on its party slot
 )
 
+/** SoulGold v1.2.1: v1.2's struct but its attacks bit-packed ([PartyMonLayout.packedAttacks]). The game's own SetMonData
+ * headless (moves 242 / 423 / 349 / 701, PP 15 / 15 / 20 / 10) wrote `f2 00 a7 01 5d e9 15 00 8f 07 45 31`; read as
+ * v1.2's, move 4 came out 701 >> 5 = 21 and the PP 143 / 7 / 69 / 49 (a player's FISHIOUS REND read as SLAM). */
+val SOULGOLD_V1_2_1_PARTY_MON = SOULGOLD_PARTY_MON.copy(packedAttacks = true)
+
+/** A plaintext box's moves and PP from its attacks substruct at [a]: four u16 moves and four PP bytes, or bit-packed
+ * ([PartyMonLayout.packedAttacks]). The configs' moveMask / ppMask still apply after this. */
+internal fun plainAttacks(raw: ByteArray, a: Int, layout: PartyMonLayout): Pair<IntArray, IntArray> {
+    if (!layout.packedAttacks) {
+        return IntArray(NUM_MOVES) { u16(raw, a + it * 2) } to IntArray(NUM_MOVES) { raw[a + 8 + it].toInt() and 0xFF }
+    }
+    val w = IntArray(4) { u16(raw, a + it * 2) }
+    val moves = intArrayOf(w[0] and 0x7FF, w[1] and 0x7FF, w[2] and 0x7FF, ((w[2] ushr 11) or (w[3] shl 5)) and 0x7FF)
+    val ppWord = u32(raw, a + 8)
+    return moves to IntArray(NUM_MOVES) { ((ppWord ushr (7 * it)) and 0x7F).toInt() }
+}
+
 /**
  * Decodes one struct Pokemon at [off]. Tries the retail Gen 3 format
  * (substructs encrypted with key = PID ^ OTID, ordered by PID % 24, gated on the
@@ -274,8 +294,9 @@ fun decodePartyMon(raw: ByteArray, off: Int, layout: PartyMonLayout = VANILLA_PA
         species = u16(raw, box) and layout.plainSpeciesMask
         if (species == 0 || species > 4000) return null
         heldItem = u16(raw, box + 2) and layout.plainItemMask
-        moves = IntArray(NUM_MOVES) { u16(raw, box + 0x0C + it * 2) }
-        pp = IntArray(NUM_MOVES) { raw[box + 0x0C + 8 + it].toInt() and 0xFF }
+        val (m, p) = plainAttacks(raw, box + 0x0C, layout)
+        moves = m
+        pp = p
         // Plaintext boxes keep the substructs in G-A-E-M order: EVs at +0x18, IVs at Misc +4.
         evs = List(6) { raw[box + 0x18 + it].toInt() and 0xFF }
         ivWord = u32(raw, box + 0x28)
@@ -375,11 +396,12 @@ private fun plainBoxSubstructs(raw: ByteArray, off: Int, layout: PartyMonLayout)
     val box = off + layout.plainBox
     val species = u16(raw, box) and layout.plainSpeciesMask
     if (species > 4000) return null
+    val (moves, pp) = plainAttacks(raw, box + 0x0C, layout)
     return Gen3Substructs(
         species = species,
         exp = u32(raw, box + 4),
-        moves = IntArray(NUM_MOVES) { u16(raw, box + 0x0C + it * 2) },
-        pp = IntArray(NUM_MOVES) { raw[box + 0x0C + 8 + it].toInt() and 0xFF },
+        moves = moves,
+        pp = pp,
         evs = List(6) { raw[box + 0x18 + it].toInt() and 0xFF },
         ivWord = u32(raw, box + 0x28),
         heldItem = u16(raw, box + 2) and layout.plainItemMask,

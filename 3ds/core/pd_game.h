@@ -94,13 +94,15 @@ struct pd_party_layout {
     bool rowe;              // R.O.W.E.'s bit-packed struct (no substructs, no IVs, no held item)
     bool eliteRedux;        // Elite Redux's bit-packed struct (no substructs; IVs all 31)
     bool monomythKey;       // Monomyth: the substructs are XORed with a key of its own (MonomythKey), its natures its own
+    bool packedAttacks;     // a plaintext box's attacks are bit fields (SoulGold v1.2.1): 11-bit moves at bits 0, 16, 32, 43,
+                            // the PP four 7-bit fields of the u32 after them (Gen3Mon.kt plainAttacks)
     // Shininess, for the hacks that mark it (the app's shinyBelow / shinyModifier / shinyBits): shiny when the
     // personality's shiny value is below shinyBelow, flipped by bit 6 of the byte at shinyModifier; or, when
     // shinyBitsMask is set, when that byte at shinyBits has a mask bit. All 0 = not read.
     int shinyBelow, shinyModifier, shinyBits;
     unsigned shinyBitsMask;
 };
-extern const struct pd_party_layout pd_party_layout_vanilla, pd_party_layout_quetzal, pd_party_layout_soulgold,
+extern const struct pd_party_layout pd_party_layout_vanilla, pd_party_layout_quetzal, pd_party_layout_soulgold, pd_party_layout_soulgold_v121,
     pd_party_layout_team_rocket, pd_party_layout_rowe, pd_party_layout_rogue, pd_party_layout_elite_redux,
     pd_party_layout_monomyth;
 
