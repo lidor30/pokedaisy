@@ -209,6 +209,15 @@ confirmation. **Auto-Run** in Companion Settings follows Android's controls.
 Hold **B** while moving to walk. Menus, scripts, battles, bikes and surfing keep
 their native controls.
 
+## Polished Crystal overworld
+
+The normal Polished Crystal 3.2.3 release supports **Expand** and **Zoom Out**
+in Companion Settings → Aspect. The libretro core checks the exact release
+ROM before enabling the profile. Faithful, debug, and other releases still
+use their existing companion support. The renderer extends the overworld with
+map tiles from the game and falls back to the regular game view during scenes
+it cannot reconstruct.
+
 ## GB, GBC and GBA companion backport checklist
 
 In the Dex, **Select** cycles the four filters. Press **A** on a seen entry to
