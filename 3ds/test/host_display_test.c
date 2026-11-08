@@ -96,7 +96,63 @@ static void test_crystal_guide(void) {
     assert(ui.guidePage == 0);
 }
 
+static const char* test_pocket_name(void* ctx, int pocket) {
+    (void) ctx;
+    const char* names[] = {"ALL", "KEY", "ITEMS", "BALLS"};
+    return names[pocket];
+}
+
+static const char* test_bag_name(void* ctx, int item) {
+    (void) ctx;
+    const char* names[] = {"", "Antidote", "Potion", "X Attack"};
+    return names[item];
+}
+
+static bool test_bag_item(void* ctx, int row, int* pocket, struct pd_item* out, bool* quantity) {
+    *out = ((const struct pd_item*)ctx)[row];
+    *pocket = row == 2 ? 3 : 2;
+    *quantity = true;
+    return true;
+}
+
+static void test_handheld_navigation(void) {
+    struct pd_settings settings;
+    pd_settings_defaults(&settings);
+    struct pd_ui ui;
+    pd_ui_init(&ui, &settings);
+    ui.shoulderTabs = true;
+    ui.tab = PD_TAB_SETTINGS;
+    struct pd_game game = {0};
+    struct pd_snapshot snap = {.valid=true};
+    struct pd_host_info host = {
+        .batteryPct=-1, .hideScreenMode=true, .frontendOwnsPlayback=true,
+        .hasExpand=true, .expandGame=true, .hasHud=true, .hasQuickMenu=true, .hasButtonRows=true,
+    };
+    struct pd_canvas canvas;
+    pd_canvas_init(&canvas, 240, 180, pixels);
+    pd_ui_draw(&ui, &canvas, &game, &snap, &host);
+    assert(ui.settingsNavId == HIT_SETTING + SETTING_ASPECT);
+    assert(pd_ui_settings_control(&ui, 1, false));
+    assert(ui.settingsNavId == HIT_SETTING + SETTING_HUD);
+    assert(pd_ui_settings_control(&ui, 20, false));
+    assert(ui.settingsNavId == HIT_SETTING + SETTING_TAB_BAR && ui.settingsScroll > 0);
+    pd_ui_draw(&ui, &canvas, &game, &snap, &host);
+    assert(has(&ui, ui.settingsNavId));
+    assert(pd_ui_settings_control(&ui, 0, true) && ui.overlay == PD_OVERLAY_TAB_BAR);
+    assert(pd_ui_back(&ui));
+    assert(pd_ui_settings_control(&ui, -20, false) && ui.settingsScroll == 0);
+
+    int button = -1;
+    assert(pd_ui_map_control(&button, 2, 1, 0, false, false, false) == PD_MAP_MOVE);
+    assert(pd_ui_map_control(&button, 2, 0, 0, false, true, false) == PD_MAP_IDLE && button == 0);
+    assert(pd_ui_map_control(&button, 2, 1, 0, false, false, false) == PD_MAP_IDLE && button == 1);
+    assert(pd_ui_map_control(&button, 2, 0, 0, true, false, false) == PD_MAP_CHOOSE);
+    assert(pd_ui_map_control(&button, 2, 0, -1, false, false, false) == PD_MAP_IDLE && button == -1);
+    assert(pd_ui_map_control(&button, 2, 0, 0, false, false, true) == PD_MAP_OPEN_PLACES);
+}
+
 int main(void) {
+    test_handheld_navigation();
     test_crystal_guide();
     test_dex_evolutions();
     test_dex_machine_tables();
@@ -166,6 +222,59 @@ int main(void) {
     int solid=0;
     for(int y=cell[0].y+cell[0].h;y<240;y++)for(int x=0;x<426;x++)solid+=partyPx[y*426+x]==0x4A4A63;
     assert(solid==0);
+    // The handheld shoulders include More, with disabled cards off the bar.
+    pd_ui_init(&ui,&settings);
+    ui.shoulderTabs = ui.handheldParty = true;
+    settings.tabBar = (1 << PD_TAB_PARTY) | (1 << PD_TAB_BAG);
+    pd_ui_draw(&ui,&c,&fr,&party,&noHost);
+    assert(!has(&ui,HIT_TAB + PD_TAB_MAP) && has(&ui,HIT_MORE));
+    pd_ui_next_tab(&ui,1);
+    assert(ui.tab == PD_TAB_BAG && ui.overlay == PD_OVERLAY_NONE);
+    pd_ui_next_tab(&ui,1);
+    assert(ui.overlay == PD_OVERLAY_MORE && pd_ui_tab_menu_count(&ui) >= 1);
+    pd_ui_next_tab(&ui,1);
+    assert(ui.tab == PD_TAB_SETTINGS && ui.overlay == PD_OVERLAY_NONE);
+    pd_ui_next_tab(&ui,-1);
+    assert(ui.overlay == PD_OVERLAY_MORE);
+    pd_ui_tab_menu_choose(&ui,0);
+    assert(ui.moreOpened && ui.overlay == PD_OVERLAY_NONE);
+    pd_ui_next_tab(&ui,-1);
+    assert(ui.tab == PD_TAB_BAG && !ui.moreOpened);
+
+    // A and Select act on the open Pokémon regardless of the last cursor hit.
+    ui.tab = PD_TAB_PARTY;
+    ui.summarySlot = 0;
+    ui.focusId = HIT_TAB + PD_TAB_MAP;
+    party.party[0].stats.valid = party.party[1].stats.valid = true;
+    pd_ui_party_summary_control(&ui,&party,0,0,true,false);
+    assert(ui.tab == PD_TAB_PARTY && ui.summaryStats);
+    ui.summaryCanLearn = true;
+    ui.summaryLearnLast = 5;
+    pd_ui_party_summary_control(&ui,&party,0,0,false,true);
+    assert(ui.summaryLearn && !ui.summaryStats);
+    pd_ui_party_summary_control(&ui,&party,1,0,false,false);
+    assert(ui.summaryLearnRow == 1);
+    pd_ui_party_summary_control(&ui,&party,0,1,false,false);
+    assert(ui.summarySlot == 1 && ui.summaryLearnRow == 0);
+    pd_ui_party_summary_control(&ui,&party,0,0,true,false);
+    assert(!ui.summaryLearn && !ui.summaryStats);
+    settings.tabBar = PD_TAB_BAR_DEFAULT;
+    // In handheld battles, only the Party chip changes, even with focus enabled.
+    pd_ui_init(&ui,&settings);
+    ui.shoulderTabs = true;
+    pd_ui_draw(&ui,&c,&fr,&party,&noHost);
+    bool chipsBefore[PD_TAB_COUNT];
+    for (int i=0;i<PD_TAB_COUNT;i++) chipsBefore[i]=has(&ui,HIT_TAB+i);
+    const bool moreBefore=has(&ui,HIT_MORE);
+    ui.keyFocus = ui.battleOnBar = true;
+    ui.tab = PD_TAB_BATTLE;
+    pd_ui_draw(&ui,&c,&fr,&party,&noHost);
+    assert(!has(&ui,HIT_SHOULDER_L) && !has(&ui,HIT_SHOULDER_R));
+    assert(has(&ui,HIT_TAB+PD_TAB_BATTLE) && !has(&ui,HIT_TAB+PD_TAB_PARTY));
+    for (int i=0;i<PD_TAB_COUNT;i++)
+        if (i!=PD_TAB_BATTLE && i!=PD_TAB_PARTY) assert(chipsBefore[i]==has(&ui,HIT_TAB+i));
+    assert(moreBefore==has(&ui,HIT_MORE));
+
     // The open Bag tab runs on into the list (one shape, like the app's bag): no backdrop left between the two frames.
     struct pd_game bagGame=fr;
     party.bagOk=true;
@@ -181,6 +290,50 @@ int main(void) {
         pd_ui_bag_view(&ui,&c,&bagGame,&party);
         assert(memcmp(gap,partyPx+y*c.w+panelX-4,sizeof gap));
         assert(has(&ui,HIT_BAG_TAB) && has(&ui,HIT_BAG_LIST));
+    }
+    // The DS inventory uses the shared Bag sort and hides empty pockets.
+    struct pd_item bagItems[] = {{2, 8}, {1, 1}, {3, 12}};
+    const struct pd_bag_source bagSource = {
+        .ctx=bagItems, .tabs=4, .count=3, .pocketName=test_pocket_name,
+        .item=test_bag_item, .name=test_bag_name,
+    };
+    pd_ui_init(&ui,&settings);
+    ui.shoulderTabs = true;
+    ui.bagSource = &bagSource;
+    ui.bagDetails = true;
+    ui.bagPocket = 1; // empty, with occupied pockets 2 and 3
+    pd_ui_bag_view(&ui,&c,&fr,&party);
+    assert(ui.bagPocket == 0 && ui.bagTabCount == 3 && ui.bagPocketMask == 13);
+    assert(has(&ui,HIT_BAG_SORT));
+    const int first[] = {2, 1, 3, 2};
+    for (int i=0;i<4;i++) {
+        ui.bagDetails = true;
+        ui.bagSelected = 0;
+        pd_ui_bag_view(&ui,&c,&fr,&party);
+        assert(ui.bagItemShown == first[i]);
+        pd_ui_bag_cycle_sort(&ui);
+    }
+    struct pd_bag_source empty = bagSource;
+    empty.count = 0;
+    ui.bagSource = &empty;
+    const int seam = MARGIN + c.w * 27 / 100 - 4, seamY = CONTENT_Y + 11;
+    pd_backdrop(&c);
+    uint32_t handheldGap[4];
+    memcpy(handheldGap, partyPx + seamY * c.w + seam, sizeof handheldGap);
+    pd_ui_bag_view(&ui,&c,&fr,&party);
+    assert(!memcmp(handheldGap, partyPx + seamY * c.w + seam, sizeof handheldGap));
+    assert(ui.bagTabCount == 1 && ui.bagPocketMask == 1 && !has(&ui,HIT_BAG_TAB+1));
+    // Native GBA pockets also use the common sorting and keep cartridge order in Default.
+    ui.bagSource = NULL;
+    party.bag[PD_POCKET_BALLS].count = 3;
+    memcpy(party.bag[PD_POCKET_BALLS].items,bagItems,sizeof bagItems);
+    ui.bagSort = 0;
+    const int gbaFirst[] = {2, 3, 3, 2}; // Ultra Ball, Great Ball, Great Ball, Ultra Ball
+    for (int i=0;i<4;i++) {
+        ui.bagSelected = 0;
+        pd_ui_bag_view(&ui,&c,&fr,&party);
+        assert(ui.bagTabCount == 2 && ui.bagItemShown == gbaFirst[i]);
+        pd_ui_bag_cycle_sort(&ui);
     }
     puts("PASS default/null host, optional scaling row, remaining settings and FF interaction, EXPAND rows, party grid");
 }

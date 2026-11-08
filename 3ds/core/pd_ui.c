@@ -59,47 +59,40 @@ bool ui_tab_available(const struct pd_ui* ui, const struct pd_game* g, enum pd_t
 
 // The chips of the chosen tabs this game has, then - while there's room - its others, in the tabs' own order. Without
 // a game known yet (g NULL) the choice as it stands.
-static enum pd_tab bar_choice(const struct pd_ui* ui, int i) {
-    static const enum pd_tab hostOrder[UI_BAR_CHOICES] = {
-        PD_TAB_PARTY, PD_TAB_BAG, PD_TAB_MAP, PD_TAB_GUIDE, PD_TAB_DEX,
-        PD_TAB_BOXES, PD_TAB_NUZLOCKE, PD_TAB_CARD, PD_TAB_STATES, PD_TAB_ACHIEVEMENTS,
-    };
-    return ui->content ? hostOrder[i] : UI_BAR_CHOICE[i];
-}
 
 static int bar_tabs(const struct pd_ui* ui, const struct pd_game* g, enum pd_tab out[PD_MAX_BAR_TABS]) {
     int bits = ui->settings && ui->settings->tabBar ? ui->settings->tabBar : PD_TAB_BAR_DEFAULT;
-    int room = ui->battleOnBar ? PD_MAX_BAR_TABS - 1 : PD_MAX_BAR_TABS;
+    int room = ui->battleOnBar && !ui->shoulderTabs ? PD_MAX_BAR_TABS - 1 : PD_MAX_BAR_TABS;
     bool picked[UI_BAR_CHOICES] = { false };
     int n = 0;
     for (int i = 0; i < UI_BAR_CHOICES && n < room; i++) {
-        if ((bits >> bar_choice(ui, i) & 1) && ui_tab_available(ui, g, bar_choice(ui, i))) {
+        if ((bits >> UI_BAR_CHOICE[i] & 1) && ui_tab_available(ui, g, UI_BAR_CHOICE[i])) {
             picked[i] = true;
             n++;
         }
     }
     for (int i = 0; i < UI_BAR_CHOICES && n < room; i++) {
-        if (!ui->content && !picked[i] && ui_tab_available(ui, g, bar_choice(ui, i)) && bar_choice(ui, i) != PD_TAB_NUZLOCKE) {
+        if (!ui->content && (!ui->shoulderTabs || !n) && !picked[i] && ui_tab_available(ui, g, UI_BAR_CHOICE[i]) && UI_BAR_CHOICE[i] != PD_TAB_NUZLOCKE) {
             picked[i] = true;
             n++;
         }
     }
     int m = 0;
     for (int i = 0; i < UI_BAR_CHOICES; i++)
-        if (picked[i]) out[m++] = bar_choice(ui, i);
+        if (picked[i]) out[m++] = UI_BAR_CHOICE[i];
     return m;
 }
 
 int ui_bar_count(const struct pd_ui* ui) {
     int bits = ui->settings && ui->settings->tabBar ? ui->settings->tabBar : PD_TAB_BAR_DEFAULT, n = 0;
-    for (int i = 0; i < UI_BAR_CHOICES; i++) n += bits >> bar_choice(ui, i) & 1;
+    for (int i = 0; i < UI_BAR_CHOICES; i++) n += bits >> UI_BAR_CHOICE[i] & 1;
     return n;
 }
 
 int ui_configurable_tabs(const struct pd_ui* ui, enum pd_tab out[UI_BAR_CHOICES]) {
     int n = 0;
     for (int i = 0; i < UI_BAR_CHOICES; i++) {
-        const enum pd_tab tab = bar_choice(ui, i);
+        const enum pd_tab tab = UI_BAR_CHOICE[i];
         if (!ui->availableTabs || (ui->availableTabs & (1u << tab))) out[n++] = tab;
     }
     return n;
@@ -110,8 +103,8 @@ int ui_more_tabs(const struct pd_ui* ui, const struct pd_game* g, enum pd_tab ou
     int n = bar_tabs(ui, g, bar), m = 0;
     for (int i = 0; i < UI_BAR_CHOICES; i++) {
         bool on = false;
-        for (int k = 0; k < n; k++) on |= bar[k] == bar_choice(ui, i);
-        if (!on && ui_tab_available(ui, g, bar_choice(ui, i))) out[m++] = bar_choice(ui, i);
+        for (int k = 0; k < n; k++) on |= bar[k] == UI_BAR_CHOICE[i];
+        if (!on && ui_tab_available(ui, g, UI_BAR_CHOICE[i])) out[m++] = UI_BAR_CHOICE[i];
     }
     return m;
 }
@@ -180,6 +173,7 @@ void ui_toggle_act(struct pd_ui* ui, int i) {
 
 void pd_ui_init(struct pd_ui* ui, struct pd_settings* settings) {
     memset(ui, 0, sizeof(*ui));
+    ui->settingsNavId = -1;
     ui->tab = PD_TAB_PARTY;
     ui->summarySlot = -1;
     ui->bagSelected = -1;
@@ -246,8 +240,12 @@ static const struct pd_hit* hit_at(const struct pd_ui* ui, int x, int y) {
 static int chips(const struct pd_ui* ui, const struct pd_game* g, enum pd_tab out[PD_MAX_BAR_TABS + 1]) {
     enum pd_tab bar[PD_MAX_BAR_TABS];
     int n = 0, m = bar_tabs(ui, g, bar);
-    if (ui->battleOnBar) out[n++] = PD_TAB_BATTLE;
-    for (int i = 0; i < m; i++) out[n++] = bar[i];
+    bool replaceParty = false;
+    if (ui->battleOnBar && ui->shoulderTabs)
+        for (int i = 0; i < m; i++) replaceParty |= bar[i] == PD_TAB_PARTY;
+    if (ui->battleOnBar && !replaceParty) out[n++] = PD_TAB_BATTLE;
+    for (int i = 0; i < m; i++)
+        out[n++] = replaceParty && bar[i] == PD_TAB_PARTY ? PD_TAB_BATTLE : bar[i];
     return n;
 }
 
@@ -278,12 +276,13 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
     bool hasMore = ui_more_tabs(ui, g, more) > 0;
     int icons = hasMore ? 2 : 1;
     // L / R at the ends while the buttons are the companion's (ShoulderHint).
-    int keys = ui->keyFocus ? 2 * (SHOULDER_W + CHIP_GAP) : 0;
+    const bool shoulderHints = ui->keyFocus && !ui->shoulderTabs;
+    int keys = shoulderHints ? 2 * (SHOULDER_W + CHIP_GAP) : 0;
     // Fast-forward's chip, on the hosts that show one (libretro frontends own fast-forward).
     int ffW = host && host->hasFfChip && !host->frontendOwnsPlayback ? FF_W + CHIP_GAP : 0;
     int room = c->w - 2 * MARGIN - icons * ICON_CHIP_W - (n + icons - 1) * CHIP_GAP - keys - ffW;
     int x = MARGIN;
-    if (ui->keyFocus) {
+    if (shoulderHints) {
         chip(ui, c, x, SHOULDER_W, false, HIT_SHOULDER_L);
         pd_text(c, x + (SHOULDER_W - pd_text_width("L")) / 2, pd_text_y(by, CHIP_H), "L", PD_TITLE_TEXT, PD_TITLE_SHADOW);
         x += SHOULDER_W + CHIP_GAP;
@@ -314,7 +313,7 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         x += FF_W + CHIP_GAP;
     }
     icon_chip(ui, c, x, &PD_ICON_GEAR, ui->tab == PD_TAB_SETTINGS && ui->overlay != PD_OVERLAY_MORE, HIT_TAB + PD_TAB_SETTINGS);
-    if (ui->keyFocus) {
+    if (shoulderHints) {
         x += ICON_CHIP_W + CHIP_GAP;
         chip(ui, c, x, SHOULDER_W, false, HIT_SHOULDER_R);
         pd_text(c, x + (SHOULDER_W - pd_text_width("R")) / 2, pd_text_y(by, CHIP_H), "R", PD_TITLE_TEXT, PD_TITLE_SHADOW);
@@ -402,6 +401,8 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     c = &view;
     if (ui->overlay == PD_OVERLAY_MORE) {
         ui_more_page(ui, c, g);
+    } else if (ui->tab == PD_TAB_BATTLE && ui->battleSource) {
+        ui_battle_tab(ui, c, g, s);
     } else if (ui->content) {
         // A backend's own tab content (libretro's DS companion) inside the shared frame and bar.
         ui->content(ui->contentCtx, ui, c);
@@ -581,11 +582,11 @@ static void act(struct pd_ui* ui, int id) {
         ui->action = PD_ACTION_ITEM_TAKE;
     } else if (id == HIT_BACK) {
         pd_ui_back(ui);
-    } else if (id >= HIT_BAG_TAB && id < HIT_BAG_TAB + 8) {
+    } else if (id >= HIT_BAG_TAB && id < HIT_BAG_LIST) {
         ui->bagPocket = id - HIT_BAG_TAB;
         ui->bagSelected = -1;
         ui->bagScroll = 0;
-    } else if (id >= HIT_BAG_ROW && id < HIT_BAG_ROW + PD_POCKET_SLOTS) {
+    } else if (id >= HIT_BAG_ROW && id < HIT_BAG_ROW_END) {
         ui->bagSelected = id - HIT_BAG_ROW;
     } else if (id == HIT_SETTING + SETTING_FILTER) {
         ui->settings->lcdFilter = !ui->settings->lcdFilter;
@@ -613,6 +614,17 @@ static void act(struct pd_ui* ui, int id) {
         };
         ui->overlay = OPENS[id - HIT_SETTING];
     }
+}
+
+bool pd_ui_settings_control(struct pd_ui* ui, int dy, bool accept) {
+    int count = ui->settingsNavCount, index = 0;
+    while (index < count && ui->settingsNav[index].id != ui->settingsNavId) ++index;
+    if (index == count) return false;
+    index = pd_ui_list_step(index, count, dy);
+    ui->settingsNavId = ui->settingsNav[index].id;
+    ui->settingsScroll = ui_settings_follow(ui->settingsScroll, ui->settingsNav[index].top, ui->settingsNavHeight);
+    if (accept) act(ui, ui->settingsNavId);
+    return true;
 }
 
 /* A BUTTON row: the next button (X, Y, L2, R2; the HUD's also NONE). A button another action already uses goes to
@@ -695,7 +707,7 @@ bool pd_ui_touch(struct pd_ui* ui, int x, int y, bool down) {
 
 int pd_ui_tab_menu_count(const struct pd_ui* ui) {
     enum pd_tab tabs[UI_BAR_CHOICES];
-    if (ui->overlay == PD_OVERLAY_MORE) return ui_more_tabs(ui, NULL, tabs);
+    if (ui->overlay == PD_OVERLAY_MORE) return ui_more_tabs(ui, ui->drawnGame, tabs);
     if (ui->overlay == PD_OVERLAY_TAB_BAR) return ui_configurable_tabs(ui, tabs);
     return 0;
 }
@@ -709,14 +721,22 @@ void pd_ui_tab_menu_choose(struct pd_ui* ui, int row) {
 }
 
 void pd_ui_next_tab(struct pd_ui* ui, int dir) {
-    if (ui->overlay != PD_OVERLAY_NONE) return;
-    // The bar's order, then the gear (a tab MORE opened steps on from the gear).
-    enum pd_tab order[PD_MAX_BAR_TABS + 2];
-    int n = chips(ui, ui->drawnGame, order), at = n;
+    if (ui->overlay != PD_OVERLAY_NONE &&
+        !(ui->shoulderTabs && ui->overlay == PD_OVERLAY_MORE)) return;
+    enum pd_tab order[PD_MAX_BAR_TABS + 3];
+    int n = chips(ui, ui->drawnGame, order);
+    enum pd_tab more[UI_BAR_CHOICES];
+    const bool hasMore = ui->shoulderTabs && ui_more_tabs(ui, ui->drawnGame, more) > 0;
+    const enum pd_tab current = hasMore && (ui->overlay == PD_OVERLAY_MORE || ui->moreOpened)
+        ? PD_TAB_COUNT : ui->tab;
+    if (hasMore) order[n++] = PD_TAB_COUNT;
+    order[n++] = PD_TAB_SETTINGS;
+    int at = n - 1;
     for (int i = 0; i < n; i++)
-        if (order[i] == ui->tab) at = i;
-    order[n] = PD_TAB_SETTINGS;
-    ui->tab = order[(at + n + 1 + dir) % (n + 1)];
+        if (order[i] == current) at = i;
+    const enum pd_tab next = order[(at + n + dir) % n];
+    ui->overlay = next == PD_TAB_COUNT ? PD_OVERLAY_MORE : PD_OVERLAY_NONE;
+    ui->tab = next == PD_TAB_COUNT ? PD_TAB_SETTINGS : next;
     ui->summarySlot = -1;
     ui->moreOpened = false;
 }

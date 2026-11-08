@@ -810,7 +810,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   if (!ovPixels)
     ovPixels = calloc((size_t)CWMAX * CHMAX, sizeof *ovPixels);
   pd_ui_init(&ui, &settings);
-  ui.handheldDex = ui.handheldParty = ui.guideController = true;
+  ui.handheldDex = ui.handheldParty = ui.guideController = ui.shoulderTabs = true;
   memset(&host, 0, sizeof host);
   host.hideScreenMode = true;
   host.hasQuickMenu = true;
@@ -874,12 +874,7 @@ RETRO_API void retro_unload_game(void) {
 /* The HUD's cursor goes onto it: the lead's slot where the party shows, else the first target. */
 static void hud_focus_start(void) {
   hudFocus = true;
-  hudState.focus = hudHits.at[0].id;
-  for (int i = 0, lowest = PD_PARTY_SIZE; i < hudHits.n; i++)
-    if (hudHits.at[i].id >= HUD_SLOT && hudHits.at[i].id - HUD_SLOT < lowest) {
-      lowest = hudHits.at[i].id - HUD_SLOT;
-      hudState.focus = hudHits.at[i].id;
-    }
+  hudState.focus = hud_first(&hudHits);
 }
 
 /* What a HUD part does when pressed (the HUD cursor's A, or a tap): its companion tab, or the game's PC. */
@@ -1016,7 +1011,7 @@ RETRO_API void retro_run(void) {
     } else {
       int dir = down(UP) ? UP : down(DOWN) ? DOWN : down(LEFT) ? LEFT : down(RIGHT) ? RIGHT : -1;
       if (dir >= 0)
-        hudState.focus = hud_step(&hudHits, hudState.focus, dir);
+        hudState.focus = hud_step(&hudHits, hudState.focus, (dir == RIGHT) - (dir == LEFT), (dir == DOWN) - (dir == UP));
     }
   }
 
@@ -1150,55 +1145,79 @@ RETRO_API void retro_run(void) {
       pd_ui_touch(&ui, touchX, touchY, true);
     else if (touchWas)
       pd_ui_touch(&ui, 0, 0, false);
-    if (down(B) && !map_cursor_back(&ui) && !pd_ui_back(&ui))
-      companion = false;
-    if (down(L) || down(R))
+    const bool backing = down(B);
+    const bool shoulder = down(L) || down(R);
+    bool closeMap = false;
+    const bool mapHandled = (backing || !shoulder) &&
+        map_control(&ui, down(RIGHT) - down(LEFT), down(DOWN) - down(UP), down(A), backing, down(SELECT), &closeMap);
+    if (mapHandled) {
+      if (closeMap) companion = false;
+    } else if (backing) {
+      const bool places = ui.overlay == PD_OVERLAY_PLACES;
+      const int slot = ui.tab == PD_TAB_PARTY ? ui.summarySlot : -1;
+      if (!pd_ui_back(&ui)) companion = false;
+      if (places) focusId = HIT_MAP_PLACES;
+      if (slot >= 0 && ui.summarySlot < 0) focusId = HIT_SLOT + slot;
+    } else if (shoulder) {
       pd_ui_next_tab(&ui, down(R) ? 1 : -1);
-    if (ui.tab == PD_TAB_DEX && !ui.dexOpen && ui.overlay == PD_OVERLAY_NONE && down(SELECT)) {
-      ui_dex_next_filter(&ui);
-      focus_new_screen();
-    }
-    if (ui.tab == PD_TAB_DEX && ui.dexOpen && ui.overlay == PD_OVERLAY_NONE) {
-      if (down(SELECT)) ui_dex_act(&ui, HIT_DEX_CYCLE);
-      if (down(LEFT) || down(RIGHT)) ui_dex_act(&ui, down(RIGHT) ? HIT_DEX_NEXT : HIT_DEX_PREV);
-      if (ui.dexPage == PD_DEX_MOVES) {
-        const int machine = pd_ui_dex_machine_row(ui.dexLevelCount);
-        if (down(A)) ui.dexDetailRow = ui.dexDetailRow < machine ? machine : 0;
-        ui.dexDetailRow += down(DOWN) - down(UP);
-        if (ui.dexDetailRow < 0) ui.dexDetailRow = 0;
-        if (ui.dexDetailRow > machine + ui.dexMachineCount) ui.dexDetailRow = machine + ui.dexMachineCount;
-      } else if (ui.dexPage == PD_DEX_EVOLVE || ui.dexPage == PD_DEX_AREA) {
-        ui.dexDetailRow += down(DOWN) - down(UP);
-        const int count = ui.dexPage == PD_DEX_AREA ? ui.dexSpotCount : ui.dexLinkCount;
-        const int last = count > 0 ? count - 1 : 0;
-        if (ui.dexDetailRow < 0) ui.dexDetailRow = 0;
-        if (ui.dexDetailRow > last) ui.dexDetailRow = last;
+    } else {
+      if (ui.tab == PD_TAB_DEX && !ui.dexOpen && ui.overlay == PD_OVERLAY_NONE && down(SELECT)) {
+        ui_dex_next_filter(&ui);
+        focus_new_screen();
       }
-    }
-    const bool partySummary = ui.tab == PD_TAB_PARTY && ui.summarySlot >= 0 && ui.overlay == PD_OVERLAY_NONE;
-    if (partySummary && down(SELECT) && ui_summary_learn(&ui)) focus_new_screen();
-    if (partySummary && ui.summaryLearn) {
-      ui.summaryLearnRow += down(RIGHT) - down(LEFT);
-      if (ui.summaryLearnRow < 0) ui.summaryLearnRow = 0;
-      if (ui.summaryLearnRow > ui.summaryLearnLast) ui.summaryLearnRow = ui.summaryLearnLast;
-    }
-    const bool guideInput = ui.tab == PD_TAB_GUIDE && (ui.overlay == PD_OVERLAY_NONE || ui.overlay == PD_OVERLAY_GUIDE_NOTICE);
-    if (guideInput && !down(B))
-      pd_ui_guide_control(&ui, down(RIGHT) - down(LEFT), down(DOWN) - down(UP), down(A));
-    for (int k = RIGHT; !guideInput && k <= DOWN; k++) {
-      if (!down(k)) continue;
-      if (ui.tab == PD_TAB_DEX && ui.dexOpen && (ui.dexPage != PD_DEX_INFO || k == LEFT || k == RIGHT)) continue;
-      if (partySummary && (k == UP || k == DOWN)) {
-        const int next = ui.summarySlot + (k == DOWN ? 1 : -1);
-        if (next >= 0 && next < snap.partyCount) {
-          ui.summarySlot = next;
-          ui.summaryLearnRow = 0;
+      if (ui.tab == PD_TAB_DEX && ui.dexOpen && ui.overlay == PD_OVERLAY_NONE) {
+        if (down(SELECT)) ui_dex_act(&ui, HIT_DEX_CYCLE);
+        if (down(LEFT) || down(RIGHT)) ui_dex_act(&ui, down(RIGHT) ? HIT_DEX_NEXT : HIT_DEX_PREV);
+        if (ui.dexPage == PD_DEX_MOVES) {
+          const int machine = pd_ui_dex_machine_row(ui.dexLevelCount);
+          if (down(A)) ui.dexDetailRow = ui.dexDetailRow < machine ? machine : 0;
+          ui.dexDetailRow += down(DOWN) - down(UP);
+          if (ui.dexDetailRow < 0) ui.dexDetailRow = 0;
+          if (ui.dexDetailRow > machine + ui.dexMachineCount) ui.dexDetailRow = machine + ui.dexMachineCount;
+        } else if (ui.dexPage == PD_DEX_EVOLVE || ui.dexPage == PD_DEX_AREA) {
+          ui.dexDetailRow += down(DOWN) - down(UP);
+          const int count = ui.dexPage == PD_DEX_AREA ? ui.dexSpotCount : ui.dexLinkCount;
+          const int last = count > 0 ? count - 1 : 0;
+          if (ui.dexDetailRow < 0) ui.dexDetailRow = 0;
+          if (ui.dexDetailRow > last) ui.dexDetailRow = last;
         }
-      } else if (!partySummary || !ui.summaryLearn) focus_move(&ui, k);
-    }
-    if (!guideInput && down(A) && !(ui.tab == PD_TAB_DEX && ui.dexOpen && ui.dexPage == PD_DEX_MOVES)) {
-      if (partySummary && ui.summaryLearn) ui_summary_learn(&ui);
-      else focus_activate(&ui);
+      }
+      const bool partySummary = ui.tab == PD_TAB_PARTY && ui.summarySlot >= 0 &&
+          ui.summarySlot < snap.partyCount && ui.overlay == PD_OVERLAY_NONE;
+      if (partySummary) {
+        pd_ui_party_summary_control(&ui, &snap, down(RIGHT) - down(LEFT), down(DOWN) - down(UP), down(A), down(SELECT));
+      } else if (bag_browsing(&ui)) {
+        const int dx = down(RIGHT) - down(LEFT);
+        if (down(SELECT)) {
+          pd_ui_bag_cycle_sort(&ui);
+          focusId = -1;
+          focus_new_screen();
+        } else if (dx && ui.bagTabCount > 1) {
+          ui.bagPocket = (ui.bagPocket + dx + ui.bagTabCount) % ui.bagTabCount;
+          ui.bagScroll = 0;
+          focusId = -1;
+          focus_new_screen();
+        } else {
+          if (down(UP)) focus_move(&ui, UP);
+          if (down(DOWN)) focus_move(&ui, DOWN);
+          if (down(A)) focus_activate(&ui);
+        }
+      } else if (ui.tab == PD_TAB_GUIDE && (ui.overlay == PD_OVERLAY_NONE || ui.overlay == PD_OVERLAY_GUIDE_NOTICE)) {
+        pd_ui_guide_control(&ui, down(RIGHT) - down(LEFT), down(DOWN) - down(UP), down(A));
+      } else if (ui.tab == PD_TAB_SETTINGS && ui.overlay == PD_OVERLAY_NONE) {
+        pd_ui_settings_control(&ui, down(DOWN) - down(UP), down(A));
+      } else {
+        for (int k = RIGHT; k <= DOWN; k++) {
+          if (!down(k) || (ui.overlay == PD_OVERLAY_PLACES && (k == LEFT || k == RIGHT))) continue;
+          if (ui.tab == PD_TAB_DEX && ui.dexOpen && (ui.dexPage != PD_DEX_INFO || k == LEFT || k == RIGHT)) continue;
+          focus_move(&ui, k);
+        }
+        if (down(A) && !(ui.tab == PD_TAB_DEX && ui.dexOpen && ui.dexPage == PD_DEX_MOVES)) {
+          const bool places = ui.overlay == PD_OVERLAY_PLACES;
+          focus_activate(&ui);
+          if (places && ui.overlay == PD_OVERLAY_NONE) focusId = HIT_MAP;
+        }
+      }
     }
     switch (pd_ui_take_action(&ui)) {
     case PD_ACTION_SETTINGS_CHANGED:
@@ -1400,8 +1419,12 @@ RETRO_API void retro_run(void) {
     memset(cvs, 0, (size_t)CW * CH * sizeof *cvs);
     pd_ui_draw(&ui, &canvas, &game, &snap, &host);
     map_cursor_sync(&ui, &game, &snap);
-    if (ui.tab != PD_TAB_GUIDE || (ui.overlay != PD_OVERLAY_NONE && ui.overlay != PD_OVERLAY_GUIDE_NOTICE))
-      focus_draw(&ui, focus_after_draw(&ui, focus_resolve(&ui)));
+    if (ui.tab != PD_TAB_GUIDE || (ui.overlay != PD_OVERLAY_NONE && ui.overlay != PD_OVERLAY_GUIDE_NOTICE)) {
+      const int focus = focus_after_draw(&ui, focus_resolve(&ui));
+      if (ui.overlay != PD_OVERLAY_NONE ||
+          (ui.tab != PD_TAB_SETTINGS && (ui.tab != PD_TAB_PARTY || ui.summarySlot < 0)))
+        focus_draw(&ui, focus);
+    }
   } else if (quickOpen && ovPixels) {
     draw_game();
     dim(0x55);

@@ -5,6 +5,7 @@
 
 #include <stdlib.h>
 #include <string.h>
+#include <strings.h>
 
 #include "pd_games.h"
 #include "pd_icon.h"
@@ -16,18 +17,20 @@
 #define DESC_H 44
 #define FIRST_HM 339 // ITEM_HM01..ITEM_HM08: no quantity, like the game
 #define LAST_HM 346
-#define MAX_TABS 9 // room for backend-native eight-pocket bags, plus ALL
-#define MAX_ROWS 99 // HIT_BAG_ROW's ids
+#define MAX_TABS (PD_POCKET_COUNT + 1)
+#define MAX_ROWS (HIT_BAG_ROW_END - HIT_BAG_ROW)
 
 // What one tab lists: ALL, then each pocket with something in it, in the
 // game's own order (the app's ItemsScreen: empty pockets get no tab).
 struct bag_row {
     struct pd_item item;
-    int pocket;
+    const char* name;
+    bool quantity;
+    int order, pocket;
 };
 
 struct bag_view {
-    int tabs, pockets[MAX_TABS]; // pockets[0] = -1: ALL
+    int tabs, active, pockets[MAX_TABS]; // pockets[0] = ALL
     int count;
     struct bag_row rows[MAX_ROWS];
 };
@@ -44,39 +47,74 @@ static int base_pockets(const struct pd_game* g, int out[PD_POCKET_COUNT]) {
     return n;
 }
 
-static void gather(struct pd_ui* ui, const struct pd_game* g, const struct pd_snapshot* s, int tab, struct bag_view* v) {
-    if(ui->bagSource){
-        v->tabs=ui->bagSource->tabs;
-        if(v->tabs<1)v->tabs=1;
-        if(v->tabs>MAX_TABS)v->tabs=MAX_TABS;
-        if(tab<0 || tab>=v->tabs)tab=0;
-        v->count=ui->bagSource->count(ui->bagSource->ctx,tab);return;
+static void add_row(struct bag_view* v, struct pd_item item, const char* name, bool quantity, int pocket) {
+    if (v->count >= MAX_ROWS) return;
+    v->rows[v->count] = (struct bag_row){item, name, quantity, v->count, pocket};
+    v->count++;
+}
+
+static void gather(struct pd_ui* ui, const struct pd_game* g, const struct pd_snapshot* s, struct bag_view* v) {
+    v->tabs = 1;
+    v->active = v->count = 0;
+    const struct pd_bag_source* source = ui->bagSource;
+    if (source) {
+        unsigned occupied = 0;
+        const int tabs = source->tabs < MAX_TABS ? source->tabs : MAX_TABS;
+        for (int i = 0; i < source->count; i++) {
+            struct pd_item item;
+            int pocket;
+            bool quantity;
+            if (!source->item(source->ctx, i, &pocket, &item, &quantity) || pocket <= 0 || pocket >= tabs ||
+                !item.id || !item.quantity) continue;
+            occupied |= 1u << pocket;
+            add_row(v, item, source->name(source->ctx, item.id), quantity, pocket);
+        }
+        v->pockets[0] = 0;
+        for (int pocket = 1; pocket < tabs; pocket++) {
+            if (!(occupied & (1u << pocket))) continue;
+            if (ui->bagPocket == pocket) v->active = v->tabs;
+            v->pockets[v->tabs++] = pocket;
+        }
+        ui->bagPocketMask = occupied | 1u;
+        if (ui->bagPocket && !v->active) {
+            ui->bagPocket = 0;
+            ui->bagSelected = -1;
+            ui->bagDetails = false;
+            ui->bagScroll = 0;
+        }
+        if (v->active) {
+            int n = 0;
+            for (int i = 0; i < v->count; i++)
+                if (v->rows[i].pocket == ui->bagPocket) v->rows[n++] = v->rows[i];
+            v->count = n;
+        }
+        return;
     }
     int order[PD_POCKET_COUNT];
     int n = base_pockets(g, order);
-    v->tabs = 0;
-    v->pockets[v->tabs++] = -1;
+    v->pockets[0] = -1;
     for (int i = 0; i < n; i++) {
         if (s->bag[order[i]].count > 0) v->pockets[v->tabs++] = order[i];
     }
-    if (tab < 0 || tab >= v->tabs) tab = 0;
-    v->count = 0;
+    if (ui->bagPocket < 0 || ui->bagPocket >= v->tabs) ui->bagPocket = 0;
+    v->active = ui->bagPocket;
     for (int i = 0; i < n; i++) {
         int pocket = order[i];
-        if (v->pockets[tab] >= 0 && pocket != v->pockets[tab]) continue;
+        if (v->pockets[v->active] >= 0 && pocket != v->pockets[v->active]) continue;
         const struct pd_pocket_items* items = &s->bag[pocket];
         for (int j = 0; j < items->count && v->count < MAX_ROWS; j++) {
-            v->rows[v->count].item = items->items[j];
-            v->rows[v->count].pocket = pocket;
-            v->count++;
+            const struct pd_item item = items->items[j];
+            const bool quantity = pocket != PD_POCKET_KEY && !(item.id >= FIRST_HM && item.id <= LAST_HM);
+            add_row(v, item, pd_item_name(g, item.id), quantity, pocket);
         }
     }
 }
 
-static const struct pd_game* sortGame;
-
 static int by_name(const void* a, const void* b) {
-    return strcmp(pd_item_name(sortGame, ((const struct bag_row*) a)->item.id), pd_item_name(sortGame, ((const struct bag_row*) b)->item.id));
+    const struct bag_row* left = a;
+    const struct bag_row* right = b;
+    const int cmp = strcasecmp(left->name, right->name);
+    return cmp ? cmp : left->order - right->order;
 }
 
 static int by_count(const void* a, const void* b) {
@@ -86,19 +124,20 @@ static int by_count(const void* a, const void* b) {
 
 // The pocket tabs down the left, the open one joined to the list.
 static void tabs(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_palette* p, const struct bag_view* v,
-                 int x, int w, int joinX) {
-    int visible=(c->h-CONTENT_Y)/(TAB_H+3);
-    int first=ui->bagSource && ui->bagPocket>=visible ? ui->bagPocket-visible+1:0;
+                 int x, int w, int bottom, int joinX) {
+    int visible = ui->shoulderTabs ? (bottom - CONTENT_Y + 3) / (TAB_H + 3) : v->tabs;
+    if (visible < 1) return;
+    int first = v->active >= visible ? v->active - visible + 1 : 0;
     for (int i = first; i < v->tabs; i++) {
         int y = CONTENT_Y + (i-first) * (TAB_H + 3);
-        if(ui->bagSource && y+TAB_H>c->h)break;
-        bool open = i == ui->bagPocket;
+        if (ui->shoulderTabs && y + TAB_H > bottom) break;
+        bool open = i == v->active;
         uint32_t fill = open ? p->fill : p->panel[p->tabLayers].color;
-        // The open tab is drawn on into the list, its top and bottom lines meeting the list's frame, and its fill carried
-        // through that frame: one shape with the list.
-        int f = pd_layered_box(c, x, y, open ? joinX + 4 - x : w, TAB_H, 3, p->panel, p->tabLayers, fill);
-        if (open) pd_fill(c, x + w - f - 1, y + f, joinX + 5 - (x + w - f - 1), TAB_H - 2 * f, p->fill);
-        const char* name = ui->bagSource ? ui->bagSource->pocketName(ui->bagSource->ctx, i) : v->pockets[i] < 0 ? "ALL" : pd_pocket_name(v->pockets[i]);
+        // The open tab carries its fill across the list frame.
+        const bool joined = open && !ui->shoulderTabs;
+        int f = pd_layered_box(c, x, y, joined ? joinX + 4 - x : w, TAB_H, 3, p->panel, p->tabLayers, fill);
+        if (joined) pd_fill(c, x + w - f - 1, y + f, joinX + 5 - (x + w - f - 1), TAB_H - 2 * f, p->fill);
+        const char* name = ui->bagSource ? ui->bagSource->pocketName(ui->bagSource->ctx,v->pockets[i]) : v->pockets[i] < 0 ? "ALL" : pd_pocket_name(v->pockets[i]);
         int tx = x + f + 5, ty = pd_text_y(y, TAB_H);
         int tw = pd_text_fit(c, tx, ty, w - 2 * f - 8, name, open ? p->text : p->tabText,
                              open ? p->textShadow : p->tabTextShadow);
@@ -109,7 +148,7 @@ static void tabs(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
     }
 }
 
-static void list(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_bag_palette* p,
+static void list(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_palette* p,
                  const struct bag_view* v, int x, int y, int w, int h) {
     int f = pd_layered_box(c, x, y, w, h, 3, p->panel, p->panelLayers, p->fill);
     int ix = x + f, iy = y + f + 1, iw = w - 2 * f, ih = h - 2 * f - 2;
@@ -136,23 +175,18 @@ static void list(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     for (int i = ui->bagScroll / BAG_ROW; i < v->count; i++) {
         int ry = iy + i * BAG_ROW - ui->bagScroll;
         if (ry >= iy + ih) break;
-        struct pd_item native;
-        bool quantity=true;
-        const struct pd_item* it = ui->bagSource ? &native : &v->rows[i].item;
-        if(ui->bagSource){
-            if(!ui->bagSource->item(ui->bagSource->ctx,ui->bagPocket,i,&native,&quantity))continue;
-            it=&native;
-        }
+        const struct bag_row* row = &v->rows[i];
+        const struct pd_item* it = &row->item;
         bool cursor = i == ui->bagSelected || ui->pressedId == HIT_BAG_ROW + i;
         if (cursor) pd_triangle(c, ix + 4, ry + 3, 6, PD_RIGHT, p->cursor);
-        const char* name = ui->bagSource ? ui->bagSource->name(ui->bagSource->ctx,it->id) : pd_item_name(g,it->id);
+        const char* name = row->name;
         char fallback[16];
         if (!*name) {
             snprintf(fallback, sizeof(fallback), "ITEM %d", it->id);
             name = fallback;
         }
         pd_text_fit(c, ix + 14, pd_text_y(ry, BAG_ROW), iw - 64, name, p->text, p->textShadow);
-        if (ui->bagSource ? quantity : v->rows[i].pocket != PD_POCKET_KEY && !(it->id >= FIRST_HM && it->id <= LAST_HM)) {
+        if (row->quantity) {
             char qty[12];
             snprintf(qty, sizeof(qty), "× %d", it->quantity);
             pd_text_right(c, ix + iw - 10, pd_text_y(ry, BAG_ROW), qty, p->text, p->textShadow);
@@ -226,10 +260,15 @@ static void item_picker(struct pd_ui* ui, struct pd_canvas* c, const struct pd_g
     }
 }
 
+void pd_ui_bag_cycle_sort(struct pd_ui* ui) {
+    ui->bagSort = (ui->bagSort + 1) % 3;
+    ui->bagSelected = -1;
+    ui->bagScroll = 0;
+}
+
 bool ui_bag_act(struct pd_ui* ui, int id, const struct pd_snapshot* s) {
     if (id == HIT_BAG_SORT) {
-        ui->bagSort = (ui->bagSort + 1) % 3;
-        ui->bagSelected = -1;
+        pd_ui_bag_cycle_sort(ui);
         return true;
     }
     if (id == HIT_BAG_USE || id == HIT_BAG_GIVE) {
@@ -285,38 +324,35 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         for (int y = 0; y < c->h; y += 8) pd_fill(c, 0, y, c->w, 8, (y / 8) % 2 ? p->backdropB : p->backdropA);
     }
     static struct bag_view v;
-    gather(ui, g, s, ui->bagPocket, &v);
-    sortGame = g;
+    gather(ui, g, s, &v);
+    ui->bagTabCount = v.tabs;
     if (ui->bagSort == 1) qsort(v.rows, (size_t) v.count, sizeof(v.rows[0]), by_name);
     else if (ui->bagSort == 2) qsort(v.rows, (size_t) v.count, sizeof(v.rows[0]), by_count);
-    if (ui->bagPocket < 0 || ui->bagPocket >= v.tabs) ui->bagPocket = 0;
     if (ui->bagSelected >= v.count) ui->bagSelected = -1;
-    int tabW = c->w * 27 / 100, panelX = MARGIN + tabW - 3;
+    int tabW = c->w * 27 / 100, panelX = MARGIN + tabW - (ui->shoulderTabs ? 0 : 3);
     bool details = ui->bagSelected >= 0 && (!ui->bagSource || ui->bagDetails);
     int bottom = details ? c->h - MARGIN - DESC_H - 4 : c->h - MARGIN;
-    list(ui, c, g, p, &v, panelX, CONTENT_Y, c->w - MARGIN - panelX, bottom - CONTENT_Y);
+    list(ui, c, p, &v, panelX, CONTENT_Y, c->w - MARGIN - panelX, bottom - CONTENT_Y);
+    const bool sort = !details && (ui->shoulderTabs || ui->bagSelected < 0);
+    const int sortY = c->h - MARGIN - 22;
     int frame = 0;
     for (int i = 0; i < p->panelLayers; i++) frame += p->panel[i].width;
-    tabs(ui, c, p, &v, MARGIN, tabW - 4, panelX + frame);
-    if (ui->bagSelected < 0 && !ui->bagSource) {
+    tabs(ui, c, p, &v, MARGIN, tabW - 4, sort ? sortY - 3 : bottom, panelX + frame);
+    if (sort) {
         // SORT: under the tabs, like the description bar's corner.
         static const char* const SORTS[3] = { "DEFAULT", "NAME", "COUNT" };
-        int sy = c->h - MARGIN - 22, sw = tabW - 4;
+        int sy = sortY, sw = tabW - 4;
         pd_layered_box(c, MARGIN, sy, sw, 22, 3, p->desc, p->descLayers, p->descFill);
-        pd_text(c, MARGIN + (sw - pd_text_width(SORTS[ui->bagSort])) / 2, pd_text_y(sy, 22), SORTS[ui->bagSort], p->descText, p->descTextShadow);
+        const char* sortLabel = SORTS[ui->bagSort];
+        char hint[16];
+        snprintf(hint, sizeof hint, "SEL %s", sortLabel);
+        if (ui->shoulderTabs && pd_text_width(hint) <= sw - 8) sortLabel = hint;
+        pd_text(c, MARGIN + (sw - pd_text_width(sortLabel)) / 2, pd_text_y(sy, 22), sortLabel, p->descText, p->descTextShadow);
         ui_add_hit(ui, MARGIN, sy, sw, 22, HIT_BAG_SORT);
     }
     if (details) {
-        if (ui->bagSource) {
-            // A backend's bag (libretro's DS companion): its own item and words, no USE / GIVE.
-            struct pd_item item;
-            bool quantity;
-            if (ui->bagSource->item(ui->bagSource->ctx, ui->bagPocket, ui->bagSelected, &item, &quantity))
-                description(ui, c, g, p, NULL, item.id, bottom + 4);
-        } else {
-            ui->bagItemShown = v.rows[ui->bagSelected].item.id;
-            description(ui, c, g, p, host, ui->bagItemShown, bottom + 4);
-        }
+        ui->bagItemShown = v.rows[ui->bagSelected].item.id;
+        description(ui, c, g, p, ui->bagSource ? NULL : host, ui->bagItemShown, bottom + 4);
     }
 }
 

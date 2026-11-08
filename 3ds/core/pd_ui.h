@@ -258,7 +258,7 @@ struct pd_summary_view {
     const char* name;
     const char* primary;
     const char* secondary;
-    bool secondaryLearn;
+    bool secondaryLearn, handheldControls, learnPage;
     const char* speciesName;
     const char* heldItem;
     int friendship; // -1 for unavailable
@@ -276,10 +276,9 @@ struct pd_bag_palette;
 // Optional read-only bag presentation; item IDs remain backend-owned.
 struct pd_bag_source {
     void* ctx;
-    int tabs;
+    int tabs, count;
     const char* (*pocketName)(void*, int);
-    int (*count)(void*, int);
-    bool (*item)(void*, int, int, struct pd_item*, bool* quantity);
+    bool (*item)(void*, int row, int* pocket, struct pd_item*, bool* quantity);
     const char* (*name)(void*, int);
 };
 // A list-only dex source: no ROM entry/sprite data is implied by a name.
@@ -302,7 +301,7 @@ struct pd_map_source {
 };
 // Host-owned option rows use the established Settings frame and row widgets.
 struct pd_option_row { const char* label; const char* value; };
-struct pd_option_source { const char* title; const struct pd_option_row* rows; int count; };
+struct pd_option_source { const char* title; const struct pd_option_row* rows; int count, infoCount; };
 struct pd_guide_row {
     const char *title, *detail, *hint, *answer;
     bool owned, heading;
@@ -362,6 +361,17 @@ int pd_ui_dex_machine_row(int levels);
 void pd_ui_dex_moves(struct pd_canvas*, int x, int y, int w, int h,
                      const struct pd_dex_moves_source*, int selected);
 
+// Battle readers supply their own move IDs and species data.
+struct pd_battle_source {
+    void* ctx;
+    const char* (*species)(void*, int);
+    const char* (*move)(void*, int);
+    int (*moveType)(void*, int);
+    int (*movePower)(void*, int);
+    void (*speciesTypes)(void*, int, int*, int*);
+    bool (*icon)(void*, struct pd_canvas*, int, int, int, bool);
+};
+
 struct pd_ui {
     // Optional backend content inside the shared companion frame and tab bar.
     unsigned availableTabs; // 0 preserves the original complete tab set.
@@ -375,9 +385,11 @@ struct pd_ui {
     bool keepBackdrop;
     bool bagDetails;
     bool handheldDex, handheldParty;
+    bool shoulderTabs; // handheld tab cycle includes More, without D-pad tab focus
     const struct pd_party_source* partySource;
     int summaryPage;
     bool pixelOff; // SCREEN doesn't offer PIXEL 1x: EXPAND can't hold its speed that wide
+    const struct pd_battle_source* battleSource;
     struct pd_binput* battleInput; // the host's, NULL = no touch controls
     const struct pd_snapshot* drawn; // what the last pd_ui_draw showed, for the taps on it
     const struct pd_game* drawnGame;
@@ -407,7 +419,9 @@ struct pd_ui {
     int boxShown, boxSlot, boxSummary, boxPartySlot, boxTarget;
     bool boxSwapPick, boxDepositing;
     char boxMessage[64];
-    int bagPocket;   // the open pocket tab: 0 ALL, then each pocket with items, in the game's order
+    int bagPocket;   // the open pocket tab (native ID for bagSource, 0 is always ALL)
+    int bagTabCount;
+    unsigned bagPocketMask; // bagSource: occupied native pocket IDs plus ALL
     int bagSelected; // the item's row in that tab, -1 = none
     int bagScroll;   // pixels
     // USE / GIVE on the open item: the host's answer, the pick (itemPicking), a move's pick for that slot (-1 = none).
@@ -444,6 +458,8 @@ struct pd_ui {
 
     enum pd_overlay overlay;
     bool moreOpened; // the open tab came from MORE (BACK doesn't send the CARD to SETTINGS then)
+    int settingsNavId, settingsNavCount, settingsNavHeight;
+    struct { int id, top; } settingsNav[PD_UI_MAX_HITS];
     int settingsScroll; // SETTINGS' list, in canvas pixels
     struct pd_settings* settings;
     enum pd_action action;
@@ -465,13 +481,23 @@ struct pd_ui {
 void pd_ui_choices_view(struct pd_canvas*, const char*, const char* const*, int, int);
 
 // Shared party body, including its original frames, HP bars, status and summary.
-void pd_ui_map_view(struct pd_canvas*, const struct pd_map_source*);
+struct pd_map_viewport { int x, y, w, h; };
+struct pd_map_viewport pd_ui_map_view(struct pd_canvas*, const struct pd_map_source*);
+enum pd_map_input {
+    PD_MAP_IDLE, PD_MAP_MOVE, PD_MAP_CENTER, PD_MAP_OPEN_PLACES, PD_MAP_CHOOSE, PD_MAP_CLOSE,
+};
+// action is -1 on the grid, or the index of the focused button.
+enum pd_map_input pd_ui_map_control(int* action, int count, int dx, int dy, bool accept, bool back, bool places);
+int pd_ui_list_step(int selected, int count, int step);
+bool pd_ui_settings_control(struct pd_ui*, int dy, bool accept);
+void pd_ui_format_money(long, char*, size_t);
 void pd_ui_options_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*);
 void pd_ui_guide_view(struct pd_ui*, struct pd_canvas*, const struct pd_guide_source*);
 void pd_ui_guide_reset(struct pd_ui*);
 void pd_ui_guide_control(struct pd_ui*, int dx, int dy, bool confirm);
 void pd_ui_guide_boss_note(char*, size_t, const char* place, int count, int ace, int best);
 void pd_ui_dex_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*,int selected);
+void pd_ui_bag_cycle_sort(struct pd_ui*);
 void pd_ui_bag_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*, const struct pd_snapshot*);
 void pd_ui_party_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*,
                       const struct pd_snapshot*, int selected);
@@ -488,6 +514,7 @@ int pd_ui_tab_menu_count(const struct pd_ui*);
 void pd_ui_tab_menu_focus(struct pd_ui*, int row);
 void pd_ui_tab_menu_choose(struct pd_ui*, int row);
 void pd_ui_next_tab(struct pd_ui* ui, int dir);
+void pd_ui_party_summary_control(struct pd_ui*, const struct pd_snapshot*, int dx, int dy, bool confirm, bool select);
 // The buttons on the companion (keyFocus): a direction (0 up, 1 down, 2 left, 3 right), A on what the cursor's on.
 void pd_ui_focus_move(struct pd_ui* ui, int direction);
 void pd_ui_focus_press(struct pd_ui* ui);

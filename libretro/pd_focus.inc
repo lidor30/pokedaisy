@@ -16,8 +16,13 @@ static struct screen screen_of(const struct pd_ui *u) {
 }
 static void focus_new_screen(void) { lastScreen.tab = -1; }
 // What the cursor can land on: not the tab bar, nor a scrim or a list's drag area.
-static bool focusable(int id) {
-  return !(id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) && id != HIT_FF && id != HIT_SCRIM &&
+static bool bag_browsing(const struct pd_ui *u) {
+  return u->tab == PD_TAB_BAG && u->overlay == PD_OVERLAY_NONE && !u->itemPicking && u->bagSelected < 0;
+}
+static bool focusable(const struct pd_ui *u, int id) {
+  if (bag_browsing(u)) return id >= HIT_BAG_ROW && id < HIT_BAG_ROW_END;
+  return !(id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) && id != HIT_MORE && id != HIT_FF && id != HIT_SCRIM &&
+         id != HIT_SHOULDER_L && id != HIT_SHOULDER_R && id != HIT_SCROLL_BAR &&
          id != HIT_BAG_LIST && id != HIT_DEX_LIST && id != HIT_GUIDE_LIST && id != HIT_SETTINGS_LIST;
 }
 // A window over the screen (the guide's notice, a picker, PLACES) starts with its scrim: the cursor stays on what
@@ -99,18 +104,9 @@ static bool map_cursor_active(const struct pd_ui *u) {
   return mapCursor.ready && u->tab == PD_TAB_MAP &&
          u->overlay == PD_OVERLAY_NONE && focusId == HIT_MAP;
 }
-// B leaves the grid for PLACES / ME / region buttons; another B is normal Back.
-static bool map_cursor_back(struct pd_ui *u) {
-  int i = focus_index(u, HIT_MAP_PLACES);
-  if (!map_cursor_active(u) || i < 0)
-    return false;
-  focusId = HIT_MAP_PLACES;
-  focusAt = u->hits[i];
-  return true;
-}
 static void focus_activate(struct pd_ui *u) {
   int at = focus_index(u, focusId);
-  if (at < 0)
+  if (at < 0 || !focusable(u, focusId))
     return;
   const struct pd_hit *h = &u->hits[at];
   if (map_cursor_active(u)) {
@@ -122,19 +118,73 @@ static void focus_activate(struct pd_ui *u) {
     mapCursor.sel = u->mapSel;
     mapCursor.dungeon = u->mapDungeon;
     mapCursor.requestedPage = u->mapPage;
+  } else if (h->id >= HIT_SLOT && h->id < HIT_SLOT + PD_PARTY_SIZE) {
+    u->focusId = h->id;
+    pd_ui_focus_press(u);
   } else {
     pd_ui_touch(u, h->x + h->w / 2, h->y + h->h / 2, true);
     pd_ui_touch(u, h->x + h->w / 2, h->y + h->h / 2, false);
   }
 }
+// The map art and hit IDs are native to this core; the grid/button transitions
+// are the same as the DS companion.
+static bool map_control(struct pd_ui *u, int dx, int dy, bool accept, bool back, bool places, bool *close) {
+  if (u->tab != PD_TAB_MAP || u->overlay != PD_OVERLAY_NONE || !mapCursor.ready)
+    return false;
+  const int buttons[] = {HIT_MAP_PLACES, HIT_MAP_ME, HIT_MAP_FLY, HIT_MAP_REGION};
+  int ids[sizeof buttons / sizeof buttons[0]], count = 0, action = -1;
+  for (unsigned i = 0; i < sizeof buttons / sizeof buttons[0]; ++i) {
+    if (focus_index(u, buttons[i]) < 0) continue;
+    if (focusId == buttons[i]) action = count;
+    ids[count++] = buttons[i];
+  }
+  switch (pd_ui_map_control(&action, count, dx, dy, accept, back, places)) {
+  case PD_MAP_CLOSE:
+    if (u->moreOpened) u->overlay = PD_OVERLAY_MORE;
+    else *close = true;
+    action = -1;
+    break;
+  case PD_MAP_OPEN_PLACES:
+    ui_map_act(u, HIT_MAP_PLACES);
+    break;
+  case PD_MAP_CHOOSE:
+    ui_map_act(u, ids[action]);
+    if (ids[action] != HIT_MAP_PLACES && u->overlay == PD_OVERLAY_NONE)
+      action = -1;
+    break;
+  case PD_MAP_CENTER:
+    ui_map_act(u, HIT_MAP_ME);
+    break;
+  case PD_MAP_MOVE:
+    mapCursor.tx += dx;
+    mapCursor.ty += dy;
+    if (mapCursor.tx < mapCursor.minX) mapCursor.tx = mapCursor.minX;
+    if (mapCursor.tx > mapCursor.maxX) mapCursor.tx = mapCursor.maxX;
+    if (mapCursor.ty < mapCursor.minY) mapCursor.ty = mapCursor.minY;
+    if (mapCursor.ty > mapCursor.maxY) mapCursor.ty = mapCursor.maxY;
+    focus_activate(u);
+    break;
+  case PD_MAP_IDLE:
+    break;
+  }
+  focusId = action < 0 ? HIT_MAP : ids[action];
+  return true;
+}
+
 // After a draw: where the cursor is now (an index into u->hits, -1 = none).
 static int focus_resolve(struct pd_ui *u) {
   struct screen now = screen_of(u);
   bool changed = memcmp(&now, &lastScreen, sizeof now) != 0;
-  lastScreen = now;
+  const bool partyBack = now.tab == PD_TAB_PARTY && now.overlay == PD_OVERLAY_NONE &&
+      now.summarySlot < 0 && lastScreen.tab == PD_TAB_PARTY && lastScreen.summarySlot >= 0;
   int floor = modal_floor(u);
-  int i = changed ? -1 : focus_index(u, focusId);
-  if (i >= 0 && i < floor)
+  const bool settings = now.tab == PD_TAB_SETTINGS && now.overlay == PD_OVERLAY_NONE;
+  const bool mapBack = now.tab == PD_TAB_MAP && now.overlay == PD_OVERLAY_NONE &&
+      lastScreen.tab == PD_TAB_MAP;
+  int i = settings ? focus_index(u, u->settingsNavId)
+                   : changed && !partyBack && !mapBack ? -1 : focus_index(u, focusId);
+  lastScreen = now;
+  if (i >= 0 && (i < floor || !focusable(u, u->hits[i].id)))
     i = -1;
   if (i < 0 && !changed && focusId >= 0) { // gone: the nearest item to where it was
     int best = 1 << 30;
@@ -142,16 +192,16 @@ static int focus_resolve(struct pd_ui *u) {
       const struct pd_hit *h = &u->hits[j];
       int dx = h->x + h->w / 2 - (focusAt.x + focusAt.w / 2),
           dy = h->y + h->h / 2 - (focusAt.y + focusAt.h / 2);
-      if (focusable(h->id) && dx * dx + dy * dy < best)
+      if (focusable(u, h->id) && dx * dx + dy * dy < best)
         best = dx * dx + dy * dy, i = j;
     }
   }
   if (i < 0 && u->startId >= 0)
     i = focus_index(u, u->startId);
-  if (i >= 0 && i < floor)
+  if (i >= 0 && (i < floor || !focusable(u, u->hits[i].id)))
     i = -1;
   for (int j = floor; i < 0 && j < u->hitCount; j++)
-    if (focusable(u->hits[j].id))
+    if (focusable(u, u->hits[j].id))
       i = j;
   focusId = i >= 0 ? u->hits[i].id : -1;
   if (i >= 0)
@@ -202,14 +252,6 @@ static int focus_after_draw(struct pd_ui *u, int at) {
 }
 /* The cursor's step; false when there was nothing that way and the list scrolled one row instead. */
 static bool focus_step(struct pd_ui *u, int direction, bool scroll) {
-  if (map_cursor_active(u)) {
-    if (direction == LEFT && mapCursor.tx > mapCursor.minX) mapCursor.tx--;
-    if (direction == RIGHT && mapCursor.tx < mapCursor.maxX) mapCursor.tx++;
-    if (direction == UP && mapCursor.ty > mapCursor.minY) mapCursor.ty--;
-    if (direction == DOWN && mapCursor.ty < mapCursor.maxY) mapCursor.ty++;
-    focus_activate(u); // Name the location immediately, like the game's map.
-    return true;
-  }
   int cur = focus_index(u, focusId);
   if (cur < 0) {
     focus_resolve(u);
@@ -221,8 +263,7 @@ static bool focus_step(struct pd_ui *u, int direction, bool scroll) {
     if (i == cur)
       continue;
     struct pd_hit *t = &u->hits[i];
-    if (t->id == HIT_SCRIM || t->id == HIT_BAG_LIST || t->id == HIT_DEX_LIST || t->id == HIT_GUIDE_LIST ||
-        t->id == HIT_SETTINGS_LIST)
+    if (!focusable(u, t->id))
       continue;
     int dx = (t->x + t->w / 2) - (h->x + h->w / 2),
         dy = (t->y + t->h / 2) - (h->y + h->h / 2);
@@ -293,29 +334,4 @@ static void focus_draw(struct pd_ui *u, int focus) {
   pd_fill(&canvas, h->x, h->y + h->h - 2, h->w, 2, 0xff7331);
   pd_fill(&canvas, h->x, h->y, 2, h->h, 0xff7331);
   pd_fill(&canvas, h->x + h->w - 2, h->y, 2, h->h, 0xff7331);
-}
-/* The HUD hotkey's cursor: the target to the [direction] of [cur] among where the HUD put them (hud_hits, in HUD
- * canvas pixels) - what lines up on the other axis first, as focus_move does; -1 = nowhere that way. */
-static int hud_step(const struct hud_hits *hh, int cur, int direction) {
-  int from = -1, best = -1, score = 1 << 30;
-  for (int i = 0; i < hh->n; i++)
-    if (hh->at[i].id == cur)
-      from = i;
-  if (from < 0)
-    return hh->n ? hh->at[0].id : -1;
-  const typeof(hh->at[0]) *h = &hh->at[from];
-  for (int i = 0; i < hh->n; i++) {
-    if (i == from)
-      continue;
-    const typeof(hh->at[0]) *t = &hh->at[i];
-    int dx = (t->x + t->w / 2) - (h->x + h->w / 2), dy = (t->y + t->h / 2) - (h->y + h->h / 2);
-    int along = direction == LEFT ? -dx : direction == RIGHT ? dx : direction == UP ? -dy : dy;
-    int across = direction == LEFT || direction == RIGHT
-                     ? (t->y + t->h <= h->y ? h->y - (t->y + t->h) : t->y >= h->y + h->h ? t->y - (h->y + h->h) : 0)
-                     : (t->x + t->w <= h->x ? h->x - (t->x + t->w) : t->x >= h->x + h->w ? t->x - (h->x + h->w) : 0);
-    int cost = along + across * 4 + (across > 0 ? 100000 : 0);
-    if (along > 0 && cost < score)
-      best = i, score = cost;
-  }
-  return best >= 0 ? hh->at[best].id : cur;
 }

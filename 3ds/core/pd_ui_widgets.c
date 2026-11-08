@@ -189,7 +189,7 @@ void ui_scroll_rail(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, 
     ui_add_hit(ui, x - 6, y, w + 8, h, HIT_SCROLL_BAR);
 }
 
-void ui_format_money(long v, char* buf, size_t len) {
+void pd_ui_format_money(long v, char* buf, size_t len) {
     if (v < 0) {
         snprintf(buf, len, "-");
     } else if (v >= 1000) {

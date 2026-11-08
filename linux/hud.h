@@ -46,6 +46,11 @@ struct hud_hits {
   struct { int x, y, w, h, id; } at[HUD_MAX_HITS];
 };
 
+/* The lead's slot if it is visible, otherwise the first visible target. */
+int hud_first(const struct hud_hits *);
+int hud_step(const struct hud_hits *, int current, int dx, int dy);
+void hud_focus_draw(struct pd_canvas *, const struct pd_settings *, const struct hud_hits *, int focus);
+
 /* Draws the HUD's shown parts in the settings' layout and look over QUICK_CLEAR; false if nothing shows. [out]
  * (nullable): where each target landed. */
 bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snapshot *s, const struct hud_state *h,
@@ -56,10 +61,10 @@ typedef bool (*hud_item_draw_fn)(struct pd_canvas *, int item, int x, int y);
 /* The party row alone in the default look, the canvas not cleared (the Linux host's DSperate backend). */
 void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx, hud_mon_draw_fn draw);
 void hud_ds_draw(struct pd_canvas *, const struct pd_snapshot *, const struct hud_state *,
-                 const struct pd_settings *, void *, hud_mon_draw_fn, hud_item_draw_fn, int repelItem, bool minimal);
+                 const struct pd_settings *, void *, hud_mon_draw_fn, hud_item_draw_fn, int repelItem, bool minimal, int right, struct hud_hits *);
 
 typedef void (*hud_ds_map_fn)(struct pd_canvas *, int x, int y, int w, int h);
-void hud_ds_minimap(struct pd_canvas *, const struct pd_settings *, const char *name, hud_ds_map_fn draw);
+void hud_ds_minimap(struct pd_canvas *, const struct pd_settings *, const char *name, hud_ds_map_fn draw, struct hud_hits *);
 
 /* A number that changes whenever what the HUD shows does (so the host redraws it only then). */
 uint32_t hud_key(const struct pd_game *g, const struct pd_snapshot *s, const struct hud_state *h, const struct pd_settings *st);
