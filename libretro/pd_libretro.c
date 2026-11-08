@@ -874,12 +874,7 @@ RETRO_API void retro_unload_game(void) {
 /* The HUD's cursor goes onto it: the lead's slot where the party shows, else the first target. */
 static void hud_focus_start(void) {
   hudFocus = true;
-  hudState.focus = hudHits.at[0].id;
-  for (int i = 0, lowest = PD_PARTY_SIZE; i < hudHits.n; i++)
-    if (hudHits.at[i].id >= HUD_SLOT && hudHits.at[i].id - HUD_SLOT < lowest) {
-      lowest = hudHits.at[i].id - HUD_SLOT;
-      hudState.focus = hudHits.at[i].id;
-    }
+  hudState.focus = hud_first(&hudHits);
 }
 
 /* What a HUD part does when pressed (the HUD cursor's A, or a tap): its companion tab, or the game's PC. */
@@ -1016,7 +1011,7 @@ RETRO_API void retro_run(void) {
     } else {
       int dir = down(UP) ? UP : down(DOWN) ? DOWN : down(LEFT) ? LEFT : down(RIGHT) ? RIGHT : -1;
       if (dir >= 0)
-        hudState.focus = hud_step(&hudHits, hudState.focus, dir);
+        hudState.focus = hud_step(&hudHits, hudState.focus, (dir == RIGHT) - (dir == LEFT), (dir == DOWN) - (dir == UP));
     }
   }
 

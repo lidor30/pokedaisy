@@ -24,7 +24,7 @@ namespace {
 constexpr int dsTabs=(1<<PD_TAB_PARTY)|(1<<PD_TAB_BAG)|(1<<PD_TAB_MAP)|(1<<PD_TAB_GUIDE)|(1<<PD_TAB_DEX);
 using Companion=DsCompanionUi;
 constexpr Companion::Row settingsOrder[]={
-  Companion::Layout,Companion::Hud,Companion::QuickStyle,Companion::CompanionButton,Companion::TabBar,Companion::MoreTabs,
+  Companion::Layout,Companion::Hud,Companion::QuickStyle,Companion::CompanionButton,Companion::HudButton,Companion::TabBar,Companion::MoreTabs,
   Companion::Battles,Companion::BattleStrip,Companion::AutoRun,Companion::ScreenButton,Companion::PenSpeed,
   Companion::HudMinimal,Companion::HudBalls,Companion::HudRepel,Companion::HudMap,Companion::DarkMode,Companion::Reset
 };
@@ -32,15 +32,17 @@ static_assert(std::size(settingsOrder)==Companion::Rows);
 const char* const layoutNames[]={"ONE SCREEN","TOP","BOTTOM","SIDE BY SIDE","STACKED","LARGE + SMALL","PICTURE IN PICTURE"};
 const char* const buttonNames[]={"L2","R2","X","Y","NONE"};
 const unsigned buttonIds[]={RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,RETRO_DEVICE_ID_JOYPAD_X,RETRO_DEVICE_ID_JOYPAD_Y};
+const char* const hudButtonNames[]={ "X", "Y", "L2", "R2", "NONE" };
+const int hudButtonIds[]={RETRO_DEVICE_ID_JOYPAD_X,RETRO_DEVICE_ID_JOYPAD_Y,RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,-1};
 const char* const speedNames[]={"SLOW","NORMAL","FAST"};
 const char* const resetNames[]={"CANCEL","RESET"};
-const char* const labels[]={"DS LAYOUT","AUTO BATTLES","HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP","MINIMAL HUD","POKÉ BALLS","REPEL STEPS","MINIMAP","DARK MODE","AUTO-RUN","TAB BAR","MORE TABS"};
+const char* const labels[]={"DS LAYOUT","AUTO BATTLES","HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP","MINIMAL HUD","POKÉ BALLS","REPEL STEPS","MINIMAP","DARK MODE","AUTO-RUN","TAB BAR","MORE TABS","HUD CURSOR BUTTON"};
 const char* const* choices(int row){
   return row==DsCompanionUi::Layout?layoutNames:row==DsCompanionUi::PenSpeed?speedNames:
-    row==DsCompanionUi::Reset?resetNames:buttonNames;
+    row==DsCompanionUi::Reset?resetNames:row==DsCompanionUi::HudButton?hudButtonNames:buttonNames;
 }
 int count(int row){return row==DsCompanionUi::Layout?DS_LAYOUTS:row==DsCompanionUi::CompanionButton?4:
- row==DsCompanionUi::ScreenButton?5:row==DsCompanionUi::PenSpeed?3:2;}
+ row==DsCompanionUi::ScreenButton||row==DsCompanionUi::HudButton?5:row==DsCompanionUi::PenSpeed?3:2;}
 }
 void DsCompanionUi::defaults(){
   pd_settings_defaults(&settings);settings.hud=false;
@@ -82,6 +84,7 @@ void DsCompanionUi::init(const std::string& directory,int legacyLayout,bool lega
     }
   }
   if(companionButton==screenButton)screenButton=(companionButton+1)%4;
+  if(hud_id()<0)settings.hudBtn=PD_BTN_NONE;
   settings.tabBar &= dsTabs;
   if (!settings.tabBar) settings.tabBar=dsTabs;
   pd_ui_init(&frame,&settings);pd_ui_init(&options,&settings);
@@ -124,8 +127,13 @@ void DsCompanionUi::set_game(DsGame value,bool soulSilverVersion){
 }
 unsigned DsCompanionUi::companion_id()const{return buttonIds[companionButton];}
 int DsCompanionUi::screen_id()const{return screenButton<4?int(buttonIds[screenButton]):-1;}
+int DsCompanionUi::hud_id()const{
+  const int id=hudButtonIds[settings.hudBtn];
+  return id==int(companion_id()) || id==screen_id() ? -1 : id;
+}
 int DsCompanionUi::pen_step()const{return penSpeed==0?1:penSpeed==1?3:6;}
 int DsCompanionUi::value(int row)const{
+  if(row==HudButton)return settings.hudBtn;
   if(row==DarkMode)return darkMode;
   if(row==AutoRun)return autoRun;
   if(row==HudMinimal)return hudMinimal;
@@ -138,8 +146,22 @@ void DsCompanionUi::apply(int row,int v){
   if(row==Layout){layout=v;++displayRevision;}
   else if(row==Battles)autoBattles=v;
   else if(row==Hud)settings.hud=v;
-  else if(row==CompanionButton){if(screenButton==v)screenButton=companionButton;companionButton=v;}
-  else if(row==ScreenButton){if(companionButton==v){error="Button already opens companion";return;}screenButton=v;}
+  else if(row==CompanionButton){
+    if(int(buttonIds[v])==hud_id()){error="Button already controls HUD";return;}
+    if(screenButton==v)screenButton=companionButton;
+    companionButton=v;
+  }
+  else if(row==ScreenButton){
+    if(companionButton==v){error="Button already opens companion";return;}
+    if(v<4 && int(buttonIds[v])==hud_id()){error="Button already controls HUD";return;}
+    screenButton=v;
+  }
+  else if(row==HudButton){
+    if(v!=PD_BTN_NONE && (hudButtonIds[v]==int(companion_id()) || hudButtonIds[v]==screen_id())){
+      error="Button already opens companion or switches screens";return;
+    }
+    settings.hudBtn=v;
+  }
   else if(row==PenSpeed)penSpeed=v;
   else if(row==QuickStyle)settings.quickGrid=v;
   else if(row==BattleStrip)battleStrip=v;
@@ -160,7 +182,7 @@ void DsCompanionUi::draw_settings(pd_canvas* c){
   pd_ui_format_money(s.valid?s.money:-1,money,sizeof money);
   const char* values[]={layoutNames[layout],autoBattles?"ON":"OFF",settings.hud?"ON":"OFF",
     buttonNames[companionButton],buttonNames[screenButton],speedNames[penSpeed],settings.quickGrid?"GRID":"RING","...",battleStrip?"ON":"OFF",hudMinimal?"ON":"OFF",value(HudBalls)?"ON":"OFF",value(HudRepel)?"ON":"OFF",value(HudMap)?"ON":"OFF",darkMode?"ON":"OFF",game==DsGame::Unsupported?"N/A":autoRun?"ON":"OFF",game==DsGame::Unsupported?"N/A":"EDIT",
-    (settings.tabBar & dsTabs)==dsTabs?"NONE HIDDEN":"OPEN"};
+    (settings.tabBar & dsTabs)==dsTabs?"NONE HIDDEN":"OPEN",hudButtonNames[settings.hudBtn]};
   constexpr int infoCount=3;
   pd_option_row rows[Rows+infoCount]={{"PLACE",s.valid?ds_place(s.map,s.game):"-"},
     {"MONEY",money},{"HOST","PokeDaisy core"}};
@@ -337,7 +359,7 @@ bool DsCompanionUi::control(unsigned pressed){
           choice=0;
           if(!pd_ui_tab_menu_count(&frame))frame.overlay=PD_OVERLAY_NONE;
         }
-      }else if(setting==Battles || setting==Hud || setting==QuickStyle || setting>=BattleStrip)apply(setting,!value(setting));
+      }else if(setting==Battles || setting==Hud || setting==QuickStyle || (setting>=BattleStrip && setting<HudButton))apply(setting,!value(setting));
       else{picker=setting;choice=value(setting);}
     }return false;
   }

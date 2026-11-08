@@ -68,6 +68,14 @@ item, A opens its details, and B returns to the list. Press Select while
 browsing to cycle **Default**, **Name**, and **Count** (highest first).
 Sorting only changes the companion display.
 
+To control the DS overworld HUD, turn **HUD** on and assign an unused button
+under **HUD CURSOR BUTTON** in companion Settings. The binding starts at
+**None** so native buttons keep their usual functions. Press the assigned
+button over a visible HUD, move with the D-pad, and press A to open the
+highlighted map, party summary, or Bag. Press B or the HUD button again to
+return to gameplay. The cursor is available in the overworld, with a target
+for each visible HUD part.
+
 The shared tab order is **Party, Dex, Map, Bag, Guide**, with **More** and
 **Settings** at the end when available. **Battle** takes the Party slot
 during a supported battle.

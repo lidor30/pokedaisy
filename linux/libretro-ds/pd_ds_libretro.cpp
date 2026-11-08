@@ -59,6 +59,10 @@ DsCompanion snapshot;
 DsMapArt map;
 std::vector<std::vector<uint32_t>> icons,hudItemIcons;
 int repelFull=0;
+hud_hits hudHits{};
+int hudCursor=-1;
+unsigned hudConsumed=0;
+void clear_hud_focus(){hudHits.n=0;hudCursor=-1;hudConsumed=0;}
 bool supported=false, companion=false, quickOpen=false, swallowMenuInput=false;
 int quickSelected=0,companionHold=0;
 struct FlyDestination { int x,y; const char* name; int header=0; };
@@ -159,6 +163,7 @@ void clear_field_actions() {
 
 void clear() {
   clear_field_actions();
+  clear_hud_focus();
   stageReady=false;
   pk_nds_field_set_rates(nullptr,0);
   shell.dexArt={};shell.dexPage={};shell.dexCachedSpecies=0;
@@ -229,7 +234,7 @@ void choose_layout() {
   bool topBlank=one_colour(nds->gpu.framebuffer(0)),bottomBlank=one_colour(nds->gpu.framebuffer(1));
   const bool fieldApp=!inBattle&&(bits&PK_NDS_FIELD_MENU);
   const bool fieldScreen=bits&PK_NDS_FIELD_SCREEN;
-  const bool nativeX=(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_X)) &&
+  const bool nativeX=(buttons&~hudConsumed&(1u<<RETRO_DEVICE_ID_JOYPAD_X)) &&
     shell.companion_id()!=RETRO_DEVICE_ID_JOYPAD_X && shell.screen_id()!=RETRO_DEVICE_ID_JOYPAD_X;
   if(fieldApp || (fieldScreen&&nativeX))fieldMenuFlow=true;
   else if(inBattle || (fieldScreen&&!(bits&PK_NDS_FIELD_LOCKED)&&!topBlank))fieldMenuFlow=false;
@@ -617,11 +622,12 @@ void draw_strip(uint32_t* out){
                        battlePanelArtValid?battlePanelArt.data():nullptr);
 }
 void present(const void* data,unsigned,unsigned,size_t) {
+  hudHits.n=0;
   if(companion){draw_companion();return;}
   // Refresh composition even when DSperate skipped rasterization: switching
   // screens must still display the latest retained framebuffer.
   (void)data;
-  choose_layout();
+  if(hudCursor<0)choose_layout();
   const unsigned w=512,h=384;
   const bool showStrip=holdStrip>0 && !scene.dark && arrangement.top.w==512 && wants_strip();
   ds_compose(stage,arrangement,nds->gpu.framebuffer(0),nds->gpu.framebuffer(1),
@@ -629,7 +635,7 @@ void present(const void* data,unsigned,unsigned,size_t) {
   stageReady=true;
   geometry(w,h);
   for(unsigned i=0;i<w*h;++i)pixels[i]=ds_rgb565(stage[i]);
-  if((buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT))&&arrangement.touch.w>0){
+  if(hudCursor<0&&(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT))&&arrangement.touch.w>0){
     int cx=arrangement.touch.x+cursor_x*arrangement.touch.w/256;
     int cy=arrangement.touch.y+cursor_y*arrangement.touch.h/192;
     for(int d=-4;d<=4;++d){
@@ -690,12 +696,13 @@ void present(const void* data,unsigned,unsigned,size_t) {
         if(p>>24)pd_fill(c,x+col,y+row,1,1,p&0xffffff);
       }
       return true;
-    },79,shell.hudMinimal,hudRight);
+    },79,shell.hudMinimal,hudRight,&hudHits);
     const auto player=ds_map_position(snapshot);
     if(!shell.hudMinimal&&!(shell.settings.hudHidden&(1<<PD_HUD_MAP))&&!map.background.empty()&&player.x>=0&&player.y>=0)
       hud_ds_minimap(&c,&shell.settings,ds_place(snapshot.map,companionGame),[](pd_canvas* c,int x,int y,int w,int h){
         ds_draw_minimap(c,snapshot,map,x,y,w,h);
-      });
+      },&hudHits);
+    hud_focus_draw(&c,&shell.settings,&hudHits,hudCursor);
     // Scale with the top screen and keep the picture-in-picture touch screen clear.
     const bool doubled=top.w==512 && top.h==384;
     for(int y=0;y<top.h;++y){
@@ -729,6 +736,7 @@ int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
   }
   if(swallowMenuInput)return 0;
   if(d==RETRO_DEVICE_JOYPAD) {
+    if(id<16 && (hudConsumed&(1u<<id)))return 0;
     if(id==RETRO_DEVICE_ID_JOYPAD_A&&heldQuickConfirm)return 0;
     if(id==RETRO_DEVICE_ID_JOYPAD_SELECT && select_pulse)return 1;
     if(companion || quickOpen || (buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT)))return 0;
@@ -758,21 +766,68 @@ int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
   }
   return input(p,d,i,id);
 }
+void hud_open_target(int id) {
+  refresh();
+  if(!snapshot.valid)return;
+  shell.frame.overlay=PD_OVERLAY_NONE;
+  shell.frame.moreOpened=false;
+  shell.summary=shell.details=false;
+  shell.placeRow=shell.mapAction=-1;
+  if(id>=HUD_SLOT && id<HUD_SLOT+int(snapshot.party.size())){
+    shell.frame.tab=PD_TAB_PARTY;
+    shell.selected=id-HUD_SLOT;
+    shell.summary=true;
+    shell.page=shell.learnRow=0;
+  }else if(id==HUD_MAP){
+    shell.frame.tab=PD_TAB_MAP;
+    shell.mapX=snapshot.mapX;
+    shell.mapY=snapshot.mapY;
+  }else if(id==HUD_BALLS || id==HUD_REPEL){
+    shell.frame.tab=PD_TAB_BAG;
+    shell.pocket=shell.scroll=0;
+  }else return;
+  companion=true;
+}
+
 void controls() {
   buttons=0;for(unsigned id=0;id<16;++id)if(input(0,RETRO_DEVICE_JOYPAD,0,id))buttons|=1u<<id;
+  hudConsumed&=buttons;
   select_pulse=!(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT)) &&
     (old_buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT)) && !select_used;
   if(!(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT)))select_used=false;
   unsigned edge=buttons&~old_buttons;old_buttons=buttons;
   for(unsigned id=RETRO_DEVICE_ID_JOYPAD_UP;id<=RETRO_DEVICE_ID_JOYPAD_RIGHT;++id){
     held_frames[id]=(buttons&(1u<<id))?held_frames[id]+1:0;
-    if((companion || quickOpen) && held_frames[id]>15 && (held_frames[id]-15)%5==0)edge|=1u<<id;
+    if((companion || quickOpen || hudCursor>=0) && held_frames[id]>15 && (held_frames[id]-15)%5==0)edge|=1u<<id;
   }
   auto hit=[&](unsigned id){return !!(edge&(1u<<id));};
   heldQuickConfirm&=!!(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_A));
   if(flyCallJob)return;
   if(flyJob.active()){
     if(hit(RETRO_DEVICE_ID_JOYPAD_B))flyJob={};
+    return;
+  }
+  const int hudButton=shell.hud_id();
+  if(hudCursor>=0){
+    if(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT))select_used=true;
+    if(hit(RETRO_DEVICE_ID_JOYPAD_B) || hit(RETRO_DEVICE_ID_JOYPAD_A) ||
+       (hudButton>=0 && hit(hudButton))){
+      const int target=hudCursor;
+      hudCursor=-1;
+      hudConsumed|=buttons;
+      if(hit(RETRO_DEVICE_ID_JOYPAD_A) && !hit(RETRO_DEVICE_ID_JOYPAD_B))hud_open_target(target);
+    }else{
+      const int dx=hit(RETRO_DEVICE_ID_JOYPAD_RIGHT)-hit(RETRO_DEVICE_ID_JOYPAD_LEFT);
+      const int dy=hit(RETRO_DEVICE_ID_JOYPAD_DOWN)-hit(RETRO_DEVICE_ID_JOYPAD_UP);
+      if(dx || dy)hudCursor=hud_step(&hudHits,hudCursor,dy?0:dx,dy);
+    }
+    return;
+  }
+  if(!companion && !quickOpen && hudButton>=0 && hit(hudButton) && hudHits.n &&
+     !(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT)) && field_free()){
+    hudCursor=hud_first(&hudHits);
+    hudConsumed|=1u<<hudButton;
+    companionHold=0;
     return;
   }
   const bool companionDown=buttons&(1u<<shell.companion_id());
@@ -934,7 +989,7 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
 }
 RETRO_API void retro_reset(){
   pd_ds::clear_battle();
-  ds_reset();pd_ds::stageReady=false;pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;
+  ds_reset();pd_ds::clear_hud_focus();pd_ds::stageReady=false;pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;
 }
 RETRO_API bool retro_unserialize(const void* data,size_t n){
   pd_ds::clear_battle();
@@ -952,7 +1007,7 @@ RETRO_API bool retro_unserialize(const void* data,size_t n){
     if(sram.data()!=frontendSave)log(RETRO_LOG_WARN,"PokeDaisy DS: the save buffer moved on a state load\n");
   }
   if(ok){pd_ds::shell.battle={};pd_ds::shell.update_battle();pd_ds::stageReady=false;pd_ds::restoreGrace=4;pd_ds::set_wild_rates();}
-  if(ok){pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;}
+  if(ok){pd_ds::clear_hud_focus();pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;}
   return ok;
 }
 RETRO_API void retro_unload_game(){ds_unload_game();pd_ds::clear();}
@@ -960,7 +1015,7 @@ RETRO_API void retro_run(){
   if(!nds)return;
   input_poll_cb();
   const unsigned previous=pd_ds::old_buttons;
-  const bool menuWasOpen=pd_ds::companion || pd_ds::quickOpen;
+  const bool menuWasOpen=pd_ds::companion || pd_ds::quickOpen || pd_ds::hudCursor>=0;
   pd_ds::controls();
   const int field=pk_nds_field_state(pd_ds::game,pd_ds::read32,nullptr,0);
   if(pd_ds::shell.frame.battleWasOn && !(field&PK_NDS_FIELD_BATTLE)){
@@ -968,8 +1023,10 @@ RETRO_API void retro_run(){
     pd_ds::shell.update_battle();
   }
   pd_ds::update_battle(menuWasOpen?0:pd_ds::buttons&~previous,field);
-  if(pd_ds::companion || pd_ds::quickOpen){
-    if(pd_ds::quickOpen)pd_ds::draw_quick();else pd_ds::draw_companion();
+  if(pd_ds::companion || pd_ds::quickOpen || pd_ds::hudCursor>=0){
+    if(pd_ds::quickOpen)pd_ds::draw_quick();
+    else if(pd_ds::companion)pd_ds::draw_companion();
+    else pd_ds::present(nullptr,0,0,0);
     static const int16_t silence[548*2]={};audio_batch_cb(silence,547);
   }else {
     pd_ds::update_fly();

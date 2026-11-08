@@ -248,6 +248,58 @@ static void hit(struct hud *u, int x, int y, int w, int h, int id) {
     u->out->at[u->out->n++] = (__typeof__(u->out->at[0])){x, y, w, h, id};
 }
 
+void hud_focus_draw(struct pd_canvas *c, const struct pd_settings *st, const struct hud_hits *out, int focus) {
+  if (focus < 0) return;
+  const uint32_t accent = LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0].accent;
+  for (int i = 0; out && i < out->n; i++)
+    if (out->at[i].id == focus) {
+      int x = out->at[i].x - 3, y = out->at[i].y - 3, w = out->at[i].w + 6, hh = out->at[i].h + 6;
+      pd_fill(c, x, y, w, 2, accent);
+      pd_fill(c, x, y + hh - 2, w, 2, accent);
+      pd_fill(c, x, y, 2, hh, accent);
+      pd_fill(c, x + w - 2, y, 2, hh, accent);
+    }
+}
+
+int hud_first(const struct hud_hits *hh) {
+  if (!hh->n) return -1;
+  int first = hh->at[0].id;
+  for (int i = 0, lowest = PD_PARTY_SIZE; i < hh->n; ++i) {
+    const int slot = hh->at[i].id - HUD_SLOT;
+    if (slot >= 0 && slot < lowest) {
+      lowest = slot;
+      first = hh->at[i].id;
+    }
+  }
+  return first;
+}
+
+/* The HUD hotkey's cursor: the target to the [direction] of [cur] among where the HUD put them (hud_hits, in HUD
+ * canvas pixels) - what lines up on the other axis first, as focus_move does. Keep the current target if there is none in that direction. */
+int hud_step(const struct hud_hits *hh, int cur, int horizontal, int vertical) {
+  int from = -1, best = -1, score = 1 << 30;
+  for (int i = 0; i < hh->n; i++)
+    if (hh->at[i].id == cur)
+      from = i;
+  if (from < 0)
+    return hh->n ? hh->at[0].id : -1;
+  const typeof(hh->at[0]) *h = &hh->at[from];
+  for (int i = 0; i < hh->n; i++) {
+    if (i == from)
+      continue;
+    const typeof(hh->at[0]) *t = &hh->at[i];
+    int dx = (t->x + t->w / 2) - (h->x + h->w / 2), dy = (t->y + t->h / 2) - (h->y + h->h / 2);
+    int along = horizontal ? horizontal * dx : vertical * dy;
+    int across = horizontal
+                     ? (t->y + t->h <= h->y ? h->y - (t->y + t->h) : t->y >= h->y + h->h ? t->y - (h->y + h->h) : 0)
+                     : (t->x + t->w <= h->x ? h->x - (t->x + t->w) : t->x >= h->x + h->w ? t->x - (h->x + h->w) : 0);
+    int cost = along + across * 4 + (across > 0 ? 100000 : 0);
+    if (along > 0 && cost < score)
+      best = i, score = cost;
+  }
+  return best >= 0 ? hh->at[best].id : cur;
+}
+
 static void panel(struct hud *u, int x, int y, int w, int h) {
   if (u->L->window) {
     pd_title_box(u->c, x, y, w, h, PD_TITLE_FILL);
@@ -855,15 +907,7 @@ bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snap
   case PD_HUD_DOCK: dock(&u); break;
   default: corners(&u, false); break;
   }
-  // The HUD hotkey's cursor: the quick menu's focus ring round the focused target.
-  for (int i = 0; out && i < out->n; i++)
-    if (out->at[i].id == h->focus) {
-      int x = out->at[i].x - 3, y = out->at[i].y - 3, w = out->at[i].w + 6, hh = out->at[i].h + 6;
-      pd_fill(c, x, y, w, 2, u.L->accent);
-      pd_fill(c, x, y + hh - 2, w, 2, u.L->accent);
-      pd_fill(c, x, y, 2, hh, u.L->accent);
-      pd_fill(c, x + w - 2, y, 2, hh, u.L->accent);
-    }
+  hud_focus_draw(c, st, out, h->focus);
   return true;
 }
 
@@ -884,7 +928,8 @@ void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx,
 
 void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct hud_state *h,
                  const struct pd_settings *st, void *ctx, hud_mon_draw_fn monDraw,
-                 hud_item_draw_fn itemDraw, int repelItem, bool minimal, int right) {
+                 hud_item_draw_fn itemDraw, int repelItem, bool minimal, int right, struct hud_hits *out) {
+  if (out) out->n = 0;
   for (int i = 0; i < c->w * c->h; i++)
     c->px[i] = QUICK_CLEAR;
   if (!s->valid)
@@ -892,7 +937,7 @@ void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct 
   small = right < c->w;
   sizes = small ? &COMPACT_SIZES : &NORMAL_SIZES;
   struct hud u = {.c = c, .s = s, .h = h, .st = st, .monDraw = monDraw, .monCtx = ctx, .itemDraw = itemDraw, .x1 = right,
-                  .repelItem = repelItem,
+                  .repelItem = repelItem, .out = out,
                   .L = &LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
   u.partyN = !minimal && shows(&u, PD_HUD_PARTY) ? s->partyCount : 0;
   u.balls = shows(&u, PD_HUD_BALLS) ? balls(s, u.ball) : 0;
@@ -911,13 +956,14 @@ void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct 
   column(&u, BOTTOM_UP, 3, false, right - EDGE - width, width, 1, bottom, true);
 }
 
-void hud_ds_minimap(struct pd_canvas *c, const struct pd_settings *st, const char *name, hud_ds_map_fn draw) {
+void hud_ds_minimap(struct pd_canvas *c, const struct pd_settings *st, const char *name, hud_ds_map_fn draw, struct hud_hits *out) {
   enum { W=104, H=64 };
   small = false;
   sizes = &NORMAL_SIZES;
-  struct hud u = {.c=c, .x1=c->w, .L=&LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
+  struct hud u = {.c=c, .x1=c->w, .out=out, .L=&LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
   const int x=c->w-EDGE-minimap_w(W), y=EDGE;
   panel(&u,x,y,minimap_w(W),minimap_h(H,1));
+  hit(&u,x,y,minimap_w(W),minimap_h(H,1),HUD_MAP);
   draw(c,x+PAD,y+PAD,W,H);
   pd_text_fit(c,x+PAD,y+PAD+H+1,W,name,u.L->text,u.L->shadow);
 }

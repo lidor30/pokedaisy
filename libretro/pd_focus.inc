@@ -335,28 +335,3 @@ static void focus_draw(struct pd_ui *u, int focus) {
   pd_fill(&canvas, h->x, h->y, 2, h->h, 0xff7331);
   pd_fill(&canvas, h->x + h->w - 2, h->y, 2, h->h, 0xff7331);
 }
-/* The HUD hotkey's cursor: the target to the [direction] of [cur] among where the HUD put them (hud_hits, in HUD
- * canvas pixels) - what lines up on the other axis first, as focus_move does; -1 = nowhere that way. */
-static int hud_step(const struct hud_hits *hh, int cur, int direction) {
-  int from = -1, best = -1, score = 1 << 30;
-  for (int i = 0; i < hh->n; i++)
-    if (hh->at[i].id == cur)
-      from = i;
-  if (from < 0)
-    return hh->n ? hh->at[0].id : -1;
-  const typeof(hh->at[0]) *h = &hh->at[from];
-  for (int i = 0; i < hh->n; i++) {
-    if (i == from)
-      continue;
-    const typeof(hh->at[0]) *t = &hh->at[i];
-    int dx = (t->x + t->w / 2) - (h->x + h->w / 2), dy = (t->y + t->h / 2) - (h->y + h->h / 2);
-    int along = direction == LEFT ? -dx : direction == RIGHT ? dx : direction == UP ? -dy : dy;
-    int across = direction == LEFT || direction == RIGHT
-                     ? (t->y + t->h <= h->y ? h->y - (t->y + t->h) : t->y >= h->y + h->h ? t->y - (h->y + h->h) : 0)
-                     : (t->x + t->w <= h->x ? h->x - (t->x + t->w) : t->x >= h->x + h->w ? t->x - (h->x + h->w) : 0);
-    int cost = along + across * 4 + (across > 0 ? 100000 : 0);
-    if (along > 0 && cost < score)
-      best = i, score = cost;
-  }
-  return best >= 0 ? hh->at[best].id : cur;
-}

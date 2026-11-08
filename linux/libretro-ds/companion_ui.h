@@ -8,7 +8,7 @@ extern "C" {
 #include "pd_settings.h"
 }
 struct DsCompanionUi {
-  enum Row { Layout, Battles, Hud, CompanionButton, ScreenButton, PenSpeed, QuickStyle, Reset, BattleStrip, HudMinimal, HudBalls, HudRepel, HudMap, DarkMode, AutoRun, TabBar, MoreTabs, Rows };
+  enum Row { Layout, Battles, Hud, CompanionButton, ScreenButton, PenSpeed, QuickStyle, Reset, BattleStrip, HudMinimal, HudBalls, HudRepel, HudMap, DarkMode, AutoRun, TabBar, MoreTabs, HudButton, Rows };
   pd_settings settings{};
   pd_ui frame{}, options{};
   pd_snapshot battle{};
@@ -40,6 +40,7 @@ struct DsCompanionUi {
   void draw(pd_canvas*,const DsCompanion&,bool,const DsMapArt&,const std::vector<std::vector<uint32_t>>&);
   bool control(unsigned pressed); // true closes the companion
   unsigned companion_id() const;
+  int hud_id() const;
   int screen_id() const;
   int pen_step() const;
 private:
