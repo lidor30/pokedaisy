@@ -33,6 +33,8 @@ export const FEATURE_GROUPS = [
     ['Bike / surf', msg('BIKE AND SURF SPEED'), msg('A speed of their own for riding and surfing.')],
     ['Player look', msg('PLAYER LOOK'), msg('Play as another game\'s hero.')],
     ['Shiny odds', msg('SHINY ODDS'), msg('Wild Pokémon turn up shiny at the odds you pick.')],
+    ['TMs from the bag', msg('TEACH A TM'), msg('USE on a TM or HM in the companion\'s bag opens the game\'s own screen for teaching it.')],
+    ['FLASH', msg('QUICK FLASH'), msg('Light up a dark cave from the quick menu.')],
   ]],
 ];
 export const FEATURE_COLUMNS = FEATURE_GROUPS.flatMap(([, rows]) => rows.map((r) => r[0]));
