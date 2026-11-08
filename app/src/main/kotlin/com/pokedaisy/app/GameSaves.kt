@@ -51,7 +51,13 @@ object GameSaves {
      * engine is stopped). The game boots from the new save next time instead of
      * resuming ([SaveStates.freshBootFile]).
      */
-    fun load(context: Context, prefs: Prefs, rom: File, bytes: ByteArray): Result {
+    fun load(context: Context, prefs: Prefs, rom: File, picked: ByteArray): Result {
+        // RetroArch's compressed .srm goes in unpacked (RzipSave): mGBA reads only a plain save.
+        val bytes = when (val r = RzipSave.decode(picked)) {
+            RzipSave.Result.NotRzip -> picked
+            is RzipSave.Result.Unpacked -> r.bytes
+            is RzipSave.Result.Unreadable -> return Result.Failed(RzipSave.unreadableMessage())
+        }
         val current = SavesLocation.saveFor(context, prefs, rom)
         val dir = current.parentFile ?: SavesLocation.dir(context, prefs)
         var backup: File? = null

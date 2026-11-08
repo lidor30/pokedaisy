@@ -3,7 +3,7 @@ title: Saves, backups and save states
 summary: Where your saves live, how they're protected, how to share them with RetroArch, and how save states, resume and rewind work.
 section: start
 order: 5
-keywords: [save file, sav, srm, savestate, quicksave, quick save, load state, slot, backup, restore, retroarch, sync, syncthing, resume, continue, rewind, undo, lost save, progress]
+keywords: [save file, sav, srm, savestate, saveram compression, compressed save, quicksave, quick save, load state, slot, backup, restore, retroarch, sync, syncthing, resume, continue, rewind, undo, lost save, progress]
 ---
 
 Your progress lives in two kinds of files. The **save file** is what the game writes when you save in the game's own menu: a standard `.sav` or `.srm`, the same as mGBA and RetroArch use, so you can carry it between emulators. **Save states** are snapshots of the whole moment, taken by PokeDaisy at any time, even mid-battle.
@@ -48,6 +48,8 @@ Changing the folder doesn't move any saves. Copy them over yourself if you want 
 To keep playing the same saves in RetroArch and PokeDaisy, add RetroArch's save folders in Settings > `FOLDERS` > `ALSO LOOK IN` with `ADD FOLDER`. RetroArch often keeps one folder per core, so add each one you use, for example `RetroArch/saves/mGBA` and `RetroArch/saves/gpSP`.
 
 A save found in one of those folders is played and written right there, so RetroArch keeps seeing your latest progress. `REMOVE` takes a folder off the list.
+
+If RetroArch's SaveRAM Compression is on (Settings > Saving), its `.srm` files are packed much smaller than the game's save. PokeDaisy unpacks such a save the first time it opens it, after keeping a copy of the packed file with your backups, and RetroArch reads the unpacked one just as well. `LOAD SAVE` takes packed saves too. A few newer RetroArch builds pack saves in a way PokeDaisy can't read yet: then the game doesn't start and the save is left as it is, and turning SaveRAM Compression off in RetroArch (then saving there once) fixes it.
 
 > [!WARNING]
 > If a game has a save in the saves folder *and* in an `ALSO LOOK IN` folder, the saves folder's copy wins. Keep one copy of each save to avoid surprises.

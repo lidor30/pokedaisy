@@ -1830,7 +1830,9 @@ only keeps a 256x256 ring of tiles in VRAM (`field_camera.c`), so the rest would
   bars) is a hole in the margins, so the row's own edge pixel goes on like a battle's text box band - the map used to
   go on beside the bars. Both conditions count: Unbound's POKéDEX label and clock windows touch the screen's edges with
   the field between them (a white strip once), and BG0 sits opaque under the map beside them. Not under FireRed's map
-  preview, which keeps its dimmed map around it.
+  preview, which keeps its dimmed map around it. Only runs of such rows from the screen's top or bottom edge count
+  (`barRows`): Unbound's text box is BG0 across too (a 1 px white outline at both edges, rows 116-157, the field under
+  it), and carrying it out drew a white box behind every message in 1.4.0.
 - **A warp holds the zoom** (`fadedFrame`): between two maps (a door, a connection building) the screen is black for a
   few frames with no map to check, which used to read as OFF - the camera pulled in to 1x and zoomed back out on the
   other side. A frame that's all black (or all white) outside a battle is FADE, whatever the map check or the menu

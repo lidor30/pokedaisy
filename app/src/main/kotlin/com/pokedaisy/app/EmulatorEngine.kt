@@ -861,6 +861,13 @@ class EmulatorEngine(
     private fun loop(rom: File, save: File, resume: File?) {
         emuJobs.clear()   // the last game's
         SaveBackups.snapshot(save)
+        // RetroArch's compressed .srm, unpacked first: mGBA would take it as the flash itself and the game start anew.
+        RzipSave.unpackForPlay(save)?.let { why ->
+            loadError = why
+            running = false
+            if (resume != null) onResumeResult?.invoke(false)
+            return
+        }
         ndsScaleSet = -1
         if (!MgbaCore.pkInit(rom.absolutePath, save.absolutePath)) {
             loadError = "mGBA could not load ${rom.name}"
