@@ -1351,8 +1351,11 @@ struct pd_gb_party_menu pd_gb_party_menu(const struct pd_gb_config* c, pd_read_f
     return c->gen == 1 ? gen1_party_menu(c, read, ctx) : gen2_party_menu(c, read, ctx);
 }
 
-int pd_gb_party(const struct pd_gb_config* c, pd_read_fn read, void* ctx, struct pd_gb_party_mon* out) {
+int pd_gb_party(const struct pd_gb_config* cfg, pd_read_fn read, void* ctx, struct pd_gb_party_mon* out) {
     // The keys are the snapshot's personalities (decode_mon: OT ID and DVs), so a slot is found by the party read's key.
+    struct pd_gb_config copy = *cfg;
+    fill_counts(&copy);
+    const struct pd_gb_config* c = &copy;
     static uint8_t raw[PD_PARTY_SIZE * G2_MON];
     int n = read8(read, ctx, c->partyCount);
     if (n > PD_PARTY_SIZE) n = PD_PARTY_SIZE;
