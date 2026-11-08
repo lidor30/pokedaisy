@@ -148,6 +148,9 @@ int pk_nds_bgm_settle(const PkNdsFieldGame* game, uint32_t (*read32)(uint32_t ad
  * process no longer remembers, from a resume state taken while it was off. Emu thread. */
 void pk_nds_field_set_rates(const int32_t* triples, int n);
 
+/** Forget the previous RAM image's held rates after reset or state load. Emu thread. */
+void pk_nds_field_reset_wild(void);
+
 /** This frame's bits for [game], reading main RAM through [read32] (0 = unreadable). With [wildOff], WILD ENCOUNTERS
  * OFF: while the field is free, the current map's grass and surf encounter rates are held at 0 through [write32] (the
  * game never rolls a random encounter; fishing and scripted battles are untouched) - PK_NDS_FIELD_WILD_HELD while

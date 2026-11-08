@@ -22,6 +22,7 @@ add_executable(nds_dump
     ../../app/src/main/cpp/nds/pk_nds_field.cpp
     ../../app/src/main/cpp/nds/pk_nds_field_gpu.cpp
     ../../app/src/main/cpp/nds/pk_nds_call.cpp
+    ../../app/src/main/cpp/nds/pk_nds_call_melonds.cpp
     ../../app/src/main/cpp/nds/pk_nds_wide.cpp
     ../../app/src/main/cpp/nds/pk_nds_music.cpp)
 target_include_directories(nds_dump PRIVATE ../../app/src/main/cpp/nds)

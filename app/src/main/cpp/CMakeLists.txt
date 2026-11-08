@@ -102,8 +102,8 @@ target_link_libraries(core PUBLIC GLESv3 EGL)
 # ---------------------------------------------------------------------------
 # Our JNI bridge.
 # ---------------------------------------------------------------------------
-add_library(pokedaisy SHARED pokedaisy_jni.c pokedaisy_ra.c pk_call.c pk_host.c pk_cheats.c pk_coop.c pk_coop_field.c pk_coop_after.c pk_coop_lock.c pk_coop_link.c pk_coop_link_start.c pk_coop_link_wild.c pk_coop_link_story.c pk_coop_link_drop.c pk_coop_link_rewards.c pk_coop_link_end.c pk_coop_lock_jni.c pk_link.c pk_link_jni.c pk_rewind.c pk_savevf.c pk_wide.c pk_wide_gb.c pk_gb_field.c pk_gb_audio.c
-    nds/pk_nds.cpp nds/pk_nds_platform.cpp nds/pk_nds_field.cpp nds/pk_nds_field_gpu.cpp nds/pk_nds_call.cpp nds/pk_nds_wide.cpp
+add_library(pokedaisy SHARED pokedaisy_jni.c pokedaisy_ra.c pk_call.c pk_cheats.c pk_coop.c pk_coop_field.c pk_coop_after.c pk_coop_lock.c pk_coop_link.c pk_coop_link_start.c pk_coop_link_wild.c pk_coop_link_story.c pk_coop_link_drop.c pk_coop_link_rewards.c pk_coop_link_end.c pk_coop_lock_jni.c pk_link.c pk_link_jni.c pk_rewind.c pk_savevf.c pk_wide.c pk_wide_gb.c pk_gb_field.c pk_gb_audio.c
+    nds/pk_nds.cpp nds/pk_nds_platform.cpp nds/pk_nds_field.cpp nds/pk_nds_field_gpu.cpp nds/pk_nds_call.cpp nds/pk_nds_call_melonds.cpp nds/pk_nds_wide.cpp
     nds/pk_nds_music.cpp nds/pk_nds_gl.cpp)
 set_target_properties(pokedaisy PROPERTIES CXX_STANDARD 17 CXX_STANDARD_REQUIRED ON)
 # melonDS's headers test these (its own sources get them from its directory's add_definitions).
