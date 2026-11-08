@@ -180,11 +180,17 @@ class LinkActivity : ComponentActivity() {
         phase = Phase.STARTING
         val picked = slots.toList()
         thread(name = "pokedaisy-link-open") {
+            var refused: String? = null
             val list = picked.mapIndexed { i, rom ->
                 val copy = picked.take(i).count { it.absolutePath == rom.absolutePath }
                 val save = saveFor(rom, copy)
                 SaveBackups.snapshot(save)
+                RzipSave.unpackForPlay(save)?.let { refused = refused ?: it }   // RetroArch's compressed .srm
                 Game(rom, RomArchive.playable(rom, cacheDir) ?: rom, save)
+            }
+            refused?.let { why ->
+                runOnUiThread { phase = Phase.SETUP; notice = why }
+                return@thread
             }
             val ok = LinkCore.pkLinkOpen(list.map { it.playable.absolutePath }.toTypedArray(), list.map { it.save.absolutePath }.toTypedArray())
             Log.i(TAG, "open ${list.size} games: $ok (${list.joinToString { it.rom.name }})")
