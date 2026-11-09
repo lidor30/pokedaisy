@@ -14,7 +14,7 @@ native-capture/nds_dump/build/nds_dump ROM.nds SAVE.sav [--jit] < script.txt
 
 It boots with melonDS's FreeBIOS and generated firmware (no BIOS or firmware files), reads `SAVE.sav` if it exists and
 **writes every save the game makes back to it**: always give it a copy, never the player's save. `--jit` runs the app's
-JIT settings (no fast memory); without it, the interpreter. `NDS_BIOS_DIR=<folder>` boots with the real BIOS from that folder
+JIT settings (fast memory on, which melonDS turns off on macOS: test it on a device); without it, the interpreter. `NDS_BIOS_DIR=<folder>` boots with the real BIOS from that folder
 (`bios7.bin`, `bios9.bin`) instead, to rule FreeBIOS in or out.
 
 ### The GPU renderer (DS RESOLUTION)

@@ -521,8 +521,8 @@ int main(int argc, char** argv)
     static PkNdsHost host {onSave, onStop, nullptr};
 
     NDSArgs args;
-    // The app's JIT: no fast memory (pk_nds.cpp)
-    if (jit) args.JIT = JITArgs {32, true, true, false};
+    // The app's JIT (pk_nds.cpp): fast memory on, which melonDS turns off on macOS (IsFastMemSupported)
+    if (jit) args.JIT = JITArgs {32, true, true, true};
     else args.JIT = std::nullopt;
     if (const char* dir = getenv("NDS_BIOS_DIR")) {
         // The real BIOS (bios7.bin / bios9.bin in that folder) instead of FreeBIOS, to compare against

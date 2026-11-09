@@ -220,9 +220,12 @@ bool pk_nds_init(const char* romPath, const char* savePath, int sampleRate)
 
     NDSArgs args;
     args.OutputSampleRate = sampleRate;
-    // The JIT without fast memory: fast memory catches faults with a signal handler, which would sit beside
-    // crash reporting's and pk_wide.c's.
-    args.JIT = JITArgs {32, true, true, false};
+    // The JIT with fast memory: the DS's memory mapped where the compiled code reaches it directly, a fault mapping a
+    // page or sending the access to the slow path. The fault handler (ARMJIT_Memory::SigsegvHandler) is melonDS's own,
+    // set up with the JIT whether fast memory is on or not; it takes only faults in compiled code and passes the rest to
+    // the handler before it (crash reporting's, set up at app start; pk_wide.c's guard). Off where melonDS can't
+    // (IsFastMemSupported: page sizes other than 4 / 16 KB); 32-bit ARM has no JIT at all.
+    args.JIT = JITArgs {32, true, true, true};
     ds->nds = new NDS(std::move(args), &ds->host);
     ds->nds->Reset();
 

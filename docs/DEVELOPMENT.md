@@ -2974,7 +2974,8 @@ skipped - a state taken or loaded mid-skip, a restart, the thread switched on - 
 frame, which then read 3D lines not drawn yet: black rows on the Thor, never on the Mac, whose render thread kept up; the
 patch's `EnableRenderThread` starts none on a skipped frame now, and `RenderFrame` drops and logs any left over -
 nds_dump prints `3D: dropped ...`), its OpenGL renderer ported to OpenGL ES (DS RESOLUTION, below) and the
-JIT without fast memory. Our changes are one patch,
+JIT with fast memory (since 2026-11-09; melonDS's own fault handler, set up with the JIT either way, takes the faults in
+compiled code and passes the rest on to crash reporting's). Our changes are one patch,
 `third_party/patches/melonds-pokedaisy.patch`, applied to the submodule's working tree at configure time by
 `apply_melonds_patch.cmake` (once; a tree that has it is left alone): EXPAND's GPU3D hooks (every polygon past culling,
 the lists' swap at VBlank, the clipper), the software renderer's column range, fast-forward's frame skip
