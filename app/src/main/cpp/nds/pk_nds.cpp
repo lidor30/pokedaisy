@@ -299,6 +299,7 @@ void pk_nds_run_frame(void)
     NDS* nds = ds->nds;
     if (ds->scalePending) {
         ds->scalePending = false;
+        pk_nds_wide_sync();
         pk_nds_gl_set_scale(nds, ds->scaleWant);
     }
     bool gpu = pk_nds_gl_scale() > 1;
@@ -399,6 +400,7 @@ bool pk_nds_save_state(const char* path)
 {
     if (!ds) return false;
     Savestate st;
+    pk_nds_wide_sync();
     setArm9Shift(1);
     bool taken = ds->nds->DoSavestate(&st) && !st.Error;
     setArm9Shift(boostShift());
@@ -423,6 +425,7 @@ bool pk_nds_load_state(const char* path)
     memcpy(header, data.data(), sizeof(header));
     if (header[0] != STATE_MAGIC) return false;
     Savestate st(data.data() + 16, (u32) (data.size() - 16), false);
+    pk_nds_wide_sync();
     setArm9Shift(1);
     bool loaded = !st.Error && ds->nds->DoSavestate(&st) && !st.Error;
     setArm9Shift(boostShift());

@@ -386,6 +386,7 @@ static void recordShown()
 static bool saveState(const std::string& path)
 {
     Savestate st;
+    pk_nds_wide_sync();
     if (!nds->DoSavestate(&st) || st.Error) { fprintf(stderr, "savestate failed\n"); return false; }
     st.Finish();
     return writeFile(path, st.Buffer(), st.Length());
@@ -396,6 +397,7 @@ static bool loadState(const std::string& path)
     std::vector<u8> data = readFile(path.c_str());
     if (data.empty()) { fprintf(stderr, "can't read %s\n", path.c_str()); return false; }
     Savestate st(data.data(), (u32) data.size(), false);
+    pk_nds_wide_sync();
     if (st.Error || !nds->DoSavestate(&st) || st.Error) { fprintf(stderr, "loadstate failed\n"); return false; }
     return true;
 }
@@ -657,6 +659,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "gpu")) {
             // gpu N: DS RESOLUTION at N (1 = back to the software renderer)
             pk_nds_gl_capture(true);
+            pk_nds_wide_sync();
             int s = pk_nds_gl_set_scale(nds, (int) num(a));
             gpuOn = s > 1;
             printf("gpu: scale %d\n", s);
@@ -739,6 +742,7 @@ int main(int argc, char** argv)
             fflush(stdout);
         } else if (!strcmp(cmd, "threaded")) {
             // threaded 1 / 0: the 3D renderer on its own thread (the default, as the app runs it: pk_nds.cpp) / on this one
+            pk_nds_wide_sync();
             static_cast<SoftRenderer&>(nds->GPU.GetRenderer3D()).SetThreaded(num(a) != 0, nds->GPU);
         } else if (!strcmp(cmd, "ffmode")) {
             // ffmode GROUP PREFIX: from here on every command's frames run in the app's fast-forward pattern at GROUP

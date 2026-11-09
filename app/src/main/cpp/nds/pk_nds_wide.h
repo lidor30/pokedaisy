@@ -2,9 +2,9 @@
 //
 // How: every polygon the game submits (melonDS's GPU3D WideSubmitHook) is also clipped again, shifted in clip space by
 // about a screen, into polygon lists of our own - one per slice round the screen: left, right, above, below and the
-// four corners - swapped with the game's at VBlank (WideSwapHook). A second, unthreaded software renderer draws each
-// slice after the frame, only the rows and columns the window shown needs, and the wide frame is the game's own
-// 256 x 192, untouched, with the slices round it. The game's polygon RAM, counters and picture are never touched: the
+// four corners - swapped with the game's at VBlank (WideSwapHook). Software renderers of our own draw the slices on
+// helper threads while the next frame runs (done by its VBlank), only the rows and columns the window shown needs,
+// and the wide frame is the game's own 256 x 192, untouched, with the slices round it. The game's polygon RAM, counters and picture are never touched: the
 // middle is the real frame, pixel for pixel.
 //
 // Shared by the app (pk_nds.cpp) and the headless tool (native-capture/nds_dump's wide / wideshot / widecheck).
@@ -28,7 +28,7 @@ void pk_nds_wide_set(melonDS::NDS* nds, bool on);
  * goes on past the screen, both platforms included), scrolled as the screen is; clear there, the backdrop.
  *
  * After each frame: composes the wide frame from the game's top screen ([topArgb]: melonDS's 0xAARRGGBB, 256 x 192)
- * and the slices drawn after the last frame, then draws the slices for the next one. [draw] false skips the composing
+ * and the slices drawn after the last frame, then hands the slices for the next one to the helpers. [draw] false skips the composing
  * (a frame no one sees), [drawNext] false the slices (the next frame won't be seen either: fast-forward shows one frame
  * of each group, and the slices were two thirds of a frame's cost); [margins] false leaves them black (off the
  * overworld: a battle, a menu). Returns whether a wide frame was composed. */
@@ -57,6 +57,11 @@ void pk_nds_wide_check(melonDS::NDS* nds, const uint32_t* topArgb, int* compared
  * hardware reads it (its map and tiles in VRAM, 16 / 256 colours, flips, the standard palette): 0x8000 | BGR555, or 0
  * where clear. For a battle's wide frame and nds_dump's bgdump. */
 uint16_t pk_nds_bg_pixel(melonDS::NDS* nds, int bg, int bx, int by);
+
+/** Waits for the slices still being drawn (they draw while the next frame runs, until its VBlank): call before
+ * anything that changes the emulator's state other than running it (a state load or save, a reset, another 3D
+ * renderer). */
+void pk_nds_wide_sync();
 
 /** How many polygons each slice got last frame (8: above-left, above, above-right, left, right, below-left, below,
  * below-right): a debugging read. */
