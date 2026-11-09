@@ -10,6 +10,9 @@ enum class DsGame { Unsupported, Platinum, Johto, Black, White, Black2, White2 }
 bool ds_unova(DsGame game);
 bool ds_unova_sequel(DsGame game);
 DsGame ds_companion_game(const char* sha1);
+// Maps the digest of a known decrypted dump to the digest of the retail dump it
+// is the same ROM as, so every digest check downstream sees one id per game.
+const char* ds_canonical_sha1(const char* sha1);
 int ds_egg_icon(DsGame game);
 struct DsMon {
   int species=0, level=0, hp=0, maxHp=0, heldItem=0;

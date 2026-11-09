@@ -37,6 +37,15 @@ std::string utf16_text(const uint8_t* p,int count){
 bool ds_unova(DsGame game){return game==DsGame::Black||game==DsGame::White||ds_unova_sequel(game);}
 bool ds_unova_sequel(DsGame game){return game==DsGame::Black2||game==DsGame::White2;}
 int ds_egg_icon(DsGame game){return ds_unova(game)?650:pd_ds_data::iconEgg;}
+const char* ds_canonical_sha1(const char* digest){
+  using namespace pd_ds_data;
+  // Decrypted dumps: the secure area differs, the rest of the file (every offset the
+  // companion reads) is the retail layout. Listed per dump, so only ROMs somebody
+  // has checked are accepted.
+  if(!std::strcmp(digest,"1492557711d8cd46628fe3eeceae1dec52d33e70"))return heartGoldSha1;  // HeartGold (IPKE rev 0)
+  if(!std::strcmp(digest,"d94d02ec44c8e2dfc9b744bb888cb64c49678dc2"))return black2Sha1;     // Black 2 (IREO rev 0)
+  return digest;
+}
 DsGame ds_companion_game(const char* digest){
   using namespace pd_ds_data;
   if(!std::strcmp(digest,sha1))return DsGame::Platinum;

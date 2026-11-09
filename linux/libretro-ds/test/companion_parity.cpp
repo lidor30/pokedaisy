@@ -13,6 +13,10 @@ int main(int argc,char**argv) {
   assert(argc==4 || argc==7);
   using G=DsGame;
   const int field=PK_NDS_FIELD_KNOWN|PK_NDS_FIELD_SCREEN;
+  assert(ds_companion_game(ds_canonical_sha1("1492557711d8cd46628fe3eeceae1dec52d33e70"))==G::Johto);
+  assert(ds_companion_game(ds_canonical_sha1("d94d02ec44c8e2dfc9b744bb888cb64c49678dc2"))==G::Black2);
+  assert(ds_companion_game(ds_canonical_sha1("4fcded0e2713dc03929845de631d0932ea2b5a37"))==G::Johto);
+  assert(ds_companion_game(ds_canonical_sha1("9d13e2623003b63e61a60d92360ccb5b84c03f39"))==G::Unsupported);
   assert(ds_auto_run(field,true,false));
   assert(!ds_auto_run(field,false,false) && !ds_auto_run(field,true,true));
   assert(!ds_auto_run(PK_NDS_FIELD_KNOWN,true,false));
