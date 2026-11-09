@@ -75,11 +75,11 @@ A few things worth knowing:
 
 ## DS CPU boost: fewer slowdowns
 
-The DS games sometimes can't finish a frame in time and hold the last picture a little longer: walking in HeartGold and SoulSilver stutters every few steps, more so with a Pokémon following you. That happens on a real DS too. `DS CPU BOOST` (on by default) runs the DS's processor twice as fast, so the game finishes its frames and walking stays smooth. The game itself doesn't speed up: it still waits for each frame as it always does.
+The DS games sometimes can't finish a frame in time and hold the last picture a little longer: walking in HeartGold and SoulSilver stutters every few steps, more so with a Pokémon following you. That happens on a real DS too. `DS CPU BOOST` runs the DS's processor twice as fast, so the game finishes its frames and walking stays smooth. The game itself doesn't speed up: it still waits for each frame as it always does.
 
 The overworld in these games runs at 30 frames a second on a DS as well, so that's as smooth as walking gets; the boost removes the hiccups on top of it.
 
-It costs your device more work. If a DS game runs slower with it on, or your device runs warm, turn it off. On the companion, the row only shows while a DS game is running.
+It costs your device more work, so it starts on only where the device has the speed for it. On a handheld with a slower processor (no core faster than 2.3 GHz, or less than 3 GB of memory) it starts off, because there the boost takes more time than it saves. Whatever it started as, you can switch it: if a DS game runs slower with it on, or your device runs warm, turn it off. On the companion, the row only shows while a DS game is running.
 
 ## Status bar
 
