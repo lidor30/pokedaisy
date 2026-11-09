@@ -60,7 +60,7 @@ X Y`, joined with commas (`A,UP`), or `NONE`.
 | `widecount` | Polygons in each slice this frame. |
 | `bgdump BG FILE` | Engine A's text BG whole, as the hardware reads it (clear = magenta). |
 | `skipdraw N` | Fast-forward's frame skip: N = 1 skips drawing, as the app does on a frame nobody sees. |
-| `threaded 1/0` | The 3D renderer on its own thread (off by default, as the app runs it since 2026-10-20: the threaded one raced fast-forward on the Thor). |
+| `threaded 1/0` | The 3D renderer on its own thread (on by default, as the app runs it) or on the emulation thread. A run with `ffmode` must give the same frames either way; a `3D: dropped ... stale line ...` line means a render was started that no frame waited for (it raced fast-forward on the Thor until 2026-11-09). |
 | `ffmode G PREFIX` / `ffmode off` | From here on, the app's fast-forward pattern at G frames a refresh (EmulatorEngine's `pkNdsSetDraw`; 0 = every frame drawn), each frame drawn written as `PREFIX_<frame>.png` (and `_wide.png` with `wide` on). Run one script with `ffmode 0` and `ffmode 3` in two processes and compare the files frame by frame: they must be equal. |
 | `ffgroup G` | Changes ffmode's G mid-run, as the app does when its frames a refresh change (SMART's 1x, FF off, the refresh pacing). |
 | `ffguard 1/0` | `pk_nds_run_frame`'s guard on (default) / off: a frame whose 3D the one before skipped isn't drawn. Off shows the flash it prevents. |

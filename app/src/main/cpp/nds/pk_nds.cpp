@@ -241,11 +241,12 @@ bool pk_nds_init(const char* romPath, const char* savePath, int sampleRate)
     ds->nds->SetNDSCart(std::move(cart));
     ds->nds->Reset();
     ds->nds->SetupDirectBoot("rom.nds");
-    // The 3D on the emulation thread, not melonDS's render thread: with fast-forward's frame skip the threaded renderer
-    // let a shown frame's 2D read 3D lines it hadn't drawn yet on the Thor (black from a row down, sometimes the whole
-    // picture; never headless on the Mac, whose render thread kept up). Rendered here only for the frames shown, 3x
-    // still holds (~180 frames a second, HeartGold's overworld and menus, 2026-10-20).
-    static_cast<SoftRenderer&>(ds->nds->GPU.GetRenderer3D()).SetThreaded(false, ds->nds->GPU);
+    // The 3D on melonDS's render thread, beside the emulation (HeartGold's overworld, headless: a quarter less time a
+    // frame). From 2026-10-20 to 2026-11-09 it ran on the emulation thread: with fast-forward's frame skip, a frame
+    // shown read 3D lines not drawn yet on the Thor (black from a row down). The cause was a render started for a
+    // skipped frame (a state taken or loaded mid-skip, a restart, the thread switched on), whose line signals the next
+    // frame took; the patch's SoftRenderer::EnableRenderThread starts none now, and RenderFrame drops any left over.
+    static_cast<SoftRenderer&>(ds->nds->GPU.GetRenderer3D()).SetThreaded(true, ds->nds->GPU);
     setClock();
     setArm9Shift(boostShift());
     ds->nds->Start();

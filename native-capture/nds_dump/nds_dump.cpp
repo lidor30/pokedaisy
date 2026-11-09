@@ -550,6 +550,8 @@ int main(int argc, char** argv)
     nds->SetNDSCart(std::move(cart));
     nds->Reset();
     nds->SetupDirectBoot("rom.nds");
+    // The 3D on its own thread, as the app runs it (pk_nds_init); `threaded 0` puts it on this one
+    static_cast<SoftRenderer&>(nds->GPU.GetRenderer3D()).SetThreaded(true, nds->GPU);
     nds->Start();
     fprintf(stderr, "booted %s, save %u bytes\n", argv[1], nds->GetNDSSaveLength());
 
@@ -736,7 +738,7 @@ int main(int argc, char** argv)
                 frames, cmpTotal, diffTotal, farTotal, badFrames);
             fflush(stdout);
         } else if (!strcmp(cmd, "threaded")) {
-            // threaded 1 / 0: the 3D renderer on its own thread, as the app runs it (pk_nds.cpp)
+            // threaded 1 / 0: the 3D renderer on its own thread (the default, as the app runs it: pk_nds.cpp) / on this one
             static_cast<SoftRenderer&>(nds->GPU.GetRenderer3D()).SetThreaded(num(a) != 0, nds->GPU);
         } else if (!strcmp(cmd, "ffmode")) {
             // ffmode GROUP PREFIX: from here on every command's frames run in the app's fast-forward pattern at GROUP

@@ -2968,8 +2968,12 @@ Platinum (USA rev 1, `CPUE`; France rev 0, `CPUF`), HeartGold / SoulSilver (USA,
 the Gen 5 carts are DSi enhanced and run in DS mode) run on melonDS, with the companion, EXPAND and STEADY music.
 
 **The core.** `third_party/melonds` (a submodule pinned to upstream 1.1) builds its core library only, with the
-software 3D renderer (unthreaded: on the emulation thread, since melonDS's render thread raced fast-forward's frame skip
-on the Thor and showed frames with black rows), its OpenGL renderer ported to OpenGL ES (DS RESOLUTION, below) and the
+software 3D renderer on melonDS's render thread (a quarter less time a frame than on the emulation thread, HeartGold's
+overworld headless; from 2026-10-20 to 2026-11-09 it ran unthreaded, because a render started for a frame fast-forward
+skipped - a state taken or loaded mid-skip, a restart, the thread switched on - left its 192 line signals for the next
+frame, which then read 3D lines not drawn yet: black rows on the Thor, never on the Mac, whose render thread kept up; the
+patch's `EnableRenderThread` starts none on a skipped frame now, and `RenderFrame` drops and logs any left over -
+nds_dump prints `3D: dropped ...`), its OpenGL renderer ported to OpenGL ES (DS RESOLUTION, below) and the
 JIT without fast memory. Our changes are one patch,
 `third_party/patches/melonds-pokedaisy.patch`, applied to the submodule's working tree at configure time by
 `apply_melonds_patch.cmake` (once; a tree that has it is left alone): EXPAND's GPU3D hooks (every polygon past culling,

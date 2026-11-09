@@ -1033,10 +1033,26 @@ index ab9985ce..15ef82b8 100644
  }
  )";
 diff --git a/src/GPU3D_Soft.cpp b/src/GPU3D_Soft.cpp
-index 9f6e2d73..729a452c 100644
+index 9f6e2d73..cc2f503b 100644
 --- a/src/GPU3D_Soft.cpp
 +++ b/src/GPU3D_Soft.cpp
-@@ -843,7 +843,7 @@ void SoftRenderer::RenderShadowMaskScanline(const GPU3D& gpu3d, RendererPolygon*
+@@ -89,6 +89,15 @@ void SoftRenderer::SetupRenderThread(GPU& gpu)
+ 
+ void SoftRenderer::EnableRenderThread()
+ {
++    // PokeDaisy: not for a frame fast-forward skipped (SkippedFrame): its 2D takes no lines and VCount144 waits for no
++    // render, so the render's 192 line signals and its done would be left for the next frame, which then reads 3D lines
++    // the thread hasn't drawn yet. A restart (a VCOUNT write, the ARM7 waking), a state taken or loaded or the thread
++    // switched on mid-skip all come here; the next frame shown renders whole instead (RenderAnyway).
++    if (Threaded && Sema_RenderStart && SkippedFrame)
++    {
++        RenderAnyway = true;
++        return;
++    }
+     if (Threaded && Sema_RenderStart)
+     {
+         Platform::Semaphore_Post(Sema_RenderStart);
+@@ -843,7 +852,7 @@ void SoftRenderer::RenderShadowMaskScanline(const GPU3D& gpu3d, RendererPolygon*
      s32 x = xstart;
      Interpolator<0> interpX(xstart, xend+1, wl, wr, polygon->WBuffer);
  
@@ -1045,7 +1061,7 @@ index 9f6e2d73..729a452c 100644
      s32 xlimit;
  
      // for shadow masks: set stencil bits where the depth test fails.
-@@ -853,7 +853,7 @@ void SoftRenderer::RenderShadowMaskScanline(const GPU3D& gpu3d, RendererPolygon*
+@@ -853,7 +862,7 @@ void SoftRenderer::RenderShadowMaskScanline(const GPU3D& gpu3d, RendererPolygon*
      edge = yedge | 0x1;
      xlimit = xstart+l_edgelen;
      if (xlimit > xend+1) xlimit = xend+1;
@@ -1054,7 +1070,7 @@ index 9f6e2d73..729a452c 100644
  
      if (!l_filledge) x = xlimit;
      else
-@@ -878,10 +878,11 @@ void SoftRenderer::RenderShadowMaskScanline(const GPU3D& gpu3d, RendererPolygon*
+@@ -878,10 +887,11 @@ void SoftRenderer::RenderShadowMaskScanline(const GPU3D& gpu3d, RendererPolygon*
      }
  
      // part 2: polygon inside
@@ -1067,7 +1083,7 @@ index 9f6e2d73..729a452c 100644
      if (wireframe && !edge) x = std::max(x, xlimit);
      else for (; x < xlimit; x++)
      {
-@@ -906,7 +907,7 @@ void SoftRenderer::RenderShadowMaskScanline(const GPU3D& gpu3d, RendererPolygon*
+@@ -906,7 +916,7 @@ void SoftRenderer::RenderShadowMaskScanline(const GPU3D& gpu3d, RendererPolygon*
      // part 3: right edge
      edge = yedge | 0x2;
      xlimit = xend+1;
@@ -1076,7 +1092,7 @@ index 9f6e2d73..729a452c 100644
  
      if (r_filledge)
      for (; x < xlimit; x++)
-@@ -1093,7 +1094,7 @@ void SoftRenderer::RenderPolygonScanline(const GPU& gpu, RendererPolygon* rp, s3
+@@ -1093,7 +1103,7 @@ void SoftRenderer::RenderPolygonScanline(const GPU& gpu, RendererPolygon* rp, s3
      s32 x = xstart;
      Interpolator<0> interpX(xstart, xend+1, wl, wr, polygon->WBuffer);
  
@@ -1085,7 +1101,7 @@ index 9f6e2d73..729a452c 100644
      s32 xlimit;
  
      s32 xcov = 0;
-@@ -1102,7 +1103,7 @@ void SoftRenderer::RenderPolygonScanline(const GPU& gpu, RendererPolygon* rp, s3
+@@ -1102,7 +1112,7 @@ void SoftRenderer::RenderPolygonScanline(const GPU& gpu, RendererPolygon* rp, s3
      edge = yedge | 0x1;
      xlimit = xstart+l_edgelen;
      if (xlimit > xend+1) xlimit = xend+1;
@@ -1094,7 +1110,7 @@ index 9f6e2d73..729a452c 100644
      if (l_edgecov & (1<<31))
      {
          xcov = (l_edgecov >> 12) & 0x3FF;
-@@ -1200,10 +1201,11 @@ void SoftRenderer::RenderPolygonScanline(const GPU& gpu, RendererPolygon* rp, s3
+@@ -1200,10 +1210,11 @@ void SoftRenderer::RenderPolygonScanline(const GPU& gpu, RendererPolygon* rp, s3
      }
  
      // part 2: polygon inside
@@ -1107,7 +1123,7 @@ index 9f6e2d73..729a452c 100644
  
      if (wireframe && !edge) x = std::max(x, xlimit);
      else
-@@ -1291,7 +1293,7 @@ void SoftRenderer::RenderPolygonScanline(const GPU& gpu, RendererPolygon* rp, s3
+@@ -1291,7 +1302,7 @@ void SoftRenderer::RenderPolygonScanline(const GPU& gpu, RendererPolygon* rp, s3
      // part 3: right edge
      edge = yedge | 0x2;
      xlimit = xend+1;
@@ -1116,7 +1132,7 @@ index 9f6e2d73..729a452c 100644
      if (r_edgecov & (1<<31))
      {
          xcov = (r_edgecov >> 12) & 0x3FF;
-@@ -1408,6 +1410,60 @@ void SoftRenderer::RenderScanline(const GPU& gpu, s32 y, int npolys)
+@@ -1408,6 +1419,60 @@ void SoftRenderer::RenderScanline(const GPU& gpu, s32 y, int npolys)
      }
  }
  
@@ -1177,7 +1193,7 @@ index 9f6e2d73..729a452c 100644
  u32 SoftRenderer::CalculateFogDensity(const GPU3D& gpu3d, u32 pixeladdr) const
  {
      u32 z = DepthBuffer[pixeladdr];
-@@ -1458,7 +1514,7 @@ void SoftRenderer::ScanlineFinalPass(const GPU3D& gpu3d, s32 y)
+@@ -1458,7 +1523,7 @@ void SoftRenderer::ScanlineFinalPass(const GPU3D& gpu3d, s32 y)
          // edge marking
          // only applied to topmost pixels
  
@@ -1186,7 +1202,7 @@ index 9f6e2d73..729a452c 100644
          {
              u32 pixeladdr = FirstPixelOffset + (y*ScanlineWidth) + x;
  
-@@ -1506,7 +1562,7 @@ void SoftRenderer::ScanlineFinalPass(const GPU3D& gpu3d, s32 y)
+@@ -1506,7 +1571,7 @@ void SoftRenderer::ScanlineFinalPass(const GPU3D& gpu3d, s32 y)
          u32 fogB = (gpu3d.RenderFogColor >> 9) & 0x3E; if (fogB) fogB++;
          u32 fogA = (gpu3d.RenderFogColor >> 16) & 0x1F;
  
@@ -1195,7 +1211,7 @@ index 9f6e2d73..729a452c 100644
          {
              u32 pixeladdr = FirstPixelOffset + (y*ScanlineWidth) + x;
              u32 density, srccolor, srcR, srcG, srcB, srcA;
-@@ -1571,7 +1627,7 @@ void SoftRenderer::ScanlineFinalPass(const GPU3D& gpu3d, s32 y)
+@@ -1571,7 +1636,7 @@ void SoftRenderer::ScanlineFinalPass(const GPU3D& gpu3d, s32 y)
          // edges were flagged and their coverages calculated during rendering
          // this is where such edge pixels are blended with the pixels underneath
  
@@ -1204,7 +1220,7 @@ index 9f6e2d73..729a452c 100644
          {
              u32 pixeladdr = FirstPixelOffset + (y*ScanlineWidth) + x;
  
-@@ -1649,15 +1705,20 @@ void SoftRenderer::ClearBuffers(const GPU& gpu)
+@@ -1649,15 +1714,20 @@ void SoftRenderer::ClearBuffers(const GPU& gpu)
      }
  
      // clear the screen
@@ -1227,7 +1243,7 @@ index 9f6e2d73..729a452c 100644
              {
                  u16 val2 = gpu.ReadVRAMFlat_Texture<u16>(0x40000 + (yoff << 9) + (xoff << 1));
                  u16 val3 = gpu.ReadVRAMFlat_Texture<u16>(0x60000 + (yoff << 9) + (xoff << 1));
-@@ -1693,9 +1754,9 @@ void SoftRenderer::ClearBuffers(const GPU& gpu)
+@@ -1693,9 +1763,9 @@ void SoftRenderer::ClearBuffers(const GPU& gpu)
  
          polyid |= (gpu.GPU3D.RenderClearAttr1 & 0x8000);
  
@@ -1239,7 +1255,7 @@ index 9f6e2d73..729a452c 100644
              {
                  u32 pixeladdr = FirstPixelOffset + y + x;
                  ColorBuffer[pixeladdr] = color;
-@@ -1736,19 +1797,30 @@ void SoftRenderer::RenderPolygons(const GPU& gpu, bool threaded, Polygon** polyg
+@@ -1736,22 +1806,45 @@ void SoftRenderer::RenderPolygons(const GPU& gpu, bool threaded, Polygon** polyg
  
  void SoftRenderer::VCount144(GPU& gpu)
  {
@@ -1271,7 +1287,22 @@ index 9f6e2d73..729a452c 100644
  
      if (RenderThreadRunning.load(std::memory_order_relaxed))
      {
-@@ -1803,7 +1875,7 @@ void SoftRenderer::RenderThreadFunc(GPU& gpu)
++        // PokeDaisy: the frame before has taken every line it was given by now (its 2D lines are drawn) and waited for its
++        // render; a signal still here came from a render nobody waited for, and would let this frame's 2D read 3D lines the
++        // thread hasn't drawn yet (black from a row down, on a device whose render thread is slower than its 2D).
++        // EnableRenderThread no longer starts one on a skipped frame; this catches any other way.
++        if (!RenderThreadRendering)
++        {
++            int lines = 0, done = 0;
++            while (Platform::Semaphore_TryWait(Sema_ScanlineCount, 0)) lines++;
++            while (Platform::Semaphore_TryWait(Sema_RenderDone, 0)) done++;
++            if (lines || done)
++                Platform::Log(Platform::LogLevel::Warn, "3D: dropped %d stale line and %d done signals\n", lines, done);
++        }
+         // "Render thread, you're up! Get moving."
+         Platform::Semaphore_Post(Sema_RenderStart);
+     }
+@@ -1803,7 +1896,7 @@ void SoftRenderer::RenderThreadFunc(GPU& gpu)
  
  u32* SoftRenderer::GetLine(int line)
  {
