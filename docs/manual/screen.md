@@ -81,6 +81,10 @@ The overworld in these games runs at 30 frames a second on a DS as well, so that
 
 It costs your device more work, so it starts on only where the device has the speed for it. On a handheld with a slower processor (no core faster than 2.3 GHz, or less than 3 GB of memory) it starts off, because there the boost takes more time than it saves. Whatever it started as, you can switch it: if a DS game runs slower with it on, or your device runs warm, turn it off. On the companion, the row only shows while a DS game is running.
 
+### When your device can't keep up
+
+On a device that can't run a DS game at full speed, PokeDaisy keeps the game at the DS's own speed by drawing fewer pictures: it draws one frame and skips drawing the next one (or up to three) while the game itself keeps running. The music, walking and battles stay at their real pace, and the picture is a little less smooth. It happens by itself, only when it's needed, and stops when the game is light enough again. On a device so slow that skipping wouldn't bring the speed back, every frame is drawn and the game simply runs slower. Fast-forward does its own skipping, so none of this applies while it's on.
+
 ## Status bar
 
 `STATUS BAR` adds a thin strip with the game's name, where you are, your money, the time and the battery. It's handy when the game is full screen and you can't see the device's own clock.
