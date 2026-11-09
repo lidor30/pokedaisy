@@ -144,8 +144,16 @@ static void tabs(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
         // Under the letters, not through them: the tab's last rows.
         if (open) pd_fill(c, tx, y + TAB_H - f - 2, tw, 2, p->cursor);
         // A backend's bag keys its tabs by its own pocket ids (ui->bagPocket), the shared one by the tab's place.
-        const int hitId = HIT_BAG_TAB + (ui->bagSource ? v->pockets[i] : i);
+        const int key = ui->bagSource ? v->pockets[i] : i;
+        const int hitId = HIT_BAG_TAB + key;
         if (ui->pressedId == hitId) pd_fill(c, x + f, y + f, w - 2 * f, 1, p->cursor);
+        // The D-pad cursor, on the tab it chose (not on the open one, until it is moved there).
+        if (ui->bagTabs && ui->bagTabKey == key) {
+            pd_fill(c, x, y, w, 2, PD_VALUE);
+            pd_fill(c, x, y + TAB_H - 2, w, 2, PD_VALUE);
+            pd_fill(c, x, y, 2, TAB_H, PD_VALUE);
+            pd_fill(c, x + w - 2, y, 2, TAB_H, PD_VALUE);
+        }
         ui_add_hit(ui, x, y, w, TAB_H, hitId);
     }
 }
@@ -260,6 +268,15 @@ static void item_picker(struct pd_ui* ui, struct pd_canvas* c, const struct pd_g
         pd_text_right(c, x + w - 40, pd_text_y(ry, rowH), buf, PD_VALUE, PD_VALUE_SHADOW);
         if (ok) ui_add_hit(ui, x + 30, ry, w - 60, rowH, HIT_ITEM_MOVE + i);
     }
+}
+
+int pd_ui_bag_tab_step(const int* keys, int count, int key, int dy) {
+    if (count <= 0) return key;
+    int at = 0;
+    for (int i = 0; i < count; i++)
+        if (keys[i] == key) at = i;
+    at += dy > 0 ? 1 : dy < 0 ? -1 : 0;
+    return keys[at < 0 ? 0 : at >= count ? count - 1 : at];
 }
 
 void pd_ui_bag_cycle_sort(struct pd_ui* ui) {

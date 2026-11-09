@@ -1140,6 +1140,8 @@ RETRO_API void retro_run(void) {
   }
 
   if (companion) {
+    if (ui.tab != PD_TAB_BAG || ui.overlay != PD_OVERLAY_NONE)
+      ui.bagTabs = false; // the pocket tab bar's cursor lives only on the bag
     // The finger over the companion, as the 3DS's stylus: down every frame it's held (drags scroll), then up.
     if (touchDown)
       pd_ui_touch(&ui, touchX, touchY, true);
@@ -1152,6 +1154,10 @@ RETRO_API void retro_run(void) {
         map_control(&ui, down(RIGHT) - down(LEFT), down(DOWN) - down(UP), down(A), backing, down(SELECT), &closeMap);
     if (mapHandled) {
       if (closeMap) companion = false;
+    } else if (backing && ui.tab == PD_TAB_BAG && ui.bagTabs && ui.overlay == PD_OVERLAY_NONE) {
+      ui.bagTabs = false; // B on the pocket tab bar: back to the list
+      focusId = -1;
+      focus_new_screen();
     } else if (backing) {
       const bool places = ui.overlay == PD_OVERLAY_PLACES;
       const int slot = ui.tab == PD_TAB_PARTY ? ui.summarySlot : -1;
@@ -1184,17 +1190,41 @@ RETRO_API void retro_run(void) {
       }
       const bool partySummary = ui.tab == PD_TAB_PARTY && ui.summarySlot >= 0 &&
           ui.summarySlot < snap.partyCount && ui.overlay == PD_OVERLAY_NONE;
-      if (partySummary) {
+      const bool bagBar = ui.tab == PD_TAB_BAG && ui.overlay == PD_OVERLAY_NONE && !ui.itemPicking &&
+          (ui.bagTabs || (down(LEFT) && ui.bagTabCount > 1));
+      if (bagBar) {
+        // The pocket tab bar. LEFT from the list goes to it, on the open pocket (closing an open item in the same press);
+        // up / down walk it, A opens the pocket under the cursor, RIGHT (B, above) goes back to the list.
+        if (!ui.bagTabs) {
+          ui.bagSelected = -1;
+          ui.bagTabs = true;
+          ui.bagTabKey = ui.bagPocket;
+          focusId = -1;
+        } else {
+          int keys[PD_POCKET_COUNT + 1];
+          const int n = ui.bagTabCount < PD_POCKET_COUNT + 1 ? ui.bagTabCount : PD_POCKET_COUNT + 1;
+          for (int i = 0; i < n; i++)
+            keys[i] = i;
+          if (down(UP) || down(DOWN))
+            ui.bagTabKey = pd_ui_bag_tab_step(keys, n, ui.bagTabKey, down(DOWN) - down(UP));
+          if (down(A)) {
+            ui.bagPocket = ui.bagTabKey;
+            ui.bagScroll = 0;
+            ui.bagSelected = -1;
+            ui.bagTabs = false;
+            focusId = -1;
+            focus_new_screen();
+          } else if (down(RIGHT)) {
+            ui.bagTabs = false;
+            focusId = -1;
+            focus_new_screen();
+          }
+        }
+      } else if (partySummary) {
         pd_ui_party_summary_control(&ui, &snap, down(RIGHT) - down(LEFT), down(DOWN) - down(UP), down(A), down(SELECT));
       } else if (bag_browsing(&ui)) {
-        const int dx = down(RIGHT) - down(LEFT);
         if (down(SELECT)) {
           pd_ui_bag_cycle_sort(&ui);
-          focusId = -1;
-          focus_new_screen();
-        } else if (dx && ui.bagTabCount > 1) {
-          ui.bagPocket = (ui.bagPocket + dx + ui.bagTabCount) % ui.bagTabCount;
-          ui.bagScroll = 0;
           focusId = -1;
           focus_new_screen();
         } else {
@@ -1422,7 +1452,8 @@ RETRO_API void retro_run(void) {
     if (ui.tab != PD_TAB_GUIDE || (ui.overlay != PD_OVERLAY_NONE && ui.overlay != PD_OVERLAY_GUIDE_NOTICE)) {
       const int focus = focus_after_draw(&ui, focus_resolve(&ui));
       if (ui.overlay != PD_OVERLAY_NONE ||
-          (ui.tab != PD_TAB_SETTINGS && (ui.tab != PD_TAB_PARTY || ui.summarySlot < 0)))
+          (ui.tab != PD_TAB_SETTINGS && (ui.tab != PD_TAB_PARTY || ui.summarySlot < 0) &&
+           !(ui.tab == PD_TAB_BAG && ui.bagTabs)))
         focus_draw(&ui, focus);
     }
   } else if (quickOpen && ovPixels) {

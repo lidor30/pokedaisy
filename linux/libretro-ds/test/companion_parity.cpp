@@ -240,12 +240,48 @@ int main(int argc,char**argv) {
     press(RETRO_DEVICE_ID_JOYPAD_R);
     assert(ui.frame.tab==PD_TAB_BAG);
     draw();
-    press(RETRO_DEVICE_ID_JOYPAD_LEFT);
-    int lastPocket=0;
-    for(const auto& item:s.bag)lastPocket=std::max(lastPocket,item.pocket+1);
-    assert(lastPocket>0 && ui.pocket==lastPocket);
-    press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
-    assert(ui.pocket==0);
+    {
+      // The bag's pockets are a vertical tab bar. LEFT from the list goes to it, on the open pocket; up / down walk
+      // it (stopping at the ends) without opening anything, A opens the pocket under the cursor, RIGHT / B go back.
+      std::vector<int> keys{0};
+      for(int pocket=1;pocket<=16;++pocket)
+        for(const auto& item:s.bag)if(item.pocket+1==pocket){keys.push_back(pocket);break;}
+      assert(keys.size()>2 && ui.pocket==0 && ui.bagTabKey==-1);
+      press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+      assert(ui.pocket==0 && ui.bagTabKey==-1);
+      press(RETRO_DEVICE_ID_JOYPAD_LEFT);
+      assert(ui.bagTabKey==0 && ui.pocket==0);
+      press(RETRO_DEVICE_ID_JOYPAD_UP);
+      assert(ui.bagTabKey==0);
+      press(RETRO_DEVICE_ID_JOYPAD_DOWN);
+      assert(ui.bagTabKey==keys[1] && ui.pocket==0);
+      for(size_t i=0;i<keys.size()+2;++i)press(RETRO_DEVICE_ID_JOYPAD_DOWN);
+      assert(ui.bagTabKey==keys.back() && ui.pocket==0);
+      press(RETRO_DEVICE_ID_JOYPAD_A);
+      assert(ui.pocket==keys.back() && ui.bagTabKey==-1 && !ui.details && ui.scroll==0);
+      draw();
+      press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+      assert(ui.pocket==keys.back() && ui.bagTabKey==-1);
+      press(RETRO_DEVICE_ID_JOYPAD_LEFT);
+      assert(ui.bagTabKey==keys.back());
+      press(RETRO_DEVICE_ID_JOYPAD_UP);
+      assert(ui.bagTabKey==keys[keys.size()-2] && ui.pocket==keys.back());
+      press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+      assert(ui.bagTabKey==-1 && ui.pocket==keys.back());
+      press(RETRO_DEVICE_ID_JOYPAD_LEFT);
+      press(RETRO_DEVICE_ID_JOYPAD_B);
+      assert(ui.bagTabKey==-1 && ui.pocket==keys.back() && ui.frame.tab==PD_TAB_BAG);
+      // An open item closes with the same LEFT that goes to the bar.
+      press(RETRO_DEVICE_ID_JOYPAD_A);
+      assert(ui.details && ui.bagTabKey==-1);
+      draw();
+      press(RETRO_DEVICE_ID_JOYPAD_LEFT);
+      assert(!ui.details && ui.bagTabKey==keys.back());
+      for(size_t i=0;i<keys.size();++i)press(RETRO_DEVICE_ID_JOYPAD_UP);
+      press(RETRO_DEVICE_ID_JOYPAD_A);
+      assert(ui.pocket==0 && ui.bagTabKey==-1);
+      draw();
+    }
     for(int sort:{1,2,0}){
       press(RETRO_DEVICE_ID_JOYPAD_SELECT);
       assert(ui.frame.bagSort==sort && ui.scroll==0);

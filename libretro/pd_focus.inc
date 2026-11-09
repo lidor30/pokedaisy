@@ -21,7 +21,7 @@ static bool bag_browsing(const struct pd_ui *u) {
 }
 static bool focusable(const struct pd_ui *u, int id) {
   if (bag_browsing(u)) return id >= HIT_BAG_ROW && id < HIT_BAG_ROW_END;
-  return !(id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) && id != HIT_MORE && id != HIT_FF && id != HIT_SCRIM &&
+  return !(id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) && !(id >= HIT_BAG_TAB && id < HIT_BAG_LIST) && id != HIT_MORE && id != HIT_FF && id != HIT_SCRIM &&
          id != HIT_SHOULDER_L && id != HIT_SHOULDER_R && id != HIT_SCROLL_BAR &&
          id != HIT_BAG_LIST && id != HIT_DEX_LIST && id != HIT_GUIDE_LIST && id != HIT_SETTINGS_LIST;
 }

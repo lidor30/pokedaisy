@@ -218,7 +218,7 @@ void DsCompanionUi::draw_body(pd_ui* u,pd_canvas* c){
   if(u->tab==PD_TAB_PARTY)
     ds_party_view(c,*snapshot,*icons,selected,summary,page,&dexArt,learnRow,&learnLast);
   if(u->tab==PD_TAB_BAG){
-    const auto visible=ds_bag_view(c,*snapshot,pocket,scroll,details,frame.bagSort);
+    const auto visible=ds_bag_view(c,*snapshot,pocket,scroll,details,frame.bagSort,bagTabKey);
     bagPockets=visible.occupied;
     if(pocket!=visible.active){pocket=visible.active;scroll=0;details=false;}
   }
@@ -337,7 +337,7 @@ bool DsCompanionUi::control(unsigned pressed){
     pd_ui_next_tab(&frame,hit(RETRO_DEVICE_ID_JOYPAD_R)?1:-1);
     pd_ui_guide_reset(&frame);
     choice=0;
-    scroll=dexEntry=0;placeRow=mapAction=dexFilterFocus=-1;summary=details=false;error.clear();return false;
+    scroll=dexEntry=0;placeRow=mapAction=dexFilterFocus=-1;bagTabKey=-1;summary=details=false;error.clear();return false;
   }
   if(frame.overlay==PD_OVERLAY_TAB_BAR || frame.overlay==PD_OVERLAY_MORE){
     const int step=frame.overlay==PD_OVERLAY_MORE && dx ? dx : dy;
@@ -407,14 +407,25 @@ bool DsCompanionUi::control(unsigned pressed){
     }
     if(hit(RETRO_DEVICE_ID_JOYPAD_B)){if(summary)summary=false;else return true;}
   }else if(frame.tab==PD_TAB_BAG){
+    const int tabs=ds_bag_tabs(game);
+    if(bagTabKey>=0){
+      // On the pocket tab bar: up / down walk it, A opens the pocket under the cursor, RIGHT / B go back to the list.
+      std::vector<int> keys;
+      for(int k=0;k<tabs;++k)if(bagPockets&(1u<<k))keys.push_back(k);
+      if(dy)bagTabKey=pd_ui_bag_tab_step(keys.data(),int(keys.size()),bagTabKey,dy);
+      if(hit(RETRO_DEVICE_ID_JOYPAD_A)){pocket=bagTabKey;scroll=0;details=false;bagTabKey=-1;}
+      else if(dx>0 || hit(RETRO_DEVICE_ID_JOYPAD_B))bagTabKey=-1;
+      return false;
+    }
     if(!details && hit(RETRO_DEVICE_ID_JOYPAD_SELECT)){
       pd_ui_bag_cycle_sort(&frame);
       scroll=0;
     }
-    if(!details && dx){
-      const int tabs=ds_bag_tabs(game);
-      do pocket=(pocket+dx+tabs)%tabs; while(!(bagPockets&(1u<<pocket)));
-      scroll=0;
+    if(dx<0 && __builtin_popcount(bagPockets)>1){
+      // LEFT closes an open item and goes to the tab bar in the same press, on the pocket that is open.
+      details=false;
+      bagTabKey=pocket;
+      return false;
     }
     const int count=snapshot?ds_bag_count(*snapshot,pocket):0;
     scroll=std::clamp(scroll+dy,0,std::max(0,count-1));

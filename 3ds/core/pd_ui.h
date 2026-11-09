@@ -421,6 +421,8 @@ struct pd_ui {
     char boxMessage[64];
     int bagPocket;   // the open pocket tab (native ID for bagSource, 0 is always ALL)
     int bagTabCount;
+    bool bagTabs;    // the D-pad cursor is on the pocket tab bar rather than the list ...
+    int bagTabKey;   // ... on this tab: its native pocket ID for a bagSource, else its place (0 is always ALL)
     unsigned bagPocketMask; // bagSource: occupied native pocket IDs plus ALL
     int bagSelected; // the item's row in that tab, -1 = none
     int bagScroll;   // pixels
@@ -498,6 +500,9 @@ void pd_ui_guide_control(struct pd_ui*, int dx, int dy, bool confirm);
 void pd_ui_guide_boss_note(char*, size_t, const char* place, int count, int ace, int best);
 void pd_ui_dex_view(struct pd_ui*,struct pd_canvas*,const struct pd_game*,const struct pd_snapshot*,int selected);
 void pd_ui_bag_cycle_sort(struct pd_ui*);
+// The tab bar's D-pad step: the key after / before `key` in `keys` (the tabs in the order they are drawn), the ends
+// stopping the cursor; a key not among them starts from the first.
+int pd_ui_bag_tab_step(const int* keys, int count, int key, int dy);
 void pd_ui_bag_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*, const struct pd_snapshot*);
 void pd_ui_party_view(struct pd_ui*, struct pd_canvas*, const struct pd_game*,
                       const struct pd_snapshot*, int selected);
