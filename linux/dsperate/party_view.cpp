@@ -21,6 +21,7 @@ bool ds_draw_party_icon(pd_canvas* c,const std::vector<std::vector<uint32_t>>& i
 
 namespace {
 // Android's PlatinumPartyPalette, HeartGoldPartyPalette and BlackPartyPalette.
+constexpr pd_hp_band dsGreen{0x61FB61,0x18C320}, dsYellow{0xFBDB00,0xEBAA00}, dsRed{0xFB9A9A,0xFB4938};
 constexpr pd_party_source_palette platinum{
   {0x494961,0x9AC3F3,0x82B2F3,0x41699A,0x5982D3,0},
   {0xEB5900,0xB2DBEB,0x92DBF3,0x69BAEB,0x69BAEB,0},
@@ -28,25 +29,31 @@ constexpr pd_party_source_palette platinum{
   {0xEB5900,0xEBBAAA,0xEBBAAA,0xE39A79,0xE39A79,0},
   {0x494961,0x383849,0x383849,0x383849,0,0},
   0xFBFBFB,0x515151,0x000000,0xA2AA92,0xFB9A9A,0xFB4938,
-  {0x828282,0xFBBABA,0xCBAAAA,0xF3F3F3},false,false
+  {0x828282,0xFBBABA,0xCBAAAA,0xF3F3F3},false,false,
+  0,0x798292,dsGreen,dsYellow,dsRed,{0x697161,0xA2AA92},
+  0x0071FB,0x79BAEB,0xFF9C94,0x9C4239
 };
 constexpr pd_party_source_palette johto{
-  {0x004900,0x69DB71,0x009238,0x006920,0,0},
-  {0xFB2020,0x79F382,0x30DB51,0x10AA41,0,0},
-  {0x490000,0xF37900,0xD33810,0x821000,0,0},
-  {0xFB2020,0xFBAA41,0xFB7900,0xFB4100,0,0},
-  {0x38B2BA,0x69CBCB,0x69CBCB,0x38B2BA,0,0},
+  {0x004900,0x69DB71,0x009238,0x006920,0x69DB71,0},
+  {0xFB2020,0x79F382,0x30DB51,0x10AA41,0x79F382,0},
+  {0x490000,0xF37900,0xD33810,0x821000,0xF37900,0},
+  {0xFB2020,0xFBAA41,0xFB7900,0xFB4100,0xFBAA41,0},
+  {},
   0xFBFBFB,0x282828,0x414141,0xFBFBFB,0xFFD652,0xFFB542,
-  {0x4A4A63,0xB54200,0xC65200,0xB5BDCE},false,false
+  {0x4A4A63,0xB54200,0xC65200,0xB5BDCE},false,false,
+  89,0,dsGreen,{0xCEAD08,0xFFE739},{0xC63900,0xFF7331},{0x525252,0x737373},
+  0x42CEFF,0x006394,0xFF9C94,0x9C4239
 };
 constexpr pd_party_source_palette unova{
   {0x0C719E,0x96FFFF,0x0C5175,0x0C719E,0x0C5175,0x0C304D},
   {0x0C719E,0x96FFFF,0x4579A6,0x0C719E,0x4579A6,0x0C304D},
   {0xC73886,0xFF9AAE,0x8E2024,0xC73886,0x8E2024,0x6D2824},
   {0x0C699E,0xC7CBCF,0xEF106D,0x0C699E,0xEF106D,0xB61055},
-  {0x0C415D,0x0C415D,0x101820,0x101820,0,0},
+  {},
   0xFBFBFB,0x828282,0x303030,0x303030,0x00FB49,0x00BA20,
-  {},true,true
+  {},true,true,
+  0,0x0C415D,dsGreen,dsYellow,dsRed,{0x202020,0x202020},
+  0x00EBFB,0x006961,0xE33838,0x712030
 };
 void party_summary(pd_canvas* c,const DsCompanion& s,const std::vector<std::vector<uint32_t>>& icons,int selected,
                    int page,const DsDexArt* art,int learnRow,int* learnLast){
@@ -107,6 +114,10 @@ void party_summary(pd_canvas* c,const DsCompanion& s,const std::vector<std::vect
 }
 
 }
+const pd_party_source_palette& ds_party_palette(DsGame game) {
+  return ds_unova(game)?unova:game==DsGame::Johto?johto:platinum;
+}
+
 void ds_party_view(pd_canvas* c,const DsCompanion& s,const std::vector<std::vector<uint32_t>>& icons,int selected,bool summary,int page,const DsDexArt* art,int learnRow,int* learnLast){
   ds_companion_backdrop(c,s.game,PD_TAB_PARTY);
   if(summary && !s.party.empty()){
@@ -122,7 +133,7 @@ void ds_party_view(pd_canvas* c,const DsCompanion& s,const std::vector<std::vect
   }
   struct Context {const DsCompanion& s;const pd_snapshot& view;const std::vector<std::vector<uint32_t>>& icons; } ctx{s,view,icons};
   pd_party_source source{};source.ctx=&ctx;
-  source.palette=ds_unova(s.game)?&unova:s.game==DsGame::Johto?&johto:&platinum;
+  source.palette=&ds_party_palette(s.game);
   source.egg=[](void* data,const pd_mon* m){auto& x=*static_cast<Context*>(data);return x.s.party[m-x.view.party].egg;};
   source.species=[](void* data,int id){return ds_species(id,static_cast<Context*>(data)->s.game);};
   source.icon=[](void* data,pd_canvas* c,const pd_mon* m,int x,int y,int scale,bool faded){

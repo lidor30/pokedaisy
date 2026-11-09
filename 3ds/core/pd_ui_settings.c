@@ -483,7 +483,9 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
 }
 
 void pd_ui_options_view(struct pd_ui* ui,struct pd_canvas* c,const struct pd_game* g,const struct pd_snapshot* s){
-    ui->hitCount=0;pd_backdrop(c);ui_settings_tab(ui,c,g,s,NULL);
+    ui->hitCount=0;
+    if (!ui->keepBackdrop) pd_backdrop(c);
+    ui_settings_tab(ui,c,g,s,NULL);
 }
 
 void pd_ui_choices_view(struct pd_canvas* c,const char* title,const char* const* choices,int count,int selected){

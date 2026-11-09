@@ -134,14 +134,14 @@ int pd_ui_dex_filters(struct pd_ui* ui, struct pd_canvas* c, const int counts[4]
 }
 
 void pd_ui_dex_list_row(struct pd_canvas* c, int x, int y, int w, int number, const char* name,
-                        bool seen, bool caught, bool selected, const uint32_t* icon, uint32_t clear) {
+                        bool seen, uint32_t mark, bool selected, const uint32_t* icon, uint32_t clear) {
     if (selected) pd_fill(c, x, y, w, DEX_ROW, PD_ROW_SELECTED);
     char no[16];
     snprintf(no, sizeof no, "No.%03d", number);
     pd_text(c, x + 4, y, no, PD_MUTED, PD_MUTED_SHADOW);
     pd_text_fit(c, x + 78, y, w - 92, seen ? name : "???", PD_LABEL, PD_LABEL_SHADOW);
     if (!seen) return;
-    pd_fill(c, x + w - 10, y + 7, 5, 5, caught ? PD_VALUE : PD_MUTED);
+    pd_fill(c, x + w - 10, y + 7, 5, 5, mark);
     if (icon)
         for (int iy = 0; iy < 16; iy++)
             for (int ix = 0; ix < 16; ix++) {
@@ -203,7 +203,7 @@ static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
             const uint32_t* icon = seen ? pd_mon_icon_pixels(g, species, false) : NULL;
             const bool selected = ui->focusId == HIT_DEX_ROW + nat || ui->focusId == HIT_DEX_READ_ONLY + nat;
             pd_ui_dex_list_row(c, ix, ry, iw - 4, number, pd_species_name(g, species, buf, sizeof buf),
-                               seen, caught, selected, icon, 0xff000000u);
+                               seen, caught ? PD_VALUE : PD_MUTED, selected, icon, 0xff000000u);
         } else {
             if (ui->pressedId == HIT_DEX_ROW + nat) pd_fill(c, ix, ry, iw, DEX_ROW, PD_ROW_SELECTED);
             if (seen) ui_ball(c, ix + 6, ry + 4, caught);

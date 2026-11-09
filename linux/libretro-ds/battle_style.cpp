@@ -28,8 +28,8 @@ const DsBattleStyle* ds_battle_style(const char* sha1){
     {0x51cb28,0,0,0,0,0}, {0x28baf3,0,0,0,0,0},
   }},DsBattleLook::Unova};
   static const DsBattleStyle unova2{146,149,{{
-    {0xfb2018,0,0,0,0,0}, {0xfbcb28,0,0,0,0,0},
-    {0x71db30,0,0,0,0,0}, {0x20a2fb,0,0,0,0,0},
+    {0xfb2018,0x921818,0,0,0,0}, {0xfbcb28,0x927108,0,0,0,0},
+    {0x71db30,0x207108,0,0,0,0}, {0x20a2fb,0x005992,0,0,0,0},
   }},DsBattleLook::Unova2};
   if(!std::strcmp(sha1,pd_ds_data::sha1))return &ds_platinum_battle_style;
   if(!std::strcmp(sha1,heartGoldSha1))return &gold;
@@ -121,13 +121,14 @@ void family_plate(pd_canvas& canvas,Rect r,DsBattleLook look,uint32_t color,bool
   }
 }
 
-void unova_command_plate(pd_canvas& canvas,Rect r,DsBattleLook look,uint32_t color,bool enabled){
+void unova_command_plate(pd_canvas& canvas,Rect r,DsBattleLook look,const DsBattleColors& color,bool enabled){
   const unsigned tone=enabled?100:50;
   const bool sequel=look==DsBattleLook::Unova2;
-  pd_round_rect(&canvas,r.x,r.y,r.w,r.h,3,outline);
-  pd_round_rect(&canvas,r.x+1,r.y+1,r.w-2,r.h-2,2,shade(sequel?color:white,tone));
-  fill(canvas,inset(r,3),shade(color,55*tone/100));
-  const Rect face=inset(r,5);
+  pd_round_rect(&canvas,r.x,r.y,r.w,r.h,4,shade(sequel?0x202020:0x717171,tone));
+  pd_round_rect(&canvas,r.x+1,r.y+1,r.w-2,r.h-2,3,shade(sequel?color.face:white,tone));
+  fill(canvas,inset(r,3),shade(sequel?color.dark:0x9a9a9a,tone));
+  if(sequel)fill(canvas,inset(r,4),shade(0x202020,tone));
+  const Rect face=inset(r,sequel?5:4);
   fill(canvas,face,shade(sequel?0x282828:0x383838,tone));
   if(sequel){
     for(int y=0;y<face.h;y+=3)pd_fill(&canvas,face.x,face.y+y,face.w,1,shade(0x383838,tone));
@@ -201,13 +202,16 @@ void message(pd_canvas& canvas,Rect r,const std::string& nickname,DsBattleLook l
   const std::string prompt="What will "+nickname+" do?";
   if(look!=DsBattleLook::Platinum){
     if(!unova(look)){
-      fill(canvas,r,0x292631);
-      pd_fill(&canvas,r.x+2,r.y+2,r.w-4,r.h-4,look==DsBattleLook::SoulSilver?0xdbebfb:0xfbdb69);
-      pd_fill(&canvas,r.x+5,r.y+5,r.w-10,r.h-10,0x515568);
-      pd_fill(&canvas,r.x+9,r.y+7,r.w-18,r.h-14,0xfbfbfb);
+      // DsBattleMenu.kt's two Johto message frame palettes.
+      const bool silver=look==DsBattleLook::SoulSilver;
+      fill(canvas,r,0x494141);
+      fill(canvas,inset(r,2),silver?0xaabadb:0xeba238);
+      pd_fill(&canvas,r.x+2,r.y+2,r.w-5,r.h-5,silver?0xdbebfb:0xfbdb69);
+      fill(canvas,inset(r,3),0x616169);
+      pd_fill(&canvas,r.x+8,r.y+4,r.w-16,r.h-9,0xfbfbfb);
     }
-    const auto ink=unova(look)?white:0x38343c;
-    const auto shadow=unova(look)?0x75a29e:0xb2aab5;
+    const auto ink=unova(look)?white:0x515159;
+    const auto shadow=look==DsBattleLook::Unova2?0x82aabe:unova(look)?0x75a29e:0xa2a2aa;
     text2(canvas,{r.x+16,r.y+9,r.w-30,30},"What will",ink,shadow,false);
     text2(canvas,{r.x+16,r.y+38,r.w-30,30},(nickname+" do?").c_str(),ink,shadow,false);
     return;
@@ -448,10 +452,20 @@ void ds_draw_battle_strip(uint32_t* stage,const DsBattleStyle& style,const DsBat
   const bool moves=view.panel==DsBattlePanel::Moves;
   const int bandTop=2*style.bandTop-(moves?14:0);
   const bool platinum=style.look==DsBattleLook::Platinum;
-  const uint32_t band=platinum?0x414041:style.look==DsBattleLook::Unova?0x08302c:
-    style.look==DsBattleLook::Unova2?0x282828:0x17151c;
-  pd_fill(&canvas,0,bandTop,512,384-bandTop,band);
-  pd_fill(&canvas,0,bandTop,512,2,unova(style.look)?shade(band,125):0x29272d);
+  // DsBattleMenu.kt's drawBand: the two Unova families have distinct message bands.
+  const int bandHeight=384-bandTop;
+  const uint32_t band=platinum?0x000000:style.look==DsBattleLook::Unova?0x0c3c34:
+    style.look==DsBattleLook::Unova2?0x0c3851:0x202020;
+  pd_fill(&canvas,0,bandTop,512,bandHeight,band);
+  auto line=[&](int y,uint32_t color){pd_fill(&canvas,0,y*2,512,2,color);};
+  if(style.look==DsBattleLook::Unova){
+    const int mid=bandTop+bandHeight*35/100;
+    pd_fill(&canvas,0,mid,512,384-mid,0x08302c);
+    line(147,0x4d201c);line(148,0x24201c);line(187,0x24201c);line(188,0x4d201c);
+  }else if(style.look==DsBattleLook::Unova2){
+    pd_fill(&canvas,0,bandTop+bandHeight*30/100,512,bandHeight*40/100,0x184155);
+    line(147,0x083855);line(148,0x305d7d);line(187,0x285165);line(188,0x41697d);
+  }
   const int top=moves?bandTop:2*style.textTop;
   const int height=(moves?384:382)-top;
   const int rowGap=moves?2:4;
@@ -471,7 +485,7 @@ void ds_draw_battle_strip(uint32_t* stage,const DsBattleStyle& style,const DsBat
     }
     else if(!platinum || !native_command(canvas,card,panelArt,i,enabled)){
       if(platinum)bevel(canvas,card,style.actions[i],enabled);
-      else if(unova(style.look))unova_command_plate(canvas,card,style.look,style.actions[i].face,enabled);
+      else if(unova(style.look))unova_command_plate(canvas,card,style.look,style.actions[i],enabled);
       else family_plate(canvas,card,style.look,style.actions[i].face,enabled,false,style.actions[i].dark);
       const uint32_t ink=unova(style.look)?style.actions[i].face:white;
       text2(canvas,{card.x+5,card.y+6,card.w-10,card.h-11},labels[i],enabled?ink:0xa0a0a0,
