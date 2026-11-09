@@ -196,6 +196,43 @@ int main(int argc,char**argv) {
     assert(ui.page==0);
     draw();
     press(RETRO_DEVICE_ID_JOYPAD_B);
+    {
+      // The party grid is two columns of cards with gaps between them. Android moves its focus to the nearest card
+      // that lies the way pressed (one that lines up first), and a press with none that way stays put; this is the
+      // GB core's focus search (libretro/pd_focus.inc) over card rectangles.
+      struct Box{int x,y,w,h;};
+      auto box=[](int slot){return Box{slot%2*108,slot/2*68,100,60};};
+      auto focusStep=[&](int from,int n,int dir){ // dir: 0 up, 1 down, 2 left, 3 right
+        const Box h=box(from);
+        int best=-1,score=1<<30;
+        for(int to=0;to<n;++to){
+          if(to==from)continue;
+          const Box t=box(to);
+          const int dx=t.x+t.w/2-(h.x+h.w/2),dy=t.y+t.h/2-(h.y+h.h/2);
+          const int along=dir==0?-dy:dir==1?dy:dir==2?-dx:dx;
+          const int across=dir<2?(t.x+t.w<=h.x?h.x-(t.x+t.w):t.x>=h.x+h.w?t.x-(h.x+h.w):0)
+                                :(t.y+t.h<=h.y?h.y-(t.y+t.h):t.y>=h.y+h.h?t.y-(h.y+h.h):0);
+          const int cost=along+across*4+(across>0?100000:0);
+          if(along>0 && cost<score){best=to;score=cost;}
+        }
+        return best<0?from:best;
+      };
+      const unsigned buttons[4]={RETRO_DEVICE_ID_JOYPAD_UP,RETRO_DEVICE_ID_JOYPAD_DOWN,RETRO_DEVICE_ID_JOYPAD_LEFT,RETRO_DEVICE_ID_JOYPAD_RIGHT};
+      const int before=ui.selected;
+      for(int n=1;n<=int(s.party.size());++n){
+        DsCompanion smaller=s;
+        smaller.party.resize(n);
+        ui.draw(&canvas,smaller,true,map,icons);
+        for(int from=0;from<n;++from)
+          for(int dir=0;dir<4;++dir){
+            ui.selected=from;
+            press(buttons[dir]);
+            assert(ui.selected==focusStep(from,n,dir));
+          }
+      }
+      draw();
+      ui.selected=before;
+    }
     press(RETRO_DEVICE_ID_JOYPAD_R);
     assert(ui.frame.tab==PD_TAB_DEX);
     press(RETRO_DEVICE_ID_JOYPAD_R);

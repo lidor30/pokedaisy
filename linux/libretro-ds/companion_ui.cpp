@@ -312,6 +312,22 @@ void DsCompanionUi::draw(pd_canvas* c,const DsCompanion& s,bool match,const DsMa
   }
   pd_look_apply(nullptr,nullptr);
 }
+// The party grid (two columns, row by row) as Android's focus moves over it, the GB core's focus search in cell units:
+// a press goes to the nearest slot that lies that way, one that lines up first; with none that way it stays put.
+static int party_grid_step(int selected,int n,int dx,int dy){
+  if(n<=0)return 0;
+  if(!dx && !dy)return selected;
+  int best=selected,score=1<<30;
+  for(int to=0;to<n;++to){
+    if(to==selected)continue;
+    const int cx=to%2-selected%2,cy=to/2-selected/2;
+    const int along=dx?cx*dx:cy*dy;
+    const int across=std::abs(dx?cy:cx);
+    const int cost=along+across*4+(across?100000:0);
+    if(along>0 && cost<score){best=to;score=cost;}
+  }
+  return best;
+}
 bool DsCompanionUi::control(unsigned pressed){
   auto hit=[&](unsigned id){return bool(pressed&(1u<<id));};
   int dy=hit(RETRO_DEVICE_ID_JOYPAD_DOWN)-hit(RETRO_DEVICE_ID_JOYPAD_UP);
@@ -373,8 +389,10 @@ bool DsCompanionUi::control(unsigned pressed){
   if(frame.tab==PD_TAB_PARTY){
     int n=snapshot?int(snapshot->party.size()):0;
     const int oldSelected=selected;
-    const int step=summary?(dy?dy:page==PD_SUMMARY_LEARN?0:dx):dy*2+dx;
-    selected=std::clamp(selected+step,0,std::max(0,n-1));
+    if(summary){
+      const int step=dy?dy:page==PD_SUMMARY_LEARN?0:dx;
+      selected=std::clamp(selected+step,0,std::max(0,n-1));
+    }else selected=party_grid_step(selected,n,dx,dy);
     const bool confirm=hit(RETRO_DEVICE_ID_JOYPAD_A);
     if(summary){
       if(oldSelected!=selected)learnRow=0;
