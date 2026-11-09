@@ -420,7 +420,10 @@ bool DsCompanionUi::control(unsigned pressed){
       dexDetailRow=std::clamp(dexDetailRow+dy,0,std::max(0,rows-1));
       if(dx && snapshot){
         const auto entries=ds_dex_rows(*snapshot,filter,regional);
-        for(int row=dexRow+dx;row>=0 && row<int(entries.size());row+=dx){
+        // Android's Previous / Next entry wraps round the filtered list; an unseen species stays unopenable here.
+        const int n=int(entries.size());
+        for(int i=1;i<n;++i){
+          const int row=((dexRow+dx*i)%n+n)%n;
           const int species=entries[row].species;
           if(snapshot->dexSeen[species]){
             dexEntry=species;dexRow=row;dexDetailRow=0;

@@ -309,6 +309,15 @@ int main(int argc,char**argv) {
     draw();
     press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
     assert(ui.dexEntry==caught.at(1).species && ui.dexRow==1);
+    // Android's Previous / Next entry wraps round the filtered list.
+    press(RETRO_DEVICE_ID_JOYPAD_LEFT);
+    assert(ui.dexEntry==caught.at(0).species && ui.dexRow==0);
+    press(RETRO_DEVICE_ID_JOYPAD_LEFT);
+    assert(ui.dexEntry==caught.back().species && ui.dexRow==int(caught.size())-1);
+    press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+    assert(ui.dexEntry==caught.at(0).species && ui.dexRow==0);
+    press(RETRO_DEVICE_ID_JOYPAD_RIGHT);
+    assert(ui.dexEntry==caught.at(1).species && ui.dexRow==1);
     press(RETRO_DEVICE_ID_JOYPAD_B);
     assert(ui.dexEntry==0 && ui.dexRow==1 && ui.filter==1);
     press(RETRO_DEVICE_ID_JOYPAD_SELECT);
