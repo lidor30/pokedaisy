@@ -696,7 +696,7 @@ void present(const void* data,unsigned,unsigned,size_t) {
         if(p>>24)pd_fill(c,x+col,y+row,1,1,p&0xffffff);
       }
       return true;
-    },79,shell.hudMinimal,hudRight,&hudHits);
+    },79,shell.hudMinimal,hudRight,&hudHits,&ds_party_palette(companionGame));
     const auto player=ds_map_position(snapshot);
     if(!shell.hudMinimal&&!(shell.settings.hudHidden&(1<<PD_HUD_MAP))&&!map.background.empty()&&player.x>=0&&player.y>=0)
       hud_ds_minimap(&c,&shell.settings,ds_place(snapshot.map,companionGame),[](pd_canvas* c,int x,int y,int w,int h){

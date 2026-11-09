@@ -112,6 +112,7 @@ struct hud {
   hud_mon_draw_fn monDraw;
   hud_item_draw_fn itemDraw;
   int repelItem;
+  const struct pd_party_source_palette *partyPalette;
   void *monCtx;
   int partyN;           // party members shown (0: PARTY off)
   struct pd_item ball[3];
@@ -384,24 +385,40 @@ static void art(struct pd_canvas *c, const char *const *rows, int x, int y, cons
 // ---- Party --------------------------------------------------------------------------------------
 
 // The party menu's HP bar without its "HP" tag (HudHpBar): a dark frame, the two-tone fill by how much is left.
-static void hp_bar(struct pd_canvas *c, int x, int y, int w, int hp, int maxHp) {
-  pd_fill(c, x, y, w, 5, 0x404848);
-  pd_fill(c, x + 1, y + 1, w - 2, 3, 0x506858);
+static void hp_bar(struct hud *u, int x, int y, int w, int hp, int maxHp) {
+  struct pd_canvas *c = u->c;
+  const struct pd_party_source_palette *p = u->partyPalette;
+  if (p) {
+    pd_round_rect(c, x, y, w, 5, 1, p->hpFrame);
+    pd_fill(c, x + 1, y + 1, w - 2, 1, p->hpEmpty.top);
+    pd_fill(c, x + 1, y + 2, w - 2, 2, p->hpEmpty.main);
+  } else {
+    pd_fill(c, x, y, w, 5, 0x404848);
+    pd_fill(c, x + 1, y + 1, w - 2, 3, 0x506858);
+  }
   int inner = w - 2, f = maxHp > 0 ? hp * inner / maxHp : 0;
   if (f == 0 && hp > 0)
     f = 1;
   if (f > inner)
     f = inner;
   uint32_t top = 0x70F8A8, main = 0x18C020;
-  if (maxHp > 0 && hp * 2 <= maxHp)
-    top = hp * 5 > maxHp ? 0xF8E038 : 0xF85838, main = hp * 5 > maxHp ? 0xC8A808 : 0xA84048;
+  if (p) {
+    struct pd_hp_band band = maxHp <= 0 || hp * 2 > maxHp ? p->hpGreen : hp * 5 > maxHp ? p->hpYellow : p->hpRed;
+    top = band.top;
+    main = band.main;
+  } else if (maxHp > 0 && hp * 2 <= maxHp) {
+    top = hp * 5 > maxHp ? 0xF8E038 : 0xF85838;
+    main = hp * 5 > maxHp ? 0xC8A808 : 0xA84048;
+  }
   pd_fill(c, x + 1, y + 1, f, 1, top);
   pd_fill(c, x + 1, y + 2, f, 2, main);
 }
 
 // The status chip over an icon's top (HudStatusChip): the party tab's colours.
-static void status_chip(struct pd_canvas *c, int cx, int y, const char *label) {
-  uint32_t fill = !strcmp(label, "FNT") ? 0x6B6B6B : !strcmp(label, "PSN") || !strcmp(label, "TOX") ? 0xA040A0
+static void status_chip(struct hud *u, int cx, int y, const char *label) {
+  struct pd_canvas *c = u->c;
+  uint32_t fill = u->partyPalette ? pd_ui_status_color(label)
+                : !strcmp(label, "FNT") ? 0x6B6B6B : !strcmp(label, "PSN") || !strcmp(label, "TOX") ? 0xA040A0
                 : !strcmp(label, "PAR") ? 0xB8A038 : !strcmp(label, "BRN") ? 0xE07030
                 : !strcmp(label, "FRZ") ? 0x58A8C8 : 0x8C8C8C;
   int w = pd_text_width(label) + 6;
@@ -450,10 +467,10 @@ static void party_tiles(struct hud *u, int x, int y) {
     const char *status = mon_status(m);
     mon_icon(u, m, x, y + tag);
     if (*status)
-      status_chip(u->c, x + TILE / 2, y, status);
+      status_chip(u, x + TILE / 2, y, status);
     hit(u, x, y, TILE, tag + TILE_H, HUD_SLOT + i);
     if (m->species != PD_SPECIES_EGG)
-      hp_bar(u->c, x, y + tag + iconH, TILE, m->hp, m->maxHp);
+      hp_bar(u, x, y + tag + iconH, TILE, m->hp, m->maxHp);
   }
 }
 
@@ -484,8 +501,8 @@ static void party_column(struct hud *u, int x, int y, int w) {
     int tx = rx + TILE + 3, hpW = w - 2 * PAD - 2 - TILE - 6;
     const char *status = mon_status(m);
     if (*status)
-      status_chip(u->c, tx + hpW / 2, ry + 4, status);
-    hp_bar(u->c, tx, ry + (*status ? 20 : (MON_ROW_H - 5) / 2), hpW, m->hp, m->maxHp);
+      status_chip(u, tx + hpW / 2, ry + 4, status);
+    hp_bar(u, tx, ry + (*status ? 20 : (MON_ROW_H - 5) / 2), hpW, m->hp, m->maxHp);
   }
 }
 
@@ -984,7 +1001,8 @@ void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx,
 
 void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct hud_state *h,
                  const struct pd_settings *st, void *ctx, hud_mon_draw_fn monDraw,
-                 hud_item_draw_fn itemDraw, int repelItem, bool minimal, int right, struct hud_hits *out) {
+                 hud_item_draw_fn itemDraw, int repelItem, bool minimal, int right, struct hud_hits *out,
+                 const struct pd_party_source_palette *partyPalette) {
   if (out) out->n = 0;
   for (int i = 0; i < c->w * c->h; i++)
     c->px[i] = QUICK_CLEAR;
@@ -993,7 +1011,7 @@ void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct 
   small = right < c->w;
   sizes = small ? &COMPACT_SIZES : &NORMAL_SIZES;
   struct hud u = {.c = c, .s = s, .h = h, .st = st, .monDraw = monDraw, .monCtx = ctx, .itemDraw = itemDraw, .x1 = right,
-                  .repelItem = repelItem, .out = out,
+                  .repelItem = repelItem, .out = out, .partyPalette = partyPalette,
                   .L = hud_ink(st->hudLook)};
   u.partyN = !minimal && shows(&u, PD_HUD_PARTY) ? s->partyCount : 0;
   u.balls = shows(&u, PD_HUD_BALLS) ? balls(s, u.ball) : 0;

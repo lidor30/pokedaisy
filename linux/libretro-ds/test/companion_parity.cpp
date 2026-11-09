@@ -1,4 +1,9 @@
 #include "companion_ui.h"
+#include "companion_style.h"
+#include "party_view.h"
+extern "C" {
+#include "../../hud.h"
+}
 #include "browser.h"
 #include "guide_view.h"
 #include "layout.h"
@@ -9,8 +14,78 @@
 #include <fstream>
 #include <cstdio>
 #include <vector>
+namespace {
+void check_palettes() {
+  using G=DsGame;
+  DsCompanionUi ui;
+  ui.init("");
+  DsCompanion party;
+  party.valid=true;
+  party.party.resize(4);
+  const int hp[]={76,40,10,0};
+  for(int i=0;i<4;++i){
+    auto& mon=party.party[i];
+    mon.nickname="TEST";
+    mon.species=1+i;
+    mon.hp=hp[i];
+    mon.maxHp=100;
+  }
+  party.party[1].status=8; // Poison
+  std::vector<uint32_t> pixels(341*256);
+  pd_canvas canvas;
+  pd_canvas_init(&canvas,341,256,pixels.data());
+  auto has=[&](uint32_t color){return std::find(pixels.begin(),pixels.end(),color)!=pixels.end();};
+  const std::vector<std::vector<uint32_t>> noIcons;
+  for(G game:{G::Platinum,G::Johto,G::Black,G::White,G::Black2,G::White2}){
+    party.game=game;
+    ds_party_view(&canvas,party,noIcons,3,false,0);
+    for(uint32_t color:{0x61FB61u,0x18C320u,0xA259D9u,0x6B6B6Bu})assert(has(color));
+    if(game==G::Johto){
+      assert(pixels[0]==0x8ADBDB);
+      for(uint32_t color:{0x009238u,0xFB7900u,0x59C1A2u,0x7EDBB6u,0xCEAD08u,0xFFE739u,
+                         0xC63900u,0xFF7331u,0x525252u,0x737373u})assert(has(color));
+    }else{
+      for(uint32_t color:{0xFBDB00u,0xEBAA00u,0xFB9A9Au,0xFB4938u})assert(has(color));
+      if(ds_unova(game)){
+        assert(pixels[0]==0x414141 && pixels[341+31]==0x101820 && pixels[2*341+31]==0x202020);
+        assert(has(0x0C415D) && has(0x0C304D) && has(0xEF106D));
+      }else assert(pixels[0]==0x383849 && has(0x798292) && has(0xE39A79));
+    }
+    ds_companion_backdrop(&canvas,game,PD_TAB_DEX);
+    const uint32_t dex=game==G::Platinum?0x798292:game==G::Johto?0xFBFBFB:
+      ds_unova_sequel(game)?0xBA2010:0x08B279;
+    assert(pixels[342]==dex);
+    ds_companion_backdrop(&canvas,game,PD_TAB_BATTLE);
+    assert(pixels[0]==0xAAAA9A && pixels[20*341]==0xCBFBF3);
+
+    pd_snapshot field{};
+    field.valid=true;
+    field.partyCount=1;
+    field.party[0].species=1;
+    field.party[0].hp=40;
+    field.party[0].maxHp=100;
+    field.party[0].status=8;
+    hud_state state{};
+    hud_ds_draw(&canvas,&field,&state,&ui.settings,nullptr,
+                [](pd_canvas*,void*,const pd_mon*,int,int,bool){},nullptr,79,false,canvas.w,nullptr,
+                &ds_party_palette(game));
+    assert(has(0xA259D9) && has(game==G::Johto?0xCEAD08:0xFBDB00));
+  }
+  constexpr uint32_t pockets[]={0xDB82AA,0xDB82AA,0xA259EB,0x92C330,0x18AAD3,0xEB8251,0x30BA59,0xE3A238,0x4982F3};
+  for(int pocket=0;pocket<9;++pocket){
+    ds_companion_backdrop(&canvas,G::Johto,PD_TAB_BAG,pocket);
+    assert(pixels[0]==0xFBFBFB && pixels[18*341]==0xBABABA && pixels[40*341]==pockets[pocket]);
+  }
+  ui.settings.darkMode=true;
+  pd_look_apply(nullptr,&ui.settings);
+  ds_party_view(&canvas,party,noIcons,0,false,0);
+  assert(pixels[0]!=0x414141 && has(0x61FB61));
+  pd_look_apply(nullptr,nullptr);
+}
+}
 int main(int argc,char**argv) {
   assert(argc==4 || argc==7);
+  check_palettes();
   using G=DsGame;
   const int field=PK_NDS_FIELD_KNOWN|PK_NDS_FIELD_SCREEN;
   assert(ds_companion_game(ds_canonical_sha1("1492557711d8cd46628fe3eeceae1dec52d33e70"))==G::Johto);
@@ -448,6 +523,8 @@ int main(int argc,char**argv) {
     press(RETRO_DEVICE_ID_JOYPAD_L);
     assert(ui.frame.tab==PD_TAB_SETTINGS && ui.dexEntry==0);
     draw();
+    // Settings uses Android's same per-game backdrop behind the shared window.
+    assert(pixels[0]==(expect.game==G::Johto?0x8ADBDB:0x414141));
     press(RETRO_DEVICE_ID_JOYPAD_R);
     assert(ui.frame.tab==PD_TAB_PARTY);
   }
