@@ -8,6 +8,7 @@
 #include "pd_map.h"
 #include "host_io.h"
 #include "field_items.h"
+#include "flash.h"
 #include "fly.h"
 #include "display_filter.h"
 #include "hud.h"
@@ -1397,6 +1398,9 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
   struct fly_targets flyT = {0};
   const char *flyNames[FLY_MAX_TOWNS];
   int flyAsk = 0, flySel = 0, flyStage = 0, flyMapsec = 0, flyWait = 0, fieldFlags = 0;
+  // FLASH from the quick menu (flash.c), where the ROM has its code: picked, then run between two frames.
+  const struct pd_config *flashCfg = game.cfg && c->platform(c) == mPLATFORM_GBA && flash_supported(game.cfg, romdata, (size_t)len) ? game.cfg : NULL;
+  int flashAsk = 0;
   bool flyList = false;
   uint32_t flyCallback = 0;
   // REPEL, BIKE and PC anywhere (field_items.c): offered where the ROM's code is the config's. A job waits for
@@ -1563,6 +1567,15 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
                                             flyer < 0 ? "No one in your party knows FLY" : NULL,
                                             flyer < 0 ? 0 : snap.party[flyer].species, 0, NULL};
     }
+    if (flashCfg) {
+      // FLASH (QuickMenu.kt's quickBlocked): who knows it, then whether it's dark here at all.
+      int dark = flash_dark(c, flashCfg, &snap);
+      quick[quickN++] = (struct quick_item){QUICK_FLASH, false, false,
+                                            flash_flasher(&snap) < 0 ? flash_reason(FLASH_NO_FLASHER)
+                                            : dark == 0              ? flash_reason(FLASH_CANT_USE_HERE)
+                                                                     : NULL,
+                                            0, 0, NULL};
+    }
     if (itemsOk) {
       // The strongest kind held for the icon; dimmed while one works (the steps left).
       repelKindCount = 0;
@@ -1653,6 +1666,9 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
       } else if (down(A) && !quick[quickSel].why) {
         quickOpen = false;
         switch (quick[quickSel].action) {
+        case QUICK_FLASH:
+          flashAsk = 1; // run below, between two frames
+          break;
         case QUICK_PC:
           job = JOB_PC;
           jobFrames = 0;
@@ -1841,6 +1857,18 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
     bool flyBattle = snap.inBattle || (fieldFlags & PK_FIELD_BATTLE);
     bool flyBusy = companion || (fieldFlags & PK_FIELD_LOCKED) ||
                    (wideSupported && pk_wide_scene() != PK_WIDE_SCENE_FIELD);
+    if (flashCfg && flashAsk && !companion) {
+      if (pk_call_safe(c)) {
+        pd_snapshot_read(&snap, &game, read_memory, c);
+        enum flash_result r = flash_use(c, flashCfg, romdata, (size_t)len, &snap, flyBusy, flyBattle);
+        flashAsk = 0;
+        if (r != FLASH_OK)
+          notice(flash_reason(r));
+      } else if (++flashAsk > 120) {
+        flashAsk = 0;
+        notice(flash_reason(FLASH_FAILED));
+      }
+    }
     if (flyCfg && flyAsk && quickOpen && !companion) {
       if (pk_call_safe(c)) {
         pd_snapshot_read(&snap, &game, read_memory, c);

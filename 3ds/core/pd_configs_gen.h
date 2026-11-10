@@ -105,7 +105,7 @@ extern const struct pd_text pd_text_soulgold_v1_2_1;
 // and the party icons. The FOE TEAM's addresses are known for rev 1 only. Retail FireRed rev 0 as the app
 // reads it: no POKéDEX / GUIDE tables (none on file for rev 0), its trainer card set in code (Poller.kt), the
 // quick menu from FIELD_ITEMS_PORTS["BPRE0"] (fieldItemsFor).
-// gamedata/gen3/retail/firered.toml: firered_rev1 (ram, foes, icons, dex, guide, card, fly, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/firered.toml: firered_rev1 (ram, foes, icons, dex, guide, card, fly, flash, field, battle, engine, boxes, dexsec)
 static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260632, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -275,6 +275,19 @@ static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .flyFemaleHeal = 0,
     .flySaveBlock2Static = false,
     .flyMapHeader = 0,
+    .flashFlagGet = 0x0806E6E4,
+    .flashBadgeFlag = 0x820,
+    .flashLitFlag = 0x806,
+    .flashSetUp = 0x080C9B40,
+    .flashMenuCb = 0x03005024,
+    .flashPostCb = 0x0203B0C4,
+    .flashCallbacks = { 0x080C9B88 },
+    .flashSlot = 0x0203B0A9,
+    .flashMapHeader = 0x02036DFC,
+    .flashCrcs = { 0x07BEBC3A, 0x95A07BD8, 0x99857EDD },
+    .flashBadgeCheck = 0,
+    .flashBadgeCheckCrc = 0,
+    .flashCaveOff = 0x15,
     .fieldVarGet = 0x0806E57C,
     .fieldVarSet = 0x0806E598,
     .fieldCheckBag = 0x08099F54,
@@ -321,7 +334,7 @@ static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .dexMapGroups = 0x08352718,
 };
 
-// gamedata/gen3/retail/firered.toml: firered_rev0 (ram, icons, dex, card, fly, field, battle, engine, boxes)
+// gamedata/gen3/retail/firered.toml: firered_rev0 (ram, icons, dex, card, fly, flash, field, battle, engine, boxes)
 static const struct pd_config PD_CONFIG_FIRERED_REV0 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260520, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -459,6 +472,19 @@ static const struct pd_config PD_CONFIG_FIRERED_REV0 = {
     .flyFemaleHeal = 0,
     .flySaveBlock2Static = false,
     .flyMapHeader = 0,
+    .flashFlagGet = 0x0806E6D0,
+    .flashBadgeFlag = 0x820,
+    .flashLitFlag = 0x806,
+    .flashSetUp = 0x080C9B2C,
+    .flashMenuCb = 0x03005024,
+    .flashPostCb = 0x0203B0C4,
+    .flashCallbacks = { 0x080C9B74 },
+    .flashSlot = 0x0203B0A9,
+    .flashMapHeader = 0x02036DFC,
+    .flashCrcs = { 0x07BEBC3A, 0x95A07BD8, 0xEFB4F176 },
+    .flashBadgeCheck = 0x0812461C,
+    .flashBadgeCheckCrc = 0xD3F21DE4,
+    .flashCaveOff = 0x15,
     .fieldVarGet = 0x0806E568,
     .fieldVarSet = 0x0806E584,
     .fieldCheckBag = 0x08099F40,
@@ -500,7 +526,7 @@ static const struct pd_config PD_CONFIG_FIRERED_REV0 = {
     .pcStorage = &pd_pc_vanilla,
 };
 
-// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev0 (ram, icons, dex, guide, card, fly, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev0 (ram, icons, dex, guide, card, fly, flash, field, battle, engine, boxes, dexsec)
 static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260068, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -665,6 +691,19 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .flyFemaleHeal = 0,
     .flySaveBlock2Static = false,
     .flyMapHeader = 0,
+    .flashFlagGet = 0x0806E6D0,
+    .flashBadgeFlag = 0x820,
+    .flashLitFlag = 0x806,
+    .flashSetUp = 0x080C9B00,
+    .flashMenuCb = 0x03005024,
+    .flashPostCb = 0x0203B0C4,
+    .flashCallbacks = { 0x080C9B48 },
+    .flashSlot = 0x0203B0A9,
+    .flashMapHeader = 0x02036DFC,
+    .flashCrcs = { 0x07BEBC3A, 0xDA630667, 0xEA609AF5 },
+    .flashBadgeCheck = 0,
+    .flashBadgeCheckCrc = 0,
+    .flashCaveOff = 0x15,
     .fieldVarGet = 0x0806E568,
     .fieldVarSet = 0x0806E584,
     .fieldCheckBag = 0x08099F14,
@@ -711,7 +750,7 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .dexMapGroups = 0x08352688,
 };
 
-// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev1 (ram, foes, icons, dex, guide, card, fly, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev1 (ram, foes, icons, dex, guide, card, fly, flash, field, battle, engine, boxes, dexsec)
 static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260180, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -881,6 +920,19 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .flyFemaleHeal = 0,
     .flySaveBlock2Static = false,
     .flyMapHeader = 0,
+    .flashFlagGet = 0x0806E6E4,
+    .flashBadgeFlag = 0x820,
+    .flashLitFlag = 0x806,
+    .flashSetUp = 0x080C9B14,
+    .flashMenuCb = 0x03005024,
+    .flashPostCb = 0x0203B0C4,
+    .flashCallbacks = { 0x080C9B5C },
+    .flashSlot = 0x0203B0A9,
+    .flashMapHeader = 0x02036DFC,
+    .flashCrcs = { 0x07BEBC3A, 0xDA630667, 0x80A86C54 },
+    .flashBadgeCheck = 0,
+    .flashBadgeCheckCrc = 0,
+    .flashCaveOff = 0x15,
     .fieldVarGet = 0x0806E57C,
     .fieldVarSet = 0x0806E598,
     .fieldCheckBag = 0x08099F28,
@@ -927,7 +979,7 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .dexMapGroups = 0x083526F8,
 };
 
-// gamedata/gen3/retail/emerald.toml: emerald_retail (ram, foes, icons, dex, guide, card, fly, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/emerald.toml: emerald_retail (ram, foes, icons, dex, guide, card, fly, flash, field, battle, engine, boxes, dexsec)
 static const struct pd_config PD_CONFIG_EMERALD = {
     .itemDescs = &(const struct pd_item_descs){ .base = 139999648, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x020244EC,
@@ -1097,6 +1149,19 @@ static const struct pd_config PD_CONFIG_EMERALD = {
     .flyFemaleHeal = 13,
     .flySaveBlock2Static = false,
     .flyMapHeader = 0,
+    .flashFlagGet = 0x0809D790,
+    .flashBadgeFlag = 0x868,
+    .flashLitFlag = 0x888,
+    .flashSetUp = 0x081370FC,
+    .flashMenuCb = 0x03005DB0,
+    .flashPostCb = 0x0203CEEC,
+    .flashCallbacks = { 0x08137178, 0x08179918 },
+    .flashSlot = 0x0203CED1,
+    .flashMapHeader = 0x02037318,
+    .flashCrcs = { 0xBCF97BF3, 0x532E8E01, 0x39FAB5C6, 0x698BF3CB },
+    .flashBadgeCheck = 0,
+    .flashBadgeCheckCrc = 0,
+    .flashCaveOff = 0x15,
     .fieldVarGet = 0x0809D694,
     .fieldVarSet = 0x0809D6B0,
     .fieldCheckBag = 0x080D6724,
@@ -1145,7 +1210,7 @@ static const struct pd_config PD_CONFIG_EMERALD = {
 
 // plorpOS's Linux port: the hacks, as their records reach gen3/records/c_hacks.toml. Emerald Legacy v1.1.4: retail's
 // structs with its own addresses, its own TrainerMon (guideTables.trainerMon).
-// gamedata/gen3/hacks/emerald_legacy.toml: emerald_legacy (ram, foes, icons, dex, guide, card, fly, field, battle, engine, boxes)
+// gamedata/gen3/hacks/emerald_legacy.toml: emerald_legacy (ram, foes, icons, dex, guide, card, fly, flash, field, battle, engine, boxes)
 static const struct pd_config PD_CONFIG_EMERALD_LEGACY = {
     .itemDescs = &(const struct pd_item_descs){ .base = 140206608, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x020244EC,
@@ -1315,6 +1380,19 @@ static const struct pd_config PD_CONFIG_EMERALD_LEGACY = {
     .flyFemaleHeal = 13,
     .flySaveBlock2Static = false,
     .flyMapHeader = 0,
+    .flashFlagGet = 0x0809EBFC,
+    .flashBadgeFlag = 0x8C8,
+    .flashLitFlag = 0x8E8,
+    .flashSetUp = 0x0813AB7C,
+    .flashMenuCb = 0x03005F90,
+    .flashPostCb = 0x0203D214,
+    .flashCallbacks = { 0x0813ABF8, 0x0817DA6C },
+    .flashSlot = 0x0203D1F9,
+    .flashMapHeader = 0x020374A4,
+    .flashCrcs = { 0xBCF97BF3, 0x8E37859E, 0x2A2B8D7C, 0xB6C3FB91 },
+    .flashBadgeCheck = 0,
+    .flashBadgeCheckCrc = 0,
+    .flashCaveOff = 0x15,
     .fieldVarGet = 0x0809EB00,
     .fieldVarSet = 0x0809EB1C,
     .fieldCheckBag = 0x080D9EB8,
@@ -1358,7 +1436,7 @@ static const struct pd_config PD_CONFIG_EMERALD_LEGACY = {
 
 // Ruby / Sapphire (USA): rev 1 and 2 share every address (the app's NATIVE_RUBY / _SAPPHIRE), rev 0 is its own
 // (RETAIL_PORTS' AXVE0 / AXPE0). Read like Emerald (the same species / item / map-section ids); no trainer card.
-// gamedata/gen3/retail/ruby_sapphire.toml: ruby (ram, foes, icons, dex, guide, fly, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/ruby_sapphire.toml: ruby (ram, foes, icons, dex, guide, fly, flash, field, battle, engine, boxes, dexsec)
 static const struct pd_config PD_CONFIG_RUBY = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138171776, .stride = 44, .descOff = 20, .idOff = 14, .count = 349 },
     .playerParty = 0x03004360,
@@ -1502,6 +1580,19 @@ static const struct pd_config PD_CONFIG_RUBY = {
     .flyFemaleHeal = 13,
     .flySaveBlock2Static = true,
     .flyMapHeader = 0x0202E828,
+    .flashFlagGet = 0x08069360,
+    .flashBadgeFlag = 0x808,
+    .flashLitFlag = 0x828,
+    .flashSetUp = 0x0810CBD4,
+    .flashMenuCb = 0x0300485C,
+    .flashPostCb = 0x03005CE4,
+    .flashCallbacks = { 0x0810CC1C },
+    .flashSlot = 0x03005CE0,
+    .flashMapHeader = 0x0202E828,
+    .flashCrcs = { 0xAC4D17B2, 0xC9BC4238, 0xA460DEAE },
+    .flashBadgeCheck = 0,
+    .flashBadgeCheckCrc = 0,
+    .flashCaveOff = 0x15,
     .fieldVarGet = 0x08069274,
     .fieldVarSet = 0x08069290,
     .fieldCheckBag = 0x080A92F4,
@@ -1548,7 +1639,7 @@ static const struct pd_config PD_CONFIG_RUBY = {
     .dexMapGroups = 0x083085A0,
 };
 
-// gamedata/gen3/retail/ruby_sapphire.toml: sapphire (ram, foes, icons, dex, guide, fly, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/ruby_sapphire.toml: sapphire (ram, foes, icons, dex, guide, fly, flash, field, battle, engine, boxes, dexsec)
 static const struct pd_config PD_CONFIG_SAPPHIRE = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138171868, .stride = 44, .descOff = 20, .idOff = 14, .count = 349 },
     .playerParty = 0x03004360,
@@ -1692,6 +1783,19 @@ static const struct pd_config PD_CONFIG_SAPPHIRE = {
     .flyFemaleHeal = 13,
     .flySaveBlock2Static = true,
     .flyMapHeader = 0x0202E828,
+    .flashFlagGet = 0x08069364,
+    .flashBadgeFlag = 0x808,
+    .flashLitFlag = 0x828,
+    .flashSetUp = 0x0810CBD4,
+    .flashMenuCb = 0x0300485C,
+    .flashPostCb = 0x03005CE4,
+    .flashCallbacks = { 0x0810CC1C },
+    .flashSlot = 0x03005CE0,
+    .flashMapHeader = 0x0202E828,
+    .flashCrcs = { 0xAC4D17B2, 0x19F9C4F9, 0xA460DEAE },
+    .flashBadgeCheck = 0,
+    .flashBadgeCheckCrc = 0,
+    .flashCaveOff = 0x15,
     .fieldVarGet = 0x08069278,
     .fieldVarSet = 0x08069294,
     .fieldCheckBag = 0x080A92F4,
@@ -1738,7 +1842,7 @@ static const struct pd_config PD_CONFIG_SAPPHIRE = {
     .dexMapGroups = 0x08308530,
 };
 
-// gamedata/gen3/ports/ruby.toml: port_axve0 (ram, foes, icons, dex, guide, fly, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/ports/ruby.toml: port_axve0 (ram, foes, icons, dex, guide, fly, flash, field, battle, engine, boxes, dexsec)
 static const struct pd_config PD_CONFIG_RUBY_REV0 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138171748, .stride = 44, .descOff = 20, .idOff = 14, .count = 349 },
     .playerParty = 0x03004360,
@@ -1882,6 +1986,19 @@ static const struct pd_config PD_CONFIG_RUBY_REV0 = {
     .flyFemaleHeal = 13,
     .flySaveBlock2Static = true,
     .flyMapHeader = 0x0202E828,
+    .flashFlagGet = 0x08069340,
+    .flashBadgeFlag = 0x808,
+    .flashLitFlag = 0x828,
+    .flashSetUp = 0x0810CBB4,
+    .flashMenuCb = 0x0300485C,
+    .flashPostCb = 0x03005CE4,
+    .flashCallbacks = { 0x0810CBFC },
+    .flashSlot = 0x03005CE0,
+    .flashMapHeader = 0x0202E828,
+    .flashCrcs = { 0xAC4D17B2, 0xC9BC4238, 0xA460DEAE },
+    .flashBadgeCheck = 0,
+    .flashBadgeCheckCrc = 0,
+    .flashCaveOff = 0x15,
     .fieldVarGet = 0x08069254,
     .fieldVarSet = 0x08069270,
     .fieldCheckBag = 0x080A92D4,
@@ -1928,7 +2045,7 @@ static const struct pd_config PD_CONFIG_RUBY_REV0 = {
     .dexMapGroups = 0x08308588,
 };
 
-// gamedata/gen3/ports/sapphire.toml: port_axpe0 (ram, foes, icons, dex, guide, fly, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/ports/sapphire.toml: port_axpe0 (ram, foes, icons, dex, guide, fly, flash, field, battle, engine, boxes, dexsec)
 static const struct pd_config PD_CONFIG_SAPPHIRE_REV0 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138171836, .stride = 44, .descOff = 20, .idOff = 14, .count = 349 },
     .playerParty = 0x03004360,
@@ -2072,6 +2189,19 @@ static const struct pd_config PD_CONFIG_SAPPHIRE_REV0 = {
     .flyFemaleHeal = 13,
     .flySaveBlock2Static = true,
     .flyMapHeader = 0x0202E828,
+    .flashFlagGet = 0x08069344,
+    .flashBadgeFlag = 0x808,
+    .flashLitFlag = 0x828,
+    .flashSetUp = 0x0810CBB4,
+    .flashMenuCb = 0x0300485C,
+    .flashPostCb = 0x03005CE4,
+    .flashCallbacks = { 0x0810CBFC },
+    .flashSlot = 0x03005CE0,
+    .flashMapHeader = 0x0202E828,
+    .flashCrcs = { 0xAC4D17B2, 0x19F9C4F9, 0xA460DEAE },
+    .flashBadgeCheck = 0,
+    .flashBadgeCheckCrc = 0,
+    .flashCaveOff = 0x15,
     .fieldVarGet = 0x08069258,
     .fieldVarSet = 0x08069274,
     .fieldCheckBag = 0x080A92D4,

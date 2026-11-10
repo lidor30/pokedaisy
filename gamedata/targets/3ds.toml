@@ -254,6 +254,22 @@ flyFemaleHeal = '@items.fly.healWarp.femaleHeal'
 flySaveBlock2Static = '@items.fly.healWarp.saveBlock2Static'
 flyMapHeader = '@items.fly.mapHeader'
 
+# FLASH from the QUICK MENU: the config's FLASH record (`flash`, the app's FlashFns in Flash.kt).
+[part.flash]
+flashFlagGet = '@flash.flagGet'
+flashBadgeFlag = '@flash.badgeFlag'
+flashLitFlag = '@flash.litFlag'
+flashSetUp = '@flash.setUpFieldMoveFlash'
+flashMenuCb = '@flash.menuFieldCallback'
+flashPostCb = '@flash.postMenuFieldCallback'
+flashCallbacks = '@flash.fieldCallbacks'
+flashSlot = '@flash.partyMenuSlotId'
+flashMapHeader = '@flash.mapHeader'
+flashCrcs = '@flash.codeCrcs'
+flashBadgeCheck = '@flash.badgeCheck'
+flashBadgeCheckCrc = '@flash.badgeCheckCrc'
+flashCaveOff = '@flash.caveOff'
+
 # The Repels and PC anywhere: the same record's VarGet / VarSet / CheckBagHasItem / RemoveBagItem /
 # ArePlayerFieldControlsLocked (fieldCrcs: their first 32 bytes' CRC32, in that order), VAR_REPEL_STEP_COUNT,
 # gItems (struct Item: holdEffectParam itemNameLen + 5 in, unless itemParamOffset) and the PC's PcFns.
@@ -328,61 +344,61 @@ dexMapGroups = 'guideTables.mapGroups'
 # quick menu from FIELD_ITEMS_PORTS["BPRE0"] (fieldItemsFor).
 [config.firered_rev1]
 name = 'FIRERED_REV1'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_FIRERED_REV1' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'flash', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_FIRERED_REV1', flash = 'FLASH_FIRERED_REV1' }
 values = { partyMenu = 0x0203B0A0, pokemonStoragePtr = 0x03005010 }
 
 [config.firered_rev0]
 name = 'FIRERED_REV0'
-parts = ['ram', 'icons', 'dex', 'card', 'fly', 'field', 'battle', 'engine', 'boxes']
-records = { items = 'FIELD_ITEMS_PORTS_BPRE0' }
+parts = ['ram', 'icons', 'dex', 'card', 'fly', 'flash', 'field', 'battle', 'engine', 'boxes']
+records = { items = 'FIELD_ITEMS_PORTS_BPRE0', flash = 'FLASH_FIRERED_REV0' }
 set = { trainerCard = 'TRAINER_CARD_FIRERED' }
 values = { pokemonStoragePtr = 0x03005010 }
 
 [config.leafgreen_rev0]
 name = 'LEAFGREEN_REV0'
-parts = ['ram', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_LEAFGREEN_REV0' }
+parts = ['ram', 'icons', 'dex', 'guide', 'card', 'fly', 'flash', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_LEAFGREEN_REV0', flash = 'FLASH_LEAFGREEN_REV0' }
 
 [config.leafgreen_rev1]
 name = 'LEAFGREEN_REV1'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_LEAFGREEN_REV1' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'flash', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_LEAFGREEN_REV1', flash = 'FLASH_LEAFGREEN_REV1' }
 
 [config.emerald_retail]
 name = 'EMERALD'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_EMERALD' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'flash', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_EMERALD', flash = 'FLASH_EMERALD' }
 values = { partyMenu = 0x0203CEC8, pokemonStoragePtr = 0x03005D94 }
 
 # plorpOS's Linux port: the hacks, as their records reach gen3/records/c_hacks.toml. Emerald Legacy v1.1.4: retail's
 # structs with its own addresses, its own TrainerMon (guideTables.trainerMon).
 [config.emerald_legacy]
 name = 'EMERALD_LEGACY'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes']
-records = { items = 'FIELD_ITEMS_EMERALD_LEGACY' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'flash', 'field', 'battle', 'engine', 'boxes']
+records = { items = 'FIELD_ITEMS_EMERALD_LEGACY', flash = 'FLASH_EMERALD_LEGACY' }
 
 # Ruby / Sapphire (USA): rev 1 and 2 share every address (the app's NATIVE_RUBY / _SAPPHIRE), rev 0 is its own
 # (RETAIL_PORTS' AXVE0 / AXPE0). Read like Emerald (the same species / item / map-section ids); no trainer card.
 [config.ruby]
 name = 'RUBY'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_RUBY' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'flash', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_RUBY', flash = 'FLASH_RUBY' }
 
 [config.sapphire]
 name = 'SAPPHIRE'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_SAPPHIRE' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'flash', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_SAPPHIRE', flash = 'FLASH_SAPPHIRE' }
 
 [config.port_axve0]
 name = 'RUBY_REV0'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_PORTS_AXVE0' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'flash', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_PORTS_AXVE0', flash = 'FLASH_RUBY_REV0' }
 
 [config.port_axpe0]
 name = 'SAPPHIRE_REV0'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_PORTS_AXPE0' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'flash', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_PORTS_AXPE0', flash = 'FLASH_SAPPHIRE_REV0' }
 
 # The retail-struct hacks whose ROMs aren't to hand: RAM-only (PARTY / BATTLE / foes, checked on the app's captured RAM);
 # the tabs that read the ROM (icons, POKéDEX, GUIDE, CARD, FLY) join once a ROM is there to check them against.

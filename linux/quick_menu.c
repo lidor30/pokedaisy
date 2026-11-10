@@ -80,6 +80,7 @@ const char *quick_label(enum quick_action a) {
   switch (a) {
   case QUICK_PC: return "PC";
   case QUICK_FLY: return "FLY";
+  case QUICK_FLASH: return "FLASH";
   case QUICK_REPEL: return "REPEL";
   case QUICK_BIKE: return "BIKE";
   case QUICK_WILD: return "WILD";
@@ -92,7 +93,15 @@ const char *quick_label(enum quick_action a) {
   }
 }
 
+// FLASH (QuickMenu.kt's FLASH_ICON): a burst of light, K outline, Y its glow, W the white middle.
+static const char *const FLASH[] = {
+    ".....KK.....", ".K...KK...K.", "..K.KYYK.K..", "...KYWWYK...", "..KYWWWWYK..", "KKYWWWWWWYKK",
+    "KKYWWWWWWYKK", "..KYWWWWYK..", "...KYWWYK...", "..K.KYYK.K..", ".K...KK...K.", ".....KK.....", NULL,
+};
+
 static uint32_t icon_color(enum quick_action a, char ch) {
+  if (a == QUICK_FLASH)
+    return ch == 'K' ? 0x584818 : ch == 'Y' ? 0xF8D030 : 0xFFFFF0;
   if (a == QUICK_WILD)
     return ch == 'K' ? 0x183818 : ch == 'G' ? 0x389838 : 0x78D058;
   if (a == QUICK_PC)
@@ -109,7 +118,7 @@ static uint32_t icon_color(enum quick_action a, char ch) {
 static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int scale, bool dim) {
   const char *const *rows = a == QUICK_PC ? quick_icon_pc : a == QUICK_WILD ? quick_icon_grass : a == QUICK_SAVE_STATE ? SAVE_STATE
                           : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : a == QUICK_REPEL ? quick_icon_repel
-                          : a == QUICK_BIKE ? BIKE : a == QUICK_FLY ? WING
+                          : a == QUICK_BIKE ? BIKE : a == QUICK_FLY ? WING : a == QUICK_FLASH ? FLASH
                           : a == QUICK_HUD ? quick_icon_hud : quick_icon_companion;
   int h = 0, w = (int)strlen(rows[0]);
   while (rows[h])

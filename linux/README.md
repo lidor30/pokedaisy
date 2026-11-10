@@ -57,7 +57,9 @@ or dialog keeps controller focus inside it.
 Y (F on a keyboard) opens the QUICK MENU over the running game. In retail
 English FireRed, LeafGreen and Emerald: PC (the game's own PC, anywhere on the
 field), FLY (once a Pokemon in the party knows the move: a list of the towns
-you have been to, then the game's own flight), REPEL (the bag's; a list when it
+you have been to, then the game's own flight), FLASH (in English FireRed,
+LeafGreen, Emerald, Ruby and Sapphire, once a Pokemon in the party knows it:
+the game's own cut-in and light, dimmed where it isn't dark), REPEL (the bag's; a list when it
 holds more than one kind, dimmed with the steps left while one works) and BIKE
 (GET OFF while riding: the bike goes into the game's SELECT slot for a moment,
 yours is put back). Then WILD ENCOUNTERS on or off (saved in DATA/settings.ini;
@@ -66,7 +68,7 @@ Ruby / Sapphire in every language and the CFRU hacks), SAVE STATE, LOAD STATE,
 FF and COMPANION. The D-pad picks a tile, A runs it, B or Y closes it; the
 game's buttons wait meanwhile. Each calls the game's own functions between
 frames, at the addresses in `gamedata/` (the app's `FLY_*` / `FIELD_ITEMS_*`
-records), and only where the ROM's code is where they say.
+/ `FLASH_*` records), and only where the ROM's code is where they say.
 
 The HUD (companion SETTINGS > HUD, on by default) shows over the overworld, the
 app's CORNERS layout in its glass look: the party bottom left (level, HP,

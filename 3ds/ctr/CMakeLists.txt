@@ -65,7 +65,7 @@ file(GLOB HOST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../host/*.c")
 add_executable(pokedaisy.elf main.c gpu.c devlink.c ${CORE_SOURCES} ${HOST_SOURCES}
     ../../app/src/main/cpp/pk_host.c ../../app/src/main/cpp/pk_call.c ../../app/src/main/cpp/pk_wide.c
     ../../app/src/main/cpp/pk_gb_audio.c ../../app/src/main/cpp/pk_cheats.c ../../app/src/main/cpp/pk_gb_field.c
-    ../../app/src/main/cpp/pk_wide_gb.c ../../linux/fly.c ../../linux/field_items.c ../../linux/gb_field.c ../../linux/wild.c ../../linux/hud.c
+    ../../app/src/main/cpp/pk_wide_gb.c ../../linux/fly.c ../../linux/flash.c ../../linux/field_items.c ../../linux/gb_field.c ../../linux/wild.c ../../linux/hud.c
     ../../linux/quick_menu.c)
 target_include_directories(pokedaisy.elf PRIVATE
     "${MGBA_DIR}/include"

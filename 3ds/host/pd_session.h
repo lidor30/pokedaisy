@@ -121,6 +121,8 @@ struct pd_session {
     char repelRows[3][48];
     const char* repelNames[3];
     const struct pd_config* flyCfg;
+    const struct pd_config* flashCfg; // FLASH from the quick menu (linux/flash.c), where the ROM has its code
+    int flashAsk;                     // 1+ = FLASH picked, run between two frames
     bool itemsOk, pcOk, bikeOk;
 
     // USE / GIVE / TAKE, each run between frames.

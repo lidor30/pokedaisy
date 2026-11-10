@@ -204,6 +204,43 @@ static void wild(int species, int level) {
     }
 }
 
+// The game's ScriptContext on [script] (written over the PC's script RAM, as `wild` does).
+static void run_script(const uint8_t* script, int len) {
+    const struct pd_config* cfg = session.game.cfg;
+    if (!cfg || !cfg->pcSetupScript || !cfg->pcScript) {
+        printf("FAIL: no ScriptContext_SetupScript for this game\n");
+        failures++;
+        return;
+    }
+    pd_session_write(&session, cfg->pcScript, script, (size_t) len);
+    for (int i = 0; i < 300 && !pk_call_safe(session.core); i++) frames(1, 0);
+    uint32_t args[4] = { cfg->pcScript, 0, 0, 0 };
+    if (!pk_call(session.core, cfg->pcSetupScript, args, NULL)) {
+        printf("FAIL: the script didn't start\n");
+        failures++;
+    }
+}
+
+// teach SLOT INDEX MOVE: the party Pokémon's move INDEX set by the game's own SetMonData (MON_DATA_MOVE1 + INDEX), its
+// value from the field items' scratch RAM.
+static void teach(int slot, int index, int move) {
+    const struct pd_config* cfg = session.game.cfg;
+    const struct pd_party_fns* p = cfg ? cfg->partyFns : NULL;
+    if (!p || !p->setMonData || !p->scratch) {
+        printf("FAIL: no SetMonData for this game\n");
+        failures++;
+        return;
+    }
+    uint8_t v[2] = { (uint8_t) move, (uint8_t) (move >> 8) };
+    pd_session_write(&session, p->scratch, v, 2);
+    for (int i = 0; i < 300 && !pk_call_safe(session.core); i++) frames(1, 0);
+    uint32_t args[4] = { p->party + (uint32_t) slot * 100, 13u + (uint32_t) (index + p->monFieldShift), p->scratch, 0 };
+    if (!pk_call(session.core, p->setMonData, args, NULL)) {
+        printf("FAIL: SetMonData didn't return\n");
+        failures++;
+    }
+}
+
 static void print_state(void) {
     pd_snapshot_read(&session.snap, &session.game, pd_session_read, &session);
     const struct pd_snapshot* s = &session.snap;
@@ -236,7 +273,7 @@ static void command(char* line) {
     if (sscanf(line, "%31s %n", cmd, &n) < 1) return;
     char* args = line + n;
     args[strcspn(args, "\r\n")] = 0;
-    int a = 0, b = 0;
+    int a = 0, b = 0, a3 = 0;
     if (!strcmp(cmd, "run")) {
         frames(atoi(args), heldKeys);
     } else if (!strcmp(cmd, "press")) {
@@ -316,6 +353,23 @@ static void command(char* line) {
             printf("state %s after %d frames\n", name, i);
             frames(2, heldKeys); // the session reads it on its next frame
         }
+    } else if (!strcmp(cmd, "teach") && sscanf(args, "%d %d %d", &a, &b, &a3) == 3) {
+        teach(a, b, a3);
+    } else if (!strcmp(cmd, "script")) {
+        // script HEX: the game runs these script bytes (a warp, say) through its own ScriptContext, like `wild`.
+        uint8_t bytes[64];
+        int len = 0;
+        for (char* p = args; *p && len < (int) sizeof(bytes);) {
+            while (*p == ' ') p++;
+            unsigned v;
+            if (sscanf(p, "%2x", &v) != 1) break;
+            bytes[len++] = (uint8_t) v;
+            p += 2;
+        }
+        run_script(bytes, len);
+    } else if (!strcmp(cmd, "flash")) {
+        // FLASH picked from the quick menu: the session runs it between two frames.
+        session.flashAsk = 1;
     } else if (!strcmp(cmd, "poke")) {
         unsigned addr, value;
         if (sscanf(args, "%x %x", &addr, &value) == 2) {

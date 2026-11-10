@@ -109,7 +109,8 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
 - **Library**: the app's rail, view pills and tiles.
 - **Battle controls**: FIGHT / BAG / RUN / POKéMON, the moves, the party to send in (BEST / OUT), ONE-TAP MOVES,
   on the GBA games with their handlers known and on every Game Boy game (its 2x2 menu in the cart's own words).
-- **QUICK MENU** (Y): PC, FLY, REPEL, BIKE, WILD, states, FF. The Game Boy games have PC, FLY and WILD (`GbField`).
+- **QUICK MENU** (Y): PC, FLY, FLASH (English FireRed, LeafGreen, Emerald, Ruby, Sapphire: the game's own cut-in and light,
+  dimmed outside a dark cave; `linux/flash.c`), REPEL, BIKE, WILD, states, FF. The Game Boy games have PC, FLY and WILD (`GbField`).
 - **EXPAND / ZOOM OUT** on the games the app has it for, Game Boy too, and the **HUD** (party, minimap, balls,
   Repel steps), kept to the game's picture without EXPAND, in the app's battle HP box look: every window with its
   shadow down and right, the party as sprite and HP bar (status tags in a row of their own), the QUICK MENU's tiles
@@ -206,7 +207,8 @@ in `roms/` (a new one shows after `restart`). Never in a release build.
 `make sim` builds `build/sim/pd_sim` (`desktop/sim/`): the real session (`host/`) and companion over the real mGBA,
 with no 3DS code, from a script of `run`, `press`, `quick`, `tap`, `hit ID`, `hits`, `shot`, `wild`, `wait-state`,
 `press-to-state`, `poke`, `peek`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`, `gen5` / `onetap` / `noinfo` /
-`infofirst` (BATTLE STYLE, ONE-TAP MOVES, BATTLE INFO, BATTLE VIEW), `bench` (times the companion's redraw). `make sim-test` runs
+`infofirst` (BATTLE STYLE, ONE-TAP MOVES, BATTLE INFO, BATTLE VIEW), `script HEX` (script bytes run by the game: a warp),
+`teach SLOT INDEX MOVE` (the game's SetMonData), `flash` (FLASH picked), `bench` (times the companion's redraw). `make sim-test` runs
 `test/sim_*.txt` on FireRed and Emerald (`ROM_DIR`, `SAVE_DIR`), `make sim-test-gb` the Game Boy script on Yellow; saves
 are copied first, never written.
 

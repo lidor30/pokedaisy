@@ -378,6 +378,13 @@ struct pd_config {
     int flyGenderMapsec, flyMaleHeal, flyFemaleHeal; // the home town: by the player's gender
     bool flySaveBlock2Static; // flySaveBlock2Ptr is gSaveBlock2 itself (Ruby / Sapphire)
     uint32_t flyMapHeader; // set: SetUpFieldMove_Fly takes gMapHeader.mapType (+0x17) as its argument (Ruby / Sapphire)
+    // FLASH from the QUICK MENU (Flash.kt's FlashFns, the config's FLASH record): FlagGet, the field move's badge flag and the
+    // cave's lit flag, SetUpFieldMove_Flash, the two callbacks it sets (put back after), the post-menu callbacks it may set,
+    // gPartyMenu.slotId, gMapHeader (its cave byte at flashCaveOff), CRC32 of FlagGet / SetUp / each callback's first 32
+    // bytes, and the party menu's badge check with its 16 bytes' CRC32 (0 = not read). flashFlagGet 0 = no FLASH.
+    uint32_t flashFlagGet, flashSetUp, flashMenuCb, flashPostCb, flashSlot, flashMapHeader, flashBadgeCheck, flashBadgeCheckCrc;
+    int flashBadgeFlag, flashLitFlag, flashCaveOff;
+    uint32_t flashCallbacks[2], flashCrcs[4];
 
     // REPEL and PC anywhere (the app's FieldItemFns / PcFns, FieldItems.kt / Pc.kt): VarGet, VarSet,
     // CheckBagHasItem, RemoveBagItem and ArePlayerFieldControlsLocked (fieldCrcs, in that order), VAR_REPEL_STEP_COUNT

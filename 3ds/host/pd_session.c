@@ -23,6 +23,7 @@
 #include "../../app/src/main/cpp/pk_host.h"
 #include "../../app/src/main/cpp/pk_wide.h"
 #include "../../linux/field_items.h"
+#include "../../linux/flash.h"
 #include "../../linux/wild.h"
 #include "../core/pd_canvas.h"
 #include "../core/pd_map.h"
@@ -351,6 +352,8 @@ void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* 
 
     const struct pd_config* cfg = s->game.cfg;
     s->flyCfg = cfg && fly_supported(cfg, s->rom, s->romSize) ? cfg : NULL;
+    s->flashCfg = cfg && flash_supported(cfg, s->rom, s->romSize) ? cfg : NULL;
+    s->flashAsk = 0;
     s->itemsOk = cfg && field_items_supported(cfg, s->rom, s->romSize);
     s->pcOk = s->itemsOk && pc_supported(cfg, s->rom, s->romSize);
     s->bikeOk = s->itemsOk && bike_supported(cfg);
@@ -570,6 +573,14 @@ static void quick_items(struct pd_session* s) {
         q[n++] = (struct quick_item) { QUICK_FLY, false, false, flyer < 0 ? "No one in your party knows FLY" : NULL,
                                        flyer < 0 ? 0 : snap->party[flyer].species, 0, NULL };
     }
+    if (s->flashCfg) {
+        // FLASH (QuickMenu.kt's quickBlocked): who knows it, then whether it's dark here at all.
+        bool flasher = flash_flasher(snap) >= 0;
+        int dark = flash_dark(s->core, s->flashCfg, snap);
+        q[n++] = (struct quick_item) { QUICK_FLASH, false, false,
+                                       !flasher ? flash_reason(FLASH_NO_FLASHER) : dark == 0 ? flash_reason(FLASH_CANT_USE_HERE) : NULL,
+                                       0, 0, NULL };
+    }
     if (s->itemsOk) {
         s->repelKindCount = 0;
         for (int k = 0; k < REPEL_KINDS; k++)
@@ -687,7 +698,10 @@ static void quick_input(struct pd_session* s, const struct pd_input* in) {
         s->quickSel = (in->stickAngle * s->quickCount + 180) / 360 % s->quickCount;
     const struct quick_item* item = &s->quick[s->quickSel];
     if (!(down & PD_KEY_A) || item->why) return;
-    if (item->action == QUICK_FLY) {
+    if (item->action == QUICK_FLASH) {
+        s->quickOpen = false;
+        s->flashAsk = 1; // run between two frames
+    } else if (item->action == QUICK_FLY) {
         s->flyAsk = 1; // answered between two frames
     } else if (item->action == QUICK_REPEL && s->repelKindCount > 1) {
         // More than one kind: their list (QuickMenu.kt's RepelKinds), each with how many and its steps.
@@ -755,6 +769,17 @@ static void field_jobs(struct pd_session* s) {
     const struct pd_config* cfg = s->game.cfg;
     bool battle = s->shown.inBattle || (s->fieldFlags & PK_FIELD_BATTLE);
     bool busy = (s->fieldFlags & PK_FIELD_LOCKED) || (s->wideKnown && pk_wide_scene() != PK_WIDE_SCENE_FIELD);
+    if (s->flashCfg && s->flashAsk) {
+        if (pk_call_safe(c)) {
+            pd_snapshot_read(&s->snap, &s->game, pd_session_read, s);
+            enum flash_result r = flash_use(c, s->flashCfg, s->rom, s->romSize, &s->snap, busy, battle);
+            s->flashAsk = 0;
+            if (r != FLASH_OK) pd_session_show(s, flash_reason(r));
+        } else if (++s->flashAsk > 120) {
+            s->flashAsk = 0;
+            pd_session_show(s, flash_reason(FLASH_FAILED));
+        }
+    }
     if (s->flyCfg && s->flyAsk && (s->quickOpen || s->flyFromMap)) {
         if (pk_call_safe(c)) {
             pd_snapshot_read(&s->snap, &s->game, pd_session_read, s);

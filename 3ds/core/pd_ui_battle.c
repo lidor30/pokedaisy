@@ -209,8 +209,15 @@ static void hp_line(struct pd_canvas* c, int x, int y, int w, int hp, int maxHp)
 #define CARD_H 46
 
 // BattlerCard: [side] over the icon; the name (status, a state pill) / its types and level / HP, in a half of INFO.
+// Whether the save's POKéDEX has [species] caught (the foe's card marks it with a Poke Ball, discussion #305).
+static bool caught_species(const struct battle_data* d, const struct pd_snapshot* s, int species) {
+    if (!s || !s->dexOk || !d->game || !species) return false;
+    int national = pd_dex_national(d->game, species);
+    return national > 0 && pd_dex_caught(s, national);
+}
+
 static void side_card(struct pd_canvas* c, const struct battle_data* d, int x, int y, int w, const struct mon_view* m,
-                      const char* side, const char* state) {
+                      const char* side, const char* state, bool caught) {
     char buf[40];
     pd_text(c, x, y - 2, side, PD_VALUE, PD_VALUE_SHADOW);
     icon(c, d, m->species, m->shiny, x, y + 12, false);
@@ -218,10 +225,14 @@ static void side_card(struct pd_canvas* c, const struct battle_data* d, int x, i
     int stateW = state && *state ? pd_text_width(state) + 6 : 0;
     if (stateW) pill(c, right - stateW, y - 1, state, VERDICT_GREY);
     const char* status = pd_status_label(m->status);
-    int statusW = *status ? pd_text_width(status) + 6 + 3 : 0;
-    int nameEnd = tx + pd_text_fit(c, tx, y - 2, right - tx - stateW - statusW - (stateW ? 3 : 0),
+    int statusW = *status ? pd_text_width(status) + 6 + 3 : 0, ballW = caught ? 13 : 0;
+    int nameEnd = tx + pd_text_fit(c, tx, y - 2, right - tx - stateW - statusW - ballW - (stateW ? 3 : 0),
                                    species_name(d, m->species, buf, sizeof(buf)), PD_LABEL, PD_LABEL_SHADOW);
     if (m->shiny) nameEnd += pd_text(c, nameEnd + 2, y - 2, "*", SHINY_FRAME, PD_LABEL_SHADOW) + 2;
+    if (caught) {
+        ui_ball(c, nameEnd + 3, y + 2, true);
+        nameEnd += ballW;
+    }
     if (*status) ui_status_badge(c, nameEnd + 3, y + 1, m->status);
     // Types as the game's coloured tags, then Lv.
     int bx = tx, by = y + 17;
@@ -606,7 +617,7 @@ static void foe_details(struct pd_canvas* c, const struct battle_data* d, const 
         pd_text(c, rx, y - 2, "NO FOE", PD_MUTED, PD_MUTED_SHADOW);
         return;
     }
-    side_card(c, d, rx, y, rw, foe, s->isTrainer ? "FOE" : "WILD", foeState);
+    side_card(c, d, rx, y, rw, foe, s->isTrainer ? "FOE" : "WILD", foeState, caught_species(d, s, foe->species));
     y = iy + CARD_H + 4;
     separator(c, rx, y, rw, false);
     y += 5;
@@ -639,9 +650,9 @@ static void info(struct pd_canvas* c, const struct battle_data* d, const struct 
     const int gap = 3;
     int half = (iw - 2 - 2 * gap) / 2, rx = ix + half + gap + 2 + gap;
     int y = iy + 2;
-    side_card(c, d, ix, y, half, you, "YOU", "");
+    side_card(c, d, ix, y, half, you, "YOU", "", false);
     separator(c, ix + half + gap, iy, CARD_H + 2, true);
-    if (foe) side_card(c, d, rx, y, half, foe, s->isTrainer ? "FOE" : "WILD", foeState);
+    if (foe) side_card(c, d, rx, y, half, foe, s->isTrainer ? "FOE" : "WILD", foeState, caught_species(d, s, foe->species));
     else pd_text(c, rx, y - 2, "NO FOE", PD_MUTED, PD_MUTED_SHADOW);
     y = iy + CARD_H + 4;
     separator(c, ix, y, iw, false);
