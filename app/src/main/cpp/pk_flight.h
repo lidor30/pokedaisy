@@ -63,6 +63,8 @@ enum {
     PK_FLIGHT_BIRD_PALETTE,      // the hacks' palette loader (CFRU's dynamic palettes: a slot by tag, loaded if need be), or 0:
                                  // CreateFlyBirdSprite's palette 0 (FireRed's player palette, with the bird's colours)
     PK_FLIGHT_BIRD_PALETTE_TAG,  // ... the tag it's given (Radical Red the player's 0x1100, Unbound its bird's 0x11A2)
+                                 // 0xFFFF: the player's gender (the expansion); bit 16: called before CreateSprite with the low half,
+                                 // the slot CreateSprite gives kept (R.O.W.E.)
     PK_FLIGHT_OBJ_SPRITE_ID,     // ObjectEvent.spriteId's offset, 0 = 4 (pokeemerald-expansion moved it to +0x23: graphicsId grew to a u16)
     PK_FLIGHT_FOLLOWER_REMOVE,   // pokeemerald-expansion's following Pokemon: RemoveFollowingPokemon() at take-off (as the game's
                                  // FLY does), UpdateFollowingPokemon() once down (back by the player, out of its ball at the

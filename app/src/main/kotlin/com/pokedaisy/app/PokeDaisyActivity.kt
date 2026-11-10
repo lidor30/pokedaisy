@@ -416,7 +416,7 @@ class PokeDaisyActivity : Activity() {
 
     private fun fieldItemSupport(): com.pokedaisy.app.companion.data.FieldItemSupport? {
         val game = telemetry.snapshot.value.game
-        // The config's text key and tables too: Emerald Kaizo runs as EMERALD and keeps no FLY (fieldItemsForGame);
+        // The config's text key and tables too: Emerald Kaizo runs as EMERALD and keeps no classic FLY (fieldItemsForGame);
         // Recharged Emerald shares retail Emerald's code, revision and kind, but not its functions.
         val candidates = fieldItemsFor(game).ifEmpty { return null }
         val key = "$romCode/$romRev/$game/${com.pokedaisy.app.companion.data.romGameCode}/" +

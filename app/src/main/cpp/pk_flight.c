@@ -916,6 +916,10 @@ int pk_flight_take_off(struct mCore* core) {
     uint32_t spriteId = FL_MAX_SPRITES;
     flPlayerOnScreen(core, obj, &flAnchorX, &flAnchorY);
     // The bird comes in from the top right, alone (the game's FLY: CreateFlyBirdSprite's priority and palette).
+    // A tag with bit 16: the loader runs first, as R.O.W.E.'s CreateFlyBirdSprite does (LoadFieldEffectPalette-like, by index),
+    // and CreateSprite then gives the bird its slot by the template's palette tag: that slot is kept.
+    int preload = (flCfg[PK_FLIGHT_BIRD_PALETTE_TAG] & 0x10000u) != 0;
+    if (preload && flCfg[PK_FLIGHT_BIRD_PALETTE]) flCall(core, flCfg[PK_FLIGHT_BIRD_PALETTE], flCfg[PK_FLIGHT_BIRD_PALETTE_TAG] & 0xFFFFu, 0, 0, 0, NULL);
     if (!flCall(core, flCfg[PK_FLIGHT_CREATE_SPRITE], flCfg[PK_FLIGHT_BIRD_TEMPLATE], (uint32_t) (flAnchorX + 120) & 0xFFFF,
               (uint32_t) (flAnchorY - 100) & 0xFFFF, 1, &spriteId) || spriteId >= FL_MAX_SPRITES) {
         return PK_FLIGHT_NOT_NOW;
@@ -932,7 +936,8 @@ int pk_flight_take_off(struct mCore* core) {
     uint32_t slot = 0;
     // (A tag of 0xFFFF: the loader takes the player's gender - pokeemerald-expansion's LoadPlayerObjectEventPalette.)
     uint32_t tag = flCfg[PK_FLIGHT_BIRD_PALETTE_TAG] == 0xFFFF ? (uint32_t) flGender(core) : flCfg[PK_FLIGHT_BIRD_PALETTE_TAG];
-    if (flCfg[PK_FLIGHT_BIRD_PALETTE] && (!flCall(core, flCfg[PK_FLIGHT_BIRD_PALETTE], tag, 0, 0, 0, &slot) || slot > 15)) slot = 0;
+    if (preload) slot = a2 >> 12;
+    else if (flCfg[PK_FLIGHT_BIRD_PALETTE] && (!flCall(core, flCfg[PK_FLIGHT_BIRD_PALETTE], tag, 0, 0, 0, &slot) || slot > 15)) slot = 0;
     core->busWrite16(core, spr + FL_SPR_ATTR2, (uint16_t) ((a2 & 0x03FFu) | (1u << 10) | (slot << 12)));   // priority 1
     core->busWrite8(core, spr + FL_SPR_FLAGS, (uint8_t) (core->busRead8(core, spr + FL_SPR_FLAGS) & ~2u));  // screen coordinates
     uint8_t dir = core->busRead8(core, obj + 0x18) & 0x0F;

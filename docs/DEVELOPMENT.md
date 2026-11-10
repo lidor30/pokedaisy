@@ -2359,6 +2359,14 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
   CreateSprite by creating the bird, gPaletteFade through BeginNormalPaletteFade's pool, the lock trio beside
   ArePlayerFieldControlsLocked. Its CB_ExitFlyMap (found by calling both heal-warp functions) gives the town table and the
   specials, read straight from its code.
+- **R.O.W.E. and Super Mariomon 1.5.x** (`FIELD_ITEMS_ROWE`, `_MARIOMON_V1_5(_2)`): pokeemerald forks, so retail Emerald's
+  whole verified table ports (masked code, callers, pool words; R.O.W.E.'s RAM checked against the symbol table its ROM
+  carries at 0x08FB0670). Both load the bird's palette before CreateSprite by an index (0x1A): `birdPaletteTag` with bit 16
+  calls the loader first and keeps the slot CreateSprite picks from the template's tag. Their CB_ExitFlyMap is where the FLY
+  rules are: find it as the one function calling both SetWarpDestinationToHealLocation and ...ToMapWarp, then read it -
+  R.O.W.E.'s is a compiled switch (a jump table of 0x9E cases: `movs r0, #heal; bl` per case) decoded into
+  `HealWarp.special`. A badge flag that moved (R.O.W.E.'s FLAG_BADGE01_GET 0xCD7) shows at retail's trainer-card badge check.
+  Mariomon's builds share a kind and code: `fieldItemsCandidatesForGame` lets the CRCs pick, like SoulGold's.
 - **Following Pokemon** (the expansion's OW followers: Imperium, Lazarus, Heart and Soul, SoulGold, Seaglass): left on the ground, the follower was lost on the next map.
   The game's FLY removes it in its return-to-field code (`if (gFieldCallback == FieldCallback_UseFly) RemoveFollowingPokemon();
   else UpdateFollowingPokemon();`), which is where both are found: `followerRemove` is called at take-off, `followerUpdate`
