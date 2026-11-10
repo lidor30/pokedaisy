@@ -2367,6 +2367,12 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
   R.O.W.E.'s is a compiled switch (a jump table of 0x9E cases: `movs r0, #heal; bl` per case) decoded into
   `HealWarp.special`. A badge flag that moved (R.O.W.E.'s FLAG_BADGE01_GET 0xCD7) shows at retail's trainer-card badge check.
   Mariomon's builds share a kind and code: `fieldItemsCandidatesForGame` lets the CRCs pick, like SoulGold's.
+- **Quetzal Alpha 9** (`FIELD_ITEMS_QUETZAL(_ES)(_V1)`): agbcc code (`adds rX, rY, #0` moves), so retail Emerald's table is
+  the source, not an expansion or modern build. Its field-move gate is its own (`flagGet` = its region-badge check, `badgeFlag`
+  = FLY's entry in its table), its ObjectEvent keeps the sprite id at +0x23 (with the wrong offset the held movement was set
+  but never ran: the flight drove another sprite), its Fly warp is a function of its own (Hoenn's table and Emerald's
+  specials replayed; its other regions not). Its saves: the Spanish one (Jagged Pass) loads in every Alpha 9 build.
+- **Emerald Rogue** has no FLY: its party menu refuses it, so `flightAllowed` never sees a table there.
 - **Following Pokemon** (the expansion's OW followers: Imperium, Lazarus, Heart and Soul, SoulGold, Seaglass): left on the ground, the follower was lost on the next map.
   The game's FLY removes it in its return-to-field code (`if (gFieldCallback == FieldCallback_UseFly) RemoveFollowingPokemon();
   else UpdateFollowingPokemon();`), which is where both are found: `followerRemove` is called at take-off, `followerUpdate`

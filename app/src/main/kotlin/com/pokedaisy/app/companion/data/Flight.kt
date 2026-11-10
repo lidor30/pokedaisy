@@ -147,7 +147,7 @@ fun flightAllowed(kind: GameKind?, retail: Boolean, flight: FlightFns? = null): 
     GameKind.EMERALD -> retail || flight === FLIGHT_EMERALD_LEGACY || flight === FLIGHT_EMERALD_KAIZO
     // Known by their hash, their worlds flown headless.
     GameKind.RADICAL_RED, GameKind.UNBOUND, GameKind.GLAZED, GameKind.ORANGE_ISLANDS, GameKind.ODYSSEY, GameKind.GAIA,
-    GameKind.AMETHYST, GameKind.SWORD_SHIELD, GameKind.GS_CHRONICLES, GameKind.IMPERIUM, GameKind.LAZARUS, GameKind.HEART_AND_SOUL, GameKind.EMERALD_SEAGLASS, GameKind.TMT2, GameKind.ROWE, GameKind.MARIOMON,
+    GameKind.AMETHYST, GameKind.SWORD_SHIELD, GameKind.GS_CHRONICLES, GameKind.IMPERIUM, GameKind.LAZARUS, GameKind.HEART_AND_SOUL, GameKind.EMERALD_SEAGLASS, GameKind.TMT2, GameKind.ROWE, GameKind.MARIOMON, GameKind.QUETZAL,
     GameKind.SOULGOLD -> flight != null
     else -> false
 }
