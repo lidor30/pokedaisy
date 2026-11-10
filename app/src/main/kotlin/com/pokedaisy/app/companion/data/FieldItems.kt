@@ -521,6 +521,119 @@ val FIELD_ITEMS_MARIOMON_V1_5_2 = FieldItemFns(
 )
 
 /**
+ * Quetzal Alpha 9.0 (English): agbcc pokeemerald grown into its own engine, so retail Emerald's verified table ported by
+ * masked code, callers and pool words (its RAM landing on NATIVE_QUETZAL's). FLY's gate is the game's own: its party menu
+ * checks the current region's badge for a field move through its own function (0x08293CAC, FLY's entry 0xD9 in its table at
+ * 0x092C2430), used here as [FlyFns.flagGet] / [FlyFns.badgeFlag]; SetUpFieldMove_Fly from its field-move callback table.
+ * Its Fly warp replays Hoenn's 50-row table and Emerald's specials (Littleroot fixed at heal location 12); its other regions'
+ * towns have handlers of their own, not offered here. Vanilla MON_DATA. gSpecials[63] = the PC. The bird's palette loaded
+ * first (index 0x1A). Flown headless on the Spanish save from Jagged Pass.
+ */
+val FIELD_ITEMS_QUETZAL = FieldItemFns(
+    varGet = 0x080E1A54L, varSet = 0x080E1A8CL, checkBagHasItem = 0, removeBagItem = 0,
+    fieldControlsLocked = 0x080DB940L, repelVar = 0x4021, items = 0,
+    codeCrcs = listOf(0x5E1955EEL, 0x974222FCL, 0xE9BE9306L),
+    party = PartyItemFns(
+        getMonData = 0x0809C9D4L, setMonData = 0x0809D164L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
+        party = 0x020235CCL, partyCount = 0x020235C9L, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        codeCrcs = listOf(0x580B6010L, 0xD3637F5FL),
+    ),
+    bagActions = false,
+    pc = PcFns(0x080DB9CCL, 63, 0x082AC36CL, 0x081046C1L, listOf(0xEF3698BAL, 0x16040B9DL)),
+    fly = FlyFns(
+        flagGet = 0x08293CACL, badgeFlag = 0xd9, setUpFieldMoveFly = 0x0822A68CL, getMapsecType = 0x0818B970L,
+        fadeScreen = 0x080FC36CL, lockControls = 0x080DB928L, unlockControls = 0x080DB934L, setFlyWarpDestination = 0,
+        partyMenuSlotId = 0x0203EA05L, destinations = 0x0922B1C8L, firstMapsec = 0, count = 50,
+        codeCrcs = listOf(0x033909CDL, 0x835A5257L, 0xB58C94D7L, 0x5C7A97CFL, 0x17AEE52BL, 0x1E62A823L, 0xFC0F5150L, 0x2F1D18CAL, 0x21B04BE8L),
+        flyTypes = setOf(2, 4), extraMapsecs = listOf(58, 73), monMoveField = 13, monEggField = 45,
+        healWarp = HealWarp(
+            toHealLocation = 0x080BEDECL, toMapWarp = 0x080BED28L, returnToField = 0x08110210L,
+            saveBlock2Ptr = 0x030055C0L, special = mapOf(0 to 12, 15 to 11, 58 to 22, 73 to 21),
+            genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
+        ),
+    ),
+    flight = FLIGHT_QUETZAL,
+)
+
+/** Quetzal Alpha 9.0 (Spanish) and Alpha 9v1 (English / Spanish): Alpha 9.0 English's table ported (masked code, callers, pool
+ * words); 9v1 creates the bird through a field-effect helper of its own, so its template is read from that helper's table. */
+val FIELD_ITEMS_QUETZAL_ES = FieldItemFns(
+    varGet = 0x080E1A6CL, varSet = 0x080E1AA4L, checkBagHasItem = 0, removeBagItem = 0,
+    fieldControlsLocked = 0x080DB958L, repelVar = 0x4021, items = 0,
+    codeCrcs = listOf(0x5E1955EEL, 0x974222FCL, 0xE9BE9306L),
+    party = PartyItemFns(
+        getMonData = 0x0809C9B0L, setMonData = 0x0809D140L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
+        party = 0x020235CCL, partyCount = 0x020235C9L, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        codeCrcs = listOf(0xA5391E4BL, 0x68350C8AL),
+    ),
+    bagActions = false,
+    pc = PcFns(0x080DB9E4L, 63, 0x082AC1CCL, 0x081046D9L, listOf(0xEF3698BAL, 0xE364C232L)),
+    fly = FlyFns(
+        flagGet = 0x08293AF0L, badgeFlag = 0xd9, setUpFieldMoveFly = 0x0822A5A4L, getMapsecType = 0x0818B858L,
+        fadeScreen = 0x080FC384L, lockControls = 0x080DB940L, unlockControls = 0x080DB94CL, setFlyWarpDestination = 0,
+        partyMenuSlotId = 0x0203EA05L, destinations = 0x0922E444L, firstMapsec = 0, count = 50,
+        codeCrcs = listOf(0x033909CDL, 0xEF35D490L, 0xB58C94D7L, 0x5C7A97CFL, 0x17AEE52BL, 0x1E62A823L, 0x24F1FF1FL, 0x2F1D18CAL, 0x8522F30DL),
+        flyTypes = setOf(2, 4), extraMapsecs = listOf(58, 73), monMoveField = 13, monEggField = 45,
+        healWarp = HealWarp(
+            toHealLocation = 0x080BEDE0L, toMapWarp = 0x080BED1CL, returnToField = 0x08110228L,
+            saveBlock2Ptr = 0x030055C0L, special = mapOf(0 to 12, 15 to 11, 58 to 22, 73 to 21),
+            genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
+        ),
+    ),
+    flight = FLIGHT_QUETZAL_ES,
+)
+val FIELD_ITEMS_QUETZAL_V1 = FieldItemFns(
+    varGet = 0x080E4558L, varSet = 0x080E4590L, checkBagHasItem = 0, removeBagItem = 0,
+    fieldControlsLocked = 0x080DE2B4L, repelVar = 0x4021, items = 0,
+    codeCrcs = listOf(0x5E1955EEL, 0x974222FCL, 0xE9BE9306L),
+    party = PartyItemFns(
+        getMonData = 0x0809EAE8L, setMonData = 0x0809F278L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
+        party = 0x020235CCL, partyCount = 0x020235C9L, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        codeCrcs = listOf(0x8E37D7DDL, 0x30B75BFEL),
+    ),
+    bagActions = false,
+    pc = PcFns(0x080DE340L, 63, 0x082BF49CL, 0x0810750DL, listOf(0xEF3698BAL, 0x89BF90F8L)),
+    fly = FlyFns(
+        flagGet = 0x082A169CL, badgeFlag = 0xd9, setUpFieldMoveFly = 0x08236558L, getMapsecType = 0x08196A40L,
+        fadeScreen = 0x080FF0BCL, lockControls = 0x080DE29CL, unlockControls = 0x080DE2A8L, setFlyWarpDestination = 0,
+        partyMenuSlotId = 0x0203EA05L, destinations = 0x09235750L, firstMapsec = 0, count = 50,
+        codeCrcs = listOf(0x6F3F5BC8L, 0xE2D711E9L, 0x159A48E5L, 0x5C7A97CFL, 0x17AEE52BL, 0x1E62A823L, 0x0F85E929L, 0x2F1D18CAL, 0x9052E6DDL),
+        flyTypes = setOf(2, 4), extraMapsecs = listOf(58, 73), monMoveField = 13, monEggField = 45,
+        healWarp = HealWarp(
+            toHealLocation = 0x080C132CL, toMapWarp = 0x080C1268L, returnToField = 0x08113308L,
+            saveBlock2Ptr = 0x030055C0L, special = mapOf(0 to 12, 15 to 11, 58 to 22, 73 to 21),
+            genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
+        ),
+    ),
+    flight = FLIGHT_QUETZAL_V1,
+)
+val FIELD_ITEMS_QUETZAL_ES_V1 = FieldItemFns(
+    varGet = 0x080E4570L, varSet = 0x080E45A8L, checkBagHasItem = 0, removeBagItem = 0,
+    fieldControlsLocked = 0x080DE2CCL, repelVar = 0x4021, items = 0,
+    codeCrcs = listOf(0x5E1955EEL, 0x974222FCL, 0xE9BE9306L),
+    party = PartyItemFns(
+        getMonData = 0x0809EAC4L, setMonData = 0x0809F254L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
+        party = 0x020235CCL, partyCount = 0x020235C9L, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        codeCrcs = listOf(0xB3730972L, 0x187D480CL),
+    ),
+    bagActions = false,
+    pc = PcFns(0x080DE358L, 63, 0x082BF354L, 0x08107525L, listOf(0xEF3698BAL, 0x757E410DL)),
+    fly = FlyFns(
+        flagGet = 0x082A1548L, badgeFlag = 0xd9, setUpFieldMoveFly = 0x082364D8L, getMapsecType = 0x08196990L,
+        fadeScreen = 0x080FF0D4L, lockControls = 0x080DE2B4L, unlockControls = 0x080DE2C0L, setFlyWarpDestination = 0,
+        partyMenuSlotId = 0x0203EA05L, destinations = 0x09238A14L, firstMapsec = 0, count = 50,
+        codeCrcs = listOf(0x6F3F5BC8L, 0x7E186EC3L, 0x159A48E5L, 0x5C7A97CFL, 0x17AEE52BL, 0x1E62A823L, 0x034546A5L, 0x2F1D18CAL, 0x3DE8C9E7L),
+        flyTypes = setOf(2, 4), extraMapsecs = listOf(58, 73), monMoveField = 13, monEggField = 45,
+        healWarp = HealWarp(
+            toHealLocation = 0x080C1320L, toMapWarp = 0x080C125CL, returnToField = 0x08113320L,
+            saveBlock2Ptr = 0x030055C0L, special = mapOf(0 to 12, 15 to 11, 58 to 22, 73 to 21),
+            genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
+        ),
+    ),
+    flight = FLIGHT_QUETZAL_ES_V1,
+)
+
+/**
  * SoulGold (pokeemerald-expansion, no source), its four builds (v1.2.1 below): v1.1.4 mapped from pokeemerald-expansion 1.13.0's build
  * (FlagGet, VarGet / VarSet, FadeScreen, the PC by code; GetMonData / SetMonData through their callers), the rest from its
  * own code - gFieldMoveInfo's FLY entry (SetUpFieldMove_Fly, IsFieldMoveUnlocked_Fly), SetFlyDestination's literal and
@@ -732,6 +845,7 @@ private fun fieldItemsByKind(kind: GameKind?, gameCode: String, revision: Int): 
  * code CRCs pick the build ([fieldItemSupport] returns null for the others). Otherwise [fieldItemsForGame]'s one. */
 fun fieldItemsCandidatesForGame(kind: GameKind?, gameCode: String, revision: Int, configured: FieldItemFns? = null): List<FieldItemFns> = when (kind) {
     GameKind.MARIOMON -> if (gameCode == "BPEE") listOf(FIELD_ITEMS_MARIOMON_V1_5, FIELD_ITEMS_MARIOMON_V1_5_2) else emptyList()
+    GameKind.QUETZAL -> if (gameCode == "BPEE") listOf(FIELD_ITEMS_QUETZAL, FIELD_ITEMS_QUETZAL_ES, FIELD_ITEMS_QUETZAL_V1, FIELD_ITEMS_QUETZAL_ES_V1) else emptyList()
     GameKind.SOULGOLD -> if (gameCode == "BPEE") listOf(
         FIELD_ITEMS_SOULGOLD, FIELD_ITEMS_SOULGOLD_V1_2, FIELD_ITEMS_SOULGOLD_V1_2B, FIELD_ITEMS_SOULGOLD_V1_2C,
         FIELD_ITEMS_SOULGOLD_V1_2_1,

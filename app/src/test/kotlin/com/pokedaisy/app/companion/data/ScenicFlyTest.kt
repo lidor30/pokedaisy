@@ -356,6 +356,27 @@ class ScenicFlyTest {
     }
 
     @Test
+    fun quetzalBuildsPickTheirOwnTablesAndFlyHoenn() {
+        val builds = listOf(
+            "Pokemon Quetzal (Alpha 9.0) (English).gba" to FIELD_ITEMS_QUETZAL,
+            "Pokemon Quetzal (Alpha 9.0) (Spanish).gba" to FIELD_ITEMS_QUETZAL_ES,
+            "Pokemon Quetzal (Alpha 9v1) (English).gba" to FIELD_ITEMS_QUETZAL_V1,
+            "Pokemon Quetzal (Alpha 9v1) (Spanish).gba" to FIELD_ITEMS_QUETZAL_ES_V1,
+        )
+        var checked = 0
+        for ((name, own) in builds) {
+            val read = hack(name) ?: continue
+            for ((_, other) in builds) assertEquals(name, other === own, fieldItemSupport(other, read)?.canFlight == true)
+            checked++
+        }
+        assumeTrue(checked > 0)
+        // From Littleroot (0.9) at 5,9, where its own FLY landed headless: Hoenn's towns over the map.
+        val read = hack("Pokemon Quetzal (Alpha 9.0) (English).gba") ?: return
+        val reached = flies(FLIGHT_QUETZAL, FIELD_ITEMS_QUETZAL.fly!!, read, ScenicFly.MapId(0, 9), 5, 9, EM_TOWNS)
+        assertTrue("$reached", reached.size >= 12)
+    }
+
+    @Test
     fun kaizoFliesHoennWithoutTheWarp() {
         // Retail's save booted in Kaizo stands on map 0.29 at 15,48; its FLY never takes the game's warp (classicFly), so
         // every town it offers goes over the map or says there's no way.
