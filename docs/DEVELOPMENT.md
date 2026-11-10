@@ -2315,6 +2315,23 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
   its world flown headless first (free flight, then mgba_dump `flightroute` sweeps with `wideon`, counting frames whose
   margins didn't match - a randomized or edited build needs `wideon 60 <retail CRC>`), then a record and its kind in
   `flightAllowed`.
+- **Every language** (40 carts): `scripts/port_field_items.py`'s port_flight maps the English record (functions by code, RAM
+  through the literal pools, gFieldEffectObjectTemplate_Bird through gFieldEffectObjectTemplatePointers' pool, gMapGroups /
+  sHealLocations through theirs) into `FieldItemsPortsGen.kt`, checking the bird template's callback, every map group's
+  headers and the heal locations' bytes. MapGridGetCollisionAt and MapGridGetElevationAt start with the same 32 bytes, so
+  a code match put both on one function: the collision one is placed at English's distance from the elevation one and
+  compared past their pools (`ScenicFlyTest.everyLanguageCartsFlightMatchesItsRom` keeps them apart).
+- **The FireRed rev 0 hacks** (`FLIGHT_ULTRA_VIOLET` ... `FLIGHT_GS_CHRONICLES`, firered.toml): rev 0's record with each
+  hack's map groups and heal locations read through rev 0's literal pools, its own DestroySprite CRC (CFRU hooks it), the
+  Saffron stand-in kept only where map 3.11 is still FireRed's. The ones running as FIRERED are picked by config
+  (`fireRedHackFlight`) and let in by identity (`FIRERED_HACK_FLIGHTS`); Rocket Edition and Ash Gray stay out (Rocket
+  Edition reset as a flight came into Cerulean; Ash Gray's EXPAND lost the map). Emerald Legacy (`FLIGHT_EMERALD_LEGACY`)
+  is Emerald's record mapped into its rebuild by code; its GetPlayerAvatarGraphicsIdByStateId returns a u16.
+- **A blank bird** (Ghost Grey blanked its graphics): flCapture finds nothing in the bird's frame and flies the player in
+  the balloon (`flBirdBlank`). **Greyscale games**: when every colour of the player's own sprite palette is a grey, a
+  vehicle's colours are each taken to the nearest of those greys by brightness (`flReadGreys` / `flGrey`).
+- **Not yet**: Heart and Soul, Lazarus, Imperium, SoulGold (pokeemerald-expansion, gcc: their ObjectEvent keeps the sprite
+  id at +0x23, and their FLY's addresses came from builds of their source; flight needs the same builds).
 
 ## PC, FLY and WILD ENCOUNTERS on the Game Boy (`GbField.kt`)
 

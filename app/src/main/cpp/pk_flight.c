@@ -4,6 +4,7 @@
 #include "pk_wide.h"
 
 #include <stdio.h>
+#include <stdlib.h>
 #include <math.h>
 #include <string.h>
 
@@ -461,10 +462,14 @@ static int flRiderMode(void) {
     return flCfg[PK_FLIGHT_RIDER_TEMPLATE] != 0;
 }
 
-/** MAKEOVER > FLY ON's vehicle (pk_flight_vehicles.h), or NULL for the game's own bird. */
+/** A game whose bird has no picture (Ghost Grey blanked its graphics): flCapture flies the player in the air balloon. */
+static int flBirdBlank;
+
+/** MAKEOVER > FLY ON's vehicle (pk_flight_vehicles.h), the balloon where the game's bird is blank, or NULL for the bird. */
 static const struct pk_flight_vehicle* flVehicle(void) {
     uint32_t v = flCfg[PK_FLIGHT_VEHICLE];
-    return v >= 1 && v <= PK_FLIGHT_VEHICLE_COUNT ? &pk_flight_vehicles[v - 1] : NULL;
+    if (v >= 1 && v <= PK_FLIGHT_VEHICLE_COUNT) return &pk_flight_vehicles[v - 1];
+    return flBirdBlank ? &pk_flight_vehicles[0] : NULL;
 }
 
 static int flMakeRider(struct mCore* core) {
@@ -641,6 +646,40 @@ static void flSeatPlayer(struct mCore* core, const struct pk_flight_vehicle* v, 
     }
 }
 
+/** A game drawn in greys (Ghost Grey): the player's own palette is grey through and through, so the vehicle is drawn in
+ * those greys too, each colour taken to the grey nearest its brightness. Read off the player's palette in the frame. */
+static uint32_t flGreys[16];
+static int flGreyN;
+
+static void flReadGreys(struct mCore* core) {
+    flGreyN = 0;
+    uint32_t spr = flSpriteAddr(core->busRead8(core, flObjAddr(core) + FL_OBJ_SPRITE_ID));
+    uint32_t pal = 0x05000200u + 32u * (uint32_t) (core->busRead16(core, spr + FL_SPR_ATTR2) >> 12);
+    uint32_t got[16];
+    int n = 0;
+    for (int i = 1; i < 16; i++) {
+        uint16_t c = core->busRead16(core, pal + 2u * (uint32_t) i);
+        int r = c & 0x1F, g = (c >> 5) & 0x1F, b = (c >> 10) & 0x1F;
+        if (abs(r - g) > 1 || abs(g - b) > 1) return;   // a colour: not a grey game
+        uint32_t v = (uint32_t) r << 3 | (uint32_t) r >> 2;
+        int seen = 0;
+        for (int k = 0; k < n; k++) seen |= got[k] == v;
+        if (!seen) got[n++] = v;
+    }
+    if (n < 3) return;   // too few greys to tell (a sprite palette barely used)
+    memcpy(flGreys, got, sizeof(got));
+    flGreyN = n;
+}
+
+static uint32_t flGrey(uint32_t c) {
+    if (!flGreyN) return c;
+    int lum = (int) ((c & 0xFF) * 30 + ((c >> 8) & 0xFF) * 59 + ((c >> 16) & 0xFF) * 11) / 100;
+    uint32_t best = flGreys[0];
+    for (int k = 1; k < flGreyN; k++)
+        if (abs((int) flGreys[k] - lum) < abs((int) best - lum)) best = flGreys[k];
+    return (c & 0xFF000000u) | best << 16 | best << 8 | best;
+}
+
 /** A vehicle's frame into flSrc (its anchor at the centre), the player in its seat while they ride, its FRONT pixels
  * (a basket's rim, ropes, window frames) over them. */
 static int flVehicleTick;
@@ -656,8 +695,7 @@ static void flDrawVehicle(struct mCore* core, const struct pk_flight_vehicle* v)
                 uint8_t b = px[y * v->w + x];
                 int dx = ox + x, dy = oy + y;
                 if (!(b & 0x3F) || (pass && !(b & 0x40)) || dx < 0 || dy < 0 || dx >= FL_SRC || dy >= FL_SRC) continue;
-                uint32_t c = v->palette[b & 0x3F];
-                flSrc[dy * FL_SRC + dx] = c;
+                flSrc[dy * FL_SRC + dx] = flGrey(v->palette[b & 0x3F]);
             }
         }
         if (!pass && flRidden()) flSeatPlayer(core, v, px, ox, oy);
@@ -665,6 +703,14 @@ static void flDrawVehicle(struct mCore* core, const struct pk_flight_vehicle* v)
 }
 
 static void flCapture(struct mCore* core) {
+    // A bird with nothing in its picture: the balloon instead (checked on the bird's own frame, every frame).
+    if (flBird >= 0 && !flCfg[PK_FLIGHT_VEHICLE]) {
+        memset(flSrc, 0, sizeof(flSrc));
+        flCopySprite(core, flBird, FL_SRC / 2, FL_SRC / 2);
+        int any = 0;
+        for (int i = 0; i < FL_SRC * FL_SRC && !any; i++) any = flSrc[i] != 0;
+        flBirdBlank = !any;
+    }
     // A vehicle is drawn the whole time (coming in empty, leaving empty); the game's bird only while ridden.
     const struct pk_flight_vehicle* veh = flVehicle();
     int on = flBird >= 0 && (veh || flRidden());
@@ -674,6 +720,7 @@ static void flCapture(struct mCore* core) {
     if (!on) return;
     memset(flSrc, 0, sizeof(flSrc));
     if (veh) {
+        flReadGreys(core);
         flDrawVehicle(core, veh);
     } else {
         flCopySprite(core, flBird, FL_SRC / 2, FL_SRC / 2);
@@ -777,6 +824,7 @@ static void flPlaySe(struct mCore* core, uint32_t song) {
 }
 
 void pk_flight_reset(void) {
+    flBirdBlank = 0;
     flMendedLayout = 0;
     flMendN = 0;
     flDrawnN = 0;

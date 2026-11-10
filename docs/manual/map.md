@@ -57,7 +57,7 @@ On the DS it works in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and
 
 ## Flying over the map
 
-In FireRed, LeafGreen, Ruby, Sapphire and Emerald (every English release), and in Radical Red, Unbound and Glazed, a second blue button sits under the first one: `TAKE OFF`. Your Pokémon's bird swoops in, you climb on, and you can fly anywhere the game's world goes: over trees, mountains, water and buildings, from one route into the next town, with the D-pad. Hold `A` to fly faster. Nothing happens on the way: no wild Pokémon, no trainers spotting you, no doors pulling you in.
+In FireRed, LeafGreen, Ruby, Sapphire and Emerald in every language, Emerald Legacy, and the hacks Radical Red, Unbound, Glazed, Ultra Violet, Orange Islands, Ghost Grey, Let's Go, Odyssey, Gaia, Amethyst, Sword and Shield Ultimate Plus and GS Chronicles, a second blue button sits under the first one: `TAKE OFF`. Your Pokémon's bird swoops in, you climb on, and you can fly anywhere the game's world goes: over trees, mountains, water and buildings, from one route into the next town, with the D-pad. Hold `A` to fly faster. Nothing happens on the way: no wild Pokémon, no trainers spotting you, no doors pulling you in.
 
 Rather ride something else? `FLY ON`, in `SETTINGS` under `MAKEOVER`, swaps the bird for an air balloon, a helicopter or a zeppelin, with you inside. See [FLY ON](companion.md#fly-on).
 

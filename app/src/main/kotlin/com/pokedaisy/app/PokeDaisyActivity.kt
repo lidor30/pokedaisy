@@ -886,7 +886,7 @@ class PokeDaisyActivity : Activity() {
     private fun flightSupport(): com.pokedaisy.app.companion.data.FieldItemSupport? =
         fieldItemSupport()?.takeIf {
             it.canFlight && it.fns.flight != null && !romIsGameBoy && !romIsNds &&
-                com.pokedaisy.app.companion.data.flightAllowed(telemetry.snapshot.value.game, telemetry.retailRom())
+                com.pokedaisy.app.companion.data.flightAllowed(telemetry.snapshot.value.game, telemetry.retailRom(), it.fns.flight)
         }
 
     /** Keeps pk_flight configured for the running game, every half second (the same words again change nothing): a

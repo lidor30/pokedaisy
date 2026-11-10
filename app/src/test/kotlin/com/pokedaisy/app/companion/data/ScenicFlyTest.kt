@@ -183,6 +183,60 @@ class ScenicFlyTest {
         for (m in listOf(0, 3, 4, 5, 6, 9, 11)) assertTrue("mapsec $m in $reached", m in reached)
     }
 
+    @Test
+    fun everyLanguageCartsFlightMatchesItsRom() {
+        // scripts/port_field_items.py's mapped records, each against the cart of its key in the ROM folder: the code where
+        // the record says, and the collision and elevation reads two functions (their first 32 bytes are the same, so a
+        // match by code alone once put both on one).
+        val dir = File(RETAIL_ROM_DIR)
+        assumeTrue(dir.isDirectory)
+        var checked = 0
+        for (f in dir.listFiles().orEmpty().filter { it.name.endsWith(".gba") && it.length() <= 0x1000000 }) {
+            val b = f.readBytes()
+            val key = String(b, 0xAC, 4, Charsets.US_ASCII) + (b[0xBC].toInt() and 0xFF)
+            val fl = FIELD_ITEMS_PORTS[key]?.flight ?: continue
+            if (sha1(b) !in ShinyOdds.RETAIL_SHA1S) continue   // retail carts only, not a hack under the same code
+            val read = { a: Long, n: Int -> val o = (a - 0x08000000L).toInt(); if (o >= 0 && o + n <= b.size) b.copyOfRange(o, o + n) else ByteArray(n) }
+            assertTrue("$key ${f.name}", flightCodeMatches(fl, read))
+            assertTrue("$key collisionAt", fl.collisionAt != fl.elevationAt)
+            assertNotNull("$key world", ScenicFly.read(fl, ScenicFly.MapId(if (key.startsWith("BP") && !key.startsWith("BPE")) 3 else 0, 0), read))
+            checked++
+        }
+        println("language carts checked: $checked")
+    }
+
+    @Test
+    fun theHacksRecordsMatchTheirRoms() {
+        val cases = listOf(
+            "Pokemon Ultra Violet (v1.22).gba" to FLIGHT_ULTRA_VIOLET,
+            "Pokemon Orange Islands.gba" to FLIGHT_ORANGE_ISLANDS,
+            "Pokemon Ghost Grey (v1.0.4).gba" to FLIGHT_GHOST_GREY,
+            "Pokemon Ghost Grey (v1.0.1).gba" to FLIGHT_GHOST_GREY,
+            "Pokemon Let's Go Pikachu.gba" to FLIGHT_LETS_GO,
+            "Pokemon Let's Go Eevee (Translation Only).gba" to FLIGHT_LETS_GO,
+            "Pokemon Odyssey (v4.1.1).gba" to FLIGHT_ODYSSEY,
+            "Pokemon Gaia (v3.2).gba" to FLIGHT_GAIA,
+            "Pokemon Amethyst (v1.3.0).gba" to FLIGHT_AMETHYST,
+            "Pokemon Amethyst (v1.4.1).gba" to FLIGHT_AMETHYST_V141,
+            "Pokemon Sword and Shield Ultimate Plus (v1.2.1.2) (Casual Patch).gba" to FLIGHT_SWORD_SHIELD,
+            "Pokemon GS Chronicles (v2.7.6).gba" to FLIGHT_GS_CHRONICLES,
+            "Pokemon Emerald Legacy (v1.1.4).gba" to FLIGHT_EMERALD_LEGACY,
+        )
+        var checked = 0
+        for ((name, fl) in cases) {
+            val read = hack(name) ?: continue
+            assertTrue(name, flightCodeMatches(fl, read))
+            checked++
+        }
+        assumeTrue(checked > 0)
+        // Rocket Edition keeps rev 0's code but resets as a flight comes into its Cerulean: never let in.
+        assertTrue(!flightAllowed(GameKind.FIRERED, false, FLIGHT_FIRERED_REV0))
+        assertTrue(flightAllowed(GameKind.FIRERED, false, FLIGHT_GHOST_GREY))
+        assertTrue(flightAllowed(GameKind.EMERALD, false, FLIGHT_EMERALD_LEGACY))
+    }
+
+    private fun sha1(b: ByteArray) = java.security.MessageDigest.getInstance("SHA-1").digest(b).joinToString("") { "%02x".format(it) }
+
     /** Walks [dirs] over the world, map by map, as the game would; fails on a step off the joined maps. */
     private fun replay(world: ScenicFly.World, start: ScenicFly.MapId, x0: Int, y0: Int, dirs: ByteArray): Triple<ScenicFly.MapId, Int, Int> {
         var m = world.placed(start)!!

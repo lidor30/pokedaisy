@@ -618,6 +618,113 @@ drawView = 0x0805A684       # DrawWholeMapView
 birdPalette = 0x089DCBC0  # its palette loader, as its CreateFlyBirdSprite hook calls it (the bird's own tag)
 birdPaletteTag = 0x11A2
 
+# FREE FLIGHT for the hacks on FireRed rev 0's code (edited in place, or CFRU): rev 0's record, each with its own map groups
+# and heal locations (read off the ROM through rev 0's literal pools), its stand-in Saffron map only where 3.11 is still
+# FireRed's, and its own code CRCs (CFRU and a few in-place hacks hook DestroySprite). Each flown headless on its save.
+# A build sharing one: Ghost Grey 1.0.1 / 1.0.2 / 1.0.4, the four Let's Go builds, the Sword and Shield patches (the same
+# bytes where these read). Not Rocket Edition or Ash Gray: Rocket Edition reset to its copyright screen as a flight came into
+# Cerulean City (headless, from Route 20), and Ash Gray's EXPAND lost the map on its long routes.
+[record.FLIGHT_ULTRA_VIOLET]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x0872AF04
+mapGroupSizes = [5, 123, 61, 66, 7, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 2, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1, 21, 17]
+healLocations = 0x08740240
+healLocationCount = 21
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0xC22D4D5F, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_ORANGE_ISLANDS]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 6, 9, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x2F2C5934, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_GHOST_GREY]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 127, 68, 72, 9, 12, 25, 16, 18, 28, 32, 12, 12, 15, 56, 11, 3, 5, 3, 1, 12, 10, 3, 3, 2, 11, 5, 14, 19, 1, 1, 7, 5, 17, 10, 13, 8, 5, 1, 1, 1, 17, 44]
+healLocations = 0x089C59C0
+healLocationCount = 25
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0xC22D4D5F, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_LETS_GO]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x2845A4EB, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_ODYSSEY]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x2845A4EB, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_GAIA]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083528DC
+mapGroupSizes = [5, 81, 22, 46, 8, 8, 7, 13, 6, 9, 6, 9, 15, 15, 11, 19, 12, 7, 1, 4, 4, 1, 1, 4, 8, 1, 21]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = []
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x89AD7851, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_AMETHYST]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 127, 62, 67, 4, 10, 18, 12, 8, 21, 21, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 4, 2, 5, 2, 1, 1, 1, 4, 10, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = []
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0xC8514894, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_AMETHYST_V141]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 127, 62, 67, 4, 10, 18, 12, 8, 21, 21, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 4, 2, 5, 2, 1, 1, 1, 4, 10, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = []
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x9F6107A5, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_SWORD_SHIELD]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x087B1010
+mapGroupSizes = [21, 123, 60, 67, 13, 17, 36, 24, 27, 21, 30, 14, 19, 21, 12, 4, 2, 2, 2, 1, 1, 3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 29, 25, 23, 45, 43, 16, 2, 16, 1]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x30EA0582, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_GS_CHRONICLES]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 67, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocations = 0x08FF1008
+healLocationCount = 21
+noFly = []
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x77378C6B, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+
 [record.FLIGHT_LEAFGREEN_REV0]
 schema = 'gen3_flight'
 objectEvents = 0x02036E38

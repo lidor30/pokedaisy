@@ -129,16 +129,22 @@ fun flightCodeMatches(f: FlightFns, read: (addr: Long, len: Int) -> ByteArray): 
     }
 
 /**
- * Whether FREE FLIGHT may fly this game: the code CRCs only say its functions are where the record has them, and the
- * hacks edited in place (Rocket Edition, Ash Gray, the CFRU hacks on FireRed rev 0's code, Glazed on Emerald's) keep
- * them while redrawing the world - each is let in only once its own maps have been flown headless. [retail]: the
- * Poller's retail hash.
+ * Whether FREE FLIGHT may fly this game: the code CRCs only say its functions are where the record has them, and a hack
+ * edited in place keeps them while redrawing the world - each is let in only once its own maps have been flown headless
+ * and it has a record of its own ([flight]). [retail]: the Poller's retail hash (randomized retail and every language too).
  */
-fun flightAllowed(kind: GameKind?, retail: Boolean): Boolean = when (kind) {
-    GameKind.FIRERED, GameKind.EMERALD -> retail
+fun flightAllowed(kind: GameKind?, retail: Boolean, flight: FlightFns? = null): Boolean = when (kind) {
+    GameKind.FIRERED -> retail || FIRERED_HACK_FLIGHTS.any { it === flight }
+    GameKind.EMERALD -> retail || flight === FLIGHT_EMERALD_LEGACY
     // Known by their hash, their worlds flown headless.
-    GameKind.RADICAL_RED, GameKind.UNBOUND, GameKind.GLAZED -> true
+    GameKind.RADICAL_RED, GameKind.UNBOUND, GameKind.GLAZED, GameKind.ORANGE_ISLANDS, GameKind.ODYSSEY, GameKind.GAIA,
+    GameKind.AMETHYST, GameKind.SWORD_SHIELD, GameKind.GS_CHRONICLES -> flight != null
     else -> false
+}
+
+/** The FireRed 1.0 hacks running as FIRERED that have a flight record of their own (FieldItems.kt's fireRedHackFlight). */
+private val FIRERED_HACK_FLIGHTS: List<FlightFns> by lazy {
+    listOf(FLIGHT_ULTRA_VIOLET, FLIGHT_GHOST_GREY, FLIGHT_LETS_GO)
 }
 
 /** pkFlightTakeOff's answer as FLY's ([FlyResult]). */

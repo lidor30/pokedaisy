@@ -78,7 +78,7 @@ The app updates itself: it offers each new version when you open it. The full ma
 - **BATTLE**: opens by itself. Your moves rated SUPER / RESISTED / NEUTRAL / IMMUNE, the foe's weaknesses,
   ability, item and stats, suggestions for who to send out and which move to use, and the rest of the foe's team. Its
   touch buttons come in two looks: big coloured buttons, or a battle screen styled after the fifth generation's.
-- **MAP**: the game's region map with you on it, every place searchable, and FLY. In FireRed, LeafGreen, Ruby, Sapphire and Emerald (English) and in Radical Red, Unbound and Glazed, TAKE OFF lets you fly anywhere over the map on your Pokémon's bird, and FLY takes you to a town over the real map instead of cutting to it (FLY STYLE > CLASSIC for the game's own).
+- **MAP**: the game's region map with you on it, every place searchable, and FLY. In FireRed, LeafGreen, Ruby, Sapphire and Emerald (every language), Emerald Legacy and a dozen hacks on their code, TAKE OFF lets you fly anywhere over the map on your Pokémon's bird, and FLY takes you to a town over the real map instead of cutting to it (FLY STYLE > CLASSIC for the game's own).
 - **DEX**: seen / caught, full entries, evolutions, where to catch each one and the moves it learns.
 - **GUIDE**: hints first, answers on a second tap. What's in the area you're in, the next boss's team, evolutions,
   tips and a STUCK? page.
