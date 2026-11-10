@@ -184,6 +184,31 @@ class ScenicFlyTest {
     }
 
     @Test
+    fun theExpansionHacksOfferTakeOff() {
+        // Their bag has no USE (bagActions false): the support check returned before it looked at the flight once, and
+        // TAKE OFF never showed in the app though the core flew.
+        val cases = listOf(
+            "Pokemon Emerald Imperium (v1.3.1).gba" to FIELD_ITEMS_IMPERIUM,
+            "Pokemon Lazarus (v2.0).gba" to FIELD_ITEMS_LAZARUS,
+            "Pokemon Heart and Soul (v2.0.6).gba" to FIELD_ITEMS_HEART_AND_SOUL,
+            "Pokemon SoulGold (v1.1.4).gba" to FIELD_ITEMS_SOULGOLD,
+            "Pokemon SoulGold (v1.2).gba" to FIELD_ITEMS_SOULGOLD_V1_2,
+            "Pokemon SoulGold (v1.2) (Alt 1).gba" to FIELD_ITEMS_SOULGOLD_V1_2B,
+            "Pokemon SoulGold (v1.2) (Alt 2).gba" to FIELD_ITEMS_SOULGOLD_V1_2C,
+            "Pokemon SoulGold (v1.2.1).gba" to FIELD_ITEMS_SOULGOLD_V1_2_1,
+        )
+        var checked = 0
+        for ((name, fns) in cases) {
+            val read = hack(name) ?: continue
+            val s = fieldItemSupport(fns, read)
+            assertNotNull(name, s)
+            assertTrue(name, s!!.canFly && s.canFlight)
+            checked++
+        }
+        assumeTrue(checked > 0)
+    }
+
+    @Test
     fun theExpansionHacksFlyJohto() {
         // Heart and Soul from the save's New Bark (0.0, 15,12); SoulGold v1.1.4 from its save's route (0.16, 24,29): its
         // 11-bit grid (undefined 0x7FF) and gMapGroups' last group stopped where the table starts.
