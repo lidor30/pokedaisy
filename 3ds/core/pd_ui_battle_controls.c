@@ -196,7 +196,7 @@ static void ball_row(struct pd_canvas* c, const struct pd_mon* mons, int count, 
 }
 
 // What a move does to the foe, as a chip (MultiplierChip).
-static int mult_chip(struct pd_canvas* c, int x, int y, int pct) {
+int ui_mult_chip(struct pd_canvas* c, int x, int y, int pct) {
     char text[16];
     if (pct == 0) snprintf(text, sizeof(text), "0x");
     else if (pct == 25) snprintf(text, sizeof(text), "1/4x");
@@ -204,6 +204,7 @@ static int mult_chip(struct pd_canvas* c, int x, int y, int pct) {
     else snprintf(text, sizeof(text), "%dx", pct / 100);
     uint32_t fill = pct == 0 ? 0x585048 : pct > 100 ? 0x60D048 : pct < 100 ? 0xF04838 : 0x8890A0;
     int w = pd_text_width(text) + 6;
+    if (!c) return w; // measuring
     pd_round_rect(c, x, y, w, 12, 2, fill);
     pd_text(c, x + 3, y - 2, text, pct == 0 ? 0xF2B8BD : 0xFFFFFF, PD_NO_SHADOW);
     return w;
@@ -255,7 +256,7 @@ static void move_card(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
         }
         cx += pd_text(c, cx, cy - 2, buf, PD_MUTED, PD_NO_SHADOW) + 3;
         if (hints && foe && foe->species && power > 0)
-            mult_chip(c, cx, cy, pd_type_multiplier_pct(ui_game, type, foe->type1, foe->type2));
+            ui_mult_chip(c, cx, cy, pd_type_multiplier_pct(ui_game, type, foe->type1, foe->type2));
     }
     if (!usable) ui_fade_rect(c, saved, x, y, w, h, DISABLED_ALPHA);
 }
@@ -391,8 +392,11 @@ void ui_battle_controls(struct pd_ui* ui, struct pd_canvas* c, const struct pd_g
     bool hints = !ui->settings || !ui->settings->hideHints;
     bool canSwitch = ui->battleInput && pd_binput_can_switch(ui->battleInput);
     enum pd_battle_state state = s->battleState;
+    // BATTLE STYLE > GEN 5: Black / White's touch screen (a Game Boy game keeps its own look).
     bool picking = (state == PD_BATTLE_ACTION && ui->battleChoosingMon) || (state == PD_BATTLE_PARTY_OPEN && canSwitch);
-    if (picking) {
+    if (ui_gen5_style(ui, g)) {
+        ui_battle_gen5(ui, c, g, s, busy);
+    } else if (picking) {
         party_picker(ui, c, g, s, busy, hints);
     } else {
         // Your balls from the left edge, the foe's (smaller) flush with the right one, both on one middle line.

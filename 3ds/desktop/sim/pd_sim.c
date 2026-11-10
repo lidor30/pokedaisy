@@ -254,6 +254,10 @@ static void command(char* line) {
     } else if (!strcmp(cmd, "dark")) {
         settings.darkMode = atoi(args) != 0;
         pd_look_apply(&session.game, &settings);
+    } else if (!strcmp(cmd, "gen5")) {
+        settings.battleGen5 = atoi(args) != 0;
+    } else if (!strcmp(cmd, "onetap")) {
+        settings.oneTapMoves = atoi(args) != 0;
     } else if (!strcmp(cmd, "theme")) {
         settings.theme = atoi(args);
         pd_look_apply(&session.game, &settings);

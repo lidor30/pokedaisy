@@ -44,7 +44,10 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   - **BATTLE**: opens by itself in a battle and goes back after it, over the DS battle screens' mint and Poké Ball.
     The controls are HeartGold's layout and buttons: FIGHT over the four pale move places, BAG and POKéMON in the
     corners with RUN between them a little lower, the moves as HeartGold's cards (the type's colour round white over
-    beige). **INFO**: you and the foe side by side (side, icon, type tags, level, HP), your moves with
+    beige). SETTINGS > BATTLE STYLE > GEN 5 (`pd_ui_battle_gen5.c`, the app's `BattleControlsGen5.kt`) draws Black / White's
+    touch screen instead, edge to edge: the red and lilac ball with FIGHT! in its lens, BAG / RUN / POKéMON as round plates
+    rising from the bottom, the moves as hexagon plates in the opened field, the game's green-rimmed party slots, and the
+    closed ball in the dark behind INFO / SUGGESTIONS (a Game Boy game keeps its own look). **INFO**: you and the foe side by side (side, icon, type tags, level, HP), your moves with
     the app's verdict pills (SUPER 2x / NEUTRAL 1x / RESISTED 1/2x / IMMUNE 0x / STATUS) on the left and what the
     foe is WEAK TO / RESISTS / IMMUNE TO on the right. Its corner button opens **FOE DETAILS**: your side shrinks to a
     strip (icon, HP standing up) and the foe gets the page - its ability (named from the ROM), held item, live stats with
@@ -136,7 +139,9 @@ frame went (`run_us` the game, `wait_us` its renderer, `wide_us` EXPAND, `snap_u
 with the slowest (`redraw_worst_us`). A redraw runs between two game frames, so it's paid in frame time: about 3.5-7 ms on a
 New 3DS (a 320 x 240 x 4 memcpy alone is 1-1.8 ms there; a desktop is ~150x faster, so judge screens against each other with
 the simulator's `bench N`). Boxes paint each frame layer once (`pd_canvas.c`'s rings), text is clipped a row at a time with its
-shadow in one pass, and PARTY's scaled cards are kept until the party, cursor or look changes.
+shadow in one pass, and PARTY's scaled cards are kept until the party, cursor or look changes. GEN 5's ball screens are kept
+as runs of one colour a row (drawn again with writes only) and drawn a row at a time: columns of fills missed the cache on
+every pixel, 42 ms a redraw before, about 4 ms now.
 
 ## Controls
 
@@ -197,7 +202,8 @@ in `roms/` (a new one shows after `restart`). Never in a release build.
 
 `make sim` builds `build/sim/pd_sim` (`desktop/sim/`): the real session (`host/`) and companion over the real mGBA,
 with no 3DS code, from a script of `run`, `press`, `quick`, `tap`, `hit ID`, `hits`, `shot`, `wild`, `wait-state`,
-`press-to-state`, `poke`, `peek`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`, `bench` (times the companion's redraw). `make sim-test` runs
+`press-to-state`, `poke`, `peek`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`, `gen5` / `onetap` (BATTLE STYLE,
+ONE-TAP MOVES), `bench` (times the companion's redraw). `make sim-test` runs
 `test/sim_*.txt` on FireRed and Emerald (`ROM_DIR`, `SAVE_DIR`), `make sim-test-gb` the Game Boy script on Yellow; saves
 are copied first, never written.
 

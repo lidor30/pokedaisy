@@ -92,6 +92,7 @@ struct pd_settings {
     // The 3DS's (the companion's SETTINGS rows on hosts that show them):
     bool hideHints;  // BATTLE HINTS off
     bool oneTapMoves; // ONE-TAP MOVES: the moves on the action menu where FIGHT is
+    bool battleGen5;  // BATTLE STYLE: GEN 5 (Black / White's touch screen); off = GEN 4
     int gameSpeed;   // GAME SPEED: an index into PD_GAME_SPEEDS
     int gameVolume;  // GAME VOLUME: 20 ... 100
     bool gameMuted;  // MUTE GAME

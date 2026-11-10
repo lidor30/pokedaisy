@@ -64,6 +64,7 @@ int ui_type_badge(struct pd_canvas* c, int x, int y, int type) {
     for (; name[n] && n < 11; n++) text[n] = name[n] >= 'a' && name[n] <= 'z' ? (char) (name[n] - 32) : name[n];
     text[n] = 0;
     int w = pd_text_width(text) + 6;
+    if (!c) return w; // measuring
     pd_round_rect(c, x, y, w, 12, 1, ui_type_color(type));
     pd_text(c, x + 3, y - 2, text, 0xFFFFFF, PD_NO_SHADOW);
     return w;

@@ -132,6 +132,7 @@ enum setting_row {
     SETTING_RUN_INDOORS,
     SETTING_HINTS,
     SETTING_ONE_TAP,
+    SETTING_BATTLE_STYLE,
     SETTING_RESTART,
 };
 
@@ -224,6 +225,15 @@ int ui_out_slots(const struct pd_snapshot* s);
 // PARTY's grid in the canvas; with [out] / [best] its picker: those slots tagged, tapping sends a Pokémon in.
 void ui_party_grid(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s, int best, int out);
 // A beveled colour button (PlatinumButton), id < 0 = not tappable.
+// What a move does to the foe, as a chip (MultiplierChip): returns its width (c NULL: just measures).
+int ui_mult_chip(struct pd_canvas* c, int x, int y, int pct);
+// BATTLE STYLE > GEN 5 (pd_ui_battle_gen5.c): the controls' pane, and the closed ball behind INFO / SUGGESTIONS.
+void ui_battle_gen5(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s, bool busy);
+void ui_gen5_closed_ball(struct pd_canvas* c);
+// The BATTLE tab's backdrop in GEN 5: the closed ball, or only the strip under the pane while the controls cover it.
+void ui_gen5_backdrop(struct pd_ui* ui, struct pd_canvas* c, const struct pd_snapshot* s);
+// Whether the BATTLE tab takes GEN 5's look for this game.
+bool ui_gen5_style(const struct pd_ui* ui, const struct pd_game* g);
 void ui_platinum(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, uint32_t fill, uint32_t frame, int id);
 // Blends what was just drawn in a rectangle over [before] (w x h pixels saved first): alpha 0-255.
 void ui_fade_rect(struct pd_canvas* c, const uint32_t* before, int x, int y, int w, int h, int alpha);
