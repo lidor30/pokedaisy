@@ -71,7 +71,7 @@ It needs what the game's own flight needs: the badge, a Pokémon in your party t
 
 ## Where you can fly
 
-`FLIGHT AREA` (in `SETTINGS`, under `GAMEPLAY`) keeps flying from skipping the story. On `WHERE YOU'VE BEEN`, the default, you fly only over places you've already been. At the edge of a place you haven't been, the bird turns back and a note says you haven't been there yet. That way you can't fly past a guard, a sleeping giant blocking the road or a cave you haven't made it through yet.
+`FLIGHT AREA` (in `SETTINGS`, under `GAMEPLAY`) keeps flying from skipping the story. On `VISITED`, the default, you fly only over places you've already been. At the edge of a place you haven't been, the bird turns back and a note says you haven't been there yet. That way you can't fly past a guard, a sleeping giant blocking the road or a cave you haven't made it through yet.
 
 PokeDaisy keeps a list of the places you've been for each save, and it grows by itself as you walk. The first time it meets a save, it fills the list from what the save already shows:
 
@@ -81,7 +81,7 @@ PokeDaisy keeps a list of the places you've been for each save, and it grows by 
 
 So a save from late in the game flies almost everywhere right away. A place with no town and no trainer, or one you skipped, needs one walk in before you can fly over it. The list is PokeDaisy's own: your save doesn't change.
 
-On `ANYWHERE`, you can fly wherever the game's world goes. If you're signed in to RetroAchievements, achievements pause the first time you take off this way, since flying ahead could reach a set's places early. They come back on when you switch to `WHERE YOU'VE BEEN` again.
+On `ANYWHERE`, you can fly wherever the game's world goes. If you're signed in to RetroAchievements, achievements pause the first time you take off this way, since flying ahead could reach a set's places early. They come back on when you switch to `VISITED` again.
 
 [The scenic way](#the-scenic-way) follows the same rule: a town you can't reach over places you've been gets the game's own flight instead.
 

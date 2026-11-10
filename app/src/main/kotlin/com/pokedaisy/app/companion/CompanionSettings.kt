@@ -624,7 +624,7 @@ enum class FfMusicMode(val label: String) {
 /** SETTINGS > FLIGHT AREA: where FREE FLIGHT and the scenic FLY may go (companion.data.FlightArea). [label] stays English. */
 enum class FlightAreaMode(val id: Int, val label: String) {
     /** Only over maps the player has seen: the save's towns, the routes between them, maps with a beaten trainer, every map stood on. */
-    SEEN(0, tk("WHERE YOU'VE BEEN")),
+    SEEN(0, tk("VISITED")),
 
     /** Anywhere the game's world goes; RetroAchievements pause from the first take-off. */
     ANYWHERE(1, tk("ANYWHERE")),
