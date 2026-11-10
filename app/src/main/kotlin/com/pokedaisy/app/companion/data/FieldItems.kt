@@ -655,14 +655,15 @@ fun fieldItemSupport(fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArra
     )
     val fly = fns.fly?.let { flyCodeMatches(it, read) } == true
     val pc = fns.pc?.let { pcCodeMatches(it, read) } == true
+    // FREE FLIGHT needs FLY's checks (the badge, the move, SetUpFieldMove_Fly) and its own code where the record says.
+    val flight = fly && fns.flight?.let { flightCodeMatches(it, read) } == true
     if (!fns.bagActions) {
         // FLY and the PC; the Repels too where the table names its own (the expansion renumbered items) and their
         // functions are mapped (SoulGold, GitHub #242).
         val repels = if (fns.repelItems != REPEL_ITEMS && fns.checkBagHasItem != 0L && fns.removeBagItem != 0L && fns.items != 0L) fns.repelItems else emptySet()
-        return FieldItemSupport(fns, emptySet(), repels, canFly = fly, canPc = pc)
+        return FieldItemSupport(fns, emptySet(), repels, canFly = fly, canPc = pc, canFlight = flight)
     }
     val items = read(fns.items, party.itemCount * fns.itemSize)
-    val flight = fly && fns.flight?.let { flightCodeMatches(it, read) } == true
     return FieldItemSupport(fns, holdableItems(fns, items), usableItems(fns, items), canFly = fly, canPc = pc, canFlight = flight)
 }
 
