@@ -385,6 +385,389 @@ riderGfx = 0x0808CE60
 spriteDummy = 0x08007445
 codeCrcs = [0xB9FB85A7, 0xB037C8AF, 0x4585C55F, 0xC22D4D5F, 0xC1C72DBE, 0x461CFB4C, 0x5FFF32BF, 0x5FFF32BF, 0x44A073D8, 0x4AD66684, 0xF7A78E5C, 0xBBFDA236, 0x02CDF403, 0xCA5315E7]
 
+# FREE FLIGHT on the pokeemerald-expansion hacks: Emerald's constants (the same movement actions, songs, metatile behaviours
+# and rider animation in expansion 1.10 / 1.13), their own addresses mapped from a plain build of the expansion's tag
+# (functions by code, masked, else by shape: MapGridGetCollisionAt / ElevationAt by the bits they return,
+# GetPlayerAvatarGraphicsIdByStateId by its gPlayerAvatar + 7 read), RAM and tables through the literal pools; checked
+# against their FLY records (the lock functions, gSaveBlock2Ptr, the field-lock byte). ObjectEvent.spriteId at +0x23.
+# Emerald Imperium 1.3.1, from expansion 1.10.0.
+[record.FLIGHT_IMPERIUM]
+schema = 'gen3_flight'
+base = 'FLIGHT_EMERALD'
+objectEvents = 0x0200A6C4
+playerAvatar = 0x0200A904
+sprites = 0x0203D2A8
+vmap = 0x030050AC
+connectionFlags = 0x0200A6B4
+saveBlock1Ptr = 0x03006218
+saveBlock2Ptr = 0x0300621C
+main = 0x03004218
+cb2Overworld = 0x08188E14
+lockByte = 0x03000E84
+paletteFade = 0x020370C8
+lockControls = 0x0820087C
+unlockControls = 0x08200888
+createSprite = 0x08211B38
+destroySprite = 0x08211EEC
+startSpriteAnim = 0x082130F0
+birdTemplate = 0x08612818
+behaviorAt = 0x08137F08
+collisionAt = 0x08137E10
+elevationAt = 0x08137DA4
+objectAt = 0x08117488
+playSe = 0x0820FFD8
+spriteOffset = 0x0203E7B4
+mapHeader = 0x0200A68C
+drawMetatileAt = 0x0812DD80
+mapGroups = 0x08FC2F74
+healLocations = 0x086A7E20
+drawView = 0x0812DB04
+riderTemplate = 0x081180D0
+riderGfx = 0x0813B1A0
+spriteDummy = 0x0821224D
+birdPalette = 0x0811A2A8
+birdPaletteTag = 0xFFFF
+mapGroupSizes = [57, 6, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 11, 23, 14, 16, 15, 2, 2, 2, 3, 1, 1, 1, 112, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+healLocationCount = 52
+noFly = []
+objSpriteId = 0x23
+followerRemove = 0x08118DC4
+followerUpdate = 0x08118B48
+codeCrcs = [0x4522C4C5, 0xFAD9A57B, 0x78B809B4, 0xED199C78, 0xC10D31AB, 0x5386DEDA, 0x6CDE81D7, 0x400F293A, 0x340A500A, 0xADDEACAC, 0xB064262A, 0x03666D93, 0x4E0E4989, 0x0DB7E95B, 0xCAB1D13A, 0x0E21B16D, 0x108BFF1C]
+
+# Lazarus 2.0, from expansion 1.10.0 too: its own build of it (registers and order apart), so the lock functions come from
+# FLY_LAZARUS's record, MapGridGetMetatileBehaviorAt as the function after MapGridGetMetatileIdAt that calls it first,
+# CB2_Overworld off gMain on its field. No rider template found: the player's own sprite rides the bird (flSeatOnBird).
+[record.FLIGHT_LAZARUS]
+schema = 'gen3_flight'
+base = 'FLIGHT_EMERALD'
+objectEvents = 0x0200566C
+playerAvatar = 0x020058AC
+sprites = 0x0203B5CC
+vmap = 0x03002468
+connectionFlags = 0x0200B094
+saveBlock1Ptr = 0x03003664
+saveBlock2Ptr = 0x03003668
+main = 0x030014B8
+cb2Overworld = 0x081906AC
+lockByte = 0x03003B38
+paletteFade = 0x0201B65C
+lockControls = 0x0820B200
+unlockControls = 0x0820B20C
+createSprite = 0x08003A40
+destroySprite = 0x08003E04
+startSpriteAnim = 0x08004F94
+birdTemplate = 0x087B8780
+behaviorAt = 0x08148BB0
+collisionAt = 0x08148AB8
+elevationAt = 0x08148A4C
+objectAt = 0x08114E6C
+playSe = 0x0821B15C
+spriteOffset = 0x0203CAD8
+mapHeader = 0x0200B06C
+drawMetatileAt = 0x0812B1F0
+mapGroups = 0x08FAF098
+healLocations = 0x08853094
+drawView = 0x0812AF70
+riderTemplate = 0x00000000
+riderGfx = 0x00000000
+spriteDummy = 0x08004141
+birdPalette = 0x081186FC
+birdPaletteTag = 0xFFFF
+mapGroupSizes = [114, 8, 12, 6, 7, 22, 10, 25, 7, 31, 8, 17, 18, 31, 24, 21, 19, 2, 2, 2, 3, 1, 1, 2, 115, 63, 89, 2, 1, 13, 1, 1, 3, 1]
+healLocationCount = 62
+noFly = []
+objSpriteId = 0x23
+followerRemove = 0x08116964
+followerUpdate = 0x08116704
+codeCrcs = [0x824C20A1, 0x3DB7411F, 0x78B809B4, 0xED199C78, 0xC10D31AB, 0x18BD2406, 0x2C6258AC, 0xCBEF23E4, 0x340A500A, 0xC4390A7B, 0xB064262A, 0x0DB7E95B, 0xB5045B1F, 0xA08F73F4, 0x8599F5EE]
+
+# FREE FLIGHT for Heart and Soul v2.0.6 (pokeemerald-expansion, its own gcc build): mapped from expansion 1.13's build
+# by masked code and checked live headless (lock / unlock, CreateSprite / PlaySE by their callers, the field's callback2).
+# Its SaveBlock1 keeps the player's position at +4 (saveBlock1PosOff). gMapGroups' groups 31 on are empty lists (NULLs),
+# so only the first 31 are read. Its bird template has no callback: SpriteCallbackDummy is written after CreateSprite.
+# No rider graphics: the player's own sprite is seated on the bird. Its following Pokemon goes at take-off and comes back
+# once down (RemoveFollowingPokemon / UpdateFollowingPokemon: the calls round its return-to-field code's FieldCallback_UseFly check).
+# Its MapGridGetMetatileBehaviorAt starts with the two lsls that sign-extend x / y (0x08151370, not the push after them).
+[record.FLIGHT_HEART_AND_SOUL]
+schema = 'gen3_flight'
+base = 'FLIGHT_EMERALD'
+objectEvents = 0x020017F4
+playerAvatar = 0x020017C4
+sprites = 0x0203A764
+vmap = 0x0300306C
+connectionFlags = 0x02001D28
+saveBlock1Ptr = 0x030041D8
+saveBlock2Ptr = 0x030041D4
+main = 0x03005BD8
+cb2Overworld = 0x0819A010
+lockByte = 0x03001FDD
+paletteFade = 0x020339DC
+lockControls = 0x08207FD8
+unlockControls = 0x08207FEC
+createSprite = 0x0821A9BC
+destroySprite = 0x082198A0
+startSpriteAnim = 0x0821A15C
+birdTemplate = 0x085018EC
+behaviorAt = 0x08151370
+collisionAt = 0x08150FD8
+elevationAt = 0x08150F38
+objectAt = 0x081274D4
+playSe = 0x082186C0
+spriteOffset = 0x0203A2DE
+mapHeader = 0x02001D0C
+drawMetatileAt = 0x08135D0C
+mapGroups = 0x092DF5A4
+healLocations = 0x08785204
+drawView = 0x08135C70
+riderTemplate = 0x00000000
+riderGfx = 0x00000000
+spriteDummy = 0x08218B45
+birdPalette = 0x08128C38
+birdPaletteTag = 0xFFFF
+mapGroupSizes = [71, 5, 5, 6, 5, 29, 9, 10, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 7, 1, 7, 35, 28, 91, 5, 15, 1, 6, 15, 108]
+healLocationCount = 74
+saveBlock1PosOff = 4
+followerRemove = 0x0812846C
+followerUpdate = 0x0812D264
+noFly = []
+objSpriteId = 0x23
+codeCrcs = [0x3A5DE8F0, 0xD7D52C9E, 0xF1F342DE, 0xA6906BB8, 0xC10D31AB, 0x1FDA72D5, 0xBC7A69FC, 0x81028CC3, 0x340A500A, 0x9545301F, 0x71C69350, 0xC22F487B, 0x56E6647A, 0x0E21B16D, 0x9DA84837]
+
+# FREE FLIGHT for SoulGold (pokeemerald-expansion, no source), v1.1.4 and the v1.2 builds (FIELD_ITEMS_SOULGOLD*'s twins; the
+# two v1.2.1 builds share their code). v1.1.4 mapped from expansion 1.13's build and by shape: CreateSprite from
+# CreateFlyBirdSprite (0xFF, 0xB4, 1), its bird template behind gFieldEffectObjectTemplatePointers +0x68 (no callback:
+# SpriteCallbackDummy written after), the palette loader after it (the player's gender), DestroySprite the body gcc split
+# off (its callers test inUse), the map grid's reads by shape - SoulGold's metatile ids are 11 bits, collision one bit
+# (bit 11), undefined 0x7FF (mapGridUndefined) - the field's callback2 live, gMapConnectionFlags right after gMapHeader.
+# The v1.2 builds from v1.1.4 by masked code and the pool words of the matched functions (port_sg-style), checked live.
+# Seated on the bird (no rider graphics); its following Pokemon goes at take-off and comes back once down. gMapGroups'
+# last group stops where the table starts (the list ran on into it).
+[record.FLIGHT_SOULGOLD]
+schema = 'gen3_flight'
+base = 'FLIGHT_EMERALD'
+objectEvents = 0x02003314
+playerAvatar = 0x020032E8
+sprites = 0x0203BF38
+vmap = 0x03002F58
+connectionFlags = 0x02003844
+saveBlock1Ptr = 0x030040C4
+saveBlock2Ptr = 0x030040C0
+main = 0x030055C0
+cb2Overworld = 0x081BEA30
+lockByte = 0x03001F74
+paletteFade = 0x020384D0
+lockControls = 0x082363B8
+unlockControls = 0x082363CC
+createSprite = 0x08247A78
+destroySprite = 0x08246EB8
+startSpriteAnim = 0x0824802C
+birdTemplate = 0x084F4EDC
+behaviorAt = 0x08165284
+collisionAt = 0x0816518C
+elevationAt = 0x08165120
+objectAt = 0x0813CB80
+playSe = 0x0824618C
+spriteOffset = 0x0203BAB2
+mapHeader = 0x02003828
+drawMetatileAt = 0x0814B428
+mapGroups = 0x09587364
+healLocations = 0x08747E9C
+drawView = 0x0814B38C
+riderTemplate = 0x00000000
+riderGfx = 0x00000000
+spriteDummy = 0x082464F9
+birdPalette = 0x0813EA40
+birdPaletteTag = 0xFFFF
+mapGroupSizes = [67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 35]
+healLocationCount = 80
+noFly = []
+objSpriteId = 0x23
+followerRemove = 0x0813DBC0
+followerUpdate = 0x08143498
+mapGridUndefined = 0x7FF
+codeCrcs = [0x49C48542, 0x10E7E49A, 0xF03D67BA, 0xF2F3BD3E, 0xC10D31AB, 0xE5E9143E, 0x6CDE81D7, 0x400F293A, 0x340A500A, 0xA821E2BB, 0x27FB3703, 0x15183F83, 0xF7F99E53, 0x0E21B16D, 0x808FB25B]
+
+[record.FLIGHT_SOULGOLD_V1_2]
+schema = 'gen3_flight'
+base = 'FLIGHT_EMERALD'
+objectEvents = 0x02003314
+playerAvatar = 0x020032E8
+sprites = 0x0203BF40
+vmap = 0x03002F58
+connectionFlags = 0x02003844
+saveBlock1Ptr = 0x030040C4
+saveBlock2Ptr = 0x030040C0
+main = 0x030055C0
+cb2Overworld = 0x081BF450
+lockByte = 0x03001F74
+paletteFade = 0x020384D8
+lockControls = 0x08236C98
+unlockControls = 0x08236CAC
+createSprite = 0x0824834C
+destroySprite = 0x0824778C
+startSpriteAnim = 0x08248900
+birdTemplate = 0x084F61A0
+behaviorAt = 0x0816594C
+collisionAt = 0x08165854
+elevationAt = 0x081657E8
+objectAt = 0x0813D2AC
+playSe = 0x08246A60
+spriteOffset = 0x0203BABA
+mapHeader = 0x02003828
+drawMetatileAt = 0x0814B9F0
+mapGroups = 0x09592634
+healLocations = 0x08749630
+drawView = 0x0814B954
+riderTemplate = 0x00000000
+riderGfx = 0x00000000
+spriteDummy = 0x08246DCD
+birdPalette = 0x0813F1F0
+birdPaletteTag = 0xFFFF
+mapGroupSizes = [67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 35]
+healLocationCount = 80
+noFly = []
+objSpriteId = 0x23
+followerRemove = 0x0813E37C
+followerUpdate = 0x08143B7C
+mapGridUndefined = 0x7FF
+codeCrcs = [0xCCA8CCA7, 0x10E7E49A, 0xF03D67BA, 0xF2F3BD3E, 0xC10D31AB, 0xE5E9143E, 0x6CDE81D7, 0x400F293A, 0x340A500A, 0xA69AF11A, 0x27FB3703, 0x15183F83, 0xFBE173AF, 0x0E21B16D, 0x15033492]
+
+[record.FLIGHT_SOULGOLD_V1_2B]
+schema = 'gen3_flight'
+base = 'FLIGHT_EMERALD'
+objectEvents = 0x02003314
+playerAvatar = 0x020032E8
+sprites = 0x0203BF40
+vmap = 0x03002F58
+connectionFlags = 0x02003844
+saveBlock1Ptr = 0x030040C4
+saveBlock2Ptr = 0x030040C0
+main = 0x030055C0
+cb2Overworld = 0x081BF3E4
+lockByte = 0x03001F74
+paletteFade = 0x020384D8
+lockControls = 0x08236C00
+unlockControls = 0x08236C14
+createSprite = 0x082482B4
+destroySprite = 0x082476F4
+startSpriteAnim = 0x08248868
+birdTemplate = 0x084F6108
+behaviorAt = 0x0816593C
+collisionAt = 0x08165844
+elevationAt = 0x081657D8
+objectAt = 0x0813D29C
+playSe = 0x082469C8
+spriteOffset = 0x0203BABA
+mapHeader = 0x02003828
+drawMetatileAt = 0x0814B9E0
+mapGroups = 0x09592590
+healLocations = 0x08749598
+drawView = 0x0814B944
+riderTemplate = 0x00000000
+riderGfx = 0x00000000
+spriteDummy = 0x08246D35
+birdPalette = 0x0813F1E0
+birdPaletteTag = 0xFFFF
+mapGroupSizes = [67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 35]
+healLocationCount = 80
+noFly = []
+objSpriteId = 0x23
+followerRemove = 0x0813E36C
+followerUpdate = 0x08143B6C
+mapGridUndefined = 0x7FF
+codeCrcs = [0x5A477C60, 0x10E7E49A, 0xF03D67BA, 0xF2F3BD3E, 0xC10D31AB, 0xE5E9143E, 0x6CDE81D7, 0x400F293A, 0x340A500A, 0x2608F792, 0x27FB3703, 0x15183F83, 0xFBE173AF, 0x0E21B16D, 0x15033492]
+
+[record.FLIGHT_SOULGOLD_V1_2C]
+schema = 'gen3_flight'
+base = 'FLIGHT_EMERALD'
+objectEvents = 0x02003314
+playerAvatar = 0x020032E8
+sprites = 0x0203BF40
+vmap = 0x03002F58
+connectionFlags = 0x02003844
+saveBlock1Ptr = 0x030040C4
+saveBlock2Ptr = 0x030040C0
+main = 0x030055C0
+cb2Overworld = 0x081BF4B0
+lockByte = 0x03001F74
+paletteFade = 0x020384D8
+lockControls = 0x08236CF8
+unlockControls = 0x08236D0C
+createSprite = 0x082483AC
+destroySprite = 0x082477EC
+startSpriteAnim = 0x08248960
+birdTemplate = 0x084F6294
+behaviorAt = 0x081659A8
+collisionAt = 0x081658B0
+elevationAt = 0x08165844
+objectAt = 0x0813D308
+playSe = 0x08246AC0
+spriteOffset = 0x0203BABA
+mapHeader = 0x02003828
+drawMetatileAt = 0x0814BA4C
+mapGroups = 0x095C04C0
+healLocations = 0x08749724
+drawView = 0x0814B9B0
+riderTemplate = 0x00000000
+riderGfx = 0x00000000
+spriteDummy = 0x08246E2D
+birdPalette = 0x0813F24C
+birdPaletteTag = 0xFFFF
+mapGroupSizes = [67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 35]
+healLocationCount = 80
+noFly = []
+objSpriteId = 0x23
+followerRemove = 0x0813E3D8
+followerUpdate = 0x08143BD8
+mapGridUndefined = 0x7FF
+codeCrcs = [0xE2F80527, 0x10E7E49A, 0xF03D67BA, 0xF2F3BD3E, 0xC10D31AB, 0xE5E9143E, 0x6CDE81D7, 0x400F293A, 0x340A500A, 0x19185C81, 0x27FB3703, 0x15183F83, 0xFBE173AF, 0x0E21B16D, 0x15033492]
+
+[record.FLIGHT_SOULGOLD_V1_2_1]
+schema = 'gen3_flight'
+base = 'FLIGHT_EMERALD'
+objectEvents = 0x0200331C
+playerAvatar = 0x020032F0
+sprites = 0x0203BE68
+vmap = 0x03002F58
+connectionFlags = 0x0200384C
+saveBlock1Ptr = 0x030040C4
+saveBlock2Ptr = 0x030040C0
+main = 0x030055C0
+cb2Overworld = 0x081C2324
+lockByte = 0x03001F74
+paletteFade = 0x02038318
+lockControls = 0x0823BB40
+unlockControls = 0x0823BB54
+createSprite = 0x0824DA18
+destroySprite = 0x0824CE58
+startSpriteAnim = 0x0824DFCC
+birdTemplate = 0x084FDD20
+behaviorAt = 0x08167DD8
+collisionAt = 0x08167CE0
+elevationAt = 0x08167C74
+objectAt = 0x0813F7D0
+playSe = 0x0824C12C
+spriteOffset = 0x0203B9E2
+mapHeader = 0x02003830
+drawMetatileAt = 0x0814DF48
+mapGroups = 0x095CC3A8
+healLocations = 0x0875115C
+drawView = 0x0814DEAC
+riderTemplate = 0x00000000
+riderGfx = 0x00000000
+spriteDummy = 0x0824C499
+birdPalette = 0x08141714
+birdPaletteTag = 0xFFFF
+mapGroupSizes = [67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 35]
+healLocationCount = 80
+noFly = []
+objSpriteId = 0x23
+followerRemove = 0x081408A0
+followerUpdate = 0x081460A4
+mapGridUndefined = 0x7FF
+codeCrcs = [0x6FE2BF05, 0x10E7E49A, 0xF03D67BA, 0xF2F3BD3E, 0xC10D31AB, 0xE5E9143E, 0x6CDE81D7, 0x400F293A, 0x340A500A, 0x9CB48D9B, 0x27FB3703, 0x15183F83, 0xFBE173AF, 0x0E21B16D, 0x15033492]
+
 # FREE FLIGHT for Ruby and Sapphire rev 1 / rev 2 (the same addresses in both revisions of each, like FIELD_ITEMS_RUBY /
 # _SAPPHIRE, which name these): pret's pokeruby symbols (its `symbols` branch: pokeruby_rev1 / _rev2, pokesapphire_rev1 /
 # _rev2.sym), the bird template's callback checked to be SpriteCallbackDummy in all four ROMs. Emerald's way: the bird

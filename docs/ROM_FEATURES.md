@@ -62,7 +62,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Celia's Stupid Romhack | 1.1.4 | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | ✅ ¹⁵ | — | — | — | — |
 | Dreamstone Mysteries | the one release | — | ✅ | ✅ | ✅ | — | — | — | — | — | — ²² | — | — | — | — | — | — |
 | Elite Redux | 2.65.3b, 2.65.4.1b | ✅ | ✅ ¹⁰ | ✅ ¹⁰ | ✅ | — | — | — | ✅ ¹⁰ | ✅ ¹⁰ | ✅ ¹⁰ | — ¹⁰ | n/a ¹⁵ | — | ✅ ¹⁹ | — | — |
-| Emerald Imperium | 1.3.1 | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ ³³ |
+| Emerald Imperium | 1.3.1 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ ³³ |
 | Emerald Kaizo | 2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | — ⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | Emerald Legacy | 1.1.4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ ³³ | ✅ ³³ |
 | Emerald Rogue | 2.2.1-EX | ✅ | — | — | — | — | — | — | ◐ ⁶ | — | — | — | — | — | — | — | — |
@@ -73,8 +73,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Let's Go Pikachu / Eevee | English, Translation Only (4 builds) | ✅ ²⁸ | ✅ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ ³⁴ | — | ✅ ²⁸ | ◐ ²⁸ | ◐ ²⁸ | ✅ ²⁸ | — | — | — | ✅ | ✅ ³³ |
 | Glazed | 9.2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁷ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ |
 | GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ |
-| Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — | — | ✅ ³³ |
-| Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | ✅ ³³ |
+| Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — | — | ✅ ³³ |
+| Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | ✅ ³³ |
 | Modern Emerald | 3.6 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — |
 | Monomyth | 1.0, 1.1 | ✅ ²³ | ✅ | ✅ | ✅ | — | — | — | ✅ ²³ | — | — ²³ | ✅ ²³ | — | — | — | — | — |
 | Odyssey | 4.1.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ |
@@ -86,7 +86,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Radical Red | 4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ | ✅ | ✅ ³³ |
 | Recharged Emerald | 2.2.5, 2.2.8, Rebalanced 2.2.8 | — | ✅ | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | ✅ ¹⁹ | ✅ ³³ | ✅ ³³ |
 | Recharged Yellow | 1.8.0, 1.9.0, 1.9.4, 1.9.7 | ✅ | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ ¹⁹ | — | — |
-| SoulGold | 1.1.4, 1.2 (3 builds), 1.2.1 (2 builds) | ✅ | ✅ | ✅ | ✅ | ◐ ¹⁷ | ✅ | ✅ | ◐ ⁶ | — | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ | — | ✅ ³³ |
+| SoulGold | 1.1.4, 1.2 (3 builds), 1.2.1 (2 builds) | ✅ | ✅ | ✅ | ✅ | ◐ ¹⁷ | ✅ ³⁴ | ✅ | ◐ ⁶ | — | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ | — | ✅ ³³ |
 | Super Mariomon | 1.2.1-1.3, 1.5.1, 1.5.2 | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | — | — | ✅ ¹⁹ | — | — |
 | Sword and Shield Ultimate Plus | 1.2.1.2 + its 3 patches | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ |
 | Team Rocket Dragonsden | 1.5 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | ✅ ¹⁹ | — | — |
@@ -497,8 +497,22 @@ change to any of the places listed under "Where it's decided" updates its rows h
     same way. Ghost Grey blanked its bird's graphics: the flight carries the player in the air balloon there, drawn in the
     game's greys (any vehicle in a game whose player palette is grey is). Orange Islands has no EXPAND, Odyssey's save town
     joins no other map (free flight only from there). Not Rocket Edition (it reset to its copyright screen as a flight came
-    into Cerulean) or Ash Gray (EXPAND lost the map on its long routes), nor the newer-engine hacks with FLY (Heart and Soul,
-    Lazarus, Imperium, SoulGold: their addresses need their builds).
+    into Cerulean) or Ash Gray (EXPAND lost the map on its long routes).
+    The pokeemerald-expansion hacks with FLY (`FLIGHT_IMPERIUM`, `_LAZARUS`, `_HEART_AND_SOUL`, `_SOULGOLD` and its four v1.2
+    builds): mapped from expansion 1.13's build by masked code and by shape (CreateSprite from CreateFlyBirdSprite's 0xFF /
+    0xB4 / 1 call, the palette loader after it taking the player's gender - `birdPaletteTag` 0xFFFF; ObjectEvent.spriteId at
+    +0x23, `objSpriteId`), Heart and Soul's and SoulGold's grid reads checked by calling them on known tiles (a mapped entry
+    two instructions past the start read tile 0,0 everywhere), the field's callback2 live; SoulGold's v1.2 builds from v1.1.4
+    by masked code and the matched functions' pool words. Lazarus, Heart and Soul and SoulGold have no rider graphics: the
+    player's own sprite sits on the bird. Their following Pokemon goes at take-off and comes back once down
+    (RemoveFollowingPokemon / UpdateFollowingPokemon, the calls round their return-to-field code's FieldCallback_UseFly check:
+    `followerRemove` / `followerUpdate`; left on the ground it was lost on the next map). Heart and Soul keeps the position at
+    SaveBlock1 +4 (`saveBlock1PosOff`) and nulls gMapGroups' groups past 30; SoulGold's metatile ids are 11 bits, its
+    undefined square 0x7FF (`mapGridUndefined`), its DestroySprite the inUse-less body gcc split off, its heal table 80 rows.
+    Each flown headless on its save: free flight, two scenic routes with EXPAND matched every frame, the follower walking
+    again after a landing. ScenicFly drops a town whose landing tile lies where two of the game's maps overlap in the layout
+    (a loop of connections that doesn't close: Heart and Soul's Violet side), and crosses a map edge only where the game's
+    first connection that way is the map the layout shows there.
 
 ## What each column is
 

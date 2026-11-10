@@ -63,6 +63,11 @@ enum {
     PK_FLIGHT_BIRD_PALETTE,      // the hacks' palette loader (CFRU's dynamic palettes: a slot by tag, loaded if need be), or 0:
                                  // CreateFlyBirdSprite's palette 0 (FireRed's player palette, with the bird's colours)
     PK_FLIGHT_BIRD_PALETTE_TAG,  // ... the tag it's given (Radical Red the player's 0x1100, Unbound its bird's 0x11A2)
+    PK_FLIGHT_OBJ_SPRITE_ID,     // ObjectEvent.spriteId's offset, 0 = 4 (pokeemerald-expansion moved it to +0x23: graphicsId grew to a u16)
+    PK_FLIGHT_FOLLOWER_REMOVE,   // pokeemerald-expansion's following Pokemon: RemoveFollowingPokemon() at take-off (as the game's
+                                 // FLY does), UpdateFollowingPokemon() once down (back by the player, out of its ball at the
+    PK_FLIGHT_FOLLOWER_UPDATE,   // first step, as after a map load); 0 = no follower
+    PK_FLIGHT_MAPGRID_UNDEFINED, // the map grid's undefined square (its metatile-id mask too), 0 = 0x3FF (SoulGold's 11-bit ids: 0x7FF)
     PK_FLIGHT_VEHICLE,           // MAKEOVER > FLY ON: 0 the game's bird, else pk_flight_vehicles.h's from 1 (balloon, helicopter,
                                  // zeppelin) - the app's choice, not the record's; changing it mid-flight just redraws
     PK_FLIGHT_NO_FLY,            // 2 words: up to 4 maps (group << 8 | num, 0xFFFF none) the flight never crosses into -

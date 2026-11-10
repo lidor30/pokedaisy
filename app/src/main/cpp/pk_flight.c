@@ -16,7 +16,7 @@
 #define FL_OBJ_FLAGS0 0x00u        // bit 6 heldMovementActive, bit 7 heldMovementFinished
 #define FL_OBJ_FLAGS1 0x01u        // bit 5 invisible
 #define FL_OBJ_FLAGS2 0x02u        // bit 0 isPlayer
-#define FL_OBJ_SPRITE_ID 0x04u
+#define FL_OBJ_SPRITE_ID (flCfg[PK_FLIGHT_OBJ_SPRITE_ID] ? flCfg[PK_FLIGHT_OBJ_SPRITE_ID] : 0x04u)   // spriteId (pokeemerald-expansion: +0x23)
 #define FL_OBJ_LOCAL_ID 0x08u
 #define FL_OBJ_ELEVATION 0x0Bu     // currentElevation (low nibble), previousElevation (high)
 #define FL_OBJ_X 0x10u             // currentCoords (s16 x, y), map grid coordinates (+ FL_MAP_OFFSET)
@@ -57,7 +57,7 @@
 #define FL_MAX_SPRITES 64u
 
 #define FL_MAP_OFFSET 7
-#define FL_MAPGRID_UNDEFINED 0x3FFu
+#define FL_MAPGRID_UNDEFINED (flCfg[PK_FLIGHT_MAPGRID_UNDEFINED] ? flCfg[PK_FLIGHT_MAPGRID_UNDEFINED] : 0x3FFu)
 #define FL_OBJECT_EVENTS_COUNT 16u
 
 #define FL_DIR_SOUTH 1
@@ -218,7 +218,7 @@ static void flMendSquares(struct mCore* core, uint32_t map, int xs, int ys, uint
                 uint32_t at = map + 2u * (uint32_t) (x + FL_MAP_OFFSET + xs * (y + FL_MAP_OFFSET));
                 if ((core->busRead16(core, at) & 0xFFFF) != FL_MAPGRID_UNDEFINED) continue;
                 uint16_t v = core->busRead16(core, own + 2u * (uint32_t) (x + mw * y));
-                if ((v & 0x3FF) == FL_MAPGRID_UNDEFINED) continue;
+                if ((v & FL_MAPGRID_UNDEFINED) == FL_MAPGRID_UNDEFINED) continue;
                 flSetSquare(core, map, xs, x + FL_MAP_OFFSET, y + FL_MAP_OFFSET, v);
             }
         }
@@ -459,7 +459,7 @@ static void flRouteHeading(void) {
  * but the hat behind the bird, which on a long flight read as no rider at all. 0 when the
  * game's code couldn't be called this frame (try again), 1 done (or not needed). */
 static int flRiderMode(void) {
-    return flCfg[PK_FLIGHT_RIDER_TEMPLATE] != 0;
+    return flCfg[PK_FLIGHT_RIDER_TEMPLATE] != 0 || flCfg[PK_FLIGHT_RIDER_ANIM] != 0;
 }
 
 /** A game whose bird has no picture (Ghost Grey blanked its graphics): flCapture flies the player in the air balloon. */
@@ -473,7 +473,7 @@ static const struct pk_flight_vehicle* flVehicle(void) {
 }
 
 static int flMakeRider(struct mCore* core) {
-    if (!flRiderMode() || flRider >= 0 || flBird < 0) return 1;
+    if (!flCfg[PK_FLIGHT_RIDER_TEMPLATE] || flRider >= 0 || flBird < 0) return 1;   // none: flSeatOnBird draws the player
     uint32_t scratch = flCfg[PK_FLIGHT_SCRATCH], gfx = 0, id = FL_MAX_SPRITES;
     if (!scratch) return 1;
     if (!flCall(core, flCfg[PK_FLIGHT_RIDER_GFX], 3, 0, 0, 0, &gfx)) return 0;   // PLAYER_AVATAR_STATE_SURFING
@@ -702,6 +702,30 @@ static void flDrawVehicle(struct mCore* core, const struct pk_flight_vehicle* v)
     }
 }
 
+/** An Emerald-style bird with no rider sprite to build (pokeemerald-expansion 1.13 dropped
+ * CopyObjectGraphicsInfoToSpriteTemplate; Lazarus's we couldn't place): the player's own overworld sprite on its back, cut
+ * at the waist (sprite rows up to 26: the cap starts at 13), its waist on the bird's back, the right way round once
+ * pk_flight_draw mirrors the picture. */
+static void flSeatOnBird(struct mCore* core) {
+    uint32_t spr = flSpriteAddr(core->busRead8(core, flObjAddr(core) + FL_OBJ_SPRITE_ID));
+    uint16_t a0 = core->busRead16(core, spr), a1 = core->busRead16(core, spr + FL_SPR_ATTR1), a2 = core->busRead16(core, spr + FL_SPR_ATTR2);
+    if ((a0 >> 14) != 2 || (a1 >> 14) != 2 || (a0 & 0x2000u)) return;   // the player's 16 x 32, 4bpp sprite
+    int flip = ((a1 & 0x1000u) != 0) != (flSx < 0);
+    uint32_t tiles = 0x06010000u + 32u * (a2 & 0x3FFu), pal = 0x05000200u + 32u * (a2 >> 12);
+    int ox = FL_SRC / 2 - 8 + 3, oy = FL_SRC / 2 - 26 - 3;   // a little behind the head (west in the picture), on the back
+    for (int y = 0; y <= 26; y++) {
+        for (int x = 0; x < 16; x++) {
+            int sx = flip ? 15 - x : x;
+            uint8_t b = core->busRead8(core, tiles + (uint32_t) ((y / 8) * 2 + sx / 8) * 32u + (uint32_t) ((y % 8) * 4 + (sx % 8) / 2));
+            int ix = (sx & 1) ? b >> 4 : b & 0xF;
+            if (!ix) continue;
+            uint16_t c = core->busRead16(core, pal + 2u * (uint32_t) ix);
+            uint32_t col = (uint32_t) (c & 0x1F) << 3 | (uint32_t) ((c >> 5) & 0x1F) << 11 | (uint32_t) ((c >> 10) & 0x1F) << 19;
+            flSrc[(oy + y) * FL_SRC + ox + x] = col | ((col >> 5) & 0x070707) | 0xFF000000u;
+        }
+    }
+}
+
 static void flCapture(struct mCore* core) {
     // A bird with nothing in its picture: the balloon instead (checked on the bird's own frame, every frame).
     if (flBird >= 0 && !flCfg[PK_FLIGHT_VEHICLE]) {
@@ -725,6 +749,7 @@ static void flCapture(struct mCore* core) {
     } else {
         flCopySprite(core, flBird, FL_SRC / 2, FL_SRC / 2);
         if (flRider >= 0) flCopySprite(core, flRider, FL_SRC / 2, FL_SRC / 2 - 8);
+        else if (flRiderMode() && !flCfg[PK_FLIGHT_RIDER_TEMPLATE]) flSeatOnBird(core);
     }
     uint32_t hsh = 2166136261u;
     for (int i = 0; i < FL_SRC * FL_SRC; i++) hsh = (hsh ^ flSrc[i]) * 16777619u;
@@ -819,6 +844,12 @@ static int flMarked(struct mCore* core, uint32_t obj) {
            (core->busRead8(core, obj + FL_OBJ_FLAGS2) & FL_IS_PLAYER);
 }
 
+/** The following Pokemon back by the player (pokeemerald-expansion's UpdateFollowingPokemon: spawned hidden on the player's
+ * tile, out of its ball at the next step), where the record has one. */
+static void flFollowerBack(struct mCore* core) {
+    if (flCfg[PK_FLIGHT_FOLLOWER_UPDATE]) flCall(core, flCfg[PK_FLIGHT_FOLLOWER_UPDATE], 0, 0, 0, 0, NULL);
+}
+
 static void flPlaySe(struct mCore* core, uint32_t song) {
     if (flCfg[PK_FLIGHT_PLAY_SE]) flCall(core, flCfg[PK_FLIGHT_PLAY_SE], song, 0, 0, 0, NULL);
 }
@@ -885,13 +916,18 @@ int pk_flight_take_off(struct mCore* core) {
         return PK_FLIGHT_NOT_NOW;
     }
     flCall(core, flCfg[PK_FLIGHT_LOCK_CONTROLS], 0, 0, 0, 0, NULL);
+    // A following Pokemon goes, as for the game's FLY: left on the ground it was lost on the next map (Heart and Soul).
+    if (flCfg[PK_FLIGHT_FOLLOWER_REMOVE]) flCall(core, flCfg[PK_FLIGHT_FOLLOWER_REMOVE], 0, 0, 0, 0, NULL);
     flBird = (int) spriteId;
     uint32_t spr = flSpriteAddr(flBird);
+    // Heart and Soul's template has no callback (its FLY sets one after): SpriteCallbackDummy, where the record has it.
+    if (flCfg[PK_FLIGHT_SPRITE_DUMMY]) core->busWrite32(core, spr + 0x1Cu, flCfg[PK_FLIGHT_SPRITE_DUMMY] | 1u);
     uint16_t a2 = core->busRead16(core, spr + FL_SPR_ATTR2);
     // Palette 0 as the game's FLY has it, or where the hack's own FLY puts it (CFRU hooks CreateFlyBirdSprite there).
     uint32_t slot = 0;
-    if (flCfg[PK_FLIGHT_BIRD_PALETTE] && (!flCall(core, flCfg[PK_FLIGHT_BIRD_PALETTE], flCfg[PK_FLIGHT_BIRD_PALETTE_TAG], 0, 0, 0, &slot)
-            || slot > 15)) slot = 0;
+    // (A tag of 0xFFFF: the loader takes the player's gender - pokeemerald-expansion's LoadPlayerObjectEventPalette.)
+    uint32_t tag = flCfg[PK_FLIGHT_BIRD_PALETTE_TAG] == 0xFFFF ? (uint32_t) flGender(core) : flCfg[PK_FLIGHT_BIRD_PALETTE_TAG];
+    if (flCfg[PK_FLIGHT_BIRD_PALETTE] && (!flCall(core, flCfg[PK_FLIGHT_BIRD_PALETTE], tag, 0, 0, 0, &slot) || slot > 15)) slot = 0;
     core->busWrite16(core, spr + FL_SPR_ATTR2, (uint16_t) ((a2 & 0x03FFu) | (1u << 10) | (slot << 12)));   // priority 1
     core->busWrite8(core, spr + FL_SPR_FLAGS, (uint8_t) (core->busRead8(core, spr + FL_SPR_FLAGS) & ~2u));  // screen coordinates
     uint8_t dir = core->busRead8(core, obj + 0x18) & 0x0F;
@@ -1005,6 +1041,7 @@ static void flFollowRam(struct mCore* core, uint32_t obj) {
             flHidePlayer(core, obj, 0);
             flMarkPlayer(core, obj, 0);
             flCall(core, flCfg[PK_FLIGHT_UNLOCK_CONTROLS], 0, 0, 0, 0, NULL);
+            flFollowerBack(core);
             return;
         }
         flState = hidden ? PK_FLIGHT_FLYING : PK_FLIGHT_TAKING_OFF;
@@ -1149,6 +1186,7 @@ void pk_flight_tick(struct mCore* core) {
             flMarkPlayer(core, obj, 0);
             flPlaySe(core, flCfg[PK_FLIGHT_SE_FLY]);
             flCall(core, flCfg[PK_FLIGHT_UNLOCK_CONTROLS], 0, 0, 0, 0, NULL);
+            flFollowerBack(core);
             flState = PK_FLIGHT_DISMOUNT;
             flPhase = 0;
         }

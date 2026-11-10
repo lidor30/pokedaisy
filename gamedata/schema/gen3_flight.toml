@@ -240,3 +240,32 @@ default = 0
 kotlin = 'Int'
 type = 'int'
 default = 0
+
+# ObjectEvent.spriteId's offset, 0 = 4 (pokeemerald-expansion keeps it at +0x23).
+[field.objSpriteId]
+kotlin = 'Int'
+type = 'int'
+default = 0
+
+# Where SaveBlock1's pos starts (location 4 after it), 0 = 0: Heart and Soul puts a u16 saveVersion (padded) first.
+[field.saveBlock1PosOff]
+kotlin = 'Int'
+type = 'int'
+default = 0
+
+# pokeemerald-expansion's following Pokemon: RemoveFollowingPokemon at take-off, UpdateFollowingPokemon once down (0 = none).
+[field.followerRemove]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+[field.followerUpdate]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# The map grid's undefined square, also its metatile-id mask: 0 = 0x3FF (SoulGold's metatile ids are 11 bits: 0x7FF).
+[field.mapGridUndefined]
+kotlin = 'Int'
+type = 'int'
+default = 0

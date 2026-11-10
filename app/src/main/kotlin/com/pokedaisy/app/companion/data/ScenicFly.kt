@@ -43,7 +43,9 @@ object ScenicFly {
             val grid = Grid(maps)
             val start = grid.cell(a.x + fx, a.y + fy)
             val goal = grid.cell(b.x + tx, b.y + ty)
-            if (start < 0 || goal < 0) return null
+            // Each end on its own map's ground: where two maps overlap in the layout (a loop of connections that doesn't
+            // close, Heart and Soul's Violet side) the first one placed holds the tile, and flown there the game is on it.
+            if (start < 0 || goal < 0 || grid.owner[start] != index[from] || grid.owner[goal] != index[to]) return null
             val path = grid.shortest(start, goal) ?: return null
             return grid.directions(grid.straighten(path))
         }
@@ -82,12 +84,14 @@ object ScenicFly {
                     if (dir in 1..4) conns += Conn(dir, off, MapId(e[8].toInt() and 0xFF, e[9].toInt() and 0xFF))
                 }
             }
-            // The map's squares (MapLayout +0xC: a u16 each, metatile id in the low 10 bits; 0x3FF = undefined).
+            // The map's squares (MapLayout +0xC: a u16 each, metatile id in the low 10 bits; 0x3FF = undefined - SoulGold's
+            // 11 bits and 0x7FF: [FlightFns.mapGridUndefined]).
             val holes = BooleanArray(w * hh)
             val data = u32(layout + 0xC)
             if (data in ROM_START until ROM_END) {
                 val b = read(data, w * hh * 2)
-                for (i in 0 until w * hh) holes[i] = ((b[2 * i].toInt() and 0xFF) or ((b[2 * i + 1].toInt() and 0x03) shl 8)) == 0x3FF
+                val undefined = if (f.mapGridUndefined != 0) f.mapGridUndefined else 0x3FF
+                for (i in 0 until w * hh) holes[i] = ((b[2 * i].toInt() and 0xFF) or ((b[2 * i + 1].toInt() and 0xFF) shl 8)) and undefined == undefined
             }
             placed[id] = Placed(id, x, y, w, hh, conns, holes)
             for (k in conns) {
@@ -148,7 +152,7 @@ object ScenicFly {
         val sb1 = if (f.saveBlockStatic) f.saveBlock1Ptr
             else read(f.saveBlock1Ptr, 4).let { b -> (0..3).fold(0L) { v, i -> v or ((b[i].toLong() and 0xFF) shl (8 * i)) } }
         if (sb1 == 0L) return null
-        val b = read(sb1, 6)
+        val b = read(sb1 + f.saveBlock1PosOff, 6)
         val x = (b[0].toInt() and 0xFF) or (b[1].toInt() shl 8)
         val y = (b[2].toInt() and 0xFF) or (b[3].toInt() shl 8)
         return Triple(MapId(b[4].toInt() and 0xFF, b[5].toInt() and 0xFF), x, y)
@@ -161,7 +165,10 @@ object ScenicFly {
         val w = maps.maxOf { it.x + it.w } - x0
         val h = maps.maxOf { it.y + it.h } - y0
         val owner = IntArray(w * h) { -1 }
-        private val joined = HashSet<Long>()
+        /** Each map's connections in the header's order: the way, the other map, where the connection puts it (its
+         * top-left tile in the world) and whether that's where it was placed. */
+        private class Edge(val dir: Int, val to: Int, val x: Int, val y: Int, val placedThere: Boolean)
+        private val edges = Array(maps.size) { ArrayList<Edge>() }
 
         init {
             maps.forEachIndexed { i, m ->
@@ -172,10 +179,21 @@ object ScenicFly {
                 }
             }
             val at = maps.withIndex().associate { (i, m) -> m.id to i }
-            maps.forEachIndexed { i, m -> m.conns.forEach { k -> at[k.to]?.let { j -> joined += key(i, j, k.dir) } } }
+            maps.forEachIndexed { i, m ->
+                m.conns.forEach { k ->
+                    val j = at[k.to] ?: return@forEach
+                    val o = maps[j]
+                    val (ex, ey) = when (k.dir) {
+                        SOUTH -> m.x + k.offset to m.y + m.h
+                        NORTH -> m.x + k.offset to m.y - o.h
+                        WEST -> m.x - o.w to m.y + k.offset
+                        else -> m.x + m.w to m.y + k.offset
+                    }
+                    edges[i] += Edge(k.dir, j, ex, ey, o.x == ex && o.y == ey)
+                }
+            }
         }
 
-        private fun key(a: Int, b: Int, dir: Int) = (a.toLong() shl 32) or (b.toLong() shl 8) or dir.toLong()
 
         fun cell(x: Int, y: Int): Int {
             val cx = x - x0
@@ -196,7 +214,15 @@ object ScenicFly {
             if (n < 0 || owner[n] < 0) return -1
             val a = owner[c]
             val b = owner[n]
-            return if (a == b || key(a, b, dir) in joined) n else -1
+            if (a == b) return n
+            // Off the edge the game takes the first connection that way whose map spans the spot (fieldmap.c's
+            // GetIncomingConnection): two maps joined to one edge may overlap, and the cell's first-placed owner isn't it.
+            val wx = n % w + x0
+            val wy = n / w + y0
+            // A map reached by two paths keeps its first place (Heart and Soul's Johto has such loops): through the other
+            // connection the game's edge leads where the layout doesn't show, so no crossing there.
+            val to = edges[a].firstOrNull { e -> e.dir == dir && maps[e.to].let { wx in e.x until e.x + it.w && wy in e.y until e.y + it.h } }
+            return if (to != null && to.to == b && to.placedThere) n else -1
         }
 
         /** A shortest path of cells (A*, 4 ways), or null. */
