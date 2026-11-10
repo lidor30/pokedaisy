@@ -209,7 +209,9 @@ in `roms/` (a new one shows after `restart`). Never in a release build.
 with no 3DS code, from a script of `run`, `press`, `quick`, `tap`, `hit ID`, `hits`, `shot`, `wild`, `wait-state`,
 `press-to-state`, `poke`, `peek`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`, `gen5` / `onetap` / `noinfo` /
 `infofirst` (BATTLE STYLE, ONE-TAP MOVES, BATTLE INFO, BATTLE VIEW), `script HEX` (script bytes run by the game: a warp),
-`teach SLOT INDEX MOVE` (the game's SetMonData), `flash` (FLASH picked), `bench` (times the companion's redraw). `make sim-test` runs
+`teach SLOT INDEX MOVE` (the game's SetMonData), `flash` (FLASH picked), `idle detect|remove|ignore` (mGBA's busy-loop
+skipping; the console uses detect), `timeframes N` (the session's and a bare runFrame's cost a frame; PD_SIM_THREADED_VIDEO=1
+puts the renderer on a thread of its own, as on a New 3DS), `bench` (times the companion's redraw). `make sim-test` runs
 `test/sim_*.txt` on FireRed and Emerald (`ROM_DIR`, `SAVE_DIR`), `make sim-test-gb` the Game Boy script on Yellow; saves
 are copied first, never written.
 
