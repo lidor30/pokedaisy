@@ -428,6 +428,99 @@ val FIELD_ITEMS_TMT2 = FieldItemFns(
 )
 
 /**
+ * R.O.W.E. v2.1.9.1 (BelialClover's own pokeemerald fork, no expansion): retail Emerald's verified table ported by masked
+ * code, then callers' BLs, then pool words - its RAM landing exactly on the ROM's own symbol table (gObjectEvents, gSprites,
+ * gMain, the save block pointers, the party, gPartyMenu). Its CB_ExitFlyMap is a switch over map sections, decoded into
+ * [HealWarp.special]: Kanto and Sevii towns sit past retail's 50-row table, with their own heal locations (76 in all).
+ * FLAG_BADGE01_GET is 0xCD7 there (its trainer card's badge check), so badge 6 is 0xCDC. Vanilla MON_DATA (moves at 13,
+ * IS_EGG 45). gSpecials[63] = the PC. Flown headless on its save from Littleroot.
+ */
+val FIELD_ITEMS_ROWE = FieldItemFns(
+    varGet = 0x080E0F3CL, varSet = 0x080E0F74L, checkBagHasItem = 0, removeBagItem = 0,
+    fieldControlsLocked = 0x080D9434L, repelVar = 0x4021, items = 0,
+    codeCrcs = listOf(0x2D145029L, 0x54901474L, 0xCE9220C5L),
+    party = PartyItemFns(
+        getMonData = 0x0809AF5CL, setMonData = 0x0809B57CL, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
+        party = 0x02025128L, partyCount = 0x02025125L, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        codeCrcs = listOf(0xD0B6F369L, 0xA898ABB0L),
+    ),
+    bagActions = false,
+    pc = PcFns(0x080D9540L, 63, 0x082545E0L, 0x08116A01L, listOf(0x13B39B1CL, 0x53FBCB0DL)),
+    fly = FlyFns(
+        flagGet = 0x080E10BCL, badgeFlag = 0xcdc, setUpFieldMoveFly = 0x08218F38L, getMapsecType = 0x0817B3CCL,
+        fadeScreen = 0x080F25D8L, lockControls = 0x080D941CL, unlockControls = 0x080D9428L, setFlyWarpDestination = 0,
+        partyMenuSlotId = 0x0203E77DL, destinations = 0x08FD3DE0L, firstMapsec = 0, count = 50,
+        codeCrcs = listOf(0x78731671L, 0x48CC197BL, 0xD503322AL, 0x5C7A97CFL, 0xDD6560B2L, 0xD4A92DBAL, 0x2D6C39E2L, 0xA4535461L, 0x5FC7015AL),
+        flyTypes = setOf(2, 4), extraMapsecs = listOf(56, 58, 73, 88, 89, 90, 91, 92, 93, 94, 95, 96, 98, 137, 143, 144, 145, 146, 147, 148, 149, 157), monMoveField = 13, monEggField = 45,
+        healWarp = HealWarp(
+            toHealLocation = 0x080C2CF8L, toMapWarp = 0x080C2B3CL, returnToField = 0x080FE58CL,
+            saveBlock2Ptr = 0x03004B00L, special = mapOf(15 to 11, 56 to 57, 58 to 22, 73 to 21, 88 to 58, 89 to 59, 90 to 60, 91 to 61, 92 to 64, 93 to 63, 94 to 65, 95 to 66, 96 to 67, 98 to 62, 137 to 12, 143 to 69, 144 to 70, 145 to 71, 146 to 72, 147 to 73, 148 to 75, 149 to 74, 157 to 76),
+            genderMapsec = 0, maleHeal = 12, femaleHeal = 13,
+        ),
+    ),
+    flight = FLIGHT_ROWE,
+)
+
+/**
+ * Super Mariomon v1.5.1 / v1.5.2 Anniversary (an old pokeemerald-expansion built with agbcc: retail Emerald's code where the
+ * expansion left it): retail Emerald's verified table ported by masked code, callers and pool words, v1.5.2 from v1.5.1 the
+ * same way. Its CB_ExitFlyMap read: its own 168-row town table and four special towns (no gender case: the player is Mario).
+ * Its CreateFlyBirdSprite loads the bird's palette first (index 0x1A), as R.O.W.E.'s does. GetMonData's numbers two past
+ * vanilla's (moves at 15, IS_EGG 47; probed on the save). gSpecials[63] = the PC. [fieldItemsCandidatesForGame] lets the
+ * code CRCs pick the build; v1.2.1 / v1.2.2 / v1.3 (the other RAM layout) aren't mapped.
+ */
+val FIELD_ITEMS_MARIOMON_V1_5 = FieldItemFns(
+    varGet = 0x080C402CL, varSet = 0x080C4064L, checkBagHasItem = 0, removeBagItem = 0,
+    fieldControlsLocked = 0x080BED04L, repelVar = 0x4021, items = 0,
+    codeCrcs = listOf(0x2D145029L, 0x54901474L, 0x538293F4L),
+    party = PartyItemFns(
+        getMonData = 0x0808A2C0L, setMonData = 0x0808AA60L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
+        party = 0x02025158L, partyCount = 0x02025155L, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        codeCrcs = listOf(0x512B36B2L, 0xF711C2C4L),
+    ),
+    bagActions = false,
+    pc = PcFns(0x080BED90L, 63, 0x0821F76CL, 0x080F0249L, listOf(0xEF3698BAL, 0xB4419B33L)),
+    fly = FlyFns(
+        flagGet = 0x080C416CL, badgeFlag = 0x86c, setUpFieldMoveFly = 0x081B8C5CL, getMapsecType = 0x081558E4L,
+        fadeScreen = 0x080D3094L, lockControls = 0x080BECECL, unlockControls = 0x080BECF8L, setFlyWarpDestination = 0,
+        partyMenuSlotId = 0x0203E9B9L, destinations = 0x08837564L, firstMapsec = 0, count = 168,
+        codeCrcs = listOf(0x78731671L, 0xAD5B9839L, 0xB6660C16L, 0x038209E9L, 0xF387E86EL, 0xFA4BA566L, 0x9E87E6D6L, 0x2F1D18CAL, 0x85770D80L),
+        flyTypes = setOf(2, 4), extraMapsecs = listOf(), monMoveField = 15, monEggField = 47,
+        healWarp = HealWarp(
+            toHealLocation = 0x080A8CB8L, toMapWarp = 0x080A8C14L, returnToField = 0x080DF4A8L,
+            saveBlock2Ptr = 0x03004BD0L, special = mapOf(15 to 35, 73 to 21, 88 to 32, 94 to 27),
+            genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
+        ),
+    ),
+    flight = FLIGHT_MARIOMON_V1_5,
+)
+val FIELD_ITEMS_MARIOMON_V1_5_2 = FieldItemFns(
+    varGet = 0x080C410CL, varSet = 0x080C4144L, checkBagHasItem = 0, removeBagItem = 0,
+    fieldControlsLocked = 0x080BEDE4L, repelVar = 0x4021, items = 0,
+    codeCrcs = listOf(0x2D145029L, 0x54901474L, 0x538293F4L),
+    party = PartyItemFns(
+        getMonData = 0x0808A384L, setMonData = 0x0808AB24L, itemNoEffect = null, itemEffect = 0, addBagItem = 0,
+        party = 0x02025158L, partyCount = 0x02025155L, scratch = 0x0203FFF0L, itemCount = 0, unholdablePockets = emptySet(),
+        codeCrcs = listOf(0xD82E48D9L, 0x7BE99C24L),
+    ),
+    bagActions = false,
+    pc = PcFns(0x080BEE70L, 63, 0x0821F93CL, 0x080F0361L, listOf(0xEF3698BAL, 0x2391FB16L)),
+    fly = FlyFns(
+        flagGet = 0x080C424CL, badgeFlag = 0x86c, setUpFieldMoveFly = 0x081B8DDCL, getMapsecType = 0x081559FCL,
+        fadeScreen = 0x080D3174L, lockControls = 0x080BEDCCL, unlockControls = 0x080BEDD8L, setFlyWarpDestination = 0,
+        partyMenuSlotId = 0x0203E9B9L, destinations = 0x08837A18L, firstMapsec = 0, count = 168,
+        codeCrcs = listOf(0x78731671L, 0x36027784L, 0x4C94D1F3L, 0x038209E9L, 0xF387E86EL, 0xFA4BA566L, 0x17E42B52L, 0x2F1D18CAL, 0x7D2D3809L),
+        flyTypes = setOf(2, 4), extraMapsecs = listOf(), monMoveField = 15, monEggField = 47,
+        healWarp = HealWarp(
+            toHealLocation = 0x080A8D8CL, toMapWarp = 0x080A8CE8L, returnToField = 0x080DF5B4L,
+            saveBlock2Ptr = 0x03004BD0L, special = mapOf(15 to 35, 73 to 21, 88 to 32, 94 to 27),
+            genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
+        ),
+    ),
+    flight = FLIGHT_MARIOMON_V1_5_2,
+)
+
+/**
  * SoulGold (pokeemerald-expansion, no source), its four builds (v1.2.1 below): v1.1.4 mapped from pokeemerald-expansion 1.13.0's build
  * (FlagGet, VarGet / VarSet, FadeScreen, the PC by code; GetMonData / SetMonData through their callers), the rest from its
  * own code - gFieldMoveInfo's FLY entry (SetUpFieldMove_Fly, IsFieldMoveUnlocked_Fly), SetFlyDestination's literal and
@@ -613,6 +706,7 @@ private fun fieldItemsByKind(kind: GameKind?, gameCode: String, revision: Int): 
     GameKind.LAZARUS -> FIELD_ITEMS_LAZARUS.takeIf { gameCode == "BPEE" }
     GameKind.EMERALD_SEAGLASS -> FIELD_ITEMS_SEAGLASS.takeIf { gameCode == "BPEE" }
     GameKind.TMT2 -> FIELD_ITEMS_TMT2.takeIf { gameCode == "BPEE" }
+    GameKind.ROWE -> FIELD_ITEMS_ROWE.takeIf { gameCode == "BPEE" }
     GameKind.UNBOUND -> cfru(0x08876200L)?.let { t -> t.copy(fly = t.fly?.let(::flyUnbound), flight = FLIGHT_UNBOUND) }
     GameKind.RADICAL_RED -> cfru(0x093C0000L)?.copy(flight = FLIGHT_RADICAL_RED)
     GameKind.ODYSSEY -> cfru(0x083DB028L)?.copy(flight = FLIGHT_ODYSSEY)
@@ -637,6 +731,7 @@ private fun fieldItemsByKind(kind: GameKind?, gameCode: String, revision: Int): 
 /** Every table a game may need, for the games whose builds share a [GameKind] and game code (SoulGold's five): the
  * code CRCs pick the build ([fieldItemSupport] returns null for the others). Otherwise [fieldItemsForGame]'s one. */
 fun fieldItemsCandidatesForGame(kind: GameKind?, gameCode: String, revision: Int, configured: FieldItemFns? = null): List<FieldItemFns> = when (kind) {
+    GameKind.MARIOMON -> if (gameCode == "BPEE") listOf(FIELD_ITEMS_MARIOMON_V1_5, FIELD_ITEMS_MARIOMON_V1_5_2) else emptyList()
     GameKind.SOULGOLD -> if (gameCode == "BPEE") listOf(
         FIELD_ITEMS_SOULGOLD, FIELD_ITEMS_SOULGOLD_V1_2, FIELD_ITEMS_SOULGOLD_V1_2B, FIELD_ITEMS_SOULGOLD_V1_2C,
         FIELD_ITEMS_SOULGOLD_V1_2_1,

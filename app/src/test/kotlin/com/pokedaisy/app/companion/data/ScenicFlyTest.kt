@@ -193,6 +193,7 @@ class ScenicFlyTest {
             "Pokemon Heart and Soul (v2.0.6).gba" to FIELD_ITEMS_HEART_AND_SOUL,
             "Pokemon Emerald Seaglass (v3.0).gba" to FIELD_ITEMS_SEAGLASS,
             "Pokemon Too Many Types 2 (v1.5.2).gba" to FIELD_ITEMS_TMT2,
+            "Pokemon R.O.W.E. (v2.1.9.1 Experimental).gba" to FIELD_ITEMS_ROWE,
             "Pokemon SoulGold (v1.1.4).gba" to FIELD_ITEMS_SOULGOLD,
             "Pokemon SoulGold (v1.2).gba" to FIELD_ITEMS_SOULGOLD_V1_2,
             "Pokemon SoulGold (v1.2) (Alt 1).gba" to FIELD_ITEMS_SOULGOLD_V1_2B,
@@ -270,6 +271,9 @@ class ScenicFlyTest {
             "Pokemon Heart and Soul (v2.0.6).gba" to FLIGHT_HEART_AND_SOUL,
             "Pokemon Emerald Seaglass (v3.0).gba" to FLIGHT_SEAGLASS,
             "Pokemon Too Many Types 2 (v1.5.2).gba" to FLIGHT_TMT2,
+            "Pokemon R.O.W.E. (v2.1.9.1 Experimental).gba" to FLIGHT_ROWE,
+            "Super Mariomon (v1.5.1 Anniversary).gba" to FLIGHT_MARIOMON_V1_5,
+            "Super Mariomon (v1.5.2 Anniversary).gba" to FLIGHT_MARIOMON_V1_5_2,
         ) + SOULGOLD_FLIGHTS
         var checked = 0
         for ((name, fl) in cases) {
@@ -319,6 +323,36 @@ class ScenicFlyTest {
         assumeTrue(read != null)
         val reached = flies(FLIGHT_TMT2, FIELD_ITEMS_TMT2.fly!!, read!!, ScenicFly.MapId(0, 5), 32, 10, EM_TOWNS)
         assertTrue("$reached", reached.size >= 12)
+    }
+
+    @Test
+    fun roweFliesHoennAndLandsKantoTheGamesWay() {
+        // Its save stands in Littleroot (0.9) at 20,9. Kanto and Sevii are worlds of their own (no connection to Hoenn): their
+        // towns take the game's FLY, through the special heal locations its CB_ExitFlyMap switch gives them.
+        val read = hack("Pokemon R.O.W.E. (v2.1.9.1 Experimental).gba")
+        assumeTrue(read != null)
+        val reached = flies(FLIGHT_ROWE, FIELD_ITEMS_ROWE.fly!!, read!!, ScenicFly.MapId(0, 9), 20, 9, EM_TOWNS)
+        assertTrue("$reached", reached.size >= 12)
+        val fly = FIELD_ITEMS_ROWE.fly!!
+        assertEquals(58, fly.healWarp!!.special[88])   // Pallet Town
+        assertTrue(88 in fly.extraMapsecs)
+        assertTrue(pcCodeMatches(FIELD_ITEMS_ROWE.pc!!, read))
+    }
+
+    @Test
+    fun mariomonBuildsPickTheirOwnTables() {
+        val builds = listOf("Super Mariomon (v1.5.1 Anniversary).gba" to FIELD_ITEMS_MARIOMON_V1_5, "Super Mariomon (v1.5.2 Anniversary).gba" to FIELD_ITEMS_MARIOMON_V1_5_2)
+        var checked = 0
+        for ((name, own) in builds) {
+            val read = hack(name) ?: continue
+            for ((_, other) in builds) assertEquals(name, other === own, fieldItemSupport(other, read)?.canFlight == true)
+            checked++
+        }
+        assumeTrue(checked > 0)
+        // The save's area (2.4 at 25,23) joins two towns over the map; the rest take the game's FLY.
+        val read = hack("Super Mariomon (v1.5.1 Anniversary).gba") ?: return
+        val reached = flies(FLIGHT_MARIOMON_V1_5, FIELD_ITEMS_MARIOMON_V1_5.fly!!, read, ScenicFly.MapId(2, 4), 25, 23, (0 until 0xA8).toList())
+        assertEquals(listOf(0, 0x58), reached)
     }
 
     @Test
