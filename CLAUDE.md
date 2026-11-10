@@ -1994,7 +1994,11 @@ over the buttons' clusters, added from the `pokedaisy-touch` thread, the drawn p
 `TouchPressTracker` with the drawn pad's; they let every touch through (`NOT_TOUCHABLE`) while anything is open over the game
 (`PokeDaisyActivity.touchWindowsAllowed`: a HUD panel, the QUICK MENU, the companion window, a tip, the editor...), and the
 drawn pad takes the fingers as before - a new overlay over the game goes on that list. Physical keys still arrive on the UI
-thread (a focused window on its own Looper would change how every key arrives: two-screen focus, BACK, the Thor's focus modes).
+thread (a focused window on its own Looper would change how every key arrives: two-screen focus, BACK, the Thor's focus modes). **Never on Samsung's Android**
+(`TouchInputWindows.supported`, 1.5.0.1's hotfix): after a configuration change it updates every window of the activity,
+sub-windows too, from the UI thread (seen in an S9's framework.jar), which crashed 1.5.0 on rotations on Galaxies; the drawn
+pad takes the fingers there. Elsewhere their views read resources nothing updates (`FrozenContext`). The stock emulator never
+makes that call: test a change here by turning a Samsung phone in a game, many times, fast.
 **Heat**: the STEADY background pass runs at most 10x real time (`BACKGROUND_FRAME_NANOS`; songs being heard go flat
 out), and gives up on a song that failed on 2 launches (`FfMusicCache.failures`) - a failing song kept the pass, and a
 second core, running on every launch.
