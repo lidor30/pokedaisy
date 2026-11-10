@@ -1,6 +1,7 @@
 /* The QUICK MENU (quick_menu.h): tiles of one size round a circle, the first at the top, clockwise; the
  * highlighted one's name in the middle, with why it's dimmed. GPL-3.0, see ../NOTICE. */
 #include "quick_menu.h"
+#include "hud_style.h"
 
 #include "pd_icon.h"
 #include "pd_style.h"
@@ -11,14 +12,6 @@
 
 #define TILE_W 74
 #define TILE_H 42
-#define GLASS_FILL 0xB8121620u // FieldHud.kt's GLASS_FILL / _EDGE (ARGB)
-#define GLASS_EDGE 0x66FFFFFFu
-#define FOCUS 0x00FF7331u      // AppColors.focusRing
-#define INK 0x00F8F8F8u
-#define INK_SHADOW 0x00303840u
-#define MUTED 0x00A8B0C0u
-#define ACCENT 0x00E83838u
-
 // QuickMenu.kt's icons: one character a pixel, '.' clear.
 const char *const quick_icon_grass[] = {
     "................", "...K......K.....", "..KGK....KGK..K.", "..KGK...KGGK.KGK", ".KGLGK..KGLGKKGK",
@@ -86,7 +79,7 @@ const char *quick_label(enum quick_action a) {
   }
 }
 
-static uint32_t icon_color(enum quick_action a, char ch) {
+static uint32_t icon_color(enum quick_action a, char ch, uint32_t text) {
   if (a == QUICK_WILD)
     return ch == 'K' ? 0x183818 : ch == 'G' ? 0x389838 : 0x78D058;
   if (a == QUICK_PC)
@@ -96,11 +89,11 @@ static uint32_t icon_color(enum quick_action a, char ch) {
     return ch == 'K' ? 0x202838 : ch == 'L' ? 0xE8ECF4 : 0x48A848;
   if (a == QUICK_SAVE_STATE || a == QUICK_LOAD_STATE)
     return ch == 'K' ? 0x202838 : ch == 'D' ? 0x4870C0 : ch == 'L' ? 0xE8ECF4 : 0xF8C030;
-  return INK;
+  return text;
 }
 
 // An icon centred at (cx, cy), `scale` canvas pixels a pixel; dim: at half strength over the glass.
-static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int scale, bool dim) {
+static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int scale, bool dim, const struct hud_ink *ink) {
   const char *const *rows = a == QUICK_PC ? quick_icon_pc : a == QUICK_WILD ? quick_icon_grass : a == QUICK_SAVE_STATE ? SAVE_STATE
                           : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : a == QUICK_REPEL ? quick_icon_repel
                           : a == QUICK_BIKE ? BIKE : a == QUICK_FLY ? WING
@@ -109,21 +102,21 @@ static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int s
   while (rows[h])
     h++;
   int x0 = cx - w * scale / 2, y0 = cy - h * scale / 2;
+  const uint32_t text = ink->window ? PD_TITLE_TEXT : ink->text;
+  const uint32_t face = ink->window ? PD_TITLE_FILL : ink->tileTop;
   for (int y = 0; y < h; y++)
     for (int x = 0; x < w; x++) {
       if (rows[y][x] == '.')
         continue;
-      uint32_t col = icon_color(a, rows[y][x]);
-      if (dim) // blend toward the glass: 45% (QuickTile's blocked alpha)
-        col = ((((col >> 16) & 255) * 45 + 0x12 * 55) / 100) << 16 | ((((col >> 8) & 255) * 45 + 0x16 * 55) / 100) << 8 |
-              (((col & 255) * 45 + 0x20 * 55) / 100);
+      uint32_t col = icon_color(a, rows[y][x], text);
+      if (dim) { // QuickTile's 45% icon opacity over the upper band.
+        uint32_t blended = 0;
+        for (unsigned shift = 0; shift < 24; shift += 8)
+          blended |= (((col >> shift & 255) * 45 + (face >> shift & 255) * 55) / 100) << shift;
+        col = blended;
+      }
       pd_fill(c, x0 + x * scale, y0 + y * scale, scale, scale, col);
     }
-}
-
-static void glass(struct pd_canvas *c, int x, int y, int w, int h) {
-  pd_round_rect(c, x, y, w, h, 4, GLASS_EDGE);
-  pd_round_rect(c, x + 1, y + 1, w - 2, h - 2, 3, GLASS_FILL);
 }
 
 /* GRID (QuickMenuStyle.GRID; Keegan Whitacre's layout, pokedaisy-brick): the width fitted, rows balanced, the short
@@ -205,19 +198,20 @@ int quick_step(int n, int sel, int dx, int dy, int w, int h) {
   return best;
 }
 
-bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick_item *items, int n, int sel) {
+bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick_item *items, int n, int sel, int look) {
   if (c->w < 3 * TILE_W || c->h < 3 * TILE_H)
     return false;
   for (int i = 0; i < c->w * c->h; i++)
     c->px[i] = QUICK_CLEAR;
+  const struct hud_ink *ink = hud_ink(look);
+  const uint32_t text = ink->window ? PD_TITLE_TEXT : ink->text;
+  const uint32_t shadow = ink->window ? PD_TITLE_SHADOW : ink->shadow;
   lastHits = 0;
   for (int i = 0; i < n; i++) {
     int x, y;
     place(n, i, c->w, c->h, &x, &y);
     hit_add(x, y, TILE_W, TILE_H, i);
-    if (i == sel)
-      pd_round_rect(c, x - 2, y - 2, TILE_W + 4, TILE_H + 4, 5, FOCUS);
-    glass(c, x, y, TILE_W, TILE_H);
+    hud_tile(c, ink, x, y, TILE_W, TILE_H, i == sel);
     bool dim = items[i].why != NULL;
     // The game's own art where there is some (the Pokémon that would FLY, the bag's item), pixel art otherwise,
     // as QuickIcon draws them.
@@ -227,15 +221,14 @@ bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick
     else if (items[i].item)
       art = pd_draw_item_icon(c, g, items[i].item, x + (TILE_W - PD_ITEM_ICON) / 2, y + 2, dim);
     if (!art)
-      icon(c, items[i].action, x + TILE_W / 2, y + 14, 1, dim || items[i].off);
+      icon(c, items[i].action, x + TILE_W / 2, y + 14, 1, dim || items[i].off, ink);
     const char *label = items[i].label ? items[i].label : quick_label(items[i].action);
     int lw = pd_text_width(label);
-    pd_text(c, x + (TILE_W - lw) / 2, y + TILE_H - 16, label, dim ? MUTED : items[i].lit ? FOCUS : INK,
-            INK_SHADOW);
+    pd_text(c, x + (TILE_W - lw) / 2, y + TILE_H - 16, label, dim ? ink->muted : items[i].lit ? ink->accent : text, shadow);
     if (items[i].off) { // WILD switched off: an OFF tag on its corner
       int tw = pd_text_width("OFF") + 6;
-      pd_round_rect(c, x + TILE_W - tw - 2, y + 2, tw, 13, 2, ACCENT);
-      pd_text(c, x + TILE_W - tw + 1, y, "OFF", INK, PD_NO_SHADOW);
+      pd_round_rect(c, x + TILE_W - tw - 2, y + 2, tw, 13, 2, ink->accent);
+      pd_text(c, x + TILE_W - tw + 1, y, "OFF", ink->onAccent, PD_NO_SHADOW);
     }
   }
   // The middle: the highlighted one's name, and why it's dimmed (or WILD's state).
@@ -252,15 +245,15 @@ bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick
       grid_shape(n, c->w, &cols, &rows);
       y = (c->h - (rows * TILE_H + (rows - 1) * 6 + 52)) / 2 + rows * (TILE_H + 6) + 6;
     }
-    glass(c, x, y, w, h);
-    pd_text(c, x + (w - nw) / 2, y + 4, name, INK, INK_SHADOW);
+    hud_panel(c, ink, x, y, w, h, 3);
+    pd_text(c, x + (w - nw) / 2, y + 4, name, text, shadow);
     if (note)
-      pd_text(c, x + (w - ow) / 2, y + 20, note, it->why ? MUTED : FOCUS, INK_SHADOW);
+      pd_text(c, x + (w - ow) / 2, y + 20, note, it->why ? ink->muted : ink->accent, shadow);
   }
   return true;
 }
 
-void quick_list_draw(struct pd_canvas *c, const char *title, const char *const *rows, int n, int sel) {
+void quick_list_draw(struct pd_canvas *c, const char *title, const char *const *rows, int n, int sel, int look) {
   for (int i = 0; i < c->w * c->h; i++)
     c->px[i] = QUICK_CLEAR;
   enum { ROW = 16, PAD = 6 };
@@ -278,22 +271,25 @@ void quick_list_draw(struct pd_canvas *c, const char *title, const char *const *
   if (top < 0)
     top = 0;
   int h = PAD + ROW + 4 + shown * ROW + PAD, x = (c->w - w) / 2, y = (c->h - h) / 2;
-  glass(c, x, y, w, h);
-  pd_text(c, x + (w - pd_text_width(title)) / 2, y + PAD - 2, title, FOCUS, INK_SHADOW);
+  const struct hud_ink *ink = hud_ink(look);
+  const uint32_t text = ink->window ? PD_TITLE_TEXT : ink->text;
+  const uint32_t shadow = ink->window ? PD_TITLE_SHADOW : ink->shadow;
+  hud_panel(c, ink, x, y, w, h, 3);
+  pd_text(c, x + (w - pd_text_width(title)) / 2, y + PAD - 2, title, ink->accent, shadow);
   lastHits = 0;
   for (int r = 0; r < shown; r++) {
     int i = top + r, ry = y + PAD + ROW + 4 + r * ROW;
     hit_add(x + PAD, ry, w - 2 * PAD, ROW, i);
     if (i == sel)
-      pd_round_rect(c, x + PAD, ry, w - 2 * PAD, ROW, 3, FOCUS);
-    pd_text(c, x + 2 * PAD + 3, ry - 1, rows[i], INK, i == sel ? 0x00803010u : INK_SHADOW);
+      pd_round_rect(c, x + PAD, ry, w - 2 * PAD, ROW, 3, HUD_SELECTED);
+    pd_text(c, x + 2 * PAD + 3, ry - 1, rows[i], i == sel ? 0xFFFFFFu : text, i == sel ? 0x00803010u : shadow);
   }
   // More above / below: a small arrow at the edge (Pixel Operator has no arrow glyphs).
   for (int k = 0; k < 3; k++) {
     if (top > 0)
-      pd_fill(c, x + w / 2 - k, y + PAD + ROW + 1 - (2 - k), 2 * k + 1, 1, MUTED);
+      pd_fill(c, x + w / 2 - k, y + PAD + ROW + 1 - (2 - k), 2 * k + 1, 1, ink->muted);
     if (top + shown < n)
-      pd_fill(c, x + w / 2 - k, y + h - 3 - k, 2 * k + 1, 1, MUTED);
+      pd_fill(c, x + w / 2 - k, y + h - 3 - k, 2 * k + 1, 1, ink->muted);
   }
 }
 

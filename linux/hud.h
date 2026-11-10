@@ -20,7 +20,7 @@ struct hud_state {
   int wild;      // this map's wild species not caught yet (WILD's badge); -1 = no wild data, no WILD button
   int focus;     // the focused target (enum hud_target), -1 = none: the HUD hotkey's cursor
   int left, right; // keeps to these columns (the game's picture); right 0 = the whole canvas
-  bool compact;    // smaller, and no level on the party (a 3DS: its game is drawn at 1.5x)
+  bool compact;    // smaller HUD for a 3DS (its game is drawn at 1.5x)
   bool noButtons;  // no PC / BAG / WILD / COMPANION buttons (a 3DS: no touch on the top screen, X opens the companion)
   int repelItem;   // the item the REPEL STEPS icon shows, 0 = the plain Repel (last, so positional initializers leave it 0)
 };
@@ -50,7 +50,7 @@ struct hud_hits {
 /* The lead's slot if it is visible, otherwise the first visible target. */
 int hud_first(const struct hud_hits *);
 int hud_step(const struct hud_hits *, int current, int dx, int dy);
-void hud_focus_draw(struct pd_canvas *, const struct pd_settings *, const struct hud_hits *, int focus);
+void hud_focus_draw(struct pd_canvas *, const struct hud_hits *, int focus);
 
 /* Draws the HUD's shown parts in the settings' layout and look over QUICK_CLEAR; false if nothing shows. [out]
  * (nullable): where each target landed. */
