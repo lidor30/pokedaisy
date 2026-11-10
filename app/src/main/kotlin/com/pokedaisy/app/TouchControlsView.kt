@@ -142,10 +142,18 @@ class TouchControlsView(context: Context) : FrameLayout(context) {
 
     /** UI thread: the input windows as the buttons and the screen are now. */
     fun syncInputWindows() {
+        // Not on Samsung's Android: the drawn pad takes the fingers there (TouchInputWindows.supported).
+        if (!TouchInputWindows.supported) return
         val show = visibility == VISIBLE && isAttachedToWindow
         if (!show && inputWindows == null) return
         val windows = inputWindows ?: TouchInputWindows(this, tracker).also { inputWindows = it }
         windows.sync(hitModel.takeIf { show }, show && inputAllowed())
+    }
+
+    /** UI thread, from the activity's onConfigurationChanged: new input windows start from the new configuration
+     * (TouchInputWindows.configurationChanged). */
+    fun inputWindowsConfigurationChanged() {
+        inputWindows?.configurationChanged()
     }
 
     /** UI thread: the activity is going - its windows with it. */
