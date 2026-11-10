@@ -1654,9 +1654,9 @@ RETRO_API void retro_run(void) {
     const char *const *rows = flyList ? flyNames : repelList ? repelNames : NULL;
     bool drawn = true;
     if (rows)
-      quick_list_draw(&qc, flyList ? "FLY" : "REPEL", rows, flyList ? flyT.count : repelKindCount, flyList ? flySel : repelSel);
+      quick_list_draw(&qc, flyList ? "FLY" : "REPEL", rows, flyList ? flyT.count : repelKindCount, flyList ? flySel : repelSel, settings.hudLook);
     else
-      drawn = quick_draw(&qc, &game, quick, quickN, quickSel);
+      drawn = quick_draw(&qc, &game, quick, quickN, quickSel, settings.hudLook);
     if (drawn) {
       quick_finish(&qc);
       blend_overlay(ovPixels, CW, CH, 1, 0, 0);

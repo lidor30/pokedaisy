@@ -1043,9 +1043,9 @@ static void overlay_update(struct pd_session* s) {
     overlay_clear();
     s->overlayShown = false;
     if (s->quickOpen) {
-        if (s->flyList) quick_list_draw(&c, "FLY", s->flyNames, s->flyTargets.count, s->flySel);
-        else if (s->repelList) quick_list_draw(&c, "REPEL", s->repelNames, s->repelKindCount, s->repelSel);
-        else quick_draw(&c, &s->game, s->quick, s->quickCount, s->quickSel);
+        if (s->flyList) quick_list_draw(&c, "FLY", s->flyNames, s->flyTargets.count, s->flySel, s->settings->hudLook);
+        else if (s->repelList) quick_list_draw(&c, "REPEL", s->repelNames, s->repelKindCount, s->repelSel, s->settings->hudLook);
+        else quick_draw(&c, &s->game, s->quick, s->quickCount, s->quickSel, s->settings->hudLook);
         s->overlayShown = true;
     } else if (hud) {
         s->hud.compact = s->hud.noButtons = true;

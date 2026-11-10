@@ -346,7 +346,7 @@ extern "C" int pd_ds_run(const char* rom,const char* root,int limit,const char* 
     else blit(renderer,top.p,nds->gpu.framebuffer(view.bottom?1:0),256,192,ow,oh);
     if(!showCompanion && !paused && (showQuick || (prefs.hud && snap.valid && !view.bottom && !inBattle && (fieldBits&PK_NDS_FIELD_SCREEN) && !(fieldBits&(PK_NDS_FIELD_LOCKED|PK_NDS_FIELD_MENU))))){
       for(auto& p:uiPixels)p=QUICK_CLEAR;
-      if(showQuick)quick_draw(&canvas,nullptr,quickItems,4,quickSelected);
+      if(showQuick)quick_draw(&canvas,nullptr,quickItems,4,quickSelected,PD_HUD_GLASS);
       else {
         pd_snapshot hs{};hs.valid=true;hs.partyCount=std::min(6,int(snap.party.size()));
         for(int i=0;i<hs.partyCount;i++){
