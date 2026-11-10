@@ -377,8 +377,16 @@ static bool busy_now(const struct pd_ui* ui) {
     return ui->battleInput && pd_binput_busy(ui->battleInput);
 }
 
+bool ui_battle_input_on(const struct pd_ui* ui, const struct pd_snapshot* s) {
+    return ui->battleInput && pd_binput_available(ui->battleInput) && !s->isDouble;
+}
+
+bool ui_battle_info_on(const struct pd_ui* ui) { return !ui->settings || !ui->settings->noBattleInfo; }
+
+bool ui_battle_hints_on(const struct pd_ui* ui) { return ui_battle_info_on(ui) && !(ui->settings && ui->settings->hideHints); }
+
 bool ui_battle_controls_usable(const struct pd_ui* ui, const struct pd_snapshot* s) {
-    if (!ui->battleInput || !pd_binput_available(ui->battleInput) || s->isDouble) return false;
+    if (!ui_battle_input_on(ui, s)) return false;
     switch (s->battleState) {
     case PD_BATTLE_ACTION: case PD_BATTLE_MOVE: case PD_BATTLE_BAG_OPEN: case PD_BATTLE_PARTY_OPEN: case PD_BATTLE_TARGET:
         return true;
@@ -389,7 +397,7 @@ bool ui_battle_controls_usable(const struct pd_ui* ui, const struct pd_snapshot*
 
 void ui_battle_controls(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s) {
     bool busy = busy_now(ui);
-    bool hints = !ui->settings || !ui->settings->hideHints;
+    bool hints = ui_battle_hints_on(ui);
     bool canSwitch = ui->battleInput && pd_binput_can_switch(ui->battleInput);
     enum pd_battle_state state = s->battleState;
     // BATTLE STYLE > GEN 5: Black / White's touch screen (a Game Boy game keeps its own look).
@@ -405,10 +413,12 @@ void ui_battle_controls(struct pd_ui* ui, struct pd_canvas* c, const struct pd_g
         if (s->isTrainer && s->foeCount > 0)
             ball_row(c, s->foes, s->foeCount, c->w - MARGIN - foeRow, ballTop + (ballH - foeBall) / 2, foeBall, true);
         int y = ballTop + ballH + 4;
-        int infoW = 72, suggestW = 112, btnH = 26, rowX = (c->w - infoW - suggestW - 6) / 2;
-        button(ui, c, rowX, y, infoW, btnH, "INFO", 1, INFO_PURPLE, INFO_PURPLE_DARK, HIT_BATTLE_INFO, true);
-        button(ui, c, rowX + infoW + 6, y, suggestW, btnH, "SUGGESTIONS", 1, SUGGEST_GOLD, SUGGEST_GOLD_DARK, HIT_BATTLE_SUGGEST, true);
-        y += btnH + 5;
+        if (ui_battle_info_on(ui)) {
+            int infoW = 72, suggestW = 112, btnH = 26, rowX = (c->w - infoW - suggestW - 6) / 2;
+            button(ui, c, rowX, y, infoW, btnH, "INFO", 1, INFO_PURPLE, INFO_PURPLE_DARK, HIT_BATTLE_INFO, true);
+            button(ui, c, rowX + infoW + 6, y, suggestW, btnH, "SUGGESTIONS", 1, SUGGEST_GOLD, SUGGEST_GOLD_DARK, HIT_BATTLE_SUGGEST, true);
+            y += btnH + 5;
+        }
         int bottom = c->h - 2;
         if (state == PD_BATTLE_MOVE || (state == PD_BATTLE_ACTION && ui->battleChoosingMove)) {
             move_grid(ui, c, g, s, y, bottom, busy, hints);
@@ -416,6 +426,9 @@ void ui_battle_controls(struct pd_ui* ui, struct pd_canvas* c, const struct pd_g
             action_buttons(ui, c, g, s, y, bottom, busy, hints);
         } else if (state == PD_BATTLE_TARGET) {
             centered(c, y, bottom - y, "Confirming target...");
+        } else if (state != PD_BATTLE_BAG_OPEN && state != PD_BATTLE_PARTY_OPEN) {
+            // Between turns (BATTLE INFO off, or RUN's hold): nothing to press; after RUN there's no turn coming.
+            if (!ui->ranAway && !busy) centered(c, y, bottom - y, "Waiting for your turn...");
         } else {
             // The game's bag / party screen is up: all we can offer is the way back.
             int bw = c->w / 2, bh = 28;
@@ -457,6 +470,7 @@ bool ui_battle_controls_act(struct pd_ui* ui, int id, const struct pd_snapshot* 
         break;
     case HIT_BATTLE_RUN:
         pd_binput_action(b, PD_ACT_RUN);
+        ui->ranAway = true;
         break;
     case HIT_BATTLE_POKEMON:
         if (pd_binput_can_switch(b)) ui->battleChoosingMon = true;

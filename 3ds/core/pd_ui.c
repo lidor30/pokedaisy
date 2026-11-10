@@ -200,7 +200,9 @@ void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s) {
         ui->summarySlot = -1;
         ui->overlay = PD_OVERLAY_NONE;
         ui->battlePane = 0;
-        ui->battleInfoOpen = false;
+        // BATTLE VIEW: INFO first, or the buttons (always the buttons with BATTLE INFO off).
+        ui->battleInfoOpen = ui->settings && ui->settings->battleInfoFirst && ui_battle_info_on(ui);
+        ui->ranAway = ui->ranWaited = false;
         ui->foeSeen = 0;
         ui->foeSelected = -1;
         ui->lastFoeActive = ui->lastFoeNext = -1;
@@ -209,6 +211,11 @@ void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s) {
         ui->battleOnBar = false;
     }
     ui->battleWasOn = on;
+    // RUN's hold ends with the battle, or when the menu is back after the turn (the escape failed).
+    bool myTurn = s->battleState >= PD_BATTLE_ACTION;
+    if (!on || !ui->ranAway) ui->ranAway = ui->ranWaited = false;
+    else if (!myTurn) ui->ranWaited = true;
+    else if (ui->ranWaited) ui->ranAway = ui->ranWaited = false;
     // Our move grid and party pane sit on the action menu.
     if (s->battleState != PD_BATTLE_ACTION) ui->battleChoosingMon = ui->battleChoosingMove = false;
     // The FOE TEAM: what's been sent out or announced counts as seen; a new
@@ -539,6 +546,8 @@ static void act(struct pd_ui* ui, int id) {
         ui->tab = (enum pd_tab) (id - HIT_TAB);
         ui->summarySlot = -1;
         ui->moreOpened = false;
+        // BATTLE VIEW: the tab opens on what it says.
+        if (ui->tab == PD_TAB_BATTLE) ui->battleInfoOpen = ui->settings && ui->settings->battleInfoFirst && ui_battle_info_on(ui);
     } else if (id == HIT_MORE) {
         ui->overlay = ui->overlay == PD_OVERLAY_MORE ? PD_OVERLAY_NONE : PD_OVERLAY_MORE;
     } else if (id == HIT_MORE_TAB_BAR) {
@@ -567,11 +576,13 @@ static void act(struct pd_ui* ui, int id) {
         ui->overlay = PD_OVERLAY_CONFIRM_RESTART;
     } else if (id == HIT_SETTING + SETTING_MUTE || id == HIT_SETTING + SETTING_WILD || id == HIT_SETTING + SETTING_AUTO_RUN ||
                id == HIT_SETTING + SETTING_RUN_INDOORS || id == HIT_SETTING + SETTING_HINTS || id == HIT_SETTING + SETTING_ONE_TAP ||
-               id == HIT_SETTING + SETTING_BATTLE_STYLE) {
+               id == HIT_SETTING + SETTING_BATTLE_STYLE || id == HIT_SETTING + SETTING_BATTLE_INFO ||
+               id == HIT_SETTING + SETTING_BATTLE_VIEW) {
         struct pd_settings* st = ui->settings;
         bool* flag = id == HIT_SETTING + SETTING_MUTE ? &st->gameMuted : id == HIT_SETTING + SETTING_WILD ? &st->wildOff
             : id == HIT_SETTING + SETTING_AUTO_RUN ? &st->autoRun : id == HIT_SETTING + SETTING_RUN_INDOORS ? &st->runIndoors
             : id == HIT_SETTING + SETTING_HINTS ? &st->hideHints : id == HIT_SETTING + SETTING_ONE_TAP ? &st->oneTapMoves
+            : id == HIT_SETTING + SETTING_BATTLE_INFO ? &st->noBattleInfo : id == HIT_SETTING + SETTING_BATTLE_VIEW ? &st->battleInfoFirst
             : &st->battleGen5;
         *flag = !*flag;
         ui->action = PD_ACTION_SETTINGS_CHANGED;

@@ -29,6 +29,8 @@ void pd_settings_defaults(struct pd_settings* s) {
     s->hideHints = false;
     s->oneTapMoves = false;
     s->battleGen5 = false;
+    s->noBattleInfo = false;
+    s->battleInfoFirst = false;
     s->gameSpeed = 0;
     s->gameVolume = 100;
     s->gameMuted = false;
@@ -115,7 +117,8 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
             bool* b = !strcmp(key, "ffaudio") ? &s->ffAudio : !strcmp(key, "rewind") ? &s->rewind
                     : !strcmp(key, "runindoors") ? &s->runIndoors : !strcmp(key, "nohints") ? &s->hideHints
                     : !strcmp(key, "onetap") ? &s->oneTapMoves : !strcmp(key, "mute") ? &s->gameMuted
-                    : !strcmp(key, "autorun") ? &s->autoRun : !strcmp(key, "gen5") ? &s->battleGen5 : NULL;
+                    : !strcmp(key, "autorun") ? &s->autoRun : !strcmp(key, "gen5") ? &s->battleGen5
+                    : !strcmp(key, "noinfo") ? &s->noBattleInfo : !strcmp(key, "infofirst") ? &s->battleInfoFirst : NULL;
             if (b && int_in(value, 0, 1, &on)) *b = on;
         }
     }
@@ -139,7 +142,7 @@ bool pd_settings_save(const struct pd_settings* s, const char* path) {
     fprintf(f, "dark=%d\ntheme=%d\nffnormal=%d\ncheats=%d\n", s->darkMode, s->theme, s->ffNormal, s->cheats);
     fprintf(f, "speed=%d\nvolume=%d\nnohints=%d\nonetap=%d\nmute=%d\nautorun=%d\nperf=%d\n", s->gameSpeed,
             s->gameVolume, s->hideHints, s->oneTapMoves, s->gameMuted, s->autoRun, s->showPerf ? 1 : 0);
-    fprintf(f, "gen5=%d\n", s->battleGen5 ? 1 : 0);
+    fprintf(f, "gen5=%d\nnoinfo=%d\ninfofirst=%d\n", s->battleGen5 ? 1 : 0, s->noBattleInfo ? 1 : 0, s->battleInfoFirst ? 1 : 0);
     if (fclose(f) != 0) return false;
     return rename(tmp, path) == 0;
 }

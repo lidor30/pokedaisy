@@ -1,6 +1,7 @@
 #include <stdio.h>
 #include <string.h>
 
+#include "pd_party_art.h"
 #include "pd_tables.h"
 #include "pd_ui_internal.h"
 
@@ -63,6 +64,18 @@ int ui_type_badge(struct pd_canvas* c, int x, int y, int type) {
     int n = 0;
     for (; name[n] && n < 11; n++) text[n] = name[n] >= 'a' && name[n] <= 'z' ? (char) (name[n] - 32) : name[n];
     text[n] = 0;
+    // The game's own tag where its ROM has the sheet (English FireRed / Emerald engines), else the drawn badge.
+    const uint32_t* tags = pd_type_tags(ui_game);
+    int tx, ty;
+    if (tags && pd_type_tag_at(text, &tx, &ty)) {
+        if (c)
+            for (int r = 0; r < 12; r++)
+                for (int i = 0; i < 32; i++) {
+                    uint32_t v = tags[(ty + r) * 128 + tx + i];
+                    if (v) pd_fill(c, x + i, y + r, 1, 1, v & 0xFFFFFF);
+                }
+        return 32;
+    }
     int w = pd_text_width(text) + 6;
     if (!c) return w; // measuring
     pd_round_rect(c, x, y, w, 12, 1, ui_type_color(type));

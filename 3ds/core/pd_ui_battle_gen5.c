@@ -498,17 +498,18 @@ static void runs_draw(const struct runs* r, struct pd_canvas* c, uint32_t from, 
     }
 }
 
-// Renders a picture with [render] once into a scratch buffer and keeps its runs; false if there's no memory for it.
-static bool runs_keep(struct runs* r, int w, int h, void (*render)(struct pd_canvas*, const void*), const void* arg) {
-    if (r->rowStart && r->w == w && r->h == h) return true;
-    uint32_t* buf = malloc((size_t) w * h * sizeof(uint32_t));
-    if (!buf) return false;
-    struct pd_canvas tmp;
-    pd_canvas_init(&tmp, w, h, buf);
-    render(&tmp, arg);
-    bool ok = runs_encode(r, buf, w, h);
-    free(buf);
-    return ok;
+// Draws a kept picture into [c]: from its runs once they're kept, else rendered with [render] straight into [c] and its runs
+// read back from there (no scratch copy: a 300 KB buffer a build is a lot for the 3DS's heap). Only a whole-canvas draw
+// (nothing clipped) is kept; anything else is just rendered.
+static void runs_show(struct runs* r, struct pd_canvas* c, void (*render)(struct pd_canvas*, const void*), const void* arg,
+                      uint32_t from, uint32_t to, int litTop, int litBottom) {
+    if (!(r->rowStart && r->w == c->w && r->h == c->h)) {
+        render(c, arg);
+        bool whole = c->cx0 == 0 && c->cy0 == 0 && c->cx1 == c->w && c->cy1 == c->h;
+        if (!whole || !runs_encode(r, c->px, c->w, c->h)) return;
+        if (litBottom <= litTop) return;
+    }
+    runs_draw(r, c, from, to, litTop, litBottom);
 }
 
 struct ball_arg { const struct g5* g; bool open; };
@@ -522,14 +523,9 @@ static void ball_render_cb(struct pd_canvas* c, const void* arg) {
 static void ball_screen(struct pd_canvas* c, const struct g5* g, bool open, bool lit) {
     static struct runs kept[2];
     struct ball_arg arg = { g, open };
-    struct runs* r = &kept[open ? 1 : 0];
-    if (!runs_keep(r, c->w, c->h, ball_render_cb, &arg)) {
-        ball_render(c, g, open);
-        return;
-    }
     uint32_t from = open ? FIELD_FILL : BAND_FILL;
     int top = lit ? snap(g, g->bandY - 26.5f * g->sy) : 0, bottom = lit ? snap(g, g->bandY + 26.5f * g->sy) : 0;
-    runs_draw(r, c, from, pd_mix(from, 0xFFFFFF, 31), top, bottom);
+    runs_show(&kept[open ? 1 : 0], c, ball_render_cb, &arg, from, pd_mix(from, 0xFFFFFF, 31), top, bottom);
 }
 
 // The battle's party screen: the ball again, darkened - deep red, a wide dark band, grey lilac under it.
@@ -577,8 +573,7 @@ static void closed_ball_render(struct pd_canvas* c, const void* arg) {
 
 void ui_gen5_closed_ball(struct pd_canvas* c) {
     static struct runs kept;
-    if (runs_keep(&kept, c->w, c->h, closed_ball_render, NULL)) runs_draw(&kept, c, 0, 0, 0, 0);
-    else closed_ball_render(c, NULL);
+    runs_show(&kept, c, closed_ball_render, NULL, 0, 0, 0, 0);
 }
 
 // ---- The plates ---------------------------------------------------------------------------------------------------------
@@ -882,7 +877,7 @@ static void party_picker5(struct pd_ui* ui, struct pd_canvas* c, const struct g5
 void ui_battle_gen5(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* game, const struct pd_snapshot* s, bool busy) {
     const struct g5 gg = g5_of(c->w, c->h);
     const struct g5* g = &gg;
-    bool hints = !ui->settings || !ui->settings->hideHints;
+    bool hints = ui_battle_hints_on(ui);
     bool oneTap = ui->settings && ui->settings->oneTapMoves;
     bool canSwitch = ui->battleInput && pd_binput_can_switch(ui->battleInput);
     enum pd_battle_state st = s->battleState;
@@ -920,7 +915,7 @@ void ui_battle_gen5(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         word_disc(ui, c, g, 39.5f, 154.f, -1, "BAG", BAG_COLORS, HIT_BATTLE_BAG, enabled);
         word_disc(ui, c, g, 127.5f, 170.f, 0, "RUN", RUN_COLORS, HIT_BATTLE_RUN, enabled);
         word_disc(ui, c, g, 215.5f, 154.f, 1, "POKéMON", MON_COLORS, HIT_BATTLE_POKEMON, enabled);
-        if (!oneTap) info_plates(ui, c, g);
+        if (!oneTap && ui_battle_info_on(ui)) info_plates(ui, c, g);
         return;
     }
     // Between turns, or the game's bag / party up: the closed ball in the dark, the message, the way back.
@@ -932,8 +927,9 @@ void ui_battle_gen5(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         back_disc(ui, c, g, !busy, 38.f, 154.f);
         return;
     }
-    message_band(c, g, st == PD_BATTLE_TARGET ? "Confirming target..." : "Waiting for your turn...");
-    info_plates(ui, c, g);
+    if (st == PD_BATTLE_TARGET) message_band(c, g, "Confirming target...");
+    else if (!ui->ranAway && !busy) message_band(c, g, "Waiting for your turn...");
+    if (ui_battle_info_on(ui)) info_plates(ui, c, g);
 }
 
 void ui_gen5_backdrop(struct pd_ui* ui, struct pd_canvas* c, const struct pd_snapshot* s) {

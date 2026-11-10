@@ -47,7 +47,10 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     beige). SETTINGS > BATTLE STYLE > GEN 5 (`pd_ui_battle_gen5.c`, the app's `BattleControlsGen5.kt`) draws Black / White's
     touch screen instead, edge to edge: the red and lilac ball with FIGHT! in its lens, BAG / RUN / POKéMON as round plates
     rising from the bottom, the moves as hexagon plates in the opened field, the game's green-rimmed party slots, and the
-    closed ball in the dark behind INFO / SUGGESTIONS (a Game Boy game keeps its own look). **INFO**: you and the foe side by side (side, icon, type tags, level, HP), your moves with
+    closed ball in the dark behind INFO / SUGGESTIONS (a Game Boy game keeps its own look). BATTLE INFO off leaves the
+    buttons alone (no INFO, SUGGESTIONS or move ratings; a double battle says to use the game's own menu); BATTLE VIEW picks
+    whether the tab opens on the buttons or INFO; after RUN the buttons stay up until the battle ends. English FireRed and
+    Emerald draw their own type tags, read from the ROM (`pd_type_tags`). **INFO**: you and the foe side by side (side, icon, type tags, level, HP), your moves with
     the app's verdict pills (SUPER 2x / NEUTRAL 1x / RESISTED 1/2x / IMMUNE 0x / STATUS) on the left and what the
     foe is WEAK TO / RESISTS / IMMUNE TO on the right. Its corner button opens **FOE DETAILS**: your side shrinks to a
     strip (icon, HP standing up) and the foe gets the page - its ability (named from the ROM), held item, live stats with
@@ -202,8 +205,8 @@ in `roms/` (a new one shows after `restart`). Never in a release build.
 
 `make sim` builds `build/sim/pd_sim` (`desktop/sim/`): the real session (`host/`) and companion over the real mGBA,
 with no 3DS code, from a script of `run`, `press`, `quick`, `tap`, `hit ID`, `hits`, `shot`, `wild`, `wait-state`,
-`press-to-state`, `poke`, `peek`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`, `gen5` / `onetap` (BATTLE STYLE,
-ONE-TAP MOVES), `bench` (times the companion's redraw). `make sim-test` runs
+`press-to-state`, `poke`, `peek`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`, `gen5` / `onetap` / `noinfo` /
+`infofirst` (BATTLE STYLE, ONE-TAP MOVES, BATTLE INFO, BATTLE VIEW), `bench` (times the companion's redraw). `make sim-test` runs
 `test/sim_*.txt` on FireRed and Emerald (`ROM_DIR`, `SAVE_DIR`), `make sim-test-gb` the Game Boy script on Yellow; saves
 are copied first, never written.
 

@@ -89,7 +89,8 @@ static bool railed;
 
 void ui_settings_group(struct pd_ui* ui, int i) {
     if (i < 0 || i >= groupCount) return;
-    ui->settingsScroll = ui_clamp_scroll(groupTop[i], lastTotal, listBottom - listTop);
+    // The last group goes to the list's end, so what closes the list (CLOSE GAME / RESTART GAME) shows whole.
+    ui->settingsScroll = ui_clamp_scroll(i == groupCount - 1 ? lastTotal : groupTop[i], lastTotal, listBottom - listTop);
     picked = i;
     pickedScroll = ui->settingsScroll;
 }
@@ -308,7 +309,11 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
             if (pd_themes[i].id == st->theme) themeName = pd_themes[i].label;
         setting(ui, c, ix, &y, iw, SETTING_THEME, "THEME", themeName);
         group(c, ix, &y, "COMPANION");
-        setting(ui, c, ix, &y, iw, SETTING_HINTS, "BATTLE HINTS", st->hideHints ? "OFF" : "ON");
+        setting(ui, c, ix, &y, iw, SETTING_BATTLE_INFO, "BATTLE INFO", st->noBattleInfo ? "OFF" : "ON");
+        if (!st->noBattleInfo) {
+            setting(ui, c, ix, &y, iw, SETTING_HINTS, "BATTLE HINTS", st->hideHints ? "OFF" : "ON");
+            setting(ui, c, ix, &y, iw, SETTING_BATTLE_VIEW, "BATTLE VIEW", st->battleInfoFirst ? "INFO" : "BUTTONS");
+        }
         setting(ui, c, ix, &y, iw, SETTING_ONE_TAP, "ONE-TAP MOVES", st->oneTapMoves ? "ON" : "OFF");
         setting(ui, c, ix, &y, iw, SETTING_BATTLE_STYLE, "BATTLE STYLE", st->battleGen5 ? "GEN 5" : "GEN 4");
     }
@@ -320,12 +325,17 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         y += 5;
         // CLOSE GAME / RESTART GAME, under a line.
         int bw = (iw - 6) / 2;
-        if (y >= listTop && y + 22 <= listBottom) {
+        if (y + 22 > listTop && y < listBottom) {
+            // Drawn whenever any of them shows (the list's clip cuts them), tappable on the part that shows.
+            int first = ui->hitCount;
             ui_button(ui, c, ix, y, bw, 22, "CLOSE GAME", HIT_SETTING + SETTING_LEAVE);
             ui_button(ui, c, ix + bw + 6, y, bw, 22, "RESTART GAME", HIT_SETTING + SETTING_RESTART);
-        } else if (!host || !host->frontendOwnsPlayback) {
-            pd_title_box(c, ix, y, bw, 22, PD_TITLE_FILL);
-            pd_title_box(c, ix + bw + 6, y, bw, 22, PD_TITLE_FILL);
+            for (int i = first; i < ui->hitCount; i++) {
+                struct pd_hit* h = &ui->hits[i];
+                int top = h->y < listTop ? listTop : h->y, bottom = h->y + h->h > listBottom ? listBottom : h->y + h->h;
+                h->y = top;
+                h->h = bottom - top;
+            }
         }
         y += 26;
     } else if (!host || !host->frontendOwnsPlayback) {

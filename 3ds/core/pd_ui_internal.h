@@ -133,6 +133,8 @@ enum setting_row {
     SETTING_HINTS,
     SETTING_ONE_TAP,
     SETTING_BATTLE_STYLE,
+    SETTING_BATTLE_INFO,
+    SETTING_BATTLE_VIEW,
     SETTING_RESTART,
 };
 
@@ -234,6 +236,11 @@ void ui_gen5_closed_ball(struct pd_canvas* c);
 void ui_gen5_backdrop(struct pd_ui* ui, struct pd_canvas* c, const struct pd_snapshot* s);
 // Whether the BATTLE tab takes GEN 5's look for this game.
 bool ui_gen5_style(const struct pd_ui* ui, const struct pd_game* g);
+// BATTLE INFO on (INFO, SUGGESTIONS and the move ratings), and the ratings with BATTLE HINTS too.
+bool ui_battle_info_on(const struct pd_ui* ui);
+bool ui_battle_hints_on(const struct pd_ui* ui);
+// The battle's touch input is there for a single battle (whatever the game waits for now).
+bool ui_battle_input_on(const struct pd_ui* ui, const struct pd_snapshot* s);
 void ui_platinum(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, uint32_t fill, uint32_t frame, int id);
 // Blends what was just drawn in a rectangle over [before] (w x h pixels saved first): alpha 0-255.
 void ui_fade_rect(struct pd_canvas* c, const uint32_t* before, int x, int y, int w, int h, int alpha);

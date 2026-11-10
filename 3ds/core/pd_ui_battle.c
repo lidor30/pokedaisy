@@ -662,7 +662,16 @@ void ui_battle_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* 
         return;
     }
     bool controls = ui_battle_controls_usable(ui, s);
-    if (controls && !ui->battleInfoOpen && !ui->battlePane) {
+    if (!ui_battle_info_on(ui)) {
+        // BATTLE INFO off: the buttons, waiting between turns too, or - where there are none (a double battle) - a word
+        // to use the game's own menu.
+        if (ui_battle_input_on(ui, s)) ui_battle_controls(ui, c, g, s);
+        else ui_notice(c, "BATTLE", "Use the game's own menu.", "");
+        return;
+    }
+    // RUN picked: the controls stay up until the battle ends (no INFO flashing by on the way out).
+    bool hold = ui->ranAway && ui_battle_input_on(ui, s);
+    if (!ui->battlePane && ((controls && !ui->battleInfoOpen) || hold)) {
         ui_battle_controls(ui, c, g, s);
         return;
     }

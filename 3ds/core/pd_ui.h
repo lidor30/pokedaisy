@@ -93,6 +93,8 @@ struct pd_settings {
     bool hideHints;  // BATTLE HINTS off
     bool oneTapMoves; // ONE-TAP MOVES: the moves on the action menu where FIGHT is
     bool battleGen5;  // BATTLE STYLE: GEN 5 (Black / White's touch screen); off = GEN 4
+    bool noBattleInfo;    // BATTLE INFO off: the battle buttons alone, no INFO / SUGGESTIONS or move ratings
+    bool battleInfoFirst; // BATTLE VIEW: INFO; off = BUTTONS (what the BATTLE tab opens on)
     int gameSpeed;   // GAME SPEED: an index into PD_GAME_SPEEDS
     int gameVolume;  // GAME VOLUME: 20 ... 100
     bool gameMuted;  // MUTE GAME
@@ -406,6 +408,8 @@ struct pd_ui {
     bool battleInfoOpen;     // INFO over the touch controls (their way back shows)
     bool battleChoosingMon;  // POKéMON tapped: our party pane, not yet the game's
     bool battleChoosingMove; // FIGHT tapped: our move grid, FIGHT not sent yet
+    // RUN picked: the controls stay up until the battle ends, or the menu is back after a turn (the escape failed).
+    bool ranAway, ranWaited;
     unsigned foeSeen;
     int foeSelected, foeShown;
     bool foeDetails; // FOE DETAILS: INFO gives the foe the page (Prefs.foeDetails, kept across battles)

@@ -256,6 +256,10 @@ static void command(char* line) {
         pd_look_apply(&session.game, &settings);
     } else if (!strcmp(cmd, "gen5")) {
         settings.battleGen5 = atoi(args) != 0;
+    } else if (!strcmp(cmd, "noinfo")) {
+        settings.noBattleInfo = atoi(args) != 0;
+    } else if (!strcmp(cmd, "infofirst")) {
+        settings.battleInfoFirst = atoi(args) != 0;
     } else if (!strcmp(cmd, "onetap")) {
         settings.oneTapMoves = atoi(args) != 0;
     } else if (!strcmp(cmd, "theme")) {
