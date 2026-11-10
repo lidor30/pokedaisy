@@ -169,6 +169,13 @@ private fun flySections(fly: FlyFns, g: GameCalls): List<Int> {
     }.map { fly.firstMapsec + it } + fly.extraMapsecs
 }
 
+/** The map sections FLY could ever offer (visited or not): FLIGHT AREA's towns ([FlightArea]). */
+fun flyTownSections(fly: FlyFns, g: GameCalls): List<Int> = flySections(fly, g)
+
+/** The towns the game's own Fly map would list now ([FlyFns.flyTypes]), with no party or badge gate: FLIGHT AREA's start. */
+fun flyVisitedTowns(fly: FlyFns, g: GameCalls): List<Int> =
+    flySections(fly, g).filter { g.call(fly.getMapsecType, it).toInt() in fly.flyTypes }
+
 /** Whether the running ROM has [fly]'s functions where they're expected. */
 fun flyCodeMatches(fly: FlyFns, read: (addr: Long, len: Int) -> ByteArray): Boolean =
     fly.functions.zip(fly.codeCrcs).all { (fn, crc) ->

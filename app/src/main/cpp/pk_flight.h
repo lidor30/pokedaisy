@@ -98,6 +98,13 @@ typedef int (*pk_flight_call_fn)(struct mCore* core, uint32_t fn, const uint32_t
 void pk_flight_set_call(pk_flight_call_fn fn);
 /** The game's addresses ([PK_FLIGHT_WORDS] words), or n = 0 to switch it off (a flight in progress is dropped). */
 void pk_flight_configure(const uint32_t* words, int n);
+/** FLIGHT AREA: the maps the flight may cross into, a bit per map (group << 8 | num: bit id % 8 of byte id / 8, at most
+ * PK_FLIGHT_AREA_BYTES), the player's own map always being one of them; n = 0 = anywhere (the default). Kept across
+ * pk_flight_configure / pk_flight_reset: it's the app's, not the game's. Emu thread. */
+#define PK_FLIGHT_AREA_BYTES 8192
+void pk_flight_set_area(const uint8_t* bits, int n);
+/** 1 when the D-pad met FLIGHT AREA's edge (a map not in it) since the last call, which clears it: the app says why. */
+int pk_flight_area_turned(void);
 /** Takes off on the next frames (the gates the game would check for FLY are the caller's: badge, a Pokemon with
  * Fly, outdoors). Emu thread, between frames. */
 int pk_flight_take_off(struct mCore* core);

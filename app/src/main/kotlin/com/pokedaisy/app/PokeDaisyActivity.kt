@@ -894,8 +894,74 @@ class PokeDaisyActivity : Activity() {
     private fun syncFlight() {
         if (!::engine.isInitialized || !engine.running) return
         askFlyStyle()
-        val words = flightSupport()?.fns?.flight?.words(flightVehicle()) ?: return
+        val support = flightSupport() ?: return
+        val words = support.fns.flight?.words(flightVehicle()) ?: return
         engine.postToEmu { MgbaCore.pkFlightConfigure(words) }
+        syncFlightArea(support)
+    }
+
+    /** FLIGHT AREA for this game (FlightArea.kt): the save's seen maps, made in [loadRom]. */
+    private var flightArea: com.pokedaisy.app.companion.data.FlightArea.Keeper? = null
+    /** pk_flight was told "anywhere" since FLIGHT AREA went ANYWHERE. */
+    private var flightAreaAnywhereSent = false
+    /** A keeper tick is queued on the emu thread (one at a time). */
+    @Volatile private var flightAreaQueued = false
+
+    private fun flightAreaSeen() = Prefs(this).flightArea == com.pokedaisy.app.companion.FlightAreaMode.SEEN
+
+    /** Every half second with [syncFlight]: pk_flight told the seen maps (the save checked, the player's map added), or
+     * "anywhere" once while FLIGHT AREA says so. */
+    private fun syncFlightArea(support: com.pokedaisy.app.companion.data.FieldItemSupport) {
+        val keeper = flightArea ?: return
+        if (!flightAreaSeen()) {
+            if (!flightAreaAnywhereSent) {
+                flightAreaAnywhereSent = true
+                engine.postToEmu { keeper.resend(); MgbaCore.pkFlightArea(null) }
+            }
+            return
+        }
+        flightAreaAnywhereSent = false
+        if (flightAreaQueued) return
+        flightAreaQueued = true
+        val standing = engine.onField.value && !telemetry.snapshot.value.inBattle
+        engine.requestFieldItemJob(false) { calls, busy ->
+            flightAreaQueued = false
+            flightAreaTick(keeper, support, calls, standing && !busy)
+            // The bird turned at a map not seen yet: say why, now and then (it can be met many times a second).
+            if (MgbaCore.pkFlightAreaTurned()) runOnUiThread {
+                val now = android.os.SystemClock.uptimeMillis()
+                if (now - flightAreaToldAt > FLIGHT_AREA_TELL_MS) {
+                    flightAreaToldAt = now
+                    showHud(com.pokedaisy.app.companion.i18n.tr("You haven't been there yet."))
+                }
+            }
+        }
+    }
+
+    /** When the HUD last said the bird turned at FLIGHT AREA's edge (uptime ms). */
+    private var flightAreaToldAt = 0L
+
+    /** Emu thread, in a field job: [FlightArea.Keeper.tick], its bits to pk_flight when they changed. FLIGHT AREA's
+     * ANYWHERE: pk_flight told so. */
+    private fun flightAreaTick(
+        keeper: com.pokedaisy.app.companion.data.FlightArea.Keeper, support: com.pokedaisy.app.companion.data.FieldItemSupport,
+        calls: com.pokedaisy.app.companion.data.GameCalls, standing: Boolean,
+    ) {
+        if (!flightAreaSeen()) {
+            keeper.resend()
+            MgbaCore.pkFlightArea(null)
+            return
+        }
+        // Quetzal's FLY flag check is its own region-badge one, not FlagGet: no trainers there.
+        val trainerFlags = telemetry.snapshot.value.game != com.pokedaisy.app.companion.data.GameKind.QUETZAL
+        runCatching { keeper.tick(support.fns, calls, trainerFlags, standing && MgbaCore.pkFlightState() == MgbaCore.FLIGHT_IDLE) }
+            .onSuccess { bits -> bits?.let { MgbaCore.pkFlightArea(it) } }
+            .onFailure { Log.w("pokedaisy", "flight area", it) }
+    }
+
+    /** A take-off went up: with FLIGHT AREA's ANYWHERE, RetroAchievements pause (UI thread). */
+    private fun flightTookOff() {
+        if (!flightAreaSeen()) RetroAchievements.setFlightAnywhere(true)
     }
 
     /** MAKEOVER > FLY ON: what the flight's words ask pk_flight to draw. */
@@ -941,12 +1007,14 @@ class PokeDaisyActivity : Activity() {
             var code = MgbaCore.FLIGHT_OK
             if (gate == com.pokedaisy.app.companion.data.FlyResult.OK) {
                 MgbaCore.pkFlightConfigure(words)
+                flightArea?.let { flightAreaTick(it, support, calls, true) }
                 code = MgbaCore.pkFlightTakeOff()
             }
             Log.i("pokedaisy", "free flight: $gate / $code")
             runOnUiThread {
                 when {
                     gate == com.pokedaisy.app.companion.data.FlyResult.OK && code == MgbaCore.FLIGHT_OK -> {
+                        flightTookOff()
                         com.pokedaisy.app.companion.FeatureTips.used(TipId.FLY)
                         closeCompanionWindow()
                         hudCloseTick.intValue++
@@ -982,10 +1050,14 @@ class PokeDaisyActivity : Activity() {
                 runOnUiThread { done(shown) }
                 return@requestFieldItemJob
             }
+            // FLIGHT AREA: the route keeps to the seen maps (a town past them flies the classic way).
+            val keeper = flightArea
+            keeper?.let { flightAreaTick(it, support, calls, true) }
+            val allowed = keeper?.takeIf { flightAreaSeen() }?.let { k -> { m: com.pokedaisy.app.companion.data.ScenicFly.MapId -> k.allows(m) } }
             val world = runCatching {
                 val here = com.pokedaisy.app.companion.data.ScenicFly.here(f, calls::read) ?: return@runCatching null
                 val dest = com.pokedaisy.app.companion.data.ScenicFly.destination(fly, f, mapsec, calls::read) ?: return@runCatching null
-                val w = com.pokedaisy.app.companion.data.ScenicFly.read(f, here.first, calls::read) ?: return@runCatching null
+                val w = com.pokedaisy.app.companion.data.ScenicFly.read(f, here.first, calls::read, allowed) ?: return@runCatching null
                 Triple(w, here, dest).takeIf { w.placed(dest.first) != null }
             }.getOrNull()
             if (world == null) {
@@ -1019,6 +1091,7 @@ class PokeDaisyActivity : Activity() {
                         when {
                             code == MgbaCore.FLIGHT_OK -> {
                                 scenicFlown = true
+                                flightTookOff()
                                 done(com.pokedaisy.app.companion.data.FlyResult.OK)
                             }
                             // Surfing: the bird can't take off from the water - the game's own FLY can.
@@ -1610,6 +1683,13 @@ class PokeDaisyActivity : Activity() {
         override val tradeEvolutions get() = Prefs(this@PokeDaisyActivity).tradeEvolutions
         override fun setTradeEvolutions(on: Boolean) { Prefs(this@PokeDaisyActivity).tradeEvolutions = on }
         override val tradeEvolutionsSupported get() = tradeEvoFns() != null
+        override val flightArea get() = Prefs(this@PokeDaisyActivity).flightArea
+        override fun setFlightArea(mode: com.pokedaisy.app.companion.FlightAreaMode) {
+            Prefs(this@PokeDaisyActivity).flightAreaId = mode.id
+            // Back to the seen maps: what a flight anywhere reached is behind the player, achievements go on.
+            if (mode == com.pokedaisy.app.companion.FlightAreaMode.SEEN) RetroAchievements.setFlightAnywhere(false)
+            syncFlight()
+        }
         override val flyStyle get() = Prefs(this@PokeDaisyActivity).flyStyle
         override fun setFlyStyle(style: com.pokedaisy.app.companion.FlyStyle) { Prefs(this@PokeDaisyActivity).flyStyleId = style.id }
         override val flightVehicle get() = this@PokeDaisyActivity.flightVehicle()
@@ -2317,6 +2397,10 @@ class PokeDaisyActivity : Activity() {
         // cart read here froze the window past Android's 5 s. Keyed by the file played, an archive's by the archive.
         val crc = "%08x".format(RomCrcs.of(this, romFile, r))
         romKey = crc
+        flightArea = com.pokedaisy.app.companion.data.FlightArea.Keeper(filesDir, crc)
+        flightAreaAnywhereSent = false
+        flightAreaQueued = false
+        RetroAchievements.setFlightAnywhere(false)
         states = SaveStates(getExternalFilesDir(null) ?: filesDir, crc)
         val ffMusicCache = FfMusicCache(getExternalFilesDir(null) ?: filesDir, crc, gameBoy = RomIdentity.isGameBoy(r))
         // STEADY FF music: songs rendered on their own from this ROM, in the
@@ -5470,6 +5554,7 @@ class PokeDaisyActivity : Activity() {
 
         /** The scenic FLY's question a moment after landing, once the player stands in town. */
         private const val FLY_STYLE_ASK_DELAY_MS = 1500L
+        private const val FLIGHT_AREA_TELL_MS = 4000L
         private const val EXTRA_DUMP_FIXTURE = "dumpFixture"
         private const val EXTRA_DUMP_FIXTURE_FORCE = "dumpFixtureForce"
         private const val EWRAM_BASE = 0x02000000L

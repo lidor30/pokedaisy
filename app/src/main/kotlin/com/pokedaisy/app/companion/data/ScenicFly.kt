@@ -51,8 +51,9 @@ object ScenicFly {
         }
     }
 
-    /** Every map joined to [start] by connections (breadth first, at most [MAX_MAPS]), laid out from it at (0, 0). */
-    fun read(f: FlightFns, start: MapId, read: (Long, Int) -> ByteArray): World? {
+    /** Every map joined to [start] by connections (breadth first, at most [MAX_MAPS]), laid out from it at (0, 0);
+     * [allowed]: FLIGHT AREA's maps ([FlightArea]), null = all ([start] always). */
+    fun read(f: FlightFns, start: MapId, read: (Long, Int) -> ByteArray, allowed: ((MapId) -> Boolean)? = null): World? {
         fun u32(a: Long) = read(a, 4).let { b -> (0..3).fold(0L) { v, i -> v or ((b[i].toLong() and 0xFF) shl (8 * i)) } }
         fun s32(a: Long) = u32(a).toInt()
         fun header(id: MapId): Long? {
@@ -66,7 +67,7 @@ object ScenicFly {
         queue += Triple(start, 0, 0)
         while (queue.isNotEmpty() && placed.size < MAX_MAPS) {
             val (id, x, y) = queue.removeFirst()
-            if (id in placed || id in noFly) continue
+            if (id in placed || id in noFly || (id != start && allowed?.invoke(id) == false)) continue
             val h = header(id) ?: continue
             val layout = u32(h).takeIf { it in ROM_START until ROM_END } ?: continue
             val w = s32(layout)
@@ -95,7 +96,7 @@ object ScenicFly {
             }
             placed[id] = Placed(id, x, y, w, hh, conns, holes)
             for (k in conns) {
-                if (k.to in placed || k.to in noFly) continue
+                if (k.to in placed || k.to in noFly || allowed?.invoke(k.to) == false) continue
                 val oh = header(k.to) ?: continue
                 val ol = u32(oh).takeIf { it in ROM_START until ROM_END } ?: continue
                 val ow = s32(ol)

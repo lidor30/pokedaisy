@@ -159,6 +159,13 @@ class Prefs(context: Context) {
         set(v) = p.edit().putInt("fly_style", v).putBoolean("fly_style_asked", true).apply()
     val flyStyle: com.pokedaisy.app.companion.FlyStyle get() = com.pokedaisy.app.companion.FlyStyle.of(flyStyleId)
 
+    /** FLIGHT AREA: where FREE FLIGHT and the scenic FLY may go, a [com.pokedaisy.app.companion.FlightAreaMode] id (0 = only
+     * the maps the player has seen, the default). For every game. */
+    var flightAreaId: Int
+        get() = p.getInt("flight_area", com.pokedaisy.app.companion.FlightAreaMode.SEEN.id)
+        set(v) = p.edit().putInt("flight_area", v).apply()
+    val flightArea: com.pokedaisy.app.companion.FlightAreaMode get() = com.pokedaisy.app.companion.FlightAreaMode.of(flightAreaId)
+
     /** MAKEOVER > FLY ON: what FREE FLIGHT and the scenic FLY fly on, a [com.pokedaisy.app.companion.data.FlightVehicle] id
      * (0 the game's own bird). For every game. */
     var flightVehicleId: Int

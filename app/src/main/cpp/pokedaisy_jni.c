@@ -921,6 +921,24 @@ Java_com_pokedaisy_app_MgbaCore_pkFlightRoute(JNIEnv* env, jobject thiz, jbyteAr
     return r;
 }
 
+// FLIGHT AREA: a bit per map (group << 8 | num) the flight may cross into, or null = anywhere. Emu thread.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkFlightArea(JNIEnv* env, jobject thiz, jbyteArray bits) {
+    if (!bits) {
+        pk_flight_set_area(NULL, 0);
+        return;
+    }
+    jsize n = (*env)->GetArrayLength(env, bits);
+    jbyte* b = (*env)->GetByteArrayElements(env, bits, NULL);
+    pk_flight_set_area((const uint8_t*) b, n);
+    (*env)->ReleaseByteArrayElements(env, bits, b, JNI_ABORT);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkFlightAreaTurned(JNIEnv* env, jobject thiz) {
+    return pk_flight_area_turned() ? JNI_TRUE : JNI_FALSE;
+}
+
 JNIEXPORT jint JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkFlightState(JNIEnv* env, jobject thiz) {
     return pk_flight_state();
