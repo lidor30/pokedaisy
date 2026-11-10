@@ -105,7 +105,7 @@ extern const struct pd_text pd_text_soulgold_v1_2_1;
 // and the party icons. The FOE TEAM's addresses are known for rev 1 only. Retail FireRed rev 0 as the app
 // reads it: no POKéDEX / GUIDE tables (none on file for rev 0), its trainer card set in code (Poller.kt), the
 // quick menu from FIELD_ITEMS_PORTS["BPRE0"] (fieldItemsFor).
-// gamedata/gen3/retail/firered.toml: firered_rev1 (ram, foes, icons, dex, guide, card, fly, flash, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/firered.toml: firered_rev1 (ram, foes, icons, dex, guide, card, fly, flash, tm, field, battle, engine, boxes, dexsec)
 static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260632, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -288,6 +288,23 @@ static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .flashBadgeCheck = 0,
     .flashBadgeCheckCrc = 0,
     .flashCaveOff = 0x15,
+    .tmItemId = 0x0203AD30,
+    .tmItemUseCb = 0x03005E98,
+    .tmItemUseCbTmhm = 0x08125BB8,
+    .tmShowParty = 0x08124D04,
+    .tmPartyMenu = 0x0203B0A0,
+    .tmPartyMenuSlotOff = 9,
+    .tmInitPartyMenu = 0x0811EC48,
+    .tmMainCallback2 = 0x030030F4,
+    .tmSetMainCallback2 = 0x08000558,
+    .tmReturnToField = 0x080567F0,
+    .tmCleanup = 0x08056404,
+    .tmFade = 0x0807A82C,
+    .tmLock = 0x08069954,
+    .tmUnlock = 0x08069960,
+    .tmCrcs = { 0xEA99DF01, 0xAA3B20FF, 0x1655AE08, 0x7FD43C20, 0x95CA9A3E, 0xCE27BF5A, 0xF9959006, 0x0111A86E, 0xBAB654BA },
+    .tmFirst = 289,
+    .tmLast = 346,
     .fieldVarGet = 0x0806E57C,
     .fieldVarSet = 0x0806E598,
     .fieldCheckBag = 0x08099F54,
@@ -334,7 +351,7 @@ static const struct pd_config PD_CONFIG_FIRERED_REV1 = {
     .dexMapGroups = 0x08352718,
 };
 
-// gamedata/gen3/retail/firered.toml: firered_rev0 (ram, icons, dex, card, fly, flash, field, battle, engine, boxes)
+// gamedata/gen3/retail/firered.toml: firered_rev0 (ram, icons, dex, card, fly, flash, tm, field, battle, engine, boxes)
 static const struct pd_config PD_CONFIG_FIRERED_REV0 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260520, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -485,6 +502,23 @@ static const struct pd_config PD_CONFIG_FIRERED_REV0 = {
     .flashBadgeCheck = 0x0812461C,
     .flashBadgeCheckCrc = 0xD3F21DE4,
     .flashCaveOff = 0x15,
+    .tmItemId = 0x0203AD30,
+    .tmItemUseCb = 0x03005E98,
+    .tmItemUseCbTmhm = 0x08125B40,
+    .tmShowParty = 0x08124C8C,
+    .tmPartyMenu = 0x0203B0A0,
+    .tmPartyMenuSlotOff = 9,
+    .tmInitPartyMenu = 0x0811EBD0,
+    .tmMainCallback2 = 0x030030F4,
+    .tmSetMainCallback2 = 0x08000544,
+    .tmReturnToField = 0x080567DC,
+    .tmCleanup = 0x080563F0,
+    .tmFade = 0x0807A818,
+    .tmLock = 0x08069940,
+    .tmUnlock = 0x0806994C,
+    .tmCrcs = { 0x9CA850AA, 0xAA3B20FF, 0x3099DC9B, 0x7FD43C20, 0xB892BBB7, 0xE67BC364, 0xF9959006, 0x0111A86E, 0xBAB654BA },
+    .tmFirst = 289,
+    .tmLast = 346,
     .fieldVarGet = 0x0806E568,
     .fieldVarSet = 0x0806E584,
     .fieldCheckBag = 0x08099F40,
@@ -526,7 +560,7 @@ static const struct pd_config PD_CONFIG_FIRERED_REV0 = {
     .pcStorage = &pd_pc_vanilla,
 };
 
-// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev0 (ram, icons, dex, guide, card, fly, flash, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev0 (ram, icons, dex, guide, card, fly, flash, tm, field, battle, engine, boxes, dexsec)
 static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260068, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -704,6 +738,23 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .flashBadgeCheck = 0,
     .flashBadgeCheckCrc = 0,
     .flashCaveOff = 0x15,
+    .tmItemId = 0x0203AD30,
+    .tmItemUseCb = 0x03005E98,
+    .tmItemUseCbTmhm = 0x08125B18,
+    .tmShowParty = 0x08124C64,
+    .tmPartyMenu = 0x0203B0A0,
+    .tmPartyMenuSlotOff = 9,
+    .tmInitPartyMenu = 0x0811EBA8,
+    .tmMainCallback2 = 0x030030F4,
+    .tmSetMainCallback2 = 0x08000544,
+    .tmReturnToField = 0x080567DC,
+    .tmCleanup = 0x080563F0,
+    .tmFade = 0x0807A7EC,
+    .tmLock = 0x08069940,
+    .tmUnlock = 0x0806994C,
+    .tmCrcs = { 0x679AE1F0, 0xAA3B20FF, 0x1DE165E1, 0x7FD43C20, 0xB892BBB7, 0xAD9CEAC8, 0xF9959006, 0x0111A86E, 0xBAB654BA },
+    .tmFirst = 289,
+    .tmLast = 346,
     .fieldVarGet = 0x0806E568,
     .fieldVarSet = 0x0806E584,
     .fieldCheckBag = 0x08099F14,
@@ -750,7 +801,7 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV0 = {
     .dexMapGroups = 0x08352688,
 };
 
-// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev1 (ram, foes, icons, dex, guide, card, fly, flash, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/leafgreen.toml: leafgreen_rev1 (ram, foes, icons, dex, guide, card, fly, flash, tm, field, battle, engine, boxes, dexsec)
 static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .itemDescs = &(const struct pd_item_descs){ .base = 138260180, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x02024284,
@@ -933,6 +984,23 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .flashBadgeCheck = 0,
     .flashBadgeCheckCrc = 0,
     .flashCaveOff = 0x15,
+    .tmItemId = 0x0203AD30,
+    .tmItemUseCb = 0x03005E98,
+    .tmItemUseCbTmhm = 0x08125B90,
+    .tmShowParty = 0x08124CDC,
+    .tmPartyMenu = 0x0203B0A0,
+    .tmPartyMenuSlotOff = 9,
+    .tmInitPartyMenu = 0x0811EC20,
+    .tmMainCallback2 = 0x030030F4,
+    .tmSetMainCallback2 = 0x08000558,
+    .tmReturnToField = 0x080567F0,
+    .tmCleanup = 0x08056404,
+    .tmFade = 0x0807A800,
+    .tmLock = 0x08069954,
+    .tmUnlock = 0x08069960,
+    .tmCrcs = { 0xAB261E3B, 0xAA3B20FF, 0xBF379CB9, 0x7FD43C20, 0x95CA9A3E, 0xD3AF9AFE, 0xF9959006, 0x0111A86E, 0xBAB654BA },
+    .tmFirst = 289,
+    .tmLast = 346,
     .fieldVarGet = 0x0806E57C,
     .fieldVarSet = 0x0806E598,
     .fieldCheckBag = 0x08099F28,
@@ -979,7 +1047,7 @@ static const struct pd_config PD_CONFIG_LEAFGREEN_REV1 = {
     .dexMapGroups = 0x083526F8,
 };
 
-// gamedata/gen3/retail/emerald.toml: emerald_retail (ram, foes, icons, dex, guide, card, fly, flash, field, battle, engine, boxes, dexsec)
+// gamedata/gen3/retail/emerald.toml: emerald_retail (ram, foes, icons, dex, guide, card, fly, flash, tm, field, battle, engine, boxes, dexsec)
 static const struct pd_config PD_CONFIG_EMERALD = {
     .itemDescs = &(const struct pd_item_descs){ .base = 139999648, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x020244EC,
@@ -1162,6 +1230,23 @@ static const struct pd_config PD_CONFIG_EMERALD = {
     .flashBadgeCheck = 0,
     .flashBadgeCheckCrc = 0,
     .flashCaveOff = 0x15,
+    .tmItemId = 0x0203CE7C,
+    .tmItemUseCb = 0x03006328,
+    .tmItemUseCbTmhm = 0x081B6DC4,
+    .tmShowParty = 0x081B617C,
+    .tmPartyMenu = 0x0203CEC8,
+    .tmPartyMenuSlotOff = 9,
+    .tmInitPartyMenu = 0x081B01E0,
+    .tmMainCallback2 = 0x030022C4,
+    .tmSetMainCallback2 = 0x08000540,
+    .tmReturnToField = 0x080860C8,
+    .tmCleanup = 0x08085D34,
+    .tmFade = 0x080ABCD0,
+    .tmLock = 0x08098E54,
+    .tmUnlock = 0x08098E60,
+    .tmCrcs = { 0xF253CF6E, 0x34D2BE1C, 0x99B75656, 0x6228571D, 0x224FD691, 0x4A3D66F5, 0xF9959006, 0xB9FB85A7, 0xB037C8AF },
+    .tmFirst = 289,
+    .tmLast = 346,
     .fieldVarGet = 0x0809D694,
     .fieldVarSet = 0x0809D6B0,
     .fieldCheckBag = 0x080D6724,
@@ -1210,7 +1295,7 @@ static const struct pd_config PD_CONFIG_EMERALD = {
 
 // plorpOS's Linux port: the hacks, as their records reach gen3/records/c_hacks.toml. Emerald Legacy v1.1.4: retail's
 // structs with its own addresses, its own TrainerMon (guideTables.trainerMon).
-// gamedata/gen3/hacks/emerald_legacy.toml: emerald_legacy (ram, foes, icons, dex, guide, card, fly, flash, field, battle, engine, boxes)
+// gamedata/gen3/hacks/emerald_legacy.toml: emerald_legacy (ram, foes, icons, dex, guide, card, fly, flash, tm, field, battle, engine, boxes)
 static const struct pd_config PD_CONFIG_EMERALD_LEGACY = {
     .itemDescs = &(const struct pd_item_descs){ .base = 140206608, .stride = 44, .descOff = 20, .idOff = 14 },
     .playerParty = 0x020244EC,
@@ -1393,6 +1478,23 @@ static const struct pd_config PD_CONFIG_EMERALD_LEGACY = {
     .flashBadgeCheck = 0,
     .flashBadgeCheckCrc = 0,
     .flashCaveOff = 0x15,
+    .tmItemId = 0x0203D1A4,
+    .tmItemUseCb = 0x03006508,
+    .tmItemUseCbTmhm = 0x081BB7B0,
+    .tmShowParty = 0x081BAAC0,
+    .tmPartyMenu = 0x0203D1F0,
+    .tmPartyMenuSlotOff = 9,
+    .tmInitPartyMenu = 0x081B4B24,
+    .tmMainCallback2 = 0x030024A4,
+    .tmSetMainCallback2 = 0x08000544,
+    .tmReturnToField = 0x08087170,
+    .tmCleanup = 0x08086DDC,
+    .tmFade = 0x080AD118,
+    .tmLock = 0x0809A1F0,
+    .tmUnlock = 0x0809A1FC,
+    .tmCrcs = { 0x2BB4FFA2, 0x34D2BE1C, 0x91CEF147, 0x79930E68, 0x352E62B9, 0xE0EF37E5, 0xF9959006, 0xB9FB85A7, 0xB037C8AF },
+    .tmFirst = 289,
+    .tmLast = 346,
     .fieldVarGet = 0x0809EB00,
     .fieldVarSet = 0x0809EB1C,
     .fieldCheckBag = 0x080D9EB8,

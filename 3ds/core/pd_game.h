@@ -385,6 +385,15 @@ struct pd_config {
     uint32_t flashFlagGet, flashSetUp, flashMenuCb, flashPostCb, flashSlot, flashMapHeader, flashBadgeCheck, flashBadgeCheckCrc;
     int flashBadgeFlag, flashLitFlag, flashCaveOff;
     uint32_t flashCallbacks[2], flashCrcs[4];
+    // USE on a TM / HM (TmTeach.kt's TmFns, the config's TM record): gSpecialVar_ItemId, gItemUseCB and ItemUseCB_TMHM,
+    // CB2_ShowPartyMenuForItemUse, gPartyMenu (its cursor at tmPartyMenuSlotOff), CB2_InitPartyMenu, gMain.callback2,
+    // SetMainCallback2, CB2_ReturnToField, CleanupOverworldWindowsAndTilemaps, FadeScreen, Lock / UnlockPlayerFieldControls,
+    // CRC32 of the functions' first 32 bytes (ItemUseCB_TMHM ... UnlockPlayerFieldControls) and the TM / HM item ids.
+    // tmShowParty 0 = none.
+    uint32_t tmItemId, tmItemUseCb, tmItemUseCbTmhm, tmShowParty, tmPartyMenu, tmInitPartyMenu, tmMainCallback2;
+    uint32_t tmSetMainCallback2, tmReturnToField, tmCleanup, tmFade, tmLock, tmUnlock;
+    int tmPartyMenuSlotOff, tmFirst, tmLast;
+    uint32_t tmCrcs[9];
 
     // REPEL and PC anywhere (the app's FieldItemFns / PcFns, FieldItems.kt / Pc.kt): VarGet, VarSet,
     // CheckBagHasItem, RemoveBagItem and ArePlayerFieldControlsLocked (fieldCrcs, in that order), VAR_REPEL_STEP_COUNT

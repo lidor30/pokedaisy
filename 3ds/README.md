@@ -117,7 +117,8 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   two-tone glass with the party screen's orange on the picked one.
 - **BOXES**: the PC's boxes live, in FireRed's and Emerald's colours and wallpapers; encrypted, plain and CFRU
   storage. WITHDRAW, DEPOSIT and SWAP through the game's own functions where the app has them.
-- **USE / GIVE / TAKE**, the summary's STATS, the bag's SORT, **DEX** sections (INFO, EVOLVE, AREA, MOVES on
+- **USE / GIVE / TAKE** (USE on a TM or HM opens the game's own TM screen in English FireRed, LeafGreen and Emerald,
+  back to the field when it closes: `linux/tm_teach.c`), the summary's STATS, the bag's SORT, **DEX** sections (INFO, EVOLVE, AREA, MOVES on
   vanilla's tables), region maps on the hacks (`RomRegionMap`, RomArt's fingerprints, smol) and the Game Boy games'
   town maps, **STATES** with ten slots, thumbnails and UNDO, **DARK MODE**, **THEME**, **FF MODE**, **CHEATS**
   (mGBA's format, `sdmc:/pokedaisy/cheats/<CRC32>.cheats`, one master switch).

@@ -24,6 +24,7 @@
 #include "../../app/src/main/cpp/pk_wide.h"
 #include "../../linux/field_items.h"
 #include "../../linux/flash.h"
+#include "../../linux/tm_teach.h"
 #include "../../linux/wild.h"
 #include "../core/pd_canvas.h"
 #include "../core/pd_map.h"
@@ -44,6 +45,13 @@ static uint32_t wideSource[PK_WIDE_W * PK_WIDE_H];
 static uint32_t wideFrames[2][PD_TOP_W * PD_TOP_H];
 static int wideShown;
 static uint32_t overlayPx[PD_TOP_W * PD_TOP_H];
+
+// The bag's USE: the field items' own, and a TM / HM where the game's TM screen can be opened (the host callback has no
+// context, so the running game's TM config is kept here).
+static const struct pd_config* itemTmCfg;
+static bool item_can_use(int item) {
+    return pd_items_can_use(item) || (itemTmCfg && tm_teaches(itemTmCfg, item));
+}
 
 // A Game Boy game's bus; 0x1Dxxx is D000-DFFF in that WRAM bank whatever the game has switched in there (pk_gb_read_banked).
 static bool gb_read(const struct pd_session* s, uint32_t addr, uint8_t* out, size_t len) {
@@ -361,7 +369,10 @@ void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* 
     if (cfg && pd_boxes_supported(&s->game)) s->ui.boxes = &s->boxes;
     s->ui.boxMoves = s->ui.boxes && s->itemsOk && pd_box_moves_ok(cfg, s->game.entry ? s->game.entry->boxSwap : NULL, s->rom, s->romSize);
     s->ui.boxSummary = s->ui.boxSlot = -1;
-    s->host.itemCanUse = pd_items_can_use;
+    s->tmCfg = cfg && tm_supported(cfg, s->rom, s->romSize) ? cfg : NULL;
+    s->tmStage = 0;
+    itemTmCfg = s->tmCfg;
+    s->host.itemCanUse = item_can_use;
     s->host.itemCanGive = pd_items_can_give;
 
     // What the companion shows: read once now (RAM still blank: an empty party), then every PD_SNAPSHOT_EVERY frames.
@@ -760,7 +771,16 @@ static void gb_jobs(struct pd_session* s) {
     }
 }
 
+// The TM screen's second step, once the fade has reached black (TmTeach.kt's tmFinish).
+static void tm_jobs(struct pd_session* s) {
+    if (!s->tmCfg || s->tmStage != 1 || ++s->tmWait < TM_FADE_FRAMES || !pk_call_safe(s->core)) return;
+    s->tmStage = 0;
+    bool left = tm_main_callback(s->core, s->tmCfg) != s->tmCallback;
+    if (!tm_finish(s->core, s->tmCfg, s->tmItem, left) && !left) pd_session_show(s, tm_reason(TM_FAILED));
+}
+
 static void field_jobs(struct pd_session* s) {
+    tm_jobs(s);
     if (s->gbField) {
         gb_jobs(s);
         return;
@@ -888,7 +908,18 @@ static void item_jobs(struct pd_session* s) {
     const struct pd_config* cfg = s->game.cfg;
     bool battle = s->shown.inBattle || (s->fieldFlags & PK_FIELD_BATTLE);
     bool busy = battle || (s->wideKnown && pk_wide_scene() != PK_WIDE_SCENE_FIELD);
-    if (ask == 1) {
+    if (ask == 1 && !ui->itemGive && s->tmCfg && tm_teaches(s->tmCfg, ui->itemId)) {
+        // A TM / HM: the game's own TM screen, the way its bag opens it (two steps: the fade, then the screen).
+        enum tm_result r = tm_start(s->core, s->tmCfg, ui->itemId, busy || (s->fieldFlags & PK_FIELD_LOCKED));
+        if (r == TM_STARTED) {
+            s->tmStage = 1;
+            s->tmWait = 0;
+            s->tmItem = ui->itemId;
+            s->tmCallback = tm_main_callback(s->core, s->tmCfg);
+        } else {
+            pd_session_show(s, tm_reason(r));
+        }
+    } else if (ask == 1) {
         pd_items_targets(s->core, cfg, ui->itemId, ui->itemGive, busy, &s->itemTargets);
         if (s->itemTargets.result != PD_ITEM_USED) {
             pd_session_show(s, pd_item_outcome_text(s->itemTargets.result));

@@ -123,6 +123,9 @@ struct pd_session {
     const struct pd_config* flyCfg;
     const struct pd_config* flashCfg; // FLASH from the quick menu (linux/flash.c), where the ROM has its code
     int flashAsk;                     // 1+ = FLASH picked, run between two frames
+    const struct pd_config* tmCfg;    // USE on a TM / HM (linux/tm_teach.c), where the ROM has its code
+    int tmStage, tmWait, tmItem;      // 1 = the fade's on its way to the game's TM screen
+    uint32_t tmCallback;
     bool itemsOk, pcOk, bikeOk;
 
     // USE / GIVE / TAKE, each run between frames.
