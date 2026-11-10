@@ -2350,7 +2350,16 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
   and the pool words of the matched functions. Lazarus, Heart and Soul and SoulGold have no rider graphics: `riderTemplate`
   0 seats the player's own sprite on the bird. Heart and Soul's bird template has no callback (`spriteDummy` is written after
   CreateSprite) and its SaveBlock1 position sits at +4 (`saveBlock1PosOff`, for ScenicFly's start).
-- **Following Pokemon** (the expansion's OW followers, all four): left on the ground, the follower was lost on the next map.
+- **Seaglass and Too Many Types 2** (FLY came with the flight; `FIELD_ITEMS_SEAGLASS` / `_TMT2`): read the expansion version
+  off the ROM's RHHEXP block (0x204: `RHHEXP 01 <minor> <patch>`: Seaglass 1.9.2, Lazarus 1.9.4, TMT2 1.12.3, SoulGold 1.15.2).
+  Seaglass is Lazarus's build: Lazarus's verified table ports by masked code, then by callers (each BL to a function from a
+  caller that ports, the BL at the same place: votes), then pool words. TMT2 matched no plain build of its tag, so each
+  function was matched by its mnemonic sequence (registers and pool values left out, difflib ratio over every BL target)
+  and then proved: grid reads called on known tiles (elevation 3s, collision 0 / 1, metatile ids, behaviour 0 / sand / sea),
+  CreateSprite by creating the bird, gPaletteFade through BeginNormalPaletteFade's pool, the lock trio beside
+  ArePlayerFieldControlsLocked. Its CB_ExitFlyMap (found by calling both heal-warp functions) gives the town table and the
+  specials, read straight from its code.
+- **Following Pokemon** (the expansion's OW followers: Imperium, Lazarus, Heart and Soul, SoulGold, Seaglass): left on the ground, the follower was lost on the next map.
   The game's FLY removes it in its return-to-field code (`if (gFieldCallback == FieldCallback_UseFly) RemoveFollowingPokemon();
   else UpdateFollowingPokemon();`), which is where both are found: `followerRemove` is called at take-off, `followerUpdate`
   once down (it spawns the follower hidden on the player's tile; it walks out at the first step).
