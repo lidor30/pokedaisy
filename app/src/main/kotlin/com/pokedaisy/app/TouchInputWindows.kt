@@ -1,5 +1,9 @@
 package com.pokedaisy.app
 
+import android.content.Context
+import android.content.ContextWrapper
+import android.content.res.Configuration
+import android.content.res.Resources
 import android.graphics.PixelFormat
 import android.graphics.Rect
 import android.os.Build
@@ -11,6 +15,7 @@ import android.util.Log
 import android.view.Gravity
 import android.view.MotionEvent
 import android.view.View
+import android.util.DisplayMetrics
 import android.view.WindowManager
 import com.pokedaisy.app.companion.ui.TouchGeometry
 import com.pokedaisy.app.companion.ui.TouchHitModel
@@ -33,11 +38,27 @@ import kotlin.math.roundToInt
  * is open over the game ([TouchControlsView.inputAllowed]: a HUD panel, the QUICK MENU, the companion window...); the
  * drawn pad then takes the fingers itself, as it always did. Anything that goes wrong here (a window refused) leaves it
  * that way.
+ *
+ * Never on Samsung's Android ([supported]): after a configuration change (a rotation, dark mode, a controller
+ * connecting) it updates every window of the activity from the UI thread, its sub-windows too
+ * (ActivityThread.handleActivityConfigurationChanged -> WindowManagerGlobal.getRootViews(token) -> updateConfiguration,
+ * read from an S9's framework.jar; stock Android updates the activity's own window alone), and a window only takes calls
+ * on the thread that added it: 1.5.0 crashed on rotations on Galaxies (a player's report and Crashlytics, 2026-11-10: S26
+ * on Android 17, S9 on Android 10; turning an S9 a few times in a game does it). Resources that nothing updates
+ * ([FrozenContext]) make that call do nothing, which turned the crash from every rotation into about one in fifty; the
+ * rest is the window's own update forcing one through on its thread at the same moment, which nothing here can rule out
+ * (Samsung also runs that loop where the activity hears of no change, and Android refuses a sub-window of a sub-window,
+ * which would have kept these out of it). So on Samsung the drawn pad takes the fingers, as before 1.5.0. Elsewhere the
+ * frozen resources stay, in case another maker's Android does the same without the race.
  */
 class TouchInputWindows(private val anchor: View, private val tracker: TouchPressTracker) {
     private val thread = HandlerThread("pokedaisy-touch", Process.THREAD_PRIORITY_URGENT_DISPLAY).apply { start() }
     private val handler = Handler(thread.looper)
     private val wm = anchor.context.getSystemService(WindowManager::class.java)
+
+    /** The windows' views' context: the activity's with resources of its own, frozen as they were when last set, so an
+     * update of the activity's configuration never reads as a change to these windows (see the class doc). */
+    @Volatile private var padContext: Context = FrozenContext.of(anchor.context)
 
     // UI thread: what [sync] last handed over.
     private var sentToken: IBinder? = null
@@ -57,7 +78,7 @@ class TouchInputWindows(private val anchor: View, private val tracker: TouchPres
     private val ys = FloatArray(MAX_FINGERS)
 
     /** One window: its place in the controls' own pixels ([rect]) and the fingers on it now (the controls' pixels). */
-    private inner class Pad(val rect: Rect) : View(anchor.context) {
+    private inner class Pad(val rect: Rect) : View(padContext) {
         val fx = FloatArray(MAX_FINGERS)
         val fy = FloatArray(MAX_FINGERS)
         var n = 0
@@ -107,6 +128,28 @@ class TouchInputWindows(private val anchor: View, private val tracker: TouchPres
         handler.post {
             removeAll()
             thread.quitSafely()
+        }
+    }
+
+    /** UI thread, from the activity's onConfigurationChanged: windows added from now on start from the new
+     * configuration, frozen in turn; the ones up keep theirs (see the class doc). */
+    fun configurationChanged() {
+        if (!released) padContext = FrozenContext.of(anchor.context)
+    }
+
+    /** A context whose resources are its own and never updated: a copy of [base]'s, configuration and all. */
+    private class FrozenContext(base: Context) : ContextWrapper(base) {
+        @Suppress("DEPRECATION") // The one way to resources that ResourcesManager doesn't keep up to date.
+        private val frozen = Resources(
+            base.resources.assets,
+            DisplayMetrics().apply { setTo(base.resources.displayMetrics) },
+            Configuration(base.resources.configuration),
+        )
+
+        override fun getResources(): Resources = frozen
+
+        companion object {
+            fun of(c: Context): Context = runCatching { FrozenContext(c) }.getOrDefault(c)
         }
     }
 
@@ -166,6 +209,9 @@ class TouchInputWindows(private val anchor: View, private val tracker: TouchPres
 
     companion object {
         private const val MAX_FINGERS = 10
+
+        /** Whether this device can have them: not on Samsung's Android (see the class doc). */
+        val supported: Boolean = !Build.MANUFACTURER.equals("samsung", ignoreCase = true)
 
         /** The touch areas of [model]'s buttons in a [w]x[h] area: each button's reach (what [touchHits] would press
          * there), those within [MERGE_DP] of each other in one, clipped to the area. */

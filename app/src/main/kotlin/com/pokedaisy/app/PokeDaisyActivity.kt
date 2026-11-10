@@ -3406,6 +3406,9 @@ class PokeDaisyActivity : Activity() {
 
     // A rotation (configChanges keeps the activity, and the game, running through it).
     override fun onConfigurationChanged(newConfig: android.content.res.Configuration) {
+        // The touch controls' input windows keep frozen resources: another thread's windows can't take a configuration
+        // update from this one (Samsung's Android makes one, a crash on rotations in 1.5.0: TouchInputWindows).
+        if (::touchControls.isInitialized) touchControls.inputWindowsConfigurationChanged()
         super.onConfigurationChanged(newConfig)
         // AUTO dark mode follows the device's (uiMode is in configChanges: the game keeps running).
         com.pokedaisy.app.companion.ui.theme.DarkMode.systemDark =

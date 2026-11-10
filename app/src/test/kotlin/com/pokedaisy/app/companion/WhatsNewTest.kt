@@ -19,7 +19,9 @@ class WhatsNewTest {
             assertTrue(n.version, n.sections.isNotEmpty() && n.sections.all { it.items.isNotEmpty() })
             assertTrue(n.version, n.sections.all { it.title == WhatsNew.NEW || it.title == WhatsNew.FIXES })
             // A window, not the release page: a handful of lines (15 since 1.4.0, the user's call: a tool a line).
-            assertTrue("${n.version}: ${n.sections.sumOf { it.items.size }} lines", n.sections.sumOf { it.items.size } <= 15)
+            // A hotfix (1.5.0.1) is its release's notes plus its own line.
+            val max = if (WhatsNew.releaseOf(n.version) != n.version) 16 else 15
+            assertTrue("${n.version}: ${n.sections.sumOf { it.items.size }} lines", n.sections.sumOf { it.items.size } <= max)
             // Each line leads with what it's about and a colon, which the window draws red.
             for (item in n.sections.flatMap { it.items }) assertTrue("${n.version}: no lead-in: $item", item.indexOf(": ") in 1..36)
         }
@@ -28,6 +30,14 @@ class WhatsNewTest {
 
     @Test fun `shown once after an update`() {
         assertEquals("1.3.2", WhatsNew.due("1.3.2", lastSeen = "1.3.1", updated = true)?.version)
+        // A hotfix: its release's notes with its line first, never again for a player who saw the release's.
+        val hotfix = WhatsNew.notesFor("1.5.0.1")!!
+        val release = WhatsNew.notesFor("1.5.0")!!
+        assertEquals(release.sections.flatMap { it.items }.size + 1, hotfix.sections.flatMap { it.items }.size)
+        assertTrue(hotfix.sections.first { it.title == WhatsNew.FIXES }.items.first().startsWith("1.5.0.1 HOTFIX: "))
+        assertEquals(null, WhatsNew.due("1.5.0.1", lastSeen = "1.5.0", updated = true))
+        assertEquals("1.5.0.1", WhatsNew.due("1.5.0.1", lastSeen = "1.4.0", updated = true)?.version)
+        assertEquals("1.5.0", WhatsNew.releaseOf("1.5.0.1"))
         assertEquals("1.3.2", WhatsNew.due("1.3.2", lastSeen = null, updated = true)?.version)   // from a version before it
         assertNull(WhatsNew.due("1.3.2", lastSeen = "1.3.2", updated = true))
         assertNull(WhatsNew.due("1.3.2", lastSeen = null, updated = false))                      // a fresh install
