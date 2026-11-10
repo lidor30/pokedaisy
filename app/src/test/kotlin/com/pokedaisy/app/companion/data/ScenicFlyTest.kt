@@ -260,6 +260,9 @@ class ScenicFlyTest {
             "Pokemon Sword and Shield Ultimate Plus (v1.2.1.2) (Casual Patch).gba" to FLIGHT_SWORD_SHIELD,
             "Pokemon GS Chronicles (v2.7.6).gba" to FLIGHT_GS_CHRONICLES,
             "Pokemon Emerald Legacy (v1.1.4).gba" to FLIGHT_EMERALD_LEGACY,
+            "Pokemon Emerald Kaizo (v2.0).gba" to FLIGHT_EMERALD_KAIZO,
+            "Pokemon FireRed Rocket Edition.gba" to FLIGHT_ROCKET_EDITION,
+            "Pokemon Ash Gray (v4.5.3).gba" to FLIGHT_ASH_GRAY,
             "Pokemon Emerald Imperium (v1.3.1).gba" to FLIGHT_IMPERIUM,
             "Pokemon Lazarus (v2.0).gba" to FLIGHT_LAZARUS,
             "Pokemon Heart and Soul (v2.0.6).gba" to FLIGHT_HEART_AND_SOUL,
@@ -271,10 +274,38 @@ class ScenicFlyTest {
             checked++
         }
         assumeTrue(checked > 0)
-        // Rocket Edition keeps rev 0's code but resets as a flight comes into its Cerulean: never let in.
+        // A hack running as FIRERED gets in only by a record of its own, never by rev 0's.
         assertTrue(!flightAllowed(GameKind.FIRERED, false, FLIGHT_FIRERED_REV0))
+        assertTrue(flightAllowed(GameKind.FIRERED, false, FLIGHT_ROCKET_EDITION))
+        assertTrue(flightAllowed(GameKind.FIRERED, false, FLIGHT_ASH_GRAY))
         assertTrue(flightAllowed(GameKind.FIRERED, false, FLIGHT_GHOST_GREY))
         assertTrue(flightAllowed(GameKind.EMERALD, false, FLIGHT_EMERALD_LEGACY))
+        assertTrue(flightAllowed(GameKind.EMERALD, false, FLIGHT_EMERALD_KAIZO))
+        assertTrue(!flightAllowed(GameKind.EMERALD, false, FLIGHT_EMERALD))
+    }
+
+    @Test
+    fun rocketEditionAndAshGrayFlyKanto() {
+        // Retail FireRed's save booted in each stands on Route 20 (3.38) at 75,5. Ash Gray's map groups are its own (bigger
+        // lists), so rev 0's read no world there.
+        var checked = 0
+        for ((name, f) in listOf("Pokemon FireRed Rocket Edition.gba" to FLIGHT_ROCKET_EDITION, "Pokemon Ash Gray (v4.5.3).gba" to FLIGHT_ASH_GRAY)) {
+            val read = hack(name) ?: continue
+            val reached = flies(f, FIELD_ITEMS_PORTS.getValue("BPRE0").fly!!, read, ScenicFly.MapId(3, 38), 75, 5, KANTO_TOWNS)
+            assertTrue("$name $reached", reached.size >= 8)
+            checked++
+        }
+        assumeTrue(checked > 0)
+    }
+
+    @Test
+    fun kaizoFliesHoennWithoutTheWarp() {
+        // Retail's save booted in Kaizo stands on map 0.29 at 15,48; its FLY never takes the game's warp (classicFly), so
+        // every town it offers goes over the map or says there's no way.
+        val read = hack("Pokemon Emerald Kaizo (v2.0).gba")
+        assumeTrue(read != null)
+        val reached = flies(FLIGHT_EMERALD_KAIZO, FLY_EMERALD, read!!, ScenicFly.MapId(0, 29), 15, 48, EM_TOWNS)
+        assertTrue("$reached", reached.size >= 10)
     }
 
     private val SOULGOLD_FLIGHTS = listOf(

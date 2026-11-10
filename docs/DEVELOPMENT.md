@@ -2324,9 +2324,18 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
 - **The FireRed rev 0 hacks** (`FLIGHT_ULTRA_VIOLET` ... `FLIGHT_GS_CHRONICLES`, firered.toml): rev 0's record with each
   hack's map groups and heal locations read through rev 0's literal pools, its own DestroySprite CRC (CFRU hooks it), the
   Saffron stand-in kept only where map 3.11 is still FireRed's. The ones running as FIRERED are picked by config
-  (`fireRedHackFlight`) and let in by identity (`FIRERED_HACK_FLIGHTS`); Rocket Edition and Ash Gray stay out (Rocket
-  Edition reset as a flight came into Cerulean; Ash Gray's EXPAND lost the map). Emerald Legacy (`FLIGHT_EMERALD_LEGACY`)
+  (`fireRedHackFlight`) and let in by identity (`FIRERED_HACK_FLIGHTS`), Rocket Edition and Ash Gray (both builds) too
+  since 2026-11-11. Ash Gray has gMapGroups of its own (rev 0's pool word points there); Rocket Edition hooks DestroySprite. Emerald Legacy (`FLIGHT_EMERALD_LEGACY`)
   is Emerald's record mapped into its rebuild by code; its GetPlayerAvatarGraphicsIdByStateId returns a u16.
+- **The player is inanimate while up** (`flHidePlayer`: ObjectEvent.inanimate with invisible): the flight's fast movement
+  actions start the "go faster / fastest" step animations, which no player table has (FireRed's has 13 entries: anim 13 / 17
+  are past its end, read from EWRAM as commands). Rocket Edition reset on long flights from it (AnimateSprite's command jumped
+  through a bad pointer into the BIOS); retail had harmless bytes there. A state from before the fix is made inanimate on adoption.
+  Debugging a reset like it: single-step whole frames (pk_flight_tick at each frame's end) into a big ring of PCs and stop when
+  gMain.callback2 changes; the last ROM code before the BIOS names the culprit.
+- **Emerald Kaizo** (`FLIGHT_EMERALD_KAIZO`, Emerald's record under its own name for `flightAllowed`): its classic FLY's warp
+  crashed from the field, so `FieldItemFns.classicFly` is false there: FLY flies over the map whatever FLY STYLE says, and a
+  town with no route answers `FlyResult.NO_ROUTE` instead of falling back.
 - **A blank bird** (Ghost Grey blanked its graphics): flCapture finds nothing in the bird's frame and flies the player in
   the balloon (`flBirdBlank`). **Greyscale games**: when every colour of the player's own sprite palette is a grey, a
   vehicle's colours are each taken to the nearest of those greys by brightness (`flReadGreys` / `flGrey`).

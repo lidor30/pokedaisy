@@ -188,6 +188,8 @@ enum class FlyResult {
     PARTNER,
     /** Nobody in the party knows Fly (any more). */
     NO_FLYER,
+    /** No way over the map to the town, in a game without the classic FLY ([FieldItemFns.classicFly]). */
+    NO_ROUTE,
     FAILED,
 }
 

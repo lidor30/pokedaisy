@@ -39,6 +39,9 @@ data class FieldItemFns(
     val fly: FlyFns? = null,
     /** FREE FLIGHT and the scenic FLY (Flight.kt, pk_flight.c); null = none. Needs [fly] too (its gates). */
     val flight: FlightFns? = null,
+    /** false = never the game's own FLY warp (Emerald Kaizo's crashed from the field): FLY goes over the map ([flight]), and
+     * a town with no way there over the map says so. [fly] still gives the gates and the towns. */
+    val classicFly: Boolean = true,
     /** holdEffectParam's offset in struct Item where a build moved it off [itemNameLen] + 5 (Recharged Emerald dropped
      * the itemId field: 0x15 after its name[18]); null = the usual place. */
     val itemParamOffset: Int? = null,
@@ -518,6 +521,8 @@ private fun fireRedHackFlight(gameCode: String, cfg: NativeConfig?): FlightFns? 
     cfg == null -> null
     cfg === NATIVE_GHOST_GREY || cfg === NATIVE_GHOST_GREY_V1_0_1 -> FLIGHT_GHOST_GREY
     cfg === NATIVE_LETS_GO_PIKACHU || cfg === NATIVE_LETS_GO_EEVEE -> FLIGHT_LETS_GO
+    cfg === NATIVE_ROCKET_EDITION -> FLIGHT_ROCKET_EDITION
+    cfg === NATIVE_ASH_GRAY -> FLIGHT_ASH_GRAY
     else -> null
 }
 
@@ -553,9 +558,11 @@ private fun fieldItemsByKind(kind: GameKind?, gameCode: String, revision: Int): 
         ?.let { t -> fireRedHackFlight(gameCode, activeNativeConfig)?.let { t.copy(flight = it) } ?: t }
     // Emerald Kaizo: retail's FLY code, but its map reload crashed when the game's ReturnToField came straight from the
     // field (headless, on retail's save: the first flight, or the fourth once the overworld's windows were freed first),
-    // where the game's own Fly map flies fine. Off until it can be checked on a Kaizo save.
+    // where the game's own Fly map flies fine. So no classic FLY there: FLY goes over the map, which never warps.
     GameKind.EMERALD -> if (emeraldLegacy) FIELD_ITEMS_EMERALD_LEGACY.takeIf { gameCode == "BPEE" }
-        else fieldItemsFor(gameCode, revision)?.let { if (romGameCode == KAIZO_TEXT) it.copy(fly = null) else it }
+        else fieldItemsFor(gameCode, revision)?.let {
+            if (romGameCode == KAIZO_TEXT) it.copy(classicFly = false, flight = FLIGHT_EMERALD_KAIZO) else it
+        }
     else -> null
 }
 

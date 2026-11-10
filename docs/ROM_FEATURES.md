@@ -58,16 +58,16 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Origin HeartGold (DS) | 4.0.3 English 1.0.0 | ✅ ¹⁴ | — ²⁹ | — | — | — | ✅ ²⁹ | — | ✅ ²⁹ | ✅ ¹⁴ | ✅ ²⁹ | ✅ ²⁹ | — | n/a | — | — | — |
 | Renegade Platinum (DS) | 1.3.0, 1.3.0 Classic, 1.2.0 | ✅ ³² | ✅ ³² | — | — | — | ✅ ³² | — | ✅ ³² | ◐ ³² | ◐ ³² | ✅ ³² | — | n/a | — | — | — |
 | Amethyst | 1.3.0, 1.4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — ³³ | ✅ ³³ |
-| Ash Gray | 4.5.3, Fork Bug Fix 1.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | — ³³ |
+| Ash Gray | 4.5.3, Fork Bug Fix 1.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | — ³³ |
 | Celia's Stupid Romhack | 1.1.4 | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | ✅ ¹⁵ | — | — | — | — |
 | Dreamstone Mysteries | the one release | — | ✅ | ✅ | ✅ | — | — | — | — | — | — ²² | — | — | — | — | — | — |
 | Elite Redux | 2.65.3b, 2.65.4.1b | ✅ | ✅ ¹⁰ | ✅ ¹⁰ | ✅ | — | — | — | ✅ ¹⁰ | ✅ ¹⁰ | ✅ ¹⁰ | — ¹⁰ | n/a ¹⁵ | — | ✅ ¹⁹ | — | — |
 | Emerald Imperium | 1.3.1 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ ³³ |
-| Emerald Kaizo | 2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | — ⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
+| Emerald Kaizo | 2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ⁴ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | Emerald Legacy | 1.1.4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ ³³ | ✅ ³³ |
 | Emerald Rogue | 2.2.1-EX | ✅ | — | — | — | — | — | — | ◐ ⁶ | — | — | — | — | — | — | — | — |
 | Emerald Seaglass | 3.0 | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | — | — | ✅ ¹⁹ | — | — |
-| FireRed Rocket Edition | the one release | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ✅ ¹⁵ | — | ✅ ¹⁹ | ✅ | — ³³ |
+| FireRed Rocket Edition | the one release | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ✅ ¹⁵ | — | ✅ ¹⁹ | ✅ | — ³³ |
 | Gaia | 3.2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ |
 | Ghost Grey | 1.0.1, 1.0.2, 1.0.4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹¹ ³⁴ | — | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | — | — | — | ✅ | ✅ ³³ |
 | Let's Go Pikachu / Eevee | English, Translation Only (4 builds) | ✅ ²⁸ | ✅ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ ³⁴ | — | ✅ ²⁸ | ◐ ²⁸ | ◐ ²⁸ | ✅ ²⁸ | — | — | — | ✅ | ✅ ³³ |
@@ -125,8 +125,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
    EXPAND (the field reads use their rows anyway, `PK_FIELD_ONLY_ROMS`): Orange Islands (the top tile row once the walk turns north), Quetzal (its own engine), R.O.W.E. (an NPC's
    sprite and one building's metatiles).
 4. Kaizo has Emerald's FLY code, but the shortcut crashed its map reload headless (on retail Emerald's save: the
-   first flight, or the fourth with the overworld's windows freed first), while its own Fly map flies fine: off
-   until it can be checked on a Kaizo save.
+   first flight, or the fourth with the overworld's windows freed first), while its own Fly map flies fine. So no
+   classic FLY there (`FieldItemFns.classicFly` false): FLY always goes over the map (the scenic way, ³⁴), which never
+   takes that warp, and a town with no way there over the map says so (`FlyResult.NO_ROUTE`).
 5. RUN INDOORS doesn't apply: Ruby / Sapphire tell indoor maps by the map's type, which flash, weather and the region
    map read too. TEXT SPEED and AUTO-RUN work.
 6. TEXT SPEED and RUN INDOORS work, but AUTO-RUN can't tell a bike from walking there (no player state found; the sprite
@@ -496,8 +497,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
     Emerald Legacy (`FLIGHT_EMERALD_LEGACY`, Emerald's mapped by code into its rebuild), each flown headless on its save the
     same way. Ghost Grey blanked its bird's graphics: the flight carries the player in the air balloon there, drawn in the
     game's greys (any vehicle in a game whose player palette is grey is). Orange Islands has no EXPAND, Odyssey's save town
-    joins no other map (free flight only from there). Not Rocket Edition (it reset to its copyright screen as a flight came
-    into Cerulean) or Ash Gray (EXPAND lost the map on its long routes).
+    joins no other map (free flight only from there). Rocket Edition and Ash Gray came later (below).
     The pokeemerald-expansion hacks with FLY (`FLIGHT_IMPERIUM`, `_LAZARUS`, `_HEART_AND_SOUL`, `_SOULGOLD` and its four v1.2
     builds): mapped from expansion 1.13's build by masked code and by shape (CreateSprite from CreateFlyBirdSprite's 0xFF /
     0xB4 / 1 call, the palette loader after it taking the player's gender - `birdPaletteTag` 0xFFFF; ObjectEvent.spriteId at
@@ -513,6 +513,15 @@ change to any of the places listed under "Where it's decided" updates its rows h
     again after a landing. ScenicFly drops a town whose landing tile lies where two of the game's maps overlap in the layout
     (a loop of connections that doesn't close: Heart and Soul's Violet side), and crosses a map edge only where the game's
     first connection that way is the map the layout shows there.
+    Then Emerald Kaizo (`FLIGHT_EMERALD_KAIZO`: Emerald's record under its own name, flown on retail's save booted in it; its
+    FLY is the scenic one alone, note 4), Rocket Edition (`FLIGHT_ROCKET_EDITION`: rev 0's with its hooked DestroySprite's
+    CRC) and Ash Gray (`FLIGHT_ASH_GRAY`, both builds: its own gMapGroups, bigger lists, which is why rev 0's read no world
+    there). Rocket Edition had reset to its copyright screen on most long flights: the flight's fast movements start the
+    "go faster / fastest" step animations, which the player's own table doesn't have (FireRed's has 13), so the hidden
+    sprite's animation read EWRAM as commands and in time jumped through a bad pointer (traced headless instruction by
+    instruction into AnimateSprite). Retail had harmless bytes there. The player is now inanimate while up
+    (ObjectEvent.inanimate: no step animation starts), cleared on landing, in every game. Every route of both flown
+    headless, EXPAND matched every frame.
 
 ## What each column is
 

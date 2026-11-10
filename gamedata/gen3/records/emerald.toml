@@ -344,6 +344,13 @@ riderAnim = 22              # ANIM_GET_ON_OFF_POKEMON_WEST
 # EWRAM's last symbol (sRayScene) ends at 0x0203CF64; PARTY_ITEMS_EMERALD's scratch word sits at 0x0203FFF0.
 scratch = 0x0203FFC0
 
+# FREE FLIGHT for Emerald Kaizo v2.0: retail Emerald edited in place, every address the flight uses retail's (its maps and
+# heal locations too). A record of its own so flightAllowed can let it in by identity. Flown headless on retail's save
+# booted in it (free flight, two scenic routes with EXPAND matched every frame). Its classic FLY stays off (classicFly).
+[record.FLIGHT_EMERALD_KAIZO]
+schema = 'gen3_flight'
+base = 'FLIGHT_EMERALD'
+
 # Emerald Legacy 1.1.4: pokeemerald rebuilt from its own source, so every address moved: FLIGHT_EMERALD's mapped into it by
 # code (scripts/port_field_items.py's port_flight: functions by their bytes, RAM through the literal pools), checked against
 # FLY_EMERALD_LEGACY's (the same lock functions and gSaveBlock2Ptr). Its GetPlayerAvatarGraphicsIdByStateId returns a u16

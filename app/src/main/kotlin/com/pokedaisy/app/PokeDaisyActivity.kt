@@ -1329,6 +1329,12 @@ class PokeDaisyActivity : Activity() {
             // The flight is the game's to show: the window over it goes, and the HUD's panel it was picked from (its map).
             closeCompanionWindow()
             hudCloseTick.intValue++
+            // A game without the classic FLY (Kaizo: its warp crashed from the field) always goes over the map.
+            if (!support.fns.classicFly) {
+                if (flightSupport() == null) return done(com.pokedaisy.app.companion.data.FlyResult.FAILED)
+                scenicFly(support, mapsec, done) { done(com.pokedaisy.app.companion.data.FlyResult.NO_ROUTE) }
+                return
+            }
             if (Prefs(this@PokeDaisyActivity).flyStyle == com.pokedaisy.app.companion.FlyStyle.SCENIC && flightSupport() != null) {
                 scenicFly(support, mapsec, done) { classicFly(support, mapsec, targets, done) }
                 return

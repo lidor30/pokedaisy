@@ -376,6 +376,13 @@ val FLIGHT_GLAZED: FlightFns by lazy {
     )
 }
 
+// FREE FLIGHT for Emerald Kaizo v2.0: retail Emerald edited in place, every address the flight uses retail's (its maps and
+// heal locations too). A record of its own so flightAllowed can let it in by identity. Flown headless on retail's save
+// booted in it (free flight, two scenic routes with EXPAND matched every frame). Its classic FLY stays off (classicFly).
+val FLIGHT_EMERALD_KAIZO: FlightFns by lazy {
+    FLIGHT_EMERALD.copy()
+}
+
 // Emerald Legacy 1.1.4: pokeemerald rebuilt from its own source, so every address moved: FLIGHT_EMERALD's mapped into it by
 // code (scripts/port_field_items.py's port_flight: functions by their bytes, RAM through the literal pools), checked against
 // FLY_EMERALD_LEGACY's (the same lock functions and gSaveBlock2Ptr). Its GetPlayerAvatarGraphicsIdByStateId returns a u16
@@ -1757,8 +1764,8 @@ val FLIGHT_UNBOUND: FlightFns by lazy {
 // and heal locations (read off the ROM through rev 0's literal pools), its stand-in Saffron map only where 3.11 is still
 // FireRed's, and its own code CRCs (CFRU and a few in-place hacks hook DestroySprite). Each flown headless on its save.
 // A build sharing one: Ghost Grey 1.0.1 / 1.0.2 / 1.0.4, the four Let's Go builds, the Sword and Shield patches (the same
-// bytes where these read). Not Rocket Edition or Ash Gray: Rocket Edition reset to its copyright screen as a flight came into
-// Cerulean City (headless, from Route 20), and Ash Gray's EXPAND lost the map on its long routes.
+// bytes where these read). Rocket Edition reset to its copyright screen on long flights until the player was made inanimate
+// while up (pk_flight.c's flHidePlayer: the fast movements' step animations ran past the player's anim table).
 val FLIGHT_ULTRA_VIOLET: FlightFns by lazy {
     FLIGHT_FIRERED_REV0.copy(
         mapGroups = 0x0872AF04L,
@@ -1767,6 +1774,19 @@ val FLIGHT_ULTRA_VIOLET: FlightFns by lazy {
         healLocationCount = 21,
         noFly = listOf(0x030B),
         codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_ROCKET_EDITION: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0x2845A4EBL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_ASH_GRAY: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        mapGroups = 0x0873E2F4L,
+        mapGroupSizes = listOf(43, 129, 60, 132, 4, 10, 10, 11, 6, 9, 22, 10, 8, 2, 11, 4, 2, 4, 2, 1, 1, 2, 2, 4, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 2, 2, 1),
     )
 }
 

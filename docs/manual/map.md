@@ -57,7 +57,7 @@ On the DS it works in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and
 
 ## Flying over the map
 
-In FireRed, LeafGreen, Ruby, Sapphire and Emerald in every language, Emerald Legacy, and the hacks Radical Red, Unbound, Glazed, Ultra Violet, Orange Islands, Ghost Grey, Let's Go, Odyssey, Gaia, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Emerald Imperium, Lazarus, Heart and Soul and SoulGold, a second blue button sits under the first one: `TAKE OFF`. Your Pokémon's bird swoops in, you climb on, and you can fly anywhere the game's world goes: over trees, mountains, water and buildings, from one route into the next town, with the D-pad. Hold `A` to fly faster. Nothing happens on the way: no wild Pokémon, no trainers spotting you, no doors pulling you in.
+In FireRed, LeafGreen, Ruby, Sapphire and Emerald in every language, Emerald Legacy, and the hacks Radical Red, Unbound, Glazed, Ultra Violet, Orange Islands, Ghost Grey, Let's Go, Odyssey, Gaia, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Rocket Edition, Ash Gray, Emerald Kaizo, Emerald Imperium, Lazarus, Heart and Soul and SoulGold, a second blue button sits under the first one: `TAKE OFF`. Your Pokémon's bird swoops in, you climb on, and you can fly anywhere the game's world goes: over trees, mountains, water and buildings, from one route into the next town, with the D-pad. Hold `A` to fly faster. Nothing happens on the way: no wild Pokémon, no trainers spotting you, no doors pulling you in.
 
 Rather ride something else? `FLY ON`, in `SETTINGS` under `MAKEOVER`, swaps the bird for an air balloon, a helicopter or a zeppelin, with you inside. See [FLY ON](companion.md#fly-on).
 
@@ -74,6 +74,8 @@ It needs what the game's own flight needs: the badge, a Pokémon in your party t
 In a game that has it, flying to a town doesn't cut to the game's animation: you take off where you stand and fly there over the real map, the place names showing as you cross into each one, and land in front of the town's Pokémon Center. With `ASPECT` set to `EXPAND` the view zooms out while you fly, so you see more of the land going by, and the trip runs at double speed.
 
 After your first flight like this, a card asks whether to keep it. `KEEP IT` (or leaving the card until it goes) keeps it; `USE CLASSIC` goes back to the game's own animation. You can change it any time with `FLY STYLE` (in `SETTINGS`, under `GAMEPLAY`): `SCENIC` flies over the map, `CLASSIC` is the game's own way.
+
+In Emerald Kaizo, `FLY` always flies over the map, whatever `FLY STYLE` says (the game's own flight animation isn't offered there), and a town you can't reach that way says so.
 
 A town you can't reach over land and sea from where you are (one behind gatehouses, one you only reach by diving, or another island group) gets the game's own flight instead. `SCENIC` works in the games that have `TAKE OFF`; other games always fly the classic way.
 
