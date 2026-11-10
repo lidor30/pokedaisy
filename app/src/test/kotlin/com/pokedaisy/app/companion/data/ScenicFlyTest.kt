@@ -29,7 +29,7 @@ class ScenicFlyTest {
     fun codeMatchesRetail() {
         assumeTrue(rom != null)
         assertTrue(flightCodeMatches(f, ::read))
-        assertEquals(44 + 8, f.words().size)
+        assertEquals(48 + 8, f.words().size)
     }
 
     @Test
@@ -103,7 +103,7 @@ class ScenicFlyTest {
     fun emeraldCodeMatchesRetail() {
         assumeTrue(emerald != null)
         assertTrue(flightCodeMatches(FLIGHT_EMERALD, ::readEm))
-        assertEquals(44 + 8, FLIGHT_EMERALD.words().size)
+        assertEquals(48 + 8, FLIGHT_EMERALD.words().size)
     }
 
     @Test
@@ -184,6 +184,20 @@ class ScenicFlyTest {
     }
 
     @Test
+    fun theExpansionHacksFlyJohto() {
+        // Heart and Soul from the save's New Bark (0.0, 15,12); SoulGold v1.1.4 from its save's route (0.16, 24,29): its
+        // 11-bit grid (undefined 0x7FF) and gMapGroups' last group stopped where the table starts.
+        hack("Pokemon Heart and Soul (v2.0.6).gba")?.let { read ->
+            val reached = flies(FLIGHT_HEART_AND_SOUL, FIELD_ITEMS_HEART_AND_SOUL.fly!!, read, ScenicFly.MapId(0, 0), 15, 12, (0..0x7C).toList())
+            assertTrue("$reached", reached.size >= 12)
+        }
+        val read = hack("Pokemon SoulGold (v1.1.4).gba")
+        assumeTrue(read != null)
+        val reached = flies(FLIGHT_SOULGOLD, FIELD_ITEMS_SOULGOLD.fly!!, read!!, ScenicFly.MapId(0, 16), 24, 29, (0..0x138).toList())
+        assertTrue("$reached", reached.size >= 19)
+    }
+
+    @Test
     fun everyLanguageCartsFlightMatchesItsRom() {
         // scripts/port_field_items.py's mapped records, each against the cart of its key in the ROM folder: the code where
         // the record says, and the collision and elevation reads two functions (their first 32 bytes are the same, so a
@@ -221,7 +235,10 @@ class ScenicFlyTest {
             "Pokemon Sword and Shield Ultimate Plus (v1.2.1.2) (Casual Patch).gba" to FLIGHT_SWORD_SHIELD,
             "Pokemon GS Chronicles (v2.7.6).gba" to FLIGHT_GS_CHRONICLES,
             "Pokemon Emerald Legacy (v1.1.4).gba" to FLIGHT_EMERALD_LEGACY,
-        )
+            "Pokemon Emerald Imperium (v1.3.1).gba" to FLIGHT_IMPERIUM,
+            "Pokemon Lazarus (v2.0).gba" to FLIGHT_LAZARUS,
+            "Pokemon Heart and Soul (v2.0.6).gba" to FLIGHT_HEART_AND_SOUL,
+        ) + SOULGOLD_FLIGHTS
         var checked = 0
         for ((name, fl) in cases) {
             val read = hack(name) ?: continue
@@ -233,6 +250,34 @@ class ScenicFlyTest {
         assertTrue(!flightAllowed(GameKind.FIRERED, false, FLIGHT_FIRERED_REV0))
         assertTrue(flightAllowed(GameKind.FIRERED, false, FLIGHT_GHOST_GREY))
         assertTrue(flightAllowed(GameKind.EMERALD, false, FLIGHT_EMERALD_LEGACY))
+    }
+
+    private val SOULGOLD_FLIGHTS = listOf(
+        "Pokemon SoulGold (v1.1.4).gba" to FLIGHT_SOULGOLD,
+        "Pokemon SoulGold (v1.2).gba" to FLIGHT_SOULGOLD_V1_2,
+        "Pokemon SoulGold (v1.2) (Alt 1).gba" to FLIGHT_SOULGOLD_V1_2B,
+        "Pokemon SoulGold (v1.2) (Alt 2).gba" to FLIGHT_SOULGOLD_V1_2C,
+        "Pokemon SoulGold (v1.2.1).gba" to FLIGHT_SOULGOLD_V1_2_1,
+    )
+
+    /** SoulGold's builds share a game code and kind: each one's code CRCs must pick its own record and no other's (the field
+     * items' candidates are chosen that way), and every record carries the follower calls and the 11-bit grid's 0x7FF. */
+    @Test
+    fun soulGoldBuildsPickTheirOwnFlight() {
+        var checked = 0
+        for ((name, own) in SOULGOLD_FLIGHTS) {
+            val read = hack(name) ?: continue
+            for ((_, other) in SOULGOLD_FLIGHTS) assertEquals(name, other === own, flightCodeMatches(other, read))
+            checked++
+        }
+        assumeTrue(checked > 0)
+        for ((_, f) in SOULGOLD_FLIGHTS) {
+            assertEquals(0x7FF, f.mapGridUndefined)
+            assertTrue(f.followerRemove != 0L && f.followerUpdate != 0L)
+            assertEquals(80, f.healLocationCount)
+            assertTrue(flightAllowed(GameKind.SOULGOLD, false, f))
+        }
+        assertTrue(!flightAllowed(GameKind.SOULGOLD, false, null))
     }
 
     private fun sha1(b: ByteArray) = java.security.MessageDigest.getInstance("SHA-1").digest(b).joinToString("") { "%02x".format(it) }

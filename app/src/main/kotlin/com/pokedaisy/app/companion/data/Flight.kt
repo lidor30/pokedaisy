@@ -88,9 +88,18 @@ data class FlightFns(
      * its hooked CreateFlyBirdSprite does), 0 = palette 0 (FireRed's player palette, which has the bird's colours). */
     val birdPalette: Long = 0,
     val birdPaletteTag: Int = 0,
+    /** ObjectEvent.spriteId's offset, 0 = 4 (pokeemerald-expansion keeps it at +0x23). */
+    val objSpriteId: Int = 0,
+    /** Where SaveBlock1's pos starts (location 4 after it): Heart and Soul puts a u16 saveVersion (padded) first, 4. */
+    val saveBlock1PosOff: Int = 0,
+    /** pokeemerald-expansion's following Pokemon: RemoveFollowingPokemon / UpdateFollowingPokemon (Heart and Soul), 0 = none. */
+    val followerRemove: Long = 0,
+    val followerUpdate: Long = 0,
+    /** The map grid's undefined square, also its metatile-id mask: 0 = 0x3FF (SoulGold's ids are 11 bits: 0x7FF). */
+    val mapGridUndefined: Int = 0,
 ) {
     val functions get() = listOf(lockControls, unlockControls, createSprite, destroySprite, startSpriteAnim, behaviorAt,
-        collisionAt, elevationAt, objectAt, playSe, drawMetatileAt) + listOf(riderTemplate, riderGfx, drawView, birdPalette).filter { it != 0L }
+        collisionAt, elevationAt, objectAt, playSe, drawMetatileAt) + listOf(riderTemplate, riderGfx, drawView, birdPalette, followerRemove, followerUpdate).filter { it != 0L }
 
     /** [noFly] as pk_flight.h's two words: a u16 each, 0xFFFF where none. */
     private fun noFlyWords(): List<Int> {
@@ -106,7 +115,7 @@ data class FlightFns(
             lockByte, paletteFade, lockControls, unlockControls, createSprite, destroySprite, startSpriteAnim, birdTemplate,
             behaviorAt, collisionAt, elevationAt, objectAt, playSe, seFly.toLong(), seFailure.toLong(), walkFast.toLong(),
             walkFaster.toLong(), spriteOffset, walkCurrent.toLong(), walkSlide.toLong(), mapHeader, mapGroups, drawMetatileAt,
-            riderTemplate, riderGfx, spriteDummy, riderAnim.toLong(), scratch, drawView, spriteOffsetY, mapGroupsXor, birdPalette, birdPaletteTag.toLong(), vehicle.id.toLong()).map { it.toInt() } +
+            riderTemplate, riderGfx, spriteDummy, riderAnim.toLong(), scratch, drawView, spriteOffsetY, mapGroupsXor, birdPalette, birdPaletteTag.toLong(), objSpriteId.toLong(), followerRemove, followerUpdate, mapGridUndefined.toLong(), vehicle.id.toLong()).map { it.toInt() } +
             noFlyWords() + land.toList()).toIntArray()
     }
 }
@@ -138,7 +147,8 @@ fun flightAllowed(kind: GameKind?, retail: Boolean, flight: FlightFns? = null): 
     GameKind.EMERALD -> retail || flight === FLIGHT_EMERALD_LEGACY
     // Known by their hash, their worlds flown headless.
     GameKind.RADICAL_RED, GameKind.UNBOUND, GameKind.GLAZED, GameKind.ORANGE_ISLANDS, GameKind.ODYSSEY, GameKind.GAIA,
-    GameKind.AMETHYST, GameKind.SWORD_SHIELD, GameKind.GS_CHRONICLES -> flight != null
+    GameKind.AMETHYST, GameKind.SWORD_SHIELD, GameKind.GS_CHRONICLES, GameKind.IMPERIUM, GameKind.LAZARUS, GameKind.HEART_AND_SOUL,
+    GameKind.SOULGOLD -> flight != null
     else -> false
 }
 

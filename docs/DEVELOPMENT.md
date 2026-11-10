@@ -2330,8 +2330,24 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
 - **A blank bird** (Ghost Grey blanked its graphics): flCapture finds nothing in the bird's frame and flies the player in
   the balloon (`flBirdBlank`). **Greyscale games**: when every colour of the player's own sprite palette is a grey, a
   vehicle's colours are each taken to the nearest of those greys by brightness (`flReadGreys` / `flGrey`).
-- **Not yet**: Heart and Soul, Lazarus, Imperium, SoulGold (pokeemerald-expansion, gcc: their ObjectEvent keeps the sprite
-  id at +0x23, and their FLY's addresses came from builds of their source; flight needs the same builds).
+- **The pokeemerald-expansion hacks** (Emerald Imperium, Lazarus, Heart and Soul, SoulGold's five builds; emerald.toml):
+  their ObjectEvent keeps the sprite id at +0x23 (`objSpriteId`) and graphicsId as a u16. Mapped from pokeemerald-expansion
+  1.13's build (the scratch mapper: masked code, then shapes - CreateSprite from CreateFlyBirdSprite's 0xFF / 0xB4 / 1 call,
+  LoadPlayerObjectEventPalette right after it, called with the player's gender: `birdPaletteTag` 0xFFFF), and every grid
+  read checked by calling it on known tiles: a match can land past a function's first instructions (Heart and Soul's
+  MapGridGetMetatileBehaviorAt was mapped two `lsls` late and read tile 0,0 everywhere, so no landing ever came). SoulGold's
+  metatile ids are 11 bits with one collision bit (`mapGridUndefined` 0x7FF, which pk_flight's mend and ScenicFly's holes
+  use) and gcc split DestroySprite: its callers test inUse and call the body. Its v1.2 builds came from v1.1.4 by masked code
+  and the pool words of the matched functions. Lazarus, Heart and Soul and SoulGold have no rider graphics: `riderTemplate`
+  0 seats the player's own sprite on the bird. Heart and Soul's bird template has no callback (`spriteDummy` is written after
+  CreateSprite) and its SaveBlock1 position sits at +4 (`saveBlock1PosOff`, for ScenicFly's start).
+- **Following Pokemon** (the expansion's OW followers, all four): left on the ground, the follower was lost on the next map.
+  The game's FLY removes it in its return-to-field code (`if (gFieldCallback == FieldCallback_UseFly) RemoveFollowingPokemon();
+  else UpdateFollowingPokemon();`), which is where both are found: `followerRemove` is called at take-off, `followerUpdate`
+  once down (it spawns the follower hidden on the player's tile; it walks out at the first step).
+- **Overlapping layouts**: a loop of connections that doesn't close (Heart and Soul's Violet side) puts two maps on the same
+  tiles. ScenicFly keeps the first placed, drops a town whose landing tile another map holds, and crosses an edge only where
+  the game's first connection that way (fieldmap.c's order) is the map the layout shows, placed where that connection puts it.
 
 ## PC, FLY and WILD ENCOUNTERS on the Game Boy (`GbField.kt`)
 

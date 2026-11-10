@@ -266,6 +266,7 @@ val FIELD_ITEMS_HEART_AND_SOUL = FieldItemFns(
             saveBlock2Ptr = 0x030041D4L, special = emptyMap(), genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
         ),
     ),
+    flight = FLIGHT_HEART_AND_SOUL,
 )
 
 /**
@@ -321,6 +322,7 @@ val FIELD_ITEMS_IMPERIUM = FieldItemFns(
             genderMapsec = 0, maleHeal = 12, femaleHeal = 13,
         ),
     ),
+    flight = FLIGHT_IMPERIUM,
 )
 
 /**
@@ -353,6 +355,7 @@ val FIELD_ITEMS_LAZARUS = FieldItemFns(
             genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
         ),
     ),
+    flight = FLIGHT_LAZARUS,
 )
 
 /**
@@ -390,6 +393,7 @@ val FIELD_ITEMS_SOULGOLD = FieldItemFns(
             genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
         ),
     ),
+    flight = FLIGHT_SOULGOLD,
 )
 val FIELD_ITEMS_SOULGOLD_V1_2 = FieldItemFns(
     varGet = 0x0813466CL, varSet = 0x08134700L, checkBagHasItem = 0x0818A694L, removeBagItem = 0x0818B1E8L,
@@ -415,6 +419,7 @@ val FIELD_ITEMS_SOULGOLD_V1_2 = FieldItemFns(
             genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
         ),
     ),
+    flight = FLIGHT_SOULGOLD_V1_2,
 )
 val FIELD_ITEMS_SOULGOLD_V1_2B = FieldItemFns(
     varGet = 0x0813465CL, varSet = 0x081346F0L, checkBagHasItem = 0x0818A684L, removeBagItem = 0x0818B1D8L,
@@ -440,6 +445,7 @@ val FIELD_ITEMS_SOULGOLD_V1_2B = FieldItemFns(
             genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
         ),
     ),
+    flight = FLIGHT_SOULGOLD_V1_2B,
 )
 val FIELD_ITEMS_SOULGOLD_V1_2C = FieldItemFns(
     varGet = 0x081346C8L, varSet = 0x0813475CL, checkBagHasItem = 0x0818A6F0L, removeBagItem = 0x0818B244L,
@@ -465,6 +471,7 @@ val FIELD_ITEMS_SOULGOLD_V1_2C = FieldItemFns(
             genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
         ),
     ),
+    flight = FLIGHT_SOULGOLD_V1_2C,
 )
 /** SoulGold v1.2.1 (both builds): the third v1.2 build's functions, matched in its code (masked bytes, else through their
  * callers; SetUpFieldMoveFly from its gFieldMoveInfo, as a masked match takes its twin neighbour again), the Repel's
@@ -494,6 +501,7 @@ val FIELD_ITEMS_SOULGOLD_V1_2_1 = FieldItemFns(
             genderMapsec = -1, maleHeal = 0, femaleHeal = 0,
         ),
     ),
+    flight = FLIGHT_SOULGOLD_V1_2_1,
 )
 
 /** The CFRU hacks keep every function the tables use where FireRed rev 0 has it (each checked by CRC), with their
