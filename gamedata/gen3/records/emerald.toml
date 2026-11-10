@@ -489,6 +489,96 @@ followerRemove = 0x08116964
 followerUpdate = 0x08116704
 codeCrcs = [0x824C20A1, 0x3DB7411F, 0x78B809B4, 0xED199C78, 0xC10D31AB, 0x18BD2406, 0x2C6258AC, 0xCBEF23E4, 0x340A500A, 0xC4390A7B, 0xB064262A, 0x0DB7E95B, 0xB5045B1F, 0xA08F73F4, 0x8599F5EE]
 
+# FREE FLIGHT for Emerald Seaglass v3.0: Lazarus's record ported (masked code, callers, pool words), its field's callback2
+# live; seated on the bird, its following Pokemon taken and brought back. Flown headless on its save from Littleroot.
+[record.FLIGHT_SEAGLASS]
+schema = 'gen3_flight'
+base = 'FLIGHT_EMERALD'
+objectEvents = 0x0200564C
+playerAvatar = 0x0200588C
+sprites = 0x02039810
+vmap = 0x03002464
+connectionFlags = 0x0200B074
+saveBlock1Ptr = 0x030051B8
+saveBlock2Ptr = 0x030051BC
+main = 0x030014B4
+cb2Overworld = 0x08179790
+lockByte = 0x03005644
+paletteFade = 0x02019550
+lockControls = 0x081EF4E4
+unlockControls = 0x081EF4F0
+createSprite = 0x08003A38
+destroySprite = 0x08003DEC
+startSpriteAnim = 0x08004FF0
+birdTemplate = 0x085D60FC
+behaviorAt = 0x0813C2BC
+collisionAt = 0x0813C1C4
+elevationAt = 0x0813C158
+objectAt = 0x0810D92C
+playSe = 0x081FF30C
+spriteOffset = 0x0203AD1C
+mapHeader = 0x0200B04C
+drawMetatileAt = 0x08122A14
+mapGroups = 0x08B45148
+healLocations = 0x086691C0
+drawView = 0x08122798
+riderTemplate = 0x00000000
+riderGfx = 0x00000000
+spriteDummy = 0x0800414D
+birdPalette = 0x081108BC
+birdPaletteTag = 0xFFFF
+mapGroupSizes = [66, 5, 5, 6, 7, 8, 10, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1]
+healLocationCount = 22
+noFly = []
+objSpriteId = 0x23
+followerRemove = 0x0810F3B8
+followerUpdate = 0x0810F20C
+codeCrcs = [0xB89FF331, 0x0764928F, 0x78B809B4, 0xED199C78, 0xC10D31AB, 0x5386DEDA, 0x6CDE81D7, 0x400F293A, 0x340A500A, 0x39CF2A5E, 0xB064262A, 0x0DB7E95B, 0xCAB1D13A, 0x0E21B16D, 0xC97AC7C7]
+
+# FREE FLIGHT for Too Many Types 2 v1.5.2: mapped against pokeemerald-expansion 1.12.3's build (FieldItems.kt's
+# FIELD_ITEMS_TMT2 says how); seated on the bird, no following Pokemon. Flown headless on its save from Lilycove.
+[record.FLIGHT_TMT2]
+schema = 'gen3_flight'
+base = 'FLIGHT_EMERALD'
+objectEvents = 0x020016AC
+playerAvatar = 0x02001680
+sprites = 0x0203661C
+vmap = 0x030046A8
+connectionFlags = 0x02001BD8
+saveBlock1Ptr = 0x030057D8
+saveBlock2Ptr = 0x030057D4
+main = 0x03004084
+cb2Overworld = 0x081750B4
+lockByte = 0x03000E6C
+paletteFade = 0x02031C0C
+lockControls = 0x081DC2BC
+unlockControls = 0x081DC2C8
+createSprite = 0x081EB5C0
+destroySprite = 0x081EA6AC
+startSpriteAnim = 0x081EAF08
+birdTemplate = 0x08586E60
+behaviorAt = 0x0813B88C
+collisionAt = 0x0813B798
+elevationAt = 0x0813B72C
+objectAt = 0x08115084
+playSe = 0x081E9C78
+spriteOffset = 0x02036196
+mapHeader = 0x02001BBC
+drawMetatileAt = 0x081232D0
+mapGroups = 0x09047730
+healLocations = 0x086ABFAC
+drawView = 0x081231C4
+riderTemplate = 0x00000000
+riderGfx = 0x00000000
+spriteDummy = 0x081E9FD1
+birdPalette = 0x081167B4
+birdPaletteTag = 0xFFFF
+mapGroupSizes = [61, 5, 5, 6, 7, 8, 9, 11, 7, 14, 8, 17, 11, 25, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 110, 61, 90, 2, 1, 13, 1, 1, 3, 1, 4]
+healLocationCount = 25
+noFly = []
+objSpriteId = 0x23
+codeCrcs = [0xCC1230F1, 0x42EC4B88, 0x5533ED97, 0x6436920E, 0xC10D31AB, 0xE671CC98, 0x555D3BFE, 0x2A8EC1F1, 0x5CA746C4, 0x2ACF7733, 0x9A7F1FE6, 0x4C242A41, 0x0365E5A0]
+
 # FREE FLIGHT for Heart and Soul v2.0.6 (pokeemerald-expansion, its own gcc build): mapped from expansion 1.13's build
 # by masked code and checked live headless (lock / unlock, CreateSprite / PlaySE by their callers, the field's callback2).
 # Its SaveBlock1 keeps the player's position at +4 (saveBlock1PosOff). gMapGroups' groups 31 on are empty lists (NULLs),

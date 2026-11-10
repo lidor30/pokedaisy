@@ -191,6 +191,8 @@ class ScenicFlyTest {
             "Pokemon Emerald Imperium (v1.3.1).gba" to FIELD_ITEMS_IMPERIUM,
             "Pokemon Lazarus (v2.0).gba" to FIELD_ITEMS_LAZARUS,
             "Pokemon Heart and Soul (v2.0.6).gba" to FIELD_ITEMS_HEART_AND_SOUL,
+            "Pokemon Emerald Seaglass (v3.0).gba" to FIELD_ITEMS_SEAGLASS,
+            "Pokemon Too Many Types 2 (v1.5.2).gba" to FIELD_ITEMS_TMT2,
             "Pokemon SoulGold (v1.1.4).gba" to FIELD_ITEMS_SOULGOLD,
             "Pokemon SoulGold (v1.2).gba" to FIELD_ITEMS_SOULGOLD_V1_2,
             "Pokemon SoulGold (v1.2) (Alt 1).gba" to FIELD_ITEMS_SOULGOLD_V1_2B,
@@ -266,6 +268,8 @@ class ScenicFlyTest {
             "Pokemon Emerald Imperium (v1.3.1).gba" to FLIGHT_IMPERIUM,
             "Pokemon Lazarus (v2.0).gba" to FLIGHT_LAZARUS,
             "Pokemon Heart and Soul (v2.0.6).gba" to FLIGHT_HEART_AND_SOUL,
+            "Pokemon Emerald Seaglass (v3.0).gba" to FLIGHT_SEAGLASS,
+            "Pokemon Too Many Types 2 (v1.5.2).gba" to FLIGHT_TMT2,
         ) + SOULGOLD_FLIGHTS
         var checked = 0
         for ((name, fl) in cases) {
@@ -296,6 +300,25 @@ class ScenicFlyTest {
             checked++
         }
         assumeTrue(checked > 0)
+    }
+
+    @Test
+    fun seaglassFliesHoenn() {
+        // Its save, walked out of Birch's lab: Littleroot (0.9) at 7,17.
+        val read = hack("Pokemon Emerald Seaglass (v3.0).gba")
+        assumeTrue(read != null)
+        val reached = flies(FLIGHT_SEAGLASS, FIELD_ITEMS_SEAGLASS.fly!!, read!!, ScenicFly.MapId(0, 9), 7, 17, EM_TOWNS)
+        assertTrue("$reached", reached.size >= 12)
+        assertTrue(pcCodeMatches(FIELD_ITEMS_SEAGLASS.pc!!, read))
+    }
+
+    @Test
+    fun tooManyTypes2FliesHoenn() {
+        // Its save stands in Lilycove (0.5) at 32,10.
+        val read = hack("Pokemon Too Many Types 2 (v1.5.2).gba")
+        assumeTrue(read != null)
+        val reached = flies(FLIGHT_TMT2, FIELD_ITEMS_TMT2.fly!!, read!!, ScenicFly.MapId(0, 5), 32, 10, EM_TOWNS)
+        assertTrue("$reached", reached.size >= 12)
     }
 
     @Test

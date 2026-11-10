@@ -524,6 +524,98 @@ val FLIGHT_LAZARUS: FlightFns by lazy {
     )
 }
 
+// FREE FLIGHT for Emerald Seaglass v3.0: Lazarus's record ported (masked code, callers, pool words), its field's callback2
+// live; seated on the bird, its following Pokemon taken and brought back. Flown headless on its save from Littleroot.
+val FLIGHT_SEAGLASS: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x0200564CL,
+        playerAvatar = 0x0200588CL,
+        sprites = 0x02039810L,
+        vmap = 0x03002464L,
+        connectionFlags = 0x0200B074L,
+        saveBlock1Ptr = 0x030051B8L,
+        saveBlock2Ptr = 0x030051BCL,
+        main = 0x030014B4L,
+        cb2Overworld = 0x08179790L,
+        lockByte = 0x03005644L,
+        paletteFade = 0x02019550L,
+        lockControls = 0x081EF4E4L,
+        unlockControls = 0x081EF4F0L,
+        createSprite = 0x08003A38L,
+        destroySprite = 0x08003DECL,
+        startSpriteAnim = 0x08004FF0L,
+        birdTemplate = 0x085D60FCL,
+        behaviorAt = 0x0813C2BCL,
+        collisionAt = 0x0813C1C4L,
+        elevationAt = 0x0813C158L,
+        objectAt = 0x0810D92CL,
+        playSe = 0x081FF30CL,
+        spriteOffset = 0x0203AD1CL,
+        mapHeader = 0x0200B04CL,
+        drawMetatileAt = 0x08122A14L,
+        mapGroups = 0x08B45148L,
+        healLocations = 0x086691C0L,
+        drawView = 0x08122798L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x0800414DL,
+        birdPalette = 0x081108BCL,
+        birdPaletteTag = 0xFFFF,
+        mapGroupSizes = listOf(66, 5, 5, 6, 7, 8, 10, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1),
+        healLocationCount = 22,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        followerRemove = 0x0810F3B8L,
+        followerUpdate = 0x0810F20CL,
+        codeCrcs = listOf(0xB89FF331L, 0x0764928FL, 0x78B809B4L, 0xED199C78L, 0xC10D31ABL, 0x5386DEDAL, 0x6CDE81D7L, 0x400F293AL, 0x340A500AL, 0x39CF2A5EL, 0xB064262AL, 0x0DB7E95BL, 0xCAB1D13AL, 0x0E21B16DL, 0xC97AC7C7L),
+    )
+}
+
+// FREE FLIGHT for Too Many Types 2 v1.5.2: mapped against pokeemerald-expansion 1.12.3's build (FieldItems.kt's
+// FIELD_ITEMS_TMT2 says how); seated on the bird, no following Pokemon. Flown headless on its save from Lilycove.
+val FLIGHT_TMT2: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x020016ACL,
+        playerAvatar = 0x02001680L,
+        sprites = 0x0203661CL,
+        vmap = 0x030046A8L,
+        connectionFlags = 0x02001BD8L,
+        saveBlock1Ptr = 0x030057D8L,
+        saveBlock2Ptr = 0x030057D4L,
+        main = 0x03004084L,
+        cb2Overworld = 0x081750B4L,
+        lockByte = 0x03000E6CL,
+        paletteFade = 0x02031C0CL,
+        lockControls = 0x081DC2BCL,
+        unlockControls = 0x081DC2C8L,
+        createSprite = 0x081EB5C0L,
+        destroySprite = 0x081EA6ACL,
+        startSpriteAnim = 0x081EAF08L,
+        birdTemplate = 0x08586E60L,
+        behaviorAt = 0x0813B88CL,
+        collisionAt = 0x0813B798L,
+        elevationAt = 0x0813B72CL,
+        objectAt = 0x08115084L,
+        playSe = 0x081E9C78L,
+        spriteOffset = 0x02036196L,
+        mapHeader = 0x02001BBCL,
+        drawMetatileAt = 0x081232D0L,
+        mapGroups = 0x09047730L,
+        healLocations = 0x086ABFACL,
+        drawView = 0x081231C4L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x081E9FD1L,
+        birdPalette = 0x081167B4L,
+        birdPaletteTag = 0xFFFF,
+        mapGroupSizes = listOf(61, 5, 5, 6, 7, 8, 9, 11, 7, 14, 8, 17, 11, 25, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 110, 61, 90, 2, 1, 13, 1, 1, 3, 1, 4),
+        healLocationCount = 25,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        codeCrcs = listOf(0xCC1230F1L, 0x42EC4B88L, 0x5533ED97L, 0x6436920EL, 0xC10D31ABL, 0xE671CC98L, 0x555D3BFEL, 0x2A8EC1F1L, 0x5CA746C4L, 0x2ACF7733L, 0x9A7F1FE6L, 0x4C242A41L, 0x0365E5A0L),
+    )
+}
+
 // FREE FLIGHT for Heart and Soul v2.0.6 (pokeemerald-expansion, its own gcc build): mapped from expansion 1.13's build
 // by masked code and checked live headless (lock / unlock, CreateSprite / PlaySE by their callers, the field's callback2).
 // Its SaveBlock1 keeps the player's position at +4 (saveBlock1PosOff). gMapGroups' groups 31 on are empty lists (NULLs),
