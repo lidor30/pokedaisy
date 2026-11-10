@@ -228,6 +228,16 @@ private fun mayFlyHere(fly: FlyFns, g: GameCalls): Long =
     if (fly.mapHeader != 0L) g.call(fly.setUpFieldMoveFly, g.read(fly.mapHeader + 0x17, 1)[0].toInt() and 0xFF)
     else g.call(fly.setUpFieldMoveFly)
 
+/** FREE FLIGHT's checks (Flight.kt): FLY's own - the field free, the badge, a map FLY may leave from - and a Pokémon
+ * that knows Fly. OK, or why not. Emu thread. */
+fun flightCheck(fns: FieldItemFns, busy: Boolean, g: GameCalls): FlyResult {
+    val fly = fns.fly ?: return FlyResult.FAILED
+    return runCatching {
+        flyGate(fns, fly, busy, g)?.let { return it }
+        if (flyer(fns, fly, g) == null) FlyResult.NO_FLYER else FlyResult.OK
+    }.getOrElse { FlyResult.FAILED }
+}
+
 /** FLY's destinations right now (the Fly map's visited towns) and its Pokémon. Emu thread. */
 fun flyTargets(fns: FieldItemFns, busy: Boolean, g: GameCalls): FlyTargets {
     val fly = fns.fly ?: return FlyTargets(FlyResult.FAILED)

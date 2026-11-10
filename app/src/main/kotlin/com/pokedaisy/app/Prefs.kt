@@ -152,6 +152,25 @@ class Prefs(context: Context) {
         get() = p.getBoolean("trade_evolutions", false)
         set(v) = p.edit().putBoolean("trade_evolutions", v).apply()
 
+    /** FLY STYLE: the companion's FLY the game's way (CLASSIC) or flown over the field (SCENIC, the default: a game without
+     * FREE FLIGHT flies the classic way whatever this says), a [com.pokedaisy.app.companion.FlyStyle] id. */
+    var flyStyleId: Int
+        get() = p.getInt("fly_style", com.pokedaisy.app.companion.FlyStyle.SCENIC.id)
+        set(v) = p.edit().putInt("fly_style", v).putBoolean("fly_style_asked", true).apply()
+    val flyStyle: com.pokedaisy.app.companion.FlyStyle get() = com.pokedaisy.app.companion.FlyStyle.of(flyStyleId)
+
+    /** MAKEOVER > FLY ON: what FREE FLIGHT and the scenic FLY fly on, a [com.pokedaisy.app.companion.data.FlightVehicle] id
+     * (0 the game's own bird). For every game. */
+    var flightVehicleId: Int
+        get() = p.getInt("flight_vehicle", 0)
+        set(v) = p.edit().putInt("flight_vehicle", v).apply()
+
+    /** The first scenic FLY's landing asked KEEP IT / USE CLASSIC (FlyStyleAsk), or the player picked a FLY STYLE themselves:
+     * never asked again. */
+    var flyStyleAsked: Boolean
+        get() = p.getBoolean("fly_style_asked", false)
+        set(v) = p.edit().putBoolean("fly_style_asked", v).apply()
+
     /** REUSABLE TMS: a TM stays in the bag after it teaches a move, as an HM does (ReusableTms.kt). */
     var reusableTms: Boolean
         get() = p.getBoolean("reusable_tms", false)

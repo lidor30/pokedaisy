@@ -31,6 +31,7 @@
 
 #include <stdbool.h>
 #include <stdio.h>
+#include <math.h>
 #include <stdlib.h>
 #include <string.h>
 
@@ -902,6 +903,46 @@ void pk_wide_extras_reset(void) {
 
 static void followBegin(struct GBAVideoRenderer* r);
 static void followEnd(struct GBAVideoRenderer* r);
+
+// FREE FLIGHT's smooth camera (pk_flight.c, pk_wide_flight): the game steps one tile at a time in four directions, so a
+// diagonal flight scrolls the map in a staircase (a tile across, a tile up). While a flight is up, each frame's camera
+// is followed from the map's scroll (BG2HOFS / VOFS at line 0: continuous across map connections, unlike the map's own
+// coordinates), and the view moves at the velocity the flight means (pk_flight: the route's way, the D-pad's), pulled
+// gently toward that camera - so a diagonal comes out straight at a steady speed whatever the steps under it (an
+// average over the last steps couldn't hide an uneven staircase, 2:1 or 3:1). The window drawn is moved by the difference
+// (viewInner) and so are the bird's and its shadow's OAM entries (here, put back after the last line), so the bird stays
+// put on screen and the map glides under it. Only where EXPAND draws the window: the margins are the map, exactly.
+static bool flyOn, flyTrack;
+static uint16_t flyTiles[2];
+static int flyTileN;
+static int flyCx, flyCy, flyPrevH, flyPrevV;
+static double flySx, flySy;                      // where the view is, in the same pixels as the camera
+static double flyVx, flyVy, flyVxS, flyVyS;      // the flight's velocity (pk_flight), and eased
+static int flyDx, flyDy;                         // this frame's offset: the view less the real camera
+static int flyOam[4], flyOamN;
+static uint16_t flySaved[4][2];
+static int flyViewAge = 99;                      // frames since viewInner last ran (the window is EXPAND's)
+
+void pk_wide_flight(int on, const uint16_t* tiles, int n, double vx, double vy) {
+    flyOn = on != 0;
+    flyVx = vx;
+    flyVy = vy;
+    flyTileN = n < 0 ? 0 : n > 2 ? 2 : n;
+    for (int i = 0; i < flyTileN; i++) flyTiles[i] = tiles[i];
+}
+
+void pk_wide_flight_offset(int* dx, int* dy) {
+    *dx = flyDx;
+    *dy = flyDy;
+}
+
+void pk_wide_flight_camera(int* x, int* y) {
+    *x = flyCx + flyDx;
+    *y = flyCy + flyDy;
+}
+
+static void flyBegin(struct GBAVideoRenderer* r);
+static void flyEnd(struct GBAVideoRenderer* r);
 static void partnerBegin(struct GBAVideoRenderer* r);
 static void partnerEnd(struct GBAVideoRenderer* r);
 static int partnerOam = -1, partnerBlobOam = -1;          // this frame's OAM entries (-1: not drawn)
@@ -941,8 +982,9 @@ static void hookDrawScanline(struct GBAVideoRenderer* r, int y) {
             const uint16_t* oam = hookGba->video.oam.raw;
             // WIDE's record of the OAM leaves the follower's and the partner's entries out: they're not the game's.
             static uint16_t own[512];
-            if (followOam >= 0 || partnerOam >= 0) {
+            if (followOam >= 0 || partnerOam >= 0 || flyOamN > 0) {
                 memcpy(own, oam, sizeof(own));
+                for (int i = 0; i < flyOamN; i++) memcpy(&own[flyOam[i] * 4], flySaved[i], 4);
                 if (followOam >= 0) memcpy(&own[followOam * 4], followSavedOam, 8);
                 if (partnerOam >= 0) memcpy(&own[partnerOam * 4], partnerSavedOam[0], 8);
                 if (partnerBlobOam >= 0) memcpy(&own[partnerBlobOam * 4], partnerSavedOam[1], 8);
@@ -954,9 +996,9 @@ static void hookDrawScanline(struct GBAVideoRenderer* r, int y) {
         }
         lineOamOf[y] = (uint8_t) (lineOamN - 1);
     }
-    if (y == 0) { followBegin(r); partnerBegin(r); }
+    if (y == 0) { followBegin(r); partnerBegin(r); flyBegin(r); }
     origDrawScanline(r, y);
-    if (y == PK_WIDE_H - 1) { partnerEnd(r); followEnd(r); }
+    if (y == PK_WIDE_H - 1) { flyEnd(r); partnerEnd(r); followEnd(r); }
 }
 
 static void hookScanlines(struct GBA* gba) {
@@ -2697,6 +2739,81 @@ static void playerBox(const uint16_t* oam, int base, struct PlayerBox* b) {
     }
 }
 
+/** Line 0: FREE FLIGHT's camera this frame (see flyOn): the averaged camera's offset, and the bird / shadow moved by it. */
+static void flyBegin(struct GBAVideoRenderer* r) {
+    flyOamN = 0;
+    flyDx = flyDy = 0;
+    if (flyViewAge < 99) flyViewAge++;
+    if ((!flyOn && !flyTrack) || !hookGba || flyViewAge > 2) {
+        flyTrack = false;
+        return;
+    }
+    const uint16_t* io = hookGba->memory.io;
+    int h = io[0x18 >> 1] & 0x1FF, v = io[0x1A >> 1] & 0x1FF;   // BG2HOFS / VOFS: the map's scroll
+    int dh = ((h - flyPrevH + 128) & 0xFF) - 128, dv = ((v - flyPrevV + 128) & 0xFF) - 128;   // its 256 px square wraps
+    if (!flyTrack || abs(dh) > 16 || abs(dv) > 16) {
+        // Starting, or a jump (a warp, a state loaded): from here, nothing to ease.
+        flyTrack = true;
+        flyCx = flyCy = 0;
+        flySx = flySy = 0;
+        flyVxS = flyVyS = 0;
+        dh = dv = 0;
+    }
+    flyPrevH = h;
+    flyPrevV = v;
+    flyCx += dh;
+    flyCy += dv;
+    // The window: 32 px of travel at the speed going lately (a diagonal mixes step speeds, 2 / 3 or 4 / 8 px a frame:
+    // a frame's own would flip the window's length every step).
+    // The view moves at the velocity the flight means (eased a little: a route turns over a few steps), pulled toward
+    // the real camera so it never drifts: a staircase's tile steps, a diagonal's uneven step times, a frame the map
+    // load held back - all within a few pixels of it, none of it on screen. Standing, it settles on the camera.
+    flyVxS += (flyVx - flyVxS) * 0.2;
+    flyVyS += (flyVy - flyVyS) * 0.2;
+    bool moving = flyVx != 0 || flyVy != 0;
+    double k = moving ? 0.03 : 0.12;
+    flySx += flyVxS + (flyCx - flySx) * k;
+    flySy += flyVyS + (flyCy - flySy) * k;
+    double ax = flySx - flyCx, ay = flySy - flyCy;
+    flyDx = (int) (ax < 0 ? ax - 0.5 : ax + 0.5);
+    flyDy = (int) (ay < 0 ? ay - 0.5 : ay + 0.5);
+    if (!flyOn && !flyDx && !flyDy && fabs(ax) < 0.5 && fabs(ay) < 0.5) {
+        flyTrack = false;   // the flight's over and the camera has caught up
+        return;
+    }
+    if (!flyDx && !flyDy) return;
+    uint16_t* oam = hookGba->video.oam.raw;
+    for (int k = 0; k < 128 && flyOamN < 4; k++) {
+        uint16_t a0 = oam[k * 4], a1 = oam[k * 4 + 1];
+        if (oamHidden(a0)) continue;
+        uint16_t tile = oam[k * 4 + 2] & 0x3FF;
+        bool ours = false;
+        for (int t = 0; t < flyTileN; t++) if (tile == flyTiles[t]) ours = true;
+        if (!ours) continue;
+        flySaved[flyOamN][0] = a0;
+        flySaved[flyOamN][1] = a1;
+        flyOam[flyOamN++] = k;
+        oam[k * 4] = (uint16_t) ((a0 & 0xFF00) | (((a0 & 0xFF) + flyDy) & 0xFF));
+        oam[k * 4 + 1] = (uint16_t) ((a1 & 0xFE00) | (((a1 & 0x1FF) + flyDx) & 0x1FF));
+        r->writeOAM(r, (uint32_t) k * 4);
+        r->writeOAM(r, (uint32_t) k * 4 + 1);
+    }
+}
+
+/** After the last line: the bird's and shadow's own OAM entries back (but one the game wrote meanwhile). */
+static void flyEnd(struct GBAVideoRenderer* r) {
+    if (!hookGba) return;
+    uint16_t* oam = hookGba->video.oam.raw;
+    for (int i = 0; i < flyOamN; i++) {
+        int k = flyOam[i];
+        oam[k * 4] = flySaved[i][0];
+        oam[k * 4 + 1] = flySaved[i][1];
+        r->writeOAM(r, (uint32_t) k * 4);
+        r->writeOAM(r, (uint32_t) k * 4 + 1);
+    }
+    flyOamN = 0;
+}
+
 /** Line 0: where the follower stands this frame, then its sprite into the hardware (saved first). */
 static void followBegin(struct GBAVideoRenderer* r) {
     followOam = followSlot = -1;
@@ -3794,7 +3911,58 @@ struct FullView {
     bool valid, battle, menu, overlay;
     int bestSnap, bestCx, bestCy, bestH, bestV;
     uint32_t alpha;
+    bool hold;   // FREE FLIGHT's crossing settling: the last window kept as it is (no glow)
 };
+
+/** FREE FLIGHT's smooth camera moves the window, the frame with it, so the map's name sign (BG0, the popup's corner:
+ * POPUP_COLS x POPUP_ROWS tiles at the top-left) would drift with every step. Kept still: where its pixels landed (the
+ * frame's offset), the map rebuilt under it (drawRegion: the field and its people, no BG0); then its own pixels where
+ * they'd be with no offset - as the bird is (flyBegin). Only while one shows and the camera is offset. Where BG0 shows
+ * comes from its tilemap and the line's registers (bgPixel, windowLayers), not the pixels' layer tags: mGBA keeps
+ * those only with the windows off. */
+static void flyLabel(const struct FullView* f) {
+    // Wider than POPUP_COLS: a long name's box ("CINNABAR ISLAND") runs past 14 tiles. Only BG0's own pixels are taken.
+    enum { LW = 20 * 8, LH = POPUP_ROWS * 8 };
+    if (!(io(0) & 0x100)) return;   // BG0 off
+    // Where BG0 shows in the corner (its tilemap and scroll, line by line: the frame's pixels carry no layer tags in
+    // every build), the sign's pixels.
+    static uint8_t sign[LH][LW];
+    bool any = false;
+    for (int y = 0; y < LH; y++) {
+        useLine(y);
+        for (int x = 0; x < LW; x++) {
+            int pal;
+            sign[y][x] = (windowLayers(x, y) & 1) && bgPixel(0, x, y, &pal) ? 1 : 0;
+            any |= sign[y][x] != 0;
+        }
+    }
+    if (!any) return;
+    const uint32_t* frame = f->frame;
+    static uint32_t under[LH][LW];
+    drawRegion(&snaps[f->bestSnap], f->bestCx, f->bestCy, f->bestH, f->bestV, 0, 0, LW, LH, false, &under[0][0], LW, f->alpha);
+    uint32_t* out = f->out;
+    struct PkWideView v = f->v;
+    // Where the sign's pixels are now (frame pixel (x, y) at window (x - v.x, y - v.y)): the map again.
+    for (int y = 0; y < LH; y++) {
+        int oy = y - v.y;
+        if (oy < 0 || oy >= v.h) continue;
+        for (int x = 0; x < LW; x++) {
+            int ox = x - v.x;
+            if (ox < 0 || ox >= v.w || !sign[y][x]) continue;
+            out[oy * v.w + ox] = under[y][x];
+        }
+    }
+    // The sign where it stays: the window as it would be with no offset.
+    for (int y = 0; y < LH; y++) {
+        int oy = y - v.y + flyDy;
+        if (oy < 0 || oy >= v.h) continue;
+        for (int x = 0; x < LW; x++) {
+            int ox = x - v.x + flyDx;
+            if (ox < 0 || ox >= v.w || !sign[y][x]) continue;
+            out[oy * v.w + ox] = frame[y * PK_WIDE_W + x];
+        }
+    }
+}
 
 static void fullDraw(const struct FullView* f) {
     const uint32_t* frame = f->frame;
@@ -3824,7 +3992,7 @@ static void fullDraw(const struct FullView* f) {
         }
         mix = mix + MIX_STEP > 256 ? 256 : mix + MIX_STEP;
     } else {
-        mix = mix - MIX_STEP < 0 ? 0 : mix - MIX_STEP;   // the last scene, frozen, dissolves into the glow
+        if (!f->hold) mix = mix - MIX_STEP < 0 ? 0 : mix - MIX_STEP;   // the last scene, frozen, dissolves into the glow
     }
     PW_MARK(pw4);
     PW_ADD(2, pw3, pw4);
@@ -3898,6 +4066,7 @@ static void fullDraw(const struct FullView* f) {
             i += n - 1;
         }
     }
+    if (valid && (flyDx || flyDy)) flyLabel(f);
     PW_MARK(pw5);
     PW_ADD(3, pw4, pw5);
     PW_REPORT();
@@ -3935,6 +4104,7 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
         // pk_wide_skip: a frame nobody will see (fast-forward runs several per refresh). Only the RAM after it is
         // kept - what the next frame shows - so the frame that is drawn still has its snapshot from the frame before.
         if (!core || core->platform(core) != mPLATFORM_GBA || !configured) return 0;
+        flyViewAge = 0;
         G = (struct GBA*) core->board;
         useLive();
         hookScanlines(G);
@@ -3961,6 +4131,10 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
     G = (struct GBA*) core->board;
     useLive();
     hookScanlines(G);
+    // FREE FLIGHT's smooth camera (flyBegin): the window moved with the bird, the frame's own offset.
+    flyViewAge = 0;
+    v.x += flyDx;
+    v.y += flyDy;
 
     PW_MARK(pw0);
     int cur = prev == 0 ? 1 : 0;
@@ -4000,9 +4174,25 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
     PW_MARK(pw1);
     PW_ADD(0, pw0, pw1);
     bool valid = best >= MIN_SCORE;
+    if (!valid && flyOn && snaps[cur].ok && fieldDisplay()) {
+        // FREE FLIGHT crossing into a map: pk_flight.c's flMend has the grid right, the screen catches up two or three
+        // frames later. The camera as the RAM has it (no menu can open with the controls locked): the margins go on
+        // with the map and its people instead of freezing (they stood still for those frames and then jumped).
+        const struct Snap* s = &snaps[cur];
+        bestH = io(0x14) & 0x1FF;
+        bestV = io(0x16) & 0x1FF;
+        bestCx = s->posX * 16 + signed8(bestH - s->xTile * 8);
+        bestCy = s->posY * 16 + signed8(bestV - s->yTile * 8);
+        bestSnap = cur;
+        valid = true;
+    }
     if (!valid) needFrame();
     bool battle = !valid && inBattleScreen();
-    bool menu = !valid && !battle && menuScreen();
+    // FREE FLIGHT: no menu can open (the controls are locked), so a frame that doesn't match is a map crossing settling
+    // (pk_flight.c's flMend draws the view again; the screen catches up two or three frames later): the camera holds and
+    // the last window stays, rather than the menu's bars and a zoom pulling in.
+    bool flyHold = flyOn && !valid && !battle;
+    bool menu = !valid && !battle && !flyHold && menuScreen();
     // A menu screen opened from a battle (POKéMON, BAG: gMain.inBattle stays set) is part of the battle for the
     // camera: a battle always pulls in to 1x, and its sub-screens used to read as SCENE_MENU, which AUTO ZOOM IN
     // OFF leaves zoomed out - the party / bag screen zoomed out and the battle zoomed back in after it.
@@ -4021,7 +4211,7 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
     bool fade = !valid && !battle && fadedFrame(frame);   // (a black frame can pass as a menu screen: still a fade)
     bool replay = questLogPlaying();
     lastClose = lastClose || replay;
-    lastScene = replay ? PK_WIDE_SCENE_OFF : fade ? PK_WIDE_SCENE_FADE : menu && !inBattle ? PK_WIDE_SCENE_MENU : !valid ? PK_WIDE_SCENE_OFF
+    lastScene = replay ? PK_WIDE_SCENE_OFF : fade || flyHold ? PK_WIDE_SCENE_FADE : menu && !inBattle ? PK_WIDE_SCENE_MENU : !valid ? PK_WIDE_SCENE_OFF
               : transition ? PK_WIDE_SCENE_BATTLE_START : overlay ? PK_WIDE_SCENE_OVERLAY
               : lastClose ? PK_WIDE_SCENE_TEXT : PK_WIDE_SCENE_FIELD;
     int dimTarget = overlay ? overlayStrength() : 0;
@@ -4069,7 +4259,7 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
 #endif
     PW_MARK(pw3);
     PW_ADD(1, pw2, pw3);
-    struct FullView full = { frame, out, centre, v, valid, battle, menu, overlay, bestSnap, bestCx, bestCy, bestH, bestV, alpha };
+    struct FullView full = { frame, out, centre, v, valid, battle, menu, overlay, bestSnap, bestCx, bestCy, bestH, bestV, alpha, flyHold };
 #ifdef PK_WIDE_CACHE
     holeLeft = holeWanted && !overlayDim && !centre;
     if (laterOn && !centre) {

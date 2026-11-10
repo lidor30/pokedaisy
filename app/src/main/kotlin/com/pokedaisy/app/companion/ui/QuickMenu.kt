@@ -87,6 +87,9 @@ interface QuickActions {
     /** The player is on a bike now (the field read's gPlayerAvatar): BIKE is GET OFF. */
     fun riding(): Boolean = false
 
+    /** FREE FLIGHT is up (EmulatorEngine.flightState): TAKE OFF is LAND. */
+    fun flying(): Boolean = false
+
     /** WILD ENCOUNTERS now, as SETTINGS has it (100 = NORMAL, 0 = OFF). */
     fun wildEncounters(): Int = 100
 
@@ -285,9 +288,16 @@ fun repelKindsIn(s: SnapshotView): List<Int> =
     REPEL_KINDS.map { it.first }.filter { id -> s.items.any { it.itemId == id && it.quantity > 0 } }
 
 /** Why [action] can't run now in [s]; null = it can. The game-side checks (a menu up, fields locked) answer when it runs. */
-fun quickBlocked(action: QuickAction, s: SnapshotView, repelSteps: Int = 0, dark: Boolean? = null): String? {
+fun quickBlocked(action: QuickAction, s: SnapshotView, repelSteps: Int = 0, dark: Boolean? = null, flying: Boolean = false): String? {
     val field = !s.inBattle
     return when (action) {
+        // Up there, LAND always can (the bird finds the nearest ground).
+        QuickAction.FLIGHT -> when {
+            flying -> null
+            !field -> tr("Not during a battle")
+            s.party.none { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } -> tr("No one in your party knows FLY")
+            else -> null
+        }
         QuickAction.PC -> if (!field) tr("Not during a battle") else null
         QuickAction.FLY -> when {
             !field -> tr("Not during a battle")
@@ -334,6 +344,7 @@ internal fun flashMessage(r: com.pokedaisy.app.companion.data.FlashResult): Stri
 /** A tile's text under its icon. */
 private fun quickLabel(action: QuickAction, actions: QuickActions): String = when (action) {
     QuickAction.BIKE -> if (actions.riding()) tr("GET OFF") else tr(action.label)
+    QuickAction.FLIGHT -> if (actions.flying()) tr("LAND") else tr(action.label)
     QuickAction.WILD -> tr("WILD")
     else -> tr(action.label)
 }
@@ -364,7 +375,8 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
     val repelSteps = actions.repelSteps()
     val dark = if (QuickAction.FLASH in shown) actions.flashDark() else null
     state.items = items
-    state.blocked = { quickBlocked(it, snapshot, repelSteps, dark) }
+    val flying = actions.flying()
+    state.blocked = { quickBlocked(it, snapshot, repelSteps, dark, flying) }
     state.repelKinds = repelKindsIn(snapshot)
     LaunchedEffect(items.size) { state.clamp() }
     val m = rememberGbaTextMetrics(1f)
@@ -379,12 +391,12 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
             val fly = state.fly
             val repels = state.repels
             val current = items.getOrNull(state.index)
-            val why = current?.let { quickBlocked(it, snapshot, repelSteps, dark) }
+            val why = current?.let { quickBlocked(it, snapshot, repelSteps, dark, flying) }
             val hint = current?.let { why ?: quickHint(it, actions) }
             val ring = state.ring
             val tile: @Composable (Int) -> Unit = { i ->
                 val a = items[i]
-                QuickTile(a, snapshot, actions, selected = i == state.index, blocked = quickBlocked(a, snapshot, repelSteps, dark) != null, m, label = state.labels) { state.tap(i) }
+                QuickTile(a, snapshot, actions, selected = i == state.index, blocked = quickBlocked(a, snapshot, repelSteps, dark, flying) != null, m, label = state.labels) { state.tap(i) }
             }
             if (fly != null || repels != null || items.isEmpty() || !ring) {
                 Column(
@@ -715,6 +727,8 @@ private fun QuickIcon(action: QuickAction, s: SnapshotView, actions: QuickAction
             val flyer = s.party.firstOrNull { !it.isEgg && it.moves.any { mv -> mv.id == FLY_MOVE } } ?: s.party.firstOrNull()
             SpeciesIcon(flyer?.iconAsset, size * 1.2f)
         }
+        // The wings: up (TAKE OFF) or down (LAND).
+        QuickAction.FLIGHT -> PixelArt(if (actions.flying()) LAND_ICON else TAKE_OFF_ICON, WING_COLORS, Modifier.size(size * 0.8f))
         // The strongest one held.
         QuickAction.REPEL -> item(REPEL_KINDS.map { it.first }.reversed())
         QuickAction.BIKE -> item(KeyItems.BIKES)
@@ -746,7 +760,12 @@ fun quickMenuRows(
         SettingRow(tk("LABELS"), onOff(labels), subtitle = "Each action's name under its icon") { setLabels(!labels) },
         groupTitle(tk("SHOW")),
     ) + QuickAction.entries.map { a ->
-        SettingRow(a.label, onOff(a in shown), labelBadge = if (a == QuickAction.FLASH) NewFeatures.badge(NewFeatures.QUICK_FLASH) else null) {
+        val badge = when (a) {
+            QuickAction.FLASH -> NewFeatures.badge(NewFeatures.QUICK_FLASH)
+            QuickAction.FLIGHT -> NewFeatures.badge(NewFeatures.FREE_FLIGHT)
+            else -> null
+        }
+        SettingRow(a.label, onOff(a in shown), labelBadge = badge) {
             setShown(if (a in shown) shown - a else shown + a)
         }
     }
@@ -754,6 +773,7 @@ fun quickMenuRows(
 
 /** SETTINGS' row for the page. */
 fun quickMenuBadge(): String? = NewFeatures.badge(NewFeatures.QUICK_MENU) ?: NewFeatures.badge(NewFeatures.QUICK_FLASH)
+    ?: NewFeatures.badge(NewFeatures.FREE_FLIGHT)
 
 /** MOVE_FLASH (the quick menu's FLASH tile, the party check). */
 internal const val FLASH_MOVE = 148
@@ -773,6 +793,39 @@ private val FLASH_ICON = listOf(
     ".K...KK...K.",
     ".....KK.....",
 )
+
+/** FREE FLIGHT: a pair of wings, the arrow over them going up (TAKE OFF) or under them going down (LAND). */
+private val TAKE_OFF_ICON = listOf(
+    ".....GG.....",
+    "....GGGG....",
+    "...G.GG.G...",
+    ".....GG.....",
+    "K....KK....K",
+    "KB..KBBK..BK",
+    "KBBKBBBBKBBK",
+    "KBWBBBBBBWBK",
+    ".KBWBBBBWBK.",
+    "..KBBKKBBK..",
+    "...KK..KK...",
+    "............",
+)
+
+private val LAND_ICON = listOf(
+    "K....KK....K",
+    "KB..KBBK..BK",
+    "KBBKBBBBKBBK",
+    "KBWBBBBBBWBK",
+    ".KBWBBBBWBK.",
+    "..KBBKKBBK..",
+    "...KK..KK...",
+    "............",
+    ".....GG.....",
+    "...G.GG.G...",
+    "....GGGG....",
+    ".....GG.....",
+)
+
+private val WING_COLORS = mapOf('K' to Color(0xFF202850), 'B' to Color(0xFF5068C8), 'W' to Color(0xFFB8C8F8), 'G' to Color(0xFF58C858))
 
 private val FLASH_COLORS = mapOf('K' to Color(0xFF584818), 'Y' to Color(0xFFF8D030), 'W' to Color(0xFFFFFFF0))
 

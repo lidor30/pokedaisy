@@ -3,7 +3,7 @@ title: Map
 summary: The game's own region map with you on it, tapping a spot to name it, and finding any town or route from the PLACES list.
 section: companion
 order: 6
-keywords: [town map, region map, location, where am i, places, route, city, fly, sevii, islands, find]
+keywords: [town map, region map, location, where am i, places, route, city, fly, sevii, islands, find, free flight, take off, land, fly over, scenic, bird]
 ---
 
 The `MAP` tab is the game's town map, always open. It answers "where am I?" at a glance and "where is that town the guide mentioned?" in two taps, without digging the map out of your bag.
@@ -54,6 +54,26 @@ It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire in every language and
 On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Crystal and Crystal Legacy. The list is the one the game's own map would give you: in Red, Blue, Yellow, Yellow Legacy, PureRed and PureBlue every town you've been to, and in Crystal and Crystal Legacy the towns you've been to in the region you're in (Kanto's once you've reached the Indigo Plateau).
 
 On the DS it works in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and White 2. Black, White and their sequels ask for no badge: once someone knows the move, every town you've arrived at is on the list.
+
+## Flying over the map
+
+In FireRed, LeafGreen, Ruby, Sapphire and Emerald in every language, Emerald Legacy, and the hacks Radical Red, Unbound, Glazed, Ultra Violet, Orange Islands, Ghost Grey, Let's Go, Odyssey, Gaia, Amethyst, Sword and Shield Ultimate Plus and GS Chronicles, a second blue button sits under the first one: `TAKE OFF`. Your Pokémon's bird swoops in, you climb on, and you can fly anywhere the game's world goes: over trees, mountains, water and buildings, from one route into the next town, with the D-pad. Hold `A` to fly faster. Nothing happens on the way: no wild Pokémon, no trainers spotting you, no doors pulling you in.
+
+Rather ride something else? `FLY ON`, in `SETTINGS` under `MAKEOVER`, swaps the bird for an air balloon, a helicopter or a zeppelin, with you inside. See [FLY ON](companion.md#fly-on).
+
+Your shadow follows on the ground below, and the bird leans the way you're flying: nose up on the way north, down on the way south, a little on a diagonal. Flying on a diagonal is about as fast as flying straight. With `ASPECT` set to `EXPAND`, flying on a diagonal glides smoothly instead of stepping a tile at a time.
+
+Press `B` (or tap the button again, which now says `LAND`) to come down. The bird finds the nearest spot you could walk on, flies you there and lands; if there's no ground anywhere near, you hear a buzz and keep flying, so head for land and try again. You can't fly past the edge of the game's world: the bird just turns.
+
+It needs what the game's own flight needs: the badge, a Pokémon in your party that knows the move, and being outdoors on foot or on your bike (not surfing). It's also a tile in the [quick menu](controls.md#the-quick-menu) and a hotkey, `FREE FLIGHT`, that you can give a button in `HOTKEYS`. A save state made in the air brings you back in the air.
+
+## The scenic way
+
+In a game that has it, flying to a town doesn't cut to the game's animation: you take off where you stand and fly there over the real map, the place names showing as you cross into each one, and land in front of the town's Pokémon Center. With `ASPECT` set to `EXPAND` the view zooms out while you fly, so you see more of the land going by, and the trip runs at double speed.
+
+After your first flight like this, a card asks whether to keep it. `KEEP IT` (or leaving the card until it goes) keeps it; `USE CLASSIC` goes back to the game's own animation. You can change it any time with `FLY STYLE` (in `SETTINGS`, under `GAMEPLAY`): `SCENIC` flies over the map, `CLASSIC` is the game's own way.
+
+A town you can't reach over land and sea from where you are (one behind gatehouses, one you only reach by diving, or another island group) gets the game's own flight instead. `SCENIC` works in the games that have `TAKE OFF`; other games always fly the classic way.
 
 ## Which games get a picture
 

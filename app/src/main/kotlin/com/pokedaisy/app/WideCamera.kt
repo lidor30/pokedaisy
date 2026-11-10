@@ -67,6 +67,12 @@ class WideCamera {
      * ([SCENE_MENU]: a zoomed-out one sat small in the middle) and anything else off the map always do, a picture over
      * the field never. */
     @Volatile var zoomOnText = true
+    /** The scenic FLY is in the air (EmulatorEngine.scenicFlight): the widest step, whatever the player picked, and the
+     * map's name sign over the field (the controls are locked, so it reads as text) leaves it out there. */
+    @Volatile var flightZoom = false
+    /** Any flight is up (FREE FLIGHT too): the map's name sign crossing into a new area (the controls are locked, so it
+     * reads as a text box) never pulls the zoom in. */
+    @Volatile var flying = false
     /** LOOK AROUND off: the right stick does nothing. */
     @Volatile var lookAround = true
 
@@ -129,7 +135,7 @@ class WideCamera {
 
         val wantsClose = when (scene) {
             SCENE_FIELD -> false
-            SCENE_TEXT -> zoomOnText
+            SCENE_TEXT -> zoomOnText && !flying && !flightZoom
             else -> true
         }
         // A fade decides nothing; nor does a picture over the field (FireRed's map preview, ~2 s): a pull-in and a
@@ -138,7 +144,7 @@ class WideCamera {
         else if (wantsClose) closeOverSince = 0L
         else if (closeOverSince == 0L) closeOverSince = now
         val close = closeOverSince == 0L || now - closeOverSince < RETURN_DELAY_NANOS
-        val target = if (close) fit else steps[level.coerceIn(0, steps.size - 1)]
+        val target = if (close) fit else if (flightZoom) steps.last() else steps[level.coerceIn(0, steps.size - 1)]
         // The zoom is a timed ease-in-out in log space (the same feel at every step): a new target starts a new
         // motion from wherever the last one is - a pull-in at the pace of what's coming, the way back out slower.
         if (target != tweenTarget) {

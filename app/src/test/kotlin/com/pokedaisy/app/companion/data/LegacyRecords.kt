@@ -195,6 +195,8 @@ val LEGACY_FIELD_ITEMS_FIRERED_REV1 = FieldItemFns(
         useFuncs = setOf(0x080A16F4L, 0x080A1710L, 0x080A172CL, 0x080A19ACL), // FieldUseFunc_Medicine, _Ether, _PpUp, _Repel
     ),
     fly = LEGACY_FLY_FIRERED_REV1,
+    // FREE FLIGHT came after the move to gamedata (2026-11-10): no hand-written one, the record's own.
+    flight = FLIGHT_FIRERED_REV1,
     pc = LEGACY_PC_FIRERED_REV1,
 )
 
@@ -218,6 +220,7 @@ val LEGACY_FIELD_ITEMS_EMERALD = FieldItemFns(
     ),
     fly = LEGACY_FLY_EMERALD,
     pc = LEGACY_PC_EMERALD,
+    flight = FLIGHT_EMERALD,
 )
 
 /** Retail LeafGreen rev 0 (BPGE): pret's pokefirered built clean as leafgreen (byte for byte retail, SHA1 574fa542...). */
@@ -232,6 +235,7 @@ val LEGACY_FIELD_ITEMS_LEAFGREEN_REV0 = FieldItemFns(
         useFuncs = setOf(0x080A16B4L, 0x080A16D0L, 0x080A16ECL, 0x080A196CL),
     ),
     fly = LEGACY_FLY_LEAFGREEN_REV0,
+    flight = FLIGHT_LEAFGREEN_REV0,
     pc = LEGACY_PC_LEAFGREEN_REV0,
 )
 
@@ -244,6 +248,7 @@ val LEGACY_FIELD_ITEMS_LEAFGREEN_REV1 = FieldItemFns(
         addBagItem = 0x0809A06CL, useFuncs = setOf(0x080A16C8L, 0x080A16E4L, 0x080A1700L, 0x080A1980L),
     ),
     fly = LEGACY_FLY_LEAFGREEN_REV1,
+    flight = FLIGHT_LEAFGREEN_REV1,
     pc = LEGACY_PC_LEAFGREEN_REV1,
 )
 

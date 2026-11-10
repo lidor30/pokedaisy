@@ -130,6 +130,11 @@ fun MapScreen(
                 }
             }
         }
+        // FREE FLIGHT's TAKE OFF (LAND while up), under FLY: the companion window goes, the game is the player's to steer.
+        val takeOff: (() -> Unit)? = fly?.takeIf { canFly && it.canFreeFlight() }?.let { f ->
+            { f.toggleFlight { r -> if (r != null) flyNote = flyMessage(r) } }
+        }
+        val flyingNow = fly?.flying() == true
         // Back to the player when they land somewhere else after FLY, or cross to another of the map's regions (the
         // Sevii ferry): a tile picked or a region flipped to before would keep the map away from where they are now.
         var flewFrom by remember { mutableStateOf<Int?>(null) }
@@ -200,6 +205,7 @@ fun MapScreen(
                 val m = rememberGbaTextMetrics(1f)
                 OptionButton(tr("PLACES"), m, onClick = { placesOpen = true })
                 if (openFly != null) FlyButton(openFly)
+                if (takeOff != null) TakeOffButton(takeOff, flyingNow)
                 if (selection != null) OptionButton(tr("ME"), m, onClick = { selection = null; cursorTile = null; shownOverride = null }, emphasis = true)
                 Spacer(Modifier.weight(1f))
                 // The game's X: in, and back out.
@@ -256,6 +262,7 @@ fun MapScreen(
                         awayFromPlayer = selection != null || (playerRegion != null && shown != playerRegion),
                         onPlaces = { placesOpen = true },
                         onFly = openFly,
+                        onTakeOff = takeOff, flying = flyingNow,
                         onRegion = { selection = null; cursorTile = null; shownOverride = (shown + 1) % model.images.size },
                         onMe = { selection = null; cursorTile = null; shownOverride = null },
                     )
@@ -669,6 +676,9 @@ private fun BoxScope.MapButtons(
     onMe: () -> Unit,
     /** FLY's button; null = none. */
     onFly: (() -> Unit)? = null,
+    /** FREE FLIGHT's TAKE OFF / LAND, under FLY; null = none. */
+    onTakeOff: (() -> Unit)? = null,
+    flying: Boolean = false,
 ) {
     val m = rememberGbaTextMetrics(1f)
     // Toward the map from a button: UP from the bottom row; LEFT from the top right (but between a row's own buttons),
@@ -687,6 +697,7 @@ private fun BoxScope.MapButtons(
             if (regionLabel != null) OptionButton(regionLabel, m, onClick = onRegion, modifier = toMap(up = true))
             OptionButton(tr("PLACES"), m, onClick = onPlaces, modifier = toMap(up = true))
             if (onFly != null) FlyButton(onFly, toMap(up = true))
+            if (onTakeOff != null) TakeOffButton(onTakeOff, flying, toMap(up = true))
             if (awayFromPlayer) OptionButton(tr("ME"), m, onClick = onMe, emphasis = true, modifier = toMap(up = true))
         }
         return
@@ -699,6 +710,7 @@ private fun BoxScope.MapButtons(
     ) {
         val lowest = when {
             awayFromPlayer -> "ME"
+            onTakeOff != null -> "TAKE OFF"
             onFly != null -> "FLY"
             else -> "TOP"
         }
@@ -707,6 +719,7 @@ private fun BoxScope.MapButtons(
             OptionButton(tr("PLACES"), m, onClick = onPlaces, modifier = toMap(left = regionLabel == null, down = lowest == "TOP"))
         }
         if (onFly != null) FlyButton(onFly, toMap(left = true, down = lowest == "FLY"))
+        if (onTakeOff != null) TakeOffButton(onTakeOff, flying, toMap(left = true, down = lowest == "TAKE OFF"))
         if (awayFromPlayer) OptionButton(tr("ME"), m, onClick = onMe, emphasis = true, modifier = toMap(left = true, down = true))
     }
 }
@@ -718,6 +731,16 @@ private fun FlyButton(onFly: () -> Unit, modifier: Modifier = Modifier) {
     val big = rememberGbaTextMetrics()
     OptionButton(
         tr("FLY"), big, onClick = onFly, modifier = modifier.widthIn(min = big.u * 56),
+        labelColors = OptionColors.fieldMove to OptionColors.fieldMoveShadow, frameLayers = OptionColors.fieldMoveLayers,
+    )
+}
+
+/** FREE FLIGHT's TAKE OFF (LAND while up), FLY's blue at its size. */
+@Composable
+private fun TakeOffButton(onClick: () -> Unit, flying: Boolean, modifier: Modifier = Modifier) {
+    val big = rememberGbaTextMetrics()
+    OptionButton(
+        if (flying) tr("LAND") else tr("TAKE OFF"), big, onClick = onClick, modifier = modifier.widthIn(min = big.u * 56),
         labelColors = OptionColors.fieldMove to OptionColors.fieldMoveShadow, frameLayers = OptionColors.fieldMoveLayers,
     )
 }

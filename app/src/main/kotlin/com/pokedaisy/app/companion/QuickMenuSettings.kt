@@ -13,6 +13,8 @@ import com.pokedaisy.app.companion.i18n.tk
 enum class QuickAction(val label: String) {
     PC(tk("PC")),
     FLY(tk("FLY")),
+    /** FREE FLIGHT (Flight.kt): up on the FLY bird, over anything, until LAND (or B). */
+    FLIGHT(tk("TAKE OFF")),
     /** The field move, where a party Pokémon knows it: a dark cave lit (companion.data.Flash). */
     FLASH(tk("FLASH")),
     REPEL(tk("REPEL")),

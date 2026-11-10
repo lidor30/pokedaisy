@@ -37,6 +37,8 @@ data class FieldItemFns(
     val itemNameLen: Int = 14,
     /** FLY from the MAP tab (Fly.kt); null = none. */
     val fly: FlyFns? = null,
+    /** FREE FLIGHT and the scenic FLY (Flight.kt, pk_flight.c); null = none. Needs [fly] too (its gates). */
+    val flight: FlightFns? = null,
     /** holdEffectParam's offset in struct Item where a build moved it off [itemNameLen] + 5 (Recharged Emerald dropped
      * the itemId field: 0x15 after its name[18]); null = the usual place. */
     val itemParamOffset: Int? = null,
@@ -189,6 +191,7 @@ val FIELD_ITEMS_EMERALD_LEGACY = FieldItemFns(
     ),
     fly = FLY_EMERALD_LEGACY,
     pc = PC_EMERALD_LEGACY,
+    flight = FLIGHT_EMERALD_LEGACY,
 )
 
 /** Ruby / Sapphire's party side, revs 1 and 2 alike (pret's pokeruby built clean as each, byte for byte retail): the
@@ -210,12 +213,14 @@ val FIELD_ITEMS_RUBY = FieldItemFns(
     party = RUBY_SAPPHIRE_PARTY,
     pc = PC_RUBY,
     fly = FLY_RUBY,
+    flight = FLIGHT_RUBY,
 )
 
 /** Retail Sapphire rev 1 / rev 2 (AXPE; SHA1 4722efb8... / 89b45fb1...): Ruby's code a few bytes on. */
 val FIELD_ITEMS_SAPPHIRE = FIELD_ITEMS_RUBY.copy(
     varGet = 0x08069278L, varSet = 0x08069294L, fieldControlsLocked = 0x0806556CL, items = 0x083C55DCL, pc = PC_SAPPHIRE,
     fly = FLY_SAPPHIRE,
+    flight = FLIGHT_SAPPHIRE,
 )
 
 /** Glazed 9.2.0: retail Emerald edited in place - Emerald's code and RAM, its VarGet / VarSet hooked into its own
@@ -225,6 +230,7 @@ val FIELD_ITEMS_GLAZED = FIELD_ITEMS_EMERALD.copy(
     // FLY as Emerald's: its towns sit in Hoenn's map slots, and its Fly map's exit (CB_ExitFlyMap) and sMapHealLocations
     // are retail's bytes - flown headless (a Tunod city's Pokémon Center). Johto's towns aren't in that table.
     codeCrcs = listOf(0x9D16316AL, 0xAC747C5FL) + FIELD_ITEMS_EMERALD.codeCrcs.drop(2),
+    flight = FLIGHT_GLAZED,
 )
 
 /**
@@ -498,6 +504,15 @@ private fun cfru(items: Long, unholdablePockets: Set<Int> = setOf(2, 4)): FieldI
     t.copy(items = items, party = t.party!!.copy(itemCount = 0x300, unholdablePockets = unholdablePockets)).u16Mapsecs()
 }
 
+/** FREE FLIGHT for a FireRed 1.0 hack edited in place, by its config (the Poller's, from its hash). */
+private fun fireRedHackFlight(gameCode: String, cfg: NativeConfig?): FlightFns? = when {
+    gameCode == "PUVV" -> FLIGHT_ULTRA_VIOLET
+    cfg == null -> null
+    cfg === NATIVE_GHOST_GREY || cfg === NATIVE_GHOST_GREY_V1_0_1 -> FLIGHT_GHOST_GREY
+    cfg === NATIVE_LETS_GO_PIKACHU || cfg === NATIVE_LETS_GO_EEVEE -> FLIGHT_LETS_GO
+    else -> null
+}
+
 /** FLY on a FireRed hack that widened map sections to 16 bits: its patched GetMapsecType counts as the game's. */
 private fun FieldItemFns.u16Mapsecs() = copy(fly = fly?.copy(getMapsecTypeAltCrc = GET_MAPSEC_TYPE_U16))
 
@@ -512,17 +527,22 @@ fun fieldItemsForGame(kind: GameKind?, gameCode: String, revision: Int, configur
 
 private fun fieldItemsByKind(kind: GameKind?, gameCode: String, revision: Int): FieldItemFns? = when (kind) {
     GameKind.GLAZED -> FIELD_ITEMS_GLAZED.takeIf { gameCode == "BPEE" }
-    GameKind.ORANGE_ISLANDS -> FIELD_ITEMS_PORTS["BPRE0"]?.u16Mapsecs().takeIf { gameCode == "BPRE" && revision == 0 }
+    GameKind.ORANGE_ISLANDS -> FIELD_ITEMS_PORTS["BPRE0"]?.u16Mapsecs()?.copy(flight = FLIGHT_ORANGE_ISLANDS)
+        .takeIf { gameCode == "BPRE" && revision == 0 }
     GameKind.HEART_AND_SOUL -> FIELD_ITEMS_HEART_AND_SOUL.takeIf { gameCode == "BPEE" }
     GameKind.IMPERIUM -> FIELD_ITEMS_IMPERIUM.takeIf { gameCode == "BPEE" }
     GameKind.LAZARUS -> FIELD_ITEMS_LAZARUS.takeIf { gameCode == "BPEE" }
-    GameKind.UNBOUND -> cfru(0x08876200L)?.let { t -> t.copy(fly = t.fly?.let(::flyUnbound)) }
-    GameKind.RADICAL_RED -> cfru(0x093C0000L)
-    GameKind.ODYSSEY, GameKind.GAIA -> cfru(0x083DB028L)
-    GameKind.AMETHYST -> cfru(0x0872DB0CL)
-    GameKind.SWORD_SHIELD -> cfru(0x093C0000L, unholdablePockets = setOf(4))
-    GameKind.GS_CHRONICLES -> cfru(0x08F70000L)
-    GameKind.FIRERED -> if (gameCode == "PUVV") FIELD_ITEMS_PORTS["BPRE0"] else fieldItemsFor(gameCode, revision)
+    GameKind.UNBOUND -> cfru(0x08876200L)?.let { t -> t.copy(fly = t.fly?.let(::flyUnbound), flight = FLIGHT_UNBOUND) }
+    GameKind.RADICAL_RED -> cfru(0x093C0000L)?.copy(flight = FLIGHT_RADICAL_RED)
+    GameKind.ODYSSEY -> cfru(0x083DB028L)?.copy(flight = FLIGHT_ODYSSEY)
+    GameKind.GAIA -> cfru(0x083DB028L)?.copy(flight = FLIGHT_GAIA)
+    GameKind.AMETHYST -> cfru(0x0872DB0CL)?.copy(flight = if (amethystV141) FLIGHT_AMETHYST_V141 else FLIGHT_AMETHYST)
+    GameKind.SWORD_SHIELD -> cfru(0x093C0000L, unholdablePockets = setOf(4))?.copy(flight = FLIGHT_SWORD_SHIELD)
+    GameKind.GS_CHRONICLES -> cfru(0x08F70000L)?.copy(flight = FLIGHT_GS_CHRONICLES)
+    // The FireRed 1.0 hacks edited in place run as FIRERED: their own flight record by their config (else rev 0's,
+    // which flightAllowed keeps to the retail ROM).
+    GameKind.FIRERED -> (if (gameCode == "PUVV") FIELD_ITEMS_PORTS["BPRE0"] else fieldItemsFor(gameCode, revision))
+        ?.let { t -> fireRedHackFlight(gameCode, activeNativeConfig)?.let { t.copy(flight = it) } ?: t }
     // Emerald Kaizo: retail's FLY code, but its map reload crashed when the game's ReturnToField came straight from the
     // field (headless, on retail's save: the first flight, or the fourth once the overworld's windows were freed first),
     // where the game's own Fly map flies fine. Off until it can be checked on a Kaizo save.
@@ -598,6 +618,8 @@ class FieldItemSupport(
     private val usable: Set<Int> = fns.party?.usable.orEmpty() + fns.repelItems,
     /** FLY's code is where [FieldItemFns.fly] says. */
     val canFly: Boolean = false,
+    /** FREE FLIGHT (Flight.kt): FLY's code and the flight's both where expected. */
+    val canFlight: Boolean = false,
     /** PC anywhere's code is where [FieldItemFns.pc] says. */
     val canPc: Boolean = false,
 ) {
@@ -632,7 +654,8 @@ fun fieldItemSupport(fns: FieldItemFns, read: (addr: Long, len: Int) -> ByteArra
         return FieldItemSupport(fns, emptySet(), repels, canFly = fly, canPc = pc)
     }
     val items = read(fns.items, party.itemCount * fns.itemSize)
-    return FieldItemSupport(fns, holdableItems(fns, items), usableItems(fns, items), canFly = fly, canPc = pc)
+    val flight = fly && fns.flight?.let { flightCodeMatches(it, read) } == true
+    return FieldItemSupport(fns, holdableItems(fns, items), usableItems(fns, items), canFly = fly, canPc = pc, canFlight = flight)
 }
 
 /** What the bag's GIVE takes (item_menu.c's Task_ItemContext_FieldGive): importance 0 and not a key

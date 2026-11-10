@@ -803,6 +803,7 @@ class PokeDaisyActivity : Activity() {
         override fun offered(action: com.pokedaisy.app.companion.QuickAction) = when (action) {
             com.pokedaisy.app.companion.QuickAction.PC -> itemUse.canPc()
             com.pokedaisy.app.companion.QuickAction.FLY -> flyAction.canFly()
+            com.pokedaisy.app.companion.QuickAction.FLIGHT -> flightSupport() != null
             // Only while a party Pokémon knows it (the snapshot's moves): the tile isn't there otherwise.
             com.pokedaisy.app.companion.QuickAction.FLASH -> flashFns() != null && fieldItemSupport()?.fns?.party != null &&
                 telemetry.snapshot.value.party.any { m -> !m.isEgg && m.moves.any { it.id == com.pokedaisy.app.companion.ui.FLASH_MOVE } }
@@ -824,6 +825,8 @@ class PokeDaisyActivity : Activity() {
         override fun repel(itemId: Int) = quickMenu.onRepel(itemId)
 
         override fun riding() = ::engine.isInitialized && engine.riding
+
+        override fun flying() = ::engine.isInitialized && engine.flightState != MgbaCore.FLIGHT_IDLE
 
         override fun wildEncounters() = Prefs(this@PokeDaisyActivity).wildEncounters
 
@@ -854,6 +857,7 @@ class PokeDaisyActivity : Activity() {
                 }
             }
             com.pokedaisy.app.companion.QuickAction.FLASH -> useFlash()
+            com.pokedaisy.app.companion.QuickAction.FLIGHT -> toggleFlight()
             // The menu picks the kind (QuickMenuState.onRepel): here only if asked straight, the weakest one held.
             com.pokedaisy.app.companion.QuickAction.REPEL ->
                 com.pokedaisy.app.companion.ui.repelKindsIn(snap).firstOrNull()?.let { quickMenu.onRepel(it) }
@@ -874,6 +878,157 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.QuickAction.LOAD_STATE -> if (!coopRefuses()) engine.requestLoadState(engine.currentSlot)
             com.pokedaisy.app.companion.QuickAction.FF -> engine.toggleFastForward()
             com.pokedaisy.app.companion.QuickAction.COMPANION -> if (::sidePanel.isInitialized) sidePanel.openPanel()
+        }
+    }
+
+    /** FREE FLIGHT here (Flight.kt): the game's tables (FieldItemFns.flight, retail FireRed rev 1 so far) with FLY's and the
+     * flight's code where expected. */
+    private fun flightSupport(): com.pokedaisy.app.companion.data.FieldItemSupport? =
+        fieldItemSupport()?.takeIf {
+            it.canFlight && it.fns.flight != null && !romIsGameBoy && !romIsNds &&
+                com.pokedaisy.app.companion.data.flightAllowed(telemetry.snapshot.value.game, telemetry.retailRom(), it.fns.flight)
+        }
+
+    /** Keeps pk_flight configured for the running game, every half second (the same words again change nothing): a
+     * resume state or save state taken in the air comes back flying, so the flight must know the game from the start. */
+    private fun syncFlight() {
+        if (!::engine.isInitialized || !engine.running) return
+        askFlyStyle()
+        val words = flightSupport()?.fns?.flight?.words(flightVehicle()) ?: return
+        engine.postToEmu { MgbaCore.pkFlightConfigure(words) }
+    }
+
+    /** MAKEOVER > FLY ON: what the flight's words ask pk_flight to draw. */
+    private fun flightVehicle() = com.pokedaisy.app.companion.data.FlightVehicle.of(Prefs(this).flightVehicleId)
+
+    /** A scenic FLY took off (UI thread): once it has landed, [askFlyStyle] may ask KEEP IT / USE CLASSIC. */
+    private var scenicFlown = false
+
+    /** When the landed flight's question goes up (uptime ms), 0 = not waiting. */
+    private var flyStyleAskAt = 0L
+
+    /** The first scenic FLY's landing asks whether to keep it (FlyStyleAsk), once ever, a moment after the bird is gone. */
+    private fun askFlyStyle() {
+        val now = android.os.SystemClock.uptimeMillis()
+        if (scenicFlown && !engine.scenicFlight && engine.flightState == MgbaCore.FLIGHT_IDLE) {
+            scenicFlown = false
+            if (!Prefs(this).flyStyleAsked) flyStyleAskAt = now + FLY_STYLE_ASK_DELAY_MS
+        }
+        if (flyStyleAskAt != 0L && now >= flyStyleAskAt && engine.onField.value && !engine.fieldLocked) {
+            flyStyleAskAt = 0L
+            com.pokedaisy.app.companion.ui.FlyStyleAsk.showing = true
+        }
+    }
+
+    /** FlyStyleAsk's answer: USE CLASSIC switches FLY STYLE; KEEP IT or a bar that ran out keeps SCENIC. Asked either way. */
+    private fun answerFlyStyle(style: com.pokedaisy.app.companion.FlyStyle?) {
+        val prefs = Prefs(this)
+        if (style == com.pokedaisy.app.companion.FlyStyle.CLASSIC) prefs.flyStyleId = style.id else prefs.flyStyleAsked = true
+    }
+
+    /** TAKE OFF, or LAND while up (the QUICK MENU, the MAP tab, the FREE FLIGHT hotkey). */
+    fun toggleFlight() {
+        if (!::engine.isInitialized || !engine.running) return
+        if (engine.flightState != MgbaCore.FLIGHT_IDLE) {
+            engine.postToEmu { MgbaCore.pkFlightLand() }
+            return
+        }
+        val support = flightSupport() ?: return showHud(com.pokedaisy.app.companion.ui.flyMessage(com.pokedaisy.app.companion.data.FlyResult.FAILED))
+        val words = support.fns.flight!!.words(flightVehicle())
+        val inBattle = telemetry.snapshot.value.inBattle
+        engine.requestFieldItemJob(inBattle) { calls, busy ->
+            val gate = com.pokedaisy.app.companion.data.flightCheck(support.fns, busy, calls)
+            var code = MgbaCore.FLIGHT_OK
+            if (gate == com.pokedaisy.app.companion.data.FlyResult.OK) {
+                MgbaCore.pkFlightConfigure(words)
+                code = MgbaCore.pkFlightTakeOff()
+            }
+            Log.i("pokedaisy", "free flight: $gate / $code")
+            runOnUiThread {
+                when {
+                    gate == com.pokedaisy.app.companion.data.FlyResult.OK && code == MgbaCore.FLIGHT_OK -> {
+                        com.pokedaisy.app.companion.FeatureTips.used(TipId.FLY)
+                        closeCompanionWindow()
+                        hudCloseTick.intValue++
+                    }
+                    gate != com.pokedaisy.app.companion.data.FlyResult.OK -> showHud(com.pokedaisy.app.companion.ui.flyMessage(
+                        if (inBattle && gate == com.pokedaisy.app.companion.data.FlyResult.NOT_NOW) com.pokedaisy.app.companion.data.FlyResult.IN_BATTLE else gate,
+                    ))
+                    code == MgbaCore.FLIGHT_NOT_ON_FOOT -> showHud(com.pokedaisy.app.companion.i18n.tr("You can only take off from land."))
+                    else -> showHud(com.pokedaisy.app.companion.ui.flyMessage(com.pokedaisy.app.companion.data.flightResult(code)))
+                }
+            }
+        }
+    }
+
+    /**
+     * The scenic FLY (FLY STYLE > SCENIC): up on the bird, then over the field to the town's landing spot along a route through
+     * the maps the game joins (ScenicFly.kt), EXPAND zoomed out and the game sped up while it's in the air (EmulatorEngine.scenicFlight).
+     * A town the player's map isn't joined to (Saffron's gatehouses, another island) gets the classic FLY ([classic]).
+     */
+    private fun scenicFly(
+        support: com.pokedaisy.app.companion.data.FieldItemSupport, mapsec: Int,
+        done: (com.pokedaisy.app.companion.data.FlyResult) -> Unit, classic: () -> Unit,
+    ) {
+        val fns = support.fns
+        val f = fns.flight!!
+        val fly = fns.fly!!
+        val words = f.words(flightVehicle())
+        val inBattle = telemetry.snapshot.value.inBattle
+        engine.requestFieldItemJob(inBattle) { calls, busy ->
+            val gate = com.pokedaisy.app.companion.data.flightCheck(fns, busy, calls)
+            if (gate != com.pokedaisy.app.companion.data.FlyResult.OK) {
+                val shown = if (inBattle && gate == com.pokedaisy.app.companion.data.FlyResult.NOT_NOW) com.pokedaisy.app.companion.data.FlyResult.IN_BATTLE else gate
+                runOnUiThread { done(shown) }
+                return@requestFieldItemJob
+            }
+            val world = runCatching {
+                val here = com.pokedaisy.app.companion.data.ScenicFly.here(f, calls::read) ?: return@runCatching null
+                val dest = com.pokedaisy.app.companion.data.ScenicFly.destination(fly, f, mapsec, calls::read) ?: return@runCatching null
+                val w = com.pokedaisy.app.companion.data.ScenicFly.read(f, here.first, calls::read) ?: return@runCatching null
+                Triple(w, here, dest).takeIf { w.placed(dest.first) != null }
+            }.getOrNull()
+            if (world == null) {
+                Log.i("pokedaisy", "scenic fly to $mapsec: not joined to here, classic")
+                runOnUiThread(classic)
+                return@requestFieldItemJob
+            }
+            // The path is plain arithmetic: off the emu thread.
+            Thread({
+                val (w, here, dest) = world
+                val route = runCatching { w.route(here.first, here.second, here.third, dest.first, dest.second, dest.third) }.getOrNull()
+                    ?.takeIf { it.size < com.pokedaisy.app.companion.data.ScenicFly.MAX_STEPS }
+                if (route == null) {
+                    Log.i("pokedaisy", "scenic fly to $mapsec: no route, classic")
+                    runOnUiThread(classic)
+                    return@Thread
+                }
+                engine.requestFieldItemJob(false) { c, busy2 ->
+                    val again = com.pokedaisy.app.companion.data.flightCheck(fns, busy2, c)
+                    var code = MgbaCore.FLIGHT_NOT_NOW
+                    if (again == com.pokedaisy.app.companion.data.FlyResult.OK) {
+                        MgbaCore.pkFlightConfigure(words)
+                        code = MgbaCore.pkFlightTakeOff()
+                        if (code == MgbaCore.FLIGHT_OK) {
+                            MgbaCore.pkFlightRoute(route)
+                            engine.scenicFlight = true
+                        }
+                    }
+                    Log.i("pokedaisy", "scenic fly to $mapsec: ${route.size} steps, $again / $code")
+                    runOnUiThread {
+                        when {
+                            code == MgbaCore.FLIGHT_OK -> {
+                                scenicFlown = true
+                                done(com.pokedaisy.app.companion.data.FlyResult.OK)
+                            }
+                            // Surfing: the bird can't take off from the water - the game's own FLY can.
+                            code == MgbaCore.FLIGHT_NOT_ON_FOOT -> classic()
+                            again != com.pokedaisy.app.companion.data.FlyResult.OK -> done(again)
+                            else -> done(com.pokedaisy.app.companion.data.flightResult(code))
+                        }
+                    }
+                }
+            }, "pokedaisy-scenic-fly").start()
         }
     }
 
@@ -973,6 +1128,15 @@ class PokeDaisyActivity : Activity() {
      * then once it's black the game's own Fly map choice. */
     private val flyAction = object : com.pokedaisy.app.companion.FlyAction {
         override fun canFly() = dsFly() || gen5Fly() || fieldItemSupport()?.canFly == true || gbField() != null
+
+        override fun canFreeFlight() = flightSupport() != null
+
+        override fun flying() = ::engine.isInitialized && engine.flightState != MgbaCore.FLIGHT_IDLE
+
+        override fun toggleFlight(done: (com.pokedaisy.app.companion.data.FlyResult?) -> Unit) {
+            this@PokeDaisyActivity.toggleFlight()
+            done(null)
+        }
 
         /** A DS game whose FLY pk_nds_call knows (Platinum, HeartGold / SoulSilver): its fly spots are the destinations
          * (spawn ids). */
@@ -1162,8 +1326,21 @@ class PokeDaisyActivity : Activity() {
                 done(com.pokedaisy.app.companion.data.FlyResult.FAILED)
                 return
             }
-            // The flight is the game's to show: the window over it goes.
+            // The flight is the game's to show: the window over it goes, and the HUD's panel it was picked from (its map).
             closeCompanionWindow()
+            hudCloseTick.intValue++
+            if (Prefs(this@PokeDaisyActivity).flyStyle == com.pokedaisy.app.companion.FlyStyle.SCENIC && flightSupport() != null) {
+                scenicFly(support, mapsec, done) { classicFly(support, mapsec, targets, done) }
+                return
+            }
+            classicFly(support, mapsec, targets, done)
+        }
+
+        /** The game's own FLY: its cut-in, flight and landing (Fly.kt's two steps). */
+        private fun classicFly(
+            support: com.pokedaisy.app.companion.data.FieldItemSupport, mapsec: Int, targets: com.pokedaisy.app.companion.data.FlyTargets,
+            done: (com.pokedaisy.app.companion.data.FlyResult) -> Unit,
+        ) {
             val inBattle = telemetry.snapshot.value.inBattle
             engine.requestFieldItemJob(inBattle) { calls, busy ->
                 val started = runCatching { com.pokedaisy.app.companion.data.flyStart(support.fns, mapsec, targets, busy, calls) }
@@ -1427,6 +1604,15 @@ class PokeDaisyActivity : Activity() {
         override val tradeEvolutions get() = Prefs(this@PokeDaisyActivity).tradeEvolutions
         override fun setTradeEvolutions(on: Boolean) { Prefs(this@PokeDaisyActivity).tradeEvolutions = on }
         override val tradeEvolutionsSupported get() = tradeEvoFns() != null
+        override val flyStyle get() = Prefs(this@PokeDaisyActivity).flyStyle
+        override fun setFlyStyle(style: com.pokedaisy.app.companion.FlyStyle) { Prefs(this@PokeDaisyActivity).flyStyleId = style.id }
+        override val flightVehicle get() = this@PokeDaisyActivity.flightVehicle()
+        override fun setFlightVehicle(v: com.pokedaisy.app.companion.data.FlightVehicle) {
+            Prefs(this@PokeDaisyActivity).flightVehicleId = v.id
+            syncFlight()   // the next frame is drawn in it, mid-flight too
+        }
+        override val flyStyleSupported get() = flightSupport() != null
+        override fun answerFlyStyle(style: com.pokedaisy.app.companion.FlyStyle?) = this@PokeDaisyActivity.answerFlyStyle(style)
         override val reusableTms get() = Prefs(this@PokeDaisyActivity).reusableTms
         override fun setReusableTms(on: Boolean) {
             if (coopRefuses()) return
@@ -4043,6 +4229,12 @@ class PokeDaisyActivity : Activity() {
                         cardModifier = androidx.compose.ui.Modifier.width(maxWidth * if (narrow) 0.94f else 0.54f),
                         maxWidth = maxWidth, keys = ::tipKeys, onTry = ::tryTip,
                     )
+                    com.pokedaisy.app.companion.ui.FlyStyleAskHost(
+                        active = !tipsOnCompanion.value, roomy = false,
+                        modifier = androidx.compose.ui.Modifier.padding(top = clearTop + 8.dp),
+                        cardModifier = androidx.compose.ui.Modifier.width(maxWidth * if (narrow) 0.94f else 0.54f),
+                        maxWidth = maxWidth, onAnswer = ::answerFlyStyle,
+                    )
                     // RetroAchievements' popups and challenge / tracker indicators, while no companion is on screen (a DS
                     // game's touch screen in its place, one screen's closed window): GitHub #500.
                     com.pokedaisy.app.companion.ui.AchievementPopupHost(
@@ -4070,6 +4262,7 @@ class PokeDaisyActivity : Activity() {
                     kotlinx.coroutines.delay(500)
                     val now = android.os.SystemClock.uptimeMillis()
                     runCatching { tickTips((now - last).coerceAtMost(1000)) }.onFailure { Log.w("pokedaisy", "tips", it) }
+                    runCatching { syncFlight() }.onFailure { Log.w("pokedaisy", "flight", it) }
                     last = now
                 }
             }
@@ -4278,6 +4471,7 @@ class PokeDaisyActivity : Activity() {
         if (coopLockState.value?.ui?.value?.let { it.waiting != null || it.partnerProposed } == true) return false
         if (expandOfferUp.value || bottomFocus.value || companionOverGame.value) return false
         if (!tipsOnCompanion.value && com.pokedaisy.app.companion.FeatureTips.scheduler?.current != null) return false
+        if (!tipsOnCompanion.value && com.pokedaisy.app.companion.ui.FlyStyleAsk.showing) return false
         return true
     }
 
@@ -4865,6 +5059,7 @@ class PokeDaisyActivity : Activity() {
                 }
             }
             Hotkeys.Action.QUICK_MENU -> triggerQuickMenu(e.pressed)
+            Hotkeys.Action.FREE_FLIGHT -> if (e.pressed) toggleFlight()
             Hotkeys.Action.MUTE -> if (e.pressed) {
                 val muted = !GameVolume.muted
                 setGameVolume(GameVolume.percent, muted)
@@ -5266,6 +5461,9 @@ class PokeDaisyActivity : Activity() {
         private const val PLAY_POSITIONS = 5
         /** How long a NUZLOCKE notice stays on the game screen: long enough to read in a battle's opening. */
         private const val NUZLOCKE_NOTICE_MS = 3500L
+
+        /** The scenic FLY's question a moment after landing, once the player stands in town. */
+        private const val FLY_STYLE_ASK_DELAY_MS = 1500L
         private const val EXTRA_DUMP_FIXTURE = "dumpFixture"
         private const val EXTRA_DUMP_FIXTURE_FORCE = "dumpFixtureForce"
         private const val EWRAM_BASE = 0x02000000L
