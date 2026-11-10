@@ -3029,6 +3029,15 @@ int main(int argc, char** argv) {
             for (const char* c = line + strlen("flightroute"); *c && n < 4096; c++)
                 if (*c == 'D' || *c == 'U' || *c == 'L' || *c == 'R') dirs[n++] = *c == 'D' ? 1 : *c == 'U' ? 2 : *c == 'L' ? 3 : 4;
             printf("flight: route %d (%d steps)\n", pk_flight_route(dirs, n), n);
+        } else if (!strcmp(cmd, "flightarea")) {
+            // flightarea [G.N ...]: FLIGHT AREA's maps (decimal group.num), none = anywhere
+            static uint8_t bits[PK_FLIGHT_AREA_BYTES];
+            memset(bits, 0, sizeof bits);
+            int n = 0, g, m, used;
+            for (const char* q = line + strlen("flightarea"); sscanf(q, " %d.%d%n", &g, &m, &used) == 2; q += used, n++)
+                bits[((g << 8) | m) >> 3] |= (uint8_t) (1u << (m & 7));
+            pk_flight_set_area(n ? bits : NULL, n ? (int) sizeof bits : 0);
+            printf("flight: area %d map(s)\n", n);
         } else if (!strcmp(cmd, "flightinfo")) {
             char info[300];
             pk_flight_info(core, info, sizeof(info));

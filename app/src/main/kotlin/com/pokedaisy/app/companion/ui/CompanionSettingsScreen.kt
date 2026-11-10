@@ -43,6 +43,7 @@ import com.pokedaisy.app.companion.CompanionSettings
 import com.pokedaisy.app.companion.KeyCapture
 import com.pokedaisy.app.companion.BattleStyle
 import com.pokedaisy.app.companion.FlyStyle
+import com.pokedaisy.app.companion.FlightAreaMode
 import com.pokedaisy.app.companion.FfMode
 import com.pokedaisy.app.companion.GameAspect
 import com.pokedaisy.app.companion.hasGrid
@@ -590,6 +591,16 @@ private fun homeRows(
         ) {
             if (s.flyStyleSupported) {
                 s.setFlyStyle(if (s.flyStyle == FlyStyle.SCENIC) FlyStyle.CLASSIC else FlyStyle.SCENIC)
+                changed()
+            }
+        },
+        // Where FREE FLIGHT and the scenic FLY may go: the maps seen (FlightArea.kt) or anywhere. Two values: a tap flips it.
+        SettingRow(
+            tk("FLIGHT AREA"), if (s.flyStyleSupported) s.flightArea.label else tk("N/A"),
+            enabled = s.flyStyleSupported, labelBadge = NewFeatures.badge(NewFeatures.FLIGHT_AREA),
+        ) {
+            if (s.flyStyleSupported) {
+                s.setFlightArea(if (s.flightArea == FlightAreaMode.SEEN) FlightAreaMode.ANYWHERE else FlightAreaMode.SEEN)
                 changed()
             }
         },

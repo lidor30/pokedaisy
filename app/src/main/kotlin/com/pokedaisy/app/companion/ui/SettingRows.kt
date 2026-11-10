@@ -188,6 +188,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "TRADE EVOS" to "trade evolutions trading evolve evolves evolution evolutions traded link cable friend second game without trading held item",
     "INSTANT TEXT" to "instant text speed fast dialogue dialog words letters message box skip immediately faster",
     "FLY ON" to "fly on vehicle balloon hot air balloon helicopter zeppelin airship blimp ride mount bird flight free flight take off",
+    "FLIGHT AREA" to "flight area where you've been where you have been anywhere visited seen places limit restrict progress story skip sequence break free flight take off fly over map achievements",
     "FLY STYLE" to "fly style scenic classic flight animation flying over map travel town cutscene bird fly to",
     "REUSABLE TMS" to "reusable tm tms technical machine machines reuse infinite unlimited keep tm single use consumed used up teach moves",
     "SHINY ODDS" to "shiny shinies shiny odds shiny rate shiny hunting hunt shiny charm sparkle rare color colour chance",

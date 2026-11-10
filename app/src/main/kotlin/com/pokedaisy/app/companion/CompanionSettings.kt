@@ -66,6 +66,9 @@ interface CompanionSettings {
     val flyStyle: FlyStyle get() = FlyStyle.CLASSIC
     fun setFlyStyle(style: FlyStyle) {}
     val flyStyleSupported: Boolean get() = false
+    /** FLIGHT AREA (where [flyStyleSupported]) - see [com.pokedaisy.app.Prefs.flightAreaId]. */
+    val flightArea: FlightAreaMode get() = FlightAreaMode.SEEN
+    fun setFlightArea(mode: FlightAreaMode) {}
     /** MAKEOVER > FLY ON (where [flyStyleSupported]): the bird, or a vehicle with the player in it. */
     val flightVehicle: com.pokedaisy.app.companion.data.FlightVehicle get() = com.pokedaisy.app.companion.data.FlightVehicle.BIRD
     fun setFlightVehicle(v: com.pokedaisy.app.companion.data.FlightVehicle) {}
@@ -616,6 +619,20 @@ enum class FfMusicMode(val label: String) {
 
     /** Silent. */
     OFF(tk("OFF")),
+}
+
+/** SETTINGS > FLIGHT AREA: where FREE FLIGHT and the scenic FLY may go (companion.data.FlightArea). [label] stays English. */
+enum class FlightAreaMode(val id: Int, val label: String) {
+    /** Only over maps the player has seen: the save's towns, the routes between them, maps with a beaten trainer, every map stood on. */
+    SEEN(0, tk("WHERE YOU'VE BEEN")),
+
+    /** Anywhere the game's world goes; RetroAchievements pause from the first take-off. */
+    ANYWHERE(1, tk("ANYWHERE")),
+    ;
+
+    companion object {
+        fun of(id: Int): FlightAreaMode = entries.firstOrNull { it.id == id } ?: SEEN
+    }
 }
 
 /** SETTINGS > FLY STYLE: how the companion's FLY (MAP, QUICK MENU) gets there. [label] stays English; the row translates it. */

@@ -57,6 +57,10 @@ object MgbaCore {
     external fun pkFlightLand()
     /** The scenic FLY: flies [dirs] (1 down, 2 up, 3 left, 4 right) at the faster speed, then lands. */
     external fun pkFlightRoute(dirs: ByteArray): Int
+    /** FLIGHT AREA (companion.data.FlightArea): a bit per map (group shl 8 or num) the flight may cross into, null = anywhere. Emu thread. */
+    external fun pkFlightArea(bits: ByteArray?)
+    /** True once after the D-pad met FLIGHT AREA's edge (a map the player hasn't seen). Emu thread. */
+    external fun pkFlightAreaTurned(): Boolean
     /** [FLIGHT_IDLE], [FLIGHT_TAKING_OFF], [FLIGHT_FLYING], [FLIGHT_LANDING] or [FLIGHT_DISMOUNT]. */
     external fun pkFlightState(): Int
     /** Steps of the route flown so far, -1 with none. */

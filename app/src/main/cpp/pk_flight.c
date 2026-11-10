@@ -132,13 +132,41 @@ static int flOnField(struct mCore* core) {
     return !(core->busRead8(core, flCfg[PK_FLIGHT_PALETTE_FADE] + 7) & 0x80);
 }
 
-/** Whether VMap tile (x, y), past the current map's [dir] edge, belongs to a connected map on the no-fly list: the
+/** Whether VMap tile (x, y), past the current map's [dir] edge, belongs to a connected map on the no-fly list (or one
+ * FLIGHT AREA leaves out: pk_flight_set_area): the
  * map's connections (gMapHeader +0xC: {u8 dir, s32 offset, u8 group, u8 num}, 12 bytes) in that direction, each covering
  * its own width (or height) from its offset along the edge. */
+static uint8_t flArea[PK_FLIGHT_AREA_BYTES];   // FLIGHT AREA: a bit per map (group << 8 | num) the flight may cross into
+static int flAreaOn;
+static int flAreaStop;      // the last flPassable said no because of FLIGHT AREA
+static int flAreaTurned;    // the D-pad met FLIGHT AREA's edge since pk_flight_area_turned last asked
+
+void pk_flight_set_area(const uint8_t* bits, int n) {
+    if (!bits || n <= 0) {
+        flAreaOn = 0;
+        return;
+    }
+    memset(flArea, 0, sizeof flArea);
+    memcpy(flArea, bits, (size_t) (n < PK_FLIGHT_AREA_BYTES ? n : PK_FLIGHT_AREA_BYTES));
+    flAreaOn = 1;
+}
+
+int pk_flight_area_turned(void) {
+    int t = flAreaTurned;
+    flAreaTurned = 0;
+    return t;
+}
+
+/** Map [id] (group << 8 | num) is outside FLIGHT AREA's maps. */
+static int flOutsideArea(uint32_t id) {
+    return flAreaOn && !((flArea[(id >> 3) & (PK_FLIGHT_AREA_BYTES - 1)] >> (id & 7)) & 1);
+}
+
 static int flNoFlyAt(struct mCore* core, int x, int y, int xs, int ys, int dir) {
     uint32_t a = flCfg[PK_FLIGHT_NO_FLY], b = flCfg[PK_FLIGHT_NO_FLY + 1];
     uint32_t ids[4] = { a & 0xFFFF, a >> 16, b & 0xFFFF, b >> 16 };
-    if (!flCfg[PK_FLIGHT_MAP_HEADER] || !flCfg[PK_FLIGHT_MAP_GROUPS] || (ids[0] == 0xFFFF && ids[2] == 0xFFFF && ids[1] == 0xFFFF && ids[3] == 0xFFFF))
+    if (!flCfg[PK_FLIGHT_MAP_HEADER] || !flCfg[PK_FLIGHT_MAP_GROUPS] ||
+        (!flAreaOn && ids[0] == 0xFFFF && ids[2] == 0xFFFF && ids[1] == 0xFFFF && ids[3] == 0xFFFF))
         return 0;
     uint32_t conns = core->busRead32(core, flCfg[PK_FLIGHT_MAP_HEADER] + 0xC);
     if (conns < 0x08000000u || conns >= 0x0A000000u) return 0;
@@ -151,15 +179,16 @@ static int flNoFlyAt(struct mCore* core, int x, int y, int xs, int ys, int dir) 
         uint32_t e = list + 12u * (uint32_t) i;
         if ((int) core->busRead8(core, e) != dir) continue;
         uint32_t g = core->busRead8(core, e + 8), m = core->busRead8(core, e + 9), id = g << 8 | m;
-        if (id != ids[0] && id != ids[1] && id != ids[2] && id != ids[3]) continue;
+        int listed = id == ids[0] || id == ids[1] || id == ids[2] || id == ids[3];
+        if (!listed && !flOutsideArea(id)) continue;
         int off = (int) core->busRead32(core, e + 4);
         uint32_t grp = (core->busRead32(core, flCfg[PK_FLIGHT_MAP_GROUPS] + 4 * g) ^ flCfg[PK_FLIGHT_MAP_GROUPS_XOR]);
         uint32_t hdr = grp ? core->busRead32(core, grp + 4 * m) : 0;
         uint32_t lay = hdr ? core->busRead32(core, hdr) : 0;
-        if (!lay) return 1;   // can't tell its span: keep out
+        if (!lay) { flAreaStop = !listed; return 1; }   // can't tell its span: keep out
         int tw = (int) core->busRead32(core, lay), th = (int) core->busRead32(core, lay + 4);
         int along = dir == FL_DIR_SOUTH || dir == FL_DIR_NORTH ? lx : ly, span = dir == FL_DIR_SOUTH || dir == FL_DIR_NORTH ? tw : th;
-        if (along >= off && along < off + span) return 1;
+        if (along >= off && along < off + span) { flAreaStop = !listed; return 1; }
     }
     return 0;
 }
@@ -323,6 +352,7 @@ static void flMendDraw(struct mCore* core) {
 /** GetMapBorderIdAt != CONNECTION_INVALID, read from RAM (fieldmap.c): inside the map, or past an edge that has a
  * connection. The same answer CanCameraMoveInDirection gives the player's next tile. */
 static int flPassable(struct mCore* core, int x, int y) {
+    flAreaStop = 0;
     uint32_t vmap = flCfg[PK_FLIGHT_VMAP];
     int xs = (int) core->busRead32(core, vmap), ys = (int) core->busRead32(core, vmap + 4);
     uint32_t map = core->busRead32(core, vmap + 8);
@@ -1158,6 +1188,7 @@ void pk_flight_tick(struct mCore* core) {
                 // The world's edge: the bird turns (above), the player stays - or, on a diagonal, flies on the other way.
                 flFacing = dir;
                 if (horizontal) { flLastHorizontal = dir; flBlockedH = 1; } else flBlockedV = 1;
+                if (flAreaStop) flAreaTurned = 1;
                 break;
             }
             if (horizontal) flBlockedH = 0; else flBlockedV = 0;

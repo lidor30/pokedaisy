@@ -2295,6 +2295,19 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
   and Emerald's from Oldale Town (every town but Sootopolis, reached only by diving). SCENIC is FLY STYLE's default;
   the first scenic landing asks once (`FlyStyleAsk`, the tip card's look where the tips go: KEEP IT / USE CLASSIC, the bar
   running out keeps it; `Prefs.flyStyleAsked`, also set by any FLY STYLE pick).
+- **FLIGHT AREA** (GAMEPLAY, `Prefs.flightAreaId`, `FlightAreaMode`; `FlightArea.kt`): WHERE YOU'VE BEEN (default) keeps the
+  flight to maps the player has seen, so it can't skip the story. The games keep no record of routes, so the app keeps one per
+  save (`FlightArea.SeenMaps`, `filesDir/flight-area/<rom crc>-<save key>.txt`, the key a CRC of SaveBlock2's name, gender
+  and trainer ID): every map stood on (a field job every half second, `Keeper.tick`), and, the first time a save is met in a
+  run, what the save proves (`FlightArea.seed`): the towns GetMapsecType calls visited, the maps on a shortest way between two
+  of them through non-town maps, and maps where FlagGet(0x500 + trainer id) is set for a trainerbattle object (the trainer id
+  at +2, or +3 in the expansion's 1.12+ TrainerBattleParameter: voted per ROM by where the text pointer's top byte sits) -
+  only next to a map already in, so a hack that numbers its trainer flags otherwise can't open a far map (Quetzal: none, its
+  flag check is a region-badge one). pk_flight gets a bit per map (`pk_flight_set_area`, `MgbaCore.pkFlightArea`; kept
+  across configure / reset), `flNoFlyAt` turns the bird at a connection to a map not in it and `pk_flight_area_turned` lets
+  the app say why; `ScenicFly.read(allowed)` plans over those maps. ANYWHERE sends none and pauses RetroAchievements from the
+  first take-off (`RetroAchievements.setFlightAnywhere`) until it's switched back. `FlightAreaTest` checks the maps and
+  trainers read on every flight hack's ROM and the seeds on FireRed / Emerald's saves; mgba_dump `flightarea G.N ...`.
 - **FLY ON** (MAKEOVER, `Prefs.flightVehicleId`, `FlightVehicle`, the PK_FLIGHT_VEHICLE word): an air balloon, a helicopter
   or a zeppelin in place of the bird, our own pixel art from `scripts/gen_flight_vehicles.py` (parts shaded by a normal lit
   from the top left over a colour ramp, coloured outlines; rerun it after changing the art) -> `pk_flight_vehicles.h`.

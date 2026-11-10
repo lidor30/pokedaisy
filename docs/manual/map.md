@@ -3,7 +3,7 @@ title: Map
 summary: The game's own region map with you on it, tapping a spot to name it, and finding any town or route from the PLACES list.
 section: companion
 order: 6
-keywords: [town map, region map, location, where am i, places, route, city, fly, sevii, islands, find, free flight, take off, land, fly over, scenic, bird]
+keywords: [town map, region map, location, where am i, places, route, city, fly, sevii, islands, find, free flight, take off, land, fly over, scenic, bird, flight area, visited, where you've been, anywhere]
 ---
 
 The `MAP` tab is the game's town map, always open. It answers "where am I?" at a glance and "where is that town the guide mentioned?" in two taps, without digging the map out of your bag.
@@ -68,6 +68,22 @@ Press `B` (or tap the button again, which now says `LAND`) to come down. The bir
 In games where a Pokémon walks behind you, it goes back to its ball as you take off, as it does for the game's own flight, and comes out again at your first steps after landing.
 
 It needs what the game's own flight needs: the badge, a Pokémon in your party that knows the move, and being outdoors on foot or on your bike (not surfing). It's also a tile in the [quick menu](controls.md#the-quick-menu) and a hotkey, `FREE FLIGHT`, that you can give a button in `HOTKEYS`. A save state made in the air brings you back in the air.
+
+## Where you can fly
+
+`FLIGHT AREA` (in `SETTINGS`, under `GAMEPLAY`) keeps flying from skipping the story. On `WHERE YOU'VE BEEN`, the default, you fly only over places you've already been. At the edge of a place you haven't been, the bird turns back and a note says you haven't been there yet. That way you can't fly past a guard, a sleeping giant blocking the road or a cave you haven't made it through yet.
+
+PokeDaisy keeps a list of the places you've been for each save, and it grows by itself as you walk. The first time it meets a save, it fills the list from what the save already shows:
+
+- every town you can fly to,
+- the routes between two of those towns, since you crossed them to get there,
+- every place where you've beaten a trainer, when it's next to one already on the list.
+
+So a save from late in the game flies almost everywhere right away. A place with no town and no trainer, or one you skipped, needs one walk in before you can fly over it. The list is PokeDaisy's own: your save doesn't change.
+
+On `ANYWHERE`, you can fly wherever the game's world goes. If you're signed in to RetroAchievements, achievements pause the first time you take off this way, since flying ahead could reach a set's places early. They come back on when you switch to `WHERE YOU'VE BEEN` again.
+
+[The scenic way](#the-scenic-way) follows the same rule: a town you can't reach over places you've been gets the game's own flight instead.
 
 ## The scenic way
 
