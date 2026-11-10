@@ -22,6 +22,7 @@ struct devlink_stats {
     unsigned late;        // loops over a refresh (16.7 ms)
     unsigned runUs, waitUs, wideUs, snapUs; // of coreUs: the game itself, waiting for its renderer, EXPAND (with that wait), the snapshot
     unsigned gaps, drops, rate;             // sound: the queue ran dry, a chunk had no room, the channel's rate x 1000
+    unsigned redraws, redrawWorstUs;        // the companion's redraws and the slowest one
 };
 
 void devlink_start(void);

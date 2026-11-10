@@ -54,8 +54,13 @@ struct pd_battle_mon {
     uint32_t status;
     int moves[PD_NUM_MOVES];
     int pp[PD_NUM_MOVES];
-    // Optional live Gen 2 battle fields, in Attack/Defense/Speed/Sp.Atk/Sp.Def order.
+    // Optional live battle fields, in Attack/Defense/Speed/Sp.Atk/Sp.Def order: a Gen 2 game's, and a Gen 3 game's where its
+    // layout maps them (hasFacts: the ability too, and statStages - HP, Atk, Def, Speed, Sp. Atk, Sp. Def, accuracy,
+    // evasion, 6 = unchanged).
     int heldItem, stats[5];
+    int ability;
+    signed char stages[8];
+    bool hasFacts;
     bool shiny; // by its personality and OT ID, where the game's shiny check is known
 };
 

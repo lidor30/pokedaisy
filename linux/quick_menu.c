@@ -10,7 +10,13 @@
 #include <string.h>
 
 #define TILE_W 74
-#define TILE_H 42
+#define TILE_H 46 // QuickMenu.kt: 8u above and under the icon and its name
+#define TILE_GAP 10
+#define SHADOW 3      // the battle HP box's tail (HUD_SHADOW)
+#define SHADE 0x80060810u
+#define FACE_TOP 0xC8283044u // HudGlassFace: the glass a step lighter on top, its own colour under
+#define FACE_LOW 0xAA121620u
+#define SELECTED 0x00F07038u // HUD_SELECTED: the party screen's orange
 #define GLASS_FILL 0xB8121620u // FieldHud.kt's GLASS_FILL / _EDGE (ARGB)
 #define GLASS_EDGE 0x66FFFFFFu
 #define FOCUS 0x00FF7331u      // AppColors.focusRing
@@ -121,9 +127,23 @@ static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int s
     }
 }
 
+// A HUD window (hudPanel): the HP box's shadow down and right, then the glass with its pixel edge.
 static void glass(struct pd_canvas *c, int x, int y, int w, int h) {
+  pd_round_rect(c, x + SHADOW, y + SHADOW, w, h, 5, SHADE);
   pd_round_rect(c, x, y, w, h, 4, GLASS_EDGE);
   pd_round_rect(c, x + 1, y + 1, w - 2, h - 2, 3, GLASS_FILL);
+}
+
+// A tile (hudButtonFace, see-through): the shadow, the glass's two-tone face inside its edge, the picked one ringed in orange.
+static void tile_face(struct pd_canvas *c, int x, int y, int w, int h, bool selected) {
+  pd_round_rect(c, x + SHADOW, y + SHADOW, w, h, 4, SHADE);
+  pd_round_rect(c, x, y, w, h, 4, GLASS_EDGE);
+  int in = 1;
+  if (selected) {
+    pd_round_rect(c, x + 1, y + 1, w - 2, h - 2, 3, SELECTED);
+    in = 2;
+  }
+  pd_two_tone(c, x + in, y + in, w - 2 * in, h - 2 * in, 4 - in, FACE_TOP, FACE_LOW, 1);
 }
 
 /* GRID (QuickMenuStyle.GRID; Keegan Whitacre's layout, pokedaisy-brick): the width fitted, rows balanced, the short
@@ -147,7 +167,7 @@ int quick_hit(int x, int y) { return hit_find(x, y); }
 int quick_list_hit(int x, int y) { return hit_find(x, y); }
 void quick_set_grid(bool grid) { gridMode = grid; }
 static void grid_shape(int n, int w, int *cols, int *rows) {
-  int fit = (w - 24 + 6) / (TILE_W + 6);
+  int fit = (w - 24 + TILE_GAP) / (TILE_W + TILE_GAP);
   if (fit < 1)
     fit = 1;
   if (fit > n)
@@ -161,8 +181,8 @@ static void grid_place(int n, int i, int w, int h, int *x, int *y) {
   int row = i / cols, count = n - row * cols;
   if (count > cols)
     count = cols;
-  *x = (w - (count * TILE_W + (count - 1) * 6)) / 2 + (i % cols) * (TILE_W + 6);
-  *y = (h - (rows * TILE_H + (rows - 1) * 6 + 52)) / 2 + row * (TILE_H + 6);
+  *x = (w - (count * TILE_W + (count - 1) * TILE_GAP)) / 2 + (i % cols) * (TILE_W + TILE_GAP);
+  *y = (h - (rows * TILE_H + (rows - 1) * TILE_GAP + 52)) / 2 + row * (TILE_H + TILE_GAP);
 }
 
 // Where tile i sits: round an ellipse that fits the canvas (a circle where it can be), the first at the top.
@@ -215,19 +235,17 @@ bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick
     int x, y;
     place(n, i, c->w, c->h, &x, &y);
     hit_add(x, y, TILE_W, TILE_H, i);
-    if (i == sel)
-      pd_round_rect(c, x - 2, y - 2, TILE_W + 4, TILE_H + 4, 5, FOCUS);
-    glass(c, x, y, TILE_W, TILE_H);
+    tile_face(c, x, y, TILE_W, TILE_H, i == sel);
     bool dim = items[i].why != NULL;
     // The game's own art where there is some (the Pokémon that would FLY, the bag's item), pixel art otherwise,
     // as QuickIcon draws them.
     bool art = false;
     if (items[i].action == QUICK_FLY)
-      art = pd_draw_mon_icon(c, g, items[i].species, x + (TILE_W - PD_ICON) / 2, y - 3, dim);
+      art = pd_draw_mon_icon(c, g, items[i].species, x + (TILE_W - PD_ICON) / 2, y - 1, dim);
     else if (items[i].item)
-      art = pd_draw_item_icon(c, g, items[i].item, x + (TILE_W - PD_ITEM_ICON) / 2, y + 2, dim);
+      art = pd_draw_item_icon(c, g, items[i].item, x + (TILE_W - PD_ITEM_ICON) / 2, y + 4, dim);
     if (!art)
-      icon(c, items[i].action, x + TILE_W / 2, y + 14, 1, dim || items[i].off);
+      icon(c, items[i].action, x + TILE_W / 2, y + 16, 1, dim || items[i].off);
     const char *label = items[i].label ? items[i].label : quick_label(items[i].action);
     int lw = pd_text_width(label);
     pd_text(c, x + (TILE_W - lw) / 2, y + TILE_H - 16, label, dim ? MUTED : items[i].lit ? FOCUS : INK,
@@ -250,7 +268,7 @@ bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick
     if (gridMode) { // under the tiles
       int cols, rows;
       grid_shape(n, c->w, &cols, &rows);
-      y = (c->h - (rows * TILE_H + (rows - 1) * 6 + 52)) / 2 + rows * (TILE_H + 6) + 6;
+      y = (c->h - (rows * TILE_H + (rows - 1) * TILE_GAP + 52)) / 2 + rows * (TILE_H + TILE_GAP) + 6;
     }
     glass(c, x, y, w, h);
     pd_text(c, x + (w - nw) / 2, y + 4, name, INK, INK_SHADOW);

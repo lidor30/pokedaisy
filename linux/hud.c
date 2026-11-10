@@ -18,8 +18,8 @@ struct look {
   bool window;
 };
 static const struct look LOOKS[PD_HUD_LOOKS] = {
-    {0xB8121620u, 0x66FFFFFFu, 0xF4F6FA, 0x0C0F15, 0xFFCF5A, 0xB2BACB, 0x59FFFFFFu, false},
-    {0xC4F6F7FAu, 0x59000000u, 0x262B34, 0xD9DCE3, 0xC8321E, 0x6A7282, 0x4D000000u, false},
+    {0xA0121620u, 0x66FFFFFFu, 0xF4F6FA, 0x0C0F15, 0xFFCF5A, 0xB2BACB, 0x59FFFFFFu, false},
+    {0xACF6F7FAu, 0x59000000u, 0x262B34, 0xD9DCE3, 0xC8321E, 0x6A7282, 0x4D000000u, false},
     {0xFFFFFF, 0x8C8C94, 0x575656, 0xBCBBB4, 0xCB0707, 0x8C8C94, 0xFFE9A8, true}, // the FireRed window look, whatever the game
 };
 
@@ -39,6 +39,10 @@ static bool small; // hud_state.compact (not CompactLayout, the HUD without part
 #define MON_ROW_W (TILE + 4 + 44)
 #define BUTTON_H (3 + 16 + 1 + LINE + 3)
 #define RAIL_MIN 70 // a rail's least width (FieldHud's u * 50; COMPANION's button in this font)
+// The battle HP box's tail (HUD_SHADOW, the user's pick of five looks): every window's shadow this far down and right.
+#define SHADOW (small ? 2 : 3)
+// The party screen's orange (HUD_SELECTED): the picked one.
+#define HUD_SELECTED 0xF07038
 
 struct hud {
   struct pd_canvas *c;
@@ -250,7 +254,9 @@ static void hit(struct hud *u, int x, int y, int w, int h, int id) {
 
 void hud_focus_draw(struct pd_canvas *c, const struct pd_settings *st, const struct hud_hits *out, int focus) {
   if (focus < 0) return;
-  const uint32_t accent = LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0].accent;
+  // The party screen's orange (HUD_SELECTED), as the HUD's picked one.
+  (void) st;
+  const uint32_t accent = HUD_SELECTED;
   for (int i = 0; out && i < out->n; i++)
     if (out->at[i].id == focus) {
       int x = out->at[i].x - 3, y = out->at[i].y - 3, w = out->at[i].w + 6, hh = out->at[i].h + 6;
@@ -300,7 +306,11 @@ int hud_step(const struct hud_hits *hh, int cur, int horizontal, int vertical) {
   return best >= 0 ? hh->at[best].id : cur;
 }
 
+// A HUD window shaped like the games' battle HP box (hudPanel): its shadow down and right, then the look's window - the
+// OPTION title window, or a see-through panel with a pixel edge.
 static void panel(struct hud *u, int x, int y, int w, int h) {
+  uint32_t shade = u->L->window ? pd_cur->title[0].color : u->L == &LOOKS[0] ? 0x80060810u : 0x4C141820u;
+  pd_round_rect(u->c, x + SHADOW, y + SHADOW, w, h, 4, shade);
   if (u->L->window) {
     pd_title_box(u->c, x, y, w, h, PD_TITLE_FILL);
     return;
@@ -354,7 +364,27 @@ static void status_chip(struct pd_canvas *c, int cx, int y, const char *label) {
   pd_text(c, cx - w / 2 + 3, y - 2, label, 0xFFFFFF, PD_NO_SHADOW);
 }
 
-// One member's icon at (x, y) in a TILE-wide slot: faded when fainted, its status chip over the top.
+// One member's status chip (HudMonTag), centred on cx: FNT when fainted, nothing for an egg or a healthy one.
+static void mon_tag(struct hud *u, const struct pd_mon *m, int cx, int y) {
+  bool egg = m->species == PD_SPECIES_EGG;
+  const char *status = egg ? "" : m->hp == 0 ? "FNT" : pd_status_label(m->status);
+  if (*status)
+    status_chip(u->c, cx, y, status);
+}
+
+// Someone has a status tag (or fainted): the party's tiles get a row for the tags over their icons, and its window is that
+// much taller; with none it's shorter (the user's call).
+static bool tag_row(const struct hud *u) {
+  for (int i = 0; i < u->partyN; i++) {
+    const struct pd_mon *m = &u->s->party[i];
+    if (m->species != PD_SPECIES_EGG && (m->hp == 0 || *pd_status_label(m->status)))
+      return true;
+  }
+  return false;
+}
+#define TAG_H 15 // a tag and the room under it
+
+// One member's icon at (x, y) in a TILE-wide slot, faded when fainted.
 static void mon_icon(struct hud *u, const struct pd_mon *m, int x, int y) {
   bool egg = m->species == PD_SPECIES_EGG, fainted = !egg && m->hp == 0;
   int ix = x + (TILE - PD_ICON) / 2;
@@ -367,47 +397,33 @@ static void mon_icon(struct hud *u, const struct pd_mon *m, int x, int y) {
   } else {
     pd_draw_mon_icon_shiny(u->c, u->g, m->species, m->shiny, ix, y - 5, 1, fainted);
   }
-  const char *status = egg ? "" : fainted ? "FNT" : pd_status_label(m->status);
-  if (*status)
-    status_chip(u->c, x + TILE / 2, y - 3, status);
-}
-
-// The lead (the one that goes out first): a lit cell with an accent edge.
-static void lead(struct hud *u, int x, int y, int w, int h) {
-  pd_round_rect(u->c, x, y, w, h, 3, u->L->accent);
-  pd_round_rect(u->c, x + 1, y + 1, w - 2, h - 2, 3, u->L->cellOn);
 }
 
 #define COMPACT_ICON_H 21 // what shows of it: a Pokémon stands at the bottom of its picture
-#define TILE_H (small ? COMPACT_ICON_H + 5 : 26 + LINE + 6)
+// The sprite, room under it, the HP bar (no level and no lit lead: the party at a glance, HudMonTile).
+#define TILE_H (small ? COMPACT_ICON_H + 5 : 26 + 3 + 5)
 static int tiles_width(const struct hud *u) { return u->partyN ? u->partyN * TILE + (u->partyN - 1) * TILE_GAP : 0; }
 
-// The party as tiles from (x, y) (HudMonTile): icon, then Lv and the HP bar under it.
+// The party as tiles from (x, y) (HudMonTile): the tags' row when anyone has one, the icon, the HP bar under it.
 static void party_tiles(struct hud *u, int x, int y) {
+  int tags = tag_row(u) ? TAG_H : 0;
   for (int i = 0; i < u->partyN; i++, x += TILE + TILE_GAP) {
     const struct pd_mon *m = &u->s->party[i];
-    if (i == 0)
-      lead(u, x - 2, y - 2, TILE + 4, TILE_H + 4);
-    mon_icon(u, m, x, y);
-    hit(u, x - 2, y - 2, TILE + 4, TILE_H + 4, HUD_SLOT + i);
+    if (tags)
+      mon_tag(u, m, x + TILE / 2, y);
+    mon_icon(u, m, x, y + tags);
+    hit(u, x - 2, y - 2, TILE + 4, TILE_H + tags + 4, HUD_SLOT + i);
     if (m->species == PD_SPECIES_EGG)
       continue;
-    if (small) { // no level: the party tab has it
-      hp_bar(u->c, x, y + COMPACT_ICON_H, TILE, m->hp, m->maxHp);
-      continue;
-    }
-    char lv[8];
-    snprintf(lv, sizeof lv, "Lv%d", m->level);
-    text(u, x + (TILE - pd_text_width(lv)) / 2, y + 24, lv, u->L->text);
-    hp_bar(u->c, x, y + 26 + LINE, TILE, m->hp, m->maxHp);
+    hp_bar(u->c, x, y + tags + (small ? COMPACT_ICON_H : 29), TILE, m->hp, m->maxHp);
   }
 }
 
-#define PARTY_H (2 * PAD + 2 + TILE_H)
+static int party_h(const struct hud *u) { return 2 * PAD + 2 + TILE_H + (tag_row(u) ? TAG_H : 0); }
 static int party_width(const struct hud *u) { return u->partyN ? 2 * PAD + 2 + tiles_width(u) : 0; }
 
 static void party_row(struct hud *u, int x, int y) {
-  panel(u, x, y, party_width(u), PARTY_H);
+  panel(u, x, y, party_width(u), party_h(u));
   party_tiles(u, x + PAD + 1, y + PAD + 1);
 }
 
@@ -421,17 +437,15 @@ static void party_column(struct hud *u, int x, int y, int w) {
   int rx = x + PAD + 1, ry = y + PAD + 1;
   for (int i = 0; i < u->partyN; i++, ry += MON_ROW_H + GAP) {
     const struct pd_mon *m = &u->s->party[i];
-    if (i == 0)
-      lead(u, rx - 1, ry - 1, w - 2 * PAD, MON_ROW_H + 2);
     mon_icon(u, m, rx, ry + 2);
     hit(u, rx - 1, ry - 1, w - 2 * PAD, MON_ROW_H + 2, HUD_SLOT + i);
     if (m->species == PD_SPECIES_EGG)
       continue;
-    char lv[8];
-    snprintf(lv, sizeof lv, "Lv%d", m->level);
-    int tx = rx + TILE + 3;
-    text(u, tx, ry + 2, lv, u->L->text);
-    hp_bar(u->c, tx, ry + 4 + LINE + 2, w - 2 * PAD - 2 - TILE - 6, m->hp, m->maxHp);
+    // HudMonRow: the icon, then its status tag (if any) over the HP bar.
+    int tx = rx + TILE + 3, bw = w - 2 * PAD - 2 - TILE - 6;
+    if (m->hp == 0 || *pd_status_label(m->status))
+      mon_tag(u, m, tx + 14, ry + 3);
+    hp_bar(u->c, tx, ry + MON_ROW_H - 10, bw, m->hp, m->maxHp);
   }
 }
 
@@ -783,7 +797,7 @@ static void corners(struct hud *u, bool swapped) {
   if (u->map)
     minimap(u, R - EDGE - minimap_w(mw), swapped ? H - EDGE - minimap_h(mh, 1) : EDGE, mw, mh, 1);
   if (u->partyN)
-    party_row(u, u->x0 + EDGE, H - EDGE - PARTY_H);
+    party_row(u, u->x0 + EDGE, H - EDGE - party_h(u));
   int cw = column_w(u, BOTTOM_UP, 3, false);
   if (swapped)
     column(u, TOP_DOWN, 3, false, R - EDGE - cw, cw, 1, EDGE, false);
@@ -829,7 +843,7 @@ static void dock(struct hud *u) {
       minimap(u, W - EDGE - minimap_w(80), EDGE, 80, 52, 1);
     return;
   }
-  int barW = 2 * 5 + inner, barH = 2 * PAD + 2 + (u->partyN ? TILE_H : BUTTON_H);
+  int barW = 2 * 5 + inner, barH = 2 * PAD + 2 + (u->partyN ? TILE_H + (tag_row(u) ? TAG_H : 0) : BUTTON_H);
   if (barW + 2 * EDGE > W) {
     corners(u, false);
     return;
@@ -922,8 +936,8 @@ void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx,
   sizes = &NORMAL_SIZES;
   struct hud u = {.c = c, .s = s, .h = &none, .st = &defaults, .monDraw = draw, .monCtx = ctx, .L = &LOOKS[0], .x1 = c->w};
   u.partyN = s->partyCount < PD_PARTY_SIZE ? s->partyCount : PD_PARTY_SIZE;
-  if (c->w >= party_width(&u) + 2 * EDGE && c->h >= PARTY_H + 2 * EDGE)
-    party_row(&u, EDGE, c->h - EDGE - PARTY_H);
+  if (c->w >= party_width(&u) + 2 * EDGE && c->h >= party_h(&u) + 2 * EDGE)
+    party_row(&u, EDGE, c->h - EDGE - party_h(&u));
 }
 
 void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct hud_state *h,
@@ -945,14 +959,14 @@ void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct 
   if (minimal) {
     if (!u.balls && !u.repel && shows(&u, PD_HUD_PARTY) && s->partyCount) {
       u.partyN = 1;
-      party_row(&u, EDGE, c->h - EDGE - PARTY_H);
+      party_row(&u, EDGE, c->h - EDGE - party_h(&u));
     } else compact(&u);
     return;
   }
   if (u.partyN)
-    party_row(&u, EDGE, c->h - EDGE - PARTY_H);
+    party_row(&u, EDGE, c->h - EDGE - party_h(&u));
   int width = column_w(&u, BOTTOM_UP, 3, false);
-  int bottom = c->h - EDGE - (tight(&u) ? PARTY_H + GAP : 0);
+  int bottom = c->h - EDGE - (tight(&u) ? party_h(&u) + GAP : 0);
   column(&u, BOTTOM_UP, 3, false, right - EDGE - width, width, 1, bottom, true);
 }
 

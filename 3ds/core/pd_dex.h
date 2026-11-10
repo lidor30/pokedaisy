@@ -5,6 +5,7 @@
 #define PD_DEX_H
 
 #include <stdbool.h>
+#include <stddef.h>
 #include <stdint.h>
 
 #include "pd_game.h"
@@ -29,6 +30,8 @@ struct pd_dex_entry {
 // Whether g's ROM has this port's POKéDEX tables (the app's probe: entry 1
 // is SEED, 7 dm, 69 hg; species 1 is national 1).
 bool pd_dex_available(const struct pd_game* g);
+// An ability's name from the ROM ("" where the game's table isn't known).
+void pd_dex_ability_name(const struct pd_game* g, int id, char* out, size_t outLen);
 // The species for a national number (0 = none), and back.
 int pd_dex_species(const struct pd_game* g, int national);
 int pd_dex_national(const struct pd_game* g, int species);

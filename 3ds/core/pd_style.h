@@ -41,6 +41,13 @@ extern uint32_t pd_backdrop_colors[3];
 // A colour of a game's own backdrop art under the same wash and scrim.
 uint32_t pd_backdrop_tint(uint32_t rgb);
 
+// The summary's Separator: a dark line beside a light one (OptionLook.separatorDark / Light).
+void pd_separator(struct pd_canvas* c, int x, int y, int len, bool vertical);
+// A battle-screen colour under dark mode's scrim (BattlePlaceholder's night()).
+uint32_t pd_battle_tint(uint32_t rgb);
+// The BATTLE tab's background (BattleBackdrop).
+void pd_battle_backdrop(struct pd_canvas* c);
+
 struct pd_game;
 struct pd_settings;
 // What the screens are drawn in: [g] may be NULL (the library).

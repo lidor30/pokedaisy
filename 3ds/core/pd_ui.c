@@ -258,8 +258,9 @@ static bool on_bar(const struct pd_ui* ui, enum pd_tab t) {
 }
 
 static void chip(struct pd_ui* ui, struct pd_canvas* c, int x, int w, bool open, int id) {
-    pd_layered_box(c, x, BAR_Y(c), w, CHIP_H, 3, pd_cur->chip, pd_cur->chipCount,
-                   open || ui->pressedId == id ? pd_cur->tabSelectedFill : pd_cur->tabIdleFill);
+    // HeartGold's two-tone face, like every companion button (the app's tab chips).
+    pd_layered_two_tone(c, x, BAR_Y(c), w, CHIP_H, 3, pd_cur->chip, pd_cur->chipCount,
+                        open || ui->pressedId == id ? pd_cur->tabSelectedFill : pd_cur->tabIdleFill, 0);
     ui_add_hit(ui, x, BAR_Y(c), w, CHIP_H, id);
 }
 
@@ -324,7 +325,7 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
 static bool focusable(int id) {
     return !(id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) && id != HIT_MORE && id != HIT_FF && id != HIT_SCRIM && id != HIT_BAG_LIST &&
         id != HIT_DEX_LIST && id != HIT_GUIDE_LIST && id != HIT_SETTINGS_LIST && id != HIT_SCROLL_BAR &&
-        id != HIT_SHOULDER_L && id != HIT_SHOULDER_R;
+        id != HIT_SHOULDER_L && id != HIT_SHOULDER_R && !(id >= HIT_SETTINGS_GROUP && id < HIT_SETTINGS_GROUP + 10);
 }
 
 static int focus_index(const struct pd_ui* ui, int id) {
@@ -392,7 +393,12 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     ui->drawn = s;
     ui->drawnGame = g;
     ui->hostHasStates = host && host->hasStates;
-    if (!ui->keepBackdrop && !pd_party_backdrop(c, g)) pd_backdrop(c);
+    // The BATTLE tab: the DS battle screens' mint and Poké Ball in place of the game's backdrop (a Game Boy game keeps its
+    // own plain look).
+    if (!ui->keepBackdrop) {
+        if (ui->tab == PD_TAB_BATTLE && ui->overlay != PD_OVERLAY_MORE && !pd_gb_look) pd_battle_backdrop(c);
+        else if (!pd_party_backdrop(c, g)) pd_backdrop(c);
+    }
     tab_bar(ui, c, g, host);
     // The tabs draw above the bar: the same pixels, a shorter canvas.
     struct pd_canvas full = *c, view = *c;
@@ -534,6 +540,8 @@ static void act(struct pd_ui* ui, int id) {
     } else if (id == HIT_MORE_TAB_BAR) {
         ui->tab = PD_TAB_SETTINGS;
         ui->overlay = PD_OVERLAY_TAB_BAR;
+    } else if (id >= HIT_SETTINGS_GROUP && id < HIT_SETTINGS_GROUP + 10) {
+        ui_settings_group(ui, id - HIT_SETTINGS_GROUP);
     } else if (id == HIT_SETTING + SETTING_TAB_BAR) {
         ui->overlay = PD_OVERLAY_TAB_BAR;
     } else if (id == HIT_SETTING + SETTING_HUD) {

@@ -21,34 +21,42 @@ const struct pd_party_layout pd_party_layout_vanilla = {
 const struct pd_battle_layout pd_battle_layout_vanilla = {
     .size = 88, .species = 0, .moves = 12, .type1 = 33, .type2 = 34, .pp = 36, .hp = 40, .level = 42,
     .maxHp = 44, .status = 76, .speciesMask = 0xFFFF, .personality = 0x48, .otId = 0x54,
+    .ability = 0x20, .item = 0x2E, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_expansion = {
     .size = 96, .species = 0, .moves = 12, .type1 = 34, .type2 = 35, .pp = 37, .hp = 42, .level = 44,
     .maxHp = 46, .status = 80, .speciesMask = 0xFFFF, .personality = 0x4C, .otId = 0x58,
+    .ability = 0x20, .abilityU16 = true, .item = 0x30, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_tmt2 = {
     .size = 96, .species = 0, .moves = 12, .type1 = 34, .type2 = 35, .pp = 38, .hp = 42, .level = 44,
     .maxHp = 46, .status = 80, .speciesMask = 0xFFFF, .personality = 0x4C, .otId = 0x58,
+    .ability = 0x20, .abilityU16 = true, .item = 0x30, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_team_rocket = {
     .size = 92, .species = 0, .moves = 12, .type1 = 34, .type2 = 35, .pp = 37, .hp = 42, .level = 44,
     .maxHp = 46, .status = 80, .speciesMask = 0xFFFF, .personality = 0x4C, .otId = 0x58,
+    .ability = 0x20, .abilityU16 = true, .item = 0x30, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_wishes = {
     .size = 136, .species = 0, .moves = 12, .type1 = 34, .type2 = 35, .pp = 37, .hp = 42, .level = 44,
     .maxHp = 46, .status = 80, .speciesMask = 0xFFFF, .personality = 0x4C, .otId = 0x58,
+    .ability = 0x20, .abilityU16 = true, .item = 0x30, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_rowe = {
     .size = 96, .species = 0, .moves = 12, .type1 = 34, .type2 = 35, .pp = 37, .hp = 42, .level = 44,
     .maxHp = 46, .status = 80, .speciesMask = 0x7FF, .personality = 0x4C, .otId = 0x58,
+    .ability = 0x20, .abilityU16 = true, .item = 0x30, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_soulgold = {
     .size = 152, .species = 0, .moves = 12, .type1 = 34, .type2 = 35, .pp = 37, .hp = 42, .level = 44,
     .maxHp = 46, .status = 84, .speciesMask = 0xFFFF, .personality = 0x50, .otId = 0x88,
+    .ability = 0x20, .abilityU16 = true, .item = 0x30, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_elite_redux = {
     .size = 104, .species = 20, .moves = 32, .type1 = 68, .type2 = 69, .pp = 71, .hp = 54, .level = 75,
     .maxHp = 56, .status = 8, .speciesMask = 0xFFFF,
+    .ability = 0x28, .abilityU16 = true, .item = 0x3A, .stats = 0x16, .stages = 0x3C, .facts = true,
 };
 // Monomyth: vanilla's struct, its substructs XORed with a key of its own and its natures its own (MONOMYTH_PARTY_MON).
 const struct pd_party_layout pd_party_layout_monomyth = {
@@ -60,6 +68,7 @@ const struct pd_party_layout pd_party_layout_monomyth = {
 const struct pd_battle_layout pd_battle_layout_monomyth = {
     .size = 0x58, .species = 0x0C, .moves = 0x18, .type1 = 0x0F, .type2 = 0x10, .pp = 0x00, .hp = 0x2C, .level = 0x12,
     .maxHp = 0x2E, .status = 0x30, .speciesMask = 0xFFFF, .personality = 0x40, .otId = 0x38,
+    .ability = 0x0E, .item = 0x20, .stats = 0x22, .stages = 0x04, .facts = true,
 };
 // Pokemon Quetzal: a 0x68-byte plaintext struct (expansion's, bit-packed HP and status), egg flag in the IV word.
 const struct pd_party_layout pd_party_layout_quetzal = {

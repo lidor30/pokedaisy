@@ -679,8 +679,14 @@ static bool run_game(const char* file) {
         }
 
         if (session.redraw) {
+            DEV_MARK(redrawStart);
             pd_session_draw(&session, &bottom);
             gpu_set_bottom(bottomPx);
+#ifdef PD_DEV
+            unsigned took = TICKS_TO_US(svcGetSystemTick() - redrawStart);
+            dev.redraws++;
+            if (took > dev.redrawWorstUs) dev.redrawWorstUs = took;
+#endif
         }
         DEV_MARK(drawStart);
         gpu_set_perf(perfPicture, session.perfRight - perfWidth, 3, settings.showPerf ? perfWidth : 0);

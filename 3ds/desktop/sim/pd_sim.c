@@ -10,6 +10,7 @@
 //   aspect N / screen N  the ASPECT and SCREEN settings
 //   hit ID             the stylus on the companion's hit with that id, then 4 frames
 //   hits               prints what can be tapped
+//   bench N            times N redraws of the companion as it is now
 //   shot NAME          NAME.png: the two screens as the console shows them
 //   wild SPECIES LEVEL a wild battle now (setwildbattle / dowildbattle through ScriptContext_SetupScript)
 //   wait-state S [MAX] frames until the battle waits for S (none busy action move bag party target)
@@ -23,6 +24,7 @@
 #include <ctype.h>
 #include <fcntl.h>
 #include <stdio.h>
+#include <time.h>
 #include <stdlib.h>
 #include <string.h>
 #include <unistd.h>
@@ -269,6 +271,18 @@ static void command(char* line) {
             const struct pd_hit* h = &session.ui.hits[i];
             printf("hit %d at %d,%d %dx%d\n", h->id, h->x, h->y, h->w, h->h);
         }
+    } else if (!strcmp(cmd, "bench")) {
+        // The companion's draw, timed: N redraws of what's up now (a host's cost, not a 3DS's: compare screens with it).
+        int n = atoi(args) > 0 ? atoi(args) : 200;
+        struct timespec t0, t1;
+        clock_gettime(CLOCK_MONOTONIC, &t0);
+        for (int i = 0; i < n; i++) {
+            session.redraw = true;
+            redraw();
+        }
+        clock_gettime(CLOCK_MONOTONIC, &t1);
+        double us = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / 1e3 / n;
+        printf("bench tab %d: %.1f us a draw\n", (int) session.ui.tab, us);
     } else if (!strcmp(cmd, "shot")) {
         shot(args);
     } else if (!strcmp(cmd, "wild") && sscanf(args, "%d %d", &a, &b) == 2) {

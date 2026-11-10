@@ -318,12 +318,12 @@ static bool cmd_stat(int fd) {
     u64 start = svcGetSystemTick();
     for (u32 i = 4000000; i; i--) __asm__ volatile("");
     unsigned clockUs = (unsigned) ((svcGetSystemTick() - start) / (SYSCLOCK_ARM11 / 1000000));
-    char text[256];
+    char text[320];
     int n = snprintf(text, sizeof(text),
                      "frames=%u core_us=%u ui_us=%u draw_us=%u worst_us=%u late=%u linear_free=%u new3ds=%d shown=%u clock_us=%u "
-                     "run_us=%u wait_us=%u wide_us=%u snap_us=%u gaps=%u drops=%u rate=%u\n",
+                     "run_us=%u wait_us=%u wide_us=%u snap_us=%u gaps=%u drops=%u rate=%u redraws=%u redraw_worst_us=%u\n",
                      s.frames, s.coreUs, s.uiUs, s.drawUs, s.worstUs, s.late, (unsigned) linearSpaceFree(), isNew, gpu_frames_shown(), clockUs,
-                     s.runUs, s.waitUs, s.wideUs, s.snapUs, s.gaps, s.drops, s.rate);
+                     s.runUs, s.waitUs, s.wideUs, s.snapUs, s.gaps, s.drops, s.rate, s.redraws, s.redrawWorstUs);
     return reply(fd, text, (size_t) n);
 }
 

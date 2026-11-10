@@ -407,6 +407,7 @@ struct pd_ui {
     bool battleChoosingMove; // FIGHT tapped: our move grid, FIGHT not sent yet
     unsigned foeSeen;
     int foeSelected, foeShown;
+    bool foeDetails; // FOE DETAILS: INFO gives the foe the page (Prefs.foeDetails, kept across battles)
     int lastFoeActive, lastFoeNext;
     int summarySlot; // party slot whose summary is open, -1 = none
     bool summaryLearn, summaryCanLearn;

@@ -142,6 +142,10 @@ struct pd_battle_layout {
     int size, species, moves, type1, type2, pp, hp, level, maxHp, status;
     unsigned speciesMask;
     int personality, otId; // u32s for the SHINY marks; 0 = not mapped
+    // FOE DETAILS (BattleMonLayout's ability / item / stats / statStages): the ability a byte or a u16, the held item, the
+    // five stats (u16: Attack, Defense, Speed, Sp. Atk, Sp. Def), statStages[8] (6 = unchanged); facts false = not mapped.
+    int ability, item, stats, stages;
+    bool abilityU16, facts;
 };
 extern const struct pd_battle_layout pd_battle_layout_vanilla, pd_battle_layout_expansion, pd_battle_layout_tmt2,
     pd_battle_layout_team_rocket, pd_battle_layout_wishes, pd_battle_layout_rowe, pd_battle_layout_soulgold,

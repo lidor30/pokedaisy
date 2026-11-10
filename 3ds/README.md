@@ -31,7 +31,8 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   of the save before every start in `sdmc:/pokedaisy/roms/pokedaisy-backups/`
   (newest 10 per game) - the repo's "save files are sacred" rule.
 - Settings kept in `sdmc:/pokedaisy/settings.ini`.
-- The companion, in the app's FireRed OPTION-screen look:
+- The companion, in the app's FireRed OPTION-screen look with 1.5.0's buttons: every tab chip, button and tile has
+  HeartGold's two-tone face (`pd_two_tone`, the app's drawTwoTone).
   - **PARTY**: two columns of three across the whole width, each card the game's own where
     the app has its art: its own height and paddings, widened only, shown as big as three
     rows allow (4/3 or 5/4 in sharp bilinear like the game on the top screen, 1x under the
@@ -40,10 +41,14 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     backdrop from your ROM, by RomArt's fingerprints. Any other game keeps the slot in its
     palette (`PartySlot` / `SlotGeometry`), edge to edge like
     `PartyGrid`; tap one for its summary (moves, type, PP).
-  - **BATTLE**: opens by itself in a battle and goes back after it. **INFO**:
-    the foe and you (with the game's own party icons, read from your ROM),
-    your moves with the app's verdicts (SUPER 2x / NEUTRAL 1x / RESISTED 1/2x /
-    IMMUNE 0x / STATUS). **SUGGESTIONS**: your party's three best picks against
+  - **BATTLE**: opens by itself in a battle and goes back after it, over the DS battle screens' mint and Poké Ball.
+    The controls are HeartGold's layout and buttons: FIGHT over the four pale move places, BAG and POKéMON in the
+    corners with RUN between them a little lower, the moves as HeartGold's cards (the type's colour round white over
+    beige). **INFO**: you and the foe side by side (side, icon, type tags, level, HP), your moves with
+    the app's verdict pills (SUPER 2x / NEUTRAL 1x / RESISTED 1/2x / IMMUNE 0x / STATUS) on the left and what the
+    foe is WEAK TO / RESISTS / IMMUNE TO on the right. Its corner button opens **FOE DETAILS**: your side shrinks to a
+    strip (icon, HP standing up) and the foe gets the page - its ability (named from the ROM), held item, live stats with
+    stage pills, and its moves with what each does to you. **SUGGESTIONS**: your party's three best picks against
     the foe, each with its best move and verdict (OUT on the one already in
     battle) - the app's ranking. In a trainer battle the bar under both carries
     the **FOE TEAM**: the trainer's party in order, Poké Balls until sent out
@@ -78,10 +83,10 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
     sprite compression, Gen 2's LZ, Crystal Clear's dictionary, Prism's packed text,
     Polished Crystal's Huffman). `make gb-check EXPORT=<a gameExport>` holds every
     page, picture and wild list of every cart against the app's own reading.
-  - **SETTINGS** (the gear): place, money, file and speed, then SCREEN and
-    FAST-FORWARD (pick-lists), TAB BAR (which tabs sit on the bar, at most five;
-    the rest open from a MORE chip), SAVE STATE / LOAD STATE / LEAVE GAME
-    (confirmed). The list scrolls (a drag) where it doesn't fit.
+  - **SETTINGS** (the gear): GAME (place, money, file and speed), FF / SPEED, SOUND, GAMEPLAY, SCREEN and
+    COMPANION, with the app's group tabs down the left outside the list's window (a tap scrolls to the group,
+    the group in view lit); TAB BAR (which tabs sit on the bar, at most five; the rest open from MORE, a grid of
+    tiles across the whole width), CLOSE GAME / RESTART GAME. The list scrolls (a drag) where it doesn't fit.
   - **TRAINER CARD** (the button in SETTINGS' title, like the app's TOOLS): the
     game's own card, drawn from your ROM's art pixel for pixel - name, ID,
     money, POKéDEX, play time with its blinking colon, badges, stars, the
@@ -100,7 +105,9 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   on the GBA games with their handlers known and on every Game Boy game (its 2x2 menu in the cart's own words).
 - **QUICK MENU** (Y): PC, FLY, REPEL, BIKE, WILD, states, FF. The Game Boy games have PC, FLY and WILD (`GbField`).
 - **EXPAND / ZOOM OUT** on the games the app has it for, Game Boy too, and the **HUD** (party, minimap, balls,
-  Repel steps), kept to the game's picture without EXPAND.
+  Repel steps), kept to the game's picture without EXPAND, in the app's battle HP box look: every window with its
+  shadow down and right, the party as sprite and HP bar (status tags in a row of their own), the QUICK MENU's tiles
+  two-tone glass with the party screen's orange on the picked one.
 - **BOXES**: the PC's boxes live, in FireRed's and Emerald's colours and wallpapers; encrypted, plain and CFRU
   storage. WITHDRAW, DEPOSIT and SWAP through the game's own functions where the app has them.
 - **USE / GIVE / TAKE**, the summary's STATS, the bag's SORT, **DEX** sections (INFO, EVOLVE, AREA, MOVES on
@@ -125,7 +132,11 @@ runs another build of that one; Amethyst, Dreamstone Mysteries and Wishes of Tom
 Sound plays at the DSP's own 32728 Hz, a sample out for a sample in. A game under full speed can't make its sound in time, so the
 channel's rate follows how fast the chunks arrive (`audio_follow` in `ctr/main.c`): the music slows with the game rather than breaking
 up, down to 85%, and is back at exactly 1 at full speed. `stat` on the dev link reports `gaps`, `drops` and the `rate`, with where a
-frame went (`run_us` the game, `wait_us` its renderer, `wide_us` EXPAND, `snap_us` the snapshot).
+frame went (`run_us` the game, `wait_us` its renderer, `wide_us` EXPAND, `snap_us` the snapshot), and the companion's `redraws`
+with the slowest (`redraw_worst_us`). A redraw runs between two game frames, so it's paid in frame time: about 3.5-7 ms on a
+New 3DS (a 320 x 240 x 4 memcpy alone is 1-1.8 ms there; a desktop is ~150x faster, so judge screens against each other with
+the simulator's `bench N`). Boxes paint each frame layer once (`pd_canvas.c`'s rings), text is clipped a row at a time with its
+shadow in one pass, and PARTY's scaled cards are kept until the party, cursor or look changes.
 
 ## Controls
 
@@ -186,7 +197,7 @@ in `roms/` (a new one shows after `restart`). Never in a release build.
 
 `make sim` builds `build/sim/pd_sim` (`desktop/sim/`): the real session (`host/`) and companion over the real mGBA,
 with no 3DS code, from a script of `run`, `press`, `quick`, `tap`, `hit ID`, `hits`, `shot`, `wild`, `wait-state`,
-`press-to-state`, `poke`, `peek`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`. `make sim-test` runs
+`press-to-state`, `poke`, `peek`, `state`, `expect`, `aspect`, `screen`, `dark`, `theme`, `bench` (times the companion's redraw). `make sim-test` runs
 `test/sim_*.txt` on FireRed and Emerald (`ROM_DIR`, `SAVE_DIR`), `make sim-test-gb` the Game Boy script on Yellow; saves
 are copied first, never written.
 

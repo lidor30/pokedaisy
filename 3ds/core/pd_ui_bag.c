@@ -361,7 +361,7 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
         // SORT: under the tabs, like the description bar's corner.
         static const char* const SORTS[3] = { "DEFAULT", "NAME", "COUNT" };
         int sy = sortY, sw = tabW - 4;
-        pd_layered_box(c, MARGIN, sy, sw, 22, 3, p->desc, p->descLayers, p->descFill);
+        pd_layered_two_tone(c, MARGIN, sy, sw, 22, 3, p->desc, p->descLayers, p->descFill, 0);
         const char* sortLabel = SORTS[ui->bagSort];
         char hint[16];
         snprintf(hint, sizeof hint, "SEL %s", sortLabel);
