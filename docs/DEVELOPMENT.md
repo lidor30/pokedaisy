@@ -2295,7 +2295,7 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
   and Emerald's from Oldale Town (every town but Sootopolis, reached only by diving). SCENIC is FLY STYLE's default;
   the first scenic landing asks once (`FlyStyleAsk`, the tip card's look where the tips go: KEEP IT / USE CLASSIC, the bar
   running out keeps it; `Prefs.flyStyleAsked`, also set by any FLY STYLE pick).
-- **FLIGHT AREA** (GAMEPLAY, `Prefs.flightAreaId`, `FlightAreaMode`; `FlightArea.kt`): WHERE YOU'VE BEEN (default) keeps the
+- **FLIGHT AREA** (GAMEPLAY, `Prefs.flightAreaId`, `FlightAreaMode`; `FlightArea.kt`): VISITED (default) keeps the
   flight to maps the player has seen, so it can't skip the story. The games keep no record of routes, so the app keeps one per
   save (`FlightArea.SeenMaps`, `filesDir/flight-area/<rom crc>-<save key>.txt`, the key a CRC of SaveBlock2's name, gender
   and trainer ID): every map stood on (a field job every half second, `Keeper.tick`), and, the first time a save is met in a
