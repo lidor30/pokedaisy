@@ -227,6 +227,9 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override val flyStyle get() = flyStyleValue
     override fun setFlyStyle(style: com.pokedaisy.app.companion.FlyStyle) { flyStyleValue = style }
     override val flyStyleSupported get() = com.pokedaisy.app.companion.data.activeGame == com.pokedaisy.app.companion.data.GameKind.FIRERED
+    private var vehicle = com.pokedaisy.app.companion.data.FlightVehicle.BIRD
+    override val flightVehicle get() = vehicle
+    override fun setFlightVehicle(v: com.pokedaisy.app.companion.data.FlightVehicle) { vehicle = v }
     private var reusableTmsOn = false
     override val reusableTms get() = reusableTmsOn
     override fun setReusableTms(on: Boolean) { reusableTmsOn = on }
@@ -1895,6 +1898,13 @@ fun main(args: Array<String>) {
         // The D-pad onto FF, the first row of FF / SPEED, while MAKEOVER still fills the top: FF / SPEED's group tab lights.
         Shot("$g-settings-group-follow", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText("FF").performSemanticsAction(SemanticsActions.RequestFocus)
+        },
+        // MAKEOVER > FLY ON (a game with FREE FLIGHT: FireRed here), then its pick-list.
+        Shot("$g-settings-fly-on", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText("FLY ON").performScrollTo()
+        },
+        Shot("$g-settings-fly-on-pick", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText("FLY ON").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
         // The COMPANION group, ONE-TAP MOVES under BATTLE HINTS.
         Shot("$g-settings-companion", bw, bh, bd, companion("SETTINGS")) {

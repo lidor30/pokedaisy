@@ -2200,8 +2200,9 @@ ZOOM's steps are whole Game Boy pixels: 7.5 -> 6 / 5 / 4 / 3 on 1080 rows). Addr
 
 ## FREE FLIGHT and the scenic FLY (`pk_flight.c`, `Flight.kt`, `ScenicFly.kt`)
 
-Retail FireRed rev 1 so far (`FLIGHT_FIRERED_REV1`, every address from pret's pokefirered built clean as firered_rev1 and
-its ELF; the called functions are CRC-checked like FLY's). No ROM patch: the flight is the game's own pieces, driven after
+Retail FireRed rev 1 (`FLIGHT_FIRERED_REV1`, every address from pret's pokefirered built clean as firered_rev1 and its
+ELF) and retail Emerald (`FLIGHT_EMERALD`, from pret's pokeemerald symbols - the `symbols` branch's `pokeemerald.sym`: the
+build is retail byte for byte); the called functions are CRC-checked like FLY's. No ROM patch: the flight is the game's own pieces, driven after
 every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headless: `flighton`, `flight`, `flightroute`,
 `flightinfo` in native-capture/README.md).
 
@@ -2217,10 +2218,26 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
   (`gFieldEffectObjectTemplate_Bird`, CreateSprite; anims 1 / 3 = Red / Leaf riding seen from the side, flipped going
   east since the game's flies off west, 2 / 4 from behind going north), priority 1 (over BG1's tree tops), at a fixed
   place on screen: the camera keeps the player there (anchored from the player's sprite at take-off, checked constant).
-- **The look on a diagonal**: the bird faces the D-pad's east / west (the route's, over its next 8 steps), and only
-  north alone shows it from behind: switching views on every step of a staircase was jumpy. Its shadow is the game's
-  large shadow sprite (`gFieldEffectObjectTemplate_ShadowLarge`, its callback swapped for SpriteCallbackDummy) on the
-  ground under the player's place, priority 2 (tree tops cover it), while the bird rides 16 px up and bobs.
+- **Emerald's rider**: its bird (`gFieldEffectObjectTemplate_Bird`, 32x32) is one picture with no rider - its FLY seats
+  the player's own sprite on it (the surfing graphics, ANIM_GET_ON_OFF_POKEMON_WEST, 8 px over the bird's centre). The
+  flight makes that rider a sprite of its own (`PK_FLIGHT_RIDER_*`): GetPlayerAvatarGraphicsIdByStateId(SURFING),
+  CopyObjectGraphicsInfoToSpriteTemplate into a scratch template (CreateObjectGraphicsSprite takes a fifth argument,
+  which pk_call can't pass), CreateSprite, the pose, and the player's own palette slot (Emerald loads it by slot, so the
+  template's tag finds none and CreateSprite picks 15: a white and green rider). In front of the bird (subpriority 0):
+  the game's cut-in has the bird in front, all but the hat hidden, which over a long flight read as no rider at all. Its
+  id + 1 in the bird's data[6], so a state brings it back. One side view only (flipped going east, the last side kept
+  going north); DestroySprite as the player lands.
+- **Turning (`flTurn`, `flCapture`)**: the bird banks toward the velocity the flight means: half the angle between the
+  picture's nose and that heading, at most 35 degrees, eased, level again after a few still frames. While it's ridden
+  the bird's (and Emerald's rider's) sprites are hidden and pk_flight_draw draws them into the finished frame instead:
+  each frame their tiles and palettes are read from VRAM into one 64x64 picture (the game keeps animating them), its 8x
+  scale built by Scale2x three times when the picture changes, and every pixel of the box around the bird looks that up
+  through the turn and the mirror (RotSprite's way). The GBA's own affine sprites were tried first: their nearest-pixel
+  turn broke the outlines and the rider's face up (seen on the RP6). The bird alone, coming in and leaving, is the
+  game's sprite again.
+- **The look on a diagonal**: the bird faces the D-pad's east / west, and only north alone shows it from behind. On a
+  route it goes by where the next 24 steps go in all, with some slack: a mostly north staircase (Pallet Town to Viridian
+  City: a step east every eight or so) took the side view at each jog and the back view between them.
 - **Diagonal speed**: a staircase covers 1.41 tiles in two steps, 71% of the straight speed at the same step time. Where
   the trip isn't straight (the D-pad's two ways; the route's next 8 steps' net distance under their length) each step
   takes that share of the time, picked from the game's 8 / 6 / 4 / 2 frames a tile (WALK_FAST, RIDE_WATER_CURRENT,
@@ -2240,12 +2257,21 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
 - **The shadow** is drawn into each finished frame (`pk_flight_draw`: a soft oval in three bands, larger, fainter and
   lower the higher the bird) and undone line by line first where the frame still holds it: mGBA redraws a line only when
   something on it changed, and a still line used to darken again every frame (the blink seen on the RP6).
-- **The map grid mended (`flMend`)**: crossing into a map, FireRed copies the screen-sized area around the camera from
-  the old map's grid into the new one (MoveMapViewToBackup), so near the crossing the new grid holds the old map's
-  undefined squares - over its connections (Route 21 above Cinnabar's corner, entered along Route 20's top row) and its
-  own edge (Route 20's after Cinnabar). Walking never reaches them; a diagonal flight did, and stopped. Once per map while
-  flying, every undefined square the map's layout or a connection covers gets its square back from the ROM, and those in
-  view are drawn again (CurrentMapDrawMetatileAt).
+- **The map grid mended (`flMend`)**: crossing into a map, the game copies the screen-sized area around the camera from
+  the old map's grid into the new one (MoveMapViewToBackup), so near the crossing the new grid holds what the old one had
+  there: its undefined squares (Route 21 above Cinnabar's corner, entered along Route 20's top row; Route 20's own edge
+  after Cinnabar; Emerald's Route 116 beside Rustboro after Route 115, where the route stopped), a third map it was joined
+  to, its border. Walking never reaches those corners; a diagonal flight does. For 30 frames after each new map (a frame
+  can end part-way through Emerald's LoadMapFromCameraTransition, the new layout already in gMapHeader and the copy
+  made on the next frame: a mend done once came too early), the map's own undefined squares get theirs back from its
+  layout and its padding is what the connections fill, in their order, undefined where none reaches. Then the whole view
+  is drawn again (DrawWholeMapView, once the game is at rest): what's on screen was drawn from the old map's metatiles,
+  garbled where the two tilesets differ (Route 117 into Verdanturf) and unmatched by EXPAND until it scrolled away (the
+  zoom pulled in, the margins showed the menu's bars). For the two or three frames the screen takes to catch up, pk_wide
+  takes the camera as the RAM has it while flying (no menu opens with the controls locked) and draws the margins from the
+  mended grid, rather than freezing them (the map and its people stood still, then jumped); `flyHold` is what's left if
+  even that snapshot is torn. Headless, Emerald's routes
+  from Route 114 to every town: no menu scene at all (they were 50-300 frames a crossing), FireRed's still none.
 - **No-fly maps** (`FlightFns.noFly`, pk_flight's NO_FLY words): stand-ins the game only shows from outside - FireRed's
   SaffronCity_Connection (3.11), Saffron seen past its gatehouses, whose tiles come out scrambled up close (EXPAND then
   lost its match: zoom pulled in, wrong sides). The flight stops at its edge (the map's connections, `flNoFlyAt`) and
@@ -2264,9 +2290,31 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
   pulled into staircases (`straighten`); flown with `pk_flight_route` at WALK_FASTER while EmulatorEngine runs the game at
   `SCENIC_SPEED` and WideCamera's `flightZoom` takes the widest EXPAND step; it lands on sMapFlyDestinations' heal
   location. A town not joined to the player's map (Saffron: its gatehouses are warps; the Sevii Islands) goes the classic
-  way. `ScenicFlyTest` replays every Kanto route over the world from the user's save's spot. SCENIC is FLY STYLE's default;
+  way; Emerald's Littleroot by the player's gender, Ever Grande and the Battle Frontier outside (HEAL_WARP_EMERALD's
+  special ids, as its Fly map exit). `ScenicFlyTest` replays every Kanto route over the world from the user's save's spot,
+  and Emerald's from Oldale Town (every town but Sootopolis, reached only by diving). SCENIC is FLY STYLE's default;
   the first scenic landing asks once (`FlyStyleAsk`, the tip card's look where the tips go: KEEP IT / USE CLASSIC, the bar
   running out keeps it; `Prefs.flyStyleAsked`, also set by any FLY STYLE pick).
+- **FLY ON** (MAKEOVER, `Prefs.flightVehicleId`, `FlightVehicle`, the PK_FLIGHT_VEHICLE word): an air balloon, a helicopter
+  or a zeppelin in place of the bird, our own pixel art from `scripts/gen_flight_vehicles.py` (parts shaded by a normal lit
+  from the top left over a colour ramp, coloured outlines; rerun it after changing the art) -> `pk_flight_vehicles.h`.
+  flCapture draws the vehicle's frame for the whole flight (the bird's hardware sprite and Emerald's rider stay hidden), the
+  player's own overworld sprite (hidden while flying, still animated) over its SEAT pixels, then its FRONT pixels over them;
+  each has its own lean (the balloon none) and no back view. Changing it mid-flight only swaps the picture (configure
+  compares the words without it). mgba_dump: the word after the bird palette's tag in `flighton`.
+- **Which games** (`flightAllowed`, `FieldItemFns.flight`; the code CRCs still decide): retail FireRed rev 0 / 1, LeafGreen
+  rev 0 / 1, Emerald, Ruby / Sapphire rev 1 / 2 (pret's `symbols` branches; R/S ride as Emerald, their save blocks in place,
+  gSpriteCoordOffsetY its own s32 - `spriteOffsetY` - and the covering ground effects turned off on the hidden player each
+  step, which FireRed / Emerald skip for the camera's localId by themselves), the randomized retail builds (retail's code;
+  the Poller's `retailRom` covers them), and three hacks by their hash: Radical Red, Unbound (also French) and Glazed. CFRU
+  hooks DestroySprite / PlaySE (their CRCs carry the hook's target) and sets the FLY bird's palette through its own loader in
+  CreateFlyBirdSprite (`birdPalette` called with `birdPaletteTag`: Radical Red's player tag 0x1100, Unbound's bird 0x11A2 -
+  palette 0 drew the bird in someone else's colours). Unbound XORs gMapGroups' group pointers (`mapGroupsXor`, as
+  DexDetails reads them) and its FLY lands on its own fly spots (`FlySpots`: u16 section, num, group, u16 x, y), which
+  `ScenicFly.destination` takes before heal locations. Glazed is Emerald's code: only its map group sizes differ. A new hack:
+  its world flown headless first (free flight, then mgba_dump `flightroute` sweeps with `wideon`, counting frames whose
+  margins didn't match - a randomized or edited build needs `wideon 60 <retail CRC>`), then a record and its kind in
+  `flightAllowed`.
 
 ## PC, FLY and WILD ENCOUNTERS on the Game Boy (`GbField.kt`)
 

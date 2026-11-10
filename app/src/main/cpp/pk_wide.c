@@ -3911,6 +3911,7 @@ struct FullView {
     bool valid, battle, menu, overlay;
     int bestSnap, bestCx, bestCy, bestH, bestV;
     uint32_t alpha;
+    bool hold;   // FREE FLIGHT's crossing settling: the last window kept as it is (no glow)
 };
 
 /** FREE FLIGHT's smooth camera moves the window, the frame with it, so the map's name sign (BG0, the popup's corner:
@@ -3991,7 +3992,7 @@ static void fullDraw(const struct FullView* f) {
         }
         mix = mix + MIX_STEP > 256 ? 256 : mix + MIX_STEP;
     } else {
-        mix = mix - MIX_STEP < 0 ? 0 : mix - MIX_STEP;   // the last scene, frozen, dissolves into the glow
+        if (!f->hold) mix = mix - MIX_STEP < 0 ? 0 : mix - MIX_STEP;   // the last scene, frozen, dissolves into the glow
     }
     PW_MARK(pw4);
     PW_ADD(2, pw3, pw4);
@@ -4173,9 +4174,25 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
     PW_MARK(pw1);
     PW_ADD(0, pw0, pw1);
     bool valid = best >= MIN_SCORE;
+    if (!valid && flyOn && snaps[cur].ok && fieldDisplay()) {
+        // FREE FLIGHT crossing into a map: pk_flight.c's flMend has the grid right, the screen catches up two or three
+        // frames later. The camera as the RAM has it (no menu can open with the controls locked): the margins go on
+        // with the map and its people instead of freezing (they stood still for those frames and then jumped).
+        const struct Snap* s = &snaps[cur];
+        bestH = io(0x14) & 0x1FF;
+        bestV = io(0x16) & 0x1FF;
+        bestCx = s->posX * 16 + signed8(bestH - s->xTile * 8);
+        bestCy = s->posY * 16 + signed8(bestV - s->yTile * 8);
+        bestSnap = cur;
+        valid = true;
+    }
     if (!valid) needFrame();
     bool battle = !valid && inBattleScreen();
-    bool menu = !valid && !battle && menuScreen();
+    // FREE FLIGHT: no menu can open (the controls are locked), so a frame that doesn't match is a map crossing settling
+    // (pk_flight.c's flMend draws the view again; the screen catches up two or three frames later): the camera holds and
+    // the last window stays, rather than the menu's bars and a zoom pulling in.
+    bool flyHold = flyOn && !valid && !battle;
+    bool menu = !valid && !battle && !flyHold && menuScreen();
     // A menu screen opened from a battle (POKéMON, BAG: gMain.inBattle stays set) is part of the battle for the
     // camera: a battle always pulls in to 1x, and its sub-screens used to read as SCENE_MENU, which AUTO ZOOM IN
     // OFF leaves zoomed out - the party / bag screen zoomed out and the battle zoomed back in after it.
@@ -4194,7 +4211,7 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
     bool fade = !valid && !battle && fadedFrame(frame);   // (a black frame can pass as a menu screen: still a fade)
     bool replay = questLogPlaying();
     lastClose = lastClose || replay;
-    lastScene = replay ? PK_WIDE_SCENE_OFF : fade ? PK_WIDE_SCENE_FADE : menu && !inBattle ? PK_WIDE_SCENE_MENU : !valid ? PK_WIDE_SCENE_OFF
+    lastScene = replay ? PK_WIDE_SCENE_OFF : fade || flyHold ? PK_WIDE_SCENE_FADE : menu && !inBattle ? PK_WIDE_SCENE_MENU : !valid ? PK_WIDE_SCENE_OFF
               : transition ? PK_WIDE_SCENE_BATTLE_START : overlay ? PK_WIDE_SCENE_OVERLAY
               : lastClose ? PK_WIDE_SCENE_TEXT : PK_WIDE_SCENE_FIELD;
     int dimTarget = overlay ? overlayStrength() : 0;
@@ -4242,7 +4259,7 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
 #endif
     PW_MARK(pw3);
     PW_ADD(1, pw2, pw3);
-    struct FullView full = { frame, out, centre, v, valid, battle, menu, overlay, bestSnap, bestCx, bestCy, bestH, bestV, alpha };
+    struct FullView full = { frame, out, centre, v, valid, battle, menu, overlay, bestSnap, bestCx, bestCy, bestH, bestV, alpha, flyHold };
 #ifdef PK_WIDE_CACHE
     holeLeft = holeWanted && !overlayDim && !centre;
     if (laterOn && !centre) {

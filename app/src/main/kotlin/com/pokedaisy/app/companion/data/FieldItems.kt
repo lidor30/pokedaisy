@@ -212,12 +212,14 @@ val FIELD_ITEMS_RUBY = FieldItemFns(
     party = RUBY_SAPPHIRE_PARTY,
     pc = PC_RUBY,
     fly = FLY_RUBY,
+    flight = FLIGHT_RUBY,
 )
 
 /** Retail Sapphire rev 1 / rev 2 (AXPE; SHA1 4722efb8... / 89b45fb1...): Ruby's code a few bytes on. */
 val FIELD_ITEMS_SAPPHIRE = FIELD_ITEMS_RUBY.copy(
     varGet = 0x08069278L, varSet = 0x08069294L, fieldControlsLocked = 0x0806556CL, items = 0x083C55DCL, pc = PC_SAPPHIRE,
     fly = FLY_SAPPHIRE,
+    flight = FLIGHT_SAPPHIRE,
 )
 
 /** Glazed 9.2.0: retail Emerald edited in place - Emerald's code and RAM, its VarGet / VarSet hooked into its own
@@ -227,6 +229,7 @@ val FIELD_ITEMS_GLAZED = FIELD_ITEMS_EMERALD.copy(
     // FLY as Emerald's: its towns sit in Hoenn's map slots, and its Fly map's exit (CB_ExitFlyMap) and sMapHealLocations
     // are retail's bytes - flown headless (a Tunod city's Pokémon Center). Johto's towns aren't in that table.
     codeCrcs = listOf(0x9D16316AL, 0xAC747C5FL) + FIELD_ITEMS_EMERALD.codeCrcs.drop(2),
+    flight = FLIGHT_GLAZED,
 )
 
 /**
@@ -518,8 +521,8 @@ private fun fieldItemsByKind(kind: GameKind?, gameCode: String, revision: Int): 
     GameKind.HEART_AND_SOUL -> FIELD_ITEMS_HEART_AND_SOUL.takeIf { gameCode == "BPEE" }
     GameKind.IMPERIUM -> FIELD_ITEMS_IMPERIUM.takeIf { gameCode == "BPEE" }
     GameKind.LAZARUS -> FIELD_ITEMS_LAZARUS.takeIf { gameCode == "BPEE" }
-    GameKind.UNBOUND -> cfru(0x08876200L)?.let { t -> t.copy(fly = t.fly?.let(::flyUnbound)) }
-    GameKind.RADICAL_RED -> cfru(0x093C0000L)
+    GameKind.UNBOUND -> cfru(0x08876200L)?.let { t -> t.copy(fly = t.fly?.let(::flyUnbound), flight = FLIGHT_UNBOUND) }
+    GameKind.RADICAL_RED -> cfru(0x093C0000L)?.copy(flight = FLIGHT_RADICAL_RED)
     GameKind.ODYSSEY, GameKind.GAIA -> cfru(0x083DB028L)
     GameKind.AMETHYST -> cfru(0x0872DB0CL)
     GameKind.SWORD_SHIELD -> cfru(0x093C0000L, unholdablePockets = setOf(4))

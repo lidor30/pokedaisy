@@ -66,6 +66,9 @@ interface CompanionSettings {
     val flyStyle: FlyStyle get() = FlyStyle.CLASSIC
     fun setFlyStyle(style: FlyStyle) {}
     val flyStyleSupported: Boolean get() = false
+    /** MAKEOVER > FLY ON (where [flyStyleSupported]): the bird, or a vehicle with the player in it. */
+    val flightVehicle: com.pokedaisy.app.companion.data.FlightVehicle get() = com.pokedaisy.app.companion.data.FlightVehicle.BIRD
+    fun setFlightVehicle(v: com.pokedaisy.app.companion.data.FlightVehicle) {}
     /** The first scenic FLY's question (ui.FlyStyleAsk) answered: CLASSIC switches, SCENIC / null (it timed out) keeps it. */
     fun answerFlyStyle(style: FlyStyle?) {}
 

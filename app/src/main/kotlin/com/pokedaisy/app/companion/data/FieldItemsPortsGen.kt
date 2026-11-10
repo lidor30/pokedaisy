@@ -403,6 +403,7 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             setFlyWarpDestination = 0x080C527CL,
             codeCrcs = listOf(0x07BEBC3AL, 0x950F2C97L, 0x9A186C79L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x70EA1DFCL),
         ),
+        flight = FLIGHT_FIRERED_REV0,
     ),
     // Pokemon - Rubin-Edition (Germany) (Rev 1).gba (SHA1 424740be...), from AXVE0; masked: repel.
     "AXVD1" to FieldItemFns(

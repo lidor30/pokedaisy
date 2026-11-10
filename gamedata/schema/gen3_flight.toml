@@ -177,3 +177,66 @@ type = 'int_list'
 [field.codeCrcs]
 kotlin = 'List<Long>'
 type = 'long_list'
+
+# Emerald's bird carries no rider: CopyObjectGraphicsInfoToSpriteTemplate, to make one from the player's surfing graphics
+# (riderGfx: GetPlayerAvatarGraphicsIdByStateId) in their get-on pose (riderAnim, facing west), with spriteDummy
+# (SpriteCallbackDummy) and scratch (0x1C bytes of EWRAM nothing else uses). 0: the bird's own picture has the rider (FireRed).
+[field.riderTemplate]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+[field.riderGfx]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+[field.spriteDummy]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+[field.riderAnim]
+kotlin = 'Int'
+type = 'int'
+default = 0
+
+[field.scratch]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# DrawWholeMapView: the view drawn again after crossing into a map (pk_flight.c's flMend), 0 = none.
+[field.drawView]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# saveBlock1Ptr / saveBlock2Ptr are the save blocks themselves, not pointers to them (Ruby / Sapphire).
+[field.saveBlockStatic]
+kotlin = 'Boolean'
+type = 'bool'
+default = false
+
+# gSpriteCoordOffsetY, 0 = spriteOffset + 2 (FireRed / Emerald's s16 pair; Ruby / Sapphire keep two s32s apart).
+[field.spriteOffsetY]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# XORed into each of gMapGroups' group pointers (Unbound scrambles them), 0 = plain.
+[field.mapGroupsXor]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# The hacks' palette loader (CFRU's dynamic palettes), called with birdPaletteTag for the bird's slot; 0 = palette 0.
+[field.birdPalette]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+[field.birdPaletteTag]
+kotlin = 'Int'
+type = 'int'
+default = 0

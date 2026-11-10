@@ -71,6 +71,12 @@ class TelemetrySampler {
     // [nativeCfg]'s RAM is known to be this ROM's: a retail hash, or another language's retail
     // path - not an unrecognised same-size hack or a BEST EFFORT match landing on a retail config.
     private var ramVerified = false
+
+    /** A retail cart by its hash (any language or revision, a collection dump, a randomizer's output): FREE FLIGHT's
+     * retail records fly it (Flight.kt's [flightAllowed]); a hack edited in place keeps retail's code but not its maps. */
+    @Volatile
+    var retailRom = false
+        private set
     // An unrecognised FireRed / Emerald hack whose code proves it kept retail's engine and RAM (RetailEngine): its
     // battle cursors and gPartyMenu are retail's, whatever BEST EFFORT reads its names with.
     private var retailEngine: RetailEngine.Proof? = null
@@ -420,6 +426,7 @@ class TelemetrySampler {
                     // BOXES too: the configs' storage was checked on retail captures only (every box record's checksum held).
                     val hash = runCatching { romHash(reader, size) }.getOrNull()
                     val retail = hash in ShinyOdds.RETAIL_SHA1S
+                    retailRom = retail
                     nativeCfg = withCheckedTables(reader, cfg).let { if (retail) it.copy(shinyBelow = 8) else it.copy(pokemonStoragePtr = 0) }
                     ramVerified = true
                 }
@@ -483,6 +490,7 @@ class TelemetrySampler {
                 return
             }
             retailHash = hash in RETAIL_SHA1S || retailDump(reader, code, size) || randomizedDump(reader, code, size)
+            retailRom = retailHash
             smallHash = hash
         }
 
@@ -631,6 +639,7 @@ class TelemetrySampler {
                 return
             }
             retailHash = hash in RETAIL_SHA1S || retailDump(reader, code, size) || randomizedDump(reader, code, size)
+            retailRom = retailHash
             smallHash = hash
         }
 

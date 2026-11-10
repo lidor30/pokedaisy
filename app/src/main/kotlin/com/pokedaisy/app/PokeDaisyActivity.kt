@@ -884,16 +884,22 @@ class PokeDaisyActivity : Activity() {
     /** FREE FLIGHT here (Flight.kt): the game's tables (FieldItemFns.flight, retail FireRed rev 1 so far) with FLY's and the
      * flight's code where expected. */
     private fun flightSupport(): com.pokedaisy.app.companion.data.FieldItemSupport? =
-        fieldItemSupport()?.takeIf { it.canFlight && it.fns.flight != null && !romIsGameBoy && !romIsNds }
+        fieldItemSupport()?.takeIf {
+            it.canFlight && it.fns.flight != null && !romIsGameBoy && !romIsNds &&
+                com.pokedaisy.app.companion.data.flightAllowed(telemetry.snapshot.value.game, telemetry.retailRom())
+        }
 
     /** Keeps pk_flight configured for the running game, every half second (the same words again change nothing): a
      * resume state or save state taken in the air comes back flying, so the flight must know the game from the start. */
     private fun syncFlight() {
         if (!::engine.isInitialized || !engine.running) return
         askFlyStyle()
-        val words = flightSupport()?.fns?.flight?.words() ?: return
+        val words = flightSupport()?.fns?.flight?.words(flightVehicle()) ?: return
         engine.postToEmu { MgbaCore.pkFlightConfigure(words) }
     }
+
+    /** MAKEOVER > FLY ON: what the flight's words ask pk_flight to draw. */
+    private fun flightVehicle() = com.pokedaisy.app.companion.data.FlightVehicle.of(Prefs(this).flightVehicleId)
 
     /** A scenic FLY took off (UI thread): once it has landed, [askFlyStyle] may ask KEEP IT / USE CLASSIC. */
     private var scenicFlown = false
@@ -928,7 +934,7 @@ class PokeDaisyActivity : Activity() {
             return
         }
         val support = flightSupport() ?: return showHud(com.pokedaisy.app.companion.ui.flyMessage(com.pokedaisy.app.companion.data.FlyResult.FAILED))
-        val words = support.fns.flight!!.words()
+        val words = support.fns.flight!!.words(flightVehicle())
         val inBattle = telemetry.snapshot.value.inBattle
         engine.requestFieldItemJob(inBattle) { calls, busy ->
             val gate = com.pokedaisy.app.companion.data.flightCheck(support.fns, busy, calls)
@@ -967,7 +973,7 @@ class PokeDaisyActivity : Activity() {
         val fns = support.fns
         val f = fns.flight!!
         val fly = fns.fly!!
-        val words = f.words()
+        val words = f.words(flightVehicle())
         val inBattle = telemetry.snapshot.value.inBattle
         engine.requestFieldItemJob(inBattle) { calls, busy ->
             val gate = com.pokedaisy.app.companion.data.flightCheck(fns, busy, calls)
@@ -1600,6 +1606,11 @@ class PokeDaisyActivity : Activity() {
         override val tradeEvolutionsSupported get() = tradeEvoFns() != null
         override val flyStyle get() = Prefs(this@PokeDaisyActivity).flyStyle
         override fun setFlyStyle(style: com.pokedaisy.app.companion.FlyStyle) { Prefs(this@PokeDaisyActivity).flyStyleId = style.id }
+        override val flightVehicle get() = this@PokeDaisyActivity.flightVehicle()
+        override fun setFlightVehicle(v: com.pokedaisy.app.companion.data.FlightVehicle) {
+            Prefs(this@PokeDaisyActivity).flightVehicleId = v.id
+            syncFlight()   // the next frame is drawn in it, mid-flight too
+        }
         override val flyStyleSupported get() = flightSupport() != null
         override fun answerFlyStyle(style: com.pokedaisy.app.companion.FlyStyle?) = this@PokeDaisyActivity.answerFlyStyle(style)
         override val reusableTms get() = Prefs(this@PokeDaisyActivity).reusableTms

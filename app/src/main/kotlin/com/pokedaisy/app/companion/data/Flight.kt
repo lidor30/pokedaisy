@@ -67,9 +67,30 @@ data class FlightFns(
     val noFly: List<Int>,
     /** CRC32 of each called function's first 32 bytes ([functions]' order): a build that moved them is left alone. */
     val codeCrcs: List<Long>,
+    /** Emerald's bird carries no rider: CopyObjectGraphicsInfoToSpriteTemplate, to make one from the player's surfing
+     * graphics ([riderGfx]: GetPlayerAvatarGraphicsIdByStateId) in their get-on pose ([riderAnim], facing west), with
+     * [spriteDummy] (SpriteCallbackDummy) and [scratch] (0x1C bytes of EWRAM nothing else uses). 0: the bird's own
+     * picture has the rider (FireRed). */
+    val riderTemplate: Long = 0,
+    val riderGfx: Long = 0,
+    val spriteDummy: Long = 0,
+    val riderAnim: Int = 0,
+    val scratch: Long = 0,
+    /** DrawWholeMapView: the view drawn again after crossing into a map (pk_flight.c's flMend), 0 = none. */
+    val drawView: Long = 0,
+    /** [saveBlock1Ptr] / [saveBlock2Ptr] are the save blocks themselves, not pointers to them (Ruby / Sapphire). */
+    val saveBlockStatic: Boolean = false,
+    /** gSpriteCoordOffsetY, 0 = [spriteOffset] + 2 (FireRed / Emerald's s16 pair; Ruby / Sapphire keep two s32s apart). */
+    val spriteOffsetY: Long = 0,
+    /** XORed into each of [mapGroups]' group pointers (Unbound scrambles them), 0 = plain. */
+    val mapGroupsXor: Long = 0,
+    /** The hacks' palette loader, called with [birdPaletteTag] for the bird's palette slot (CFRU's dynamic palettes, as
+     * its hooked CreateFlyBirdSprite does), 0 = palette 0 (FireRed's player palette, which has the bird's colours). */
+    val birdPalette: Long = 0,
+    val birdPaletteTag: Int = 0,
 ) {
     val functions get() = listOf(lockControls, unlockControls, createSprite, destroySprite, startSpriteAnim, behaviorAt,
-        collisionAt, elevationAt, objectAt, playSe, drawMetatileAt)
+        collisionAt, elevationAt, objectAt, playSe, drawMetatileAt) + listOf(riderTemplate, riderGfx, drawView, birdPalette).filter { it != 0L }
 
     /** [noFly] as pk_flight.h's two words: a u16 each, 0xFFFF where none. */
     private fun noFlyWords(): List<Int> {
@@ -77,15 +98,27 @@ data class FlightFns(
         return listOf(ids[0] or (ids[1] shl 16), ids[2] or (ids[3] shl 16))
     }
 
-    /** pk_flight_configure's words (pk_flight.h's PK_FLIGHT_* order). */
-    fun words(): IntArray {
+    /** pk_flight_configure's words (pk_flight.h's PK_FLIGHT_* order); [vehicle]: MAKEOVER > FLY ON's ([FlightVehicle]). */
+    fun words(vehicle: FlightVehicle = FlightVehicle.BIRD): IntArray {
         val land = IntArray(8)
         for (b in landOk) if (b in 0..255) land[b / 32] = land[b / 32] or (1 shl (b % 32))
         return (listOf(objectEvents, playerAvatar, sprites, vmap, connectionFlags, saveBlock2Ptr, main, cb2Overworld,
             lockByte, paletteFade, lockControls, unlockControls, createSprite, destroySprite, startSpriteAnim, birdTemplate,
             behaviorAt, collisionAt, elevationAt, objectAt, playSe, seFly.toLong(), seFailure.toLong(), walkFast.toLong(),
-            walkFaster.toLong(), spriteOffset, walkCurrent.toLong(), walkSlide.toLong(), mapHeader, mapGroups, drawMetatileAt).map { it.toInt() } +
+            walkFaster.toLong(), spriteOffset, walkCurrent.toLong(), walkSlide.toLong(), mapHeader, mapGroups, drawMetatileAt,
+            riderTemplate, riderGfx, spriteDummy, riderAnim.toLong(), scratch, drawView, spriteOffsetY, mapGroupsXor, birdPalette, birdPaletteTag.toLong(), vehicle.id.toLong()).map { it.toInt() } +
             noFlyWords() + land.toList()).toIntArray()
+    }
+}
+
+/** What FREE FLIGHT and the scenic FLY fly on (MAKEOVER > FLY ON, [com.pokedaisy.app.Prefs.flightVehicle]): the game's
+ * own bird, or one of our vehicles (pk_flight_vehicles.h, scripts/gen_flight_vehicles.py's art) with the player in it.
+ * [id] is pk_flight.h's PK_FLIGHT_VEHICLE word; [label] the row's value. */
+enum class FlightVehicle(val id: Int, val label: String) {
+    BIRD(0, "BIRD"), BALLOON(1, "AIR BALLOON"), HELICOPTER(2, "HELICOPTER"), ZEPPELIN(3, "ZEPPELIN");
+
+    companion object {
+        fun of(id: Int) = entries.firstOrNull { it.id == id } ?: BIRD
     }
 }
 
@@ -94,6 +127,19 @@ fun flightCodeMatches(f: FlightFns, read: (addr: Long, len: Int) -> ByteArray): 
     f.functions.size == f.codeCrcs.size && f.functions.zip(f.codeCrcs).all { (fn, crc) ->
         java.util.zip.CRC32().apply { update(read(fn, 32)) }.value == crc
     }
+
+/**
+ * Whether FREE FLIGHT may fly this game: the code CRCs only say its functions are where the record has them, and the
+ * hacks edited in place (Rocket Edition, Ash Gray, the CFRU hacks on FireRed rev 0's code, Glazed on Emerald's) keep
+ * them while redrawing the world - each is let in only once its own maps have been flown headless. [retail]: the
+ * Poller's retail hash.
+ */
+fun flightAllowed(kind: GameKind?, retail: Boolean): Boolean = when (kind) {
+    GameKind.FIRERED, GameKind.EMERALD -> retail
+    // Known by their hash, their worlds flown headless.
+    GameKind.RADICAL_RED, GameKind.UNBOUND, GameKind.GLAZED -> true
+    else -> false
+}
 
 /** pkFlightTakeOff's answer as FLY's ([FlyResult]). */
 fun flightResult(code: Int): FlyResult = when (code) {

@@ -29,7 +29,7 @@ class ScenicFlyTest {
     fun codeMatchesRetail() {
         assumeTrue(rom != null)
         assertTrue(flightCodeMatches(f, ::read))
-        assertEquals(33 + 8, f.words().size)
+        assertEquals(44 + 8, f.words().size)
     }
 
     @Test
@@ -92,6 +92,97 @@ class ScenicFlyTest {
         println("Route 20 -> Pallet: ${dirs.size} steps, longest run $longest: ${dirs.joinToString("") { "?DULR"[it.toInt()].toString() }}")
     }
 
+    private val emerald = File(RETAIL_ROM_DIR + "Pokemon - Emerald Version (USA, Europe).gba").takeIf { it.isFile }?.readBytes()
+
+    private fun readEm(a: Long, n: Int): ByteArray {
+        val o = (a - 0x08000000L).toInt()
+        return if (o >= 0 && o + n <= emerald!!.size) emerald.copyOfRange(o, o + n) else ByteArray(n)
+    }
+
+    @Test
+    fun emeraldCodeMatchesRetail() {
+        assumeTrue(emerald != null)
+        assertTrue(flightCodeMatches(FLIGHT_EMERALD, ::readEm))
+        assertEquals(44 + 8, FLIGHT_EMERALD.words().size)
+    }
+
+    @Test
+    fun emeraldRoutesStayOnJoinedMaps() {
+        assumeTrue(emerald != null)
+        val e = FLIGHT_EMERALD
+        // From Oldale Town's landing spot to every town Emerald's FLY knows that a connection reaches.
+        val (oldale, ox, oy) = ScenicFly.destination(FLY_EMERALD, e, EM_OLDALE, ::readEm)!!
+        val world = ScenicFly.read(e, oldale, ::readEm)!!
+        val reached = mutableListOf<Int>()
+        for (mapsec in EM_TOWNS) {
+            val (to, tx, ty) = ScenicFly.destination(FLY_EMERALD, e, mapsec, ::readEm) ?: continue
+            if (world.placed(to) == null) continue
+            val dirs = world.route(oldale, ox, oy, to, tx, ty)
+            assertNotNull("mapsec $mapsec", dirs)
+            assertEquals("mapsec $mapsec", Triple(to, tx, ty), replay(world, oldale, ox, oy, dirs!!))
+            assertTrue(dirs.size < ScenicFly.MAX_STEPS)
+            reached += mapsec
+        }
+        println("EMERALD reached $reached")
+        // Over land and the routes between: Littleroot, Petalburg, Rustboro, Mauville, Lilycove.
+        for (m in listOf(EM_LITTLEROOT, EM_PETALBURG, EM_RUSTBORO, 9, 12)) assertTrue("mapsec $m in $reached", m in reached)
+    }
+
+    @Test
+    fun emeraldLittlerootFollowsTheGender() {
+        assumeTrue(emerald != null)
+        // HEAL_LOCATION_LITTLEROOT_TOWN_BRENDANS_HOUSE / _MAYS_HOUSE (12 / 13): outside, not the table's bedroom.
+        val (map, x, y) = ScenicFly.destination(FLY_EMERALD, FLIGHT_EMERALD, EM_LITTLEROOT, ::readEm)!!
+        assertEquals(ScenicFly.MapId(0, 9), map)
+        assertTrue("$x,$y", (x == 5 || x == 14) && y == 9)
+    }
+
+    /** The hacks on retail code: Radical Red and Unbound (CFRU, FireRed rev 0), Glazed (Emerald). Each from a spot its save
+     * stands on (or a fly spot), to the towns a connection reaches; skipped without the ROM. */
+    private fun hack(name: String): ((Long, Int) -> ByteArray)? {
+        val b = File(RETAIL_ROM_DIR + name).takeIf { it.isFile }?.readBytes() ?: return null
+        return { a, n -> val o = (a - 0x08000000L).toInt(); if (o >= 0 && o + n <= b.size) b.copyOfRange(o, o + n) else ByteArray(n) }
+    }
+
+    private fun flies(f: FlightFns, fly: FlyFns, read: (Long, Int) -> ByteArray, from: ScenicFly.MapId, x: Int, y: Int, towns: List<Int>): List<Int> {
+        assertTrue(flightCodeMatches(f, read))
+        val world = ScenicFly.read(f, from, read)!!
+        return towns.filter { mapsec ->
+            val (to, tx, ty) = ScenicFly.destination(fly, f, mapsec, read) ?: return@filter false
+            val dirs = world.route(from, x, y, to, tx, ty) ?: return@filter false
+            assertEquals("mapsec 0x${mapsec.toString(16)}", Triple(to, tx, ty), replay(world, from, x, y, dirs))
+            true
+        }
+    }
+
+    @Test
+    fun radicalRedFliesKanto() {
+        val read = hack("Pokemon Radical Red (v4.1).gba")
+        assumeTrue(read != null)
+        val reached = flies(FLIGHT_RADICAL_RED, FIELD_ITEMS_PORTS.getValue("BPRE0").fly!!, read!!, ScenicFly.MapId(3, 0), 6, 8, KANTO_TOWNS)
+        for (m in listOf(0x59, 0x5A, 0x5B, 0x5F)) assertTrue("mapsec $m in $reached", m in reached)
+    }
+
+    @Test
+    fun unboundReadsItsScrambledMapsAndFlySpots() {
+        val read = hack("Pokemon Unbound (v2.1.1.1).gba")
+        assumeTrue(read != null)
+        val fly = flyUnbound(FIELD_ITEMS_PORTS.getValue("BPRE0").fly!!)
+        // A fly spot is where its FLY lands: Dehara City (0x59) on map 3.68 at 12,12.
+        assertEquals(Triple(ScenicFly.MapId(3, 68), 12, 12), ScenicFly.destination(fly, FLIGHT_UNBOUND, 0x59, read!!))
+        // From the save's map (3.80) over Borrius' mainland, joined through the XORed gMapGroups.
+        val reached = flies(FLIGHT_UNBOUND, fly, read, ScenicFly.MapId(3, 80), 19, 27, (0x58..0x9E).toList())
+        assertTrue("$reached", reached.size >= 15)
+    }
+
+    @Test
+    fun glazedFliesTunod() {
+        val read = hack("Pokemon Glazed (v9.2.0).gba")
+        assumeTrue(read != null)
+        val reached = flies(FLIGHT_GLAZED, FIELD_ITEMS_GLAZED.fly!!, read!!, ScenicFly.MapId(0, 17), 14, 13, EM_TOWNS)
+        for (m in listOf(0, 3, 4, 5, 6, 9, 11)) assertTrue("mapsec $m in $reached", m in reached)
+    }
+
     /** Walks [dirs] over the world, map by map, as the game would; fails on a step off the joined maps. */
     private fun replay(world: ScenicFly.World, start: ScenicFly.MapId, x0: Int, y0: Int, dirs: ByteArray): Triple<ScenicFly.MapId, Int, Int> {
         var m = world.placed(start)!!
@@ -119,5 +210,13 @@ class ScenicFlyTest {
         val KANTO_TOWNS = (0x58..0x64).toList()
         const val ONE_ISLAND = 0x8F
         const val SAFFRON_CITY = 0x62
+
+        // Emerald's map sections (sMapHealLocations' order): LITTLEROOT 0, OLDALE 1, ... PETALBURG 7, SLATEPORT 8,
+        // MAUVILLE 9, RUSTBORO 10, FORTREE 11, LILYCOVE 12, MOSSDEEP 13, SOOTOPOLIS 14, EVER_GRANDE 15.
+        const val EM_LITTLEROOT = 0
+        const val EM_OLDALE = 1
+        const val EM_PETALBURG = 7
+        const val EM_RUSTBORO = 10
+        val EM_TOWNS = (0..15).toList()
     }
 }

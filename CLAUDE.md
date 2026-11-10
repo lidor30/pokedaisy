@@ -1932,9 +1932,9 @@ Seaglass, TMT2, Mariomon, Recharged Yellow, Quetzal, R.O.W.E., Rogue (the same m
 blue (`OptionColors.fieldMove` / `fieldMoveLayers`), under PLACES; the map buttons sit top right on every map (Emerald-style maps had them bottom left, over Hoenn) but Heart and
 Soul's and R.O.W.E.'s (`BOTTOM_ROW_MAPS`: land and routes fill their top right), which get one row along the bottom left,
 on the sea left of the label window - checked on all three of R.O.W.E.'s maps (ui-preview `rowe-map-region*`).
-**FREE FLIGHT + the scenic FLY** (2026-11-10, retail FireRed rev 1 only; `pk_flight.c` after every frame, `Flight.kt`, `ScenicFly.kt`,
-`FLIGHT_FIRERED_REV1` on `FieldItemFns.flight`; NEW tags `FREE_FLIGHT` / `SCENIC_FLY`; docs/DEVELOPMENT.md's section): TAKE OFF / LAND on the
-MAP tab, the QUICK MENU (`QuickAction.FLIGHT`) and the FREE FLIGHT hotkey; the companion's GAMEPLAY > FLY STYLE CLASSIC / SCENIC (`Prefs.flyStyleId`, SCENIC by default; the first scenic landing asks
+**FREE FLIGHT + the scenic FLY** (2026-11-10, retail FireRed rev 1 and Emerald; then FireRed rev 0, LeafGreen, Ruby / Sapphire, the randomized builds, Radical Red, Unbound and Glazed - `flightAllowed`, docs/DEVELOPMENT.md's "Which games"; `pk_flight.c` after every frame, `Flight.kt`, `ScenicFly.kt`,
+`FLIGHT_FIRERED_REV1` / `FLIGHT_EMERALD` on `FieldItemFns.flight` - Emerald's from pret's `symbols` branch, its rider a sprite of its own; NEW tags `FREE_FLIGHT` / `SCENIC_FLY`; docs/DEVELOPMENT.md's section): TAKE OFF / LAND on the
+MAP tab, the QUICK MENU (`QuickAction.FLIGHT`) and the FREE FLIGHT hotkey; MAKEOVER > FLY ON (`FlightVehicle`, NEW tag `FLY_ON`) swaps the bird for our own balloon / helicopter / zeppelin (`scripts/gen_flight_vehicles.py` -> `pk_flight_vehicles.h`, the player's sprite in its seat); the companion's GAMEPLAY > FLY STYLE CLASSIC / SCENIC (`Prefs.flyStyleId`, SCENIC by default; the first scenic landing asks
 KEEP IT / USE CLASSIC once, `FlyStyleAsk` in FeatureTip.kt where the tips show, `Prefs.flyStyleAsked`).
 No ROM patch: controls locked, held movements written into the player's ObjectEvent (no collision; nothing a step triggers runs), the player
 hidden with localId 127 (the game then skips its ground effects), the game's own FLY bird sprite at the player's fixed screen spot, a see-through

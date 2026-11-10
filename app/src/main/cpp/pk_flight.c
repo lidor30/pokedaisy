@@ -1,5 +1,6 @@
 // FREE FLIGHT: see pk_flight.h. GPL-3.0 (see NOTICE).
 #include "pk_flight.h"
+#include "pk_flight_vehicles.h"
 #include "pk_wide.h"
 
 #include <stdio.h>
@@ -23,6 +24,7 @@
 #define FL_OBJ_ACTION 0x1Cu        // movementActionId
 #define FL_HELD_ACTIVE 0x40u
 #define FL_HELD_FINISHED 0x80u
+#define FL_NO_COVERING 0x10u     // disableCoveringGroundEffects
 #define FL_INVISIBLE 0x20u
 #define FL_IS_PLAYER 0x01u
 #define FL_LOCALID_PLAYER 0xFFu
@@ -44,7 +46,11 @@
 #define FL_SPR_X2 0x24u
 #define FL_SPR_Y2 0x26u
 #define FL_SPR_ANIM_NUM 0x2Au
+#define FL_TURN_SHARE 0.5         // a bank of half the heading's angle: 22 degrees on a diagonal (pixel art turned 45 degrees
+                                  // came out ragged, the rider's face too) ...
+#define FL_TURN_MAX 0.6108652     // ... and 35 at most (straight up or down from the side)
 #define FL_SPR_DATA 0x2Eu
+#define FL_SPR_RIDER (FL_SPR_DATA + 12u)   // the bird's data[6]: the rider's sprite id + 1 (0 = none), so a state brings it back
 #define FL_SPR_FLAGS 0x3Eu         // bit 0 inUse, bit 1 coordOffsetEnabled, bit 2 invisible
 #define FL_SPR_FLAGS2 0x3Fu        // bit 0 hFlip
 #define FL_MAX_SPRITES 64u
@@ -72,6 +78,11 @@ static int flConfigured;
 static int flState = PK_FLIGHT_IDLE;
 static int flPhase;               // frames into the current part
 static int flBird = -1;           // the bird's sprite id
+static int flRider = -1;          // Emerald: the rider's sprite id (PK_FLIGHT_RIDER_TEMPLATE), kept in the bird's data[6] too
+static double flAngle;            // how far it's turned now, radians, clockwise on screen (eased toward the heading)
+static double flAngleTarget;
+static int flAngleSx = 1;         // the mirror the angle was eased under (1 the picture's own west, -1 flipped east)
+static int flStill;               // frames with no velocity: back to level after a few
 static int flShadowOn;            // its shadow is drawn (pk_flight_draw): up, on the field
 static int flShadeW;              // the width of what pk_flight_draw last darkened (0 = nothing to put back)
 static int flStepDir;             // the step under way's direction
@@ -140,7 +151,7 @@ static int flNoFlyAt(struct mCore* core, int x, int y, int xs, int ys, int dir) 
         uint32_t g = core->busRead8(core, e + 8), m = core->busRead8(core, e + 9), id = g << 8 | m;
         if (id != ids[0] && id != ids[1] && id != ids[2] && id != ids[3]) continue;
         int off = (int) core->busRead32(core, e + 4);
-        uint32_t grp = core->busRead32(core, flCfg[PK_FLIGHT_MAP_GROUPS] + 4 * g);
+        uint32_t grp = (core->busRead32(core, flCfg[PK_FLIGHT_MAP_GROUPS] + 4 * g) ^ flCfg[PK_FLIGHT_MAP_GROUPS_XOR]);
         uint32_t hdr = grp ? core->busRead32(core, grp + 4 * m) : 0;
         uint32_t lay = hdr ? core->busRead32(core, hdr) : 0;
         if (!lay) return 1;   // can't tell its span: keep out
@@ -151,21 +162,124 @@ static int flNoFlyAt(struct mCore* core, int x, int y, int xs, int ys, int dir) 
     return 0;
 }
 
-/** The map grid's edges, mended: crossing into a map, FireRed copies the screen-sized area around the camera from the
- * old map's grid into the new one (MoveMapViewToBackup), so near the crossing the new map's connections show the old
- * map's emptiness (undefined squares) - unreachable walking, but a diagonal flight into a corner met it: the bird stopped
- * above Cinnabar with Route 21 right there. Every undefined square the map's own layout or a connection covers gets its
- * square back from the ROM, and those in view are drawn again. Once per map (VMap's
- * size and the map's layout tell a new one), while flying. */
+/** The map grid around a crossing, made what the game would load (FL_MEND_FRAMES after a new map, while flying).
+ * Crossing into a map, the game copies the screen-sized area around the camera from the old map's grid into the new
+ * one (MoveMapViewToBackup), so near the crossing the new grid holds what the old one had there: its emptiness
+ * (undefined squares), a third map it was joined to, its own border. Walking never reaches those corners; a diagonal
+ * flight does - the bird stopped above Cinnabar with Route 21 right there, Emerald's route stopped at Route 116's edge
+ * after Route 115, and EXPAND's margins showed the strays. So the new map's own undefined squares get theirs back from
+ * its layout, and its padding is what the connections fill (InitBackupMapLayoutConnections, in their order), undefined
+ * where none reaches. Then the whole view is drawn again (DrawWholeMapView): what's on screen was drawn from the old
+ * map's metatiles, and where the two maps' tilesets differ it was garbled (Emerald, Route 117 into Verdanturf) and
+ * EXPAND's tilemap match failed (the zoom pulled in) until it scrolled away. Repeated for FL_MEND_FRAMES: a frame can
+ * end part-way through the crossing (Emerald's LoadMapFromCameraTransition runs past VBlank), the new layout already in
+ * gMapHeader and the old view copied in on the next frame; the redraw waits for a frame the game is at rest. */
+#define FL_MEND_FRAMES 30
+#define FL_VMAP_MAX 16384
 static uint32_t flMendedLayout;
 static int flMendPending;
-static int flMendAt[64][2], flMendN;   // squares mended in view, still to be drawn
+static int flRedrawWanted;   // DrawWholeMapView once the crossing has settled
+#define FL_DRAW_MAX 256
+static int flMendAt[FL_DRAW_MAX][2], flMendN;   // squares to draw again (CurrentMapDrawMetatileAt), still to be drawn
+static int flDrawnAt[FL_DRAW_MAX][2], flDrawnN; // ... and every one queued since the map changed (each drawn once)
+static uint8_t flCovered[FL_VMAP_MAX];
+
+/** Queues square (x, y) of VMap to be drawn again, once per map. */
+static void flQueueDraw(int x, int y) {
+    for (int i = 0; i < flDrawnN; i++) if (flDrawnAt[i][0] == x && flDrawnAt[i][1] == y) return;
+    if (flDrawnN >= FL_DRAW_MAX || flMendN >= FL_DRAW_MAX) return;
+    flDrawnAt[flDrawnN][0] = x; flDrawnAt[flDrawnN][1] = y; flDrawnN++;
+    flMendAt[flMendN][0] = x; flMendAt[flMendN][1] = y; flMendN++;
+}
 
 static uint32_t flLayoutOf(struct mCore* core, uint32_t g, uint32_t m) {
-    uint32_t grp = core->busRead32(core, flCfg[PK_FLIGHT_MAP_GROUPS] + 4 * g);
+    uint32_t grp = (core->busRead32(core, flCfg[PK_FLIGHT_MAP_GROUPS] + 4 * g) ^ flCfg[PK_FLIGHT_MAP_GROUPS_XOR]);
     uint32_t hdr = grp >= 0x08000000u && grp < 0x0A000000u ? core->busRead32(core, grp + 4 * m) : 0;
     uint32_t lay = hdr >= 0x08000000u && hdr < 0x0A000000u ? core->busRead32(core, hdr) : 0;
     return lay >= 0x08000000u && lay < 0x0A000000u ? lay : 0;
+}
+
+/** Writes VMap square (x, y) when it differs, and queues it to be drawn. */
+static void flSetSquare(struct mCore* core, uint32_t map, int xs, int x, int y, uint16_t v) {
+    uint32_t at = map + 2u * (uint32_t) (x + xs * y);
+    if (core->busRead16(core, at) == v) return;
+    core->busWrite16(core, at, v);
+    flQueueDraw(x, y);
+}
+
+static void flMendSquares(struct mCore* core, uint32_t map, int xs, int ys, uint32_t layout, uint32_t hdr) {
+    int mw = xs - 15, mh = ys - 14;
+    // The map's own undefined squares (the copy reaches into it too: Route 20's west edge after Cinnabar), from its layout.
+    uint32_t own = core->busRead32(core, layout + 0xC);
+    if (own >= 0x08000000u && own < 0x0A000000u && (int) core->busRead32(core, layout) == mw && (int) core->busRead32(core, layout + 4) == mh) {
+        for (int y = 0; y < mh; y++) {
+            for (int x = 0; x < mw; x++) {
+                uint32_t at = map + 2u * (uint32_t) (x + FL_MAP_OFFSET + xs * (y + FL_MAP_OFFSET));
+                if ((core->busRead16(core, at) & 0xFFFF) != FL_MAPGRID_UNDEFINED) continue;
+                uint16_t v = core->busRead16(core, own + 2u * (uint32_t) (x + mw * y));
+                if ((v & 0x3FF) == FL_MAPGRID_UNDEFINED) continue;
+                flSetSquare(core, map, xs, x + FL_MAP_OFFSET, y + FL_MAP_OFFSET, v);
+            }
+        }
+    }
+    // The padding: each connection's squares in the game's order, undefined where none reaches.
+    if (xs * ys > FL_VMAP_MAX) return;
+    memset(flCovered, 0, (size_t) (xs * ys));
+    uint32_t conns = core->busRead32(core, hdr + 0xC);
+    int n = 0;
+    uint32_t list = 0;
+    if (conns >= 0x08000000u && conns < 0x0A000000u) {
+        n = (int) core->busRead32(core, conns);
+        list = core->busRead32(core, conns + 4);
+        if (n <= 0 || n > 16 || list < 0x08000000u || list >= 0x0A000000u) n = 0;
+    }
+    uint32_t a = flCfg[PK_FLIGHT_NO_FLY], b = flCfg[PK_FLIGHT_NO_FLY + 1];
+    for (int i = 0; i < n; i++) {
+        uint32_t e = list + 12u * (uint32_t) i;
+        int dir = core->busRead8(core, e), off = (int) core->busRead32(core, e + 4);
+        uint32_t g = core->busRead8(core, e + 8), m = core->busRead8(core, e + 9), id = g << 8 | m;
+        uint32_t lay = flLayoutOf(core, g, m);
+        if (!lay) continue;
+        int cw = (int) core->busRead32(core, lay), ch = (int) core->busRead32(core, lay + 4);
+        uint32_t data = core->busRead32(core, lay + 0xC);
+        if (cw <= 0 || ch <= 0 || data < 0x08000000u || data >= 0x0A000000u) continue;
+        int noFly = id == (a & 0xFFFF) || id == (a >> 16) || id == (b & 0xFFFF) || id == (b >> 16);
+        // The padding this connection fills, in VMap squares, and the connected map's square for each.
+        int x0, x1, y0, y1;
+        if (dir == FL_DIR_SOUTH || dir == FL_DIR_NORTH) {
+            x0 = FL_MAP_OFFSET + off; x1 = x0 + cw;
+            y0 = dir == FL_DIR_NORTH ? 0 : FL_MAP_OFFSET + mh; y1 = dir == FL_DIR_NORTH ? FL_MAP_OFFSET : ys;
+        } else if (dir == FL_DIR_WEST || dir == FL_DIR_EAST) {
+            y0 = FL_MAP_OFFSET + off; y1 = y0 + ch;
+            x0 = dir == FL_DIR_WEST ? 0 : FL_MAP_OFFSET + mw; x1 = dir == FL_DIR_WEST ? FL_MAP_OFFSET : xs;
+        } else {
+            continue;   // dive / emerge: not in the grid
+        }
+        if (x0 < 0) x0 = 0;
+        if (y0 < 0) y0 = 0;
+        if (x1 > xs) x1 = xs;
+        if (y1 > ys) y1 = ys;
+        for (int y = y0; y < y1; y++) {
+            for (int x = x0; x < x1; x++) {
+                int sx, sy;
+                if (dir == FL_DIR_NORTH) { sx = x - FL_MAP_OFFSET - off; sy = ch - FL_MAP_OFFSET + y; }
+                else if (dir == FL_DIR_SOUTH) { sx = x - FL_MAP_OFFSET - off; sy = y - FL_MAP_OFFSET - mh; }
+                else if (dir == FL_DIR_WEST) { sx = cw - FL_MAP_OFFSET + x; sy = y - FL_MAP_OFFSET - off; }
+                else { sx = x - FL_MAP_OFFSET - mw; sy = y - FL_MAP_OFFSET - off; }
+                if (sx < 0 || sx >= cw || sy < 0 || sy >= ch) continue;
+                flCovered[x + xs * y] = 1;
+                // A no-fly stand-in keeps what the game put there (its scrambled squares are its own business).
+                if (noFly) continue;
+                flSetSquare(core, map, xs, x, y, core->busRead16(core, data + 2u * (uint32_t) (sx + cw * sy)));
+            }
+        }
+    }
+    for (int y = 0; y < ys; y++) {
+        for (int x = 0; x < xs; x++) {
+            int inside = x >= FL_MAP_OFFSET && x < FL_MAP_OFFSET + mw && y >= FL_MAP_OFFSET && y < FL_MAP_OFFSET + mh;
+            if (!inside && !flCovered[x + xs * y]) flSetSquare(core, map, xs, x, y, FL_MAPGRID_UNDEFINED);
+        }
+    }
 }
 
 static void flMend(struct mCore* core) {
@@ -175,74 +289,28 @@ static void flMend(struct mCore* core) {
     uint32_t map = core->busRead32(core, vmap + 8);
     uint32_t layout = core->busRead32(core, hdr);
     if (xs <= 15 || ys <= 14 || !map || !layout) return;
-    if (layout != flMendedLayout) { flMendedLayout = layout; flMendPending = 1; }
-    if (!flMendPending) return;
-    flMendPending = 0;
-    int mw = xs - 15, mh = ys - 14;
-    // The map's own squares first (the copy reaches into it too: Route 20's west edge after Cinnabar), from its layout.
-    uint32_t own = core->busRead32(core, layout + 0xC);
-    if (own >= 0x08000000u && own < 0x0A000000u && (int) core->busRead32(core, layout) == mw && (int) core->busRead32(core, layout + 4) == mh) {
-        for (int y = 0; y < mh; y++) {
-            for (int x = 0; x < mw; x++) {
-                uint32_t at = map + 2u * (uint32_t) (x + FL_MAP_OFFSET + xs * (y + FL_MAP_OFFSET));
-                if ((core->busRead16(core, at) & 0xFFFF) != FL_MAPGRID_UNDEFINED) continue;
-                uint16_t v = core->busRead16(core, own + 2u * (uint32_t) (x + mw * y));
-                if ((v & 0x3FF) == FL_MAPGRID_UNDEFINED) continue;
-                core->busWrite16(core, at, v);
-                if (flMendN < 64) { flMendAt[flMendN][0] = x + FL_MAP_OFFSET; flMendAt[flMendN][1] = y + FL_MAP_OFFSET; flMendN++; }
-            }
-        }
+    if (layout != flMendedLayout) {
+        // The first map seen too: the player may have walked across a connection before taking off.
+        flMendPending = FL_MEND_FRAMES;
+        flRedrawWanted = 1;
+        flMendedLayout = layout;
+        flDrawnN = 0;
     }
-    uint32_t conns = core->busRead32(core, hdr + 0xC);
-    if (conns < 0x08000000u || conns >= 0x0A000000u) return;
-    int n = (int) core->busRead32(core, conns);
-    uint32_t list = core->busRead32(core, conns + 4);
-    if (n <= 0 || n > 16 || list < 0x08000000u || list >= 0x0A000000u) return;
-    uint32_t a = flCfg[PK_FLIGHT_NO_FLY], b = flCfg[PK_FLIGHT_NO_FLY + 1];
-    for (int i = 0; i < n; i++) {
-        uint32_t e = list + 12u * (uint32_t) i;
-        int dir = core->busRead8(core, e), off = (int) core->busRead32(core, e + 4);
-        uint32_t g = core->busRead8(core, e + 8), m = core->busRead8(core, e + 9), id = g << 8 | m;
-        if (id == (a & 0xFFFF) || id == (a >> 16) || id == (b & 0xFFFF) || id == (b >> 16)) continue;   // stays out
-        uint32_t lay = flLayoutOf(core, g, m);
-        if (!lay) continue;
-        int cw = (int) core->busRead32(core, lay), ch = (int) core->busRead32(core, lay + 4);
-        uint32_t data = core->busRead32(core, lay + 0xC);
-        if (cw <= 0 || ch <= 0 || data < 0x08000000u || data >= 0x0A000000u) continue;
-        // The padding this connection fills, in VMap squares, and the connected map's square for each.
-        int x0, x1, y0, y1;
-        if (dir == FL_DIR_SOUTH || dir == FL_DIR_NORTH) {
-            x0 = FL_MAP_OFFSET + off; x1 = x0 + cw;
-            y0 = dir == FL_DIR_NORTH ? 0 : FL_MAP_OFFSET + mh; y1 = dir == FL_DIR_NORTH ? FL_MAP_OFFSET : ys;
-        } else {
-            y0 = FL_MAP_OFFSET + off; y1 = y0 + ch;
-            x0 = dir == FL_DIR_WEST ? 0 : FL_MAP_OFFSET + mw; x1 = dir == FL_DIR_WEST ? FL_MAP_OFFSET : xs;
-        }
-        if (x0 < 0) x0 = 0;
-        if (y0 < 0) y0 = 0;
-        if (x1 > xs) x1 = xs;
-        if (y1 > ys) y1 = ys;
-        for (int y = y0; y < y1; y++) {
-            for (int x = x0; x < x1; x++) {
-                uint32_t at = map + 2u * (uint32_t) (x + xs * y);
-                if ((core->busRead16(core, at) & 0xFFFF) != FL_MAPGRID_UNDEFINED) continue;
-                int sx, sy;
-                if (dir == FL_DIR_NORTH) { sx = x - FL_MAP_OFFSET - off; sy = ch - FL_MAP_OFFSET + y; }
-                else if (dir == FL_DIR_SOUTH) { sx = x - FL_MAP_OFFSET - off; sy = y - FL_MAP_OFFSET - mh; }
-                else if (dir == FL_DIR_WEST) { sx = cw - FL_MAP_OFFSET + x; sy = y - FL_MAP_OFFSET - off; }
-                else { sx = x - FL_MAP_OFFSET - mw; sy = y - FL_MAP_OFFSET - off; }
-                if (sx < 0 || sx >= cw || sy < 0 || sy >= ch) continue;
-                uint16_t v = core->busRead16(core, data + 2u * (uint32_t) (sx + cw * sy));
-                if ((v & 0x3FF) == FL_MAPGRID_UNDEFINED) continue;
-                core->busWrite16(core, at, v);
-                if (flMendN < 64) { flMendAt[flMendN][0] = x; flMendAt[flMendN][1] = y; flMendN++; }
-            }
-        }
-    }
+    if (flMendPending <= 0) return;
+    flMendPending--;
+    flMendSquares(core, map, xs, ys, layout, hdr);
 }
 
-/** The mended squares drawn (CurrentMapDrawMetatileAt skips one out of view); what can't be called this frame waits. */
+/** The view drawn again once the crossing has settled (DrawWholeMapView), else the squares mended since, one by one
+ * (CurrentMapDrawMetatileAt skips one out of view); what can't be called this frame waits. */
 static void flMendDraw(struct mCore* core) {
+    if (flRedrawWanted && flCfg[PK_FLIGHT_DRAW_VIEW]) {
+        if (!flCall(core, flCfg[PK_FLIGHT_DRAW_VIEW], 0, 0, 0, 0, NULL)) return;
+        flRedrawWanted = 0;
+        flMendN = 0;
+        return;
+    }
+    flRedrawWanted = 0;
     while (flMendN > 0 && flCfg[PK_FLIGHT_DRAW_METATILE]) {
         if (!flCall(core, flCfg[PK_FLIGHT_DRAW_METATILE], (uint32_t) flMendAt[flMendN - 1][0], (uint32_t) flMendAt[flMendN - 1][1], 0, 0, NULL)) return;
         flMendN--;
@@ -314,7 +382,9 @@ static void flStartStep(struct mCore* core, uint32_t obj, int dir, int faster, d
     core->busWrite16(core, spr + FL_SPR_DATA + 4, 0);
     core->busWrite8(core, obj + FL_OBJ_ACTION, (uint8_t) (base + (uint32_t) dir - 1));
     uint8_t f0 = core->busRead8(core, obj + FL_OBJ_FLAGS0);
-    core->busWrite8(core, obj + FL_OBJ_FLAGS0, (uint8_t) ((f0 & ~FL_HELD_FINISHED) | FL_HELD_ACTIVE));
+    // disableCoveringGroundEffects too: Ruby / Sapphire run a step's ground effects for every object (FireRed and Emerald
+    // skip the camera's localId), so tall grass rustled and sand piled up under the bird; the step's start filters them.
+    core->busWrite8(core, obj + FL_OBJ_FLAGS0, (uint8_t) ((f0 & ~FL_HELD_FINISHED) | FL_HELD_ACTIVE | FL_NO_COVERING));
     flFacing = dir;
     if (dir == FL_DIR_WEST || dir == FL_DIR_EAST) flLastHorizontal = dir;
     flStepDir = dir;
@@ -381,15 +451,59 @@ static void flRouteHeading(void) {
     if (flLook != FL_DIR_NORTH) flLastHorizontal = flLook;
 }
 
-/** The bird's picture: 0 alone; with the rider, the side view (1 / 3: FireRed's bird flies off to the left, so it's
- * flipped going east) or the back (2 / 4, flying north). Read off the sprite, not remembered: a loaded state brings its
- * own. Only what changed is set (StartSpriteAnim restarts the frame copy). 0 when the game's code couldn't be called. */
-static int flBirdLook(struct mCore* core, int ridden) {
-    if (flBird < 0) return 1;
-    int anim = !ridden ? 0 : (flLook == FL_DIR_NORTH ? 2 : 1) + 2 * flGender(core);
-    int flip = ridden && flLook == FL_DIR_EAST;
-    uint32_t spr = flSpriteAddr(flBird);
+/** Emerald: the bird carries no picture of the rider, so the rider is a sprite of its own - the player's surfing
+ * graphics (by gender) in the get-on pose, as the game's FLY seats them: CopyObjectGraphicsInfoToSpriteTemplate into
+ * the scratch, CreateSprite from it (the player's palette is loaded on the field; its frames get tiles of their own),
+ * then the pose. Over the bird's centre by 8 px, in front of it (subpriority 0, the bird's 1): the game's cut-in hides all
+ * but the hat behind the bird, which on a long flight read as no rider at all. 0 when the
+ * game's code couldn't be called this frame (try again), 1 done (or not needed). */
+static int flRiderMode(void) {
+    return flCfg[PK_FLIGHT_RIDER_TEMPLATE] != 0;
+}
+
+/** MAKEOVER > FLY ON's vehicle (pk_flight_vehicles.h), or NULL for the game's own bird. */
+static const struct pk_flight_vehicle* flVehicle(void) {
+    uint32_t v = flCfg[PK_FLIGHT_VEHICLE];
+    return v >= 1 && v <= PK_FLIGHT_VEHICLE_COUNT ? &pk_flight_vehicles[v - 1] : NULL;
+}
+
+static int flMakeRider(struct mCore* core) {
+    if (!flRiderMode() || flRider >= 0 || flBird < 0) return 1;
+    uint32_t scratch = flCfg[PK_FLIGHT_SCRATCH], gfx = 0, id = FL_MAX_SPRITES;
+    if (!scratch) return 1;
+    if (!flCall(core, flCfg[PK_FLIGHT_RIDER_GFX], 3, 0, 0, 0, &gfx)) return 0;   // PLAYER_AVATAR_STATE_SURFING
+    if (!flCall(core, flCfg[PK_FLIGHT_RIDER_TEMPLATE], gfx & 0xFFFF, flCfg[PK_FLIGHT_SPRITE_DUMMY], scratch, scratch + 0x18, NULL)) return 0;
+    uint32_t bird = flSpriteAddr(flBird);
+    int bx = (int16_t) core->busRead16(core, bird + FL_SPR_X), by = (int16_t) core->busRead16(core, bird + FL_SPR_Y);
+    if (!flCall(core, flCfg[PK_FLIGHT_CREATE_SPRITE], scratch, (uint32_t) bx & 0xFFFF, (uint32_t) (by - 8) & 0xFFFF, 0, &id)) return 0;
+    if (id >= FL_MAX_SPRITES) return 1;   // no sprite free: the bird flies alone
+    uint32_t spr = flSpriteAddr((int) id);
+    // The player's own palette slot: Emerald loads the player's palette by slot, not by tag, so the template's tag finds
+    // no slot (CreateSprite then picks 15: a white and green rider).
+    uint32_t obj = flObjAddr(core);
+    uint16_t pal = core->busRead16(core, flSpriteAddr(core->busRead8(core, obj + FL_OBJ_SPRITE_ID)) + FL_SPR_ATTR2) & 0xF000u;
+    uint16_t a2 = core->busRead16(core, spr + FL_SPR_ATTR2);
+    core->busWrite16(core, spr + FL_SPR_ATTR2, (uint16_t) ((a2 & ~0xFC00u) | (1u << 10) | pal));   // the bird's priority
+    core->busWrite8(core, spr + FL_SPR_FLAGS, (uint8_t) (core->busRead8(core, spr + FL_SPR_FLAGS) & ~2u));  // screen coordinates
+    flRider = (int) id;
+    core->busWrite16(core, bird + FL_SPR_RIDER, (uint16_t) (id + 1));
+    return 1;
+}
+
+/** The rider off the bird (it lands, or the state had none). 0 when DestroySprite couldn't be called this frame. */
+static int flDropRider(struct mCore* core) {
+    if (flRider < 0) return 1;
+    if (!flCall(core, flCfg[PK_FLIGHT_DESTROY_SPRITE], flSpriteAddr(flRider), 0, 0, 0, NULL)) return 0;
+    if (flBird >= 0) core->busWrite16(core, flSpriteAddr(flBird) + FL_SPR_RIDER, 0);
+    flRider = -1;
+    return 1;
+}
+
+/** Sets [spr]'s anim and flip, only what changed (StartSpriteAnim restarts the frame copy). 0 when the game's code
+ * couldn't be called this frame. */
+static int flSpriteLook(struct mCore* core, uint32_t spr, int anim, int flip) {
     int shownAnim = core->busRead8(core, spr + FL_SPR_ANIM_NUM);
+
     int shownFlip = (core->busRead16(core, spr + FL_SPR_ATTR1) & 0x1000u) != 0;
     if (anim == shownAnim && flip == shownFlip) return 1;
     uint8_t f2 = core->busRead8(core, spr + FL_SPR_FLAGS2);
@@ -401,13 +515,213 @@ static int flBirdLook(struct mCore* core, int ridden) {
     return 1;
 }
 
-static void flBirdAt(struct mCore* core, int x, int y) {
-    if (flBird < 0) return;
-    uint32_t spr = flSpriteAddr(flBird);
+/** The bird turned the way it flies: its nose (west in the picture, east flipped, north from behind) along the
+ * velocity the flight means, banked by FL_TURN_SHARE of the angle (at most FL_TURN_MAX), eased; level again once it
+ * stands a few frames. Drawn by pk_flight_draw (flCapture's picture, turned the pixel-art way), not the GBA's affine
+ * sprites: their nearest-pixel turn broke the outlines and the rider's face up (the RP6, 2026-11-10). */
+static int flSx = 1;              // the mirror: 1 the picture's own west, -1 flipped east
+
+static int flRidden(void) {
+    return flState == PK_FLIGHT_FLYING || flState == PK_FLIGHT_LANDING || (flState == PK_FLIGHT_TAKING_OFF && flPhase > FL_SWOOP_FRAMES);
+}
+
+static void flTurn(void) {
+    const struct pk_flight_vehicle* veh = flVehicle();
+    int side = flLook;
+    if (side == FL_DIR_NORTH && (flRiderMode() || veh))   // Emerald's bird and the vehicles: no back view
+        side = flLastHorizontal == FL_DIR_EAST ? FL_DIR_EAST : FL_DIR_WEST;
+    double share = veh ? veh->turnShare : FL_TURN_SHARE, most = veh ? veh->turnMax : FL_TURN_MAX;
+    int sx = side == FL_DIR_EAST ? -1 : 1;
+    double nx = side == FL_DIR_NORTH ? 0 : side == FL_DIR_EAST ? 1 : -1, ny = side == FL_DIR_NORTH ? -1 : 0;
+    if (sx != flAngleSx) { flAngle = -flAngle; flAngleTarget = -flAngleTarget; flAngleSx = sx; }   // mirrored: the same tilt
+    flSx = sx;
+    double v = sqrt(flVx * flVx + flVy * flVy);
+    if ((flState == PK_FLIGHT_FLYING || flState == PK_FLIGHT_LANDING) && v > 0.1) {
+        double t = atan2(nx * flVy - ny * flVx, nx * flVx + ny * flVy) * share;
+        flAngleTarget = t > most ? most : t < -most ? -most : t;
+        flStill = 0;
+    } else if (!flRidden() || ++flStill > 8) {
+        flAngleTarget = 0;
+    }
+    flAngle += (flAngleTarget - flAngle) * 0.2;
+}
+
+/** The bird and its rider as one picture (flSrc: 64 x 64, the bird's centre at 32, 32, the rider 8 px over it, in
+ * front), read off the sprites' tiles and palettes in VRAM after each frame - the game keeps animating them (FireRed's
+ * wing beats) - while the sprites themselves are hidden; pk_flight_draw draws it turned. Off (the sprites shown
+ * again) while the bird is alone: coming in, leaving. Its 8x scale (Scale2x three times) is rebuilt only when the
+ * picture changes: rotating that and sampling it is RotSprite's way of turning pixel art. */
+#define FL_SRC 64
+#define FL_BIG (FL_SRC * 8)
+static uint32_t flSrc[FL_SRC * FL_SRC], flSrcHash;
+static uint32_t flBig[FL_BIG * FL_BIG], flMid[(FL_SRC * 4) * (FL_SRC * 4)];
+static int flSprOn;               // pk_flight_draw draws the bird (the sprites are hidden)
+static int flDrawX, flDrawY;      // where the bird's centre is on screen (flBirdAt's)
+
+static void flScale2x(const uint32_t* src, int w, int h, uint32_t* dst) {
+    for (int y = 0; y < h; y++) {
+        for (int x = 0; x < w; x++) {
+            uint32_t e = src[y * w + x];
+            uint32_t b = y > 0 ? src[(y - 1) * w + x] : 0, hh = y < h - 1 ? src[(y + 1) * w + x] : 0;
+            uint32_t d = x > 0 ? src[y * w + x - 1] : 0, f = x < w - 1 ? src[y * w + x + 1] : 0;
+            uint32_t* o = dst + (2 * y) * (2 * w) + 2 * x;
+            if (b != hh && d != f) {
+                o[0] = d == b ? d : e;
+                o[1] = b == f ? f : e;
+                o[2 * w] = d == hh ? d : e;
+                o[2 * w + 1] = hh == f ? f : e;
+            } else {
+                o[0] = o[1] = o[2 * w] = o[2 * w + 1] = e;
+            }
+        }
+    }
+}
+
+/** Sprite [id]'s current picture into flSrc, its centre at (cx, cy); its own pixels over what's there. */
+static void flCopySprite(struct mCore* core, int id, int cx, int cy) {
+    static const uint8_t kW[3][4] = { { 8, 16, 32, 64 }, { 16, 32, 32, 64 }, { 8, 8, 16, 32 } };
+    static const uint8_t kH[3][4] = { { 8, 16, 32, 64 }, { 8, 8, 16, 32 }, { 16, 32, 32, 64 } };
+    uint32_t spr = flSpriteAddr(id);
+    uint16_t a0 = core->busRead16(core, spr), a1 = core->busRead16(core, spr + FL_SPR_ATTR1), a2 = core->busRead16(core, spr + FL_SPR_ATTR2);
+    int shape = a0 >> 14, size = a1 >> 14;
+    if (shape > 2 || (a0 & 0x2000u)) return;   // 8bpp: not the birds
+    int w = kW[shape][size], h = kH[shape][size];
+    uint32_t tiles = 0x06010000u + 32u * (a2 & 0x3FFu), pal = 0x05000200u + 32u * (a2 >> 12);
+    uint32_t colors[16];
+    for (int i = 1; i < 16; i++) {
+        uint16_t c = core->busRead16(core, pal + 2u * (uint32_t) i);
+        uint32_t v = (uint32_t) (c & 0x1F) << 3 | (uint32_t) ((c >> 5) & 0x1F) << 11 | (uint32_t) ((c >> 10) & 0x1F) << 19;
+        colors[i] = v | ((v >> 5) & 0x070707) | 0xFF000000u;   // mGBA's mColorFrom555; the top byte marks it opaque
+    }
+    for (int y = 0; y < h; y++) {
+        int dy = cy - h / 2 + y;
+        if (dy < 0 || dy >= FL_SRC) continue;
+        for (int x = 0; x < w; x++) {
+            int dx = cx - w / 2 + x;
+            if (dx < 0 || dx >= FL_SRC) continue;
+            uint32_t t = (uint32_t) ((y / 8) * (w / 8) + x / 8);
+            uint8_t b = core->busRead8(core, tiles + t * 32u + (uint32_t) ((y % 8) * 4 + (x % 8) / 2));
+            int ix = (x & 1) ? b >> 4 : b & 0xF;
+            if (ix) flSrc[dy * FL_SRC + dx] = colors[ix];
+        }
+    }
+}
+
+static void flSetHidden(struct mCore* core, int id, int hidden) {
+    if (id < 0) return;
+    uint32_t spr = flSpriteAddr(id);
+    uint8_t f = core->busRead8(core, spr + FL_SPR_FLAGS);
+    core->busWrite8(core, spr + FL_SPR_FLAGS, (uint8_t) (hidden ? f | 4u : f & ~4u));
+}
+
+/** The player in a vehicle's seat: their overworld sprite's current frame (16 x 32, hidden while they fly but still
+ * animated), over the vehicle's SEAT pixels only, the right way round once pk_flight_draw mirrors the picture. */
+static void flSeatPlayer(struct mCore* core, const struct pk_flight_vehicle* v, const uint8_t* px, int ox, int oy) {
+    uint32_t spr = flSpriteAddr(core->busRead8(core, flObjAddr(core) + FL_OBJ_SPRITE_ID));
+    uint16_t a0 = core->busRead16(core, spr), a1 = core->busRead16(core, spr + FL_SPR_ATTR1), a2 = core->busRead16(core, spr + FL_SPR_ATTR2);
+    if ((a0 >> 14) != 2 || (a1 >> 14) != 2 || (a0 & 0x2000u)) return;   // a 16 x 32, 4bpp sprite: the player's
+    int flip = ((a1 & 0x1000u) != 0) != (flSx < 0);
+    uint32_t tiles = 0x06010000u + 32u * (a2 & 0x3FFu), pal = 0x05000200u + 32u * (a2 >> 12);
+    for (int y = 0; y < 32; y++) {
+        int vy = v->playerY + y;
+        if (vy < 0 || vy >= v->h) continue;
+        for (int x = 0; x < 16; x++) {
+            int vx = v->playerX + x;
+            if (vx < 0 || vx >= v->w || !(px[vy * v->w + vx] & 0x80)) continue;
+            int sx = flip ? 15 - x : x;
+            uint32_t t = (uint32_t) ((y / 8) * 2 + sx / 8);
+            uint8_t b = core->busRead8(core, tiles + t * 32u + (uint32_t) ((y % 8) * 4 + (sx % 8) / 2));
+            int ix = (sx & 1) ? b >> 4 : b & 0xF;
+            if (!ix) continue;
+            uint16_t c = core->busRead16(core, pal + 2u * (uint32_t) ix);
+            uint32_t col = (uint32_t) (c & 0x1F) << 3 | (uint32_t) ((c >> 5) & 0x1F) << 11 | (uint32_t) ((c >> 10) & 0x1F) << 19;
+            int dx = ox + vx, dy = oy + vy;
+            if (dx >= 0 && dy >= 0 && dx < FL_SRC && dy < FL_SRC) flSrc[dy * FL_SRC + dx] = col | ((col >> 5) & 0x070707) | 0xFF000000u;
+        }
+    }
+}
+
+/** A vehicle's frame into flSrc (its anchor at the centre), the player in its seat while they ride, its FRONT pixels
+ * (a basket's rim, ropes, window frames) over them. */
+static int flVehicleTick;
+static void flDrawVehicle(struct mCore* core, const struct pk_flight_vehicle* v) {
+    flVehicleTick++;
+    int f = v->sequence[(flVehicleTick / v->ticks) % v->sequenceLength];
+    if (f >= v->frames) f = 0;
+    const uint8_t* px = v->pixels + (size_t) f * (size_t) (v->w * v->h);
+    int ox = FL_SRC / 2 - v->anchorX, oy = FL_SRC / 2 - v->anchorY;
+    for (int pass = 0; pass < 2; pass++) {
+        for (int y = 0; y < v->h; y++) {
+            for (int x = 0; x < v->w; x++) {
+                uint8_t b = px[y * v->w + x];
+                int dx = ox + x, dy = oy + y;
+                if (!(b & 0x3F) || (pass && !(b & 0x40)) || dx < 0 || dy < 0 || dx >= FL_SRC || dy >= FL_SRC) continue;
+                uint32_t c = v->palette[b & 0x3F];
+                flSrc[dy * FL_SRC + dx] = c;
+            }
+        }
+        if (!pass && flRidden()) flSeatPlayer(core, v, px, ox, oy);
+    }
+}
+
+static void flCapture(struct mCore* core) {
+    // A vehicle is drawn the whole time (coming in empty, leaving empty); the game's bird only while ridden.
+    const struct pk_flight_vehicle* veh = flVehicle();
+    int on = flBird >= 0 && (veh || flRidden());
+    flSetHidden(core, flBird, on);
+    flSetHidden(core, flRider, on);
+    flSprOn = on;
+    if (!on) return;
+    memset(flSrc, 0, sizeof(flSrc));
+    if (veh) {
+        flDrawVehicle(core, veh);
+    } else {
+        flCopySprite(core, flBird, FL_SRC / 2, FL_SRC / 2);
+        if (flRider >= 0) flCopySprite(core, flRider, FL_SRC / 2, FL_SRC / 2 - 8);
+    }
+    uint32_t hsh = 2166136261u;
+    for (int i = 0; i < FL_SRC * FL_SRC; i++) hsh = (hsh ^ flSrc[i]) * 16777619u;
+    if (hsh == flSrcHash) return;
+    flSrcHash = hsh;
+    static uint32_t s2[(FL_SRC * 2) * (FL_SRC * 2)];
+    flScale2x(flSrc, FL_SRC, FL_SRC, s2);
+    flScale2x(s2, FL_SRC * 2, FL_SRC * 2, flMid);
+    flScale2x(flMid, FL_SRC * 4, FL_SRC * 4, flBig);
+}
+
+/** The bird's picture: 0 alone; with the rider, the side view (1 / 3: FireRed's bird flies off to the left, so it's
+ * flipped going east) or the back (2 / 4, flying north). Read off the sprite, not remembered: a loaded state brings its
+ * own. Emerald's bird has one picture, from the side (flipped the same way), and its rider is a sprite of its own
+ * (flMakeRider), facing the way the bird does - from the side, north too. 0 when the game's code couldn't be called. */
+static int flBirdLook(struct mCore* core, int ridden) {
+    if (flBird < 0) return 1;
+    if (flRiderMode()) {
+        int flip = ridden && (flLook == FL_DIR_EAST || (flLook == FL_DIR_NORTH && flLastHorizontal == FL_DIR_EAST));
+        if (!flSpriteLook(core, flSpriteAddr(flBird), 0, flip)) return 0;
+        if (!ridden) return flDropRider(core);
+        if (!flMakeRider(core)) return 0;
+        return flRider < 0 || flSpriteLook(core, flSpriteAddr(flRider), (int) flCfg[PK_FLIGHT_RIDER_ANIM], flip);
+    }
+    int anim = !ridden ? 0 : (flLook == FL_DIR_NORTH ? 2 : 1) + 2 * flGender(core);
+    int flip = ridden && flLook == FL_DIR_EAST;
+    return flSpriteLook(core, flSpriteAddr(flBird), anim, flip);
+}
+
+static void flSpriteAt(struct mCore* core, int id, int x, int y) {
+    uint32_t spr = flSpriteAddr(id);
     core->busWrite16(core, spr + FL_SPR_X, (uint16_t) x);
     core->busWrite16(core, spr + FL_SPR_Y, (uint16_t) y);
     core->busWrite16(core, spr + FL_SPR_X2, 0);
     core->busWrite16(core, spr + FL_SPR_Y2, 0);
+}
+
+/** The bird at (x, y), its rider (Emerald's) 8 px over it, as the game's FLY seats them. */
+static void flBirdAt(struct mCore* core, int x, int y) {
+    if (flBird < 0) return;
+    flSpriteAt(core, flBird, x, y);
+    if (flRider >= 0) flSpriteAt(core, flRider, x, y - 8);
+    flDrawX = x;
+    flDrawY = y;
 }
 
 /** Where the bird sits: over the player's place, raised by [lift], bobbing a pixel while up. */
@@ -425,6 +739,7 @@ static void flTellWide(struct mCore* core) {
     uint16_t tiles[2];
     int n = 0;
     if (flBird >= 0) tiles[n++] = (uint16_t) (core->busRead16(core, flSpriteAddr(flBird) + FL_SPR_ATTR2) & 0x3FF);
+    if (flRider >= 0) tiles[n++] = (uint16_t) (core->busRead16(core, flSpriteAddr(flRider) + FL_SPR_ATTR2) & 0x3FF);
     pk_wide_flight(flState != PK_FLIGHT_IDLE, tiles, n, flVx, flVy);
 }
 
@@ -435,7 +750,8 @@ static void flPlayerOnScreen(struct mCore* core, uint32_t obj, int* x, int* y) {
     int sy = (int16_t) core->busRead16(core, spr + FL_SPR_Y) + (int16_t) core->busRead16(core, spr + FL_SPR_Y2);
     if (core->busRead8(core, spr + FL_SPR_FLAGS) & 2) {
         sx += (int16_t) core->busRead16(core, flCfg[PK_FLIGHT_SPRITE_OFFSET]);
-        sy += (int16_t) core->busRead16(core, flCfg[PK_FLIGHT_SPRITE_OFFSET] + 2);
+        uint32_t oy = flCfg[PK_FLIGHT_SPRITE_OFFSET_Y] ? flCfg[PK_FLIGHT_SPRITE_OFFSET_Y] : flCfg[PK_FLIGHT_SPRITE_OFFSET] + 2;
+        sy += (int16_t) core->busRead16(core, oy);
     }
     *x = sx;
     *y = sy;
@@ -463,9 +779,18 @@ static void flPlaySe(struct mCore* core, uint32_t song) {
 void pk_flight_reset(void) {
     flMendedLayout = 0;
     flMendN = 0;
+    flDrawnN = 0;
+    flRedrawWanted = 0;
+    flMendPending = 0;
     flShadeW = 0;
     flState = PK_FLIGHT_IDLE;
     flBird = -1;
+    flRider = -1;
+    flAngle = flAngleTarget = 0;
+    flAngleSx = 1;
+    flStill = 0;
+    flSprOn = 0;
+    flSrcHash = 0;
     flShadowOn = 0;
     flPhase = flLift = 0;
     flLandWanted = 0;
@@ -476,7 +801,15 @@ void pk_flight_reset(void) {
 
 void pk_flight_configure(const uint32_t* words, int n) {
     // The same words again (the app re-sends them every half second): nothing changes, a flight goes on.
-    if (flConfigured && words && n >= PK_FLIGHT_WORDS && !memcmp(words, flCfg, sizeof(flCfg))) return;
+    if (flConfigured && words && n >= PK_FLIGHT_WORDS) {
+        uint32_t same[PK_FLIGHT_WORDS];
+        memcpy(same, words, sizeof(same));
+        same[PK_FLIGHT_VEHICLE] = flCfg[PK_FLIGHT_VEHICLE];
+        if (!memcmp(same, flCfg, sizeof(flCfg))) {   // FLY ON picked mid-flight: the next frame is drawn in it
+            flCfg[PK_FLIGHT_VEHICLE] = words[PK_FLIGHT_VEHICLE];
+            return;
+        }
+    }
     pk_flight_reset();
     flConfigured = 0;
     if (!words || n < PK_FLIGHT_WORDS) return;
@@ -507,7 +840,11 @@ int pk_flight_take_off(struct mCore* core) {
     flBird = (int) spriteId;
     uint32_t spr = flSpriteAddr(flBird);
     uint16_t a2 = core->busRead16(core, spr + FL_SPR_ATTR2);
-    core->busWrite16(core, spr + FL_SPR_ATTR2, (uint16_t) ((a2 & 0x03FFu) | (1u << 10)));   // priority 1, palette 0
+    // Palette 0 as the game's FLY has it, or where the hack's own FLY puts it (CFRU hooks CreateFlyBirdSprite there).
+    uint32_t slot = 0;
+    if (flCfg[PK_FLIGHT_BIRD_PALETTE] && (!flCall(core, flCfg[PK_FLIGHT_BIRD_PALETTE], flCfg[PK_FLIGHT_BIRD_PALETTE_TAG], 0, 0, 0, &slot)
+            || slot > 15)) slot = 0;
+    core->busWrite16(core, spr + FL_SPR_ATTR2, (uint16_t) ((a2 & 0x03FFu) | (1u << 10) | (slot << 12)));   // priority 1
     core->busWrite8(core, spr + FL_SPR_FLAGS, (uint8_t) (core->busRead8(core, spr + FL_SPR_FLAGS) & ~2u));  // screen coordinates
     uint8_t dir = core->busRead8(core, obj + 0x18) & 0x0F;
     flFacing = dir >= FL_DIR_SOUTH && dir <= FL_DIR_EAST ? dir : FL_DIR_EAST;
@@ -603,6 +940,11 @@ static void flFollowRam(struct mCore* core, uint32_t obj) {
     if (flState == PK_FLIGHT_IDLE && isMarked) {
         int id = core->busRead8(core, obj + FL_OBJ_EFFECT_SPRITE);
         flBird = id < (int) FL_MAX_SPRITES && (core->busRead8(core, flSpriteAddr(id) + FL_SPR_FLAGS) & 1) ? id : -1;
+        flRider = -1;
+        if (flBird >= 0 && flRiderMode()) {
+            int r = (int) core->busRead16(core, flSpriteAddr(flBird) + FL_SPR_RIDER) - 1;
+            if (r >= 0 && r < (int) FL_MAX_SPRITES && r != flBird && (core->busRead8(core, flSpriteAddr(r) + FL_SPR_FLAGS) & 1)) flRider = r;
+        }
         int hidden = (core->busRead8(core, obj + FL_OBJ_FLAGS1) & FL_INVISIBLE) != 0;
         int sx, sy;
         flPlayerOnScreen(core, obj, &sx, &sy);
@@ -754,9 +1096,9 @@ void pk_flight_tick(struct mCore* core) {
             uint8_t e = (uint8_t) (r & 0x0F);
             uint8_t old = core->busRead8(core, obj + FL_OBJ_ELEVATION);
             core->busWrite8(core, obj + FL_OBJ_ELEVATION, (uint8_t) (e ? (e | (e << 4)) : ((old & 0xF0) | 0)));
+            if (!flBirdLook(core, 0)) break;   // Emerald's rider off the bird first (DestroySprite): next frame if not now
             flHidePlayer(core, obj, 0);
             flMarkPlayer(core, obj, 0);
-            flBirdLook(core, 0);
             flPlaySe(core, flCfg[PK_FLIGHT_SE_FLY]);
             flCall(core, flCfg[PK_FLIGHT_UNLOCK_CONTROLS], 0, 0, 0, 0, NULL);
             flState = PK_FLIGHT_DISMOUNT;
@@ -805,19 +1147,24 @@ void pk_flight_tick(struct mCore* core) {
     }
     // The rider is up (the bird alone is coming in, or leaving: no rider, no shadow of one).
     flShadowOn = flState != PK_FLIGHT_IDLE && flState != PK_FLIGHT_DISMOUNT && flLift > 0;
+    flTurn();
+    flCapture(core);
     flTellWide(core);
 }
 
 /** The shadow, into the finished frame: a soft oval in three bands, each darkening what's under it (ground, water, the
- * tree tops: it falls on whatever is below), larger and fainter the higher the bird. Its place follows EXPAND's smooth
- * camera (pk_wide_flight_offset: the frame's own offset), as the bird does. */
+ * tree tops: it falls on whatever is below), larger and fainter the higher the bird. Then the bird with its rider
+ * (flCapture's picture), turned by flAngle and mirrored by flSx: each pixel of the box around it looks up the picture's
+ * 8x scale through the turn (RotSprite), so the outlines stay one pixel wide. Their places follow EXPAND's smooth camera
+ * (pk_wide_flight_offset: the frame's own offset), as the bird's sprite did. */
 // What the last pk_flight_draw changed: where, the pixels before, and what it wrote. mGBA redraws a line only when
-// something on it changed, so a still line keeps last frame's shadow: put back first, or it darkens on itself frame
+// something on it changed, so a still line keeps last frame's drawing: put back first, or it darkens on itself frame
 // after frame (on the RP6: 99, 69, 47, 21, 12, then a line that changed - the blinking).
-#define FL_SHADE_MAX 48
+#define FL_PATCH_W 112
+#define FL_PATCH_H 136
 static uint32_t* flShadeFrame;
 static int flShadeX0, flShadeY0, flShadeH, flShadeStride;
-static uint32_t flShadeOld[FL_SHADE_MAX][FL_SHADE_MAX], flShadeNew[FL_SHADE_MAX][FL_SHADE_MAX];
+static uint32_t flShadeOld[FL_PATCH_H][FL_PATCH_W], flShadeNew[FL_PATCH_H][FL_PATCH_W];
 
 static void flShadeUndo(void) {
     if (!flShadeFrame || !flShadeW) return;
@@ -836,7 +1183,7 @@ void pk_flight_draw(uint32_t* frame, int w, int h, int stride) {
     if (frame == flShadeFrame) flShadeUndo();
     flShadeFrame = frame;
     flShadeW = 0;
-    if (!flShadowOn) return;
+    if (!flShadowOn && !flSprOn) return;
     int dx = 0, dy = 0;
     pk_wide_flight_offset(&dx, &dy);
     int lift = flLift < 0 ? 0 : flLift > FL_LIFT ? FL_LIFT : flLift;
@@ -844,34 +1191,64 @@ void pk_flight_draw(uint32_t* frame, int w, int h, int stride) {
     // At FL_LIFT: 34 x 11 px, darkest 30%; touching down: 24 x 7, darkest 42%.
     double rx = 12.0 + 5.0 * lift / FL_LIFT, ry = 3.5 + 2.0 * lift / FL_LIFT;
     double dark = 0.42 - 0.12 * lift / FL_LIFT;
-    int x0 = (int) (cx - rx - 1), x1 = (int) (cx + rx + 1), y0 = (int) (cy - ry - 1), y1 = (int) (cy + ry + 1);
+    int bx = flDrawX + dx, by = flDrawY + dy;   // the bird's centre
+    // The box both go in: the shadow's oval, the bird's turned picture (half a diagonal of FL_SRC around its centre).
+    int half = (FL_SRC * 3 + 3) / 4;   // ~0.71 * FL_SRC: any turn of the picture fits
+    int x0 = flShadowOn ? (int) (cx - rx - 1) : w, x1 = flShadowOn ? (int) (cx + rx + 1) : -1;
+    int y0 = flShadowOn ? (int) (cy - ry - 1) : h, y1 = flShadowOn ? (int) (cy + ry + 1) : -1;
+    if (flSprOn) {
+        if (bx - half < x0) x0 = bx - half;
+        if (bx + half > x1) x1 = bx + half;
+        if (by - half < y0) y0 = by - half;
+        if (by + half > y1) y1 = by + half;
+    }
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;
     if (x1 >= w) x1 = w - 1;
     if (y1 >= h) y1 = h - 1;
-    if (x1 < x0 || y1 < y0 || x1 - x0 + 1 > FL_SHADE_MAX || y1 - y0 + 1 > FL_SHADE_MAX) return;
+    if (x1 < x0 || y1 < y0 || x1 - x0 + 1 > FL_PATCH_W || y1 - y0 + 1 > FL_PATCH_H) return;
     flShadeX0 = x0;
     flShadeY0 = y0;
     flShadeStride = stride;
     flShadeH = y1 - y0 + 1;
     int bw = x1 - x0 + 1;
-    for (int y = y0; y <= y1; y++) {
-        double ny = (y + 0.5 - cy) / ry;
-        for (int x = x0; x <= x1; x++) {
-            uint32_t c = frame[y * stride + x];
-            flShadeOld[y - y0][x - x0] = c;
-            double nx = (x + 0.5 - cx) / rx;
-            double d = nx * nx + ny * ny;
-            if (d < 1.0) {
+    for (int y = y0; y <= y1; y++) memcpy(flShadeOld[y - y0], frame + y * stride + x0, (size_t) bw * sizeof(uint32_t));
+    if (flShadowOn) {
+        for (int y = (int) (cy - ry - 1); y <= (int) (cy + ry + 1); y++) {
+            if (y < y0 || y > y1) continue;
+            double ny = (y + 0.5 - cy) / ry;
+            for (int x = (int) (cx - rx - 1); x <= (int) (cx + rx + 1); x++) {
+                if (x < x0 || x > x1) continue;
+                double nx = (x + 0.5 - cx) / rx;
+                double d = nx * nx + ny * ny;
+                if (d >= 1.0) continue;
+                uint32_t c = frame[y * stride + x];
                 double a = d < 0.4 ? dark : d < 0.75 ? dark * 0.65 : dark * 0.35;
                 uint32_t keep = (uint32_t) ((1.0 - a) * 256.0);
                 uint32_t r0 = ((c & 0xFF) * keep) >> 8, g0 = (((c >> 8) & 0xFF) * keep) >> 8, b0 = (((c >> 16) & 0xFF) * keep) >> 8;
-                c = (c & 0xFF000000u) | (b0 << 16) | (g0 << 8) | r0;
-                frame[y * stride + x] = c;
+                frame[y * stride + x] = (c & 0xFF000000u) | (b0 << 16) | (g0 << 8) | r0;
             }
-            flShadeNew[y - y0][x - x0] = c;
         }
     }
+    if (flSprOn) {
+        // Picture = mirror * R(-angle) * screen, around the centre; sampled in the 8x picture at the pixel's centre.
+        double c = cos(flAngle), s = sin(flAngle);
+        for (int y = by - half; y <= by + half; y++) {
+            if (y < y0 || y > y1) continue;
+            double py = y + 0.5 - by;
+            for (int x = bx - half; x <= bx + half; x++) {
+                if (x < x0 || x > x1) continue;
+                double px = x + 0.5 - bx;
+                double u = flSx * (c * px + s * py) + FL_SRC / 2, v = -s * px + c * py + FL_SRC / 2;
+                int iu = (int) floor(u * 8), iv = (int) floor(v * 8);
+                if (iu < 0 || iv < 0 || iu >= FL_BIG || iv >= FL_BIG) continue;
+                uint32_t p = flBig[iv * FL_BIG + iu];
+                if (!(p >> 24)) continue;
+                frame[y * stride + x] = (frame[y * stride + x] & 0xFF000000u) | (p & 0x00FFFFFFu);
+            }
+        }
+    }
+    for (int y = y0; y <= y1; y++) memcpy(flShadeNew[y - y0], frame + y * stride + x0, (size_t) bw * sizeof(uint32_t));
     flShadeW = bw;
 }
 
@@ -888,6 +1265,7 @@ void pk_flight_info(struct mCore* core, char* out, int n) {
     pk_wide_flight_offset(&wx, &wy);
     pk_wide_flight_camera(&vx, &vy);
     snprintf(out, (size_t) n, "flight: state %d phase %d bird %d shadow %d lift %d look %d at %d,%d screen %d,%d anchor %d,%d marked %d "
-             "land %d,%d route %d/%d locked %d wide %d,%d view %d,%d", flState, flPhase, flBird, flShadowOn, flLift, flLook, x, y, sx, sy, flAnchorX, flAnchorY,
-             flMarked(core, obj), flLandX, flLandY, flRouteDone, flRouteLen, core->busRead8(core, flCfg[PK_FLIGHT_LOCK_BYTE]), wx, wy, vx, vy);
+             "land %d,%d route %d/%d locked %d wide %d,%d view %d,%d turn %d drawn %d", flState, flPhase, flBird, flShadowOn, flLift, flLook, x, y, sx, sy, flAnchorX, flAnchorY,
+             flMarked(core, obj), flLandX, flLandY, flRouteDone, flRouteLen, core->busRead8(core, flCfg[PK_FLIGHT_LOCK_BYTE]), wx, wy, vx, vy,
+             (int) lround(flAngle * 57.29578), flSprOn);
 }

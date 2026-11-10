@@ -473,7 +473,7 @@ private fun homeRows(
     // MAKEOVER: the game's look from other games (the user's call: its own group, first and standing out, only in a
     // game it works in).
     val looks = s.playerLookSupported
-    val makeover = if (!looks && !s.dayNightSupported && !s.followerSupported) emptyList() else listOfNotNull(
+    val makeover = if (!looks && !s.dayNightSupported && !s.followerSupported && !s.flyStyleSupported) emptyList() else listOfNotNull(
         featuredGroupTitle(tk("MAKEOVER"), if (looks) "Other games' looks in this one" else "A fresh look for this game"),
         // Another game's hero for the player (PlayerLook.kt: their sprites from the player's own ROM of that game,
         // patched into this one in memory). The heroes' names are the games' own, so they aren't translated.
@@ -517,6 +517,15 @@ private fun homeRows(
                 labelBadge = NewFeatures.badge(NewFeatures.FOLLOWER),
                 subtitle = if (s.followerReady) null else "Needs a game with following Pokémon too",
             ) { if (s.followerReady) { s.setFollower(!s.follower); changed() } }
+        } else null,
+        // What FREE FLIGHT and the scenic FLY fly on (FlightVehicle: our own pixel art, the player in its seat).
+        if (s.flyStyleSupported) {
+            SettingRow(tk("FLY ON"), s.flightVehicle.label, labelBadge = NewFeatures.badge(NewFeatures.FLY_ON)) {
+                val all = com.pokedaisy.app.companion.data.FlightVehicle.entries
+                select(Selector(tk("FLY ON"), all.map { it.label }, s.flightVehicle.label) { l ->
+                    all.firstOrNull { it.label == l }?.let(s::setFlightVehicle)
+                })
+            }
         } else null,
         // The overworld by the device's clock (DayNight.kt): every GBA game but those with their own.
         if (s.dayNightSupported) {

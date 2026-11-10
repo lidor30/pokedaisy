@@ -32,7 +32,8 @@ enum {
     PK_FLIGHT_CREATE_SPRITE,     // CreateSprite(template, x, y, subpriority)
     PK_FLIGHT_DESTROY_SPRITE,    // DestroySprite(sprite)
     PK_FLIGHT_START_SPRITE_ANIM, // StartSpriteAnim(sprite, anim)
-    PK_FLIGHT_BIRD_TEMPLATE,     // gFieldEffectObjectTemplate_Bird (64x64, its anims: 0 alone, 1 / 2 Red, 3 / 4 Leaf)
+    PK_FLIGHT_BIRD_TEMPLATE,     // gFieldEffectObjectTemplate_Bird (FireRed: 64x64, its anims 0 alone, 1 / 2 Red, 3 / 4 Leaf;
+                                 // Emerald: 32x32, the bird alone - the rider is a sprite of its own, PK_FLIGHT_RIDER_*)
     PK_FLIGHT_BEHAVIOR_AT,       // MapGridGetMetatileBehaviorAt(x, y)
     PK_FLIGHT_COLLISION_AT,      // MapGridGetCollisionAt(x, y)
     PK_FLIGHT_ELEVATION_AT,      // MapGridGetElevationAt(x, y)
@@ -48,6 +49,22 @@ enum {
     PK_FLIGHT_MAP_HEADER,        // gMapHeader (its connections at +0xC)
     PK_FLIGHT_MAP_GROUPS,        // gMapGroups (a map's header: its layout, width and height)
     PK_FLIGHT_DRAW_METATILE,     // CurrentMapDrawMetatileAt(x, y): a repaired square drawn again (if it's in view)
+    PK_FLIGHT_RIDER_TEMPLATE,    // CopyObjectGraphicsInfoToSpriteTemplate(graphicsId, callback, template *, subspriteTables **),
+                                 // or 0: the bird's own picture carries the rider (FireRed). Emerald's FLY seats the player
+                                 // on the bird: their surfing graphics in the get-on pose, 8 px over the bird's centre - a
+                                 // sprite of its own made from that template (CreateSprite)
+    PK_FLIGHT_RIDER_GFX,         // GetPlayerAvatarGraphicsIdByStateId(state): PLAYER_AVATAR_STATE_SURFING (3), by gender
+    PK_FLIGHT_SPRITE_DUMMY,      // SpriteCallbackDummy (the rider's callback)
+    PK_FLIGHT_RIDER_ANIM,        // ANIM_GET_ON_OFF_POKEMON_WEST: the rider sitting, facing west (flipped going east)
+    PK_FLIGHT_SCRATCH,           // 0x1C bytes of EWRAM nothing else uses: the rider's SpriteTemplate and subspriteTables
+    PK_FLIGHT_DRAW_VIEW,         // DrawWholeMapView(): the view drawn again after a crossing (flMend), or 0
+    PK_FLIGHT_SPRITE_OFFSET_Y,   // gSpriteCoordOffsetY, or 0: right after X (FireRed / Emerald's s16 pair; Ruby / Sapphire keep two s32s apart)
+    PK_FLIGHT_MAP_GROUPS_XOR,    // XORed into each of gMapGroups' group pointers (Unbound scrambles them), 0 = plain
+    PK_FLIGHT_BIRD_PALETTE,      // the hacks' palette loader (CFRU's dynamic palettes: a slot by tag, loaded if need be), or 0:
+                                 // CreateFlyBirdSprite's palette 0 (FireRed's player palette, with the bird's colours)
+    PK_FLIGHT_BIRD_PALETTE_TAG,  // ... the tag it's given (Radical Red the player's 0x1100, Unbound its bird's 0x11A2)
+    PK_FLIGHT_VEHICLE,           // MAKEOVER > FLY ON: 0 the game's bird, else pk_flight_vehicles.h's from 1 (balloon, helicopter,
+                                 // zeppelin) - the app's choice, not the record's; changing it mid-flight just redraws
     PK_FLIGHT_NO_FLY,            // 2 words: up to 4 maps (group << 8 | num, 0xFFFF none) the flight never crosses into -
                                  // stand-ins only ever seen from outside (FireRed's SaffronCity_Connection: scrambled tiles)
     PK_FLIGHT_LAND_OK = PK_FLIGHT_NO_FLY + 2,   // 8 words: a bit per metatile behavior a player may land on

@@ -55,7 +55,7 @@ object ScenicFly {
         fun s32(a: Long) = u32(a).toInt()
         fun header(id: MapId): Long? {
             if (id.group !in f.mapGroupSizes.indices || id.num !in 0 until f.mapGroupSizes[id.group]) return null
-            val list = u32(f.mapGroups + 4L * id.group)
+            val list = u32(f.mapGroups + 4L * id.group) xor f.mapGroupsXor
             return u32(list + 4L * id.num).takeIf { it in ROM_START until ROM_END }
         }
         val noFly = f.noFly.map { MapId(it shr 8, it and 0xFF) }.toSet()
@@ -110,9 +110,32 @@ object ScenicFly {
     /** The landing spot FLY sets for [mapsec] (sMapFlyDestinations' heal location: its map and tile), or null for a town
      * with none (a plain map warp: the classic FLY). */
     fun destination(fly: FlyFns, f: FlightFns, mapsec: Int, read: (Long, Int) -> ByteArray): Triple<MapId, Int, Int>? {
+        // Unbound: its own fly spots (u16 section, u8 num, u8 group, u16 x, u16 y), where its FLY warps.
+        fly.spots?.let { s ->
+            val t = read(s.addr, s.count * s.stride)
+            for (k in 0 until s.count) {
+                val o = k * s.stride
+                if (((t[o].toInt() and 0xFF) or ((t[o + 1].toInt() and 0xFF) shl 8)) != mapsec) continue
+                val x = (t[o + 4].toInt() and 0xFF) or ((t[o + 5].toInt() and 0xFF) shl 8)
+                val y = (t[o + 6].toInt() and 0xFF) or ((t[o + 7].toInt() and 0xFF) shl 8)
+                return Triple(MapId(t[o + 3].toInt() and 0xFF, t[o + 2].toInt() and 0xFF), x, y)
+            }
+            return null
+        }
         val i = mapsec - fly.firstMapsec
-        if (i !in 0 until fly.count) return null
-        val heal = read(fly.destinations + i * 3L, 3)[2].toInt() and 0xFF
+        val hw = fly.healWarp
+        // Emerald's Fly map exit (HealWarp): Littleroot by the player's gender (outside their house), Ever Grande / the
+        // Battle Frontier outside rather than the table's (the League's door, a gate) - where the classic FLY lands.
+        val heal = when {
+            hw != null && mapsec == hw.genderMapsec -> {
+                val sb2 = if (hw.saveBlock2Static) hw.saveBlock2Ptr
+                    else read(hw.saveBlock2Ptr, 4).let { b -> (0..3).fold(0L) { v, k -> v or ((b[k].toLong() and 0xFF) shl (8 * k)) } }
+                if (sb2 != 0L && read(sb2 + 8, 1)[0].toInt() and 1 != 0) hw.femaleHeal else hw.maleHeal
+            }
+            hw != null && mapsec in hw.special -> hw.special.getValue(mapsec)
+            i !in 0 until fly.count -> return null
+            else -> read(fly.destinations + i * 3L, 3)[2].toInt() and 0xFF
+        }
         if (heal !in 1..f.healLocationCount) return null
         val e = read(f.healLocations + (heal - 1L) * f.healLocationSize, 6)
         val x = (e[2].toInt() and 0xFF) or (e[3].toInt() shl 8)
@@ -122,7 +145,8 @@ object ScenicFly {
 
     /** Where the player stands: SaveBlock1's location (map group, num at +4 / +5) and pos (the map's own tile, +0 / +2). */
     fun here(f: FlightFns, read: (Long, Int) -> ByteArray): Triple<MapId, Int, Int>? {
-        val sb1 = read(f.saveBlock1Ptr, 4).let { b -> (0..3).fold(0L) { v, i -> v or ((b[i].toLong() and 0xFF) shl (8 * i)) } }
+        val sb1 = if (f.saveBlockStatic) f.saveBlock1Ptr
+            else read(f.saveBlock1Ptr, 4).let { b -> (0..3).fold(0L) { v, i -> v or ((b[i].toLong() and 0xFF) shl (8 * i)) } }
         if (sb1 == 0L) return null
         val b = read(sb1, 6)
         val x = (b[0].toInt() and 0xFF) or (b[1].toInt() shl 8)

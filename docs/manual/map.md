@@ -57,9 +57,11 @@ On the DS it works in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and
 
 ## Flying over the map
 
-In FireRed, a second blue button sits under the first one: `TAKE OFF`. Your Pokémon's bird swoops in, you climb on, and you can fly anywhere the game's world goes: over trees, mountains, water and buildings, from one route into the next town, with the D-pad. Hold `A` to fly faster. Nothing happens on the way: no wild Pokémon, no trainers spotting you, no doors pulling you in.
+In FireRed, LeafGreen, Ruby, Sapphire and Emerald (every English release), and in Radical Red, Unbound and Glazed, a second blue button sits under the first one: `TAKE OFF`. Your Pokémon's bird swoops in, you climb on, and you can fly anywhere the game's world goes: over trees, mountains, water and buildings, from one route into the next town, with the D-pad. Hold `A` to fly faster. Nothing happens on the way: no wild Pokémon, no trainers spotting you, no doors pulling you in.
 
-Your shadow follows on the ground below. Flying on a diagonal is about as fast as flying straight. With `ASPECT` set to `EXPAND`, flying on a diagonal glides smoothly instead of stepping a tile at a time.
+Rather ride something else? `FLY ON`, in `SETTINGS` under `MAKEOVER`, swaps the bird for an air balloon, a helicopter or a zeppelin, with you inside. See [FLY ON](companion.md#fly-on).
+
+Your shadow follows on the ground below, and the bird leans the way you're flying: nose up on the way north, down on the way south, a little on a diagonal. Flying on a diagonal is about as fast as flying straight. With `ASPECT` set to `EXPAND`, flying on a diagonal glides smoothly instead of stepping a tile at a time.
 
 Press `B` (or tap the button again, which now says `LAND`) to come down. The bird finds the nearest spot you could walk on, flies you there and lands; if there's no ground anywhere near, you hear a buzz and keep flying, so head for land and try again. You can't fly past the edge of the game's world: the bird just turns.
 
@@ -71,7 +73,7 @@ In a game that has it, flying to a town doesn't cut to the game's animation: you
 
 After your first flight like this, a card asks whether to keep it. `KEEP IT` (or leaving the card until it goes) keeps it; `USE CLASSIC` goes back to the game's own animation. You can change it any time with `FLY STYLE` (in `SETTINGS`, under `GAMEPLAY`): `SCENIC` flies over the map, `CLASSIC` is the game's own way.
 
-A town you can't reach over land and sea from where you are (one behind gatehouses, or another island group) gets the game's own flight instead. `SCENIC` works in FireRed for now; other games always fly the classic way.
+A town you can't reach over land and sea from where you are (one behind gatehouses, one you only reach by diving, or another island group) gets the game's own flight instead. `SCENIC` works in the games that have `TAKE OFF`; other games always fly the classic way.
 
 ## Which games get a picture
 

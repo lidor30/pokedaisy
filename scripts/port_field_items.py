@@ -442,8 +442,18 @@ def kt(rom, key, m):
             scratch = 0x0203FFF0L, itemCount = {fam['itemCount']}, unholdablePockets = setOf({', '.join(map(str, fam['pockets']))}),
             codeCrcs = listOf({', '.join(f'0x{crc(rom, v):08X}L' for v in party)}),
             useFuncs = setOf({', '.join(h(m[n]) for n in USE)}),
-        ),{pc_kt(rom, fam, m.get('pc'))}{fly_kt(rom, m.get('fly'))}
+        ),{pc_kt(rom, fam, m.get('pc'))}{fly_kt(rom, m.get('fly'))}{flight_kt(rom)}
     ),"""
+
+
+# FREE FLIGHT (Flight.kt): records in gamedata/gen3/records/ by port key, from pret's symbols for that build (only the
+# English rev 0 FireRed so far; the hacks on its code get it only where Flight.kt's flightAllowed lets them).
+FLIGHT_RECORDS = {"BPRE0": "FLIGHT_FIRERED_REV0"}
+
+
+def flight_kt(rom):
+    rec = FLIGHT_RECORDS.get(f"{rom.code}{rom.rev}")
+    return f"\n        flight = {rec}," if rec else ""
 
 
 def fly_kt(rom, fly):
