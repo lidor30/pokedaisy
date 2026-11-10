@@ -144,7 +144,7 @@ fun flightCodeMatches(f: FlightFns, read: (addr: Long, len: Int) -> ByteArray): 
  */
 fun flightAllowed(kind: GameKind?, retail: Boolean, flight: FlightFns? = null): Boolean = when (kind) {
     GameKind.FIRERED -> retail || FIRERED_HACK_FLIGHTS.any { it === flight }
-    GameKind.EMERALD -> retail || flight === FLIGHT_EMERALD_LEGACY
+    GameKind.EMERALD -> retail || flight === FLIGHT_EMERALD_LEGACY || flight === FLIGHT_EMERALD_KAIZO
     // Known by their hash, their worlds flown headless.
     GameKind.RADICAL_RED, GameKind.UNBOUND, GameKind.GLAZED, GameKind.ORANGE_ISLANDS, GameKind.ODYSSEY, GameKind.GAIA,
     GameKind.AMETHYST, GameKind.SWORD_SHIELD, GameKind.GS_CHRONICLES, GameKind.IMPERIUM, GameKind.LAZARUS, GameKind.HEART_AND_SOUL,
@@ -154,7 +154,7 @@ fun flightAllowed(kind: GameKind?, retail: Boolean, flight: FlightFns? = null): 
 
 /** The FireRed 1.0 hacks running as FIRERED that have a flight record of their own (FieldItems.kt's fireRedHackFlight). */
 private val FIRERED_HACK_FLIGHTS: List<FlightFns> by lazy {
-    listOf(FLIGHT_ULTRA_VIOLET, FLIGHT_GHOST_GREY, FLIGHT_LETS_GO)
+    listOf(FLIGHT_ULTRA_VIOLET, FLIGHT_GHOST_GREY, FLIGHT_LETS_GO, FLIGHT_ROCKET_EDITION, FLIGHT_ASH_GRAY)
 }
 
 /** pkFlightTakeOff's answer as FLY's ([FlyResult]). */

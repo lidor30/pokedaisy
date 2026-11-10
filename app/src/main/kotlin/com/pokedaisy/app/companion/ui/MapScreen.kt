@@ -824,6 +824,7 @@ internal fun flyMessage(r: com.pokedaisy.app.companion.data.FlyResult): String =
     com.pokedaisy.app.companion.data.FlyResult.CANT_FLY_HERE -> tr("You can't FLY from here.")
     com.pokedaisy.app.companion.data.FlyResult.PARTNER -> tr("You can't FLY while someone is traveling with you.")
     com.pokedaisy.app.companion.data.FlyResult.NO_FLYER -> tr("Nobody in the party knows FLY.")
+    com.pokedaisy.app.companion.data.FlyResult.NO_ROUTE -> tr("No way there over the map from here.")
     else -> tr("It can't be used here.")
 }
 

@@ -622,8 +622,8 @@ birdPaletteTag = 0x11A2
 # and heal locations (read off the ROM through rev 0's literal pools), its stand-in Saffron map only where 3.11 is still
 # FireRed's, and its own code CRCs (CFRU and a few in-place hacks hook DestroySprite). Each flown headless on its save.
 # A build sharing one: Ghost Grey 1.0.1 / 1.0.2 / 1.0.4, the four Let's Go builds, the Sword and Shield patches (the same
-# bytes where these read). Not Rocket Edition or Ash Gray: Rocket Edition reset to its copyright screen as a flight came into
-# Cerulean City (headless, from Route 20), and Ash Gray's EXPAND lost the map on its long routes.
+# bytes where these read). Rocket Edition reset to its copyright screen on long flights until the player was made inanimate
+# while up (pk_flight.c's flHidePlayer: the fast movements' step animations ran past the player's anim table).
 [record.FLIGHT_ULTRA_VIOLET]
 schema = 'gen3_flight'
 base = 'FLIGHT_FIRERED_REV0'
@@ -633,6 +633,17 @@ healLocations = 0x08740240
 healLocationCount = 21
 noFly = [0x030B]
 codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0xC22D4D5F, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_ROCKET_EDITION]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x2845A4EB, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_ASH_GRAY]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x0873E2F4
+mapGroupSizes = [43, 129, 60, 132, 4, 10, 10, 11, 6, 9, 22, 10, 8, 2, 11, 4, 2, 4, 2, 1, 1, 2, 2, 4, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 2, 2, 1]
 
 [record.FLIGHT_ORANGE_ISLANDS]
 schema = 'gen3_flight'

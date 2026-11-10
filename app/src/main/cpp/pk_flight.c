@@ -27,6 +27,7 @@
 #define FL_HELD_FINISHED 0x80u
 #define FL_NO_COVERING 0x10u     // disableCoveringGroundEffects
 #define FL_INVISIBLE 0x20u
+#define FL_INANIMATE 0x10u      // ObjectEvent.inanimate: its movements start no step animation
 #define FL_IS_PLAYER 0x01u
 #define FL_LOCALID_PLAYER 0xFFu
 #define FL_LOCALID_CAMERA 0x7Fu    // DoFlaggedGroundEffects skips an invisible object with this localId: no ground effects
@@ -830,8 +831,12 @@ static void flPlayerOnScreen(struct mCore* core, uint32_t obj, int* x, int* y) {
 }
 
 static void flHidePlayer(struct mCore* core, uint32_t obj, int hidden) {
+    // Inanimate too while up: the flight's fast movements start the "go faster / fastest" step animations, which the player's
+    // own table doesn't have (FireRed's has 13: anim 13 / 17 read EWRAM as commands, and in Rocket Edition, whose EWRAM
+    // differs, the hidden sprite's animation jumped through a bad pointer and reset the game). A player is never inanimate.
     uint8_t f1 = core->busRead8(core, obj + FL_OBJ_FLAGS1);
-    core->busWrite8(core, obj + FL_OBJ_FLAGS1, (uint8_t) (hidden ? f1 | FL_INVISIBLE : f1 & ~FL_INVISIBLE));
+    core->busWrite8(core, obj + FL_OBJ_FLAGS1,
+                    (uint8_t) (hidden ? f1 | FL_INVISIBLE | FL_INANIMATE : f1 & ~(FL_INVISIBLE | FL_INANIMATE)));
 }
 
 static void flMarkPlayer(struct mCore* core, uint32_t obj, int flying) {
@@ -1044,6 +1049,7 @@ static void flFollowRam(struct mCore* core, uint32_t obj) {
             flFollowerBack(core);
             return;
         }
+        if (hidden) flHidePlayer(core, obj, 1);   // a state from before the player was made inanimate too
         flState = hidden ? PK_FLIGHT_FLYING : PK_FLIGHT_TAKING_OFF;
         flPhase = hidden ? 0 : FL_SWOOP_FRAMES;
         flLift = hidden ? FL_LIFT : 0;
