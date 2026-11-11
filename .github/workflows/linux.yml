@@ -26,7 +26,7 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ inputs.ref }}
-      - run: git submodule update --init third_party/mgba
+      - run: git submodule update --init third_party/mgba third_party/armgba third_party/zlib
       - run: sudo apt-get update && sudo apt-get install -y cmake libsdl2-dev
       - name: Shared host capability and legacy previews
         run: make -C 3ds test-host-display test-configs-gen preview
@@ -38,7 +38,6 @@ jobs:
       - name: Build and test native libretro cores
         run: |
           git submodule update --init --recursive third_party/dsperate-lr
-          git submodule update --init third_party/armgba third_party/zlib
           cmake -S linux/libretro-ds -B "$RUNNER_TEMP/pd-ds" -DCMAKE_BUILD_TYPE=Release
           cmake --build "$RUNNER_TEMP/pd-ds" -j2
           ctest --test-dir "$RUNNER_TEMP/pd-ds" --output-on-failure

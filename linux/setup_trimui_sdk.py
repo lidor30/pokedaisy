@@ -31,8 +31,11 @@ for name, repo, asset, sha, dest in archives:
         subprocess.run(['curl', '-fLsS', '--retry', '3', '-H', 'Accept: application/octet-stream',
                         f'https://api.github.com/repos/{repo}/releases/assets/{asset}', '-o', str(temporary)], check=True)
         temporary.rename(archive)
-    with archive.open('rb') as f:
-        actual = hashlib.file_digest(f, 'sha256').hexdigest()
+    digest = hashlib.sha256()
+    with archive.open('rb') as f:  # file_digest needs Python 3.11; ubuntu-22.04 has 3.10
+        for chunk in iter(lambda: f.read(1 << 20), b''):
+            digest.update(chunk)
+    actual = digest.hexdigest()
     if actual != sha:
         raise SystemExit(f'Archive checksum mismatch: {name}')
     with tarfile.open(archive) as t:
