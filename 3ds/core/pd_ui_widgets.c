@@ -71,7 +71,7 @@ int ui_type_badge(struct pd_canvas* c, int x, int y, int type) {
 
 void ui_button(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, const char* label, int id) {
     bool pressed = ui->pressedId == id;
-    pd_title_box(c, x, y, w, h, pressed ? PD_LIST_FILL : PD_TITLE_FILL);
+    pd_button_box(c, x, y, w, h, 3, pd_cur->title, pd_cur->titleCount, pressed ? PD_LIST_FILL : PD_TITLE_FILL);
     int tw = pd_text_width(label);
     pd_text(c, x + (w - tw) / 2, pd_text_y(y, h), label, PD_TITLE_TEXT, PD_TITLE_SHADOW);
     ui_add_hit(ui, x, y, w, h, id);

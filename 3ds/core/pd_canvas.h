@@ -33,6 +33,10 @@ void pd_round_rect(struct pd_canvas* c, int x, int y, int w, int h, int r, uint3
 int pd_layered_box(struct pd_canvas* c, int x, int y, int w, int h, int r,
                    const struct pd_layer* layers, int n, uint32_t fill);
 
+// The Android Companion's soft two-tone button face inside a layered frame.
+void pd_button_box(struct pd_canvas* c, int x, int y, int w, int h, int r,
+                   const struct pd_layer* layers, int n, uint32_t fill);
+
 // GBA text: the shadow one pixel right, down and diagonally, then the glyphs.
 // shadow 0xFF000000 (PD_NO_SHADOW) = none. Returns the advance in pixels.
 #define PD_NO_SHADOW 0xFF000000u

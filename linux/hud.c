@@ -50,26 +50,24 @@ static uint32_t mix_color(uint32_t top, uint32_t low, unsigned percent) {
 void hud_tile(struct pd_canvas *c, const struct hud_ink *ink, int x, int y, int w, int h, bool selected) {
   uint32_t top = ink->tileTop, low = ink->tileLow;
   const struct pd_layer edge = {ink->edge, 1};
-  int inset, radius = ink->window ? 3 : 4;
+  int radius = ink->window ? 3 : 4;
   pd_round_rect(c, x + 3, y + 3, w, h, 4, ink->window ? pd_cur->title[0].color : ink->boxShadow);
   if (ink->window) {
-    top = PD_TITLE_FILL;
-    low = mix_color(top, 0x40485Au, 30);
-    inset = pd_title_box(c, x, y, w, h, top);
+    pd_button_box(c, x, y, w, h, radius, pd_cur->title, pd_cur->titleCount, PD_TITLE_FILL);
   } else {
-    inset = pd_layered_box(c, x, y, w, h, radius, &edge, 1, top);
-  }
-  int split = y + h * 47 / 100;
-  const int bounds[] = {split, split + 1, split + 2, y + h - inset};
-  const uint32_t bands[] = {mix_color(top, low, 35), mix_color(top, low, 70), low};
-  for (int i = 0; i < 3; i++) {
-    struct pd_canvas clip = *c;
-    if (clip.cy0 < bounds[i])
-      clip.cy0 = bounds[i];
-    if (clip.cy1 > bounds[i + 1])
-      clip.cy1 = bounds[i + 1];
-    pd_round_rect(&clip, x + inset, y + inset, w - 2 * inset, h - 2 * inset,
-                  radius > inset ? radius - inset : 0, bands[i]);
+    int inset = pd_layered_box(c, x, y, w, h, radius, &edge, 1, top);
+    int split = y + h * 47 / 100;
+    const int bounds[] = {split, split + 1, split + 2, y + h - inset};
+    const uint32_t bands[] = {mix_color(top, low, 35), mix_color(top, low, 70), low};
+    for (int i = 0; i < 3; i++) {
+      struct pd_canvas clip = *c;
+      if (clip.cy0 < bounds[i])
+        clip.cy0 = bounds[i];
+      if (clip.cy1 > bounds[i + 1])
+        clip.cy1 = bounds[i + 1];
+      pd_round_rect(&clip, x + inset, y + inset, w - 2 * inset, h - 2 * inset,
+                    radius > inset ? radius - inset : 0, bands[i]);
+    }
   }
   if (selected) {
     pd_fill(c, x + 4, y + 1, w - 8, 1, HUD_SELECTED);
