@@ -27,7 +27,8 @@ concurrency:
 jobs:
   core:
     name: libretro cores (x86 + aarch64, exports)
-    runs-on: ubuntu-24.04
+    # Match the release cross-toolchain, before glibc 2.38 redirects C23 calls.
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
