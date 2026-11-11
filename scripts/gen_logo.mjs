@@ -2,8 +2,10 @@
 //  - app/src/main/kotlin/.../companion/ui/LogoGen.kt: the website's mark as it is - its rows and palette,
 //    for PixelArt (the Library's title, the PokéDaisy theme's backdrop).
 //  - app/src/main/res/mipmap-*/ic_launcher_foreground.png: the launcher icon's foreground - the mark with
-//    the icon's two edits ([iconLogo]: the 3 and 9 o'clock petal tips rounded, a 2 px outline) at a whole
-//    scale inside the adaptive icon's safe zone, over the blue ic_launcher_background.
+//    the icon's edits ([iconLogo]: every outline 1 px, the top / bottom petals centred, the 3 and 9 o'clock
+//    petal tips rounded), MARK_DP across in the middle of the adaptive icon, as wide as the old one.
+//  - app/src/main/res/mipmap-*/ic_launcher_background.png: a blue diamond lattice on the flower's own pixel grid
+//    ([lattice]), its 1 px lines crossing behind the flower's middle, each diamond's top half lit.
 //
 //     node scripts/gen_logo.mjs
 import { writeFileSync } from 'node:fs';
@@ -25,19 +27,26 @@ function roundSideTips(rows) {
   return g.map((r) => r.join(''));
 }
 
-/** One more pixel of outline all round the outside (4-neighbour, so corners stay round): the grid grows by
- * 2, the flower inside stays pixel for pixel. */
-function thickenOutline(rows) {
-  const w = rows[0].length + 2;
-  const g = ['.'.repeat(w), ...rows.map((r) => `.${r}.`), '.'.repeat(w)].map((r) => [...r]);
-  const ink = (x, y) => g[y]?.[x] !== undefined && g[y][x] !== '.';
-  const out = g.map((r, y) => r.map((c, x) =>
-    c === '.' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => ink(x + dx, y + dy)) ? 'K' : c));
-  return out.map((r) => r.join(''));
+/** Every outline 1 px and the flower mirrored exactly: where a petal met the ball's band the black was 3 px
+ * (the band now runs on under the petal to the ring), side petals met the ring with two outlines, and the top
+ * and bottom petals were a column off on one row each. [x, y, colour] over the 32x32 mark. */
+const ICON_EDITS = [
+  [18, 8, 'D'], [19, 8, 'K'],
+  [19, 23, 'W'], [18, 23, 'K'], [17, 23, 'S'],
+  [11, 11, 'D'], [20, 11, 'D'],
+  [8, 12, 'K'], [9, 12, 'K'], [10, 12, 'K'], [8, 13, 'H'], [9, 13, 'H'],
+  [21, 12, 'K'], [22, 12, 'K'], [23, 12, 'K'], [22, 13, 'H'], [23, 13, 'H'],
+  [9, 18, 'S'], [9, 19, 'K'], [10, 19, 'K'], [11, 20, 'S'],
+  [22, 18, 'S'], [23, 18, 'S'], [21, 19, 'K'], [22, 19, 'K'], [23, 19, 'K'], [20, 20, 'W'],
+];
+function evenOutlines(rows) {
+  const g = rows.map((r) => [...r]);
+  for (const [x, y, c] of ICON_EDITS) g[y][x] = c;
+  return g.map((r) => r.join(''));
 }
 
 const logo = SPRITES.logo;
-const iconLogo = { pal: logo.pal, rows: thickenOutline(roundSideTips(logo.rows)) };
+const iconLogo = { pal: logo.pal, rows: roundSideTips(evenOutlines(logo.rows)) };
 
 // --- Kotlin ------------------------------------------------------------------------------------
 const pal = Object.entries(logo.pal)
@@ -65,8 +74,28 @@ ${pal}
 // --- launcher PNGs -----------------------------------------------------------------------------
 // Adaptive icons: a 108 dp canvas, of which the middle 66 dp circle always shows.
 const DENSITIES = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
-/** How wide the mark is on the icon, of its 108 dp (Android's keylines put an icon's art at ~48 dp): picked by eye. */
-const ICON_DP = 51;
+/** How wide the mark is on the icon, of its 108 dp: the old icon's (its 32 pixels + a 2 px outline at 1.5 dp),
+ * picked by eye back then. One pixel of the art (a cell) is MARK_DP / 32 dp: no density makes that whole screen
+ * pixels, and nearest-neighbour left some cells a pixel wider than others (the 1 px outlines looked broken), so
+ * each screen pixel is the average of SS x SS samples: crisp cells, edges softened by a fraction of a pixel. */
+const MARK_DP = 51;
+const SS = 8;
+/** Both layers are drawn on one grid of cells: the mark on CELLS' middle 32, the lattice's cells counted from
+ * the same origin, so the lattice's pixels line up with the flower's. */
+const CELLS = 72;
+
+/** The background's cell (x, y): diagonal 1-cell lines every LATTICE cells, '/' where x + y and '\' where
+ * x - y hit a line; both pass through the middle (the corner of cells 35 / 36), so the lattice mirrors
+ * exactly both ways round the flower - an even width can't (it would sit half a cell off). The upper half of
+ * each diamond is lit, a triangle from its left corner to its right one. */
+const LATTICE = 14;
+const LATTICE_COLOURS = { line: '#226dd5', lit: '#3c94fa', fill: '#2a7fe4' };
+function lattice(x, y) {
+  const m = (v) => ((v % LATTICE) + LATTICE) % LATTICE;
+  const s = m(x + y - (CELLS - 1)), t = m(x - y);
+  if (s === 0 || t === 0) return LATTICE_COLOURS.line;
+  return s < t ? LATTICE_COLOURS.lit : LATTICE_COLOURS.fill;
+}
 const crcTable = Array.from({ length: 256 }, (_, n) => {
   let c = n;
   for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
@@ -105,21 +134,29 @@ function png(size, pixel) {
   ]);
 }
 const n = iconLogo.rows.length;
+const off = (CELLS - n) / 2;
+const rgba = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).concat(255);
+/** A screen pixel as the average of SS x SS samples of `at(cellX, cellY)` -> [r, g, b, a] (premultiplied). */
+function smooth(size, px, at) {
+  const start = (size - n * px) / 2 - off * px; // the mark centred, its cells counted out to the edges
+  return (x, y) => {
+    let r = 0, g = 0, b = 0, a = 0;
+    for (let sy = 0; sy < SS; sy++) for (let sx = 0; sx < SS; sx++) {
+      const c = at(Math.floor((x + (sx + 0.5) / SS - start) / px), Math.floor((y + (sy + 0.5) / SS - start) / px));
+      r += c[0] * c[3]; g += c[1] * c[3]; b += c[2] * c[3]; a += c[3];
+    }
+    return a ? [r / a, g / a, b / a, a / (SS * SS)].map(Math.round) : [0, 0, 0, 0];
+  };
+}
 for (const [name, d] of Object.entries(DENSITIES)) {
   const size = Math.round(108 * d);
-  // The mark ICON_DP across (a launcher shows the middle 72 dp; at the 66 dp safe zone's full width it
-  // looked too big). Not always a whole scale (51 dp is 4.5 px a pixel at xxhdpi): nearest-neighbour, so
-  // some blocks come out a screen pixel wider than others but every edge stays sharp - no smoothing.
-  const scale = (ICON_DP * d) / n;
-  const off = Math.floor((size - Math.round(n * scale)) / 2);
-  const img = png(size, (x, y) => {
-    const gx = Math.floor((x - off) / scale);
-    const gy = Math.floor((y - off) / scale);
-    const c = x >= off && y >= off && gx < n && gy < n ? iconLogo.rows[gy][gx] : '.';
-    const hex = iconLogo.pal[c];
-    if (!hex) return [0, 0, 0, 0];
-    return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).concat(255);
-  });
-  writeFileSync(join(root, `app/src/main/res/mipmap-${name}/ic_launcher_foreground.png`), img);
-  console.log(`mipmap-${name}: ${size}px, mark ${Math.round(n * scale)}px = ${((n * scale) / d).toFixed(1)} dp (x${scale.toFixed(2)})`);
+  const px = (MARK_DP * d) / n;
+  const fg = png(size, smooth(size, px, (cx, cy) => {
+    const c = iconLogo.rows[cy - off]?.[cx - off];
+    return c && c !== '.' ? rgba(iconLogo.pal[c]) : [0, 0, 0, 0];
+  }));
+  const bg = png(size, smooth(size, px, (cx, cy) => rgba(lattice(cx, cy))));
+  writeFileSync(join(root, `app/src/main/res/mipmap-${name}/ic_launcher_foreground.png`), fg);
+  writeFileSync(join(root, `app/src/main/res/mipmap-${name}/ic_launcher_background.png`), bg);
+  console.log(`mipmap-${name}: ${size}px, ${px.toFixed(2)} px a pixel, mark ${MARK_DP} dp`);
 }
