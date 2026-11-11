@@ -4,30 +4,10 @@
  * mGBA's entry points are renamed with the preprocessor while its file is included, so this file can
  * define the real retro_* functions around them and reach its static state (core, data, outputBuffer)
  * without editing a line of upstream. */
-#define retro_set_environment mgba_retro_set_environment
-#define retro_set_video_refresh mgba_retro_set_video_refresh
-#define retro_set_input_state mgba_retro_set_input_state
-#define retro_get_system_info mgba_retro_get_system_info
-#define retro_get_system_av_info mgba_retro_get_system_av_info
-#define retro_run mgba_retro_run
-#define retro_load_game mgba_retro_load_game
-#define retro_unload_game mgba_retro_unload_game
-#define retro_unserialize mgba_retro_unserialize
-#define retro_reset mgba_retro_reset
 #ifdef __ARM_NEON
 #include <arm_neon.h>
 #endif
-#include "libretro.c"
-#undef retro_set_environment
-#undef retro_set_video_refresh
-#undef retro_set_input_state
-#undef retro_get_system_info
-#undef retro_get_system_av_info
-#undef retro_run
-#undef retro_load_game
-#undef retro_unload_game
-#undef retro_unserialize
-#undef retro_reset
+#include "pd_backend.h"
 
 #include "field_items.h"
 #include "fly.h"
@@ -90,7 +70,7 @@ static retro_video_refresh_t realVideo;
 static retro_input_state_t realInput;
 static bool optionsDirty;
 
-static const char *option(const char *key) {
+static const char *pd_option(const char *key) {
   struct retro_variable v = {key, NULL};
   return realEnv && realEnv(RETRO_ENVIRONMENT_GET_VARIABLE, &v) && v.value ? v.value : NULL;
 }
@@ -638,6 +618,105 @@ static struct PkWideView wide_rect(unsigned fw, unsigned fh) {
   return (struct PkWideView){((int)fw - (int)wideW) / 2, ((int)fh - (int)wideH) / 2, (int)wideW, (int)wideH};
 }
 
+#ifdef PD_WIDECHECK
+/* EXPAND's ground rule: the rebuilt window's middle (the game's own 240x160) must equal the frame the emulator drew, pixel
+ * for pixel. Counted per frame while the scene is the field; a summary at unload (-DPD_WIDECHECK, a test build only). */
+static unsigned wcAll, wcField, wcBad, wcWorst;
+static int wcFirstFrame = -1, wcFirstX, wcFirstY;
+static void wide_check(unsigned fw, unsigned fh, struct PkWideView v) {
+  wcAll++;
+  if (pk_wide_scene() != PK_WIDE_SCENE_FIELD || pk_wide_fault())
+    return;
+  wcField++;
+  unsigned bad = 0;
+  for (unsigned y = 0; y < fh; y++)
+    for (unsigned x = 0; x < fw; x++)
+      if (wideFrame[(size_t)((int)y - v.y) * wideW + (size_t)((int)x - v.x)] != wideSource[y * fw + x]) {
+        if (!bad && wcFirstFrame < 0)
+          wcFirstFrame = (int)wcAll, wcFirstX = (int)x, wcFirstY = (int)y;
+        bad++;
+      }
+  if (bad) {
+    wcBad++;
+    if (bad > wcWorst)
+      wcWorst = bad;
+  }
+}
+static void wide_check_report(void) {
+  fprintf(stderr, "pokedaisy: widecheck frames %u, field frames %u, frames with a differing middle %u, worst %u px%s\n", wcAll,
+          wcField, wcBad, wcWorst, wcFirstFrame < 0 ? "" : " (first: see below)");
+  if (wcFirstFrame >= 0)
+    fprintf(stderr, "pokedaisy: widecheck first difference: frame %d at (%d,%d)\n", wcFirstFrame, wcFirstX, wcFirstY);
+}
+#define WIDE_CHECK(fw, fh, v) wide_check((fw), (fh), (v))
+#define WIDE_CHECK_REPORT() wide_check_report()
+#else
+#define WIDE_CHECK(fw, fh, v) ((void)0)
+#define WIDE_CHECK_REPORT() ((void)0)
+#endif
+
+#ifdef PD_CALLTEST
+/* A test build's check of the game-call layer (pk_call): FLY's own first question, asked every 300 frames from the 2500th
+ * while the field is free, through the real functions (the game's FlagGet and its Fly set-up); the result codes, towns and,
+ * on armGBA, the steps each call took are printed, and the player's last position at unload. The same on both cores, one
+ * save: their answers must agree, and the game must go on as before. */
+static int ctFrame, ctCalls, ctStage, ctWait, ctMapsec;
+static uint32_t ctCallback;
+static struct fly_targets ctT;
+#ifdef PD_ARMGBA
+long pk_call_last_steps(void);
+#define CT_STEPS() pk_call_last_steps()
+#else
+#define CT_STEPS() 0L
+#endif
+static void call_test(bool busy, bool battle) {
+  ctFrame++;
+#ifdef PD_CALLTEST_PC
+  /* PC anywhere: the game's own PC menu, opened by a script written to EWRAM and run by the game (pc_open). Once, frame 3000. */
+  if (flyCfg && ctFrame == 3000) {
+    enum item_result r = pc_open(core, game.cfg, romData, romLen, busy, battle);
+    fprintf(stderr, "pokedaisy: calltest frame %d pc_open -> %d (%ld steps), busy %d\n", ctFrame, (int)r, CT_STEPS(), busy);
+  }
+  return;
+#endif
+  if (!flyCfg || ctFrame < 2500 || ctStage >= 3 || !pk_call_safe(core))
+    return;
+  if (ctStage == 0 && ctFrame % 300 == 0) {
+    snapshot();
+    fly_targets(core, flyCfg, romData, romLen, &snap, busy, battle, &ctT);
+    ctCalls++;
+    fprintf(stderr, "pokedaisy: calltest frame %d busy %d: result %d flyer %d towns %d first %d (last call %ld steps)\n", ctFrame,
+            busy, (int)ctT.result, ctT.flyerSlot, ctT.count, ctT.count ? ctT.towns[0] : -1, CT_STEPS());
+    if (ctT.result == FLY_OK && ctT.count) {
+      ctMapsec = ctT.towns[0];
+      ctStage = 1;
+    }
+  } else if (ctStage == 1 && !busy) { /* FLY's first step: the checks again, then the Fly map closing: controls locked, a fade */
+    snapshot();
+    enum fly_result r = fly_start(core, flyCfg, romData, romLen, &snap, ctMapsec, &ctT, busy, battle);
+    fprintf(stderr, "pokedaisy: calltest frame %d fly_start -> %d (%ld steps), from map %d.%d (%d,%d)\n", ctFrame, (int)r, CT_STEPS(),
+            snap.mapGroup, snap.mapNum, snap.x, snap.y);
+    ctCallback = fly_main_callback(core, flyCfg);
+    ctWait = 0;
+    ctStage = r == FLY_OK ? 2 : 3;
+  } else if (ctStage == 2 && ++ctWait >= FLY_FADE_FRAMES) { /* the second: the game flies */
+    bool ok = fly_finish(core, flyCfg, romData, romLen, ctMapsec, &ctT, fly_main_callback(core, flyCfg) != ctCallback);
+    fprintf(stderr, "pokedaisy: calltest frame %d fly_finish -> %d (%ld steps)\n", ctFrame, ok, CT_STEPS());
+    ctStage = 3;
+  }
+}
+static void call_test_report(void) {
+  snapshot();
+  fprintf(stderr, "pokedaisy: calltest calls %d, stage %d, player at map %d.%d (%d,%d)\n", ctCalls, ctStage, snap.mapGroup,
+          snap.mapNum, snap.x, snap.y);
+}
+#define CALL_TEST(busy, battle) call_test((busy), (battle))
+#define CALL_TEST_REPORT() call_test_report()
+#else
+#define CALL_TEST(busy, battle) ((void)0)
+#define CALL_TEST_REPORT() ((void)0)
+#endif
+
 /* After every game frame: pk_wide's RAM history, and (wideReady) this frame's window. */
 static void wide_tick(void) {
   wideReady = false;
@@ -659,6 +738,7 @@ static void wide_tick(void) {
   struct PkWideView v = wide_rect(fw, fh);
   PF_T(vw0);
   pk_wide_view(core, wideSource, wideFrame, v, NULL);
+  WIDE_CHECK(fw, fh, v);
   PF_T(vw1);
   pf_add(PF_VIEW, vw1 - vw0);
   wideReady = !pk_wide_fault();
@@ -683,14 +763,14 @@ static void canvas_for(int fw, int fh, int kind, int *w, int *h) {
 }
 
 static void choose_canvas(void) {
-  const char *v = option("pokedaisy_canvas");
+  const char *v = pd_option("pokedaisy_canvas");
   int w = 320, h = 240;
   if (v && sscanf(v, "%dx%d", &w, &h) != 2)
     w = 320, h = 240;
   CWMAX = w < 320 ? 320 : w > CANVAS_MAX_W ? CANVAS_MAX_W : w;
   CHMAX = h < 240 ? 240 : h > CANVAS_MAX_H ? CANVAS_MAX_H : h;
   panelW = panelH = 0;
-  v = option("pokedaisy_panel");
+  v = pd_option("pokedaisy_panel");
   if (v && sscanf(v, "%dx%d", &panelW, &panelH) == 2 && panelW > 0 && panelH > 0) {
     struct retro_system_av_info av;
     mgba_retro_get_system_av_info(&av);
@@ -744,8 +824,7 @@ RETRO_API void retro_set_environment(retro_environment_t e) {
 }
 /* What the capture of mGBA's own video call records: the size; the pixels stay in outputBuffer. */
 static void capture_video(const void *d, unsigned w, unsigned h, size_t pitch) {
-  (void)d;
-  (void)pitch;
+  PD_BE_CAPTURE(d, w, h, pitch);
   gameW = w;
   gameH = h;
 }
@@ -774,6 +853,7 @@ RETRO_API void retro_get_system_av_info(struct retro_system_av_info *info) {
 RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   if (!mgba_retro_load_game(g))
     return false;
+  PD_BE_AFTER_LOAD(g);
   choose_canvas();
   read_options();
   {
@@ -787,16 +867,16 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
     return false;
   pd_canvas_init(&canvas, CW, CH, cvs);
   uint32_t crc = 0;
-  core->checksum(core, &crc, mCHECKSUM_CRC32);
-  const unsigned char *rom = data;
-  size_t len = dataSize;
+  PD_BE_CRC32(&crc);
+  const unsigned char *rom = PD_BE_ROM();
+  size_t len = PD_BE_ROM_LEN();
   pd_game_detect(&game, rom, len);
   game.rom = rom;
   game.romSize = len;
   pd_game_identify(&game);
   fprintf(stderr, "pokedaisy: %s, sha1 %s%s%s\n", game.title ? game.title : "?", game.sha1[0] ? game.sha1 : "-",
           game.unsupported ? " - " : "", game.unsupported ? game.unsupported : "");
-  if (core->platform(core) == mPLATFORM_GBA)
+  if (PD_BE_IS_GBA())
     pd_romart_scan(&game);
   const char *dir = NULL;
   if (realEnv(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &dir) && dir && *dir) {
@@ -831,7 +911,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   wideSupported = (polishedWide ? pk_wide_configure_gb_profile(pcWideConfig, pc_lz) : pk_wide_configure(crc)) != 0;
   wideReady = false;
   canvas_update(false);
-  fieldKnown = core->platform(core) == mPLATFORM_GBA && pk_field_configure(crc);
+  fieldKnown = PD_BE_IS_GBA() && pk_field_configure(crc);
   wildSwitch = fieldKnown ? pk_wild_switch_find(rom, len) : 0;
   if (wildSwitch)
     pk_field_wild(wildSwitch, settings.wildOff);
@@ -839,7 +919,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   fieldFlags = 0;
   romData = rom;
   romLen = len;
-  bool gba = core->platform(core) == mPLATFORM_GBA;
+  bool gba = PD_BE_IS_GBA();
   flyCfg = game.cfg && gba && fly_supported(game.cfg, rom, len) ? game.cfg : NULL;
   itemsOk = game.cfg && gba && field_items_supported(game.cfg, rom, len);
   pcOk = itemsOk && pc_supported(game.cfg, rom, len);
@@ -868,7 +948,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   host.hasButtonRows = true;
   host.frontendOwnsPlayback = true;
   // The Game Boy games get the HUD where the field scene is known (English Yellow, Crystal: pk_wide_gb), as in the app.
-  host.hasHud = core->platform(core) == mPLATFORM_GBA || wideSupported;
+  host.hasHud = PD_BE_IS_GBA() || wideSupported;
   host.hasExpand = true;
   host.itemCanUse = polishedActions ? polished_potion : NULL;
   host.expandGame = wideSupported;
@@ -917,7 +997,10 @@ RETRO_API void retro_reset(void) {
 
 RETRO_API void retro_unload_game(void) {
   pk_wide_configure(0);
+  WIDE_CHECK_REPORT();
+  CALL_TEST_REPORT();
   wideSupported = wideReady = false;
+  PD_BE_BEFORE_UNLOAD();
   mgba_retro_unload_game();
   free(cvs);
   free(out565);
@@ -1017,8 +1100,7 @@ RETRO_API void retro_run(void) {
   hudBtn = key_of(settings.hudBtn);
   // The frontend's poll, every frame: mGBA's run polls only when the game runs, and the layer pauses it (companion,
   // quick menu, HUD cursor), where a frontend that refreshes the pad in its poll left every button frozen.
-  if (inputPollCallback)
-    inputPollCallback();
+  PD_BE_INPUT_POLL();
   poll_keys();
   shortcutBlocked &= held;
   const bool fieldRunning = polishedActions && polishedInput.field.result == PD_FIELD_RUNNING;
@@ -1468,7 +1550,7 @@ RETRO_API void retro_run(void) {
     pf_add(PF_RUN, pb - pa);
     if (gameKeyFrames > 0)
       gameKeyFrames--;
-    if (core->platform(core) == mPLATFORM_GBA)
+    if (PD_BE_IS_GBA())
       pk_rest_note(core);
     if (fieldKnown)
       fieldFlags = pk_field_state(core, settings.runIndoors, wildSwitch && settings.wildOff ? 0 : 100);
@@ -1491,7 +1573,7 @@ RETRO_API void retro_run(void) {
     pf_add(PF_WIDE, pc - pb);
   } else {
     static const int16_t silence[2 * 1024];
-    audioCallback(silence, 549);
+    PD_BE_AUDIO(silence, 549);
   }
 
   if (!snap.valid || (companion && !wasCompanion) || (!companion && frames % 30 == 0))
@@ -1502,6 +1584,7 @@ RETRO_API void retro_run(void) {
   // FLY's steps and the field-item jobs, each between two frames the game's own code can be called in.
   bool flyBattle = snap.inBattle || (fieldFlags & PK_FIELD_BATTLE);
   bool flyBusy = companion || (fieldFlags & PK_FIELD_LOCKED) || (wideSupported && pk_wide_scene() != PK_WIDE_SCENE_FIELD);
+  CALL_TEST(flyBusy, flyBattle);
   if ((flyCfg || gbf) && flyAsk && quickOpen && !companion) {
     bool answered = false;
     if (gbf) {
@@ -1667,7 +1750,7 @@ RETRO_API void retro_run(void) {
       draw_game_fast();
     else
       draw_game();
-    bool gb = core->platform(core) == mPLATFORM_GB;
+    bool gb = PD_BE_IS_GB();
     bool field = gb ? wideSupported && pk_wide_scene() == PK_WIDE_SCENE_FIELD && !snap.inBattle && flyStage == 0
                     : (fieldFlags & PK_FIELD_KNOWN) && !(fieldFlags & (PK_FIELD_LOCKED | PK_FIELD_BATTLE)) &&
                           (!wideSupported || pk_wide_scene() == PK_WIDE_SCENE_FIELD) && flyStage == 0;

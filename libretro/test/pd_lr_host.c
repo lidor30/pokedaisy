@@ -1,4 +1,4 @@
-/* A bare libretro frontend for testing pokedaisy_libretro on the desktop: scripted buttons, option values, frame dumps.
+/* A bare libretro frontend for testing pokedaisy_gbc_libretro on the desktop: scripted buttons, option values, frame dumps.
  *   pd_lr_host CORE ROM SAVEDIR [-o key=value]... [-p FRAME:BUTTON[:HOLD]]... [-d FRAME:FILE.ppm]... [-n FRAMES] [-R FRAME: unload and load again after it] [-s SAVE.srm]
  *   [-w FRAME:OFFSET:HEX] [-r FRAME:OFFSET:N] (system RAM poke / peek)
  * BUTTON: a b select start right left up down r l x y l2 r2 l3. -r: write the frontend's view of the last frame size. */

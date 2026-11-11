@@ -33,6 +33,21 @@ The app shows every license below in full under Settings > LICENSES.
   stays under the MPL 2.0 (its header says so).
 - rcheevos (third_party/rcheevos), Copyright (c) 2018 RetroAchievements.org,
   MIT License - https://github.com/RetroAchievements/rcheevos
+- The libretro GBA core over armGBA (libretro/armgba):
+  armGBA (third_party/armgba), Copyright (c) 2026 Magnominus, Mozilla
+  Public License 2.0 for its own code (src/, its libretro glue, bios/), which
+  carries Jeffrey Pfau's and mGBA contributors' notices where it follows mGBA's
+  code (its renderer, save chips, cheats and sound channels, MPL 2.0) -
+  https://github.com/MagnominusGit/armGBA (source: the submodule's pinned
+  commit, v1.5). Built with libretro.h (MIT) and RetroArch's libretro-common and
+  the LZMA SDK as armGBA carries them in libretro/deps (MIT and public domain).
+  armGBA's Game Boy side (Gambatte, GNU GPL 2.0 only) is NOT built: it cannot be
+  linked into this GPL 3.0 work, and Game Boy games stay on the mGBA core.
+  PokeDaisy's files for it (libretro/pd_agba_*, libretro/armgba/) change none of
+  armGBA's files.
+- zlib (third_party/zlib, v1.3.1), Copyright (C) 1995-2024 Jean-loup Gailly and
+  Mark Adler, the zlib License - https://zlib.net (the armGBA core's glue calls
+  it; the cross toolchain has none).
 - Optional Linux DS experiment only: DSperate (third_party/dsperate),
   Copyright (C) 2026 DSperate contributors, GNU GPL 3.0 or later. Its built-in
   FreeBIOS is Copyright (c) 2013 Gilead Kutnick, BSD 2-clause
