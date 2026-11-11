@@ -23,6 +23,7 @@ import androidx.compose.ui.viewinterop.AndroidView
 import androidx.compose.ui.graphics.Color as ComposeColor
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
+import androidx.compose.ui.draw.alpha
 import androidx.compose.ui.platform.ComposeView
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.mutableStateOf
@@ -111,6 +112,9 @@ object NdsBottomFrame {
  * pick, Prefs.dsBottomCompanion). One button switches them, in the same place for both: centred in the bar the touch
  * screen's 4:3 leaves under it (COMPANION, or GAME SCREEN back), the companion taking the touch screen's area above it.
  * BACK with nothing left to go back from also returns to the touch screen (PokeDaisyActivity.companionBackTap).
+ * DS TOUCH SCREEN > FILL ([fill], Prefs.dsTouchFill): the touch screen stretched over the whole display, the companion
+ * too, and the switch a small see-through tab on the right edge halfway down - DS touch screens keep their buttons in
+ * the corners and along the bottom, and a tab running off the edge is the side panel's way of opening the companion.
  */
 @SuppressLint("ViewConstructor")
 class NdsBottomHost(
@@ -119,23 +123,45 @@ class NdsBottomHost(
     showCompanion: Boolean,
     /** The player switched: true = the companion now. */
     private val onSwitch: (Boolean) -> Unit,
+    fill: Boolean = false,
 ) : FrameLayout(context) {
-    private val touch = NdsBottomFrame.content(context)
+    private val touchView = NdsTouchScreenView(context)
+    private val touch = FrameLayout(context).apply {
+        setBackgroundColor(Color.BLACK)
+        addView(touchView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
+    }
     private val companionView = companion()
     private var label by mutableStateOf(showCompanion)
+    private var tabbed by mutableStateOf(fill)
     private val button = CompanionColors.track(ComposeView(context)).apply {
         setContent {
-            val m = rememberGbaTextMetrics()
-            Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
-                OptionButton(if (label) tr("GAME SCREEN") else tr("COMPANION"), m, onClick = { show(!showingCompanion) })
+            if (tabbed) {
+                // See-through, so the touch screen's own picture under it still shows.
+                Box(Modifier.alpha(TAB_ALPHA)) { com.pokedaisy.app.companion.ui.DsScreenSwitchTab(label) { show(!showingCompanion) } }
+            } else {
+                val m = rememberGbaTextMetrics()
+                Box(Modifier.fillMaxSize(), contentAlignment = Alignment.Center) {
+                    OptionButton(if (label) tr("GAME SCREEN") else tr("COMPANION"), m, onClick = { show(!showingCompanion) })
+                }
             }
         }
     }
     var showingCompanion = showCompanion
         private set
 
+    /** DS TOUCH SCREEN > FILL: the touch screen and the companion over the whole display, the switch a tab. */
+    var fill = fill
+        set(v) {
+            if (field == v) return
+            field = v
+            tabbed = v
+            touchView.stretch = v
+            relayout(width, height)
+        }
+
     init {
         setBackgroundColor(Color.BLACK)
+        touchView.stretch = fill
         addView(touch, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT))
         addView(companionView, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.MATCH_PARENT, Gravity.TOP))
         addView(button, LayoutParams(LayoutParams.MATCH_PARENT, LayoutParams.WRAP_CONTENT, Gravity.BOTTOM))
@@ -144,16 +170,39 @@ class NdsBottomHost(
 
     override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
         super.onSizeChanged(w, h, oldw, oldh)
-        // The touch screen's height at its own 4:3 (NdsTouchScreenView), the button's bar the rest; a display with no
-        // room under it keeps a bar of a button's height, the companion above it.
-        val screenH = minOf(h, (minOf(w.toFloat() / NdsBottomFrame.W, h.toFloat() / NdsBottomFrame.H) * NdsBottomFrame.H).toInt())
-        val minBar = (resources.displayMetrics.density * 56).toInt()
-        val bar = maxOf(h - screenH, minBar)
+        relayout(w, h)
+    }
+
+    private fun relayout(w: Int, h: Int) {
+        if (w <= 0 || h <= 0) return
         post {
-            companionView.layoutParams = (companionView.layoutParams as LayoutParams).apply { height = h - bar }
-            button.layoutParams = (button.layoutParams as LayoutParams).apply { height = bar }
+            if (fill) {
+                companionView.layoutParams = (companionView.layoutParams as LayoutParams).apply { height = LayoutParams.MATCH_PARENT }
+                button.layoutParams = (button.layoutParams as LayoutParams).apply {
+                    width = LayoutParams.WRAP_CONTENT
+                    height = LayoutParams.WRAP_CONTENT
+                    gravity = Gravity.END or Gravity.CENTER_VERTICAL
+                }
+            } else {
+                // The touch screen's height at its own 4:3 (NdsTouchScreenView), the button's bar the rest; a display with
+                // no room under it keeps a bar of a button's height, the companion above it.
+                val screenH = minOf(h, (minOf(w.toFloat() / NdsBottomFrame.W, h.toFloat() / NdsBottomFrame.H) * NdsBottomFrame.H).toInt())
+                val minBar = (resources.displayMetrics.density * 56).toInt()
+                val bar = maxOf(h - screenH, minBar)
+                companionView.layoutParams = (companionView.layoutParams as LayoutParams).apply { height = h - bar }
+                button.layoutParams = (button.layoutParams as LayoutParams).apply {
+                    width = LayoutParams.MATCH_PARENT
+                    height = bar
+                    gravity = Gravity.BOTTOM
+                }
+            }
             requestLayout()
         }
+    }
+
+    private companion object {
+        /** The tab over the touch screen: there, but not in the way. */
+        const val TAB_ALPHA = 0.7f
     }
 
     /** Shows the companion ([on]) or the touch screen, and tells [onSwitch] when that's a change. */
@@ -173,11 +222,21 @@ class NdsBottomHost(
     }
 }
 
-/** The DS's bottom screen, as large as fits at its own 4:3, top-centred; touches on it are the stylus. */
+/** The DS's bottom screen, as large as fits at its own 4:3, top-centred ([stretch]: over the whole view); touches on it
+ * are the stylus. */
 class NdsTouchScreenView(context: Context) : View(context) {
     private val bitmap = Bitmap.createBitmap(NdsBottomFrame.W, NdsBottomFrame.H, Bitmap.Config.ARGB_8888)
     private val paint = Paint().apply { isFilterBitmap = false }
     private val dst = Rect()
+
+    /** DS TOUCH SCREEN > FILL: the picture stretched over the view (taps follow it). */
+    var stretch = false
+        set(v) {
+            if (field == v) return
+            field = v
+            place(width, height)
+            invalidate()
+        }
 
     init { CompanionColors.trackGame(this) }
 
@@ -192,7 +251,10 @@ class NdsTouchScreenView(context: Context) : View(context) {
         super.onDetachedFromWindow()
     }
 
-    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) {
+    override fun onSizeChanged(w: Int, h: Int, oldw: Int, oldh: Int) = place(w, h)
+
+    private fun place(w: Int, h: Int) {
+        if (stretch) { dst.set(0, 0, w, h); return }
         val scale = minOf(w.toFloat() / NdsBottomFrame.W, h.toFloat() / NdsBottomFrame.H)
         val dw = (NdsBottomFrame.W * scale).toInt()
         val dh = (NdsBottomFrame.H * scale).toInt()

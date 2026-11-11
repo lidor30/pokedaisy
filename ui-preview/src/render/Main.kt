@@ -170,6 +170,9 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     private var battleInfoFirstOn = false
     override val battleInfoFirst get() = battleInfoFirstOn
     override fun setBattleInfoFirst(on: Boolean) { battleInfoFirstOn = on }
+    private var battleSuggestionsFirstOn = false
+    override val battleSuggestionsFirst get() = battleSuggestionsFirstOn
+    override fun setBattleSuggestionsFirst(on: Boolean) { battleSuggestionsFirstOn = on }
     override fun setOneTapMoves(on: Boolean) { oneTapOn = on }
     private val offer = androidx.compose.runtime.mutableStateOf(expandOffer)
     override val expandOffer get() = offer.value
@@ -3139,6 +3142,7 @@ val PREVIEW_BUTTONS: Map<GbaControls.Btn, List<String>> = GbaControls.Btn.entrie
         GbaControls.Btn.X, GbaControls.Btn.START_2, GbaControls.Btn.TO_COMPANION -> listOf("BUTTON_X")
         GbaControls.Btn.Y, GbaControls.Btn.SELECT_2 -> listOf("BUTTON_Y")
         GbaControls.Btn.TURBO_A, GbaControls.Btn.TURBO_B -> emptyList()
+        GbaControls.Btn.UP, GbaControls.Btn.DOWN, GbaControls.Btn.LEFT, GbaControls.Btn.RIGHT -> emptyList()
     }
 }
 

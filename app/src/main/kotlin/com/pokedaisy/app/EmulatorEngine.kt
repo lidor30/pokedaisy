@@ -600,6 +600,7 @@ class EmulatorEngine(
             s and MgbaCore.FIELD_BATTLE != 0 -> "battle"
             s and MgbaCore.FIELD_BIKE != 0 -> "bike"
             s and MgbaCore.FIELD_LOCKED != 0 -> "script / text / START menu"
+            s and MgbaCore.FIELD_WINDOW != 0 -> "a window on the field (a START menu that doesn't lock)"
             !FfMenuWatch.onField -> "not the field (a menu screen, or the field not learned yet)"
             else -> null
         }
@@ -2170,9 +2171,11 @@ class EmulatorEngine(
         const val DS_MUSIC_MAX_WAIT_FRAMES = 300
         const val DS_MUSIC_FADE_FRAMES = 30
         const val DS_MUSIC_MAX_FRAMES = 4
-        /** pkFieldState's bits that keep AUTO-RUN off: a script holding the field, a battle, a bike (known must be set). */
+        /** pkFieldState's bits that keep AUTO-RUN off: a script holding the field, a battle, a bike, a window up with the
+         *  controls free (a START menu that doesn't lock them: B closed it, GitHub #610) (known must be set). */
         const val AUTO_RUN_BLOCKERS = MgbaCore.FIELD_KNOWN or MgbaCore.FIELD_LOCKED or MgbaCore.FIELD_BATTLE or MgbaCore.FIELD_BIKE or
-            MgbaCore.FIELD_SURF   // under the sea B is what surfaces (TrySetupDiveEmergeScript): GitHub #338
+            MgbaCore.FIELD_SURF or   // under the sea B is what surfaces (TrySetupDiveEmergeScript): GitHub #338
+            MgbaCore.FIELD_WINDOW
         /** The D-pad's bits: one held = the player walking (the look-around glides back). */
         const val DIRECTIONS = MgbaCore.Key.UP or MgbaCore.Key.DOWN or MgbaCore.Key.LEFT or MgbaCore.Key.RIGHT
     }

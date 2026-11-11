@@ -127,6 +127,9 @@ enum {
     PK_FIELD_WILD_HELD = 32, // WILD ENCOUNTERS set the game's switch: keep calling until it's put back
     PK_FIELD_SURF = 64,      // surfing (or diving)
     PK_FIELD_AVATAR = 128,   // the bike / surf bits are the game's own player state (FIELD SPEED can trust them)
+    // A window on the field's text layer with the controls free: a START menu that doesn't lock them (Recharged Yellow's;
+    // GitHub #610: AUTO-RUN's B closed it on UP / DOWN). Past the DS games' bits, which share MgbaCore's FIELD_* names.
+    PK_FIELD_WINDOW = 262144,
 };
 
 /** WILD ENCOUNTERS: the game's sWildEncountersDisabled (EWRAM, found in the ROM by WildEncounters.kt; 0 = none). Call

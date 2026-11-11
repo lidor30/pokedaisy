@@ -259,6 +259,19 @@ class Hotkeys private constructor(
             writeProps(filesDir, props)
         }
 
+        /** The key [keyName] alone comes off every hotkey that was just that key (its chords with other keys stay). */
+        fun releaseKey(filesDir: File, keyName: String) {
+            val props = readProps(filesDir)
+            val chord = chordOf(keyName)
+            var changed = false
+            for (a in Action.entries) {
+                val chords = props.getProperty(a.prop).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                val kept = chords.filter { chordOf(it) != chord }
+                if (kept.size != chords.size) { props.setProperty(a.prop, kept.joinToString(", ")); changed = true }
+            }
+            if (changed) writeProps(filesDir, props)
+        }
+
         /** Unbinds [action] (an empty value, so the default doesn't come back). */
         fun clearBinding(filesDir: File, action: Action) {
             val props = readProps(filesDir)

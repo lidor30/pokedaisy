@@ -3381,6 +3381,7 @@ int pk_field_state(struct mCore* core, int runIndoors, int wildKeep) {
     if (r8(F.locked)) s |= PK_FIELD_LOCKED;
     if (F.main && (r8(F.main + F.inBattleOff) & 2)) s |= PK_FIELD_BATTLE;
     else if ((s & PK_FIELD_LOCKED) && textUp()) s |= PK_FIELD_TEXT;   // a battle's text is BATTLE SPEED's
+    else if (!(s & PK_FIELD_LOCKED) && textUp()) s |= PK_FIELD_WINDOW;
     if (onBike()) s |= PK_FIELD_BIKE;
     int surf = surfing();
     if (surf > 0) s |= PK_FIELD_SURF;
