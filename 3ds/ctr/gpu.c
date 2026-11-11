@@ -172,6 +172,13 @@ uint32_t* gpu_game_buffer(void) {
     return gameBuf;
 }
 
+// What shows beside the game's picture: black, or a Game Boy game's white.
+static u32 barColor;
+
+void gpu_set_bars(uint32_t rgb) {
+    barColor = C2D_Color32((u8) (rgb >> 16), (u8) (rgb >> 8), (u8) rgb, 0xFF);
+}
+
 void gpu_double_game(bool on) {
     gameDoubled = on && drawThread && gameBufs[1];
     shownBuf = gameBuf;
@@ -367,7 +374,7 @@ static void run_job(const struct draw_job* j, bool threaded) {
         C2D_SceneBegin(upTarget);
         C2D_DrawImageAt(image(src, &sub, srcW, srcH), 0, 0, 0.5f, NULL, 2.0f, 2.0f);
     }
-    C2D_TargetClear(topTarget, black);
+    C2D_TargetClear(topTarget, game && barColor ? barColor : black);
     C2D_SceneBegin(topTarget);
     if (!game) {
         C2D_DrawImageAt(image(&topTex, &sub, TOP_W, TOP_H), 0, 0, 0.5f, NULL, 1.0f, 1.0f);

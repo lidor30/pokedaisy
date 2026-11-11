@@ -224,7 +224,7 @@ static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
         }
     }
     pd_unclip(c);
-    ui_scroll_bar(c, ix + iw - 4, iy, ih, ui->dexScroll, n * DEX_ROW, PD_MUTED);
+    ui_list_rail(ui, c, ix + iw, iy, ih, ui->dexScroll, n * DEX_ROW);
 }
 
 static void draw_sprite(struct pd_canvas* c, int x, int y, const uint32_t* px) {
@@ -271,6 +271,9 @@ static void page_line(struct pd_canvas* c, int x, int* y, int top, int bottom, i
 
 static void section_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_dex_entry* e, int x, int top, int w, int h) {
     char left[64], right[32];
+    // Room for the rail when the page ran past its window last time.
+    const bool railed = ui->dexPageMax > 0;
+    if (railed) w -= 10;
     if (ui->dexPageScroll > ui->dexPageMax) ui->dexPageScroll = ui->dexPageMax;
     if (ui->dexPageScroll < 0) ui->dexPageScroll = 0;
     int bottom = top + h, y = top - ui->dexPageScroll;
@@ -312,6 +315,7 @@ static void section_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_
     pd_unclip(c);
     ui->dexPageMax = y + ui->dexPageScroll - top - h;
     if (ui->dexPageMax < 0) ui->dexPageMax = 0;
+    ui_list_rail(ui, c, x + w + (railed ? 10 : 0), top, h, ui->dexPageScroll, ui->dexPageMax + h);
 }
 
 int pd_ui_dex_machine_row(int levels) {

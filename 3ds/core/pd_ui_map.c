@@ -331,7 +331,7 @@ void ui_fly_overlay(struct pd_ui* ui, struct pd_canvas* c) {
         ui_add_scroll_hit(ui, ix, top, iw, bottom - top, HIT_FLY_TOWN + i);
     }
     pd_unclip(c);
-    ui_scroll_bar(c, ix + iw - 4, iy, ih, ui->placesScroll, ui->flyCount * PLACE_ROW, PD_MUTED);
+    ui_list_rail(ui, c, ix + iw, iy, ih, ui->placesScroll, ui->flyCount * PLACE_ROW);
 }
 
 void ui_places_overlay(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g) {
@@ -372,7 +372,7 @@ void ui_places_overlay(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         ui_add_scroll_hit(ui, ix, top, iw, bottom - top, HIT_PLACE + i);
     }
     pd_unclip(c);
-    ui_scroll_bar(c, ix + iw - 4, iy, ih, ui->placesScroll, placeCount * PLACE_ROW, PD_MUTED);
+    ui_list_rail(ui, c, ix + iw, iy, ih, ui->placesScroll, placeCount * PLACE_ROW);
 }
 
 bool ui_map_act(struct pd_ui* ui, int id) {

@@ -264,5 +264,7 @@ void ui_scroll_bar(struct pd_canvas* c, int x, int y, int h, int scroll, int tot
 // A list's bar to drag (SETTINGS): the rail in x, y, w, h, the thumb for scroll of total with view shown.
 #define SCROLL_BAR_W 8
 void ui_scroll_rail(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, int scroll, int total, int view);
+// A list's rail in the room its rows keep clear at their right edge ([right] = the list's inner right): dragged like SETTINGS'.
+void ui_list_rail(struct pd_ui* ui, struct pd_canvas* c, int right, int y, int h, int scroll, int total);
 
 #endif

@@ -199,6 +199,8 @@ bool pd_session_can_focus(const struct pd_session* s);
 void pd_session_set_focus(struct pd_session* s, bool on);
 // Draws the companion on the bottom canvas.
 void pd_session_draw(struct pd_session* s, struct pd_canvas* bottom);
+// A Game Boy / Color game (160x144): its picture is pillarboxed in white, never stretched.
+bool pd_session_game_boy(const struct pd_session* s);
 // The last frame stays on screen (the battle's switch drives the game's party menu behind it).
 bool pd_session_holds_frame(const struct pd_session* s);
 // The overlay's canvas (PD_TOP_W x PD_TOP_H, alpha in the top byte); redrawn when overlayDirty.

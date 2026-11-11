@@ -195,10 +195,37 @@ const struct pd_glyph* pd_font_glyph(uint32_t cp) {
 
 // A glyph, clipped a row at a time; [shadow]: the union of it moved right, down and both (GBA text's shadow in one pass,
 // one row taller). A glyph wholly outside the clip (a list's rows scrolled out of view) costs nothing.
+// A glyph with its coverage (pd_glyph.alpha): blended into what's behind; the shadow is the coverage moved right, down and
+// both, the most of the three (the bitmap shadow's union, softened the same way).
+static void draw_glyph_alpha(struct pd_canvas* c, int x, int y, const struct pd_glyph* g, uint32_t color, bool shadow, int r0, int r1) {
+    const uint8_t* a = g->alpha;
+    for (int row = r0; row < r1; row++) {
+        uint32_t* line = c->px + (y + row) * c->w;
+        for (int col = 0; col < 17; col++) {
+            int px = x + col;
+            if (px < c->cx0 || px >= c->cx1) continue;
+            int k = row < PD_FONT_HEIGHT && col < 16 ? a[row * 16 + col] : 0;
+            if (shadow) {
+                int l = row < PD_FONT_HEIGHT && col > 0 ? a[row * 16 + col - 1] : 0;
+                int u = row > 0 && row - 1 < PD_FONT_HEIGHT && col < 16 ? a[(row - 1) * 16 + col] : 0;
+                int ul = row > 0 && row - 1 < PD_FONT_HEIGHT && col > 0 ? a[(row - 1) * 16 + col - 1] : 0;
+                k = l > u ? l : u;
+                if (ul > k) k = ul;
+            }
+            if (k >= 250) line[px] = color;
+            else if (k > 0) line[px] = pd_mix(line[px], color, k);
+        }
+    }
+}
+
 static void draw_glyph(struct pd_canvas* c, int x, int y, const struct pd_glyph* g, uint32_t color, bool shadow) {
     int rows = PD_FONT_HEIGHT + (shadow ? 1 : 0);
     if (y >= c->cy1 || y + rows <= c->cy0 || x >= c->cx1 || x + 18 <= c->cx0) return;
     int r0 = c->cy0 > y ? c->cy0 - y : 0, r1 = c->cy1 - y < rows ? c->cy1 - y : rows;
+    if (g->alpha) {
+        draw_glyph_alpha(c, x, y, g, color, shadow, r0, r1);
+        return;
+    }
     for (int row = r0; row < r1; row++) {
         uint32_t bits = row < PD_FONT_HEIGHT ? g->rows[row] : 0;
         if (shadow) {

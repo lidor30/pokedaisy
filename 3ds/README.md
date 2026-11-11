@@ -116,7 +116,25 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   (Red, Blue, Yellow in five languages, Yellow Legacy, Gold, Silver, Crystal, Crystal Clear, Crystal Legacy, Prism,
   Polished Crystal, PureRed / PureBlue). Per game: its names, moves, types and type chart, party and bag palettes,
   backdrop, and the companion's windows in the Game Boy games' black on white. No DS: the 3DS can't run melonDS.
-- **Library**: the app's rail, view pills and tiles.
+- **Library**: a rail of pages down the touch screen, an icon each (the app's tool icons): GAMES, SAVE EDITOR, TRADE SAVES and
+  SETTINGS (SELECT steps through them). GAMES lists the games as rows or tiles (SETTINGS > VIEW) in the companion's look,
+  ALL / RECENT / GBA / GB / HACKS on L / R, sorted by NAME or LAST PLAYED. A game is named by its file name when the app
+  knows it, else by its contents: the header's code at once, its SHA-1 a slice a frame (once; kept in `library.tsv`), so
+  `unbound.gba` shows as Pokémon Unbound, a HACK. The top screen shows the game under the cursor the way the games' CONTINUE
+  screen does: player, time, Pokédex, the badges, money, the place, and the party with its icons (from the save itself where
+  the save editor reads it, the rest from `cards/<game>.card`, what the game looked like when it was last left). SETTINGS
+  holds the settings that aren't a game's: the library's VIEW and SORT, THEME, DARK MODE, SCREEN, ASPECT, the sound, the
+  battle buttons, HUD and FLY STYLE.
+- **SAVE EDITOR** (`core/pd_library_saves.c` over `core/pd_save.c`, the app's `Gen3SaveFile` / `Gen3SaveEditor` ported): a game's
+  save file opened with the game closed, its PC boxes on the touch screen (A picks a Pokémon up and puts it down, L / R the
+  box), MONEY and COINS, SAVE. The top screen shows the Pokémon on the cursor. Written the game's way (the other slot,
+  counter + 1, read back before it's handed out), backed up first and checked again on the SD card before it replaces the
+  file. Retail English / European FireRed, LeafGreen, Ruby, Sapphire and Emerald saves, as in the app; no bag, held items or
+  moves yet (the app's `Gen3Legal` tables).
+- **TRADE SAVES**: two games' saves, PC box to PC box, by the games' own rules (`Gen3Trade`: FireRed / LeafGreen only after the
+  Sevii Islands, no National Dex = no eggs or Pokémon outside the regional dex, Mew / Deoxys from an event only, no mail;
+  trade evolutions, the Pokédex, Ruby / Sapphire's National Dex). A tab per side over its box, a Pokémon (or an empty place)
+  picked on each, Y trades; both saves written or neither. `make test-save` runs `core/pd_save.c` on real saves.
 - **Battle controls**: FIGHT / BAG / RUN / POKéMON, the moves, the party to send in (BEST / OUT), ONE-TAP MOVES,
   on the GBA games with their handlers known and on every Game Boy game (its 2x2 menu in the cart's own words).
 - **QUICK MENU** (Y): PC, FLY, FLASH (English FireRed, LeafGreen, Emerald, Ruby, Sapphire: the game's own cut-in and light,
@@ -206,7 +224,8 @@ every pixel, 42 ms a redraw before, about 4 ms now.
 | X | on the field: the buttons go to the companion, a silver strip on the game pointing down at it (L / R step its tabs, the D-pad and A its cursor; X, START, or B with nothing left to go back from bring them back). Elsewhere companion back |
 | ZL (New 3DS) | previous companion tab |
 | ZR (New 3DS) | fast-forward while held |
-| START on the game list | quit to the Homebrew Launcher |
+| START on the library | quit to the Homebrew Launcher |
+| SELECT on the library | the next page: GAMES, SAVE EDITOR, TRADE SAVES, SETTINGS |
 
 ## Installing on a 3DS
 
@@ -282,6 +301,8 @@ Everything runs in Docker, so it works the same on a Mac or a cloud session.
 cd 3ds
 make decomps       # pret's FireRed rev 1 / Emerald, = retail (below; optional)
 make preview       # the companion from the RAM fixtures -> build/shots/*.png
+make library-preview  # the library on real ROMs and saves (read, never written) -> build/library-shots/*.png
+make test-save     # the save tools' core on real saves
 make 3ds           # ctr/pokedaisy.3dsx (devkitpro/devkitarm image)
 make fixture-roms  # build/fixture-*.gba test ROMs (below)
 make azahar-test   # the .3dsx in the Azahar 3DS emulator -> build/azahar/*.png
@@ -334,7 +355,7 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
 
 | Path | What |
 |---|---|
-| `core/` | Portable C, no platform code: game detection (`pd_game`, the app's `NativeConfig` addresses), the snapshot reader (`pd_snapshot`: party, battle, bag, money, place - ports `Gen3Mon.kt` / `readNativeTelemetry` / `readNativeBag`), the canvas (`pd_canvas`: pixel-stepped corners, layered OPTION frames, GBA-shadowed and wrapped text, drawn cursors), the companion (`pd_ui.c` frame + `pd_ui_party` / `_battle` (INFO, SUGGESTIONS, FOE TEAM) / `_bag` / `_map` / `_guide` / `_dex` / `_settings` / `_widgets`), the ROM readers (`pd_romart`: `RomArt`'s scan - every blob of the game in one pass; `pd_party_art`: the party's slot art and backdrop; `pd_map`: the region map and heads, `RegionMapModel`'s pick, `PlayerMapTile`; `pd_dex`: the dex tables and front pics; `pd_guide`: `GuideRom.kt`'s bosses, teams and wild tables), the party icons (`pd_icon`: `DecompIconSource`'s tables), the TRAINER CARD (`pd_card`: `readTrainerCard` + `TrainerCardArt`; `pd_ui_card`), the game list (`pd_menu`) and the settings file (`pd_settings`) |
+| `core/` | Portable C, no platform code: game detection (`pd_game`, the app's `NativeConfig` addresses), the snapshot reader (`pd_snapshot`: party, battle, bag, money, place - ports `Gen3Mon.kt` / `readNativeTelemetry` / `readNativeBag`), the canvas (`pd_canvas`: pixel-stepped corners, layered OPTION frames, GBA-shadowed and wrapped text, drawn cursors), the companion (`pd_ui.c` frame + `pd_ui_party` / `_battle` (INFO, SUGGESTIONS, FOE TEAM) / `_bag` / `_map` / `_guide` / `_dex` / `_settings` / `_widgets`), the ROM readers (`pd_romart`: `RomArt`'s scan - every blob of the game in one pass; `pd_party_art`: the party's slot art and backdrop; `pd_map`: the region map and heads, `RegionMapModel`'s pick, `PlayerMapTile`; `pd_dex`: the dex tables and front pics; `pd_guide`: `GuideRom.kt`'s bosses, teams and wild tables), the party icons (`pd_icon`: `DecompIconSource`'s tables), the TRAINER CARD (`pd_card`: `readTrainerCard` + `TrainerCardArt`; `pd_ui_card`), the library (`pd_library*`: its games and pages, the touch screen, the top screen, the save tools, the card a session leaves), the save file (`pd_save`) and the settings file (`pd_settings`) |
 | `core/*_gen.c` | Generated: names / moves / type chart / map sections / item text / gender ratios from the app's Kotlin tables (`tools/gen_tables.py`), the ROM art's fingerprints (map and card) and the cursor grids (`tools/gen_map_tables.py`), the guides and area data (`tools/gen_guide.py`), Pixel Operator as a 1-bit font plus drawn ♂ ♀ (`tools/gen_font.py`) |
 | `ctr/` | The 3DS host: `main.c` (game loop, ndsp audio, HID, files, states), `gpu.c` (citro2d: the game and canvases written into textures in the GPU's tiled order, drawn as quads), `host.c` (the heap split, the ROM buffer, the log, what armGBA's 3DS code asks of its frontend), and the CMake build against the armGBA and mGBA submodules |
 | `emu/` | armGBA behind mGBA's `struct mCore` (`pd_armgba*.c`), the dispatch to whichever core runs the game (`pd_dispatch.c`), no Game Boy side in armGBA (`gb_none.c`), and its build (`armgba.cmake`) |

@@ -106,6 +106,8 @@ struct pd_settings {
     bool ffNormal;   // FF MODE: NORMAL; off = SMART, 1x while the game waits for the player
     bool cheats;     // CHEATS: the game's file's codes on
     int theme;       // THEME: a pd_themes[] id
+    bool libraryGrid;    // the library's VIEW: GRID; off = LIST
+    bool libraryRecent;  // the library's SORT: LAST PLAYED; off = NAME
 };
 
 enum pd_button { PD_BTN_X, PD_BTN_Y, PD_BTN_L2, PD_BTN_R2, PD_BTN_NONE, PD_BUTTONS };

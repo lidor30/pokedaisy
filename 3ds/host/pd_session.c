@@ -468,6 +468,12 @@ void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* 
     s->redraw = true;
 }
 
+bool pd_session_game_boy(const struct pd_session* s) {
+    unsigned w = 240, h = 160;
+    s->core->desiredVideoDimensions(s->core, &w, &h);
+    return w == 160;
+}
+
 static bool in_battle(const struct pd_session* s) {
     return s->shown.inBattle || (s->wideKnown && pk_wide_scene() == PK_WIDE_SCENE_BATTLE_START);
 }
@@ -484,7 +490,8 @@ static bool menu_screen(const struct pd_session* s) {
 }
 
 int pd_session_screen(const struct pd_session* s) {
-    if (menu_screen(s)) return PD_SCREEN_STRETCH;
+    // A Game Boy game keeps its shape on them (the screen's height, white bars beside: stretched, its letters went uneven).
+    if (menu_screen(s)) return pd_session_game_boy(s) ? PD_SCREEN_SHARP : PD_SCREEN_STRETCH;
     int mode = s->settings->screenMode;
     if (mode == PD_SCREEN_PIXEL && s->wideKnown && s->settings->aspect != PD_ASPECT_ORIGINAL) mode = PD_SCREEN_SHARP_125;
     if (mode != PD_SCREEN_STRETCH && in_battle(s)) mode = PD_SCREEN_SHARP;
@@ -1339,6 +1346,12 @@ static void overlay_update(struct pd_session* s) {
     s->overlayDim = s->quickOpen;
     overlay_clear();
     s->overlayShown = false;
+    // The HUD and the QUICK MENU are drawn in the app's own font in every game, as the app's are (outside the companion, a
+    // Game Boy game's letters on the see-through glass came out heavy).
+    const struct pd_glyph* gameFont;
+    int gameFontCount;
+    pd_font_get(&gameFont, &gameFontCount);
+    pd_font_set(NULL, 0);
     if (s->quickOpen) {
         if (s->flyList) quick_list_draw(&c, "FLY", s->flyNames, s->flyTargets.count, s->flySel);
         else if (s->repelList) quick_list_draw(&c, "REPEL", s->repelNames, s->repelKindCount, s->repelSel);
@@ -1356,6 +1369,7 @@ static void overlay_update(struct pd_session* s) {
             if (p != QUICK_CLEAR) overlayPx[i] = (a / 4 ? a / 4 : 1) << 24 | (p & 0xFFFFFF);
         }
     }
+    pd_font_set(gameFont, gameFontCount);
     if (s->ui.keyFocus) {
         int left = (PD_TOP_W - picture) / 2, bottom = (PD_TOP_H + pictureH) / 2;
         focus_stripe(&c, left, left + picture, bottom, pictureH, gameRows, bob, s->stripeIn);

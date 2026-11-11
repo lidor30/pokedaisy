@@ -238,14 +238,8 @@ static void list(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
         if(!ui->bagSource)ui_add_scroll_hit(ui, ix, top, iw, bottom - top, HIT_BAG_ROW + i);
     }
     pd_unclip(c);
-    // A scroll bar when the list runs past the window.
-    if (maxScroll > 0) {
-        int total = v->count * BAG_ROW;
-        int th = ih * ih / total;
-        if (th < 8) th = 8;
-        int ty = iy + (ih - th) * ui->bagScroll / maxScroll;
-        pd_fill(c, ix + iw - 4, ty, 2, th, p->cursor);
-    }
+    // A scroll bar when the list runs past the window, dragged like SETTINGS'.
+    ui_list_rail(ui, c, ix + iw, iy, ih, ui->bagScroll, v->count * BAG_ROW);
 }
 
 // The picked item's description, a window along the bottom (ItemsScreen's), USE / GIVE at its right where they work.
@@ -384,8 +378,6 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     list(ui, c, p, &v, panelX, CONTENT_Y, c->w - MARGIN - panelX, bottom - CONTENT_Y);
     const bool sort = !details && (ui->shoulderTabs || ui->bagSelected < 0);
     const int sortY = c->h - MARGIN - 22;
-    int frame = 0;
-    for (int i = 0; i < p->panelLayers; i++) frame += p->panel[i].width;
     tabs(ui, c, p, &v, MARGIN, tabW - 4, sort ? sortY - 3 : bottom, panelX);
     if (sort) {
         // SORT: under the tabs, like the description bar's corner.

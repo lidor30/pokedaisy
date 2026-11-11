@@ -30,6 +30,7 @@
 #include "../core/pd_games.h"
 #include "../core/pd_library.h"
 #include "../core/pd_menu.h"
+#include "../core/pd_save.h"
 #include "../core/pd_settings.h"
 #include "../core/pd_style.h"
 #include "../host/pd_session.h"
@@ -483,6 +484,8 @@ static void flight_area_path(void* ctx, uint32_t crc, uint32_t key, char* path, 
     snprintf(path, len, "sdmc:" BASE_DIR "/flight-area/%08lX-%08lX.txt", (unsigned long) crc, (unsigned long) key);
 }
 
+static void write_card(const char* file, const struct pd_game* g, const struct pd_snapshot* s);
+
 // Runs one game until the player leaves (true) or the app is closed (false).
 static bool run_game(const char* file) {
     char romPath[512], savePath[512], base[256];
@@ -552,6 +555,7 @@ static bool run_game(const char* file) {
         host_log("game: running on %s; heap %lu KiB free", pd_armgba_recompiling() ? "armGBA's recompiler" : "armGBA's INTERPRETER",
                  (unsigned long) host_heap_free() >> 10);
         gpu_double_game(true);
+        gpu_set_bars(0);
     } else {
         // On mGBA, read into the ROM arena (mCorePreloadVF: the linear memory can't map a game).
         core = mCoreFindVF(rom);
@@ -578,6 +582,7 @@ static bool run_game(const char* file) {
         if (save) core->loadSave(core, save);
         bool gb = core->platform(core) == mPLATFORM_GB;
         gpu_double_game(!gb);
+        gpu_set_bars(gb ? 0xFFFFFF : 0);
         // A game frame a refresh: its 59.73 frames' sound in the 59.83 the screen shows (both Game Boys' frames are the
         // GBA's length in time).
         double ratio = GBAAudioCalculateRatio(1, 268111856.f / 4481136.f, 1);
@@ -872,6 +877,7 @@ static bool run_game(const char* file) {
     if (gbAudioOn) pk_gb_audio_detach(&gbAudio, core);
     gbAudioOn = false;
     gpu_wide_join();
+    write_card(file, &session.game, &session.snap);
     // armGBA writes the save if the game changed it, and its warm list; mGBA's VFile flushes on unmap.
     core->deinit(core);
     host_log("game: closed");
@@ -880,42 +886,223 @@ static bool run_game(const char* file) {
 
 // --- the game list ---
 
+#define CARD_DIR BASE_DIR "/cards"
+#define LIBRARY_FILE "sdmc:" BASE_DIR "/library.tsv"
+
+static void base_of(const char* file, char* base, size_t len) {
+    snprintf(base, len, "%s", file);
+    char* dot = strrchr(base, '.');
+    if (dot) *dot = 0;
+}
+
+static long lib_read_rom(void* ctx, const char* file, long offset, void* buf, long len) {
+    (void) ctx;
+    char path[512];
+    snprintf(path, sizeof path, "sdmc:" ROM_DIR "/%s", file);
+    FILE* f = fopen(path, "rb");
+    if (!f) return -1;
+    long n = fseek(f, offset, SEEK_SET) ? 0 : (long) fread(buf, 1, (size_t) len, f);
+    fclose(f);
+    return n;
+}
+
+static void save_path_of(const char* file, char* path, size_t len) {
+    char base[256];
+    base_of(file, base, sizeof base);
+    snprintf(path, len, "sdmc:" ROM_DIR "/%s.sav", base);
+}
+
+static long lib_read_save(void* ctx, const char* file, uint8_t* buf, long max) {
+    (void) ctx;
+    char path[600];
+    save_path_of(file, path, sizeof path);
+    FILE* f = fopen(path, "rb");
+    if (!f) return -1;
+    long n = (long) fread(buf, 1, (size_t) max, f);
+    fclose(f);
+    return n;
+}
+
+static bool same_file(const char* path, const uint8_t* bytes, long len) {
+    static uint8_t back[PD_SAVE_MAX_SIZE];
+    FILE* f = fopen(path, "rb");
+    if (!f) return false;
+    long n = (long) fread(back, 1, sizeof back, f);
+    fclose(f);
+    return n == len && !memcmp(back, bytes, (size_t) len);
+}
+
+// Save files are sacred: each is backed up, then written beside itself and read back, and only once every one has, put in
+// place. Nothing is replaced while any of them is in doubt.
+static bool lib_write_saves(void* ctx, int n, const char* const* files, const uint8_t* const* bytes, const long* lens, char* why, size_t whyLen) {
+    (void) ctx;
+    char paths[2][600], temps[2][620];
+    if (n > 2) return false;
+    for (int i = 0; i < n; i++) {
+        char base[256];
+        base_of(files[i], base, sizeof base);
+        save_path_of(files[i], paths[i], sizeof paths[i]);
+        snprintf(temps[i], sizeof temps[i], "%.590s.new", paths[i]);
+        backup_save(base, paths[i]);
+        FILE* f = fopen(temps[i], "wb");
+        bool ok = f && fwrite(bytes[i], 1, (size_t) lens[i], f) == (size_t) lens[i];
+        if (f && fclose(f)) ok = false;
+        if (!ok || !same_file(temps[i], bytes[i], lens[i])) {
+            for (int k = 0; k <= i; k++) remove(temps[k]);
+            snprintf(why, whyLen, "Couldn't write %s", files[i]);
+            host_log("save tools: %s didn't write", temps[i]);
+            return false;
+        }
+    }
+    for (int i = 0; i < n; i++) {
+        remove(paths[i]);
+        if (rename(temps[i], paths[i])) {
+            snprintf(why, whyLen, "Couldn't put %s in place", files[i]);
+            host_log("save tools: %s didn't rename; its backup is in " BACKUP_DIR, temps[i]);
+            return false;
+        }
+        host_log("save tools: wrote %s", paths[i]);
+    }
+    return true;
+}
+
+// The whole ROM in the arena the games use (no game runs while the library is up).
+static const uint8_t* lib_load_rom(void* ctx, const char* file, size_t* size) {
+    (void) ctx;
+    char path[512];
+    snprintf(path, sizeof path, "sdmc:" ROM_DIR "/%s", file);
+    FILE* f = fopen(path, "rb");
+    if (!f) return NULL;
+    fseek(f, 0, SEEK_END);
+    long len = ftell(f);
+    fseek(f, 0, SEEK_SET);
+    uint8_t* buf = len > 0 ? host_rom_arena((size_t) len) : NULL;
+    bool ok = buf && fread(buf, 1, (size_t) len, f) == (size_t) len;
+    fclose(f);
+    if (!ok) return NULL;
+    *size = (size_t) len;
+    return buf;
+}
+
+static void card_path(const char* file, char* path, size_t len) {
+    char base[256];
+    base_of(file, base, sizeof base);
+    snprintf(path, len, "sdmc:" CARD_DIR "/%s.card", base);
+}
+
+static bool lib_read_card(void* ctx, const char* file, struct pd_game_card* out) {
+    (void) ctx;
+    char path[600];
+    card_path(file, path, sizeof path);
+    FILE* f = fopen(path, "rb");
+    if (!f) return false;
+    bool ok = fread(out, 1, sizeof *out, f) == sizeof *out;
+    fclose(f);
+    return ok && out->magic == PD_CARD_MAGIC;
+}
+
+// What the game looked like as it was left, for the library's top screen.
+static void write_card(const char* file, const struct pd_game* g, const struct pd_snapshot* s) {
+    static struct pd_game_card card, before;
+    if (!pd_game_card_fill(&card, g, s, (uint32_t) time(NULL))) return;
+    mkdir("sdmc:" CARD_DIR, 0777);
+    char path[600];
+    card_path(file, path, sizeof path);
+    // Left before the map was up (the title screen): the place it was last left in still stands.
+    if (!card.place[0] && lib_read_card(NULL, file, &before)) snprintf(card.place, sizeof card.place, "%s", before.place);
+    FILE* f = fopen(path, "wb");
+    if (!f) return;
+    fwrite(&card, 1, sizeof card, f);
+    fclose(f);
+}
+
+static void lib_settings_changed(void* ctx) {
+    (void) ctx;
+    pd_settings_save(&settings, SETTINGS_FILE);
+    apply_volume();
+}
+
+static struct pd_library library;
+static bool cacheDirty;
+
+static void lib_cache_changed(void* ctx) {
+    (void) ctx;
+    cacheDirty = true;
+}
+
+static void write_cache(void) {
+    static char text[PD_LIBRARY_MAX * 400];
+    size_t n = pd_library_cache_write(&library, text, sizeof text);
+    FILE* f = fopen(LIBRARY_FILE, "wb");
+    if (!f) return;
+    fwrite(text, 1, n, f);
+    fclose(f);
+    cacheDirty = false;
+}
+
+static void read_cache(void) {
+    static char text[PD_LIBRARY_MAX * 400 + 1];
+    FILE* f = fopen(LIBRARY_FILE, "rb");
+    if (!f) return;
+    size_t n = fread(text, 1, sizeof text - 1, f);
+    fclose(f);
+    text[n] = 0;
+    pd_library_cache_read(&library, text);
+}
+
+static unsigned library_keys(u32 down) {
+    unsigned k = 0;
+    if (down & KEY_A) k |= PD_LIB_A;
+    if (down & KEY_B) k |= PD_LIB_B;
+    if (down & KEY_X) k |= PD_LIB_X;
+    if (down & KEY_Y) k |= PD_LIB_Y;
+    if (down & (KEY_L | KEY_ZL)) k |= PD_LIB_L;
+    if (down & (KEY_R | KEY_ZR)) k |= PD_LIB_R;
+    if (down & KEY_UP) k |= PD_LIB_UP;
+    if (down & KEY_DOWN) k |= PD_LIB_DOWN;
+    if (down & KEY_LEFT) k |= PD_LIB_LEFT;
+    if (down & KEY_RIGHT) k |= PD_LIB_RIGHT;
+    if (down & KEY_START) k |= PD_LIB_START;
+    if (down & KEY_SELECT) k |= PD_LIB_SELECT;
+    return k;
+}
+
 // Picks a game; false when the app should close.
 static bool pick_rom(char* out, size_t outLen) {
-    static struct pd_library library;
-    static char titles[PD_LIBRARY_MAX][96];
     static char* names[MAX_ROMS];
-    static int viewKept;
+    static int page, view = -1;
+    static char lastFile[256];
+#ifdef PD_DEV
+    static char devLine[64];
+#endif
+    static struct pd_library_host host = {
+        .read_rom = lib_read_rom, .read_save = lib_read_save, .write_saves = lib_write_saves, .load_rom = lib_load_rom,
+        .read_card = lib_read_card, .settings_changed = lib_settings_changed, .cache_changed = lib_cache_changed,
+        .version = PD_VERSION " (3DS)",
+    };
     int n = list_roms(names);
-    pd_library_init(&library);
-    library.view = viewKept;
-    for (int i = 0; i < n && i < PD_LIBRARY_MAX; i++) {
-        struct pd_library_game* g = &library.games[library.count++];
-        g->file = names[i];
-        g->title = titles[i];
-        pd_library_title(names[i], titles[i], sizeof(titles[i]), &g->hack, &g->supported);
-        size_t len = strlen(names[i]);
-        g->console = len > 4 && !strcasecmp(names[i] + len - 4, ".gbc") ? PD_CONSOLE_GBC
-            : len > 3 && !strcasecmp(names[i] + len - 3, ".gb") ? PD_CONSOLE_GB : PD_CONSOLE_GBA;
-    }
-    pd_look_apply(NULL, &settings);
+    pd_library_init(&library, &settings, &host);
+    for (int i = 0; i < n && i < PD_LIBRARY_MAX; i++) library.games[library.count++].file = names[i];
     pd_library_refresh(&library);
+    read_cache();
+    // Back where it was left: the page and the view.
+    if (view >= 0) library.view = view;
+    library.page = page == PD_PAGE_SETTINGS ? page : PD_PAGE_GAMES;
+    pd_library_refresh(&library);
+    pd_library_select(&library, lastFile);
+    pd_look_apply(NULL, &settings);
     struct pd_canvas top, bottom;
     pd_canvas_init(&top, TOP_W, TOP_H, topPx);
     pd_canvas_init(&bottom, PD_UI_WIDTH, PD_UI_HEIGHT, bottomPx);
 
-    bool dirty = true;
     bool touching = false, picked = false, running = true;
     u32 lastInjected = 0;
-#ifdef PD_DEV
-    char shownAddress[32] = "";
-#endif
     while ((running = aptMainLoop())) {
         hidScanInput();
         u32 injected = devlink_keys();
         u32 down = hidKeysDown() | (injected & ~lastInjected), held = hidKeysHeld() | injected;
         lastInjected = injected;
-        if (down & KEY_START || devlink_restart_wanted()) {
+        if (devlink_restart_wanted()) {
             running = false;
             break;
         }
@@ -924,54 +1111,55 @@ static bool pick_rom(char* out, size_t outLen) {
             for (int i = 0; i < library.count; i++)
                 if (!strcmp(library.games[i].file, wanted)) library.picked = i;
         }
-        int dx = !!(down & KEY_RIGHT) - !!(down & KEY_LEFT), dy = !!(down & KEY_DOWN) - !!(down & KEY_UP);
-        if (dx || dy) {
-            pd_library_move(&library, dx, dy);
-            dirty = true;
+        pd_library_keys(&library, library_keys(down));
+        if (library.quit) {
+            running = false;
+            break;
         }
-        if (down & KEY_L || down & KEY_R) {
-            library.view = (library.view + (down & KEY_R ? 1 : PD_VIEW_COUNT - 1)) % PD_VIEW_COUNT;
-            library.selected = library.scroll = 0;
-            pd_library_refresh(&library);
-            dirty = true;
-        }
-        if ((down & KEY_A) && library.shownCount) library.picked = library.shown[library.selected];
         int touchX, touchY;
         if (read_touch(held, &touchX, &touchY)) {
             pd_library_touch(&library, touchX, touchY, true);
             touching = true;
-            dirty = true;
         } else if (touching) {
             touching = false;
             pd_library_touch(&library, 0, 0, false);
-            dirty = true;
         }
         if (library.picked >= 0) {
+            // LOADING on both screens before the game is read: the draw thread shows a job a frame later, so a few.
+            pd_library_draw_loading(&library, &bottom, &top);
+            for (int i = 0; i < 3; i++) {
+                gpu_set_bottom(bottomPx);
+                gpu_set_top(topPx);
+                gpu_draw(false, 0);
+            }
             picked = true;
             break;
         }
-        if (dirty) {
+        pd_library_tick(&library);
+#ifdef PD_DEV
+        snprintf(devLine, sizeof devLine, "%s", devlink_address());
+        if (!host.devLine || strcmp(host.devLine, devLine)) library.dirty = true;
+        host.devLine = devLine;
+#endif
+        if (library.dirty) {
             pd_library_draw(&library, &bottom);
             gpu_set_bottom(bottomPx);
-#ifdef PD_DEV
-            snprintf(shownAddress, sizeof(shownAddress), "%s", devlink_address());
-            char line[64];
-            snprintf(line, sizeof(line), "Dev link: %s", shownAddress);
-            pd_library_draw_top(&library, &top, line);
-#else
-            pd_library_draw_top(&library, &top, NULL);
-#endif
+            pd_library_draw_top(&library, &top);
             gpu_set_top(topPx);
-            dirty = false;
         }
+        // The names the library worked out, kept for the next start (written between games, not every frame).
+        if (cacheDirty && library.hashing < 0) write_cache();
         gpu_draw(false, 0);
         devlink_after_frame();
-#ifdef PD_DEV
-        if (strcmp(shownAddress, devlink_address())) dirty = true;
-#endif
     }
-    viewKept = library.view;
-    if (picked) snprintf(out, outLen, "%s", library.games[library.picked].file);
+    page = library.page;
+    view = library.view;
+    if (picked) {
+        pd_library_played(&library, library.picked, (uint32_t) time(NULL));
+        write_cache();
+        snprintf(out, outLen, "%s", library.games[library.picked].file);
+        snprintf(lastFile, sizeof lastFile, "%s", out);
+    }
     for (int i = 0; i < n; i++) free(names[i]);
     return running && picked;
 }

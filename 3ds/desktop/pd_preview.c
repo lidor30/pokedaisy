@@ -16,7 +16,6 @@
 #include "../core/pd_card.h"
 #include "../core/pd_romart.h"
 #include "../core/pd_game.h"
-#include "../core/pd_library.h"
 #include "../core/pd_snapshot.h"
 #include "../core/pd_ui.h"
 #include "../core/pd_ui_internal.h"
@@ -212,47 +211,12 @@ static void drag(struct preview* p, int id, int dy) {
     release(p);
 }
 
-// The library with a few games, as the 3DS's two screens.
-static void library_shot(const char* dir, const char* name) {
-    static struct pd_library l;
-    static uint32_t bottom[PD_UI_WIDTH * PD_UI_HEIGHT], top[TOP_W * TOP_H], all[TOP_W * 2 * TOP_H];
-    static const char* const FILES[] = {
-        "Pokemon - FireRed Version (USA, Europe) (Rev 1).gba", "Pokemon - Emerald Version (USA, Europe).gba",
-        "Pokemon Radical Red (v4.1).gba", "Pokemon Unbound (v2.1.1.1).gba", "Pokemon - Crystal Version (USA).gbc",
-        "Pokemon - Yellow Version (USA, Europe).gb", "Some Other Game (USA).gba",
-    };
-    static char titles[8][96];
-    pd_library_init(&l);
-    for (int i = 0; i < 7; i++) {
-        struct pd_library_game* g = &l.games[l.count++];
-        g->file = FILES[i];
-        g->title = titles[i];
-        pd_library_title(FILES[i], titles[i], 96, &g->hack, &g->supported);
-        g->console = strstr(FILES[i], ".gbc") ? PD_CONSOLE_GBC : strstr(FILES[i], ".gb") && !strstr(FILES[i], ".gba") ? PD_CONSOLE_GB : PD_CONSOLE_GBA;
-    }
-    pd_library_refresh(&l);
-    struct pd_canvas b, t;
-    pd_canvas_init(&b, PD_UI_WIDTH, PD_UI_HEIGHT, bottom);
-    pd_canvas_init(&t, TOP_W, TOP_H, top);
-    pd_library_draw(&l, &b);
-    pd_library_draw_top(&l, &t, NULL);
-    for (int y = 0; y < TOP_H; y++) {
-        for (int x = 0; x < TOP_W; x++) all[y * TOP_W + x] = 0xFF000000 | top[y * TOP_W + x];
-        for (int x = 0; x < TOP_W; x++) all[(TOP_H + y) * TOP_W + x] = 0xFF000000;
-        for (int x = 0; x < PD_UI_WIDTH; x++) all[(TOP_H + y) * TOP_W + 40 + x] = 0xFF000000 | bottom[y * PD_UI_WIDTH + x];
-    }
-    char path[1024];
-    snprintf(path, sizeof(path), "%s/%s-library.png", dir, name);
-    pd_png_write(path, TOP_W, TOP_H * 2, all);
-}
-
 int main(int argc, char** argv) {
     if (argc != 5 && argc != 6) {
         fprintf(stderr, "usage: pd_preview <fixture dir> <BPRE|BPGE|BPEE> <out dir> <name> [rom]\n");
         return 2;
     }
     const char *dir = argv[1], *code = argv[2], *out = argv[3], *name = argv[4];
-    library_shot(out, name);
     // A Game Boy fixture with its cart (code GB): the party, bag, DEX and GUIDE shots in the Game Boy look.
     gbFixture = !strcmp(code, "GB");
     if (gbFixture) {

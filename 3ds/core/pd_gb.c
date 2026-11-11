@@ -699,19 +699,53 @@ static const struct gb_char POLISHED_EXTRA[] = {
 
 #define GB_GLYPHS 160
 static struct pd_glyph gbGlyphs[GB_GLYPHS];
+static uint8_t gbAlpha[GB_GLYPHS][16 * 16];
 
-// One 8x8 1bpp tile (top row first, the left pixel the high bit) as a glyph: 8 rows drawn as 10 (nearest), the letters'
-// top at the standard font's cap line (row 4), 8 wide.
+// A tile's pixel, outside it blank.
+static int font_px(const uint8_t* tile, int x, int y) {
+    return tile && x >= 0 && x < 8 && y >= 0 && y < 8 ? tile[y] >> (7 - x) & 1 : 0;
+}
+
+// Scale3x (AdvMAME3x) of a 1-bit tile: sub-pixel (sx, sy) of (x, y).
+static int tile3x(const uint8_t* tile, int x, int y, int sx, int sy) {
+    int A = font_px(tile, x - 1, y - 1), B = font_px(tile, x, y - 1), C = font_px(tile, x + 1, y - 1), D = font_px(tile, x - 1, y),
+        E = font_px(tile, x, y), F = font_px(tile, x + 1, y), G = font_px(tile, x - 1, y + 1), H = font_px(tile, x, y + 1),
+        I = font_px(tile, x + 1, y + 1);
+    if (B == H || D == F) return E;
+    int e[9] = {
+        D == B ? D : E, (D == B && E != C) || (B == F && E != A) ? B : E, B == F ? F : E,
+        (D == B && E != G) || (D == H && E != A) ? D : E, E, (B == F && E != I) || (H == F && E != C) ? F : E,
+        D == H ? D : E, (D == H && E != I) || (H == F && E != G) ? H : E, H == F ? F : E,
+    };
+    return e[sy * 3 + sx];
+}
+
+// One 8x8 1bpp tile (top row first, the left pixel the high bit) as a glyph 10 rows tall (9/7 the standard font's letters),
+// its top at the standard font's cap line (row 4), 8 wide. Drawn smooth: the tile at 3x (Scale3x), each glyph pixel the
+// share of its 3 x 2.4 block the letter covers - repeating two rows of 8 made the letters uneven.
 static void put_glyph(int* n, uint16_t cp, const uint8_t* tile) {
     if (*n >= GB_GLYPHS) return;
-    struct pd_glyph* gl = &gbGlyphs[(*n)++];
+    int i = (*n)++;
+    struct pd_glyph* gl = &gbGlyphs[i];
+    uint8_t* alpha = gbAlpha[i];
     memset(gl, 0, sizeof(*gl));
+    memset(alpha, 0, 16 * 16);
     gl->codepoint = cp;
     gl->advance = 8;
+    gl->alpha = alpha;
     for (int r = 0; r < 10; r++) {
-        uint8_t b = tile ? tile[r * 8 / 10] : 0;
         uint16_t row = 0;
-        for (int x = 0; x < 8; x++) if (b >> (7 - x) & 1) row |= (uint16_t) (1u << x);
+        for (int x = 0; x < 8; x++) {
+            // Rows [r * 2.4, (r + 1) * 2.4) of the 24-row picture, in fifths of a row.
+            int from = r * 12, to = (r + 1) * 12, covered = 0;
+            for (int f = from; f < to; f++) {
+                int by = f / 5;
+                for (int bx = x * 3; bx < x * 3 + 3; bx++) covered += tile3x(tile, bx / 3, by / 3, bx % 3, by % 3);
+            }
+            int a = covered * 255 / (12 * 3);
+            alpha[(4 + r) * 16 + x] = (uint8_t) a;
+            if (a >= 128) row |= (uint16_t) (1u << x);
+        }
         gl->rows[4 + r] = row;
     }
 }
