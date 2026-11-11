@@ -55,9 +55,10 @@ struct pd_session_host {
     void (*flightAreaPath)(void* ctx, uint32_t crc, uint32_t key, char* path, size_t len);
 };
 
-// Clock ticks spent since the host last zeroed it: in the core, waiting for its renderer, in EXPAND, reading the snapshot.
+// Clock ticks spent since the host last zeroed it: in the core, waiting for its renderer, in EXPAND, reading the snapshot,
+// FREE FLIGHT's step and its drawing.
 struct pd_session_prof {
-    uint64_t run, wait, wide, snap;
+    uint64_t run, wait, wide, snap, flightTick, flightDraw;
 };
 
 enum pd_job { PD_JOB_NONE, PD_JOB_GB_TAKEN, PD_JOB_PC, PD_JOB_REPEL, PD_JOB_BIKE, PD_JOB_BIKE_WAIT, PD_JOB_BIKE_RESTORE };
@@ -110,6 +111,7 @@ struct pd_session {
 
     // The QUICK MENU.
     bool quickOpen;
+    uint32_t quickHeld; // buttons pressed in the menu, kept from the game until let go (the app's menuHeld)
     int quickSel, quickCount;
     struct quick_item quick[QUICK_COUNT];
     char repelWhy[32];

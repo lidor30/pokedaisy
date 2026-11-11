@@ -1631,6 +1631,11 @@ static bool ghostPalette(uint32_t tag, uint32_t alpha, uint32_t pal[16]) {
 }
 
 static bool holeLeft;   // pk_wide_hole: the host puts the frame's own pixels in itself
+// FREE FLIGHT's area sign kept still (flyLabel): the corner of BG0 it may be in. Wider than POPUP_COLS: a long name's box
+// ("CINNABAR ISLAND") runs past 14 tiles. Only BG0's own pixels are taken.
+#define FL_SIGN_W (20 * 8)
+#define FL_SIGN_H (POPUP_ROWS * 8)
+
 #ifdef PK_WIDE_CACHE
 // The margin cache (pk_wide_cache): the map's own pixels around the frame, kept between frames in world coordinates, so
 // a frame only draws the 8x8 cells that are new or changed - EXPAND's margins are otherwise most of a 3DS's frame, and
@@ -1667,7 +1672,12 @@ static struct Later {
     int cx, cy, enabled;
     uint32_t alpha;
     bool due;
+    // A flight's camera offset with the area sign up: the frame copied in (no hole), then the sign moved back (flySignMove,
+    // after the cached view: [sign] read on the emulator's thread, the frame's offset and camera with it).
+    bool sign;
+    int href, vref, dx, dy;
 } later;
+static uint8_t laterSign[FL_SIGN_H][FL_SIGN_W];
 static const uint32_t* cachedOut;   // a host may hand a different buffer each frame
 static int cacheHits;
 
@@ -3815,7 +3825,7 @@ static void ringRow(uint32_t* to, int wx, int wy, int n) {
 }
 
 /** The window from the cache: what changed drawn, the rows copied, the sprites over them. */
-static void cacheDraw(const struct Snap* s, const uint32_t* frame, uint32_t* out, struct PkWideView v, int cx, int cy, int enabled, uint32_t alpha) {
+static void cacheDraw(const struct Snap* s, const uint32_t* frame, uint32_t* out, struct PkWideView v, int cx, int cy, int enabled, uint32_t alpha, bool copyFrame) {
     foreignFrame++;
     for (int i = 0; i < MAX_CONNS; i++) connForeign[i] = i < s->nconn ? foreignFor(s, &s->conn[i]) : NULL;
     useLine(0);
@@ -3873,7 +3883,7 @@ static void cacheDraw(const struct Snap* s, const uint32_t* frame, uint32_t* out
             continue;
         }
         ringRow(row, cx + v.x, cy + Y, left);
-        if (!holeWanted) memcpy(row + left, frame + Y * PK_WIDE_W + (v.x > 0 ? v.x : 0), (size_t) mid * sizeof(uint32_t));
+        if (!holeWanted || copyFrame) memcpy(row + left, frame + Y * PK_WIDE_W + (v.x > 0 ? v.x : 0), (size_t) mid * sizeof(uint32_t));
         ringRow(row + left + mid, cx + v.x + left + mid, cy + Y, v.w - left - mid);
         memset(takenBuf[j], 0, (size_t) left);
         memset(takenBuf[j] + left, 1, (size_t) mid);
@@ -3920,48 +3930,80 @@ struct FullView {
  * they'd be with no offset - as the bird is (flyBegin). Only while one shows and the camera is offset. Where BG0 shows
  * comes from its tilemap and the line's registers (bgPixel, windowLayers), not the pixels' layer tags: mGBA keeps
  * those only with the windows off. */
-static void flyLabel(const struct FullView* f) {
-    // Wider than POPUP_COLS: a long name's box ("CINNABAR ISLAND") runs past 14 tiles. Only BG0's own pixels are taken.
-    enum { LW = 20 * 8, LH = POPUP_ROWS * 8 };
-    if (!(io(0) & 0x100)) return;   // BG0 off
-    // Where BG0 shows in the corner (its tilemap and scroll, line by line: the frame's pixels carry no layer tags in
-    // every build), the sign's pixels.
-    static uint8_t sign[LH][LW];
+/** The sign's pixels in the frame's corner (where BG0 shows: its tilemap and the line's registers), false if none. Reads
+ * the frame's line registers: on the emulator's thread, right after the frame. */
+/** bgTileFilled for BG0, each tile's answer kept for the rest of [gen]'s mask (the same tiles under row after row). */
+static bool flySignTileFilled(int x, int y, uint32_t gen) {
+    static uint32_t seen[4][1024];
+    static uint8_t filled[4][1024];
+    uint16_t cnt = io(0x08), e;
+    int bx, by;
+    if (cnt & 0x80) return bgTileFilled(0, x, y);   // 256 colours: not BG0's text tiles, asked directly
+    if (!bgEntry(0, x, y, &e, &bx, &by)) return false;
+    int base = (cnt >> 2) & 3, tile = e & 0x3FF;
+    if (seen[base][tile] != gen) {
+        seen[base][tile] = gen;
+        filled[base][tile] = bgTileFilled(0, x, y);
+    }
+    return filled[base][tile];
+}
+
+static bool flySignMask(uint8_t sign[FL_SIGN_H][FL_SIGN_W]) {
+    if (!(io(0) & 0x100)) return false;   // BG0 off
+    static uint32_t gen;
+    if (++gen == 0) gen = 1;
     bool any = false;
-    for (int y = 0; y < LH; y++) {
+    for (int y = 0; y < FL_SIGN_H; y++) {
         useLine(y);
-        for (int x = 0; x < LW; x++) {
-            int pal;
-            sign[y][x] = (windowLayers(x, y) & 1) && bgPixel(0, x, y, &pal) ? 1 : 0;
-            any |= sign[y][x] != 0;
+        for (int x0 = 0; x0 < FL_SIGN_W; x0 += 8) {
+            // Eight pixels lie on at most two of BG0's tiles, the ones under the first and the last: both blank, none of
+            // them is the sign's (most of the corner while no sign is up: a 3DS spent ~2 ms a frame reading every pixel).
+            if (!flySignTileFilled(x0, y, gen) && !flySignTileFilled(x0 + 7, y, gen)) {
+                memset(&sign[y][x0], 0, 8);
+                continue;
+            }
+            for (int x = x0; x < x0 + 8; x++) {
+                int pal;
+                sign[y][x] = (windowLayers(x, y) & 1) && bgPixel(0, x, y, &pal) ? 1 : 0;
+                any |= sign[y][x] != 0;
+            }
         }
     }
-    if (!any) return;
-    const uint32_t* frame = f->frame;
-    static uint32_t under[LH][LW];
-    drawRegion(&snaps[f->bestSnap], f->bestCx, f->bestCy, f->bestH, f->bestV, 0, 0, LW, LH, false, &under[0][0], LW, f->alpha);
-    uint32_t* out = f->out;
-    struct PkWideView v = f->v;
+    return any;
+}
+
+/** The sign moved back: where its pixels landed in window [v] ([dx], [dy]: the frame's offset) the map again (drawRegion
+ * from [s]: the field and its people, no BG0), then its own pixels where they'd be with no offset. */
+static void flySignMove(const uint8_t sign[FL_SIGN_H][FL_SIGN_W], const struct Snap* s, int cx, int cy, int href, int vref,
+                        const uint32_t* frame, uint32_t* out, struct PkWideView v, int dx, int dy, uint32_t alpha) {
+    static uint32_t under[FL_SIGN_H][FL_SIGN_W];
+    drawRegion(s, cx, cy, href, vref, 0, 0, FL_SIGN_W, FL_SIGN_H, false, &under[0][0], FL_SIGN_W, alpha);
     // Where the sign's pixels are now (frame pixel (x, y) at window (x - v.x, y - v.y)): the map again.
-    for (int y = 0; y < LH; y++) {
+    for (int y = 0; y < FL_SIGN_H; y++) {
         int oy = y - v.y;
         if (oy < 0 || oy >= v.h) continue;
-        for (int x = 0; x < LW; x++) {
+        for (int x = 0; x < FL_SIGN_W; x++) {
             int ox = x - v.x;
             if (ox < 0 || ox >= v.w || !sign[y][x]) continue;
             out[oy * v.w + ox] = under[y][x];
         }
     }
     // The sign where it stays: the window as it would be with no offset.
-    for (int y = 0; y < LH; y++) {
-        int oy = y - v.y + flyDy;
+    for (int y = 0; y < FL_SIGN_H; y++) {
+        int oy = y - v.y + dy;
         if (oy < 0 || oy >= v.h) continue;
-        for (int x = 0; x < LW; x++) {
-            int ox = x - v.x + flyDx;
+        for (int x = 0; x < FL_SIGN_W; x++) {
+            int ox = x - v.x + dx;
             if (ox < 0 || ox >= v.w || !sign[y][x]) continue;
             out[oy * v.w + ox] = frame[y * PK_WIDE_W + x];
         }
     }
+}
+
+static void flyLabel(const struct FullView* f) {
+    static uint8_t sign[FL_SIGN_H][FL_SIGN_W];
+    if (!flySignMask(sign)) return;
+    flySignMove(sign, &snaps[f->bestSnap], f->bestCx, f->bestCy, f->bestH, f->bestV, f->frame, f->out, f->v, flyDx, flyDy, f->alpha);
 }
 
 static void fullDraw(const struct FullView* f) {
@@ -4089,7 +4131,10 @@ void pk_wide_finish(void) {
     }
     if (!later.due) return;
     later.due = false;
-    cacheDraw(later.s, later.frame, later.out, later.v, later.cx, later.cy, later.enabled, later.alpha);
+    cacheDraw(later.s, later.frame, later.out, later.v, later.cx, later.cy, later.enabled, later.alpha, later.sign);
+    if (later.sign)
+        flySignMove(laterSign, later.s, later.cx, later.cy, later.href, later.vref, later.frame, later.out, later.v, later.dx,
+                    later.dy, later.alpha);
 }
 #endif
 
@@ -4234,9 +4279,12 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
     if (cacheMode && valid && !centre && !overlay && !overlayDim && !transition && !tintShown && mix >= 256 && rawView.w &&
         cacheReady(io(0x14) & 0x1FF, io(0x16) & 0x1FF, bestH, bestV, &cacheBgs)) {
         tileSide ^= 1;
-        later = (struct Later) { &snaps[bestSnap], frame, out, v, bestCx, bestCy, cacheBgs, alpha, true };
+        // A flight's camera offset moves the area sign with it: kept still as the full draw does (flyLabel), its pixels
+        // read now, while the frame's line registers are this frame's.
+        bool sign = (flyDx || flyDy) && flySignMask(laterSign);
+        later = (struct Later) { &snaps[bestSnap], frame, out, v, bestCx, bestCy, cacheBgs, alpha, true, sign, bestH, bestV, flyDx, flyDy };
         if (!laterOn) pk_wide_finish();
-        holeLeft = holeWanted;
+        holeLeft = holeWanted && !sign;
         cachedLast = true;
         cachedView = v;
         cachedOut = out;
@@ -4261,7 +4309,9 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
     PW_ADD(1, pw2, pw3);
     struct FullView full = { frame, out, centre, v, valid, battle, menu, overlay, bestSnap, bestCx, bestCy, bestH, bestV, alpha, flyHold };
 #ifdef PK_WIDE_CACHE
-    holeLeft = holeWanted && !overlayDim && !centre;
+    // Not while FREE FLIGHT's camera is offset: flyLabel puts the area sign back where it would be with no offset, over
+    // the frame's own (moved) one - the host's copy of the frame would bring the moved one back (a doubled sign).
+    holeLeft = holeWanted && !overlayDim && !centre && !flyDx && !flyDy;
     if (laterOn && !centre) {
         laterFull = full;
         laterFullDue = true;

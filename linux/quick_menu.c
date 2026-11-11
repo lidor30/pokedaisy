@@ -5,13 +5,17 @@
 #include "pd_icon.h"
 #include "pd_style.h"
 #include <math.h>
+#include <stdio.h>
 #include <stdlib.h>
 #include <stdint.h>
 #include <string.h>
 
-#define TILE_W 74
+#define TILE_W 74 // GRID's tiles (and the most a ring tile may be)
 #define TILE_H 46 // QuickMenu.kt: 8u above and under the icon and its name
 #define TILE_GAP 10
+#define RING_GAP 8       // between two ring tiles' facing edges (QuickMenu.kt's 10u, a little closer on 240 rows)
+#define LABEL_LINE 11    // a label line: the capitals, their shadow and a row
+#define ONE_LINE_MAX 50  // a ring label wider than this (with its 5 px each side) goes on two lines, at its space
 #define SHADOW 3      // the battle HP box's tail (HUD_SHADOW)
 #define SHADE 0x80060810u
 #define FACE_TOP 0xC8283044u // HudGlassFace: the glass a step lighter on top, its own colour under
@@ -210,22 +214,137 @@ static void grid_place(int n, int i, int w, int h, int *x, int *y) {
   *y = (h - (rows * TILE_H + (rows - 1) * TILE_GAP + 52)) / 2 + row * (TILE_H + TILE_GAP);
 }
 
-// Where tile i sits: round an ellipse that fits the canvas (a circle where it can be), the first at the top.
+// The ring's tiles, all one size (UniformTiles): the widest label line's, set by quick_draw.
+static int ringW = TILE_W, ringH = TILE_H, ringLines = 1;
+
+// QuickMenu.kt's ringPlaces: the tiles round a circle, the first at the top, clockwise, each the same gap from the last
+// (rectangles at equal angles meet corner to corner closer than side to side); too tall for the canvas, an oval.
+struct ring {
+  int n, w, h, limW, limH;
+  double px[QUICK_COUNT], py[QUICK_COUNT]; // each tile's centre from the ring's
+};
+static struct ring ring = {.n = -1};
+static double rw, rh; // the tiles' size, for the helpers below
+
+static double between(double rx, double ry, double a, double b) {
+  double dx = fabs(rx * sin(b) - rx * sin(a)) - rw, dy = fabs(-ry * cos(b) + ry * cos(a)) - rh;
+  return dx > dy ? dx : dy;
+}
+// The right half's angles, one gap [g] after another from the top.
+static void walk(int n, double rx, double ry, double g, double *t) {
+  int half = n / 2;
+  t[0] = 0;
+  for (int i = 1; i <= half; i++) {
+    double lo = t[i - 1], hi = t[i - 1] + M_PI;
+    for (int k = 0; k < 40; k++) {
+      double mid = (lo + hi) / 2;
+      if (between(rx, ry, t[i - 1], mid) < g)
+        lo = mid;
+      else
+        hi = mid;
+    }
+    t[i] = hi;
+  }
+}
+// The halves run past each other (true = a bigger ring, or a smaller gap).
+static bool overrun(int n, double rx, double ry, double g) {
+  double t[QUICK_COUNT / 2 + 2];
+  walk(n, rx, ry, g, t);
+  int half = n / 2;
+  return n % 2 == 0 ? t[half] > M_PI : t[half] >= M_PI || between(rx, ry, t[half], -t[half]) < g;
+}
+enum grow { GROW_RADIUS, GROW_GAP, GROW_WIDTH };
+static double bisect(double lo, double hi, enum grow what, int n, double a, double b) {
+  for (int k = 0; k < 40; k++) {
+    double mid = (lo + hi) / 2;
+    bool grow = what == GROW_RADIUS ? overrun(n, mid, mid, a) : what == GROW_GAP ? !overrun(n, a, a, mid)
+                                                                : overrun(n, b * mid, b, a);
+    if (grow)
+      lo = mid;
+    else
+      hi = mid;
+  }
+  return hi;
+}
+static void ring_places(int n, int w, int h, int limW, int limH) {
+  if (ring.n == n && ring.w == w && ring.h == h && ring.limW == limW && ring.limH == limH)
+    return;
+  ring = (struct ring){.n = n, .w = w, .h = h, .limW = limW, .limH = limH};
+  if (n <= 0)
+    return;
+  rw = w;
+  rh = h;
+  double big = w > h ? w : h, minR = big * 1.6, g = RING_GAP;
+  double ry = n == 1 ? minR : bisect(big / 2, (w + h + RING_GAP) * (double)n, GROW_RADIUS, n, RING_GAP, 0);
+  if (ry < minR) {
+    // Held at the size the hint needs: the gaps grow (all alike) until the halves meet.
+    ry = minR;
+    if (n > 1)
+      g = bisect(RING_GAP, 2 * M_PI * minR, GROW_GAP, n, minR, 0);
+  }
+  double rx = ry;
+  if (2 * ry + h > limH) {
+    // Too tall: as tall as the canvas allows, the oval as wide as it then needs.
+    ry = (limH - h) / 2.0 > h ? (limH - h) / 2.0 : h;
+    double wide = ry * bisect(1, 8, GROW_WIDTH, n, g, ry), most = (limW - w) / 2.0 > ry ? (limW - w) / 2.0 : ry;
+    rx = wide < most ? wide : most;
+  }
+  double t[QUICK_COUNT / 2 + 2];
+  walk(n, rx, ry, g, t);
+  int half = n / 2;
+  double squeeze = n % 2 == 0 && t[half] > M_PI ? M_PI / t[half] : 1;
+  for (int i = 0; i < n; i++) {
+    double turn = i <= half ? t[i] * squeeze : 2 * M_PI - t[n - i] * squeeze;
+    ring.px[i] = rx * sin(turn);
+    ring.py[i] = -ry * cos(turn);
+  }
+}
+
+// Where tile i sits (its top left).
 static void place(int n, int i, int w, int h, int *x, int *y) {
   if (gridMode) {
     grid_place(n, i, w, h, x, y);
     return;
   }
-  double rx = (w - TILE_W) / 2.0 - 4, ry = (h - TILE_H) / 2.0 - 4;
-  // Close round the middle's hint, not out at the screen's edges (QuickMenu.kt's ring); wide enough that
-  // nine tiles don't touch.
-  if (ry > 90)
-    ry = 90;
-  if (rx > ry * 1.6)
-    rx = ry * 1.6;
-  double a = -M_PI / 2 + 2 * M_PI * i / (n > 0 ? n : 1);
-  *x = (int)lround(w / 2.0 + rx * cos(a)) - TILE_W / 2;
-  *y = (int)lround(h / 2.0 + ry * sin(a)) - TILE_H / 2;
+  ring_places(n, ringW, ringH, w * 96 / 100, h * 96 / 100);
+  *x = (int)lround(w / 2.0 + ring.px[i] - ringW / 2.0);
+  *y = (int)lround(h / 2.0 + ring.py[i] - ringH / 2.0);
+}
+
+// A ring label's lines: on two at its space when it's wider than ONE_LINE_MAX; their count.
+static int label_lines(const char *label, char a[32], char b[32]) {
+  snprintf(a, 32, "%s", label);
+  b[0] = 0;
+  const char *space = strchr(label, ' ');
+  if (gridMode || !space || pd_text_width(label) + 10 <= ONE_LINE_MAX)
+    return 1;
+  // At the space nearest the middle.
+  const char *best = space;
+  int len = (int)strlen(label);
+  for (const char *p = space; p; p = strchr(p + 1, ' '))
+    if (abs((int)(p - label) * 2 - len) < abs((int)(best - label) * 2 - len))
+      best = p;
+  snprintf(a, 32, "%.*s", (int)(best - label), label);
+  snprintf(b, 32, "%s", best + 1);
+  return 2;
+}
+
+// The ring's tile size for these items: the widest label line with 5 px each side, at least 38 (QuickTile's).
+static void measure(const struct quick_item *items, int n) {
+  int w = 38, lines = 1;
+  for (int i = 0; i < n; i++) {
+    const char *label = items[i].label ? items[i].label : quick_label(items[i].action);
+    char a[32], b[32];
+    int k = label_lines(label, a, b);
+    if (k > lines)
+      lines = k;
+    int lw = pd_text_width(a) > pd_text_width(b) ? pd_text_width(a) : pd_text_width(b);
+    if (lw + 10 > w)
+      w = lw + 10;
+  }
+  ringW = gridMode ? TILE_W : w > TILE_W ? TILE_W : w;
+  ringH = gridMode ? TILE_H : 24 + lines * LABEL_LINE + 3;
+  ringLines = gridMode ? 1 : lines;
 }
 
 int quick_step(int n, int sel, int dx, int dy, int w, int h) {
@@ -253,32 +372,41 @@ int quick_step(int n, int sel, int dx, int dy, int w, int h) {
 bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick_item *items, int n, int sel) {
   if (c->w < 3 * TILE_W || c->h < 3 * TILE_H)
     return false;
+  measure(items, n);
   for (int i = 0; i < c->w * c->h; i++)
     c->px[i] = QUICK_CLEAR;
   lastHits = 0;
+  const int TW = ringW, TH = ringH;
   for (int i = 0; i < n; i++) {
     int x, y;
     place(n, i, c->w, c->h, &x, &y);
-    hit_add(x, y, TILE_W, TILE_H, i);
-    tile_face(c, x, y, TILE_W, TILE_H, i == sel);
+    hit_add(x, y, TW, TH, i);
+    tile_face(c, x, y, TW, TH, i == sel);
     bool dim = items[i].why != NULL;
     // The game's own art where there is some (the Pokémon that would FLY, the bag's item), pixel art otherwise,
     // as QuickIcon draws them.
     bool art = false;
+    // The icon's middle: GRID's tiles as before; a ring tile's 8 px down from its top edge's padding.
+    int iconY = gridMode ? y + 16 : y + 14;
     if (items[i].action == QUICK_FLY)
-      art = pd_draw_mon_icon(c, g, items[i].species, x + (TILE_W - PD_ICON) / 2, y - 1, dim);
+      art = pd_draw_mon_icon(c, g, items[i].species, x + (TW - PD_ICON) / 2, iconY - 17, dim);
     else if (items[i].item)
-      art = pd_draw_item_icon(c, g, items[i].item, x + (TILE_W - PD_ITEM_ICON) / 2, y + 4, dim);
+      art = pd_draw_item_icon(c, g, items[i].item, x + (TW - PD_ITEM_ICON) / 2, iconY - 12, dim);
     if (!art)
-      icon(c, items[i].action, x + TILE_W / 2, y + 16, 1, dim || items[i].off);
+      icon(c, items[i].action, x + TW / 2, iconY, 1, dim || items[i].off);
     const char *label = items[i].label ? items[i].label : quick_label(items[i].action);
-    int lw = pd_text_width(label);
-    pd_text(c, x + (TILE_W - lw) / 2, y + TILE_H - 16, label, dim ? MUTED : items[i].lit ? FOCUS : INK,
-            INK_SHADOW);
+    char la[32], lb[32];
+    int lines = label_lines(label, la, lb);
+    uint32_t ink = dim ? MUTED : items[i].lit ? FOCUS : INK;
+    // The label's lines at the tile's bottom (a one-line label on a two-line ring sits on the lower line's place).
+    int ly = gridMode ? y + TH - 16 : y + TH - 3 - lines * LABEL_LINE - 4;
+    pd_text(c, x + (TW - pd_text_width(la)) / 2, ly, la, ink, INK_SHADOW);
+    if (lines > 1)
+      pd_text(c, x + (TW - pd_text_width(lb)) / 2, ly + LABEL_LINE, lb, ink, INK_SHADOW);
     if (items[i].off) { // WILD switched off: an OFF tag on its corner
       int tw = pd_text_width("OFF") + 6;
-      pd_round_rect(c, x + TILE_W - tw - 2, y + 2, tw, 13, 2, ACCENT);
-      pd_text(c, x + TILE_W - tw + 1, y, "OFF", INK, PD_NO_SHADOW);
+      pd_round_rect(c, x + TW - tw - 2, y + 2, tw, 13, 2, ACCENT);
+      pd_text(c, x + TW - tw + 1, y, "OFF", INK, PD_NO_SHADOW);
     }
   }
   // The middle: the highlighted one's name, and why it's dimmed (or WILD's state).

@@ -585,6 +585,17 @@ static bool run_game(const char* file) {
             uint32_t args[4] = { cfg->pcScript, 0, 0, 0 };
             pk_call(core, cfg->pcSetupScript, args, NULL);
         }
+        int teachSlot, teachIndex, teachMove;
+        const struct pd_party_fns* partyFns = session.game.cfg ? session.game.cfg->partyFns : NULL;
+        if (session.game.kind != PD_GAME_GB && pk_call_safe(core) && partyFns && partyFns->setMonData && partyFns->scratch &&
+            devlink_take_teach(&teachSlot, &teachIndex, &teachMove)) {
+            // The party Pokemon's move by the game's SetMonData (MON_DATA_MOVE1 + index), as pd_sim's `teach`.
+            uint8_t v[2] = { (uint8_t) teachMove, (uint8_t) (teachMove >> 8) };
+            pd_session_write(&session, partyFns->scratch, v, 2);
+            uint32_t args[4] = { partyFns->party + (uint32_t) teachSlot * 100, 13u + (uint32_t) (teachIndex + partyFns->monFieldShift),
+                                 partyFns->scratch, 0 };
+            pk_call(core, partyFns->setMonData, args, NULL);
+        }
 #endif
 
         // X on the field sends the buttons to the companion (the app's bottom focus), elsewhere it's BACK; Y the QUICK
@@ -723,6 +734,9 @@ static bool run_game(const char* file) {
                 dev.waitUs = TICKS_TO_US(session.prof.wait);
                 dev.wideUs = TICKS_TO_US(session.prof.wide);
                 dev.snapUs = TICKS_TO_US(session.prof.snap);
+                dev.flightTickUs = TICKS_TO_US(session.prof.flightTick);
+                dev.flightDrawUs = TICKS_TO_US(session.prof.flightDraw);
+                dev.flightState = session.flightState;
                 if (core->platform(core) == mPLATFORM_GBA) {
                     // Whether mGBA still skips the game's wait loop (a scene that stops it costs twice the CPU).
                     const struct GBA* gba = core->board;

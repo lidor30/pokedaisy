@@ -463,8 +463,10 @@ const uint32_t* pd_session_perf(unsigned fpsTenths, unsigned cpuPercent, int* w)
     char text[32];
     snprintf(text, sizeof(text), "%u.%u FPS  CPU %u%%", fpsTenths / 10, fpsTenths % 10, cpuPercent);
     *w = pd_text_width(text) + 8;
-    pd_round_rect(&c, 0, 0, *w, PD_PERF_H - 2, 2, 0xB8121620u);
-    pd_text(&c, 4, 1, text, 0xF8F8F8, 0x303840);
+    // The capitals (font rows 4-12) and their shadow centred in the box: 2 rows above, 2 under.
+    const int boxH = PD_PERF_H - 2;
+    pd_round_rect(&c, 0, 0, *w, boxH, 2, 0xB8121620u);
+    pd_text(&c, 4, (boxH - 10) / 2 - 4, text, 0xF8F8F8, 0x303840);
     for (int i = 0; i < PD_PERF_W * PD_PERF_H; i++)
         if (px[i] && !(px[i] >> 24)) px[i] |= 0xFF000000u;
     return px;
@@ -545,6 +547,11 @@ static void wide_tick(struct pd_session* s, bool skip) {
     s->wideReady = !pk_wide_fault();
     s->wideHole = (struct pd_wide_hole) { 0 };
     if (pk_wide_holed()) {
+        // FREE FLIGHT's smooth camera moved the view (pk_wide_view adds its offset): the frame's place moved with it.
+        int fdx = 0, fdy = 0;
+        pk_wide_flight_offset(&fdx, &fdy);
+        v.x += fdx;
+        v.y += fdy;
         struct pd_wide_hole* h = &s->wideHole;
         h->x = v.x < 0 ? -v.x : 0;
         h->y = v.y < 0 ? -v.y : 0;
@@ -591,11 +598,16 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
     s->framePending = last;
     if (s->flightCfg) {
         // FREE FLIGHT's next step, then its shadow and bird into the finished frame (before EXPAND reads it).
+        uint64_t t0 = s->files.clock ? s->files.clock() : 0;
         pk_flight_tick(s->core);
         s->flightState = pk_flight_state();
+        uint64_t t1 = s->files.clock ? s->files.clock() : 0;
+        s->prof.flightTick += t1 - t0;
         if (last && (s->flightState != PK_FLIGHT_IDLE || s->flightDrawn)) {
             frame_whole(s);
+            uint64_t t2 = s->files.clock ? s->files.clock() : 0;
             pk_flight_draw((uint32_t*) s->video, PD_GAME_STRIDE, 160, PD_GAME_STRIDE);
+            s->prof.flightDraw += (s->files.clock ? s->files.clock() : 0) - t2;
             s->flightDrawn = s->flightState != PK_FLIGHT_IDLE;
         }
     }
@@ -1318,6 +1330,7 @@ static void overlay_update(struct pd_session* s) {
 
 void pd_session_tick(struct pd_session* s, const struct pd_input* in, unsigned ms) {
     quick_items(s);
+    bool menuWasOpen = s->quickOpen;
     if (in->quickMenu) {
         s->quickOpen = !s->quickOpen;
         s->flyList = s->repelList = s->flyFromMap = false;
@@ -1332,7 +1345,11 @@ void pd_session_tick(struct pd_session* s, const struct pd_input* in, unsigned m
         s->host.ffOn = ff;
         s->redraw = true;
     }
-    uint32_t keys = s->quickOpen ? 0 : in->held;
+    // A button held while the menu was up (the A that picked a tile closes it this very loop) stays the menu's until
+    // it's let go: else the game gets it too, and talks to the water or the person in front.
+    if (menuWasOpen || s->quickOpen) s->quickHeld |= in->held;
+    s->quickHeld &= in->held;
+    uint32_t keys = s->quickOpen ? 0 : in->held & ~s->quickHeld;
     // A loop is one screen refresh, so a speed is frames a refresh: 1.5x runs one, two, one, two; 0.5x every other.
     static const int SPEED_X4[PD_GAME_SPEED_COUNT] = { 4, 6, 8, 12, 16, 2, 1 };
     int quarter = ff && !smart_slows(s) ? s->settings->ffSpeed * 4 : SPEED_X4[s->settings->gameSpeed];

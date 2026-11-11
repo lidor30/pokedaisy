@@ -15,8 +15,6 @@
 #define FRAME 5
 #define MAX_RECTS 8
 // The most MapScreen stretches the map to fill the tab (MAX_MAP_STRETCH); past it the map keeps its shape.
-#define MAX_STRETCH_NUM 6
-#define MAX_STRETCH_DEN 5
 #define PLACE_ROW 18
 #define CURSOR 0xFFFFFF
 #define CURSOR_ARM 5
@@ -217,12 +215,14 @@ static void layout_box(struct pd_canvas* c, int width, int height, int l, int t,
     crop.r = r;
     crop.b = b;
     int mw = crop.r - crop.l, mh = crop.b - crop.t;
-    // The map fills the tab: stretched to it while that's within 1.2x of its shape, else as big as fits,
-    // centred (MapScreen's MAX_MAP_STRETCH).
+    // As big as fits in its own shape, centred: never stretched (the user's call for the 3DS; the app stretches up
+    // to MAX_MAP_STRETCH).
     int aw = c->w - 2 * MARGIN - 2 * FRAME, ah = c->h - CONTENT_Y - MARGIN - 2 * FRAME;
-    int w = aw, h = ah;
-    if ((long) aw * mh * MAX_STRETCH_DEN > (long) ah * mw * MAX_STRETCH_NUM) w = ah * mw / mh;
-    else if ((long) ah * mw * MAX_STRETCH_DEN > (long) aw * mh * MAX_STRETCH_NUM) h = aw * mh / mw;
+    int w = aw, h = (int) ((long) aw * mh / mw);
+    if (h > ah) {
+        h = ah;
+        w = (int) ((long) ah * mw / mh);
+    }
     view.w = w > 0 ? w : 1;
     view.h = h > 0 ? h : 1;
     view.x = MARGIN + FRAME + (aw - w) / 2;

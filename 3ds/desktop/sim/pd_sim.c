@@ -76,6 +76,13 @@ static void quick_button(void) {
     pd_session_tick(&session, &in, 16);
 }
 
+// The session's clock for pd_session_prof: nanoseconds.
+static uint64_t sim_clock(void) {
+    struct timespec t;
+    clock_gettime(CLOCK_MONOTONIC, &t);
+    return (uint64_t) t.tv_sec * 1000000000u + (uint64_t) t.tv_nsec;
+}
+
 static void flight_area_path(void* ctx, uint32_t crc, uint32_t key, char* path, size_t len) {
     (void) ctx;
     snprintf(path, len, "%s/flight-area-%08X-%08X.txt", outDir, crc, key);
@@ -310,6 +317,10 @@ static void command(char* line) {
         pd_look_apply(&session.game, &settings);
     } else if (!strcmp(cmd, "screen")) {
         settings.screenMode = atoi(args);
+    } else if (!strcmp(cmd, "quicksel")) {
+        // quicksel ACTION: the open QUICK MENU's cursor on that tile (quick_menu.h's enum quick_action number).
+        for (int i = 0; i < session.quickCount; i++)
+            if ((int) session.quick[i].action == atoi(args)) session.quickSel = i;
     } else if (!strcmp(cmd, "quick")) {
         quick_button();
     } else if (!strcmp(cmd, "tap") && sscanf(args, "%d %d", &a, &b) == 2) {
@@ -429,6 +440,83 @@ static void command(char* line) {
             printf("flight state=%d map=%d.%d x=%d y=%d area=%d seeded=%d key=%08X notice=\"%s\" | %s\n", pk_flight_state(), here.map >> 8,
                    here.map & 0xFF, here.x, here.y, session.flightArea.count, session.flightArea.seeded, session.flightArea.key, session.notice, info);
         }
+    } else if (!strcmp(cmd, "hole")) {
+        // hole 0: EXPAND draws the frame into its view itself (the app's way), not the host (the console's).
+        pk_wide_hole(atoi(args));
+    } else if (!strcmp(cmd, "widesum")) {
+        // widesum N [KEYS]: N frames, a checksum of each top-screen picture as the console composes it (EXPAND's view with
+        // the frame in its hole), so `hole 0` and `hole 1` runs can be compared frame by frame.
+        char keys[64] = "";
+        int n = 0;
+        sscanf(args, "%d %63s", &n, keys);
+        uint32_t held = keys[0] ? parse_keys(keys) : 0;
+        static uint32_t filled[PK_WIDE_W * 2 * PK_WIDE_H * 2];
+        for (int i = 0; i < n; i++) {
+            frames(1, held);
+            if (!session.wideReady) {
+                printf("wide %d none\n", i);
+                continue;
+            }
+            const struct pd_wide_hole* hole = &session.wideHole;
+            int ww = session.wideW, wh = session.wideH;
+            memcpy(filled, pd_session_wide(&session), (size_t) ww * wh * sizeof(uint32_t));
+            for (int y = 0; y < hole->h; y++)
+                memcpy(filled + (hole->y + y) * ww + hole->x, session.video + (hole->gameY + y) * STRIDE + hole->gameX,
+                       (size_t) hole->w * sizeof(uint32_t));
+            uint32_t h = 2166136261u;
+            for (int k = 0; k < ww * wh; k++) h = (h ^ (filled[k] & 0xFFFFFF)) * 16777619u;
+            printf("wide %d %08X %dx%d\n", i, h, ww, wh);
+        }
+    } else if (!strcmp(cmd, "signpos")) {
+        // signpos N [KEYS]: N frames, where the area sign's white box is in each composed top-screen picture (its first
+        // run of 40+ near-white pixels in the top 80 rows): steady while the camera glides, or not.
+        char keys[64] = "";
+        int n = 0;
+        sscanf(args, "%d %63s", &n, keys);
+        uint32_t held = keys[0] ? parse_keys(keys) : 0;
+        static uint32_t filled[PK_WIDE_W * 2 * PK_WIDE_H * 2];
+        for (int i = 0; i < n; i++) {
+            frames(1, held);
+            if (!session.wideReady) continue;
+            const struct pd_wide_hole* hole = &session.wideHole;
+            int ww = session.wideW, wh = session.wideH;
+            memcpy(filled, pd_session_wide(&session), (size_t) ww * wh * sizeof(uint32_t));
+            for (int y = 0; y < hole->h; y++)
+                memcpy(filled + (hole->y + y) * ww + hole->x, session.video + (hole->gameY + y) * STRIDE + hole->gameX,
+                       (size_t) hole->w * sizeof(uint32_t));
+            int sx = -1, sy = -1;
+            for (int y = 0; y < 80 && y < wh && sy < 0; y++)
+                for (int x = 0, run = 0; x < ww; x++) {
+                    uint32_t p = filled[y * ww + x];
+                    bool white = (p & 0xFF) > 0xE8 && (p >> 8 & 0xFF) > 0xE8 && (p >> 16 & 0xFF) > 0xE8;
+                    run = white ? run + 1 : 0;
+                    if (run >= 40) { sx = x - 39; sy = y; break; }
+                }
+            int dx = 0, dy = 0;
+            pk_wide_flight_offset(&dx, &dy);
+            printf("sign %d at %d,%d offset %d,%d hole %d\n", i, sx, sy, dx, dy, hole->w > 0);
+        }
+    } else if (!strcmp(cmd, "framesum")) {
+        // framesum N [KEYS]: N frames with KEYS held, a checksum of each finished game frame (proves a change pixel-identical).
+        char keys[64] = "";
+        int n = 0;
+        sscanf(args, "%d %63s", &n, keys);
+        uint32_t held = keys[0] ? parse_keys(keys) : 0, all = 2166136261u;
+        for (int i = 0; i < n; i++) {
+            frames(1, held);
+            uint32_t h = 2166136261u;
+            for (int k = 0; k < PD_GAME_STRIDE * 160; k++) h = (h ^ session.video[k]) * 16777619u;
+            all = (all ^ h) * 16777619u;
+            printf("frame %d %08X\n", i, h);
+        }
+        printf("framesum %08X\n", all);
+    } else if (!strcmp(cmd, "prof")) {
+        // Where the frames since the last `prof` went (pd_session_prof), in us a frame; zeroed after.
+        int n = atoi(args) > 0 ? atoi(args) : 1;
+        const struct pd_session_prof* p = &session.prof;
+        printf("prof /%d: run %.1f wait %.1f wide %.1f snap %.1f flight tick %.1f draw %.1f us\n", n, p->run / 1e3 / n, p->wait / 1e3 / n,
+               p->wide / 1e3 / n, p->snap / 1e3 / n, p->flightTick / 1e3 / n, p->flightDraw / 1e3 / n);
+        memset(&session.prof, 0, sizeof(session.prof));
     } else if (!strcmp(cmd, "seed") && session.flightCfg) {
         // FLIGHT AREA's seed from the save again, timed (it runs once a run, on the emulator's thread).
         static struct flight_area area;
@@ -563,7 +651,8 @@ int main(int argc, char** argv) {
     if (save) core->loadSave(core, save);
     core->reset(core);
     pk_heal_rtc(core);
-    struct pd_session_host files = { .statePath = state_path, .backupSave = no_backup, .flightAreaPath = flight_area_path };
+    struct pd_session_host files = { .statePath = state_path, .backupSave = no_backup, .flightAreaPath = flight_area_path,
+                                     .clock = sim_clock };
     session.host.batteryPct = 76;
     pd_session_start(&session, core, video, &settings, &files);
     printf("%s (%s rev %d): %s\n", session.game.title, session.game.code, session.game.revision,

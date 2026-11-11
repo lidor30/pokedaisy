@@ -87,7 +87,7 @@ target_link_libraries(pokedaisy.elf mgba citro2d citro3d ctru m)
 target_link_options(pokedaisy.elf PRIVATE -flto=auto -O3)
 
 if(PD_DEV)
-    set(PD_TITLE "PokeDaisy dev")
+    set(PD_TITLE "PokeDaisy [DEV]")
 else()
     set(PD_TITLE "PokeDaisy")
 endif()

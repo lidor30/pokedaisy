@@ -1391,6 +1391,9 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
     pk_field_wild(wildSwitch, settings.wildOff);
   bool quickOpen = false;
   int quickSel = 0;
+  // Buttons pressed while the menu is up (the A that picks a tile closes it in the same loop), kept from the game until
+  // they're let go (the app's menuHeld): else the game gets that A too.
+  uint32_t quickHeld = 0;
   // FLY (fly.c): the config's FLY where the ROM's code matches. flyAsk = its destinations wanted (asked for between
   // two frames the game's code can be called in), flyList = the menu shows them; flyStage 1 = start the flight,
   // 2 = the fade, then finish it.
@@ -1553,6 +1556,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
           hudState.focus = hud_step(&hudHits, hudState.focus, (dir == RIGHT) - (dir == LEFT), (dir == DOWN) - (dir == UP));
       }
     }
+    bool quickWasOpen = quickOpen;
     // Y: the QUICK MENU over the running game (its keys withheld meanwhile).
     // In the app's order (QuickAction): PC, FLY, REPEL, BIKE, WILD, SAVE / LOAD STATE, FF, COMPANION; each only
     // where the game can, dimmed with why when not now.
@@ -1819,7 +1823,10 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
     } else {
       bool fast = (ff || ffHeld) && !rewinding;
       muted = (fast && !settings.ffAudio) || rewinding;
-      c->setKeys(c, ((quickOpen || hudFocus) ? 0 : held & ~hotkeyMask & 1023) | (gameKeyFrames > 0 ? gameKeys : 0));
+      if (quickWasOpen || quickOpen)
+        quickHeld |= held & 1023;
+      quickHeld &= held;
+      c->setKeys(c, ((quickOpen || hudFocus) ? 0 : held & ~hotkeyMask & ~quickHeld & 1023) | (gameKeyFrames > 0 ? gameKeys : 0));
       int count = fast ? ff_frames(&settings, hz, frameCost) : 1;
       audio_rate(c, hz, count);
       uint64_t runStart = SDL_GetPerformanceCounter();
@@ -1834,7 +1841,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
         }
         c->runFrame(c);
         if (gameKeyFrames > 0 && --gameKeyFrames == 0)
-          c->setKeys(c, (quickOpen || hudFocus) ? 0 : held & ~hotkeyMask & 1023);
+          c->setKeys(c, (quickOpen || hudFocus) ? 0 : held & ~hotkeyMask & ~quickHeld & 1023);
         if (c->platform(c) == mPLATFORM_GBA)
           pk_rest_note(c);
         if (fieldKnown)

@@ -25,6 +25,8 @@ struct devlink_stats {
     unsigned redraws, redrawWorstUs;        // the companion's redraws and the slowest one
     int idleMode;                           // mGBA's busy-loop skipping: -1 off for good, 0 skipping, 1 still looking
     unsigned idleLoop, idleFails;           // the loop it skips, and its failed tries
+    int flightState;                        // FREE FLIGHT's pk_flight_state (0 on the ground)
+    unsigned flightTickUs, flightDrawUs;    // of coreUs: its step after each frame, its shadow and bird drawn in
 };
 
 void devlink_start(void);
@@ -39,6 +41,8 @@ bool devlink_take_launch(char* out, unsigned outLen);
 bool devlink_take_leave(void);
 // A wild battle to start (`wild`): taken once.
 bool devlink_take_wild(int* species, int* level);
+// `teach SLOT INDEX MOVE`: a party Pokemon's move set by the game's SetMonData, between frames.
+bool devlink_take_teach(int* slot, int* index, int* move);
 // SCREEN and ASPECT to set while playing (`opt`; -1 leaves one alone): taken once.
 bool devlink_take_opt(int* screen, int* aspect);
 // True when a new build waits: leave everything and run it.
@@ -62,6 +66,7 @@ static inline bool devlink_touch(int* x, int* y) { (void) x; (void) y; return fa
 static inline bool devlink_take_launch(char* out, unsigned outLen) { (void) out; (void) outLen; return false; }
 static inline bool devlink_take_leave(void) { return false; }
 static inline bool devlink_take_wild(int* species, int* level) { (void) species; (void) level; return false; }
+static inline bool devlink_take_teach(int* slot, int* index, int* move) { (void) slot; (void) index; (void) move; return false; }
 static inline bool devlink_take_opt(int* screen, int* aspect) { (void) screen; (void) aspect; return false; }
 static inline bool devlink_restart_wanted(void) { return false; }
 static inline void devlink_after_frame(void) {}
