@@ -182,33 +182,25 @@ upside down / rotated in Azahar, so don't go back to them without checking on ha
 
 ## Linux port (`linux/`)
 
-An SDL2 host for Linux handhelds (Keegan Whitacre's, from his `keeganwhitacre/pokedaisy-brick` fork, whose `pocket/`
-has much more: Polished Crystal, the summary pages, NextUI power handling): the pinned mGBA core plus the 3DS port's
-C companion (`3ds/core/`), so a companion change for 3DS shows here too and the other way round. Its canvas follows
-the screen (`companion_size`: the largest whole scale keeping 320x240, so 426x240 at 3x on 1280x720); PARTY is
-Android's `PartySlot` ported (`pd_ui_party.c`), and the host's D-pad focus reaches the core as `pd_ui.focusId` so a
-slot shows its own selected look instead of the focus ring. Controllers hotplug (`controller_added` / `_removed`, mappings
-from `DATA/gamecontrollerdb.txt` or `SDL_GAMECONTROLLERCONFIG`); `package.py --portmaster` + `linux/portmaster/PokeDaisy.sh`
-make a PortMaster port (ROCKNIX & co., untried on a device; `test_portmaster.py` runs it against a stand-in PortMaster). Y opens
-the QUICK MENU (`linux/quick_menu.c`: QuickMenu.kt's RING / GLASS look, drawn into an ARGB canvas over the running game):
-WILD ENCOUNTERS (the game's own switch, found by `linux/wild.c` - a C port of `WildEncounters.find`'s agbcc / CFRU
-shapes - and held by pk_wide.c's `pk_field_state`; `settings.wildOff`), SAVE / LOAD STATE, FF, COMPANION, and PC /
-FLY / REPEL / BIKE (`linux/fly.c`, `linux/field_items.c`: Fly.kt, FieldItems.kt's useFieldItem, Pc.kt and KeyItems.kt
-in C over pd_config's `fly*` / `field*` / `pc*` fields from the `FIELD_ITEMS_*` records - the target's `records = {
-items = ... }` - and the game's own functions through `pk_call`, moved out of pokedaisy_jni.c into
-`app/src/main/cpp/pk_call.c` for both; the party / bag from the snapshot, "on the field" from pk_wide's scene, which the
-host reads in ORIGINAL too; BIKE presses SELECT for the game). `linux-runtime-test` uses each on FireRed, LeafGreen
-and Emerald and checks the result (a Repel / FLY taught to the save through the game's AddBagItem / SetMonData where it
-lacks one). The HUD (`linux/hud.c`, SETTINGS > HUD, `settings.hud` / `hudHidden`) is FieldHud's CORNERS / GLASS with only
-the parts a player reads (PARTY, MINIMAP, POKé BALLS, REPEL STEPS: the buttons are the quick menu's without touch),
-redrawn only when `hud_key` changes. TAB BAR (`settings.tabBar`, at most 5, the rest under a MORE chip; CARD also
-from SETTINGS) and the scrolling SETTINGS list are the core's, so the 3DS has them too. It adds no game data of its own (addresses come from `3ds/core/`). Build and test in a Linux container or
-VM: `cmake -S linux -B linux/build && cmake --build linux/build && ctest --test-dir linux/build`; `linux-runtime-test
-ROM DATA OUT` boots a real ROM + save (DATA/saves/<rom file name>.sav) to the field and screenshots PARTY / the
-summary. Saves are backed up into `saves/pokedaisy-backups/` like Android's (`pocket_save_backup`, newest 10
-distinct); states carry no save data, so loading one never writes the save. Keep a copy of the ROM's bytes rather
-than mGBA's ROM block pointer: a GPIO write (FireRed) swaps the mapping. CI: `.github/workflows/linux.yml` (x86_64
-native, AArch64 under QEMU with the checksum-pinned TrimUI toolchain).
+`pokedaisy-linux` (`linux/main.c`) is an SDL2 **libretro frontend** for Linux desktops and handhelds (Steam Deck,
+TrimUI, PortMaster): it links no emulator and loads the core for the ROM from beside itself - `pokedaisy_gba_libretro.so`
+(`.gba`, armGBA, `libretro/armgba/`) or `pokedaisy_gbc_libretro.so` (`.gb` / `.gbc`, mGBA, `libretro/`; `POCKET_CORE_DIR` to
+move them) - so the companion, HUD, quick menu, FLY / PC / REPEL / BIKE, WILD ENCOUNTERS and EXPAND are the cores' own and
+never drift from them (the old host carried its own copy of each and fell behind; replaced 2026-11-10). The shared C
+those cores build - `linux/hud.c`, `quick_menu.c`, `fly.c`, `field_items.c`, `wild.c`, `3ds/core/` (the 3DS port's companion,
+so a companion change for 3DS shows in the cores too) - stays in `linux/`. The host tells the core the screen (its
+`pokedaisy_panel` option, any `WxH`; the core picks its canvas) and shows the frame at a whole scale, and owns what a frontend
+owns: input (keyboard, SDL controllers with hotplug and mappings from `DATA/gamecontrollerdb.txt` / `SDL_GAMECONTROLLERCONFIG`,
+the TrimUI raw fallback, plorpOS's hotkeys file and Fn keys, the touch screen / mouse as RETRO_DEVICE_POINTER), sound
+(resampled to keep ~60 ms queued), pacing (the screen at 58-62 Hz, else a timer), the battery save (`DATA/saves/<rom>.sav`,
+written back when it changes, backed up before a game opens: newest 10 distinct), states (`DATA/states/<rom>.ss`, armGBA's
+`.armgba.ss`), fast-forward (sound sped up), rewind (XOR deltas from the newest state in a byte budget), the LCD mask and the game
+list, with a host menu on START+SELECT / Guide / Escape (`DATA/host.ini`). It answers the core's GET_THROTTLE_STATE so EXPAND
+stays sharp in FF. `linux-host-test` (`test_host.py`, with `-DPOCKET_TEST_CORES=<dir>`) runs the real binary headless on the
+diagnostic ROMs over both cores. `package.py --core` ships the cores beside the binary (`--portmaster`: the PortMaster layout).
+CI (`.github/workflows/linux.yml`): x86_64 on Ubuntu 22.04 (glibc <= 2.35: SteamOS), AArch64 host + mGBA core on the TrimUI
+toolchain (GCC 8.3), the armGBA core on Ubuntu 22.04's cross GCC (8.3 can't build it), every aarch64 core failing CI if it needs a
+glibc past 2.33 (the Brick; `libretro/armgba/glibc_compat.*` pins armGBA's to 2.17). The DS experiment hook (`pd_ds_run`) is kept.
 **DS on Linux** (opt-in, `-DPOCKET_DSPERATE=ON`; Keegan's, 2026-10-28; `linux/dsperate/README.md`): `.nds` games on the
 DSperate core (`third_party/dsperate`, unmodified), its own event loop (`frontend.cpp`), a read-only Platinum USA rev 1
 companion (`companion.cpp`, Gen4Reader.kt's rules), the shared quick menu and party HUD. It builds the app's
