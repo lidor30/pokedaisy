@@ -153,6 +153,9 @@ class PokeDaisyActivity : Activity() {
     private var lastUiBattleState = -1
     /** WIDE's native tables for this ROM ([WideScreen.gameFor]); OFF for a game it doesn't know. */
     private var wideGame = WideScreen.OFF
+    /** The running game is one its makers asked PokéDaisy not to read ([com.pokedaisy.app.companion.data.BlockedGames], by
+     * CRC): it plays as a plain game, with none of PokéDaisy's game features. Set in [loadRom], before anything else asks. */
+    @Volatile private var romBlocked: com.pokedaisy.app.companion.data.BlockedGame? = null
     /** The field reads' game (SCENE SPEEDS' TEXT, AUTO-RUN, RUN INDOORS, WILD ENCOUNTERS): [WideScreen.fieldGameFor]. */
     private var fieldGame = WideScreen.OFF
     /** WILD ENCOUNTERS: the game's own switch, found in the ROM after it loads ([WildEncounters.find]; 0 = none). */
@@ -418,6 +421,7 @@ class PokeDaisyActivity : Activity() {
     @Volatile private var fieldSupport: Pair<String, com.pokedaisy.app.companion.data.FieldItemSupport?>? = null
 
     private fun fieldItemSupport(): com.pokedaisy.app.companion.data.FieldItemSupport? {
+        if (romBlocked != null) return null
         val game = telemetry.snapshot.value.game
         // The config's text key and tables too: Emerald Kaizo runs as EMERALD and keeps no classic FLY (fieldItemsForGame);
         // Recharged Emerald shares retail Emerald's code, revision and kind, but not its functions.
@@ -1494,7 +1498,7 @@ class PokeDaisyActivity : Activity() {
     }
 
     /** DAY AND NIGHT works here: a GBA game (not a Game Boy or DS one) that doesn't change with the time itself. */
-    private fun dayNightSupported() = !romIsGameBoy && !romIsNds && ::engine.isInitialized &&
+    private fun dayNightSupported() = !romIsGameBoy && !romIsNds && romBlocked == null && ::engine.isInitialized &&
         com.pokedaisy.app.companion.data.activeGame !in com.pokedaisy.app.companion.data.DayNight.OWN_DAY_NIGHT
     /** The game running is a DS cart (melonDS): two screens, touch, X / Y ([loadRom]). */
     @Volatile private var romIsNds = false
@@ -1888,6 +1892,9 @@ class PokeDaisyActivity : Activity() {
         }
         override fun openDiscord() {
             runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(com.pokedaisy.app.companion.Discord.URL))) }
+        }
+        override fun openUrl(url: String) {
+            runCatching { startActivity(Intent(Intent.ACTION_VIEW, Uri.parse(url))) }
         }
         override val canCloseCompanion get() = secondScreen() != null
         override fun closeCompanion() {
@@ -2448,6 +2455,8 @@ class PokeDaisyActivity : Activity() {
         // cart read here froze the window past Android's 5 s. Keyed by the file played, an archive's by the archive.
         val crc = "%08x".format(RomCrcs.of(this, romFile, r))
         romKey = crc
+        FeatureFlags.applyBlocked(this)
+        romBlocked = com.pokedaisy.app.companion.data.BlockedGames.forCrc(crc)
         flightArea = com.pokedaisy.app.companion.data.FlightArea.Keeper(filesDir, crc)
         flightAreaAnywhereSent = false
         flightAreaQueued = false
@@ -2515,8 +2524,8 @@ class PokeDaisyActivity : Activity() {
         // EXPAND: the GBA games pk_wide.c knows, and Game Boy ones pk_wide_gb.c does (Yellow, Crystal); the field reads are GBA only.
         // A randomized retail cart (RandomizedRetail) goes by retail's CRC here: retail's code, maps and sprites.
         val tablesCrc = if (gba) WideScreen.tablesCrc(r, crc) else crc
-        wideGame = if (nds) WideScreen.OFF else WideScreen.gameFor(tablesCrc)
-        fieldGame = if (!gba) WideScreen.OFF else WideScreen.fieldGameFor(tablesCrc)
+        wideGame = if (nds || romBlocked != null) WideScreen.OFF else WideScreen.gameFor(tablesCrc)
+        fieldGame = if (!gba || romBlocked != null) WideScreen.OFF else WideScreen.fieldGameFor(tablesCrc)
         wildFlag = 0L
         tmSites = emptyList()
         if (::engine.isInitialized) engine.setReusableTms(tmSites, false)
@@ -2527,7 +2536,7 @@ class PokeDaisyActivity : Activity() {
         syncShinyAchievements()
         gbFieldCache = null
         if (::engine.isInitialized) engine.gbField = null
-        if (gba) Thread({
+        if (gba && romBlocked == null) Thread({
             val flag = com.pokedaisy.app.companion.data.WildEncounters.find(r)
             Log.i("pokedaisy", "wild encounters: switch %08X".format(flag))
             // REUSABLE TMS: the spots that use a TM up, by their code (none = the row shows N/A).
@@ -2747,7 +2756,7 @@ class PokeDaisyActivity : Activity() {
         }
         // PLAYER LOOK: this ROM's scan and patches, in the background; the engine gets the pick once they're in.
         lookPatch = null
-        lookRunner.load(r, crc, if (gba) gameCode else "", if (gba) SavesLocation.saveFor(this, Prefs(this), romFile) else null)
+        lookRunner.load(r, crc, if (gba && romBlocked == null) gameCode else "", if (gba) SavesLocation.saveFor(this, Prefs(this), romFile) else null)
         setUpCoopPresence(r, gba, gameCode)
     }
 

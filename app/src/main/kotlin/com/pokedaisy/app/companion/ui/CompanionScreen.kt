@@ -570,7 +570,10 @@ fun CompanionScreen(
                         // mismatched extra layer.
                         if (paneKey == "UNSUPPORTED") {
                             val picker = snapshot.gamePicker?.takeIf { gamePick != null }
-                            if (picker != null && !picker.declined) {
+                            val blocked = snapshot.blocked
+                            if (blocked != null) {
+                                BlockedView(blocked, settings?.let { st -> { url: String -> st.openUrl(url) } }, Modifier.fillMaxSize())
+                            } else if (picker != null && !picker.declined) {
                                 GamePickerPage(picker, gamePick!!, askForSupport, Modifier.fillMaxSize())
                             } else {
                                 UnsupportedView(snapshot.error, askForSupport, picker?.let { { pickerOpen = true } }, Modifier.fillMaxSize())
@@ -1215,6 +1218,42 @@ private fun UnsupportedView(
                 if (!detail.isNullOrBlank()) {
                     Spacer(Modifier.height(m.u * 6))
                     GbaText(detail, OptionColors.label.copy(alpha = 0.7f), OptionColors.labelShadow, small, maxLines = 3)
+                }
+            }
+        }
+    }
+}
+
+/** Every tab but SETTINGS while the running ROM is one its makers asked PokéDaisy not to read
+ * ([SnapshotView.blocked], [com.pokedaisy.app.companion.data.BlockedGames]): their reason and its one button. */
+@Composable
+private fun BlockedView(
+    blocked: com.pokedaisy.app.companion.data.BlockedGame, openUrl: ((String) -> Unit)?, modifier: Modifier = Modifier,
+) {
+    val m = rememberGbaTextMetrics()
+    val big = rememberGbaTextMetrics(1.6f)
+    val small = rememberGbaTextMetrics(1f)
+    Column(modifier) {
+        OptionTitleWindow(tr("NOT AVAILABLE"), m, Modifier.fillMaxWidth())
+        Spacer(Modifier.height(m.u * 4))
+        OptionListWindow(m, Modifier.fillMaxWidth().weight(1f)) {
+            Column(
+                Modifier.fillMaxSize().verticalScroll(rememberScrollState()).padding(horizontal = m.u * 16, vertical = m.u * 8),
+                verticalArrangement = Arrangement.Center,
+                horizontalAlignment = Alignment.CenterHorizontally,
+            ) {
+                GbaText(blocked.title, OptionColors.value, OptionColors.valueShadow, big)
+                Spacer(Modifier.height(m.u * 8))
+                GbaText(tr(blocked.reason), OptionColors.label, OptionColors.labelShadow, m, maxLines = 5)
+                Spacer(Modifier.height(m.u * 6))
+                GbaText(
+                    tr("The game still plays on its own, without the companion."),
+                    OptionColors.label.copy(alpha = 0.7f), OptionColors.labelShadow, small, maxLines = 2,
+                )
+                val action = blocked.action
+                if (action != null && openUrl != null) {
+                    Spacer(Modifier.height(m.u * 8))
+                    OptionButton(tk(action.label), m, emphasis = true, onClick = { openUrl(action.url) })
                 }
             }
         }

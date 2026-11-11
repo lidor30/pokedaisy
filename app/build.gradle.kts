@@ -85,6 +85,8 @@ android {
         buildConfigField("boolean", "FEATURE_SCREENSCRAPER", featureFlag("screenScraper").toString())
         // CO-OP (the connection to a paired partner): off until the feature ships (FeatureFlags.coop).
         buildConfigField("boolean", "FEATURE_COOP", featureFlag("coop").toString())
+        // Blocked games (BlockedGames) play with everything, tagged BLOCKED: debug builds always, else only with this.
+        buildConfigField("boolean", "FEATURE_ALLOW_BLOCKED", featureFlag("allowBlocked").toString())
 
         ndk {
             // Thor is arm64; armeabi-v7a (a 32-bit Android) only with the armv7 flag above.

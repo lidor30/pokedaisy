@@ -47,6 +47,8 @@ class GameInfo(
     val bestEffortSha1: String? = null,
     /** A ROM of a Gen 3 base game the app doesn't know: PICK A GAME (WHICH GAME IS THIS?). */
     val gamePick: GamePick? = null,
+    /** A game its makers asked PokéDaisy not to read ([com.pokedaisy.app.companion.data.BlockedGames]): its button. */
+    val blocked: com.pokedaisy.app.companion.data.BlockedGame? = null,
 ) {
     class Section(val title: String, val rows: List<Pair<String, String>>)
 
@@ -65,8 +67,9 @@ class GameInfo(
             val crc = if (hashes) runCatching { SaveStates.crc32(rom) }.getOrNull() else null
             val game = sha1?.let { GameTitles.BY_SHA1[it] } ?: baseGame(code)
             val linked = RomFolder.isLinked(prefs, rom)
+            val blocked = com.pokedaisy.app.companion.data.BlockedGames.forSha1(sha1)
             val supported = if (hashes) CompanionSupport.isSupported(rom) else null
-            val bestEffort = if (supported == false) com.pokedaisy.app.companion.data.BestEffortStore.load(sha1) else null
+            val bestEffort = if (supported == false && blocked == null) com.pokedaisy.app.companion.data.BestEffortStore.load(sha1) else null
             val bestEffortAs = bestEffort?.let { com.pokedaisy.app.companion.data.BestEffort.candidate(it.id)?.title }
 
             val gameRows = buildList {
@@ -74,6 +77,7 @@ class GameInfo(
                 add(tr("GAME") to (game ?: tr("Unknown")))
                 add(tr("SECOND SCREEN") to when {
                     !hashes -> pending
+                    blocked != null -> tr("Removed at its developer's request")
                     supported == true -> tr("Supported")
                     bestEffort != null && bestEffort.full -> tr("Supported (best effort, as {0})", bestEffortAs ?: "?")
                     bestEffort != null -> tr("Partly (best effort, as {0})", bestEffortAs ?: "?")
@@ -144,10 +148,11 @@ class GameInfo(
                     Section(tr("SAVE STATES"), stateRows),
                     Section("RetroAchievements", achievementRows(rom, hashes)),
                 ),
-                supportUrl = if (supported == false && bestEffort?.full != true) RomSupportRequest.url(rom, sha1) else null,
+                supportUrl = if (supported == false && bestEffort?.full != true && blocked == null) RomSupportRequest.url(rom, sha1) else null,
                 bestEffortSha1 = sha1.takeIf { bestEffort != null },
-                gamePick = sha1?.takeIf { supported == false && code != null && com.pokedaisy.app.companion.data.BestEffort.canTry(code) }
+                gamePick = sha1?.takeIf { supported == false && blocked == null && code != null && com.pokedaisy.app.companion.data.BestEffort.canTry(code) }
                     ?.let { GamePick(it, code!!, bestEffort?.id) },
+                blocked = blocked,
             )
         }
 
@@ -251,6 +256,10 @@ fun GameInfoDialog(
                 info.supportUrl?.let { url ->
                     // Not read by the companion: a game request with the file's name and SHA-1 (never the ROM).
                     OptionButton(tr("ASK FOR SUPPORT"), m, onClick = { onOpenUrl(url) })
+                }
+                info.blocked?.action?.let { a ->
+                    // A blocked game's own link (its makers' Discord): where to ask about it, not us.
+                    OptionButton(tr(a.label), m, onClick = { onOpenUrl(a.url) })
                 }
                 info.gamePick?.let {
                     // The game it's a version of, picked here rather than on the companion.

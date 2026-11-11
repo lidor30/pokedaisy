@@ -20,6 +20,12 @@ this package, same signer, newer version (`AppUpdateFlow.isOurUpdate`); the webs
 escaped (`website/src/lib/releases.js`, `website/test/releases.test.js`); workflow actions are pinned to
 commit SHAs. `CoopLinkActivity` is exported for `pokedaisy://coop/<ticket>` only: it passes a `CoopInvite.parse`d ticket to the unexported Settings, nothing else.
 New bundled code / fonts / data go into NOTICE and the LICENSES page (`licensesAsset`).
+**Blocked games** (`companion/data/BlockedGames.kt`, 2026-11-12; Ghost Grey, at its developer's request): a list by SHA-1 and CRC32,
+each with its reason and an optional link button. In a release a listed game plays as a plain game: the companion shows `BlockedView`
+(no picker, no BEST EFFORT, no ASK FOR SUPPORT), the activity turns off EXPAND, the field reads, the game-option patches, the makeover
+and the field items (`romBlocked`), the library tags it BLOCKED (black) and INFO says why; the site leaves it out. The support code stays.
+A new entry: its hashes, CRCs, sizes, reason (+ its
+eight translations in TrCompanion), the manual's "Games removed at their makers' request" and ROM_FEATURES' row.
 
 **Co-op link** (`companion/coop/`; docs/DEVELOPMENT.md's "Co-op connection"): pure Kotlin, no native code - `RelayCoopTransport` over
 our own WebSocket relay (`server/coop-relay/`, a separate Kotlin / JVM program on Java-WebSocket, never in the APK; its README covers deploying it) plus direct

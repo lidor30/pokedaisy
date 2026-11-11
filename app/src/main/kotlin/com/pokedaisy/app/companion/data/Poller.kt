@@ -63,6 +63,8 @@ class TelemetrySampler {
     // Set instead of nativeCfg for a large BPRE ROM that isn't recognized as
     // Unbound (see detect()) - a different hack we have no addresses for.
     private var unsupportedHackLabel: String? = null
+    // A game its makers asked PokéDaisy not to read ([BlockedGames]): unsupported, with its notice, and nothing guessed.
+    private var blocked: BlockedGame? = null
     // The ROM hashed as retail FireRed / Emerald.
     private var retailHash = false
     // Retail FireRed / Emerald with a randomizer's data (RandomizedRetail): read as retail, with its own tables.
@@ -145,6 +147,17 @@ class TelemetrySampler {
         }
         // Look at it on the first sample: a guess or a sure match shows up at once.
         beSamples = EVALUATE_EVERY
+    }
+
+    /** A listed game: no config, no BEST EFFORT, no picker - only its notice ([SnapshotView.blocked]). */
+    private fun block(b: BlockedGame) {
+        blocked = b
+        kind = kind ?: GameKind.FIRERED
+        nativeCfg = null
+        baseCfg = null
+        beCode = null
+        beMatch = null
+        unsupportedHackLabel = "${b.title} is blocked"
     }
 
     private fun useBestEffort(m: BestEffort.Match) {
@@ -319,7 +332,10 @@ class TelemetrySampler {
 
     private fun sampleUntagged(reader: MemoryReader): SnapshotView {
         try {
-            if (kind == null) detect(reader)
+            if (kind == null) {
+                detect(reader)
+                BlockedGames.forSha1(romSha1)?.let(::block)
+            }
             if (beCode != null) {
                 takeAnswers(reader)
                 runBestEffort(reader)
@@ -370,7 +386,7 @@ class TelemetrySampler {
                 GameKind.PLATINUM, GameKind.HEARTGOLD, GameKind.SOULSILVER -> readGen4Telemetry(reader, gen4Cfg ?: GEN4_PLATINUM_US)
                 GameKind.BLACK, GameKind.WHITE, GameKind.BLACK2, GameKind.WHITE2 -> readGen5Telemetry(reader, gen5Cfg ?: GEN5_BLACK)
                 else -> {
-                    unsupportedHackLabel?.let { return SnapshotView(connected = false, error = it, unsupported = true) }
+                    unsupportedHackLabel?.let { return SnapshotView(connected = false, error = it, unsupported = true, blocked = blocked) }
                     val cfg = nativeCfg ?: return SnapshotView(connected = false, error = "no telemetry source")
                     readNativeTelemetry(reader, cfg)
                 }
