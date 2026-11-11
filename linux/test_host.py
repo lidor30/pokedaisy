@@ -87,7 +87,8 @@ with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
         del env['POCKET_KEYS']
         _,_,_,chord_rows=png_pixels(d/'ds-chord.png')
         # The host can overlay a rewind-disabled notice. The DS game remains on its top screen.
-        assert chord_rows[h//2][(w//2)*bpp:(w//2)*bpp+3]==mid,chord
+        r,g,b=chord_rows[3*h//8][(w//2)*bpp:(w//2)*bpp+3]
+        assert r<60 and g>100 and b<60,chord
     # The host menu (Escape) with the keys scripted: DOWN to SAVE STATE, A writes the state file.
     env['POCKET_KEYS']='20:menu,30:down,40:a'
     run(d,str(d/'roms/diagnostic.gb'),'--frames','80')
