@@ -26,7 +26,7 @@ using Companion=DsCompanionUi;
 constexpr Companion::Row settingsOrder[]={
   Companion::Layout,Companion::Hud,Companion::QuickStyle,Companion::CompanionButton,Companion::HudButton,Companion::TabBar,Companion::MoreTabs,
   Companion::Battles,Companion::BattleStrip,Companion::AutoRun,Companion::ScreenButton,Companion::PenSpeed,
-  Companion::HudMinimal,Companion::HudBalls,Companion::HudRepel,Companion::HudMap,Companion::DarkMode,Companion::Reset
+  Companion::HudSize,Companion::HudMinimal,Companion::HudBalls,Companion::HudRepel,Companion::HudMap,Companion::DarkMode,Companion::Reset
 };
 static_assert(std::size(settingsOrder)==Companion::Rows);
 const char* const layoutNames[]={"ONE SCREEN","TOP","BOTTOM","SIDE BY SIDE","STACKED","LARGE + SMALL","PICTURE IN PICTURE"};
@@ -35,9 +35,11 @@ const unsigned buttonIds[]={RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,
 const char* const hudButtonNames[]={ "X", "Y", "L2", "R2", "NONE" };
 const int hudButtonIds[]={RETRO_DEVICE_ID_JOYPAD_X,RETRO_DEVICE_ID_JOYPAD_Y,RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,-1};
 const char* const speedNames[]={"SLOW","NORMAL","FAST"};
+const char* const hudSizeNames[]={ "MINI", "LARGE" };
 const char* const resetNames[]={"CANCEL","RESET"};
-const char* const labels[]={"DS LAYOUT","AUTO BATTLES","HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP","MINIMAL HUD","POKÉ BALLS","REPEL STEPS","MINIMAP","DARK MODE","AUTO-RUN","TAB BAR","MORE TABS","HUD CURSOR BUTTON"};
+const char* const labels[]={"DS LAYOUT","AUTO BATTLES","HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP","MINIMAL HUD","POKÉ BALLS","REPEL STEPS","MINIMAP","DARK MODE","AUTO-RUN","TAB BAR","MORE TABS","HUD CURSOR BUTTON","HUD SIZE"};
 const char* const* choices(int row){
+  if(row==DsCompanionUi::HudSize)return hudSizeNames;
   return row==DsCompanionUi::Layout?layoutNames:row==DsCompanionUi::PenSpeed?speedNames:
     row==DsCompanionUi::Reset?resetNames:row==DsCompanionUi::HudButton?hudButtonNames:buttonNames;
 }
@@ -134,6 +136,7 @@ int DsCompanionUi::hud_id()const{
 int DsCompanionUi::pen_step()const{return penSpeed==0?1:penSpeed==1?3:6;}
 int DsCompanionUi::value(int row)const{
   if(row==HudButton)return settings.hudBtn;
+  if(row==HudSize)return settings.hudSize==PD_HUD_LARGE;
   if(row==DarkMode)return darkMode;
   if(row==AutoRun)return autoRun;
   if(row==HudMinimal)return hudMinimal;
@@ -166,6 +169,7 @@ void DsCompanionUi::apply(int row,int v){
   else if(row==QuickStyle)settings.quickGrid=v;
   else if(row==BattleStrip)battleStrip=v;
   else if(row==HudMinimal)hudMinimal=v;
+  else if(row==HudSize)settings.hudSize=v?PD_HUD_LARGE:PD_HUD_NORMAL;
   else if(row==DarkMode)darkMode=v;
   else if(row==AutoRun){
     if(game==DsGame::Unsupported){error="Auto-Run unavailable for this ROM";return;}
@@ -182,7 +186,7 @@ void DsCompanionUi::draw_settings(pd_canvas* c){
   pd_ui_format_money(s.valid?s.money:-1,money,sizeof money);
   const char* values[]={layoutNames[layout],autoBattles?"ON":"OFF",settings.hud?"ON":"OFF",
     buttonNames[companionButton],buttonNames[screenButton],speedNames[penSpeed],settings.quickGrid?"GRID":"RING","...",battleStrip?"ON":"OFF",hudMinimal?"ON":"OFF",value(HudBalls)?"ON":"OFF",value(HudRepel)?"ON":"OFF",value(HudMap)?"ON":"OFF",darkMode?"ON":"OFF",game==DsGame::Unsupported?"N/A":autoRun?"ON":"OFF",game==DsGame::Unsupported?"N/A":"EDIT",
-    (settings.tabBar & dsTabs)==dsTabs?"NONE HIDDEN":"OPEN",hudButtonNames[settings.hudBtn]};
+    (settings.tabBar & dsTabs)==dsTabs?"NONE HIDDEN":"OPEN",hudButtonNames[settings.hudBtn],hudSizeNames[value(HudSize)]};
   constexpr int infoCount=3;
   pd_option_row rows[Rows+infoCount]={{"PLACE",s.valid?ds_place(s.map,s.game):"-"},
     {"MONEY",money},{"HOST","PokeDaisy core"}};

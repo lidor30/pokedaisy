@@ -664,11 +664,12 @@ void present(const void* data,unsigned,unsigned,size_t) {
     const int steps=snapshot.repelSteps;
     if(!steps)repelFull=0;
     else if(steps>repelFull)repelFull=hud_repel_full(steps);
-    const hud_state state{steps,repelFull,false,-1,-1};
+    hud_state state{steps,repelFull,false,-1,-1};
+    state.mini=shell.settings.hudSize!=PD_HUD_LARGE;
     const bool pip=arrangement.touch.w>0 && arrangement.touch.x>top.x && arrangement.touch.x<top.x+top.w;
     const int hudRight=pip?(arrangement.touch.x-top.x)*256/top.w:256;
     struct HudIcons {const pd_snapshot& party;bool small;};
-    HudIcons hudIcons{party,pip};
+    HudIcons hudIcons{party,pip&&!state.mini};
     hud_ds_draw(&c,&party,&state,&shell.settings,&hudIcons,[](pd_canvas* c,void* ctx,const pd_mon* m,int x,int y,bool){
       const auto& hud=*static_cast<HudIcons*>(ctx);
       const int slot=m-hud.party.party;
