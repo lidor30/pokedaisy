@@ -526,12 +526,15 @@ static void icon_half_draw(struct pd_canvas *c, int x, int y) {
 static void mon_icon(struct hud *u, const struct pd_mon *m, int x, int y) {
   bool egg = m->species == PD_SPECIES_EGG, fainted = !egg && m->hp == 0;
   int ix = x + (TILE - PD_ICON) / 2;
-  if (u->monDraw) {
-    u->monDraw(u->c, u->monCtx, m, ix, y - 5, fainted);
-  } else if (mini) {
+  if (mini) {
     struct pd_canvas shrunk = icon_begin();
-    pd_draw_mon_icon_shiny(&shrunk, u->g, m->species, m->shiny, 0, 0, 1, fainted);
+    if (u->monDraw)
+      u->monDraw(&shrunk, u->monCtx, m, 0, 0, fainted);
+    else
+      pd_draw_mon_icon_shiny(&shrunk, u->g, m->species, m->shiny, 0, 0, 1, fainted);
     icon_half_draw(u->c, x + (TILE - MINI_ICON) / 2, y - 3);
+  } else if (u->monDraw) {
+    u->monDraw(u->c, u->monCtx, m, ix, y - 5, fainted);
   } else if (small) {
     struct pd_canvas shrunk = icon_begin();
     pd_draw_mon_icon_shiny(&shrunk, u->g, m->species, m->shiny, 0, 0, 1, fainted);
@@ -1160,9 +1163,9 @@ void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct 
     c->px[i] = QUICK_CLEAR;
   if (!s->valid)
     return;
-  small = right < c->w;
-  mini = false;
-  sizes = small ? &COMPACT_SIZES : &NORMAL_SIZES;
+  mini = h->mini;
+  small = mini || right < c->w;
+  sizes = mini ? &MINI_SIZES : small ? &COMPACT_SIZES : &NORMAL_SIZES;
   struct hud u = {.c = c, .s = s, .h = h, .st = st, .monDraw = monDraw, .monCtx = ctx, .itemDraw = itemDraw, .x1 = right,
                   .repelItem = repelItem, .out = out, .partyPalette = partyPalette,
                   .L = hud_ink(st->hudLook)};
@@ -1184,15 +1187,16 @@ void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct 
 }
 
 void hud_ds_minimap(struct pd_canvas *c, const struct pd_settings *st, const char *name, hud_ds_map_fn draw, struct hud_hits *out) {
-  enum { W=104, H=64 };
-  small = mini = false;
-  sizes = &NORMAL_SIZES;
+  small = false;
+  mini = st->hudSize != PD_HUD_LARGE;
+  sizes = mini ? &MINI_SIZES : &NORMAL_SIZES;
+  const int w = sizes->mapW, h = sizes->mapH;
   struct hud u = {.c=c, .x1=c->w, .out=out, .L=hud_ink(st->hudLook)};
-  const int x=c->w-EDGE-minimap_w(W), y=EDGE;
-  panel(&u,x,y,minimap_w(W),minimap_h(H,1));
-  hit(&u,x,y,minimap_w(W),minimap_h(H,1),HUD_MAP);
-  draw(c,x+PAD,y+PAD,W,H);
-  pd_text_fit(c,x+PAD,y+PAD+H+1,W,name,u.L->text,u.L->shadow);
+  const int x=c->w-EDGE-minimap_w(w), y=EDGE;
+  panel(&u,x,y,minimap_w(w),minimap_h(h,1));
+  hit(&u,x,y,minimap_w(w),minimap_h(h,1),HUD_MAP);
+  draw(c,x+PAD,y+PAD,w,h);
+  pd_text_fit(c,x+PAD,y+PAD+h+1,w,name,u.L->text,u.L->shadow);
 }
 
 int hud_compact_map_width(void) { return COMPACT_SIZES.mapW + 2 * COMPACT_SIZES.pad; }
@@ -1203,6 +1207,7 @@ uint32_t hud_key(const struct pd_game *g, const struct pd_snapshot *s, const str
   MIX(st->hudHidden);
   MIX(st->hudLayout);
   MIX(st->hudLook);
+  MIX(h->mini);
   MIX(h->repel);
   MIX(h->repelFull);
   MIX(h->repelItem);

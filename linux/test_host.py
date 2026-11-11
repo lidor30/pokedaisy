@@ -1,7 +1,7 @@
-"""The real pokedaisy-linux on the diagnostic ROMs (make_diagnostic.py), headless, over both cores:
+"""The real pokedaisy-linux on the diagnostic ROMs (make_diagnostic.py), headless, over all three cores:
 test_host.py BINARY CORES_DIR DIAGNOSTICS_DIR. The GB ROM runs on pokedaisy_gbc and writes a battery-save marker,
 which has to reach DATA/saves; the GBA ROM runs on pokedaisy_gba (armGBA) and fills its screen red, which has to
-reach the window. A second run backs the save up, and the game list draws with no ROM given."""
+reach the window. The DS ROM fills its top screen green. A second run backs the save up, and the game list draws with no ROM given."""
 from pathlib import Path
 import os,shutil,struct,subprocess,sys,tempfile,zlib
 
@@ -38,7 +38,7 @@ def run(data,*args):
 
 with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
     d=Path(d);(d/'roms').mkdir()
-    for rom in ('diagnostic.gb','diagnostic.gba'):shutil.copy(diag/rom,d/'roms'/rom)
+    for rom in ('diagnostic.gb','diagnostic.gba','diagnostic.nds'):shutil.copy(diag/rom,d/'roms'/rom)
     # The GB ROM on the mGBA core: its save marker written to DATA/saves.
     run(d,str(d/'roms/diagnostic.gb'),'--frames','120','--shot',str(d/'gb.png'))
     sav=d/'saves/diagnostic.gb.sav';assert sav.exists() and sav.read_bytes()[:1]==b'\x5a',sav
@@ -56,6 +56,28 @@ with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
     log=run(d,str(d/'roms/diagnostic.gba'),'--frames','120','--shot',str(d/'gba.png'))
     w,h,bpp,rows=png_pixels(d/'gba.png')
     mid=rows[h//2][(w//2)*bpp:(w//2)*bpp+3];assert mid[0]>200 and mid[1]<60 and mid[2]<60,(mid,log[-500:])
+    # DS maps the ROM from its path, so it also works above the host's 64 MiB buffer limit.
+    with (d/'roms/diagnostic.nds').open('r+b') as nds:nds.truncate(65 << 20)
+    # Select DS from the sorted list, save a state through the host menu, and return.
+    env['POCKET_KEYS']='10:down,20:down,30:down,40:a,70:menu,80:down,90:a,100:menu,110:up,120:a'
+    run(d,'--frames','65')
+    del env['POCKET_KEYS']
+    assert (d/'states/diagnostic.nds.ss').exists(),'DS did not launch from the game list'
+    run(d,str(d/'roms/diagnostic.nds'),'--frames','90','--shot',str(d/'ds.png'))
+    w,h,bpp,rows=png_pixels(d/'ds.png')
+    mid=rows[h//2][(w//2)*bpp:(w//2)*bpp+3]
+    assert mid[0]<60 and mid[1]>200 and mid[2]<60,mid
+    # L2 must reach DS Companion even though GB/GBA use that button for host rewind.
+    env['POCKET_KEYS']='25:l2'
+    run(d,str(d/'roms/diagnostic.nds'),'--frames','55','--shot',str(d/'ds-companion.png'))
+    del env['POCKET_KEYS']
+    _,_,_,companion=png_pixels(d/'ds-companion.png')
+    assert companion!=rows,'L2 did not open the DS Companion'
+    env['POCKET_KEYS']='25:r2'
+    run(d,str(d/'roms/diagnostic.nds'),'--frames','55','--shot',str(d/'ds-bottom.png'))
+    del env['POCKET_KEYS']
+    w,h,bpp,bottom=png_pixels(d/'ds-bottom.png')
+    assert min(bottom[h//2][(w//2)*bpp:(w//2)*bpp+3])>200,'R2 did not switch to the DS bottom screen'
     # The host menu (Escape) with the keys scripted: DOWN to SAVE STATE, A writes the state file.
     env['POCKET_KEYS']='20:menu,30:down,40:a'
     run(d,str(d/'roms/diagnostic.gb'),'--frames','80')

@@ -64,13 +64,15 @@ jobs:
       - name: The executable over the cores it ships with
         run: |
           mkdir -p "$RUNNER_TEMP/cores"
-          cp "$RUNNER_TEMP/pd-gb/pokedaisy_gbc_libretro.so" "$RUNNER_TEMP/pd-gba/pokedaisy_gba_libretro.so" "$RUNNER_TEMP/cores/"
+          cp "$RUNNER_TEMP/pd-gb/pokedaisy_gbc_libretro.so" "$RUNNER_TEMP/pd-gba/pokedaisy_gba_libretro.so" \
+            "$RUNNER_TEMP/pd-ds/pokedaisy_ds_libretro.so" "$RUNNER_TEMP/cores/"
           cmake -S linux -B linux/build -DPOCKET_TEST_CORES="$RUNNER_TEMP/cores"
           ctest --test-dir linux/build -R linux-host-test --output-on-failure
       - name: Package native artifact
         run: |
           python3 linux/package.py linux/build/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts" \
-            --core "$RUNNER_TEMP/cores/pokedaisy_gba_libretro.so" --core "$RUNNER_TEMP/cores/pokedaisy_gbc_libretro.so"
+            --core "$RUNNER_TEMP/cores/pokedaisy_gba_libretro.so" --core "$RUNNER_TEMP/cores/pokedaisy_gbc_libretro.so" \
+            --core "$RUNNER_TEMP/cores/pokedaisy_ds_libretro.so"
           # The three cores alone, with their notices, for other frontends (a release file).
           python3 linux/libretro-unified/package.py --cores-only --strip strip --source-ref "$(git rev-parse HEAD)" \
             "$RUNNER_TEMP/cores/pokedaisy_gbc_libretro.so" "$RUNNER_TEMP/cores/pokedaisy_gba_libretro.so" \
@@ -117,9 +119,20 @@ jobs:
             # Loads on the Brick's glibc 2.33 and anything newer.
             ! aarch64-linux-gnu-objdump -T "$core" | grep -E 'GLIBC_2\.(3[4-9]|[4-9][0-9])' || { echo "::error::$core needs a glibc newer than 2.33"; exit 1; }
           done
+      - name: Boot DS through the AArch64 executable under QEMU
+        env:
+          SDL_VIDEODRIVER: offscreen
+          SDL_AUDIODRIVER: dummy
+          SDL_RENDER_DRIVER: software
+        run: |
+          python3 linux/dsperate/make_diagnostic.py "$RUNNER_TEMP/diagnostic.nds"
+          POCKET_CORE_DIR="$PWD/build/ds-arm" qemu-aarch64-static \
+            -L "$NEXTUI_TOOLCHAIN/aarch64-nextui-linux-gnu/libc" linux/build-arm/pokedaisy-linux \
+            --data "$RUNNER_TEMP/pd-ds-data" "$RUNNER_TEMP/diagnostic.nds" --frames 75 --shot "$RUNNER_TEMP/nds.png"
+          test -s "$RUNNER_TEMP/nds.png"
       - name: Package the TrimUI, PortMaster, cores and NXRedux artifacts
         run: |
-          cores="--core build/gba-arm/pokedaisy_gba_libretro.so --core build/gbc-arm/pokedaisy_gbc_libretro.so"
+          cores="--core build/gba-arm/pokedaisy_gba_libretro.so --core build/gbc-arm/pokedaisy_gbc_libretro.so --core build/ds-arm/pokedaisy_ds_libretro.so"
           python3 linux/package.py linux/build-arm/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts" $cores
           python3 linux/package.py --portmaster linux/build-arm/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts" $cores
           # The three cores for other frontends, and the TrimUI Brick's NXRedux collection (both release files).

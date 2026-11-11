@@ -28,14 +28,14 @@ Every release has these files. Pick the one for your device.
 | Your own frontend or RetroArch, on a PC | `pokedaisy-libretro-x86_64.zip` |
 | Your own frontend or RetroArch, on an ARM handheld | `pokedaisy-libretro-aarch64.zip` |
 
-The first three are the PokeDaisy program with its two cores beside it. The last three are the cores alone, for a
+The first three are the PokeDaisy program with its three cores beside it. The last three are the cores alone, for a
 frontend that loads libretro cores.
 
 ## Steam Deck and Linux PCs
 
 `pokedaisy-linux-x86_64.zip` runs on SteamOS and on Linux PCs with glibc 2.35 or newer and SDL2 (SteamOS and most
 desktops have both). Inside its `pokedaisy-linux-x86_64` folder are the program (`pokedaisy-linux`), the GBA core
-(`pokedaisy_gba_libretro.so`), the Game Boy core (`pokedaisy_gbc_libretro.so`) and their licenses.
+(`pokedaisy_gba_libretro.so`), the Game Boy core (`pokedaisy_gbc_libretro.so`), the DS core (`pokedaisy_ds_libretro.so`) and their licenses.
 
 1. Extract the zip somewhere in your home folder. On a Steam Deck, do this in Desktop Mode, for example into a
    `PokeDaisy` folder in your home folder.
@@ -56,7 +56,7 @@ keyboard shouldn't open at launch; if it does, you're on an older build, so down
 ## Linux Handhelds
 
 `pokedaisy-linux-aarch64.zip` is the program as a TrimUI app, built for firmwares like CrossMix or NextUI, but it 
-should run other places too. Its `pokedaisy-linux-aarch64` folder holds the program, both cores, `launch.sh` (what 
+should run other places too. Its `pokedaisy-linux-aarch64` folder holds the program, all three cores, `launch.sh` (what
 the firmware runs), `config.json` and `icon.png` (the menu entry's name and icon). On CrossMix, copy the folder 
 into the SD card's `Apps` folder.
 
@@ -160,9 +160,8 @@ while you rewind.
 
 ## Adding games
 
-The program's game list shows the `.gb`, `.gbc` and `.gba` files in the `roms` folder of its data folder (and, on
-PortMaster, the firmware's folders above). Pick one with the D-pad and A. Unzip your games first. DS games don't run
-in the program: play them with the DS core or the NXRedux collection.
+The program's game list shows the `.gb`, `.gbc`, `.gba` and `.nds` files in the `roms` folder of its data folder (and, on
+PortMaster, the firmware's folders above). Pick one with the D-pad and A. Unzip your games first.
 
 ## Moving a save you already have
 
@@ -232,11 +231,9 @@ The program reads a few settings from the environment:
 - `POCKET_REWIND_MB` sets how much memory rewind may use (32 to start with).
 - `POCKET_CORE_DIR` loads the cores from another folder.
 
-To build it yourself, follow `linux/README.md` in the source repository. An experimental build of the program with
-DS games exists for testers (`linux/dsperate/README.md`); it isn't part of the release.
+To build it yourself, follow `linux/README.md` in the source repository.
 
 ## What isn't tested yet
 
 - More devices
 - PortMaster firmwares other than plorpOS
-- DS games run only on the libretro DS core and in the NXRedux collection, not yet in the other builds.

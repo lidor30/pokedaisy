@@ -29,9 +29,9 @@ mkdir -p roms saves states
 export POCKET_FULLSCREEN=1
 # SELECT+START is PortMaster's exit (gptokeyb): the host menu opens with the Menu / Guide button here.
 export POCKET_MENU_COMBO=off
-# The game list also shows the firmware's own Game Boy / Color / Advance folders.
+# The game list also shows the firmware's own Game Boy / Color / Advance and Nintendo DS folders.
 ROM_DIRS=""
-for d in gba gb gbc "Game Boy Advance" "Game Boy Color" "Game Boy"; do
+for d in gba gb gbc nds "Game Boy Advance" "Game Boy Color" "Game Boy" "Nintendo DS"; do
   [ -d "/$directory/$d" ] && ROM_DIRS="$ROM_DIRS${ROM_DIRS:+:}/$directory/$d"
 done
 export POCKET_ROM_DIRS="$ROM_DIRS"

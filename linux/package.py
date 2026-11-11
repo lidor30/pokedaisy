@@ -8,7 +8,7 @@ p=argparse.ArgumentParser(description=__doc__)
 p.add_argument('binary',type=Path);p.add_argument('output',type=Path)
 p.add_argument('--portmaster',action='store_true',help='a PortMaster port: PokeDaisy.sh + pokedaisy/')
 p.add_argument('--dsperate',action='store_true',help='label the opt-in DS experiment and include its notices')
-p.add_argument('--core',type=Path,action='append',default=[],help='a core to ship beside the binary (pokedaisy_gba / _gbc)')
+p.add_argument('--core',type=Path,action='append',default=[],help='a core to ship beside the binary (pokedaisy_gba / _gbc / _ds)')
 a=p.parse_args();repo=Path(__file__).resolve().parents[1]
 header=a.binary.read_bytes()[:20]
 if header[:6] != b'\x7fELF\x02\x01':p.error('Expected a 64-bit little-endian Linux ELF')
@@ -47,6 +47,14 @@ if any('_gba_' in c.name for c in a.core):
     # armGBA's own code is MPL 2.0; its Game Boy side (Gambatte, GPL 2.0) is not built into the core.
     shutil.copy2(repo/'third_party/armgba/LICENSES/MPL-2.0.txt',licenses/'armGBA-MPL-2.0.txt')
     shutil.copy2(repo/'third_party/zlib/LICENSE',licenses/'zlib.txt')
+ds_core=any('_ds_' in c.name for c in a.core)
+if ds_core:
+    tree=repo/'third_party/dsperate-lr'
+    for f in sorted(tree.rglob('*')):
+        if f.is_file() and f.name.lower().startswith(('license','copying','notice')):
+            dest_notice=licenses/'dsperate-lr'/f.relative_to(tree)
+            dest_notice.parent.mkdir(parents=True,exist_ok=True)
+            shutil.copy2(f,dest_notice)
 if a.dsperate:
     ds=repo/'third_party/dsperate'
     for source,target in [('LICENSE','DSperate-GPL-3.0.txt'),
@@ -63,6 +71,10 @@ if any('_gba_' in c.name for c in a.core):
     agba=subprocess.check_output(['git','rev-parse','HEAD:third_party/armgba'],cwd=repo,text=True).strip()
     with (dest/'SOURCE.txt').open('a') as f:
         f.write(f'armGBA: {agba}\n')
+if ds_core:
+    ds_commit=subprocess.check_output(['git','rev-parse','HEAD:third_party/dsperate-lr'],cwd=repo,text=True).strip()
+    with (dest/'SOURCE.txt').open('a') as f:
+        f.write(f'DSperate libretro: https://github.com/thwonp/dsperate-lr ({ds_commit})\n')
 if a.dsperate:
     ds_commit=subprocess.check_output(['git','rev-parse','HEAD'],cwd=repo/'third_party/dsperate',text=True).strip()
     with (dest/'SOURCE.txt').open('a') as f:
@@ -73,5 +85,5 @@ with zipfile.ZipFile(archive,'w',zipfile.ZIP_DEFLATED) as z:
         if f.is_file():z.write(f,f.relative_to(a.output))
 with zipfile.ZipFile(archive) as z:
     assert z.testzip() is None
-    assert not any(n.lower().endswith(('.gb','.gbc','.gba','.sav','.ss','.srm','.bin')) for n in z.namelist())
+    assert not any(n.lower().endswith(('.gb','.gbc','.gba','.nds','.sav','.ss','.srm','.bin')) for n in z.namelist())
 print(archive)
