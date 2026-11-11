@@ -149,7 +149,6 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         static const char* const LABELS[] = { "GAME", "FF / SPEED", "SOUND", "GAMEPLAY", "SCREEN", "COMPANION" };
         for (unsigned i = 0; i < sizeof(LABELS) / sizeof(*LABELS); i++)
             if (pd_text_width(LABELS[i]) + 12 > railW) railW = pd_text_width(LABELS[i]) + 12;
-        if (pd_gb_look) railW += 6; // a Game Boy font's letters run past their advance
     }
     int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_H, PD_TITLE_FILL);
     int ty = pd_text_y(CONTENT_Y, TITLE_H);

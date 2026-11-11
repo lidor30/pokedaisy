@@ -344,13 +344,8 @@ static void matchups(struct pd_canvas* c, const struct battle_data* d, const str
 static void nav_button(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, const char* label,
                        uint32_t fill, uint32_t dark, int id) {
     ui_platinum(ui, c, x, y, w, h, fill, dark, id);
-    if (label) {
-        pd_text(c, x + (w - pd_text_width(label)) / 2, pd_text_y(y, h), label, 0xFFFFFF, 0x383838);
-    } else {
-        int ax = x + (w - PD_ICON_BACK.w) / 2, ay = y + (h - PD_ICON_BACK.h) / 2;
-        ui_mono(c, &PD_ICON_BACK, ax + 1, ay + 1, 1, 0x383838);
-        ui_mono(c, &PD_ICON_BACK, ax, ay, 1, 0xFFFFFF);
-    }
+    if (label) ui_platinum_label(c, x, y, w, h, label);
+    else ui_platinum_back(c, x, y, w, h);
 }
 
 // The FOE TEAM, from x to the right edge.

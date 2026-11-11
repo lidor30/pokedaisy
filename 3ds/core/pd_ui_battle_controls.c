@@ -98,6 +98,17 @@ void ui_platinum(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int
     if (id >= 0) ui_add_hit(ui, x, y, w, h, id);
 }
 
+void ui_platinum_label(struct pd_canvas* c, int x, int y, int w, int h, const char* text) {
+    pd_text(c, x + (w - pd_text_width(text)) / 2, pd_text_y(y, h), text, GB_LOOK ? PD_TITLE_TEXT : 0xFFFFFF,
+            GB_LOOK ? PD_NO_SHADOW : 0x383838);
+}
+
+void ui_platinum_back(struct pd_canvas* c, int x, int y, int w, int h) {
+    int ax = x + (w - PD_ICON_BACK.w) / 2, ay = y + (h - PD_ICON_BACK.h) / 2;
+    if (!GB_LOOK) ui_mono(c, &PD_ICON_BACK, ax + 1, ay + 1, 1, 0x383838);
+    ui_mono(c, &PD_ICON_BACK, ax, ay, 1, GB_LOOK ? PD_TITLE_TEXT : 0xFFFFFF);
+}
+
 // HeartGold's lettering (ButtonLabel(outlined)): cream with a dark line a font pixel all round. A Game Boy game's is its ink.
 static void outlined(struct pd_canvas* c, int x, int y, const char* text, int scale) {
     if (GB_LOOK) {

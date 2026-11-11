@@ -406,7 +406,11 @@ static void gb_font(const struct pd_game* g, const struct pd_config* cfg) {
         for (const struct pd_gb_font_at* p = pd_gb_polished_fonts; p->sha1; p++)
             if (!strcmp(p->sha1, g->sha1)) off = p->off;
     }
-    pd_gb_font_use(g, off, cs);
+    // The companion keeps the GBA font in a Game Boy game too (the user's call: the cart's 8x8 letters read poorly at the
+    // companion's size); the font's address stays mapped for when a page wants the game's own letters.
+    (void) off;
+    (void) cs;
+    pd_gb_font_use(NULL, 0, PD_GB_CHARS_GEN1);
 }
 
 // The retail carts (USA / Europe) detect's configs are for: GameTitles.RETAIL.

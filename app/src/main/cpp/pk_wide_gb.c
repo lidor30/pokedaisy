@@ -928,7 +928,39 @@ static inline bool gbOnFrame(int x, int y) { return x >= 0 && x < GBW && y >= 0 
  * a text box, the START menu. */
 static void gbDraw(const struct GbSnap* s, int ox, int oy, int x0, int y0, int w, int h, uint32_t* dst, int stride,
                    uint32_t alpha, bool screen) {
-    for (int j = 0; j < h; j++) {
+    // The world alone (every frame, the whole view: the 3DS draws ~96,000 pixels of it): a tile row's 8 pixels decoded at
+    // once from its two VRAM bytes and its palette's 4 colours, the same pixels the per-pixel loop below draws.
+    for (int j = 0; !screen && j < h; j++) {
+        int wy = oy + y0 + j, ty = wy >> 3, fy = wy & 7;
+        uint32_t* out = dst + j * stride;
+        uint8_t* bgIdx = gbBgIdx + j * w;
+        for (int i = 0; i < w;) {
+            int wx = ox + x0 + i, tx = wx >> 3, fx = wx & 7;
+            int t = gbTile(s, tx, ty);
+            uint8_t attr;
+            if (gbGen == 2) {
+                attr = gbAttrAt(s, tx, ty, t);
+                if (!gbPolished) t &= 0x7F;
+            } else {
+                attr = gbAttrSeen[t] ? gbTileAttr[t] : gbAttrDefault;
+            }
+            uint32_t base = gbBgTileBase(t, attr) + (uint32_t) ((attr & 0x40) ? 7 - fy : fy) * 2;
+            unsigned lo = gbB->video.vram[base], hi = gbB->video.vram[base + 1];
+            int pal = gbCgb ? (attr & 7) * 4 : 0;
+            uint32_t col[4] = { gbOpaque(gbWorldColor(pal), alpha), gbOpaque(gbWorldColor(pal + 1), alpha),
+                                gbOpaque(gbWorldColor(pal + 2), alpha), gbOpaque(gbWorldColor(pal + 3), alpha) };
+            uint8_t prio = attr & 0x80;
+            int n = 8 - fx < w - i ? 8 - fx : w - i;
+            for (int k = 0; k < n; k++, i++) {
+                int bit = (attr & 0x20) ? fx + k : 7 - (fx + k);
+                int idx = (int) ((lo >> bit) & 1) | (int) (((hi >> bit) & 1) << 1);
+                out[i] = col[idx];
+                bgIdx[i] = (uint8_t) (idx | prio);
+            }
+        }
+    }
+    if (!screen) memset(gbObjMask, 0, (size_t) w * (size_t) h);
+    for (int j = 0; screen && j < h; j++) {
         int wy = oy + y0 + j, ty = wy >> 3, fy = wy & 7;
         int lastTx = 0x7FFFFFFF, t = 0;
         uint8_t attr = 0;
@@ -1412,6 +1444,22 @@ int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, st
         uint32_t fill = gbFillRow[gbClamp(Y, 0, GBH - 1)] | alpha;   // above / below the frame: its top / bottom band
         int ry = Y - gbRawView.y;
         bool rawRow = ry >= 0 && ry < gbRawView.h;
+        // The scene as it is (the field, fully in): whole runs from gbRaw, the frame's rows over the middle.
+        bool whole = gbMix >= 256 && rawRow && gbRawView.x == v.x && gbRawView.w == v.w;
+        if (whole) {
+            const uint32_t* raw = gbRaw + ry * gbRawView.w;
+            if (Y >= 0 && Y < GBH) {
+                int a = -v.x > 0 ? -v.x : 0, b = GBW - v.x < v.w ? GBW - v.x : v.w;   // the frame's columns in the row
+                if (a > v.w) a = v.w;
+                if (b < a) b = a;
+                memcpy(row, raw, (size_t) a * sizeof(uint32_t));
+                memcpy(row + a, frame + Y * GBW + v.x + a, (size_t) (b - a) * sizeof(uint32_t));
+                memcpy(row + b, raw + b, (size_t) (v.w - b) * sizeof(uint32_t));
+            } else {
+                memcpy(row, raw, (size_t) v.w * sizeof(uint32_t));
+            }
+            continue;
+        }
         for (int i = 0; i < v.w; i++) {
             int X = v.x + i;
             if (gbOnFrame(X, Y)) {

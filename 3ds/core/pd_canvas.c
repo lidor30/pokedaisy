@@ -4,6 +4,7 @@
 #include <string.h>
 
 #include "pd_font.h"
+#include "pd_style.h"
 
 void pd_canvas_init(struct pd_canvas* c, int w, int h, uint32_t* px) {
     c->w = w;
@@ -148,6 +149,8 @@ void pd_two_tone(struct pd_canvas* c, int x, int y, int w, int h, int r, uint32_
 
 int pd_layered_two_tone(struct pd_canvas* c, int x, int y, int w, int h, int r,
                         const struct pd_layer* layers, int n, uint32_t fill, uint32_t low) {
+    // A Game Boy game's buttons are its own: one flat face in the window's frame, no HeartGold two-tone.
+    if (pd_gb_look) return pd_layered_box(c, x, y, w, h, r, layers, n, fill);
     int rIn, inset = layer_rings(c, x, y, w, h, r, layers, n, &rIn);
     pd_two_tone(c, x + inset, y + inset, w - 2 * inset, h - 2 * inset, rIn, fill, low ? low : pd_two_tone_low(fill),
                 n > 0 ? layers[n - 1].width : 1);
