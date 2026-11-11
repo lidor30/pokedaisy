@@ -223,6 +223,21 @@ class EmulatorEngine(
         lookDirty = true
     }
 
+    /** WILD PIN ([com.pokedaisy.app.companion.data.WildPin]): its block goes into the ROM with PLAYER LOOK's in one call (each
+     * call replaces every block), on the next frame boundary; it comes out on the frame a wild battle starts. Null = none. */
+    @Volatile private var wildPin: com.pokedaisy.app.companion.data.WildPin.Pin? = null
+    @Volatile private var pinDirty = false
+    /** Whether a battle was up last frame (a pin ends on the frame one starts). */
+    private var pinWasBattling = false
+    /** Fired (emu thread) when the pin goes out by itself: its wild battle started, or its bytes didn't match the ROM. */
+    var onWildPinEnded: ((com.pokedaisy.app.companion.data.WildPin.Pin) -> Unit)? = null
+
+    fun setWildPin(pin: com.pokedaisy.app.companion.data.WildPin.Pin?) {
+        if (pin === wildPin) return
+        wildPin = pin
+        pinDirty = true
+    }
+
     /** A Game Boy game's PC / FLY / WILD ENCOUNTERS ([com.pokedaisy.app.companion.data.GbField], its code checked), or
      * null. WILD ENCOUNTERS OFF holds the game's own encounter state every frame ([gbWildHeld]). */
     @Volatile var gbField: com.pokedaisy.app.companion.data.GbField? = null
@@ -1097,7 +1112,10 @@ class EmulatorEngine(
         applyCheats()
         gameOptions.coreStarted()
         gameOptions.tick()
-        applyLook()
+        // A pin never outlives the core it was put into (a restart, another ROM, a resume): the player pins again.
+        wildPin?.let { old -> wildPin = null; runCatching { onWildPinEnded?.invoke(old) } }
+        pinWasBattling = false
+        applyBlocks(lookChanged = true)
 
         val sampleRate = MgbaCore.pkSampleRate()
         // Out of audio resources (or a device mid-reroute) mustn't take the process down:
@@ -1610,6 +1628,19 @@ class EmulatorEngine(
                     if (n > 0) Log.i("pokedaisy", "shiny odds: foe made shiny (1 in $shinyOdds)")
                 }.onFailure { Log.w("pokedaisy", "shiny odds failed", it) }
             }
+            // WILD PIN: out on the frame its wild battle starts (the foe is made by then); a trainer's battle keeps it.
+            if (gba) {
+                val battling = FfMenuWatch.battling || fieldState and MgbaCore.FIELD_BATTLE != 0
+                val pin = wildPin
+                if (pin != null && com.pokedaisy.app.companion.data.WildPin.endsNow(pinWasBattling, battling) {
+                        com.pokedaisy.app.companion.data.activeNativeConfig?.battleTypeFlags?.takeIf { it != 0L }
+                            ?.let { InProcessReader.readCoreMemory(it, 4) }?.let { com.pokedaisy.app.companion.data.u32le(it, 0).toInt() }
+                    }) {
+                    Log.i("pokedaisy", "wild pin: its battle started, the map's slots go back")
+                    endPin(pin)
+                }
+                pinWasBattling = battling
+            }
             // EXP SHARE: a GBA getexp's bits or a Game Boy cart's participants byte (a DS game finds none).
             if (!nds) gameOptions.markExp(InProcessReader::readCoreMemory, MgbaCore::pkWriteBytes)
             playback.fieldChanged(fieldState)
@@ -2084,30 +2115,59 @@ class EmulatorEngine(
             MgbaCore.pkRomPatch(expectAt, expect, at, value)
     }
 
-    /** PLAYER LOOK onto the ROM (emu thread): the last look's blocks out, this one's in (all or none), then the palettes. */
-    private fun applyLook() {
+    /** The pin out by itself (emu thread): the blocks go back without it on the next frame boundary. */
+    private fun endPin(pin: com.pokedaisy.app.companion.data.WildPin.Pin) {
+        if (wildPin !== pin) return
+        wildPin = null
+        pinDirty = true
+        runCatching { onWildPinEnded?.invoke(pin) }.onFailure { Log.e("pokedaisy", "wild pin end hook failed", it) }
+    }
+
+    /** PLAYER LOOK and WILD PIN onto the ROM (emu thread), in one [MgbaCore.pkRomBlocks] call since each call replaces every
+     * block: the last ones out, these in (all or none). A pin whose bytes don't match goes, and the look alone goes in.
+     * [lookChanged]: the look itself changed, so its palettes follow (not when only the pin did - never mid-battle). */
+    private fun applyBlocks(lookChanged: Boolean = lookDirty) {
         lookDirty = false
+        pinDirty = false
         MgbaCore.pkRomUnblock()
         rideApplied = null
         val patch = lookPatch
         // The player's sprite still holds the last look's record (a Pokémon's 32x32 shape, a frame table in the tail):
         // set up from the ROM as it is now, whatever comes next.
-        if (gba && patch == null) { lookRefreshPending = true; lookRefreshTries = 0 }
-        if (!gba || patch == null) return
-        if (patch.blocks.isNotEmpty()) {
-            val data = java.io.ByteArrayOutputStream()
-            patch.blocks.forEach { data.write(it.data) }
-            val n = MgbaCore.pkRomBlocks(
-                IntArray(patch.blocks.size) { 0x08000000 + patch.blocks[it].off },
-                IntArray(patch.blocks.size) { patch.blocks[it].data.size },
-                IntArray(patch.blocks.size) { patch.blocks[it].crc },
-                data.toByteArray(),
-            )
-            Log.i("pokedaisy", "player look: ${if (n < 0) "the ROM didn't match, left as it is" else "$n block(s) in"}")
-            if (n < 0) return
-            rideApplied = patch.ride   // only with the rider's frames in: else a vehicle under the game's own bike
+        if (lookChanged && gba && patch == null) { lookRefreshPending = true; lookRefreshTries = 0 }
+        val pin = wildPin
+        if (!gba) {
+            pin?.let(::endPin)
+            runCatching { RetroAchievements.setWildPinActive(false) }
+            return
         }
-        settleLook()
+        val look = patch?.blocks.orEmpty().map { com.pokedaisy.app.companion.data.WildPin.RomBlock(0x08000000 + it.off, it.crc, it.data) }
+        var lookIn = look.isEmpty()
+        var pinIn = false
+        val all = com.pokedaisy.app.companion.data.WildPin.withPin(look, pin)
+        if (all.isNotEmpty()) {
+            if (putBlocks(all) >= 0) { lookIn = true; pinIn = pin != null }
+            else if (pin != null && look.isNotEmpty()) lookIn = putBlocks(look) >= 0
+        }
+        if (look.isNotEmpty()) Log.i("pokedaisy", "player look: ${if (lookIn) "${look.size} block(s) in" else "the ROM didn't match, left as it is"}")
+        if (pin != null) {
+            Log.i("pokedaisy", "wild pin: ${if (pinIn) "species ${pin.species} on ${pin.group}.${pin.num}" else "the map's slots didn't match, no pin"}")
+            if (!pinIn) endPin(pin)
+            pinDirty = false
+        }
+        runCatching { RetroAchievements.setWildPinActive(pinIn) }
+        // Only with the rider's frames in: else a vehicle under the game's own bike.
+        if (patch != null && lookIn && look.isNotEmpty()) rideApplied = patch.ride
+        if (patch != null && lookIn && lookChanged) settleLook()
+    }
+
+    private fun putBlocks(blocks: List<com.pokedaisy.app.companion.data.WildPin.RomBlock>): Int {
+        val data = java.io.ByteArrayOutputStream()
+        blocks.forEach { data.write(it.data) }
+        return MgbaCore.pkRomBlocks(
+            IntArray(blocks.size) { blocks[it].addr }, IntArray(blocks.size) { blocks[it].size },
+            IntArray(blocks.size) { blocks[it].crc }, data.toByteArray(),
+        )
     }
 
     /** The worn look's palettes over any other hero's the game has loaded (emu thread). */
@@ -2128,7 +2188,7 @@ class EmulatorEngine(
         if (cheatsDirty) applyCheats()
         // Never during a co-op battle: both reach pkRomUnpatch / pkRomUnblock, which uninstall co-op (they stay dirty until it ends).
         if (gameOptions.dirty && !CoopGuards.battleActive()) { gameOptions.tick(); coopLock?.requestReinstall() }
-        if (lookDirty && !CoopGuards.battleActive()) { applyLook(); coopLock?.requestReinstall() }
+        if ((lookDirty || pinDirty) && !CoopGuards.battleActive()) { applyBlocks(); coopLock?.requestReinstall() }
         // Co-op holds still service posted work and patches, but field delays must not advance.
         if (runFieldJobs) gameSession.serviceField(gba, gbOnField)
         pendingSuspend?.let { target ->

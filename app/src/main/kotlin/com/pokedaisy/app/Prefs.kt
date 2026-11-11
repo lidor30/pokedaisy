@@ -281,6 +281,11 @@ class Prefs(
         get() = p.getBoolean("instant_text", false)
         set(v) = p.edit().putBoolean("instant_text", v).apply()
 
+    /** GAMEPLAY > WILD PIN (ON by default): the PIN on HERE's and the HUD's WILD rows ([com.pokedaisy.app.companion.data.WildPin]). */
+    var wildPin: Boolean
+        get() = p.getBoolean("wild_pin", true)
+        set(v) = p.edit().putBoolean("wild_pin", v).apply()
+
     /** SHINY ODDS: a wild foe is shiny 1 in this many ([com.pokedaisy.app.companion.data.ShinyOdds]; NORMAL 8192 = the
      * game's own odds). Read through [com.pokedaisy.app.companion.data.ShinyOdds.choices]: a debug build's 1 in 4 / 1 in 1
      * count as NORMAL in a release build (PokeDaisyActivity.shinyOddsPref). */

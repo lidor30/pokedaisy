@@ -52,6 +52,8 @@ data class AchievementsState(
     val expSharePaused: Boolean = false,
     /** FLIGHT AREA is ANYWHERE and the player has taken off with it: paused the same way until it's VISITED again. */
     val flightPaused: Boolean = false,
+    /** A WILD PIN is on: paused the same way until it ends. */
+    val wildPinPaused: Boolean = false,
 )
 
 data class Leaderboard(

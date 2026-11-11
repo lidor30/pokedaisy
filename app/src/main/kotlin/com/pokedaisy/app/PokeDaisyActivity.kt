@@ -181,6 +181,39 @@ class PokeDaisyActivity : Activity() {
         .takeIf { it in com.pokedaisy.app.companion.data.ShinyOdds.choices(BuildConfig.DEBUG) }
         ?: com.pokedaisy.app.companion.data.ShinyOdds.NORMAL
 
+    /** WILD PIN: [species] on the map the player is on - its land slots read off the UI thread, the pin handed to the
+     * engine (which puts it into the ROM at the next frame boundary). Only on a free field: never in a battle, never with
+     * the NUZLOCKE tracker on (the PIN is greyed then). */
+    private fun pinWild(species: Int) {
+        val snap = telemetry.snapshot.value
+        val t = snap.guideTables ?: return
+        if (!com.pokedaisy.app.companion.data.WildPin.offered(t) || !::engine.isInitialized) return
+        if (com.pokedaisy.app.companion.data.WildPin.blocked(com.pokedaisy.app.companion.Nuzlocke.on, snap.inBattle) != null) return
+        val group = snap.mapGroup
+        val num = snap.mapNum
+        val set = t.wildSetOf(group, num, snap.progress)
+        lookGender.launch {
+            val pin = kotlinx.coroutines.withContext(kotlinx.coroutines.Dispatchers.IO) {
+                com.pokedaisy.app.companion.data.GuideRomSource.landSlots(t, group, num, set)
+                    ?.let { com.pokedaisy.app.companion.data.WildPin.pin(species, group, num, set, it) }
+            }
+            if (pin == null) {
+                Log.w("pokedaisy", "wild pin: species $species isn't in $group.$num's land slots")
+                return@launch
+            }
+            // The player moved on while the slots were read: no pin for a map they've left.
+            val now = telemetry.snapshot.value
+            if (!pin.onMap(now.mapGroup, now.mapNum) || now.inBattle) return@launch
+            com.pokedaisy.app.companion.WildPins.setPinned(pin)
+            engine.setWildPin(pin)
+        }
+    }
+
+    private fun unpinWild() {
+        com.pokedaisy.app.companion.WildPins.setPinned(null)
+        if (::engine.isInitialized) engine.setWildPin(null)
+    }
+
     /** RetroAchievements pause while SHINY ODDS is raised on a game it works in ("catch a shiny" sets). */
     private fun syncShinyAchievements() {
         val raised = shinyTarget != null && shinyOddsPref() < com.pokedaisy.app.companion.data.ShinyOdds.NORMAL
@@ -2662,6 +2695,9 @@ class PokeDaisyActivity : Activity() {
                 prefs.nuzlockeFor(crc), prefs.nuzlockeRunFor(crc),
                 saveOn = { prefs.setNuzlockeFor(crc, it) }, saveRun = { prefs.setNuzlockeRunFor(crc, it) },
             )
+            com.pokedaisy.app.companion.WildPins.load(prefs.wildPin) { prefs.wildPin = it }
+            com.pokedaisy.app.companion.WildPins.setPinned(null)
+            com.pokedaisy.app.companion.WildPins.host = com.pokedaisy.app.companion.WildPins.Host(::pinWild, ::unpinWild)
         }
         // RetroAchievements unlocks play the game's level-up fanfare, rendered the same way.
         unlockSound?.release()
@@ -2832,6 +2868,8 @@ class PokeDaisyActivity : Activity() {
                 it.lookAround = Prefs(this@PokeDaisyActivity).lookAround
             }
             onWideOff = { runOnUiThread { showHud(com.pokedaisy.app.companion.i18n.tr("EXPAND hit a problem and is off for this game")) } }
+            // WILD PIN: out by itself (its wild battle, a ROM that didn't match, a new core): the PINs follow.
+            onWildPinEnded = { p -> runOnUiThread { if (com.pokedaisy.app.companion.WildPins.pinned === p) com.pokedaisy.app.companion.WildPins.setPinned(null) } }
             gen1Music = this@PokeDaisyActivity.gen1Music
             onCoreReady = { w, h ->
                 // A DS game's bottom screen goes to the bottom display (NdsBottomFrame).
@@ -2926,6 +2964,10 @@ class PokeDaisyActivity : Activity() {
                 // right then faithfully captures a real but useless "partyCount=0"
                 // moment. Bit the first fixture capture this existed for.
                 if (snap.connected && (snap.party.isNotEmpty() || forceFixtureDump)) dumpFixtureIfPending()
+                // WILD PIN: it belongs to its map; on another one it goes.
+                com.pokedaisy.app.companion.WildPins.pinned?.let { p ->
+                    if (snap.connected && !p.onMap(snap.mapGroup, snap.mapNum)) runOnUiThread { unpinWild() }
+                }
                 // NUZLOCKE: the run follows every sample; its notices go on the game screen.
                 com.pokedaisy.app.companion.Nuzlocke.onSample(snap).takeIf { it.isNotEmpty() }?.let { notes ->
                     runOnUiThread { showHud(notes.joinToString("\n"), NUZLOCKE_NOTICE_MS) }
@@ -3596,6 +3638,8 @@ class PokeDaisyActivity : Activity() {
         com.pokedaisy.app.companion.FeatureTips.available = { false }
         Hotkeys.dsActive = { false }
         endN3ds()
+        com.pokedaisy.app.companion.WildPins.host = null
+        com.pokedaisy.app.companion.WildPins.setPinned(null)
         // Gone while the game slept (onPause held it): stop it now, as a close would have.
         if (::engine.isInitialized && engine.running) {
             view.unbindCoreBlocking()
