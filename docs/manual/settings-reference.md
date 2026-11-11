@@ -49,6 +49,7 @@ The `SPEED OPTIONS` page:
 | `LOOK AROUND` | **`ON`**, `OFF` | Only with `ASPECT` on `EXPAND`: the right stick moves the view. | [Screen](screen.md) |
 | `DS RESOLUTION` | **`ORIGINAL`**, `2x` to `8x` | The DS games' 3D drawn sharper by your device's graphics chip. `N/A` on a device that can't. | [Screen](screen.md#ds-resolution-sharper-3d) |
 | `DS CPU BOOST` | `OFF`, **`ON`** | The DS's processor twice as fast, so the games' own slow frames go. | [Screen](screen.md#ds-cpu-boost-fewer-slowdowns) |
+| `DS TOUCH SCREEN` | **`ORIGINAL`**, `STRETCH` | Only on a device with two screens: a DS game's touch screen at its own shape with the `COMPANION` bar under it, or stretched over the whole bottom screen with a small tab for the switch. | [Devices](devices.md#ds-games) |
 | `DS LAYOUT` | **`ONE SCREEN`**, `SIDE BY SIDE`, `LARGE + SMALL`, `PICTURE IN PICTURE`, `STACKED` | Only on a device with one screen (or with `SINGLE SCREEN` on): where a DS game's two screens go when you hold it sideways. Opens a list with a picture of each. | [Devices](devices.md#ds-layout-two-screens-on-one) |
 | `HUD` | **`ON`**, `OFF` (a page) | Your party, a minimap, your Poké Balls and `BAG` / `WILD` buttons on the game while you walk around, with `LAYOUT`, `LOOK`, `SIZE` and which parts show. | [HUD](hud.md) |
 | `BATTLE BUTTONS` | **`ON`**, `OFF` | Only on a device with one screen (or with `SINGLE SCREEN` on): `FIGHT`, `POKéMON` and `RUN` at the top right, beside the battle. | [Battle](battle.md) |
@@ -199,6 +200,7 @@ At the top of SETTINGS, in a blue frame, in the games where any of it works.
 | `LOOK AROUND` | as on the top screen | Only with `ASPECT` on `EXPAND`. | [Screen](screen.md) |
 | `DS RESOLUTION` | as on the top screen | Only while a DS game is running. Changes the game straight away. | [Screen](screen.md#ds-resolution-sharper-3d) |
 | `DS CPU BOOST` | as on the top screen | Only while a DS game is running. Changes the game straight away. | [Screen](screen.md#ds-cpu-boost-fewer-slowdowns) |
+| `DS TOUCH SCREEN` | as on the top screen | Only while a DS game is running on two screens. Changes the game straight away. | [Devices](devices.md#ds-games) |
 | `DS LAYOUT` | as on the top screen | Only while a DS game is running on one screen. Changes the game straight away. | [Devices](devices.md#ds-layout-two-screens-on-one) |
 | `HUD` | a page | The same rows as on the top screen; the game changes as you tap. | [HUD](hud.md) |
 | `BATTLE BUTTONS` | as on the top screen | Only on a device with one screen (or with `SINGLE SCREEN` on): `FIGHT`, `POKéMON` and `RUN` beside the battle. | [Battle](battle.md) |
@@ -227,13 +229,14 @@ The `DISPLAY OPTIONS` page:
 | --- | --- | --- | --- |
 | `BATTLE INFO` | **`ON`**, `OFF` | Off, the `BATTLE` tab has only your battle buttons: no `INFO`, `SUGGESTIONS` or move ratings. | [Battle](battle.md) |
 | `BATTLE HINTS` | **`ON`**, `OFF` | Move ratings, the foe's weaknesses and suggestions during battles. | [Battle](battle.md) |
-| `BATTLE VIEW` | **`BUTTONS`**, `INFO` | What the `BATTLE` tab opens on. | [Battle](battle.md) |
+| `BATTLE VIEW` | **`BUTTONS`**, `INFO`, `SUGGESTIONS` | What the `BATTLE` tab opens on. | [Battle](battle.md) |
 | `ONE-TAP MOVES` | `ON`, **`OFF`** | Puts your moves on the battle's first menu, so one tap picks FIGHT and the move. | [Battle](battle.md) |
 | `BATTLE STYLE` | **`GEN 4`**, `GEN 5` | The battle buttons' look: big coloured buttons, or dark plates round a red and white ball. Both work the same way. | [Battle](battle.md#battle-style) |
 | `FOE IVS` | `ON`, **`OFF`** | A STATS page in battle with the foe's IVs, EVs and nature. | [Battle](battle.md) |
 | `BATTLE FOCUS` | `ON`, **`OFF`** | Battle `INFO` as one page with no scrolling: one Pokémon's ability, item, stats, moves and matchups, a button to turn from the foe to yours, the foe's team down the side. No `SUGGESTIONS` or `STATS` there. | [Battle](battle.md) |
 | `TAB BAR` | **5 tabs** (a page) | Which tabs sit next to the gear: up to 5, `SHOWN` or `HIDDEN`. By default `PARTY`, `DEX`, `MAP`, `BAG` and `GUIDE`. A tab the game doesn't have gives its place to another of the game's tabs. The rest open from `MORE`, left of the gear. | [The companion](companion.md) |
 | `CLICK SOUND` | **`ON`**, `OFF` | The game's own menu click on every companion button. | [The companion](companion.md) |
+| `CHALLENGE ICONS` | **`ON`**, `OFF` | RetroAchievements' challenge badges and leaderboard values in the corner. | [Achievements](achievements.md) |
 | `TWEAKS` | a page, each **`ON`** | `PARTY ICONS MOVE`, `MAP CURSOR BLINK`, `TAB ANIMATIONS` and `JUMP TO BATTLE` (a battle opens the battle tab by itself). | [The companion](companion.md) |
 
 ### Controls

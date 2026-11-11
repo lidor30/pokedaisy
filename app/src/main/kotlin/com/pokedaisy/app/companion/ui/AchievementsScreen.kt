@@ -685,6 +685,7 @@ private fun PopupCard(p: AchievementPopup, onTap: () -> Unit) {
  */
 @Composable
 fun AchievementIndicators(achievements: CompanionAchievements?, modifier: Modifier = Modifier) {
+    if (!AchievementIcons.shown) return
     val state = achievements?.state?.collectAsState()?.value ?: return
     if (state.trackers.isEmpty() && state.challenges.isEmpty()) return
     val m = rememberGbaTextMetrics()
@@ -701,6 +702,12 @@ fun AchievementIndicators(achievements: CompanionAchievements?, modifier: Modifi
         }
         state.challenges.forEach { c -> AchievementBadge(c.badgeUrl, m.lineHeight * 1.6f) }
     }
+}
+
+/** SETTINGS > CHALLENGE ICONS ([com.pokedaisy.app.Prefs.raIcons], GitHub discussion #620): off, [AchievementIndicators] draws
+ *  nothing (the badges sat over the companion's corner). Compose state: both screens follow a flip at once. */
+object AchievementIcons {
+    var shown by androidx.compose.runtime.mutableStateOf(true)
 }
 
 /** How long the list keeps scrolling to a popup's achievement as it re-sorts (see [AchievementList]). */

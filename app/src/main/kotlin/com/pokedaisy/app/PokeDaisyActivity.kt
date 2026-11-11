@@ -274,6 +274,9 @@ class PokeDaisyActivity : Activity() {
      * GBA's own picture is (EXPAND: the battle's middle, which [hudFrame] leaves out). */
     private val battleButtonsOn = androidx.compose.runtime.mutableStateOf(true)
     private val battleHints = androidx.compose.runtime.mutableStateOf(true)
+    /** SETTINGS > BATTLE STYLE as Compose state: the BATTLE tab redraws when it changes (read from Prefs alone, a pick
+     *  mid-game left the old look up until something else redrew the pane). */
+    private val battleStyle = androidx.compose.runtime.mutableStateOf(com.pokedaisy.app.companion.BattleStyle.GEN4)
     private val hudSingleScreen = androidx.compose.runtime.mutableStateOf(false)
     private val coreFrame = androidx.compose.runtime.mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
     private val battlePicking = androidx.compose.runtime.mutableStateOf(false)
@@ -1724,6 +1727,11 @@ class PokeDaisyActivity : Activity() {
             Prefs(this@PokeDaisyActivity).dsCpuBoost = on
             if (::engine.isInitialized) engine.ndsCpuBoost = on
         }
+        override val dsTouchFill get() = if (romIsNds && secondScreen() != null) Prefs(this@PokeDaisyActivity).dsTouchFill else null
+        override fun setDsTouchFill(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).dsTouchFill = on
+            dsBottom?.fill = on
+        }
         override val dsLayout get() = if (romIsNds && secondScreen() == null) Prefs(this@PokeDaisyActivity).dsLayout else null
         override fun setDsLayout(layout: com.pokedaisy.app.companion.DsLayout) {
             Prefs(this@PokeDaisyActivity).dsLayout = layout
@@ -2069,10 +2077,20 @@ class PokeDaisyActivity : Activity() {
         }
         override val battleInfoFirst get() = Prefs(this@PokeDaisyActivity).battleInfoFirst
         override fun setBattleInfoFirst(on: Boolean) { Prefs(this@PokeDaisyActivity).battleInfoFirst = on }
+        override val raIcons get() = Prefs(this@PokeDaisyActivity).raIcons
+        override fun setRaIcons(on: Boolean) {
+            Prefs(this@PokeDaisyActivity).raIcons = on
+            com.pokedaisy.app.companion.ui.AchievementIcons.shown = on
+        }
+        override val battleSuggestionsFirst get() = Prefs(this@PokeDaisyActivity).battleSuggestionsFirst
+        override fun setBattleSuggestionsFirst(on: Boolean) { Prefs(this@PokeDaisyActivity).battleSuggestionsFirst = on }
         override val oneTapMoves get() = Prefs(this@PokeDaisyActivity).oneTapMoves
         override fun setOneTapMoves(on: Boolean) { Prefs(this@PokeDaisyActivity).oneTapMoves = on }
-        override val battleStyle get() = com.pokedaisy.app.companion.BattleStyle.of(Prefs(this@PokeDaisyActivity).battleStyle)
-        override fun setBattleStyle(style: com.pokedaisy.app.companion.BattleStyle) { Prefs(this@PokeDaisyActivity).battleStyle = style.id }
+        override val battleStyle get() = this@PokeDaisyActivity.battleStyle.value
+        override fun setBattleStyle(style: com.pokedaisy.app.companion.BattleStyle) {
+            Prefs(this@PokeDaisyActivity).battleStyle = style.id
+            this@PokeDaisyActivity.battleStyle.value = style
+        }
         override val foeDetails get() = Prefs(this@PokeDaisyActivity).foeDetails
         override fun setFoeDetails(on: Boolean) { Prefs(this@PokeDaisyActivity).foeDetails = on }
         override val battleFocus get() = Prefs(this@PokeDaisyActivity).battleFocus
@@ -3545,7 +3563,7 @@ class PokeDaisyActivity : Activity() {
                         initialTab = companionStartTab, initialSettingsRow = companionStartRow, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort,
                         keys = bottomKeys, focus = { bottomFocus.value },
                     )
-                }, Prefs(this).dsBottomCompanion) { on -> Prefs(this).dsBottomCompanion = on }.also { dsBottom = it }
+                }, Prefs(this).dsBottomCompanion, onSwitch = { on -> Prefs(this).dsBottomCompanion = on }, fill = Prefs(this).dsTouchFill).also { dsBottom = it }
                 else DualScreenPresentation.companionView(
                     ctx, telemetry, stateSlots, companionSettings, battleInput, companionBack, playClick, RetroAchievements,
                     initialTab = companionStartTab, initialSettingsRow = companionStartRow, statusBar = companionStatusBar, itemUse = itemUse, fly = flyAction, askForSupport = askForSupport, gamePick = gamePick, shareBestEffort = shareBestEffort,
@@ -3768,7 +3786,7 @@ class PokeDaisyActivity : Activity() {
             )
         }
         val view = if (romIsNds) {
-            NdsBottomHost(this, companion, Prefs(this).dsBottomCompanion) { on -> Prefs(this).dsBottomCompanion = on }.also { dsBottom = it }
+            NdsBottomHost(this, companion, Prefs(this).dsBottomCompanion, onSwitch = { on -> Prefs(this).dsBottomCompanion = on }, fill = Prefs(this).dsTouchFill).also { dsBottom = it }
         } else companion()
         view.apply {
             setViewTreeLifecycleOwner(owner)
@@ -3794,6 +3812,8 @@ class PokeDaisyActivity : Activity() {
         quickShown.value = prefs.quickMenuActions
         battleButtonsOn.value = prefs.battleButtons
         battleHints.value = prefs.showHints && prefs.battleInfo
+        battleStyle.value = com.pokedaisy.app.companion.BattleStyle.of(prefs.battleStyle)
+        com.pokedaisy.app.companion.ui.AchievementIcons.shown = prefs.raIcons
         hudUpright.value = resources.configuration.orientation == android.content.res.Configuration.ORIENTATION_PORTRAIT
         com.pokedaisy.app.companion.ui.CompanionStatusBar.shown = prefs.statusBar && prefs.statusBarOnCompanion
         val stageLayout = statusBar.parent as? GameStageLayout
@@ -4237,8 +4257,11 @@ class PokeDaisyActivity : Activity() {
             // Read here, so the tab steps aside when the DS battle menu comes up (a read in the SideEffect wouldn't redraw).
             val dsMenuMode = dsBattleMenu.mode
             androidx.compose.runtime.SideEffect {
-                // (A DS battle's menu window sits in that corner too.)
-                if (::sidePanel.isInitialized) sidePanel.tabInHud = shown && panelClosed || battlePicking.value || dsMenuMode != 0
+                // A DS battle's menu sits in that corner too: the tab goes to the top right meanwhile (GitHub #595).
+                if (::sidePanel.isInitialized) {
+                    sidePanel.tabInHud = shown && panelClosed || battlePicking.value
+                    sidePanel.tabRaised = dsMenuMode != 0
+                }
             }
             // BATTLE BUTTONS: one screen held sideways, a single battle the game's touch input can steer (its state read
             // at least once this battle - it reads NONE in games without it).

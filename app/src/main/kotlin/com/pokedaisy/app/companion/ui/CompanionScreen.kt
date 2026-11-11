@@ -194,14 +194,16 @@ fun CompanionScreen(
         // becomes available (a fresh battle), matching selectedLabel's own reset.
         // BATTLE INFO off: the battle buttons alone, no INFO / SUGGESTIONS and no move ratings.
         val battleInfo = settings?.battleInfo != false
-        val opensOnButtons = settings?.battleInfoFirst != true || !battleInfo
+        // BATTLE VIEW: BUTTONS, INFO or SUGGESTIONS first.
+        val opensOnSuggestions = settings?.battleSuggestionsFirst == true && battleInfo
+        val opensOnButtons = (settings?.battleInfoFirst != true && !opensOnSuggestions) || !battleInfo
         var battleShowControls by remember { mutableStateOf(opensOnButtons) }
         // BATTLE tab's SUGGESTIONS pane - see SuggestionsScreen.kt. A plain
         // flag rather than another battleInputState-driven sub-screen since
         // it's pure information (ranks the whole party, not just whoever's
         // currently sent out) and isn't gated by whose turn it is the way
         // Controls/Info are.
-        var showSuggestions by remember { mutableStateOf(false) }
+        var showSuggestions by remember { mutableStateOf(opensOnSuggestions) }
         // BATTLE INFO's STATS page (FOE IVS on): IVs / EVs of the battlers.
         var showBattleStats by remember { mutableStateOf(false) }
         // BATTLE INFO's FOE TEAM: the party indexes sent out or announced so
@@ -327,7 +329,7 @@ fun CompanionScreen(
                     preBattleTab = null
                 }
                 if (battle) battleShowControls = opensOnButtons
-                showSuggestions = false; showBattleStats = false
+                showSuggestions = battle && opensOnSuggestions; showBattleStats = false
                 seenFoes.clear(); selectedFoe = null
                 focusSeen.clear()
             }
@@ -386,7 +388,7 @@ fun CompanionScreen(
             popupReturn = null
             if (title != current) backTab = current
             selectedLabel = title; detailIndex = null; showSuggestions = false; showBattleStats = false; dexUi.open = null
-            if (title == "BATTLE") battleShowControls = opensOnButtons
+            if (title == "BATTLE") { battleShowControls = opensOnButtons; showSuggestions = opensOnSuggestions }
         }
         // The window over the game (one screen): L / R step along the bar (round, like the game's own pages), from the gear
         // when a tab opened from MORE is up. Under everything a tab registers, so a page of its own can take them.

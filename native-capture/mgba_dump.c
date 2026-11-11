@@ -1877,9 +1877,10 @@ int main(int argc, char** argv) {
             arg1[0] = 0;
             sscanf(line, "%*s %255s", arg1);
             int fs = pk_field_state(core, !strcmp(arg1, "run"), wildKeep >= 0 ? wildKeep : 100);
-            printf("fieldinfo: frame %u known %d locked %d battle %d text %d bike %d surf %d avatar %d\n",
+            printf("fieldinfo: frame %u known %d locked %d battle %d text %d bike %d surf %d avatar %d window %d\n",
                    core->frameCounter(core), !!(fs & PK_FIELD_KNOWN), !!(fs & PK_FIELD_LOCKED), !!(fs & PK_FIELD_BATTLE),
-                   !!(fs & PK_FIELD_TEXT), !!(fs & PK_FIELD_BIKE), !!(fs & PK_FIELD_SURF), !!(fs & PK_FIELD_AVATAR));
+                   !!(fs & PK_FIELD_TEXT), !!(fs & PK_FIELD_BIKE), !!(fs & PK_FIELD_SURF), !!(fs & PK_FIELD_AVATAR),
+                   !!(fs & PK_FIELD_WINDOW));
         } else if (!strcmp(cmd, "partnerself")) {
             // Co-op presence: this frame's pk_partner_self (map, fine position x16 + pixels, facing, mode, step count).
             if (!partnerOk) printf("partnerself: none (no field table: `wideon` first)\n");

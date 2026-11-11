@@ -104,6 +104,10 @@ interface CompanionSettings {
     val dsCpuBoost: Boolean? get() = null
     fun setDsCpuBoost(on: Boolean) {}
 
+    /** DS TOUCH SCREEN ([com.pokedaisy.app.Prefs.dsTouchFill]): null when there's no row (not a DS game on two screens). */
+    val dsTouchFill: Boolean? get() = null
+    fun setDsTouchFill(on: Boolean) {}
+
     /** DS LAYOUT ([com.pokedaisy.app.Prefs.dsLayout]): null when there's no row (not a DS game, or one on two screens). */
     val dsLayout: DsLayout? get() = null
     fun setDsLayout(layout: DsLayout) {}
@@ -275,6 +279,13 @@ interface CompanionSettings {
     /** BATTLE VIEW - see [com.pokedaisy.app.Prefs.battleInfoFirst]. */
     val battleInfoFirst: Boolean get() = false
     fun setBattleInfoFirst(on: Boolean) {}
+    /** BATTLE VIEW > SUGGESTIONS - see [com.pokedaisy.app.Prefs.battleSuggestionsFirst]. */
+    val battleSuggestionsFirst: Boolean get() = false
+    fun setBattleSuggestionsFirst(on: Boolean) {}
+
+    /** CHALLENGE ICONS - see [com.pokedaisy.app.Prefs.raIcons]. */
+    val raIcons: Boolean get() = true
+    fun setRaIcons(on: Boolean) {}
 
     /** ONE-TAP MOVES - see [Prefs.oneTapMoves]. */
     val oneTapMoves: Boolean get() = false

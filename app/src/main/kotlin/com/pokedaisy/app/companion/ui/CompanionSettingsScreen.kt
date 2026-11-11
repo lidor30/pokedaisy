@@ -705,6 +705,13 @@ private fun homeRows(
                 tk("DS CPU BOOST"), onOff(on), labelBadge = NewFeatures.badge(NewFeatures.DS_CPU_BOOST), subtitle = "Fewer slowdowns in DS games",
             ) { s.setDsCpuBoost(!on); changed() }
         },
+        // A DS game on two screens: its touch screen at its 4:3 with the COMPANION bar, or stretched over the second display.
+        s.dsTouchFill?.let { on ->
+            SettingRow(
+                tk("DS TOUCH SCREEN"), if (on) tk("STRETCH") else tk("ORIGINAL"), labelBadge = NewFeatures.badge(NewFeatures.DS_TOUCH_FILL),
+                subtitle = "The touch screen on your second screen",
+            ) { s.setDsTouchFill(!on); changed() }
+        },
         // A DS game on one screen held sideways: where its two screens go (DsLayout), picked from miniatures.
         s.dsLayout?.let { layout ->
             SettingRow(
@@ -786,10 +793,20 @@ private fun homeRows(
             .takeIf { s.battleInfo },
         // The battle controls' action menu shows the moves: one tap picks FIGHT and the move.
         // What the BATTLE tab shows first: the battle buttons, or INFO (its own buttons lead back).
-        SettingRow(
-            tk("BATTLE VIEW"), if (s.battleInfoFirst) tk("INFO") else tk("BUTTONS"), subtitle = "What the BATTLE tab opens on",
-            labelBadge = NewFeatures.badge(NewFeatures.BATTLE_VIEW),
-        ) { s.setBattleInfoFirst(!s.battleInfoFirst); changed() }.takeIf { s.battleInfo },
+        // BUTTONS / INFO / SUGGESTIONS: a pick-list (three values never cycle on a tap).
+        run {
+            val view = when { s.battleSuggestionsFirst -> tk("SUGGESTIONS"); s.battleInfoFirst -> tk("INFO"); else -> tk("BUTTONS") }
+            SettingRow(
+                tk("BATTLE VIEW"), view, subtitle = "What the BATTLE tab opens on",
+                labelBadge = NewFeatures.badge(NewFeatures.BATTLE_VIEW),
+            ) {
+                select(Selector(tk("BATTLE VIEW"), listOf(tk("BUTTONS"), tk("INFO"), tk("SUGGESTIONS")), view) { l ->
+                    s.setBattleInfoFirst(l == tk("INFO"))
+                    s.setBattleSuggestionsFirst(l == tk("SUGGESTIONS"))
+                    changed()
+                })
+            }.takeIf { s.battleInfo }
+        },
         SettingRow(tk("ONE-TAP MOVES"), onOff(s.oneTapMoves), subtitle = "Your moves right on the battle menu") { s.setOneTapMoves(!s.oneTapMoves); changed() },
         // The battle buttons' look: GEN 4 (coloured buttons) or GEN 5 (dark plates round a red and white ball).
         SettingRow(
@@ -809,6 +826,11 @@ private fun homeRows(
         SettingRow(tk("TAB BAR"), tr("{0} TABS", barTabs), labelBadge = NewFeatures.badge(NewFeatures.MORE_TAB) ?: NewFeatures.badge(NewFeatures.BOXES_TAB), opensPage = true, subtitle = "Which tabs sit next to the gear") { navigate(Page.TABS) },
         // The game's menu click on every companion button.
         SettingRow(tk("CLICK SOUND"), onOff(s.clickSound)) { s.setClickSound(!s.clickSound); changed() },
+        // RetroAchievements' challenge badges and leaderboard values in the corner (GitHub discussion #620).
+        SettingRow(
+            tk("CHALLENGE ICONS"), onOff(s.raIcons), subtitle = "RetroAchievements' icons in the corner",
+            labelBadge = NewFeatures.badge(NewFeatures.RA_ICONS),
+        ) { s.setRaIcons(!s.raIcons); changed() },
         // Small on / off preferences: the icons' bounce, the map cursor's blink, tab slides, the battle jump.
         SettingRow(tk("TWEAKS"), null, opensPage = true, subtitle = "Small animations and the battle jump") { navigate(Page.TWEAKS) },
     ) + coopRows(s, changed, navigate, pick = { title, choices, current, onPick -> select(Selector(title, choices, current) { onPick(it); changed() }) }, askLock = askLock) + listOfNotNull(

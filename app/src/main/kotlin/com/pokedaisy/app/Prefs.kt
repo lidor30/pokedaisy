@@ -324,6 +324,17 @@ class Prefs(context: Context) {
         get() = p.getBoolean("battle_info_first", false)
         set(v) = p.edit().putBoolean("battle_info_first", v).apply()
 
+    /** BATTLE VIEW > SUGGESTIONS: the BATTLE tab opens on SUGGESTIONS (GitHub discussions #614 / #640); wins over
+     *  [battleInfoFirst]. Off by default. */
+    var battleSuggestionsFirst: Boolean
+        get() = p.getBoolean("battle_suggestions_first", false)
+        set(v) = p.edit().putBoolean("battle_suggestions_first", v).apply()
+
+    /** CHALLENGE ICONS: RetroAchievements' challenge badges and leaderboard values in the companion's corner. On by default. */
+    var raIcons: Boolean
+        get() = p.getBoolean("ra_icons", true)
+        set(v) = p.edit().putBoolean("ra_icons", v).apply()
+
     /** GAME NAMES: the library names games by their file (GitHub #124); a RENAME still wins. Off by default. */
     var libraryFileNames: Boolean
         get() = p.getBoolean("library_file_names", false)
@@ -646,6 +657,12 @@ class Prefs(context: Context) {
     var dsBottomCompanion: Boolean
         get() = p.getBoolean("ds_bottom_companion", false)
         set(v) = p.edit().putBoolean("ds_bottom_companion", v).apply()
+
+    /** DS TOUCH SCREEN: a DS game's touch screen on the second display at its own 4:3 with the COMPANION bar under it
+     *  (ORIGINAL, false), or stretched over the whole display with a tab for the switch (STRETCH, true). */
+    var dsTouchFill: Boolean
+        get() = p.getBoolean("ds_touch_fill", false)
+        set(v) = p.edit().putBoolean("ds_touch_fill", v).apply()
 
     /** Single-screen devices: the companion's side panel is locked beside the game (see [SidePanel]). */
     var sidePanelDocked: Boolean
