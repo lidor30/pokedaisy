@@ -1,0 +1,26 @@
+diff --git a/src/cpu/step.c b/src/cpu/step.c
+index 10bae0c..932ba86 100644
+--- a/src/cpu/step.c
++++ b/src/cpu/step.c
+@@ -22,6 +22,10 @@ static uint32_t ror32(uint32_t value, unsigned rotate) {
+ 	return rotate ? (value >> rotate) | (value << (32 - rotate)) : value;
+ }
+ 
++// PokeDaisy: the host's handler for a Thumb BKPT (0xBExx). It returns true when it took the instruction, having set the CPU
++// going on (its registers, r15 and stepReload); false leaves the undefined instruction's exception as before.
++bool (*gbaBkptHook)(struct GBA* gba, uint32_t address, unsigned immediate);
++
+ // After a PC write, the new PC's fetch is nonsequential and the next one sequential.
+ void stepReload(struct GBA* gba) {
+ 	struct CPU* cpu = &gba->cpu;
+@@ -604,6 +608,10 @@ void stepExecute(struct GBA* gba, const struct Inst* in) {
+ 		exception(gba, MODE_SUPERVISOR, 0x08, in->address + width);
+ 		break;
+ 	default:
++		// PokeDaisy: a Thumb BKPT (undefined on a GBA) goes to the host first, which may take it.
++		if (gbaBkptHook && in->thumb && (in->opcode & 0xFF00) == 0xBE00 && gbaBkptHook(gba, in->address, in->opcode & 0xFF)) {
++			break;
++		}
+ 		exception(gba, MODE_UNDEFINED, 0x04, in->address + width);
+ 		break;
+ 	}

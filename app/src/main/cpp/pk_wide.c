@@ -771,6 +771,9 @@ static inline uint16_t io(int reg) { return R[reg >> 1]; }
 #define LINE_REGS 0x58   // DISPCNT .. BLDY
 static uint16_t lineIo[PK_WIDE_H][LINE_REGS / 2];
 static int lineIoFrames;   // frames drawn since the hook went in (lineIo is whole from the second)
+// A core whose renderer can't be hooked (the 3DS's armGBA draws on another core from a log of its own): every line is
+// taken as drawn with the registers the frame ended with, and the VRAM tiles that changed are found by comparing.
+static bool lineHookless;
 static struct GBA* hookGba;
 static void (*origDrawScanline)(struct GBAVideoRenderer*, int);
 
@@ -931,6 +934,18 @@ void pk_wide_flight(int on, const uint16_t* tiles, int n, double vx, double vy) 
     for (int i = 0; i < flyTileN; i++) flyTiles[i] = tiles[i];
 }
 
+// A core whose renderer can't be hooked (lineHookless): the glide's offset worked out after each frame, from the
+// registers the frame ended with, where flyBegin would have at its line 0 (pk_flight draws the bird at it; the game's own
+// sprite can't be moved inside the frame there).
+static bool flyGlide(const uint16_t* io);
+void pk_wide_after_frame(struct mCore* core) {
+    if (!core || core->platform(core) != mPLATFORM_GBA) return;
+    struct GBA* gba = (struct GBA*) core->board;
+    if (gba->video.renderer) return;
+    flyOamN = 0;
+    flyGlide(gba->memory.io);
+}
+
 void pk_wide_flight_offset(int* dx, int* dy) {
     *dx = flyDx;
     *dy = flyDy;
@@ -1003,7 +1018,13 @@ static void hookDrawScanline(struct GBAVideoRenderer* r, int y) {
 
 static void hookScanlines(struct GBA* gba) {
     struct GBAVideoRenderer* r = gba->video.renderer;
-    if (!r || !r->drawScanline) return;
+    if (!r || !r->drawScanline) {
+        lineHookless = true;
+        lineIoFrames = 0;
+        hookGba = NULL;
+        return;
+    }
+    lineHookless = false;
     if (r->drawScanline != hookDrawScanline) {
         origDrawScanline = r->drawScanline;
         r->drawScanline = hookDrawScanline;
@@ -2750,15 +2771,14 @@ static void playerBox(const uint16_t* oam, int base, struct PlayerBox* b) {
 }
 
 /** Line 0: FREE FLIGHT's camera this frame (see flyOn): the averaged camera's offset, and the bird / shadow moved by it. */
-static void flyBegin(struct GBAVideoRenderer* r) {
-    flyOamN = 0;
+/** This frame's glide (flyDx / flyDy) from the map's scroll it's drawn with; false: nothing to move. */
+static bool flyGlide(const uint16_t* io) {
     flyDx = flyDy = 0;
     if (flyViewAge < 99) flyViewAge++;
-    if ((!flyOn && !flyTrack) || !hookGba || flyViewAge > 2) {
+    if ((!flyOn && !flyTrack) || !io || flyViewAge > 2) {
         flyTrack = false;
-        return;
+        return false;
     }
-    const uint16_t* io = hookGba->memory.io;
     int h = io[0x18 >> 1] & 0x1FF, v = io[0x1A >> 1] & 0x1FF;   // BG2HOFS / VOFS: the map's scroll
     int dh = ((h - flyPrevH + 128) & 0xFF) - 128, dv = ((v - flyPrevV + 128) & 0xFF) - 128;   // its 256 px square wraps
     if (!flyTrack || abs(dh) > 16 || abs(dv) > 16) {
@@ -2789,9 +2809,14 @@ static void flyBegin(struct GBAVideoRenderer* r) {
     flyDy = (int) (ay < 0 ? ay - 0.5 : ay + 0.5);
     if (!flyOn && !flyDx && !flyDy && fabs(ax) < 0.5 && fabs(ay) < 0.5) {
         flyTrack = false;   // the flight's over and the camera has caught up
-        return;
+        return false;
     }
-    if (!flyDx && !flyDy) return;
+    return flyDx || flyDy;
+}
+
+static void flyBegin(struct GBAVideoRenderer* r) {
+    flyOamN = 0;
+    if (!flyGlide(hookGba ? hookGba->memory.io : NULL)) return;
     uint16_t* oam = hookGba->video.oam.raw;
     for (int k = 0; k < 128 && flyOamN < 4; k++) {
         uint16_t a0 = oam[k * 4], a1 = oam[k * 4 + 1];
@@ -3756,7 +3781,7 @@ void pk_wide_probe(struct mCore* core, const uint32_t* frame, int skip) {
 #ifdef PK_WIDE_CACHE
 /** An ordinary field frame: every line drawn alike, the same window setting all round the frame. *enabled: its BGs. */
 static bool cacheReady(int hofs, int vofs, int href, int vref, int* enabled) {
-    if (lineIoFrames < 2 || linePalN != 1) return false;
+    if (!lineHookless && (lineIoFrames < 2 || linePalN != 1)) return false;
     if (signed9(hofs - href) || signed9(vofs - vref)) return false;
     useLine(0);
     int disp = io(0), mode = (io(0x50) >> 6) & 3;
@@ -3790,6 +3815,21 @@ static void cellEntries(const struct Snap* s, int wx, int wy, int enabled, uint1
         e[i] = f ? metatileIn(&f->t, mid, b)[q] : metatile(s, mid, b)[q];
     }
     *foreignOut = f;
+}
+
+// The hook's tileWritten for a hookless core: BG VRAM's 32-byte tiles that differ from the copy kept at the last look.
+static void tilesCompared(void) {
+    static uint32_t seen[0x10000 / 4];
+    const uint32_t* vram = (const uint32_t*) G->video.vram;
+    if (!vram) return;
+    for (int t = 0; t < 2048; t++) {
+        const uint32_t* a = vram + t * 8;
+        uint32_t* b = seen + t * 8;
+        if (a[0] == b[0] && a[1] == b[1] && a[2] == b[2] && a[3] == b[3] && a[4] == b[4] && a[5] == b[5] && a[6] == b[6] && a[7] == b[7])
+            continue;
+        memcpy(b, a, 32);
+        tileWritten[tileSide][t >> 5] |= 1u << (t & 31);
+    }
 }
 
 static bool cellWritten(const uint16_t e[3], const struct Foreign* f, int enabled) {
@@ -4278,6 +4318,7 @@ static int viewInner(struct mCore* core, const uint32_t* frame, uint32_t* out, s
     int cacheBgs = 0;
     if (cacheMode && valid && !centre && !overlay && !overlayDim && !transition && !tintShown && mix >= 256 && rawView.w &&
         cacheReady(io(0x14) & 0x1FF, io(0x16) & 0x1FF, bestH, bestV, &cacheBgs)) {
+        if (lineHookless) tilesCompared();
         tileSide ^= 1;
         // A flight's camera offset moves the area sign with it: kept still as the full draw does (flyLabel), its pixels
         // read now, while the frame's line registers are this frame's.

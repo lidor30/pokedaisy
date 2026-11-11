@@ -33,6 +33,7 @@
 #include <mgba/core/core.h>
 #include <mgba/core/log.h>
 #include "../../host/pd_mixer.h"
+#include "../../emu/pd_armgba.h"
 #include <mgba/internal/gba/gba.h>
 
 #include "../../../app/src/main/cpp/pk_call.h"
@@ -333,7 +334,7 @@ static void command(char* line) {
             const struct pd_hit* h = &session.ui.hits[i];
             printf("hit %d at %d,%d %dx%d\n", h->id, h->x, h->y, h->w, h->h);
         }
-    } else if (!strcmp(cmd, "idle") && session.core->platform(session.core) == mPLATFORM_GBA) {
+    } else if (!strcmp(cmd, "idle") && session.core->platform(session.core) == mPLATFORM_GBA && !pd_armgba_is(session.core)) {
         // idle detect | remove | ignore: mGBA's busy-loop skipping, as the console sets it (detect) or not; bare, the state.
         struct GBA* gba = session.core->board;
         if (*args)
@@ -353,7 +354,14 @@ static void command(char* line) {
         double core = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / 1e3 / n;
         // The same frames with mGBA's renderer skipped: what the game's own code costs, apart from drawing it.
         double bare = 0;
-        if (session.core->platform(session.core) == mPLATFORM_GBA) {
+        if (pd_armgba_is(session.core)) {
+            pd_armgba_skip_video(true);
+            clock_gettime(CLOCK_MONOTONIC, &t0);
+            for (int i = 0; i < n; i++) session.core->runFrame(session.core);
+            clock_gettime(CLOCK_MONOTONIC, &t1);
+            pd_armgba_skip_video(false);
+            bare = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / 1e3 / n;
+        } else if (session.core->platform(session.core) == mPLATFORM_GBA) {
             struct GBA* gba = session.core->board;
             int skip = gba->video.frameskip;
             gba->video.frameskip = gba->video.frameskipCounter = 1 << 20;
@@ -465,7 +473,9 @@ static void command(char* line) {
                        (size_t) hole->w * sizeof(uint32_t));
             uint32_t h = 2166136261u;
             for (int k = 0; k < ww * wh; k++) h = (h ^ (filled[k] & 0xFFFFFF)) * 16777619u;
-            printf("wide %d %08X %dx%d\n", i, h, ww, wh);
+            int fdx = 0, fdy = 0;
+            pk_wide_flight_offset(&fdx, &fdy);
+            printf("wide %d %08X %dx%d glide %d,%d\n", i, h, ww, wh, fdx, fdy);
         }
     } else if (!strcmp(cmd, "signpos")) {
         // signpos N [KEYS]: N frames, where the area sign's white box is in each composed top-screen picture (its first
@@ -549,13 +559,14 @@ static void command(char* line) {
             uint8_t v = (uint8_t) value;
             pd_session_write(&session, addr, &v, 1);
         }
-    } else if (!strcmp(cmd, "io") && session.core->platform(session.core) == mPLATFORM_GBA) {
+    } else if (!strcmp(cmd, "io") && session.core->platform(session.core) == mPLATFORM_GBA && !pd_armgba_is(session.core)) {
         // The display registers as the frame ended, and the DMAs set to run each line (a scene's drawing cost).
         struct GBA* gba = session.core->board;
         const uint16_t* io = gba->memory.io;
         printf("DISPCNT %04X BLDCNT %04X BLDALPHA %04X BLDY %04X WININ %04X WINOUT %04X WIN0H %04X WIN0V %04X MOSAIC %04X\n",
                io[0x00 >> 1], io[0x50 >> 1], io[0x52 >> 1], io[0x54 >> 1], io[0x48 >> 1], io[0x4A >> 1], io[0x40 >> 1],
                io[0x44 >> 1], io[0x4C >> 1]);
+        printf("IE %04X DISPSTAT %04X IME %04X\n", io[0x200 >> 1], io[0x04 >> 1], io[0x208 >> 1]);
         for (int i = 0; i < 4; i++) {
             const struct GBADMA* d = &gba->memory.dma[i];
             printf("DMA%d ctl %04X src %08X dst %08X count %u\n", i, d->reg, d->source, d->dest, d->count);
@@ -572,11 +583,28 @@ static void command(char* line) {
             printf("\n");
         }
     } else if (!strcmp(cmd, "mixer")) {
+#ifdef PD_MIXER_CHECK
         // The native mixer against the game's, run side by side on every mix so far (pd_mixer.c).
         printf("mixer mixes=%u differed=%u reverb=%u fixed=%u resampled=%u compressed=%u reversed=%u ended=%u\n", pd_mixer_stats.mixes,
                pd_mixer_stats.differed, pd_mixer_stats.reverb, pd_mixer_stats.fixed, pd_mixer_stats.resampled, pd_mixer_stats.compressed,
                pd_mixer_stats.reversed, pd_mixer_stats.ended);
         if (pd_mixer_stats.differed) failures++;
+#else
+        printf("mixer: native alone (PD_SIM_MIXER_CHECK=OFF)\n");
+#endif
+    } else if (!strcmp(cmd, "scene")) {
+        // EXPAND's scene now (pk_wide.h: 0 field, 1 text, 2 overlay, 3 battle start, 4 off, 5 fade, 6 menu) and the screen mode.
+        printf("scene %d screen %d wide %d\n", session.wideKnown ? pk_wide_scene() : -1, pd_session_screen(&session), session.wideReady);
+    } else if (!strcmp(cmd, "savestate")) {
+        // savestate N / loadstate N: a STATES slot (0-9), as SAVE / LOAD on the companion.
+        int slot = atoi(args);
+        bool ok = pd_session_save_state(&session, slot);
+        printf("savestate %d: %s\n", slot, ok ? "ok" : "FAILED");
+        if (!ok) failures++;
+    } else if (!strcmp(cmd, "loadstate")) {
+        int slot = atoi(args);
+        bool ok = pd_session_load_state(&session, slot);
+        printf("loadstate %d: %s%s%s\n", slot, ok ? "ok" : "refused", session.notice[0] ? " - " : "", session.notice);
     } else if (!strcmp(cmd, "state")) {
         print_state();
     } else if (!strcmp(cmd, "expect")) {
@@ -629,27 +657,39 @@ int main(int argc, char** argv) {
     void* romBytes = malloc(romLen);
     if (fread(romBytes, 1, romLen, romFile) != romLen) return 1;
     fclose(romFile);
-    struct VFile* rom = VFileFromMemory(romBytes, romLen);
-    uint8_t header[0xC0];
-    rom->seek(rom, 0, SEEK_SET);
-    rom->read(rom, header, sizeof(header));
-    rom->seek(rom, 0, SEEK_SET);
-    pd_game_detect(&session.game, header, (size_t) rom->size(rom));
-    struct mCore* core = mCoreFindVF(rom);
-    if (!core || !core->init(core)) return 1;
-    mCoreInitConfig(core, NULL);
-    // PD_SIM_THREADED_VIDEO=1: mGBA's renderer on a thread of its own, as on a New 3DS (ctr/main.c).
-    if (getenv("PD_SIM_THREADED_VIDEO")) mCoreConfigSetIntValue(&core->config, "threadedVideo", 1);
-    core->setVideoBuffer(core, video, STRIDE);
-    if (core->platform(core) == mPLATFORM_GB) {
-        mCoreConfigSetIntValue(&core->config, "sgb.borders", 0);
-        core->reloadConfigOption(core, "sgb.borders", &core->config);
+    pd_game_detect(&session.game, romBytes, romLen);
+    struct mCore* core = NULL;
+    // A GBA game on armGBA, as the 3DS runs it; PD_SIM_CORE=mgba keeps it on mGBA (to compare the two).
+    const char* coreName = getenv("PD_SIM_CORE");
+    if (pd_armgba_wants(romBytes, romLen) && !(coreName && !strcmp(coreName, "mgba"))) {
+        struct pd_armgba_host host = { .threaded = getenv("PD_SIM_THREADED_VIDEO") != NULL };
+        char error[128] = "";
+        core = pd_armgba_load(argv[1], savePath, &host, error, sizeof(error));
+        if (!core) {
+            fprintf(stderr, "armGBA: %s\n", error);
+            return 1;
+        }
+        core->setVideoBuffer(core, video, STRIDE);
+        core->reset(core);
+        free(romBytes);
+    } else {
+        struct VFile* rom = VFileFromMemory(romBytes, romLen);
+        core = mCoreFindVF(rom);
+        if (!core || !core->init(core)) return 1;
+        mCoreInitConfig(core, NULL);
+        // PD_SIM_THREADED_VIDEO=1: mGBA's renderer on a thread of its own, as on a New 3DS (ctr/main.c).
+        if (getenv("PD_SIM_THREADED_VIDEO")) mCoreConfigSetIntValue(&core->config, "threadedVideo", 1);
+        core->setVideoBuffer(core, video, STRIDE);
+        if (core->platform(core) == mPLATFORM_GB) {
+            mCoreConfigSetIntValue(&core->config, "sgb.borders", 0);
+            core->reloadConfigOption(core, "sgb.borders", &core->config);
+        }
+        core->setAudioBufferSize(core, 1024);
+        if (!core->loadROM(core, rom)) return 1;
+        struct VFile* save = VFileOpen(savePath, O_CREAT | O_RDWR);
+        if (save) core->loadSave(core, save);
+        core->reset(core);
     }
-    core->setAudioBufferSize(core, 1024);
-    if (!core->loadROM(core, rom)) return 1;
-    struct VFile* save = VFileOpen(savePath, O_CREAT | O_RDWR);
-    if (save) core->loadSave(core, save);
-    core->reset(core);
     pk_heal_rtc(core);
     struct pd_session_host files = { .statePath = state_path, .backupSave = no_backup, .flightAreaPath = flight_area_path,
                                      .clock = sim_clock };

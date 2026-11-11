@@ -178,6 +178,8 @@ void pk_wide_lines(int on);
  * window over the game's tile steps and moves the bird with it (pk_wide.c's flyBegin): the view at the velocity the
  * flight means ([vx], [vy]: px a frame, east / south +), pulled toward the real camera. */
 void pk_wide_flight(int on, const uint16_t* tiles, int n, double vx, double vy);
+/** After each frame, on a core whose renderer can't be hooked (the 3DS's armGBA): the flight's glide for that frame. */
+void pk_wide_after_frame(struct mCore* core);
 /** The offset flyBegin gave the last frame (mgba_dump's `flightinfo`). */
 void pk_wide_flight_offset(int* dx, int* dy);
 /** Where that put the view, in pixels from where the flight started (mgba_dump's `flightinfo`: how even the glide is). */

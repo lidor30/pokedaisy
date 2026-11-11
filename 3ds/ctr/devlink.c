@@ -328,14 +328,18 @@ static bool cmd_stat(int fd) {
     u64 start = svcGetSystemTick();
     for (u32 i = 4000000; i; i--) __asm__ volatile("");
     unsigned clockUs = (unsigned) ((svcGetSystemTick() - start) / (SYSCLOCK_ARM11 / 1000000));
-    char text[400];
+    char text[640];
     int n = snprintf(text, sizeof(text),
                      "frames=%u core_us=%u ui_us=%u draw_us=%u worst_us=%u late=%u linear_free=%u new3ds=%d shown=%u clock_us=%u "
                      "run_us=%u wait_us=%u wide_us=%u snap_us=%u gaps=%u drops=%u rate=%u redraws=%u redraw_worst_us=%u "
-                     "idle_mode=%d idle_loop=%08X idle_fails=%u flight=%d flight_tick_us=%u flight_draw_us=%u\n",
+                     "idle_mode=%d idle_loop=%08X idle_fails=%u flight=%d flight_tick_us=%u flight_draw_us=%u "
+                     "ag_wait_us=%u ag_render_us=%u ag_compile_us=%u ag_flush_us=%u wide_thread_us=%u draw_job_us=%u "
+                     "ag_stepped=%u ag_compiled=%u ag_invalidated=%u ag_code_writes=%u mixes=%u\n",
                      s.frames, s.coreUs, s.uiUs, s.drawUs, s.worstUs, s.late, (unsigned) linearSpaceFree(), isNew, gpu_frames_shown(), clockUs,
                      s.runUs, s.waitUs, s.wideUs, s.snapUs, s.gaps, s.drops, s.rate, s.redraws, s.redrawWorstUs,
-                     s.idleMode, s.idleLoop, s.idleFails, s.flightState, s.flightTickUs, s.flightDrawUs);
+                     s.idleMode, s.idleLoop, s.idleFails, s.flightState, s.flightTickUs, s.flightDrawUs,
+                     s.agWaitUs, s.agRenderUs, s.agCompileUs, s.agFlushUs, s.wideThreadUs, s.drawJobUs,
+                     s.agStepped, s.agCompiled, s.agInvalidated, s.agCodeWrites, s.mixes);
     return reply(fd, text, (size_t) n);
 }
 

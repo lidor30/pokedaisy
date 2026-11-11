@@ -408,6 +408,9 @@ unsigned gpu_frames_shown(void) {
     return framesShown;
 }
 
+// The fourth core's work, in ticks (the dev build's stat).
+volatile u64 gpuWideTicks, gpuDrawTicks;
+
 static void draw_main(void* arg) {
     (void) arg;
     for (;;) {
@@ -415,7 +418,9 @@ static void draw_main(void* arg) {
         if (drawStop) return;
         // Its own copy: the stage goes free halfway through, and the next job can be written then.
         struct draw_job mine = job;
+        u64 t0 = svcGetSystemTick();
         run_job(&mine, true);
+        gpuDrawTicks += svcGetSystemTick() - t0;
         jobsDone++;
     }
 }
@@ -432,7 +437,9 @@ static void wide_main(void* arg) {
     for (;;) {
         LightEvent_Wait(&wideStart);
         if (wideStop) return;
+        u64 t0 = svcGetSystemTick();
         wideWork();
+        gpuWideTicks += svcGetSystemTick() - t0;
         LightEvent_Signal(&wideDone);
     }
 }
@@ -474,7 +481,8 @@ static void draw_thread_start(void) {
     LightEvent_Signal(&stageFree);
     s32 priority = 0x30;
     svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
-    // The New 3DS's fourth core: mGBA's renderer has the third.
+    // The New 3DS's fourth core, beside armGBA's mixer (it sleeps between batches); mGBA's renderer and armGBA's render
+    // worker have the third. armGBA's second worker is kept off (pd_armgba.c): beside it this thread starved.
     drawThread = threadCreate(draw_main, NULL, DRAW_STACK, priority - 1, 3, false);
     if (!drawThread) drawThread = threadCreate(draw_main, NULL, DRAW_STACK, priority - 1, 2, false);
     if (drawThread) aptHook(&drawHook, draw_apt_hook, NULL);

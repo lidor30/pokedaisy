@@ -27,6 +27,11 @@ struct devlink_stats {
     unsigned idleLoop, idleFails;           // the loop it skips, and its failed tries
     int flightState;                        // FREE FLIGHT's pk_flight_state (0 on the ground)
     unsigned flightTickUs, flightDrawUs;    // of coreUs: its step after each frame, its shadow and bird drawn in
+    // armGBA's own counters (of runUs: waiting for its render worker, compiling, cache flushes; the worker's drawing on
+    // core 2), and the fourth core's: EXPAND's margins and the screens' draw jobs.
+    unsigned agWaitUs, agRenderUs, agCompileUs, agFlushUs, wideThreadUs, drawJobUs;
+    unsigned agStepped, agCompiled, agInvalidated, agCodeWrites;   // armGBA's recompiler, in the last second
+    unsigned mixes;   // the native m4a mixer's, in the last second
 };
 
 void devlink_start(void);

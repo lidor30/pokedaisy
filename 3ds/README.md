@@ -1,8 +1,9 @@
 # PokeDaisy for the Nintendo 3DS (early preview)
 
-A homebrew port of PokeDaisy: the game runs on the top screen (libmgba, the
-same mGBA 0.10.5 submodule the Android app uses) and the companion lives on
-the touch screen. It is a rewrite, not a recompile - the Android app is Kotlin
+A homebrew port of PokeDaisy: the game runs on the top screen and the companion lives on the touch screen. GBA games
+run on **armGBA** (`third_party/armgba`: a GBA core with a recompiler for the 3DS's ARM11, at ratherDashing's
+`3ds-v0.0.2-alpha`), Game Boy and Game Boy Color games on **libmgba** (the same mGBA 0.10.5 submodule the Android app
+uses). It is a rewrite, not a recompile - the Android app is Kotlin
 and Jetpack Compose, which the 3DS can't run - so this folder holds a small,
 portable C core that re-implements the companion's reading and drawing, plus a
 3DS host and a desktop preview tool around it.
@@ -10,7 +11,10 @@ portable C core that re-implements the companion's reading and drawing, plus a
 **Status: preview.** It builds, every screen below has been driven on real ROMs and copies of real saves in the
 headless simulator (`make sim-test`, below), and the dev build runs on a New 3DS: FireRed, Emerald, Unbound and Monomyth
 (32 MB) and Yellow boot copies of real saves to the field with the companion, the HUD and the minimap up. It holds
-60 FPS on the field and in battle in FireRed, Emerald, Monomyth and Yellow, walking included; Unbound 49-59 on the field and 43 in battle (see "Sound and speed"). EXPAND runs at the same speeds at SHARP 1.5x and 1.25x (Emerald's Route 113, its ash the heaviest scene so far, 55-60), its drawing on the fourth core beside the next frame and the 2x picture built by the GPU; it has no PIXEL 1x, which couldn't keep up, and a battle always goes to 1.5x
+60 FPS on the field in FireRed, Emerald, Monomyth and Yellow, walking and surfing included, and in the game's own menus
+(30 on mGBA); 52-55 in a GBA battle (60 on mGBA); Unbound 58-60 on the field (see "Sound and speed"). On the game's own menu screens (the intro, the title, CONTINUE, the party, the bag: EXPAND's MENU scene, and a fade
+from one) EXPAND and ZOOM OUT give way to STRETCH: no map to show past them, and drawing their margins cost the frame
+(`menu_screen` in `host/pd_session.c`). EXPAND runs at the same speeds at SHARP 1.5x and 1.25x (Emerald's Route 113, its ash the heaviest scene so far, 55-60), its drawing on the fourth core beside the next frame and the 2x picture built by the GPU; it has no PIXEL 1x, which couldn't keep up, and a battle always goes to 1.5x
 (`pdlink.py stat`). HOME and the lid work; most companion screens haven't been tried on a console.
 Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS XL / 2DS may not hold full speed
 (see "Hardware").
@@ -24,10 +28,15 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   own "sharp bilinear" look: the frame at 2x nearest, sampled linearly.
 - **Fast-forward**: the ▶▶ chip on the companion toggles it, ZR (New 3DS) holds
   it; 2x / 3x / 4x in SETTINGS. The game is muted meanwhile.
-- **Save state**: one slot per game (`sdmc:/pokedaisy/states/`). A state never
-  carries the save data, so loading one can't write an old copy over the save
-  file; the save is backed up before every load anyway.
-- Saves next to the ROM (`<rom>.sav`, like mGBA's own 3DS build), and a backup
+- **Save state**: one slot per game (`sdmc:/pokedaisy/states/`). Loading one keeps the save memory as it is, so it
+  can't write an old copy over the save file; the save is backed up before every load anyway. A GBA game's states are
+  armGBA's own: one made by an earlier (mGBA) build is turned away with a notice and left where it is.
+- `sdmc:/pokedaisy/log.txt` says what the last run did (`log-prev.txt`: the run before): memory, whether armGBA's
+  recompiler and its render thread started, each save written. Attach it to a bug report. `armgba/` keeps each game's
+  warm list (the code the recompiler translated, so a second run translates it ahead of need); `system/gba_bios.bin` is
+  used if it's there, else armGBA's own BIOS.
+- Saves next to the ROM (`<rom>.sav`, in mGBA's layout: the save memory, then the clock, so a save moves either way
+  between this build and mGBA; armGBA's are written to a new file first, then put in place), and a backup
   of the save before every start in `sdmc:/pokedaisy/roms/pokedaisy-backups/`
   (newest 10 per game) - the repo's "save files are sacred" rule.
 - Settings kept in `sdmc:/pokedaisy/settings.ini`.
@@ -137,7 +146,34 @@ coloured chips, per-cheat switches.
 
 ## Sound and speed
 
-Half of a frame on a New 3DS is the game's own sound mixer, the m4a engine's `SoundMainRAM`. `host/pd_mixer.c` runs it natively:
+**armGBA** (GBA games, `emu/`): its recompiler runs the game on the main core, its renderer on the New 3DS's third core
+(one worker: armGBA-3DS puts a second on the fourth, where it starved the companion's draw thread and EXPAND's; `ctr/host.c`
+declines it) and its mixer on the game's thread. It sits behind mGBA's own `struct mCore` (`emu/pd_armgba_core.c`: a
+`struct GBA` of mGBA's shape whose memory points into armGBA's, io / palette / OAM copied after each frame), so every
+reader shared with the mGBA hosts runs unchanged; `emu/pd_dispatch.c` sends `pk_call` / `pk_host` / `pk_cheats` to the
+core that runs the game (the app's files are built with those names given an `_mgba` ending), and `pk_call` runs the
+game's functions on armGBA's interpreter (`emu/pd_armgba_call.c`). armGBA's renderer can't be hooked, so EXPAND takes every
+line as drawn with the registers the frame ended with and finds the VRAM tiles that changed by comparing
+(`pk_wide.c`'s `lineHookless`), and FREE FLIGHT's glide is worked out after each frame (`pk_wide_after_frame`) instead of
+at line 0, `pk_flight` drawing the bird at it; the composed screen equals mGBA's frame for frame in the sim (`widesum`,
+walking, battles, a diagonal flight's glide). The native m4a mixer (`host/pd_mixer.c`, below) runs on armGBA too: a Thumb BKPT
+there goes to `gbaBkptHook` first (`third_party/patches/armgba-pokedaisy.patch`, applied at configure time by
+`apply_armgba_patch.cmake`, as melonDS's is), and the mixer reaches the CPU through `pd_armgba_reg` / `_set_reg` / `_jump`.
+In the sim it matches the game's own mixer byte for byte on both cores (`mixer`), and `PD_SIM_MIXER_CHECK=OFF` builds the
+native one alone, as the console runs it. It's what armGBA gains most from in Unbound (ipatix's mixer rewrites its own
+code): fast-forward 130 FPS (95 without), battles 49-54 (43 on mGBA). FireRed / Emerald battles stay at 52-55 FPS (60 on
+mGBA): their battle screen raises an interrupt every scanline (IE 0x00C7, HBlank), cheap for an interpreter, costly for a
+recompiler (armGBA's own numbers show the same). Measured on a New 3DS (FireRed, `pdlink stat`): emulation 6-7 ms a frame on the field (mGBA 8.8), the game's
+party menu 60 FPS (30), fast-forward 152 FPS at ORIGINAL and 141 with EXPAND (111). Gambatte, which armGBA runs Game Boy
+games on, is GPL-2.0-only and can't be distributed with this GPL-3.0 code: `emu/gb_none.c` stands in for it. The cartridge
+buffer is one 32 MB block reserved at start (`host_rom_arena`): a block per game left the heap too broken up for a 32 MB
+game after another had run. The dev build's `sdmc:/pokedaisy-dev/armgba/mgba` runs GBA games on mGBA, to compare;
+`stat` adds armGBA's counters (`ag_wait_us` / `ag_render_us` / `ag_compile_us` / `ag_flush_us`) and the fourth core's
+(`wide_thread_us`, `draw_job_us`). The sim runs armGBA's interpreter (a desktop recompiler would need its own executable
+memory); `PD_SIM_CORE=mgba` puts a GBA game on mGBA there too.
+
+**mGBA** (Game Boy games, and the comparison above): half of a frame on a New 3DS is the game's own sound mixer, the m4a
+engine's `SoundMainRAM`. `host/pd_mixer.c` runs it natively:
 a BKPT over its first instruction in IWRAM hands it to C, on every ROM that carries the stock routine (106 of the 136 GBA ROMs the app
 knows, found by its CRC, and only once the copy in IWRAM is that code). Every sim run does both on the same state and compares every
 byte (`mixer` in a script, `make sim-test`). Saved states never hold the hook. Unbound (both builds), Odyssey and Rocket Edition run
@@ -295,7 +331,8 @@ make tables        # regenerate core/*_gen.c and ctr/icon.png from the app
 |---|---|
 | `core/` | Portable C, no platform code: game detection (`pd_game`, the app's `NativeConfig` addresses), the snapshot reader (`pd_snapshot`: party, battle, bag, money, place - ports `Gen3Mon.kt` / `readNativeTelemetry` / `readNativeBag`), the canvas (`pd_canvas`: pixel-stepped corners, layered OPTION frames, GBA-shadowed and wrapped text, drawn cursors), the companion (`pd_ui.c` frame + `pd_ui_party` / `_battle` (INFO, SUGGESTIONS, FOE TEAM) / `_bag` / `_map` / `_guide` / `_dex` / `_settings` / `_widgets`), the ROM readers (`pd_romart`: `RomArt`'s scan - every blob of the game in one pass; `pd_party_art`: the party's slot art and backdrop; `pd_map`: the region map and heads, `RegionMapModel`'s pick, `PlayerMapTile`; `pd_dex`: the dex tables and front pics; `pd_guide`: `GuideRom.kt`'s bosses, teams and wild tables), the party icons (`pd_icon`: `DecompIconSource`'s tables), the TRAINER CARD (`pd_card`: `readTrainerCard` + `TrainerCardArt`; `pd_ui_card`), the game list (`pd_menu`) and the settings file (`pd_settings`) |
 | `core/*_gen.c` | Generated: names / moves / type chart / map sections / item text / gender ratios from the app's Kotlin tables (`tools/gen_tables.py`), the ROM art's fingerprints (map and card) and the cursor grids (`tools/gen_map_tables.py`), the guides and area data (`tools/gen_guide.py`), Pixel Operator as a 1-bit font plus drawn ♂ ♀ (`tools/gen_font.py`) |
-| `ctr/` | The 3DS host: `main.c` (game loop, ndsp audio, HID, files, states) and `gpu.c` (citro2d: the game and canvases written into textures in the GPU's tiled order, drawn as quads), and the CMake build against the mGBA submodule |
+| `ctr/` | The 3DS host: `main.c` (game loop, ndsp audio, HID, files, states), `gpu.c` (citro2d: the game and canvases written into textures in the GPU's tiled order, drawn as quads), `host.c` (the heap split, the ROM buffer, the log, what armGBA's 3DS code asks of its frontend), and the CMake build against the armGBA and mGBA submodules |
+| `emu/` | armGBA behind mGBA's `struct mCore` (`pd_armgba*.c`), the dispatch to whichever core runs the game (`pd_dispatch.c`), no Game Boy side in armGBA (`gb_none.c`), and its build (`armgba.cmake`) |
 | `host/` | What a running game needs on any host: the session (`pd_session`), USE / GIVE / TAKE and the PC's moves (`pd_items`), the Game Boy games' field actions through the Linux host's `linux/gb_field.c` |
 | `desktop/` | The preview tool, its small PNG writer and the simulator (`sim/`) |
 | `test/` | The fixture ROM, the decomp build and the Azahar script |
@@ -315,7 +352,7 @@ not used; nor is render-to-texture.
 
 - **New 3DS / New 3DS XL / New 2DS XL** (804 MHz, 256 MB): the target; the app
   turns on the faster clock (`osSetSpeedupEnable`).
-- **3DS / 3DS XL / 2DS** (268 MHz, 128 MB): mGBA alone is close to its limit
+- **3DS / 3DS XL / 2DS** (268 MHz, 128 MB): not tried with armGBA (no cores to spare there); mGBA alone was close to its limit
   there, and the companion's drawing shares the CPU. Expect slowdowns; PIXEL 1x
   is the cheapest screen mode, and fast-forward may not get past 1x.
 

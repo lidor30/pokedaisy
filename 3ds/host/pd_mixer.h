@@ -7,6 +7,8 @@
 
 #include <mgba/core/core.h>
 
+extern unsigned pd_mixer_mixes; // native mixes so far
+
 // Finds the stock mixer in a GBA game's ROM; false (and nothing changes) on a game with another one.
 bool pd_mixer_attach(struct mCore* core);
 // Every frame: the hook goes back in wherever the game (a reset, a loaded state) has put the mixer back.

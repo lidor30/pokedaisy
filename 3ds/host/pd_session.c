@@ -4,6 +4,7 @@
 #include "../core/pd_tables.h"
 #include "../../linux/gb_field.h"
 #include "pd_mixer.h"
+#include "../emu/pd_armgba.h"
 
 #include <stdio.h>
 #include <stdlib.h>
@@ -98,6 +99,8 @@ bool pd_session_write(void* ctx, uint32_t addr, const void* data, size_t len) {
         for (size_t i = 0; i < len; i++) s->core->busWrite8(s->core, addr + (uint32_t) i, ((const uint8_t*) data)[i]);
         return true;
     }
+    // armGBA throws out code it compiled from RAM that changes.
+    if (pd_armgba_is(s->core)) return pd_armgba_write(addr, data, len);
     if (addr >= 0x02000000 && addr - 0x02000000 + len <= s->ewramSize) {
         memcpy(s->ewram + (addr - 0x02000000), data, len);
         return true;
@@ -176,11 +179,16 @@ bool pd_session_save_state(struct pd_session* s, int slot) {
     }
     char vfPath[512], path[512], thumb[520];
     state_paths(s, slot, vfPath, sizeof(vfPath), path, sizeof(path));
-    pd_mixer_release(s->core);
-    struct VFile* vf = VFileOpen(vfPath, O_CREAT | O_TRUNC | O_RDWR);
-    if (!vf) return false;
-    bool ok = mCoreSaveStateNamed(s->core, vf, STATE_FLAGS);
-    vf->close(vf);
+    bool ok;
+    pd_mixer_release(s->core); // a state never holds the hook
+    if (pd_armgba_is(s->core)) {
+        ok = pd_armgba_save_state(path);
+    } else {
+        struct VFile* vf = VFileOpen(vfPath, O_CREAT | O_TRUNC | O_RDWR);
+        if (!vf) return false;
+        ok = mCoreSaveStateNamed(s->core, vf, STATE_FLAGS);
+        vf->close(vf);
+    }
     uint32_t* px = s->thumbs[slot];
     unsigned gw = 240, gh = 160;
     s->core->desiredVideoDimensions(s->core, &gw, &gh);
@@ -201,7 +209,12 @@ bool pd_session_save_state(struct pd_session* s, int slot) {
     return ok;
 }
 
-static void write_state(struct pd_session* s, const char* vfPath) {
+static void write_state(struct pd_session* s, const char* vfPath, const char* path) {
+    if (pd_armgba_is(s->core)) {
+        pd_mixer_release(s->core);
+        pd_armgba_save_state(path);
+        return;
+    }
     struct VFile* vf = VFileOpen(vfPath, O_CREAT | O_TRUNC | O_RDWR);
     if (!vf) return;
     pd_mixer_release(s->core);
@@ -224,14 +237,28 @@ bool pd_session_undo_save(struct pd_session* s) {
     return true;
 }
 
+// A state into the running core: armGBA's own (an mGBA state from an earlier build is refused with a notice and left
+// where it is), else mGBA's.
+static bool load_state_file(struct pd_session* s, const char* vfPath, const char* path) {
+    if (pd_armgba_is(s->core)) {
+        enum pd_armgba_state r = pd_armgba_load_state(path);
+        if (r == PD_ARMGBA_STATE_FOREIGN) pd_session_show(s, "THAT STATE IS FROM AN OLDER BUILD");
+        else if (r == PD_ARMGBA_STATE_OTHER_GAME) pd_session_show(s, "THAT STATE IS ANOTHER GAME'S");
+        else if (r == PD_ARMGBA_STATE_BAD) pd_session_show(s, "THAT STATE DIDN'T LOAD");
+        return r == PD_ARMGBA_STATE_OK;
+    }
+    struct VFile* vf = VFileOpen(vfPath, O_RDONLY);
+    if (!vf) return false;
+    bool ok = mCoreLoadStateNamed(s->core, vf, STATE_FLAGS);
+    vf->close(vf);
+    return ok;
+}
+
 bool pd_session_undo_load(struct pd_session* s) {
     if (!s->host.undoLoad) return false;
     char vf[512], path[512];
     undo_path(s, "undoload", vf, sizeof(vf), path, sizeof(path));
-    struct VFile* f = VFileOpen(vf, O_RDONLY);
-    if (!f) return false;
-    bool ok = mCoreLoadStateNamed(s->core, f, STATE_FLAGS);
-    f->close(f);
+    bool ok = load_state_file(s, vf, path);
     if (ok) {
         pk_heal_rtc(s->core);
         pk_wide_reset();
@@ -246,12 +273,9 @@ bool pd_session_load_state(struct pd_session* s, int slot) {
     s->files.backupSave(s->files.ctx);
     char undoVf[512], undo[512];
     undo_path(s, "undoload", undoVf, sizeof(undoVf), undo, sizeof(undo));
-    write_state(s, undoVf);
+    write_state(s, undoVf, undo);
     s->host.undoLoad = true;
-    struct VFile* vf = VFileOpen(vfPath, O_RDONLY);
-    if (!vf) return false;
-    bool ok = mCoreLoadStateNamed(s->core, vf, STATE_FLAGS);
-    vf->close(vf);
+    bool ok = load_state_file(s, vfPath, path);
     if (ok) {
         pk_heal_rtc(s->core);
         pk_wide_reset(); // its RAM history is from before the jump
@@ -448,7 +472,19 @@ static bool in_battle(const struct pd_session* s) {
     return s->shown.inBattle || (s->wideKnown && pk_wide_scene() == PK_WIDE_SCENE_BATTLE_START);
 }
 
+// EXPAND and ZOOM OUT give way to the whole screen, stretched, on the game's own menu screens (the title, CONTINUE, the
+// party, the bag ...): there's no map past them to show, and drawing their margins every frame cost the frame.
+static bool menu_screen(const struct pd_session* s) {
+    if (!s->wideKnown || s->settings->aspect == PD_ASPECT_ORIGINAL || s->flightState != PK_FLIGHT_IDLE || in_battle(s)) return false;
+    int scene = pk_wide_scene();
+    // OFF is a battle too: only with the battle flag read this very frame (the snapshot's comes later) saying it isn't. A
+    // fade from a menu screen (the intro's, the title's to CONTINUE) stays one.
+    return scene == PK_WIDE_SCENE_MENU || (scene == PK_WIDE_SCENE_OFF && s->fieldKnown && !(s->fieldFlags & PK_FIELD_BATTLE)) ||
+           (scene == PK_WIDE_SCENE_FADE && s->menuLatched);
+}
+
 int pd_session_screen(const struct pd_session* s) {
+    if (menu_screen(s)) return PD_SCREEN_STRETCH;
     int mode = s->settings->screenMode;
     if (mode == PD_SCREEN_PIXEL && s->wideKnown && s->settings->aspect != PD_ASPECT_ORIGINAL) mode = PD_SCREEN_SHARP_125;
     if (mode != PD_SCREEN_STRETCH && in_battle(s)) mode = PD_SCREEN_SHARP;
@@ -487,6 +523,7 @@ static void wide_window(const struct pd_session* s, int aspect, int* w, int* h) 
 }
 
 #define ORIGINAL_SCENE_EVERY 16
+#define MENU_SCENE_EVERY 4 // on a menu screen (menu_screen): the way back to the field goes through a fade longer than this
 
 // The frame that will be shown: with mGBA's renderer on its own thread (New 3DS) the last lines may still be coming,
 // and getPixels is what waits for them. EXPAND's margins are worked out meanwhile.
@@ -509,6 +546,9 @@ static void wide_tick(struct pd_session* s, bool skip) {
     // took 7 ms of a New 3DS's 16.7, and with the game's own 9 that's one refresh too many.
     bool original = s->settings->aspect == PD_ASPECT_ORIGINAL;
     if (original && s->frame % ORIGINAL_SCENE_EVERY) return;
+    bool menu = !original && menu_screen(s);
+    s->menuLatched = menu;
+    if (menu && s->frame % MENU_SCENE_EVERY) return;
     int fw = pk_wide_frame_w(), fh = pk_wide_frame_h();
     // A GBA frame is already the rows EXPAND reads; a Game Boy's is narrower than the buffer's.
     const uint32_t* source = s->video;
@@ -521,7 +561,7 @@ static void wide_tick(struct pd_session* s, bool skip) {
         pk_wide_skip(s->core, source);
         return;
     }
-    if (original) {
+    if (original || menu) {
         // A one-pixel window.
         static uint32_t px;
         pk_wide_view(s->core, source, &px, (struct PkWideView) { 0, 0, 1, 1 }, NULL);
@@ -585,10 +625,13 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
         s->gameKeyFrames--;
     }
     s->core->setKeys(s->core, keys);
+    // Fast-forward's frames that aren't shown: armGBA needn't draw them.
+    if (pd_armgba_is(s->core)) pd_armgba_skip_video(!last);
     uint64_t start = s->files.clock ? s->files.clock() : 0;
     s->core->runFrame(s->core);
     uint64_t ran = s->files.clock ? s->files.clock() : 0;
     s->prof.run += ran - start;
+    if (s->game.kind != PD_GAME_GB) pk_wide_after_frame(s->core);
     if (s->game.kind != PD_GAME_GB) {
         pk_rest_note(s->core);
         pd_mixer_frame(s->core);

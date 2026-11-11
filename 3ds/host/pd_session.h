@@ -99,6 +99,7 @@ struct pd_session {
     bool fieldKnown, wideKnown;
     uint32_t wildSwitch;
     int fieldFlags;
+    bool menuLatched;     // the last scene looked at was a menu screen (pd_session.c's menu_screen)
     bool wideReady;       // this frame shows EXPAND's window
     struct pd_wide_hole wideHole;
     const uint32_t* nextVideo;

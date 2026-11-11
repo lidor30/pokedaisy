@@ -152,8 +152,9 @@ tables:
 			-DCMAKE_TOOLCHAIN_FILE=/repo/third_party/mgba/src/platform/3ds/CMakeToolchain.txt \
 			&& cmake --build build-dev -j$$(nproc) && cp build-dev/pokedaisy.3dsx pokedaisy-dev.3dsx"
 
-# pd_sim: the real mGBA core, the real ROMs and the app's host logic, no console (desktop/sim/).
-$(BUILD)/sim/pd_sim: $(CORE_SRC) $(wildcard core/*.h) $(wildcard host/*) desktop/sim/pd_sim.c desktop/sim/CMakeLists.txt \
+# pd_sim: the real cores (armGBA's interpreter for GBA games, mGBA for Game Boy ones), the real ROMs and the app's host
+# logic, no console (desktop/sim/).
+$(BUILD)/sim/pd_sim: $(CORE_SRC) $(wildcard core/*.h) $(wildcard host/*) $(wildcard emu/*) desktop/sim/pd_sim.c desktop/sim/CMakeLists.txt \
 		$(wildcard ../linux/*.c ../linux/*.h ../app/src/main/cpp/pk_*.c ../app/src/main/cpp/pk_*.h)
 	cmake -S desktop/sim -B $(BUILD)/sim -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_POLICY_VERSION_MINIMUM=3.5 >/dev/null
 	cmake --build $(BUILD)/sim --target pd_sim -j8

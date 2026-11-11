@@ -31,6 +31,16 @@ The app shows every license below in full under Settings > LICENSES.
   its bundled libraries: blip_buf (GNU LGPL 2.1) and inih (BSD).
   app/src/main/cpp/pk_rewind.c is adapted from mGBA's src/core/rewind.c and
   stays under the MPL 2.0 (its header says so).
+- 3DS build only: armGBA (third_party/armgba), Copyright (c) 2026 Magnominus and the armGBA 3DS
+  port contributors, Mozilla Public License 2.0 for the parts the 3DS build
+  uses (src/, libretro/ and platform/3ds/source/; its Gambatte side, GPL-2.0, is
+  left out) - https://github.com/MagnominusGit/armGBA (source of the build:
+  https://github.com/ratherDashing/armGBA/tree/3ds-v0.0.2-alpha). Parts of it
+  follow mGBA's code and carry mGBA's copyright too. The 3DS port's armGBA glue
+  (3ds/emu/pd_armgba*.c, 3ds/ctr/host.c) is based on ratherDashing's
+  pokedaisy-3ds fork; third_party/patches/armgba-pokedaisy.patch (a BKPT hook in
+  its interpreter) is our change to it, under the MPL 2.0. Its libretro layer links RetroArch's libretro-common (MIT)
+  and the 7-Zip LZMA SDK (public domain), and the 3DS build zlib (zlib License).
 - rcheevos (third_party/rcheevos), Copyright (c) 2018 RetroAchievements.org,
   MIT License - https://github.com/RetroAchievements/rcheevos
 - Optional Linux DS experiment only: DSperate (third_party/dsperate),
