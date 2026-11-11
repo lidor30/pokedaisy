@@ -125,7 +125,8 @@ The app shows every license below in full under Settings > LICENSES.
   layouts), the Gen 2 LZ decompressor (with Polished
   Crystal's variant and its text compression), expansion's "smol"
   decompressor, the DS games' text, archive and picture decoding and the
-  trainer card's layout are re-implemented from them in Kotlin.
+  trainer card's layout are re-implemented from them in Kotlin (Polished
+  Crystal's LZ also in C, for EXPAND).
 
 GAMES AND TRADEMARKS
 

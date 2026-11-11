@@ -4,7 +4,6 @@
 #include "fly.h"
 #include "gb_field.h"
 #include "pk_wide.h"
-#include "pk_wide_gb_profile.h"
 #include "polished_field.h"
 
 #include <stdbool.h>
@@ -65,8 +64,4 @@ bool polished_pc_open(struct mCore *core, const char *sha, pd_read_fn read, void
 bool polished_wild_hold(struct mCore *core, const char *sha, pd_read_fn read, void *ctx) {
   (void)core; (void)sha; (void)read; (void)ctx;
   return false;
-}
-int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG], pk_wide_gb_decode_fn decode) {
-  (void)addresses; (void)decode;
-  return 0;
 }

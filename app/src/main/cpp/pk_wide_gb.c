@@ -43,6 +43,8 @@
 /** A game's addresses (WRAM unless noted; D000-DFFF in WRAM bank 1). Gen 1's and Crystal's share where they mean the
  * same; the rest is one generation's (0 in the other's rows). */
 #include "pk_wide_gb_profile.h"
+#include "pk_wide_gb_polished_tables.h"   // pcWideConfig: Polished Crystal 3.2.3 (normal), by PC_WIDE_CRC
+#include "pk_wide_gb_polished_lz.inc"       // pcLz
 
 #define GB_LINEAR(bank, addr) ((uint32_t) (bank) * 0x4000u + ((addr) - 0x4000u))
 
@@ -374,8 +376,9 @@ static void gbTake(struct GbSnap* s) {
     }
     s->battle = gbRam(A[GB_IN_BATTLE]) != 0;
     if (gbGen == 2) {
-        // A wild battle's flashes run on the field before wBattleMode is set: DoBattleTransition's VBlank mode.
-        s->battle = s->battle || gbHram(A[GB_VBLANK_MODE]) == 1;
+        // A wild battle's flashes run on the field before wBattleMode is set: DoBattleTransition's VBlank mode (Crystal's
+        // VBLANK_CUTSCENE 1; Polished Crystal's is 3, its 1 is the magnet train's).
+        s->battle = s->battle || gbHram(A[GB_VBLANK_MODE]) == (gbPolished ? 3 : 1);
         if (gbPolished) {
           gbRamCopy(s->tiles, A[PC_METATILES], 4096);
           gbRamCopy(s->attrs, A[PC_ATTRIBUTES], 4096);
@@ -1166,13 +1169,19 @@ static bool gbMixSnap; // pk_wide_gb_snap
 static int gbMix, gbLastScore = -1, gbLastMode = PK_WIDE_MODE_NONE, gbLastClose = 1, gbLastScene = PK_WIDE_SCENE_OFF;
 
 int pk_wide_gb_knows(uint32_t crc) {
+  if (crc && crc == PC_WIDE_CRC)
+    return 1;
   for (size_t i = 0; i < sizeof(GB_ROMS) / sizeof(GB_ROMS[0]); i++)
     if (GB_ROMS[i].crc == crc)
       return 1;
   return 0;
 }
 
+static int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG], pk_wide_gb_decode_fn decode);
+
 int pk_wide_gb_configure(uint32_t crc) {
+    // Polished Crystal 3.2.3 (normal): its own structs and LZ, a profile of its own (pk_wide_gb_polished.inc)
+    if (crc && crc == PC_WIDE_CRC) return pk_wide_gb_configure_polished(pcWideConfig, pcLz);
     gbCfg = NULL;
     for (size_t i = 0; i < sizeof(GB_ROMS) / sizeof(GB_ROMS[0]); i++)
         if (crc && GB_ROMS[i].crc == crc) {
@@ -1189,8 +1198,7 @@ int pk_wide_gb_configure(uint32_t crc) {
     return gbCfg != NULL;
 }
 
-int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG],
-                                 pk_wide_gb_decode_fn decode) {
+static int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG], pk_wide_gb_decode_fn decode) {
     pk_wide_gb_configure(0);
     if (!addresses || !decode) return 0;
     gbCfg = addresses;

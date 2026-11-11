@@ -1,4 +1,4 @@
-// GPL-3.0. Optional Polished Crystal profile for the shared GB renderer.
+// GPL-3.0. The Game Boy renderer's per-game addresses (pk_wide_gb.c), Polished Crystal's profile included.
 #pragma once
 #include <stddef.h>
 #include <stdint.h>
@@ -44,12 +44,3 @@ enum {
 
 typedef int (*pk_wide_gb_decode_fn)(const unsigned char*, size_t, size_t,
                                     unsigned char*, size_t);
-// Identify a compatible ROM first. Caller owns addresses until next configure.
-// This does not register ROM identities or enable Android expansion support.
-// A null profile or decoder disables expansion and returns zero.
-int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG],
-                                 pk_wide_gb_decode_fn decode);
-
-/* Select an externally identified profile through the top-level renderer. */
-int pk_wide_configure_gb_profile(const uint32_t addresses[GB_CONFIG],
-                                 pk_wide_gb_decode_fn decode);

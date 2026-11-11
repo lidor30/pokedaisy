@@ -19,10 +19,6 @@
 #include "pd_guide.h"
 #include "pk_call.h"
 #include "pk_wide.h"
-#include "pk_wide_gb_profile.h"
-#include "polished_wide_tables.h"
-
-int pc_lz(const unsigned char*, size_t, size_t, unsigned char*, size_t);
 #include "quick_menu.h"
 #include "wild.h"
 #include "pd_dex.h"
@@ -1007,8 +1003,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   memset(heldFrames, 0, sizeof heldFrames);
   gameW = gameH = 0;
   quickSel = 0;
-  const bool polishedWide = crc == PC_WIDE_CRC && !strcmp(game.sha1, PC_WIDE_SHA1);
-  wideSupported = (polishedWide ? pk_wide_configure_gb_profile(pcWideConfig, pc_lz) : pk_wide_configure(crc)) != 0;
+  wideSupported = pk_wide_configure(crc) != 0;   // Polished Crystal 3.2.3 too (pk_wide_gb.c, by its CRC)
   wideReady = false;
   canvas_update(false);
   fieldKnown = PD_BE_IS_GBA() && pk_field_configure(crc);
