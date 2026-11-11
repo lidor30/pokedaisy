@@ -68,3 +68,7 @@ find_package(Threads REQUIRED)
 target_link_libraries(pokedaisy_gba_libretro PRIVATE armgba retro-archive Threads::Threads ${PD_ZLIB} m)
 # Only retro_* leaves the object, as in the mGBA core (a second core may be resident beside this one).
 target_link_options(pokedaisy_gba_libretro PRIVATE -Wl,--no-undefined -Wl,--exclude-libs,ALL -Wl,--version-script=${PD}/retro.map)
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+  target_sources(pokedaisy_gba_libretro PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/glibc_compat.c)
+  target_link_options(pokedaisy_gba_libretro PRIVATE -Wl,--wrap=stat -Wl,--wrap=fstat -Wl,--wrap=pthread_create -Wl,--wrap=pthread_join)
+endif()
