@@ -96,7 +96,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | ✅ ³³ | ✅ | — |
 | Modern Emerald | 3.6 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | ✅ | — |
 | Epsilon Emerald | 1.0.0 | ✅ ³⁹ | ✅ | ✅ | ✅ | — | ✅ ³⁹ | — | ✅ ³⁹ | — | ✅ ³⁹ | ✅ ³⁹ | — | — | — | — | — | — | — |
-| Monomyth | 1.0, 1.1, 1.2 | ✅ ²³ | ✅ | ✅ | ✅ | — | — | — | ✅ ²³ | — | — ²³ | ✅ ²³ | — | — | — | — | — | ✅ | — |
+| Monomyth | 1.0, 1.1, 1.2 | ✅ ²³ | ✅ | ✅ | ✅ | — | — | — | ✅ ²³ | — | — ²³ | ✅ ²³ | — | — | — | — | — | ✅ | ✅ ⁵⁸ |
 | Odyssey | 4.1.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ | — |
 | Orange Islands | Beta 5.7, an older beta | ◐ ³ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | — | ✅ ¹⁹ ²⁰ | ✅ | ✅ ³³ | ✅ | — |
 | Quetzal | English / Spanish Alpha 9 v0 | ◐ ³ | ✅ | ✅ | ✅ | — | ◐ ³⁴ | — | ◐ ⁶ | — | — | ✅ | — | — | — | — | — | — ³⁶ | — |
@@ -1061,5 +1061,6 @@ Hacks that are not in the table have no DEX, CARD or GUIDE yet. The MAP tab draw
     call: each replaces every block), every slot the pinned species at its own level range on the map, guarded by the
     file's 48 bytes' CRC32. It goes out on the frame a battle starts with gBattleTypeFlags' TRAINER clear, on another
     map and on UNPIN. Offered by the running GUIDE tables (`WildPin.offered`): retail English FireRed rev 1, LeafGreen
-    rev 0 / 1 and Emerald, so their randomized builds too (the ROM's own species); grass and caves only. Headless:
+    rev 0 / 1 and Emerald, so their randomized builds too (the ROM's own species), and Monomyth v1.0 / v1.1
+    (vanilla's wild headers and 12 land slots, checked on its ROUTE 1; not v1.2 yet); grass and caves only. Headless:
     mgba_dump `romblocks` takes `WildPin.Pin.toText()`'s line.

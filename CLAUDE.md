@@ -955,8 +955,8 @@ array: `GuideRomSource.landSlots`) go in as one ROM block, every slot the specie
 that doesn't match drops and the look goes alone). One encounter (the user's call over until-caught): out on the frame a battle starts
 with gBattleTypeFlags' TRAINER clear (`WildPin.endsNow`; a trainer's battle keeps it), on another map (the activity's sample) and on
 UNPIN; never gEnemyParty, never the file or the save. RetroAchievements idle while one is in (`achievementsIdle`, WILD PIN ON / OFF,
-PAUSED: WILD PIN). Greyed with the NUZLOCKE tracker on (OFF IN A NUZLOCKE RUN) or in a battle. First slice: retail English FireRed rev 1,
-LeafGreen rev 0 / 1, Emerald (`WildPin.offered`, by their GUIDE tables; randomized ones too). Headless: `Pin.toText()` is mgba_dump's
+PAUSED: WILD PIN). Greyed with the NUZLOCKE tracker on (OFF IN A NUZLOCKE RUN) or in a battle. Games: retail English FireRed rev 1,
+LeafGreen rev 0 / 1, Emerald (randomized ones too) and Monomyth v1.0 / v1.1 (vanilla's wild headers; `WildPin.offered`, by GUIDE tables). Headless: `Pin.toText()` is mgba_dump's
 `romblocks` line. ui-preview `*-guide-pin*` (`-Prom`), `hud-wild-*` (`WildPins.preview`). Fishing / surf / other games: later.
 **LINK PLAY** (2026-11-01, a game's library menu; `LinkActivity`, `LinkCore`, native `pk_link.c` / `pk_link_jni.c`): two to
 four GBA games on mGBA's own lockstep link cable, apart from the player's core (`g`): only the games, no companion / EXPAND /

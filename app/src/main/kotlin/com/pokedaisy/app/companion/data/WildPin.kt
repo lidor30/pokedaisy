@@ -90,10 +90,12 @@ object WildPin {
         return Pin(species, group, num, set, slots, range.first, range.last)
     }
 
-    /** The games of the first slice: retail English FireRed rev 1, LeafGreen rev 0 / 1 and Emerald, by their GUIDE tables
-     * (the Poller drops them where the ROM doesn't match; hacks have their own). */
+    /** The games so far: retail English FireRed rev 1, LeafGreen rev 0 / 1 and Emerald, and Monomyth v1.0 / v1.1 (vanilla's
+     * 20-byte wild headers and 12 land slots; its ROUTE 1 slots end where the next WildPokemonInfo starts), by their GUIDE
+     * tables (the Poller drops them where the ROM doesn't match; other hacks have their own). */
     fun offered(t: GuideTables?): Boolean = t != null && t.wildLayout == null && (
-        t === GUIDE_TABLES_FIRERED_REV1 || t === GUIDE_TABLES_LEAFGREEN_REV0 || t === GUIDE_TABLES_LEAFGREEN_REV1 || t === GUIDE_TABLES_EMERALD
+        t === GUIDE_TABLES_FIRERED_REV1 || t === GUIDE_TABLES_LEAFGREEN_REV0 || t === GUIDE_TABLES_LEAFGREEN_REV1 ||
+            t === GUIDE_TABLES_EMERALD || t === GUIDE_TABLES_MONOMYTH || t === GUIDE_TABLES_MONOMYTH_V1_1
         )
 
     /** Why PIN can't be tapped now, or null: the NUZLOCKE tracker on, or a battle up. An English key (tr() draws it). */

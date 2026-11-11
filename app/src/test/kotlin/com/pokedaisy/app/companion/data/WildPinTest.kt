@@ -125,11 +125,13 @@ class WildPinTest {
     }
 
     @Test
-    fun offeredOnTheRetailEnglishGamesOnly() {
+    fun offeredOnRetailEnglishAndMonomyth() {
         assertTrue(WildPin.offered(GUIDE_TABLES_FIRERED_REV1))
         assertTrue(WildPin.offered(GUIDE_TABLES_LEAFGREEN_REV0))
         assertTrue(WildPin.offered(GUIDE_TABLES_LEAFGREEN_REV1))
         assertTrue(WildPin.offered(GUIDE_TABLES_EMERALD))
+        assertTrue(WildPin.offered(GUIDE_TABLES_MONOMYTH))
+        assertTrue(WildPin.offered(GUIDE_TABLES_MONOMYTH_V1_1))
         assertFalse(WildPin.offered(null))
         assertFalse(WildPin.offered(GUIDE_TABLES_EMERALD_KAIZO))
         assertFalse(WildPin.offered(GUIDE_TABLES_EMERALD.copy(probeName = "X")))
