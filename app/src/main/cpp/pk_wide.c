@@ -218,6 +218,7 @@ struct Snap {
 
 static struct Snap snaps[2];
 static int prev = -1;              // snaps[prev]: the RAM after the frame before this one
+static bool mixSnap;               // pk_wide_jump: the next drawn scene at full strength, no crossfade
 
 /** FlagGet as the game has it. Flags past SaveBlock1's own array read on into it (the engine doesn't stop there, so
  * a hack that uses them - Odyssey, Glazed - keeps them there); CFRU's GetFlagPointer (PK_WIDE_EXPANDED_FLAGS) puts
@@ -3411,6 +3412,14 @@ void pk_wide_reset(void) {
     lastScene = PK_WIDE_SCENE_OFF;
     overlayDim = 0;
     edgeAccOk = false;
+    mixSnap = false;
+}
+
+void pk_wide_jump(struct mCore* core, const uint32_t* frame) {
+    pk_wide_reset();
+    pk_wide_skip(core, frame);
+    mixSnap = true;
+    pk_wide_gb_snap();
 }
 
 int pk_wide_last_score(void) { return gbGame ? pk_wide_gb_last_score() : lastScore; }
@@ -3990,7 +3999,8 @@ static void fullDraw(const struct FullView* f) {
             else if (battle) drawBattleRegion(0, 0, PK_WIDE_W, PK_WIDE_H, false, centre, PK_WIDE_W, alpha);   // holes show the backdrop, as the PPU does
             else drawMenuRegion(0, 0, PK_WIDE_W, PK_WIDE_H, false, centre, PK_WIDE_W, alpha, NULL);
         }
-        mix = mix + MIX_STEP > 256 ? 256 : mix + MIX_STEP;
+        mix = mixSnap || mix + MIX_STEP > 256 ? 256 : mix + MIX_STEP;
+        mixSnap = false;
     } else {
         if (!f->hold) mix = mix - MIX_STEP < 0 ? 0 : mix - MIX_STEP;   // the last scene, frozen, dissolves into the glow
     }

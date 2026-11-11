@@ -1162,6 +1162,7 @@ static bool gbFaded(const uint32_t* frame) {
 // --- the frame -----------------------------------------------------------------------------------------
 
 static int gbSinceField = 1000;   // frames since the field (or a whole black / white frame) last showed
+static bool gbMixSnap; // pk_wide_gb_snap
 static int gbMix, gbLastScore = -1, gbLastMode = PK_WIDE_MODE_NONE, gbLastClose = 1, gbLastScene = PK_WIDE_SCENE_OFF;
 
 int pk_wide_gb_knows(uint32_t crc) {
@@ -1199,10 +1200,13 @@ int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG],
     return 1;
 }
 
+void pk_wide_gb_snap(void) { gbMixSnap = true; }
+
 void pk_wide_gb_reset(void) {
     gbPrev = -1;
     gbSnaps[0].ok = gbSnaps[1].ok = gbGood.ok = false;
     gbMix = 0;
+    gbMixSnap = false;
     gbRawView.w = 0;
     gbLastScore = -1;
     gbLastMode = PK_WIDE_MODE_NONE;
@@ -1395,7 +1399,8 @@ int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, st
             gbDraw(s, ox, oy, 0, 0, GBW, GBH, centre, GBW, alpha, true);
             gbNObjs = n;
         }
-        gbMix = gbMix + GB_MIX_STEP > 256 ? 256 : gbMix + GB_MIX_STEP;
+        gbMix = gbMixSnap || gbMix + GB_MIX_STEP > 256 ? 256 : gbMix + GB_MIX_STEP;
+        gbMixSnap = false;
     } else {
         gbMix = gbMix - GB_MIX_STEP < 0 ? 0 : gbMix - GB_MIX_STEP;   // the last scene, frozen, dissolves into the glow
     }

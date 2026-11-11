@@ -140,6 +140,10 @@ int pk_field_state(struct mCore* core, int runIndoors, int wildKeep);
 
 /** Forgets what earlier frames left (a state load, a new core, a rewind). */
 void pk_wide_reset(void);
+/** pk_wide_reset for a jump to another moment (a state load, a rewind step), called right after it: the RAM now is what
+ * the next frame draws from, so it is kept as that frame's history, and the next drawn scene shows at once instead of
+ * fading in from the glow (a jump is a cut already). [frame]: the last frame, as pk_wide_skip's. */
+void pk_wide_jump(struct mCore* core, const uint32_t* frame);
 
 /**
  * Emu thread, after each frame: `out` ((240 + 2 * margin) x 160) gets `frame` (the core's
@@ -306,6 +310,7 @@ int pk_wide_last_battle_ways(void);
 int pk_wide_gb_knows(uint32_t crc);
 int pk_wide_gb_configure(uint32_t crc);
 void pk_wide_gb_reset(void);
+void pk_wide_gb_snap(void);   // pk_wide_jump's: the next drawn scene at full strength
 /** pk_wide_view's twin; `out` NULL = pk_wide_skip's (only the RAM after the frame is kept). */
 int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView view, uint32_t* centre);
 /** pk_wide_glow's twin for a Game Boy game: the frame over its menus' bars. */

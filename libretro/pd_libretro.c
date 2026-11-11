@@ -965,7 +965,10 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
 /** After a state load or a reset the game is another one: nothing the layer had started may finish in it (a FLY's warp,
  * the bike's registered item put back, a Game Boy action withdrawn), and EXPAND's RAM history is from before the jump. */
 static void layer_jump(void) {
-  pk_wide_reset();
+  if (wideSupported)
+    pk_wide_jump(core, wideSource); // the loaded RAM is the next frame's history: the map past the edges at once
+  else
+    pk_wide_reset();
   haveGameFrame = repeatedFrame = false;
   wideReady = false;
   snap.valid = false;

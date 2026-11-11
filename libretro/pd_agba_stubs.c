@@ -40,6 +40,7 @@ bool gb_field_taken(struct mCore *core, const struct gb_field *f) { (void)core; 
 int pk_wide_gb_knows(uint32_t crc) { (void)crc; return 0; }
 int pk_wide_gb_configure(uint32_t crc) { (void)crc; return 0; }
 void pk_wide_gb_reset(void) {}
+void pk_wide_gb_snap(void) {}
 int pk_wide_gb_scene(void) { return 0; }
 int pk_wide_gb_wants_close(void) { return 0; }
 int pk_wide_gb_last_mode(void) { return 0; }
