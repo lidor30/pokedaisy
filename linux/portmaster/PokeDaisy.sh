@@ -27,6 +27,14 @@ mkdir -p roms saves states
 : > "$GAMEDIR/log.txt" && exec > >(tee "$GAMEDIR/log.txt") 2>&1
 
 export POCKET_FULLSCREEN=1
+# SELECT+START is PortMaster's exit (gptokeyb): the host menu opens with the Menu / Guide button here.
+export POCKET_MENU_COMBO=off
+# The game list also shows the firmware's own Game Boy / Color / Advance folders.
+ROM_DIRS=""
+for d in gba gb gbc "Game Boy Advance" "Game Boy Color" "Game Boy"; do
+  [ -d "/$directory/$d" ] && ROM_DIRS="$ROM_DIRS${ROM_DIRS:+:}/$directory/$d"
+done
+export POCKET_ROM_DIRS="$ROM_DIRS"
 # shellcheck disable=SC2154
 export SDL_GAMECONTROLLERCONFIG="$sdl_controllerconfig"
 # gptokeyb gives PortMaster's exit hotkey; the game list's B and the game menu's quit work too.

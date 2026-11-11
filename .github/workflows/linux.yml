@@ -19,13 +19,14 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native:
-    runs-on: ubuntu-24.04
+    # 22.04: the package's binaries need glibc 2.35 at most (SteamOS, older desktops).
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ inputs.ref }}
-      - run: git submodule update --init third_party/mgba
+      - run: git submodule update --init third_party/mgba third_party/armgba third_party/zlib
       - run: sudo apt-get update && sudo apt-get install -y cmake libsdl2-dev
       - name: Shared host capability and legacy previews
         run: make -C 3ds test-host-display test-configs-gen preview
@@ -37,7 +38,6 @@ jobs:
       - name: Build and test native libretro cores
         run: |
           git submodule update --init --recursive third_party/dsperate-lr
-          git submodule update --init third_party/armgba third_party/zlib
           cmake -S linux/libretro-ds -B "$RUNNER_TEMP/pd-ds" -DCMAKE_BUILD_TYPE=Release
           cmake --build "$RUNNER_TEMP/pd-ds" -j2
           ctest --test-dir "$RUNNER_TEMP/pd-ds" --output-on-failure
@@ -61,22 +61,31 @@ jobs:
           sh libretro/test/check_exports.sh "$RUNNER_TEMP/pd-gba/pokedaisy_gba_libretro.so"
           PD_LEGACY_FF=1 "$RUNNER_TEMP/pd-core-test" "$RUNNER_TEMP/pd-gba/pokedaisy_gba_libretro.so" \
             "$RUNNER_TEMP/diagnostic.gba" "$RUNNER_TEMP/pd-saves"
+      - name: The executable over the cores it ships with
+        run: |
+          mkdir -p "$RUNNER_TEMP/cores"
+          cp "$RUNNER_TEMP/pd-gb/pokedaisy_gbc_libretro.so" "$RUNNER_TEMP/pd-gba/pokedaisy_gba_libretro.so" "$RUNNER_TEMP/cores/"
+          cmake -S linux -B linux/build -DPOCKET_TEST_CORES="$RUNNER_TEMP/cores"
+          ctest --test-dir linux/build -R linux-host-test --output-on-failure
       - name: Package native artifact
-        run: python3 linux/package.py linux/build/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts"
+        run: |
+          python3 linux/package.py linux/build/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts" \
+            --core "$RUNNER_TEMP/cores/pokedaisy_gba_libretro.so" --core "$RUNNER_TEMP/cores/pokedaisy_gbc_libretro.so"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: pokedaisy-linux-x86_64
           path: ${{ runner.temp }}/linux-artifacts/*.zip
           if-no-files-found: error
   trimui:
-    runs-on: ubuntu-24.04
+    # 22.04: its aarch64 cross glibc (2.35) has none of 2.38's C23 redirects; armgba/glibc_compat.* bind the rest to 2.17.
+    runs-on: ubuntu-22.04
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ inputs.ref }}
-      - run: git submodule update --init third_party/mgba
-      - run: sudo apt-get update && sudo apt-get install -y cmake qemu-user-static
+      - run: git submodule update --init third_party/mgba third_party/armgba third_party/zlib
+      - run: sudo apt-get update && sudo apt-get install -y cmake qemu-user-static gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross
       - name: Prepare checksum-pinned toolchain and SDK
         run: |
           python3 linux/setup_trimui_sdk.py "$RUNNER_TEMP/trimui-sdk"
@@ -88,10 +97,22 @@ jobs:
             -DCMAKE_CROSSCOMPILING_EMULATOR="qemu-aarch64-static;-L;$NEXTUI_TOOLCHAIN/aarch64-nextui-linux-gnu/libc"
           cmake --build linux/build-arm -j2
           ctest --test-dir linux/build-arm --output-on-failure
+      - name: AArch64 cores (mGBA on the TrimUI toolchain; armGBA needs a newer GCC than its 8.3)
+        run: |
+          cmake -S libretro -B build/gbc-arm -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/gbc-arm -j"$(nproc)" --target pokedaisy_gbc_libretro
+          cmake -S libretro/armgba -B build/gba-arm -DCMAKE_TOOLCHAIN_FILE="$PWD/libretro/aarch64.cmake" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/gba-arm -j"$(nproc)" --target pokedaisy_gba_libretro
+          for core in build/gbc-arm/pokedaisy_gbc_libretro.so build/gba-arm/pokedaisy_gba_libretro.so; do
+            NM=aarch64-linux-gnu-nm sh libretro/test/check_exports.sh "$core"
+            # Loads on the Brick's glibc 2.33 and anything newer.
+            ! aarch64-linux-gnu-objdump -T "$core" | grep -E 'GLIBC_2\.(3[4-9]|[4-9][0-9])' || { echo "::error::$core needs a glibc newer than 2.33"; exit 1; }
+          done
       - name: Package TrimUI and PortMaster artifacts
         run: |
-          python3 linux/package.py linux/build-arm/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts"
-          python3 linux/package.py --portmaster linux/build-arm/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts"
+          cores="--core build/gba-arm/pokedaisy_gba_libretro.so --core build/gbc-arm/pokedaisy_gbc_libretro.so"
+          python3 linux/package.py linux/build-arm/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts" $cores
+          python3 linux/package.py --portmaster linux/build-arm/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts" $cores
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: pokedaisy-linux-aarch64

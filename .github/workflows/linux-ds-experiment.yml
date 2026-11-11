@@ -28,7 +28,7 @@ jobs:
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-      - run: git submodule update --init third_party/mgba third_party/dsperate
+      - run: git submodule update --init third_party/mgba third_party/dsperate third_party/armgba third_party/zlib
       - run: sudo apt-get update && sudo apt-get install -y cmake libsdl2-dev qemu-user-static
       - name: Native build and tests
         if: matrix.target == 'native'
