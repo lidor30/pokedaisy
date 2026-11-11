@@ -56,6 +56,16 @@ with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
     log=run(d,str(d/'roms/diagnostic.gba'),'--frames','120','--shot',str(d/'gba.png'))
     w,h,bpp,rows=png_pixels(d/'gba.png')
     mid=rows[h//2][(w//2)*bpp:(w//2)*bpp+3];assert mid[0]>200 and mid[1]<60 and mid[2]<60,(mid,log[-500:])
+    # The host menu (Escape) with the keys scripted: DOWN to SAVE STATE, A writes the state file.
+    env['POCKET_KEYS']='20:menu,30:down,40:a'
+    run(d,str(d/'roms/diagnostic.gb'),'--frames','80')
+    del env['POCKET_KEYS']
+    assert (d/'states/diagnostic.gb.ss').exists(),'SAVE STATE from the host menu wrote nothing'
+    # A/B BUTTONS (seven rows down from RESUME) is saved with the host's settings.
+    env['POCKET_KEYS']='20:menu,'+','.join(f'{30+10*i}:down' for i in range(7))+',110:a'
+    run(d,str(d/'roms/diagnostic.gb'),'--frames','140')
+    del env['POCKET_KEYS']
+    assert 'swap_ab=1' in (d/'host.ini').read_text(),(d/'host.ini').read_text()
     # No ROM: the game list.
     run(d,'--frames','5','--shot',str(d/'list.png'));png_pixels(d/'list.png')
     # A ROM no core plays is refused, not crashed on.

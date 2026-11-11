@@ -90,6 +90,13 @@ enum {
 };
 static SDL_GameController *controller;
 static bool rawTrimui;
+static bool swapFace; // the host menu's A/B BUTTONS: SWAPPED (host.ini swap_ab)
+// A controller's face button, after the host menu's A/B BUTTONS (the keyboard's keys stay where they are).
+static int face(int k) {
+  if (!swapFace)
+    return k;
+  return k == A ? B : k == B ? A : k == X ? Y : k == Y ? X : k;
+}
 static unsigned held, pressed;
 static unsigned repeatAt[NKEYS];
 static int keyboard(SDL_Keycode k) {
@@ -248,6 +255,36 @@ static void pointer_at(int x, int y) {
   pointerY = py < -0x7FFF ? -0x7FFF : py > 0x7FFF ? 0x7FFF : py;
 }
 static bool audioLost, outputChanged;
+static int key_named(const char *s);
+/* POCKET_KEYS="TICK:KEY[:HOLD],...": presses scripted by loop tick (each events() call), held HOLD ticks (2), for
+ * tests: KEY is a hotkeys-file name (a, b, up, menu, start ...). */
+static struct {
+  unsigned at, hold;
+  int key;
+} script[64];
+static int scriptN = -1;
+static unsigned tick;
+static void key(int k, bool isDown);
+static void script_keys(void) {
+  if (scriptN < 0) {
+    scriptN = 0;
+    char buf[1024], *save = NULL;
+    snprintf(buf, sizeof buf, "%s", getenv("POCKET_KEYS") ? getenv("POCKET_KEYS") : "");
+    for (char *t = strtok_r(buf, ",", &save); t && scriptN < 64; t = strtok_r(NULL, ",", &save)) {
+      char name[16];
+      unsigned at, hold = 2;
+      if (sscanf(t, "%u:%15[^:]:%u", &at, name, &hold) >= 2 && key_named(name) >= 0)
+        script[scriptN++] = (typeof(script[0])){at, hold, key_named(name)};
+    }
+  }
+  for (int i = 0; i < scriptN; i++) {
+    if (tick == script[i].at)
+      key(script[i].key, true);
+    if (tick == script[i].at + script[i].hold)
+      key(script[i].key, false);
+  }
+  tick++;
+}
 static void events(void) {
   pressed = 0;
   SDL_Event e;
@@ -265,7 +302,7 @@ static void events(void) {
     if ((e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) && !e.key.repeat)
       key(keyboard(e.key.keysym.sym), e.type == SDL_KEYDOWN);
     if (e.type == SDL_CONTROLLERBUTTONDOWN || e.type == SDL_CONTROLLERBUTTONUP)
-      key(controller_button(e.cbutton.button), e.type == SDL_CONTROLLERBUTTONDOWN);
+      key(face(controller_button(e.cbutton.button)), e.type == SDL_CONTROLLERBUTTONDOWN);
     if (e.type == SDL_CONTROLLERAXISMOTION) {
       if (e.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT)
         key(L2, e.caxis.value > 16000);
@@ -285,7 +322,7 @@ static void events(void) {
       }
     }
     if (!controller && rawTrimui && (e.type == SDL_JOYBUTTONDOWN || e.type == SDL_JOYBUTTONUP))
-      key(joy(e.jbutton.button), e.type == SDL_JOYBUTTONDOWN);
+      key(face(joy(e.jbutton.button)), e.type == SDL_JOYBUTTONDOWN);
     if (!controller && rawTrimui && e.type == SDL_JOYHATMOTION) {
       key(UP, e.jhat.value & SDL_HAT_UP);
       key(DOWN, e.jhat.value & SDL_HAT_DOWN);
@@ -310,6 +347,7 @@ static void events(void) {
       outputChanged = true;
   }
   fn_keys();
+  script_keys();
 }
 static void repeat_directions(void) {
   for (int k = RIGHT; k <= DOWN; k++)
@@ -333,13 +371,15 @@ static struct {
 static int hotkeyN;
 static unsigned hotkeyMask;
 static bool hostMenu;
+// START+SELECT opens the host menu too, unless POCKET_MENU_COMBO=off (PortMaster: there it is the port's exit).
+static bool comboMenu = true;
 static int key_named(const char *s) {
   static const struct {
     const char *name;
     int key;
   } names[] = {{"a", A},       {"b", B},         {"x", X},         {"y", Y},           {"l1", L},
                {"r1", R},      {"l2", L2},       {"r2", R2},       {"up", UP},         {"down", DOWN},
-               {"left", LEFT}, {"right", RIGHT}, {"menu", MENU},   {"select", SELECT}, {"l3", L3},
+               {"left", LEFT}, {"right", RIGHT}, {"menu", MENU},   {"select", SELECT}, {"start", START}, {"l3", L3},
                {"sup", SUP},   {"sdown", SDOWN}, {"sleft", SLEFT}, {"sright", SRIGHT}, {"fn1", FN1},
                {"fn2", FN2}};
   for (size_t i = 0; i < sizeof names / sizeof names[0]; i++)
@@ -429,7 +469,8 @@ static unsigned hotkeys_held(unsigned *fired) {
 static struct {
   int ffSpeed; // 0 = MAX (as many frames as fit), else 2..8
   bool rewind, lcd;
-} hostSet = {0, false, false};
+  bool swapAB; // the controller's A / B and X / Y the other way round (devices disagree on which is SDL's "A")
+} hostSet = {0, false, false, false};
 static char hostIni[PATH_MAX];
 static void host_load(void) {
   FILE *f = fopen(hostIni, "r");
@@ -442,15 +483,18 @@ static void host_load(void) {
       hostSet.rewind = v != 0;
     if (sscanf(line, "lcd=%d", &v) == 1)
       hostSet.lcd = v != 0;
+    if (sscanf(line, "swap_ab=%d", &v) == 1)
+      hostSet.swapAB = v != 0;
   }
   if (f)
     fclose(f);
+  swapFace = hostSet.swapAB;
 }
 static void host_save(void) {
   FILE *f = fopen(hostIni, "w");
   if (!f)
     return;
-  fprintf(f, "ff_speed=%d\nrewind=%d\nlcd=%d\n", hostSet.ffSpeed, hostSet.rewind, hostSet.lcd);
+  fprintf(f, "ff_speed=%d\nrewind=%d\nlcd=%d\nswap_ab=%d\n", hostSet.ffSpeed, hostSet.rewind, hostSet.lcd, hostSet.swapAB);
   fclose(f);
 }
 
@@ -1261,7 +1305,7 @@ static const char *core_for(const char *path) {
 extern int pd_ds_run(const char *, const char *, int, const char *, SDL_Renderer *, bool (*)(void));
 static bool ds_running(void) { return running != 0; }
 #endif
-enum { M_RESUME, M_SAVE, M_LOAD, M_FF, M_FFSPEED, M_REWIND, M_LCD, M_QUIT, M_COUNT };
+enum { M_RESUME, M_SAVE, M_LOAD, M_FF, M_FFSPEED, M_REWIND, M_LCD, M_SWAP, M_QUIT, M_COUNT };
 static void run_game(const char *path, int maxFrames, const char *shot, bool fromList) {
 #ifdef POCKET_DSPERATE
   const char *ext = strrchr(path, '.');
@@ -1379,7 +1423,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       panel_follow();
     }
     bool menuKey = (!hostMenu && down(MENU)) ||
-                   ((down(START) || down(SELECT)) && (held & (1u << START)) && (held & (1u << SELECT)));
+                   (comboMenu && (down(START) || down(SELECT)) && (held & (1u << START)) && (held & (1u << SELECT)));
     snprintf(rows[M_RESUME], 40, "RESUME");
     snprintf(rows[M_SAVE], 40, "SAVE STATE");
     snprintf(rows[M_LOAD], 40, "LOAD STATE");
@@ -1390,6 +1434,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       snprintf(rows[M_FFSPEED], 40, "FF SPEED  MAX");
     snprintf(rows[M_REWIND], 40, "REWIND  %s", hostSet.rewind ? "ON" : "OFF");
     snprintf(rows[M_LCD], 40, "LCD FILTER  %s", hostSet.lcd ? "ON" : "OFF");
+    snprintf(rows[M_SWAP], 40, "A/B BUTTONS  %s", hostSet.swapAB ? "SWAPPED" : "NORMAL");
     snprintf(rows[M_QUIT], 40, fromList ? "QUIT TO GAME LIST" : "QUIT");
     for (int i = 0; i < M_COUNT; i++)
       rowPtrs[i] = rows[i];
@@ -1445,6 +1490,11 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
           hostSet.lcd = !hostSet.lcd;
           host_save();
           break;
+        case M_SWAP:
+          hostSet.swapAB = swapFace = !hostSet.swapAB;
+          held = 0; // the button that chose this is now the other one: let it go
+          host_save();
+          break;
         case M_QUIT:
           leave = true;
           break;
@@ -1453,7 +1503,12 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       muted = true;
       gameKeys = 0;
       present_game(menuOpen ? &menu : NULL);
-      if (!vsyncPaced)
+      if (maxFrames && ++frames >= maxFrames) { // a scripted run can end, and be captured, with the menu up
+        if (shot && !capture(shot))
+          appError = 1;
+        break;
+      }
+      if (!vsyncPaced && !maxFrames)
         SDL_Delay(16);
       due = SDL_GetPerformanceCounter();
       continue;
@@ -1522,7 +1577,12 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
   held = pressed = 0;
 }
 
-static int cmp(const void *a, const void *b) { return strcasecmp(*(char *const *)a, *(char *const *)b); }
+// By the file name, whichever folder it is in.
+static const char *base_name(const char *p) {
+  const char *s = strrchr(p, '/');
+  return s ? s + 1 : p;
+}
+static int cmp(const void *a, const void *b) { return strcasecmp(base_name(*(char *const *)a), base_name(*(char *const *)b)); }
 static void exe_dir(const char *argv0) {
   char p[PATH_MAX];
   ssize_t n = readlink("/proc/self/exe", p, sizeof p - 1);
@@ -1565,6 +1625,10 @@ int main(int argc, char **argv) {
   snprintf(savesDir, sizeof savesDir, "%s/saves", root);
   snprintf(hostIni, sizeof hostIni, "%s/host.ini", root);
   host_load();
+  comboMenu = !(getenv("POCKET_MENU_COMBO") && !strcmp(getenv("POCKET_MENU_COMBO"), "off"));
+  // A window manager can give another window the focus over the game (plorpOS's in-game menu on the GKD): the
+  // controller has to keep reaching the host then.
+  SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER)) {
     fprintf(stderr, "SDL: %s\n", SDL_GetError());
     return 1;
@@ -1611,25 +1675,37 @@ int main(int argc, char **argv) {
   if (rom)
     run_game(rom, frames, shot, false);
   else {
-    char *names[256];
+    /* DATA/roms, then the folders POCKET_ROM_DIRS names (colon-separated: the PortMaster launcher passes the
+     * firmware's own gba / gb / gbc folders), by file name. */
+    static char *paths[1024];
+    static const char *names[1024];
     int count = 0;
-    snprintf(path, sizeof path, "%s/roms", root);
-    DIR *d = opendir(path);
-    struct dirent *e;
-    while (d && (e = readdir(d)) && count < 256) {
-      char *ext = strrchr(e->d_name, '.');
-      if (ext && (!strcasecmp(ext, ".gba") || !strcasecmp(ext, ".gbc") || !strcasecmp(ext, ".gb")
+    char dirs[4096];
+    snprintf(dirs, sizeof dirs, "%s/roms%s%s", root, getenv("POCKET_ROM_DIRS") ? ":" : "",
+             getenv("POCKET_ROM_DIRS") ? getenv("POCKET_ROM_DIRS") : "");
+    char *save = NULL;
+    for (char *dir = strtok_r(dirs, ":", &save); dir; dir = strtok_r(NULL, ":", &save)) {
+      DIR *d = opendir(dir);
+      struct dirent *e;
+      while (d && (e = readdir(d)) && count < 1024) {
+        char *ext = strrchr(e->d_name, '.');
+        if (ext && (!strcasecmp(ext, ".gba") || !strcasecmp(ext, ".gbc") || !strcasecmp(ext, ".gb")
 #ifdef POCKET_DSPERATE
-                  || !strcasecmp(ext, ".nds")
+                    || !strcasecmp(ext, ".nds")
 #endif
-                      ))
-        names[count++] = strdup(e->d_name);
+                        )) {
+          snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
+          paths[count++] = strdup(path);
+        }
+      }
+      if (d)
+        closedir(d);
     }
-    if (d)
-      closedir(d);
-    qsort(names, count, sizeof(*names), cmp);
+    qsort(paths, count, sizeof(*paths), cmp);
+    for (int i = 0; i < count; i++)
+      names[i] = base_name(paths[i]);
     struct pd_menu list;
-    pd_menu_init(&list, "PokeDaisy Linux", (const char *const *)names, count);
+    pd_menu_init(&list, "PokeDaisy Linux", names, count);
     int ticks = 0;
     while (running) {
       events();
@@ -1640,10 +1716,8 @@ int main(int argc, char **argv) {
         pd_menu_move(&list, -1);
       if (down(DOWN))
         pd_menu_move(&list, 1);
-      if (down(A) && count) {
-        snprintf(path, sizeof path, "%s/roms/%s", root, names[list.selected]);
-        run_game(path, 0, NULL, true);
-      }
+      if (down(A) && count)
+        run_game(paths[list.selected], 0, NULL, true);
       SDL_RenderClear(renderer);
       overlay_begin();
       pd_menu_draw(&list, &overlay);
@@ -1658,7 +1732,7 @@ int main(int argc, char **argv) {
       SDL_Delay(16);
     }
     for (int i = 0; i < count; i++)
-      free(names[i]);
+      free(paths[i]);
   }
   if (js)
     SDL_JoystickClose(js);

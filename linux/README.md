@@ -27,7 +27,8 @@ ctest --test-dir linux/build --output-on-failure
 POCKET_CORE_DIR=build/cores linux/build/pokedaisy-linux --data /your/test-directory /your/game.gba
 ```
 
-Without a ROM argument, choose a `.gb`, `.gbc` or `.gba` from DATA/roms. The host creates DATA/saves and
+Without a ROM argument, choose a `.gb`, `.gbc` or `.gba` from DATA/roms and the folders `POCKET_ROM_DIRS` names
+(colon-separated; the PortMaster launcher passes the firmware's `gba`, `gb` and `gbc` folders where they exist). The host creates DATA/saves and
 DATA/states. Before a game opens its battery save is backed up into DATA/saves/pokedaisy-backups (a new copy only
 when it changed, the newest 10 kept; with `--save FILE`, DATA/backups); a save that can't be backed up keeps the game
 closed. The save is DATA/saves/COMPLETE-ROM-FILENAME.sav, the raw battery save, read into the core when the game
@@ -42,9 +43,12 @@ Keyboard: arrows, Z=A, X=B, Enter=Start, Backspace=Select, Q/E=L/R, 1/2=L2/R2, T
 (held), R=rewind (held), F2=save state, F4=load state, Escape=the host menu. The core's own controls work as on any
 frontend: X opens the companion, Y the quick menu (each can be rebound in the companion's SETTINGS).
 
-START+SELECT (or the controller's Guide button, or Escape) opens the host menu over the game: RESUME, SAVE STATE,
-LOAD STATE, FAST FORWARD (on / off), FF SPEED (MAX, or 2x to 8x), REWIND (keeps the last ~20 s while on, in a
-32 MB budget: `POCKET_REWIND_MB`), LCD FILTER and QUIT (QUIT TO GAME LIST when the game came from the list). The game
+START+SELECT (or the controller's Guide / Menu button, or Escape) opens the host menu over the game: RESUME, SAVE
+STATE, LOAD STATE, FAST FORWARD (on / off), FF SPEED (MAX, or 2x to 8x), REWIND (keeps the last ~20 s while on, in a
+32 MB budget: `POCKET_REWIND_MB`), LCD FILTER, A/B BUTTONS (NORMAL / SWAPPED: devices disagree on which physical
+button SDL calls A; SWAPPED trades A with B and X with Y on controllers) and QUIT (QUIT TO GAME LIST when the game
+came from the list). `POCKET_MENU_COMBO=off` leaves START+SELECT alone (the PortMaster launcher sets it: there it is
+the port's exit). The game
 pauses while it is open. Fast-forward plays its sound sped up. A touch screen or the mouse reaches the core's
 companion and HUD.
 
@@ -63,7 +67,7 @@ fits, centred. `POCKET_WINDOW=WxH` opens the window at a device's panel size ins
 720x720 ...), to try a layout on a desktop. The screen paces the game when it runs at 58-62 Hz and presents wait for
 it, else a timer does; the sound is resampled a little faster or slower to keep up. Audio-device failure is logged
 and leaves silent gameplay available; the device is reopened when it comes back. `POCKET_PERF=1` logs frame timings
-every 5 s.
+every 5 s. `POCKET_KEYS="TICK:KEY[:HOLD],..."` presses keys by loop tick, for tests (`test_host.py`).
 
 ## PortMaster (ROCKNIX, Knulli, muOS ...)
 
