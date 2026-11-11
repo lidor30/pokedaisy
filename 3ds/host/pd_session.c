@@ -266,6 +266,55 @@ static void cheats_update(struct pd_session* s) {
     pk_cheats_apply(s->core, on ? s->cheatText : NULL, on ? s->cheatLen : 0);
 }
 
+static void fly_to(struct pd_session* s, int mapsec);
+
+// FREE FLIGHT's calls into the game (pk_flight.h).
+static int flight_call(struct mCore* core, uint32_t fn, const uint32_t args[4], uint32_t* r0) {
+    return pk_call(core, fn, args, r0) ? 1 : 0;
+}
+
+// pk_flight told this game's addresses, with FLY ON's vehicle (a change mid-flight just redraws).
+static void flight_configure(struct pd_session* s) {
+    uint32_t w[PK_FLIGHT_WORDS];
+    flight_words(s->flightCfg, s->settings->flightVehicle, w);
+    pk_flight_configure(w, PK_FLIGHT_WORDS);
+    s->flightVehicle = s->settings->flightVehicle;
+}
+
+// FLIGHT AREA's file: a line per map seen ("group.num"), one per ROM and save.
+static char flightAreaText[16384];
+
+static void flight_area_write(struct pd_session* s) {
+    struct flight_area* a = &s->flightArea;
+    if (!a->dirty || !a->key || !s->files.flightAreaPath) return;
+    a->dirty = false;
+    char path[512], tmp[520];
+    s->files.flightAreaPath(s->files.ctx, s->romCrc, a->key, path, sizeof(path));
+    snprintf(tmp, sizeof(tmp), "%s.tmp", path);
+    size_t n = flight_area_format(a, flightAreaText, sizeof(flightAreaText));
+    FILE* f = fopen(tmp, "wb");
+    if (!f) return;
+    bool ok = fwrite(flightAreaText, 1, n, f) == n;
+    if (fclose(f) != 0) ok = false;
+    if (ok) {
+        remove(path);
+        rename(tmp, path);
+    }
+}
+
+static void flight_area_load(struct pd_session* s, uint32_t key) {
+    flight_area_write(s);
+    flight_area_clear(&s->flightArea, key);
+    if (!s->files.flightAreaPath) return;
+    char path[512];
+    s->files.flightAreaPath(s->files.ctx, s->romCrc, key, path, sizeof(path));
+    FILE* f = fopen(path, "rb");
+    if (!f) return;
+    size_t n = fread(flightAreaText, 1, sizeof(flightAreaText), f);
+    fclose(f);
+    flight_area_parse(&s->flightArea, flightAreaText, n);
+}
+
 static void cheats_load(struct pd_session* s) {
     free(s->cheatText);
     s->cheatText = NULL;
@@ -362,6 +411,19 @@ void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* 
     s->flyCfg = cfg && fly_supported(cfg, s->rom, s->romSize) ? cfg : NULL;
     s->flashCfg = cfg && flash_supported(cfg, s->rom, s->romSize) ? cfg : NULL;
     s->flashAsk = 0;
+    // FREE FLIGHT: retail English FireRed / LeafGreen / Emerald (a retail hash, a dump or a randomized copy of one), like
+    // the app's flightAllowed. The flight starts unconfigured: a state taken in the air comes back flying once it is.
+    pk_flight_set_call(flight_call);
+    pk_flight_configure(NULL, 0);
+    pk_flight_reset();
+    bool retail = gba && (s->game.retail || !strncmp(s->game.code, "BPG", 3));
+    s->flightCfg = cfg && flight_supported(cfg, s->rom, s->romSize, retail) ? cfg : NULL;
+    s->flightAsk = s->scenicAsk = 0;
+    s->scenic = s->flightDrawn = s->flightAreaAnywhere = false;
+    s->flightState = PK_FLIGHT_IDLE;
+    flight_area_clear(&s->flightArea, 0);
+    if (s->flightCfg) flight_configure(s);
+    s->host.flightSupported = s->flightCfg != NULL;
     s->itemsOk = cfg && field_items_supported(cfg, s->rom, s->romSize);
     s->pcOk = s->itemsOk && pc_supported(cfg, s->rom, s->romSize);
     s->bikeOk = s->itemsOk && bike_supported(cfg);
@@ -464,8 +526,11 @@ static void wide_tick(struct pd_session* s, bool skip) {
         pk_wide_finish();
         return;
     }
-    int aspect = s->settings->aspect == PD_ASPECT_ZOOM_OUT && (in_battle(s) || (s->settings->autoZoom &&
+    // A flight's controls are held (the map's sign as it crosses): no pull-in for that. The scenic FLY is shown zoomed out.
+    bool flying = s->flightState != PK_FLIGHT_IDLE;
+    int aspect = s->settings->aspect == PD_ASPECT_ZOOM_OUT && (in_battle(s) || (s->settings->autoZoom && !flying &&
         pk_wide_scene() != PK_WIDE_SCENE_FIELD)) ? PD_ASPECT_EXPAND : s->settings->aspect;
+    if (s->scenic && flying && aspect == PD_ASPECT_EXPAND) aspect = PD_ASPECT_ZOOM_OUT;
     wide_window(s, aspect, &s->wideW, &s->wideH);
     struct PkWideView v = { (fw - s->wideW) / 2, (fh - s->wideH) / 2, s->wideW, s->wideH };
     wideShown ^= 1;
@@ -524,6 +589,16 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
     if (s->fieldKnown)
         s->fieldFlags = pk_field_state(s->core, s->settings->runIndoors, s->wildSwitch && s->settings->wildOff ? 0 : 100);
     s->framePending = last;
+    if (s->flightCfg) {
+        // FREE FLIGHT's next step, then its shadow and bird into the finished frame (before EXPAND reads it).
+        pk_flight_tick(s->core);
+        s->flightState = pk_flight_state();
+        if (last && (s->flightState != PK_FLIGHT_IDLE || s->flightDrawn)) {
+            frame_whole(s);
+            pk_flight_draw((uint32_t*) s->video, PD_GAME_STRIDE, 160, PD_GAME_STRIDE);
+            s->flightDrawn = s->flightState != PK_FLIGHT_IDLE;
+        }
+    }
     uint64_t wideStart = s->files.clock ? s->files.clock() : 0;
     wide_tick(s, !last);
     frame_whole(s);
@@ -583,6 +658,15 @@ static void quick_items(struct pd_session* s) {
         int flyer = fly_flyer(snap);
         q[n++] = (struct quick_item) { QUICK_FLY, false, false, flyer < 0 ? "No one in your party knows FLY" : NULL,
                                        flyer < 0 ? 0 : snap->party[flyer].species, 0, NULL };
+    }
+    s->host.flightReady = s->flightCfg && fly_flyer(snap) >= 0;
+    s->host.flying = s->flightState != PK_FLIGHT_IDLE;
+    if (s->flightCfg) {
+        // TAKE OFF (QuickMenu.kt's quickBlocked): up there LAND always can, the bird finds the nearest ground.
+        bool flying = s->flightState != PK_FLIGHT_IDLE;
+        const char* why = flying ? NULL : snap->inBattle ? "Not during a battle"
+                        : fly_flyer(snap) < 0 ? "No one in your party knows FLY" : NULL;
+        q[n++] = (struct quick_item) { flying ? QUICK_LAND : QUICK_FLIGHT, false, false, why, 0, 0, NULL };
     }
     if (s->flashCfg) {
         // FLASH (QuickMenu.kt's quickBlocked): who knows it, then whether it's dark here at all.
@@ -693,9 +777,7 @@ static void quick_input(struct pd_session* s, const struct pd_input* in) {
             s->flyList = false;
         } else if ((down & PD_KEY_A) && n) {
             s->quickOpen = s->flyList = false;
-            s->flyMapsec = s->flyTargets.towns[s->flySel];
-            s->flyStage = 1;
-            s->flyWait = 0;
+            fly_to(s, s->flyTargets.towns[s->flySel]);
         }
         return;
     }
@@ -712,6 +794,9 @@ static void quick_input(struct pd_session* s, const struct pd_input* in) {
     if (item->action == QUICK_FLASH) {
         s->quickOpen = false;
         s->flashAsk = 1; // run between two frames
+    } else if (item->action == QUICK_FLIGHT || item->action == QUICK_LAND) {
+        s->quickOpen = false;
+        s->flightAsk = 1;
     } else if (item->action == QUICK_FLY) {
         s->flyAsk = 1; // answered between two frames
     } else if (item->action == QUICK_REPEL && s->repelKindCount > 1) {
@@ -728,6 +813,106 @@ static void quick_input(struct pd_session* s, const struct pd_input* in) {
         s->repelSel = s->repelKindCount - 1;
     } else {
         quick_run(s, item);
+    }
+}
+
+// FLY to [mapsec]: the game's own (FLY STYLE CLASSIC, or a game without FREE FLIGHT), else up on the bird and over the
+// field to it (the scenic FLY), routed between two frames.
+static void fly_to(struct pd_session* s, int mapsec) {
+    s->flyMapsec = mapsec;
+    if (s->flightCfg && !s->settings->flyClassic && s->game.kind != PD_GAME_GB) {
+        s->scenicMapsec = mapsec;
+        s->scenicAsk = 1;
+    } else {
+        s->flyStage = 1;
+        s->flyWait = 0;
+    }
+}
+
+// FLIGHT AREA (FlightArea.Keeper.tick): the save checked, seeded once a run, the player's map added while they stand on the
+// field, pk_flight given the maps when they changed. [now]: before a take-off, not just every half second.
+static void flight_area_job(struct pd_session* s, bool busy, bool battle, bool now) {
+    struct mCore* c = s->core;
+    struct flight_area* a = &s->flightArea;
+    if (s->settings->flightAnywhere) {
+        if (!s->flightAreaAnywhere) pk_flight_set_area(NULL, 0);
+        s->flightAreaAnywhere = true;
+        return;
+    }
+    if (s->flightAreaAnywhere) a->sent = -1;
+    s->flightAreaAnywhere = false;
+    if (!now && s->frame % 30) return;
+    uint32_t key = flight_save_key(c, s->flightCfg);
+    if (!key) return;
+    if (key != a->key) flight_area_load(s, key);
+    if (!a->seeded && pk_call_safe(c)) flight_area_seed(a, c, s->flightCfg, s->rom, s->romSize);
+    struct flight_spot here;
+    if (!busy && !battle && s->flightState == PK_FLIGHT_IDLE && flight_here(c, s->flightCfg, &here)) flight_area_add(a, here.map);
+    if (a->count != a->sent) {
+        pk_flight_set_area(a->bits, PK_FLIGHT_AREA_BYTES);
+        a->sent = a->count;
+    }
+    flight_area_write(s);
+}
+
+// TAKE OFF / LAND and the scenic FLY, between two frames (PokeDaisyActivity's toggleFlight / scenicFly).
+static void flight_jobs(struct pd_session* s, bool busy, bool battle) {
+    struct mCore* c = s->core;
+    const struct pd_config* cfg = s->flightCfg;
+    if (s->settings->flightVehicle != s->flightVehicle) flight_configure(s);
+    flight_area_job(s, busy, battle, false);
+    // The bird turned at a map not seen yet: say why, now and then (it can be met many times a second).
+    if (pk_flight_area_turned() && (unsigned) (s->frame - s->flightAreaTold) > 240) {
+        s->flightAreaTold = s->frame;
+        pd_session_show(s, "You haven't been there yet.");
+    }
+    if (s->scenic && s->flightState == PK_FLIGHT_IDLE) s->scenic = false;
+    if (s->flightAsk && s->flightState != PK_FLIGHT_IDLE) {
+        s->flightAsk = 0;
+        pk_flight_land();
+    } else if (s->flightAsk || s->scenicAsk) {
+        if (!pk_call_safe(c)) {
+            if ((s->flightAsk && ++s->flightAsk > 120) || (s->scenicAsk && ++s->scenicAsk > 120)) {
+                s->flightAsk = s->scenicAsk = 0;
+                pd_session_show(s, fly_reason(FLY_FAILED));
+            }
+            return;
+        }
+        bool scenic = s->scenicAsk != 0;
+        s->flightAsk = s->scenicAsk = 0;
+        pd_snapshot_read(&s->snap, &s->game, pd_session_read, s);
+        enum fly_result gate = flight_check(c, cfg, s->rom, s->romSize, &s->snap, busy, battle);
+        if (gate != FLY_OK) {
+            pd_session_show(s, fly_reason(gate));
+            return;
+        }
+        flight_area_job(s, busy, battle, true);
+        static uint8_t route[FLIGHT_MAX_STEPS];
+        int steps = -1;
+        if (scenic) {
+            // FLIGHT AREA's maps only (none known yet: anywhere); a town past them, or not joined to here, flies the classic way.
+            const struct flight_area* area = !s->settings->flightAnywhere && s->flightArea.key ? &s->flightArea : NULL;
+            struct flight_spot here, dest;
+            if (flight_here(c, cfg, &here) && flight_destination(c, cfg, s->rom, s->romSize, s->scenicMapsec, &dest))
+                steps = flight_route(c, cfg, s->rom, s->romSize, &here, &dest, area, route);
+            if (steps < 0) {
+                s->flyStage = 1;
+                s->flyWait = 0;
+                return;
+            }
+        }
+        flight_configure(s);
+        int code = pk_flight_take_off(c);
+        if (code == PK_FLIGHT_OK && scenic) {
+            pk_flight_route(route, steps);
+            s->scenic = true;
+        } else if (code == PK_FLIGHT_NOT_ON_FOOT && scenic) {
+            // Surfing: the bird can't take off from the water - the game's own FLY can.
+            s->flyStage = 1;
+            s->flyWait = 0;
+        } else if (code != PK_FLIGHT_OK) {
+            pd_session_show(s, flight_reason(code));
+        }
     }
 }
 
@@ -789,6 +974,7 @@ static void field_jobs(struct pd_session* s) {
     const struct pd_config* cfg = s->game.cfg;
     bool battle = s->shown.inBattle || (s->fieldFlags & PK_FIELD_BATTLE);
     bool busy = (s->fieldFlags & PK_FIELD_LOCKED) || (s->wideKnown && pk_wide_scene() != PK_WIDE_SCENE_FIELD);
+    if (s->flightCfg) flight_jobs(s, busy, battle);
     if (s->flashCfg && s->flashAsk) {
         if (pk_call_safe(c)) {
             pd_snapshot_read(&s->snap, &s->game, pd_session_read, s);
@@ -1150,6 +1336,8 @@ void pd_session_tick(struct pd_session* s, const struct pd_input* in, unsigned m
     // A loop is one screen refresh, so a speed is frames a refresh: 1.5x runs one, two, one, two; 0.5x every other.
     static const int SPEED_X4[PD_GAME_SPEED_COUNT] = { 4, 6, 8, 12, 16, 2, 1 };
     int quarter = ff && !smart_slows(s) ? s->settings->ffSpeed * 4 : SPEED_X4[s->settings->gameSpeed];
+    // The scenic FLY's trip runs at 2x at least (EmulatorEngine.SCENIC_SPEED): a show, nothing to steer.
+    if (s->scenic && s->flightState != PK_FLIGHT_IDLE && s->flightState != PK_FLIGHT_DISMOUNT && quarter < 8) quarter = 8;
     s->speedDebt += quarter;
     int count = s->speedDebt / 4;
     s->speedDebt %= 4;
@@ -1200,9 +1388,10 @@ bool pd_session_action(struct pd_session* s, enum pd_action action) {
         s->flyAsk = 1;
         return true;
     case PD_ACTION_FLY_TO:
-        s->flyMapsec = s->flyTargets.towns[s->ui.flyPick];
-        s->flyStage = 1;
-        s->flyWait = 0;
+        fly_to(s, s->flyTargets.towns[s->ui.flyPick]);
+        return true;
+    case PD_ACTION_FLIGHT:
+        s->flightAsk = 1;
         return true;
     case PD_ACTION_STATE_SLOT:
         s->host.slotSelected = s->ui.actionSlot;

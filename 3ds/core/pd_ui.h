@@ -95,6 +95,9 @@ struct pd_settings {
     bool battleGen5;  // BATTLE STYLE: GEN 5 (Black / White's touch screen); off = GEN 4
     bool noBattleInfo;    // BATTLE INFO off: the battle buttons alone, no INFO / SUGGESTIONS or move ratings
     bool battleInfoFirst; // BATTLE VIEW: INFO; off = BUTTONS (what the BATTLE tab opens on)
+    bool flyClassic;      // FLY STYLE: CLASSIC (the game's own FLY); off = SCENIC, flown over the field where the game can
+    bool flightAnywhere;  // FLIGHT AREA: ANYWHERE; off = VISITED, the app's WHERE YOU'VE BEEN (only the maps this save has seen)
+    int flightVehicle;    // FLY ON: linux/flight.h's enum flight_vehicle (0 the game's bird)
     int gameSpeed;   // GAME SPEED: an index into PD_GAME_SPEEDS
     int gameVolume;  // GAME VOLUME: 20 ... 100
     bool gameMuted;  // MUTE GAME
@@ -145,6 +148,7 @@ enum pd_action {
     PD_ACTION_BOX_DEPOSIT,  // party slot ui.boxPartySlot into box ui.boxTarget
     PD_ACTION_FLY_ASK,   // MAP's FLY: where it can go is wanted
     PD_ACTION_FLY_TO,    // ... and the pick: ui.flyPick
+    PD_ACTION_FLIGHT,    // MAP's TAKE OFF / LAND (FREE FLIGHT)
 };
 
 // A party slot in USE / GIVE's pick: dimmed, or which of its moves it would help.
@@ -187,6 +191,8 @@ struct pd_host_info {
     bool wildSupported, fieldSupported; // WILD ENCOUNTERS / the field read works on this game
     int batteryPct;     // -1 = unknown
     bool flyReady;      // MAP's FLY button: someone in the party can
+    bool flightSupported; // FREE FLIGHT works in this game: FLY STYLE / FLIGHT AREA / FLY ON rows
+    bool flightReady, flying; // MAP's TAKE OFF (someone knows FLY), and LAND while up
     bool canTake;       // the summary's TAKE
     bool (*itemCanUse)(int item);  // Optional: what the bag's USE / GIVE can do with an item
     bool (*itemCanGive)(int item);
@@ -222,6 +228,7 @@ enum pd_overlay {
     PD_OVERLAY_PICK_BOX,    // the boxes, BOXES' name or DEPOSIT's where to
     PD_OVERLAY_CONFIRM_BOX, // WITHDRAW / DEPOSIT asked
     PD_OVERLAY_PICK_VOLUME,
+    PD_OVERLAY_PICK_FLY_ON, // FLY ON: what FREE FLIGHT flies on
     PD_OVERLAY_CONFIRM_RESTART,
     PD_OVERLAY_FLY,     // MAP's FLY: the towns
 };

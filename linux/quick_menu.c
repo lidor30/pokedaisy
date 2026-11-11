@@ -81,6 +81,8 @@ const char *quick_label(enum quick_action a) {
   case QUICK_PC: return "PC";
   case QUICK_FLY: return "FLY";
   case QUICK_FLASH: return "FLASH";
+  case QUICK_FLIGHT: return "TAKE OFF";
+  case QUICK_LAND: return "LAND";
   case QUICK_REPEL: return "REPEL";
   case QUICK_BIKE: return "BIKE";
   case QUICK_WILD: return "WILD";
@@ -99,7 +101,20 @@ static const char *const FLASH[] = {
     "KKYWWWWWWYKK", "..KYWWWWYK..", "...KYWWYK...", "..K.KYYK.K..", ".K...KK...K.", ".....KK.....", NULL,
 };
 
+// FREE FLIGHT (QuickMenu.kt's TAKE_OFF_ICON / LAND_ICON): a pair of wings, the arrow over them going up or under them
+// going down; K outline, B the wings, W their light, G the arrow.
+static const char *const TAKE_OFF[] = {
+    ".....GG.....", "....GGGG....", "...G.GG.G...", ".....GG.....", "K....KK....K", "KB..KBBK..BK",
+    "KBBKBBBBKBBK", "KBWBBBBBBWBK", ".KBWBBBBWBK.", "..KBBKKBBK..", "...KK..KK...", "............", NULL,
+};
+static const char *const LAND[] = {
+    "K....KK....K", "KB..KBBK..BK", "KBBKBBBBKBBK", "KBWBBBBBBWBK", ".KBWBBBBWBK.", "..KBBKKBBK..",
+    "...KK..KK...", "............", ".....GG.....", "...G.GG.G...", "....GGGG....", ".....GG.....", NULL,
+};
+
 static uint32_t icon_color(enum quick_action a, char ch) {
+  if (a == QUICK_FLIGHT || a == QUICK_LAND)
+    return ch == 'K' ? 0x202850 : ch == 'B' ? 0x5068C8 : ch == 'W' ? 0xB8C8F8 : 0x58C858;
   if (a == QUICK_FLASH)
     return ch == 'K' ? 0x584818 : ch == 'Y' ? 0xF8D030 : 0xFFFFF0;
   if (a == QUICK_WILD)
@@ -119,6 +134,7 @@ static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int s
   const char *const *rows = a == QUICK_PC ? quick_icon_pc : a == QUICK_WILD ? quick_icon_grass : a == QUICK_SAVE_STATE ? SAVE_STATE
                           : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : a == QUICK_REPEL ? quick_icon_repel
                           : a == QUICK_BIKE ? BIKE : a == QUICK_FLY ? WING : a == QUICK_FLASH ? FLASH
+                          : a == QUICK_FLIGHT ? TAKE_OFF : a == QUICK_LAND ? LAND
                           : a == QUICK_HUD ? quick_icon_hud : quick_icon_companion;
   int h = 0, w = (int)strlen(rows[0]);
   while (rows[h])

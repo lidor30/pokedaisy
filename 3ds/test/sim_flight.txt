@@ -1,0 +1,13 @@
+# FREE FLIGHT: FLY taught to the lead, TAKE OFF, a few tiles south, B lands on the nearest ground.
+flysettings 0 0 0
+teach 0 0 19
+run 40
+takeoff
+run 90
+expect flying 2
+press down 40
+expect flying 2
+press b 3
+run 200
+expect flying 0
+flight

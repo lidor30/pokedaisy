@@ -31,6 +31,9 @@ void pd_settings_defaults(struct pd_settings* s) {
     s->battleGen5 = false;
     s->noBattleInfo = false;
     s->battleInfoFirst = false;
+    s->flyClassic = false;
+    s->flightAnywhere = false;
+    s->flightVehicle = 0;
     s->gameSpeed = 0;
     s->gameVolume = 100;
     s->gameMuted = false;
@@ -112,13 +115,15 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
         else if (!strcmp(key, "hudbtn")) int_in(value, 0, PD_BUTTONS - 1, &s->hudBtn);
         else if (!strcmp(key, "speed")) int_in(value, 0, PD_GAME_SPEED_COUNT - 1, &s->gameSpeed);
         else if (!strcmp(key, "volume")) int_in(value, 20, 100, &s->gameVolume);
+        else if (!strcmp(key, "flyon")) int_in(value, 0, 3, &s->flightVehicle);
         else {
             int on;
             bool* b = !strcmp(key, "ffaudio") ? &s->ffAudio : !strcmp(key, "rewind") ? &s->rewind
                     : !strcmp(key, "runindoors") ? &s->runIndoors : !strcmp(key, "nohints") ? &s->hideHints
                     : !strcmp(key, "onetap") ? &s->oneTapMoves : !strcmp(key, "mute") ? &s->gameMuted
                     : !strcmp(key, "autorun") ? &s->autoRun : !strcmp(key, "gen5") ? &s->battleGen5
-                    : !strcmp(key, "noinfo") ? &s->noBattleInfo : !strcmp(key, "infofirst") ? &s->battleInfoFirst : NULL;
+                    : !strcmp(key, "noinfo") ? &s->noBattleInfo : !strcmp(key, "infofirst") ? &s->battleInfoFirst
+                    : !strcmp(key, "flyclassic") ? &s->flyClassic : !strcmp(key, "flyanywhere") ? &s->flightAnywhere : NULL;
             if (b && int_in(value, 0, 1, &on)) *b = on;
         }
     }
@@ -143,6 +148,7 @@ bool pd_settings_save(const struct pd_settings* s, const char* path) {
     fprintf(f, "speed=%d\nvolume=%d\nnohints=%d\nonetap=%d\nmute=%d\nautorun=%d\nperf=%d\n", s->gameSpeed,
             s->gameVolume, s->hideHints, s->oneTapMoves, s->gameMuted, s->autoRun, s->showPerf ? 1 : 0);
     fprintf(f, "gen5=%d\nnoinfo=%d\ninfofirst=%d\n", s->battleGen5 ? 1 : 0, s->noBattleInfo ? 1 : 0, s->battleInfoFirst ? 1 : 0);
+    fprintf(f, "flyclassic=%d\nflyanywhere=%d\nflyon=%d\n", s->flyClassic ? 1 : 0, s->flightAnywhere ? 1 : 0, s->flightVehicle);
     if (fclose(f) != 0) return false;
     return rename(tmp, path) == 0;
 }

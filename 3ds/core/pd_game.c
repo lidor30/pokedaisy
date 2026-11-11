@@ -652,6 +652,7 @@ static void identify(struct pd_game* g) {
     pd_sha1_update(&s, g->rom, g->romSize);
     pd_sha1_hex(&s, g->sha1);
     g->shinyBelow = 0;
+    g->retail = false;
     for (const struct pd_shiny_rom* r = pd_shiny_roms; r->sha1; r++)
         if (!strcmp(r->sha1, g->sha1)) g->shinyBelow = r->below;
 
@@ -697,13 +698,14 @@ static void identify(struct pd_game* g) {
     if (strcmp(g->code, "BPRE") && strcmp(g->code, "BPEE")) return;
     // English FireRed / Emerald: retail's shiny check once the hash (or a collection's dump of it) checks out (Poller.kt).
     for (size_t i = 0; i < sizeof RETAIL_SHA1S / sizeof *RETAIL_SHA1S; i++)
-        if (!strcmp(RETAIL_SHA1S[i], g->sha1)) { g->shinyBelow = 8; return; }
-    if (retail_dump(g)) { g->shinyBelow = 8; return; }
+        if (!strcmp(RETAIL_SHA1S[i], g->sha1)) { g->shinyBelow = 8; g->retail = true; return; }
+    if (retail_dump(g)) { g->shinyBelow = 8; g->retail = true; return; }
     // Retail as Universal Pokemon Randomizer ZX left it (the app's RandomizedRetail): retail's config and guide, what the
     // randomizer changed read from the ROM.
     g->randomized = pd_randomized_match(g);
     if (g->randomized) {
         g->shinyBelow = 8;
+        g->retail = true;
         g->title = g->kind == PD_GAME_FIRERED ? "Pokémon FireRed (Randomized)" : "Pokémon Emerald (Randomized)";
         return;
     }

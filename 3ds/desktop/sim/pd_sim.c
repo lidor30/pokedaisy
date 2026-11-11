@@ -76,6 +76,11 @@ static void quick_button(void) {
     pd_session_tick(&session, &in, 16);
 }
 
+static void flight_area_path(void* ctx, uint32_t crc, uint32_t key, char* path, size_t len) {
+    (void) ctx;
+    snprintf(path, len, "%s/flight-area-%08X-%08X.txt", outDir, crc, key);
+}
+
 static void state_path(void* ctx, int slot, char* vf, size_t vfLen, char* path, size_t pathLen) {
     (void) ctx;
     snprintf(path, pathLen, "%s/slot%d.ss", outDir, slot);
@@ -258,6 +263,7 @@ static void expect(char* what) {
     if (!strcmp(kind, "state")) ok = (int) s->battleState == state_id(a);
     else if (!strcmp(kind, "inbattle")) ok = s->inBattle == (atoi(a) != 0);
     else if (!strcmp(kind, "hp")) ok = s->party[atoi(a)].hp == atoi(b);
+    else if (!strcmp(kind, "flying")) ok = pk_flight_state() == atoi(a);
     if (!ok) {
         failures++;
         printf("FAIL: expect %s\n  ", what);
@@ -399,6 +405,53 @@ static void command(char* line) {
             p += 2;
         }
         run_script(bytes, len);
+    } else if (!strcmp(cmd, "takeoff")) {
+        // TAKE OFF / LAND picked (the quick menu, the MAP): the session runs it between two frames.
+        session.flightAsk = 1;
+    } else if (!strcmp(cmd, "flyto")) {
+        // The scenic FLY to map section N (FLY STYLE SCENIC), routed between two frames.
+        session.flyMapsec = session.scenicMapsec = atoi(args);
+        session.scenicAsk = 1;
+    } else if (!strcmp(cmd, "flysettings") && sscanf(args, "%d %d %d", &a, &b, &a3) == 3) {
+        // FLY STYLE CLASSIC, FLIGHT AREA ANYWHERE, FLY ON.
+        settings.flyClassic = a != 0;
+        settings.flightAnywhere = b != 0;
+        settings.flightVehicle = a3;
+    } else if (!strcmp(cmd, "flight")) {
+        // Where the flight is: pk_flight's state, the player's map and tile, FLIGHT AREA's maps.
+        if (!session.flightCfg) {
+            printf("flight: none for this game\n");
+        } else {
+            char info[512];
+            pk_flight_info(session.core, info, sizeof(info));
+            struct flight_spot here = { -1, 0, 0 };
+            flight_here(session.core, session.flightCfg, &here);
+            printf("flight state=%d map=%d.%d x=%d y=%d area=%d seeded=%d key=%08X notice=\"%s\" | %s\n", pk_flight_state(), here.map >> 8,
+                   here.map & 0xFF, here.x, here.y, session.flightArea.count, session.flightArea.seeded, session.flightArea.key, session.notice, info);
+        }
+    } else if (!strcmp(cmd, "seed") && session.flightCfg) {
+        // FLIGHT AREA's seed from the save again, timed (it runs once a run, on the emulator's thread).
+        static struct flight_area area;
+        flight_area_clear(&area, 1);
+        struct timespec t0, t1;
+        clock_gettime(CLOCK_MONOTONIC, &t0);
+        flight_area_seed(&area, session.core, session.flightCfg, session.rom, session.romSize);
+        clock_gettime(CLOCK_MONOTONIC, &t1);
+        printf("seed: %d maps in %.1f ms\n", area.count, (t1.tv_sec - t0.tv_sec) * 1e3 + (t1.tv_nsec - t0.tv_nsec) / 1e6);
+    } else if (!strcmp(cmd, "route")) {
+        // The scenic route from here to map section N, timed, without flying it.
+        struct flight_spot here, dest;
+        static uint8_t dirs[FLIGHT_MAX_STEPS];
+        int mapsec = atoi(args), n = -2;
+        struct timespec t0, t1;
+        clock_gettime(CLOCK_MONOTONIC, &t0);
+        if (session.flightCfg && flight_here(session.core, session.flightCfg, &here) &&
+            flight_destination(session.core, session.flightCfg, session.rom, session.romSize, mapsec, &dest))
+            n = flight_route(session.core, session.flightCfg, session.rom, session.romSize, &here, &dest,
+                             settings.flightAnywhere ? NULL : &session.flightArea, dirs);
+        clock_gettime(CLOCK_MONOTONIC, &t1);
+        printf("route to %d: %d steps in %.1f ms\n", mapsec, n,
+               (t1.tv_sec - t0.tv_sec) * 1e3 + (t1.tv_nsec - t0.tv_nsec) / 1e6);
     } else if (!strcmp(cmd, "flash")) {
         // FLASH picked from the quick menu: the session runs it between two frames.
         session.flashAsk = 1;
@@ -510,7 +563,7 @@ int main(int argc, char** argv) {
     if (save) core->loadSave(core, save);
     core->reset(core);
     pk_heal_rtc(core);
-    struct pd_session_host files = { .statePath = state_path, .backupSave = no_backup };
+    struct pd_session_host files = { .statePath = state_path, .backupSave = no_backup, .flightAreaPath = flight_area_path };
     session.host.batteryPct = 76;
     pd_session_start(&session, core, video, &settings, &files);
     printf("%s (%s rev %d): %s\n", session.game.title, session.game.code, session.game.revision,

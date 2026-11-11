@@ -441,6 +441,13 @@ static void cheat_path(void* ctx, uint32_t crc, char* path, size_t len) {
     snprintf(path, len, "sdmc:" BASE_DIR "/cheats/%08lX.cheats", (unsigned long) crc);
 }
 
+// FLIGHT AREA's maps for one save of a ROM (the app's flight-area/<rom>-<save>.txt).
+static void flight_area_path(void* ctx, uint32_t crc, uint32_t key, char* path, size_t len) {
+    (void) ctx;
+    mkdir("sdmc:" BASE_DIR "/flight-area", 0777);
+    snprintf(path, len, "sdmc:" BASE_DIR "/flight-area/%08lX-%08lX.txt", (unsigned long) crc, (unsigned long) key);
+}
+
 // Runs one game until the player leaves (true) or the app is closed (false).
 static bool run_game(const char* file) {
     char romPath[512], savePath[512], base[256];
@@ -523,7 +530,7 @@ static bool run_game(const char* file) {
     snprintf(gameFiles.saveSd, sizeof(gameFiles.saveSd), "%s", saveSd);
     bool wideThread = gpu_wide_thread(pk_wide_finish);
     struct pd_session_host files = { state_path, backup_for_load, settings_changed, cheat_path, &gameFiles,
-                                     wideThread ? gpu_wide_go : NULL, wideThread ? gpu_wide_join : NULL, NULL };
+                                     wideThread ? gpu_wide_go : NULL, wideThread ? gpu_wide_join : NULL, NULL, flight_area_path };
 #ifdef PD_DEV
     files.clock = svcGetSystemTick;
 #endif

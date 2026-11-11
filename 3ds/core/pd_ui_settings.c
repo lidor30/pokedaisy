@@ -14,6 +14,9 @@ static const char* const SCREEN_NAMES[PD_SCREEN_MODES] = { "PIXEL 1x", "SHARP 1.
 static const char* const ASPECT_NAMES[PD_ASPECTS] = { "ORIGINAL", "EXPAND", "ZOOM OUT" };
 const char* const PD_GAME_SPEEDS[PD_GAME_SPEED_COUNT] = { "1x", "1.5x", "2x", "3x", "4x", "0.5x", "0.25x" };
 static const char* const VOLUMES[5] = { "20%", "40%", "60%", "80%", "100%" };
+// FLY ON (the app's FlightVehicle, linux/flight.h's enum flight_vehicle): the game's bird, or a vehicle with the player in it.
+static const char* const FLY_ON_NAMES[4] = { "BIRD", "AIR BALLOON", "HELICOPTER", "ZEPPELIN" };
+static const char* flight_vehicle_label(int v) { return FLY_ON_NAMES[v >= 0 && v < 4 ? v : 0]; }
 
 const char* pd_aspect_name(int aspect) {
     return aspect >= 0 && aspect < PD_ASPECTS ? ASPECT_NAMES[aspect] : "";
@@ -262,6 +265,15 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         group(c, ix, &y, "GAMEPLAY");
         if (host->wildSupported) setting(ui, c, ix, &y, iw, SETTING_WILD, "WILD ENCOUNTERS", st->wildOff ? "OFF" : "ON");
         else muted_row(c, ix, &y, iw, "WILD ENCOUNTERS", "N/A");
+        // FREE FLIGHT's (the app's FLY STYLE / FLIGHT AREA, and MAKEOVER's FLY ON): two values flip in place.
+        if (host->flightSupported) {
+            setting(ui, c, ix, &y, iw, SETTING_FLY_STYLE, "FLY STYLE", st->flyClassic ? "CLASSIC" : "SCENIC");
+            setting(ui, c, ix, &y, iw, SETTING_FLIGHT_AREA, "FLIGHT AREA", st->flightAnywhere ? "ANYWHERE" : "VISITED");
+            setting(ui, c, ix, &y, iw, SETTING_FLY_ON, "FLY ON", flight_vehicle_label(st->flightVehicle));
+        } else {
+            muted_row(c, ix, &y, iw, "FLY STYLE", "N/A");
+            muted_row(c, ix, &y, iw, "FLIGHT AREA", "N/A");
+        }
         if (host->fieldSupported) {
             setting(ui, c, ix, &y, iw, SETTING_AUTO_RUN, "AUTO-RUN", st->autoRun ? "ON" : "OFF");
             setting(ui, c, ix, &y, iw, SETTING_RUN_INDOORS, "RUN INDOORS", st->runIndoors ? "ON" : "OFF");
@@ -557,6 +569,9 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     }
     case PD_OVERLAY_PICK_VOLUME:
         pick_list(ui, c, "GAME VOLUME", VOLUMES, 5, ui->settings->gameVolume / 20 - 1);
+        break;
+    case PD_OVERLAY_PICK_FLY_ON:
+        pick_list(ui, c, "FLY ON", FLY_ON_NAMES, 4, ui->settings->flightVehicle);
         break;
     case PD_OVERLAY_TAB_BAR:
         tab_bar_page(ui, c);

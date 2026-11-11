@@ -300,6 +300,12 @@ void ui_map_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
             map_button(ui, c, "ME", HIT_MAP_ME);
         if (art->pages > 1) map_button(ui, c, pd_map_page_name(g, (page + 1) % art->pages), HIT_MAP_REGION);
     }
+    // FREE FLIGHT's TAKE OFF (LAND while up) under the row, at its right end (MapScreen's TakeOffButton, under FLY).
+    if (host && host->flightReady) {
+        buttonRight = view.x + view.w - 4;
+        buttonTop += 26;
+        map_button(ui, c, host->flying ? "LAND" : "TAKE OFF", HIT_MAP_TAKE_OFF);
+    }
 }
 
 // MAP's FLY: the towns the game would fly to.
@@ -437,6 +443,9 @@ bool ui_map_act(struct pd_ui* ui, int id) {
         return true;
     case HIT_MAP_FLY:
         ui->action = PD_ACTION_FLY_ASK;
+        return true;
+    case HIT_MAP_TAKE_OFF:
+        ui->action = PD_ACTION_FLIGHT;
         return true;
     default:
         return false;

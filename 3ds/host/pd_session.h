@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "../../linux/fly.h"
+#include "../../linux/flight.h"
 #include "../../linux/hud.h"
 #include "../../linux/quick_menu.h"
 #include "../core/pd_binput.h"
@@ -50,6 +51,8 @@ struct pd_session_host {
     void (*wideJoin)(void);
     // The dev build's clock, for where a frame goes (pd_session_prof); NULL: not counted.
     uint64_t (*clock)(void);
+    // FLIGHT AREA's file for one save of a ROM (by its CRC32 and flight_save_key); NULL = kept for this run only.
+    void (*flightAreaPath)(void* ctx, uint32_t crc, uint32_t key, char* path, size_t len);
 };
 
 // Clock ticks spent since the host last zeroed it: in the core, waiting for its renderer, in EXPAND, reading the snapshot.
@@ -127,6 +130,19 @@ struct pd_session {
     int tmStage, tmWait, tmItem;      // 1 = the fade's on its way to the game's TM screen
     uint32_t tmCallback;
     bool itemsOk, pcOk, bikeOk;
+
+    // FREE FLIGHT, FLIGHT AREA and the scenic FLY (linux/flight.c over the app's pk_flight.c): NULL where the game can't.
+    const struct pd_config* flightCfg;
+    int flightAsk;           // 1+ = TAKE OFF / LAND picked, run between two frames
+    int flightState;         // pk_flight_state() after the last frame
+    int flightVehicle;       // FLY ON the words were last given with
+    bool flightDrawn;        // the flight's shadow went into the last frame shown
+    bool scenic;             // the flight up there is the scenic FLY's (the trip runs faster)
+    int scenicAsk;           // 1+ = FLY STYLE SCENIC to scenicMapsec, routed between two frames
+    int scenicMapsec;
+    bool flightAreaAnywhere; // pk_flight was told ANYWHERE
+    int flightAreaTold;      // the frame FLIGHT AREA's edge was last explained
+    struct flight_area flightArea;
 
     // USE / GIVE / TAKE, each run between frames.
     int itemAsk;   // 1 = pick wanted, 2 = apply, 3 = take

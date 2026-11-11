@@ -111,6 +111,13 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   on the GBA games with their handlers known and on every Game Boy game (its 2x2 menu in the cart's own words).
 - **QUICK MENU** (Y): PC, FLY, FLASH (English FireRed, LeafGreen, Emerald, Ruby, Sapphire: the game's own cut-in and light,
   dimmed outside a dark cave; `linux/flash.c`), REPEL, BIKE, WILD, states, FF. The Game Boy games have PC, FLY and WILD (`GbField`).
+- **FREE FLIGHT** (retail English FireRed, LeafGreen and Emerald, as in the app): TAKE OFF from the QUICK MENU or under the
+  MAP's buttons puts you on the game's FLY bird (or FLY ON's balloon, helicopter or zeppelin), the D-pad flies over anything,
+  B or LAND comes down on the nearest ground. FLY STYLE SCENIC (the default) flies FLY's trip over the real map, zoomed out on
+  EXPAND, and lands at the town's FLY spot; a town that isn't joined to where you are gets the game's own FLY. FLIGHT AREA
+  VISITED (the default; the app's WHERE YOU'VE BEEN) keeps both to the maps your save has seen, kept per save in
+  `sdmc:/pokedaisy/flight-area/`. The flying is the app's own `pk_flight.c`; `linux/flight.c` has its gates, the area and the
+  route (a breadth-first search over the joined maps, about a millisecond on a desktop).
 - **EXPAND / ZOOM OUT** on the games the app has it for, Game Boy too, and the **HUD** (party, minimap, balls,
   Repel steps), kept to the game's picture without EXPAND, in the app's battle HP box look: every window with its
   shadow down and right, the party as sprite and HP bar (status tags in a row of their own), the QUICK MENU's tiles

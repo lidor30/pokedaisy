@@ -385,6 +385,24 @@ struct pd_config {
     uint32_t flashFlagGet, flashSetUp, flashMenuCb, flashPostCb, flashSlot, flashMapHeader, flashBadgeCheck, flashBadgeCheckCrc;
     int flashBadgeFlag, flashLitFlag, flashCaveOff;
     uint32_t flashCallbacks[2], flashCrcs[4];
+    // FREE FLIGHT and the scenic FLY (Flight.kt's FlightFns, the field-item record's flight): pk_flight.h's words, plus
+    // what FLIGHT AREA and the scenic route read (gMapGroups with each group's size, sHealLocations, SaveBlock1's pos).
+    // flightCrcs: CRC32 of each called function's first 32 bytes (FlightFns.functions' order). flightObjectEvents 0 = none.
+    // flightClassicFly false: never the game's own FLY warp (Emerald Kaizo), the scenic FLY only.
+    uint32_t flightObjectEvents, flightPlayerAvatar, flightSprites, flightVmap, flightConnectionFlags, flightSaveBlock1Ptr;
+    uint32_t flightSaveBlock2Ptr, flightMain, flightCb2Overworld, flightLockByte, flightPaletteFade, flightLockControls;
+    uint32_t flightUnlockControls, flightCreateSprite, flightDestroySprite, flightStartSpriteAnim, flightBirdTemplate;
+    uint32_t flightBehaviorAt, flightCollisionAt, flightElevationAt, flightObjectAt, flightPlaySe, flightSpriteOffset;
+    uint32_t flightMapHeader, flightDrawMetatileAt, flightMapGroups, flightHealLocations, flightRiderTemplate, flightRiderGfx;
+    uint32_t flightSpriteDummy, flightScratch, flightDrawView, flightSpriteOffsetY, flightMapGroupsXor, flightBirdPalette;
+    uint32_t flightFollowerRemove, flightFollowerUpdate;
+    int flightSeFly, flightSeFailure, flightWalkFast, flightWalkFaster, flightWalkCurrent, flightWalkSlide;
+    int flightHealLocationSize, flightHealLocationCount, flightRiderAnim, flightBirdPaletteTag, flightObjSpriteId;
+    int flightSaveBlock1PosOff, flightMapGridUndefined;
+    int flightLandOk[32], flightMapGroupSizes[64], flightNoFly[4];
+    uint32_t flightCrcs[17];
+    bool flightSaveBlockStatic, flightClassicFly;
+
     // USE on a TM / HM (TmTeach.kt's TmFns, the config's TM record): gSpecialVar_ItemId, gItemUseCB and ItemUseCB_TMHM,
     // CB2_ShowPartyMenuForItemUse, gPartyMenu (its cursor at tmPartyMenuSlotOff), CB2_InitPartyMenu, gMain.callback2,
     // SetMainCallback2, CB2_ReturnToField, CleanupOverworldWindowsAndTilemaps, FadeScreen, Lock / UnlockPlayerFieldControls,
@@ -451,6 +469,9 @@ struct pd_game {
     // The game's shiny check (the app's NativeConfig.shinyBelow, set by hash): shiny when the shiny value is below it;
     // 0 = the party layout's own rule, if any.
     int shinyBelow;
+    // English FireRed / Emerald proven retail: its hash, a collection's dump of it or a randomizer's copy (the app's
+    // retailRom, which FREE FLIGHT goes by).
+    bool retail;
     // A Game Boy game: no map-section names yet (the GBA hacks' come from pd_text.mapsecs / the ROM).
     bool hackMaps;
     // What the app shows of this ROM beyond its config (pd_games_gen.c, by SHA-1): its look, its PC's moves; NULL = none.

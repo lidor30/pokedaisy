@@ -21,7 +21,7 @@ file(GLOB HOST_SOURCES "${REPO}/3ds/host/*.c")
 add_executable(pd_sim pd_sim.c ${HOST_SOURCES} ${CORE_SOURCES} "${REPO}/3ds/desktop/pd_png.c"
     "${REPO}/app/src/main/cpp/pk_host.c" "${REPO}/app/src/main/cpp/pk_call.c" "${REPO}/app/src/main/cpp/pk_cheats.c" "${REPO}/app/src/main/cpp/pk_gb_field.c"
     "${REPO}/app/src/main/cpp/pk_wide.c" "${REPO}/app/src/main/cpp/pk_wide_gb.c"
-    "${REPO}/linux/fly.c" "${REPO}/linux/flash.c" "${REPO}/linux/tm_teach.c" "${REPO}/linux/field_items.c" "${REPO}/linux/gb_field.c" "${REPO}/linux/wild.c" "${REPO}/linux/hud.c"
+    "${REPO}/linux/fly.c" "${REPO}/linux/flash.c" "${REPO}/linux/flight.c" "${REPO}/app/src/main/cpp/pk_flight.c" "${REPO}/linux/tm_teach.c" "${REPO}/linux/field_items.c" "${REPO}/linux/gb_field.c" "${REPO}/linux/wild.c" "${REPO}/linux/hud.c"
     "${REPO}/linux/quick_menu.c")
 target_include_directories(pd_sim PRIVATE "${REPO}/third_party/mgba/include" "${REPO}/third_party/mgba/src"
     "${CMAKE_CURRENT_BINARY_DIR}/mgba/include" "${REPO}/3ds/core" "${REPO}/linux" "${REPO}/app/src/main/cpp")

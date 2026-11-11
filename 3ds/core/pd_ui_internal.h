@@ -63,6 +63,7 @@ enum {
     HIT_MAP_ME = 902,
     HIT_MAP_PLACES = 903,
     HIT_MAP_FLY = 904,
+    HIT_MAP_TAKE_OFF = 905,
     HIT_FLY_TOWN = 1300,   // + town
     HIT_PLACE = 1000,      // + PLACES row
     HIT_DEX_LIST = 1400,
@@ -135,6 +136,9 @@ enum setting_row {
     SETTING_BATTLE_STYLE,
     SETTING_BATTLE_INFO,
     SETTING_BATTLE_VIEW,
+    SETTING_FLY_STYLE,
+    SETTING_FLIGHT_AREA,
+    SETTING_FLY_ON,
     SETTING_RESTART,
 };
 

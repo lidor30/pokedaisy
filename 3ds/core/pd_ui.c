@@ -528,6 +528,7 @@ static void act(struct pd_ui* ui, int id) {
             if (ui->overlay == PD_OVERLAY_PICK_ASPECT && i < PD_ASPECTS) ui->settings->aspect = i;
             if (ui->overlay == PD_OVERLAY_PICK_SPEED) ui->settings->gameSpeed = i;
             if (ui->overlay == PD_OVERLAY_PICK_VOLUME) ui->settings->gameVolume = (i + 1) * 20;
+            if (ui->overlay == PD_OVERLAY_PICK_FLY_ON && i < 4) ui->settings->flightVehicle = i;
             close_overlay(ui, PD_ACTION_SETTINGS_CHANGED);
         } else if (id == HIT_YES) {
             enum pd_action a = ui->overlay == PD_OVERLAY_CONFIRM_SAVE ? PD_ACTION_SAVE_STATE
@@ -567,6 +568,8 @@ static void act(struct pd_ui* ui, int id) {
         ui->overlay = PD_OVERLAY_PICK_VOLUME;
     } else if (id == HIT_SETTING + SETTING_THEME) {
         ui->overlay = PD_OVERLAY_PICK_THEME;
+    } else if (id == HIT_SETTING + SETTING_FLY_ON) {
+        ui->overlay = PD_OVERLAY_PICK_FLY_ON;
     } else if (id == HIT_SETTING + SETTING_DARK || id == HIT_SETTING + SETTING_FF_MODE || id == HIT_SETTING + SETTING_CHEATS) {
         bool* flag = id == HIT_SETTING + SETTING_DARK ? &ui->settings->darkMode :
             id == HIT_SETTING + SETTING_FF_MODE ? &ui->settings->ffNormal : &ui->settings->cheats;
@@ -577,12 +580,14 @@ static void act(struct pd_ui* ui, int id) {
     } else if (id == HIT_SETTING + SETTING_MUTE || id == HIT_SETTING + SETTING_WILD || id == HIT_SETTING + SETTING_AUTO_RUN ||
                id == HIT_SETTING + SETTING_RUN_INDOORS || id == HIT_SETTING + SETTING_HINTS || id == HIT_SETTING + SETTING_ONE_TAP ||
                id == HIT_SETTING + SETTING_BATTLE_STYLE || id == HIT_SETTING + SETTING_BATTLE_INFO ||
-               id == HIT_SETTING + SETTING_BATTLE_VIEW) {
+               id == HIT_SETTING + SETTING_BATTLE_VIEW || id == HIT_SETTING + SETTING_FLY_STYLE ||
+               id == HIT_SETTING + SETTING_FLIGHT_AREA) {
         struct pd_settings* st = ui->settings;
         bool* flag = id == HIT_SETTING + SETTING_MUTE ? &st->gameMuted : id == HIT_SETTING + SETTING_WILD ? &st->wildOff
             : id == HIT_SETTING + SETTING_AUTO_RUN ? &st->autoRun : id == HIT_SETTING + SETTING_RUN_INDOORS ? &st->runIndoors
             : id == HIT_SETTING + SETTING_HINTS ? &st->hideHints : id == HIT_SETTING + SETTING_ONE_TAP ? &st->oneTapMoves
             : id == HIT_SETTING + SETTING_BATTLE_INFO ? &st->noBattleInfo : id == HIT_SETTING + SETTING_BATTLE_VIEW ? &st->battleInfoFirst
+            : id == HIT_SETTING + SETTING_FLY_STYLE ? &st->flyClassic : id == HIT_SETTING + SETTING_FLIGHT_AREA ? &st->flightAnywhere
             : &st->battleGen5;
         *flag = !*flag;
         ui->action = PD_ACTION_SETTINGS_CHANGED;
