@@ -982,6 +982,12 @@ void pk_wide_flight_offset(int* dx, int* dy) {
     *dy = flyDy;
 }
 
+void pk_wide_bg2_scroll(struct mCore* core, int* h, int* v) {
+    struct GBA* gba = core && core->platform(core) == mPLATFORM_GBA ? (struct GBA*) core->board : NULL;
+    *h = gba ? gba->memory.io[0x18 >> 1] & 0x1FF : 0;   // BG2HOFS / VOFS: the map's scroll, as this frame was drawn
+    *v = gba ? gba->memory.io[0x1A >> 1] & 0x1FF : 0;
+}
+
 void pk_wide_flight_camera(int* x, int* y) {
     *x = flyCx + flyDx;
     *y = flyCy + flyDy;

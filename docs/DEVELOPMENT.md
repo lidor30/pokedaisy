@@ -2323,8 +2323,10 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
 - **Clouds** (pk_flight.c's flDrawClouds): while up, round-puff cumulus (flMakeClouds: clusters of domes on a wrapped 128 x 128
   map, 2 x 2 px a texel, read bilinear) drawn into the finished frame over the ground and shadow, under the bird: a white core
   and a thinner rim, bluer where the cloud thins below, at most 70% opaque, as thick as the bird is high. They slide by at
-  1.45x the real camera's movement (gSpriteCoordOffset's step: it moves as the ground does, staircase and all - steered by
-  the flight's own speed they shook on diagonals) plus EXPAND's smooth-camera offset times 0.45, and a slow wind. With
+  1.15x the camera the frame shows (the map's BG2 scroll as it was drawn, `pk_wide_bg2_scroll`: it moves as the ground
+  does, staircase and all - the flight's own speed, or gSpriteCoordOffset, which is the next frame's, shook them against
+  the ground on diagonals) plus EXPAND's smooth-camera offset times 0.15, and a slow wind; mgba_dump's `flightinfo` prints
+  their offset and the scroll, so a diagonal's frames can be checked: against the ground they only ever drift one way. With
   EXPAND the clouds go over its whole picture after it's made (`pk_flight_draw_wide`, the bird's pixels masked out), else
   into the GBA frame; there the draw's undo covers the whole frame (its buffers grow to it). Taking off from a bike gets off it first (`offBikeThen`: the game's own SELECT path).
 - **FLY ON** (MAKEOVER, `Prefs.flightVehicleId`, `FlightVehicle`, the PK_FLIGHT_VEHICLE word): an air balloon, a helicopter,

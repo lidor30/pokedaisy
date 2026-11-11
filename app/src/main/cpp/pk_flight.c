@@ -1377,13 +1377,13 @@ static void flShadeUndo(void) {
 
 /**
  * Clouds while up: a sheet of soft white puffs between the bird and the ground, seen through (at most FL_CLOUD_ALPHA), over
- * the ground and its shadow, under the bird. They're nearer the eye than the ground, so they slide by faster than it does
- * (FL_CLOUD_PARALLAX times the flight's own speed, the other way) and drift a little on the wind - the ground moving one
+ * the ground and its shadow, under the bird. They're nearer the eye than the ground, so they slide by a little faster than
+ * it does (FL_CLOUD_PARALLAX times the camera's own movement) and drift a little on the wind - the ground moving one
  * way and the clouds another is what reads as height. A 128 x 128 map of round puffs in clusters (flMakeClouds), each texel
  * 2 x 2 pixels, wrapped; they thin in with the climb and out with the landing.
  */
 #define FL_CLOUD_N 128
-#define FL_CLOUD_PARALLAX 1.45
+#define FL_CLOUD_PARALLAX 1.15
 #define FL_CLOUD_ALPHA 0.7
 static uint8_t flCloudMap[FL_CLOUD_N * FL_CLOUD_N];
 static int flCloudMade;
@@ -1422,26 +1422,25 @@ static void flMakeClouds(void) {
     flCloudMade = 1;
 }
 
-/** The sheet moved one frame (pk_flight_tick) with the real camera - the game's sprite scroll, which moves exactly as the
- * ground does, staircase and all (the flight's own speed doesn't on a diagonal, and clouds steered by it shook against
- * the ground) - FL_CLOUD_PARALLAX times as far, plus the wind. The map is read at the pixel plus this offset. */
+/** The sheet moved one frame (pk_flight_tick) with the camera the frame shows - the map's BG2 scroll as it was drawn,
+ * which moves exactly as the ground does, staircase and all (the flight's own speed doesn't on a diagonal, and the game's
+ * sprite offset is the next frame's: either one shook the clouds against the ground) - FL_CLOUD_PARALLAX times as far,
+ * plus the wind. The map is read at the pixel plus this offset. */
 static int flCloudPrevX = 0x7FFF, flCloudPrevY;
 static void flCloudsStep(struct mCore* core) {
-    uint32_t ox = flCfg[PK_FLIGHT_SPRITE_OFFSET];
-    uint32_t oyAt = flCfg[PK_FLIGHT_SPRITE_OFFSET_Y] ? flCfg[PK_FLIGHT_SPRITE_OFFSET_Y] : ox + 2;
-    int sx = (int16_t) core->busRead16(core, ox), sy = (int16_t) core->busRead16(core, oyAt);
+    int sx, sy;
+    pk_wide_bg2_scroll(core, &sx, &sy);
     if (flCloudPrevX != 0x7FFF) {
-        // gSpriteCoordOffset goes down as the camera goes right (and may wrap at 512): the camera's step, -delta.
-        int dx = -(((sx - flCloudPrevX) + 256) & 511) + 256, dy = -(((sy - flCloudPrevY) + 256) & 511) + 256;
-        if (abs(dx) <= 32 && abs(dy) <= 32) {   // a warp or a new map's reset: no step
+        int dx = ((sx - flCloudPrevX + 128) & 0xFF) - 128, dy = ((sy - flCloudPrevY + 128) & 0xFF) - 128;   // the map's 256 px square wraps
+        if (abs(dx) <= 16 && abs(dy) <= 16) {   // a warp or a new map's reset: no step
             flCloudX += dx * FL_CLOUD_PARALLAX;
             flCloudY += dy * FL_CLOUD_PARALLAX;
         }
     }
     flCloudPrevX = sx;
     flCloudPrevY = sy;
-    flCloudX += 0.12;
-    flCloudY -= 0.05;
+    flCloudX += 0.08;
+    flCloudY -= 0.03;
     double span = FL_CLOUD_N * 2.0;
     flCloudX = fmod(flCloudX, span); if (flCloudX < 0) flCloudX += span;
     flCloudY = fmod(flCloudY, span); if (flCloudY < 0) flCloudY += span;
@@ -1614,8 +1613,10 @@ void pk_flight_info(struct mCore* core, char* out, int n) {
     int wx = 0, wy = 0, vx = 0, vy = 0;
     pk_wide_flight_offset(&wx, &wy);
     pk_wide_flight_camera(&vx, &vy);
+    int cox, coy;
+    flCloudOrigin(wx, wy, &cox, &coy);
     snprintf(out, (size_t) n, "flight: state %d phase %d bird %d shadow %d lift %d look %d at %d,%d screen %d,%d anchor %d,%d marked %d "
-             "land %d,%d route %d/%d locked %d wide %d,%d view %d,%d turn %d drawn %d", flState, flPhase, flBird, flShadowOn, flLift, flLook, x, y, sx, sy, flAnchorX, flAnchorY,
+             "land %d,%d route %d/%d locked %d wide %d,%d view %d,%d turn %d drawn %d clouds %d,%d bg %d,%d", flState, flPhase, flBird, flShadowOn, flLift, flLook, x, y, sx, sy, flAnchorX, flAnchorY,
              flMarked(core, obj), flLandX, flLandY, flRouteDone, flRouteLen, core->busRead8(core, flCfg[PK_FLIGHT_LOCK_BYTE]), wx, wy, vx, vy,
-             (int) lround(flAngle * 57.29578), flSprOn);
+             (int) lround(flAngle * 57.29578), flSprOn, cox, coy, flCloudPrevX, flCloudPrevY);
 }

@@ -248,6 +248,8 @@ void pk_follower_info(char* out, int n);
  * for w 64) and palette (32 bytes),
  * or NULL; drawn behind the player while they're on a bike and [on] (pk_ride_show). */
 void pk_ride_set(const uint8_t* frames, const uint8_t* pal, int w);
+/** The map's scroll (BG2HOFS / VOFS) as the frame just run was drawn - FREE FLIGHT's clouds follow it. */
+void pk_wide_bg2_scroll(struct mCore* core, int* h, int* v);
 void pk_ride_show(struct mCore* core, int on);
 void pk_ride_info(char* out, int n);
 
