@@ -1649,7 +1649,10 @@ int main(int argc, char **argv) {
   }
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
   SDL_DisplayMode display = {0};
-  bool fullscreen = getenv("POCKET_FULLSCREEN") != NULL;
+  // Fullscreen with POCKET_FULLSCREEN, and under gamescope (the Steam Deck's Game Mode): it scales a window to the
+  // screen keeping its shape, so a window there was letterboxed and EXPAND couldn't reach the edges.
+  const char *desktop = getenv("XDG_CURRENT_DESKTOP");
+  bool fullscreen = getenv("POCKET_FULLSCREEN") != NULL || (desktop && strstr(desktop, "gamescope"));
   if (fullscreen && SDL_GetCurrentDisplayMode(0, &display))
     fullscreen = false;
   // POCKET_WINDOW=WxH: a window the size of a device's panel, for trying a layout on a desktop.
@@ -1674,6 +1677,9 @@ int main(int argc, char **argv) {
   if (!SDL_GetRendererInfo(renderer, &rendererInfo))
     fprintf(stderr, "Video backend: %s\n", rendererInfo.name);
   SDL_ShowCursor(SDL_DISABLE);
+  // SDL starts text input with the window, and Steam answers it with its on-screen keyboard: the host reads keys,
+  // never text.
+  SDL_StopTextInput();
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
   audio_open();
   rawTrimui = getenv("POCKET_RAW_TRIMUI") && !strcmp(getenv("POCKET_RAW_TRIMUI"), "1");
