@@ -18,6 +18,8 @@
 #include "hud.h"
 #include "pd_guide.h"
 #include "pk_call.h"
+#include "pk_flight.h"
+#include "pd_flight_gen.h"
 #include "pk_wide.h"
 #include "pk_wide_gb_profile.h"
 #include "polished_wide_tables.h"
@@ -279,6 +281,9 @@ enum { PF_RUN, PF_WIDE, PF_DRAW, PF_PRESENT, PF_TOTAL, PF_CONV, PF_VIEW };
 static bool wideSupported, wideReady, fieldKnown;
 static unsigned wideW, wideH;
 static uint32_t wideSource[240 * 160], wideFrame[PK_WIDE_MAX_VIEW_W * PK_WIDE_MAX_VIEW_H];
+static const uint16_t *base_pixels(void);
+static uint16_t flightPixels[256 * 160];
+static bool flightFrame;
 static uint32_t wildSwitch;
 static inline uint32_t to_xbgr(uint16_t p) {
   uint32_t r = (p >> 11) & 31, g = (p >> 5) & 63, b = p & 31;
@@ -336,7 +341,7 @@ static void draw_game(void) {
     if (oy + (int)y * s < 0 || oy + ((int)y + 1) * s > CH)
       continue;
     for (unsigned x = 0; x < gameW; x++) {
-      uint32_t p = from565(outputBuffer[y * 256 + x]);
+      uint32_t p = from565(base_pixels()[y * 256 + x]);
       for (int k = 0; k < s; k++)
         row[x * s + k] = p;
     }
@@ -349,6 +354,8 @@ static void draw_game(void) {
 /* The usual frame (nothing over it but the HUD) goes straight into the frontend's 565 buffer, never through the 32-bit
  * canvas: that detour costs two passes over every pixel of the window. */
 static bool direct565;
+static const uint16_t *base_pixels(void) { return flightFrame ? flightPixels : outputBuffer; }
+
 static inline uint16_t xbgr_to565(uint32_t p) { return (uint16_t)(((p & 0xF8) << 8) | ((p >> 5) & 0x07E0) | ((p >> 19) & 0x1F)); }
 /* n pixels of XBGR into 565, 16 at a time on NEON (R,G,B are bytes 0,1,2 of each pixel). */
 static void row_to565(uint16_t *dst, const uint32_t *src, unsigned n) {
@@ -402,11 +409,11 @@ static void draw_game_fast(void) {
       continue;
     uint16_t *row = out565 + (size_t)cy * CW + ox;
     if (s == 1) {
-      memcpy(row, outputBuffer + (size_t)y * 256, (size_t)gameW * sizeof *row);
+      memcpy(row, base_pixels() + (size_t)y * 256, (size_t)gameW * sizeof *row);
     } else {
       for (unsigned x = 0; x < gameW; x++)
         for (int j = 0; j < s; j++)
-          row[x * s + j] = outputBuffer[y * 256 + x];
+          row[x * s + j] = base_pixels()[y * 256 + x];
       for (int k = 1; k < s; k++)
         memcpy(row + (size_t)k * CW, row, (size_t)gameW * s * sizeof *row);
     }
@@ -565,6 +572,7 @@ static int fieldFlags, hudFieldFrames;
 static bool quickOpen;
 static int quickSel;
 static const struct pd_config *flyCfg;
+static bool freeFlight, takeOff;
 static struct fly_targets flyT;
 static const char *flyNames[FLY_MAX_TOWNS];
 static int flyAsk, flySel, flyStage, flyMapsec, flyWait;
@@ -806,13 +814,23 @@ static void call_test_report(void) {
 /* After every game frame: pk_wide's RAM history, and (wideReady) this frame's window. */
 static void wide_tick(void) {
   wideReady = false;
-  if (!wideSupported)
+  flightFrame = false;
+  if (!wideSupported && (!freeFlight || pk_flight_state() == PK_FLIGHT_IDLE))
     return;
-  unsigned fw = (unsigned)pk_wide_frame_w(), fh = (unsigned)pk_wide_frame_h();
+  unsigned fw = wideSupported ? (unsigned)pk_wide_frame_w() : 240;
+  unsigned fh = wideSupported ? (unsigned)pk_wide_frame_h() : 160;
   PF_T(cv0);
   for (unsigned y = 0; y < fh; y++)
     for (unsigned x = 0; x < fw; x++)
       wideSource[y * fw + x] = to_xbgr(outputBuffer[y * 256 + x]);
+  if (freeFlight && pk_flight_state() != PK_FLIGHT_IDLE && fw == 240 && fh == 160) {
+    pk_flight_draw(wideSource, 240, 160, 240);
+    for (unsigned y = 0; y < 160; y++)
+      row_to565(flightPixels + y * 256, wideSource + y * 240, 240);
+    flightFrame = true;
+  }
+  if (!wideSupported)
+    return;
   PF_T(cv1);
   pf_add(PF_CONV, cv1 - cv0);
   if (settings.aspect == PD_ASPECT_ORIGINAL) {
@@ -1021,6 +1039,16 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   romLen = len;
   bool gba = PD_BE_IS_GBA();
   flyCfg = game.cfg && gba && fly_supported(game.cfg, rom, len) ? game.cfg : NULL;
+  freeFlight = takeOff = flightFrame = false;
+  pk_flight_set_call(pk_call);
+  pk_flight_configure(NULL, 0);
+  for (size_t i = 0; flyCfg && i < sizeof flight_profiles / sizeof flight_profiles[0]; i++) {
+    if (!strcmp(game.sha1, flight_profiles[i].sha1)) {
+      pk_flight_configure(flight_profiles[i].words, PK_FLIGHT_WORDS);
+      freeFlight = true;
+      break;
+    }
+  }
   itemsOk = game.cfg && gba && field_items_supported(game.cfg, rom, len);
   pcOk = itemsOk && pc_supported(game.cfg, rom, len);
   bikeOk = itemsOk && bike_supported(game.cfg);
@@ -1065,6 +1093,8 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
 /** After a state load or a reset the game is another one: nothing the layer had started may finish in it (a FLY's warp,
  * the bike's registered item put back, a Game Boy action withdrawn), and EXPAND's RAM history is from before the jump. */
 static void layer_jump(void) {
+  takeOff = flightFrame = false;
+  pk_flight_reset();
   if (wideSupported)
     pk_wide_jump(core, wideSource); // the loaded RAM is the next frame's history: the map past the edges at once
   else
@@ -1118,6 +1148,8 @@ RETRO_API void retro_reset(void) {
 }
 
 RETRO_API void retro_unload_game(void) {
+  pk_flight_configure(NULL, 0);
+  freeFlight = takeOff = flightFrame = false;
   pk_wide_configure(0);
   WIDE_CHECK_REPORT();
   CALL_TEST_REPORT();
@@ -1231,10 +1263,11 @@ RETRO_API void retro_run(void) {
     pd_binput_cancel(&polishedInput);
     notice(pd_field_input_message(&polishedInput.field));
   }
-  if (inputRunning)
+  const bool airborne = freeFlight && pk_flight_state() != PK_FLIGHT_IDLE;
+  if (inputRunning || airborne)
     pressedKeys = 0;
   touch_poll();
-  if (inputRunning)
+  if (inputRunning || airborne)
     touchDown = touchWas = false;
   if (polishedActions && down(quickBtn) && !quickOpen && !companion)
     snapshot();
@@ -1315,6 +1348,9 @@ RETRO_API void retro_run(void) {
     quick[quickN++] = (struct quick_item){QUICK_FLY, false, false, why,
         flyer < 0 || flyer >= snap.partyCount ? 0 : snap.party[flyer].species, 0, NULL};
   }
+  if (freeFlight)
+    quick[quickN++] = (struct quick_item){QUICK_TAKE_OFF, false, false,
+        fly_flyer(&snap) < 0 ? "No one in your party knows FLY" : NULL, 0, 0, NULL};
   if (itemsOk || polishedActions) {
     repelKindCount = 0;
     for (int k = 0; k < REPEL_KINDS; k++) {
@@ -1389,7 +1425,11 @@ RETRO_API void retro_run(void) {
     int dx = down(RIGHT) - down(LEFT), dy = down(DOWN) - down(UP);
     if (dx || dy)
       quickSel = quick_step(quickN, quickSel, dx, dy, CW, CH);
-    if (down(A) && !quick[quickSel].why && quick[quickSel].action == QUICK_FLY) {
+    if (down(A) && !quick[quickSel].why && quick[quickSel].action == QUICK_TAKE_OFF) {
+      quickOpen = false;
+      takeOff = true;
+      shortcutBlocked |= held;
+    } else if (down(A) && !quick[quickSel].why && quick[quickSel].action == QUICK_FLY) {
       if (polishedActions) {
         quickOpen = false;
         shortcutBlocked |= held; // the A that picked it stays out of the game
@@ -1664,6 +1704,8 @@ RETRO_API void retro_run(void) {
     }
     PF_T(pa);
     mgba_retro_run();
+    if (freeFlight)
+      pk_flight_tick(core);
     PF_T(pb);
     if (fieldStarted && polishedInput.field.result != PD_FIELD_RUNNING && polishedInput.field.result != PD_FIELD_CANCELLED) {
       notice(pd_field_input_message(&polishedInput.field));
@@ -1706,6 +1748,20 @@ RETRO_API void retro_run(void) {
   // FLY's steps and the field-item jobs, each between two frames the game's own code can be called in.
   bool flyBattle = snap.inBattle || (fieldFlags & PK_FIELD_BATTLE);
   bool flyBusy = companion || (fieldFlags & PK_FIELD_LOCKED) || (wideSupported && pk_wide_scene() != PK_WIDE_SCENE_FIELD);
+  if (takeOff) {
+    takeOff = false;
+    snapshot();
+    enum fly_result gate = fly_gate(core, flyCfg, romData, romLen, flyBusy, flyBattle);
+    if (gate == FLY_OK && fly_flyer(&snap) < 0)
+      gate = FLY_NO_FLYER;
+    if (gate != FLY_OK)
+      notice(fly_reason(gate));
+    else {
+      int result = pk_flight_take_off(core);
+      if (result != PK_FLIGHT_OK)
+        notice(result == PK_FLIGHT_NOT_ON_FOOT ? "Take off from land" : "Can't take off now");
+    }
+  }
   CALL_TEST(flyBusy, flyBattle);
   if ((flyCfg || gbf) && flyAsk && quickOpen && !companion) {
     bool answered = false;
