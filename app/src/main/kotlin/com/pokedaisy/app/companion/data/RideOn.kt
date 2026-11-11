@@ -68,7 +68,7 @@ object RideOn {
         val v = art.views[view]
         val cut = art.cut[view]
         val out = IntArray(32 * 32)
-        for (i in 0 until 32 * 32) {
+        for (i in 0 until 32 * 32) {   // the rider's frame: the views' first 32 rows
             val b = v[i].toInt() and 0xFF
             out[i] = when {
                 b and 0x80 != 0 -> leg
@@ -81,7 +81,7 @@ object RideOn {
     }
 
     /** The vehicle as pk_wide.c's ride takes it: its views (south, north, west) one after another in OBJ tile order,
-     * [width] x 32 each, and its palette (16 RGB555 colours). */
+     * 32 x 64 each (the rider's frame on top, the wheels reaching below it), and its palette (16 RGB555 colours). */
     class Sprite(val frames: ByteArray, val pal: ByteArray, val width: Int) {
         fun sameAs(o: Sprite?) = o != null && width == o.width && frames.contentEquals(o.frames) && pal.contentEquals(o.pal)
     }
@@ -89,10 +89,17 @@ object RideOn {
     /** [vehicle]'s sprite; null for the bike. */
     fun sprite(vehicle: RideVehicle): Sprite? {
         val art = vehicle.art ?: return null
-        val frames = ByteArray(3 * 512)
-        for (view in 0..2) encode(IntArray(32 * 32) { art.views[view][it].toInt() and 0x0F }.let { px ->
-            IntArray(32 * 32) { i -> if (art.views[view][i].toInt() and 0x80 != 0) 0 else px[i] }
-        }, frames, view)
+        val frames = ByteArray(3 * 1024)
+        for (view in 0..2) {
+            val v = art.views[view]
+            val px = IntArray(32 * 64) { i -> if (i < v.size && v[i].toInt() and 0x80 == 0) v[i].toInt() and 0x0F else 0 }
+            // 4 x 8 tiles, row by row (OBJ 1D mapping).
+            for (t in 0 until 32) for (i in 0 until 32) {
+                val x = (t % 4) * 8 + (i % 4) * 2
+                val y = (t / 4) * 8 + i / 4
+                frames[view * 1024 + t * 32 + i] = (px[y * 32 + x] or (px[y * 32 + x + 1] shl 4)).toByte()
+            }
+        }
         val pal = ByteArray(32)
         for (i in 1 until art.palette.size.coerceAtMost(16)) {
             val c = art.palette[i]

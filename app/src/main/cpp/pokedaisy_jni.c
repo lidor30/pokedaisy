@@ -522,7 +522,10 @@ Java_com_pokedaisy_app_MgbaCore_pkRunFrame(JNIEnv* env, jobject thiz) {
         if (g.core) pk_coop_lock_tick(g.core);
         pthread_rwlock_unlock(&pk_coreLock);
         pk_flight_tick(g.core);   // FREE FLIGHT's next step (nothing until a game configures it)
-        if (sizeof(color_t) == 4) pk_flight_draw((uint32_t*) g.video, (int) g.vw, (int) g.vh, (int) g.vw);   // its shadow
+        // Its shadow, clouds and bird; with EXPAND drawing its picture next, the clouds go over that (pk_flight_draw_wide).
+        bool wideNext = g.wide && g.wideCrc && g.viewW > 0 && g.viewH > 0 && g.viewW <= PK_WIDE_MAX_VIEW_W &&
+            g.viewH <= PK_WIDE_MAX_VIEW_H && pkWideFrameFits() && !g.wideSkipNext;
+        if (sizeof(color_t) == 4) pk_flight_draw((uint32_t*) g.video, (int) g.vw, (int) g.vh, (int) g.vw, !wideNext);
     }
     pkDrainAudio();
     // WIDE: only with a game it knows and a window set. 32-bit colour, like the screen's upload.
@@ -535,6 +538,7 @@ Java_com_pokedaisy_app_MgbaCore_pkRunFrame(JNIEnv* env, jobject thiz) {
     } else if (g.wide && g.wideCrc && v.w > 0 && v.h > 0 && v.w <= PK_WIDE_MAX_VIEW_W && v.h <= PK_WIDE_MAX_VIEW_H &&
         sizeof(color_t) == 4 && pkWideFrameFits()) {
         pk_wide_view(g.core, (const uint32_t*) g.video, g.wide, v, NULL);
+        pk_flight_draw_wide(g.wide, v.w, v.h, v.x, v.y);   // FREE FLIGHT's clouds over the whole picture
         g.wideW = v.w;
         g.wideH = v.h;
         if (pk_wide_fault()) {
@@ -615,7 +619,7 @@ Java_com_pokedaisy_app_MgbaCore_pkFollowerSet(JNIEnv* env, jobject thiz, jbyteAr
 // RIDE ON: the vehicle's views + palette (null = none) and whether it's drawn. Emu thread.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkRideSet(JNIEnv* env, jobject thiz, jbyteArray frames, jbyteArray pal, jint width) {
-    if (!frames || !pal || (width != 32 && width != 64) || (*env)->GetArrayLength(env, frames) != 3 * width * 16 ||
+    if (!frames || !pal || (width != 32 && width != 64) || (*env)->GetArrayLength(env, frames) != 3 * 1024 ||
         (*env)->GetArrayLength(env, pal) != 32) {
         pk_ride_set(NULL, NULL, 32);
         return;

@@ -116,7 +116,8 @@ object MgbaCore {
 
     /** FOLLOWER: the Pokémon's six 32x32 frames (3072 bytes) and palette (32); nulls = none. Emu thread. */
     external fun pkFollowerSet(frames: ByteArray?, pal: ByteArray?)
-    /** RIDE ON's vehicle (companion.data.RideOn.Sprite): three views ([width] x 32, OBJ tile order) and a palette, or null. Emu thread. */
+    /** RIDE ON's vehicle (companion.data.RideOn.Sprite): three views (1024 bytes each, OBJ tile order: 32 x 64 or 64 x 32 by
+     * [width]) and a palette, or null. Emu thread. */
     external fun pkRideSet(frames: ByteArray?, pal: ByteArray?, width: Int)
     /** RIDE ON's vehicle drawn this frame (behind the player, only while they're on a bike). Emu thread. */
     external fun pkRideShow(on: Boolean)

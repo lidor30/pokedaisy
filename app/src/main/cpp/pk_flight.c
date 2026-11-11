@@ -111,7 +111,7 @@ static uint32_t flSpriteAddr(int id) {
     return flCfg[PK_FLIGHT_SPRITES] + (uint32_t) id * FL_SPR_SIZE;
 }
 
-static void flCloudsStep(void);
+static void flCloudsStep(struct mCore* core);
 static pk_flight_call_fn flCallFn;
 
 void pk_flight_set_call(pk_flight_call_fn fn) {
@@ -1343,7 +1343,7 @@ void pk_flight_tick(struct mCore* core) {
     }
     // The rider is up (the bird alone is coming in, or leaving: no rider, no shadow of one).
     flShadowOn = flState != PK_FLIGHT_IDLE && flState != PK_FLIGHT_DISMOUNT && flLift > 0;
-    if (flShadowOn) flCloudsStep();
+    if (flShadowOn) flCloudsStep(core);
     flTurn();
     flCapture(core);
     flTellWide(core);
@@ -1422,14 +1422,36 @@ static void flMakeClouds(void) {
     flCloudMade = 1;
 }
 
-/** The sheet moved one frame (pk_flight_tick): on screen against the flight, faster than the ground, plus the wind. The
- * map is read at the pixel plus this offset, so flying east (the ground sliding west) the offset grows. */
-static void flCloudsStep(void) {
-    flCloudX += flVx * FL_CLOUD_PARALLAX + 0.12;
-    flCloudY += flVy * FL_CLOUD_PARALLAX - 0.05;
+/** The sheet moved one frame (pk_flight_tick) with the real camera - the game's sprite scroll, which moves exactly as the
+ * ground does, staircase and all (the flight's own speed doesn't on a diagonal, and clouds steered by it shook against
+ * the ground) - FL_CLOUD_PARALLAX times as far, plus the wind. The map is read at the pixel plus this offset. */
+static int flCloudPrevX = 0x7FFF, flCloudPrevY;
+static void flCloudsStep(struct mCore* core) {
+    uint32_t ox = flCfg[PK_FLIGHT_SPRITE_OFFSET];
+    uint32_t oyAt = flCfg[PK_FLIGHT_SPRITE_OFFSET_Y] ? flCfg[PK_FLIGHT_SPRITE_OFFSET_Y] : ox + 2;
+    int sx = (int16_t) core->busRead16(core, ox), sy = (int16_t) core->busRead16(core, oyAt);
+    if (flCloudPrevX != 0x7FFF) {
+        // gSpriteCoordOffset goes down as the camera goes right (and may wrap at 512): the camera's step, -delta.
+        int dx = -(((sx - flCloudPrevX) + 256) & 511) + 256, dy = -(((sy - flCloudPrevY) + 256) & 511) + 256;
+        if (abs(dx) <= 32 && abs(dy) <= 32) {   // a warp or a new map's reset: no step
+            flCloudX += dx * FL_CLOUD_PARALLAX;
+            flCloudY += dy * FL_CLOUD_PARALLAX;
+        }
+    }
+    flCloudPrevX = sx;
+    flCloudPrevY = sy;
+    flCloudX += 0.12;
+    flCloudY -= 0.05;
     double span = FL_CLOUD_N * 2.0;
     flCloudX = fmod(flCloudX, span); if (flCloudX < 0) flCloudX += span;
     flCloudY = fmod(flCloudY, span); if (flCloudY < 0) flCloudY += span;
+}
+
+/** Where the map is read for frame pixel (0, 0): the sheet's offset, and with EXPAND's smooth camera (its window [fdx,
+ * fdy] off the real one) as far again times FL_CLOUD_PARALLAX - 1, so the clouds keep their speed against the ground there too. */
+static void flCloudOrigin(int fdx, int fdy, int* ox, int* oy) {
+    *ox = (int) floor(flCloudX + (FL_CLOUD_PARALLAX - 1) * fdx);
+    *oy = (int) floor(flCloudY + (FL_CLOUD_PARALLAX - 1) * fdy);
 }
 
 /** The map at half a pixel's resolution, bilinear (2 x 2 blocks read as squares). */
@@ -1443,19 +1465,32 @@ static int flCloudAt(int px, int py) {
     return fy ? (top + bottom) >> 1 : top;
 }
 
-/** The clouds over frame rows / columns [x0, x1] x [y0, y1] at [strength] (0..1): pixel-art puffs - a white core, a
- * thinner rim round it, a bluer underside where the cloud thins below (lit from the top, as the games' are). */
-static void flDrawClouds(uint32_t* frame, int stride, int x0, int y0, int x1, int y1, double strength) {
+/** The bird's pixels in the last frame pk_flight_draw drew (GBA frame coordinates): the clouds over EXPAND's whole picture
+ * (pk_flight_draw_wide) leave them alone. */
+static uint8_t flBirdMask[240 * 160];
+static int flBirdMaskOn;
+static double flCloudStrength;   // the last frame's (0 = none)
+
+/** The clouds over [out]'s rows / columns [x0, x1] x [y0, y1] ([stride] a row), its pixel (x, y) being GBA frame pixel
+ * (x + fx, y + fy) - the map read there - at [strength] (0..1): pixel-art puffs, a white core, a thinner rim round it, a
+ * bluer underside where the cloud thins below (lit from the top, as the games' are). [mask]: skip the bird's pixels. */
+static void flDrawClouds(uint32_t* out, int stride, int x0, int y0, int x1, int y1, int fx, int fy, double strength, int mask) {
     if (strength <= 0.01) return;
     flMakeClouds();
-    int sx = (int) flCloudX, sy = (int) flCloudY;
+    int fdx = 0, fdy = 0;
+    pk_wide_flight_offset(&fdx, &fdy);
+    int ox, oy;
+    flCloudOrigin(fdx, fdy, &ox, &oy);
     int core = (int) (strength * FL_CLOUD_ALPHA * 256), rim = core * 5 / 9;
     for (int y = y0; y <= y1; y++) {
-        uint32_t* row = frame + y * stride;
+        uint32_t* row = out + y * stride;
+        int gy = y + fy;
         for (int x = x0; x <= x1; x++) {
-            int m = flCloudAt(x + sx, y + sy);
+            int gx = x + fx;
+            if (mask && gx >= 0 && gy >= 0 && gx < 240 && gy < 160 && flBirdMask[gy * 240 + gx]) continue;
+            int m = flCloudAt(gx + ox, gy + oy);
             if (m < 40) continue;
-            int under = flCloudAt(x + sx, y + sy + 3) < m - 30;   // the cloud thins below: its shaded side
+            int under = flCloudAt(gx + ox, gy + oy + 3) < m - 30;   // the cloud thins below: its shaded side
             int a = m >= 140 ? core : rim;
             int wr = under ? 206 : 248, wg = under ? 220 : 250, wb = under ? 240 : 255;
             uint32_t c = row[x];
@@ -1466,12 +1501,20 @@ static void flDrawClouds(uint32_t* frame, int stride, int x0, int y0, int x1, in
     }
 }
 
-void pk_flight_draw(uint32_t* frame, int w, int h, int stride) {
+void pk_flight_draw_wide(uint32_t* out, int w, int h, int vx, int vy) {
+    if (!out || flCloudStrength <= 0.01) return;
+    int fdx = 0, fdy = 0;
+    pk_wide_flight_offset(&fdx, &fdy);
+    // The window as pk_wide_view drew it: moved by the flight's smooth camera.
+    flDrawClouds(out, w, 0, 0, w - 1, h - 1, vx + fdx, vy + fdy, flCloudStrength, flBirdMaskOn);
+}
+
+void pk_flight_draw(uint32_t* frame, int w, int h, int stride, int cloudsHere) {
     if (!frame) return;
     if (frame == flShadeFrame) flShadeUndo();
     flShadeFrame = frame;
     flShadeW = 0;
-    if (!flShadowOn && !flSprOn) return;
+    if (!flShadowOn && !flSprOn) { flCloudStrength = 0; return; }
     int dx = 0, dy = 0;
     pk_wide_flight_offset(&dx, &dy);
     int lift = flLift < 0 ? 0 : flLift > FL_LIFT ? FL_LIFT : flLift;
@@ -1490,8 +1533,11 @@ void pk_flight_draw(uint32_t* frame, int w, int h, int stride) {
         if (by - half < y0) y0 = by - half;
         if (by + half > y1) y1 = by + half;
     }
-    // The clouds: as thick as the bird is high, while it's up (not the bird alone coming in or leaving).
+    // The clouds: as thick as the bird is high, while it's up (not the bird alone coming in or leaving) - here, or over
+    // EXPAND's whole picture after it's made (pk_flight_draw_wide: [cloudsHere] 0).
     double clouds = flShadowOn ? (double) lift / FL_LIFT : 0;
+    flCloudStrength = clouds;
+    if (!cloudsHere) clouds = 0;
     if (clouds > 0.01) { x0 = 0; y0 = 0; x1 = w - 1; y1 = h - 1; }
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;
@@ -1530,7 +1576,9 @@ void pk_flight_draw(uint32_t* frame, int w, int h, int stride) {
             }
         }
     }
-    flDrawClouds(frame, stride, x0, y0, x1, y1, clouds);
+    flDrawClouds(frame, stride, x0, y0, x1, y1, 0, 0, clouds, 0);
+    flBirdMaskOn = w == 240 && h == 160;
+    if (flBirdMaskOn) memset(flBirdMask, 0, sizeof(flBirdMask));
     if (flSprOn) {
         // Picture = mirror * R(-angle) * screen, around the centre; sampled in the 8x picture at the pixel's centre.
         double c = cos(flAngle), s = sin(flAngle);
@@ -1546,6 +1594,7 @@ void pk_flight_draw(uint32_t* frame, int w, int h, int stride) {
                 uint32_t p = flBig[iv * FL_BIG + iu];
                 if (!(p >> 24)) continue;
                 frame[y * stride + x] = (frame[y * stride + x] & 0xFF000000u) | (p & 0x00FFFFFFu);
+                if (flBirdMaskOn) flBirdMask[y * 240 + x] = 1;
             }
         }
     }

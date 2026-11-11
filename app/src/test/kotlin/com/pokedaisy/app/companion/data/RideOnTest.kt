@@ -43,7 +43,7 @@ class RideOnTest {
         for (v in listOf(RideVehicle.MOTORCYCLE, RideVehicle.SCOOTER)) {
             val sp = RideOn.sprite(v)!!
             assertEquals(32, sp.width)
-            assertEquals(3 * 512, sp.frames.size)
+            assertEquals(3 * 1024, sp.frames.size)
             assertEquals(32, sp.pal.size)
             // Its own colours, at most 15: every pixel's index is one of the art's.
             val used = (0 until sp.frames.size * 2).map { i -> (sp.frames[i / 2].toInt() shr (4 * (i % 2))) and 15 }.toSet() - 0

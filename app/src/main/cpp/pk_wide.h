@@ -244,7 +244,8 @@ void pk_follower_show(struct mCore* core, int on);
 
 /** FOLLOWER: its state as text (mgba_dump's followinfo). */
 void pk_follower_info(char* out, int n);
-/** RIDE ON: the vehicle's three views (south, north, west; [w] x 32, w 32 or 64, OBJ tile order) and palette (32 bytes),
+/** RIDE ON: the vehicle's three views (south, north, west; 1024 bytes each in OBJ tile order: 32 x 64 for w 32, 64 x 32
+ * for w 64) and palette (32 bytes),
  * or NULL; drawn behind the player while they're on a bike and [on] (pk_ride_show). */
 void pk_ride_set(const uint8_t* frames, const uint8_t* pal, int w);
 void pk_ride_show(struct mCore* core, int on);

@@ -870,8 +870,8 @@ static uint8_t followDirty[256];                             // halfwords the ga
 // hardware sprite right behind the player's (the first hidden OAM entry after theirs, at their priority), OBJ tiles 944-975
 // and a palette slot no shown sprite uses, put in as each frame starts and taken out after its last line. The ROM's bike
 // frames hold the rider alone (RideOn's patch); the vehicle keeps its own colours. Its view is the player's facing (south,
-// north, west; east = west flipped), 32 or 64 wide, centred on the player's sprite, its bottom on theirs. Only while the
-// player is on a bike (onBike) and shown.
+// north, west; east = west flipped), 32 x 64 (the rider's frame on top, the wheels below it) or 64 x 32, centred on the
+// player's sprite, its top on theirs. Only while the player is on a bike (onBike) and shown.
 #define RIDE_TILE 944
 #define RIDE_VRAM (0x10000 + RIDE_TILE * 32)
 static bool rideOn, rideHave;
@@ -879,17 +879,22 @@ static uint8_t rideFrames[3 * 1024], ridePal[32];
 static int rideW = 32;
 static int rideOam = -1, rideSlot = -1, rideWhy;
 static uint16_t rideSavedOam[4];
+// The bob: rider and vehicle a pixel up now and then - an engine idling while still (12 frames up, 12 down), the road's
+// bumps while moving (every 4). The player's own OAM entries are nudged with the vehicle's and put back after the frame.
+static unsigned rideTick;
+static int rideBobbed[8], rideBobbedN;
+static uint16_t rideBobSaved[8];
 static uint8_t rideSavedVram[1024];
 static uint8_t rideDirty[512];
 
 static void followWrote(uint32_t address) {
     if (followOam >= 0 && address >= FOLLOW_VRAM && address < FOLLOW_VRAM + 512) followDirty[(address - FOLLOW_VRAM) >> 1] = 1;
-    if (rideOam >= 0 && address >= RIDE_VRAM && address < RIDE_VRAM + (uint32_t) rideW * 16) rideDirty[(address - RIDE_VRAM) >> 1] = 1;
+    if (rideOam >= 0 && address >= RIDE_VRAM && address < RIDE_VRAM + 1024) rideDirty[(address - RIDE_VRAM) >> 1] = 1;
 }
 
 void pk_ride_set(const uint8_t* frames, const uint8_t* pal, int w) {
     if (frames && pal && (w == 32 || w == 64)) {
-        memcpy(rideFrames, frames, (size_t) (3 * w * 16));
+        memcpy(rideFrames, frames, sizeof(rideFrames));
         memcpy(ridePal, pal, sizeof(ridePal));
         rideW = w;
         rideHave = true;
@@ -2980,14 +2985,18 @@ static void rideBegin(struct GBAVideoRenderer* r) {
     struct PlayerBox pb;
     playerBox(oam, base, &pb);
     if (pb.last < 0) { rideWhy = 4; return; }   // the player not shown (FREE FLIGHT, a warp's fade)
-    int w = rideW, ox = (pb.x0 + pb.x1) / 2 - w / 2, oy = pb.y1 - 32;
-    if (ox <= -w || ox >= 240 || oy <= -32 || oy >= 160) { rideWhy = 5; return; }
+    // Moving: the object's current tile isn't its previous one (a step under way).
+    bool moving = le16(oe + 0x10) != le16(oe + 0x14) || le16(oe + 0x12) != le16(oe + 0x16);
+    rideTick++;
+    int bob = moving ? ((rideTick >> 2) & 1) : ((rideTick % 24) < 12 ? 0 : 1);
+    int w = rideW, ox = (pb.x0 + pb.x1) / 2 - w / 2, oy = pb.y1 - 32 - bob;
+    if (ox <= -w || ox >= 240 || oy <= -64 || oy >= 160) { rideWhy = 5; return; }
     int entry = -1;
     for (int e = pb.last + 1; e < 128; e++) if (oamHidden(oam[e * 4])) { entry = e; break; }
     int slot = -1;
     for (int e = 15; e >= 0; e--) if (!pb.used[e]) { slot = e; break; }
     if (entry < 0 || slot < 0) { rideWhy = 6; return; }
-    int bytes = w * 16;
+    int bytes = 1024;   // 32 tiles either shape
     uint8_t* vram = (uint8_t*) hookGba->video.vram;
     memcpy(rideSavedVram, vram + RIDE_VRAM, (size_t) bytes);
     memset(rideDirty, 0, sizeof(rideDirty));
@@ -2995,13 +3004,24 @@ static void rideBegin(struct GBAVideoRenderer* r) {
     for (int i = 0; i < bytes; i += 2) origWriteVRAM(r, RIDE_VRAM + (uint32_t) i);
     memcpy(rideSavedOam, &oam[entry * 4], 8);
     uint16_t* wr = &hookGba->video.oam.raw[entry * 4];
-    wr[0] = (uint16_t) ((oy & 0xFF) | (w == 64 ? 1 << 14 : 0));                            // square / wide, 4bpp, shown
-    wr[1] = (uint16_t) ((ox & 0x1FF) | ((w == 64 ? 3 : 2) << 14) | (flip ? 0x1000 : 0));  // 32x32 / 64x32
+    wr[0] = (uint16_t) ((oy & 0xFF) | (w == 64 ? 1 << 14 : 2 << 14));                        // wide / tall, 4bpp, shown
+    wr[1] = (uint16_t) ((ox & 0x1FF) | (3 << 14) | (flip ? 0x1000 : 0));                  // 64x32 / 32x64
     wr[2] = (uint16_t) (RIDE_TILE | pb.prio << 10 | slot << 12);
     for (int i = 0; i < 3; i++) r->writeOAM(r, (uint32_t) entry * 4 + (uint32_t) i);
     for (int i = 0; i < 16; i++) {
         uint16_t c = (uint16_t) (ridePal[i * 2] | ridePal[i * 2 + 1] << 8);
         r->writePalette(r, (uint32_t) (0x200 + slot * 32 + i * 2), tintShown ? tint555(c) : c);
+    }
+    // The rider up with it: the player's shown entries (their tiles), a pixel higher this frame.
+    rideBobbedN = 0;
+    if (bob) for (int e = 0; e < 128 && rideBobbedN < 8; e++) {
+        uint16_t a0 = oam[e * 4], a2 = oam[e * 4 + 2];
+        int t = a2 & 0x3FF;
+        if (oamHidden(a0) || t < base || t >= base + 16) continue;
+        rideBobbed[rideBobbedN] = e;
+        rideBobSaved[rideBobbedN++] = a0;
+        hookGba->video.oam.raw[e * 4] = (uint16_t) ((a0 & 0xFF00) | ((a0 - bob) & 0xFF));
+        r->writeOAM(r, (uint32_t) e * 4);
     }
     rideOam = entry;
     rideSlot = slot;
@@ -3012,13 +3032,18 @@ static void rideBegin(struct GBAVideoRenderer* r) {
 static void rideEnd(struct GBAVideoRenderer* r) {
     if (rideOam < 0 || !hookGba) return;
     uint8_t* vram = (uint8_t*) hookGba->video.vram;
-    for (int i = 0; i < rideW * 8; i++) {
+    for (int i = 0; i < 512; i++) {
         if (rideDirty[i]) continue;
         memcpy(vram + RIDE_VRAM + i * 2, rideSavedVram + i * 2, 2);
         origWriteVRAM(r, RIDE_VRAM + (uint32_t) i * 2);
     }
     memcpy(&hookGba->video.oam.raw[rideOam * 4], rideSavedOam, 8);
     for (int k = 0; k < 3; k++) r->writeOAM(r, (uint32_t) rideOam * 4 + (uint32_t) k);
+    for (int i = 0; i < rideBobbedN; i++) {
+        hookGba->video.oam.raw[rideBobbed[i] * 4] = rideBobSaved[i];
+        r->writeOAM(r, (uint32_t) rideBobbed[i] * 4);
+    }
+    rideBobbedN = 0;
     for (int i = 0; i < 16; i++) {
         uint16_t c = hookGba->video.palette[256 + rideSlot * 16 + i];
         r->writePalette(r, (uint32_t) (0x200 + rideSlot * 32 + i * 2), tintShown ? tint555(c) : c);
