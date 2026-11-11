@@ -31,6 +31,7 @@ import com.pokedaisy.app.companion.i18n.tr
 import com.pokedaisy.app.companion.data.showsBattle
 import com.pokedaisy.app.companion.data.isGen2
 import com.pokedaisy.app.companion.data.isDsGame
+import com.pokedaisy.app.companion.data.wildSetOf
 import androidx.compose.runtime.collectAsState
 import androidx.compose.runtime.getValue
 import androidx.compose.runtime.produceState
