@@ -587,12 +587,12 @@ void draw_quick() {
   quick_set_grid(shell.settings.quickGrid);
   if(repelPicker){
     const char* labels[3]={repelLabels[0].c_str(),repelLabels[1].c_str(),repelLabels[2].c_str()};
-    quick_list_draw(&c,"REPEL",labels,repelCount,repelSelected);
+    quick_list_draw(&c,"REPEL",labels,repelCount,repelSelected,shell.settings.hudLook);
   }else if(flyPicker){
     std::vector<const char*> labels;
     for(const auto& destination:flyDestinations)labels.push_back(destination.name);
-    quick_list_draw(&c,"FLY TO",labels.data(),int(labels.size()),flySelected);
-  }else quick_draw(&c,&presentation,items,count,std::min(quickSelected,count-1));
+    quick_list_draw(&c,"FLY TO",labels.data(),int(labels.size()),flySelected,shell.settings.hudLook);
+  }else quick_draw(&c,&presentation,items,count,std::min(quickSelected,count-1),shell.settings.hudLook);
   quick_finish(&c);
   // Overlay the menu on the paused composition at the same geometry as gameplay.
   if(!stageReady){
@@ -702,7 +702,7 @@ void present(const void* data,unsigned,unsigned,size_t) {
       hud_ds_minimap(&c,&shell.settings,ds_place(snapshot.map,companionGame),[](pd_canvas* c,int x,int y,int w,int h){
         ds_draw_minimap(c,snapshot,map,x,y,w,h);
       },&hudHits);
-    hud_focus_draw(&c,&shell.settings,&hudHits,hudCursor);
+    hud_focus_draw(&c,&hudHits,hudCursor);
     // Scale with the top screen and keep the picture-in-picture touch screen clear.
     const bool doubled=top.w==512 && top.h==384;
     for(int y=0;y<top.h;++y){

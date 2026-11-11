@@ -27,9 +27,13 @@ from your bag, get on or off your bike, turn wild encounters off or back on,
 save or load a state, fast forward or open the companion. Pick a tile with the
 D-pad and press A; B closes it. Flying needs a Pokémon in your party that knows
 the move and the badge the game asks for, just like in the game's own menu.
+The tiles follow your HUD look, with two shades and an orange outline on
+the selected action.
 
 The HUD shows your party, a small map around you, the steps left on the spray
-and your balls over the overworld, out of the way of the game's own text. Turn
+and your balls over the overworld, out of the way of the game's own text.
+The panels have a battle-style shadow, and each party sprite has an HP bar
+with room for a status tag when needed. Turn
 it or any of its parts off in the companion's `SETTINGS` > `HUD`. In
 `SETTINGS` > `TAB BAR` you pick which tabs sit on the bar; the rest open from
 `MORE`.

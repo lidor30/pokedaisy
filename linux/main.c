@@ -796,7 +796,7 @@ static bool overlay_texture(void) {
 }
 /* The QUICK MENU over the running game: a light dim, the ring at the companion's canvas scale. */
 static void present_quick(const struct pd_game *g, const struct quick_item *items, int n, int sel,
-                          const char *title, const char *const *rows, int rowCount, int rowSel, unsigned gw,
+                          const char *title, const char *const *rows, int rowCount, int rowSel, int look, unsigned gw,
                           unsigned gh) {
   if (!render_game(gw, gh) || !overlay_texture())
     return;
@@ -808,8 +808,8 @@ static void present_quick(const struct pd_game *g, const struct quick_item *item
   struct pd_canvas qc;
   pd_canvas_init(&qc, canvasW, canvasH, menuPixels);
   if (rows)
-    quick_list_draw(&qc, title, rows, rowCount, rowSel);
-  else if (!quick_draw(&qc, g, items, n, sel))
+    quick_list_draw(&qc, title, rows, rowCount, rowSel, look);
+  else if (!quick_draw(&qc, g, items, n, sel, look))
     return;
   quick_finish(&qc);
   SDL_UpdateTexture(menuTexture, &(SDL_Rect){0, 0, canvasW, canvasH}, menuPixels, canvasW * 4);
@@ -1934,7 +1934,7 @@ static void run_game(const char *path, int maxFrames, const char *shot) {
       const char *const *rows = flyList ? flyNames : repelList ? repelNames : NULL;
       present_quick(&game, quick, quickN, quickSel, flyList ? "FLY" : "REPEL", rows,
                     flyList ? flyT.count : repelKindCount,
-                    flyList ? flySel : repelSel, gw, gh);
+                    flyList ? flySel : repelSel, settings.hudLook, gw, gh);
     } else if (companion && menuOpen && menuOpen != 4) {
       present_menu(menuOpen == 1 ? &gameMenu : &confirmMenu, gw, gh);
     } else if (companion) {

@@ -60,7 +60,7 @@ static void test_fly(struct mCore* c,struct pd_game* game,const uint8_t* rom,siz
   int to=-1;
   for(int i=t.count-1;i>=0 && to<0;i--)if(t.towns[i]!=snap->mapsec)to=t.towns[i];
   assert(to>=0);
-  present_quick(game,NULL,0,0,"FLY",names,t.count,t.count>1?1:0,gw,gh);shot("fly-list");
+  present_quick(game,NULL,0,0,"FLY",names,t.count,t.count>1?1:0,s->hudLook,gw,gh);shot("fly-list");
   for(int i=0;i<300 && !pk_call_safe(c);i++)flags=fly_frame(c,s);
   assert(fly_start(c,cfg,rom,len,snap,to,&t,false,false)==FLY_OK);
   uint32_t cb=fly_main_callback(c,cfg);
@@ -259,10 +259,10 @@ static void test_frame(struct mCore* c,bool companion,int frame,struct pd_ui* ui
                              {.action=QUICK_WILD,.off=true},{.action=QUICK_SAVE_STATE},
                              {.action=QUICK_LOAD_STATE,.why="No state saved yet"},{.action=QUICK_FF,.lit=true},
                              {.action=QUICK_COMPANION}};
-      present_quick(&game,q,9,1,NULL,NULL,0,0,gw,gh);shot("quick");
-      present_quick(&game,q,9,2,NULL,NULL,0,0,gw,gh);shot("quick-dim");
+      present_quick(&game,q,9,1,NULL,NULL,0,0,s->hudLook,gw,gh);shot("quick");
+      present_quick(&game,q,9,2,NULL,NULL,0,0,s->hudLook,gw,gh);shot("quick-dim");
       const char* kinds[]={"REPEL x2  100 steps","MAX REPEL x1  250 steps"};
-      present_quick(&game,q,9,2,"REPEL",kinds,2,1,gw,gh);shot("quick-repel");
+      present_quick(&game,q,9,2,"REPEL",kinds,2,1,s->hudLook,gw,gh);shot("quick-repel");
       // The HUD over EXPAND (the screen's corners) and over the game's own picture, a Repel working.
       if(companionGame) {
         struct hud_state hs={.repel=80,.repelFull=100,.wild=-1,.focus=-1};
