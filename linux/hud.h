@@ -23,6 +23,7 @@ struct hud_state {
   bool compact;    // smaller HUD for a 3DS (its game is drawn at 1.5x)
   bool noButtons;  // no PC / BAG / WILD / COMPANION buttons (a 3DS: no touch on the top screen, X opens the companion)
   int repelItem;   // the item the REPEL STEPS icon shows, 0 = the plain Repel (last, so positional initializers leave it 0)
+  bool mini;       // the libretro cores' HUD: half-size icons, 3x5 digits, icon-only buttons, the compact layout
 };
 
 /* How wide the compact HUD's minimap is, its frame included. */
