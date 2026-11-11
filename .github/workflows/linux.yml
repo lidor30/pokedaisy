@@ -71,6 +71,10 @@ jobs:
         run: |
           python3 linux/package.py linux/build/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts" \
             --core "$RUNNER_TEMP/cores/pokedaisy_gba_libretro.so" --core "$RUNNER_TEMP/cores/pokedaisy_gbc_libretro.so"
+          # The three cores alone, with their notices, for other frontends (a release file).
+          python3 linux/libretro-unified/package.py --cores-only --strip strip --source-ref "$(git rev-parse HEAD)" \
+            "$RUNNER_TEMP/cores/pokedaisy_gbc_libretro.so" "$RUNNER_TEMP/cores/pokedaisy_gba_libretro.so" \
+            "$RUNNER_TEMP/pd-ds/pokedaisy_ds_libretro.so" "$RUNNER_TEMP/linux-artifacts/pokedaisy-libretro-x86_64.zip"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: pokedaisy-linux-x86_64
@@ -79,12 +83,14 @@ jobs:
   trimui:
     # 22.04: its aarch64 cross glibc (2.35) has none of 2.38's C23 redirects; armgba/glibc_compat.* bind the rest to 2.17.
     runs-on: ubuntu-22.04
-    timeout-minutes: 25
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ inputs.ref }}
-      - run: git submodule update --init third_party/mgba third_party/armgba third_party/zlib
+      - run: |
+          git submodule update --init third_party/mgba third_party/armgba third_party/zlib
+          git submodule update --init --recursive third_party/dsperate-lr
       - run: sudo apt-get update && sudo apt-get install -y cmake qemu-user-static gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross
       - name: Prepare checksum-pinned toolchain and SDK
         run: |
@@ -97,22 +103,32 @@ jobs:
             -DCMAKE_CROSSCOMPILING_EMULATOR="qemu-aarch64-static;-L;$NEXTUI_TOOLCHAIN/aarch64-nextui-linux-gnu/libc"
           cmake --build linux/build-arm -j2
           ctest --test-dir linux/build-arm --output-on-failure
-      - name: AArch64 cores (mGBA on the TrimUI toolchain; armGBA needs a newer GCC than its 8.3)
+      - name: AArch64 cores (mGBA and DSperate on the TrimUI toolchain; armGBA needs a newer GCC than its 8.3)
         run: |
           cmake -S libretro -B build/gbc-arm -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake" -DCMAKE_BUILD_TYPE=Release
           cmake --build build/gbc-arm -j"$(nproc)" --target pokedaisy_gbc_libretro
           cmake -S libretro/armgba -B build/gba-arm -DCMAKE_TOOLCHAIN_FILE="$PWD/libretro/aarch64.cmake" -DCMAKE_BUILD_TYPE=Release
           cmake --build build/gba-arm -j"$(nproc)" --target pokedaisy_gba_libretro
-          for core in build/gbc-arm/pokedaisy_gbc_libretro.so build/gba-arm/pokedaisy_gba_libretro.so; do
+          cmake -S linux/libretro-ds -B build/ds-arm -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake" \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake --build build/ds-arm -j"$(nproc)" --target pokedaisy_ds_libretro
+          for core in build/gbc-arm/pokedaisy_gbc_libretro.so build/gba-arm/pokedaisy_gba_libretro.so build/ds-arm/pokedaisy_ds_libretro.so; do
             NM=aarch64-linux-gnu-nm sh libretro/test/check_exports.sh "$core"
             # Loads on the Brick's glibc 2.33 and anything newer.
             ! aarch64-linux-gnu-objdump -T "$core" | grep -E 'GLIBC_2\.(3[4-9]|[4-9][0-9])' || { echo "::error::$core needs a glibc newer than 2.33"; exit 1; }
           done
-      - name: Package TrimUI and PortMaster artifacts
+      - name: Package the TrimUI, PortMaster, cores and NXRedux artifacts
         run: |
           cores="--core build/gba-arm/pokedaisy_gba_libretro.so --core build/gbc-arm/pokedaisy_gbc_libretro.so"
           python3 linux/package.py linux/build-arm/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts" $cores
           python3 linux/package.py --portmaster linux/build-arm/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts" $cores
+          # The three cores for other frontends, and the TrimUI Brick's NXRedux collection (both release files).
+          three="build/gbc-arm/pokedaisy_gbc_libretro.so build/gba-arm/pokedaisy_gba_libretro.so build/ds-arm/pokedaisy_ds_libretro.so"
+          strip="$NEXTUI_TOOLCHAIN/bin/aarch64-nextui-linux-gnu-strip"
+          python3 linux/libretro-unified/package.py --cores-only --strip "$strip" --source-ref "$(git rev-parse HEAD)" \
+            $three "$RUNNER_TEMP/linux-artifacts/pokedaisy-libretro-aarch64.zip"
+          python3 linux/libretro-unified/package.py --strip "$strip" --source-ref "$(git rev-parse HEAD)" \
+            $three "$RUNNER_TEMP/linux-artifacts/PokeDaisy-NXRedux.zip"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: pokedaisy-linux-aarch64

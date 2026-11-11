@@ -1,7 +1,7 @@
 #!/bin/bash
 # PokeDaisy as a PortMaster port (ROCKNIX, Knulli, muOS, AmberELEC and the other firmwares that
 # run PortMaster): PortMaster's usual launcher. Put this file and the pokedaisy/ folder in your
-# ports folder, and your games in pokedaisy/roms/. Not yet tried on a device.
+# ports folder, and your games in pokedaisy/roms/ (or the firmware's ROM folders). Played on a GKD 350H (ROCKNIX).
 
 XDG_DATA_HOME=${XDG_DATA_HOME:-$HOME/.local/share}
 if [ -d "/opt/system/Tools/PortMaster/" ]; then

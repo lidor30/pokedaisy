@@ -84,8 +84,8 @@ exit hotkey) beside a `pokedaisy/` folder with the binary, the cores (`--core`),
 `roms/`, `saves/` and `states/` once it has run. Copy both into the firmware's
 `ports` folder and your games into `pokedaisy/roms/`. It fills the screen and
 uses the firmware's own SDL2. CTest's `portmaster-launcher` runs the launcher
-against a stand-in PortMaster (native builds). The package has run FireRed headless on a ROCKNIX handheld
-(GKD 350H); a launch from a firmware's Ports menu is still to be reported.
+against a stand-in PortMaster (native builds). The package has been played from the Ports menu of a ROCKNIX
+handheld (GKD 350H): the firmware's ROM folders in the game list, the host menu on MENU, A/B BUTTONS.
 
 ## TrimUI cross-build and launcher
 
