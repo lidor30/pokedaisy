@@ -716,6 +716,13 @@ static bool run_game(const char* file) {
                 dev.waitUs = TICKS_TO_US(session.prof.wait);
                 dev.wideUs = TICKS_TO_US(session.prof.wide);
                 dev.snapUs = TICKS_TO_US(session.prof.snap);
+                if (core->platform(core) == mPLATFORM_GBA) {
+                    // Whether mGBA still skips the game's wait loop (a scene that stops it costs twice the CPU).
+                    const struct GBA* gba = core->board;
+                    dev.idleMode = gba->idleOptimization;
+                    dev.idleLoop = gba->idleLoop;
+                    dev.idleFails = (unsigned) gba->idleDetectionFailures;
+                }
                 memset(&session.prof, 0, sizeof(session.prof));
                 dev.gaps = audioGaps;
                 dev.drops = audioDrops;

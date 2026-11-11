@@ -317,10 +317,11 @@ static void command(char* line) {
             printf("hit %d at %d,%d %dx%d\n", h->id, h->x, h->y, h->w, h->h);
         }
     } else if (!strcmp(cmd, "idle") && session.core->platform(session.core) == mPLATFORM_GBA) {
-        // idle detect | remove | ignore: mGBA's busy-loop skipping, as the console sets it (detect) or not.
+        // idle detect | remove | ignore: mGBA's busy-loop skipping, as the console sets it (detect) or not; bare, the state.
         struct GBA* gba = session.core->board;
-        gba->idleOptimization = !strcmp(args, "detect") ? IDLE_LOOP_DETECT : !strcmp(args, "ignore") ? IDLE_LOOP_IGNORE : IDLE_LOOP_REMOVE;
-        printf("idle %s: loop at %08X\n", args, gba->idleLoop);
+        if (*args)
+            gba->idleOptimization = !strcmp(args, "detect") ? IDLE_LOOP_DETECT : !strcmp(args, "ignore") ? IDLE_LOOP_IGNORE : IDLE_LOOP_REMOVE;
+        printf("idle %s: mode %d, loop at %08X, %d failures\n", args, gba->idleOptimization, gba->idleLoop, gba->idleDetectionFailures);
     } else if (!strcmp(cmd, "timeframes")) {
         // N frames of the session (the game, its hooks and the host's per-frame work), timed: a host's cost.
         int n = atoi(args) > 0 ? atoi(args) : 300;
@@ -333,7 +334,20 @@ static void command(char* line) {
         for (int i = 0; i < n; i++) session.core->runFrame(session.core);
         clock_gettime(CLOCK_MONOTONIC, &t1);
         double core = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / 1e3 / n;
-        printf("timeframes: %.1f us a session frame, %.1f us a bare runFrame\n", us, core);
+        // The same frames with mGBA's renderer skipped: what the game's own code costs, apart from drawing it.
+        double bare = 0;
+        if (session.core->platform(session.core) == mPLATFORM_GBA) {
+            struct GBA* gba = session.core->board;
+            int skip = gba->video.frameskip;
+            gba->video.frameskip = gba->video.frameskipCounter = 1 << 20;
+            clock_gettime(CLOCK_MONOTONIC, &t0);
+            for (int i = 0; i < n; i++) session.core->runFrame(session.core);
+            clock_gettime(CLOCK_MONOTONIC, &t1);
+            gba->video.frameskip = skip;
+            gba->video.frameskipCounter = 0;
+            bare = ((t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec)) / 1e3 / n;
+        }
+        printf("timeframes: %.1f us a session frame, %.1f us a bare runFrame, %.1f us undrawn\n", us, core, bare);
     } else if (!strcmp(cmd, "bench")) {
         // The companion's draw, timed: N redraws of what's up now (a host's cost, not a 3DS's: compare screens with it).
         int n = atoi(args) > 0 ? atoi(args) : 200;
@@ -393,6 +407,17 @@ static void command(char* line) {
         if (sscanf(args, "%x %x", &addr, &value) == 2) {
             uint8_t v = (uint8_t) value;
             pd_session_write(&session, addr, &v, 1);
+        }
+    } else if (!strcmp(cmd, "io") && session.core->platform(session.core) == mPLATFORM_GBA) {
+        // The display registers as the frame ended, and the DMAs set to run each line (a scene's drawing cost).
+        struct GBA* gba = session.core->board;
+        const uint16_t* io = gba->memory.io;
+        printf("DISPCNT %04X BLDCNT %04X BLDALPHA %04X BLDY %04X WININ %04X WINOUT %04X WIN0H %04X WIN0V %04X MOSAIC %04X\n",
+               io[0x00 >> 1], io[0x50 >> 1], io[0x52 >> 1], io[0x54 >> 1], io[0x48 >> 1], io[0x4A >> 1], io[0x40 >> 1],
+               io[0x44 >> 1], io[0x4C >> 1]);
+        for (int i = 0; i < 4; i++) {
+            const struct GBADMA* d = &gba->memory.dma[i];
+            printf("DMA%d ctl %04X src %08X dst %08X count %u\n", i, d->reg, d->source, d->dest, d->count);
         }
     } else if (!strcmp(cmd, "peek")) {
         unsigned addr;

@@ -23,6 +23,8 @@ struct devlink_stats {
     unsigned runUs, waitUs, wideUs, snapUs; // of coreUs: the game itself, waiting for its renderer, EXPAND (with that wait), the snapshot
     unsigned gaps, drops, rate;             // sound: the queue ran dry, a chunk had no room, the channel's rate x 1000
     unsigned redraws, redrawWorstUs;        // the companion's redraws and the slowest one
+    int idleMode;                           // mGBA's busy-loop skipping: -1 off for good, 0 skipping, 1 still looking
+    unsigned idleLoop, idleFails;           // the loop it skips, and its failed tries
 };
 
 void devlink_start(void);
