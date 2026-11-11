@@ -93,7 +93,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Super Mariomon | 1.2.1-1.3, 1.5.1, 1.5.2 | ✅ | ✅ | ✅ | ✅ | — | ◐ ³⁴ | — | ✅ | ✅ | ✅ | ◐ | — | — | ✅ ¹⁹ | — | — |
 | Sword and Shield Ultimate Plus | 1.2.1.2 + its 3 patches | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ |
 | Team Rocket Dragonsden | 1.5 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | ✅ ¹⁹ | — | — |
-| Team Rocket Dragonsden | 2026 3.0.9 (Spanish) | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — |
+| Team Rocket Dragonsden | 2026 3.0.9, 3.1 (Spanish) | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — |
 | Too Many Types 2 | 1.5.2 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | — | — | — | ✅ ¹⁹ | — | — |
 | Ultra Violet | 1.22 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | Unbound | 2.1.1.1, 2.1.1.1 French | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ | ✅ | ✅ ³³ |

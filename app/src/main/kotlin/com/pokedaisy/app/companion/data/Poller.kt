@@ -356,7 +356,7 @@ class TelemetrySampler {
                 base === NATIVE_SOULGOLD_V1_2_1
             amethystV141 = base === NATIVE_AMETHYST_V1_4_1
             eliteRedux265_3 = base === NATIVE_ELITE_REDUX_V2_65_3B
-            teamRocketV3 = base === NATIVE_TEAM_ROCKET_V3
+            teamRocketV3 = base === NATIVE_TEAM_ROCKET_V3 || base === NATIVE_TEAM_ROCKET_V3_1
             originHeartGold = dsOrigin
             renegadePlatinum = dsRenegade
             black2Redux = dsRedux
@@ -605,6 +605,7 @@ class TelemetrySampler {
                 ELITE_REDUX_V2_65_4_1B_SHA1 -> { kind = GameKind.ELITE_REDUX; nativeCfg = NATIVE_ELITE_REDUX_V2_65_4_1B }
                 TEAM_ROCKET_DRAGONSDEN_V1_5_SHA1 -> { kind = GameKind.TEAM_ROCKET; nativeCfg = NATIVE_TEAM_ROCKET }
                 TEAM_ROCKET_2026_V3_0_9_ES_SHA1 -> { kind = GameKind.TEAM_ROCKET; nativeCfg = NATIVE_TEAM_ROCKET_V3 }
+                TEAM_ROCKET_2026_V3_1_ES_SHA1 -> { kind = GameKind.TEAM_ROCKET; nativeCfg = NATIVE_TEAM_ROCKET_V3_1 }
                 WISHES_OF_TOMORROW_V1_2_6_SHA1 -> { kind = GameKind.WISHES; nativeCfg = NATIVE_WISHES }
                 DREAMSTONE_MYSTERIES_UNVERSIONED_SHA1 -> { kind = GameKind.DREAMSTONE; nativeCfg = NATIVE_DREAMSTONE }
                 MONOMYTH_V1_1_SHA1 -> { kind = GameKind.MONOMYTH; nativeCfg = NATIVE_MONOMYTH_V1_1 }
@@ -759,9 +760,9 @@ class TelemetrySampler {
         val rev = runCatching { reader0x1E() }.getOrDefault(-1)
         dsOrigin = code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
         dsRenegade = code == RenegadePlatinum.CODE && RenegadePlatinum.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
-        when {
         dsRedux = (code == Black2Redux.CODE_BLACK2 || code == Black2Redux.CODE_WHITE2) &&
             Black2Redux.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
+        when {
             dsOrigin && NDS_SUPPORT -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_ORIGIN_HEARTGOLD }
             ndsSupported(code, rev) && DsPorts.of(code, rev) != null -> {
                 val port = DsPorts.of(code, rev)!!
@@ -1078,6 +1079,8 @@ class TelemetrySampler {
         // Pokémon Team Rocket Edition 2026 - Dragonsden, Spanish (its START menu says v3.0.9; BPEE, 32 MB, an expansion
         // 1.14.4 rebuild) - host-side masked hash (GPIO bytes zero, so a plain `shasum`).
         const val TEAM_ROCKET_2026_V3_0_9_ES_SHA1 = "0d8bdaeeca0856175037a75679c1a2b73ad2b68a"
+        /** v3.1: v3.0.9's RAM and tables, its ROM moved (NATIVE_TEAM_ROCKET_V3_1). */
+        const val TEAM_ROCKET_2026_V3_1_ES_SHA1 = "32d9e438ab791a0477fffe9f1cca750cab5a4a80"
         // Pokémon Wishes of Tomorrow v1.2.6 (FlatFoot Labs; BPEE, 32 MB, pokeemerald-expansion 1.15.3) - host-side masked
         // hash (GPIO bytes zero, so a plain `shasum`).
         const val WISHES_OF_TOMORROW_V1_2_6_SHA1 = "60182b934d2e8eb3eef226a9bbc25e5df6becd4f"
@@ -1301,7 +1304,7 @@ class TelemetrySampler {
             LETS_GO_PIKACHU_UNVERSIONED_SHA1, LETS_GO_PIKACHU_TRANSLATION_ONLY_UNVERSIONED_SHA1,
             LETS_GO_EEVEE_UNVERSIONED_SHA1, LETS_GO_EEVEE_TRANSLATION_ONLY_UNVERSIONED_SHA1,
             ELITE_REDUX_V2_65_3B_SHA1, ELITE_REDUX_V2_65_4_1B_SHA1, TEAM_ROCKET_DRAGONSDEN_V1_5_SHA1,
-            TEAM_ROCKET_2026_V3_0_9_ES_SHA1,
+            TEAM_ROCKET_2026_V3_0_9_ES_SHA1, TEAM_ROCKET_2026_V3_1_ES_SHA1,
             WISHES_OF_TOMORROW_V1_2_6_SHA1,
             DREAMSTONE_MYSTERIES_UNVERSIONED_SHA1, MONOMYTH_V1_0_SHA1, MONOMYTH_V1_1_SHA1,
             ULTRA_VIOLET_V1_22_SHA1, SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_SHA1, SWORD_SHIELD_ULTIMATE_PLUS_V1_2_1_2_CASUAL_SHA1,

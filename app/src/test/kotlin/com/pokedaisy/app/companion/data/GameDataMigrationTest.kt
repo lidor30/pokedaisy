@@ -27,7 +27,7 @@ class GameDataMigrationTest {
     private val legacy = configs("LegacyNativeConfigsKt", "LEGACY_NATIVE_")
 
     /** Games added since the move, written in gamedata/ from the start: they have no hand-written config. */
-    private val bornInGamedata = setOf("WISHES", "DREAMSTONE", "SOULGOLD_V1_2_1", "MONOMYTH", "MONOMYTH_V1_1", "TEAM_ROCKET_V3", "LETS_GO_PIKACHU", "LETS_GO_EEVEE",
+    private val bornInGamedata = setOf("WISHES", "DREAMSTONE", "SOULGOLD_V1_2_1", "MONOMYTH", "MONOMYTH_V1_1", "TEAM_ROCKET_V3", "TEAM_ROCKET_V3_1", "LETS_GO_PIKACHU", "LETS_GO_EEVEE",
         "MODERN_EMERALD")
 
     @Test

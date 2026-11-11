@@ -162,6 +162,7 @@ object GameTitles {
         "2f3e17e55c6afe23da97ec0f96a067eeb142ad15" to "Pokémon Elite Redux",
         "40780347d0b4df6bf491eaf12603e5422caee677" to "Pokémon Team Rocket Edition: Dragonsden Version",
         "0d8bdaeeca0856175037a75679c1a2b73ad2b68a" to "Pokémon Team Rocket Edition 2026 (ES)",
+        "32d9e438ab791a0477fffe9f1cca750cab5a4a80" to "Pokémon Team Rocket Edition 2026 (ES)",
         "ae1c4be9be8d706bb989602bc05731203d42860d" to "Pokémon Monomyth",
         "eb660caffbc26e1f09f86714d03af4c3eccd9e4d" to "Pokémon Monomyth",
         "60182b934d2e8eb3eef226a9bbc25e5df6becd4f" to "Pokémon Wishes of Tomorrow",

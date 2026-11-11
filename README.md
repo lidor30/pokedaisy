@@ -190,7 +190,7 @@ shows a "not supported" notice).
 | Modern Emerald                 | 3.6                        |  ✅   | ✅  |   ◐    |  ◐  |    —    |   —   |
 | Elite Redux                    | 2.65.3b, 2.65.4.1b         |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Team Rocket Dragonsden         | 1.5                        |  ✅   | ✅  |   ◐    |  ◐  |    —    |   ◐   |
-| Team Rocket Dragonsden         | 2026 3.0.9 (Spanish)       |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
+| Team Rocket Dragonsden         | 2026 3.0.9, 3.1 (Spanish)  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Wishes of Tomorrow             | 1.2.6                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Dreamstone Mysteries           | the one release            |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |
 | Monomyth                       | 1.0, 1.1                   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ◐   |

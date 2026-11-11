@@ -350,6 +350,36 @@ GAMES = {
                     moves={1: (1, 40), 33: (1, 40), 44: (18, 60), 52: (11, 40), 57: (12, 90), 89: (5, 100),
                            585: (19, 95)}),
     ),
+    # Team Rocket Edition 2026, Spanish v3.1 (its START menu says V.3.1): v3.0.9's RAM word for word (gPlayerParty's 552
+    # literal-pool words and the rest), its ROM tables moved: gSpeciesInfo and the icon palettes +0x4BD8 (its GF header's
+    # 0x080001BC / 0x08000140), gMovesInfo and gItemsInfo +0x4BD0 (the header's 0x080001CC / 0x080001C8),
+    # the chart +0x12C8 (its Normal row's run), gRegionMapEntries and the region grids +0x4F20 (495 entries of
+    # {x, y, w, h, name*}). Every table comes out equal to v3.0.9's, so it runs on those (`same_as`: checked, not written).
+    "team_rocket_v3_1": dict(
+        suffix="TeamRocketV3",
+        same_as="team_rocket_v3",
+        label="Pokemon Team Rocket Edition 2026 (Spanish, v3.1)",
+        sha1="32d9e438ab791a0477fffe9f1cca750cab5a4a80",
+        spanish=True,
+        potion_desc="20 PS",
+        species_name1=0x08975994, species_stride=0xA8, species_max=1698,
+        species_types_off=-0x26, species_gender_off=-0x1A, species_growth_off=-0x17,
+        items_base=0x088D17EC + 0x14, items_stride=0x2C, items_desc_off=-8,
+        moves_base=0x08939A4C, moves_stride=0x3C, move_bits_off=0x0A,
+        chart=0x084BF478, chart_n=21,
+        mapsec_base=0x08E6F864, mapsec_name_off=4, mapsec_count=0x1EF,
+        region_maps=[dict(image=img, layout=grid, ids=ids, w=28, h=15, ox=1, oy=2, none=0x1EF, cell=2) for img, grid, ids in (
+            ("tr3_kanto", 0x08E72CF4, (0x7A, 0xE6)), ("tr3_sevii123", 0x08E72664, (0xE7, 0xFD)),
+            ("tr3_sevii45", 0x08E7231C, (0xFE, 0x116)), ("tr3_sevii67", 0x08E71FD4, (0x117, 0x13C)),
+            ("tr3_johto", 0x08E729AC, (0x13D, 0x190)), ("tr3_hoenn", 0x08E7303C, (0x00, 0x79)),
+            ("tr3_sinnoh", 0x08E71C8C, (0x191, 0x1EE)))],
+        checks=dict(species={1: "Bulbasaur", 23: "Ekans", 25: "Pikachu", 41: "Zubat", 169: "Crobat", 1669: "Zubat"},
+                    types={1: (13, 4), 23: (4, 4), 41: (4, 3), 169: (4, 3)},
+                    gender={1: 31, 25: 127}, growth={1: 3, 41: 0},
+                    items={1: "Poké Ball", 2: "Super Ball", 28: "Poción", 148: "Perla", 149: "Perla Grande"},
+                    moves={1: (1, 40), 33: (1, 40), 44: (18, 60), 52: (11, 40), 57: (12, 90), 89: (5, 100),
+                           585: (19, 95)}),
+    ),
 }
 
 # The Western charmap's accented letters and Spanish punctuation, for a game whose text is Spanish (`spanish=True`).
@@ -422,10 +452,27 @@ def header(g, what):
 ONLY = None
 
 
+# A game's `same_as`: another build whose generated files this one's must equal (header lines aside); nothing is written.
+SAME_AS = None
+PENDING = {}
+
+
+def check_same():
+    def tail(text):
+        return text.split(" - do not hand-edit.", 1)[1].split("\n", 1)[1]
+    for path, body in PENDING.items():
+        with open(path) as f:
+            assert tail(f.read()) == tail(body), f"{os.path.basename(path)} differs from {SAME_AS}'s"
+        print("same as", SAME_AS + ":", os.path.relpath(path))
+
+
 def write(name, body):
     if ONLY is not None and not any(name.startswith(t) for t in ONLY):
         return
     path = os.path.join(OUT_DIR, name)
+    if SAME_AS is not None:
+        PENDING[path] = body   # the last write of a file counts (check_same, at the end)
+        return
     with open(path, "w") as f:
         f.write(body)
     print("wrote", os.path.relpath(path))
@@ -488,8 +535,9 @@ def main():
     rom = Rom(data)
     if g.get("spanish"):
         CHARS.update(SPANISH_CHARS)
-    global ONLY
+    global ONLY, SAME_AS
     ONLY = g.get("only")
+    SAME_AS = g.get("same_as")
     sfx = g["suffix"]
     low = sfx[0].lower() + sfx[1:]
 
@@ -657,3 +705,5 @@ def main():
 
 if __name__ == "__main__":
     main()
+    if SAME_AS is not None:
+        check_same()

@@ -79,7 +79,7 @@ The companion reads their party, bag, map, Pokédex and guide, with pictures, Po
 | Pokémon Recharged Emerald | 2.2.5 and 2.2.8, and Rebalanced 2.2.8 |
 | Pokémon Modern Emerald | 3.6 (types follow the settings you picked when you started your game) |
 | Pokémon Elite Redux | 2.65.3b and 2.65.4.1b |
-| Pokémon Team Rocket Edition: Dragonsden Version | 1.5, and the 2026 edition's 3.0.9 in Spanish (its START menu shows the version) |
+| Pokémon Team Rocket Edition: Dragonsden Version | 1.5, and the 2026 edition's 3.0.9 and 3.1 in Spanish (its START menu shows the version) |
 | Pokémon Wishes of Tomorrow | 1.2.6 |
 | Pokémon Dreamstone Mysteries | its one release (the game shows no version) |
 | Pokémon Monomyth | 1.0 and 1.1 |

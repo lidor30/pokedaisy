@@ -1686,7 +1686,8 @@ the summary shows CROBAT as No. 067), region map, EXPAND, field reads or field i
 its own config (`[config.team_rocket_v3]`) and tables (`gen_expansion_tables.py team_rocket_v3`, Spanish charmap). Its bag's eight
 pockets show as eight tabs (`activePocketOrder`, `TEAM_ROCKET_V3_BAG_POCKET_ORDER`, `POCKET_MEGA_STONES`); DEX from its gSpeciesInfo
 (1-1062); seven region maps (RomArt's `TR3_*`, a section's map picked by its id range, `region_maps` in the generator). No EXPAND,
-field reads or field items.
+field reads or field items. v3.1 (2026-11-12, `NATIVE_TEAM_ROCKET_V3_1`) is the same RAM and tables, its ROM moved (`gen_expansion_tables.py team_rocket_v3_1` checks the tables
+equal, `same_as`).
 **Wishes of Tomorrow 1.2.6 (2026-10-22)** (`GameKind.WISHES`, `NATIVE_WISHES`): FlatFoot Labs' closed BPEE build (32 MB) on
 pokeemerald-expansion 1.15.3 (its RHHEXP block). No save existed: two new games played headless (randomizer off / on), party,
 bag and dex flags given through its own script commands (`callnative ScrCmd_createmon` 0x0A200DD5; FLAG_SYS_POKEMON_GET 0x880:
