@@ -124,6 +124,57 @@ fun FeatureTipHost(
 }
 
 /**
+ * After the first scenic FLY has landed (FLY STYLE's default, where the game has it): keep it, or fly the classic way from
+ * now on - and FLY STYLE is where to change it later. Shown once ([com.pokedaisy.app.Prefs.flyStyleAsked]) where the tips are
+ * (the companion's screen, else over the game); like a tip its bar runs out, and that keeps SCENIC.
+ */
+object FlyStyleAsk {
+    var showing by mutableStateOf(false)
+}
+
+/** The card's words: the tip card's pieces, KEEP IT for its TRY IT. */
+fun flyStyleAskText(): FeatureTip = FeatureTip(
+    tr("ENJOYED THE VIEW?"),
+    tr("FLY now takes you there over the map. Keep it, or use the classic FLY. Change it any time in SETTINGS > FLY STYLE."),
+    tk("KEEP IT"),
+)
+
+/** [FlyStyleAsk] on screen, sliding in from the top like [FeatureTipHost]; [onAnswer] gets the style picked (null: the bar ran out). */
+@Composable
+fun FlyStyleAskHost(
+    active: Boolean,
+    roomy: Boolean,
+    modifier: Modifier = Modifier,
+    cardModifier: Modifier = Modifier,
+    maxWidth: Dp = 760.dp,
+    onAnswer: (com.pokedaisy.app.companion.FlyStyle?) -> Unit,
+) {
+    val asking = FlyStyleAsk.showing
+    val left = remember { Animatable(1f) }
+    LaunchedEffect(asking, active) {
+        if (!asking || !active) return@LaunchedEffect
+        left.snapTo(1f)
+        left.animateTo(0f, tween(TipScheduler.SHOW_MS.toInt(), easing = LinearEasing))
+        FlyStyleAsk.showing = false
+        onAnswer(null)
+    }
+    Box(modifier.fillMaxWidth(), contentAlignment = Alignment.TopCenter) {
+        AnimatedVisibility(
+            visible = active && asking,
+            enter = slideInVertically(tween(260)) { -it } + fadeIn(tween(260)),
+            exit = slideOutVertically(tween(220)) { -it } + fadeOut(tween(220)),
+        ) {
+            FeatureTipCard(
+                flyStyleAskText(), cardModifier, left = left.value, roomy = roomy, maxWidth = maxWidth,
+                badge = tk("NEW"), noLabel = tk("USE CLASSIC"),
+                onTry = { FlyStyleAsk.showing = false; onAnswer(com.pokedaisy.app.companion.FlyStyle.SCENIC) },
+                onNoThanks = { FlyStyleAsk.showing = false; onAnswer(com.pokedaisy.app.companion.FlyStyle.CLASSIC) },
+            )
+        }
+    }
+}
+
+/**
  * The tip's card: the flower on the left, the feature's name and a line or two about it, its keys, and TRY IT /
  * NO THANKS. [left] is the share of its time still to go (it goes by itself, which is the "later"); null = no bar.
  * [roomy]: the companion's screen, where the card has room for its keys under the text.
@@ -138,6 +189,8 @@ fun FeatureTipCard(
     maxWidth: Dp = 760.dp,
     onTry: () -> Unit = {},
     onNoThanks: () -> Unit = {},
+    badge: String = tk("TIP"),
+    noLabel: String = tk("NO THANKS"),
 ) {
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
@@ -154,7 +207,7 @@ fun FeatureTipCard(
             Spacer(Modifier.width(u * 8))
             Column(Modifier.weight(1f)) {
                 Row(verticalAlignment = Alignment.CenterVertically) {
-                    OptionBadge(tk("TIP"), m)
+                    OptionBadge(badge, m)
                     Spacer(Modifier.width(u * 4))
                     GbaText(tip.title, OptionColors.label, OptionColors.labelShadow, m, maxLines = 1)
                 }
@@ -174,7 +227,7 @@ fun FeatureTipCard(
             }
             Spacer(Modifier.height(u * 6))
             Row(horizontalArrangement = Arrangement.spacedBy(u * 6)) {
-                OptionButton(tk("NO THANKS"), m, onClick = onNoThanks, modifier = Modifier.weight(1f))
+                OptionButton(noLabel, m, onClick = onNoThanks, modifier = Modifier.weight(1f))
                 OptionButton(tip.tryLabel, m, onClick = onTry, emphasis = true, modifier = Modifier.weight(1f))
             }
         } else {
@@ -182,7 +235,7 @@ fun FeatureTipCard(
             Spacer(Modifier.height(u * 4))
             Row(verticalAlignment = Alignment.CenterVertically) {
                 Spacer(Modifier.weight(1f))
-                OptionButton(tk("NO THANKS"), small, onClick = onNoThanks)
+                OptionButton(noLabel, small, onClick = onNoThanks)
                 Spacer(Modifier.width(u * 4))
                 OptionButton(tip.tryLabel, small, onClick = onTry, emphasis = true)
             }

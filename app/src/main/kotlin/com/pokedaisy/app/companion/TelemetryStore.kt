@@ -169,6 +169,7 @@ class TelemetryStore {
 
     /** The battle menus' cursors, where the ROM's RAM is known to be its config's. */
     fun knownCursorAddrs(): Pair<Long, Long>? = sampler.knownCursorAddrs
+    fun retailRom(): Boolean = sampler.retailRom
 
     private companion object {
         /** ~1 sample a second: a game whose data never comes in drops the copy after this long. */

@@ -139,6 +139,7 @@ val FIELD_ITEMS_EMERALD: FieldItemFns by lazy {
         codeCrcs = listOf(0x7D0D07B6L, 0x519C39C0L, 0x312F6576L, 0x379EF742L, 0x2532A407L),
         party = PARTY_ITEMS_EMERALD,
         fly = FLY_EMERALD,
+        flight = FLIGHT_EMERALD,
         pc = PC_EMERALD,
     )
 }
@@ -259,6 +260,1077 @@ val FLASH_EMERALD_LEGACY: FlashFns by lazy {
         partyMenuSlotId = 0x0203D1F9L,
         mapHeader = 0x020374A4L,
         codeCrcs = listOf(0xBCF97BF3L, 0x8E37859EL, 0x2A2B8D7CL, 0xB6C3FB91L),
+    )
+}
+
+// FREE FLIGHT and the scenic FLY (Flight.kt's FlightFns): retail Emerald (BPEE, SHA1 f3ae0881...). Every address from
+// pret's pokeemerald symbols (its `symbols` branch: the build is byte for byte retail), each function's first bytes
+// checked against the ROM (codeCrcs; LockPlayerFieldControls' and UnlockPlayerFieldControls' are FLY_EMERALD's). Its
+// bird is one 32x32 picture with no rider: the rider is the player's surfing graphics in their get-on pose, a sprite of
+// its own (riderTemplate: CopyObjectGraphicsInfoToSpriteTemplate), as Emerald's FLY seats them.
+val FLIGHT_EMERALD: FlightFns by lazy {
+    FlightFns(
+        objectEvents = 0x02037350L,
+        playerAvatar = 0x02037590L,
+        sprites = 0x02020630L,
+        vmap = 0x03005DC0L, // gBackupMapLayout
+        connectionFlags = 0x02037340L, // sMapConnectionFlags
+        saveBlock1Ptr = 0x03005D8CL,
+        saveBlock2Ptr = 0x03005D90L,
+        main = 0x030022C0L,
+        cb2Overworld = 0x08085E5CL,
+        lockByte = 0x03000F2CL,
+        paletteFade = 0x02037FD4L,
+        lockControls = 0x08098E54L,
+        unlockControls = 0x08098E60L,
+        createSprite = 0x08006DF4L,
+        destroySprite = 0x080070E8L,
+        startSpriteAnim = 0x080081A8L,
+        birdTemplate = 0x0850D4A8L,
+        behaviorAt = 0x080882BCL,
+        collisionAt = 0x080881B0L,
+        elevationAt = 0x08088144L,
+        objectAt = 0x0808D574L,
+        playSe = 0x080A37A4L,
+        seFly = 158,
+        seFailure = 32,
+        walkFast = 0x15,
+        walkFaster = 0x2D,
+        spriteOffset = 0x02021BBCL,
+        walkCurrent = 0x29,
+        walkSlide = 0x31,
+        mapHeader = 0x02037318L,
+        drawMetatileAt = 0x08089EA0L,
+        // MB_NORMAL, TALL_GRASS, LONG_GRASS, DEEP_SAND, SHORT_GRASS, CAVE, NO_RUNNING, MOUNTAIN_TOP, PUDDLE, SAND, ASHGRASS,
+        // FOOTPRINTS, HOT_SPRINGS
+        landOk = setOf(0x00, 0x02, 0x03, 0x06, 0x07, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x24, 0x25, 0x28),
+        mapGroups = 0x08486578L,
+        mapGroupSizes = listOf(57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1),
+        healLocations = 0x0859F53CL,
+        healLocationSize = 8,
+        healLocationCount = 22,
+        noFly = emptyList(),
+        codeCrcs = listOf(0xB9FB85A7L, 0xB037C8AFL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x7C801D56L, 0xF7A78E5CL, 0xA5FEDEAEL, 0x037235C5L, 0xCA5315E7L),
+        drawView = 0x08089C34L, // DrawWholeMapView
+        riderTemplate = 0x0808DCFCL,
+        riderGfx = 0x0808BD8CL,
+        spriteDummy = 0x08007429L,
+        riderAnim = 22, // ANIM_GET_ON_OFF_POKEMON_WEST
+        // EWRAM's last symbol (sRayScene) ends at 0x0203CF64; PARTY_ITEMS_EMERALD's scratch word sits at 0x0203FFF0.
+        scratch = 0x0203FFC0L,
+    )
+}
+
+// Glazed 9.2.0: retail Emerald edited in place, every function and table where retail has them; its Tunod and Johto
+// are written over Hoenn's maps (gMapGroups' lists grew, sHealLocations' entries are its own).
+val FLIGHT_GLAZED: FlightFns by lazy {
+    FlightFns(
+        objectEvents = 0x02037350L,
+        playerAvatar = 0x02037590L,
+        sprites = 0x02020630L,
+        vmap = 0x03005DC0L, // gBackupMapLayout
+        connectionFlags = 0x02037340L, // sMapConnectionFlags
+        saveBlock1Ptr = 0x03005D8CL,
+        saveBlock2Ptr = 0x03005D90L,
+        main = 0x030022C0L,
+        cb2Overworld = 0x08085E5CL,
+        lockByte = 0x03000F2CL,
+        paletteFade = 0x02037FD4L,
+        lockControls = 0x08098E54L,
+        unlockControls = 0x08098E60L,
+        createSprite = 0x08006DF4L,
+        destroySprite = 0x080070E8L,
+        startSpriteAnim = 0x080081A8L,
+        birdTemplate = 0x0850D4A8L,
+        behaviorAt = 0x080882BCL,
+        collisionAt = 0x080881B0L,
+        elevationAt = 0x08088144L,
+        objectAt = 0x0808D574L,
+        playSe = 0x080A37A4L,
+        seFly = 158,
+        seFailure = 32,
+        walkFast = 0x15,
+        walkFaster = 0x2D,
+        spriteOffset = 0x02021BBCL,
+        walkCurrent = 0x29,
+        walkSlide = 0x31,
+        mapHeader = 0x02037318L,
+        drawMetatileAt = 0x08089EA0L,
+        // MB_NORMAL, TALL_GRASS, LONG_GRASS, DEEP_SAND, SHORT_GRASS, CAVE, NO_RUNNING, MOUNTAIN_TOP, PUDDLE, SAND, ASHGRASS,
+        // FOOTPRINTS, HOT_SPRINGS
+        landOk = setOf(0x00, 0x02, 0x03, 0x06, 0x07, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x24, 0x25, 0x28),
+        mapGroups = 0x08486578L,
+        mapGroupSizes = listOf(57, 5, 5, 6, 9, 8, 9, 9, 8, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 110, 61, 89, 2, 1, 13, 1, 1, 3, 1),
+        healLocations = 0x0859F53CL,
+        healLocationSize = 8,
+        healLocationCount = 22,
+        noFly = emptyList(),
+        codeCrcs = listOf(0xB9FB85A7L, 0xB037C8AFL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x7C801D56L, 0xF7A78E5CL, 0xA5FEDEAEL, 0x037235C5L, 0xCA5315E7L),
+        drawView = 0x08089C34L, // DrawWholeMapView
+        riderTemplate = 0x0808DCFCL,
+        riderGfx = 0x0808BD8CL,
+        spriteDummy = 0x08007429L,
+        riderAnim = 22, // ANIM_GET_ON_OFF_POKEMON_WEST
+        // EWRAM's last symbol (sRayScene) ends at 0x0203CF64; PARTY_ITEMS_EMERALD's scratch word sits at 0x0203FFF0.
+        scratch = 0x0203FFC0L,
+    )
+}
+
+// FREE FLIGHT for Emerald Kaizo v2.0: retail Emerald edited in place, every address the flight uses retail's (its maps and
+// heal locations too). A record of its own so flightAllowed can let it in by identity. Flown headless on retail's save
+// booted in it (free flight, two scenic routes with EXPAND matched every frame). Its classic FLY stays off (classicFly).
+val FLIGHT_EMERALD_KAIZO: FlightFns by lazy {
+    FLIGHT_EMERALD.copy()
+}
+
+// Emerald Legacy 1.1.4: pokeemerald rebuilt from its own source, so every address moved: FLIGHT_EMERALD's mapped into it by
+// code (scripts/port_field_items.py's port_flight: functions by their bytes, RAM through the literal pools), checked against
+// FLY_EMERALD_LEGACY's (the same lock functions and gSaveBlock2Ptr). Its GetPlayerAvatarGraphicsIdByStateId returns a u16
+// (graphics ids grew), found as the one caller of the by-gender table read that loads gPlayerAvatar + 7. Emerald's map
+// groups and heal locations, the same sizes. Flown headless on its save.
+val FLIGHT_EMERALD_LEGACY: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x020374DCL,
+        playerAvatar = 0x0203771CL,
+        sprites = 0x02020630L,
+        vmap = 0x03005FA0L,
+        connectionFlags = 0x020374CCL,
+        saveBlock1Ptr = 0x03005F6CL,
+        saveBlock2Ptr = 0x03005F70L,
+        main = 0x030024A0L,
+        cb2Overworld = 0x08086F04L,
+        lockByte = 0x03000F2CL,
+        paletteFade = 0x02038160L,
+        lockControls = 0x0809A1F0L,
+        unlockControls = 0x0809A1FCL,
+        createSprite = 0x08006E10L,
+        destroySprite = 0x08007104L,
+        startSpriteAnim = 0x080081C4L,
+        birdTemplate = 0x0853DDF8L,
+        behaviorAt = 0x08089378L,
+        collisionAt = 0x0808926CL,
+        elevationAt = 0x08089200L,
+        objectAt = 0x0808E60CL,
+        playSe = 0x080A4BC8L,
+        spriteOffset = 0x02021BBCL,
+        mapHeader = 0x020374A4L,
+        drawMetatileAt = 0x0808AF5CL,
+        mapGroups = 0x084AF90CL,
+        healLocations = 0x085D1DF0L,
+        drawView = 0x0808ACF0L,
+        riderTemplate = 0x0808ED9CL,
+        riderGfx = 0x0808CE60L,
+        spriteDummy = 0x08007445L,
+        codeCrcs = listOf(0xB9FB85A7L, 0xB037C8AFL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x4AD66684L, 0xF7A78E5CL, 0xBBFDA236L, 0x02CDF403L, 0xCA5315E7L),
+    )
+}
+
+// FREE FLIGHT on the pokeemerald-expansion hacks: Emerald's constants (the same movement actions, songs, metatile behaviours
+// and rider animation in expansion 1.10 / 1.13), their own addresses mapped from a plain build of the expansion's tag
+// (functions by code, masked, else by shape: MapGridGetCollisionAt / ElevationAt by the bits they return,
+// GetPlayerAvatarGraphicsIdByStateId by its gPlayerAvatar + 7 read), RAM and tables through the literal pools; checked
+// against their FLY records (the lock functions, gSaveBlock2Ptr, the field-lock byte). ObjectEvent.spriteId at +0x23.
+// Emerald Imperium 1.3.1, from expansion 1.10.0.
+val FLIGHT_IMPERIUM: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x0200A6C4L,
+        playerAvatar = 0x0200A904L,
+        sprites = 0x0203D2A8L,
+        vmap = 0x030050ACL,
+        connectionFlags = 0x0200A6B4L,
+        saveBlock1Ptr = 0x03006218L,
+        saveBlock2Ptr = 0x0300621CL,
+        main = 0x03004218L,
+        cb2Overworld = 0x08188E14L,
+        lockByte = 0x03000E84L,
+        paletteFade = 0x020370C8L,
+        lockControls = 0x0820087CL,
+        unlockControls = 0x08200888L,
+        createSprite = 0x08211B38L,
+        destroySprite = 0x08211EECL,
+        startSpriteAnim = 0x082130F0L,
+        birdTemplate = 0x08612818L,
+        behaviorAt = 0x08137F08L,
+        collisionAt = 0x08137E10L,
+        elevationAt = 0x08137DA4L,
+        objectAt = 0x08117488L,
+        playSe = 0x0820FFD8L,
+        spriteOffset = 0x0203E7B4L,
+        mapHeader = 0x0200A68CL,
+        drawMetatileAt = 0x0812DD80L,
+        mapGroups = 0x08FC2F74L,
+        healLocations = 0x086A7E20L,
+        drawView = 0x0812DB04L,
+        riderTemplate = 0x081180D0L,
+        riderGfx = 0x0813B1A0L,
+        spriteDummy = 0x0821224DL,
+        birdPalette = 0x0811A2A8L,
+        birdPaletteTag = 0xFFFF,
+        mapGroupSizes = listOf(57, 6, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 11, 23, 14, 16, 15, 2, 2, 2, 3, 1, 1, 1, 112, 61, 89, 2, 1, 13, 1, 1, 3, 1),
+        healLocationCount = 52,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        followerRemove = 0x08118DC4L,
+        followerUpdate = 0x08118B48L,
+        codeCrcs = listOf(0x4522C4C5L, 0xFAD9A57BL, 0x78B809B4L, 0xED199C78L, 0xC10D31ABL, 0x5386DEDAL, 0x6CDE81D7L, 0x400F293AL, 0x340A500AL, 0xADDEACACL, 0xB064262AL, 0x03666D93L, 0x4E0E4989L, 0x0DB7E95BL, 0xCAB1D13AL, 0x0E21B16DL, 0x108BFF1CL),
+    )
+}
+
+// Lazarus 2.0, from expansion 1.10.0 too: its own build of it (registers and order apart), so the lock functions come from
+// FLY_LAZARUS's record, MapGridGetMetatileBehaviorAt as the function after MapGridGetMetatileIdAt that calls it first,
+// CB2_Overworld off gMain on its field. No rider template found: the player's own sprite rides the bird (flSeatOnBird).
+val FLIGHT_LAZARUS: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x0200566CL,
+        playerAvatar = 0x020058ACL,
+        sprites = 0x0203B5CCL,
+        vmap = 0x03002468L,
+        connectionFlags = 0x0200B094L,
+        saveBlock1Ptr = 0x03003664L,
+        saveBlock2Ptr = 0x03003668L,
+        main = 0x030014B8L,
+        cb2Overworld = 0x081906ACL,
+        lockByte = 0x03003B38L,
+        paletteFade = 0x0201B65CL,
+        lockControls = 0x0820B200L,
+        unlockControls = 0x0820B20CL,
+        createSprite = 0x08003A40L,
+        destroySprite = 0x08003E04L,
+        startSpriteAnim = 0x08004F94L,
+        birdTemplate = 0x087B8780L,
+        behaviorAt = 0x08148BB0L,
+        collisionAt = 0x08148AB8L,
+        elevationAt = 0x08148A4CL,
+        objectAt = 0x08114E6CL,
+        playSe = 0x0821B15CL,
+        spriteOffset = 0x0203CAD8L,
+        mapHeader = 0x0200B06CL,
+        drawMetatileAt = 0x0812B1F0L,
+        mapGroups = 0x08FAF098L,
+        healLocations = 0x08853094L,
+        drawView = 0x0812AF70L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x08004141L,
+        birdPalette = 0x081186FCL,
+        birdPaletteTag = 0xFFFF,
+        mapGroupSizes = listOf(114, 8, 12, 6, 7, 22, 10, 25, 7, 31, 8, 17, 18, 31, 24, 21, 19, 2, 2, 2, 3, 1, 1, 2, 115, 63, 89, 2, 1, 13, 1, 1, 3, 1),
+        healLocationCount = 62,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        followerRemove = 0x08116964L,
+        followerUpdate = 0x08116704L,
+        codeCrcs = listOf(0x824C20A1L, 0x3DB7411FL, 0x78B809B4L, 0xED199C78L, 0xC10D31ABL, 0x18BD2406L, 0x2C6258ACL, 0xCBEF23E4L, 0x340A500AL, 0xC4390A7BL, 0xB064262AL, 0x0DB7E95BL, 0xB5045B1FL, 0xA08F73F4L, 0x8599F5EEL),
+    )
+}
+
+// FREE FLIGHT for Emerald Seaglass v3.0: Lazarus's record ported (masked code, callers, pool words), its field's callback2
+// live; seated on the bird, its following Pokemon taken and brought back. Flown headless on its save from Littleroot.
+val FLIGHT_SEAGLASS: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x0200564CL,
+        playerAvatar = 0x0200588CL,
+        sprites = 0x02039810L,
+        vmap = 0x03002464L,
+        connectionFlags = 0x0200B074L,
+        saveBlock1Ptr = 0x030051B8L,
+        saveBlock2Ptr = 0x030051BCL,
+        main = 0x030014B4L,
+        cb2Overworld = 0x08179790L,
+        lockByte = 0x03005644L,
+        paletteFade = 0x02019550L,
+        lockControls = 0x081EF4E4L,
+        unlockControls = 0x081EF4F0L,
+        createSprite = 0x08003A38L,
+        destroySprite = 0x08003DECL,
+        startSpriteAnim = 0x08004FF0L,
+        birdTemplate = 0x085D60FCL,
+        behaviorAt = 0x0813C2BCL,
+        collisionAt = 0x0813C1C4L,
+        elevationAt = 0x0813C158L,
+        objectAt = 0x0810D92CL,
+        playSe = 0x081FF30CL,
+        spriteOffset = 0x0203AD1CL,
+        mapHeader = 0x0200B04CL,
+        drawMetatileAt = 0x08122A14L,
+        mapGroups = 0x08B45148L,
+        healLocations = 0x086691C0L,
+        drawView = 0x08122798L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x0800414DL,
+        birdPalette = 0x081108BCL,
+        birdPaletteTag = 0xFFFF,
+        mapGroupSizes = listOf(66, 5, 5, 6, 7, 8, 10, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1),
+        healLocationCount = 22,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        followerRemove = 0x0810F3B8L,
+        followerUpdate = 0x0810F20CL,
+        codeCrcs = listOf(0xB89FF331L, 0x0764928FL, 0x78B809B4L, 0xED199C78L, 0xC10D31ABL, 0x5386DEDAL, 0x6CDE81D7L, 0x400F293AL, 0x340A500AL, 0x39CF2A5EL, 0xB064262AL, 0x0DB7E95BL, 0xCAB1D13AL, 0x0E21B16DL, 0xC97AC7C7L),
+    )
+}
+
+// FREE FLIGHT for Too Many Types 2 v1.5.2: mapped against pokeemerald-expansion 1.12.3's build (FieldItems.kt's
+// FIELD_ITEMS_TMT2 says how); seated on the bird, no following Pokemon. Flown headless on its save from Lilycove.
+val FLIGHT_TMT2: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x020016ACL,
+        playerAvatar = 0x02001680L,
+        sprites = 0x0203661CL,
+        vmap = 0x030046A8L,
+        connectionFlags = 0x02001BD8L,
+        saveBlock1Ptr = 0x030057D8L,
+        saveBlock2Ptr = 0x030057D4L,
+        main = 0x03004084L,
+        cb2Overworld = 0x081750B4L,
+        lockByte = 0x03000E6CL,
+        paletteFade = 0x02031C0CL,
+        lockControls = 0x081DC2BCL,
+        unlockControls = 0x081DC2C8L,
+        createSprite = 0x081EB5C0L,
+        destroySprite = 0x081EA6ACL,
+        startSpriteAnim = 0x081EAF08L,
+        birdTemplate = 0x08586E60L,
+        behaviorAt = 0x0813B88CL,
+        collisionAt = 0x0813B798L,
+        elevationAt = 0x0813B72CL,
+        objectAt = 0x08115084L,
+        playSe = 0x081E9C78L,
+        spriteOffset = 0x02036196L,
+        mapHeader = 0x02001BBCL,
+        drawMetatileAt = 0x081232D0L,
+        mapGroups = 0x09047730L,
+        healLocations = 0x086ABFACL,
+        drawView = 0x081231C4L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x081E9FD1L,
+        birdPalette = 0x081167B4L,
+        birdPaletteTag = 0xFFFF,
+        mapGroupSizes = listOf(61, 5, 5, 6, 7, 8, 9, 11, 7, 14, 8, 17, 11, 25, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 110, 61, 90, 2, 1, 13, 1, 1, 3, 1, 4),
+        healLocationCount = 25,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        codeCrcs = listOf(0xCC1230F1L, 0x42EC4B88L, 0x5533ED97L, 0x6436920EL, 0xC10D31ABL, 0xE671CC98L, 0x555D3BFEL, 0x2A8EC1F1L, 0x5CA746C4L, 0x2ACF7733L, 0x9A7F1FE6L, 0x4C242A41L, 0x0365E5A0L),
+    )
+}
+
+// FREE FLIGHT for R.O.W.E. v2.1.9.1: retail Emerald's record ported (its RAM checked against the ROM's symbol table); the
+// sprite id at +0x23 (16-bit graphics ids); seated on the bird. Its CreateFlyBirdSprite loads the bird's palette first (by
+// index 0x1A), so the loader runs before CreateSprite and the slot it gives is kept (birdPaletteTag bit 16).
+val FLIGHT_ROWE: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x02037C2CL,
+        playerAvatar = 0x020380D4L,
+        sprites = 0x02020538L,
+        vmap = 0x03004B30L,
+        connectionFlags = 0x02037C1CL,
+        saveBlock1Ptr = 0x03004AFCL,
+        saveBlock2Ptr = 0x03004B00L,
+        main = 0x03002B90L,
+        cb2Overworld = 0x080C3EF0L,
+        lockByte = 0x0203F72CL,
+        paletteFade = 0x02038F18L,
+        lockControls = 0x080D941CL,
+        unlockControls = 0x080D9428L,
+        createSprite = 0x080070B0L,
+        destroySprite = 0x080073A4L,
+        startSpriteAnim = 0x08008464L,
+        birdTemplate = 0x08E00E38L,
+        behaviorAt = 0x080C6668L,
+        collisionAt = 0x080C655CL,
+        elevationAt = 0x080C64F0L,
+        objectAt = 0x080CC2D4L,
+        playSe = 0x080E9C84L,
+        spriteOffset = 0x02021AC4L,
+        mapHeader = 0x02037BF4L,
+        drawMetatileAt = 0x080C85A4L,
+        mapGroups = 0x0883937CL,
+        healLocations = 0x08FCE3A4L,
+        drawView = 0x080C8338L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x080076E5L,
+        birdPalette = 0x081B6B28L,
+        birdPaletteTag = 0x1001A,
+        mapGroupSizes = listOf(128, 118, 23, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 111, 61, 89, 2, 1, 13, 1, 1, 3, 13),
+        healLocationCount = 76,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        codeCrcs = listOf(0xDD6560B2L, 0xD4A92DBAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x4C4FF396L, 0xF7A78E5CL, 0xCA5315E7L, 0x720F965EL),
+    )
+}
+
+// FREE FLIGHT for Super Mariomon v1.5.1 / v1.5.2: retail Emerald's record ported; seated on the bird, the bird's palette
+// loaded first (index 0x1A, birdPaletteTag bit 16) like R.O.W.E.'s. Flown headless on its save.
+val FLIGHT_MARIOMON_V1_5: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x02038DD4L,
+        playerAvatar = 0x02039014L,
+        sprites = 0x02020630L,
+        vmap = 0x03004C00L,
+        connectionFlags = 0x02038DC4L,
+        saveBlock1Ptr = 0x03004BCCL,
+        saveBlock2Ptr = 0x03004BD0L,
+        main = 0x03002C40L,
+        cb2Overworld = 0x080AA0A8L,
+        lockByte = 0x0300102CL,
+        paletteFade = 0x02039A58L,
+        lockControls = 0x080BECECL,
+        unlockControls = 0x080BECF8L,
+        createSprite = 0x080070D4L,
+        destroySprite = 0x080073C8L,
+        startSpriteAnim = 0x080084B4L,
+        birdTemplate = 0x0876C4B4L,
+        behaviorAt = 0x080ACA58L,
+        collisionAt = 0x080AC94CL,
+        elevationAt = 0x080AC8E0L,
+        objectAt = 0x080B22E8L,
+        playSe = 0x080CA58CL,
+        spriteOffset = 0x02021B3CL,
+        mapHeader = 0x02038D9CL,
+        drawMetatileAt = 0x080AE89CL,
+        mapGroups = 0x0869821CL,
+        healLocations = 0x08834B50L,
+        drawView = 0x080AE630L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x08007709L,
+        birdPalette = 0x081942E4L,
+        birdPaletteTag = 0x1001A,
+        mapGroupSizes = listOf(6, 7, 30, 9, 10, 18, 47, 32, 22, 21, 11, 18, 7, 17, 17, 3, 3, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 57),
+        healLocationCount = 45,
+        noFly = emptyList(),
+        objSpriteId = 0x0,
+        codeCrcs = listOf(0xF387E86EL, 0xFA4BA566L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xD90903A8L, 0xF7A78E5CL, 0xCA5315E7L, 0xB39D34E0L),
+    )
+}
+
+val FLIGHT_MARIOMON_V1_5_2: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x02038DD4L,
+        playerAvatar = 0x02039014L,
+        sprites = 0x02020630L,
+        vmap = 0x03004C00L,
+        connectionFlags = 0x02038DC4L,
+        saveBlock1Ptr = 0x03004BCCL,
+        saveBlock2Ptr = 0x03004BD0L,
+        main = 0x03002C40L,
+        cb2Overworld = 0x080AA17CL,
+        lockByte = 0x0300102CL,
+        paletteFade = 0x02039A58L,
+        lockControls = 0x080BEDCCL,
+        unlockControls = 0x080BEDD8L,
+        createSprite = 0x080070D4L,
+        destroySprite = 0x080073C8L,
+        startSpriteAnim = 0x080084B4L,
+        birdTemplate = 0x0876C948L,
+        behaviorAt = 0x080ACB38L,
+        collisionAt = 0x080ACA2CL,
+        elevationAt = 0x080AC9C0L,
+        objectAt = 0x080B23C8L,
+        playSe = 0x080CA66CL,
+        spriteOffset = 0x02021B3CL,
+        mapHeader = 0x02038D9CL,
+        drawMetatileAt = 0x080AE97CL,
+        mapGroups = 0x086986B0L,
+        healLocations = 0x08835004L,
+        drawView = 0x080AE710L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x08007709L,
+        birdPalette = 0x08194448L,
+        birdPaletteTag = 0x1001A,
+        mapGroupSizes = listOf(6, 7, 30, 9, 10, 18, 47, 32, 22, 21, 11, 18, 7, 17, 17, 3, 3, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 57),
+        healLocationCount = 45,
+        noFly = emptyList(),
+        objSpriteId = 0x0,
+        codeCrcs = listOf(0xF387E86EL, 0xFA4BA566L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xF29C9C1DL, 0xF7A78E5CL, 0xCA5315E7L, 0xB39D34E0L),
+    )
+}
+
+// FREE FLIGHT for Quetzal Alpha 9.0 (English): retail Emerald's record ported; its SaveBlock1 position at +0x470; seated on
+// the bird, its palette loaded first (index 0x1A). Flown headless on the Spanish save (Jagged Pass).
+val FLIGHT_QUETZAL: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x02038D10L,
+        playerAvatar = 0x02039070L,
+        sprites = 0x02020630L,
+        vmap = 0x03005600L,
+        connectionFlags = 0x02038CD8L,
+        saveBlock1Ptr = 0x030055BCL,
+        saveBlock2Ptr = 0x030055C0L,
+        main = 0x03002660L,
+        cb2Overworld = 0x080C043CL,
+        lockByte = 0x03000FDCL,
+        paletteFade = 0x02039ABCL,
+        lockControls = 0x080DB928L,
+        unlockControls = 0x080DB934L,
+        createSprite = 0x08007574L,
+        destroySprite = 0x08007A60L,
+        startSpriteAnim = 0x080090D4L,
+        birdTemplate = 0x090FECACL,
+        behaviorAt = 0x080C50CCL,
+        collisionAt = 0x080C4F6CL,
+        elevationAt = 0x080C4E68L,
+        objectAt = 0x080CD1BCL,
+        playSe = 0x080F1130L,
+        spriteOffset = 0x02021BBCL,
+        mapHeader = 0x02038CB0L,
+        drawMetatileAt = 0x080C7580L,
+        mapGroups = 0x089286BCL,
+        healLocations = 0x0921C7BCL,
+        drawView = 0x080C71E4L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x08007E59L,
+        birdPalette = 0x081D2858L,
+        birdPaletteTag = 0x1001A,
+        mapGroupSizes = listOf(57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 126, 123, 126, 126, 126, 37),
+        healLocationCount = 57,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        saveBlock1PosOff = 0x470,
+        codeCrcs = listOf(0x17AEE52BL, 0x1E62A823L, 0xE06046D4L, 0x5FF57BF2L, 0xC1C72DBEL, 0x43ED8429L, 0x8BB04EAFL, 0x8BB04EAFL, 0x44A073D8L, 0x7F5AB1B2L, 0x1D44D1D4L, 0x90BD8427L, 0xDBF8DC1FL),
+    )
+}
+
+// Quetzal Alpha 9.0 Spanish and Alpha 9v1 English / Spanish: Alpha 9.0 English's record ported.
+val FLIGHT_QUETZAL_ES: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x02038D10L,
+        playerAvatar = 0x02039070L,
+        sprites = 0x02020630L,
+        vmap = 0x03005600L,
+        connectionFlags = 0x02038CD8L,
+        saveBlock1Ptr = 0x030055BCL,
+        saveBlock2Ptr = 0x030055C0L,
+        main = 0x03002660L,
+        cb2Overworld = 0x080C0430L,
+        lockByte = 0x03000FDCL,
+        paletteFade = 0x02039ABCL,
+        lockControls = 0x080DB940L,
+        unlockControls = 0x080DB94CL,
+        createSprite = 0x08007574L,
+        destroySprite = 0x08007A60L,
+        startSpriteAnim = 0x080090D4L,
+        birdTemplate = 0x0910A660L,
+        behaviorAt = 0x080C50E4L,
+        collisionAt = 0x080C4F84L,
+        elevationAt = 0x080C4E80L,
+        objectAt = 0x080CD1D4L,
+        playSe = 0x080F1148L,
+        spriteOffset = 0x02021BBCL,
+        mapHeader = 0x02038CB0L,
+        drawMetatileAt = 0x080C7598L,
+        mapGroups = 0x08934070L,
+        healLocations = 0x0921FA38L,
+        drawView = 0x080C71FCL,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x08007E59L,
+        birdPalette = 0x081D278CL,
+        birdPaletteTag = 0x1001A,
+        mapGroupSizes = listOf(57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 126, 123, 126, 126, 126, 37),
+        healLocationCount = 57,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        saveBlock1PosOff = 0x470,
+        codeCrcs = listOf(0x17AEE52BL, 0x1E62A823L, 0xE06046D4L, 0x5FF57BF2L, 0xC1C72DBEL, 0x43ED8429L, 0x8BB04EAFL, 0x8BB04EAFL, 0x44A073D8L, 0x4112261BL, 0x1D44D1D4L, 0x90BD8427L, 0xDBF8DC1FL),
+    )
+}
+
+val FLIGHT_QUETZAL_V1: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x02038D10L,
+        playerAvatar = 0x02039070L,
+        sprites = 0x02020630L,
+        vmap = 0x03005600L,
+        connectionFlags = 0x02038CD8L,
+        saveBlock1Ptr = 0x030055BCL,
+        saveBlock2Ptr = 0x030055C0L,
+        main = 0x03002660L,
+        cb2Overworld = 0x080C2988L,
+        lockByte = 0x03000FDCL,
+        paletteFade = 0x02039ABCL,
+        lockControls = 0x080DE29CL,
+        unlockControls = 0x080DE2A8L,
+        createSprite = 0x08007574L,
+        destroySprite = 0x08007A60L,
+        startSpriteAnim = 0x080090D4L,
+        birdTemplate = 0x09112A90L,
+        behaviorAt = 0x080C786CL,
+        collisionAt = 0x080C770CL,
+        elevationAt = 0x080C7608L,
+        objectAt = 0x080CF9CCL,
+        playSe = 0x080F3DA4L,
+        spriteOffset = 0x02021BBCL,
+        mapHeader = 0x02038CB0L,
+        drawMetatileAt = 0x080C9D20L,
+        mapGroups = 0x0893C438L,
+        healLocations = 0x09226D44L,
+        drawView = 0x080C9984L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x08007E59L,
+        birdPalette = 0x081DDD58L,
+        birdPaletteTag = 0x1001A,
+        mapGroupSizes = listOf(57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 126, 123, 126, 126, 126, 37),
+        healLocationCount = 57,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        saveBlock1PosOff = 0x470,
+        codeCrcs = listOf(0x17AEE52BL, 0x1E62A823L, 0xE06046D4L, 0x5FF57BF2L, 0xC1C72DBEL, 0x43ED8429L, 0x8BB04EAFL, 0x8BB04EAFL, 0x44A073D8L, 0x79C1BCFEL, 0x1D44D1D4L, 0x90BD8427L, 0xB08D826BL),
+    )
+}
+
+val FLIGHT_QUETZAL_ES_V1: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x02038D10L,
+        playerAvatar = 0x02039070L,
+        sprites = 0x02020630L,
+        vmap = 0x03005600L,
+        connectionFlags = 0x02038CD8L,
+        saveBlock1Ptr = 0x030055BCL,
+        saveBlock2Ptr = 0x030055C0L,
+        main = 0x03002660L,
+        cb2Overworld = 0x080C297CL,
+        lockByte = 0x03000FDCL,
+        paletteFade = 0x02039ABCL,
+        lockControls = 0x080DE2B4L,
+        unlockControls = 0x080DE2C0L,
+        createSprite = 0x08007574L,
+        destroySprite = 0x08007A60L,
+        startSpriteAnim = 0x080090D4L,
+        birdTemplate = 0x0911E47CL,
+        behaviorAt = 0x080C7884L,
+        collisionAt = 0x080C7724L,
+        elevationAt = 0x080C7620L,
+        objectAt = 0x080CF9E4L,
+        playSe = 0x080F3DBCL,
+        spriteOffset = 0x02021BBCL,
+        mapHeader = 0x02038CB0L,
+        drawMetatileAt = 0x080C9D38L,
+        mapGroups = 0x08947E24L,
+        healLocations = 0x0922A008L,
+        drawView = 0x080C999CL,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x08007E59L,
+        birdPalette = 0x081DDCF4L,
+        birdPaletteTag = 0x1001A,
+        mapGroupSizes = listOf(57, 5, 5, 6, 7, 8, 9, 7, 7, 14, 8, 17, 10, 23, 13, 15, 15, 2, 2, 2, 3, 1, 1, 1, 108, 61, 89, 2, 1, 13, 1, 1, 3, 1, 126, 123, 126, 126, 126, 37),
+        healLocationCount = 57,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        saveBlock1PosOff = 0x470,
+        codeCrcs = listOf(0x17AEE52BL, 0x1E62A823L, 0xE06046D4L, 0x5FF57BF2L, 0xC1C72DBEL, 0x43ED8429L, 0x8BB04EAFL, 0x8BB04EAFL, 0x44A073D8L, 0xFE28AF7FL, 0x1D44D1D4L, 0x90BD8427L, 0xB08D826BL),
+    )
+}
+
+// FREE FLIGHT for Heart and Soul v2.0.6 (pokeemerald-expansion, its own gcc build): mapped from expansion 1.13's build
+// by masked code and checked live headless (lock / unlock, CreateSprite / PlaySE by their callers, the field's callback2).
+// Its SaveBlock1 keeps the player's position at +4 (saveBlock1PosOff). gMapGroups' groups 31 on are empty lists (NULLs),
+// so only the first 31 are read. Its bird template has no callback: SpriteCallbackDummy is written after CreateSprite.
+// No rider graphics: the player's own sprite is seated on the bird. Its following Pokemon goes at take-off and comes back
+// once down (RemoveFollowingPokemon / UpdateFollowingPokemon: the calls round its return-to-field code's FieldCallback_UseFly check).
+// Its MapGridGetMetatileBehaviorAt starts with the two lsls that sign-extend x / y (0x08151370, not the push after them).
+val FLIGHT_HEART_AND_SOUL: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x020017F4L,
+        playerAvatar = 0x020017C4L,
+        sprites = 0x0203A764L,
+        vmap = 0x0300306CL,
+        connectionFlags = 0x02001D28L,
+        saveBlock1Ptr = 0x030041D8L,
+        saveBlock2Ptr = 0x030041D4L,
+        main = 0x03005BD8L,
+        cb2Overworld = 0x0819A010L,
+        lockByte = 0x03001FDDL,
+        paletteFade = 0x020339DCL,
+        lockControls = 0x08207FD8L,
+        unlockControls = 0x08207FECL,
+        createSprite = 0x0821A9BCL,
+        destroySprite = 0x082198A0L,
+        startSpriteAnim = 0x0821A15CL,
+        birdTemplate = 0x085018ECL,
+        behaviorAt = 0x08151370L,
+        collisionAt = 0x08150FD8L,
+        elevationAt = 0x08150F38L,
+        objectAt = 0x081274D4L,
+        playSe = 0x082186C0L,
+        spriteOffset = 0x0203A2DEL,
+        mapHeader = 0x02001D0CL,
+        drawMetatileAt = 0x08135D0CL,
+        mapGroups = 0x092DF5A4L,
+        healLocations = 0x08785204L,
+        drawView = 0x08135C70L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x08218B45L,
+        birdPalette = 0x08128C38L,
+        birdPaletteTag = 0xFFFF,
+        mapGroupSizes = listOf(71, 5, 5, 6, 5, 29, 9, 10, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 7, 1, 7, 35, 28, 91, 5, 15, 1, 6, 15, 108),
+        healLocationCount = 74,
+        saveBlock1PosOff = 4,
+        followerRemove = 0x0812846CL,
+        followerUpdate = 0x0812D264L,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        codeCrcs = listOf(0x3A5DE8F0L, 0xD7D52C9EL, 0xF1F342DEL, 0xA6906BB8L, 0xC10D31ABL, 0x1FDA72D5L, 0xBC7A69FCL, 0x81028CC3L, 0x340A500AL, 0x9545301FL, 0x71C69350L, 0xC22F487BL, 0x56E6647AL, 0x0E21B16DL, 0x9DA84837L),
+    )
+}
+
+// FREE FLIGHT for SoulGold (pokeemerald-expansion, no source), v1.1.4 and the v1.2 builds (FIELD_ITEMS_SOULGOLD*'s twins; the
+// two v1.2.1 builds share their code). v1.1.4 mapped from expansion 1.13's build and by shape: CreateSprite from
+// CreateFlyBirdSprite (0xFF, 0xB4, 1), its bird template behind gFieldEffectObjectTemplatePointers +0x68 (no callback:
+// SpriteCallbackDummy written after), the palette loader after it (the player's gender), DestroySprite the body gcc split
+// off (its callers test inUse), the map grid's reads by shape - SoulGold's metatile ids are 11 bits, collision one bit
+// (bit 11), undefined 0x7FF (mapGridUndefined) - the field's callback2 live, gMapConnectionFlags right after gMapHeader.
+// The v1.2 builds from v1.1.4 by masked code and the pool words of the matched functions (port_sg-style), checked live.
+// Seated on the bird (no rider graphics); its following Pokemon goes at take-off and comes back once down. gMapGroups'
+// last group stops where the table starts (the list ran on into it).
+val FLIGHT_SOULGOLD: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x02003314L,
+        playerAvatar = 0x020032E8L,
+        sprites = 0x0203BF38L,
+        vmap = 0x03002F58L,
+        connectionFlags = 0x02003844L,
+        saveBlock1Ptr = 0x030040C4L,
+        saveBlock2Ptr = 0x030040C0L,
+        main = 0x030055C0L,
+        cb2Overworld = 0x081BEA30L,
+        lockByte = 0x03001F74L,
+        paletteFade = 0x020384D0L,
+        lockControls = 0x082363B8L,
+        unlockControls = 0x082363CCL,
+        createSprite = 0x08247A78L,
+        destroySprite = 0x08246EB8L,
+        startSpriteAnim = 0x0824802CL,
+        birdTemplate = 0x084F4EDCL,
+        behaviorAt = 0x08165284L,
+        collisionAt = 0x0816518CL,
+        elevationAt = 0x08165120L,
+        objectAt = 0x0813CB80L,
+        playSe = 0x0824618CL,
+        spriteOffset = 0x0203BAB2L,
+        mapHeader = 0x02003828L,
+        drawMetatileAt = 0x0814B428L,
+        mapGroups = 0x09587364L,
+        healLocations = 0x08747E9CL,
+        drawView = 0x0814B38CL,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x082464F9L,
+        birdPalette = 0x0813EA40L,
+        birdPaletteTag = 0xFFFF,
+        mapGroupSizes = listOf(67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 35),
+        healLocationCount = 80,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        followerRemove = 0x0813DBC0L,
+        followerUpdate = 0x08143498L,
+        mapGridUndefined = 0x7FF,
+        codeCrcs = listOf(0x49C48542L, 0x10E7E49AL, 0xF03D67BAL, 0xF2F3BD3EL, 0xC10D31ABL, 0xE5E9143EL, 0x6CDE81D7L, 0x400F293AL, 0x340A500AL, 0xA821E2BBL, 0x27FB3703L, 0x15183F83L, 0xF7F99E53L, 0x0E21B16DL, 0x808FB25BL),
+    )
+}
+
+val FLIGHT_SOULGOLD_V1_2: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x02003314L,
+        playerAvatar = 0x020032E8L,
+        sprites = 0x0203BF40L,
+        vmap = 0x03002F58L,
+        connectionFlags = 0x02003844L,
+        saveBlock1Ptr = 0x030040C4L,
+        saveBlock2Ptr = 0x030040C0L,
+        main = 0x030055C0L,
+        cb2Overworld = 0x081BF450L,
+        lockByte = 0x03001F74L,
+        paletteFade = 0x020384D8L,
+        lockControls = 0x08236C98L,
+        unlockControls = 0x08236CACL,
+        createSprite = 0x0824834CL,
+        destroySprite = 0x0824778CL,
+        startSpriteAnim = 0x08248900L,
+        birdTemplate = 0x084F61A0L,
+        behaviorAt = 0x0816594CL,
+        collisionAt = 0x08165854L,
+        elevationAt = 0x081657E8L,
+        objectAt = 0x0813D2ACL,
+        playSe = 0x08246A60L,
+        spriteOffset = 0x0203BABAL,
+        mapHeader = 0x02003828L,
+        drawMetatileAt = 0x0814B9F0L,
+        mapGroups = 0x09592634L,
+        healLocations = 0x08749630L,
+        drawView = 0x0814B954L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x08246DCDL,
+        birdPalette = 0x0813F1F0L,
+        birdPaletteTag = 0xFFFF,
+        mapGroupSizes = listOf(67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 35),
+        healLocationCount = 80,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        followerRemove = 0x0813E37CL,
+        followerUpdate = 0x08143B7CL,
+        mapGridUndefined = 0x7FF,
+        codeCrcs = listOf(0xCCA8CCA7L, 0x10E7E49AL, 0xF03D67BAL, 0xF2F3BD3EL, 0xC10D31ABL, 0xE5E9143EL, 0x6CDE81D7L, 0x400F293AL, 0x340A500AL, 0xA69AF11AL, 0x27FB3703L, 0x15183F83L, 0xFBE173AFL, 0x0E21B16DL, 0x15033492L),
+    )
+}
+
+val FLIGHT_SOULGOLD_V1_2B: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x02003314L,
+        playerAvatar = 0x020032E8L,
+        sprites = 0x0203BF40L,
+        vmap = 0x03002F58L,
+        connectionFlags = 0x02003844L,
+        saveBlock1Ptr = 0x030040C4L,
+        saveBlock2Ptr = 0x030040C0L,
+        main = 0x030055C0L,
+        cb2Overworld = 0x081BF3E4L,
+        lockByte = 0x03001F74L,
+        paletteFade = 0x020384D8L,
+        lockControls = 0x08236C00L,
+        unlockControls = 0x08236C14L,
+        createSprite = 0x082482B4L,
+        destroySprite = 0x082476F4L,
+        startSpriteAnim = 0x08248868L,
+        birdTemplate = 0x084F6108L,
+        behaviorAt = 0x0816593CL,
+        collisionAt = 0x08165844L,
+        elevationAt = 0x081657D8L,
+        objectAt = 0x0813D29CL,
+        playSe = 0x082469C8L,
+        spriteOffset = 0x0203BABAL,
+        mapHeader = 0x02003828L,
+        drawMetatileAt = 0x0814B9E0L,
+        mapGroups = 0x09592590L,
+        healLocations = 0x08749598L,
+        drawView = 0x0814B944L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x08246D35L,
+        birdPalette = 0x0813F1E0L,
+        birdPaletteTag = 0xFFFF,
+        mapGroupSizes = listOf(67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 35),
+        healLocationCount = 80,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        followerRemove = 0x0813E36CL,
+        followerUpdate = 0x08143B6CL,
+        mapGridUndefined = 0x7FF,
+        codeCrcs = listOf(0x5A477C60L, 0x10E7E49AL, 0xF03D67BAL, 0xF2F3BD3EL, 0xC10D31ABL, 0xE5E9143EL, 0x6CDE81D7L, 0x400F293AL, 0x340A500AL, 0x2608F792L, 0x27FB3703L, 0x15183F83L, 0xFBE173AFL, 0x0E21B16DL, 0x15033492L),
+    )
+}
+
+val FLIGHT_SOULGOLD_V1_2C: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x02003314L,
+        playerAvatar = 0x020032E8L,
+        sprites = 0x0203BF40L,
+        vmap = 0x03002F58L,
+        connectionFlags = 0x02003844L,
+        saveBlock1Ptr = 0x030040C4L,
+        saveBlock2Ptr = 0x030040C0L,
+        main = 0x030055C0L,
+        cb2Overworld = 0x081BF4B0L,
+        lockByte = 0x03001F74L,
+        paletteFade = 0x020384D8L,
+        lockControls = 0x08236CF8L,
+        unlockControls = 0x08236D0CL,
+        createSprite = 0x082483ACL,
+        destroySprite = 0x082477ECL,
+        startSpriteAnim = 0x08248960L,
+        birdTemplate = 0x084F6294L,
+        behaviorAt = 0x081659A8L,
+        collisionAt = 0x081658B0L,
+        elevationAt = 0x08165844L,
+        objectAt = 0x0813D308L,
+        playSe = 0x08246AC0L,
+        spriteOffset = 0x0203BABAL,
+        mapHeader = 0x02003828L,
+        drawMetatileAt = 0x0814BA4CL,
+        mapGroups = 0x095C04C0L,
+        healLocations = 0x08749724L,
+        drawView = 0x0814B9B0L,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x08246E2DL,
+        birdPalette = 0x0813F24CL,
+        birdPaletteTag = 0xFFFF,
+        mapGroupSizes = listOf(67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 35),
+        healLocationCount = 80,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        followerRemove = 0x0813E3D8L,
+        followerUpdate = 0x08143BD8L,
+        mapGridUndefined = 0x7FF,
+        codeCrcs = listOf(0xE2F80527L, 0x10E7E49AL, 0xF03D67BAL, 0xF2F3BD3EL, 0xC10D31ABL, 0xE5E9143EL, 0x6CDE81D7L, 0x400F293AL, 0x340A500AL, 0x19185C81L, 0x27FB3703L, 0x15183F83L, 0xFBE173AFL, 0x0E21B16DL, 0x15033492L),
+    )
+}
+
+val FLIGHT_SOULGOLD_V1_2_1: FlightFns by lazy {
+    FLIGHT_EMERALD.copy(
+        objectEvents = 0x0200331CL,
+        playerAvatar = 0x020032F0L,
+        sprites = 0x0203BE68L,
+        vmap = 0x03002F58L,
+        connectionFlags = 0x0200384CL,
+        saveBlock1Ptr = 0x030040C4L,
+        saveBlock2Ptr = 0x030040C0L,
+        main = 0x030055C0L,
+        cb2Overworld = 0x081C2324L,
+        lockByte = 0x03001F74L,
+        paletteFade = 0x02038318L,
+        lockControls = 0x0823BB40L,
+        unlockControls = 0x0823BB54L,
+        createSprite = 0x0824DA18L,
+        destroySprite = 0x0824CE58L,
+        startSpriteAnim = 0x0824DFCCL,
+        birdTemplate = 0x084FDD20L,
+        behaviorAt = 0x08167DD8L,
+        collisionAt = 0x08167CE0L,
+        elevationAt = 0x08167C74L,
+        objectAt = 0x0813F7D0L,
+        playSe = 0x0824C12CL,
+        spriteOffset = 0x0203B9E2L,
+        mapHeader = 0x02003830L,
+        drawMetatileAt = 0x0814DF48L,
+        mapGroups = 0x095CC3A8L,
+        healLocations = 0x0875115CL,
+        drawView = 0x0814DEACL,
+        riderTemplate = 0x00000000L,
+        riderGfx = 0x00000000L,
+        spriteDummy = 0x0824C499L,
+        birdPalette = 0x08141714L,
+        birdPaletteTag = 0xFFFF,
+        mapGroupSizes = listOf(67, 6, 9, 6, 6, 36, 11, 14, 6, 6, 6, 5, 5, 7, 6, 9, 7, 18, 10, 12, 1, 9, 85, 69, 120, 46, 35),
+        healLocationCount = 80,
+        noFly = emptyList(),
+        objSpriteId = 0x23,
+        followerRemove = 0x081408A0L,
+        followerUpdate = 0x081460A4L,
+        mapGridUndefined = 0x7FF,
+        codeCrcs = listOf(0x6FE2BF05L, 0x10E7E49AL, 0xF03D67BAL, 0xF2F3BD3EL, 0xC10D31ABL, 0xE5E9143EL, 0x6CDE81D7L, 0x400F293AL, 0x340A500AL, 0x9CB48D9BL, 0x27FB3703L, 0x15183F83L, 0xFBE173AFL, 0x0E21B16DL, 0x15033492L),
+    )
+}
+
+// FREE FLIGHT for Ruby and Sapphire rev 1 / rev 2 (the same addresses in both revisions of each, like FIELD_ITEMS_RUBY /
+// _SAPPHIRE, which name these): pret's pokeruby symbols (its `symbols` branch: pokeruby_rev1 / _rev2, pokesapphire_rev1 /
+// _rev2.sym), the bird template's callback checked to be SpriteCallbackDummy in all four ROMs. Emerald's way: the bird
+// alone, the rider the player's surfing graphics (MakeObjectTemplateFromObjectEventGraphicsInfo, R/S's name for
+// CopyObjectGraphicsInfoToSpriteTemplate). Its save blocks sit in place (saveBlockStatic: gSaveBlock1 / gSaveBlock2).
+val FLIGHT_RUBY: FlightFns by lazy {
+    FlightFns(
+        objectEvents = 0x030048A0L,
+        playerAvatar = 0x0202E858L,
+        sprites = 0x02020004L,
+        vmap = 0x03004870L,
+        connectionFlags = 0x0202E850L,
+        saveBlock1Ptr = 0x02025734L,
+        saveBlock2Ptr = 0x02024EA4L,
+        main = 0x03001770L,
+        cb2Overworld = 0x080543C4L,
+        lockByte = 0x030006A4L,
+        paletteFade = 0x0202F388L,
+        lockControls = 0x08065550L,
+        unlockControls = 0x0806555CL,
+        createSprite = 0x08000BDCL,
+        destroySprite = 0x08000ED0L,
+        startSpriteAnim = 0x08001F58L,
+        birdTemplate = 0x08375024L,
+        behaviorAt = 0x080564BCL,
+        collisionAt = 0x080563B0L,
+        elevationAt = 0x08056344L,
+        objectAt = 0x0805ABF4L,
+        playSe = 0x080754B4L,
+        seFly = 158,
+        seFailure = 32,
+        walkFast = 0x15,
+        walkFaster = 0x2D,
+        spriteOffset = 0x030024D0L,
+        walkCurrent = 0x29,
+        walkSlide = 0x31,
+        mapHeader = 0x0202E828L,
+        drawMetatileAt = 0x08057DD0L,
+        // MB_NORMAL, TALL_GRASS, LONG_GRASS, SHORT_GRASS, NO_RUNNING, MOUNTAIN_TOP, PUDDLE, SAND, ASHGRASS, FOOTPRINTS, HOT_SPRINGS
+        landOk = setOf(0x00, 0x02, 0x03, 0x07, 0x0A, 0x0C, 0x16, 0x21, 0x24, 0x25, 0x28),
+        mapGroups = 0x083085A0L,
+        mapGroupSizes = listOf(54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1),
+        healLocations = 0x083E5A3CL,
+        healLocationSize = 8,
+        healLocationCount = 22,
+        noFly = emptyList(),
+        codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xD1BC264FL, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
+        riderTemplate = 0x0805B344L,
+        riderGfx = 0x0805988CL,
+        spriteDummy = 0x08001211L,
+        riderAnim = 22, // ANIM_GET_ON_OFF_POKEMON_WEST
+        // EWRAM past the build's last symbol, below PARTY_ITEMS' scratch word (0x0203FFF0) as in Emerald.
+        scratch = 0x0203FFC0L,
+        drawView = 0x08057B60L, // DrawWholeMapView
+        saveBlockStatic = true,
+        spriteOffsetY = 0x030027E0L,
+    )
+}
+
+val FLIGHT_SAPPHIRE: FlightFns by lazy {
+    FlightFns(
+        objectEvents = 0x030048A0L,
+        playerAvatar = 0x0202E858L,
+        sprites = 0x02020004L,
+        vmap = 0x03004870L,
+        connectionFlags = 0x0202E850L,
+        saveBlock1Ptr = 0x02025734L,
+        saveBlock2Ptr = 0x02024EA4L,
+        main = 0x03001770L,
+        cb2Overworld = 0x080543C8L,
+        lockByte = 0x030006A4L,
+        paletteFade = 0x0202F388L,
+        lockControls = 0x08065554L,
+        unlockControls = 0x08065560L,
+        createSprite = 0x08000BDCL,
+        destroySprite = 0x08000ED0L,
+        startSpriteAnim = 0x08001F58L,
+        birdTemplate = 0x08374FB4L,
+        behaviorAt = 0x080564C0L,
+        collisionAt = 0x080563B4L,
+        elevationAt = 0x08056348L,
+        objectAt = 0x0805ABF8L,
+        playSe = 0x080754B8L,
+        seFly = 158,
+        seFailure = 32,
+        walkFast = 0x15,
+        walkFaster = 0x2D,
+        spriteOffset = 0x030024D0L,
+        walkCurrent = 0x29,
+        walkSlide = 0x31,
+        mapHeader = 0x0202E828L,
+        drawMetatileAt = 0x08057DD4L,
+        // MB_NORMAL, TALL_GRASS, LONG_GRASS, SHORT_GRASS, NO_RUNNING, MOUNTAIN_TOP, PUDDLE, SAND, ASHGRASS, FOOTPRINTS, HOT_SPRINGS
+        landOk = setOf(0x00, 0x02, 0x03, 0x07, 0x0A, 0x0C, 0x16, 0x21, 0x24, 0x25, 0x28),
+        mapGroups = 0x08308530L,
+        mapGroupSizes = listOf(54, 5, 5, 6, 7, 7, 8, 7, 7, 13, 8, 17, 10, 24, 13, 13, 14, 2, 2, 2, 3, 1, 1, 1, 86, 44, 12, 2, 1, 13, 1, 1, 3, 1),
+        healLocations = 0x083E5A98L,
+        healLocationSize = 8,
+        healLocationCount = 22,
+        noFly = emptyList(),
+        codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x91979114L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
+        riderTemplate = 0x0805B348L,
+        riderGfx = 0x08059890L,
+        spriteDummy = 0x08001211L,
+        riderAnim = 22, // ANIM_GET_ON_OFF_POKEMON_WEST
+        // EWRAM past the build's last symbol, below PARTY_ITEMS' scratch word (0x0203FFF0) as in Emerald.
+        scratch = 0x0203FFC0L,
+        drawView = 0x08057B64L, // DrawWholeMapView
+        saveBlockStatic = true,
+        spriteOffsetY = 0x030027E0L,
     )
 }
 
@@ -580,6 +1652,54 @@ val FLY_LEAFGREEN_REV1: FlyFns by lazy {
     )
 }
 
+// FREE FLIGHT and the scenic FLY (Flight.kt's FlightFns, pk_flight.c): retail FireRed rev 1, pret's pokefirered built
+// clean as firered_rev1 (byte for byte retail) and its ELF. Landing behaviours: MB_NORMAL, TALL_GRASS, CAVE,
+// RUNNING_DISALLOWED, MOUNTAIN_TOP, PUDDLE, SAND, HOT_SPRINGS, ROCK_STAIRS, SAND_CAVE. Flown headless on the user's save.
+val FLIGHT_FIRERED_REV1: FlightFns by lazy {
+    FlightFns(
+        objectEvents = 0x02036E38L,
+        playerAvatar = 0x02037078L,
+        sprites = 0x0202063CL,
+        vmap = 0x03005040L,
+        connectionFlags = 0x02036E24L,
+        saveBlock1Ptr = 0x03005008L,
+        saveBlock2Ptr = 0x0300500CL,
+        main = 0x030030F0L,
+        cb2Overworld = 0x080565C8L,
+        lockByte = 0x03000F9CL,
+        paletteFade = 0x02037AB8L,
+        lockControls = 0x08069954L,
+        unlockControls = 0x08069960L,
+        createSprite = 0x08006FA0L,
+        destroySprite = 0x08007294L,
+        startSpriteAnim = 0x080083A0L,
+        birdTemplate = 0x083A5E70L,
+        behaviorAt = 0x08058F8CL,
+        collisionAt = 0x08058DD8L,
+        elevationAt = 0x08058D58L,
+        objectAt = 0x0805DFC4L,
+        playSe = 0x080722E0L,
+        seFly = 151,
+        seFailure = 26,
+        walkFast = 0x1D,
+        walkFaster = 0x35,
+        spriteOffset = 0x02021BC8L,
+        walkCurrent = 0x31,
+        walkSlide = 0x39,
+        mapHeader = 0x02036DFCL,
+        drawMetatileAt = 0x0805A8FCL,
+        landOk = setOf(0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B),
+        mapGroups = 0x08352718L,
+        mapGroupSizes = listOf(5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1),
+        healLocations = 0x083EEC68L,
+        healLocationSize = 8,
+        healLocationCount = 20,
+        noFly = listOf(0x030B),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0xCBD4DA8FL, 0x11B905BAL, 0x20389A3EL),
+        drawView = 0x0805A698L, // DrawWholeMapView
+    )
+}
+
 // USE / GIVE / TAKE, the Repels, FLY and PC anywhere (FieldItems.kt's FieldItemFns): retail FireRed rev 1 (BPRE).
 // Every address from the pret pokefirered build at the pinned commit, built as firered_rev1 (byte for byte the
 // retail ROM, SHA1 dd5945db...) and its ELF.
@@ -595,6 +1715,7 @@ val FIELD_ITEMS_FIRERED_REV1: FieldItemFns by lazy {
         codeCrcs = listOf(0xE6DE47BAL, 0x6E7CC2BEL, 0xD30D656EL, 0xC40BF208L, 0x9C26CCA4L),
         party = PARTY_ITEMS_FIRERED_REV1,
         fly = FLY_FIRERED_REV1,
+        flight = FLIGHT_FIRERED_REV1,
         pc = PC_FIRERED_REV1,
     )
 }
@@ -643,6 +1764,7 @@ val FIELD_ITEMS_LEAFGREEN_REV0: FieldItemFns by lazy {
         codeCrcs = listOf(0xE6DE47BAL, 0x6E7CC2BEL, 0xD30D656EL, 0xC40BF208L, 0x9C26CCA4L),
         party = PARTY_ITEMS_LEAFGREEN_REV0,
         fly = FLY_LEAFGREEN_REV0,
+        flight = FLIGHT_LEAFGREEN_REV0,
         pc = PC_LEAFGREEN_REV0,
     )
 }
@@ -682,6 +1804,7 @@ val FIELD_ITEMS_LEAFGREEN_REV1: FieldItemFns by lazy {
         codeCrcs = listOf(0xE6DE47BAL, 0x6E7CC2BEL, 0xD30D656EL, 0xC40BF208L, 0x9C26CCA4L),
         party = PARTY_ITEMS_LEAFGREEN_REV1,
         fly = FLY_LEAFGREEN_REV1,
+        flight = FLIGHT_LEAFGREEN_REV1,
         pc = PC_LEAFGREEN_REV1,
     )
 }
@@ -890,6 +2013,374 @@ val FLASH_LEAFGREEN_REV1: FlashFns by lazy {
         partyMenuSlotId = 0x0203B0A9L,
         mapHeader = 0x02036DFCL,
         codeCrcs = listOf(0x07BEBC3AL, 0xDA630667L, 0x80A86C54L),
+    )
+}
+
+// FREE FLIGHT for English FireRed rev 0 and LeafGreen rev 0 / 1: FLIGHT_FIRERED_REV1's fields from pret's symbols for each
+// build (its `symbols` branch: pokefirered.sym, pokeleafgreen.sym, pokeleafgreen_rev1.sym), the bird template's callback
+// checked to be SpriteCallbackDummy in each ROM; the same maps, so the same map groups, heal locations and stand-in.
+// FireRed rev 0's rides its port table (FIELD_ITEMS_PORTS' BPRE0, port_field_items.py's FLIGHT_RECORDS).
+val FLIGHT_FIRERED_REV0: FlightFns by lazy {
+    FlightFns(
+        objectEvents = 0x02036E38L,
+        playerAvatar = 0x02037078L,
+        sprites = 0x0202063CL,
+        vmap = 0x03005040L,
+        connectionFlags = 0x02036E24L,
+        saveBlock1Ptr = 0x03005008L,
+        saveBlock2Ptr = 0x0300500CL,
+        main = 0x030030F0L,
+        cb2Overworld = 0x080565B4L,
+        lockByte = 0x03000F9CL,
+        paletteFade = 0x02037AB8L,
+        lockControls = 0x08069940L,
+        unlockControls = 0x0806994CL,
+        createSprite = 0x08006F8CL,
+        destroySprite = 0x08007280L,
+        startSpriteAnim = 0x0800838CL,
+        birdTemplate = 0x083A5E00L,
+        behaviorAt = 0x08058F78L,
+        collisionAt = 0x08058DC4L,
+        elevationAt = 0x08058D44L,
+        objectAt = 0x0805DFB0L,
+        playSe = 0x080722CCL,
+        seFly = 151,
+        seFailure = 26,
+        walkFast = 0x1D,
+        walkFaster = 0x35,
+        spriteOffset = 0x02021BC8L,
+        walkCurrent = 0x31,
+        walkSlide = 0x39,
+        mapHeader = 0x02036DFCL,
+        drawMetatileAt = 0x0805A8E8L,
+        mapGroups = 0x083526A8L,
+        healLocations = 0x083EEBF8L,
+        landOk = setOf(0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B),
+        mapGroupSizes = listOf(5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1),
+        healLocationSize = 8,
+        healLocationCount = 20,
+        noFly = listOf(0x030B),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+        drawView = 0x0805A684L, // DrawWholeMapView
+    )
+}
+
+// Radical Red v4.1 (CFRU on FireRed rev 0): rev 0's RAM and functions, but CFRU hooks DestroySprite (a jump to its own
+// code: its CRC carries the target), and its map groups grew.
+val FLIGHT_RADICAL_RED: FlightFns by lazy {
+    FlightFns(
+        objectEvents = 0x02036E38L,
+        playerAvatar = 0x02037078L,
+        sprites = 0x0202063CL,
+        vmap = 0x03005040L,
+        connectionFlags = 0x02036E24L,
+        saveBlock1Ptr = 0x03005008L,
+        saveBlock2Ptr = 0x0300500CL,
+        main = 0x030030F0L,
+        cb2Overworld = 0x080565B4L,
+        lockByte = 0x03000F9CL,
+        paletteFade = 0x02037AB8L,
+        lockControls = 0x08069940L,
+        unlockControls = 0x0806994CL,
+        createSprite = 0x08006F8CL,
+        destroySprite = 0x08007280L,
+        startSpriteAnim = 0x0800838CL,
+        birdTemplate = 0x083A5E00L,
+        behaviorAt = 0x08058F78L,
+        collisionAt = 0x08058DC4L,
+        elevationAt = 0x08058D44L,
+        objectAt = 0x0805DFB0L,
+        playSe = 0x080722CCL,
+        seFly = 151,
+        seFailure = 26,
+        walkFast = 0x1D,
+        walkFaster = 0x35,
+        spriteOffset = 0x02021BC8L,
+        walkCurrent = 0x31,
+        walkSlide = 0x39,
+        mapHeader = 0x02036DFCL,
+        drawMetatileAt = 0x0805A8E8L,
+        mapGroups = 0x083526A8L,
+        healLocations = 0x083EEBF8L,
+        landOk = setOf(0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B),
+        mapGroupSizes = listOf(5, 130, 65, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44),
+        healLocationSize = 8,
+        healLocationCount = 20,
+        noFly = listOf(0x030B),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0x49B528F4L, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL, 0x7C60FCC4L),
+        drawView = 0x0805A684L, // DrawWholeMapView
+        // Unbound v2.1.1.1 (CFRU on FireRed rev 0, Borrius): rev 0's RAM and functions, DestroySprite and PlaySE hooked, its own
+        // gMapGroups with the group pointers XORed (as DexDetails reads them) and heal locations; FLY lands on its fly spots
+        // (FlyFns.spots), so none of FireRed's stand-in maps.
+        birdPalette = 0x0908FF1CL, // its palette loader, as its CreateFlyBirdSprite hook calls it
+        birdPaletteTag = 0x1100,
+    )
+}
+
+val FLIGHT_UNBOUND: FlightFns by lazy {
+    FlightFns(
+        objectEvents = 0x02036E38L,
+        playerAvatar = 0x02037078L,
+        sprites = 0x0202063CL,
+        vmap = 0x03005040L,
+        connectionFlags = 0x02036E24L,
+        saveBlock1Ptr = 0x03005008L,
+        saveBlock2Ptr = 0x0300500CL,
+        main = 0x030030F0L,
+        cb2Overworld = 0x080565B4L,
+        lockByte = 0x03000F9CL,
+        paletteFade = 0x02037AB8L,
+        lockControls = 0x08069940L,
+        unlockControls = 0x0806994CL,
+        createSprite = 0x08006F8CL,
+        destroySprite = 0x08007280L,
+        startSpriteAnim = 0x0800838CL,
+        birdTemplate = 0x083A5E00L,
+        behaviorAt = 0x08058F78L,
+        collisionAt = 0x08058DC4L,
+        elevationAt = 0x08058D44L,
+        objectAt = 0x0805DFB0L,
+        playSe = 0x080722CCL,
+        seFly = 151,
+        seFailure = 26,
+        walkFast = 0x1D,
+        walkFaster = 0x35,
+        spriteOffset = 0x02021BC8L,
+        walkCurrent = 0x31,
+        walkSlide = 0x39,
+        mapHeader = 0x02036DFCL,
+        drawMetatileAt = 0x0805A8E8L,
+        mapGroups = 0x08B70498L,
+        mapGroupsXor = 0x00B749DEL,
+        healLocations = 0x0881DC78L,
+        landOk = setOf(0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B),
+        mapGroupSizes = listOf(6, 123, 60, 109, 13, 7, 13, 12, 6, 8, 26, 12, 9, 2, 16, 4, 1, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 7, 20, 10, 7, 13, 5, 1, 1, 1, 2, 1, 8, 6, 7, 10, 4, 4, 16, 2, 2, 3, 12, 23, 9, 13),
+        healLocationSize = 8,
+        healLocationCount = 17,
+        noFly = emptyList(),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0x24AF731EL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0xB6C96B74L, 0x11B905BAL, 0x20389A3EL, 0xB9C98AB7L),
+        drawView = 0x0805A684L, // DrawWholeMapView
+        birdPalette = 0x089DCBC0L, // its palette loader, as its CreateFlyBirdSprite hook calls it (the bird's own tag)
+        birdPaletteTag = 0x11A2,
+    )
+}
+
+// FREE FLIGHT for the hacks on FireRed rev 0's code (edited in place, or CFRU): rev 0's record, each with its own map groups
+// and heal locations (read off the ROM through rev 0's literal pools), its stand-in Saffron map only where 3.11 is still
+// FireRed's, and its own code CRCs (CFRU and a few in-place hacks hook DestroySprite). Each flown headless on its save.
+// A build sharing one: Ghost Grey 1.0.1 / 1.0.2 / 1.0.4, the four Let's Go builds, the Sword and Shield patches (the same
+// bytes where these read). Rocket Edition reset to its copyright screen on long flights until the player was made inanimate
+// while up (pk_flight.c's flHidePlayer: the fast movements' step animations ran past the player's anim table).
+val FLIGHT_ULTRA_VIOLET: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        mapGroups = 0x0872AF04L,
+        mapGroupSizes = listOf(5, 123, 61, 66, 7, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 2, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1, 21, 17),
+        healLocations = 0x08740240L,
+        healLocationCount = 21,
+        noFly = listOf(0x030B),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_ROCKET_EDITION: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0x2845A4EBL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_ASH_GRAY: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        mapGroups = 0x0873E2F4L,
+        mapGroupSizes = listOf(43, 129, 60, 132, 4, 10, 10, 11, 6, 9, 22, 10, 8, 2, 11, 4, 2, 4, 2, 1, 1, 2, 2, 4, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 2, 2, 1),
+    )
+}
+
+val FLIGHT_ORANGE_ISLANDS: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        mapGroups = 0x083526A8L,
+        mapGroupSizes = listOf(5, 123, 60, 66, 6, 9, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44),
+        healLocations = 0x083EEBF8L,
+        healLocationCount = 20,
+        noFly = listOf(0x030B),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0x2F2C5934L, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_GHOST_GREY: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        mapGroups = 0x083526A8L,
+        mapGroupSizes = listOf(5, 127, 68, 72, 9, 12, 25, 16, 18, 28, 32, 12, 12, 15, 56, 11, 3, 5, 3, 1, 12, 10, 3, 3, 2, 11, 5, 14, 19, 1, 1, 7, 5, 17, 10, 13, 8, 5, 1, 1, 1, 17, 44),
+        healLocations = 0x089C59C0L,
+        healLocationCount = 25,
+        noFly = listOf(0x030B),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_LETS_GO: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        mapGroups = 0x083526A8L,
+        mapGroupSizes = listOf(5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44),
+        healLocations = 0x083EEBF8L,
+        healLocationCount = 20,
+        noFly = listOf(0x030B),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0x2845A4EBL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_ODYSSEY: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        mapGroups = 0x083526A8L,
+        mapGroupSizes = listOf(5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44),
+        healLocations = 0x083EEBF8L,
+        healLocationCount = 20,
+        noFly = listOf(0x030B),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0x2845A4EBL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_GAIA: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        mapGroups = 0x083528DCL,
+        mapGroupSizes = listOf(5, 81, 22, 46, 8, 8, 7, 13, 6, 9, 6, 9, 15, 15, 11, 19, 12, 7, 1, 4, 4, 1, 1, 4, 8, 1, 21),
+        healLocations = 0x083EEBF8L,
+        healLocationCount = 20,
+        noFly = emptyList(),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0x89AD7851L, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_AMETHYST: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        mapGroups = 0x083526A8L,
+        mapGroupSizes = listOf(5, 127, 62, 67, 4, 10, 18, 12, 8, 21, 21, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 4, 2, 5, 2, 1, 1, 1, 4, 10, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44),
+        healLocations = 0x083EEBF8L,
+        healLocationCount = 20,
+        noFly = emptyList(),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC8514894L, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_AMETHYST_V141: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        mapGroups = 0x083526A8L,
+        mapGroupSizes = listOf(5, 127, 62, 67, 4, 10, 18, 12, 8, 21, 21, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 4, 2, 5, 2, 1, 1, 1, 4, 10, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44),
+        healLocations = 0x083EEBF8L,
+        healLocationCount = 20,
+        noFly = emptyList(),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0x9F6107A5L, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_SWORD_SHIELD: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        mapGroups = 0x087B1010L,
+        mapGroupSizes = listOf(21, 123, 60, 67, 13, 17, 36, 24, 27, 21, 30, 14, 19, 21, 12, 4, 2, 2, 2, 1, 1, 3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 29, 25, 23, 45, 43, 16, 2, 16, 1),
+        healLocations = 0x083EEBF8L,
+        healLocationCount = 20,
+        noFly = listOf(0x030B),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0x30EA0582L, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_GS_CHRONICLES: FlightFns by lazy {
+    FLIGHT_FIRERED_REV0.copy(
+        mapGroups = 0x083526A8L,
+        mapGroupSizes = listOf(5, 123, 60, 67, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44),
+        healLocations = 0x08FF1008L,
+        healLocationCount = 21,
+        noFly = emptyList(),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0x77378C6BL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x82667C29L, 0x11B905BAL, 0x20389A3EL),
+    )
+}
+
+val FLIGHT_LEAFGREEN_REV0: FlightFns by lazy {
+    FlightFns(
+        objectEvents = 0x02036E38L,
+        playerAvatar = 0x02037078L,
+        sprites = 0x0202063CL,
+        vmap = 0x03005040L,
+        connectionFlags = 0x02036E24L,
+        saveBlock1Ptr = 0x03005008L,
+        saveBlock2Ptr = 0x0300500CL,
+        main = 0x030030F0L,
+        cb2Overworld = 0x080565B4L,
+        lockByte = 0x03000F9CL,
+        paletteFade = 0x02037AB8L,
+        lockControls = 0x08069940L,
+        unlockControls = 0x0806994CL,
+        createSprite = 0x08006F8CL,
+        destroySprite = 0x08007280L,
+        startSpriteAnim = 0x0800838CL,
+        birdTemplate = 0x083A5DE0L,
+        behaviorAt = 0x08058F78L,
+        collisionAt = 0x08058DC4L,
+        elevationAt = 0x08058D44L,
+        objectAt = 0x0805DFB0L,
+        playSe = 0x080722CCL,
+        seFly = 151,
+        seFailure = 26,
+        walkFast = 0x1D,
+        walkFaster = 0x35,
+        spriteOffset = 0x02021BC8L,
+        walkCurrent = 0x31,
+        walkSlide = 0x39,
+        mapHeader = 0x02036DFCL,
+        drawMetatileAt = 0x0805A8E8L,
+        mapGroups = 0x08352688L,
+        healLocations = 0x083EEA34L,
+        landOk = setOf(0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B),
+        mapGroupSizes = listOf(5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1),
+        healLocationSize = 8,
+        healLocationCount = 20,
+        noFly = listOf(0x030B),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0xE75CED8BL, 0x11B905BAL, 0x20389A3EL),
+        drawView = 0x0805A684L, // DrawWholeMapView
+    )
+}
+
+val FLIGHT_LEAFGREEN_REV1: FlightFns by lazy {
+    FlightFns(
+        objectEvents = 0x02036E38L,
+        playerAvatar = 0x02037078L,
+        sprites = 0x0202063CL,
+        vmap = 0x03005040L,
+        connectionFlags = 0x02036E24L,
+        saveBlock1Ptr = 0x03005008L,
+        saveBlock2Ptr = 0x0300500CL,
+        main = 0x030030F0L,
+        cb2Overworld = 0x080565C8L,
+        lockByte = 0x03000F9CL,
+        paletteFade = 0x02037AB8L,
+        lockControls = 0x08069954L,
+        unlockControls = 0x08069960L,
+        createSprite = 0x08006FA0L,
+        destroySprite = 0x08007294L,
+        startSpriteAnim = 0x080083A0L,
+        birdTemplate = 0x083A5E50L,
+        behaviorAt = 0x08058F8CL,
+        collisionAt = 0x08058DD8L,
+        elevationAt = 0x08058D58L,
+        objectAt = 0x0805DFC4L,
+        playSe = 0x080722E0L,
+        seFly = 151,
+        seFailure = 26,
+        walkFast = 0x1D,
+        walkFaster = 0x35,
+        spriteOffset = 0x02021BC8L,
+        walkCurrent = 0x31,
+        walkSlide = 0x39,
+        mapHeader = 0x02036DFCL,
+        drawMetatileAt = 0x0805A8FCL,
+        mapGroups = 0x083526F8L,
+        healLocations = 0x083EEAA4L,
+        landOk = setOf(0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B),
+        mapGroupSizes = listOf(5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1),
+        healLocationSize = 8,
+        healLocationCount = 20,
+        noFly = listOf(0x030B),
+        codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x1E5B3B09L, 0x11B905BAL, 0x20389A3EL),
+        drawView = 0x0805A698L, // DrawWholeMapView
     )
 }
 

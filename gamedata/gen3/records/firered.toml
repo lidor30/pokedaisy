@@ -149,6 +149,52 @@ setFlyWarpDestination = 0x080C5264
 destinations = 0x083F2D8C
 codeCrcs = [0x07BEBC3A, 0xDBE480BD, 0x50C0C136, 0xF9959006, 0x0111A86E, 0xBAB654BA, 0x059815BF]
 
+# FREE FLIGHT and the scenic FLY (Flight.kt's FlightFns, pk_flight.c): retail FireRed rev 1, pret's pokefirered built
+# clean as firered_rev1 (byte for byte retail) and its ELF. Landing behaviours: MB_NORMAL, TALL_GRASS, CAVE,
+# RUNNING_DISALLOWED, MOUNTAIN_TOP, PUDDLE, SAND, HOT_SPRINGS, ROCK_STAIRS, SAND_CAVE. Flown headless on the user's save.
+[record.FLIGHT_FIRERED_REV1]
+schema = 'gen3_flight'
+objectEvents = 0x02036E38
+playerAvatar = 0x02037078
+sprites = 0x0202063C
+vmap = 0x03005040
+connectionFlags = 0x02036E24
+saveBlock1Ptr = 0x03005008
+saveBlock2Ptr = 0x0300500C
+main = 0x030030F0
+cb2Overworld = 0x080565C8
+lockByte = 0x03000F9C
+paletteFade = 0x02037AB8
+lockControls = 0x08069954
+unlockControls = 0x08069960
+createSprite = 0x08006FA0
+destroySprite = 0x08007294
+startSpriteAnim = 0x080083A0
+birdTemplate = 0x083A5E70
+behaviorAt = 0x08058F8C
+collisionAt = 0x08058DD8
+elevationAt = 0x08058D58
+objectAt = 0x0805DFC4
+playSe = 0x080722E0
+seFly = 151
+seFailure = 26
+walkFast = 0x1D
+walkFaster = 0x35
+spriteOffset = 0x02021BC8
+walkCurrent = 0x31
+walkSlide = 0x39
+mapHeader = 0x02036DFC
+drawMetatileAt = 0x0805A8FC
+landOk = [0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B]
+mapGroups = 0x08352718
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+healLocations = 0x083EEC68
+healLocationSize = 8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0xC22D4D5F, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0xCBD4DA8F, 0x11B905BA, 0x20389A3E]
+drawView = 0x0805A698       # DrawWholeMapView
+
 # USE / GIVE / TAKE, the Repels, FLY and PC anywhere (FieldItems.kt's FieldItemFns): retail FireRed rev 1 (BPRE).
 # Every address from the pret pokefirered build at the pinned commit, built as firered_rev1 (byte for byte the
 # retail ROM, SHA1 dd5945db...) and its ELF.
@@ -164,6 +210,7 @@ items = 0x083DB098
 codeCrcs = [0xE6DE47BA, 0x6E7CC2BE, 0xD30D656E, 0xC40BF208, 0x9C26CCA4]
 party = 'PARTY_ITEMS_FIRERED_REV1'
 fly = 'FLY_FIRERED_REV1'
+flight = 'FLIGHT_FIRERED_REV1'
 pc = 'PC_FIRERED_REV1'
 
 [record.PARTY_ITEMS_FIRERED_REV1]
@@ -206,6 +253,7 @@ items = 0x083DAE64
 codeCrcs = [0xE6DE47BA, 0x6E7CC2BE, 0xD30D656E, 0xC40BF208, 0x9C26CCA4]
 party = 'PARTY_ITEMS_LEAFGREEN_REV0'
 fly = 'FLY_LEAFGREEN_REV0'
+flight = 'FLIGHT_LEAFGREEN_REV0'
 pc = 'PC_LEAFGREEN_REV0'
 
 [record.PARTY_ITEMS_LEAFGREEN_REV0]
@@ -240,6 +288,7 @@ items = 0x083DAED4
 codeCrcs = [0xE6DE47BA, 0x6E7CC2BE, 0xD30D656E, 0xC40BF208, 0x9C26CCA4]
 party = 'PARTY_ITEMS_LEAFGREEN_REV1'
 fly = 'FLY_LEAFGREEN_REV1'
+flight = 'FLIGHT_LEAFGREEN_REV1'
 pc = 'PC_LEAFGREEN_REV1'
 
 [record.PARTY_ITEMS_LEAFGREEN_REV1]
@@ -424,3 +473,351 @@ fieldCallbacks = [0x080C9B5C] # FieldCallback_Flash
 partyMenuSlotId = 0x0203B0A9
 mapHeader = 0x02036DFC
 codeCrcs = [0x07BEBC3A, 0xDA630667, 0x80A86C54]
+
+# FREE FLIGHT for English FireRed rev 0 and LeafGreen rev 0 / 1: FLIGHT_FIRERED_REV1's fields from pret's symbols for each
+# build (its `symbols` branch: pokefirered.sym, pokeleafgreen.sym, pokeleafgreen_rev1.sym), the bird template's callback
+# checked to be SpriteCallbackDummy in each ROM; the same maps, so the same map groups, heal locations and stand-in.
+# FireRed rev 0's rides its port table (FIELD_ITEMS_PORTS' BPRE0, port_field_items.py's FLIGHT_RECORDS).
+[record.FLIGHT_FIRERED_REV0]
+schema = 'gen3_flight'
+objectEvents = 0x02036E38
+playerAvatar = 0x02037078
+sprites = 0x0202063C
+vmap = 0x03005040
+connectionFlags = 0x02036E24
+saveBlock1Ptr = 0x03005008
+saveBlock2Ptr = 0x0300500C
+main = 0x030030F0
+cb2Overworld = 0x080565B4
+lockByte = 0x03000F9C
+paletteFade = 0x02037AB8
+lockControls = 0x08069940
+unlockControls = 0x0806994C
+createSprite = 0x08006F8C
+destroySprite = 0x08007280
+startSpriteAnim = 0x0800838C
+birdTemplate = 0x083A5E00
+behaviorAt = 0x08058F78
+collisionAt = 0x08058DC4
+elevationAt = 0x08058D44
+objectAt = 0x0805DFB0
+playSe = 0x080722CC
+seFly = 151
+seFailure = 26
+walkFast = 0x1D
+walkFaster = 0x35
+spriteOffset = 0x02021BC8
+walkCurrent = 0x31
+walkSlide = 0x39
+mapHeader = 0x02036DFC
+drawMetatileAt = 0x0805A8E8
+mapGroups = 0x083526A8
+healLocations = 0x083EEBF8
+landOk = [0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B]
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+healLocationSize = 8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0xC22D4D5F, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+drawView = 0x0805A684       # DrawWholeMapView
+
+# Radical Red v4.1 (CFRU on FireRed rev 0): rev 0's RAM and functions, but CFRU hooks DestroySprite (a jump to its own
+# code: its CRC carries the target), and its map groups grew.
+[record.FLIGHT_RADICAL_RED]
+schema = 'gen3_flight'
+objectEvents = 0x02036E38
+playerAvatar = 0x02037078
+sprites = 0x0202063C
+vmap = 0x03005040
+connectionFlags = 0x02036E24
+saveBlock1Ptr = 0x03005008
+saveBlock2Ptr = 0x0300500C
+main = 0x030030F0
+cb2Overworld = 0x080565B4
+lockByte = 0x03000F9C
+paletteFade = 0x02037AB8
+lockControls = 0x08069940
+unlockControls = 0x0806994C
+createSprite = 0x08006F8C
+destroySprite = 0x08007280
+startSpriteAnim = 0x0800838C
+birdTemplate = 0x083A5E00
+behaviorAt = 0x08058F78
+collisionAt = 0x08058DC4
+elevationAt = 0x08058D44
+objectAt = 0x0805DFB0
+playSe = 0x080722CC
+seFly = 151
+seFailure = 26
+walkFast = 0x1D
+walkFaster = 0x35
+spriteOffset = 0x02021BC8
+walkCurrent = 0x31
+walkSlide = 0x39
+mapHeader = 0x02036DFC
+drawMetatileAt = 0x0805A8E8
+mapGroups = 0x083526A8
+healLocations = 0x083EEBF8
+landOk = [0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B]
+mapGroupSizes = [5, 130, 65, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocationSize = 8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x49B528F4, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E, 0x7C60FCC4]
+drawView = 0x0805A684       # DrawWholeMapView
+
+# Unbound v2.1.1.1 (CFRU on FireRed rev 0, Borrius): rev 0's RAM and functions, DestroySprite and PlaySE hooked, its own
+# gMapGroups with the group pointers XORed (as DexDetails reads them) and heal locations; FLY lands on its fly spots
+# (FlyFns.spots), so none of FireRed's stand-in maps.
+birdPalette = 0x0908FF1C  # its palette loader, as its CreateFlyBirdSprite hook calls it
+birdPaletteTag = 0x1100
+
+[record.FLIGHT_UNBOUND]
+schema = 'gen3_flight'
+objectEvents = 0x02036E38
+playerAvatar = 0x02037078
+sprites = 0x0202063C
+vmap = 0x03005040
+connectionFlags = 0x02036E24
+saveBlock1Ptr = 0x03005008
+saveBlock2Ptr = 0x0300500C
+main = 0x030030F0
+cb2Overworld = 0x080565B4
+lockByte = 0x03000F9C
+paletteFade = 0x02037AB8
+lockControls = 0x08069940
+unlockControls = 0x0806994C
+createSprite = 0x08006F8C
+destroySprite = 0x08007280
+startSpriteAnim = 0x0800838C
+birdTemplate = 0x083A5E00
+behaviorAt = 0x08058F78
+collisionAt = 0x08058DC4
+elevationAt = 0x08058D44
+objectAt = 0x0805DFB0
+playSe = 0x080722CC
+seFly = 151
+seFailure = 26
+walkFast = 0x1D
+walkFaster = 0x35
+spriteOffset = 0x02021BC8
+walkCurrent = 0x31
+walkSlide = 0x39
+mapHeader = 0x02036DFC
+drawMetatileAt = 0x0805A8E8
+mapGroups = 0x08B70498
+mapGroupsXor = 0x00B749DE
+healLocations = 0x0881DC78
+landOk = [0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B]
+mapGroupSizes = [6, 123, 60, 109, 13, 7, 13, 12, 6, 8, 26, 12, 9, 2, 16, 4, 1, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 7, 20, 10, 7, 13, 5, 1, 1, 1, 2, 1, 8, 6, 7, 10, 4, 4, 16, 2, 2, 3, 12, 23, 9, 13]
+healLocationSize = 8
+healLocationCount = 17
+noFly = []
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x24AF731E, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0xB6C96B74, 0x11B905BA, 0x20389A3E, 0xB9C98AB7]
+drawView = 0x0805A684       # DrawWholeMapView
+birdPalette = 0x089DCBC0  # its palette loader, as its CreateFlyBirdSprite hook calls it (the bird's own tag)
+birdPaletteTag = 0x11A2
+
+# FREE FLIGHT for the hacks on FireRed rev 0's code (edited in place, or CFRU): rev 0's record, each with its own map groups
+# and heal locations (read off the ROM through rev 0's literal pools), its stand-in Saffron map only where 3.11 is still
+# FireRed's, and its own code CRCs (CFRU and a few in-place hacks hook DestroySprite). Each flown headless on its save.
+# A build sharing one: Ghost Grey 1.0.1 / 1.0.2 / 1.0.4, the four Let's Go builds, the Sword and Shield patches (the same
+# bytes where these read). Rocket Edition reset to its copyright screen on long flights until the player was made inanimate
+# while up (pk_flight.c's flHidePlayer: the fast movements' step animations ran past the player's anim table).
+[record.FLIGHT_ULTRA_VIOLET]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x0872AF04
+mapGroupSizes = [5, 123, 61, 66, 7, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 2, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1, 21, 17]
+healLocations = 0x08740240
+healLocationCount = 21
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0xC22D4D5F, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_ROCKET_EDITION]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x2845A4EB, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_ASH_GRAY]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x0873E2F4
+mapGroupSizes = [43, 129, 60, 132, 4, 10, 10, 11, 6, 9, 22, 10, 8, 2, 11, 4, 2, 4, 2, 1, 1, 2, 2, 4, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 2, 2, 1]
+
+[record.FLIGHT_ORANGE_ISLANDS]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 6, 9, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x2F2C5934, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_GHOST_GREY]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 127, 68, 72, 9, 12, 25, 16, 18, 28, 32, 12, 12, 15, 56, 11, 3, 5, 3, 1, 12, 10, 3, 3, 2, 11, 5, 14, 19, 1, 1, 7, 5, 17, 10, 13, 8, 5, 1, 1, 1, 17, 44]
+healLocations = 0x089C59C0
+healLocationCount = 25
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0xC22D4D5F, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_LETS_GO]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x2845A4EB, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_ODYSSEY]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x2845A4EB, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_GAIA]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083528DC
+mapGroupSizes = [5, 81, 22, 46, 8, 8, 7, 13, 6, 9, 6, 9, 15, 15, 11, 19, 12, 7, 1, 4, 4, 1, 1, 4, 8, 1, 21]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = []
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x89AD7851, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_AMETHYST]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 127, 62, 67, 4, 10, 18, 12, 8, 21, 21, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 4, 2, 5, 2, 1, 1, 1, 4, 10, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = []
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0xC8514894, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_AMETHYST_V141]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 127, 62, 67, 4, 10, 18, 12, 8, 21, 21, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 4, 2, 5, 2, 1, 1, 1, 4, 10, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = []
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x9F6107A5, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_SWORD_SHIELD]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x087B1010
+mapGroupSizes = [21, 123, 60, 67, 13, 17, 36, 24, 27, 21, 30, 14, 19, 21, 12, 4, 2, 2, 2, 1, 1, 3, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 29, 25, 23, 45, 43, 16, 2, 16, 1]
+healLocations = 0x083EEBF8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x30EA0582, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+[record.FLIGHT_GS_CHRONICLES]
+schema = 'gen3_flight'
+base = 'FLIGHT_FIRERED_REV0'
+mapGroups = 0x083526A8
+mapGroupSizes = [5, 123, 60, 67, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 44]
+healLocations = 0x08FF1008
+healLocationCount = 21
+noFly = []
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0x77378C6B, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x82667C29, 0x11B905BA, 0x20389A3E]
+
+
+[record.FLIGHT_LEAFGREEN_REV0]
+schema = 'gen3_flight'
+objectEvents = 0x02036E38
+playerAvatar = 0x02037078
+sprites = 0x0202063C
+vmap = 0x03005040
+connectionFlags = 0x02036E24
+saveBlock1Ptr = 0x03005008
+saveBlock2Ptr = 0x0300500C
+main = 0x030030F0
+cb2Overworld = 0x080565B4
+lockByte = 0x03000F9C
+paletteFade = 0x02037AB8
+lockControls = 0x08069940
+unlockControls = 0x0806994C
+createSprite = 0x08006F8C
+destroySprite = 0x08007280
+startSpriteAnim = 0x0800838C
+birdTemplate = 0x083A5DE0
+behaviorAt = 0x08058F78
+collisionAt = 0x08058DC4
+elevationAt = 0x08058D44
+objectAt = 0x0805DFB0
+playSe = 0x080722CC
+seFly = 151
+seFailure = 26
+walkFast = 0x1D
+walkFaster = 0x35
+spriteOffset = 0x02021BC8
+walkCurrent = 0x31
+walkSlide = 0x39
+mapHeader = 0x02036DFC
+drawMetatileAt = 0x0805A8E8
+mapGroups = 0x08352688
+healLocations = 0x083EEA34
+landOk = [0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B]
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+healLocationSize = 8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0xC22D4D5F, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0xE75CED8B, 0x11B905BA, 0x20389A3E]
+drawView = 0x0805A684       # DrawWholeMapView
+
+[record.FLIGHT_LEAFGREEN_REV1]
+schema = 'gen3_flight'
+objectEvents = 0x02036E38
+playerAvatar = 0x02037078
+sprites = 0x0202063C
+vmap = 0x03005040
+connectionFlags = 0x02036E24
+saveBlock1Ptr = 0x03005008
+saveBlock2Ptr = 0x0300500C
+main = 0x030030F0
+cb2Overworld = 0x080565C8
+lockByte = 0x03000F9C
+paletteFade = 0x02037AB8
+lockControls = 0x08069954
+unlockControls = 0x08069960
+createSprite = 0x08006FA0
+destroySprite = 0x08007294
+startSpriteAnim = 0x080083A0
+birdTemplate = 0x083A5E50
+behaviorAt = 0x08058F8C
+collisionAt = 0x08058DD8
+elevationAt = 0x08058D58
+objectAt = 0x0805DFC4
+playSe = 0x080722E0
+seFly = 151
+seFailure = 26
+walkFast = 0x1D
+walkFaster = 0x35
+spriteOffset = 0x02021BC8
+walkCurrent = 0x31
+walkSlide = 0x39
+mapHeader = 0x02036DFC
+drawMetatileAt = 0x0805A8FC
+mapGroups = 0x083526F8
+healLocations = 0x083EEAA4
+landOk = [0x00, 0x02, 0x08, 0x0A, 0x0C, 0x16, 0x21, 0x28, 0x2A, 0x2B]
+mapGroupSizes = [5, 123, 60, 66, 4, 6, 8, 10, 6, 8, 20, 10, 8, 2, 10, 4, 2, 2, 2, 1, 1, 2, 2, 3, 2, 3, 2, 1, 1, 1, 1, 7, 5, 5, 8, 8, 5, 5, 1, 1, 1, 2, 1]
+healLocationSize = 8
+healLocationCount = 20
+noFly = [0x030B]
+codeCrcs = [0x0111A86E, 0xBAB654BA, 0x4585C55F, 0xC22D4D5F, 0xC1C72DBE, 0x9EDE7CCC, 0x4963D7D2, 0x4963D7D2, 0x44A073D8, 0x1E5B3B09, 0x11B905BA, 0x20389A3E]
+drawView = 0x0805A698       # DrawWholeMapView

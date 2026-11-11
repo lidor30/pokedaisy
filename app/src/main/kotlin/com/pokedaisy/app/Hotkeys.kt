@@ -39,6 +39,8 @@ class Hotkeys private constructor(
         COMPANION(tk("COMPANION")),
         // No default keys: the game's sound off and on again (SOUND > MUTE GAME, GameVolume).
         MUTE(tk("MUTE")),
+        // No default keys: FREE FLIGHT's TAKE OFF, or LAND while up (companion.data.Flight).
+        FREE_FLIGHT(tk("FREE FLIGHT")),
         // A DS game on one screen: its touch screen floating over the game (DS LAYOUT), or closed again. L2.
         TOUCH_SCREEN(tk("TOUCH SCREEN")),
         // A DS game on one screen held sideways steps to the next DS LAYOUT (ONE SCREEN, SIDE BY SIDE...). R2.
@@ -56,6 +58,7 @@ class Hotkeys private constructor(
             QUICK_MENU -> NewFeatures.badge(NewFeatures.QUICK_MENU)
             COMPANION -> NewFeatures.badge(NewFeatures.COMPANION_HOTKEY)
             MUTE -> NewFeatures.badge(NewFeatures.GAME_VOLUME)
+            FREE_FLIGHT -> NewFeatures.badge(NewFeatures.FREE_FLIGHT)
             TOUCH_SCREEN, DS_LAYOUT -> NewFeatures.badge(NewFeatures.DS_LAYOUT)
             else -> null
         }

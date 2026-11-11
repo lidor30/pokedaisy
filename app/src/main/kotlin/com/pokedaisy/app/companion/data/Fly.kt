@@ -169,6 +169,13 @@ private fun flySections(fly: FlyFns, g: GameCalls): List<Int> {
     }.map { fly.firstMapsec + it } + fly.extraMapsecs
 }
 
+/** The map sections FLY could ever offer (visited or not): FLIGHT AREA's towns ([FlightArea]). */
+fun flyTownSections(fly: FlyFns, g: GameCalls): List<Int> = flySections(fly, g)
+
+/** The towns the game's own Fly map would list now ([FlyFns.flyTypes]), with no party or badge gate: FLIGHT AREA's start. */
+fun flyVisitedTowns(fly: FlyFns, g: GameCalls): List<Int> =
+    flySections(fly, g).filter { g.call(fly.getMapsecType, it).toInt() in fly.flyTypes }
+
 /** Whether the running ROM has [fly]'s functions where they're expected. */
 fun flyCodeMatches(fly: FlyFns, read: (addr: Long, len: Int) -> ByteArray): Boolean =
     fly.functions.zip(fly.codeCrcs).all { (fn, crc) ->
@@ -188,6 +195,8 @@ enum class FlyResult {
     PARTNER,
     /** Nobody in the party knows Fly (any more). */
     NO_FLYER,
+    /** No way over the map to the town, in a game without the classic FLY ([FieldItemFns.classicFly]). */
+    NO_ROUTE,
     FAILED,
 }
 
@@ -227,6 +236,16 @@ private fun flyGate(fns: FieldItemFns, fly: FlyFns, busy: Boolean, g: GameCalls)
 private fun mayFlyHere(fly: FlyFns, g: GameCalls): Long =
     if (fly.mapHeader != 0L) g.call(fly.setUpFieldMoveFly, g.read(fly.mapHeader + 0x17, 1)[0].toInt() and 0xFF)
     else g.call(fly.setUpFieldMoveFly)
+
+/** FREE FLIGHT's checks (Flight.kt): FLY's own - the field free, the badge, a map FLY may leave from - and a Pokémon
+ * that knows Fly. OK, or why not. Emu thread. */
+fun flightCheck(fns: FieldItemFns, busy: Boolean, g: GameCalls): FlyResult {
+    val fly = fns.fly ?: return FlyResult.FAILED
+    return runCatching {
+        flyGate(fns, fly, busy, g)?.let { return it }
+        if (flyer(fns, fly, g) == null) FlyResult.NO_FLYER else FlyResult.OK
+    }.getOrElse { FlyResult.FAILED }
+}
 
 /** FLY's destinations right now (the Fly map's visited towns) and its Pokémon. Emu thread. */
 fun flyTargets(fns: FieldItemFns, busy: Boolean, g: GameCalls): FlyTargets {

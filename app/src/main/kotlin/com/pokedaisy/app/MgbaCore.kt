@@ -48,6 +48,35 @@ object MgbaCore {
      * core and gives back its r0, or -1 if it never returned. Emu thread, between frames. */
     external fun pkCall(fn: Long, a0: Int, a1: Int, a2: Int, a3: Int): Long
 
+    /** FREE FLIGHT (pk_flight.h, companion.data.Flight.kt): the game's addresses ([com.pokedaisy.app.companion.data.FlightFns.words]),
+     * or null to switch it off. Emu thread. */
+    external fun pkFlightConfigure(words: IntArray?)
+    /** Takes off: [FLIGHT_OK] or why not ([FLIGHT_BUSY], [FLIGHT_NOT_NOW], [FLIGHT_NOT_ON_FOOT]). Emu thread, between frames. */
+    external fun pkFlightTakeOff(): Int
+    /** Lands on the nearest tile a player can stand on. */
+    external fun pkFlightLand()
+    /** The scenic FLY: flies [dirs] (1 down, 2 up, 3 left, 4 right) at the faster speed, then lands. */
+    external fun pkFlightRoute(dirs: ByteArray): Int
+    /** FLIGHT AREA (companion.data.FlightArea): a bit per map (group shl 8 or num) the flight may cross into, null = anywhere. Emu thread. */
+    external fun pkFlightArea(bits: ByteArray?)
+    /** True once after the D-pad met FLIGHT AREA's edge (a map the player hasn't seen). Emu thread. */
+    external fun pkFlightAreaTurned(): Boolean
+    /** [FLIGHT_IDLE], [FLIGHT_TAKING_OFF], [FLIGHT_FLYING], [FLIGHT_LANDING] or [FLIGHT_DISMOUNT]. */
+    external fun pkFlightState(): Int
+    /** Steps of the route flown so far, -1 with none. */
+    external fun pkFlightRouteDone(): Int
+
+    const val FLIGHT_IDLE = 0
+    const val FLIGHT_TAKING_OFF = 1
+    const val FLIGHT_FLYING = 2
+    const val FLIGHT_LANDING = 3
+    const val FLIGHT_DISMOUNT = 4
+    const val FLIGHT_OK = 0
+    const val FLIGHT_NOT_CONFIGURED = -1
+    const val FLIGHT_BUSY = -2
+    const val FLIGHT_NOT_NOW = -3
+    const val FLIGHT_NOT_ON_FOOT = -4
+
     /** Whether [pkCall] can run now: the frame ended with the CPU in the BIOS, not part-way through the game's own
      * code (its interrupt handler, a lag frame) - pokedaisy_jni.c's pk_call_safe. Field-item jobs wait a frame if not. */
     external fun pkCallSafe(): Boolean

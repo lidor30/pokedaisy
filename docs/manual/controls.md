@@ -90,11 +90,12 @@ When SELECT or START is part of a chord, the game gets it when you let go rather
 | `CLOSE APP` | Leaves the game (it saves as usual) and closes PokeDaisy completely, so it's gone from your recent apps | | |
 | `QUICK MENU` | Opens the [quick menu](#the-quick-menu), or closes it | L3 (shown as `THUMBL`) | |
 | `COMPANION` | Opens the companion over the game on one screen, where you can hide its edge button with `COMPANION BUTTON`. Also brings it back after `CLOSE COMPANION`. On a phone held upright it hides the companion or brings it back. In a DS game with two screens it swaps the second screen between the touch screen and the companion, and your buttons go with it | | |
+| `FREE FLIGHT` | Takes off to [fly over the map](map.md#flying-over-the-map), or lands | | |
 | `MUTE` | Mutes the game, or brings its sound back (`MUTE GAME` in [SOUND](fast-forward.md#game-volume-and-mute-sound)) | | |
 | `TOUCH SCREEN` | In a DS game on one screen: brings its touch screen up over the game, or closes it (see [DS layout](devices.md#ds-layout-two-screens-on-one)) | L2 | T |
 | `DS LAYOUT` | In a DS game on one screen held sideways: steps to the next `DS LAYOUT` (`ONE SCREEN`, `SIDE BY SIDE`, `LARGE + SMALL`, `PICTURE IN PICTURE`, `STACKED`, then round again), its name showing on the game for a moment | R2 | |
 
-`RESTART GAME`, `CLOSE APP`, `COMPANION` and `MUTE` have no buttons until you give them some. `TOUCH SCREEN` and `DS LAYOUT` share L2 and R2 with `SPEED CYCLE` and `FF HOLD`: in a DS game on one screen the triggers are theirs, and everywhere else they're speed's, so changing one never asks you to move the other.
+`RESTART GAME`, `CLOSE APP`, `COMPANION`, `FREE FLIGHT` and `MUTE` have no buttons until you give them some. `TOUCH SCREEN` and `DS LAYOUT` share L2 and R2 with `SPEED CYCLE` and `FF HOLD`: in a DS game on one screen the triggers are theirs, and everywhere else they're speed's, so changing one never asks you to move the other.
 
 The speed hotkeys are explained in [Fast-forward and game speed](fast-forward.md), states and rewind in [Saves](saves.md), and zoom in [Screen](screen.md).
 
@@ -133,6 +134,7 @@ The quick menu puts the things you'd otherwise dig through menus for under one b
 | --- | --- |
 | `PC` | Opens your game's own PC right where you stand, as in the [bag](bag.md). |
 | `FLY` | Lists the places you can fly to; pick one and off you go. Needs a Pokémon in your party that knows the move. |
+| `TAKE OFF` | Takes off on your Pokémon's bird and lets you [fly over the map](map.md#flying-over-the-map); while you're up it says `LAND` and brings you down. The original games in every language, Emerald Legacy and the hacks listed in [Map](map.md#flying-over-the-map). |
 | `FLASH` | Lights up a dark cave, the way the move does from the game's party menu: the Pokémon that knows it shows up and the cave lights up. It only shows while a Pokémon in your party knows `FLASH`, and it's greyed out where it isn't dark. In Emerald it also opens the sealed wall in the ancient tomb when you stand where the game asks. It needs the same badge as in the game. |
 | The keep-away spray | Uses an item from your bag that keeps wild Pokémon away (the tile shows its icon and name). With more than one kind in your bag, it lists them with how many you have and how many steps each lasts, so you pick. While one is still working it's greyed out and says how many steps are left. |
 | `BIKE` | Gets on your bike. While you're riding it says `GET OFF` and gets you off. |

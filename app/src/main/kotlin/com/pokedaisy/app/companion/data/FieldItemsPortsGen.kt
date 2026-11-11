@@ -25,6 +25,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             codeCrcs = listOf(0xBCF97BF3L, 0x589774D7L, 0x4B625BC4L, 0xF9959006L, 0xB9FB85A7L, 0xB037C8AFL, 0x2248A064L, 0x2F1D18CAL, 0x0BB229A0L),
             healWarp = FLY_EMERALD.healWarp!!.copy(toHealLocation = 0x08084634L, toMapWarp = 0x08084590L, returnToField = 0x080B6134L, saveBlock2Ptr = 0x03005AF0L),
         ),
+        flight = FLIGHT_EMERALD.copy(
+            lockControls = 0x080987DCL, unlockControls = 0x080987E8L, createSprite = 0x08006B0CL, destroySprite = 0x08006E00L, startSpriteAnim = 0x08007EC0L, behaviorAt = 0x08087C20L, collisionAt = 0x08087B14L, elevationAt = 0x08087AA8L, objectAt = 0x0808CEE4L, playSe = 0x080A306CL, drawMetatileAt = 0x08089804L, riderTemplate = 0x0808D66CL, riderGfx = 0x0808B6F0L, drawView = 0x08089598L, cb2Overworld = 0x080857C4L, spriteDummy = 0x08007141L, objectEvents = 0x02036FF0L, playerAvatar = 0x02037230L, sprites = 0x020205ACL, vmap = 0x03005B20L, connectionFlags = 0x02036FE0L, saveBlock1Ptr = 0x03005AECL, saveBlock2Ptr = 0x03005AF0L, main = 0x03002360L, lockByte = 0x03000F2CL, paletteFade = 0x02037C74L, spriteOffset = 0x02021B38L, mapHeader = 0x02036FB8L, birdTemplate = 0x084E58FCL, mapGroups = 0x0845E998L, healLocations = 0x0857B10CL,
+            codeCrcs = listOf(0xB9FB85A7L, 0xB037C8AFL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x4EE94D74L, 0xF7A78E5CL, 0xA5FEDEAEL, 0x6C98ECC7L, 0xCA5315E7L),
+        ),
     ),
     // Pocket Monsters - FireRed (Japan) (Rev 1).gba (SHA1 7c7107b8...), from BPRE0; masked: addBagItem, checkBagHasItem, removeBagItem, repel.
     "BPRJ1" to FieldItemFns(
@@ -45,6 +49,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x08079F08L, lockControls = 0x080691A8L, unlockControls = 0x080691B4L, partyMenuSlotId = 0x0203B01DL, destinations = 0x083B53D0L,
             setFlyWarpDestination = 0x080C64BCL,
             codeCrcs = listOf(0x07BEBC3AL, 0x4976391AL, 0xA87A87C2L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x2886B75FL),
+        ),
+        flight = FLIGHT_FIRERED_REV0.copy(
+            lockControls = 0x080691A8L, unlockControls = 0x080691B4L, createSprite = 0x08006A74L, destroySprite = 0x08006D68L, startSpriteAnim = 0x08007E74L, behaviorAt = 0x080587F4L, collisionAt = 0x08058640L, elevationAt = 0x080585C0L, objectAt = 0x0805D830L, playSe = 0x080719E8L, drawMetatileAt = 0x0805A164L, drawView = 0x08059F00L, cb2Overworld = 0x08055E50L, objectEvents = 0x02036D6CL, playerAvatar = 0x02036FACL, sprites = 0x020205B8L, vmap = 0x03004FE0L, connectionFlags = 0x02036D58L, saveBlock1Ptr = 0x03004FA8L, saveBlock2Ptr = 0x03004FACL, main = 0x03003090L, lockByte = 0x03000F9CL, paletteFade = 0x020379ECL, spriteOffset = 0x02021B44L, mapHeader = 0x02036D30L, birdTemplate = 0x08365668L, mapGroups = 0x08311F70L, healLocations = 0x083B12ACL,
+            codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0xF502431DL, 0x11B905BAL, 0x7A296776L),
         ),
     ),
     // Pocket Monsters - FireRed (Japan).gba (SHA1 04139887...), from BPRE0; masked: addBagItem, checkBagHasItem, removeBagItem, repel.
@@ -67,6 +75,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             setFlyWarpDestination = 0x080C6460L,
             codeCrcs = listOf(0x07BEBC3AL, 0x922E6495L, 0xEDECBCE4L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0xB392EF62L),
         ),
+        flight = FLIGHT_FIRERED_REV0.copy(
+            lockControls = 0x08069200L, unlockControls = 0x0806920CL, createSprite = 0x08006B08L, destroySprite = 0x08006DFCL, startSpriteAnim = 0x08007F08L, behaviorAt = 0x08058834L, collisionAt = 0x08058680L, elevationAt = 0x08058600L, objectAt = 0x0805D870L, playSe = 0x08071A70L, drawMetatileAt = 0x0805A1A4L, drawView = 0x08059F40L, cb2Overworld = 0x08055E74L, objectEvents = 0x02036D6CL, playerAvatar = 0x02036FACL, sprites = 0x020205B8L, vmap = 0x03005080L, connectionFlags = 0x02036D58L, saveBlock1Ptr = 0x03005048L, saveBlock2Ptr = 0x0300504CL, main = 0x03003130L, lockByte = 0x03000F9CL, paletteFade = 0x020379ECL, spriteOffset = 0x02021B44L, mapHeader = 0x02036D30L, birdTemplate = 0x08369E88L, mapGroups = 0x08316758L, healLocations = 0x083B5944L,
+            codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x5E37F656L, 0x11B905BAL, 0xBB2CC203L),
+        ),
     ),
     // Pocket Monsters - LeafGreen (Japan) (Rev 1).gba (SHA1 de9d5a84...), from BPGE0; masked: addBagItem, checkBagHasItem, removeBagItem, repel.
     "BPGJ1" to FieldItemFns(
@@ -87,6 +99,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x08079EDCL, lockControls = 0x080691A8L, unlockControls = 0x080691B4L, partyMenuSlotId = 0x0203B01DL, destinations = 0x083B5240L,
             setFlyWarpDestination = 0x080C6490L,
             codeCrcs = listOf(0x07BEBC3AL, 0x8D16E4C6L, 0xD6B4B5B3L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0xB710AF9AL),
+        ),
+        flight = FLIGHT_LEAFGREEN_REV0.copy(
+            lockControls = 0x080691A8L, unlockControls = 0x080691B4L, createSprite = 0x08006A74L, destroySprite = 0x08006D68L, startSpriteAnim = 0x08007E74L, behaviorAt = 0x080587F4L, collisionAt = 0x08058640L, elevationAt = 0x080585C0L, objectAt = 0x0805D830L, playSe = 0x080719E8L, drawMetatileAt = 0x0805A164L, drawView = 0x08059F00L, cb2Overworld = 0x08055E50L, objectEvents = 0x02036D6CL, playerAvatar = 0x02036FACL, sprites = 0x020205B8L, vmap = 0x03004FE0L, connectionFlags = 0x02036D58L, saveBlock1Ptr = 0x03004FA8L, saveBlock2Ptr = 0x03004FACL, main = 0x03003090L, lockByte = 0x03000F9CL, paletteFade = 0x020379ECL, spriteOffset = 0x02021B44L, mapHeader = 0x02036D30L, birdTemplate = 0x08365648L, mapGroups = 0x08311F50L, healLocations = 0x083B111CL,
+            codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x208DA29BL, 0x11B905BAL, 0x7A296776L),
         ),
     ),
     // Pocket Monsters - LeafGreen (Japan).gba (SHA1 5946f1b5...), from BPGE0; masked: addBagItem, checkBagHasItem, removeBagItem, repel.
@@ -109,6 +125,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             setFlyWarpDestination = 0x080C6434L,
             codeCrcs = listOf(0x07BEBC3AL, 0x844385F7L, 0xA618A00FL, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x2C04F7A7L),
         ),
+        flight = FLIGHT_LEAFGREEN_REV0.copy(
+            lockControls = 0x08069200L, unlockControls = 0x0806920CL, createSprite = 0x08006B08L, destroySprite = 0x08006DFCL, startSpriteAnim = 0x08007F08L, behaviorAt = 0x08058834L, collisionAt = 0x08058680L, elevationAt = 0x08058600L, objectAt = 0x0805D870L, playSe = 0x08071A70L, drawMetatileAt = 0x0805A1A4L, drawView = 0x08059F40L, cb2Overworld = 0x08055E74L, objectEvents = 0x02036D6CL, playerAvatar = 0x02036FACL, sprites = 0x020205B8L, vmap = 0x03005080L, connectionFlags = 0x02036D58L, saveBlock1Ptr = 0x03005048L, saveBlock2Ptr = 0x0300504CL, main = 0x03003130L, lockByte = 0x03000F9CL, paletteFade = 0x020379ECL, spriteOffset = 0x02021B44L, mapHeader = 0x02036D30L, birdTemplate = 0x08369E68L, mapGroups = 0x08316738L, healLocations = 0x083B57B4L,
+            codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x102955C6L, 0x11B905BAL, 0xBB2CC203L),
+        ),
     ),
     // Pocket Monsters - Ruby (Japan) (Rev 1).gba (SHA1 971e0d67...), from AXVE0; masked: checkBagHasItem, fieldControlsLocked, repel.
     "AXVJ1" to FieldItemFns(
@@ -129,6 +149,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807A520L, lockControls = 0x08062870L, unlockControls = 0x0806287CL, partyMenuSlotId = 0x03005C10L, destinations = 0x083BF4C8L,
             mapHeader = 0x0202E588L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0xA31315F7L, 0xF9959006L, 0xBF9B3752L, 0x879F4120L, 0x2ECD2293L, 0x2F1D18CAL, 0x2BEB3BCEL),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x080507ACL, toMapWarp = 0x08050704L, returnToField = 0x08083478L, saveBlock2Ptr = 0x02024C04L),
+        ),
+        flight = FLIGHT_RUBY.copy(
+            lockControls = 0x08062870L, unlockControls = 0x0806287CL, createSprite = 0x08000BCCL, destroySprite = 0x08000EC0L, startSpriteAnim = 0x08001E74L, behaviorAt = 0x080536ECL, collisionAt = 0x080535E0L, elevationAt = 0x08053574L, objectAt = 0x08057E30L, playSe = 0x080724CCL, drawMetatileAt = 0x08055000L, riderTemplate = 0x08058580L, riderGfx = 0x08056ABCL, drawView = 0x08054D90L, cb2Overworld = 0x08051618L, spriteDummy = 0x08001201L, objectEvents = 0x030047D0L, playerAvatar = 0x0202E5B8L, sprites = 0x02020004L, vmap = 0x030047A0L, connectionFlags = 0x0202E5B0L, saveBlock1Ptr = 0x02025494L, saveBlock2Ptr = 0x02024C04L, main = 0x030016E0L, lockByte = 0x0300060CL, paletteFade = 0x0202F0A8L, spriteOffset = 0x03002440L, spriteOffsetY = 0x03002750L, mapHeader = 0x0202E588L, birdTemplate = 0x0834D204L, mapGroups = 0x082E09F0L, healLocations = 0x083BD6DCL,
+            codeCrcs = listOf(0xBF9B3752L, 0x879F4120L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x2D7EF1C9L, 0x9BFD9D72L, 0x44564590L, 0xF74F1291L, 0x1AD951B6L),
         ),
     ),
     // Pocket Monsters - Ruby (Japan).gba (SHA1 5c5e5467...), from AXVE0; masked: checkBagHasItem, fieldControlsLocked, repel.
@@ -151,6 +175,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             mapHeader = 0x0202E588L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0xA31315F7L, 0xF9959006L, 0xBF9B3752L, 0x879F4120L, 0x2ECD2293L, 0x2F1D18CAL, 0x2BEB3BCEL),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x080507ACL, toMapWarp = 0x08050704L, returnToField = 0x08083478L, saveBlock2Ptr = 0x02024C04L),
         ),
+        flight = FLIGHT_RUBY.copy(
+            lockControls = 0x08062870L, unlockControls = 0x0806287CL, createSprite = 0x08000BCCL, destroySprite = 0x08000EC0L, startSpriteAnim = 0x08001E74L, behaviorAt = 0x080536ECL, collisionAt = 0x080535E0L, elevationAt = 0x08053574L, objectAt = 0x08057E30L, playSe = 0x080724CCL, drawMetatileAt = 0x08055000L, riderTemplate = 0x08058580L, riderGfx = 0x08056ABCL, drawView = 0x08054D90L, cb2Overworld = 0x08051618L, spriteDummy = 0x08001201L, objectEvents = 0x030047D0L, playerAvatar = 0x0202E5B8L, sprites = 0x02020004L, vmap = 0x030047A0L, connectionFlags = 0x0202E5B0L, saveBlock1Ptr = 0x02025494L, saveBlock2Ptr = 0x02024C04L, main = 0x030016E0L, lockByte = 0x0300060CL, paletteFade = 0x0202F0A8L, spriteOffset = 0x03002440L, spriteOffsetY = 0x03002750L, mapHeader = 0x0202E588L, birdTemplate = 0x0834D204L, mapGroups = 0x082E09F0L, healLocations = 0x083BD6DCL,
+            codeCrcs = listOf(0xBF9B3752L, 0x879F4120L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x2D7EF1C9L, 0x9BFD9D72L, 0x44564590L, 0xF74F1291L, 0x1AD951B6L),
+        ),
     ),
     // Pocket Monsters - Sapphire (Japan) (Rev 1).gba (SHA1 01f50967...), from AXPE0; masked: checkBagHasItem, fieldControlsLocked, repel.
     "AXPJ1" to FieldItemFns(
@@ -171,6 +199,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807A520L, lockControls = 0x08062874L, unlockControls = 0x08062880L, partyMenuSlotId = 0x03005C10L, destinations = 0x083BF4ACL,
             mapHeader = 0x0202E588L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0xA31315F7L, 0xF9959006L, 0xBF9B3752L, 0x879F4120L, 0x2ECD2293L, 0x2F1D18CAL, 0x2EE1764FL),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x080507ACL, toMapWarp = 0x08050704L, returnToField = 0x08083478L, saveBlock2Ptr = 0x02024C04L),
+        ),
+        flight = FLIGHT_SAPPHIRE.copy(
+            lockControls = 0x08062874L, unlockControls = 0x08062880L, createSprite = 0x08000BCCL, destroySprite = 0x08000EC0L, startSpriteAnim = 0x08001E74L, behaviorAt = 0x080536F0L, collisionAt = 0x080535E4L, elevationAt = 0x08053578L, objectAt = 0x08057E34L, playSe = 0x080724D0L, drawMetatileAt = 0x08055004L, riderTemplate = 0x08058584L, riderGfx = 0x08056AC0L, drawView = 0x08054D94L, cb2Overworld = 0x0805161CL, spriteDummy = 0x08001201L, objectEvents = 0x030047D0L, playerAvatar = 0x0202E5B8L, sprites = 0x02020004L, vmap = 0x030047A0L, connectionFlags = 0x0202E5B0L, saveBlock1Ptr = 0x02025494L, saveBlock2Ptr = 0x02024C04L, main = 0x030016E0L, lockByte = 0x0300060CL, paletteFade = 0x0202F0A8L, spriteOffset = 0x03002440L, spriteOffsetY = 0x03002750L, mapHeader = 0x0202E588L, birdTemplate = 0x0834D194L, mapGroups = 0x082E0980L, healLocations = 0x083BD6C0L,
+            codeCrcs = listOf(0xBF9B3752L, 0x879F4120L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xE82FE4D5L, 0x9BFD9D72L, 0x44564590L, 0xF74F1291L, 0x1AD951B6L),
         ),
     ),
     // Pocket Monsters - Sapphire (Japan).gba (SHA1 3233342c...), from AXPE0; masked: checkBagHasItem, fieldControlsLocked, repel.
@@ -193,6 +225,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             mapHeader = 0x0202E588L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0xA31315F7L, 0xF9959006L, 0xBF9B3752L, 0x879F4120L, 0x2ECD2293L, 0x2F1D18CAL, 0x2EE1764FL),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x080507ACL, toMapWarp = 0x08050704L, returnToField = 0x08083478L, saveBlock2Ptr = 0x02024C04L),
         ),
+        flight = FLIGHT_SAPPHIRE.copy(
+            lockControls = 0x08062874L, unlockControls = 0x08062880L, createSprite = 0x08000BCCL, destroySprite = 0x08000EC0L, startSpriteAnim = 0x08001E74L, behaviorAt = 0x080536F0L, collisionAt = 0x080535E4L, elevationAt = 0x08053578L, objectAt = 0x08057E34L, playSe = 0x080724D0L, drawMetatileAt = 0x08055004L, riderTemplate = 0x08058584L, riderGfx = 0x08056AC0L, drawView = 0x08054D94L, cb2Overworld = 0x0805161CL, spriteDummy = 0x08001201L, objectEvents = 0x030047D0L, playerAvatar = 0x0202E5B8L, sprites = 0x02020004L, vmap = 0x030047A0L, connectionFlags = 0x0202E5B0L, saveBlock1Ptr = 0x02025494L, saveBlock2Ptr = 0x02024C04L, main = 0x030016E0L, lockByte = 0x0300060CL, paletteFade = 0x0202F0A8L, spriteOffset = 0x03002440L, spriteOffsetY = 0x03002750L, mapHeader = 0x0202E588L, birdTemplate = 0x0834D194L, mapGroups = 0x082E0980L, healLocations = 0x083BD6C0L,
+            codeCrcs = listOf(0xBF9B3752L, 0x879F4120L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xE82FE4D5L, 0x9BFD9D72L, 0x44564590L, 0xF74F1291L, 0x1AD951B6L),
+        ),
     ),
     // Pokemon - Blattgruene Edition (Germany).gba (SHA1 0802d1fb...), from BPGE0; masked: repel.
     "BPGD0" to FieldItemFns(
@@ -213,6 +249,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807A750L, lockControls = 0x08069930L, unlockControls = 0x0806993CL, partyMenuSlotId = 0x0203B0A9L, destinations = 0x083F2574L,
             setFlyWarpDestination = 0x080C5408L,
             codeCrcs = listOf(0x07BEBC3AL, 0x516FF14BL, 0x5B69DD06L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x39034401L),
+        ),
+        flight = FLIGHT_LEAFGREEN_REV0.copy(
+            lockControls = 0x08069930L, unlockControls = 0x0806993CL, createSprite = 0x08006F0CL, destroySprite = 0x08007200L, startSpriteAnim = 0x0800830CL, behaviorAt = 0x08058F78L, collisionAt = 0x08058DC4L, elevationAt = 0x08058D44L, objectAt = 0x0805DFB0L, playSe = 0x08072230L, drawMetatileAt = 0x0805A8E8L, drawView = 0x0805A684L, cb2Overworld = 0x080565D4L, objectEvents = 0x02036E38L, playerAvatar = 0x02037078L, sprites = 0x0202063CL, vmap = 0x03004F90L, connectionFlags = 0x02036E24L, saveBlock1Ptr = 0x03004F58L, saveBlock2Ptr = 0x03004F5CL, main = 0x03003040L, lockByte = 0x03000F9CL, paletteFade = 0x02037AB8L, spriteOffset = 0x02021BC8L, mapHeader = 0x02036DFCL, birdTemplate = 0x083A5CA4L, mapGroups = 0x083525ACL, healLocations = 0x083EE29CL,
+            codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x8A4538E8L, 0x11B905BAL, 0xFC4F71D1L),
         ),
     ),
     // Pokemon - Edicion Esmeralda (Spain).gba (SHA1 fe1558a3...), from BPEE0; masked: repel.
@@ -235,6 +275,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             codeCrcs = listOf(0xBCF97BF3L, 0xE373D840L, 0x4B625BC4L, 0xF9959006L, 0xB9FB85A7L, 0xB037C8AFL, 0xE2EE95C7L, 0x2F1D18CAL, 0x7316D8E4L),
             healWarp = FLY_EMERALD.healWarp!!.copy(toHealLocation = 0x08084CE0L, toMapWarp = 0x08084C3CL, returnToField = 0x080B69F0L, saveBlock2Ptr = 0x03005D90L),
         ),
+        flight = FLIGHT_EMERALD.copy(
+            lockControls = 0x08098E68L, unlockControls = 0x08098E74L, createSprite = 0x08006DF4L, destroySprite = 0x080070E8L, startSpriteAnim = 0x080081A8L, behaviorAt = 0x080882D0L, collisionAt = 0x080881C4L, elevationAt = 0x08088158L, objectAt = 0x0808D588L, playSe = 0x080A37B8L, drawMetatileAt = 0x08089EB4L, riderTemplate = 0x0808DD10L, riderGfx = 0x0808BDA0L, drawView = 0x08089C48L, cb2Overworld = 0x08085E70L, spriteDummy = 0x08007429L, objectEvents = 0x02037350L, playerAvatar = 0x02037590L, sprites = 0x02020630L, vmap = 0x03005DC0L, connectionFlags = 0x02037340L, saveBlock1Ptr = 0x03005D8CL, saveBlock2Ptr = 0x03005D90L, main = 0x030022C0L, lockByte = 0x03000F2CL, paletteFade = 0x02037FD4L, spriteOffset = 0x02021BBCL, mapHeader = 0x02037318L, birdTemplate = 0x08510B04L, mapGroups = 0x08489BD4L, healLocations = 0x085A22D0L,
+            codeCrcs = listOf(0xB9FB85A7L, 0xB037C8AFL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xBFA7CB5FL, 0xF7A78E5CL, 0xA5FEDEAEL, 0x037235C5L, 0xCA5315E7L),
+        ),
     ),
     // Pokemon - Edicion Rojo Fuego (Spain).gba (SHA1 ab8f6bfe...), from BPRE1; masked: repel.
     "BPRS0" to FieldItemFns(
@@ -255,6 +299,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807A850L, lockControls = 0x08069A04L, unlockControls = 0x08069A10L, partyMenuSlotId = 0x0203B0A9L, destinations = 0x083ED1B4L,
             setFlyWarpDestination = 0x080C54FCL,
             codeCrcs = listOf(0x07BEBC3AL, 0x3A0AFE94L, 0x4D75AD0BL, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x691A139EL),
+        ),
+        flight = FLIGHT_FIRERED_REV1.copy(
+            lockControls = 0x08069A04L, unlockControls = 0x08069A10L, createSprite = 0x08006EF8L, destroySprite = 0x080071ECL, startSpriteAnim = 0x080082F8L, behaviorAt = 0x0805904CL, collisionAt = 0x08058E98L, elevationAt = 0x08058E18L, objectAt = 0x0805E084L, playSe = 0x08072304L, drawMetatileAt = 0x0805A9BCL, drawView = 0x0805A758L, cb2Overworld = 0x080566A8L, objectEvents = 0x02036E38L, playerAvatar = 0x02037078L, sprites = 0x0202063CL, vmap = 0x03004F90L, connectionFlags = 0x02036E24L, saveBlock1Ptr = 0x03004F58L, saveBlock2Ptr = 0x03004F5CL, main = 0x03003040L, lockByte = 0x03000F9CL, paletteFade = 0x02037AB8L, spriteOffset = 0x02021BC8L, mapHeader = 0x02036DFCL, birdTemplate = 0x083A1568L, mapGroups = 0x0834DE70L, healLocations = 0x083E8EE8L,
+            codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x96BEB32AL, 0x11B905BAL, 0xFC4F71D1L),
         ),
     ),
     // Pokemon - Edicion Rubi (Spain) (Rev 1).gba (SHA1 9ac73481...), from AXVE0; masked: repel.
@@ -277,6 +325,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x979C545FL, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x4478454BL, 0x2F1D18CAL, 0xB00DC634L),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053974L, toMapWarp = 0x080538CCL, returnToField = 0x08086A98L, saveBlock2Ptr = 0x02024EA4L),
         ),
+        flight = FLIGHT_RUBY.copy(
+            lockControls = 0x0806596CL, unlockControls = 0x08065978L, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080568D8L, collisionAt = 0x080567CCL, elevationAt = 0x08056760L, objectAt = 0x0805B010L, playSe = 0x08075950L, drawMetatileAt = 0x080581ECL, riderTemplate = 0x0805B760L, riderGfx = 0x08059CA8L, drawView = 0x08057F7CL, cb2Overworld = 0x080547E0L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x083785A4L, mapGroups = 0x0830BB20L, healLocations = 0x083E99D4L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xD938A289L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
+        ),
     ),
     // Pokemon - Edicion Rubi (Spain).gba (SHA1 1f49f728...), from AXVE0; masked: repel.
     "AXVS0" to FieldItemFns(
@@ -297,6 +349,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807DB00L, lockControls = 0x0806596CL, unlockControls = 0x08065978L, partyMenuSlotId = 0x03005CF0L, destinations = 0x083EB8CCL,
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x979C545FL, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x4478454BL, 0x2F1D18CAL, 0xB00DC634L),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053974L, toMapWarp = 0x080538CCL, returnToField = 0x08086A98L, saveBlock2Ptr = 0x02024EA4L),
+        ),
+        flight = FLIGHT_RUBY.copy(
+            lockControls = 0x0806596CL, unlockControls = 0x08065978L, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080568D8L, collisionAt = 0x080567CCL, elevationAt = 0x08056760L, objectAt = 0x0805B010L, playSe = 0x08075950L, drawMetatileAt = 0x080581ECL, riderTemplate = 0x0805B760L, riderGfx = 0x08059CA8L, drawView = 0x08057F7CL, cb2Overworld = 0x080547E0L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x083785A4L, mapGroups = 0x0830BB20L, healLocations = 0x083E99D4L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xD938A289L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
         ),
     ),
     // Pokemon - Edicion Verde Hoja (Spain).gba (SHA1 f9ebee5d...), from BPGE1; masked: repel.
@@ -319,6 +375,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             setFlyWarpDestination = 0x080C54D0L,
             codeCrcs = listOf(0x07BEBC3AL, 0x14B2ADD0L, 0x33BB9F7AL, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x56BEA465L),
         ),
+        flight = FLIGHT_LEAFGREEN_REV1.copy(
+            lockControls = 0x08069A04L, unlockControls = 0x08069A10L, createSprite = 0x08006EF8L, destroySprite = 0x080071ECL, startSpriteAnim = 0x080082F8L, behaviorAt = 0x0805904CL, collisionAt = 0x08058E98L, elevationAt = 0x08058E18L, objectAt = 0x0805E084L, playSe = 0x08072304L, drawMetatileAt = 0x0805A9BCL, drawView = 0x0805A758L, cb2Overworld = 0x080566A8L, objectEvents = 0x02036E38L, playerAvatar = 0x02037078L, sprites = 0x0202063CL, vmap = 0x03004F90L, connectionFlags = 0x02036E24L, saveBlock1Ptr = 0x03004F58L, saveBlock2Ptr = 0x03004F5CL, main = 0x03003040L, lockByte = 0x03000F9CL, paletteFade = 0x02037AB8L, spriteOffset = 0x02021BC8L, mapHeader = 0x02036DFCL, birdTemplate = 0x083A1548L, mapGroups = 0x0834DE50L, healLocations = 0x083E8D24L,
+            codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x5575492EL, 0x11B905BAL, 0xFC4F71D1L),
+        ),
     ),
     // Pokemon - Edicion Zafiro (Spain) (Rev 1).gba (SHA1 0fe9ad1e...), from AXPE0; masked: repel.
     "AXPS1" to FieldItemFns(
@@ -339,6 +399,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807DB00L, lockControls = 0x08065970L, unlockControls = 0x0806597CL, partyMenuSlotId = 0x03005CF0L, destinations = 0x083EB608L,
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x979C545FL, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x4478454BL, 0x2F1D18CAL, 0xB30BFD4BL),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053974L, toMapWarp = 0x080538CCL, returnToField = 0x08086A98L, saveBlock2Ptr = 0x02024EA4L),
+        ),
+        flight = FLIGHT_SAPPHIRE.copy(
+            lockControls = 0x08065970L, unlockControls = 0x0806597CL, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080568DCL, collisionAt = 0x080567D0L, elevationAt = 0x08056764L, objectAt = 0x0805B014L, playSe = 0x08075954L, drawMetatileAt = 0x080581F0L, riderTemplate = 0x0805B764L, riderGfx = 0x08059CACL, drawView = 0x08057F80L, cb2Overworld = 0x080547E4L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x08378534L, mapGroups = 0x0830BAB0L, healLocations = 0x083E9710L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xF4D2A88DL, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
         ),
     ),
     // Pokemon - Edicion Zafiro (Spain).gba (SHA1 3a648918...), from AXPE0; masked: repel.
@@ -361,6 +425,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x979C545FL, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x4478454BL, 0x2F1D18CAL, 0xB30BFD4BL),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053974L, toMapWarp = 0x080538CCL, returnToField = 0x08086A98L, saveBlock2Ptr = 0x02024EA4L),
         ),
+        flight = FLIGHT_SAPPHIRE.copy(
+            lockControls = 0x08065970L, unlockControls = 0x0806597CL, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080568DCL, collisionAt = 0x080567D0L, elevationAt = 0x08056764L, objectAt = 0x0805B014L, playSe = 0x08075954L, drawMetatileAt = 0x080581F0L, riderTemplate = 0x0805B764L, riderGfx = 0x08059CACL, drawView = 0x08057F80L, cb2Overworld = 0x080547E4L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x08378534L, mapGroups = 0x0830BAB0L, healLocations = 0x083E9710L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xF4D2A88DL, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
+        ),
     ),
     // Pokemon - Feuerrote Edition (Germany).gba (SHA1 18a3758c...), from BPRE0; masked: repel.
     "BPRD0" to FieldItemFns(
@@ -381,6 +449,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807A77CL, lockControls = 0x08069930L, unlockControls = 0x0806993CL, partyMenuSlotId = 0x0203B0A9L, destinations = 0x083F2738L,
             setFlyWarpDestination = 0x080C5434L,
             codeCrcs = listOf(0x07BEBC3AL, 0xB9D4EE53L, 0x1E811874L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x79EE9C0CL),
+        ),
+        flight = FLIGHT_FIRERED_REV0.copy(
+            lockControls = 0x08069930L, unlockControls = 0x0806993CL, createSprite = 0x08006F0CL, destroySprite = 0x08007200L, startSpriteAnim = 0x0800830CL, behaviorAt = 0x08058F78L, collisionAt = 0x08058DC4L, elevationAt = 0x08058D44L, objectAt = 0x0805DFB0L, playSe = 0x08072230L, drawMetatileAt = 0x0805A8E8L, drawView = 0x0805A684L, cb2Overworld = 0x080565D4L, objectEvents = 0x02036E38L, playerAvatar = 0x02037078L, sprites = 0x0202063CL, vmap = 0x03004F90L, connectionFlags = 0x02036E24L, saveBlock1Ptr = 0x03004F58L, saveBlock2Ptr = 0x03004F5CL, main = 0x03003040L, lockByte = 0x03000F9CL, paletteFade = 0x02037AB8L, spriteOffset = 0x02021BC8L, mapHeader = 0x02036DFCL, birdTemplate = 0x083A5CC4L, mapGroups = 0x083525CCL, healLocations = 0x083EE460L,
+            codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0xB7E35CAEL, 0x11B905BAL, 0xFC4F71D1L),
         ),
     ),
     // Pokemon - FireRed Version (USA).gba (SHA1 41cb23d8...), from BPRE0.
@@ -403,6 +475,7 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             setFlyWarpDestination = 0x080C527CL,
             codeCrcs = listOf(0x07BEBC3AL, 0x950F2C97L, 0x9A186C79L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x70EA1DFCL),
         ),
+        flight = FLIGHT_FIRERED_REV0,
     ),
     // Pokemon - Rubin-Edition (Germany) (Rev 1).gba (SHA1 424740be...), from AXVE0; masked: repel.
     "AXVD1" to FieldItemFns(
@@ -423,6 +496,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807DA78L, lockControls = 0x08065870L, unlockControls = 0x0806587CL, partyMenuSlotId = 0x03005CF0L, destinations = 0x083F3CCCL,
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x7CF02388L, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0xC3DFC68AL, 0x2F1D18CAL, 0xEC4AF463L),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053878L, toMapWarp = 0x080537D0L, returnToField = 0x08086A10L, saveBlock2Ptr = 0x02024EA4L),
+        ),
+        flight = FLIGHT_RUBY.copy(
+            lockControls = 0x08065870L, unlockControls = 0x0806587CL, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080567DCL, collisionAt = 0x080566D0L, elevationAt = 0x08056664L, objectAt = 0x0805AF14L, playSe = 0x08075854L, drawMetatileAt = 0x080580F0L, riderTemplate = 0x0805B664L, riderGfx = 0x08059BACL, drawView = 0x08057E80L, cb2Overworld = 0x080546E4L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x083807F4L, mapGroups = 0x08313D70L, healLocations = 0x083F1DF8L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xFB641C73L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
         ),
     ),
     // Pokemon - Rubin-Edition (Germany).gba (SHA1 1c2a5333...), from AXVE0; masked: repel.
@@ -445,6 +522,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x7CF02388L, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0xC3DFC68AL, 0x2F1D18CAL, 0xEC4AF463L),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053878L, toMapWarp = 0x080537D0L, returnToField = 0x08086A10L, saveBlock2Ptr = 0x02024EA4L),
         ),
+        flight = FLIGHT_RUBY.copy(
+            lockControls = 0x08065870L, unlockControls = 0x0806587CL, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080567DCL, collisionAt = 0x080566D0L, elevationAt = 0x08056664L, objectAt = 0x0805AF14L, playSe = 0x08075854L, drawMetatileAt = 0x080580F0L, riderTemplate = 0x0805B664L, riderGfx = 0x08059BACL, drawView = 0x08057E80L, cb2Overworld = 0x080546E4L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x083807F4L, mapGroups = 0x08313D70L, healLocations = 0x083F1DF8L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xFB641C73L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
+        ),
     ),
     // Pokemon - Ruby Version (USA, Europe).gba (SHA1 f28b6ffc...), from AXVE0.
     "AXVE0" to FieldItemFns(
@@ -465,6 +546,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807D644L, lockControls = 0x08065530L, unlockControls = 0x0806553CL, partyMenuSlotId = 0x03005CE0L, destinations = 0x083E7920L,
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x22721D44L, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x5BF43808L, 0x2F1D18CAL, 0xD5F7FEC3L),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053538L, toMapWarp = 0x08053490L, returnToField = 0x080865BCL, saveBlock2Ptr = 0x02024EA4L),
+        ),
+        flight = FLIGHT_RUBY.copy(
+            lockControls = 0x08065530L, unlockControls = 0x0806553CL, createSprite = 0x08000BDCL, destroySprite = 0x08000ED0L, startSpriteAnim = 0x08001F58L, behaviorAt = 0x0805649CL, collisionAt = 0x08056390L, elevationAt = 0x08056324L, objectAt = 0x0805ABD4L, playSe = 0x08075494L, drawMetatileAt = 0x08057DB0L, riderTemplate = 0x0805B324L, riderGfx = 0x0805986CL, drawView = 0x08057B40L, cb2Overworld = 0x080543A4L, spriteDummy = 0x08001211L, objectEvents = 0x030048A0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004870L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x0837500CL, mapGroups = 0x08308588L, healLocations = 0x083E5A20L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xB8BAB810L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
         ),
     ),
     // Pokemon - Saphir-Edition (Germany) (Rev 1).gba (SHA1 7e6e034f...), from AXPE0; masked: repel.
@@ -487,6 +572,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x7CF02388L, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0xC3DFC68AL, 0x2F1D18CAL, 0xE940B9E2L),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053878L, toMapWarp = 0x080537D0L, returnToField = 0x08086A10L, saveBlock2Ptr = 0x02024EA4L),
         ),
+        flight = FLIGHT_SAPPHIRE.copy(
+            lockControls = 0x08065874L, unlockControls = 0x08065880L, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080567E0L, collisionAt = 0x080566D4L, elevationAt = 0x08056668L, objectAt = 0x0805AF18L, playSe = 0x08075858L, drawMetatileAt = 0x080580F4L, riderTemplate = 0x0805B668L, riderGfx = 0x08059BB0L, drawView = 0x08057E84L, cb2Overworld = 0x080546E8L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x08380788L, mapGroups = 0x08313D04L, healLocations = 0x083F1D64L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xD97FC5C6L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
+        ),
     ),
     // Pokemon - Saphir-Edition (Germany).gba (SHA1 5a087835...), from AXPE0; masked: repel.
     "AXPD0" to FieldItemFns(
@@ -507,6 +596,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807DA78L, lockControls = 0x08065874L, unlockControls = 0x08065880L, partyMenuSlotId = 0x03005CF0L, destinations = 0x083F3C38L,
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x7CF02388L, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0xC3DFC68AL, 0x2F1D18CAL, 0xE940B9E2L),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053878L, toMapWarp = 0x080537D0L, returnToField = 0x08086A10L, saveBlock2Ptr = 0x02024EA4L),
+        ),
+        flight = FLIGHT_SAPPHIRE.copy(
+            lockControls = 0x08065874L, unlockControls = 0x08065880L, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080567E0L, collisionAt = 0x080566D4L, elevationAt = 0x08056668L, objectAt = 0x0805AF18L, playSe = 0x08075858L, drawMetatileAt = 0x080580F4L, riderTemplate = 0x0805B668L, riderGfx = 0x08059BB0L, drawView = 0x08057E84L, cb2Overworld = 0x080546E8L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x08380788L, mapGroups = 0x08313D04L, healLocations = 0x083F1D64L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xD97FC5C6L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
         ),
     ),
     // Pokemon - Sapphire Version (USA, Europe).gba (SHA1 3ccbbd45...), from AXPE0.
@@ -529,6 +622,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x22721D44L, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x5BF43808L, 0x2F1D18CAL, 0xD0FDB342L),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053538L, toMapWarp = 0x08053490L, returnToField = 0x080865BCL, saveBlock2Ptr = 0x02024EA4L),
         ),
+        flight = FLIGHT_SAPPHIRE.copy(
+            lockControls = 0x08065534L, unlockControls = 0x08065540L, createSprite = 0x08000BDCL, destroySprite = 0x08000ED0L, startSpriteAnim = 0x08001F58L, behaviorAt = 0x080564A0L, collisionAt = 0x08056394L, elevationAt = 0x08056328L, objectAt = 0x0805ABD8L, playSe = 0x08075498L, drawMetatileAt = 0x08057DB4L, riderTemplate = 0x0805B328L, riderGfx = 0x08059870L, drawView = 0x08057B44L, cb2Overworld = 0x080543A8L, spriteDummy = 0x08001211L, objectEvents = 0x030048A0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004870L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x08374F9CL, mapGroups = 0x08308518L, healLocations = 0x083E5A78L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x55F74CC8L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
+        ),
     ),
     // Pokemon - Smaragd-Edition (Germany).gba (SHA1 61c2eb2b...), from BPEE0; masked: repel.
     "BPED0" to FieldItemFns(
@@ -549,6 +646,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x080ABCECL, lockControls = 0x08098E70L, unlockControls = 0x08098E7CL, partyMenuSlotId = 0x0203CED1L, destinations = 0x085B2E74L,
             codeCrcs = listOf(0xBCF97BF3L, 0xD873B584L, 0x4B625BC4L, 0xF9959006L, 0xB9FB85A7L, 0xB037C8AFL, 0xCCBE5C47L, 0x2F1D18CAL, 0x8E13262FL),
             healWarp = FLY_EMERALD.healWarp!!.copy(toHealLocation = 0x08084CE8L, toMapWarp = 0x08084C44L, returnToField = 0x080B69F8L, saveBlock2Ptr = 0x03005D90L),
+        ),
+        flight = FLIGHT_EMERALD.copy(
+            lockControls = 0x08098E70L, unlockControls = 0x08098E7CL, createSprite = 0x08006DF4L, destroySprite = 0x080070E8L, startSpriteAnim = 0x080081A8L, behaviorAt = 0x080882D8L, collisionAt = 0x080881CCL, elevationAt = 0x08088160L, objectAt = 0x0808D590L, playSe = 0x080A37C0L, drawMetatileAt = 0x08089EBCL, riderTemplate = 0x0808DD18L, riderGfx = 0x0808BDA8L, drawView = 0x08089C50L, cb2Overworld = 0x08085E78L, spriteDummy = 0x08007429L, objectEvents = 0x02037350L, playerAvatar = 0x02037590L, sprites = 0x02020630L, vmap = 0x03005DC0L, connectionFlags = 0x02037340L, saveBlock1Ptr = 0x03005D8CL, saveBlock2Ptr = 0x03005D90L, main = 0x030022C0L, lockByte = 0x03000F2CL, paletteFade = 0x02037FD4L, spriteOffset = 0x02021BBCL, mapHeader = 0x02037318L, birdTemplate = 0x0851F1D8L, mapGroups = 0x084982A8L, healLocations = 0x085B05BCL,
+            codeCrcs = listOf(0xB9FB85A7L, 0xB037C8AFL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xC028E43FL, 0xF7A78E5CL, 0xA5FEDEAEL, 0x037235C5L, 0xCA5315E7L),
         ),
     ),
     // Pokemon - Version Emeraude (France).gba (SHA1 ca666651...), from BPEE0; masked: repel.
@@ -571,6 +672,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             codeCrcs = listOf(0xBCF97BF3L, 0x62CE5907L, 0x4B625BC4L, 0xF9959006L, 0xB9FB85A7L, 0xB037C8AFL, 0x84788BAEL, 0x2F1D18CAL, 0x7010E39BL),
             healWarp = FLY_EMERALD.healWarp!!.copy(toHealLocation = 0x08084CDCL, toMapWarp = 0x08084C38L, returnToField = 0x080B69F0L, saveBlock2Ptr = 0x03005D90L),
         ),
+        flight = FLIGHT_EMERALD.copy(
+            lockControls = 0x08098E64L, unlockControls = 0x08098E70L, createSprite = 0x08006DF4L, destroySprite = 0x080070E8L, startSpriteAnim = 0x080081A8L, behaviorAt = 0x080882CCL, collisionAt = 0x080881C0L, elevationAt = 0x08088154L, objectAt = 0x0808D584L, playSe = 0x080A37B8L, drawMetatileAt = 0x08089EB0L, riderTemplate = 0x0808DD0CL, riderGfx = 0x0808BD9CL, drawView = 0x08089C44L, cb2Overworld = 0x08085E6CL, spriteDummy = 0x08007429L, objectEvents = 0x02037350L, playerAvatar = 0x02037590L, sprites = 0x02020630L, vmap = 0x03005DC0L, connectionFlags = 0x02037340L, saveBlock1Ptr = 0x03005D8CL, saveBlock2Ptr = 0x03005D90L, main = 0x030022C0L, lockByte = 0x03000F2CL, paletteFade = 0x02037FD4L, spriteOffset = 0x02021BBCL, mapHeader = 0x02037318L, birdTemplate = 0x08512394L, mapGroups = 0x0848B464L, healLocations = 0x085A3C34L,
+            codeCrcs = listOf(0xB9FB85A7L, 0xB037C8AFL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xF7E31E58L, 0xF7A78E5CL, 0xA5FEDEAEL, 0x037235C5L, 0xCA5315E7L),
+        ),
     ),
     // Pokemon - Version Rouge Feu (France).gba (SHA1 fc663907...), from BPRE0; masked: repel.
     "BPRF0" to FieldItemFns(
@@ -591,6 +696,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807A83CL, lockControls = 0x080699F0L, unlockControls = 0x080699FCL, partyMenuSlotId = 0x0203B0A9L, destinations = 0x083EB49CL,
             setFlyWarpDestination = 0x080C54F4L,
             codeCrcs = listOf(0x07BEBC3AL, 0x09E9BC03L, 0x0B3DC9CEL, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x79EE9C0CL),
+        ),
+        flight = FLIGHT_FIRERED_REV0.copy(
+            lockControls = 0x080699F0L, unlockControls = 0x080699FCL, createSprite = 0x08006EF8L, destroySprite = 0x080071ECL, startSpriteAnim = 0x080082F8L, behaviorAt = 0x08059038L, collisionAt = 0x08058E84L, elevationAt = 0x08058E04L, objectAt = 0x0805E070L, playSe = 0x080722F0L, drawMetatileAt = 0x0805A9A8L, drawView = 0x0805A744L, cb2Overworld = 0x08056694L, objectEvents = 0x02036E38L, playerAvatar = 0x02037078L, sprites = 0x0202063CL, vmap = 0x03004F90L, connectionFlags = 0x02036E24L, saveBlock1Ptr = 0x03004F58L, saveBlock2Ptr = 0x03004F5CL, main = 0x03003040L, lockByte = 0x03000F9CL, paletteFade = 0x02037AB8L, spriteOffset = 0x02021BC8L, mapHeader = 0x02036DFCL, birdTemplate = 0x083A01F0L, mapGroups = 0x0834CAF8L, healLocations = 0x083E721CL,
+            codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x3A646AF8L, 0x11B905BAL, 0xFC4F71D1L),
         ),
     ),
     // Pokemon - Version Rubis (France) (Rev 1).gba (SHA1 ba888dfb...), from AXVE0; masked: repel.
@@ -613,6 +722,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0xDAFCA937L, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x9F7E558AL, 0x2F1D18CAL, 0xCD0A68CBL),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053964L, toMapWarp = 0x080538BCL, returnToField = 0x08086AF8L, saveBlock2Ptr = 0x02024EA4L),
         ),
+        flight = FLIGHT_RUBY.copy(
+            lockControls = 0x0806595CL, unlockControls = 0x08065968L, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080568C8L, collisionAt = 0x080567BCL, elevationAt = 0x08056750L, objectAt = 0x0805B000L, playSe = 0x08075944L, drawMetatileAt = 0x080581DCL, riderTemplate = 0x0805B750L, riderGfx = 0x08059C98L, drawView = 0x08057F6CL, cb2Overworld = 0x080547D0L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x0837BC70L, mapGroups = 0x0830F1ECL, healLocations = 0x083ED804L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x8D610879L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
+        ),
     ),
     // Pokemon - Version Rubis (France).gba (SHA1 a6ee9420...), from AXVE0; masked: repel.
     "AXVF0" to FieldItemFns(
@@ -633,6 +746,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807DB60L, lockControls = 0x0806595CL, unlockControls = 0x08065968L, partyMenuSlotId = 0x03005CF0L, destinations = 0x083EF6C4L,
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0xDAFCA937L, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x9F7E558AL, 0x2F1D18CAL, 0xCD0A68CBL),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053964L, toMapWarp = 0x080538BCL, returnToField = 0x08086AF8L, saveBlock2Ptr = 0x02024EA4L),
+        ),
+        flight = FLIGHT_RUBY.copy(
+            lockControls = 0x0806595CL, unlockControls = 0x08065968L, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080568C8L, collisionAt = 0x080567BCL, elevationAt = 0x08056750L, objectAt = 0x0805B000L, playSe = 0x08075944L, drawMetatileAt = 0x080581DCL, riderTemplate = 0x0805B750L, riderGfx = 0x08059C98L, drawView = 0x08057F6CL, cb2Overworld = 0x080547D0L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x0837BC70L, mapGroups = 0x0830F1ECL, healLocations = 0x083ED804L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x8D610879L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
         ),
     ),
     // Pokemon - Version Saphir (France) (Rev 1).gba (SHA1 860e93f5...), from AXPE0; masked: repel.
@@ -655,6 +772,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0xDAFCA937L, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x9F7E558AL, 0x2F1D18CAL, 0xCE0C53B4L),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053964L, toMapWarp = 0x080538BCL, returnToField = 0x08086AF8L, saveBlock2Ptr = 0x02024EA4L),
         ),
+        flight = FLIGHT_SAPPHIRE.copy(
+            lockControls = 0x08065960L, unlockControls = 0x0806596CL, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080568CCL, collisionAt = 0x080567C0L, elevationAt = 0x08056754L, objectAt = 0x0805B004L, playSe = 0x08075948L, drawMetatileAt = 0x080581E0L, riderTemplate = 0x0805B754L, riderGfx = 0x08059C9CL, drawView = 0x08057F70L, cb2Overworld = 0x080547D4L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x0837BC00L, mapGroups = 0x0830F17CL, healLocations = 0x083ED334L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x1B80A09CL, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
+        ),
     ),
     // Pokemon - Version Saphir (France).gba (SHA1 c269b569...), from AXPE0; masked: repel.
     "AXPF0" to FieldItemFns(
@@ -675,6 +796,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807DB60L, lockControls = 0x08065960L, unlockControls = 0x0806596CL, partyMenuSlotId = 0x03005CF0L, destinations = 0x083EF1F4L,
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0xDAFCA937L, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x9F7E558AL, 0x2F1D18CAL, 0xCE0C53B4L),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x08053964L, toMapWarp = 0x080538BCL, returnToField = 0x08086AF8L, saveBlock2Ptr = 0x02024EA4L),
+        ),
+        flight = FLIGHT_SAPPHIRE.copy(
+            lockControls = 0x08065960L, unlockControls = 0x0806596CL, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080568CCL, collisionAt = 0x080567C0L, elevationAt = 0x08056754L, objectAt = 0x0805B004L, playSe = 0x08075948L, drawMetatileAt = 0x080581E0L, riderTemplate = 0x0805B754L, riderGfx = 0x08059C9CL, drawView = 0x08057F70L, cb2Overworld = 0x080547D4L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x0837BC00L, mapGroups = 0x0830F17CL, healLocations = 0x083ED334L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x1B80A09CL, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
         ),
     ),
     // Pokemon - Version Vert Feuille (France).gba (SHA1 4b5758c1...), from BPGE0; masked: repel.
@@ -697,6 +822,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             setFlyWarpDestination = 0x080C54C8L,
             codeCrcs = listOf(0x07BEBC3AL, 0x4C34E098L, 0xA1CA04DEL, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x39034401L),
         ),
+        flight = FLIGHT_LEAFGREEN_REV0.copy(
+            lockControls = 0x080699F0L, unlockControls = 0x080699FCL, createSprite = 0x08006EF8L, destroySprite = 0x080071ECL, startSpriteAnim = 0x080082F8L, behaviorAt = 0x08059038L, collisionAt = 0x08058E84L, elevationAt = 0x08058E04L, objectAt = 0x0805E070L, playSe = 0x080722F0L, drawMetatileAt = 0x0805A9A8L, drawView = 0x0805A744L, cb2Overworld = 0x08056694L, objectEvents = 0x02036E38L, playerAvatar = 0x02037078L, sprites = 0x0202063CL, vmap = 0x03004F90L, connectionFlags = 0x02036E24L, saveBlock1Ptr = 0x03004F58L, saveBlock2Ptr = 0x03004F5CL, main = 0x03003040L, lockByte = 0x03000F9CL, paletteFade = 0x02037AB8L, spriteOffset = 0x02021BC8L, mapHeader = 0x02036DFCL, birdTemplate = 0x083A01D0L, mapGroups = 0x0834CAD8L, healLocations = 0x083E7058L,
+            codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x747AC968L, 0x11B905BAL, 0xFC4F71D1L),
+        ),
     ),
     // Pokemon - Versione Rosso Fuoco (Italy).gba (SHA1 66a9d415...), from BPRE0; masked: repel.
     "BPRI0" to FieldItemFns(
@@ -717,6 +846,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807A768L, lockControls = 0x0806991CL, unlockControls = 0x08069928L, partyMenuSlotId = 0x0203B0A9L, destinations = 0x083EA19CL,
             setFlyWarpDestination = 0x080C5414L,
             codeCrcs = listOf(0x07BEBC3AL, 0x2751EF47L, 0x47C5D51CL, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x691A139EL),
+        ),
+        flight = FLIGHT_FIRERED_REV0.copy(
+            lockControls = 0x0806991CL, unlockControls = 0x08069928L, createSprite = 0x08006F0CL, destroySprite = 0x08007200L, startSpriteAnim = 0x0800830CL, behaviorAt = 0x08058F64L, collisionAt = 0x08058DB0L, elevationAt = 0x08058D30L, objectAt = 0x0805DF9CL, playSe = 0x0807221CL, drawMetatileAt = 0x0805A8D4L, drawView = 0x0805A670L, cb2Overworld = 0x080565C0L, objectEvents = 0x02036E38L, playerAvatar = 0x02037078L, sprites = 0x0202063CL, vmap = 0x03004F90L, connectionFlags = 0x02036E24L, saveBlock1Ptr = 0x03004F58L, saveBlock2Ptr = 0x03004F5CL, main = 0x03003040L, lockByte = 0x03000F9CL, paletteFade = 0x02037AB8L, spriteOffset = 0x02021BC8L, mapHeader = 0x02036DFCL, birdTemplate = 0x0839EE80L, mapGroups = 0x0834B788L, healLocations = 0x083E5E40L,
+            codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0x1FAD39BCL, 0x11B905BAL, 0xFC4F71D1L),
         ),
     ),
     // Pokemon - Versione Rubino (Italy) (Rev 1).gba (SHA1 015a5d38...), from AXVE0; masked: repel.
@@ -739,6 +872,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x58D1994BL, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x8FCA39CBL, 0x2F1D18CAL, 0x0D2C5F23L),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x0805388CL, toMapWarp = 0x080537E4L, returnToField = 0x080869B0L, saveBlock2Ptr = 0x02024EA4L),
         ),
+        flight = FLIGHT_RUBY.copy(
+            lockControls = 0x08065884L, unlockControls = 0x08065890L, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080567F0L, collisionAt = 0x080566E4L, elevationAt = 0x08056678L, objectAt = 0x0805AF28L, playSe = 0x08075868L, drawMetatileAt = 0x08058104L, riderTemplate = 0x0805B678L, riderGfx = 0x08059BC0L, drawView = 0x08057E94L, cb2Overworld = 0x080546F8L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x083754FCL, mapGroups = 0x08308A78L, healLocations = 0x083E6920L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x77C5C7A3L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
+        ),
     ),
     // Pokemon - Versione Rubino (Italy).gba (SHA1 2b313422...), from AXVE0; masked: repel.
     "AXVI0" to FieldItemFns(
@@ -759,6 +896,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807DA18L, lockControls = 0x08065884L, unlockControls = 0x08065890L, partyMenuSlotId = 0x03005CF0L, destinations = 0x083E8840L,
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x58D1994BL, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x8FCA39CBL, 0x2F1D18CAL, 0x0D2C5F23L),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x0805388CL, toMapWarp = 0x080537E4L, returnToField = 0x080869B0L, saveBlock2Ptr = 0x02024EA4L),
+        ),
+        flight = FLIGHT_RUBY.copy(
+            lockControls = 0x08065884L, unlockControls = 0x08065890L, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080567F0L, collisionAt = 0x080566E4L, elevationAt = 0x08056678L, objectAt = 0x0805AF28L, playSe = 0x08075868L, drawMetatileAt = 0x08058104L, riderTemplate = 0x0805B678L, riderGfx = 0x08059BC0L, drawView = 0x08057E94L, cb2Overworld = 0x080546F8L, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x083754FCL, mapGroups = 0x08308A78L, healLocations = 0x083E6920L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0x77C5C7A3L, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
         ),
     ),
     // Pokemon - Versione Smeraldo (Italy).gba (SHA1 1692db32...), from BPEE0; masked: repel.
@@ -781,6 +922,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             codeCrcs = listOf(0xBCF97BF3L, 0xCE1E54E6L, 0x4B625BC4L, 0xF9959006L, 0xB9FB85A7L, 0xB037C8AFL, 0xBE4F06C7L, 0x2F1D18CAL, 0x7316D8E4L),
             healWarp = FLY_EMERALD.healWarp!!.copy(toHealLocation = 0x08084CE0L, toMapWarp = 0x08084C3CL, returnToField = 0x080B69F0L, saveBlock2Ptr = 0x03005D90L),
         ),
+        flight = FLIGHT_EMERALD.copy(
+            lockControls = 0x08098E68L, unlockControls = 0x08098E74L, createSprite = 0x08006DF4L, destroySprite = 0x080070E8L, startSpriteAnim = 0x080081A8L, behaviorAt = 0x080882D0L, collisionAt = 0x080881C4L, elevationAt = 0x08088158L, objectAt = 0x0808D588L, playSe = 0x080A37B8L, drawMetatileAt = 0x08089EB4L, riderTemplate = 0x0808DD10L, riderGfx = 0x0808BDA0L, drawView = 0x08089C48L, cb2Overworld = 0x08085E70L, spriteDummy = 0x08007429L, objectEvents = 0x02037350L, playerAvatar = 0x02037590L, sprites = 0x02020630L, vmap = 0x03005DC0L, connectionFlags = 0x02037340L, saveBlock1Ptr = 0x03005D8CL, saveBlock2Ptr = 0x03005D90L, main = 0x030022C0L, lockByte = 0x03000F2CL, paletteFade = 0x02037FD4L, spriteOffset = 0x02021BBCL, mapHeader = 0x02037318L, birdTemplate = 0x0850A1ECL, mapGroups = 0x084832BCL, healLocations = 0x0859BF00L,
+            codeCrcs = listOf(0xB9FB85A7L, 0xB037C8AFL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xEC926D0DL, 0xF7A78E5CL, 0xA5FEDEAEL, 0x037235C5L, 0xCA5315E7L),
+        ),
     ),
     // Pokemon - Versione Verde Foglia (Italy).gba (SHA1 a1dfea14...), from BPGE0; masked: repel.
     "BPGI0" to FieldItemFns(
@@ -801,6 +946,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807A73CL, lockControls = 0x0806991CL, unlockControls = 0x08069928L, partyMenuSlotId = 0x0203B0A9L, destinations = 0x083E9FD8L,
             setFlyWarpDestination = 0x080C53E8L,
             codeCrcs = listOf(0x07BEBC3AL, 0xA48FFF80L, 0x788B5759L, 0xF9959006L, 0x0111A86EL, 0xBAB654BAL, 0x56BEA465L),
+        ),
+        flight = FLIGHT_LEAFGREEN_REV0.copy(
+            lockControls = 0x0806991CL, unlockControls = 0x08069928L, createSprite = 0x08006F0CL, destroySprite = 0x08007200L, startSpriteAnim = 0x0800830CL, behaviorAt = 0x08058F64L, collisionAt = 0x08058DB0L, elevationAt = 0x08058D30L, objectAt = 0x0805DF9CL, playSe = 0x0807221CL, drawMetatileAt = 0x0805A8D4L, drawView = 0x0805A670L, cb2Overworld = 0x080565C0L, objectEvents = 0x02036E38L, playerAvatar = 0x02037078L, sprites = 0x0202063CL, vmap = 0x03004F90L, connectionFlags = 0x02036E24L, saveBlock1Ptr = 0x03004F58L, saveBlock2Ptr = 0x03004F5CL, main = 0x03003040L, lockByte = 0x03000F9CL, paletteFade = 0x02037AB8L, spriteOffset = 0x02021BC8L, mapHeader = 0x02036DFCL, birdTemplate = 0x0839EE60L, mapGroups = 0x0834B768L, healLocations = 0x083E5C7CL,
+            codeCrcs = listOf(0x0111A86EL, 0xBAB654BAL, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x9EDE7CCCL, 0x4963D7D2L, 0x4963D7D2L, 0x44A073D8L, 0xCA22D83AL, 0x11B905BAL, 0xFC4F71D1L),
         ),
     ),
     // Pokemon - Versione Zaffiro (Italy) (Rev 1).gba (SHA1 73edf67b...), from AXPE0; masked: repel.
@@ -823,6 +972,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x58D1994BL, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x8FCA39CBL, 0x2F1D18CAL, 0x0E2A645CL),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x0805388CL, toMapWarp = 0x080537E4L, returnToField = 0x080869B0L, saveBlock2Ptr = 0x02024EA4L),
         ),
+        flight = FLIGHT_SAPPHIRE.copy(
+            lockControls = 0x08065888L, unlockControls = 0x08065894L, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080567F4L, collisionAt = 0x080566E8L, elevationAt = 0x0805667CL, objectAt = 0x0805AF2CL, playSe = 0x0807586CL, drawMetatileAt = 0x08058108L, riderTemplate = 0x0805B67CL, riderGfx = 0x08059BC4L, drawView = 0x08057E98L, cb2Overworld = 0x080546FCL, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x0837548CL, mapGroups = 0x08308A08L, healLocations = 0x083E65C4L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xAC9D9A2CL, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
+        ),
     ),
     // Pokemon - Versione Zaffiro (Italy).gba (SHA1 f729dd57...), from AXPE0; masked: repel.
     "AXPI0" to FieldItemFns(
@@ -843,6 +996,10 @@ val FIELD_ITEMS_PORTS: Map<String, FieldItemFns> = mapOf(
             fadeScreen = 0x0807DA18L, lockControls = 0x08065888L, unlockControls = 0x08065894L, partyMenuSlotId = 0x03005CF0L, destinations = 0x083E84E4L,
             mapHeader = 0x0202E828L, codeCrcs = listOf(0xAC4D17B2L, 0x6F375BAAL, 0x58D1994BL, 0xF9959006L, 0xA003C21AL, 0x9807B468L, 0x8FCA39CBL, 0x2F1D18CAL, 0x0E2A645CL),
             healWarp = FLY_RUBY.healWarp!!.copy(toHealLocation = 0x0805388CL, toMapWarp = 0x080537E4L, returnToField = 0x080869B0L, saveBlock2Ptr = 0x02024EA4L),
+        ),
+        flight = FLIGHT_SAPPHIRE.copy(
+            lockControls = 0x08065888L, unlockControls = 0x08065894L, createSprite = 0x08000D10L, destroySprite = 0x08001004L, startSpriteAnim = 0x0800208CL, behaviorAt = 0x080567F4L, collisionAt = 0x080566E8L, elevationAt = 0x0805667CL, objectAt = 0x0805AF2CL, playSe = 0x0807586CL, drawMetatileAt = 0x08058108L, riderTemplate = 0x0805B67CL, riderGfx = 0x08059BC4L, drawView = 0x08057E98L, cb2Overworld = 0x080546FCL, spriteDummy = 0x08001345L, objectEvents = 0x030048B0L, playerAvatar = 0x0202E858L, sprites = 0x02020004L, vmap = 0x03004880L, connectionFlags = 0x0202E850L, saveBlock1Ptr = 0x02025734L, saveBlock2Ptr = 0x02024EA4L, main = 0x03001770L, lockByte = 0x030006A4L, paletteFade = 0x0202F388L, spriteOffset = 0x030024D0L, spriteOffsetY = 0x030027E0L, mapHeader = 0x0202E828L, birdTemplate = 0x0837548CL, mapGroups = 0x08308A08L, healLocations = 0x083E65C4L,
+            codeCrcs = listOf(0xA003C21AL, 0x9807B468L, 0x4585C55FL, 0xC22D4D5FL, 0xC1C72DBEL, 0x461CFB4CL, 0x5FFF32BFL, 0x5FFF32BFL, 0x44A073D8L, 0xAC9D9A2CL, 0x9BFD9D72L, 0x44564590L, 0x15485630L, 0x1AD951B6L),
         ),
     ),
 )

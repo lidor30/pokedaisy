@@ -223,6 +223,13 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override val wildEncounters get() = wildPercent
     override fun setWildEncounters(percent: Int) { wildPercent = percent }
     override val wildEncountersSupported get() = true
+    private var flyStyleValue = com.pokedaisy.app.companion.FlyStyle.SCENIC
+    override val flyStyle get() = flyStyleValue
+    override fun setFlyStyle(style: com.pokedaisy.app.companion.FlyStyle) { flyStyleValue = style }
+    override val flyStyleSupported get() = com.pokedaisy.app.companion.data.activeGame == com.pokedaisy.app.companion.data.GameKind.FIRERED
+    private var vehicle = com.pokedaisy.app.companion.data.FlightVehicle.BIRD
+    override val flightVehicle get() = vehicle
+    override fun setFlightVehicle(v: com.pokedaisy.app.companion.data.FlightVehicle) { vehicle = v }
     private var reusableTmsOn = false
     override val reusableTms get() = reusableTmsOn
     override fun setReusableTms(on: Boolean) { reusableTmsOn = on }
@@ -1539,6 +1546,7 @@ fun main(args: Array<String>) {
         // APP > TIPS, with its NEW tag.
         Shot("$g-settings-tips", bw, bh, bd, companion("SETTINGS", settingsRow = "TIPS")),
         Shot("$g-settings-autorun", bw, bh, bd, companion("SETTINGS", settingsRow = "AUTO-RUN")),
+        Shot("$g-settings-flystyle", bw, bh, bd, companion("SETTINGS", settingsRow = "FLY STYLE")),
         Shot("$g-settings-battleview", bw, bh, bd, companion("SETTINGS", settingsRow = "BATTLE VIEW")),
         Shot("$g-settings-battery-low", bw, bh, bd, companion("SETTINGS", battery = BatteryStatus(9, charging = false))),
         Shot("$g-settings-battery-charging", bw, bh, bd, companion("SETTINGS", battery = BatteryStatus(100, charging = true))),
@@ -1890,6 +1898,13 @@ fun main(args: Array<String>) {
         // The D-pad onto FF, the first row of FF / SPEED, while MAKEOVER still fills the top: FF / SPEED's group tab lights.
         Shot("$g-settings-group-follow", bw, bh, bd, companion("SETTINGS")) {
             onNodeWithText("FF").performSemanticsAction(SemanticsActions.RequestFocus)
+        },
+        // MAKEOVER > FLY ON (a game with FREE FLIGHT: FireRed here), then its pick-list.
+        Shot("$g-settings-fly-on", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText("FLY ON").performScrollTo()
+        },
+        Shot("$g-settings-fly-on-pick", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText("FLY ON").performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
         // The COMPANION group, ONE-TAP MOVES under BATTLE HINTS.
         Shot("$g-settings-companion", bw, bh, bd, companion("SETTINGS")) {
@@ -2685,6 +2700,34 @@ fun main(args: Array<String>) {
                         androidx.compose.ui.Modifier.padding(top = 24.dp).fillMaxWidth(0.54f),
                         keys = listOf("L2" to "TOUCH SCREEN", "R2" to "NEXT LAYOUT"),
                         left = 0.7f,
+                    )
+                }
+            }
+        }),
+        // The first scenic FLY's landing: keep it or the classic FLY (FlyStyleAsk), over the game on one screen and on the companion.
+        Shot("ask-fly-style", 1920, 1080, 2.30625f, {
+            {
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Brush.verticalGradient(listOf(androidx.compose.ui.graphics.Color(0xFF3A5A40), androidx.compose.ui.graphics.Color(0xFF1E2A22)))),
+                    contentAlignment = androidx.compose.ui.Alignment.TopCenter,
+                ) {
+                    com.pokedaisy.app.companion.ui.FeatureTipCard(
+                        com.pokedaisy.app.companion.ui.flyStyleAskText(),
+                        androidx.compose.ui.Modifier.padding(top = 24.dp).fillMaxWidth(0.54f),
+                        left = 0.7f, badge = "NEW", noLabel = "USE CLASSIC",
+                    )
+                }
+            }
+        }),
+        Shot("ask-fly-style-companion", bw, bh, bd, {
+            {
+                androidx.compose.foundation.layout.Box(
+                    androidx.compose.ui.Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color(0xFF6C8CB0)).padding(16.dp),
+                    contentAlignment = androidx.compose.ui.Alignment.TopCenter,
+                ) {
+                    com.pokedaisy.app.companion.ui.FeatureTipCard(
+                        com.pokedaisy.app.companion.ui.flyStyleAskText(), androidx.compose.ui.Modifier.fillMaxWidth(),
+                        left = 0.7f, roomy = true, maxWidth = 1200.dp, badge = "NEW", noLabel = "USE CLASSIC",
                     )
                 }
             }

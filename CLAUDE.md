@@ -1927,11 +1927,29 @@ instructions, else through its callers' BLs (votes), else small ones by their RA
 expansion renumbered MON_DATA (MOVE1 20; IS_EGG 54 Heart and Soul / 52) - `FlyFns.monMoveField` / `monEggField`;
 Heart and Soul gates FLY with gFieldMoveInfo's IsFieldMoveUnlocked_Fly / SetUpFieldMove_Fly. SoulGold too (four builds,
 `fieldItemsCandidatesForGame` lets the CRCs pick; MOVE1 / IS_EGG 21 / 55; its GetMapsecType takes the section - 0xC3, its
-PC is special 71). Not done:
-Seaglass, TMT2, Mariomon, Recharged Yellow, Quetzal, R.O.W.E., Rogue (the same method, one game at a time), Celia. The button is the party menu's field-move
+PC is special 71). Seaglass (Lazarus's table ported, PC too) and TMT2 (expansion 1.12.3: functions matched by
+instruction sequence against that tag's build, then checked; FLY only), R.O.W.E. and Mariomon 1.5.x (retail's table ported;
+R.O.W.E.'s CB_ExitFlyMap switch decoded) and Quetzal Alpha 9 (Hoenn's towns; its own badge check as the flag check) since
+2026-11-11. Rogue refuses FLY in its own party menu: none there. Not done: Mariomon 1.2.x / 1.3, Recharged Yellow, Celia. The button is the party menu's field-move
 blue (`OptionColors.fieldMove` / `fieldMoveLayers`), under PLACES; the map buttons sit top right on every map (Emerald-style maps had them bottom left, over Hoenn) but Heart and
 Soul's and R.O.W.E.'s (`BOTTOM_ROW_MAPS`: land and routes fill their top right), which get one row along the bottom left,
 on the sea left of the label window - checked on all three of R.O.W.E.'s maps (ui-preview `rowe-map-region*`).
+**FREE FLIGHT + the scenic FLY** (2026-11-10, retail FireRed rev 1 and Emerald; then FireRed rev 0, LeafGreen, Ruby / Sapphire, every language (port_field_items.py's port_flight), the randomized builds, Emerald Legacy and the hacks on retail code - Radical Red, Unbound, Glazed, Ultra Violet, Orange Islands, Ghost Grey (its blank bird: the balloon, in greys), Let's Go, Odyssey, Gaia, Amethyst, Sword and Shield, GS Chronicles, Rocket Edition, Ash Gray, Emerald Kaizo (FLY over the map only: `classicFly` false, its warp crashed), and the expansion hacks Imperium, Lazarus, Heart and Soul, Seaglass, TMT2, R.O.W.E., Mariomon 1.5.x, Quetzal Alpha 9 and SoulGold's five builds (their following Pokemon removed at take-off and brought back once down: `followerRemove` / `followerUpdate`; SoulGold's 11-bit grid: `mapGridUndefined`); the player inanimate while up (fast movements' step anims ran past FireRed's table: Rocket Edition reset) - `flightAllowed`, docs/DEVELOPMENT.md's "Which games"; `pk_flight.c` after every frame, `Flight.kt`, `ScenicFly.kt`,
+`FLIGHT_FIRERED_REV1` / `FLIGHT_EMERALD` on `FieldItemFns.flight` - Emerald's from pret's `symbols` branch, its rider a sprite of its own; NEW tags `FREE_FLIGHT` / `SCENIC_FLY`; docs/DEVELOPMENT.md's section): TAKE OFF / LAND on the
+MAP tab, the QUICK MENU (`QuickAction.FLIGHT`) and the FREE FLIGHT hotkey; MAKEOVER > FLY ON (`FlightVehicle`, NEW tag `FLY_ON`) swaps the bird for our own balloon / helicopter / zeppelin (`scripts/gen_flight_vehicles.py` -> `pk_flight_vehicles.h`, the player's sprite in its seat); GAMEPLAY > FLIGHT AREA (`FlightArea.kt`, NEW tag `FLIGHT_AREA`): WHERE YOU'VE BEEN (default) flies only over maps the save has seen (kept per save, seeded from its towns, the routes between them and maps with a beaten trainer), ANYWHERE pauses RetroAchievements from the first take-off; the companion's GAMEPLAY > FLY STYLE CLASSIC / SCENIC (`Prefs.flyStyleId`, SCENIC by default; the first scenic landing asks
+KEEP IT / USE CLASSIC once, `FlyStyleAsk` in FeatureTip.kt where the tips show, `Prefs.flyStyleAsked`).
+No ROM patch: controls locked, held movements written into the player's ObjectEvent (no collision; nothing a step triggers runs), the player
+hidden with localId 127 (the game then skips its ground effects), the game's own FLY bird sprite at the player's fixed screen spot, a see-through
+shadow drawn into each finished frame (`pk_flight_draw`, undone line by line where mGBA didn't redraw the line); with EXPAND the diagonal staircase is glided out (`pk_wide.c` flyBegin: the view moves at the velocity the flight means,
+pulled toward the real camera; the window and the bird's OAM entry moved by the difference); diagonal steps quicker (8 / 6 / 4 / 2 frames a tile
+by a running balance) so diagonals match the straight speed; the bird keeps its side view on a diagonal; the map's name sign is held still
+(`flyLabel`); the grid's leftovers from FireRed's MoveMapViewToBackup mended once per map (`flMend`); no-fly stand-in maps (`FlightFns.noFly`:
+SaffronCity_Connection). Its state is
+in the game's RAM (that mark + the bird id in fieldEffectSpriteId), so states / REWIND taken in the air come back flying (`pk_flight_tick` adopts
+them; `syncFlight` re-sends the same words every half second, which change nothing). SCENIC: A* over the maps joined by connections, pulled into
+staircases, flown at WALK_FASTER with EXPAND at its widest step (`WideCamera.flightZoom`) and the game at `SCENIC_SPEED`; towns not joined to the
+player's map (Saffron, the Sevii Islands) fly the classic way. mgba_dump: `flighton` / `flight` / `flightroute` / `flightinfo`. A native build of
+mgba_dump on the Mac (no Docker) works: libmgba.a from `third_party/mgba` with cmake, then clang (2026-11-10, when Docker's VM kept crashing).
 **Bag favorites** (ITEMS): the star button beside USE in an item's description bar stars it for this ROM only
 (`FavoriteItems`, Compose state; `Prefs.favoriteItemsFor(crc)`, loaded in `loadRom`, item ids). Starred items come first
 in the DEFAULT order (bag order kept among them) and carry a gold star (`PixelIcons.star`, `OptionColors.favorite`) in

@@ -42,6 +42,8 @@ import com.pokedaisy.app.companion.COMPANION_TABS
 import com.pokedaisy.app.companion.CompanionSettings
 import com.pokedaisy.app.companion.KeyCapture
 import com.pokedaisy.app.companion.BattleStyle
+import com.pokedaisy.app.companion.FlyStyle
+import com.pokedaisy.app.companion.FlightAreaMode
 import com.pokedaisy.app.companion.FfMode
 import com.pokedaisy.app.companion.GameAspect
 import com.pokedaisy.app.companion.hasGrid
@@ -472,7 +474,7 @@ private fun homeRows(
     // MAKEOVER: the game's look from other games (the user's call: its own group, first and standing out, only in a
     // game it works in).
     val looks = s.playerLookSupported
-    val makeover = if (!looks && !s.dayNightSupported && !s.followerSupported) emptyList() else listOfNotNull(
+    val makeover = if (!looks && !s.dayNightSupported && !s.followerSupported && !s.flyStyleSupported) emptyList() else listOfNotNull(
         featuredGroupTitle(tk("MAKEOVER"), if (looks) "Other games' looks in this one" else "A fresh look for this game"),
         // Another game's hero for the player (PlayerLook.kt: their sprites from the player's own ROM of that game,
         // patched into this one in memory). The heroes' names are the games' own, so they aren't translated.
@@ -516,6 +518,15 @@ private fun homeRows(
                 labelBadge = NewFeatures.badge(NewFeatures.FOLLOWER),
                 subtitle = if (s.followerReady) null else "Needs a game with following Pokémon too",
             ) { if (s.followerReady) { s.setFollower(!s.follower); changed() } }
+        } else null,
+        // What FREE FLIGHT and the scenic FLY fly on (FlightVehicle: our own pixel art, the player in its seat).
+        if (s.flyStyleSupported) {
+            SettingRow(tk("FLY ON"), s.flightVehicle.label, labelBadge = NewFeatures.badge(NewFeatures.FLY_ON)) {
+                val all = com.pokedaisy.app.companion.data.FlightVehicle.entries
+                select(Selector(tk("FLY ON"), all.map { it.label }, s.flightVehicle.label) { l ->
+                    all.firstOrNull { it.label == l }?.let(s::setFlightVehicle)
+                })
+            }
         } else null,
         // The overworld by the device's clock (DayNight.kt): every GBA game but those with their own.
         if (s.dayNightSupported) {
@@ -571,6 +582,27 @@ private fun homeRows(
             enabled = s.instantTextSupported, labelBadge = NewFeatures.badge(NewFeatures.INSTANT_TEXT),
         ) {
             if (s.instantTextSupported) { s.setInstantText(!s.instantText); changed() }
+        },
+        // The companion's FLY: the game's own (CLASSIC) or flown over the field to the town (SCENIC, Flight.kt). Two values: a tap flips it.
+        SettingRow(
+            tk("FLY STYLE"), if (s.flyStyleSupported) s.flyStyle.label else tk("N/A"),
+            enabled = s.flyStyleSupported, labelBadge = NewFeatures.badge(NewFeatures.SCENIC_FLY),
+            subtitle = "SCENIC flies you there over the map",
+        ) {
+            if (s.flyStyleSupported) {
+                s.setFlyStyle(if (s.flyStyle == FlyStyle.SCENIC) FlyStyle.CLASSIC else FlyStyle.SCENIC)
+                changed()
+            }
+        },
+        // Where FREE FLIGHT and the scenic FLY may go: the maps seen (FlightArea.kt) or anywhere. Two values: a tap flips it.
+        SettingRow(
+            tk("FLIGHT AREA"), if (s.flyStyleSupported) s.flightArea.label else tk("N/A"),
+            enabled = s.flyStyleSupported, labelBadge = NewFeatures.badge(NewFeatures.FLIGHT_AREA),
+        ) {
+            if (s.flyStyleSupported) {
+                s.setFlightArea(if (s.flightArea == FlightAreaMode.SEEN) FlightAreaMode.ANYWHERE else FlightAreaMode.SEEN)
+                changed()
+            }
         },
         // A TM stays in the bag after it teaches a move, as an HM does (ReusableTms.kt: the ROM's own check patched).
         // A game whose own TMs never run out (ReusableTms.BUILT_IN) shows ON, greyed, and says so.
