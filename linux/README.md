@@ -44,10 +44,10 @@ Keyboard: arrows, Z=A, X=B, Enter=Start, Backspace=Select, Q/E=L/R, 1/2=L2/R2, T
 frontend: X opens the companion, Y the quick menu (each can be rebound in the companion's SETTINGS).
 
 START+SELECT (or the controller's Guide / Menu button, or Escape) opens the host menu over the game: RESUME, SAVE
-STATE, LOAD STATE, FAST FORWARD (on / off), FF SPEED (MAX, or 2x to 8x), REWIND (keeps the last ~20 s while on, in a
-32 MB budget: `POCKET_REWIND_MB`), LCD FILTER, A/B BUTTONS (NORMAL / SWAPPED: devices disagree on which physical
-button SDL calls A; SWAPPED trades A with B and X with Y on controllers), HOTKEYS and QUIT (QUIT TO GAME LIST when the
-game came from the list). `POCKET_MENU_COMBO=off` leaves START+SELECT alone (the PortMaster launcher sets it: there it is
+STATE, LOAD STATE, HOTKEYS, REWIND (keeps the last ~20 s while on, in a 32 MB budget: `POCKET_REWIND_MB`), FF SPEED
+(MAX, or 2x to 8x), LCD FILTER, A/B BUTTONS (NORMAL / SWAPPED: devices disagree on which physical button SDL calls A;
+SWAPPED trades A with B and X with Y on controllers) and QUIT (QUIT TO GAME LIST when the game came from the list).
+Fast-forward is the FAST FORWARD hotkey's, while it is held. `POCKET_MENU_COMBO=off` leaves START+SELECT alone (the PortMaster launcher sets it: there it is
 the port's exit). The game pauses while it is open.
 
 HOTKEYS gives FAST FORWARD (held; default R2), REWIND (held, while REWIND is on; default L2), SAVE STATE and LOAD

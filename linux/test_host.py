@@ -66,9 +66,9 @@ with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
     run(d,str(d/'roms/diagnostic.gb'),'--frames','140')
     del env['POCKET_KEYS']
     assert 'swap_ab=1' in (d/'host.ini').read_text(),(d/'host.ini').read_text()
-    # HOTKEYS (eight rows down): REWIND takes L3; SAVE STATE takes R2, which FAST FORWARD then loses.
+    # HOTKEYS (three rows down): REWIND takes L3; SAVE STATE takes R2, which FAST FORWARD then loses.
     ini=(d/'host.ini').read_text();assert 'hk_ff=r2' in ini and 'hk_rewind=l2' in ini,ini
-    steps=['menu']+['down']*8+['a','down','a','l3','down','a','r2']
+    steps=['menu']+['down']*3+['a','down','a','l3','down','a','r2']
     env['POCKET_KEYS']=','.join(f'{20+10*i}:{k}' for i,k in enumerate(steps))
     run(d,str(d/'roms/diagnostic.gb'),'--frames',str(40+10*len(steps)))
     del env['POCKET_KEYS']

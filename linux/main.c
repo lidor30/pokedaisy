@@ -1270,7 +1270,8 @@ static const char *core_for(const char *path) {
 extern int pd_ds_run(const char *, const char *, int, const char *, SDL_Renderer *, bool (*)(void));
 static bool ds_running(void) { return running != 0; }
 #endif
-enum { M_RESUME, M_SAVE, M_LOAD, M_FF, M_FFSPEED, M_REWIND, M_LCD, M_SWAP, M_HOTKEYS, M_QUIT, M_COUNT };
+// The host menu's rows, top to bottom (fast-forward is the FAST FORWARD hotkey's, held).
+enum { M_RESUME, M_SAVE, M_LOAD, M_HOTKEYS, M_REWIND, M_FFSPEED, M_LCD, M_SWAP, M_QUIT, M_COUNT };
 static void run_game(const char *path, int maxFrames, const char *shot, bool fromList) {
 #ifdef POCKET_DSPERATE
   const char *ext = strrchr(path, '.');
@@ -1364,7 +1365,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
   }
   rewindBudget = (getenv("POCKET_REWIND_MB") ? (size_t)atoi(getenv("POCKET_REWIND_MB")) : 32) << 20;
   rewindTick = 0;
-  bool ffToggled = false, menuOpen = false, leave = false;
+  bool menuOpen = false, leave = false;
   struct pd_menu menu, hkMenu;
   static char rows[M_COUNT][40], hkRows[HK_ACTIONS][40];
   static const char *rowPtrs[M_COUNT], *hkPtrs[HK_ACTIONS];
@@ -1392,7 +1393,6 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     snprintf(rows[M_RESUME], 40, "RESUME");
     snprintf(rows[M_SAVE], 40, "SAVE STATE");
     snprintf(rows[M_LOAD], 40, "LOAD STATE");
-    snprintf(rows[M_FF], 40, "FAST FORWARD  %s", ffToggled ? "ON" : "OFF");
     if (hostSet.ffSpeed)
       snprintf(rows[M_FFSPEED], 40, "FF SPEED  %dx", hostSet.ffSpeed);
     else
@@ -1480,9 +1480,6 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
           notice(!exists(ss) ? "No state saved yet" : state_file(ss, false) ? "State loaded" : "State load failed");
           menuOpen = false;
           break;
-        case M_FF:
-          ffToggled = !ffToggled;
-          break;
         case M_FFSPEED:
           hostSet.ffSpeed = hostSet.ffSpeed == 0 ? 2 : hostSet.ffSpeed >= 8 ? 0 : hostSet.ffSpeed + 1;
           host_save();
@@ -1529,7 +1526,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     }
     muted = false;
     bool rewinding = (hkOn & (1u << HK_REWIND)) && hostSet.rewind;
-    bool ff = !rewinding && (ffToggled || (hkOn & (1u << HK_FF)));
+    bool ff = !rewinding && (hkOn & (1u << HK_FF));
     int runs = 1;
     if (ff) {
       double cost = emuMs > 0 ? emuMs : 4;
