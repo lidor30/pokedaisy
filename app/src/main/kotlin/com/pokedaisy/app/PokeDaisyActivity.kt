@@ -690,9 +690,9 @@ class PokeDaisyActivity : Activity() {
         }
 
         override fun canReorderParty() = !romIsNds && !romIsGameBoy && ::engine.isInitialized && engine.running &&
-            com.pokedaisy.app.companion.data.activeNativeConfig != null
+            telemetry.knownPartyReorderConfig() != null
         override fun reorderParty(a: Int, b: Int, done: (com.pokedaisy.app.companion.data.PartySwapResult) -> Unit) {
-            val cfg = com.pokedaisy.app.companion.data.activeNativeConfig
+            val cfg = telemetry.knownPartyReorderConfig()
             val snap = telemetry.snapshot.value
             if (cfg == null || !::engine.isInitialized || !engine.running) return done(com.pokedaisy.app.companion.data.PartySwapResult.FAILED)
             if (snap.inBattle) return done(com.pokedaisy.app.companion.data.PartySwapResult.IN_BATTLE)
