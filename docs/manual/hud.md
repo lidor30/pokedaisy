@@ -51,3 +51,12 @@ Tap `LAYOUT`, `LOOK` or `SIZE` to step to the next choice. The HUD changes right
 | `LOOK` | **`GLASS`**, `WHITE GLASS`, `WINDOW` | `GLASS` is a dark see-through panel that lets the game show through, with light text. `WHITE GLASS` is the same in white, with dark text. `WINDOW` uses the white windows the rest of the app has. In every look the windows are shaped like the games' battle HP boxes, with a shadow below and to the right, and whatever is picked (a pocket, an item, `KEEP OPEN`) gets an orange edge, like the chosen slot on the games' party screen. |
 | `SIZE` | `SMALL`, **`NORMAL`**, `LARGE` | How big it is, from small to large. |
 | `PARTY`, `MINIMAP`, `POKé BALLS`, the steps left, `PC`, `BAG`, `WILD POKéMON` | **`ON`**, `OFF` | Show or hide each part. |
+
+## On Linux and in other launchers
+
+When PokeDaisy runs as a libretro core (the [Linux program](linux.md), plorpOS, the NXRedux collection, RetroArch), the
+HUD is drawn in the game's own pixels, and the screen shows those several times larger. So at `SMALL` and `NORMAL` it's
+drawn at about half the app's size: smaller pictures of your party and Poké Balls, small numbers, and buttons with
+their pictures but no names. `LARGE` draws it at full size, with the names on the buttons. Every `LAYOUT` works at each
+size. When your party and the rest don't fit side by side, the HUD keeps to the bottom left corner, with a `MAP` button
+in place of the minimap.

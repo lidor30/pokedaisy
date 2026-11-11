@@ -564,9 +564,9 @@ static void draw_hud(void) {
     ax = (CW - aw) / 2;
     ay = (CH - ah) / 2;
   }
-  int scale = 1 + settings.hudSize - PD_HUD_NORMAL;
-  if (scale < 1)
-    scale = 1;
+  // SMALL / NORMAL: the mini HUD (a core's canvas is the game's own pixels, shown 3x to 6x); LARGE: the full one.
+  hudState.mini = settings.hudSize != PD_HUD_LARGE;
+  int scale = 1;
   int w = aw / scale, hh = ah / scale;
   if (!hudPixels)
     hudPixels = malloc((size_t)CANVAS_MAX_W * CANVAS_MAX_H * sizeof *hudPixels);

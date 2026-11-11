@@ -26,12 +26,13 @@ static const struct look LOOKS[PD_HUD_LOOKS] = {
 // The sizes: FieldHud's, or a 3DS's (hud_state.compact: its screen shows the game at 1.5x, a Linux handheld's at 3x and
 // more, so the same pixels cover twice as much of the picture). A compact tile overlaps the icon's see-through edges.
 struct hud_sizes { int pad, edge, tile, gap, mapW, mapH; };
-static const struct hud_sizes NORMAL_SIZES = { 4, 6, 30, 3, 104, 64 }, COMPACT_SIZES = { 2, 3, 20, 1, 72, 40 };
+static const struct hud_sizes NORMAL_SIZES = { 4, 6, 30, 3, 104, 64 }, COMPACT_SIZES = { 2, 3, 20, 1, 72, 40 },
+                               MINI_SIZES = { 2, 3, 15, 1, 72, 40 }; // the cores' mini HUD: half-size party icons
 static const struct hud_sizes *sizes = &NORMAL_SIZES;
 static bool small; // hud_state.compact (not CompactLayout, the HUD without party or minimap: compact() below)
 #define PAD (sizes->pad)
 #define EDGE (sizes->edge) // CornersLayout's padding
-#define GAP 4  // between a column's windows
+#define GAP (mini ? 2 : 4) // between a column's windows
 #define TILE (sizes->tile)
 #define TILE_GAP (sizes->gap)
 #define LINE 12
@@ -243,6 +244,77 @@ static bool small_text(struct pd_canvas *c, int x, int y, const char *text, uint
 
 static bool shows(const struct hud *u, int part) { return !(u->st->hudHidden >> part & 1); }
 
+// ---- Mini (hud_state.mini): the libretro cores' HUD -------------------------------------------------
+// A core's canvas is the game's own pixels, shown at the screen's whole scale (5x on a Steam Deck), so the HUD's
+// art and text are drawn at about half their size: icons halved, counts in 3x5 digits, buttons without labels.
+static bool mini;
+static const unsigned char TINY_DIGITS[10][5] = {
+    {7, 5, 5, 5, 7}, {2, 6, 2, 2, 7}, {7, 1, 7, 4, 7}, {7, 1, 7, 1, 7}, {5, 5, 7, 1, 1},
+    {7, 4, 7, 1, 7}, {7, 4, 7, 5, 7}, {7, 1, 2, 2, 2}, {7, 5, 7, 5, 7}, {7, 5, 7, 1, 7}};
+#define TINY_H 5
+// Digits (anything else is skipped), each 3 wide and a pixel apart, with the look's shadow down-right; the width.
+static int tiny_text(struct pd_canvas *c, int x, int y, const char *t, uint32_t color, uint32_t shadow) {
+  int w = 0;
+  for (const char *p = t; *p; p++) {
+    if (*p < '0' || *p > '9')
+      continue;
+    const unsigned char *g = TINY_DIGITS[*p - '0'];
+    for (int pass = shadow != PD_NO_SHADOW ? 0 : 1; pass < 2; pass++)
+      for (int j = 0; j < TINY_H; j++)
+        for (int i = 0; i < 3; i++)
+          if (g[j] & 4 >> i)
+            pd_fill(c, x + w + i + (pass ? 0 : 1), y + j + (pass ? 0 : 1), 1, 1, pass ? color : shadow);
+    w += 4;
+  }
+  return w ? w - 1 : 0;
+}
+static int tiny_width(const char *t) {
+  int w = 0;
+  for (const char *p = t; *p; p++)
+    w += *p >= '0' && *p <= '9' ? 4 : 0;
+  return w ? w - 1 : 0;
+}
+
+// An item icon at two thirds: drawn into its own canvas, through Scale2x (edges kept, as the compact party icons), then
+// each 3x3 block of that is one pixel - its solid pixels' average, where most of the block is solid.
+#define MINI_ITEM (PD_ITEM_ICON * 2 / 3)
+static uint32_t itemPx[PD_ITEM_ICON * PD_ITEM_ICON], item2x[4 * PD_ITEM_ICON * PD_ITEM_ICON];
+static void mini_item(struct hud *u, int id, int x, int y) {
+  struct pd_canvas s;
+  pd_canvas_init(&s, PD_ITEM_ICON, PD_ITEM_ICON, itemPx);
+  for (int i = 0; i < PD_ITEM_ICON * PD_ITEM_ICON; i++)
+    itemPx[i] = SHRUNK_CLEAR;
+  bool drawn = u->itemDraw ? u->itemDraw(&s, id, 0, 0) : pd_draw_item_icon(&s, u->g, id, 0, 0, false);
+  if (!drawn)
+    pd_draw_party_ball(&s, (PD_ITEM_ICON - 20) / 2, (PD_ITEM_ICON - 20) / 2);
+  const int n2 = 2 * PD_ITEM_ICON;
+  for (int y = 0; y < PD_ITEM_ICON; y++)
+    for (int x2 = 0; x2 < PD_ITEM_ICON; x2++) {
+      const int m = PD_ITEM_ICON;
+      uint32_t e = itemPx[y * m + x2];
+      uint32_t bb = itemPx[(y ? y - 1 : y) * m + x2], hh = itemPx[(y < m - 1 ? y + 1 : y) * m + x2];
+      uint32_t dd = itemPx[y * m + (x2 ? x2 - 1 : x2)], ff = itemPx[y * m + (x2 < m - 1 ? x2 + 1 : x2)];
+      bool edge = bb != hh && dd != ff;
+      uint32_t *o = &item2x[2 * y * n2 + 2 * x2];
+      o[0] = edge && dd == bb ? dd : e;
+      o[1] = edge && bb == ff ? ff : e;
+      o[n2] = edge && dd == hh ? dd : e;
+      o[n2 + 1] = edge && hh == ff ? ff : e;
+    }
+  for (int oy = 0; oy < MINI_ITEM; oy++)
+    for (int ox = 0; ox < MINI_ITEM; ox++) {
+      int r = 0, g = 0, b = 0, n = 0;
+      for (int k = 0; k < 9; k++) {
+        uint32_t p = item2x[(3 * oy + k / 3) * n2 + 3 * ox + k % 3];
+        if (p == SHRUNK_CLEAR || p >> 24)
+          continue;
+        r += (int)(p >> 16 & 0xFF), g += (int)(p >> 8 & 0xFF), b += (int)(p & 0xFF), n++;
+      }
+      if (n >= 5)
+        pd_fill(u->c, x + ox, y + oy, 1, 1, (uint32_t)(r / n) << 16 | (uint32_t)(g / n) << 8 | (uint32_t)(b / n));
+    }
+}
+
 static void hit(struct hud *u, int x, int y, int w, int h, int id) {
   if (u->out && u->out->n < HUD_MAX_HITS)
     u->out->at[u->out->n++] = (__typeof__(u->out->at[0])){x, y, w, h, id};
@@ -355,11 +427,35 @@ static void status_chip(struct pd_canvas *c, int cx, int y, const char *label) {
 }
 
 // One member's icon at (x, y) in a TILE-wide slot: faded when fainted, its status chip over the top.
+// A party icon at half size (the mini HUD): Scale2x, then each 4x4 block of that is one pixel - its solid pixels'
+// average, where at least half the block is solid.
+#define MINI_ICON (PD_ICON / 2)
+static void icon_half_draw(struct pd_canvas *c, int x, int y) {
+  const int n = 2 * PD_ICON;
+  icon_scale2x();
+  for (int oy = 0; oy < MINI_ICON; oy++)
+    for (int ox = 0; ox < MINI_ICON; ox++) {
+      int r = 0, g = 0, b = 0, k = 0;
+      for (int j = 0; j < 16; j++) {
+        uint32_t p = icon2x[(4 * oy + j / 4) * n + 4 * ox + j % 4];
+        if (p == SHRUNK_CLEAR || p >> 24)
+          continue;
+        r += (int)(p >> 16 & 0xFF), g += (int)(p >> 8 & 0xFF), b += (int)(p & 0xFF), k++;
+      }
+      if (k >= 8)
+        pd_fill(c, x + ox, y + oy, 1, 1, (uint32_t)(r / k) << 16 | (uint32_t)(g / k) << 8 | (uint32_t)(b / k));
+    }
+}
+
 static void mon_icon(struct hud *u, const struct pd_mon *m, int x, int y) {
   bool egg = m->species == PD_SPECIES_EGG, fainted = !egg && m->hp == 0;
   int ix = x + (TILE - PD_ICON) / 2;
   if (u->monDraw) {
     u->monDraw(u->c, u->monCtx, m, ix, y - 5, fainted);
+  } else if (mini) {
+    struct pd_canvas shrunk = icon_begin();
+    pd_draw_mon_icon_shiny(&shrunk, u->g, m->species, m->shiny, 0, 0, 1, fainted);
+    icon_half_draw(u->c, x + (TILE - MINI_ICON) / 2, y - 3);
   } else if (small) {
     struct pd_canvas shrunk = icon_begin();
     pd_draw_mon_icon_shiny(&shrunk, u->g, m->species, m->shiny, 0, 0, 1, fainted);
@@ -379,7 +475,8 @@ static void lead(struct hud *u, int x, int y, int w, int h) {
 }
 
 #define COMPACT_ICON_H 21 // what shows of it: a Pokémon stands at the bottom of its picture
-#define TILE_H (small ? COMPACT_ICON_H + 5 : 26 + LINE + 6)
+#define SHOWN_ICON_H (mini ? 12 : COMPACT_ICON_H)
+#define TILE_H (small ? SHOWN_ICON_H + 5 : 26 + LINE + 6)
 static int tiles_width(const struct hud *u) { return u->partyN ? u->partyN * TILE + (u->partyN - 1) * TILE_GAP : 0; }
 
 // The party as tiles from (x, y) (HudMonTile): icon, then Lv and the HP bar under it.
@@ -393,7 +490,7 @@ static void party_tiles(struct hud *u, int x, int y) {
     if (m->species == PD_SPECIES_EGG)
       continue;
     if (small) { // no level: the party tab has it
-      hp_bar(u->c, x, y + COMPACT_ICON_H, TILE, m->hp, m->maxHp);
+      hp_bar(u->c, x, y + SHOWN_ICON_H, TILE, m->hp, m->maxHp);
       continue;
     }
     char lv[8];
@@ -521,14 +618,21 @@ static int balls(const struct pd_snapshot *s, struct pd_item out[3]) {
   return n;
 }
 
+#define ITEM_SZ (mini ? MINI_ITEM : PD_ITEM_ICON)
 static int count_w(const struct pd_item *b) {
   char t[12];
   snprintf(t, sizeof t, "x%d", b->quantity);
-  return pd_text_width(t);
+  return mini ? tiny_width(t) : pd_text_width(t);
 }
 
 // One ball and its count (BallCount); Ruby / Sapphire keep no item icons: a drawn ball in its place.
 static int ball_count(struct hud *u, const struct pd_item *b, int x, int y) {
+  if (mini) {
+    char t[12];
+    snprintf(t, sizeof t, "%d", b->quantity);
+    mini_item(u, b->id, x, y);
+    return MINI_ITEM + 1 + tiny_text(u->c, x + MINI_ITEM + 1, y + (MINI_ITEM - TINY_H) / 2, t, u->L->text, u->L->shadow);
+  }
   bool drawn = u->itemDraw ? u->itemDraw(u->c, b->id, x, y) : pd_draw_item_icon(u->c, u->g, b->id, x, y, false);
   if (!drawn)
     pd_draw_party_ball(u->c, x + (PD_ITEM_ICON - 20) / 2, y + (PD_ITEM_ICON - 20) / 2);
@@ -540,48 +644,51 @@ static int ball_count(struct hud *u, const struct pd_item *b, int x, int y) {
 static int balls_inline_w(const struct hud *u) {
   int w = 0;
   for (int i = 0; i < u->balls; i++)
-    w += PD_ITEM_ICON + 1 + count_w(&u->ball[i]) + (i ? 4 : 0);
+    w += ITEM_SZ + 1 + count_w(&u->ball[i]) + (i ? (mini ? 3 : 4) : 0);
   return w;
 }
 
 static void balls_inline(struct hud *u, int x, int y) {
-  hit(u, x - 2, y - 2, balls_inline_w(u) + 4, PD_ITEM_ICON + 4, HUD_BALLS);
+  hit(u, x - 2, y - 2, balls_inline_w(u) + 4, ITEM_SZ + 4, HUD_BALLS);
   for (int i = 0; i < u->balls; i++)
-    x += ball_count(u, &u->ball[i], x, y) + 4;
+    x += ball_count(u, &u->ball[i], x, y) + (mini ? 3 : 4);
 }
 
 static int balls_w(const struct hud *u, bool vertical) {
   if (!vertical)
-    return 2 * PAD + 4 + balls_inline_w(u);
+    return 2 * PAD + (mini ? 2 : 4) + balls_inline_w(u);
   int w = 0;
   for (int i = 0; i < u->balls; i++)
     if (count_w(&u->ball[i]) > w)
       w = count_w(&u->ball[i]);
-  return 2 * PAD + 2 + PD_ITEM_ICON + 1 + w;
+  return 2 * PAD + 2 + ITEM_SZ + 1 + w;
 }
-static int balls_h(const struct hud *u, bool vertical) { return 2 * PAD + (vertical ? u->balls : 1) * PD_ITEM_ICON; }
+static int balls_h(const struct hud *u, bool vertical) { return 2 * PAD + (vertical ? u->balls : 1) * ITEM_SZ; }
 
 static void balls_panel(struct hud *u, int x, int y, bool vertical) {
   panel(u, x, y, balls_w(u, vertical), balls_h(u, vertical));
   hit(u, x, y, balls_w(u, vertical), balls_h(u, vertical), HUD_BALLS);
-  int bx = x + PAD + 2, by = y + PAD;
+  int bx = x + PAD + (mini ? 1 : 2), by = y + PAD;
   for (int i = 0; i < u->balls; i++) {
     int w = ball_count(u, &u->ball[i], bx, by);
     if (vertical)
-      by += PD_ITEM_ICON;
+      by += ITEM_SZ;
     else
-      bx += w + 4;
+      bx += w + (mini ? 3 : 4);
   }
 }
 
 // RAILS' narrow one: the count over a shorter bar, no "steps".
+#define MINI_BAR 20
 static int repel_inner_w(const struct hud *u, bool narrow) {
   char t[12];
   snprintf(t, sizeof t, "%d", u->h->repel);
+  if (mini)
+    return MINI_ITEM + 2 + (tiny_width(t) > MINI_BAR ? tiny_width(t) : MINI_BAR);
   int words = pd_text_width(t) + (narrow ? 0 : 3 + pd_text_width("steps")), bar = narrow ? 30 : 46;
   return PD_ITEM_ICON + 3 + (words > bar ? words : bar);
 }
-#define REPEL_INNER_H (PD_ITEM_ICON + 2)
+#define REPEL_INNER_H (mini ? MINI_ITEM : PD_ITEM_ICON + 2)
 static int repel_w(const struct hud *u, bool narrow) { return 2 * PAD + repel_inner_w(u, narrow) + 2; }
 #define REPEL_H (2 * PAD + REPEL_INNER_H)
 
@@ -589,6 +696,20 @@ static int repel_w(const struct hud *u, bool narrow) { return 2 * PAD + repel_in
 // draining green / yellow / red against the steps it started from.
 static void repel_inner(struct hud *u, int x, int y, bool narrow) {
   const struct hud_state *h = u->h;
+  if (mini) { // the spray, the count over a thin bar
+    mini_item(u, u->itemDraw ? u->repelItem : h->repelItem ? h->repelItem : 86, x, y);
+    char t[12];
+    snprintf(t, sizeof t, "%d", h->repel);
+    int tx = x + MINI_ITEM + 2, full = h->repelFull > 0 ? h->repelFull : 100;
+    tiny_text(u->c, tx, y + 1, t, h->repel <= 20 ? u->L->accent : u->L->text, u->L->shadow);
+    int left = h->repel * (MINI_BAR - 2) / full;
+    if (left > MINI_BAR - 2)
+      left = MINI_BAR - 2;
+    uint32_t fill = h->repel * 2 > full ? 0x58D080 : h->repel * 5 > full ? 0xF8C030 : 0xE84838;
+    pd_fill(u->c, tx, y + MINI_ITEM - 4, MINI_BAR, 3, 0x00405060);
+    pd_fill(u->c, tx + 1, y + MINI_ITEM - 3, left, 1, fill);
+    return;
+  }
   // The game tracks steps, so use the plain Repel icon.
   if (u->itemDraw)
     u->itemDraw(u->c, u->repelItem, x, y + 1);
@@ -631,6 +752,9 @@ static const char *const MAP_ICON[] = {
     "................", NULL,
 };
 
+// The mini HUD's buttons: the same art, no label.
+#define MINI_BUTTON 20 // square, the 16 x 16 art in the middle
+
 static const char *button_label(int id) {
   switch (id) {
   case HUD_PC: return "PC";
@@ -642,6 +766,8 @@ static const char *button_label(int id) {
 }
 
 static int button_w(int id) {
+  if (mini)
+    return MINI_BUTTON;
   int w = pd_text_width(button_label(id)) + 6;
   return w > 34 ? w : 34;
 }
@@ -650,16 +776,41 @@ static int buttons_w(const struct hud *u, bool vertical) {
   int w = 0;
   for (int i = 0; i < u->buttons; i++) {
     int b = button_w(u->button[i]);
-    w = vertical ? (b > w ? b : w) : w + b + (i ? 3 : 0);
+    w = vertical ? (b > w ? b : w) : w + b + (i ? (mini ? 2 : 3) : 0);
   }
   return w;
 }
 static int buttons_h(const struct hud *u, bool vertical) {
-  return u->buttons ? (vertical ? u->buttons * BUTTON_H + (u->buttons - 1) * 3 : BUTTON_H) : 0;
+  int bh = mini ? MINI_BUTTON : BUTTON_H, gap = mini ? 2 : 3;
+  return u->buttons ? (vertical ? u->buttons * bh + (u->buttons - 1) * gap : bh) : 0;
 }
 
 // A square button (HudButton): pixel art over a small label, WILD's red count on its corner.
 static void button(struct hud *u, int id, int x, int y, int w, bool framed) {
+  if (mini) {
+    if (framed)
+      panel(u, x, y, w, MINI_BUTTON);
+    hit(u, x, y, w, MINI_BUTTON, id);
+    int ax = x + (w - 16) / 2, ay = y + (MINI_BUTTON - 16) / 2;
+    if (id == HUD_PC)
+      art(u->c, quick_icon_pc, ax, ay, "KLDSHG", (const uint32_t[]){0x202838, 0xD8D8E0, 0x9098A8, 0x3070C8, 0x90C8F8, 0x40D040}, 0);
+    else if (id == HUD_BAG)
+      art(u->c, BAG_ICON, ax, ay, "KBLY", (const uint32_t[]){0x3A2414, 0xC0783A, 0xE8A868, 0xF8D030}, 0);
+    else if (id == HUD_WILD)
+      art(u->c, quick_icon_grass, ax, ay, "KGL", (const uint32_t[]){0x183818, 0x389838, 0x78D058}, 0);
+    else if (id == HUD_MAP_BUTTON)
+      art(u->c, MAP_ICON, ax, ay, "KGBYRW", (const uint32_t[]){0x202838, 0x58B048, 0x4890E0, 0xF0D060, 0xE83028, 0xFFFFFF}, 0);
+    else // the companion's open arrow, 8 x 13
+      art(u->c, quick_icon_companion, ax + 4, ay + 1, "", NULL, u->L->text);
+    if (id == HUD_WILD && u->h->wild > 0) {
+      char t[12];
+      snprintf(t, sizeof t, "%d", u->h->wild);
+      int bw = tiny_width(t) + 4;
+      pd_fill(u->c, x + w - bw, y - 2, bw, TINY_H + 2, 0xE83028);
+      tiny_text(u->c, x + w - bw + 2, y - 1, t, 0xFFFFFF, PD_NO_SHADOW);
+    }
+    return;
+  }
   if (framed)
     panel(u, x, y, w, BUTTON_H);
   hit(u, x, y, w, BUTTON_H, id);
@@ -677,7 +828,7 @@ static void button(struct hud *u, int id, int x, int y, int w, bool framed) {
   const char *label = button_label(id);
   text(u, x + (w - pd_text_width(label)) / 2, ay + 16 + 1 - 2, label, u->L->text);
   if (id == HUD_WILD && u->h->wild > 0) {
-    char t[8];
+    char t[12];
     snprintf(t, sizeof t, "%d", u->h->wild);
     int bw = pd_text_width(t) + 6;
     pd_round_rect(u->c, x + w - bw, y - 3, bw, 13, 3, 0xE83028);
@@ -691,9 +842,9 @@ static void buttons(struct hud *u, int x, int y, bool vertical, bool framed) {
     int bw = vertical ? w : button_w(u->button[i]);
     button(u, u->button[i], x, y, bw, framed);
     if (vertical)
-      y += BUTTON_H + 3;
+      y += (mini ? MINI_BUTTON : BUTTON_H) + (mini ? 2 : 3);
     else
-      x += bw + 3;
+      x += bw + (mini ? 2 : 3);
   }
 }
 
@@ -868,8 +1019,9 @@ bool hud_draw(struct pd_canvas *c, const struct pd_game *g, const struct pd_snap
     out->n = 0;
   if (!s || !s->valid)
     return false;
-  small = h->compact;
-  sizes = small ? &COMPACT_SIZES : &NORMAL_SIZES;
+  mini = h->mini;
+  small = h->compact || mini; // the mini HUD's party and minimap are the compact ones, its party icons halved
+  sizes = mini ? &MINI_SIZES : small ? &COMPACT_SIZES : &NORMAL_SIZES;
   struct hud u = {.c = c, .g = g, .s = s, .h = h, .st = st, .out = out, .x0 = h->left, .x1 = h->right ? h->right : c->w,
                   .L = &LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
   // WINDOW on a Game Boy game: the game's own black-on-white window (OptionColors' Gen 1 look), not FireRed's.
@@ -918,7 +1070,7 @@ void hud_party_draw(struct pd_canvas *c, const struct pd_snapshot *s, void *ctx,
   static const struct hud_state none = {.wild = -1, .focus = -1};
   if (!s || !s->valid || s->partyCount <= 0 || !draw)
     return;
-  small = false;
+  small = mini = false;
   sizes = &NORMAL_SIZES;
   struct hud u = {.c = c, .s = s, .h = &none, .st = &defaults, .monDraw = draw, .monCtx = ctx, .L = &LOOKS[0], .x1 = c->w};
   u.partyN = s->partyCount < PD_PARTY_SIZE ? s->partyCount : PD_PARTY_SIZE;
@@ -935,6 +1087,7 @@ void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct 
   if (!s->valid)
     return;
   small = right < c->w;
+  mini = false;
   sizes = small ? &COMPACT_SIZES : &NORMAL_SIZES;
   struct hud u = {.c = c, .s = s, .h = h, .st = st, .monDraw = monDraw, .monCtx = ctx, .itemDraw = itemDraw, .x1 = right,
                   .repelItem = repelItem, .out = out,
@@ -958,7 +1111,7 @@ void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct 
 
 void hud_ds_minimap(struct pd_canvas *c, const struct pd_settings *st, const char *name, hud_ds_map_fn draw, struct hud_hits *out) {
   enum { W=104, H=64 };
-  small = false;
+  small = mini = false;
   sizes = &NORMAL_SIZES;
   struct hud u = {.c=c, .x1=c->w, .out=out, .L=&LOOKS[st->hudLook >= 0 && st->hudLook < PD_HUD_LOOKS ? st->hudLook : 0]};
   const int x=c->w-EDGE-minimap_w(W), y=EDGE;
