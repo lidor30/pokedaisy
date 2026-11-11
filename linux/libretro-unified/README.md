@@ -273,17 +273,20 @@ Run from the repository root with CMake, Ninja and Python 3.12 or later.
 `NEXTUI_TOOLCHAIN`.
 
 ```sh
-git submodule update --init third_party/mgba
+git submodule update --init third_party/mgba third_party/armgba third_party/zlib
 git submodule update --init --recursive third_party/dsperate-lr
 python3 linux/setup_trimui_sdk.py /path/to/trimui-sdk
 export NEXTUI_TOOLCHAIN=/path/to/trimui-sdk/cross/x86_64-aarch64-nextui-linux-gnu
 cmake -S libretro -B build/gb -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake"
+cmake -S libretro/armgba -B build/gba -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake"
 cmake -S linux/libretro-ds -B build/ds -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake" -DBUILD_TESTING=OFF
-cmake --build build/gb --target pokedaisy_libretro -j4
+cmake --build build/gb --target pokedaisy_gbc_libretro -j4
+cmake --build build/gba --target pokedaisy_gba_libretro -j4
 cmake --build build/ds --target pokedaisy_ds_libretro -j4
-python3 linux/libretro-unified/package.py build/gb/pokedaisy_libretro.so \
+python3 linux/libretro-unified/package.py build/gb/pokedaisy_gbc_libretro.so build/gba/pokedaisy_gba_libretro.so \
   build/ds/pokedaisy_ds_libretro.so PokeDaisy-NXRedux.zip \
   --strip "$NEXTUI_TOOLCHAIN/bin/aarch64-nextui-linux-gnu-strip" --source-ref "$(git rev-parse HEAD)"
 ```
