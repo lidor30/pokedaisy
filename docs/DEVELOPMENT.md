@@ -2968,9 +2968,14 @@ Platinum (USA rev 1, `CPUE`; France rev 0, `CPUF`), HeartGold / SoulSilver (USA,
 the Gen 5 carts are DSi enhanced and run in DS mode) run on melonDS, with the companion, EXPAND and STEADY music.
 
 **The core.** `third_party/melonds` (a submodule pinned to upstream 1.1) builds its core library only, with the
-software 3D renderer (unthreaded: on the emulation thread, since melonDS's render thread raced fast-forward's frame skip
-on the Thor and showed frames with black rows), its OpenGL renderer ported to OpenGL ES (DS RESOLUTION, below) and the
-JIT without fast memory. Our changes are one patch,
+software 3D renderer on melonDS's render thread (a quarter less time a frame than on the emulation thread, HeartGold's
+overworld headless; from 2026-10-20 to 2026-11-09 it ran unthreaded, because a render started for a frame fast-forward
+skipped - a state taken or loaded mid-skip, a restart, the thread switched on - left its 192 line signals for the next
+frame, which then read 3D lines not drawn yet: black rows on the Thor, never on the Mac, whose render thread kept up; the
+patch's `EnableRenderThread` starts none on a skipped frame now, and `RenderFrame` drops and logs any left over -
+nds_dump prints `3D: dropped ...`), its OpenGL renderer ported to OpenGL ES (DS RESOLUTION, below) and the
+JIT with fast memory (since 2026-11-09; melonDS's own fault handler, set up with the JIT either way, takes the faults in
+compiled code and passes the rest on to crash reporting's). Our changes are one patch,
 `third_party/patches/melonds-pokedaisy.patch`, applied to the submodule's working tree at configure time by
 `apply_melonds_patch.cmake` (once; a tree that has it is left alone): EXPAND's GPU3D hooks (every polygon past culling,
 the lists' swap at VBlank, the clipper), the software renderer's column range, fast-forward's frame skip
@@ -3266,9 +3271,19 @@ added once more ahead (`pk_nds_wide_need`, which the slices follow too). Far zoo
 budget of 1.75 screens at 8x: a 16:9 window at 1x and its pad stay at 8x). Headless: nds_dump's `NDS_DUMP_GL` build runs
 it through ANGLE (its README).
 
+**EXPAND's slices off the emulator's thread** (2026-11-12). With the software renderer the margins are slices, each a
+second SoftRenderer of its own drawing the lists the last VBlank swapped. After each frame they go to four helper threads
+and draw while the next frame runs: what they read (our lists, the 3D registers latched at VBlank, the textures in
+`GPU::VRAMFlat_*`, copied at line 215) doesn't change before the next VBlank, where `onVisibleEnd` waits for them
+(`waitSlices`; `pk_nds_wide_sync` before a state load / save, a reset or another renderer). HeartGold walking headless
+(the interpreter, as a 32-bit device runs it): EXPAND's cost a frame 1.15 -> 0.45 ms at 1x, 3.8 -> 1.45 ms zoomed out,
+the emulator waiting ~0 ms; every `widecheck` count and wide shot the same as drawn in place, and a ThreadSanitizer
+build of nds_dump found no race (it did find helpers restarted at an old job generation when EXPAND went off and on:
+`stopPool` resets it).
+
 **Fast-forward.** A shown frame of an FF group draws; the others skip drawing (above), which took 4x from ~200 to 240
 DS frames a second on the Thor. Whether the next frame is seen is decided a frame ahead (its 3D starts at line 215,
-EXPAND's slices are drawn after the frame before), and FF can end a group part-way (SMART's 1x for a menu, FF off, the
+EXPAND's slices are handed out after the frame before), and FF can end a group part-way (SMART's 1x for a menu, FF off, the
 refresh pacing dropping out): `pk_nds_run_frame` then skips that frame too and shows the next, whole - drawn, it came
 up with an older frame's 3D and EXPAND's margins black, a flash each time (nds_dump's `ffmode` / `ffgroup` / `ffguard`).
 SMART's battle wait reads HG/SS's `BattleContext.command` (5 = SELECTION_SCREEN_INPUT) and reports it as `MgbaCore.FIELD_BATTLE_INPUT`. STEADY music is a second melonDS loaded from

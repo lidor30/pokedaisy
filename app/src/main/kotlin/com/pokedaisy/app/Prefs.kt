@@ -11,6 +11,7 @@ import com.pokedaisy.app.companion.FfMusicMode
 /** Tiny SharedPreferences wrapper for app-level state. */
 class Prefs(context: Context) {
     private val p = context.getSharedPreferences("pokedaisy", Context.MODE_PRIVATE)
+    private val appContext: Context = context.applicationContext ?: context
 
     var lastRomPath: String?
         get() = p.getString("last_rom", null)
@@ -563,9 +564,11 @@ class Prefs(context: Context) {
 
     /** SCREEN > DS RESOLUTION: a DS game's 3D at this many times the DS's own (2-8: the GPU renderer,
      * nds/pk_nds_gl.h) or the DS's own on the CPU (1, the default: melonDS's software renderer, pixel for pixel). */
-    /** DS CPU BOOST: the emulated ARM9 at twice the DS's clock (MgbaCore.pkNdsCpuBoost), on unless turned off. */
+    /** DS CPU BOOST: the emulated ARM9 at twice the DS's clock (MgbaCore.pkNdsCpuBoost). Until the player sets it, on
+     * except where [DevicePerformance.looksWeak]: the boost about doubles the ARM9's work (HeartGold's frame 3.8 -> 7.3 ms
+     * on the RP6), and a chip with only little cores (the RG DS's A55s) runs out of time with it, not without. */
     var dsCpuBoost: Boolean
-        get() = p.getBoolean("ds_cpu_boost", true)
+        get() = if (p.contains("ds_cpu_boost")) p.getBoolean("ds_cpu_boost", true) else !DevicePerformance.looksWeak(appContext)
         set(v) = p.edit().putBoolean("ds_cpu_boost", v).apply()
 
     var dsResolution: Int

@@ -867,6 +867,10 @@ class EmulatorEngine(
     /** This game's frames miss the GL thread's wait too often: drawn a refresh later, never waited for (as a DS
      * game's). Latched until the core stops - flipping back and forth would skip / repeat a frame each time. */
     @Volatile private var slowFrames = false
+    /** A DS game at 1x that can't keep up skips some frames' drawing (DsFrameSkip); emu thread only. */
+    private val dsSkip = DsFrameSkip()
+    private var dsSkipDrawn = true    // this frame's plan: drawn
+    private var dsSkipTimed = false   // this frame's core time goes to dsSkip
 
     /** The game screen's fastest display mode (Hz, 0 = unknown), for [VsyncCheck]: asked on the GL thread once a second. */
     @Volatile var displayMaxHz: () -> Float = { 0f }
@@ -1209,14 +1213,27 @@ class EmulatorEngine(
                     // EXPAND's slices (drawn after a frame, for the next) only come before a shown one - drawing them for
                     // every frame was two thirds of a DS frame's cost, and at 3x the group outran the refresh (stutter).
                     val ff = ffPerTick > 0
+                    dsSkipDrawn = true
                     if (dsHeld) {
                         // Held: nothing is seen, so most frames skip their drawing (the hold still reads every
                         // DsTransitionHold.DRAW_EVERY-th, to see the next screen lit).
                         val n = dsHold.frames + 1
+                        dsSkip.reset()
                         MgbaCore.pkNdsSetDraw(n % DsTransitionHold.DRAW_EVERY == 0, (n + 1) % DsTransitionHold.DRAW_EVERY == 0)
-                    } else MgbaCore.pkNdsSetDraw(!ff || ffGroup <= 1, !ff || (if (ffGroup > 1) ffGroup <= 2 else ffFit.size <= 1))
+                    } else if (!ff && effectiveSpeed() == 1f) {
+                        // 1x on a device that can't finish its frames in time: some skip their drawing (DsFrameSkip).
+                        val (draw, drawNext) = dsSkip.plan()
+                        dsSkipDrawn = draw
+                        dsSkipTimed = true
+                        MgbaCore.pkNdsSetDraw(draw, drawNext)
+                    } else {
+                        dsSkip.reset()
+                        MgbaCore.pkNdsSetDraw(!ff || ffGroup <= 1, !ff || (if (ffGroup > 1) ffGroup <= 2 else ffFit.size <= 1))
+                    }
                 }
+                val coreStart = System.nanoTime()
                 MgbaCore.pkRunFrame()
+                val coreEnd = System.nanoTime()
                 // Before the frame is shown: the frame a menu transition starts fading on is never seen.
                 if (nds) stepDsHold()
                 onFrame?.invoke()
@@ -1235,6 +1252,13 @@ class EmulatorEngine(
                 if (gba) {
                     flightState = MgbaCore.pkFlightState()
                     if (scenicFlight && flightState == MgbaCore.FLIGHT_IDLE) scenicFlight = false
+                }
+                // DsFrameSkip learns from the core's own time (drawn or not), after the frame is out.
+                if (dsSkipTimed) {
+                    val before = dsSkip.skip
+                    dsSkip.frameDone(coreEnd - coreStart, dsSkipDrawn)
+                    dsSkipTimed = false
+                    if (dsSkip.skip != before) Log.i("pokedaisy", "DS frame skip: $before -> ${dsSkip.skip} (${dsSkip.describe()})")
                 }
 
                 servicePending()
@@ -1713,7 +1737,7 @@ class EmulatorEngine(
                             fpsRepeats = r; fpsUnshown = u
                             line
                         } ?: "") +
-                        if (nds) " dsMusic=%s/%d written=%d peak=%d gamePeak=%d track=%d".format(dsMusicOn, dsMusicBgm, dsMusicFrames, dsMusicPeak, gamePeak, track?.playState ?: -1) else "")
+                        if (nds) " dsMusic=%s/%d written=%d peak=%d gamePeak=%d track=%d skip=%d".format(dsMusicOn, dsMusicBgm, dsMusicFrames, dsMusicPeak, gamePeak, track?.playState ?: -1, dsSkip.skip) else "")
                     dsMusicPeak = 0
                     gamePeak = 0
                     dsMusicFrames = 0

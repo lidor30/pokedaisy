@@ -41,9 +41,9 @@ constexpr int OW = PK_NDS_WIDE_MAX_W, OH = PK_NDS_WIDE_MAX_H;
 constexpr int EDGE_BAND = 5;
 constexpr int EDGE_STEADY = 8;
 constexpr u32 NONE = 0xFFFFFFFFu;   // not drawn (a 3D colour's alpha is 5 bits: never this)
-// Threads drawing the slices besides the caller's: the slices are independent, and the 3x zoom step's (eight of them,
-// ~4.7 screens) took ~6 ms a frame on one thread on an M-series Mac, more on a handheld.
-constexpr int HELPERS = 3;
+// Threads drawing the slices: the slices are independent, and the 3x zoom step's (eight of them, ~4.7 screens) took
+// ~6 ms a frame on one thread on an M-series Mac, more on a handheld. They draw while the next frame runs (drawSlices).
+constexpr int HELPERS = 4;
 // GPU mode (pk_nds_wide_gpu): the whole view's list, at most these (GLRenderer's buffers hold 4096 / 24576).
 constexpr u32 GPU_MAX_POLYS = 4096;
 constexpr u32 GPU_MAX_VERTS = 20000;
@@ -75,20 +75,20 @@ struct Slice {
     u32 numVerts = 0, numPolys = 0, numOpaque = 0;
     std::array<Polygon*, MAX_POLYS> render {};
     u32 renderNum = 0;
+    int x0 = 0, x1 = 0, y0 = 0, y1 = 0;   // what the drawing under way draws (sliceRect when it was handed out)
     Image image;   // drawn after the last frame: what the next composed frame shows
     Image shown;   // what the last composed frame used (pk_nds_wide_check)
     int lastCount = 0;
 };
 
-// A renderer of its own and its scratch: one per thread drawing slices.
+// A renderer of its own and its scratch: one per helper thread.
 struct Drawer {
     std::unique_ptr<SoftRenderer> renderer;
     std::vector<Polygon*> visible;   // a slice's polygons that reach what it draws
 };
 
-// The helper threads: each frame's slices go into [jobs], every thread (the caller too) takes the next one until none
-// are left, and the caller waits for the rest before the frame goes on (the game's VRAM and 3D registers are only read,
-// and nothing runs the game meanwhile).
+// The helper threads: each frame's slices go into [jobs] and every helper takes the next one until none are left, while
+// the next frame runs (waitSlices says when they must be done).
 struct Pool {
     std::vector<std::thread> threads;
     std::mutex lock;
@@ -98,13 +98,14 @@ struct Pool {
     int busy = 0;
     std::vector<Slice*> jobs;
     std::atomic<int> next {0};
+    bool pending = false;   // handed out, not waited for yet
 };
 
 struct Wide {
     NDS* nds = nullptr;
     bool on = false;
     Slice slices[9];      // (sy + 1) * 3 + sx + 1; 4, the screen itself, unused
-    Drawer drawers[HELPERS + 1];   // [0] the caller's
+    Drawer drawers[HELPERS];
     Pool pool;
     std::vector<u32> out;   // OW x OH, the game frame's (0, 0) at (MX, MY)
     int cx0 = 0, cx1 = 0, cy0 = 0, cy1 = 0;   // what the last composed frame covers, in the game frame's pixels
@@ -177,7 +178,14 @@ void takeShown2D(Shown2D& d, const GPU& gpu)
     d.valid = true;
 }
 
-void onVisibleEnd(GPU& gpu, void*) { takeShown2D(shown2D, gpu); }
+void waitSlices();
+
+// Line 192: VBlank is next, which latches the 3D registers the slices still being drawn read (waitSlices).
+void onVisibleEnd(GPU& gpu, void*)
+{
+    waitSlices();
+    takeShown2D(shown2D, gpu);
+}
 
 // What the frame on screen was drawn with: the snapshot, or (no frame run since the hook went in) the live state.
 const Shown2D& shown(const NDS* nds)
@@ -552,6 +560,7 @@ void swapGpu(GPU3D& g, bool rendering)
 
 void onSwap(GPU3D& g, bool rendering, void*)
 {
+    waitSlices();   // (onVisibleEnd has, unless the hook wasn't in)
     if (wide.gpu) {
         swapGpu(g, rendering);
         return;
@@ -899,8 +908,7 @@ void sliceRect(int sx, int sy, int* x0, int* x1, int* y0, int* y1)
 
 void drawSlice(Slice& s, Drawer& d)
 {
-    int x0, x1, y0, y1;
-    sliceRect(s.sx, s.sy, &x0, &x1, &y0, &y1);
+    int x0 = s.x0, x1 = s.x1, y0 = s.y0, y1 = s.y1;
     int ox = s.sx * (W3D - OVERLAP), oy = s.sy * (H3D - OVERLAP);   // screen pixel = slice pixel + (ox, oy)
     SoftRenderer& r = *d.renderer;
     r.ColumnMin = std::clamp(x0 - ox, 0, W3D);
@@ -955,36 +963,43 @@ void helperLoop(int id)
     }
 }
 
-// The slices in [jobs] drawn, largest first, on the caller and the helpers.
+// The slices in [jobs] handed to the helpers, largest first, and left drawing while the game runs on: they read the
+// lists the last VBlank swapped (ours, untouched until the next swap), the 3D registers it latched and the textures as
+// the main renderer last copied them (GPU::VRAMFlat_*, at line 215), and the next frame changes none of those before its
+// own VBlank at line 192 - where waitSlices holds the game until they're done (onVisibleEnd), about three quarters of a
+// frame later. Drawn on the emulator's thread after each frame, they were most of EXPAND's cost there.
 void drawSlices()
 {
     Pool& p = wide.pool;
-    if (p.jobs.empty()) return;
-    auto area = [](const Slice* s) {
-        int x0, x1, y0, y1;
-        sliceRect(s->sx, s->sy, &x0, &x1, &y0, &y1);
-        return (x1 - x0) * (y1 - y0);
-    };
-    std::stable_sort(p.jobs.begin(), p.jobs.end(), [&](Slice* a, Slice* b) { return area(a) > area(b); });
+    if (p.jobs.empty() || p.threads.empty()) return;
+    for (Slice* s : p.jobs) sliceRect(s->sx, s->sy, &s->x0, &s->x1, &s->y0, &s->y1);
+    std::stable_sort(p.jobs.begin(), p.jobs.end(), [](Slice* a, Slice* b) {
+        return (a->x1 - a->x0) * (a->y1 - a->y0) > (b->x1 - b->x0) * (b->y1 - b->y0);
+    });
     p.next = 0;
-    int helpers = std::min<int>((int) p.threads.size(), (int) p.jobs.size() - 1);
-    if (helpers > 0) {
-        {
-            std::lock_guard<std::mutex> l(p.lock);
-            p.busy = (int) p.threads.size();
-            p.generation++;
-        }
-        p.wake.notify_all();
+    {
+        std::lock_guard<std::mutex> l(p.lock);
+        p.busy = (int) p.threads.size();
+        p.generation++;
     }
-    takeJobs(wide.drawers[0]);
-    if (helpers > 0) {
-        std::unique_lock<std::mutex> l(p.lock);
-        p.done.wait(l, [&] { return p.busy == 0; });
-    }
+    p.pending = true;
+    p.wake.notify_all();
+}
+
+// The slices handed out by drawSlices drawn: before anything they read changes (a VBlank, a state load, the lists' swap)
+// and before the images are composed.
+void waitSlices()
+{
+    Pool& p = wide.pool;
+    if (!p.pending) return;
+    std::unique_lock<std::mutex> l(p.lock);
+    p.done.wait(l, [&] { return p.busy == 0; });
+    p.pending = false;
 }
 
 void stopPool()
 {
+    waitSlices();
     Pool& p = wide.pool;
     {
         std::lock_guard<std::mutex> l(p.lock);
@@ -994,6 +1009,11 @@ void stopPool()
     for (std::thread& t : p.threads) t.join();
     p.threads.clear();
     p.quit = false;
+    // New helpers start at generation 0: one left over from before had them take an old job list at once, and count
+    // busy below zero (EXPAND off and on again).
+    p.generation = 0;
+    p.busy = 0;
+    p.jobs.clear();
 }
 
 } // namespace
@@ -1003,6 +1023,7 @@ static void applyNeed();
 void pk_nds_wide_set(NDS* nds, bool on)
 {
     if (nds == wide.nds && on == wide.on) return;
+    waitSlices();
     if (wide.nds) {
         wide.nds->GPU.GPU3D.WideSubmitHook = nullptr;
         wide.nds->GPU.GPU3D.WideSwapHook = nullptr;
@@ -1032,7 +1053,7 @@ void pk_nds_wide_set(NDS* nds, bool on)
         d.renderer = std::make_unique<SoftRenderer>();
         d.renderer->Reset(nds->GPU);
     }
-    for (int i = 1; i <= HELPERS; i++) wide.pool.threads.emplace_back(helperLoop, i);
+    for (int i = 0; i < HELPERS; i++) wide.pool.threads.emplace_back(helperLoop, i);
     wide.out.assign((size_t) OW * OH, 0xFF000000u);
     nds->GPU.GPU3D.WideHookUser = &wide;
     nds->GPU.GPU3D.WideSubmitHook = onSubmit;
@@ -1044,6 +1065,7 @@ void pk_nds_wide_set(NDS* nds, bool on)
 
 void pk_nds_wide_gpu(bool on, int scale, int maxTexture)
 {
+    waitSlices();
     wide.gpuScale = std::max(1, scale);
     wide.gpuMaxTexture = std::max(256, maxTexture);
     if (on == wide.gpu) return;
@@ -1108,6 +1130,7 @@ static void applyNeed()
 bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, bool drawNext, bool battle)
 {
     if (!wide.on || nds != wide.nds || !top) return false;
+    waitSlices();
     int step = 1 + wide.undrawn;
     wide.undrawn = draw ? 0 : std::min(wide.undrawn + 1, 255);
     // Only while the 3D engine (engine A) is the top screen, and the caller says it's the overworld.
@@ -1486,6 +1509,7 @@ static void edgeReport(NDS* nds)
 
 void pk_nds_wide_check(NDS* nds, const uint32_t* top, int* compared, int* differ, int* far)
 {
+    waitSlices();
     if (getenv("PK_WIDE_EDGES")) edgeReport(nds);
     *compared = *differ = *far = 0;
     if (!wide.on) return;
@@ -1575,9 +1599,12 @@ uint16_t pk_nds_bg_pixel(NDS* nds, int bg, int bx, int by)
     return (u16) (0x8000 | (c & 0x7FFF));
 }
 
+void pk_nds_wide_sync() { waitSlices(); }
+
 void pk_nds_wide_counts(int out[8])
 {
     int n = 0;
     for (int i = 0; i < 9; i++)
         if (i != 4) out[n++] = wide.slices[i].lastCount;
 }
+
