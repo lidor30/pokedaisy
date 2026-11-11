@@ -46,6 +46,12 @@ with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
     # Run again: the save is backed up first.
     run(d,str(d/'roms/diagnostic.gb'),'--frames','10')
     backups=list((d/'saves/pokedaisy-backups').glob('diagnostic.gb.sav.*.sav'));assert len(backups)==1,backups
+    # A Game Boy cartridge with a clock (MBC3, as Crystal's): the clock is kept after the save, mGBA's layout.
+    rtc=bytearray((diag/'diagnostic.gb').read_bytes());rtc[0x147]=0x10;rtc[0x14d]=(-sum(rtc[0x134:0x14d])-25)&255
+    (d/'roms/clock.gb').write_bytes(rtc)
+    run(d,str(d/'roms/clock.gb'),'--frames','120')
+    clock=(d/'saves/clock.gb.sav').read_bytes();assert len(clock)==8192+48 and clock[:1]==b'\x5a',len(clock)
+    assert any(clock[8192:]),'the clock bytes are empty'
     # The GBA ROM on the armGBA core: its red reaches the window.
     log=run(d,str(d/'roms/diagnostic.gba'),'--frames','120','--shot',str(d/'gba.png'))
     w,h,bpp,rows=png_pixels(d/'gba.png')

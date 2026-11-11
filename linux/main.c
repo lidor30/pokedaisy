@@ -1191,13 +1191,46 @@ static bool state_file(const char *ss, bool save) {
     rewind_clear(); // its differences lead back from another history
   return ok;
 }
-static void sram_write(const char *sav, unsigned char *copy, bool sync) {
-  void *mem = core.get_memory_data(RETRO_MEMORY_SAVE_RAM);
-  size_t n = core.get_memory_size(RETRO_MEMORY_SAVE_RAM);
-  if (!mem || !n || !copy || !memcmp(mem, copy, n))
+/* The .sav: the core's save memory, then its cartridge clock (RETRO_MEMORY_RTC: a Game Boy MBC3's, Crystal's) right
+ * after it - mGBA's own layout, which the old host wrote too. NULL out: the size. */
+static size_t save_image(unsigned char *out) {
+  void *mem = core.get_memory_data(RETRO_MEMORY_SAVE_RAM), *rtc = core.get_memory_data(RETRO_MEMORY_RTC);
+  size_t n = mem ? core.get_memory_size(RETRO_MEMORY_SAVE_RAM) : 0, rn = rtc ? core.get_memory_size(RETRO_MEMORY_RTC) : 0;
+  if (out && n)
+    memcpy(out, mem, n);
+  if (out && n && rn)
+    memcpy(out + n, rtc, rn);
+  return n ? n + rn : 0;
+}
+// The file's bytes into the core: the save memory, and what follows it into the clock (a GBA .sav's 16-byte clock
+// footer from mGBA finds no clock memory on armGBA, so a dead battery recorded there never comes back).
+static void save_load(const unsigned char *d, size_t fn) {
+  void *mem = core.get_memory_data(RETRO_MEMORY_SAVE_RAM), *rtc = core.get_memory_data(RETRO_MEMORY_RTC);
+  size_t n = mem ? core.get_memory_size(RETRO_MEMORY_SAVE_RAM) : 0, rn = rtc ? core.get_memory_size(RETRO_MEMORY_RTC) : 0;
+  if (!n)
     return;
-  if (write_file(sav, mem, n, sync))
-    memcpy(copy, mem, n);
+  memcpy(mem, d, fn < n ? fn : n);
+  if (rn && fn > n)
+    memcpy(rtc, d + n, fn - n < rn ? fn - n : rn);
+}
+static void sram_write(const char *sav, unsigned char *copy, bool sync) {
+  static unsigned char *now;
+  static size_t nowSize;
+  size_t n = save_image(NULL);
+  if (!n || !copy)
+    return;
+  if (n > nowSize) {
+    free(now);
+    now = malloc(n);
+    nowSize = now ? n : 0;
+    if (!now)
+      return;
+  }
+  save_image(now);
+  if (!memcmp(now, copy, n))
+    return;
+  if (write_file(sav, now, n, sync))
+    memcpy(copy, now, n);
   else
     notice("Save write failed");
 }
@@ -1311,15 +1344,14 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
   // The battery save: the file's bytes into the core's, and written back whenever they change.
   unsigned char *sramCopy = NULL;
   {
-    void *mem = core.get_memory_data(RETRO_MEMORY_SAVE_RAM);
-    size_t n = core.get_memory_size(RETRO_MEMORY_SAVE_RAM), fn;
-    unsigned char *d = mem && n ? read_file(sav, &fn, 64u << 20) : NULL;
+    size_t n = save_image(NULL), fn;
+    unsigned char *d = n ? read_file(sav, &fn, 64u << 20) : NULL;
     if (d)
-      memcpy(mem, d, fn < n ? fn : n);
+      save_load(d, fn);
     free(d);
-    sramCopy = mem && n ? malloc(n) : NULL;
+    sramCopy = n ? malloc(n) : NULL;
     if (sramCopy)
-      memcpy(sramCopy, mem, n);
+      save_image(sramCopy);
   }
   hotkeys_load();
   rewindBudget = (getenv("POCKET_REWIND_MB") ? (size_t)atoi(getenv("POCKET_REWIND_MB")) : 32) << 20;
