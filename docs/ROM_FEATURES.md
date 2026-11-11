@@ -6,116 +6,116 @@ change to any of the places listed under "Where it's decided" updates its rows h
 
 ✅ yes · ◐ partly (see the note) · — no · n/a doesn't apply
 
-| Game | Version | EXPAND | Battle buttons | One-press picks | POKéMON switch | Field items | FLY | Trainer card | Field reads | Bike / surf | Wild encounters | PC anywhere | Reusable TMs | Player look | Shiny odds | TMs from the bag | FLASH | Area map |
-| ---- | ------- | :----: | :------------: | :-------------: | :------------: | :---------: | :-: | :----------: | :---------: | :---------: | :-------------: | :---------: | :----------: | :---------: | :--------: | :--------------: | :---: | :------: |
-| Yellow (GB) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
-| Yellow (GB) | DE / FR / IT / ES | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
-| Yellow Legacy (GB) | 1.0.10 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
-| Red / Blue (GB) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
-| Red / Blue (GB) | DE (Rote Edition / Blaue Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
-| Red Gen II Graphics (GB) | 2.0 ⁵⁶ | — | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ⁵⁶ | — | n/a | n/a | ✅ ⁵⁶ | ✅ ⁵⁶ | — | n/a | n/a | — | — | — ³⁶ |
-| Yellow Gen II Graphics (GB) | 1.1 ⁵⁶ | — | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | — | — | — | n/a | n/a | — | — | — ³⁶ |
-| Brown (GB) | 6.0.1, 6.1.2 | — | ✅ ³⁸ | ✅ ³⁸ | ✅ ³⁸ | — | ✅ ³⁸ | — | n/a | n/a | ✅ ³⁸ | ✅ ³⁸ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ |
-| PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ |
-| Gold / Silver (GBC) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
-| Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ |
-| Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ |
-| Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — | — ³⁶ |
-| Crystal Legacy (GBC) | 1.3.1 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
-| Crystal Clear (GBC) | 2.5.11, 2.6.0 (4 builds) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ |
-| Prism (GBC) | 0.95 build 254 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
-| Polished Crystal (GBC) | 3.2.0 - 3.2.3 (16 builds) | ◐ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
-| FireRed | USA/Europe rev 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| FireRed | USA/Europe rev 0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| FireRed | ES | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ ⁴⁹ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| FireRed | DE / FR / IT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ ⁴⁹ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| FireRed | JP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| LeafGreen | USA/Europe rev 0 and 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| LeafGreen | ES / DE / FR / IT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ ⁴⁹ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| LeafGreen | JP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| Emerald | USA/Europe | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| Emerald | ES / DE / FR / IT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ ⁴⁹ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| Emerald | JP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| FireRed, randomized (UPR ZX 4.6.1) | USA/Europe rev 1 | ✅ ²³ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| FireRed, randomized (UPR ZX 4.6.1) | USA/Europe rev 0 | ✅ ²³ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | — | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| Emerald, randomized (UPR ZX 4.6.1) | USA/Europe | ✅ ²³ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| Ruby / Sapphire | USA rev 1 and 2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ ⁵³ | ✅ | ✅ |
-| Ruby / Sapphire | USA rev 0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ ⁵³ | ✅ | ✅ |
-| Ruby / Sapphire | ES / DE / FR / IT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ | ✅ |
-| Ruby / Sapphire | JP | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ | ✅ |
-| Platinum (DS) | USA rev 1 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | ✅ ⁵⁴ | — | — | — ³⁶ |
-| Platinum (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | — | — | — | — ³⁶ |
-| Platinum (DS) | Spain, Germany rev 0 ³¹ | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ³¹ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | — | — | — | — ³⁶ |
-| HeartGold (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | ✅ ⁵⁴ | — | — | — ³⁶ |
-| HeartGold (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | — | — | — | — ³⁶ |
-| HeartGold (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | ◐ ⁵⁴ | — | — | — ³⁶ |
-| SoulSilver (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | ✅ ⁵⁴ | — | — | — ³⁶ |
-| SoulSilver (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | — | — | — | — ³⁶ |
-| SoulSilver (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | ◐ ⁵⁴ | — | — | — ³⁶ |
-| HeartGold (DS) | Germany rev 0 | ✅ ¹⁴ | ✅ ²⁵ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | — | — | — | — ³⁶ |
-| SoulSilver (DS) | Germany rev 0 | ✅ ¹⁴ | ✅ ²⁵ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | — | — | — | — ³⁶ |
-| Black (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | ✅ ⁵⁴ | — | — | — ³⁶ |
-| Black (DS) | France | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
-| Black (DS) | Germany, Spain, Italy, Japan, Korea ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
-| White (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | ✅ ⁵⁴ | — | — | — ³⁶ |
-| White (DS) | France | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
-| White (DS) | Germany, Spain, Italy, Japan, Korea ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
-| Black 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | ✅ ⁵⁴ | — | — | — ³⁶ |
-| Black 2 (DS) | France, Germany, Spain, Italy, Korea; Japan rev 1 ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
-| White 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | ✅ ⁵⁴ | — | — | — ³⁶ |
-| White 2 (DS) | France, Germany, Spain, Italy, Korea; Japan rev 1 ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
-| Origin HeartGold (DS) | 4.0.3 English 1.0.0 | ✅ ¹⁴ | — ²⁹ | — | — | — | ✅ ²⁹ | — | ✅ ²⁹ | ✅ ¹⁴ | ✅ ²⁹ | ✅ ²⁹ | — | n/a | — | — | — | — ³⁶ |
-| Heartfelt Gold (DS) | 1.0.15 (+ Zoomed In) | ✅ ³⁷ | ✅ ³⁷ | — | — | — | ✅ ³⁷ | — | ✅ ³⁷ | — | ✅ ³⁷ | ✅ ³⁷ | — | n/a | — | — | — | — ³⁶ |
-| Sacred Gold (DS), Storm Silver (DS) | 1.05 (Sacred Gold's Classic too) | ✅ ⁴³ | ◐ ⁴³ | — | — | — | ◐ ⁴³ | — | ✅ ⁴³ | ◐ ⁴³ | ◐ ⁴³ | ◐ ⁴³ | — | n/a | — | — | — | — ³⁶ |
-| Renegade Platinum (DS) | 1.3.0 (+ Classic, shiny rate, Speed Up), 1.2.0 | ✅ ³² | ✅ ³² | — | — | — | ✅ ³² | — | ✅ ³² | ◐ ³² | ◐ ³² | ✅ ³² | — | n/a | — | — | — | — ³⁶ |
-| Blaze Black 2 Redux (DS) | 1.4.1, + Classic / EVless / Classic EVless | ✅ ³⁵ | ✅ ³⁵ | — | — | — | ✅ ³⁵ | — | ✅ ³⁵ | ◐ ¹⁴ | ✅ ³⁵ | ✅ ³⁵ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
-| Volt White 2 Redux (DS) | 1.4.1, + Classic / EVless / Classic EVless | ✅ ³⁵ | ✅ ³⁵ | — | — | — | ✅ ³⁵ | — | ✅ ³⁵ | ◐ ¹⁴ | ✅ ³⁵ | ✅ ³⁵ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ |
-| Amethyst | 1.3.0, 1.4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — ³³ | ✅ ³³ | ✅ |
-| Ash Gray | 4.5.3, Fork Bug Fix 1.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | — ³³ | ✅ |
-| Celia's Stupid Romhack | 1.1.4 | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | ✅ ¹⁵ | — | — | — | — | ✅ |
-| Dreamstone Mysteries | the one release | — | ✅ | ✅ | ✅ | — | — | — | — | — | — ²² | — | — | — | — | — | — | ✅ |
-| Elite Redux | 2.65.3b, 2.65.4.1b | ✅ | ✅ ¹⁰ | ✅ ¹⁰ | ✅ | — | — | — | ✅ ¹⁰ | ✅ ¹⁰ | ✅ ¹⁰ | — ¹⁰ | n/a ¹⁵ | — | ✅ ¹⁹ | — | — | ✅ |
-| Emerald Imperium | 1.3.1 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ ³³ | ✅ |
-| Emerald Kaizo | 2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ⁴ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| Emerald Legacy | 1.1.4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ ³³ | ✅ ³³ | ✅ |
-| Emerald Rogue | 2.2.1-EX | ✅ | — | — | — | — | — | — | ◐ ⁶ | — | — | — | — | — | — | — | — | ✅ |
-| Emerald Seaglass | 3.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | — | ✅ |
-| FireRed Rocket Edition | the one release | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ✅ ¹⁵ | — | ✅ ¹⁹ | ✅ | — ³³ | ✅ |
-| Gaia | 3.2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
-| Ghost Grey (blocked ¹¹) | 1.0.1, 1.0.2, 1.0.4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹¹ ³⁴ | — | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | — | — | — | ✅ | ✅ ³³ | — ¹¹ |
-| Let's Go Pikachu / Eevee | English, Translation Only (4 builds) | ✅ ²⁸ | ✅ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ ³⁴ | — | ✅ ²⁸ | ◐ ²⁸ | ◐ ²⁸ | ✅ ²⁸ | — | — | — | ✅ | ✅ ³³ | ✅ |
-| Clover | 1.3.3 | ✅ ⁴¹ | ✅ | ✅ ⁴¹ | — | — ⁴¹ | — ⁴¹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — ⁴¹ | — | — | — | — | — | ✅ |
-| Elysium (Part A), Elysium (Part B) | 2.5.0 | ✅ ⁴² | ✅ | ✅ ⁴² | — | ◐ ⁹ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | — | — | — | ✅ |
-| Glazed | 9.2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁷ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
-| GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | — ³⁶ |
-| Rhythm | 1.4.0 | — | ✅ | ✅ ⁴⁴ | — | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
-| Oops All Eevees! | 1.3.2 | — | ✅ | ✅ ⁴⁵ | — | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
-| Ceruleum | 1.1.1 | — | ✅ ⁴⁶ | ✅ ⁴⁶ | ✅ ⁴⁶ | — | — | — | — | — | — ⁴⁶ | — | — | — | — | — | — | — ³⁶ |
-| RecordKeepers | 1.2.1 | — | — ⁴⁷ | — ⁴⁷ | — ⁴⁷ | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
-| Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — | — | ✅ ³³ | ✅ |
-| Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | ✅ ³³ | ✅ |
-| Modern Emerald | 3.6 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | ✅ |
-| Epsilon Emerald | 1.0.0 | ✅ ³⁹ | ✅ | ✅ | ✅ | — | ✅ ³⁹ | — | ✅ ³⁹ | — | ✅ ³⁹ | ✅ ³⁹ | — | — | — | — | — | — |
-| Monomyth | 1.0, 1.1, 1.2 | ✅ ²³ | ✅ | ✅ | ✅ | — | — | — | ✅ ²³ | — | — ²³ | ✅ ²³ | — | — | — | — | — | ✅ |
-| Odyssey | 4.1.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
-| Orange Islands | Beta 5.7, an older beta | ◐ ³ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | — | ✅ ¹⁹ ²⁰ | ✅ | ✅ ³³ | ✅ |
-| Quetzal | English / Spanish Alpha 9 v0 | ◐ ³ | ✅ | ✅ | ✅ | — | ◐ ³⁴ | — | ◐ ⁶ | — | — | ✅ | — | — | — | — | — | — ³⁶ |
-| Quetzal | English / Spanish Alpha 9 v1 | — | ✅ | ✅ | ✅ | — | ◐ ³⁴ | — | — | — | — | ✅ | — | — | — | — | — | — ³⁶ |
-| Quetzal, Moemon Quetzal | English / Spanish Alpha 0.8.4 (+ Hotfix) | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | ✅ |
-| R.O.W.E. | 2.1.9.1 Experimental | ✅ ³ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | — | ✅ |
-| Radical Red | 4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
-| Recharged Emerald | 2.2.5, 2.2.8, Rebalanced 2.2.8 | — | ✅ | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | ✅ ¹⁹ | ✅ ³³ | ✅ ³³ | ✅ |
-| Recharged Yellow | 1.8.0, 1.9.0, 1.9.4, 1.9.7 | ✅ | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ ¹⁹ | — | — | ✅ |
-| SoulGold | 1.1.4, 1.2 (3 builds), 1.2.1 (2 builds) | ✅ | ✅ | ✅ | ✅ | ◐ ¹⁷ | ✅ ³⁴ | ✅ | ◐ ⁶ | — | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ | — | ✅ ³³ | ✅ |
-| Super Mariomon | 1.2.1-1.3, 1.5.1, 1.5.2 | ✅ | ✅ | ✅ | ✅ | — | ◐ ³⁴ | — | ✅ | ✅ | ✅ | ◐ | — | — | ✅ ¹⁹ | — | — | ✅ |
-| Sword and Shield Ultimate Plus | 1.2.1.2 + its 3 patches | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ◐ ³⁶ |
-| Team Rocket Dragonsden | 1.5 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | ✅ ¹⁹ | — | — | — ³⁶ |
-| Team Rocket Dragonsden | 2026 3.0.9, 3.1 (Spanish) | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ |
-| Too Many Types 2 | 1.5.2 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | — | — | — | ✅ ¹⁹ | — | — | ✅ |
-| Ultra Violet | 1.22 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ |
-| Unbound | 2.1.1.1, 2.1.1.1 French, 2.1.1.1 Italian (patch v7) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ ⁴⁰ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ |
-| Wishes of Tomorrow | 1.2.6 | — | ✅ ²¹ | ✅ ²¹ | ✅ ²¹ | — | — | — | — | — | — ²¹ | — | — | — | — | — | — | ◐ ³⁶ |
-| Unknown FireRed / Emerald hacks edited in place | any (proven by code) | ◐ ³⁰ | ◐ ³⁰ | ◐ ³⁰ | ◐ ³⁰ | — | — | — | ◐ ³⁰ | ◐ ³⁰ | — | — | — | — | — | — | — | — ³⁶ |
+| Game | Version | EXPAND | Battle buttons | One-press picks | POKéMON switch | Field items | FLY | Trainer card | Field reads | Bike / surf | Wild encounters | PC anywhere | Reusable TMs | Player look | Shiny odds | TMs from the bag | FLASH | Area map | Wild pin |
+| ---- | ------- | :----: | :------------: | :-------------: | :------------: | :---------: | :-: | :----------: | :---------: | :---------: | :-------------: | :---------: | :----------: | :---------: | :--------: | :--------------: | :---: | :------: | :------: |
+| Yellow (GB) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ | — |
+| Yellow (GB) | DE / FR / IT / ES | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ | — |
+| Yellow Legacy (GB) | 1.0.10 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ | — |
+| Red / Blue (GB) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ | — |
+| Red / Blue (GB) | DE (Rote Edition / Blaue Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ | — |
+| Red Gen II Graphics (GB) | 2.0 ⁵⁶ | — | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ⁵⁶ | — | n/a | n/a | ✅ ⁵⁶ | ✅ ⁵⁶ | — | n/a | n/a | — | — | — ³⁶ | — |
+| Yellow Gen II Graphics (GB) | 1.1 ⁵⁶ | — | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | — | — | — | n/a | n/a | — | — | — ³⁶ | — |
+| Brown (GB) | 6.0.1, 6.1.2 | — | ✅ ³⁸ | ✅ ³⁸ | ✅ ³⁸ | — | ✅ ³⁸ | — | n/a | n/a | ✅ ³⁸ | ✅ ³⁸ | ✅ ⁴⁸ | n/a | n/a | — | — | — ³⁶ | — |
+| PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — | — ³⁶ | — |
+| Gold / Silver (GBC) | USA/Europe | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ | — |
+| Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — | — ³⁶ | — |
+| Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | ✅ ⁵⁵ | — | — | — ³⁶ | — |
+| Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — | — ³⁶ | — |
+| Crystal Legacy (GBC) | 1.3.1 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ | — |
+| Crystal Clear (GBC) | 2.5.11, 2.6.0 (4 builds) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ⁴⁸ | n/a | — | — | — | — ³⁶ | — |
+| Prism (GBC) | 0.95 build 254 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ | — |
+| Polished Crystal (GBC) | 3.2.0 - 3.2.3 (16 builds) | ◐ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ | — |
+| FireRed | USA/Europe rev 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | ✅ ⁵⁸ |
+| FireRed | USA/Europe rev 0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | — |
+| FireRed | ES | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ ⁴⁹ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | — |
+| FireRed | DE / FR / IT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ ⁴⁹ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | — |
+| FireRed | JP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | — |
+| LeafGreen | USA/Europe rev 0 and 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | ✅ ⁵⁸ |
+| LeafGreen | ES / DE / FR / IT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ ⁴⁹ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | — |
+| LeafGreen | JP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | — |
+| Emerald | USA/Europe | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | ✅ ⁵⁸ |
+| Emerald | ES / DE / FR / IT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ ⁴⁹ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | — |
+| Emerald | JP | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | — |
+| FireRed, randomized (UPR ZX 4.6.1) | USA/Europe rev 1 | ✅ ²³ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | ✅ ⁵⁸ |
+| FireRed, randomized (UPR ZX 4.6.1) | USA/Europe rev 0 | ✅ ²³ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | — | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | — |
+| Emerald, randomized (UPR ZX 4.6.1) | USA/Europe | ✅ ²³ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ ³⁴ | ✅ | ✅ ²³ | ✅ | ✅ ²³ | ✅ ²³ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | ✅ ⁵⁸ |
+| Ruby / Sapphire | USA rev 1 and 2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ ⁵³ | ✅ | ✅ | — |
+| Ruby / Sapphire | USA rev 0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ ⁵³ | ✅ | ✅ | — |
+| Ruby / Sapphire | ES / DE / FR / IT | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ | ✅ | — |
+| Ruby / Sapphire | JP | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ | ✅ | — |
+| Platinum (DS) | USA rev 1 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | ✅ ⁵⁴ | — | — | — ³⁶ | — |
+| Platinum (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | — | — | — | — ³⁶ | — |
+| Platinum (DS) | Spain, Germany rev 0 ³¹ | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ³¹ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | — | — | — | — ³⁶ | — |
+| HeartGold (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | ✅ ⁵⁴ | — | — | — ³⁶ | — |
+| HeartGold (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | — | — | — | — ³⁶ | — |
+| HeartGold (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | ◐ ⁵⁴ | — | — | — ³⁶ | — |
+| SoulSilver (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | ✅ ⁵⁴ | — | — | — ³⁶ | — |
+| SoulSilver (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | — | — | — | — ³⁶ | — |
+| SoulSilver (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | ◐ ⁵⁴ | — | — | — ³⁶ | — |
+| HeartGold (DS) | Germany rev 0 | ✅ ¹⁴ | ✅ ²⁵ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | — | — | — | — ³⁶ | — |
+| SoulSilver (DS) | Germany rev 0 | ✅ ¹⁴ | ✅ ²⁵ | — | ✅ ⁵⁰ | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ⁵² | n/a | — | — | — | — ³⁶ | — |
+| Black (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | ✅ ⁵⁴ | — | — | — ³⁶ | — |
+| Black (DS) | France | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ | — |
+| Black (DS) | Germany, Spain, Italy, Japan, Korea ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ | — |
+| White (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | ✅ ⁵⁴ | — | — | — ³⁶ | — |
+| White (DS) | France | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ | — |
+| White (DS) | Germany, Spain, Italy, Japan, Korea ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ | — |
+| Black 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | ✅ ⁵⁴ | — | — | — ³⁶ | — |
+| Black 2 (DS) | France, Germany, Spain, Italy, Korea; Japan rev 1 ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ | — |
+| White 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | ✅ ⁵⁴ | — | — | — ³⁶ | — |
+| White 2 (DS) | France, Germany, Spain, Italy, Korea; Japan rev 1 ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ | — |
+| Origin HeartGold (DS) | 4.0.3 English 1.0.0 | ✅ ¹⁴ | — ²⁹ | — | — | — | ✅ ²⁹ | — | ✅ ²⁹ | ✅ ¹⁴ | ✅ ²⁹ | ✅ ²⁹ | — | n/a | — | — | — | — ³⁶ | — |
+| Heartfelt Gold (DS) | 1.0.15 (+ Zoomed In) | ✅ ³⁷ | ✅ ³⁷ | — | — | — | ✅ ³⁷ | — | ✅ ³⁷ | — | ✅ ³⁷ | ✅ ³⁷ | — | n/a | — | — | — | — ³⁶ | — |
+| Sacred Gold (DS), Storm Silver (DS) | 1.05 (Sacred Gold's Classic too) | ✅ ⁴³ | ◐ ⁴³ | — | — | — | ◐ ⁴³ | — | ✅ ⁴³ | ◐ ⁴³ | ◐ ⁴³ | ◐ ⁴³ | — | n/a | — | — | — | — ³⁶ | — |
+| Renegade Platinum (DS) | 1.3.0 (+ Classic, shiny rate, Speed Up), 1.2.0 | ✅ ³² | ✅ ³² | — | — | — | ✅ ³² | — | ✅ ³² | ◐ ³² | ◐ ³² | ✅ ³² | — | n/a | — | — | — | — ³⁶ | — |
+| Blaze Black 2 Redux (DS) | 1.4.1, + Classic / EVless / Classic EVless | ✅ ³⁵ | ✅ ³⁵ | — | — | — | ✅ ³⁵ | — | ✅ ³⁵ | ◐ ¹⁴ | ✅ ³⁵ | ✅ ³⁵ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ | — |
+| Volt White 2 Redux (DS) | 1.4.1, + Classic / EVless / Classic EVless | ✅ ³⁵ | ✅ ³⁵ | — | — | — | ✅ ³⁵ | — | ✅ ³⁵ | ◐ ¹⁴ | ✅ ³⁵ | ✅ ³⁵ | ✅ ¹⁶ | n/a | — | — | — | — ³⁶ | — |
+| Amethyst | 1.3.0, 1.4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — ³³ | ✅ ³³ | ✅ | — |
+| Ash Gray | 4.5.3, Fork Bug Fix 1.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | — ³³ | ✅ | — |
+| Celia's Stupid Romhack | 1.1.4 | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | ✅ ¹⁵ | — | — | — | — | ✅ | — |
+| Dreamstone Mysteries | the one release | — | ✅ | ✅ | ✅ | — | — | — | — | — | — ²² | — | — | — | — | — | — | ✅ | — |
+| Elite Redux | 2.65.3b, 2.65.4.1b | ✅ | ✅ ¹⁰ | ✅ ¹⁰ | ✅ | — | — | — | ✅ ¹⁰ | ✅ ¹⁰ | ✅ ¹⁰ | — ¹⁰ | n/a ¹⁵ | — | ✅ ¹⁹ | — | — | ✅ | — |
+| Emerald Imperium | 1.3.1 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ ³³ | ✅ | — |
+| Emerald Kaizo | 2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ⁴ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | — |
+| Emerald Legacy | 1.1.4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ ³³ | ✅ ³³ | ✅ | — |
+| Emerald Rogue | 2.2.1-EX | ✅ | — | — | — | — | — | — | ◐ ⁶ | — | — | — | — | — | — | — | — | ✅ | — |
+| Emerald Seaglass | 3.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | — | ✅ | — |
+| FireRed Rocket Edition | the one release | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ✅ ¹⁵ | — | ✅ ¹⁹ | ✅ | — ³³ | ✅ | — |
+| Gaia | 3.2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ | — |
+| Ghost Grey (blocked ¹¹) | 1.0.1, 1.0.2, 1.0.4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹¹ ³⁴ | — | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | — | — | — | ✅ | ✅ ³³ | — ¹¹ | — |
+| Let's Go Pikachu / Eevee | English, Translation Only (4 builds) | ✅ ²⁸ | ✅ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ ³⁴ | — | ✅ ²⁸ | ◐ ²⁸ | ◐ ²⁸ | ✅ ²⁸ | — | — | — | ✅ | ✅ ³³ | ✅ | — |
+| Clover | 1.3.3 | ✅ ⁴¹ | ✅ | ✅ ⁴¹ | — | — ⁴¹ | — ⁴¹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — ⁴¹ | — | — | — | — | — | ✅ | — |
+| Elysium (Part A), Elysium (Part B) | 2.5.0 | ✅ ⁴² | ✅ | ✅ ⁴² | — | ◐ ⁹ | ◐ ⁹ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | — | — | — | ✅ | — |
+| Glazed | 9.2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁷ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ | — |
+| GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | — ³⁶ | — |
+| Rhythm | 1.4.0 | — | ✅ | ✅ ⁴⁴ | — | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ | — |
+| Oops All Eevees! | 1.3.2 | — | ✅ | ✅ ⁴⁵ | — | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ | — |
+| Ceruleum | 1.1.1 | — | ✅ ⁴⁶ | ✅ ⁴⁶ | ✅ ⁴⁶ | — | — | — | — | — | — ⁴⁶ | — | — | — | — | — | — | — ³⁶ | — |
+| RecordKeepers | 1.2.1 | — | — ⁴⁷ | — ⁴⁷ | — ⁴⁷ | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ | — |
+| Heart and Soul | 2.0.6 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | ✅ | — | — | — | — | ✅ ³³ | ✅ | — |
+| Lazarus | 2.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | ✅ ³³ | ✅ | — |
+| Modern Emerald | 3.6 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | ✅ | — |
+| Epsilon Emerald | 1.0.0 | ✅ ³⁹ | ✅ | ✅ | ✅ | — | ✅ ³⁹ | — | ✅ ³⁹ | — | ✅ ³⁹ | ✅ ³⁹ | — | — | — | — | — | — | — |
+| Monomyth | 1.0, 1.1, 1.2 | ✅ ²³ | ✅ | ✅ | ✅ | — | — | — | ✅ ²³ | — | — ²³ | ✅ ²³ | — | — | — | — | — | ✅ | — |
+| Odyssey | 4.1.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ | — |
+| Orange Islands | Beta 5.7, an older beta | ◐ ³ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | — | ✅ ¹⁹ ²⁰ | ✅ | ✅ ³³ | ✅ | — |
+| Quetzal | English / Spanish Alpha 9 v0 | ◐ ³ | ✅ | ✅ | ✅ | — | ◐ ³⁴ | — | ◐ ⁶ | — | — | ✅ | — | — | — | — | — | — ³⁶ | — |
+| Quetzal | English / Spanish Alpha 9 v1 | — | ✅ | ✅ | ✅ | — | ◐ ³⁴ | — | — | — | — | ✅ | — | — | — | — | — | — ³⁶ | — |
+| Quetzal, Moemon Quetzal | English / Spanish Alpha 0.8.4 (+ Hotfix) | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | ✅ | — |
+| R.O.W.E. | 2.1.9.1 Experimental | ✅ ³ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | — | ✅ | — |
+| Radical Red | 4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ | — |
+| Recharged Emerald | 2.2.5, 2.2.8, Rebalanced 2.2.8 | — | ✅ | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | ✅ ¹⁹ | ✅ ³³ | ✅ ³³ | ✅ | — |
+| Recharged Yellow | 1.8.0, 1.9.0, 1.9.4, 1.9.7 | ✅ | ✅ | ✅ | ✅ | — | — | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ ¹⁹ | — | — | ✅ | — |
+| SoulGold | 1.1.4, 1.2 (3 builds), 1.2.1 (2 builds) | ✅ | ✅ | ✅ | ✅ | ◐ ¹⁷ | ✅ ³⁴ | ✅ | ◐ ⁶ | — | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ | — | ✅ ³³ | ✅ | — |
+| Super Mariomon | 1.2.1-1.3, 1.5.1, 1.5.2 | ✅ | ✅ | ✅ | ✅ | — | ◐ ³⁴ | — | ✅ | ✅ | ✅ | ◐ | — | — | ✅ ¹⁹ | — | — | ✅ | — |
+| Sword and Shield Ultimate Plus | 1.2.1.2 + its 3 patches | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ◐ ³⁶ | — |
+| Team Rocket Dragonsden | 1.5 | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | ✅ ¹⁹ | — | — | — ³⁶ | — |
+| Team Rocket Dragonsden | 2026 3.0.9, 3.1 (Spanish) | — | ✅ | ✅ | ✅ | — | — | — | — | — | — | — | — | — | — | — | — | — ³⁶ | — |
+| Too Many Types 2 | 1.5.2 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ◐ ⁶ | — | ✅ | — | — | — | ✅ ¹⁹ | — | — | ✅ | — |
+| Ultra Violet | 1.22 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ | ✅ | — |
+| Unbound | 2.1.1.1, 2.1.1.1 French, 2.1.1.1 Italian (patch v7) | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ ⁴⁰ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁶ | — | ✅ ¹⁹ | ✅ | ✅ ³³ | ✅ | — |
+| Wishes of Tomorrow | 1.2.6 | — | ✅ ²¹ | ✅ ²¹ | ✅ ²¹ | — | — | — | — | — | — ²¹ | — | — | — | — | — | — | ◐ ³⁶ | — |
+| Unknown FireRed / Emerald hacks edited in place | any (proven by code) | ◐ ³⁰ | ◐ ³⁰ | ◐ ³⁰ | ◐ ³⁰ | — | — | — | ◐ ³⁰ | ◐ ³⁰ | — | — | — | — | — | — | — | — ³⁶ | — |
 
 1. Yellow's and Crystal's battle controls steer from the cursor they read off the screen (`readGen1BattleInput`,
    `readGen2BattleInput`: the menu's own cursor variables, checked against the filled ▶ on screen), not from addresses
@@ -958,6 +958,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
   (`CardStyle.SOULGOLD` / `.LAZARUS` / `.RECHARGED_YELLOW`): their art found from headless VRAM dumps of the open card and
   each card's code, their save fields and star rules poked in and checked against the game's card. Each matched the
   game's frames pixel for pixel on the save as it is and with everything the card shows poked in (`TrainerCardTest`).
+- **Wild pin**: GUIDE > HERE's and the HUD's PIN, the next grass / cave encounter on the map (`WildPin.kt`).
 
 ## Next up (from the table)
 
@@ -1054,3 +1055,11 @@ Hacks that are not in the table have no DEX, CARD or GUIDE yet. The MAP tab draw
     Italian Yellow and Crystal Legacy (not played); N/A in the Spanish / German / French Yellows (12 to 14 bytes of bank 0
     padding for a 16-byte trampoline), Brown, PureRed / PureBlue, Yellow Legacy, Crystal Clear (1 byte), Prism (27 bytes,
     under the 64 kept) and Polished Crystal (no .GetDPad). `GbRunningShoesTest`.
+
+58. WILD PIN (`WildPin.kt`): while a pin is on, the map's 12 land slots ({u8 min, u8 max, u16 species}, the
+    WildPokemonInfo's slot array, `GuideRomSource.landSlots`) are one ROM block beside PLAYER LOOK's (one `pkRomBlocks`
+    call: each replaces every block), every slot the pinned species at its own level range on the map, guarded by the
+    file's 48 bytes' CRC32. It goes out on the frame a battle starts with gBattleTypeFlags' TRAINER clear, on another
+    map and on UNPIN. Offered by the running GUIDE tables (`WildPin.offered`): retail English FireRed rev 1, LeafGreen
+    rev 0 / 1 and Emerald, so their randomized builds too (the ROM's own species); grass and caves only. Headless:
+    mgba_dump `romblocks` takes `WildPin.Pin.toText()`'s line.

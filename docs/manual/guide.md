@@ -3,7 +3,7 @@ title: Guide
 summary: The GUIDE tab's hints, what's in the area you're in, the next gym leader's team, evolutions and the hand-written help pages.
 section: companion
 order: 8
-keywords: [randomizer, randomized, walkthrough, hints, spoilers, help, stuck, where, encounters, wild, gym, leader, boss, items, hidden, gifts, trades, evolve, trees, clock, time of day, rematch, season, spring, summer, autumn, winter]
+keywords: [pin, pinned, unpin, pick, target, hunt, rare, randomizer, randomized, walkthrough, hints, spoilers, help, stuck, where, encounters, wild, gym, leader, boss, items, hidden, gifts, trades, evolve, trees, clock, time of day, rematch, season, spring, summer, autumn, winter]
 ---
 
 The GUIDE tab is there for the moments you'd normally open a walkthrough: you're stuck, you want to know what lives on this route, or you'd like to see the next gym leader's team before walking in. It reads your game as you play, so it knows where you are, what you've already picked up and which bosses you've beaten.
@@ -43,6 +43,24 @@ Anything your save already has (an item you picked up, a gift you got, a Pokémo
 
 > [!TIP]
 > Before leaving a town for good, open HERE and look for rows without a ball in ITEMS and PEOPLE.
+
+## Pin your next wild encounter
+
+Hunting for the rare one on a route? Pin it, and the next Pokémon you meet in the grass or a cave there is that one.
+
+- Every row under `GRASS / CAVE` has a `PIN` button. Tap it on the Pokémon you want.
+- Walk into the grass (or the cave) as usual. Your next wild battle there is the pinned Pokémon, at a level it can have on this map. Everything else about it is up to the game: its nature, its stats, whether it's shiny.
+- A pin is good for one battle. It comes off as that battle starts, and the next encounter is the area's usual mix again. Pin again for another one.
+- Leaving the map takes the pin off too. So does its button, which reads `UNPIN` in red on the pinned row.
+- A trainer battle doesn't use the pin up: it waits for your next wild one.
+
+While a pin is on, the HUD's `WILD` button shows the pinned Pokémon with a small red pin on it, and the HUD's wild list has the same `PIN` buttons. See [HUD](hud.md).
+
+A pin never changes your game file or your save. While you play, it changes which Pokémon the game picks from this map's list, and it puts the list back when it's done.
+
+`PIN` is greyed out during a battle, and while the [Nuzlocke](nuzlocke.md) tracker is on (a picked first encounter isn't a fair one); a line under `GRASS / CAVE` says why. Achievements pause while a pin is on, the same way they do for cheats. To hide every `PIN`, turn `WILD PIN` off in the companion's SETTINGS, under GAMEPLAY.
+
+It works in the English FireRed (Rev 1), LeafGreen and Emerald, randomized ones too, in the grass and in caves. Fishing, surfing and smashing rocks aren't covered yet.
 
 ## NEXT BOSS: the next gym leader
 

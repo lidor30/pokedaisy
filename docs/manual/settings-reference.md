@@ -206,6 +206,7 @@ At the top of SETTINGS, in a blue frame, in the games where any of it works.
 | `AUTO REFILL` | `ON`, **`OFF`** | Another item that keeps wild Pokémon away goes on from your bag before the one working runs out. `N/A` where it can't work. | [Bag](bag.md#auto-refill) |
 | `LEVEL CAP` | `ON`, **`OFF`** | No Pokémon goes past the highest level on the next boss's team; the row shows the cap now. `N/A` where it can't work. | [Controls](controls.md#level-cap) |
 | `TRADE EVOS` | `ON`, **`OFF`** | A Pokémon that evolves by trading can evolve from its summary's `EVOLVE` button, through the game's own evolution. `N/A` where it can't work. | [Party](party.md#trade-evolutions) |
+| `WILD PIN` | **`ON`**, `OFF` | A `PIN` on the grass and cave rows of GUIDE > HERE and the HUD's `WILD`: the next wild Pokémon there is the one you pinned. `OFF` hides every `PIN`. `N/A` where it can't work. | [Guide](guide.md#pin-your-next-wild-encounter) |
 | `SHINY ODDS` | **`NORMAL`**, `1 IN 4096`, `1 IN 1024`, `1 IN 512`, `1 IN 128` | How often a wild Pokémon is shiny. Pauses achievements while raised. `N/A` where it can't work. | [Controls](controls.md#shiny-odds) |
 | `SHINY ALERT` | `ON`, **`OFF`** | Counts your wild battles in this game and, when a shiny one shows up, stops fast-forward and turbo and says so. `N/A` where it can't work. | [Controls](controls.md#shiny-alert) |
 | `LOW HP BEEP` | **`ON`**, `OFF` | `OFF` stops the beeping while your Pokémon's health is in the red. `N/A` where it can't work. | [Controls](controls.md#low-hp-beep-and-field-poison) |
