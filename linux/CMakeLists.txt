@@ -25,7 +25,7 @@ target_compile_options(pd_linux_common PRIVATE -Wall -Wextra)
 # The app's EXPAND sources, built as they are.
 set_source_files_properties(../app/src/main/cpp/pk_wide.c ../app/src/main/cpp/pk_wide_gb.c PROPERTIES COMPILE_OPTIONS -Wno-unused-parameter)
 target_link_libraries(pd_linux_common PUBLIC mgba ${SDL2_LIBRARY} m Threads::Threads ${CMAKE_DL_LIBS})
-# The executable is a libretro frontend: it loads pokedaisy_gba / pokedaisy_gbc from beside itself and links no
+# The executable is a libretro frontend: it loads pokedaisy_gba / pokedaisy_gbc / pokedaisy_ds from beside itself and links no
 # emulator, only SDL2 and the portable canvas for its menus (3ds/core).
 add_library(pd_host_ui STATIC ${PD_CORE} ../3ds/desktop/pd_png.c)
 target_include_directories(pd_host_ui PUBLIC ../3ds/core)
@@ -58,10 +58,11 @@ if(BUILD_TESTING)
   endif()
   add_test(NAME diagnostic-roms COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/make_diagnostic.py)
   set_tests_properties(diagnostic-roms PROPERTIES FIXTURES_SETUP diagnostics)
-  # The real binary on the diagnostic ROMs over both cores (POCKET_TEST_CORES: a folder holding
-  # pokedaisy_gba_libretro.so and pokedaisy_gbc_libretro.so, built from libretro/ and libretro/armgba/).
-  set(POCKET_TEST_CORES "" CACHE PATH "Folder with the two GB / GBA cores for linux-host-test")
+  set(POCKET_TEST_CORES "" CACHE PATH "Folder with the GB, GBA and DS libretro cores for linux-host-test")
   if(POCKET_TEST_CORES AND NOT CMAKE_CROSSCOMPILING)
+    add_test(NAME diagnostic-nds COMMAND ${Python3_EXECUTABLE}
+      ${CMAKE_CURRENT_SOURCE_DIR}/dsperate/make_diagnostic.py ${CMAKE_CURRENT_BINARY_DIR}/diagnostic.nds)
+    set_tests_properties(diagnostic-nds PROPERTIES FIXTURES_SETUP diagnostics)
     add_test(NAME linux-host-test COMMAND ${Python3_EXECUTABLE} ${CMAKE_CURRENT_SOURCE_DIR}/test_host.py
       $<TARGET_FILE:pokedaisy-linux> ${POCKET_TEST_CORES} ${CMAKE_CURRENT_BINARY_DIR})
     set_tests_properties(linux-host-test PROPERTIES FIXTURES_REQUIRED diagnostics TIMEOUT 120)

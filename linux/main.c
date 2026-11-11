@@ -1,8 +1,7 @@
 /* PokeDaisy Linux: an SDL2 frontend for the PokeDaisy libretro cores. The companion, HUD, quick menu, FLY / PC /
  * REPEL / BIKE and EXPAND are the cores' own (libretro/, libretro/armgba/), so this host shows exactly what the
  * cores do on every other frontend. It loads the core for the ROM from beside the binary
- * (pokedaisy_gba_libretro.so for .gba: armGBA; pokedaisy_gbc_libretro.so for .gb / .gbc: mGBA), tells it the
- * screen (the pokedaisy_panel option: the core then picks its canvas), shows its frame at a whole scale, and owns
+ * (armGBA for .gba, mGBA for .gb / .gbc, DSperate for .nds), tells it the screen (the pokedaisy_panel option: the core then picks its canvas), shows its frame at a whole scale, and owns
  * what a frontend owns: input, sound, pacing, the battery save and its backups, save states, fast-forward,
  * rewind, the LCD mask and the game list. */
 #include "libretro.h"
@@ -392,7 +391,8 @@ static struct {
   bool rewind, lcd;
   bool swapAB; // the controller's A / B and X / Y the other way round (devices disagree on which is SDL's "A")
   int hotkey[HK_ACTIONS]; // the HOTKEYS page's button per action, -1 none
-} hostSet = {0, false, false, false, {R2, L2, -1, -1}};
+  int dsHotkey[HK_ACTIONS];
+} hostSet = {0, false, false, false, {R2, L2, -1, -1}, {R3, L3, -1, -1}};
 static char hostIni[PATH_MAX];
 static void host_load(void) {
   FILE *f = fopen(hostIni, "r");
@@ -412,6 +412,9 @@ static void host_load(void) {
       snprintf(key, sizeof key, "hk_%s=%%15s", hotkeyIds[i]);
       if (sscanf(line, key, name) == 1)
         hostSet.hotkey[i] = hotkey_assignable(key_named(name)) ? key_named(name) : -1;
+      snprintf(key, sizeof key, "ds_hk_%s=%%15s", hotkeyIds[i]);
+      if (sscanf(line, key, name) == 1)
+        hostSet.dsHotkey[i] = hotkey_assignable(key_named(name)) ? key_named(name) : -1;
     }
   }
   if (f)
@@ -423,8 +426,10 @@ static void host_save(void) {
   if (!f)
     return;
   fprintf(f, "ff_speed=%d\nrewind=%d\nlcd=%d\nswap_ab=%d\n", hostSet.ffSpeed, hostSet.rewind, hostSet.lcd, hostSet.swapAB);
-  for (int i = 0; i < HK_ACTIONS; i++)
+  for (int i = 0; i < HK_ACTIONS; i++) {
     fprintf(f, "hk_%s=%s\n", hotkeyIds[i], key_name(hostSet.hotkey[i]));
+    fprintf(f, "ds_hk_%s=%s\n", hotkeyIds[i], key_name(hostSet.dsHotkey[i]));
+  }
   fclose(f);
 }
 // A hotkey's button as the HOTKEYS page shows it.
@@ -435,12 +440,12 @@ static const char *hotkey_label(int k) {
   return k >= 0 && k < (int)(sizeof labels / sizeof labels[0]) && labels[k] ? labels[k] : "OFF";
 }
 /* The actions held this frame; *fired: those whose button went down now. The keyboard's own keys count too. */
-static unsigned hotkeys_held(unsigned *fired) {
+static unsigned hotkeys_held(const int *hotkeys, unsigned *fired) {
   unsigned on = 0;
   *fired = 0;
   hotkeyMask = 0;
   for (int i = 0; i < HK_ACTIONS; i++) {
-    int k = hostSet.hotkey[i];
+    int k = hotkeys[i];
     if (k < 0)
       continue;
     unsigned bit = 1u << k;
@@ -556,6 +561,7 @@ static struct {
   void (*set_audio_sample_batch)(retro_audio_sample_batch_t);
   void (*set_input_poll)(retro_input_poll_t);
   void (*set_input_state)(retro_input_state_t);
+  void (*get_system_info)(struct retro_system_info *);
   void (*get_system_av_info)(struct retro_system_av_info *);
   bool (*load_game)(const struct retro_game_info *);
   void (*unload_game)(void);
@@ -587,6 +593,7 @@ static bool core_open(const char *path) {
   SYM(set_audio_sample_batch, "retro_set_audio_sample_batch")
   SYM(set_input_poll, "retro_set_input_poll")
   SYM(set_input_state, "retro_set_input_state")
+  SYM(get_system_info, "retro_get_system_info")
   SYM(get_system_av_info, "retro_get_system_av_info")
   SYM(load_game, "retro_load_game")
   SYM(unload_game, "retro_unload_game")
@@ -603,6 +610,7 @@ static bool core_open(const char *path) {
 /* The core's options: their defaults as it declares them, and the panel this host has. */
 static struct {
   const char *key, *value;
+  char legacyDefault[128];
 } options[160];
 static int optionN;
 static char panelValue[32];
@@ -617,6 +625,24 @@ static void options_from_v1(const struct retro_core_option_definition *d) {
   for (optionN = 0; d && d->key && optionN < (int)(sizeof options / sizeof options[0]); d++, optionN++) {
     options[optionN].key = d->key;
     options[optionN].value = d->default_value;
+  }
+}
+
+static void options_from_variables(const struct retro_variable *v) {
+  for (optionN = 0; v && v->key && optionN < (int)(sizeof options / sizeof options[0]); v++) {
+    const char *first = v->value ? strchr(v->value, ';') : NULL;
+    if (!first)
+      continue;
+    first++;
+    first += strspn(first, " ");
+    size_t len = strcspn(first, "|");
+    if (len >= sizeof options[0].legacyDefault)
+      continue;
+    options[optionN].key = v->key;
+    memcpy(options[optionN].legacyDefault, first, len);
+    options[optionN].legacyDefault[len] = '\0';
+    options[optionN].value = options[optionN].legacyDefault;
+    optionN++;
   }
 }
 
@@ -686,6 +712,8 @@ static bool environment(unsigned cmd, void *data) {
     options_from_v1(data ? ((const struct retro_core_options_intl *)data)->us : NULL);
     return true;
   case RETRO_ENVIRONMENT_SET_VARIABLES:
+    options_from_variables(data);
+    return true;
   case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY:
   case RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS:
   case RETRO_ENVIRONMENT_SET_SUPPORT_ACHIEVEMENTS:
@@ -1222,11 +1250,15 @@ static void save_load(const unsigned char *d, size_t fn) {
   if (rn && fn > n)
     memcpy(rtc, d + n, fn - n < rn ? fn - n : rn);
 }
-static void sram_write(const char *sav, unsigned char *copy, bool sync) {
+struct save_baseline {
+  unsigned char *data;
+  size_t size;
+};
+static void sram_write(const char *sav, struct save_baseline *copy, bool sync) {
   static unsigned char *now;
   static size_t nowSize;
   size_t n = save_image(NULL);
-  if (!n || !copy)
+  if (!n)
     return;
   if (n > nowSize) {
     free(now);
@@ -1236,12 +1268,18 @@ static void sram_write(const char *sav, unsigned char *copy, bool sync) {
       return;
   }
   save_image(now);
-  if (!memcmp(now, copy, n))
+  if (n == copy->size && !memcmp(now, copy->data, n))
     return;
-  if (write_file(sav, now, n, sync))
-    memcpy(copy, now, n);
-  else
+  if (!write_file(sav, now, n, sync)) {
     notice("Save write failed");
+    return;
+  }
+  unsigned char *previous = copy->data;
+  size_t previousSize = copy->size;
+  copy->data = now;
+  copy->size = n;
+  now = previous;
+  nowSize = previousSize;
 }
 // The settings the old host kept in DATA/settings.ini become the core's (SAVES/pokedaisy/settings.ini), once.
 static void settings_migrate(void) {
@@ -1264,6 +1302,8 @@ static const char *core_for(const char *path) {
     return "pokedaisy_gba_libretro.so";
   if (ext && (!strcasecmp(ext, ".gb") || !strcasecmp(ext, ".gbc")))
     return "pokedaisy_gbc_libretro.so";
+  if (ext && !strcasecmp(ext, ".nds"))
+    return "pokedaisy_ds_libretro.so";
   return NULL;
 }
 #ifdef POCKET_DSPERATE
@@ -1297,9 +1337,11 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     notice(coreName ? "Core missing: put it beside pokedaisy-linux" : "Unsupported ROM");
     return;
   }
-  size_t romSize;
-  unsigned char *rom = read_file(path, &romSize, 64u << 20);
-  if (!rom || romSize < 0x150) {
+  struct retro_system_info system = {0};
+  core.get_system_info(&system);
+  size_t romSize = 0;
+  unsigned char *rom = system.need_fullpath ? NULL : read_file(path, &romSize, 64u << 20);
+  if (!system.need_fullpath && (!rom || romSize < 0x150)) {
     free(rom);
     dlclose(core.dl);
     appError = 1;
@@ -1316,6 +1358,8 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     snprintf(sav, sizeof sav, "%s/%s.sav", savesDir, name);
     snprintf(backups, sizeof backups, "%s/pokedaisy-backups", savesDir);
   }
+  // DS uses L2 for the Companion and R2 for screen switching. Keep the host's DS bindings separate.
+  int *hotkeys = !strcmp(coreName, "pokedaisy_ds_libretro.so") ? hostSet.dsHotkey : hostSet.hotkey;
   // armGBA's states aren't mGBA's: each core its own file.
   snprintf(ss, sizeof ss, "%s/states/%s%s.ss", root, name, strstr(coreName, "_gba_") ? ".armgba" : "");
   if (!save_backup(sav, backups)) {
@@ -1352,16 +1396,16 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
   frameW = frameH = 0;
   frame_texture();
   // The battery save: the file's bytes into the core's, and written back whenever they change.
-  unsigned char *sramCopy = NULL;
+  struct save_baseline sramCopy = {0};
   {
     size_t n = save_image(NULL), fn;
     unsigned char *d = n ? read_file(sav, &fn, 64u << 20) : NULL;
     if (d)
       save_load(d, fn);
     free(d);
-    sramCopy = n ? malloc(n) : NULL;
-    if (sramCopy)
-      save_image(sramCopy);
+    sramCopy.data = n ? malloc(n) : NULL;
+    if (sramCopy.data)
+      sramCopy.size = save_image(sramCopy.data);
   }
   rewindBudget = (getenv("POCKET_REWIND_MB") ? (size_t)atoi(getenv("POCKET_REWIND_MB")) : 32) << 20;
   rewindTick = 0;
@@ -1405,7 +1449,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     for (int i = 0; i < M_COUNT; i++)
       rowPtrs[i] = rows[i];
     for (int i = 0; i < HK_ACTIONS; i++) {
-      snprintf(hkRows[i], 40, "%s  %s", hkNames[i], capturing == i ? "..." : hotkey_label(hostSet.hotkey[i]));
+      snprintf(hkRows[i], 40, "%s  %s", hkNames[i], capturing == i ? "..." : hotkey_label(hotkeys[i]));
       hkPtrs[i] = hkRows[i];
     }
     if (menuKey) {
@@ -1420,7 +1464,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     unsigned hkFired = 0, hkOn = 0;
     hotkeyMask = 0;
     if (!menuOpen)
-      hkOn = hotkeys_held(&hkFired);
+      hkOn = hotkeys_held(hotkeys, &hkFired);
     if (hkFired & (1u << HK_SAVE))
       notice(state_file(ss, true) ? "State saved" : "State save failed");
     if (hkFired & (1u << HK_LOAD))
@@ -1433,16 +1477,16 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       if (down(B))
         capturing = -1;
       else if (down(SELECT)) {
-        hostSet.hotkey[capturing] = -1;
+        hotkeys[capturing] = -1;
         host_save();
         capturing = -1;
       } else
         for (int k = 0; k < NKEYS; k++)
           if (down(k) && hotkey_assignable(k)) {
             for (int j = 0; j < HK_ACTIONS; j++)
-              if (hostSet.hotkey[j] == k)
-                hostSet.hotkey[j] = -1;
-            hostSet.hotkey[capturing] = k;
+              if (hotkeys[j] == k)
+                hotkeys[j] = -1;
+            hotkeys[capturing] = k;
             host_save();
             capturing = -1;
             break;
@@ -1554,7 +1598,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     }
     emuMs = (double)(SDL_GetPerformanceCounter() - t) * 1000.0 / SDL_GetPerformanceFrequency() / runs;
     if (++frames % 120 == 0)
-      sram_write(sav, sramCopy, true);
+      sram_write(sav, &sramCopy, true);
     present_game(NULL);
     if (maxFrames && frames >= maxFrames) {
       if (shot && !capture(shot))
@@ -1574,8 +1618,8 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     }
     perf_frame(frameStart, hz);
   }
-  sram_write(sav, sramCopy, true);
-  free(sramCopy);
+  sram_write(sav, &sramCopy, true);
+  free(sramCopy.data);
   rewind_clear();
   core.unload_game();
   core.deinit();
@@ -1693,7 +1737,7 @@ int main(int argc, char **argv) {
     run_game(rom, frames, shot, false);
   else {
     /* DATA/roms, then the folders POCKET_ROM_DIRS names (colon-separated: the PortMaster launcher passes the
-     * firmware's own gba / gb / gbc folders), by file name. */
+     * firmware's own gba / gb / gbc / nds folders), by file name. */
     static char *paths[1024];
     static const char *names[1024];
     int count = 0;
@@ -1705,12 +1749,7 @@ int main(int argc, char **argv) {
       DIR *d = opendir(dir);
       struct dirent *e;
       while (d && (e = readdir(d)) && count < 1024) {
-        char *ext = strrchr(e->d_name, '.');
-        if (ext && (!strcasecmp(ext, ".gba") || !strcasecmp(ext, ".gbc") || !strcasecmp(ext, ".gb")
-#ifdef POCKET_DSPERATE
-                    || !strcasecmp(ext, ".nds")
-#endif
-                        )) {
+        if (core_for(e->d_name)) {
           snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
           paths[count++] = strdup(path);
         }
