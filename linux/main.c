@@ -194,6 +194,14 @@ static void key(int k, bool isDown) {
   } else
     held &= ~bit;
 }
+/* The left stick is the D-pad too, but only when it crosses the threshold: a stick at rest still sends small axis
+ * events (the Steam Deck's, all the time), and releasing the direction on each of them let go of a held D-pad. */
+static void stick_dir(int stickKey, int dir, bool on) {
+  if (on == ((held & (1u << stickKey)) != 0))
+    return;
+  key(stickKey, on);
+  key(dir, on);
+}
 /* Controllers come and go (a USB or Bluetooth pad, a handheld whose built-in one shows up late): SDL reports the
  * ones it has a mapping for as game controllers (its own database, DATA/gamecontrollerdb.txt, or
  * SDL_GAMECONTROLLERCONFIG, which PortMaster sets). The first one is used; an unmapped device is named in the log
@@ -309,16 +317,12 @@ static void events(void) {
       if (e.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT)
         key(R2, e.caxis.value > 16000);
       if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTX) {
-        key(LEFT, e.caxis.value < -16000);
-        key(RIGHT, e.caxis.value > 16000);
-        key(SLEFT, e.caxis.value < -16000);
-        key(SRIGHT, e.caxis.value > 16000);
+        stick_dir(SLEFT, LEFT, e.caxis.value < -16000);
+        stick_dir(SRIGHT, RIGHT, e.caxis.value > 16000);
       }
       if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
-        key(UP, e.caxis.value < -16000);
-        key(DOWN, e.caxis.value > 16000);
-        key(SUP, e.caxis.value < -16000);
-        key(SDOWN, e.caxis.value > 16000);
+        stick_dir(SUP, UP, e.caxis.value < -16000);
+        stick_dir(SDOWN, DOWN, e.caxis.value > 16000);
       }
     }
     if (!controller && rawTrimui && (e.type == SDL_JOYBUTTONDOWN || e.type == SDL_JOYBUTTONUP))
