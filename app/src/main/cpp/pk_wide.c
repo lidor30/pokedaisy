@@ -4003,6 +4003,7 @@ static void fullDraw(const struct FullView* f) {
         mixSnap = false;
     } else {
         if (!f->hold) mix = mix - MIX_STEP < 0 ? 0 : mix - MIX_STEP;   // the last scene, frozen, dissolves into the glow
+        mixSnap = false;   // a jump's cut is the frame after it: a scene drawn much later (after a fade, a reset) fades in
     }
     PW_MARK(pw4);
     PW_ADD(2, pw3, pw4);

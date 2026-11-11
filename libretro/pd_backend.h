@@ -3,8 +3,8 @@
  * retro_* functions around them and reach its static state without editing a line of upstream. What pd_libretro.c
  * needs from the emulator, besides those entry points, is the PD_BE_* set at the end. GPL-3.0, see ../NOTICE.
  *
- * With armGBA the game-code layer that needs the emulated CPU and renderer (EXPAND, FLY, the wild-encounter switch, the
- * field read: pk_wide, pk_call, gb_field, fly, field_items) is not ported yet (pd_agba_stubs.c). */
+ * With armGBA, EXPAND, the game's own functions (FLY, PC, the wild-encounter switch) and the field read run over armGBA's
+ * CPU and renderer (pd_agba_view.c, pd_agba_call.c); only the Game Boy side is left out (pd_agba_stubs.c). */
 #ifndef PD_BACKEND_H
 #define PD_BACKEND_H
 
@@ -18,6 +18,7 @@
 #define retro_unload_game mgba_retro_unload_game
 #define retro_unserialize mgba_retro_unserialize
 #define retro_reset mgba_retro_reset
+#define retro_load_game_special mgba_retro_load_game_special
 /* (The prefix is mGBA's for both: it is the name pd_libretro.c calls them by.) */
 
 #include "libretro.c"
@@ -32,6 +33,7 @@
 #undef retro_unload_game
 #undef retro_unserialize
 #undef retro_reset
+#undef retro_load_game_special
 
 #ifndef PD_ARMGBA
 
@@ -42,7 +44,7 @@
 #define PD_BE_CRC32(out) core->checksum(core, (out), mCHECKSUM_CRC32)
 #define PD_BE_ROM() ((const unsigned char *)data)
 #define PD_BE_ROM_LEN() (dataSize)
-#define PD_BE_CAPTURE(d, w, h, pitch) ((void)0)
+#define PD_BE_CAPTURE(d, w, h, pitch) (1)
 #define PD_BE_AFTER_LOAD(g) ((void)0)
 #define PD_BE_BEFORE_UNLOAD() ((void)0)
 #define PD_BE_INPUT_POLL() do { if (inputPollCallback) inputPollCallback(); } while (0)
@@ -63,12 +65,15 @@ static size_t pdRomLen;
 /* (A function, since pd_libretro.c has a local `gba` that would hide armGBA's.) */
 static const uint8_t *pd_be_rom(void) { return gba->rom; }
 
-static void pd_be_capture(const void *d, unsigned w, unsigned h, size_t pitch) {
+static bool pd_be_capture(const void *d, unsigned w, unsigned h, size_t pitch) {
   if (!d || w > 256 || h > 160)
-    return;
+    return false;
   for (unsigned y = 0; y < h; y++)
     memcpy(outputBuffer + (size_t)y * 256, (const uint8_t *)d + (size_t)y * pitch, (size_t)w * sizeof *outputBuffer);
+  return true;
 }
+/* What armGBA really loaded: a file over 32 MiB is cut to it, a Low Memory or pair-file load has no data / size. */
+static size_t pd_be_rom_len(void) { return gba ? (size_t)gba->romSize : 0; }
 
 static uint32_t pd_be_crc32(const uint8_t *p, size_t n) {
   uint32_t c = 0xffffffffu;
@@ -86,7 +91,7 @@ static uint32_t pd_be_crc32(const uint8_t *p, size_t n) {
 #define PD_BE_ROM() (pd_be_rom())
 #define PD_BE_ROM_LEN() (pdRomLen)
 #define PD_BE_CAPTURE(d, w, h, pitch) pd_be_capture((d), (w), (h), (pitch))
-#define PD_BE_AFTER_LOAD(g) (pdRomLen = (g)->size, pd_agba_attach(), core = (struct mCore *)pd_agba_core())
+#define PD_BE_AFTER_LOAD(g) (pdRomLen = pd_be_rom_len(), pd_agba_attach(), core = (struct mCore *)pd_agba_core())
 #define PD_BE_BEFORE_UNLOAD() (core = NULL, pd_agba_detach())
 #define PD_BE_INPUT_POLL() inputPoll()
 #define PD_BE_AUDIO(buf, frames) audioBatch((buf), (frames))

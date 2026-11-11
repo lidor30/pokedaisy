@@ -57,6 +57,9 @@ jobs:
           cmake -S libretro/armgba -B build/gba-arm -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$PWD/libretro/aarch64.cmake"
           cmake --build build/gba-arm -j"$(nproc)" --target pokedaisy_gba_libretro
           NM=aarch64-linux-gnu-nm sh libretro/test/check_exports.sh build/gba-arm/pokedaisy_gba_libretro.so
+          # It loads on any aarch64 glibc from 2.17 (glibc_compat.c): nothing newer may be asked for.
+          newest=$(aarch64-linux-gnu-objdump -T build/gba-arm/pokedaisy_gba_libretro.so | grep -oE 'GLIBC_2\.[0-9]+' | sort -t. -k2 -n | tail -1)
+          [ "${newest#GLIBC_2.}" -le 17 ] || { echo "::error::pokedaisy_gba_libretro.so needs $newest (2.17 at most)"; exit 1; }
 
   previews:
     name: Shared UI previews

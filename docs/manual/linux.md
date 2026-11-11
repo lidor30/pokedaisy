@@ -53,14 +53,14 @@ add it. Steam starts it in its own folder, so no launch options are needed. In G
 screen by itself, and the Deck's controls, touch screen and sound work as they do anywhere else. Steam's on-screen
 keyboard shouldn't open at launch; if it does, you're on an older build, so download the newest one.
 
-## Linux Handhelds
+## Linux handhelds
 
-`pokedaisy-linux-aarch64.zip` is the program as a TrimUI app, built for firmwares like CrossMix or NextUI, but it 
+`pokedaisy-linux-aarch64.zip` is the program as a TrimUI app, built for firmwares like CrossMix or NextUI, but it
 should run other places too. Its `pokedaisy-linux-aarch64` folder holds the program, all three cores, `launch.sh` (what
-the firmware runs), `config.json` and `icon.png` (the menu entry's name and icon). On CrossMix, copy the folder 
+the firmware runs), `config.json` and `icon.png` (the menu entry's name and icon). On CrossMix, copy the folder
 into the SD card's `Apps` folder.
 
-On [plorpOS](https://github.com/thwonp/plorpos) and on [spruceOS](https://github.com/spruceUI/spruceOS) nightly, 
+On [plorpOS](https://github.com/thwonp/plorpos) and on [spruceOS](https://github.com/spruceUI/spruceOS) nightly,
 the Game Boy Advance, Game Boy and Game Boy Color cores come installed already, so there you don't need these files:
 pick PokeDaisy as the core for your game.
 
@@ -72,12 +72,12 @@ CrossMix it raises the CPU's lowest speed while you play and puts it back when y
 
 ## PortMaster build
 
-`pokedaisy-portmaster-aarch64.zip` is an unpublished PortMaster port: `PokeDaisy.sh` beside a `pokedaisy` folder. 
-Copy both into your firmware's `ports` folder, then start PokeDaisy from the Ports list. It has been tried on a 
-GKD 350H running plorpOS.
+`pokedaisy-portmaster-aarch64.zip` is an unpublished PortMaster port: `PokeDaisy.sh` beside a `pokedaisy` folder.
+Copy both into your firmware's `ports` folder, then start PokeDaisy from the Ports list. It has been tried on a
+GKD 350H running ROCKNIX.
 
-- **Your games:** the game list shows `ports/pokedaisy/roms` and the firmware's own `gba`, `gb`, `gbc`,
-  `Game Boy Advance`, `Game Boy Color` and `Game Boy` folders, wherever they exist next to `ports`.
+- **Your games:** the game list shows `ports/pokedaisy/roms` and the firmware's own `gba`, `gb`, `gbc`, `nds`,
+  `Game Boy Advance`, `Game Boy Color`, `Game Boy` and `Nintendo DS` folders, wherever they exist next to `ports`.
 - **The menu:** press the Menu or Guide button. SELECT and START together quit the port, as in any PortMaster game.
 - PortMaster tells PokeDaisy your device's buttons, so they work without setup.
 
@@ -191,6 +191,9 @@ of the map. The quick menu's tiles follow your HUD look, in two shades with an o
 one you're on, and the HUD's panels have a battle-style shadow, with an HP bar and room for a status tag on each
 party Pokémon.
 
+In a DS game the DS has every face and shoulder button, so L2 opens the companion and R2 switches the screens, and the
+game starts on one screen. `SETTINGS` > `HUD SIZE` there picks `MINI` or `LARGE`.
+
 ## The menu
 
 Press START and SELECT together (or the Guide or Menu button, or Escape) to open the menu over the game. The game
@@ -199,26 +202,31 @@ pauses while it's open.
 | Row | What it does |
 | --- | --- |
 | `RESUME` | Back to the game. |
-| `SAVE STATE`, `LOAD STATE` | One save state for the game. |
+| `SAVE STATE`, `LOAD STATE` | One save state for the game. `LOAD STATE` asks first. Game Boy Advance states made before this version don't load. |
 | `HOTKEYS` | Buttons for fast-forward, rewind and states (below). |
 | `REWIND` | `ON` keeps the last 20 seconds or so to rewind through. |
 | `FF SPEED` | How fast fast-forward goes: `MAX`, or 2x to 8x. |
 | `LCD FILTER` | A screen texture like a handheld's. |
 | `A/B BUTTONS` | `NORMAL` or `SWAPPED`, for devices whose A and B are the other way round. |
-| `QUIT` | Leave the game (`QUIT TO GAME LIST` when you picked it from the list). |
+| `QUIT` | Leave the game (`QUIT TO GAME LIST` when you picked it from the list). It asks first. |
 
 ### Hotkeys
 
 `HOTKEYS` gives these a button each:
 
 - `FAST FORWARD`: the game runs fast while you hold it. R2 to start with.
-- `REWIND`: the game runs backwards while you hold it, with `REWIND` set to `ON`. L2 to start with.
+- `REWIND`: the game runs backwards while you hold it, with `REWIND` set to `ON`. L2 to start with. While `REWIND` is
+  `OFF` its button is the game's.
 - `SAVE STATE` and `LOAD STATE`: one press each. Off to start with.
 
 Pick a row, then press the button you want. B cancels and SELECT turns the hotkey off. L1, R1, L2, R2, X, Y, either
 stick's click and back buttons can be hotkeys; A, B, START, SELECT and the D-pad stay the game's. A button that
 another hotkey had moves over to the new one. The game never sees a hotkey's button, so if you make X or Y one,
-the companion or the quick menu needs another button. On a Steam Deck, the back buttons reach PokeDaisy only when
+the companion or the quick menu needs another button.
+
+DS games keep hotkeys of their own, since L2 and R2 are the DS's companion and screen buttons there: fast-forward is
+R3 and rewind L3 to start with. A device without stick buttons gets them only once you pick buttons in `HOTKEYS`
+during a DS game. On a Steam Deck, the back buttons reach PokeDaisy only when
 Steam passes them on.
 
 ## For advanced users
@@ -236,4 +244,5 @@ To build it yourself, follow `linux/README.md` in the source repository.
 ## What isn't tested yet
 
 - More devices
-- PortMaster firmwares other than plorpOS
+- PortMaster firmwares other than ROCKNIX
+- DS games in the program on a TrimUI handheld

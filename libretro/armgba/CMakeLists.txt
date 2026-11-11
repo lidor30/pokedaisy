@@ -17,8 +17,11 @@ set(ARMGBA ${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/armgba)
 if(NOT EXISTS ${ARMGBA}/CMakeLists.txt)
   message(FATAL_ERROR "Initialize armGBA: git submodule update --init third_party/armgba")
 endif()
+# The old-glibc shims (glibc_compat.h / .c) only where the C library is glibc: a musl toolchain has no __xstat@GLIBC_2.17.
+include(CheckCSourceCompiles)
+check_c_source_compiles("#include <stdlib.h>\n#ifndef __GLIBC__\n#error not glibc\n#endif\nint main(void) { return 0; }" PD_GLIBC)
 # Every C file (armGBA's too): the old glibc versions of exp / pow (glibc_compat.h).
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND PD_GLIBC)
   set(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -include ${CMAKE_CURRENT_SOURCE_DIR}/glibc_compat.h")
 endif()
 
@@ -68,7 +71,7 @@ find_package(Threads REQUIRED)
 target_link_libraries(pokedaisy_gba_libretro PRIVATE armgba retro-archive Threads::Threads ${PD_ZLIB} m)
 # Only retro_* leaves the object, as in the mGBA core (a second core may be resident beside this one).
 target_link_options(pokedaisy_gba_libretro PRIVATE -Wl,--no-undefined -Wl,--exclude-libs,ALL -Wl,--version-script=${PD}/retro.map)
-if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" AND CMAKE_SYSTEM_NAME STREQUAL "Linux")
+if(CMAKE_SYSTEM_PROCESSOR MATCHES "aarch64" AND CMAKE_SYSTEM_NAME STREQUAL "Linux" AND PD_GLIBC)
   target_sources(pokedaisy_gba_libretro PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/glibc_compat.c)
   target_link_options(pokedaisy_gba_libretro PRIVATE -Wl,--wrap=stat -Wl,--wrap=fstat -Wl,--wrap=pthread_create -Wl,--wrap=pthread_join)
 endif()

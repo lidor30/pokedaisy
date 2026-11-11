@@ -3,7 +3,7 @@ test_host.py BINARY CORES_DIR DIAGNOSTICS_DIR. The GB ROM runs on pokedaisy_gbc 
 which has to reach DATA/saves; the GBA ROM runs on pokedaisy_gba (armGBA) and fills its screen red, which has to
 reach the window. The DS ROM fills its top screen green. A second run backs the save up, and the game list draws with no ROM given."""
 from pathlib import Path
-import os,shutil,struct,subprocess,sys,tempfile,zlib
+import os,shutil,struct,subprocess,sys,tempfile,time,zlib
 
 binary,cores,diag=(Path(a).resolve() for a in sys.argv[1:4])
 
@@ -45,21 +45,24 @@ with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
     w,h,bpp,rows=png_pixels(d/'gb.png');assert len({r for r in rows})>1,'the GB frame is one colour'
     # Run again: the save is backed up first.
     run(d,str(d/'roms/diagnostic.gb'),'--frames','10')
-    backups=list((d/'saves/pokedaisy-backups').glob('diagnostic.gb.sav.*.sav'));assert len(backups)==1,backups
+    backups=list((d/'saves/pokedaisy-backups').glob('diagnostic.gb.backup-*.sav'));assert len(backups)==1,backups
     # A Game Boy cartridge with a clock (MBC3, as Crystal's): the clock is kept after the save, mGBA's layout.
     rtc=bytearray((diag/'diagnostic.gb').read_bytes());rtc[0x147]=0x10;rtc[0x14d]=(-sum(rtc[0x134:0x14d])-25)&255
     (d/'roms/clock.gb').write_bytes(rtc)
     run(d,str(d/'roms/clock.gb'),'--frames','120')
     clock=(d/'saves/clock.gb.sav').read_bytes();assert len(clock)==8192+48 and clock[:1]==b'\x5a',len(clock)
     assert any(clock[8192:]),'the clock bytes are empty'
+    # Each run moves the clock behind the save: that alone makes no new backup (only the save data counts).
+    run(d,str(d/'roms/clock.gb'),'--frames','10');time.sleep(1.1);run(d,str(d/'roms/clock.gb'),'--frames','10')
+    kept=list((d/'saves/pokedaisy-backups').glob('clock.gb.backup-*.sav'));assert len(kept)==1,kept
     # The GBA ROM on the armGBA core: its red reaches the window.
     log=run(d,str(d/'roms/diagnostic.gba'),'--frames','120','--shot',str(d/'gba.png'))
     w,h,bpp,rows=png_pixels(d/'gba.png')
     mid=rows[h//2][(w//2)*bpp:(w//2)*bpp+3];assert mid[0]>200 and mid[1]<60 and mid[2]<60,(mid,log[-500:])
     # DS maps the ROM from its path, so it also works above the host's 64 MiB buffer limit.
     with (d/'roms/diagnostic.nds').open('r+b') as nds:nds.truncate(65 << 20)
-    # Select DS from the sorted list, save a state through the host menu, and return.
-    env['POCKET_KEYS']='10:down,20:down,30:down,40:a,70:menu,80:down,90:a,100:menu,110:up,120:a'
+    # Select DS from the sorted list, save a state through the host menu, and return (QUIT asks: CANCEL, then QUIT).
+    env['POCKET_KEYS']='10:down,20:down,30:down,40:a,70:menu,80:down,90:a,100:menu,110:up,120:a,130:down,140:a'
     run(d,'--frames','65')
     del env['POCKET_KEYS']
     assert (d/'states/diagnostic.nds.ss').exists(),'DS did not launch from the game list'

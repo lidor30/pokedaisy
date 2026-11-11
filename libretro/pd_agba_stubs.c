@@ -1,8 +1,5 @@
-/* What is still not on the armGBA core: Game Boy games (gb_field.c, pk_wide_gb.c, both written against mGBA's SM83). EXPAND (pk_wide), the game's own functions called between
- * frames (pk_call: FLY, PC, REPEL, BIKE, the wild-encounter switch) and the field read are written against mGBA's CPU and
- * renderer structures; armGBA's are its own. Until they are ported (plorpos-oe0.45.2 and .3) every one of them says "not
- * supported", so the companion (party, bag, dex, map, guide, settings, the HUD's readouts) runs and the rest is hidden.
- * GPL-3.0, see ../NOTICE. */
+/* What is not on the armGBA core: the Game Boy side (gb_field.c, pk_wide_gb.c and Polished Crystal's field calls, all
+ * written against mGBA's SM83; the core takes GBA games only). Each says "not supported" here. GPL-3.0, see ../NOTICE. */
 #include "field_items.h"
 #include "fly.h"
 #include "gb_field.h"

@@ -340,13 +340,19 @@ static int tiny_width(const char *t) {
 // each 3x3 block of that is one pixel - its solid pixels' average, where most of the block is solid.
 #define MINI_ITEM (PD_ITEM_ICON * 2 / 3)
 static uint32_t itemPx[PD_ITEM_ICON * PD_ITEM_ICON], item2x[4 * PD_ITEM_ICON * PD_ITEM_ICON];
-static void mini_item(struct hud *u, int id, int x, int y) {
+static void art(struct pd_canvas *c, const char *const *rows, int x, int y, const char *keys, const uint32_t *cols,
+                uint32_t other);
+/* An item's picture at about two thirds (the mini HUD); [art] (nullable): drawn when the game has no picture for it,
+ * else a Poké Ball (Ruby / Sapphire draw no item icons: the REPEL row then shows the spray, as the full-size HUD). */
+static void mini_item(struct hud *u, int id, int x, int y, const char *const *fallback) {
   struct pd_canvas s;
   pd_canvas_init(&s, PD_ITEM_ICON, PD_ITEM_ICON, itemPx);
   for (int i = 0; i < PD_ITEM_ICON * PD_ITEM_ICON; i++)
     itemPx[i] = SHRUNK_CLEAR;
   bool drawn = u->itemDraw ? u->itemDraw(&s, id, 0, 0) : pd_draw_item_icon(&s, u->g, id, 0, 0, false);
-  if (!drawn)
+  if (!drawn && fallback)
+    art(&s, fallback, 1, 2, "KLG", (const uint32_t[]){0x182820, 0xA4F0B8, 0x48B66C}, 0);
+  else if (!drawn)
     pd_draw_party_ball(&s, (PD_ITEM_ICON - 20) / 2, (PD_ITEM_ICON - 20) / 2);
   const int n2 = 2 * PD_ITEM_ICON;
   for (int y = 0; y < PD_ITEM_ICON; y++)
@@ -487,12 +493,17 @@ static void hp_bar(struct hud *u, int x, int y, int w, int hp, int maxHp) {
 }
 
 // The status chip over an icon's top (HudStatusChip): the party tab's colours.
+#define TAG_H (mini ? 5 : 15) // the party's status row: chips, or the mini HUD's marks
 static void status_chip(struct hud *u, int cx, int y, const char *label) {
   struct pd_canvas *c = u->c;
   uint32_t fill = u->partyPalette ? pd_ui_status_color(label)
                 : !strcmp(label, "FNT") ? 0x6B6B6B : !strcmp(label, "PSN") || !strcmp(label, "TOX") ? 0xA040A0
                 : !strcmp(label, "PAR") ? 0xB8A038 : !strcmp(label, "BRN") ? 0xE07030
                 : !strcmp(label, "FRZ") ? 0x58A8C8 : 0x8C8C8C;
+  if (mini) { // a tile is 15 pixels and the tiny font has digits only: the status is its colour, inside the tile
+    pd_round_rect(c, cx - (TILE - 3) / 2, y, TILE - 3, TAG_H - 2, 1, fill);
+    return;
+  }
   int w = pd_text_width(label) + 6;
   pd_round_rect(c, cx - w / 2, y, w, 13, 2, fill);
   pd_text(c, cx - w / 2 + 3, y - 2, label, 0xFFFFFF, PD_NO_SHADOW);
@@ -547,7 +558,6 @@ static void mon_icon(struct hud *u, const struct pd_mon *m, int x, int y) {
 #define COMPACT_ICON_H 21 // what shows of it: a Pokémon stands at the bottom of its picture
 #define SHOWN_ICON_H (mini ? 12 : COMPACT_ICON_H)
 #define TILE_H (small ? SHOWN_ICON_H + 5 : 26 + 5)
-#define TAG_H 15
 
 static int party_tag_height(const struct hud *u) {
   for (int i = 0; i < u->partyN; i++)
@@ -704,7 +714,7 @@ static int ball_count(struct hud *u, const struct pd_item *b, int x, int y) {
   if (mini) {
     char t[12];
     snprintf(t, sizeof t, "%d", b->quantity);
-    mini_item(u, b->id, x, y);
+    mini_item(u, b->id, x, y, NULL);
     return MINI_ITEM + 1 + tiny_text(u->c, x + MINI_ITEM + 1, y + (MINI_ITEM - TINY_H) / 2, t, u->L->text, u->L->shadow);
   }
   bool drawn = u->itemDraw ? u->itemDraw(u->c, b->id, x, y) : pd_draw_item_icon(u->c, u->g, b->id, x, y, false);
@@ -771,7 +781,7 @@ static int repel_w(const struct hud *u, bool narrow) { return 2 * PAD + repel_in
 static void repel_inner(struct hud *u, int x, int y, bool narrow) {
   const struct hud_state *h = u->h;
   if (mini) { // the spray, the count over a thin bar
-    mini_item(u, u->itemDraw ? u->repelItem : h->repelItem ? h->repelItem : 86, x, y);
+    mini_item(u, u->itemDraw ? u->repelItem : h->repelItem ? h->repelItem : 86, x, y, quick_icon_repel);
     char t[12];
     snprintf(t, sizeof t, "%d", h->repel);
     int tx = x + MINI_ITEM + 2, full = h->repelFull > 0 ? h->repelFull : 100;

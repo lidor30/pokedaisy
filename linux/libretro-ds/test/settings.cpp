@@ -185,7 +185,7 @@ int main(int argc,char** argv){
     hud_ds_draw(&hudCanvas,&field,&scale,&hudOptions,nullptr,
                 [](pd_canvas* dest,void*,const pd_mon*,int x,int y,bool){pd_fill(dest,x+6,y+6,20,20,0xF4CF54);},
                 [](pd_canvas* dest,int,int x,int y){pd_fill(dest,x+8,y+3,8,16,0x80CF72);return true;},
-                79,false,hudCanvas.w,&hits);
+                79,false,hudCanvas.w,&hits,nullptr);
     assert(hud_first(&hits)==HUD_SLOT);
     partyWidth[i]=hits.at[0].w;
     partyHeight[i]=hits.at[0].h;

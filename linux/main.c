@@ -192,10 +192,26 @@ static int joy(int n) {
   static const int map[] = {B, A, Y, X, L, R, SELECT, START, MENU, -1, L2, R2};
   return n >= 0 && n < 12 ? map[n] : -1;
 }
+/* A direction is held by the D-pad (or the keyboard, the hat) and by the left stick apart: letting go of one keeps it
+ * held while the other still has it. */
+static unsigned padHeld;  // directions the D-pad, keyboard or hat hold
+static bool fromStick;    // key() called by stick_dir
+static int stick_of(int dir) { return dir == UP ? SUP : dir == DOWN ? SDOWN : dir == LEFT ? SLEFT : dir == RIGHT ? SRIGHT : -1; }
 static void key(int k, bool isDown) {
   if (k < 0)
     return;
   unsigned bit = 1u << k;
+  int stick = stick_of(k);
+  if (stick >= 0) {
+    if (fromStick) {
+      if (!isDown && (padHeld & bit))
+        return; // the D-pad still holds it
+    } else {
+      padHeld = isDown ? padHeld | bit : padHeld & ~bit;
+      if (!isDown && (held & (1u << stick)))
+        return; // the stick still holds it
+    }
+  }
   if (isDown) {
     if (!(held & bit)) {
       pressed |= bit;
@@ -211,7 +227,9 @@ static void stick_dir(int stickKey, int dir, bool on) {
   if (on == ((held & (1u << stickKey)) != 0))
     return;
   key(stickKey, on);
+  fromStick = true;
   key(dir, on);
+  fromStick = false;
 }
 /* Controllers come and go (a USB or Bluetooth pad, a handheld whose built-in one shows up late): SDL reports the
  * ones it has a mapping for as game controllers (its own database, DATA/gamecontrollerdb.txt, or
@@ -446,7 +464,8 @@ static unsigned hotkeys_held(const int *hotkeys, unsigned *fired) {
   hotkeyMask = 0;
   for (int i = 0; i < HK_ACTIONS; i++) {
     int k = hotkeys[i];
-    if (k < 0)
+    // REWIND's button is the game's while REWIND is off (L2 to start with: the core's own buttons may be on it).
+    if (k < 0 || (i == HK_REWIND && !hostSet.rewind))
       continue;
     unsigned bit = 1u << k;
     hotkeyMask |= bit; // never the game's, pressed or not (a release mid-frame would reach it otherwise)
@@ -500,51 +519,66 @@ static bool write_file(const char *path, const void *d, size_t n, bool sync) {
   unlink(tmp);
   return false;
 }
-static int name_cmp(const void *a, const void *b) { return strcmp(*(char *const *)a, *(char *const *)b); }
-/* A copy of the battery save before the game opens, like Android's: DIR/NAME.YYYYmmdd-HHMMSS.sav, a new one only when
- * it differs from the newest, the newest 10 kept. A save that can't be backed up keeps the game closed. */
+/* A copy of the battery save before the game opens, like Android's and as host_io.c's pocket_save_backup names them (the
+ * DS path's, and the hosts' before this one): DIR/STEM.backup-YYYYmmdd-HHMMSS.EXT, a new one only when the save data
+ * differs from the newest backup's, the newest 10 kept. Every save chip is a multiple of 512 bytes, so what is past the
+ * last whole 512 is mGBA's clock footer, which moves every session: a save where only the clock moved is the same save.
+ * A save that can't be backed up keeps the game closed. */
+static bool same_save(const unsigned char *a, size_t an, const unsigned char *b, size_t bn) {
+  size_t n = an - an % 512;
+  if (!n || n != bn - bn % 512)
+    return an == bn && !memcmp(a, b, an);
+  return !memcmp(a, b, n);
+}
+static int newest_first(const void *a, const void *b) { return -strcmp(*(char *const *)a, *(char *const *)b); }
 static bool save_backup(const char *sav, const char *dir) {
   size_t n;
   unsigned char *d = read_file(sav, &n, 64u << 20);
   if (!d)
     return !exists(sav); // nothing to keep yet
+  if (!n) {
+    free(d);
+    return true;
+  }
   mkdir(dir, 0755);
-  const char *name = strrchr(sav, '/');
-  name = name ? name + 1 : sav;
-  size_t nameLen = strlen(name);
+  const char *file = strrchr(sav, '/');
+  file = file ? file + 1 : sav;
+  const char *dot = strrchr(file, '.');
+  char stem[512], ext[32] = "sav";
+  snprintf(stem, sizeof stem, "%.*s.backup-", dot && dot != file ? (int)(dot - file) : (int)strlen(file), file);
+  if (dot && dot != file)
+    snprintf(ext, sizeof ext, "%s", dot + 1);
   char *list[256];
   int count = 0;
   DIR *dd = opendir(dir);
-  struct dirent *e;
-  while (dd && (e = readdir(dd)) && count < 256)
-    if (!strncmp(e->d_name, name, nameLen) && e->d_name[nameLen] == '.' && strstr(e->d_name + nameLen, ".sav"))
+  for (struct dirent *e; dd && (e = readdir(dd)) && count < 256;)
+    if (!strncmp(e->d_name, stem, strlen(stem)) && !strstr(e->d_name, ".tmp"))
       list[count++] = strdup(e->d_name);
   if (dd)
     closedir(dd);
-  qsort(list, count, sizeof *list, name_cmp);
-  bool same = false, ok = true;
+  qsort(list, count, sizeof *list, newest_first);
+  bool write = true, ok = true;
   char path[PATH_MAX * 4 + 64];
   if (count) {
     size_t m;
-    snprintf(path, sizeof path, "%s/%s", dir, list[count - 1]);
+    snprintf(path, sizeof path, "%s/%s", dir, list[0]);
     unsigned char *last = read_file(path, &m, 64u << 20);
-    same = last && m == n && !memcmp(last, d, n);
+    write = !last || !same_save(last, m, d, n);
     free(last);
   }
-  if (!same) {
+  if (write) {
     char stamp[32];
     time_t now = time(NULL);
     strftime(stamp, sizeof stamp, "%Y%m%d-%H%M%S", localtime(&now));
-    snprintf(path, sizeof path, "%s/%s.%s.sav", dir, name, stamp);
+    snprintf(path, sizeof path, "%s/%s%s.%s", dir, stem, stamp, ext);
     ok = write_file(path, d, n, true);
-    if (ok)
-      count++; // the new one is the newest
   }
-  for (int i = 0; ok && i < count - 10 && i < count; i++) {
+  // The newest 10 stay (a new one counts as the newest).
+  for (int i = ok && write ? 9 : 10; ok && i < count; i++) {
     snprintf(path, sizeof path, "%s/%s", dir, list[i]);
     unlink(path);
   }
-  for (int i = 0; i < (same ? count : count - 1) && i < 256; i++)
+  for (int i = 0; i < count; i++)
     free(list[i]);
   free(d);
   return ok;
@@ -650,6 +684,8 @@ static enum retro_pixel_format pixelFormat = RETRO_PIXEL_FORMAT_0RGB1555;
 static struct retro_system_av_info av;
 static SDL_Texture *frameTexture;
 static int textureW, textureH, frameW, frameH;
+static enum retro_pixel_format textureFormat; // what frameTexture was made for: a core of another format needs a new one
+static double srcRate = 32768, rateTrim = 1;   // the core's audio rate (SET_SYSTEM_AV_INFO can change it), the pacing's trim
 static bool ffNow, rewindingNow;
 static int ffSpeedNow = 1;
 static void core_log(enum retro_log_level level, const char *fmt, ...) {
@@ -662,7 +698,7 @@ static void core_log(enum retro_log_level level, const char *fmt, ...) {
 }
 static void frame_texture(void) {
   int w = (int)av.geometry.max_width, h = (int)av.geometry.max_height;
-  if (frameTexture && w <= textureW && h <= textureH)
+  if (frameTexture && w <= textureW && h <= textureH && pixelFormat == textureFormat)
     return;
   if (frameTexture)
     SDL_DestroyTexture(frameTexture);
@@ -673,6 +709,7 @@ static void frame_texture(void) {
                                    SDL_TEXTUREACCESS_STREAMING, w, h);
   textureW = w;
   textureH = h;
+  textureFormat = pixelFormat;
   if (frameTexture)
     SDL_SetTextureBlendMode(frameTexture, SDL_BLENDMODE_NONE);
   else
@@ -738,6 +775,8 @@ static bool environment(unsigned cmd, void *data) {
     return true;
   case RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO:
     av = *(const struct retro_system_av_info *)data;
+    if (av.timing.sample_rate > 0)
+      srcRate = av.timing.sample_rate; // the audio resampler follows the core's new rate
     if (renderer)
       frame_texture();
     return true;
@@ -922,7 +961,6 @@ static bool capture(const char *path) {
 
 /* ---- audio: the core's samples resampled to the device, a little faster or slower to keep its queue near 60 ms
  * (the screen paces the game, not the sound card); fast-forward keeps every Nth sample, so it plays sped up. ---- */
-static double srcRate = 32768, rateTrim = 1;
 static double resamplePos;
 static int16_t prevL, prevR;
 static unsigned audioSkip, audioKeepEvery = 1;
@@ -967,6 +1005,7 @@ static size_t audio_batch(const int16_t *in, size_t frames) {
     return frames;
   size_t n = 0;
   double step = srcRate * rateTrim / OUT_RATE;
+  const bool room = SDL_GetQueuedAudioSize(audio) < OUT_RATE * 4 / 5; // never more than 200 ms behind
   for (size_t i = 0; i < frames; i++) {
     if (audioSkip++ % audioKeepEvery)
       continue;
@@ -974,7 +1013,12 @@ static size_t audio_batch(const int16_t *in, size_t frames) {
 #ifdef POCKET_TEST_AUDIO
     audioNonzero += l || r;
 #endif
-    while (resamplePos < 1.0 && n < 4096) {
+    while (resamplePos < 1.0) {
+      if (n == 4096) { // a batch longer than the buffer: send what's made and go on (never skip ahead in the input)
+        if (room)
+          SDL_QueueAudio(audio, out, (Uint32)(n * 4));
+        n = 0;
+      }
       out[2 * n] = (int16_t)(prevL + (l - prevL) * resamplePos);
       out[2 * n + 1] = (int16_t)(prevR + (r - prevR) * resamplePos);
       n++;
@@ -984,7 +1028,7 @@ static size_t audio_batch(const int16_t *in, size_t frames) {
     prevL = l;
     prevR = r;
   }
-  if (n && SDL_GetQueuedAudioSize(audio) < OUT_RATE * 4 / 5) // never more than 200 ms behind
+  if (n && room)
     SDL_QueueAudio(audio, out, (Uint32)(n * 4));
   return frames;
 }
@@ -1030,7 +1074,7 @@ static unsigned joypad(unsigned keys) {
              {R, RETRO_DEVICE_ID_JOYPAD_R},           {L, RETRO_DEVICE_ID_JOYPAD_L},
              {X, RETRO_DEVICE_ID_JOYPAD_X},           {Y, RETRO_DEVICE_ID_JOYPAD_Y},
              {L2, RETRO_DEVICE_ID_JOYPAD_L2},         {R2, RETRO_DEVICE_ID_JOYPAD_R2},
-             {L3, RETRO_DEVICE_ID_JOYPAD_L3}};
+             {L3, RETRO_DEVICE_ID_JOYPAD_L3},         {R3, RETRO_DEVICE_ID_JOYPAD_R3}};
   unsigned bits = 0;
   for (size_t i = 0; i < sizeof map / sizeof map[0]; i++)
     if (keys & (1u << map[i].key))
@@ -1362,6 +1406,13 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
   int *hotkeys = !strcmp(coreName, "pokedaisy_ds_libretro.so") ? hostSet.dsHotkey : hostSet.hotkey;
   // armGBA's states aren't mGBA's: each core its own file.
   snprintf(ss, sizeof ss, "%s/states/%s%s.ss", root, name, strstr(coreName, "_gba_") ? ".armgba" : "");
+  if (strstr(coreName, "_gba_")) {
+    // A GBA state from before armGBA is mGBA's: it can't load here, so say so instead of "No state saved yet".
+    char old[PATH_MAX * 2 + 16];
+    snprintf(old, sizeof old, "%s/states/%s.ss", root, name);
+    if (exists(old) && !exists(ss))
+      notice("Your older save state doesn't load in this version");
+  }
   if (!save_backup(sav, backups)) {
     free(rom);
     dlclose(core.dl);
@@ -1407,7 +1458,8 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     if (sramCopy.data)
       sramCopy.size = save_image(sramCopy.data);
   }
-  rewindBudget = (getenv("POCKET_REWIND_MB") ? (size_t)atoi(getenv("POCKET_REWIND_MB")) : 32) << 20;
+  int rewindMB = getenv("POCKET_REWIND_MB") ? atoi(getenv("POCKET_REWIND_MB")) : 32;
+  rewindBudget = (size_t)(rewindMB > 0 ? rewindMB : 32) << 20; // a bad value (negative, 0) is the default
   rewindTick = 0;
   bool menuOpen = false, leave = false;
   struct pd_menu menu, hkMenu;
@@ -1416,6 +1468,10 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
   static const char *const hkNames[HK_ACTIONS] = {"FAST FORWARD", "REWIND", "SAVE STATE", "LOAD STATE"};
   bool hkPage = false;
   int capturing = -1; // the HOTKEYS row waiting for a button
+  // LOAD STATE and QUIT ask first, CANCEL on top (as the hosts before this one): a stray A never loses the game's progress.
+  struct pd_menu confirmMenu;
+  static const char *confirmRows[2];
+  int confirming = 0; // the menu row asked about (M_LOAD / M_QUIT), 0 = none
   int frames = 0;
   uint64_t due = SDL_GetPerformanceCounter(), lastStart = 0, lastFrame = due;
   pacing_start(hz);
@@ -1455,6 +1511,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     if (menuKey) {
       menuOpen = !menuOpen;
       hkPage = false;
+      confirming = 0;
       capturing = -1;
       if (menuOpen) {
         pd_menu_init(&menu, "POKEDAISY", rowPtrs, M_COUNT);
@@ -1492,6 +1549,22 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
             break;
           }
       hkMenu.title = capturing >= 0 ? "PRESS A BUTTON" : "HOTKEYS";
+    } else if (menuOpen && confirming) {
+      if (down(UP))
+        pd_menu_move(&confirmMenu, -1);
+      if (down(DOWN))
+        pd_menu_move(&confirmMenu, 1);
+      if (down(B))
+        confirming = 0;
+      if (down(A)) {
+        if (confirmMenu.selected == 1 && confirming == M_LOAD) {
+          notice(state_file(ss, false) ? "State loaded" : "State load failed");
+          menuOpen = false;
+        } else if (confirmMenu.selected == 1 && confirming == M_QUIT) {
+          leave = true;
+        }
+        confirming = 0;
+      }
     } else if (menuOpen && hkPage) {
       if (down(UP))
         pd_menu_move(&hkMenu, -1);
@@ -1521,8 +1594,16 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
           menuOpen = false;
           break;
         case M_LOAD:
-          notice(!exists(ss) ? "No state saved yet" : state_file(ss, false) ? "State loaded" : "State load failed");
-          menuOpen = false;
+          if (!exists(ss)) {
+            notice("No state saved yet");
+            menuOpen = false;
+            break;
+          }
+          confirming = M_LOAD;
+          confirmRows[0] = "CANCEL";
+          confirmRows[1] = "LOAD STATE";
+          pd_menu_init(&confirmMenu, "LOAD THE STATE?", confirmRows, 2);
+          confirmMenu.overlay = true;
           break;
         case M_FFSPEED:
           hostSet.ffSpeed = hostSet.ffSpeed == 0 ? 2 : hostSet.ffSpeed >= 8 ? 0 : hostSet.ffSpeed + 1;
@@ -1549,7 +1630,11 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
           hkMenu.overlay = true;
           break;
         case M_QUIT:
-          leave = true;
+          confirming = M_QUIT;
+          confirmRows[0] = "CANCEL";
+          confirmRows[1] = fromList ? "QUIT TO GAME LIST" : "QUIT";
+          pd_menu_init(&confirmMenu, "LEAVE THE GAME?", confirmRows, 2);
+          confirmMenu.overlay = true;
           break;
         }
       }
@@ -1557,7 +1642,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     if (menuFrame) {
       muted = true;
       gameKeys = 0;
-      present_game(menuOpen ? (hkPage ? &hkMenu : &menu) : NULL);
+      present_game(menuOpen ? (confirming ? &confirmMenu : hkPage ? &hkMenu : &menu) : NULL);
       if (maxFrames && ++frames >= maxFrames) { // a scripted run can end, and be captured, with the menu up
         if (shot && !capture(shot))
           appError = 1;
@@ -1670,6 +1755,7 @@ int main(int argc, char **argv) {
   exe_dir(argv[0]);
   signal(SIGINT, stop);
   signal(SIGTERM, stop);
+  signal(SIGHUP, stop); // a closed terminal or session: the save goes to the card like a quit
   mkdir(root, 0755);
   char path[PATH_MAX * 2];
   const char *dirs[] = {"roms", "saves", "states"};
@@ -1773,7 +1859,7 @@ int main(int argc, char **argv) {
       if (down(DOWN))
         pd_menu_move(&list, 1);
       if (down(A) && count)
-        run_game(paths[list.selected], 0, NULL, true);
+        appError = 0, run_game(paths[list.selected], 0, NULL, true); // the last game's result is the exit status
       SDL_RenderClear(renderer);
       overlay_begin();
       pd_menu_draw(&list, &overlay);

@@ -66,6 +66,14 @@ static void audio_status(bool active, unsigned occupancy, bool underrun) {
   (void)occupancy;
   frameLate = underrun;
 }
+/* The emulator's own (armGBA's frame skip registers one, again on every option change): the frontend holds one callback,
+ * so both are called from it, and ours stays registered whatever the emulator sets later. */
+static retro_audio_buffer_status_callback_t emuAudioStatus;
+static void audio_status_both(bool active, unsigned occupancy, bool underrun) {
+  audio_status(active, occupancy, underrun);
+  if (emuAudioStatus)
+    emuAudioStatus(active, occupancy, underrun);
+}
 static retro_video_refresh_t realVideo;
 static retro_input_state_t realInput;
 static bool optionsDirty;
@@ -74,6 +82,54 @@ static const char *pd_option(const char *key) {
   struct retro_variable v = {key, NULL};
   return realEnv && realEnv(RETRO_ENVIRONMENT_GET_VARIABLE, &v) && v.value ? v.value : NULL;
 }
+
+#ifdef PD_ARMGBA
+/* armGBA's options this core can't follow, left out of the list and answered here: the LCD effects and screen sizes
+ * (a frame bigger than the GBA's, which the companion draws over), the link modes (two games, or a GameCube, in one
+ * frame), Low Memory (no ROM in memory to read), Threaded Video (EXPAND's middle a frame behind its margins), the save
+ * sharing (another save loaded over the player's) and the Game Boy side (Gambatte isn't in this core). Each keeps the
+ * value set here, else armGBA's own default. */
+static const struct { const char *key, *value; } HELD[] = {
+    {"armgba_low_memory", "disabled"}, {"armgba_threaded_video", "disabled"}, {"armgba_lcd_effects", "disabled"},
+    {"armgba_lcd_grid", "disabled"}, {"armgba_lcd_screen", "auto"}, {"armgba_link_mode", "off"},
+    {"armgba_player1_saves", "retroarch"}, {"armgba_load_save", "off"}, {"armgba_send_save", "off"},
+    {"armgba_back_up_save", "off"}, {"armgba_shared_controls", "off"}, {"armgba_player2_game", "same"},
+};
+static const char *const HIDDEN_PREFIX[] = {"armgba_lcd_", "armgba_gb_", "armgba_link_"};
+static const char *const HIDDEN[] = {"armgba_r2_follows", "armgba_switch_controller", "armgba_player_numbers",
+    "armgba_gamecube_address", "armgba_receive_into", "armgba_load_into", "armgba_keep_progress", "armgba_new_save",
+    "armgba_keep_saves", "armgba_list_saves", "armgba_safe_saves"};
+#define HELD_DEFAULTS_MAX 64
+static struct { const char *key, *value; } heldDefaults[HELD_DEFAULTS_MAX]; // armGBA's defaults of what's hidden
+static int heldDefaultsN;
+static const char *held_value(const char *key) {
+  for (size_t i = 0; i < sizeof HELD / sizeof *HELD; i++)
+    if (!strcmp(key, HELD[i].key))
+      return HELD[i].value;
+  return NULL;
+}
+static bool option_hidden(const char *key) {
+  if (held_value(key))
+    return true;
+  for (size_t i = 0; i < sizeof HIDDEN_PREFIX / sizeof *HIDDEN_PREFIX; i++)
+    if (!strncmp(key, HIDDEN_PREFIX[i], strlen(HIDDEN_PREFIX[i])))
+      return true;
+  for (size_t i = 0; i < sizeof HIDDEN / sizeof *HIDDEN; i++)
+    if (!strcmp(key, HIDDEN[i]))
+      return true;
+  return false;
+}
+/* What a hidden option reads as (NULL: not one). */
+static const char *hidden_value(const char *key) {
+  const char *v = held_value(key);
+  if (v || !option_hidden(key))
+    return v;
+  for (int i = 0; i < heldDefaultsN; i++)
+    if (!strcmp(key, heldDefaults[i].key))
+      return heldDefaults[i].value;
+  return NULL;
+}
+#endif
 
 /* mGBA defines its options in one call; ours go in with them (an environment may take only one). */
 static bool env_wrap(unsigned cmd, void *data) {
@@ -87,7 +143,20 @@ static bool env_wrap(unsigned cmd, void *data) {
     free(defs);
     defs = calloc(n + PD_OPTION_COUNT + 1, sizeof *defs);
     if (defs && us) {
+#ifdef PD_ARMGBA
+      size_t kept = 0;
+      heldDefaultsN = 0;
+      for (size_t i = 0; i < n; i++) {
+        const struct retro_core_option_v2_definition *o = &us->definitions[i];
+        if (!option_hidden(o->key))
+          defs[kept++] = *o;
+        else if (heldDefaultsN < HELD_DEFAULTS_MAX)
+          heldDefaults[heldDefaultsN].key = o->key, heldDefaults[heldDefaultsN++].value = o->default_value;
+      }
+      n = kept;
+#else
       memcpy(defs, us->definitions, n * sizeof *defs);
+#endif
       memcpy(defs + n, pdOptions, sizeof pdOptions);
       static struct retro_core_options_v2 merged;
       static struct retro_core_options_v2_intl mergedIntl;
@@ -97,6 +166,22 @@ static bool env_wrap(unsigned cmd, void *data) {
           cmd == RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL ? ((struct retro_core_options_v2_intl *)data)->local : NULL};
       return realEnv(cmd, cmd == RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL ? (void *)&mergedIntl : (void *)&merged);
     }
+  }
+#ifdef PD_ARMGBA
+  if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE && data && ((struct retro_variable *)data)->key) {
+    const char *v = hidden_value(((struct retro_variable *)data)->key);
+    if (v) {
+      ((struct retro_variable *)data)->value = v;
+      return true;
+    }
+  }
+  if (cmd == RETRO_ENVIRONMENT_SET_SUBSYSTEM_INFO)
+    return false; // two linked games: not loaded by retro_load_game_special here
+#endif
+  if (cmd == RETRO_ENVIRONMENT_SET_AUDIO_BUFFER_STATUS_CALLBACK) {
+    emuAudioStatus = data ? ((struct retro_audio_buffer_status_callback *)data)->callback : NULL;
+    struct retro_audio_buffer_status_callback both = {audio_status_both};
+    return realEnv(cmd, &both);
   }
   if (cmd == RETRO_ENVIRONMENT_GET_VARIABLE && data && !strcmp(((struct retro_variable *)data)->key, "mgba_sgb_borders")) {
     // EXPAND needs the Game Boy's own 160x144, so a Super Game Boy border never frames it (as the SDL host's pk_gb_config).
@@ -549,7 +634,8 @@ static int hud_wild_uncaught(const struct pd_game *g, const struct pd_snapshot *
   return left;
 }
 
-/* The HUD over the game's own picture, at the companion's pixel scale (SIZE steps it). */
+/* The HUD over the game's own picture, a canvas pixel a game pixel: SIZE picks the mini HUD (SMALL, NORMAL) or the full
+ * one (LARGE). */
 static void draw_hud(void) {
   int gs = CW / (int)gameW < CH / (int)gameH ? CW / (int)gameW : CH / (int)gameH;
   if (gs < 1)
@@ -824,7 +910,10 @@ RETRO_API void retro_set_environment(retro_environment_t e) {
 }
 /* What the capture of mGBA's own video call records: the size; the pixels stay in outputBuffer. */
 static void capture_video(const void *d, unsigned w, unsigned h, size_t pitch) {
-  PD_BE_CAPTURE(d, w, h, pitch);
+  /* A frame the capture can't hold (armGBA's larger LCD / link pictures) keeps the last one: the drawing reads
+   * outputBuffer at gameW x gameH. */
+  if (!PD_BE_CAPTURE(d, w, h, pitch))
+    return;
   gameW = w;
   gameH = h;
 }
@@ -840,6 +929,16 @@ RETRO_API void retro_get_system_info(struct retro_system_info *info) {
   mgba_retro_get_system_info(info);
   info->library_name = "PokeDaisy";
   info->library_version = "0.3";
+#ifdef PD_ARMGBA
+  info->valid_extensions = "gba|bin"; // armGBA's Game Boy side (Gambatte) isn't in this core
+#endif
+}
+/* Linked games (a subsystem): the companion follows one game, loaded by retro_load_game. */
+RETRO_API bool retro_load_game_special(unsigned type, const struct retro_game_info *info, size_t n) {
+  (void)type;
+  (void)info;
+  (void)n;
+  return false;
 }
 RETRO_API void retro_get_system_av_info(struct retro_system_av_info *info) {
   mgba_retro_get_system_av_info(info);
@@ -851,13 +950,14 @@ RETRO_API void retro_get_system_av_info(struct retro_system_av_info *info) {
 }
 
 RETRO_API bool retro_load_game(const struct retro_game_info *g) {
-  if (!mgba_retro_load_game(g))
+  /* No game: armGBA offers "Start Core" (SET_SUPPORT_NO_GAME), but the companion needs one (PD_BE_AFTER_LOAD reads it). */
+  if (!g || !mgba_retro_load_game(g))
     return false;
   PD_BE_AFTER_LOAD(g);
   choose_canvas();
   read_options();
   {
-    struct retro_audio_buffer_status_callback abc = {audio_status};
+    struct retro_audio_buffer_status_callback abc = {audio_status_both};
     realEnv(RETRO_ENVIRONMENT_SET_AUDIO_BUFFER_STATUS_CALLBACK, &abc);
   }
   frameLate = false;
@@ -986,7 +1086,26 @@ static void layer_jump(void) {
 }
 
 RETRO_API bool retro_unserialize(const void *d, size_t n) {
+#ifdef PD_ARMGBA
+  /* armGBA's state is the whole console, the cartridge's save memory with it, and its unserialize puts that back ("A
+   * loaded state has every console's save as it was"): a frontend that writes the save file afterwards would take the
+   * player's in-game save back to the state's. The save stays the cartridge's here, as in the mGBA core (states load
+   * with SAVESTATE_RTC only) and the DS core (load_state_keeping_save): a state load or a rewind step never touches it. */
+  static uint8_t keep[0x20000]; /* the largest GBA save, 1 Mbit flash */
+  uint8_t *save = retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
+  size_t saveSize = retro_get_memory_size(RETRO_MEMORY_SAVE_RAM);
+  bool kept = save && saveSize && saveSize <= sizeof keep;
+  if (kept)
+    memcpy(keep, save, saveSize);
+#endif
   bool r = mgba_retro_unserialize(d, n);
+#ifdef PD_ARMGBA
+  if (r && kept) {
+    uint8_t *now = retro_get_memory_data(RETRO_MEMORY_SAVE_RAM);
+    if (now && retro_get_memory_size(RETRO_MEMORY_SAVE_RAM) == saveSize)
+      memcpy(now, keep, saveSize);
+  }
+#endif
   if (r && haveGame)
     layer_jump();
   return r;

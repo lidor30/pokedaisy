@@ -1403,6 +1403,7 @@ int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, st
         gbMixSnap = false;
     } else {
         gbMix = gbMix - GB_MIX_STEP < 0 ? 0 : gbMix - GB_MIX_STEP;   // the last scene, frozen, dissolves into the glow
+        gbMixSnap = false; // pk_wide_jump's cut is the frame after it, as pk_wide.c's mixSnap
     }
     if (!gbRawView.w) gbMix = 0;
     if (!PK_WIDE_GB_GLOW) {

@@ -23,7 +23,7 @@ with tempfile.TemporaryDirectory() as temp:
  for module in ['dsperate-lr','mgba','armgba','zlib']:
   tree=root/'third_party'/module
   for f in sorted(tree.rglob('*')):
-   if f.is_file() and f.name.lower().startswith(('license','copying','notice')):
+   if f.is_file() and (f.name.lower().startswith(('license','copying','notice')) or f.parent.name=='LICENSES'):
     dest=notices/module/f.relative_to(tree);dest.parent.mkdir(parents=True,exist_ok=True);shutil.copyfile(f,dest)
  (pak/'SOURCE.txt').write_text('Source: https://github.com/lidor30/pokedaisy\nRef: '+a.source_ref+'\n'
   'GB/GBC: libretro/ and third_party/mgba. GBA: libretro/armgba/, third_party/armgba and third_party/zlib.\n'
