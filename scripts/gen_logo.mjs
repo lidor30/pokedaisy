@@ -2,10 +2,11 @@
 //  - app/src/main/kotlin/.../companion/ui/LogoGen.kt: the website's mark as it is - its rows and palette,
 //    for PixelArt (the Library's title, the PokéDaisy theme's backdrop).
 //  - app/src/main/res/mipmap-*/ic_launcher_foreground.png: the launcher icon's foreground - the mark with
-//    the icon's edits ([iconLogo]: every outline 1 px, the top / bottom petals centred, the 3 and 9 o'clock
-//    petal tips rounded), MARK_DP across in the middle of the adaptive icon, as wide as the old one.
-//  - app/src/main/res/mipmap-*/ic_launcher_background.png: a blue diamond lattice on the flower's own pixel grid
-//    ([lattice]), its 1 px lines crossing behind the flower's middle, each diamond's top half lit.
+//    the icon's edits (scripts/logo_icon.mjs' iconLogo: every outline 1 px, the top / bottom petals centred,
+//    the 3 and 9 o'clock petal tips rounded), MARK_DP across in the middle of the adaptive icon, as wide as the old one.
+//  - app/src/main/res/mipmap-*/ic_launcher_background.png: logo_icon.mjs' blue diamond lattice on the flower's own
+//    pixel grid, its 1 px lines crossing behind the flower's middle, each diamond's top half lit.
+// The avatar and GitHub's social preview are drawn from the same art by scripts/gen_brand_images.mjs.
 //
 //     node scripts/gen_logo.mjs
 import { writeFileSync } from 'node:fs';
@@ -13,40 +14,11 @@ import { deflateSync } from 'node:zlib';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SPRITES } from '../website/src/lib/pixel.js';
+import { CELLS, iconLogo, lattice } from './logo_icon.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** The side (3 and 9 o'clock) petals' tips rounded: the band's notch at each tip filled in. */
-function roundSideTips(rows) {
-  const g = rows.map((r) => [...r]);
-  const n = g.length;
-  for (const col of [0, n - 1]) {
-    const inked = g.map((r, y) => (r[col] !== '.' ? y : -1)).filter((y) => y >= 0);
-    for (let y = Math.min(...inked); y <= Math.max(...inked); y++) if (g[y][col] === '.') g[y][col] = 'K';
-  }
-  return g.map((r) => r.join(''));
-}
-
-/** Every outline 1 px and the flower mirrored exactly: where a petal met the ball's band the black was 3 px
- * (the band now runs on under the petal to the ring), side petals met the ring with two outlines, and the top
- * and bottom petals were a column off on one row each. [x, y, colour] over the 32x32 mark. */
-const ICON_EDITS = [
-  [18, 8, 'D'], [19, 8, 'K'],
-  [19, 23, 'W'], [18, 23, 'K'], [17, 23, 'S'],
-  [11, 11, 'D'], [20, 11, 'D'],
-  [8, 12, 'K'], [9, 12, 'K'], [10, 12, 'K'], [8, 13, 'H'], [9, 13, 'H'],
-  [21, 12, 'K'], [22, 12, 'K'], [23, 12, 'K'], [22, 13, 'H'], [23, 13, 'H'],
-  [9, 18, 'S'], [9, 19, 'K'], [10, 19, 'K'], [11, 20, 'S'],
-  [22, 18, 'S'], [23, 18, 'S'], [21, 19, 'K'], [22, 19, 'K'], [23, 19, 'K'], [20, 20, 'W'],
-];
-function evenOutlines(rows) {
-  const g = rows.map((r) => [...r]);
-  for (const [x, y, c] of ICON_EDITS) g[y][x] = c;
-  return g.map((r) => r.join(''));
-}
-
 const logo = SPRITES.logo;
-const iconLogo = { pal: logo.pal, rows: roundSideTips(evenOutlines(logo.rows)) };
 
 // --- Kotlin ------------------------------------------------------------------------------------
 const pal = Object.entries(logo.pal)
@@ -80,22 +52,6 @@ const DENSITIES = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
  * each screen pixel is the average of SS x SS samples: crisp cells, edges softened by a fraction of a pixel. */
 const MARK_DP = 51;
 const SS = 8;
-/** Both layers are drawn on one grid of cells: the mark on CELLS' middle 32, the lattice's cells counted from
- * the same origin, so the lattice's pixels line up with the flower's. */
-const CELLS = 72;
-
-/** The background's cell (x, y): diagonal 1-cell lines every LATTICE cells, '/' where x + y and '\' where
- * x - y hit a line; both pass through the middle (the corner of cells 35 / 36), so the lattice mirrors
- * exactly both ways round the flower - an even width can't (it would sit half a cell off). The upper half of
- * each diamond is lit, a triangle from its left corner to its right one. */
-const LATTICE = 14;
-const LATTICE_COLOURS = { line: '#226dd5', lit: '#3c94fa', fill: '#2a7fe4' };
-function lattice(x, y) {
-  const m = (v) => ((v % LATTICE) + LATTICE) % LATTICE;
-  const s = m(x + y - (CELLS - 1)), t = m(x - y);
-  if (s === 0 || t === 0) return LATTICE_COLOURS.line;
-  return s < t ? LATTICE_COLOURS.lit : LATTICE_COLOURS.fill;
-}
 const crcTable = Array.from({ length: 256 }, (_, n) => {
   let c = n;
   for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;

@@ -1,20 +1,24 @@
-// The r/PokeDaisy banners (docs/reddit-banners/): the daisy logo and wordmark on the app's blue over a
+// PokeDaisy's banners and profile pictures (docs/brand/) for Reddit, Discord, Ko-fi, Patreon, Buy Me a Coffee and
+// GitHub. The banners: the daisy logo and wordmark on the app's blue over a
 // pixel meadow (and a Ko-fi page banner, 1200x400, and a Patreon one, 2500x625), built from the website's own sprites (website/src/lib/pixel.js) and its Pixel Operator
 // font. No creatures and no game art: the two handhelds are drawn here with plain screens. Writes the
 // PNGs with headless Chrome: Reddit's at 2x (it asks for at least 1072x128 desktop / 1080x128 mobile),
-// Ko-fi's at exactly 1200x400 (3:1, so nothing is cropped), Patreon's at exactly 2500x625 (4:1). Also a square
-// profile picture (1024x1024) and a light banner on the website cover's page (1280x640 at 2x).
+// Ko-fi's at exactly 1200x400 (3:1, so nothing is cropped), Patreon's at exactly 2500x625 (4:1). Also a light
+// banner on the website cover's page (1280x640 at 2x), and from the launcher icon's art (scripts/logo_icon.mjs):
+// the square profile picture (avatar.png, 1024x1024, and a 512 one) and GitHub's social preview (1280x640, uploaded
+// by hand in the repo's Settings > General > Social preview).
 //
-//     node scripts/gen_reddit_banners.mjs
+//     node scripts/gen_brand_images.mjs
 import { spawn } from 'node:child_process';
 import { existsSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { SPRITES, spriteSvg } from '../website/src/lib/pixel.js';
+import { CELLS, LATTICE, LATTICE_COLOURS, iconLogo } from './logo_icon.mjs';
 
 const root = resolve(dirname(fileURLToPath(import.meta.url)), '..');
-const outDir = join(root, 'docs/reddit-banners');
+const outDir = join(root, 'docs/brand');
 const CHROME = process.env.CHROME ?? [
   '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
   '/usr/bin/google-chrome',
@@ -134,20 +138,53 @@ ${sprites}
 </body>`;
 }
 
-// The square profile picture: the logo alone on the banners' blue, kept inside the circle Patreon / Reddit crop it to.
-function avatarPage({ size, logoScale, unit }) {
-  const { w: lw, h: lh, svg } = spriteSvg('logo');
+// The launcher icon's art on <canvas>es, whole screen pixels a cell (crisp): `<canvas data-cell data-flower>`,
+// the flower and the lattice centred on it (the lattice's lines cross at the flower's middle, as on the icon).
+const ICON_SCRIPT = `<script>
+const ROWS = ${JSON.stringify(iconLogo.rows)}, PAL = ${JSON.stringify(iconLogo.pal)};
+const L = ${LATTICE}, COL = ${JSON.stringify(LATTICE_COLOURS)}, MID = ${CELLS / 2};
+const lattice = (x, y) => { const m = (v) => ((v % L) + L) % L; const s = m(x + y - (2 * MID - 1)), t = m(x - y);
+  return s === 0 || t === 0 ? COL.line : s < t ? COL.lit : COL.fill; };
+for (const cv of document.querySelectorAll('canvas[data-cell]')) {
+  const c = +cv.dataset.cell, flower = cv.dataset.flower === '1', ctx = cv.getContext('2d');
+  const n = ROWS.length, ox = cv.width / 2 - MID * c, oy = cv.height / 2 - MID * c; // cell (0, 0) of the icon grid
+  for (let gy = Math.floor(-oy / c); gy * c + oy < cv.height; gy++) for (let gx = Math.floor(-ox / c); gx * c + ox < cv.width; gx++) {
+    const k = flower ? ROWS[gy - (MID - n / 2)]?.[gx - (MID - n / 2)] : undefined;
+    ctx.fillStyle = k && k !== '.' ? PAL[k] : lattice(gx, gy);
+    ctx.fillRect(gx * c + ox, gy * c + oy, c, c);
+  }
+}
+</script>`;
+
+// The square profile picture: the launcher icon's flower and lattice filling the square, the flower as wide a share
+// of it as on the launcher (69%), so the circle Discord / Reddit / Patreon / Ko-fi crop it to keeps it whole.
+function avatarPage(size) {
   return `<!doctype html><meta charset="utf-8"><style>
-* { margin: 0; box-sizing: border-box; }
-html, body { width: ${size}px; height: ${size}px; overflow: hidden; }
-body { position: relative; display: flex; align-items: center; justify-content: center; background:
-  radial-gradient(circle at 50% 30%, rgba(255,255,255,.22), transparent 60%),
-  radial-gradient(circle at 50% 100%, rgba(7,40,120,.30), transparent 55%),
-  linear-gradient(180deg, #0E65F1 0%, #2f84fa 100%); }
-body::before { content: ""; position: absolute; inset: 0; background-image: radial-gradient(rgba(255,255,255,.16) 1px, transparent 1.4px); background-size: ${unit * 6}px ${unit * 6}px; }
-.logo { position: relative; width: ${lw * logoScale}px; height: ${lh * logoScale}px; line-height: 0; filter: drop-shadow(${unit}px ${unit}px 0 rgba(5,30,100,.35)); }
-.logo svg { width: 100%; height: 100%; display: block; }
-</style><body><span class="logo">${svg}</span></body>`;
+* { margin: 0; } html, body { width: ${size}px; height: ${size}px; overflow: hidden; } canvas { display: block; }
+</style><body><canvas width="${size}" height="${size}" data-cell="${(size / 1024) * 22}" data-flower="1"></canvas>${ICON_SCRIPT}</body>`;
+}
+
+// GitHub's social preview (1280x640, what a shared repo link shows): the lattice, the icon in a white frame and
+// the wordmark with a line about the app.
+function socialPage() {
+  const icon = 368; // 46 cells of 8 px, the flower 256 px
+  return `<!doctype html><meta charset="utf-8"><style>
+@font-face { font-family: PX; src: url('${FONT}'); }
+* { margin: 0; } html, body { width: 1280px; height: 640px; overflow: hidden; }
+body { position: relative; font-family: PX, monospace; }
+canvas { display: block; }
+.bg { position: absolute; inset: 0; }
+.card { position: absolute; inset: 0; display: flex; align-items: center; justify-content: center; gap: 64px; }
+.icon { border-radius: 80px; box-shadow: 0 0 0 8px #fff, 12px 12px 0 8px #123f8c; }
+.copy { color: #fff; }
+.name { font-size: 132px; line-height: 1; letter-spacing: 2px; text-shadow: 8px 8px 0 #123f8c; }
+.name b { color: #ff5a4a; font-weight: normal; }
+.tag { font-size: 44px; margin-top: 28px; line-height: 1.25; text-shadow: 4px 4px 0 #123f8c; }
+</style><body>
+<canvas class="bg" width="1280" height="640" data-cell="10" data-flower="0"></canvas>
+<div class="card"><canvas class="icon" width="${icon}" height="${icon}" data-cell="8" data-flower="1"></canvas>
+<div class="copy"><div class="name"><b>POKE</b>DAISY</div><div class="tag">Pokémon, played better.<br>Game Boy to DS, free and open source.</div></div></div>
+${ICON_SCRIPT}</body>`;
 }
 
 // The website cover's light page (blobs, dot grid, faded logos) with the wordmark and a meadow along the bottom.
@@ -246,8 +283,11 @@ const BANNERS = {
       ['coffee', 1224, 5, true], ['bsingle', 1330, 3], ['tree', 1536, 4, true],
     ],
   })],
-  // Square profile picture, 1024 x 1024 at 1x.
-  'avatar': [1, avatarPage({ size: 1024, logoScale: 20, unit: 8 })],
+  // Square profile pictures, 1024 x 1024 and 512 x 512 at 1x.
+  'avatar': [1, avatarPage(1024)],
+  'avatar-512': [1, avatarPage(512)],
+  // GitHub's social preview, 1280 x 640 at 1x.
+  'github-social': [1, socialPage()],
   // The light cover, 1280 x 640 (the website's og.png size) drawn at 2x.
   'light-banner': [2, lightPage({
     w: 1280, h: 640, unit: 4, logoScale: 6, font: 120, kicker: 30, grassRows: 12, flowerX: [250, 470, 760, 1010, 1180],
