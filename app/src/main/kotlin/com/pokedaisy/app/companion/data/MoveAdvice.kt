@@ -34,6 +34,10 @@ fun moveKind(mv: MoveView): MoveKind? = when {
         renegadePlatinum && activeGame == GameKind.PLATINUM -> RenegadePlatinum.data?.moveCategories?.get(mv.id)?.let {
             when (it) { 0 -> MoveKind.PHYSICAL; 1 -> MoveKind.SPECIAL; 2 -> MoveKind.STATUS; else -> null }
         }
+        // So did the Redux hacks (Black 2 / White 2).
+        black2Redux && activeGame.isBw2 -> Black2Redux.data?.moveCategories?.get(mv.id)?.let {
+            when (it) { 0 -> MoveKind.PHYSICAL; 1 -> MoveKind.SPECIAL; 2 -> MoveKind.STATUS; else -> null }
+        }
         originHeartGold || mv.id !in 1..559 -> null
         mv.id in dsStatusMoves -> MoveKind.STATUS
         mv.id in dsSpecialMoves -> MoveKind.SPECIAL

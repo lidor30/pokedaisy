@@ -3178,6 +3178,26 @@ apart), and its own 12 changed files (personal, moves, trainers, encounters...) 
 keep the original typings of a few species v1.3.0 retyped (`RenegadePlatinumTest`'s "other builds" case).
 
 **GUIDE.** `scripts/gen_gen4_guide.py` writes `GuideGen4PlatinumGen.kt` / `GuideGen4HeartGoldGen.kt` from the decomps,
+**Blaze Black 2 Redux / Volt White 2 Redux** (Drayano and AphexCubed's v1.4.1; `Black2Redux`, eight SHA-1s): xdelta patches
+on the US / Europe Black 2 and White 2, each with three more on top (Classic, EVless, Classic EVless). The headers stay
+the retail carts' (`IREO` / `IRDO` rev 0) and so do the RAM, the save and the code the native side calls (the PC's and
+FLY's code checks pass): the player's retail saves load in them, and `GEN5_BLACK2_REDUX` / `GEN5_WHITE2_REDUX` are the
+retail configs with a DEX of their own. Changed: overlays 36, 166-168, 207, 255 and 265, and 33 data files (species,
+moves, items, trainers, encounters, text, icons). The ARM9 is stored unpacked (retail's is BLZ-packed) with its tables
+where the unpacked retail ARM9 has them: sTMHMMoves at 0x0208CC84 (15 TMs teach other moves), the party icon palettes at
+0x0208C54C, the item icon pairs at 0x0208CD50 (White 2's all 0x2C later). Battle overlay 167 loads 0x180 lower and opens
+with an 18 x 18 type chart (Gen 5's ids, Fairy 17; 4 = 1x), Gen 6's: `Black2Redux.matches` reads overlay 167's RAM address
+from the overlay table (now at cart 0x9EE00, so its entry is at 0xA02E4), 0x02199740 / 0x02199780 against retail's
+0x021998C0 / 0x02199900 (the retail table sits at 0x77800). Everything is read from the cart at run time (`NdsArt.readRedux`):
+`/a/0/1/6` types at 6 / 7, `/a/0/2/1` (type 0, category 2 - Gen 5's 0 status, 1 physical, 2 special, turned into the
+app's order - power 3), the chart from overlay 167 (BLZ, `NdsArt.overlay`), the ARM9 tables, and each zone's wild set
+(`/a/0/1/2` +0x14, bits 0-12) into `/a/1/2/7`'s per-season rates for WILD ENCOUNTERS. `gen5Type` maps 17 to the app's 9
+(Fairy in "???"'s slot, as Renegade Platinum, Glazed's names and chart); the battle structs and the DEX go through it too.
+Their art and DEX go to `nds/redux/` with the build's personal-records CRC in the marker (Classic's species differ). Names
+come from the cart's text as every DS cart's (Power-Up Punch in Comet Punch's slot, Dual Wingbeat in ViceGrip's...). No
+GUIDE: their wild Pokémon and trainers are their own. The White 2 dump on this machine (`[b]`) has its DSi ARM9i's last
+byte (0x11824C37) at 0xFF; Volt White 2's patch reads it as 0x00 (its checksums only pass with that byte put back).
+
 numbers only: every map header's wild set (Platinum's grass with its day / night pair, HG / SS's per time of day and
 each version's own branch, surf, rock smash, rods and HG / SS's night fish), the bosses' teams, and HERE's item balls
 and hidden items with their done flags, keyed by place. `Gen4World` (`GuideGen4.kt`) picks from them for the save and

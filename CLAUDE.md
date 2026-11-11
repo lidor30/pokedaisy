@@ -759,6 +759,10 @@ the Poller): its types (Fairy = 9), moves, chart, TMs, icon palettes and wild ra
 never bundled), names from its text as every DS cart's, its art under `nds/renegade/`; no GUIDE (`Guide.kt`). Its Classic patch
 differs only in `pl_personal.narc` and matches the same check. Fixtures `renegade_platinum(_battle)`; docs/DEVELOPMENT.md's
 "Renegade Platinum".
+**Blaze Black 2 / Volt White 2 Redux v1.4.1 (2026-11-12)**: the same path on Black 2 / White 2 (`Black2Redux`, `black2Redux`,
+`GEN5_*2_REDUX`, `NdsArt.readRedux`, art under `nds/redux/`, eight builds: + Classic / EVless / Classic EVless). Told apart by
+battle overlay 167's load address in the overlay table (cart 0xA02E4); its chart opens that overlay (Fairy = Gen 5's 17, which
+`gen5Type` maps to 9 for every Gen 5 read). Retail saves load in them. No GUIDE. docs/DEVELOPMENT.md's "Blaze Black 2 Redux".
 **DS LAYOUT (one screen held sideways, 2026-11-01; SETTINGS > SCREEN on both screens, `Prefs.dsLayout`, NEW tag)**: ONE SCREEN
 (default) / SIDE BY SIDE / LARGE + SMALL / PICTURE IN PICTURE / STACKED, picked from drawn miniatures (`DsLayoutPicker`); the
 stage places the screens (`GameStageLayout.dsArrange`, `DsLayouts.arrange`, edge to edge) over the game's own picture (`DsShots`:

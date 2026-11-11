@@ -56,6 +56,7 @@ class TelemetrySampler {
     private var dsOrigin = false
     /** The DS cart is Renegade Platinum's ([RenegadePlatinum]: the retail Platinum header, its own tables). */
     private var dsRenegade = false
+    private var dsRedux = false
     /** The DS cart's language letter before its text is read: its header's, but English for Origin HeartGold. */
     private val dsLanguage: Char? get() = if (dsOrigin) 'E' else dsGameCode.getOrNull(3)
     private var gen5Cfg: Gen5Config? = null
@@ -358,6 +359,7 @@ class TelemetrySampler {
             teamRocketV3 = base === NATIVE_TEAM_ROCKET_V3
             originHeartGold = dsOrigin
             renegadePlatinum = dsRenegade
+            black2Redux = dsRedux
             fireRedHack = fireRedHackFor(base)
             // Modern Emerald's tables follow the save's settings (a few bytes a sample).
             emeraldHack = if (base === NATIVE_MODERN_EMERALD) {
@@ -758,6 +760,8 @@ class TelemetrySampler {
         dsOrigin = code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
         dsRenegade = code == RenegadePlatinum.CODE && RenegadePlatinum.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
         when {
+        dsRedux = (code == Black2Redux.CODE_BLACK2 || code == Black2Redux.CODE_WHITE2) &&
+            Black2Redux.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
             dsOrigin && NDS_SUPPORT -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_ORIGIN_HEARTGOLD }
             ndsSupported(code, rev) && DsPorts.of(code, rev) != null -> {
                 val port = DsPorts.of(code, rev)!!
@@ -776,8 +780,8 @@ class TelemetrySampler {
                 "IRAO" -> { kind = GameKind.WHITE; gen5Cfg = GEN5_WHITE }
                 "IRBF" -> { kind = GameKind.BLACK; gen5Cfg = GEN5_BLACK_FR }
                 "IRAF" -> { kind = GameKind.WHITE; gen5Cfg = GEN5_WHITE_FR }
-                "IREO" -> { kind = GameKind.BLACK2; gen5Cfg = GEN5_BLACK2 }
-                "IRDO" -> { kind = GameKind.WHITE2; gen5Cfg = GEN5_WHITE2 }
+                "IREO" -> { kind = GameKind.BLACK2; gen5Cfg = if (dsRedux) GEN5_BLACK2_REDUX else GEN5_BLACK2 }
+                "IRDO" -> { kind = GameKind.WHITE2; gen5Cfg = if (dsRedux) GEN5_WHITE2_REDUX else GEN5_WHITE2 }
                 "CPUF" -> { kind = GameKind.PLATINUM; gen4Cfg = GEN4_PLATINUM_FR }
                 else -> { kind = GameKind.PLATINUM; gen4Cfg = if (dsRenegade) GEN4_RENEGADE_PLATINUM else GEN4_PLATINUM_US }
             }

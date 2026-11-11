@@ -2521,6 +2521,11 @@ class PokeDaisyActivity : Activity() {
             com.pokedaisy.app.companion.data.RenegadePlatinum.matches(r)) {
             // Renegade Platinum: retail Platinum's header, its own maps' rates (read from its cart, like Origin's).
             { (com.pokedaisy.app.companion.data.RenegadePlatinum.data ?: com.pokedaisy.app.companion.data.NdsArt.readRenegade(r))?.wildRates ?: IntArray(0) }
+        } else if ((ndsCode == com.pokedaisy.app.companion.data.Black2Redux.CODE_BLACK2 ||
+                ndsCode == com.pokedaisy.app.companion.data.Black2Redux.CODE_WHITE2) &&
+            com.pokedaisy.app.companion.data.Black2Redux.matches(r)) {
+            // Blaze Black 2 / Volt White 2 Redux: retail Black 2's / White 2's header, their own zones' rates (from the cart).
+            { (com.pokedaisy.app.companion.data.Black2Redux.data ?: com.pokedaisy.app.companion.data.NdsArt.readRedux(r))?.wildRateWords() ?: IntArray(0) }
         } else when (ndsCode) {
             "CPUE", "CPUF" -> com.pokedaisy.app.companion.data.PLATINUM_WORLD::wildRates
             "IPKE", "IPKD", "IPKF" -> com.pokedaisy.app.companion.data.HEARTGOLD_WORLD::wildRates

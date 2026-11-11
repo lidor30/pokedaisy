@@ -44,7 +44,8 @@ object GameTitles {
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_CLASSIC_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1,
-    ) + com.pokedaisy.app.companion.data.NDS_PORTS.map { it.sha1 }
+    ) + com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S + com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S +
+        com.pokedaisy.app.companion.data.NDS_PORTS.map { it.sha1 }
 
     private val RETAIL: Map<String, String> = mapOf(
         // Retail (USA, Europe), every revision: pret's pokefirered / pokeemerald / pokeruby.
@@ -71,6 +72,9 @@ object GameTitles {
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1 to "Pokémon Renegade Platinum",
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_CLASSIC_SHA1 to "Pokémon Renegade Platinum",
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1 to "Pokémon Renegade Platinum",
+        // Blaze Black 2 / Volt White 2 Redux v1.4.1 (and their Classic / EVless patches), Black 2 / White 2 edited in place (Black2Redux).
+    ) + com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S.associateWith { "Pokémon Blaze Black 2 Redux" } +
+        com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S.associateWith { "Pokémon Volt White 2 Redux" } + mapOf(
         // Black and White (USA, Europe): the No-Intro dumps (no decomp builds them).
         "26ad0b9967aa279c4a266ee69f52b9b2332399a5" to "Pokémon Black",
         "bc696a0dfb448c7b3a8a206f0f8214411a039208" to "Pokémon White",

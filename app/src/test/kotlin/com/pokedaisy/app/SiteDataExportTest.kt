@@ -5,6 +5,7 @@ import com.pokedaisy.app.companion.data.RETAIL_DUMPS
 import com.pokedaisy.app.companion.data.RETAIL_PORT_CODE_TITLES
 import com.pokedaisy.app.companion.data.OriginHeartGold
 import com.pokedaisy.app.companion.data.RenegadePlatinum
+import com.pokedaisy.app.companion.data.Black2Redux
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -151,7 +152,14 @@ class SiteDataExportTest {
                     // Renegade Platinum (RenegadePlatinum): the retail Platinum's header.
                     "    {\"code\": ${q(RenegadePlatinum.CODE)}, \"rev\": ${RenegadePlatinum.REV}, \"offset\": ${RenegadePlatinum.SIG_OFFSET}, " +
                     "\"word\": ${RenegadePlatinum.SIG}, \"title\": ${q(GameTitles.BY_SHA1.getValue(RenegadePlatinum.V1_3_0_SHA1))}, " +
-                    "\"version\": \"v1.3.0\"}",
+                    "\"version\": \"v1.3.0\"},\n" +
+                    // Blaze Black 2 / Volt White 2 Redux (Black2Redux): the retail Black 2's / White 2's header.
+                    "    {\"code\": ${q(Black2Redux.CODE_BLACK2)}, \"rev\": ${Black2Redux.REV}, \"offset\": ${Black2Redux.SIG_OFFSET}, " +
+                    "\"word\": ${Black2Redux.SIG_BLACK2}, \"title\": ${q(GameTitles.BY_SHA1.getValue(Black2Redux.BLAZE_BLACK2_V1_4_1_SHA1))}, " +
+                    "\"version\": \"v1.4.1\"},\n" +
+                    "    {\"code\": ${q(Black2Redux.CODE_WHITE2)}, \"rev\": ${Black2Redux.REV}, \"offset\": ${Black2Redux.SIG_OFFSET}, " +
+                    "\"word\": ${Black2Redux.SIG_WHITE2}, \"title\": ${q(GameTitles.BY_SHA1.getValue(Black2Redux.VOLT_WHITE2_V1_4_1_SHA1))}, " +
+                    "\"version\": \"v1.4.1\"}",
             )
             append("\n  ],\n")
             append("  \"titles\": {\n")

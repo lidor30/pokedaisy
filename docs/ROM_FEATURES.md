@@ -58,6 +58,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | White 2 (DS) | France, Germany, Spain, Italy, Korea; Japan rev 1 ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
 | Origin HeartGold (DS) | 4.0.3 English 1.0.0 | ✅ ¹⁴ | — ²⁹ | — | — | — | ✅ ²⁹ | — | ✅ ²⁹ | ✅ ¹⁴ | ✅ ²⁹ | ✅ ²⁹ | — | n/a | — | — | — |
 | Renegade Platinum (DS) | 1.3.0, 1.3.0 Classic, 1.2.0 | ✅ ³² | ✅ ³² | — | — | — | ✅ ³² | — | ✅ ³² | ◐ ³² | ◐ ³² | ✅ ³² | — | n/a | — | — | — |
+| Blaze Black 2 Redux (DS) | 1.4.1, + Classic / EVless / Classic EVless | ✅ ³⁵ | ✅ ³⁵ | — | — | — | ✅ ³⁵ | — | ✅ ³⁵ | ◐ ¹⁴ | ✅ ³⁵ | ✅ ³⁵ | ✅ ¹⁶ | n/a | — | — | — |
+| Volt White 2 Redux (DS) | 1.4.1, + Classic / EVless / Classic EVless | ✅ ³⁵ | ✅ ³⁵ | — | — | — | ✅ ³⁵ | — | ✅ ³⁵ | ◐ ¹⁴ | ✅ ³⁵ | ✅ ³⁵ | ✅ ¹⁶ | n/a | — | — | — |
 | Amethyst | 1.3.0, 1.4.1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — ³³ | ✅ ³³ |
 | Ash Gray | 4.5.3, Fork Bug Fix 1.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | — ³³ |
 | Celia's Stupid Romhack | 1.1.4 | ✅ | ✅ | ✅ | ✅ | — | — | — | ✅ | ✅ | ✅ | — | ✅ ¹⁵ | — | — | — | — |
@@ -552,6 +554,18 @@ change to any of the places listed under "Where it's decided" updates its rows h
     its objects keep the sprite id at +0x23 (24 slots, 16-bit graphics ids); 9v1 creates the bird through a field-effect
     helper of its own (template from that helper's table). Emerald Rogue: no FLY at all - its party menu refuses FLY, Dig,
     Teleport and Secret Power always (party_menu.c's CursorCb_FieldMove), so no flight either.
+35. Blaze Black 2 Redux and Volt White 2 Redux (Drayano and AphexCubed's, 1.4.1, and their Classic, EVless and Classic
+    EVless patches) are US / Europe Black 2 and White 2 edited in place: the same headers (`IREO` / `IRDO` rev 0), RAM and
+    save, and the field code the native side calls, so it runs them as Black 2 / White 2. The app tells them apart by
+    battle overlay 167's load address in the overlay table (`Black2Redux.matches`: cart 0xA02E4 holds 0x02199740 /
+    0x02199780 where retail's holds 0x021998C0 / 0x02199900: they moved it to put an 18 x 18 type chart with Fairy at its start)
+    and reads their types, moves, categories, chart, TMs, icon palettes, item icons and the zones' wild rates from the cart
+    (`NdsArt.readRedux`; Fairy is Gen 5's 17, the app's 9). Checked headless on the player's retail Black 2 and White 2 saves,
+    which load in them: PC anywhere opened the storage system; FLY's job flew to Nuvema Town; EXPAND on Humilau City's
+    beach, `widecheck`'s overlap differences the same as retail Black 2's on the same walk; a wild battle on its water
+    (the command menu's input state read, FIGHT pressed through the touch screen); WILD ENCOUNTERS OFF: no battle in 120 steps of surfing, where one came within 16
+    with it on. All eight builds pass the same check and read their own species records (`Black2ReduxTest`).
+
 ## What each column is
 
 - **EXPAND**: ASPECT > EXPAND, the overworld rebuilt past the GBA's edges (`pk_wide.c`; a Game Boy game's past its
