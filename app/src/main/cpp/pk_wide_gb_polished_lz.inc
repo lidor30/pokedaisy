@@ -1,6 +1,6 @@
-/* GPL-3.0; recovered from the working pocket/polished.c decoder. */
-#include <stddef.h>
-int pc_lz(const unsigned char *rom, size_t size, size_t p, unsigned char *out,
+/* GPL-3.0; recovered from the working pocket/polished.c decoder. Included by pk_wide_gb.c.
+ * Polished Crystal's LZ (its connected maps' blocks, its overworld sprites): bytes written, -1 on bad data. */
+static int pcLz(const unsigned char *rom, size_t size, size_t p, unsigned char *out,
           size_t capacity) {
   int used = 0;
 #define BYTE(v)                                                                \

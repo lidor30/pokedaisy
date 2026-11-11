@@ -56,7 +56,7 @@ set(APP ${PD}/../app/src/main/cpp)
 file(GLOB PD_CORE CONFIGURE_DEPENDS ${PD}/../3ds/core/*.c)
 add_library(pokedaisy_gba_libretro SHARED ${AG_GLUE}
   ${PD}/pd_libretro.c ${PD}/pd_lr_mem_agba.c ${PD}/pd_agba_view.c ${PD}/pd_agba_call.c ${APP}/pk_wide.c ${PD}/../linux/fly.c ${PD}/../linux/field_items.c ${PD}/pd_agba_gb_stub.c ${PD}/pd_agba_stubs.c ${PD_CORE}
-  ${PD}/../linux/hud.c ${PD}/../linux/quick_menu.c ${PD}/../linux/wild.c ${PD}/../linux/polished_lz.c)
+  ${PD}/../linux/hud.c ${PD}/../linux/quick_menu.c ${PD}/../linux/wild.c)
 set_source_files_properties(${PD}/pd_libretro.c PROPERTIES COMPILE_OPTIONS "-Wno-unused-function")
 # pk_wide.c is the app's own file, written against mGBA's headers: shim/ gives it the view's types under mGBA's names.
 set_source_files_properties(${APP}/pk_wide.c ${PD}/../linux/fly.c ${PD}/../linux/field_items.c PROPERTIES

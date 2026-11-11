@@ -2076,7 +2076,7 @@ only keeps a 256x256 ring of tiles in VRAM (`field_camera.c`), so the rest would
   pixel for pixel on both games (2026-10-09). Not covered yet: weather drawn over the field (rain sprites, fog on
   BG0) stops at the GBA's edges; scanline effects aren't extended.
 
-### WIDE on the Game Boy (`pk_wide_gb.c`, Pokémon Yellow, Crystal, their Legacy hacks and Crystal Clear)
+### WIDE on the Game Boy (`pk_wide_gb.c`, Pokémon Yellow, Crystal, their Legacy hacks, Crystal Clear and Polished Crystal)
 
 Since 2026-10-18 English Yellow (CRC32 `7d527d62`) has EXPAND, ZOOM and the look-around too. `pk_wide.c` hands every call
 to `pk_wide_gb.c` while a Game Boy game is configured (`pk_wide_gb_knows` / `_configure`, same CRC lookup); the frame is
@@ -2193,10 +2193,22 @@ ZOOM's steps are whole Game Boy pixels: 7.5 -> 6 / 5 / 4 / 3 on 1080 rows). Addr
     Not counted as a fault: a battle's wave transition (per-line SCX, LYOverrides) can't match the
     middle, for about 40 frames on the way into a battle indoors. Retail does the same (rev 1, Union Cave: 44 frames,
     `gbMarkTorn` sees no VRAM or palette write there), so `widecheck` lists them on every Crystal.
+- **Polished Crystal** (3.2.3's normal build, CRC32 `f98367e4`; Keegan's profile, written for the libretro core on 2026-11-08,
+  in the app since 2026-11-12). Its RAM isn't Crystal's shape, so it isn't a `GB_ROMS` row: `pk_wide_gb_knows` / `_configure`
+  answer for its CRC with `pcWideConfig` (`pk_wide_gb_polished_tables.h`, written from the release's own `.sym` by
+  `scripts/gen_polished_wide.py`, which checks the file's SHA-256: addresses only, no ROM bytes) and `gbPolished` set. What
+  differs: metatiles and attributes decompressed into WRAM (`PC_METATILES` / `PC_ATTRIBUTES`, a byte of attributes per tile),
+  34-byte object structs and 14-byte map objects, its LZ (`pk_wide_gb_polished_lz.inc`: connected maps' blocks, overworld
+  sprites), its object palettes as loaded (`PC_LOADED_PALS`: a sprite whose palette isn't loaded isn't drawn) and the map
+  objects in `pk_wide_gb_polished.inc`. Its battle transition sets `hVBlank` to 3, not Crystal's 1 (its 1 is the magnet
+  train), so that's the pull-in's cue there. Checked headless on the new-game save (`native-capture/boot/polished_crystal.txt`):
+  walking its route and grass, the START menu and OPTION, 2197 of 2265 map frames exact; the 68 others are a wild battle's
+  wipe, as on Crystal, and report BATTLE_START. The faithful and debug builds and 3.2.0 - 3.2.2 have their own CRCs and RAM
+  and aren't on yet: a `.sym` each through the generator, then a table of profiles by CRC.
 - **Not yet**: the other languages' Yellows (their RAM is English's + 5 from 0xD018: a `GB_ROMS` row each, plus
   `MapHeaderPointers`), Red / Blue (Yellow's + 1 from 0xCF1B, SGB palettes: `palette` takes `sgbAttributes` there), Gold /
-  Silver, Prism and Polished Crystal (Crystal's engine, their own addresses), battles past the edges, walking frames for Gen 1's
-  off-screen NPCs.
+  Silver and Prism (Crystal's engine, their own addresses), Polished Crystal's other builds, battles past the edges, walking
+  frames for Gen 1's off-screen NPCs.
 
 ## FREE FLIGHT and the scenic FLY (`pk_flight.c`, `Flight.kt`, `ScenicFly.kt`)
 

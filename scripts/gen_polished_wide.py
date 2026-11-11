@@ -1,5 +1,5 @@
 """Generate v3.2.3 normal expansion addresses from official symbols, no ROM data.
-Usage: python3 linux/gen_polished_wide.py release.sym
+Usage: python3 scripts/gen_polished_wide.py release.sym  (writes app/src/main/cpp/pk_wide_gb_polished_tables.h)
 Official release: https://github.com/Rangi42/polishedcrystal/releases/tag/v3.2.3
 ROM SHA1: 6930b48af5844d373e3c9130f26d6dd1084cf4ed; CRC32 f98367e4.
 """
@@ -20,4 +20,4 @@ assert symbols['wOverworldMapBlocksEnd']-symbols['wOverworldMapBlocks']==1326
 assert symbols['wObjectStructsEnd']-symbols['wObjectStructs']==13*34
 assert symbols['wMapObjectsEnd']-symbols['wMapObjects']==21*14
 out='/* Generated from official v3.2.3 symbols (SHA256 '+hashlib.sha256(raw).hexdigest()+'). GPL-3.0. No ROM bytes. */\n#define PC_WIDE_CRC 0xf98367e4u\n#define PC_WIDE_SHA1 "6930b48af5844d373e3c9130f26d6dd1084cf4ed"\nstatic const uint32_t pcWideConfig[GB_CONFIG] = {\n'+'\n'.join(rows)+'\n};\n'
-Path(__file__).with_name('polished_wide_tables.h').write_text(out)
+(Path(__file__).resolve().parents[1]/'app/src/main/cpp/pk_wide_gb_polished_tables.h').write_text(out)
