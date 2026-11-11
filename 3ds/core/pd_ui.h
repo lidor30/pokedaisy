@@ -15,6 +15,7 @@
 
 #include "pd_canvas.h"
 #include "pd_game.h"
+#include "pd_games.h"
 #include "pd_snapshot.h"
 
 #define PD_UI_WIDTH 320
@@ -231,7 +232,13 @@ struct pd_party_source_palette {
     struct pd_party_slot_colors normal, selected, fainted, selectedFainted, empty;
     uint32_t text, shadow, hpFrame, hpInner, hpLabel, hpLabelShade, ball[4];
     bool hideBall, chamfer;
+    int emptyAlpha; // 0 means draw the explicit empty slot
+    uint32_t emptyLines;
+    struct pd_hp_band hpGreen, hpYellow, hpRed, hpEmpty;
+    uint32_t male, maleShadow, female, femaleShadow;
 };
+uint32_t pd_ui_status_color(const char* label);
+
 struct pd_party_source {
     void* ctx;
     bool (*egg)(void*, const struct pd_mon*);
@@ -356,7 +363,7 @@ struct pd_dex_pane pd_ui_dex_card(struct pd_ui*, struct pd_canvas*, const struct
 void pd_ui_dex_links(struct pd_canvas*, struct pd_dex_pane, const struct pd_dex_links*, int selected);
 void pd_ui_dex_info(struct pd_canvas*, struct pd_dex_pane, const char* text, const int* stats, bool gen1);
 void pd_ui_dex_list_row(struct pd_canvas*, int x, int y, int w, int number, const char* name,
-                        bool seen, bool caught, bool selected, const uint32_t* icon, uint32_t clear);
+                        bool seen, uint32_t mark, bool selected, const uint32_t* icon, uint32_t clear);
 int pd_ui_dex_machine_row(int levels);
 void pd_ui_dex_moves(struct pd_canvas*, int x, int y, int w, int h,
                      const struct pd_dex_moves_source*, int selected);

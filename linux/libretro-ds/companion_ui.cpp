@@ -89,6 +89,7 @@ void DsCompanionUi::init(const std::string& directory,int legacyLayout,bool lega
   if (!settings.tabBar) settings.tabBar=dsTabs;
   pd_ui_init(&frame,&settings);pd_ui_init(&options,&settings);
   frame.availableTabs=dsTabs;
+  options.keepBackdrop=true;
   frame.shoulderTabs=true;
   frame.guideController=true;
   frame.contentCtx=this;frame.content=[](void* ctx,pd_ui* u,pd_canvas* c){static_cast<DsCompanionUi*>(ctx)->draw_body(u,c);};

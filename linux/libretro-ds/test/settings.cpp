@@ -160,12 +160,12 @@ int main(int argc,char** argv){
   pd_settings_defaults(&hudOptions);
   hud_hits hits{};
   hud_ds_draw(&c,&field,&active,&hudOptions,nullptr,nullptr,
-              [](pd_canvas*,int id,int,int){assert(id==79);return true;},79,true,c.w,&hits);
+              [](pd_canvas*,int id,int,int){assert(id==79);return true;},79,true,c.w,&hits,nullptr);
   assert(hud_first(&hits)==HUD_REPEL);
   hud_ds_minimap(&c,&hudOptions,"Route 201",[](pd_canvas*,int,int,int,int){},&hits);
   assert(hud_step(&hits,HUD_REPEL,0,-1)==HUD_MAP);
   const hud_state noRepel{0,0,false,-1,-1};
-  hud_ds_draw(&c,&field,&noRepel,&hudOptions,nullptr,nullptr,nullptr,79,true,c.w,&hits);
+  hud_ds_draw(&c,&field,&noRepel,&hudOptions,nullptr,nullptr,nullptr,79,true,c.w,&hits,nullptr);
   assert(hud_step(&hits,HUD_REPEL,0,-1)==-1);
   ui.frame.tab=PD_TAB_BAG;
   s.bag.clear();

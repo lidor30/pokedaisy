@@ -91,8 +91,10 @@ void ds_dex_view(pd_canvas* c,const DsCompanion& s,int filter,int selected,int f
     const int y=9+(index-first)*rowH;
     const bool caught = n < s.dexCaught.size() && s.dexCaught[n];
     const uint32_t* icon = icons && n < icons->size() && (*icons)[n].size() == 32 * 32 ? (*icons)[n].data() : nullptr;
+    // PokedexScreen.kt's caughtBall / seenBall / seenBallNight body colors.
+    const uint32_t mark=caught?0xE83028:pd_dark_look?0x3E4552:0xC6C5C5;
     pd_ui_dex_list_row(c, listX + 5, y, listW - 10, number, ds_species(n, s.game), caught || s.dexSeen[n],
-                       caught, index == selected && filterFocus < 0, icon, 0);
+                       mark, index == selected && filterFocus < 0, icon, 0);
   }
 }
 
