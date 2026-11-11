@@ -50,17 +50,14 @@ START+SELECT (or the controller's Guide / Menu button, or Escape) opens the host
 STATE, LOAD STATE, HOTKEYS, REWIND (keeps the last ~20 s while on, in a 32 MB budget: `POCKET_REWIND_MB`), FF SPEED
 (MAX, or 2x to 8x), LCD FILTER, A/B BUTTONS (NORMAL / SWAPPED: devices disagree on which physical button SDL calls A;
 SWAPPED trades A with B and X with Y on controllers) and QUIT (QUIT TO GAME LIST when the game came from the list).
-Fast-forward is the FAST FORWARD hotkey's, while it is held. `POCKET_MENU_COMBO=off` leaves START+SELECT alone (the PortMaster launcher sets it: there it is
-the port's exit). The game pauses while it is open.
+Fast-forward is the FAST FORWARD hotkey's, while it is held. `POCKET_MENU_COMBO=off` reserves START+SELECT for PortMaster's exit without opening the host menu. The game pauses while it is open.
 
-HOTKEYS gives FAST FORWARD (held; default R2), REWIND (held, while REWIND is on; default L2), SAVE STATE and LOAD
-STATE (off by default) a controller button each: pick a row, then press the button (B cancels, SELECT turns it off).
-Any of L1, R1, L2, R2, X, Y, L3, R3 and the back paddles SDL reports (the Steam Deck's L4 / R4 / L5 / R5 reach it only
-when Steam passes them on); the game's A, B, START, SELECT, D-pad and the menu button stay theirs. A button another
-hotkey had moves over. A hotkey's button never reaches the game, so one the companion uses (X, Y, or L2 / R2 when
-picked in its SETTINGS) is the hotkey's while it is one. Saved in DATA/host.ini (`hk_ff`, `hk_rewind`, `hk_savestate`,
-`hk_loadstate`). Fast-forward plays its sound sped up. A touch screen or the mouse reaches the core's
-companion and HUD.
+Hold SELECT and press R2 to fast-forward, or L2 to rewind when enabled. A plain SELECT tap reaches the game
+on release. In HOTKEYS you can rebind FAST FORWARD, REWIND, SAVE STATE and LOAD STATE (save and load start off).
+Pick a row, then press a shoulder, stick click, X, Y or a reported paddle. B cancels and SELECT clears the action.
+The MODIFIER row is shared by all cores. It accepts START and the same buttons as action bindings. Press SELECT
+in that row to choose SELECT or toggle the modifier off. With the modifier off, hotkeys use single buttons.
+Bindings are stored in DATA/host.ini. Fast-forward plays its sound sped up.
 
 SDL GameController mappings take priority. The right face button acts as game A; the bottom button acts as game B.
 A controller can be plugged in or pulled out while the game runs: the first one SDL has a mapping for is used, from
@@ -144,8 +141,8 @@ are in NOTICE and the packaged licenses (mGBA, and armGBA and zlib for the GBA c
 ## Nintendo DS
 
 The bundled DS core starts in its One Screen layout. L2 opens the Companion and R2 switches screens by default.
-DS has separate host hotkey bindings so those two buttons reach the core. Fast-forward and rewind default to R3
-and L3 on DS, and can be rebound from the host's HOTKEYS page. On DS, Companion Settings → HUD SIZE switches
+Hold L2 to open Quick Menu. With SELECT as the host modifier, SELECT + Y toggles stylus mode and SELECT + D-pad/A
+moves or taps the stylus. DS host actions can be rebound separately in HOTKEYS. Companion Settings → HUD SIZE switches
 between MINI and LARGE. MINIMAL HUD controls which HUD elements are shown.
 
 To bring over an existing DS battery save, copy its raw save data to `DATA/saves/<game>.nds.sav` (including the

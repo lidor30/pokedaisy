@@ -81,6 +81,13 @@ with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
     del env['POCKET_KEYS']
     w,h,bpp,bottom=png_pixels(d/'ds-bottom.png')
     assert min(bottom[h//2][(w//2)*bpp:(w//2)*bpp+3])>200,'R2 did not switch to the DS bottom screen'
+    for chord in ('r2','l2'):
+        env['POCKET_KEYS']=f'25:select:4,26:{chord}:12'
+        run(d,str(d/'roms/diagnostic.nds'),'--frames','55','--shot',str(d/'ds-chord.png'))
+        del env['POCKET_KEYS']
+        _,_,_,chord_rows=png_pixels(d/'ds-chord.png')
+        # The host can overlay a rewind-disabled notice. The DS game remains on its top screen.
+        assert chord_rows[h//2][(w//2)*bpp:(w//2)*bpp+3]==mid,chord
     # The host menu (Escape) with the keys scripted: DOWN to SAVE STATE, A writes the state file.
     env['POCKET_KEYS']='20:menu,30:down,40:a'
     run(d,str(d/'roms/diagnostic.gb'),'--frames','80')
@@ -99,9 +106,12 @@ with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
     del env['POCKET_KEYS']
     ini=(d/'host.ini').read_text()
     assert 'hk_rewind=l3' in ini and 'hk_savestate=r2' in ini and 'hk_ff=off' in ini and 'hk_loadstate=off' in ini,ini
-    # The hotkey works in the game: R2 now saves the state.
+    # The hotkey requires the modifier: Select + R2 now saves the state.
     (d/'states/diagnostic.gb.ss').unlink()
     env['POCKET_KEYS']='30:r2'
+    run(d,str(d/'roms/diagnostic.gb'),'--frames','60')
+    assert not (d/'states/diagnostic.gb.ss').exists(),'R2 alone saved a state'
+    env['POCKET_KEYS']='25:select:12,30:r2'
     run(d,str(d/'roms/diagnostic.gb'),'--frames','60')
     del env['POCKET_KEYS']
     assert (d/'states/diagnostic.gb.ss').exists(),'the SAVE STATE hotkey wrote nothing'
