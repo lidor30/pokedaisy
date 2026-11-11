@@ -995,6 +995,31 @@ class PokeDaisyActivity : Activity() {
         if (style == com.pokedaisy.app.companion.FlyStyle.CLASSIC) prefs.flyStyleId = style.id else prefs.flyStyleAsked = true
     }
 
+    /** On a bike: off it first (the game's own way, SELECT with the bike: KeyItems), then [then] once the game has the
+     * player on foot - a flight takes off from the ground, not from the saddle. At most [OFF_BIKE_WAIT_MS], then [then]
+     * all the same (the game said no: a bike lane, a slope). */
+    private fun offBikeThen(then: () -> Unit) {
+        if (!engine.riding) return then()
+        val bike = com.pokedaisy.app.companion.data.KeyItems.firstIn(telemetry.snapshot.value.items, com.pokedaisy.app.companion.data.KeyItems.BIKES)
+            ?: return then()
+        useKeyItem(bike)
+        val handler = android.os.Handler(android.os.Looper.getMainLooper())
+        val start = android.os.SystemClock.uptimeMillis()
+        var offAt = 0L
+        val check = object : Runnable {
+            override fun run() {
+                val now = android.os.SystemClock.uptimeMillis()
+                if (!engine.riding && offAt == 0L) offAt = now
+                when {
+                    offAt != 0L && now - offAt >= OFF_BIKE_SETTLE_MS -> then()   // off, and the game done with it
+                    now - start >= OFF_BIKE_WAIT_MS -> then()
+                    else -> handler.postDelayed(this, 50)
+                }
+            }
+        }
+        handler.postDelayed(check, 50)
+    }
+
     /** TAKE OFF, or LAND while up (the QUICK MENU, the MAP tab, the FREE FLIGHT hotkey). */
     fun toggleFlight() {
         if (!::engine.isInitialized || !engine.running) return
@@ -1002,6 +1027,7 @@ class PokeDaisyActivity : Activity() {
             engine.postToEmu { MgbaCore.pkFlightLand() }
             return
         }
+        if (engine.riding) return offBikeThen { if (!engine.riding) toggleFlight() }
         val support = flightSupport() ?: return showHud(com.pokedaisy.app.companion.ui.flyMessage(com.pokedaisy.app.companion.data.FlyResult.FAILED))
         val words = support.fns.flight!!.words(flightVehicle())
         val inBattle = telemetry.snapshot.value.inBattle
@@ -1041,6 +1067,8 @@ class PokeDaisyActivity : Activity() {
         support: com.pokedaisy.app.companion.data.FieldItemSupport, mapsec: Int,
         done: (com.pokedaisy.app.companion.data.FlyResult) -> Unit, classic: () -> Unit,
     ) {
+        // Off the bike first; still on it (the game kept them on), the game's own FLY, which handles a bike itself.
+        if (engine.riding) return offBikeThen { if (engine.riding) classic() else scenicFly(support, mapsec, done, classic) }
         val fns = support.fns
         val f = fns.flight!!
         val fly = fns.fly!!
@@ -5583,6 +5611,9 @@ class PokeDaisyActivity : Activity() {
         /** The scenic FLY's question a moment after landing, once the player stands in town. */
         private const val FLY_STYLE_ASK_DELAY_MS = 1500L
         private const val FLIGHT_AREA_TELL_MS = 4000L
+        /** offBikeThen: the longest it waits for the game to put the player on foot, and how long after for its dismount. */
+        private const val OFF_BIKE_WAIT_MS = 2500L
+        private const val OFF_BIKE_SETTLE_MS = 250L
         private const val EXTRA_DUMP_FIXTURE = "dumpFixture"
         private const val EXTRA_DUMP_FIXTURE_FORCE = "dumpFixtureForce"
         private const val EWRAM_BASE = 0x02000000L

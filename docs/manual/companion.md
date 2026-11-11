@@ -139,7 +139,7 @@ Its sprite comes from a game whose Pokémon follow you (Heart and Soul, R.O.W.E.
 
 `RIDE ON` swaps your bike for a `MOTORCYCLE` or a `SCOOTER`. Get on your bike as usual and you ride the one you picked instead, seen from the side, from the front and from behind like the game's own bike, and you stop pedalling. `BIKE` is the game's own.
 
-It works in FireRed, LeafGreen, Ruby, Sapphire and Emerald (both of Emerald's bikes), and in the hacks where `PLAYER LOOK` works. It's drawn in your hero's own colours, so each hero's ride looks a little different, and it goes along with `PLAYER LOOK`: another game's hero rides it too. Your game and your save don't change, and your pick is the same in every game.
+It works in FireRed, LeafGreen, Ruby, Sapphire and Emerald (both of Emerald's bikes), and in the hacks where `PLAYER LOOK` works. It keeps its own colours whoever rides it, and it goes along with `PLAYER LOOK`: another game's hero rides it too. Your game and your save don't change, and your pick is the same in every game.
 
 ### FLY ON
 

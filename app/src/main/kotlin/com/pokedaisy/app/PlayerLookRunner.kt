@@ -210,7 +210,7 @@ class PlayerLookRunner(private val context: Context, private val onPatch: (Playe
         picked.value = pick
         val rival = prefs.rivalLook && PlayerLook.hasRival(me.engine)
         val look = ride(me, patches[Triple(f, pick, rival)] ?: patches[Triple(f, pick, false)], RideVehicle.of(prefs.rideVehicleId))
-        onPatch(if (textBlocks.isEmpty()) look else PlayerLook.Patch(look?.blocks.orEmpty() + textBlocks, look?.palettes.orEmpty(), look?.playerPal))
+        onPatch(if (textBlocks.isEmpty()) look else PlayerLook.Patch(look?.blocks.orEmpty() + textBlocks, look?.palettes.orEmpty(), look?.playerPal, look?.ride))
     }
 
     /** RIDE ON: [look]'s patch with [vehicle] written over [me]'s bike sheets as worn (RideOn), in the worn palette. */
@@ -222,7 +222,7 @@ class PlayerLookRunner(private val context: Context, private val onPatch: (Playe
         val rides = runCatching { RideOn.writes(scan, me, under, pal, vehicle) }
             .onFailure { Log.w("pokedaisy", "ride on", it) }.getOrNull().orEmpty()
         if (rides.isEmpty()) return look
-        return PlayerLook.Patch(PlayerLook.merge(scan.rom, under + rides), look?.palettes.orEmpty(), look?.playerPal)
+        return PlayerLook.Patch(PlayerLook.merge(scan.rom, under + rides), look?.palettes.orEmpty(), look?.playerPal, RideOn.sprite(vehicle))
     }
 
     /** The Pokémon picked (a national number; null: a hero or the game's own). */

@@ -2320,8 +2320,14 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
   the app say why; `ScenicFly.read(allowed)` plans over those maps. ANYWHERE sends none and pauses RetroAchievements from the
   first take-off (`RetroAchievements.setFlightAnywhere`) until it's switched back. `FlightAreaTest` checks the maps and
   trainers read on every flight hack's ROM and the seeds on FireRed / Emerald's saves; mgba_dump `flightarea G.N ...`.
+- **Clouds** (pk_flight.c's flDrawClouds): while up, round-puff cumulus (flMakeClouds: clusters of domes on a wrapped 128 x 128
+  map, 2 x 2 px a texel, read bilinear) drawn into the finished frame over the ground and shadow, under the bird: a white core
+  and a thinner rim, bluer where the cloud thins below, at most 70% opaque, as thick as the bird is high. They slide by at
+  1.45x the flight's speed (nearer the eye than the ground) plus a slow wind. While they're out the draw's undo covers the
+  whole frame (its buffers grow to it). Taking off from a bike gets off it first (`offBikeThen`: the game's own SELECT path).
 - **FLY ON** (MAKEOVER, `Prefs.flightVehicleId`, `FlightVehicle`, the PK_FLIGHT_VEHICLE word): an air balloon, a helicopter,
-  a zeppelin or a small plane in place of the bird, our own pixel art from `scripts/gen_flight_vehicles.py` (parts shaded by a normal lit
+  a zeppelin or a small plane in place of the bird, our own pixel art from `scripts/gen_flight_vehicles.py` at the games' angle (from
+  the side and a little above: spinning discs for rotors and propellers, roofs, wings and fins spread both ways; parts shaded by a normal lit
   from the top left over a colour ramp, coloured outlines; rerun it after changing the art) -> `pk_flight_vehicles.h`.
   flCapture draws the vehicle's frame for the whole flight (the bird's hardware sprite and Emerald's rider stay hidden), the
   player's own overworld sprite (hidden while flying) over its SEAT pixels, then its FRONT pixels over them; the sprite held

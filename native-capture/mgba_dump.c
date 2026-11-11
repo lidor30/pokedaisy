@@ -3048,6 +3048,24 @@ int main(int argc, char** argv) {
             char info[200];
             pk_follower_info(info, sizeof(info));
             printf("followinfo: %s\n", info);
+        } else if (!strcmp(cmd, "rideset")) {
+            // rideset FILE W: RIDE ON's vehicle - three views (W x 32 each, OBJ tile order) then a 32-byte palette
+            static uint8_t buf[3 * 1024 + 32];
+            int w = 32;
+            sscanf(line, "%*s %255s %d", arg1, &w);
+            FILE* f = fopen(arg1, "rb");
+            size_t n = f ? fread(buf, 1, (size_t) (3 * w * 16 + 32), f) : 0;
+            if (f) fclose(f);
+            if (n == (size_t) (3 * w * 16 + 32)) pk_ride_set(buf, buf + 3 * w * 16, w);
+            else fprintf(stderr, "mgba_dump: rideset: can't read %s\n", arg1);
+        } else if (!strcmp(cmd, "rideon")) {
+            int on = 0;
+            sscanf(line, "%*s %d", &on);
+            pk_ride_show(core, on);
+        } else if (!strcmp(cmd, "rideinfo")) {
+            char info[200];
+            pk_ride_info(info, sizeof(info));
+            printf("rideinfo: %s\n", info);
         } else if (!strcmp(cmd, "followon")) {
             int on = 0;
             sscanf(line, "%*s %d", &on);

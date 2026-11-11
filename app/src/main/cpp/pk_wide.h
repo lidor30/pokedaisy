@@ -244,6 +244,11 @@ void pk_follower_show(struct mCore* core, int on);
 
 /** FOLLOWER: its state as text (mgba_dump's followinfo). */
 void pk_follower_info(char* out, int n);
+/** RIDE ON: the vehicle's three views (south, north, west; [w] x 32, w 32 or 64, OBJ tile order) and palette (32 bytes),
+ * or NULL; drawn behind the player while they're on a bike and [on] (pk_ride_show). */
+void pk_ride_set(const uint8_t* frames, const uint8_t* pal, int w);
+void pk_ride_show(struct mCore* core, int on);
+void pk_ride_info(char* out, int n);
 
 /** A game closed: FOLLOWER (its sprite, shown or not) and DAY AND NIGHT's tint go back to none, so the next game starts
  * without the last one's (they live here, not in the core, and the next game's engine starts from none). */

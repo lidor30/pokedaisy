@@ -61,13 +61,13 @@ In FireRed, LeafGreen, Ruby, Sapphire and Emerald in every language, Emerald Leg
 
 Rather ride something else? `FLY ON`, in `SETTINGS` under `MAKEOVER`, swaps the bird for an air balloon, a helicopter, a zeppelin or a small plane, with you inside. See [FLY ON](companion.md#fly-on).
 
-Your shadow follows on the ground below, and the bird leans the way you're flying: nose up on the way north, down on the way south, a little on a diagonal. Flying on a diagonal is about as fast as flying straight. With `ASPECT` set to `EXPAND`, flying on a diagonal glides smoothly instead of stepping a tile at a time.
+Your shadow follows on the ground below, clouds drift by between you and the ground (faster than the ground, as they're nearer), and the bird leans the way you're flying: nose up on the way north, down on the way south, a little on a diagonal. Flying on a diagonal is about as fast as flying straight. With `ASPECT` set to `EXPAND`, flying on a diagonal glides smoothly instead of stepping a tile at a time.
 
 Press `B` (or tap the button again, which now says `LAND`) to come down. The bird finds the nearest spot you could walk on, flies you there and lands; if there's no ground anywhere near, you hear a buzz and keep flying, so head for land and try again. You can't fly past the edge of the game's world: the bird just turns.
 
 In games where a Pokémon walks behind you, it goes back to its ball as you take off, as it does for the game's own flight, and comes out again at your first steps after landing.
 
-It needs what the game's own flight needs: the badge, a Pokémon in your party that knows the move, and being outdoors on foot or on your bike (not surfing). It's also a tile in the [quick menu](controls.md#the-quick-menu) and a hotkey, `FREE FLIGHT`, that you can give a button in `HOTKEYS`. A save state made in the air brings you back in the air.
+It needs what the game's own flight needs: the badge, a Pokémon in your party that knows the move, and being outdoors on foot (not surfing). On your bike, you get off first and then take off. It's also a tile in the [quick menu](controls.md#the-quick-menu) and a hotkey, `FREE FLIGHT`, that you can give a button in `HOTKEYS`. A save state made in the air brings you back in the air.
 
 ## Where you can fly
 

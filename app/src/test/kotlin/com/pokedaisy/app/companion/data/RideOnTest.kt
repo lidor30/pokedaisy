@@ -8,8 +8,8 @@ import org.junit.Test
 import java.io.File
 
 /**
- * RIDE ON (RideOn.kt) over the player's own retail FireRed rev 1 and Emerald (skipped without them): the vehicle written
- * into each hero's bike sheets, the rider's upper body kept from their standing frames, no pedalling.
+ * RIDE ON (RideOn.kt) over the player's own retail FireRed rev 1 and Emerald (skipped without them): each hero's bike
+ * sheets made the rider alone (their upper body from their standing frames, no pedalling), the vehicle a sprite of its own.
  */
 class RideOnTest {
     private fun scanOf(name: String) = File(RETAIL_ROM_DIR + name).takeIf { it.isFile }?.let { PlayerLook.scan(it.readBytes()) }
@@ -36,6 +36,20 @@ class RideOnTest {
         // No pedalling: the moving frames are the standing ones.
         for ((k, view) in listOf(3 to 0, 4 to 0, 5 to 1, 6 to 1, 7 to 2, 8 to 2)) assertArrayEquals(RideOn.decode(made, view), RideOn.decode(made, k))
         assertTrue(RideOn.writes(scan, LookChar.RED, emptyList(), pal, RideVehicle.BIKE).isEmpty())
+    }
+
+    @Test
+    fun theVehicleIsASpriteOfItsOwn() {
+        for (v in listOf(RideVehicle.MOTORCYCLE, RideVehicle.SCOOTER)) {
+            val sp = RideOn.sprite(v)!!
+            assertEquals(32, sp.width)
+            assertEquals(3 * 512, sp.frames.size)
+            assertEquals(32, sp.pal.size)
+            // Its own colours, at most 15: every pixel's index is one of the art's.
+            val used = (0 until sp.frames.size * 2).map { i -> (sp.frames[i / 2].toInt() shr (4 * (i % 2))) and 15 }.toSet() - 0
+            assertTrue(used.isNotEmpty() && used.all { it < v.art!!.palette.size } && v.art!!.palette.size <= 16)
+        }
+        assertEquals(null, RideOn.sprite(RideVehicle.BIKE))
     }
 
     @Test

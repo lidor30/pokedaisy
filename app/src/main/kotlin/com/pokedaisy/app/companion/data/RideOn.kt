@@ -13,13 +13,14 @@ enum class RideVehicle(val id: Int, val label: String, internal val art: RideVeh
 }
 
 /**
- * RIDE ON: the player's bike swapped for one of our vehicles ([RideVehicle], scripts/gen_ride_vehicles.py's art), as part
- * of PLAYER LOOK's ROM patch ([PlayerLook.Patch]): the hero's bike sheets are rewritten in place, frame by frame. Each frame
- * keeps the rider's upper body from the hero's standing frame facing that way (rows up to the view's cut - the frames as
- * PLAYER LOOK left them, so a worn hero rides too) and the vehicle goes round and under it, its colours taken to the
- * nearest of the hero's overworld palette (the palette slot is the hero's, shared with everything they wear). The pedalling
- * frames get the standing ones' rider: nobody pedals a motorcycle. FireRed / LeafGreen's bike sheet; Emerald's (and Ruby /
- * Sapphire's) Mach and Acro bike sheets, the Acro bike's wheelie and hop frames by the way they face.
+ * RIDE ON: the player's bike swapped for one of our vehicles ([RideVehicle], scripts/gen_ride_vehicles.py's art), in two
+ * parts. The rider: PLAYER LOOK's ROM patch ([PlayerLook.Patch]) rewrites the hero's bike sheets in place, each frame the
+ * rider alone - their upper body from the hero's standing frame facing that way (rows up to the view's cut, the frames as
+ * PLAYER LOOK left them, so a worn hero rides too), their leg in the hero's own colours, clear where the vehicle's front
+ * parts go. The pedalling frames get the standing ones: nobody pedals a motorcycle. The vehicle: a sprite of its own right
+ * behind the rider ([sprite], pk_wide.c's ride), in its own 15 colours - the hero's 16 had no greys for a tyre. FireRed /
+ * LeafGreen's bike sheet; Emerald's (and Ruby / Sapphire's) Mach and Acro bike sheets, the Acro bike's wheelie and hop
+ * frames by the way they face.
  */
 object RideOn {
     /** The bike frames' views: 0 south, 1 north, 2 west (the sheets' standing frames 0, 1, 2), by frame. */
@@ -39,7 +40,7 @@ object RideOn {
      */
     fun writes(scan: PlayerLook.Scan, me: LookChar, under: List<Pair<Int, ByteArray>>, pal: ByteArray, vehicle: RideVehicle): List<Pair<Int, ByteArray>> {
         val art = vehicle.art ?: return emptyList()
-        val colours = art.palette.map { nearest(pal, it) }
+        val leg = nearest(pal, LEG)
         val out = ArrayList<Pair<Int, ByteArray>>()
         for (part in parts(me.engine)) {
             val order = if (part == LookPart.EM_ACRO_BIKE) ACRO else NINE
@@ -54,31 +55,55 @@ object RideOn {
                 }
                 val standing = (0..2).map { decode(sheet, it) }
                 val made = ByteArray(size)
-                for ((k, view) in order.withIndex()) encode(compose(standing[view], art, view, colours), made, k)
+                for ((k, view) in order.withIndex()) encode(compose(standing[view], art, view, leg), made, k)
                 out += at to made
             }
         }
         return out
     }
 
-    /** One frame: the vehicle's body, the rider's upper body over it, their leg, then the vehicle's front parts. */
-    internal fun compose(rider: IntArray, art: RideVehiclesGen.Art, view: Int, colours: List<Int>): IntArray {
+    /** One frame of the rider alone: their leg (in [leg], the hero's colour nearest the art's), their upper body where the
+     * vehicle has no front part, nothing else (the vehicle's sprite shows there). */
+    internal fun compose(rider: IntArray, art: RideVehiclesGen.Art, view: Int, leg: Int): IntArray {
         val v = art.views[view]
         val cut = art.cut[view]
         val out = IntArray(32 * 32)
         for (i in 0 until 32 * 32) {
             val b = v[i].toInt() and 0xFF
-            val c = b and 0x3F
-            val y = i / 32
             out[i] = when {
-                c != 0 && b and 0xC0 != 0 -> colours[c]           // FRONT or the leg
-                y <= cut && rider[i] != 0 -> rider[i]
-                c != 0 -> colours[c]
+                b and 0x80 != 0 -> leg
+                b and 0x40 != 0 && b and 0x0F != 0 -> 0
+                i / 32 <= cut -> rider[i]
                 else -> 0
             }
         }
         return out
     }
+
+    /** The vehicle as pk_wide.c's ride takes it: its views (south, north, west) one after another in OBJ tile order,
+     * [width] x 32 each, and its palette (16 RGB555 colours). */
+    class Sprite(val frames: ByteArray, val pal: ByteArray, val width: Int) {
+        fun sameAs(o: Sprite?) = o != null && width == o.width && frames.contentEquals(o.frames) && pal.contentEquals(o.pal)
+    }
+
+    /** [vehicle]'s sprite; null for the bike. */
+    fun sprite(vehicle: RideVehicle): Sprite? {
+        val art = vehicle.art ?: return null
+        val frames = ByteArray(3 * 512)
+        for (view in 0..2) encode(IntArray(32 * 32) { art.views[view][it].toInt() and 0x0F }.let { px ->
+            IntArray(32 * 32) { i -> if (art.views[view][i].toInt() and 0x80 != 0) 0 else px[i] }
+        }, frames, view)
+        val pal = ByteArray(32)
+        for (i in 1 until art.palette.size.coerceAtMost(16)) {
+            val c = art.palette[i]
+            val v = ((c shr 19) and 31) or (((c shr 11) and 31) shl 5) or (((c shr 3) and 31) shl 10)
+            pal[i * 2] = v.toByte(); pal[i * 2 + 1] = (v shr 8).toByte()
+        }
+        return Sprite(frames, pal, art.width)
+    }
+
+    /** The art's leg colour (dark navy trousers), taken to the hero's palette. */
+    private const val LEG = 0x39397B
 
     /** Frame [k] of a 4x4-tile sheet as 32 x 32 palette indices. */
     internal fun decode(sheet: ByteArray, k: Int): IntArray {
