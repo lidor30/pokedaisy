@@ -527,6 +527,11 @@ internal val trSettings: Map<String, Tr> = mapOf(
     "PAUSED: WILD PIN" to Tr(ja = "ていし: やせい ピン", fr = "EN PAUSE : ÉPINGLE", de = "PAUSE: WILD-PIN", it = "IN PAUSA: PIN", es = "EN PAUSA: PIN", br = "PAUSADO: PIN", pt = "EM PAUSA: PIN", ko = "일시정지: 야생 핀"),
     "OFF IN A NUZLOCKE RUN" to Tr(ja = "ナズロックちゅうは つかえない", fr = "INACTIF EN NUZLOCKE", de = "AUS IM NUZLOCKE", it = "NO IN UN NUZLOCKE", es = "NO EN UN NUZLOCKE", br = "DESLIGADO NO NUZLOCKE", pt = "DESLIGADO NO NUZLOCKE", ko = "너즐록 중에는 꺼짐"),
     "NOT IN A BATTLE" to Tr(ja = "バトルちゅうは できない", fr = "PAS EN COMBAT", de = "NICHT IM KAMPF", it = "NON IN LOTTA", es = "NO EN COMBATE", br = "NÃO EM BATALHA", pt = "NÃO EM BATALHA", ko = "배틀 중에는 불가"),
+    "WILD PIN" to Tr(ja = "やせい ピン", fr = "ÉPINGLE SAUV.", de = "WILD-PIN", it = "PIN SELVATICO", es = "PIN SALVAJE", br = "PIN SELVAGEM", pt = "PIN SELVAGEM", ko = "야생 핀"),
+    "Pick the next wild POKéMON from HERE" to Tr(ja = "つぎの やせいの ポケモンを ここから えらぶ", fr = "Choisir le prochain POKéMON sauvage dans ICI", de = "Nächstes wildes POKéMON unter HIER wählen", it = "Scegli il prossimo POKéMON selvatico da QUI", es = "Elige el próximo POKéMON salvaje desde AQUÍ", br = "Escolha o próximo POKéMON selvagem em AQUI", pt = "Escolhe o próximo POKéMON selvagem em AQUI", ko = "여기에서 다음 야생 포켓몬 고르기"),
+    "PIN" to Tr(ja = "ピン", fr = "ÉPINGLER", de = "PINNEN", it = "FISSA", es = "FIJAR", br = "FIXAR", pt = "FIXAR", ko = "핀"),
+    "UNPIN" to Tr(ja = "ピン はずす", fr = "RETIRER", de = "LÖSEN", it = "TOGLI", es = "QUITAR", br = "SOLTAR", pt = "SOLTAR", ko = "핀 해제"),
+    "PIN: {0}" to Tr(ja = "ピン: {0}", fr = "ÉPINGLE : {0}", de = "PIN: {0}", it = "PIN: {0}", es = "PIN: {0}", br = "PIN: {0}", pt = "PIN: {0}", ko = "핀: {0}"),
     // SCREEN > OVERLAY (overlay/Overlays.kt).
     "OVERLAY" to Tr(ja = "オーバーレイ", fr = "SURIMPRESSION", de = "OVERLAY", it = "OVERLAY", es = "SUPERPOSICIÓN", br = "MOLDURA", pt = "MOLDURA", ko = "오버레이"),
     "DAISY" to Tr(ja = "デイジー", fr = "DAISY", de = "DAISY", it = "DAISY", es = "DAISY", br = "DAISY", pt = "DAISY", ko = "DAISY"),

@@ -2037,6 +2037,7 @@ class PokeDaisyActivity : Activity() {
         override val nuzlockeSupported get() = telemetry.snapshot.value.let { !it.unsupported && com.pokedaisy.app.companion.Nuzlocke.supports(it.game) }
         override val nuzlocke get() = com.pokedaisy.app.companion.Nuzlocke.on
         override fun setNuzlocke(on: Boolean) = com.pokedaisy.app.companion.Nuzlocke.setOn(on)
+        override val wildPinSupported get() = telemetry.snapshot.value.let { !it.unsupported && com.pokedaisy.app.companion.data.WildPin.offered(it.guideTables) }
         override val shinyOdds get() = shinyOddsPref()
         override fun setShinyOdds(odds: Int) {
             Prefs(this@PokeDaisyActivity).shinyOdds = odds

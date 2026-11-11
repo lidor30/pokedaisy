@@ -29,6 +29,8 @@ data class GuideEntry(
     val areas: List<String> = emptyList(),
     /** Whether it holds on a randomized game ([gameRandomized]). */
     val randomized: Randomized = Randomized.ANY,
+    /** HERE's GRASS / CAVE rows: the species WILD PIN can pin from it ([WildPin]); 0 = no PIN. */
+    val pinSpecies: Int = 0,
 ) {
     /** Taps until the answer shows: one straight to it, two via the hint; 0 = nothing hidden. */
     val steps: Int get() = when {
