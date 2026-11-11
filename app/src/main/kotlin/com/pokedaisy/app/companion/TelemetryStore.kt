@@ -155,6 +155,8 @@ class TelemetryStore {
 
     /** The detected game's gPartyMenu + gPlayerParty, when its config has them. */
     fun knownPartyMenu(): Pair<Long, Long>? = sampler.knownPartyMenu
+    /** The detected game's layout for overworld party reordering, including verified English Unbound. */
+    fun knownPartyReorderConfig(): com.pokedaisy.app.companion.data.NativeConfig? = sampler.knownPartyReorderConfig
     fun knownPartyMenuStyle(): Pair<Long, Int>? = sampler.knownPartyMenuStyle
     fun retailEnginePartyMenu(): Pair<Long, Long>? = sampler.retailEnginePartyMenu
 
