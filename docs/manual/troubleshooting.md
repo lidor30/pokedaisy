@@ -80,6 +80,13 @@ If it's below 60 or stutters:
 - The first time you play a game with `FF MUSIC` on `STEADY`, PokeDaisy records its music in the background, which keeps a second processor core busy for a while. It's capped, but on a small device you may notice the heat. `SPED-UP` or `OFF` skips it.
 - Close other apps running in the background, and check the device isn't in a battery saver mode.
 
+If it reads 60 but movement still looks uneven, look at the `SCREEN` line in the panel. `VSYNC` means each frame is timed to your screen's refresh, which is the smoothest. `TIMER` means a clock times them instead, which can look a little less even:
+
+- `TIMER (AUDIO)`: the sound kept running out, so PokeDaisy switched to the clock to keep it playing. It tries the screen's timing again after a minute, then waits longer each time it has to switch back.
+- `TIMER (SCREEN)`: your screen's refresh didn't come at a steady pace, as on some devices. PokeDaisy goes back to the screen's timing once it does.
+
+If it stays on `TIMER`, tell us your device on the [feedback page](https://pokedaisy.com/feedback/) along with what the line says.
+
 If the picture runs fine but your buttons react late, for example nothing happens for a moment after `FIGHT`, set `LIGHT COMPANION` to `ON` (Settings, `SCREEN` group, `DISPLAY OPTIONS`). See [Light companion](screen.md#light-companion-for-slow-devices).
 
 ## Achievements won't unlock

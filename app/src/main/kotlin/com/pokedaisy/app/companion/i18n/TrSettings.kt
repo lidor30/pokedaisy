@@ -327,6 +327,8 @@ internal val trSettings: Map<String, Tr> = mapOf(
     "SNAPSHOTS" to Tr(ja = "スナップショット", fr = "INSTANTANÉS", de = "SNAPSHOTS", it = "ISTANTANEE", es = "CAPTURAS", br = "INSTANTÂNEOS", pt = "INSTANTÂNEOS", ko = "스냅샷"),
     "BATTLE CHECKS" to Tr(ja = "バトル チェック", fr = "CONTRÔLES COMBAT", de = "KAMPF-CHECKS", it = "CONTROLLI LOTTA", es = "COMPROB. COMBATE", br = "VERIF. BATALHA", pt = "VERIF. BATALHA", ko = "배틀 검사"),
     "TIMER" to Tr(ja = "タイマー", fr = "MINUTERIE", de = "TIMER", it = "TIMER", es = "TEMPORIZADOR", br = "TEMPORIZADOR", pt = "TEMPORIZADOR", ko = "타이머"),
+    "TIMER (AUDIO)" to Tr(ja = "タイマー(サウンド)", fr = "MINUTERIE (SON)", de = "TIMER (TON)", it = "TIMER (AUDIO)", es = "TEMPORIZADOR (SONIDO)", br = "TEMPORIZADOR (SOM)", pt = "TEMPORIZADOR (SOM)", ko = "타이머 (소리)"),
+    "TIMER (SCREEN)" to Tr(ja = "タイマー(がめん)", fr = "MINUTERIE (ÉCRAN)", de = "TIMER (BILDSCHIRM)", it = "TIMER (SCHERMO)", es = "TEMPORIZADOR (PANTALLA)", br = "TEMPORIZADOR (TELA)", pt = "TEMPORIZADOR (ECRÃ)", ko = "타이머 (화면)"),
     "WARM" to Tr(ja = "あたたかい", fr = "TIÈDE", de = "WARM", it = "TIEPIDO", es = "TIBIO", br = "MORNO", pt = "MORNO", ko = "따뜻함"),
     "HOT" to Tr(ja = "あつい", fr = "CHAUD", de = "HEISS", it = "CALDO", es = "CALIENTE", br = "QUENTE", pt = "QUENTE", ko = "뜨거움"),
     "THROTTLING" to Tr(ja = "せいげんちゅう", fr = "BRIDÉ", de = "GEDROSSELT", it = "LIMITATO", es = "LIMITADO", br = "LIMITADO", pt = "LIMITADO", ko = "성능 제한"),

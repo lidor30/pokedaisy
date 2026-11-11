@@ -4249,7 +4249,7 @@ class PokeDaisyActivity : Activity() {
                         frameMaxMs = (maxWork / 1e6).toFloat(),
                         emulationLoad = (dw / 1e9 / secs * 100).toInt().coerceIn(0, 100),
                         cpu = cpuPct, cores = cores,
-                        refreshHz = e.refreshHz, refreshesPerFrame = e.refreshesPerFrame,
+                        refreshHz = e.refreshHz, refreshesPerFrame = e.refreshesPerFrame, timerFallback = e.timerFallback,
                         speed = e.currentSpeed,
                         audioDropouts = e.audioUnderruns,
                         batteryTempC = batteryTempC,

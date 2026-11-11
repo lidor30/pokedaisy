@@ -118,12 +118,51 @@ class VsyncCheckTest {
         assertTrue(known.unreliable)   // 70 / 95 on a 60 Hz screen: neither is 1.25x over, but it jumps past 1.1x
     }
 
-    /** Once caught it stays caught (the engine keeps it for the process), whatever the ticks do after. */
-    @Test fun itLatches() {
+    /** A screen that runs steadily faster than the modes it reports (120 Hz on a "60 Hz" display): its ticks still come
+     * with its refresh, which vsync pacing measures, so it never strikes. */
+    @Test fun aSteadyScreenFasterThanItsModesIsReliable() {
+        val rnd = Random(6)
         val check = VsyncCheck()
-        val t = run(check, 60f, 4.0) { 2_500_000L }
+        run(check, 60f, 120.0) { (1e9 / 120.0 + rnd.nextLong(-1_000_000L, 1_000_000L)).toLong() }
+        assertFalse(check.reason, check.unreliable)
+    }
+
+    /** A false strike isn't for good (1.5.0 kept it for the process: a smooth device stayed on the timer, choppy at 60
+     * fps): ten clean seconds and it's reliable again. */
+    @Test fun itRecoversOnceTheTicksFollowTheRefresh() {
+        val check = VsyncCheck()
+        var t = run(check, 60f, 4.0) { 2_500_000L }
         assertTrue(check.unreliable)
-        run(check, 60f, 60.0, t) { (1e9 / 60.0).toLong() }
+        t = run(check, 60f, 5.0, t) { (1e9 / 60.0).toLong() }
+        assertTrue("not before ten clean seconds", check.unreliable)
+        run(check, 60f, 9.0, t) { (1e9 / 60.0).toLong() }   // the first windows after the change still strike
+        assertFalse(check.unreliable)
+        assertEquals(null, check.reason)
+        assertEquals(VsyncCheck.RECOVER_WINDOWS * 2, check.recoverWindows)
+    }
+
+    /** A device that strikes now and then waits twice as long each time before vsync paces again. */
+    @Test fun eachRecoveryTakesTwiceAsLong() {
+        val check = VsyncCheck()
+        var t = 1L
+        var waits = VsyncCheck.RECOVER_WINDOWS
+        repeat(3) {
+            t = run(check, 60f, 4.0, t) { 2_500_000L }
+            assertTrue(check.unreliable)
+            t = run(check, 60f, waits - 4.0, t) { (1e9 / 60.0).toLong() }
+            assertTrue(check.unreliable)
+            t = run(check, 60f, 8.0, t) { (1e9 / 60.0).toLong() }
+            assertFalse(check.unreliable)
+            waits *= 2
+            assertEquals(waits, check.recoverWindows)
+        }
+    }
+
+    /** The RG DS never recovers: its ticks keep outrunning the screen. */
+    @Test fun theRgDsStaysUnreliable() {
+        val rnd = Random(7)
+        val check = VsyncCheck()
+        run(check, 60f, 120.0) { if (rnd.nextInt(10) == 0) rnd.nextLong(4_000_000L, 14_000_000L) else rnd.nextLong(500_000L, 3_000_000L) }
         assertTrue(check.unreliable)
     }
 }

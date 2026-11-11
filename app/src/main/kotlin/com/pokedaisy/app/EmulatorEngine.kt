@@ -867,6 +867,15 @@ class EmulatorEngine(
     /** The game screen's refresh as measured (Hz, 0 = unknown) and refreshes per frame (0 = timer pacing). */
     val refreshHz: Float get() = vsyncPeriodNanos.let { if (it > 0.0) (1e9 / it).toFloat() else 0f }
     val refreshesPerFrame: Int get() = pacedPerFrame
+    /** Why 1x is on the timer: [TIMER_NONE], [TIMER_AUDIO] (underruns kept coming under vsync pacing) or [TIMER_SCREEN]
+     * (the screen's ticks don't follow its refresh, [VsyncCheck]), for FPS / CPU's panel. */
+    val timerFallback: Int get() = when {
+        vsyncUnreliable != null -> TIMER_SCREEN
+        audioFallback -> TIMER_AUDIO
+        else -> TIMER_NONE
+    }
+    /** The audio fallback is on (the loop's own flag, for [timerFallback]). */
+    @Volatile private var audioFallback = false
     /** The speed the core runs at now (1 = real time, Infinity = uncapped FF). */
     @Volatile var currentSpeed = 1f
         private set
@@ -895,8 +904,6 @@ class EmulatorEngine(
 
     /** The game screen's fastest display mode (Hz, 0 = unknown), for [VsyncCheck]: asked on the GL thread once a second. */
     @Volatile var displayMaxHz: () -> Float = { 0f }
-    /** GL thread: whether its ticks follow the refresh at all (GitHub #350: the RG DS swaps without waiting for it). */
-    private val vsyncCheck = VsyncCheck()
 
     /** GL thread: the game's screen just refreshed (EmulatorView.onVsync). Returns how long the draw may
      * wait for the frame this refresh starts (~60% of a refresh), or 0 when none is due. */
@@ -904,9 +911,15 @@ class EmulatorEngine(
         val now = System.nanoTime()
         val d = now - lastVsyncNanos
         lastVsyncNanos = now
-        if (vsyncUnreliable == null && vsyncCheck.tick(now, displayMaxHz)) {
-            vsyncUnreliable = vsyncCheck.reason ?: "unreliable"
-            Log.w("pokedaisy", "pacing: the screen's ticks don't follow its refresh (${vsyncUnreliable}); the timer paces from now on")
+        val unreliable = vsyncCheck.tick(now, displayMaxHz)
+        if (unreliable != (vsyncUnreliable != null)) {
+            if (unreliable) {
+                vsyncUnreliable = vsyncCheck.reason ?: "unreliable"
+                Log.w("pokedaisy", "pacing: the screen's ticks don't follow its refresh (${vsyncUnreliable}); the timer paces until they do")
+            } else {
+                vsyncUnreliable = null
+                Log.i("pokedaisy", "pacing: the screen's ticks follow its refresh again; vsync paces (next time ${vsyncCheck.recoverWindows} s to come back)")
+            }
         }
         // A gap (the view paused, a dropped refresh) isn't a period.
         if (d in 4_000_000L..34_000_000L) {
@@ -1091,8 +1104,13 @@ class EmulatorEngine(
         var lastQueued = -1
         var catchUpRun = 0
         // Underruns while vsync paces, counted once it has settled; too many and this run goes back to the timer.
-        val trouble = AudioTroubleWatch()
+        var trouble = AudioTroubleWatch()
         var vsyncFallback = false
+        audioFallback = false
+        // The audio fallback isn't for the whole run (1.5.0's was: one bad stretch left a game choppy until it was
+        // closed): vsync pacing is tried again after [AUDIO_RETRY_NANOS], twice as long after each time it gives up.
+        var audioRetryAt = 0L
+        var audioRetryNanos = AUDIO_RETRY_NANOS
         var vsyncSettledAt = 0L
         // For the fps log line: audio a full buffer cut off, frames run at once / held back.
         var fpsDropped = 0
@@ -1566,7 +1584,14 @@ class EmulatorEngine(
                 // Refreshes per frame when the display paces 1x; 0 = the timer and blocking audio.
                 // A screen whose ticks don't follow its refresh (VsyncCheck, GitHub #350): the timer and blocking writes,
                 // like the audio's own fallback - vsync pacing on its made-up rate flipped on and off, 25-60 fps at 1x.
-                if (!vsyncFallback && vsyncUnreliable != null) vsyncFallback = true
+                // Not latched: vsyncsPerFrame() is 0 while the check finds them unreliable, and vsync paces again once
+                // it doesn't. The audio fallback tries vsync pacing again once its wait is over.
+                if (vsyncFallback && System.nanoTime() >= audioRetryAt) {
+                    vsyncFallback = false
+                    audioFallback = false
+                    trouble = AudioTroubleWatch()
+                    Log.i("pokedaisy", "audio: trying vsync pacing again")
+                }
                 val perFrame = if (speed == 1f && track != null && bufferFrames > 0 && !vsyncFallback) vsyncsPerFrame() else 0
                 pacedPerFrame = perFrame
                 val ffPer = ffFramesPerRefresh(speed, vsyncsPerFrame())
@@ -1597,7 +1622,7 @@ class EmulatorEngine(
                 // The timer fallback keeps the whole buffer: it's there for devices that ran dry. So does a DS game's
                 // STEADY copy, which fills it to the top on purpose (a track starts once its buffer is full).
                 if (!trackStarted && !paused && track != null) trackStarted = track.playbackHeadPosition != 0
-                val half = (!vsyncMode || !trackStarted) && !vsyncFallback && !dsMusicOn
+                val half = (!vsyncMode || !trackStarted) && !vsyncFallback && vsyncUnreliable == null && !dsMusicOn
                 if (half != trackHalf && track != null) {
                     trackHalf = half
                     runCatching { track.bufferSizeInFrames = if (half) bufferFrames / 2 else bufferFrames }
@@ -1668,9 +1693,12 @@ class EmulatorEngine(
                             trouble.record(System.nanoTime())
                         ) {
                             // The device keeps running dry with this screen's pacing: the timer and blocking
-                            // writes for the rest of this run, as before vsync pacing (1.1.x).
+                            // writes for a while, as before vsync pacing (1.1.x), then vsync pacing again.
                             vsyncFallback = true
-                            Log.w("pokedaisy", "audio: underruns keep coming under vsync pacing; timer pacing for this run")
+                            audioFallback = true
+                            audioRetryAt = System.nanoTime() + audioRetryNanos
+                            Log.w("pokedaisy", "audio: underruns keep coming under vsync pacing; timer pacing for %d s".format(audioRetryNanos / 1_000_000_000L))
+                            audioRetryNanos = (audioRetryNanos * 2).coerceAtMost(AUDIO_RETRY_MAX_NANOS)
                         }
                         underruns = nowUnderruns
                         // No silence written in: it was the stutter (30-40 ms of it each time the buffer ran low). A
@@ -1752,7 +1780,7 @@ class EmulatorEngine(
                         fpsCatchUps, fpsHolds, fpsDropped, lastQueued, bufferFrames,
                         fpsAudioMade, fpsAudioTaken,
                         (track?.playbackHeadPosition?.toLong()?.and(0xFFFFFFFFL) ?: 0L).let { p -> if (fpsPlayedAt < 0) -1 else p - fpsPlayedAt },
-                        if (vsyncFallback) (if (vsyncUnreliable != null) " fallback (ticks don't follow the refresh)" else " fallback") else "") +
+                        if (vsyncUnreliable != null) " fallback (ticks don't follow the refresh)" else if (vsyncFallback) " fallback (audio)" else "") +
                         " ticks=%.0f/s".format(vsyncCheck.lastRate) +
                         (if (fpsBlocks > 0) " block=%.1f/%.1fms".format(fpsBlockSum / fpsBlocks / 1e6, fpsBlockMax / 1e6) else "") +
                         (drawStatsSource?.invoke()?.let { (r, u) ->
@@ -2190,9 +2218,20 @@ class EmulatorEngine(
         /** Late draws in a 120-frame window, in this many windows, that make a game's frames [slowFrames]. */
         private const val SLOW_LATE_FRAMES = 3
         private const val SLOW_WINDOWS = 2
-        /** [VsyncCheck]'s finding, once made: kept for the process (the device doesn't change), so a game started again
-         * doesn't spend its first seconds on vsync pacing's made-up rate. Null = the ticks follow the refresh. */
+        /** [VsyncCheck]'s finding while it holds: kept across games (the device doesn't change), so a game started again
+         * doesn't spend its first seconds on vsync pacing's made-up rate; cleared once the ticks follow the refresh
+         * again for a while. Null = they follow it. */
         @Volatile private var vsyncUnreliable: String? = null
+        /** GL thread: whether its ticks follow the refresh at all (GitHub #350: the RG DS swaps without waiting for it).
+         * One per process, like [vsyncUnreliable]. */
+        private val vsyncCheck = VsyncCheck()
+        /** [timerFallback]'s values. */
+        const val TIMER_NONE = 0
+        const val TIMER_AUDIO = 1
+        const val TIMER_SCREEN = 2
+        /** The audio fallback's first wait before vsync pacing is tried again, and its longest (it doubles). */
+        const val AUDIO_RETRY_NANOS = 60_000_000_000L
+        const val AUDIO_RETRY_MAX_NANOS = 960_000_000_000L
         /** Dynamic rate control's most the audio is stretched or squeezed (RetroArch's default). */
         const val DRC_MAX = 0.005
         /** Vsync pacing: frames run at once in a row at most, when the audio buffer runs low ([vsyncPace]). */
