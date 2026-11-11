@@ -260,6 +260,9 @@ static void wideAfterFrame(void) {
     struct timespec t0, t1;
     clock_gettime(CLOCK_MONOTONIC, &t0);
     pk_wide_view(core, (const uint32_t*) video, wideOut, wideView, wideCheck ? wideCentre : NULL);
+#ifdef HAVE_PK_FLIGHT
+    if (!wideCheck) pk_flight_draw_wide(wideOut, wideView.w, wideView.h, wideView.x, wideView.y);   // the app's clouds over it
+#endif
     clock_gettime(CLOCK_MONOTONIC, &t1);
     double ns = (t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec);
     wideStats.ns += ns;
@@ -440,7 +443,7 @@ static void frameOne(void) {
     if (core->platform(core) == mPLATFORM_GBA) pk_rest_note(core);
 #ifdef HAVE_PK_FLIGHT
     pk_flight_tick(core);   // FREE FLIGHT (`flighton`): its step after every frame, like the app's pkRunFrame
-    if (sizeof(color_t) == 4 && core->platform(core) == mPLATFORM_GBA) pk_flight_draw((uint32_t*) video, 240, 160, (int) videoW);
+    if (sizeof(color_t) == 4 && core->platform(core) == mPLATFORM_GBA) pk_flight_draw((uint32_t*) video, 240, 160, (int) videoW, !wideOn);
 #endif
 #ifdef HAVE_PK_WIDE
     if (partnerTrack) {
@@ -3048,6 +3051,24 @@ int main(int argc, char** argv) {
             char info[200];
             pk_follower_info(info, sizeof(info));
             printf("followinfo: %s\n", info);
+        } else if (!strcmp(cmd, "rideset")) {
+            // rideset FILE W: RIDE ON's vehicle - three views (1024 bytes each, OBJ tile order) then a 32-byte palette
+            static uint8_t buf[3 * 1024 + 32];
+            int w = 32;
+            sscanf(line, "%*s %255s %d", arg1, &w);
+            FILE* f = fopen(arg1, "rb");
+            size_t n = f ? fread(buf, 1, (size_t) (3 * 1024 + 32), f) : 0;
+            if (f) fclose(f);
+            if (n == (size_t) (3 * 1024 + 32)) pk_ride_set(buf, buf + 3 * 1024, w);
+            else fprintf(stderr, "mgba_dump: rideset: can't read %s\n", arg1);
+        } else if (!strcmp(cmd, "rideon")) {
+            int on = 0;
+            sscanf(line, "%*s %d", &on);
+            pk_ride_show(core, on);
+        } else if (!strcmp(cmd, "rideinfo")) {
+            char info[200];
+            pk_ride_info(info, sizeof(info));
+            printf("rideinfo: %s\n", info);
         } else if (!strcmp(cmd, "followon")) {
             int on = 0;
             sscanf(line, "%*s %d", &on);

@@ -528,6 +528,15 @@ private fun homeRows(
                 })
             }
         } else null,
+        // What the player rides in place of the bike (RideOn.kt: our own pixel art in the hero's bike sheets).
+        if (looks) {
+            SettingRow(tk("RIDE ON"), s.rideVehicle.label, labelBadge = NewFeatures.badge(NewFeatures.RIDE_ON)) {
+                val all = com.pokedaisy.app.companion.data.RideVehicle.entries
+                select(Selector(tk("RIDE ON"), all.map { it.label }, s.rideVehicle.label) { l ->
+                    all.firstOrNull { it.label == l }?.let(s::setRideVehicle)
+                })
+            }
+        } else null,
         // The overworld by the device's clock (DayNight.kt): every GBA game but those with their own.
         if (s.dayNightSupported) {
             SettingRow(tk("DAY AND NIGHT"), onOff(s.dayNight), labelBadge = NewFeatures.badge(NewFeatures.DAY_NIGHT)) {

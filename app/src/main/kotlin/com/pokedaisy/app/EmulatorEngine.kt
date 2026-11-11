@@ -543,6 +543,27 @@ class EmulatorEngine(
      * is on) and when AUTO-RUN becomes ready or blocked, and why - so SCENE SPEEDS, TEXT SPEED and AUTO-RUN's bike /
      * script / battle checks can be read off `adb logcat -s pokedaisy` after a test on a device.
      */
+    /** RIDE ON's vehicle as the look patch now in brings it (emu thread; null = none), sent to the core when it changed. */
+    private var rideApplied: com.pokedaisy.app.companion.data.RideOn.Sprite? = null
+    private var rideSent: com.pokedaisy.app.companion.data.RideOn.Sprite? = null
+    private var rideShown = false
+    private var rideFrames = 0
+
+    /** RIDE ON, once a frame (emu thread): the vehicle's sprite to the core when it changed, and shown or not (the core
+     * draws it only while the player is on a bike, behind them). */
+    private fun stepRide(field: Boolean) {
+        val r = rideApplied
+        if (r !== rideSent) {
+            MgbaCore.pkRideSet(r?.frames, r?.pal, r?.width ?: 32)
+            rideSent = r
+        }
+        val show = field && r != null
+        if (show != rideShown || (show && ++rideFrames % 60 == 0)) {
+            MgbaCore.pkRideShow(show)
+            rideShown = show
+        }
+    }
+
     /** FOLLOWER, once a frame (emu thread): its sprite to the core when it changed, and shown or not. */
     private fun stepFollower(field: Boolean) {
         val mon = follower
@@ -1441,6 +1462,8 @@ class EmulatorEngine(
                         lookRefreshTries = 0
                     }
                 }
+                if (gba) stepRide(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
+                    battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
                 if (gba) stepFollower(fieldScreen && !mapOpen && !FfMenuWatch.battling &&
                     battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE && fieldState and MgbaCore.FIELD_SURF == 0)
                 if (gba) coopLock?.onFrame()
@@ -1907,6 +1930,7 @@ class EmulatorEngine(
     private fun applyLook() {
         lookDirty = false
         MgbaCore.pkRomUnblock()
+        rideApplied = null
         val patch = lookPatch
         // The player's sprite still holds the last look's record (a Pokémon's 32x32 shape, a frame table in the tail):
         // set up from the ROM as it is now, whatever comes next.
@@ -1923,6 +1947,7 @@ class EmulatorEngine(
             )
             Log.i("pokedaisy", "player look: ${if (n < 0) "the ROM didn't match, left as it is" else "$n block(s) in"}")
             if (n < 0) return
+            rideApplied = patch.ride   // only with the rider's frames in: else a vehicle under the game's own bike
         }
         settleLook()
     }

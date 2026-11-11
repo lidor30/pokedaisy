@@ -173,6 +173,12 @@ class Prefs(context: Context) {
         get() = p.getInt("flight_vehicle", 0)
         set(v) = p.edit().putInt("flight_vehicle", v).apply()
 
+    /** MAKEOVER > RIDE ON: what the player rides when they get on their bike, a
+     * [com.pokedaisy.app.companion.data.RideVehicle] id (0 the game's own bike). For every game. */
+    var rideVehicleId: Int
+        get() = p.getInt("ride_vehicle", 0)
+        set(v) = p.edit().putInt("ride_vehicle", v).apply()
+
     /** The first scenic FLY's landing asked KEEP IT / USE CLASSIC (FlyStyleAsk), or the player picked a FLY STYLE themselves:
      * never asked again. */
     var flyStyleAsked: Boolean

@@ -135,6 +135,9 @@ interface CompanionSettings {
     fun setPlayerLook(look: String?) {}
     /** A PLAYER LOOK pick's name as the row and its tile show it (a hero's, or a Pokémon's in the game). */
     fun playerLookLabel(name: String): String = com.pokedaisy.app.companion.data.LookChar.byName(name)?.label ?: name
+    /** MAKEOVER > RIDE ON (where [playerLookSupported]): the game's bike, or one of our vehicles in its place. */
+    val rideVehicle: com.pokedaisy.app.companion.data.RideVehicle get() = com.pokedaisy.app.companion.data.RideVehicle.BIKE
+    fun setRideVehicle(v: com.pokedaisy.app.companion.data.RideVehicle) {}
     /** RIVAL LOOK: the rival of the other gender ([rivalLookSupported]: Emerald, Ruby, Sapphire) dressed up with the player. */
     val rivalLookSupported: Boolean get() = false
     val rivalLook: Boolean get() = true

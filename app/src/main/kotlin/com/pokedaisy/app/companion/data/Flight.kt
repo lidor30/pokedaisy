@@ -124,7 +124,7 @@ data class FlightFns(
  * own bird, or one of our vehicles (pk_flight_vehicles.h, scripts/gen_flight_vehicles.py's art) with the player in it.
  * [id] is pk_flight.h's PK_FLIGHT_VEHICLE word; [label] the row's value. */
 enum class FlightVehicle(val id: Int, val label: String) {
-    BIRD(0, "BIRD"), BALLOON(1, "AIR BALLOON"), HELICOPTER(2, "HELICOPTER"), ZEPPELIN(3, "ZEPPELIN");
+    BIRD(0, "BIRD"), BALLOON(1, "AIR BALLOON"), HELICOPTER(2, "HELICOPTER"), ZEPPELIN(3, "ZEPPELIN"), PLANE(4, "PLANE");
 
     companion object {
         fun of(id: Int) = entries.firstOrNull { it.id == id } ?: BIRD

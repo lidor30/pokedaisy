@@ -233,6 +233,9 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     private var vehicle = com.pokedaisy.app.companion.data.FlightVehicle.BIRD
     override val flightVehicle get() = vehicle
     override fun setFlightVehicle(v: com.pokedaisy.app.companion.data.FlightVehicle) { vehicle = v }
+    private var ride = com.pokedaisy.app.companion.data.RideVehicle.MOTORCYCLE
+    override val rideVehicle get() = ride
+    override fun setRideVehicle(v: com.pokedaisy.app.companion.data.RideVehicle) { ride = v }
     private var reusableTmsOn = false
     override val reusableTms get() = reusableTmsOn
     override fun setReusableTms(on: Boolean) { reusableTmsOn = on }
@@ -1550,6 +1553,7 @@ fun main(args: Array<String>) {
         Shot("$g-settings-tips", bw, bh, bd, companion("SETTINGS", settingsRow = "TIPS")),
         Shot("$g-settings-autorun", bw, bh, bd, companion("SETTINGS", settingsRow = "AUTO-RUN")),
         Shot("$g-settings-flystyle", bw, bh, bd, companion("SETTINGS", settingsRow = "FLY STYLE")),
+        Shot("$g-settings-rideon", bw, bh, bd, companion("SETTINGS", settingsRow = "RIDE ON")),
         Shot("$g-settings-battleview", bw, bh, bd, companion("SETTINGS", settingsRow = "BATTLE VIEW")),
         Shot("$g-settings-battery-low", bw, bh, bd, companion("SETTINGS", battery = BatteryStatus(9, charging = false))),
         Shot("$g-settings-battery-charging", bw, bh, bd, companion("SETTINGS", battery = BatteryStatus(100, charging = true))),
