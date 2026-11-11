@@ -814,6 +814,13 @@ class TelemetrySampler {
     val knownPartyMenu: Pair<Long, Long>?
         get() = nativeCfg?.takeIf { it.partyMenu != 0L }?.let { it.partyMenu to it.playerParty }
 
+    /** The detected game's party layout, for overworld reordering only. English Unbound reads through a fallback;
+     * admit that fallback only after its exact supported ROM has been verified, without enabling other config users. */
+    val knownPartyReorderConfig: NativeConfig?
+        get() = nativeCfg ?: NATIVE_UNBOUND_WITH_DEX.takeIf {
+            kind == GameKind.UNBOUND && romSha1 == UNBOUND_V2_1_1_1_SHA1 && ramVerified && beMatch == null
+        }
+
     /** Where the detected game's save keeps the option that shapes its battle party menu (gSaveBlock1Ptr + the offset:
      * SoulGold's PARTY MENU), or null when the shape is fixed. */
     val knownPartyMenuStyle: Pair<Long, Int>?
