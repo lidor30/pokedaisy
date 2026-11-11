@@ -672,6 +672,10 @@ int main(int argc, char** argv) {
         core->setVideoBuffer(core, video, STRIDE);
         core->reset(core);
         free(romBytes);
+        // PD_SIM_HBLANK=0: the game's empty H-blank interrupts raised as ever (pd_armgba.c), to compare.
+        const char* hb = getenv("PD_SIM_HBLANK");
+        if (hb && !strcmp(hb, "0")) pd_armgba_hblank_skips(false);
+        if (getenv("PD_SIM_HBLANK_COST")) pd_armgba_hblank_cost(atoi(getenv("PD_SIM_HBLANK_COST")));
     } else {
         struct VFile* rom = VFileFromMemory(romBytes, romLen);
         core = mCoreFindVF(rom);

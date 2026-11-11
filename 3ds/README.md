@@ -11,8 +11,9 @@ portable C core that re-implements the companion's reading and drawing, plus a
 **Status: preview.** It builds, every screen below has been driven on real ROMs and copies of real saves in the
 headless simulator (`make sim-test`, below), and the dev build runs on a New 3DS: FireRed, Emerald, Unbound and Monomyth
 (32 MB) and Yellow boot copies of real saves to the field with the companion, the HUD and the minimap up. It holds
-60 FPS on the field in FireRed, Emerald, Monomyth and Yellow, walking and surfing included, and in the game's own menus
-(30 on mGBA); 52-55 in a GBA battle (60 on mGBA); Unbound 58-60 on the field (see "Sound and speed"). On the game's own menu screens (the intro, the title, CONTINUE, the party, the bag: EXPAND's MENU scene, and a fade
+60 FPS on the field and in battle in FireRed, Emerald, Monomyth and Yellow, walking and surfing included, and in the
+game's own menus (30 on mGBA); Unbound 58-60 on the field and 60 in battle (43 on mGBA; see "Sound and speed").
+On the game's own menu screens (the intro, the title, CONTINUE, the party, the bag: EXPAND's MENU scene, and a fade
 from one) EXPAND and ZOOM OUT give way to STRETCH: no map to show past them, and drawing their margins cost the frame
 (`menu_screen` in `host/pd_session.c`). EXPAND runs at the same speeds at SHARP 1.5x and 1.25x (Emerald's Route 113, its ash the heaviest scene so far, 55-60), its drawing on the fourth core beside the next frame and the 2x picture built by the GPU; it has no PIXEL 1x, which couldn't keep up, and a battle always goes to 1.5x
 (`pdlink.py stat`). HOME and the lid work; most companion screens haven't been tried on a console.
@@ -161,9 +162,13 @@ there goes to `gbaBkptHook` first (`third_party/patches/armgba-pokedaisy.patch`,
 `apply_armgba_patch.cmake`, as melonDS's is), and the mixer reaches the CPU through `pd_armgba_reg` / `_set_reg` / `_jump`.
 In the sim it matches the game's own mixer byte for byte on both cores (`mixer`), and `PD_SIM_MIXER_CHECK=OFF` builds the
 native one alone, as the console runs it. It's what armGBA gains most from in Unbound (ipatix's mixer rewrites its own
-code): fast-forward 130 FPS (95 without), battles 49-54 (43 on mGBA). FireRed / Emerald battles stay at 52-55 FPS (60 on
-mGBA): their battle screen raises an interrupt every scanline (IE 0x00C7, HBlank), cheap for an interpreter, costly for a
-recompiler (armGBA's own numbers show the same). Measured on a New 3DS (FireRed, `pdlink stat`): emulation 6-7 ms a frame on the field (mGBA 8.8), the game's
+code): fast-forward 130 FPS (95 without). A battle keeps the H-blank interrupt on with no callback set: 228 interrupts a frame
+that only set two flags, 12 ms of armGBA's 18 (it leaves compiled code for each; 52-55 FPS). Where the game has the
+stock HBlankIntr (found by its code, FireRed's at 0x080007F0, Emerald's at 0x08000814), armGBA asks first
+(`gbaHblankIrqHook`, the same patch) and `pd_armgba.c` sets the two flags itself and charges the handler's time (190
+cycles), so the game keeps its speed and lag frames: in the sim seven of eight test runs equal the real interrupts frame for
+frame, the eighth reaching its battle menu a frame sooner (`PD_SIM_HBLANK=0` raises them as ever,
+`PD_SIM_HBLANK_COST=N` tries another cost). Battles: FireRed, Emerald and Unbound 60 FPS, about 6-7 ms of armGBA a frame. Measured on a New 3DS (FireRed, `pdlink stat`): emulation 6-7 ms a frame on the field (mGBA 8.8), the game's
 party menu 60 FPS (30), fast-forward 152 FPS at ORIGINAL and 141 with EXPAND (111). Gambatte, which armGBA runs Game Boy
 games on, is GPL-2.0-only and can't be distributed with this GPL-3.0 code: `emu/gb_none.c` stands in for it. The cartridge
 buffer is one 32 MB block reserved at start (`host_rom_arena`): a block per game left the heap too broken up for a 32 MB

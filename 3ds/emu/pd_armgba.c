@@ -218,6 +218,78 @@ static int16_t input_state(unsigned port, unsigned device, unsigned index, unsig
     return id < 16 && BIT[id] ? (E.keys >> (BIT[id] - 1)) & 1 : 0;
 }
 
+// --- H-blank interrupts with nothing to do ---
+
+// The games' HBlankIntr (pret's main.c: gMain.hblankCallback if set, then INTR_CHECK and gMain.intrCheck |= H-blank), the
+// same code in FireRed (0x080007F0) and Emerald (0x08000814) but for the call's offset and gMain's address. A battle
+// keeps the H-blank interrupt on with no callback: 228 interrupts a frame that only set two flags, 12 ms of armGBA's
+// 18 on a New 3DS (it leaves compiled code for each). Where the game has this handler, the hook (armgba-pokedaisy.patch)
+// sets the flags itself and the interrupt isn't raised; with a callback set, it is.
+static const uint8_t HBLANK_INTR[40] = {
+    0x10, 0xB5, 0x09, 0x4C, 0x20, 0x69, 0x00, 0x28, 0x01, 0xD0, 0x00, 0x00, 0x00, 0x00, 0x07, 0x4A, 0x10, 0x88, 0x02, 0x21,
+    0x08, 0x43, 0x10, 0x80, 0xA0, 0x8B, 0xA2, 0x8B, 0x01, 0x43, 0xA1, 0x83, 0x10, 0xBC, 0x01, 0xBC, 0x00, 0x47, 0x00, 0x00,
+};
+#define HBLANK_INTR_BL 10 // the bl to _call_via_r0, 4 bytes, masked
+#define INTR_CHECK 0x03007FF8u
+#define MAIN_HBLANK_CALLBACK 0x10
+#define MAIN_INTR_CHECK 0x1C
+#define IRQ_FLAG_HBLANK 2
+
+extern bool (*gbaHblankIrqHook)(struct GBA* gba); // armgba-pokedaisy.patch
+static uint32_t hblankMain;   // gMain, where the game has the stock handler; 0: the interrupt runs as ever
+static bool hblankSkips = true;
+// CPU cycles the handler would have taken (BIOS entry, IntrMain, HBlankIntr, back). Its real time varies a little with
+// what it interrupts; at 190 the sim's frames equal the real interrupts' in seven of eight test runs (FireRed and
+// Emerald: battle, RUN, GEN 5, flight), the eighth reaching its battle menu a frame sooner (180-200 all close).
+static int32_t hblankCost = 190;
+
+static uint8_t* ram_at(struct GBA* g, uint32_t addr, uint32_t len) {
+    if (addr >= 0x02000000 && addr - 0x02000000 + len <= SIZE_EWRAM) return g->ewram + (addr - 0x02000000);
+    if (addr >= 0x03000000 && addr - 0x03000000 + len <= SIZE_IWRAM) return g->iwram + (addr - 0x03000000);
+    return NULL;
+}
+
+static bool hblank_hook(struct GBA* g) {
+    uint8_t* m = ram_at(g, hblankMain, 0x20);
+    uint8_t* check = ram_at(g, INTR_CHECK, 2);
+    if (!m || !check) return false;
+    if (m[MAIN_HBLANK_CALLBACK] | m[MAIN_HBLANK_CALLBACK + 1] | m[MAIN_HBLANK_CALLBACK + 2] | m[MAIN_HBLANK_CALLBACK + 3]) return false;
+    check[0] |= IRQ_FLAG_HBLANK;
+    m[MAIN_INTR_CHECK] |= IRQ_FLAG_HBLANK;
+    // The time it would have taken, so the game keeps the speed (and the lag frames) it has on a GBA. A halted CPU
+    // (waiting for V-blank) would have gone back to its wait: nothing to charge.
+    if (!g->cpu.halted) g->cpu.cycles += hblankCost;
+    return true;
+}
+
+static void hblank_find(void) {
+    hblankMain = 0;
+    gbaHblankIrqHook = NULL;
+    const uint8_t* rom = gba->rom;
+    size_t size = gba->romSize < 0x400000 ? gba->romSize : 0x400000; // it sits near the start
+    for (size_t at = 0; rom && at + 48 <= size; at += 4) {
+        if (rom[at] != 0x10 || rom[at + 1] != 0xB5 || memcmp(rom + at, HBLANK_INTR, HBLANK_INTR_BL) ||
+            memcmp(rom + at + HBLANK_INTR_BL + 4, HBLANK_INTR + HBLANK_INTR_BL + 4, sizeof(HBLANK_INTR) - HBLANK_INTR_BL - 4))
+            continue;
+        uint32_t main = (uint32_t) rom[at + 40] | (uint32_t) rom[at + 41] << 8 | (uint32_t) rom[at + 42] << 16 | (uint32_t) rom[at + 43] << 24;
+        uint32_t check = (uint32_t) rom[at + 44] | (uint32_t) rom[at + 45] << 8 | (uint32_t) rom[at + 46] << 16 | (uint32_t) rom[at + 47] << 24;
+        if (check != INTR_CHECK || !ram_at(gba, main, 0x20)) continue;
+        hblankMain = main;
+        break;
+    }
+    if (hblankMain && hblankSkips) gbaHblankIrqHook = hblank_hook;
+    emu_log("H-blank handler: %s", hblankMain ? "the stock one, taken when it has no callback" : "not the stock one, left alone");
+}
+
+void pd_armgba_hblank_cost(int cycles) {
+    hblankCost = cycles;
+}
+
+void pd_armgba_hblank_skips(bool on) {
+    hblankSkips = on;
+    gbaHblankIrqHook = hblankMain && on ? hblank_hook : NULL;
+}
+
 // --- the save file ---
 
 static void put64(uint8_t* to, uint64_t v) {
@@ -414,6 +486,7 @@ bool pd_armgba_write(uint32_t addr, const void* data, size_t len) {
 
 void ag_unload(void) {
     if (!E.loaded) return;
+    gbaHblankIrqHook = NULL;
     pd_armgba_flush_save();
 #if defined(__3DS__)
     if (E.warmPath[0]) jitWarmSave(E.warmPath);
@@ -530,6 +603,7 @@ bool ag_load(const char* romPath, const char* savePath, const struct ag_host* ho
         return false;
     }
     E.loaded = true;
+    hblank_find();
     read_save();
     emu_log("armGBA: %s, %s, %u KiB game", gba->jit ? "recompiler" : "interpreter (no recompiler)",
             gba->renderThread ? "renderer and mixer on their own cores" : "one thread", (unsigned) (gba->romSize >> 10));

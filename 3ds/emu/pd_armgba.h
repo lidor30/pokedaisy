@@ -53,6 +53,9 @@ bool pd_armgba_recompiling(void);
 bool pd_armgba_threaded(void);
 // The frames from now on aren't shown (fast-forward's extra ones): armGBA needn't draw them.
 void pd_armgba_skip_video(bool skip);
+// The stock H-blank handler's interrupts with no callback taken by the host (pd_armgba.c, on by default; off to compare).
+void pd_armgba_hblank_skips(bool on);
+void pd_armgba_hblank_cost(int cycles);
 // RAM writes (EWRAM / IWRAM), with any compiled code over them thrown out.
 bool pd_armgba_write(uint32_t addr, const void* data, size_t len);
 
