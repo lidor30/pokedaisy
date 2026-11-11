@@ -191,11 +191,11 @@ those cores build - `linux/hud.c`, `quick_menu.c`, `fly.c`, `field_items.c`, `wi
 so a companion change for 3DS shows in the cores too) - stays in `linux/`. The host tells the core the screen (its
 `pokedaisy_panel` option, any `WxH`; the core picks its canvas) and shows the frame at a whole scale, and owns what a frontend
 owns: input (keyboard, SDL controllers with hotplug and mappings from `DATA/gamecontrollerdb.txt` / `SDL_GAMECONTROLLERCONFIG`,
-the TrimUI raw fallback, plorpOS's hotkeys file and Fn keys, the touch screen / mouse as RETRO_DEVICE_POINTER), sound
+the TrimUI raw fallback, the HOTKEYS page's buttons, the touch screen / mouse as RETRO_DEVICE_POINTER), sound
 (resampled to keep ~60 ms queued), pacing (the screen at 58-62 Hz, else a timer), the battery save (`DATA/saves/<rom>.sav`,
 written back when it changes, backed up before a game opens: newest 10 distinct), states (`DATA/states/<rom>.ss`, armGBA's
 `.armgba.ss`), fast-forward (sound sped up), rewind (XOR deltas from the newest state in a byte budget), the LCD mask and the game
-list, with a host menu on START+SELECT / Guide / Escape (`DATA/host.ini`). It answers the core's GET_THROTTLE_STATE so EXPAND
+list, with a host menu on START+SELECT / Guide / Escape (`DATA/host.ini`; its HOTKEYS page: FF / rewind / state buttons, `hk_*`). It answers the core's GET_THROTTLE_STATE so EXPAND
 stays sharp in FF. `linux-host-test` (`test_host.py`, with `-DPOCKET_TEST_CORES=<dir>`) runs the real binary headless on the
 diagnostic ROMs over both cores. `package.py --core` ships the cores beside the binary (`--portmaster`: the PortMaster layout).
 CI (`.github/workflows/linux.yml`): x86_64 on Ubuntu 22.04 (glibc <= 2.35: SteamOS), AArch64 host + mGBA core on the TrimUI

@@ -16,7 +16,6 @@
 #include <errno.h>
 #include <fcntl.h>
 #include <limits.h>
-#include <linux/input.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -76,12 +75,15 @@ enum {
   R2,
   MENU,
   L3,
-  SUP, // plorpOS: the left stick's directions apart (they're also the D-pad's), and the Brick's Fn keys
+  SUP, // the left stick's directions apart (they're also the D-pad's)
   SDOWN,
   SLEFT,
   SRIGHT,
-  FN1,
-  FN2,
+  R3,
+  P1, // the back paddles (the Steam Deck's L4 / R4 / L5 / R5, an Elite pad's), when SDL is given them
+  P2,
+  P3,
+  P4,
   FFKEY, // the keyboard's own: fast-forward held, rewind held, save / load state
   RWKEY,
   SAVEKEY,
@@ -161,6 +163,16 @@ static int controller_button(int button) {
     return MENU;
   case SDL_CONTROLLER_BUTTON_LEFTSTICK:
     return L3;
+  case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+    return R3;
+  case SDL_CONTROLLER_BUTTON_PADDLE1:
+    return P1;
+  case SDL_CONTROLLER_BUTTON_PADDLE2:
+    return P2;
+  case SDL_CONTROLLER_BUTTON_PADDLE3:
+    return P3;
+  case SDL_CONTROLLER_BUTTON_PADDLE4:
+    return P4;
   case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
     return L;
   case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
@@ -232,24 +244,6 @@ static void controller_removed(SDL_JoystickID id) {
     if (SDL_IsGameController(i))
       controller_added(i);
 }
-/* plorpOS: keys SDL's joystick never reports (below BTN_MISC: the Brick's Fn keys, KEY_F1 / KEY_F2), read from the
- * pad's own node beside SDL: POCKET_FN_KEYS=NODE:FN1CODE:FN2CODE. */
-static void fn_keys(void) {
-  static int fd = -2, code[2];
-  if (fd == -2) {
-    const char *spec = getenv("POCKET_FN_KEYS");
-    char node[256];
-    fd = -1;
-    if (spec && sscanf(spec, "%255[^:]:%d:%d", node, &code[0], &code[1]) == 3)
-      fd = open(node, O_RDONLY | O_NONBLOCK);
-  }
-  struct input_event ev;
-  while (fd >= 0 && read(fd, &ev, sizeof ev) == (ssize_t)sizeof ev)
-    for (int i = 0; i < 2; i++)
-      if (ev.type == EV_KEY && ev.code == code[i] && ev.value != 2)
-        key(FN1 + i, ev.value != 0);
-}
-
 /* The pointer (a touch screen, or the mouse): where on the core's frame, for RETRO_DEVICE_POINTER. */
 static SDL_Rect frameRect;
 static int pointerX, pointerY;
@@ -265,7 +259,7 @@ static void pointer_at(int x, int y) {
 static bool audioLost, outputChanged;
 static int key_named(const char *s);
 /* POCKET_KEYS="TICK:KEY[:HOLD],...": presses scripted by loop tick (each events() call), held HOLD ticks (2), for
- * tests: KEY is a hotkeys-file name (a, b, up, menu, start ...). */
+ * tests: KEY is a key name (a, b, up, menu, start, l3, r2 ...: keyNames). */
 static struct {
   unsigned at, hold;
   int key;
@@ -350,7 +344,6 @@ static void events(void) {
     if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
       outputChanged = true;
   }
-  fn_keys();
   script_keys();
 }
 static void repeat_directions(void) {
@@ -362,119 +355,44 @@ static void repeat_directions(void) {
 }
 static bool down(int k) { return (pressed & (1u << k)) != 0; }
 
-/* plorpOS: its GBA hotkeys, in the file POCKET_HOTKEYS_FILE names - Diatom's wire on its first line
- * ("l2:ff,d.x:savestate,select+r1:rewind"), the modifier a binding naming none holds on its second - read at start
- * and again after a pause (its in-game menu can change them). A trigger is held with its modifier, or alone with
- * "d.". The game doesn't get a trigger while it's a hotkey's (hotkeyMask). Set at all, the host owns MENU - its
- * own in-game menu and the modifier - and MENU no longer opens the host menu (START+SELECT still does). The HUD
- * cursor is the core's own button row now. */
+/* Hotkeys: a button per action, set on the host menu's HOTKEYS page (host.ini hk_*). FF and rewind act while held,
+ * the states on the press. A hotkey's button never reaches the game. The keyboard keeps its own (Space, R, F2, F4). */
 enum { HK_FF, HK_REWIND, HK_SAVE, HK_LOAD, HK_ACTIONS };
-static struct {
-  int action, key, mod; // mod -1: alone
-} hotkey[16];
-static int hotkeyN;
+static const char *const hotkeyIds[HK_ACTIONS] = {"ff", "rewind", "savestate", "loadstate"};
 static unsigned hotkeyMask;
-static bool hostMenu;
+// The game's own buttons and the menu's stay theirs: A, B, START, SELECT, the D-pad (and the stick's), MENU.
+static bool hotkey_assignable(int k) {
+  return k == L || k == R || k == X || k == Y || k == L2 || k == R2 || k == L3 || k == R3 || (k >= P1 && k <= P4);
+}
 // START+SELECT opens the host menu too, unless POCKET_MENU_COMBO=off (PortMaster: there it is the port's exit).
 static bool comboMenu = true;
+static const struct {
+  const char *name;
+  int key;
+} keyNames[] = {{"a", A},       {"b", B},         {"x", X},         {"y", Y},           {"l1", L},
+                {"r1", R},      {"l2", L2},       {"r2", R2},       {"up", UP},         {"down", DOWN},
+                {"left", LEFT}, {"right", RIGHT}, {"menu", MENU},   {"select", SELECT}, {"start", START}, {"l3", L3},
+                {"sup", SUP},   {"sdown", SDOWN}, {"sleft", SLEFT}, {"sright", SRIGHT}, {"r3", R3},
+                {"p1", P1},     {"p2", P2},       {"p3", P3},       {"p4", P4}};
 static int key_named(const char *s) {
-  static const struct {
-    const char *name;
-    int key;
-  } names[] = {{"a", A},       {"b", B},         {"x", X},         {"y", Y},           {"l1", L},
-               {"r1", R},      {"l2", L2},       {"r2", R2},       {"up", UP},         {"down", DOWN},
-               {"left", LEFT}, {"right", RIGHT}, {"menu", MENU},   {"select", SELECT}, {"start", START}, {"l3", L3},
-               {"sup", SUP},   {"sdown", SDOWN}, {"sleft", SLEFT}, {"sright", SRIGHT}, {"fn1", FN1},
-               {"fn2", FN2}};
-  for (size_t i = 0; i < sizeof names / sizeof names[0]; i++)
-    if (!strcmp(s, names[i].name))
-      return names[i].key;
+  for (size_t i = 0; i < sizeof keyNames / sizeof keyNames[0]; i++)
+    if (!strcmp(s, keyNames[i].name))
+      return keyNames[i].key;
   return -1;
 }
-static void hotkeys_load(void) {
-  static const char *const actions[HK_ACTIONS] = {"ff", "rewind", "savestate", "loadstate"};
-  const char *path = getenv("POCKET_HOTKEYS_FILE");
-  char buf[512] = "", modBuf[32] = "menu", *mod = modBuf, *save = NULL;
-  FILE *f = path ? fopen(path, "r") : NULL;
-  hostMenu = path != NULL;
-  hotkeyN = 0;
-  if (f) {
-    if (!fgets(buf, sizeof buf, f))
-      buf[0] = 0;
-    if (!fgets(modBuf, sizeof modBuf, f))
-      snprintf(modBuf, sizeof modBuf, "menu");
-    fclose(f);
-  }
-  buf[strcspn(buf, "\r\n")] = 0;
-  modBuf[strcspn(modBuf, "\r\n")] = 0;
-  for (char *t = strtok_r(buf, ",", &save); t && hotkeyN < 16; t = strtok_r(NULL, ",", &save)) {
-    char *colon = strchr(t, ':'), *plus = strchr(t, '+');
-    int action = -1, m, k;
-    if (!colon)
-      continue;
-    *colon = 0;
-    for (int i = 0; i < HK_ACTIONS; i++)
-      if (!strcmp(colon + 1, actions[i]))
-        action = i;
-    if (plus) {
-      *plus = 0;
-      m = key_named(t);
-      k = key_named(plus + 1);
-    } else if (!strncmp(t, "d.", 2)) {
-      m = -2;
-      k = key_named(t + 2);
-    } else {
-      m = key_named(mod);
-      k = key_named(t);
-    }
-    // Others (screenshot, turbo, the right stick, the HUD cursor, the GKD's Home) aren't this host's.
-    if (action < 0 || k < 0 || m == -1)
-      continue;
-    hotkey[hotkeyN].action = action;
-    hotkey[hotkeyN].key = k;
-    hotkey[hotkeyN++].mod = m < 0 ? -1 : m;
-  }
+static const char *key_name(int k) {
+  for (size_t i = 0; i < sizeof keyNames / sizeof keyNames[0]; i++)
+    if (keyNames[i].key == k)
+      return keyNames[i].name;
+  return "off";
 }
-/* The actions held this frame; *fired: those whose trigger went down now. The keyboard's own keys count too. */
-static unsigned hotkeys_held(unsigned *fired) {
-  unsigned on = 0;
-  *fired = 0;
-  hotkeyMask = 0;
-  for (int i = 0; i < hotkeyN; i++) {
-    unsigned bit = 1u << hotkey[i].key;
-    bool mod = hotkey[i].mod >= 0 ? (held & (1u << hotkey[i].mod)) != 0 : !(hostMenu && (held & (1u << MENU)));
-    // pressed too: a tap shorter than a frame is let go before this sees it.
-    if (!((held | pressed) & bit) || !mod)
-      continue;
-    on |= 1u << hotkey[i].action;
-    if (pressed & bit)
-      *fired |= 1u << hotkey[i].action;
-    pressed &= ~bit;
-    hotkeyMask |= bit;
-    // A stick direction is the D-pad's too: the game doesn't get that either.
-    if (hotkey[i].key >= SUP && hotkey[i].key <= SRIGHT)
-      hotkeyMask |= 1u << (hotkey[i].key == SUP     ? UP
-                           : hotkey[i].key == SDOWN ? DOWN
-                           : hotkey[i].key == SLEFT ? LEFT
-                                                    : RIGHT);
-  }
-  if (held & (1u << FFKEY))
-    on |= 1u << HK_FF;
-  if (held & (1u << RWKEY))
-    on |= 1u << HK_REWIND;
-  if (down(SAVEKEY))
-    *fired |= 1u << HK_SAVE;
-  if (down(LOADKEY))
-    *fired |= 1u << HK_LOAD;
-  return on;
-}
-
 /* ---- the host's settings (DATA/host.ini): what its menu sets ---- */
 static struct {
   int ffSpeed; // 0 = MAX (as many frames as fit), else 2..8
   bool rewind, lcd;
   bool swapAB; // the controller's A / B and X / Y the other way round (devices disagree on which is SDL's "A")
-} hostSet = {0, false, false, false};
+  int hotkey[HK_ACTIONS]; // the HOTKEYS page's button per action, -1 none
+} hostSet = {0, false, false, false, {R2, L2, -1, -1}};
 static char hostIni[PATH_MAX];
 static void host_load(void) {
   FILE *f = fopen(hostIni, "r");
@@ -489,6 +407,12 @@ static void host_load(void) {
       hostSet.lcd = v != 0;
     if (sscanf(line, "swap_ab=%d", &v) == 1)
       hostSet.swapAB = v != 0;
+    for (int i = 0; i < HK_ACTIONS; i++) {
+      char key[32], name[16];
+      snprintf(key, sizeof key, "hk_%s=%%15s", hotkeyIds[i]);
+      if (sscanf(line, key, name) == 1)
+        hostSet.hotkey[i] = hotkey_assignable(key_named(name)) ? key_named(name) : -1;
+    }
   }
   if (f)
     fclose(f);
@@ -499,7 +423,44 @@ static void host_save(void) {
   if (!f)
     return;
   fprintf(f, "ff_speed=%d\nrewind=%d\nlcd=%d\nswap_ab=%d\n", hostSet.ffSpeed, hostSet.rewind, hostSet.lcd, hostSet.swapAB);
+  for (int i = 0; i < HK_ACTIONS; i++)
+    fprintf(f, "hk_%s=%s\n", hotkeyIds[i], key_name(hostSet.hotkey[i]));
   fclose(f);
+}
+// A hotkey's button as the HOTKEYS page shows it.
+static const char *hotkey_label(int k) {
+  static const char *const labels[] = {[L] = "L1", [R] = "R1",  [X] = "X",         [Y] = "Y",         [L2] = "L2",
+                                       [R2] = "R2", [L3] = "L3", [R3] = "R3",       [P1] = "PADDLE 1", [P2] = "PADDLE 2",
+                                       [P3] = "PADDLE 3", [P4] = "PADDLE 4"};
+  return k >= 0 && k < (int)(sizeof labels / sizeof labels[0]) && labels[k] ? labels[k] : "OFF";
+}
+/* The actions held this frame; *fired: those whose button went down now. The keyboard's own keys count too. */
+static unsigned hotkeys_held(unsigned *fired) {
+  unsigned on = 0;
+  *fired = 0;
+  hotkeyMask = 0;
+  for (int i = 0; i < HK_ACTIONS; i++) {
+    int k = hostSet.hotkey[i];
+    if (k < 0)
+      continue;
+    unsigned bit = 1u << k;
+    hotkeyMask |= bit; // never the game's, pressed or not (a release mid-frame would reach it otherwise)
+    // pressed too: a tap shorter than a frame is let go before this sees it.
+    if (!((held | pressed) & bit))
+      continue;
+    on |= 1u << i;
+    if (pressed & bit)
+      *fired |= 1u << i;
+  }
+  if (held & (1u << FFKEY))
+    on |= 1u << HK_FF;
+  if (held & (1u << RWKEY))
+    on |= 1u << HK_REWIND;
+  if (down(SAVEKEY))
+    *fired |= 1u << HK_SAVE;
+  if (down(LOADKEY))
+    *fired |= 1u << HK_LOAD;
+  return on;
 }
 
 /* ---- files ---- */
@@ -1309,7 +1270,7 @@ static const char *core_for(const char *path) {
 extern int pd_ds_run(const char *, const char *, int, const char *, SDL_Renderer *, bool (*)(void));
 static bool ds_running(void) { return running != 0; }
 #endif
-enum { M_RESUME, M_SAVE, M_LOAD, M_FF, M_FFSPEED, M_REWIND, M_LCD, M_SWAP, M_QUIT, M_COUNT };
+enum { M_RESUME, M_SAVE, M_LOAD, M_FF, M_FFSPEED, M_REWIND, M_LCD, M_SWAP, M_HOTKEYS, M_QUIT, M_COUNT };
 static void run_game(const char *path, int maxFrames, const char *shot, bool fromList) {
 #ifdef POCKET_DSPERATE
   const char *ext = strrchr(path, '.');
@@ -1401,23 +1362,23 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     if (sramCopy)
       save_image(sramCopy);
   }
-  hotkeys_load();
   rewindBudget = (getenv("POCKET_REWIND_MB") ? (size_t)atoi(getenv("POCKET_REWIND_MB")) : 32) << 20;
   rewindTick = 0;
   bool ffToggled = false, menuOpen = false, leave = false;
-  struct pd_menu menu;
-  static char rows[M_COUNT][40];
-  static const char *rowPtrs[M_COUNT];
+  struct pd_menu menu, hkMenu;
+  static char rows[M_COUNT][40], hkRows[HK_ACTIONS][40];
+  static const char *rowPtrs[M_COUNT], *hkPtrs[HK_ACTIONS];
+  static const char *const hkNames[HK_ACTIONS] = {"FAST FORWARD", "REWIND", "SAVE STATE", "LOAD STATE"};
+  bool hkPage = false;
+  int capturing = -1; // the HOTKEYS row waiting for a button
   int frames = 0;
   uint64_t due = SDL_GetPerformanceCounter(), lastStart = 0, lastFrame = due;
   pacing_start(hz);
   while (running && !leave) {
     uint64_t frameStart = SDL_GetPerformanceCounter();
-    // plorpOS: back from a pause (its in-game menu stops this process, as does sleep): its hotkeys again.
-    if (lastStart && (frameStart - lastStart) * 4 > SDL_GetPerformanceFrequency()) {
-      hotkeys_load();
+    // Back from a pause (a stopped process, sleep): no catching up.
+    if (lastStart && (frameStart - lastStart) * 4 > SDL_GetPerformanceFrequency())
       due = frameStart;
-    }
     lastStart = frameStart;
     events();
     audio_check();
@@ -1426,7 +1387,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       outputChanged = false;
       panel_follow();
     }
-    bool menuKey = (!hostMenu && down(MENU)) ||
+    bool menuKey = down(MENU) ||
                    (comboMenu && (down(START) || down(SELECT)) && (held & (1u << START)) && (held & (1u << SELECT)));
     snprintf(rows[M_RESUME], 40, "RESUME");
     snprintf(rows[M_SAVE], 40, "SAVE STATE");
@@ -1439,11 +1400,18 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     snprintf(rows[M_REWIND], 40, "REWIND  %s", hostSet.rewind ? "ON" : "OFF");
     snprintf(rows[M_LCD], 40, "LCD FILTER  %s", hostSet.lcd ? "ON" : "OFF");
     snprintf(rows[M_SWAP], 40, "A/B BUTTONS  %s", hostSet.swapAB ? "SWAPPED" : "NORMAL");
+    snprintf(rows[M_HOTKEYS], 40, "HOTKEYS");
     snprintf(rows[M_QUIT], 40, fromList ? "QUIT TO GAME LIST" : "QUIT");
     for (int i = 0; i < M_COUNT; i++)
       rowPtrs[i] = rows[i];
+    for (int i = 0; i < HK_ACTIONS; i++) {
+      snprintf(hkRows[i], 40, "%s  %s", hkNames[i], capturing == i ? "..." : hotkey_label(hostSet.hotkey[i]));
+      hkPtrs[i] = hkRows[i];
+    }
     if (menuKey) {
       menuOpen = !menuOpen;
+      hkPage = false;
+      capturing = -1;
       if (menuOpen) {
         pd_menu_init(&menu, "POKEDAISY", rowPtrs, M_COUNT);
         menu.overlay = true;
@@ -1457,7 +1425,42 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       notice(state_file(ss, true) ? "State saved" : "State save failed");
     if (hkFired & (1u << HK_LOAD))
       notice(!exists(ss) ? "No state saved yet" : state_file(ss, false) ? "State loaded" : "State load failed");
-    if (menuOpen) {
+    if ((hkFired & (1u << HK_REWIND)) && !hostSet.rewind)
+      notice("REWIND is off: turn it on in the menu");
+    const bool menuFrame = menuOpen; // the frame that closes the menu is still the menu's
+    if (menuOpen && capturing >= 0) {
+      // The next assignable button is the hotkey (taken from any other action that had it); B cancels, SELECT = OFF.
+      if (down(B))
+        capturing = -1;
+      else if (down(SELECT)) {
+        hostSet.hotkey[capturing] = -1;
+        host_save();
+        capturing = -1;
+      } else
+        for (int k = 0; k < NKEYS; k++)
+          if (down(k) && hotkey_assignable(k)) {
+            for (int j = 0; j < HK_ACTIONS; j++)
+              if (hostSet.hotkey[j] == k)
+                hostSet.hotkey[j] = -1;
+            hostSet.hotkey[capturing] = k;
+            host_save();
+            capturing = -1;
+            break;
+          }
+      hkMenu.title = capturing >= 0 ? "PRESS A BUTTON" : "HOTKEYS";
+    } else if (menuOpen && hkPage) {
+      if (down(UP))
+        pd_menu_move(&hkMenu, -1);
+      if (down(DOWN))
+        pd_menu_move(&hkMenu, 1);
+      if (down(B))
+        hkPage = false;
+      if (down(A)) {
+        capturing = hkMenu.selected;
+        hkMenu.title = "PRESS A BUTTON";
+        notice("B: cancel   SELECT: off");
+      }
+    } else if (menuOpen) {
       if (down(UP))
         pd_menu_move(&menu, -1);
       if (down(DOWN))
@@ -1499,14 +1502,21 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
           held = 0; // the button that chose this is now the other one: let it go
           host_save();
           break;
+        case M_HOTKEYS:
+          hkPage = true;
+          pd_menu_init(&hkMenu, "HOTKEYS", hkPtrs, HK_ACTIONS);
+          hkMenu.overlay = true;
+          break;
         case M_QUIT:
           leave = true;
           break;
         }
       }
+    }
+    if (menuFrame) {
       muted = true;
       gameKeys = 0;
-      present_game(menuOpen ? &menu : NULL);
+      present_game(menuOpen ? (hkPage ? &hkMenu : &menu) : NULL);
       if (maxFrames && ++frames >= maxFrames) { // a scripted run can end, and be captured, with the menu up
         if (shot && !capture(shot))
           appError = 1;

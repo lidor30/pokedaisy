@@ -46,10 +46,17 @@ frontend: X opens the companion, Y the quick menu (each can be rebound in the co
 START+SELECT (or the controller's Guide / Menu button, or Escape) opens the host menu over the game: RESUME, SAVE
 STATE, LOAD STATE, FAST FORWARD (on / off), FF SPEED (MAX, or 2x to 8x), REWIND (keeps the last ~20 s while on, in a
 32 MB budget: `POCKET_REWIND_MB`), LCD FILTER, A/B BUTTONS (NORMAL / SWAPPED: devices disagree on which physical
-button SDL calls A; SWAPPED trades A with B and X with Y on controllers) and QUIT (QUIT TO GAME LIST when the game
-came from the list). `POCKET_MENU_COMBO=off` leaves START+SELECT alone (the PortMaster launcher sets it: there it is
-the port's exit). The game
-pauses while it is open. Fast-forward plays its sound sped up. A touch screen or the mouse reaches the core's
+button SDL calls A; SWAPPED trades A with B and X with Y on controllers), HOTKEYS and QUIT (QUIT TO GAME LIST when the
+game came from the list). `POCKET_MENU_COMBO=off` leaves START+SELECT alone (the PortMaster launcher sets it: there it is
+the port's exit). The game pauses while it is open.
+
+HOTKEYS gives FAST FORWARD (held; default R2), REWIND (held, while REWIND is on; default L2), SAVE STATE and LOAD
+STATE (off by default) a controller button each: pick a row, then press the button (B cancels, SELECT turns it off).
+Any of L1, R1, L2, R2, X, Y, L3, R3 and the back paddles SDL reports (the Steam Deck's L4 / R4 / L5 / R5 reach it only
+when Steam passes them on); the game's A, B, START, SELECT, D-pad and the menu button stay theirs. A button another
+hotkey had moves over. A hotkey's button never reaches the game, so one the companion uses (X, Y, or L2 / R2 when
+picked in its SETTINGS) is the hotkey's while it is one. Saved in DATA/host.ini (`hk_ff`, `hk_rewind`, `hk_savestate`,
+`hk_loadstate`). Fast-forward plays its sound sped up. A touch screen or the mouse reaches the core's
 companion and HUD.
 
 SDL GameController mappings take priority. The right face button acts as game A; the bottom button acts as game B.
@@ -57,8 +64,7 @@ A controller can be plugged in or pulled out while the game runs: the first one 
 SDL's own database, `DATA/gamecontrollerdb.txt` (the community file's format) or `SDL_GAMECONTROLLERCONFIG` (which
 PortMaster sets for the device it runs on). An unmapped device is named in the log with its GUID, to write it a
 mapping. It is otherwise ignored unless you explicitly set `POCKET_RAW_TRIMUI=1`, which enables the TrimUI raw button
-layout. plorpOS's hotkeys file (`POCKET_HOTKEYS_FILE`: ff, rewind, savestate, loadstate) and the Brick's Fn keys
-(`POCKET_FN_KEYS`) still work.
+layout.
 
 `POCKET_FULLSCREEN=1` uses SDL's current display mode. The host tells the core the screen's size (its
 `pokedaisy_panel` option), so the core picks its canvas for that screen (EXPAND at the game's whole scale, the
