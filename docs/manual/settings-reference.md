@@ -171,7 +171,8 @@ At the top of SETTINGS, in a blue frame, in the games where any of it works.
 | `RIVAL LOOK` | **`ON`**, `OFF` | Your rival wears the other hero of the game you picked. Ruby, Sapphire and Emerald only; `N/A` until you pick a `PLAYER LOOK`. | [Companion](companion.md#rival-look) |
 | `TEXT LOOK` | **`OFF`**, or the other game | FireRed's text boxes and letters in Emerald, or Emerald's in FireRed and LeafGreen, from your own copy of that game. Shows once that game is found. | [Companion](companion.md#text-look) |
 | `FOLLOWER` | `ON`, **`OFF`** | Your first Pokémon walks behind you on the map, drawn over the game. Needs Heart and Soul, R.O.W.E., Recharged Yellow or Emerald Seaglass too (their sprites); not in games whose Pokémon follow you already. | [Companion](companion.md#follower) |
-| `FLY ON` | **`BIRD`**, `AIR BALLOON`, `HELICOPTER`, `ZEPPELIN` | What you ride when you fly over the map: your Pokémon's bird, or a vehicle with you in it. The same in every game; shows in the games that have `TAKE OFF`. | [Companion](companion.md#fly-on) |
+| `RIDE ON` | **`BIKE`**, `MOTORCYCLE`, `SCOOTER` | What you ride when you get on your bike: the game's own, or one of ours in your hero's colours. The same in every game; shows in the games where `PLAYER LOOK` works. | [Companion](companion.md#ride-on) |
+| `FLY ON` | **`BIRD`**, `AIR BALLOON`, `HELICOPTER`, `ZEPPELIN`, `PLANE` | What you ride when you fly over the map: your Pokémon's bird, or a vehicle with you in it. The same in every game; shows in the games that have `TAKE OFF`. | [Companion](companion.md#fly-on) |
 | `DAY AND NIGHT` | `ON`, **`OFF`** | The map outdoors follows your clock: dawn, dusk and night tints. Text boxes, menus, buildings and battles keep their colours. Every GBA game but those with a day and night of their own. | [Companion](companion.md#day-and-night) |
 
 ### Gameplay

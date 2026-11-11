@@ -170,6 +170,9 @@ object NewFeatures {
     /** SETTINGS > FLY STYLE: SCENIC flies over the field to the town. */
     const val SCENIC_FLY = "scenic_fly"
 
+    /** MAKEOVER > RIDE ON: a motorcycle or a scooter in place of the bike (companion.data.RideOn). */
+    const val RIDE_ON = "ride_on"
+
     /** SETTINGS > FLIGHT AREA: flying only over the maps the player has seen (companion.data.FlightArea). */
     const val FLIGHT_AREA = "flight_area"
     /** MAKEOVER > FLY ON: a balloon, a helicopter or a zeppelin in place of the bird. */
@@ -187,7 +190,7 @@ object NewFeatures {
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
         GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE, FOLD_LAYOUT, TOUCH_STYLES, TOUCH_SKINS,
         AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
-        QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON,
+        QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
         DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL,
     )
 

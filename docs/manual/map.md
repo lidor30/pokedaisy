@@ -59,7 +59,7 @@ On the DS it works in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and
 
 In FireRed, LeafGreen, Ruby, Sapphire and Emerald in every language, Emerald Legacy, and the hacks Radical Red, Unbound, Glazed, Ultra Violet, Orange Islands, Ghost Grey, Let's Go, Odyssey, Gaia, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Rocket Edition, Ash Gray, Emerald Kaizo, Emerald Imperium, Emerald Seaglass, Too Many Types 2, R.O.W.E., Super Mariomon, Quetzal, Lazarus, Heart and Soul and SoulGold, a second blue button sits under the first one: `TAKE OFF`. Your Pokémon's bird swoops in, you climb on, and you can fly anywhere the game's world goes: over trees, mountains, water and buildings, from one route into the next town, with the D-pad. Hold `A` to fly faster. Nothing happens on the way: no wild Pokémon, no trainers spotting you, no doors pulling you in.
 
-Rather ride something else? `FLY ON`, in `SETTINGS` under `MAKEOVER`, swaps the bird for an air balloon, a helicopter or a zeppelin, with you inside. See [FLY ON](companion.md#fly-on).
+Rather ride something else? `FLY ON`, in `SETTINGS` under `MAKEOVER`, swaps the bird for an air balloon, a helicopter, a zeppelin or a small plane, with you inside. See [FLY ON](companion.md#fly-on).
 
 Your shadow follows on the ground below, and the bird leans the way you're flying: nose up on the way north, down on the way south, a little on a diagonal. Flying on a diagonal is about as fast as flying straight. With `ASPECT` set to `EXPAND`, flying on a diagonal glides smoothly instead of stepping a tile at a time.
 

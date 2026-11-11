@@ -493,6 +493,15 @@ static int flRiderMode(void) {
     return flCfg[PK_FLIGHT_RIDER_TEMPLATE] != 0 || flCfg[PK_FLIGHT_RIDER_ANIM] != 0;
 }
 
+/** A FireRed-engine bird drawn in a palette of its own (Unbound's, tag 0x11A2) carries no rider: the game's pictures
+ * of it with Red / Leaf are the bird alone. The player's palette (0x1100), the expansion's by gender (0xFFFF) and the
+ * loaders called first (bit 16) are the player's colours: their birds have the rider. Flown like Emerald's (its one side
+ * picture, flipped going east), the player seated on its back by flSeatOnBird. */
+static int flBirdNoRider(void) {
+    uint32_t tag = flCfg[PK_FLIGHT_BIRD_PALETTE_TAG];
+    return !flRiderMode() && flCfg[PK_FLIGHT_BIRD_PALETTE] && tag && tag != 0x1100u && tag != 0xFFFFu && !(tag & 0x10000u);
+}
+
 /** A game whose bird has no picture (Ghost Grey blanked its graphics): flCapture flies the player in the air balloon. */
 static int flBirdBlank;
 
@@ -564,7 +573,7 @@ static int flRidden(void) {
 static void flTurn(void) {
     const struct pk_flight_vehicle* veh = flVehicle();
     int side = flLook;
-    if (side == FL_DIR_NORTH && (flRiderMode() || veh))   // Emerald's bird and the vehicles: no back view
+    if (side == FL_DIR_NORTH && (flRiderMode() || flBirdNoRider() || veh))   // a bird with one picture, the vehicles: no back view
         side = flLastHorizontal == FL_DIR_EAST ? FL_DIR_EAST : FL_DIR_WEST;
     double share = veh ? veh->turnShare : FL_TURN_SHARE, most = veh ? veh->turnMax : FL_TURN_MAX;
     int sx = side == FL_DIR_EAST ? -1 : 1;
@@ -650,29 +659,83 @@ static void flSetHidden(struct mCore* core, int id, int hidden) {
     core->busWrite8(core, spr + FL_SPR_FLAGS, (uint8_t) (hidden ? f | 4u : f & ~4u));
 }
 
-/** The player in a vehicle's seat: their overworld sprite's current frame (16 x 32, hidden while they fly but still
- * animated), over the vehicle's SEAT pixels only, the right way round once pk_flight_draw mirrors the picture. */
-static void flSeatPlayer(struct mCore* core, const struct pk_flight_vehicle* v, const uint8_t* px, int ox, int oy) {
-    uint32_t spr = flSpriteAddr(core->busRead8(core, flObjAddr(core) + FL_OBJ_SPRITE_ID));
-    uint16_t a0 = core->busRead16(core, spr), a1 = core->busRead16(core, spr + FL_SPR_ATTR1), a2 = core->busRead16(core, spr + FL_SPR_ATTR2);
-    if ((a0 >> 14) != 2 || (a1 >> 14) != 2 || (a0 & 0x2000u)) return;   // a 16 x 32, 4bpp sprite: the player's
-    int flip = ((a1 & 0x1000u) != 0) != (flSx < 0);
+/** The player's overworld sprite as drawn this frame: 16 x 32 (pret's heroes) or 32 x 32 (Unbound's), 4bpp; its width,
+ * 0 when it's neither. */
+static int flPlayerSprite(struct mCore* core, uint32_t* spr) {
+    *spr = flSpriteAddr(core->busRead8(core, flObjAddr(core) + FL_OBJ_SPRITE_ID));
+    uint16_t a0 = core->busRead16(core, *spr), a1 = core->busRead16(core, *spr + FL_SPR_ATTR1);
+    if (a0 & 0x2000u) return 0;
+    if ((a0 >> 14) == 2 && (a1 >> 14) == 2) return 16;   // tall, 16 x 32
+    if ((a0 >> 14) == 0 && (a1 >> 14) == 2) return 32;   // square, 32 x 32
+    return 0;
+}
+
+/** Pixel (x, y) of the player's sprite frame (w wide, 32 tall) as a frame colour, 0 for none. */
+static uint32_t flPlayerPixel(struct mCore* core, uint32_t spr, int w, int x, int y) {
+    uint16_t a2 = core->busRead16(core, spr + FL_SPR_ATTR2);
     uint32_t tiles = 0x06010000u + 32u * (a2 & 0x3FFu), pal = 0x05000200u + 32u * (a2 >> 12);
+    uint32_t t = (uint32_t) ((y / 8) * (w / 8) + x / 8);
+    uint8_t b = core->busRead8(core, tiles + t * 32u + (uint32_t) ((y % 8) * 4 + (x % 8) / 2));
+    int ix = (x & 1) ? b >> 4 : b & 0xF;
+    if (!ix) return 0;
+    uint16_t c = core->busRead16(core, pal + 2u * (uint32_t) ix);
+    uint32_t col = (uint32_t) (c & 0x1F) << 3 | (uint32_t) ((c >> 5) & 0x1F) << 11 | (uint32_t) ((c >> 10) & 0x1F) << 19;
+    return col | ((col >> 5) & 0x070707) | 0xFF000000u;
+}
+
+/** The pose the rider is drawn in: the player's own standing frames (ANIM_STD_FACE_SOUTH 0, NORTH 1, WEST 2 - the first
+ * anims of every hero's table), not whatever step their hidden sprite was on (the walking frames bobbed the rider up and
+ * down in the seat). From the side (west in the picture, mirrored going east); in the balloon, whose basket shows them
+ * from every side, from behind going up and from the front going down. [flPoseAnim] -1 = take-off's own frame kept. */
+#define FL_POSE_SOUTH 0
+#define FL_POSE_NORTH 1
+#define FL_POSE_WEST 2
+static int flPose = FL_POSE_WEST;
+static int flPoseSaved = -1;       // the player's anim before the flight posed them, put back on landing
+static int flPoseSavedFlip;
+
+static void flPosePlayer(struct mCore* core, int upDown) {
+    if (!upDown) {
+        flPose = FL_POSE_WEST;
+    } else if (flVx * flVx + flVy * flVy > 0.01) {
+        double ax = fabs(flVx), ay = fabs(flVy);
+        if (ay > ax * 1.5) flPose = flVy < 0 ? FL_POSE_NORTH : FL_POSE_SOUTH;
+        else if (ax > ay * 1.5) flPose = FL_POSE_WEST;
+    }
+    uint32_t spr;
+    if (!flPlayerSprite(core, &spr)) return;
+    if (flPoseSaved < 0) {
+        flPoseSaved = core->busRead8(core, spr + FL_SPR_ANIM_NUM);
+        flPoseSavedFlip = core->busRead8(core, spr + FL_SPR_FLAGS2) & 1;
+    }
+    flSpriteLook(core, spr, flPose, 0);
+}
+
+/** Landed: the player's own frame back (their sprite stands as it did at take-off until their first step). */
+static void flUnposePlayer(struct mCore* core) {
+    uint32_t spr;
+    if (flPoseSaved < 0 || !flPlayerSprite(core, &spr)) { flPoseSaved = -1; return; }
+    flSpriteLook(core, spr, flPoseSaved, flPoseSavedFlip);
+    flPoseSaved = -1;
+}
+
+/** The player in a vehicle's seat: their overworld sprite's current frame (16 x 32, or 32 x 32 centred on the same
+ * place; hidden while they fly), over the vehicle's SEAT pixels only, the right way round once pk_flight_draw mirrors the
+ * picture. */
+static void flSeatPlayer(struct mCore* core, const struct pk_flight_vehicle* v, const uint8_t* px, int ox, int oy) {
+    uint32_t spr;
+    int w = flPlayerSprite(core, &spr);
+    if (!w) return;
+    int flip = ((core->busRead16(core, spr + FL_SPR_ATTR1) & 0x1000u) != 0) != (flSx < 0);
     for (int y = 0; y < 32; y++) {
         int vy = v->playerY + y;
         if (vy < 0 || vy >= v->h) continue;
-        for (int x = 0; x < 16; x++) {
-            int vx = v->playerX + x;
+        for (int x = 0; x < w; x++) {
+            int vx = v->playerX - (w - 16) / 2 + x;
             if (vx < 0 || vx >= v->w || !(px[vy * v->w + vx] & 0x80)) continue;
-            int sx = flip ? 15 - x : x;
-            uint32_t t = (uint32_t) ((y / 8) * 2 + sx / 8);
-            uint8_t b = core->busRead8(core, tiles + t * 32u + (uint32_t) ((y % 8) * 4 + (sx % 8) / 2));
-            int ix = (sx & 1) ? b >> 4 : b & 0xF;
-            if (!ix) continue;
-            uint16_t c = core->busRead16(core, pal + 2u * (uint32_t) ix);
-            uint32_t col = (uint32_t) (c & 0x1F) << 3 | (uint32_t) ((c >> 5) & 0x1F) << 11 | (uint32_t) ((c >> 10) & 0x1F) << 19;
+            uint32_t col = flPlayerPixel(core, spr, w, flip ? w - 1 - x : x, y);
             int dx = ox + vx, dy = oy + vy;
-            if (dx >= 0 && dy >= 0 && dx < FL_SRC && dy < FL_SRC) flSrc[dy * FL_SRC + dx] = col | ((col >> 5) & 0x070707) | 0xFF000000u;
+            if (col && dx >= 0 && dy >= 0 && dx < FL_SRC && dy < FL_SRC) flSrc[dy * FL_SRC + dx] = col;
         }
     }
 }
@@ -734,25 +797,22 @@ static void flDrawVehicle(struct mCore* core, const struct pk_flight_vehicle* v)
 }
 
 /** An Emerald-style bird with no rider sprite to build (pokeemerald-expansion 1.13 dropped
- * CopyObjectGraphicsInfoToSpriteTemplate; Lazarus's we couldn't place): the player's own overworld sprite on its back, cut
- * at the waist (sprite rows up to 26: the cap starts at 13), its waist on the bird's back, the right way round once
- * pk_flight_draw mirrors the picture. */
+ * CopyObjectGraphicsInfoToSpriteTemplate; Lazarus's we couldn't place), or a bird with no rider in its pictures
+ * (flBirdNoRider: Unbound's): the player's own overworld sprite on its back, cut at the waist (sprite rows up to 26: the
+ * cap starts at 13), its waist on the bird's back, the right way round once pk_flight_draw mirrors the picture. */
 static void flSeatOnBird(struct mCore* core) {
-    uint32_t spr = flSpriteAddr(core->busRead8(core, flObjAddr(core) + FL_OBJ_SPRITE_ID));
-    uint16_t a0 = core->busRead16(core, spr), a1 = core->busRead16(core, spr + FL_SPR_ATTR1), a2 = core->busRead16(core, spr + FL_SPR_ATTR2);
-    if ((a0 >> 14) != 2 || (a1 >> 14) != 2 || (a0 & 0x2000u)) return;   // the player's 16 x 32, 4bpp sprite
-    int flip = ((a1 & 0x1000u) != 0) != (flSx < 0);
-    uint32_t tiles = 0x06010000u + 32u * (a2 & 0x3FFu), pal = 0x05000200u + 32u * (a2 >> 12);
-    int ox = FL_SRC / 2 - 8 + 3, oy = FL_SRC / 2 - 26 - 3;   // a little behind the head (west in the picture), on the back
-    for (int y = 0; y <= 26; y++) {
-        for (int x = 0; x < 16; x++) {
-            int sx = flip ? 15 - x : x;
-            uint8_t b = core->busRead8(core, tiles + (uint32_t) ((y / 8) * 2 + sx / 8) * 32u + (uint32_t) ((y % 8) * 4 + (sx % 8) / 2));
-            int ix = (sx & 1) ? b >> 4 : b & 0xF;
-            if (!ix) continue;
-            uint16_t c = core->busRead16(core, pal + 2u * (uint32_t) ix);
-            uint32_t col = (uint32_t) (c & 0x1F) << 3 | (uint32_t) ((c >> 5) & 0x1F) << 11 | (uint32_t) ((c >> 10) & 0x1F) << 19;
-            flSrc[(oy + y) * FL_SRC + ox + x] = col | ((col >> 5) & 0x070707) | 0xFF000000u;
+    uint32_t spr;
+    int w = flPlayerSprite(core, &spr);
+    if (!w) return;
+    int flip = ((core->busRead16(core, spr + FL_SPR_ATTR1) & 0x1000u) != 0) != (flSx < 0);
+    // Cut at the waist: row 26 of pret's 16 x 32 heroes (the cap starts at 13), row 20 of Unbound's taller 32 x 32 ones (whose
+    // legs hid its small bird); the waist on the bird's back, a little behind the head (west in the picture).
+    int waist = w == 32 ? 20 : 26;
+    int ox = FL_SRC / 2 - w / 2 + 3, oy = FL_SRC / 2 - waist - (w == 32 ? 8 : 3);
+    for (int y = 0; y <= waist; y++) {
+        for (int x = 0; x < w; x++) {
+            uint32_t col = flPlayerPixel(core, spr, w, flip ? w - 1 - x : x, y);
+            if (col) flSrc[(oy + y) * FL_SRC + ox + x] = col;
         }
     }
 }
@@ -774,10 +834,14 @@ static void flCapture(struct mCore* core) {
     flSprOn = on;
     if (!on) return;
     memset(flSrc, 0, sizeof(flSrc));
+    if (flRidden() && (veh || flBirdNoRider() || (flRiderMode() && !flCfg[PK_FLIGHT_RIDER_TEMPLATE])))
+        flPosePlayer(core, veh && veh->upDown);
     if (veh) {
         flReadGreys(core);
         flDrawVehicle(core, veh);
     } else {
+        // Unbound's bird is small for its tall hero: the rider first, the bird over their legs (seated in it, wings in front).
+        if (flBirdNoRider()) flSeatOnBird(core);
         flCopySprite(core, flBird, FL_SRC / 2, FL_SRC / 2);
         if (flRider >= 0) flCopySprite(core, flRider, FL_SRC / 2, FL_SRC / 2 - 8);
         else if (flRiderMode() && !flCfg[PK_FLIGHT_RIDER_TEMPLATE]) flSeatOnBird(core);
@@ -798,7 +862,7 @@ static void flCapture(struct mCore* core) {
  * (flMakeRider), facing the way the bird does - from the side, north too. 0 when the game's code couldn't be called. */
 static int flBirdLook(struct mCore* core, int ridden) {
     if (flBird < 0) return 1;
-    if (flRiderMode()) {
+    if (flRiderMode() || flBirdNoRider()) {
         int flip = ridden && (flLook == FL_DIR_EAST || (flLook == FL_DIR_NORTH && flLastHorizontal == FL_DIR_EAST));
         if (!flSpriteLook(core, flSpriteAddr(flBird), 0, flip)) return 0;
         if (!ridden) return flDropRider(core);
@@ -911,6 +975,8 @@ void pk_flight_reset(void) {
     flLandX = flLandY = -1;
     flRouteLen = -1;
     flRouteDone = 0;
+    flPose = FL_POSE_WEST;
+    flPoseSaved = -1;
 }
 
 void pk_flight_configure(const uint32_t* words, int n) {
@@ -1224,6 +1290,7 @@ void pk_flight_tick(struct mCore* core) {
             uint8_t old = core->busRead8(core, obj + FL_OBJ_ELEVATION);
             core->busWrite8(core, obj + FL_OBJ_ELEVATION, (uint8_t) (e ? (e | (e << 4)) : ((old & 0xF0) | 0)));
             if (!flBirdLook(core, 0)) break;   // Emerald's rider off the bird first (DestroySprite): next frame if not now
+            flUnposePlayer(core);
             flHidePlayer(core, obj, 0);
             flMarkPlayer(core, obj, 0);
             flPlaySe(core, flCfg[PK_FLIGHT_SE_FLY]);

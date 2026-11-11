@@ -2320,12 +2320,16 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
   the app say why; `ScenicFly.read(allowed)` plans over those maps. ANYWHERE sends none and pauses RetroAchievements from the
   first take-off (`RetroAchievements.setFlightAnywhere`) until it's switched back. `FlightAreaTest` checks the maps and
   trainers read on every flight hack's ROM and the seeds on FireRed / Emerald's saves; mgba_dump `flightarea G.N ...`.
-- **FLY ON** (MAKEOVER, `Prefs.flightVehicleId`, `FlightVehicle`, the PK_FLIGHT_VEHICLE word): an air balloon, a helicopter
-  or a zeppelin in place of the bird, our own pixel art from `scripts/gen_flight_vehicles.py` (parts shaded by a normal lit
+- **FLY ON** (MAKEOVER, `Prefs.flightVehicleId`, `FlightVehicle`, the PK_FLIGHT_VEHICLE word): an air balloon, a helicopter,
+  a zeppelin or a small plane in place of the bird, our own pixel art from `scripts/gen_flight_vehicles.py` (parts shaded by a normal lit
   from the top left over a colour ramp, coloured outlines; rerun it after changing the art) -> `pk_flight_vehicles.h`.
   flCapture draws the vehicle's frame for the whole flight (the bird's hardware sprite and Emerald's rider stay hidden), the
-  player's own overworld sprite (hidden while flying, still animated) over its SEAT pixels, then its FRONT pixels over them;
-  each has its own lean (the balloon none) and no back view. Changing it mid-flight only swaps the picture (configure
+  player's own overworld sprite (hidden while flying) over its SEAT pixels, then its FRONT pixels over them; the sprite held
+  on the player's standing frame the way they fly (`flPosePlayer`: ANIM_STD_FACE_WEST, mirrored going east; the balloon's
+  `upDown` takes FACE_NORTH / SOUTH going up / down; their walking frames bobbed in the seat), put back on landing; a 32 x 32
+  hero (Unbound's) is seated centred like a 16 x 32 one. Each has its own lean (the balloon none) and no back view.
+  A FireRed-engine bird in a palette of its own (`flBirdNoRider`: Unbound's tag 0x11A2) has no rider in its pictures: it
+  flies like Emerald's (one side picture), the player seated on its back (flSeatOnBird). Changing it mid-flight only swaps the picture (configure
   compares the words without it). mgba_dump: the word after the bird palette's tag in `flighton`.
 - **Which games** (`flightAllowed`, `FieldItemFns.flight`; the code CRCs still decide): retail FireRed rev 0 / 1, LeafGreen
   rev 0 / 1, Emerald, Ruby / Sapphire rev 1 / 2 (pret's `symbols` branches; R/S ride as Emerald, their save blocks in place,

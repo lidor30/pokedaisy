@@ -1777,6 +1777,11 @@ class PokeDaisyActivity : Activity() {
         override val dayNight get() = Prefs(this@PokeDaisyActivity).dayNight
         override fun setDayNight(on: Boolean) { Prefs(this@PokeDaisyActivity).dayNight = on }
         override val rivalLookSupported get() = lookRunner.rivalSupported
+        override val rideVehicle get() = com.pokedaisy.app.companion.data.RideVehicle.of(Prefs(this@PokeDaisyActivity).rideVehicleId)
+        override fun setRideVehicle(v: com.pokedaisy.app.companion.data.RideVehicle) {
+            Prefs(this@PokeDaisyActivity).rideVehicleId = v.id
+            lookRunner.apply()   // the bike sheets rewritten: the next frame the bike shows is the new ride
+        }
         override val rivalLook get() = Prefs(this@PokeDaisyActivity).rivalLook
         override fun setRivalLook(on: Boolean) {
             if (coopRefuses()) return

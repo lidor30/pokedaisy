@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""The FLY ON vehicles (MAKEOVER > FLY ON): an air balloon, a helicopter and a zeppelin the player flies in place of
+"""The FLY ON vehicles (MAKEOVER > FLY ON): an air balloon, a helicopter, a zeppelin and a small plane the player flies in place of
 FREE FLIGHT's bird. Our own pixel art, made here - no game art. Each part is drawn with a colour ramp (dark to light, its
 material's) by a normal lit from the top left, a glint where the light hits square on, then a one-pixel outline in the
 part's own dark (a lighter one on the lit side) - the games' overworld look.
@@ -303,7 +303,7 @@ def helicopter(frame):
     cv.outline(['cowl'])
     # the cabin: a blue egg whose front is glass
     def cab(x, y, u, v, n):
-        if u < -0.05 and v < 0.42 and not (u > -0.3 and v < -0.75):
+        if u < -0.05 and v < 0.62 and not (u > -0.3 and v < -0.75):
             cv.seat[y][x] = True
             c = H_GLASS.shade(n, ambient=0.3)
             # a glint band across the glass
@@ -460,19 +460,109 @@ def zeppelin(frame):
     return cv
 
 
+P_BODY = Mat(['#8a5a10', '#c08818', '#e8b828', '#f8d850', '#fcf0a0'], '#4c3008', '#8a5a10')
+P_TRIM = Mat(['#7a1c22', '#a8282a', '#d0403a', '#ec6450'], '#4c1018', '#7a1c22')
+P_GLASS = Mat(['#3a6a88', '#5a94b4', '#84bcd8', '#b4e0f0'], '#1c3040')
+P_TYRE = Mat(['#1c1e24', '#30343c', '#484c56'], '#0c0e12')
+
+P_W, P_H = 60, 32
+
+
+def plane(frame):
+    """A small propeller plane from the side, nose west: a yellow body with a red band and tail, a bubble canopy (the seat:
+    the pilot's head and shoulders show), a wing seen edge on, a spinner and a two-blade propeller (frames: across, half,
+    edge on), fixed wheels."""
+    cv = Canvas(P_W, P_H)
+    W, H = P_W, P_H
+    # the fuselage: thick behind the engine, tapering to the tail
+    for x in range(6, 54):
+        t = (x - 6) / 47
+        r = 5.6 if t < 0.32 else 5.6 - (5.6 - 1.6) * ((t - 0.32) / 0.68) ** 1.2
+        c = 19.0 - (2.5 * max(0.0, t - 0.4) / 0.6)
+        for y in range(int(c - r) - 1, int(c + r) + 2):
+            v = (y + 0.5 - c) / r
+            if abs(v) >= 1:
+                continue
+            n = (-0.2 if x < 9 else 0.05, v, math.sqrt(max(0.0, 1 - v * v)))
+            m = P_TRIM if (-0.05 < v < 0.25 and x > 12) else P_BODY
+            cv.put(x, y, m.shade(n), 'body', P_BODY)
+    # the cowling's nose, rounded, and the tail fin and stabiliser in red
+    ellipsoid(cv, 'body', P_BODY, 7.5, 19, 2.6, 4.6)
+    poly(cv, 'fin', P_TRIM, [(46, 16), (50, 5), (55, 5), (55, 16)], light=lambda x, y: (-0.4, -0.2, 0.9))
+    poly(cv, 'stab', P_TRIM, [(44, 17), (55, 17), (56, 19), (46, 19)], light=lambda x, y: (0, 0.5, 0.86))
+    cv.outline(['body', 'fin', 'stab'])
+    # the canopy: a glass bubble on top of the body, behind the engine
+    def glass(x, y, u, v, n):
+        if v > 0.55:
+            return None
+        cv.seat[y][x] = True
+        c = P_GLASS.shade(n, ambient=0.3)
+        if 0 <= (x + y * 0.9) - 26 <= 1.2 and v < 0.2:
+            c = (232, 248, 252)
+        return c
+    ellipsoid(cv, 'canopy', P_GLASS, 22, 12.5, 7.2, 7.0, glass, clip=lambda x, y: y <= 18)
+    for y in range(H):
+        for x in range(W):
+            if cv.c[y][x] == (232, 248, 252):
+                cv.front[y][x] = True
+                cv.seat[y][x] = False
+    cv.outline(['canopy'])
+    for y in range(H):
+        for x in range(W):
+            if cv.part[y][x] == 'canopy' and cv.c[y][x] in (P_GLASS.outline, P_GLASS.lit):
+                cv.seat[y][x] = False
+                cv.front[y][x] = True
+    # the canopy's frame: a bar down the middle
+    for y in range(6, 19):
+        if cv.part[y][23] == 'canopy':
+            cv.put(23, y, DARK.ramp[1], 'canopy', P_GLASS, True)
+            cv.seat[y][23] = False
+    # a low wing seen edge on, along the body's belly, in the trim's red
+    for x in range(12, 37):
+        tip = x < 14 or x > 34
+        cv.put(x, 24, P_TRIM.ramp[3] if not tip else P_TRIM.ramp[2], 'wing', P_TRIM, True)
+        if not tip or x == 35:
+            cv.put(x, 25, P_TRIM.ramp[1] if x < 33 else P_TRIM.ramp[0], 'wing', P_TRIM, True)
+    cv.outline(['wing'])
+    # wheels under the wing, on struts
+    for sx in (18, 26):
+        line(cv, 'strut', STEEL.ramp[1], [(sx, 26), (sx - 1, 27)], front=True)
+    for wx in (17, 25):
+        ellipsoid(cv, 'tyre', P_TYRE, wx, 28.5, 2.2, 2.2, front=True)
+        cv.put(wx, 28, STEEL.ramp[3], 'tyre', P_TYRE, True)
+    cv.outline(['tyre', 'strut'])
+    # the spinner and the propeller
+    ellipsoid(cv, 'spinner', P_TRIM, 4.5, 19, 1.8, 2.2, front=True)
+    cv.outline(['spinner'])
+    blade = [[(2, y) for y in range(8, 31)], [(2, y) for y in range(13, 26)], [(2, y) for y in range(17, 22)]][frame]
+    for x, y in blade:
+        cv.put(x, y, BLADE[1] if abs(y - 19) > 2 else BLADE[0], 'prop', None, True)
+    if frame == 0:
+        for y in (8, 30):
+            cv.put(2, y, BLADE[2], 'prop', None, True)
+    for y in range(H):
+        for x in range(W):
+            if cv.part[y][x] in ('body', 'fin', 'stab', 'wing'):
+                cv.front[y][x] = True
+    return cv
+
+
 HERE = os.path.dirname(os.path.abspath(__file__))
 OUT = os.path.join(HERE, "../app/src/main/cpp/pk_flight_vehicles.h")
 SIZE = 64   # pk_flight.c's FL_SRC: a picture fits 64 x 64 around its anchor
 
 # name, frames, the sequence of frames (one per [ticks] game frames), the player's sprite's top left (its 16 x 32 frame:
-# a hero's cap starts 13 rows down), the art point drawn at the bird's place, its lean (share of the heading, at most).
+# a hero's cap starts 13 rows down), the art point drawn at the bird's place, its lean (share of the heading, at most),
+# whether the rider turns to the back / front going up / down (the balloon's open basket; else always from the side).
 VEHICLES = [
     dict(name="BALLOON", build=balloon, frames=3, sequence=[0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 2, 2, 1, 0], ticks=4,
-         player=(8, 23), anchor=(16, 32), turn=(0.0, 0.0)),
+         player=(8, 23), anchor=(16, 32), turn=(0.0, 0.0), upDown=True),
     dict(name="HELICOPTER", build=helicopter, frames=3, sequence=[0, 1, 2, 1], ticks=2,
-         player=(7, -4), anchor=(24, 16), turn=(0.3, 0.26)),
+         player=(7, -2), anchor=(24, 16), turn=(0.3, 0.26)),
     dict(name="ZEPPELIN", build=zeppelin, frames=2, sequence=[0, 1], ticks=3,
-         player=(18, 10), anchor=(28, 22), turn=(0.2, 0.1)),
+         player=(18, 12), anchor=(28, 22), turn=(0.2, 0.1)),
+    dict(name="PLANE", build=plane, frames=3, sequence=[0, 1, 2, 1], ticks=1,
+         player=(15, -7), anchor=(28, 18), turn=(0.3, 0.26)),
 ]
 
 
@@ -522,6 +612,7 @@ def write_header():
         "    int playerX, playerY;         // the player's sprite (16 x 32), its top left in the picture",
         "    int anchorX, anchorY;         // drawn at the bird's place",
         "    float turnShare, turnMax;     // its lean: a share of the heading's angle, at most (radians)",
+        "    int upDown;                   // the rider shown from behind / the front going up / down (else from the side)",
         "};",
         "",
     ]
@@ -545,7 +636,7 @@ def write_header():
         ax, ay = v["anchor"]
         ts, tm = v["turn"]
         rows.append(f"    {{ {w}, {h}, {v['frames']}, pk_vehicle_{n}_pixels, pk_vehicle_{n}_palette, pk_vehicle_{n}_sequence, "
-                    f"{len(v['sequence'])}, {v['ticks']}, {px0}, {py0}, {ax}, {ay}, {ts}f, {tm}f }},   // {v['name']}")
+                    f"{len(v['sequence'])}, {v['ticks']}, {px0}, {py0}, {ax}, {ay}, {ts}f, {tm}f, {1 if v.get('upDown') else 0} }},   // {v['name']}")
     lines.append("// PK_FLIGHT_VEHICLE's values from 1 (0 = the game's bird)")
     lines.append("static const struct pk_flight_vehicle pk_flight_vehicles[] = {")
     lines += rows
