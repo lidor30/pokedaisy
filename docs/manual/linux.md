@@ -46,13 +46,6 @@ desktops have both). Inside its `pokedaisy-linux-x86_64` folder are the program 
 The `--data` folder is where PokeDaisy keeps `roms`, `saves`, `states` and its settings. Without `--data` it uses
 the folder you started it from, so a shortcut should always pass it.
 
-### A desktop shortcut
-
-In Desktop Mode, right click the desktop, choose Create New > Link to Application, and set the program to the full
-path of `pokedaisy-linux` followed by `--data` and its folder, for example
-`/home/deck/PokeDaisy/pokedaisy-linux-x86_64/pokedaisy-linux --data /home/deck/PokeDaisy/pokedaisy-linux-x86_64`.
-You can use `icon.png` from the same folder as its icon. On the desktop it opens in a window you can resize.
-
 ### Game Mode
 
 In Desktop Mode, open Steam and choose Games > Add a Non-Steam Game to My Library, browse to `pokedaisy-linux` and
@@ -60,30 +53,28 @@ add it. Steam starts it in its own folder, so no launch options are needed. In G
 screen by itself, and the Deck's controls, touch screen and sound work as they do anywhere else. Steam's on-screen
 keyboard shouldn't open at launch; if it does, you're on an older build, so download the newest one.
 
-## TrimUI handhelds (the app)
+## Linux Handhelds
 
-`pokedaisy-linux-aarch64.zip` is the program as a TrimUI app, for firmwares like CrossMix or NextUI. Its
-`pokedaisy-linux-aarch64` folder holds the program, both cores, `launch.sh` (what the firmware runs),
-`config.json` and `icon.png` (the menu entry's name and icon).
+`pokedaisy-linux-aarch64.zip` is the program as a TrimUI app, built for firmwares like CrossMix or NextUI, but it 
+should run other places too. Its `pokedaisy-linux-aarch64` folder holds the program, both cores, `launch.sh` (what 
+the firmware runs), `config.json` and `icon.png` (the menu entry's name and icon). On CrossMix, copy the folder 
+into the SD card's `Apps` folder.
 
-- On CrossMix, copy the folder into the SD card's `Apps` folder.
-- On NextUI, use it as a tool: rename the folder `PokeDaisy.pak` and copy it into `Tools/tg5040`.
-
-On plorpOS and on spruceUI's nightly builds, the Game Boy Advance, Game Boy and Game Boy Color cores come installed
-already, so there you don't need these files: pick PokeDaisy as the core for your game.
+On [plorpOS](https://github.com/thwonp/plorpos) and on [spruceOS](https://github.com/spruceUI/spruceOS) nightly, 
+the Game Boy Advance, Game Boy and Game Boy Color cores come installed already, so there you don't need these files:
+pick PokeDaisy as the core for your game.
 
 The app keeps everything in its own folder: put your games in its `roms` folder. It runs fullscreen, and on
 CrossMix it raises the CPU's lowest speed while you play and puts it back when you quit.
 
 > [!NOTE]
-> The program itself hasn't run on a TrimUI device yet (its cores have, on the TrimUI Brick). Expect rough edges,
-> and tell us how it goes.
+> The program itself hasn't run as a standalone app yet (its cores have). Expect rough edges, and tell us how it goes.
 
-## PortMaster handhelds
+## PortMaster build
 
-`pokedaisy-portmaster-aarch64.zip` is a PortMaster port: `PokeDaisy.sh` beside a `pokedaisy` folder. Copy both into
-your firmware's `ports` folder, then start PokeDaisy from the Ports list. It has been tried on a GKD 350H running
-ROCKNIX.
+`pokedaisy-portmaster-aarch64.zip` is an unpublished PortMaster port: `PokeDaisy.sh` beside a `pokedaisy` folder. 
+Copy both into your firmware's `ports` folder, then start PokeDaisy from the Ports list. It has been tried on a 
+GKD 350H running plorpOS.
 
 - **Your games:** the game list shows `ports/pokedaisy/roms` and the firmware's own `gba`, `gb`, `gbc`,
   `Game Boy Advance`, `Game Boy Color` and `Game Boy` folders, wherever they exist next to `ports`.
@@ -244,6 +235,6 @@ DS games exists for testers (`linux/dsperate/README.md`); it isn't part of the r
 
 ## What isn't tested yet
 
-- The program on TrimUI devices (its cores have run on the Brick).
-- PortMaster firmwares other than ROCKNIX on the GKD 350H.
-- DS games run only on the DS core and in the NXRedux collection, not in the program.
+- More devices
+- PortMaster firmwares other than plorpOS
+- DS games run only on the libretro DS core and in the NXRedux collection, not yet in the other builds.
