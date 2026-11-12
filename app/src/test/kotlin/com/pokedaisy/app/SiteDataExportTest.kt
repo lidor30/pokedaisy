@@ -85,7 +85,9 @@ class SiteDataExportTest {
             val revs = (0..3).filter { TelemetrySampler.otherRetailConfig(code, it) != null }
             if (revs.isEmpty()) null else Triple(code, revs, codeTitles.getValue(code))
         }
-        val hackSha1s = TelemetrySampler.SUPPORTED_HACK_SHA1S
+        // A game its makers asked PokéDaisy not to read (BlockedGames) isn't on the site at all: not supported, no title.
+        val blocked = com.pokedaisy.app.companion.data.BlockedGames.ALL.flatMap { it.sha1s }.toSet()
+        val hackSha1s = TelemetrySampler.SUPPORTED_HACK_SHA1S - blocked
         // A game whose README row is all "—" plays but has no companion yet (R.O.W.E.): the site lists it
         // as in progress, not as supported, and leaves it out of the matrix.
         val (columns, allRows) = readmeMatrix()
@@ -97,7 +99,7 @@ class SiteDataExportTest {
         val gameBoy = if (TelemetrySampler.GAME_BOY_SUPPORT) TelemetrySampler.SUPPORTED_GB_SHA1S.sorted() else emptyList()
         val ds = if (TelemetrySampler.NDS_SUPPORT) TelemetrySampler.NDS_GAMES.sortedWith(compareBy({ it.first }, { it.second })) else emptyList()
         // DS carts go by their header's code and revision (`ds`), as the app takes them, not by hash.
-        val titles = GameTitles.BY_SHA1.filterKeys { it !in hackSha1s && it !in gameBoy && it !in GameTitles.NDS_SHA1S }.toSortedMap()
+        val titles = GameTitles.BY_SHA1.filterKeys { it !in hackSha1s && it !in blocked && it !in gameBoy && it !in GameTitles.NDS_SHA1S }.toSortedMap()
 
         return buildString {
             append("{\n")

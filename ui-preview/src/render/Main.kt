@@ -1814,6 +1814,11 @@ fun main(args: Array<String>) {
         Shot("$g-unsupported", bw, bh, bd, companion("PARTY") {
             SnapshotView(connected = false, error = "game code AMTE isn't a supported Pokémon game", unsupported = true)
         }),
+        // A game its makers asked PokéDaisy not to read: their reason and its link, no ASK FOR SUPPORT.
+        Shot("$g-blocked", bw, bh, bd, companion("PARTY") {
+            SnapshotView(connected = false, error = "GHOST GREY is blocked", unsupported = true,
+                blocked = com.pokedaisy.app.companion.data.BlockedGames.GHOST_GREY)
+        }),
         Shot("$g-settings", bw, bh, bd, companion("SETTINGS")),
         // MORE (left of the gear): the tabs off the bar as app icons, the TAB BAR link under them.
         Shot("$g-more", bw, bh, bd, companion("MORE")),
@@ -2449,6 +2454,21 @@ fun main(args: Array<String>) {
             val hack = File(ctx.filesDir, "roms/firered-hack.gba").absolutePath
             File(ctx.filesDir, "rom-folder-scan.tsv").writeText("$hack\t1\t1700000000000\t0\n")
             LibraryActivity().apply { unsupportedRoms = setOf(hack) }
+        }) {
+            onNodeWithContentDescription("Toggle view").performClick()
+        },
+        // A game on the blocked list (BlockedGames): a black BLOCKED tag, in the list and the grid.
+        Shot("library-tag-blocked", tw, th * 2, td, activity {
+            val ctx = android.content.Context()
+            val hack = File(ctx.filesDir, "roms/firered-hack.gba").absolutePath
+            File(ctx.filesDir, "rom-folder-scan.tsv").writeText("$hack\t1\t1700000000000\t0\n")
+            LibraryActivity().apply { blockedRoms = setOf(hack) }
+        }),
+        Shot("library-tag-blocked-grid", tw, th * 2, td, activity {
+            val ctx = android.content.Context()
+            val hack = File(ctx.filesDir, "roms/firered-hack.gba").absolutePath
+            File(ctx.filesDir, "rom-folder-scan.tsv").writeText("$hack\t1\t1700000000000\t0\n")
+            LibraryActivity().apply { blockedRoms = setOf(hack) }
         }) {
             onNodeWithContentDescription("Toggle view").performClick()
         },

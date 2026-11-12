@@ -183,6 +183,8 @@ data class SnapshotView(
     val error: String? = null,
     /** The running ROM is one the companion can't read (see TelemetrySampler.detect). */
     val unsupported: Boolean = false,
+    /** Set with [unsupported] for a game its makers asked PokéDaisy not to read: its notice instead of NOT SUPPORTED. */
+    val blocked: BlockedGame? = null,
     /** Read through BEST EFFORT ([BestEffort]): what as, and how well; null = a ROM the app knows. */
     val bestEffort: BestEffortView? = null,
     /** WHICH GAME IS THIS? - set for every ROM the app doesn't know that's a Gen 3 base game. */

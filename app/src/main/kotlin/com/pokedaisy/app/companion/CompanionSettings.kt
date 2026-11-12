@@ -256,6 +256,13 @@ interface CompanionSettings {
     /** SETTINGS > DISCORD: opens PokeDaisy's Discord server ([Discord.URL]) in the browser or the Discord app. */
     fun openDiscord() {}
 
+    /** The running game is one its makers asked PokéDaisy not to read ([com.pokedaisy.app.companion.data.BlockedGames]):
+     * SETTINGS shows the emulator's rows only. */
+    val gameBlocked: Boolean get() = false
+
+    /** Opens a web link ([url]) in the browser - a blocked game's button ([com.pokedaisy.app.companion.data.BlockedAction]). */
+    fun openUrl(url: String) {}
+
     /** Whether battle-only strategic hints (move effectiveness chips, foe
      * Weak-to/Resists/Immune-to) are shown — see [Prefs.showHints]. */
     val showHints: Boolean

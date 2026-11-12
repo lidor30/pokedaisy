@@ -10,5 +10,8 @@ object BuildConfig {
     @JvmField var FEATURE_SCREENSCRAPER = false
     /** On in the preview: the CO-OP group and the invite pages are what the co-op shots show. */
     @JvmField var FEATURE_COOP = true
+    /** Off as in a release: the blocked-game shots show the notice. */
+    @JvmField var FEATURE_ALLOW_BLOCKED = false
+    @JvmField var FEATURE_KEEP_BLOCKED = false
     const val COOP_RELAY_URL = ""
 }

@@ -59,9 +59,9 @@ The move happens in your game right away. **Save in the game** to keep it, just 
 The tab shows your boxes in:
 
 - **FireRed, LeafGreen, Emerald, Ruby and Sapphire** in every language, every version of each cartridge.
-- **Hacks built on those games**: Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Odyssey, Gaia, Orange Islands, Ultra Violet, Rocket Edition, Ash Gray, Ghost Grey, Emerald Kaizo and Glazed.
+- **Hacks built on those games**: Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Odyssey, Gaia, Orange Islands, Ultra Violet, Rocket Edition, Ash Gray, Emerald Kaizo and Glazed.
 - **SoulGold**.
 
 Unbound, Radical Red, Amethyst, Sword and Shield Ultimate Plus and GS Chronicles have 25 boxes and SoulGold 15, and the tab shows them all.
 
-`WITHDRAW`, the swap and `DEPOSIT` work on FireRed, LeafGreen and Emerald in English, German, French, Italian and Spanish (both FireRed cartridges, both LeafGreens), and on Ultra Violet, Rocket Edition, Ash Gray and Ghost Grey. The other games show their boxes but can't move Pokémon yet. More games will follow.
+`WITHDRAW`, the swap and `DEPOSIT` work on FireRed, LeafGreen and Emerald in English, German, French, Italian and Spanish (both FireRed cartridges, both LeafGreens), and on Ultra Violet, Rocket Edition and Ash Gray. The other games show their boxes but can't move Pokémon yet. More games will follow.
