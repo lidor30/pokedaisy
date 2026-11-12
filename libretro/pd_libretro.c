@@ -1112,7 +1112,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   host.hasHud = PD_BE_IS_GBA() || wideSupported;
   host.hasExpand = true;
   host.fieldSupported = fieldKnown; // AUTO-RUN (the field read tells walking from scripts, battles and bikes)
-  host.hasReset = true;
+  host.hasCoreRows = true; // AUTO-RUN, DARK MODE, RESET SETTINGS
   host.hasFlightArea = freeFlight;
   host.itemCanUse = polishedActions ? polished_potion : NULL;
   host.expandGame = wideSupported;

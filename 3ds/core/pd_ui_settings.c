@@ -339,13 +339,13 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     }
     // A host without the groups (the libretro cores): AUTO-RUN and DARK MODE here, the full list has them in GAMEPLAY
     // and by THEME.
-    if (!full && host) {
+    if (!full && host && host->hasCoreRows) {
         if (host->fieldSupported) setting(ui, c, ix, &y, iw, SETTING_AUTO_RUN, "AUTO-RUN", st->autoRun ? "ON" : "OFF");
         setting(ui, c, ix, &y, iw, SETTING_DARK, "DARK MODE", st->darkMode ? "ON" : "OFF");
     }
     snprintf(buf, sizeof(buf), "%d TABS", ui_bar_count(ui));
     setting(ui, c, ix, &y, iw, SETTING_TAB_BAR, "TAB BAR", buf);
-    if (!full && host && host->hasReset) setting(ui, c, ix, &y, iw, SETTING_RESET, "RESET SETTINGS", "...");
+    if (!full && host && host->hasCoreRows) setting(ui, c, ix, &y, iw, SETTING_RESET, "RESET SETTINGS", "...");
     if (full) {
         y += 3;
         pd_fill(c, ix, y, iw, 1, PD_DIVIDER);

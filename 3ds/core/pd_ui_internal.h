@@ -140,7 +140,7 @@ enum setting_row {
     SETTING_FLIGHT_AREA,
     SETTING_FLY_ON,
     SETTING_RESTART,
-    SETTING_RESET,      // hosts with hasReset: every setting back to its default, after a confirm
+    SETTING_RESET,      // hosts with hasCoreRows: every setting back to its default, after a confirm
 };
 
 int ui_settings_follow(int scroll, int y, int height);

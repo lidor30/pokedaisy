@@ -193,7 +193,7 @@ struct pd_host_info {
     char stateWhen[24]; // when it was made, shown beside LOAD STATE
     bool fullSettings;  // Optional: SETTINGS' groups and the rows the 3DS has
     bool wildSupported, fieldSupported; // WILD ENCOUNTERS / the field read works on this game
-    bool hasReset;       // RESET SETTINGS in the compact list (the libretro cores; the DS core has its own)
+    bool hasCoreRows;    // the compact list adds AUTO-RUN (with fieldSupported), DARK MODE and RESET SETTINGS (the libretro cores)
     int batteryPct;     // -1 = unknown
     bool flyReady;      // MAP's FLY button: someone in the party can
     bool flightSupported; // FREE FLIGHT works in this game: FLY STYLE / FLIGHT AREA / FLY ON rows
