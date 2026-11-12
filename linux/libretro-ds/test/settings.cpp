@@ -41,7 +41,14 @@ int main(int argc,char** argv){
   // Cancel does not apply a highlighted choice.
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);press(ui,RETRO_DEVICE_ID_JOYPAD_UP);press(ui,RETRO_DEVICE_ID_JOYPAD_B);assert(ui.layout==3);
   press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);assert(ui.setting==DsCompanionUi::Hud);
+  // HUD opens the shared HUD page (the GB / GBA cores' own): its first row switches the HUD, B comes back.
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  assert(ui.frame.overlay==PD_OVERLAY_HUD && pd_ui_tab_menu_count(&ui.frame)==4+PD_HUD_PARTS && !ui.settings.hud);
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.settings.hud);
+  draw();ppm((std::string(argv[2])+"/hud-page.ppm").c_str(),px);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  assert(ui.settings.hudLayout==0); // LAYOUT is N/A on DS: one layout
+  press(ui,RETRO_DEVICE_ID_JOYPAD_B);assert(ui.frame.overlay==PD_OVERLAY_NONE && ui.setting==DsCompanionUi::Hud);
   press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);assert(ui.setting==DsCompanionUi::QuickStyle);
   press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);assert(ui.setting==DsCompanionUi::CompanionButton);
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);
@@ -98,18 +105,19 @@ int main(int argc,char** argv){
   assert(ui.hud_id()==RETRO_DEVICE_ID_JOYPAD_Y);
   reloaded.init(path);
   assert(reloaded.hud_id()==RETRO_DEVICE_ID_JOYPAD_Y);
-  ui.setting=DsCompanionUi::HudSize;
+  // SIZE and the parts are rows of the HUD page: SIZE cycles NORMAL to LARGE, POKé BALLS and REPEL STEPS hide.
+  ui.setting=DsCompanionUi::Hud;
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);assert(ui.frame.overlay==PD_OVERLAY_HUD && ui.settings.hudSize==PD_HUD_NORMAL);
+  for(int i=0;i<3;++i)press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);
-  assert(ui.picker==DsCompanionUi::HudSize && ui.choice==PD_HUD_NORMAL);
+  for(int i=0;i<PD_HUD_BALLS+1;++i)press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);
+  press(ui,RETRO_DEVICE_ID_JOYPAD_B);
   reloaded.init(path);
   assert(reloaded.settings.hudSize==PD_HUD_LARGE);
   ui.setting=DsCompanionUi::HudMinimal;
-  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_A);
-  press(ui,RETRO_DEVICE_ID_JOYPAD_DOWN);
   press(ui,RETRO_DEVICE_ID_JOYPAD_A);
   reloaded.init(path);
   assert(reloaded.hudMinimal && (reloaded.settings.hudHidden&(1<<PD_HUD_BALLS))

@@ -204,8 +204,8 @@ party Pokémon.
 
 In a DS game the DS has every face and shoulder button, so L2 opens the companion and R2 switches the screens, and the
 game starts on one screen. The DS HUD has the same PC, BAG, WILD and COMPANION buttons as a GBA game's, and hides
-while the game shows text. `SETTINGS` > `HUD SIZE` there picks `SMALL`, `NORMAL` or
-`LARGE`, and the quick menu's `HUD` tile moves the cursor onto the HUD.
+while the game shows text. `HUD` in its `SETTINGS` opens the same HUD page as a GBA game's, with `LOOK`, `SIZE`
+(`SMALL`, `NORMAL` or `LARGE`) and which parts show, and the quick menu's `HUD` tile moves the cursor onto the HUD.
 
 ## The menu
 

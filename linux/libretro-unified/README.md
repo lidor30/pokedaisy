@@ -109,9 +109,10 @@ On Platinum USA revision 1, **Battle Strip** defaults on with **One Screen**
 selected. An existing Off preference is kept and can be changed in the DS
 companion Settings. A new battle returns a temporary screen peek to One
 Screen. Use the D-pad and A to choose Fight,
-Bag, Pokémon or Run. Fight opens the move grid with move types and current PP.
-B returns from the move grid. Native Bag and party windows float over the
-strip. Doubles and native prompts use the game's own controls.
+Bag, Pokémon or Run. Fight opens the move grid with move types and current/max
+PP. B returns from the move grid. Native Bag and party windows open full screen
+at twice the DS size, like the battle. Doubles and native prompts use the
+game's own controls. The picked button has the games' own red corner brackets.
 
 Platinum's compact battle buttons use the native lettering and tiles without
 the Fight sprite. The move cards retain the original type badges and
@@ -121,13 +122,15 @@ current/max PP.
 
 The same One Screen controls are enabled for exact English retail revision 0
 ROMs of HeartGold, SoulSilver, Black, White, Black 2 and White 2. HeartGold
-and SoulSilver have split-color buttons and gold or silver message rims.
-Black and White use charcoal plates and colored command labels. Black 2
-and White 2 use striped plates with colored rims.
+and SoulSilver keep the game's own message frame beside split-color buttons,
+and their move cards follow the games': a type-colored frame, the move name,
+the type badge and current/max PP. Black and White use charcoal plates and
+colored command labels, Black 2 and White 2 striped plates with colored rims;
+their angled move plates show current/max PP, and a move out of PP is greyed.
 
-These themes use PokéDaisy's bitmap font and app-owned move data. The
-native move-card artwork remains specific to Platinum. The new battle paths
-need live retail ROM testing.
+These themes use PokéDaisy's bitmap font and app-owned move data, and each
+move's base PP from the cart. The native move-card artwork remains specific to
+Platinum. The new battle paths need live retail ROM testing.
 
 ### Johto and Unova companion
 
@@ -143,9 +146,9 @@ list and Left/Right scrolls it. Up/Down browses the party. In Bag, Left goes
 to the pocket bar and A picks a pocket.
 Turn on HUD in Companion Settings. In the overworld, hold L2 and choose HUD
 to focus a HUD tile. Use the D-pad and A to open it, or B to cancel. It appears after the
-overworld settles in a layout with only the top screen visible. The companion's
-Settings control Minimal HUD, Poké Balls, Repel Steps and the Minimap. Minimal hides the
-party cards. The ball counter shows up to three ball types by quantity and
+overworld settles in a layout with only the top screen visible. In the companion's
+Settings, HUD opens the same HUD page as the GB and GBA cores (on or off, LOOK,
+SIZE and each part); Minimal HUD stays a row of its own and hides the party cards. The ball counter shows up to three ball types by quantity and
 Repel Steps appears only while a Repel is active. The Dex lists seen and
 caught species in a list beside Android's four filters. Press Left to focus
 the filters and the regional/National switch at the bottom. Select cycles

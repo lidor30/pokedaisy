@@ -25,10 +25,12 @@ constexpr int dsTabs=(1<<PD_TAB_PARTY)|(1<<PD_TAB_BAG)|(1<<PD_TAB_MAP)|(1<<PD_TA
 using Companion=DsCompanionUi;
 constexpr Companion::Row settingsOrder[]={
   Companion::Layout,Companion::Hud,Companion::QuickStyle,Companion::CompanionButton,Companion::HudButton,Companion::TabBar,Companion::MoreTabs,
-  Companion::Battles,Companion::BattleStrip,Companion::AutoRun,Companion::ScreenButton,Companion::PenSpeed,
-  Companion::HudSize,Companion::HudMinimal,Companion::HudBalls,Companion::HudRepel,Companion::HudMap,Companion::DarkMode,Companion::Reset
+  Companion::HudMinimal,Companion::Battles,Companion::BattleStrip,Companion::AutoRun,Companion::ScreenButton,Companion::PenSpeed,
+  Companion::DarkMode,Companion::Reset
 };
-static_assert(std::size(settingsOrder)==Companion::Rows);
+// HUD opens the shared HUD page (pd_ui_settings.c's hud_page: on/off, LOOK, SIZE and each part), as on the GB/GBA cores;
+// HudSize, HudBalls, HudRepel and HudMap stay rows of the enum for settings files and apply(), not of the list.
+constexpr int listed=int(std::size(settingsOrder));
 const char* const layoutNames[]={"ONE SCREEN","TOP","BOTTOM","SIDE BY SIDE","STACKED","LARGE + SMALL","PICTURE IN PICTURE"};
 const char* const buttonNames[]={"L2","R2","X","Y","NONE"};
 const unsigned buttonIds[]={RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,RETRO_DEVICE_ID_JOYPAD_X,RETRO_DEVICE_ID_JOYPAD_Y};
@@ -37,7 +39,7 @@ const int hudButtonIds[]={RETRO_DEVICE_ID_JOYPAD_X,RETRO_DEVICE_ID_JOYPAD_Y,RETR
 const char* const speedNames[]={"SLOW","NORMAL","FAST"};
 const char* const hudSizeNames[]={ "SMALL", "NORMAL", "LARGE" };
 const char* const resetNames[]={"CANCEL","RESET"};
-const char* const labels[]={"DS LAYOUT","AUTO BATTLES","HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP","MINIMAL HUD","POKÉ BALLS","REPEL STEPS","MINIMAP","DARK MODE","AUTO-RUN","TAB BAR","MORE TABS","HUD CURSOR BUTTON","HUD SIZE"};
+const char* const labels[]={"DS LAYOUT","AUTO BATTLES","HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP","MINIMAL HUD","POKé BALLS","REPEL STEPS","MINIMAP","DARK MODE","AUTO-RUN","TAB BAR","MORE TABS","HUD CURSOR BUTTON","HUD SIZE"};
 const char* const* choices(int row){
   if(row==DsCompanionUi::HudSize)return hudSizeNames;
   return row==DsCompanionUi::Layout?layoutNames:row==DsCompanionUi::PenSpeed?speedNames:
@@ -93,6 +95,7 @@ void DsCompanionUi::init(const std::string& directory,int legacyLayout,bool lega
   frame.availableTabs=dsTabs;
   options.keepBackdrop=true;
   frame.shoulderTabs=true;
+  frame.hudLayoutFixed=true; // hud_ds_draw has one layout
   frame.guideController=true;
   frame.contentCtx=this;frame.content=[](void* ctx,pd_ui* u,pd_canvas* c){static_cast<DsCompanionUi*>(ctx)->draw_body(u,c);};
   (void)loaded;
@@ -344,7 +347,7 @@ bool DsCompanionUi::control(unsigned pressed){
     choice=0;
     scroll=dexEntry=0;placeRow=mapAction=dexFilterFocus=-1;bagTabKey=-1;summary=details=false;error.clear();return false;
   }
-  if(frame.overlay==PD_OVERLAY_TAB_BAR || frame.overlay==PD_OVERLAY_MORE){
+  if(frame.overlay==PD_OVERLAY_TAB_BAR || frame.overlay==PD_OVERLAY_MORE || frame.overlay==PD_OVERLAY_HUD){
     const int step=frame.overlay==PD_OVERLAY_MORE && dx ? dx : dy;
     choice=std::clamp(choice+step,0,std::max(0,pd_ui_tab_menu_count(&frame)-1));
     if(hit(RETRO_DEVICE_ID_JOYPAD_B))pd_ui_back(&frame);
@@ -370,17 +373,20 @@ bool DsCompanionUi::control(unsigned pressed){
   }
   if(frame.tab==PD_TAB_SETTINGS){
     const int index=int(std::find(std::begin(settingsOrder),std::end(settingsOrder),setting)-std::begin(settingsOrder));
-    setting=settingsOrder[pd_ui_list_step(index,Rows,dy)];
+    setting=settingsOrder[pd_ui_list_step(index,listed,dy)];
     if(hit(RETRO_DEVICE_ID_JOYPAD_B))return true;
     if(hit(RETRO_DEVICE_ID_JOYPAD_A)){
       error.clear();
-      if(setting==TabBar || setting==MoreTabs){
+      if(setting==Hud){
+        frame.overlay=PD_OVERLAY_HUD;
+        choice=0;
+      }else if(setting==TabBar || setting==MoreTabs){
         if(game!=DsGame::Unsupported){
           frame.overlay=setting==TabBar?PD_OVERLAY_TAB_BAR:PD_OVERLAY_MORE;
           choice=0;
           if(!pd_ui_tab_menu_count(&frame))frame.overlay=PD_OVERLAY_NONE;
         }
-      }else if(setting==Battles || setting==Hud || setting==QuickStyle || (setting>=BattleStrip && setting<HudButton))apply(setting,!value(setting));
+      }else if(setting==Battles || setting==QuickStyle || (setting>=BattleStrip && setting<HudButton))apply(setting,!value(setting));
       else{picker=setting;choice=value(setting);}
     }return false;
   }

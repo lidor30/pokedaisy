@@ -15,6 +15,13 @@ bool DsBattleView::enabled(int slot) const {
 
 namespace {
 using namespace pd_ds_data;
+std::vector<uint8_t> basePp;
+// The cards' max PP: base PP and a fifth of it per PP Up (0 to 3), as the games count it; 0 when not known.
+int max_pp(int move,int ups){
+  if(move<=0 || size_t(move)>=basePp.size() || ups<0 || ups>3)return 0;
+  const int base=basePp[move];
+  return base?base+base*ups/5:0;
+}
 bool in_ram(uint32_t addr,unsigned last=0){
   return !(addr&3) && addr>=0x02000000 && addr<=0x023ffffc-last;
 }
@@ -48,12 +55,15 @@ DsBattleView read_gen4(const PkNdsFieldGame* game,uint32_t (*read32)(uint32_t)) 
   view.personality=read32(mon+0x68);
   view.trainer=type&1;
   view.panel=step<=2?DsBattlePanel::Actions:DsBattlePanel::Moves;
-  const auto pp=read32(mon+0x2c);
+  // BattleMon's ppCur[4] at +0x2C, then ppUps[4] at +0x30 (level follows at +0x34, as Gen4Reader reads it).
+  const auto pp=read32(mon+0x2c), ups=read32(mon+0x30);
   for(int slot=0;slot<4;++slot){
     const auto move=(read32(mon+0x0c+4*(slot/2))>>(16*(slot%2)))&0xffff;
     if(move>=std::size(moves))return {};
     view.moves[slot]=move;
     view.pp[slot]=(pp>>(8*slot))&0xff;
+    const int most=max_pp(move,(ups>>(8*slot))&0xff);
+    view.maxPp[slot]=most>=view.pp[slot]?most:0;
   }
   return view;
 }
@@ -101,10 +111,16 @@ DsBattleView read_gen5(const PkNdsFieldGame* game,uint32_t (*read32)(uint32_t)) 
     const auto pp=offset+2;
     result.moves[slot]=id;
     result.pp[slot]=(read32(mon+(pp&~3u))>>((pp&3)*8))&0xff;
+    // The byte after the current PP holds the max; trusted only where it is the base with 0 to 3 PP Ups.
+    const int most=(read32(mon+((pp+1)&~3u))>>(((pp+1)&3)*8))&0xff;
+    for(int k=0;k<=3;++k)
+      if(most && most==max_pp(int(id),k) && most>=result.pp[slot])result.maxPp[slot]=most;
   }
   return result;
 }
 }
+
+void ds_battle_set_base_pp(std::vector<uint8_t> table){basePp=std::move(table);}
 
 DsBattleView ds_read_battle(const PkNdsFieldGame* game,uint32_t (*read32)(uint32_t),int scene) {
   if(!game || game->battleManagerPtr || !(scene&PK_NDS_FIELD_TOUCH_BATTLE_MENU))return {};
