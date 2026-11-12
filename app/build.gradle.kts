@@ -87,6 +87,9 @@ android {
         buildConfigField("boolean", "FEATURE_COOP", featureFlag("coop").toString())
         // Blocked games (BlockedGames) play with everything, tagged BLOCKED: debug builds always, else only with this.
         buildConfigField("boolean", "FEATURE_ALLOW_BLOCKED", featureFlag("allowBlocked").toString())
+        // ...and `allowBlocked=false` keeps them blocked in a debug build too (to see it as a release does).
+        buildConfigField("boolean", "FEATURE_KEEP_BLOCKED",
+            ((findProperty("pokedaisy.allowBlocked") ?: localProps?.getProperty("pokedaisy.allowBlocked"))?.toString()?.trim() == "false").toString())
 
         ndk {
             // Thor is arm64; armeabi-v7a (a 32-bit Android) only with the armv7 flag above.

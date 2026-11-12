@@ -393,7 +393,8 @@ fun CompanionScreen(
         // The window over the game (one screen): L / R step along the bar (round, like the game's own pages), from the gear
         // when a tab opened from MORE is up. Under everything a tab registers, so a page of its own can take them.
         val stepTab: (Int) -> Unit = { step ->
-            val usable = tabs.filter { !snapshot.unsupported || it == "ACHIEVEMENTS" || it == "SETTINGS" || it == "MORE" }
+            // A blocked game's tabs all open its notice: they stay in the round.
+            val usable = tabs.filter { !snapshot.unsupported || snapshot.blocked != null || it == "ACHIEVEMENTS" || it == "SETTINGS" || it == "MORE" }
             val at = usable.indexOf(tabs.getOrNull(selectedIdx)).coerceAtLeast(0)
             openTab(usable[(at + step).mod(usable.size)])
         }
@@ -418,7 +419,10 @@ fun CompanionScreen(
             // The party backdrop stays put under the bag's, which fades in over it: a
             // crossfade dimmed both halfway and showed the dark fill between them (a
             // flicker on every BAG visit, plainest on Yellow's white on white).
-            if (game == null) {
+            if (snapshot.blocked != null) {
+                // A game its makers asked PokéDaisy not to read: plain black, no art of the app's or the game's.
+                Box(Modifier.fillMaxSize().background(androidx.compose.ui.graphics.Color.Black))
+            } else if (game == null) {
                 AppBackdrop()
             } else {
                 GameBackdrop(game)
@@ -466,7 +470,8 @@ fun CompanionScreen(
                         } else if (title == "MORE") {
                             IconTabChip(PixelIcons.more, tr("MORE"), selectedIdx == i, open, Modifier.testTag("tab-MORE"), slot = i)
                         } else {
-                            val usable = !snapshot.unsupported || title == "ACHIEVEMENTS"
+                            // A blocked game's tabs can be opened: each shows its notice (the reason and its link).
+                            val usable = !snapshot.unsupported || snapshot.blocked != null || title == "ACHIEVEMENTS"
                             TabChip(companionTabLabel(title), selectedIdx == i && usable, Modifier.weight(1f).testTag("tab-$title"), enabled = usable, slot = i, onClick = open)
                         }
                     }
@@ -725,7 +730,7 @@ fun CompanionScreen(
                                 onOpen = { backTab = "MORE"; popupReturn = null; selectedLabel = it },
                                 // The link to SETTINGS > TAB BAR; its BACK returns to SETTINGS' options, like any page.
                                 onConfigure = { settingsUi.page = Page.TABS; openTab("SETTINGS") },
-                                usable = { !snapshot.unsupported || it == "ACHIEVEMENTS" },
+                                usable = { !snapshot.unsupported || snapshot.blocked != null || it == "ACHIEVEMENTS" },
                             )
                         } else if (tab == "NUZLOCKE") {
                             NuzlockeScreen(snapshot.regionMapSectionId, snapshot.location.mapSecName)

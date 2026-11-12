@@ -2152,7 +2152,8 @@ class PokeDaisyActivity : Activity() {
             store.save(list.toMutableList().also { it[index] = it[index].copy(enabled = on) })
             syncCheats()
         }
-        override val gameName get() = com.pokedaisy.app.companion.data.activeGame.displayName()
+        override val gameName get() = romBlocked?.title ?: com.pokedaisy.app.companion.data.activeGame.displayName()
+        override val gameBlocked get() = romBlocked != null
         override val romFileName get() = rom?.name ?: "(none)"
         override val companionTabs get() = Prefs(this@PokeDaisyActivity).companionTabs
         override fun setCompanionTabs(tabs: List<String>) {
@@ -4542,6 +4543,7 @@ class PokeDaisyActivity : Activity() {
         val off = HashSet<com.pokedaisy.app.companion.TouchButton>()
         if (!view.wide) off += com.pokedaisy.app.companion.TouchButton.ZOOM
         if (romIsNds) off += com.pokedaisy.app.companion.TouchButton.REWIND
+        if (romBlocked != null) off += com.pokedaisy.app.companion.TouchButton.QUICK_MENU
         if (touchControls.unavailable != off) touchControls.unavailable = off
     }
 
@@ -5250,6 +5252,8 @@ class PokeDaisyActivity : Activity() {
 
     /** The QUICK MENU's key went down ([pressed]) or up: it opens or closes. */
     private fun triggerQuickMenu(pressed: Boolean) {
+        // A blocked game has no quick menu (its actions are the game's features).
+        if (romBlocked != null && !quickMenu.open) return
         val wasOpen = quickMenu.open
         quickMenu.trigger(pressed)
         // Opened: the buttons are the menu's now, so a held direction stops walking.

@@ -158,6 +158,7 @@ fun CompanionSettingsScreen(
                         listOf(groupTitle(tk("GAME")), SettingRow(tk("PLAYS AS"), game, subtitle = "Which game this ROM is read as", opensPage = true) { onPlaysAs() })
                     }.orEmpty() + homeRows(settings, barCount(settings, availableTabs), { tick++ }, { page = it }, { selector = it },
                         { c -> confirm = Confirm(c.title, c.message, c.confirmLabel, c.onConfirm).also { it.cancelLabel = c.cancelLabel; it.onCancel = c.onCancel } })
+                        .let { if (settings.gameBlocked) withoutGameRows(it) else it }
                     Page.TABS -> COMPANION_TABS.map { id ->
                         val shown = id in settings.companionTabs
                         // A tab this game doesn't have (DEX, GUIDE) keeps its setting for the games that do.
@@ -461,6 +462,22 @@ private class Confirm(val title: String, val message: String, val confirmLabel: 
     var onCancel: () -> Unit = {}
 }
 
+/** The groups (by title) a blocked game ([CompanionSettings.gameBlocked]) leaves out whole: none of them works there. */
+private val BLOCKED_GROUPS = setOf(tk("MAKEOVER"), tk("GAMEPLAY"), tk("COMPANION"), tk("CO-OP"))
+
+/** And the single rows it leaves out: EXPAND's, the HUD's, the battle buttons and the quick menu. */
+private val BLOCKED_ROWS = setOf(tk("ZOOM"), tk("AUTO ZOOM IN"), tk("LOOK AROUND"), tk("HUD"), tk("BATTLE BUTTONS"), tk("QUICK MENU"))
+
+/** HOME for a game its makers asked PokéDaisy not to read: the emulator's settings only (speed, sound, screen, controls,
+ * the app), none of the game's own features. */
+private fun withoutGameRows(rows: List<SettingRow>): List<SettingRow> {
+    var skipping = false
+    return rows.filter { r ->
+        if (r.header) skipping = r.label in BLOCKED_GROUPS
+        !skipping && r.label !in BLOCKED_ROWS
+    }
+}
+
 private fun homeRows(
     s: CompanionSettings,
     barTabs: Int,
@@ -670,14 +687,18 @@ private fun homeRows(
         groupTitle(tk("SCREEN")),
         // The game at the GBA's 3:2, stretched to fill the top screen, or WIDE (the overworld drawn past
         // its edges); WIDE is tagged BETA, or NOT YET on a game it doesn't know (which shows it as ORIGINAL).
-        SettingRow(tk("ASPECT"), aspectLabel(s.gameAspect), wideBadge(s, s.gameAspect), subtitle = "Original shape, stretched, or more of the map") {
-            val aspects = GameAspect.entries
-            select(
-                Selector(
-                    tk("ASPECT"), aspects.map { it.label }, s.gameAspect.label,
-                    badge = { l -> wideBadge(s, aspects.first { it.label == l }) },
-                ) { l -> s.setGameAspect(aspects.first { it.label == l }) },
-            )
+        // A blocked game has no EXPAND: ORIGINAL or STRETCH, a saved EXPAND reading as ORIGINAL (what it plays as).
+        run {
+            val aspect = if (s.gameBlocked && s.gameAspect == GameAspect.WIDE) GameAspect.ORIGINAL else s.gameAspect
+            SettingRow(tk("ASPECT"), aspectLabel(aspect), if (s.gameBlocked) null else wideBadge(s, aspect), subtitle = "Original shape, stretched, or more of the map") {
+                val aspects = GameAspect.entries.filter { !s.gameBlocked || it != GameAspect.WIDE }
+                select(
+                    Selector(
+                        tk("ASPECT"), aspects.map { it.label }, aspect.label,
+                        badge = { l -> wideBadge(s, aspects.first { it.label == l }) },
+                    ) { l -> s.setGameAspect(aspects.first { it.label == l }) },
+                )
+            }
         },
         // EXPAND only: the zoom step from a list, for a device with no right stick (R3 is the ZOOM hotkey).
         s.zoomSteps.takeIf { s.gameAspect == GameAspect.WIDE && it.size > 1 }?.let { steps ->

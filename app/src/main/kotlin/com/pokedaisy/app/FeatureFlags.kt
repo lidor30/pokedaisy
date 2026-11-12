@@ -30,7 +30,8 @@ object FeatureFlags {
      * release, where they play as plain games. Read into [com.pokedaisy.app.companion.data.BlockedGames.enforced] when the
      * process, the library and a game start.
      */
-    fun allowBlocked(context: Context): Boolean = BuildConfig.DEBUG || BuildConfig.FEATURE_ALLOW_BLOCKED || marker(context, "allow-blocked")
+    fun allowBlocked(context: Context): Boolean =
+        (BuildConfig.DEBUG && !BuildConfig.FEATURE_KEEP_BLOCKED) || BuildConfig.FEATURE_ALLOW_BLOCKED || marker(context, "allow-blocked")
 
     /** [allowBlocked] into [com.pokedaisy.app.companion.data.BlockedGames.enforced]. */
     fun applyBlocked(context: Context) {
