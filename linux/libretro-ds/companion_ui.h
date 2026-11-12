@@ -8,7 +8,7 @@ extern "C" {
 #include "pd_settings.h"
 }
 struct DsCompanionUi {
-  enum Row { Layout, Battles, Hud, CompanionButton, ScreenButton, PenSpeed, QuickStyle, Reset, BattleStrip, HudMinimal, HudBalls, HudRepel, HudMap, DarkMode, AutoRun, TabBar, MoreTabs, HudButton, Rows };
+  enum Row { Layout, Battles, Hud, CompanionButton, ScreenButton, PenSpeed, QuickStyle, Reset, BattleStrip, HudMinimal, HudBalls, HudRepel, HudMap, DarkMode, AutoRun, TabBar, MoreTabs, HudButton, HudSize, Rows };
   pd_settings settings{};
   pd_ui frame{}, options{};
   pd_snapshot battle{};

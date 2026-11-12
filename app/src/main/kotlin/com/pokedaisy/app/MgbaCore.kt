@@ -116,6 +116,11 @@ object MgbaCore {
 
     /** FOLLOWER: the Pokémon's six 32x32 frames (3072 bytes) and palette (32); nulls = none. Emu thread. */
     external fun pkFollowerSet(frames: ByteArray?, pal: ByteArray?)
+    /** RIDE ON's vehicle (companion.data.RideOn.Sprite): three views (1024 bytes each, OBJ tile order: 32 x 64 or 64 x 32 by
+     * [width]) and a palette, or null. Emu thread. */
+    external fun pkRideSet(frames: ByteArray?, pal: ByteArray?, width: Int)
+    /** RIDE ON's vehicle drawn this frame (behind the player, only while they're on a bike). Emu thread. */
+    external fun pkRideShow(on: Boolean)
 
     /** FOLLOWER: drawn from the next frame on, or not (off, it reappears only once the player steps). Emu thread. */
     external fun pkFollowerShow(on: Boolean)
@@ -165,6 +170,9 @@ object MgbaCore {
     const val FIELD_DARK_BOTTOM = 65536
     /** A DS game's own: a menu screen all on the top screen, its touch screen a picture (Platinum's party): the game alone. */
     const val FIELD_TOP_ONLY = 131072
+    /** A GBA game: a window up on the field's text layer while its controls are free (a START menu that doesn't lock them,
+     *  Recharged Yellow's): AUTO-RUN keeps its B out of it (GitHub #610). */
+    const val FIELD_WINDOW = 262144
     /** WIDE: the window to draw around the frame from the next frame on ([WideCamera]), in the frame's pixels
      * (its top-left 0, 0); [w] 0 = none. Any thread. */
     external fun pkWideSetView(x: Int, y: Int, w: Int, h: Int)

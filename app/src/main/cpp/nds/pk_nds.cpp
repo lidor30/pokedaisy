@@ -220,9 +220,12 @@ bool pk_nds_init(const char* romPath, const char* savePath, int sampleRate)
 
     NDSArgs args;
     args.OutputSampleRate = sampleRate;
-    // The JIT without fast memory: fast memory catches faults with a signal handler, which would sit beside
-    // crash reporting's and pk_wide.c's.
-    args.JIT = JITArgs {32, true, true, false};
+    // The JIT with fast memory: the DS's memory mapped where the compiled code reaches it directly, a fault mapping a
+    // page or sending the access to the slow path. The fault handler (ARMJIT_Memory::SigsegvHandler) is melonDS's own,
+    // set up with the JIT whether fast memory is on or not; it takes only faults in compiled code and passes the rest to
+    // the handler before it (crash reporting's, set up at app start; pk_wide.c's guard). Off where melonDS can't
+    // (IsFastMemSupported: page sizes other than 4 / 16 KB); 32-bit ARM has no JIT at all.
+    args.JIT = JITArgs {32, true, true, true};
     ds->nds = new NDS(std::move(args), &ds->host);
     ds->nds->Reset();
 
@@ -241,11 +244,12 @@ bool pk_nds_init(const char* romPath, const char* savePath, int sampleRate)
     ds->nds->SetNDSCart(std::move(cart));
     ds->nds->Reset();
     ds->nds->SetupDirectBoot("rom.nds");
-    // The 3D on the emulation thread, not melonDS's render thread: with fast-forward's frame skip the threaded renderer
-    // let a shown frame's 2D read 3D lines it hadn't drawn yet on the Thor (black from a row down, sometimes the whole
-    // picture; never headless on the Mac, whose render thread kept up). Rendered here only for the frames shown, 3x
-    // still holds (~180 frames a second, HeartGold's overworld and menus, 2026-10-20).
-    static_cast<SoftRenderer&>(ds->nds->GPU.GetRenderer3D()).SetThreaded(false, ds->nds->GPU);
+    // The 3D on melonDS's render thread, beside the emulation (HeartGold's overworld, headless: a quarter less time a
+    // frame). From 2026-10-20 to 2026-11-09 it ran on the emulation thread: with fast-forward's frame skip, a frame
+    // shown read 3D lines not drawn yet on the Thor (black from a row down). The cause was a render started for a
+    // skipped frame (a state taken or loaded mid-skip, a restart, the thread switched on), whose line signals the next
+    // frame took; the patch's SoftRenderer::EnableRenderThread starts none now, and RenderFrame drops any left over.
+    static_cast<SoftRenderer&>(ds->nds->GPU.GetRenderer3D()).SetThreaded(true, ds->nds->GPU);
     setClock();
     setArm9Shift(boostShift());
     ds->nds->Start();
@@ -295,6 +299,7 @@ void pk_nds_run_frame(void)
     NDS* nds = ds->nds;
     if (ds->scalePending) {
         ds->scalePending = false;
+        pk_nds_wide_sync();
         pk_nds_gl_set_scale(nds, ds->scaleWant);
     }
     bool gpu = pk_nds_gl_scale() > 1;
@@ -395,6 +400,7 @@ bool pk_nds_save_state(const char* path)
 {
     if (!ds) return false;
     Savestate st;
+    pk_nds_wide_sync();
     setArm9Shift(1);
     bool taken = ds->nds->DoSavestate(&st) && !st.Error;
     setArm9Shift(boostShift());
@@ -419,6 +425,7 @@ bool pk_nds_load_state(const char* path)
     memcpy(header, data.data(), sizeof(header));
     if (header[0] != STATE_MAGIC) return false;
     Savestate st(data.data() + 16, (u32) (data.size() - 16), false);
+    pk_nds_wide_sync();
     setArm9Shift(1);
     bool loaded = !st.Error && ds->nds->DoSavestate(&st) && !st.Error;
     setArm9Shift(boostShift());

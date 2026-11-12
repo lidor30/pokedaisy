@@ -1,6 +1,7 @@
 // See pk_nds_music.h.
 
 #include "pk_nds_music.h"
+#include "pk_nds_wide.h"
 #include "pk_nds_platform.h"
 
 #include <NDS.h>
@@ -54,6 +55,7 @@ bool pk_nds_music_begin(NDS* live, int sampleRate)
     music.playing = false;
     if (!live) return false;
     Savestate save;
+    pk_nds_wide_sync();   // EXPAND's slices may still be drawing from [live]
     if (!live->DoSavestate(&save) || save.Error) return false;
     save.Finish();
 

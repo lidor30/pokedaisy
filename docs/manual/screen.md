@@ -33,9 +33,9 @@ A few things worth knowing:
 - **Battles are wide too.** The battle scenery carries on past the edges, and Pokémon, trainers and health boxes slide in from off screen. Some hacks only draw their battle scenes as wide as the screen; there the scene is mirrored out from its edges so it still flows on. The dark band behind the text and the battle menu runs right across.
 - **Weather and caves work.** Fog, ash and rain reach the screen's edges, and a dark cave stays dark around your light.
 - **Menus and the title screen** can't be extended, so there the strips glow softly with the colours at the game's edges, and fade back into the map when you return to it.
-- **Supported games:** FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and revision), plus Unbound, Radical Red, Lazarus, SoulGold, Heart and Soul, Gaia, Odyssey, Amethyst 1.3.0, Glazed, Seaglass, Emerald Imperium, Emerald Legacy, Emerald Rogue, Too Many Types 2, Recharged Yellow, Super Mariomon, Ultra Violet, FireRed Rocket Edition, Ash Gray, Ghost Grey, Let's Go, Elite Redux, Monomyth, Sword and Shield Ultimate Plus, GS Chronicles and Celia's hack.
+- **Supported games:** FireRed, LeafGreen, Emerald, Ruby and Sapphire (every language and revision), plus Unbound, Radical Red, Lazarus, SoulGold, Heart and Soul, Gaia, Odyssey, Amethyst 1.3.0, Glazed, Seaglass, Emerald Imperium, Emerald Legacy, Emerald Rogue, Too Many Types 2, Recharged Yellow, Super Mariomon, Ultra Violet, FireRed Rocket Edition, Ash Gray, Let's Go, Elite Redux, Monomyth, Sword and Shield Ultimate Plus, GS Chronicles and Celia's hack.
 - **DS games:** Platinum, HeartGold, SoulSilver, Black, White, Black 2, White 2 and Origin HeartGold. Their 3D world goes on past the screen, and so do their battles: the whole battle scene of Black, White and their sequels, sky, ground and all, and the others' battle backgrounds with the health boxes carried to the edges.
-- **On the Game Boy:** Yellow (the English cart), Yellow Legacy, Crystal, Crystal Legacy and Crystal Clear have it too. The town or route goes on past the small screen, with the people standing in it, and zoom and looking around work the same way. People in the next town or route show up in the strips before you cross over. Text boxes, the start menu, the save prompt and the options screen keep the map around them. Battles and the other menu screens aren't widened: the strips there are plain, in the colours along the screen's sides (white in most of them, Yellow's trainer card too; black beside a screen whose top part is black).
+- **On the Game Boy:** Yellow (the English cart), Yellow Legacy, Crystal, Crystal Legacy, Crystal Clear and Polished Crystal (version 3.2.3, the normal build) have it too. The town or route goes on past the small screen, with the people standing in it, and zoom and looking around work the same way. People in the next town or route show up in the strips before you cross over. Text boxes, the start menu, the save prompt and the options screen keep the map around them. Battles and the other menu screens aren't widened: the strips there are plain, in the colours along the screen's sides (white in most of them, Yellow's trainer card too; black beside a screen whose top part is black).
 
 `EXPAND` is tagged `BETA` in Settings: it works in every game listed above, but it isn't perfect yet, and now and then you may spot something at the edges that the game itself doesn't show. If you do, [tell us](https://pokedaisy.com/feedback/) where it happened.
 
@@ -75,11 +75,15 @@ A few things worth knowing:
 
 ## DS CPU boost: fewer slowdowns
 
-The DS games sometimes can't finish a frame in time and hold the last picture a little longer: walking in HeartGold and SoulSilver stutters every few steps, more so with a Pokémon following you. That happens on a real DS too. `DS CPU BOOST` (on by default) runs the DS's processor twice as fast, so the game finishes its frames and walking stays smooth. The game itself doesn't speed up: it still waits for each frame as it always does.
+The DS games sometimes can't finish a frame in time and hold the last picture a little longer: walking in HeartGold and SoulSilver stutters every few steps, more so with a Pokémon following you. That happens on a real DS too. `DS CPU BOOST` runs the DS's processor twice as fast, so the game finishes its frames and walking stays smooth. The game itself doesn't speed up: it still waits for each frame as it always does.
 
 The overworld in these games runs at 30 frames a second on a DS as well, so that's as smooth as walking gets; the boost removes the hiccups on top of it.
 
-It costs your device more work. If a DS game runs slower with it on, or your device runs warm, turn it off. On the companion, the row only shows while a DS game is running.
+It costs your device more work, so it starts on only where the device has the speed for it. On a handheld with a slower processor (no core faster than 2.3 GHz, or less than 3 GB of memory) it starts off, because there the boost takes more time than it saves. Whatever it started as, you can switch it: if a DS game runs slower with it on, or your device runs warm, turn it off. On the companion, the row only shows while a DS game is running.
+
+### When your device can't keep up
+
+On a device that can't run a DS game at full speed, PokeDaisy keeps the game at the DS's own speed by drawing fewer pictures: it draws one frame and skips drawing the next one (or up to three) while the game itself keeps running. The music, walking and battles stay at their real pace, and the picture is a little less smooth. It happens by itself, only when it's needed, and stops when the game is light enough again. On a device so slow that skipping wouldn't bring the speed back, every frame is drawn and the game simply runs slower. Fast-forward does its own skipping, so none of this applies while it's on.
 
 ## Status bar
 

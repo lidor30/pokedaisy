@@ -15,10 +15,11 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — |
 | Gold / Silver (GBC) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — |
 | Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — |
+| Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — |
 | Crystal Legacy (GBC) | 1.3.1 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — |
 | Crystal Clear (GBC) | 2.5.11, 2.6.0 (4 builds) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — |
 | Prism (GBC) | 0.95 build 254 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — |
-| Polished Crystal (GBC) | 3.2.0 - 3.2.3 (16 builds) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — |
+| Polished Crystal (GBC) | 3.2.0 - 3.2.3 (16 builds) | ◐ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — |
 | FireRed | USA/Europe rev 1 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | FireRed | USA/Europe rev 0 | ✅ | ✅ | — | — | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
 | FireRed | ES | ✅ | ✅ | ◐ ² | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | ✅ | ✅ |
@@ -69,7 +70,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Emerald Seaglass | 3.0 | ✅ | ✅ | ✅ | ✅ | — | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | — | — |
 | FireRed Rocket Edition | the one release | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ✅ ¹⁵ | — | ✅ ¹⁹ | ✅ | — ³³ |
 | Gaia | 3.2 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ³⁴ | — | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ |
-| Ghost Grey | 1.0.1, 1.0.2, 1.0.4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹¹ ³⁴ | — | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | — | — | — | ✅ | ✅ ³³ |
+| Ghost Grey (blocked ¹¹) | 1.0.1, 1.0.2, 1.0.4 | ✅ | ✅ | ✅ | ✅ | ✅ | ✅ ¹¹ ³⁴ | — | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | ✅ ¹¹ | — | — | — | ✅ | ✅ ³³ |
 | Let's Go Pikachu / Eevee | English, Translation Only (4 builds) | ✅ ²⁸ | ✅ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ | ✅ ²⁸ ³⁴ | — | ✅ ²⁸ | ◐ ²⁸ | ◐ ²⁸ | ✅ ²⁸ | — | — | — | ✅ | ✅ ³³ |
 | Glazed | 9.2.0 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁷ ³⁴ | ✅ | ✅ | ✅ | ✅ | ✅ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ |
 | GS Chronicles | 2.7.6 | ✅ | ✅ | ✅ | ✅ | ✅ | ◐ ⁹ ³⁴ | — | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | ◐ ⁹ | — | — | ✅ ¹⁹ | ✅ | ✅ ³³ |
@@ -112,6 +113,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
    showed did nothing; a DOWN dropped as the move list opened used the wrong move), on Crystal rev 1 too: the Game Boy
    picks now steer on the menu read every frame (`GbPartySwitch.battleMenu`) and press again what was dropped, A
    included. A pick takes 15-31 frames.
+   German Crystal (Kristall) has Crystal's menus at its own columns (KMPF / PkMn / BEUTEL / FLUCHT from column 5, the
+   TAUSCH / STATUS / ZURÜCK menu at column 10: `Gen2Config.battleMenuLeft` / `switchMenuLeft`): reads checked on the
+   `crystal_de_battle*` fixtures, not yet through the controller against the running game.
    Gold / Silver have Crystal's battle menus (their own addresses, `GEN2_GOLD`): reads checked on the `gold_battle*` /
    `silver_battle` fixtures, the controls' timing not run on them.
    Red / Blue have Yellow's battle menus and menu variables (at Yellow's addresses, the cursor columns 9 / 15): their
@@ -166,7 +170,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
     (`fieldinfo`): free / text / battle, the MACH and ACRO BIKE and SURF from gPlayerAvatar. WILD ENCOUNTERS: 0x0203D214
     (2.65.3b) / 0x0203D21C (2.65.4.1b); off = no battle in 300 steps of Route 101's grass, 100 = one within ~24. No PC
     anywhere: its START menu has its own PC.
-11. Ghost Grey, checked headless on v1.0.4 and v1.0.1 with its own save (FireRed rev 0's table, `FIELD_ITEMS_PORTS["BPRE0"]`):
+11. **Blocked since 2026-11-12 at its developer's request** (`BlockedGames`, by SHA-1 and CRC32): it plays as a plain game, the
+    companion shows the reason and its Discord link, and nothing below runs. The code is kept, as it was. Ghost Grey, checked headless on v1.0.4 and v1.0.1 with its own save (FireRed rev 0's table, `FIELD_ITEMS_PORTS["BPRE0"]`):
     a RAGECANDYBAR through ExecuteTableBasedItemEffect healed the lead 85 -> 93; the PC script opened the PC in its cave;
     after a warp to Pewter City, DRIFBLIM taught FLY, the badge check, SetUpFieldMove_Fly and SetFlyWarpDestination flew it
     to Viridian's Pokémon Center, controls free after; `fieldinfo` read the field free / locked with text (START menu) /
@@ -182,7 +187,13 @@ change to any of the places listed under "Where it's decided" updates its rows h
     New Bark Town (its name sign up), in and out of a house, the START menu, OPTION, SAVE, a wild battle and RUN: every
     map frame exact but those the game wrote VRAM or a palette in mid-frame. Crystal Clear (all four builds) has the same
     over its own tables: palette maps a byte per tile, 256 blocks, its compressed connected maps, its own object sprites.
-    The other languages' Yellows, Red / Blue, Gold / Silver, Prism and Polished Crystal aren't mapped yet (—).
+    Polished Crystal has it on 3.2.3's normal build only (CRC32 `f98367e4`; Keegan's profile, first in the libretro core, now
+    the app's too): its own structs and LZ (`pk_wide_gb_polished.inc`, addresses from the release's `.sym` by
+    `scripts/gen_polished_wide.py`). Checked headless on the new-game save: a walk round its route and grass, the START menu and OPTION
+    (2197 of 2265 map frames exact; the other 68 are a wild battle's wipe, which the camera now pulls in for, as on Crystal).
+    German Crystal (Kristall) is English's rebuild but for one ROM address (SpriteMovementData, 0x4276 in bank 1): a walk on
+    Route 29 and its grass, 777 map frames, every one exact.
+    The other languages' Yellows, Red / Blue, Gold / Silver, Prism and the other Polished Crystal builds aren't mapped yet (—).
 13. FLY, WILD ENCOUNTERS and PC anywhere on Red / Blue, Yellow (all five languages) and Crystal (rev 0, rev 1, Australia)
     are `GbField.kt`, each the game's own way in (pret/pokered's, pokeyellow's and pokecrystal's sources; the European
     Yellows' addresses mapped by scripts/port_gen1.py; each cart's code checked in it first: `GbFieldTest` finds every Gen 1
@@ -198,6 +209,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
     from PACK, Yellow's FLY to Vermilion from MAP. The European Yellows and Red / Blue have no EXPAND scene, so their PC /
     FLY go by RAM alone (the walk counter, wFontLoaded's text box bit, the joypad and warp flags). FLY's list is the game's
     own (Gen 1: the visited towns in town map order; Crystal: the visited flypoints of the region the Fly map would show).
+    German Crystal (Kristall, `GbField.CrystalDe`): English's RAM and scripts, RunMemScript and the Flypoints table moved;
+    headless on its own save its PC opened ("CHRIS schaltet den PC ein.") and FLY landed at Rosalia City's Pokémon Center.
     Gold / Silver and the Crystal hacks: not yet (their RAM moved).
     PureRed / PureBlue (`GB_FIELD_PURE_RGB`, pureRGB's own source; both carts the same code): Red's ways in at its places -
     the PC routine in bank 0x33, called from 0x03D7 (its loop waits at OverworldLoop's `rst DelayFrame`), the wild data in
@@ -693,7 +706,7 @@ against the app's recorded cards (`make -C 3ds test-card`), the GUIDE's boss tea
 | Wishes of Tomorrow, Team Rocket Edition, Elite Redux | ✅ | — | ◐ ³⁰ |
 | R.O.W.E., Emerald Rogue (EX) | ✅ | — | — |
 | Celia's Stupid Romhack | ◐ ²⁵ | — | ✅ |
-| Ghost Grey | ✅ | — | ✅ ²⁷ |
+| Ghost Grey (blocked ¹¹) | ✅ | — | ✅ ²⁷ |
 
 ²³ Checked against a screenshot of the game's own card (0 pixels differ), not the app's recorded output.
 ²⁴ No reference render of Imperium's card exists to check against, so the tab stays off.

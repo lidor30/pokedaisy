@@ -18,7 +18,16 @@ def writable(member, path):
         member = member.replace(linkname=os.path.relpath(member.linkname.lstrip('/'), os.path.dirname(member.name) or '.'))
     elif member.islnk() and member.linkname.startswith('/'):
         member = member.replace(linkname=member.linkname.lstrip('/'))
-    member = tarfile.data_filter(member, path)
+    if member.issym():
+        # Ubuntu 22.04's Python 3.10.12 resolves a relative link from the wrong folder and refuses the toolchain's
+        # (lib/bfd-plugins/liblto_plugin.so -> ../../libexec/...): check the link here, the rest in data_filter.
+        target = os.path.normpath(os.path.join(os.path.dirname(member.name), member.linkname))
+        if os.path.isabs(target) or target == '..' or target.startswith('../'):
+            raise tarfile.LinkOutsideDestinationError(member, target)
+        checked = tarfile.data_filter(member.replace(linkname=os.path.basename(member.name)), path)
+        member = checked.replace(linkname=member.linkname) if checked else None
+    else:
+        member = tarfile.data_filter(member, path)
     if member:
         member.uid = member.gid = os.getuid()
         if member.mode is not None:
@@ -31,8 +40,11 @@ for name, repo, asset, sha, dest in archives:
         subprocess.run(['curl', '-fLsS', '--retry', '3', '-H', 'Accept: application/octet-stream',
                         f'https://api.github.com/repos/{repo}/releases/assets/{asset}', '-o', str(temporary)], check=True)
         temporary.rename(archive)
-    with archive.open('rb') as f:
-        actual = hashlib.file_digest(f, 'sha256').hexdigest()
+    digest = hashlib.sha256()
+    with archive.open('rb') as f:  # file_digest needs Python 3.11; ubuntu-22.04 has 3.10
+        for chunk in iter(lambda: f.read(1 << 20), b''):
+            digest.update(chunk)
+    actual = digest.hexdigest()
     if actual != sha:
         raise SystemExit(f'Archive checksum mismatch: {name}')
     with tarfile.open(archive) as t:

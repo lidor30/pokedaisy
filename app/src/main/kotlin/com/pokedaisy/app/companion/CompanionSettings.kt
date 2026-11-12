@@ -104,6 +104,10 @@ interface CompanionSettings {
     val dsCpuBoost: Boolean? get() = null
     fun setDsCpuBoost(on: Boolean) {}
 
+    /** DS TOUCH SCREEN ([com.pokedaisy.app.Prefs.dsTouchFill]): null when there's no row (not a DS game on two screens). */
+    val dsTouchFill: Boolean? get() = null
+    fun setDsTouchFill(on: Boolean) {}
+
     /** DS LAYOUT ([com.pokedaisy.app.Prefs.dsLayout]): null when there's no row (not a DS game, or one on two screens). */
     val dsLayout: DsLayout? get() = null
     fun setDsLayout(layout: DsLayout) {}
@@ -131,6 +135,9 @@ interface CompanionSettings {
     fun setPlayerLook(look: String?) {}
     /** A PLAYER LOOK pick's name as the row and its tile show it (a hero's, or a Pokémon's in the game). */
     fun playerLookLabel(name: String): String = com.pokedaisy.app.companion.data.LookChar.byName(name)?.label ?: name
+    /** MAKEOVER > RIDE ON (where [playerLookSupported]): the game's bike, or one of our vehicles in its place. */
+    val rideVehicle: com.pokedaisy.app.companion.data.RideVehicle get() = com.pokedaisy.app.companion.data.RideVehicle.BIKE
+    fun setRideVehicle(v: com.pokedaisy.app.companion.data.RideVehicle) {}
     /** RIVAL LOOK: the rival of the other gender ([rivalLookSupported]: Emerald, Ruby, Sapphire) dressed up with the player. */
     val rivalLookSupported: Boolean get() = false
     val rivalLook: Boolean get() = true
@@ -249,6 +256,13 @@ interface CompanionSettings {
     /** SETTINGS > DISCORD: opens PokeDaisy's Discord server ([Discord.URL]) in the browser or the Discord app. */
     fun openDiscord() {}
 
+    /** The running game is one its makers asked PokéDaisy not to read ([com.pokedaisy.app.companion.data.BlockedGames]):
+     * SETTINGS shows the emulator's rows only. */
+    val gameBlocked: Boolean get() = false
+
+    /** Opens a web link ([url]) in the browser - a blocked game's button ([com.pokedaisy.app.companion.data.BlockedAction]). */
+    fun openUrl(url: String) {}
+
     /** Whether battle-only strategic hints (move effectiveness chips, foe
      * Weak-to/Resists/Immune-to) are shown — see [Prefs.showHints]. */
     val showHints: Boolean
@@ -275,6 +289,13 @@ interface CompanionSettings {
     /** BATTLE VIEW - see [com.pokedaisy.app.Prefs.battleInfoFirst]. */
     val battleInfoFirst: Boolean get() = false
     fun setBattleInfoFirst(on: Boolean) {}
+    /** BATTLE VIEW > SUGGESTIONS - see [com.pokedaisy.app.Prefs.battleSuggestionsFirst]. */
+    val battleSuggestionsFirst: Boolean get() = false
+    fun setBattleSuggestionsFirst(on: Boolean) {}
+
+    /** CHALLENGE ICONS - see [com.pokedaisy.app.Prefs.raIcons]. */
+    val raIcons: Boolean get() = true
+    fun setRaIcons(on: Boolean) {}
 
     /** ONE-TAP MOVES - see [Prefs.oneTapMoves]. */
     val oneTapMoves: Boolean get() = false
@@ -624,7 +645,7 @@ enum class FfMusicMode(val label: String) {
 /** SETTINGS > FLIGHT AREA: where FREE FLIGHT and the scenic FLY may go (companion.data.FlightArea). [label] stays English. */
 enum class FlightAreaMode(val id: Int, val label: String) {
     /** Only over maps the player has seen: the save's towns, the routes between them, maps with a beaten trainer, every map stood on. */
-    SEEN(0, tk("WHERE YOU'VE BEEN")),
+    SEEN(0, tk("VISITED")),
 
     /** Anywhere the game's world goes; RetroAchievements pause from the first take-off. */
     ANYWHERE(1, tk("ANYWHERE")),

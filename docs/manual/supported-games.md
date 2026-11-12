@@ -24,7 +24,7 @@ Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the compan
 - Pokémon Yellow: the USA / Europe release and the German, French, Italian and Spanish ones, drawn in the game's own look. A German, French, Italian or Spanish copy shows its own names and Pokédex text. Item descriptions are only shown in the English one, as these games have none of their own.
 - Pokémon Yellow Legacy: version 1.0.10, drawn in the game's own look, with its own moves, trainers, wild Pokémon, party icons and town map. Make it from your English Yellow with `PATCH A ROM` and the release's patch. Start a new game: a save from the original Yellow doesn't load correctly in it.
 - Pokémon Gold and Silver: the USA / Europe releases, drawn in the game's own look.
-- Pokémon Crystal: the USA release, the USA / Europe revision 1 and the Australian one, drawn in the game's own look.
+- Pokémon Crystal: the USA release, the USA / Europe revision 1, the Australian one and the German one (Kristall), drawn in the game's own look. The German copy shows its own names and Pokédex text.
 - Pokémon Crystal Legacy: version 1.3.1, drawn in the game's own look, with its own moves, items, trainers, wild Pokémon, coloured party icons and maps. Make it from your Crystal (the USA release or revision 1) with `PATCH A ROM` and the release's matching patch. A save from the original Crystal starts, but its bag comes out wrong, so start a new game.
 - Pokémon Crystal Clear, the open world hack of Crystal: versions 2.5.11 and 2.6.0, each in its Standard Colors and its Color Filter build, drawn in the game's own look.
 - Pokémon Prism, built on Crystal with regions of its own: version 0.95 build 254 (Hotfix 5), drawn in the game's own look, with its own Pokédex.
@@ -61,7 +61,6 @@ The companion reads their party, bag, map, Pokédex and guide, with pictures, Po
 | Pokémon Ultra Violet | 1.22 |
 | Pokémon FireRed Rocket Edition | its one release |
 | Pokémon Ash Gray | 4.5.3, and its Fork Bug Fix 1.0 build |
-| Pokémon Ghost Grey | 1.0.1, 1.0.2 and 1.0.4 |
 | Pokémon Let's Go (both versions) | its English translation, and each version's Translation Only build |
 | Sword and Shield Ultimate Plus | 1.2.1.2, plus its three patches |
 | Pokémon GS Chronicles | 2.7.6 |
@@ -88,6 +87,14 @@ The companion reads their party, bag, map, Pokédex and guide, with pictures, Po
 | Pokémon R.O.W.E. | 2.1.9.1 Experimental |
 
 Not every game gets every tab yet. Some hacks have the guide's live pages only, a few have no guide, and battle panes in many hacks haven't been checked in every kind of battle. The full table, tab by tab, is on the [compatibility page](https://pokedaisy.com/compatibility/) and in the [README](https://github.com/lidor30/pokedaisy#supported-games).
+
+## Games removed at their makers' request
+
+Some games aren't read by PokeDaisy because the people who made them asked for that. They still play, as plain games: no companion, no `EXPAND`, no HUD and none of the other extras. Instead of your party, the companion says why and links to where you can ask the game's makers about it.
+
+| Game | Why |
+|---|---|
+| Pokémon Ghost Grey | Its developer asked for it to be removed. Ask them on the Ghost Grey Discord if you'd like it back. |
 
 ## Support is for the exact version
 

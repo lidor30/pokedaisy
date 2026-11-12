@@ -11,6 +11,9 @@ on:
       - 'gamedata/**'
       - 'app/src/main/cpp/pk_savevf.*'
       - 'third_party/dsperate'
+      - 'third_party/armgba'
+      - 'third_party/zlib'
+      - 'libretro/**'
       - '.gitmodules'
       - 'NOTICE'
       - '.github/workflows/linux-ds-experiment.yml'
@@ -23,20 +26,33 @@ jobs:
   build:
     strategy:
       matrix:
-        target: [native, trimui]
-    runs-on: ubuntu-24.04
+        include:
+          - target: native
+            os: ubuntu-24.04
+          # As linux.yml's TrimUI job: 22.04's aarch64 cross glibc (2.35) for armGBA, which glibc_compat binds to 2.17.
+          - target: trimui
+            os: ubuntu-22.04
+    runs-on: ${{ matrix.os }}
     timeout-minutes: 25
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
-      - run: git submodule update --init third_party/mgba third_party/dsperate
+      - run: git submodule update --init third_party/mgba third_party/dsperate third_party/armgba third_party/zlib
       - run: sudo apt-get update && sudo apt-get install -y cmake libsdl2-dev qemu-user-static
+      - if: matrix.target == 'trimui'
+        run: sudo apt-get install -y gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross
       - name: Native build and tests
         if: matrix.target == 'native'
         run: |
           cmake -S linux -B linux/build-ds -DCMAKE_BUILD_TYPE=Release -DBUILD_LTO=OFF -DPOCKET_DSPERATE=ON
           cmake --build linux/build-ds -j2
           ctest --test-dir linux/build-ds --output-on-failure
-          python3 linux/package.py --dsperate linux/build-ds/pokedaisy-linux "$RUNNER_TEMP/ds-artifacts"
+          # The executable plays GB / GBA games through the cores beside it: ship them, or those games say "Core missing".
+          cmake -S libretro -B "$RUNNER_TEMP/pd-gb" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/pd-gb" --target pokedaisy_gbc_libretro -j2
+          cmake -S libretro/armgba -B "$RUNNER_TEMP/pd-gba" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/pd-gba" --target pokedaisy_gba_libretro -j2
+          python3 linux/package.py --dsperate linux/build-ds/pokedaisy-linux "$RUNNER_TEMP/ds-artifacts" \
+            --core "$RUNNER_TEMP/pd-gb/pokedaisy_gbc_libretro.so" --core "$RUNNER_TEMP/pd-gba/pokedaisy_gba_libretro.so"
       - name: TrimUI build and QEMU tests
         if: matrix.target == 'trimui'
         run: |
@@ -47,7 +63,12 @@ jobs:
             -DCMAKE_CROSSCOMPILING_EMULATOR="qemu-aarch64-static;-L;$NEXTUI_TOOLCHAIN/aarch64-nextui-linux-gnu/libc"
           cmake --build linux/build-ds-arm -j2
           ctest --test-dir linux/build-ds-arm --output-on-failure
-          python3 linux/package.py --dsperate linux/build-ds-arm/pokedaisy-linux "$RUNNER_TEMP/ds-artifacts"
+          cmake -S libretro -B build/gbc-arm -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/gbc-arm -j2 --target pokedaisy_gbc_libretro
+          cmake -S libretro/armgba -B build/gba-arm -DCMAKE_TOOLCHAIN_FILE="$PWD/libretro/aarch64.cmake" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/gba-arm -j2 --target pokedaisy_gba_libretro
+          python3 linux/package.py --dsperate linux/build-ds-arm/pokedaisy-linux "$RUNNER_TEMP/ds-artifacts" \
+            --core build/gbc-arm/pokedaisy_gbc_libretro.so --core build/gba-arm/pokedaisy_gba_libretro.so
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: pokedaisy-ds-experiment-${{ matrix.target }}

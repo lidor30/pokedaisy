@@ -63,6 +63,8 @@ class TelemetrySampler {
     // Set instead of nativeCfg for a large BPRE ROM that isn't recognized as
     // Unbound (see detect()) - a different hack we have no addresses for.
     private var unsupportedHackLabel: String? = null
+    // A game its makers asked PokéDaisy not to read ([BlockedGames]): unsupported, with its notice, and nothing guessed.
+    private var blocked: BlockedGame? = null
     // The ROM hashed as retail FireRed / Emerald.
     private var retailHash = false
     // Retail FireRed / Emerald with a randomizer's data (RandomizedRetail): read as retail, with its own tables.
@@ -145,6 +147,17 @@ class TelemetrySampler {
         }
         // Look at it on the first sample: a guess or a sure match shows up at once.
         beSamples = EVALUATE_EVERY
+    }
+
+    /** A listed game: no config, no BEST EFFORT, no picker - only its notice ([SnapshotView.blocked]). */
+    private fun block(b: BlockedGame) {
+        blocked = b
+        kind = kind ?: GameKind.FIRERED
+        nativeCfg = null
+        baseCfg = null
+        beCode = null
+        beMatch = null
+        unsupportedHackLabel = "${b.title} is blocked"
     }
 
     private fun useBestEffort(m: BestEffort.Match) {
@@ -319,7 +332,10 @@ class TelemetrySampler {
 
     private fun sampleUntagged(reader: MemoryReader): SnapshotView {
         try {
-            if (kind == null) detect(reader)
+            if (kind == null) {
+                detect(reader)
+                BlockedGames.forSha1(romSha1)?.let(::block)
+            }
             if (beCode != null) {
                 takeAnswers(reader)
                 runBestEffort(reader)
@@ -353,8 +369,8 @@ class TelemetrySampler {
             quetzalV1 = base?.quetzalV1 == true
             gen2Cfg?.let { activeGen2 = it }
             // A DS cart: its own text's language (NdsArt.names: a French Sacred Gold is an IPKE HeartGold, GitHub #230).
-            romLanguage = nativeCfg?.language ?: gen1Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language ?: dsLanguage ?: 'E'
-            romGameCode = nativeCfg?.gameCode ?: gen1Cfg?.gameCode ?: dsGameCode
+            romLanguage = nativeCfg?.language ?: gen1Cfg?.language ?: gen2Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language ?: dsLanguage ?: 'E'
+            romGameCode = nativeCfg?.gameCode ?: gen1Cfg?.gameCode ?: gen2Cfg?.gameCode ?: dsGameCode
             // Quetzal picks each kind of name's language from its own options (a few bytes a sample).
             quetzalNames = nativeCfg?.takeIf { it.quetzalPlacesDefault >= 0 }
                 ?.let { runCatching { readQuetzalNames(reader, it) }.getOrNull() } ?: QuetzalNames()
@@ -370,7 +386,7 @@ class TelemetrySampler {
                 GameKind.PLATINUM, GameKind.HEARTGOLD, GameKind.SOULSILVER -> readGen4Telemetry(reader, gen4Cfg ?: GEN4_PLATINUM_US)
                 GameKind.BLACK, GameKind.WHITE, GameKind.BLACK2, GameKind.WHITE2 -> readGen5Telemetry(reader, gen5Cfg ?: GEN5_BLACK)
                 else -> {
-                    unsupportedHackLabel?.let { return SnapshotView(connected = false, error = it, unsupported = true) }
+                    unsupportedHackLabel?.let { return SnapshotView(connected = false, error = it, unsupported = true, blocked = blocked) }
                     val cfg = nativeCfg ?: return SnapshotView(connected = false, error = "no telemetry source")
                     readNativeTelemetry(reader, cfg)
                 }
@@ -794,6 +810,7 @@ class TelemetrySampler {
             GAME_BOY_SUPPORT && hash == CRYSTAL_LEGACY_V1_3_1_SHA1 -> { kind = GameKind.CRYSTAL_LEGACY; gen2Cfg = GEN2_CRYSTAL_LEGACY }
             GAME_BOY_SUPPORT && gen1ConfigFor(hash) != null -> { kind = GameKind.YELLOW; gen1Cfg = gen1ConfigFor(hash) }
             hash in CRYSTAL_SHA1S && GAME_BOY_SUPPORT -> { kind = GameKind.CRYSTAL; gen2Cfg = GEN2_CRYSTAL }
+            GAME_BOY_SUPPORT && hash == CRYSTAL_DE_SHA1 -> { kind = GameKind.CRYSTAL; gen2Cfg = GEN2_CRYSTAL_DE }
             GAME_BOY_SUPPORT && hash == GOLD_SHA1 -> { kind = GameKind.GOLD; gen2Cfg = GEN2_GOLD }
             GAME_BOY_SUPPORT && hash == SILVER_SHA1 -> { kind = GameKind.SILVER; gen2Cfg = GEN2_SILVER }
             GAME_BOY_SUPPORT && crystalClearConfigFor(hash) != null -> { kind = GameKind.CRYSTAL_CLEAR; gen2Cfg = crystalClearConfigFor(hash) }
@@ -822,6 +839,13 @@ class TelemetrySampler {
     /** The detected game's gPartyMenu + gPlayerParty when its config has them (SoulGold), or null. */
     val knownPartyMenu: Pair<Long, Long>?
         get() = nativeCfg?.takeIf { it.partyMenu != 0L }?.let { it.partyMenu to it.playerParty }
+
+    /** The detected game's party layout, for overworld reordering only. English Unbound reads through a fallback;
+     * admit that fallback only after its exact supported ROM has been verified, without enabling other config users. */
+    val knownPartyReorderConfig: NativeConfig?
+        get() = nativeCfg ?: NATIVE_UNBOUND_WITH_DEX.takeIf {
+            kind == GameKind.UNBOUND && romSha1 == UNBOUND_V2_1_1_1_SHA1 && ramVerified && beMatch == null
+        }
 
     /** Where the detected game's save keeps the option that shapes its battle party menu (gSaveBlock1Ptr + the offset:
      * SoulGold's PARTY MENU), or null when the shape is fixed. */
@@ -1165,6 +1189,8 @@ class TelemetrySampler {
         const val CRYSTAL_REV1_SHA1 = "f2f52230b536214ef7c9924f483392993e226cfb"
         const val CRYSTAL_AU_SHA1 = "a0fc810f1d4e124434f7be2c989ab5b5892ddf36"
         val CRYSTAL_SHA1S = setOf(CRYSTAL_SHA1, CRYSTAL_REV1_SHA1, CRYSTAL_AU_SHA1)
+        // Pokémon Kristall-Edition (Germany): English Crystal's code translated, its own ROM tables (GEN2_CRYSTAL_DE).
+        const val CRYSTAL_DE_SHA1 = "accb584293ba056152f1fd908439b019017ff2fe"
 
         // Pokémon Gold and Silver (USA, Europe): pret/pokegold builds both byte for byte.
         const val GOLD_SHA1 = "d8b8a3600a465308c9953dfa04f0081c05bdcb94"
@@ -1221,7 +1247,7 @@ class TelemetrySampler {
 
         /** The Game Boy / Color carts the companion reads ([CompanionSupport] checks imports against it). */
         val SUPPORTED_GB_SHA1S = setOf(YELLOW_SHA1, YELLOW_DE_SHA1, YELLOW_FR_SHA1, YELLOW_IT_SHA1, YELLOW_ES_SHA1, RED_SHA1, BLUE_SHA1) +
-            CRYSTAL_SHA1S + CRYSTAL_CLEAR_SHA1S + PRISM_V0_95_254_SHA1 + GOLD_SHA1 + SILVER_SHA1 + POLISHED_CRYSTAL_SHA1S +
+            CRYSTAL_SHA1S + CRYSTAL_DE_SHA1 + CRYSTAL_CLEAR_SHA1S + PRISM_V0_95_254_SHA1 + GOLD_SHA1 + SILVER_SHA1 + POLISHED_CRYSTAL_SHA1S +
             PURE_RED_V2_7_6_SHA1 + PURE_BLUE_V2_7_6_SHA1 + YELLOW_LEGACY_V1_0_10_SHA1 + CRYSTAL_LEGACY_V1_3_1_SHA1
 
         /**

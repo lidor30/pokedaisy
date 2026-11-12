@@ -43,6 +43,9 @@ int pd_layered_two_tone(struct pd_canvas* c, int x, int y, int w, int h, int r,
 uint32_t pd_two_tone_low(uint32_t fill);
 // a toward b by k / 256, per channel (alpha included).
 uint32_t pd_mix(uint32_t a, uint32_t b, int k256);
+// The Android Companion's soft two-tone button face inside a layered frame.
+void pd_button_box(struct pd_canvas* c, int x, int y, int w, int h, int r,
+                   const struct pd_layer* layers, int n, uint32_t fill);
 
 // GBA text: the shadow one pixel right, down and diagonally, then the glyphs.
 // shadow 0xFF000000 (PD_NO_SHADOW) = none. Returns the advance in pixels.

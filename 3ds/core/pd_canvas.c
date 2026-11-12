@@ -157,6 +157,13 @@ int pd_layered_two_tone(struct pd_canvas* c, int x, int y, int w, int h, int r,
     return inset;
 }
 
+// The Android Companion's soft two-tone face inside a layered frame: pd_layered_two_tone's (one face everywhere, flat in a
+// Game Boy game).
+void pd_button_box(struct pd_canvas* c, int x, int y, int w, int h, int r,
+                   const struct pd_layer* layers, int n, uint32_t fill) {
+    pd_layered_two_tone(c, x, y, w, h, r, layers, n, fill, 0);
+}
+
 static uint32_t next_codepoint(const char** s) {
     const unsigned char* p = (const unsigned char*) *s;
     uint32_t cp;

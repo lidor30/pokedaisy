@@ -33,7 +33,14 @@ object GbaControls {
         TURBO_A(MgbaCore.Key.A or TURBO, "TURBO A"), TURBO_B(MgbaCore.Key.B or TURBO, "TURBO B"),
         X(MgbaCore.Key.X, "X", Group.DS), Y(MgbaCore.Key.Y, "Y", Group.DS),
         START_2(MgbaCore.Key.START, "START 2", Group.GBA), SELECT_2(MgbaCore.Key.SELECT, "SELECT 2", Group.GBA),
-        TO_COMPANION(COMPANION, tk("TO COMPANION"), Group.GBA);
+        TO_COMPANION(COMPANION, tk("TO COMPANION"), Group.GBA),
+        // More keys for the D-pad, unbound by default (the D-pad itself stays fixed, GbaInput): a controller whose D-pad
+        // sends other keys - the 8BitDo Micro's keyboard mode sends letters, its UP the C of ZOOM's hotkey.
+        UP(MgbaCore.Key.UP, tk("D-PAD UP")), DOWN(MgbaCore.Key.DOWN, tk("D-PAD DOWN")),
+        LEFT(MgbaCore.Key.LEFT, tk("D-PAD LEFT")), RIGHT(MgbaCore.Key.RIGHT, tk("D-PAD RIGHT"));
+
+        /** One of the D-pad's extra keys ([UP] .. [RIGHT]). */
+        val dpad get() = this == UP || this == DOWN || this == LEFT || this == RIGHT
 
         /** Its key in the file: START 2 / SELECT 2 kept the names X / Y had when they were one row each. */
         val prop get() = when (this) {
@@ -41,11 +48,12 @@ object GbaControls {
             else -> name.lowercase()
         }
         /** Its row's name in GAME BUTTONS: the GBA's own buttons say so, the others are their own. */
-        val title get() = if (group == Group.ALL) "GBA $label" else label
+        val title get() = if (group == Group.ALL && !dpad) "GBA $label" else label
         /** START 2 / SELECT 2 / TO COMPANION are new rows (they were all X / Y once); TO COMPANION keeps X's tag. */
         val badge: String? get() = when (this) {
             TO_COMPANION -> com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.X_COMPANION)
             START_2, SELECT_2 -> com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.GBA_BUTTONS)
+            UP, DOWN, LEFT, RIGHT -> com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DPAD_KEYS)
             else -> null
         }
         /** A line under its row: what it does (English; translated where drawn). */
@@ -53,10 +61,11 @@ object GbaControls {
             START_2 -> "A second START"
             SELECT_2 -> "A second SELECT"
             TO_COMPANION -> "On the field: your buttons go to the companion"
+            UP, DOWN, LEFT, RIGHT -> "Another key for the D-pad"
             else -> null
         }
         /** Every game needs the GBA's buttons and the DS its X / Y; the rest start unbound or can go back to it. */
-        val canClear get() = this == TURBO_A || this == TURBO_B || group == Group.GBA
+        val canClear get() = this == TURBO_A || this == TURBO_B || group == Group.GBA || dpad
         /** TO COMPANION shares its key with a button (by default START 2's); it never takes the key from one. */
         fun sharesKeyWith(other: Btn) = this == other || !group.overlaps(other.group) || this == TO_COMPANION || other == TO_COMPANION
     }
@@ -77,6 +86,10 @@ object GbaControls {
         "companion" to "BUTTON_X",
         "turbo_a" to "",
         "turbo_b" to "",
+        "up" to "",
+        "down" to "",
+        "left" to "",
+        "right" to "",
     )
 
     /** Rows that came out of one: a file from before them gives each its old row's keys, so nothing moves (X was the
@@ -147,6 +160,9 @@ object GbaControls {
         }
         props.setProperty(btn.prop, name)
         runCatching { file(dir).outputStream().use { props.store(it, "PokeDaisy GBA button map") } }
+        // A D-pad key goes to the D-pad alone: a hotkey that was only this key loses it (else the hotkey kept it - the
+        // 8BitDo Micro's UP is ZOOM's C).
+        if (btn.dpad) Hotkeys.releaseKey(dir, name)
     }
 
     /** Leaves [btn] unbound - TURBO A / B and the GBA / Game Boy rows only ([Btn.canClear]). */

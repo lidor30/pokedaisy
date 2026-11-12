@@ -33,11 +33,20 @@ object RomFolder {
         val partial: Boolean = false, val matched: Boolean = false, val tryable: Boolean = false,
         /** Written before TRYABLE existed ("0"): checked again once. */
         val legacy: Boolean = false,
+        /** A game on [com.pokedaisy.app.companion.data.BlockedGames]' list: its BLOCKED tag (written "B" while it plays
+         * anyway, "X" while it's kept off). */
+        val blocked: Boolean = false,
     ) {
         val listed get() = supported || partial || tryable
     }
 
-    private fun entryOf(size: Long, modified: Long, f: File): Entry =
+    private fun entryOf(size: Long, modified: Long, f: File): Entry {
+        val e = verdictEntry(size, modified, f)
+        val blocked = runCatching { CompanionSupport.listed(f) }.getOrNull() != null
+        return if (blocked) Entry(size, modified, e.supported, blocked = true) else e
+    }
+
+    private fun verdictEntry(size: Long, modified: Long, f: File): Entry =
         when (runCatching { CompanionSupport.verdict(f) }.getOrDefault(CompanionSupport.Verdict.UNSUPPORTED)) {
             CompanionSupport.Verdict.SUPPORTED -> Entry(size, modified, true)
             CompanionSupport.Verdict.MATCHED -> Entry(size, modified, true, matched = true)
@@ -185,6 +194,10 @@ object RomFolder {
     fun unsupported(context: Context): Set<String> =
         load(context).filterValues { !it.supported && !it.partial }.keys
 
+    /** Paths of games on [com.pokedaisy.app.companion.data.BlockedGames]' list - the BLOCKED tag (over NOT SUPPORTED). */
+    fun blocked(context: Context): Set<String> =
+        load(context).filterValues { it.blocked }.keys
+
     /** Paths read through a PARTIAL best-effort match - the PARTIALLY SUPPORTED tag. */
     fun partial(context: Context): Set<String> =
         load(context).filterValues { it.partial }.keys
@@ -235,6 +248,10 @@ object RomFolder {
             com.pokedaisy.app.companion.data.OriginHeartGold.V4_0_3_EN_RC8_SHA1).hashCode(),
     )
 
+    /** Which games were blocked when the cache was written ([com.pokedaisy.app.companion.data.BlockedGames]): a newly
+     * blocked game may sit in it as SUPPORTED, so on a change every answer is read again (once, after that update). */
+    private val BLOCKED get() = "#blocked\t" + com.pokedaisy.app.companion.data.BlockedGames.stamp
+
     private fun load(context: Context): Map<String, Entry> {
         val f = cacheFile(context)
         if (!f.isFile) return emptyMap()
@@ -242,13 +259,18 @@ object RomFolder {
             val lines = f.readLines()
             // Written before a game got its companion (an app update): only SUPPORTED answers still stand.
             val stale = SUPPORTED !in lines
+            val blockedLine = BLOCKED
+            if (blockedLine !in lines) return@runCatching emptyMap()
             lines.mapNotNull { line ->
                 val p = line.split('\t')
                 if (p.size != 4) return@mapNotNull null
                 val size = p[1].toLongOrNull() ?: return@mapNotNull null
                 val modified = p[2].toLongOrNull() ?: return@mapNotNull null
                 if (stale && p[3] != "1") return@mapNotNull null
-                p[0] to Entry(size, modified, p[3] == "1" || p[3] == "M", partial = p[3] == "P", matched = p[3] == "M", tryable = p[3] == "T", legacy = p[3] == "0")
+                p[0] to Entry(
+                    size, modified, p[3] == "1" || p[3] == "M" || p[3] == "B", partial = p[3] == "P", matched = p[3] == "M",
+                    tryable = p[3] == "T", legacy = p[3] == "0", blocked = p[3] == "B" || p[3] == "X",
+                )
             }.toMap()
         }.getOrDefault(emptyMap())
     }
@@ -257,8 +279,8 @@ object RomFolder {
         val f = cacheFile(context)
         val tmp = File(f.parentFile, "${f.name}.tmp")
         runCatching {
-            tmp.writeText(SUPPORTED + "\n" + entries.entries.joinToString("") { (path, e) ->
-                "$path\t${e.size}\t${e.modified}\t${if (e.matched) "M" else if (e.supported) "1" else if (e.partial) "P" else if (e.tryable) "T" else "U"}\n"
+            tmp.writeText(SUPPORTED + "\n" + BLOCKED + "\n" + entries.entries.joinToString("") { (path, e) ->
+                "$path\t${e.size}\t${e.modified}\t${if (e.blocked) (if (e.supported) "B" else "X") else if (e.matched) "M" else if (e.supported) "1" else if (e.partial) "P" else if (e.tryable) "T" else "U"}\n"
             })
             tmp.renameTo(f)
         }

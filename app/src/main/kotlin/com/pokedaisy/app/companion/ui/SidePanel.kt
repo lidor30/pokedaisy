@@ -285,16 +285,26 @@ fun SidePanelOpenTab(onOpen: () -> Unit) = SidePanelTab(PixelIcons.panelOpen, re
 @Composable
 fun SidePanelCloseTab(onClose: () -> Unit) = SidePanelTab(PixelIcons.panelClose, red = false, tr("Close the companion"), onClose)
 
-/** One of the side panel's tabs: [icon] on a white title-window tab running off its right edge. */
+/**
+ * A DS game's touch screen filling the second display (DS TOUCH SCREEN > FILL, [com.pokedaisy.app.NdsBottomHost]): its
+ * COMPANION / GAME SCREEN switch as a small tab on the right edge, the side panel's open tab while the touch screen shows
+ * and its close tab over the companion.
+ */
 @Composable
-private fun SidePanelTab(icon: List<String>, red: Boolean, description: String, onClick: () -> Unit) {
+fun DsScreenSwitchTab(showingCompanion: Boolean, onClick: () -> Unit) =
+    if (showingCompanion) SidePanelTab(PixelIcons.panelClose, red = false, tr("GAME SCREEN"), onClick, cells = 24)
+    else SidePanelTab(PixelIcons.panelOpen, red = false, tr("COMPANION"), onClick, cells = 24)
+
+/** One of the side panel's tabs: [icon] on a white title-window tab running off its right edge, [cells] GBA pixels square. */
+@Composable
+private fun SidePanelTab(icon: List<String>, red: Boolean, description: String, onClick: () -> Unit, cells: Int = 32) {
     val m = rememberGbaTextMetrics()
     val u = m.u
     val noRipple = remember { MutableInteractionSource() }
     Box(
         contentAlignment = Alignment.Center,
         modifier = Modifier
-            .size(u * 32, u * 32)
+            .size(u * cells, u * cells)
             .drawBehind {
                 drawLayeredBox(OptionColors.titleLayers.inPx(u.toPx()), OptionColors.titleFill, radius = 3 * u.toPx(), openRight = true)
             }

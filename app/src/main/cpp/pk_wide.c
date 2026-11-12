@@ -26,7 +26,6 @@
 // this port against the same captures (native-capture/mgba_dump's `wide` / `widecheck`).
 
 #include "pk_wide.h"
-#include "pk_wide_gb_profile.h"
 #include "pk_cheats.h"
 
 #include <stdbool.h>
@@ -218,6 +217,7 @@ struct Snap {
 
 static struct Snap snaps[2];
 static int prev = -1;              // snaps[prev]: the RAM after the frame before this one
+static bool mixSnap;               // pk_wide_jump: the next drawn scene at full strength, no crossfade
 
 /** FlagGet as the game has it. Flags past SaveBlock1's own array read on into it (the engine doesn't stop there, so
  * a hack that uses them - Odyssey, Glazed - keeps them there); CFRU's GetFlagPointer (PK_WIDE_EXPANDED_FLAGS) puts
@@ -869,8 +869,45 @@ static uint16_t followSavedOam[4];
 static uint8_t followSavedVram[512];
 static uint8_t followDirty[256];                             // halfwords the game wrote over this frame
 
+// RIDE ON (companion/data/RideOn.kt): the vehicle the player rides in place of their bike, drawn like FOLLOWER - one more
+// hardware sprite right behind the player's (the first hidden OAM entry after theirs, at their priority), OBJ tiles 944-975
+// and a palette slot no shown sprite uses, put in as each frame starts and taken out after its last line. The ROM's bike
+// frames hold the rider alone (RideOn's patch); the vehicle keeps its own colours. Its view is the player's facing (south,
+// north, west; east = west flipped), 32 x 64 (the rider's frame on top, the wheels below it) or 64 x 32, centred on the
+// player's sprite, its top on theirs. Only while the player is on a bike (onBike) and shown.
+#define RIDE_TILE 944
+#define RIDE_VRAM (0x10000 + RIDE_TILE * 32)
+static bool rideOn, rideHave;
+static uint8_t rideFrames[3 * 1024], ridePal[32];
+static int rideW = 32;
+static int rideOam = -1, rideSlot = -1, rideWhy;
+static uint16_t rideSavedOam[4];
+// The bob: rider and vehicle a pixel up now and then - an engine idling while still (12 frames up, 12 down), the road's
+// bumps while moving (every 4). The player's own OAM entries are nudged with the vehicle's and put back after the frame.
+static unsigned rideTick;
+static int rideBobbed[8], rideBobbedN;
+static uint16_t rideBobSaved[8];
+static uint8_t rideSavedVram[1024];
+static uint8_t rideDirty[512];
+
 static void followWrote(uint32_t address) {
     if (followOam >= 0 && address >= FOLLOW_VRAM && address < FOLLOW_VRAM + 512) followDirty[(address - FOLLOW_VRAM) >> 1] = 1;
+    if (rideOam >= 0 && address >= RIDE_VRAM && address < RIDE_VRAM + 1024) rideDirty[(address - RIDE_VRAM) >> 1] = 1;
+}
+
+void pk_ride_set(const uint8_t* frames, const uint8_t* pal, int w) {
+    if (frames && pal && (w == 32 || w == 64)) {
+        memcpy(rideFrames, frames, sizeof(rideFrames));
+        memcpy(ridePal, pal, sizeof(ridePal));
+        rideW = w;
+        rideHave = true;
+    } else {
+        rideHave = false;
+    }
+}
+
+void pk_ride_info(char* out, int n) {
+    snprintf(out, (size_t) n, "on %d have %d w %d why %d oam %d slot %d", rideOn, rideHave, rideW, rideWhy, rideOam, rideSlot);
 }
 
 void pk_follower_info(char* out, int n) {
@@ -890,6 +927,11 @@ void pk_follower_set(const uint8_t* frames, const uint8_t* pal) {
 }
 
 static void hookScanlines(struct GBA* gba);
+void pk_ride_show(struct mCore* core, int on) {
+    rideOn = on != 0;
+    if (on && core && core->platform(core) == mPLATFORM_GBA) hookScanlines((struct GBA*) core->board);
+}
+
 void pk_follower_show(struct mCore* core, int on) {
     followOn = on != 0;
     if (!on) followState = 0;
@@ -897,6 +939,8 @@ void pk_follower_show(struct mCore* core, int on) {
 }
 
 void pk_wide_extras_reset(void) {
+    rideOn = rideHave = false;
+    rideOam = rideSlot = -1;
     followOn = followHave = false;
     followState = 0;
     followOam = followSlot = -1;
@@ -906,6 +950,8 @@ void pk_wide_extras_reset(void) {
 
 static void followBegin(struct GBAVideoRenderer* r);
 static void followEnd(struct GBAVideoRenderer* r);
+static void rideBegin(struct GBAVideoRenderer* r);
+static void rideEnd(struct GBAVideoRenderer* r);
 
 // FREE FLIGHT's smooth camera (pk_flight.c, pk_wide_flight): the game steps one tile at a time in four directions, so a
 // diagonal flight scrolls the map in a staircase (a tile across, a tile up). While a flight is up, each frame's camera
@@ -949,6 +995,12 @@ void pk_wide_after_frame(struct mCore* core) {
 void pk_wide_flight_offset(int* dx, int* dy) {
     *dx = flyDx;
     *dy = flyDy;
+}
+
+void pk_wide_bg2_scroll(struct mCore* core, int* h, int* v) {
+    struct GBA* gba = core && core->platform(core) == mPLATFORM_GBA ? (struct GBA*) core->board : NULL;
+    *h = gba ? gba->memory.io[0x18 >> 1] & 0x1FF : 0;   // BG2HOFS / VOFS: the map's scroll, as this frame was drawn
+    *v = gba ? gba->memory.io[0x1A >> 1] & 0x1FF : 0;
 }
 
 void pk_wide_flight_camera(int* x, int* y) {
@@ -1011,9 +1063,9 @@ static void hookDrawScanline(struct GBAVideoRenderer* r, int y) {
         }
         lineOamOf[y] = (uint8_t) (lineOamN - 1);
     }
-    if (y == 0) { followBegin(r); partnerBegin(r); flyBegin(r); }
+    if (y == 0) { followBegin(r); rideBegin(r); partnerBegin(r); flyBegin(r); }
     origDrawScanline(r, y);
-    if (y == PK_WIDE_H - 1) { flyEnd(r); partnerEnd(r); followEnd(r); }
+    if (y == PK_WIDE_H - 1) { flyEnd(r); partnerEnd(r); rideEnd(r); followEnd(r); }
 }
 
 static void hookScanlines(struct GBA* gba) {
@@ -2535,14 +2587,6 @@ static uint8_t rawHole[BUF_H][BUF_W];   // ... and where it had nothing: the fra
 int pk_wide_frame_w(void) { return gbGame ? PK_WIDE_GB_W : PK_WIDE_W; }
 int pk_wide_frame_h(void) { return gbGame ? PK_WIDE_GB_H : PK_WIDE_H; }
 
-int pk_wide_configure_gb_profile(const uint32_t addresses[GB_CONFIG],
-                                 pk_wide_gb_decode_fn decode) {
-    pk_wide_configure(0);
-    gbGame = pk_wide_gb_configure_polished(addresses, decode);
-    pk_wide_reset();
-    return gbGame;
-}
-
 int pk_wide_configure(uint32_t crc) {
     lastFault = 0;
     gbGame = crc && pk_wide_gb_configure(crc);
@@ -2958,6 +3002,94 @@ static void followEnd(struct GBAVideoRenderer* r) {
         r->writePalette(r, (uint32_t) (0x200 + followSlot * 32 + i * 2), tintShown ? tint555(c) : c);
     }
     followOam = followSlot = -1;
+}
+
+static bool onBike(void);
+
+/** Line 0 (after followBegin): RIDE ON's vehicle into the hardware behind the player, the game's bytes saved first. */
+static void rideBegin(struct GBAVideoRenderer* r) {
+    rideOam = rideSlot = -1;
+    if (!rideOn || !rideHave || !hookGba || !F.objects) { rideWhy = 1; return; }
+    G = hookGba;
+    if (!onBike()) { rideWhy = 2; return; }
+    int k = playerObject();
+    const uint8_t* oe = k < 0 ? NULL : mem(F.objects + 0x24u * (uint32_t) k, 0x24);
+    if (!oe) { rideWhy = 3; return; }
+    uint32_t spriteId = oe[F.spriteIdOff];
+    if (spriteId >= 64) { rideWhy = 3; return; }
+    int facing = oe[0x18] & 0xF;   // DIR_SOUTH 1, NORTH 2, WEST 3, EAST 4
+    int view = facing == 2 ? 1 : facing == 3 || facing == 4 ? 2 : 0;
+    bool flip = facing == 4;
+    uint32_t s = F.sprites + 0x44 * spriteId;
+    int base = (int) (r16(s + 4) & 0x3FF);
+    const uint16_t* oam = hookGba->video.oam.raw;
+    struct PlayerBox pb;
+    playerBox(oam, base, &pb);
+    if (pb.last < 0) { rideWhy = 4; return; }   // the player not shown (FREE FLIGHT, a warp's fade)
+    // Moving: the object's current tile isn't its previous one (a step under way).
+    bool moving = le16(oe + 0x10) != le16(oe + 0x14) || le16(oe + 0x12) != le16(oe + 0x16);
+    rideTick++;
+    int bob = moving ? ((rideTick >> 2) & 1) : ((rideTick % 24) < 12 ? 0 : 1);
+    int w = rideW, ox = (pb.x0 + pb.x1) / 2 - w / 2, oy = pb.y1 - 32 - bob;
+    if (ox <= -w || ox >= 240 || oy <= -64 || oy >= 160) { rideWhy = 5; return; }
+    int entry = -1;
+    for (int e = pb.last + 1; e < 128; e++) if (oamHidden(oam[e * 4])) { entry = e; break; }
+    int slot = -1;
+    for (int e = 15; e >= 0; e--) if (!pb.used[e]) { slot = e; break; }
+    if (entry < 0 || slot < 0) { rideWhy = 6; return; }
+    int bytes = 1024;   // 32 tiles either shape
+    uint8_t* vram = (uint8_t*) hookGba->video.vram;
+    memcpy(rideSavedVram, vram + RIDE_VRAM, (size_t) bytes);
+    memset(rideDirty, 0, sizeof(rideDirty));
+    memcpy(vram + RIDE_VRAM, rideFrames + view * bytes, (size_t) bytes);
+    for (int i = 0; i < bytes; i += 2) origWriteVRAM(r, RIDE_VRAM + (uint32_t) i);
+    memcpy(rideSavedOam, &oam[entry * 4], 8);
+    uint16_t* wr = &hookGba->video.oam.raw[entry * 4];
+    wr[0] = (uint16_t) ((oy & 0xFF) | (w == 64 ? 1 << 14 : 2 << 14));                        // wide / tall, 4bpp, shown
+    wr[1] = (uint16_t) ((ox & 0x1FF) | (3 << 14) | (flip ? 0x1000 : 0));                  // 64x32 / 32x64
+    wr[2] = (uint16_t) (RIDE_TILE | pb.prio << 10 | slot << 12);
+    for (int i = 0; i < 3; i++) r->writeOAM(r, (uint32_t) entry * 4 + (uint32_t) i);
+    for (int i = 0; i < 16; i++) {
+        uint16_t c = (uint16_t) (ridePal[i * 2] | ridePal[i * 2 + 1] << 8);
+        r->writePalette(r, (uint32_t) (0x200 + slot * 32 + i * 2), tintShown ? tint555(c) : c);
+    }
+    // The rider up with it: the player's shown entries (their tiles), a pixel higher this frame.
+    rideBobbedN = 0;
+    if (bob) for (int e = 0; e < 128 && rideBobbedN < 8; e++) {
+        uint16_t a0 = oam[e * 4], a2 = oam[e * 4 + 2];
+        int t = a2 & 0x3FF;
+        if (oamHidden(a0) || t < base || t >= base + 16) continue;
+        rideBobbed[rideBobbedN] = e;
+        rideBobSaved[rideBobbedN++] = a0;
+        hookGba->video.oam.raw[e * 4] = (uint16_t) ((a0 & 0xFF00) | ((a0 - bob) & 0xFF));
+        r->writeOAM(r, (uint32_t) e * 4);
+    }
+    rideOam = entry;
+    rideSlot = slot;
+    rideWhy = 0;
+}
+
+/** After the last line: the game's own OAM entry, tiles (but those it wrote meanwhile) and palette back. */
+static void rideEnd(struct GBAVideoRenderer* r) {
+    if (rideOam < 0 || !hookGba) return;
+    uint8_t* vram = (uint8_t*) hookGba->video.vram;
+    for (int i = 0; i < 512; i++) {
+        if (rideDirty[i]) continue;
+        memcpy(vram + RIDE_VRAM + i * 2, rideSavedVram + i * 2, 2);
+        origWriteVRAM(r, RIDE_VRAM + (uint32_t) i * 2);
+    }
+    memcpy(&hookGba->video.oam.raw[rideOam * 4], rideSavedOam, 8);
+    for (int k = 0; k < 3; k++) r->writeOAM(r, (uint32_t) rideOam * 4 + (uint32_t) k);
+    for (int i = 0; i < rideBobbedN; i++) {
+        hookGba->video.oam.raw[rideBobbed[i] * 4] = rideBobSaved[i];
+        r->writeOAM(r, (uint32_t) rideBobbed[i] * 4);
+    }
+    rideBobbedN = 0;
+    for (int i = 0; i < 16; i++) {
+        uint16_t c = hookGba->video.palette[256 + rideSlot * 16 + i];
+        r->writePalette(r, (uint32_t) (0x200 + rideSlot * 32 + i * 2), tintShown ? tint555(c) : c);
+    }
+    rideOam = rideSlot = -1;
 }
 
 // CO-OP PARTNER (companion/data/coop/PartnerArt.kt, pk_partner_place): the other player's hero drawn like FOLLOWER - one
@@ -3415,6 +3547,7 @@ int pk_field_state(struct mCore* core, int runIndoors, int wildKeep) {
     if (r8(F.locked)) s |= PK_FIELD_LOCKED;
     if (F.main && (r8(F.main + F.inBattleOff) & 2)) s |= PK_FIELD_BATTLE;
     else if ((s & PK_FIELD_LOCKED) && textUp()) s |= PK_FIELD_TEXT;   // a battle's text is BATTLE SPEED's
+    else if (!(s & PK_FIELD_LOCKED) && textUp()) s |= PK_FIELD_WINDOW;
     if (onBike()) s |= PK_FIELD_BIKE;
     int surf = surfing();
     if (surf > 0) s |= PK_FIELD_SURF;
@@ -3446,6 +3579,14 @@ void pk_wide_reset(void) {
     lastScene = PK_WIDE_SCENE_OFF;
     overlayDim = 0;
     edgeAccOk = false;
+    mixSnap = false;
+}
+
+void pk_wide_jump(struct mCore* core, const uint32_t* frame) {
+    pk_wide_reset();
+    pk_wide_skip(core, frame);
+    mixSnap = true;
+    pk_wide_gb_snap();
 }
 
 int pk_wide_last_score(void) { return gbGame ? pk_wide_gb_last_score() : lastScore; }
@@ -4072,9 +4213,11 @@ static void fullDraw(const struct FullView* f) {
             else if (battle) drawBattleRegion(0, 0, PK_WIDE_W, PK_WIDE_H, false, centre, PK_WIDE_W, alpha);   // holes show the backdrop, as the PPU does
             else drawMenuRegion(0, 0, PK_WIDE_W, PK_WIDE_H, false, centre, PK_WIDE_W, alpha, NULL);
         }
-        mix = mix + MIX_STEP > 256 ? 256 : mix + MIX_STEP;
+        mix = mixSnap || mix + MIX_STEP > 256 ? 256 : mix + MIX_STEP;
+        mixSnap = false;
     } else {
         if (!f->hold) mix = mix - MIX_STEP < 0 ? 0 : mix - MIX_STEP;   // the last scene, frozen, dissolves into the glow
+        mixSnap = false;   // a jump's cut is the frame after it: a scene drawn much later (after a fade, a reset) fades in
     }
     PW_MARK(pw4);
     PW_ADD(2, pw3, pw4);

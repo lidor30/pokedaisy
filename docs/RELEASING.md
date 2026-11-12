@@ -42,6 +42,32 @@ release only), and the in-app updater offers the version on the next library ope
   the same way. Its tag push starts the Release workflow too: cancel that run (`gh run cancel`)
   rather than approve it.
 
+## The Linux files (beta)
+
+The **Linux foundation** workflow (`.github/workflows/linux.yml`) builds them; the Release workflow doesn't. It runs on
+pushes that touch Linux code, so start it on the tag yourself once the draft is up, then add its files to the draft:
+
+```bash
+V=1.2.0
+gh workflow run linux.yml --ref v$V        # the tagged commit; about 25 minutes
+gh run watch "$(gh run list --workflow linux.yml --branch v$V --limit 1 --json databaseId --jq '.[0].databaseId')"
+gh run download "$(gh run list --workflow linux.yml --branch v$V --limit 1 --json databaseId --jq '.[0].databaseId')" -D linux-v$V
+ls linux-v$V/*/*.zip                        # the six files below
+gh release upload v$V linux-v$V/*/*.zip
+```
+
+| File | For |
+| --- | --- |
+| `pokedaisy-linux-x86_64.zip` | Steam Deck and desktop Linux (glibc 2.35 or newer): the executable and its two cores |
+| `pokedaisy-linux-aarch64.zip` | TrimUI devices, as an app |
+| `pokedaisy-portmaster-aarch64.zip` | PortMaster handhelds (`PokeDaisy.sh` + `pokedaisy/`) |
+| `pokedaisy-libretro-x86_64.zip`, `pokedaisy-libretro-aarch64.zip` | the three libretro cores (GBA on armGBA, GB/GBC on mGBA, DS on DSperate) and their licenses, for other frontends |
+| `PokeDaisy-NXRedux.zip` | the TrimUI Brick on NXRedux (all three cores behind one collection) |
+
+The install guide for all six is the manual's Linux page (`docs/manual/linux.md`); link it in the release notes and
+say the Linux files are a **beta** (Android stays the full app). A file missing from the run means a job failed: fix
+it on `main`, then follow the "If a run fails" steps above.
+
 ## One APK for arm64 and 32-bit ARM
 
 The release APK carries the native code for both arm64 (the Thor, the Retroid Pocket, phones) and 32-bit ARM

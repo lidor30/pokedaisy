@@ -49,7 +49,7 @@ When someone in your party knows the move that carries you between towns, a blue
 
 The game's own rules still apply: you need the badge that allows it and you have to be outdoors, walking around, with no menu or conversation open. If something's missing, the button tells you what instead of flying.
 
-It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire in every language and on these hacks: Unbound, Radical Red, Ultra Violet, Ghost Grey, Let's Go, Gaia, Odyssey, Amethyst, Sword and Shield Ultimate Plus, Orange Islands, Glazed (its first region), Emerald Legacy, Heart and Soul, SoulGold, Lazarus, Emerald Imperium, Emerald Seaglass, Too Many Types 2, R.O.W.E., Super Mariomon (1.5.1 and 1.5.2), Quetzal (Alpha 9, Hoenn's towns), Rocket Edition, Ash Gray and Emerald Kaizo (over the map only, see below). Emerald Rogue doesn't let anyone fly, so it has no button.
+It works in FireRed, LeafGreen, Emerald, Ruby and Sapphire in every language and on these hacks: Unbound, Radical Red, Ultra Violet, Let's Go, Gaia, Odyssey, Amethyst, Sword and Shield Ultimate Plus, Orange Islands, Glazed (its first region), Emerald Legacy, Heart and Soul, SoulGold, Lazarus, Emerald Imperium, Emerald Seaglass, Too Many Types 2, R.O.W.E., Super Mariomon (1.5.1 and 1.5.2), Quetzal (Alpha 9, Hoenn's towns), Rocket Edition, Ash Gray and Emerald Kaizo (over the map only, see below). Emerald Rogue doesn't let anyone fly, so it has no button.
 
 On the Game Boy it works in Red, Blue, Yellow (in every language), Yellow Legacy, PureRed, PureBlue, Crystal and Crystal Legacy. The list is the one the game's own map would give you: in Red, Blue, Yellow, Yellow Legacy, PureRed and PureBlue every town you've been to, and in Crystal and Crystal Legacy the towns you've been to in the region you're in (Kanto's once you've reached the Indigo Plateau).
 
@@ -57,21 +57,21 @@ On the DS it works in Platinum, HeartGold, SoulSilver, Black, White, Black 2 and
 
 ## Flying over the map
 
-In FireRed, LeafGreen, Ruby, Sapphire and Emerald in every language, Emerald Legacy, and the hacks Radical Red, Unbound, Glazed, Ultra Violet, Orange Islands, Ghost Grey, Let's Go, Odyssey, Gaia, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Rocket Edition, Ash Gray, Emerald Kaizo, Emerald Imperium, Emerald Seaglass, Too Many Types 2, R.O.W.E., Super Mariomon, Quetzal, Lazarus, Heart and Soul and SoulGold, a second blue button sits under the first one: `TAKE OFF`. Your Pokémon's bird swoops in, you climb on, and you can fly anywhere the game's world goes: over trees, mountains, water and buildings, from one route into the next town, with the D-pad. Hold `A` to fly faster. Nothing happens on the way: no wild Pokémon, no trainers spotting you, no doors pulling you in.
+In FireRed, LeafGreen, Ruby, Sapphire and Emerald in every language, Emerald Legacy, and the hacks Radical Red, Unbound, Glazed, Ultra Violet, Orange Islands, Let's Go, Odyssey, Gaia, Amethyst, Sword and Shield Ultimate Plus, GS Chronicles, Rocket Edition, Ash Gray, Emerald Kaizo, Emerald Imperium, Emerald Seaglass, Too Many Types 2, R.O.W.E., Super Mariomon, Quetzal, Lazarus, Heart and Soul and SoulGold, a second blue button sits under the first one: `TAKE OFF`. Your Pokémon's bird swoops in, you climb on, and you can fly anywhere the game's world goes: over trees, mountains, water and buildings, from one route into the next town, with the D-pad. Hold `A` to fly faster. Nothing happens on the way: no wild Pokémon, no trainers spotting you, no doors pulling you in.
 
-Rather ride something else? `FLY ON`, in `SETTINGS` under `MAKEOVER`, swaps the bird for an air balloon, a helicopter or a zeppelin, with you inside. See [FLY ON](companion.md#fly-on).
+Rather ride something else? `FLY ON`, in `SETTINGS` under `MAKEOVER`, swaps the bird for an air balloon, a helicopter, a zeppelin or a small plane, with you inside. See [FLY ON](companion.md#fly-on).
 
-Your shadow follows on the ground below, and the bird leans the way you're flying: nose up on the way north, down on the way south, a little on a diagonal. Flying on a diagonal is about as fast as flying straight. With `ASPECT` set to `EXPAND`, flying on a diagonal glides smoothly instead of stepping a tile at a time.
+Your shadow follows on the ground below, clouds drift by between you and the ground (faster than the ground, as they're nearer), and the bird leans the way you're flying: nose up on the way north, down on the way south, a little on a diagonal. Flying on a diagonal is about as fast as flying straight. With `ASPECT` set to `EXPAND`, flying on a diagonal glides smoothly instead of stepping a tile at a time.
 
 Press `B` (or tap the button again, which now says `LAND`) to come down. The bird finds the nearest spot you could walk on, flies you there and lands; if there's no ground anywhere near, you hear a buzz and keep flying, so head for land and try again. You can't fly past the edge of the game's world: the bird just turns.
 
 In games where a Pokémon walks behind you, it goes back to its ball as you take off, as it does for the game's own flight, and comes out again at your first steps after landing.
 
-It needs what the game's own flight needs: the badge, a Pokémon in your party that knows the move, and being outdoors on foot or on your bike (not surfing). It's also a tile in the [quick menu](controls.md#the-quick-menu) and a hotkey, `FREE FLIGHT`, that you can give a button in `HOTKEYS`. A save state made in the air brings you back in the air.
+It needs what the game's own flight needs: the badge, a Pokémon in your party that knows the move, and being outdoors on foot (not surfing). On your bike, you get off first and then take off. It's also a tile in the [quick menu](controls.md#the-quick-menu) and a hotkey, `FREE FLIGHT`, that you can give a button in `HOTKEYS`. A save state made in the air brings you back in the air.
 
 ## Where you can fly
 
-`FLIGHT AREA` (in `SETTINGS`, under `GAMEPLAY`) keeps flying from skipping the story. On `WHERE YOU'VE BEEN`, the default, you fly only over places you've already been. At the edge of a place you haven't been, the bird turns back and a note says you haven't been there yet. That way you can't fly past a guard, a sleeping giant blocking the road or a cave you haven't made it through yet.
+`FLIGHT AREA` (in `SETTINGS`, under `GAMEPLAY`) keeps flying from skipping the story. On `VISITED`, the default, you fly only over places you've already been. At the edge of a place you haven't been, the bird turns back and a note says you haven't been there yet. That way you can't fly past a guard, a sleeping giant blocking the road or a cave you haven't made it through yet.
 
 PokeDaisy keeps a list of the places you've been for each save, and it grows by itself as you walk. The first time it meets a save, it fills the list from what the save already shows:
 
@@ -81,7 +81,7 @@ PokeDaisy keeps a list of the places you've been for each save, and it grows by 
 
 So a save from late in the game flies almost everywhere right away. A place with no town and no trainer, or one you skipped, needs one walk in before you can fly over it. The list is PokeDaisy's own: your save doesn't change.
 
-On `ANYWHERE`, you can fly wherever the game's world goes. If you're signed in to RetroAchievements, achievements pause the first time you take off this way, since flying ahead could reach a set's places early. They come back on when you switch to `WHERE YOU'VE BEEN` again.
+On `ANYWHERE`, you can fly wherever the game's world goes. If you're signed in to RetroAchievements, achievements pause the first time you take off this way, since flying ahead could reach a set's places early. They come back on when you switch to `VISITED` again.
 
 [The scenic way](#the-scenic-way) follows the same rule: a town you can't reach over places you've been gets the game's own flight instead.
 

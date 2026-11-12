@@ -2,8 +2,11 @@
 //  - app/src/main/kotlin/.../companion/ui/LogoGen.kt: the website's mark as it is - its rows and palette,
 //    for PixelArt (the Library's title, the PokéDaisy theme's backdrop).
 //  - app/src/main/res/mipmap-*/ic_launcher_foreground.png: the launcher icon's foreground - the mark with
-//    the icon's two edits ([iconLogo]: the 3 and 9 o'clock petal tips rounded, a 2 px outline) at a whole
-//    scale inside the adaptive icon's safe zone, over the blue ic_launcher_background.
+//    the icon's edits (scripts/logo_icon.mjs' iconLogo: every outline 1 px, the top / bottom petals centred,
+//    the 3 and 9 o'clock petal tips rounded), MARK_DP across in the middle of the adaptive icon, as wide as the old one.
+//  - app/src/main/res/mipmap-*/ic_launcher_background.png: logo_icon.mjs' blue diamond lattice on the flower's own
+//    pixel grid, its 1 px lines crossing behind the flower's middle, each diamond's top half lit.
+// The avatar and GitHub's social preview are drawn from the same art by scripts/gen_brand_images.mjs.
 //
 //     node scripts/gen_logo.mjs
 import { writeFileSync } from 'node:fs';
@@ -11,33 +14,11 @@ import { deflateSync } from 'node:zlib';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { SPRITES } from '../website/src/lib/pixel.js';
+import { CELLS, iconLogo, lattice } from './logo_icon.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..');
 
-/** The side (3 and 9 o'clock) petals' tips rounded: the band's notch at each tip filled in. */
-function roundSideTips(rows) {
-  const g = rows.map((r) => [...r]);
-  const n = g.length;
-  for (const col of [0, n - 1]) {
-    const inked = g.map((r, y) => (r[col] !== '.' ? y : -1)).filter((y) => y >= 0);
-    for (let y = Math.min(...inked); y <= Math.max(...inked); y++) if (g[y][col] === '.') g[y][col] = 'K';
-  }
-  return g.map((r) => r.join(''));
-}
-
-/** One more pixel of outline all round the outside (4-neighbour, so corners stay round): the grid grows by
- * 2, the flower inside stays pixel for pixel. */
-function thickenOutline(rows) {
-  const w = rows[0].length + 2;
-  const g = ['.'.repeat(w), ...rows.map((r) => `.${r}.`), '.'.repeat(w)].map((r) => [...r]);
-  const ink = (x, y) => g[y]?.[x] !== undefined && g[y][x] !== '.';
-  const out = g.map((r, y) => r.map((c, x) =>
-    c === '.' && [[1, 0], [-1, 0], [0, 1], [0, -1]].some(([dx, dy]) => ink(x + dx, y + dy)) ? 'K' : c));
-  return out.map((r) => r.join(''));
-}
-
 const logo = SPRITES.logo;
-const iconLogo = { pal: logo.pal, rows: thickenOutline(roundSideTips(logo.rows)) };
 
 // --- Kotlin ------------------------------------------------------------------------------------
 const pal = Object.entries(logo.pal)
@@ -65,8 +46,12 @@ ${pal}
 // --- launcher PNGs -----------------------------------------------------------------------------
 // Adaptive icons: a 108 dp canvas, of which the middle 66 dp circle always shows.
 const DENSITIES = { mdpi: 1, hdpi: 1.5, xhdpi: 2, xxhdpi: 3, xxxhdpi: 4 };
-/** How wide the mark is on the icon, of its 108 dp (Android's keylines put an icon's art at ~48 dp): picked by eye. */
-const ICON_DP = 51;
+/** How wide the mark is on the icon, of its 108 dp: the old icon's (its 32 pixels + a 2 px outline at 1.5 dp),
+ * picked by eye back then. One pixel of the art (a cell) is MARK_DP / 32 dp: no density makes that whole screen
+ * pixels, and nearest-neighbour left some cells a pixel wider than others (the 1 px outlines looked broken), so
+ * each screen pixel is the average of SS x SS samples: crisp cells, edges softened by a fraction of a pixel. */
+const MARK_DP = 51;
+const SS = 8;
 const crcTable = Array.from({ length: 256 }, (_, n) => {
   let c = n;
   for (let k = 0; k < 8; k++) c = c & 1 ? 0xedb88320 ^ (c >>> 1) : c >>> 1;
@@ -105,21 +90,29 @@ function png(size, pixel) {
   ]);
 }
 const n = iconLogo.rows.length;
+const off = (CELLS - n) / 2;
+const rgba = (hex) => [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).concat(255);
+/** A screen pixel as the average of SS x SS samples of `at(cellX, cellY)` -> [r, g, b, a] (premultiplied). */
+function smooth(size, px, at) {
+  const start = (size - n * px) / 2 - off * px; // the mark centred, its cells counted out to the edges
+  return (x, y) => {
+    let r = 0, g = 0, b = 0, a = 0;
+    for (let sy = 0; sy < SS; sy++) for (let sx = 0; sx < SS; sx++) {
+      const c = at(Math.floor((x + (sx + 0.5) / SS - start) / px), Math.floor((y + (sy + 0.5) / SS - start) / px));
+      r += c[0] * c[3]; g += c[1] * c[3]; b += c[2] * c[3]; a += c[3];
+    }
+    return a ? [r / a, g / a, b / a, a / (SS * SS)].map(Math.round) : [0, 0, 0, 0];
+  };
+}
 for (const [name, d] of Object.entries(DENSITIES)) {
   const size = Math.round(108 * d);
-  // The mark ICON_DP across (a launcher shows the middle 72 dp; at the 66 dp safe zone's full width it
-  // looked too big). Not always a whole scale (51 dp is 4.5 px a pixel at xxhdpi): nearest-neighbour, so
-  // some blocks come out a screen pixel wider than others but every edge stays sharp - no smoothing.
-  const scale = (ICON_DP * d) / n;
-  const off = Math.floor((size - Math.round(n * scale)) / 2);
-  const img = png(size, (x, y) => {
-    const gx = Math.floor((x - off) / scale);
-    const gy = Math.floor((y - off) / scale);
-    const c = x >= off && y >= off && gx < n && gy < n ? iconLogo.rows[gy][gx] : '.';
-    const hex = iconLogo.pal[c];
-    if (!hex) return [0, 0, 0, 0];
-    return [1, 3, 5].map((i) => parseInt(hex.slice(i, i + 2), 16)).concat(255);
-  });
-  writeFileSync(join(root, `app/src/main/res/mipmap-${name}/ic_launcher_foreground.png`), img);
-  console.log(`mipmap-${name}: ${size}px, mark ${Math.round(n * scale)}px = ${((n * scale) / d).toFixed(1)} dp (x${scale.toFixed(2)})`);
+  const px = (MARK_DP * d) / n;
+  const fg = png(size, smooth(size, px, (cx, cy) => {
+    const c = iconLogo.rows[cy - off]?.[cx - off];
+    return c && c !== '.' ? rgba(iconLogo.pal[c]) : [0, 0, 0, 0];
+  }));
+  const bg = png(size, smooth(size, px, (cx, cy) => rgba(lattice(cx, cy))));
+  writeFileSync(join(root, `app/src/main/res/mipmap-${name}/ic_launcher_foreground.png`), fg);
+  writeFileSync(join(root, `app/src/main/res/mipmap-${name}/ic_launcher_background.png`), bg);
+  console.log(`mipmap-${name}: ${size}px, ${px.toFixed(2)} px a pixel, mark ${MARK_DP} dp`);
 }

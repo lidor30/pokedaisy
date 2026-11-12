@@ -116,7 +116,8 @@ Save states are instant snapshots you can take and load at any moment: before a 
 The companion's `STATES` tab shows 10 slots (`SLOT 0` to `SLOT 9`), each with a screenshot of the moment and when it was saved. It isn't in the tab bar at first: find it under `MORE`, left of the gear, or put it in the tab bar with `TAB BAR`.
 
 - `SAVE` under a slot saves the game into it, replacing what was there.
-- `LOAD` puts the game back to that moment.
+- `LOAD` puts the game back to that moment. Tapping a slot's screenshot does the same.
+- Long-press a saved slot to delete it: its screenshot turns into `DELETE`, a tap asks `CONFIRM DELETE?`, and a second tap removes the slot. A tap anywhere else keeps it. Your game's own save is never touched.
 - `UNDO SAVE` gives the last slot you saved over its previous contents back.
 - `UNDO LOAD` takes you back to right before the last load.
 

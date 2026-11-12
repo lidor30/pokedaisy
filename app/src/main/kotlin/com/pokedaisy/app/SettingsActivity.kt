@@ -802,6 +802,14 @@ class SettingsActivity : ComponentActivity() {
                 prefs.dsCpuBoost = !prefs.dsCpuBoost
                 revision++
             }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
+            // A DS game on two screens: its touch screen at its 4:3 with the COMPANION bar, or stretched over the second display.
+            SettingRow(
+                tk("DS TOUCH SCREEN"), if (prefs.dsTouchFill) tk("STRETCH") else tk("ORIGINAL"), subtitle = "The touch screen on your second screen",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_TOUCH_FILL),
+            ) {
+                prefs.dsTouchFill = !prefs.dsTouchFill
+                revision++
+            }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT && usesSecondScreen },
             // A DS game on one screen held sideways: where its two screens go (DsLayout), picked from miniatures.
             SettingRow(
                 tk("DS LAYOUT"), prefs.dsLayout.label, subtitle = "Where a DS game's two screens go",
@@ -1906,7 +1914,7 @@ class SettingsActivity : ComponentActivity() {
     private fun ControlsScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
         val ctrls = remember(revision) { GbaControls.rawBindings(filesRoot) }
         Column(modifier = Modifier.fillMaxWidth()) {
-            Hint(tr("Which physical button is each GBA button. The D-pad and analog stick are fixed."), m, small)
+            Hint(tr("Which physical button is each GBA button. The D-pad and analog stick always work; the D-PAD rows add more keys to them."), m, small)
             OptionListWindow(m, Modifier.fillMaxWidth().weight(1f, fill = false)) {
                 Column(Modifier.verticalScroll(rememberScrollState())) {
                     // Every game's buttons, then the DS games' and the GBA / Game Boy games' own.

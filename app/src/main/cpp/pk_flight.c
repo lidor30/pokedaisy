@@ -72,7 +72,7 @@
 #define FL_LEAVE_FRAMES 24
 #define FL_LIFT 16
 #define FL_SHADOW_Y 13      // the shadow's centre under the player's place on the ground: the sprite centre to its feet, less half the shadow
-#define FL_SHADOW_DROP 11   // ... and that much lower again at full height: the higher the bird, the further below it
+#define FL_SHADOW_DROP 24   // ... and that much lower again at full height: the higher the bird, the further below it
 #define FL_LAND_RADIUS 24
 
 static uint32_t flCfg[PK_FLIGHT_WORDS];
@@ -111,6 +111,7 @@ static uint32_t flSpriteAddr(int id) {
     return flCfg[PK_FLIGHT_SPRITES] + (uint32_t) id * FL_SPR_SIZE;
 }
 
+static void flCloudsStep(struct mCore* core);
 static pk_flight_call_fn flCallFn;
 
 void pk_flight_set_call(pk_flight_call_fn fn) {
@@ -493,6 +494,15 @@ static int flRiderMode(void) {
     return flCfg[PK_FLIGHT_RIDER_TEMPLATE] != 0 || flCfg[PK_FLIGHT_RIDER_ANIM] != 0;
 }
 
+/** A FireRed-engine bird drawn in a palette of its own (Unbound's, tag 0x11A2) carries no rider: the game's pictures
+ * of it with Red / Leaf are the bird alone. The player's palette (0x1100), the expansion's by gender (0xFFFF) and the
+ * loaders called first (bit 16) are the player's colours: their birds have the rider. Flown like Emerald's (its one side
+ * picture, flipped going east), the player seated on its back by flSeatOnBird. */
+static int flBirdNoRider(void) {
+    uint32_t tag = flCfg[PK_FLIGHT_BIRD_PALETTE_TAG];
+    return !flRiderMode() && flCfg[PK_FLIGHT_BIRD_PALETTE] && tag && tag != 0x1100u && tag != 0xFFFFu && !(tag & 0x10000u);
+}
+
 /** A game whose bird has no picture (Ghost Grey blanked its graphics): flCapture flies the player in the air balloon. */
 static int flBirdBlank;
 
@@ -564,7 +574,7 @@ static int flRidden(void) {
 static void flTurn(void) {
     const struct pk_flight_vehicle* veh = flVehicle();
     int side = flLook;
-    if (side == FL_DIR_NORTH && (flRiderMode() || veh))   // Emerald's bird and the vehicles: no back view
+    if (side == FL_DIR_NORTH && (flRiderMode() || flBirdNoRider() || veh))   // a bird with one picture, the vehicles: no back view
         side = flLastHorizontal == FL_DIR_EAST ? FL_DIR_EAST : FL_DIR_WEST;
     double share = veh ? veh->turnShare : FL_TURN_SHARE, most = veh ? veh->turnMax : FL_TURN_MAX;
     int sx = side == FL_DIR_EAST ? -1 : 1;
@@ -668,29 +678,83 @@ static void flSetHidden(struct mCore* core, int id, int hidden) {
     core->busWrite8(core, spr + FL_SPR_FLAGS, (uint8_t) (hidden ? f | 4u : f & ~4u));
 }
 
-/** The player in a vehicle's seat: their overworld sprite's current frame (16 x 32, hidden while they fly but still
- * animated), over the vehicle's SEAT pixels only, the right way round once pk_flight_draw mirrors the picture. */
-static void flSeatPlayer(struct mCore* core, const struct pk_flight_vehicle* v, const uint8_t* px, int ox, int oy) {
-    uint32_t spr = flSpriteAddr(core->busRead8(core, flObjAddr(core) + FL_OBJ_SPRITE_ID));
-    uint16_t a0 = core->busRead16(core, spr), a1 = core->busRead16(core, spr + FL_SPR_ATTR1), a2 = core->busRead16(core, spr + FL_SPR_ATTR2);
-    if ((a0 >> 14) != 2 || (a1 >> 14) != 2 || (a0 & 0x2000u)) return;   // a 16 x 32, 4bpp sprite: the player's
-    int flip = ((a1 & 0x1000u) != 0) != (flSx < 0);
+/** The player's overworld sprite as drawn this frame: 16 x 32 (pret's heroes) or 32 x 32 (Unbound's), 4bpp; its width,
+ * 0 when it's neither. */
+static int flPlayerSprite(struct mCore* core, uint32_t* spr) {
+    *spr = flSpriteAddr(core->busRead8(core, flObjAddr(core) + FL_OBJ_SPRITE_ID));
+    uint16_t a0 = core->busRead16(core, *spr), a1 = core->busRead16(core, *spr + FL_SPR_ATTR1);
+    if (a0 & 0x2000u) return 0;
+    if ((a0 >> 14) == 2 && (a1 >> 14) == 2) return 16;   // tall, 16 x 32
+    if ((a0 >> 14) == 0 && (a1 >> 14) == 2) return 32;   // square, 32 x 32
+    return 0;
+}
+
+/** Pixel (x, y) of the player's sprite frame (w wide, 32 tall) as a frame colour, 0 for none. */
+static uint32_t flPlayerPixel(struct mCore* core, uint32_t spr, int w, int x, int y) {
+    uint16_t a2 = core->busRead16(core, spr + FL_SPR_ATTR2);
     uint32_t tiles = 0x06010000u + 32u * (a2 & 0x3FFu), pal = 0x05000200u + 32u * (a2 >> 12);
+    uint32_t t = (uint32_t) ((y / 8) * (w / 8) + x / 8);
+    uint8_t b = core->busRead8(core, tiles + t * 32u + (uint32_t) ((y % 8) * 4 + (x % 8) / 2));
+    int ix = (x & 1) ? b >> 4 : b & 0xF;
+    if (!ix) return 0;
+    uint16_t c = core->busRead16(core, pal + 2u * (uint32_t) ix);
+    uint32_t col = (uint32_t) (c & 0x1F) << 3 | (uint32_t) ((c >> 5) & 0x1F) << 11 | (uint32_t) ((c >> 10) & 0x1F) << 19;
+    return col | ((col >> 5) & 0x070707) | 0xFF000000u;
+}
+
+/** The pose the rider is drawn in: the player's own standing frames (ANIM_STD_FACE_SOUTH 0, NORTH 1, WEST 2 - the first
+ * anims of every hero's table), not whatever step their hidden sprite was on (the walking frames bobbed the rider up and
+ * down in the seat). From the side (west in the picture, mirrored going east); in the balloon, whose basket shows them
+ * from every side, from behind going up and from the front going down. [flPoseAnim] -1 = take-off's own frame kept. */
+#define FL_POSE_SOUTH 0
+#define FL_POSE_NORTH 1
+#define FL_POSE_WEST 2
+static int flPose = FL_POSE_WEST;
+static int flPoseSaved = -1;       // the player's anim before the flight posed them, put back on landing
+static int flPoseSavedFlip;
+
+static void flPosePlayer(struct mCore* core, int upDown) {
+    if (!upDown) {
+        flPose = FL_POSE_WEST;
+    } else if (flVx * flVx + flVy * flVy > 0.01) {
+        double ax = fabs(flVx), ay = fabs(flVy);
+        if (ay > ax * 1.5) flPose = flVy < 0 ? FL_POSE_NORTH : FL_POSE_SOUTH;
+        else if (ax > ay * 1.5) flPose = FL_POSE_WEST;
+    }
+    uint32_t spr;
+    if (!flPlayerSprite(core, &spr)) return;
+    if (flPoseSaved < 0) {
+        flPoseSaved = core->busRead8(core, spr + FL_SPR_ANIM_NUM);
+        flPoseSavedFlip = core->busRead8(core, spr + FL_SPR_FLAGS2) & 1;
+    }
+    flSpriteLook(core, spr, flPose, 0);
+}
+
+/** Landed: the player's own frame back (their sprite stands as it did at take-off until their first step). */
+static void flUnposePlayer(struct mCore* core) {
+    uint32_t spr;
+    if (flPoseSaved < 0 || !flPlayerSprite(core, &spr)) { flPoseSaved = -1; return; }
+    flSpriteLook(core, spr, flPoseSaved, flPoseSavedFlip);
+    flPoseSaved = -1;
+}
+
+/** The player in a vehicle's seat: their overworld sprite's current frame (16 x 32, or 32 x 32 centred on the same
+ * place; hidden while they fly), over the vehicle's SEAT pixels only, the right way round once pk_flight_draw mirrors the
+ * picture. */
+static void flSeatPlayer(struct mCore* core, const struct pk_flight_vehicle* v, const uint8_t* px, int ox, int oy) {
+    uint32_t spr;
+    int w = flPlayerSprite(core, &spr);
+    if (!w) return;
+    int flip = ((core->busRead16(core, spr + FL_SPR_ATTR1) & 0x1000u) != 0) != (flSx < 0);
     for (int y = 0; y < 32; y++) {
         int vy = v->playerY + y;
         if (vy < 0 || vy >= v->h) continue;
-        for (int x = 0; x < 16; x++) {
-            int vx = v->playerX + x;
+        for (int x = 0; x < w; x++) {
+            int vx = v->playerX - (w - 16) / 2 + x;
             if (vx < 0 || vx >= v->w || !(px[vy * v->w + vx] & 0x80)) continue;
-            int sx = flip ? 15 - x : x;
-            uint32_t t = (uint32_t) ((y / 8) * 2 + sx / 8);
-            uint8_t b = core->busRead8(core, tiles + t * 32u + (uint32_t) ((y % 8) * 4 + (sx % 8) / 2));
-            int ix = (sx & 1) ? b >> 4 : b & 0xF;
-            if (!ix) continue;
-            uint16_t c = core->busRead16(core, pal + 2u * (uint32_t) ix);
-            uint32_t col = (uint32_t) (c & 0x1F) << 3 | (uint32_t) ((c >> 5) & 0x1F) << 11 | (uint32_t) ((c >> 10) & 0x1F) << 19;
+            uint32_t col = flPlayerPixel(core, spr, w, flip ? w - 1 - x : x, y);
             int dx = ox + vx, dy = oy + vy;
-            if (dx >= 0 && dy >= 0 && dx < FL_SRC && dy < FL_SRC) flSrc[dy * FL_SRC + dx] = col | ((col >> 5) & 0x070707) | 0xFF000000u;
+            if (col && dx >= 0 && dy >= 0 && dx < FL_SRC && dy < FL_SRC) flSrc[dy * FL_SRC + dx] = col;
         }
     }
 }
@@ -752,25 +816,22 @@ static void flDrawVehicle(struct mCore* core, const struct pk_flight_vehicle* v)
 }
 
 /** An Emerald-style bird with no rider sprite to build (pokeemerald-expansion 1.13 dropped
- * CopyObjectGraphicsInfoToSpriteTemplate; Lazarus's we couldn't place): the player's own overworld sprite on its back, cut
- * at the waist (sprite rows up to 26: the cap starts at 13), its waist on the bird's back, the right way round once
- * pk_flight_draw mirrors the picture. */
+ * CopyObjectGraphicsInfoToSpriteTemplate; Lazarus's we couldn't place), or a bird with no rider in its pictures
+ * (flBirdNoRider: Unbound's): the player's own overworld sprite on its back, cut at the waist (sprite rows up to 26: the
+ * cap starts at 13), its waist on the bird's back, the right way round once pk_flight_draw mirrors the picture. */
 static void flSeatOnBird(struct mCore* core) {
-    uint32_t spr = flSpriteAddr(core->busRead8(core, flObjAddr(core) + FL_OBJ_SPRITE_ID));
-    uint16_t a0 = core->busRead16(core, spr), a1 = core->busRead16(core, spr + FL_SPR_ATTR1), a2 = core->busRead16(core, spr + FL_SPR_ATTR2);
-    if ((a0 >> 14) != 2 || (a1 >> 14) != 2 || (a0 & 0x2000u)) return;   // the player's 16 x 32, 4bpp sprite
-    int flip = ((a1 & 0x1000u) != 0) != (flSx < 0);
-    uint32_t tiles = 0x06010000u + 32u * (a2 & 0x3FFu), pal = 0x05000200u + 32u * (a2 >> 12);
-    int ox = FL_SRC / 2 - 8 + 3, oy = FL_SRC / 2 - 26 - 3;   // a little behind the head (west in the picture), on the back
-    for (int y = 0; y <= 26; y++) {
-        for (int x = 0; x < 16; x++) {
-            int sx = flip ? 15 - x : x;
-            uint8_t b = core->busRead8(core, tiles + (uint32_t) ((y / 8) * 2 + sx / 8) * 32u + (uint32_t) ((y % 8) * 4 + (sx % 8) / 2));
-            int ix = (sx & 1) ? b >> 4 : b & 0xF;
-            if (!ix) continue;
-            uint16_t c = core->busRead16(core, pal + 2u * (uint32_t) ix);
-            uint32_t col = (uint32_t) (c & 0x1F) << 3 | (uint32_t) ((c >> 5) & 0x1F) << 11 | (uint32_t) ((c >> 10) & 0x1F) << 19;
-            flSrc[(oy + y) * FL_SRC + ox + x] = col | ((col >> 5) & 0x070707) | 0xFF000000u;
+    uint32_t spr;
+    int w = flPlayerSprite(core, &spr);
+    if (!w) return;
+    int flip = ((core->busRead16(core, spr + FL_SPR_ATTR1) & 0x1000u) != 0) != (flSx < 0);
+    // Cut at the waist: row 26 of pret's 16 x 32 heroes (the cap starts at 13), row 20 of Unbound's taller 32 x 32 ones (whose
+    // legs hid its small bird); the waist on the bird's back, a little behind the head (west in the picture).
+    int waist = w == 32 ? 20 : 26;
+    int ox = FL_SRC / 2 - w / 2 + 3, oy = FL_SRC / 2 - waist - (w == 32 ? 8 : 3);
+    for (int y = 0; y <= waist; y++) {
+        for (int x = 0; x < w; x++) {
+            uint32_t col = flPlayerPixel(core, spr, w, flip ? w - 1 - x : x, y);
+            if (col) flSrc[(oy + y) * FL_SRC + ox + x] = col;
         }
     }
 }
@@ -793,16 +854,23 @@ static void flCapture(struct mCore* core) {
     flSetHidden(core, flRider, on);
     flSprOn = on;
     if (!on) return;
+    // The rider's pose (their own sprite's frame; flSrc untouched).
+    if (flRidden() && (veh || flBirdNoRider() || (flRiderMode() && !flCfg[PK_FLIGHT_RIDER_TEMPLATE])))
+        flPosePlayer(core, veh && veh->upDown);
     if (veh) {
         memset(flSrc, 0, sizeof(flSrc));
         flReadGreys(core);
         flDrawVehicle(core, veh);
     } else {
-        // The bird alone is in flSrc already (just copied above): the rider goes over it.
-        if (!birdCopied) {
+        if (flBirdNoRider()) {
+            // Unbound's bird is small for its tall hero: the rider first, the bird over their legs (seated in it, wings in front).
+            memset(flSrc, 0, sizeof(flSrc));
+            flSeatOnBird(core);
+            flCopySprite(core, flBird, FL_SRC / 2, FL_SRC / 2);
+        } else if (!birdCopied) {
             memset(flSrc, 0, sizeof(flSrc));
             flCopySprite(core, flBird, FL_SRC / 2, FL_SRC / 2);
-        }
+        } // else the bird alone is in flSrc already (just copied above): the rider goes over it
         if (flRider >= 0) flCopySprite(core, flRider, FL_SRC / 2, FL_SRC / 2 - 8);
         else if (flRiderMode() && !flCfg[PK_FLIGHT_RIDER_TEMPLATE]) flSeatOnBird(core);
     }
@@ -834,7 +902,7 @@ static void flCapture(struct mCore* core) {
  * (flMakeRider), facing the way the bird does - from the side, north too. 0 when the game's code couldn't be called. */
 static int flBirdLook(struct mCore* core, int ridden) {
     if (flBird < 0) return 1;
-    if (flRiderMode()) {
+    if (flRiderMode() || flBirdNoRider()) {
         int flip = ridden && (flLook == FL_DIR_EAST || (flLook == FL_DIR_NORTH && flLastHorizontal == FL_DIR_EAST));
         if (!flSpriteLook(core, flSpriteAddr(flBird), 0, flip)) return 0;
         if (!ridden) return flDropRider(core);
@@ -947,6 +1015,8 @@ void pk_flight_reset(void) {
     flLandX = flLandY = -1;
     flRouteLen = -1;
     flRouteDone = 0;
+    flPose = FL_POSE_WEST;
+    flPoseSaved = -1;
 }
 
 void pk_flight_configure(const uint32_t* words, int n) {
@@ -1260,6 +1330,7 @@ void pk_flight_tick(struct mCore* core) {
             uint8_t old = core->busRead8(core, obj + FL_OBJ_ELEVATION);
             core->busWrite8(core, obj + FL_OBJ_ELEVATION, (uint8_t) (e ? (e | (e << 4)) : ((old & 0xF0) | 0)));
             if (!flBirdLook(core, 0)) break;   // Emerald's rider off the bird first (DestroySprite): next frame if not now
+            flUnposePlayer(core);
             flHidePlayer(core, obj, 0);
             flMarkPlayer(core, obj, 0);
             flPlaySe(core, flCfg[PK_FLIGHT_SE_FLY]);
@@ -1311,6 +1382,7 @@ void pk_flight_tick(struct mCore* core) {
     }
     // The rider is up (the bird alone is coming in, or leaving: no rider, no shadow of one).
     flShadowOn = flState != PK_FLIGHT_IDLE && flState != PK_FLIGHT_DISMOUNT && flLift > 0;
+    if (flShadowOn) flCloudsStep(core);
     flTurn();
     flCapture(core);
     flTellWide(core);
@@ -1324,11 +1396,11 @@ void pk_flight_tick(struct mCore* core) {
 // What the last pk_flight_draw changed: where, the pixels before, and what it wrote. mGBA redraws a line only when
 // something on it changed, so a still line keeps last frame's drawing: put back first, or it darkens on itself frame
 // after frame (on the RP6: 99, 69, 47, 21, 12, then a line that changed - the blinking).
-#define FL_PATCH_W 112
-#define FL_PATCH_H 136
+// The box is the whole frame while the clouds are out (flClouds): the buffers grow to fit it.
 static uint32_t* flShadeFrame;
 static int flShadeX0, flShadeY0, flShadeH, flShadeStride;
-static uint32_t flShadeOld[FL_PATCH_H][FL_PATCH_W], flShadeNew[FL_PATCH_H][FL_PATCH_W];
+static uint32_t *flShadeOld, *flShadeNew;
+static size_t flShadeCap;
 
 static void flShadeUndo(void) {
     if (!flShadeFrame || !flShadeW) return;
@@ -1336,18 +1408,151 @@ static void flShadeUndo(void) {
     // since, so it gets its pixels back; any other was, and is the game's new picture already.
     for (int y = 0; y < flShadeH; y++) {
         uint32_t* row = flShadeFrame + (flShadeY0 + y) * flShadeStride + flShadeX0;
-        if (!memcmp(row, flShadeNew[y], (size_t) flShadeW * sizeof(uint32_t)))
-            memcpy(row, flShadeOld[y], (size_t) flShadeW * sizeof(uint32_t));
+        if (!memcmp(row, flShadeNew + (size_t) y * (size_t) flShadeW, (size_t) flShadeW * sizeof(uint32_t)))
+            memcpy(row, flShadeOld + (size_t) y * (size_t) flShadeW, (size_t) flShadeW * sizeof(uint32_t));
     }
     flShadeW = 0;
 }
 
-void pk_flight_draw(uint32_t* frame, int w, int h, int stride) {
+/**
+ * Clouds while up: a sheet of soft white puffs between the bird and the ground, seen through (at most FL_CLOUD_ALPHA), over
+ * the ground and its shadow, under the bird. They're nearer the eye than the ground, so they slide by a little faster than
+ * it does (FL_CLOUD_PARALLAX times the camera's own movement) and drift a little on the wind - the ground moving one
+ * way and the clouds another is what reads as height. A 128 x 128 map of round puffs in clusters (flMakeClouds), each texel
+ * 2 x 2 pixels, wrapped; they thin in with the climb and out with the landing.
+ */
+#define FL_CLOUD_N 128
+#define FL_CLOUD_PARALLAX 1.15
+#define FL_CLOUD_ALPHA 0.7
+static uint8_t flCloudMap[FL_CLOUD_N * FL_CLOUD_N];
+static int flCloudMade;
+static double flCloudX, flCloudY;   // where the sheet is (pixels, wrapped by the map)
+
+static void flMakeClouds(void) {
+    if (flCloudMade) return;
+    // Cumulus as the games draw them: a few clusters of round puffs, a big one in the middle and smaller ones round it,
+    // flatter at the bottom. Each puff a dome of density; the map keeps the densest of any.
+    uint32_t seed = 0x9E3779B9u;
+    #define RND() ((seed = seed * 1664525u + 1013904223u) >> 8) / 16777216.0
+    memset(flCloudMap, 0, sizeof(flCloudMap));
+    for (int c = 0; c < 7; c++) {
+        double cx = RND() * FL_CLOUD_N, cy = RND() * FL_CLOUD_N;
+        int puffs = 4 + (int) (RND() * 4);
+        double big = 7 + RND() * 4;
+        for (int p = 0; p < puffs; p++) {
+            double r = p == 0 ? big : big * (0.45 + RND() * 0.35);
+            double a = RND() * 6.2832, d = p == 0 ? 0 : big * (0.55 + RND() * 0.5);
+            double px = cx + cos(a) * d * 1.4, py = cy + sin(a) * d * 0.55 - (p == 0 ? 0 : r * 0.2);
+            for (int y = (int) (py - r) - 1; y <= (int) (py + r) + 1; y++) {
+                for (int x = (int) (px - r) - 1; x <= (int) (px + r) + 1; x++) {
+                    double dx = (x - px) / r, dy = (y - py) / r;
+                    if (dy > 0.55) continue;   // flat bottoms
+                    double q = 1 - (dx * dx + dy * dy);
+                    if (q <= 0) continue;
+                    int v = (int) (sqrt(q) * 255 * 1.6);
+                    if (v > 255) v = 255;
+                    uint8_t* m = &flCloudMap[(y & (FL_CLOUD_N - 1)) * FL_CLOUD_N + (x & (FL_CLOUD_N - 1))];
+                    if (v > *m) *m = (uint8_t) v;
+                }
+            }
+        }
+    }
+    #undef RND
+    flCloudMade = 1;
+}
+
+/** The sheet moved one frame (pk_flight_tick) with the camera the frame shows - the map's BG2 scroll as it was drawn,
+ * which moves exactly as the ground does, staircase and all (the flight's own speed doesn't on a diagonal, and the game's
+ * sprite offset is the next frame's: either one shook the clouds against the ground) - FL_CLOUD_PARALLAX times as far,
+ * plus the wind. The map is read at the pixel plus this offset. */
+static int flCloudPrevX = 0x7FFF, flCloudPrevY;
+static void flCloudsStep(struct mCore* core) {
+    int sx, sy;
+    pk_wide_bg2_scroll(core, &sx, &sy);
+    if (flCloudPrevX != 0x7FFF) {
+        int dx = ((sx - flCloudPrevX + 128) & 0xFF) - 128, dy = ((sy - flCloudPrevY + 128) & 0xFF) - 128;   // the map's 256 px square wraps
+        if (abs(dx) <= 16 && abs(dy) <= 16) {   // a warp or a new map's reset: no step
+            flCloudX += dx * FL_CLOUD_PARALLAX;
+            flCloudY += dy * FL_CLOUD_PARALLAX;
+        }
+    }
+    flCloudPrevX = sx;
+    flCloudPrevY = sy;
+    flCloudX += 0.08;
+    flCloudY -= 0.03;
+    double span = FL_CLOUD_N * 2.0;
+    flCloudX = fmod(flCloudX, span); if (flCloudX < 0) flCloudX += span;
+    flCloudY = fmod(flCloudY, span); if (flCloudY < 0) flCloudY += span;
+}
+
+/** Where the map is read for frame pixel (0, 0): the sheet's offset, and with EXPAND's smooth camera (its window [fdx,
+ * fdy] off the real one) as far again times FL_CLOUD_PARALLAX - 1, so the clouds keep their speed against the ground there too. */
+static void flCloudOrigin(int fdx, int fdy, int* ox, int* oy) {
+    *ox = (int) floor(flCloudX + (FL_CLOUD_PARALLAX - 1) * fdx);
+    *oy = (int) floor(flCloudY + (FL_CLOUD_PARALLAX - 1) * fdy);
+}
+
+/** The map at half a pixel's resolution, bilinear (2 x 2 blocks read as squares). */
+static int flCloudAt(int px, int py) {
+    int x = px & (FL_CLOUD_N * 2 - 1), y = py & (FL_CLOUD_N * 2 - 1);
+    int x0 = x >> 1, y0 = y >> 1, x1 = (x0 + 1) & (FL_CLOUD_N - 1), y1 = (y0 + 1) & (FL_CLOUD_N - 1);
+    int a = flCloudMap[y0 * FL_CLOUD_N + x0], b = flCloudMap[y0 * FL_CLOUD_N + x1];
+    int c = flCloudMap[y1 * FL_CLOUD_N + x0], d = flCloudMap[y1 * FL_CLOUD_N + x1];
+    int fx = x & 1, fy = y & 1;
+    int top = fx ? (a + b) >> 1 : a, bottom = fx ? (c + d) >> 1 : c;
+    return fy ? (top + bottom) >> 1 : top;
+}
+
+/** The bird's pixels in the last frame pk_flight_draw drew (GBA frame coordinates): the clouds over EXPAND's whole picture
+ * (pk_flight_draw_wide) leave them alone. */
+static uint8_t flBirdMask[240 * 160];
+static int flBirdMaskOn;
+static double flCloudStrength;   // the last frame's (0 = none)
+
+/** The clouds over [out]'s rows / columns [x0, x1] x [y0, y1] ([stride] a row), its pixel (x, y) being GBA frame pixel
+ * (x + fx, y + fy) - the map read there - at [strength] (0..1): pixel-art puffs, a white core, a thinner rim round it, a
+ * bluer underside where the cloud thins below (lit from the top, as the games' are). [mask]: skip the bird's pixels. */
+static void flDrawClouds(uint32_t* out, int stride, int x0, int y0, int x1, int y1, int fx, int fy, double strength, int mask) {
+    if (strength <= 0.01) return;
+    flMakeClouds();
+    int fdx = 0, fdy = 0;
+    pk_wide_flight_offset(&fdx, &fdy);
+    int ox, oy;
+    flCloudOrigin(fdx, fdy, &ox, &oy);
+    int core = (int) (strength * FL_CLOUD_ALPHA * 256), rim = core * 5 / 9;
+    for (int y = y0; y <= y1; y++) {
+        uint32_t* row = out + y * stride;
+        int gy = y + fy;
+        for (int x = x0; x <= x1; x++) {
+            int gx = x + fx;
+            if (mask && gx >= 0 && gy >= 0 && gx < 240 && gy < 160 && flBirdMask[gy * 240 + gx]) continue;
+            int m = flCloudAt(gx + ox, gy + oy);
+            if (m < 40) continue;
+            int under = flCloudAt(gx + ox, gy + oy + 3) < m - 30;   // the cloud thins below: its shaded side
+            int a = m >= 140 ? core : rim;
+            int wr = under ? 206 : 248, wg = under ? 220 : 250, wb = under ? 240 : 255;
+            uint32_t c = row[x];
+            int r = c & 0xFF, gg = (c >> 8) & 0xFF, b = (c >> 16) & 0xFF;
+            r += ((wr - r) * a) >> 8; gg += ((wg - gg) * a) >> 8; b += ((wb - b) * a) >> 8;
+            row[x] = (c & 0xFF000000u) | (uint32_t) b << 16 | (uint32_t) gg << 8 | (uint32_t) r;
+        }
+    }
+}
+
+void pk_flight_draw_wide(uint32_t* out, int w, int h, int vx, int vy) {
+    if (!out || flCloudStrength <= 0.01) return;
+    int fdx = 0, fdy = 0;
+    pk_wide_flight_offset(&fdx, &fdy);
+    // The window as pk_wide_view drew it: moved by the flight's smooth camera.
+    flDrawClouds(out, w, 0, 0, w - 1, h - 1, vx + fdx, vy + fdy, flCloudStrength, flBirdMaskOn);
+}
+
+void pk_flight_draw(uint32_t* frame, int w, int h, int stride, int cloudsHere) {
     if (!frame) return;
     if (frame == flShadeFrame) flShadeUndo();
     flShadeFrame = frame;
     flShadeW = 0;
-    if (!flShadowOn && !flSprOn) return;
+    if (!flShadowOn && !flSprOn) { flCloudStrength = 0; return; }
     int dx = 0, dy = 0;
     pk_wide_flight_offset(&dx, &dy);
     int lift = flLift < 0 ? 0 : flLift > FL_LIFT ? FL_LIFT : flLift;
@@ -1366,17 +1571,32 @@ void pk_flight_draw(uint32_t* frame, int w, int h, int stride) {
         if (by - half < y0) y0 = by - half;
         if (by + half > y1) y1 = by + half;
     }
+    // The clouds: as thick as the bird is high, while it's up (not the bird alone coming in or leaving) - here, or over
+    // EXPAND's whole picture after it's made (pk_flight_draw_wide: [cloudsHere] 0).
+    double clouds = flShadowOn ? (double) lift / FL_LIFT : 0;
+    flCloudStrength = clouds;
+    if (!cloudsHere) clouds = 0;
+    if (clouds > 0.01) { x0 = 0; y0 = 0; x1 = w - 1; y1 = h - 1; }
     if (x0 < 0) x0 = 0;
     if (y0 < 0) y0 = 0;
     if (x1 >= w) x1 = w - 1;
     if (y1 >= h) y1 = h - 1;
-    if (x1 < x0 || y1 < y0 || x1 - x0 + 1 > FL_PATCH_W || y1 - y0 + 1 > FL_PATCH_H) return;
+    if (x1 < x0 || y1 < y0) return;
+    int bw = x1 - x0 + 1;
+    size_t need = (size_t) bw * (size_t) (y1 - y0 + 1);
+    if (need > flShadeCap) {
+        uint32_t* o = realloc(flShadeOld, need * sizeof(uint32_t));
+        if (o) flShadeOld = o;
+        uint32_t* nn = realloc(flShadeNew, need * sizeof(uint32_t));
+        if (nn) flShadeNew = nn;
+        if (!o || !nn) return;
+        flShadeCap = need;
+    }
     flShadeX0 = x0;
     flShadeY0 = y0;
     flShadeStride = stride;
     flShadeH = y1 - y0 + 1;
-    int bw = x1 - x0 + 1;
-    for (int y = y0; y <= y1; y++) memcpy(flShadeOld[y - y0], frame + y * stride + x0, (size_t) bw * sizeof(uint32_t));
+    for (int y = y0; y <= y1; y++) memcpy(flShadeOld + (size_t) (y - y0) * (size_t) bw, frame + y * stride + x0, (size_t) bw * sizeof(uint32_t));
     if (flShadowOn) {
         for (int y = (int) (cy - ry - 1); y <= (int) (cy + ry + 1); y++) {
             if (y < y0 || y > y1) continue;
@@ -1394,6 +1614,9 @@ void pk_flight_draw(uint32_t* frame, int w, int h, int stride) {
             }
         }
     }
+    flDrawClouds(frame, stride, x0, y0, x1, y1, 0, 0, clouds, 0);
+    flBirdMaskOn = w == 240 && h == 160;
+    if (flBirdMaskOn) memset(flBirdMask, 0, sizeof(flBirdMask));
     if (flSprOn) {
         // Picture = mirror * R(-angle) * screen, around the centre; sampled in the 8x picture at the pixel's centre.
         // The same sums as one expression a pixel, the row's terms once; floor() of a value >= 0 is its truncation (and
@@ -1435,10 +1658,11 @@ void pk_flight_draw(uint32_t* frame, int w, int h, int stride) {
                 uint32_t p = flBig[iv * FL_BIG + iu];
                 if (!(p >> 24)) continue;
                 frame[y * stride + x] = (frame[y * stride + x] & 0xFF000000u) | (p & 0x00FFFFFFu);
+                if (flBirdMaskOn) flBirdMask[y * 240 + x] = 1;
             }
         }
     }
-    for (int y = y0; y <= y1; y++) memcpy(flShadeNew[y - y0], frame + y * stride + x0, (size_t) bw * sizeof(uint32_t));
+    for (int y = y0; y <= y1; y++) memcpy(flShadeNew + (size_t) (y - y0) * (size_t) bw, frame + y * stride + x0, (size_t) bw * sizeof(uint32_t));
     flShadeW = bw;
 }
 
@@ -1454,8 +1678,10 @@ void pk_flight_info(struct mCore* core, char* out, int n) {
     int wx = 0, wy = 0, vx = 0, vy = 0;
     pk_wide_flight_offset(&wx, &wy);
     pk_wide_flight_camera(&vx, &vy);
+    int cox, coy;
+    flCloudOrigin(wx, wy, &cox, &coy);
     snprintf(out, (size_t) n, "flight: state %d phase %d bird %d shadow %d lift %d look %d at %d,%d screen %d,%d anchor %d,%d marked %d "
-             "land %d,%d route %d/%d locked %d wide %d,%d view %d,%d turn %d drawn %d", flState, flPhase, flBird, flShadowOn, flLift, flLook, x, y, sx, sy, flAnchorX, flAnchorY,
+             "land %d,%d route %d/%d locked %d wide %d,%d view %d,%d turn %d drawn %d clouds %d,%d bg %d,%d", flState, flPhase, flBird, flShadowOn, flLift, flLook, x, y, sx, sy, flAnchorX, flAnchorY,
              flMarked(core, obj), flLandX, flLandY, flRouteDone, flRouteLen, (int) core->busRead8(core, flCfg[PK_FLIGHT_LOCK_BYTE]), wx, wy, vx, vy,
-             (int) lround(flAngle * 57.29578), flSprOn);
+             (int) lround(flAngle * 57.29578), flSprOn, cox, coy, flCloudPrevX, flCloudPrevY);
 }

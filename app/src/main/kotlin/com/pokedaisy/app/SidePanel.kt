@@ -150,6 +150,15 @@ class SidePanel(
             apply()
         }
 
+    /** A DS battle's menu sits in the edge tab's corner: the tab goes to the top right corner meanwhile, so the
+     *  companion can still be opened with a tap (GitHub #595: hidden, it left no way to tap it open). */
+    var tabRaised = false
+        set(v) {
+            if (field == v) return
+            field = v
+            apply()
+        }
+
     private var panel: View? = null
     /** Over the game and the HUD while the panel is open and unlocked: a tap there closes it ([catchOutside]). */
     private var outside: View? = null
@@ -404,6 +413,15 @@ class SidePanel(
         openTab?.apply {
             visibility = if (enabled && !open && !tabInHud && openTabShown && book == null) View.VISIBLE else View.GONE
             alpha = if (docked.value && !win) LOCKED_TAB_ALPHA else 1f
+            val lp = layoutParams as FrameLayout.LayoutParams
+            val gravity = Gravity.END or if (tabRaised) Gravity.TOP else Gravity.BOTTOM
+            if (lp.gravity != gravity) {
+                val margin = ((if (tabRaised) HANDLE_TOP_DP else TAB_MARGIN_DP) * context.resources.displayMetrics.density).roundToInt()
+                lp.gravity = gravity
+                lp.topMargin = if (tabRaised) margin else 0
+                lp.bottomMargin = if (tabRaised) 0 else margin
+                layoutParams = lp
+            }
         }
         // Book mode: the game's page ends at the hinge, not at the companion's edge.
         val gameEdge = book?.let { (rootWidth - it.first).coerceAtLeast(0) } ?: w

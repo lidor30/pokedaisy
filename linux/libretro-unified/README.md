@@ -2,8 +2,9 @@
 
 Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 
-The TrimUI Brick package puts two native libretro cores behind one collection.
-NXRedux chooses mGBA for `.gb`, `.gbc` and `.gba`, and DSperate for `.nds`, using
+The TrimUI Brick package puts three native libretro cores behind one collection.
+NXRedux chooses armGBA (`pokedaisy_gba`) for `.gba`, mGBA (`pokedaisy_gbc`) for `.gb` and `.gbc`, and DSperate
+(`pokedaisy_ds`) for `.nds`, using
 the ROM's original path for its save and resume keys. Extract archives before
 adding games.
 
@@ -132,15 +133,16 @@ need live retail ROM testing.
 
 | Games | Exact revisions | Companion and Quick Menu |
 | --- | --- | --- |
-| HeartGold, SoulSilver | USA rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD toggle |
-| Black, White, Black 2, White 2 | USA/Europe rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD toggle |
+| HeartGold, SoulSilver | USA rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD cursor |
+| Black, White, Black 2, White 2 | USA/Europe rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD cursor |
 
 Party shows HP, EXP to the next level, type matchups, moves, power and PP.
 A opens the selected party member's summary or Bag item's details. In a party
 summary, A switches between Moves and Stats. Select opens the level-up Learn
 list and Left/Right scrolls it. Up/Down browses the party. In Bag, Left goes
 to the pocket bar and A picks a pocket.
-To turn on the HUD, hold L2, select HUD and press A. It appears after the
+Turn on HUD in Companion Settings. In the overworld, hold L2 and choose HUD
+to focus a HUD tile. Use the D-pad and A to open it, or B to cancel. It appears after the
 overworld settles in a layout with only the top screen visible. The companion's
 Settings control Minimal HUD, Poké Balls, Repel Steps and the Minimap. Minimal hides the
 party cards. The ball counter shows up to three ball types by quantity and
@@ -273,17 +275,25 @@ Run from the repository root with CMake, Ninja and Python 3.12 or later.
 `NEXTUI_TOOLCHAIN`.
 
 ```sh
-git submodule update --init third_party/mgba
+git submodule update --init third_party/mgba third_party/armgba third_party/zlib
 git submodule update --init --recursive third_party/dsperate-lr
 python3 linux/setup_trimui_sdk.py /path/to/trimui-sdk
 export NEXTUI_TOOLCHAIN=/path/to/trimui-sdk/cross/x86_64-aarch64-nextui-linux-gnu
 cmake -S libretro -B build/gb -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake"
+# armGBA needs a newer GCC than the toolchain's 8.3: a distribution's aarch64 cross GCC (Ubuntu 22.04's
+# gcc-aarch64-linux-gnu); libretro/armgba/glibc_compat.* keep the core loadable on the Brick's glibc.
+cmake -S libretro/armgba -B build/gba -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE="$PWD/libretro/aarch64.cmake"
 cmake -S linux/libretro-ds -B build/ds -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake" -DBUILD_TESTING=OFF
-cmake --build build/gb --target pokedaisy_libretro -j4
+cmake --build build/gb --target pokedaisy_gbc_libretro -j4
+cmake --build build/gba --target pokedaisy_gba_libretro -j4
 cmake --build build/ds --target pokedaisy_ds_libretro -j4
-python3 linux/libretro-unified/package.py build/gb/pokedaisy_libretro.so \
+python3 linux/libretro-unified/package.py build/gb/pokedaisy_gbc_libretro.so build/gba/pokedaisy_gba_libretro.so \
   build/ds/pokedaisy_ds_libretro.so PokeDaisy-NXRedux.zip \
   --strip "$NEXTUI_TOOLCHAIN/bin/aarch64-nextui-linux-gnu-strip" --source-ref "$(git rev-parse HEAD)"
 ```
+
+`--cores-only` makes the release's `pokedaisy-libretro-<arch>.zip` instead: the three cores and their notices in one
+folder named after the zip, no NXRedux launcher or ROM folder. CI's `linux.yml` builds both.

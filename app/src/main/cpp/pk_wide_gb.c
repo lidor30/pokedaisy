@@ -43,6 +43,8 @@
 /** A game's addresses (WRAM unless noted; D000-DFFF in WRAM bank 1). Gen 1's and Crystal's share where they mean the
  * same; the rest is one generation's (0 in the other's rows). */
 #include "pk_wide_gb_profile.h"
+#include "pk_wide_gb_polished_tables.h"   // pcWideConfig: Polished Crystal 3.2.3 (normal), by PC_WIDE_CRC
+#include "pk_wide_gb_polished_lz.inc"       // pcLz
 
 #define GB_LINEAR(bank, addr) ((uint32_t) (bank) * 0x4000u + ((addr) - 0x4000u))
 
@@ -61,6 +63,10 @@ static const struct GbGame { uint32_t crc; int gen; uint32_t a[GB_CONFIG]; } GB_
     { 0xEE6F5188u, 2, GB_CRYSTAL },
     { 0xBB6DD80Cu, 2, GB_CRYSTAL },
 #undef GB_CRYSTAL
+    // Pokémon Kristall-Edition (Germany): Crystal's, SpriteMovementData 3 bytes later.
+    { 0x616D85DEu, 2, { 0, 0, 0xC800, 0xD194, 0xDCB7, 0xD196, 0xD199, 0xD19E, 0xD1A8, 0xD1DC, 0xD19D, 0xD22D, 0xD0ED, 0, 0,
+                        GB_LINEAR(0x25, 0x4000), 0, 0xCF74, 0xDA72, 0xD1E6, 0x13, 0xD4D6, 0xD71E, 0xD81E, 0xD154, 0xD82E,
+                        GB_LINEAR(0x05, 0x4736), GB_LINEAR(0x01, 0x4276), 0xFF9E, 0xFFCF, 0xD269, 0xFF94 } },
     // Pokémon Crystal Legacy v1.3.1: its pokecrystal.sym (its build is the patched cart byte for byte).
     { 0x12E97FB4u, 2, { 0, 0, 0xC800, 0xD19F, 0xDCC2, 0xD1A1, 0xD1A4, 0xD1A9, 0xD1B3, 0xD1E7, 0xD1A8, 0xD238, 0xD0F8, 0, 0,
                         GB_LINEAR(0x25, 0x4000), 0, 0xCF74, 0xDA7D, 0xD1F1, 0x13, 0xD4E1, 0xD729, 0xD829, 0xD15F, 0xD839,
@@ -381,8 +387,9 @@ static void gbTake(struct GbSnap* s) {
     }
     s->battle = gbRam(A[GB_IN_BATTLE]) != 0;
     if (gbGen == 2) {
-        // A wild battle's flashes run on the field before wBattleMode is set: DoBattleTransition's VBlank mode.
-        s->battle = s->battle || gbHram(A[GB_VBLANK_MODE]) == 1;
+        // A wild battle's flashes run on the field before wBattleMode is set: DoBattleTransition's VBlank mode (Crystal's
+        // VBLANK_CUTSCENE 1; Polished Crystal's is 3, its 1 is the magnet train's).
+        s->battle = s->battle || gbHram(A[GB_VBLANK_MODE]) == (gbPolished ? 3 : 1);
         if (gbPolished) {
           gbRamCopy(s->tiles, A[PC_METATILES], 4096);
           gbRamCopy(s->attrs, A[PC_ATTRIBUTES], 4096);
@@ -1332,16 +1339,23 @@ static bool gbFaded(const uint32_t* frame) {
 // --- the frame -----------------------------------------------------------------------------------------
 
 static int gbSinceField = 1000;   // frames since the field (or a whole black / white frame) last showed
+static bool gbMixSnap; // pk_wide_gb_snap
 static int gbMix, gbLastScore = -1, gbLastMode = PK_WIDE_MODE_NONE, gbLastClose = 1, gbLastScene = PK_WIDE_SCENE_OFF;
 
 int pk_wide_gb_knows(uint32_t crc) {
+  if (crc && crc == PC_WIDE_CRC)
+    return 1;
   for (size_t i = 0; i < sizeof(GB_ROMS) / sizeof(GB_ROMS[0]); i++)
     if (GB_ROMS[i].crc == crc)
       return 1;
   return 0;
 }
 
+static int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG], pk_wide_gb_decode_fn decode);
+
 int pk_wide_gb_configure(uint32_t crc) {
+    // Polished Crystal 3.2.3 (normal): its own structs and LZ, a profile of its own (pk_wide_gb_polished.inc)
+    if (crc && crc == PC_WIDE_CRC) return pk_wide_gb_configure_polished(pcWideConfig, pcLz);
     gbCfg = NULL;
     for (size_t i = 0; i < sizeof(GB_ROMS) / sizeof(GB_ROMS[0]); i++)
         if (crc && GB_ROMS[i].crc == crc) {
@@ -1358,8 +1372,7 @@ int pk_wide_gb_configure(uint32_t crc) {
     return gbCfg != NULL;
 }
 
-int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG],
-                                 pk_wide_gb_decode_fn decode) {
+static int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG], pk_wide_gb_decode_fn decode) {
     pk_wide_gb_configure(0);
     if (!addresses || !decode) return 0;
     gbCfg = addresses;
@@ -1369,10 +1382,13 @@ int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG],
     return 1;
 }
 
+void pk_wide_gb_snap(void) { gbMixSnap = true; }
+
 void pk_wide_gb_reset(void) {
     gbPrev = -1;
     gbSnaps[0].ok = gbSnaps[1].ok = gbGood.ok = false;
     gbMix = 0;
+    gbMixSnap = false;
     gbRawView.w = 0;
     gbLastScore = -1;
     gbLastMode = PK_WIDE_MODE_NONE;
@@ -1660,9 +1676,11 @@ int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, st
             gbDraw(s, ox, oy, 0, 0, GBW, GBH, centre, GBW, alpha, true);
             gbNObjs = n;
         }
-        gbMix = gbMix + GB_MIX_STEP > 256 ? 256 : gbMix + GB_MIX_STEP;
+        gbMix = gbMixSnap || gbMix + GB_MIX_STEP > 256 ? 256 : gbMix + GB_MIX_STEP;
+        gbMixSnap = false;
     } else {
         gbMix = gbMix - GB_MIX_STEP < 0 ? 0 : gbMix - GB_MIX_STEP;   // the last scene, frozen, dissolves into the glow
+        gbMixSnap = false; // pk_wide_jump's cut is the frame after it, as pk_wide.c's mixSnap
     }
     if (!gbRawView.w) gbMix = 0;
     if (!PK_WIDE_GB_GLOW) {

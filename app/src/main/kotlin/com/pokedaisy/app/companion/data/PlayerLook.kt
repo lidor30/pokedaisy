@@ -127,6 +127,8 @@ object PlayerLook {
          * the look changes on the field ([com.pokedaisy.app.MgbaCore.pkLookRefresh]) - a palette swap by content can't
          * tell a look's from another's (Emerald's May's is also the rival's), nor know a Pokémon's. */
         val playerPal: ByteArray? = null,
+        /** RIDE ON's vehicle, drawn behind the rider these blocks leave in the bike sheets (pk_wide.c's ride); null = none. */
+        val ride: RideOn.Sprite? = null,
     ) {
         /** mgba_dump's `romblocks` file (headless checks of exactly what the app puts in). */
         fun toText(): String = buildString {
@@ -140,7 +142,8 @@ object PlayerLook {
             blocks.indices.all { i -> blocks[i].let { b -> other.blocks[i].let { o -> b.off == o.off && b.crc == o.crc && b.data.contentEquals(o.data) } } } &&
             palettes.indices.all { i -> palettes[i].to.contentEquals(other.palettes[i].to) && palettes[i].from.size == other.palettes[i].from.size &&
                 palettes[i].from.indices.all { j -> palettes[i].from[j].contentEquals(other.palettes[i].from[j]) } } &&
-            (playerPal == null && other.playerPal == null || playerPal != null && other.playerPal != null && playerPal.contentEquals(other.playerPal))
+            (playerPal == null && other.playerPal == null || playerPal != null && other.playerPal != null && playerPal.contentEquals(other.playerPal)) &&
+            (ride == null && other.ride == null || ride != null && ride.sameAs(other.ride))
     }
 
     fun blob(char: LookChar, part: LookPart): LookBlob? = LookBlob.entries.firstOrNull { it.char == char && it.part == part }

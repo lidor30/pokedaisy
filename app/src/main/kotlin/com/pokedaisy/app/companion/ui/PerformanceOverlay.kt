@@ -40,6 +40,9 @@ data class PerfReading(
     /** The game screen's measured refresh (0 = unknown) and refreshes per game frame (0 = timer pacing). */
     val refreshHz: Float = 0f,
     val refreshesPerFrame: Int = 0,
+    /** Why 1x runs on the timer when it does: 0 not a fallback, 1 the audio's (underruns under vsync pacing), 2 the
+     * screen's (its ticks don't follow its refresh) - EmulatorEngine.TIMER_*. */
+    val timerFallback: Int = 0,
     /** 1 = real time; Infinity = fast-forward uncapped. */
     val speed: Float = 1f,
     /** Times the audio ran dry since the game started (each one a crackle). */
@@ -92,7 +95,7 @@ fun PerformanceOverlay(reading: PerfReading, modifier: Modifier = Modifier, init
             Stat(tr("FRAME TIME"), "%.1f / %.1f ms".format(Locale.ROOT, r.frameMs, r.frameMaxMs)),
             Stat(tr("EMULATION"), "${r.emulationLoad}%", warn = r.emulationLoad >= 85),
             Stat("CPU", pct(r.cpu) + (if (r.cores > 0) " / ${r.cores}" else "")),
-            Stat(tr("SCREEN"), refreshText(r)),
+            Stat(tr("SCREEN"), refreshText(r), warn = r.refreshesPerFrame == 0 && r.timerFallback != 0),
             Stat(tr("GAME SPEED"), if (r.speed.isInfinite()) "FF" else "%sx".format(Locale.ROOT, trimFloat(r.speed))),
             Stat(tr("AUDIO DROPOUTS"), "${r.audioDropouts}"),
             Stat(tr("BATTERY"), r.batteryTempC?.let { "%.1f °C".format(Locale.ROOT, it) } ?: "--"),
@@ -122,7 +125,12 @@ private fun trimFloat(f: Float) = if (f % 1f == 0f) f.toInt().toString() else f.
 
 private fun refreshText(r: PerfReading): String {
     val hz = if (r.refreshHz > 0f) "%.0f Hz".format(Locale.ROOT, r.refreshHz) else "--"
-    return if (r.refreshesPerFrame > 0) "$hz · VSYNC ${r.refreshesPerFrame}:1" else "$hz · " + tr("TIMER")
+    if (r.refreshesPerFrame > 0) return "$hz · VSYNC ${r.refreshesPerFrame}:1"
+    return "$hz · " + when (r.timerFallback) {
+        1 -> tr("TIMER (AUDIO)")
+        2 -> tr("TIMER (SCREEN)")
+        else -> tr("TIMER")
+    }
 }
 
 /** PowerManager.THERMAL_STATUS_* in a word: none OK, light WARM, moderate HOT, severe and up THROTTLING. */

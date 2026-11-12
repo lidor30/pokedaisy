@@ -119,8 +119,12 @@ int pk_flight_state(void);
 /** After every frame: the flight's next step. Reads the core's keys (D-pad to fly, A held faster, B to land). */
 void pk_flight_tick(struct mCore* core);
 /** After every frame, before it's shown: the shadow under the bird, drawn into the finished [frame] (w x h pixels,
- * [stride] a row, mGBA's 32-bit colour). */
-void pk_flight_draw(uint32_t* frame, int w, int h, int stride);
+ * [stride] a row, mGBA's 32-bit colour), then the clouds while up ([cloudsHere]; 0 = EXPAND draws its picture from this
+ * frame next, and pk_flight_draw_wide puts them over all of it), then the bird. */
+void pk_flight_draw(uint32_t* frame, int w, int h, int stride, int cloudsHere);
+/** EXPAND's picture made (pk_wide_view's [out], w x h, its window at (vx, vy) of the frame): the clouds over all of it, but
+ * the bird's pixels. */
+void pk_flight_draw_wide(uint32_t* out, int w, int h, int vx, int vy);
 /** A new game / reset: forget everything (the game's RAM is gone). */
 void pk_flight_reset(void);
 /** mgba_dump's `flightinfo`. */

@@ -105,6 +105,8 @@ object GameTitles {
         "f4cd194bdee0d04ca4eac29e09b8e4e9d818c133" to "Pokémon Crystal",
         "f2f52230b536214ef7c9924f483392993e226cfb" to "Pokémon Crystal",
         "a0fc810f1d4e124434f7be2c989ab5b5892ddf36" to "Pokémon Crystal",
+        // Germany.
+        "accb584293ba056152f1fd908439b019017ff2fe" to "Pokémon Kristall",
         // pret/pokegold's roms.sha1.
         "d8b8a3600a465308c9953dfa04f0081c05bdcb94" to "Pokémon Gold",
         "49b163f7e57702bc939d642a18f591de55d92dae" to "Pokémon Silver",

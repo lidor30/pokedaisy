@@ -656,7 +656,9 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
         if (last && (s->flightState != PK_FLIGHT_IDLE || s->flightDrawn)) {
             frame_whole(s);
             uint64_t t2 = s->files.clock ? s->files.clock() : 0;
-            pk_flight_draw((uint32_t*) s->video, PD_GAME_STRIDE, 160, PD_GAME_STRIDE);
+            // The clouds go into the frame too: the 3DS's EXPAND shows the frame itself in its middle (its hole), so they
+            // stay over the game's picture rather than spreading into the margins (pk_flight_draw_wide).
+            pk_flight_draw((uint32_t*) s->video, PD_GAME_STRIDE, 160, PD_GAME_STRIDE, 1);
             s->prof.flightDraw += (s->files.clock ? s->files.clock() : 0) - t2;
             s->flightDrawn = s->flightState != PK_FLIGHT_IDLE;
         }
@@ -1353,9 +1355,9 @@ static void overlay_update(struct pd_session* s) {
     pd_font_get(&gameFont, &gameFontCount);
     pd_font_set(NULL, 0);
     if (s->quickOpen) {
-        if (s->flyList) quick_list_draw(&c, "FLY", s->flyNames, s->flyTargets.count, s->flySel);
-        else if (s->repelList) quick_list_draw(&c, "REPEL", s->repelNames, s->repelKindCount, s->repelSel);
-        else quick_draw(&c, &s->game, s->quick, s->quickCount, s->quickSel);
+        if (s->flyList) quick_list_draw(&c, "FLY", s->flyNames, s->flyTargets.count, s->flySel, s->settings->hudLook);
+        else if (s->repelList) quick_list_draw(&c, "REPEL", s->repelNames, s->repelKindCount, s->repelSel, s->settings->hudLook);
+        else quick_draw(&c, &s->game, s->quick, s->quickCount, s->quickSel, s->settings->hudLook);
         s->overlayShown = true;
     } else if (hud) {
         s->hud.compact = s->hud.noButtons = true;

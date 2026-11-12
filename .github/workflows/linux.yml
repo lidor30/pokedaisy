@@ -1,10 +1,10 @@
 name: Linux foundation
 on:
   pull_request:
-    paths: ['linux/**', '3ds/core/**', '3ds/test/host_display_test.c', '3ds/test/configs_gen_test.c', '3ds/Makefile', '3ds/desktop/pd_png.*', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
+    paths: ['linux/**', '3ds/core/**', '3ds/test/host_display_test.c', '3ds/test/configs_gen_test.c', '3ds/Makefile', '3ds/desktop/pd_png.*', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/armgba', 'third_party/zlib', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
   push:
     branches: [main, dev]
-    paths: ['linux/**', '3ds/**', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
+    paths: ['linux/**', '3ds/**', 'app/src/main/cpp/pk_savevf.*', 'libretro/**', 'third_party/mgba', 'third_party/armgba', 'third_party/zlib', 'third_party/dsperate-lr', 'app/src/main/cpp/nds/pk_nds_field.*', '.github/workflows/linux.yml', 'gamedata/**']
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -19,13 +19,14 @@ concurrency:
   cancel-in-progress: true
 jobs:
   native:
-    runs-on: ubuntu-24.04
+    # 22.04: the package's binaries need glibc 2.35 at most (SteamOS, older desktops).
+    runs-on: ubuntu-22.04
     timeout-minutes: 20
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ inputs.ref }}
-      - run: git submodule update --init third_party/mgba
+      - run: git submodule update --init third_party/mgba third_party/armgba third_party/zlib
       - run: sudo apt-get update && sudo apt-get install -y cmake libsdl2-dev
       - name: Shared host capability and legacy previews
         run: make -C 3ds test-host-display test-configs-gen preview
@@ -41,8 +42,8 @@ jobs:
           cmake --build "$RUNNER_TEMP/pd-ds" -j2
           ctest --test-dir "$RUNNER_TEMP/pd-ds" --output-on-failure
           cmake -S libretro -B "$RUNNER_TEMP/pd-gb" -DCMAKE_BUILD_TYPE=Release
-          cmake --build "$RUNNER_TEMP/pd-gb" --target pokedaisy_libretro -j2
-          sh libretro/test/check_exports.sh "$RUNNER_TEMP/pd-gb/pokedaisy_libretro.so"
+          cmake --build "$RUNNER_TEMP/pd-gb" --target pokedaisy_gbc_libretro -j2
+          sh libretro/test/check_exports.sh "$RUNNER_TEMP/pd-gb/pokedaisy_gbc_libretro.so"
           sh libretro/test/check_exports.sh "$RUNNER_TEMP/pd-ds/pokedaisy_ds_libretro.so"
           python3 linux/libretro-unified/test_launcher.py
           cc -I third_party/dsperate-lr/include linux/libretro-unified/test_core.c \
@@ -50,27 +51,49 @@ jobs:
           (cd "$RUNNER_TEMP" && python3 "$GITHUB_WORKSPACE/linux/make_diagnostic.py")
           mkdir -p "$RUNNER_TEMP/pd-saves"
           for rom in diagnostic.gb diagnostic.gba; do
-            PD_LEGACY_FF=1 "$RUNNER_TEMP/pd-core-test" "$RUNNER_TEMP/pd-gb/pokedaisy_libretro.so" \
+            PD_LEGACY_FF=1 "$RUNNER_TEMP/pd-core-test" "$RUNNER_TEMP/pd-gb/pokedaisy_gbc_libretro.so" \
               "$RUNNER_TEMP/$rom" "$RUNNER_TEMP/pd-saves"
           done
           PD_MODERN_THROTTLE=1 PD_LEGACY_FF=1 "$RUNNER_TEMP/pd-core-test" \
-            "$RUNNER_TEMP/pd-gb/pokedaisy_libretro.so" "$RUNNER_TEMP/diagnostic.gba" "$RUNNER_TEMP/pd-saves"
+            "$RUNNER_TEMP/pd-gb/pokedaisy_gbc_libretro.so" "$RUNNER_TEMP/diagnostic.gba" "$RUNNER_TEMP/pd-saves"
+          cmake -S libretro/armgba -B "$RUNNER_TEMP/pd-gba" -DCMAKE_BUILD_TYPE=Release
+          cmake --build "$RUNNER_TEMP/pd-gba" --target pokedaisy_gba_libretro -j2
+          sh libretro/test/check_exports.sh "$RUNNER_TEMP/pd-gba/pokedaisy_gba_libretro.so"
+          PD_LEGACY_FF=1 "$RUNNER_TEMP/pd-core-test" "$RUNNER_TEMP/pd-gba/pokedaisy_gba_libretro.so" \
+            "$RUNNER_TEMP/diagnostic.gba" "$RUNNER_TEMP/pd-saves"
+      - name: The executable over the cores it ships with
+        run: |
+          mkdir -p "$RUNNER_TEMP/cores"
+          cp "$RUNNER_TEMP/pd-gb/pokedaisy_gbc_libretro.so" "$RUNNER_TEMP/pd-gba/pokedaisy_gba_libretro.so" \
+            "$RUNNER_TEMP/pd-ds/pokedaisy_ds_libretro.so" "$RUNNER_TEMP/cores/"
+          cmake -S linux -B linux/build -DPOCKET_TEST_CORES="$RUNNER_TEMP/cores"
+          ctest --test-dir linux/build -R linux-host-test --output-on-failure
       - name: Package native artifact
-        run: python3 linux/package.py linux/build/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts"
+        run: |
+          python3 linux/package.py linux/build/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts" \
+            --core "$RUNNER_TEMP/cores/pokedaisy_gba_libretro.so" --core "$RUNNER_TEMP/cores/pokedaisy_gbc_libretro.so" \
+            --core "$RUNNER_TEMP/cores/pokedaisy_ds_libretro.so"
+          # The three cores alone, with their notices, for other frontends (a release file).
+          python3 linux/libretro-unified/package.py --cores-only --strip strip --source-ref "$(git rev-parse HEAD)" \
+            "$RUNNER_TEMP/cores/pokedaisy_gbc_libretro.so" "$RUNNER_TEMP/cores/pokedaisy_gba_libretro.so" \
+            "$RUNNER_TEMP/pd-ds/pokedaisy_ds_libretro.so" "$RUNNER_TEMP/linux-artifacts/pokedaisy-libretro-x86_64.zip"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: pokedaisy-linux-x86_64
           path: ${{ runner.temp }}/linux-artifacts/*.zip
           if-no-files-found: error
   trimui:
-    runs-on: ubuntu-24.04
-    timeout-minutes: 25
+    # 22.04: its aarch64 cross glibc (2.35) has none of 2.38's C23 redirects; armgba/glibc_compat.* bind the rest to 2.17.
+    runs-on: ubuntu-22.04
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ inputs.ref }}
-      - run: git submodule update --init third_party/mgba
-      - run: sudo apt-get update && sudo apt-get install -y cmake qemu-user-static
+      - run: |
+          git submodule update --init third_party/mgba third_party/armgba third_party/zlib
+          git submodule update --init --recursive third_party/dsperate-lr
+      - run: sudo apt-get update && sudo apt-get install -y cmake qemu-user-static gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross
       - name: Prepare checksum-pinned toolchain and SDK
         run: |
           python3 linux/setup_trimui_sdk.py "$RUNNER_TEMP/trimui-sdk"
@@ -82,10 +105,43 @@ jobs:
             -DCMAKE_CROSSCOMPILING_EMULATOR="qemu-aarch64-static;-L;$NEXTUI_TOOLCHAIN/aarch64-nextui-linux-gnu/libc"
           cmake --build linux/build-arm -j2
           ctest --test-dir linux/build-arm --output-on-failure
-      - name: Package TrimUI and PortMaster artifacts
+      - name: AArch64 cores (mGBA and DSperate on the TrimUI toolchain; armGBA needs a newer GCC than its 8.3)
         run: |
-          python3 linux/package.py linux/build-arm/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts"
-          python3 linux/package.py --portmaster linux/build-arm/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts"
+          cmake -S libretro -B build/gbc-arm -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/gbc-arm -j"$(nproc)" --target pokedaisy_gbc_libretro
+          cmake -S libretro/armgba -B build/gba-arm -DCMAKE_TOOLCHAIN_FILE="$PWD/libretro/aarch64.cmake" -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/gba-arm -j"$(nproc)" --target pokedaisy_gba_libretro
+          cmake -S linux/libretro-ds -B build/ds-arm -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake" \
+            -DCMAKE_BUILD_TYPE=Release -DBUILD_TESTING=OFF
+          cmake --build build/ds-arm -j"$(nproc)" --target pokedaisy_ds_libretro
+          for core in build/gbc-arm/pokedaisy_gbc_libretro.so build/gba-arm/pokedaisy_gba_libretro.so build/ds-arm/pokedaisy_ds_libretro.so; do
+            NM=aarch64-linux-gnu-nm sh libretro/test/check_exports.sh "$core"
+            # Loads on the Brick's glibc 2.33 and anything newer.
+            ! aarch64-linux-gnu-objdump -T "$core" | grep -E 'GLIBC_2\.(3[4-9]|[4-9][0-9])' || { echo "::error::$core needs a glibc newer than 2.33"; exit 1; }
+          done
+      - name: Boot DS through the AArch64 executable under QEMU
+        env:
+          SDL_VIDEODRIVER: offscreen
+          SDL_AUDIODRIVER: dummy
+          SDL_RENDER_DRIVER: software
+        run: |
+          python3 linux/dsperate/make_diagnostic.py "$RUNNER_TEMP/diagnostic.nds"
+          POCKET_CORE_DIR="$PWD/build/ds-arm" qemu-aarch64-static \
+            -L "$NEXTUI_TOOLCHAIN/aarch64-nextui-linux-gnu/libc" linux/build-arm/pokedaisy-linux \
+            --data "$RUNNER_TEMP/pd-ds-data" "$RUNNER_TEMP/diagnostic.nds" --frames 75 --shot "$RUNNER_TEMP/nds.png"
+          test -s "$RUNNER_TEMP/nds.png"
+      - name: Package the TrimUI, PortMaster, cores and NXRedux artifacts
+        run: |
+          cores="--core build/gba-arm/pokedaisy_gba_libretro.so --core build/gbc-arm/pokedaisy_gbc_libretro.so --core build/ds-arm/pokedaisy_ds_libretro.so"
+          python3 linux/package.py linux/build-arm/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts" $cores
+          python3 linux/package.py --portmaster linux/build-arm/pokedaisy-linux "$RUNNER_TEMP/linux-artifacts" $cores
+          # The three cores for other frontends, and the TrimUI Brick's NXRedux collection (both release files).
+          three="build/gbc-arm/pokedaisy_gbc_libretro.so build/gba-arm/pokedaisy_gba_libretro.so build/ds-arm/pokedaisy_ds_libretro.so"
+          strip="$NEXTUI_TOOLCHAIN/bin/aarch64-nextui-linux-gnu-strip"
+          python3 linux/libretro-unified/package.py --cores-only --strip "$strip" --source-ref "$(git rev-parse HEAD)" \
+            $three "$RUNNER_TEMP/linux-artifacts/pokedaisy-libretro-aarch64.zip"
+          python3 linux/libretro-unified/package.py --strip "$strip" --source-ref "$(git rev-parse HEAD)" \
+            $three "$RUNNER_TEMP/linux-artifacts/PokeDaisy-NXRedux.zip"
       - uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
         with:
           name: pokedaisy-linux-aarch64

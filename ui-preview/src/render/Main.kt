@@ -132,6 +132,7 @@ class FakeSlots : StateSlots {
     override val currentIndex = 1
     override fun requestSave(index: Int) {}
     override fun requestLoad(index: Int) {}
+    override fun requestDelete(index: Int) {}
     override fun requestUndoSave() {}
     override fun requestUndoLoad() {}
 }
@@ -170,6 +171,9 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     private var battleInfoFirstOn = false
     override val battleInfoFirst get() = battleInfoFirstOn
     override fun setBattleInfoFirst(on: Boolean) { battleInfoFirstOn = on }
+    private var battleSuggestionsFirstOn = false
+    override val battleSuggestionsFirst get() = battleSuggestionsFirstOn
+    override fun setBattleSuggestionsFirst(on: Boolean) { battleSuggestionsFirstOn = on }
     override fun setOneTapMoves(on: Boolean) { oneTapOn = on }
     private val offer = androidx.compose.runtime.mutableStateOf(expandOffer)
     override val expandOffer get() = offer.value
@@ -230,6 +234,9 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     private var vehicle = com.pokedaisy.app.companion.data.FlightVehicle.BIRD
     override val flightVehicle get() = vehicle
     override fun setFlightVehicle(v: com.pokedaisy.app.companion.data.FlightVehicle) { vehicle = v }
+    private var ride = com.pokedaisy.app.companion.data.RideVehicle.MOTORCYCLE
+    override val rideVehicle get() = ride
+    override fun setRideVehicle(v: com.pokedaisy.app.companion.data.RideVehicle) { ride = v }
     private var reusableTmsOn = false
     override val reusableTms get() = reusableTmsOn
     override fun setReusableTms(on: Boolean) { reusableTmsOn = on }
@@ -1547,6 +1554,7 @@ fun main(args: Array<String>) {
         Shot("$g-settings-tips", bw, bh, bd, companion("SETTINGS", settingsRow = "TIPS")),
         Shot("$g-settings-autorun", bw, bh, bd, companion("SETTINGS", settingsRow = "AUTO-RUN")),
         Shot("$g-settings-flystyle", bw, bh, bd, companion("SETTINGS", settingsRow = "FLY STYLE")),
+        Shot("$g-settings-rideon", bw, bh, bd, companion("SETTINGS", settingsRow = "RIDE ON")),
         Shot("$g-settings-battleview", bw, bh, bd, companion("SETTINGS", settingsRow = "BATTLE VIEW")),
         Shot("$g-settings-battery-low", bw, bh, bd, companion("SETTINGS", battery = BatteryStatus(9, charging = false))),
         Shot("$g-settings-battery-charging", bw, bh, bd, companion("SETTINGS", battery = BatteryStatus(100, charging = true))),
@@ -1806,6 +1814,11 @@ fun main(args: Array<String>) {
         // A ROM the companion can't read: the notice over every tab but SETTINGS.
         Shot("$g-unsupported", bw, bh, bd, companion("PARTY") {
             SnapshotView(connected = false, error = "game code AMTE isn't a supported Pokémon game", unsupported = true)
+        }),
+        // A game its makers asked PokéDaisy not to read: their reason and its link, no ASK FOR SUPPORT.
+        Shot("$g-blocked", bw, bh, bd, companion("PARTY") {
+            SnapshotView(connected = false, error = "GHOST GREY is blocked", unsupported = true,
+                blocked = com.pokedaisy.app.companion.data.BlockedGames.GHOST_GREY)
         }),
         Shot("$g-settings", bw, bh, bd, companion("SETTINGS")),
         // MORE (left of the gear): the tabs off the bar as app icons, the TAB BAR link under them.
@@ -2442,6 +2455,21 @@ fun main(args: Array<String>) {
             val hack = File(ctx.filesDir, "roms/firered-hack.gba").absolutePath
             File(ctx.filesDir, "rom-folder-scan.tsv").writeText("$hack\t1\t1700000000000\t0\n")
             LibraryActivity().apply { unsupportedRoms = setOf(hack) }
+        }) {
+            onNodeWithContentDescription("Toggle view").performClick()
+        },
+        // A game on the blocked list (BlockedGames): a black BLOCKED tag, in the list and the grid.
+        Shot("library-tag-blocked", tw, th * 2, td, activity {
+            val ctx = android.content.Context()
+            val hack = File(ctx.filesDir, "roms/firered-hack.gba").absolutePath
+            File(ctx.filesDir, "rom-folder-scan.tsv").writeText("$hack\t1\t1700000000000\t0\n")
+            LibraryActivity().apply { blockedRoms = setOf(hack) }
+        }),
+        Shot("library-tag-blocked-grid", tw, th * 2, td, activity {
+            val ctx = android.content.Context()
+            val hack = File(ctx.filesDir, "roms/firered-hack.gba").absolutePath
+            File(ctx.filesDir, "rom-folder-scan.tsv").writeText("$hack\t1\t1700000000000\t0\n")
+            LibraryActivity().apply { blockedRoms = setOf(hack) }
         }) {
             onNodeWithContentDescription("Toggle view").performClick()
         },
@@ -3139,6 +3167,7 @@ val PREVIEW_BUTTONS: Map<GbaControls.Btn, List<String>> = GbaControls.Btn.entrie
         GbaControls.Btn.X, GbaControls.Btn.START_2, GbaControls.Btn.TO_COMPANION -> listOf("BUTTON_X")
         GbaControls.Btn.Y, GbaControls.Btn.SELECT_2 -> listOf("BUTTON_Y")
         GbaControls.Btn.TURBO_A, GbaControls.Btn.TURBO_B -> emptyList()
+        GbaControls.Btn.UP, GbaControls.Btn.DOWN, GbaControls.Btn.LEFT, GbaControls.Btn.RIGHT -> emptyList()
     }
 }
 

@@ -1,4 +1,4 @@
-/* The QUICK MENU (the Y button): the app's QuickMenu.kt in its default RING style and GLASS look, drawn into
+/* The QUICK MENU (the Y button): the app's QuickMenu.kt in RING or GRID, using the HUD look, drawn into
  * a canvas whose see-through pixels carry their alpha (the host lays it over the game). GPL-3.0. */
 #ifndef POCKET_QUICK_MENU_H
 #define POCKET_QUICK_MENU_H
@@ -24,10 +24,10 @@ struct quick_item {
 
 /* Draws the ring (n tiles, sel highlighted) and the middle's hint over QUICK_CLEAR; returns false if it
  * doesn't fit the canvas. */
-bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick_item *items, int n, int sel);
+bool quick_draw(struct pd_canvas *c, const struct pd_game *g, const struct quick_item *items, int n, int sel, int look);
 /* FLY's places / REPEL's kinds (QuickMenu.kt's PickList): a titled list over QUICK_CLEAR, row sel highlighted,
  * scrolled to keep it in view. */
-void quick_list_draw(struct pd_canvas *c, const char *title, const char *const *rows, int n, int sel);
+void quick_list_draw(struct pd_canvas *c, const char *title, const char *const *rows, int n, int sel, int look);
 /* The tile a D-pad press (dx, dy: -1 / 0 / 1) moves to from sel: the nearest one that way round the ring. */
 int quick_step(int n, int sel, int dx, int dy, int w, int h);
 /* RING (default) or GRID layout for the next draw / step (settings.quickGrid). */
