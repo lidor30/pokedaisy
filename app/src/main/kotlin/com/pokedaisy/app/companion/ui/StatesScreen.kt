@@ -48,10 +48,10 @@ import kotlinx.coroutines.withContext
  * Savestate slots for the bottom screen, in the SETTINGS tab's OPTION-screen
  * language (white title window, grey framed windows, grey/red pixel text)
  * straight over the game's backdrop - but as a grid of slot cards rather
- * than one list. SAVE and LOAD act on their own card; tapping a slot's picture
- * does nothing (so a stray tap can't load an old state), and long-pressing a
- * saved slot replaces its picture with DELETE, which asks for a second tap
- * before removing the slot. [tick] just forces a re-list after a save/load.
+ * than one list. Tap a slot's screenshot (or LOAD) to load it, SAVE to
+ * overwrite; long-pressing a saved slot replaces its picture with DELETE, which
+ * asks for a second tap before removing the slot. [tick] just forces a re-list
+ * after a save/load.
  */
 @Composable
 fun StatesScreen(slots: StateSlots?, tick: Long) {
