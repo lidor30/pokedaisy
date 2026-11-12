@@ -545,6 +545,19 @@ static void frame_whole(void* ctx) {
     if (s->files.clock) s->prof.wait += s->files.clock() - start;
 }
 
+// FREE FLIGHT's clouds over EXPAND's margins (the frame has its own: pk_flight_draw), planned with the view and drawn
+// once the picture is whole - after pk_wide_finish, on whichever thread that runs.
+static struct PkFlightClouds wideClouds;
+static uint32_t* wideCloudsOut;
+static int wideCloudsW, wideCloudsH;
+
+void pd_session_wide_finish(void) {
+    pk_wide_finish();
+    if (!wideCloudsOut) return;
+    pk_flight_clouds_margins(&wideClouds, wideCloudsOut, wideCloudsW, wideCloudsH);
+    wideCloudsOut = NULL;
+}
+
 static void wide_tick(struct pd_session* s, bool skip) {
     s->wideReady = false;
     if (!s->wideKnown) return;
@@ -587,10 +600,18 @@ static void wide_tick(struct pd_session* s, bool skip) {
     pk_wide_view(s->core, source, wideFrames[wideShown], v, NULL);
     pk_wide_frame_wait(NULL, NULL);
     frame_whole(s);
-    if (pk_wide_due()) {
-        if (s->files.wideGo) s->files.wideGo();
-        else pk_wide_finish();
+    // (pk_wide_view joined any finish still running: the plan is free to change.)
+    wideCloudsOut = NULL;
+    if (s->flightCfg) {
+        pk_flight_clouds_plan(&wideClouds, v.x, v.y, fw, fh);
+        if (wideClouds.strength > 0) {
+            wideCloudsOut = wideFrames[wideShown];
+            wideCloudsW = v.w;
+            wideCloudsH = v.h;
+        }
     }
+    if (pk_wide_due() && s->files.wideGo) s->files.wideGo();
+    else pd_session_wide_finish();
     s->wideReady = !pk_wide_fault();
     s->wideHole = (struct pd_wide_hole) { 0 };
     if (pk_wide_holed()) {
@@ -656,8 +677,8 @@ void pd_session_run_frame(struct pd_session* s, uint32_t playerKeys, bool last) 
         if (last && (s->flightState != PK_FLIGHT_IDLE || s->flightDrawn)) {
             frame_whole(s);
             uint64_t t2 = s->files.clock ? s->files.clock() : 0;
-            // The clouds go into the frame too: the 3DS's EXPAND shows the frame itself in its middle (its hole), so they
-            // stay over the game's picture rather than spreading into the margins (pk_flight_draw_wide).
+            // The clouds go into the frame itself: the 3DS's EXPAND may show the frame in its middle (its hole), so the
+            // margins get theirs apart (pd_session_wide_finish), the frame's rectangle left alone.
             pk_flight_draw((uint32_t*) s->video, PD_GAME_STRIDE, 160, PD_GAME_STRIDE, 1);
             s->prof.flightDraw += (s->files.clock ? s->files.clock() : 0) - t2;
             s->flightDrawn = s->flightState != PK_FLIGHT_IDLE;

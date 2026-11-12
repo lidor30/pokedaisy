@@ -1512,18 +1512,21 @@ static double flCloudStrength;   // the last frame's (0 = none)
 /** The clouds over [out]'s rows / columns [x0, x1] x [y0, y1] ([stride] a row), its pixel (x, y) being GBA frame pixel
  * (x + fx, y + fy) - the map read there - at [strength] (0..1): pixel-art puffs, a white core, a thinner rim round it, a
  * bluer underside where the cloud thins below (lit from the top, as the games' are). [mask]: skip the bird's pixels. */
-static void flDrawClouds(uint32_t* out, int stride, int x0, int y0, int x1, int y1, int fx, int fy, double strength, int mask) {
-    if (strength <= 0.01) return;
-    flMakeClouds();
-    int fdx = 0, fdy = 0;
-    pk_wide_flight_offset(&fdx, &fdy);
-    int ox, oy;
-    flCloudOrigin(fdx, fdy, &ox, &oy);
+/** flDrawClouds with the map's origin given ([ox], [oy]: flCloudOrigin) and, past [skipW] x [skipH] > 0, the frame's own
+ * pixels (0, 0)..(skipW - 1, skipH - 1) left alone. Reads nothing that changes: any thread. */
+static void flDrawCloudsAt(uint32_t* out, int stride, int x0, int y0, int x1, int y1, int fx, int fy, double strength, int mask,
+                           int ox, int oy, int skipW, int skipH) {
     int core = (int) (strength * FL_CLOUD_ALPHA * 256), rim = core * 5 / 9;
     for (int y = y0; y <= y1; y++) {
         uint32_t* row = out + y * stride;
         int gy = y + fy;
+        int sa = x1 + 1, sb = x1;   // the row's columns over the frame: [sa, sb]
+        if (gy >= 0 && gy < skipH) {
+            sa = -fx > x0 ? -fx : x0;
+            sb = skipW - 1 - fx < x1 ? skipW - 1 - fx : x1;
+        }
         for (int x = x0; x <= x1; x++) {
+            if (x == sa && sa <= sb) { x = sb; continue; }
             int gx = x + fx;
             if (mask && gx >= 0 && gy >= 0 && gx < 240 && gy < 160 && flBirdMask[gy * 240 + gx]) continue;
             int m = flCloudAt(gx + ox, gy + oy);
@@ -1539,12 +1542,41 @@ static void flDrawClouds(uint32_t* out, int stride, int x0, int y0, int x1, int 
     }
 }
 
+static void flDrawClouds(uint32_t* out, int stride, int x0, int y0, int x1, int y1, int fx, int fy, double strength, int mask) {
+    if (strength <= 0.01) return;
+    flMakeClouds();
+    int fdx = 0, fdy = 0;
+    pk_wide_flight_offset(&fdx, &fdy);
+    int ox, oy;
+    flCloudOrigin(fdx, fdy, &ox, &oy);
+    flDrawCloudsAt(out, stride, x0, y0, x1, y1, fx, fy, strength, mask, ox, oy, 0, 0);
+}
+
 void pk_flight_draw_wide(uint32_t* out, int w, int h, int vx, int vy) {
     if (!out || flCloudStrength <= 0.01) return;
     int fdx = 0, fdy = 0;
     pk_wide_flight_offset(&fdx, &fdy);
     // The window as pk_wide_view drew it: moved by the flight's smooth camera.
     flDrawClouds(out, w, 0, 0, w - 1, h - 1, vx + fdx, vy + fdy, flCloudStrength, flBirdMaskOn);
+}
+
+void pk_flight_clouds_plan(struct PkFlightClouds* c, int vx, int vy, int fw, int fh) {
+    memset(c, 0, sizeof(*c));
+    if (flCloudStrength <= 0.01) return;
+    flMakeClouds();
+    int fdx = 0, fdy = 0;
+    pk_wide_flight_offset(&fdx, &fdy);
+    c->strength = flCloudStrength;
+    flCloudOrigin(fdx, fdy, &c->ox, &c->oy);
+    c->fx = vx + fdx;
+    c->fy = vy + fdy;
+    c->fw = fw;
+    c->fh = fh;
+}
+
+void pk_flight_clouds_margins(const struct PkFlightClouds* c, uint32_t* out, int w, int h) {
+    if (!out || !c || c->strength <= 0.01) return;
+    flDrawCloudsAt(out, w, 0, 0, w - 1, h - 1, c->fx, c->fy, c->strength, 0, c->ox, c->oy, c->fw, c->fh);
 }
 
 void pk_flight_draw(uint32_t* frame, int w, int h, int stride, int cloudsHere) {
