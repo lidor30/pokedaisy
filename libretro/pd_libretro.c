@@ -552,6 +552,7 @@ static struct pd_ui ui;
 static struct pd_snapshot snap;
 static struct pd_host_info host;
 static char settingsPath[1100];
+static char pdDir[1050]; // <save dir>/pokedaisy: settings.ini and FLIGHT AREA's seen maps ("" = none)
 static bool companion, companionWas, haveGame;
 static int frames;
 
@@ -569,6 +570,7 @@ static bool quickOpen;
 static int quickSel;
 static const struct pd_config *flyCfg;
 static bool freeFlight, takeOff;
+static int areaToldAt = -100000; // when the bird last turned at FLIGHT AREA's edge with a notice (frames)
 static struct fly_targets flyT;
 static const char *flyNames[FLY_MAX_TOWNS];
 static int flyAsk, flySel, flyStage, flyMapsec, flyWait;
@@ -997,12 +999,13 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
     pd_romart_scan(&game);
   const char *dir = NULL;
   if (realEnv(RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY, &dir) && dir && *dir) {
-    char sub[1050];
-    snprintf(sub, sizeof sub, "%s/pokedaisy", dir);
-    mkdir(sub, 0755);
-    snprintf(settingsPath, sizeof settingsPath, "%s/settings.ini", sub);
-  } else
+    snprintf(pdDir, sizeof pdDir, "%s/pokedaisy", dir);
+    mkdir(pdDir, 0755);
+    snprintf(settingsPath, sizeof settingsPath, "%s/settings.ini", pdDir);
+  } else {
+    *pdDir = 0;
     snprintf(settingsPath, sizeof settingsPath, "pokedaisy-settings.ini");
+  }
   pd_settings_load(&settings, settingsPath);
   // A resident frontend loads the core again in the same process: nothing of the last game may survive.
   memset(&snap, 0, sizeof snap);
@@ -1040,13 +1043,18 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   freeFlight = takeOff = flightFrame = false;
   pk_flight_set_call(pk_call);
   pk_flight_configure(NULL, 0);
+  const struct pd_flight_area_cfg *areaCfg = NULL;
   for (size_t i = 0; flyCfg && i < sizeof flight_profiles / sizeof flight_profiles[0]; i++) {
     if (!strcmp(game.sha1, flight_profiles[i].sha1)) {
       pk_flight_configure(flight_profiles[i].words, PK_FLIGHT_WORDS);
+      areaCfg = &flight_profiles[i].area;
       freeFlight = true;
       break;
     }
   }
+  // FLIGHT AREA: the save's seen maps beside settings.ini (the app's FlightArea.Keeper), the first sync seeding them.
+  pd_flight_area_begin(areaCfg, rom, len, crc, *pdDir ? pdDir : NULL);
+  areaToldAt = -100000;
   itemsOk = game.cfg && gba && field_items_supported(game.cfg, rom, len);
   pcOk = itemsOk && pc_supported(game.cfg, rom, len);
   bikeOk = itemsOk && bike_supported(game.cfg);
@@ -1076,6 +1084,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   // The Game Boy games get the HUD where the field scene is known (English Yellow, Crystal: pk_wide_gb), as in the app.
   host.hasHud = PD_BE_IS_GBA() || wideSupported;
   host.hasExpand = true;
+  host.hasFlightArea = freeFlight;
   host.itemCanUse = polishedActions ? polished_potion : NULL;
   host.expandGame = wideSupported;
   host.count = 1;
@@ -1093,6 +1102,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
 static void layer_jump(void) {
   takeOff = flightFrame = false;
   pk_flight_reset();
+  pd_flight_area_resend(); // the loaded game may be another save: checked and sent again at the next sync
   if (wideSupported)
     pk_wide_jump(core, wideSource); // the loaded RAM is the next frame's history: the map past the edges at once
   else
@@ -1147,6 +1157,8 @@ RETRO_API void retro_reset(void) {
 
 RETRO_API void retro_unload_game(void) {
   pk_flight_configure(NULL, 0);
+  pd_flight_area_end();
+  pk_flight_set_area(NULL, 0);
   freeFlight = takeOff = flightFrame = false;
   pk_wide_configure(0);
   WIDE_CHECK_REPORT();
@@ -1647,6 +1659,7 @@ RETRO_API void retro_run(void) {
       break;
     case PD_ACTION_SETTINGS_CHANGED:
       pd_settings_save(&settings, settingsPath);
+      pd_flight_area_resend(); // FLIGHT AREA may have flipped
       hudDrawnKey = 0;
       break;
     default:
@@ -1746,6 +1759,16 @@ RETRO_API void retro_run(void) {
   // FLY's steps and the field-item jobs, each between two frames the game's own code can be called in.
   bool flyBattle = snap.inBattle || (fieldFlags & PK_FIELD_BATTLE);
   bool flyBusy = companion || (fieldFlags & PK_FIELD_LOCKED) || (wideSupported && pk_wide_scene() != PK_WIDE_SCENE_FIELD);
+  // FLIGHT AREA (the app's syncFlightArea, every half second): pk_flight told the save's seen maps, the map the player
+  // stands on added while on the free field; or "anywhere".
+  if (freeFlight && frames % 30 == 0)
+    pd_flight_area_sync(core, settings.flightAnywhere,
+                        !flyBusy && !flyBattle && pk_flight_state() == PK_FLIGHT_IDLE);
+  // The bird turned at a map not seen yet: say why, now and then (it can be met many times a second).
+  if (freeFlight && pk_flight_area_turned() && frames - areaToldAt > 240) {
+    areaToldAt = frames;
+    notice("You haven't been there yet.");
+  }
   if (takeOff) {
     takeOff = false;
     snapshot();
@@ -1755,6 +1778,7 @@ RETRO_API void retro_run(void) {
     if (gate != FLY_OK)
       notice(fly_reason(gate));
     else {
+      pd_flight_area_sync(core, settings.flightAnywhere, true); // the maps up to date before the bird is
       int result = pk_flight_take_off(core);
       if (result != PK_FLIGHT_OK)
         notice(result == PK_FLIGHT_NOT_ON_FOOT ? "Take off from land" : "Can't take off now");

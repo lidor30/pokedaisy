@@ -77,6 +77,11 @@ static void muted_row(struct pd_canvas* c, int x, int* y, int w, const char* lab
     *y += ROW_H;
 }
 
+// FLIGHT AREA (the app's GAMEPLAY row): where TAKE OFF may fly. Two values, so it flips in place.
+static void flight_area_row(struct pd_ui* ui, struct pd_canvas* c, int x, int* y, int w, const struct pd_settings* st) {
+    setting(ui, c, x, y, w, SETTING_FLIGHT_AREA, "FLIGHT AREA", st->flightAnywhere ? "ANYWHERE" : "VISITED");
+}
+
 static void group(struct pd_canvas* c, int x, int* y, const char* title) {
     *y += 3;
     // Gen 1's value colour is the rows' black: its titles are a black band (groupTitleFill).
@@ -206,6 +211,7 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         }
         if (host->hasCheats) setting(ui, c, ix, &y, iw, SETTING_CHEATS, "CHEATS", st->cheats ? "ON" : "OFF");
         else muted_row(c, ix, &y, iw, "CHEATS", "N/A");
+        if (host->hasFlightArea) flight_area_row(ui, c, ix, &y, iw, st);
         group(c, ix, &y, "SCREEN");
     }
     // PIXEL 1x is ORIGINAL's: EXPAND that wide can't keep up, so there it reads as the next size (pd_session_screen).
@@ -231,6 +237,8 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         setting(ui, c, ix, &y, iw, SETTING_FILTER, "FILTER", st->lcdFilter ? "LCD" : "OFF");
     if (host && host->hasQuickMenu)
         setting(ui, c, ix, &y, iw, SETTING_QUICK_MENU, "QUICK MENU", st->quickGrid ? "GRID" : "RING");
+    // The app keeps it in GAMEPLAY; a host without the groups has it by the QUICK MENU, where TAKE OFF is.
+    if (host && host->hasFlightArea && !full) flight_area_row(ui, c, ix, &y, iw, st);
     if (host && host->hasButtonRows) {
         static const char* const NAMES[PD_BUTTONS] = {"X", "Y", "L2", "R2", "NONE"};
         setting(ui, c, ix, &y, iw, SETTING_QUICK_BTN, "QUICK MENU BUTTON", NAMES[st->quickBtn]);

@@ -101,6 +101,7 @@ struct pd_settings {
     bool ffNormal;   // FF MODE: NORMAL; off = SMART, 1x while the game waits for the player
     bool cheats;     // CHEATS: the game's file's codes on
     int theme;       // THEME: a pd_themes[] id
+    bool flightAnywhere; // FLIGHT AREA: ANYWHERE; off = VISITED, only over maps the save has seen (hosts with hasFlightArea)
 };
 
 enum pd_button { PD_BTN_X, PD_BTN_Y, PD_BTN_L2, PD_BTN_R2, PD_BTN_NONE, PD_BUTTONS };
@@ -179,6 +180,7 @@ struct pd_host_info {
     bool hasFfChip;      // Optional: a fast-forward chip on the tab bar (the Linux host's; the 3DS has its own hotkeys)
     bool frontendOwnsPlayback; // Optional: the frontend runs fast-forward, save states and leaving the game: no such rows
     bool hasPerf;        // Optional: the host can show FPS / CPU (its SETTINGS row)
+    bool hasFlightArea;  // Optional: TAKE OFF works in this game (FLIGHT AREA's row; the libretro core's free flight)
     bool hasState;      // a save state exists for LOAD STATE
     char stateWhen[24]; // when it was made, shown beside LOAD STATE
     bool fullSettings;  // Optional: SETTINGS' groups and the rows the 3DS has

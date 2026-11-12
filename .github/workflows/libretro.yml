@@ -70,5 +70,8 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ inputs.ref }}
+      # The GBA core's flight records come from gamedata/ (Python 3.11+ for tomllib: this job's runner, not 22.04's).
+      - name: Flight records (libretro/pd_flight_gen.h) match gamedata
+        run: python3 libretro/gen_flight.py --check
       - name: make -C 3ds preview (fixtures; the ROM-backed lines skip without ROMs)
         run: make -C 3ds preview

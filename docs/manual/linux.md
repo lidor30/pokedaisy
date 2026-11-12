@@ -128,9 +128,10 @@ On plorpOS, PokeDaisy runs as a core of the launcher's own emulator. The save is
 and the launcher owns save states, fast-forward, rewind, shaders and leaving the game. Pick PokeDaisy in the Core
 row of a Game Boy shelf.
 
-In this form the quick menu (Y) keeps PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS and COMPANION, adds a HUD
-tile that puts the cursor on the HUD, and the game pauses while it is open. X opens the companion. SETTINGS lists
-only what the core does itself: ASPECT, HUD, QUICK MENU, three button rows and TAB BAR. QUICK MENU BUTTON,
+In this form the quick menu (Y) keeps PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS and COMPANION (with TAKE
+OFF in the English FireRed and Emerald), adds a HUD tile that puts the cursor on the HUD, and the game pauses while it
+is open. X opens the companion. SETTINGS lists only what the core does itself: ASPECT, HUD, QUICK MENU, FLIGHT AREA
+(where there's TAKE OFF), three button rows and TAB BAR. QUICK MENU BUTTON,
 COMPANION BUTTON and HUD CURSOR BUTTON step through X, Y, L2 and R2 (and NONE for the cursor) when you press A on
 them, and a button another action already uses swaps over to it. L2 and R2 reach the core on every shelf (for other
 Game Boy Advance cores the launcher still keeps them back).
@@ -185,9 +186,12 @@ screen or a mouse reaches the companion and the HUD.
 
 The companion and the quick menu work as in the cores everywhere: X opens the [companion](companion.md), Y opens the
 quick menu over the game (PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS, COMPANION), and both buttons can be
-changed in the companion's `SETTINGS`. The [HUD](hud.md) shows your party and a small map over the overworld, and
-[EXPAND](screen.md#expand-more-of-the-map) is `ASPECT` in the companion's `SETTINGS`, with `ZOOM OUT` for even more
-of the map. The quick menu's tiles follow your HUD look, in two shades with an orange outline on the
+changed in the companion's `SETTINGS`. In the English FireRed and Emerald the quick menu also has `TAKE OFF`, to
+[fly over the map](map.md#flying-over-the-map) on your Pokémon's bird. `FLIGHT AREA` in the companion's `SETTINGS`
+keeps that flight to [places you've already been](map.md#where-you-can-fly) (`VISITED`, the default) or lets it go
+`ANYWHERE`. The list of places is kept for each save, in `saves/pokedaisy/flight-area`. The
+[HUD](hud.md) shows your party and a small map over the overworld, and [EXPAND](screen.md#expand-more-of-the-map)
+is `ASPECT` in the companion's `SETTINGS`, with `ZOOM OUT` for even more of the map. The quick menu's tiles follow your HUD look, in two shades with an orange outline on the
 one you're on, and the HUD's panels have a battle-style shadow, with an HP bar and room for a status tag on each
 party Pokémon.
 

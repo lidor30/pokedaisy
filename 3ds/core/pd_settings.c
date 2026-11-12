@@ -36,6 +36,7 @@ void pd_settings_defaults(struct pd_settings* s) {
     s->ffNormal = false;
     s->cheats = false;
     s->theme = 8; // POKéDAISY
+    s->flightAnywhere = false; // FLIGHT AREA: VISITED
 }
 
 const int PD_FF_SPEEDS[PD_FF_CHOICES] = {2, 3, 4, 5, 6, 8, 10, 0};
@@ -114,7 +115,7 @@ bool pd_settings_load(struct pd_settings* s, const char* path) {
             bool* b = !strcmp(key, "ffaudio") ? &s->ffAudio : !strcmp(key, "rewind") ? &s->rewind
                     : !strcmp(key, "runindoors") ? &s->runIndoors : !strcmp(key, "nohints") ? &s->hideHints
                     : !strcmp(key, "onetap") ? &s->oneTapMoves : !strcmp(key, "mute") ? &s->gameMuted
-                    : !strcmp(key, "autorun") ? &s->autoRun : NULL;
+                    : !strcmp(key, "autorun") ? &s->autoRun : !strcmp(key, "flightanywhere") ? &s->flightAnywhere : NULL;
             if (b && int_in(value, 0, 1, &on)) *b = on;
         }
     }
@@ -138,6 +139,7 @@ bool pd_settings_save(const struct pd_settings* s, const char* path) {
     fprintf(f, "dark=%d\ntheme=%d\nffnormal=%d\ncheats=%d\n", s->darkMode, s->theme, s->ffNormal, s->cheats);
     fprintf(f, "speed=%d\nvolume=%d\nnohints=%d\nonetap=%d\nmute=%d\nautorun=%d\nperf=%d\n", s->gameSpeed,
             s->gameVolume, s->hideHints, s->oneTapMoves, s->gameMuted, s->autoRun, s->showPerf ? 1 : 0);
+    fprintf(f, "flightanywhere=%d\n", s->flightAnywhere ? 1 : 0);
     if (fclose(f) != 0) return false;
     return rename(tmp, path) == 0;
 }

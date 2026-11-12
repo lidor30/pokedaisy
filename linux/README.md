@@ -4,7 +4,7 @@
 the ROM from its own folder. It uses `pokedaisy_gba_libretro.so` for `.gba` (armGBA, `libretro/armgba/`),
 `pokedaisy_gbc_libretro.so` for `.gb` / `.gbc` (mGBA, `libretro/`), or `pokedaisy_ds_libretro.so` for `.nds`
 (DSperate, `linux/libretro-ds/`), and shows what the core draws. So the companion,
-the HUD, the quick menu (PC, FLY, REPEL, BIKE, WILD ENCOUNTERS), EXPAND and every companion setting are the cores'
+the HUD, the quick menu (PC, FLY, TAKE OFF, REPEL, BIKE, WILD ENCOUNTERS), EXPAND and every companion setting are the cores'
 own, the same as on any other frontend, and a change to them reaches this executable with the next core build.
 
 The host owns what a frontend owns: input, sound, pacing, the battery save and its backups, save states,

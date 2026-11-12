@@ -131,6 +131,7 @@ enum setting_row {
     SETTING_HINTS,
     SETTING_ONE_TAP,
     SETTING_RESTART,
+    SETTING_FLIGHT_AREA, // hosts with hasFlightArea: VISITED / ANYWHERE, flips in place
 };
 
 int ui_settings_follow(int scroll, int y, int height);
