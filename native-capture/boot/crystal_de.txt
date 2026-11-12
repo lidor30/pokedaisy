@@ -1,0 +1,14 @@
+# Pokémon Kristall-Edition (German Crystal) from a save: the intro, the title, CONTINUE and the save summary, then on
+# the field (capture_fixture_headless.sh crystal_de --script native-capture/boot/crystal_de.txt). Its menus want A held
+# longer than English's boot gives it (crystal.txt stayed on the main menu with this save).
+wait 150
+hold START 3
+wait 150
+hold START 3
+wait 400
+hold A 10
+wait 200
+hold A 10
+wait 200
+hold A 10
+wait 300

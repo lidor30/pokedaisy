@@ -16,7 +16,7 @@ package com.pokedaisy.app.companion.data
  *   CANCEL (wTopMenuItemY / X 12, item 0 first every time). After a faint (wPartyMenuTypeOrMessageID
  *   BATTLE_PARTY_MENU) A on a slot sends it out at once.
  * - Crystal: a _2DMenu from (1, 0), a row per Pokémon plus CANCEL, two rows apart, wMenuCursorY 1-based; A opens
- *   BattleMonMenu's SWITCH / STATS / CANCEL, a 2D menu from (12, 12), SWITCH first. After a faint
+ *   BattleMonMenu's SWITCH / STATS / CANCEL, a 2D menu from (12, 12) (Kristall: 10, 12), SWITCH first. After a faint
  *   (wPartyMenuActionText PARTYMENUACTION_SWITCH) A sends the slot out; CANCEL only buzzes.
  * Either menu only counts as waiting while its cursor cell holds the filled ▶: a pick turns it hollow at once.
  */
@@ -154,7 +154,7 @@ fun readGen2PartyMenu(r: MemoryReader, cfg: Gen2Config): GbPartyMenu? {
     if (cols != 1 || spacing != 0x20 || y !in 1..rows) return null
     val ty = top + 2 * (y - 1)
     if (ty >= 18 || left >= 20 || u8(r.readCoreMemory(cfg.tileMap + ty * 20 + left, 1), 0) != cfg.cursorTile) return null
-    if (top == GEN2_SUBMENU_TOP && left == (if (cfg.polished) POLISHED_SUBMENU_LEFT else GEN2_SUBMENU_TOP) && rows == 3) return GbPartyMenu(submenu = true, cursor = y - 1)
+    if (top == GEN2_SUBMENU_TOP && left == (if (cfg.polished) POLISHED_SUBMENU_LEFT else cfg.switchMenuLeft) && rows == 3) return GbPartyMenu(submenu = true, cursor = y - 1)
     if (top != 1 || left != 0) return null
     val count = u8(r.readCoreMemory(cfg.partyCount, 1), 0)
     val action = u8(r.readCoreMemory(cfg.partyMenuAction, 1), 0)

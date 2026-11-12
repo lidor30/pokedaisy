@@ -818,8 +818,9 @@ private fun Gen1ActionButtons(
             cell(words[1], 2, Modifier.weight(1f).fillMaxHeight())
         }
         Row(Modifier.fillMaxWidth().weight(1f), horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-            // Gen 2 calls the bag PACK.
-            cell(if (com.pokedaisy.app.companion.data.activeGame.isGen2 && words[2] != "Pack" && words[2] != "Bag") "PACK" else words[2], 1,
+            // Gen 2 calls the bag PACK (German Crystal: BEUTEL).
+            val gen2Bag = if (com.pokedaisy.app.companion.data.romLanguage == 'D') "BEUTEL" else "PACK"
+            cell(if (com.pokedaisy.app.companion.data.activeGame.isGen2 && words[2] != "Pack" && words[2] != "Bag") gen2Bag else words[2], 1,
                 Modifier.weight(1f).fillMaxHeight())
             cell(words[3], 3, Modifier.weight(1f).fillMaxHeight())
         }

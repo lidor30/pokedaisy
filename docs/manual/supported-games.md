@@ -24,7 +24,7 @@ Any GBA, Game Boy or DS game plays in PokeDaisy. "Supported" is about the compan
 - Pokémon Yellow: the USA / Europe release and the German, French, Italian and Spanish ones, drawn in the game's own look. A German, French, Italian or Spanish copy shows its own names and Pokédex text. Item descriptions are only shown in the English one, as these games have none of their own.
 - Pokémon Yellow Legacy: version 1.0.10, drawn in the game's own look, with its own moves, trainers, wild Pokémon, party icons and town map. Make it from your English Yellow with `PATCH A ROM` and the release's patch. Start a new game: a save from the original Yellow doesn't load correctly in it.
 - Pokémon Gold and Silver: the USA / Europe releases, drawn in the game's own look.
-- Pokémon Crystal: the USA release, the USA / Europe revision 1 and the Australian one, drawn in the game's own look.
+- Pokémon Crystal: the USA release, the USA / Europe revision 1, the Australian one and the German one (Kristall), drawn in the game's own look. The German copy shows its own names and Pokédex text.
 - Pokémon Crystal Legacy: version 1.3.1, drawn in the game's own look, with its own moves, items, trainers, wild Pokémon, coloured party icons and maps. Make it from your Crystal (the USA release or revision 1) with `PATCH A ROM` and the release's matching patch. A save from the original Crystal starts, but its bag comes out wrong, so start a new game.
 - Pokémon Crystal Clear, the open world hack of Crystal: versions 2.5.11 and 2.6.0, each in its Standard Colors and its Color Filter build, drawn in the game's own look.
 - Pokémon Prism, built on Crystal with regions of its own: version 0.95 build 254 (Hotfix 5), drawn in the game's own look, with its own Pokédex.
