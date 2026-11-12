@@ -404,7 +404,7 @@ fun rememberGameFont(game: GameKind?): FontFamily? {
     return remember(game, gen, language) {
         val path = when (game) {
             GameKind.YELLOW -> com.pokedaisy.app.companion.data.Gen1Art.yellowFont(com.pokedaisy.app.companion.data.romLanguage)
-            GameKind.RED, GameKind.BLUE -> com.pokedaisy.app.companion.data.Gen1Art.RED_BLUE_FONT
+            GameKind.RED, GameKind.BLUE -> com.pokedaisy.app.companion.data.Gen1Art.redBlueFont(com.pokedaisy.app.companion.data.romLanguage)
             GameKind.PURE_RED, GameKind.PURE_BLUE -> com.pokedaisy.app.companion.data.Gen1Art.PURE_FONT
             GameKind.YELLOW_LEGACY -> com.pokedaisy.app.companion.data.Gen1Art.YELLOW_LEGACY_FONT
             GameKind.CRYSTAL_LEGACY -> com.pokedaisy.app.companion.data.Gen2Art.CRYSTAL_LEGACY_FONT

@@ -66,6 +66,8 @@ fun gen1GuideRam(cfg: Gen1Config): Gen1GuideRam? = when {
         YELLOW_GUIDE_RAM.shifted((cfg.badges - GEN1_YELLOW.badges).toInt())
     cfg === GEN1_RED -> RED_GUIDE_RAM
     cfg === GEN1_BLUE -> BLUE_GUIDE_RAM
+    cfg === GEN1_RED_DE -> RED_GUIDE_RAM.shifted((cfg.badges - GEN1_RED.badges).toInt())
+    cfg === GEN1_BLUE_DE -> BLUE_GUIDE_RAM.shifted((cfg.badges - GEN1_BLUE.badges).toInt())
     else -> null
 }
 

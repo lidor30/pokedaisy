@@ -12,6 +12,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Yellow (GB) | DE / FR / IT / ES | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — |
 | Yellow Legacy (GB) | 1.0.10 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — |
 | Red / Blue (GB) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — |
+| Red / Blue (GB) | DE (Rote Edition / Blaue Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — |
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — |
 | Gold / Silver (GBC) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — |
 | Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — |
@@ -123,7 +124,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
    `silver_battle` fixtures, the controls' timing not run on them. German Gold / Silver (Goldene / Silberne Edition) have
    them at Kristall's columns (`GEN2_GOLD_DE`): reads checked on the `gold_de_battle*` / `silver_de_battle` fixtures.
    Red / Blue have Yellow's battle menus and menu variables (at Yellow's addresses, the cursor columns 9 / 15): their
-   reads are checked on the `red_battle*` fixtures, the controls' timing wasn't run on them.
+   reads are checked on the `red_battle*` fixtures, the controls' timing wasn't run on them. German Red / Blue have German
+   Yellow's columns (KMPF / ITEM 7, PkMn / FLUCHT 12): reads checked on `red_de_battle*` / `blue_de_battle`.
    PureRed / PureBlue keep Red's battle menus at Red's places (FIGHT / ITEM column 9, PkMn / RUN 15, the move list at
    (5, 12)): reads checked on the `purered_battle*` / `pureblue_battle` fixtures, the controls' timing not run on them.
 2. Spanish FireRed's port copies English rev 1's config, cursors included. Its battle RAM matches English byte for
@@ -199,7 +201,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
     German Crystal (Kristall) is English's rebuild but for one ROM address (SpriteMovementData, 0x4276 in bank 1): a walk on
     Route 29 and its grass, 777 map frames, every one exact.
     The other languages' Yellows, Red / Blue, Gold / Silver, Prism and the other Polished Crystal builds aren't mapped yet (—).
-13. FLY, WILD ENCOUNTERS and PC anywhere on Red / Blue, Yellow (all five languages) and Crystal (rev 0, rev 1, Australia)
+13. FLY, WILD ENCOUNTERS and PC anywhere on Red / Blue (English and German), Yellow (all five languages) and Crystal (rev 0, rev 1, Australia)
     are `GbField.kt`, each the game's own way in (pret/pokered's, pokeyellow's and pokecrystal's sources; the European
     Yellows' addresses mapped by scripts/port_gen1.py; each cart's code checked in it first: `GbFieldTest` finds every Gen 1
     cart's own config and no other's). Crystal queues a map script the overworld runs once the player stands free
@@ -208,7 +210,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
     overworld loop through Bankswitch (`pk_gb_field.c`, `MgbaCore.pkGbCallAt`); FLY sets what the town map's A leaves
     (destination, BIT_FLY_WARP / BIT_USED_FLY, Yellow's Pikachu hidden); encounters are the map's wGrassRate / wWaterRate
     held at 0 and put back from its wild data. Checked headless with mgba_dump (`gbpoke`, `gbcallat`): every cart's PC (in
-    its own language) opened over the field and backed out of; flights to Pewter (all six Gen 1 configs, Blue on pret's
+    its own language) opened over the field and backed out of; flights to Pewter (every Gen 1 config, German Red / Blue too; Blue on pret's
     pokeblue.gbc) and Cherrygrove landing at their Pokémon Centers; Crystal's Route 29 grass with no battle in 100 steps
     (one within ~15 without), Yellow's Route 1 at a forced rate of 255 meeting one at once; then on the Thor: Crystal's PC
     from PACK, Yellow's FLY to Vermilion from MAP. The European Yellows and Red / Blue have no EXPAND scene, so their PC /

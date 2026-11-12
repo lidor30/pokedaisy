@@ -105,6 +105,8 @@ object GameTitles {
         // pret/pokered's roms.sha1 (Blue: the build stands in for the cart).
         "ea9bcae617fdf159b045185467ae58b2e4a48b9a" to "Pokémon Red",
         "d7037c83e1ae5b39bde3c30787637ba1d4c48ce2" to "Pokémon Blue",
+        "87d523fe1a0c548db7c5477b451ddec1eb083c06" to "Pokémon Rote Edition",
+        "20e72dc6f41493eee1fdd0cef54214e6c3389688" to "Pokémon Blaue Edition",
         // Game Boy Color (pret/pokecrystal's roms.sha1): rev 0, rev 1, Australia.
         "f4cd194bdee0d04ca4eac29e09b8e4e9d818c133" to "Pokémon Crystal",
         "f2f52230b536214ef7c9924f483392993e226cfb" to "Pokémon Crystal",

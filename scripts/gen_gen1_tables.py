@@ -5,6 +5,7 @@ straight from the ROM the user owns (nothing is downloaded):
     scripts/gen_gen1_tables.py yellow <rom.gb>
     scripts/gen_gen1_tables.py yellow_de|yellow_fr|yellow_it|yellow_es <rom.gb>
     scripts/gen_gen1_tables.py red|blue <rom.gb> <english yellow.gb>
+    scripts/gen_gen1_tables.py red_de|blue_de <rom.gb> <english red|blue.gb>
     scripts/gen_gen1_tables.py purered <PureRed v2.7.6.gb>
     scripts/gen_gen1_tables.py pureblue <PureBlue v2.7.6.gb> <PureRed v2.7.6.gb>
     scripts/gen_gen1_tables.py yellow_legacy <Yellow Legacy v1.0.10.gb> <english yellow.gb>
@@ -164,6 +165,22 @@ GAMES = {
          dict(species={1: "BULBASAUR", 25: "PIKACHU"}, moves={85: "RAYO"},
               items={1: "MASTER BALL", 4: "POKé BALL", 20: "POCIÓN"}, maps={0: "PUEBLO PALETA", 0x0C: "RUTA 1"})),
     ]},
+    # German Red / Blue: English Red's code with German Yellow's text (the same names at the same ids, but for the
+    # hideout's: checked against YellowTextDeGen.kt, so they use it - YellowLanguages.kt's RED_BLUE_DE_TEXT - and nothing
+    # is written). Addresses from scripts/port_gen1.py.
+    **{f"{v}_de": dict(
+        suffix="YellowDe", label=f"Pokemon - {title} Edition (Germany)", sha1=sha1, names_only=True, english=v,
+        text_as="YellowTextDeGen.kt", map_renames={"TEAM ROCKET HQ": "ROCKET HQ"}, charset="DF", machine_prefixes=("TM", "VM"),
+        monster_names=(0x07, 0x421E), name_len=10, internal_count=190,
+        pokedex_order=(0x10, 0x4F96), base_stats=(0x0E, 0x43DE), base_stats_size=28, dex_count=150,
+        moves=(0x0E, 0x4000), move_count=165, move_names=(0x2C, 0x4000),
+        item_names=(0x01, 0x472D), item_count=0x61,
+        type_effects=(0x0F, 0x6482),
+        external_maps=(0x1C, 0x5310), internal_maps=(0x1C, 0x537F), first_indoor_map=0x25, map_count=0xF8,
+        checks=dict(species={1: "BISASAM", 25: "PIKACHU", 150: "MEWTU", 151: "MEW"}, moves={85: "DONNERBLITZ"},
+                    items={1: "MEISTERBALL", 4: "POKéBALL", 20: "TRANK"}, maps={0: "ALABASTIA", 0x0C: "ROUTE 1"}))
+       for v, title, sha1 in (("red", "Rote", "87d523fe1a0c548db7c5477b451ddec1eb083c06"),
+                              ("blue", "Blaue", "20e72dc6f41493eee1fdd0cef54214e6c3389688"))},
 }
 
 CHARS = {0x7F: " ", 0xBA: "é", 0xE0: "'", 0xE3: "-", 0xE6: "?", 0xE7: "!", 0xE8: ".", 0xEF: "♂", 0xF5: "♀",
@@ -463,11 +480,12 @@ def tables(g, data):
 
 def names_only(g, data, en):
     """A European cart: its names over English's tables, after checking those tables are English's bytes."""
-    e = GAMES["yellow"]
+    e = GAMES[g.get("english", "yellow")]
     if hashlib.sha1(en).hexdigest() != e["sha1"]:
         sys.exit(f"the English cart isn't {e['label']}")
     rom, eng = Rom(data, CHARSETS[g["charset"]]), Rom(en)
-    for what, n in (("pokedex_order", g["internal_count"]), ("base_stats", 28 * 151), ("moves", 6 * 165), ("type_effects", 3 * 82)):
+    for what, n in (("pokedex_order", g["internal_count"]), ("base_stats", 28 * g.get("dex_count", 151)), ("moves", 6 * 165),
+                    ("type_effects", 3 * 82)):
         (b, a), (eb, ea) = g[what], e[what]
         assert data[rom.off(b, a):][:n] == en[eng.off(eb, ea):][:n], f"{what} isn't English's"
     ob, oa = g["pokedex_order"]
@@ -521,11 +539,18 @@ def names_only(g, data, en):
             f"// (sha1 {g['sha1'][:8]}...) - do not hand-edit. Its names over English Yellow's tables, by the same\n"
             "// ids (Dex number, move id, item id, map id); everything else is English's byte for byte.\n")
     sfx = g["suffix"]
-    write(f"YellowText{sfx[6:]}Gen.kt", head,
-          kmap(f"speciesNames{sfx}", "String", [(k, kstr(v)) for k, v in sorted(species.items())]) + "\n" +
+    body = (kmap(f"speciesNames{sfx}", "String", [(k, kstr(v)) for k, v in sorted(species.items())]) + "\n" +
           kmap(f"moveNames{sfx}", "String", [(k, kstr(v)) for k, v in sorted(moves.items())]) + "\n" +
           kmap(f"itemNames{sfx}", "String", [(k, kstr(v)) for k, v in sorted(items.items())]) + "\n" +
           kmap(f"mapNames{sfx}", "String", [(k, kstr(v)) for k, v in sorted(maps.items())]))
+    if g.get("text_as"):
+        have = open(os.path.join(OUT_DIR, g["text_as"])).read()
+        for yellow, mine in g.get("map_renames", {}).items():
+            have = have.replace(kstr(yellow), kstr(mine))
+        assert have.endswith(body), f"its names aren't {g['text_as']}'s"
+        print(f"{g['label']}: its names equal {g['text_as']}'s - nothing to write")
+        return
+    write(f"YellowText{sfx[6:]}Gen.kt", head, body)
     print(f"{len(species)} species, {len(moves)} moves, {len(items)} items, {len(maps)} maps")
 
 

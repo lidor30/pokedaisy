@@ -66,7 +66,11 @@ sealed class GbField {
                 'S' -> GB_FIELD_YELLOW_ES
                 else -> null
             }
-            game == GameKind.RED || game == GameKind.BLUE -> GB_FIELD_RED_BLUE
+            game == GameKind.RED || game == GameKind.BLUE -> when (romLanguage) {
+                'E' -> GB_FIELD_RED_BLUE
+                'D' -> GB_FIELD_RED_BLUE_DE
+                else -> null
+            }
             game == GameKind.PURE_RED || game == GameKind.PURE_BLUE -> GB_FIELD_PURE_RGB
             game == GameKind.YELLOW_LEGACY -> GB_FIELD_YELLOW_LEGACY
             game == GameKind.CRYSTAL && activeGen2 === GEN2_CRYSTAL -> Crystal
@@ -475,6 +479,24 @@ val GB_FIELD_RED_BLUE = GbField.Gen1(
         0x7102BL to "7eea1ad72132d7cbde23cbfe",
         0x71070L to "213dcd36ff23fa0bd75ffa0cd75701",
         0xCEB8L to "21eb4efa5ed34f060009092a666f2aea87d8",
+    ),
+)
+
+/** German Red / Blue (the same code at the same places in both carts): Red's ways in, mapped by scripts/port_gen1.py. */
+val GB_FIELD_RED_BLUE_DE = GbField.Gen1(
+    loopAfterWait = 0x0405, bankswitch = 0x35F0, pcRoutine = 0x651C,
+    walkCounter = 0xCFCAL, flags5 = 0xD735L, inBattle = 0xD05CL, badges = 0xD35BL,
+    tileset = 0xD36CL, townsVisited = 0xD710L, destination = 0xD71FL, flags6 = 0xD737L, pikachuFlags = -1L, pikachuImage = -1L,
+    partyCount = 0xD168L, partyMoves = 0xD178L, curMap = 0xD363L, grassRate = 0xD88CL,
+    waterRate = 0xD8A9L, wildDataPointers = 0x4EEB,
+    signatures = listOf(
+        0x402L to "cdaf20cdba20fa3bd7cb77c49e03facacfa7c2b5",
+        0x35F0L to "f0b8f578e0b8ea002001fe35",
+        0x3F0FL to "e08c213c3fcd293f2116cfcb",
+        0x62516L to "fa09c1fe04c0cd563c3e01ea11cf3e1fc30f3ff9",
+        0x71029L to "7eea1fd72137d7cbde23cbfe",
+        0x7106EL to "213dcd36ff23fa10d75ffa11d75701",
+        0xCEB8L to "21eb4efa63d34f060009092a666f2aea8cd8",
     ),
 )
 

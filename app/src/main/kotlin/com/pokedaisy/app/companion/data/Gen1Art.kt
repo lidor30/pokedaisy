@@ -25,6 +25,8 @@ object Gen1Art {
     /** The town map, where MapScreen loads region maps from ([activeRegionMapImages] "yellow"). */
     const val YELLOW_TOWN_MAP = "regionmap/yellow.png"
     const val RED_BLUE_FONT = "gen1/red-blue-font.ttf"
+    /** The running Red / Blue's font: German Red / Blue's has its accented letters ([romLanguage]). */
+    fun redBlueFont(language: Char): String = if (language == 'E') RED_BLUE_FONT else "gen1/red-blue-font-${language.lowercaseChar()}.ttf"
     const val RED_BLUE_ICONS = "gen1/red_blue/pokemon"
     /** Red / Blue's town map and player ([activeRegionMapImages] "red_blue"), in their Super Game Boy colours. */
     const val RED_BLUE_TOWN_MAP_NAME = "red_blue"
@@ -118,26 +120,32 @@ object Gen1Art {
      * there is white, light blue and black (FLY's map, headless). Their party icons have no PIKACHU shape: 14
      * icon loads a frame.
      */
-    private fun redBlue(sha1: String) = Gen1ArtTables(
+    private fun redBlue(sha1: String, language: Char = 'E', icons: Int = 0x57C0, monParty: Int = 0x590D, townMap: Int = 0x5100,
+                        townMapTiles: Int = 0x65A8, charset: Gen1Charset = Gen1Charset.EN) = Gen1ArtTables(
         sha1 = sha1,
         font = 0x04 to 0x5A80,
-        fontPath = RED_BLUE_FONT,
-        iconPointers = 0x1C to 0x57C0,
+        fontPath = redBlueFont(language),
+        iconPointers = 0x1C to icons,
         iconPointerCount = 28,
-        monPartyData = 0x1C to 0x590D,
+        monPartyData = 0x1C to monParty,
         dexCount = 151,
         iconsDir = RED_BLUE_ICONS,
         iconColors = intArrayOf(0xFFFFEFFF.toInt(), 0xFFF7B58C.toInt(), 0xFF181010.toInt()),
-        townMap = 0x1C to 0x5100,
-        townMapTiles = 0x04 to 0x65A8,
+        townMap = 0x1C to townMap,
+        townMapTiles = 0x04 to townMapTiles,
         townMapPath = RED_BLUE_TOWN_MAP,
         townMapColors = intArrayOf(0xFFFFEFFF.toInt(), 0xFFA5D6FF.toInt(), 0xFF8CBD52.toInt(), 0xFF181010.toInt()),
         playerSprite = 0x05 to 0x4180,
         playerPath = RED_BLUE_PLAYER,
         playerColors = intArrayOf(0, 0xFFFFEFFF.toInt(), 0xFFA5D6FF.toInt(), 0xFF181010.toInt()),
+        charset = charset,
     )
     val RED = redBlue(TelemetrySampler.RED_SHA1)
     val BLUE = redBlue(TelemetrySampler.BLUE_SHA1)
+    /** German Red / Blue: English's art, some of it moved (scripts/port_gen1.py; the icons, town map and player are
+     * English's pixel for pixel - RedBlueGermanDecodeTest - so they share its files), their own font (German Yellow's letters). */
+    val RED_DE = redBlue(TelemetrySampler.RED_DE_SHA1, 'D', 0x579A, 0x58E7, 0x50FE, 0x65B8, Gen1Charset.DF)
+    val BLUE_DE = redBlue(TelemetrySampler.BLUE_DE_SHA1, 'D', 0x579A, 0x58E7, 0x50FE, 0x65B8, Gen1Charset.DF)
 
     /**
      * PureRed and PureBlue v2.7.6 (pureRGB's pokered.sym: the same addresses in both). A Color cart, its default COLORS
@@ -196,7 +204,7 @@ object Gen1Art {
         iconSheet2 = 0x0E to 0x64BF,
     )
 
-    private val GAMES = listOf(YELLOW, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, BLUE, PURE_RED, PURE_BLUE, YELLOW_LEGACY)
+    private val GAMES = listOf(YELLOW, YELLOW_DE, YELLOW_FR, YELLOW_IT, YELLOW_ES, RED, BLUE, RED_DE, BLUE_DE, PURE_RED, PURE_BLUE, YELLOW_LEGACY)
 
     private fun off(bank: Int, addr: Int) = if (bank == 0) addr else bank * 0x4000 + (addr - 0x4000)
 

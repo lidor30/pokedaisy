@@ -122,6 +122,7 @@
     {"sha1": "0aceec0ef7aa2ca5aa831554598d91f61a925591", "title": "Pokémon Version Jaune"},
     {"sha1": "11d461629363402fc15b5005ef51b8f44e726140", "title": "Pokémon Polished Crystal"},
     {"sha1": "1dc242039218fba50928d1afb66b70565b6b9daf", "title": "Pokémon Edición Amarilla"},
+    {"sha1": "20e72dc6f41493eee1fdd0cef54214e6c3389688", "title": "Pokémon Blaue Edition"},
     {"sha1": "2ac87de42afc70ef6016805acb3b206644417f97", "title": "Pokémon Yellow Legacy"},
     {"sha1": "2e94d09c1e16a57eb079404c030f26fdeeac949d", "title": "Pokémon PureRed"},
     {"sha1": "3ff091a8e94a0c031372b6f0275e12620fe3d766", "title": "Pokémon Polished Crystal"},
@@ -137,6 +138,7 @@
     {"sha1": "772858dd5a3e66dea4454d5f83b48c83d732ca69", "title": "Pokémon Polished Crystal"},
     {"sha1": "79ebf9984eac8081f488d15a35a6c5d11b4f84e2", "title": "Pokémon Polished Crystal"},
     {"sha1": "84d5c4924c3f1f3fc690669148b7e392948fb23d", "title": "Pokémon Crystal Clear"},
+    {"sha1": "87d523fe1a0c548db7c5477b451ddec1eb083c06", "title": "Pokémon Rote Edition"},
     {"sha1": "8ecc58d621faaedf2a934bd2583d527220df7bb9", "title": "Pokémon Silberne Edition"},
     {"sha1": "9254195d461ea942eaaa08cc4b83de3cf82aea0d", "title": "Pokémon Goldene Edition"},
     {"sha1": "9c13585eb34efdcd881c2e68f029b820bddf349d", "title": "Pokémon Polished Crystal"},
@@ -272,6 +274,7 @@
     "columns": ["Party", "Bag", "Battle", "Map", "Dex", "Guide"],
     "rows": [
       {"game": "Red / Blue (GB)", "version": "USA/Europe", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
+      {"game": "Red / Blue (GB)", "version": "DE (Rote Edition / Blaue Edition)", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "PureRed / PureBlue (GB)", "version": "2.7.6", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
       {"game": "Yellow (GB)", "version": "USA/Europe", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "Yellow (GB)", "version": "DE / FR / IT / ES", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
