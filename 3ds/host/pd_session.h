@@ -46,7 +46,7 @@ struct pd_session_host {
     // The game's .cheats file (mGBA's format), by the ROM's CRC32; NULL = none here.
     void (*cheatPath)(void* ctx, uint32_t crc, char* path, size_t len);
     void* ctx;
-    // EXPAND's drawing on a thread of its own: pk_wide_finish starts there, and join waits for it. NULL: drawn in place.
+    // EXPAND's drawing on a thread of its own: pd_session_wide_finish starts there, and join waits for it. NULL: drawn in place.
     void (*wideGo)(void);
     void (*wideJoin)(void);
     // The dev build's clock, for where a frame goes (pd_session_prof); NULL: not counted.
@@ -213,6 +213,9 @@ int pd_session_screen(const struct pd_session* s);
 const uint32_t* pd_session_perf(unsigned fpsTenths, unsigned cpuPercent, int* w);
 // EXPAND's window, s->wideW x s->wideH pixels, when s->wideReady.
 const uint32_t* pd_session_wide(const struct pd_session* s);
+// EXPAND's deferred drawing (pk_wide_finish) and then FREE FLIGHT's clouds over its margins: the host's wideGo thread runs
+// this (it's called in place without one).
+void pd_session_wide_finish(void);
 // STATES: the slot's file and picture; the save state of the session's game.
 bool pd_session_save_state(struct pd_session* s, int slot);
 bool pd_session_load_state(struct pd_session* s, int slot);

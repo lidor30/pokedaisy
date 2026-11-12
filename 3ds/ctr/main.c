@@ -614,7 +614,7 @@ static bool run_game(const char* file) {
     struct game_files gameFiles;
     snprintf(gameFiles.base, sizeof(gameFiles.base), "%s", base);
     snprintf(gameFiles.saveSd, sizeof(gameFiles.saveSd), "%s", saveSd);
-    bool wideThread = gpu_wide_thread(pk_wide_finish);
+    bool wideThread = gpu_wide_thread(pd_session_wide_finish);
     struct pd_session_host files = { state_path, backup_for_load, settings_changed, cheat_path, &gameFiles,
                                      wideThread ? gpu_wide_go : NULL, wideThread ? gpu_wide_join : NULL, NULL, flight_area_path };
 #ifdef PD_DEV
