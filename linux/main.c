@@ -99,6 +99,7 @@ static int face(int k) {
   return k == A ? B : k == B ? A : k == X ? Y : k == Y ? X : k;
 }
 static unsigned held, pressed;
+static bool inputReset;
 static unsigned repeatAt[NKEYS];
 static int keyboard(SDL_Keycode k) {
   switch (k) {
@@ -256,6 +257,7 @@ static void controller_removed(SDL_JoystickID id) {
     return;
   SDL_GameControllerClose(controller);
   controller = NULL;
+  inputReset = true;
   held = 0; // nothing stays pressed on a pad that's gone
   for (int i = 0; i < SDL_NumJoysticks() && !controller; i++)
     if (SDL_IsGameController(i))
@@ -356,8 +358,10 @@ static void events(void) {
     }
     if (e.type == SDL_MOUSEMOTION)
       pointer_at(e.motion.x, e.motion.y);
-    if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST)
-      held = 0;
+    if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+      inputReset = true;
+      held = pressed = 0;
+    }
     if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
       outputChanged = true;
   }
@@ -410,12 +414,14 @@ static struct {
   bool swapAB; // the controller's A / B and X / Y the other way round (devices disagree on which is SDL's "A")
   int hotkey[HK_ACTIONS]; // the HOTKEYS page's button per action, -1 none
   int dsHotkey[HK_ACTIONS];
-} hostSet = {0, false, false, false, {R2, L2, -1, -1}, {R3, L3, -1, -1}};
+  int modifier;
+} hostSet = {0, false, false, false, {R2, L2, -1, -1}, {R2, L2, -1, -1}, SELECT};
 static char hostIni[PATH_MAX];
 static void host_load(void) {
   FILE *f = fopen(hostIni, "r");
   char line[128];
   int v;
+  bool modifierSaved = false;
   while (f && fgets(line, sizeof line, f)) {
     if (sscanf(line, "ff_speed=%d", &v) == 1)
       hostSet.ffSpeed = v == 0 || (v >= 2 && v <= 8) ? v : 0;
@@ -425,6 +431,14 @@ static void host_load(void) {
       hostSet.lcd = v != 0;
     if (sscanf(line, "swap_ab=%d", &v) == 1)
       hostSet.swapAB = v != 0;
+    char modifier[16];
+    if (sscanf(line, "hk_modifier=%15s", modifier) == 1) {
+      int k = key_named(modifier);
+      if (k == SELECT || k == START || hotkey_assignable(k) || !strcmp(modifier, "off")) {
+        hostSet.modifier = k;
+        modifierSaved = true;
+      }
+    }
     for (int i = 0; i < HK_ACTIONS; i++) {
       char key[32], name[16];
       snprintf(key, sizeof key, "hk_%s=%%15s", hotkeyIds[i]);
@@ -437,6 +451,10 @@ static void host_load(void) {
   }
   if (f)
     fclose(f);
+  if (!modifierSaved && hostSet.dsHotkey[HK_FF] == R3 && hostSet.dsHotkey[HK_REWIND] == L3) {
+    hostSet.dsHotkey[HK_FF] = R2;
+    hostSet.dsHotkey[HK_REWIND] = L2;
+  }
   swapFace = hostSet.swapAB;
 }
 static void host_save(void) {
@@ -444,6 +462,7 @@ static void host_save(void) {
   if (!f)
     return;
   fprintf(f, "ff_speed=%d\nrewind=%d\nlcd=%d\nswap_ab=%d\n", hostSet.ffSpeed, hostSet.rewind, hostSet.lcd, hostSet.swapAB);
+  fprintf(f, "hk_modifier=%s\n", key_name(hostSet.modifier));
   for (int i = 0; i < HK_ACTIONS; i++) {
     fprintf(f, "hk_%s=%s\n", hotkeyIds[i], key_name(hostSet.hotkey[i]));
     fprintf(f, "ds_hk_%s=%s\n", hotkeyIds[i], key_name(hostSet.dsHotkey[i]));
@@ -452,13 +471,13 @@ static void host_save(void) {
 }
 // A hotkey's button as the HOTKEYS page shows it.
 static const char *hotkey_label(int k) {
-  static const char *const labels[] = {[L] = "L1", [R] = "R1",  [X] = "X",         [Y] = "Y",         [L2] = "L2",
+  static const char *const labels[] = {[START] = "START", [SELECT] = "SELECT", [L] = "L1", [R] = "R1",  [X] = "X",         [Y] = "Y",         [L2] = "L2",
                                        [R2] = "R2", [L3] = "L3", [R3] = "R3",       [P1] = "PADDLE 1", [P2] = "PADDLE 2",
                                        [P3] = "PADDLE 3", [P4] = "PADDLE 4"};
   return k >= 0 && k < (int)(sizeof labels / sizeof labels[0]) && labels[k] ? labels[k] : "OFF";
 }
 /* The actions held this frame; *fired: those whose button went down now. The keyboard's own keys count too. */
-static unsigned hotkeys_held(const int *hotkeys, unsigned *fired) {
+static unsigned hotkeys_held(const int *hotkeys, unsigned modifier, unsigned *latched, unsigned *fired) {
   unsigned on = 0;
   *fired = 0;
   hotkeyMask = 0;
@@ -468,7 +487,15 @@ static unsigned hotkeys_held(const int *hotkeys, unsigned *fired) {
     if (k < 0 || (i == HK_REWIND && !hostSet.rewind))
       continue;
     unsigned bit = 1u << k;
-    hotkeyMask |= bit; // never the game's, pressed or not (a release mid-frame would reach it otherwise)
+    if (bit == modifier)
+      continue;
+    if (modifier) {
+      if ((held & modifier) && (pressed & bit))
+        *latched |= bit;
+      if (!(*latched & bit) || !(held & modifier))
+        continue;
+    }
+    hotkeyMask |= bit;
     // pressed too: a tap shorter than a frame is let go before this sees it.
     if (!((held | pressed) & bit))
       continue;
@@ -720,6 +747,8 @@ static bool environment(unsigned cmd, void *data) {
   case RETRO_ENVIRONMENT_GET_VARIABLE: {
     struct retro_variable *v = data;
     v->value = NULL;
+    if (!strcmp(v->key, "pokedaisy_ds_select_modifier"))
+      v->value = hostSet.modifier == SELECT ? "enabled" : "disabled";
     if (!strcmp(v->key, "pokedaisy_panel"))
       v->value = panelValue;
     for (int i = 0; i < optionN && !v->value; i++)
@@ -1403,7 +1432,8 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     snprintf(backups, sizeof backups, "%s/pokedaisy-backups", savesDir);
   }
   // DS uses L2 for the Companion and R2 for screen switching. Keep the host's DS bindings separate.
-  int *hotkeys = !strcmp(coreName, "pokedaisy_ds_libretro.so") ? hostSet.dsHotkey : hostSet.hotkey;
+  const bool dsGame = !strcmp(coreName, "pokedaisy_ds_libretro.so");
+  int *hotkeys = dsGame ? hostSet.dsHotkey : hostSet.hotkey;
   // armGBA's states aren't mGBA's: each core its own file.
   snprintf(ss, sizeof ss, "%s/states/%s%s.ss", root, name, strstr(coreName, "_gba_") ? ".armgba" : "");
   if (strstr(coreName, "_gba_")) {
@@ -1463,10 +1493,12 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
   rewindTick = 0;
   bool menuOpen = false, leave = false;
   struct pd_menu menu, hkMenu;
-  static char rows[M_COUNT][40], hkRows[HK_ACTIONS][40];
-  static const char *rowPtrs[M_COUNT], *hkPtrs[HK_ACTIONS];
+  static char rows[M_COUNT][40], hkRows[HK_ACTIONS + 1][40];
+  static const char *rowPtrs[M_COUNT], *hkPtrs[HK_ACTIONS + 1];
   static const char *const hkNames[HK_ACTIONS] = {"FAST FORWARD", "REWIND", "SAVE STATE", "LOAD STATE"};
   bool hkPage = false;
+  unsigned latched = 0, menuConsumed = 0;
+  bool modifierPending = false, modifierUsed = false;
   int capturing = -1; // the HOTKEYS row waiting for a button
   // LOAD STATE and QUIT ask first, CANCEL on top (as the hosts before this one): a stray A never loses the game's progress.
   struct pd_menu confirmMenu;
@@ -1488,8 +1520,9 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       outputChanged = false;
       panel_follow();
     }
-    bool menuKey = down(MENU) ||
-                   (comboMenu && (down(START) || down(SELECT)) && (held & (1u << START)) && (held & (1u << SELECT)));
+    const unsigned menuChord = (1u << START) | (1u << SELECT);
+    const bool menuChordDown = (held & menuChord) == menuChord;
+    bool menuKey = down(MENU) || (comboMenu && menuChordDown && (pressed & menuChord));
     snprintf(rows[M_RESUME], 40, "RESUME");
     snprintf(rows[M_SAVE], 40, "SAVE STATE");
     snprintf(rows[M_LOAD], 40, "LOAD STATE");
@@ -1508,6 +1541,16 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       snprintf(hkRows[i], 40, "%s  %s", hkNames[i], capturing == i ? "..." : hotkey_label(hotkeys[i]));
       hkPtrs[i] = hkRows[i];
     }
+    snprintf(hkRows[HK_ACTIONS], 40, "MODIFIER  %s",
+             capturing == HK_ACTIONS ? "..." : hotkey_label(hostSet.modifier));
+    hkPtrs[HK_ACTIONS] = hkRows[HK_ACTIONS];
+    menuConsumed &= held;
+    if (inputReset || menuKey || menuChordDown) {
+      modifierPending = modifierUsed = false;
+      inputReset = false;
+      if (menuKey || menuChordDown)
+        menuConsumed |= held;
+    }
     if (menuKey) {
       menuOpen = !menuOpen;
       hkPage = false;
@@ -1520,8 +1563,28 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     }
     unsigned hkFired = 0, hkOn = 0;
     hotkeyMask = 0;
-    if (!menuOpen)
-      hkOn = hotkeys_held(hotkeys, &hkFired);
+    unsigned modifier = hostSet.modifier < 0 ? 0 : 1u << hostSet.modifier;
+    latched &= held;
+    unsigned modifierPulse = 0;
+    if (!menuOpen && !menuKey && !menuChordDown) {
+      if (pressed & modifier & ~menuConsumed)
+        modifierPending = true;
+      if (!(menuConsumed & modifier))
+        hkOn = hotkeys_held(hotkeys, modifier, &latched, &hkFired);
+      // The DS core handles its stylus shortcuts with Select held.
+      const unsigned stylus = (1u << UP) | (1u << DOWN) | (1u << LEFT) | (1u << RIGHT) | (1u << A) | (1u << Y);
+      bool dsStylus = dsGame && hostSet.modifier == SELECT && (held & modifier)
+                      && (held & stylus & ~latched & ~menuConsumed) && !(latched & hotkeyMask);
+      modifierUsed |= !!(latched & hotkeyMask) || dsStylus;
+      if (!(held & modifier)) {
+        if (modifierPending && !modifierUsed)
+          modifierPulse = modifier;
+        modifierPending = modifierUsed = false;
+      }
+      if (!dsStylus)
+        hotkeyMask |= modifier;
+    }
+    hotkeyMask |= latched | menuConsumed;
     if (hkFired & (1u << HK_SAVE))
       notice(state_file(ss, true) ? "State saved" : "State save failed");
     if (hkFired & (1u << HK_LOAD))
@@ -1534,16 +1597,23 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       if (down(B))
         capturing = -1;
       else if (down(SELECT)) {
-        hotkeys[capturing] = -1;
+        if (capturing == HK_ACTIONS)
+          hostSet.modifier = hostSet.modifier == SELECT ? -1 : SELECT;
+        else
+          hotkeys[capturing] = -1;
         host_save();
         capturing = -1;
       } else
         for (int k = 0; k < NKEYS; k++)
-          if (down(k) && hotkey_assignable(k)) {
-            for (int j = 0; j < HK_ACTIONS; j++)
-              if (hotkeys[j] == k)
-                hotkeys[j] = -1;
-            hotkeys[capturing] = k;
+          if (down(k) && (hotkey_assignable(k) || (capturing == HK_ACTIONS && k == START))) {
+            if (capturing == HK_ACTIONS) {
+              hostSet.modifier = k;
+            } else {
+              for (int j = 0; j < HK_ACTIONS; j++)
+                if (hotkeys[j] == k)
+                  hotkeys[j] = -1;
+              hotkeys[capturing] = k;
+            }
             host_save();
             capturing = -1;
             break;
@@ -1575,7 +1645,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       if (down(A)) {
         capturing = hkMenu.selected;
         hkMenu.title = "PRESS A BUTTON";
-        notice("B: cancel   SELECT: off");
+        notice(capturing == HK_ACTIONS ? "SELECT: select / off   B: cancel" : "B: cancel   SELECT: off");
       }
     } else if (menuOpen) {
       if (down(UP))
@@ -1626,7 +1696,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
           break;
         case M_HOTKEYS:
           hkPage = true;
-          pd_menu_init(&hkMenu, "HOTKEYS", hkPtrs, HK_ACTIONS);
+          pd_menu_init(&hkMenu, "HOTKEYS", hkPtrs, HK_ACTIONS + 1);
           hkMenu.overlay = true;
           break;
         case M_QUIT:
@@ -1666,7 +1736,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     ffSpeedNow = runs;
     rewindingNow = rewinding;
     audioKeepEvery = (unsigned)runs;
-    gameKeys = joypad(held & ~hotkeyMask & ~((1u << MENU) | (1u << FFKEY) | (1u << RWKEY)));
+    gameKeys = joypad((held & ~hotkeyMask & ~((1u << MENU) | (1u << FFKEY) | (1u << RWKEY))) | modifierPulse);
     uint64_t t = SDL_GetPerformanceCounter();
     if (rewinding) {
       muted = true;
@@ -1677,6 +1747,8 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     } else {
       for (int i = 0; i < runs && running; i++) {
         core.run();
+        if (modifierPulse)
+          gameKeys &= ~joypad(modifierPulse);
         if (hostSet.rewind && !(++rewindTick & 1))
           rewind_push();
       }

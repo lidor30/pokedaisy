@@ -831,11 +831,13 @@ void controls() {
     companionHold=0;
     return;
   }
-  const bool companionDown=buttons&(1u<<shell.companion_id());
+  const bool selectDown=buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT);
+  const bool stylusChord=selectDown && (buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_Y))
+                         && opt("pokedaisy_ds_select_modifier")=="enabled";
+  const bool companionDown=!stylusChord && (buttons&(1u<<shell.companion_id()));
   const bool companionTap=!companionDown&&companionHold>0;
   if(!companionDown)companionHold=0;
   else if(companionHold>=0)++companionHold;
-  const bool selectDown=buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT);
   if(!companion && companionHold>0 && (selectDown || (!quickOpen&&companionHold>=24))){
     quickOpen=!quickOpen;repelPicker=flyPicker=false;select_used=selectDown;quickSelected=0;companionHold=-1;
     if(quickOpen){flyWhy=nullptr;refresh();}
@@ -893,7 +895,9 @@ void controls() {
     if(companion){refresh();refresh_battle_companion();shell.mapX=snapshot.mapX;shell.mapY=snapshot.mapY;}
   }
   if(!companion) {
-    if(shell.screen_id()>=0 && hit(shell.screen_id())){
+    if(stylusChord && hit(RETRO_DEVICE_ID_JOYPAD_Y)){
+      manualTouch=!manualTouch;screen_override=0;select_used=true;
+    }else if(shell.screen_id()>=0 && hit(shell.screen_id())){
       if(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT)){
         manualTouch=!manualTouch;screen_override=0;select_used=true;
       }else{screen_override=(screen_override+1)%3;manualTouch=false;}
