@@ -10,6 +10,7 @@
 #include "pd_backend.h"
 
 #include "field_items.h"
+#include "flash.h"
 #include "fly.h"
 #include "gb_field.h"
 #include "polished_field.h"
@@ -570,10 +571,14 @@ static uint32_t hudDrawnKey;
 static int hudW, hudH;
 static int fieldFlags, hudFieldFrames;
 
-/* the quick menu and the game-code jobs: PC, FLY, REPEL, BIKE (fly.c, field_items.c) */
+/* the quick menu and the game-code jobs: PC, FLY, FLASH, REPEL, BIKE (fly.c, flash.c, field_items.c) */
 static bool quickOpen;
 static int quickSel;
 static const struct pd_config *flyCfg;
+/* FLASH: the config whose functions this ROM has, and a pick waiting for a frame the game can be called in (counts the
+ * frames it has waited, given up at 120 as the 3DS does). */
+static const struct pd_config *flashCfg;
+static int flashAsk;
 static bool freeFlight, takeOff;
 static int areaToldAt = -100000; // when the bird last turned at FLIGHT AREA's edge with a notice (frames)
 static struct fly_targets flyT;
@@ -1055,6 +1060,8 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   romLen = len;
   bool gba = PD_BE_IS_GBA();
   flyCfg = game.cfg && gba && fly_supported(game.cfg, rom, len) ? game.cfg : NULL;
+  flashCfg = game.cfg && gba && flash_supported(game.cfg, rom, len) ? game.cfg : NULL;
+  flashAsk = 0;
   freeFlight = takeOff = flightFrame = false;
   pk_flight_set_call(pk_call);
   pk_flight_configure(NULL, 0);
@@ -1302,8 +1309,8 @@ RETRO_API void retro_run(void) {
   touch_poll();
   if (inputRunning || airborne)
     touchDown = touchWas = false;
-  if (polishedActions && down(quickBtn) && !quickOpen && !companion)
-    snapshot();
+  if ((polishedActions || flashCfg) && down(quickBtn) && !quickOpen && !companion)
+    snapshot(); // FLASH dims on who knows it and the lit flag: read as the menu opens, not up to 30 frames old
   // A tap on the quick menu: a tile (or a FLY / REPEL list row) is picked as A picks it; outside, the list or the menu
   // closes as B. On the field, a tap that starts and ends on one HUD part presses it; the game picture itself does nothing.
   if (touch_tapped() && quickOpen && !companion) {
@@ -1364,8 +1371,8 @@ RETRO_API void retro_run(void) {
   }
 
 
-  // The QUICK MENU over the paused game, in the app's order (QuickAction): PC, FLY, REPEL, BIKE, WILD, COMPANION;
-  // each only where the game can, dimmed with why when not now.
+  // The QUICK MENU over the paused game, in the app's order (QuickAction): PC, FLY, TAKE OFF, FLASH, REPEL, BIKE, WILD,
+  // COMPANION; each only where the game can, dimmed with why when not now.
   struct quick_item quick[QUICK_COUNT];
   int quickN = 0;
   char repelWhy[32] = "";
@@ -1385,6 +1392,13 @@ RETRO_API void retro_run(void) {
   if (freeFlight)
     quick[quickN++] = (struct quick_item){QUICK_FLIGHT, false, false,
         fly_flyer(&snap) < 0 ? "No one in your party knows FLY" : NULL, 0, 0, NULL};
+  if (flashCfg) {
+    // FLASH (QuickMenu.kt's quickBlocked): who knows it, then whether it's dark here at all.
+    int dark = flash_dark(core, flashCfg, &snap);
+    quick[quickN++] = (struct quick_item){QUICK_FLASH, false, false,
+        flash_flasher(&snap) < 0 ? flash_reason(FLASH_NO_FLASHER) : dark == 0 ? flash_reason(FLASH_CANT_USE_HERE) : NULL,
+        0, 0, NULL};
+  }
   if (itemsOk || polishedActions) {
     repelKindCount = 0;
     for (int k = 0; k < REPEL_KINDS; k++) {
@@ -1514,6 +1528,9 @@ RETRO_API void retro_run(void) {
         jobItem = bag_bike(&snap);
         jobFrames = 0;
         jobTries = 15; // PokeDaisyActivity's SELECT_TRIES
+        break;
+      case QUICK_FLASH:
+        flashAsk = 1; // run below, between two frames
         break;
       case QUICK_WILD:
         settings.wildOff = !settings.wildOff;
@@ -1861,6 +1878,18 @@ RETRO_API void retro_run(void) {
     flyStage = 0;
     if (!fly_finish(core, flyCfg, romData, romLen, flyMapsec, &flyT, fly_main_callback(core, flyCfg) != flyCallback))
       notice(fly_reason(FLY_FAILED));
+  }
+  if (flashCfg && flashAsk && !companion) {
+    if (pk_call_safe(core)) {
+      snapshot();
+      enum flash_result r = flash_use(core, flashCfg, romData, romLen, &snap, flyBusy, flyBattle);
+      flashAsk = 0;
+      if (r != FLASH_OK)
+        notice(flash_reason(r));
+    } else if (++flashAsk > 120) {
+      flashAsk = 0;
+      notice(flash_reason(FLASH_FAILED));
+    }
   }
   // pk_call_safe reads the ARM CPU: never on a Game Boy core, whose jobs need no call guard.
   bool safe = job != JOB_NONE && !companion && (gbf ? true : pk_call_safe(core));
