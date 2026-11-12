@@ -246,9 +246,12 @@ void pk_follower_show(struct mCore* core, int on);
 
 /** FOLLOWER: its state as text (mgba_dump's followinfo). */
 void pk_follower_info(char* out, int n);
-/** RIDE ON: the vehicle's three views (south, north, west; 1024 bytes each in OBJ tile order: 32 x 64 for w 32, 64 x 32
- * for w 64) and palette (32 bytes),
- * or NULL; drawn behind the player while they're on a bike and [on] (pk_ride_show). */
+/** RIDE ON: the vehicle (PK_RIDE_BYTES: its three views - south, north, west; 1024 bytes each in OBJ tile order: 32 x 64
+ * for w 32, 64 x 32 for w 64 - then its exhaust smoke, PK_RIDE_SMOKE_FRAMES 16 x 8 frames of two tiles, six from the side
+ * and six from behind, then the smoke's place per view: x, y signed bytes, -128 none, and two spare bytes; RideOn.Sprite)
+ * and palette (32 bytes), or NULL; drawn behind the player while they're on a bike and [on] (pk_ride_show). */
+#define PK_RIDE_SMOKE_FRAMES 12
+#define PK_RIDE_BYTES (3 * 1024 + PK_RIDE_SMOKE_FRAMES * 64 + 8)
 void pk_ride_set(const uint8_t* frames, const uint8_t* pal, int w);
 /** The map's scroll (BG2HOFS / VOFS) as the frame just run was drawn - FREE FLIGHT's clouds follow it. */
 void pk_wide_bg2_scroll(struct mCore* core, int* h, int* v);
