@@ -124,9 +124,9 @@ The same One Screen controls are enabled for exact English retail revision 0
 ROMs of HeartGold, SoulSilver, Black, White, Black 2 and White 2. HeartGold
 and SoulSilver keep the game's own message frame beside split-color buttons,
 and their move cards follow the games': a type-colored frame, the move name,
-the type badge and current/max PP. Black and White and their sequels keep the
-game's own prompt band, with colored command plates lettered in white and the
-angled move plates; a move out of PP is greyed.
+the type badge and current/max PP. Black and White use charcoal plates and
+colored command labels, Black 2 and White 2 striped plates with colored rims;
+their angled move plates show current/max PP, and a move out of PP is greyed.
 
 These themes use PokéDaisy's bitmap font and app-owned move data, and each
 move's base PP from the cart. The native move-card artwork remains specific to

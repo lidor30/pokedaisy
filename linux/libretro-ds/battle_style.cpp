@@ -24,7 +24,7 @@ const DsBattleStyle* ds_battle_style(const char* sha1){
   static const DsBattleStyle gold{144,146,ds_platinum_battle_style.actions,DsBattleLook::HeartGold};
   static const DsBattleStyle silver{144,146,ds_platinum_battle_style.actions,DsBattleLook::SoulSilver};
   static const DsBattleStyle unova{145,149,{{
-    {0xe0283c,0,0,0,0,0}, {0xfbb228,0,0,0,0,0},
+    {0xff6e82,0,0,0,0,0}, {0xfbb228,0,0,0,0,0},
     {0x51cb28,0,0,0,0,0}, {0x28baf3,0,0,0,0,0},
   }},DsBattleLook::Unova};
   static const DsBattleStyle unova2{146,149,{{
@@ -118,6 +118,26 @@ void family_plate(pd_canvas& canvas,Rect r,DsBattleLook look,uint32_t color,bool
   }else {
     pd_fill(&canvas,r.x+5,r.y+5,r.w-10,split-r.y-5,shade(color,tone));
     pd_fill(&canvas,r.x+5,split,r.w-10,1,shade(color,80*tone/100));
+  }
+}
+
+void unova_command_plate(pd_canvas& canvas,Rect r,DsBattleLook look,const DsBattleColors& color,bool enabled){
+  const unsigned tone=enabled?100:50;
+  const bool sequel=look==DsBattleLook::Unova2;
+  pd_round_rect(&canvas,r.x,r.y,r.w,r.h,4,shade(sequel?0x202020:0x717171,tone));
+  pd_round_rect(&canvas,r.x+1,r.y+1,r.w-2,r.h-2,3,shade(sequel?color.face:white,tone));
+  fill(canvas,inset(r,3),shade(sequel?color.dark:0x9a9a9a,tone));
+  if(sequel)fill(canvas,inset(r,4),shade(0x202020,tone));
+  const Rect face=inset(r,sequel?5:4);
+  fill(canvas,face,shade(sequel?0x282828:0x383838,tone));
+  if(sequel){
+    for(int y=0;y<face.h;y+=3)pd_fill(&canvas,face.x,face.y+y,face.w,1,shade(0x383838,tone));
+  }else{
+    for(int y=2;y<face.h-6;y+=4)
+      for(int x=2+(y%8)/2;x<face.w-2;x+=4)
+        pd_fill(&canvas,face.x+x,face.y+y,1,1,shade(0x414141,tone));
+    for(int y=1;y<=3;++y)
+      pd_fill(&canvas,face.x,face.y+face.h-2*y,face.w,2,shade(0x181818+0x080808*y,tone));
   }
 }
 
@@ -264,17 +284,16 @@ bool native_message_frame(pd_canvas& canvas,int top,int width){
   return true;
 }
 
-void native_message(pd_canvas& canvas,Rect r,const std::string& nickname,DsBattleLook look){
-  if(!native_message_frame(canvas,r.y,r.x+r.w)){message(canvas,r,nickname,look);return;}
+void native_message_text(pd_canvas& canvas,int top,int width,const std::string& nickname){
   // The games' grey ink and its light shadow, where the native line starts.
   constexpr uint32_t ink=0x505058,shadow=0xb0b0b8;
   const std::string prompt="What will "+nickname+" do?";
-  const int x=30,width=r.x+r.w-44-x-4;
-  if(pd_text_width(prompt.c_str())*2+2<=width)
-    text2(canvas,{x,r.y+8,width,32},prompt.c_str(),ink,shadow,false);
+  const int x=30,room=width-44-x-4;
+  if(pd_text_width(prompt.c_str())*2+2<=room)
+    text2(canvas,{x,top+8,room,32},prompt.c_str(),ink,shadow,false);
   else {
-    text2(canvas,{x,r.y+6,width,30},"What will",ink,shadow,false);
-    text2(canvas,{x,r.y+34,width,30},(nickname+" do?").c_str(),ink,shadow,false);
+    text2(canvas,{x,top+6,room,30},"What will",ink,shadow,false);
+    text2(canvas,{x,top+34,room,30},(nickname+" do?").c_str(),ink,shadow,false);
   }
 }
 
@@ -510,32 +529,6 @@ void unova_move_card(pd_canvas& canvas,Rect r,int move,int pp,int maxPp,bool ena
               enabled?pp_ink(pp,maxPp,ink):0x7a7a7a,shadow);
 }
 
-// Black / White's command buttons are filled with their colour and lettered in white, outlined dark: the angled plate
-// in FIGHT's red, BAG's gold, POKéMON's green and RUN's blue.
-void text2_outline(pd_canvas& canvas,Rect area,const char* text,uint32_t ink,uint32_t edge){
-  for(int dy=-2;dy<=2;dy+=2)for(int dx=-2;dx<=2;dx+=2)
-    if(dx||dy)text2(canvas,{area.x+dx,area.y+dy,area.w,area.h},text,edge,PD_NO_SHADOW,true);
-  text2(canvas,area,text,ink,PD_NO_SHADOW,true);
-}
-
-void unova_command(pd_canvas& canvas,Rect r,DsBattleLook look,uint32_t color,const char* label,bool enabled){
-  const unsigned tone=enabled?100:50;
-  const int cut=plate_cut(r);
-  const bool sequel=look==DsBattleLook::Unova2;
-  angled_plate(canvas,r,cut,0x181818,look,tone);
-  angled_plate(canvas,inset(r,2),cut,sequel?0xf0f0f0:shade(color,60)|0x404040,look,tone);
-  angled_plate(canvas,inset(r,4),cut,color,look,tone);
-  // A lit top and a shaded foot, as the plates are drawn.
-  const Rect face=inset(r,4);
-  for(int y=0;y<face.h;++y){
-    const int left=slant(y,face.h,face.h/3,cut), right=slant(y,face.h,2*face.h/3,cut);
-    if(y<3)pd_fill(&canvas,face.x+left,face.y+y,face.w-left-right,1,shade(0xffffff,tone*45/100)|shade(color,tone));
-    else if(y>=face.h-5)pd_fill(&canvas,face.x+left,face.y+y,face.w-left-right,1,shade(color,68*tone/100));
-  }
-  // The ends lean in only above and below the middle third, where the label sits: it may use nearly the full width.
-  text2_outline(canvas,{r.x+6,r.y+4,r.w-12,r.h-8},label,enabled?white:0xb0b0b0,shade(0x282828,tone));
-}
-
 }
 
 bool ds_platinum_has_command_art(const uint32_t* lower){
@@ -566,25 +559,32 @@ void ds_draw_battle_strip(uint32_t* stage,const DsBattleStyle& style,const DsBat
   const int bandTop=2*style.bandTop-(moves?14:0);
   const bool platinum=style.look==DsBattleLook::Platinum;
   const bool unovan=unova(style.look);
+  constexpr int gap=4,right=508,commandLeft=270;
+  // Gen 4's prompt box is the game's own frame, narrowed beside the plates: taken before the band covers it.
+  const bool nativeBox=!moves && !unovan && native_message_frame(canvas,bandTop,commandLeft-4);
+  // DsBattleMenu.kt's drawBand: the two Unova families have distinct message bands.
   const int bandHeight=384-bandTop;
-  if(unovan){
-    // Black / White print their prompt themselves, white on a see-through dark band over the battle: it stays, with the
-    // command plates on its right. The move plates get the same darkened band under them.
-    if(moves)
-      for(int y=bandTop;y<384;++y)for(int x=0;x<512;++x){
-        uint32_t& p=stage[y*512+x];
-        p=((p&0xfcfcfc)>>2)+((p&0xfefefe)>>3);
-      }
-  }else{
-    // Gen 4's prompt box is redrawn narrower beside the plates; the move cards sit on a dark band.
-    if(moves)pd_fill(&canvas,0,bandTop,512,bandHeight,platinum?0x000000:0x202020);
+  const uint32_t band=platinum?0x000000:style.look==DsBattleLook::Unova?0x0c3c34:
+    style.look==DsBattleLook::Unova2?0x0c3851:0x202020;
+  const int bandLeft=nativeBox?commandLeft-4:0;
+  pd_fill(&canvas,bandLeft,bandTop,512-bandLeft,bandHeight,band);
+  auto line=[&](int y,uint32_t color){pd_fill(&canvas,0,y*2,512,2,color);};
+  if(style.look==DsBattleLook::Unova){
+    const int mid=bandTop+bandHeight*35/100;
+    pd_fill(&canvas,0,mid,512,384-mid,0x08302c);
+    line(147,0x4d201c);line(148,0x24201c);line(187,0x24201c);line(188,0x4d201c);
+  }else if(style.look==DsBattleLook::Unova2){
+    pd_fill(&canvas,0,bandTop+bandHeight*30/100,512,bandHeight*40/100,0x184155);
+    line(147,0x083855);line(148,0x305d7d);line(187,0x285165);line(188,0x41697d);
   }
-  const int top=moves?bandTop+(unovan?2:0):2*style.textTop;
+  const int top=moves?bandTop:2*style.textTop;
   const int height=(moves?384:382)-top;
   const int rowGap=moves?2:4;
-  constexpr int gap=4,right=508,commandLeft=270;
   const int left=moves?6:commandLeft, end=moves?right-52:right;
-  if(!moves && !unovan)native_message(canvas,{4,bandTop,commandLeft-8,bandHeight},nickname,style.look);
+  if(!moves){
+    if(nativeBox)native_message_text(canvas,bandTop,commandLeft-4,nickname);
+    else message(canvas,{4,top,commandLeft-8,height},nickname,style.look);
+  }
   const int cellW=(end-left-gap)/2,cellH=(height-rowGap)/2;
   Rect selected{};
   static const char* const labels[]={"FIGHT","BAG","POKéMON","RUN"};
@@ -597,11 +597,12 @@ void ds_draw_battle_strip(uint32_t* stage,const DsBattleStyle& style,const DsBat
       else if(unovan)unova_move_card(canvas,card,view.moves[i],view.pp[i],view.maxPp[i],enabled,style.look);
       else gen4_move_card(canvas,card,view.moves[i],view.pp[i],view.maxPp[i],enabled,style.look);
     }
-    else if(unovan)unova_command(canvas,card,style.look,style.actions[i].face,labels[i],enabled);
     else if(!platinum || !native_command(canvas,card,panelArt,i,enabled)){
       if(platinum)bevel(canvas,card,style.actions[i],enabled);
+      else if(unovan)unova_command_plate(canvas,card,style.look,style.actions[i],enabled);
       else family_plate(canvas,card,style.look,style.actions[i].face,enabled,false,style.actions[i].dark);
-      text2(canvas,{card.x+5,card.y+6,card.w-10,card.h-11},labels[i],enabled?white:0xa0a0a0,
+      const uint32_t ink=unovan?style.actions[i].face:white;
+      text2(canvas,{card.x+5,card.y+6,card.w-10,card.h-11},labels[i],enabled?ink:0xa0a0a0,
             platinum?style.actions[i].shadow:outline,true);
     }
     if(i==focus)selected=card;
@@ -609,7 +610,6 @@ void ds_draw_battle_strip(uint32_t* stage,const DsBattleStyle& style,const DsBat
   if(moves){
     const Rect back{end+gap,top,right-end-gap,height};
     if(platinum)bevel(canvas,back,style.actions[3],true);
-    else if(unovan)unova_command(canvas,back,style.look,style.actions[3].face,"",true);
     else family_plate(canvas,back,style.look,style.actions[3].face,true,false,style.actions[3].dark);
     const int x=back.x+back.w/2,y=back.y+back.h/2;
     pd_triangle(&canvas,x-13,y-9,18,PD_LEFT,white);
