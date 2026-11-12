@@ -25,6 +25,9 @@ interface StateSlots {
     fun requestSave(index: Int)
     fun requestLoad(index: Int)
 
+    /** Delete slot [index] and the files saved beside it (thumbnail, undo copy, cached data). */
+    fun requestDelete(index: Int)
+
     /** Undo the most recent save (restore the current slot's previous contents). */
     fun requestUndoSave()
 
