@@ -55,10 +55,11 @@ with tempfile.TemporaryDirectory(prefix='pd-host-') as d:
     # Each run moves the clock behind the save: that alone makes no new backup (only the save data counts).
     run(d,str(d/'roms/clock.gb'),'--frames','10');time.sleep(1.1);run(d,str(d/'roms/clock.gb'),'--frames','10')
     kept=list((d/'saves/pokedaisy-backups').glob('clock.gb.backup-*.sav'));assert len(kept)==1,kept
-    # The GBA ROM on the armGBA core: its red reaches the window.
+    # The GBA ROM on the armGBA core: its grey / olive one-pixel stripes reach the window.
     log=run(d,str(d/'roms/diagnostic.gba'),'--frames','120','--shot',str(d/'gba.png'))
     w,h,bpp,rows=png_pixels(d/'gba.png')
-    mid=rows[h//2][(w//2)*bpp:(w//2)*bpp+3];assert mid[0]>200 and mid[1]<60 and mid[2]<60,(mid,log[-500:])
+    row=rows[h//2];seen={tuple(row[i:i+3]) for i in range(0,w*bpp,bpp)}
+    assert any(r>120 and g>120 and b>120 for r,g,b in seen) and any(r>120 and g>120 and b<60 for r,g,b in seen),(seen,log[-500:])
     # DS maps the ROM from its path, so it also works above the host's 64 MiB buffer limit.
     with (d/'roms/diagnostic.nds').open('r+b') as nds:nds.truncate(65 << 20)
     # Select DS from the sorted list, save a state through the host menu, and return (QUIT asks: CANCEL, then QUIT).

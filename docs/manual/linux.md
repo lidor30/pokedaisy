@@ -196,7 +196,9 @@ one you're on, and the HUD's panels have a battle-style shadow, with an HP bar a
 party Pokémon.
 
 In a DS game the DS has every face and shoulder button, so L2 opens the companion and R2 switches the screens, and the
-game starts on one screen. `SETTINGS` > `HUD SIZE` there picks `MINI` or `LARGE`.
+game starts on one screen. The DS HUD has the same PC, BAG, WILD and COMPANION buttons as a GBA game's, and hides
+while the game shows text. `SETTINGS` > `HUD SIZE` there picks `SMALL`, `NORMAL` or
+`LARGE`, and the quick menu's `HUD` tile moves the cursor onto the HUD.
 
 ## The menu
 

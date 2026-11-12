@@ -1231,9 +1231,10 @@ static void hud_press(int id) {
  * where it is, where it went down, and last frame's state. */
 static bool touchDown, touchWas;
 static int touchX, touchY, touchX0, touchY0;
-/* Use Companion's logical size in every GBA view that can display it without downsampling. */
+/* Use Companion's logical size in a GBA view that shows it at a whole scale (the same on both axes), so the pixel font
+ * stays even; any other canvas draws the menu at its own size, 1:1. */
 static bool quick_use_menu_canvas(void) {
-  return PD_BE_IS_GBA() && CW >= menuW && CH >= menuH;
+  return PD_BE_IS_GBA() && menuW > 0 && menuH > 0 && CW % menuW == 0 && CH % menuH == 0 && CW / menuW == CH / menuH;
 }
 static int quick_width(void) { return quick_use_menu_canvas() ? menuW : CW; }
 static int quick_height(void) { return quick_use_menu_canvas() ? menuH : CH; }
@@ -1965,7 +1966,7 @@ RETRO_API void retro_run(void) {
       drawn = quick_draw(&qc, &game, quick, quickN, quickSel, settings.hudLook);
     if (drawn) {
       quick_finish(&qc);
-      blend_overlay(ovPixels, qc.w, qc.h, qc.w == CW && qc.h == CH ? 1 : 0, 0, 0);
+      blend_overlay(ovPixels, qc.w, qc.h, CW / qc.w, 0, 0);
     }
   } else {
     direct565 = messageFrames == 0;
