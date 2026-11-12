@@ -4,6 +4,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <string>
+#include <vector>
 #include "pk_nds_field.h"
 
 struct DsCompanion;
@@ -18,9 +19,12 @@ struct DsBattleView {
   int species=0;
   uint32_t personality=0;
   std::array<int,4> moves{},pp{};
+  std::array<int,4> maxPp{}; // 0 = not known (no base-PP table for this cart): the card shows PP alone
   bool enabled(int slot) const;
 };
 
+// Each move's base PP from the cart's own move table (ds_move_base_pp), for maxPp. An empty table: no maxPp.
+void ds_battle_set_base_pp(std::vector<uint8_t> table);
 // Call only after the exact supported ROM identity has been established.
 DsBattleView ds_read_battle(const PkNdsFieldGame*,uint32_t (*read32)(uint32_t),int scene);
 void ds_read_battle_companion(const PkNdsFieldGame*,uint32_t (*read32)(uint32_t),
