@@ -50,6 +50,8 @@ class Gen2DexTables(
     /** Polished Crystal: this build's ROM tables ([polishedCrystalAddrs]): its pages, body data, pics, pic sizes, palettes and
      * base data are by the species' table index ([Gen2Dex]'s polished branch); null = Crystal's formats. */
     val polished: IntArray? = null,
+    /** Height (a byte, dm) and weight (a word, hg) instead of Crystal's feet x 100 + inches and pounds x 10. */
+    val metricBody: Boolean = false,
 ) {
     private val dexNumbers: IntArray? = dexOrder?.let { o ->
         IntArray((o.maxOrNull() ?: 0) + 1).also { m -> o.forEachIndexed { i, s -> if (m[s] == 0) m[s] = i + 1 } }
@@ -161,6 +163,26 @@ val POKEDEX_CRYSTAL = PokedexTables(
 )
 
 val POKEDEX_CRYSTAL_LEGACY = POKEDEX_CRYSTAL.copy(gen2 = GEN2_DEX_CRYSTAL_LEGACY)
+
+/** German Crystal (Kristall): Crystal's tables moved, its pages metric with no "POKéMON" after the category. */
+val GEN2_DEX_CRYSTAL_DE = Gen2DexTables(
+    baseData = 0x14 to 0x540E,
+    dexEntryPointers = 0x11 to 0x436C,
+    dexEntryBanks = 0x11 to 0x4346,
+    picPointers = 0x48 to 0x4000,
+    unownPicPointers = 0x49 to 0x4000,
+    picsBanks = 0x14 to 0x51BE,
+    palettes = 0x02 to 0x68CE,
+    itemDescriptions = 0x72 to 0x4979,
+    tmHmMoves = 0x04 to 0x5671,
+    moveDescriptions = 0x0B to 0x4B55,
+    firstTm = 0xBF,
+    tmItems = gen2TmItemsCrystal,
+    metricBody = true,
+)
+val POKEDEX_CRYSTAL_DE = POKEDEX_CRYSTAL.copy(
+    gen2 = GEN2_DEX_CRYSTAL_DE, categorySuffix = "", metric = true, decimalPoint = '.', unitSpace = false,
+)
 
 /** Gold's and Silver's: the same tables over each version's own pages (two objects, so a dex cache never crosses them). */
 val POKEDEX_GOLD = POKEDEX_CRYSTAL.copy(gen2 = GEN2_DEX_GOLD_SILVER)
@@ -665,12 +687,18 @@ object Gen2Dex {
             val words = dictionary(rom, t)
             category = text(rom, e, words = words)
             o++
-            val height = u16(rom, o)     // feet x 100 + inches
-            lbs10 = u16(rom, o + 2)
-            heightIn = (height / 100) * 12 + height % 100
-            heightDm = Math.round(heightIn * 2.54 / 10).toInt()
-            weightHg = Math.round(lbs10 * 0.45359237).toInt()
-            description = text(rom, o + 4, pages = 2, words = words)
+            if (t.metricBody) {
+                heightDm = u8(rom, o)
+                weightHg = u16(rom, o + 1)
+                description = text(rom, o + 3, pages = 2, words = words)
+            } else {
+                val height = u16(rom, o)     // feet x 100 + inches
+                lbs10 = u16(rom, o + 2)
+                heightIn = (height / 100) * 12 + height % 100
+                heightDm = Math.round(heightIn * 2.54 / 10).toInt()
+                weightHg = Math.round(lbs10 * 0.45359237).toInt()
+                description = text(rom, o + 4, pages = 2, words = words)
+            }
         }
         return DexEntry(
             national = dex,

@@ -353,8 +353,8 @@ class TelemetrySampler {
             quetzalV1 = base?.quetzalV1 == true
             gen2Cfg?.let { activeGen2 = it }
             // A DS cart: its own text's language (NdsArt.names: a French Sacred Gold is an IPKE HeartGold, GitHub #230).
-            romLanguage = nativeCfg?.language ?: gen1Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language ?: dsLanguage ?: 'E'
-            romGameCode = nativeCfg?.gameCode ?: gen1Cfg?.gameCode ?: dsGameCode
+            romLanguage = nativeCfg?.language ?: gen1Cfg?.language ?: gen2Cfg?.language ?: NdsArt.names?.takeIf { kind?.isDsGame == true }?.language ?: dsLanguage ?: 'E'
+            romGameCode = nativeCfg?.gameCode ?: gen1Cfg?.gameCode ?: gen2Cfg?.gameCode ?: dsGameCode
             // Quetzal picks each kind of name's language from its own options (a few bytes a sample).
             quetzalNames = nativeCfg?.takeIf { it.quetzalPlacesDefault >= 0 }
                 ?.let { runCatching { readQuetzalNames(reader, it) }.getOrNull() } ?: QuetzalNames()
@@ -794,6 +794,7 @@ class TelemetrySampler {
             GAME_BOY_SUPPORT && hash == CRYSTAL_LEGACY_V1_3_1_SHA1 -> { kind = GameKind.CRYSTAL_LEGACY; gen2Cfg = GEN2_CRYSTAL_LEGACY }
             GAME_BOY_SUPPORT && gen1ConfigFor(hash) != null -> { kind = GameKind.YELLOW; gen1Cfg = gen1ConfigFor(hash) }
             hash in CRYSTAL_SHA1S && GAME_BOY_SUPPORT -> { kind = GameKind.CRYSTAL; gen2Cfg = GEN2_CRYSTAL }
+            GAME_BOY_SUPPORT && hash == CRYSTAL_DE_SHA1 -> { kind = GameKind.CRYSTAL; gen2Cfg = GEN2_CRYSTAL_DE }
             GAME_BOY_SUPPORT && hash == GOLD_SHA1 -> { kind = GameKind.GOLD; gen2Cfg = GEN2_GOLD }
             GAME_BOY_SUPPORT && hash == SILVER_SHA1 -> { kind = GameKind.SILVER; gen2Cfg = GEN2_SILVER }
             GAME_BOY_SUPPORT && crystalClearConfigFor(hash) != null -> { kind = GameKind.CRYSTAL_CLEAR; gen2Cfg = crystalClearConfigFor(hash) }
@@ -1172,6 +1173,8 @@ class TelemetrySampler {
         const val CRYSTAL_REV1_SHA1 = "f2f52230b536214ef7c9924f483392993e226cfb"
         const val CRYSTAL_AU_SHA1 = "a0fc810f1d4e124434f7be2c989ab5b5892ddf36"
         val CRYSTAL_SHA1S = setOf(CRYSTAL_SHA1, CRYSTAL_REV1_SHA1, CRYSTAL_AU_SHA1)
+        // Pokémon Kristall-Edition (Germany): English Crystal's code translated, its own ROM tables (GEN2_CRYSTAL_DE).
+        const val CRYSTAL_DE_SHA1 = "accb584293ba056152f1fd908439b019017ff2fe"
 
         // Pokémon Gold and Silver (USA, Europe): pret/pokegold builds both byte for byte.
         const val GOLD_SHA1 = "d8b8a3600a465308c9953dfa04f0081c05bdcb94"
@@ -1228,7 +1231,7 @@ class TelemetrySampler {
 
         /** The Game Boy / Color carts the companion reads ([CompanionSupport] checks imports against it). */
         val SUPPORTED_GB_SHA1S = setOf(YELLOW_SHA1, YELLOW_DE_SHA1, YELLOW_FR_SHA1, YELLOW_IT_SHA1, YELLOW_ES_SHA1, RED_SHA1, BLUE_SHA1) +
-            CRYSTAL_SHA1S + CRYSTAL_CLEAR_SHA1S + PRISM_V0_95_254_SHA1 + GOLD_SHA1 + SILVER_SHA1 + POLISHED_CRYSTAL_SHA1S +
+            CRYSTAL_SHA1S + CRYSTAL_DE_SHA1 + CRYSTAL_CLEAR_SHA1S + PRISM_V0_95_254_SHA1 + GOLD_SHA1 + SILVER_SHA1 + POLISHED_CRYSTAL_SHA1S +
             PURE_RED_V2_7_6_SHA1 + PURE_BLUE_V2_7_6_SHA1 + YELLOW_LEGACY_V1_0_10_SHA1 + CRYSTAL_LEGACY_V1_3_1_SHA1
 
         /**

@@ -15,6 +15,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — |
 | Gold / Silver (GBC) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — |
 | Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — |
+| Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — |
 | Crystal Legacy (GBC) | 1.3.1 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — |
 | Crystal Clear (GBC) | 2.5.11, 2.6.0 (4 builds) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — |
 | Prism (GBC) | 0.95 build 254 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | ✅ ¹⁶ | n/a | — | — | — |
@@ -112,6 +113,9 @@ change to any of the places listed under "Where it's decided" updates its rows h
    showed did nothing; a DOWN dropped as the move list opened used the wrong move), on Crystal rev 1 too: the Game Boy
    picks now steer on the menu read every frame (`GbPartySwitch.battleMenu`) and press again what was dropped, A
    included. A pick takes 15-31 frames.
+   German Crystal (Kristall) has Crystal's menus at its own columns (KMPF / PkMn / BEUTEL / FLUCHT from column 5, the
+   TAUSCH / STATUS / ZURÜCK menu at column 10: `Gen2Config.battleMenuLeft` / `switchMenuLeft`): reads checked on the
+   `crystal_de_battle*` fixtures, not yet through the controller against the running game.
    Gold / Silver have Crystal's battle menus (their own addresses, `GEN2_GOLD`): reads checked on the `gold_battle*` /
    `silver_battle` fixtures, the controls' timing not run on them.
    Red / Blue have Yellow's battle menus and menu variables (at Yellow's addresses, the cursor columns 9 / 15): their
@@ -182,6 +186,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
     New Bark Town (its name sign up), in and out of a house, the START menu, OPTION, SAVE, a wild battle and RUN: every
     map frame exact but those the game wrote VRAM or a palette in mid-frame. Crystal Clear (all four builds) has the same
     over its own tables: palette maps a byte per tile, 256 blocks, its compressed connected maps, its own object sprites.
+    German Crystal (Kristall) is English's rebuild but for one ROM address (SpriteMovementData, 0x4276 in bank 1): a walk on
+    Route 29 and its grass, 777 map frames, every one exact.
     The other languages' Yellows, Red / Blue, Gold / Silver, Prism and Polished Crystal aren't mapped yet (—).
 13. FLY, WILD ENCOUNTERS and PC anywhere on Red / Blue, Yellow (all five languages) and Crystal (rev 0, rev 1, Australia)
     are `GbField.kt`, each the game's own way in (pret/pokered's, pokeyellow's and pokecrystal's sources; the European
@@ -198,6 +204,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
     from PACK, Yellow's FLY to Vermilion from MAP. The European Yellows and Red / Blue have no EXPAND scene, so their PC /
     FLY go by RAM alone (the walk counter, wFontLoaded's text box bit, the joypad and warp flags). FLY's list is the game's
     own (Gen 1: the visited towns in town map order; Crystal: the visited flypoints of the region the Fly map would show).
+    German Crystal (Kristall, `GbField.CrystalDe`): English's RAM and scripts, RunMemScript and the Flypoints table moved;
+    headless on its own save its PC opened ("CHRIS schaltet den PC ein.") and FLY landed at Rosalia City's Pokémon Center.
     Gold / Silver and the Crystal hacks: not yet (their RAM moved).
     PureRed / PureBlue (`GB_FIELD_PURE_RGB`, pureRGB's own source; both carts the same code): Red's ways in at its places -
     the PC routine in bank 0x33, called from 0x03D7 (its loop waits at OverworldLoop's `rst DelayFrame`), the wild data in

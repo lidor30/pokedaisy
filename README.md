@@ -131,6 +131,7 @@ shows a "not supported" notice).
 | Yellow Legacy (GB)             | 1.0.10                     |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ✅   |
 | Gold / Silver (GBC)            | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Crystal (GBC)                  | USA, USA/Europe rev 1, AU  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| Crystal (GBC)                  | DE (Kristall)              |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Crystal Legacy (GBC)           | 1.3.1                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ✅   |
 | Crystal Clear (GBC)            | 2.5.11, 2.6.0 (4 builds)   |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Prism (GBC)                    | 0.95 build 254             |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |

@@ -151,6 +151,8 @@ private fun crystalMusic(
 val GEN2_MUSIC_CRYSTAL = crystalMusic(TelemetrySampler.CRYSTAL_SHA1)
 val GEN2_MUSIC_CRYSTAL_REV1 = crystalMusic(TelemetrySampler.CRYSTAL_REV1_SHA1)
 val GEN2_MUSIC_CRYSTAL_AU = crystalMusic(TelemetrySampler.CRYSTAL_AU_SHA1)
+/** German Crystal (Kristall): Crystal's sound engine and songs; bank 0 moved PlayMusic and SaveScreen's park. */
+val GEN2_MUSIC_CRYSTAL_DE = crystalMusic(TelemetrySampler.CRYSTAL_DE_SHA1, playMusic = 0x3B81, spin = 0x289C)
 /** Crystal Legacy v1.3.1: Crystal's sound engine, songs and channels; bank 0 moved PlayMusic and SaveScreen's park. */
 val GEN2_MUSIC_CRYSTAL_LEGACY = crystalMusic(TelemetrySampler.CRYSTAL_LEGACY_V1_3_1_SHA1, playMusic = 0x3B62, spin = 0x287B)
 
@@ -219,7 +221,7 @@ private val GEN2_MUSIC_POLISHED_CRYSTAL = with(TelemetrySampler) {
 object Gen1Music {
     private val GAMES = listOf(GEN1_MUSIC_YELLOW, GEN1_MUSIC_YELLOW_DE, GEN1_MUSIC_YELLOW_FR, GEN1_MUSIC_YELLOW_IT, GEN1_MUSIC_YELLOW_ES,
         GEN1_MUSIC_RED, GEN1_MUSIC_BLUE, GEN1_MUSIC_PURE_RED, GEN1_MUSIC_PURE_BLUE, GEN1_MUSIC_YELLOW_LEGACY, GEN2_MUSIC_CRYSTAL, GEN2_MUSIC_CRYSTAL_REV1,
-        GEN2_MUSIC_CRYSTAL_AU, GEN2_MUSIC_CRYSTAL_LEGACY) +
+        GEN2_MUSIC_CRYSTAL_AU, GEN2_MUSIC_CRYSTAL_DE, GEN2_MUSIC_CRYSTAL_LEGACY) +
         GEN2_MUSIC_CRYSTAL_CLEAR + GEN2_MUSIC_GOLD_SILVER + GEN2_MUSIC_POLISHED_CRYSTAL
 
     fun forSha1(sha1: String): Gen1MusicTables? = GAMES.firstOrNull { it.sha1 == sha1 }
