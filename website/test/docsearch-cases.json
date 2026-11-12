@@ -91,6 +91,9 @@
     ["not supported", "supported-games"],
     ["phone", "devices"],
     ["3ds", "3ds"],
-    ["homebrew launcher", "3ds"]
+    ["homebrew launcher", "3ds"],
+    ["install linux", "linux-install"],
+    ["steam deck", "linux-install"],
+    ["portmaster", "linux-install"]
   ]
 }

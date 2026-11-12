@@ -10,6 +10,9 @@ PokeDaisy for Linux plays your Game Boy, Game Boy Color and Game Boy Advance gam
 quick menu and `EXPAND` as the libretro cores, on a Steam Deck, a Linux desktop and Linux handhelds. It reads your
 own ROMs and saves; it never comes with games.
 
+New to it? [Install on Linux, Steam Deck and handhelds](linux-install.md) takes you through the download and
+install step by step, in every language the app has.
+
 > [!WARNING]
 > This is a beta. The Android app stays the full PokeDaisy, and some devices below haven't been tried yet. If
 > something goes wrong, open an issue on [GitHub](https://github.com/lidor30/pokedaisy/issues) and say which file

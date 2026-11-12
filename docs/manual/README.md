@@ -72,14 +72,16 @@ fails the website build (`website/src/lib/docs.js` says which line). Links betwe
 
 ## Translated pages
 
-A few pages also come in the site's other eight languages (today `3ds.md`, the 3DS install guide):
+A few pages also come in the site's other eight languages (today the install guides: `3ds.md` for the 3DS and
+`linux-install.md` for Linux):
 `translations/<code>/<page>.md`, one per language code in `website/src/i18n/` (`ja`, `ko`, `fr`, `de`, `it`, `es`,
 `pt-br`, `pt`). Same format and writing rules, the same front matter but `order` / `keywords`, the same sections and
 screenshots in the same order (the tests check). Use the localized games' and consoles' own words; labels the app
 shows in English stay in English, in `code`. A link to another page goes to its English version. The website draws
 them at `/<code>/docs/<page>/`; the app's HELP stays English. Changing the English page means changing all eight.
 
-The 3DS guide's GitHub copies (`3ds/INSTALL.md`, `3ds/INSTALL.<code>.md`) are made from these pages: after an edit,
+The install guides' GitHub copies (`3ds/INSTALL.md`, `3ds/INSTALL.<code>.md`, and `linux/INSTALL*.md` the same way) are made
+from these pages: after an edit,
 `node website/scripts/install-guides.mjs` (the website's tests fail while they're stale). Japanese and Korean headings
 draw in the pixel fonts: rerun `website/scripts/gen_site_jp_font.py` / `gen_site_ko_font.py` after new characters.
 

@@ -26,7 +26,7 @@ Portuguese for Brazil and for Portugal), which covers every language a supported
 the root (`/compatibility/`), the others under a prefix (`/fr/compatibility/`, `/pt-br/`, `/pt/`): each page's
 body is a view in `src/views/`, drawn once per language by `src/pages/` (English) and `src/pages/[lang]/`. The
 manual (`/docs/`) and the release notes stay English, but for the few manual pages that have translations
-(`docs/manual/translations/<code>/<page>.md`, today the 3DS install guide): those are drawn at `/<code>/docs/<page>/`
+(`docs/manual/translations/<code>/<page>.md`, today the 3DS and Linux install guides): those are drawn at `/<code>/docs/<page>/`
 by `src/pages/[lang]/docs/[slug].astro`, link to each other (the page's language row, the picker, hreflang) and are
 checked like the manual (`test/docs.test.js`). The docs API and the app's HELP stay English.
 

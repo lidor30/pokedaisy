@@ -1,6 +1,7 @@
-// The 3DS install guide for GitHub: 3ds/INSTALL.md and 3ds/INSTALL.<lang>.md, made from the manual's page
-// (docs/manual/3ds.md) and its translations (docs/manual/translations/<lang>/3ds.md), so the two places never
-// drift. Edit the manual, then run this; test/docs.test.js fails while a file here is stale.
+// The install guides for GitHub, made from the manual's pages and their translations
+// (docs/manual/translations/<lang>/<page>.md), so the two places never drift: the 3DS one (docs/manual/3ds.md ->
+// 3ds/INSTALL.md and 3ds/INSTALL.<lang>.md) and the Linux one (docs/manual/linux-install.md -> linux/INSTALL*.md).
+// Edit the manual, then run this; test/docs.test.js fails while a file here is stale.
 //
 //   node scripts/install-guides.mjs          write them
 //   node scripts/install-guides.mjs --check  exit 1 if one is out of date
@@ -11,12 +12,16 @@ import YAML from 'yaml';
 import { LANGUAGES } from '../src/i18n/index.js';
 
 const SITE = 'https://pokedaisy.com';
-const SLUG = '3ds';
+// Each guide: its manual page and the repository folder its GitHub copies go in.
+const GUIDES = [
+  { slug: '3ds', dir: '3ds' },
+  { slug: 'linux-install', dir: 'linux' },
+];
 const repo = join(dirname(fileURLToPath(import.meta.url)), '../..');
 const manual = join(repo, 'docs/manual');
 
 const fileOf = (code) => (code === 'en' ? 'INSTALL.md' : `INSTALL.${code}.md`);
-const siteOf = (code) => (code === 'en' ? `${SITE}/docs/${SLUG}/` : `${SITE}/${code}/docs/${SLUG}/`);
+const siteOf = (slug, code) => (code === 'en' ? `${SITE}/docs/${slug}/` : `${SITE}/${code}/docs/${slug}/`);
 // What the line under the title says, in each language: the same guide on the website.
 const ON_SITE = {
   en: 'Also on the website',
@@ -30,13 +35,13 @@ const ON_SITE = {
   pt: 'Também no site',
 };
 
-function source(code) {
-  return code === 'en' ? join(manual, `${SLUG}.md`) : join(manual, 'translations', code, `${SLUG}.md`);
+function source(slug, code) {
+  return code === 'en' ? join(manual, `${slug}.md`) : join(manual, 'translations', code, `${slug}.md`);
 }
 
 /** One language's page as GitHub Markdown: a title, the language links, links and pictures pointed at their homes. */
-function guide(code, langs) {
-  const src = readFileSync(source(code), 'utf8');
+function guide(slug, code, langs) {
+  const src = readFileSync(source(slug, code), 'utf8');
   const m = /^---\n([\s\S]*?)\n---\n/.exec(src);
   const meta = YAML.parse(m[1]);
   const body = src
@@ -45,13 +50,13 @@ function guide(code, langs) {
     // Screenshots live with the manual.
     .replace(/\]\(shots\//g, '](../docs/manual/shots/')
     // The page's own anchors stay here; other manual pages are on the website (English).
-    .replace(new RegExp(`\\]\\(${SLUG}\\.md(#[a-z0-9-]+)?\\)`, 'g'), (_, a) => `](${a ?? `#`})`)
+    .replace(new RegExp(`\\]\\(${slug}\\.md(#[a-z0-9-]+)?\\)`, 'g'), (_, a) => `](${a ?? `#`})`)
     .replace(/\]\(([a-z0-9-]+)\.md(#[a-z0-9-]+)?\)/g, (_, page, a) => `](${SITE}/docs/${page}/${a ?? ''})`);
   const links = LANGUAGES.filter((l) => langs.includes(l.code))
     .map((l) => (l.code === code ? `**${l.name}**` : `[${l.name}](${fileOf(l.code)})`))
     .join(' · ');
   return [
-    `<!-- Made from docs/manual/${code === 'en' ? '' : `translations/${code}/`}${SLUG}.md by website/scripts/install-guides.mjs: edit that page, not this file. -->`,
+    `<!-- Made from docs/manual/${code === 'en' ? '' : `translations/${code}/`}${slug}.md by website/scripts/install-guides.mjs: edit that page, not this file. -->`,
     '',
     `# ${meta.title}`,
     '',
@@ -59,20 +64,22 @@ function guide(code, langs) {
     '',
     links,
     '',
-    `${ON_SITE[code]}: ${siteOf(code)}`,
+    `${ON_SITE[code]}: ${siteOf(slug, code)}`,
     '',
     body,
     '',
   ].join('\n');
 }
 
-/** { '3ds/INSTALL.md': text, ... } for English and every translation the manual has. */
+/** { '3ds/INSTALL.md': text, 'linux/INSTALL.md': text, ... } for English and every translation the manual has. */
 export function installGuides() {
-  const translated = existsSync(join(manual, 'translations'))
-    ? readdirSync(join(manual, 'translations')).filter((c) => existsSync(source(c)))
-    : [];
-  const langs = ['en', ...translated];
-  return Object.fromEntries(langs.map((code) => [`3ds/${fileOf(code)}`, guide(code, langs)]));
+  const codes = existsSync(join(manual, 'translations')) ? readdirSync(join(manual, 'translations')) : [];
+  return Object.fromEntries(
+    GUIDES.flatMap(({ slug, dir }) => {
+      const langs = ['en', ...codes.filter((c) => existsSync(source(slug, c)))];
+      return langs.map((code) => [`${dir}/${fileOf(code)}`, guide(slug, code, langs)]);
+    }),
+  );
 }
 
 /** The guides whose file on disk isn't what installGuides() makes. */

@@ -73,6 +73,6 @@ test('translated pages parse, match an English page and keep its screenshots', (
   for (const [slug, langs] of bySlug) assert.deepEqual([...langs].sort(), [...PREFIXED].sort(), `${slug}.md's translations`);
 });
 
-test('the 3DS install guides on GitHub (3ds/INSTALL*.md) match the manual', () => {
+test('the install guides on GitHub (3ds/INSTALL*.md, linux/INSTALL*.md) match the manual', () => {
   assert.deepEqual(staleInstallGuides(), [], 'run node website/scripts/install-guides.mjs');
 });
