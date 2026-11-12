@@ -188,6 +188,27 @@ val POKEDEX_CRYSTAL_DE = POKEDEX_CRYSTAL.copy(
 val POKEDEX_GOLD = POKEDEX_CRYSTAL.copy(gen2 = GEN2_DEX_GOLD_SILVER)
 val POKEDEX_SILVER = POKEDEX_CRYSTAL.copy(gen2 = GEN2_DEX_GOLD_SILVER)
 
+/** German Gold / Silver: English's tables, a few moved; their pages metric, as Kristall's. */
+val GEN2_DEX_GOLD_SILVER_DE = Gen2DexTables(
+    baseData = 0x14 to 0x5B00,
+    dexEntryPointers = 0x11 to 0x4354,
+    dexEntryBanks = 0x11 to 0x4354,   // unused: [dexEntryFirstBank]
+    picPointers = 0x12 to 0x4000,
+    unownPicPointers = 0x1F to 0x4000,
+    picsBanks = 0x14 to 0x586D,       // unused: [picBankFixes]
+    palettes = 0x02 to 0x6D3D,
+    itemDescriptions = 0x6E to 0x4000,
+    tmHmMoves = 0x04 to 0x5A5D,
+    moveDescriptions = 0x6D to 0x4000,
+    firstTm = 0xBF,
+    tmItems = gen2TmItemsCrystal,
+    dexEntryFirstBank = 0x68,
+    picBankFixes = 0x14 to 0x586D,
+    metricBody = true,
+)
+val POKEDEX_GOLD_DE = POKEDEX_CRYSTAL_DE.copy(gen2 = GEN2_DEX_GOLD_SILVER_DE)
+val POKEDEX_SILVER_DE = POKEDEX_CRYSTAL_DE.copy(gen2 = GEN2_DEX_GOLD_SILVER_DE)
+
 /**
  * Crystal Clear v2.6.0 (both builds): Crystal's tables moved (found by their contents and the code that reads them,
  * checked in Gen2ArtTest on every build), the pics' pointers where Crystal has them; its text packed with a

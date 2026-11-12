@@ -110,6 +110,9 @@ object GameTitles {
         // pret/pokegold's roms.sha1.
         "d8b8a3600a465308c9953dfa04f0081c05bdcb94" to "Pokémon Gold",
         "49b163f7e57702bc939d642a18f591de55d92dae" to "Pokémon Silver",
+        // Germany.
+        "9254195d461ea942eaaa08cc4b83de3cf82aea0d" to "Pokémon Goldene Edition",
+        "8ecc58d621faaedf2a934bd2583d527220df7bb9" to "Pokémon Silberne Edition",
     )
 
     /** Hacks (and the Game Boy ones): the library's HACK tag. */
@@ -294,7 +297,8 @@ object GameTitles {
 
     /** Color games with a dual-mode header (0x80) that the companion knows. Yellow says the same but is a GB game. */
     private val COLOR_DUAL: Set<String>
-        get() = TelemetrySampler.POLISHED_CRYSTAL_SHA1S + TelemetrySampler.GOLD_SHA1 + TelemetrySampler.SILVER_SHA1
+        get() = TelemetrySampler.POLISHED_CRYSTAL_SHA1S + TelemetrySampler.GOLD_SHA1 + TelemetrySampler.SILVER_SHA1 +
+            TelemetrySampler.GOLD_DE_SHA1 + TelemetrySampler.SILVER_DE_SHA1
 
     /** [rom]'s [RomCategory] (reads its header; [sha1] when [identify] hashed it). A Pokémon cart hashed but known as
      * neither retail nor a hack is a hack too (an unsupported one); a cart nobody hashes is its platform's. */

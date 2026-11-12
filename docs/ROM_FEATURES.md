@@ -14,6 +14,7 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Red / Blue (GB) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — |
 | PureRed / PureBlue (GB) | 2.7.6 | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | n/a | — | — |
 | Gold / Silver (GBC) | USA/Europe | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — |
+| Gold / Silver (GBC) | DE (Goldene Edition, Silberne Edition) | n/a | ✅ | ✅ ¹ | ✅ ⁸ | — | — | — | n/a | n/a | n/a | n/a | — | n/a | — | — | — |
 | Crystal (GBC) | USA, USA/Europe rev 1, AU | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — |
 | Crystal (GBC) | DE (Kristall) | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — |
 | Crystal Legacy (GBC) | 1.3.1 | ✅ ¹² | ✅ | ✅ ¹ | ✅ ⁸ | — | ✅ ¹³ | — | n/a | n/a | ✅ ¹³ | ✅ ¹³ | — | n/a | — | — | — |
@@ -117,7 +118,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
    TAUSCH / STATUS / ZURÜCK menu at column 10: `Gen2Config.battleMenuLeft` / `switchMenuLeft`): reads checked on the
    `crystal_de_battle*` fixtures, not yet through the controller against the running game.
    Gold / Silver have Crystal's battle menus (their own addresses, `GEN2_GOLD`): reads checked on the `gold_battle*` /
-   `silver_battle` fixtures, the controls' timing not run on them.
+   `silver_battle` fixtures, the controls' timing not run on them. German Gold / Silver (Goldene / Silberne Edition) have
+   them at Kristall's columns (`GEN2_GOLD_DE`): reads checked on the `gold_de_battle*` / `silver_de_battle` fixtures.
    Red / Blue have Yellow's battle menus and menu variables (at Yellow's addresses, the cursor columns 9 / 15): their
    reads are checked on the `red_battle*` fixtures, the controls' timing wasn't run on them.
    PureRed / PureBlue keep Red's battle menus at Red's places (FIGHT / ITEM column 9, PkMn / RUN 15, the move list at
@@ -147,7 +149,8 @@ change to any of the places listed under "Where it's decided" updates its rows h
    Clear 2.5.11 share that RAM and code; Prism takes a menu press only if it spans two frames, so every switch press
    does. Gold / Silver have Crystal's party menus (CANCEL row, SWITCH menu, none after a faint): their reads are checked
    on the `gold_battle_*` fixtures and the faint's pick by pressing headless (an A on SWITCH took 6 frames after the ▶
-   showed), not through the controller. Polished Crystal's party menu is Crystal's (CANCEL row, A after a faint sends the
+   showed), not through the controller; German Gold's the same way on the `gold_de_battle_*` fixtures (A after the faint sent the
+   picked Pokemon in). Polished Crystal's party menu is Crystal's (CANCEL row, A after a faint sends the
    slot out) with its SWITCH / SUMMARY / CANCEL a column left (from (11, 12)); like Prism's it reads keys every other frame
    and its SWITCH menu takes A from 3 frames after its ▶ shows: reads checked on the `polished_crystal_battle_*` fixtures,
    and the switch run through the real controller against 3.2.3 (wild and trainer battles): from Bag's cell via PkMn

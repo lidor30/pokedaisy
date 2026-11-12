@@ -203,6 +203,16 @@ val GEN2_GOLD = Gen2Config(
 )
 val GEN2_SILVER = GEN2_GOLD.copy(pokedex = POKEDEX_SILVER)
 
+/** German Gold / Silver: English Gold's RAM; their own names ([GOLD_SILVER_DE_TEXT]), dex pages and Kristall's battle menu columns. */
+val GEN2_GOLD_DE = GEN2_GOLD.copy(
+    pokedex = POKEDEX_GOLD_DE,
+    language = 'D',
+    gameCode = "AAUD",
+    battleMenuLeft = 0x05,
+    switchMenuLeft = 0x0A,
+)
+val GEN2_SILVER_DE = GEN2_GOLD_DE.copy(pokedex = POKEDEX_SILVER_DE, gameCode = "AAXD")
+
 /**
  * Pokémon Crystal Clear (ShockSlayer's open-world hack of Crystal): v2.6.0 and v2.5.11, each in a Standard Colors and a
  * Color Filter build (the same code, other palettes), share this RAM. It was mapped from pokecrystal11.sym by

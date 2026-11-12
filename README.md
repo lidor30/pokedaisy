@@ -130,6 +130,7 @@ shows a "not supported" notice).
 | Yellow (GB)                    | DE / FR / IT / ES          |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Yellow Legacy (GB)             | 1.0.10                     |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ✅   |
 | Gold / Silver (GBC)            | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
+| Gold / Silver (GBC)            | DE (Goldene Edition, Silberne Edition) |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Crystal (GBC)                  | USA, USA/Europe rev 1, AU  |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Crystal (GBC)                  | DE (Kristall)              |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Crystal Legacy (GBC)           | 1.3.1                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   ✅   |
