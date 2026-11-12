@@ -77,7 +77,8 @@ static uint32_t crc32_of(const void* buf, size_t size) {
 // Frame Skip is Auto only so that fast-forward's unseen frames can be left undrawn (the sound status below): a frame
 // that is shown is always drawn. Player 1's save stays the frontend's (this file's), never armGBA's own folders. Its
 // mixer stays on the game's thread: the New 3DS's fourth core is the companion's draw thread and EXPAND's (one render
-// worker, on the third: ctr/host.c declines the second).
+// worker, on the third: ctr/host.c declines the second). Fast Flash Saves stays off here: it changes four bytes of the
+// ROM as the game is loaded, before the companion has taken the ROM's SHA-1 (pd_armgba_fast_flash_saves does it after).
 static const char* option_value(const char* key) {
     static const struct { const char* key; const char* value; } FIXED[] = {
         { "armgba_skip_bios", "enabled" },
@@ -518,6 +519,12 @@ void pd_armgba_jit_counts(uint32_t out[4]) {
     out[3] = (uint32_t) c.codeWrites;
 }
 #endif
+
+// armGBA's Fast Flash Saves (savedataSkipFlashTimer): the two routines return at once, found by their code and only
+// when each is in the ROM once. A game without them is left as it is.
+bool pd_armgba_fast_flash_saves(void) {
+    return E.loaded && savedataSkipFlashTimer(gba);
+}
 
 bool pd_armgba_recompiling(void) {
     return E.loaded && gba->jit != NULL;

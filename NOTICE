@@ -35,7 +35,7 @@ The app shows every license below in full under Settings > LICENSES.
   port contributors, Mozilla Public License 2.0 for the parts the 3DS build
   uses (src/, libretro/ and platform/3ds/source/; its Gambatte side, GPL-2.0, is
   left out) - https://github.com/MagnominusGit/armGBA (source of the build:
-  https://github.com/ratherDashing/armGBA/tree/3ds-v0.0.2-alpha). Parts of it
+  https://github.com/ratherDashing/armGBA/tree/3ds-v0.0.3-alpha). Parts of it
   follow mGBA's code and carry mGBA's copyright too. The 3DS port's armGBA glue
   (3ds/emu/pd_armgba*.c, 3ds/ctr/host.c) is based on ratherDashing's
   pokedaisy-3ds fork; third_party/patches/armgba-pokedaisy.patch (a BKPT hook in

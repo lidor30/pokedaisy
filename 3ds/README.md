@@ -2,7 +2,7 @@
 
 A homebrew port of PokeDaisy: the game runs on the top screen and the companion lives on the touch screen. GBA games
 run on **armGBA** (`third_party/armgba`: a GBA core with a recompiler for the 3DS's ARM11, at ratherDashing's
-`3ds-v0.0.2-alpha`), Game Boy and Game Boy Color games on **libmgba** (the same mGBA 0.10.5 submodule the Android app
+`3ds-v0.0.3-alpha`), Game Boy and Game Boy Color games on **libmgba** (the same mGBA 0.10.5 submodule the Android app
 uses). It is a rewrite, not a recompile - the Android app is Kotlin
 and Jetpack Compose, which the 3DS can't run - so this folder holds a small,
 portable C core that re-implements the companion's reading and drawing, plus a
