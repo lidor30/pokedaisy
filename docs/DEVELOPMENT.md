@@ -2345,6 +2345,12 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
   HealWarp records, `libretro/gen_flight.py`, `--check` in libretro.yml), its seen maps in the frontend's save directory
   (`pokedaisy/flight-area/<rom crc>-<save key>.txt`, the app's format), the row in the companion's SETTINGS
   (`pd_settings.flightAnywhere`, `host.hasFlightArea`). There ANYWHERE can't pause achievements: the frontend runs them.
+  The core flies the scenic FLY and FLY ON too (`host.flightSupported`: the compact SETTINGS list then has FLY STYLE /
+  FLIGHT AREA / FLY ON by QUICK MENU): FLY ON is the profile's words with `PK_FLIGHT_VEHICLE` set (`flight_configure_words`,
+  sent again when it changes, mid-flight too); a FLY pick under SCENIC routes with `linux/flight.c`'s `flight_here` /
+  `flight_destination` / `flight_route` over the config's flight record and FLIGHT AREA's maps (`scenic_job`, the 3DS's
+  flight_jobs), else the game's own FLY (no route, surfing, a config without the record: FireRed rev 0). MAP's TAKE OFF /
+  LAND is `PD_ACTION_FLIGHT` (`host.flightReady` / `host.flying`).
 - **Clouds** (pk_flight.c's flDrawClouds): while up, round-puff cumulus (flMakeClouds: clusters of domes on a wrapped 128 x 128
   map, 2 x 2 px a texel, read bilinear) drawn into the finished frame over the ground and shadow, under the bird: a white core
   and a thinner rim, bluer where the cloud thins below, at most 70% opaque, as thick as the bird is high. They slide by at

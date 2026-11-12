@@ -11,6 +11,7 @@
 
 #include "field_items.h"
 #include "flash.h"
+#include "flight.h"
 #include "fly.h"
 #include "gb_field.h"
 #include "polished_field.h"
@@ -581,6 +582,12 @@ static const struct pd_config *flashCfg;
 static int flashAsk;
 static bool freeFlight, takeOff;
 static int areaToldAt = -100000; // when the bird last turned at FLIGHT AREA's edge with a notice (frames)
+/* FLY ON and the scenic FLY (the 3DS's flight_configure / fly_to): the profile's words, sent again with MAKEOVER's vehicle
+ * when it changes (pk_flight takes a vehicle-only change mid-flight); a FLY pick waiting to be flown over the field (counts
+ * the frames it has waited for one the game can be called in), to its map section. The route is linux/flight.c's, over the
+ * config's flight record: a game whose config has none flies the classic way. */
+static const uint32_t *flightWords;
+static int flightVehicle, scenicAsk, scenicMapsec;
 static struct fly_targets flyT;
 static const char *flyNames[FLY_MAX_TOWNS];
 static int flyAsk, flySel, flyStage, flyMapsec, flyWait;
@@ -629,6 +636,73 @@ static bool polished_potion(int item) {
 
 
 static void snapshot(void) { pd_snapshot_read(&snap, &game, pd_lr_read_memory, core); }
+
+/* pk_flight told the profile's words with FLY ON's vehicle (again only when it changed). */
+static void flight_configure_words(void) {
+  if (!flightWords)
+    return;
+  uint32_t w[PK_FLIGHT_WORDS];
+  memcpy(w, flightWords, sizeof w);
+  flightVehicle = settings.flightVehicle >= 0 && settings.flightVehicle < FLIGHT_VEHICLES ? settings.flightVehicle : 0;
+  w[PK_FLIGHT_VEHICLE] = (uint32_t)flightVehicle;
+  pk_flight_configure(w, PK_FLIGHT_WORDS);
+}
+
+/* The scenic FLY can plan here: FREE FLIGHT, FLY STYLE SCENIC, and the config's flight record for linux/flight.c's route
+ * (retail FireRed rev 0 has a profile but no record yet: classic). */
+static bool scenic_ok(void) { return freeFlight && !settings.flyClassic && game.cfg && game.cfg->flightMapGroups; }
+
+/* FLIGHT AREA's seen maps as flight_route takes them (NULL = anywhere, or none known yet). */
+static const struct flight_area *scenic_area(void) {
+  static struct flight_area a;
+  if (settings.flightAnywhere || pd_flight_area_count() <= 0)
+    return NULL;
+  flight_area_clear(&a, 1);
+  for (int id = 0; id < PK_FLIGHT_AREA_BYTES * 8; id++)
+    if (pd_flight_area_has(id))
+      flight_area_add(&a, id);
+  return &a;
+}
+
+/* The scenic FLY to [scenicMapsec], between two frames (the 3DS's flight_jobs): up on the bird where the field joins
+ * here to there over seen maps, else the game's own FLY (a town past them, Saffron, surfing). */
+static void scenic_job(bool busy, bool battle) {
+  if (!scenicAsk)
+    return;
+  if (!pk_call_safe(core)) {
+    if (++scenicAsk > 120) {
+      scenicAsk = 0;
+      notice(fly_reason(FLY_FAILED));
+    }
+    return;
+  }
+  scenicAsk = 0;
+  snapshot();
+  enum fly_result gate = flight_check(core, game.cfg, romData, romLen, &snap, busy, battle);
+  if (gate != FLY_OK) {
+    notice(fly_reason(gate));
+    return;
+  }
+  pd_flight_area_sync(core, settings.flightAnywhere, true); // the maps up to date before the route is planned
+  static uint8_t route[FLIGHT_MAX_STEPS];
+  struct flight_spot here, dest;
+  int steps = -1;
+  if (flight_here(core, game.cfg, &here) &&
+      flight_destination(core, game.cfg, romData, romLen, scenicMapsec, &dest))
+    steps = flight_route(core, game.cfg, romData, romLen, &here, &dest, scenic_area(), route);
+  int code = steps < 0 ? PK_FLIGHT_NOT_NOW : pk_flight_take_off(core);
+  if (steps >= 0 && code == PK_FLIGHT_OK) {
+    pk_flight_route(route, steps);
+    return;
+  }
+  if (steps >= 0 && code != PK_FLIGHT_NOT_ON_FOOT) {
+    notice(flight_reason(code));
+    return;
+  }
+  flyMapsec = scenicMapsec; // no route, or surfing: the game's own FLY can
+  flyStage = 1;
+  flyWait = 0;
+}
 
 static int hud_wild_uncaught(const struct pd_game *g, const struct pd_snapshot *s) {
   struct pd_wild_set w;
@@ -1063,12 +1137,15 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   flashCfg = game.cfg && gba && flash_supported(game.cfg, rom, len) ? game.cfg : NULL;
   flashAsk = 0;
   freeFlight = takeOff = flightFrame = false;
+  flightWords = NULL;
+  scenicAsk = 0;
   pk_flight_set_call(pk_call);
   pk_flight_configure(NULL, 0);
   const struct pd_flight_area_cfg *areaCfg = NULL;
   for (size_t i = 0; flyCfg && i < sizeof flight_profiles / sizeof flight_profiles[0]; i++) {
     if (!strcmp(game.sha1, flight_profiles[i].sha1)) {
-      pk_flight_configure(flight_profiles[i].words, PK_FLIGHT_WORDS);
+      flightWords = flight_profiles[i].words;
+      flight_configure_words();
       areaCfg = &flight_profiles[i].area;
       freeFlight = true;
       break;
@@ -1107,6 +1184,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
   host.hasHud = PD_BE_IS_GBA() || wideSupported;
   host.hasExpand = true;
   host.hasFlightArea = freeFlight;
+  host.flightSupported = freeFlight; // FLY STYLE / FLIGHT AREA / FLY ON (SCENIC needs scenic_ok, else classic)
   host.itemCanUse = polishedActions ? polished_potion : NULL;
   host.expandGame = wideSupported;
   host.count = 1;
@@ -1123,6 +1201,7 @@ RETRO_API bool retro_load_game(const struct retro_game_info *g) {
  * the bike's registered item put back, a Game Boy action withdrawn), and EXPAND's RAM history is from before the jump. */
 static void layer_jump(void) {
   takeOff = flightFrame = false;
+  scenicAsk = 0;
   pk_flight_reset();
   pd_flight_area_resend(); // the loaded game may be another save: checked and sent again at the next sync
   if (wideSupported)
@@ -1464,8 +1543,13 @@ RETRO_API void retro_run(void) {
     else if (down(A) && flyT.count) {
       quickOpen = flyList = false;
       flyMapsec = flyT.towns[flySel];
-      flyStage = 1;
-      flyWait = 0;
+      if (scenic_ok()) {
+        scenicMapsec = flyMapsec; // FLY STYLE SCENIC: over the field, planned between two frames
+        scenicAsk = 1;
+      } else {
+        flyStage = 1;
+        flyWait = 0;
+      }
     }
   } else if (quickOpen && down(B)) {
     quickOpen = false;
@@ -1698,6 +1782,13 @@ RETRO_API void retro_run(void) {
       else if (polishedActions)
         notice("Potion unavailable");
       break;
+    case PD_ACTION_FLIGHT:
+      // MAP's TAKE OFF / LAND: run between two frames, the companion closed so the field is what's flown over.
+      if (freeFlight) {
+        takeOff = true;
+        companion = false;
+      }
+      break;
     case PD_ACTION_SETTINGS_CHANGED:
       pd_settings_save(&settings, settingsPath);
       pd_flight_area_resend(); // FLIGHT AREA may have flipped
@@ -1810,7 +1901,14 @@ RETRO_API void retro_run(void) {
     areaToldAt = frames;
     notice("You haven't been there yet.");
   }
-  if (takeOff) {
+  if (freeFlight && settings.flightVehicle != flightVehicle)
+    flight_configure_words(); // FLY ON picked: the next frame is drawn in it, even mid-flight
+  if (freeFlight)
+    scenic_job(flyBusy, flyBattle);
+  if (takeOff && freeFlight && pk_flight_state() != PK_FLIGHT_IDLE) {
+    takeOff = false;
+    pk_flight_land(); // MAP's LAND: the bird finds the nearest ground
+  } else if (takeOff) {
     takeOff = false;
     snapshot();
     enum fly_result gate = fly_gate(core, flyCfg, romData, romLen, flyBusy, flyBattle);
@@ -1959,6 +2057,8 @@ RETRO_API void retro_run(void) {
     ui.focusId = focusId;
     host.ffOn = false;
     host.hasState = false;
+    host.flightReady = freeFlight && fly_flyer(&snap) >= 0; // MAP's TAKE OFF / LAND
+    host.flying = freeFlight && pk_flight_state() != PK_FLIGHT_IDLE;
     memset(cvs, 0, (size_t)CW * CH * sizeof *cvs);
     // Use the Dex's compact font throughout the GBC Companion. Restore the cart font for the in-game HUD.
     const bool gen2 = game.cfg && game.cfg->gb && game.cfg->gb->gen == 2;
