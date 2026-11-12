@@ -56,12 +56,12 @@ class C:
             for x in range(x0, x1 + 1):
                 self.put(x, y, c, front)
 
-    def oval(self, cx, cy, rx, ry, fn, front=False):
+    def oval(self, cx, cy, rx, ry, fn, front=False, edge=1.0):
         for y in range(int(cy - ry) - 1, int(cy + ry) + 2):
             for x in range(int(cx - rx) - 1, int(cx + rx) + 2):
                 u, v = (x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry
                 d = u * u + v * v
-                if d <= 1:
+                if d <= edge:
                     c = fn(d, u, v)
                     if c: self.put(x, y, c, front)
 
@@ -91,14 +91,22 @@ class C:
             if src in self.front: self.front.add(q)
 
 
-def wheel_side(cv, cx, cy, rx=4.5, ry=2.6, front=False):
-    """A wheel seen from the side and a little above: a flat oval, its rim an inner oval, the top of the tyre lit."""
-    def f(d, u, v):
-        if d > 0.42:
-            return TIRE[1] if v < -0.35 else TIRE[0]
-        return RIM[1] if v < 0 else RIM[0]
-    cv.oval(cx, cy, rx, ry, f, front)
-    cv.put(int(cx), int(cy), STEEL[0], front)
+def wheel_side(cv, cx, top, rows, front=False):
+    """A wheel seen from the side and a little above, drawn row by row ([rows]: each row's width, centred on [cx]) so it
+    rounds off at the bottom as at the top - an oval's last row and the outline under it, both as wide, read as a flat
+    tyre. The tyre's top lit, the rim an inner oval, a dark hub."""
+    n = len(rows)
+    for i, w in enumerate(rows):
+        y = top + i
+        x0 = int(round(cx - w / 2))
+        for x in range(x0, x0 + w):
+            inner = 0 < i < n - 1 and abs(x + 0.5 - cx) < w / 2 - 1.5
+            if inner:
+                c = RIM[1] if i < n / 2 else RIM[0]
+            else:
+                c = TIRE[1] if i < n / 2 - 1 else TIRE[0]
+            cv.put(x, y, c, front)
+    cv.put(int(cx - 0.5), top + n // 2 - (1 if n % 2 == 0 else 0), STEEL[0], front)
 
 
 def wheel_end(cv, cx, cy, rx=1.6, ry=3.2, front=True):
@@ -116,8 +124,8 @@ def ramp_top(ramp, y, top):
 
 def moto_side():
     cv = C()
-    wheel_side(cv, 11.5, 34.0, 3.7, 2.5)
-    wheel_side(cv, 29.0, 34.0, 3.7, 2.5)
+    wheel_side(cv, 12, 31, [4, 6, 8, 8, 6, 4])
+    wheel_side(cv, 29, 31, [4, 6, 8, 8, 6, 4])
     # swingarm and fork
     for i in range(6): cv.put(12 + i, 33 - i // 3, STEEL[1])
     for i in range(6): cv.put(29 - i // 2, 33 - i, STEEL[2])
@@ -166,11 +174,13 @@ def moto_front(back=False):
 
 def scooter_side():
     cv = C()
-    wheel_side(cv, 12.5, 34.5, 3.4, 2.1)
-    wheel_side(cv, 28.0, 34.5, 3.4, 2.1)
+    wheel_side(cv, 13, 32, [4, 6, 6, 6, 4])
+    wheel_side(cv, 28, 32, [4, 6, 6, 6, 4])
     # the rear body: a low rounded shell, lit on top
     cv.oval(13, 30.5, 6.5, 3.2, lambda d, u, v: ramp_top(MINT, int(30.5 + v * 3.2), 27) if v < 0.5 else MINT[0])
     cv.put(6, 30, TAIL)
+    # the exhaust, low under the rear shell
+    for x in range(7, 12): cv.put(x, 33, STEEL[2] if x > 7 else STEEL[1])
     # the floorboard seen from above: a flat cream deck
     cv.rect(18, 30, 24, 31, CREAM[2]); cv.rect(18, 32, 24, 32, MINT[0])
     # leg shield, slanting forward from under the handlebar, and the front fender over the wheel
@@ -190,6 +200,7 @@ def scooter_front(back=False):
     if back:
         cv.oval(20, 31, 6, 3, lambda d, u, v: ramp_top(MINT, int(31 + v * 3), 28), front=True)
         cv.put(19, 31, TAIL, True); cv.put(20, 31, TAIL, True)
+        cv.rect(23, 33, 24, 33, STEEL[2], front=True)   # the exhaust's end
     else:
         cv.poly([(14, 28), (26, 28), (25, 33), (15, 33)], lambda x, y: ramp_top(MINT, y, 28), front=True)
         # the handlebar across, its grips under the hands, the headset light in the middle
@@ -208,14 +219,50 @@ def leg_side(floor=False):
     return [(x, y, NAVY) for x, y in pts] + [(x, y, SHOE) for x, y in shoe]
 
 
+# ----- exhaust smoke -----
+# Puffs from the exhaust, a sprite of their own behind the vehicle (pk_wide.c's ride): 16 x 8 frames in the vehicle's own
+# palette, the first six seen from the side (drifting back and up, growing, thinning out), the next six from behind (drifting
+# down and out, toward us). Two puffs half a cycle apart, so the cycle runs on without a gap.
+SMOKE_W, SMOKE_H, SMOKE_STEPS = 16, 8, 6
+SMOKE = [(206, 210, 222), (238, 240, 246)]
+
+
+def smoke_frames():
+    frames = []
+    for side in (True, False):
+        for k in range(SMOKE_STEPS):
+            px = {}
+            for off in (0, SMOKE_STEPS // 2):
+                t = ((k + off) % SMOKE_STEPS) / SMOKE_STEPS
+                r = 1.1 + t * 1.9
+                if side:
+                    cx, cy = 2.0 + t * 10.5, 5.4 - t * 2.4
+                else:
+                    cx, cy = 4.5 + t * 3.0, 2.0 + t * 3.4
+                for y in range(SMOKE_H):
+                    for x in range(SMOKE_W):
+                        u, v = (x + 0.5 - cx) / (r * 1.2), (y + 0.5 - cy) / r
+                        if u * u + v * v > 1:
+                            continue
+                        if t > 0.66 and (x + y + k) % 2:   # thinning out
+                            continue
+                        px[(x, y)] = SMOKE[1] if v < 0.1 or t > 0.5 else SMOKE[0]
+            frames.append(px)
+    return frames
+
+
 # The views in the order RideOn.kt reads them (the bike sheet's standing frames: south, north, west); the art above is
 # drawn in a 40 x 44 box whose (4, 4) is the frame's top left, the side facing east (mirrored here to the sheet's west).
 VIEWS = ("south", "north", "west")
 VIEW_H = 40   # the views reach 8 rows below the rider's 32 x 32 frame (the wheels): the sprite is 32 x 64
 CUT = {"south": 25, "north": 25, "west": 24}   # the rider's last row kept (frame rows)
+# exhaust: where the smoke's 16 x 8 sprite goes in each view (south, north, west: its top left in the view's 32 x 40, as
+# stored - west mirrored), or None: from the front the smoke is behind the vehicle.
 VEHICLES = [
-    dict(name="MOTORCYCLE", south=lambda: moto_front(), north=lambda: moto_front(True), west=lambda: moto_side(), legs=leg_side()),
-    dict(name="SCOOTER", south=lambda: scooter_front(), north=lambda: scooter_front(True), west=lambda: scooter_side(), legs=leg_side(True)),
+    dict(name="MOTORCYCLE", south=lambda: moto_front(), north=lambda: moto_front(True), west=lambda: moto_side(), legs=leg_side(),
+         exhaust=[None, (17, 28), (26, 22)]),
+    dict(name="SCOOTER", south=lambda: scooter_front(), north=lambda: scooter_front(True), west=lambda: scooter_side(), legs=leg_side(True),
+         exhaust=[None, (17, 30), (28, 24)]),
 ]
 
 
@@ -265,6 +312,10 @@ def encode(v):
         for (c, flags) in px.values():
             if flags != 0x80:
                 counts[c] = counts.get(c, 0) + 1
+    smoke = smoke_frames()
+    for f in smoke:
+        for c in f.values():
+            counts[c] = counts.get(c, 0) + 1
     to = quantize(counts)
     pal = [None]
     index = {}
@@ -281,8 +332,16 @@ def encode(v):
                 pal.append(c)
             data[y * 32 + x] = index[c] | flags
         views.append(bytes(data))
+    sm = bytearray(SMOKE_W * SMOKE_H * len(smoke))
+    for i, f in enumerate(smoke):
+        for (x, y), c in f.items():
+            c = to[c]
+            if c not in index:
+                index[c] = len(pal)
+                pal.append(c)
+            sm[i * SMOKE_W * SMOKE_H + y * SMOKE_W + x] = index[c]
     assert len(pal) <= 16, v["name"]
-    return pal, views
+    return pal, views, bytes(sm)
 
 
 def write(out):
@@ -295,14 +354,16 @@ def write(out):
         "package com.pokedaisy.app.companion.data",
         "",
         "internal object RideVehiclesGen {",
-        "    class Art(val palette: IntArray, val views: List<ByteArray>, val cut: IntArray, val width: Int = 32)",
+        "    /** smoke: the exhaust's puffs, 16 x 8 frames (six from the side, six from behind), a byte a pixel (palette index);",
+        "     * exhaust: the smoke sprite's top left per view (south, north, west: x, y; -128 none). */",
+        "    class Art(val palette: IntArray, val views: List<ByteArray>, val cut: IntArray, val smoke: ByteArray, val exhaust: IntArray, val width: Int = 32)",
         "",
         "    private fun views(vararg b64: String) = b64.map { java.util.Base64.getDecoder().decode(it) }",
         "",
     ]
     names = []
     for v in VEHICLES:
-        pal, views = encode(v)
+        pal, views, smoke = encode(v)
         cols = ", ".join("0x%06X" % (c[0] << 16 | c[1] << 8 | c[2]) for c in pal[1:])
         lines.append(f"    val {v['name']} = Art(")
         lines.append(f"        intArrayOf(0, {cols}),")
@@ -311,6 +372,9 @@ def write(out):
             lines.append(f'            "{base64.b64encode(d).decode()}",')
         lines.append("        ),")
         lines.append(f"        intArrayOf({', '.join(str(CUT[w]) for w in VIEWS)}),")
+        lines.append(f'        java.util.Base64.getDecoder().decode("{base64.b64encode(smoke).decode()}"),')
+        ex = [c for e in v["exhaust"] for c in (e if e else (-128, -128))]
+        lines.append(f"        intArrayOf({', '.join(map(str, ex))}),")
         lines.append("    )")
         lines.append("")
         names.append(v["name"])
@@ -324,13 +388,24 @@ def preview(d):
     from PIL import Image
     os.makedirs(d, exist_ok=True)
     for v in VEHICLES:
-        pal, views = encode(v)
-        im = Image.new("RGB", (32 * 3 + 8, VIEW_H), (96, 160, 120))
+        pal, views, smoke = encode(v)
+        im = Image.new("RGB", (112 + 20 * 6, VIEW_H + 12), (96, 160, 120))
         for i, data in enumerate(views):
+            ex = v["exhaust"][i]
             for p in range(32 * VIEW_H):
                 b = data[p]
                 if b & 0x3F:
                     im.putpixel((i * 36 + p % 32, p // 32), pal[b & 0x3F])
+            if ex:   # the smoke's first frame of this view, behind the vehicle
+                f = 0 if i == 2 else SMOKE_STEPS
+                for q in range(SMOKE_W * SMOKE_H):
+                    x, y = i * 36 + ex[0] + q % SMOKE_W, ex[1] + q // SMOKE_W
+                    if smoke[f * SMOKE_W * SMOKE_H + q] and 0 <= x < im.width and 0 <= y < im.height and not (x - i * 36 < 32 and views[i][y * 32 + x - i * 36] & 0x3F if y < VIEW_H else False):
+                        im.putpixel((x, y), pal[smoke[f * SMOKE_W * SMOKE_H + q]])
+        for f in range(SMOKE_STEPS * 2):   # every smoke frame
+            for q in range(SMOKE_W * SMOKE_H):
+                if smoke[f * SMOKE_W * SMOKE_H + q]:
+                    im.putpixel((112 + (f % 6) * 20 + q % SMOKE_W, (f // 6) * 10 + q // SMOKE_W + 30), pal[smoke[f * SMOKE_W * SMOKE_H + q]])
         im.resize((im.width * 8, im.height * 8), Image.NEAREST).save(os.path.join(d, v["name"].lower() + ".png"))
 
 

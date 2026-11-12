@@ -14,7 +14,7 @@ basket's rim, ropes, frames, glints) are drawn again over them.
 Writes app/src/main/cpp/pk_flight_vehicles.h (palettes and indexed frames, a byte a pixel: palette index in the low 6
 bits, FRONT 0x40, SEAT 0x80) and, with --preview DIR, a PNG of every frame at 8x.
 
-Usage: scripts/gen_flight_vehicles.py [--preview DIR]
+Usage: scripts/gen_flight_vehicles.py [--preview DIR [--hero PNG]]
 """
 import os
 import sys
@@ -291,26 +291,21 @@ BLADE = [(52, 54, 62), (120, 124, 134), (176, 180, 188)]
 H_W, H_H = 56, 40
 
 
-def disc(cv, cx, cy, rx, ry, frame, blades=2):
-    """A spinning rotor / propeller seen from above at an angle: a faint dotted disc (its blur) and the blades where
-    they are this frame, edge pixels a shade lighter; drawn over everything (FRONT)."""
-    for y in range(int(cy - ry) - 1, int(cy + ry) + 2):
-        for x in range(int(cx - rx) - 1, int(cx + rx) + 2):
-            u, v = (x + 0.5 - cx) / rx, (y + 0.5 - cy) / ry
-            d = u * u + v * v
-            if d > 1:
-                continue
-            if d > 0.86 and (x + y) % 2 == 0:
-                cv.put(x, y, BLADE[2], 'disc', None, True)
-            elif (x * 3 + y * 5) % 11 == 0:
-                cv.put(x, y, BLADE[2], 'disc', None, True)
+def disc(cv, cx, cy, rx, ry, frame, blades=2, thick=1):
+    """A spinning rotor / propeller seen from above at an angle: the blades where they are this frame ([thick] pixels,
+    the extra ones below / beside them a shade lighter), their tips lighter still; drawn over everything (FRONT). No
+    blur dots (they read as grey specks floating round the blades)."""
     for k in range(blades):
-        ang = math.pi * (frame / 3.0 + k / blades)
+        ang = math.pi * (frame / 3.0 + k / blades + 1 / 12.0)   # never quite end on: an end-on blade read as a stick
+        across = (0, 1) if abs(math.cos(ang) * rx) >= abs(math.sin(ang) * ry) else (1, 0)
         for t in range(-40, 41):
             tt = t / 40.0
-            x = cx + math.cos(ang) * rx * tt
-            y = cy + math.sin(ang) * ry * tt
-            cv.put(int(round(x)), int(round(y)), BLADE[0] if abs(tt) < 0.85 else BLADE[1], 'blade', None, True)
+            x = int(round(cx + math.cos(ang) * rx * tt))
+            y = int(round(cy + math.sin(ang) * ry * tt))
+            tip = abs(tt) >= 0.85
+            for j in range(thick):
+                c = BLADE[1] if tip else (BLADE[0] if j == 0 else BLADE[1])
+                cv.put(x + across[0] * j, y + across[1] * j, c, 'blade', None, True)
 
 
 def helicopter(frame):
@@ -339,11 +334,11 @@ def helicopter(frame):
     cv.outline(['boom', 'fin', 'stab', 'skidb', 'strutb'])
     # the cabin: an egg lit from above, its front glass the seat
     def cab(x, y, u, v, n):
-        if u < -0.05 and -0.85 < v < 0.5:
+        if u < 0.12 and -0.85 < v < 0.5:
             cv.seat[y][x] = True
             c = H_GLASS.shade(n, ambient=0.3)
-            if 0 <= (x + y * 0.8) - 23 <= 1.2 and v < 0.1:
-                c = (232, 248, 252)
+            if 0 <= (x + y * 0.8) - 31.5 <= 1.2 and v > 0.2:
+                c = (232, 248, 252)   # a glint low in the glass, under the rider's face
             return c
         if 0.2 < v < 0.4 and u > -0.05:
             return H_GOLD.shade(n)
@@ -377,7 +372,7 @@ def helicopter(frame):
     cv.put(6, 34, H_STEEL.ramp[2], 'skid', H_STEEL, True)
     cv.outline(['skid', 'strut'])
     # the rotor: a wide disc over it all, the tail rotor a small one on the fin
-    disc(cv, 25.5, 7, 25, 5, frame)
+    disc(cv, 25.5, 7, 25, 5, frame, thick=2)
     tr = [[(50, 9), (50, 10), (50, 11), (50, 12), (50, 13)], [(48, 11), (49, 11), (50, 11), (51, 11), (52, 11)],
           [(48, 9), (49, 10), (50, 11), (51, 12), (52, 13)]][frame]
     for x, y in tr:
@@ -436,17 +431,17 @@ def zeppelin(frame):
         return CABIN.shade(n)
     box(cv, 'cabin', CABIN, 15, 24, 37, 39, cabin, round_=2)
     cv.outline(['cabin'])
-    for (x0, x1) in ((17, 20), (22, 31), (33, 35)):
-        for y in range(26, 37):
+    for (x0, x1) in ((17, 19), (21, 31), (33, 35)):
+        for y in range(26, 38):
             for x in range(x0, x1 + 1):
                 n = (0.0, (y - 31) / 7, 0.9)
                 cv.put(x, y, GLASS.shade(n, ambient=0.35), 'win', GLASS)
-                cv.seat[y][x] = (x0 == 22)
+                cv.seat[y][x] = (x0 == 21)
         for k in range(3):
-            if x0 + k + 1 <= x1:
+            if x0 + k + 1 <= x1 and x0 != 21:
                 cv.put(x0 + k + 1, 27 + k, (232, 248, 252), 'win', GLASS, True)
                 cv.seat[27 + k][x0 + k + 1] = False
-    for y in range(25, 38):
+    for y in range(25, 39):
         for x in range(16, 37):
             if cv.part[y][x] == 'cabin':
                 for dx, dy in ((1, 0), (-1, 0), (0, 1), (0, -1)):
@@ -472,40 +467,39 @@ P_TRIM = Mat(['#7a1c22', '#a8282a', '#d0403a', '#ec6450', '#f89a80'], '#4c1018',
 P_GLASS = Mat(['#3a6a88', '#5a94b4', '#84bcd8', '#b4e0f0'], '#1c3040')
 P_TYRE = Mat(['#1c1e24', '#30343c', '#484c56'], '#0c0e12')
 
-P_W, P_H = 60, 40
+P_W, P_H = 60, 44
 
 
 def plane(frame):
-    """A small propeller plane from the side and a little above: its wings spread out, the far one up behind the body,
-    the near one down in front of it (bigger: nearer), the tail plane the same, a bubble canopy (the seat), a spinning
-    propeller disc at the nose; its wheels tucked away in flight."""
+    """A small, chunky propeller plane from the side and a little above: a round body, its wings spread out (the far one
+    up behind the body, the near one down in front of it, bigger: nearer), the tail plane the same, a tall bubble canopy
+    (the seat, the rider's head and shoulders in it), a spinning propeller at the nose; its wheels tucked away in flight."""
     cv = Canvas(P_W, P_H)
     W, H = P_W, P_H
     top_lit = lambda x, y: (0.15, -0.3, 0.94)
     # far wing and far tail plane, behind the body
-    poly(cv, 'wingb', P_TRIM, [(20, 19), (31, 19), (33, 8), (27, 8)], light=lambda x, y: (0.1, -0.5, 0.8))
-    poly(cv, 'tailb', P_TRIM, [(47, 18), (54, 18), (55, 13), (52, 13)], light=lambda x, y: (0.1, -0.5, 0.8))
+    poly(cv, 'wingb', P_TRIM, [(19, 20), (33, 20), (35, 7), (27, 7)], light=lambda x, y: (0.1, -0.5, 0.8))
+    poly(cv, 'tailb', P_TRIM, [(46, 19), (54, 19), (56, 13), (52, 13)], light=lambda x, y: (0.1, -0.5, 0.8))
     cv.outline(['wingb', 'tailb'])
-    # the fuselage, lit along its top, a red line down its side
+    # the fuselage: round at the nose, tapering to the tail, lit along its top, a red line down its side
     def body(x, y, u, v, n):
-        if 0.25 < v < 0.5 and x > 9:
+        if 0.22 < v < 0.5 and x > 9:
             return P_TRIM.shade(n)
         if v < -0.5:
             return P_BODY.ramp[-1] if v < -0.8 else P_BODY.ramp[3]
         return None
-    ellipsoid(cv, 'body', P_BODY, 30, 20, 25, 4.6, body)
-    poly(cv, 'fin', P_TRIM, [(48, 17), (52, 7), (57, 7), (56, 17)], light=lambda x, y: (-0.4, -0.2, 0.9))
+    taper = lambda x, y: not (x > 36 and abs(y + 0.5 - 21) > 7.0 - (x - 36) * 0.19)
+    ellipsoid(cv, 'body', P_BODY, 29, 21, 25, 7.0, body, clip=taper)
+    poly(cv, 'fin', P_TRIM, [(46, 18), (51, 6), (57, 6), (56, 18)], light=lambda x, y: (-0.4, -0.2, 0.9))
     cv.outline(['body', 'fin'])
     # the canopy on top, the seat
     def glass(x, y, u, v, n):
-        if v > 0.6:
-            return None
         cv.seat[y][x] = True
         c = P_GLASS.shade(n, ambient=0.3)
-        if 0 <= (x + y * 0.9) - 25 <= 1.2 and v < 0.1:
-            c = (232, 248, 252)
+        if 0 <= (x - y * 0.9) - 11.5 <= 1.2 and v < -0.2 and x > 26:
+            c = (232, 248, 252)   # a glint on the canopy's back, behind the rider's head
         return c
-    ellipsoid(cv, 'canopy', P_GLASS, 21, 15.5, 6.5, 6, glass, clip=lambda x, y: y <= 18)
+    ellipsoid(cv, 'canopy', P_GLASS, 21.5, 15, 8, 7.5, glass, clip=lambda x, y: y <= 20)
     for y in range(H):
         for x in range(W):
             if cv.c[y][x] == (232, 248, 252):
@@ -518,21 +512,34 @@ def plane(frame):
                 cv.seat[y][x] = False
                 cv.front[y][x] = True
     # the near wing and tail plane, in front of the body, their tops in the light
-    poly(cv, 'wing', P_TRIM, [(18, 22), (31, 22), (37, 36), (27, 36)], light=top_lit, front=True)
-    for y in range(23, 36):
-        x = 18 + (y - 22) * 9 // 14 + 2
+    poly(cv, 'wing', P_TRIM, [(17, 24), (33, 24), (40, 41), (27, 41)], light=top_lit, front=True)
+    for y in range(25, 41):
+        x = 17 + (y - 24) * 10 // 17 + 2
         cv.put(x, y, P_TRIM.ramp[-1], 'wing', P_TRIM, True)   # a lit leading edge
-    poly(cv, 'tail', P_TRIM, [(46, 22), (54, 22), (57, 28), (51, 28)], light=top_lit, front=True)
+        cv.put(x + 1, y, P_TRIM.ramp[-1], 'wing', P_TRIM, True)
+    poly(cv, 'tail', P_TRIM, [(45, 23), (54, 23), (58, 31), (51, 31)], light=top_lit, front=True)
     cv.outline(['wing', 'tail'])
-    # the spinner and the propeller's disc
-    ellipsoid(cv, 'spinner', P_TRIM, 4.5, 20, 1.8, 2.2, front=True)
+    # the spinner and the propeller
+    ellipsoid(cv, 'spinner', P_TRIM, 4.5, 21, 2.6, 3.2, front=True)
     cv.outline(['spinner'])
-    disc(cv, 2.5, 20, 1.6, 9, frame, blades=1)
+    propeller(cv, 2, 21, 9, frame)
     for y in range(H):
         for x in range(W):
             if cv.part[y][x] in ('body', 'fin'):
                 cv.front[y][x] = True
     return cv
+
+
+def propeller(cv, x, cy, r, frame):
+    """A two-bladed propeller at the nose, seen from the side (its disc edge on): the blade upright at full length, then
+    shorter (turning toward us), then a stub at the hub (edge on), then shorter again - four frames that read as a spin.
+    No blur specks round it. Drawn over everything (FRONT)."""
+    half = [r, r * 2 // 3, 2, r * 2 // 3][frame]
+    line(cv, 'prop', BLADE[0], [(x, cy - half), (x, cy + half)], front=True)
+    if half > 2:
+        line(cv, 'prop', BLADE[1], [(x - 1, cy - half + 1), (x - 1, cy + half - 1)], front=True)
+    cv.put(x, cy - half, BLADE[1], 'prop', None, True)   # its tips a shade lighter
+    cv.put(x, cy + half, BLADE[1], 'prop', None, True)
 
 
 HERE = os.path.dirname(os.path.abspath(__file__))
@@ -546,11 +553,11 @@ VEHICLES = [
     dict(name="BALLOON", build=balloon, frames=3, sequence=[0, 0, 1, 0, 1, 1, 0, 0, 0, 1, 2, 2, 1, 0], ticks=4,
          player=(8, 23), anchor=(16, 32), turn=(0.0, 0.0), upDown=True),
     dict(name="HELICOPTER", build=helicopter, frames=3, sequence=[0, 1, 2, 1], ticks=2,
-         player=(7, 1), anchor=(24, 20), turn=(0.3, 0.26)),
+         player=(11, 3), anchor=(24, 20), turn=(0.3, 0.26)),
     dict(name="ZEPPELIN", build=zeppelin, frames=2, sequence=[0, 1], ticks=3,
-         player=(18, 15), anchor=(28, 22), turn=(0.2, 0.1)),
-    dict(name="PLANE", build=plane, frames=3, sequence=[0, 1, 2, 1], ticks=1,
-         player=(13, -4), anchor=(28, 20), turn=(0.3, 0.26)),
+         player=(20, 13), anchor=(28, 22), turn=(0.2, 0.1)),
+    dict(name="PLANE", build=plane, frames=4, sequence=[0, 1, 2, 3], ticks=2,
+         player=(14, -3), anchor=(28, 21), turn=(0.3, 0.26)),
 ]
 
 
@@ -637,17 +644,25 @@ def write_header():
     print(f"wrote {OUT}")
 
 
-def preview(d):
+def preview(d, hero=None):
+    """Every frame at 8x; with [hero] (a 16 x 32 PNG of a hero standing, facing west, clear around it) seated in it the way
+    pk_flight.c's flSeatPlayer does: over SEAT pixels only, FRONT pixels over them again."""
     from PIL import Image
     os.makedirs(d, exist_ok=True)
+    hp = Image.open(hero).convert("RGBA").load() if hero else None
     for v in VEHICLES:
         for f in range(v["frames"]):
             cv = v["build"](f)
             im = Image.new("RGB", (cv.w * 8, cv.h * 8), (120, 176, 96))
             p = im.load()
+            px0, py0 = v["player"]
             for y in range(cv.h):
                 for x in range(cv.w):
-                    c = cv.c[y][x] or ((150, 196, 120) if cv.seat[y][x] else None)
+                    c = cv.c[y][x] or ((150, 196, 120) if cv.seat[y][x] and not hp else None)
+                    if hp and cv.seat[y][x] and not cv.front[y][x] and 0 <= x - px0 < 16 and 0 <= y - py0 < 32:
+                        h = hp[x - px0, y - py0]
+                        if h[3]:
+                            c = h[:3]
                     if c is None:
                         continue
                     for yy in range(8):
@@ -658,5 +673,5 @@ def preview(d):
 
 if __name__ == "__main__":
     if "--preview" in sys.argv:
-        preview(sys.argv[sys.argv.index("--preview") + 1])
+        preview(sys.argv[sys.argv.index("--preview") + 1], sys.argv[sys.argv.index("--hero") + 1] if "--hero" in sys.argv else None)
     write_header()

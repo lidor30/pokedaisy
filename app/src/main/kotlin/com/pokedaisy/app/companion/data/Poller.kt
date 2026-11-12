@@ -818,6 +818,8 @@ class TelemetrySampler {
             GAME_BOY_SUPPORT && hash == CRYSTAL_DE_SHA1 -> { kind = GameKind.CRYSTAL; gen2Cfg = GEN2_CRYSTAL_DE }
             GAME_BOY_SUPPORT && hash == GOLD_SHA1 -> { kind = GameKind.GOLD; gen2Cfg = GEN2_GOLD }
             GAME_BOY_SUPPORT && hash == SILVER_SHA1 -> { kind = GameKind.SILVER; gen2Cfg = GEN2_SILVER }
+            GAME_BOY_SUPPORT && hash == GOLD_DE_SHA1 -> { kind = GameKind.GOLD; gen2Cfg = GEN2_GOLD_DE }
+            GAME_BOY_SUPPORT && hash == SILVER_DE_SHA1 -> { kind = GameKind.SILVER; gen2Cfg = GEN2_SILVER_DE }
             GAME_BOY_SUPPORT && crystalClearConfigFor(hash) != null -> { kind = GameKind.CRYSTAL_CLEAR; gen2Cfg = crystalClearConfigFor(hash) }
             GAME_BOY_SUPPORT && hash == PRISM_V0_95_254_SHA1 -> { kind = GameKind.PRISM; gen2Cfg = GEN2_PRISM }
             GAME_BOY_SUPPORT && hash in POLISHED_CRYSTAL_SHA1S ->
@@ -1202,6 +1204,9 @@ class TelemetrySampler {
         // Pokémon Gold and Silver (USA, Europe): pret/pokegold builds both byte for byte.
         const val GOLD_SHA1 = "d8b8a3600a465308c9953dfa04f0081c05bdcb94"
         const val SILVER_SHA1 = "49b163f7e57702bc939d642a18f591de55d92dae"
+        // Pokémon Goldene / Silberne Edition (Germany): English Gold / Silver's code translated (GEN2_GOLD_DE / GEN2_SILVER_DE).
+        const val GOLD_DE_SHA1 = "9254195d461ea942eaaa08cc4b83de3cf82aea0d"
+        const val SILVER_DE_SHA1 = "8ecc58d621faaedf2a934bd2583d527220df7bb9"
 
         // Pokémon Crystal Clear (ShockSlayer's open-world Crystal hack): v2.5.11 and v2.6.0, each a Standard Colors
         // build and a Color Filter one (the same code and tables, other palettes): one RAM, a version's ROM tables.
@@ -1254,7 +1259,7 @@ class TelemetrySampler {
 
         /** The Game Boy / Color carts the companion reads ([CompanionSupport] checks imports against it). */
         val SUPPORTED_GB_SHA1S = setOf(YELLOW_SHA1, YELLOW_DE_SHA1, YELLOW_FR_SHA1, YELLOW_IT_SHA1, YELLOW_ES_SHA1, RED_SHA1, BLUE_SHA1) +
-            CRYSTAL_SHA1S + CRYSTAL_DE_SHA1 + CRYSTAL_CLEAR_SHA1S + PRISM_V0_95_254_SHA1 + GOLD_SHA1 + SILVER_SHA1 + POLISHED_CRYSTAL_SHA1S +
+            CRYSTAL_SHA1S + CRYSTAL_DE_SHA1 + CRYSTAL_CLEAR_SHA1S + PRISM_V0_95_254_SHA1 + GOLD_SHA1 + SILVER_SHA1 + GOLD_DE_SHA1 + SILVER_DE_SHA1 + POLISHED_CRYSTAL_SHA1S +
             PURE_RED_V2_7_6_SHA1 + PURE_BLUE_V2_7_6_SHA1 + YELLOW_LEGACY_V1_0_10_SHA1 + CRYSTAL_LEGACY_V1_3_1_SHA1
 
         /**

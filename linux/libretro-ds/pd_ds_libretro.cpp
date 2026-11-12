@@ -288,7 +288,7 @@ void choose_layout() {
     // Present the last field image through the game's loading fades. The
     // native menu is shown only once the screen(s) it needs are drawn.
     if(fieldApp&&(bits&PK_NDS_FIELD_TOP_ONLY)&&!topBlank)
-      arrangement={{80,60,352,264},{},false,true,true};
+      arrangement={{0,0,512,384},{},false,true,true};
     else if(fieldApp&&!(bits&(PK_NDS_FIELD_TOP_ONLY|PK_NDS_FIELD_TOUCH_ONLY))&&!topBlank&&!bottomBlank)
       arrangement={{0,96,256,192},{256,96,256,192},false,true,true};
     else if(topBlank || (fieldApp&&!(bits&PK_NDS_FIELD_TOUCH_ONLY)))

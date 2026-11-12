@@ -60,7 +60,7 @@ DsArrangement ds_arrange(int mode,const DsScenePolicy& s,bool followed,bool manu
   else if(mode==DS_LARGE_SMALL){a.top={0,38,410,308};a.touch={410,269,102,77};}
   else if(mode==DS_PIP){a.touch={378,280,122,92};}
   if(floats&&!a.modal&&(manual||(s.touch&&!s.bottomBlank))){
-    a.floating=true;a.touch={80,60,352,264};a.useField=s.app;
+    a.floating=true;a.touch={0,0,512,384};a.useField=s.app;
   }
   return a;
 }
@@ -78,12 +78,12 @@ DsArrangement ds_arrange_one_screen(DsArrangement normal,const DsScenePolicy& sc
 
   const DsArrangement cachedField{{},{},false,false,true};
   const DsArrangement liveField{{0,0,512,384},{}};
-  const DsArrangement floatingTouch{{0,0,512,384},{80,60,352,264},true,false,fieldCached};
+  const DsArrangement floatingTouch{{0,0,512,384},{0,0,512,384},true,false,fieldCached};
   if(app){
     if(bits&PK_NDS_FIELD_TOUCH_ONLY){
       if(scene.touch&&!scene.bottomBlank)return floatingTouch;
     }else if(bits&PK_NDS_FIELD_TOP_ONLY){
-      if(!topBlank)return {{80,60,352,264},{},false,true,fieldCached};
+      if(!topBlank)return {{0,0,512,384},{},false,true,fieldCached};
     }else if((!topBlank&&!scene.bottomBlank)||scene.dualScreenLitFrames==12){
       return {{0,96,256,192},{256,96,256,192},false,true,fieldCached};
     }
