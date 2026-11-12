@@ -1066,7 +1066,7 @@ class EmulatorEngine(
         var paused = false
         var lastSample = 0L
         var lastBattleInputSample = 0L
-        var lastFfMusicFile: File? = null
+        val ffClipNotice = SteadyClipNotice()
         var requestedKey: String? = null
         // The song playing and when it started (elapsedRealtime), so a clip picks up
         // where the song is: from the top for a song that just started, further on
@@ -1162,6 +1162,7 @@ class EmulatorEngine(
                     if (sleeping) synchronized(sleepLock) {
                         while (sleeping && running && pendingSuspend == null) sleepLock.wait(SLEEP_POLL_MS)
                         sleeping = false
+                        ffClipNotice.forget()   // STEADY's player was released meanwhile (see the wake below)
                     } else Thread.sleep(16)
                     next = System.nanoTime()
                     continue
@@ -1247,6 +1248,7 @@ class EmulatorEngine(
                         if (sleeping) synchronized(sleepLock) {
                             while (sleeping && running && pendingSuspend == null) sleepLock.wait(SLEEP_POLL_MS)
                             sleeping = false
+                            ffClipNotice.forget()
                         } else Thread.sleep(2)
                         next = System.nanoTime()
                         continue
@@ -1316,11 +1318,16 @@ class EmulatorEngine(
                 servicePending()
                 if (sleeping) {
                     runCatching { track?.pause(); track?.flush() }
+                    val sleptAt = android.os.SystemClock.elapsedRealtime()
                     synchronized(sleepLock) {
                         while (sleeping && running && pendingSuspend == null) sleepLock.wait(SLEEP_POLL_MS)
                         sleeping = false
                     }
                     Log.i("pokedaisy", "sleep: woke")
+                    // STEADY's clip: the activity released its player as the screen went off, so it's told again (the
+                    // lid closed and opened on the Thor left FF silent). The song held meanwhile: its start moves on.
+                    ffClipNotice.forget()
+                    songStartedAt += android.os.SystemClock.elapsedRealtime() - sleptAt
                     if (!paused) runCatching { track?.play() }
                     // As after the audio pausing below: flush() put the play head back at 0. And the frames due while
                     // it slept are not owed.
@@ -1529,8 +1536,7 @@ class EmulatorEngine(
                 val clip = if (ffWanted && mode == FfMusicMode.STEADY && ffMusicKey != null) {
                     ffMusicCache.fileIfCached(ffMusicKey)
                 } else null
-                if (clip != lastFfMusicFile) {
-                    lastFfMusicFile = clip
+                if (ffClipNotice.changed(clip)) {
                     onFfMusicChanged?.invoke(
                         clip?.let { FfMusicPlayer.Clip(it, ffMusicCache.introIfCached(ffMusicKey!!), songStartedAt) },
                     )
