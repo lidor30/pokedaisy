@@ -3,9 +3,13 @@
 // block type added here needs drawing there too.
 import DocInline from './DocInline.astro';
 
-interface Props { blocks: any[]; site?: string }
-const { blocks } = Astro.props;
-const NOTE = { tip: 'TIP', note: 'NOTE', warning: 'HEADS UP' };
+import { msg, trFor } from '../i18n/index.js';
+
+/** [local]: slug -> path for links that stay on a translated page (its own anchors); others go to /docs/. */
+interface Props { blocks: any[]; site?: string; local?: Record<string, string> }
+const { blocks, local } = Astro.props;
+const tr = trFor(Astro.url);
+const NOTE = { tip: msg('TIP'), note: msg('NOTE'), warning: msg('HEADS UP') };
 ---
 {blocks.map((b) => {
   switch (b.t) {
@@ -14,11 +18,11 @@ const NOTE = { tip: 'TIP', note: 'NOTE', warning: 'HEADS UP' };
     case 'h3':
       return <h3 id={b.id} class="d-h3">{b.text}</h3>;
     case 'p':
-      return <p class="d-p"><DocInline spans={b.c} /></p>;
+      return <p class="d-p"><DocInline spans={b.c} local={local} /></p>;
     case 'ul':
-      return <ul class="d-list">{b.items.map((it) => <li><Astro.self blocks={it} /></li>)}</ul>;
+      return <ul class="d-list">{b.items.map((it) => <li><Astro.self blocks={it} local={local} /></li>)}</ul>;
     case 'ol':
-      return <ol class="d-list" start={b.start}>{b.items.map((it) => <li><Astro.self blocks={it} /></li>)}</ol>;
+      return <ol class="d-list" start={b.start}>{b.items.map((it) => <li><Astro.self blocks={it} local={local} /></li>)}</ol>;
     case 'img':
       return (
         <figure class="d-shot">
@@ -29,16 +33,16 @@ const NOTE = { tip: 'TIP', note: 'NOTE', warning: 'HEADS UP' };
     case 'note':
       return (
         <aside class={`d-note d-${b.kind}`}>
-          <span class="d-note-tag">{NOTE[b.kind]}</span>
-          <Astro.self blocks={b.c} />
+          <span class="d-note-tag">{tr(NOTE[b.kind])}</span>
+          <Astro.self blocks={b.c} local={local} />
         </aside>
       );
     case 'table':
       return (
         <div class="d-table-wrap">
           <table class="d-table">
-            <thead><tr>{b.head.map((c) => <th><DocInline spans={c} /></th>)}</tr></thead>
-            <tbody>{b.rows.map((r) => <tr>{r.map((c) => <td><DocInline spans={c} /></td>)}</tr>)}</tbody>
+            <thead><tr>{b.head.map((c) => <th><DocInline spans={c} local={local} /></th>)}</tr></thead>
+            <tbody>{b.rows.map((r) => <tr>{r.map((c) => <td><DocInline spans={c} local={local} /></td>)}</tr>)}</tbody>
           </table>
         </div>
       );

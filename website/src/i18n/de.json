@@ -367,5 +367,13 @@
   "Your trainer card, drawn like the game's, front and back.": "Dein Trainerpass, gezeichnet wie im Spiel, Vorder- und Rückseite.",
   "n/a": "entf.",
   "Nothing matches.": "Nichts gefunden.",
-  "Search games": "Spiele suchen"
+  "Search games": "Spiele suchen",
+  "PokeDaisy docs": "PokeDaisy-Doku",
+  "ALL PAGES": "ALLE SEITEN",
+  "DOCS HOME": "DOKU-START",
+  "ON THIS PAGE": "AUF DIESER SEITE",
+  "TIP": "TIPP",
+  "NOTE": "HINWEIS",
+  "HEADS UP": "ACHTUNG",
+  "Something wrong or missing here? <a href=\"{edit}\">Edit this page on GitHub</a> or <a href=\"{bug}\">tell us</a>.": "Ist hier etwas falsch oder fehlt etwas? <a href=\"{edit}\">Bearbeite diese Seite auf GitHub</a> oder <a href=\"{bug}\">sag uns Bescheid</a>."
 }

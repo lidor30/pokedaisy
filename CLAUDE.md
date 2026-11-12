@@ -2295,7 +2295,9 @@ got its companion, 2026-10-09).
 The site's demos and art never use real Pokémon / move / item names or the games' art (the user's rule).
 **Website languages** (2026-11-07, website/README.md's "Languages"): the app's nine (EN / JA / KO / FR / DE / IT / ES / pt-BR / pt-PT),
 English at the root, the rest under `/<code>/` (`src/views/` drawn by `src/pages/` and `src/pages/[lang]/`); the manual and
-release notes stay English. Site text goes through `tr()` / `msg()` with its eight translations in `src/i18n/<code>.json`
+release notes stay English, but for pages translated in all eight (`docs/manual/translations/<code>/`, `/<code>/docs/<page>/`: the 3DS and
+Linux install guides, `3ds.md` / `linux-install.md`, whose GitHub copies `3ds/INSTALL*.md` / `linux/INSTALL*.md` are made from them by
+`website/scripts/install-guides.mjs`: its `GUIDES` list). Site text goes through `tr()` / `msg()` with its eight translations in `src/i18n/<code>.json`
 (same writing rules: no dashes), else `test/i18n.test.js` fails; Japanese needs `website/scripts/gen_site_jp_font.py` for a
 new character, Korean `website/scripts/gen_site_ko_font.py` for a new syllable. The picker's choice is `localStorage` `pd-lang`, else the browser's language (on English pages only).
 **Website analytics** (`website/src/lib/analytics.js`, website/README.md's "Analytics"): anonymous GA4 counts, no cookies, a fixed

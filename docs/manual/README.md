@@ -70,6 +70,21 @@ That's the whole format: no HTML, no other blocks. The app draws every page nati
 fails the website build (`website/src/lib/docs.js` says which line). Links between pages use the file name
 (`library.md#hidden-games`), and broken links or anchors fail the build too.
 
+## Translated pages
+
+A few pages also come in the site's other eight languages (today the install guides: `3ds.md` for the 3DS and
+`linux-install.md` for Linux):
+`translations/<code>/<page>.md`, one per language code in `website/src/i18n/` (`ja`, `ko`, `fr`, `de`, `it`, `es`,
+`pt-br`, `pt`). Same format and writing rules, the same front matter but `order` / `keywords`, the same sections and
+screenshots in the same order (the tests check). Use the localized games' and consoles' own words; labels the app
+shows in English stay in English, in `code`. A link to another page goes to its English version. The website draws
+them at `/<code>/docs/<page>/`; the app's HELP stays English. Changing the English page means changing all eight.
+
+The install guides' GitHub copies (`3ds/INSTALL.md`, `3ds/INSTALL.<code>.md`, and `linux/INSTALL*.md` the same way) are made
+from these pages: after an edit,
+`node website/scripts/install-guides.mjs` (the website's tests fail while they're stale). Japanese and Korean headings
+draw in the pixel fonts: rerun `website/scripts/gen_site_jp_font.py` / `gen_site_ko_font.py` after new characters.
+
 ## Screenshots
 
 Screenshots come from ui-preview's docs render: the app's real screens with an invented save (no game's
@@ -81,6 +96,9 @@ cd ../ui-preview && gradle docsShots               # all of them, or -Ponly=comp
 ```
 
 They land in `shots/` under the shot's name. Look at every one before you reference it.
+
+The 3DS screens (`shots/3ds-*.png`) come from the 3DS port's library instead, drawn over made-up file names with
+no ROM or save read: `make -C 3ds docs-shots` (`3ds/desktop/pd_docs_shots.c`).
 
 ## Checking your work
 

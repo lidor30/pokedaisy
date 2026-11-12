@@ -15,7 +15,7 @@ CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Werror
 CORE_SRC := $(wildcard core/*.c)
 DEVKITARM_IMAGE := devkitpro/devkitarm:latest
 
-.PHONY: preview library-preview test-save 3ds-dev test-shiny test-roms test-gbguide test-gbdex test-dex test-font 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
+.PHONY: preview library-preview docs-shots test-save 3ds-dev test-shiny test-roms test-gbguide test-gbdex test-dex test-font 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
 
 $(BUILD)/pd_font_test: core/pd_canvas.c core/pd_canvas.h core/pd_font.h core/pd_font_gen.c test/font_test.c
 	@mkdir -p $(BUILD)
@@ -105,6 +105,15 @@ $(BUILD)/pd_library_preview: $(CORE_SRC) $(wildcard core/*.h) desktop/pd_library
 library-preview: $(BUILD)/pd_library_preview
 	@mkdir -p $(BUILD)/library-shots
 	$(BUILD)/pd_library_preview "$(LIBRARY_ROMS)" "$(LIBRARY_SAVES)" $(BUILD)/library-shots $(FIXTURES)/firered_vanilla "$(LIBRARY_ROMS)/Pokemon - FireRed Version (USA, Europe) (Rev 1).gba"
+
+# The install guide's screenshots (docs/manual/3ds.md): the library on made-up files, no ROM or save read.
+DOCS_SHOTS ?= ../docs/manual/shots
+$(BUILD)/pd_docs_shots: $(CORE_SRC) $(wildcard core/*.h) desktop/pd_docs_shots.c desktop/pd_png.c desktop/pd_png.h
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $(CORE_SRC) desktop/pd_docs_shots.c desktop/pd_png.c -lm
+
+docs-shots: $(BUILD)/pd_docs_shots
+	$(BUILD)/pd_docs_shots $(DOCS_SHOTS)
 
 # The save tools' core (pd_save.c) on real saves: read, written the game's way and read back, a move, the money, trades.
 $(BUILD)/pd_save_test: $(CORE_SRC) $(wildcard core/*.h) test/save_test.c

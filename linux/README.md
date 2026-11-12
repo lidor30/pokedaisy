@@ -10,6 +10,12 @@ own, the same as on any other frontend, and a change to them reaches this execut
 The host owns what a frontend owns: input, sound, pacing, the battery save and its backups, save states,
 fast-forward, rewind, the LCD mask and the game list.
 
+The step-by-step install guide for players is [INSTALL.md](INSTALL.md), in every language the app has: [日本語](INSTALL.ja.md),
+[한국어](INSTALL.ko.md), [Français](INSTALL.fr.md), [Deutsch](INSTALL.de.md), [Italiano](INSTALL.it.md),
+[Español](INSTALL.es.md), [Português (Brasil)](INSTALL.pt-br.md), [Português (Portugal)](INSTALL.pt.md). It's made from the
+manual's `docs/manual/linux-install.md` and its translations (also on pokedaisy.com/docs/linux-install/) by
+`website/scripts/install-guides.mjs`: edit the manual, then run that.
+
 ## Native build
 
 Requires C11, CMake 3.18+, SDL2 development headers / library, libdl, Python 3 for tests. Put the three cores beside the binary, or point `POCKET_CORE_DIR` at them.

@@ -367,5 +367,13 @@
   "Your trainer card, drawn like the game's, front and back.": "Votre carte dresseur, dessinée comme celle du jeu, recto et verso.",
   "n/a": "s.o.",
   "Nothing matches.": "Aucun résultat.",
-  "Search games": "Chercher un jeu"
+  "Search games": "Chercher un jeu",
+  "PokeDaisy docs": "Manuel de PokeDaisy",
+  "ALL PAGES": "TOUTES LES PAGES",
+  "DOCS HOME": "ACCUEIL DU MANUEL",
+  "ON THIS PAGE": "SUR CETTE PAGE",
+  "TIP": "ASTUCE",
+  "NOTE": "NOTE",
+  "HEADS UP": "ATTENTION",
+  "Something wrong or missing here? <a href=\"{edit}\">Edit this page on GitHub</a> or <a href=\"{bug}\">tell us</a>.": "Une erreur ou un oubli ici ? <a href=\"{edit}\">Modifiez cette page sur GitHub</a> ou <a href=\"{bug}\">dites-le-nous</a>."
 }

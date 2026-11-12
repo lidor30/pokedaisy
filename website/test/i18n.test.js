@@ -2,13 +2,18 @@
 // {placeholders} and links, reads dash-free like the manual, and Japanese has the pixel font's glyphs.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { collectKeys, keysIn } from '../scripts/i18n-keys.mjs';
 import {
   TABLES, PREFIXED, LANGUAGES, detectLanguage, langOfPath, stripLang, localePath, translate, isLocalizedPath,
 } from '../src/i18n/index.js';
 
 const keys = collectKeys();
+// The manual's translated pages (docs/manual/translations/<lang>/*.md) draw their headings in the pixel fonts too.
+const manualIn = (code) => {
+  const dir = new URL(`../../docs/manual/translations/${code}/`, import.meta.url);
+  return existsSync(dir) ? readdirSync(dir).filter((f) => f.endsWith('.md')).map((f) => readFileSync(new URL(f, dir), 'utf8')).join('') : '';
+};
 const placeholders = (s) => [...s.matchAll(/\{(\w+)\}/g)].map((m) => m[1]).sort();
 const tags = (s) => [...s.matchAll(/<\/?([a-z]+)[^>]*>/g)].map((m) => m[0]).sort();
 
@@ -41,7 +46,7 @@ for (const code of PREFIXED) {
 test('Japanese has the pixel font for every character it uses', () => {
   const font = readFileSync(new URL('../public/fonts/PixelMplusJP-site.ttf', import.meta.url));
   const have = cmap(font);
-  const text = Object.values(TABLES.ja).join('') + LANGUAGES.map((l) => l.name).join('');
+  const text = Object.values(TABLES.ja).join('') + manualIn('ja') + LANGUAGES.map((l) => l.name).join('');
   // Base.astro's @font-face unicode-range: what the browser draws with it rather than Pixel Operator.
   const jp = (c) => (c >= 0x3000 && c <= 0x30ff) || (c >= 0x3400 && c <= 0x4dbf) || (c >= 0x4e00 && c <= 0x9fff) || (c >= 0xff00 && c <= 0xffef);
   const lacking = [...new Set([...text].map((c) => c.codePointAt(0)).filter(jp))].filter((c) => !have.has(c));
@@ -51,7 +56,7 @@ test('Japanese has the pixel font for every character it uses', () => {
 test('Korean has the pixel font for every syllable it uses', () => {
   const font = readFileSync(new URL('../public/fonts/GalmuriKO-site.ttf', import.meta.url));
   const have = cmap(font);
-  const text = Object.values(TABLES.ko).join('') + LANGUAGES.map((l) => l.name).join('');
+  const text = Object.values(TABLES.ko).join('') + manualIn('ko') + LANGUAGES.map((l) => l.name).join('');
   // Base.astro's @font-face unicode-range.
   const ko = (c) => (c >= 0x3131 && c <= 0x318e) || (c >= 0xac00 && c <= 0xd7a3);
   const lacking = [...new Set([...text].map((c) => c.codePointAt(0)).filter(ko))].filter((c) => !have.has(c));

@@ -1,0 +1,19 @@
+---
+// A docs page in another language: docs/manual/translations/<lang>/<slug>.md (src/lib/docs.js's
+// loadTranslations). Only the pages translated so far; every other docs link goes to the English page.
+import DocPage from '../../../views/DocPage.astro';
+import { loadDocs, loadTranslations } from '../../../lib/docs.js';
+import { PREFIXED } from '../../../i18n/index.js';
+
+export function getStaticPaths() {
+  const docs = loadDocs();
+  const { pages, bySlug } = loadTranslations(docs, undefined, PREFIXED);
+  return pages.map((page) => ({
+    params: { lang: page.lang, slug: page.slug },
+    props: { page, docs, langs: bySlug.get(page.slug) },
+  }));
+}
+
+const { page, docs, langs } = Astro.props;
+---
+<DocPage page={page} docs={docs} langs={langs} />
