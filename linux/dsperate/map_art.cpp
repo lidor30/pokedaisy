@@ -518,3 +518,21 @@ std::vector<std::vector<uint32_t>> ds_hud_item_icons(const std::vector<uint8_t>&
     return icons;
   }catch(const std::exception& e){std::fprintf(stderr,"DS HUD item art: %s\n",e.what());return {};}
 }
+
+// Each move's base PP, from the cart's own move table (Platinum's pl_waza_tbl.narc, HeartGold / SoulSilver's a/0/1/1,
+// a 16-byte record per move with PP at +6; Black / White and their sequels' a/0/2/1, PP at +5). Checked against two
+// moves every one of these games gives 35 (Pound, Tackle); empty when the cart doesn't match.
+std::vector<uint8_t> ds_move_base_pp(const std::vector<uint8_t>& rom,DsGame game){
+ try{
+  const bool unova=ds_unova(game);
+  const auto narc=file(rom,unova?"/a/0/2/1":game==DsGame::Platinum?"/poketool/waza/pl_waza_tbl.narc":"/a/0/1/1");
+  const unsigned count=u16(narc,u16(narc,12)+8), at=unova?5:6;
+  std::vector<uint8_t> pp(count,0);
+  for(unsigned id=1;id<count;++id){
+   const auto record=member(narc,id);
+   if(record.size()>at)pp[id]=record[at];
+  }
+  if(count<=33 || pp[1]!=35 || pp[33]!=35)return {};
+  return pp;
+ }catch(const std::exception&){return {};}
+}

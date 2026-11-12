@@ -406,6 +406,7 @@ struct pd_ui {
     bool bagDetails;
     bool handheldDex, handheldParty;
     bool shoulderTabs; // handheld tab cycle includes More, without D-pad tab focus
+    bool hudLayoutFixed; // the host draws one HUD layout: the HUD page's LAYOUT row is N/A (the DS core)
     const struct pd_party_source* partySource;
     int summaryPage;
     bool pixelOff; // SCREEN doesn't offer PIXEL 1x: EXPAND can't hold its speed that wide

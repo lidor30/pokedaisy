@@ -149,8 +149,8 @@ are in NOTICE and the packaged licenses (mGBA, and armGBA and zlib for the GBA c
 The bundled DS core starts in its One Screen layout. L2 opens the Companion and R2 switches screens by default.
 Hold L2 to open Quick Menu. With SELECT as the host modifier, SELECT + Y toggles stylus mode and SELECT + D-pad/A
 moves or taps the stylus. DS host actions can be rebound separately in HOTKEYS (SELECT + R2 / L2 by default; with
-the modifier off they move to R3 / L3, since bare R2 / L2 belong to the core). Companion Settings → HUD SIZE switches
-among SMALL, NORMAL and LARGE. MINIMAL HUD controls which HUD elements are shown.
+the modifier off they move to R3 / L3, since bare R2 / L2 belong to the core). Companion Settings → HUD opens the shared HUD
+page (on or off, LOOK, SIZE and each part), as on the GB and GBA cores. MINIMAL HUD hides the party cards.
 
 To bring over an existing DS battery save, copy its raw save data to `DATA/saves/<game>.nds.sav` (including the
 ROM extension in the name), or pass its path with `--save`.

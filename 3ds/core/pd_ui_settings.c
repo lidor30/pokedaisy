@@ -466,6 +466,10 @@ static void hud_page(struct pd_ui* ui, struct pd_canvas* c) {
     const char* values[N] = { NULL, pd_hud_layout_name(s->hudLayout), pd_hud_look_name(s->hudLook),
                               pd_hud_size_name(s->hudSize) };
     bool on[N] = { s->hud, true, true, true }, muted[N] = { false, !s->hud, !s->hud, !s->hud };
+    if (ui->hudLayoutFixed) {
+        values[1] = "N/A";
+        muted[1] = true;
+    }
     for (int i = 0; i < PD_HUD_PARTS; i++) {
         labels[4 + i] = pd_hud_part_name(i);
         on[4 + i] = !((s->hudHidden >> i) & 1);
