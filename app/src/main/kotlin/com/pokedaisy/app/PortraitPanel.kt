@@ -87,7 +87,7 @@ class PortraitPanel(
         }
     private var underGame = prefs.portraitCompanionUnderGame
 
-    /** The touch controls' own strip along the bottom (px) for EXPAND + UNDER GAME; 0 while they're hidden. */
+    /** The touch controls' own strip along the bottom (px) for UNDER GAME; 0 while they're hidden. */
     var padStrip = 0
         set(v) {
             if (field == v) return
@@ -121,7 +121,7 @@ class PortraitPanel(
     private val gameH get() = root.gameHeightFor(screenW)
     private val gripH get() = gripView?.height ?: 0
     /** The grip's strip, kept free in either placement ([PortraitLayout.arrange]). */
-    private val reserve get() = gripH + if (expand && underGame && padStrip > 0) minOf(padStrip, screenH / 3) else 0
+    private val reserve get() = gripH + if (underGame && padStrip > 0) minOf(padStrip, screenH / 3) else 0
     private fun arrangement() = PortraitLayout.arrange(screenW, screenH, gameH, gripH, ratio, underGame, expand, padStrip, hiddenNow)
 
     // A rotation, the status bar coming or going, a Game Boy game's 10:9: lay out again.

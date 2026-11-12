@@ -100,6 +100,12 @@ interface CompanionSettings {
     val dsGpuAvailable: Boolean get() = true
     fun setDsResolution(scale: Int) {}
 
+    /** DS CORE ([com.pokedaisy.app.Prefs.dsCore]): null when the game isn't a DS one (no row); taken at the game's next
+     * start. [dsMelonDs]: the game runs on melonDS - on DSperate DS RESOLUTION and DS CPU BOOST are greyed out. */
+    val dsCore: DsCore? get() = null
+    fun setDsCore(core: DsCore) {}
+    val dsMelonDs: Boolean get() = true
+
     /** DS CPU BOOST ([com.pokedaisy.app.Prefs.dsCpuBoost]): null when the game isn't a DS one (no row). */
     val dsCpuBoost: Boolean? get() = null
     fun setDsCpuBoost(on: Boolean) {}

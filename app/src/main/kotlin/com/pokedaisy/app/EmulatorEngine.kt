@@ -495,6 +495,8 @@ class EmulatorEngine(
 
     /** DS CPU BOOST ([Prefs.dsCpuBoost]): the emulated ARM9 at twice the DS's clock, set between frames. */
     @Volatile var ndsCpuBoost = true
+    /** DS CORE ([com.pokedaisy.app.companion.DsCore]): the core the next DS game starts on (MgbaCore.NDS_CORE_*). */
+    @Volatile var ndsCore = MgbaCore.NDS_CORE_MELONDS
 
     /** DS LAYOUT floats the X menu (one screen): it comes back after a menu screen left by touch ([MgbaCore.pkNdsKeepStartMenu]). */
     @Volatile var dsKeepStartMenu = false
@@ -970,6 +972,7 @@ class EmulatorEngine(
             return
         }
         ndsScaleSet = -1
+        MgbaCore.pkNdsSetCore(ndsCore)
         if (!MgbaCore.pkInit(rom.absolutePath, save.absolutePath)) {
             loadError = "mGBA could not load ${rom.name}"
             running = false
@@ -992,8 +995,18 @@ class EmulatorEngine(
         // save: if it was changed since (another emulator, a save copied in, the saves
         // folder moved), the file wins and the game boots from it.
         var resumed: File? = null
+        val dsCore = MgbaCore.pkNdsCore()
         if (resume != null && resume.isFile && resume.length() > 0) {
-            if (MgbaCore.pkStateMatchesSave(resume.absolutePath) == 0) {
+            val matches = MgbaCore.pkStateMatchesSave(resume.absolutePath)
+            if (matches == MgbaCore.STATE_OTHER_CORE) {
+                // A DS game left on the other DS core (DS CORE changed since): its state can't load here. Kept for that
+                // core (SaveStates.parkedResume: the next start on it resumes it), and the game starts from its save file.
+                Log.w("pokedaisy", "resume skipped: the state is the other DS core's")
+                val other = if (dsCore == MgbaCore.NDS_CORE_DSPERATE) MgbaCore.NDS_CORE_MELONDS else MgbaCore.NDS_CORE_DSPERATE
+                resume.renameTo(SaveStates.parkedResume(resume, other))
+                SnapshotCache.fileFor(resume).delete()
+                startNotice = tr("This game was left on the other DS core, so it started from the save file")
+            } else if (matches == 0) {
                 Log.w("pokedaisy", "resume skipped: ${save.name} changed since the state was made")
                 resume.renameTo(File(resume.parentFile, "resume.replaced"))
                 SnapshotCache.fileFor(resume).delete()

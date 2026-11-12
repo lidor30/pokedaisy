@@ -205,6 +205,8 @@ class SettingsActivity : ComponentActivity() {
     private val usesSecondScreen get() = hasSecondScreen && !prefs.singleScreen
     /** DS RESOLUTION's GPU renderer can run here (OpenGL ES 3.2). */
     private val dsGpu by lazy { GlCaps.gles32(this) }
+    /** DS games start on DSperate (DS CORE): DS RESOLUTION and DS CPU BOOST are melonDS's, greyed out then. */
+    private val dsOnDsperate get() = prefs.dsCore.runs() == MgbaCore.NDS_CORE_DSPERATE
 
     private val updates by lazy { AppUpdateFlow(this) }
 
@@ -779,12 +781,23 @@ class SettingsActivity : ComponentActivity() {
                 prefs.lookAround = !prefs.lookAround
                 revision++
             }.takeIf { prefs.gameAspect == com.pokedaisy.app.companion.GameAspect.WIDE },
+            // DS games: which emulator runs them (companion.DsCore): melonDS, or DSperate for weak devices (AUTO picks).
+            SettingRow(
+                tk("DS CORE"), prefs.dsCore.valueLabel(), subtitle = "DSPERATE runs on weaker devices",
+                labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_CORE),
+            ) {
+                val cores = com.pokedaisy.app.companion.DsCore.entries
+                selector = Selector(tk("DS CORE"), cores.map { it.label }, prefs.dsCore.label) { l ->
+                    prefs.dsCore = cores.first { it.label == l }
+                    revision++
+                }
+            }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
             // DS games: the 3D at 2x to 8x the DS's own, drawn on the GPU (nds/pk_nds_gl.h); ORIGINAL keeps the CPU's,
-            // pixel for pixel. N/A without OpenGL ES 3.2.
-            dsGpu.let { gpu ->
+            // pixel for pixel. N/A without OpenGL ES 3.2, or on DSperate (melonDS's renderer).
+            (dsGpu && !dsOnDsperate).let { gpu ->
                 SettingRow(
                     tk("DS RESOLUTION"), if (gpu) com.pokedaisy.app.companion.ui.dsResolutionLabel(prefs.dsResolution) else tk("N/A"),
-                    enabled = gpu,
+                    enabled = gpu, subtitle = if (dsOnDsperate) "Unavailable on DSPERATE" else null,
                     labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_RESOLUTION),
                 ) {
                     if (!gpu) return@SettingRow
@@ -796,9 +809,11 @@ class SettingsActivity : ComponentActivity() {
             }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
             // DS games: the emulated CPU at twice the DS's clock, so a game's own slow frames go.
             SettingRow(
-                tk("DS CPU BOOST"), onOff(prefs.dsCpuBoost), subtitle = "Fewer slowdowns in DS games",
+                tk("DS CPU BOOST"), if (dsOnDsperate) tk("N/A") else onOff(prefs.dsCpuBoost), enabled = !dsOnDsperate,
+                subtitle = if (dsOnDsperate) "Unavailable on DSPERATE" else "Fewer slowdowns in DS games",
                 labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.DS_CPU_BOOST),
             ) {
+                if (dsOnDsperate) return@SettingRow
                 prefs.dsCpuBoost = !prefs.dsCpuBoost
                 revision++
             }.takeIf { com.pokedaisy.app.companion.data.TelemetrySampler.NDS_SUPPORT },
@@ -1149,7 +1164,7 @@ class SettingsActivity : ComponentActivity() {
         val expand = prefs.gameAspect == com.pokedaisy.app.companion.GameAspect.WIDE
         val w = rootSize.width.toFloat()
         val h = rootSize.height.toFloat()
-        val strip = if (expand && h > w && prefs.portraitCompanionUnderGame && touchWouldShow(style))
+        val strip = if (h > w && prefs.portraitCompanionUnderGame && touchWouldShow(style))
             com.pokedaisy.app.companion.ui.TouchGeometry.naturalHeight(style, w, density) else 0
         return com.pokedaisy.app.companion.ui.simulateTouchStage(
             w, h, density,

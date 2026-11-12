@@ -577,6 +577,11 @@ class Prefs(context: Context) {
         get() = if (p.contains("ds_cpu_boost")) p.getBoolean("ds_cpu_boost", true) else !DevicePerformance.looksWeak(appContext)
         set(v) = p.edit().putBoolean("ds_cpu_boost", v).apply()
 
+    /** SCREEN > DS CORE: which emulator runs a DS game (companion.DsCore: AUTO, the default, MELONDS, DSPERATE). */
+    var dsCore: com.pokedaisy.app.companion.DsCore
+        get() = com.pokedaisy.app.companion.DsCore.of(p.getInt("ds_core", 0))
+        set(v) = p.edit().putInt("ds_core", v.id).apply()
+
     var dsResolution: Int
         get() = p.getInt("ds_resolution", 1).coerceIn(1, DS_RESOLUTION_MAX)
         set(v) = p.edit().putInt("ds_resolution", v.coerceIn(1, DS_RESOLUTION_MAX)).apply()

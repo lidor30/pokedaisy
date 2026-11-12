@@ -261,6 +261,17 @@ object MgbaCore {
 
     /** DS CPU BOOST: the emulated ARM9 at twice the DS's clock - a game's own slow frames (HeartGold walking) go. Emu thread. */
     external fun pkNdsCpuBoost(on: Boolean)
+
+    /** DS CORE (companion.DsCore): the DS core the next [pkInit] of a DS cart starts, NDS_CORE_*. Emu thread. */
+    external fun pkNdsSetCore(core: Int)
+    /** The DS core that's up (NDS_CORE_*), -1 with no DS game. */
+    external fun pkNdsCore(): Int
+    /** melonDS (nds/pk_nds.cpp): every DS feature. */
+    const val NDS_CORE_MELONDS = 0
+    /** DSperate (nds/pk_nds_dsp.cpp): for weak devices; no EXPAND, DS RESOLUTION, PC / FLY calls, STEADY or DS CPU BOOST. */
+    const val NDS_CORE_DSPERATE = 1
+    /** [pkStateMatchesSave]'s answer for a DS state the other core made: it won't load. */
+    const val STATE_OTHER_CORE = 2
     /** A DS game's Action Replay codes ([words], [lengths] words per cheat: cheats.DsCheats) into melonDS's AREngine,
      * replacing the ones before; none = no cheats. Emu thread, between frames. The count loaded, -1 with no DS game. */
     external fun pkNdsCheats(words: IntArray, lengths: IntArray): Int

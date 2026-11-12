@@ -106,6 +106,9 @@ object NewFeatures {
     const val DS_RESOLUTION = "ds_resolution"
     const val DS_CPU_BOOST = "ds_cpu_boost"
 
+    /** SETTINGS > DS CORE: DSperate, a second DS emulator for weak devices (companion.DsCore). */
+    const val DS_CORE = "ds_core"
+
     /** SETTINGS > APP > TIPS: a card now and then about a feature the player hasn't found (FeatureTips). */
     const val TIPS = "tips"
 
@@ -191,7 +194,7 @@ object NewFeatures {
         GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE, FOLD_LAYOUT, TOUCH_STYLES, TOUCH_SKINS,
         AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
-        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL,
+        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE,
     )
 
     private const val DAYS = 7
