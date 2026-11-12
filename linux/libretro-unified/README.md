@@ -110,8 +110,8 @@ selected. An existing Off preference is kept and can be changed in the DS
 companion Settings. A new battle returns a temporary screen peek to One
 Screen. Use the D-pad and A to choose Fight,
 Bag, Pokémon or Run. Fight opens the move grid with move types and current/max
-PP. B returns from the move grid. Native Bag and party windows open full screen
-at twice the DS size, like the battle. Doubles and native prompts use the
+PP. B returns from the move grid. Native Bag and party windows open as a popup
+over the dimmed battle. Doubles and native prompts use the
 game's own controls. The picked button has the games' own red corner brackets.
 
 Platinum's compact battle buttons use the native lettering and tiles without
