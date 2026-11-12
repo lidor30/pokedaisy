@@ -50,3 +50,5 @@ std::vector<DsDexMove> ds_level_moves(const DsDexArt&,DsGame,int species);
 std::vector<DsDexEvolution> ds_dex_evolutions(const DsDexArt&,int species);
 
 std::vector<std::vector<uint32_t>> ds_hud_item_icons(const std::vector<uint8_t>& rom, DsGame game);
+// Each move's base PP from the cart's move table (empty when it doesn't check out): the battle strip's max PP.
+std::vector<uint8_t> ds_move_base_pp(const std::vector<uint8_t>& rom, DsGame game);

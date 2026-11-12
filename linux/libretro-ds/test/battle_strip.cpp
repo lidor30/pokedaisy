@@ -5,6 +5,7 @@
 extern "C" {
 #include "pd_snapshot.h"
 }
+#include <algorithm>
 #include <cassert>
 #include <fstream>
 #include <iterator>
@@ -190,9 +191,15 @@ int main(int argc,char** argv){
   assert(bwStyle && bwStyle==ds_battle_style(whiteSha1));
   assert(bw2Style && bw2Style==ds_battle_style(white2Sha1) && bwStyle!=bw2Style);
   assert(!ds_battle_style("unknown"));
+  // The games' own cursor: red brackets on the picked plate, in both Unova styles, which draw differently.
+  auto cursorPixels=[&]{return std::count(stage.begin(),stage.end(),0xf0141cu);};
   ds_draw_battle_strip(stage.data(),*bwStyle,blackMoves,"Latios",0,true,0);
-  assert(stage[276*512]==0x0c3c34 && stage[376*512]==0x4d201c);
+  assert(stage[276*512]==0x0c3c34 && stage[376*512]==0x4d201c && cursorPixels()>100);
   const auto bw=stage;
   ds_draw_battle_strip(stage.data(),*bw2Style,blackMoves,"Latios",0,true,0);
-  assert(stage!=bw && stage[278*512]==0x0c3851 && stage[376*512]==0x41697d);
+  assert(stage!=bw && stage[278*512]==0x0c3851 && stage[376*512]==0x41697d && cursorPixels()>100);
+  // No cursor while a tap is in flight.
+  std::fill(stage.begin(),stage.end(),0x808080u);
+  ds_draw_battle_strip(stage.data(),*bwStyle,blackMoves,"Latios",0,false,0);
+  assert(cursorPixels()==0);
 }

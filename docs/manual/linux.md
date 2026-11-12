@@ -133,9 +133,9 @@ row of a Game Boy shelf.
 
 In this form the quick menu (Y) keeps PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS and COMPANION (with TAKE
 OFF in the English FireRed and Emerald), adds a HUD tile that puts the cursor on the HUD, and the game pauses while it
-is open. X opens the companion. SETTINGS lists only what the core does itself: ASPECT, HUD, QUICK MENU, FLIGHT AREA
-(where there's TAKE OFF), three button rows, AUTO-RUN (where the game's field is read), DARK MODE, TAB BAR and RESET
-SETTINGS, which puts every companion setting back after you confirm. QUICK MENU BUTTON,
+is open. X opens the companion. SETTINGS lists only what the core does itself: ASPECT, HUD, QUICK MENU, FLY STYLE,
+FLIGHT AREA and FLY ON (where there's TAKE OFF), three button rows, AUTO-RUN (where the game's field is read), DARK
+MODE, TAB BAR and RESET SETTINGS, which puts every companion setting back after you confirm. QUICK MENU BUTTON,
 COMPANION BUTTON and HUD CURSOR BUTTON step through X, Y, L2 and R2 (and NONE for the cursor) when you press A on
 them, and a button another action already uses swaps over to it. L2 and R2 reach the core on every shelf (for other
 Game Boy Advance cores the launcher still keeps them back).
@@ -191,8 +191,10 @@ screen or a mouse reaches the companion and the HUD.
 The companion and the quick menu work as in the cores everywhere: X opens the [companion](companion.md), Y opens the
 quick menu over the game (PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS, COMPANION), and both buttons can be
 changed in the companion's `SETTINGS`. In the English FireRed and Emerald the quick menu also has `TAKE OFF`, to
-[fly over the map](map.md#flying-over-the-map) on your Pokémon's bird. `FLIGHT AREA` in the companion's `SETTINGS`
-keeps that flight to [places you've already been](map.md#where-you-can-fly) (`VISITED`, the default) or lets it go
+[fly over the map](map.md#flying-over-the-map) on your Pokémon's bird (the companion's `MAP` has a `TAKE OFF` button
+too). There `FLY` flies you over the map to the town you pick, unless `FLY STYLE` in the companion's `SETTINGS` is
+`CLASSIC`, the game's own way. `FLY ON` swaps the bird for an air balloon, a helicopter or a zeppelin. `FLIGHT AREA`
+keeps the flight to [places you've already been](map.md#where-you-can-fly) (`VISITED`, the default) or lets it go
 `ANYWHERE`. The list of places is kept for each save, in `saves/pokedaisy/flight-area`. In the English FireRed,
 LeafGreen, Ruby, Sapphire and Emerald the quick menu has [`FLASH`](controls.md#the-quick-menu) too, to light up a dark
 cave once a Pokémon in your party knows the move; it's greyed out where it isn't dark. The
@@ -203,8 +205,8 @@ party Pokémon.
 
 In a DS game the DS has every face and shoulder button, so L2 opens the companion and R2 switches the screens, and the
 game starts on one screen. The DS HUD has the same PC, BAG, WILD and COMPANION buttons as a GBA game's, and hides
-while the game shows text. `SETTINGS` > `HUD SIZE` there picks `SMALL`, `NORMAL` or
-`LARGE`, and the quick menu's `HUD` tile moves the cursor onto the HUD.
+while the game shows text. `HUD` in its `SETTINGS` opens the same HUD page as a GBA game's, with `LOOK`, `SIZE`
+(`SMALL`, `NORMAL` or `LARGE`) and which parts show, and the quick menu's `HUD` tile moves the cursor onto the HUD.
 
 ## The menu
 

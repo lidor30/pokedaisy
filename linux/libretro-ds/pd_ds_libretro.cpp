@@ -184,7 +184,7 @@ bool env(unsigned cmd,void* data) {
     std::vector<retro_variable> all;
     for(;vars && vars->key;++vars)all.push_back(*vars);
     all.push_back({"pokedaisy_ds_layout","Initial DS layout (saved companion settings take priority); auto|top|bottom|stacked"});
-    all.push_back({"pokedaisy_ds_hud","Initial party HUD (saved companion settings take priority); disabled|enabled"});
+    all.push_back({"pokedaisy_ds_hud","Initial party HUD (saved companion settings take priority); enabled|disabled"});
     all.push_back({nullptr,nullptr});
     return environment(cmd,all.data());
   }
@@ -288,7 +288,7 @@ void choose_layout() {
     // Present the last field image through the game's loading fades. The
     // native menu is shown only once the screen(s) it needs are drawn.
     if(fieldApp&&(bits&PK_NDS_FIELD_TOP_ONLY)&&!topBlank)
-      arrangement={{80,60,352,264},{},false,true,true};
+      arrangement={{0,0,512,384},{},false,true,true};
     else if(fieldApp&&!(bits&(PK_NDS_FIELD_TOP_ONLY|PK_NDS_FIELD_TOUCH_ONLY))&&!topBlank&&!bottomBlank)
       arrangement={{0,96,256,192},{256,96,256,192},false,true,true};
     else if(topBlank || (fieldApp&&!(bits&PK_NDS_FIELD_TOUCH_ONLY)))
@@ -999,6 +999,7 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
     pd_ds::companionGame=ds_companion_game(hex);
     pd_ds::soulSilver=!std::strcmp(hex,pd_ds_data::soulSilverSha1);
     pd_ds::battleStyle=ds_battle_style(hex);
+    ds_battle_set_base_pp({});
     if(pd_ds::battleStyle)
       pd_ds::game=pk_nds_field_game(reinterpret_cast<const char*>(rom.data()+12),rom[30]);
     if(pd_ds::companionGame!=DsGame::Unsupported)pd_ds::map=ds_map_art(rom,pd_ds::companionGame);
@@ -1006,6 +1007,7 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
       dexArt=ds_dex_art(rom,pd_ds::companionGame);
       pd_ds::icons=ds_party_icons(rom,pd_ds::companionGame);
       pd_ds::hudItemIcons=ds_hud_item_icons(rom,pd_ds::companionGame);
+      ds_battle_set_base_pp(ds_move_base_pp(rom,pd_ds::companionGame));
     }
   }
   const auto old_layout=opt("pokedaisy_ds_layout");

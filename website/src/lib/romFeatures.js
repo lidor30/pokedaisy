@@ -51,7 +51,7 @@ export function cellState(text) {
 
 const split = (line) => line.trim().replace(/^\||\|$/g, '').split('|').map((c) => c.trim());
 
-/** The first table: { columns: [doc column names], rows: [{ game, version, cells: { column: state } }] }. */
+/** The first table: { columns: [doc column names], rows: [{ game, version, blocked, cells: { column: state } }] }. */
 export function parseRomFeatures(md) {
   const lines = md.split('\n');
   const head = lines.findIndex((l) => /^\|\s*Game\s*\|\s*Version\s*\|/.test(l));
@@ -60,9 +60,12 @@ export function parseRomFeatures(md) {
   const rows = [];
   for (let i = head + 2; i < lines.length && lines[i].startsWith('|'); i++) {
     const cells = split(lines[i]);
-    const game = cells[0].replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, '').trim();
+    // A game blocked at its maker's request reads "Name (blocked ¹¹)": the site leaves it out (BlockedGames.kt).
+    const name = cells[0].replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, '').trim();
+    const blocked = /\(blocked\s*\)$/.test(name);
+    const game = name.replace(/\s*\(blocked\s*\)$/, '');
     const version = cells[1].replace(/[⁰¹²³⁴⁵⁶⁷⁸⁹]+/g, '').trim();
-    rows.push({ game, version, cells: Object.fromEntries(columns.map((c, j) => [c, cellState(cells[j + 2] ?? '')])) });
+    rows.push({ game, version, blocked, cells: Object.fromEntries(columns.map((c, j) => [c, cellState(cells[j + 2] ?? '')])) });
   }
   return { columns, rows };
 }
@@ -80,7 +83,8 @@ const ALIASES = {
 };
 /**
  * Rows no games-table game owns: hacks the app proves by their code (never listed by name), and Emerald Kaizo,
- * which README's Supported games table (the site's games table) doesn't list yet.
+ * which README's Supported games table (the site's games table) doesn't list yet. Blocked games' rows are left out
+ * by their `blocked` flag instead.
  */
 export const UNLISTED = ['Unknown FireRed / Emerald hacks edited in place', 'Emerald Kaizo'];
 

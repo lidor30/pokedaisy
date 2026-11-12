@@ -18,7 +18,11 @@ fun typeInText(type: String): String = localTypeNames()?.get(type.uppercase()) ?
 private fun localTypeNames(): Map<String, String>? = GAME_TYPE_NAMES[romGameCode] ?: LOCAL_TYPE_NAMES[romLanguage]
 
 private val GAME_TYPE_NAMES: Map<String, Map<String, String>> by lazy {
-    mapOf("BYTD" to typeNamesCrystal.mapNotNull { (id, en) -> typeNamesCrystalDe[id]?.let { en.uppercase() to it } }.toMap())
+    val goldSilverDe = typeNamesCrystal.mapNotNull { (id, en) -> typeNamesGoldSilverDe[id]?.let { en.uppercase() to it } }.toMap()
+    mapOf(
+        "BYTD" to typeNamesCrystal.mapNotNull { (id, en) -> typeNamesCrystalDe[id]?.let { en.uppercase() to it } }.toMap(),
+        "AAUD" to goldSilverDe, "AAXD" to goldSilverDe,
+    )
 }
 
 private val LOCAL_TYPE_NAMES: Map<Char, Map<String, String>> = mapOf(

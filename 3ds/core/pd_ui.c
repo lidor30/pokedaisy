@@ -147,7 +147,10 @@ void ui_toggle_act(struct pd_ui* ui, int i) {
         // HUD, then LAYOUT / LOOK / SIZE (each cycles on a press, FieldHud.kt's fieldHudRows), then the parts.
         if (i == 0) s->hud = !s->hud;
         else if (!s->hud) return;
-        else if (i == 1) s->hudLayout = (s->hudLayout + 1) % PD_HUD_LAYOUTS;
+        else if (i == 1) {
+            if (ui->hudLayoutFixed) return;
+            s->hudLayout = (s->hudLayout + 1) % PD_HUD_LAYOUTS;
+        }
         else if (i == 2) s->hudLook = (s->hudLook + 1) % PD_HUD_LOOKS;
         else if (i == 3) s->hudSize = (s->hudSize + 1) % PD_HUD_SIZES;
         else if (i - 4 < PD_HUD_PARTS) s->hudHidden ^= 1 << (i - 4);
@@ -745,6 +748,7 @@ int pd_ui_tab_menu_count(const struct pd_ui* ui) {
     enum pd_tab tabs[UI_BAR_CHOICES];
     if (ui->overlay == PD_OVERLAY_MORE) return ui_more_tabs(ui, ui->drawnGame, tabs);
     if (ui->overlay == PD_OVERLAY_TAB_BAR) return ui_configurable_tabs(ui, tabs);
+    if (ui->overlay == PD_OVERLAY_HUD) return 4 + PD_HUD_PARTS; // HUD, LAYOUT, LOOK, SIZE, then the parts
     return 0;
 }
 
