@@ -401,6 +401,8 @@ void pd_session_start(struct pd_session* s, struct mCore* core, const uint32_t* 
         pd_romart_scan(&s->game);
         pd_map_art(&s->game);
         pk_rest_reset();
+        // After the SHA-1 above: this changes the ROM in memory (pd_armgba.h).
+        if (pd_armgba_is(core)) pd_armgba_fast_flash_saves();
     }
 
     pd_look_apply(&s->game, settings);

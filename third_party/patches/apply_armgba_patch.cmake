@@ -1,4 +1,4 @@
-# Our changes to armGBA (third_party/armgba, ratherDashing's 3DS fork at 3ds-v0.0.2-alpha) live in armgba-pokedaisy.patch:
+# Our changes to armGBA (third_party/armgba, ratherDashing's 3DS fork at 3ds-v0.0.3-alpha) live in armgba-pokedaisy.patch:
 # a hook for a Thumb BKPT in its interpreter, which the 3DS port's native m4a mixer (3ds/host/pd_mixer.c) takes over the
 # game's own with, and one before an H-blank interrupt is raised (3ds/emu/pd_armgba.c: a stock handler with no callback). Applied to the submodule's working tree at configure time - once: a tree that already has it is left
 # alone (looked for by its text: a Docker build sees the tree, not always its git) - so a fresh checkout builds as is.

@@ -25,7 +25,7 @@ index 10bae0c..932ba86 100644
  		break;
  	}
 diff --git a/src/video/video.c b/src/video/video.c
-index d777015..39e729b 100644
+index 5593f3d..0e8c0e1 100644
 --- a/src/video/video.c
 +++ b/src/video/video.c
 @@ -19,6 +19,10 @@ enum {

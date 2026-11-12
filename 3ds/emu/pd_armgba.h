@@ -51,6 +51,11 @@ struct mCore* pd_armgba_load(const char* romPath, const char* savePath, const st
 bool pd_armgba_is(const struct mCore* core);
 bool pd_armgba_recompiling(void);
 bool pd_armgba_threaded(void);
+// Ruby, Sapphire, FireRed, LeafGreen and Emerald start and stop a timeout timer round every byte they save, the worst
+// case for the recompiler's exact events (a save held the game at about 41 FPS for four seconds on a New 3DS). This
+// skips that timer: the save is the same. It changes four bytes of the ROM in memory, so call it once the ROM has been
+// identified by its hash (pd_session_open does), and before the game runs. False: not a game with those routines.
+bool pd_armgba_fast_flash_saves(void);
 // The frames from now on aren't shown (fast-forward's extra ones): armGBA needn't draw them.
 void pd_armgba_skip_video(bool skip);
 // The stock H-blank handler's interrupts with no callback taken by the host (pd_armgba.c, on by default; off to compare).
