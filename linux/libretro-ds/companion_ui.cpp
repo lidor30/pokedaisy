@@ -35,7 +35,7 @@ const unsigned buttonIds[]={RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,
 const char* const hudButtonNames[]={ "X", "Y", "L2", "R2", "NONE" };
 const int hudButtonIds[]={RETRO_DEVICE_ID_JOYPAD_X,RETRO_DEVICE_ID_JOYPAD_Y,RETRO_DEVICE_ID_JOYPAD_L2,RETRO_DEVICE_ID_JOYPAD_R2,-1};
 const char* const speedNames[]={"SLOW","NORMAL","FAST"};
-const char* const hudSizeNames[]={ "MINI", "LARGE" };
+const char* const hudSizeNames[]={ "SMALL", "NORMAL", "LARGE" };
 const char* const resetNames[]={"CANCEL","RESET"};
 const char* const labels[]={"DS LAYOUT","AUTO BATTLES","HUD","COMPANION BUTTON","SCREEN BUTTON","STYLUS SPEED","QUICK MENU","RESET SETTINGS","BATTLE STRIP","MINIMAL HUD","POKÉ BALLS","REPEL STEPS","MINIMAP","DARK MODE","AUTO-RUN","TAB BAR","MORE TABS","HUD CURSOR BUTTON","HUD SIZE"};
 const char* const* choices(int row){
@@ -43,7 +43,7 @@ const char* const* choices(int row){
   return row==DsCompanionUi::Layout?layoutNames:row==DsCompanionUi::PenSpeed?speedNames:
     row==DsCompanionUi::Reset?resetNames:row==DsCompanionUi::HudButton?hudButtonNames:buttonNames;
 }
-int count(int row){return row==DsCompanionUi::Layout?DS_LAYOUTS:row==DsCompanionUi::CompanionButton?4:
+int count(int row){return row==DsCompanionUi::HudSize?PD_HUD_SIZES:row==DsCompanionUi::Layout?DS_LAYOUTS:row==DsCompanionUi::CompanionButton?4:
  row==DsCompanionUi::ScreenButton||row==DsCompanionUi::HudButton?5:row==DsCompanionUi::PenSpeed?3:2;}
 }
 void DsCompanionUi::defaults(){
@@ -137,7 +137,7 @@ int DsCompanionUi::hud_id()const{
 int DsCompanionUi::pen_step()const{return penSpeed==0?1:penSpeed==1?3:6;}
 int DsCompanionUi::value(int row)const{
   if(row==HudButton)return settings.hudBtn;
-  if(row==HudSize)return settings.hudSize==PD_HUD_LARGE;
+  if(row==HudSize)return settings.hudSize;
   if(row==DarkMode)return darkMode;
   if(row==AutoRun)return autoRun;
   if(row==HudMinimal)return hudMinimal;
@@ -170,7 +170,7 @@ void DsCompanionUi::apply(int row,int v){
   else if(row==QuickStyle)settings.quickGrid=v;
   else if(row==BattleStrip)battleStrip=v;
   else if(row==HudMinimal)hudMinimal=v;
-  else if(row==HudSize)settings.hudSize=v?PD_HUD_LARGE:PD_HUD_NORMAL;
+  else if(row==HudSize)settings.hudSize=v;
   else if(row==DarkMode)darkMode=v;
   else if(row==AutoRun){
     if(game==DsGame::Unsupported){error="Auto-Run unavailable for this ROM";return;}

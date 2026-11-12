@@ -22,14 +22,19 @@ for p,n in fix:code[p]=(labels[n]-p-1)&255
 r[0x150:0x150+len(code)]=bytes(code);r[0x14d]=(-sum(r[0x134:0x14d])-25)&255
 Path('diagnostic.gb').write_bytes(r)
 
-# Original ARM7TDMI diagnostic. Mode 3 red framebuffer, then an idle loop.
+# Original ARM7TDMI diagnostic. Mode 3 one-pixel stripes, then an idle loop.
 # Format fields are enough for mGBA; no commercial logo or ROM code included.
 import struct
 r=bytearray(32768)
 r[0:4]=struct.pack('<I',0xea00002e)
 r[0xa0:0xac]=b'PD TEST GBA '
 r[0xac:0xb0]=b'BPRE';r[0xb2]=0x96;r[0xbc]=1
-ops=[0xe59f0020,0xe59f1020,0xe1c010b0,0xe59f001c,0xe3a0101f,0xe59f2018,0xe0c010b2,0xe2522001,0x1afffffc,0xeafffffe,0x04000000,0x403,0x06000000,38400]
+ops=[
+    0xe59f0024,0xe59f1024,0xe1c010b0, # Set mode 3 with BG2 enabled.
+    0xe59f0020,0xe59f1020,0xe59f2020, # Load VRAM, the first color, and pixel count.
+    0xe0c010b2,0xe2211901,0xe2522001,0x1afffffb, # Store a pixel, toggle bit 14, and loop.
+    0xeafffffe,0x04000000,0x403,0x06000000,0x4a52,38400,
+]
 r[0xc0:0xc0+4*len(ops)]=struct.pack('<'+'I'*len(ops),*ops)
 r[0xbd]=(-sum(r[0xa0:0xbd])-0x19)&255
 Path('diagnostic.gba').write_bytes(r)

@@ -133,15 +133,16 @@ need live retail ROM testing.
 
 | Games | Exact revisions | Companion and Quick Menu |
 | --- | --- | --- |
-| HeartGold, SoulSilver | USA rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD toggle |
-| Black, White, Black 2, White 2 | USA/Europe rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD toggle |
+| HeartGold, SoulSilver | USA rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD cursor |
+| Black, White, Black 2, White 2 | USA/Europe rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD cursor |
 
 Party shows HP, EXP to the next level, type matchups, moves, power and PP.
 A opens the selected party member's summary or Bag item's details. In a party
 summary, A switches between Moves and Stats. Select opens the level-up Learn
 list and Left/Right scrolls it. Up/Down browses the party. In Bag, Left goes
 to the pocket bar and A picks a pocket.
-To turn on the HUD, hold L2, select HUD and press A. It appears after the
+Turn on HUD in Companion Settings. In the overworld, hold L2 and choose HUD
+to focus a HUD tile. Use the D-pad and A to open it, or B to cancel. It appears after the
 overworld settles in a layout with only the top screen visible. The companion's
 Settings control Minimal HUD, Poké Balls, Repel Steps and the Minimap. Minimal hides the
 party cards. The ball counter shows up to three ball types by quantity and
