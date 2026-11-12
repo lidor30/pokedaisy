@@ -82,6 +82,7 @@ void pdRenderScanline(struct GBA *g, int y) { line(g, y, false); }
 void pdRenderThreadScanline(struct GBA *g, int y) { line(g, y, true); }
 
 static int platform(const struct PdCore *c) { (void)c; return PD_PLATFORM_GBA; }
+static uint32_t getKeys(struct PdCore *c) { (void)c; return gba ? gba->keysActive : 0; }
 static uint8_t read8(struct PdCore *c, uint32_t a) { (void)c; return gba ? (uint8_t)memoryLoad8(gba, a, NULL) : 0; }
 static uint16_t read16(struct PdCore *c, uint32_t a) { (void)c; return gba ? (uint16_t)memoryLoad16(gba, a, NULL) : 0; }
 static uint32_t read32(struct PdCore *c, uint32_t a) { (void)c; return gba ? memoryLoad32(gba, a, NULL) : 0; }
@@ -103,7 +104,7 @@ void pd_agba_attach(void) {
   view.video.oam.raw = (uint16_t *)gba->oam;
   renderer = (struct PdRenderer){realDraw, noVram, noOam, noPalette};
   view.video.renderer = &renderer;
-  pdcore = (struct PdCore){platform, &view, read8, read16, read32, write8, write16, write32};
+  pdcore = (struct PdCore){platform, getKeys, &view, read8, read16, read32, write8, write16, write32};
 }
 
 void pd_agba_detach(void) {

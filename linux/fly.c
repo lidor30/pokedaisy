@@ -82,7 +82,7 @@ static bool flies(const struct pd_config *cfg, uint32_t type) {
 }
 
 // The party menu's checks in its order (Fly.kt's flyGate): busy, the badge, the map type.
-static enum fly_result gate(struct mCore *core, const struct pd_config *cfg, const uint8_t *rom, size_t len,
+enum fly_result fly_gate(struct mCore *core, const struct pd_config *cfg, const uint8_t *rom, size_t len,
                             bool busy, bool battle) {
   if (!fly_supported(cfg, rom, len))
     return FLY_FAILED;
@@ -122,7 +122,7 @@ void fly_targets(struct mCore *core, const struct pd_config *cfg, const uint8_t 
                  const struct pd_snapshot *snap, bool busy, bool battle, struct fly_targets *out) {
   memset(out, 0, sizeof *out);
   out->flyerSlot = -1;
-  out->result = gate(core, cfg, rom, len, busy, battle);
+  out->result = fly_gate(core, cfg, rom, len, busy, battle);
   if (out->result != FLY_OK)
     return;
   int slot = fly_flyer(snap);
@@ -147,7 +147,7 @@ void fly_targets(struct mCore *core, const struct pd_config *cfg, const uint8_t 
 enum fly_result fly_start(struct mCore *core, const struct pd_config *cfg, const uint8_t *rom, size_t len,
                           const struct pd_snapshot *snap, int mapsec, const struct fly_targets *t, bool busy,
                           bool battle) {
-  enum fly_result r = gate(core, cfg, rom, len, busy, battle);
+  enum fly_result r = fly_gate(core, cfg, rom, len, busy, battle);
   if (r != FLY_OK)
     return r;
   bool known = mapsec - cfg->flyFirstMapsec >= 0 && mapsec - cfg->flyFirstMapsec < cfg->flyCount;

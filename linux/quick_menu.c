@@ -67,6 +67,7 @@ const char *quick_label(enum quick_action a) {
   switch (a) {
   case QUICK_PC: return "PC";
   case QUICK_FLY: return "FLY";
+  case QUICK_TAKE_OFF: return "TAKE OFF";
   case QUICK_REPEL: return "REPEL";
   case QUICK_BIKE: return "BIKE";
   case QUICK_WILD: return "WILD";
@@ -96,7 +97,7 @@ static uint32_t icon_color(enum quick_action a, char ch, uint32_t text) {
 static void icon(struct pd_canvas *c, enum quick_action a, int cx, int cy, int scale, bool dim, const struct hud_ink *ink) {
   const char *const *rows = a == QUICK_PC ? quick_icon_pc : a == QUICK_WILD ? quick_icon_grass : a == QUICK_SAVE_STATE ? SAVE_STATE
                           : a == QUICK_LOAD_STATE ? LOAD_STATE : a == QUICK_FF ? FF : a == QUICK_REPEL ? quick_icon_repel
-                          : a == QUICK_BIKE ? BIKE : a == QUICK_FLY ? WING
+                          : a == QUICK_BIKE ? BIKE : (a == QUICK_FLY || a == QUICK_TAKE_OFF) ? WING
                           : a == QUICK_HUD ? quick_icon_hud : quick_icon_companion;
   int h = 0, w = (int)strlen(rows[0]);
   while (rows[h])
