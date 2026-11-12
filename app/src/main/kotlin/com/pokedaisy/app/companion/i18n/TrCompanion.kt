@@ -278,6 +278,7 @@ internal val trCompanion: Map<String, Tr> = mapOf(
     "SLOT {0}" to Tr(ja = "スロット {0}", fr = "EMPL. {0}", de = "SLOT {0}", it = "SLOT {0}", es = "RANURA {0}", br = "ESPAÇO {0}", pt = "ESPAÇO {0}", ko = "슬롯 {0}"),
     "Slot {0}" to Tr(ja = "スロット {0}", fr = "Emplacement {0}", de = "Slot {0}", it = "Slot {0}", es = "Ranura {0}", br = "Espaço {0}", pt = "Espaço {0}", ko = "슬롯 {0}"),
     "EMPTY" to Tr(ja = "から", fr = "VIDE", de = "LEER", it = "VUOTO", es = "VACÍO", br = "VAZIO", pt = "VAZIO", ko = "비어 있음"),
+    "CONFIRM DELETE?" to Tr(ja = "ほんとうに けす？", fr = "SUPPRIMER ?", de = "LÖSCHEN?", it = "ELIMINARE?", es = "¿BORRAR?", br = "EXCLUIR?", pt = "ELIMINAR?", ko = "삭제할까요?"),
 
     // CARD tab.
     "TAP TO FLIP THE CARD" to Tr(ja = "タッチで うらがえす", fr = "TOUCHE POUR RETOURNER LA CARTE", de = "TIPPEN ZUM UMDREHEN", it = "TOCCA PER GIRARE LA SCHEDA", es = "TOCA PARA GIRAR LA FICHA", br = "TOQUE PARA VIRAR O CARTÃO", pt = "TOQUE PARA VIRAR O CARTÃO", ko = "탭해서 카드 뒤집기"),

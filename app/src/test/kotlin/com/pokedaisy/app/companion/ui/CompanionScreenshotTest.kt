@@ -2274,6 +2274,7 @@ object SampleCompanion {
         override val currentIndex = 1
         override fun requestSave(index: Int) {}
         override fun requestLoad(index: Int) {}
+        override fun requestDelete(index: Int) {}
         override fun requestUndoSave() {}
         override fun requestUndoLoad() {}
     }
