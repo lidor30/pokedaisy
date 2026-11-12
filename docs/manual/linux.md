@@ -192,7 +192,9 @@ quick menu over the game (PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS, C
 changed in the companion's `SETTINGS`. In the English FireRed and Emerald the quick menu also has `TAKE OFF`, to
 [fly over the map](map.md#flying-over-the-map) on your Pokémon's bird. `FLIGHT AREA` in the companion's `SETTINGS`
 keeps that flight to [places you've already been](map.md#where-you-can-fly) (`VISITED`, the default) or lets it go
-`ANYWHERE`. The list of places is kept for each save, in `saves/pokedaisy/flight-area`. The
+`ANYWHERE`. The list of places is kept for each save, in `saves/pokedaisy/flight-area`. In the English FireRed,
+LeafGreen, Ruby, Sapphire and Emerald the quick menu has [`FLASH`](controls.md#the-quick-menu) too, to light up a dark
+cave once a Pokémon in your party knows the move; it's greyed out where it isn't dark. The
 [HUD](hud.md) shows your party and a small map over the overworld, and [EXPAND](screen.md#expand-more-of-the-map)
 is `ASPECT` in the companion's `SETTINGS`, with `ZOOM OUT` for even more of the map. The quick menu's tiles follow your HUD look, in two shades with an orange outline on the
 one you're on, and the HUD's panels have a battle-style shadow, with an HP bar and room for a status tag on each
