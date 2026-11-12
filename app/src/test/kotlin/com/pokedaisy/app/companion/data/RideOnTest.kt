@@ -43,10 +43,15 @@ class RideOnTest {
         for (v in listOf(RideVehicle.MOTORCYCLE, RideVehicle.SCOOTER)) {
             val sp = RideOn.sprite(v)!!
             assertEquals(32, sp.width)
-            assertEquals(3 * 1024, sp.frames.size)
+            assertEquals(RideOn.BYTES, sp.frames.size)
+            // Smoke behind it from the side and from behind, none from the front (the vehicle hides it).
+            val ex = sp.frames.copyOfRange(3 * 1024 + RideOn.SMOKE_FRAMES * 64, RideOn.BYTES)
+            assertEquals(-128, ex[0].toInt())
+            assertTrue(ex[2].toInt() != -128 && ex[4].toInt() != -128)
+            assertTrue((3 * 1024 until 3 * 1024 + RideOn.SMOKE_FRAMES * 64).any { sp.frames[it].toInt() != 0 })
             assertEquals(32, sp.pal.size)
             // Its own colours, at most 15: every pixel's index is one of the art's.
-            val used = (0 until sp.frames.size * 2).map { i -> (sp.frames[i / 2].toInt() shr (4 * (i % 2))) and 15 }.toSet() - 0
+            val used = (0 until (3 * 1024 + RideOn.SMOKE_FRAMES * 64) * 2).map { i -> (sp.frames[i / 2].toInt() shr (4 * (i % 2))) and 15 }.toSet() - 0
             assertTrue(used.isNotEmpty() && used.all { it < v.art!!.palette.size } && v.art!!.palette.size <= 16)
         }
         assertEquals(null, RideOn.sprite(RideVehicle.BIKE))
