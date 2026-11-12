@@ -146,7 +146,7 @@ are in NOTICE and the packaged licenses (mGBA, and armGBA and zlib for the GBA c
 The bundled DS core starts in its One Screen layout. L2 opens the Companion and R2 switches screens by default.
 DS has separate host hotkey bindings so those two buttons reach the core. Fast-forward and rewind default to R3
 and L3 on DS, and can be rebound from the host's HOTKEYS page. On DS, Companion Settings → HUD SIZE switches
-between MINI and LARGE. MINIMAL HUD controls which HUD elements are shown.
+among SMALL, NORMAL and LARGE. MINIMAL HUD controls which HUD elements are shown.
 
 To bring over an existing DS battery save, copy its raw save data to `DATA/saves/<game>.nds.sav` (including the
 ROM extension in the name), or pass its path with `--save`.

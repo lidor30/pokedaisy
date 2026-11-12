@@ -199,6 +199,8 @@ static bool env_wrap(unsigned cmd, void *data) {
 #define CANVAS_MAX_H 480
 static int CW = 320, CH = 240;       // the canvas now (follows the aspect, see canvas_update)
 static int CWMAX = 320, CHMAX = 240; // the largest canvas: what the buffers hold and what the frontend is told is the maximum
+static int menuW, menuH;
+static int canvasScale = 1; // integer game-pixel multiplier for the output canvas
 static int panelW, panelH;           // the frontend's screen, 0 = unknown (the canvas option alone then)
 static int baseGW = 240, baseGH = 160; // the game's frame before the first picture
 static uint32_t *cvs;     // the companion's canvas, 0xRRGGBB
@@ -301,15 +303,20 @@ static void draw_wide_quick_background(void) {
   }
 }
 
+enum { CANVAS_EXPAND, CANVAS_ZOOM, CANVAS_MENU };
+static int game_scale(unsigned w, unsigned h) {
+  int sx = CW / canvasScale / (int)w, sy = CH / canvasScale / (int)h;
+  int scale = sx < sy ? sx : sy;
+  return (scale < 1 ? 1 : scale) * canvasScale;
+}
+
 /* The game, whole-scale and centred, over a black canvas. */
 static void draw_game(void) {
   memset(cvs, 0, (size_t)CW * CH * sizeof *cvs);
   if (!outputBuffer || !gameW || !gameH)
     return;
   if (wideReady) {
-    int ws = CW / (int)wideW < CH / (int)wideH ? CW / (int)wideW : CH / (int)wideH;
-    if (ws < 1)
-      ws = 1;
+    int ws = game_scale(wideW, wideH);
     int wx = (CW - (int)wideW * ws) / 2, wy = (CH - (int)wideH * ws) / 2;
     for (unsigned y = 0; y < wideH; y++)
       for (int k = 0; k < ws; k++) {
@@ -327,9 +334,7 @@ static void draw_game(void) {
       }
     return;
   }
-  int s = CW / (int)gameW < CH / (int)gameH ? CW / (int)gameW : CH / (int)gameH;
-  if (s < 1)
-    s = 1;
+  int s = game_scale(gameW, gameH);
   int ox = (CW - (int)gameW * s) / 2, oy = (CH - (int)gameH * s) / 2;
   for (unsigned y = 0; y < gameH; y++) {
     uint32_t *row = cvs + (size_t)(oy + (int)y * s) * CW + ox;
@@ -370,9 +375,7 @@ static void draw_game_fast(void) {
   if (!outputBuffer || !gameW || !gameH)
     return;
   if (wideReady) {
-    int ws = CW / (int)wideW < CH / (int)wideH ? CW / (int)wideW : CH / (int)wideH;
-    if (ws < 1)
-      ws = 1;
+    int ws = game_scale(wideW, wideH);
     int wx = (CW - (int)wideW * ws) / 2, wy = (CH - (int)wideH * ws) / 2;
     for (unsigned y = 0; y < wideH; y++) {
       int cy = wy + (int)y * ws;
@@ -392,9 +395,7 @@ static void draw_game_fast(void) {
     }
     return;
   }
-  int s = CW / (int)gameW < CH / (int)gameH ? CW / (int)gameW : CH / (int)gameH;
-  if (s < 1)
-    s = 1;
+  int s = game_scale(gameW, gameH);
   int ox = (CW - (int)gameW * s) / 2, oy = (CH - (int)gameH * s) / 2;
   for (unsigned y = 0; y < gameH; y++) {
     int cy = oy + (int)y * s;
@@ -416,15 +417,19 @@ static void draw_game_fast(void) {
 /* An overlay drawn over QUICK_CLEAR and finished (quick_finish): its alpha laid over the canvas at the
  * given integer scale, its top-left at (x, y) in canvas pixels. */
 static void blend_overlay(const uint32_t *px, int w, int h, int scale, int x0, int y0) {
-  for (int y = 0; y < h * scale; y++) {
+  // A zero scale fills the output canvas, sampling the overlay with nearest-neighbor.
+  const int width = scale ? w * scale : CW;
+  const int height = scale ? h * scale : CH;
+  for (int y = 0; y < height; y++) {
     int cy = y0 + y;
     if (cy < 0 || cy >= CH)
       continue;
-    for (int x = 0; x < w * scale; x++) {
+    const uint32_t *row = px + (scale ? y / scale : y * h / height) * w;
+    for (int x = 0; x < width; x++) {
       int cx = x0 + x;
       if (cx < 0 || cx >= CW)
         continue;
-      uint32_t p = px[(y / scale) * w + x / scale], a = p >> 24;
+      uint32_t p = row[scale ? x / scale : x * w / width], a = p >> 24;
       if (!a)
         continue;
       if (direct565) {
@@ -619,7 +624,7 @@ static int hud_wild_uncaught(const struct pd_game *g, const struct pd_snapshot *
   if (!g->cfg || (!g->cfg->gb && !g->cfg->wildHeaders)) // the Game Boy games' come from their GUIDE data
     return -1;
   if (!pd_wild_here(g, s, &w))
-    return 0;
+    return -1;
   int seen[PD_WILD_METHODS * PD_WILD_MAX], n = 0, left = 0;
   for (int m = 0; m < PD_WILD_METHODS; m++)
     for (int i = 0; i < w.count[m]; i++) {
@@ -631,20 +636,16 @@ static int hud_wild_uncaught(const struct pd_game *g, const struct pd_snapshot *
       seen[n++] = sp;
       left += !pd_dex_caught(s, pd_dex_national(g, sp));
     }
-  return left;
+  return n ? left : -1;
 }
 
 /* The HUD over the game's own picture, a canvas pixel a game pixel: SIZE picks the mini HUD (SMALL, NORMAL) or the full
  * one (LARGE). */
 static void draw_hud(void) {
-  int gs = CW / (int)gameW < CH / (int)gameH ? CW / (int)gameW : CH / (int)gameH;
-  if (gs < 1)
-    gs = 1;
+  int gs = game_scale(gameW, gameH);
   int ax = (CW - (int)gameW * gs) / 2, ay = (CH - (int)gameH * gs) / 2, aw = (int)gameW * gs, ah = (int)gameH * gs;
   if (wideReady) { // the wide view (EXPAND, ZOOM OUT) is what is on screen: anchor to it, not to the centred game picture
-    int ws = CW / (int)wideW < CH / (int)wideH ? CW / (int)wideW : CH / (int)wideH;
-    if (ws < 1)
-      ws = 1;
+    int ws = game_scale(wideW, wideH);
     aw = (int)wideW * ws;
     ah = (int)wideH * ws;
     ax = (CW - aw) / 2;
@@ -652,7 +653,7 @@ static void draw_hud(void) {
   }
   // SMALL / NORMAL: the mini HUD (a core's canvas is the game's own pixels, shown 3x to 6x); LARGE: the full one.
   hudState.mini = settings.hudSize != PD_HUD_LARGE;
-  int scale = 1;
+  int scale = canvasScale;
   int w = aw / scale, hh = ah / scale;
   if (!hudPixels)
     hudPixels = malloc((size_t)CANVAS_MAX_W * CANVAS_MAX_H * sizeof *hudPixels);
@@ -682,12 +683,14 @@ static void draw_hud(void) {
 /* The EXPAND window for the canvas and a fw x fh game: the canvas over the game's whole scale (one less for
  * ZOOM OUT), within pk_wide's largest view, never smaller than the game, even margins. */
 static void wide_window(int aspect, unsigned fw, unsigned fh, unsigned *w, unsigned *h) {
-  int scale = CW / (int)fw < CH / (int)fh ? CW / (int)fw : CH / (int)fh;
+  int width = CW / canvasScale, height = CH / canvasScale;
+  int sx = width / (int)fw, sy = height / (int)fh;
+  int scale = sx < sy ? sx : sy;
   if (aspect == PD_ASPECT_ZOOM_OUT)
     scale--;
   if (scale < 1)
     scale = 1;
-  unsigned x = (unsigned)CW / scale, y = (unsigned)CH / scale;
+  unsigned x = (unsigned)width / scale, y = (unsigned)height / scale;
   x = x > PK_WIDE_MAX_VIEW_W ? PK_WIDE_MAX_VIEW_W : x < fw ? fw : x;
   y = y > PK_WIDE_MAX_VIEW_H ? PK_WIDE_MAX_VIEW_H : y < fh ? fh : y;
   *w = x - ((x - fw) & 1);
@@ -832,7 +835,6 @@ static void wide_tick(void) {
 
 /* The canvas for a fw x fh game on the panel: the panel over the game's whole scale (one less for ZOOM OUT), so the
  * frontend shows it at exactly that integer scale. EXPAND's window is the whole canvas. */
-enum { CANVAS_EXPAND, CANVAS_ZOOM, CANVAS_MENU };
 static void canvas_for(int fw, int fh, int kind, int *w, int *h) {
   int s = panelW / fw < panelH / fh ? panelW / fw : panelH / fh;
   if (s < 1)
@@ -855,28 +857,31 @@ static void choose_canvas(void) {
     w = 320, h = 240;
   CWMAX = w < 320 ? 320 : w > CANVAS_MAX_W ? CANVAS_MAX_W : w;
   CHMAX = h < 240 ? 240 : h > CANVAS_MAX_H ? CANVAS_MAX_H : h;
+  struct retro_system_av_info av;
+  mgba_retro_get_system_av_info(&av);
+  baseGW = (int)av.geometry.base_width;
+  baseGH = (int)av.geometry.base_height;
   panelW = panelH = 0;
   v = pd_option("pokedaisy_panel");
-  if (v && sscanf(v, "%dx%d", &panelW, &panelH) == 2 && panelW > 0 && panelH > 0) {
-    struct retro_system_av_info av;
-    mgba_retro_get_system_av_info(&av);
-    baseGW = (int)av.geometry.base_width;
-    baseGH = (int)av.geometry.base_height;
-    canvas_for(baseGW, baseGH, CANVAS_MENU, &CWMAX, &CHMAX); // the menus' is the largest
-  } else
+  if (v && sscanf(v, "%dx%d", &panelW, &panelH) == 2 && panelW > 0 && panelH > 0)
+    canvas_for(baseGW, baseGH, CANVAS_MENU, &CWMAX, &CHMAX);
+  else
     panelW = panelH = 0;
-  CW = CWMAX;
-  CH = CHMAX;
+  menuW = CW = CWMAX;
+  menuH = CH = CHMAX;
+  canvasScale = 1;
+  if (PD_BE_IS_GBA()) {
+    CWMAX = CANVAS_MAX_W;
+    CHMAX = CANVAS_MAX_H;
+  }
 }
 
-/* Which canvas this moment wants. With a known panel: ZOOM OUT (one scale less) while it is the chosen view, and while a
- * menu is up (they are laid out for it); EXPAND's scale otherwise, which for a game with no EXPAND is the default. The
- * HUD cursor is not a menu: it sits on the game's own view, so the canvas stays as it is. */
+/* Keep GBA Quick Menu on the selected gameplay canvas. Companion has its own layout. */
 static int want_canvas(void) {
-  if (companion || quickOpen)
+  if (companion || (quickOpen && !PD_BE_IS_GBA()))
     return CANVAS_MENU;
-  if (settings.aspect == PD_ASPECT_ORIGINAL) // one scale under the panel's largest, as ZOOM OUT: a Game Boy game 4x on the Brick
-    return CANVAS_ZOOM;
+  if (settings.aspect == PD_ASPECT_ORIGINAL)
+    return PD_BE_IS_GBA() ? CANVAS_EXPAND : CANVAS_ZOOM;
   if (!wideSupported || settings.aspect != PD_ASPECT_ZOOM_OUT)
     return CANVAS_EXPAND;
   return settings.autoZoom && !rewinding && pk_wide_scene() != PK_WIDE_SCENE_FIELD ? CANVAS_EXPAND : CANVAS_ZOOM;
@@ -884,15 +889,25 @@ static int want_canvas(void) {
 
 /* Follow the aspect: when the wanted canvas differs, resize it and tell the frontend (it rescales to the new whole factor). */
 static void canvas_update(bool notify) {
-  if (!panelW)
-    return;
-  int w, h;
+  int w = menuW, h = menuH, scale = 1;
   unsigned fw = gameW ? gameW : (unsigned)baseGW, fh = gameH ? gameH : (unsigned)baseGH;
-  canvas_for((int)fw, (int)fh, want_canvas(), &w, &h);
-  if (w == CW && h == CH)
+  if (PD_BE_IS_GBA() && !companion && settings.aspect == PD_ASPECT_ORIGINAL && fw && fh) {
+    w = (int)fw;
+    h = (int)fh;
+  } else if (panelW)
+    canvas_for((int)fw, (int)fh, want_canvas(), &w, &h);
+  // Keep extra pixels available for the menu throughout gameplay. Double the game
+  // pixels exactly, then draw menu text and icons directly at output resolution.
+  if (PD_BE_IS_GBA() && !companion && (w < 320 || h < 240) && w <= CWMAX / 2 && h <= CHMAX / 2) {
+    scale = 2;
+    w *= scale;
+    h *= scale;
+  }
+  if (w == CW && h == CH && scale == canvasScale)
     return;
   CW = w;
   CH = h;
+  canvasScale = scale;
   haveGameFrame = false;
   if (cvs)
     pd_canvas_init(&canvas, CW, CH, cvs);
@@ -1174,6 +1189,13 @@ static void hud_press(int id) {
  * where it is, where it went down, and last frame's state. */
 static bool touchDown, touchWas;
 static int touchX, touchY, touchX0, touchY0;
+/* Use Companion's logical size in every GBA view that can display it without downsampling. */
+static bool quick_use_menu_canvas(void) {
+  return PD_BE_IS_GBA() && CW >= menuW && CH >= menuH;
+}
+static int quick_width(void) { return quick_use_menu_canvas() ? menuW : CW; }
+static int quick_height(void) { return quick_use_menu_canvas() ? menuH : CH; }
+
 static void touch_poll(void) {
   touchWas = touchDown;
   touchDown = realInput && realInput(0, RETRO_DEVICE_POINTER, 0, RETRO_DEVICE_ID_POINTER_PRESSED);
@@ -1241,7 +1263,8 @@ RETRO_API void retro_run(void) {
   // A tap on the quick menu: a tile (or a FLY / REPEL list row) is picked as A picks it; outside, the list or the menu
   // closes as B. On the field, a tap that starts and ends on one HUD part presses it; the game picture itself does nothing.
   if (touch_tapped() && quickOpen && !companion) {
-    int i = (flyList || repelList) ? quick_list_hit(touchX, touchY) : quick_hit(touchX, touchY);
+    const int x = touchX * quick_width() / CW, y = touchY * quick_height() / CH;
+    int i = (flyList || repelList) ? quick_list_hit(x, y) : quick_hit(x, y);
     if (i >= 0) {
       if (flyList)
         flySel = i;
@@ -1388,7 +1411,7 @@ RETRO_API void retro_run(void) {
   } else if (quickOpen) {
     int dx = down(RIGHT) - down(LEFT), dy = down(DOWN) - down(UP);
     if (dx || dy)
-      quickSel = quick_step(quickN, quickSel, dx, dy, CW, CH);
+      quickSel = quick_step(quickN, quickSel, dx, dy, quick_width(), quick_height());
     if (down(A) && !quick[quickSel].why && quick[quickSel].action == QUICK_FLY) {
       if (polishedActions) {
         quickOpen = false;
@@ -1855,7 +1878,7 @@ RETRO_API void retro_run(void) {
       draw_game();
     dim(0x55);
     struct pd_canvas qc;
-    pd_canvas_init(&qc, CW, CH, ovPixels);
+    pd_canvas_init(&qc, quick_width(), quick_height(), ovPixels);
     const char *const *rows = flyList ? flyNames : repelList ? repelNames : NULL;
     bool drawn = true;
     if (rows)
@@ -1864,7 +1887,7 @@ RETRO_API void retro_run(void) {
       drawn = quick_draw(&qc, &game, quick, quickN, quickSel, settings.hudLook);
     if (drawn) {
       quick_finish(&qc);
-      blend_overlay(ovPixels, CW, CH, 1, 0, 0);
+      blend_overlay(ovPixels, qc.w, qc.h, qc.w == CW && qc.h == CH ? 1 : 0, 0, 0);
     }
   } else {
     direct565 = messageFrames == 0;

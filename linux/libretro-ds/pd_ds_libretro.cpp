@@ -310,7 +310,7 @@ int repelChoices[3],repelCount=0,repelSelected=0;
 std::string repelLabels[3];
 bool repelPicker=false;
 bool field_free(int bits){
-  return (bits&PK_NDS_FIELD_SCREEN)&&!(bits&(PK_NDS_FIELD_LOCKED|PK_NDS_FIELD_BATTLE|PK_NDS_FIELD_MENU));
+  return (bits&PK_NDS_FIELD_SCREEN)&&!(bits&(PK_NDS_FIELD_LOCKED|PK_NDS_FIELD_BATTLE|PK_NDS_FIELD_MENU|PK_NDS_FIELD_TEXT));
 }
 bool field_free(){return field_free(pk_nds_field_state(game,read32,nullptr,0));}
 void quick_notice(const char* label){
@@ -574,7 +574,7 @@ int ds_shortcuts(quick_item (&items)[shortcutCapacity]){
     items[count++]={QUICK_REPEL,false,false,fieldWhy?fieldWhy:snapshot.repelSteps?"Repel still active":
       !hasRepel?"No Repel in the Bag":nullptr};
     if(game)items[count++]={QUICK_WILD,shell.settings.wildOff,false,fieldWhy};
-    items[count++]={QUICK_HUD,false,shell.settings.hud,nullptr};
+    items[count++]={QUICK_HUD,false,false,hudHits.n?nullptr:"No HUD on screen"};
   }
   items[count++]={QUICK_COMPANION,false,false,nullptr};
   return count;
@@ -645,6 +645,7 @@ void present(const void* data,unsigned,unsigned,size_t) {
   }
   const auto& top=arrangement.top;
   if(companionGame!=DsGame::Unsupported && shell.settings.hud && scene.hud && !scene.dark &&
+     (!game || field_free()) && !fieldMenuFlow &&
      top.w>0 && top.h>0 && !arrangement.floating && !arrangement.modal) {
     if(tick%12==0 || !snapshot.valid)refresh();
     pd_canvas c;pd_canvas_init(&c,256,192,ui_pixels);
@@ -658,13 +659,25 @@ void present(const void* data,unsigned,unsigned,size_t) {
     for(const auto& item:snapshot.bag){
       // Unova stores Poké Balls in Items, alongside held items and field tools.
       const bool unovaBall=(item.id>=1&&item.id<=16)||(item.id>=492&&item.id<=500)||item.id==576;
-      const bool ball=ds_unova(companionGame)?item.pocket==0&&unovaBall:item.pocket==6;
+      const bool ball=ds_unova(companionGame)?unovaBall:item.pocket==6;
       if(ball&&balls.count<PD_POCKET_SLOTS)balls.items[balls.count++]={uint16_t(item.id),uint16_t(item.count)};
     }
     const int steps=snapshot.repelSteps;
     if(!steps)repelFull=0;
     else if(steps>repelFull)repelFull=hud_repel_full(steps);
-    hud_state state{steps,repelFull,false,-1,-1};
+    const auto encounters=ds_guide_here(snapshot,soulSilver);
+    int wild=encounters.count ? 0 : -1;
+    if(wild>=0){
+      bool counted[650]{};
+      for(int i=0;i<encounters.count;++i){
+        const unsigned id=encounters.entries[i].species;
+        if(!id || id>=std::size(counted) || counted[id])continue;
+        counted[id]=true;
+        if(id>=snapshot.dexCaught.size() || !snapshot.dexCaught[id])++wild;
+      }
+    }
+    const bool pc=pk_nds_call_supported(game)&&nds->cpu(ds::Cpu::ARM9).itcm_size>=0x02000000;
+    hud_state state{steps,repelFull,pc,wild,-1};
     state.mini=shell.settings.hudSize!=PD_HUD_LARGE;
     const bool pip=arrangement.touch.w>0 && arrangement.touch.x>top.x && arrangement.touch.x<top.x+top.w;
     const int hudRight=pip?(arrangement.touch.x-top.x)*256/top.w:256;
@@ -768,6 +781,7 @@ int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
   return input(p,d,i,id);
 }
 void hud_open_target(int id) {
+  if(id==HUD_PC){open_pc();return;}
   refresh();
   if(!snapshot.valid)return;
   shell.frame.overlay=PD_OVERLAY_NONE;
@@ -779,11 +793,18 @@ void hud_open_target(int id) {
     shell.selected=id-HUD_SLOT;
     shell.summary=true;
     shell.page=shell.learnRow=0;
-  }else if(id==HUD_MAP){
+  }else if(id==HUD_MAP || id==HUD_MAP_BUTTON){
     shell.frame.tab=PD_TAB_MAP;
     shell.mapX=snapshot.mapX;
     shell.mapY=snapshot.mapY;
-  }else if(id==HUD_BALLS || id==HUD_REPEL){
+  }else if(id==HUD_WILD){
+    shell.frame.tab=PD_TAB_GUIDE;
+    shell.frame.guidePage=int(GuidePage::Here);
+    shell.guideLoadedPage=-1;
+    pd_ui_guide_reset(&shell.frame);
+  }else if(id==HUD_COMPANION){
+    refresh_battle_companion();
+  }else if(id==HUD_BALLS || id==HUD_REPEL || id==HUD_BAG){
     shell.frame.tab=PD_TAB_BAG;
     shell.pocket=shell.scroll=0;
   }else return;
@@ -879,7 +900,10 @@ void controls() {
         quickOpen=false;
         return;
       }
-      if(shortcut.action==QUICK_HUD){shell.settings.hud=!shell.settings.hud;shell.save();}
+      if(shortcut.action==QUICK_HUD){
+        hudCursor=hud_first(&hudHits);
+        hudConsumed|=buttons;
+      }
       else{
         refresh();refresh_battle_companion();companion=true;
         shell.mapX=snapshot.mapX;shell.mapY=snapshot.mapY;

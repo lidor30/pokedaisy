@@ -1182,8 +1182,25 @@ void hud_ds_draw(struct pd_canvas *c, const struct pd_snapshot *s, const struct 
   u.partyN = !minimal && shows(&u, PD_HUD_PARTY) ? s->partyCount : 0;
   u.balls = shows(&u, PD_HUD_BALLS) ? balls(s, u.ball) : 0;
   u.repel = shows(&u, PD_HUD_REPEL) && h->repel > 0;
+  if (!h->noButtons) {
+    if (h->pc && shows(&u, PD_HUD_PC))
+      u.button[u.buttons++] = HUD_PC;
+    if (shows(&u, PD_HUD_BAG))
+      u.button[u.buttons++] = HUD_BAG;
+    if (h->wild >= 0 && shows(&u, PD_HUD_WILD))
+      u.button[u.buttons++] = HUD_WILD;
+    u.button[u.buttons++] = HUD_COMPANION;
+  }
+  const int available = right - 2 * EDGE;
+  while (u.buttons > 1 && buttons_w(&u, false) > available) {
+    if (u.buttons == 2 && u.button[1] == HUD_BAG)
+      u.button[0] = HUD_BAG;
+    u.buttons--;
+  }
+  while (u.balls > 1 && balls_w(&u, false) > available)
+    u.balls--;
   if (minimal) {
-    if (!u.balls && !u.repel && shows(&u, PD_HUD_PARTY) && s->partyCount) {
+    if (!u.balls && !u.repel && !u.buttons && shows(&u, PD_HUD_PARTY) && s->partyCount) {
       u.partyN = 1;
       party_row(&u, EDGE, c->h - EDGE - party_height(&u));
     } else compact(&u);
