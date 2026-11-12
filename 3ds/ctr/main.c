@@ -114,6 +114,7 @@ static float dspBase = DSP_RATE;
 #define ARMGBA_RATE ((float) (PD_ARMGBA_SAMPLE_RATE * SCREEN_HZ / PD_ARMGBA_FPS))
 static u64 audioLast;
 static unsigned audioGaps, audioDrops; // the queue ran dry / had no room, for the dev build's stat
+static unsigned audioGapsTotal, audioQueueMin = 99;
 
 // A game under full speed makes its sound too slowly, and a dry queue is a hole in the music, several a second: that was
 // the crunch. So the channel follows how fast the chunks really come: the sound plays as slowly as the game runs, a slow
@@ -154,7 +155,8 @@ static ndspWaveBuf* audio_next(void) {
         audio_follow(queued);
         return NULL;
     }
-    if (!queued) audioGaps++;
+    if (!queued) audioGaps++, audioGapsTotal++;
+    if ((unsigned) queued < audioQueueMin) audioQueueMin = (unsigned) queued;
     audio_follow(queued);
     bufferId = free;
     ndspWaveBuf* b = &dspBuffer[free];
@@ -810,6 +812,20 @@ static bool run_game(const char* file) {
             unsigned whole = TICKS_TO_US(end - loopStart);
             if (whole > dev.worstUs) dev.worstUs = whole;
             if (whole > 17500) dev.late++;
+            {
+                static unsigned loops, late, lateCore, lateDraw, lateRest, framesTotal;
+                loops++;
+                framesTotal += (unsigned) frames;
+                unsigned coreUs = TICKS_TO_US(uiStart - coreStart), drawUs = TICKS_TO_US(end - drawStart);
+                if (whole > 17500) {
+                    late++;
+                    if (coreUs > 12000) lateCore++;
+                    else if (drawUs > 10000) lateDraw++;
+                    else lateRest++;
+                }
+                dev.totLoops = loops, dev.totLate = late, dev.totLateCore = lateCore, dev.totLateDraw = lateDraw;
+                dev.totLateRest = lateRest, dev.totGaps = audioGapsTotal, dev.totFrames = framesTotal, dev.queueMin = audioQueueMin;
+            }
             loopStart = end;
             dev.frames += (unsigned) frames;
             if (now - devSecond >= 1000) {
@@ -830,6 +846,12 @@ static bool run_game(const char* file) {
                     dev.agFlushUs = TICKS_TO_US(jitFlushTicks);
                     dev.wideThreadUs = TICKS_TO_US(gpuWideTicks);
                     dev.drawJobUs = TICKS_TO_US(gpuDrawTicks);
+                    extern volatile u64 gpuTexTicks, gpuCanvasTicks, gpuBeginTicks, gpuRestTicks;
+                    dev.jobTexUs = TICKS_TO_US(gpuTexTicks);
+                    dev.jobBeginUs = TICKS_TO_US(gpuBeginTicks);
+                    dev.jobCanvasUs = TICKS_TO_US(gpuCanvasTicks);
+                    dev.jobRestUs = TICKS_TO_US(gpuRestTicks);
+                    gpuTexTicks = gpuCanvasTicks = gpuBeginTicks = gpuRestTicks = 0;
                     renderWaitTicks = renderWorkTicks = jitCompileTicks = jitFlushTicks = 0;
                     {
                         static unsigned mixesWas;
@@ -863,6 +885,7 @@ static bool run_game(const char* file) {
                 audioGaps = audioDrops = 0;
                 devlink_report(&dev);
                 memset(&dev, 0, sizeof(dev));
+                audioQueueMin = 99;
             }
         }
 #endif
@@ -1136,6 +1159,18 @@ static bool pick_rom(char* out, size_t outLen) {
             break;
         }
         pd_library_tick(&library);
+        {
+            // The battery in every page's title, read once a second.
+            static u64 batteryAt;
+            u64 now = osGetTime();
+            if (!batteryAt || now - batteryAt >= 1000) {
+                batteryAt = now;
+                u8 level = 0;
+                int pct = R_SUCCEEDED(MCUHWC_GetBatteryLevel(&level)) ? level : -1;
+                if (pct != library.batteryPct) library.dirty = true;
+                library.batteryPct = pct;
+            }
+        }
 #ifdef PD_DEV
         snprintf(devLine, sizeof devLine, "%s", devlink_address());
         if (!host.devLine || strcmp(host.devLine, devLine)) library.dirty = true;

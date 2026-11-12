@@ -162,10 +162,10 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         right -= pd_text_width(pct);
         pd_text(c, right, ty, pct, PD_TITLE_TEXT, PD_TITLE_SHADOW);
         right -= 26;
-        pd_fill(c, right + 2, ty + 6, 18, 8, PD_TITLE_TEXT);
-        pd_fill(c, right + 3, ty + 7, 16, 6, PD_TITLE_FILL);
-        pd_fill(c, right + 4, ty + 8, 14 * host->batteryPct / 100, 4, PD_TITLE_TEXT);
-        pd_fill(c, right + 20, ty + 8, 2, 4, PD_TITLE_TEXT);
+        pd_fill(c, right + 2, ty + 5, 18, 8, PD_TITLE_TEXT);
+        pd_fill(c, right + 3, ty + 6, 16, 6, PD_TITLE_FILL);
+        pd_fill(c, right + 4, ty + 7, 14 * host->batteryPct / 100, 4, PD_TITLE_TEXT);
+        pd_fill(c, right + 20, ty + 7, 2, 4, PD_TITLE_TEXT);
         right -= 2;
     } else if (g->cfg && g->cfg->cardStyle && g->rom) {
         const char* label = "TRAINER CARD";

@@ -32,6 +32,10 @@ struct devlink_stats {
     unsigned agWaitUs, agRenderUs, agCompileUs, agFlushUs, wideThreadUs, drawJobUs;
     unsigned agStepped, agCompiled, agInvalidated, agCodeWrites;   // armGBA's recompiler, in the last second
     unsigned mixes;   // the native m4a mixer's, in the last second
+    // Since the game started (read twice, a quiet stretch apart): loops, late loops by what ran over (the core over 12 ms,
+    // the draw over 10 ms, else the rest of the loop), the sound queue running dry, its fewest chunks queued.
+    unsigned totLoops, totLate, totLateCore, totLateDraw, totLateRest, totGaps, totFrames, queueMin;
+    unsigned jobTexUs, jobBeginUs, jobCanvasUs, jobRestUs;   // the draw jobs in the last second (gpu.c)
 };
 
 void devlink_start(void);

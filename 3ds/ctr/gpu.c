@@ -340,7 +340,10 @@ void gpu_hold_game(bool hold) {
     holdGame = hold;
 }
 
+// The dev build's split of the draw jobs (ticks): writing the game's texture, the canvases, waiting in FrameBegin, the rest.
+volatile u64 gpuTexTicks, gpuCanvasTicks, gpuBeginTicks, gpuRestTicks;
 static void run_job(const struct draw_job* j, bool threaded) {
+    u64 tA = svcGetSystemTick();
     bool game = j->game;
     int screenMode = j->screenMode, gameW = j->gameW, gameH = j->gameH, wideW = j->wideW, wideH = j->wideH;
     bool holdGame = j->holdGame;
@@ -358,12 +361,15 @@ static void run_job(const struct draw_job* j, bool threaded) {
     }
     bool canvases = j->bottom || j->top || j->overlay || j->perfNew;
     if (threaded && !canvases) LightEvent_Signal(&stageFree);
+    u64 tB = svcGetSystemTick();
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+    u64 tC = svcGetSystemTick();
     if (j->bottom) write_canvas(&bottomTex, j->bottom, PD_UI_WIDTH, PD_UI_HEIGHT);
     if (j->top) write_canvas(&topTex, j->top, TOP_W, TOP_H);
     if (j->overlay) write_overlay(j->overlay);
     if (j->perfNew) write_perf(stagePerf);
     if (threaded && canvases) LightEvent_Signal(&stageFree);
+    u64 tD = svcGetSystemTick();
     Tex3DS_SubTexture sub, upSub;
     u32 black = C2D_Color32(0, 0, 0, 0xFF);
     // The smooth modes: the frame at 2x nearest, sampled linearly down to size (mGBA's "sharp bilinear").
@@ -409,6 +415,11 @@ static void run_job(const struct draw_job* j, bool threaded) {
     C2D_DrawImageAt(image(&bottomTex, &bottomSub, PD_UI_WIDTH, PD_UI_HEIGHT), 0, 0, 0.5f, NULL, 1.0f, 1.0f);
     C3D_FrameEnd(0);
     framesShown++;
+    u64 tE = svcGetSystemTick();
+    gpuTexTicks += tB - tA;
+    gpuBeginTicks += tC - tB;
+    gpuCanvasTicks += tD - tC;
+    gpuRestTicks += tE - tD;
 }
 
 unsigned gpu_frames_shown(void) {

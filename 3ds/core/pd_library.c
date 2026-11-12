@@ -150,6 +150,7 @@ void pd_library_init(struct pd_library* l, struct pd_settings* settings, const s
     lib_saves_reset();
     lib_top_reset();
     lib_draw_reset();
+    l->batteryPct = -1;
     l->settings = settings;
     l->host = host;
     l->picked = -1;

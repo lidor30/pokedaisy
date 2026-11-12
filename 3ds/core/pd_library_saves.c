@@ -622,14 +622,18 @@ void lib_saves_draw(struct pd_library* l, struct pd_canvas* c) {
         static const int HITS[BUTTONS] = { HIT_MONEY, HIT_COINS, HIT_WRITE };
         buttons(l, c, LABELS, HITS, -1);
     } else {
-        // TRADE: a tab per side over its box.
-        int y = TITLE_Y, gap = 4, w = (PAGE_W - gap) / 2;
+        // TRADE: a tab per side over its box, the battery in a window of its own at the right.
+        int y = TITLE_Y, gap = 4, bw = lib_battery_width() ? lib_battery_width() + 14 : 0;
+        int w = (PAGE_W - gap - (bw ? bw + gap : 0)) / 2;
+        if (bw) lib_battery_box(c, PAGE_X + PAGE_W - bw, y, bw, TITLE_H);
         for (int i = 0; i < 2; i++) {
             const struct pd_library_game* g = &l->games[s->sides[i].game];
             int x = PAGE_X + i * (w + gap);
             bool on = s->active == i;
             pd_layered_two_tone(c, x, y, w, TITLE_H, 3, pd_cur->chip, pd_cur->chipCount, on ? pd_cur->tabSelectedFill : pd_cur->tabIdleFill, 0);
-            pd_text_fit(c, x + 6, pd_text_y(y, TITLE_H), w - 12 - (s->sides[i].mark >= 0 ? 10 : 0), g->title, on ? PD_VALUE : PD_LABEL,
+            // The games' own names without the series' (two of them share the row with the battery).
+            const char* name = !strncmp(g->title, "Pokémon ", strlen("Pokémon ")) ? g->title + strlen("Pokémon ") : g->title;
+            pd_text_fit(c, x + 6, pd_text_y(y, TITLE_H), w - 12 - (s->sides[i].mark >= 0 ? 10 : 0), name, on ? PD_VALUE : PD_LABEL,
                         on ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
             if (s->sides[i].mark >= 0) pd_round_rect(c, x + w - 12, y + (TITLE_H - 6) / 2, 6, 6, 3, PD_VALUE);
             if (on) pd_fill(c, x + 6, y + TITLE_H - 5, w - 12, 2, PD_VALUE);

@@ -213,6 +213,7 @@ int main(int argc, char** argv) {
         NULL, read_rom, read_save, write_saves, load_rom, read_card, settings_changed, cache_changed, "1.6.0 (3DS)", NULL,
     };
     pd_library_init(&lib, &settings, &host);
+    lib.batteryPct = 82;   // the 3DS host reads the console's
     for (size_t i = 0; i < sizeof FILES / sizeof FILES[0]; i++) {
         char path[1024];
         rom_path(FILES[i], path, sizeof path);

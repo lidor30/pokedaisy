@@ -123,7 +123,7 @@ static void outlined(struct pd_canvas* c, int x, int y, const char* text, int sc
 
 static void label(struct pd_canvas* c, int x, int y, int w, int h, const char* text, int scale) {
     int tw = pd_text_width(text) * scale;
-    pd_text_scaled(c, x + (w - tw) / 2, y + (h - PD_FONT_HEIGHT * scale) / 2 + scale, text, GB_LOOK ? PD_TITLE_TEXT : 0xFFFFFF,
+    pd_text_scaled(c, x + (w - tw) / 2, y + (h - 18 * scale) / 2, text, GB_LOOK ? PD_TITLE_TEXT : 0xFFFFFF,
                    GB_LOOK ? PD_NO_SHADOW : LABEL_SHADOW, scale);
 }
 
@@ -138,7 +138,7 @@ static int fit_scale(const char* text, int w, int max) {
 static void outlined_label(struct pd_canvas* c, int x, int y, int w, int h, const char* text, int scale) {
     int room = w - 8 - 2 * scale, num = scale * 4, den = 4;
     while (num > 4 && pd_text_width(text) * num / den > room) num--;
-    int tw = pd_text_width(text) * num / den, tx = x + (w - tw) / 2, ty = y + (h - PD_FONT_HEIGHT * scale) / 2 + scale;
+    int tw = pd_text_width(text) * num / den, tx = x + (w - tw) / 2, ty = y + (h - 17 * scale) / 2;   // the capitals in the middle, their outline all round
     if (num == scale * 4 || GB_LOOK) {
         outlined(c, tx, ty, text, scale);
         return;
@@ -351,7 +351,7 @@ static void action_buttons(struct pd_ui* ui, struct pd_canvas* c, const struct p
     // (A party icon stands at the bottom of its 32 x 32: raised a little, it sits level with the word.)
     if (pd_draw_mon_icon(c, g, you->species, cx, fy + (fightH - PD_ICON) / 2 - 3, false)) cx += iconW;
     else cx += iconW / 2;
-    outlined(c, cx, fy + (fightH - PD_FONT_HEIGHT * scale) / 2 + scale, "FIGHT", scale);
+    outlined(c, cx, fy + (fightH - 17 * scale) / 2, "FIGHT", scale);
     if (busy) ui_fade_rect(c, saved, fx, fy, fightW, fightH, DISABLED_ALPHA);
     // The row's ends flush with the move places' (HeartGold's 254 of 256 rounds to the pane's own edges).
     int rowW = w, bw = WIDE(82), bh = DS(46);

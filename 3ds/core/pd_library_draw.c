@@ -230,14 +230,46 @@ void lib_page_backdrop(struct pd_canvas* c) {
     memcpy(c->px, page, sizeof(uint32_t) * (size_t) c->w * (size_t) c->h);
 }
 
+int lib_battery = -1;
+
+int lib_battery_width(void) {
+    if (lib_battery < 0) return 0;
+    char pct[8];
+    snprintf(pct, sizeof pct, "%d%%", lib_battery > 100 ? 100 : lib_battery);
+    return 24 + pd_text_width(pct);
+}
+
+// The battery, as the companion's SETTINGS title has it: its level drawn, then the percentage, ending at [end].
+static void battery_at(struct pd_canvas* c, int end, int ty) {
+    if (lib_battery < 0) return;
+    int pct = lib_battery > 100 ? 100 : lib_battery, x = end - lib_battery_width();
+    char text[8];
+    snprintf(text, sizeof text, "%d%%", pct);
+    pd_fill(c, x, ty + 5, 18, 8, PD_TITLE_TEXT);
+    pd_fill(c, x + 1, ty + 6, 16, 6, PD_TITLE_FILL);
+    pd_fill(c, x + 2, ty + 7, 14 * pct / 100, 4, pct <= 15 ? PD_VALUE : PD_TITLE_TEXT);
+    pd_fill(c, x + 18, ty + 7, 2, 4, PD_TITLE_TEXT);
+    pd_text(c, end - pd_text_width(text), ty, text, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+}
+
+void lib_battery_box(struct pd_canvas* c, int x, int y, int w, int h) {
+    int f = pd_title_box(c, x, y, w, h, PD_TITLE_FILL);
+    battery_at(c, x + w - f - 4, pd_text_y(y, h));
+}
+
 int lib_title(struct pd_canvas* c, const char* title, const char* right, bool logo) {
     int x = PAGE_X, w = PAGE_W;
     int f = pd_title_box(c, x, TITLE_Y, w, TITLE_H, PD_TITLE_FILL);
-    int tx = x + f + 4;
+    int tx = x + f + 4, ty = pd_text_y(TITLE_Y, TITLE_H);
     (void) logo; // the logo sits under the rail, at its own size
-    int rw = right ? pd_text_width(right) : 0;
-    pd_text_fit(c, tx, pd_text_y(TITLE_Y, TITLE_H), x + w - f - 6 - rw - tx, title, PD_TITLE_TEXT, PD_TITLE_SHADOW);
-    if (right) pd_text_right(c, x + w - f - 4, pd_text_y(TITLE_Y, TITLE_H), right, PD_VALUE, PD_VALUE_SHADOW);
+    int end = x + w - f - 4;
+    if (lib_battery >= 0) {
+        battery_at(c, end, ty);
+        end -= lib_battery_width() + 6;
+    }
+    int rw = right ? pd_text_width(right) + 6 : 0;
+    pd_text_fit(c, tx, ty, end - rw - tx, title, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+    if (right) pd_text_right(c, end, ty, right, PD_VALUE, PD_VALUE_SHADOW);
     return f;
 }
 
@@ -544,9 +576,7 @@ static void view_chip(struct pd_canvas* c, int x, int y, int w, int h, int view,
 }
 
 static void games_page(struct pd_library* l, struct pd_canvas* c) {
-    char count[16];
-    snprintf(count, sizeof count, "%d", l->count);
-    lib_title(c, "POKéDAISY", count, true);
+    lib_title(c, "POKéDAISY", NULL, true);
     // The views as chips under the title, sharing its width (L / R step them).
     int y = TITLE_Y + TITLE_H + LIB_M, h = 20, gap = 3, x = PAGE_X;
     int room = PAGE_W - gap * (PD_VIEW_COUNT - 1);
@@ -637,6 +667,7 @@ void lib_settings_draw(struct pd_library* l, struct pd_canvas* c) {
 
 void pd_library_draw(struct pd_library* l, struct pd_canvas* c) {
     lib_hits_clear();
+    lib_battery = l->batteryPct;
     pd_font_set(NULL, 0); // the library's own font (a Game Boy game leaves its own installed)
     barShown = false;
     pd_look_apply(NULL, l->settings);

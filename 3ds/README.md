@@ -117,7 +117,7 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
   Polished Crystal, PureRed / PureBlue). Per game: its names, moves, types and type chart, party and bag palettes,
   backdrop, and the companion's windows in the Game Boy games' black on white. No DS: the 3DS can't run melonDS.
 - **Library**: a rail of pages down the touch screen, an icon each (the app's tool icons): GAMES, SAVE EDITOR, TRADE SAVES and
-  SETTINGS (SELECT steps through them). GAMES lists the games as rows or tiles (SETTINGS > VIEW) in the companion's look,
+  SETTINGS (SELECT steps through them), each page's title with the battery and its percentage. GAMES lists the games as rows or tiles (SETTINGS > VIEW) in the companion's look,
   ALL / RECENT / GBA / GB / HACKS on L / R, sorted by NAME or LAST PLAYED. A game is named by its file name when the app
   knows it, else by its contents: the header's code at once, its SHA-1 a slice a frame (once; kept in `library.tsv`), so
   `unbound.gba` shows as Pokémon Unbound, a HACK. The top screen shows the game under the cursor the way the games' CONTINUE
@@ -192,7 +192,10 @@ games on, is GPL-2.0-only and can't be distributed with this GPL-3.0 code: `emu/
 buffer is one 32 MB block reserved at start (`host_rom_arena`): a block per game left the heap too broken up for a 32 MB
 game after another had run. The dev build's `sdmc:/pokedaisy-dev/armgba/mgba` runs GBA games on mGBA, to compare;
 `stat` adds armGBA's counters (`ag_wait_us` / `ag_render_us` / `ag_compile_us` / `ag_flush_us`) and the fourth core's
-(`wide_thread_us`, `draw_job_us`). The sim runs armGBA's interpreter (a desktop recompiler would need its own executable
+(`wide_thread_us`, `draw_job_us`; its split `job_tex_us` / `job_begin_us`, the wait for the refresh / `job_canvas_us` /
+`job_rest_us`). Each `stat` busies the link's core ~25 ms (its `clock_us`), so a reading a second costs frames of its own:
+for a quiet measurement read the running totals (`tot_loops`, `tot_late` split by `tot_late_core` / `_draw` / `_rest`,
+`tot_gaps`, the sound queue's `queue_min`) twice, a stretch of play apart. The sim runs armGBA's interpreter (a desktop recompiler would need its own executable
 memory); `PD_SIM_CORE=mgba` puts a GBA game on mGBA there too.
 
 **mGBA** (Game Boy games, and the comparison above): half of a frame on a New 3DS is the game's own sound mixer, the m4a
