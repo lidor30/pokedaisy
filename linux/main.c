@@ -32,6 +32,7 @@
 #define OVERLAY_MAX_H 768
 #define KEY_COLOR 0xFF00FFu // the overlay's see-through colour
 #define OUT_RATE 48000
+#define MODIFIER_TAP_FRAMES 6 // a tap of the MODIFIER alone reaches the game this long (Game Boy menus miss 1-frame presses)
 
 static SDL_Window *window;
 static SDL_Renderer *renderer;
@@ -417,6 +418,27 @@ static struct {
   int modifier;
 } hostSet = {0, false, false, false, {R2, L2, -1, -1}, {R2, L2, -1, -1}, SELECT};
 static char hostIni[PATH_MAX];
+/* A DS game's L2 / R2 are its companion and screen buttons: with no modifier held for them, its FAST FORWARD and REWIND
+ * go back to the stick clicks (R3 / L3), and come back to R2 / L2 when a modifier is picked again. */
+static void ds_hotkeys_follow_modifier(void) {
+  int *ds = hostSet.dsHotkey;
+  if (hostSet.modifier < 0 && ds[HK_FF] == R2 && ds[HK_REWIND] == L2) {
+    ds[HK_FF] = R3;
+    ds[HK_REWIND] = L3;
+  } else if (hostSet.modifier >= 0 && ds[HK_FF] == R3 && ds[HK_REWIND] == L3) {
+    ds[HK_FF] = R2;
+    ds[HK_REWIND] = L2;
+  }
+}
+/* A new modifier can't also be a hotkey's own button (that hotkey would never fire): the hotkey lets it go. */
+static void modifier_takes(int k) {
+  for (int i = 0; i < HK_ACTIONS; i++) {
+    if (hostSet.hotkey[i] == k)
+      hostSet.hotkey[i] = -1;
+    if (hostSet.dsHotkey[i] == k)
+      hostSet.dsHotkey[i] = -1;
+  }
+}
 static void host_load(void) {
   FILE *f = fopen(hostIni, "r");
   char line[128];
@@ -455,6 +477,7 @@ static void host_load(void) {
     hostSet.dsHotkey[HK_FF] = R2;
     hostSet.dsHotkey[HK_REWIND] = L2;
   }
+  ds_hotkeys_follow_modifier();
   swapFace = hostSet.swapAB;
 }
 static void host_save(void) {
@@ -1499,6 +1522,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
   bool hkPage = false;
   unsigned latched = 0, menuConsumed = 0;
   bool modifierPending = false, modifierUsed = false;
+  int pulseLeft = 0; // frames the modifier's own tap still reaches the game
   int capturing = -1; // the HOTKEYS row waiting for a button
   // LOAD STATE and QUIT ask first, CANCEL on top (as the hosts before this one): a stray A never loses the game's progress.
   struct pd_menu confirmMenu;
@@ -1547,6 +1571,7 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     menuConsumed &= held;
     if (inputReset || menuKey || menuChordDown) {
       modifierPending = modifierUsed = false;
+      pulseLeft = 0;
       inputReset = false;
       if (menuKey || menuChordDown)
         menuConsumed |= held;
@@ -1578,12 +1603,16 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       modifierUsed |= !!(latched & hotkeyMask) || dsStylus;
       if (!(held & modifier)) {
         if (modifierPending && !modifierUsed)
-          modifierPulse = modifier;
+          pulseLeft = MODIFIER_TAP_FRAMES;
         modifierPending = modifierUsed = false;
-      }
+      } else
+        pulseLeft = 0; // held again: it's the modifier now, not a tap
+      if (pulseLeft > 0)
+        modifierPulse = modifier;
       if (!dsStylus)
         hotkeyMask |= modifier;
-    }
+    } else
+      pulseLeft = 0;
     hotkeyMask |= latched | menuConsumed;
     if (hkFired & (1u << HK_SAVE))
       notice(state_file(ss, true) ? "State saved" : "State save failed");
@@ -1597,9 +1626,12 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
       if (down(B))
         capturing = -1;
       else if (down(SELECT)) {
-        if (capturing == HK_ACTIONS)
+        if (capturing == HK_ACTIONS) {
           hostSet.modifier = hostSet.modifier == SELECT ? -1 : SELECT;
-        else
+          if (hostSet.modifier >= 0)
+            modifier_takes(hostSet.modifier);
+          ds_hotkeys_follow_modifier();
+        } else
           hotkeys[capturing] = -1;
         host_save();
         capturing = -1;
@@ -1608,6 +1640,12 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
           if (down(k) && (hotkey_assignable(k) || (capturing == HK_ACTIONS && k == START))) {
             if (capturing == HK_ACTIONS) {
               hostSet.modifier = k;
+              modifier_takes(k);
+              ds_hotkeys_follow_modifier();
+            } else if (k == hostSet.modifier) {
+              notice("That button is the MODIFIER");
+              capturing = -1;
+              break;
             } else {
               for (int j = 0; j < HK_ACTIONS; j++)
                 if (hotkeys[j] == k)
@@ -1747,8 +1785,10 @@ static void run_game(const char *path, int maxFrames, const char *shot, bool fro
     } else {
       for (int i = 0; i < runs && running; i++) {
         core.run();
-        if (modifierPulse)
+        if (modifierPulse && --pulseLeft <= 0) {
           gameKeys &= ~joypad(modifierPulse);
+          modifierPulse = 0;
+        }
         if (hostSet.rewind && !(++rewindTick & 1))
           rewind_push();
       }

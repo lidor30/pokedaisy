@@ -92,9 +92,9 @@ names saves by the file name alone.
 
 ### NXRedux collection and Platinum
 
-In Platinum (USA, revision 1), L2 opens the companion and SELECT + L2 opens the quick menu. Set `SETTINGS` >
+In Platinum (USA, revision 1), L2 opens the companion and holding L2 opens the quick menu. Set `SETTINGS` >
 `DS LAYOUT` to `ONE SCREEN` to play on the whole screen, with the touch screen and menus floating in when the game
-wants them. R2 switches to the bottom or top screen by hand. Hold SELECT and press R2 to show or hide a floating
+wants them. R2 switches to the bottom or top screen by hand. Hold SELECT and press Y to show or hide a floating
 touch screen in `ONE SCREEN` or `PICTURE IN PICTURE`. SELECT + D-pad moves the stylus and SELECT + A taps.
 
 In a DS game's DEX entry, Left and Right step to the previous and next entry you have seen, going round at either
@@ -212,22 +212,24 @@ pauses while it's open.
 
 ### Hotkeys
 
-`HOTKEYS` gives these a button each:
+Hotkeys work while you hold SELECT, so their buttons stay the game's the rest of the time. `HOTKEYS` gives these a
+button each:
 
-- `FAST FORWARD`: the game runs fast while you hold it. R2 to start with.
-- `REWIND`: the game runs backwards while you hold it, with `REWIND` set to `ON`. L2 to start with. While `REWIND` is
-  `OFF` its button is the game's.
-- `SAVE STATE` and `LOAD STATE`: one press each. Off to start with.
+- `FAST FORWARD`: the game runs fast while you hold SELECT and the button. R2 to start with.
+- `REWIND`: the game runs backwards while you hold SELECT and the button, with `REWIND` set to `ON`. L2 to start with.
+- `SAVE STATE` and `LOAD STATE`: one press each, with SELECT held. Off to start with.
+- `MODIFIER`: the button you hold for the hotkeys. SELECT to start with. Press START or a hotkey button to use that
+  instead, or press SELECT to turn it off; then each hotkey is its button alone, and that button never reaches the game.
+
+A short press of SELECT on its own still reaches the game when you let go.
 
 Pick a row, then press the button you want. B cancels and SELECT turns the hotkey off. L1, R1, L2, R2, X, Y, either
 stick's click and back buttons can be hotkeys; A, B, START, SELECT and the D-pad stay the game's. A button that
-another hotkey had moves over to the new one. The game never sees a hotkey's button, so if you make X or Y one,
-the companion or the quick menu needs another button.
+another hotkey had moves over to the new one, and the `MODIFIER` can't be a hotkey's button too.
 
-DS games keep hotkeys of their own, since L2 and R2 are the DS's companion and screen buttons there: fast-forward is
-R3 and rewind L3 to start with. A device without stick buttons gets them only once you pick buttons in `HOTKEYS`
-during a DS game. On a Steam Deck, the back buttons reach PokeDaisy only when
-Steam passes them on.
+DS games keep hotkeys of their own, also SELECT + R2 and SELECT + L2 to start with. With the `MODIFIER` off they move
+to R3 and L3, since R2 and L2 alone are the DS's screen and companion buttons. On a Steam Deck, the back buttons reach
+PokeDaisy only when Steam passes them on.
 
 ## For advanced users
 
