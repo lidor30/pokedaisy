@@ -71,6 +71,32 @@ int pd_layered_box(struct pd_canvas* c, int x, int y, int w, int h, int r,
     return inset;
 }
 
+static uint32_t mix_rgb(uint32_t from, uint32_t to, unsigned percent) {
+    uint32_t color = 0;
+    for (unsigned shift = 0; shift < 24; shift += 8) {
+        unsigned a = (from >> shift) & 255, b = (to >> shift) & 255;
+        color |= ((a * (100 - percent) + b * percent + 50) / 100) << shift;
+    }
+    return color;
+}
+
+void pd_button_box(struct pd_canvas* c, int x, int y, int w, int h, int r,
+                   const struct pd_layer* layers, int n, uint32_t fill) {
+    int inset = pd_layered_box(c, x, y, w, h, r, layers, n, fill);
+    int split = y + h * 47 / 100;
+    int line = n > 0 ? layers[n - 1].width : 1;
+    int bounds[] = {split, split + line, split + 2 * line, y + h};
+    uint32_t low = mix_rgb(fill, 0x40485A, 30);
+    uint32_t colors[] = {mix_rgb(fill, low, 35), mix_rgb(fill, low, 70), low};
+    for (int i = 0; i < 3; i++) {
+        struct pd_canvas clip = *c;
+        if (clip.cy0 < bounds[i]) clip.cy0 = bounds[i];
+        if (clip.cy1 > bounds[i + 1]) clip.cy1 = bounds[i + 1];
+        pd_round_rect(&clip, x + inset, y + inset, w - 2 * inset, h - 2 * inset,
+                      r > inset ? r - inset : 0, colors[i]);
+    }
+}
+
 static uint32_t next_codepoint(const char** s) {
     const unsigned char* p = (const unsigned char*) *s;
     uint32_t cp;

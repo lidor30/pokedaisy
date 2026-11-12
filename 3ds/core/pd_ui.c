@@ -258,7 +258,7 @@ static bool on_bar(const struct pd_ui* ui, enum pd_tab t) {
 }
 
 static void chip(struct pd_ui* ui, struct pd_canvas* c, int x, int w, bool open, int id) {
-    pd_layered_box(c, x, BAR_Y(c), w, CHIP_H, 3, pd_cur->chip, pd_cur->chipCount,
+    pd_button_box(c, x, BAR_Y(c), w, CHIP_H, 3, pd_cur->chip, pd_cur->chipCount,
                    open || ui->pressedId == id ? pd_cur->tabSelectedFill : pd_cur->tabIdleFill);
     ui_add_hit(ui, x, BAR_Y(c), w, CHIP_H, id);
 }
