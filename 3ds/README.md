@@ -22,7 +22,7 @@ Target the **New 3DS / New 3DS XL / New 2DS XL** first; the original 3DS / 3DS X
 
 ## What works
 
-- Game list (`sdmc:/pokedaisy/roms/*.gba`), D-pad or stylus.
+- Game list (`sdmc:/pokedaisy/roms/`: `.gba`, `.gb`, `.gbc`), D-pad or stylus.
 - The game on the top screen, with sound (ndsp), in three SCREEN modes:
   **PIXEL 1x** (pixel for pixel, centred), **SHARP 1.5x** (fills the height;
   the default) and **STRETCH** (fills the screen). The smooth two use mGBA's
@@ -232,13 +232,14 @@ every pixel, 42 ms a redraw before, about 4 ms now.
 
 ## Installing on a 3DS
 
-Needs a 3DS with custom firmware (Luma3DS) and the Homebrew Launcher.
-
-1. Copy `pokedaisy.3dsx` to `sdmc:/3ds/`.
-2. Put your own legally dumped `.gba` files (and any `.sav` with the same name)
-   in `sdmc:/pokedaisy/roms/`.
-3. For sound, the DSP firmware must be dumped once (`sdmc:/3ds/dspfirm.cdc`, the
-   DSP1 homebrew does it) - without it the game runs silent.
+The step-by-step guide for players is [INSTALL.md](INSTALL.md), in every language the app has: [日本語](INSTALL.ja.md),
+[한국어](INSTALL.ko.md), [Français](INSTALL.fr.md), [Deutsch](INSTALL.de.md), [Italiano](INSTALL.it.md),
+[Español](INSTALL.es.md), [Português (Brasil)](INSTALL.pt-br.md), [Português (Portugal)](INSTALL.pt.md) (the manual's
+`docs/manual/3ds.md` and its translations, also on pokedaisy.com/docs/3ds/). In short: a 3DS with custom firmware
+(Luma3DS) and the Homebrew Launcher; `pokedaisy.3dsx` in `sdmc:/3ds/`; your own `.gba` / `.gb` / `.gbc` files (and any
+`.sav` with the same name) in `sdmc:/pokedaisy/roms/`; the DSP firmware dumped once for sound (`sdmc:/3ds/dspfirm.cdc`,
+Rosalina's Miscellaneous options > Dump DSP firmware), without which the game runs silent. `make docs-shots` renders the
+guide's screenshots (`desktop/pd_docs_shots.c`: the library over made-up file names).
 
 ## Running it without a 3DS (Azahar)
 

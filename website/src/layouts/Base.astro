@@ -11,9 +11,12 @@ import { LANGUAGES, language, localePath, stripLang, trFor, msg } from '../i18n/
 /**
  * [image]: the link preview's picture (og:image), a path on this site. [theme]: a look of its own (themes.js).
  * [localized]: the page comes in every language (src/i18n); the docs are English only, so they pass false.
+ * [paths]: a page that comes in some languages of its own (a translated docs page): its path in each, by code.
+ * The page then counts as localized, and a language it doesn't come in offers that language's home.
  */
-interface Props { title: string; description: string; noindex?: boolean; image?: string; theme?: string; localized?: boolean }
-const { title, description, noindex = false, image = '/og.png', theme, localized = true } = Astro.props;
+interface Props { title: string; description: string; noindex?: boolean; image?: string; theme?: string; localized?: boolean; paths?: Record<string, string> }
+const { title, description, noindex = false, image = '/og.png', theme, localized: wholeSite = true, paths } = Astro.props;
+const localized = wholeSite || !!paths;
 const tr = trFor(Astro.url);
 const lang = language(tr.lang);
 const themed = theme ? THEMES[theme] : undefined;
@@ -25,8 +28,9 @@ const canonical = new URL(path, site).href;
 // The page in every language (hreflang alternates, the picker, the redirect below). A page that isn't translated
 // offers each language's home instead, and is no one's alternate.
 const here = stripLang(path);
-const versions = LANGUAGES.map((l) => ({ ...l, href: localePath(l.code, localized ? here : '/') }));
-const alternates = localized ? versions : [];
+const versions = LANGUAGES.map((l) => ({ ...l, href: paths ? (paths[l.code] ?? localePath(l.code, '/')) : localePath(l.code, wholeSite ? here : '/') }));
+// Only the languages the page itself comes in are its alternates.
+const alternates = paths ? versions.filter((l) => paths[l.code]) : wholeSite ? versions : [];
 const nav = [
   [msg('FEATURES'), '/#features'],
   [msg('GAMES'), '/#games'],
@@ -47,7 +51,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     {noindex && <meta name="robots" content="noindex" />}
     <link rel="canonical" href={canonical} />
     {alternates.map((l) => <link rel="alternate" hreflang={l.hreflang} href={new URL(l.href, site).href} />)}
-    {alternates.length > 0 && <link rel="alternate" hreflang="x-default" href={new URL(versions[0].href, site).href} />}
+    {alternates.length > 0 && <link rel="alternate" hreflang="x-default" href={new URL(alternates[0].href, site).href} />}
     <meta name="theme-color" content={themed?.themeColor ?? '#f7f6fb'} />
     <link rel="icon" href={favicon} />
     <link rel="preload" href="/fonts/PixelOperator.ttf" as="font" type="font/ttf" crossorigin />
@@ -58,7 +62,7 @@ const petals = [[4, 22, 1, 0, 22], [91, 10, 2, 4, 26], [70, 62, 1, 9, 24], [10, 
     <meta property="og:locale" content={localized ? lang.og : 'en_US'} />
     <meta name="twitter:card" content="summary_large_image" />
     {alternates.length > 0 && (
-      <script is:inline define:vars={{ hrefs: Object.fromEntries(versions.map((l) => [l.code, l.href])), current: tr.lang }}>
+      <script is:inline define:vars={{ hrefs: Object.fromEntries(alternates.map((l) => [l.code, l.href])), current: tr.lang }}>
         // The visitor's language: the one they picked (the picker below remembers it in this browser), else, on an
         // English page, the first supported one their browser asks for. Only with working storage, so a pick of
         // English always sticks. Before anything draws, so the page doesn't flash in the wrong language.

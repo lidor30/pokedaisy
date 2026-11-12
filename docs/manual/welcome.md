@@ -26,6 +26,8 @@ PokeDaisy was built on the **AYN Thor**, and the companion is laid out for its b
 
 With one screen, the companion opens as a window over the game (or a panel beside it), or, on a phone held upright, a strip docked under it. The [HUD](hud.md) keeps your party, a minimap and your bag on the game screen while you walk, and the [quick menu](controls.md#the-quick-menu) puts your PC, `FLY`, your bike, your rod and save states one button away. [Screens and devices](devices.md) covers all of it.
 
+There's also an early preview for the New Nintendo 3DS, a homebrew app with the companion on the touch screen: [Install on a Nintendo 3DS](3ds.md).
+
 ## A quick tour
 
 **On the bottom screen (the companion):**

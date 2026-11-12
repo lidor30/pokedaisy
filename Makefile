@@ -77,6 +77,7 @@ check: ## Everything a PR must pass: unit tests, translations, game data, ui-pre
 docs-shots: ## Re-render the manual's screenshots (docs/manual/shots) with the invented save
 	cd website && npm run docs-art && npm run build
 	./gradlew -p ui-preview docsShots
+	$(MAKE) -C 3ds docs-shots
 
 docs-check: ## The manual parses, links resolve, no dashes, every setting documented, search cases pass
 	cd website && node --test test/docs.test.js test/docsearch.test.js && npm run build

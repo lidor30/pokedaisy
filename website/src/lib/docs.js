@@ -220,6 +220,48 @@ export function loadDocs(dir = docsDir()) {
 }
 
 /**
+ * The manual's translated pages: docs/manual/translations/<lang>/<slug>.md, each a copy of the English page
+ * <slug>.md in one of the site's languages (src/i18n's PREFIXED), in the same format and checked the same way.
+ * Only a few pages have them (the 3DS install guide); the docs API and the app's HELP stay English. A link
+ * to the page itself (#anchor or <slug>.md#anchor) stays on the translation and is checked against its own
+ * headings; a link to any other page goes to the English page. Returns { pages: [{ lang, slug, title,
+ * summary, section, blocks }], bySlug: Map(slug -> [lang]) }, or throws like loadDocs.
+ */
+export function loadTranslations(docs, dir = docsDir(), langs) {
+  const root = join(dir, 'translations');
+  const pages = [];
+  const bySlug = new Map();
+  if (!existsSync(root)) return { pages, bySlug };
+  const english = new Map(docs.pages.map((p) => [p.slug, p]));
+  const images = new Set();
+  for (const lang of readdirSync(root).sort()) {
+    if (langs && !langs.includes(lang)) throw new Error(`translations/${lang}: not one of the site's languages (${langs.join(', ')})`);
+    for (const f of readdirSync(join(root, lang)).filter((f) => f.endsWith('.md')).sort()) {
+      const rel = `translations/${lang}/${f}`;
+      const file = join(root, lang, f);
+      const { meta, body } = frontMatter(readFileSync(file, 'utf8'), file);
+      const slug = f.slice(0, -3);
+      const en = english.get(slug);
+      if (!en) throw new Error(`${rel}: translates ${slug}.md, which the manual doesn't have`);
+      if (meta.section !== en.section) throw new Error(`${rel}: section "${meta.section}", but ${slug}.md's is "${en.section}"`);
+      const ctx = { file: rel, dir, slug, slugger: new GithubSlugger(), links: [], images };
+      const tree = fromMarkdown(body, { extensions: [gfm()], mdastExtensions: [gfmFromMarkdown()] });
+      const page = { lang, slug, title: String(meta.title), summary: String(meta.summary), section: meta.section, blocks: blocks(tree.children, ctx) };
+      for (const l of ctx.links) {
+        const target = l.page === slug ? page : english.get(l.page);
+        if (!target) fail(rel, l.node, `link to a page that doesn't exist: ${l.page}.md`);
+        if (l.anchor && !target.blocks.some((b) => (b.t === 'h2' || b.t === 'h3') && b.id === l.anchor)) {
+          fail(rel, l.node, `link to #${l.anchor}, which ${l.page === slug ? 'this page' : `${l.page}.md`} has no heading for`);
+        }
+      }
+      pages.push(page);
+      bySlug.set(slug, [...(bySlug.get(slug) ?? []), lang]);
+    }
+  }
+  return { pages, bySlug };
+}
+
+/**
  * What /api/docs/v1/docs.json serves: the manual without build-only fields, where its images live (`site` +
  * an image's src) and `rev`, a hash of the content, so a reader can tell a changed manual from the one it has.
  */

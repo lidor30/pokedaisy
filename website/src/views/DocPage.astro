@@ -1,0 +1,84 @@
+---
+// One docs page (src/lib/docs.js): the English page at /docs/<slug>/ (src/pages/docs/[slug].astro), or one of its
+// translations at /<lang>/docs/<slug>/ (src/pages/[lang]/docs/[slug].astro, docs/manual/translations/). Static
+// HTML so search engines get the whole text; the app shows the English page from the docs API.
+import DocsLayout from '../layouts/DocsLayout.astro';
+import DocBlocks from '../components/DocBlocks.astro';
+import { REPO_URL } from '../lib/releases.js';
+import { LANGUAGES, language, trFor } from '../i18n/index.js';
+
+interface Props {
+  page: any;
+  docs: any;
+  prev?: any;
+  next?: any;
+  /** The languages this page comes in besides English (empty: English only). */
+  langs?: string[];
+}
+const { page, docs, prev, next, langs = [] } = Astro.props;
+const tr = trFor(Astro.url);
+const lang = page.lang ?? 'en';
+const translated = lang !== 'en';
+const section = docs.sections.find((s) => s.id === page.section);
+const toc = page.blocks.filter((b) => b.t === 'h2').map((b) => ({ id: b.id, text: b.text }));
+const site = Astro.site ?? new URL('https://pokedaisy.com');
+const pathOf = (code: string) => (code === 'en' ? `/docs/${page.slug}/` : `/${code}/docs/${page.slug}/`);
+const url = new URL(pathOf(lang), site).href;
+// The page in each language it comes in, for the language row, the picker and the hreflang alternates.
+const paths = langs.length ? Object.fromEntries(LANGUAGES.filter((l) => l.code === 'en' || langs.includes(l.code)).map((l) => [l.code, pathOf(l.code)])) : undefined;
+const firstShot = page.blocks.find((b) => b.t === 'img');
+const jsonLd = [
+  {
+    '@context': 'https://schema.org',
+    '@type': 'TechArticle',
+    headline: page.title,
+    description: page.summary,
+    url,
+    inLanguage: language(lang).hreflang,
+    isPartOf: { '@type': 'WebSite', name: 'PokeDaisy', url: site.href },
+    about: { '@type': 'SoftwareApplication', name: 'PokeDaisy', operatingSystem: 'Android', applicationCategory: 'GameApplication' },
+    ...(firstShot ? { image: new URL(firstShot.src, site).href } : {}),
+  },
+  {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    itemListElement: [
+      { '@type': 'ListItem', position: 1, name: 'Docs', item: new URL('/docs/', site).href },
+      { '@type': 'ListItem', position: 2, name: section.title, item: new URL(`/docs/#${section.id}`, site).href },
+      { '@type': 'ListItem', position: 3, name: page.title, item: url },
+    ],
+  },
+];
+const source = translated ? `docs/manual/translations/${lang}/${page.slug}.md` : `docs/manual/${page.slug}.md`;
+---
+<DocsLayout title={`${page.title} · ${tr('PokeDaisy docs')}`} description={page.summary} docs={docs} current={page.slug} toc={toc} jsonLd={jsonLd} paths={paths}>
+  <article class="doc f-card" lang={translated ? language(lang).hreflang : undefined}>
+    <p class="doc-crumb"><a href="/docs/">{tr('DOCS')}</a>{!translated && <> · <a href={`/docs/#${section.id}`}>{section.title.toUpperCase()}</a></>}</p>
+    <h1 class="doc-title">{page.title}</h1>
+    <p class="doc-summary">{page.summary}</p>
+    {paths && (
+      <p class="doc-langs">
+        {LANGUAGES.filter((l) => paths[l.code]).map((l) =>
+          l.code === lang
+            ? <span aria-current="true" lang={l.hreflang}>{l.name}</span>
+            : <a href={paths[l.code]} hreflang={l.hreflang} lang={l.hreflang} data-lang={l.code}>{l.name}</a>
+        )}
+      </p>
+    )}
+    <div class="prose"><DocBlocks blocks={page.blocks} local={translated ? { [page.slug]: pathOf(lang) } : undefined} /></div>
+    {!translated && (
+      <nav class="doc-foot" aria-label="More pages">
+        {prev ? <a class="prev f-card" href={`/docs/${prev.slug}/`}><small>PREVIOUS</small><span>{prev.title}</span></a> : <span />}
+        {next && <a class="next f-card" href={`/docs/${next.slug}/`}><small>NEXT</small><span>{next.title}</span></a>}
+      </nav>
+    )}
+    <p class="doc-edit" set:html={tr('Something wrong or missing here? <a href="{edit}">Edit this page on GitHub</a> or <a href="{bug}">tell us</a>.', { edit: `${REPO_URL}/edit/main/${source}`, bug: tr.path('/feedback/#bug') })} />
+  </article>
+</DocsLayout>
+
+<script>
+  // A pick from the language row is remembered like the header's picker's (Base.astro's redirect reads it).
+  for (const a of document.querySelectorAll<HTMLAnchorElement>('.doc-langs a[data-lang]')) {
+    a.addEventListener('click', () => { try { localStorage.setItem('pd-lang', a.dataset.lang!); } catch {} });
+  }
+</script>

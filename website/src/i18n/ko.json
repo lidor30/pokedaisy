@@ -367,5 +367,13 @@
   "Your trainer card, drawn like the game's, front and back.": "게임처럼 그린 트레이너 카드, 앞면과 뒷면.",
   "n/a": "없음",
   "Nothing matches.": "일치하는 항목이 없어요.",
-  "Search games": "게임 검색"
+  "Search games": "게임 검색",
+  "PokeDaisy docs": "PokeDaisy 문서",
+  "ALL PAGES": "모든 페이지",
+  "DOCS HOME": "문서 홈",
+  "ON THIS PAGE": "이 페이지 내용",
+  "TIP": "팁",
+  "NOTE": "참고",
+  "HEADS UP": "주의",
+  "Something wrong or missing here? <a href=\"{edit}\">Edit this page on GitHub</a> or <a href=\"{bug}\">tell us</a>.": "틀리거나 빠진 내용이 있나요? <a href=\"{edit}\">GitHub에서 이 페이지를 고치거나</a> <a href=\"{bug}\">알려 주세요</a>."
 }
