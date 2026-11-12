@@ -59,6 +59,8 @@ class MoneyTest {
         assertEquals(1968L, money("monomyth_v1_1", NATIVE_MONOMYTH_V1_1))
         // Team Rocket Edition: Dragonsden's save: past 999,999 (its AddMoney caps at 99,999,999).
         assertEquals(3_000_000L, money("team_rocket", NATIVE_TEAM_ROCKET))
+        // Team Rocket Edition 2026 v3.1's new game: SaveBlock1 +0x490 XOR the key at SaveBlock2 +0x44.
+        assertEquals(3000L, money("team_rocket_v3_1", NATIVE_TEAM_ROCKET_V3_1))
         // Wishes of Tomorrow's new game (its START menu: ₽3000), the randomizer one too.
         assertEquals(3000L, money("wishes", NATIVE_WISHES))
         assertEquals(3000L, money("wishes_random", NATIVE_WISHES))

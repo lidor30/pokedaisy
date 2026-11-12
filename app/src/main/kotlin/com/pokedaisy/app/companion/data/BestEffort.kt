@@ -514,7 +514,7 @@ object BestEffort {
             mariomonV13 = c.cfg === NATIVE_MARIOMON_V1_3 || c.cfg === NATIVE_MARIOMON_V1_2_2 || c.cfg === NATIVE_MARIOMON_V1_2_1
             quetzalV084 = c.cfg.quetzalV084
             eliteRedux265_3 = c.cfg === NATIVE_ELITE_REDUX_V2_65_3B
-            teamRocketV3 = c.cfg === NATIVE_TEAM_ROCKET_V3
+            teamRocketV3 = c.cfg === NATIVE_TEAM_ROCKET_V3 || c.cfg === NATIVE_TEAM_ROCKET_V3_1
         }
     }
 }

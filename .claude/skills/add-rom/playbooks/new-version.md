@@ -20,6 +20,14 @@ CLAUDE.md's Monomyth v1.1 note) give each old ROM address its new place. The RAM
   in a dump.
 - **Nothing agrees**: it's a rebuild. Go to `gba-rebuild.md` / `expansion.md` with the old version as the template.
 
+Without the old build's ROM on this machine (a contributor's): read the new one's GF header (0x08000100) and RHHEXP
+block for the moved tables (gSpeciesInfo, gItemsInfo, gMovesInfo, icon palettes, gAbilitiesInfo), find the rest by
+content (the chart's Normal row, 8-byte map-section runs, a trainer's name at its record offset, 84-byte wild headers)
+with a Counter of every aligned ROM word (never a search per offset), and for code pointers try one shift for all of a
+file's functions at once: the shift under which every old pointer lands on a pool word (Team Rocket 2026 v3.1: +0x68
+for all five battle handlers), then read them live. The generator's `same_as` checks a build's tables equal another's
+without writing them.
+
 ## 3. Implement
 
 - Config: a new `[config.<name>_v<ver>]` in the sibling's TOML (gamedata/gen3/hacks/<game>.toml), then `make gamedata`.

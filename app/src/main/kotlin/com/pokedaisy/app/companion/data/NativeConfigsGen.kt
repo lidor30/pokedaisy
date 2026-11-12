@@ -5138,6 +5138,31 @@ val NATIVE_TEAM_ROCKET_V3 = NATIVE_EMERALD.copy(
     guideTables = GUIDE_TABLES_TEAM_ROCKET_V3,
 )
 
+// Pokémon Team Rocket Edition 2026 - Dragonsden, Spanish v3.1 (32 MB, BPEE, sha1 32d9e438…; its START menu says V.3.1):
+// v3.0.9 rebuilt, its RAM word for word (gPlayerParty's literal-pool words 552, the save-block pointers, gMain, gBagPockets,
+// gBattleMons, gPartyMenu all where v3.0.9 has them), its ROM moved. Mapped headless on a new game played in it
+// (`team_rocket_v3_1*` fixtures): the GF header's gSpeciesInfo 0x089758C0 and icon palettes 0x08969848 (+0x4BD8), gItemsInfo
+// 0x088D17EC (+0x4BD0); the battle controller's handlers +0x68, the one shift that turns all five of v3.0.9's into
+// literal-pool words, then read live in a wild battle (action 0x0805500D, move 0x08054031, bag 0x08052BFD, party 0x08052C3D;
+// the cursors walked RIGHT / DOWN 0 -> 1 -> 3, a written move cell + A spent that move's PP, gPartyMenu's slot 0 -> 7 on
+// DOWN; the target screen's +0x68 like the rest, a pool word, not opened: a single battle never shows it). Every name / type /
+// move / chart / map-section table is v3.0.9's (gen_expansion_tables.py team_rocket_v3_1 checks); trainers +0x12E0, wild
+// headers +0x5048, gAbilitiesInfo +0x4F20 (its RHHEXP block's word), each found by its contents (POKEDEX / GUIDE_TABLES_*_V3_1).
+val NATIVE_TEAM_ROCKET_V3_1 = NATIVE_TEAM_ROCKET_V3.copy(
+    itemDescs = ItemDescTable(0x088D1800L, 0x2C, -8),
+    handleInputChooseAction = 0x0805500DL,
+    handleInputChooseMove = 0x08054031L,
+    completeWhenChoseItem = 0x08052BFDL,
+    waitForMonSelection = 0x08052C3DL,
+    handleInputChooseTarget = 0x080530B9L,
+    monIconTable = 0x08975928L, // gSpeciesInfo[0].iconSprite
+    monIconPaletteIndices = 0x08975946L, // gSpeciesInfo[0].iconPalIndex
+    monIconPaletteTable = 0x08969848L,
+    itemIconTable = 0x088D1810L, // gItemsInfo[0].iconPic
+    pokedex = POKEDEX_TEAM_ROCKET_V3_1,
+    guideTables = GUIDE_TABLES_TEAM_ROCKET_V3_1,
+)
+
 // ---- gamedata/gen3/hacks/tmt2.toml ----
 
 // Pokemon Too Many Types 2 v1.5.2 - BPEE, 32 MB, a NEWER

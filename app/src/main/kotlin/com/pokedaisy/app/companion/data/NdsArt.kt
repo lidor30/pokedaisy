@@ -33,6 +33,13 @@ object NdsArt {
     const val RENEGADE_ITEMS = "nds/renegade/items"
     const val RENEGADE_DEX = "nds/renegade/dex.tsv"
     const val RENEGADE_FRONT = "nds/renegade/front"
+    /** Blaze Black 2 / Volt White 2 Redux ([Black2Redux]): Black 2's archives with their own icons (in their own
+     * palettes), item icons, DEX pages and pictures, kept apart from a retail Black 2's; both hacks write the same paths
+     * (their art and text are the same files), the build's personal records in the marker ([extractTo]). */
+    const val REDUX_ICONS = "nds/redux/pokemon"
+    const val REDUX_ITEMS = "nds/redux/items"
+    const val REDUX_DEX = "nds/redux/dex.tsv"
+    const val REDUX_FRONT = "nds/redux/front"
     /** HeartGold / SoulSilver's bag pocket buttons ([bagPockets]): pocket 0-7 in the game's order, open or not. */
     fun heartGoldPocket(pocket: Int, open: Boolean) = "nds/heartgold/bag/pocket_${pocket}_${if (open) "on" else "off"}"
     /** The DEX pages from the cart ([dex]): a line a species, tab-separated (see [Gen4Dex]). */
@@ -119,6 +126,7 @@ object NdsArt {
         names = null
         OriginHeartGold.data = null
         RenegadePlatinum.data = null
+        Black2Redux.data = null
         Thread({
             // The names first (a few text banks): the companion's first samples use them.
             runCatching { names = readNames(rom) }.onFailure { android.util.Log.w("pokedaisy", "NdsArt: names failed", it) }
@@ -126,6 +134,8 @@ object NdsArt {
                 .onFailure { android.util.Log.w("pokedaisy", "NdsArt: Origin HeartGold's tables failed", it) }
             runCatching { RenegadePlatinum.data = if (RenegadePlatinum.matches(rom)) readRenegade(rom) else null }
                 .onFailure { android.util.Log.w("pokedaisy", "NdsArt: Renegade Platinum's tables failed", it) }
+            runCatching { Black2Redux.data = if (Black2Redux.matches(rom)) readRedux(rom) else null }
+                .onFailure { android.util.Log.w("pokedaisy", "NdsArt: the Redux hacks' tables failed", it) }
             names?.let { n ->
                 if (activeGame.isDsGame) {
                     romLanguage = n.language
@@ -164,10 +174,12 @@ object NdsArt {
         val black2 = code == "IREO" && rev == 0 || portIs(code, rev, GameKind.BLACK2) || white2
         val origin = OriginHeartGold.matches { off, len -> f.read(off, len) }
         val renegade = platinum && RenegadePlatinum.matches { off, len -> f.read(off, len) }
+        val redux = black2 && Black2Redux.matches { off, len -> f.read(off, len) }
         if (!platinum && !heartGold && !black && !black2 && !origin) return false
         val marker = File(dir, when {
             origin -> "nds/originhg-built"
             renegade -> "nds/renegade-built"
+            redux -> "nds/redux-built"
             white2 -> "nds/white2-built"
             black2 -> "nds/black2-built"
             white -> "nds/white-built"
@@ -175,7 +187,9 @@ object NdsArt {
             platinum -> "nds/platinum-built"
             else -> "nds/heartgold-built"
         })
-        val stamp = "v$VERSION $code $rev"
+        // The Redux builds share a code and revision but not their species' records (Classic, EVless): the DEX's types
+        // and stats are theirs, so the marker keeps a CRC of those too.
+        val stamp = "v$VERSION $code $rev" + if (redux) " " + (file(f, header, "/a/0/1/6")?.let { java.util.zip.CRC32().apply { update(it) }.value } ?: 0L) else ""
         if (marker.isFile && runCatching { marker.readText() }.getOrNull() == stamp) return false
         if (origin) {
             if (!extractOrigin(f, header, dir)) return false
@@ -184,7 +198,8 @@ object NdsArt {
             return true
         }
         if (black || black2) {
-            val files = (if (black2) GEN5_BLACK2_FILES else if (white) GEN5_WHITE_FILES else GEN5_BLACK_FILES)
+            val files = (if (redux) reduxFiles(f, code == Black2Redux.CODE_WHITE2) ?: return false
+                else if (black2) GEN5_BLACK2_FILES else if (white) GEN5_WHITE_FILES else GEN5_BLACK_FILES)
                 // Japanese Black / White: one bank fewer before the moves, so the categories are 257 (the rest as the US carts').
                 .let { if (!black2 && code[3] == 'J') it.copy(category = 257) else it }
             if (!extractGen5(f, header, dir, files)) return false
@@ -446,6 +461,77 @@ object NdsArt {
     }
 
     /**
+     * The Redux hacks' tables from their cart ([Black2Redux.Data]): each species' types (Black 2's 76-byte personal
+     * records, types at 6 and 7), each move's type, category and power (`/a/0/2/1`, 36 bytes a move: 0, 2, 3) under the
+     * cart's move names, the type chart (overlay 167's first 18 x 18 bytes), the machines, the party icon palettes, the
+     * item icons and the zones' wild encounter rates (a zone's set, bits 0-12 of its +0x14, in `/a/1/2/7`: one 0xE8-byte
+     * block, or four for the seasons, its first 7 bytes the rates).
+     */
+    fun readRedux(rom: File): Black2Redux.Data? = RandomAccessFile(rom, "r").use { f ->
+        val header = f.read(0, 0x200)
+        val white2 = Black2Redux.which { off, len -> f.read(off, len) }?.let { it == Black2Redux.CODE_WHITE2 } ?: return null
+        val personal = Narc(file(f, header, "/a/0/1/6") ?: return null)
+        val types = HashMap<Int, SpeciesTypes>()
+        for (id in 1..BLACK_EGG - 1) {
+            val p = personal.member(id) ?: continue
+            if (p.size >= 8) types[id] = SpeciesTypes(Black2Redux.type(u8(p, 6)), Black2Redux.type(u8(p, 7)))
+        }
+        val moveNames = readNames(rom)?.moves.orEmpty()
+        val moveRecords = Narc(file(f, header, "/a/0/2/1") ?: return null)
+        val moves = HashMap<Int, MoveInfo>()
+        val categories = HashMap<Int, Int>()
+        for (id in 1 until moveRecords.size) {
+            val m = moveRecords.member(id) ?: continue
+            if (m.size < 4) continue
+            val name = moveNames.getOrNull(id)?.takeIf { it.isNotBlank() } ?: moveDataBlack[id]?.name ?: continue
+            moves[id] = MoveInfo(name, Black2Redux.type(u8(m, 0)), u8(m, 3))
+            // Gen 5 keeps 0 status, 1 physical, 2 special; the app's (Gen 4's) order is physical, special, status.
+            categories[id] = when (u8(m, 2)) { 1 -> 0; 2 -> 1; else -> 2 }
+        }
+        val overlay167 = overlay(f, header, 167) ?: return null
+        val n = Black2Redux.CHART_TYPES
+        if (overlay167.size < n * n) return null
+        val chart = HashMap<Int, Int>()
+        for (atk in 0 until n) for (def in 0 until n) {
+            val pct = u8(overlay167, atk * n + def) * 25
+            if (pct != 100) chart[Black2Redux.type(atk) * 100 + Black2Redux.type(def)] = pct
+        }
+        val tms = f.read(Black2Redux.tmMovesOffset(white2), Black2Redux.TM_MOVE_COUNT * 2)
+        val machines = IntArray(Black2Redux.TM_MOVE_COUNT) { u16(tms, it * 2) }
+        val iconPalettes = readReduxIconPalettes(f, white2)
+        val itemIcons = readReduxItemIcons(f, white2)
+        val zones = file(f, header, "/a/0/1/2")?.let { Narc(it).member(0) } ?: ByteArray(0)
+        val encounters = file(f, header, "/a/1/2/7")?.let { Narc(it) }
+        val seasons = List(4) { ArrayList<Int>() }
+        for (zone in 0 until zones.size / 48) {
+            val set = u16(zones, zone * 48 + 0x14) and 0x1FFF
+            val e = if (set == 0x1FFF) null else encounters?.member(set) ?: continue
+            if (e == null || e.size < 0xE8) continue
+            for (season in 0 until 4) {
+                val b = if (e.size >= 0xE8 * 4) season * 0xE8 else 0
+                fun r(i: Int) = u8(e, b + i)
+                seasons[season] += listOf(zone, r(0) or (r(1) shl 8) or (r(2) shl 16) or (r(3) shl 24), r(4) or (r(5) shl 8) or (r(6) shl 16))
+            }
+        }
+        Black2Redux.Data(types, moves, categories, chart, machines, iconPalettes, itemIcons, seasons.map { it.toIntArray() })
+    }
+
+    /** ARM9 overlay [id] of the cart, unpacked (the overlay table at the header's 0x50; its file in the FAT). */
+    private fun overlay(f: RandomAccessFile, header: ByteArray, id: Int): ByteArray? {
+        val table = u32(header, 0x50)
+        if (id * 32 + 32 > u32(header, 0x54)) return null
+        val entry = f.read(table + id * 32L, 32)
+        val fileId = u32(entry, 0x18)
+        val packed = u8(entry, 0x1F) and 1 != 0
+        val fat = f.read(u32(header, 0x48) + fileId * 8, 8)
+        val start = u32(fat, 0)
+        val end = u32(fat, 4)
+        if (end <= start || end - start > 4L shl 20) return null
+        val raw = f.read(start, (end - start).toInt())
+        return if (packed) Gen5Lz.blz(raw) else raw
+    }
+
+    /**
      * Platinum's Town Map (town_map/main.c, graphics.c), as its top screen draws it: the region background and the map
      * (two tilemaps over one 4bpp tile set and palette) into regionmap/[PLATINUM_MAP] (cropped to [PLATINUM_MAP_CROP]),
      * each fly location's 16x16 block sprite in its three palettes (5 not visited yet, 6 a town's blue, 7 a city's red:
@@ -524,6 +610,28 @@ object NdsArt {
         442, 464, 374, 709,
         iconBase = 8,
     )
+
+    /** The Redux hacks' ([Black2Redux]): Black 2's archives, their own icon palettes and item icon table (read from
+     * the cart's ARM9), written apart from a retail Black 2's. */
+    private fun reduxFiles(f: RandomAccessFile, white2: Boolean): Gen5Files? {
+        val palettes = readReduxIconPalettes(f, white2)
+        return GEN5_BLACK2_FILES.copy(
+            icons = REDUX_ICONS, items = REDUX_ITEMS, dex = REDUX_DEX, front = REDUX_FRONT,
+            iconPalettes = palettes, itemIcons = readReduxItemIcons(f, white2),
+        )
+    }
+
+    /** The Redux hacks' party icon palettes: their ARM9's byte an icon entry, its low nibble the icon's own (the high
+     * nibble its female icon's), as [iconPalettesBlack2] keeps them. */
+    private fun readReduxIconPalettes(f: RandomAccessFile, white2: Boolean): ByteArray =
+        f.read(Black2Redux.iconPalettesOffset(white2), Black2Redux.ICON_PALETTES_SIZE).map { (it.toInt() and 0xF).toByte() }.toByteArray()
+
+    /** The Redux hacks' item icons: their ARM9's (graphics, palette) pairs for the items Black 2 has icons for. */
+    private fun readReduxItemIcons(f: RandomAccessFile, white2: Boolean): Map<Int, Int> {
+        val last = itemIconsBlack2.keys.max()
+        val t = f.read(Black2Redux.itemIconsOffset(white2), (last + 1) * 4)
+        return itemIconsBlack2.keys.associateWith { (u16(t, it * 4) shl 16) or u16(t, it * 4 + 2) }
+    }
 
     /**
      * A Gen 5 cart's art and DEX ([files]). The party icons are a/0/0/7: member 0 the palette file (the same three

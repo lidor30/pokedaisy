@@ -1,0 +1,18 @@
+# Pokémon Team Rocket Edition 2026 v3.1: boot as team_rocket_v3_1.txt, then a scripted wild EKANS Lv4 - setwildbattle 23 4 0
+# (its setwildbattle takes a second mon's species / level / item too, zero here) / dowildbattle / end, poked into free
+# EWRAM and run through ScriptContext_SetupScript (0x081A4175); dumped at the action menu ("¿Qué debería hacer Zubat?").
+wait 600
+hold START 5
+wait 300
+hold A 5
+wait 300
+hold A 5
+wait 300
+poke32 0x02030100 0x040017b6
+poke32 0x02030104 0x00000000
+poke32 0x02030108 0xb7000000
+poke32 0x0203010c 0x00000002
+call 0x081A4175 0x02030100
+wait 800
+hold A 4
+wait 700

@@ -204,8 +204,9 @@ fun guideId(game: GameKind?, live: GuideTables?): GuideId? = live?.guide ?: when
     GameKind.SOULSILVER -> GuideId.SOULSILVER
     GameKind.BLACK -> GuideId.BLACK
     GameKind.WHITE -> GuideId.WHITE
-    GameKind.BLACK2 -> GuideId.BLACK2
-    GameKind.WHITE2 -> GuideId.WHITE2
+    // Blaze Black 2 / Volt White 2 Redux run as BLACK2 / WHITE2, but their wild Pokémon and trainers are their own: no guide.
+    GameKind.BLACK2 -> if (black2Redux) null else GuideId.BLACK2
+    GameKind.WHITE2 -> if (black2Redux) null else GuideId.WHITE2
     else -> null
 }
 

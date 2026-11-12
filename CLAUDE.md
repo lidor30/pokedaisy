@@ -759,6 +759,10 @@ the Poller): its types (Fairy = 9), moves, chart, TMs, icon palettes and wild ra
 never bundled), names from its text as every DS cart's, its art under `nds/renegade/`; no GUIDE (`Guide.kt`). Its Classic patch
 differs only in `pl_personal.narc` and matches the same check. Fixtures `renegade_platinum(_battle)`; docs/DEVELOPMENT.md's
 "Renegade Platinum".
+**Blaze Black 2 / Volt White 2 Redux v1.4.1 (2026-11-12)**: the same path on Black 2 / White 2 (`Black2Redux`, `black2Redux`,
+`GEN5_*2_REDUX`, `NdsArt.readRedux`, art under `nds/redux/`, eight builds: + Classic / EVless / Classic EVless). Told apart by
+battle overlay 167's load address in the overlay table (cart 0xA02E4); its chart opens that overlay (Fairy = Gen 5's 17, which
+`gen5Type` maps to 9 for every Gen 5 read). Retail saves load in them. No GUIDE. docs/DEVELOPMENT.md's "Blaze Black 2 Redux".
 **DS LAYOUT (one screen held sideways, 2026-11-01; SETTINGS > SCREEN on both screens, `Prefs.dsLayout`, NEW tag)**: ONE SCREEN
 (default) / SIDE BY SIDE / LARGE + SMALL / PICTURE IN PICTURE / STACKED, picked from drawn miniatures (`DsLayoutPicker`); the
 stage places the screens (`GameStageLayout.dsArrange`, `DsLayouts.arrange`, edge to edge) over the game's own picture (`DsShots`:
@@ -1682,7 +1686,8 @@ the summary shows CROBAT as No. 067), region map, EXPAND, field reads or field i
 its own config (`[config.team_rocket_v3]`) and tables (`gen_expansion_tables.py team_rocket_v3`, Spanish charmap). Its bag's eight
 pockets show as eight tabs (`activePocketOrder`, `TEAM_ROCKET_V3_BAG_POCKET_ORDER`, `POCKET_MEGA_STONES`); DEX from its gSpeciesInfo
 (1-1062); seven region maps (RomArt's `TR3_*`, a section's map picked by its id range, `region_maps` in the generator). No EXPAND,
-field reads or field items.
+field reads or field items. v3.1 (2026-11-12, `NATIVE_TEAM_ROCKET_V3_1`) is the same RAM and tables, its ROM moved (`gen_expansion_tables.py team_rocket_v3_1` checks the tables
+equal, `same_as`).
 **Wishes of Tomorrow 1.2.6 (2026-10-22)** (`GameKind.WISHES`, `NATIVE_WISHES`): FlatFoot Labs' closed BPEE build (32 MB) on
 pokeemerald-expansion 1.15.3 (its RHHEXP block). No save existed: two new games played headless (randomizer off / on), party,
 bag and dex flags given through its own script commands (`callnative ScrCmd_createmon` 0x0A200DD5; FLAG_SYS_POKEMON_GET 0x880:

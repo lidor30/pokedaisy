@@ -189,8 +189,13 @@ private fun inMain(p: Long) = p in MAIN_RAM until MAIN_RAM_END
 private const val GEN5_MON_SIZE = 0xDC
 private val EMPTY_BATTLE_MON = BattleMon(0, 0, 0, 0, 0, 0, 0, IntArray(4), IntArray(4))
 
-/** Gen 5's type ids drop Gen 4's ??? (9): FIRE is 9 .. DARK 16. The app keeps Gen 3's ids. */
-fun gen5Type(t: Int): Int = if (t >= 9) t + 1 else t
+/** Gen 5's type ids drop Gen 4's ??? (9): FIRE is 9 .. DARK 16. The app keeps Gen 3's ids. 17 is no retail type: the
+ * Redux hacks' Fairy ([Black2Redux]), which takes "???"'s slot, 9, as Renegade Platinum's does. */
+fun gen5Type(t: Int): Int = when {
+    t == 17 -> 9
+    t >= 9 -> t + 1
+    else -> t
+}
 
 /** The save image in main RAM, or -1 before the game has loaded one (boot, the title screen). */
 fun gen5Image(r: (Long, Int) -> ByteArray, cfg: Gen5Config): Long {
@@ -488,8 +493,19 @@ val GEN5_WHITE2 = GEN5_BLACK2.copy(
     townMapZones = townMapZonesWhite2,
 )
 
+/** Blaze Black 2 Redux and Volt White 2 Redux ([Black2Redux]): Black 2's and White 2's RAM, save and code, their own
+ * DEX pages from the cart. */
+val GEN5_BLACK2_REDUX = GEN5_BLACK2.copy(pokedexTables = POKEDEX_REDUX)
+val GEN5_WHITE2_REDUX = GEN5_WHITE2.copy(pokedexTables = POKEDEX_REDUX)
+
 /** The Gen 5 config for [kind], or null. */
-fun gen5ConfigFor(kind: GameKind?, code: String = romGameCode): Gen5Config? = when (kind) {
+fun gen5ConfigFor(kind: GameKind?, code: String = romGameCode): Gen5Config? = when {
+    black2Redux && kind == GameKind.BLACK2 -> GEN5_BLACK2_REDUX
+    black2Redux && kind == GameKind.WHITE2 -> GEN5_WHITE2_REDUX
+    else -> gen5ConfigForRetail(kind, code)
+}
+
+private fun gen5ConfigForRetail(kind: GameKind?, code: String): Gen5Config? = when (kind) {
     GameKind.BLACK -> if (code == "IRBF") GEN5_BLACK_FR else DsPorts.byCode(code)?.let(DsPorts::gen5Config) ?: GEN5_BLACK
     GameKind.WHITE -> if (code == "IRAF") GEN5_WHITE_FR else DsPorts.byCode(code)?.let(DsPorts::gen5Config) ?: GEN5_WHITE
     GameKind.BLACK2 -> DsPorts.byCode(code)?.let(DsPorts::gen5Config) ?: GEN5_BLACK2

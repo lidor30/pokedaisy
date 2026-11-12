@@ -27,5 +27,12 @@ Read both CLAUDE.md / DEVELOPMENT.md sections and `RenegadePlatinum.kt` / `Origi
 7. **Books**: README row and the DS line naming the hacks, the manual, ROM_FEATURES, DEVELOPMENT.md's section. The manual
    can't name real Pokémon, so name the hack only.
 
+A hack that grew a table into an overlay moves that overlay's load address: the overlay table's entry for it (header
+0x50's table, 32 bytes an entry, RAM address at +4) is a good code word (Blaze Black 2 / Volt White 2 Redux: overlay 167,
+its chart at the start). Gen 5 move records keep the category as 0 status / 1 physical / 2 special (Gen 4: physical,
+special, status), and Gen 5's ARM9 may come unpacked in a hack (compare raw against retail's unpacked one). Patches made
+on a "dirty" dump may want a byte the No-Intro `[b]` dump doesn't have: `xdelta3 printdelta` shows the failing window's
+copies, and a window's adler32 tells a guessed byte right.
+
 Several builds of one hack (RNGPLAT's "Classic Version" beside the normal one): try the first build's code word and tables
 on the second before anything else. They're often one config with two SHA-1s.

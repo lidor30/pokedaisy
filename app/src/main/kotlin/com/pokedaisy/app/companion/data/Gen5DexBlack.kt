@@ -38,3 +38,11 @@ val POKEDEX_BLACK2 = POKEDEX_BLACK.copy(regionalCount = 301, gen4 = GEN5_DEX_BLA
 
 /** White 2's: Black 2's (the two carts' text, pictures and personal records are the same files). */
 val POKEDEX_WHITE2 = POKEDEX_BLACK2
+
+/** Blaze Black 2 / Volt White 2 Redux's ([Black2Redux]): Black 2's, its pages and pictures from its own cart, its
+ * machines too (15 TMs teach other moves). */
+val GEN5_DEX_REDUX = Gen4DexTables(
+    NdsArt.REDUX_DEX, NdsArt.REDUX_FRONT, tmMovesBlack, tmCount = 95, lastSpecies = 649, gen5 = true,
+    machineMoves = { Black2Redux.data?.machines ?: tmMovesBlack },
+)
+val POKEDEX_REDUX = POKEDEX_BLACK2.copy(gen4 = GEN5_DEX_REDUX)

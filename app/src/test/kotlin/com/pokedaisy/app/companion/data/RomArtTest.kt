@@ -56,6 +56,15 @@ class RomArtTest {
         assertEquals("a9c4cfb6", pixels(images.getValue("regionmap/imperium.png")))
     }
 
+    /** Team Rocket Edition 2026 v3.1: its seven region maps are v3.0.9's blobs (TR3_*), found by the same fingerprints. */
+    @Test fun teamRocketV31SuppliesItsRegionMaps() {
+        val images = composed(System.getProperty("user.home") + "/Downloads/Game ROMs & Emulation/gba/Pokemon Team Rocket Edition 2026 (v3.1) (Spanish).gba")
+        val maps = listOf("tr3_kanto", "tr3_sevii123", "tr3_sevii45", "tr3_sevii67", "tr3_johto", "tr3_hoenn", "tr3_sinnoh")
+        for (m in maps) assertTrue(m, "regionmap/$m.png" in images)
+        val out = File("build/rom-art").apply { mkdirs() }
+        images.getValue("regionmap/tr3_kanto.png").let { File(out, "tr3_1_kanto.png").writeBytes(it.png()) }
+    }
+
     /** Dreamstone Mysteries' Cormoria TOWN MAP (DSM_REGION_*): its own 4bpp tiles, tilemap and palette. */
     @Test fun dreamstoneSuppliesItsRegionMap() {
         val images = composed(System.getProperty("user.home") + "/Downloads/Game ROMs & Emulation/gba/Pokemon Dreamstone Mysteries.gba")

@@ -91,6 +91,7 @@
     {"sha1": "932323d1fa3732d8673d1319fa86ed4df41087b9", "title": "Pokémon Sword and Shield Ultimate Plus", "version": "v1.2.1.2-CASUAL-PERFORMANCE"},
     {"sha1": "4858cc3d7b335bb5eed553861d7a4a17bad9ce2c", "title": "Pokémon Sword and Shield Ultimate Plus", "version": "v1.2.1.2-PERFORMANCE"},
     {"sha1": "0d8bdaeeca0856175037a75679c1a2b73ad2b68a", "title": "Pokémon Team Rocket Edition 2026 (ES)", "version": "v3.0.9-ES"},
+    {"sha1": "32d9e438ab791a0477fffe9f1cca750cab5a4a80", "title": "Pokémon Team Rocket Edition 2026 (ES)", "version": "v3.1-ES"},
     {"sha1": "40780347d0b4df6bf491eaf12603e5422caee677", "title": "Pokémon Team Rocket Edition: Dragonsden Version", "version": "v1.5"},
     {"sha1": "3fa8e61ec1727cc51540c54677623f736a446e1b", "title": "Pokémon Too Many Types 2", "version": "v1.5.2"},
     {"sha1": "3b6c51d8fb6b513bdd01b7bda3ed8965bc985d58", "title": "Pokémon Ultra Violet", "version": "v1.22"},
@@ -207,7 +208,9 @@
   ],
   "dsHacks": [
     {"code": "IPKJ", "rev": 0, "offset": 177980, "word": 35459504, "title": "Pokémon Origin HeartGold", "version": "v4.0.3 English 1.0.0"},
-    {"code": "CPUE", "rev": 1, "offset": 2232416, "word": 35561345, "title": "Pokémon Renegade Platinum", "version": "v1.3.0"}
+    {"code": "CPUE", "rev": 1, "offset": 2232416, "word": 35561345, "title": "Pokémon Renegade Platinum", "version": "v1.3.0"},
+    {"code": "IREO", "rev": 0, "offset": 656100, "word": 35231552, "title": "Pokémon Blaze Black 2 Redux", "version": "v1.4.1"},
+    {"code": "IRDO", "rev": 0, "offset": 656100, "word": 35231616, "title": "Pokémon Volt White 2 Redux", "version": "v1.4.1"}
   ],
   "titles": {
     "015a5d380afe316a2a6fcc561798ebff9dfb3009": "Pokémon Versione Rubino",
@@ -298,6 +301,8 @@
       {"game": "White 2 (DS)", "version": "USA/Europe, every language", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "Origin HeartGold (DS)", "version": "4.0.3 English 1.0.0", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
       {"game": "Renegade Platinum (DS)", "version": "1.2.0, 1.3.0 (+ Classic)", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
+      {"game": "Blaze Black 2 Redux (DS)", "version": "1.4.1 (+ Classic, EVless)", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
+      {"game": "Volt White 2 Redux (DS)", "version": "1.4.1 (+ Classic, EVless)", "cells": ["yes", "yes", "part", "yes", "yes", "no"]},
       {"game": "Unbound", "version": "2.1.1.1", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "Unbound", "version": "2.1.1.1 French", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
       {"game": "Radical Red", "version": "4.1", "cells": ["yes", "yes", "part", "yes", "yes", "yes"]},
@@ -330,7 +335,7 @@
       {"game": "Modern Emerald", "version": "3.6", "cells": ["yes", "yes", "part", "part", "no", "no"]},
       {"game": "Elite Redux", "version": "2.65.3b, 2.65.4.1b", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "Team Rocket Dragonsden", "version": "1.5", "cells": ["yes", "yes", "part", "part", "no", "part"]},
-      {"game": "Team Rocket Dragonsden", "version": "2026 3.0.9 (Spanish)", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
+      {"game": "Team Rocket Dragonsden", "version": "2026 3.0.9, 3.1 (Spanish)", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "Wishes of Tomorrow", "version": "1.2.6", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "Dreamstone Mysteries", "version": "the one release", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
       {"game": "Monomyth", "version": "1.0, 1.1", "cells": ["yes", "yes", "part", "yes", "yes", "part"]},
