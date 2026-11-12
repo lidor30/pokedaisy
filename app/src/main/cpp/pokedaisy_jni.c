@@ -619,7 +619,7 @@ Java_com_pokedaisy_app_MgbaCore_pkFollowerSet(JNIEnv* env, jobject thiz, jbyteAr
 // RIDE ON: the vehicle's views + palette (null = none) and whether it's drawn. Emu thread.
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkRideSet(JNIEnv* env, jobject thiz, jbyteArray frames, jbyteArray pal, jint width) {
-    if (!frames || !pal || (width != 32 && width != 64) || (*env)->GetArrayLength(env, frames) != 3 * 1024 ||
+    if (!frames || !pal || (width != 32 && width != 64) || (*env)->GetArrayLength(env, frames) != PK_RIDE_BYTES ||
         (*env)->GetArrayLength(env, pal) != 32) {
         pk_ride_set(NULL, NULL, 32);
         return;

@@ -80,16 +80,21 @@ object RideOn {
         return out
     }
 
-    /** The vehicle as pk_wide.c's ride takes it: its views (south, north, west) one after another in OBJ tile order,
-     * 32 x 64 each (the rider's frame on top, the wheels reaching below it), and its palette (16 RGB555 colours). */
+    /** The vehicle as pk_wide.c's ride takes it ([BYTES], pk_wide.h's PK_RIDE_BYTES): its views (south, north, west) one
+     * after another in OBJ tile order, 32 x 64 each (the rider's frame on top, the wheels reaching below it); then its
+     * exhaust smoke, [SMOKE_FRAMES] 16 x 8 frames of two tiles; then where the smoke goes in each view (x, y signed bytes,
+     * -128 none) and two spare bytes. And its palette (16 RGB555 colours). */
     class Sprite(val frames: ByteArray, val pal: ByteArray, val width: Int) {
         fun sameAs(o: Sprite?) = o != null && width == o.width && frames.contentEquals(o.frames) && pal.contentEquals(o.pal)
     }
 
     /** [vehicle]'s sprite; null for the bike. */
+    const val SMOKE_FRAMES = 12
+    const val BYTES = 3 * 1024 + SMOKE_FRAMES * 64 + 8
+
     fun sprite(vehicle: RideVehicle): Sprite? {
         val art = vehicle.art ?: return null
-        val frames = ByteArray(3 * 1024)
+        val frames = ByteArray(BYTES)
         for (view in 0..2) {
             val v = art.views[view]
             val px = IntArray(32 * 64) { i -> if (i < v.size && v[i].toInt() and 0x80 == 0) v[i].toInt() and 0x0F else 0 }
@@ -100,6 +105,16 @@ object RideOn {
                 frames[view * 1024 + t * 32 + i] = (px[y * 32 + x] or (px[y * 32 + x + 1] shl 4)).toByte()
             }
         }
+        // The smoke: each 16 x 8 frame two tiles, left then right.
+        val smoke = 3 * 1024
+        for (f in 0 until minOf(SMOKE_FRAMES, art.smoke.size / 128)) for (t in 0 until 2) for (i in 0 until 32) {
+            val x = t * 8 + (i % 4) * 2
+            val y = i / 4
+            val a = art.smoke[f * 128 + y * 16 + x].toInt() and 15
+            val b = art.smoke[f * 128 + y * 16 + x + 1].toInt() and 15
+            frames[smoke + f * 64 + t * 32 + i] = (a or (b shl 4)).toByte()
+        }
+        for (k in 0 until 6) frames[smoke + SMOKE_FRAMES * 64 + k] = art.exhaust.getOrElse(k) { -128 }.toByte()
         val pal = ByteArray(32)
         for (i in 1 until art.palette.size.coerceAtMost(16)) {
             val c = art.palette[i]

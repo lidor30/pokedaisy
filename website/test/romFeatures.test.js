@@ -21,7 +21,14 @@ test('every game in the table has its feature rows', () => {
 test('every feature row belongs to a game in the table', () => {
   const games = [...new Set(data.matrix.rows.map((r) => r.game))];
   const owned = new Set(games.flatMap((g) => rowsFor(table, g)));
-  assert.deepEqual(table.rows.filter((r) => !owned.has(r) && !UNLISTED.includes(r.game)).map((r) => `${r.game} | ${r.version}`), []);
+  assert.deepEqual(table.rows.filter((r) => !owned.has(r) && !r.blocked && !UNLISTED.includes(r.game)).map((r) => `${r.game} | ${r.version}`), []);
+});
+
+test('a blocked game\'s row keeps its name and is marked blocked', () => {
+  const row = table.rows.find((r) => r.game === 'Ghost Grey');
+  assert.ok(row, 'Ghost Grey\'s row');
+  assert.equal(row.blocked, true);
+  assert.equal(data.matrix.rows.some((r) => r.game === 'Ghost Grey'), false, 'blocked games stay off the site');
 });
 
 test('cells read with their footnotes dropped', () => {

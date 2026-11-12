@@ -314,8 +314,15 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         setting(ui, c, ix, &y, iw, SETTING_FILTER, "FILTER", st->lcdFilter ? "LCD" : "OFF");
     if (host && host->hasQuickMenu)
         setting(ui, c, ix, &y, iw, SETTING_QUICK_MENU, "QUICK MENU", st->quickGrid ? "GRID" : "RING");
-    // The app keeps it in GAMEPLAY; a host without the groups has it by the QUICK MENU, where TAKE OFF is.
-    if (host && host->hasFlightArea && !host->flightSupported && !full) flight_area_row(ui, c, ix, &y, iw, st);
+    // The app keeps them in GAMEPLAY; a host without the groups has them by the QUICK MENU, where TAKE OFF is: FLIGHT
+    // AREA alone, or with FLY STYLE and FLY ON where the host flies FREE FLIGHT's scenic FLY and vehicles too.
+    if (host && host->hasFlightArea && !full) {
+        if (host->flightSupported)
+            setting(ui, c, ix, &y, iw, SETTING_FLY_STYLE, "FLY STYLE", st->flyClassic ? "CLASSIC" : "SCENIC");
+        flight_area_row(ui, c, ix, &y, iw, st);
+        if (host->flightSupported)
+            setting(ui, c, ix, &y, iw, SETTING_FLY_ON, "FLY ON", flight_vehicle_label(st->flightVehicle));
+    }
     if (host && host->hasButtonRows) {
         static const char* const NAMES[PD_BUTTONS] = {"X", "Y", "L2", "R2", "NONE"};
         setting(ui, c, ix, &y, iw, SETTING_QUICK_BTN, "QUICK MENU BUTTON", NAMES[st->quickBtn]);

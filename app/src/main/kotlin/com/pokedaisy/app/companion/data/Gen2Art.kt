@@ -216,6 +216,23 @@ object Gen2Art {
         )
     }
 
+    /** German Gold / Silver: English's art, the party icons' tables 2 bytes later, the town maps 0x32 later. */
+    val GOLD_DE = GOLD.let {
+        Gen2ArtTables(
+            it.name, setOf(TelemetrySampler.GOLD_DE_SHA1), it.font, it.fontPath, 0x23 to 0x6A72, 0x23 to 0x6977, it.eggIcon,
+            0x23 to 0x68DD, it.partyMenuObPals, it.iconsDir, it.holdIconsPath, it.townMapGfx,
+            listOf(0x24 to 0x5F84, 0x24 to 0x60ED), 0x24 to 0x5EDE, it.pokegearPals, it.townMapPaths, it.playerSprites,
+            it.objectPals, it.playerPaths,
+        )
+    }
+    val SILVER_DE = GOLD_DE.let {
+        Gen2ArtTables(
+            it.name, setOf(TelemetrySampler.SILVER_DE_SHA1), it.font, it.fontPath, 0x23 to 0x6A58, 0x23 to 0x695D, it.eggIcon,
+            0x23 to 0x68C3, it.partyMenuObPals, it.iconsDir, it.holdIconsPath, it.townMapGfx, it.townMaps, it.townMapPalMap,
+            it.pokegearPals, it.townMapPaths, it.playerSprites, it.objectPals, it.playerPaths,
+        )
+    }
+
     /**
      * Crystal Clear v2.6.0, both builds: Crystal's art moved (the town maps' and font's bytes where Crystal has them,
      * found by their contents; the icons and their palettes by the party menu's code, 23:6F3C). Its POKéGEAR map is the
@@ -336,7 +353,7 @@ object Gen2Art {
         )
     }
 
-    private val GAMES = listOf(CRYSTAL, CRYSTAL_DE, GOLD, SILVER, CRYSTAL_CLEAR_V2_6_0, CRYSTAL_CLEAR_V2_5_11, PRISM, CRYSTAL_LEGACY) + POLISHED_CRYSTAL
+    private val GAMES = listOf(CRYSTAL, CRYSTAL_DE, GOLD, SILVER, GOLD_DE, SILVER_DE, CRYSTAL_CLEAR_V2_6_0, CRYSTAL_CLEAR_V2_5_11, PRISM, CRYSTAL_LEGACY) + POLISHED_CRYSTAL
 
     /** The game's text characters for its font tiles 0x80-0xFF (constants/charmap.asm) the companion prints. */
     private val CHARS: Map<Int, Char> = buildMap {

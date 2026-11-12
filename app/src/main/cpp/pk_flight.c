@@ -745,7 +745,7 @@ static void flSeatPlayer(struct mCore* core, const struct pk_flight_vehicle* v, 
     uint32_t spr;
     int w = flPlayerSprite(core, &spr);
     if (!w) return;
-    int flip = ((core->busRead16(core, spr + FL_SPR_ATTR1) & 0x1000u) != 0) != (flSx < 0);
+    int flip = (core->busRead16(core, spr + FL_SPR_ATTR1) & 0x1000u) != 0;   // posed facing west: pk_flight_draw mirrors the whole picture going east
     for (int y = 0; y < 32; y++) {
         int vy = v->playerY + y;
         if (vy < 0 || vy >= v->h) continue;
@@ -823,7 +823,7 @@ static void flSeatOnBird(struct mCore* core) {
     uint32_t spr;
     int w = flPlayerSprite(core, &spr);
     if (!w) return;
-    int flip = ((core->busRead16(core, spr + FL_SPR_ATTR1) & 0x1000u) != 0) != (flSx < 0);
+    int flip = (core->busRead16(core, spr + FL_SPR_ATTR1) & 0x1000u) != 0;   // posed facing west: pk_flight_draw mirrors the whole picture going east
     // Cut at the waist: row 26 of pret's 16 x 32 heroes (the cap starts at 13), row 20 of Unbound's taller 32 x 32 ones (whose
     // legs hid its small bird); the waist on the bird's back, a little behind the head (west in the picture).
     int waist = w == 32 ? 20 : 26;

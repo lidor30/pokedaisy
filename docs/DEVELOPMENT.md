@@ -282,6 +282,7 @@ working · — = not attempted.
 | **Pokémon Yellow Legacy** v1.0.10 (Game Boy, cRz-Shadows') | a pret/pokeyellow fork, open source: `make pokeyellow.gbc` with rgbds 0.6.1 at tag V1.0.10 is the release BPS over retail Yellow byte for byte (sha1 `2ac87de4…`, CRC `e7d07a3f`) | ✅ (`GEN1_YELLOW_LEGACY`) | ⚠️ both battlers, touch controls and the POKéMON switch as Yellow's (`yellow_legacy_battle*`) | ✅ one list of 59 | ✅ its own town map, Yellow's places | ✅ its own (an icon a species) | ✅ its own base data and pages | `GameKind.YELLOW_LEGACY`. See below. |
 | **Pokémon Crystal Legacy** v1.3.1 (Game Boy Color, cRz-Shadows') | a pret/pokecrystal fork, open source: `make pokecrystal.gbc` with rgbds 0.5.2 at tag V1.3.1 is the release BPS over either retail revision byte for byte (sha1 `74a6727e…`, CRC `12e97fb4`) | ✅ (`GEN2_CRYSTAL_LEGACY`) | ⚠️ both battlers, touch controls and the POKéMON switch as Crystal's (`crystal_legacy_battle*`) | ✅ four pockets, ITEMS 84 | ✅ its own POKéGEAR maps, Crystal's places | ✅ its own (an icon a species, eight palettes) | ✅ its own base data and pages (a far pointer each) | `GameKind.CRYSTAL_LEGACY`. See below. |
 | **Pokémon Crystal** (Game Boy Color: USA rev 0, USA/Europe rev 1, Australia) | Gen 2 retail carts (sha1 `f4cd194b…` / `f2f52230…` / `a0fc810f…`, = pret/pokecrystal's `crystal` / `crystal11` / `crystal_au` builds) | ✅ (`Gen2Reader`: big-endian 48-byte party_struct, species = Dex number, held item, gender from the DVs; `crystal` / `crystal_rev0` / `crystal_au`: one save in all three) | ⚠️ both battlers (wBattleMon / wEnemyMon, 32-byte battle_struct with its types) from a wild battle (`crystal_battle`); a trainer's party (wOTPartyMons) is read but no trainer battle was captured. Touch controls: the 2D menu's cursor (`readGen2BattleInput`), steered like Yellow's; a move and RUN checked headless | ✅ four pockets (ITEMS, BALLS, KEY ITEMS, the TM / HM quantities) | ✅ landmarks: each map header's landmark by (group, number), the POKéGEAR's Johto and Kanto maps from the ROM (`Gen2Art`) | ✅ its party icons from the ROM (IconPointers, PartyMenuOBPals), the held-item / Mail marks | ✅ 251, national order; SEEN 2 / OWN 2 = the game's own POKéDEX (flag poked on to look) | Runs on mGBA's GB core. Tables from `scripts/gen_gen2_tables.py crystal` (pokecrystal.sym addresses, the three releases checked byte for byte). WRAM bank 1 is read by bank (`wramx`), see below. |
+| **Pokémon Goldene Edition / Silberne Edition** (Game Boy Color, German Gold / Silver) | English Gold / Silver translated (sha1 `9254195d…` / `8ecc58d6…`) | ✅ English Gold's RAM (`gold_de` / `silver_de`: the gold fixture's save, loaded unchanged) | ⚠️ as English (`gold_de_battle*`, `silver_de_battle`), the menus at Kristall's columns | ✅ English's four pockets, their own names (BEUTEL) | ✅ their own landmark names, English's POKéGEAR maps | ✅ English's icons | ✅ 251, each version's own pages, metric | `GEN2_GOLD_DE` / `GEN2_SILVER_DE`. Names from `scripts/gen_gen2_tables.py gold_silver_de` (everything else checked equal to English's). See below. |
 | **Pokémon Kristall** (Game Boy Color, German Crystal) | English Crystal translated (sha1 `accb5842…`) | ✅ English's RAM (`crystal_de`: the crystal fixture's save, loaded unchanged) | ⚠️ as English (`crystal_de_battle*`), its menus at its own columns | ✅ English's four pockets, its own names (BEUTEL) | ✅ its own landmark names, English's POKéGEAR maps | ✅ English's icons | ✅ 251, its own pages, metric | `GEN2_CRYSTAL_DE`. Names from `scripts/gen_gen2_tables.py crystal_de` (everything else checked equal to English's). See below. |
 | **Pokémon Gold / Silver** (Game Boy Color, USA/Europe) | Gen 2 retail carts (sha1 `d8b8a360…` / `49b163f7…`, = pret/pokegold's `pokegold` / `pokesilver` builds) | ✅ Crystal's struct at their own RAM (`GEN2_GOLD` / `GEN2_SILVER`; `gold` / `silver`: one save played headless in Gold, loaded in both) | ⚠️ both battlers from wild battles (`gold_battle`, `silver_battle`) and a trainer's six (`gold_trainer`); touch controls and the POKéMON switch on Crystal's menus (`gold_battle_*`) | ✅ Crystal's four pockets, their own item names | ✅ their own 95 landmarks and maps, the POKéGEAR's Johto / Kanto maps (`Gen2Art`), the boy on them | ✅ their party icons from the ROM, Crystal's colours | ✅ 251, each version's own pages | `GameKind.GOLD` / `.SILVER`. Tables from `scripts/gen_gen2_tables.py gold_silver` (species, moves, types and chart checked equal to Crystal's with `--base`). See below. |
 | **Polished Crystal** 3.2.0 - 3.2.3 (normal, faithful, + debug: 16 builds) | Rangi42's open-source Crystal hack (GBC, 2 MB); every official release build, by SHA-1 | ✅ its own 48-byte party_struct (9-bit species + forms, gender bit), `GEN2_POLISHED_CRYSTAL` (`polished_crystal*`: a new game played headless) | ⚠️ both battlers (35-byte battle_struct) from a wild battle (`polished_crystal_battle`) and LYRA's (`polished_crystal_trainer`); touch controls and the POKéMON switch on its menus (`polished_crystal_battle_*`) | ✅ ITEMS / MEDICINE / BALLS / BERRIES, key items (their own ids), TMs a bit each | ✅ its 145 landmarks and 605 maps, Johto / Kanto / Orange Islands town maps (`Gen2Art`) | ✅ its party minis, each species' own colours | ✅ 289 in National order, metric | `GameKind.POLISHED_CRYSTAL`. Tables from `scripts/gen_polished_crystal_tables.py` (the releases' own .sym files). See below. |
@@ -532,7 +533,7 @@ address and every table the companion reads at the same place (their .sym files 
 
 **Pokémon Kristall** (German Crystal, Game Boy Color; `GEN2_CRYSTAL_DE`, still `GameKind.CRYSTAL`; sha1 `accb5842…`, CRC32
 `616d85de`): English Crystal's code translated. Its RAM is English's byte for byte (the `crystal` fixture's save, written out by
-`scripts/crystal_save_from_fixture.py`, loads in it unchanged: `crystal_de*`); its ROM tables moved. What differs:
+`scripts/gen2_save_from_fixture.py crystal`, loads in it unchanged: `crystal_de*`); its ROM tables moved. What differs:
 - **Names**: `scripts/gen_gen2_tables.py crystal_de <kristall.gbc> --base <crystal rev 1.gbc>` checks every table but the names
   against English's (species, moves' types and powers, the chart, landmark places, maps) and writes the names alone
   (`Gen2TextCrystalDeGen.kt`), laid over Crystal's as a `GameText` keyed by its game code BYTD (`CRYSTAL_DE_TEXT`); its
@@ -547,6 +548,20 @@ address and every table the companion reads at the same place (their .sym files 
 - **EXPAND**: English's `GB_ROMS` row but SpriteMovementData (bank 1, 0x4276).
 - **PC / FLY / WILD**: `GbField.CrystalDe` (RunMemScript one byte later, Flypoints 0x1E later, its Fly script's text id).
 - **GUIDE**: Crystal's; its hand-written lines stay English, like the European Yellows'.
+
+**Pokémon Goldene Edition / Silberne Edition** (German Gold / Silver, Game Boy Color; `GEN2_GOLD_DE` / `GEN2_SILVER_DE`, still
+`GameKind.GOLD` / `.SILVER`; sha1 `9254195d…` / `8ecc58d6…`, CRC32 `4889dfaa` / `96c9db95`): English Gold / Silver translated,
+the way Kristall is English Crystal. Their RAM is English Gold's (`port_gen1.py` over pokegold.sym: every symbol at the same
+place), so the gold fixture's save (`scripts/gen2_save_from_fixture.py gold`) loads in both; the two German carts share every
+name table byte for byte. What differs:
+- **Names**: `scripts/gen_gen2_tables.py gold_silver_de <goldene.gbc> <silberne.gbc> --base <gold.gbc> <silver.gbc>` writes the
+  names alone (`Gen2TextGoldSilverDeGen.kt`, `GOLD_SILVER_DE_TEXT`, game codes AAUD / AAXD); species, move and type names are
+  Kristall's words, items and landmarks their own.
+- **Battle menus**: Kristall's columns (5 and 10).
+- **DEX** (`GEN2_DEX_GOLD_SILVER_DE`): English Gold's formats at their own addresses, pages metric as Kristall's.
+- **Art**: English's pixels; the icon tables 2 bytes later, the town maps' tilemaps 0x32 later (`Gen2Art.GOLD_DE` / `.SILVER_DE`).
+- **STEADY music**: PlayMusic 0x3D8F, the park 0x29D0; the songs loop as English's (`gbloop`).
+- The user's German Gold saves were empty, hence the fixture's save.
 
 **Pokémon Gold and Silver** (Game Boy Color; `GEN2_GOLD` / `GEN2_SILVER`, `GameKind.GOLD` / `.SILVER`): pret/pokegold
 builds both carts byte for byte (`pokegold.gbc` / `pokesilver.gbc`, its roms.sha1), and the two keep every RAM address at the
@@ -2345,6 +2360,12 @@ every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headles
   HealWarp records, `libretro/gen_flight.py`, `--check` in libretro.yml), its seen maps in the frontend's save directory
   (`pokedaisy/flight-area/<rom crc>-<save key>.txt`, the app's format), the row in the companion's SETTINGS
   (`pd_settings.flightAnywhere`, `host.hasFlightArea`). There ANYWHERE can't pause achievements: the frontend runs them.
+  The core flies the scenic FLY and FLY ON too (`host.flightSupported`: the compact SETTINGS list then has FLY STYLE /
+  FLIGHT AREA / FLY ON by QUICK MENU): FLY ON is the profile's words with `PK_FLIGHT_VEHICLE` set (`flight_configure_words`,
+  sent again when it changes, mid-flight too); a FLY pick under SCENIC routes with `linux/flight.c`'s `flight_here` /
+  `flight_destination` / `flight_route` over the config's flight record and FLIGHT AREA's maps (`scenic_job`, the 3DS's
+  flight_jobs), else the game's own FLY (no route, surfing, a config without the record: FireRed rev 0). MAP's TAKE OFF /
+  LAND is `PD_ACTION_FLIGHT` (`host.flightReady` / `host.flying`).
 - **Clouds** (pk_flight.c's flDrawClouds): while up, round-puff cumulus (flMakeClouds: clusters of domes on a wrapped 128 x 128
   map, 2 x 2 px a texel, read bilinear) drawn into the finished frame over the ground and shadow, under the bird: a white core
   and a thinner rim, bluer where the cloud thins below, at most 70% opaque, as thick as the bird is high. They slide by at
