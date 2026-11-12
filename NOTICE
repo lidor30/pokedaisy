@@ -58,13 +58,17 @@ The app shows every license below in full under Settings > LICENSES.
 - zlib (third_party/zlib, v1.3.1), Copyright (C) 1995-2024 Jean-loup Gailly and
   Mark Adler, the zlib License - https://zlib.net (the armGBA libretro core
   only, never the APK: its glue calls it; the cross toolchain has none).
-- Optional Linux DS experiment only: DSperate (third_party/dsperate),
-  Copyright (C) 2026 DSperate contributors, GNU GPL 3.0 or later. Its built-in
-  FreeBIOS is Copyright (c) 2013 Gilead Kutnick, BSD 2-clause
-  (src/core/bios/LICENSE.freebios); its miniz implementation is MIT
-  (src/core/cart/miniz/LICENSE). Its DSi font tables have the Noto Sans OFL 1.1
-  and WenQuanYi Micro Hei GPL-3+ font-exception notices under
-  src/core/io/dsi_font. Experiment packages include these license texts.
+- DSperate (third_party/dsperate), Copyright (C) 2026 DSperate contributors,
+  GNU GPL 3.0 or later - https://github.com/beebono/DSperate (source: the
+  submodule's pinned commit). The app's second DS core (its core library only,
+  app/src/main/cpp/nds/dsperate.cmake, which also makes the few build fixes the
+  Android compiler needs in the build directory) and the optional Linux DS
+  experiment. Its built-in FreeBIOS is Copyright (c) 2013 Gilead Kutnick, BSD
+  2-clause (src/core/bios/LICENSE.freebios); its miniz implementation is MIT
+  (src/core/cart/miniz/LICENSE); its tiny-AES-c is The Unlicense. Its DSi font
+  tables have the Noto Sans OFL 1.1 and WenQuanYi Micro Hei GPL-3+
+  font-exception notices under src/core/io/dsi_font. The app's LICENSES page
+  and the experiment packages include these license texts.
 - The Linux DS libretro core (linux/libretro-ds: the NXRedux collection, the
   libretro cores' zips and the Linux program's packages, never the APK):
   dsperate-lr (third_party/dsperate-lr), DSperate's libretro wrapper,

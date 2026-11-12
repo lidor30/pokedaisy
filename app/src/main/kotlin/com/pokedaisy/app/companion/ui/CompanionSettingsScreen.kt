@@ -2,6 +2,7 @@ package com.pokedaisy.app.companion.ui
 
 import com.pokedaisy.app.companion.SkinSystem
 
+import com.pokedaisy.app.companion.DsCore
 import com.pokedaisy.app.companion.NewFeatures
 import com.pokedaisy.app.companion.zoomLabel
 
@@ -718,22 +719,39 @@ private fun homeRows(
             labelBadge = NewFeatures.badge(NewFeatures.LOOK_AROUND),
         ) { s.setLookAround(!s.lookAround); changed() }
             .takeIf { s.gameAspect == GameAspect.WIDE },
-        // A DS game: its 3D at 2x to 8x the DS's own on the GPU, or ORIGINAL (the CPU's, pixel for pixel).
-        s.dsResolution?.let { scale ->
+        // A DS game: which emulator runs it (melonDS, or DSperate for weak devices); taken at the game's next start.
+        s.dsCore?.let { core ->
+            val now = core.valueLabel()
+            val pending = (core.runs() == com.pokedaisy.app.MgbaCore.NDS_CORE_DSPERATE) == s.dsMelonDs
             SettingRow(
-                tk("DS RESOLUTION"), if (s.dsGpuAvailable) dsResolutionLabel(scale) else tk("N/A"), enabled = s.dsGpuAvailable,
-                labelBadge = NewFeatures.badge(NewFeatures.DS_RESOLUTION),
+                tk("DS CORE"), now, labelBadge = NewFeatures.badge(NewFeatures.DS_CORE),
+                subtitle = if (pending) "Takes effect when the game restarts" else "DSPERATE runs on weaker devices",
             ) {
-                if (!s.dsGpuAvailable) return@SettingRow
+                select(Selector(tk("DS CORE"), DsCore.entries.map { it.label }, core.label) { l ->
+                    s.setDsCore(DsCore.entries.first { it.label == l }); changed()
+                })
+            }
+        },
+        // A DS game: its 3D at 2x to 8x the DS's own on the GPU, or ORIGINAL (the CPU's, pixel for pixel). melonDS only.
+        s.dsResolution?.let { scale ->
+            val can = s.dsGpuAvailable && s.dsMelonDs
+            SettingRow(
+                tk("DS RESOLUTION"), if (can) dsResolutionLabel(scale) else tk("N/A"), enabled = can,
+                labelBadge = NewFeatures.badge(NewFeatures.DS_RESOLUTION),
+                subtitle = if (!s.dsMelonDs) "Unavailable on DSPERATE" else null,
+            ) {
+                if (!can) return@SettingRow
                 val labels = dsResolutionLabels()
                 select(Selector(tk("DS RESOLUTION"), labels, dsResolutionLabel(scale)) { l -> s.setDsResolution(labels.indexOf(l) + 1); changed() })
             }
         },
-        // A DS game: its CPU at twice the DS's clock, so the game's own slow frames go (HeartGold walking).
+        // A DS game: its CPU at twice the DS's clock, so the game's own slow frames go (HeartGold walking). melonDS only.
         s.dsCpuBoost?.let { on ->
             SettingRow(
-                tk("DS CPU BOOST"), onOff(on), labelBadge = NewFeatures.badge(NewFeatures.DS_CPU_BOOST), subtitle = "Fewer slowdowns in DS games",
-            ) { s.setDsCpuBoost(!on); changed() }
+                tk("DS CPU BOOST"), if (s.dsMelonDs) onOff(on) else tk("N/A"), enabled = s.dsMelonDs,
+                labelBadge = NewFeatures.badge(NewFeatures.DS_CPU_BOOST),
+                subtitle = if (s.dsMelonDs) "Fewer slowdowns in DS games" else "Unavailable on DSPERATE",
+            ) { if (s.dsMelonDs) { s.setDsCpuBoost(!on); changed() } }
         },
         // A DS game on two screens: its touch screen at its 4:3 with the COMPANION bar, or stretched over the second display.
         s.dsTouchFill?.let { on ->

@@ -144,7 +144,7 @@ Hold a phone upright and the game sits across the top of the screen, with the co
 
 The `COMPANION` setting (on the `DISPLAY OPTIONS` page of the `SCREEN` group, on single-screen devices) picks where the companion sits on a phone held upright:
 
-- `UNDER GAME` (the default): right under the game, with the touch controls at the bottom of the screen.
+- `UNDER GAME` (the default): right under the game, with the touch controls at the bottom of the screen. On a screen with no room to spare under the companion (a tablet, or a DS game's taller picture), the companion and then the game get a little smaller so the touch controls still have their own space at the bottom and never cover the game.
 - `AT BOTTOM`: along the bottom of the screen, with the touch controls in any gap above it.
 
 With `ASPECT` set to `EXPAND`, the game fills everything above the companion, so both would look the same. There `UNDER GAME` gives the touch controls a strip of their own along the bottom of the screen, under the companion, so they don't lie over the game. When the touch controls aren't showing (you're using a controller), the setting is greyed out.

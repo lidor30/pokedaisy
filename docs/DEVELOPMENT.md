@@ -3319,6 +3319,35 @@ the emulator waiting ~0 ms; every `widecheck` count and wide shot the same as dr
 build of nds_dump found no race (it did find helpers restarted at an old job generation when EXPAND went off and on:
 `stopPool` resets it).
 
+**DSperate, the second DS core (DS CORE, 2026-11-10).** For devices too slow for melonDS (the RG DS's Cortex-A55s, the
+Retroid Pocket Duo Lite, 32-bit tablets: melonDS has no JIT on 32-bit ARM), `third_party/dsperate` (beebono/DSperate, GPL-3.0,
+the submodule the Linux port uses) runs DS carts too: its ARM -> AArch64 and ARM -> ARMv7 recompilers, fast memory (a memfd
+mapped in 4 KB views; off on a 16 KB-page kernel), the 3D on worker threads and idle-loop skipping. `nds/dsperate.cmake` builds
+its `src/core` alone (never its top-level CMakeLists: it turns LTO on for everything and builds ARMv7 hard-float, which isn't
+Android's ABI) and makes what the NDK's clang and bionic need **without touching the submodule** (the Linux port builds it
+unmodified): sources clang refuses are copied into the build directory with the fix (`dsperate_fix`: a braced NEON vector in a
+macro argument, a `const void*` cast to a function pointer; a fix whose text has moved fails the configure), `dsperate_android.h`
+is forced into every file (bionic's `PAGE_SIZE` macro, `aligned_alloc` before API 28, defined in `pk_nds_dsp.cpp`), and its
+tiny-AES-c is renamed (`pk_dsp_AES_*`: melonDS bundles its own). The app side: `pk_nds.cpp`'s functions are `pk_ndsm_*`,
+`pk_nds_dsp.cpp`'s `pk_ndsd_*`, and `pk_nds_core.cpp` defines pk_nds.h's from the list in `pk_nds_cores.h`, handing each call
+to the core that's up (`pk_nds_set_core` before `pk_nds_init`, from `EmulatorEngine.ndsCore`, from `companion.DsCore`: AUTO =
+DSperate where `DevicePerformance.looksWeak` or the process is 32-bit). On DSperate the field read is the same RAM-only
+`pk_nds_field.cpp` (BG tiles and master brightness from DSperate's GPU), saves the same quiet-frames flush, audio resampled
+linearly from its ~32728 Hz mixer; EXPAND, DS RESOLUTION, the game's own functions (PC / FLY), STEADY music and DS CPU BOOST are
+melonDS internals and report off (the activity greys them out: `PokeDaisyActivity.dsperate`). States are each core's own,
+behind a header with the save's CRC32 ("PKDS" melonDS, "PKDP" DSperate): `pk_nds_state_matches_save` answers 2 for the other
+core's, which the engine parks as `resume.melonds` / `resume.dsperate` (`SaveStates.parkedResume`) and the next start on that
+core takes back; a DSperate state loads into a second console first (a failed load leaves DSperate's machine unusable), and a
+save file of the wrong size for the chip makes DSperate refuse to start rather than cut it. Headless: `native-capture/dsp_dump`
+(its README) runs nds_dump's script commands through the app's `pk_ndsd_*`, so one script runs on both cores. HeartGold walking,
+an arm64 Linux container on the Mac (4000 frames): DSperate 0.69-0.92 ms a frame wall, 1.07-1.68 ms CPU; melonDS as the app runs
+it (JIT, 3D on the emulation thread, DS CPU BOOST) 2.86-3.15 ms, single-threaded. On a Galaxy Tab A (SM-T510, Exynos 7904,
+Android 11, a 32-bit app), HeartGold walking: DSperate 60 fps, 12-17 ms of work a frame; melonDS 16 fps, ~63 ms (no JIT there).
+32-bit ARM faults on clang's aligned NEON forms where a byte buffer is cast to `u16*` / `u32*` (its depth pre-pass's pass plane
+killed a 3D band worker with SIGBUS on the tablet; arm64 doesn't care, so headless never showed it): those four sites are
+`dsperate_fix`es too, through `dsperate_android.h`'s `pk_dsp_load16` / `load32` / `store32`. Check a new DSperate on a 32-bit
+device, or disassemble the armv7 library for `[rN:16]` / `[rN:32]` forms in `ds::gpu::kern::neon`.
+
 **Fast-forward.** A shown frame of an FF group draws; the others skip drawing (above), which took 4x from ~200 to 240
 DS frames a second on the Thor. Whether the next frame is seen is decided a frame ahead (its 3D starts at line 215,
 EXPAND's slices are handed out after the frame before), and FF can end a group part-way (SMART's 1x for a menu, FF off, the

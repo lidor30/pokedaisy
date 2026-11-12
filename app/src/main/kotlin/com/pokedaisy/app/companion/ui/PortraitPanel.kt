@@ -124,17 +124,21 @@ object PortraitLayout {
             return Arrangement(gripTop, gripTop, companionTop, c, Grip.ABOVE, gripTop, stripTop, h)
         }
         @Suppress("NAME_SHADOWING") val underGame = underGame && !expand
-        val c = companionHeight(w, h, gameH, ratio, gripH)
         if (underGame) {
-            val gameBottom = minOf(gameH, h - c - gripH)
+            // The controls' strip ([padStrip], when they're shown) is kept free at the bottom whatever's above it: on a
+            // screen with no gap left under the companion (a tablet, a DS game's 4:3) they lay over the game instead.
+            val strip = if (padStrip > 0) minOf(padStrip, h / 3) else 0
+            val c = companionHeight(w, h, gameH, ratio, gripH + strip)
+            val gameBottom = minOf(gameH, h - c - gripH - strip)
             val gripTop = gameBottom + c
             val below = gripTop + gripH
-            val inGap = padInGap(w, h - below)
+            val inGap = strip > 0 || padInGap(w, h - below)
             return Arrangement(
                 gameBottom, gameBottom, gameBottom, c, Grip.BELOW, gripTop,
                 if (inGap) below else 0, if (inGap) h else gameBottom,
             )
         }
+        val c = companionHeight(w, h, gameH, ratio, gripH)
         val companionTop = h - c
         val gameBottom = minOf(gameH, companionTop)
         val inside = companionTop - gameBottom < gripH

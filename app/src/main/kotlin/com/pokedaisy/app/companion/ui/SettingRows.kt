@@ -131,6 +131,7 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "ZOOM" to "expand wide zoom out see further map farther camera distance no right stick r3 touch",
     "AUTO ZOOM IN" to "expand wide zoom close-up closeup dialogue conversation sign menu text box pull in automatic",
     "DS TOUCH SCREEN" to "bottom screen touch screen stretch fill full fullscreen bar black bar companion button game screen dual screen thor nintendo ds",
+    "DS CORE" to "emulator core engine melonds dsperate weak slow slower old cheap low end budget performance speed faster lag laggy stutter 32-bit 32bit armv7 tablet retroid pocket duo lite anbernic rg ds nintendo ds heartgold soulsilver platinum black white",
     "DS CPU BOOST" to "overclock cpu clock speed boost faster lag slowdown slow stutter stuttering smooth smoother frame rate fps 30fps 60fps choppy laggy nintendo ds heartgold soulsilver platinum black white",
     "DS RESOLUTION" to "internal resolution upscale upscaling scale scaling hd high definition sharp sharper crisp 3d render renderer gpu opengl 2x 4x 6x 8x jaggies jagged blurry nintendo ds platinum heartgold soulsilver",
     "DS LAYOUT" to "screen layout screens dual screen two screens bottom screen touch screen touchscreen side by side stacked vertical hybrid picture in picture pip large small single screen one screen floating window popup nintendo ds heartgold soulsilver",

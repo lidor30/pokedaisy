@@ -26,6 +26,7 @@
 #include <zlib.h>
 
 #include <chrono>
+#include <ctime>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -958,10 +959,15 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "bench")) {
             // bench N: N frames as fast as they go, then the average ms per frame (with wide on, its frames too)
             int frames = (int) num(a);
+            timespec c0, c1;
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &c0);
             auto t0 = std::chrono::steady_clock::now();
             runFrames(frames, heldKeys);
             double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
-            printf("bench %d frames: %.3f ms a frame (wide %d)\n", frames, ms / frames, wideMargin);
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &c1);
+            double cpu = (c1.tv_sec - c0.tv_sec) * 1e3 + (c1.tv_nsec - c0.tv_nsec) / 1e6;
+            // (process CPU as dsp_dump prints it: the two DS cores' runs compare)
+            printf("bench %d frames: %.3f ms a frame (wide %d), %.3f ms CPU\n", frames, ms / frames, wideMargin, cpu / frames);
             fflush(stdout);
         } else if (!strcmp(cmd, "watch")) {
             // watch LO HI [r|w|rw] [N]: report the game's accesses to [LO, HI) (at most N, default 20); watch off clears

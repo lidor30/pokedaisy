@@ -2534,6 +2534,12 @@ fun main(args: Array<String>) {
         Shot("settings-home-focus", tw, th, td, activity { SettingsActivity() }),
         Shot("settings-app", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("CRASH REPORTS").performScrollTo() },
         Shot("settings-library-names", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("GAME NAMES").performScrollTo() },
+        // SCREEN's DS rows: DS CORE (AUTO), then on DSPERATE with DS RESOLUTION / DS CPU BOOST greyed out.
+        Shot("settings-ds-core", tw, th, td, activity { SettingsActivity() }) { onNodeWithText("DS CPU BOOST").performScrollTo() },
+        Shot("settings-ds-core-dsperate", tw, th, td, activity {
+            Prefs(android.content.Context()).dsCore = com.pokedaisy.app.companion.DsCore.DSPERATE
+            SettingsActivity()
+        }) { onNodeWithText("DS CPU BOOST").performScrollTo() },
         Shot("library-grid", tw, th, td, activity { LibraryActivity() }) {
             onNodeWithContentDescription("Toggle view").performClick()
         },
