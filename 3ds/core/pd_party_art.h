@@ -31,6 +31,12 @@ struct pd_party_art {
 
 const struct pd_party_art* pd_party_art_for(const struct pd_game* g);
 
+// The game's type tags (TypeBadge): its 128x128 sheet read from the ROM, 0 see-through, or NULL (not an English FireRed /
+// Emerald engine, or the ROM lost them). Built once a ROM.
+const uint32_t* pd_type_tags(const struct pd_game* g);
+// Where a type's 32x12 tag starts in the sheet, by its English name ("FIRE"); false for one the sheet hasn't.
+bool pd_type_tag_at(const char* name, int* x, int* y);
+
 // Row y (0..15) of a FONT_SMALL glyph: two bits a pixel, the first pixel in the top bits; 1 text, 2 shadow, else clear.
 int pd_party_glyph_row(const struct pd_party_art* a, int glyph, int y);
 

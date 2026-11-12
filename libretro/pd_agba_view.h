@@ -48,6 +48,8 @@ struct PdCore {
   void (*busWrite8)(struct PdCore *, uint32_t address, uint8_t value);
   void (*busWrite16)(struct PdCore *, uint32_t address, uint16_t value);
   void (*busWrite32)(struct PdCore *, uint32_t address, uint32_t value);
+  /* mCore's: a memory region in place (pk_flight.c's sprite copy). Left NULL here: callers fall back to bus reads. */
+  void *(*getMemoryBlock)(struct PdCore *, size_t id, size_t *sizeOut);
 };
 
 /* pd_agba_view.c */

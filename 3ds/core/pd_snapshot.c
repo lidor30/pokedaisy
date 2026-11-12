@@ -367,6 +367,13 @@ static void decode_battle_mon(const uint8_t* raw, const struct pd_battle_layout*
     b->level = raw[l->level];
     b->maxHp = u16(raw + l->maxHp);
     b->status = u32(raw + l->status);
+    if (l->facts) {
+        b->ability = l->abilityU16 ? u16(raw + l->ability) : raw[l->ability];
+        b->heldItem = u16(raw + l->item);
+        for (int i = 0; i < 5; i++) b->stats[i] = u16(raw + l->stats + i * 2);
+        for (int i = 0; i < 8; i++) b->stages[i] = (signed char) (raw[l->stages + i] - 6);
+        b->hasFacts = true;
+    }
     // A wrong guess at the game's addresses reads bytes that are not a battler: show nothing rather than garbage.
     if (b->level < 1 || b->level > 100 || b->maxHp < 1 || b->maxHp > 9999 || b->hp > b->maxHp) { memset(b, 0, sizeof(*b)); return; }
     // the app's decodeBattleMon: a game that keeps shininess in bits of its own never tells by the battler's personality

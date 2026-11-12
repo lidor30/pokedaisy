@@ -601,6 +601,11 @@ static void flTurn(void) {
 #define FL_BIG (FL_SRC * 8)
 static uint32_t flSrc[FL_SRC * FL_SRC], flSrcHash;
 static uint32_t flBig[FL_BIG * FL_BIG], flMid[(FL_SRC * 4) * (FL_SRC * 4)];
+// Which of flBig's pixels show (a bit each, its top byte set) and their box, in flBig's pixels (flBigU0 > flBigU1: none).
+// pk_flight_draw tests the bit before it reads flBig (1 MB: a cache miss a pixel cost a 3DS ~2 ms a frame) and keeps to
+// the box turned onto the screen, so it draws the same pixels.
+static uint32_t flBigOpaque[FL_BIG * FL_BIG / 32];
+static int flBigU0 = FL_BIG, flBigU1 = -1, flBigV0 = FL_BIG, flBigV1 = -1;
 static int flSprOn;               // pk_flight_draw draws the bird (the sprites are hidden)
 static int flDrawX, flDrawY;      // where the bird's centre is on screen (flBirdAt's)
 
@@ -623,6 +628,10 @@ static void flScale2x(const uint32_t* src, int w, int h, uint32_t* dst) {
     }
 }
 
+/** mGBA's GBA memory blocks (getMemoryBlock ids: gba/memory.h's REGION_PALETTE_RAM, REGION_VRAM). */
+#define FL_REGION_PALETTE 5
+#define FL_REGION_VRAM 6
+
 /** Sprite [id]'s current picture into flSrc, its centre at (cx, cy); its own pixels over what's there. */
 static void flCopySprite(struct mCore* core, int id, int cx, int cy) {
     static const uint8_t kW[3][4] = { { 8, 16, 32, 64 }, { 16, 32, 32, 64 }, { 8, 8, 16, 32 } };
@@ -633,9 +642,17 @@ static void flCopySprite(struct mCore* core, int id, int cx, int cy) {
     if (shape > 2 || (a0 & 0x2000u)) return;   // 8bpp: not the birds
     int w = kW[shape][size], h = kH[shape][size];
     uint32_t tiles = 0x06010000u + 32u * (a2 & 0x3FFu), pal = 0x05000200u + 32u * (a2 >> 12);
+    // VRAM and palette RAM read in place where the core hands them out (a bus read a byte cost a 3DS ~0.5 ms a frame).
+    size_t vramSize = 0, palSize = 0;
+    const uint8_t* vram = core->getMemoryBlock ? (const uint8_t*) core->getMemoryBlock(core, FL_REGION_VRAM, &vramSize) : NULL;
+    const uint8_t* palRam = core->getMemoryBlock ? (const uint8_t*) core->getMemoryBlock(core, FL_REGION_PALETTE, &palSize) : NULL;
+    uint32_t tileOff = tiles - 0x06000000u, palOff = pal - 0x05000000u;
+    if (!vram || vramSize < tileOff + (uint32_t) (w * h / 2)) vram = NULL;
+    if (!palRam || palSize < palOff + 32u) palRam = NULL;
     uint32_t colors[16];
     for (int i = 1; i < 16; i++) {
-        uint16_t c = core->busRead16(core, pal + 2u * (uint32_t) i);
+        uint16_t c = palRam ? (uint16_t) (palRam[palOff + 2u * (uint32_t) i] | palRam[palOff + 2u * (uint32_t) i + 1] << 8)
+                            : core->busRead16(core, pal + 2u * (uint32_t) i);
         uint32_t v = (uint32_t) (c & 0x1F) << 3 | (uint32_t) ((c >> 5) & 0x1F) << 11 | (uint32_t) ((c >> 10) & 0x1F) << 19;
         colors[i] = v | ((v >> 5) & 0x070707) | 0xFF000000u;   // mGBA's mColorFrom555; the top byte marks it opaque
     }
@@ -646,7 +663,8 @@ static void flCopySprite(struct mCore* core, int id, int cx, int cy) {
             int dx = cx - w / 2 + x;
             if (dx < 0 || dx >= FL_SRC) continue;
             uint32_t t = (uint32_t) ((y / 8) * (w / 8) + x / 8);
-            uint8_t b = core->busRead8(core, tiles + t * 32u + (uint32_t) ((y % 8) * 4 + (x % 8) / 2));
+            uint32_t at = t * 32u + (uint32_t) ((y % 8) * 4 + (x % 8) / 2);
+            uint8_t b = vram ? vram[tileOff + at] : core->busRead8(core, tiles + at);
             int ix = (x & 1) ? b >> 4 : b & 0xF;
             if (ix) flSrc[dy * FL_SRC + dx] = colors[ix];
         }
@@ -820,12 +838,14 @@ static void flSeatOnBird(struct mCore* core) {
 
 static void flCapture(struct mCore* core) {
     // A bird with nothing in its picture: the balloon instead (checked on the bird's own frame, every frame).
+    int birdCopied = 0;
     if (flBird >= 0 && !flCfg[PK_FLIGHT_VEHICLE]) {
         memset(flSrc, 0, sizeof(flSrc));
         flCopySprite(core, flBird, FL_SRC / 2, FL_SRC / 2);
         int any = 0;
         for (int i = 0; i < FL_SRC * FL_SRC && !any; i++) any = flSrc[i] != 0;
         flBirdBlank = !any;
+        birdCopied = 1;
     }
     // A vehicle is drawn the whole time (coming in empty, leaving empty); the game's bird only while ridden.
     const struct pk_flight_vehicle* veh = flVehicle();
@@ -834,16 +854,23 @@ static void flCapture(struct mCore* core) {
     flSetHidden(core, flRider, on);
     flSprOn = on;
     if (!on) return;
-    memset(flSrc, 0, sizeof(flSrc));
+    // The rider's pose (their own sprite's frame; flSrc untouched).
     if (flRidden() && (veh || flBirdNoRider() || (flRiderMode() && !flCfg[PK_FLIGHT_RIDER_TEMPLATE])))
         flPosePlayer(core, veh && veh->upDown);
     if (veh) {
+        memset(flSrc, 0, sizeof(flSrc));
         flReadGreys(core);
         flDrawVehicle(core, veh);
     } else {
-        // Unbound's bird is small for its tall hero: the rider first, the bird over their legs (seated in it, wings in front).
-        if (flBirdNoRider()) flSeatOnBird(core);
-        flCopySprite(core, flBird, FL_SRC / 2, FL_SRC / 2);
+        if (flBirdNoRider()) {
+            // Unbound's bird is small for its tall hero: the rider first, the bird over their legs (seated in it, wings in front).
+            memset(flSrc, 0, sizeof(flSrc));
+            flSeatOnBird(core);
+            flCopySprite(core, flBird, FL_SRC / 2, FL_SRC / 2);
+        } else if (!birdCopied) {
+            memset(flSrc, 0, sizeof(flSrc));
+            flCopySprite(core, flBird, FL_SRC / 2, FL_SRC / 2);
+        } // else the bird alone is in flSrc already (just copied above): the rider goes over it
         if (flRider >= 0) flCopySprite(core, flRider, FL_SRC / 2, FL_SRC / 2 - 8);
         else if (flRiderMode() && !flCfg[PK_FLIGHT_RIDER_TEMPLATE]) flSeatOnBird(core);
     }
@@ -855,6 +882,18 @@ static void flCapture(struct mCore* core) {
     flScale2x(flSrc, FL_SRC, FL_SRC, s2);
     flScale2x(s2, FL_SRC * 2, FL_SRC * 2, flMid);
     flScale2x(flMid, FL_SRC * 4, FL_SRC * 4, flBig);
+    memset(flBigOpaque, 0, sizeof(flBigOpaque));
+    flBigU0 = flBigV0 = FL_BIG;
+    flBigU1 = flBigV1 = -1;
+    for (int v = 0; v < FL_BIG; v++)
+        for (int u = 0; u < FL_BIG; u++) {
+            if (!(flBig[v * FL_BIG + u] >> 24)) continue;
+            flBigOpaque[(v * FL_BIG + u) >> 5] |= 1u << (u & 31);
+            if (u < flBigU0) flBigU0 = u;
+            if (u > flBigU1) flBigU1 = u;
+            if (v < flBigV0) flBigV0 = v;
+            if (v > flBigV1) flBigV1 = v;
+        }
 }
 
 /** The bird's picture: 0 alone; with the rider, the side view (1 / 3: FireRed's bird flies off to the left, so it's
@@ -1580,16 +1619,42 @@ void pk_flight_draw(uint32_t* frame, int w, int h, int stride, int cloudsHere) {
     if (flBirdMaskOn) memset(flBirdMask, 0, sizeof(flBirdMask));
     if (flSprOn) {
         // Picture = mirror * R(-angle) * screen, around the centre; sampled in the 8x picture at the pixel's centre.
+        // The same sums as one expression a pixel, the row's terms once; floor() of a value >= 0 is its truncation (and
+        // a negative one is skipped either way): a 3DS spent ~1 ms a frame in floor().
         double c = cos(flAngle), s = sin(flAngle);
-        for (int y = by - half; y <= by + half; y++) {
-            if (y < y0 || y > y1) continue;
+        int ya = by - half > y0 ? by - half : y0, yb = by + half < y1 ? by + half : y1;
+        int xa = bx - half > x0 ? bx - half : x0, xb = bx + half < x1 ? bx + half : x1;
+        if (flBigU0 > flBigU1) yb = ya - 1;   // nothing in the picture
+        else {
+            // The picture's box turned onto the screen (px = c U - s V, py = s U + c V, U = (u - 32) flSx, V = v - 32), a
+            // pixel of room each way: every pixel outside samples outside it, where nothing shows.
+            double us[2] = { flBigU0 / 8.0 - FL_SRC / 2, (flBigU1 + 1) / 8.0 - FL_SRC / 2 };
+            double vs[2] = { flBigV0 / 8.0 - FL_SRC / 2, (flBigV1 + 1) / 8.0 - FL_SRC / 2 };
+            double pxa = 1e9, pxb = -1e9, pya = 1e9, pyb = -1e9;
+            for (int i = 0; i < 4; i++) {
+                double U = us[i & 1] * flSx, V = vs[i >> 1];
+                double qx = c * U - s * V, qy = s * U + c * V;
+                if (qx < pxa) pxa = qx;
+                if (qx > pxb) pxb = qx;
+                if (qy < pya) pya = qy;
+                if (qy > pyb) pyb = qy;
+            }
+            int bxa = bx + (int) floor(pxa) - 2, bxb = bx + (int) ceil(pxb) + 2;
+            int bya = by + (int) floor(pya) - 2, byb = by + (int) ceil(pyb) + 2;
+            if (bxa > xa) xa = bxa;
+            if (bxb < xb) xb = bxb;
+            if (bya > ya) ya = bya;
+            if (byb < yb) yb = byb;
+        }
+        for (int y = ya; y <= yb; y++) {
             double py = y + 0.5 - by;
-            for (int x = bx - half; x <= bx + half; x++) {
-                if (x < x0 || x > x1) continue;
+            double spy = s * py, cpy = c * py;
+            for (int x = xa; x <= xb; x++) {
                 double px = x + 0.5 - bx;
-                double u = flSx * (c * px + s * py) + FL_SRC / 2, v = -s * px + c * py + FL_SRC / 2;
-                int iu = (int) floor(u * 8), iv = (int) floor(v * 8);
-                if (iu < 0 || iv < 0 || iu >= FL_BIG || iv >= FL_BIG) continue;
+                double u8 = (flSx * (c * px + spy) + FL_SRC / 2) * 8, v8 = (-s * px + cpy + FL_SRC / 2) * 8;
+                if (u8 < 0 || v8 < 0) continue;
+                int iu = (int) u8, iv = (int) v8;
+                if (iu >= FL_BIG || iv >= FL_BIG || !(flBigOpaque[(iv * FL_BIG + iu) >> 5] >> (iu & 31) & 1)) continue;
                 uint32_t p = flBig[iv * FL_BIG + iu];
                 if (!(p >> 24)) continue;
                 frame[y * stride + x] = (frame[y * stride + x] & 0xFF000000u) | (p & 0x00FFFFFFu);
@@ -1617,6 +1682,6 @@ void pk_flight_info(struct mCore* core, char* out, int n) {
     flCloudOrigin(wx, wy, &cox, &coy);
     snprintf(out, (size_t) n, "flight: state %d phase %d bird %d shadow %d lift %d look %d at %d,%d screen %d,%d anchor %d,%d marked %d "
              "land %d,%d route %d/%d locked %d wide %d,%d view %d,%d turn %d drawn %d clouds %d,%d bg %d,%d", flState, flPhase, flBird, flShadowOn, flLift, flLook, x, y, sx, sy, flAnchorX, flAnchorY,
-             flMarked(core, obj), flLandX, flLandY, flRouteDone, flRouteLen, core->busRead8(core, flCfg[PK_FLIGHT_LOCK_BYTE]), wx, wy, vx, vy,
+             flMarked(core, obj), flLandX, flLandY, flRouteDone, flRouteLen, (int) core->busRead8(core, flCfg[PK_FLIGHT_LOCK_BYTE]), wx, wy, vx, vy,
              (int) lround(flAngle * 57.29578), flSprOn, cox, coy, flCloudPrevX, flCloudPrevY);
 }

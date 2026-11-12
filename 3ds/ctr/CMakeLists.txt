@@ -1,9 +1,9 @@
-# PokeDaisy for the 3DS: libmgba (the submodule, built by its own CMake for the
-# 3DS) + the portable companion core + main.c, packed into a .3dsx.
+# PokeDaisy for the 3DS: armGBA for GBA games (third_party/armgba, ../emu), libmgba for Game Boy ones (the submodule,
+# built by its own CMake for the 3DS) + the portable companion core + main.c, packed into a .3dsx.
 # Configure with mGBA's 3DS toolchain file (it sets up devkitARM and the `3DS`
 # variable mGBA keys its platform code on) - `make 3ds` in ../ does it in Docker.
 cmake_minimum_required(VERSION 3.18)
-project(pokedaisy C)
+project(pokedaisy C ASM)
 
 get_filename_component(MGBA_DIR "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/mgba" ABSOLUTE)
 if(NOT EXISTS "${MGBA_DIR}/CMakeLists.txt")
@@ -59,13 +59,30 @@ get_target_property(MGBA_DEFS mgba COMPILE_DEFINITIONS)
 list(REMOVE_ITEM MGBA_DEFS COLOR_16_BIT COLOR_5_6_5)
 set_target_properties(mgba PROPERTIES COMPILE_DEFINITIONS "${MGBA_DEFS}")
 
+# armGBA with its ARM11 recompiler, and armGBA-3DS's own host code: executable memory, its render and sound threads on
+# the New 3DS's other cores, the warm list (host.c answers what it asks a frontend).
+get_filename_component(ARMGBA_3DS "${CMAKE_CURRENT_SOURCE_DIR}/../../third_party/armgba/platform/3ds/source" ABSOLUTE)
+set(ARMGBA_BACKEND a32)
+set(ARMGBA_HOST_SRC "${ARMGBA_3DS}/jitmem.c" "${ARMGBA_3DS}/svc.s")
+include("${CMAKE_CURRENT_SOURCE_DIR}/../emu/armgba.cmake")
+# zlib (the archive readers) is a devkitPro portlib.
+set(PORTLIBS "${DEVKITPRO}/portlibs/3ds")
+target_include_directories(pd_armgba PRIVATE "${ARMGBA_3DS}" "${CTRULIB}/include" "${PORTLIBS}/include")
+target_include_directories(pd_armgba_archive PRIVATE "${PORTLIBS}/include")
+target_link_directories(pd_armgba PUBLIC "${PORTLIBS}/lib")
+target_compile_options(pd_armgba PRIVATE -flto)
+set_source_files_properties("${ARMGBA_3DS}/svc.s" PROPERTIES COMPILE_OPTIONS "-x;assembler-with-cpp")
+# armGBA's second render worker goes on the fourth core, the companion's draw thread's and EXPAND's: host.c's own hook
+# declines it, so one worker on the third core draws every line.
+set_source_files_properties("${ARMGBA_3DS}/jitmem.c" PROPERTIES COMPILE_DEFINITIONS "renderThreadHostCreateSecond=armgbaSecondWorkerUnused")
+
 file(GLOB CORE_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../core/*.c")
 
 file(GLOB HOST_SOURCES "${CMAKE_CURRENT_SOURCE_DIR}/../host/*.c")
-add_executable(pokedaisy.elf main.c gpu.c devlink.c ${CORE_SOURCES} ${HOST_SOURCES}
+add_executable(pokedaisy.elf main.c gpu.c devlink.c host.c ${CORE_SOURCES} ${HOST_SOURCES} ${PD_ARMGBA_GLUE}
     ../../app/src/main/cpp/pk_host.c ../../app/src/main/cpp/pk_call.c ../../app/src/main/cpp/pk_wide.c
     ../../app/src/main/cpp/pk_gb_audio.c ../../app/src/main/cpp/pk_cheats.c ../../app/src/main/cpp/pk_gb_field.c
-    ../../app/src/main/cpp/pk_wide_gb.c ../../linux/fly.c ../../linux/field_items.c ../../linux/gb_field.c ../../linux/wild.c ../../linux/hud.c
+    ../../app/src/main/cpp/pk_wide_gb.c ../../linux/fly.c ../../linux/flash.c ../../linux/flight.c ../../app/src/main/cpp/pk_flight.c ../../linux/tm_teach.c ../../linux/field_items.c ../../linux/gb_field.c ../../linux/wild.c ../../linux/hud.c
     ../../linux/quick_menu.c)
 target_include_directories(pokedaisy.elf PRIVATE
     "${MGBA_DIR}/include"
@@ -77,17 +94,22 @@ target_include_directories(pokedaisy.elf PRIVATE
 # mGBA's headers size its structs by these, so ours must match the library's (see the colour note above).
 target_compile_definitions(pokedaisy.elf PRIVATE M_CORE_GBA M_CORE_GB BUILD_STATIC PK_WIDE_NO_GUARD PK_WIDE_CACHE FIXED_ROM_BUFFER)
 target_compile_options(pokedaisy.elf PRIVATE -std=gnu11 -O2 -Wall -Wextra)
+# The app's version, for the library's SETTINGS > APP.
+file(STRINGS "${CMAKE_CURRENT_SOURCE_DIR}/../../app/build.gradle.kts" PD_VERSION_LINE REGEX "versionName = \"")
+string(REGEX REPLACE ".*versionName = \"([^\"]+)\".*" "\\1" PD_VERSION "${PD_VERSION_LINE}")
+target_compile_definitions(pokedaisy.elf PRIVATE "PD_VERSION=\"${PD_VERSION}\"")
 # The dev build (make 3ds-dev): the Wi-Fi link and its own SD folder; devlink.c is empty without it.
 option(PD_DEV "the dev build" OFF)
 if(PD_DEV)
     target_compile_definitions(pokedaisy.elf PRIVATE PD_DEV)
 endif()
 # citro2d draws the screens (gpu.c); citro3d and libctru come with libmgba too.
-target_link_libraries(pokedaisy.elf mgba citro2d citro3d ctru m)
-target_link_options(pokedaisy.elf PRIVATE -flto=auto -O3)
+target_link_libraries(pokedaisy.elf pd_armgba mgba citro2d citro3d ctru z m)
+pd_mgba_renames(pokedaisy.elf)
+target_link_options(pokedaisy.elf PRIVATE -flto=auto -O3 -Wl,--wrap=free)
 
 if(PD_DEV)
-    set(PD_TITLE "PokeDaisy dev")
+    set(PD_TITLE "PokeDaisy [DEV]")
 else()
     set(PD_TITLE "PokeDaisy")
 endif()

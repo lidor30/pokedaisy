@@ -254,6 +254,102 @@ flyFemaleHeal = '@items.fly.healWarp.femaleHeal'
 flySaveBlock2Static = '@items.fly.healWarp.saveBlock2Static'
 flyMapHeader = '@items.fly.mapHeader'
 
+# FREE FLIGHT and the scenic FLY: the config's field-item record's flight (`@items.flight.`: the app's FlightFns in Flight.kt,
+# pk_flight.h's words). Lists are padded with 0: every landOk has behaviour 0 already, noFly's 0 = none.
+[part.flight]
+flightObjectEvents = '@items.flight.objectEvents'
+flightPlayerAvatar = '@items.flight.playerAvatar'
+flightSprites = '@items.flight.sprites'
+flightVmap = '@items.flight.vmap'
+flightConnectionFlags = '@items.flight.connectionFlags'
+flightSaveBlock1Ptr = '@items.flight.saveBlock1Ptr'
+flightSaveBlock2Ptr = '@items.flight.saveBlock2Ptr'
+flightMain = '@items.flight.main'
+flightCb2Overworld = '@items.flight.cb2Overworld'
+flightLockByte = '@items.flight.lockByte'
+flightPaletteFade = '@items.flight.paletteFade'
+flightLockControls = '@items.flight.lockControls'
+flightUnlockControls = '@items.flight.unlockControls'
+flightCreateSprite = '@items.flight.createSprite'
+flightDestroySprite = '@items.flight.destroySprite'
+flightStartSpriteAnim = '@items.flight.startSpriteAnim'
+flightBirdTemplate = '@items.flight.birdTemplate'
+flightBehaviorAt = '@items.flight.behaviorAt'
+flightCollisionAt = '@items.flight.collisionAt'
+flightElevationAt = '@items.flight.elevationAt'
+flightObjectAt = '@items.flight.objectAt'
+flightPlaySe = '@items.flight.playSe'
+flightSeFly = '@items.flight.seFly'
+flightSeFailure = '@items.flight.seFailure'
+flightWalkFast = '@items.flight.walkFast'
+flightWalkFaster = '@items.flight.walkFaster'
+flightSpriteOffset = '@items.flight.spriteOffset'
+flightWalkCurrent = '@items.flight.walkCurrent'
+flightWalkSlide = '@items.flight.walkSlide'
+flightMapHeader = '@items.flight.mapHeader'
+flightDrawMetatileAt = '@items.flight.drawMetatileAt'
+flightLandOk = '@items.flight.landOk'
+flightMapGroups = '@items.flight.mapGroups'
+flightMapGroupSizes = '@items.flight.mapGroupSizes'
+flightHealLocations = '@items.flight.healLocations'
+flightHealLocationSize = '@items.flight.healLocationSize'
+flightHealLocationCount = '@items.flight.healLocationCount'
+flightNoFly = '@items.flight.noFly'
+flightCrcs = '@items.flight.codeCrcs'
+flightRiderTemplate = '@items.flight.riderTemplate'
+flightRiderGfx = '@items.flight.riderGfx'
+flightSpriteDummy = '@items.flight.spriteDummy'
+flightRiderAnim = '@items.flight.riderAnim'
+flightScratch = '@items.flight.scratch'
+flightDrawView = '@items.flight.drawView'
+flightSaveBlockStatic = '@items.flight.saveBlockStatic'
+flightSpriteOffsetY = '@items.flight.spriteOffsetY'
+flightMapGroupsXor = '@items.flight.mapGroupsXor'
+flightBirdPalette = '@items.flight.birdPalette'
+flightBirdPaletteTag = '@items.flight.birdPaletteTag'
+flightObjSpriteId = '@items.flight.objSpriteId'
+flightSaveBlock1PosOff = '@items.flight.saveBlock1PosOff'
+flightFollowerRemove = '@items.flight.followerRemove'
+flightFollowerUpdate = '@items.flight.followerUpdate'
+flightMapGridUndefined = '@items.flight.mapGridUndefined'
+flightClassicFly = '@items.classicFly'
+
+# FLASH from the QUICK MENU: the config's FLASH record (`flash`, the app's FlashFns in Flash.kt).
+[part.flash]
+flashFlagGet = '@flash.flagGet'
+flashBadgeFlag = '@flash.badgeFlag'
+flashLitFlag = '@flash.litFlag'
+flashSetUp = '@flash.setUpFieldMoveFlash'
+flashMenuCb = '@flash.menuFieldCallback'
+flashPostCb = '@flash.postMenuFieldCallback'
+flashCallbacks = '@flash.fieldCallbacks'
+flashSlot = '@flash.partyMenuSlotId'
+flashMapHeader = '@flash.mapHeader'
+flashCrcs = '@flash.codeCrcs'
+flashBadgeCheck = '@flash.badgeCheck'
+flashBadgeCheckCrc = '@flash.badgeCheckCrc'
+flashCaveOff = '@flash.caveOff'
+
+# USE on a TM / HM: the game's own TM party menu (the config's TM record, `tm`: the app's TmFns in TmTeach.kt).
+[part.tm]
+tmItemId = '@tm.specialVarItemId'
+tmItemUseCb = '@tm.itemUseCb'
+tmItemUseCbTmhm = '@tm.itemUseCbTmhm'
+tmShowParty = '@tm.showPartyMenuForItemUse'
+tmPartyMenu = '@tm.partyMenu'
+tmPartyMenuSlotOff = '@tm.partyMenuSlotOff'
+tmInitPartyMenu = '@tm.initPartyMenu'
+tmMainCallback2 = '@tm.mainCallback2'
+tmSetMainCallback2 = '@tm.setMainCallback2'
+tmReturnToField = '@tm.returnToField'
+tmCleanup = '@tm.cleanupOverworld'
+tmFade = '@tm.fadeScreen'
+tmLock = '@tm.lockControls'
+tmUnlock = '@tm.unlockControls'
+tmCrcs = '@tm.codeCrcs'
+tmFirst = '@tm.firstTm'
+tmLast = '@tm.lastHm'
+
 # The Repels and PC anywhere: the same record's VarGet / VarSet / CheckBagHasItem / RemoveBagItem /
 # ArePlayerFieldControlsLocked (fieldCrcs: their first 32 bytes' CRC32, in that order), VAR_REPEL_STEP_COUNT,
 # gItems (struct Item: holdEffectParam itemNameLen + 5 in, unless itemParamOffset) and the PC's PcFns.
@@ -328,61 +424,61 @@ dexMapGroups = 'guideTables.mapGroups'
 # quick menu from FIELD_ITEMS_PORTS["BPRE0"] (fieldItemsFor).
 [config.firered_rev1]
 name = 'FIRERED_REV1'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_FIRERED_REV1' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'flight', 'flash', 'tm', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_FIRERED_REV1', flash = 'FLASH_FIRERED_REV1', tm = 'TM_FIRERED_REV1' }
 values = { partyMenu = 0x0203B0A0, pokemonStoragePtr = 0x03005010 }
 
 [config.firered_rev0]
 name = 'FIRERED_REV0'
-parts = ['ram', 'icons', 'dex', 'card', 'fly', 'field', 'battle', 'engine', 'boxes']
-records = { items = 'FIELD_ITEMS_PORTS_BPRE0' }
+parts = ['ram', 'icons', 'dex', 'card', 'fly', 'flight', 'flash', 'tm', 'field', 'battle', 'engine', 'boxes']
+records = { items = 'FIELD_ITEMS_PORTS_BPRE0', flash = 'FLASH_FIRERED_REV0', tm = 'TM_FIRERED_REV0' }
 set = { trainerCard = 'TRAINER_CARD_FIRERED' }
 values = { pokemonStoragePtr = 0x03005010 }
 
 [config.leafgreen_rev0]
 name = 'LEAFGREEN_REV0'
-parts = ['ram', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_LEAFGREEN_REV0' }
+parts = ['ram', 'icons', 'dex', 'guide', 'card', 'fly', 'flight', 'flash', 'tm', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_LEAFGREEN_REV0', flash = 'FLASH_LEAFGREEN_REV0', tm = 'TM_LEAFGREEN_REV0' }
 
 [config.leafgreen_rev1]
 name = 'LEAFGREEN_REV1'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_LEAFGREEN_REV1' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'flight', 'flash', 'tm', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_LEAFGREEN_REV1', flash = 'FLASH_LEAFGREEN_REV1', tm = 'TM_LEAFGREEN_REV1' }
 
 [config.emerald_retail]
 name = 'EMERALD'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_EMERALD' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'flight', 'flash', 'tm', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_EMERALD', flash = 'FLASH_EMERALD', tm = 'TM_EMERALD' }
 values = { partyMenu = 0x0203CEC8, pokemonStoragePtr = 0x03005D94 }
 
 # plorpOS's Linux port: the hacks, as their records reach gen3/records/c_hacks.toml. Emerald Legacy v1.1.4: retail's
 # structs with its own addresses, its own TrainerMon (guideTables.trainerMon).
 [config.emerald_legacy]
 name = 'EMERALD_LEGACY'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'field', 'battle', 'engine', 'boxes']
-records = { items = 'FIELD_ITEMS_EMERALD_LEGACY' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'card', 'fly', 'flight', 'flash', 'tm', 'field', 'battle', 'engine', 'boxes']
+records = { items = 'FIELD_ITEMS_EMERALD_LEGACY', flash = 'FLASH_EMERALD_LEGACY', tm = 'TM_EMERALD_LEGACY' }
 
 # Ruby / Sapphire (USA): rev 1 and 2 share every address (the app's NATIVE_RUBY / _SAPPHIRE), rev 0 is its own
 # (RETAIL_PORTS' AXVE0 / AXPE0). Read like Emerald (the same species / item / map-section ids); no trainer card.
 [config.ruby]
 name = 'RUBY'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_RUBY' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'flight', 'flash', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_RUBY', flash = 'FLASH_RUBY' }
 
 [config.sapphire]
 name = 'SAPPHIRE'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_SAPPHIRE' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'flight', 'flash', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_SAPPHIRE', flash = 'FLASH_SAPPHIRE' }
 
 [config.port_axve0]
 name = 'RUBY_REV0'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_PORTS_AXVE0' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'flight', 'flash', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_PORTS_AXVE0', flash = 'FLASH_RUBY_REV0' }
 
 [config.port_axpe0]
 name = 'SAPPHIRE_REV0'
-parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'field', 'battle', 'engine', 'boxes', 'dexsec']
-records = { items = 'FIELD_ITEMS_PORTS_AXPE0' }
+parts = ['ram', 'foes', 'icons', 'dex', 'guide', 'fly', 'flight', 'flash', 'field', 'battle', 'engine', 'boxes', 'dexsec']
+records = { items = 'FIELD_ITEMS_PORTS_AXPE0', flash = 'FLASH_SAPPHIRE_REV0' }
 
 # The retail-struct hacks whose ROMs aren't to hand: RAM-only (PARTY / BATTLE / foes, checked on the app's captured RAM);
 # the tabs that read the ROM (icons, POKéDEX, GUIDE, CARD, FLY) join once a ROM is there to check them against.

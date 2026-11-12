@@ -22,6 +22,20 @@ struct devlink_stats {
     unsigned late;        // loops over a refresh (16.7 ms)
     unsigned runUs, waitUs, wideUs, snapUs; // of coreUs: the game itself, waiting for its renderer, EXPAND (with that wait), the snapshot
     unsigned gaps, drops, rate;             // sound: the queue ran dry, a chunk had no room, the channel's rate x 1000
+    unsigned redraws, redrawWorstUs;        // the companion's redraws and the slowest one
+    int idleMode;                           // mGBA's busy-loop skipping: -1 off for good, 0 skipping, 1 still looking
+    unsigned idleLoop, idleFails;           // the loop it skips, and its failed tries
+    int flightState;                        // FREE FLIGHT's pk_flight_state (0 on the ground)
+    unsigned flightTickUs, flightDrawUs;    // of coreUs: its step after each frame, its shadow and bird drawn in
+    // armGBA's own counters (of runUs: waiting for its render worker, compiling, cache flushes; the worker's drawing on
+    // core 2), and the fourth core's: EXPAND's margins and the screens' draw jobs.
+    unsigned agWaitUs, agRenderUs, agCompileUs, agFlushUs, wideThreadUs, drawJobUs;
+    unsigned agStepped, agCompiled, agInvalidated, agCodeWrites;   // armGBA's recompiler, in the last second
+    unsigned mixes;   // the native m4a mixer's, in the last second
+    // Since the game started (read twice, a quiet stretch apart): loops, late loops by what ran over (the core over 12 ms,
+    // the draw over 10 ms, else the rest of the loop), the sound queue running dry, its fewest chunks queued.
+    unsigned totLoops, totLate, totLateCore, totLateDraw, totLateRest, totGaps, totFrames, queueMin;
+    unsigned jobTexUs, jobBeginUs, jobCanvasUs, jobRestUs;   // the draw jobs in the last second (gpu.c)
 };
 
 void devlink_start(void);
@@ -36,6 +50,8 @@ bool devlink_take_launch(char* out, unsigned outLen);
 bool devlink_take_leave(void);
 // A wild battle to start (`wild`): taken once.
 bool devlink_take_wild(int* species, int* level);
+// `teach SLOT INDEX MOVE`: a party Pokemon's move set by the game's SetMonData, between frames.
+bool devlink_take_teach(int* slot, int* index, int* move);
 // SCREEN and ASPECT to set while playing (`opt`; -1 leaves one alone): taken once.
 bool devlink_take_opt(int* screen, int* aspect);
 // True when a new build waits: leave everything and run it.
@@ -59,6 +75,7 @@ static inline bool devlink_touch(int* x, int* y) { (void) x; (void) y; return fa
 static inline bool devlink_take_launch(char* out, unsigned outLen) { (void) out; (void) outLen; return false; }
 static inline bool devlink_take_leave(void) { return false; }
 static inline bool devlink_take_wild(int* species, int* level) { (void) species; (void) level; return false; }
+static inline bool devlink_take_teach(int* slot, int* index, int* move) { (void) slot; (void) index; (void) move; return false; }
 static inline bool devlink_take_opt(int* screen, int* aspect) { (void) screen; (void) aspect; return false; }
 static inline bool devlink_restart_wanted(void) { return false; }
 static inline void devlink_after_frame(void) {}

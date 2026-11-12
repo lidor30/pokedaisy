@@ -1,4 +1,6 @@
-# The boot to the field, on the player's save.
+# The boot to the field, on the player's save. FLIGHT AREA ANYWHERE: its seed calls the game, which moves the RNG
+# (the battle tests count on the rolls they were written with); sim_flight.txt turns it back on.
+flysettings 0 1 0
 run 300
 press start
 run 120

@@ -709,12 +709,45 @@ static struct art_geometry card_geometry(const struct pd_party_style* st, int ex
     return a;
 }
 
+// FNV-1a over [n] bytes, continuing from [h].
+static uint32_t hash_bytes(uint32_t h, const void* p, size_t n) {
+    const unsigned char* b = p;
+    for (size_t i = 0; i < n; i++) h = (h ^ b[i]) * 16777619u;
+    return h;
+}
+
+// What the scaled cards are drawn from: the party, the cursor, the layout, the look and the art. The same key = the same
+// pixels, so a redraw for something else (a tab press, the clock) copies them instead of scaling the screen again - on a
+// 3DS the scale took most of a frame.
+static uint32_t cards_key(const struct pd_canvas* c, const struct pd_game* g, const struct pd_party_art* art, const struct window_at* at,
+                          const struct card_scale* k, const struct pd_snapshot* s, int selected) {
+    uint32_t h = 2166136261u;
+    const void* ptrs[4] = { c->px, g, art, pd_cur };
+    int ints[9] = { c->w, c->h, c->cx0, c->cy0, c->cx1, c->cy1, selected, s->partyCount, (int) pd_rom_id(g) };
+    h = hash_bytes(h, ptrs, sizeof(ptrs));
+    h = hash_bytes(h, ints, sizeof(ints));
+    h = hash_bytes(h, k, sizeof(*k));
+    h = hash_bytes(h, at, sizeof(*at) * PD_PARTY_SIZE);
+    h = hash_bytes(h, pd_backdrop_colors, sizeof(pd_backdrop_colors));
+    int n = s->partyCount < PD_PARTY_SIZE ? s->partyCount : PD_PARTY_SIZE;
+    return hash_bytes(h, s->party, sizeof(s->party[0]) * (size_t) (n > 0 ? n : 0));
+}
+
 // The cards on the canvas, over its backdrop, or only the backdrop if `cards` is false. selected: which card, -1 none.
 static bool draw_cards(struct pd_canvas* c, const struct pd_game* g, const struct pd_party_art* art, const struct window_at* at,
                        const struct card_scale* k, const struct pd_snapshot* s, int selected, bool cards) {
     static uint32_t px[PD_UI_WIDTH * PD_UI_HEIGHT];
+    static uint32_t kept[PD_UI_WIDTH * PD_UI_HEIGHT], keptKey;
+    static bool keptOk;
     struct pd_canvas screen;
     bool up = k->num != k->den;
+    // The scaled party screen as last drawn: copied when nothing it shows has changed.
+    bool cache = up && cards && c->w * c->h <= PD_UI_WIDTH * PD_UI_HEIGHT;
+    uint32_t key = cache ? cards_key(c, g, art, at, k, s, selected) : 0;
+    if (cache && keptOk && key == keptKey) {
+        memcpy(c->px, kept, (size_t) c->w * c->h * sizeof(*kept));
+        return true;
+    }
     int w = (c->w * k->den + k->num - 1) / k->num + 1, h = (c->h * k->den + k->num - 1) / k->num + 1;
     pd_canvas_init(&screen, w, h, px);
     if (up && !pd_party_screen(&screen, g)) return false;
@@ -734,6 +767,11 @@ static bool draw_cards(struct pd_canvas* c, const struct pd_game* g, const struc
         int x = t->x * k->num / k->den, y = (t->y + TEXT_TOP) * k->num / k->den + CARD_TEXT_DY;
         if (t->right) pd_text_right(c, x, y, t->text, t->fg, t->shadow);
         else pd_text(c, x, y, t->text, t->fg, t->shadow);
+    }
+    if (cache) {
+        memcpy(kept, c->px, (size_t) c->w * c->h * sizeof(*kept));
+        keptKey = key;
+        keptOk = true;
     }
     return true;
 }
@@ -1434,7 +1472,7 @@ void ui_mon_summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
                     const struct pd_mon* const* column, int columnCount, int shown, bool canTake, const char* pcLabel) {
     (void) s;
     char buf[40];
-    int x = MARGIN, y = CONTENT_Y - 2, btnH = 22, full = c->h - y - 2, h = full - btnH - 3;
+    int x = MARGIN, y = CONTENT_Y - 2, btnH = 26, full = c->h - y - 2, h = full - btnH - 3;
     int colX = c->w - MARGIN - SUMMARY_COLUMN, w = colX - 3 - x;
     int f = pd_title_box(c, x, y, w, h, PD_TITLE_FILL);
     int ix = x + f + 4, iy = y + f + 2, iw = w - 2 * (f + 4), ih = h - 2 * (f + 2);
@@ -1526,18 +1564,18 @@ void ui_mon_summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
     }
     int by = y + full - btnH, bx = x;
     ui_platinum(ui, c, colX, by, SUMMARY_COLUMN, btnH, 0x4890D8, 0x2860A0, HIT_BACK);
-    ui_mono(c, &PD_ICON_BACK, colX + (SUMMARY_COLUMN - PD_ICON_BACK.w) / 2, by + (btnH - PD_ICON_BACK.h) / 2, 1, 0xFFFFFF);
+    ui_platinum_back(c, colX, by, SUMMARY_COLUMN, btnH);
     if (pcLabel) {
         int bw = pd_text_width(pcLabel) + 16;
         ui_platinum(ui, c, bx, by, bw, btnH, 0x58A840, 0x307020, HIT_SUMMARY_PC);
-        pd_text(c, bx + (bw - pd_text_width(pcLabel)) / 2, pd_text_y(by, btnH), pcLabel, 0xFFFFFF, 0x383838);
+        ui_platinum_label(c, bx, by, bw, btnH, pcLabel);
         bx += bw + 3;
     }
     if (m->stats.valid && !egg) {
         const char* label = ui->summaryStats ? "MOVES" : "STATS";
         int bw = pd_text_width("MOVES") + 16;
         ui_platinum(ui, c, bx, by, bw, btnH, STATS_PURPLE, STATS_PURPLE_DARK, HIT_SUMMARY_STATS);
-        pd_text(c, bx + (bw - pd_text_width(label)) / 2, pd_text_y(by, btnH), label, 0xFFFFFF, 0x383838);
+        ui_platinum_label(c, bx, by, bw, btnH, label);
         bx += bw + 3;
     }
     if (!egg) {
@@ -1545,7 +1583,7 @@ void ui_mon_summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         const char* label = ui->summaryInfo ? "MOVES" : "INFO";
         int bw = pd_text_width("MOVES") + 16;
         ui_platinum(ui, c, bx, by, bw, btnH, 0x4890D8, 0x2860A0, HIT_SUMMARY_INFO);
-        pd_text(c, bx + (bw - pd_text_width(label)) / 2, pd_text_y(by, btnH), label, 0xFFFFFF, 0x383838);
+        ui_platinum_label(c, bx, by, bw, btnH, label);
     }
 }
 
@@ -1566,7 +1604,7 @@ void ui_party_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
         const struct pd_mon* column[PD_PARTY_SIZE];
         for (int i = 0; i < s->partyCount; i++) column[i] = &s->party[i];
         ui_mon_summary(ui, c, g, s, &s->party[ui->summarySlot], column, s->partyCount, ui->summarySlot, host && host->canTake,
-                       ui->boxMoves ? "PC" : NULL);
+                       ui->boxMoves ? "DEPOSIT" : NULL);
         if (*ui->boxMessage) ui_box_message(ui, c);
         return;
     }

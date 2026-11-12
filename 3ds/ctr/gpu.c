@@ -172,6 +172,13 @@ uint32_t* gpu_game_buffer(void) {
     return gameBuf;
 }
 
+// What shows beside the game's picture: black, or a Game Boy game's white.
+static u32 barColor;
+
+void gpu_set_bars(uint32_t rgb) {
+    barColor = C2D_Color32((u8) (rgb >> 16), (u8) (rgb >> 8), (u8) rgb, 0xFF);
+}
+
 void gpu_double_game(bool on) {
     gameDoubled = on && drawThread && gameBufs[1];
     shownBuf = gameBuf;
@@ -333,7 +340,10 @@ void gpu_hold_game(bool hold) {
     holdGame = hold;
 }
 
+// The dev build's split of the draw jobs (ticks): writing the game's texture, the canvases, waiting in FrameBegin, the rest.
+volatile u64 gpuTexTicks, gpuCanvasTicks, gpuBeginTicks, gpuRestTicks;
 static void run_job(const struct draw_job* j, bool threaded) {
+    u64 tA = svcGetSystemTick();
     bool game = j->game;
     int screenMode = j->screenMode, gameW = j->gameW, gameH = j->gameH, wideW = j->wideW, wideH = j->wideH;
     bool holdGame = j->holdGame;
@@ -351,12 +361,15 @@ static void run_job(const struct draw_job* j, bool threaded) {
     }
     bool canvases = j->bottom || j->top || j->overlay || j->perfNew;
     if (threaded && !canvases) LightEvent_Signal(&stageFree);
+    u64 tB = svcGetSystemTick();
     C3D_FrameBegin(C3D_FRAME_SYNCDRAW);
+    u64 tC = svcGetSystemTick();
     if (j->bottom) write_canvas(&bottomTex, j->bottom, PD_UI_WIDTH, PD_UI_HEIGHT);
     if (j->top) write_canvas(&topTex, j->top, TOP_W, TOP_H);
     if (j->overlay) write_overlay(j->overlay);
     if (j->perfNew) write_perf(stagePerf);
     if (threaded && canvases) LightEvent_Signal(&stageFree);
+    u64 tD = svcGetSystemTick();
     Tex3DS_SubTexture sub, upSub;
     u32 black = C2D_Color32(0, 0, 0, 0xFF);
     // The smooth modes: the frame at 2x nearest, sampled linearly down to size (mGBA's "sharp bilinear").
@@ -367,7 +380,7 @@ static void run_job(const struct draw_job* j, bool threaded) {
         C2D_SceneBegin(upTarget);
         C2D_DrawImageAt(image(src, &sub, srcW, srcH), 0, 0, 0.5f, NULL, 2.0f, 2.0f);
     }
-    C2D_TargetClear(topTarget, black);
+    C2D_TargetClear(topTarget, game && barColor ? barColor : black);
     C2D_SceneBegin(topTarget);
     if (!game) {
         C2D_DrawImageAt(image(&topTex, &sub, TOP_W, TOP_H), 0, 0, 0.5f, NULL, 1.0f, 1.0f);
@@ -402,11 +415,19 @@ static void run_job(const struct draw_job* j, bool threaded) {
     C2D_DrawImageAt(image(&bottomTex, &bottomSub, PD_UI_WIDTH, PD_UI_HEIGHT), 0, 0, 0.5f, NULL, 1.0f, 1.0f);
     C3D_FrameEnd(0);
     framesShown++;
+    u64 tE = svcGetSystemTick();
+    gpuTexTicks += tB - tA;
+    gpuBeginTicks += tC - tB;
+    gpuCanvasTicks += tD - tC;
+    gpuRestTicks += tE - tD;
 }
 
 unsigned gpu_frames_shown(void) {
     return framesShown;
 }
+
+// The fourth core's work, in ticks (the dev build's stat).
+volatile u64 gpuWideTicks, gpuDrawTicks;
 
 static void draw_main(void* arg) {
     (void) arg;
@@ -415,7 +436,9 @@ static void draw_main(void* arg) {
         if (drawStop) return;
         // Its own copy: the stage goes free halfway through, and the next job can be written then.
         struct draw_job mine = job;
+        u64 t0 = svcGetSystemTick();
         run_job(&mine, true);
+        gpuDrawTicks += svcGetSystemTick() - t0;
         jobsDone++;
     }
 }
@@ -432,7 +455,9 @@ static void wide_main(void* arg) {
     for (;;) {
         LightEvent_Wait(&wideStart);
         if (wideStop) return;
+        u64 t0 = svcGetSystemTick();
         wideWork();
+        gpuWideTicks += svcGetSystemTick() - t0;
         LightEvent_Signal(&wideDone);
     }
 }
@@ -474,7 +499,8 @@ static void draw_thread_start(void) {
     LightEvent_Signal(&stageFree);
     s32 priority = 0x30;
     svcGetThreadPriority(&priority, CUR_THREAD_HANDLE);
-    // The New 3DS's fourth core: mGBA's renderer has the third.
+    // The New 3DS's fourth core, beside armGBA's mixer (it sleeps between batches); mGBA's renderer and armGBA's render
+    // worker have the third. armGBA's second worker is kept off (pd_armgba.c): beside it this thread starved.
     drawThread = threadCreate(draw_main, NULL, DRAW_STACK, priority - 1, 3, false);
     if (!drawThread) drawThread = threadCreate(draw_main, NULL, DRAW_STACK, priority - 1, 2, false);
     if (drawThread) aptHook(&drawHook, draw_apt_hook, NULL);

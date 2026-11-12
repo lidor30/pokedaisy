@@ -93,6 +93,12 @@ struct pd_settings {
     // The 3DS's (the companion's SETTINGS rows on hosts that show them):
     bool hideHints;  // BATTLE HINTS off
     bool oneTapMoves; // ONE-TAP MOVES: the moves on the action menu where FIGHT is
+    bool battleGen5;  // BATTLE STYLE: GEN 5 (Black / White's touch screen); off = GEN 4
+    bool noBattleInfo;    // BATTLE INFO off: the battle buttons alone, no INFO / SUGGESTIONS or move ratings
+    bool battleInfoFirst; // BATTLE VIEW: INFO; off = BUTTONS (what the BATTLE tab opens on)
+    bool flyClassic;      // FLY STYLE: CLASSIC (the game's own FLY); off = SCENIC, flown over the field where the game can
+    bool flightAnywhere;  // FLIGHT AREA: ANYWHERE; off = VISITED, the app's WHERE YOU'VE BEEN (only the maps this save has seen)
+    int flightVehicle;    // FLY ON: linux/flight.h's enum flight_vehicle (0 the game's bird)
     int gameSpeed;   // GAME SPEED: an index into PD_GAME_SPEEDS
     int gameVolume;  // GAME VOLUME: 20 ... 100
     bool gameMuted;  // MUTE GAME
@@ -101,7 +107,8 @@ struct pd_settings {
     bool ffNormal;   // FF MODE: NORMAL; off = SMART, 1x while the game waits for the player
     bool cheats;     // CHEATS: the game's file's codes on
     int theme;       // THEME: a pd_themes[] id
-    bool flightAnywhere; // FLIGHT AREA: ANYWHERE; off = VISITED, only over maps the save has seen (hosts with hasFlightArea)
+    bool libraryGrid;    // the library's VIEW: GRID; off = LIST
+    bool libraryRecent;  // the library's SORT: LAST PLAYED; off = NAME
 };
 
 enum pd_button { PD_BTN_X, PD_BTN_Y, PD_BTN_L2, PD_BTN_R2, PD_BTN_NONE, PD_BUTTONS };
@@ -144,6 +151,7 @@ enum pd_action {
     PD_ACTION_BOX_DEPOSIT,  // party slot ui.boxPartySlot into box ui.boxTarget
     PD_ACTION_FLY_ASK,   // MAP's FLY: where it can go is wanted
     PD_ACTION_FLY_TO,    // ... and the pick: ui.flyPick
+    PD_ACTION_FLIGHT,    // MAP's TAKE OFF / LAND (FREE FLIGHT)
 };
 
 // A party slot in USE / GIVE's pick: dimmed, or which of its moves it would help.
@@ -187,6 +195,8 @@ struct pd_host_info {
     bool wildSupported, fieldSupported; // WILD ENCOUNTERS / the field read works on this game
     int batteryPct;     // -1 = unknown
     bool flyReady;      // MAP's FLY button: someone in the party can
+    bool flightSupported; // FREE FLIGHT works in this game: FLY STYLE / FLIGHT AREA / FLY ON rows
+    bool flightReady, flying; // MAP's TAKE OFF (someone knows FLY), and LAND while up
     bool canTake;       // the summary's TAKE
     bool (*itemCanUse)(int item);  // Optional: what the bag's USE / GIVE can do with an item
     bool (*itemCanGive)(int item);
@@ -222,6 +232,7 @@ enum pd_overlay {
     PD_OVERLAY_PICK_BOX,    // the boxes, BOXES' name or DEPOSIT's where to
     PD_OVERLAY_CONFIRM_BOX, // WITHDRAW / DEPOSIT asked
     PD_OVERLAY_PICK_VOLUME,
+    PD_OVERLAY_PICK_FLY_ON, // FLY ON: what FREE FLIGHT flies on
     PD_OVERLAY_CONFIRM_RESTART,
     PD_OVERLAY_FLY,     // MAP's FLY: the towns
 };
@@ -414,8 +425,11 @@ struct pd_ui {
     bool battleInfoOpen;     // INFO over the touch controls (their way back shows)
     bool battleChoosingMon;  // POKéMON tapped: our party pane, not yet the game's
     bool battleChoosingMove; // FIGHT tapped: our move grid, FIGHT not sent yet
+    // RUN picked: the controls stay up until the battle ends, or the menu is back after a turn (the escape failed).
+    bool ranAway, ranWaited;
     unsigned foeSeen;
     int foeSelected, foeShown;
+    bool foeDetails; // FOE DETAILS: INFO gives the foe the page (Prefs.foeDetails, kept across battles)
     int lastFoeActive, lastFoeNext;
     int summarySlot; // party slot whose summary is open, -1 = none
     bool summaryLearn, summaryCanLearn;

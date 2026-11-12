@@ -18,7 +18,9 @@
 	url = https://github.com/thwonp/dsperate-lr.git
 [submodule "third_party/armgba"]
 	path = third_party/armgba
-	url = https://github.com/MagnominusGit/armGBA.git
+	url = https://github.com/ratherDashing/armGBA.git
+	# The 3DS build applies third_party/patches/armgba-pokedaisy.patch here.
+	ignore = dirty
 [submodule "third_party/zlib"]
 	path = third_party/zlib
 	url = https://github.com/madler/zlib.git

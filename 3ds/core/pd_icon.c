@@ -177,16 +177,52 @@ static bool shiny_icon_pal(const struct pd_game* g, uint32_t battle, int species
     return true;
 }
 
+// Scale3x (AdvMAME3x) of a 16x16 icon (0 = clear): sub-pixel (sx, sy) of (x, y).
+static uint32_t icon3x(const uint32_t* p, int x, int y, int sx, int sy) {
+#define AT(xx, yy) ((xx) < 0 || (xx) > 15 || (yy) < 0 || (yy) > 15 ? 0u : p[(yy) * 16 + (xx)])
+    uint32_t A = AT(x - 1, y - 1), B = AT(x, y - 1), C = AT(x + 1, y - 1), D = AT(x - 1, y), E = AT(x, y), F = AT(x + 1, y),
+             G = AT(x - 1, y + 1), H = AT(x, y + 1), I = AT(x + 1, y + 1);
+#undef AT
+    if (B == H || D == F) return E;
+    uint32_t e[9] = {
+        D == B ? D : E, (D == B && E != C) || (B == F && E != A) ? B : E, B == F ? F : E,
+        (D == B && E != G) || (D == H && E != A) ? D : E, E, (B == F && E != I) || (H == F && E != C) ? F : E,
+        D == H ? D : E, (D == H && E != I) || (H == F && E != G) ? H : E, H == F ? F : E,
+    };
+    return e[sy * 3 + sx];
+}
+
+// A Game Boy icon (16x16) at 24 px in a 32 px cell: Scale3x, then each 2x2 block averaged - the colours blended where they
+// meet, a pixel shown where at least half its block is the Pokémon. Doubled to 32, it filled the cell and stood a head
+// taller than a GBA game's.
+static void gb_icon_24(const uint32_t* small, uint32_t* out) {
+    for (int i = 0; i < PD_ICON * PD_ICON; i++) out[i] = CLEAR;
+    const int ox = 4, oy = 6;
+    for (int y = 0; y < 24; y++) {
+        for (int x = 0; x < 24; x++) {
+            int r = 0, gg = 0, b = 0, n = 0;
+            for (int dy = 0; dy < 2; dy++) {
+                for (int dx = 0; dx < 2; dx++) {
+                    int bx = x * 2 + dx, by = y * 2 + dy;
+                    uint32_t v = icon3x(small, bx / 3, by / 3, bx % 3, by % 3);
+                    if (!v) continue;
+                    r += (int) (v >> 16 & 0xFF);
+                    gg += (int) (v >> 8 & 0xFF);
+                    b += (int) (v & 0xFF);
+                    n++;
+                }
+            }
+            if (n >= 2) out[(oy + y) * PD_ICON + ox + x] = (uint32_t) (r / n) << 16 | (uint32_t) (gg / n) << 8 | (uint32_t) (b / n);
+        }
+    }
+}
+
 static bool decode(const struct pd_game* g, int species, bool shiny, uint32_t* out) {
     const struct pd_config* cfg = g->cfg;
-    if (cfg && cfg->gb) {  // a Game Boy cart's own 16x16 icon, at twice its size like the GBA's 32x32
+    if (cfg && cfg->gb) {  // a Game Boy cart's own 16x16 icon, as large in its 32x32 cell as a GBA icon's Pokémon (24 px)
         uint32_t small[16 * 16];
         if (!pd_gb_icon(g, species, small)) return false;
-        for (int y = 0; y < PD_ICON; y++)
-            for (int x = 0; x < PD_ICON; x++) {
-                uint32_t v = small[(y / 2) * 16 + x / 2];
-                out[y * PD_ICON + x] = v ? v & 0xFFFFFF : CLEAR;
-            }
+        gb_icon_24(small, out);
         return true;
     }
     if (!cfg || !cfg->monIconTable || species <= 0) return false;

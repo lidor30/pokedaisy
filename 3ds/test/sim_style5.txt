@@ -1,0 +1,24 @@
+# BATTLE STYLE > GEN 5's controls on a real game (after sim_boot.txt): FIGHT and back, the party picker and back, a move,
+# then a switch from the picker. Run by `make sim-test`.
+gen5 1
+wild 143 30
+press-to-state action
+shot action
+hit 3030
+shot moves
+hit 3034
+hit 3033
+shot picker
+hit 3034
+hit 3001
+shot info
+hit 3020
+hit 3030
+hit 3035
+run 2
+press-to-state action 3000
+hit 3033
+hit 203
+run 2
+press-to-state action 3000
+shot switched

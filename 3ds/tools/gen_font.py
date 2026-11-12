@@ -74,14 +74,14 @@ def main():
                 if im.getpixel((x * SCALE + SCALE // 2, y * SCALE + SCALE // 2)) > 127:
                     rows[y] |= 1 << x
         desc = "space" if ch == " " else ch.replace("\\", "backslash")
-        out.append(f"    {{ 0x{ord(ch):04X}, {advance}, {{ {', '.join(f'0x{r:04X}' for r in rows)} }} }}, // {desc}")
+        out.append(f"    {{ 0x{ord(ch):04X}, {advance}, {{ {', '.join(f'0x{r:04X}' for r in rows)} }}, 0 }}, // {desc}")
     for ch, (advance, art) in PIXEL_GLYPHS.items():
         rows = [0] * SIZE
         for y, line in enumerate(art):
             for x, px in enumerate(line):
                 if px == "#":
                     rows[CAP_TOP + y] |= 1 << x
-        out.append(f"    {{ 0x{ord(ch):04X}, {advance}, {{ {', '.join(f'0x{r:04X}' for r in rows)} }} }}, // {ch} (drawn)")
+        out.append(f"    {{ 0x{ord(ch):04X}, {advance}, {{ {', '.join(f'0x{r:04X}' for r in rows)} }}, 0 }}, // {ch} (drawn)")
     out.append("};")
     out.append(f"const int pd_font_glyph_count = {len(CHARS) + len(PIXEL_GLYPHS)};")
     out.append("")

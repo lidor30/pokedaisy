@@ -666,8 +666,9 @@ static void minimap(struct hud *u, int x, int y, int mw, int mh, int lines) {
   if (name && *name) {
     pd_clip(u->c, mx, my + mh + 1, mw, lines * NAME_H + 4);
     if (small && lines == 1 && small_text(u->c, 0, 0, name, 0, true)) {
-      small_text(u->c, mx + 1, my + mh + 2, name, u->L->shadow, false);
-      small_text(u->c, mx, my + mh + 1, name, u->L->text, false);
+      // The capitals (the small font's rows 0-7) centred between the map and the panel's edge: 3 rows each side.
+      small_text(u->c, mx + 1, my + mh + 4, name, u->L->shadow, false);
+      small_text(u->c, mx, my + mh + 3, name, u->L->text, false);
     } else if (lines > 1)
       pd_text_wrap(u->c, mx, my + mh + 1, mw, LINE, lines, name, u->L->text, u->L->shadow);
     else

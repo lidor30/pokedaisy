@@ -1383,7 +1383,7 @@ RETRO_API void retro_run(void) {
         flyer < 0 || flyer >= snap.partyCount ? 0 : snap.party[flyer].species, 0, NULL};
   }
   if (freeFlight)
-    quick[quickN++] = (struct quick_item){QUICK_TAKE_OFF, false, false,
+    quick[quickN++] = (struct quick_item){QUICK_FLIGHT, false, false,
         fly_flyer(&snap) < 0 ? "No one in your party knows FLY" : NULL, 0, 0, NULL};
   if (itemsOk || polishedActions) {
     repelKindCount = 0;
@@ -1459,7 +1459,7 @@ RETRO_API void retro_run(void) {
     int dx = down(RIGHT) - down(LEFT), dy = down(DOWN) - down(UP);
     if (dx || dy)
       quickSel = quick_step(quickN, quickSel, dx, dy, quick_width(), quick_height());
-    if (down(A) && !quick[quickSel].why && quick[quickSel].action == QUICK_TAKE_OFF) {
+    if (down(A) && !quick[quickSel].why && quick[quickSel].action == QUICK_FLIGHT) {
       quickOpen = false;
       takeOff = true;
       shortcutBlocked |= held;
