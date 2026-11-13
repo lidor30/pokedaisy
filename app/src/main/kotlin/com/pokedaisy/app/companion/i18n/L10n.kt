@@ -58,6 +58,7 @@ const val LANGUAGE_AUTO = "AUTO"
 /**
  * One English string's translations. [br] (Brazilian Portuguese), [pt] (Portugal's) and [ko] (Korean) are required
  * in the app's own tables (`TranslationsTest`), optional in the GUIDE's, which show English in those languages.
+ * [zh] (Chinese) is optional everywhere: a table that doesn't carry it shows English for it.
  */
 data class Tr(
     val ja: String, val fr: String, val de: String, val it: String, val es: String,

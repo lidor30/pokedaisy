@@ -10,8 +10,9 @@ package com.pokedaisy.app.companion.i18n
  * words (BAG = SAC / BEUTEL / BORSA / MOCHILA / バッグ / 가방; both Portuguese use the Brazilian
  * games' words, Portugal's only its own everyday ones: ecrã, guardar, ficheiro); Japanese in kana
  * only, like Gen 3's Japanese text; Korean in the Korean games' words, labels as nouns, sentences in 해요체,
- * no particle right after a {0} (its form depends on the word); stay about as short as the English -
- * the buttons and tab chips are sized for it.
+ * no particle right after a {0} (its form depends on the word); Chinese in the official
+ * Simplified Chinese names, no spaces between words, full-width punctuation; stay about as short as the
+ * English - the buttons and tab chips are sized for it.
  */
 internal fun allTranslationTables(): List<Map<String, Tr>> = listOf(
     trCore,
