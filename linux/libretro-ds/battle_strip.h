@@ -18,6 +18,7 @@ struct DsBattleView {
   bool gen5=false;
   int species=0;
   uint32_t personality=0;
+  int partySlot=-1; // Gen 5: the battler's place in the player's party (Gen 4 matches by [personality] instead)
   std::array<int,4> moves{},pp{};
   std::array<int,4> maxPp{}; // 0 = not known (no base-PP table for this cart): the card shows PP alone
   bool enabled(int slot) const;
