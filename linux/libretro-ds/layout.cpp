@@ -187,6 +187,11 @@ void ds_compose(uint32_t* out,const DsArrangement& a,const uint32_t* top,const u
     pd_round_rect(&c,r.x-5,r.y-5,r.w+10,r.h+10,3,0x303840);
     pd_round_rect(&c,r.x-3,r.y-3,r.w+6,r.h+6,2,0xf8f8f8);
   };
+  // The cached field held while a native app loads (both screens black between its fade out and in): dimmed as the
+  // popup that follows dims it, so the game's fade to black isn't undone by a bright frozen field, and the popup
+  // arrives over the backdrop it keeps.
+  const bool waiting=a.useField&&field&&a.top.w<=0&&a.touch.w<=0&&!a.modal&&!a.floating;
+  if(waiting)pd_dim(&c,110);
   if(a.modal){pd_dim(&c,110);frame({a.top.x,a.top.y,a.top.w+a.touch.w,a.top.h});}
   if(!a.floating&&!fullTop)blit(top,a.top);
   if(a.floating){
