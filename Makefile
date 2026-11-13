@@ -47,6 +47,12 @@ install: ## Build + install on a connected Android device (adb)
 run: install ## Build + install + launch the library screen on the connected device
 	adb shell am start -n $(PKG)/.LibraryActivity
 
+install-dev: ## Build + install the dev app (PokeDaisy Dev, $(PKG).dev) beside the release app
+	./gradlew :app:installDev
+
+run-dev: install-dev ## Build + install + launch the dev app's library screen
+	adb shell am start -n $(PKG).dev/$(PKG).LibraryActivity
+
 gamedata: ## Regenerate the per-game code from gamedata/ (NativeConfigsGen.kt, the DS ports' tables; see gamedata/README.md)
 	python3 scripts/gen_gamedata.py
 	python3 scripts/gen_nds_ports.py
