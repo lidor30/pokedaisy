@@ -38,7 +38,8 @@ class TranslationsTest {
         translations.forEach { (key, t) ->
             val want = placeholder.findAll(key).map { it.value }.sorted().toList()
             AppLanguage.entries.drop(1).forEach { lang ->
-                val s = t.of(lang).orEmpty()
+                // A language this entry doesn't carry (Chinese in a table without it yet): the English shows.
+                val s = t.of(lang) ?: return@forEach
                 if (s.isBlank()) problems += "\"$key\": empty ${lang.code}"
                 else if (placeholder.findAll(s).map { it.value }.sorted().toList() != want) problems += "\"$key\": ${lang.code} placeholders"
             }
@@ -87,7 +88,8 @@ class TranslationsTest {
 
     @Test
     fun placeholders() {
-        L10n.apply("EN", null)
+        // AUTO follows the device's language, so the label must not depend on the machine running the test.
+        L10n.apply("EN", null, Locale.US)
         assertEquals("AUTO (ENGLISH)", L10n.settingLabel(LANGUAGE_AUTO))
         assertEquals("3 + 4", tr("{0} + {1}", 3, 4))
     }

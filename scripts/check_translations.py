@@ -7,7 +7,11 @@ same {0}-style placeholders as the English. Keys must be plain literals: an
 interpolated "$x" key can't be looked up. Also lists table entries nothing uses
 (-v). TranslationsTest runs the same check on the JVM. Usage:
 
-    python3 scripts/check_translations.py [-v] [files...]
+    python3 scripts/check_translations.py [-v] [--zh] [files...]
+
+Chinese (zh) is optional, like a table that doesn't carry it yet: the English
+shows for it instead. --zh asks for it everywhere, which the Chinese build's CI
+wants.
 """
 import re
 import sys
@@ -21,8 +25,11 @@ CALL = re.compile(r'\bt[rk]\(\s*' + STR)
 ENTRY = re.compile(
     STR + r'\s+to\s+Tr\(\s*ja\s*=\s*' + STR + r'\s*,\s*fr\s*=\s*' + STR + r'\s*,\s*de\s*=\s*' + STR
     + r'\s*,\s*it\s*=\s*' + STR + r'\s*,\s*es\s*=\s*' + STR
-    + r'\s*,\s*br\s*=\s*' + STR + r'\s*,\s*pt\s*=\s*' + STR + r'\s*,\s*ko\s*=\s*' + STR + r'\s*,?\s*\)'
+    + r'\s*,\s*br\s*=\s*' + STR + r'\s*,\s*pt\s*=\s*' + STR + r'\s*,\s*ko\s*=\s*' + STR
+    # Chinese came with the Chinese translation: a table that doesn't carry it yet shows English for it.
+    + r'(?:\s*,\s*zh\s*=\s*' + STR + r')?\s*,?\s*\)'
 )
+LANGS = ("ja", "fr", "de", "it", "es", "br", "pt", "ko", "zh")
 PH = re.compile(r'\{\d+\}')
 # String literals first, so a "*/*" or "//" inside one isn't taken for a comment.
 TOKEN = re.compile(r'"(?:[^"\\\n]|\\.)*"|/\*.*?\*/|//[^\n]*', re.S)
@@ -45,7 +52,8 @@ def tables():
 
 def main():
     verbose = "-v" in sys.argv
-    only = [Path(a).resolve() for a in sys.argv[1:] if a != "-v"]
+    want_zh = "--zh" in sys.argv
+    only = [Path(a).resolve() for a in sys.argv[1:] if a not in ("-v", "--zh")]
     table, dupes = tables()
     used, errors = set(), list(dupes)
     for f in sorted(SRC.rglob("*.kt")):
@@ -64,7 +72,13 @@ def main():
                 errors.append(f"{where}: no translation for {key!r}")
     for key, (fname, langs) in table.items():
         want = sorted(PH.findall(key))
-        for lang, s in zip(("ja", "fr", "de", "it", "es", "br", "pt", "ko"), langs):
+        # The optional Chinese group is None when the entry doesn't carry one.
+        present = list(langs)
+        if present and present[-1] is None:
+            present.pop()
+        if want_zh and len(present) < len(LANGS):
+            errors.append(f"{fname}: {key!r} has no Chinese")
+        for lang, s in zip(LANGS, present):
             if not s.strip():
                 errors.append(f"{fname}: {key!r} has an empty {lang}")
             elif sorted(PH.findall(s)) != want:
