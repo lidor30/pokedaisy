@@ -1,5 +1,7 @@
 // GPL-3.0. Pure scene/geometry tests plus actual pixel composition, no fake game state.
 #include "layout.h"
+#include <cstring>
+#include <iterator>
 #include <cassert>
 #include <vector>
 #include <cstdio>
@@ -88,5 +90,37 @@ int main(){
   s.reset();
   for(int i=0;i<11;++i)assert(automatic(dualApp,true,false,true).touch.w==0);
   assert(automatic(dualApp,true,false,true).modal); // A legitimate blank screen can't block the app.
+  {
+    // A popup's kept backdrop: every frame equals a compose from nothing, as the screens, the arrangement and the held
+    // field change, and through a frame that can't keep one (a battle strip's overlay).
+    static uint32_t top[256*192],bottom[256*192],held[256*192],kept[512*384],fresh[512*384];
+    uint32_t seed=1;
+    auto noise=[&](uint32_t* px){for(int i=0;i<256*192;++i){seed=seed*1664525u+1013904223u;px[i]=seed;}};
+    const DsArrangement popups[]={
+      {{0,0,512,384},{80,60,352,264},true,false,true},   // the floating touch window
+      {{80,60,352,264},{},false,true,true},              // a top-only popup
+      {{0,96,256,192},{256,96,256,192},false,true,true}, // side by side
+      {{},{},false,false,true},                          // the field held while an app loads
+      {{0,0,512,384},{}},                                // the plain field: nothing kept
+      {{0,96,256,192},{256,96,256,192},false,true,false},// side by side over the blurred top screen: nothing kept
+    };
+    DsBackdrop backdrop;
+    unsigned revision=0;
+    int reused=0;
+    noise(held);
+    for(int frame=0;frame<60;++frame){
+      const auto& a=popups[(frame/4)%std::size(popups)];
+      noise(top);noise(bottom);
+      if(frame==30){noise(held);++revision;} // a new field picture under the same popup
+      const bool strip=frame%13==5;
+      auto overlay=strip?+[](uint32_t* out){out[300*512+7]=0x123456;}:nullptr;
+      const bool was=backdrop.held;
+      ds_compose(kept,a,top,bottom,held,overlay,&backdrop,revision);
+      ds_compose(fresh,a,top,bottom,held,overlay);
+      assert(!std::memcmp(kept,fresh,sizeof kept));
+      if(was&&backdrop.held)++reused;
+    }
+    assert(reused>10);
+  }
   std::puts("PASS upstream scene timing, fade timeout, HUD gates, layouts, pointer bounds and unclipped source corners");
 }
