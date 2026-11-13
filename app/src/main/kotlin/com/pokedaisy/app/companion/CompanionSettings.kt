@@ -372,6 +372,14 @@ interface CompanionSettings {
     val showPerformance: Boolean get() = false
     fun setShowPerformance(on: Boolean) {}
 
+    /** RetroAchievements popups - see [Prefs.raPopups]. The top screen's Settings > RetroAchievements has the same
+     * switches; off also mutes the unlock fanfare. */
+    val raPopups: Boolean get() = true
+    fun setRaPopups(on: Boolean) {}
+    /** RetroAchievements PROGRESS popups only - see [Prefs.raProgressPopups]; [raPopups] off hides these too. */
+    val raProgressPopups: Boolean get() = true
+    fun setRaProgressPopups(on: Boolean) {}
+
     /** How the game sits on the top screen: 3:2, stretched or WIDE - see [Prefs.gameAspect]. */
     val gameAspect: GameAspect
     fun setGameAspect(aspect: GameAspect)

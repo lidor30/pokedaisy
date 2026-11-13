@@ -1983,6 +1983,11 @@ class PokeDaisyActivity : Activity() {
             Prefs(this@PokeDaisyActivity).showPerformance = on
             runOnUiThread { syncGameScreen() }
         }
+        // RetroAchievements reads Prefs at each event, so these apply to the running game at once.
+        override val raPopups get() = Prefs(this@PokeDaisyActivity).raPopups
+        override fun setRaPopups(on: Boolean) { Prefs(this@PokeDaisyActivity).raPopups = on }
+        override val raProgressPopups get() = Prefs(this@PokeDaisyActivity).raProgressPopups
+        override fun setRaProgressPopups(on: Boolean) { Prefs(this@PokeDaisyActivity).raProgressPopups = on }
         override val statusBarOnCompanion get() = Prefs(this@PokeDaisyActivity).statusBarOnCompanion
         override fun setStatusBarOnCompanion(on: Boolean) {
             Prefs(this@PokeDaisyActivity).statusBarOnCompanion = on

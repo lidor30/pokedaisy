@@ -72,6 +72,13 @@ Tap an unlock or progress popup to open the ACHIEVEMENTS tab right on that achie
 
 When the companion isn't on screen (a DS game's touch screen in its place, or the companion closed on a one-screen handheld), popups show at the top of the game instead, and a tap there just closes them.
 
+### Turning popups off
+
+The top screen's Settings page has a `NOTIFICATIONS` section (and so does the companion's `SETTINGS`, under `ONLINE`, so you can change it in game):
+
+- `ACHIEVEMENT POPUPS` (`ON` by default) turns every popup off, in the game and on the companion, and mutes the unlock fanfare. Achievements still unlock and count on your account, and the CHEEVOS tab still lists them.
+- `PROGRESS POPUPS` (`ON` by default) turns off only the progress notices (`PROGRESS`), while unlocks and the rest still show. It's greyed out while `ACHIEVEMENT POPUPS` is off.
+
 ## Leaderboards and challenges
 
 Some sets have leaderboards (fastest time, highest score). When the game has any, a `LEADERBOARDS` button appears on the ACHIEVEMENTS tab. Tap a board to see the top 10 and the players around your own entry, with your row highlighted.

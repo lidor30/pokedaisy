@@ -1403,6 +1403,7 @@ class SettingsActivity : ComponentActivity() {
      * kept (Prefs); the password goes straight to the login call. */
     @Composable
     private fun AchievementsScreen(m: GbaTextMetrics, small: GbaTextMetrics) {
+        @Suppress("UNUSED_EXPRESSION") revision
         val user by RetroAchievements.user.collectAsState()
         val signingIn by RetroAchievements.signingIn.collectAsState()
         val state by RetroAchievements.state.collectAsState()
@@ -1410,6 +1411,7 @@ class SettingsActivity : ComponentActivity() {
         var password by remember { mutableStateOf("") }
         var error by remember { mutableStateOf<String?>(null) }
         val savedName = prefs.raUsername.takeIf { prefs.raToken != null }
+        fun onOff(on: Boolean) = if (on) tk("ON") else tk("OFF")
 
         Column(modifier = Modifier.fillMaxWidth().verticalScroll(rememberScrollState())) {
             Hint(
@@ -1458,6 +1460,29 @@ class SettingsActivity : ComponentActivity() {
                                 },
                             )
                         }
+                    }
+                }
+            }
+            // What shows over the game / companion; tracking and submissions carry on either way.
+            Spacer(Modifier.height(m.u * 4))
+            OptionListWindow(m, Modifier.fillMaxWidth()) {
+                Column {
+                    com.pokedaisy.app.companion.ui.GroupTitleLine(tk("NOTIFICATIONS"), m, first = true)
+                    OptionLine(
+                        tk("ACHIEVEMENT POPUPS"), onOff(prefs.raPopups), selected = false, m,
+                        height = m.rowHeight * 1.2f + m.lineHeight, divider = true,
+                        subtitle = "Unlocks, game complete, leaderboards and connection notices",
+                    ) {
+                        prefs.raPopups = !prefs.raPopups
+                        revision++
+                    }
+                    OptionLine(
+                        tk("PROGRESS POPUPS"), onOff(prefs.raProgressPopups), selected = false, m,
+                        height = m.rowHeight * 1.2f + m.lineHeight, enabled = prefs.raPopups,
+                        subtitle = "A notice when a counting achievement gets closer",
+                    ) {
+                        prefs.raProgressPopups = !prefs.raProgressPopups
+                        revision++
                     }
                 }
             }

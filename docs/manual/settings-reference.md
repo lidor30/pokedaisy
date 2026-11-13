@@ -102,7 +102,7 @@ The `SHADERS` page:
 
 | Setting | Choices | What it does | More |
 | --- | --- | --- | --- |
-| `RetroAchievements` | your user name, or **`OFF`** (tagged `BETA`) | Sign in to earn achievements (softcore). Signed in means on; `SIGN OUT` turns it off. | [Achievements](achievements.md) |
+| `RetroAchievements` | your user name, or **`OFF`** (tagged `BETA`) | Sign in to earn achievements (softcore). Signed in means on; `SIGN OUT` turns it off. Its page's `NOTIFICATIONS` section has `ACHIEVEMENT POPUPS` and `PROGRESS POPUPS`. | [Achievements](achievements.md) |
 
 ### Controls
 
