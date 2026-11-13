@@ -1,5 +1,6 @@
 package com.pokedaisy.app.companion.data
 
+import org.junit.After
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNotNull
@@ -12,6 +13,11 @@ import org.junit.Test
  * pret/pokeyellow's and pret/pokered's (data/wild/maps, data/trainers/parties.asm).
  */
 class Gen1GuideTest {
+    @After fun tearDown() {
+        romLanguage = 'E'
+        romGameCode = ""
+    }
+
     private fun read(fixture: String, cfg: Gen1Config, game: GameKind, language: Char = 'E'): SnapshotView {
         activeGame = game
         romLanguage = language
@@ -38,6 +44,7 @@ class Gen1GuideTest {
             Triple("yellow", GEN1_YELLOW, GameKind.YELLOW), Triple("yellow_de", GEN1_YELLOW_DE, GameKind.YELLOW),
             Triple("yellow_fr", GEN1_YELLOW_FR, GameKind.YELLOW), Triple("yellow_it", GEN1_YELLOW_IT, GameKind.YELLOW),
             Triple("yellow_es", GEN1_YELLOW_ES, GameKind.YELLOW), Triple("red", GEN1_RED, GameKind.RED), Triple("blue", GEN1_BLUE, GameKind.BLUE),
+            Triple("red_de", GEN1_RED_DE, GameKind.RED), Triple("blue_de", GEN1_BLUE_DE, GameKind.BLUE),
         )
         for ((fixture, cfg, game) in saves) {
             val p = read(fixture, cfg, game, cfg.language).progress
@@ -45,6 +52,8 @@ class Gen1GuideTest {
             assertTrue(fixture, (0 until 8).all { p!!.flag(G1_BADGE_FLAG + it) })
             // The European Yellows read the same save at their own addresses: the same flags.
             if (game == GameKind.YELLOW) assertEquals(fixture, read("yellow", GEN1_YELLOW, game).progress, p)
+            // German Red / Blue: the red fixture's game written out as their save, read at their own addresses.
+            if (cfg.language == 'D' && game != GameKind.YELLOW) assertEquals(fixture, read("red", GEN1_RED, GameKind.RED).progress, p)
         }
     }
 

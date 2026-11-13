@@ -111,6 +111,10 @@ private val GEN1_DEX_YELLOW_IT = GEN1_DEX_YELLOW_DE.copy(dexEntryPointers = 0x10
     cgbPalettes = 0x1C to 0x6B39, charset = Gen1Charset.IS)
 private val GEN1_DEX_YELLOW_ES = GEN1_DEX_YELLOW_IT.copy(monsterPalettes = 0x1C to 0x6911, cgbPalettes = 0x1C to 0x6AE9)
 
+/** German Red / Blue: Red's tables, their pages' text and palettes moved (port_gen1.py), German Yellow's letters, metric. */
+private val GEN1_DEX_RED_DE = GEN1_DEX_RED.copy(dexEntryPointers = 0x10 to 0x447A, monsterPalettes = 0x1C to 0x65A2,
+    cgbPalettes = 0x1C to 0x663A, owned = 0xD2FCL, seen = 0xD30FL, metric = true, charset = Gen1Charset.DF)
+
 /** The Kanto dex: 151, no regional / national split. Its pages come from [Gen1Dex]. */
 val POKEDEX_YELLOW = PokedexTables(
     entries = 0, frontPics = 0, palettes = 0, speciesInfo = 0, speciesToNational = 0, abilityNames = 0, footprints = 0,
@@ -126,6 +130,8 @@ val POKEDEX_YELLOW_ES = POKEDEX_YELLOW_METRIC.copy(gen1 = GEN1_DEX_YELLOW_ES)
 /** Red's and Blue's: one set of tables over each cart's own bytes (two objects, so a dex cache never crosses them). */
 val POKEDEX_RED = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_RED)
 val POKEDEX_BLUE = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_RED.copy())
+val POKEDEX_RED_DE = POKEDEX_YELLOW_METRIC.copy(gen1 = GEN1_DEX_RED_DE)
+val POKEDEX_BLUE_DE = POKEDEX_YELLOW_METRIC.copy(gen1 = GEN1_DEX_RED_DE.copy())
 /** Yellow Legacy's. */
 val POKEDEX_YELLOW_LEGACY = POKEDEX_YELLOW.copy(gen1 = GEN1_DEX_YELLOW_LEGACY)
 /** PureRed's and PureBlue's, likewise. */

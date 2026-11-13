@@ -809,6 +809,8 @@ class TelemetrySampler {
         when {
             GAME_BOY_SUPPORT && hash == RED_SHA1 -> { kind = GameKind.RED; gen1Cfg = GEN1_RED }
             GAME_BOY_SUPPORT && hash == BLUE_SHA1 -> { kind = GameKind.BLUE; gen1Cfg = GEN1_BLUE }
+            GAME_BOY_SUPPORT && hash == RED_DE_SHA1 -> { kind = GameKind.RED; gen1Cfg = GEN1_RED_DE }
+            GAME_BOY_SUPPORT && hash == BLUE_DE_SHA1 -> { kind = GameKind.BLUE; gen1Cfg = GEN1_BLUE_DE }
             GAME_BOY_SUPPORT && hash == PURE_RED_V2_7_6_SHA1 -> { kind = GameKind.PURE_RED; gen1Cfg = GEN1_PURE_RED }
             GAME_BOY_SUPPORT && hash == PURE_BLUE_V2_7_6_SHA1 -> { kind = GameKind.PURE_BLUE; gen1Cfg = GEN1_PURE_BLUE }
             GAME_BOY_SUPPORT && hash == YELLOW_LEGACY_V1_0_10_SHA1 -> { kind = GameKind.YELLOW_LEGACY; gen1Cfg = GEN1_YELLOW_LEGACY }
@@ -1174,6 +1176,9 @@ class TelemetrySampler {
         // Pokémon Red and Blue (USA, Europe): pret/pokered builds both byte for byte.
         const val RED_SHA1 = "ea9bcae617fdf159b045185467ae58b2e4a48b9a"
         const val BLUE_SHA1 = "d7037c83e1ae5b39bde3c30787637ba1d4c48ce2"
+        // Pokémon Rote / Blaue Edition (Germany) (SGB Enhanced): English Red's code translated (GEN1_RED_DE). Plain `shasum`s.
+        const val RED_DE_SHA1 = "87d523fe1a0c548db7c5477b451ddec1eb083c06"
+        const val BLUE_DE_SHA1 = "20e72dc6f41493eee1fdd0cef54214e6c3389688"
 
         // PureRed / PureBlue v2.7.6 (Vortyne/pureRGB): its source at tag v2.7.6 builds both byte for byte.
         const val PURE_RED_V2_7_6_SHA1 = "2e94d09c1e16a57eb079404c030f26fdeeac949d"
@@ -1258,7 +1263,8 @@ class TelemetrySampler {
         )
 
         /** The Game Boy / Color carts the companion reads ([CompanionSupport] checks imports against it). */
-        val SUPPORTED_GB_SHA1S = setOf(YELLOW_SHA1, YELLOW_DE_SHA1, YELLOW_FR_SHA1, YELLOW_IT_SHA1, YELLOW_ES_SHA1, RED_SHA1, BLUE_SHA1) +
+        val SUPPORTED_GB_SHA1S = setOf(YELLOW_SHA1, YELLOW_DE_SHA1, YELLOW_FR_SHA1, YELLOW_IT_SHA1, YELLOW_ES_SHA1, RED_SHA1, BLUE_SHA1,
+            RED_DE_SHA1, BLUE_DE_SHA1) +
             CRYSTAL_SHA1S + CRYSTAL_DE_SHA1 + CRYSTAL_CLEAR_SHA1S + PRISM_V0_95_254_SHA1 + GOLD_SHA1 + SILVER_SHA1 + GOLD_DE_SHA1 + SILVER_DE_SHA1 + POLISHED_CRYSTAL_SHA1S +
             PURE_RED_V2_7_6_SHA1 + PURE_BLUE_V2_7_6_SHA1 + YELLOW_LEGACY_V1_0_10_SHA1 + CRYSTAL_LEGACY_V1_3_1_SHA1
 

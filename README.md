@@ -125,6 +125,7 @@ shows a "not supported" notice).
 | Game                           | Version                    | Party | Bag | Battle | Map |   Dex   | Guide |
 | ------------------------------ | -------------------------- | :---: | :-: | :----: | :-: | :-----: | :---: |
 | Red / Blue (GB)                | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
+| Red / Blue (GB)                | DE (Rote Edition / Blaue Edition) |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | PureRed / PureBlue (GB)        | 2.7.6                      |  ✅   | ✅  |   ◐    | ✅  |   ✅    |   —   |
 | Yellow (GB)                    | USA/Europe                 |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |
 | Yellow (GB)                    | DE / FR / IT / ES          |  ✅   | ✅  |   ◐    | ✅  |   ✅    |  ✅   |

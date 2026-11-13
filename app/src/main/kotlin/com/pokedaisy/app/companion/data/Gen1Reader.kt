@@ -144,6 +144,37 @@ val GEN1_RED = GEN1_YELLOW.copy(
 val GEN1_BLUE = GEN1_RED.copy(pokedex = POKEDEX_BLUE)
 
 /**
+ * German Red and Blue (Rote / Blaue Edition): English Red's code with German Yellow's text, which moved everything from
+ * wOnSGB up 5 bytes, as in the European Yellows (scripts/port_gen1.py from pokered.sym, every field below; checked on
+ * headless captures of a save written from the `red` fixture's game, scripts/gen1_save_from_fixture.py: the `red_de*` /
+ * `blue_de*` fixtures). The two carts share every address. Their product codes (DMG-APAD / APED) key the names.
+ */
+val GEN1_RED_DE = GEN1_RED.copy(
+    partyCount = 0xD168L,
+    partyMons = 0xD170L,
+    bagCount = 0xD322L,
+    money = 0xD34CL,
+    badges = 0xD35BL,
+    curMap = 0xD363L,
+    yCoord = 0xD366L,
+    xCoord = 0xD367L,
+    isInBattle = 0xD05CL,
+    battleMon = 0xD019L,
+    enemyMon = 0xCFEAL,
+    enemyMonPartyPos = 0xCFEDL,
+    enemyPartyCount = 0xD8A1L,
+    enemyMons = 0xD8A9L,
+    pokedex = POKEDEX_RED_DE,
+    playTime = 0xDA46L,
+    partyMenuType = 0xD082L,
+    language = 'D',
+    gameCode = "APAD",
+    battleMenuLeftX = 7,
+    battleMenuRightX = 12,
+)
+val GEN1_BLUE_DE = GEN1_RED_DE.copy(gameCode = "APED", pokedex = POKEDEX_BLUE_DE)
+
+/**
  * PureRed and PureBlue v2.7.6 (Vortyne/pureRGB, a pret/pokered fork: its `make red blue` with rgbds 1.0.3 is both releases
  * byte for byte, so its pokered.sym gives every address; pokeblue.sym's RAM is the same). A Color cart (rgbfix -c) that
  * keeps its game state in WRAM bank 1 and switches D000 to bank 2 for its palette buffers (wGBCFullPalBuffer), so

@@ -42,6 +42,8 @@ class GbFieldTest {
             "Pokemon - Versione Gialla - Speciale Edizione Pikachu (Italy) (GBC,SGB Enhanced).gb" to GB_FIELD_YELLOW_IT,
             "Pokemon - Edicion Amarilla - Edicion Especial Pikachu (Spain) (GBC,SGB Enhanced).gb" to GB_FIELD_YELLOW_ES,
             "Pokemon - Red Version (USA, Europe) (SGB Enhanced).gb" to GB_FIELD_RED_BLUE,
+            "Pokemon - Rote Edition (Germany) (SGB Enhanced).gb" to GB_FIELD_RED_BLUE_DE,
+            "Pokemon - Blaue Edition (Germany) (SGB Enhanced).gb" to GB_FIELD_RED_BLUE_DE,
             "Pokemon PureRed (v2.7.6).gb" to GB_FIELD_PURE_RGB,
         )
         for ((name, own) in carts) {
