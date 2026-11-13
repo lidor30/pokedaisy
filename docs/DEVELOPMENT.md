@@ -477,7 +477,7 @@ share every address below. What differs:
 - **DEX**: Red's tables, its pages and palettes moved (`GEN1_DEX_RED_DE`), metric, German Yellow's letters.
 - **Art**: English Red's pixels (icons, town map, player; `RedBlueGermanDecodeTest`), the tables moved; its own font file
   (`Gen1Art.redBlueFont`: German letters).
-- **STEADY music**: Red's PlayMusic, park and songs at the same places (ROUTES 1's loop 32.15 s, as English's, `gbloop`).
+- **STEADY music**: Red's PlayMusic, park and songs at the same places (Route 1 loops at 22.90 s and Pallet Town at 32.15 s, as English's, `gbloop`).
 - **PC / FLY / WILD ENCOUNTERS**: `GB_FIELD_RED_BLUE_DE` (Bankswitch 0x35F0, the rest +5): the PC opened and FLY landed at
   Pewter's Pokémon Center headless in both. No EXPAND, like English Red / Blue.
 
