@@ -373,7 +373,11 @@ private fun DexMark(caught: Boolean, seen: Boolean, modifier: Modifier) {
  * drawn while it animates out after Back.
  */
 @Composable
-fun PokedexEntryScreen(dex: PokedexState, ui: DexUiState, current: Int, modifier: Modifier = Modifier, guide: GuideTables? = null) {
+fun PokedexEntryScreen(
+    dex: PokedexState, ui: DexUiState, current: Int, modifier: Modifier = Modifier, guide: GuideTables? = null,
+    /** Back's way out; null = back to the dex list. A party summary's jump comes back to that summary instead. */
+    onBack: (() -> Unit)? = null,
+) {
     // Dense pages sized to Pixel Operator: a game font keeps its metrics here.
     val m = rememberGbaTextMetrics()
     val small = rememberGbaTextMetrics(1f)
@@ -390,7 +394,7 @@ fun PokedexEntryScreen(dex: PokedexState, ui: DexUiState, current: Int, modifier
     LaunchedEffect(index) { if (index >= 0) ui.list.scrollToItem((index - 3).coerceAtLeast(0)) }
 
     SummaryFrame(
-        m, onBack = { ui.open = null }, modifier = modifier,
+        m, onBack = onBack ?: { ui.open = null }, modifier = modifier,
         buttons = {
             NavButton(PixelIcons.arrowUp, tr("Previous entry"), MonGreen, MonGreenDark, entries.size > 1) { step(-1) }
             NavButton(PixelIcons.arrowDown, tr("Next entry"), MonGreen, MonGreenDark, entries.size > 1) { step(1) }

@@ -83,6 +83,8 @@ fun MonDetailScreen(
     index: Int,
     onIndexChange: (Int) -> Unit,
     onBack: () -> Unit,
+    /** A second tap on the active party slot: open that Pokémon's dex entry. */
+    onOpenDex: ((Int) -> Unit)? = null,
     modifier: Modifier = Modifier,
     /** Open on the STATS page (screenshot tests). */
     initialShowStats: Boolean = false,
@@ -235,7 +237,7 @@ fun MonDetailScreen(
         }
     }
     Column(Modifier.width(SummaryButtonSize).fillMaxHeight(), verticalArrangement = Arrangement.spacedBy(8.dp)) {
-        PartyColumn(party, index, onIndexChange, small, Modifier.weight(1f).fillMaxWidth())
+        PartyColumn(party, index, onIndexChange, small, Modifier.weight(1f).fillMaxWidth(), onOpenDex = onOpenDex)
         BackNavButton(onBack, SummaryButtonSize)
     }
     }
@@ -373,7 +375,11 @@ internal fun NavButton(
  * another shows it. As big as the height allows (up to [SummaryButtonSize]). A PC box's (BOXES) shows six of its Pokémon at
  * a time, the one on show among them. */
 @Composable
-private fun PartyColumn(party: List<MonView>, index: Int, onPick: (Int) -> Unit, small: GbaTextMetrics, modifier: Modifier = Modifier) {
+private fun PartyColumn(
+    party: List<MonView>, index: Int, onPick: (Int) -> Unit, small: GbaTextMetrics, modifier: Modifier = Modifier,
+    /** A tap on the active slot again: open its dex entry. */
+    onOpenDex: ((Int) -> Unit)? = null,
+) {
     BoxWithConstraints(modifier, contentAlignment = Alignment.TopCenter) {
         val gap = 4.dp
         val first = (index - STRIP_MAX / 2).coerceIn(0, (party.size - STRIP_MAX).coerceAtLeast(0))
@@ -381,7 +387,9 @@ private fun PartyColumn(party: List<MonView>, index: Int, onPick: (Int) -> Unit,
         val n = shown.size.coerceAtLeast(1)
         val cell = minOf(SummaryButtonSize, (maxHeight - gap * (n - 1)) / n)
         Column(verticalArrangement = Arrangement.spacedBy(gap)) {
-            shown.forEach { (i, mon) -> PartyColumnSlot(mon, current = i == index, small, cell) { onPick(i) } }
+            shown.forEach { (i, mon) -> PartyColumnSlot(mon, current = i == index, small, cell) {
+                if (i == index) onOpenDex?.invoke(i) else onPick(i)
+            } }
         }
     }
 }
