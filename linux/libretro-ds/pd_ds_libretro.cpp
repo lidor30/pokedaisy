@@ -108,7 +108,7 @@ DsCompanionUi shell;
 DsScenePolicy scene;
 DsBattleStrip battleStrip;
 DsBattleTap battleTap;
-DsBattleView drawnBattle;
+DsBattleView drawnBattle,battleBalls;
 std::string battleName;
 std::array<uint32_t,256*192> battlePanelArt;
 bool battlePanelArtValid=false;
@@ -146,7 +146,7 @@ void set_wild_rates(){
   pk_nds_field_reset_wild();
 }
 void clear_battle() {
-  battleStrip={};battleTap={};drawnBattle={};battleName.clear();battlePanelArtValid=false;
+  battleStrip={};battleTap={};drawnBattle={};battleBalls={};battleName.clear();battlePanelArtValid=false;
   battleHeld=0;holdStrip=restoreGrace=0;battleActive=injectBattleTap=wasInBattle=false;
 }
 bool wants_strip() {
@@ -265,7 +265,14 @@ void choose_layout() {
     if(drawnBattle.panel!=view.panel || drawnBattle.personality!=view.personality ||
        drawnBattle.species!=view.species ||
        (view.panel==DsBattlePanel::Moves &&
-        (drawnBattle.moves!=view.moves || drawnBattle.pp!=view.pp)))battlePanelArtValid=false;
+        (drawnBattle.moves!=view.moves || drawnBattle.pp!=view.pp))){
+      battlePanelArtValid=false;
+      // The ball rows change with the turn, and the command panel comes up once a turn: read them then.
+      battleBalls=view;
+      if(view.panel==DsBattlePanel::Actions && companionGame!=DsGame::Unsupported)
+        ds_read_battle_balls(game,read32,nds->bus.main_ram.get(),nds->bus.main_ram_size(),
+                             ds_read_companion(nds->bus.main_ram.get(),nds->bus.main_ram_size(),companionGame),battleBalls);
+    }
     if(supported && !battlePanelArtValid){
       const auto* lower=nds->gpu.framebuffer(1);
       const bool ready=view.panel==DsBattlePanel::Actions?ds_platinum_has_command_art(lower):
@@ -286,6 +293,8 @@ void choose_layout() {
       }
     }
     drawnBattle=view;
+    drawnBattle.balls=battleBalls.balls;
+    drawnBattle.partyBalls=battleBalls.partyBalls;drawnBattle.foeBalls=battleBalls.foeBalls;
     holdStrip=18;
   }else if(!wants_strip() || !inBattle || ((bits&PK_NDS_FIELD_TOUCH_BATTLE_MENU) &&
             !(battleStrip.moveCommitFrames>0&&battleStrip.cancelingMove))){
@@ -638,10 +647,12 @@ void draw_quick() {
   video(pixels,512,384,512*2);
 }
 void draw_strip(uint32_t* out){
-  const int focus=drawnBattle.panel==DsBattlePanel::Moves?battleStrip.moveFocus:battleStrip.actionFocus;
-  ds_draw_battle_strip(out,*battleStyle,drawnBattle,battleName,focus,
-                       battleActive&&!battleStrip.tapFrames,tick,
-                       battlePanelArtValid?battlePanelArt.data():nullptr);
+  const bool moves=drawnBattle.panel==DsBattlePanel::Moves;
+  // A tap in flight shows on the plate it lands on: B's is the move panel's back plate.
+  const bool pressed=battleStrip.tapFrames>0;
+  const int focus=!moves?battleStrip.actionFocus:pressed&&battleStrip.cancelingMove?4:battleStrip.moveFocus;
+  ds_draw_battle_strip(out,*battleStyle,drawnBattle,battleName,focus,battleActive&&!pressed,tick,
+                       battlePanelArtValid?battlePanelArt.data():nullptr,pressed);
 }
 void present_frame(const void* data);
 void present(const void* data,unsigned,unsigned,size_t) {
