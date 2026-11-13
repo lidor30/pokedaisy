@@ -75,8 +75,11 @@ step, so a miss prints `action failed`.
   `Icons.Filled.X` (not in desktop Compose 1.5), plus `src/shims`
   (`ComponentActivity` whose `setContent {}` is captured, `Intent`, `Uri`,
   `Toast`, activity-result stubs, …).
-- Pinned to **Compose Multiplatform 1.5.12 / Kotlin 1.9.22**: CMP 1.6+ needs
-  androidx runtime jars that only exist on Google Maven.
+- **Compose Multiplatform 1.5.12's libraries** (`cmp` in `build.gradle.kts`) compiled by the app's
+  Kotlin (2.4.21) and its Compose compiler plugin, so the app's sources go through the same compiler here as
+  in the APK. CMP's own Gradle plugin isn't applied (its 1.5 line brings a Kotlin 1.9 compiler): the desktop
+  runtime is picked by OS in `data/build.gradle.kts`. CMP 1.6+ needs androidx runtime jars that only exist
+  on Google Maven.
 - Popups (a `DropdownMenu`) are separate roots; `captureAllRoots()` draws
   them over the window, so a shot can show an open menu. Long presses go
   through `performSemanticsAction(SemanticsActions.OnLongClick)` - injected

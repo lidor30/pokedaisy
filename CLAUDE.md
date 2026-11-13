@@ -265,8 +265,9 @@ pixel, so there its text was as large for the screen as on a GBA): `LocalTextSte
    to 3 columns past 2.0:1 (1.6 caught the Duo Lite's 4:3 grid, ~1.56-1.75) (a measuring `Layout` - BoxWithConstraints composed the slots late and FireRed's
    icons missed the frame), and the MAP fills the tab only while that stretches it <= 1.2x
    (`MAX_MAP_STRETCH`; the Thor's bottom is ~1.16), else it keeps its shape, centred, buttons with it. Add a
-   test when adding a screen. Paparazzi is pinned to **1.3.4** — the last release on
-   Kotlin 1.9.24; newer ones need a Kotlin 2 bump first. Library/Settings (top screen)
+   test when adding a screen. Paparazzi is on **1.3.5** (Kotlin 2.4.21, Compose BOM
+   2025.03.01 = Compose 1.7.8) — the last release on compileSdk 34's layoutlib; 2.x, Compose 1.8+ and a Kotlin past
+   2.4 need compileSdk 35+ and a newer AGP first (Kotlin 2.4's lowest AGP is our 8.5.2). Library/Settings (top screen)
    are private composables inside their Activities, so Paparazzi can't reach them; use
    the preview harness below for those.
 2. **`ui-preview/`** (Maven Central only — works in cloud sessions
@@ -279,7 +280,7 @@ pixel, so there its text was as large for the screen as on a GBA): `LocalTextSte
    (`-Ponly=settings` filters by name, `-Pgame=EMERALD` switches game; render only what you changed,
    a render of everything needs the user's OK). It's also the
    only compile check available in such sessions, so run it (with `-Ponly`) after any UI edit there. See
-   its README for the shims and quirks (CMP 1.5 / Kotlin 1.9.22, `Icons.AutoMirrored`
+   its README for the shims and quirks (CMP 1.5's libraries under the app's Kotlin 2.4.21 and its Compose compiler, `Icons.AutoMirrored`
    rewritten to `Icons.Filled`, a stale incremental cache once faked "Unresolved
    reference" errors — delete `build/kotlin` if errors look impossible).
 
