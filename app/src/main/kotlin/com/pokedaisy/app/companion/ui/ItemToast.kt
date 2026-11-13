@@ -114,8 +114,9 @@ private fun ItemGainCard(gain: ItemGain, m: GbaTextMetrics, small: GbaTextMetric
         verticalAlignment = Alignment.CenterVertically,
         modifier = Modifier
             .widthIn(max = 210.dp)
-            .drawBehind { drawLayeredBox(OptionColors.listLayers.inPx(u.toPx()), OptionColors.titleFill, radius = 2 * u.toPx()) }
-            .padding(horizontal = u * 5, vertical = u * 3),
+            // A thin title-window frame: the list frame's seven pixels would eat into a card this small.
+            .drawBehind { drawLayeredBox(OptionColors.titleLayers.inPx(u.toPx()), OptionColors.titleFill, radius = 2 * u.toPx()) }
+            .padding(start = u * 6, end = u * 6, top = u * 4, bottom = u * 5),
     ) {
         ItemIcon(gain.item.iconAsset, size = m.lineHeight * 1.35f, pixelated = true)
         Spacer(Modifier.width(u * 5))
