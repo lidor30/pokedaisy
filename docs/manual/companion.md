@@ -168,11 +168,13 @@ A card only shows while you're walking around the field, never in a battle, a me
 
 ### LANGUAGE
 
-The app's own text comes in English, Japanese, Korean, French, German, Italian, Spanish and Portuguese, with Brazil's and Portugal's Portuguese as two choices. `LANGUAGE` starts on `AUTO`, which follows the game's language; pick another and both screens switch at once.
+The app's own text comes in English, Japanese, Korean, Simplified Chinese, French, German, Italian, Spanish and Portuguese, with Brazil's and Portugal's Portuguese as two choices. `LANGUAGE` starts on `AUTO`, which follows the game's language; pick another and both screens switch at once.
 
-No game came out in Portuguese, so on a phone or handheld set to Portuguese, `AUTO` shows Portuguese over an English game too. A Korean DS game picks Korean by itself; on a device set to Korean, the library and settings are in Korean too. The GUIDE's written pages stay in English in Portuguese and Korean.
+No game came out in Portuguese or Chinese, so on a phone or handheld set to either, `AUTO` shows that language over an English game too. A Korean DS game picks Korean by itself; on a device set to Korean, the library and settings are in Korean too. The GUIDE's written pages stay in English in Portuguese and Korean, and are translated in Simplified Chinese.
 
 This only changes PokeDaisy's words (buttons, labels, hints). Pokémon, move and item names stay as your game has them, so a French game shows its French names whatever you pick, and an English game keeps its English ones.
+
+Simplified Chinese (`中文`) is the one exception. No Gen 3 cartridge shipped in Chinese, so the companion also supplies official Simplified Chinese Pokémon, move, item, ability, type and map-place names, plus Chinese Pokédex categories and flavour text. A fan-translated ROM usually stores those strings in its own glyph encoding, which reads as junk here; when that happens the built-in official Chinese text stands in. Chinese labels are drawn with the device's system font, which has hanzi at every size; the bundled pixel faces stay for Latin. Every other language keeps reading names from the game itself.
 
 ## Closing and restarting
 

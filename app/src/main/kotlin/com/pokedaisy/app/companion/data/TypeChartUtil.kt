@@ -1,5 +1,9 @@
 package com.pokedaisy.app.companion.data
 
+import com.pokedaisy.app.companion.i18n.AppLanguage
+import com.pokedaisy.app.companion.i18n.GameNamesZh
+import com.pokedaisy.app.companion.i18n.L10n
+
 val typeNames = mapOf(
     0 to "Normal", 1 to "Fighting", 2 to "Flying", 3 to "Poison", 4 to "Ground",
     5 to "Rock", 6 to "Bug", 7 to "Ghost", 8 to "Steel", 9 to "???",
@@ -9,6 +13,7 @@ val typeNames = mapOf(
 
 fun typeName(t: Int): String {
     if (t == TYPE_NONE) return ""
+    if (L10n.language == AppLanguage.ZH) GameNamesZh.types[t]?.let { return it }
     return activeTypeNames[t] ?: "Type#$t"
 }
 
@@ -150,10 +155,15 @@ fun statusLabel(status: Long): String = when {
 
 fun speciesName(id: Int): String {
     if (id == 0) return "-"
+    // Chinese in the app's own language: the ROM's English name stays what matching uses.
+    if (L10n.language == AppLanguage.ZH) GameNamesZh.species[id]?.let { return it }
     return activeSpeciesNames[id]?.let(::gameCase) ?: "Species#$id"
 }
 
-fun itemName(id: Int): String = activeItemNames[id]?.let(::gameCase) ?: "Item#$id"
+fun itemName(id: Int): String {
+    if (L10n.language == AppLanguage.ZH) GameNamesZh.items[id]?.let { return it }
+    return activeItemNames[id]?.let(::gameCase) ?: "Item#$id"
+}
 
 /**
  * [name] as the running game prints it. The shared vanilla tables are
@@ -222,7 +232,8 @@ data class MoveInfoLookup(val name: String, val type: Int, val power: Int = 0)
 fun lookupMove(id: Int): MoveInfoLookup {
     if (id == 0) return MoveInfoLookup("-", TYPE_NONE)
     val info = activeMoveData[id] ?: return MoveInfoLookup("Move#$id", TYPE_NONE)
-    return MoveInfoLookup(gameCase(info.name), info.type, info.power)
+    val name = if (L10n.language == AppLanguage.ZH) GameNamesZh.moves[id] ?: gameCase(info.name) else gameCase(info.name)
+    return MoveInfoLookup(name, info.type, info.power)
 }
 
 val directionNames = mapOf(

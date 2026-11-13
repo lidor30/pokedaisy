@@ -1,5 +1,9 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.i18n.AppLanguage
+import com.pokedaisy.app.companion.i18n.GameNamesZh
+import com.pokedaisy.app.companion.i18n.L10n
+
 import androidx.compose.ui.focus.focusProperties
 import androidx.compose.ui.focus.focusRequester
 import androidx.compose.ui.focus.FocusRequester
@@ -171,8 +175,8 @@ fun MapScreen(
             }
             val sel = selection
             val (name, dungeon) = when {
-                sel != null -> sel.name to sel.dungeon
-                playerRegion == null || playerRegion == shown -> snapshot.location.mapSecName to null
+                sel != null -> placeText(sel.name) to sel.dungeon
+                playerRegion == null || playerRegion == shown -> placeText(snapshot.location.mapSecName) to null
                 else -> "" to null
             }
             // The map fills the tab while that stretches it only a little (the Thor's
@@ -290,7 +294,7 @@ fun MapScreen(
                     onPick = { id ->
                         placesOpen = false
                         cursorTile = null
-                        selection = model.sections[id]?.let { MapSelection(it.region, model.tilesOf(id), it.name, null, id) }
+                        selection = model.sections[id]?.let { MapSelection(it.region, model.tilesOf(id), placeText(it.name), null, id) }
                     },
                     onMe = { placesOpen = false; selection = null; cursorTile = null; shownOverride = null },
                     onDismiss = { placesOpen = false },
@@ -307,9 +311,9 @@ private data class MapSelection(val region: Int, val tiles: List<MapTiles>, val 
 private fun RegionMapModel.select(region: Int, tx: Int, ty: Int): MapSelection {
     val pick = pick(region, tx, ty) ?: return MapSelection(region, listOf(MapTiles(tx, ty, 1, 1)), "", null)
     val main = pick.mapsec.takeIf { it >= 0 } ?: pick.dungeon
-    val dungeon = sections[pick.dungeon]?.name?.takeIf { pick.mapsec >= 0 && pick.dungeon >= 0 }
+    val dungeon = sections[pick.dungeon]?.name?.let(::placeText)?.takeIf { pick.mapsec >= 0 && pick.dungeon >= 0 }
     val tiles = if (pick.dungeon >= 0) listOf(MapTiles(tx, ty, 1, 1)) else tilesOf(main).ifEmpty { listOf(MapTiles(tx, ty, 1, 1)) }
-    return MapSelection(region, tiles, sections[main]?.name.orEmpty(), dungeon, main)
+    return MapSelection(region, tiles, sections[main]?.name?.let(::placeText).orEmpty(), dungeon, main)
 }
 
 /**
@@ -772,7 +776,7 @@ private fun PlacesList(model: RegionMapModel, onPick: (Int) -> Unit, onMe: () ->
                             val s = model.sections.getValue(id)
                             OptionLine(
                                 // Only places off the first map say which one (FireRed's Sevii Islands).
-                                gameCase(s.name), if (s.region > 0) regionName(model.images, s.region) else null,
+                                gameCase(placeText(s.name)), if (s.region > 0) regionName(model.images, s.region) else null,
                                 selected = false, m, labelWeight = 0.62f, divider = true,
                             ) { onPick(id) }
                         }
@@ -806,7 +810,7 @@ private fun FlyList(model: RegionMapModel?, targets: com.pokedaisy.app.companion
                         val ds = if (activeGame.isDsGame) com.pokedaisy.app.companion.data.gen4ConfigFor(activeGame)?.flySpotName(mapsec) else null
                         val s = if (ds != null) null else model?.sections?.get(mapsec)
                         OptionLine(
-                            gameCase(ds ?: s?.name ?: "#$mapsec"), s?.takeIf { it.region > 0 && model != null }?.let { regionName(model!!.images, it.region) },
+                            gameCase(placeText(ds ?: s?.name ?: "#$mapsec")), s?.takeIf { it.region > 0 && model != null }?.let { regionName(model!!.images, it.region) },
                             selected = false, m, labelWeight = 0.62f, divider = true,
                         ) { onPick(mapsec) }
                     }
@@ -836,6 +840,10 @@ private fun placesGroupTitle(title: String): String = when (title) {
     else -> title
 }
 
+/** A map section's own name, in the app's language when it has one. */
+internal fun placeText(name: String): String =
+    if (L10n.language == AppLanguage.ZH) GameNamesZh.place(name) ?: name else name
+
 /** [directionNames]' words in the app's language. */
 private fun directionText(dir: String): String = when (dir) {
     "South" -> tr("South")
@@ -863,7 +871,7 @@ private fun BoxScope.NoRegionMap(snapshot: SnapshotView) {
             .padding(horizontal = 12.dp, vertical = 10.dp),
     ) {
         if (location.mapSecName.isNotEmpty()) {
-            Text(location.mapSecName, color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, textAlign = TextAlign.Center)
+            Text(placeText(location.mapSecName), color = Color.White, fontWeight = FontWeight.Bold, fontSize = 16.sp, textAlign = TextAlign.Center)
         }
         Text(
             tr("({0}, {1}) facing {2}", snapshot.x, snapshot.y, directionText(snapshot.facingDirection)),

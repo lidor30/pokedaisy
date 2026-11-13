@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.i18n.AppLanguage
+import com.pokedaisy.app.companion.i18n.L10n
 import androidx.compose.foundation.layout.Box
 import androidx.compose.foundation.layout.fillMaxSize
 import androidx.compose.foundation.layout.offset
@@ -119,11 +121,11 @@ fun rememberGbaTextMetrics(textScale: Float = 1.25f, wholePixels: Boolean = true
     }
 }
 
-fun gbaTextStyle(font: FontFamily, m: GbaTextMetrics, scaleX: Float = 1f) = TextStyle(
+fun gbaTextStyle(font: FontFamily, m: GbaTextMetrics, scaleX: Float = 1f, sizeScale: Float = 1f) = TextStyle(
     fontFamily = font,
-    fontSize = m.fontSize,
+    fontSize = m.fontSize * sizeScale,
     textGeometricTransform = if (scaleX == 1f) null else TextGeometricTransform(scaleX = scaleX),
-    lineHeight = m.fontSize,
+    lineHeight = m.fontSize * sizeScale,
     platformStyle = PlatformTextStyle(includeFontPadding = false),
     lineHeightStyle = LineHeightStyle(LineHeightStyle.Alignment.Center, LineHeightStyle.Trim.None),
 )
@@ -149,7 +151,15 @@ fun GbaText(
     scaleX: Float? = null,
 ) {
     val scaleX = scaleX ?: gameFontScaleX(m)
-    val style = gbaTextStyle(pixelFontFamily(), m, scaleX)
+    // A game's own font (Gen 1/2's, or a hack's) has no hanzi: Chinese drawn with it comes out as
+    // one "?" per character. Text that needs CJK takes the app's own chain, which has the face.
+    // Gated to zh: the ranges below also cover kana and kanji, and a Japanese screen must keep
+    // its PixelMplusJP face rather than being switched to the system font and shrunk.
+    val cjk = L10n.language == AppLanguage.ZH &&
+        text.any { it.code in 0x2E80..0x9FFF || it.code in 0xFF00..0xFFEF }
+    val family = if (cjk) appPixelFontFamily() else pixelFontFamily()
+    // A system face at the pixel font's size reads a size larger and crowds the layouts: set it smaller.
+    val style = gbaTextStyle(family, m, scaleX, if (cjk) 0.72f else 1f)
     val k = m.fontPixel.roundToInt()
     val b = if (bold) boldOffsetPx(m.fontPixel * scaleX) else 0
     // The layout the text was given, for its copies; set before each draw (layout comes first), read only there.
@@ -301,3 +311,12 @@ internal fun Modifier.narrowToFit(m: GbaTextMetrics): Modifier = layout { measur
         p.placeWithLayer((w - p.width) / 2, 0) { scaleX = scale }
     }
 }
+
+/**
+ * A family that can draw Chinese. The app's own chain has a fourth face for hanzi, but Android only
+ * consults it where the fallback builder exists, and it is the platform that decides - the device
+ * this was tested on (API 36) still drew "?" for every hanzi with the chain in place. The system face
+ * always has them, so Chinese is drawn with it; the pixel faces stay for Latin.
+ */
+@Composable
+private fun appPixelFontFamily(): FontFamily = FontFamily.Default

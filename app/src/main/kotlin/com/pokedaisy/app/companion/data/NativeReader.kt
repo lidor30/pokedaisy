@@ -728,7 +728,7 @@ internal fun readPcBoxes(c: MemoryReader, cfg: NativeConfig): PcBoxes? = runCatc
     }
     val boxes = List(layout.boxes) { b ->
         PcBox(
-            name = Gen3Text.decode(raw, name(b), PC_BOX_NAME_LEN),
+            name = Gen3Text.decode(raw, name(b), PC_BOX_NAME_LEN).let(::readableBoxName),
             wallpaper = raw[wallpaper(b)].toInt() and 0xFF,
             mons = List(PC_BOX_SLOTS) { s ->
                 val o = slot(b, s)
@@ -1041,4 +1041,13 @@ fun readNativeBattleInputFast(client: MemoryReader, cfg: NativeConfig): Pair<Int
         }
         0 to BATTLE_INPUT_BUSY
     }.getOrNull()
+}
+
+/** A box name the app can actually draw: a translated ROM keeps its box names in its own character
+ * set, which decodes to symbols here - an empty name (the tab then shows "BOX n") reads better. */
+private fun readableBoxName(name: String): String {
+    val t = name.trim()
+    if (t.isEmpty()) return ""
+    val ok = t.count { it.code in 0x20..0x7E || it == 'é' }
+    return if (ok * 4 >= t.length * 3) t else ""
 }

@@ -26,6 +26,10 @@ import androidx.compose.runtime.key
 import androidx.compose.runtime.getValue
 import com.pokedaisy.app.companion.data.PokedexSource
 import com.pokedaisy.app.companion.data.PokedexTables
+import com.pokedaisy.app.companion.data.readsAsText
+import com.pokedaisy.app.companion.i18n.AppLanguage
+import com.pokedaisy.app.companion.i18n.GameNamesZh
+import com.pokedaisy.app.companion.i18n.L10n
 import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
@@ -300,13 +304,20 @@ internal fun FoeFacts(
     }
 }
 
-/** The ability's name, read from the ROM if the battle didn't give one. */
+/** The ability's name, read from the ROM if the battle didn't give one. A
+ * localized ROM's ability text is its own glyph encoding (reads as junk), so
+ * those fall back to the official name by the ability's id. */
 @Composable
-internal fun rememberFoeAbility(foe: MonView, dexTables: PokedexTables?): String? = rememberLoaded(
-    foe.abilityName, dexTables, foe.abilityId,
-    cached = { foe.abilityName ?: dexTables?.let { PokedexSource.cachedAbilityName(it, foe.abilityId) } },
-    load = { dexTables?.let { PokedexSource.abilityName(it, foe.abilityId) } },
-)
+internal fun rememberFoeAbility(foe: MonView, dexTables: PokedexTables?): String? {
+    val rom = rememberLoaded(
+        foe.abilityName, dexTables, foe.abilityId,
+        cached = { foe.abilityName ?: dexTables?.let { PokedexSource.cachedAbilityName(it, foe.abilityId) } },
+        load = { dexTables?.let { PokedexSource.abilityName(it, foe.abilityId) } },
+    )
+    return if (rom != null && rom.readsAsText()) rom
+    else if (L10n.language == AppLanguage.ZH) GameNamesZh.ability(foe.abilityId) ?: rom
+    else rom
+}
 
 @Composable
 private fun FactPair(label: String, value: String, small: GbaTextMetrics, modifier: Modifier) {

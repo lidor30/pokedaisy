@@ -17,6 +17,7 @@ import androidx.compose.ui.graphics.ImageBitmap
 import androidx.compose.ui.graphics.asAndroidBitmap
 import androidx.compose.ui.graphics.asImageBitmap
 import androidx.compose.ui.graphics.drawscope.DrawScope
+import androidx.compose.ui.graphics.nativeCanvas
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.unit.IntOffset
 import androidx.compose.ui.unit.IntSize
@@ -92,7 +93,7 @@ fun GbaPartySlot(
         if (mon.isEgg) {
             // DisplayPartyPokemonData's egg branch: the no-HP box + nickname only.
             px.window(if (selected) assets.slotNoHpSelected else assets.slotNoHp) {
-                px.text(assets, st.eggName, px.left(st.nameX), px.textY(st.nameY), st.text, st.textShadow)
+                px.nameText(st.eggName, px.left(st.nameX), px.textY(st.nameY), st.text, st.textShadow)
             }
             px.ball(assets, selected)
             sheetImg?.let { px.monIcon(it, mon, selected, phase) }
@@ -110,7 +111,7 @@ fun GbaPartySlot(
         px.window(slot) {
             // The nickname as the game prints it; without one, the species (FireRed / Emerald print it in caps).
             val name = mon.nickname ?: if (st.upperCaseNames) mon.name.uppercase() else mon.name
-            px.text(assets, name, px.left(st.nameX), px.textY(st.nameY), st.text, st.textShadow)
+            px.nameText(name, px.left(st.nameX), px.textY(st.nameY), st.text, st.textShadow)
             // Gender symbol (DisplayPartyPokemonGender) - drawn whenever known,
             // even alongside a status icon, like the game.
             when (mon.genderSymbol) {
@@ -345,6 +346,37 @@ private class Px(
             x += st.glyphWidths[g]
         }
     }
+
+    /**
+     * A name (nickname or species) that may hold CJK, which the game's
+     * FONT_SMALL atlas can't encode - every such glyph would fall to '?'.
+     * Latin-only strings still go through the game font; anything beyond ASCII
+     * is drawn with the system typeface on the native canvas, centred in the
+     * same GLYPH_H band the bitmap glyphs occupy and with the same 1px shadow.
+     */
+    fun nameText(s: String, x0: Int, y: Int, fg: Long, shadow: Long) {
+        if (!s.any { it.code > 0x7F && it != NUM_PAD }) {
+            text(assets, s, x0, y, fg, shadow)
+            return
+        }
+        val paint = cjkPaint
+        paint.textSize = L.GLYPH_H * scale * 0.85f
+        val x = (ox + x0 * scale).toFloat()
+        val bandH = L.GLYPH_H * scale
+        val fm = paint.fontMetrics
+        val baseline = (oy + y * scale) + (bandH - (fm.descent - fm.ascent)) / 2f - fm.ascent
+        val canvas = scope.drawContext.canvas.nativeCanvas
+        paint.color = shadow.toInt()
+        canvas.drawText(s, x + scale, baseline + scale, paint)
+        paint.color = fg.toInt()
+        canvas.drawText(s, x, baseline, paint)
+    }
+}
+
+/** Reused for CJK party names (drawing is main-thread only, like the rest of Px). */
+private val cjkPaint = android.graphics.Paint().apply {
+    isAntiAlias = true
+    typeface = android.graphics.Typeface.DEFAULT
 }
 
 /** Stands for the game's right-align pad character in number strings. */

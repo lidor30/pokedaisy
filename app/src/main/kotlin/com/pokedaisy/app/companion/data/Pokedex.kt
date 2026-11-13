@@ -1,5 +1,9 @@
 package com.pokedaisy.app.companion.data
 
+import com.pokedaisy.app.companion.i18n.AppLanguage
+import com.pokedaisy.app.companion.i18n.GameNamesZh
+import com.pokedaisy.app.companion.i18n.L10n
+
 import android.graphics.Bitmap
 import java.util.concurrent.ConcurrentHashMap
 
@@ -1776,8 +1780,13 @@ object PokedexSource {
     private fun ability(t: PokedexTables, id: Int): String {
         val stride = if (t.abilityNameStride > 0) t.abilityNameStride else t.abilityNameLength
         val at = t.abilityNames + id.toLong() * stride
-        if (t.abilityNamePtr) return Gfx.u32(rd(at, 4), 0).takeIf(Gfx::inRom)?.let { Gen3Text.decode(rd(it, t.abilityNameLength)) }.orEmpty()
-        return Gen3Text.decode(rd(at, t.abilityNameLength))
+        val decoded = if (t.abilityNamePtr) Gfx.u32(rd(at, 4), 0).takeIf(Gfx::inRom)?.let { Gen3Text.decode(rd(it, t.abilityNameLength)) }.orEmpty()
+        else Gen3Text.decode(rd(at, t.abilityNameLength))
+        // A localized ROM's ability text is its own glyph encoding (reads as junk): the official
+        // Chinese name by id stands in on a Chinese screen; other languages keep the ROM's text.
+        val clean = decoded.trim()
+        if (clean.isNotEmpty() && clean.readsAsText()) return clean
+        return if (L10n.language == AppLanguage.ZH) GameNamesZh.ability(id).orEmpty() else clean
     }
 
     private fun readEntry(t: PokedexTables, national: Int): DexEntry? {
@@ -1795,16 +1804,20 @@ object PokedexSource {
         val hidden = t.hiddenAbilityOff.takeIf { it >= 0 }?.let { abilityAt(it) }?.takeIf { it != 0 }?.let { ability(t, it) }
         val category = if (t.entryCategoryPtr) Gfx.u32(e, 0).takeIf(Gfx::inRom)?.let { Gen3Text.decode(rd(it, t.entryCategoryLen + 1)) }.orEmpty()
             else Gen3Text.decode(e, 0, t.entryCategoryLen)
+        // A localized ROM's dex text is its own glyph encoding (reads as junk): a Chinese screen
+        // falls back to the official text; other languages keep whatever the ROM decoded to.
+        val zh = DexTextZh.entry(national).takeIf { L10n.language == AppLanguage.ZH }
+        val decodedDesc = listOfNotNull(
+                descPtr.takeIf(Gfx::inRom),
+                t.descriptionPage2Off.takeIf { it >= 0 }?.let { Gfx.u32(e, it) }?.takeIf(Gfx::inRom),
+            ).joinToString(" ") { Gen3Text.decode(rd(it, 200)) }
         return DexEntry(
             national = national,
             species = species,
-            category = category,
+            category = category.takeIf { it.readsAsText() } ?: zh?.first ?: category,
             heightDm = u16le(e, t.entryHeightOff),
             weightHg = u16le(e, t.entryHeightOff + 2),
-            description = listOfNotNull(
-                descPtr.takeIf(Gfx::inRom),
-                t.descriptionPage2Off.takeIf { it >= 0 }?.let { Gfx.u32(e, it) }?.takeIf(Gfx::inRom),
-            ).joinToString(" ") { Gen3Text.decode(rd(it, 200)) },
+            description = decodedDesc.takeIf { it.readsAsText() } ?: zh?.second ?: decodedDesc,
             type1 = b(bs.typesOff),
             type2 = b(bs.typesOff + 1),
             baseStats = listOf(0, 1, 2, 4, 5, 3).map { if (bs.statsU16) u16le(info, it * 2) else b(it) },
@@ -1822,13 +1835,16 @@ object PokedexSource {
         fun b(i: Int) = info[i].toInt() and 0xFF
         val ids = (0 until 3).map { u16le(info, x.abilitiesOff + it * 2) }
         val descPtr = Gfx.u32(info, x.descriptionOff)
+        val zh = DexTextZh.entry(national).takeIf { L10n.language == AppLanguage.ZH }
+        val decodedCategory = Gen3Text.decode(info, x.categoryOff, 13)
+        val decodedDesc = if (Gfx.inRom(descPtr)) Gen3Text.decode(rd(descPtr, 200)) else ""
         return DexEntry(
             national = national,
             species = species,
-            category = Gen3Text.decode(info, x.categoryOff, 13),
+            category = decodedCategory.takeIf { it.readsAsText() } ?: zh?.first ?: decodedCategory,
             heightDm = u16le(info, x.natDexOff + 2),
             weightHg = u16le(info, x.natDexOff + 4),
-            description = if (Gfx.inRom(descPtr)) Gen3Text.decode(rd(descPtr, 200)) else "",
+            description = decodedDesc.takeIf { it.readsAsText() } ?: zh?.second ?: decodedDesc,
             type1 = b(6),
             type2 = b(7),
             baseStats = listOf(b(0), b(1), b(2), b(4), b(5), b(3)),
@@ -1863,7 +1879,9 @@ private val EGG_GROUP_NAMES = listOf(
 
 /** The dex page's category line, worded as [t]'s game does: "SEED POKéMON", "KÜKEN", "POKéMON POLLUELO". */
 fun dexCategoryLine(t: PokedexTables, category: String): String =
-    listOf(t.categoryPrefix, category, t.categorySuffix).filter { it.isNotEmpty() }.joinToString(t.categorySeparator)
+    // A fallback genus already ends in the suffix's word ("雏鸡宝可梦"): don't double it.
+    if (t.categorySuffix.isNotEmpty() && category.endsWith(t.categorySuffix)) category
+    else listOf(t.categoryPrefix, category, t.categorySuffix).filter { it.isNotEmpty() }.joinToString(t.categorySeparator)
 
 /** HT as [t]'s game prints it: "2'04"" or, in the European releases, "0,7 m". */
 /** HT / WT for [e] - a Gen 1 page's own feet / inches and pounds when it has them. */

@@ -642,7 +642,7 @@ private fun BoxWindow(
             }
             HeaderButton(m, tr("Pick a box"), Modifier.weight(1f).fillMaxHeight(), onClick = { ui.picking = true }) {
                 Box(Modifier.fillMaxSize().drawBehind { header(paper, u.toPx(), night) }, contentAlignment = Alignment.Center) {
-                    GbaText(box.name, PcColors.shade(PcColors.TITLE, night), PcColors.shade(PcColors.TITLE_SHADOW, night), m)
+                    GbaText(box.name.ifBlank { tr("BOX {0}", boxIndex + 1) }, PcColors.shade(PcColors.TITLE, night), PcColors.shade(PcColors.TITLE_SHADOW, night), m)
                 }
             }
             HeaderButton(m, tr("Next box"), Modifier.fillMaxHeight().width(u * 30), onClick = { step(1) }) {

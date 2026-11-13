@@ -108,7 +108,7 @@ fun shortDate(date: LocalDate): String {
     val lang = L10n.language
     val pattern = when (lang) {
         AppLanguage.EN -> "MMM d"
-        AppLanguage.JA -> "M月d日"
+        AppLanguage.JA, AppLanguage.ZH -> "M月d日"
         AppLanguage.KO -> "M월 d일"
         else -> "d MMM"
     }

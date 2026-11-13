@@ -45,7 +45,7 @@ fun gameFontFamily(context: Context, file: java.io.File): FontFamily? {
     synchronized(fontLock) { gameFamilies[stamp]?.let { return it } }
     val family = runCatching {
         if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return@runCatching FontFamily(ComposeFont(file))
-        val assets = assetFamilies(context.applicationContext)
+        val assets = assetFamilies(context.applicationContext) ?: return@runCatching null
         val builder = Typeface.CustomFallbackBuilder(AndroidFontFamily.Builder(Font.Builder(file).build()).build())
         chain(assets, chinese).forEach { builder.addCustomFallback(it) }
         FontFamily(androidx.compose.ui.text.font.Typeface(builder.setSystemFallback("sans-serif").build()))
@@ -63,26 +63,28 @@ private val gameFamilies = HashMap<String, FontFamily>()
 
 private class AssetFonts(
     val pixel: AndroidFontFamily,
-    val japanese: AndroidFontFamily,
-    val korean: AndroidFontFamily,
-    val chinese: AndroidFontFamily,
+    val japanese: AndroidFontFamily?,
+    val korean: AndroidFontFamily?,
+    val chinese: AndroidFontFamily?,
 )
 
 /** The fallbacks after Pixel Operator, in the order the language on screen wants them. */
 private fun chain(assets: AssetFonts, chineseFirst: Boolean): List<AndroidFontFamily> =
-    if (chineseFirst) listOf(assets.chinese, assets.japanese, assets.korean)
-    else listOf(assets.japanese, assets.korean, assets.chinese)
+    (if (chineseFirst) listOf(assets.chinese, assets.japanese, assets.korean)
+    else listOf(assets.japanese, assets.korean, assets.chinese)).filterNotNull()
 
 /** Pixel Operator, PixelMplusJP, GalmuriKO and PixelCJK as platform families, loaded once (Android 10+ only). */
-private fun assetFamilies(context: Context): AssetFonts = synchronized(fontLock) {
+private fun assetFamilies(context: Context): AssetFonts? = synchronized(fontLock) {
     assetFonts ?: run {
-        fun family(path: String) = AndroidFontFamily.Builder(Font.Builder(context.assets, path).build()).build()
-        AssetFonts(
-            family("fonts/PixelOperator.ttf"),
-            family("fonts/PixelMplusJP.ttf"),
-            family("fonts/GalmuriKO.ttf"),
-            family("fonts/PixelCJK.ttf"),
-        ).also { assetFonts = it }
+        // One bad file must not take the others down with it: a chain that loses its Chinese
+        // face draws every hanzi as "?" while Latin still looks right - the failure the whole
+        // chain then hides.
+        fun family(path: String): AndroidFontFamily? = runCatching {
+            AndroidFontFamily.Builder(Font.Builder(context.assets, path).build()).build()
+        }.getOrNull()
+        val pixel = family("fonts/PixelOperator.ttf") ?: return@run null
+        AssetFonts(pixel, family("fonts/PixelMplusJP.ttf"), family("fonts/GalmuriKO.ttf"), family("fonts/PixelCJK.ttf"))
+            .also { assetFonts = it }
     }
 }
 
@@ -90,7 +92,7 @@ private fun buildPixelFamily(context: Context, chineseFirst: Boolean = false): F
     val plain = { FontFamily(ComposeFont("fonts/PixelOperator.ttf", context.assets)) }
     if (Build.VERSION.SDK_INT < Build.VERSION_CODES.Q) return plain()
     return runCatching {
-        val assets = assetFamilies(context)
+        val assets = assetFamilies(context) ?: return plain()
         val builder = Typeface.CustomFallbackBuilder(assets.pixel)
         chain(assets, chineseFirst).forEach { builder.addCustomFallback(it) }
         FontFamily(androidx.compose.ui.text.font.Typeface(builder.setSystemFallback("sans-serif").build()))

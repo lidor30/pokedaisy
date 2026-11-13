@@ -1,5 +1,11 @@
 package com.pokedaisy.app.companion.ui
 
+import androidx.compose.material3.Text
+import androidx.compose.ui.text.font.FontFamily
+import androidx.compose.ui.unit.sp
+
+import com.pokedaisy.app.companion.i18n.AppLanguage
+import com.pokedaisy.app.companion.i18n.L10n
 import com.pokedaisy.app.companion.i18n.tr
 import androidx.compose.foundation.Canvas
 import androidx.compose.foundation.background
@@ -864,7 +870,22 @@ private fun PartySlot(palette: PartyPalette, mon: MonView?, selected: Boolean, o
         HeldItemMarker(mon.heldItemId, u, g.fx - 8 * u + 16 * u, g.fy + 22 * u)
 
         val textWidth = with(density) { (g.fx + g.fw - 4 * u - g.textX).toDp() }
-        GbaText(mon.shownName, text, textShadow, nameM, density.at(g.textX, g.nameMid, nameM).width(textWidth))
+        // The name: Chinese needs a plain Compose text on the system face - the game-font path
+        // cannot draw hanzi. Every other language keeps the game's own pixel font (upstream's
+        // GbaText), so Japanese / Korean names aren't switched to a system face or shrunk.
+        if (L10n.language == AppLanguage.ZH) {
+            androidx.compose.material3.Text(
+                mon.shownName, color = text, maxLines = 1, overflow = androidx.compose.ui.text.style.TextOverflow.Ellipsis,
+                // fontFamily as a direct parameter: Theme.kt notes it always beats `style`.
+                fontFamily = androidx.compose.ui.text.font.FontFamily.Default,
+                style = androidx.compose.ui.text.TextStyle(
+                    fontSize = nameM.fontSize * 0.82f, lineHeight = nameM.fontSize * 0.82f,
+                ),
+                modifier = density.at(g.textX, g.nameMid, nameM).width(textWidth),
+            )
+        } else {
+            GbaText(mon.shownName, text, textShadow, nameM, density.at(g.textX, g.nameMid, nameM).width(textWidth))
+        }
         if (!showHp) return@BoxWithConstraints
 
         val status = if (mon.hp == 0) "FNT" else mon.status
@@ -1045,3 +1066,4 @@ internal fun HeldItemMarker(itemId: Int, u: Int, x: Float, y: Float) {
         )
     }
 }
+

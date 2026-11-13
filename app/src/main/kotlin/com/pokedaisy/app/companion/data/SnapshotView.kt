@@ -53,10 +53,29 @@ data class MonView(
     val shiny: Boolean = false,
 ) {
     /** What the game's party menu prints: the nickname where it was read, else the species ([name]). */
-    val shownName: String get() = nickname ?: name
+    /**
+     * The name to draw: the player's nickname if the ROM's text for it reads, else the species name.
+     * A translated ROM keeps its names in its own character set, which decodes to "?" - the species
+     * name (in the app's language) reads better than a row of question marks.
+     */
+    val shownName: String get() = nickname?.takeIf { it.readsAsText() } ?: name
 
     /** The nickname is the player's own, not the species' name (the summary adds the species then). */
     val renamed: Boolean get() = nickname != null && !nickname.equals(name, ignoreCase = true)
+}
+
+/**
+ * Does this string read as text, or is it a translated ROM's own character set decoded as ours?
+ * Those come out as rows of "?", of accented Latin letters ("ÉLuâíôÀ"), or of U+FFFD boxes -
+ * the decoder's unknown-byte glyph, which no real game text contains - so a short name with more
+ * than a third such characters, or any U+FFFD at all, is treated as unreadable and the caller
+ * falls back to a name it knows.
+ */
+fun String.readsAsText(): Boolean {
+    if (isBlank()) return false
+    if (contains('\uFFFD')) return false
+    val odd = count { it == '?' || it.code in 0xC0..0x24F || it.code in 0xE0..0xFF }
+    return odd * 3 < length
 }
 
 /** [total] EXP; this level starts at [levelStart], the next at [nextLevel] (== levelStart at Lv100). */

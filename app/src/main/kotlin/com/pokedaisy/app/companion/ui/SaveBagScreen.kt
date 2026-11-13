@@ -1,5 +1,10 @@
 package com.pokedaisy.app.companion.ui
 
+import com.pokedaisy.app.companion.data.itemName
+import com.pokedaisy.app.companion.data.lookupMove
+import com.pokedaisy.app.companion.i18n.AppLanguage
+import com.pokedaisy.app.companion.i18n.L10n
+
 import androidx.compose.foundation.layout.Arrangement
 import androidx.compose.foundation.layout.BoxWithConstraints
 import androidx.compose.foundation.layout.Column
@@ -42,11 +47,12 @@ internal fun pocketLabel(p: BagPocket): String = when (p) {
 
 /** An item's name in capitals; a TM / HM with the move it teaches ("TM06 TOXIC"). */
 internal fun bagItemLabel(id: Int): String {
-    val name = itemNames[id]?.let(::caps) ?: "#$id"
+    val name = if (L10n.language == AppLanguage.ZH) itemName(id) else itemNames[id]?.let(::caps) ?: "#$id"
     return Gen3Legal.tmHmMove(id)?.let { "$name ${moveLabel(it)}" } ?: name
 }
 
-internal fun moveLabel(id: Int): String = moveData[id]?.name?.let(::caps) ?: "#$id"
+internal fun moveLabel(id: Int): String =
+    if (L10n.language == AppLanguage.ZH) lookupMove(id).name else moveData[id]?.name?.let(::caps) ?: "#$id"
 
 /** A stack the player can't change: key items and HMs are handed out once and the game needs them. */
 private fun fixedStack(p: BagPocket, item: Int) = p == BagPocket.KEY || (p == BagPocket.TMHM && item >= Gen3SaveFormat.FIRST_HM)
