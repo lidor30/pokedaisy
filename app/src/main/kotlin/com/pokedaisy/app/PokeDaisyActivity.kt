@@ -486,6 +486,8 @@ class PokeDaisyActivity : Activity() {
     private val tipWildEnds = ArrayDeque<Long>()
     private val hudUpright = androidx.compose.runtime.mutableStateOf(false)
     private val hudClear = androidx.compose.runtime.mutableStateOf(0 to 0)
+    /** Bumped when a savestate loads: the item toast starts its bag baseline over. */
+    private val itemToastReset = androidx.compose.runtime.mutableIntStateOf(0)
     private val hudFrame = androidx.compose.runtime.mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
     /** Where the HUD keeps to while touch controls show held sideways, when the game's own picture gives it no frame
      * (EXPAND): the game's middle columns ([syncHudClear]). */
@@ -3194,7 +3196,11 @@ class PokeDaisyActivity : Activity() {
                     Hotkeys.Action.UNDO_LOAD -> if (ok) tr("Undid load") else if (CoopGuards.statesBlockedBy(CoopGuards.StateBlock.LOCK)) tr("Not while you play together only") else tr("Nothing to undo")
                     else -> ""
                 }
-                if (msg.isNotEmpty()) runOnUiThread { showHud(msg) }
+                val reloaded = ok && (action == Hotkeys.Action.LOAD_STATE || action == Hotkeys.Action.UNDO_LOAD)
+                if (msg.isNotEmpty() || reloaded) runOnUiThread {
+                    if (reloaded) itemToastReset.intValue++
+                    if (msg.isNotEmpty()) showHud(msg)
+                }
             }
             onSlotChanged = { slot ->
                 val text = if (states?.exists(slot) == true) tr("Slot {0} (used)", slot) else tr("Slot {0} (empty)", slot)
@@ -5370,13 +5376,21 @@ class PokeDaisyActivity : Activity() {
                             kotlinx.coroutines.delay(500)
                         }
                     }
+                    val clearBottom = with(androidx.compose.ui.platform.LocalDensity.current) { hudClear.value.second.toDp() }
                     if (!companionSeen) {
-                        val clearBottom = with(androidx.compose.ui.platform.LocalDensity.current) { hudClear.value.second.toDp() }
                         com.pokedaisy.app.companion.ui.AchievementIndicators(
                             RetroAchievements,
                             androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomEnd).padding(end = 8.dp, bottom = clearBottom + 8.dp),
                         )
                     }
+                    // A bag gain: a small card bottom left, above the HUD's balls / buttons when it's up.
+                    com.pokedaisy.app.companion.ui.ItemToastHost(
+                        snap.items, snap.connected, snap.hasData, itemToastReset.intValue,
+                        androidx.compose.ui.Modifier.align(androidx.compose.ui.Alignment.BottomStart).padding(
+                            start = 10.dp,
+                            bottom = clearBottom + 10.dp + if (shown) 80.dp else 0.dp,
+                        ),
+                    )
                 }
             }
             // Tips' clock: field play time, the moments, whether the field is calm ([tickTips]).

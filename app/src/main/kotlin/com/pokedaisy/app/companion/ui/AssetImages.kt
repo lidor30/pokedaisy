@@ -156,6 +156,8 @@ fun ItemIcon(
     asset: String?, size: Dp, modifier: Modifier = Modifier,
     /** The picture's own pixels centred in [size], not its canvas (a DS item icon sits off its 32 x 32's middle). */
     centerArt: Boolean = false,
+    /** Nearest-neighbour scaling: the item's pixels stay square when the card is not an exact multiple of them. */
+    pixelated: Boolean = false,
 ) {
     val context = LocalContext.current
     // Starts from an already-decoded icon, like SpeciesIcon.
@@ -186,7 +188,7 @@ fun ItemIcon(
             val shift = if (centerArt) artCentreShift(it) else null
             Image(
                 bitmap = it.asImageBitmap(), contentDescription = null,
-                filterQuality = if (centerArt) FilterQuality.None else androidx.compose.ui.graphics.drawscope.DrawScope.DefaultFilterQuality,
+                filterQuality = if (centerArt || pixelated) FilterQuality.None else androidx.compose.ui.graphics.drawscope.DrawScope.DefaultFilterQuality,
                 modifier = Modifier.size(size).then(
                     if (shift == null) Modifier
                     else Modifier.offset { IntOffset((shift.first * size.toPx() / it.width).roundToInt(), (shift.second * size.toPx() / it.height).roundToInt()) },

@@ -368,7 +368,8 @@ internal fun u16le(b: ByteArray, off: Int) =
 internal fun u32le(b: ByteArray, off: Int) =
     s32le(b, off).toLong() and 0xFFFFFFFFL
 
-private const val BAG_REFRESH_EVERY = 6
+// Every sample: the bag tab and the item-gain toast follow the game within the sample's own second.
+private const val BAG_REFRESH_EVERY = 1
 
 /**
  * The player's money: SaveBlock1.money XOR SaveBlock2.encryptionKey (Ruby /
