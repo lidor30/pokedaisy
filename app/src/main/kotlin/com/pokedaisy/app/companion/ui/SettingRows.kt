@@ -166,6 +166,8 @@ val SETTING_KEYWORDS: Map<String, String> = mapOf(
     "BATTLE HINTS" to "suggestions recommendations best move tips",
     "BATTLE STYLE" to "battle screen look theme gen 4 gen 5 platinum black white buttons design",
     "BATTLE INFO" to "hide battle info suggestions ratings effectiveness buttons only clean",
+    "ACHIEVEMENT POPUPS" to "retroachievements cheevos achievements notifications notices popup unlock fanfare sound quiet hide",
+    "PROGRESS POPUPS" to "retroachievements cheevos achievements notifications notices popup progress counter quiet hide",
     "CHALLENGE ICONS" to "retroachievements cheevos achievements leaderboard tracker badge badges corner hide icons overlay",
     "BATTLE VIEW" to "battle tab default info buttons suggestions best picks first opens",
     "GAME NAMES" to "file name filename rom title library naming",

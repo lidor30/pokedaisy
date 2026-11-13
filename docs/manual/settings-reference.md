@@ -240,6 +240,8 @@ The `DISPLAY OPTIONS` page:
 | `TAB BAR` | **5 tabs** (a page) | Which tabs sit next to the gear: up to 5, `SHOWN` or `HIDDEN`. By default `PARTY`, `DEX`, `MAP`, `BAG` and `GUIDE`. A tab the game doesn't have gives its place to another of the game's tabs. The rest open from `MORE`, left of the gear. | [The companion](companion.md) |
 | `CLICK SOUND` | **`ON`**, `OFF` | The game's own menu click on every companion button. | [The companion](companion.md) |
 | `CHALLENGE ICONS` | **`ON`**, `OFF` | RetroAchievements' challenge badges and leaderboard values in the corner. | [Achievements](achievements.md) |
+| `ACHIEVEMENT POPUPS` | **`ON`**, `OFF` | Every RetroAchievements popup and the unlock fanfare. Achievements still unlock with it off. | [Achievements](achievements.md) |
+| `PROGRESS POPUPS` | **`ON`**, `OFF` | Only the notices when a counting achievement gets closer. Greyed out while `ACHIEVEMENT POPUPS` is off. | [Achievements](achievements.md) |
 | `TWEAKS` | a page, each **`ON`** | `PARTY ICONS MOVE`, `MAP CURSOR BLINK`, `TAB ANIMATIONS` and `JUMP TO BATTLE` (a battle opens the battle tab by itself). | [The companion](companion.md) |
 
 ### Controls

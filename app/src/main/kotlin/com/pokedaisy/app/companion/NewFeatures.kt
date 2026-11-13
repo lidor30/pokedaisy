@@ -78,6 +78,8 @@ object NewFeatures {
     const val DPAD_KEYS = "dpad_keys"
     /** SETTINGS > CHALLENGE ICONS: RetroAchievements' corner icons on or off. */
     const val RA_ICONS = "ra_icons"
+    /** ACHIEVEMENT POPUPS / PROGRESS POPUPS: RetroAchievements' popups (and the unlock fanfare) on or off. */
+    const val RA_POPUPS = "ra_popups"
     /** SETTINGS > DS TOUCH SCREEN: a DS game's touch screen stretched over the second display. */
     const val DS_TOUCH_FILL = "ds_touch_fill"
 
@@ -194,7 +196,7 @@ object NewFeatures {
         GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE, FOLD_LAYOUT, TOUCH_STYLES, TOUCH_SKINS,
         AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
         QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
-        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE,
+        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE, RA_POPUPS,
     )
 
     private const val DAYS = 7

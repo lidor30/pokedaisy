@@ -1472,6 +1472,7 @@ class SettingsActivity : ComponentActivity() {
                         tk("ACHIEVEMENT POPUPS"), onOff(prefs.raPopups), selected = false, m,
                         height = m.rowHeight * 1.2f + m.lineHeight, divider = true,
                         subtitle = "Unlocks, game complete, leaderboards and connection notices",
+                        labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RA_POPUPS),
                     ) {
                         prefs.raPopups = !prefs.raPopups
                         revision++
@@ -1480,6 +1481,7 @@ class SettingsActivity : ComponentActivity() {
                         tk("PROGRESS POPUPS"), onOff(prefs.raProgressPopups), selected = false, m,
                         height = m.rowHeight * 1.2f + m.lineHeight, enabled = prefs.raPopups,
                         subtitle = "A notice when a counting achievement gets closer",
+                        labelBadge = com.pokedaisy.app.companion.NewFeatures.badge(com.pokedaisy.app.companion.NewFeatures.RA_POPUPS),
                     ) {
                         prefs.raProgressPopups = !prefs.raProgressPopups
                         revision++
