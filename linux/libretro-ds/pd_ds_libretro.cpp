@@ -49,7 +49,8 @@ extern "C" {
 }
 namespace pd_ds {
 // PD_DS_PERF=1: every 300 frames, where a frame's time went (ms each): DSperate's own emulation, and PokeDaisy's
-// present split into composing the screens, the RGB565 copy and the HUD. Off, it costs a getenv at load.
+// present split into composing the screens, the RGB565 copy (none where the frontend takes XRGB8888) and the HUD. Off,
+// it costs a getenv at load.
 bool perfOn=false;
 // The last frame handed over was this layout's field picture (not the companion's or the quick menu's), and whether the
 // one before was a repeat: see present_frame's skip.
@@ -59,14 +60,26 @@ bool same_arrangement(const DsArrangement& a,const DsArrangement& b){
   auto rect=[](const DsRect& p,const DsRect& q){return p.x==q.x&&p.y==q.y&&p.w==q.w&&p.h==q.h;};
   return rect(a.top,b.top)&&rect(a.touch,b.touch)&&a.floating==b.floating&&a.modal==b.modal&&a.useField==b.useField;
 }
-double perfRun=0,perfPresent=0,perfCompose=0,perfConvert=0,perfHud=0,perfLayout=0;int perfFrames=0;
+double perfRun=0,perfPresent=0,perfCompose=0,perfConvert=0,perfHud=0,perfLayout=0;int perfFrames=0,perfSkipped=0;
 double perf_now(){timespec t;clock_gettime(CLOCK_MONOTONIC,&t);return t.tv_sec*1e3+t.tv_nsec/1e6;}
+// dsperate_frameskip on a frontend with no audio buffer status callback (NXRedux, PokeDaisy's own host): nothing ever
+// said a frame was late, so DSperate never skipped one. The core then times itself: a frame's work is DSperate's
+// emulation and this file's drawing, not the time inside the frontend's video callback (which waits for the screen).
+// Work past the budget adds up as debt; over skipDebt, the next frame's 3D raster and line output are skipped (the
+// game, both CPUs and the sound run as ever), at most two in a row. A frame inside the budget pays the debt back, so a
+// game that keeps up never skips. PD_DS_FRAME_BUDGET (ms) tunes the budget: a frame less what the frontend needs.
+bool ownSkip=false;
+double frameBudget=15.2,frameDebt=0,runStart=0,presentStart=0,frontendTime=0,frameWork=0;
+constexpr double skipDebt=4.0,maxDebt=33.0;   // ms: when a skip is asked for, and the most a stall can leave owing
+int skipRun=0;
+void reset_skip(){frameDebt=0;skipRun=0;}
 void perf_report(){
   if(!perfOn || ++perfFrames<300)return;
   const double n=perfFrames;
-  std::fprintf(stderr,"PokeDaisy DS perf: emulation %.2f ms, present %.2f ms (layout %.2f, compose %.2f, rgb565 %.2f, hud %.2f) per frame\n",
-               (perfRun-perfPresent)/n,perfPresent/n,perfLayout/n,perfCompose/n,perfConvert/n,perfHud/n);
-  perfRun=perfPresent=perfCompose=perfConvert=perfHud=perfLayout=0;perfFrames=0;
+  std::fprintf(stderr,"PokeDaisy DS perf: emulation %.2f ms, present %.2f ms (layout %.2f, compose %.2f, rgb565 %.2f, hud %.2f) per frame, %d of %d frames skipped%s\n",
+               (perfRun-perfPresent)/n,perfPresent/n,perfLayout/n,perfCompose/n,perfConvert/n,perfHud/n,
+               perfSkipped,perfFrames,ownSkip?" (the core's own timing)":"");
+  perfRun=perfPresent=perfCompose=perfConvert=perfHud=perfLayout=0;perfFrames=perfSkipped=0;
 }
 retro_environment_t environment;
 retro_video_refresh_t video;
@@ -82,7 +95,19 @@ int repelFull=0;
 hud_hits hudHits{};
 int hudCursor=-1;
 unsigned hudConsumed=0;
-void clear_hud_focus(){hudHits.n=0;hudCursor=-1;hudConsumed=0;}
+// The field HUD's own 256x192 picture, kept between frames: what it shows comes from the snapshot (read every 12th
+// frame), the settings and the cursor, so it is drawn again only when one of those changes and blended over the game
+// each frame. hud.c's hud_key does the same for the GB / GBA cores.
+struct HudLayerKey {
+  pd_settings settings;
+  int right,cursor;
+  bool minimal,small,pc;
+};
+uint32_t hud_pixels[256*192];
+HudLayerKey hudLayerKey;
+hud_hits hudLayerHits{};
+bool hudLayerValid=false;
+void clear_hud_focus(){hudHits.n=0;hudCursor=-1;hudConsumed=0;hudLayerValid=false;}
 bool supported=false, companion=false, quickOpen=false, swallowMenuInput=false;
 int quickSelected=0,companionHold=0;
 struct FlyDestination { int x,y; const char* name; int header=0; };
@@ -121,13 +146,36 @@ constexpr unsigned battleKeys=(1u<<RETRO_DEVICE_ID_JOYPAD_A)|(1u<<RETRO_DEVICE_I
 DsArrangement arrangement;
 bool manualTouch=false,fieldValid=false,fieldMenuFlow=false;
 uint32_t stage[512*384],fieldFrame[256*192];
+// A popup's backdrop (the held field, dimmed, and the popup's frame) stays in stage while the popup is up: ds_compose
+// then draws only the live screens. fieldRevision counts fieldFrame's copies.
+DsBackdrop backdrop;
+unsigned fieldRevision=0;
+// The HUD or the stylus cross was drawn into stage (they are part of the frame handed over): the quick menu, which
+// opens over the game's picture alone, composes it again first.
+bool stageMarked=false;
 unsigned held_frames[16]={};
 bool select_used=false, select_pulse=false;
 unsigned old_buttons=0, buttons=0, tick=0, width=256, height=192;
 int screen_override=0, cursor_x=128, cursor_y=96;
 int layout=0; // 0 top, 1 bottom, 2 side by side, 3 stacked
+// The frame as the frontend takes it: XRGB8888 as drawn, or (rgb565) converted into pixels.
+bool rgb565=false;
 uint16_t pixels[512*384];
-uint32_t ui_pixels[341*256];
+uint32_t ui_pixels[341*256],quick_stage[512*384];
+// The frontend's video callback, its time kept out of the frame's work (it may wait for the screen).
+void show(const void* px,unsigned w,unsigned h,size_t pitch){
+  if(!ownSkip){video(px,w,h,pitch);return;}
+  const double t0=perf_now();
+  video(px,w,h,pitch);
+  frontendTime+=perf_now()-t0;
+}
+void submit(const uint32_t* px,unsigned w,unsigned h){
+  if(!rgb565){show(px,w,h,w*4);return;}
+  const double c0=perfOn?perf_now():0;
+  for(unsigned i=0;i<w*h;++i)pixels[i]=ds_rgb565(px[i]);
+  if(perfOn)perfConvert+=perf_now()-c0;
+  show(pixels,w,h,w*2);
+}
 
 uint32_t read32(uint32_t a) {
   if (!nds || a<0x02000000 || a>0x023ffffc) return 0;
@@ -197,6 +245,7 @@ void clear() {
   old_buttons=buttons=tick=0;std::fill(held_frames,held_frames+16,0);
   screen_override=0;cursor_x=128;cursor_y=96;layout=0;
   scene.reset();arrangement={};manualTouch=fieldValid=fieldMenuFlow=false;
+  backdrop={};
 }
 bool env(unsigned cmd,void* data) {
   if(cmd==RETRO_ENVIRONMENT_SET_VARIABLES) {
@@ -209,8 +258,19 @@ bool env(unsigned cmd,void* data) {
     return environment(cmd,all.data());
   }
   if(cmd==RETRO_ENVIRONMENT_SET_PIXEL_FORMAT) {
-    retro_pixel_format f=RETRO_PIXEL_FORMAT_RGB565;
+    // DSperate's own XRGB8888 where the frontend takes it: a frontend converts whatever it is given to its screen's
+    // format (NXRedux: either one to RGBA, in NEON), so a pass to RGB565 here was the same work done twice. RGB565 only
+    // for a frontend that takes nothing else.
+    retro_pixel_format f=RETRO_PIXEL_FORMAT_XRGB8888;
+    rgb565=!environment(cmd,&f);
+    if(!rgb565)return true;
+    f=RETRO_PIXEL_FORMAT_RGB565;
     return environment(cmd,&f);
+  }
+  if(cmd==RETRO_ENVIRONMENT_SET_AUDIO_BUFFER_STATUS_CALLBACK && data) {
+    // Refused: the wrapper would turn dsperate_frameskip off. Keep it, on the core's own timing.
+    ownSkip=!environment(cmd,data);
+    return true;
   }
   return environment(cmd,data);
 }
@@ -230,6 +290,7 @@ void refresh() {
     pd_ui_guide_reset(&shell.frame);
   }
   ds_map_update(map,snapshot);
+  hudLayerValid=false;
 }
 void refresh_battle_companion(){
   ds_read_battle_companion(game,read32,nds->bus.main_ram.get(),nds->bus.main_ram_size(),snapshot,shell.battle);
@@ -316,15 +377,14 @@ void choose_layout() {
   }
   if(battleActive && !scene.dark)arrangement={{0,0,512,384},{}};
   layout=mode==DS_BOTTOM?1:mode==DS_SIDE?2:mode==DS_STACKED?3:0;
-  if(scene.hud&&!scene.dark&&!(bits&PK_NDS_FIELD_LOCKED)){std::memcpy(fieldFrame,nds->gpu.framebuffer(0),sizeof fieldFrame);fieldValid=true;}
+  if(scene.hud&&!scene.dark&&!(bits&PK_NDS_FIELD_LOCKED)){std::memcpy(fieldFrame,nds->gpu.framebuffer(0),sizeof fieldFrame);fieldValid=true;++fieldRevision;}
 }
 void draw_companion() {
   presentedField=false;
   pd_canvas c;pd_canvas_init(&c,341,256,ui_pixels);
   shell.draw(&c,snapshot,companionGame!=DsGame::Unsupported,map,icons);
   geometry(341,256);
-  for(unsigned i=0;i<341*256;++i)pixels[i]=ds_rgb565(ui_pixels[i]);
-  video(pixels,width,height,width*2);
+  submit(ui_pixels,341,256);
 }
 constexpr int repelItems[]={79,76,77};
 int repelChoices[3],repelCount=0,repelSelected=0;
@@ -620,7 +680,13 @@ void draw_quick() {
   if(!stageReady){
     choose_layout();
     ds_compose(stage,arrangement,nds->gpu.framebuffer(0),nds->gpu.framebuffer(1));
-    stageReady=true;
+    backdrop.held=false;
+    stageReady=true;stageMarked=false;
+  }else if(stageMarked){
+    // Never with a battle strip: the HUD needs a free field, the cross a touch screen in view.
+    ds_compose(stage,arrangement,nds->gpu.framebuffer(0),nds->gpu.framebuffer(1),fieldValid?fieldFrame:nullptr);
+    backdrop.held=false;
+    stageMarked=false;
   }
   geometry(512,384);
   for(unsigned y=0;y<384;++y)for(unsigned x=0;x<512;++x){
@@ -633,9 +699,9 @@ void draw_quick() {
       unsigned b=((p&255)*a+(base&255)*(255-a))/255;
       base=(r<<16)|(g<<8)|b;
     }
-    pixels[y*512+x]=ds_rgb565(base);
+    quick_stage[y*512+x]=base;
   }
-  video(pixels,512,384,512*2);
+  submit(quick_stage,512,384);
 }
 void draw_strip(uint32_t* out){
   const int focus=drawnBattle.panel==DsBattlePanel::Moves?battleStrip.moveFocus:battleStrip.actionFocus;
@@ -645,9 +711,12 @@ void draw_strip(uint32_t* out){
 }
 void present_frame(const void* data);
 void present(const void* data,unsigned,unsigned,size_t) {
-  const double t0=perfOn?perf_now():0;
+  const double t0=perfOn||ownSkip?perf_now():0;
+  frontendTime=0;
   present_frame(data);
   if(perfOn)perfPresent+=perf_now()-t0;
+  // Called by DSperate's run right after the frame: everything since runStart but the frontend's callback.
+  if(ownSkip && runStart>0)frameWork=perf_now()-runStart-frontendTime;
 }
 void present_frame(const void* data) {
   if(companion){hudHits.n=0;draw_companion();return;}
@@ -657,15 +726,16 @@ void present_frame(const void* data) {
   const double l0=perfOn?perf_now():0;
   if(hudCursor<0)choose_layout();
   if(perfOn)perfLayout+=perf_now()-l0;
-  // dsperate_frameskip auto: a frame the frontend's audio said to skip wasn't drawn, so the screens are the last ones.
+  // dsperate_frameskip: a frame DSperate skipped (will_skip_frame: asked for a frame ahead, and never for a frame that
+  // captures) wasn't drawn, so the screens are the last ones.
   // Where nothing of ours changed (the same layout, no cursor), show the last frame again (video(nullptr)) instead of
   // composing, converting and drawing the HUD over the same picture - the time the skip was meant to give back. Never
   // twice in a row: the HUD, the strip and a popup are at most a frame behind.
-  if(fs_mode==Skip::Frame && fs_behind && data && presentedField && !repeatedLast && hudCursor<0 && !quickOpen &&
+  if(fs_mode!=Skip::Off && nds->gpu.will_skip_frame() && presentedField && !repeatedLast && hudCursor<0 && !quickOpen &&
      same_arrangement(arrangement,presentedArrangement)){
     // The HUD on screen is the last frame's, so its hit boxes stay: cleared here, the HUD button went unheard after it.
     repeatedLast=true;
-    video(nullptr,512,384,512*2);
+    show(nullptr,512,384,512*(rgb565?2:4));
     return;
   }
   repeatedLast=false;
@@ -674,19 +744,18 @@ void present_frame(const void* data) {
   const bool showStrip=holdStrip>0 && !scene.dark && arrangement.top.w==512 && wants_strip();
   const double c0=perfOn?perf_now():0;
   ds_compose(stage,arrangement,nds->gpu.framebuffer(0),nds->gpu.framebuffer(1),
-             fieldValid?fieldFrame:nullptr,showStrip?draw_strip:nullptr);
-  stageReady=true;
+             fieldValid?fieldFrame:nullptr,showStrip?draw_strip:nullptr,&backdrop,fieldRevision);
+  stageReady=true;stageMarked=false;
   geometry(w,h);
-  const double c1=perfOn?perf_now():0;
-  for(unsigned i=0;i<w*h;++i)pixels[i]=ds_rgb565(stage[i]);
-  if(perfOn){const double c2=perf_now();perfCompose+=c1-c0;perfConvert+=c2-c1;}
+  if(perfOn)perfCompose+=perf_now()-c0;
   const double h0=perfOn?perf_now():0;
   if(hudCursor<0&&(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT))&&arrangement.touch.w>0){
     int cx=arrangement.touch.x+cursor_x*arrangement.touch.w/256;
     int cy=arrangement.touch.y+cursor_y*arrangement.touch.h/192;
+    stageMarked=true;
     for(int d=-4;d<=4;++d){
-      if(arrangement.touch.contains(cx+d,cy))pixels[cy*w+cx+d]=0xffff;
-      if(arrangement.touch.contains(cx,cy+d))pixels[(cy+d)*w+cx]=0xffff;
+      if(arrangement.touch.contains(cx+d,cy))stage[cy*w+cx+d]=0xffffff;
+      if(arrangement.touch.contains(cx,cy+d))stage[(cy+d)*w+cx]=0xffffff;
     }
   }
   const auto& top=arrangement.top;
@@ -694,7 +763,19 @@ void present_frame(const void* data) {
      (!game || field_free()) && !fieldMenuFlow &&
      top.w>0 && top.h>0 && !arrangement.floating && !arrangement.modal) {
     if(tick%12==0 || !snapshot.valid)refresh();
-    pd_canvas c;pd_canvas_init(&c,256,192,ui_pixels);
+    stageMarked=true;
+    const bool pc=pk_nds_call_supported(game)&&nds->cpu(ds::Cpu::ARM9).itcm_size>=0x02000000;
+    const bool mini=shell.settings.hudSize!=PD_HUD_LARGE;
+    const bool pip=arrangement.touch.w>0 && arrangement.touch.x>top.x && arrangement.touch.x<top.x+top.w;
+    const int hudRight=pip?(arrangement.touch.x-top.x)*256/top.w:256;
+    HudLayerKey key;
+    // Whole objects, padding too (memcmp below): the settings are one object, never copied member by member.
+    std::memset(&key,0,sizeof key);
+    std::memcpy(&key.settings,&shell.settings,sizeof key.settings);
+    key.right=hudRight;key.cursor=hudCursor;key.minimal=shell.hudMinimal;key.small=pip&&!mini;key.pc=pc;
+    if(hudLayerValid && !std::memcmp(&key,&hudLayerKey,sizeof key))hudHits=hudLayerHits;
+    else{
+    pd_canvas c;pd_canvas_init(&c,256,192,hud_pixels);
     pd_snapshot party{};party.valid=snapshot.valid;party.partyCount=std::min(6,int(snapshot.party.size()));
     for(int i=0;i<party.partyCount;++i){
       const auto& m=snapshot.party[i];auto& d=party.party[i];
@@ -722,13 +803,10 @@ void present_frame(const void* data) {
         if(id>=snapshot.dexCaught.size() || !snapshot.dexCaught[id])++wild;
       }
     }
-    const bool pc=pk_nds_call_supported(game)&&nds->cpu(ds::Cpu::ARM9).itcm_size>=0x02000000;
     hud_state state{steps,repelFull,pc,wild,-1};
-    state.mini=shell.settings.hudSize!=PD_HUD_LARGE;
-    const bool pip=arrangement.touch.w>0 && arrangement.touch.x>top.x && arrangement.touch.x<top.x+top.w;
-    const int hudRight=pip?(arrangement.touch.x-top.x)*256/top.w:256;
+    state.mini=mini;
     struct HudIcons {const pd_snapshot& party;bool small;};
-    HudIcons hudIcons{party,pip&&!state.mini};
+    HudIcons hudIcons{party,key.small};
     hud_ds_draw(&c,&party,&state,&shell.settings,&hudIcons,[](pd_canvas* c,void* ctx,const pd_mon* m,int x,int y,bool){
       const auto& hud=*static_cast<HudIcons*>(ctx);
       const int slot=m-hud.party.party;
@@ -763,51 +841,46 @@ void present_frame(const void* data) {
         ds_draw_minimap(c,snapshot,map,x,y,w,h);
       },&hudHits);
     hud_focus_draw(&c,&hudHits,hudCursor);
+    hudLayerKey=key;hudLayerHits=hudHits;hudLayerValid=true;
+    }
     // Scale with the top screen and keep the picture-in-picture touch screen clear.
     const bool doubled=top.w==512 && top.h==384;
     // x / 255 for x up to 255 * 255, exactly, without a divide.
     auto div255=[](unsigned x){return (x+1+(x>>8))>>8;};
-    auto blend=[&](uint32_t p,uint16_t old){
+    auto blend=[&](uint32_t p,uint32_t old){
       const unsigned a=p>>24?p>>24:255;
-      if(a==255)return ds_rgb565(p&0xffffff);
-      unsigned r=(old>>11&31)*255/31,g=(old>>5&63)*255/63,b=(old&31)*255/31;
-      r=div255(((p>>16)&255)*a+r*(255-a));
-      g=div255(((p>>8)&255)*a+g*(255-a));
-      b=div255((p&255)*a+b*(255-a));
-      return ds_rgb565((r<<16)|(g<<8)|b);
+      if(a==255)return p&0xffffff;
+      const unsigned r=div255(((p>>16)&255)*a+((old>>16)&255)*(255-a));
+      const unsigned g=div255(((p>>8)&255)*a+((old>>8)&255)*(255-a));
+      const unsigned b=div255((p&255)*a+(old&255)*(255-a));
+      return uint32_t((r<<16)|(g<<8)|b);
     };
     if(doubled && arrangement.touch.w==0){
       // The usual One Screen field: each HUD pixel is a 2x2 block. Walk the HUD's own 256x192 and skip clear pixels.
       for(int y=0;y<192;++y){
-        const auto* row=ui_pixels+y*256;
+        const auto* row=hud_pixels+y*256;
         for(int x=0;x<256;++x){
           const uint32_t p=row[x];
           if(p==QUICK_CLEAR)continue;
           const unsigned at=(top.y+2*y)*w+top.x+2*x;
-          const uint16_t q=blend(p,pixels[at]);
-          pixels[at]=pixels[at+1]=pixels[at+w]=pixels[at+w+1]=q;
+          const uint32_t q=blend(p,stage[at]);
+          stage[at]=stage[at+1]=stage[at+w]=stage[at+w+1]=q;
         }
       }
     }else for(int y=0;y<top.h;++y){
-      const auto* row=ui_pixels+(doubled?y/2:y*192/top.h)*256;
+      const auto* row=hud_pixels+(doubled?y/2:y*192/top.h)*256;
       for(int x=0;x<top.w;++x){
         const uint32_t p=row[doubled?x/2:x*256/top.w];
         if(p==QUICK_CLEAR || arrangement.touch.contains(top.x+x,top.y+y))continue;
-        const unsigned a=p>>24?p>>24:255;
         const unsigned at=(top.y+y)*w+top.x+x;
-        const uint16_t old=pixels[at];
-        unsigned r=(old>>11&31)*255/31,g=(old>>5&63)*255/63,b=(old&31)*255/31;
-        r=(((p>>16)&255)*a+r*(255-a))/255;
-        g=(((p>>8)&255)*a+g*(255-a))/255;
-        b=((p&255)*a+b*(255-a))/255;
-        pixels[at]=ds_rgb565((r<<16)|(g<<8)|b);
+        stage[at]=blend(p,stage[at]);
       }
     }
   }
   if(perfOn)perfHud+=perf_now()-h0;
   presentedField=true;
   presentedArrangement=arrangement;
-  video(pixels,w,h,w*2);
+  submit(stage,w,h);
 }
 int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
   if(flyCallJob)return 0;
@@ -1052,6 +1125,11 @@ RETRO_API void retro_get_system_av_info(retro_system_av_info* info){
 RETRO_API bool retro_load_game(const retro_game_info* info){
   pd_ds::clear();pd_ds::width=512;pd_ds::height=384;
   pd_ds::perfOn=std::getenv("PD_DS_PERF")!=nullptr;
+  pd_ds::ownSkip=false;pd_ds::reset_skip();
+  if(const char* budget=std::getenv("PD_DS_FRAME_BUDGET")){
+    const double ms=std::atof(budget);
+    if(ms>0 && ms<=17)pd_ds::frameBudget=ms;
+  }
   if(!ds_load_game(info))return false;
   // Read for the hash and the companion's art: a game too big for memory (or not a file) leaves the companion off
   // rather than throwing out of a C entry point.
@@ -1093,7 +1171,7 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
   return true;
 }
 RETRO_API void retro_reset(){
-  pd_ds::clear_battle();
+  pd_ds::clear_battle();pd_ds::reset_skip();
   ds_reset();pd_ds::clear_hud_focus();pd_ds::stageReady=false;pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;
 }
 RETRO_API bool retro_unserialize(const void* data,size_t n){
@@ -1111,7 +1189,7 @@ RETRO_API bool retro_unserialize(const void* data,size_t n){
     if(!dirty)nds->cart->clear_sram_dirty();
     if(sram.data()!=frontendSave)log(RETRO_LOG_WARN,"PokeDaisy DS: the save buffer moved on a state load\n");
   }
-  if(ok){pd_ds::shell.battle={};pd_ds::shell.update_battle();pd_ds::stageReady=false;pd_ds::restoreGrace=4;pd_ds::set_wild_rates();}
+  if(ok){pd_ds::reset_skip();pd_ds::shell.battle={};pd_ds::shell.update_battle();pd_ds::stageReady=false;pd_ds::restoreGrace=4;pd_ds::set_wild_rates();}
   if(ok){pd_ds::clear_hud_focus();pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;}
   return ok;
 }
@@ -1142,9 +1220,22 @@ RETRO_API void retro_run(){
       (1u<<RETRO_DEVICE_ID_JOYPAD_LEFT)|(1u<<RETRO_DEVICE_ID_JOYPAD_RIGHT);
     pd_ds::autoRunThisFrame=pd_ds::shell.autoRun && !pd_ds::manualTouch &&
       !pd_ds::pcJob && ds_auto_run(field,pd_ds::buttons&directions,pd_ds::buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_A));
-    const double r0=pd_ds::perfOn?pd_ds::perf_now():0;
+    if(pd_ds::ownSkip && fs_mode!=Skip::Off){
+      // Last frame's work against the budget; see ownSkip.
+      pd_ds::frameDebt=std::clamp(pd_ds::frameDebt+pd_ds::frameWork-pd_ds::frameBudget,0.0,pd_ds::maxDebt);
+      pd_ds::skipRun=pd_ds::frameDebt>pd_ds::skipDebt && pd_ds::skipRun<2?pd_ds::skipRun+1:0;
+      fs_behind=pd_ds::skipRun>0;
+      pd_ds::frameWork=pd_ds::frameBudget;   // a frame that never presents neither adds nor pays
+    }
+    const double r0=pd_ds::perfOn||pd_ds::ownSkip?pd_ds::perf_now():0;
+    pd_ds::runStart=r0;
     ds_run();
-    if(pd_ds::perfOn){pd_ds::perfRun+=pd_ds::perf_now()-r0;pd_ds::perf_report();}
+    pd_ds::runStart=0;
+    if(pd_ds::perfOn){
+      pd_ds::perfRun+=pd_ds::perf_now()-r0;
+      if(nds->gpu.will_skip_frame())++pd_ds::perfSkipped;
+      pd_ds::perf_report();
+    }
     pd_ds::update_pc();
     pd_ds::update_fly_call();
     pd_ds::swallowMenuInput=false;

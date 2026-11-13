@@ -52,8 +52,9 @@ companion opens with L2 and uses L1/R1 to switch tabs. Select + R2 opens the
 manual Pokétch panel. These are the default bindings.
 
 This package defaults to DSperate Auto frameskip and 512×384 battle output.
-Auto only skips rendering when the frontend reports that its audio buffer
-is running low. Reload the ROM after changing frameskip.
+Auto skips a frame's rendering only when the game is running late: NXRedux has
+no audio buffer report for the core to go by, so the DS core times its own
+frames (see the DS core's README). Reload the ROM after changing frameskip.
 
 ### Companion navigation on both cores
 
