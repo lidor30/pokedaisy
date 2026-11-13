@@ -263,7 +263,7 @@ void choose_layout() {
   battleActive=view.panel!=DsBattlePanel::Native;
   if(battleActive){
     if(drawnBattle.panel!=view.panel || drawnBattle.personality!=view.personality ||
-       drawnBattle.species!=view.species ||
+       drawnBattle.partySlot!=view.partySlot || drawnBattle.species!=view.species ||
        (view.panel==DsBattlePanel::Moves &&
         (drawnBattle.moves!=view.moves || drawnBattle.pp!=view.pp)))battlePanelArtValid=false;
     if(supported && !battlePanelArtValid){
@@ -275,14 +275,17 @@ void choose_layout() {
         battlePanelArtValid=true;
       }
     }
-    if(drawnBattle.personality!=view.personality || drawnBattle.species!=view.species || battleName.empty()){
+    if(drawnBattle.personality!=view.personality || drawnBattle.partySlot!=view.partySlot ||
+       drawnBattle.species!=view.species || battleName.empty()){
       battleName=ds_battle_species(view);
-      if(companionGame!=DsGame::Unsupported && !view.gen5){
+      if(companionGame!=DsGame::Unsupported){
+        // The prompt names the Pokemon as the game does, by its nickname: Gen 4 finds it by personality, Gen 5 by its
+        // party slot (its battler carries no personality), the species checked either way.
         const auto party=ds_read_companion(nds->bus.main_ram.get(),nds->bus.main_ram_size(),companionGame).party;
-        const auto mon=std::find_if(party.begin(),party.end(),[&](const DsMon& candidate){
-          return candidate.personality==view.personality && candidate.species==view.species;
-        });
-        if(mon!=party.end() && !mon->nickname.empty())battleName=mon->nickname;
+        const auto mon=view.gen5?
+          (view.partySlot>=0 && size_t(view.partySlot)<party.size()?party.begin()+view.partySlot:party.end()):
+          std::find_if(party.begin(),party.end(),[&](const DsMon& candidate){return candidate.personality==view.personality;});
+        if(mon!=party.end() && mon->species==view.species && !mon->nickname.empty())battleName=mon->nickname;
       }
     }
     drawnBattle=view;
