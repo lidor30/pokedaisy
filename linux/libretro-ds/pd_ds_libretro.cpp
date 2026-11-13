@@ -650,8 +650,7 @@ void present(const void* data,unsigned,unsigned,size_t) {
   if(perfOn)perfPresent+=perf_now()-t0;
 }
 void present_frame(const void* data) {
-  hudHits.n=0;
-  if(companion){draw_companion();return;}
+  if(companion){hudHits.n=0;draw_companion();return;}
   // Refresh composition even when DSperate skipped rasterization: switching
   // screens must still display the latest retained framebuffer.
   (void)data;
@@ -664,11 +663,13 @@ void present_frame(const void* data) {
   // twice in a row: the HUD, the strip and a popup are at most a frame behind.
   if(fs_mode==Skip::Frame && fs_behind && data && presentedField && !repeatedLast && hudCursor<0 && !quickOpen &&
      same_arrangement(arrangement,presentedArrangement)){
+    // The HUD on screen is the last frame's, so its hit boxes stay: cleared here, the HUD button went unheard after it.
     repeatedLast=true;
     video(nullptr,512,384,512*2);
     return;
   }
   repeatedLast=false;
+  hudHits.n=0;
   const unsigned w=512,h=384;
   const bool showStrip=holdStrip>0 && !scene.dark && arrangement.top.w==512 && wants_strip();
   const double c0=perfOn?perf_now():0;
