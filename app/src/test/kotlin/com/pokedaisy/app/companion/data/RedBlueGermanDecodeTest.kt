@@ -105,6 +105,8 @@ class RedBlueGermanDecodeTest {
     fun `dex pages - metric, their own text, Red's pictures`() {
         val en = english
         assumeTrue("Red ROMs not on this machine", en != null)
+        // Else the loop below skips both carts and the test passes having checked nothing.
+        assumeTrue("German Red / Blue not on this machine", listOf(RED_DE_ROM, BLUE_DE_ROM).any { romOf(it) != null })
         activeGame = GameKind.RED
         for ((name, cfg) in listOf(RED_DE_ROM to GEN1_RED_DE, BLUE_DE_ROM to GEN1_BLUE_DE)) {
             val rom = romOf(name) ?: continue
@@ -126,6 +128,8 @@ class RedBlueGermanDecodeTest {
     fun `art - Red's icons, town map and player, a font with German letters`() {
         val en = english
         assumeTrue("Red ROMs not on this machine", en != null)
+        // Else the loop below skips both carts and the test passes having checked nothing.
+        assumeTrue("German Red / Blue not on this machine", listOf(RED_DE_ROM, BLUE_DE_ROM).any { romOf(it) != null })
         val enIcons = Gen1Art.icons(en!!, Gen1Art.RED)
         val enMap = Gen1Art.townMap(en, Gen1Art.RED)
         val enPlayer = Gen1Art.player(en, Gen1Art.RED)
