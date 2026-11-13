@@ -72,6 +72,17 @@ class Prefs(context: Context) {
         get() = p.getString("ra_token", null)
         set(v) = p.edit().putString("ra_token", v).apply()
 
+    /** Achievement popups (Settings > RetroAchievements): unlocks, game complete, leaderboards
+     * and the connection notices. Off also mutes the unlock fanfare. */
+    var raPopups: Boolean
+        get() = p.getBoolean("ra_popups", true)
+        set(v) = p.edit().putBoolean("ra_popups", v).apply()
+
+    /** PROGRESS popups only (the "38/50" notices); [raPopups] off hides these too. */
+    var raProgressPopups: Boolean
+        get() = p.getBoolean("ra_progress_popups", true)
+        set(v) = p.edit().putBoolean("ra_progress_popups", v).apply()
+
     /** Fast-forward speed cap. 0 = unlimited. */
     var ffMaxSpeed: Float
         get() = p.getFloat("ff_max_speed", 2f)
