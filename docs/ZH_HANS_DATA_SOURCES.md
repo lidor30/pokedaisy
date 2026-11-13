@@ -74,3 +74,28 @@ three paths that cannot use `CustomFallbackBuilder`: `GbaText`'s CJK branch,
 `PartyScreen`'s nickname and `GbaPartySlot.nameText`), but its 12 px grid lands on
 half pixels at these sizes and thin diagonal strokes render grey. It was dropped
 in favour of the sharper vector system face.
+
+## Independent update channel
+
+The upstream `AppUpdater` checks `lidor30/pokedaisy` releases and compares tag
+names to `versionName`. A translation build must not do that, for two reasons:
+
+* Its APK is signed with a different key, so upstream's APK cannot be installed
+  over it (`AppUpdateFlow.isOurUpdate` verifies signing certificates).
+* A `versionName` such as `1.5.0.1-zh` is parsed as a **pre-release** of
+  `1.5.0.1`, so upstream's release always looks newer and is offered.
+
+`-PupdateRepo=owner/repo` points `BuildConfig.UPDATE_REPO` at this fork's own
+GitHub releases; `-PupdateRepo=` (empty) disables `AppUpdater.check()` entirely —
+no network request at all, and Settings > VERSION simply reports the current
+version. The default stays `lidor30/pokedaisy`, so an unmodified build behaves
+exactly as before. The zh build ships with the check OFF until it has its own
+release repo.
+
+When a downstream build starts publishing its own releases:
+
+1. Sign each APK with the **same key** as the installed build (the updater
+   compares signing certificates).
+2. Use a tag that `compareVersions` reads as newer than the current
+   `versionName` — e.g. `v1.5.0.2-zh`, not `v1.5.0.1`.
+3. Attach one `.apk` asset to a published (non-draft, non-prerelease) release.

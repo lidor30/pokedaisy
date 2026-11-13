@@ -14,6 +14,11 @@ plugins {
 // app/google-services.json, which stays out of this public repo (gitignored; the release
 // workflow writes it from a secret). Without it the app builds the same, reports off.
 val crashlytics = file("google-services.json").isFile
+// In-app update source. Defaults to upstream; a fork can pass `-PupdateRepo=owner/repo`
+// to check its own releases, or `-PupdateRepo=` (empty) to turn the check off entirely.
+// Useful for translations and other downstream builds, whose APKs carry a different
+// signature and must never be offered upstream's release.
+val updateRepo = (project.findProperty("updateRepo") as String?) ?: "lidor30/pokedaisy"
 if (crashlytics) {
     apply(plugin = "com.google.gms.google-services")
     apply(plugin = "com.google.firebase.crashlytics")
@@ -76,6 +81,8 @@ android {
         versionName = "1.5.1"
         // Whether this build can send crash reports at all (CrashReports.available).
         buildConfigField("boolean", "CRASHLYTICS", crashlytics.toString())
+        // GitHub repo whose releases the in-app updater checks; empty disables it (see AppUpdater).
+        buildConfigField("String", "UPDATE_REPO", "\"$updateRepo\"")
         buildConfigField("String", "SCREENSCRAPER_DEV_ID", "\"${buildSecret("screenscraper.devId", "SCREENSCRAPER_DEV_ID")}\"")
         buildConfigField("String", "SCREENSCRAPER_DEV_PASSWORD", "\"${buildSecret("screenscraper.devPassword", "SCREENSCRAPER_DEV_PASSWORD")}\"")
         // The co-op relay this build starts on (empty = no relay: LAN and BY IP only); Settings can override it.

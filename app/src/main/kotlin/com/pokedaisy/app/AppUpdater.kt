@@ -13,8 +13,10 @@ import java.net.URL
  */
 object AppUpdater {
 
-    const val REPO = "lidor30/pokedaisy"
-    const val RELEASES_PAGE = "https://github.com/$REPO/releases"
+    /** Build-configurable so a fork / translation build can point the updater at its own
+     * releases instead of upstream's; an empty value turns the check off entirely. */
+    val REPO: String get() = BuildConfig.UPDATE_REPO
+    val RELEASES_PAGE: String get() = if (REPO.isEmpty()) "" else "https://github.com/$REPO/releases"
 
     class Release(
         val version: String,
@@ -24,17 +26,20 @@ object AppUpdater {
         val pageUrl: String,
     )
 
-    /** The newest release that is newer than [current], or null (none, or offline). Blocking. */
-    fun check(current: String): Release? = runCatching {
-        val conn = (URL("https://api.github.com/repos/$REPO/releases?per_page=20").openConnection() as HttpURLConnection).apply {
-            connectTimeout = 8000
-            readTimeout = 8000
-            setRequestProperty("Accept", "application/vnd.github+json")
-            setRequestProperty("User-Agent", "PokeDaisy/$current")
-        }
-        val body = conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
-        newest(JSONArray(body))
-    }.getOrNull()?.takeIf { isNewer(it.version, current) }
+    /** The newest release that is newer than [current], or null (none, offline, or updates off). Blocking. */
+    fun check(current: String): Release? {
+        if (REPO.isEmpty()) return null
+        return runCatching {
+            val conn = (URL("https://api.github.com/repos/$REPO/releases?per_page=20").openConnection() as HttpURLConnection).apply {
+                connectTimeout = 8000
+                readTimeout = 8000
+                setRequestProperty("Accept", "application/vnd.github+json")
+                setRequestProperty("User-Agent", "PokeDaisy/$current")
+            }
+            val body = conn.inputStream.use { it.readBytes().toString(Charsets.UTF_8) }
+            newest(JSONArray(body))
+        }.getOrNull()?.takeIf { isNewer(it.version, current) }
+    }
 
     /** The highest-versioned published, non-pre-release release with an APK in [releases] (GitHub's JSON). */
     fun newest(releases: JSONArray): Release? {
