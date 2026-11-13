@@ -134,7 +134,8 @@ row of a Game Boy shelf.
 In this form the quick menu (Y) keeps PC, FLY, the keep-away spray, BIKE, WILD ENCOUNTERS and COMPANION (with TAKE
 OFF in the English FireRed and Emerald), adds a HUD tile that puts the cursor on the HUD, and the game pauses while it
 is open. X opens the companion. SETTINGS lists only what the core does itself: ASPECT, HUD, QUICK MENU, FLY STYLE,
-FLIGHT AREA and FLY ON (where there's TAKE OFF), three button rows and TAB BAR. QUICK MENU BUTTON,
+FLIGHT AREA and FLY ON (where there's TAKE OFF), three button rows, AUTO-RUN (where the game's field is read), DARK
+MODE, TAB BAR and RESET SETTINGS, which puts every companion setting back after you confirm. QUICK MENU BUTTON,
 COMPANION BUTTON and HUD CURSOR BUTTON step through X, Y, L2 and R2 (and NONE for the cursor) when you press A on
 them, and a button another action already uses swaps over to it. L2 and R2 reach the core on every shelf (for other
 Game Boy Advance cores the launcher still keeps them back).

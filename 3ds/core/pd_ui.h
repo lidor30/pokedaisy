@@ -193,6 +193,7 @@ struct pd_host_info {
     char stateWhen[24]; // when it was made, shown beside LOAD STATE
     bool fullSettings;  // Optional: SETTINGS' groups and the rows the 3DS has
     bool wildSupported, fieldSupported; // WILD ENCOUNTERS / the field read works on this game
+    bool hasCoreRows;    // the compact list adds AUTO-RUN (with fieldSupported), DARK MODE and RESET SETTINGS (the libretro cores)
     int batteryPct;     // -1 = unknown
     bool flyReady;      // MAP's FLY button: someone in the party can
     bool flightSupported; // FREE FLIGHT works in this game: FLY STYLE / FLIGHT AREA / FLY ON rows
@@ -235,6 +236,7 @@ enum pd_overlay {
     PD_OVERLAY_PICK_FLY_ON, // FLY ON: what FREE FLIGHT flies on
     PD_OVERLAY_CONFIRM_RESTART,
     PD_OVERLAY_FLY,     // MAP's FLY: the towns
+    PD_OVERLAY_CONFIRM_RESET, // RESET SETTINGS asked
 };
 
 // Optional presentation data for another emulator; IDs stay native to that backend.

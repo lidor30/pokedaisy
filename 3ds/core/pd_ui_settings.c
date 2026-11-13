@@ -344,8 +344,15 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         setting(ui, c, ix, &y, iw, SETTING_ONE_TAP, "ONE-TAP MOVES", st->oneTapMoves ? "ON" : "OFF");
         setting(ui, c, ix, &y, iw, SETTING_BATTLE_STYLE, "BATTLE STYLE", st->battleGen5 ? "GEN 5" : "GEN 4");
     }
+    // A host without the groups (the libretro cores): AUTO-RUN and DARK MODE here, the full list has them in GAMEPLAY
+    // and by THEME.
+    if (!full && host && host->hasCoreRows) {
+        if (host->fieldSupported) setting(ui, c, ix, &y, iw, SETTING_AUTO_RUN, "AUTO-RUN", st->autoRun ? "ON" : "OFF");
+        setting(ui, c, ix, &y, iw, SETTING_DARK, "DARK MODE", st->darkMode ? "ON" : "OFF");
+    }
     snprintf(buf, sizeof(buf), "%d TABS", ui_bar_count(ui));
     setting(ui, c, ix, &y, iw, SETTING_TAB_BAR, "TAB BAR", buf);
+    if (!full && host && host->hasCoreRows) setting(ui, c, ix, &y, iw, SETTING_RESET, "RESET SETTINGS", "...");
     if (full) {
         y += 3;
         pd_fill(c, ix, y, iw, 1, PD_DIVIDER);
@@ -610,6 +617,10 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     case PD_OVERLAY_CONFIRM_LEAVE:
         confirm(ui, c, "CLOSE GAME",
                 "Back to the game list? What the game saved stays saved; anything since is lost.", "CLOSE");
+        break;
+    case PD_OVERLAY_CONFIRM_RESET:
+        confirm(ui, c, "RESET SETTINGS",
+                "Put every companion setting back to how it started? Your saves and states aren't touched.", "RESET");
         break;
     case PD_OVERLAY_CONFIRM_RESTART:
         confirm(ui, c, "RESTART GAME", "Start the game again from its save? Anything since the last save is lost.", "RESTART");

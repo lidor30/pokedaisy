@@ -8,6 +8,7 @@
 #include "pd_dex.h"
 #include "pd_guide.h"
 #include "pd_party_art.h"
+#include "pd_settings.h"
 #include "pd_ui_internal.h"
 
 static void cycle_button(struct pd_settings* s, int row);
@@ -533,6 +534,9 @@ static void act(struct pd_ui* ui, int id) {
             if (ui->overlay == PD_OVERLAY_PICK_VOLUME) ui->settings->gameVolume = (i + 1) * 20;
             if (ui->overlay == PD_OVERLAY_PICK_FLY_ON && i < 4) ui->settings->flightVehicle = i;
             close_overlay(ui, PD_ACTION_SETTINGS_CHANGED);
+        } else if (id == HIT_YES && ui->overlay == PD_OVERLAY_CONFIRM_RESET) {
+            pd_settings_defaults(ui->settings);
+            close_overlay(ui, PD_ACTION_SETTINGS_CHANGED);
         } else if (id == HIT_YES) {
             enum pd_action a = ui->overlay == PD_OVERLAY_CONFIRM_SAVE ? PD_ACTION_SAVE_STATE
                 : ui->overlay == PD_OVERLAY_CONFIRM_LOAD ? PD_ACTION_LOAD_STATE
@@ -578,6 +582,8 @@ static void act(struct pd_ui* ui, int id) {
             id == HIT_SETTING + SETTING_FF_MODE ? &ui->settings->ffNormal : &ui->settings->cheats;
         *flag = !*flag;
         ui->action = PD_ACTION_SETTINGS_CHANGED;
+    } else if (id == HIT_SETTING + SETTING_RESET) {
+        ui->overlay = PD_OVERLAY_CONFIRM_RESET;
     } else if (id == HIT_SETTING + SETTING_RESTART) {
         ui->overlay = PD_OVERLAY_CONFIRM_RESTART;
     } else if (id == HIT_SETTING + SETTING_MUTE || id == HIT_SETTING + SETTING_WILD || id == HIT_SETTING + SETTING_AUTO_RUN ||
