@@ -37,9 +37,41 @@ object WhatsNew {
 
     /** Newest first. */
     val RELEASES: List<Notes> by lazy {
-        listOf(hotfix("1.5.0.1", NOTES_1_5_0, "1.5.0.1 HOTFIX: turning a Samsung Galaxy sideways no longer closes the game.")) +
-            OLDER
+        listOf(
+            NOTES_1_5_1,
+            hotfix("1.5.0.1", NOTES_1_5_0, "1.5.0.1 HOTFIX: turning a Samsung Galaxy sideways no longer closes the game."),
+        ) + OLDER
     }
+
+    private val NOTES_1_5_1 = Notes(
+        "1.5.1",
+        listOf(
+            Section(
+                NEW,
+                listOf(
+                    "FREE FLIGHT: take off from the MAP tab or the quick menu and fly over the map yourself.",
+                    "Scenic FLY: FLY takes you there through the sky. FLY STYLE brings back the classic way.",
+                    "FLY ON and RIDE ON: fly in a balloon, a helicopter, a zeppelin or a plane, and ride a motorcycle or a scooter instead of the bike.",
+                    "New games: Blaze Black 2 and Volt White 2 Redux, Team Rocket Edition 2026 v3.1, and German Crystal, Gold and Silver.",
+                    "FLY in more hacks: Seaglass, Too Many Types 2, R.O.W.E., Super Mariomon and Quetzal.",
+                    "DS CORE: a second DS emulator, faster on weaker devices. AUTO picks it for you.",
+                    "Polished Crystal: EXPAND widens the overworld.",
+                    "Unbound: change your party's order from the companion.",
+                    "Save states: press and hold a slot to delete it.",
+                    "DS TOUCH SCREEN: STRETCH fills the second screen with the touch screen.",
+                ),
+            ),
+            Section(
+                FIXES,
+                listOf(
+                    "DS on weaker devices: smoother play, skipping a frame when a device can't keep up.",
+                    "Smoother play: a game that turns choppy gets smooth again by itself.",
+                    "DS battles on one screen: the companion's tab stays where you can tap it.",
+                    "AUTO-RUN: no longer closes Recharged Yellow's START menu.",
+                ),
+            ),
+        ),
+    )
 
     private val NOTES_1_5_0 = Notes(
         "1.5.0",
