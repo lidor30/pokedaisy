@@ -26,3 +26,10 @@ They check layout timing and touch bounds, the libretro state contract, the
 shared companion, and persistent settings. The DS core uses the wrapper's
 native SRAM and state API. Linux builds use the regular DSperate core without
 release PGO.
+
+## Timing
+
+Set `PD_DS_PERF=1` in the frontend's environment and the core logs, every 300 frames, where a frame's time went:
+DSperate's emulation, and PokéDaisy's own drawing split into layout, composing the screens, the RGB565 copy and the
+HUD. With `dsperate_frameskip` on `auto`, a frame the frontend asks to skip shows the last one again (no composing or
+HUD) when the layout hasn't changed, at most every other frame.

@@ -128,16 +128,21 @@ void ds_compose(uint32_t* out,const DsArrangement& a,const uint32_t* top,const u
     };
     int cx[512],wx[512],cy[384],wy[384];
     spans(r.w,256,cx,wx);spans(r.h,192,cy,wy);
+    // p's share w (of 256) and q's the rest, per channel: red and blue in one multiply (each lane stays under 16 bits).
     auto mix=[](uint32_t p,uint32_t q,int w){
       if(w>=256)return p&0xffffff;
-      auto ch=[&](int s){return ((((p>>s)&255)*w+((q>>s)&255)*(256-w))>>8)<<s;};
-      return ch(16)|ch(8)|ch(0);
+      const uint32_t v=uint32_t(256-w);
+      const uint32_t rb=(((p&0xff00ff)*uint32_t(w)+(q&0xff00ff)*v)>>8)&0xff00ff;
+      const uint32_t g=(((p&0xff00)>>8)*uint32_t(w)+((q&0xff00)>>8)*v)>>8;
+      return rb|(g<<8);
     };
     for(int y=0;y<r.h;++y){
       const int oy=r.y+y;if(oy<0||oy>=384)continue;
       const uint32_t* r0=src+cy[y]*256;const uint32_t* r1=src+std::min(cy[y]+1,191)*256;
       for(int x=0;x<r.w;++x){
         const int ox=r.x+x;if(ox<0||ox>=512)continue;
+        // Most output pixels lie inside one DS pixel: copied, with no blend.
+        if(wx[x]>=256 && wy[y]>=256){out[oy*512+ox]=r0[cx[x]]&0xffffff;continue;}
         const int x1=std::min(cx[x]+1,255);
         const uint32_t top=mix(r0[cx[x]],r0[x1],wx[x]);
         out[oy*512+ox]=wy[y]>=256?top:mix(top,mix(r1[cx[x]],r1[x1],wx[x]),wy[y]);
@@ -155,13 +160,27 @@ void ds_compose(uint32_t* out,const DsArrangement& a,const uint32_t* top,const u
       for(int x=0;x<256;++x)row[2*x]=row[2*x+1]=background[y*256+x]&0xffffff;
       std::copy_n(row,512,row+512);
     }
-  }else for(int y=0;y<384;++y)for(int x=0;x<512;++x){
-    int sx=x/2,sy=y/2;unsigned r=0,g=0,b=0,n=0;
-    for(int dy=-2;dy<=2;dy+=2)for(int dx=-2;dx<=2;dx+=2){
-      uint32_t p=background[std::clamp(sy+dy,0,191)*256+std::clamp(sx+dx,0,255)];
-      r+=(p>>16)&255;g+=(p>>8)&255;b+=p&255;++n;
+  }else{
+    // A 3x3 box two DS pixels apart, darkened to two thirds. Separable: sums across, then down (the same nine pixels'
+    // sum), at DS resolution, each value doubled into a 2x2 block of the frame.
+    static uint32_t across[192][256][3];
+    for(int sy=0;sy<192;++sy)for(int sx=0;sx<256;++sx){
+      unsigned r=0,g=0,b=0;
+      for(int dx=-2;dx<=2;dx+=2){
+        const uint32_t p=background[sy*256+std::clamp(sx+dx,0,255)];
+        r+=(p>>16)&255;g+=(p>>8)&255;b+=p&255;
+      }
+      across[sy][sx][0]=r;across[sy][sx][1]=g;across[sy][sx][2]=b;
     }
-    out[y*512+x]=((r/n*2/3)<<16)|((g/n*2/3)<<8)|(b/n*2/3);
+    for(int sy=0;sy<192;++sy){
+      auto* row=out+sy*1024;
+      const auto* up=across[std::max(sy-2,0)];const auto* mid=across[sy];const auto* down=across[std::min(sy+2,191)];
+      for(int sx=0;sx<256;++sx){
+        const unsigned r=up[sx][0]+mid[sx][0]+down[sx][0],g=up[sx][1]+mid[sx][1]+down[sx][1],b=up[sx][2]+mid[sx][2]+down[sx][2];
+        row[2*sx]=row[2*sx+1]=((r/9*2/3)<<16)|((g/9*2/3)<<8)|(b/9*2/3);
+      }
+      std::copy_n(row,512,row+512);
+    }
   }
   pd_canvas c;pd_canvas_init(&c,512,384,out);
   auto frame=[&](DsRect r){
@@ -172,7 +191,16 @@ void ds_compose(uint32_t* out,const DsArrangement& a,const uint32_t* top,const u
   if(!a.floating&&!fullTop)blit(top,a.top);
   if(a.floating){
     if(overlay)overlay(out);
-    pd_dim(&c,130);frame(a.touch);
+    // Dim what stays in view around the popup (it covers its own rect whole): pd_dim's sums, by region.
+    auto dim=[&](int x,int y,int w,int h){
+      if(w<=0||h<=0)return;
+      pd_canvas part;pd_canvas_init(&part,w,1,out);
+      for(int row=y;row<y+h;++row){part.px=out+row*512+x;pd_dim(&part,130);}
+    };
+    const DsRect t=a.touch;
+    const int ty=std::clamp(t.y,0,384),tb=std::clamp(t.y+t.h,0,384),tx=std::clamp(t.x,0,512),tr=std::clamp(t.x+t.w,0,512);
+    dim(0,0,512,ty);dim(0,tb,512,384-tb);dim(0,ty,tx,tb-ty);dim(tr,ty,512-tr,tb-ty);
+    frame(a.touch);
   }else if(a.touch.w>0&&a.top.w==512)frame(a.touch);
   if(!a.floating && overlay)overlay(out);
   blit(bottom,a.touch);
