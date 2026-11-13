@@ -62,6 +62,19 @@ interface CompanionSettings {
     fun setWildEncounters(percent: Int) {}
     val wildEncountersSupported: Boolean get() = false
 
+    /** FLY STYLE - see [com.pokedaisy.app.Prefs.flyStyleId]; [flyStyleSupported]: this game has FREE FLIGHT (Flight.kt). */
+    val flyStyle: FlyStyle get() = FlyStyle.CLASSIC
+    fun setFlyStyle(style: FlyStyle) {}
+    val flyStyleSupported: Boolean get() = false
+    /** FLIGHT AREA (where [flyStyleSupported]) - see [com.pokedaisy.app.Prefs.flightAreaId]. */
+    val flightArea: FlightAreaMode get() = FlightAreaMode.SEEN
+    fun setFlightArea(mode: FlightAreaMode) {}
+    /** MAKEOVER > FLY ON (where [flyStyleSupported]): the bird, or a vehicle with the player in it. */
+    val flightVehicle: com.pokedaisy.app.companion.data.FlightVehicle get() = com.pokedaisy.app.companion.data.FlightVehicle.BIRD
+    fun setFlightVehicle(v: com.pokedaisy.app.companion.data.FlightVehicle) {}
+    /** The first scenic FLY's question (ui.FlyStyleAsk) answered: CLASSIC switches, SCENIC / null (it timed out) keeps it. */
+    fun answerFlyStyle(style: FlyStyle?) {}
+
     /** REUSABLE TMS - see [com.pokedaisy.app.Prefs.reusableTms]; [reusableTmsSupported]: the ROM's code that uses a TM
      * up is known ([com.pokedaisy.app.companion.data.ReusableTms]). */
     val reusableTms: Boolean get() = false
@@ -87,9 +100,19 @@ interface CompanionSettings {
     val dsGpuAvailable: Boolean get() = true
     fun setDsResolution(scale: Int) {}
 
+    /** DS CORE ([com.pokedaisy.app.Prefs.dsCore]): null when the game isn't a DS one (no row); taken at the game's next
+     * start. [dsMelonDs]: the game runs on melonDS - on DSperate DS RESOLUTION and DS CPU BOOST are greyed out. */
+    val dsCore: DsCore? get() = null
+    fun setDsCore(core: DsCore) {}
+    val dsMelonDs: Boolean get() = true
+
     /** DS CPU BOOST ([com.pokedaisy.app.Prefs.dsCpuBoost]): null when the game isn't a DS one (no row). */
     val dsCpuBoost: Boolean? get() = null
     fun setDsCpuBoost(on: Boolean) {}
+
+    /** DS TOUCH SCREEN ([com.pokedaisy.app.Prefs.dsTouchFill]): null when there's no row (not a DS game on two screens). */
+    val dsTouchFill: Boolean? get() = null
+    fun setDsTouchFill(on: Boolean) {}
 
     /** DS LAYOUT ([com.pokedaisy.app.Prefs.dsLayout]): null when there's no row (not a DS game, or one on two screens). */
     val dsLayout: DsLayout? get() = null
@@ -118,6 +141,9 @@ interface CompanionSettings {
     fun setPlayerLook(look: String?) {}
     /** A PLAYER LOOK pick's name as the row and its tile show it (a hero's, or a Pokémon's in the game). */
     fun playerLookLabel(name: String): String = com.pokedaisy.app.companion.data.LookChar.byName(name)?.label ?: name
+    /** MAKEOVER > RIDE ON (where [playerLookSupported]): the game's bike, or one of our vehicles in its place. */
+    val rideVehicle: com.pokedaisy.app.companion.data.RideVehicle get() = com.pokedaisy.app.companion.data.RideVehicle.BIKE
+    fun setRideVehicle(v: com.pokedaisy.app.companion.data.RideVehicle) {}
     /** RIVAL LOOK: the rival of the other gender ([rivalLookSupported]: Emerald, Ruby, Sapphire) dressed up with the player. */
     val rivalLookSupported: Boolean get() = false
     val rivalLook: Boolean get() = true
@@ -236,6 +262,13 @@ interface CompanionSettings {
     /** SETTINGS > DISCORD: opens PokeDaisy's Discord server ([Discord.URL]) in the browser or the Discord app. */
     fun openDiscord() {}
 
+    /** The running game is one its makers asked PokéDaisy not to read ([com.pokedaisy.app.companion.data.BlockedGames]):
+     * SETTINGS shows the emulator's rows only. */
+    val gameBlocked: Boolean get() = false
+
+    /** Opens a web link ([url]) in the browser - a blocked game's button ([com.pokedaisy.app.companion.data.BlockedAction]). */
+    fun openUrl(url: String) {}
+
     /** Whether battle-only strategic hints (move effectiveness chips, foe
      * Weak-to/Resists/Immune-to) are shown — see [Prefs.showHints]. */
     val showHints: Boolean
@@ -262,6 +295,13 @@ interface CompanionSettings {
     /** BATTLE VIEW - see [com.pokedaisy.app.Prefs.battleInfoFirst]. */
     val battleInfoFirst: Boolean get() = false
     fun setBattleInfoFirst(on: Boolean) {}
+    /** BATTLE VIEW > SUGGESTIONS - see [com.pokedaisy.app.Prefs.battleSuggestionsFirst]. */
+    val battleSuggestionsFirst: Boolean get() = false
+    fun setBattleSuggestionsFirst(on: Boolean) {}
+
+    /** CHALLENGE ICONS - see [com.pokedaisy.app.Prefs.raIcons]. */
+    val raIcons: Boolean get() = true
+    fun setRaIcons(on: Boolean) {}
 
     /** ONE-TAP MOVES - see [Prefs.oneTapMoves]. */
     val oneTapMoves: Boolean get() = false
@@ -606,6 +646,34 @@ enum class FfMusicMode(val label: String) {
 
     /** Silent. */
     OFF(tk("OFF")),
+}
+
+/** SETTINGS > FLIGHT AREA: where FREE FLIGHT and the scenic FLY may go (companion.data.FlightArea). [label] stays English. */
+enum class FlightAreaMode(val id: Int, val label: String) {
+    /** Only over maps the player has seen: the save's towns, the routes between them, maps with a beaten trainer, every map stood on. */
+    SEEN(0, tk("VISITED")),
+
+    /** Anywhere the game's world goes; RetroAchievements pause from the first take-off. */
+    ANYWHERE(1, tk("ANYWHERE")),
+    ;
+
+    companion object {
+        fun of(id: Int): FlightAreaMode = entries.firstOrNull { it.id == id } ?: SEEN
+    }
+}
+
+/** SETTINGS > FLY STYLE: how the companion's FLY (MAP, QUICK MENU) gets there. [label] stays English; the row translates it. */
+enum class FlyStyle(val id: Int, val label: String) {
+    /** The game's own cut-in, flight and landing. */
+    CLASSIC(0, tk("CLASSIC")),
+
+    /** Up on the bird and over the field to the town (companion.data.ScenicFly), the view zoomed out on EXPAND. */
+    SCENIC(1, tk("SCENIC")),
+    ;
+
+    companion object {
+        fun of(id: Int): FlyStyle = entries.firstOrNull { it.id == id } ?: CLASSIC
+    }
 }
 
 /** SETTINGS > BATTLE STYLE: the battle controls' look. [label] stays English; the rows translate it. */

@@ -570,7 +570,7 @@ static void draw_list(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w
         cy += 4;
     }
     pd_unclip(c);
-    ui_scroll_bar(c, x + w - 4, y, h, ui->guideScroll, total, PD_MUTED);
+    ui_list_rail(ui, c, x + w, y, h, ui->guideScroll, total);
 }
 
 static int draw_pages(struct pd_ui* ui, struct pd_canvas* c, const char* const* labels, int count) {

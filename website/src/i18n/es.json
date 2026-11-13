@@ -367,5 +367,13 @@
   "Your trainer card, drawn like the game's, front and back.": "Tu ficha de entrenador, dibujada como la del juego, por delante y por detrás.",
   "n/a": "n/a",
   "Nothing matches.": "No hay resultados.",
-  "Search games": "Buscar juegos"
+  "Search games": "Buscar juegos",
+  "PokeDaisy docs": "Manual de PokeDaisy",
+  "ALL PAGES": "TODAS LAS PÁGINAS",
+  "DOCS HOME": "INICIO DEL MANUAL",
+  "ON THIS PAGE": "EN ESTA PÁGINA",
+  "TIP": "CONSEJO",
+  "NOTE": "NOTA",
+  "HEADS UP": "ATENCIÓN",
+  "Something wrong or missing here? <a href=\"{edit}\">Edit this page on GitHub</a> or <a href=\"{bug}\">tell us</a>.": "¿Algo está mal o falta? <a href=\"{edit}\">Edita esta página en GitHub</a> o <a href=\"{bug}\">avísanos</a>."
 }

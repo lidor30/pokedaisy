@@ -20,6 +20,12 @@ this package, same signer, newer version (`AppUpdateFlow.isOurUpdate`); the webs
 escaped (`website/src/lib/releases.js`, `website/test/releases.test.js`); workflow actions are pinned to
 commit SHAs. `CoopLinkActivity` is exported for `pokedaisy://coop/<ticket>` only: it passes a `CoopInvite.parse`d ticket to the unexported Settings, nothing else.
 New bundled code / fonts / data go into NOTICE and the LICENSES page (`licensesAsset`).
+**Blocked games** (`companion/data/BlockedGames.kt`, 2026-11-12; Ghost Grey, at its developer's request): a list by SHA-1 and CRC32,
+each with its reason and an optional link button. In a release a listed game plays as a plain game: the companion shows `BlockedView`
+(no picker, no BEST EFFORT, no ASK FOR SUPPORT), the activity turns off EXPAND, the field reads, the game-option patches, the makeover
+and the field items (`romBlocked`), the library tags it BLOCKED (black) and INFO says why; the site leaves it out. The support code stays.
+A new entry: its hashes, CRCs, sizes, reason (+ its
+eight translations in TrCompanion), the manual's "Games removed at their makers' request" and ROM_FEATURES' row.
 
 **Co-op link** (`companion/coop/`; docs/DEVELOPMENT.md's "Co-op connection"): pure Kotlin, no native code - `RelayCoopTransport` over
 our own WebSocket relay (`server/coop-relay/`, a separate Kotlin / JVM program on Java-WebSocket, never in the APK; its README covers deploying it) plus direct
@@ -159,7 +165,12 @@ species2/level2/item2 too, and zero padding is harmless since 0x00 is `nop`).
 
 A homebrew 3DS build, early preview (see `3ds/README.md`): a portable C core (`3ds/core/`) re-implements
 the companion's reads (addresses generated from `gamedata/`: `pd_configs_gen.h`; decoding from `Gen3Mon.kt` - keep in sync) and
-draws it at 320x240 in the OPTION look; `3ds/ctr/` runs it beside libmgba (the same submodule). Its
+draws it at 320x240 in the OPTION look; `3ds/ctr/` runs GBA games on armGBA (`third_party/armgba`, ratherDashing's 3DS
+fork at `3ds-v0.0.2-alpha`: a recompiler; MPL-2.0, its GPL-2.0-only Gambatte left out, `3ds/emu/gb_none.c`) and Game Boy
+games on libmgba (the same submodule). armGBA sits behind mGBA's own `struct mCore` (`3ds/emu/pd_armgba_core.c`), so the
+shared C (`pk_wide.c`, `linux/*.c`) needs no change for it; the app's `pk_call.c` / `pk_host.c` / `pk_cheats.c` are built
+as `*_mgba` there and `3ds/emu/pd_dispatch.c` picks. Code that reaches into mGBA's CPU or renderer checks `pd_armgba_is()`
+first; armGBA's renderer can't be hooked (`pk_wide.c`'s `lineHookless`). 3ds/README.md's "Sound and speed" has the numbers. Its
 tables, font, map layouts, guides (`Guide*.kt` + `GuideAreas*Gen.kt`, by a Kotlin-subset parser in
 `tools/gen_guide.py`) are generated from the app's (`make -C 3ds tables`). Look at UI changes with `make -C
 3ds preview` (PNGs from the RAM fixtures); `make -C 3ds azahar-test` boots the real `.3dsx` in the
@@ -182,33 +193,25 @@ upside down / rotated in Azahar, so don't go back to them without checking on ha
 
 ## Linux port (`linux/`)
 
-An SDL2 host for Linux handhelds (Keegan Whitacre's, from his `keeganwhitacre/pokedaisy-brick` fork, whose `pocket/`
-has much more: Polished Crystal, the summary pages, NextUI power handling): the pinned mGBA core plus the 3DS port's
-C companion (`3ds/core/`), so a companion change for 3DS shows here too and the other way round. Its canvas follows
-the screen (`companion_size`: the largest whole scale keeping 320x240, so 426x240 at 3x on 1280x720); PARTY is
-Android's `PartySlot` ported (`pd_ui_party.c`), and the host's D-pad focus reaches the core as `pd_ui.focusId` so a
-slot shows its own selected look instead of the focus ring. Controllers hotplug (`controller_added` / `_removed`, mappings
-from `DATA/gamecontrollerdb.txt` or `SDL_GAMECONTROLLERCONFIG`); `package.py --portmaster` + `linux/portmaster/PokeDaisy.sh`
-make a PortMaster port (ROCKNIX & co., untried on a device; `test_portmaster.py` runs it against a stand-in PortMaster). Y opens
-the QUICK MENU (`linux/quick_menu.c`: QuickMenu.kt's RING / GLASS look, drawn into an ARGB canvas over the running game):
-WILD ENCOUNTERS (the game's own switch, found by `linux/wild.c` - a C port of `WildEncounters.find`'s agbcc / CFRU
-shapes - and held by pk_wide.c's `pk_field_state`; `settings.wildOff`), SAVE / LOAD STATE, FF, COMPANION, and PC /
-FLY / REPEL / BIKE (`linux/fly.c`, `linux/field_items.c`: Fly.kt, FieldItems.kt's useFieldItem, Pc.kt and KeyItems.kt
-in C over pd_config's `fly*` / `field*` / `pc*` fields from the `FIELD_ITEMS_*` records - the target's `records = {
-items = ... }` - and the game's own functions through `pk_call`, moved out of pokedaisy_jni.c into
-`app/src/main/cpp/pk_call.c` for both; the party / bag from the snapshot, "on the field" from pk_wide's scene, which the
-host reads in ORIGINAL too; BIKE presses SELECT for the game). `linux-runtime-test` uses each on FireRed, LeafGreen
-and Emerald and checks the result (a Repel / FLY taught to the save through the game's AddBagItem / SetMonData where it
-lacks one). The HUD (`linux/hud.c`, SETTINGS > HUD, `settings.hud` / `hudHidden`) is FieldHud's CORNERS / GLASS with only
-the parts a player reads (PARTY, MINIMAP, POKé BALLS, REPEL STEPS: the buttons are the quick menu's without touch),
-redrawn only when `hud_key` changes. TAB BAR (`settings.tabBar`, at most 5, the rest under a MORE chip; CARD also
-from SETTINGS) and the scrolling SETTINGS list are the core's, so the 3DS has them too. It adds no game data of its own (addresses come from `3ds/core/`). Build and test in a Linux container or
-VM: `cmake -S linux -B linux/build && cmake --build linux/build && ctest --test-dir linux/build`; `linux-runtime-test
-ROM DATA OUT` boots a real ROM + save (DATA/saves/<rom file name>.sav) to the field and screenshots PARTY / the
-summary. Saves are backed up into `saves/pokedaisy-backups/` like Android's (`pocket_save_backup`, newest 10
-distinct); states carry no save data, so loading one never writes the save. Keep a copy of the ROM's bytes rather
-than mGBA's ROM block pointer: a GPIO write (FireRed) swaps the mapping. CI: `.github/workflows/linux.yml` (x86_64
-native, AArch64 under QEMU with the checksum-pinned TrimUI toolchain).
+`pokedaisy-linux` (`linux/main.c`) is an SDL2 **libretro frontend** for Linux desktops and handhelds (Steam Deck,
+TrimUI, PortMaster): it links no emulator and loads the core for the ROM from beside itself - `pokedaisy_gba_libretro.so`
+(`.gba`, armGBA, `libretro/armgba/`) or `pokedaisy_gbc_libretro.so` (`.gb` / `.gbc`, mGBA, `libretro/`; `POCKET_CORE_DIR` to
+move them) - so the companion, HUD, quick menu, FLY / PC / REPEL / BIKE, WILD ENCOUNTERS and EXPAND are the cores' own and
+never drift from them (the old host carried its own copy of each and fell behind; replaced 2026-11-10). The shared C
+those cores build - `linux/hud.c`, `quick_menu.c`, `fly.c`, `field_items.c`, `wild.c`, `3ds/core/` (the 3DS port's companion,
+so a companion change for 3DS shows in the cores too) - stays in `linux/`. The host tells the core the screen (its
+`pokedaisy_panel` option, any `WxH`; the core picks its canvas) and shows the frame at a whole scale, and owns what a frontend
+owns: input (keyboard, SDL controllers with hotplug and mappings from `DATA/gamecontrollerdb.txt` / `SDL_GAMECONTROLLERCONFIG`,
+the TrimUI raw fallback, the HOTKEYS page's buttons, the touch screen / mouse as RETRO_DEVICE_POINTER), sound
+(resampled to keep ~60 ms queued), pacing (the screen at 58-62 Hz, else a timer), the battery save (`DATA/saves/<rom>.sav`,
+written back when it changes, backed up before a game opens: newest 10 distinct), states (`DATA/states/<rom>.ss`, armGBA's
+`.armgba.ss`), fast-forward (sound sped up), rewind (XOR deltas from the newest state in a byte budget), the LCD mask and the game
+list, with a host menu on START+SELECT / Guide / Escape (`DATA/host.ini`; its HOTKEYS page: FF / rewind / state buttons, `hk_*`). It answers the core's GET_THROTTLE_STATE so EXPAND
+stays sharp in FF. `linux-host-test` (`test_host.py`, with `-DPOCKET_TEST_CORES=<dir>`) runs the real binary headless on the
+diagnostic ROMs over both cores. `package.py --core` ships the cores beside the binary (`--portmaster`: the PortMaster layout).
+CI (`.github/workflows/linux.yml`): x86_64 on Ubuntu 22.04 (glibc <= 2.35: SteamOS), AArch64 host + mGBA core on the TrimUI
+toolchain (GCC 8.3), the armGBA core on Ubuntu 22.04's cross GCC (8.3 can't build it), every aarch64 core failing CI if it needs a
+glibc past 2.33 (the Brick; `libretro/armgba/glibc_compat.*` pins armGBA's to 2.17). The DS experiment hook (`pd_ds_run`) is kept.
 **DS on Linux** (opt-in, `-DPOCKET_DSPERATE=ON`; Keegan's, 2026-10-28; `linux/dsperate/README.md`): `.nds` games on the
 DSperate core (`third_party/dsperate`, unmodified), its own event loop (`frontend.cpp`), a read-only Platinum USA rev 1
 companion (`companion.cpp`, Gen4Reader.kt's rules), the shared quick menu and party HUD. It builds the app's
@@ -713,6 +716,16 @@ panel locked at half the screen sideways, `SidePanel.setDsScreen`, the dock unde
 `_HEARTGOLD`, pages from the cart); GUIDE on both (`GuidePlatinum.kt`, `GuideHeartGold.kt` over `Gen4World`:
 `scripts/gen_gen4_guide.py` writes the wild sets, boss teams and HERE's items from the decomps; gym leaders go by badge -
 HG / SS clears the leaders' trainer flags for rematches; `readGen4Progress` adds the badges and the DS clock's hour).
+**DSperate, the second DS core (DS CORE, SCREEN group on both screens, `Prefs.dsCore` AUTO / MELONDS / DSPERATE, NEW tag;
+2026-11-10)**: `third_party/dsperate` (the Linux port's submodule) is built into the APK too, for weak devices (AUTO = DSperate
+where `DevicePerformance.looksWeak` or a 32-bit process: `companion/DsCoreSettings.kt`). `nds/pk_nds_core.cpp` hands pk_nds.h's
+calls to `pk_nds.cpp` (`pk_ndsm_*`) or `pk_nds_dsp.cpp` (`pk_ndsd_*`); a new pk_nds call goes in `pk_nds_cores.h`'s list and
+both cores. `nds/dsperate.cmake` makes the NDK fixes in the build directory, never in the submodule (the Linux port builds it
+unmodified; a moved line fails the configure). On DSperate EXPAND, DS RESOLUTION, PC / FLY calls, STEADY and DS CPU BOOST are
+off and greyed out (`PokeDaisyActivity.dsperate`). States never cross cores (`pk_nds_state_matches_save` 2; the other core's
+resume is parked, `SaveStates.parkedResume`). Headless: `native-capture/dsp_dump` (nds_dump's commands, arm64 Linux only), which
+can't show 32-bit ARM's alignment faults: a byte buffer cast to `u16*` / `u32*` in DSperate's NEON code faulted on a Galaxy Tab A
+(fixed in the build copy, docs/DEVELOPMENT.md); try a new DSperate on a 32-bit device. HeartGold there: DSperate 60 fps, melonDS 16.
 **French DS carts (2026-11-06)**: Platinum rev 0, HeartGold / SoulSilver, Black, White (`CPUF`, `IPKF`, `IPGF`, `IRBF`, `IRAF`): the US builds at other addresses, each run headless beside its US
 cart with one script; everything but the addresses is shared. Another language: `scripts/port_nds_fns.py` (functions matched by structure and call anchors, wrong = 0 on
 every known pair: `--check scripts/port_nds_fns_known.txt`, `scripts/test_port_nds_fns.py`; an UNRESOLVED hint is a lead to check live,
@@ -746,6 +759,10 @@ the Poller): its types (Fairy = 9), moves, chart, TMs, icon palettes and wild ra
 never bundled), names from its text as every DS cart's, its art under `nds/renegade/`; no GUIDE (`Guide.kt`). Its Classic patch
 differs only in `pl_personal.narc` and matches the same check. Fixtures `renegade_platinum(_battle)`; docs/DEVELOPMENT.md's
 "Renegade Platinum".
+**Blaze Black 2 / Volt White 2 Redux v1.4.1 (2026-11-12)**: the same path on Black 2 / White 2 (`Black2Redux`, `black2Redux`,
+`GEN5_*2_REDUX`, `NdsArt.readRedux`, art under `nds/redux/`, eight builds: + Classic / EVless / Classic EVless). Told apart by
+battle overlay 167's load address in the overlay table (cart 0xA02E4); its chart opens that overlay (Fairy = Gen 5's 17, which
+`gen5Type` maps to 9 for every Gen 5 read). Retail saves load in them. No GUIDE. docs/DEVELOPMENT.md's "Blaze Black 2 Redux".
 **DS LAYOUT (one screen held sideways, 2026-11-01; SETTINGS > SCREEN on both screens, `Prefs.dsLayout`, NEW tag)**: ONE SCREEN
 (default) / SIDE BY SIDE / LARGE + SMALL / PICTURE IN PICTURE / STACKED, picked from drawn miniatures (`DsLayoutPicker`); the
 stage places the screens (`GameStageLayout.dsArrange`, `DsLayouts.arrange`, edge to edge) over the game's own picture (`DsShots`:
@@ -1310,6 +1327,10 @@ docs/DEVELOPMENT.md's "WIDE on the Game Boy".
 attributes per tile id from the tileset's own bank, 256 blocks with no wrap, LZ-compressed blocks (a connected map goes through
 `gbLz`), 5-byte object sprites with no palette. `widecheck` proved it on a sweep of every map, warped to by poking the game's own
 `warp`: docs/DEVELOPMENT.md's "WIDE on the Game Boy".
+**EXPAND on Polished Crystal (2026-11-12)**: 3.2.3's normal build only (CRC32 `f98367e4`), Keegan's profile from the libretro core, now
+reached the same way by every build: `pk_wide_gb_knows` / `_configure` answer for that CRC with `pcWideConfig`
+(`pk_wide_gb_polished_tables.h`, from the release's `.sym` by `scripts/gen_polished_wide.py`) and its LZ (`pk_wide_gb_polished_lz.inc`).
+Its battle transition is `hVBlank` 3 (Crystal's 1). docs/DEVELOPMENT.md's "WIDE on the Game Boy".
 **Transitions (2026-10-12, FireRed first)**: FireRed's map preview (a BG0 picture over the field on entering a forest /
 cave) dims the map around it, frame and margins (`overlayDim`; mGBA's output pixels carry their layer in the top byte,
 `fromBg`, so BG0's own pixels are left alone). **AUTO ZOOM IN** (SETTINGS on either screen, under ASPECT, shown only on EXPAND; `Prefs.expandZoomOnText`, ON):
@@ -1665,7 +1686,8 @@ the summary shows CROBAT as No. 067), region map, EXPAND, field reads or field i
 its own config (`[config.team_rocket_v3]`) and tables (`gen_expansion_tables.py team_rocket_v3`, Spanish charmap). Its bag's eight
 pockets show as eight tabs (`activePocketOrder`, `TEAM_ROCKET_V3_BAG_POCKET_ORDER`, `POCKET_MEGA_STONES`); DEX from its gSpeciesInfo
 (1-1062); seven region maps (RomArt's `TR3_*`, a section's map picked by its id range, `region_maps` in the generator). No EXPAND,
-field reads or field items.
+field reads or field items. v3.1 (2026-11-12, `NATIVE_TEAM_ROCKET_V3_1`) is the same RAM and tables, its ROM moved (`gen_expansion_tables.py team_rocket_v3_1` checks the tables
+equal, `same_as`).
 **Wishes of Tomorrow 1.2.6 (2026-10-22)** (`GameKind.WISHES`, `NATIVE_WISHES`): FlatFoot Labs' closed BPEE build (32 MB) on
 pokeemerald-expansion 1.15.3 (its RHHEXP block). No save existed: two new games played headless (randomizer off / on), party,
 bag and dex flags given through its own script commands (`callnative ScrCmd_createmon` 0x0A200DD5; FLAG_SYS_POKEMON_GET 0x880:
@@ -1927,11 +1949,29 @@ instructions, else through its callers' BLs (votes), else small ones by their RA
 expansion renumbered MON_DATA (MOVE1 20; IS_EGG 54 Heart and Soul / 52) - `FlyFns.monMoveField` / `monEggField`;
 Heart and Soul gates FLY with gFieldMoveInfo's IsFieldMoveUnlocked_Fly / SetUpFieldMove_Fly. SoulGold too (four builds,
 `fieldItemsCandidatesForGame` lets the CRCs pick; MOVE1 / IS_EGG 21 / 55; its GetMapsecType takes the section - 0xC3, its
-PC is special 71). Not done:
-Seaglass, TMT2, Mariomon, Recharged Yellow, Quetzal, R.O.W.E., Rogue (the same method, one game at a time), Celia. The button is the party menu's field-move
+PC is special 71). Seaglass (Lazarus's table ported, PC too) and TMT2 (expansion 1.12.3: functions matched by
+instruction sequence against that tag's build, then checked; FLY only), R.O.W.E. and Mariomon 1.5.x (retail's table ported;
+R.O.W.E.'s CB_ExitFlyMap switch decoded) and Quetzal Alpha 9 (Hoenn's towns; its own badge check as the flag check) since
+2026-11-11. Rogue refuses FLY in its own party menu: none there. Not done: Mariomon 1.2.x / 1.3, Recharged Yellow, Celia. The button is the party menu's field-move
 blue (`OptionColors.fieldMove` / `fieldMoveLayers`), under PLACES; the map buttons sit top right on every map (Emerald-style maps had them bottom left, over Hoenn) but Heart and
 Soul's and R.O.W.E.'s (`BOTTOM_ROW_MAPS`: land and routes fill their top right), which get one row along the bottom left,
 on the sea left of the label window - checked on all three of R.O.W.E.'s maps (ui-preview `rowe-map-region*`).
+**FREE FLIGHT + the scenic FLY** (2026-11-10, retail FireRed rev 1 and Emerald; then FireRed rev 0, LeafGreen, Ruby / Sapphire, every language (port_field_items.py's port_flight), the randomized builds, Emerald Legacy and the hacks on retail code - Radical Red, Unbound, Glazed, Ultra Violet, Orange Islands, Ghost Grey (its blank bird: the balloon, in greys), Let's Go, Odyssey, Gaia, Amethyst, Sword and Shield, GS Chronicles, Rocket Edition, Ash Gray, Emerald Kaizo (FLY over the map only: `classicFly` false, its warp crashed), and the expansion hacks Imperium, Lazarus, Heart and Soul, Seaglass, TMT2, R.O.W.E., Mariomon 1.5.x, Quetzal Alpha 9 and SoulGold's five builds (their following Pokemon removed at take-off and brought back once down: `followerRemove` / `followerUpdate`; SoulGold's 11-bit grid: `mapGridUndefined`); the player inanimate while up (fast movements' step anims ran past FireRed's table: Rocket Edition reset) - `flightAllowed`, docs/DEVELOPMENT.md's "Which games"; `pk_flight.c` after every frame, `Flight.kt`, `ScenicFly.kt`,
+`FLIGHT_FIRERED_REV1` / `FLIGHT_EMERALD` on `FieldItemFns.flight` - Emerald's from pret's `symbols` branch, its rider a sprite of its own; NEW tags `FREE_FLIGHT` / `SCENIC_FLY`; docs/DEVELOPMENT.md's section): TAKE OFF / LAND on the
+MAP tab, the QUICK MENU (`QuickAction.FLIGHT`) and the FREE FLIGHT hotkey; MAKEOVER > FLY ON (`FlightVehicle`, NEW tag `FLY_ON`) swaps the bird for our own balloon / helicopter / zeppelin / plane; MAKEOVER > RIDE ON (`RideOn.kt`, `RideVehicle`, `Prefs.rideVehicleId`, NEW tag `RIDE_ON`; `scripts/gen_ride_vehicles.py` -> `RideVehiclesGen.kt`) swaps the bike for a motorcycle / scooter: PLAYER LOOK's patch leaves the rider alone in the hero's bike sheets (`PlayerLookRunner.ride`: after the look's writes, their upper body from their standing frames, holes where front parts go, no pedalling) and the vehicle is a sprite of its own behind them in its own 15 colours (`RideOn.Sprite` on `Patch.ride` -> `MgbaCore.pkRideSet` / `pkRideShow`, pk_wide.c's ride: OBJ tiles 944-975 as one 32 x 64 sprite (the wheels reach below the rider's frame), its exhaust smoke a 16 x 8 sprite behind it (tiles 942-943, `PK_RIDE_BYTES`), their OAM entries right after the player's with the game's later shown ones moved down a place for the frame (its tyre tracks and grass effects were drawn over the wheels), only while `onBike`, rider and vehicle bobbed a pixel together - slow standing, quick moving; mgba_dump `rideset` / `rideon`). Taking off (TAKE OFF, the scenic FLY) gets off the bike first (`offBikeThen`) (the rider in a standing pose facing west, the whole picture mirrored going east - never mirror the rider again; from behind / the front in the balloon going up / down: `upDown`) (`scripts/gen_flight_vehicles.py` -> `pk_flight_vehicles.h`, the player's sprite in its seat); GAMEPLAY > FLIGHT AREA (`FlightArea.kt`, NEW tag `FLIGHT_AREA`): VISITED (default) flies only over maps the save has seen (kept per save, seeded from its towns, the routes between them and maps with a beaten trainer), ANYWHERE pauses RetroAchievements from the first take-off; the companion's GAMEPLAY > FLY STYLE CLASSIC / SCENIC (`Prefs.flyStyleId`, SCENIC by default; the first scenic landing asks
+KEEP IT / USE CLASSIC once, `FlyStyleAsk` in FeatureTip.kt where the tips show, `Prefs.flyStyleAsked`).
+No ROM patch: controls locked, held movements written into the player's ObjectEvent (no collision; nothing a step triggers runs), the player
+hidden with localId 127 (the game then skips its ground effects), the game's own FLY bird sprite at the player's fixed screen spot, a see-through
+shadow drawn into each finished frame (`pk_flight_draw`, undone line by line where mGBA didn't redraw the line); with EXPAND the diagonal staircase is glided out (`pk_wide.c` flyBegin: the view moves at the velocity the flight means,
+pulled toward the real camera; the window and the bird's OAM entry moved by the difference); diagonal steps quicker (8 / 6 / 4 / 2 frames a tile
+by a running balance) so diagonals match the straight speed; the bird keeps its side view on a diagonal; the map's name sign is held still
+(`flyLabel`); the grid's leftovers from FireRed's MoveMapViewToBackup mended once per map (`flMend`); no-fly stand-in maps (`FlightFns.noFly`:
+SaffronCity_Connection). Its state is
+in the game's RAM (that mark + the bird id in fieldEffectSpriteId), so states / REWIND taken in the air come back flying (`pk_flight_tick` adopts
+them; `syncFlight` re-sends the same words every half second, which change nothing). SCENIC: A* over the maps joined by connections, pulled into
+staircases, flown at WALK_FASTER with EXPAND at its widest step (`WideCamera.flightZoom`) and the game at `SCENIC_SPEED`; towns not joined to the
+player's map (Saffron, the Sevii Islands) fly the classic way. mgba_dump: `flighton` / `flight` / `flightroute` / `flightinfo`. A native build of
+mgba_dump on the Mac (no Docker) works: libmgba.a from `third_party/mgba` with cmake, then clang (2026-11-10, when Docker's VM kept crashing).
 **Bag favorites** (ITEMS): the star button beside USE in an item's description bar stars it for this ROM only
 (`FavoriteItems`, Compose state; `Prefs.favoriteItemsFor(crc)`, loaded in `loadRom`, item ids). Starred items come first
 in the DEFAULT order (bag order kept among them) and carry a gold star (`PixelIcons.star`, `OptionColors.favorite`) in
@@ -2260,7 +2300,9 @@ got its companion, 2026-10-09).
 The site's demos and art never use real Pokémon / move / item names or the games' art (the user's rule).
 **Website languages** (2026-11-07, website/README.md's "Languages"): the app's nine (EN / JA / KO / FR / DE / IT / ES / pt-BR / pt-PT),
 English at the root, the rest under `/<code>/` (`src/views/` drawn by `src/pages/` and `src/pages/[lang]/`); the manual and
-release notes stay English. Site text goes through `tr()` / `msg()` with its eight translations in `src/i18n/<code>.json`
+release notes stay English, but for pages translated in all eight (`docs/manual/translations/<code>/`, `/<code>/docs/<page>/`: the 3DS and
+Linux install guides, `3ds.md` / `linux-install.md`, whose GitHub copies `3ds/INSTALL*.md` / `linux/INSTALL*.md` are made from them by
+`website/scripts/install-guides.mjs`: its `GUIDES` list). Site text goes through `tr()` / `msg()` with its eight translations in `src/i18n/<code>.json`
 (same writing rules: no dashes), else `test/i18n.test.js` fails; Japanese needs `website/scripts/gen_site_jp_font.py` for a
 new character, Korean `website/scripts/gen_site_ko_font.py` for a new syllable. The picker's choice is `localStorage` `pd-lang`, else the browser's language (on English pages only).
 **Website analytics** (`website/src/lib/analytics.js`, website/README.md's "Analytics"): anonymous GA4 counts, no cookies, a fixed

@@ -62,7 +62,8 @@ class PerformanceGuardsTest {
             "EmulatorEngine must publish right after each pkRunFrame",
             // (DS LAYOUT's transition hold decides first whether that frame is shown: DsTransitionHold.)
             "MgbaCore.pkRunFrame()\n                onFrame?.invoke()" in engine ||
-                Regex("""MgbaCore\.pkRunFrame\(\)\n(\s*//[^\n]*\n)*\s*if \(nds\) stepDsHold\(\)\n\s*onFrame\?\.invoke\(\)""").containsMatchIn(engine),
+                // (DsFrameSkip takes the time the frame ended: a clock read, nothing that delays the publish.)
+                Regex("""MgbaCore\.pkRunFrame\(\)\n(\s*val coreEnd = System\.nanoTime\(\)\n)?(\s*//[^\n]*\n)*\s*if \(nds\) stepDsHold\(\)\n\s*onFrame\?\.invoke\(\)""").containsMatchIn(engine),
         )
         assertTrue("the activity must wire onFrame to the view's publish", "view.publishFrame()" in lambda(read("PokeDaisyActivity.kt"), "onFrame = {"))
     }

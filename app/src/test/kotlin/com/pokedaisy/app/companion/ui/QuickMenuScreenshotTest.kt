@@ -37,11 +37,12 @@ class QuickMenuScreenshotTest {
 
     @After fun reset() = setup.reset()
 
-    private class Actions(val onBike: Boolean = false, val wild: Int = 100) : QuickActions {
+    private class Actions(val onBike: Boolean = false, val wild: Int = 100, val up: Boolean = false) : QuickActions {
         override fun offered(action: QuickAction) = true
         override fun run(action: QuickAction) {}
         override fun flyTo(mapsec: Int, targets: FlyTargets) {}
         override fun riding() = onBike
+        override fun flying() = up
         override fun wildEncounters() = wild
     }
 
@@ -73,17 +74,23 @@ class QuickMenuScreenshotTest {
     @Test fun dimmed() = shot(moves = 1)
 
     /** On FLASH, which nobody knows: dimmed, saying why. */
-    @Test fun flash() = shot(moves = 2)
+    @Test fun flash() = shot(moves = 3)
 
     /** On FLASH in a dark cave, a party Pokémon knowing it (the tile only shows then). */
-    @Test fun flashDark() = shot(moves = 2, actions = object : QuickActions by Actions() {
+    @Test fun flashDark() = shot(moves = 3, actions = object : QuickActions by Actions() {
         override fun flashDark() = true
     }, snapshot = FieldHudScreenshotTest.snapshot.let { s ->
         s.copy(party = s.party.mapIndexed { i, m -> if (i == 1) m.copy(moves = m.moves + com.pokedaisy.app.companion.data.MoveView("FLASH", "Normal", 20, 0, id = 148)) else m })
     })
 
+    /** On TAKE OFF (FREE FLIGHT), which nobody can do here (no one knows FLY): dimmed, saying why. */
+    @Test fun takeOff() = shot(moves = 2)
+
+    /** In the air: TAKE OFF says LAND, the wings' arrow down. */
+    @Test fun land() = shot(moves = 2, actions = Actions(up = true))
+
     /** On the bike: the bag's own icon. */
-    @Test fun bike() = shot(moves = 4)
+    @Test fun bike() = shot(moves = 5)
 
     @Test fun whiteGlass() = shot(FieldHudLook.WHITE_GLASS, moves = 4)
 

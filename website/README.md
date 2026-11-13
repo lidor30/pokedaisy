@@ -25,7 +25,10 @@ The site comes in every language the app's own text does (English, Japanese, Kor
 Portuguese for Brazil and for Portugal), which covers every language a supported ROM comes in. English lives at
 the root (`/compatibility/`), the others under a prefix (`/fr/compatibility/`, `/pt-br/`, `/pt/`): each page's
 body is a view in `src/views/`, drawn once per language by `src/pages/` (English) and `src/pages/[lang]/`. The
-manual (`/docs/`) and the release notes stay English.
+manual (`/docs/`) and the release notes stay English, but for the few manual pages that have translations
+(`docs/manual/translations/<code>/<page>.md`, today the 3DS and Linux install guides): those are drawn at `/<code>/docs/<page>/`
+by `src/pages/[lang]/docs/[slug].astro`, link to each other (the page's language row, the picker, hreflang) and are
+checked like the manual (`test/docs.test.js`). The docs API and the app's HELP stay English.
 
 Text is looked up by its English, like the app's `tr()`: `const tr = trFor(Astro.url)`, then `tr('ROM CHECK')`, or
 `msg('...')` to mark a string kept in a table (`src/lib/gamePages.js`) that's translated where it's drawn. Each

@@ -3,7 +3,7 @@ title: The companion at a glance
 summary: What the bottom screen shows, how the tab bar works, and what the companion's SETTINGS tab holds.
 section: companion
 order: 1
-keywords: [bottom screen, second screen, tabs, tab bar, overview, back button, click, sound, language, translation, close, restart, reset, gear, more, apps, hidden tabs, extra tabs, grid, player look, hero, heroine, protagonist, character, outfit, costume, skin, sprite, play as, tips, hints, feature tips, popup]
+keywords: [bottom screen, second screen, tabs, tab bar, overview, back button, click, sound, language, translation, close, restart, reset, gear, more, apps, hidden tabs, extra tabs, grid, player look, hero, heroine, protagonist, character, outfit, costume, skin, sprite, play as, fly on, balloon, hot air balloon, helicopter, zeppelin, airship, blimp, vehicle, ride, tips, hints, feature tips, popup]
 ---
 
 The companion is everything on the bottom screen while a game runs. It reads your game as you play, so your party, bag, location and battles are always up to date without opening a single menu on the top screen. It's drawn in the game's own menu style: FireRed's party screen in FireRed, Emerald's in Emerald, and each supported hack's own look where it has one.
@@ -73,11 +73,11 @@ The gear opens the companion's SETTINGS, laid out like FireRed's OPTION screen. 
 
 The options come in groups, the ones you change while playing first:
 
-- **MAKEOVER**: `PLAYER LOOK`, `RIVAL LOOK`, `TEXT LOOK`, `FOLLOWER` and `DAY AND NIGHT`, fresh looks for your game. It sits at the top in a blue frame of its own, and only shows in a game it works in. See [MAKEOVER](#makeover) below.
+- **MAKEOVER**: `PLAYER LOOK`, `RIVAL LOOK`, `TEXT LOOK`, `FOLLOWER`, `FLY ON`, `RIDE ON` and `DAY AND NIGHT`, fresh looks for your game. It sits at the top in a blue frame of its own, and only shows in a game it works in. See [MAKEOVER](#makeover) below.
 - **FF / SPEED**: `FF`, `FF SPEED`, `GAME SPEED`, `REWIND` and `SPEED OPTIONS` (a page with `SCENE SPEEDS`, `FF MODE` and `FF MUSIC`). See [Fast-forward](fast-forward.md).
-- **GAMEPLAY**: `WILD ENCOUNTERS`, `INSTANT TEXT`, `REUSABLE TMS`, `TRADE EVOS`, `SHINY ODDS`, `NUZLOCKE`, `AUTO-RUN`, `RUN INDOORS` and `CHEATS`. See [Controls](controls.md), [Party](party.md#trade-evolutions), [Bag](bag.md), [Nuzlocke](nuzlocke.md) and [Cheats](cheats.md).
+- **GAMEPLAY**: `WILD ENCOUNTERS`, `INSTANT TEXT`, `FLY STYLE`, `FLIGHT AREA`, `REUSABLE TMS`, `TRADE EVOS`, `SHINY ODDS`, `NUZLOCKE`, `AUTO-RUN`, `RUN INDOORS` and `CHEATS`. See [Controls](controls.md), [Party](party.md#trade-evolutions), [Bag](bag.md), [Nuzlocke](nuzlocke.md) and [Cheats](cheats.md).
 - **SCREEN**: `ASPECT`, `HUD`, `DISPLAY OPTIONS` (a page with `STATUS BAR`, `SHADERS`, `OVERLAY` and `LIGHT COMPANION`), `THEME`, `DARK MODE`, `FPS / CPU` and, depending on your device, `BATTLE BUTTONS`, `COMPANION VIEW`, `COMPANION BUTTON`, `SWAP SCREENS` or `SINGLE SCREEN`. See [Screen and display](screen.md).
-- **COMPANION**: `BATTLE INFO`, `BATTLE HINTS`, `BATTLE VIEW`, `ONE-TAP MOVES`, `BATTLE STYLE`, `FOE IVS`, `BATTLE FOCUS`, `TAB BAR`, `CLICK SOUND` and `TWEAKS`.
+- **COMPANION**: `BATTLE INFO`, `BATTLE HINTS`, `BATTLE VIEW`, `ONE-TAP MOVES`, `BATTLE STYLE`, `FOE IVS`, `BATTLE FOCUS`, `TAB BAR`, `CLICK SOUND`, `CHALLENGE ICONS` and `TWEAKS`.
 - **CONTROLS**: `GAME BUTTONS`, `HOTKEYS`, `QUICK MENU` and `TOUCH CONTROLS`. See [Controls](controls.md).
 - **APP**: `TIPS`, `LANGUAGE` and `HELP` (this manual).
 
@@ -98,7 +98,7 @@ Every option is explained in the [Settings reference](settings-reference.md). Th
 
 ### MAKEOVER
 
-`MAKEOVER` is the group at the top of SETTINGS, framed in blue: it brings fresh looks into the game you're playing, with `PLAYER LOOK`, `RIVAL LOOK`, `TEXT LOOK`, `FOLLOWER` and `DAY AND NIGHT` below. It only shows in a game where one of them works.
+`MAKEOVER` is the group at the top of SETTINGS, framed in blue: it brings fresh looks into the game you're playing, with `PLAYER LOOK`, `RIVAL LOOK`, `TEXT LOOK`, `FOLLOWER`, `FLY ON`, `RIDE ON` and `DAY AND NIGHT` below. It only shows in a game where one of them works.
 
 ### PLAYER LOOK
 
@@ -134,6 +134,18 @@ With `FOLLOWER` on, the first Pokémon in your party walks a step behind you on 
 
 Its sprite comes from a game whose Pokémon follow you (Heart and Soul, R.O.W.E., Recharged Yellow or Emerald Seaglass), like the Pokémon you can wear with `PLAYER LOOK`, so the row shows `N/A` until one of those has been played here or is in your library. It's off to start with, and games whose Pokémon already follow you don't have it.
 
+
+### RIDE ON
+
+`RIDE ON` swaps your bike for a `MOTORCYCLE` or a `SCOOTER`. Get on your bike as usual and you ride the one you picked instead, seen from the side, from the front and from behind like the game's own bike, and you stop pedalling. A little smoke puffs out of the exhaust behind you, more of it while you ride. `BIKE` is the game's own.
+
+It works in FireRed, LeafGreen, Ruby, Sapphire and Emerald (both of Emerald's bikes), and in the hacks where `PLAYER LOOK` works. It keeps its own colours whoever rides it, and it goes along with `PLAYER LOOK`: another game's hero rides it too. Your game and your save don't change, and your pick is the same in every game.
+
+### FLY ON
+
+`FLY ON` picks what carries you when you [fly over the map](map.md#flying-over-the-map) with `TAKE OFF`, or fly to a town the scenic way: your Pokémon's bird (`BIRD`, the game's own), an `AIR BALLOON`, a `HELICOPTER`, a `ZEPPELIN` or a small `PLANE`. You ride in it, your head and shoulders showing over the basket, through the cockpit glass or the gondola's window, and it comes in empty to pick you up and flies off empty after you land. You face the way you fly, left or right; in the balloon you also turn your back going up and face the front going down. The burner flickers, the rotors spin and the propellers turn; the helicopter, the zeppelin and the plane lean a little as they turn, and the balloon floats upright.
+
+The vehicles are drawn by PokeDaisy over the game, so your game and your save don't change. The row shows in the games that have `TAKE OFF`, it starts on `BIRD`, and your pick is the same in every game. Changing it in the air swaps your ride at once. The game's own flying animation (`FLY STYLE` set to `CLASSIC`) keeps its bird.
 ### DAY AND NIGHT
 
 With `DAY AND NIGHT` on, the map follows your device's clock: a soft pink at dawn, the game's own colours by day, an orange glow at dusk and a deep blue at night. Only the outdoors changes, and only while you walk around: text boxes and menus keep their colours, buildings stay lit, and battles look as they always do. It eases in and out as you go between them.

@@ -1,36 +1,20 @@
-/* Native single-screen host for PokeDaisy. GPL-3.0, see ../NOTICE. */
+/* PokeDaisy Linux: an SDL2 frontend for the PokeDaisy libretro cores. The companion, HUD, quick menu, FLY / PC /
+ * REPEL / BIKE and EXPAND are the cores' own (libretro/, libretro/armgba/), so this host shows exactly what the
+ * cores do on every other frontend. It loads the core for the ROM from beside the binary
+ * (armGBA for .gba, mGBA for .gb / .gbc, DSperate for .nds), tells it the screen (the pokedaisy_panel option: the core then picks its canvas), shows its frame at a whole scale, and owns
+ * what a frontend owns: input, sound, pacing, the battery save and its backups, save states, fast-forward,
+ * rewind, the LCD mask and the game list. */
+#include "libretro.h"
 #include "../3ds/desktop/pd_png.h"
-#include "pd_menu.h"
-#include "pd_romart.h"
-#include "pd_settings.h"
-#include "pd_ui.h"
-#include "pd_ui_internal.h"
-#include "pd_map.h"
-#include "host_io.h"
-#include "field_items.h"
-#include "fly.h"
 #include "display_filter.h"
-#include "hud.h"
-#include "pd_dex.h"
-#include "pd_guide.h"
-#include "../app/src/main/cpp/pk_call.h"
-#include "../app/src/main/cpp/pk_host.h"
-#include "quick_menu.h"
-#include "wild.h"
-#include "../app/src/main/cpp/pk_wide.h"
-#include "../app/src/main/cpp/pk_rewind.h"
+#include "pd_canvas.h"
+#include "pd_menu.h"
 #include <SDL.h>
 #include <dirent.h>
+#include <dlfcn.h>
 #include <errno.h>
 #include <fcntl.h>
-#include <linux/input.h>
-#include <mgba-util/vfs.h>
-#include <mgba/core/blip_buf.h>
-#include <mgba/core/core.h>
-#include <mgba/core/log.h>
-#include <mgba/core/serialize.h>
-#include <mgba/gb/core.h>
-#include <mgba/internal/gb/gb.h>
+#include <limits.h>
 #include <signal.h>
 #include <stdarg.h>
 #include <stdio.h>
@@ -40,40 +24,40 @@
 #include <sys/stat.h>
 #include <time.h>
 #include <unistd.h>
-// The window's size without POCKET_FULLSCREEN / POCKET_WINDOW, and the companion's
-// canvas until a screen says otherwise (companion_size).
+
+// The window's size without POCKET_FULLSCREEN / POCKET_WINDOW.
 #define W 512
 #define H 384
-#define CANVAS_MAX_W 1024
-#define CANVAS_MAX_H 768
-static uint32_t pixels[CANVAS_MAX_W * CANVAS_MAX_H];
-static int canvasW = W, canvasH = H;
-static color_t video[256 * 256];
-static struct pd_canvas canvas;
+#define OVERLAY_MAX_W 1024
+#define OVERLAY_MAX_H 768
+#define KEY_COLOR 0xFF00FFu // the overlay's see-through colour
+#define OUT_RATE 48000
+#define MODIFIER_TAP_FRAMES 6 // a tap of the MODIFIER alone reaches the game this long (Game Boy menus miss 1-frame presses)
+
 static SDL_Window *window;
 static SDL_Renderer *renderer;
-static SDL_Texture *texture, *gameTexture;
-static SDL_Rect lastGameRect;
-/* EXPAND (the app's pk_wide.c): the overworld rebuilt past the game's edges
- * into a window the screen's shape, at the scale the game's own picture gets
- * (ZOOM OUT: one whole scale less), so the original pixels stay where they were. */
-static SDL_Texture *wideTexture;
-static uint32_t wideSource[240 * 160], wideFrame[PK_WIDE_MAX_VIEW_W * PK_WIDE_MAX_VIEW_H];
-static bool wideSupported, wideReady;
-static unsigned wideW, wideH;
 static SDL_AudioDeviceID audio;
 static volatile sig_atomic_t running = 1;
-static bool muted;
 static int appError;
-#ifdef POCKET_TEST
-static unsigned audioNonzero;
-#endif
 static const char *root = ".";
-/* plorpOS: --save FILE, the battery save another emulator keeps (its backups
- * then go to DATA/backups); NULL = DATA/saves/ROM.sav. */
+/* plorpOS: --save FILE, the battery save another emulator keeps (its backups then go to DATA/backups);
+ * NULL = DATA/saves/ROM.sav. */
 static const char *saveFile;
+static char savesDir[PATH_MAX], exeDir[PATH_MAX];
 static char message[128];
 static unsigned messageUntil;
+
+static void stop(int sig) {
+  (void)sig;
+  running = 0;
+}
+static void notice(const char *s) {
+  snprintf(message, sizeof message, "%s", s);
+  messageUntil = SDL_GetTicks() + 2500;
+  fprintf(stderr, "%s\n", s);
+}
+
+/* ---- input ---- */
 enum {
   A,
   B,
@@ -91,113 +75,33 @@ enum {
   R2,
   MENU,
   L3,
-  SUP, // plorpOS: the left stick's directions apart (they're also the D-pad's), and the Brick's Fn keys
+  SUP, // the left stick's directions apart (they're also the D-pad's)
   SDOWN,
   SLEFT,
   SRIGHT,
-  FN1,
-  FN2,
+  R3,
+  P1, // the back paddles (the Steam Deck's L4 / R4 / L5 / R5, an Elite pad's), when SDL is given them
+  P2,
+  P3,
+  P4,
+  FFKEY, // the keyboard's own: fast-forward held, rewind held, save / load state
+  RWKEY,
+  SAVEKEY,
+  LOADKEY,
   NKEYS
 };
 static SDL_GameController *controller;
 static bool rawTrimui;
+static bool swapFace; // the host menu's A/B BUTTONS: SWAPPED (host.ini swap_ab)
+// A controller's face button, after the host menu's A/B BUTTONS (the keyboard's keys stay where they are).
+static int face(int k) {
+  if (!swapFace)
+    return k;
+  return k == A ? B : k == B ? A : k == X ? Y : k == Y ? X : k;
+}
 static unsigned held, pressed;
+static bool inputReset;
 static unsigned repeatAt[NKEYS];
-static void stop(int sig) {
-  (void)sig;
-  running = 0;
-}
-static void notice(const char *s) {
-  snprintf(message, sizeof message, "%s", s);
-  messageUntil = SDL_GetTicks() + 2500;
-  fprintf(stderr, "%s\n", s);
-}
-/* mGBA logs every DMA and BIOS call at DEBUG; keep warnings and errors only, so
- * launch.sh's log stays readable. */
-static void quiet_log(struct mLogger *l, int category, enum mLogLevel level,
-                      const char *format, va_list args) {
-  (void)l;
-  if (!(level & (mLOG_FATAL | mLOG_ERROR | mLOG_WARN)))
-    return;
-  fprintf(stderr, "%s: ", mLogCategoryName(category));
-  vfprintf(stderr, format, args);
-  fputc('\n', stderr);
-}
-static struct mLogger quietLogger = {.log = quiet_log};
-/* The audio device. A handheld's ALSA device can go bad under the app (the
- * screen turned off and on: "ALSA write failed (unrecoverable)"), and SDL then
- * closes it for good; it's reopened as soon as SDL says so, or within a second
- * of it no longer playing. */
-static bool audioLost;
-static void audio_open(void) {
-  SDL_AudioSpec want = {0};
-  want.freq = 32768;
-  want.format = AUDIO_S16SYS;
-  want.channels = 2;
-  want.samples = 512;
-  audio = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0);
-  if (audio)
-    SDL_PauseAudioDevice(audio, 0);
-  else
-    fprintf(stderr, "Audio unavailable: %s\n", SDL_GetError());
-}
-static void audio_check(void) {
-  static Uint32 next;
-  bool stopped = audio && SDL_GetAudioDeviceStatus(audio) == SDL_AUDIO_STOPPED;
-  if (!audioLost && !stopped)
-    return;
-  if (SDL_GetTicks() < next)
-    return;
-  next = SDL_GetTicks() + 1000;
-  if (audio)
-    SDL_CloseAudioDevice(audio);
-  audio = 0;
-  audio_open();
-  audioLost = !audio;
-  if (audio)
-    fprintf(stderr, "Audio device reopened\n");
-}
-static void post_audio(struct mAVStream *s, blip_t *l, blip_t *r) {
-  (void)s;
-  int16_t out[2048];
-  int n = blip_samples_avail(l);
-  if (n > 1024)
-    n = 1024;
-  blip_read_samples(l, out, n, true);
-  blip_read_samples(r, out + 1, n, true);
-#ifdef POCKET_TEST
-  for (int i = 0; i < n * 2; i++)
-    if (out[i])
-      audioNonzero++;
-#endif
-  if (audio && !muted && SDL_GetQueuedAudioSize(audio) < 32768)
-    SDL_QueueAudio(audio, out, n * 4);
-}
-static bool read_memory(void *ctx, uint32_t a, void *out, size_t n) {
-  struct mCore *c = ctx;
-  unsigned char *p = out;
-  if (c->platform(c) == mPLATFORM_GB && a >= 0x10000) {
-    // WRAM bank b's D000-DFFF as (b << 16) | address: Crystal switches the window mid-frame, so read the bank itself.
-    unsigned bank = a >> 16, addr = a & 65535;
-    struct GB *gb = c->board;
-    if (bank > 7 || addr < 0xd000 || addr >= 0xe000 || n > 0xe000 - addr || !gb->memory.wram)
-      return false;
-    memcpy(p, gb->memory.wram + bank * 0x1000 + addr - 0xd000, n);
-    return true;
-  }
-  if (c->platform(c) == mPLATFORM_GBA && a >= 0x08000000 && a < 0x0e000000) {
-    size_t size = 0;
-    const unsigned char *r = c->getMemoryBlock(c, 0x08, &size);
-    size_t start = (a - 0x08000000) & 0x01ffffff;
-    if (!r || start > size || n > size - start)
-      return false;
-    memcpy(p, r + start, n);
-    return true;
-  }
-  for (size_t i = 0; i < n; i++)
-    p[i] = c->busRead8(c, a + (uint32_t)i);
-  return true;
-}
 static int keyboard(SDL_Keycode k) {
   switch (k) {
   case SDLK_z:
@@ -230,38 +134,87 @@ static int keyboard(SDL_Keycode k) {
     return R2;
   case SDLK_ESCAPE:
     return MENU;
+  case SDLK_SPACE:
+    return FFKEY;
+  case SDLK_r:
+    return RWKEY;
+  case SDLK_F2:
+    return SAVEKEY;
+  case SDLK_F4:
+    return LOADKEY;
   default:
     return -1;
   }
 }
 static int controller_button(int button) {
-  switch(button) {
-    case SDL_CONTROLLER_BUTTON_A:return B;
-    case SDL_CONTROLLER_BUTTON_B:return A;
-    case SDL_CONTROLLER_BUTTON_X:return Y;
-    case SDL_CONTROLLER_BUTTON_Y:return X;
-    case SDL_CONTROLLER_BUTTON_BACK:return SELECT;
-    case SDL_CONTROLLER_BUTTON_START:return START;
-    case SDL_CONTROLLER_BUTTON_GUIDE:return MENU;
-    case SDL_CONTROLLER_BUTTON_LEFTSTICK:return L3;
-    case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:return L;
-    case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:return R;
-    case SDL_CONTROLLER_BUTTON_DPAD_UP:return UP;
-    case SDL_CONTROLLER_BUTTON_DPAD_DOWN:return DOWN;
-    case SDL_CONTROLLER_BUTTON_DPAD_LEFT:return LEFT;
-    case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:return RIGHT;
-    default:return -1;
+  switch (button) {
+  case SDL_CONTROLLER_BUTTON_A:
+    return B;
+  case SDL_CONTROLLER_BUTTON_B:
+    return A;
+  case SDL_CONTROLLER_BUTTON_X:
+    return Y;
+  case SDL_CONTROLLER_BUTTON_Y:
+    return X;
+  case SDL_CONTROLLER_BUTTON_BACK:
+    return SELECT;
+  case SDL_CONTROLLER_BUTTON_START:
+    return START;
+  case SDL_CONTROLLER_BUTTON_GUIDE:
+    return MENU;
+  case SDL_CONTROLLER_BUTTON_LEFTSTICK:
+    return L3;
+  case SDL_CONTROLLER_BUTTON_RIGHTSTICK:
+    return R3;
+  case SDL_CONTROLLER_BUTTON_PADDLE1:
+    return P1;
+  case SDL_CONTROLLER_BUTTON_PADDLE2:
+    return P2;
+  case SDL_CONTROLLER_BUTTON_PADDLE3:
+    return P3;
+  case SDL_CONTROLLER_BUTTON_PADDLE4:
+    return P4;
+  case SDL_CONTROLLER_BUTTON_LEFTSHOULDER:
+    return L;
+  case SDL_CONTROLLER_BUTTON_RIGHTSHOULDER:
+    return R;
+  case SDL_CONTROLLER_BUTTON_DPAD_UP:
+    return UP;
+  case SDL_CONTROLLER_BUTTON_DPAD_DOWN:
+    return DOWN;
+  case SDL_CONTROLLER_BUTTON_DPAD_LEFT:
+    return LEFT;
+  case SDL_CONTROLLER_BUTTON_DPAD_RIGHT:
+    return RIGHT;
+  default:
+    return -1;
   }
 }
 static int joy(int n) {
   static const int map[] = {B, A, Y, X, L, R, SELECT, START, MENU, -1, L2, R2};
   return n >= 0 && n < 12 ? map[n] : -1;
 }
-static void key(int k, bool down) {
+/* A direction is held by the D-pad (or the keyboard, the hat) and by the left stick apart: letting go of one keeps it
+ * held while the other still has it. */
+static unsigned padHeld;  // directions the D-pad, keyboard or hat hold
+static bool fromStick;    // key() called by stick_dir
+static int stick_of(int dir) { return dir == UP ? SUP : dir == DOWN ? SDOWN : dir == LEFT ? SLEFT : dir == RIGHT ? SRIGHT : -1; }
+static void key(int k, bool isDown) {
   if (k < 0)
     return;
   unsigned bit = 1u << k;
-  if (down) {
+  int stick = stick_of(k);
+  if (stick >= 0) {
+    if (fromStick) {
+      if (!isDown && (padHeld & bit))
+        return; // the D-pad still holds it
+    } else {
+      padHeld = isDown ? padHeld | bit : padHeld & ~bit;
+      if (!isDown && (held & (1u << stick)))
+        return; // the stick still holds it
+    }
+  }
+  if (isDown) {
     if (!(held & bit)) {
       pressed |= bit;
       repeatAt[k] = SDL_GetTicks() + 400;
@@ -270,16 +223,26 @@ static void key(int k, bool down) {
   } else
     held &= ~bit;
 }
-/* Controllers come and go (a USB or Bluetooth pad, a handheld whose built-in
- * one shows up late): SDL reports the ones it has a mapping for as game
- * controllers (its own database, DATA/gamecontrollerdb.txt, or
- * SDL_GAMECONTROLLERCONFIG, which PortMaster sets). The first one is used; an
- * unmapped device is named in the log so a mapping can be added. */
+/* The left stick is the D-pad too, but only when it crosses the threshold: a stick at rest still sends small axis
+ * events (the Steam Deck's, all the time), and releasing the direction on each of them let go of a held D-pad. */
+static void stick_dir(int stickKey, int dir, bool on) {
+  if (on == ((held & (1u << stickKey)) != 0))
+    return;
+  key(stickKey, on);
+  fromStick = true;
+  key(dir, on);
+  fromStick = false;
+}
+/* Controllers come and go (a USB or Bluetooth pad, a handheld whose built-in one shows up late): SDL reports the
+ * ones it has a mapping for as game controllers (its own database, DATA/gamecontrollerdb.txt, or
+ * SDL_GAMECONTROLLERCONFIG, which PortMaster sets). The first one is used; an unmapped device is named in the log
+ * so a mapping can be added. */
 static void controller_added(int index) {
   if (!SDL_IsGameController(index)) {
     char guid[64];
     SDL_JoystickGetGUIDString(SDL_JoystickGetDeviceGUID(index), guid, sizeof guid);
-    fprintf(stderr, "Controller without a mapping: %s (%s); add one to "
+    fprintf(stderr,
+            "Controller without a mapping: %s (%s); add one to "
             "DATA/gamecontrollerdb.txt or SDL_GAMECONTROLLERCONFIG\n",
             SDL_JoystickNameForIndex(index) ? SDL_JoystickNameForIndex(index) : "?", guid);
     return;
@@ -291,32 +254,58 @@ static void controller_added(int index) {
     fprintf(stderr, "Controller: %s\n", SDL_GameControllerName(controller));
 }
 static void controller_removed(SDL_JoystickID id) {
-  if (!controller ||
-      SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller)) != id)
+  if (!controller || SDL_JoystickInstanceID(SDL_GameControllerGetJoystick(controller)) != id)
     return;
   SDL_GameControllerClose(controller);
   controller = NULL;
+  inputReset = true;
   held = 0; // nothing stays pressed on a pad that's gone
   for (int i = 0; i < SDL_NumJoysticks() && !controller; i++)
     if (SDL_IsGameController(i))
       controller_added(i);
 }
-/* plorpOS: keys SDL's joystick never reports (below BTN_MISC: the Brick's Fn keys, KEY_F1 / KEY_F2), read
- * from the pad's own node beside SDL: POCKET_FN_KEYS=NODE:FN1CODE:FN2CODE. */
-static void fn_keys(void) {
-  static int fd = -2, code[2];
-  if (fd == -2) {
-    const char *spec = getenv("POCKET_FN_KEYS");
-    char node[256];
-    fd = -1;
-    if (spec && sscanf(spec, "%255[^:]:%d:%d", node, &code[0], &code[1]) == 3)
-      fd = open(node, O_RDONLY | O_NONBLOCK);
+/* The pointer (a touch screen, or the mouse): where on the core's frame, for RETRO_DEVICE_POINTER. */
+static SDL_Rect frameRect;
+static int pointerX, pointerY;
+static bool pointerDown;
+static void pointer_at(int x, int y) {
+  if (frameRect.w <= 0 || frameRect.h <= 0)
+    return;
+  int px = (int)((long)(x - frameRect.x) * 0xFFFE / frameRect.w) - 0x7FFF;
+  int py = (int)((long)(y - frameRect.y) * 0xFFFE / frameRect.h) - 0x7FFF;
+  pointerX = px < -0x7FFF ? -0x7FFF : px > 0x7FFF ? 0x7FFF : px;
+  pointerY = py < -0x7FFF ? -0x7FFF : py > 0x7FFF ? 0x7FFF : py;
+}
+static bool audioLost, outputChanged;
+static int key_named(const char *s);
+/* POCKET_KEYS="TICK:KEY[:HOLD],...": presses scripted by loop tick (each events() call), held HOLD ticks (2), for
+ * tests: KEY is a key name (a, b, up, menu, start, l3, r2 ...: keyNames). */
+static struct {
+  unsigned at, hold;
+  int key;
+} script[64];
+static int scriptN = -1;
+static unsigned tick;
+static void key(int k, bool isDown);
+static void script_keys(void) {
+  if (scriptN < 0) {
+    scriptN = 0;
+    char buf[1024], *save = NULL;
+    snprintf(buf, sizeof buf, "%s", getenv("POCKET_KEYS") ? getenv("POCKET_KEYS") : "");
+    for (char *t = strtok_r(buf, ",", &save); t && scriptN < 64; t = strtok_r(NULL, ",", &save)) {
+      char name[16];
+      unsigned at, hold = 2;
+      if (sscanf(t, "%u:%15[^:]:%u", &at, name, &hold) >= 2 && key_named(name) >= 0)
+        script[scriptN++] = (typeof(script[0])){at, hold, key_named(name)};
+    }
   }
-  struct input_event ev;
-  while (fd >= 0 && read(fd, &ev, sizeof ev) == (ssize_t)sizeof ev)
-    for (int i = 0; i < 2; i++)
-      if (ev.type == EV_KEY && ev.code == code[i] && ev.value != 2)
-        key(FN1 + i, ev.value != 0);
+  for (int i = 0; i < scriptN; i++) {
+    if (tick == script[i].at)
+      key(script[i].key, true);
+    if (tick == script[i].at + script[i].hold)
+      key(script[i].key, false);
+  }
+  tick++;
 }
 static void events(void) {
   pressed = 0;
@@ -326,29 +315,32 @@ static void events(void) {
       running = 0;
     if (e.type == SDL_JOYDEVICEADDED && !SDL_IsGameController(e.jdevice.which))
       controller_added(e.jdevice.which);
-    if (e.type == SDL_AUDIODEVICEREMOVED && !e.adevice.iscapture && audio &&
-        e.adevice.which == audio)
+    if (e.type == SDL_AUDIODEVICEREMOVED && !e.adevice.iscapture && audio && e.adevice.which == audio)
       audioLost = true;
     if (e.type == SDL_CONTROLLERDEVICEADDED)
       controller_added(e.cdevice.which);
     if (e.type == SDL_CONTROLLERDEVICEREMOVED)
       controller_removed(e.cdevice.which);
-    if (e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) {
-      if (!e.key.repeat)
-        key(keyboard(e.key.keysym.sym), e.type == SDL_KEYDOWN);
-    }
-    if(e.type == SDL_CONTROLLERBUTTONDOWN || e.type == SDL_CONTROLLERBUTTONUP)
-      key(controller_button(e.cbutton.button),e.type == SDL_CONTROLLERBUTTONDOWN);
-    if(e.type == SDL_CONTROLLERAXISMOTION) {
-      if(e.caxis.axis==SDL_CONTROLLER_AXIS_TRIGGERLEFT)key(L2,e.caxis.value>16000);
-      if(e.caxis.axis==SDL_CONTROLLER_AXIS_TRIGGERRIGHT)key(R2,e.caxis.value>16000);
-      if(e.caxis.axis==SDL_CONTROLLER_AXIS_LEFTX) {key(LEFT,e.caxis.value < -16000);key(RIGHT,e.caxis.value > 16000);
-        key(SLEFT,e.caxis.value < -16000);key(SRIGHT,e.caxis.value > 16000);}
-      if(e.caxis.axis==SDL_CONTROLLER_AXIS_LEFTY) {key(UP,e.caxis.value < -16000);key(DOWN,e.caxis.value > 16000);
-        key(SUP,e.caxis.value < -16000);key(SDOWN,e.caxis.value > 16000);}
+    if ((e.type == SDL_KEYDOWN || e.type == SDL_KEYUP) && !e.key.repeat)
+      key(keyboard(e.key.keysym.sym), e.type == SDL_KEYDOWN);
+    if (e.type == SDL_CONTROLLERBUTTONDOWN || e.type == SDL_CONTROLLERBUTTONUP)
+      key(face(controller_button(e.cbutton.button)), e.type == SDL_CONTROLLERBUTTONDOWN);
+    if (e.type == SDL_CONTROLLERAXISMOTION) {
+      if (e.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERLEFT)
+        key(L2, e.caxis.value > 16000);
+      if (e.caxis.axis == SDL_CONTROLLER_AXIS_TRIGGERRIGHT)
+        key(R2, e.caxis.value > 16000);
+      if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTX) {
+        stick_dir(SLEFT, LEFT, e.caxis.value < -16000);
+        stick_dir(SRIGHT, RIGHT, e.caxis.value > 16000);
+      }
+      if (e.caxis.axis == SDL_CONTROLLER_AXIS_LEFTY) {
+        stick_dir(SUP, UP, e.caxis.value < -16000);
+        stick_dir(SDOWN, DOWN, e.caxis.value > 16000);
+      }
     }
     if (!controller && rawTrimui && (e.type == SDL_JOYBUTTONDOWN || e.type == SDL_JOYBUTTONUP))
-      key(joy(e.jbutton.button), e.type == SDL_JOYBUTTONDOWN);
+      key(face(joy(e.jbutton.button)), e.type == SDL_JOYBUTTONDOWN);
     if (!controller && rawTrimui && e.type == SDL_JOYHATMOTION) {
       key(UP, e.jhat.value & SDL_HAT_UP);
       key(DOWN, e.jhat.value & SDL_HAT_DOWN);
@@ -361,11 +353,20 @@ static void events(void) {
       if (e.jaxis.axis == 5)
         key(R2, e.jaxis.value > 16000);
     }
-    if (e.type == SDL_WINDOWEVENT &&
-        e.window.event == SDL_WINDOWEVENT_FOCUS_LOST)
-      held = 0;
+    if (e.type == SDL_MOUSEBUTTONDOWN || e.type == SDL_MOUSEBUTTONUP) {
+      pointer_at(e.button.x, e.button.y);
+      pointerDown = e.type == SDL_MOUSEBUTTONDOWN && e.button.button == SDL_BUTTON_LEFT;
+    }
+    if (e.type == SDL_MOUSEMOTION)
+      pointer_at(e.motion.x, e.motion.y);
+    if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_FOCUS_LOST) {
+      inputReset = true;
+      held = pressed = 0;
+    }
+    if (e.type == SDL_WINDOWEVENT && e.window.event == SDL_WINDOWEVENT_SIZE_CHANGED)
+      outputChanged = true;
   }
-  fn_keys();
+  script_keys();
 }
 static void repeat_directions(void) {
   for (int k = RIGHT; k <= DOWN; k++)
@@ -375,162 +376,579 @@ static void repeat_directions(void) {
     }
 }
 static bool down(int k) { return (pressed & (1u << k)) != 0; }
-/* plorpOS: its GBA hotkeys, in the file POCKET_HOTKEYS_FILE names - Diatom's wire on its first line
- * ("l2:ff,d.x:savestate,select+r1:rewind"), the modifier a binding naming none holds on its second - read
- * at start and again after a pause (its in-game menu can change them). A trigger is held with its modifier,
- * or alone with "d.". The game doesn't get a trigger while it's a hotkey's (hotkeyMask). Set at all, the
- * host owns MENU - its own in-game menu and the modifier - and MENU no longer opens this GAME menu
- * (START+SELECT still does). */
-enum { HK_FF, HK_REWIND, HK_SAVE, HK_LOAD, HK_HUD, HK_ACTIONS };
-static struct {
-  int action, key, mod; // mod -1: alone
-} hotkey[16];
-static int hotkeyN;
+
+/* Hotkeys: a button per action, set on the host menu's HOTKEYS page (host.ini hk_*). FF and rewind act while held,
+ * the states on the press. A hotkey's button never reaches the game. The keyboard keeps its own (Space, R, F2, F4). */
+enum { HK_FF, HK_REWIND, HK_SAVE, HK_LOAD, HK_ACTIONS };
+static const char *const hotkeyIds[HK_ACTIONS] = {"ff", "rewind", "savestate", "loadstate"};
 static unsigned hotkeyMask;
-static bool hostMenu, rewindBound; // rewindBound: a REWIND hotkey, which keeps the ring on (as plorpOS's games)
+// The game's own buttons and the menu's stay theirs: A, B, START, SELECT, the D-pad (and the stick's), MENU.
+static bool hotkey_assignable(int k) {
+  return k == L || k == R || k == X || k == Y || k == L2 || k == R2 || k == L3 || k == R3 || (k >= P1 && k <= P4);
+}
+// START+SELECT opens the host menu too, unless POCKET_MENU_COMBO=off (PortMaster: there it is the port's exit).
+static bool comboMenu = true;
+static const struct {
+  const char *name;
+  int key;
+} keyNames[] = {{"a", A},       {"b", B},         {"x", X},         {"y", Y},           {"l1", L},
+                {"r1", R},      {"l2", L2},       {"r2", R2},       {"up", UP},         {"down", DOWN},
+                {"left", LEFT}, {"right", RIGHT}, {"menu", MENU},   {"select", SELECT}, {"start", START}, {"l3", L3},
+                {"sup", SUP},   {"sdown", SDOWN}, {"sleft", SLEFT}, {"sright", SRIGHT}, {"r3", R3},
+                {"p1", P1},     {"p2", P2},       {"p3", P3},       {"p4", P4}};
 static int key_named(const char *s) {
-  static const struct {
-    const char *name;
-    int key;
-  } names[] = {{"a", A},       {"b", B},         {"x", X},         {"y", Y},           {"l1", L},
-               {"r1", R},      {"l2", L2},       {"r2", R2},       {"up", UP},         {"down", DOWN},
-               {"left", LEFT}, {"right", RIGHT}, {"menu", MENU},   {"select", SELECT}, {"l3", L3},
-               {"sup", SUP},   {"sdown", SDOWN}, {"sleft", SLEFT}, {"sright", SRIGHT}, {"fn1", FN1},
-               {"fn2", FN2}};
-  for (size_t i = 0; i < sizeof names / sizeof names[0]; i++)
-    if (!strcmp(s, names[i].name))
-      return names[i].key;
+  for (size_t i = 0; i < sizeof keyNames / sizeof keyNames[0]; i++)
+    if (!strcmp(s, keyNames[i].name))
+      return keyNames[i].key;
   return -1;
 }
-static void hotkeys_load(void) {
-  static const char *const actions[HK_ACTIONS] = {"ff", "rewind", "savestate", "loadstate", "hud"};
-  const char *path = getenv("POCKET_HOTKEYS_FILE");
-  char buf[512] = "", modBuf[32] = "menu", *mod = modBuf, *save = NULL;
-  FILE *f = path ? fopen(path, "r") : NULL;
-  hostMenu = path != NULL;
-  hotkeyN = 0;
-  rewindBound = false;
-  if (f) {
-    if (!fgets(buf, sizeof buf, f))
-      buf[0] = 0;
-    if (!fgets(modBuf, sizeof modBuf, f))
-      snprintf(modBuf, sizeof modBuf, "menu");
-    fclose(f);
-  }
-  buf[strcspn(buf, "\r\n")] = 0;
-  modBuf[strcspn(modBuf, "\r\n")] = 0;
-  for (char *t = strtok_r(buf, ",", &save); t && hotkeyN < 16; t = strtok_r(NULL, ",", &save)) {
-    char *colon = strchr(t, ':'), *plus = strchr(t, '+');
-    int action = -1, m, k;
-    if (!colon)
-      continue;
-    *colon = 0;
-    for (int i = 0; i < HK_ACTIONS; i++)
-      if (!strcmp(colon + 1, actions[i]))
-        action = i;
-    if (plus) {
-      *plus = 0;
-      m = key_named(t);
-      k = key_named(plus + 1);
-    } else if (!strncmp(t, "d.", 2)) {
-      m = -2;
-      k = key_named(t + 2);
-    } else {
-      m = key_named(mod);
-      k = key_named(t);
-    }
-    // Others (screenshot, turbo, the right stick, the GKD's Home) aren't this host's.
-    if (action < 0 || k < 0 || m == -1)
-      continue;
-    rewindBound |= action == HK_REWIND;
-    hotkey[hotkeyN].action = action;
-    hotkey[hotkeyN].key = k;
-    hotkey[hotkeyN++].mod = m < 0 ? -1 : m;
+static const char *key_name(int k) {
+  for (size_t i = 0; i < sizeof keyNames / sizeof keyNames[0]; i++)
+    if (keyNames[i].key == k)
+      return keyNames[i].name;
+  return "off";
+}
+/* ---- the host's settings (DATA/host.ini): what its menu sets ---- */
+static struct {
+  int ffSpeed; // 0 = MAX (as many frames as fit), else 2..8
+  bool rewind, lcd;
+  bool swapAB; // the controller's A / B and X / Y the other way round (devices disagree on which is SDL's "A")
+  int hotkey[HK_ACTIONS]; // the HOTKEYS page's button per action, -1 none
+  int dsHotkey[HK_ACTIONS];
+  int modifier;
+} hostSet = {0, false, false, false, {R2, L2, -1, -1}, {R2, L2, -1, -1}, SELECT};
+static char hostIni[PATH_MAX];
+/* A DS game's L2 / R2 are its companion and screen buttons: with no modifier held for them, its FAST FORWARD and REWIND
+ * go back to the stick clicks (R3 / L3), and come back to R2 / L2 when a modifier is picked again. */
+static void ds_hotkeys_follow_modifier(void) {
+  int *ds = hostSet.dsHotkey;
+  if (hostSet.modifier < 0 && ds[HK_FF] == R2 && ds[HK_REWIND] == L2) {
+    ds[HK_FF] = R3;
+    ds[HK_REWIND] = L3;
+  } else if (hostSet.modifier >= 0 && ds[HK_FF] == R3 && ds[HK_REWIND] == L3) {
+    ds[HK_FF] = R2;
+    ds[HK_REWIND] = L2;
   }
 }
-/* The actions held this frame; *fired: those whose trigger went down now. */
-static unsigned hotkeys_held(unsigned *fired) {
+/* A new modifier can't also be a hotkey's own button (that hotkey would never fire): the hotkey lets it go. */
+static void modifier_takes(int k) {
+  for (int i = 0; i < HK_ACTIONS; i++) {
+    if (hostSet.hotkey[i] == k)
+      hostSet.hotkey[i] = -1;
+    if (hostSet.dsHotkey[i] == k)
+      hostSet.dsHotkey[i] = -1;
+  }
+}
+static void host_load(void) {
+  FILE *f = fopen(hostIni, "r");
+  char line[128];
+  int v;
+  bool modifierSaved = false;
+  while (f && fgets(line, sizeof line, f)) {
+    if (sscanf(line, "ff_speed=%d", &v) == 1)
+      hostSet.ffSpeed = v == 0 || (v >= 2 && v <= 8) ? v : 0;
+    if (sscanf(line, "rewind=%d", &v) == 1)
+      hostSet.rewind = v != 0;
+    if (sscanf(line, "lcd=%d", &v) == 1)
+      hostSet.lcd = v != 0;
+    if (sscanf(line, "swap_ab=%d", &v) == 1)
+      hostSet.swapAB = v != 0;
+    char modifier[16];
+    if (sscanf(line, "hk_modifier=%15s", modifier) == 1) {
+      int k = key_named(modifier);
+      if (k == SELECT || k == START || hotkey_assignable(k) || !strcmp(modifier, "off")) {
+        hostSet.modifier = k;
+        modifierSaved = true;
+      }
+    }
+    for (int i = 0; i < HK_ACTIONS; i++) {
+      char key[32], name[16];
+      snprintf(key, sizeof key, "hk_%s=%%15s", hotkeyIds[i]);
+      if (sscanf(line, key, name) == 1)
+        hostSet.hotkey[i] = hotkey_assignable(key_named(name)) ? key_named(name) : -1;
+      snprintf(key, sizeof key, "ds_hk_%s=%%15s", hotkeyIds[i]);
+      if (sscanf(line, key, name) == 1)
+        hostSet.dsHotkey[i] = hotkey_assignable(key_named(name)) ? key_named(name) : -1;
+    }
+  }
+  if (f)
+    fclose(f);
+  if (!modifierSaved && hostSet.dsHotkey[HK_FF] == R3 && hostSet.dsHotkey[HK_REWIND] == L3) {
+    hostSet.dsHotkey[HK_FF] = R2;
+    hostSet.dsHotkey[HK_REWIND] = L2;
+  }
+  ds_hotkeys_follow_modifier();
+  swapFace = hostSet.swapAB;
+}
+static void host_save(void) {
+  FILE *f = fopen(hostIni, "w");
+  if (!f)
+    return;
+  fprintf(f, "ff_speed=%d\nrewind=%d\nlcd=%d\nswap_ab=%d\n", hostSet.ffSpeed, hostSet.rewind, hostSet.lcd, hostSet.swapAB);
+  fprintf(f, "hk_modifier=%s\n", key_name(hostSet.modifier));
+  for (int i = 0; i < HK_ACTIONS; i++) {
+    fprintf(f, "hk_%s=%s\n", hotkeyIds[i], key_name(hostSet.hotkey[i]));
+    fprintf(f, "ds_hk_%s=%s\n", hotkeyIds[i], key_name(hostSet.dsHotkey[i]));
+  }
+  fclose(f);
+}
+// A hotkey's button as the HOTKEYS page shows it.
+static const char *hotkey_label(int k) {
+  static const char *const labels[] = {[START] = "START", [SELECT] = "SELECT", [L] = "L1", [R] = "R1",  [X] = "X",         [Y] = "Y",         [L2] = "L2",
+                                       [R2] = "R2", [L3] = "L3", [R3] = "R3",       [P1] = "PADDLE 1", [P2] = "PADDLE 2",
+                                       [P3] = "PADDLE 3", [P4] = "PADDLE 4"};
+  return k >= 0 && k < (int)(sizeof labels / sizeof labels[0]) && labels[k] ? labels[k] : "OFF";
+}
+/* The actions held this frame; *fired: those whose button went down now. The keyboard's own keys count too. */
+static unsigned hotkeys_held(const int *hotkeys, unsigned modifier, unsigned *latched, unsigned *fired) {
   unsigned on = 0;
   *fired = 0;
   hotkeyMask = 0;
-  for (int i = 0; i < hotkeyN; i++) {
-    unsigned bit = 1u << hotkey[i].key;
-    bool mod = hotkey[i].mod >= 0 ? (held & (1u << hotkey[i].mod)) != 0
-                                  : !(hostMenu && (held & (1u << MENU)));
-    // pressed too: a tap shorter than a frame is let go before this sees it.
-    if (!((held | pressed) & bit) || !mod)
+  for (int i = 0; i < HK_ACTIONS; i++) {
+    int k = hotkeys[i];
+    // REWIND's button is the game's while REWIND is off (L2 to start with: the core's own buttons may be on it).
+    if (k < 0 || (i == HK_REWIND && !hostSet.rewind))
       continue;
-    on |= 1u << hotkey[i].action;
-    if (pressed & bit)
-      *fired |= 1u << hotkey[i].action;
-    pressed &= ~bit;
+    unsigned bit = 1u << k;
+    if (bit == modifier)
+      continue;
+    if (modifier) {
+      if ((held & modifier) && (pressed & bit))
+        *latched |= bit;
+      if (!(*latched & bit) || !(held & modifier))
+        continue;
+    }
     hotkeyMask |= bit;
-    // A stick direction is the D-pad's too: the game doesn't get that either.
-    if (hotkey[i].key >= SUP && hotkey[i].key <= SRIGHT)
-      hotkeyMask |= 1u << (hotkey[i].key == SUP ? UP : hotkey[i].key == SDOWN ? DOWN
-                           : hotkey[i].key == SLEFT ? LEFT : RIGHT);
+    // pressed too: a tap shorter than a frame is let go before this sees it.
+    if (!((held | pressed) & bit))
+      continue;
+    on |= 1u << i;
+    if (pressed & bit)
+      *fired |= 1u << i;
   }
+  if (held & (1u << FFKEY))
+    on |= 1u << HK_FF;
+  if (held & (1u << RWKEY))
+    on |= 1u << HK_REWIND;
+  if (down(SAVEKEY))
+    *fired |= 1u << HK_SAVE;
+  if (down(LOADKEY))
+    *fired |= 1u << HK_LOAD;
   return on;
 }
-/* The companion's canvas for an ow x oh screen: the largest whole scale that
- * keeps it at least 320x240 (the 3DS's, which every tab is laid out for), so
- * its pixel text is about as big on every panel: 320x240 at 2x on 640x480,
- * 426x240 at 3x on 1280x720, 341x256 on 1024x768, 480x270 on 1920x1080.
- * POCKET_COMPANION_SCALE=N picks the scale instead. */
-static void companion_size(int ow, int oh, int *w, int *h) {
-  int scale = ow / 320 < oh / 240 ? ow / 320 : oh / 240;
-  const char *forced = getenv("POCKET_COMPANION_SCALE");
-  if (forced && atoi(forced) > 0)
-    scale = atoi(forced);
-  if (scale < 1)
-    scale = 1;
-  *w = ow / scale;
-  *h = oh / scale;
-  if (*w > CANVAS_MAX_W)
-    *w = CANVAS_MAX_W;
-  if (*h > CANVAS_MAX_H)
-    *h = CANVAS_MAX_H;
-  if (*w < 320)
-    *w = 320;
-  if (*h < 240)
-    *h = 240;
-}
-/* Before the companion draws: the canvas follows the window (a resize, a
- * rotated panel), with a texture to match. */
-static void companion_canvas(void) {
-  int ow = W, oh = H, w, h;
-  if (SDL_GetRendererOutputSize(renderer, &ow, &oh) < 0 || ow <= 0 || oh <= 0)
-    ow = W, oh = H;
-  companion_size(ow, oh, &w, &h);
-  if (w == canvasW && h == canvasH && texture)
-    return;
-  SDL_Texture *t = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_RGB888,
-                                     SDL_TEXTUREACCESS_STREAMING, w, h);
-  if (!t) {
-    notice(SDL_GetError());
-    return;
+
+/* ---- files ---- */
+static bool exists(const char *p) { return access(p, F_OK) == 0; }
+static unsigned char *read_file(const char *path, size_t *size, size_t max) {
+  FILE *f = fopen(path, "rb");
+  if (!f)
+    return NULL;
+  fseek(f, 0, SEEK_END);
+  long len = ftell(f);
+  rewind(f);
+  unsigned char *d = len > 0 && (size_t)len <= max ? malloc((size_t)len) : NULL;
+  if (d && fread(d, 1, (size_t)len, f) != (size_t)len) {
+    free(d);
+    d = NULL;
   }
-  SDL_SetTextureBlendMode(t, SDL_BLENDMODE_NONE);
-  if (texture)
-    SDL_DestroyTexture(texture);
-  texture = t;
-  canvasW = w;
-  canvasH = h;
-  pd_canvas_init(&canvas, w, h, pixels);
+  fclose(f);
+  *size = d ? (size_t)len : 0;
+  return d;
 }
-/* How long the last presents waited (the driver holds each one for the screen's
- * refresh), for POCKET_PERF. */
-static double presentMs, emuMs, wideMs;
-static double ms_since(uint64_t t) {
-  return (double)(SDL_GetPerformanceCounter() - t) * 1000.0 / SDL_GetPerformanceFrequency();
+// Written beside, then renamed over: a crash leaves the old file or the new one, never half of one.
+static bool write_file(const char *path, const void *d, size_t n, bool sync) {
+  char tmp[PATH_MAX + 8];
+  snprintf(tmp, sizeof tmp, "%s.tmp", path);
+  FILE *f = fopen(tmp, "wb");
+  if (!f)
+    return false;
+  bool ok = fwrite(d, 1, n, f) == n && fflush(f) == 0 && (!sync || fsync(fileno(f)) == 0);
+  ok = fclose(f) == 0 && ok;
+  if (ok && rename(tmp, path) == 0)
+    return true;
+  unlink(tmp);
+  return false;
 }
-/* LCD (SETTINGS > FILTER): Keegan Whitacre's output-space aperture mask (pokedaisy-brick dfc62a0), multiplied over the
- * whole presented frame; no emulator or companion buffer changes. */
-static bool lcdEnabled;
+/* A copy of the battery save before the game opens, like Android's and as host_io.c's pocket_save_backup names them (the
+ * DS path's, and the hosts' before this one): DIR/STEM.backup-YYYYmmdd-HHMMSS.EXT, a new one only when the save data
+ * differs from the newest backup's, the newest 10 kept. Every save chip is a multiple of 512 bytes, so what is past the
+ * last whole 512 is mGBA's clock footer, which moves every session: a save where only the clock moved is the same save.
+ * A save that can't be backed up keeps the game closed. */
+static bool same_save(const unsigned char *a, size_t an, const unsigned char *b, size_t bn) {
+  size_t n = an - an % 512;
+  if (!n || n != bn - bn % 512)
+    return an == bn && !memcmp(a, b, an);
+  return !memcmp(a, b, n);
+}
+static int newest_first(const void *a, const void *b) { return -strcmp(*(char *const *)a, *(char *const *)b); }
+static bool save_backup(const char *sav, const char *dir) {
+  size_t n;
+  unsigned char *d = read_file(sav, &n, 64u << 20);
+  if (!d)
+    return !exists(sav); // nothing to keep yet
+  if (!n) {
+    free(d);
+    return true;
+  }
+  mkdir(dir, 0755);
+  const char *file = strrchr(sav, '/');
+  file = file ? file + 1 : sav;
+  const char *dot = strrchr(file, '.');
+  char stem[512], ext[32] = "sav";
+  snprintf(stem, sizeof stem, "%.*s.backup-", dot && dot != file ? (int)(dot - file) : (int)strlen(file), file);
+  if (dot && dot != file)
+    snprintf(ext, sizeof ext, "%s", dot + 1);
+  char *list[256];
+  int count = 0;
+  DIR *dd = opendir(dir);
+  for (struct dirent *e; dd && (e = readdir(dd)) && count < 256;)
+    if (!strncmp(e->d_name, stem, strlen(stem)) && !strstr(e->d_name, ".tmp"))
+      list[count++] = strdup(e->d_name);
+  if (dd)
+    closedir(dd);
+  qsort(list, count, sizeof *list, newest_first);
+  bool write = true, ok = true;
+  char path[PATH_MAX * 4 + 64];
+  if (count) {
+    size_t m;
+    snprintf(path, sizeof path, "%s/%s", dir, list[0]);
+    unsigned char *last = read_file(path, &m, 64u << 20);
+    write = !last || !same_save(last, m, d, n);
+    free(last);
+  }
+  if (write) {
+    char stamp[32];
+    time_t now = time(NULL);
+    strftime(stamp, sizeof stamp, "%Y%m%d-%H%M%S", localtime(&now));
+    snprintf(path, sizeof path, "%s/%s%s.%s", dir, stem, stamp, ext);
+    ok = write_file(path, d, n, true);
+  }
+  // The newest 10 stay (a new one counts as the newest).
+  for (int i = ok && write ? 9 : 10; ok && i < count; i++) {
+    snprintf(path, sizeof path, "%s/%s", dir, list[i]);
+    unlink(path);
+  }
+  for (int i = 0; i < count; i++)
+    free(list[i]);
+  free(d);
+  return ok;
+}
+
+/* ---- the core ---- */
+static struct {
+  void *dl;
+  void (*init)(void);
+  void (*deinit)(void);
+  void (*set_environment)(retro_environment_t);
+  void (*set_video_refresh)(retro_video_refresh_t);
+  void (*set_audio_sample)(retro_audio_sample_t);
+  void (*set_audio_sample_batch)(retro_audio_sample_batch_t);
+  void (*set_input_poll)(retro_input_poll_t);
+  void (*set_input_state)(retro_input_state_t);
+  void (*get_system_info)(struct retro_system_info *);
+  void (*get_system_av_info)(struct retro_system_av_info *);
+  bool (*load_game)(const struct retro_game_info *);
+  void (*unload_game)(void);
+  void (*run)(void);
+  size_t (*serialize_size)(void);
+  bool (*serialize)(void *, size_t);
+  bool (*unserialize)(const void *, size_t);
+  void *(*get_memory_data)(unsigned);
+  size_t (*get_memory_size)(unsigned);
+} core;
+static bool core_open(const char *path) {
+  core.dl = dlopen(path, RTLD_NOW | RTLD_LOCAL);
+  if (!core.dl) {
+    fprintf(stderr, "%s\n", dlerror());
+    return false;
+  }
+#define SYM(field, name)                                                                                       \
+  if (!(*(void **)&core.field = dlsym(core.dl, name))) {                                                       \
+    fprintf(stderr, "%s: no %s\n", path, name);                                                                \
+    dlclose(core.dl);                                                                                          \
+    core.dl = NULL;                                                                                            \
+    return false;                                                                                              \
+  }
+  SYM(init, "retro_init")
+  SYM(deinit, "retro_deinit")
+  SYM(set_environment, "retro_set_environment")
+  SYM(set_video_refresh, "retro_set_video_refresh")
+  SYM(set_audio_sample, "retro_set_audio_sample")
+  SYM(set_audio_sample_batch, "retro_set_audio_sample_batch")
+  SYM(set_input_poll, "retro_set_input_poll")
+  SYM(set_input_state, "retro_set_input_state")
+  SYM(get_system_info, "retro_get_system_info")
+  SYM(get_system_av_info, "retro_get_system_av_info")
+  SYM(load_game, "retro_load_game")
+  SYM(unload_game, "retro_unload_game")
+  SYM(run, "retro_run")
+  SYM(serialize_size, "retro_serialize_size")
+  SYM(serialize, "retro_serialize")
+  SYM(unserialize, "retro_unserialize")
+  SYM(get_memory_data, "retro_get_memory_data")
+  SYM(get_memory_size, "retro_get_memory_size")
+#undef SYM
+  return true;
+}
+
+/* The core's options: their defaults as it declares them, and the panel this host has. */
+static struct {
+  const char *key, *value;
+  char legacyDefault[128];
+} options[160];
+static int optionN;
+static char panelValue[32];
+static bool optionsChanged;
+static void options_from(const struct retro_core_option_v2_definition *d) {
+  for (optionN = 0; d && d->key && optionN < (int)(sizeof options / sizeof options[0]); d++, optionN++) {
+    options[optionN].key = d->key;
+    options[optionN].value = d->default_value;
+  }
+}
+static void options_from_v1(const struct retro_core_option_definition *d) {
+  for (optionN = 0; d && d->key && optionN < (int)(sizeof options / sizeof options[0]); d++, optionN++) {
+    options[optionN].key = d->key;
+    options[optionN].value = d->default_value;
+  }
+}
+
+static void options_from_variables(const struct retro_variable *v) {
+  for (optionN = 0; v && v->key && optionN < (int)(sizeof options / sizeof options[0]); v++) {
+    const char *first = v->value ? strchr(v->value, ';') : NULL;
+    if (!first)
+      continue;
+    first++;
+    first += strspn(first, " ");
+    size_t len = strcspn(first, "|");
+    if (len >= sizeof options[0].legacyDefault)
+      continue;
+    options[optionN].key = v->key;
+    memcpy(options[optionN].legacyDefault, first, len);
+    options[optionN].legacyDefault[len] = '\0';
+    options[optionN].value = options[optionN].legacyDefault;
+    optionN++;
+  }
+}
+
+static enum retro_pixel_format pixelFormat = RETRO_PIXEL_FORMAT_0RGB1555;
+static struct retro_system_av_info av;
+static SDL_Texture *frameTexture;
+static int textureW, textureH, frameW, frameH;
+static enum retro_pixel_format textureFormat; // what frameTexture was made for: a core of another format needs a new one
+static double srcRate = 32768, rateTrim = 1;   // the core's audio rate (SET_SYSTEM_AV_INFO can change it), the pacing's trim
+static bool ffNow, rewindingNow;
+static int ffSpeedNow = 1;
+static void core_log(enum retro_log_level level, const char *fmt, ...) {
+  if (level < RETRO_LOG_WARN && !getenv("POCKET_CORE_LOG"))
+    return;
+  va_list ap;
+  va_start(ap, fmt);
+  vfprintf(stderr, fmt, ap);
+  va_end(ap);
+}
+static void frame_texture(void) {
+  int w = (int)av.geometry.max_width, h = (int)av.geometry.max_height;
+  if (frameTexture && w <= textureW && h <= textureH && pixelFormat == textureFormat)
+    return;
+  if (frameTexture)
+    SDL_DestroyTexture(frameTexture);
+  frameTexture = SDL_CreateTexture(renderer,
+                                   pixelFormat == RETRO_PIXEL_FORMAT_XRGB8888 ? SDL_PIXELFORMAT_ARGB8888
+                                   : pixelFormat == RETRO_PIXEL_FORMAT_RGB565 ? SDL_PIXELFORMAT_RGB565
+                                                                              : SDL_PIXELFORMAT_ARGB1555,
+                                   SDL_TEXTUREACCESS_STREAMING, w, h);
+  textureW = w;
+  textureH = h;
+  textureFormat = pixelFormat;
+  if (frameTexture)
+    SDL_SetTextureBlendMode(frameTexture, SDL_BLENDMODE_NONE);
+  else
+    fprintf(stderr, "Texture: %s\n", SDL_GetError());
+}
+static bool environment(unsigned cmd, void *data) {
+  switch (cmd) {
+  case RETRO_ENVIRONMENT_GET_VARIABLE: {
+    struct retro_variable *v = data;
+    v->value = NULL;
+    if (!strcmp(v->key, "pokedaisy_ds_select_modifier"))
+      v->value = hostSet.modifier == SELECT ? "enabled" : "disabled";
+    if (!strcmp(v->key, "pokedaisy_panel"))
+      v->value = panelValue;
+    for (int i = 0; i < optionN && !v->value; i++)
+      if (!strcmp(options[i].key, v->key))
+        v->value = options[i].value;
+    return v->value != NULL;
+  }
+  case RETRO_ENVIRONMENT_GET_VARIABLE_UPDATE:
+    *(bool *)data = optionsChanged;
+    optionsChanged = false;
+    return true;
+  case RETRO_ENVIRONMENT_GET_CORE_OPTIONS_VERSION:
+    *(unsigned *)data = 2;
+    return true;
+  case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2:
+    options_from(data ? ((const struct retro_core_options_v2 *)data)->definitions : NULL);
+    return true;
+  case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_V2_INTL: {
+    const struct retro_core_options_v2_intl *i = data;
+    options_from(i && i->us ? i->us->definitions : NULL);
+    return true;
+  }
+  case RETRO_ENVIRONMENT_SET_CORE_OPTIONS:
+    options_from_v1(data);
+    return true;
+  case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_INTL:
+    options_from_v1(data ? ((const struct retro_core_options_intl *)data)->us : NULL);
+    return true;
+  case RETRO_ENVIRONMENT_SET_VARIABLES:
+    options_from_variables(data);
+    return true;
+  case RETRO_ENVIRONMENT_SET_CORE_OPTIONS_DISPLAY:
+  case RETRO_ENVIRONMENT_SET_INPUT_DESCRIPTORS:
+  case RETRO_ENVIRONMENT_SET_SUPPORT_ACHIEVEMENTS:
+    return true;
+  case RETRO_ENVIRONMENT_SET_PIXEL_FORMAT: {
+    enum retro_pixel_format f = *(const enum retro_pixel_format *)data;
+    if (f != RETRO_PIXEL_FORMAT_XRGB8888 && f != RETRO_PIXEL_FORMAT_RGB565 && f != RETRO_PIXEL_FORMAT_0RGB1555)
+      return false;
+    pixelFormat = f;
+    return true;
+  }
+  case RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY:
+    *(const char **)data = savesDir;
+    return true;
+  case RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY:
+    *(const char **)data = root;
+    return true;
+  case RETRO_ENVIRONMENT_SET_GEOMETRY:
+    av.geometry = *(const struct retro_game_geometry *)data;
+    if (renderer)
+      frame_texture();
+    return true;
+  case RETRO_ENVIRONMENT_SET_SYSTEM_AV_INFO:
+    av = *(const struct retro_system_av_info *)data;
+    if (av.timing.sample_rate > 0)
+      srcRate = av.timing.sample_rate; // the audio resampler follows the core's new rate
+    if (renderer)
+      frame_texture();
+    return true;
+  case RETRO_ENVIRONMENT_GET_CAN_DUPE:
+    *(bool *)data = true;
+    return true;
+  case RETRO_ENVIRONMENT_GET_INPUT_BITMASKS:
+    return true;
+  case RETRO_ENVIRONMENT_GET_LOG_INTERFACE:
+    ((struct retro_log_callback *)data)->log = core_log;
+    return true;
+  case RETRO_ENVIRONMENT_GET_AUDIO_VIDEO_ENABLE:
+    if (data)
+      *(int *)data = 3;
+    return true;
+  case RETRO_ENVIRONMENT_GET_FASTFORWARDING:
+    *(bool *)data = ffNow;
+    return true;
+  case RETRO_ENVIRONMENT_GET_THROTTLE_STATE: {
+    struct retro_throttle_state *t = data;
+    t->mode = rewindingNow ? RETRO_THROTTLE_REWINDING
+              : ffNow      ? RETRO_THROTTLE_FAST_FORWARD
+                           : RETRO_THROTTLE_VSYNC;
+    t->rate = (float)(av.timing.fps * (ffNow ? ffSpeedNow : 1));
+    return true;
+  }
+  default:
+    return false;
+  }
+}
+
+/* ---- video ---- */
+static void video_refresh(const void *data, unsigned w, unsigned h, size_t pitch) {
+  if (!data || !frameTexture) // a dupe: the last frame stays
+    return;
+  SDL_Rect r = {0, 0, (int)w, (int)h};
+  SDL_UpdateTexture(frameTexture, &r, data, (int)pitch);
+  frameW = (int)w;
+  frameH = (int)h;
+}
+/* The frame at the largest whole scale the screen holds (the core sized it for this screen), centred; a screen
+ * smaller than the frame gets it shrunk to fit. */
+static SDL_Rect frame_place(int ow, int oh) {
+  SDL_Rect r = {0, 0, ow, oh};
+  if (frameW <= 0 || frameH <= 0)
+    return r;
+  int s = ow / frameW < oh / frameH ? ow / frameW : oh / frameH;
+  if (s >= 1) {
+    r.w = frameW * s;
+    r.h = frameH * s;
+  } else if ((long)ow * frameH < (long)oh * frameW) {
+    r.w = ow;
+    r.h = ow * frameH / frameW;
+  } else {
+    r.h = oh;
+    r.w = oh * frameW / frameH;
+  }
+  r.x = (ow - r.w) / 2;
+  r.y = (oh - r.h) / 2;
+  return r;
+}
+
+/* The overlay (notices, the host menu, the game list): a canvas at the largest whole scale that keeps it at least
+ * 320x240 (as the companion's), KEY_COLOR see-through. */
+static uint32_t overlayPx[OVERLAY_MAX_W * OVERLAY_MAX_H];
+static struct pd_canvas overlay;
+static SDL_Texture *overlayTexture;
+static int overlayTexW, overlayTexH;
+static void overlay_begin(void) {
+  int ow = W, oh = H;
+  SDL_GetRendererOutputSize(renderer, &ow, &oh);
+  int s = ow / 320 < oh / 240 ? ow / 320 : oh / 240;
+  if (s < 1)
+    s = 1;
+  int w = ow / s, h = oh / s;
+  w = w > OVERLAY_MAX_W ? OVERLAY_MAX_W : w;
+  h = h > OVERLAY_MAX_H ? OVERLAY_MAX_H : h;
+  pd_canvas_init(&overlay, w, h, overlayPx);
+  pd_fill(&overlay, 0, 0, w, h, KEY_COLOR);
+}
+static void overlay_draw(bool opaque) {
+  if (!overlayTexture || overlayTexW != overlay.w || overlayTexH != overlay.h) {
+    if (overlayTexture)
+      SDL_DestroyTexture(overlayTexture);
+    overlayTexture =
+        SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, overlay.w, overlay.h);
+    overlayTexW = overlay.w;
+    overlayTexH = overlay.h;
+    if (!overlayTexture)
+      return;
+    SDL_SetTextureBlendMode(overlayTexture, SDL_BLENDMODE_BLEND);
+  }
+  int n = overlay.w * overlay.h;
+  for (int i = 0; i < n; i++) {
+    uint32_t p = overlayPx[i] & 0xFFFFFF;
+    overlayPx[i] = p == KEY_COLOR && !opaque ? 0 : 0xFF000000u | p;
+  }
+  SDL_UpdateTexture(overlayTexture, NULL, overlayPx, overlay.w * 4);
+  int ow = W, oh = H;
+  SDL_GetRendererOutputSize(renderer, &ow, &oh);
+  int s = ow / overlay.w < oh / overlay.h ? ow / overlay.w : oh / overlay.h;
+  if (s < 1)
+    s = 1;
+  SDL_Rect r = {(ow - overlay.w * s) / 2, (oh - overlay.h * s) / 2, overlay.w * s, overlay.h * s};
+  SDL_RenderCopy(renderer, overlayTexture, NULL, &r);
+}
+static bool overlay_notice(void) {
+  if (SDL_GetTicks() >= messageUntil)
+    return false;
+  pd_fill(&overlay, 4, overlay.h - 30, overlay.w - 8, 24, 0x181818);
+  pd_text_fit(&overlay, 10, overlay.h - 26, overlay.w - 20, message, 0xffffff, PD_NO_SHADOW);
+  return true;
+}
+
+/* LCD (the host menu's LCD FILTER): Keegan Whitacre's output-space aperture mask (pokedaisy-brick dfc62a0),
+ * multiplied over the whole presented frame. */
 static SDL_Texture *lcdTexture;
 static int lcdW, lcdH;
 static void render_lcd(void) {
-  if (!lcdEnabled)
+  if (!hostSet.lcd)
     return;
   int w, h;
   if (SDL_GetRendererOutputSize(renderer, &w, &h) < 0 || w <= 0 || h <= 0)
@@ -554,1473 +972,882 @@ static void render_lcd(void) {
     lcdW = w;
     lcdH = h;
   }
-  if (!lcdTexture)
-    return;
-  int lw, lh;
-  SDL_RenderGetLogicalSize(renderer, &lw, &lh);
-  SDL_bool integer = SDL_RenderGetIntegerScale(renderer);
-  SDL_RenderSetLogicalSize(renderer, w, h);
-  SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
-  SDL_RenderCopy(renderer, lcdTexture, NULL, NULL);
-  SDL_RenderSetLogicalSize(renderer, lw, lh);
-  SDL_RenderSetIntegerScale(renderer, integer);
+  if (lcdTexture)
+    SDL_RenderCopy(renderer, lcdTexture, NULL, NULL);
 }
-static void timed_present(void) {
-  uint64_t t = SDL_GetPerformanceCounter();
+static double presentMs;
+static void present_game(const struct pd_menu *menu) {
+  int ow = W, oh = H;
+  SDL_GetRendererOutputSize(renderer, &ow, &oh);
+  SDL_RenderClear(renderer);
+  frameRect = frame_place(ow, oh);
+  if (frameTexture && frameW > 0) {
+    SDL_Rect src = {0, 0, frameW, frameH};
+    SDL_RenderCopy(renderer, frameTexture, &src, &frameRect);
+  }
   render_lcd();
+  bool any = false;
+  overlay_begin();
+  if (menu) {
+    pd_menu_draw((struct pd_menu *)menu, &overlay);
+    any = true;
+  }
+  any |= overlay_notice();
+  if (any)
+    overlay_draw(false);
+  uint64_t t = SDL_GetPerformanceCounter();
   SDL_RenderPresent(renderer);
   presentMs += (double)(SDL_GetPerformanceCounter() - t) * 1000.0 / SDL_GetPerformanceFrequency();
 }
-static void present(void) {
-  SDL_RenderSetLogicalSize(renderer, canvasW, canvasH);
-  SDL_RenderSetIntegerScale(renderer, SDL_TRUE);
-  if (SDL_GetTicks() < messageUntil) {
-    pd_fill(&canvas, 4, canvasH - 50, canvasW - 8, 24, 0x181818);
-    pd_text_fit(&canvas, 10, canvasH - 46, canvasW - 20, message, 0xffffff, PD_NO_SHADOW);
-  }
-  if (SDL_UpdateTexture(texture, NULL, pixels, canvasW * 4) < 0) {
-    notice(SDL_GetError());
-    return;
-  }
-  SDL_RenderClear(renderer);
-  if (SDL_RenderCopy(renderer, texture, NULL, NULL) < 0) {
-    notice(SDL_GetError());
-    return;
-  }
-  timed_present();
+static bool capture(const char *path) {
+  int w = W, h = H;
+  SDL_GetRendererOutputSize(renderer, &w, &h);
+  uint32_t *px = malloc((size_t)w * h * 4);
+  bool ok = px && SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_ARGB8888, px, w * 4) == 0;
+  for (int i = 0; ok && i < w * h; i++)
+    px[i] &= 0xFFFFFF;
+  ok = ok && pd_png_write(path, w, h, px);
+  free(px);
+  return ok;
 }
-/* The EXPAND window for an ow x oh screen and a fw x fh game: the screen's
- * size over the game's whole scale (one less for ZOOM OUT), within pk_wide's
- * largest view, never smaller than the game, with even margins so the game's
- * own pixels sit exactly in the middle. */
-static void wide_window(int ow, int oh, unsigned fw, unsigned fh, int aspect,
-                        unsigned *w, unsigned *h) {
-  int scale = ow / (int)fw < oh / (int)fh ? ow / (int)fw : oh / (int)fh;
-  if (aspect == PD_ASPECT_ZOOM_OUT)
-    scale--;
-  if (scale < 1)
-    scale = 1;
-  unsigned x = (unsigned)ow / scale, y = (unsigned)oh / scale;
-  x = x > PK_WIDE_MAX_VIEW_W ? PK_WIDE_MAX_VIEW_W : x < fw ? fw : x;
-  y = y > PK_WIDE_MAX_VIEW_H ? PK_WIDE_MAX_VIEW_H : y < fh ? fh : y;
-  *w = x - ((x - fw) & 1);
-  *h = y - ((y - fh) & 1);
+
+/* ---- audio: the core's samples resampled to the device, a little faster or slower to keep its queue near 60 ms
+ * (the screen paces the game, not the sound card); fast-forward keeps every Nth sample, so it plays sped up. ---- */
+static double resamplePos;
+static int16_t prevL, prevR;
+static unsigned audioSkip, audioKeepEvery = 1;
+static bool muted;
+static void audio_open(void) {
+  SDL_AudioSpec want = {0};
+  want.freq = OUT_RATE;
+  want.format = AUDIO_S16SYS;
+  want.channels = 2;
+  want.samples = 512;
+  audio = SDL_OpenAudioDevice(NULL, 0, &want, NULL, 0);
+  if (audio)
+    SDL_PauseAudioDevice(audio, 0);
+  else
+    fprintf(stderr, "Audio unavailable: %s\n", SDL_GetError());
 }
-/* After every frame while EXPAND can run: a frame nobody sees (fast-forward)
- * only keeps pk_wide's RAM history. wideReady = this frame shows the window:
- * the plain overworld (text boxes too with AUTO ZOOM IN off), its edges all
- * map; anything else (battles, menus, transitions) shows the game's picture. */
-static void wide_tick(struct mCore *c, bool skip, const struct pd_settings *s) {
-  wideReady = false;
-  if (!wideSupported)
+/* A handheld's ALSA device can go bad under the app (the screen turned off and on: "ALSA write failed
+ * (unrecoverable)"), and SDL then closes it for good; it's reopened as soon as SDL says so, or within a second of it
+ * no longer playing. */
+static void audio_check(void) {
+  static Uint32 next;
+  bool stopped = audio && SDL_GetAudioDeviceStatus(audio) == SDL_AUDIO_STOPPED;
+  if (!audioLost && !stopped)
     return;
-  unsigned fw = (unsigned)pk_wide_frame_w(), fh = (unsigned)pk_wide_frame_h();
-  for (unsigned y = 0; y < fh; y++)
-    memcpy(wideSource + y * fw, video + y * 256, fw * sizeof *wideSource);
-  if (skip) {
-    pk_wide_skip(c, wideSource);
+  if (SDL_GetTicks() < next)
     return;
-  }
-  if (s->aspect == PD_ASPECT_ORIGINAL) {
-    // Nothing past the picture, but the scene still read (FLY's "on the field"): a one-pixel window.
-    static uint32_t px;
-    pk_wide_view(c, wideSource, &px, (struct PkWideView){0, 0, 1, 1}, NULL);
-    return;
-  }
-  // ZOOM OUT steps back in to EXPAND's window off the plain overworld (a text
-  // box, the START menu, a battle) with AUTO ZOOM IN on, as the app's camera
-  // does - by the last frame's scene, the one known before this one is drawn.
-  int last = pk_wide_scene();
-  int aspect = s->aspect == PD_ASPECT_ZOOM_OUT && s->autoZoom && last != PK_WIDE_SCENE_FIELD
-                   ? PD_ASPECT_EXPAND : s->aspect;
-  int ow = W, oh = H;
-  if (SDL_GetRendererOutputSize(renderer, &ow, &oh) < 0 || ow <= 0 || oh <= 0)
-    ow = W, oh = H;
-  wide_window(ow, oh, fw, fh, aspect, &wideW, &wideH);
-  struct PkWideView v = {((int)fw - (int)wideW) / 2, ((int)fh - (int)wideH) / 2,
-                         (int)wideW, (int)wideH};
-  // Like the app's EXPAND, the window shows whatever the scene: the map past
-  // the edges on the overworld (text boxes and the START menu too), the
-  // battle's own scenery, and off the map a glow from the frame's own edge
-  // pixels, crossfaded - never a cut back to the bare picture.
-  pk_wide_view(c, wideSource, wideFrame, v, NULL);
-  wideReady = !pk_wide_fault();
+  next = SDL_GetTicks() + 1000;
+  if (audio)
+    SDL_CloseAudioDevice(audio);
+  audio = 0;
+  audio_open();
+  audioLost = !audio;
+  if (audio)
+    fprintf(stderr, "Audio device reopened\n");
 }
-// Gameplay scales in physical panel pixels; the companion keeps its 512x384
-// grid.
-static int gameScaling; // plorpOS: enum pd_scaling, for ASPECT ORIGINAL's picture
-static bool render_game(unsigned gw, unsigned gh) {
-  int ow, oh;
-  if (SDL_GetRendererOutputSize(renderer, &ow, &oh) < 0 || ow <= 0 || oh <= 0)
-    return false;
-  SDL_RenderSetLogicalSize(renderer, ow, oh);
-  SDL_RenderSetIntegerScale(renderer, SDL_FALSE);
-  int scale = ow / (int)gw;
-  if (oh / (int)gh < scale)
-    scale = oh / (int)gh;
-  if (scale < 1)
-    scale = 1;
-  lastGameRect =
-      (SDL_Rect){(ow - (int)gw * scale) / 2, (oh - (int)gh * scale) / 2,
-                 (int)gw * scale, (int)gh * scale};
-  if (gameScaling == PD_SCALE_STRETCH)
-    lastGameRect = (SDL_Rect){0, 0, ow, oh};
-  else if (gameScaling == PD_SCALE_FIT) {
-    int w = ow, h = (int)((long)ow * gh / gw);
-    if (h > oh) {
-      h = oh;
-      w = (int)((long)oh * gw / gh);
+#ifdef POCKET_TEST_AUDIO
+static unsigned long audioNonzero;
+#endif
+static size_t audio_batch(const int16_t *in, size_t frames) {
+  static int16_t out[4096 * 2];
+  if (!audio || muted)
+    return frames;
+  size_t n = 0;
+  double step = srcRate * rateTrim / OUT_RATE;
+  const bool room = SDL_GetQueuedAudioSize(audio) < OUT_RATE * 4 / 5; // never more than 200 ms behind
+  for (size_t i = 0; i < frames; i++) {
+    if (audioSkip++ % audioKeepEvery)
+      continue;
+    int16_t l = in[2 * i], r = in[2 * i + 1];
+#ifdef POCKET_TEST_AUDIO
+    audioNonzero += l || r;
+#endif
+    while (resamplePos < 1.0) {
+      if (n == 4096) { // a batch longer than the buffer: send what's made and go on (never skip ahead in the input)
+        if (room)
+          SDL_QueueAudio(audio, out, (Uint32)(n * 4));
+        n = 0;
+      }
+      out[2 * n] = (int16_t)(prevL + (l - prevL) * resamplePos);
+      out[2 * n + 1] = (int16_t)(prevR + (r - prevR) * resamplePos);
+      n++;
+      resamplePos += step;
     }
-    lastGameRect = (SDL_Rect){(ow - w) / 2, (oh - h) / 2, w, h};
+    resamplePos -= 1.0;
+    prevL = l;
+    prevR = r;
   }
-  // The textures take mGBA's pixels as they are (XBGR: SDL's BGR888).
-  if (SDL_UpdateTexture(gameTexture, &(SDL_Rect){0, 0, (int)gw, (int)gh}, video, 256 * 4) < 0) {
-    notice(SDL_GetError());
-    return false;
-  }
-  SDL_Texture *drawn = gameTexture;
-  if (wideReady) {
-    // The same scale: the window's middle lands on the game's own picture.
-    gw = wideW;
-    gh = wideH;
-    scale = ow / (int)gw < oh / (int)gh ? ow / (int)gw : oh / (int)gh;
-    if (scale < 1)
-      scale = 1;
-    lastGameRect = (SDL_Rect){(ow - (int)gw * scale) / 2, (oh - (int)gh * scale) / 2,
-                              (int)gw * scale, (int)gh * scale};
-    if (SDL_UpdateTexture(wideTexture, &(SDL_Rect){0, 0, (int)gw, (int)gh},
-                          wideFrame, (int)gw * 4) < 0) {
-      notice(SDL_GetError());
-      return false;
-    }
-    drawn = wideTexture;
-  }
-  SDL_RenderClear(renderer);
-  SDL_Rect src = {0, 0, (int)gw, (int)gh};
-  if (SDL_RenderCopy(renderer, drawn, &src, &lastGameRect) < 0) {
-    notice(SDL_GetError());
-    return false;
-  }
-  return true;
+  if (n && room)
+    SDL_QueueAudio(audio, out, (Uint32)(n * 4));
+  return frames;
 }
-static void present_game(unsigned gw, unsigned gh) {
-  if (render_game(gw, gh))
-    timed_present();
+static void audio_sample(int16_t l, int16_t r) {
+  int16_t s[2] = {l, r};
+  audio_batch(s, 1);
 }
-/* WILD's badge: this map's wild species not caught yet (FieldHud's hudWild); -1 = the game has no wild tables. */
-static int hud_wild_uncaught(const struct pd_game *g, const struct pd_snapshot *s) {
-  struct pd_wild_set w;
-  if (!g->cfg || !g->cfg->wildHeaders)
-    return -1;
-  if (!pd_wild_here(g, s, &w))
+static void audio_trim(double gameHz, double paceHz) {
+  double rate = paceHz > 0 && gameHz > 0 ? paceHz / gameHz : 1;
+  if (audio) {
+    double queued = SDL_GetQueuedAudioSize(audio) / 4.0, target = OUT_RATE * 0.06;
+    double d = (target - queued) / target;
+    d = d > 1 ? 1 : d < -1 ? -1 : d;
+    rate *= 1 - 0.005 * d; // short of the target: a little more output per input sample
+  }
+  rateTrim = rate;
+}
+
+/* ---- input to the core ---- */
+static unsigned gameKeys; // this frame's joypad, in RETRO_DEVICE_ID_JOYPAD bits
+static void input_poll(void) {}
+static int16_t input_state(unsigned port, unsigned device, unsigned index, unsigned id) {
+  (void)index;
+  if (port)
     return 0;
-  int seen[PD_WILD_METHODS * PD_WILD_MAX], n = 0, left = 0;
-  for (int m = 0; m < PD_WILD_METHODS; m++)
-    for (int i = 0; i < w.count[m]; i++) {
-      int sp = w.mons[m][i].species, k = 0;
-      while (k < n && seen[k] != sp)
-        k++;
-      if (k < n)
-        continue;
-      seen[n++] = sp;
-      left += !pd_dex_caught(s, pd_dex_national(g, sp));
-    }
-  return left;
-}
-/* The HUD over the overworld (hud.c): the screen with EXPAND (its corners), else the game's own picture, at the
- * companion's canvas scale. Its texture is redrawn only when what it shows changed (hud_key). */
-static uint32_t hudPixels[CANVAS_MAX_W * CANVAS_MAX_H];
-static SDL_Texture *hudTexture;
-static uint32_t hudDrawnKey;
-static int hudW, hudH;
-static bool hudShown;
-static struct hud_hits hudHits; // where hud_draw put each target, in HUD canvas pixels
-static int hudScale = 1;
-static void present_hud_game(const struct pd_game *g, const struct pd_snapshot *s, const struct hud_state *h,
-                             const struct pd_settings *st, unsigned gw, unsigned gh) {
-  if (!render_game(gw, gh))
-    return;
-  int ow, oh;
-  SDL_GetRendererOutputSize(renderer, &ow, &oh);
-  int scale = ow / canvasW < oh / canvasH ? ow / canvasW : oh / canvasH;
-  // SIZE: the companion's scale a whole pixel smaller or bigger (FieldHudSize's step).
-  scale += st->hudSize - PD_HUD_NORMAL;
-  if (scale < 1)
-    scale = 1;
-  hudScale = scale;
-  SDL_Rect area = wideReady ? (SDL_Rect){0, 0, ow, oh} : lastGameRect;
-  int w = area.w / scale, hh = area.h / scale;
-  if (w > CANVAS_MAX_W)
-    w = CANVAS_MAX_W;
-  if (hh > CANVAS_MAX_H)
-    hh = CANVAS_MAX_H;
-  if (!hudTexture) {
-    hudTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING, CANVAS_MAX_W,
-                                   CANVAS_MAX_H);
-    if (hudTexture)
-      SDL_SetTextureBlendMode(hudTexture, SDL_BLENDMODE_BLEND);
-  }
-  uint32_t key = hud_key(g, s, h, st) ^ (uint32_t)(w * 65599 + hh);
-  if (hudTexture && (key != hudDrawnKey || w != hudW || hh != hudH)) {
-    struct pd_canvas hc;
-    pd_canvas_init(&hc, w, hh, hudPixels);
-    hudShown = hud_draw(&hc, g, s, h, st, &hudHits);
-    quick_finish(&hc);
-    SDL_UpdateTexture(hudTexture, &(SDL_Rect){0, 0, w, hh}, hudPixels, w * 4);
-    hudDrawnKey = key;
-    hudW = w;
-    hudH = hh;
-  }
-  if (hudTexture && hudShown) {
-    SDL_Rect at = {area.x + (area.w - w * scale) / 2, area.y + (area.h - hh * scale) / 2, w * scale, hh * scale};
-    SDL_RenderCopy(renderer, hudTexture, &(SDL_Rect){0, 0, w, hh}, &at);
-  }
-  timed_present();
-}
-/* The game menu (resume, states, quit): an OPTION window over the game's
- * picture, EXPAND's edges and all, dimmed behind it - the companion's canvas
- * scale, its windows only (pd_menu.overlay), drawn into a texture whose
- * untouched pixels stay see-through. */
-#define MENU_KEY 0x00FF00FFu
-static uint32_t menuPixels[CANVAS_MAX_W * CANVAS_MAX_H];
-static SDL_Texture *menuTexture;
-static bool overlay_texture(void) {
-  if (!menuTexture) {
-    menuTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_ARGB8888, SDL_TEXTUREACCESS_STREAMING,
-                                    CANVAS_MAX_W, CANVAS_MAX_H);
-    if (!menuTexture)
-      return false;
-    SDL_SetTextureBlendMode(menuTexture, SDL_BLENDMODE_BLEND);
-  }
-  return true;
-}
-/* The QUICK MENU over the running game: a light dim, the ring at the companion's canvas scale. */
-static void present_quick(const struct pd_game *g, const struct quick_item *items, int n, int sel,
-                          const char *title, const char *const *rows, int rowCount, int rowSel, unsigned gw,
-                          unsigned gh) {
-  if (!render_game(gw, gh) || !overlay_texture())
-    return;
-  int ow, oh;
-  SDL_GetRendererOutputSize(renderer, &ow, &oh);
-  int scale = ow / canvasW < oh / canvasH ? ow / canvasW : oh / canvasH;
-  if (scale < 1)
-    scale = 1;
-  struct pd_canvas qc;
-  pd_canvas_init(&qc, canvasW, canvasH, menuPixels);
-  if (rows)
-    quick_list_draw(&qc, title, rows, rowCount, rowSel);
-  else if (!quick_draw(&qc, g, items, n, sel))
-    return;
-  quick_finish(&qc);
-  SDL_UpdateTexture(menuTexture, &(SDL_Rect){0, 0, canvasW, canvasH}, menuPixels, canvasW * 4);
-  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 0x55);
-  SDL_RenderFillRect(renderer, NULL);
-  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-  SDL_Rect at = {(ow - canvasW * scale) / 2, (oh - canvasH * scale) / 2, canvasW * scale, canvasH * scale};
-  SDL_RenderCopy(renderer, menuTexture, &(SDL_Rect){0, 0, canvasW, canvasH}, &at);
-  timed_present();
-}
-static void present_menu(struct pd_menu *m, unsigned gw, unsigned gh) {
-  if (!render_game(gw, gh))
-    return;
-  int ow, oh;
-  SDL_GetRendererOutputSize(renderer, &ow, &oh);
-  int scale = ow / canvasW < oh / canvasH ? ow / canvasW : oh / canvasH;
-  if (scale < 1)
-    scale = 1;
-  int w = canvasW * 3 / 4 < 300 ? (canvasW < 300 ? canvasW : 300) : canvasW * 3 / 4;
-  int h = 24 + 4 + m->count * 18 + 2 * 7 + 8 + 2 * MARGIN;
-  if (h > canvasH)
-    h = canvasH;
-  if (!overlay_texture())
-    return;
-  struct pd_canvas mc;
-  pd_canvas_init(&mc, w, h, menuPixels);
-  for (int i = 0; i < w * h; i++)
-    menuPixels[i] = MENU_KEY;
-  m->overlay = true;
-  pd_menu_draw(m, &mc);
-  for (int i = 0; i < w * h; i++)
-    menuPixels[i] = menuPixels[i] == MENU_KEY ? 0 : (menuPixels[i] | 0xFF000000u);
-  SDL_UpdateTexture(menuTexture, &(SDL_Rect){0, 0, w, h}, menuPixels, w * 4);
-  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_BLEND);
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 120);
-  SDL_RenderFillRect(renderer, NULL);
-  SDL_SetRenderDrawBlendMode(renderer, SDL_BLENDMODE_NONE);
-  SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
-  SDL_Rect at = {(ow - w * scale) / 2, (oh - h * scale) / 2, w * scale, h * scale};
-  SDL_RenderCopy(renderer, menuTexture, &(SDL_Rect){0, 0, w, h}, &at);
-  timed_present();
-}
-static bool capture_frame(const char *path, unsigned *lit) {
-  int ow, oh;
-  if (SDL_GetRendererOutputSize(renderer, &ow, &oh) < 0 || ow <= 0 || oh <= 0 ||
-      ow > 8192 || oh > 8192)
-    return false;
-  uint32_t *shot = malloc((size_t)ow * oh * 4);
-  if (!shot)
-    return false;
-  bool ok = SDL_RenderReadPixels(renderer, NULL, SDL_PIXELFORMAT_RGB888, shot,
-                                 ow * 4) == 0;
-  if (ok && lit) {
-    *lit = 0;
-    for (int i = 0; i < ow * oh; i++)
-      if (shot[i] & 0xffffff)
-        (*lit)++;
-  }
-  if (ok && path)
-    ok = pd_png_write(path, ow, oh, shot);
-  free(shot);
-  return ok;
-}
-static bool state(struct mCore *c, const char *path, bool save) {
-  char tmp[1200];
-  snprintf(tmp, sizeof tmp, "%s.tmp", path);
-  struct VFile *f = VFileOpen(save ? tmp : path,
-                              save ? O_CREAT | O_TRUNC | O_RDWR : O_RDONLY);
-  if (!f)
-    return false;
-  bool ok = save ? mCoreSaveStateNamed(c, f, SAVESTATE_RTC)
-                 : mCoreLoadStateNamed(c, f, SAVESTATE_RTC);
-  if(!f->close(f))ok=false;
-  if (ok && !save) {
-    pk_heal_rtc(c);
-    pk_wide_reset(); // EXPAND's RAM history is from before the jump
-    wideReady = false;
-  }
-  if (save) {
-    if (ok)
-      ok = rename(tmp, path) == 0;
-    else
-      unlink(tmp);
-  }
-  return ok;
-}
-/* The D-pad's cursor over the companion. Kept by hit id, since every draw makes
- * the hit list anew: a press that leaves the screen as it was keeps it where it
- * is (the nearest item if that one went), and a new screen (a tab, a summary, a
- * pick-list, a dex entry) puts it on that screen's start (pd_ui.startId: a
- * pick-list's current choice, a confirm's CANCEL), else its first item. */
-static int focusId = -1;
-static struct pd_hit focusAt;
-struct screen {
-  int tab, overlay, summarySlot, dexOpen;
-};
-static struct screen lastScreen = {-1, -1, -1, -1};
-static struct screen screen_of(const struct pd_ui *u) {
-  return (struct screen){u->tab, u->overlay, u->summarySlot, u->dexOpen};
-}
-static void focus_new_screen(void) { lastScreen.tab = -1; }
-// What the cursor can land on: not the tab bar, nor a scrim or a list's drag area.
-static bool focusable(int id) {
-  return !(id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) && id != HIT_FF && id != HIT_SCRIM &&
-         id != HIT_BAG_LIST && id != HIT_DEX_LIST && id != HIT_GUIDE_LIST && id != HIT_SETTINGS_LIST;
-}
-// A window over the screen (the guide's notice, a picker, PLACES) starts with its scrim: the cursor stays on what
-// comes after it - the screen under the window can't be reached (or pressed) while it's open.
-static int modal_floor(const struct pd_ui *u) {
-  for (int i = 0; i < u->hitCount; i++)
-    if (u->hits[i].id == HIT_SCRIM)
-      return i;
+  if (device == RETRO_DEVICE_JOYPAD)
+    return id == RETRO_DEVICE_ID_JOYPAD_MASK ? (int16_t)gameKeys : (int16_t)((gameKeys >> id) & 1);
+  if (device == RETRO_DEVICE_POINTER)
+    return id == RETRO_DEVICE_ID_POINTER_X         ? (int16_t)pointerX
+           : id == RETRO_DEVICE_ID_POINTER_Y       ? (int16_t)pointerY
+           : id == RETRO_DEVICE_ID_POINTER_PRESSED ? pointerDown
+                                                   : 0;
   return 0;
 }
-static int focus_index(const struct pd_ui *u, int id) {
-  for (int i = modal_floor(u); i < u->hitCount; i++)
-    if (u->hits[i].id == id)
-      return i;
-  return -1;
+static unsigned joypad(unsigned keys) {
+  static const struct {
+    int key;
+    unsigned id;
+  } map[] = {{A, RETRO_DEVICE_ID_JOYPAD_A},           {B, RETRO_DEVICE_ID_JOYPAD_B},
+             {SELECT, RETRO_DEVICE_ID_JOYPAD_SELECT}, {START, RETRO_DEVICE_ID_JOYPAD_START},
+             {RIGHT, RETRO_DEVICE_ID_JOYPAD_RIGHT},   {LEFT, RETRO_DEVICE_ID_JOYPAD_LEFT},
+             {UP, RETRO_DEVICE_ID_JOYPAD_UP},         {DOWN, RETRO_DEVICE_ID_JOYPAD_DOWN},
+             {R, RETRO_DEVICE_ID_JOYPAD_R},           {L, RETRO_DEVICE_ID_JOYPAD_L},
+             {X, RETRO_DEVICE_ID_JOYPAD_X},           {Y, RETRO_DEVICE_ID_JOYPAD_Y},
+             {L2, RETRO_DEVICE_ID_JOYPAD_L2},         {R2, RETRO_DEVICE_ID_JOYPAD_R2},
+             {L3, RETRO_DEVICE_ID_JOYPAD_L3},         {R3, RETRO_DEVICE_ID_JOYPAD_R3}};
+  unsigned bits = 0;
+  for (size_t i = 0; i < sizeof map / sizeof map[0]; i++)
+    if (keys & (1u << map[i].key))
+      bits |= 1u << map[i].id;
+  return bits;
 }
-// The shared map is a touch target. Linux keeps a tile cursor over that same
-// target, using the shared player/section layouts rather than another grid.
+
+/* ---- rewind: a state every 2 frames, kept as the newest whole state plus the differences back from it (XOR,
+ * zero runs packed), within a memory budget (POCKET_REWIND_MB, default 32): about 20 s on a GBA game. ---- */
+#define REWIND_CAP 4096
+static unsigned char *rewindNow, *rewindTmp;
+static size_t rewindSize, rewindBytes, rewindBudget;
 static struct {
-  bool ready;
-  unsigned rom;
-  int page, requestedPage, tx, ty, sel, dungeon;
-  int minX, minY, maxX, maxY;
-} mapCursor;
-static void map_cursor_sync(const struct pd_ui *u, const struct pd_game *g,
-                            const struct pd_snapshot *s) {
-  if (u->tab != PD_TAB_MAP) {
-    mapCursor.ready = false;
-    return;
+  unsigned char *d;
+  size_t n;
+} rewindRing[REWIND_CAP];
+static int rewindHead, rewindCount, rewindTick;
+static void rewind_clear(void) {
+  for (int i = 0; i < rewindCount; i++)
+    free(rewindRing[(rewindHead + i) % REWIND_CAP].d);
+  rewindHead = rewindCount = 0;
+  rewindBytes = 0;
+  free(rewindNow);
+  free(rewindTmp);
+  rewindNow = rewindTmp = NULL;
+  rewindSize = 0;
+}
+// a ^ b packed: (u32 zeros, u32 literal count, literal bytes)...
+static size_t delta_pack(const unsigned char *a, const unsigned char *b, size_t n, unsigned char *out) {
+  size_t o = 0, i = 0;
+  while (i < n) {
+    size_t z = i;
+    while (z < n && a[z] == b[z])
+      z++;
+    size_t lit = z;
+    while (lit < n && (a[lit] != b[lit] || (lit + 1 < n && a[lit + 1] != b[lit + 1])))
+      lit++;
+    uint32_t zeros = (uint32_t)(z - i), count = (uint32_t)(lit - z);
+    memcpy(out + o, &zeros, 4);
+    memcpy(out + o + 4, &count, 4);
+    o += 8;
+    for (size_t k = z; k < lit; k++)
+      out[o++] = a[k] ^ b[k];
+    i = lit;
   }
-  const struct pd_map_art *art = pd_map_art(g);
-  if (!art) {
-    mapCursor.ready = false;
-    return;
+  return o;
+}
+static void delta_apply(unsigned char *s, const unsigned char *d, size_t dn) {
+  size_t i = 0, o = 0;
+  while (o + 8 <= dn) {
+    uint32_t zeros, count;
+    memcpy(&zeros, d + o, 4);
+    memcpy(&count, d + o + 4, 4);
+    o += 8;
+    i += zeros;
+    for (uint32_t k = 0; k < count; k++)
+      s[i++] ^= d[o++];
   }
-  if (focus_index(u, HIT_MAP) < 0)
+}
+static void rewind_push(void) {
+  size_t size = core.serialize_size();
+  if (!size)
     return;
-  int page = 0, tx = PD_MAP_W / 16, ty = PD_MAP_H / 16;
-  bool player = pd_map_player_tile(g, s, &page, &tx, &ty);
-  int shown = u->mapPage >= 0 ? u->mapPage : player ? page : 0;
-  if (shown >= art->pages) shown = 0;
-  const struct pd_region_layout *layouts = g->kind == PD_GAME_EMERALD ?
-      pd_layouts_emerald : pd_layouts_firered;
-  int pages = g->kind == PD_GAME_EMERALD ? pd_layouts_emerald_count : pd_layouts_firered_count;
-  if (shown < 0 || shown >= pages) {
-    mapCursor.ready = false;
-    return;
-  }
-  const struct pd_region_layout *layout = &layouts[shown];
-  mapCursor.minX = layout->offX;
-  mapCursor.minY = layout->offY;
-  mapCursor.maxX = layout->offX + layout->w - 1;
-  mapCursor.maxY = layout->offY + layout->h - 1;
-  if (mapCursor.ready && mapCursor.rom == g->loadId && mapCursor.page == shown &&
-      mapCursor.requestedPage == u->mapPage &&
-      mapCursor.sel == u->mapSel && mapCursor.dungeon == u->mapDungeon)
-    return;
-  if (!player || page != shown) {
-    tx = PD_MAP_W / 16;
-    ty = PD_MAP_H / 16;
-  }
-  if (u->mapDungeon >= 0) {
-    tx = u->mapSelTx;
-    ty = u->mapSelTy;
-  } else if (u->mapSel >= 0) {
-    struct pd_tile_rect r;
-    if (pd_map_tiles(g, u->mapSel, &page, &r, 1) && page == shown) {
-      tx = r.x + (r.w - 1) / 2;
-      ty = r.y + (r.h - 1) / 2;
+  if (size != rewindSize) {
+    rewind_clear();
+    rewindNow = malloc(size);
+    rewindTmp = malloc(size * 3 + 64); // the worst packing: 9 bytes per 3 (1 literal + its header)
+    if (!rewindNow || !rewindTmp || !core.serialize(rewindNow, size)) {
+      rewind_clear();
+      return;
     }
+    rewindSize = size;
+    return;
   }
-  mapCursor.ready = true;
-  mapCursor.rom = g->loadId;
-  mapCursor.page = shown;
-  mapCursor.requestedPage = u->mapPage;
-  mapCursor.tx = tx < mapCursor.minX ? mapCursor.minX : tx > mapCursor.maxX ? mapCursor.maxX : tx;
-  mapCursor.ty = ty < mapCursor.minY ? mapCursor.minY : ty > mapCursor.maxY ? mapCursor.maxY : ty;
-  mapCursor.sel = u->mapSel;
-  mapCursor.dungeon = u->mapDungeon;
+  static unsigned char *next;
+  static size_t nextSize;
+  if (nextSize != size) {
+    free(next);
+    next = malloc(size);
+    nextSize = next ? size : 0;
+  }
+  if (!next || !core.serialize(next, size))
+    return;
+  size_t dn = delta_pack(rewindNow, next, size, rewindTmp);
+  unsigned char *d = malloc(dn);
+  if (!d)
+    return;
+  memcpy(d, rewindTmp, dn);
+  while (rewindCount && (rewindCount == REWIND_CAP || rewindBytes + dn > rewindBudget)) {
+    free(rewindRing[rewindHead].d);
+    rewindBytes -= rewindRing[rewindHead].n;
+    rewindHead = (rewindHead + 1) % REWIND_CAP;
+    rewindCount--;
+  }
+  int at = (rewindHead + rewindCount++) % REWIND_CAP;
+  rewindRing[at].d = d;
+  rewindRing[at].n = dn;
+  rewindBytes += dn;
+  memcpy(rewindNow, next, size);
 }
-static bool map_cursor_active(const struct pd_ui *u) {
-  return mapCursor.ready && u->tab == PD_TAB_MAP &&
-         u->overlay == PD_OVERLAY_NONE && focusId == HIT_MAP;
-}
-// B leaves the grid for PLACES / ME / region buttons; another B is normal Back.
-static bool map_cursor_back(struct pd_ui *u) {
-  int i = focus_index(u, HIT_MAP_PLACES);
-  if (!map_cursor_active(u) || i < 0)
+// One state back: false when there's none left.
+static bool rewind_pop(void) {
+  if (!rewindCount || !rewindNow)
     return false;
-  focusId = HIT_MAP_PLACES;
-  focusAt = u->hits[i];
-  return true;
+  int at = (rewindHead + --rewindCount) % REWIND_CAP;
+  delta_apply(rewindNow, rewindRing[at].d, rewindRing[at].n);
+  rewindBytes -= rewindRing[at].n;
+  free(rewindRing[at].d);
+  return core.unserialize(rewindNow, rewindSize);
 }
-static void focus_activate(struct pd_ui *u) {
-  int at = focus_index(u, focusId);
-  if (at < 0)
-    return;
-  const struct pd_hit *h = &u->hits[at];
-  if (map_cursor_active(u)) {
-    // Call the map's existing selection directly: overlaid map buttons must
-    // not intercept a tile in the top-right corner of the grid.
-    u->touchX0 = h->x + (mapCursor.tx * 8 + 4) * h->w / PD_MAP_W;
-    u->touchY0 = h->y + (mapCursor.ty * 8 + 4) * h->h / PD_MAP_H;
-    ui_map_act(u, HIT_MAP);
-    mapCursor.sel = u->mapSel;
-    mapCursor.dungeon = u->mapDungeon;
-    mapCursor.requestedPage = u->mapPage;
-  } else {
-    pd_ui_touch(u, h->x + h->w / 2, h->y + h->h / 2, true);
-    pd_ui_touch(u, h->x + h->w / 2, h->y + h->h / 2, false);
-  }
-}
-// After a draw: where the cursor is now (an index into u->hits, -1 = none).
-static int focus_resolve(struct pd_ui *u) {
-  struct screen now = screen_of(u);
-  bool changed = memcmp(&now, &lastScreen, sizeof now) != 0;
-  lastScreen = now;
-  int floor = modal_floor(u);
-  int i = changed ? -1 : focus_index(u, focusId);
-  if (i >= 0 && i < floor)
-    i = -1;
-  if (i < 0 && !changed && focusId >= 0) { // gone: the nearest item to where it was
-    int best = 1 << 30;
-    for (int j = floor; j < u->hitCount; j++) {
-      const struct pd_hit *h = &u->hits[j];
-      int dx = h->x + h->w / 2 - (focusAt.x + focusAt.w / 2),
-          dy = h->y + h->h / 2 - (focusAt.y + focusAt.h / 2);
-      if (focusable(h->id) && dx * dx + dy * dy < best)
-        best = dx * dx + dy * dy, i = j;
-    }
-  }
-  if (i < 0 && u->startId >= 0)
-    i = focus_index(u, u->startId);
-  if (i >= 0 && i < floor)
-    i = -1;
-  for (int j = floor; i < 0 && j < u->hitCount; j++)
-    if (focusable(u->hits[j].id))
-      i = j;
-  focusId = i >= 0 ? u->hits[i].id : -1;
-  if (i >= 0)
-    focusAt = u->hits[i];
-  return i;
-}
-static void focus_move(struct pd_ui *u, int direction) {
-  if (map_cursor_active(u)) {
-    if (direction == LEFT && mapCursor.tx > mapCursor.minX) mapCursor.tx--;
-    if (direction == RIGHT && mapCursor.tx < mapCursor.maxX) mapCursor.tx++;
-    if (direction == UP && mapCursor.ty > mapCursor.minY) mapCursor.ty--;
-    if (direction == DOWN && mapCursor.ty < mapCursor.maxY) mapCursor.ty++;
-    focus_activate(u); // Name the location immediately, like the game's map.
-    return;
-  }
-  int cur = focus_index(u, focusId);
-  if (cur < 0) {
-    focus_resolve(u);
-    return;
-  }
-  const struct pd_hit *h = &u->hits[cur];
-  int best = -1, score = 1000000;
-  for (int i = modal_floor(u); i < u->hitCount; i++) {
-    if (i == cur)
-      continue;
-    struct pd_hit *t = &u->hits[i];
-    // Never onto what focus_resolve can't land on either (the tab chips: L / R own the bar).
-    if (!focusable(t->id) || t->id == HIT_SCRIM || t->id == HIT_BAG_LIST || t->id == HIT_DEX_LIST ||
-        t->id == HIT_GUIDE_LIST || t->id == HIT_SETTINGS_LIST)
-      continue;
-    int dx = (t->x + t->w / 2) - (h->x + h->w / 2),
-        dy = (t->y + t->h / 2) - (h->y + h->h / 2);
-    int along = direction == LEFT    ? -dx
-                : direction == RIGHT ? dx
-                : direction == UP    ? -dy
-                                     : dy;
-    // Across: the gap between the two along the other axis, 0 where they overlap (a full-width row right
-    // under a button beats a chip far off to the side).
-    int across = direction == LEFT || direction == RIGHT
-                     ? (t->y + t->h <= h->y ? h->y - (t->y + t->h) : t->y >= h->y + h->h ? t->y - (h->y + h->h) : 0)
-                     : (t->x + t->w <= h->x ? h->x - (t->x + t->w) : t->x >= h->x + h->w ? t->x - (h->x + h->w) : 0);
-    // What lines up with the cursor on the other axis comes first (the next chip in a tab bar, not the slot
-    // just above it); an item off to the side is only reached where nothing lines up.
-    int cost = along + across * 4 + (across > 0 ? 100000 : 0);
-    if (along > 0 && cost < score) {
-      best = i;
-      score = cost;
-    }
-  }
-  if (best >= 0) {
-    focusId = u->hits[best].id;
-    focusAt = u->hits[best];
-  } else if (direction == UP || direction == DOWN) {
-    int d = direction == DOWN ? 36 : -36;
-    if (u->overlay == PD_OVERLAY_PLACES)
-      u->placesScroll += d;
-    else if (u->tab == PD_TAB_BAG)
-      u->bagScroll += d;
-    else if (u->tab == PD_TAB_DEX)
-      u->dexScroll += d;
-    else if (u->tab == PD_TAB_GUIDE)
-      u->guideScroll += d;
-    else if (u->tab == PD_TAB_SETTINGS && u->overlay == PD_OVERLAY_NONE)
-      u->settingsScroll += d;
-  }
-}
-static void focus_draw(struct pd_ui *u, int focus) {
-  if (focus < 0 || focus >= u->hitCount)
-    return;
-  struct pd_hit *h = &u->hits[focus];
-  struct pd_hit tile;
-  if (map_cursor_active(u)) {
-    int x = mapCursor.tx * 8, y = mapCursor.ty * 8;
-    tile = (struct pd_hit){h->x + x * h->w / PD_MAP_W,
-                          h->y + y * h->h / PD_MAP_H,
-                          (x + 8) * h->w / PD_MAP_W - x * h->w / PD_MAP_W,
-                          (y + 8) * h->h / PD_MAP_H - y * h->h / PD_MAP_H,
-                          HIT_MAP, false};
-    h = &tile;
-    pd_fill(&canvas, h->x - 1, h->y - 1, h->w + 2, 1, 0x202828);
-    pd_fill(&canvas, h->x - 1, h->y + h->h, h->w + 2, 1, 0x202828);
-    pd_fill(&canvas, h->x - 1, h->y, 1, h->h, 0x202828);
-    pd_fill(&canvas, h->x + h->w, h->y, 1, h->h, 0x202828);
-  }
-  if (h->id >= HIT_SLOT && h->id < HIT_SLOT + PD_PARTY_SIZE)
-    return; // a party slot shows its own selected look (pd_ui.focusId)
-  pd_fill(&canvas, h->x, h->y, h->w, 2, 0xff7331);
-  pd_fill(&canvas, h->x, h->y + h->h - 2, h->w, 2, 0xff7331);
-  pd_fill(&canvas, h->x, h->y, 2, h->h, 0xff7331);
-  pd_fill(&canvas, h->x + h->w - 2, h->y, 2, h->h, 0xff7331);
-}
-/* Pacing. The screen's refresh paces the game where it's close to the game's
- * 59.73 fps (a 60 Hz panel): a game frame per refresh, the present waiting for
- * it, no timer - the timer's frames drifted against the refresh and every few
- * seconds one missed it (the Smart Pro lost ~13 frames in 5 s). The audio then
- * plays a hair faster, so its sample rate follows the queue (dynamic rate
- * control, as RetroArch and the Android app do): +-0.5% around the ratio of the
- * two rates, keeping ~60 ms queued. Elsewhere, or with POCKET_NO_VSYNC, the
- * timer paces as before. */
+
+/* ---- pacing: the screen's refresh when it's the game's (58-62 Hz and presents wait for it), else the timer ---- */
 static bool vsyncPaced;
-static double screenHz;
+static int screenHz;
 static void pacing_start(double gameHz) {
   SDL_DisplayMode mode = {0};
   screenHz = SDL_GetCurrentDisplayMode(0, &mode) == 0 ? mode.refresh_rate : 0;
   SDL_RendererInfo info;
   vsyncPaced = !getenv("POCKET_NO_VSYNC") && screenHz >= 58 && screenHz <= 62 &&
-               SDL_GetRendererInfo(renderer, &info) == 0 && (info.flags & SDL_RENDERER_PRESENTVSYNC) &&
-               gameHz > 0;
+               SDL_GetRendererInfo(renderer, &info) == 0 && (info.flags & SDL_RENDERER_PRESENTVSYNC) && gameHz > 0;
 }
 // A refresh-paced loop whose presents don't wait (a driver ignoring vsync) goes back to the timer.
 static void pacing_check(double frameMs) {
-  static double avg;
+  static double sum;
   static int count;
   if (!vsyncPaced)
     return;
-  avg += frameMs;
+  sum += frameMs;
   if (++count < 120)
     return;
-  if (avg / count < 12.0) {
+  if (sum / count < 12.0) {
     vsyncPaced = false;
-    fprintf(stderr, "Presents don't wait for the refresh (%.1f ms apart): pacing by the timer\n", avg / count);
+    fprintf(stderr, "Presents don't wait for the refresh (%.1f ms apart): pacing by the timer\n", sum / count);
   }
-  avg = 0;
+  sum = 0;
   count = 0;
 }
-/* plorpOS: speed > 1 is fast-forward with its sound: as many samples as one frame's, so it plays sped up. */
-static void audio_rate(struct mCore *c, double gameHz, int speed) {
-  double rate = 32768;
-  if (vsyncPaced && audio && screenHz > 0) {
-    double queued = SDL_GetQueuedAudioSize(audio) / 4.0, target = 32768 * 0.06;
-    double d = (target - queued) / target;
-    d = d > 1 ? 1 : d < -1 ? -1 : d;
-    rate = 32768 * gameHz / screenHz * (1 + 0.005 * d);
-  }
-  rate /= speed;
-  for (int i = 0; i < 2; i++)
-    blip_set_rates(c->getAudioChannel(c, i), c->frequency(c), rate);
-}
-/* POCKET_PERF=1: every 5 s, how the frames went: loop iterations, the work in
- * one (emulation, EXPAND, drawing, present) on average and at worst, how many
- * took longer than a game frame, how far apart presents landed, the screen's
- * refresh rate. */
+/* POCKET_PERF=1: every 5 s, how the frames went. */
+static double emuMs;
 static void perf_frame(uint64_t start, double hz) {
   static int on = -1, n, late;
-  static double sum, worst, gapSum, gapWorst, presents, emus, wides;
-  static uint64_t lastEnd, windowStart;
+  static double sum, worst, presents, emus;
+  static uint64_t windowStart;
   if (on < 0)
     on = getenv("POCKET_PERF") != NULL;
   if (!on)
     return;
   uint64_t end = SDL_GetPerformanceCounter(), f = SDL_GetPerformanceFrequency();
-  double work = (double)(end - start) * 1000.0 / f, budget = 1000.0 / hz;
+  double work = (double)(end - start) * 1000.0 / f;
   if (!windowStart)
     windowStart = end;
   n++;
   sum += work;
   presents += presentMs;
   emus += emuMs;
-  wides += wideMs;
-  presentMs = emuMs = wideMs = 0;
-  if (work > worst)
-    worst = work;
-  if (work > budget)
-    late++;
-  if (lastEnd) {
-    double gap = (double)(end - lastEnd) * 1000.0 / f;
-    gapSum += gap;
-    if (gap > gapWorst)
-      gapWorst = gap;
-  }
-  lastEnd = end;
+  presentMs = emuMs = 0;
+  worst = work > worst ? work : worst;
+  late += work > 1000.0 / hz;
   if (end - windowStart >= 5 * f) {
-    SDL_DisplayMode mode = {0};
-    SDL_GetCurrentDisplayMode(0, &mode);
-    fprintf(stderr, "perf: emulation %.2f ms, EXPAND %.2f ms a frame\n", emus / n, wides / n);
-    fprintf(stderr, "perf: %d frames in %.1f s, work %.2f ms avg (%.2f of it waiting in present) / %.2f worst, "
-            "%d over %.2f ms, frame to frame %.2f ms avg / %.2f worst, screen %d Hz, %s, audio queued %u B\n",
-            n, (double)(end - windowStart) / f, sum / n, presents / n, worst, late, budget,
-            gapSum / (n > 1 ? n - 1 : 1), gapWorst, mode.refresh_rate,
+    fprintf(stderr,
+            "perf: %d frames in %.1f s, core %.2f ms, work %.2f ms avg (%.2f in present) / %.2f worst, %d late, "
+            "screen %d Hz, %s, audio queued %u B\n",
+            n, (double)(end - windowStart) / f, emus / n, sum / n, presents / n, worst, late, screenHz,
             vsyncPaced ? "paced by the screen" : "paced by the timer", audio ? SDL_GetQueuedAudioSize(audio) : 0);
     n = late = 0;
-    sum = worst = gapSum = gapWorst = presents = emus = wides = 0;
+    sum = worst = presents = emus = 0;
     windowStart = end;
   }
 }
-#ifdef POCKET_TEST
-static void test_frame(struct mCore *, bool, int, struct pd_ui *,
-                       struct pd_snapshot *);
-#endif
-/* plorpOS: REWIND, the app's ring - a state every 2 frames, 600 of them (~20 s) - while settings.rewind. */
-static struct mCoreRewindContext rewindRing;
-static bool rewindOn;
-static int rewindTick;
-static void rewind_follow(bool on) {
-  if (on == rewindOn)
-    return;
-  if (rewindOn)
-    pk_rewind_deinit(&rewindRing);
-  else
-    pk_rewind_init(&rewindRing, 600);
-  rewindOn = on;
-  rewindTick = 0;
+
+/* ---- a game ---- */
+static void panel_follow(void) {
+  int ow = W, oh = H;
+  SDL_GetRendererOutputSize(renderer, &ow, &oh);
+  char v[32];
+  snprintf(v, sizeof v, "%dx%d", ow, oh);
+  if (strcmp(v, panelValue)) {
+    snprintf(panelValue, sizeof panelValue, "%s", v);
+    optionsChanged = true;
+  }
 }
-/* plorpOS: fast-forward's frames this refresh - its speed, or for MAX as many as ~80% of a frame's time fits
- * (frameMs: what one cost lately). */
-static int ff_frames(const struct pd_settings *s, double hz, double frameMs) {
-  if (s->ffSpeed)
-    return s->ffSpeed;
-  int n = frameMs > 0 ? (int)(800.0 / hz / frameMs) : 2;
-  return n < 2 ? 2 : n > 30 ? 30 : n;
+static bool state_file(const char *ss, bool save) {
+  if (save) {
+    size_t n = core.serialize_size();
+    void *d = n ? malloc(n) : NULL;
+    bool ok = d && core.serialize(d, n) && write_file(ss, d, n, false);
+    free(d);
+    return ok;
+  }
+  size_t n;
+  unsigned char *d = read_file(ss, &n, 64u << 20);
+  bool ok = d && core.unserialize(d, n);
+  free(d);
+  if (ok)
+    rewind_clear(); // its differences lead back from another history
+  return ok;
+}
+/* The .sav: the core's save memory, then its cartridge clock (RETRO_MEMORY_RTC: a Game Boy MBC3's, Crystal's) right
+ * after it - mGBA's own layout, which the old host wrote too. NULL out: the size. */
+static size_t save_image(unsigned char *out) {
+  void *mem = core.get_memory_data(RETRO_MEMORY_SAVE_RAM), *rtc = core.get_memory_data(RETRO_MEMORY_RTC);
+  size_t n = mem ? core.get_memory_size(RETRO_MEMORY_SAVE_RAM) : 0, rn = rtc ? core.get_memory_size(RETRO_MEMORY_RTC) : 0;
+  if (out && n)
+    memcpy(out, mem, n);
+  if (out && n && rn)
+    memcpy(out + n, rtc, rn);
+  return n ? n + rn : 0;
+}
+// The file's bytes into the core: the save memory, and what follows it into the clock (a GBA .sav's 16-byte clock
+// footer from mGBA finds no clock memory on armGBA, so a dead battery recorded there never comes back).
+static void save_load(const unsigned char *d, size_t fn) {
+  void *mem = core.get_memory_data(RETRO_MEMORY_SAVE_RAM), *rtc = core.get_memory_data(RETRO_MEMORY_RTC);
+  size_t n = mem ? core.get_memory_size(RETRO_MEMORY_SAVE_RAM) : 0, rn = rtc ? core.get_memory_size(RETRO_MEMORY_RTC) : 0;
+  if (!n)
+    return;
+  memcpy(mem, d, fn < n ? fn : n);
+  if (rn && fn > n)
+    memcpy(rtc, d + n, fn - n < rn ? fn - n : rn);
+}
+struct save_baseline {
+  unsigned char *data;
+  size_t size;
+};
+static void sram_write(const char *sav, struct save_baseline *copy, bool sync) {
+  static unsigned char *now;
+  static size_t nowSize;
+  size_t n = save_image(NULL);
+  if (!n)
+    return;
+  if (n > nowSize) {
+    free(now);
+    now = malloc(n);
+    nowSize = now ? n : 0;
+    if (!now)
+      return;
+  }
+  save_image(now);
+  if (n == copy->size && !memcmp(now, copy->data, n))
+    return;
+  if (!write_file(sav, now, n, sync)) {
+    notice("Save write failed");
+    return;
+  }
+  unsigned char *previous = copy->data;
+  size_t previousSize = copy->size;
+  copy->data = now;
+  copy->size = n;
+  now = previous;
+  nowSize = previousSize;
+}
+// The settings the old host kept in DATA/settings.ini become the core's (SAVES/pokedaisy/settings.ini), once.
+static void settings_migrate(void) {
+  char from[PATH_MAX + 16], dir[PATH_MAX + 16], to[PATH_MAX + 32];
+  snprintf(from, sizeof from, "%s/settings.ini", root);
+  snprintf(dir, sizeof dir, "%s/pokedaisy", savesDir);
+  snprintf(to, sizeof to, "%s/settings.ini", dir);
+  size_t n;
+  unsigned char *d = exists(to) ? NULL : read_file(from, &n, 1u << 20);
+  if (!d)
+    return;
+  mkdir(dir, 0755);
+  if (write_file(to, d, n, false))
+    fprintf(stderr, "Settings moved from %s to %s\n", from, to);
+  free(d);
+}
+static const char *core_for(const char *path) {
+  const char *ext = strrchr(path, '.');
+  if (ext && !strcasecmp(ext, ".gba"))
+    return "pokedaisy_gba_libretro.so";
+  if (ext && (!strcasecmp(ext, ".gb") || !strcasecmp(ext, ".gbc")))
+    return "pokedaisy_gbc_libretro.so";
+  if (ext && !strcasecmp(ext, ".nds"))
+    return "pokedaisy_ds_libretro.so";
+  return NULL;
 }
 #ifdef POCKET_DSPERATE
-extern int pd_ds_run(const char*, const char*, int, const char*, SDL_Renderer*, bool (*)(void));
+extern int pd_ds_run(const char *, const char *, int, const char *, SDL_Renderer *, bool (*)(void));
 static bool ds_running(void) { return running != 0; }
 #endif
-static void run_game(const char *path, int maxFrames, const char *shot) {
+// The host menu's rows, top to bottom (fast-forward is the FAST FORWARD hotkey's, held).
+enum { M_RESUME, M_SAVE, M_LOAD, M_HOTKEYS, M_REWIND, M_FFSPEED, M_LCD, M_SWAP, M_QUIT, M_COUNT };
+static void run_game(const char *path, int maxFrames, const char *shot, bool fromList) {
 #ifdef POCKET_DSPERATE
   const char *ext = strrchr(path, '.');
   if (ext && !strcasecmp(ext, ".nds")) {
-    if (audio) { SDL_CloseAudioDevice(audio); audio = 0; }
+    if (audio) {
+      SDL_CloseAudioDevice(audio);
+      audio = 0;
+    }
     appError = pd_ds_run(path, root, maxFrames, shot, renderer, ds_running);
-    // The DS backend owns its device while running. Restore the normal host's
-    // device for the next GB/GBA game selected without restarting the app.
+    // The DS backend owns its device while running; the GB / GBA games get theirs back.
     audio_open();
     audioLost = !audio;
     held = pressed = 0;
     return;
   }
 #endif
-  FILE *f = fopen(path, "rb");
-  if (!f) {
+  const char *coreName = core_for(path);
+  char corePath[PATH_MAX * 2];
+  const char *dir = getenv("POCKET_CORE_DIR") ? getenv("POCKET_CORE_DIR") : exeDir;
+  snprintf(corePath, sizeof corePath, "%s/%s", dir, coreName ? coreName : "");
+  if (!coreName || !core_open(corePath)) {
     appError = 1;
-    notice("Cannot open ROM");
+    notice(coreName ? "Core missing: put it beside pokedaisy-linux" : "Unsupported ROM");
     return;
   }
-  fseek(f, 0, SEEK_END);
-  long len = ftell(f);
-  rewind(f);
-  if (len < 0x150 || len > 40 * 1024 * 1024) {
-    fclose(f);
-    appError = 1;
-    notice("Invalid ROM size");
-    return;
-  }
-  unsigned char *romdata = malloc((size_t)len);
-  if (!romdata || fread(romdata, 1, len, f) != (size_t)len) {
-    free(romdata);
-    fclose(f);
+  struct retro_system_info system = {0};
+  core.get_system_info(&system);
+  size_t romSize = 0;
+  unsigned char *rom = system.need_fullpath ? NULL : read_file(path, &romSize, 64u << 20);
+  if (!system.need_fullpath && (!rom || romSize < 0x150)) {
+    free(rom);
+    dlclose(core.dl);
     appError = 1;
     notice("Cannot read ROM");
     return;
   }
-  fclose(f);
-  struct VFile *vf = VFileOpen(path, O_RDONLY);
-  struct mCore *c = vf ? mCoreFindVF(vf) : NULL;
-  if (!c || !c->init(c)) {
-    if (vf)
-      vf->close(vf);
-    free(romdata);
+  const char *name = strrchr(path, '/');
+  name = name ? name + 1 : path;
+  char sav[PATH_MAX * 2], ss[PATH_MAX * 2], backups[PATH_MAX * 2];
+  if (saveFile) {
+    snprintf(sav, sizeof sav, "%s", saveFile);
+    snprintf(backups, sizeof backups, "%s/backups", root);
+  } else {
+    snprintf(sav, sizeof sav, "%s/%s.sav", savesDir, name);
+    snprintf(backups, sizeof backups, "%s/pokedaisy-backups", savesDir);
+  }
+  // DS uses L2 for the Companion and R2 for screen switching. Keep the host's DS bindings separate.
+  const bool dsGame = !strcmp(coreName, "pokedaisy_ds_libretro.so");
+  int *hotkeys = dsGame ? hostSet.dsHotkey : hostSet.hotkey;
+  // armGBA's states aren't mGBA's: each core its own file.
+  snprintf(ss, sizeof ss, "%s/states/%s%s.ss", root, name, strstr(coreName, "_gba_") ? ".armgba" : "");
+  if (strstr(coreName, "_gba_")) {
+    // A GBA state from before armGBA is mGBA's: it can't load here, so say so instead of "No state saved yet".
+    char old[PATH_MAX * 2 + 16];
+    snprintf(old, sizeof old, "%s/states/%s.ss", root, name);
+    if (exists(old) && !exists(ss))
+      notice("Your older save state doesn't load in this version");
+  }
+  if (!save_backup(sav, backups)) {
+    free(rom);
+    dlclose(core.dl);
     appError = 1;
-    notice("Unsupported ROM");
+    notice("Save backup failed; game not opened");
     return;
   }
-  mCoreInitConfig(c, NULL);
-  if (c->platform(c) == mPLATFORM_GB) {
-    // Match upstream's Android GB setup, including SGB-enhanced cartridges.
-    mCoreConfigSetIntValue(&c->config, "sgb.borders", 0);
-    c->reloadConfigOption(c, "sgb.borders", &c->config);
-  }
-  c->setVideoBuffer(c, video, 256);
-  c->setAudioBufferSize(c, 512);
-  if (!c->loadROM(c, vf)) {
-    vf->close(vf);
-    mCoreConfigDeinit(&c->config);
-    c->deinit(c);
-    free(romdata);
+  settings_migrate();
+  optionN = 0;
+  pixelFormat = RETRO_PIXEL_FORMAT_0RGB1555;
+  panel_follow();
+  optionsChanged = false;
+  core.set_environment(environment);
+  core.init();
+  core.set_video_refresh(video_refresh);
+  core.set_audio_sample(audio_sample);
+  core.set_audio_sample_batch(audio_batch);
+  core.set_input_poll(input_poll);
+  core.set_input_state(input_state);
+  struct retro_game_info info = {path, rom, romSize, NULL};
+  if (!core.load_game(&info)) {
+    core.deinit();
+    dlclose(core.dl);
+    free(rom);
     appError = 1;
     notice("ROM load failed");
     return;
   }
-  char sav[1024], ss[1024];
-  const char *name = strrchr(path, '/');
-  name = name ? name + 1 : path;
-  if (saveFile)
-    snprintf(sav, sizeof sav, "%s", saveFile);
-  else
-    snprintf(sav, sizeof sav, "%s/saves/%s.sav", root, name);
-  snprintf(ss, sizeof ss, "%s/states/%s.ss", root, name);
-  struct pocket_save_status saveStatus = {0};
-  if (!pocket_save_backup(sav, time(NULL))) {
-    appError = 1;
-    notice("Save backup failed; game not opened");
-    goto cleanup;
+  core.get_system_av_info(&av);
+  srcRate = av.timing.sample_rate > 0 ? av.timing.sample_rate : 32768;
+  double hz = av.timing.fps > 0 ? av.timing.fps : 59.7275;
+  frameW = frameH = 0;
+  frame_texture();
+  // The battery save: the file's bytes into the core's, and written back whenever they change.
+  struct save_baseline sramCopy = {0};
+  {
+    size_t n = save_image(NULL), fn;
+    unsigned char *d = n ? read_file(sav, &fn, 64u << 20) : NULL;
+    if (d)
+      save_load(d, fn);
+    free(d);
+    sramCopy.data = n ? malloc(n) : NULL;
+    if (sramCopy.data)
+      sramCopy.size = save_image(sramCopy.data);
   }
-  struct VFile *sv = pocket_save_wrap(VFileOpen(sav, O_CREAT | O_RDWR), &saveStatus);
-  if (!sv || !c->loadSave(c, sv)) {
-    if (sv)
-      sv->close(sv);
-    appError = 1;
-    notice("Save file unavailable; game not opened");
-    goto cleanup;
-  }
-  struct mAVStream stream = {.postAudioBuffer = post_audio};
-  c->setAVStream(c, &stream);
-  for (int i = 0; i < 2; i++)
-    blip_set_rates(c->getAudioChannel(c, i), c->frequency(c), 32768);
-  c->reset(c);
-  pk_heal_rtc(c);
-  uint32_t crc = 0;
-  c->checksum(c, &crc, mCHECKSUM_CRC32);
-  wideSupported = pk_wide_configure(crc) != 0;
-  wideReady = false;
-  // WILD ENCOUNTERS: the game's own switch (wild.c finds it), held by pk_wide's field read every frame.
-  uint32_t wildSwitch = 0;
-  bool fieldKnown = c->platform(c) == mPLATFORM_GBA && pk_field_configure(crc);
-  if (fieldKnown)
-    wildSwitch = pk_wild_switch_find(romdata, (size_t)len);
-  pk_rest_reset(); // pk_call (FLY) learns this game's main loop depth
-  unsigned gw, gh;
-  c->desiredVideoDimensions(c, &gw, &gh);
-  struct pd_game game;
-  pd_game_detect(&game, romdata, (size_t)len);
-  game.rom = romdata;
-  game.romSize = (size_t)len;
-  pd_game_identify(&game);
-  fprintf(stderr, "pokedaisy: %s, sha1 %s%s%s\n", game.title ? game.title : "?", game.sha1[0] ? game.sha1 : "-",
-          game.unsupported ? " - " : "", game.unsupported ? game.unsupported : "");
-  if (c->platform(c) == mPLATFORM_GBA)
-    pd_romart_scan(&game);
-  char config[1024];
-  snprintf(config, sizeof config, "%s/settings.ini", root);
-  struct pd_settings settings;
-  pd_settings_load(&settings, config);
-  if (wildSwitch)
-    pk_field_wild(wildSwitch, settings.wildOff);
-  bool quickOpen = false;
-  int quickSel = 0;
-  // FLY (fly.c): the config's FLY where the ROM's code matches. flyAsk = its destinations wanted (asked for between
-  // two frames the game's code can be called in), flyList = the menu shows them; flyStage 1 = start the flight,
-  // 2 = the fade, then finish it.
-  const struct pd_config *flyCfg = game.cfg && c->platform(c) == mPLATFORM_GBA && fly_supported(game.cfg, romdata, (size_t)len) ? game.cfg : NULL;
-  struct fly_targets flyT = {0};
-  const char *flyNames[FLY_MAX_TOWNS];
-  int flyAsk = 0, flySel = 0, flyStage = 0, flyMapsec = 0, flyWait = 0, fieldFlags = 0;
-  bool flyList = false;
-  uint32_t flyCallback = 0;
-  // REPEL, BIKE and PC anywhere (field_items.c): offered where the ROM's code is the config's. A job waits for
-  // two frames the game's code can be called between; BIKE then presses SELECT for the game (gameKeys), watches
-  // the riding state flip (or the field lock) and puts the player's own registered item back 20 frames later.
-  bool itemsOk = game.cfg && c->platform(c) == mPLATFORM_GBA && field_items_supported(game.cfg, romdata, (size_t)len);
-  bool pcOk = itemsOk && pc_supported(game.cfg, romdata, (size_t)len);
-  bool bikeOk = itemsOk && bike_supported(game.cfg);
-  enum { JOB_NONE, JOB_PC, JOB_REPEL, JOB_BIKE, JOB_BIKE_WAIT, JOB_BIKE_RESTORE } job = JOB_NONE;
-  int jobItem = 0, jobFrames = 0, jobTries = 0, repelSel = 0, repelKinds[REPEL_KINDS], repelKindCount = 0;
-  bool repelList = false, bikeWasRiding = false, bikeTook = false;
-  uint16_t bikeOld = 0;
-  unsigned gameKeys = 0;
-  int gameKeyFrames = 0;
-  // The HUD: on after 20 frames of the plain field (FieldHud's rule), off at once.
-  struct hud_state hudState = { .wild = -1, .focus = -1 };
-  int hudFieldFrames = 0;
-  bool hudFocus = false; // the HUD hotkey's cursor is on (the game gets no keys meanwhile)
-  hudDrawnKey = 0;
-  char repelRows[REPEL_KINDS][48];
-  const char *repelNames[REPEL_KINDS];
-  struct pd_ui ui;
-  pd_ui_init(&ui, &settings);
-  hotkeys_load();
-  rewind_follow(settings.rewind || rewindBound);
-  double frameCost = 0;
-  uint64_t lastStart = 0;
-  struct pd_snapshot snap = {0};
-  struct pd_host_info host = {.hideScreenMode = true, .hasExpand = true, .hasFfChip = true, .hasQuickMenu = true, .hasDisplayFilter = true, .hasHud = c->platform(c) == mPLATFORM_GBA,
-                              .expandGame = wideSupported, .count = 1, .labels = {"HOST"}};
-  snprintf(host.values[0], 40, "PokeDaisy Linux");
-  const char *opts[] = {"Resume game",
-                        "Party",
-                        "Save state",
-                        "Load state",
-                        "Toggle fast-forward",
-                        "Quit to game list",
-                        "About"};
-  const char *confirmOpts[] = {"Cancel", "Confirm"};
-  struct pd_menu gameMenu, confirmMenu;
-  pd_menu_init(&gameMenu, "GAME", opts, 7);
-  pd_menu_init(&confirmMenu, "CONFIRM", confirmOpts, 2);
-  int menuOpen = 0;
-  bool companion = false, ff = false, leave = false;
+  int rewindMB = getenv("POCKET_REWIND_MB") ? atoi(getenv("POCKET_REWIND_MB")) : 32;
+  rewindBudget = (size_t)(rewindMB > 0 ? rewindMB : 32) << 20; // a bad value (negative, 0) is the default
+  rewindTick = 0;
+  bool menuOpen = false, leave = false;
+  struct pd_menu menu, hkMenu;
+  static char rows[M_COUNT][40], hkRows[HK_ACTIONS + 1][40];
+  static const char *rowPtrs[M_COUNT], *hkPtrs[HK_ACTIONS + 1];
+  static const char *const hkNames[HK_ACTIONS] = {"FAST FORWARD", "REWIND", "SAVE STATE", "LOAD STATE"};
+  bool hkPage = false;
+  unsigned latched = 0, menuConsumed = 0;
+  bool modifierPending = false, modifierUsed = false;
+  int pulseLeft = 0; // frames the modifier's own tap still reaches the game
+  int capturing = -1; // the HOTKEYS row waiting for a button
+  // LOAD STATE and QUIT ask first, CANCEL on top (as the hosts before this one): a stray A never loses the game's progress.
+  struct pd_menu confirmMenu;
+  static const char *confirmRows[2];
+  int confirming = 0; // the menu row asked about (M_LOAD / M_QUIT), 0 = none
   int frames = 0;
-  bool companionWas = false;
-  focusId = -1;
-  focus_new_screen();
-  uint64_t due = SDL_GetPerformanceCounter(), lastFrame = due;
-  double hz = (double)c->frequency(c) / c->frameCycles(c);
+  uint64_t due = SDL_GetPerformanceCounter(), lastStart = 0, lastFrame = due;
   pacing_start(hz);
   while (running && !leave) {
     uint64_t frameStart = SDL_GetPerformanceCounter();
-    if(saveStatus.failed) { appError=1; notice("Save I/O failed; stopping game"); break; }
-    // plorpOS: back from a pause (its in-game menu stops this process, as does sleep): what its OPTIONS
-    // changed in settings.ini, taken at once.
-    if (lastStart && (frameStart - lastStart) * 4 > SDL_GetPerformanceFrequency()) {
-      struct pd_settings fresh;
-      if (pd_settings_load(&fresh, config)) {
-        settings = fresh;
-        if (wildSwitch)
-          pk_field_wild(wildSwitch, settings.wildOff);
-        hudDrawnKey = 0;
-      }
-      hotkeys_load();
-    }
+    // Back from a pause (a stopped process, sleep): no catching up.
+    if (lastStart && (frameStart - lastStart) * 4 > SDL_GetPerformanceFrequency())
+      due = frameStart;
     lastStart = frameStart;
-    rewind_follow(settings.rewind || rewindBound);
-    lcdEnabled = settings.lcdFilter;
-    gameScaling = settings.aspect == PD_ASPECT_ORIGINAL || !wideSupported ? settings.scaling : PD_SCALE_INTEGER;
     events();
     audio_check();
     repeat_directions();
-    // plorpOS's hotkeys, over the game only.
+    if (outputChanged) {
+      outputChanged = false;
+      panel_follow();
+    }
+    const unsigned menuChord = (1u << START) | (1u << SELECT);
+    const bool menuChordDown = (held & menuChord) == menuChord;
+    bool menuKey = down(MENU) || (comboMenu && menuChordDown && (pressed & menuChord));
+    snprintf(rows[M_RESUME], 40, "RESUME");
+    snprintf(rows[M_SAVE], 40, "SAVE STATE");
+    snprintf(rows[M_LOAD], 40, "LOAD STATE");
+    if (hostSet.ffSpeed)
+      snprintf(rows[M_FFSPEED], 40, "FF SPEED  %dx", hostSet.ffSpeed);
+    else
+      snprintf(rows[M_FFSPEED], 40, "FF SPEED  MAX");
+    snprintf(rows[M_REWIND], 40, "REWIND  %s", hostSet.rewind ? "ON" : "OFF");
+    snprintf(rows[M_LCD], 40, "LCD FILTER  %s", hostSet.lcd ? "ON" : "OFF");
+    snprintf(rows[M_SWAP], 40, "A/B BUTTONS  %s", hostSet.swapAB ? "SWAPPED" : "NORMAL");
+    snprintf(rows[M_HOTKEYS], 40, "HOTKEYS");
+    snprintf(rows[M_QUIT], 40, fromList ? "QUIT TO GAME LIST" : "QUIT");
+    for (int i = 0; i < M_COUNT; i++)
+      rowPtrs[i] = rows[i];
+    for (int i = 0; i < HK_ACTIONS; i++) {
+      snprintf(hkRows[i], 40, "%s  %s", hkNames[i], capturing == i ? "..." : hotkey_label(hotkeys[i]));
+      hkPtrs[i] = hkRows[i];
+    }
+    snprintf(hkRows[HK_ACTIONS], 40, "MODIFIER  %s",
+             capturing == HK_ACTIONS ? "..." : hotkey_label(hostSet.modifier));
+    hkPtrs[HK_ACTIONS] = hkRows[HK_ACTIONS];
+    menuConsumed &= held;
+    if (inputReset || menuKey || menuChordDown) {
+      modifierPending = modifierUsed = false;
+      pulseLeft = 0;
+      inputReset = false;
+      if (menuKey || menuChordDown)
+        menuConsumed |= held;
+    }
+    if (menuKey) {
+      menuOpen = !menuOpen;
+      hkPage = false;
+      confirming = 0;
+      capturing = -1;
+      if (menuOpen) {
+        pd_menu_init(&menu, "POKEDAISY", rowPtrs, M_COUNT);
+        menu.overlay = true;
+      }
+    }
     unsigned hkFired = 0, hkOn = 0;
     hotkeyMask = 0;
-    if (!companion && !quickOpen)
-      hkOn = hotkeys_held(&hkFired);
-    if (hkFired & (1u << HK_SAVE))
-      notice(state(c, ss, true) ? "State saved" : "State save failed");
-    if (hkFired & (1u << HK_LOAD))
-      notice(access(ss, F_OK) ? "No state saved yet" : state(c, ss, false) ? "State loaded" : "State load failed");
-    bool ffHeld = hkOn & (1u << HK_FF), rewinding = (hkOn & (1u << HK_REWIND)) && rewindOn;
-    if (down(X)) {
-      menuOpen = 0;
-      companion = !companion;
-      c->setKeys(c, 0);
-      if (audio)
-        SDL_ClearQueuedAudio(audio);
-    }
-    if ((!hostMenu && down(MENU)) || ((down(START) || down(SELECT)) &&
-                       (held & (1u << START)) && (held & (1u << SELECT)))) {
-      menuOpen = menuOpen ? 0 : 1;
-      companion = true;
-      c->setKeys(c, 0);
-      if (audio)
-        SDL_ClearQueuedAudio(audio);
-    }
-    // The HUD hotkey (plorpos-l22.4): the cursor goes onto the HUD, the D-pad moves it, A presses what it is on
-    // (a slot -> its summary, the minimap / MAP -> the map, the balls / REPEL STEPS / BAG -> the bag, PC -> the
-    // game's PC, WILD -> GUIDE's HERE, COMPANION), B / MENU / the hotkey again leave.
-    if (hudFocus && (companion || quickOpen || !hudShown)) {
-      hudFocus = false;
-      hudState.focus = -1;
-    }
-    if ((hkFired & (1u << HK_HUD)) && !companion && !quickOpen) {
-      if (hudFocus || !hudShown || !hudHits.n) {
-        if (!hudFocus)
-          notice("No HUD on screen");
-        hudFocus = false;
-        hudState.focus = -1;
-      } else {
-        hudFocus = true;
-        hudState.focus = hud_first(&hudHits);
-        c->setKeys(c, 0);
-      }
-    } else if (hudFocus) {
-      if (down(B) || down(MENU)) {
-        hudFocus = false;
-        hudState.focus = -1;
-      } else if (down(A)) {
-        int id = hudState.focus;
-        hudFocus = false;
-        hudState.focus = -1;
-        if (id == HUD_PC) {
-          job = JOB_PC;
-          jobFrames = 0;
-        } else {
-          if (id >= HUD_SLOT && id < HUD_SLOT + PD_PARTY_SIZE) {
-            ui.tab = PD_TAB_PARTY;
-            ui.summarySlot = id - HUD_SLOT;
-          } else if (id == HUD_MAP || id == HUD_MAP_BUTTON) {
-            ui.tab = PD_TAB_MAP;
-            ui.mapPage = -1;
-          } else if (id == HUD_BALLS || id == HUD_REPEL || id == HUD_BAG) {
-            ui.tab = PD_TAB_BAG;
-          } else if (id == HUD_WILD) {
-            ui.tab = PD_TAB_GUIDE;
-            ui.guidePage = 0;
-            ui.guideOpen = -1;
-          }
-          companion = true;
-          c->setKeys(c, 0);
-          if (audio)
-            SDL_ClearQueuedAudio(audio);
-        }
-      } else {
-        int dir = down(UP) ? UP : down(DOWN) ? DOWN : down(LEFT) ? LEFT : down(RIGHT) ? RIGHT : -1;
-        if (dir >= 0)
-          hudState.focus = hud_step(&hudHits, hudState.focus, (dir == RIGHT) - (dir == LEFT), (dir == DOWN) - (dir == UP));
-      }
-    }
-    // Y: the QUICK MENU over the running game (its keys withheld meanwhile).
-    // In the app's order (QuickAction): PC, FLY, REPEL, BIKE, WILD, SAVE / LOAD STATE, FF, COMPANION; each only
-    // where the game can, dimmed with why when not now.
-    struct quick_item quick[QUICK_COUNT];
-    int quickN = 0;
-    char repelWhy[32] = "";
-    if (pcOk)
-      quick[quickN++] = (struct quick_item){QUICK_PC, false, false, NULL, 0, 0, NULL};
-    if (flyCfg) {
-      int flyer = fly_flyer(&snap);
-      quick[quickN++] = (struct quick_item){QUICK_FLY, false, false,
-                                            flyer < 0 ? "No one in your party knows FLY" : NULL,
-                                            flyer < 0 ? 0 : snap.party[flyer].species, 0, NULL};
-    }
-    if (itemsOk) {
-      // The strongest kind held for the icon; dimmed while one works (the steps left).
-      repelKindCount = 0;
-      for (int k = 0; k < REPEL_KINDS; k++)
-        if (bag_count(&snap, repel_kinds[k][0]) > 0)
-          repelKinds[repelKindCount++] = repel_kinds[k][0];
-      int left = repel_steps(c, game.cfg);
-      if (left)
-        snprintf(repelWhy, sizeof repelWhy, "%d steps left", left);
-      quick[quickN++] = (struct quick_item){QUICK_REPEL, false, false,
-                                            left ? repelWhy : repelKindCount ? NULL : "No REPEL in your bag", 0,
-                                            repelKindCount ? repelKinds[repelKindCount - 1] : repel_kinds[0][0], NULL};
-    }
-    if (bikeOk) {
-      int bike = bag_bike(&snap);
-      bool riding = (fieldFlags & PK_FIELD_AVATAR) && (fieldFlags & PK_FIELD_BIKE);
-      quick[quickN++] = (struct quick_item){QUICK_BIKE, false, false, bike ? NULL : "No bike in your bag", 0,
-                                            bike ? bike : 360, riding ? "GET OFF" : NULL};
-    }
-    quick[quickN++] = (struct quick_item){QUICK_WILD, settings.wildOff, false,
-                                          wildSwitch ? NULL : "Not in this game", 0, 0, NULL};
-    quick[quickN++] = (struct quick_item){QUICK_SAVE_STATE, false, false, NULL, 0, 0, NULL};
-    quick[quickN++] = (struct quick_item){QUICK_LOAD_STATE, false, false,
-                                          access(ss, F_OK) == 0 ? NULL : "No state saved yet", 0, 0, NULL};
-    quick[quickN++] = (struct quick_item){QUICK_FF, false, ff, NULL, 0, 0, NULL};
-    quick[quickN++] = (struct quick_item){QUICK_COMPANION, false, false, NULL, 0, 0, NULL};
-    if (quickSel >= quickN)
-      quickSel = 0;
-    quick_set_grid(settings.quickGrid);
-    if (down(Y) && !companion) {
-      quickOpen = !quickOpen;
-      flyList = repelList = false;
-      flyAsk = 0;
-      c->setKeys(c, 0);
-    } else if (quickOpen && repelList) {
-      // REPEL's kinds in the bag: UP / DOWN, A uses one, B back to the ring.
-      if (down(UP))
-        repelSel = (repelSel + repelKindCount - 1) % repelKindCount;
-      if (down(DOWN))
-        repelSel = (repelSel + 1) % repelKindCount;
-      if (down(B))
-        repelList = false;
-      else if (down(MENU))
-        quickOpen = repelList = false;
-      else if (down(A)) {
-        quickOpen = repelList = false;
-        job = JOB_REPEL;
-        jobItem = repelKinds[repelSel];
-        jobFrames = 0;
-      }
-    } else if (quickOpen && flyList) {
-      // FLY's places: UP / DOWN, A flies, B back to the ring.
-      if (down(UP) && flyT.count)
-        flySel = (flySel + flyT.count - 1) % flyT.count;
-      if (down(DOWN) && flyT.count)
-        flySel = (flySel + 1) % flyT.count;
-      if (down(B))
-        flyList = false;
-      else if (down(MENU))
-        quickOpen = flyList = false;
-      else if (down(A) && flyT.count) {
-        quickOpen = flyList = false;
-        flyMapsec = flyT.towns[flySel];
-        flyStage = 1;
-        flyWait = 0;
-      }
-    } else if (quickOpen && (down(B) || down(MENU))) {
-      quickOpen = false;
-    } else if (quickOpen) {
-      int dx = down(RIGHT) - down(LEFT), dy = down(DOWN) - down(UP);
-      if (dx || dy)
-        quickSel = quick_step(quickN, quickSel, dx, dy, canvasW, canvasH);
-      if (down(A) && !quick[quickSel].why && quick[quickSel].action == QUICK_FLY) {
-        flyAsk = 1; // answered below, between two frames
-      } else if (down(A) && !quick[quickSel].why && quick[quickSel].action == QUICK_REPEL && repelKindCount > 1) {
-        // More than one kind: their list (QuickMenu.kt's RepelKinds), each with how many and its steps.
-        for (int k = 0; k < repelKindCount; k++) {
-          int steps = 0;
-          for (int r = 0; r < REPEL_KINDS; r++)
-            if (repel_kinds[r][0] == repelKinds[k])
-              steps = repel_kinds[r][1];
-          snprintf(repelRows[k], sizeof repelRows[k], "%s x%d  %d steps", pd_item_name(&game, repelKinds[k]),
-                   bag_count(&snap, repelKinds[k]), steps);
-          repelNames[k] = repelRows[k];
-        }
-        repelList = true;
-        repelSel = repelKindCount - 1;
-      } else if (down(A) && !quick[quickSel].why) {
-        quickOpen = false;
-        switch (quick[quickSel].action) {
-        case QUICK_PC:
-          job = JOB_PC;
-          jobFrames = 0;
-          break;
-        case QUICK_REPEL:
-          job = JOB_REPEL;
-          jobItem = repelKinds[0];
-          jobFrames = 0;
-          break;
-        case QUICK_BIKE:
-          job = JOB_BIKE;
-          jobItem = bag_bike(&snap);
-          jobFrames = 0;
-          jobTries = 15; // PokeDaisyActivity's SELECT_TRIES
-          break;
-        case QUICK_WILD:
-          settings.wildOff = !settings.wildOff;
-          pd_settings_save(&settings, config);
-          notice(settings.wildOff ? "Wild encounters off" : "Wild encounters on");
-          break;
-        case QUICK_SAVE_STATE:
-          notice(state(c, ss, true) ? "State saved" : "State save failed");
-          break;
-        case QUICK_LOAD_STATE:
-          notice(state(c, ss, false) ? "State loaded" : "State load failed");
-          break;
-        case QUICK_FF:
-          ff = !ff;
-          break;
-        case QUICK_COMPANION:
-          companion = true;
-          if (audio)
-            SDL_ClearQueuedAudio(audio);
-          break;
-        default:
-          break;
-        }
-      }
-    }
-    if (companion) {
-      companion_canvas();
-      if (menuOpen) {
-        if (menuOpen == 4) {
-          if (down(B) || down(A))
-            menuOpen = 1;
-        } else {
-          struct pd_menu *pm = menuOpen == 1 ? &gameMenu : &confirmMenu;
-          if (down(UP))
-            pd_menu_move(pm, -1);
-          if (down(DOWN))
-            pd_menu_move(pm, 1);
-          if (down(B)) {
-            if (menuOpen == 1) {
-              menuOpen = 0;
-              companion = false;
-            } else
-              menuOpen = 1;
-          } else if (down(A)) {
-            if (menuOpen == 1) {
-              switch (gameMenu.selected) {
-              case 0:
-                menuOpen = 0;
-                companion = false;
-                break;
-              case 1:
-                menuOpen = 0;
-                ui.tab = PD_TAB_PARTY;
-                break;
-              case 2:
-                menuOpen = 5;
-                confirmMenu.title = "Overwrite save state?";
-                confirmMenu.selected = 0;
-                break;
-              case 3:
-                menuOpen = 2;
-                confirmMenu.title = "Load state? Current progress will rewind.";
-                confirmMenu.selected = 0;
-                break;
-              case 4:
-                ff = !ff;
-                notice(ff ? "Fast-forward on" : "Fast-forward off");
-                break;
-              case 5:
-                menuOpen = 3;
-                confirmMenu.title = "Quit? Save in-game first.";
-                confirmMenu.selected = 0;
-                break;
-              case 6:
-                menuOpen = 4;
-                break;
-              }
-            } else {
-              if (confirmMenu.selected == 1) {
-                if (menuOpen == 3)
-                  leave = true;
-                else if (menuOpen == 5)
-                  notice(state(c, ss, true) ? "State saved"
-                                            : "State save failed");
-                else
-                  notice(state(c, ss, false) ? "State loaded"
-                                             : "State load failed");
-              }
-              menuOpen = 1;
-            }
-          }
-        }
-      } else {
-        if (down(B) && !map_cursor_back(&ui) && !pd_ui_back(&ui))
-          companion = false;
-        if (down(L) || down(R)) {
-          pd_ui_next_tab(&ui, down(R) ? 1 : -1);
-        }
-        for (int k = RIGHT; k <= DOWN; k++)
-          if (down(k))
-            focus_move(&ui, k);
-        if (down(A))
-          focus_activate(&ui);
-        switch (pd_ui_take_action(&ui)) {
-        case PD_ACTION_LEAVE_GAME:
-          leave = true;
-          break;
-        case PD_ACTION_TOGGLE_FF:
-          ff = !ff;
-          break;
-        case PD_ACTION_SAVE_STATE:
-          notice(state(c, ss, true) ? "State saved" : "State save failed");
-          break;
-        case PD_ACTION_LOAD_STATE:
-          notice(state(c, ss, false) ? "State loaded" : "State load failed");
-          break;
-        case PD_ACTION_SETTINGS_CHANGED:
-          pd_settings_save(&settings, config);
-          break;
-        default:
-          break;
-        }
-      }
-      if (down(L2)) {
-        menuOpen = 5;
-        confirmMenu.title = "Overwrite save state?";
-        confirmMenu.selected = 0;
-      }
-      if (down(R2)) {
-        menuOpen = 2;
-        confirmMenu.title = "Load state? Current progress will rewind.";
-        confirmMenu.selected = 0;
-      }
-    } else {
-      bool fast = (ff || ffHeld) && !rewinding;
-      muted = (fast && !settings.ffAudio) || rewinding;
-      c->setKeys(c, ((quickOpen || hudFocus) ? 0 : held & ~hotkeyMask & 1023) | (gameKeyFrames > 0 ? gameKeys : 0));
-      int count = fast ? ff_frames(&settings, hz, frameCost) : 1;
-      audio_rate(c, hz, count);
-      uint64_t runStart = SDL_GetPerformanceCounter();
-      for (int i = 0; i < count; i++) {
-        uint64_t t = SDL_GetPerformanceCounter();
-        // REWIND: back one entry, then that frame runs to draw it; at the oldest, stand still.
-        if (rewinding && !pk_rewind_restore(&rewindRing, c))
-          break;
-        if (rewindOn && !rewinding && ++rewindTick >= 2) {
-          rewindTick = 0;
-          pk_rewind_append(&rewindRing, c);
-        }
-        c->runFrame(c);
-        if (gameKeyFrames > 0 && --gameKeyFrames == 0)
-          c->setKeys(c, (quickOpen || hudFocus) ? 0 : held & ~hotkeyMask & 1023);
-        if (c->platform(c) == mPLATFORM_GBA)
-          pk_rest_note(c);
-        if (fieldKnown)
-          fieldFlags = pk_field_state(c, settings.runIndoors, wildSwitch && settings.wildOff ? 0 : 100);
-        emuMs += ms_since(t);
-        t = SDL_GetPerformanceCounter();
-        wide_tick(c, i < count - 1, &settings);
-        wideMs += ms_since(t);
-      }
-      if (fast)
-        frameCost = frameCost * 0.8 + 0.2 * ms_since(runStart) / count;
-    }
-    // The companion's data: fresh when it opens (it pauses the game), else twice a
-    // second - read through the bus byte by byte, every frame cost frame time.
-    if (!snap.valid || (companion && !companionWas) || (!companion && frames % 30 == 0))
-      pd_snapshot_read(&snap, &game, read_memory, c);
-    companionWas = companion;
-    // FLY's steps, each between two frames the game's own code can be called in (pk_call_safe), as the app's
-    // field-item jobs wait for one.
-    bool flyBattle = snap.inBattle || (fieldFlags & PK_FIELD_BATTLE);
-    bool flyBusy = companion || (fieldFlags & PK_FIELD_LOCKED) ||
-                   (wideSupported && pk_wide_scene() != PK_WIDE_SCENE_FIELD);
-    if (flyCfg && flyAsk && quickOpen && !companion) {
-      if (pk_call_safe(c)) {
-        pd_snapshot_read(&snap, &game, read_memory, c);
-        fly_targets(c, flyCfg, romdata, (size_t)len, &snap, flyBusy, flyBattle, &flyT);
-        flyAsk = 0;
-        if (flyT.result == FLY_OK && flyT.count) {
-          for (int i = 0; i < flyT.count; i++) {
-            const char *name = pd_mapsec_name(&game, flyT.towns[i]);
-            flyNames[i] = name && *name ? name : "?";
-          }
-          flyList = true;
-          flySel = 0;
-        } else {
-          quickOpen = false;
-          notice(flyT.result == FLY_OK ? "You haven't been anywhere to FLY to yet." : fly_reason(flyT.result));
-        }
-      } else if (++flyAsk > 120) {
-        flyAsk = 0;
-        quickOpen = false;
-        notice(fly_reason(FLY_FAILED));
-      }
-    }
-    if (flyCfg && flyStage == 1 && !companion && pk_call_safe(c)) {
-      pd_snapshot_read(&snap, &game, read_memory, c);
-      enum fly_result r = fly_start(c, flyCfg, romdata, (size_t)len, &snap, flyMapsec, &flyT, flyBusy, flyBattle);
-      if (r == FLY_OK) {
-        flyStage = 2;
-        flyWait = 0;
-        flyCallback = fly_main_callback(c, flyCfg);
-      } else {
-        flyStage = 0;
-        notice(fly_reason(r));
-      }
-    } else if (flyCfg && flyStage == 2 && !companion && ++flyWait >= FLY_FADE_FRAMES && pk_call_safe(c)) {
-      flyStage = 0;
-      if (!fly_finish(c, flyCfg, romdata, (size_t)len, flyMapsec, &flyT, fly_main_callback(c, flyCfg) != flyCallback))
-        notice(fly_reason(FLY_FAILED));
-    }
-    bool safe = job != JOB_NONE && !companion && pk_call_safe(c);
-    if (job == JOB_PC && safe) {
-      job = JOB_NONE;
-      enum item_result r = pc_open(c, game.cfg, romdata, (size_t)len, flyBusy, flyBattle);
-      if (r != ITEM_USED)
-        notice(item_reason(r));
-    } else if (job == JOB_REPEL && safe) {
-      job = JOB_NONE;
-      int steps = 0;
-      enum item_result r = repel_use(c, game.cfg, romdata, (size_t)len, jobItem, flyBusy, flyBattle, &steps);
-      if (r == ITEM_USED) {
-        char msg[48];
-        snprintf(msg, sizeof msg, "Used! It lasts %d steps.", steps);
-        notice(msg);
+    unsigned modifier = hostSet.modifier < 0 ? 0 : 1u << hostSet.modifier;
+    latched &= held;
+    unsigned modifierPulse = 0;
+    if (!menuOpen && !menuKey && !menuChordDown) {
+      if (pressed & modifier & ~menuConsumed)
+        modifierPending = true;
+      if (!(menuConsumed & modifier))
+        hkOn = hotkeys_held(hotkeys, modifier, &latched, &hkFired);
+      // The DS core handles its stylus shortcuts with Select held.
+      const unsigned stylus = (1u << UP) | (1u << DOWN) | (1u << LEFT) | (1u << RIGHT) | (1u << A) | (1u << Y);
+      bool dsStylus = dsGame && hostSet.modifier == SELECT && (held & modifier)
+                      && (held & stylus & ~latched & ~menuConsumed) && !(latched & hotkeyMask);
+      modifierUsed |= !!(latched & hotkeyMask) || dsStylus;
+      if (!(held & modifier)) {
+        if (modifierPending && !modifierUsed)
+          pulseLeft = MODIFIER_TAP_FRAMES;
+        modifierPending = modifierUsed = false;
       } else
-        notice(item_reason(r));
-    } else if (job == JOB_BIKE && safe) {
-      enum item_result r = bike_register(c, game.cfg, romdata, (size_t)len, jobItem, flyBusy, flyBattle, &bikeOld);
-      if (r == ITEM_USED) {
-        gameKeys = 1u << SELECT;
-        gameKeyFrames = 2;
-        bikeWasRiding = fieldFlags & PK_FIELD_BIKE;
-        bikeTook = false;
-        job = JOB_BIKE_WAIT;
-        jobFrames = 0;
-      } else {
-        job = JOB_NONE;
-        notice(item_reason(r));
-      }
-    } else if (job == JOB_BIKE_WAIT && !companion) {
-      // SELECT again if the game dropped it (a bike rolling at full speed ignores it), but only where taking it
-      // shows for sure: the riding state flips, or the field's controls stay held (PokeDaisyActivity.pressSelect).
-      if (((fieldFlags & PK_FIELD_BIKE) != 0) != bikeWasRiding || (fieldFlags & PK_FIELD_LOCKED))
-        bikeTook = true;
-      if (++jobFrames >= 10) {
-        if (bikeTook || !(fieldFlags & PK_FIELD_AVATAR) || --jobTries <= 0) {
-          job = JOB_BIKE_RESTORE;
-        } else {
-          gameKeys = 1u << SELECT;
-          gameKeyFrames = 2;
-        }
-        jobFrames = 0;
-      }
-    } else if (job == JOB_BIKE_RESTORE && ++jobFrames >= 20) {
-      job = JOB_NONE;
-      bike_restore(c, game.cfg, jobItem, bikeOld);
-    } else if ((job == JOB_PC || job == JOB_REPEL || job == JOB_BIKE) && !companion && ++jobFrames > 120) {
-      job = JOB_NONE;
-      notice(item_reason(ITEM_FAILED));
-    }
-    if (quickOpen && !companion) {
-      companion_canvas();
-      const char *const *rows = flyList ? flyNames : repelList ? repelNames : NULL;
-      present_quick(&game, quick, quickN, quickSel, flyList ? "FLY" : "REPEL", rows,
-                    flyList ? flyT.count : repelKindCount,
-                    flyList ? flySel : repelSel, gw, gh);
-    } else if (companion && menuOpen && menuOpen != 4) {
-      present_menu(menuOpen == 1 ? &gameMenu : &confirmMenu, gw, gh);
-    } else if (companion) {
-      if (menuOpen) {
-        if (menuOpen == 4) {
-          pd_splash_draw(&canvas, "Based on PokeDaisy by Lidor Itzhari",
-                         "https://github.com/lidor30/pokedaisy",
-                         "GPL-3.0 | mGBA MPL-2.0 | B: Back");
+        pulseLeft = 0; // held again: it's the modifier now, not a tap
+      if (pulseLeft > 0)
+        modifierPulse = modifier;
+      if (!dsStylus)
+        hotkeyMask |= modifier;
+    } else
+      pulseLeft = 0;
+    hotkeyMask |= latched | menuConsumed;
+    if (hkFired & (1u << HK_SAVE))
+      notice(state_file(ss, true) ? "State saved" : "State save failed");
+    if (hkFired & (1u << HK_LOAD))
+      notice(!exists(ss) ? "No state saved yet" : state_file(ss, false) ? "State loaded" : "State load failed");
+    if ((hkFired & (1u << HK_REWIND)) && !hostSet.rewind)
+      notice("REWIND is off: turn it on in the menu");
+    const bool menuFrame = menuOpen; // the frame that closes the menu is still the menu's
+    if (menuOpen && capturing >= 0) {
+      // The next assignable button is the hotkey (taken from any other action that had it); B cancels, SELECT = OFF.
+      if (down(B))
+        capturing = -1;
+      else if (down(SELECT)) {
+        if (capturing == HK_ACTIONS) {
+          hostSet.modifier = hostSet.modifier == SELECT ? -1 : SELECT;
+          if (hostSet.modifier >= 0)
+            modifier_takes(hostSet.modifier);
+          ds_hotkeys_follow_modifier();
         } else
-          pd_menu_draw(menuOpen == 1 ? &gameMenu : &confirmMenu, &canvas);
-      } else {
-        pd_ui_update(&ui, &snap);
-        // The companion draws the focused hit as its own cursor where it has one.
-        ui.focusId = focusId;
-        host.ffOn = ff;
-        host.hasState = access(ss, F_OK) == 0;
-        pd_ui_draw(&ui, &canvas, &game, &snap, &host);
-        map_cursor_sync(&ui, &game, &snap);
-        focus_draw(&ui, focus_resolve(&ui));
+          hotkeys[capturing] = -1;
+        host_save();
+        capturing = -1;
+      } else
+        for (int k = 0; k < NKEYS; k++)
+          if (down(k) && (hotkey_assignable(k) || (capturing == HK_ACTIONS && k == START))) {
+            if (capturing == HK_ACTIONS) {
+              hostSet.modifier = k;
+              modifier_takes(k);
+              ds_hotkeys_follow_modifier();
+            } else if (k == hostSet.modifier) {
+              notice("That button is the MODIFIER");
+              capturing = -1;
+              break;
+            } else {
+              for (int j = 0; j < HK_ACTIONS; j++)
+                if (hotkeys[j] == k)
+                  hotkeys[j] = -1;
+              hotkeys[capturing] = k;
+            }
+            host_save();
+            capturing = -1;
+            break;
+          }
+      hkMenu.title = capturing >= 0 ? "PRESS A BUTTON" : "HOTKEYS";
+    } else if (menuOpen && confirming) {
+      if (down(UP))
+        pd_menu_move(&confirmMenu, -1);
+      if (down(DOWN))
+        pd_menu_move(&confirmMenu, 1);
+      if (down(B))
+        confirming = 0;
+      if (down(A)) {
+        if (confirmMenu.selected == 1 && confirming == M_LOAD) {
+          notice(state_file(ss, false) ? "State loaded" : "State load failed");
+          menuOpen = false;
+        } else if (confirmMenu.selected == 1 && confirming == M_QUIT) {
+          leave = true;
+        }
+        confirming = 0;
       }
-      present();
-    } else {
-      bool field = (fieldFlags & PK_FIELD_KNOWN) && !(fieldFlags & (PK_FIELD_LOCKED | PK_FIELD_BATTLE)) &&
-                   (!wideSupported || pk_wide_scene() == PK_WIDE_SCENE_FIELD) && flyStage == 0;
-      hudFieldFrames = field ? hudFieldFrames + 1 : 0;
-      if (settings.hud && game.cfg && c->platform(c) == mPLATFORM_GBA && hudFieldFrames >= 20) {
-        int steps = repel_steps(c, game.cfg);
-        if (steps <= 0)
-          hudState.repelFull = 0;
-        else if (!hudState.repelFull || steps > hudState.repelFull)
-          hudState.repelFull = hud_repel_full(steps);
-        hudState.repel = steps > 0 ? steps : 0;
-        hudState.pc = pcOk;
-        hudState.wild = hud_wild_uncaught(&game, &snap);
-        companion_canvas();
-        present_hud_game(&game, &snap, &hudState, &settings, gw, gh);
-      } else {
-        present_game(gw, gh);
+    } else if (menuOpen && hkPage) {
+      if (down(UP))
+        pd_menu_move(&hkMenu, -1);
+      if (down(DOWN))
+        pd_menu_move(&hkMenu, 1);
+      if (down(B))
+        hkPage = false;
+      if (down(A)) {
+        capturing = hkMenu.selected;
+        hkMenu.title = "PRESS A BUTTON";
+        notice(capturing == HK_ACTIONS ? "SELECT: select / off   B: cancel" : "B: cancel   SELECT: off");
+      }
+    } else if (menuOpen) {
+      if (down(UP))
+        pd_menu_move(&menu, -1);
+      if (down(DOWN))
+        pd_menu_move(&menu, 1);
+      if (down(B))
+        menuOpen = false;
+      if (down(A)) {
+        switch (menu.selected) {
+        case M_RESUME:
+          menuOpen = false;
+          break;
+        case M_SAVE:
+          notice(state_file(ss, true) ? "State saved" : "State save failed");
+          menuOpen = false;
+          break;
+        case M_LOAD:
+          if (!exists(ss)) {
+            notice("No state saved yet");
+            menuOpen = false;
+            break;
+          }
+          confirming = M_LOAD;
+          confirmRows[0] = "CANCEL";
+          confirmRows[1] = "LOAD STATE";
+          pd_menu_init(&confirmMenu, "LOAD THE STATE?", confirmRows, 2);
+          confirmMenu.overlay = true;
+          break;
+        case M_FFSPEED:
+          hostSet.ffSpeed = hostSet.ffSpeed == 0 ? 2 : hostSet.ffSpeed >= 8 ? 0 : hostSet.ffSpeed + 1;
+          host_save();
+          break;
+        case M_REWIND:
+          hostSet.rewind = !hostSet.rewind;
+          if (!hostSet.rewind)
+            rewind_clear();
+          host_save();
+          break;
+        case M_LCD:
+          hostSet.lcd = !hostSet.lcd;
+          host_save();
+          break;
+        case M_SWAP:
+          hostSet.swapAB = swapFace = !hostSet.swapAB;
+          held = 0; // the button that chose this is now the other one: let it go
+          host_save();
+          break;
+        case M_HOTKEYS:
+          hkPage = true;
+          pd_menu_init(&hkMenu, "HOTKEYS", hkPtrs, HK_ACTIONS + 1);
+          hkMenu.overlay = true;
+          break;
+        case M_QUIT:
+          confirming = M_QUIT;
+          confirmRows[0] = "CANCEL";
+          confirmRows[1] = fromList ? "QUIT TO GAME LIST" : "QUIT";
+          pd_menu_init(&confirmMenu, "LEAVE THE GAME?", confirmRows, 2);
+          confirmMenu.overlay = true;
+          break;
+        }
       }
     }
-#ifdef POCKET_TEST
-    test_frame(c, companion, frames, &ui, &snap);
-#endif
-    frames++;
-    if (maxFrames && frames >= maxFrames) {
-      if (shot) {
-        unsigned lit = 0;
-        if (!capture_frame(shot, &lit))
-          notice("Capture failed");
-        fprintf(stderr,
-                "Capture frame %u: %ux%u game, rect %d,%d %dx%d, lit=%u\n",
-                c->frameCounter(c), gw, gh, lastGameRect.x, lastGameRect.y,
-                lastGameRect.w, lastGameRect.h, lit);
+    if (menuFrame) {
+      muted = true;
+      gameKeys = 0;
+      present_game(menuOpen ? (confirming ? &confirmMenu : hkPage ? &hkMenu : &menu) : NULL);
+      if (maxFrames && ++frames >= maxFrames) { // a scripted run can end, and be captured, with the menu up
+        if (shot && !capture(shot))
+          appError = 1;
+        break;
       }
-      break;
-    }
-    perf_frame(frameStart, hz);
-    uint64_t now = SDL_GetPerformanceCounter();
-    pacing_check((double)(now - lastFrame) * 1000.0 / SDL_GetPerformanceFrequency());
-    lastFrame = now;
-    if (vsyncPaced) {
-      due = now; // the present waited for the refresh: that's the pace
+      if (!vsyncPaced && !maxFrames)
+        SDL_Delay(16);
+      due = SDL_GetPerformanceCounter();
       continue;
     }
-    due += (uint64_t)(SDL_GetPerformanceFrequency() / hz);
-    if (now < due)
-      SDL_Delay((Uint32)((due - now) * 1000 / SDL_GetPerformanceFrequency()));
-    else if (now - due > SDL_GetPerformanceFrequency() / 5)
-      due = now;
+    muted = false;
+    bool rewinding = (hkOn & (1u << HK_REWIND)) && hostSet.rewind;
+    bool ff = !rewinding && (hkOn & (1u << HK_FF));
+    int runs = 1;
+    if (ff) {
+      double cost = emuMs > 0 ? emuMs : 4;
+      runs = hostSet.ffSpeed ? hostSet.ffSpeed : (int)(800.0 / hz / cost);
+      runs = runs < 2 ? 2 : runs > 30 ? 30 : runs;
+    }
+    ffNow = ff;
+    ffSpeedNow = runs;
+    rewindingNow = rewinding;
+    audioKeepEvery = (unsigned)runs;
+    gameKeys = joypad((held & ~hotkeyMask & ~((1u << MENU) | (1u << FFKEY) | (1u << RWKEY))) | modifierPulse);
+    uint64_t t = SDL_GetPerformanceCounter();
+    if (rewinding) {
+      muted = true;
+      if (rewind_pop())
+        core.run();
+      else
+        rewinding = false;
+    } else {
+      for (int i = 0; i < runs && running; i++) {
+        core.run();
+        if (modifierPulse && --pulseLeft <= 0) {
+          gameKeys &= ~joypad(modifierPulse);
+          modifierPulse = 0;
+        }
+        if (hostSet.rewind && !(++rewindTick & 1))
+          rewind_push();
+      }
+    }
+    emuMs = (double)(SDL_GetPerformanceCounter() - t) * 1000.0 / SDL_GetPerformanceFrequency() / runs;
+    if (++frames % 120 == 0)
+      sram_write(sav, &sramCopy, true);
+    present_game(NULL);
+    if (maxFrames && frames >= maxFrames) {
+      if (shot && !capture(shot))
+        appError = 1;
+      break;
+    }
+    uint64_t now = SDL_GetPerformanceCounter(), f = SDL_GetPerformanceFrequency();
+    pacing_check((double)(now - lastFrame) * 1000.0 / f);
+    lastFrame = now;
+    audio_trim(hz, vsyncPaced ? screenHz : hz);
+    if (!vsyncPaced && !maxFrames) {
+      due += (uint64_t)(f / hz);
+      if (now < due)
+        SDL_Delay((Uint32)((due - now) * 1000 / f));
+      else if (now - due > f / 10)
+        due = now; // far behind (a stall): start again rather than run to catch up
+    }
+    perf_frame(frameStart, hz);
   }
-  pk_finish_save(c, PK_FINISH_SAVE_FRAMES, NULL); // a save the game is writing finishes before the core stops
+  sram_write(sav, &sramCopy, true);
+  free(sramCopy.data);
+  rewind_clear();
+  core.unload_game();
+  core.deinit();
+  dlclose(core.dl);
+  memset(&core, 0, sizeof core);
+  free(rom);
   if (audio)
     SDL_ClearQueuedAudio(audio);
-cleanup:
-  rewind_follow(false);
-  pk_wide_configure(0);
-  wideSupported = wideReady = false;
-  c->unloadROM(c);
-  if(saveStatus.failed)appError=1;
-  mCoreConfigDeinit(&c->config);
-  c->deinit(c);
-  free(romdata);
+  muted = false;
   held = pressed = 0;
 }
-static int cmp(const void *a, const void *b) {
-  return strcasecmp(*(char *const *)a, *(char *const *)b);
+
+// By the file name, whichever folder it is in.
+static const char *base_name(const char *p) {
+  const char *s = strrchr(p, '/');
+  return s ? s + 1 : p;
+}
+static int cmp(const void *a, const void *b) { return strcasecmp(base_name(*(char *const *)a), base_name(*(char *const *)b)); }
+static void exe_dir(const char *argv0) {
+  char p[PATH_MAX];
+  ssize_t n = readlink("/proc/self/exe", p, sizeof p - 1);
+  if (n > 0)
+    p[n] = 0;
+  else
+    snprintf(p, sizeof p, "%s", argv0);
+  char *slash = strrchr(p, '/');
+  if (slash)
+    *slash = 0;
+  else
+    snprintf(p, sizeof p, ".");
+  snprintf(exeDir, sizeof exeDir, "%s", p);
 }
 int main(int argc, char **argv) {
   const char *rom = NULL, *shot = NULL;
@@ -2037,39 +1864,45 @@ int main(int argc, char **argv) {
     else
       rom = argv[i];
   }
-  mLogSetDefaultLogger(&quietLogger);
+  exe_dir(argv[0]);
   signal(SIGINT, stop);
   signal(SIGTERM, stop);
+  signal(SIGHUP, stop); // a closed terminal or session: the save goes to the card like a quit
   mkdir(root, 0755);
-  char path[1024];
-  static char backups[1024];
-  if (saveFile) {
-    snprintf(backups, sizeof backups, "%s/backups", root);
-    pocket_backup_dir = backups;
-  }
+  char path[PATH_MAX * 2];
   const char *dirs[] = {"roms", "saves", "states"};
   for (int i = 0; i < 3; i++) {
     snprintf(path, sizeof path, "%s/%s", root, dirs[i]);
     mkdir(path, 0755);
   }
+  snprintf(savesDir, sizeof savesDir, "%s/saves", root);
+  snprintf(hostIni, sizeof hostIni, "%s/host.ini", root);
+  host_load();
+  comboMenu = !(getenv("POCKET_MENU_COMBO") && !strcmp(getenv("POCKET_MENU_COMBO"), "off"));
+  // A window manager can give another window the focus over the game (plorpOS's in-game menu on the GKD): the
+  // controller has to keep reaching the host then.
+  SDL_SetHint(SDL_HINT_JOYSTICK_ALLOW_BACKGROUND_EVENTS, "1");
   if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO | SDL_INIT_JOYSTICK | SDL_INIT_GAMECONTROLLER)) {
     fprintf(stderr, "SDL: %s\n", SDL_GetError());
     return 1;
   }
   SDL_SetHint(SDL_HINT_RENDER_SCALE_QUALITY, "0");
   SDL_DisplayMode display = {0};
-  bool fullscreen = getenv("POCKET_FULLSCREEN") != NULL;
-  if(fullscreen && SDL_GetCurrentDisplayMode(0,&display))fullscreen=false;
-  // POCKET_WINDOW=WxH: a window the size of a device's panel, for trying a
-  // layout on a desktop (1280x720 Smart Pro, 640x480, 720x720 ...).
+  // Fullscreen with POCKET_FULLSCREEN, and under gamescope (the Steam Deck's Game Mode): it scales a window to the
+  // screen keeping its shape, so a window there was letterboxed and EXPAND couldn't reach the edges.
+  const char *desktop = getenv("XDG_CURRENT_DESKTOP");
+  bool fullscreen = getenv("POCKET_FULLSCREEN") != NULL || (desktop && strstr(desktop, "gamescope"));
+  if (fullscreen && SDL_GetCurrentDisplayMode(0, &display))
+    fullscreen = false;
+  // POCKET_WINDOW=WxH: a window the size of a device's panel, for trying a layout on a desktop.
   int winW = W, winH = H;
   const char *size = getenv("POCKET_WINDOW");
-  if (size && (sscanf(size, "%dx%d", &winW, &winH) != 2 || winW < 160 ||
-               winH < 144 || winW > 8192 || winH > 8192))
+  if (size &&
+      (sscanf(size, "%dx%d", &winW, &winH) != 2 || winW < 160 || winH < 144 || winW > 8192 || winH > 8192))
     winW = W, winH = H;
-  window = SDL_CreateWindow("PokeDaisy Linux", SDL_WINDOWPOS_CENTERED,
-      SDL_WINDOWPOS_CENTERED, fullscreen?display.w:winW, fullscreen?display.h:winH,
-      fullscreen?SDL_WINDOW_FULLSCREEN:SDL_WINDOW_RESIZABLE);
+  window = SDL_CreateWindow("PokeDaisy Linux", SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
+                            fullscreen ? display.w : winW, fullscreen ? display.h : winH,
+                            fullscreen ? SDL_WINDOW_FULLSCREEN : SDL_WINDOW_RESIZABLE);
   // Presents wait for the refresh (the pacing, above); a driver without it gets the timer.
   renderer = window ? SDL_CreateRenderer(window, -1, getenv("POCKET_NO_VSYNC") ? 0 : SDL_RENDERER_PRESENTVSYNC) : NULL;
   if (!renderer && window)
@@ -2081,24 +1914,14 @@ int main(int argc, char **argv) {
   }
   SDL_RendererInfo rendererInfo;
   if (!SDL_GetRendererInfo(renderer, &rendererInfo))
-    fprintf(stderr, "Video backend: %s; opaque RGB888 canvas %dx%d\n",
-            rendererInfo.name, canvasW, canvasH);
+    fprintf(stderr, "Video backend: %s\n", rendererInfo.name);
   SDL_ShowCursor(SDL_DISABLE);
-  companion_canvas();
-  gameTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGR888,
-                                  SDL_TEXTUREACCESS_STREAMING, 256, 256);
-  wideTexture = SDL_CreateTexture(renderer, SDL_PIXELFORMAT_BGR888,
-                                  SDL_TEXTUREACCESS_STREAMING, PK_WIDE_MAX_VIEW_W,
-                                  PK_WIDE_MAX_VIEW_H);
-  if (!texture || !gameTexture || !wideTexture) {
-    fprintf(stderr, "Texture: %s\n", SDL_GetError());
-    return 1;
-  }
-  SDL_SetTextureBlendMode(gameTexture, SDL_BLENDMODE_NONE);
-  SDL_SetTextureBlendMode(wideTexture, SDL_BLENDMODE_NONE);
+  // SDL starts text input with the window, and Steam answers it with its on-screen keyboard: the host reads keys,
+  // never text.
+  SDL_StopTextInput();
   SDL_SetRenderDrawColor(renderer, 0, 0, 0, 255);
   audio_open();
-  rawTrimui=getenv("POCKET_RAW_TRIMUI") && !strcmp(getenv("POCKET_RAW_TRIMUI"),"1");
+  rawTrimui = getenv("POCKET_RAW_TRIMUI") && !strcmp(getenv("POCKET_RAW_TRIMUI"), "1");
   snprintf(path, sizeof path, "%s/gamecontrollerdb.txt", root);
   if (access(path, R_OK) == 0) {
     int added = SDL_GameControllerAddMappingsFromFile(path);
@@ -2109,28 +1932,34 @@ int main(int argc, char **argv) {
       controller_added(i);
   SDL_Joystick *js = !controller && rawTrimui && SDL_NumJoysticks() ? SDL_JoystickOpen(0) : NULL;
   if (rom)
-    run_game(rom, frames, shot);
+    run_game(rom, frames, shot, false);
   else {
-    char *names[256];
+    /* DATA/roms, then the folders POCKET_ROM_DIRS names (colon-separated: the PortMaster launcher passes the
+     * firmware's own gba / gb / gbc / nds folders), by file name. */
+    static char *paths[1024];
+    static const char *names[1024];
     int count = 0;
-    snprintf(path, sizeof path, "%s/roms", root);
-    DIR *d = opendir(path);
-    struct dirent *e;
-    while (d && (e = readdir(d)) && count < 256) {
-      char *ext = strrchr(e->d_name, '.');
-      if (ext && (!strcasecmp(ext, ".gba") || !strcasecmp(ext, ".gbc") ||
-                  !strcasecmp(ext, ".gb")
-#ifdef POCKET_DSPERATE
-                  || !strcasecmp(ext, ".nds")
-#endif
-                  ))
-        names[count++] = strdup(e->d_name);
+    char dirs[4096];
+    snprintf(dirs, sizeof dirs, "%s/roms%s%s", root, getenv("POCKET_ROM_DIRS") ? ":" : "",
+             getenv("POCKET_ROM_DIRS") ? getenv("POCKET_ROM_DIRS") : "");
+    char *save = NULL;
+    for (char *dir = strtok_r(dirs, ":", &save); dir; dir = strtok_r(NULL, ":", &save)) {
+      DIR *d = opendir(dir);
+      struct dirent *e;
+      while (d && (e = readdir(d)) && count < 1024) {
+        if (core_for(e->d_name)) {
+          snprintf(path, sizeof path, "%s/%s", dir, e->d_name);
+          paths[count++] = strdup(path);
+        }
+      }
+      if (d)
+        closedir(d);
     }
-    if (d)
-      closedir(d);
-    qsort(names, count, sizeof(*names), cmp);
-    struct pd_menu menu;
-    pd_menu_init(&menu, "PokeDaisy Linux", (const char *const *)names, count);
+    qsort(paths, count, sizeof(*paths), cmp);
+    for (int i = 0; i < count; i++)
+      names[i] = base_name(paths[i]);
+    struct pd_menu list;
+    pd_menu_init(&list, "PokeDaisy Linux", names, count);
     int ticks = 0;
     while (running) {
       events();
@@ -2138,44 +1967,39 @@ int main(int argc, char **argv) {
       if (down(B) || down(MENU))
         break;
       if (down(UP))
-        pd_menu_move(&menu, -1);
+        pd_menu_move(&list, -1);
       if (down(DOWN))
-        pd_menu_move(&menu, 1);
-      if (down(A) && count) {
-        snprintf(path, sizeof path, "%s/roms/%s", root, names[menu.selected]);
-        run_game(path, 0, NULL);
-      }
-      companion_canvas();
-      pd_menu_draw(&menu, &canvas);
-      present();
+        pd_menu_move(&list, 1);
+      if (down(A) && count)
+        appError = 0, run_game(paths[list.selected], 0, NULL, true); // the last game's result is the exit status
+      SDL_RenderClear(renderer);
+      overlay_begin();
+      pd_menu_draw(&list, &overlay);
+      overlay_notice();
+      overlay_draw(true);
+      SDL_RenderPresent(renderer);
       if (frames && ++ticks >= frames) {
-        if (shot)
-          capture_frame(shot, NULL);
+        if (shot && !capture(shot))
+          appError = 1;
         break;
       }
       SDL_Delay(16);
     }
     for (int i = 0; i < count; i++)
-      free(names[i]);
+      free(paths[i]);
   }
   if (js)
     SDL_JoystickClose(js);
-  if(controller) {SDL_GameControllerClose(controller);controller=NULL;}
+  if (controller)
+    SDL_GameControllerClose(controller);
   if (audio)
     SDL_CloseAudioDevice(audio);
-  // NULLed: the runtime test runs the app again in a new window.
-  SDL_DestroyTexture(texture);
-  texture = NULL;
-  SDL_DestroyTexture(gameTexture);
-  SDL_DestroyTexture(wideTexture);
-  SDL_DestroyTexture(lcdTexture);
-  lcdTexture = NULL;
-  if (menuTexture)
-    SDL_DestroyTexture(menuTexture);
-  menuTexture = NULL;
-  if (hudTexture)
-    SDL_DestroyTexture(hudTexture);
-  hudTexture = NULL;
+  if (frameTexture)
+    SDL_DestroyTexture(frameTexture);
+  if (overlayTexture)
+    SDL_DestroyTexture(overlayTexture);
+  if (lcdTexture)
+    SDL_DestroyTexture(lcdTexture);
   SDL_DestroyRenderer(renderer);
   SDL_DestroyWindow(window);
   SDL_Quit();

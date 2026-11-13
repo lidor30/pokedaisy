@@ -1001,6 +1001,14 @@ val GUIDE_TABLES_TEAM_ROCKET_V3 = GuideTables(
     mapSecWide = true,
 )
 
+/** Team Rocket Edition 2026 v3.1: v3.0.9's tables moved - gTrainers 0x084EDD58 (26 literal-pool words; its NORMAL array
+ * 0x0850F568, 415 BROCK), gSpeciesInfo's learnsets 0x08975950, gWildMonHeaders 0x0909E11C (10 pool words, 462 headers). */
+val GUIDE_TABLES_TEAM_ROCKET_V3_1 = GUIDE_TABLES_TEAM_ROCKET_V3.copy(
+    trainers = 0x0850F568L,
+    learnsets = 0x08975950L,
+    wildHeaders = 0x0909E11CL,
+)
+
 /**
  * Pokémon Wishes of Tomorrow v1.2.6 (expansion 1.15.3): HERE only. gTrainers[EASY][NORMAL][HARD][896] at 0x08428F54 (EASY
  * empty, so its NORMAL array 0x08435354; 0x38-byte records - its own, four bytes longer than the reference build's: party

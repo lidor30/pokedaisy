@@ -48,6 +48,8 @@ data class AchievementsState(
     val cheatsPaused: Boolean = false,
     /** SHINY ODDS is raised: paused the same way until it's NORMAL again. */
     val shinyOddsPaused: Boolean = false,
+    /** FLIGHT AREA is ANYWHERE and the player has taken off with it: paused the same way until it's VISITED again. */
+    val flightPaused: Boolean = false,
 )
 
 data class Leaderboard(

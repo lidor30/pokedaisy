@@ -13,4 +13,13 @@ interface FlyAction {
 
     /** Flies to [mapsec] (one of [targets]' destinations): [done] with OK once the game has taken over. */
     fun fly(mapsec: Int, targets: FlyTargets, done: (FlyResult) -> Unit)
+
+    /** FREE FLIGHT here (Flight.kt): the MAP's TAKE OFF shows (with someone who knows FLY). */
+    fun canFreeFlight(): Boolean = false
+
+    /** In the air now: TAKE OFF reads LAND. */
+    fun flying(): Boolean = false
+
+    /** TAKE OFF, or LAND while up; why it didn't, as [done]'s message (null = it went). */
+    fun toggleFlight(done: (FlyResult?) -> Unit) {}
 }

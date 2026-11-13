@@ -130,25 +130,38 @@ static struct slot_geometry geometry(int w, int h) {
     return g;
 }
 
-static void chamfer(struct pd_canvas* c,int x,int y,int w,int h,int cut,uint32_t color) {
-    for(int row=0;row<h;++row) {
-        int edge=cut-row, lower=cut-(h-row-1);
-        if(lower>edge)edge=lower;
-        if(edge<0)edge=0;
-        pd_fill(c,x+edge,y+row,w-2*edge,1,color);
+static int cut_inset(int row, int height) {
+    int edge = 9 - row, lower = 9 - (height - row - 1);
+    if (lower > edge) edge = lower;
+    return edge > 0 ? edge : 0;
+}
+
+static void chamfer(struct pd_canvas* c, int x, int y, int w, int h, int u, uint32_t color) {
+    for (int row = 0; row < h; ++row) {
+        int edge = cut_inset(row, h);
+        pd_fill(c, x + edge * u, y + row * u, (w - 2 * edge) * u, u, color);
     }
 }
 
 static void slot_frame(struct pd_canvas* c, int x, int y, const struct slot_geometry* g, const struct pd_party_slot_colors* col, bool angled) {
     int u = g->u;
-    if(angled) {
-        int left=x+g->fx, top=y+g->fy;
-        chamfer(c,left,top,g->fw,g->fh,9*u,col->outline);
-        chamfer(c,left+u,top+u,g->fw-2*u,g->fh-2*u,8*u,col->light);
-        chamfer(c,left+2*u,top+2*u,g->fw-4*u,g->fh-4*u,7*u,col->fill);
-        if(col->stripe)
-            for(int row=4*u;row<g->fh-4*u;row+=4*u)
-                pd_fill(c,left+9*u,top+row,g->fw-18*u,u,col->stripe);
+    if (angled) {
+        int left = x + g->fx, top = y + g->fy, w = g->fw / u, h = g->fh / u;
+        chamfer(c, left, top, w, h, u, col->outline);
+        chamfer(c, left + u, top + u, w - 2, h - 2, u, col->light);
+        chamfer(c, left + 2 * u, top + 2 * u, w - 4, h - 4, u, col->shade);
+        chamfer(c, left + 3 * u, top + 3 * u, w - 6, h - 6, u, col->fill);
+        if (col->stripe) {
+            int innerW = w - 6, innerH = h - 6;
+            for (int row = 0; row < innerH; ++row) {
+                int edge = cut_inset(row, innerH);
+                int from = innerW * 62 / 100 - row, to = from + innerW * 46 / 100;
+                if (from < edge) from = edge;
+                if (to > innerW - edge) to = innerW - edge;
+                if (from < to)
+                    pd_fill(c, left + (3 + from) * u, top + (3 + row) * u, (to - from) * u, u, col->stripe);
+            }
+        }
         return;
     }
     pd_round_rect(c, x + g->fx, y + g->fy, g->fw, g->fh, 3 * u, col->outline);
@@ -176,19 +189,25 @@ static void hp_bar(struct pd_canvas* c, int x, int y, const struct slot_geometry
     if (hp < 0) hp = 0;
     int filled = maxHp > 0 ? inner / u * hp / maxHp * u : 0;
     if (filled < u && hp > 0) filled = u;
-    const struct pd_hp_band* col = maxHp <= 0 || hp * 2 > maxHp ? &HP_GREEN : hp * 5 > maxHp ? &HP_YELLOW : &HP_RED;
+    const struct pd_hp_band* col = maxHp <= 0 || hp * 2 > maxHp ? (p ? &p->hpGreen : &HP_GREEN)
+        : hp * 5 > maxHp ? (p ? &p->hpYellow : &HP_YELLOW) : (p ? &p->hpRed : &HP_RED);
+    const struct pd_hp_band* empty = p ? &p->hpEmpty : &HP_NONE;
     int bx = x + g->barX + 2 * u;
-    pd_fill(c, bx, by + 2 * u, inner, u, HP_NONE.top);
-    pd_fill(c, bx, by + 3 * u, inner, 2 * u, HP_NONE.main);
+    pd_fill(c, bx, by + 2 * u, inner, u, empty->top);
+    pd_fill(c, bx, by + 3 * u, inner, 2 * u, empty->main);
     pd_fill(c, bx, by + 2 * u, filled, u, col->top);
     pd_fill(c, bx, by + 3 * u, filled, 2 * u, col->main);
 }
 
 // The status chip (StatusChip): a darker rim around the status colour, FNT grey.
-static void status_chip(struct pd_canvas* c, int x, int y, const char* label) {
-    uint32_t color = !strcmp(label, "FNT") ? 0x6B6B6B : !strcmp(label, "SLP") ? 0x8A8A8A
+uint32_t pd_ui_status_color(const char* label) {
+    return !strcmp(label, "FNT") ? 0x6B6B6B : !strcmp(label, "SLP") ? 0x8A8A8A
         : !strcmp(label, "PSN") ? 0xA259D9 : !strcmp(label, "BRN") ? 0xE0693E : !strcmp(label, "PAR") ? 0xD9C341
         : !strcmp(label, "FRZ") ? 0x56C2E6 : !strcmp(label, "TOX") ? 0x7A3EA1 : 0x8890A0;
+}
+
+static void status_chip(struct pd_canvas* c, int x, int y, const char* label) {
+    uint32_t color = pd_ui_status_color(label);
     uint32_t rim = ((((color >> 16) & 0xFF) * 65 / 100) << 16) | ((((color >> 8) & 0xFF) * 65 / 100) << 8)
         | ((color & 0xFF) * 65 / 100);
     uint32_t shadow = ((((color >> 16) & 0xFF) / 2) << 16) | ((((color >> 8) & 0xFF) / 2) << 8) | ((color & 0xFF) / 2);
@@ -199,15 +218,14 @@ static void status_chip(struct pd_canvas* c, int x, int y, const char* label) {
 }
 
 // An empty slot: its box, faint over the backdrop (drawn whole, then blended in).
-static void empty_slot(struct pd_canvas* c, int x, int y, int w, int h, const struct slot_geometry* g) {
+static void faded_slot(struct pd_canvas* c, int x, int y, int w, int h, const struct slot_geometry* g,
+                       const struct pd_party_slot_colors* colors, int alpha) {
     static uint32_t scratch[512 * 256];
     if (w <= 0 || h <= 0 || w * h > (int) (sizeof(scratch) / sizeof(*scratch))) return;
     struct pd_canvas t;
     pd_canvas_init(&t, w, h, scratch);
     memset(scratch, 0xFF, (size_t) w * h * sizeof(*scratch)); // 0xFFFFFFFF: nothing drawn
-    const struct pd_slot_colors* slot = &SLOT_NORMAL;
-    const struct pd_party_slot_colors colors = {slot->outline, slot->light, slot->fill, slot->shade, slot->band, 0};
-    slot_frame(&t, 0, 0, g, &colors, false);
+    slot_frame(&t, 0, 0, g, colors, false);
     for (int yy = 0; yy < h; yy++) {
         int sy = y + yy;
         if (sy < c->cy0 || sy >= c->cy1) continue;
@@ -219,7 +237,7 @@ static void empty_slot(struct pd_canvas* c, int x, int y, int w, int h, const st
             uint32_t out = 0;
             for (int sh = 0; sh <= 16; sh += 8) {
                 uint32_t a = (v >> sh) & 0xFF, b = (*d >> sh) & 0xFF;
-                out |= ((a * EMPTY_ALPHA + b * (255 - EMPTY_ALPHA)) / 255) << sh;
+                out |= ((a * alpha + b * (255 - alpha)) / 255) << sh;
             }
             *d = out;
         }
@@ -691,12 +709,45 @@ static struct art_geometry card_geometry(const struct pd_party_style* st, int ex
     return a;
 }
 
+// FNV-1a over [n] bytes, continuing from [h].
+static uint32_t hash_bytes(uint32_t h, const void* p, size_t n) {
+    const unsigned char* b = p;
+    for (size_t i = 0; i < n; i++) h = (h ^ b[i]) * 16777619u;
+    return h;
+}
+
+// What the scaled cards are drawn from: the party, the cursor, the layout, the look and the art. The same key = the same
+// pixels, so a redraw for something else (a tab press, the clock) copies them instead of scaling the screen again - on a
+// 3DS the scale took most of a frame.
+static uint32_t cards_key(const struct pd_canvas* c, const struct pd_game* g, const struct pd_party_art* art, const struct window_at* at,
+                          const struct card_scale* k, const struct pd_snapshot* s, int selected) {
+    uint32_t h = 2166136261u;
+    const void* ptrs[4] = { c->px, g, art, pd_cur };
+    int ints[9] = { c->w, c->h, c->cx0, c->cy0, c->cx1, c->cy1, selected, s->partyCount, (int) pd_rom_id(g) };
+    h = hash_bytes(h, ptrs, sizeof(ptrs));
+    h = hash_bytes(h, ints, sizeof(ints));
+    h = hash_bytes(h, k, sizeof(*k));
+    h = hash_bytes(h, at, sizeof(*at) * PD_PARTY_SIZE);
+    h = hash_bytes(h, pd_backdrop_colors, sizeof(pd_backdrop_colors));
+    int n = s->partyCount < PD_PARTY_SIZE ? s->partyCount : PD_PARTY_SIZE;
+    return hash_bytes(h, s->party, sizeof(s->party[0]) * (size_t) (n > 0 ? n : 0));
+}
+
 // The cards on the canvas, over its backdrop, or only the backdrop if `cards` is false. selected: which card, -1 none.
 static bool draw_cards(struct pd_canvas* c, const struct pd_game* g, const struct pd_party_art* art, const struct window_at* at,
                        const struct card_scale* k, const struct pd_snapshot* s, int selected, bool cards) {
     static uint32_t px[PD_UI_WIDTH * PD_UI_HEIGHT];
+    static uint32_t kept[PD_UI_WIDTH * PD_UI_HEIGHT], keptKey;
+    static bool keptOk;
     struct pd_canvas screen;
     bool up = k->num != k->den;
+    // The scaled party screen as last drawn: copied when nothing it shows has changed.
+    bool cache = up && cards && c->w * c->h <= PD_UI_WIDTH * PD_UI_HEIGHT;
+    uint32_t key = cache ? cards_key(c, g, art, at, k, s, selected) : 0;
+    if (cache && keptOk && key == keptKey) {
+        memcpy(c->px, kept, (size_t) c->w * c->h * sizeof(*kept));
+        return true;
+    }
     int w = (c->w * k->den + k->num - 1) / k->num + 1, h = (c->h * k->den + k->num - 1) / k->num + 1;
     pd_canvas_init(&screen, w, h, px);
     if (up && !pd_party_screen(&screen, g)) return false;
@@ -716,6 +767,11 @@ static bool draw_cards(struct pd_canvas* c, const struct pd_game* g, const struc
         int x = t->x * k->num / k->den, y = (t->y + TEXT_TOP) * k->num / k->den + CARD_TEXT_DY;
         if (t->right) pd_text_right(c, x, y, t->text, t->fg, t->shadow);
         else pd_text(c, x, y, t->text, t->fg, t->shadow);
+    }
+    if (cache) {
+        memcpy(kept, c->px, (size_t) c->w * c->h * sizeof(*kept));
+        keptKey = key;
+        keptOk = true;
     }
     return true;
 }
@@ -739,8 +795,25 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
     int u = geo.u;
     const struct pd_party_source_palette* p=ui->partySource?ui->partySource->palette:NULL;
     if (!m) {
-        if(p)slot_frame(c,x,y,&geo,&p->empty,p->chamfer);
-        else empty_slot(c, x, y, w, h, &geo);
+        if (!p) {
+            const struct pd_slot_colors* slot = &SLOT_NORMAL;
+            const struct pd_party_slot_colors colors = {slot->outline, slot->light, slot->fill, slot->shade, slot->band, 0};
+            faded_slot(c, x, y, w, h, &geo, &colors, EMPTY_ALPHA);
+        } else if (p->emptyAlpha) {
+            faded_slot(c, x, y, w, h, &geo, selected ? &p->selected : &p->normal, p->emptyAlpha);
+        } else if (p->emptyLines) {
+            int left = x + geo.fx, top = y + geo.fy, height = geo.fh / u;
+            if (!p->chamfer) {
+                pd_round_rect(c, left, top, geo.fw, geo.fh, 3 * u, p->empty.outline);
+                pd_round_rect(c, left + 2 * u, top + 2 * u, geo.fw - 4 * u, geo.fh - 4 * u, u, p->empty.fill);
+            }
+            for (int row = p->chamfer ? 1 : 3; row < height - (p->chamfer ? 1 : 2); row += 2) {
+                int edge = (p->chamfer ? cut_inset(row, height) : 2) * u;
+                pd_fill(c, left + edge, top + row * u, geo.fw - 2 * edge, u, p->emptyLines);
+            }
+        } else {
+            slot_frame(c, x, y, &geo, &p->empty, p->chamfer);
+        }
         return;
     }
     char buf[40];
@@ -776,8 +849,8 @@ static void party_slot(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         int gx = x + geo.fx + geo.fw - 14 * u, gy = y + geo.levelMid - 4 * u;
         if (m->gender == PD_GENDER_MALE || m->gender == PD_GENDER_FEMALE) {
             bool male = m->gender == PD_GENDER_MALE;
-            const uint32_t shadow[1] = { male ? MALE_SHADOW : FEMALE_SHADOW };
-            const uint32_t color[1] = { male ? MALE : FEMALE };
+            const uint32_t shadow[1] = { male ? (p ? p->maleShadow : MALE_SHADOW) : (p ? p->femaleShadow : FEMALE_SHADOW) };
+            const uint32_t color[1] = { male ? (p ? p->male : MALE) : (p ? p->female : FEMALE) };
             char_bitmap(c, male ? MALE_MARK : FEMALE_MARK, 8, gx + u, gy + u, u, "1", shadow);
             char_bitmap(c, male ? MALE_MARK : FEMALE_MARK, 8, gx, gy, u, "1", color);
         }
@@ -1399,7 +1472,7 @@ void ui_mon_summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
                     const struct pd_mon* const* column, int columnCount, int shown, bool canTake, const char* pcLabel) {
     (void) s;
     char buf[40];
-    int x = MARGIN, y = CONTENT_Y - 2, btnH = 22, full = c->h - y - 2, h = full - btnH - 3;
+    int x = MARGIN, y = CONTENT_Y - 2, btnH = 26, full = c->h - y - 2, h = full - btnH - 3;
     int colX = c->w - MARGIN - SUMMARY_COLUMN, w = colX - 3 - x;
     int f = pd_title_box(c, x, y, w, h, PD_TITLE_FILL);
     int ix = x + f + 4, iy = y + f + 2, iw = w - 2 * (f + 4), ih = h - 2 * (f + 2);
@@ -1491,18 +1564,18 @@ void ui_mon_summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
     }
     int by = y + full - btnH, bx = x;
     ui_platinum(ui, c, colX, by, SUMMARY_COLUMN, btnH, 0x4890D8, 0x2860A0, HIT_BACK);
-    ui_mono(c, &PD_ICON_BACK, colX + (SUMMARY_COLUMN - PD_ICON_BACK.w) / 2, by + (btnH - PD_ICON_BACK.h) / 2, 1, 0xFFFFFF);
+    ui_platinum_back(c, colX, by, SUMMARY_COLUMN, btnH);
     if (pcLabel) {
         int bw = pd_text_width(pcLabel) + 16;
         ui_platinum(ui, c, bx, by, bw, btnH, 0x58A840, 0x307020, HIT_SUMMARY_PC);
-        pd_text(c, bx + (bw - pd_text_width(pcLabel)) / 2, pd_text_y(by, btnH), pcLabel, 0xFFFFFF, 0x383838);
+        ui_platinum_label(c, bx, by, bw, btnH, pcLabel);
         bx += bw + 3;
     }
     if (m->stats.valid && !egg) {
         const char* label = ui->summaryStats ? "MOVES" : "STATS";
         int bw = pd_text_width("MOVES") + 16;
         ui_platinum(ui, c, bx, by, bw, btnH, STATS_PURPLE, STATS_PURPLE_DARK, HIT_SUMMARY_STATS);
-        pd_text(c, bx + (bw - pd_text_width(label)) / 2, pd_text_y(by, btnH), label, 0xFFFFFF, 0x383838);
+        ui_platinum_label(c, bx, by, bw, btnH, label);
         bx += bw + 3;
     }
     if (!egg) {
@@ -1510,7 +1583,7 @@ void ui_mon_summary(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
         const char* label = ui->summaryInfo ? "MOVES" : "INFO";
         int bw = pd_text_width("MOVES") + 16;
         ui_platinum(ui, c, bx, by, bw, btnH, 0x4890D8, 0x2860A0, HIT_SUMMARY_INFO);
-        pd_text(c, bx + (bw - pd_text_width(label)) / 2, pd_text_y(by, btnH), label, 0xFFFFFF, 0x383838);
+        ui_platinum_label(c, bx, by, bw, btnH, label);
     }
 }
 
@@ -1531,7 +1604,7 @@ void ui_party_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g
         const struct pd_mon* column[PD_PARTY_SIZE];
         for (int i = 0; i < s->partyCount; i++) column[i] = &s->party[i];
         ui_mon_summary(ui, c, g, s, &s->party[ui->summarySlot], column, s->partyCount, ui->summarySlot, host && host->canTake,
-                       ui->boxMoves ? "PC" : NULL);
+                       ui->boxMoves ? "DEPOSIT" : NULL);
         if (*ui->boxMessage) ui_box_message(ui, c);
         return;
     }

@@ -1,6 +1,9 @@
-// The app's Nintendo DS core: melonDS behind a small C interface, which pokedaisy_jni.c calls when the
-// loaded ROM is a DS cart (pk_nds_is_rom). One DS at a time, owned by the emu thread like the mGBA core;
-// pk_nds_read is the only call other threads make, under pokedaisy_jni.c's core lock.
+// The app's Nintendo DS cores behind a small C interface, which pokedaisy_jni.c calls when the loaded ROM is a DS
+// cart (pk_nds_is_rom): melonDS (pk_nds.cpp) or DSperate (pk_nds_dsp.cpp, for devices too slow for melonDS), picked
+// by pk_nds_set_core before pk_nds_init (pk_nds_core.cpp passes each call to the one that's up). One DS at a time,
+// owned by the emu thread like the mGBA core; pk_nds_read is the only call other threads make, under
+// pokedaisy_jni.c's core lock. Some calls only melonDS has (EXPAND, DS RESOLUTION, STEADY music, the game's own
+// functions, DS CPU BOOST): on DSperate they do nothing and report off.
 #pragma once
 
 #include <stdbool.h>
@@ -15,6 +18,13 @@ extern "C" {
 
 // Whether the file at path has a DS cart header (the Nintendo logo's CRC at 0x15C).
 bool pk_nds_is_rom(const char* path);
+
+#define PK_NDS_CORE_MELONDS 0
+#define PK_NDS_CORE_DSPERATE 1
+// The core the next pk_nds_init starts (PK_NDS_CORE_*; melonDS until told otherwise). Emu thread, no DS up.
+void pk_nds_set_core(int core);
+// The core that's up, or -1 with no DS game.
+int pk_nds_core(void);
 
 // Boots the ROM at romPath (FreeBIOS, generated firmware: no BIOS / firmware files) with the save at savePath
 // (read if it exists, written each time the game saves; NULL = none), audio resampled to sampleRate.
@@ -44,7 +54,8 @@ int pk_nds_finish_save(int maxFrames);
 
 bool pk_nds_save_state(const char* path);
 bool pk_nds_load_state(const char* path);
-// 1 = the save inside the state at path is the save file as it is now, 0 = it isn't, -1 = can't tell.
+// 1 = the save inside the state at path is the save file as it is now, 0 = it isn't, -1 = can't tell, 2 = the state is
+// the other DS core's (it won't load: each core reads only its own).
 int pk_nds_state_matches_save(const char* path);
 
 // Reads len bytes at addr: main RAM (0x02000000-0x023FFFFF, mirrored as the DS does), shared WRAM, the ARM9's

@@ -1,0 +1,271 @@
+# FlightFns's fields (Flight.kt), checked against it by scripts/gen_gamedata.py.
+# type: long | int | bool | char | string | item_descs | int_range | long_list | int_list | int_set | long_set | int_map |
+# ref (a Kotlin val's name, or a record in gamedata/gen3/records/); record names the schema of the record a ref
+# names (its defaults stand in where there is none).
+
+version = 1
+kotlin_class = 'FlightFns'
+kotlin_file = 'Flight.kt'
+
+[field.objectEvents]
+kotlin = 'Long'
+type = 'long'
+
+[field.playerAvatar]
+kotlin = 'Long'
+type = 'long'
+
+[field.sprites]
+kotlin = 'Long'
+type = 'long'
+
+# VMap: struct BackupMapLayout (Xsize, Ysize, map) - the loaded map with its connections around it.
+[field.vmap]
+kotlin = 'Long'
+type = 'long'
+
+[field.connectionFlags]
+kotlin = 'Long'
+type = 'long'
+
+[field.saveBlock1Ptr]
+kotlin = 'Long'
+type = 'long'
+
+[field.saveBlock2Ptr]
+kotlin = 'Long'
+type = 'long'
+
+[field.main]
+kotlin = 'Long'
+type = 'long'
+
+[field.cb2Overworld]
+kotlin = 'Long'
+type = 'long'
+
+# sLockFieldControls.
+[field.lockByte]
+kotlin = 'Long'
+type = 'long'
+
+[field.paletteFade]
+kotlin = 'Long'
+type = 'long'
+
+[field.lockControls]
+kotlin = 'Long'
+type = 'long'
+
+[field.unlockControls]
+kotlin = 'Long'
+type = 'long'
+
+[field.createSprite]
+kotlin = 'Long'
+type = 'long'
+
+[field.destroySprite]
+kotlin = 'Long'
+type = 'long'
+
+[field.startSpriteAnim]
+kotlin = 'Long'
+type = 'long'
+
+# gFieldEffectObjectTemplate_Bird: the FLY bird, alone (anim 0) or with the rider (1 / 2 Red, 3 / 4 Leaf).
+[field.birdTemplate]
+kotlin = 'Long'
+type = 'long'
+
+[field.behaviorAt]
+kotlin = 'Long'
+type = 'long'
+
+[field.collisionAt]
+kotlin = 'Long'
+type = 'long'
+
+[field.elevationAt]
+kotlin = 'Long'
+type = 'long'
+
+[field.objectAt]
+kotlin = 'Long'
+type = 'long'
+
+[field.playSe]
+kotlin = 'Long'
+type = 'long'
+
+[field.seFly]
+kotlin = 'Int'
+type = 'int'
+
+[field.seFailure]
+kotlin = 'Int'
+type = 'int'
+
+# MOVEMENT_ACTION_WALK_FAST_DOWN (then UP, LEFT, RIGHT) and WALK_FASTER_DOWN.
+[field.walkFast]
+kotlin = 'Int'
+type = 'int'
+
+[field.walkFaster]
+kotlin = 'Int'
+type = 'int'
+
+# gSpriteCoordOffsetX (Y at +2).
+[field.spriteOffset]
+kotlin = 'Long'
+type = 'long'
+
+# MOVEMENT_ACTION_RIDE_WATER_CURRENT_DOWN (6 frames a tile) and MOVEMENT_ACTION_SLIDE_DOWN (2): a diagonal's quicker
+# steps, so it keeps the straight speed along it.
+[field.walkCurrent]
+kotlin = 'Int'
+type = 'int'
+
+[field.walkSlide]
+kotlin = 'Int'
+type = 'int'
+
+# gMapHeader (the loaded map's connections at +0xC).
+[field.mapHeader]
+kotlin = 'Long'
+type = 'long'
+
+# CurrentMapDrawMetatileAt(x, y): a map square mended at the grid's edges drawn again (pk_flight.c's flMend).
+[field.drawMetatileAt]
+kotlin = 'Long'
+type = 'long'
+
+# The metatile behaviours a player may land on (ground, grass, sand...; never water, a ledge, a door or a warp).
+[field.landOk]
+kotlin = 'Set<Int>'
+type = 'int_set'
+
+# gMapGroups: a pointer per map group to its list of map header pointers ([mapGroupSizes] each).
+[field.mapGroups]
+kotlin = 'Long'
+type = 'long'
+
+[field.mapGroupSizes]
+kotlin = 'List<Int>'
+type = 'int_list'
+
+# sHealLocations: {s8 group, s8 num, s16 x, s16 y} per heal location id from 1, [healLocationSize] bytes each.
+[field.healLocations]
+kotlin = 'Long'
+type = 'long'
+
+[field.healLocationSize]
+kotlin = 'Int'
+type = 'int'
+
+[field.healLocationCount]
+kotlin = 'Int'
+type = 'int'
+
+# Maps (group shl 8 or num) the flight never crosses into, at most 4: stand-ins the game only shows from outside
+# (FireRed's SaffronCity_Connection, 3.11: its tiles come out scrambled, and EXPAND can't match it).
+[field.noFly]
+kotlin = 'List<Int>'
+type = 'int_list'
+
+# CRC32 of each called function's first 32 bytes ([functions]' order): a build that moved them is left alone.
+[field.codeCrcs]
+kotlin = 'List<Long>'
+type = 'long_list'
+
+# Emerald's bird carries no rider: CopyObjectGraphicsInfoToSpriteTemplate, to make one from the player's surfing graphics
+# (riderGfx: GetPlayerAvatarGraphicsIdByStateId) in their get-on pose (riderAnim, facing west), with spriteDummy
+# (SpriteCallbackDummy) and scratch (0x1C bytes of EWRAM nothing else uses). 0: the bird's own picture has the rider (FireRed).
+[field.riderTemplate]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+[field.riderGfx]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+[field.spriteDummy]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+[field.riderAnim]
+kotlin = 'Int'
+type = 'int'
+default = 0
+
+[field.scratch]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# DrawWholeMapView: the view drawn again after crossing into a map (pk_flight.c's flMend), 0 = none.
+[field.drawView]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# saveBlock1Ptr / saveBlock2Ptr are the save blocks themselves, not pointers to them (Ruby / Sapphire).
+[field.saveBlockStatic]
+kotlin = 'Boolean'
+type = 'bool'
+default = false
+
+# gSpriteCoordOffsetY, 0 = spriteOffset + 2 (FireRed / Emerald's s16 pair; Ruby / Sapphire keep two s32s apart).
+[field.spriteOffsetY]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# XORed into each of gMapGroups' group pointers (Unbound scrambles them), 0 = plain.
+[field.mapGroupsXor]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# The hacks' palette loader (CFRU's dynamic palettes), called with birdPaletteTag for the bird's slot; 0 = palette 0.
+[field.birdPalette]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+[field.birdPaletteTag]
+kotlin = 'Int'
+type = 'int'
+default = 0
+
+# ObjectEvent.spriteId's offset, 0 = 4 (pokeemerald-expansion keeps it at +0x23).
+[field.objSpriteId]
+kotlin = 'Int'
+type = 'int'
+default = 0
+
+# Where SaveBlock1's pos starts (location 4 after it), 0 = 0: Heart and Soul puts a u16 saveVersion (padded) first.
+[field.saveBlock1PosOff]
+kotlin = 'Int'
+type = 'int'
+default = 0
+
+# pokeemerald-expansion's following Pokemon: RemoveFollowingPokemon at take-off, UpdateFollowingPokemon once down (0 = none).
+[field.followerRemove]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+[field.followerUpdate]
+kotlin = 'Long'
+type = 'long'
+default = 0
+
+# The map grid's undefined square, also its metatile-id mask: 0 = 0x3FF (SoulGold's metatile ids are 11 bits: 0x7FF).
+[field.mapGridUndefined]
+kotlin = 'Int'
+type = 'int'
+default = 0

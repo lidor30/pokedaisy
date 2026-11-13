@@ -19,6 +19,8 @@
 #include <mgba/internal/arm/isa-inlines.h>
 #include <mgba/internal/gba/gba.h>
 
+#include "../emu/pd_armgba.h"
+
 #define HOOK 0xD7
 #define HOOK_OP (0xBE00 | HOOK)
 #define FIRST_OP 0x7943 // both mixers' `ldrb r3, [r0, 5]`
@@ -114,6 +116,38 @@ static const uint8_t* hq;
 static enum mixer running;       // which of them IWRAM holds
 static bool attached;
 static void (*forward16)(struct ARMCore* cpu, int immediate);
+
+// The core the hook runs on: mGBA (its BKPT handler, the CPU it hands over) or armGBA (pd_armgba.h's BKPT hook, its CPU
+// through pd_armgba_reg / _set_reg / _jump). The game's RAM and ROM are where the core's struct GBA points either way.
+static bool onArmgba;
+unsigned pd_mixer_mixes; // native mixes so far (the dev build's stat)
+static struct GBA* hookedGba;
+static struct ARMCore* mcpu;
+
+static uint32_t cpu_reg(int n) {
+    return onArmgba ? pd_armgba_reg(n) : (uint32_t) mcpu->gprs[n];
+}
+
+static void cpu_set(int n, uint32_t v) {
+    if (onArmgba) pd_armgba_set_reg(n, v);
+    else mcpu->gprs[n] = (int32_t) v;
+}
+
+// To [to], Thumb with bit 0 set.
+static void cpu_jump(uint32_t to) {
+    if (onArmgba) {
+        pd_armgba_jump(to);
+        return;
+    }
+    _ARMSetMode(mcpu, to & 1 ? MODE_THUMB : MODE_ARM);
+    mcpu->gprs[ARM_PC] = (int32_t) (to & ~1u);
+    if (to & 1) ThumbWritePC(mcpu);
+    else ARMWritePC(mcpu);
+}
+
+static int cpu_vcount(void) {
+    return onArmgba ? pd_armgba_vcount() : hookedGba->video.vcount;
+}
 
 static uint32_t le32(const uint8_t* p) {
     return (uint32_t) p[0] | (uint32_t) p[1] << 8 | (uint32_t) p[2] << 16 | (uint32_t) p[3] << 24;
@@ -930,36 +964,38 @@ struct call {
     int dmaCounter, samples, stopLine;
 };
 
-static struct call call_of(struct ARMCore* cpu, const struct mem* m) {
-    uint32_t sp = (uint32_t) cpu->gprs[ARM_SP];
-    return (struct call) { read32(m, sp + 0x18), (uint32_t) cpu->gprs[5], cpu->gprs[4], cpu->gprs[8], (int) read32(m, sp + 0x14) };
+static struct call call_of(const struct mem* m) {
+    uint32_t sp = cpu_reg(13);
+    return (struct call) { read32(m, sp + 0x18), cpu_reg(5), (int) cpu_reg(4), (int) cpu_reg(8), (int) read32(m, sp + 0x14) };
 }
 
 // The routine's last instructions: the saved registers back, and `bx` to its caller.
-static void leave(struct ARMCore* cpu, const struct mem* m) {
-    uint32_t sp = (uint32_t) cpu->gprs[ARM_SP];
-    int32_t saved[8];
-    for (int i = 0; i < 8; i++) saved[i] = (int32_t) read32(m, sp + 0x1C + 4u * (uint32_t) i);
+static void leave(const struct mem* m) {
+    uint32_t sp = cpu_reg(13);
+    uint32_t saved[8];
+    for (int i = 0; i < 8; i++) saved[i] = read32(m, sp + 0x1C + 4u * (uint32_t) i);
     uint32_t back = read32(m, sp + 0x1C + 0x20);
-    for (int i = 0; i < 4; i++) cpu->gprs[8 + i] = saved[i];
-    for (int i = 0; i < 4; i++) cpu->gprs[4 + i] = saved[4 + i];
-    cpu->gprs[0] = saved[0];
-    cpu->gprs[1] = saved[1];
-    cpu->gprs[2] = saved[2];
-    cpu->gprs[3] = (int32_t) back;
-    cpu->gprs[ARM_SP] = (int32_t) (sp + 0x1C + 0x24);
-    _ARMSetMode(cpu, back & 1 ? MODE_THUMB : MODE_ARM);
-    cpu->gprs[ARM_PC] = (int32_t) (back & ~1u);
-    if (back & 1) ThumbWritePC(cpu);
-    else ARMWritePC(cpu);
+    for (int i = 0; i < 4; i++) cpu_set(8 + i, saved[i]);
+    for (int i = 0; i < 4; i++) cpu_set(4 + i, saved[4 + i]);
+    cpu_set(0, saved[0]);
+    cpu_set(1, saved[1]);
+    cpu_set(2, saved[2]);
+    cpu_set(3, back);
+    cpu_set(13, sp + 0x1C + 0x24);
+    cpu_jump(back);
 }
 
-static void jump_thumb(struct ARMCore* cpu, uint32_t to) {
-    cpu->gprs[ARM_PC] = (int32_t) to;
-    ThumbWritePC(cpu);
+static void jump_thumb(uint32_t to) {
+    cpu_jump(to | 1);
 }
 
+// IWRAM code: on armGBA through its write, which throws out what it compiled there.
 static void put_hook(struct GBA* gba, uint32_t addr, uint16_t op) {
+    if (onArmgba) {
+        uint8_t v[2] = { (uint8_t) op, (uint8_t) (op >> 8) };
+        pd_armgba_write(0x03000000u | (addr & 0x7FFF), v, 2);
+        return;
+    }
     uint8_t* p = (uint8_t*) gba->memory.iwram + (addr & 0x7FFF);
     p[0] = (uint8_t) op;
     p[1] = (uint8_t) (op >> 8);
@@ -997,45 +1033,55 @@ static void check_exit(struct GBA* gba) {
 }
 #endif
 
-static void hook16(struct ARMCore* cpu, int immediate) {
-    struct GBA* gba = (struct GBA*) cpu->master;
+// The hook's BKPT on either core; false: not one of ours.
+static bool on_hook(int immediate) {
+    struct GBA* gba = hookedGba;
 #ifdef PD_MIXER_CHECK
     if (immediate == CHECK_EXIT_HOOK) {
         check_exit(gba);
         uint32_t at = entry + (running == MIXER_HQ ? HQ_EXIT_AT : EXIT_AT);
         put_hook(gba, at, 0x9806); // its `ldr r0, [sp, 0x18]`
-        jump_thumb(cpu, at);
-        return;
+        jump_thumb(at);
+        return true;
     }
 #endif
-    if (immediate != HOOK) {
-        forward16(cpu, immediate);
-        return;
-    }
+    if (immediate != HOOK) return false;
+    pd_mixer_mixes++;
     struct mem real = { (uint8_t*) gba->memory.wram, (uint8_t*) gba->memory.iwram, (const uint8_t*) gba->memory.rom, gba->memory.romSize };
-    struct call k = call_of(cpu, &real);
+    struct call k = call_of(&real);
 #ifdef PD_MIXER_CHECK
     memcpy(copyEwram, real.ewram, sizeof(copyEwram));
     memcpy(copyIwram, real.iwram, sizeof(copyIwram));
     struct mem copy = { copyEwram, copyIwram, real.rom, real.romSize };
     if (running == MIXER_HQ) hq_mix(&copy, k.info, k.dmaCounter, k.buffer, k.samples);
-    else mix(&copy, k.info, k.dmaCounter, k.buffer, k.samples, 0, gba->video.vcount);
+    else mix(&copy, k.info, k.dmaCounter, k.buffer, k.samples, 0, cpu_vcount());
     checkInfo = k.info;
     put_hook(gba, entry, FIRST_OP);
     put_hook(gba, entry + (running == MIXER_HQ ? HQ_EXIT_AT : EXIT_AT), 0xBE00 | CHECK_EXIT_HOOK);
-    jump_thumb(cpu, entry);
+    jump_thumb(entry);
 #else
     bool done = running == MIXER_HQ ? hq_mix(&real, k.info, k.dmaCounter, k.buffer, k.samples)
-                                    : mix(&real, k.info, k.dmaCounter, k.buffer, k.samples, k.stopLine, gba->video.vcount);
+                                    : mix(&real, k.info, k.dmaCounter, k.buffer, k.samples, k.stopLine, cpu_vcount());
     if (done) {
-        leave(cpu, &real);
+        leave(&real);
     } else {
         // Not where it should be: the game's own code from here on.
         put_hook(gba, entry, FIRST_OP);
         attached = false;
-        jump_thumb(cpu, entry);
+        jump_thumb(entry);
     }
 #endif
+    return true;
+}
+
+static void hook16(struct ARMCore* cpu, int immediate) {
+    mcpu = cpu;
+    if (!on_hook(immediate)) forward16(cpu, immediate);
+}
+
+static bool armgba_hook(uint32_t address, unsigned immediate) {
+    (void) address;
+    return on_hook((int) immediate);
 }
 
 static const uint8_t* find_code(const uint8_t* rom, size_t size, const uint8_t* signature, size_t length, uint32_t crc) {
@@ -1049,6 +1095,7 @@ bool pd_mixer_attach(struct mCore* core) {
     attached = false;
     running = MIXER_NONE;
     stock = hq = NULL;
+    if (pd_armgba_is(core)) pd_armgba_set_bkpt(NULL); // a game before may have left it in
     if (core->platform(core) != mPLATFORM_GBA) return false;
     struct GBA* gba = core->board;
     const uint8_t* rom = (const uint8_t*) gba->memory.rom;
@@ -1067,7 +1114,11 @@ bool pd_mixer_attach(struct mCore* core) {
     stock = find_code(rom, size, SIGNATURE, CODE_SIZE, CODE_CRC);
     hq = find_code(rom, size, HQ_SIGNATURE, HQ_SIZE, HQ_CRC);
     if (!stock && !hq) return false;
-    if (gba->cpu->irqh.bkpt16 != hook16) {
+    onArmgba = pd_armgba_is(core);
+    hookedGba = gba;
+    if (onArmgba) {
+        pd_armgba_set_bkpt(armgba_hook);
+    } else if (gba->cpu->irqh.bkpt16 != hook16) {
         forward16 = gba->cpu->irqh.bkpt16;
         gba->cpu->irqh.bkpt16 = hook16;
     }

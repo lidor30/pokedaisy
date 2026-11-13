@@ -44,7 +44,8 @@ object GameTitles {
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_CLASSIC_SHA1,
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1,
-    ) + com.pokedaisy.app.companion.data.NDS_PORTS.map { it.sha1 }
+    ) + com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S + com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S +
+        com.pokedaisy.app.companion.data.NDS_PORTS.map { it.sha1 }
 
     private val RETAIL: Map<String, String> = mapOf(
         // Retail (USA, Europe), every revision: pret's pokefirered / pokeemerald / pokeruby.
@@ -71,6 +72,9 @@ object GameTitles {
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_SHA1 to "Pokémon Renegade Platinum",
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_3_0_CLASSIC_SHA1 to "Pokémon Renegade Platinum",
         com.pokedaisy.app.companion.data.RenegadePlatinum.V1_2_0_SHA1 to "Pokémon Renegade Platinum",
+        // Blaze Black 2 / Volt White 2 Redux v1.4.1 (and their Classic / EVless patches), Black 2 / White 2 edited in place (Black2Redux).
+    ) + com.pokedaisy.app.companion.data.Black2Redux.BLAZE_BLACK2_SHA1S.associateWith { "Pokémon Blaze Black 2 Redux" } +
+        com.pokedaisy.app.companion.data.Black2Redux.VOLT_WHITE2_SHA1S.associateWith { "Pokémon Volt White 2 Redux" } + mapOf(
         // Black and White (USA, Europe): the No-Intro dumps (no decomp builds them).
         "26ad0b9967aa279c4a266ee69f52b9b2332399a5" to "Pokémon Black",
         "bc696a0dfb448c7b3a8a206f0f8214411a039208" to "Pokémon White",
@@ -105,9 +109,14 @@ object GameTitles {
         "f4cd194bdee0d04ca4eac29e09b8e4e9d818c133" to "Pokémon Crystal",
         "f2f52230b536214ef7c9924f483392993e226cfb" to "Pokémon Crystal",
         "a0fc810f1d4e124434f7be2c989ab5b5892ddf36" to "Pokémon Crystal",
+        // Germany.
+        "accb584293ba056152f1fd908439b019017ff2fe" to "Pokémon Kristall",
         // pret/pokegold's roms.sha1.
         "d8b8a3600a465308c9953dfa04f0081c05bdcb94" to "Pokémon Gold",
         "49b163f7e57702bc939d642a18f591de55d92dae" to "Pokémon Silver",
+        // Germany.
+        "9254195d461ea942eaaa08cc4b83de3cf82aea0d" to "Pokémon Goldene Edition",
+        "8ecc58d621faaedf2a934bd2583d527220df7bb9" to "Pokémon Silberne Edition",
     )
 
     /** Hacks (and the Game Boy ones): the library's HACK tag. */
@@ -156,6 +165,7 @@ object GameTitles {
         "2f3e17e55c6afe23da97ec0f96a067eeb142ad15" to "Pokémon Elite Redux",
         "40780347d0b4df6bf491eaf12603e5422caee677" to "Pokémon Team Rocket Edition: Dragonsden Version",
         "0d8bdaeeca0856175037a75679c1a2b73ad2b68a" to "Pokémon Team Rocket Edition 2026 (ES)",
+        "32d9e438ab791a0477fffe9f1cca750cab5a4a80" to "Pokémon Team Rocket Edition 2026 (ES)",
         "ae1c4be9be8d706bb989602bc05731203d42860d" to "Pokémon Monomyth",
         "eb660caffbc26e1f09f86714d03af4c3eccd9e4d" to "Pokémon Monomyth",
         "60182b934d2e8eb3eef226a9bbc25e5df6becd4f" to "Pokémon Wishes of Tomorrow",
@@ -292,7 +302,8 @@ object GameTitles {
 
     /** Color games with a dual-mode header (0x80) that the companion knows. Yellow says the same but is a GB game. */
     private val COLOR_DUAL: Set<String>
-        get() = TelemetrySampler.POLISHED_CRYSTAL_SHA1S + TelemetrySampler.GOLD_SHA1 + TelemetrySampler.SILVER_SHA1
+        get() = TelemetrySampler.POLISHED_CRYSTAL_SHA1S + TelemetrySampler.GOLD_SHA1 + TelemetrySampler.SILVER_SHA1 +
+            TelemetrySampler.GOLD_DE_SHA1 + TelemetrySampler.SILVER_DE_SHA1
 
     /** [rom]'s [RomCategory] (reads its header; [sha1] when [identify] hashed it). A Pokémon cart hashed but known as
      * neither retail nor a hack is a hack too (an unsupported one); a cart nobody hashes is its platform's. */

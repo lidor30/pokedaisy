@@ -146,7 +146,10 @@ void ui_toggle_act(struct pd_ui* ui, int i) {
         // HUD, then LAYOUT / LOOK / SIZE (each cycles on a press, FieldHud.kt's fieldHudRows), then the parts.
         if (i == 0) s->hud = !s->hud;
         else if (!s->hud) return;
-        else if (i == 1) s->hudLayout = (s->hudLayout + 1) % PD_HUD_LAYOUTS;
+        else if (i == 1) {
+            if (ui->hudLayoutFixed) return;
+            s->hudLayout = (s->hudLayout + 1) % PD_HUD_LAYOUTS;
+        }
         else if (i == 2) s->hudLook = (s->hudLook + 1) % PD_HUD_LOOKS;
         else if (i == 3) s->hudSize = (s->hudSize + 1) % PD_HUD_SIZES;
         else if (i - 4 < PD_HUD_PARTS) s->hudHidden ^= 1 << (i - 4);
@@ -200,7 +203,9 @@ void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s) {
         ui->summarySlot = -1;
         ui->overlay = PD_OVERLAY_NONE;
         ui->battlePane = 0;
-        ui->battleInfoOpen = false;
+        // BATTLE VIEW: INFO first, or the buttons (always the buttons with BATTLE INFO off).
+        ui->battleInfoOpen = ui->settings && ui->settings->battleInfoFirst && ui_battle_info_on(ui);
+        ui->ranAway = ui->ranWaited = false;
         ui->foeSeen = 0;
         ui->foeSelected = -1;
         ui->lastFoeActive = ui->lastFoeNext = -1;
@@ -209,6 +214,11 @@ void pd_ui_update(struct pd_ui* ui, const struct pd_snapshot* s) {
         ui->battleOnBar = false;
     }
     ui->battleWasOn = on;
+    // RUN's hold ends with the battle, or when the menu is back after the turn (the escape failed).
+    bool myTurn = s->battleState >= PD_BATTLE_ACTION;
+    if (!on || !ui->ranAway) ui->ranAway = ui->ranWaited = false;
+    else if (!myTurn) ui->ranWaited = true;
+    else if (ui->ranWaited) ui->ranAway = ui->ranWaited = false;
     // Our move grid and party pane sit on the action menu.
     if (s->battleState != PD_BATTLE_ACTION) ui->battleChoosingMon = ui->battleChoosingMove = false;
     // The FOE TEAM: what's been sent out or announced counts as seen; a new
@@ -258,8 +268,9 @@ static bool on_bar(const struct pd_ui* ui, enum pd_tab t) {
 }
 
 static void chip(struct pd_ui* ui, struct pd_canvas* c, int x, int w, bool open, int id) {
-    pd_layered_box(c, x, BAR_Y(c), w, CHIP_H, 3, pd_cur->chip, pd_cur->chipCount,
-                   open || ui->pressedId == id ? pd_cur->tabSelectedFill : pd_cur->tabIdleFill);
+    // HeartGold's two-tone face, like every companion button (the app's tab chips).
+    pd_layered_two_tone(c, x, BAR_Y(c), w, CHIP_H, 3, pd_cur->chip, pd_cur->chipCount,
+                        open || ui->pressedId == id ? pd_cur->tabSelectedFill : pd_cur->tabIdleFill, 0);
     ui_add_hit(ui, x, BAR_Y(c), w, CHIP_H, id);
 }
 
@@ -324,7 +335,7 @@ static void tab_bar(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game*
 static bool focusable(int id) {
     return !(id >= HIT_TAB && id < HIT_TAB + PD_TAB_COUNT) && id != HIT_MORE && id != HIT_FF && id != HIT_SCRIM && id != HIT_BAG_LIST &&
         id != HIT_DEX_LIST && id != HIT_GUIDE_LIST && id != HIT_SETTINGS_LIST && id != HIT_SCROLL_BAR &&
-        id != HIT_SHOULDER_L && id != HIT_SHOULDER_R;
+        id != HIT_SHOULDER_L && id != HIT_SHOULDER_R && !(id >= HIT_SETTINGS_GROUP && id < HIT_SETTINGS_GROUP + 10);
 }
 
 static int focus_index(const struct pd_ui* ui, int id) {
@@ -392,7 +403,16 @@ void pd_ui_draw(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g,
     ui->drawn = s;
     ui->drawnGame = g;
     ui->hostHasStates = host && host->hasStates;
-    if (!ui->keepBackdrop && !pd_party_backdrop(c, g)) pd_backdrop(c);
+    // The BATTLE tab: the DS battle screens' mint and Poké Ball in place of the game's backdrop (a Game Boy game keeps its
+    // own plain look).
+    if (!ui->keepBackdrop) {
+        if (ui->tab == PD_TAB_BATTLE && ui->overlay != PD_OVERLAY_MORE && !pd_gb_look) {
+            // BATTLE STYLE > GEN 5: Black's dark closed-ball screen instead, behind INFO / SUGGESTIONS too.
+            if (ui_gen5_style(ui, g)) ui_gen5_backdrop(ui, c, s);
+            else pd_battle_backdrop(c);
+        }
+        else if (!pd_party_backdrop(c, g)) pd_backdrop(c);
+    }
     tab_bar(ui, c, g, host);
     // The tabs draw above the bar: the same pixels, a shorter canvas.
     struct pd_canvas full = *c, view = *c;
@@ -511,6 +531,7 @@ static void act(struct pd_ui* ui, int id) {
             if (ui->overlay == PD_OVERLAY_PICK_ASPECT && i < PD_ASPECTS) ui->settings->aspect = i;
             if (ui->overlay == PD_OVERLAY_PICK_SPEED) ui->settings->gameSpeed = i;
             if (ui->overlay == PD_OVERLAY_PICK_VOLUME) ui->settings->gameVolume = (i + 1) * 20;
+            if (ui->overlay == PD_OVERLAY_PICK_FLY_ON && i < 4) ui->settings->flightVehicle = i;
             close_overlay(ui, PD_ACTION_SETTINGS_CHANGED);
         } else if (id == HIT_YES) {
             enum pd_action a = ui->overlay == PD_OVERLAY_CONFIRM_SAVE ? PD_ACTION_SAVE_STATE
@@ -529,11 +550,15 @@ static void act(struct pd_ui* ui, int id) {
         ui->tab = (enum pd_tab) (id - HIT_TAB);
         ui->summarySlot = -1;
         ui->moreOpened = false;
+        // BATTLE VIEW: the tab opens on what it says.
+        if (ui->tab == PD_TAB_BATTLE) ui->battleInfoOpen = ui->settings && ui->settings->battleInfoFirst && ui_battle_info_on(ui);
     } else if (id == HIT_MORE) {
         ui->overlay = ui->overlay == PD_OVERLAY_MORE ? PD_OVERLAY_NONE : PD_OVERLAY_MORE;
     } else if (id == HIT_MORE_TAB_BAR) {
         ui->tab = PD_TAB_SETTINGS;
         ui->overlay = PD_OVERLAY_TAB_BAR;
+    } else if (id >= HIT_SETTINGS_GROUP && id < HIT_SETTINGS_GROUP + 10) {
+        ui_settings_group(ui, id - HIT_SETTINGS_GROUP);
     } else if (id == HIT_SETTING + SETTING_TAB_BAR) {
         ui->overlay = PD_OVERLAY_TAB_BAR;
     } else if (id == HIT_SETTING + SETTING_HUD) {
@@ -546,6 +571,8 @@ static void act(struct pd_ui* ui, int id) {
         ui->overlay = PD_OVERLAY_PICK_VOLUME;
     } else if (id == HIT_SETTING + SETTING_THEME) {
         ui->overlay = PD_OVERLAY_PICK_THEME;
+    } else if (id == HIT_SETTING + SETTING_FLY_ON) {
+        ui->overlay = PD_OVERLAY_PICK_FLY_ON;
     } else if (id == HIT_SETTING + SETTING_DARK || id == HIT_SETTING + SETTING_FF_MODE || id == HIT_SETTING + SETTING_CHEATS) {
         bool* flag = id == HIT_SETTING + SETTING_DARK ? &ui->settings->darkMode :
             id == HIT_SETTING + SETTING_FF_MODE ? &ui->settings->ffNormal : &ui->settings->cheats;
@@ -554,11 +581,17 @@ static void act(struct pd_ui* ui, int id) {
     } else if (id == HIT_SETTING + SETTING_RESTART) {
         ui->overlay = PD_OVERLAY_CONFIRM_RESTART;
     } else if (id == HIT_SETTING + SETTING_MUTE || id == HIT_SETTING + SETTING_WILD || id == HIT_SETTING + SETTING_AUTO_RUN ||
-               id == HIT_SETTING + SETTING_RUN_INDOORS || id == HIT_SETTING + SETTING_HINTS || id == HIT_SETTING + SETTING_ONE_TAP) {
+               id == HIT_SETTING + SETTING_RUN_INDOORS || id == HIT_SETTING + SETTING_HINTS || id == HIT_SETTING + SETTING_ONE_TAP ||
+               id == HIT_SETTING + SETTING_BATTLE_STYLE || id == HIT_SETTING + SETTING_BATTLE_INFO ||
+               id == HIT_SETTING + SETTING_BATTLE_VIEW || id == HIT_SETTING + SETTING_FLY_STYLE ||
+               id == HIT_SETTING + SETTING_FLIGHT_AREA) {
         struct pd_settings* st = ui->settings;
         bool* flag = id == HIT_SETTING + SETTING_MUTE ? &st->gameMuted : id == HIT_SETTING + SETTING_WILD ? &st->wildOff
             : id == HIT_SETTING + SETTING_AUTO_RUN ? &st->autoRun : id == HIT_SETTING + SETTING_RUN_INDOORS ? &st->runIndoors
-            : id == HIT_SETTING + SETTING_HINTS ? &st->hideHints : &st->oneTapMoves;
+            : id == HIT_SETTING + SETTING_HINTS ? &st->hideHints : id == HIT_SETTING + SETTING_ONE_TAP ? &st->oneTapMoves
+            : id == HIT_SETTING + SETTING_BATTLE_INFO ? &st->noBattleInfo : id == HIT_SETTING + SETTING_BATTLE_VIEW ? &st->battleInfoFirst
+            : id == HIT_SETTING + SETTING_FLY_STYLE ? &st->flyClassic : id == HIT_SETTING + SETTING_FLIGHT_AREA ? &st->flightAnywhere
+            : &st->battleGen5;
         *flag = !*flag;
         ui->action = PD_ACTION_SETTINGS_CHANGED;
     } else if (id == HIT_FF) {
@@ -709,6 +742,7 @@ int pd_ui_tab_menu_count(const struct pd_ui* ui) {
     enum pd_tab tabs[UI_BAR_CHOICES];
     if (ui->overlay == PD_OVERLAY_MORE) return ui_more_tabs(ui, ui->drawnGame, tabs);
     if (ui->overlay == PD_OVERLAY_TAB_BAR) return ui_configurable_tabs(ui, tabs);
+    if (ui->overlay == PD_OVERLAY_HUD) return 4 + PD_HUD_PARTS; // HUD, LAYOUT, LOOK, SIZE, then the parts
     return 0;
 }
 

@@ -127,6 +127,12 @@ private inline val origin get() = originHeartGold && activeGame == GameKind.HEAR
 var renegadePlatinum = false
 private inline val renegade get() = renegadePlatinum && activeGame == GameKind.PLATINUM
 
+/** Blaze Black 2 Redux or Volt White 2 Redux is running (they run as BLACK2 / WHITE2, their tables from their cart:
+ * [Black2Redux.data]). Set with [activeGame] by the Poller. */
+@Volatile
+var black2Redux = false
+private inline val redux get() = black2Redux && activeGame.isBw2
+
 /** SoulGold v1.2 runs on v1.1.4's tables (byte for byte the same) but for one TM: its
  * TM75 teaches Agility, not Swords Dance. Set with [activeGame] by the Poller. */
 var soulGoldV12 = false
@@ -346,6 +352,7 @@ val activeSpeciesNames: Map<Int, String> get() = localText?.species ?: when {
     else -> frHack?.speciesMerged ?: speciesNames
 }
 val activeMoveData: Map<Int, MoveInfo> get() = localText?.moveData ?: when {
+    redux -> Black2Redux.data?.moveData ?: NdsArt.names?.movesMerged ?: moveDataBlack
     black -> NdsArt.names?.movesMerged ?: moveDataBlack
     origin -> OriginHeartGold.data?.moveData ?: NdsArt.names?.movesMerged ?: moveDataPlatinum
     renegade -> RenegadePlatinum.data?.moveData ?: NdsArt.names?.movesMerged ?: moveDataPlatinum
@@ -425,6 +432,7 @@ val activeItemNames: Map<Int, String> get() = localText?.items ?: when {
     else -> frHack?.itemsMerged ?: itemNames
 }
 val activeSpeciesTypeData: Map<Int, SpeciesTypes> get() = when {
+    redux -> Black2Redux.data?.speciesTypes ?: speciesTypesBlack
     black -> speciesTypesBlack
     origin -> OriginHeartGold.data?.speciesTypes ?: speciesTypesPlatinum
     renegade -> RenegadePlatinum.data?.speciesTypes ?: speciesTypesPlatinum
@@ -470,6 +478,8 @@ val activeTypeEffectiveness: Map<Int, Int> get() = when {
     origin -> OriginHeartGold.data?.typeChart ?: typeEffectivenessGlazed
     // Renegade Platinum: Gen 6's chart too, Fairy as 9, read from its cart.
     renegade -> RenegadePlatinum.data?.typeChart ?: typeEffectivenessGlazed
+    // Blaze Black 2 / Volt White 2 Redux: Gen 6's chart, Fairy as 9, read from their cart.
+    redux -> Black2Redux.data?.typeChart ?: typeEffectivenessGlazed
     pureRgb -> typeEffectivenessPureRgb
     yellowLegacy -> typeEffectivenessYellowLegacy
     yellow -> typeEffectivenessYellow
@@ -502,6 +512,7 @@ val activeTypeEffectiveness: Map<Int, Int> get() = when {
 val activeTypeNames: Map<Int, String> get() = when {
     origin -> OriginHeartGold.typeNames
     renegade -> RenegadePlatinum.typeNames
+    redux -> Black2Redux.typeNames
     pureRgb -> typeNamesPureRgb
     yellowLegacy -> typeNamesYellowLegacy
     yellow -> typeNamesYellow
@@ -705,6 +716,7 @@ val activeMonSpriteDir: String get() = when {
     yellowLegacy -> Gen1Art.YELLOW_LEGACY_ICONS
     yellow -> Gen1Art.YELLOW_ICONS   // its own party icons, rebuilt from the ROM
     polished -> Gen2Art.POLISHED_ICONS
+    redux -> NdsArt.REDUX_ICONS
     black2 -> NdsArt.BLACK2_ICONS
     black -> NdsArt.BLACK_ICONS
     renegade -> NdsArt.RENEGADE_ICONS
@@ -721,6 +733,7 @@ val activeMonSpriteDir: String get() = when {
 val activeItemSpriteDir: String? get() = when {
     unbound -> "items-unbound"
     yellow -> null   // Gen 1 has no item icons
+    redux -> NdsArt.REDUX_ITEMS
     black2 -> NdsArt.BLACK2_ITEMS
     black -> NdsArt.BLACK_ITEMS
     origin -> NdsArt.ORIGIN_ITEMS

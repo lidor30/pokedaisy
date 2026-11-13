@@ -1,0 +1,50 @@
+diff --git a/src/cpu/step.c b/src/cpu/step.c
+index 10bae0c..932ba86 100644
+--- a/src/cpu/step.c
++++ b/src/cpu/step.c
+@@ -22,6 +22,10 @@ static uint32_t ror32(uint32_t value, unsigned rotate) {
+ 	return rotate ? (value >> rotate) | (value << (32 - rotate)) : value;
+ }
+ 
++// PokeDaisy: the host's handler for a Thumb BKPT (0xBExx). It returns true when it took the instruction, having set the CPU
++// going on (its registers, r15 and stepReload); false leaves the undefined instruction's exception as before.
++bool (*gbaBkptHook)(struct GBA* gba, uint32_t address, unsigned immediate);
++
+ // After a PC write, the new PC's fetch is nonsequential and the next one sequential.
+ void stepReload(struct GBA* gba) {
+ 	struct CPU* cpu = &gba->cpu;
+@@ -604,6 +608,10 @@ void stepExecute(struct GBA* gba, const struct Inst* in) {
+ 		exception(gba, MODE_SUPERVISOR, 0x08, in->address + width);
+ 		break;
+ 	default:
++		// PokeDaisy: a Thumb BKPT (undefined on a GBA) goes to the host first, which may take it.
++		if (gbaBkptHook && in->thumb && (in->opcode & 0xFF00) == 0xBE00 && gbaBkptHook(gba, in->address, in->opcode & 0xFF)) {
++			break;
++		}
+ 		exception(gba, MODE_UNDEFINED, 0x04, in->address + width);
+ 		break;
+ 	}
+diff --git a/src/video/video.c b/src/video/video.c
+index d777015..39e729b 100644
+--- a/src/video/video.c
++++ b/src/video/video.c
+@@ -19,6 +19,10 @@ enum {
+ static void startHblank(struct GBA*, void*, uint32_t);
+ static void lineEvent(struct GBA*, void*, uint32_t);
+ 
++// PokeDaisy: the host's say over an H-blank interrupt about to be raised. True: the host has done what the game's handler
++// would have (a handler with nothing to call only sets its flags) and the interrupt isn't raised.
++bool (*gbaHblankIrqHook)(struct GBA* gba);
++
+ static const int IRQ_OF_EVENT[3] = { IRQ_VBLANK, IRQ_HBLANK, IRQ_VCOUNTER };
+ 
+ // The V-blank, H-blank and line-match interrupts are requested one cycle after what causes them.
+@@ -440,7 +444,7 @@ static void startHblank(struct GBA* gba, void* context, uint32_t late) {
+ 	if (video->vcount < VISIBLE_LINES) {
+ 		dmaRequestHblank(gba, late);
+ 	}
+-	if ((dispstat & 0x0010) && (gba->irq.ie & (1 << IRQ_HBLANK))) {
++	if ((dispstat & 0x0010) && (gba->irq.ie & (1 << IRQ_HBLANK)) && !(gbaHblankIrqHook && gbaHblankIrqHook(gba))) {
+ 		scheduleIrq(gba, 1, late);
+ 	}
+ 	scheduleVideo(gba, timingCurrentTime(gba) - late);

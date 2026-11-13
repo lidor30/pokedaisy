@@ -72,8 +72,8 @@ android {
         targetSdk = 34
         // Bump both for every GitHub release: the updater compares versionName
         // against the release tag (v<versionName>), Android needs versionCode to grow.
-        versionCode = 20
-        versionName = "1.5.0.1"
+        versionCode = 21
+        versionName = "1.5.1"
         // Whether this build can send crash reports at all (CrashReports.available).
         buildConfigField("boolean", "CRASHLYTICS", crashlytics.toString())
         buildConfigField("String", "SCREENSCRAPER_DEV_ID", "\"${buildSecret("screenscraper.devId", "SCREENSCRAPER_DEV_ID")}\"")
@@ -85,6 +85,11 @@ android {
         buildConfigField("boolean", "FEATURE_SCREENSCRAPER", featureFlag("screenScraper").toString())
         // CO-OP (the connection to a paired partner): off until the feature ships (FeatureFlags.coop).
         buildConfigField("boolean", "FEATURE_COOP", featureFlag("coop").toString())
+        // Blocked games (BlockedGames) play with everything, tagged BLOCKED: debug builds always, else only with this.
+        buildConfigField("boolean", "FEATURE_ALLOW_BLOCKED", featureFlag("allowBlocked").toString())
+        // ...and `allowBlocked=false` keeps them blocked in a debug build too (to see it as a release does).
+        buildConfigField("boolean", "FEATURE_KEEP_BLOCKED",
+            ((findProperty("pokedaisy.allowBlocked") ?: localProps?.getProperty("pokedaisy.allowBlocked"))?.toString()?.trim() == "false").toString())
 
         ndk {
             // Thor is arm64; armeabi-v7a (a 32-bit Android) only with the armv7 flag above.
@@ -186,9 +191,14 @@ val licensesAsset by tasks.registering {
         "FatFs (in melonDS)" to "third_party/melonds/src/fatfs/LICENSE.txt",
         "Teakra (in melonDS) - MIT" to "third_party/melonds/src/teakra/LICENSE",
         "xxHash (in melonDS) - BSD 2-Clause" to "third_party/licenses/xxHash-BSD-2-Clause.txt",
-        "tiny-AES-c (in melonDS) - The Unlicense" to "third_party/melonds/src/tiny-AES-c/unlicense.txt",
+        "tiny-AES-c (in melonDS and DSperate) - The Unlicense" to "third_party/melonds/src/tiny-AES-c/unlicense.txt",
         "blip_buf (in melonDS) - GNU LGPL 2.1" to "third_party/melonds/src/blip-buf/license.txt",
         "Dolphin's ARM64 emitter (in melonDS) - GNU GPL 2.0 or later" to "third_party/melonds/src/dolphin/license_dolphin.txt",
+        "DSperate - GNU GPL 3.0 or later" to "third_party/dsperate/LICENSE",
+        "FreeBIOS (in DSperate) - BSD 2-Clause" to "third_party/dsperate/src/core/bios/LICENSE.freebios",
+        "miniz (in DSperate) - MIT" to "third_party/dsperate/src/core/cart/miniz/LICENSE",
+        "Noto Sans DSi font table (in DSperate) - SIL Open Font License 1.1" to "third_party/dsperate/src/core/io/dsi_font/LICENSE-NotoSans-OFL-1.1.txt",
+        "WenQuanYi Micro Hei DSi font table (in DSperate) - GNU GPL 3.0 or later with font exception" to "third_party/dsperate/src/core/io/dsi_font/LICENSE-WenQuanYi-MicroHei.txt",
         "LCD and Scanlines shaders - MIT" to "third_party/licenses/mGBA-shaders-MIT.txt",
         "xBR, xBRZ and ScaleFX shaders (libretro glsl-shaders) - MIT, xBRZ also GNU GPL 3.0" to "third_party/licenses/libretro-shaders.txt",
         "PixelMplus - M+ FONT LICENSE" to "app/src/main/assets/fonts/LICENSE-PixelMplus.txt",

@@ -184,7 +184,7 @@ bool env(unsigned cmd,void* data) {
     std::vector<retro_variable> all;
     for(;vars && vars->key;++vars)all.push_back(*vars);
     all.push_back({"pokedaisy_ds_layout","Initial DS layout (saved companion settings take priority); auto|top|bottom|stacked"});
-    all.push_back({"pokedaisy_ds_hud","Initial party HUD (saved companion settings take priority); disabled|enabled"});
+    all.push_back({"pokedaisy_ds_hud","Initial party HUD (saved companion settings take priority); enabled|disabled"});
     all.push_back({nullptr,nullptr});
     return environment(cmd,all.data());
   }
@@ -288,7 +288,7 @@ void choose_layout() {
     // Present the last field image through the game's loading fades. The
     // native menu is shown only once the screen(s) it needs are drawn.
     if(fieldApp&&(bits&PK_NDS_FIELD_TOP_ONLY)&&!topBlank)
-      arrangement={{80,60,352,264},{},false,true,true};
+      arrangement={{0,0,512,384},{},false,true,true};
     else if(fieldApp&&!(bits&(PK_NDS_FIELD_TOP_ONLY|PK_NDS_FIELD_TOUCH_ONLY))&&!topBlank&&!bottomBlank)
       arrangement={{0,96,256,192},{256,96,256,192},false,true,true};
     else if(topBlank || (fieldApp&&!(bits&PK_NDS_FIELD_TOUCH_ONLY)))
@@ -310,7 +310,7 @@ int repelChoices[3],repelCount=0,repelSelected=0;
 std::string repelLabels[3];
 bool repelPicker=false;
 bool field_free(int bits){
-  return (bits&PK_NDS_FIELD_SCREEN)&&!(bits&(PK_NDS_FIELD_LOCKED|PK_NDS_FIELD_BATTLE|PK_NDS_FIELD_MENU));
+  return (bits&PK_NDS_FIELD_SCREEN)&&!(bits&(PK_NDS_FIELD_LOCKED|PK_NDS_FIELD_BATTLE|PK_NDS_FIELD_MENU|PK_NDS_FIELD_TEXT));
 }
 bool field_free(){return field_free(pk_nds_field_state(game,read32,nullptr,0));}
 void quick_notice(const char* label){
@@ -574,7 +574,7 @@ int ds_shortcuts(quick_item (&items)[shortcutCapacity]){
     items[count++]={QUICK_REPEL,false,false,fieldWhy?fieldWhy:snapshot.repelSteps?"Repel still active":
       !hasRepel?"No Repel in the Bag":nullptr};
     if(game)items[count++]={QUICK_WILD,shell.settings.wildOff,false,fieldWhy};
-    items[count++]={QUICK_HUD,false,shell.settings.hud,nullptr};
+    items[count++]={QUICK_HUD,false,false,hudHits.n?nullptr:"No HUD on screen"};
   }
   items[count++]={QUICK_COMPANION,false,false,nullptr};
   return count;
@@ -587,12 +587,12 @@ void draw_quick() {
   quick_set_grid(shell.settings.quickGrid);
   if(repelPicker){
     const char* labels[3]={repelLabels[0].c_str(),repelLabels[1].c_str(),repelLabels[2].c_str()};
-    quick_list_draw(&c,"REPEL",labels,repelCount,repelSelected);
+    quick_list_draw(&c,"REPEL",labels,repelCount,repelSelected,shell.settings.hudLook);
   }else if(flyPicker){
     std::vector<const char*> labels;
     for(const auto& destination:flyDestinations)labels.push_back(destination.name);
-    quick_list_draw(&c,"FLY TO",labels.data(),int(labels.size()),flySelected);
-  }else quick_draw(&c,&presentation,items,count,std::min(quickSelected,count-1));
+    quick_list_draw(&c,"FLY TO",labels.data(),int(labels.size()),flySelected,shell.settings.hudLook);
+  }else quick_draw(&c,&presentation,items,count,std::min(quickSelected,count-1),shell.settings.hudLook);
   quick_finish(&c);
   // Overlay the menu on the paused composition at the same geometry as gameplay.
   if(!stageReady){
@@ -645,6 +645,7 @@ void present(const void* data,unsigned,unsigned,size_t) {
   }
   const auto& top=arrangement.top;
   if(companionGame!=DsGame::Unsupported && shell.settings.hud && scene.hud && !scene.dark &&
+     (!game || field_free()) && !fieldMenuFlow &&
      top.w>0 && top.h>0 && !arrangement.floating && !arrangement.modal) {
     if(tick%12==0 || !snapshot.valid)refresh();
     pd_canvas c;pd_canvas_init(&c,256,192,ui_pixels);
@@ -658,17 +659,30 @@ void present(const void* data,unsigned,unsigned,size_t) {
     for(const auto& item:snapshot.bag){
       // Unova stores Poké Balls in Items, alongside held items and field tools.
       const bool unovaBall=(item.id>=1&&item.id<=16)||(item.id>=492&&item.id<=500)||item.id==576;
-      const bool ball=ds_unova(companionGame)?item.pocket==0&&unovaBall:item.pocket==6;
+      const bool ball=ds_unova(companionGame)?unovaBall:item.pocket==6;
       if(ball&&balls.count<PD_POCKET_SLOTS)balls.items[balls.count++]={uint16_t(item.id),uint16_t(item.count)};
     }
     const int steps=snapshot.repelSteps;
     if(!steps)repelFull=0;
     else if(steps>repelFull)repelFull=hud_repel_full(steps);
-    const hud_state state{steps,repelFull,false,-1,-1};
+    const auto encounters=ds_guide_here(snapshot,soulSilver);
+    int wild=encounters.count ? 0 : -1;
+    if(wild>=0){
+      bool counted[650]{};
+      for(int i=0;i<encounters.count;++i){
+        const unsigned id=encounters.entries[i].species;
+        if(!id || id>=std::size(counted) || counted[id])continue;
+        counted[id]=true;
+        if(id>=snapshot.dexCaught.size() || !snapshot.dexCaught[id])++wild;
+      }
+    }
+    const bool pc=pk_nds_call_supported(game)&&nds->cpu(ds::Cpu::ARM9).itcm_size>=0x02000000;
+    hud_state state{steps,repelFull,pc,wild,-1};
+    state.mini=shell.settings.hudSize!=PD_HUD_LARGE;
     const bool pip=arrangement.touch.w>0 && arrangement.touch.x>top.x && arrangement.touch.x<top.x+top.w;
     const int hudRight=pip?(arrangement.touch.x-top.x)*256/top.w:256;
     struct HudIcons {const pd_snapshot& party;bool small;};
-    HudIcons hudIcons{party,pip};
+    HudIcons hudIcons{party,pip&&!state.mini};
     hud_ds_draw(&c,&party,&state,&shell.settings,&hudIcons,[](pd_canvas* c,void* ctx,const pd_mon* m,int x,int y,bool){
       const auto& hud=*static_cast<HudIcons*>(ctx);
       const int slot=m-hud.party.party;
@@ -696,13 +710,13 @@ void present(const void* data,unsigned,unsigned,size_t) {
         if(p>>24)pd_fill(c,x+col,y+row,1,1,p&0xffffff);
       }
       return true;
-    },79,shell.hudMinimal,hudRight,&hudHits);
+    },79,shell.hudMinimal,hudRight,&hudHits,&ds_party_palette(companionGame));
     const auto player=ds_map_position(snapshot);
     if(!shell.hudMinimal&&!(shell.settings.hudHidden&(1<<PD_HUD_MAP))&&!map.background.empty()&&player.x>=0&&player.y>=0)
       hud_ds_minimap(&c,&shell.settings,ds_place(snapshot.map,companionGame),[](pd_canvas* c,int x,int y,int w,int h){
         ds_draw_minimap(c,snapshot,map,x,y,w,h);
       },&hudHits);
-    hud_focus_draw(&c,&shell.settings,&hudHits,hudCursor);
+    hud_focus_draw(&c,&hudHits,hudCursor);
     // Scale with the top screen and keep the picture-in-picture touch screen clear.
     const bool doubled=top.w==512 && top.h==384;
     for(int y=0;y<top.h;++y){
@@ -767,6 +781,7 @@ int16_t filtered_input(unsigned p,unsigned d,unsigned i,unsigned id) {
   return input(p,d,i,id);
 }
 void hud_open_target(int id) {
+  if(id==HUD_PC){open_pc();return;}
   refresh();
   if(!snapshot.valid)return;
   shell.frame.overlay=PD_OVERLAY_NONE;
@@ -778,11 +793,18 @@ void hud_open_target(int id) {
     shell.selected=id-HUD_SLOT;
     shell.summary=true;
     shell.page=shell.learnRow=0;
-  }else if(id==HUD_MAP){
+  }else if(id==HUD_MAP || id==HUD_MAP_BUTTON){
     shell.frame.tab=PD_TAB_MAP;
     shell.mapX=snapshot.mapX;
     shell.mapY=snapshot.mapY;
-  }else if(id==HUD_BALLS || id==HUD_REPEL){
+  }else if(id==HUD_WILD){
+    shell.frame.tab=PD_TAB_GUIDE;
+    shell.frame.guidePage=int(GuidePage::Here);
+    shell.guideLoadedPage=-1;
+    pd_ui_guide_reset(&shell.frame);
+  }else if(id==HUD_COMPANION){
+    refresh_battle_companion();
+  }else if(id==HUD_BALLS || id==HUD_REPEL || id==HUD_BAG){
     shell.frame.tab=PD_TAB_BAG;
     shell.pocket=shell.scroll=0;
   }else return;
@@ -830,11 +852,13 @@ void controls() {
     companionHold=0;
     return;
   }
-  const bool companionDown=buttons&(1u<<shell.companion_id());
+  const bool selectDown=buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT);
+  const bool stylusChord=selectDown && (buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_Y))
+                         && opt("pokedaisy_ds_select_modifier")=="enabled";
+  const bool companionDown=!stylusChord && (buttons&(1u<<shell.companion_id()));
   const bool companionTap=!companionDown&&companionHold>0;
   if(!companionDown)companionHold=0;
   else if(companionHold>=0)++companionHold;
-  const bool selectDown=buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT);
   if(!companion && companionHold>0 && (selectDown || (!quickOpen&&companionHold>=24))){
     quickOpen=!quickOpen;repelPicker=flyPicker=false;select_used=selectDown;quickSelected=0;companionHold=-1;
     if(quickOpen){flyWhy=nullptr;refresh();}
@@ -878,7 +902,10 @@ void controls() {
         quickOpen=false;
         return;
       }
-      if(shortcut.action==QUICK_HUD){shell.settings.hud=!shell.settings.hud;shell.save();}
+      if(shortcut.action==QUICK_HUD){
+        hudCursor=hud_first(&hudHits);
+        hudConsumed|=buttons;
+      }
       else{
         refresh();refresh_battle_companion();companion=true;
         shell.mapX=snapshot.mapX;shell.mapY=snapshot.mapY;
@@ -892,7 +919,9 @@ void controls() {
     if(companion){refresh();refresh_battle_companion();shell.mapX=snapshot.mapX;shell.mapY=snapshot.mapY;}
   }
   if(!companion) {
-    if(shell.screen_id()>=0 && hit(shell.screen_id())){
+    if(stylusChord && hit(RETRO_DEVICE_ID_JOYPAD_Y)){
+      manualTouch=!manualTouch;screen_override=0;select_used=true;
+    }else if(shell.screen_id()>=0 && hit(shell.screen_id())){
       if(buttons&(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT)){
         manualTouch=!manualTouch;screen_override=0;select_used=true;
       }else{screen_override=(screen_override+1)%3;manualTouch=false;}
@@ -970,6 +999,7 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
     pd_ds::companionGame=ds_companion_game(hex);
     pd_ds::soulSilver=!std::strcmp(hex,pd_ds_data::soulSilverSha1);
     pd_ds::battleStyle=ds_battle_style(hex);
+    ds_battle_set_base_pp({});
     if(pd_ds::battleStyle)
       pd_ds::game=pk_nds_field_game(reinterpret_cast<const char*>(rom.data()+12),rom[30]);
     if(pd_ds::companionGame!=DsGame::Unsupported)pd_ds::map=ds_map_art(rom,pd_ds::companionGame);
@@ -977,6 +1007,7 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
       dexArt=ds_dex_art(rom,pd_ds::companionGame);
       pd_ds::icons=ds_party_icons(rom,pd_ds::companionGame);
       pd_ds::hudItemIcons=ds_hud_item_icons(rom,pd_ds::companionGame);
+      ds_battle_set_base_pp(ds_move_base_pp(rom,pd_ds::companionGame));
     }
   }
   const auto old_layout=opt("pokedaisy_ds_layout");

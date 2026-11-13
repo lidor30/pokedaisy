@@ -74,6 +74,29 @@ GAMES = {
                     landmarks={1: "NEW BARK TOWN", 2: "ROUTE 29", 0x2F: "PALLET TOWN"},
                     maps={(24, 3): 2, (24, 4): 1, (24, 5): 1, (24, 7): 1}),
     ),
+    "crystal_de": dict(
+        suffix="CrystalDe",
+        label="Pokemon - Kristall-Edition (Germany)",
+        decomp="pokecrystal",
+        sha1s={"accb584293ba056152f1fd908439b019017ff2fe": "Germany"},
+        # English Crystal translated: only its names are written, the rest is checked equal to Crystal's (--base).
+        names_over="crystal",
+        tm_names=("TM01", "TM50", "VM01"),
+        species_names=(0x14, 0x736E), name_len=10, species_count=251,
+        base_data=(0x14, 0x540E), base_size=32,
+        moves=(0x10, 0x5AEB), move_size=7, move_count=251, move_names=(0x72, 0x5E9D),
+        item_names=(0x72, 0x4000), item_count=0xFF,
+        type_names=(0x14, 0x496E), type_count=28,
+        type_matchups=(0x0D, 0x4BB1),
+        landmarks=(0x72, 0x68E5), landmark_count=0x60, kanto_landmark=0x2F, fast_ship=0x5F,
+        map_groups=(0x25, 0x4000), map_header_size=9,
+        checks=dict(species={1: "BISASAM", 25: "PIKACHU", 249: "LUGIA", 251: "CELEBI"},
+                    types={1: (22, 3), 25: (23, 23), 152: (22, 22), 16: (0, 2), 208: (9, 4)},
+                    moves={1: ("PFUND", 0, 40), 45: ("HEULER", 0, 0)},
+                    items={1: "MEISTERBALL", 5: "POKéBALL", 0xBF: "TM01", 0xF3: "VM01"},
+                    landmarks={1: "NEUBORKIA", 2: "ROUTE 29"},
+                    maps={(24, 3): 2, (24, 4): 1, (24, 5): 1, (24, 7): 1}),
+    ),
     "crystal_legacy": dict(
         suffix="CrystalLegacy",
         label="Pokemon Crystal Legacy v1.3.1",
@@ -123,6 +146,32 @@ GAMES = {
                     moves={1: ("POUND", 0, 40), 33: ("TACKLE", 0, 35), 45: ("GROWL", 0, 0), 242: ("CRUNCH", 27, 80)},
                     items={1: "MASTER BALL", 5: "POKé BALL", 18: "POTION", 0xAD: "BERRY", 0xBF: "TM01", 0xF3: "HM01"},
                     landmarks={1: "NEW BARK TOWN", 2: "ROUTE 29", 0x2E: "PALLET TOWN", 0x5E: "FAST SHIP"},
+                    maps={(24, 3): 2, (24, 4): 1, (24, 5): 1, (24, 7): 1}),
+    ),
+    "gold_silver_de": dict(
+        suffix="GoldSilverDe",
+        label="Pokemon - Goldene / Silberne Edition (Germany)",
+        decomp="pokegold",
+        sha1s={
+            "9254195d461ea942eaaa08cc4b83de3cf82aea0d": "Gold",
+            "8ecc58d621faaedf2a934bd2583d527220df7bb9": "Silver",
+        },
+        # English Gold / Silver translated: only its names are written, the rest is checked equal to theirs (--base).
+        names_over="gold_silver",
+        tm_names=("TM01", "TM50", "VM01"),
+        species_names=(0x6C, 0x4B6B), name_len=10, species_count=251,
+        base_data=(0x14, 0x5B00), base_size=32,
+        moves=(0x10, 0x5AF1), move_size=7, move_count=251, move_names=(0x6C, 0x556B),
+        item_names=(0x6C, 0x4000), item_count=0xFF,
+        type_names=(0x14, 0x49A1), type_count=28,
+        type_matchups=(0x0D, 0x4D01),
+        landmarks=(0x27, 0x402D), landmark_count=0x5F, kanto_landmark=0x2E, fast_ship=0x5E,
+        map_groups=(0x25, 0x40ED), map_header_size=9,
+        checks=dict(species={1: "BISASAM", 25: "PIKACHU", 249: "LUGIA", 251: "CELEBI"},
+                    types={1: (22, 3), 25: (23, 23), 152: (22, 22), 16: (0, 2), 208: (9, 4)},
+                    moves={1: ("PFUND", 0, 40), 45: ("HEULER", 0, 0)},
+                    items={1: "MEISTERBALL", 5: "POKéBALL", 0xBF: "TM01", 0xF3: "VM01"},
+                    landmarks={1: "NEUBORKIA", 2: "ROUTE 29"},
                     maps={(24, 3): 2, (24, 4): 1, (24, 5): 1, (24, 7): 1}),
     ),
     "crystal_clear": dict(
@@ -200,7 +249,7 @@ CHARS = {0x7F: " ", 0xE0: "'", 0xE3: "-", 0xE6: "?", 0xE7: "!", 0xE8: ".", 0xE9:
          0xF0: "¥", 0xF1: "×", 0xF2: ".", 0xF3: "/", 0xF4: ",", 0x9A: "(", 0x9B: ")", 0x9C: ":", 0x9D: ";", 0x9E: "[",
          0x9F: "]", 0x54: "POKé", 0x4A: "PKMN", 0xE1: "PK", 0xE2: "MN", 0xD0: "'d", 0xD1: "'l", 0xD2: "'m", 0xD3: "'r",
          0xD4: "'s", 0xD5: "'t", 0xD6: "'v", 0x75: "…", 0x56: "……", 0x5C: "TM", 0x5B: "PC", 0x5D: "TRAINER",
-         0x5E: "ROCKET", 0x1F: " ", 0x25: "", 0x22: " ", 0x4E: " ", 0x4F: " ", 0xC0: "Ä", 0xC1: "Ö", 0xC2: "Ü",
+         0x5E: "ROCKET", 0x1F: " ", 0x1E: "-", 0x25: "", 0x22: " ", 0x4E: " ", 0x4F: " ", 0xC0: "Ä", 0xC1: "Ö", 0xC2: "Ü",
          0xC3: "ä", 0xC4: "ö", 0xC5: "ü"}
 CHARS.update({0x80 + i: chr(65 + i) for i in range(26)})
 CHARS.update({0xA0 + i: chr(97 + i) for i in range(26)})
@@ -429,7 +478,8 @@ def read_game(g, roms):
         assert r.text_list(ib, ia, g["item_count"]) == list(items.values()), f"item names differ in {name}"
     assert all(items[k] == v for k, v in c["items"].items()), "items"
     tms = tm_items(decomp) if decomp else rom_tm_items(items)
-    assert len(tms) == 57 and items[tms[0]] == "TM01" and items[tms[49]] == "TM50" and items[tms[50]] == "HM01", "TM ids"
+    tm01, tm50, hm01 = g.get("tm_names", ("TM01", "TM50", "HM01"))
+    assert len(tms) == 57 and items[tms[0]] == tm01 and items[tms[49]] == tm50 and items[tms[50]] == hm01, "TM ids"
 
     # Types: a pointer table (BIRD and the unused ids, which point at NORMAL, left out) + TypeMatchups
     # (attacker, defender, x10 multiplier; 0xFE marks the Foresight split, 0xFF ends it).
@@ -440,7 +490,7 @@ def read_game(g, roms):
     type_names = {}
     for t in range(g["type_count"]):
         n = type_name(rom, t)
-        if (n == "NORMAL" and t != 0) or n == "BIRD":
+        if (n == "NORMAL" and t != 0) or n in ("BIRD", ""):
             continue
         type_names[t] = n
     for name, r in others:
@@ -654,6 +704,34 @@ def read_prism(g, roms):
                 placed=placed, stand_in={}, maps=maps, dex_order=dex_order)
 
 
+def write_names_over(g, t, base_paths):
+    """A translation ([g]'s names_over: the base game's code and data with its own text): everything but the names is
+    checked equal to the base's, then only the names are written, keyed as the base's tables are."""
+    if not base_paths:
+        sys.exit(f"pass --base <{g['names_over']} rom.gbc>")
+    b = read_game(GAMES[g["names_over"]], load_roms(GAMES[g["names_over"]], base_paths))
+    assert t["types"] == b["types"], "species types"
+    assert t["gen2_species"] == b["gen2_species"], "gender ratios, growth rates or TM ids"
+    assert {k: v[1:] for k, v in t["moves"].items()} == {k: v[1:] for k, v in b["moves"].items()}, "moves' types / powers"
+    assert t["type_chart"][1] == b["type_chart"][1], "type chart"
+    assert set(t["type_chart"][0]) == set(b["type_chart"][0]), "type ids"
+    assert {k: v[1:] for k, v in t["landmarks"].items()} == {k: v[1:] for k, v in b["landmarks"].items()}, "landmarks' places"
+    assert t["maps"] == b["maps"], "maps"
+    assert len(t["items"]) == len(b["items"]), "item count"
+    sfx = g["suffix"]
+    head = (f"// GENERATED by scripts/gen_gen2_tables.py from the {g['label']} ROM\n"
+            f"// - do not hand-edit. Its names over {GAMES[g['names_over']]['label']}'s tables, by the same\n"
+            f"// ids (Dex number, move id, item id, landmark id, type id); everything else is that game's (checked).\n")
+    body = (kmap(f"speciesNames{sfx}", "String", [(k, kstr(v)) for k, v in sorted(t["species"].items())]) + "\n" +
+            kmap(f"moveNames{sfx}", "String", [(k, kstr(v[0])) for k, v in sorted(t["moves"].items())]) + "\n" +
+            kmap(f"itemNames{sfx}", "String", [(k, kstr(v)) for k, v in sorted(t["items"].items())]) + "\n" +
+            kmap(f"landmarkNames{sfx}", "String", [(k, kstr(v[0])) for k, v in sorted(t["landmarks"].items())]) + "\n" +
+            kmap(f"typeNames{sfx}", "String", [(k, kstr(v)) for k, v in sorted(t["type_chart"][0].items())]))
+    write(f"Gen2Text{sfx}Gen.kt", head, body)
+    print(f"{len(t['species'])} species, {len(t['moves'])} moves, {len(t['items'])} items, {len(t['landmarks'])} landmarks: "
+          f"names over {g['names_over']}'s tables, the rest checked equal")
+
+
 def main():
     args = sys.argv[1:]
     base_paths = []
@@ -666,6 +744,8 @@ def main():
     g = GAMES[args[0]]
     roms = load_roms(g, args[1:])
     t = read_game(g, roms)
+    if "names_over" in g:
+        return write_names_over(g, t, base_paths)
     shared = set(g.get("shares", ()))
     if shared:
         # A hack that kept its base game's tables reads them from the base's files: they're checked equal here.

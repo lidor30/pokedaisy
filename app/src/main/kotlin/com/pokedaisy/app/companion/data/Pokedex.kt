@@ -861,6 +861,10 @@ val POKEDEX_TEAM_ROCKET_V3 = PokedexTables(
     nationalMagicOff = -1,
 )
 
+/** Team Rocket Edition 2026 v3.1: v3.0.9's, gSpeciesInfo 0x089758C0 (its GF header's) and gAbilitiesInfo 0x08E65B68 (its
+ * RHHEXP block's; "Hedor" first) moved; the save's flags where v3.0.9 keeps them. */
+val POKEDEX_TEAM_ROCKET_V3_1 = POKEDEX_TEAM_ROCKET_V3.copy(speciesInfo = 0x089758C0L, abilityNames = 0x08E65B68L)
+
 /**
  * Pokémon Dreamstone Mysteries (expansion 1.11.2): Imperium's gSpeciesInfo page (the same 0x104-byte entries and
  * offsets; gSpeciesInfo 0x087B0160, gAbilitiesInfo 0x08E65E98), its own regional order - 315 national numbers from

@@ -44,6 +44,8 @@ void fly_targets(struct mCore *core, const struct pd_config *cfg, const uint8_t 
                  const struct pd_snapshot *snap, bool busy, bool battle, struct fly_targets *out);
 /* FLY's first step to [mapsec]: the checks again, then what closing the Fly map leaves (controls locked, the
  * screen fading to black). fly_finish follows FLY_FADE_FRAMES frames later. */
+enum fly_result fly_gate(struct mCore *core, const struct pd_config *cfg, const uint8_t *rom, size_t len,
+                         bool busy, bool battle);
 enum fly_result fly_start(struct mCore *core, const struct pd_config *cfg, const uint8_t *rom, size_t len,
                           const struct pd_snapshot *snap, int mapsec, const struct fly_targets *t, bool busy,
                           bool battle);

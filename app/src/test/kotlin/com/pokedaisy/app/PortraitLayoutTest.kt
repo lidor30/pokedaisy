@@ -105,6 +105,32 @@ class PortraitLayoutTest {
         val full = PortraitLayout.arrange(w, h, game, grip, 10f, underGame = true)
         assertEquals(h - game - grip, full.companionHeight)
         assertEquals(h - grip, full.gripTop)
+        // With the controls showing, their strip stays free even at full height.
+        val fullPad = PortraitLayout.arrange(w, h, game, grip, 10f, underGame = true, padStrip = 400)
+        assertEquals(h - 400, fullPad.padTop)
+        assertEquals(h - 400 - grip, fullPad.gripTop)
+    }
+
+    @Test
+    fun underTheGameWithNoGapTheControlsStillGetTheBottom() {
+        // A 16:10 tablet with a DS game's 4:3 (900 tall): the companion under the game left no gap, and the controls
+        // lay over the game. Their strip is kept at the bottom; the companion gives way first, then the game.
+        val tw = 1200
+        val th = 1920
+        val ds = 900
+        val grip = 63
+        val strip = 450
+        val a = PortraitLayout.arrange(tw, th, ds, grip, PortraitLayout.DEFAULT_RATIO, underGame = true, padStrip = strip)
+        assertEquals(th - strip, a.padTop)
+        assertEquals(th, a.padBottom)
+        assertEquals(a.padTop, a.gripTop + grip)
+        assertEquals(a.gameBottom, a.companionTop)
+        assertTrue(a.companionHeight >= (tw * PortraitLayout.MIN_RATIO).toInt())
+        assertTrue(a.gameBottom <= ds)
+        // No controls: as before (nothing reserved).
+        val none = PortraitLayout.arrange(tw, th, ds, grip, PortraitLayout.DEFAULT_RATIO, underGame = true)
+        assertEquals(0, none.padTop)
+        assertEquals(none.gameBottom, none.padBottom)
     }
 
     @Test

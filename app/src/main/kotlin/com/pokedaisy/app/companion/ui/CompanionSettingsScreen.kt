@@ -2,6 +2,7 @@ package com.pokedaisy.app.companion.ui
 
 import com.pokedaisy.app.companion.SkinSystem
 
+import com.pokedaisy.app.companion.DsCore
 import com.pokedaisy.app.companion.NewFeatures
 import com.pokedaisy.app.companion.zoomLabel
 
@@ -42,6 +43,8 @@ import com.pokedaisy.app.companion.COMPANION_TABS
 import com.pokedaisy.app.companion.CompanionSettings
 import com.pokedaisy.app.companion.KeyCapture
 import com.pokedaisy.app.companion.BattleStyle
+import com.pokedaisy.app.companion.FlyStyle
+import com.pokedaisy.app.companion.FlightAreaMode
 import com.pokedaisy.app.companion.FfMode
 import com.pokedaisy.app.companion.GameAspect
 import com.pokedaisy.app.companion.hasGrid
@@ -156,6 +159,7 @@ fun CompanionSettingsScreen(
                         listOf(groupTitle(tk("GAME")), SettingRow(tk("PLAYS AS"), game, subtitle = "Which game this ROM is read as", opensPage = true) { onPlaysAs() })
                     }.orEmpty() + homeRows(settings, barCount(settings, availableTabs), { tick++ }, { page = it }, { selector = it },
                         { c -> confirm = Confirm(c.title, c.message, c.confirmLabel, c.onConfirm).also { it.cancelLabel = c.cancelLabel; it.onCancel = c.onCancel } })
+                        .let { if (settings.gameBlocked) withoutGameRows(it) else it }
                     Page.TABS -> COMPANION_TABS.map { id ->
                         val shown = id in settings.companionTabs
                         // A tab this game doesn't have (DEX, GUIDE) keeps its setting for the games that do.
@@ -459,6 +463,22 @@ private class Confirm(val title: String, val message: String, val confirmLabel: 
     var onCancel: () -> Unit = {}
 }
 
+/** The groups (by title) a blocked game ([CompanionSettings.gameBlocked]) leaves out whole: none of them works there. */
+private val BLOCKED_GROUPS = setOf(tk("MAKEOVER"), tk("GAMEPLAY"), tk("COMPANION"), tk("CO-OP"))
+
+/** And the single rows it leaves out: EXPAND's, the HUD's, the battle buttons and the quick menu. */
+private val BLOCKED_ROWS = setOf(tk("ZOOM"), tk("AUTO ZOOM IN"), tk("LOOK AROUND"), tk("HUD"), tk("BATTLE BUTTONS"), tk("QUICK MENU"))
+
+/** HOME for a game its makers asked PokéDaisy not to read: the emulator's settings only (speed, sound, screen, controls,
+ * the app), none of the game's own features. */
+private fun withoutGameRows(rows: List<SettingRow>): List<SettingRow> {
+    var skipping = false
+    return rows.filter { r ->
+        if (r.header) skipping = r.label in BLOCKED_GROUPS
+        !skipping && r.label !in BLOCKED_ROWS
+    }
+}
+
 private fun homeRows(
     s: CompanionSettings,
     barTabs: Int,
@@ -472,7 +492,7 @@ private fun homeRows(
     // MAKEOVER: the game's look from other games (the user's call: its own group, first and standing out, only in a
     // game it works in).
     val looks = s.playerLookSupported
-    val makeover = if (!looks && !s.dayNightSupported && !s.followerSupported) emptyList() else listOfNotNull(
+    val makeover = if (!looks && !s.dayNightSupported && !s.followerSupported && !s.flyStyleSupported) emptyList() else listOfNotNull(
         featuredGroupTitle(tk("MAKEOVER"), if (looks) "Other games' looks in this one" else "A fresh look for this game"),
         // Another game's hero for the player (PlayerLook.kt: their sprites from the player's own ROM of that game,
         // patched into this one in memory). The heroes' names are the games' own, so they aren't translated.
@@ -516,6 +536,24 @@ private fun homeRows(
                 labelBadge = NewFeatures.badge(NewFeatures.FOLLOWER),
                 subtitle = if (s.followerReady) null else "Needs a game with following Pokémon too",
             ) { if (s.followerReady) { s.setFollower(!s.follower); changed() } }
+        } else null,
+        // What FREE FLIGHT and the scenic FLY fly on (FlightVehicle: our own pixel art, the player in its seat).
+        if (s.flyStyleSupported) {
+            SettingRow(tk("FLY ON"), s.flightVehicle.label, labelBadge = NewFeatures.badge(NewFeatures.FLY_ON)) {
+                val all = com.pokedaisy.app.companion.data.FlightVehicle.entries
+                select(Selector(tk("FLY ON"), all.map { it.label }, s.flightVehicle.label) { l ->
+                    all.firstOrNull { it.label == l }?.let(s::setFlightVehicle)
+                })
+            }
+        } else null,
+        // What the player rides in place of the bike (RideOn.kt: our own pixel art in the hero's bike sheets).
+        if (looks) {
+            SettingRow(tk("RIDE ON"), s.rideVehicle.label, labelBadge = NewFeatures.badge(NewFeatures.RIDE_ON)) {
+                val all = com.pokedaisy.app.companion.data.RideVehicle.entries
+                select(Selector(tk("RIDE ON"), all.map { it.label }, s.rideVehicle.label) { l ->
+                    all.firstOrNull { it.label == l }?.let(s::setRideVehicle)
+                })
+            }
         } else null,
         // The overworld by the device's clock (DayNight.kt): every GBA game but those with their own.
         if (s.dayNightSupported) {
@@ -571,6 +609,27 @@ private fun homeRows(
             enabled = s.instantTextSupported, labelBadge = NewFeatures.badge(NewFeatures.INSTANT_TEXT),
         ) {
             if (s.instantTextSupported) { s.setInstantText(!s.instantText); changed() }
+        },
+        // The companion's FLY: the game's own (CLASSIC) or flown over the field to the town (SCENIC, Flight.kt). Two values: a tap flips it.
+        SettingRow(
+            tk("FLY STYLE"), if (s.flyStyleSupported) s.flyStyle.label else tk("N/A"),
+            enabled = s.flyStyleSupported, labelBadge = NewFeatures.badge(NewFeatures.SCENIC_FLY),
+            subtitle = "SCENIC flies you there over the map",
+        ) {
+            if (s.flyStyleSupported) {
+                s.setFlyStyle(if (s.flyStyle == FlyStyle.SCENIC) FlyStyle.CLASSIC else FlyStyle.SCENIC)
+                changed()
+            }
+        },
+        // Where FREE FLIGHT and the scenic FLY may go: the maps seen (FlightArea.kt) or anywhere. Two values: a tap flips it.
+        SettingRow(
+            tk("FLIGHT AREA"), if (s.flyStyleSupported) s.flightArea.label else tk("N/A"),
+            enabled = s.flyStyleSupported, labelBadge = NewFeatures.badge(NewFeatures.FLIGHT_AREA),
+        ) {
+            if (s.flyStyleSupported) {
+                s.setFlightArea(if (s.flightArea == FlightAreaMode.SEEN) FlightAreaMode.ANYWHERE else FlightAreaMode.SEEN)
+                changed()
+            }
         },
         // A TM stays in the bag after it teaches a move, as an HM does (ReusableTms.kt: the ROM's own check patched).
         // A game whose own TMs never run out (ReusableTms.BUILT_IN) shows ON, greyed, and says so.
@@ -629,14 +688,18 @@ private fun homeRows(
         groupTitle(tk("SCREEN")),
         // The game at the GBA's 3:2, stretched to fill the top screen, or WIDE (the overworld drawn past
         // its edges); WIDE is tagged BETA, or NOT YET on a game it doesn't know (which shows it as ORIGINAL).
-        SettingRow(tk("ASPECT"), aspectLabel(s.gameAspect), wideBadge(s, s.gameAspect), subtitle = "Original shape, stretched, or more of the map") {
-            val aspects = GameAspect.entries
-            select(
-                Selector(
-                    tk("ASPECT"), aspects.map { it.label }, s.gameAspect.label,
-                    badge = { l -> wideBadge(s, aspects.first { it.label == l }) },
-                ) { l -> s.setGameAspect(aspects.first { it.label == l }) },
-            )
+        // A blocked game has no EXPAND: ORIGINAL or STRETCH, a saved EXPAND reading as ORIGINAL (what it plays as).
+        run {
+            val aspect = if (s.gameBlocked && s.gameAspect == GameAspect.WIDE) GameAspect.ORIGINAL else s.gameAspect
+            SettingRow(tk("ASPECT"), aspectLabel(aspect), if (s.gameBlocked) null else wideBadge(s, aspect), subtitle = "Original shape, stretched, or more of the map") {
+                val aspects = GameAspect.entries.filter { !s.gameBlocked || it != GameAspect.WIDE }
+                select(
+                    Selector(
+                        tk("ASPECT"), aspects.map { it.label }, aspect.label,
+                        badge = { l -> wideBadge(s, aspects.first { it.label == l }) },
+                    ) { l -> s.setGameAspect(aspects.first { it.label == l }) },
+                )
+            }
         },
         // EXPAND only: the zoom step from a list, for a device with no right stick (R3 is the ZOOM hotkey).
         s.zoomSteps.takeIf { s.gameAspect == GameAspect.WIDE && it.size > 1 }?.let { steps ->
@@ -656,22 +719,46 @@ private fun homeRows(
             labelBadge = NewFeatures.badge(NewFeatures.LOOK_AROUND),
         ) { s.setLookAround(!s.lookAround); changed() }
             .takeIf { s.gameAspect == GameAspect.WIDE },
-        // A DS game: its 3D at 2x to 8x the DS's own on the GPU, or ORIGINAL (the CPU's, pixel for pixel).
-        s.dsResolution?.let { scale ->
+        // A DS game: which emulator runs it (melonDS, or DSperate for weak devices); taken at the game's next start.
+        s.dsCore?.let { core ->
+            val now = core.valueLabel()
+            val pending = (core.runs() == com.pokedaisy.app.MgbaCore.NDS_CORE_DSPERATE) == s.dsMelonDs
             SettingRow(
-                tk("DS RESOLUTION"), if (s.dsGpuAvailable) dsResolutionLabel(scale) else tk("N/A"), enabled = s.dsGpuAvailable,
-                labelBadge = NewFeatures.badge(NewFeatures.DS_RESOLUTION),
+                tk("DS CORE"), now, labelBadge = NewFeatures.badge(NewFeatures.DS_CORE),
+                subtitle = if (pending) "Takes effect when the game restarts" else "DSPERATE runs on weaker devices",
             ) {
-                if (!s.dsGpuAvailable) return@SettingRow
+                select(Selector(tk("DS CORE"), DsCore.entries.map { it.label }, core.label) { l ->
+                    s.setDsCore(DsCore.entries.first { it.label == l }); changed()
+                })
+            }
+        },
+        // A DS game: its 3D at 2x to 8x the DS's own on the GPU, or ORIGINAL (the CPU's, pixel for pixel). melonDS only.
+        s.dsResolution?.let { scale ->
+            val can = s.dsGpuAvailable && s.dsMelonDs
+            SettingRow(
+                tk("DS RESOLUTION"), if (can) dsResolutionLabel(scale) else tk("N/A"), enabled = can,
+                labelBadge = NewFeatures.badge(NewFeatures.DS_RESOLUTION),
+                subtitle = if (!s.dsMelonDs) "Unavailable on DSPERATE" else null,
+            ) {
+                if (!can) return@SettingRow
                 val labels = dsResolutionLabels()
                 select(Selector(tk("DS RESOLUTION"), labels, dsResolutionLabel(scale)) { l -> s.setDsResolution(labels.indexOf(l) + 1); changed() })
             }
         },
-        // A DS game: its CPU at twice the DS's clock, so the game's own slow frames go (HeartGold walking).
+        // A DS game: its CPU at twice the DS's clock, so the game's own slow frames go (HeartGold walking). melonDS only.
         s.dsCpuBoost?.let { on ->
             SettingRow(
-                tk("DS CPU BOOST"), onOff(on), labelBadge = NewFeatures.badge(NewFeatures.DS_CPU_BOOST), subtitle = "Fewer slowdowns in DS games",
-            ) { s.setDsCpuBoost(!on); changed() }
+                tk("DS CPU BOOST"), if (s.dsMelonDs) onOff(on) else tk("N/A"), enabled = s.dsMelonDs,
+                labelBadge = NewFeatures.badge(NewFeatures.DS_CPU_BOOST),
+                subtitle = if (s.dsMelonDs) "Fewer slowdowns in DS games" else "Unavailable on DSPERATE",
+            ) { if (s.dsMelonDs) { s.setDsCpuBoost(!on); changed() } }
+        },
+        // A DS game on two screens: its touch screen at its 4:3 with the COMPANION bar, or stretched over the second display.
+        s.dsTouchFill?.let { on ->
+            SettingRow(
+                tk("DS TOUCH SCREEN"), if (on) tk("STRETCH") else tk("ORIGINAL"), labelBadge = NewFeatures.badge(NewFeatures.DS_TOUCH_FILL),
+                subtitle = "The touch screen on your second screen",
+            ) { s.setDsTouchFill(!on); changed() }
         },
         // A DS game on one screen held sideways: where its two screens go (DsLayout), picked from miniatures.
         s.dsLayout?.let { layout ->
@@ -754,10 +841,20 @@ private fun homeRows(
             .takeIf { s.battleInfo },
         // The battle controls' action menu shows the moves: one tap picks FIGHT and the move.
         // What the BATTLE tab shows first: the battle buttons, or INFO (its own buttons lead back).
-        SettingRow(
-            tk("BATTLE VIEW"), if (s.battleInfoFirst) tk("INFO") else tk("BUTTONS"), subtitle = "What the BATTLE tab opens on",
-            labelBadge = NewFeatures.badge(NewFeatures.BATTLE_VIEW),
-        ) { s.setBattleInfoFirst(!s.battleInfoFirst); changed() }.takeIf { s.battleInfo },
+        // BUTTONS / INFO / SUGGESTIONS: a pick-list (three values never cycle on a tap).
+        run {
+            val view = when { s.battleSuggestionsFirst -> tk("SUGGESTIONS"); s.battleInfoFirst -> tk("INFO"); else -> tk("BUTTONS") }
+            SettingRow(
+                tk("BATTLE VIEW"), view, subtitle = "What the BATTLE tab opens on",
+                labelBadge = NewFeatures.badge(NewFeatures.BATTLE_VIEW),
+            ) {
+                select(Selector(tk("BATTLE VIEW"), listOf(tk("BUTTONS"), tk("INFO"), tk("SUGGESTIONS")), view) { l ->
+                    s.setBattleInfoFirst(l == tk("INFO"))
+                    s.setBattleSuggestionsFirst(l == tk("SUGGESTIONS"))
+                    changed()
+                })
+            }.takeIf { s.battleInfo }
+        },
         SettingRow(tk("ONE-TAP MOVES"), onOff(s.oneTapMoves), subtitle = "Your moves right on the battle menu") { s.setOneTapMoves(!s.oneTapMoves); changed() },
         // The battle buttons' look: GEN 4 (coloured buttons) or GEN 5 (dark plates round a red and white ball).
         SettingRow(
@@ -777,6 +874,11 @@ private fun homeRows(
         SettingRow(tk("TAB BAR"), tr("{0} TABS", barTabs), labelBadge = NewFeatures.badge(NewFeatures.MORE_TAB) ?: NewFeatures.badge(NewFeatures.BOXES_TAB), opensPage = true, subtitle = "Which tabs sit next to the gear") { navigate(Page.TABS) },
         // The game's menu click on every companion button.
         SettingRow(tk("CLICK SOUND"), onOff(s.clickSound)) { s.setClickSound(!s.clickSound); changed() },
+        // RetroAchievements' challenge badges and leaderboard values in the corner (GitHub discussion #620).
+        SettingRow(
+            tk("CHALLENGE ICONS"), onOff(s.raIcons), subtitle = "RetroAchievements' icons in the corner",
+            labelBadge = NewFeatures.badge(NewFeatures.RA_ICONS),
+        ) { s.setRaIcons(!s.raIcons); changed() },
         // Small on / off preferences: the icons' bounce, the map cursor's blink, tab slides, the battle jump.
         SettingRow(tk("TWEAKS"), null, opensPage = true, subtitle = "Small animations and the battle jump") { navigate(Page.TWEAKS) },
     ) + coopRows(s, changed, navigate, pick = { title, choices, current, onPick -> select(Selector(title, choices, current) { onPick(it); changed() }) }, askLock = askLock) + listOfNotNull(

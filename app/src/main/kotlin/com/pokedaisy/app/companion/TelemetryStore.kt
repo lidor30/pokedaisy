@@ -155,6 +155,8 @@ class TelemetryStore {
 
     /** The detected game's gPartyMenu + gPlayerParty, when its config has them. */
     fun knownPartyMenu(): Pair<Long, Long>? = sampler.knownPartyMenu
+    /** The detected game's layout for overworld party reordering, including verified English Unbound. */
+    fun knownPartyReorderConfig(): com.pokedaisy.app.companion.data.NativeConfig? = sampler.knownPartyReorderConfig
     fun knownPartyMenuStyle(): Pair<Long, Int>? = sampler.knownPartyMenuStyle
     fun retailEnginePartyMenu(): Pair<Long, Long>? = sampler.retailEnginePartyMenu
 
@@ -169,6 +171,7 @@ class TelemetryStore {
 
     /** The battle menus' cursors, where the ROM's RAM is known to be its config's. */
     fun knownCursorAddrs(): Pair<Long, Long>? = sampler.knownCursorAddrs
+    fun retailRom(): Boolean = sampler.retailRom
 
     private companion object {
         /** ~1 sample a second: a game whose data never comes in drops the copy after this long. */

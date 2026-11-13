@@ -89,6 +89,11 @@
     ["install", "install"],
     ["roms folder", "library"],
     ["not supported", "supported-games"],
-    ["phone", "devices"]
+    ["phone", "devices"],
+    ["3ds", "3ds"],
+    ["homebrew launcher", "3ds"],
+    ["install linux", "linux-install"],
+    ["steam deck", "linux-install"],
+    ["portmaster", "linux-install"]
   ]
 }

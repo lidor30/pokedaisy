@@ -277,7 +277,7 @@ private fun ButtonsStep(s: SetupState, m: GbaTextMetrics, small: GbaTextMetrics,
     Para(tr("To change one, tap it and press the button you want for it. The D-pad and analog stick are fixed."), small, muted = true)
     GbaControls.Group.entries.forEach { group ->
         com.pokedaisy.app.companion.ui.GroupTitleLine(group.title, m, first = group == GbaControls.Group.ALL)
-        val btns = GbaControls.Btn.entries.filter { it.group == group }
+        val btns = GbaControls.Btn.entries.filter { it.group == group && !it.dpad }   // (the D-pad rows: SETTINGS only)
         btns.forEachIndexed { i, btn ->
             KeyBindRow(
                 btn.title, s.buttons[btn], s.capture, m, small, divider = i < btns.lastIndex, subtitle = btn.subtitle,

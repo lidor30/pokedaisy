@@ -40,6 +40,48 @@ uint32_t pd_backdrop_tint(uint32_t c) {
     return channels(channels(c, backdropWash, multiply, 0), NIGHT, mix, backdropScrim);
 }
 
+void pd_separator(struct pd_canvas* c, int x, int y, int len, bool vertical) {
+    // A Game Boy game's windows: its divider, the rows' own rule.
+    uint32_t dark = pd_gb_look ? pd_cur->divider : pd_dark ? 0x0E1116 : 0xB8B8C0;
+    uint32_t light = pd_gb_look ? pd_cur->listFill : pd_dark ? 0x3A414D : 0xE8E8EC;
+    pd_fill(c, x, y, vertical ? 1 : len, vertical ? len : 1, dark);
+    pd_fill(c, x + (vertical ? 1 : 0), y + (vertical ? 0 : 1), vertical ? 1 : len, vertical ? len : 1, light);
+}
+
+uint32_t pd_battle_tint(uint32_t c) {
+    return channels(c, NIGHT, mix, backdropScrim);
+}
+
+// DsBackdrops.kt's BattleBackdrop: HeartGold's battle screens' manner, sampled and drawn here (no game art) - pale mint between
+// grey bands, a big faint Poké Ball in the middle, in whole DS-sized pixels (one canvas pixel on the 3DS's 240 rows).
+void pd_battle_backdrop(struct pd_canvas* c) {
+    static const uint32_t MINT = 0xCBFBF3, RING = 0xBADBCB, THIN = 0xC3E3D3, PEACH = 0xF3D3B2;
+    static const struct { int rows; uint32_t color; } BANDS[3] = { { 16, 0xAAAA9A }, { 2, 0xB2C3A2 }, { 2, 0xBADBB2 } };
+    int k = c->h / 192 > 1 ? c->h / 192 : 1;
+    pd_fill(c, 0, 0, c->w, c->h, pd_backdrop_tint(MINT));
+    int edge = 0;
+    for (int i = 0; i < 3; i++) {
+        int h = BANDS[i].rows * k;
+        pd_fill(c, 0, edge, c->w, h, pd_backdrop_tint(BANDS[i].color));
+        pd_fill(c, 0, c->h - edge - h, c->w, h, pd_backdrop_tint(BANDS[i].color));
+        edge += h;
+    }
+    int cx = c->w / 2 / k * k, cy = c->h / 2 / k * k;
+    const int R = 56, BAND = 5;
+    for (int dy = -R; dy <= R; dy++) {
+        int radii[5] = { R, R - 5, 20, 15, 10 };
+        uint32_t cols[5] = { RING, dy < -BAND ? PEACH : dy > BAND ? MINT : RING, RING, MINT, THIN };
+        for (int i = 0; i < 6; i++) {
+            int r = i < 5 ? radii[i] : 8;
+            uint32_t col = i < 5 ? cols[i] : MINT;
+            if (dy * dy >= r * r) continue;
+            int half = 0;
+            while ((half + 1) * (half + 1) <= r * r - dy * dy) half++;
+            if (half > 0) pd_fill(c, cx - half * k, cy + dy * k, half * 2 * k, k, pd_backdrop_tint(col));
+        }
+    }
+}
+
 void pd_look_apply(const struct pd_game* g, const struct pd_settings* s) {
     int dark = s && s->darkMode ? 1 : 0;
     pd_dark = dark;

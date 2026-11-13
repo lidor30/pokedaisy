@@ -26,6 +26,7 @@
 #include <zlib.h>
 
 #include <chrono>
+#include <ctime>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -386,6 +387,7 @@ static void recordShown()
 static bool saveState(const std::string& path)
 {
     Savestate st;
+    pk_nds_wide_sync();
     if (!nds->DoSavestate(&st) || st.Error) { fprintf(stderr, "savestate failed\n"); return false; }
     st.Finish();
     return writeFile(path, st.Buffer(), st.Length());
@@ -396,6 +398,7 @@ static bool loadState(const std::string& path)
     std::vector<u8> data = readFile(path.c_str());
     if (data.empty()) { fprintf(stderr, "can't read %s\n", path.c_str()); return false; }
     Savestate st(data.data(), (u32) data.size(), false);
+    pk_nds_wide_sync();
     if (st.Error || !nds->DoSavestate(&st) || st.Error) { fprintf(stderr, "loadstate failed\n"); return false; }
     return true;
 }
@@ -521,8 +524,8 @@ int main(int argc, char** argv)
     static PkNdsHost host {onSave, onStop, nullptr};
 
     NDSArgs args;
-    // The app's JIT: no fast memory (pk_nds.cpp)
-    if (jit) args.JIT = JITArgs {32, true, true, false};
+    // The app's JIT (pk_nds.cpp): fast memory on, which melonDS turns off on macOS (IsFastMemSupported)
+    if (jit) args.JIT = JITArgs {32, true, true, true};
     else args.JIT = std::nullopt;
     if (const char* dir = getenv("NDS_BIOS_DIR")) {
         // The real BIOS (bios7.bin / bios9.bin in that folder) instead of FreeBIOS, to compare against
@@ -550,6 +553,8 @@ int main(int argc, char** argv)
     nds->SetNDSCart(std::move(cart));
     nds->Reset();
     nds->SetupDirectBoot("rom.nds");
+    // The 3D on its own thread, as the app runs it (pk_nds_init); `threaded 0` puts it on this one
+    static_cast<SoftRenderer&>(nds->GPU.GetRenderer3D()).SetThreaded(true, nds->GPU);
     nds->Start();
     fprintf(stderr, "booted %s, save %u bytes\n", argv[1], nds->GetNDSSaveLength());
 
@@ -655,6 +660,7 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "gpu")) {
             // gpu N: DS RESOLUTION at N (1 = back to the software renderer)
             pk_nds_gl_capture(true);
+            pk_nds_wide_sync();
             int s = pk_nds_gl_set_scale(nds, (int) num(a));
             gpuOn = s > 1;
             printf("gpu: scale %d\n", s);
@@ -736,7 +742,8 @@ int main(int argc, char** argv)
                 frames, cmpTotal, diffTotal, farTotal, badFrames);
             fflush(stdout);
         } else if (!strcmp(cmd, "threaded")) {
-            // threaded 1 / 0: the 3D renderer on its own thread, as the app runs it (pk_nds.cpp)
+            // threaded 1 / 0: the 3D renderer on its own thread (the default, as the app runs it: pk_nds.cpp) / on this one
+            pk_nds_wide_sync();
             static_cast<SoftRenderer&>(nds->GPU.GetRenderer3D()).SetThreaded(num(a) != 0, nds->GPU);
         } else if (!strcmp(cmd, "ffmode")) {
             // ffmode GROUP PREFIX: from here on every command's frames run in the app's fast-forward pattern at GROUP
@@ -952,10 +959,15 @@ int main(int argc, char** argv)
         } else if (!strcmp(cmd, "bench")) {
             // bench N: N frames as fast as they go, then the average ms per frame (with wide on, its frames too)
             int frames = (int) num(a);
+            timespec c0, c1;
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &c0);
             auto t0 = std::chrono::steady_clock::now();
             runFrames(frames, heldKeys);
             double ms = std::chrono::duration<double, std::milli>(std::chrono::steady_clock::now() - t0).count();
-            printf("bench %d frames: %.3f ms a frame (wide %d)\n", frames, ms / frames, wideMargin);
+            clock_gettime(CLOCK_PROCESS_CPUTIME_ID, &c1);
+            double cpu = (c1.tv_sec - c0.tv_sec) * 1e3 + (c1.tv_nsec - c0.tv_nsec) / 1e6;
+            // (process CPU as dsp_dump prints it: the two DS cores' runs compare)
+            printf("bench %d frames: %.3f ms a frame (wide %d), %.3f ms CPU\n", frames, ms / frames, wideMargin, cpu / frames);
             fflush(stdout);
         } else if (!strcmp(cmd, "watch")) {
             // watch LO HI [r|w|rw] [N]: report the game's accesses to [LO, HI) (at most N, default 20); watch off clears

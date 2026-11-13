@@ -5,6 +5,7 @@
 import Base from './Base.astro';
 import Pixel from '../components/Pixel.astro';
 import DocSearch from '../components/DocSearch.astro';
+import { trFor } from '../i18n/index.js';
 
 interface Props {
   title: string;
@@ -15,12 +16,15 @@ interface Props {
   jsonLd?: object[];
   /** The sidebar's search box (the docs home has its own, bigger one). */
   search?: boolean;
+  /** A page that comes in several languages (docs/manual/translations): its path in each, for Base. */
+  paths?: Record<string, string>;
 }
-const { title, description, docs, current, toc = [], jsonLd = [], search = true } = Astro.props;
+const { title, description, docs, current, toc = [], jsonLd = [], search = true, paths } = Astro.props;
+const tr = trFor(Astro.url);
 const pageTitle = (slug: string) => docs.pages.find((p: any) => p.slug === slug)?.title ?? slug;
 ---
-<!-- English only for now (src/i18n's isLocalizedPath): the language picker offers each language's home. -->
-<Base title={title} description={description} localized={false}>
+<!-- English only but for the pages with translations (paths): the language picker offers each language's home. -->
+<Base title={title} description={description} localized={false} paths={paths}>
   <Fragment slot="head">
     <link rel="preload" href="/fonts/AtkinsonHyperlegible-Regular.ttf" as="font" type="font/ttf" crossorigin />
     {jsonLd.map((j) => <script type="application/ld+json" set:html={JSON.stringify(j)} />)}
@@ -29,9 +33,9 @@ const pageTitle = (slug: string) => docs.pages.find((p: any) => p.slug === slug)
     <aside class="docs-nav">
       {search && <DocSearch />}
       <details class="docs-menu" open>
-        <summary class="docs-menu-toggle small">ALL PAGES</summary>
+        <summary class="docs-menu-toggle small">{tr('ALL PAGES')}</summary>
         <nav aria-label="Docs">
-          <a href="/docs/" class:list={['docs-home small', !current && 'on']}><Pixel name="guide" scale={0.5} /> DOCS HOME</a>
+          <a href="/docs/" class:list={['docs-home small', !current && 'on']}><Pixel name="guide" scale={0.5} /> {tr('DOCS HOME')}</a>
           {docs.sections.map((s: any) => (
             <div class="docs-sec">
               <p class="docs-sec-title tiny">{s.title.toUpperCase()}</p>
@@ -53,8 +57,8 @@ const pageTitle = (slug: string) => docs.pages.find((p: any) => p.slug === slug)
       <slot />
     </main>
     {toc.length > 1 && (
-      <aside class="docs-toc" aria-label="On this page">
-        <p class="tiny docs-sec-title">ON THIS PAGE</p>
+      <aside class="docs-toc" aria-label={tr('ON THIS PAGE')}>
+        <p class="tiny docs-sec-title">{tr('ON THIS PAGE')}</p>
         <ul>{toc.map((h) => <li><a href={`#${h.id}`}>{h.text}</a></li>)}</ul>
       </aside>
     )}
@@ -102,8 +106,8 @@ const pageTitle = (slug: string) => docs.pages.find((p: any) => p.slug === slug)
   /* Reading text: Atkinson Hyperlegible, a comfortable measure and line height. */
   .prose { font: 18px/1.7 'Atkinson Hyperlegible', system-ui, sans-serif; color: var(--ink); max-width: 70ch; }
   .prose strong { font-weight: 700; }
-  .prose .d-h2 { position: relative; font-family: 'Pixel Operator', monospace; font-size: var(--t-l); letter-spacing: 0.0625em; text-shadow: var(--bold); margin: 44px 0 14px; padding-top: 18px; border-top: var(--px) solid #e3e1ec; scroll-margin-top: 100px; }
-  .prose .d-h3 { font-family: 'Pixel Operator', monospace; font-size: var(--t-m); letter-spacing: 0.0625em; margin: 28px 0 8px; color: var(--ink); scroll-margin-top: 100px; }
+  .prose .d-h2 { position: relative; font-family: 'Pixel Operator', 'PixelMplus JP', 'Galmuri KO', monospace; font-size: var(--t-l); letter-spacing: 0.0625em; text-shadow: var(--bold); margin: 44px 0 14px; padding-top: 18px; border-top: var(--px) solid #e3e1ec; scroll-margin-top: 100px; }
+  .prose .d-h3 { font-family: 'Pixel Operator', 'PixelMplus JP', 'Galmuri KO', monospace; font-size: var(--t-m); letter-spacing: 0.0625em; margin: 28px 0 8px; color: var(--ink); scroll-margin-top: 100px; }
   .prose .d-anchor { position: absolute; left: -0.9em; color: #c9c7d6; text-decoration: none; text-shadow: none; opacity: 0; }
   .prose .d-h2:hover .d-anchor { opacity: 1; }
   .prose .d-p { margin: 0 0 16px; }
@@ -117,7 +121,7 @@ const pageTitle = (slug: string) => docs.pages.find((p: any) => p.slug === slug)
   .prose .d-link { color: var(--blue); text-decoration-thickness: 2px; text-underline-offset: 3px; }
   .prose .d-link:hover { color: var(--red); }
   .prose .d-code {
-    font-family: 'Pixel Operator', monospace; font-size: 1.12em; letter-spacing: 0.03em; white-space: nowrap;
+    font-family: 'Pixel Operator', 'PixelMplus JP', 'Galmuri KO', monospace; font-size: 1.12em; letter-spacing: 0.03em; white-space: nowrap;
     background: #f1f0f6; padding: 0 5px; box-shadow: inset 0 -2px 0 #dcdae6;
   }
   .prose .d-shot { margin: 22px 0 26px; }
@@ -129,10 +133,10 @@ const pageTitle = (slug: string) => docs.pages.find((p: any) => p.slug === slug)
   .prose .d-note { position: relative; margin: 20px 0; padding: 16px 18px 4px; background: #fffaf0; border-left: calc(var(--px) * 2) solid var(--yellow); }
   .prose .d-note.d-tip { background: #effaf1; border-color: var(--green); }
   .prose .d-note.d-warning { background: #fff1ef; border-color: var(--red); }
-  .prose .d-note-tag { display: block; font-family: 'Pixel Operator', monospace; font-size: var(--t-xs); letter-spacing: 0.0625em; margin-bottom: 4px; color: var(--ink-2); }
+  .prose .d-note-tag { display: block; font-family: 'Pixel Operator', 'PixelMplus JP', 'Galmuri KO', monospace; font-size: var(--t-xs); letter-spacing: 0.0625em; margin-bottom: 4px; color: var(--ink-2); }
   .prose .d-table-wrap { overflow-x: auto; margin: 0 0 20px; }
   .prose .d-table { border-collapse: collapse; width: 100%; font-size: 16px; }
-  .prose .d-table th { text-align: left; font-family: 'Pixel Operator', monospace; font-weight: normal; font-size: var(--t-s); letter-spacing: 0.04em; background: #f1f0f6; }
+  .prose .d-table th { text-align: left; font-family: 'Pixel Operator', 'PixelMplus JP', 'Galmuri KO', monospace; font-weight: normal; font-size: var(--t-s); letter-spacing: 0.04em; background: #f1f0f6; }
   .prose .d-table th, .prose .d-table td { padding: 8px 12px; border-bottom: 1px solid #e3e1ec; vertical-align: top; }
   .prose .d-hr { border: 0; border-top: var(--px) solid #e3e1ec; margin: 32px 0; }
 
@@ -142,6 +146,9 @@ const pageTitle = (slug: string) => docs.pages.find((p: any) => p.slug === slug)
   .doc-foot small { display: block; color: var(--muted); font-size: var(--t-xs); }
   .doc-foot span { font-size: var(--t-s); }
   .doc-edit { margin-top: 18px; font-size: var(--t-xs); color: var(--muted); }
+  .doc-langs { display: flex; flex-wrap: wrap; gap: 4px 14px; margin: 4px 0 18px; font-size: var(--t-xs); }
+  .doc-langs a { color: var(--blue); }
+  .doc-langs span { color: var(--ink); text-shadow: var(--bold); }
 
   @media (max-width: 1180px) {
     .docs { grid-template-columns: 250px minmax(0, 1fr); }

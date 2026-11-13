@@ -5,6 +5,7 @@ import com.pokedaisy.app.companion.data.RETAIL_DUMPS
 import com.pokedaisy.app.companion.data.RETAIL_PORT_CODE_TITLES
 import com.pokedaisy.app.companion.data.OriginHeartGold
 import com.pokedaisy.app.companion.data.RenegadePlatinum
+import com.pokedaisy.app.companion.data.Black2Redux
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
@@ -85,7 +86,9 @@ class SiteDataExportTest {
             val revs = (0..3).filter { TelemetrySampler.otherRetailConfig(code, it) != null }
             if (revs.isEmpty()) null else Triple(code, revs, codeTitles.getValue(code))
         }
-        val hackSha1s = TelemetrySampler.SUPPORTED_HACK_SHA1S
+        // A game its makers asked PokéDaisy not to read (BlockedGames) isn't on the site at all: not supported, no title.
+        val blocked = com.pokedaisy.app.companion.data.BlockedGames.ALL.flatMap { it.sha1s }.toSet()
+        val hackSha1s = TelemetrySampler.SUPPORTED_HACK_SHA1S - blocked
         // A game whose README row is all "—" plays but has no companion yet (R.O.W.E.): the site lists it
         // as in progress, not as supported, and leaves it out of the matrix.
         val (columns, allRows) = readmeMatrix()
@@ -97,7 +100,7 @@ class SiteDataExportTest {
         val gameBoy = if (TelemetrySampler.GAME_BOY_SUPPORT) TelemetrySampler.SUPPORTED_GB_SHA1S.sorted() else emptyList()
         val ds = if (TelemetrySampler.NDS_SUPPORT) TelemetrySampler.NDS_GAMES.sortedWith(compareBy({ it.first }, { it.second })) else emptyList()
         // DS carts go by their header's code and revision (`ds`), as the app takes them, not by hash.
-        val titles = GameTitles.BY_SHA1.filterKeys { it !in hackSha1s && it !in gameBoy && it !in GameTitles.NDS_SHA1S }.toSortedMap()
+        val titles = GameTitles.BY_SHA1.filterKeys { it !in hackSha1s && it !in blocked && it !in gameBoy && it !in GameTitles.NDS_SHA1S }.toSortedMap()
 
         return buildString {
             append("{\n")
@@ -149,7 +152,14 @@ class SiteDataExportTest {
                     // Renegade Platinum (RenegadePlatinum): the retail Platinum's header.
                     "    {\"code\": ${q(RenegadePlatinum.CODE)}, \"rev\": ${RenegadePlatinum.REV}, \"offset\": ${RenegadePlatinum.SIG_OFFSET}, " +
                     "\"word\": ${RenegadePlatinum.SIG}, \"title\": ${q(GameTitles.BY_SHA1.getValue(RenegadePlatinum.V1_3_0_SHA1))}, " +
-                    "\"version\": \"v1.3.0\"}",
+                    "\"version\": \"v1.3.0\"},\n" +
+                    // Blaze Black 2 / Volt White 2 Redux (Black2Redux): the retail Black 2's / White 2's header.
+                    "    {\"code\": ${q(Black2Redux.CODE_BLACK2)}, \"rev\": ${Black2Redux.REV}, \"offset\": ${Black2Redux.SIG_OFFSET}, " +
+                    "\"word\": ${Black2Redux.SIG_BLACK2}, \"title\": ${q(GameTitles.BY_SHA1.getValue(Black2Redux.BLAZE_BLACK2_V1_4_1_SHA1))}, " +
+                    "\"version\": \"v1.4.1\"},\n" +
+                    "    {\"code\": ${q(Black2Redux.CODE_WHITE2)}, \"rev\": ${Black2Redux.REV}, \"offset\": ${Black2Redux.SIG_OFFSET}, " +
+                    "\"word\": ${Black2Redux.SIG_WHITE2}, \"title\": ${q(GameTitles.BY_SHA1.getValue(Black2Redux.VOLT_WHITE2_V1_4_1_SHA1))}, " +
+                    "\"version\": \"v1.4.1\"}",
             )
             append("\n  ],\n")
             append("  \"titles\": {\n")

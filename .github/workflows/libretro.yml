@@ -5,10 +5,10 @@ name: libretro core
 # mk/build-pokedaisy-core.sh in its toolchain image), only retro_* exported, and the shared UI previews rendered.
 on:
   pull_request:
-    paths: ['libretro/**', 'linux/**', '3ds/core/**', '3ds/desktop/**', '3ds/Makefile', 'app/src/main/cpp/pk_*', 'third_party/mgba', 'gamedata/**', '.github/workflows/libretro.yml']
+    paths: ['libretro/**', 'linux/**', '3ds/core/**', '3ds/desktop/**', '3ds/Makefile', 'app/src/main/cpp/pk_*', 'third_party/mgba', 'third_party/armgba', 'third_party/zlib', 'gamedata/**', '.github/workflows/libretro.yml']
   push:
     branches: [main]
-    paths: ['libretro/**', 'linux/**', '3ds/**', 'app/src/main/cpp/pk_*', 'third_party/mgba', 'gamedata/**', '.github/workflows/libretro.yml']
+    paths: ['libretro/**', 'linux/**', '3ds/**', 'app/src/main/cpp/pk_*', 'third_party/mgba', 'third_party/armgba', 'third_party/zlib', 'gamedata/**', '.github/workflows/libretro.yml']
   workflow_dispatch:
   workflow_call:
     inputs:
@@ -26,29 +26,41 @@ concurrency:
 
 jobs:
   core:
-    name: libretro core (x86 + aarch64, exports)
-    runs-on: ubuntu-24.04
+    name: libretro cores (x86 + aarch64, exports)
+    # Match the release cross-toolchain, before glibc 2.38 redirects C23 calls.
+    runs-on: ubuntu-22.04
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ inputs.ref }}
-      - name: mGBA submodule
-        run: git submodule update --init --depth 1 third_party/mgba
+      - name: mGBA, armGBA and zlib submodules
+        run: git submodule update --init --depth 1 third_party/mgba third_party/armgba third_party/zlib
       - name: Toolchains
         run: sudo apt-get update && sudo apt-get install -y --no-install-recommends cmake gcc-aarch64-linux-gnu g++-aarch64-linux-gnu binutils-aarch64-linux-gnu libc6-dev-arm64-cross
       - name: Core (x86) + test hosts
         run: |
           cmake -S libretro -B build/x86 -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
-          cmake --build build/x86 -j"$(nproc)" --target pokedaisy_libretro gb_field_test
+          cmake --build build/x86 -j"$(nproc)" --target pokedaisy_gbc_libretro gb_field_test
           gcc -I third_party/mgba/src/platform/libretro -o build/x86/pd_lr_host libretro/test/pd_lr_host.c -ldl -lm
-          sh libretro/test/check_exports.sh build/x86/pokedaisy_libretro.so
+          sh libretro/test/check_exports.sh build/x86/pokedaisy_gbc_libretro.so
       - name: Core (aarch64, Cortex-A53)
         run: |
           cmake -S libretro -B build/arm -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5 \
             -DCMAKE_TOOLCHAIN_FILE="$PWD/libretro/aarch64.cmake"
-          cmake --build build/arm -j"$(nproc)" --target pokedaisy_libretro
-          NM=aarch64-linux-gnu-nm sh libretro/test/check_exports.sh build/arm/pokedaisy_libretro.so
+          cmake --build build/arm -j"$(nproc)" --target pokedaisy_gbc_libretro
+          NM=aarch64-linux-gnu-nm sh libretro/test/check_exports.sh build/arm/pokedaisy_gbc_libretro.so
+      - name: GBA core over armGBA (x86 + aarch64)
+        run: |
+          cmake -S libretro/armgba -B build/gba-x86 -DCMAKE_BUILD_TYPE=Release
+          cmake --build build/gba-x86 -j"$(nproc)" --target pokedaisy_gba_libretro
+          sh libretro/test/check_exports.sh build/gba-x86/pokedaisy_gba_libretro.so
+          cmake -S libretro/armgba -B build/gba-arm -DCMAKE_BUILD_TYPE=Release -DCMAKE_TOOLCHAIN_FILE="$PWD/libretro/aarch64.cmake"
+          cmake --build build/gba-arm -j"$(nproc)" --target pokedaisy_gba_libretro
+          NM=aarch64-linux-gnu-nm sh libretro/test/check_exports.sh build/gba-arm/pokedaisy_gba_libretro.so
+          # It loads on any aarch64 glibc from 2.17 (glibc_compat.c): nothing newer may be asked for.
+          newest=$(aarch64-linux-gnu-objdump -T build/gba-arm/pokedaisy_gba_libretro.so | grep -oE 'GLIBC_2\.[0-9]+' | sort -t. -k2 -n | tail -1)
+          [ "${newest#GLIBC_2.}" -le 17 ] || { echo "::error::pokedaisy_gba_libretro.so needs $newest (2.17 at most)"; exit 1; }
 
   previews:
     name: Shared UI previews
@@ -58,5 +70,8 @@ jobs:
       - uses: actions/checkout@fbc6f3992d24b796d5a048ff273f7fcc4a7b6c09 # v5.1.0
         with:
           ref: ${{ inputs.ref }}
+      # The GBA core's flight records come from gamedata/ (Python 3.11+ for tomllib: this job's runner, not 22.04's).
+      - name: Flight records (libretro/pd_flight_gen.h) match gamedata
+        run: python3 libretro/gen_flight.py --check
       - name: make -C 3ds preview (fixtures; the ROM-backed lines skip without ROMs)
         run: make -C 3ds preview

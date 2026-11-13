@@ -122,9 +122,38 @@ static int by_count(const void* a, const void* b) {
     return d ? d : by_name(a, b);
 }
 
+// The open tab joined to the list the app's way (ItemsScreen's FolderTab): the tabs' tan, its dark border over the list's
+// outline only, so the two outlines meet in a clean corner, its inner layers and fill on over the list's light line up to
+// its gold band. [panelX]: the list window's outer edge. The frame's width.
+static int open_tab(struct pd_canvas* c, const struct pd_bag_palette* p, int x, int y, int panelX, uint32_t fill, bool first) {
+    const int bw = p->panel[0].width;
+    int reach = 0; // selectedFillReach: the tab's own layers
+    for (int i = 0; i < p->tabLayers; i++) reach += p->panel[i].width;
+    const int borderEnd = panelX + bw, fillEnd = panelX + reach;
+    pd_clip(c, x, y, borderEnd - x, TAB_H);
+    pd_round_rect(c, x, y, fillEnd - x + 8, TAB_H, 3, p->panel[0].color);
+    pd_unclip(c);
+    pd_clip(c, x + bw, y + bw, fillEnd - x - bw, TAB_H - 2 * bw);
+    int f = bw + pd_layered_box(c, x + bw, y + bw, fillEnd - x + 8, TAB_H - 2 * bw, 2, p->panel + 1, p->tabLayers - 1, fill);
+    pd_unclip(c);
+    if (first) {
+        // Level with the list's top: each of the tab's lines runs on past the list's rounded corner, so each reads as one
+        // line with the list's own, and the corner's leftover is the tab's.
+        const int cornerEnd = panelX + 3 + 1;
+        int ly = 0;
+        for (int i = 0; i < p->tabLayers; i++) {
+            int lx = i == 0 ? borderEnd : fillEnd;
+            pd_fill(c, lx, y + ly, cornerEnd - lx, p->panel[i].width, p->panel[i].color);
+            ly += p->panel[i].width;
+        }
+        if (3 - ly > 0) pd_fill(c, fillEnd, y + ly, 3 - ly, 3 - ly, fill);
+    }
+    return f;
+}
+
 // The pocket tabs down the left, the open one joined to the list.
 static void tabs(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_palette* p, const struct bag_view* v,
-                 int x, int w, int bottom, int joinX) {
+                 int x, int w, int bottom, int panelX) {
     int visible = ui->shoulderTabs ? (bottom - CONTENT_Y + 3) / (TAB_H + 3) : v->tabs;
     if (visible < 1) return;
     int first = v->active >= visible ? v->active - visible + 1 : 0;
@@ -132,17 +161,18 @@ static void tabs(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
         int y = CONTENT_Y + (i-first) * (TAB_H + 3);
         if (ui->shoulderTabs && y + TAB_H > bottom) break;
         bool open = i == v->active;
-        uint32_t fill = open ? p->fill : p->panel[p->tabLayers].color;
-        // The open tab carries its fill across the list frame.
+        uint32_t fill = p->panel[p->tabLayers].color;
+        // The open tab reaches onto the list's frame (beside the list only: with the shoulder hints it stands alone).
         const bool joined = open && !ui->shoulderTabs;
-        int f = pd_layered_box(c, x, y, joined ? joinX + 4 - x : w, TAB_H, 3, p->panel, p->tabLayers, fill);
-        if (joined) pd_fill(c, x + w - f - 1, y + f, joinX + 5 - (x + w - f - 1), TAB_H - 2 * f, p->fill);
+        int f = joined ? open_tab(c, p, x, y, panelX, fill, y == CONTENT_Y) : pd_layered_box(c, x, y, w, TAB_H, 3, p->panel, p->tabLayers, fill);
         const char* name = ui->bagSource ? ui->bagSource->pocketName(ui->bagSource->ctx,v->pockets[i]) : v->pockets[i] < 0 ? "ALL" : pd_pocket_name(v->pockets[i]);
-        int tx = x + f + 5, ty = pd_text_y(y, TAB_H);
-        int tw = pd_text_fit(c, tx, ty, w - 2 * f - 8, name, open ? p->text : p->tabText,
-                             open ? p->textShadow : p->tabTextShadow);
-        // Under the letters, not through them: the tab's last rows.
-        if (open) pd_fill(c, tx, y + TAB_H - f - 2, tw, 2, p->cursor);
+        // The capitals (font rows 4-12, the shadow 13), a free row and the open tab's 2-row underline, centred as one block
+        // on every tab: the line never touches the letters (a tab's inside is only 16-20 rows).
+        int capTop = y + f + (TAB_H - 2 * f - 13 + 1) / 2;
+        int tx = x + f + 5, ty = capTop - 4;
+        pd_text_fit(c, tx, ty, w - 2 * f - 8, name, p->tabText, p->tabTextShadow);
+        // The app's tab-wide underline, a row clear of the letters' shadow.
+        if (open) pd_fill(c, tx, capTop + 11, x + w - f - 5 - tx, 2, p->cursor);
         // A backend's bag keys its tabs by its own pocket ids (ui->bagPocket), the shared one by the tab's place.
         const int key = ui->bagSource ? v->pockets[i] : i;
         const int hitId = HIT_BAG_TAB + key;
@@ -208,14 +238,8 @@ static void list(struct pd_ui* ui, struct pd_canvas* c, const struct pd_bag_pale
         if(!ui->bagSource)ui_add_scroll_hit(ui, ix, top, iw, bottom - top, HIT_BAG_ROW + i);
     }
     pd_unclip(c);
-    // A scroll bar when the list runs past the window.
-    if (maxScroll > 0) {
-        int total = v->count * BAG_ROW;
-        int th = ih * ih / total;
-        if (th < 8) th = 8;
-        int ty = iy + (ih - th) * ui->bagScroll / maxScroll;
-        pd_fill(c, ix + iw - 4, ty, 2, th, p->cursor);
-    }
+    // A scroll bar when the list runs past the window, dragged like SETTINGS'.
+    ui_list_rail(ui, c, ix + iw, iy, ih, ui->bagScroll, v->count * BAG_ROW);
 }
 
 // The picked item's description, a window along the bottom (ItemsScreen's), USE / GIVE at its right where they work.
@@ -354,14 +378,12 @@ void ui_bag_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, 
     list(ui, c, p, &v, panelX, CONTENT_Y, c->w - MARGIN - panelX, bottom - CONTENT_Y);
     const bool sort = !details && (ui->shoulderTabs || ui->bagSelected < 0);
     const int sortY = c->h - MARGIN - 22;
-    int frame = 0;
-    for (int i = 0; i < p->panelLayers; i++) frame += p->panel[i].width;
-    tabs(ui, c, p, &v, MARGIN, tabW - 4, sort ? sortY - 3 : bottom, panelX + frame);
+    tabs(ui, c, p, &v, MARGIN, tabW - 4, sort ? sortY - 3 : bottom, panelX);
     if (sort) {
         // SORT: under the tabs, like the description bar's corner.
         static const char* const SORTS[3] = { "DEFAULT", "NAME", "COUNT" };
         int sy = sortY, sw = tabW - 4;
-        pd_layered_box(c, MARGIN, sy, sw, 22, 3, p->desc, p->descLayers, p->descFill);
+        pd_layered_two_tone(c, MARGIN, sy, sw, 22, 3, p->desc, p->descLayers, p->descFill, 0);
         const char* sortLabel = SORTS[ui->bagSort];
         char hint[16];
         snprintf(hint, sizeof hint, "SEL %s", sortLabel);

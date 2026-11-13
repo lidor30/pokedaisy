@@ -39,6 +39,8 @@ class Hotkeys private constructor(
         COMPANION(tk("COMPANION")),
         // No default keys: the game's sound off and on again (SOUND > MUTE GAME, GameVolume).
         MUTE(tk("MUTE")),
+        // No default keys: FREE FLIGHT's TAKE OFF, or LAND while up (companion.data.Flight).
+        FREE_FLIGHT(tk("FREE FLIGHT")),
         // A DS game on one screen: its touch screen floating over the game (DS LAYOUT), or closed again. L2.
         TOUCH_SCREEN(tk("TOUCH SCREEN")),
         // A DS game on one screen held sideways steps to the next DS LAYOUT (ONE SCREEN, SIDE BY SIDE...). R2.
@@ -56,6 +58,7 @@ class Hotkeys private constructor(
             QUICK_MENU -> NewFeatures.badge(NewFeatures.QUICK_MENU)
             COMPANION -> NewFeatures.badge(NewFeatures.COMPANION_HOTKEY)
             MUTE -> NewFeatures.badge(NewFeatures.GAME_VOLUME)
+            FREE_FLIGHT -> NewFeatures.badge(NewFeatures.FREE_FLIGHT)
             TOUCH_SCREEN, DS_LAYOUT -> NewFeatures.badge(NewFeatures.DS_LAYOUT)
             else -> null
         }
@@ -254,6 +257,19 @@ class Hotkeys private constructor(
             }
             props.setProperty(action.prop, keyNames.joinToString("+"))
             writeProps(filesDir, props)
+        }
+
+        /** The key [keyName] alone comes off every hotkey that was just that key (its chords with other keys stay). */
+        fun releaseKey(filesDir: File, keyName: String) {
+            val props = readProps(filesDir)
+            val chord = chordOf(keyName)
+            var changed = false
+            for (a in Action.entries) {
+                val chords = props.getProperty(a.prop).orEmpty().split(',').map { it.trim() }.filter { it.isNotEmpty() }
+                val kept = chords.filter { chordOf(it) != chord }
+                if (kept.size != chords.size) { props.setProperty(a.prop, kept.joinToString(", ")); changed = true }
+            }
+            if (changed) writeProps(filesDir, props)
         }
 
         /** Unbinds [action] (an empty value, so the default doesn't come back). */

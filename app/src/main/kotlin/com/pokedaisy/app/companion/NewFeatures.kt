@@ -74,6 +74,12 @@ object NewFeatures {
 
     /** GAME BUTTONS > START 2 / SELECT 2: the GBA / Game Boy games' spare buttons, apart from the DS games' X / Y. */
     const val GBA_BUTTONS = "gba_buttons"
+    /** GAME BUTTONS' UP / DOWN / LEFT / RIGHT: more keys for the D-pad (a controller whose D-pad sends letters). */
+    const val DPAD_KEYS = "dpad_keys"
+    /** SETTINGS > CHALLENGE ICONS: RetroAchievements' corner icons on or off. */
+    const val RA_ICONS = "ra_icons"
+    /** SETTINGS > DS TOUCH SCREEN: a DS game's touch screen stretched over the second display. */
+    const val DS_TOUCH_FILL = "ds_touch_fill"
 
     /** SETTINGS > PLAYER LOOK: play as another game's hero (companion.data.PlayerLook). */
     const val PLAYER_LOOK = "player_look"
@@ -99,6 +105,9 @@ object NewFeatures {
     /** SETTINGS > DS RESOLUTION: a DS game's 3D drawn at 2x to 8x on the GPU (nds/pk_nds_gl.h). */
     const val DS_RESOLUTION = "ds_resolution"
     const val DS_CPU_BOOST = "ds_cpu_boost"
+
+    /** SETTINGS > DS CORE: DSperate, a second DS emulator for weak devices (companion.DsCore). */
+    const val DS_CORE = "ds_core"
 
     /** SETTINGS > APP > TIPS: a card now and then about a feature the player hasn't found (FeatureTips). */
     const val TIPS = "tips"
@@ -159,6 +168,18 @@ object NewFeatures {
     const val BATTLE_STYLE = "battle_style"
     /** QUICK MENU > FLASH: the field move from the quick menu (companion.data.Flash); the QUICK MENU row carries it too. */
     const val QUICK_FLASH = "quick_flash"
+    /** FREE FLIGHT: TAKE OFF / LAND (the QUICK MENU's tile and its row, the MAP tab, the FREE FLIGHT hotkey). */
+    const val FREE_FLIGHT = "free_flight"
+    /** SETTINGS > FLY STYLE: SCENIC flies over the field to the town. */
+    const val SCENIC_FLY = "scenic_fly"
+
+    /** MAKEOVER > RIDE ON: a motorcycle or a scooter in place of the bike (companion.data.RideOn). */
+    const val RIDE_ON = "ride_on"
+
+    /** SETTINGS > FLIGHT AREA: flying only over the maps the player has seen (companion.data.FlightArea). */
+    const val FLIGHT_AREA = "flight_area"
+    /** MAKEOVER > FLY ON: a balloon, a helicopter or a zeppelin in place of the bird. */
+    const val FLY_ON = "fly_on"
     /** SETTINGS > ZOOM: EXPAND's zoom picked from a list, without a right stick. */
     const val ZOOM_SETTING = "zoom_setting"
     /** TOUCH CONTROLS > VIBRATION as a switch with its STRENGTH under it (TouchHaptics). */
@@ -172,7 +193,8 @@ object NewFeatures {
         FOLLOWER, COMPANION_HOTKEY, NUZLOCKE, GBA_BUTTONS, DS_RESOLUTION, TIPS, ROMS_FOLDERS, SAVE_BACKUPS, DISCORD, BOXES_TAB,
         GAME_VOLUME, ROM_PATCH, TRADE_EVOLUTIONS, DS_LAYOUT, DS_CPU_BOOST, LINK_PLAY, BATTLE_FOCUS, THEMES, SAVE_TRADE, FOLD_LAYOUT, TOUCH_STYLES, TOUCH_SKINS,
         AUDIO_EFFECTS, BATTLE_INFO, BATTLE_VIEW, GAME_NAMES, SUPPORTED_ONLY, LOOK_AROUND, INSTANT_TEXT, BATTLE_STYLE,
-        QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS,
+        QUICK_FLASH, ZOOM_SETTING, TOUCH_VIBRATION, TOUCH_MORE_BUTTONS, FREE_FLIGHT, SCENIC_FLY, FLIGHT_AREA, FLY_ON, RIDE_ON,
+        DPAD_KEYS, RA_ICONS, DS_TOUCH_FILL, DS_CORE,
     )
 
     private const val DAYS = 7

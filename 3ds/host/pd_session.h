@@ -9,6 +9,7 @@
 #include <stdint.h>
 
 #include "../../linux/fly.h"
+#include "../../linux/flight.h"
 #include "../../linux/hud.h"
 #include "../../linux/quick_menu.h"
 #include "../core/pd_binput.h"
@@ -45,16 +46,19 @@ struct pd_session_host {
     // The game's .cheats file (mGBA's format), by the ROM's CRC32; NULL = none here.
     void (*cheatPath)(void* ctx, uint32_t crc, char* path, size_t len);
     void* ctx;
-    // EXPAND's drawing on a thread of its own: pk_wide_finish starts there, and join waits for it. NULL: drawn in place.
+    // EXPAND's drawing on a thread of its own: pd_session_wide_finish starts there, and join waits for it. NULL: drawn in place.
     void (*wideGo)(void);
     void (*wideJoin)(void);
     // The dev build's clock, for where a frame goes (pd_session_prof); NULL: not counted.
     uint64_t (*clock)(void);
+    // FLIGHT AREA's file for one save of a ROM (by its CRC32 and flight_save_key); NULL = kept for this run only.
+    void (*flightAreaPath)(void* ctx, uint32_t crc, uint32_t key, char* path, size_t len);
 };
 
-// Clock ticks spent since the host last zeroed it: in the core, waiting for its renderer, in EXPAND, reading the snapshot.
+// Clock ticks spent since the host last zeroed it: in the core, waiting for its renderer, in EXPAND, reading the snapshot,
+// FREE FLIGHT's step and its drawing.
 struct pd_session_prof {
-    uint64_t run, wait, wide, snap;
+    uint64_t run, wait, wide, snap, flightTick, flightDraw;
 };
 
 enum pd_job { PD_JOB_NONE, PD_JOB_GB_TAKEN, PD_JOB_PC, PD_JOB_REPEL, PD_JOB_BIKE, PD_JOB_BIKE_WAIT, PD_JOB_BIKE_RESTORE };
@@ -95,6 +99,7 @@ struct pd_session {
     bool fieldKnown, wideKnown;
     uint32_t wildSwitch;
     int fieldFlags;
+    bool menuLatched;     // the last scene looked at was a menu screen (pd_session.c's menu_screen)
     bool wideReady;       // this frame shows EXPAND's window
     struct pd_wide_hole wideHole;
     const uint32_t* nextVideo;
@@ -107,6 +112,7 @@ struct pd_session {
 
     // The QUICK MENU.
     bool quickOpen;
+    uint32_t quickHeld; // buttons pressed in the menu, kept from the game until let go (the app's menuHeld)
     int quickSel, quickCount;
     struct quick_item quick[QUICK_COUNT];
     char repelWhy[32];
@@ -121,7 +127,25 @@ struct pd_session {
     char repelRows[3][48];
     const char* repelNames[3];
     const struct pd_config* flyCfg;
+    const struct pd_config* flashCfg; // FLASH from the quick menu (linux/flash.c), where the ROM has its code
+    int flashAsk;                     // 1+ = FLASH picked, run between two frames
+    const struct pd_config* tmCfg;    // USE on a TM / HM (linux/tm_teach.c), where the ROM has its code
+    int tmStage, tmWait, tmItem;      // 1 = the fade's on its way to the game's TM screen
+    uint32_t tmCallback;
     bool itemsOk, pcOk, bikeOk;
+
+    // FREE FLIGHT, FLIGHT AREA and the scenic FLY (linux/flight.c over the app's pk_flight.c): NULL where the game can't.
+    const struct pd_config* flightCfg;
+    int flightAsk;           // 1+ = TAKE OFF / LAND picked, run between two frames
+    int flightState;         // pk_flight_state() after the last frame
+    int flightVehicle;       // FLY ON the words were last given with
+    bool flightDrawn;        // the flight's shadow went into the last frame shown
+    bool scenic;             // the flight up there is the scenic FLY's (the trip runs faster)
+    int scenicAsk;           // 1+ = FLY STYLE SCENIC to scenicMapsec, routed between two frames
+    int scenicMapsec;
+    bool flightAreaAnywhere; // pk_flight was told ANYWHERE
+    int flightAreaTold;      // the frame FLIGHT AREA's edge was last explained
+    struct flight_area flightArea;
 
     // USE / GIVE / TAKE, each run between frames.
     int itemAsk;   // 1 = pick wanted, 2 = apply, 3 = take
@@ -175,6 +199,8 @@ bool pd_session_can_focus(const struct pd_session* s);
 void pd_session_set_focus(struct pd_session* s, bool on);
 // Draws the companion on the bottom canvas.
 void pd_session_draw(struct pd_session* s, struct pd_canvas* bottom);
+// A Game Boy / Color game (160x144): its picture is pillarboxed in white, never stretched.
+bool pd_session_game_boy(const struct pd_session* s);
 // The last frame stays on screen (the battle's switch drives the game's party menu behind it).
 bool pd_session_holds_frame(const struct pd_session* s);
 // The overlay's canvas (PD_TOP_W x PD_TOP_H, alpha in the top byte); redrawn when overlayDirty.
@@ -187,6 +213,9 @@ int pd_session_screen(const struct pd_session* s);
 const uint32_t* pd_session_perf(unsigned fpsTenths, unsigned cpuPercent, int* w);
 // EXPAND's window, s->wideW x s->wideH pixels, when s->wideReady.
 const uint32_t* pd_session_wide(const struct pd_session* s);
+// EXPAND's deferred drawing (pk_wide_finish) and then FREE FLIGHT's clouds over its margins: the host's wideGo thread runs
+// this (it's called in place without one).
+void pd_session_wide_finish(void);
 // STATES: the slot's file and picture; the save state of the session's game.
 bool pd_session_save_state(struct pd_session* s, int slot);
 bool pd_session_load_state(struct pd_session* s, int slot);

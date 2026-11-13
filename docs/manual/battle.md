@@ -59,7 +59,7 @@ Want to work the battle out yourself? Turn off `BATTLE INFO` in SETTINGS (COMPAN
 
 ### BATTLE VIEW
 
-The `BATTLE` tab opens on your battle buttons. If you'd rather read about the fight first and use the game's own menu, set `BATTLE VIEW` to `INFO` in SETTINGS (COMPANION group). `BACK` on `INFO` still brings the buttons up.
+The `BATTLE` tab opens on your battle buttons. If you'd rather read about the fight first and use the game's own menu, set `BATTLE VIEW` to `INFO` in SETTINGS (COMPANION group), or to `SUGGESTIONS` to see the best picks first. `BACK` on either still brings the buttons up.
 
 ### ONE-TAP MOVES
 

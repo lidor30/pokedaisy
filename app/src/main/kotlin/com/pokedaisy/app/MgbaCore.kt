@@ -48,6 +48,35 @@ object MgbaCore {
      * core and gives back its r0, or -1 if it never returned. Emu thread, between frames. */
     external fun pkCall(fn: Long, a0: Int, a1: Int, a2: Int, a3: Int): Long
 
+    /** FREE FLIGHT (pk_flight.h, companion.data.Flight.kt): the game's addresses ([com.pokedaisy.app.companion.data.FlightFns.words]),
+     * or null to switch it off. Emu thread. */
+    external fun pkFlightConfigure(words: IntArray?)
+    /** Takes off: [FLIGHT_OK] or why not ([FLIGHT_BUSY], [FLIGHT_NOT_NOW], [FLIGHT_NOT_ON_FOOT]). Emu thread, between frames. */
+    external fun pkFlightTakeOff(): Int
+    /** Lands on the nearest tile a player can stand on. */
+    external fun pkFlightLand()
+    /** The scenic FLY: flies [dirs] (1 down, 2 up, 3 left, 4 right) at the faster speed, then lands. */
+    external fun pkFlightRoute(dirs: ByteArray): Int
+    /** FLIGHT AREA (companion.data.FlightArea): a bit per map (group shl 8 or num) the flight may cross into, null = anywhere. Emu thread. */
+    external fun pkFlightArea(bits: ByteArray?)
+    /** True once after the D-pad met FLIGHT AREA's edge (a map the player hasn't seen). Emu thread. */
+    external fun pkFlightAreaTurned(): Boolean
+    /** [FLIGHT_IDLE], [FLIGHT_TAKING_OFF], [FLIGHT_FLYING], [FLIGHT_LANDING] or [FLIGHT_DISMOUNT]. */
+    external fun pkFlightState(): Int
+    /** Steps of the route flown so far, -1 with none. */
+    external fun pkFlightRouteDone(): Int
+
+    const val FLIGHT_IDLE = 0
+    const val FLIGHT_TAKING_OFF = 1
+    const val FLIGHT_FLYING = 2
+    const val FLIGHT_LANDING = 3
+    const val FLIGHT_DISMOUNT = 4
+    const val FLIGHT_OK = 0
+    const val FLIGHT_NOT_CONFIGURED = -1
+    const val FLIGHT_BUSY = -2
+    const val FLIGHT_NOT_NOW = -3
+    const val FLIGHT_NOT_ON_FOOT = -4
+
     /** Whether [pkCall] can run now: the frame ended with the CPU in the BIOS, not part-way through the game's own
      * code (its interrupt handler, a lag frame) - pokedaisy_jni.c's pk_call_safe. Field-item jobs wait a frame if not. */
     external fun pkCallSafe(): Boolean
@@ -87,6 +116,11 @@ object MgbaCore {
 
     /** FOLLOWER: the Pokémon's six 32x32 frames (3072 bytes) and palette (32); nulls = none. Emu thread. */
     external fun pkFollowerSet(frames: ByteArray?, pal: ByteArray?)
+    /** RIDE ON's vehicle (companion.data.RideOn.Sprite): three views (1024 bytes each, OBJ tile order: 32 x 64 or 64 x 32 by
+     * [width]) and a palette, or null. Emu thread. */
+    external fun pkRideSet(frames: ByteArray?, pal: ByteArray?, width: Int)
+    /** RIDE ON's vehicle drawn this frame (behind the player, only while they're on a bike). Emu thread. */
+    external fun pkRideShow(on: Boolean)
 
     /** FOLLOWER: drawn from the next frame on, or not (off, it reappears only once the player steps). Emu thread. */
     external fun pkFollowerShow(on: Boolean)
@@ -136,6 +170,9 @@ object MgbaCore {
     const val FIELD_DARK_BOTTOM = 65536
     /** A DS game's own: a menu screen all on the top screen, its touch screen a picture (Platinum's party): the game alone. */
     const val FIELD_TOP_ONLY = 131072
+    /** A GBA game: a window up on the field's text layer while its controls are free (a START menu that doesn't lock them,
+     *  Recharged Yellow's): AUTO-RUN keeps its B out of it (GitHub #610). */
+    const val FIELD_WINDOW = 262144
     /** WIDE: the window to draw around the frame from the next frame on ([WideCamera]), in the frame's pixels
      * (its top-left 0, 0); [w] 0 = none. Any thread. */
     external fun pkWideSetView(x: Int, y: Int, w: Int, h: Int)
@@ -224,6 +261,17 @@ object MgbaCore {
 
     /** DS CPU BOOST: the emulated ARM9 at twice the DS's clock - a game's own slow frames (HeartGold walking) go. Emu thread. */
     external fun pkNdsCpuBoost(on: Boolean)
+
+    /** DS CORE (companion.DsCore): the DS core the next [pkInit] of a DS cart starts, NDS_CORE_*. Emu thread. */
+    external fun pkNdsSetCore(core: Int)
+    /** The DS core that's up (NDS_CORE_*), -1 with no DS game. */
+    external fun pkNdsCore(): Int
+    /** melonDS (nds/pk_nds.cpp): every DS feature. */
+    const val NDS_CORE_MELONDS = 0
+    /** DSperate (nds/pk_nds_dsp.cpp): for weak devices; no EXPAND, DS RESOLUTION, PC / FLY calls, STEADY or DS CPU BOOST. */
+    const val NDS_CORE_DSPERATE = 1
+    /** [pkStateMatchesSave]'s answer for a DS state the other core made: it won't load. */
+    const val STATE_OTHER_CORE = 2
     /** A DS game's Action Replay codes ([words], [lengths] words per cheat: cheats.DsCheats) into melonDS's AREngine,
      * replacing the ones before; none = no cheats. Emu thread, between frames. The count loaded, -1 with no DS game. */
     external fun pkNdsCheats(words: IntArray, lengths: IntArray): Int

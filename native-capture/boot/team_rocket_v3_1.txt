@@ -1,0 +1,9 @@
+# Pokémon Team Rocket Edition 2026 v3.1 (Spanish): from the save (title, START, A on CONTINUAR, A), on the field in
+# ALMACÉN ROCKET.
+wait 600
+hold START 5
+wait 300
+hold A 5
+wait 300
+hold A 5
+wait 300

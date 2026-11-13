@@ -11,6 +11,7 @@
   pdlink.py [-a IP] tap X Y [FRAMES] | drag X0 Y0 X1 Y1 [FRAMES]
   pdlink.py [-a IP] opt SCREEN ASPECT     set them while playing (-1 leaves one alone; not saved)
   pdlink.py [-a IP] wild SPECIES LEVEL    a scripted wild battle, on the field of a GBA game
+  pdlink.py [-a IP] teach SLOT INDEX MOVE a party Pokemon's move (the game's SetMonData), in RAM until the game saves
   pdlink.py [-a IP] shot OUT.png          both screens, stacked as the console shows them
   pdlink.py [-a IP] push BUILD.3dsx       the new build, then restart into it
 
@@ -130,6 +131,8 @@ def main():
         link.call(f"opt {rest[0]} {rest[1]}")
     elif cmd == "wild":
         link.call(f"wild {rest[0]} {rest[1]}")
+    elif cmd == "teach":
+        link.call(f"teach {rest[0]} {rest[1]} {rest[2]}")
     elif cmd == "shot":
         shot(link, rest[0])
     else:

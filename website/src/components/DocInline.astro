@@ -1,8 +1,8 @@
 ---
 // A docs paragraph's spans (src/lib/docs.js): bold, italic, `code` (a button or setting name) and links.
-interface Props { spans: any[] }
-const { spans } = Astro.props;
-const href = (s) => s.href ?? `/docs/${s.page}/${s.anchor ? `#${s.anchor}` : ''}`;
+interface Props { spans: any[]; local?: Record<string, string> }
+const { spans, local } = Astro.props;
+const href = (s) => s.href ?? `${local?.[s.page] ?? `/docs/${s.page}/`}${s.anchor ? `#${s.anchor}` : ''}`;
 const inner = (s) => {
   let html = s.text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/\n/g, '<br>');
   if (s.code) html = `<code class="d-code">${html}</code>`;

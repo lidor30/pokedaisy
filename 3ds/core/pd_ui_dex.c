@@ -134,14 +134,14 @@ int pd_ui_dex_filters(struct pd_ui* ui, struct pd_canvas* c, const int counts[4]
 }
 
 void pd_ui_dex_list_row(struct pd_canvas* c, int x, int y, int w, int number, const char* name,
-                        bool seen, bool caught, bool selected, const uint32_t* icon, uint32_t clear) {
+                        bool seen, uint32_t mark, bool selected, const uint32_t* icon, uint32_t clear) {
     if (selected) pd_fill(c, x, y, w, DEX_ROW, PD_ROW_SELECTED);
     char no[16];
     snprintf(no, sizeof no, "No.%03d", number);
     pd_text(c, x + 4, y, no, PD_MUTED, PD_MUTED_SHADOW);
     pd_text_fit(c, x + 78, y, w - 92, seen ? name : "???", PD_LABEL, PD_LABEL_SHADOW);
     if (!seen) return;
-    pd_fill(c, x + w - 10, y + 7, 5, 5, caught ? PD_VALUE : PD_MUTED);
+    pd_fill(c, x + w - 10, y + 7, 5, 5, mark);
     if (icon)
         for (int iy = 0; iy < 16; iy++)
             for (int ix = 0; ix < 16; ix++) {
@@ -203,7 +203,7 @@ static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
             const uint32_t* icon = seen ? pd_mon_icon_pixels(g, species, false) : NULL;
             const bool selected = ui->focusId == HIT_DEX_ROW + nat || ui->focusId == HIT_DEX_READ_ONLY + nat;
             pd_ui_dex_list_row(c, ix, ry, iw - 4, number, pd_species_name(g, species, buf, sizeof buf),
-                               seen, caught, selected, icon, 0xff000000u);
+                               seen, caught ? PD_VALUE : PD_MUTED, selected, icon, 0xff000000u);
         } else {
             if (ui->pressedId == HIT_DEX_ROW + nat) pd_fill(c, ix, ry, iw, DEX_ROW, PD_ROW_SELECTED);
             if (seen) ui_ball(c, ix + 6, ry + 4, caught);
@@ -224,7 +224,7 @@ static void list_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_gam
         }
     }
     pd_unclip(c);
-    ui_scroll_bar(c, ix + iw - 4, iy, ih, ui->dexScroll, n * DEX_ROW, PD_MUTED);
+    ui_list_rail(ui, c, ix + iw, iy, ih, ui->dexScroll, n * DEX_ROW);
 }
 
 static void draw_sprite(struct pd_canvas* c, int x, int y, const uint32_t* px) {
@@ -271,6 +271,9 @@ static void page_line(struct pd_canvas* c, int x, int* y, int top, int bottom, i
 
 static void section_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_dex_entry* e, int x, int top, int w, int h) {
     char left[64], right[32];
+    // Room for the rail when the page ran past its window last time.
+    const bool railed = ui->dexPageMax > 0;
+    if (railed) w -= 10;
     if (ui->dexPageScroll > ui->dexPageMax) ui->dexPageScroll = ui->dexPageMax;
     if (ui->dexPageScroll < 0) ui->dexPageScroll = 0;
     int bottom = top + h, y = top - ui->dexPageScroll;
@@ -312,6 +315,7 @@ static void section_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_
     pd_unclip(c);
     ui->dexPageMax = y + ui->dexPageScroll - top - h;
     if (ui->dexPageMax < 0) ui->dexPageMax = 0;
+    ui_list_rail(ui, c, x + w + (railed ? 10 : 0), top, h, ui->dexPageScroll, ui->dexPageMax + h);
 }
 
 int pd_ui_dex_machine_row(int levels) {
@@ -645,7 +649,9 @@ static void entry_view(struct pd_ui* ui, struct pd_canvas* c, const struct pd_ga
         int cw = (iw - 3 * 2) / 4;
         for (int i = 0; i < 4; i++) {
             int cx = ix + i * (cw + 2);
-            pd_title_box(c, cx, dy, cw, 18, i == ui->dexSection ? PD_TITLE_FILL : PD_LIST_FILL);
+            // The tab bar's chips (two-tone), the open section white.
+            pd_layered_two_tone(c, cx, dy, cw, 18, 3, pd_cur->chip, pd_cur->chipCount,
+                                i == ui->dexSection ? pd_cur->tabSelectedFill : pd_cur->tabIdleFill, 0);
             pd_text(c, cx + (cw - pd_text_width(SECTIONS[i])) / 2, pd_text_y(dy, 18), SECTIONS[i],
                     i == ui->dexSection ? PD_VALUE : PD_LABEL, i == ui->dexSection ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
             ui_add_hit(ui, cx, dy, cw, 18, HIT_DEX_SECTION + i);

@@ -261,6 +261,8 @@ def port(rom, refs, key):
     out["box"] = port_box(src, rom, key, shift) if key in BOX else None
     out["tm"] = port_tm(src, rom, key, shift) if key in TM_REC else None
     out["flash"] = port_flash(src, rom, key, shift) if key in FLASH_REC else None
+    fl_key = key if key in FLIGHT_REC else FLIGHT_FROM.get(key)
+    out["flight"] = port_flight(refs[fl_key], rom, fl_key, shift) if fl_key and out["fly"] else None
     return out, None
 
 
@@ -442,8 +444,138 @@ def kt(rom, key, m):
             scratch = 0x0203FFF0L, itemCount = {fam['itemCount']}, unholdablePockets = setOf({', '.join(map(str, fam['pockets']))}),
             codeCrcs = listOf({', '.join(f'0x{crc(rom, v):08X}L' for v in party)}),
             useFuncs = setOf({', '.join(h(m[n]) for n in USE)}),
-        ),{pc_kt(rom, fam, m.get('pc'))}{fly_kt(rom, m.get('fly'))}
+        ),{pc_kt(rom, fam, m.get('pc'))}{fly_kt(rom, m.get('fly'))}{flight_kt(rom, m.get('flight'))}
     ),"""
+
+
+# FREE FLIGHT (Flight.kt): the English records in gamedata/gen3/records/ (pret's symbols for each build), mapped into the
+# other languages like FLY's: functions by code, RAM globals through the literal pools, gFieldEffectObjectTemplate_Bird,
+# gMapGroups and sHealLocations through theirs, each checked against the ROM. English FireRed rev 0 keeps its own record
+# (the hacks on its code get it only where Flight.kt's flightAllowed lets them); Ruby / Sapphire rev 0 map from rev 1.
+FLIGHT_REC = {"BPRE0": "FLIGHT_FIRERED_REV0", "BPRE1": "FLIGHT_FIRERED_REV1", "BPGE0": "FLIGHT_LEAFGREEN_REV0",
+              "BPGE1": "FLIGHT_LEAFGREEN_REV1", "BPEE0": "FLIGHT_EMERALD", "AXVE1": "FLIGHT_RUBY", "AXPE1": "FLIGHT_SAPPHIRE"}
+FLIGHT_FROM = {"AXVE0": "AXVE1", "AXPE0": "AXPE1"}
+FLIGHT_FUNCS = ("lockControls", "unlockControls", "createSprite", "destroySprite", "startSpriteAnim", "behaviorAt",
+                "collisionAt", "elevationAt", "objectAt", "playSe", "drawMetatileAt")   # FlightFns.functions, then the rest
+FLIGHT_MORE_FUNCS = ("riderTemplate", "riderGfx", "drawView", "cb2Overworld", "spriteDummy")
+FLIGHT_RAM = ("objectEvents", "playerAvatar", "sprites", "vmap", "connectionFlags", "saveBlock1Ptr", "saveBlock2Ptr", "main",
+              "lockByte", "paletteFade", "spriteOffset", "spriteOffsetY", "mapHeader")
+FLIGHT_ROM = ("birdTemplate", "mapGroups", "healLocations")
+
+
+def why(rom, what):
+    """port_flight's refusal, reported."""
+    print(f"  {rom.code}{rom.rev} FLIGHT: {what} not found / didn't check")
+    return None
+
+
+def port_table_entry(src, rom, a):
+    """[a] reached through a table of pointers (gFieldEffectObjectTemplatePointers[FLDEFFOBJ_BIRD]): the table found in
+    English as the aligned word run holding [a] whose start a literal pool loads, mapped, and read at the same index."""
+    want = struct.pack("<I", a)
+    k = src.d.find(want)
+    while k >= 0:
+        if k % 4 == 0:
+            for back in range(0, 64):
+                base = k - 4 * back
+                w = struct.unpack_from("<I", src.d, base)[0] if base >= 0 else 1
+                if w and not B <= w < B + len(src.d):   # a table of pointers (some entries NULL)
+                    break
+                if struct.pack("<I", B + base) in src.words():
+                    t, _ = map_literal(src, rom, B + base)
+                    if t is not None and B <= t < B + len(rom.d):
+                        v = rom.u32(t + 4 * back)
+                        if B <= v < B + len(rom.d):
+                            return v
+        k = src.d.find(want, k + 1)
+    return None
+
+
+def port_flight(src, rom, key, shift):
+    """FREE FLIGHT's addresses mapped from English [key]'s record, or None. Checked: every function and global found, the
+    bird template's callback the mapped SpriteCallbackDummy, every map group's headers in the ROM, sHealLocations' entries
+    the same bytes as English's."""
+    rec_name = FLIGHT_REC.get(key)
+    if rec_name is None:
+        return None
+    r = record(rec_name)
+    got = {}
+    anchors = []
+    for n in FLIGHT_FUNCS + FLIGHT_MORE_FUNCS:
+        a = r.get(n, 0)
+        if not a:
+            continue
+        v = port_fn(src, rom, a, shift)
+        if v is None:
+            return why(rom, n)
+        got[n] = v
+        anchors.append((a, v))
+    # MapGridGetCollisionAt and MapGridGetElevationAt start with the same 32 bytes (one reads the square's bits 10-11, the
+    # other 12-15): mapped by code, both land on one. The collision one sits at English's distance from the elevation one,
+    # and its own code (up to its literal pool) must be English's there.
+    if True:   # always: the code alone can't tell them apart
+        x, dist = got["elevationAt"], r["collisionAt"] - r["elevationAt"]
+        # They first differ past their literal pool (the map layout's RAM address, moved in a rebuild) and BLs: compared
+        # over 0x48 bytes with RAM words and BL halves left out.
+        def same(a, b):
+            for k in range(0, 0x48, 2):
+                h = struct.unpack_from("<H", src.d, b - B + k)[0]
+                w = struct.unpack_from("<I", src.d, b - B + (k & ~3))[0]
+                if 0x02000000 <= w < 0x03008000 or h >> 11 in (0b11110, 0b11111):
+                    continue
+                if rom.d[a - B + k:a - B + k + 2] != src.d[b - B + k:b - B + k + 2]:
+                    return False
+            return True
+        pair = next(((e, e + dist) for e in (x, x - dist) if same(e, r["elevationAt"]) and same(e + dist, r["collisionAt"])), None)
+        if pair is None:
+            return why(rom, "collisionAt / elevationAt (apart by English's distance)")
+        got["elevationAt"], got["collisionAt"] = pair
+    for n in FLIGHT_RAM:
+        a = r.get(n, 0)
+        if not a:
+            continue
+        v = port_ram(src, rom, a, anchors)
+        if v is None:
+            return why(rom, n)
+        got[n] = v
+    for n in FLIGHT_ROM:
+        v, _ = map_literal(src, rom, r[n])
+        if v is None:
+            v = port_table_entry(src, rom, r[n])
+        if v is None or not B <= v < B + len(rom.d):
+            return why(rom, n)
+        got[n] = v
+    # The bird's template: its callback is SpriteCallbackDummy, as English's (mapped by code)
+    cb = port_fn(src, rom, src.u32(r["birdTemplate"] + 0x14), shift)
+    if cb is None or rom.u32(got["birdTemplate"] + 0x14) != cb:
+        return why(rom, "the bird template's callback")
+    for g, size in enumerate(r["mapGroupSizes"]):
+        lst = rom.u32(got["mapGroups"] + 4 * g)
+        if not B <= lst < B + len(rom.d):
+            return why(rom, f"map group {g}")
+        for m in range(size):
+            hdr = rom.u32(lst + 4 * m)
+            if not B <= hdr < B + len(rom.d) or not B <= rom.u32(hdr) < B + len(rom.d):
+                return why(rom, f"map {g}.{m}")
+    size = r["healLocationSize"] * r["healLocationCount"]
+    if rom.d[got["healLocations"] - B:got["healLocations"] - B + size] != src.d[r["healLocations"] - B:r["healLocations"] - B + size]:
+        return why(rom, "sHealLocations' entries")
+    got["rec"] = rec_name
+    return got
+
+
+def flight_kt(rom, fl):
+    if not fl:
+        return ""
+    if fl.get("own"):
+        return f"\n        flight = {fl['rec']},"
+    h = lambda v: f"0x{v:08X}L"
+    r = record(fl["rec"])
+    names = [n for n in FLIGHT_FUNCS + FLIGHT_MORE_FUNCS + FLIGHT_RAM + FLIGHT_ROM if n in fl]
+    fields = ", ".join(f"{n} = {h(fl[n])}" for n in names)
+    funcs = [fl[n] for n in FLIGHT_FUNCS] + [fl[n] for n in ("riderTemplate", "riderGfx", "drawView") if n in fl]
+    crcs = ", ".join(f"0x{crc(rom, v):08X}L" for v in funcs)
+    return f"\n        flight = {fl['rec']}.copy(\n            {fields},\n            codeCrcs = listOf({crcs}),\n        ),"
 
 
 def fly_kt(rom, fly):
@@ -546,6 +678,10 @@ def main():
             if key in FLY_FROM:
                 m["fly"] = port_fly(refs[FLY_FROM[key]], rom, FLY_FROM[key], 0)
             m["box"] = BOX.get(key)
+            if key in FLIGHT_REC:
+                m["flight"] = dict(rec=FLIGHT_REC[key], own=True)
+            elif key in FLIGHT_FROM:
+                m["flight"] = port_flight(refs[FLIGHT_FROM[key]], rom, FLIGHT_FROM[key], 0) if m.get("fly") else None
             ref_key = key
         else:
             cands = {k: v for k, v in refs.items() if k[:3] == rom.code[:3]}
@@ -568,7 +704,7 @@ def main():
         js[key] = dict(path=os.path.abspath(p), ref=ref_key, family=rom.code[:3], **{k: v for k, v in m.items() if k != "how"})
         masked = [n for n, v in m["how"].items() if v == "masked"]
         print(f"{key:6} {name[:48]:48} from {ref_key}  items {m['items']:#x} x{m['name_len'] + 30}"
-              f"  party {m['party']:#x}{'  masked ' + ','.join(masked) if masked else ''}{'' if m.get('pc') else '  NO PC'}{'' if m.get('fly') else '  NO FLY'}"
+              f"  party {m['party']:#x}{'  masked ' + ','.join(masked) if masked else ''}{'' if m.get('pc') else '  NO PC'}{'' if m.get('fly') else '  NO FLY'}{'' if m.get('flight') else '  NO FLIGHT'}"
               f"{'' if m.get('box') else '  NO BOX MOVES'}{'' if m.get('tm') or rom.code[:3] in ('AXV', 'AXP') or rom.lang == 'E' else '  NO TM'}"
               f"{'' if m.get('flash') or rom.lang == 'E' else '  NO FLASH'}")
     # The hand-written English tables' FLY (FieldItems.kt), checked the same way: printed for FLY_RUBY's file.

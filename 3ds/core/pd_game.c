@@ -21,34 +21,42 @@ const struct pd_party_layout pd_party_layout_vanilla = {
 const struct pd_battle_layout pd_battle_layout_vanilla = {
     .size = 88, .species = 0, .moves = 12, .type1 = 33, .type2 = 34, .pp = 36, .hp = 40, .level = 42,
     .maxHp = 44, .status = 76, .speciesMask = 0xFFFF, .personality = 0x48, .otId = 0x54,
+    .ability = 0x20, .item = 0x2E, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_expansion = {
     .size = 96, .species = 0, .moves = 12, .type1 = 34, .type2 = 35, .pp = 37, .hp = 42, .level = 44,
     .maxHp = 46, .status = 80, .speciesMask = 0xFFFF, .personality = 0x4C, .otId = 0x58,
+    .ability = 0x20, .abilityU16 = true, .item = 0x30, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_tmt2 = {
     .size = 96, .species = 0, .moves = 12, .type1 = 34, .type2 = 35, .pp = 38, .hp = 42, .level = 44,
     .maxHp = 46, .status = 80, .speciesMask = 0xFFFF, .personality = 0x4C, .otId = 0x58,
+    .ability = 0x20, .abilityU16 = true, .item = 0x30, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_team_rocket = {
     .size = 92, .species = 0, .moves = 12, .type1 = 34, .type2 = 35, .pp = 37, .hp = 42, .level = 44,
     .maxHp = 46, .status = 80, .speciesMask = 0xFFFF, .personality = 0x4C, .otId = 0x58,
+    .ability = 0x20, .abilityU16 = true, .item = 0x30, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_wishes = {
     .size = 136, .species = 0, .moves = 12, .type1 = 34, .type2 = 35, .pp = 37, .hp = 42, .level = 44,
     .maxHp = 46, .status = 80, .speciesMask = 0xFFFF, .personality = 0x4C, .otId = 0x58,
+    .ability = 0x20, .abilityU16 = true, .item = 0x30, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_rowe = {
     .size = 96, .species = 0, .moves = 12, .type1 = 34, .type2 = 35, .pp = 37, .hp = 42, .level = 44,
     .maxHp = 46, .status = 80, .speciesMask = 0x7FF, .personality = 0x4C, .otId = 0x58,
+    .ability = 0x20, .abilityU16 = true, .item = 0x30, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_soulgold = {
     .size = 152, .species = 0, .moves = 12, .type1 = 34, .type2 = 35, .pp = 37, .hp = 42, .level = 44,
     .maxHp = 46, .status = 84, .speciesMask = 0xFFFF, .personality = 0x50, .otId = 0x88,
+    .ability = 0x20, .abilityU16 = true, .item = 0x30, .stats = 0x02, .stages = 0x18, .facts = true,
 };
 const struct pd_battle_layout pd_battle_layout_elite_redux = {
     .size = 104, .species = 20, .moves = 32, .type1 = 68, .type2 = 69, .pp = 71, .hp = 54, .level = 75,
     .maxHp = 56, .status = 8, .speciesMask = 0xFFFF,
+    .ability = 0x28, .abilityU16 = true, .item = 0x3A, .stats = 0x16, .stages = 0x3C, .facts = true,
 };
 // Monomyth: vanilla's struct, its substructs XORed with a key of its own and its natures its own (MONOMYTH_PARTY_MON).
 const struct pd_party_layout pd_party_layout_monomyth = {
@@ -60,6 +68,7 @@ const struct pd_party_layout pd_party_layout_monomyth = {
 const struct pd_battle_layout pd_battle_layout_monomyth = {
     .size = 0x58, .species = 0x0C, .moves = 0x18, .type1 = 0x0F, .type2 = 0x10, .pp = 0x00, .hp = 0x2C, .level = 0x12,
     .maxHp = 0x2E, .status = 0x30, .speciesMask = 0xFFFF, .personality = 0x40, .otId = 0x38,
+    .ability = 0x0E, .item = 0x20, .stats = 0x22, .stages = 0x04, .facts = true,
 };
 // Pokemon Quetzal: a 0x68-byte plaintext struct (expansion's, bit-packed HP and status), egg flag in the IV word.
 const struct pd_party_layout pd_party_layout_quetzal = {
@@ -397,7 +406,11 @@ static void gb_font(const struct pd_game* g, const struct pd_config* cfg) {
         for (const struct pd_gb_font_at* p = pd_gb_polished_fonts; p->sha1; p++)
             if (!strcmp(p->sha1, g->sha1)) off = p->off;
     }
-    pd_gb_font_use(g, off, cs);
+    // The companion keeps the GBA font in a Game Boy game too (the user's call: the cart's 8x8 letters read poorly at the
+    // companion's size); the font's address stays mapped for when a page wants the game's own letters.
+    (void) off;
+    (void) cs;
+    pd_gb_font_use(NULL, 0, PD_GB_CHARS_GEN1);
 }
 
 // The retail carts (USA / Europe) detect's configs are for: GameTitles.RETAIL.
@@ -643,6 +656,7 @@ static void identify(struct pd_game* g) {
     pd_sha1_update(&s, g->rom, g->romSize);
     pd_sha1_hex(&s, g->sha1);
     g->shinyBelow = 0;
+    g->retail = false;
     for (const struct pd_shiny_rom* r = pd_shiny_roms; r->sha1; r++)
         if (!strcmp(r->sha1, g->sha1)) g->shinyBelow = r->below;
 
@@ -688,13 +702,14 @@ static void identify(struct pd_game* g) {
     if (strcmp(g->code, "BPRE") && strcmp(g->code, "BPEE")) return;
     // English FireRed / Emerald: retail's shiny check once the hash (or a collection's dump of it) checks out (Poller.kt).
     for (size_t i = 0; i < sizeof RETAIL_SHA1S / sizeof *RETAIL_SHA1S; i++)
-        if (!strcmp(RETAIL_SHA1S[i], g->sha1)) { g->shinyBelow = 8; return; }
-    if (retail_dump(g)) { g->shinyBelow = 8; return; }
+        if (!strcmp(RETAIL_SHA1S[i], g->sha1)) { g->shinyBelow = 8; g->retail = true; return; }
+    if (retail_dump(g)) { g->shinyBelow = 8; g->retail = true; return; }
     // Retail as Universal Pokemon Randomizer ZX left it (the app's RandomizedRetail): retail's config and guide, what the
     // randomizer changed read from the ROM.
     g->randomized = pd_randomized_match(g);
     if (g->randomized) {
         g->shinyBelow = 8;
+        g->retail = true;
         g->title = g->kind == PD_GAME_FIRERED ? "Pokémon FireRed (Randomized)" : "Pokémon Emerald (Randomized)";
         return;
     }

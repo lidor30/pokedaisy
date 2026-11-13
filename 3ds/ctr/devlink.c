@@ -41,6 +41,7 @@ static int dragToX, dragToY, dragTotal;
 static char launch[256];
 static volatile bool leaveWanted, restartWanted;
 static volatile int wildSpecies, wildLevel;
+static volatile int teachSlot = -1, teachIndex, teachMove;
 static volatile int optScreen = -1, optAspect = -1;
 static struct devlink_stats stats;
 static char logRing[LOG_BYTES];
@@ -125,6 +126,15 @@ bool devlink_take_wild(int* species, int* level) {
     *species = wildSpecies;
     *level = wildLevel;
     wildSpecies = 0;
+    return true;
+}
+
+bool devlink_take_teach(int* slot, int* index, int* move) {
+    if (teachSlot < 0) return false;
+    *slot = teachSlot;
+    *index = teachIndex;
+    *move = teachMove;
+    teachSlot = -1;
     return true;
 }
 
@@ -318,12 +328,22 @@ static bool cmd_stat(int fd) {
     u64 start = svcGetSystemTick();
     for (u32 i = 4000000; i; i--) __asm__ volatile("");
     unsigned clockUs = (unsigned) ((svcGetSystemTick() - start) / (SYSCLOCK_ARM11 / 1000000));
-    char text[256];
+    char text[1100];
     int n = snprintf(text, sizeof(text),
                      "frames=%u core_us=%u ui_us=%u draw_us=%u worst_us=%u late=%u linear_free=%u new3ds=%d shown=%u clock_us=%u "
-                     "run_us=%u wait_us=%u wide_us=%u snap_us=%u gaps=%u drops=%u rate=%u\n",
+                     "run_us=%u wait_us=%u wide_us=%u snap_us=%u gaps=%u drops=%u rate=%u redraws=%u redraw_worst_us=%u "
+                     "idle_mode=%d idle_loop=%08X idle_fails=%u flight=%d flight_tick_us=%u flight_draw_us=%u "
+                     "ag_wait_us=%u ag_render_us=%u ag_compile_us=%u ag_flush_us=%u wide_thread_us=%u draw_job_us=%u "
+                     "ag_stepped=%u ag_compiled=%u ag_invalidated=%u ag_code_writes=%u mixes=%u "
+                     "tot_loops=%u tot_late=%u tot_late_core=%u tot_late_draw=%u tot_late_rest=%u tot_gaps=%u tot_frames=%u queue_min=%u "
+                     "job_tex_us=%u job_begin_us=%u job_canvas_us=%u job_rest_us=%u\n",
                      s.frames, s.coreUs, s.uiUs, s.drawUs, s.worstUs, s.late, (unsigned) linearSpaceFree(), isNew, gpu_frames_shown(), clockUs,
-                     s.runUs, s.waitUs, s.wideUs, s.snapUs, s.gaps, s.drops, s.rate);
+                     s.runUs, s.waitUs, s.wideUs, s.snapUs, s.gaps, s.drops, s.rate, s.redraws, s.redrawWorstUs,
+                     s.idleMode, s.idleLoop, s.idleFails, s.flightState, s.flightTickUs, s.flightDrawUs,
+                     s.agWaitUs, s.agRenderUs, s.agCompileUs, s.agFlushUs, s.wideThreadUs, s.drawJobUs,
+                     s.agStepped, s.agCompiled, s.agInvalidated, s.agCodeWrites, s.mixes,
+                     s.totLoops, s.totLate, s.totLateCore, s.totLateDraw, s.totLateRest, s.totGaps, s.totFrames, s.queueMin,
+                     s.jobTexUs, s.jobBeginUs, s.jobCanvasUs, s.jobRestUs);
     return reply(fd, text, (size_t) n);
 }
 
@@ -383,6 +403,13 @@ static bool serve(int fd, char* line) {
     if (sscanf(line, "opt %d %d", &species, &level) == 2) {
         optScreen = species;
         optAspect = level;
+        return reply(fd, NULL, 0);
+    }
+    int slot;
+    if (sscanf(line, "teach %d %d %d", &slot, &species, &level) == 3 && slot >= 0 && slot < 6 && species >= 0 && species < 4) {
+        teachIndex = species;
+        teachMove = level;
+        teachSlot = slot;
         return reply(fd, NULL, 0);
     }
     if (sscanf(line, "wild %d %d", &species, &level) == 2) {

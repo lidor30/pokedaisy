@@ -43,6 +43,8 @@
 /** A game's addresses (WRAM unless noted; D000-DFFF in WRAM bank 1). Gen 1's and Crystal's share where they mean the
  * same; the rest is one generation's (0 in the other's rows). */
 #include "pk_wide_gb_profile.h"
+#include "pk_wide_gb_polished_tables.h"   // pcWideConfig: Polished Crystal 3.2.3 (normal), by PC_WIDE_CRC
+#include "pk_wide_gb_polished_lz.inc"       // pcLz
 
 #define GB_LINEAR(bank, addr) ((uint32_t) (bank) * 0x4000u + ((addr) - 0x4000u))
 
@@ -61,6 +63,10 @@ static const struct GbGame { uint32_t crc; int gen; uint32_t a[GB_CONFIG]; } GB_
     { 0xEE6F5188u, 2, GB_CRYSTAL },
     { 0xBB6DD80Cu, 2, GB_CRYSTAL },
 #undef GB_CRYSTAL
+    // Pokémon Kristall-Edition (Germany): Crystal's, SpriteMovementData 3 bytes later.
+    { 0x616D85DEu, 2, { 0, 0, 0xC800, 0xD194, 0xDCB7, 0xD196, 0xD199, 0xD19E, 0xD1A8, 0xD1DC, 0xD19D, 0xD22D, 0xD0ED, 0, 0,
+                        GB_LINEAR(0x25, 0x4000), 0, 0xCF74, 0xDA72, 0xD1E6, 0x13, 0xD4D6, 0xD71E, 0xD81E, 0xD154, 0xD82E,
+                        GB_LINEAR(0x05, 0x4736), GB_LINEAR(0x01, 0x4276), 0xFF9E, 0xFFCF, 0xD269, 0xFF94 } },
     // Pokémon Crystal Legacy v1.3.1: its pokecrystal.sym (its build is the patched cart byte for byte).
     { 0x12E97FB4u, 2, { 0, 0, 0xC800, 0xD19F, 0xDCC2, 0xD1A1, 0xD1A4, 0xD1A9, 0xD1B3, 0xD1E7, 0xD1A8, 0xD238, 0xD0F8, 0, 0,
                         GB_LINEAR(0x25, 0x4000), 0, 0xCF74, 0xDA7D, 0xD1F1, 0x13, 0xD4E1, 0xD729, 0xD829, 0xD15F, 0xD839,
@@ -98,6 +104,12 @@ static const uint32_t* gbCfg;
 static int gbGen;   // 1 Yellow, 2 Crystal
 static struct GB* gbB;
 static struct GBVideoSoftwareRenderer* gbR;
+
+// What the drawing reads of the game, as the frame ended: its VRAM, its palettes (converted once a view, not per pixel)
+// and Crystal Clear's two RAM bytes.
+static const uint8_t* gbVram;   // the core's VRAM
+static uint32_t gbPal[64];
+static uint8_t gbClearRam[2];   // Crystal Clear: wDecoCarpet (DC10) and D9C2, for its room floor's attributes
 
 static inline int gbClamp(int v, int lo, int hi) { return v < lo ? lo : v > hi ? hi : v; }
 
@@ -166,6 +178,7 @@ static int gbPrev = -1;
 static struct GbSnap gbGood;
 static int gbGoodTx, gbGoodTy;
 static bool gbFromStart;   // the START menu was the last thing up on the field (cleared by the plain field, a battle)
+static int memoBest = -2;  // pk_wide_gb_view's last search, -2 = none (another game, a reset)
 
 /** Crystal: the map header of group:number (9 bytes: attributes bank, tileset, ..., attributes pointer at +3). */
 static const uint8_t* gbCrystalMapHeader(int group, int number) {
@@ -374,8 +387,9 @@ static void gbTake(struct GbSnap* s) {
     }
     s->battle = gbRam(A[GB_IN_BATTLE]) != 0;
     if (gbGen == 2) {
-        // A wild battle's flashes run on the field before wBattleMode is set: DoBattleTransition's VBlank mode.
-        s->battle = s->battle || gbHram(A[GB_VBLANK_MODE]) == 1;
+        // A wild battle's flashes run on the field before wBattleMode is set: DoBattleTransition's VBlank mode (Crystal's
+        // VBLANK_CUTSCENE 1; Polished Crystal's is 3, its 1 is the magnet train's).
+        s->battle = s->battle || gbHram(A[GB_VBLANK_MODE]) == (gbPolished ? 3 : 1);
         if (gbPolished) {
           gbRamCopy(s->tiles, A[PC_METATILES], 4096);
           gbRamCopy(s->attrs, A[PC_ATTRIBUTES], 4096);
@@ -463,9 +477,9 @@ static inline uint8_t gbPalAttr(const struct GbSnap* s, int t) {
         // its bit 7 swaps the VRAM bank).
         int flip = 0;
         if (t == 1 && s->tileset == 0x14) {
-            uint8_t carpet = (uint8_t) (gbRam(0xDC10) - 7);
-            const uint8_t* home = gbRom(0x2E90u + (uint8_t) (gbRam(0xD9C2) - 0x1D), 1);
-            if (gbRam(0xDC10)) t = (uint8_t) ((carpet << 4 | carpet >> 4) + 0x0D);
+            uint8_t carpet = (uint8_t) (gbClearRam[0] - 7);
+            const uint8_t* home = gbRom(0x2E90u + (uint8_t) (gbClearRam[1] - 0x1D), 1);
+            if (gbClearRam[0]) t = (uint8_t) ((carpet << 4 | carpet >> 4) + 0x0D);
             else if (home) {
                 t = *home;
                 flip = t & 0x80 ? 8 : 0;
@@ -496,6 +510,94 @@ static inline int gbKey(const struct GbSnap* s, int tx, int ty) {
 /** A map tile, not text: below the font (0x60), in either bank. */
 static inline bool gbMapKey(int k) { return (k & 0xFF) < GB_MAP_TILES; }
 
+// --- the world's tile keys, once per map ---------------------------------------------------------------------
+//
+// Where the screen is gets looked for by comparing its tiles with the world's at many places; on a screen that isn't the
+// field (a menu half drawn, the Pokégear's pages) that's the whole loaded world, every frame. Each world tile's key
+// (gbKey: its block, the blockset, the palette map) is the same every frame until the map changes, so it's read once
+// into a grid here. A grid is for exactly what gbKey reads from a snapshot (and Crystal Clear's two floor bytes, the
+// connected maps' unpacked blocks).
+
+#define GB_GRID_X0 20                // world tiles left of / above the array the searches reach
+#define GB_GRID_Y0 18
+#define GB_GRID_MAX 0x10000
+#define GB_GRIDS 3
+
+struct GbGrid {
+    bool ok;
+    unsigned used;
+    int gw, gh;
+    // what it was built from
+    int w, h, bgBlock, tileset;
+    uint32_t blockset, palMap;
+    uint8_t ow[GB_OW_MAX];
+    struct GbConn conn[4];
+    uint8_t tiles[4096], attrs[4096];
+    uint8_t clear[2];
+    uint32_t lzAt[GB_LZ_SLOTS];
+    uint16_t key[GB_GRID_MAX];
+};
+static struct GbGrid gbGrids[GB_GRIDS];
+static unsigned gbGridClock;
+
+static bool gbGridIs(const struct GbGrid* g, const struct GbSnap* s, const uint8_t clear[2]) {
+    if (!g->ok || g->w != s->w || g->h != s->h || g->bgBlock != s->bgBlock || g->tileset != s->tileset ||
+        g->blockset != s->blockset || g->palMap != s->palMap || memcmp(g->clear, clear, 2)) return false;
+    for (int i = 0; i < GB_LZ_SLOTS; i++)
+        if (g->lzAt[i] != gbLz[i].at) return false;
+    for (int d = 0; d < 4; d++) {
+        const struct GbConn *a = &g->conn[d], *b = &s->conn[d];
+        if (a->on != b->on || (b->on && (a->offX != b->offX || a->offY != b->offY || a->w != b->w || a->h != b->h ||
+                                         a->blocks != b->blocks || a->lz != b->lz))) return false;
+    }
+    if (memcmp(g->ow, s->ow, (size_t) ((s->w + 6) * (s->h + 6)))) return false;
+    return !gbPolished || (!memcmp(g->tiles, s->tiles, sizeof(s->tiles)) && !memcmp(g->attrs, s->attrs, sizeof(s->attrs)));
+}
+
+/** The grid for snapshot s's world (built now if no grid is), or NULL for a world too big for one. */
+static const struct GbGrid* gbGridFor(const struct GbSnap* s) {
+    if (!s->ok) return NULL;
+    int gw = (s->w + 6) * 4 + 2 * GB_GRID_X0, gh = (s->h + 6) * 4 + 2 * GB_GRID_Y0;
+    if (gw * gh > GB_GRID_MAX) return NULL;
+    uint8_t clear[2] = { 0, 0 };
+    if (gbCfg[GB_CLEAR]) { clear[0] = gbClearRam[0]; clear[1] = gbClearRam[1]; }
+    struct GbGrid* g = NULL;
+    for (int i = 0; i < GB_GRIDS && !g; i++)
+        if (gbGridIs(&gbGrids[i], s, clear)) g = &gbGrids[i];
+    if (!g) {
+        g = &gbGrids[0];
+        for (int i = 1; i < GB_GRIDS; i++)
+            if (!gbGrids[i].ok || (g->ok && gbGrids[i].used < g->used)) g = &gbGrids[i];
+        g->ok = true;
+        g->gw = gw;
+        g->gh = gh;
+        g->w = s->w;
+        g->h = s->h;
+        g->bgBlock = s->bgBlock;
+        g->tileset = s->tileset;
+        g->blockset = s->blockset;
+        g->palMap = s->palMap;
+        memcpy(g->ow, s->ow, sizeof(g->ow));
+        memcpy(g->conn, s->conn, sizeof(g->conn));
+        if (gbPolished) {
+            memcpy(g->tiles, s->tiles, sizeof(g->tiles));
+            memcpy(g->attrs, s->attrs, sizeof(g->attrs));
+        }
+        memcpy(g->clear, clear, 2);
+        for (int i = 0; i < GB_LZ_SLOTS; i++) g->lzAt[i] = gbLz[i].at;
+        for (int y = 0; y < gh; y++)
+            for (int x = 0; x < gw; x++) g->key[y * gw + x] = (uint16_t) gbKey(s, x - GB_GRID_X0, y - GB_GRID_Y0);
+    }
+    g->used = ++gbGridClock;
+    return g;
+}
+
+static inline int gbGridKey(const struct GbGrid* g, const struct GbSnap* s, int tx, int ty) {
+    int x = tx + GB_GRID_X0, y = ty + GB_GRID_Y0;
+    if (g && x >= 0 && y >= 0 && x < g->gw && y < g->gh) return g->key[y * g->gw + x];
+    return gbKey(s, tx, ty);
+}
+
 // --- the screen ----------------------------------------------------------------------------------------
 
 static uint8_t gbLcdc, gbScx, gbScy;   // as the frame was drawn
@@ -519,9 +621,9 @@ static uint8_t gbAttrDefault;
 static inline int gbScreenTile(int i, int j, uint8_t* attr) {
     if (gbWinPart && j * 8 + 8 - (gbSrcY & 7) > gbWinY && i * 8 + 8 - (gbSrcX & 7) > gbWinX) return GB_COVERED;
     int at = gbMapBase + (((gbSrcY >> 3) + j) & 31) * 32 + (((gbSrcX >> 3) + i) & 31);
-    uint8_t a = gbCgb ? gbB->video.vram[0x2000 + at] : 0;
+    uint8_t a = gbCgb ? gbVram[0x2000 + at] : 0;
     if (attr) *attr = a;
-    int t = gbB->video.vram[at];
+    int t = gbVram[at];
     return gbGen == 2 && (a & 8) ? t | 0x100 : t;
 }
 
@@ -547,13 +649,13 @@ static void gbReadScreen(void) {
 
 /** Per mille of the screen's map tiles world tile (tx, ty) onwards matches, or -1 with too few map tiles. With
  * `quick`, gives up (0) as soon as it can't reach GB_MIN_SCORE. */
-static int gbScore(const struct GbSnap* s, int tx, int ty, bool quick) {
+static int gbScore(const struct GbSnap* s, const struct GbGrid* g, int tx, int ty, bool quick) {
     if (gbScreenMap < GB_MIN_MAP_TILES) return -1;
     int miss = 0, allowed = gbScreenMap * (1000 - GB_MIN_SCORE) / 1000;
     for (int j = 0; j < 18; j++)
         for (int i = 0; i < 20; i++) {
             int t = gbScreen[j][i];
-            if (!gbMapKey(t) || gbKey(s, tx + i, ty + j) == t) continue;
+            if (!gbMapKey(t) || gbGridKey(g, s, tx + i, ty + j) == t) continue;
             if (++miss > allowed && quick) return 0;
         }
     return (gbScreenMap - miss) * 1000 / gbScreenMap;
@@ -591,14 +693,23 @@ static bool gbUseFieldPal;
 #ifdef COLOR_16_BIT
 // The libretro build's renderer keeps 16-bit colours (5-6-5 with red high); everything here draws 32-bit XBGR like the
 // frame it sits beside, rounded as the frame's own conversion is (green's low bit from its top).
-static inline uint32_t gbLive(int i) {
+static inline uint32_t gbLiveRaw(int i) {
     uint32_t c = gbR->palette[gbR->lookup[i]], r = (c >> 11) & 31, g = (c >> 5) & 63, b = c & 31;
     g |= g >> 5;
     return ((b << 3 | b >> 2) << 16) | ((g << 2 | g >> 4) << 8) | (r << 3 | r >> 2);
 }
 #else
-static inline uint32_t gbLive(int i) { return gbR->palette[gbR->lookup[i]]; }
+static inline uint32_t gbLiveRaw(int i) { return gbR->palette[gbR->lookup[i]]; }
 #endif
+
+static inline uint32_t gbLive(int i) { return gbPal[i]; }
+
+static void gbCopyLive(void) {
+    gbVram = gbB->video.vram;
+    for (int i = 0; i < 64; i++) gbPal[i] = gbLiveRaw(i);
+    gbClearRam[0] = gbCfg[GB_CLEAR] ? gbRam(0xDC10) : 0;
+    gbClearRam[1] = gbCfg[GB_CLEAR] ? gbRam(0xD9C2) : 0;
+}
 
 static inline uint32_t gbWorldColor(int i) { return gbUseFieldPal ? gbFieldPal[i] : gbLive(i); }
 
@@ -615,7 +726,7 @@ static inline uint32_t gbObjColor(uint8_t attr, int idx, uint32_t alpha) {
 
 /** Colour index (0..3) of a tile's pixel; `base` is the tile's offset in VRAM. */
 static inline int gbTilePixel(uint32_t base, int x, int y) {
-    uint8_t lo = gbB->video.vram[base + (uint32_t) y * 2], hi = gbB->video.vram[base + (uint32_t) y * 2 + 1];
+    uint8_t lo = gbVram[base + (uint32_t) y * 2], hi = gbVram[base + (uint32_t) y * 2 + 1];
     int bit = 7 - x;
     return ((lo >> bit) & 1) | (((hi >> bit) & 1) << 1);
 }
@@ -928,7 +1039,73 @@ static inline bool gbOnFrame(int x, int y) { return x >= 0 && x < GBW && y >= 0 
  * a text box, the START menu. */
 static void gbDraw(const struct GbSnap* s, int ox, int oy, int x0, int y0, int w, int h, uint32_t* dst, int stride,
                    uint32_t alpha, bool screen) {
-    for (int j = 0; j < h; j++) {
+    // The world alone (every frame, the whole view: the 3DS draws ~96,000 pixels of it): a tile row's 8 pixels decoded at
+    // once from its two VRAM bytes and its palette's 4 colours, the same pixels the per-pixel loop below draws.
+    if (!screen) {
+        // Under the game's own picture nothing of this is shown (the view takes the frame's pixels there), but for Gen 1's
+        // people a step past the edge, drawn over the picture (`over`): their rows are drawn whole, for what's under them.
+        static uint8_t rowWhole[PK_WIDE_MAX_VIEW_H];
+        memset(rowWhole, 0, (size_t) h);
+        for (int k = 0; k < gbNObjs; k++) {
+            if (!gbObjs[k].over) continue;
+            for (int yy = 0; yy < 8; yy++) {
+                int j = gbObjs[k].y + yy - y0;
+                if (j >= 0 && j < h) rowWhole[j] = 1;
+            }
+        }
+        int fa = gbClamp(-x0, 0, w), fb = gbClamp(GBW - x0, fa, w);   // the frame's columns in the view
+        // A row of tiles is looked up once (its tile, attributes, colours), then its 8 rows of pixels drawn from it.
+        struct GbTileLook { uint32_t base; uint8_t attr; uint32_t col[4]; };
+        static struct GbTileLook look[PK_WIDE_MAX_VIEW_W / 8 + 2];
+        int firstTx = (ox + x0) >> 3, lastTy = 0x7FFFFFFF;
+        int nt = ((ox + x0 + w - 1) >> 3) - firstTx + 1;
+        for (int j = 0; j < h; j++) {
+            int wy = oy + y0 + j, ty = wy >> 3, fy = wy & 7;
+            if (ty != lastTy) {
+                lastTy = ty;
+                for (int c = 0; c < nt; c++) {
+                    int tx = firstTx + c, t = gbTile(s, tx, ty);
+                    uint8_t attr;
+                    if (gbGen == 2) {
+                        attr = gbAttrAt(s, tx, ty, t);
+                        if (!gbPolished) t &= 0x7F;
+                    } else {
+                        attr = gbAttrSeen[t] ? gbTileAttr[t] : gbAttrDefault;
+                    }
+                    struct GbTileLook* L = &look[c];
+                    L->base = gbBgTileBase(t, attr);
+                    L->attr = attr;
+                    int pal = gbCgb ? (attr & 7) * 4 : 0;
+                    for (int q = 0; q < 4; q++) L->col[q] = gbOpaque(gbWorldColor(pal + q), alpha);
+                }
+            }
+            int sy = y0 + j;
+            bool skip = sy >= 0 && sy < GBH && !rowWhole[j];
+            uint32_t* out = dst + j * stride;
+            uint8_t* bgIdx = gbBgIdx + j * w;
+            for (int i = 0; i < w;) {
+                if (skip && i >= fa && i < fb) {
+                    i = fb;
+                    continue;
+                }
+                int wx = ox + x0 + i, fx = wx & 7;
+                const struct GbTileLook* L = &look[(wx >> 3) - firstTx];
+                uint8_t attr = L->attr;
+                uint32_t base = L->base + (uint32_t) ((attr & 0x40) ? 7 - fy : fy) * 2;
+                unsigned lo = gbVram[base], hi = gbVram[base + 1];
+                uint8_t prio = attr & 0x80;
+                int n = 8 - fx < w - i ? 8 - fx : w - i;
+                for (int k = 0; k < n; k++, i++) {
+                    int bit = (attr & 0x20) ? fx + k : 7 - (fx + k);
+                    int idx = (int) ((lo >> bit) & 1) | (int) (((hi >> bit) & 1) << 1);
+                    out[i] = L->col[idx];
+                    bgIdx[i] = (uint8_t) (idx | prio);
+                }
+            }
+        }
+    }
+    if (!screen) memset(gbObjMask, 0, (size_t) w * (size_t) h);
+    for (int j = 0; screen && j < h; j++) {
         int wy = oy + y0 + j, ty = wy >> 3, fy = wy & 7;
         int lastTx = 0x7FFFFFFF, t = 0;
         uint8_t attr = 0;
@@ -956,8 +1133,8 @@ static void gbDraw(const struct GbSnap* s, int ox, int oy, int x0, int y0, int w
                 bool win = gbWinPart && sy >= gbWinY && sx >= gbWinX;
                 int mx = win ? sx - gbWinX : gbSrcX + sx, my = win ? sy - gbWinY : gbSrcY + sy;
                 int at = (win ? gbWinBase : gbMapBase) + ((my >> 3) & 31) * 32 + ((mx >> 3) & 31);
-                int st = gbB->video.vram[at];
-                uint8_t sa = gbCgb ? gbB->video.vram[0x2000 + at] : 0;
+                int st = gbVram[at];
+                uint8_t sa = gbCgb ? gbVram[0x2000 + at] : 0;
                 if (win || !gbMapKey(st)) {
                     a = sa;
                     int fx = mx & 7, fyy = my & 7;
@@ -1162,16 +1339,23 @@ static bool gbFaded(const uint32_t* frame) {
 // --- the frame -----------------------------------------------------------------------------------------
 
 static int gbSinceField = 1000;   // frames since the field (or a whole black / white frame) last showed
+static bool gbMixSnap; // pk_wide_gb_snap
 static int gbMix, gbLastScore = -1, gbLastMode = PK_WIDE_MODE_NONE, gbLastClose = 1, gbLastScene = PK_WIDE_SCENE_OFF;
 
 int pk_wide_gb_knows(uint32_t crc) {
+  if (crc && crc == PC_WIDE_CRC)
+    return 1;
   for (size_t i = 0; i < sizeof(GB_ROMS) / sizeof(GB_ROMS[0]); i++)
     if (GB_ROMS[i].crc == crc)
       return 1;
   return 0;
 }
 
+static int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG], pk_wide_gb_decode_fn decode);
+
 int pk_wide_gb_configure(uint32_t crc) {
+    // Polished Crystal 3.2.3 (normal): its own structs and LZ, a profile of its own (pk_wide_gb_polished.inc)
+    if (crc && crc == PC_WIDE_CRC) return pk_wide_gb_configure_polished(pcWideConfig, pcLz);
     gbCfg = NULL;
     for (size_t i = 0; i < sizeof(GB_ROMS) / sizeof(GB_ROMS[0]); i++)
         if (crc && GB_ROMS[i].crc == crc) {
@@ -1188,8 +1372,7 @@ int pk_wide_gb_configure(uint32_t crc) {
     return gbCfg != NULL;
 }
 
-int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG],
-                                 pk_wide_gb_decode_fn decode) {
+static int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG], pk_wide_gb_decode_fn decode) {
     pk_wide_gb_configure(0);
     if (!addresses || !decode) return 0;
     gbCfg = addresses;
@@ -1199,10 +1382,13 @@ int pk_wide_gb_configure_polished(const uint32_t addresses[GB_CONFIG],
     return 1;
 }
 
+void pk_wide_gb_snap(void) { gbMixSnap = true; }
+
 void pk_wide_gb_reset(void) {
     gbPrev = -1;
     gbSnaps[0].ok = gbSnaps[1].ok = gbGood.ok = false;
     gbMix = 0;
+    gbMixSnap = false;
     gbRawView.w = 0;
     gbLastScore = -1;
     gbLastMode = PK_WIDE_MODE_NONE;
@@ -1212,6 +1398,8 @@ void pk_wide_gb_reset(void) {
     gbFromStart = false;
     gbEdgeAccOk = false;
     gbFillSet = false;
+    memoBest = -2;
+    for (int i = 0; i < GB_GRIDS; i++) gbGrids[i].ok = false;
 }
 
 int pk_wide_gb_scene(void) { return gbLastScene; }
@@ -1237,6 +1425,52 @@ int pk_wide_gb_glow(struct mCore* core, const uint32_t* frame, uint32_t* out, st
     return 1;
 }
 
+/** The view from the frame, the rebuilt scene (gbRaw, at gbMix) and the bars, then the objects that go over the frame. */
+static void gbCompose(const uint32_t* frame, uint32_t* out, struct PkWideView v, uint32_t alpha, bool over) {
+    int reach[4] = { -v.x, v.x + v.w - GBW, -v.y, v.y + v.h - GBH };
+
+    for (int j = 0; j < v.h; j++) {
+        int Y = v.y + j;
+        uint32_t* row = out + j * v.w;
+        uint32_t fill = gbFillRow[gbClamp(Y, 0, GBH - 1)] | alpha;   // above / below the frame: its top / bottom band
+        int ry = Y - gbRawView.y;
+        bool rawRow = ry >= 0 && ry < gbRawView.h;
+        // The scene as it is (the field, fully in): whole runs from gbRaw, the frame's rows over the middle.
+        bool whole = gbMix >= 256 && rawRow && gbRawView.x == v.x && gbRawView.w == v.w;
+        if (whole) {
+            const uint32_t* raw = gbRaw + ry * gbRawView.w;
+            if (Y >= 0 && Y < GBH) {
+                int a = -v.x > 0 ? -v.x : 0, b = GBW - v.x < v.w ? GBW - v.x : v.w;   // the frame's columns in the row
+                if (a > v.w) a = v.w;
+                if (b < a) b = a;
+                memcpy(row, raw, (size_t) a * sizeof(uint32_t));
+                memcpy(row + a, frame + Y * GBW + v.x + a, (size_t) (b - a) * sizeof(uint32_t));
+                memcpy(row + b, raw + b, (size_t) (v.w - b) * sizeof(uint32_t));
+            } else {
+                memcpy(row, raw, (size_t) v.w * sizeof(uint32_t));
+            }
+            continue;
+        }
+        for (int i = 0; i < v.w; i++) {
+            int X = v.x + i;
+            if (gbOnFrame(X, Y)) {
+                int n = (GBW - X) < (v.w - i) ? GBW - X : v.w - i;
+                memcpy(row + i, frame + Y * GBW + X, (size_t) n * sizeof(uint32_t));
+                i += n - 1;
+                continue;
+            }
+            int rx = X - gbRawView.x, m = gbMix;
+            uint32_t scene = 0;
+            if (rawRow && rx >= 0 && rx < gbRawView.w) scene = gbRaw[ry * gbRawView.w + rx];
+            else m = 0;
+            row[i] = m >= 256 ? scene : gbLerp(PK_WIDE_GB_GLOW ? gbGlowAt(frame, X, Y, reach, alpha) : fill, scene, m);
+        }
+    }
+    if (over) for (int k = 0; k < gbNOver; k++) out[gbOver[k]] = gbRaw[gbOver[k]];
+}
+
+
+
 int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, struct PkWideView v, uint32_t* centre) {
     if (!core || core->platform(core) != mPLATFORM_GB || !gbCfg) {
         if (out) {
@@ -1257,6 +1491,7 @@ int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, st
     gbPalTorn = false;
     int cur = gbPrev == 0 ? 1 : 0;
     gbTake(&gbSnaps[cur]);
+    gbCopyLive();
     if (!out) {   // pk_wide_skip: only the RAM after this frame, for the next one drawn
         gbPrev = cur;
         return gbMix;
@@ -1289,41 +1524,87 @@ int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, st
     if (gbLcdc & 0x80) {
         gbReadScreen();
         const int order[2] = { gbPrev, cur };
-        for (int k = 0; k < 2 && best < 1000; k++) {
+        // A screen that isn't the field (the Pokégear, the trainer card) makes the search below look through the whole
+        // loaded world every frame - several times the rest of EXPAND. Its answer depends on nothing but the screen's
+        // tiles, the two snapshots (in this order), the last match and Crystal Clear's two floor bytes: while those are
+        // the same as last frame, so is the answer.
+        static uint16_t memoScreen[18][20];
+        static struct GbSnap memoSnap[2], memoGood;
+        static int memoGoodTx, memoGoodTy, memoTx, memoTy, memoAt;
+        static bool memoOk[2];
+        static uint8_t memoClear[2];
+        uint8_t clear[2] = { 0, 0 };
+        if (gbCfg[GB_CLEAR]) { clear[0] = gbClearRam[0]; clear[1] = gbClearRam[1]; }
+        bool same = memoBest != -2 && !memcmp(memoScreen, gbScreen, sizeof(gbScreen)) && !memcmp(memoClear, clear, 2) &&
+                    memoGoodTx == gbGoodTx && memoGoodTy == gbGoodTy && !memcmp(&memoGood, &gbGood, sizeof(gbGood));
+        for (int k = 0; same && k < 2; k++) {
+            bool ok = order[k] >= 0 && gbSnaps[order[k]].ok;
+            same = ok == memoOk[k] && (!ok || !memcmp(&memoSnap[k], &gbSnaps[order[k]], sizeof(struct GbSnap)));
+        }
+        if (same) {
+            best = memoBest;
+            bestTx = memoTx;
+            bestTy = memoTy;
+            bestSnap = memoAt < 0 ? -1 : memoAt == 2 ? 2 : order[memoAt];
+        }
+        bool costly = false;   // past the guess: worth keeping for the next frame (the field at the guess isn't)
+        for (int k = 0; !same && k < 2 && best < 1000; k++) {
             int si = order[k];
             if (si < 0 || !gbSnaps[si].ok) continue;
             const struct GbSnap* s = &gbSnaps[si];
+            const struct GbGrid* g = NULL;   // the field at the guess needs no grid: built only past it
             // Nearest first: on a tie (a field of grass), the guess wins.
             for (int r = 0; r <= GB_SEARCH && best < 1000; r++)
                 for (int dy = -r; dy <= r; dy++)
                     for (int dx = -r; dx <= r; dx++) {
                         if ((dx < 0 ? -dx : dx) != r && (dy < 0 ? -dy : dy) != r) continue;
-                        int sc = gbScore(s, s->guessX + dx, s->guessY + dy, false);
+                        if (r && !g) g = gbGridFor(s);
+                        if (r) costly = true;
+                        int sc = gbScore(s, g, s->guessX + dx, s->guessY + dy, false);
                         if (sc > best) { best = sc; bestTx = s->guessX + dx; bestTy = s->guessY + dy; bestSnap = si; }
                     }
         }
         // Not near the guess, or not exactly: the last snapshot that matched, around where it did (crossing a connection,
         // both snapshots can hold the new map half loaded - Crystal's zeros, its border block - while the screen still
         // shows the old one).
-        if (best >= 0 && best < 1000 && gbGood.ok) {
+        if (!same && best >= 0 && best < 1000 && gbGood.ok) {
+            costly = true;
+            const struct GbGrid* g = gbGridFor(&gbGood);
             for (int dy = -GB_SEARCH; dy <= GB_SEARCH; dy++)
                 for (int dx = -GB_SEARCH; dx <= GB_SEARCH; dx++) {
-                    int sc = gbScore(&gbGood, gbGoodTx + dx, gbGoodTy + dy, true);
+                    int sc = gbScore(&gbGood, g, gbGoodTx + dx, gbGoodTy + dy, true);
                     if (sc > best) { best = sc; bestTx = gbGoodTx + dx; bestTy = gbGoodTy + dy; bestSnap = 2; }
                 }
         }
         // Still nothing, but the screen is the field: RAM is somewhere else for a moment - look everywhere in the loaded
         // world, giving up on each spot as soon as it can't match (the best spot wins, not the first).
-        bool wide = best >= 0 && best < GB_MIN_SCORE;
+        bool wide = !same && best >= 0 && best < GB_MIN_SCORE;
         for (int k = 0; k < 2 && wide && best < 1000; k++) {
             int si = order[k];
             if (si < 0 || !gbSnaps[si].ok) continue;
             const struct GbSnap* s = &gbSnaps[si];
+            const struct GbGrid* g = gbGridFor(s);
             for (int ty = -18; ty <= (s->h + 6) * 4 && best < 1000; ty++)
                 for (int tx = -20; tx <= (s->w + 6) * 4 && best < 1000; tx++) {
-                    int sc = gbScore(s, tx, ty, true);
+                    int sc = gbScore(s, g, tx, ty, true);
                     if (sc > best) { best = sc; bestTx = tx; bestTy = ty; bestSnap = si; }
                 }
+        }
+        if (!same && !costly) memoBest = -2;
+        if (!same && costly) {
+            memcpy(memoScreen, gbScreen, sizeof(gbScreen));
+            memcpy(memoClear, clear, 2);
+            memoGood = gbGood;
+            memoGoodTx = gbGoodTx;
+            memoGoodTy = gbGoodTy;
+            for (int k = 0; k < 2; k++) {
+                memoOk[k] = order[k] >= 0 && gbSnaps[order[k]].ok;
+                if (memoOk[k]) memoSnap[k] = gbSnaps[order[k]];
+            }
+            memoBest = best;
+            memoTx = bestTx;
+            memoTy = bestTy;
+            memoAt = bestSnap < 0 ? -1 : bestSnap == 2 ? 2 : bestSnap == order[0] ? 0 : 1;
         }
         // A box over a blanked field - SAVE's prompt clears the screen behind its boxes but for a corner of the map: too
         // few map tiles to place the screen by, but every one of them is where the field last was, so it's still the
@@ -1395,39 +1676,19 @@ int pk_wide_gb_view(struct mCore* core, const uint32_t* frame, uint32_t* out, st
             gbDraw(s, ox, oy, 0, 0, GBW, GBH, centre, GBW, alpha, true);
             gbNObjs = n;
         }
-        gbMix = gbMix + GB_MIX_STEP > 256 ? 256 : gbMix + GB_MIX_STEP;
+        gbMix = gbMixSnap || gbMix + GB_MIX_STEP > 256 ? 256 : gbMix + GB_MIX_STEP;
+        gbMixSnap = false;
     } else {
         gbMix = gbMix - GB_MIX_STEP < 0 ? 0 : gbMix - GB_MIX_STEP;   // the last scene, frozen, dissolves into the glow
+        gbMixSnap = false; // pk_wide_jump's cut is the frame after it, as pk_wide.c's mixSnap
     }
     if (!gbRawView.w) gbMix = 0;
     if (!PK_WIDE_GB_GLOW) {
         if (!valid || !gbFillSet) gbBackgroundRows(frame);   // fading in again from a menu: from its bars
     } else if (gbMix < 256) gbAmbientPrepare(frame);
     else gbEdgeAccOk = false;   // the glow starts from the edges as they are when it is next needed
-    int reach[4] = { -v.x, v.x + v.w - GBW, -v.y, v.y + v.h - GBH };
-
-    for (int j = 0; j < v.h; j++) {
-        int Y = v.y + j;
-        uint32_t* row = out + j * v.w;
-        uint32_t fill = gbFillRow[gbClamp(Y, 0, GBH - 1)] | alpha;   // above / below the frame: its top / bottom band
-        int ry = Y - gbRawView.y;
-        bool rawRow = ry >= 0 && ry < gbRawView.h;
-        for (int i = 0; i < v.w; i++) {
-            int X = v.x + i;
-            if (gbOnFrame(X, Y)) {
-                int n = (GBW - X) < (v.w - i) ? GBW - X : v.w - i;
-                memcpy(row + i, frame + Y * GBW + X, (size_t) n * sizeof(uint32_t));
-                i += n - 1;
-                continue;
-            }
-            int rx = X - gbRawView.x, m = gbMix;
-            uint32_t scene = 0;
-            if (rawRow && rx >= 0 && rx < gbRawView.w) scene = gbRaw[ry * gbRawView.w + rx];
-            else m = 0;
-            row[i] = m >= 256 ? scene : gbLerp(PK_WIDE_GB_GLOW ? gbGlowAt(frame, X, Y, reach, alpha) : fill, scene, m);
-        }
-    }
-    if (valid && gbLastScene == PK_WIDE_SCENE_FIELD) for (int k = 0; k < gbNOver; k++) out[gbOver[k]] = gbRaw[gbOver[k]];
+    gbCompose(frame, out, v, alpha, valid && gbLastScene == PK_WIDE_SCENE_FIELD);
     gbPrev = cur;
     return gbMix;
 }
+

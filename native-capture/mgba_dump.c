@@ -214,6 +214,10 @@ static int lastRomDiffs[3], markRomDiffs[3];
 #include "../app/src/main/cpp/pk_gb_field.c"
 #define HAVE_PK_WIDE 1
 #endif
+#if __has_include("../app/src/main/cpp/pk_flight.c")
+#include "../app/src/main/cpp/pk_flight.c"
+#define HAVE_PK_FLIGHT 1
+#endif
 #if __has_include("../app/src/main/cpp/pk_gb_audio.c")
 #include "../app/src/main/cpp/pk_gb_audio.c"
 #define HAVE_PK_GB_AUDIO 1
@@ -256,6 +260,9 @@ static void wideAfterFrame(void) {
     struct timespec t0, t1;
     clock_gettime(CLOCK_MONOTONIC, &t0);
     pk_wide_view(core, (const uint32_t*) video, wideOut, wideView, wideCheck ? wideCentre : NULL);
+#ifdef HAVE_PK_FLIGHT
+    if (!wideCheck) pk_flight_draw_wide(wideOut, wideView.w, wideView.h, wideView.x, wideView.y);   // the app's clouds over it
+#endif
     clock_gettime(CLOCK_MONOTONIC, &t1);
     double ns = (t1.tv_sec - t0.tv_sec) * 1e9 + (t1.tv_nsec - t0.tv_nsec);
     wideStats.ns += ns;
@@ -434,6 +441,10 @@ static void frameOne(void) {
     pk_coop_link_tick(core);   // task 5
 #endif
     if (core->platform(core) == mPLATFORM_GBA) pk_rest_note(core);
+#ifdef HAVE_PK_FLIGHT
+    pk_flight_tick(core);   // FREE FLIGHT (`flighton`): its step after every frame, like the app's pkRunFrame
+    if (sizeof(color_t) == 4 && core->platform(core) == mPLATFORM_GBA) pk_flight_draw((uint32_t*) video, 240, 160, (int) videoW, !wideOn);
+#endif
 #ifdef HAVE_PK_WIDE
     if (partnerTrack) {
         partnerOk = pk_partner_self(core, partnerSelf);
@@ -1028,6 +1039,15 @@ static void cmdRomBlocks(const char* path) {
 }
 
 #ifdef HAVE_PK_COOP
+#ifdef HAVE_PK_FLIGHT
+// pk_flight's way to call the game (pk_flight_call_fn): mgba_dump's own pk_call.
+static int flightCall(struct mCore* c, uint32_t fn, const uint32_t args[4], uint32_t* r0) {
+    if (!pk_call(c, fn, args)) return 0;
+    if (r0) *r0 = pk_call_r0;
+    return 1;
+}
+#endif
+
 // pk_coop's way to call the game (pk_coop_call_fn): mgba_dump's own pk_call, r0 back, 0xFFFFFFFF if it never returned.
 static uint32_t coopCall(struct mCore* c, uint32_t fn, const uint32_t args[4]) {
     return pk_call(c, fn, args) ? pk_call_r0 : 0xFFFFFFFFu;
@@ -1344,7 +1364,7 @@ int main(int argc, char** argv) {
     core->reset(core);
     fprintf(stderr, "mgba_dump: core ready (%ux%u, %d Hz)\n", w, h, core->frequency(core));
 
-    char line[512];
+    char line[8192];   // a scenic FLY route (`flightroute`) is one line
     while (fgets(line, sizeof(line), stdin)) {
         char* nl = strchr(line, '\n');
         if (nl) *nl = 0;
@@ -1860,9 +1880,10 @@ int main(int argc, char** argv) {
             arg1[0] = 0;
             sscanf(line, "%*s %255s", arg1);
             int fs = pk_field_state(core, !strcmp(arg1, "run"), wildKeep >= 0 ? wildKeep : 100);
-            printf("fieldinfo: frame %u known %d locked %d battle %d text %d bike %d surf %d avatar %d\n",
+            printf("fieldinfo: frame %u known %d locked %d battle %d text %d bike %d surf %d avatar %d window %d\n",
                    core->frameCounter(core), !!(fs & PK_FIELD_KNOWN), !!(fs & PK_FIELD_LOCKED), !!(fs & PK_FIELD_BATTLE),
-                   !!(fs & PK_FIELD_TEXT), !!(fs & PK_FIELD_BIKE), !!(fs & PK_FIELD_SURF), !!(fs & PK_FIELD_AVATAR));
+                   !!(fs & PK_FIELD_TEXT), !!(fs & PK_FIELD_BIKE), !!(fs & PK_FIELD_SURF), !!(fs & PK_FIELD_AVATAR),
+                   !!(fs & PK_FIELD_WINDOW));
         } else if (!strcmp(cmd, "partnerself")) {
             // Co-op presence: this frame's pk_partner_self (map, fine position x16 + pixels, facing, mode, step count).
             if (!partnerOk) printf("partnerself: none (no field table: `wideon` first)\n");
@@ -2975,10 +2996,80 @@ int main(int argc, char** argv) {
             if (f && fread(buf, 1, sizeof(buf), f) == sizeof(buf)) pk_follower_set(buf, buf + 3072);
             else fprintf(stderr, "mgba_dump: follower: can't read %s\n", arg1);
             if (f) fclose(f);
+#ifdef HAVE_PK_FLIGHT
+        } else if (!strcmp(cmd, "flighton")) {
+            // flighton W0 W1 ... : pk_flight_configure with the words (hex or decimal; FlightFns.words() prints them)
+            static uint32_t words[PK_FLIGHT_WORDS];
+            int n = 0;
+            const char* q = line + strlen("flighton");
+            char* end;
+            while (n < PK_FLIGHT_WORDS) {
+                unsigned long v = strtoul(q, &end, 0);
+                if (end == q) break;
+                words[n++] = (uint32_t) v;
+                q = end;
+            }
+            pk_flight_set_call(flightCall);
+            pk_flight_configure(words, n);
+            printf("flight: configured %d of %d words\n", n, PK_FLIGHT_WORDS);
+        } else if (!strcmp(cmd, "flight")) {
+            // flight takeoff | land: waits (up to 60 frames) for a frame the game's code can be called on
+            sscanf(line, "%*s %255s", arg1);
+            if (!strcmp(arg1, "takeoff")) {
+                int r = PK_FLIGHT_NOT_NOW, waited = 0;
+                for (; waited < 60; waited++) {
+                    if (pk_call_safe(core)) { r = pk_flight_take_off(core); break; }
+                    runFrame();
+                }
+                printf("flight: takeoff %d (after %d frame(s))\n", r, waited);
+            } else if (!strcmp(arg1, "land")) {
+                pk_flight_land();
+                printf("flight: land asked\n");
+            }
+        } else if (!strcmp(cmd, "flightroute")) {
+            // flightroute DIRS: a string of D U L R (down, up, left, right), the scenic FLY's route
+            static uint8_t dirs[4096];
+            int n = 0;
+            for (const char* c = line + strlen("flightroute"); *c && n < 4096; c++)
+                if (*c == 'D' || *c == 'U' || *c == 'L' || *c == 'R') dirs[n++] = *c == 'D' ? 1 : *c == 'U' ? 2 : *c == 'L' ? 3 : 4;
+            printf("flight: route %d (%d steps)\n", pk_flight_route(dirs, n), n);
+        } else if (!strcmp(cmd, "flightarea")) {
+            // flightarea [G.N ...]: FLIGHT AREA's maps (decimal group.num), none = anywhere
+            static uint8_t bits[PK_FLIGHT_AREA_BYTES];
+            memset(bits, 0, sizeof bits);
+            int n = 0, g, m, used;
+            for (const char* q = line + strlen("flightarea"); sscanf(q, " %d.%d%n", &g, &m, &used) == 2; q += used, n++)
+                bits[((g << 8) | m) >> 3] |= (uint8_t) (1u << (m & 7));
+            pk_flight_set_area(n ? bits : NULL, n ? (int) sizeof bits : 0);
+            printf("flight: area %d map(s)\n", n);
+        } else if (!strcmp(cmd, "flightinfo")) {
+            char info[300];
+            pk_flight_info(core, info, sizeof(info));
+            printf("%s\n", info);
+#endif
         } else if (!strcmp(cmd, "followinfo")) {
             char info[200];
             pk_follower_info(info, sizeof(info));
             printf("followinfo: %s\n", info);
+        } else if (!strcmp(cmd, "rideset")) {
+            // rideset FILE W: RIDE ON's vehicle - PK_RIDE_BYTES (three views, 1024 bytes each in OBJ tile order, the smoke,
+            // its places) then a 32-byte palette
+            static uint8_t buf[PK_RIDE_BYTES + 32];
+            int w = 32;
+            sscanf(line, "%*s %255s %d", arg1, &w);
+            FILE* f = fopen(arg1, "rb");
+            size_t n = f ? fread(buf, 1, (size_t) (PK_RIDE_BYTES + 32), f) : 0;
+            if (f) fclose(f);
+            if (n == (size_t) (PK_RIDE_BYTES + 32)) pk_ride_set(buf, buf + PK_RIDE_BYTES, w);
+            else fprintf(stderr, "mgba_dump: rideset: can't read %s\n", arg1);
+        } else if (!strcmp(cmd, "rideon")) {
+            int on = 0;
+            sscanf(line, "%*s %d", &on);
+            pk_ride_show(core, on);
+        } else if (!strcmp(cmd, "rideinfo")) {
+            char info[200];
+            pk_ride_info(info, sizeof(info));
+            printf("rideinfo: %s\n", info);
         } else if (!strcmp(cmd, "followon")) {
             int on = 0;
             sscanf(line, "%*s %d", &on);

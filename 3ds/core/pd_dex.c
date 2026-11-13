@@ -264,6 +264,13 @@ int pd_dex_regional(const struct pd_game* g, int i) {
 }
 
 // An ability's name by id (gAbilityNames: records of abilityNameStride bytes holding the name or a pointer to it).
+static void ability_name(const struct pd_game* g, int id, char* out, size_t outLen);
+
+void pd_dex_ability_name(const struct pd_game* g, int id, char* out, size_t outLen) {
+    if (outLen) out[0] = 0;
+    if (g && g->cfg) ability_name(g, id, out, outLen);
+}
+
 static void ability_name(const struct pd_game* g, int id, char* out, size_t outLen) {
     const struct pd_config* cfg = g->cfg;
     out[0] = 0;

@@ -1,6 +1,8 @@
 #pragma once
 #include "companion.h"
 struct DsDexArt;
+struct pd_party_source_palette;
+const pd_party_source_palette& ds_party_palette(DsGame game);
 extern "C" {
 #include "pd_canvas.h"
 }

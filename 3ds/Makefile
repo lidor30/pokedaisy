@@ -15,7 +15,7 @@ CFLAGS ?= -std=c11 -O2 -Wall -Wextra -Werror
 CORE_SRC := $(wildcard core/*.c)
 DEVKITARM_IMAGE := devkitpro/devkitarm:latest
 
-.PHONY: preview 3ds-dev test-shiny test-roms test-gbguide test-gbdex test-dex test-font 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
+.PHONY: preview library-preview docs-shots test-save 3ds-dev test-shiny test-roms test-gbguide test-gbdex test-dex test-font 3ds decomps fixture-roms azahar-test azahar-battle-test tables clean
 
 $(BUILD)/pd_font_test: core/pd_canvas.c core/pd_canvas.h core/pd_font.h core/pd_font_gen.c test/font_test.c
 	@mkdir -p $(BUILD)
@@ -94,6 +94,37 @@ $(BUILD)/pd_preview: $(CORE_SRC) $(wildcard core/*.h) desktop/pd_preview.c deskt
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -o $@ $(CORE_SRC) desktop/pd_preview.c desktop/pd_png.c -lm
 
+# The library on real files (both screens a PNG per page): ROMs and saves are read where they are, never written - the
+# save tools' writes land in build/library-shots/. LIBRARY_ROMS / LIBRARY_SAVES move them.
+LIBRARY_ROMS ?= $(HOME)/Downloads/Game ROMs & Emulation/gba
+LIBRARY_SAVES ?= $(HOME)/Documents/RetroArch/saves/mGBA
+$(BUILD)/pd_library_preview: $(CORE_SRC) $(wildcard core/*.h) desktop/pd_library_preview.c desktop/pd_png.c desktop/pd_png.h
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $(CORE_SRC) desktop/pd_library_preview.c desktop/pd_png.c -lm
+
+library-preview: $(BUILD)/pd_library_preview
+	@mkdir -p $(BUILD)/library-shots
+	$(BUILD)/pd_library_preview "$(LIBRARY_ROMS)" "$(LIBRARY_SAVES)" $(BUILD)/library-shots $(FIXTURES)/firered_vanilla "$(LIBRARY_ROMS)/Pokemon - FireRed Version (USA, Europe) (Rev 1).gba"
+
+# The install guide's screenshots (docs/manual/3ds.md): the library on made-up files, no ROM or save read.
+DOCS_SHOTS ?= ../docs/manual/shots
+$(BUILD)/pd_docs_shots: $(CORE_SRC) $(wildcard core/*.h) desktop/pd_docs_shots.c desktop/pd_png.c desktop/pd_png.h
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $(CORE_SRC) desktop/pd_docs_shots.c desktop/pd_png.c -lm
+
+docs-shots: $(BUILD)/pd_docs_shots
+	$(BUILD)/pd_docs_shots $(DOCS_SHOTS)
+
+# The save tools' core (pd_save.c) on real saves: read, written the game's way and read back, a move, the money, trades.
+$(BUILD)/pd_save_test: $(CORE_SRC) $(wildcard core/*.h) test/save_test.c
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -o $@ $(CORE_SRC) test/save_test.c -lm
+
+test-save: $(BUILD)/pd_save_test
+	python3 tools/gen_save_tables.py --check
+	$(BUILD)/pd_save_test "BPRE=$(LIBRARY_SAVES)/Pokemon - FireRed Version (USA, Europe) (Rev 1).srm" \
+		"BPEE=$(LIBRARY_SAVES)/Pokemon - Emerald Version (USA, Europe).srm" "AXVE=$(LIBRARY_SAVES)/Pokemon - Ruby Version (USA, Europe) (Rev 1).sav"
+
 # The tabs that read the ROM (MAP, POKéDEX, GUIDE) need one: pret's decomps
 # build byte-identical to retail (make decomps, below); without them those
 # tabs show their "not available" notices. Point FR_ROM / EM_ROM at builds you
@@ -137,6 +168,7 @@ tables:
 	python3 tools/gen_font.py
 	python3 tools/gen_icon.py
 	python3 tools/gen_icons.py
+	python3 tools/gen_save_tables.py
 
 # The repo is mounted whole: the build needs third_party/mgba next to 3ds/.
 3ds:
@@ -152,8 +184,10 @@ tables:
 			-DCMAKE_TOOLCHAIN_FILE=/repo/third_party/mgba/src/platform/3ds/CMakeToolchain.txt \
 			&& cmake --build build-dev -j$$(nproc) && cp build-dev/pokedaisy.3dsx pokedaisy-dev.3dsx"
 
-# pd_sim: the real mGBA core, the real ROMs and the app's host logic, no console (desktop/sim/).
-$(BUILD)/sim/pd_sim: $(CORE_SRC) $(wildcard core/*.h) $(wildcard host/*) desktop/sim/pd_sim.c desktop/sim/CMakeLists.txt
+# pd_sim: the real cores (armGBA's interpreter for GBA games, mGBA for Game Boy ones), the real ROMs and the app's host
+# logic, no console (desktop/sim/).
+$(BUILD)/sim/pd_sim: $(CORE_SRC) $(wildcard core/*.h) $(wildcard host/*) $(wildcard emu/*) desktop/sim/pd_sim.c desktop/sim/CMakeLists.txt \
+		$(wildcard ../linux/*.c ../linux/*.h ../app/src/main/cpp/pk_*.c ../app/src/main/cpp/pk_*.h)
 	cmake -S desktop/sim -B $(BUILD)/sim -DCMAKE_BUILD_TYPE=RelWithDebInfo -DCMAKE_POLICY_VERSION_MINIMUM=3.5 >/dev/null
 	cmake --build $(BUILD)/sim --target pd_sim -j8
 

@@ -271,6 +271,7 @@ working · — = not attempted.
 | **Pokémon Modern Emerald** v3.6 | Emerald-based (BPEE, 32 MB), resetes12's public pokeemerald fork (tag `Release3.6`) built with `make modern` | ✅ (`modern_emerald`: a new game played headless, six given through its own `givemon`, saved in the moving truck) | ✅ a scripted wild battle (`modern_emerald_battle`); the five handlers read live in their menus, the one-press picks and the POKéMON switch checked | ✅ Emerald's five pockets (Items holds 90), the key at SaveBlock2 +0xBC | ◐ Emerald's map sections; its picture not checked | ✅ mon + item icons (its own tables, by their neighbours' bytes) | — | `NATIVE_MODERN_EMERALD`, `GameKind.EMERALD` with `ActiveTables.emeraldHack` per save (`ModernEmerald`). See "Pokémon Modern Emerald" below. |
 | **Pokémon Elite Redux** 2.65.3b, 2.65.4.1b | Emerald-based (BPEE, **32 MB**), its own pokeemerald rebuild (gcc, from Inclement Emerald); its source is public (Elite-Redux/eliteredux-source) but no release is tagged, so everything was mapped from the ROMs | ✅ (`elite_redux`, `elite_redux_v2653`: the one save, from its Discord, loads in both) - a packed plaintext 0x4C-byte party mon, no IVs (all 31; `speedDown` = a 0 Speed IV), the nature stored | ✅ scripted wild and trainer battles (`*_battle`, `*_trainer`: ROXANNE's FOE TEAM, the next foe after a faint), its 0x68-byte BattlePokemon; its own battle menu (no BAG; FIGHT 0, POKéMON 1, RUN 2, INFO 3; moves a column) - one-press picks and the POKéMON switch (a two-column grid) checked headless | ✅ one owned bit per item, no counts (`ItemFlagsBag`), its 8 pockets folded into the app's 5 | ✅ Emerald's Hoenn art and grid (its ROM kept them), its own section names | ✅ mon + item icons (the GF ROM header's) | ✅ one National dex of 1222 by dex number, SaveBlock1's flags (CAUGHT 29 = its title screen) | `NATIVE_ELITE_REDUX_V2_65_4_1B` / `_V2_65_3B`, `GameKind.ELITE_REDUX`; tables from `scripts/gen_elite_redux_tables.py` (2.65.4.1b whole, 2.65.3b's differences). EWRAM past the battle globals is 8 higher in 2.65.4.1b; every ROM table moved. GUIDE: HERE only. EXPAND (its own WIDE rows, exact), the field reads and WILD ENCOUNTERS checked headless; no field items, FLY or card. |
 | **Pokémon Team Rocket Edition: Dragonsden Version** 1.5 | Emerald-based (BPEE, **32 MB**), DragonsdenTV's own closed pokeemerald build (gcc) on an older pokeemerald-expansion (36-byte base stats, vanilla's 44-byte items in expansion's ids, National Dex species to 1395), no source | ✅ (`team_rocket`: the one save, from its Discord) - vanilla's encrypted 100-byte mon, but language + flags share +0x12 (hasSpecies bit 4, isEgg bit 5) and the OT name starts at +0x13; no Mints (nature = PID % 25) | ✅ scripted wild (`team_rocket_battle`) and trainer battles (`team_rocket_trainer*`: BROCK's FOE TEAM, the next foe at gBattleStruct + 0x62), its 0x5C-byte BattlePokemon; the five handlers read live, one-press picks and the POKéMON switch (Emerald's list) checked headless | ✅ 8 pockets folded into the app's 5, Emerald's encryption key | ◐ its own section names (Kanto / Johto drawn with Hoenn tiles: the save is in CELADON CITY); its region maps aren't read | ✅ mon + item icons (the GF ROM header's; sItemIconTable by shape) | — (a regional dex of its own: the summary shows CROBAT as No. 067; the save has no Pokédex yet) | `NATIVE_TEAM_ROCKET`, `GameKind.TEAM_ROCKET`; tables from `scripts/gen_team_rocket_tables.py`. Its setwildbattle takes a second mon's fields; ScriptContext_SetupScript 0x080CEDC5. GUIDE: HERE only (`team_rocket_route`, warped to ROUTE 101). No EXPAND, field reads, field items, FLY or card yet. |
+| **Pokémon Team Rocket Edition 2026** 3.0.9, 3.1 (Spanish) | Emerald-based (BPEE, **32 MB**), pokeemerald-expansion 1.14.4 (its RHHEXP block), closed | ✅ 3.1 (`team_rocket_v3_1`: a new game played headless, its ZUBAT); 3.0.9 mapped from a contributor's save (no fixture) | ✅ 3.1 (`team_rocket_v3_1_battle`: a scripted wild battle through its ScriptContext_SetupScript 0x081A4175; handlers v3.0.9's +0x68) | ✅ eight pockets | ✅ its seven region maps (RomArt's `TR3_*`) | ✅ | ✅ gSpeciesInfo pages | 3.1 is 3.0.9's RAM word for word with its ROM moved: GF header / RHHEXP block pointers, chart / trainers / wild headers by content; every name table equal (`gen_expansion_tables.py team_rocket_v3_1`, `same_as`) |
 | **Pokémon Wishes of Tomorrow** 1.2.6 | Emerald-based (BPEE, **32 MB**), FlatFoot Labs' closed build on pokeemerald-expansion 1.15.3 (its RHHEXP block: 848 moves, 1581 species, 924 items), gcc, no source | ✅ (`wishes`: a new game played headless, randomizer off, its party / bag / Pokédex flags given through the game's own script commands, then saved in game) - expansion's encrypted 100-byte mon (species / moves 11 bits, PP 7, experience 21, held item 10) | ✅ scripted wild and trainer battles (`wishes_battle`, `wishes_trainer*`: GENERAL EDWARDS' six, KENJI's next pick at gBattleStruct + 0xEB; `wishes_mega`: a Mega Evolved TYRANITAR reads as species 926), its 0x88-byte BattlePokemon; the five handlers read live (the target one in a double battle), one-press picks and the POKéMON switch (Emerald's list) checked headless | ✅ Emerald's five pockets | ✅ its own JOKAIM TOWN MAP (`regionmap/wishes.png` rebuilt from the ROM: RomArt's `WSH_REGION_*`, Emerald's kind of 8bpp affine screen with smol art) and cursor grid, its own section names (MUNEN VILLAGE 0xD1 ...); the player's head is Emerald's Brendan / May, as in the game | ✅ mon + item icons (gSpeciesInfo / gItemsInfo, smol item tiles, plain palettes) | ✅ expansion's Hoenn list (214, u32 entries) + National (1025), SaveBlock1+0x359C / +0x361D | `NATIVE_WISHES`, `GameKind.WISHES`; tables from `gen_expansion_tables.py wishes`, RAM by literal-pool reference counts against an expansion 1.15.3 build of the tag (`nm`), every address then checked live. GUIDE: HERE only; its randomizer is followed (`WishesRandomizer`, see below). No EXPAND, field reads, field items, FLY or card yet. |
 | **Pokémon Dreamstone Mysteries** (no version shown) | Emerald-based (BPEE, **32 MB**), dsmyst's closed Cormoria hack on pokeemerald-expansion **1.11.2** (its debug menu's EXPANSION VERSION: "v1.11.2 Development Build"), gcc | ✅ (`dreamstone`: no save existed, so a new game was played headless and five Pokémon given through its own ScrCmd_createmon) - 1.10's packed encrypted 100-byte mon, Imperium's handling | ✅ scripted wild (`dreamstone_battle`) and trainer battles (`dreamstone_trainer*`: BACKPACKER RONNIE's FOE TEAM, the next foe at gBattleStruct + 0x5B), expansion's 0x60-byte BattlePokemon; the five handlers read live, one-press picks and the POKéMON switch (a two-column grid) checked headless | ✅ 7 pockets (Medicine, Battle Items folded into Items) | ✅ its own Cormoria TOWN MAP (`regionmap/dreamstone.png` rebuilt from the ROM: RomArt's `DSM_REGION_*`, a FireRed-like 4bpp screen) and cursor grid | ✅ mon + item icons (gSpeciesInfo / gItemsInfo) | ✅ its own regional list (315, GOTHITA first; the game titles it HOENN) + National, SaveBlock1's flags | `NATIVE_DREAMSTONE`, `GameKind.DREAMSTONE`; tables from `gen_expansion_tables.py dreamstone` (+ growth rates). pokeemerald-expansion 1.11.2 built plain was the map for the RAM (every global within a few bytes of it, then checked in dumps). GUIDE: NEXT BOSS (the eight badge holders by the badge flag their scripts set, then VICTORY CAPE's five) and HERE. Its gScriptCmdTable's commands run through the ROM's 0x0A000000 mirror. No EXPAND, field reads, field items, FLY, PC or card. |
 | **Pokémon Monomyth** 1.0, 1.1 | its own game code on 1.0 (**MONE**, 32 MB; 1.1 is **BPEE**, found by hash with the big BPEE hacks), Team Monomyth's closed game on its own pokeemerald build (gcc: globals in EWRAM behind section anchors, so literal-pool words point near a variable, not at it), the Athanto region | ✅ (`monomyth`: the user's save) - vanilla's 100-byte mon, its substructs XORed with a key of its own (`monomythKey`: its box decryption at 0x08068198, from the personality and OT ID); 250 natures of its own, flavour only (`monomythNature`, its GetNature's hash) | ✅ scripted wild (`monomyth_battle`) and trainer battles (`monomyth_trainer*`: BUG CATCHER TIM's FOE TEAM, his second out), its rearranged 0x58-byte BattlePokemon (PP first, species +0x0C, item +0x20); the five handlers read live, one-press picks and the POKéMON switch (a two-column grid) checked headless; the trainer's next pick isn't mapped | ✅ 8 pockets (Medicine and held items folded into Items), the key at SaveBlock2 +0x40 | ✅ its PokeNav's ATHANTO MAP (RomArt's `MMY_REGION_*`: a mode-0 screen, 8bpp tiles from tile 0x60 through a 32x32 u16 tilemap shown from row 2, BG palette 7; matched the game's screen pixel for pixel), its one player head, section rects at 0x08A166AC on cursor grid 0x08A16000 (28x15, from tile (1, 2)) | ✅ mon + item icons (vanilla-shaped tables; the mon icons packed by its own tile coder, `MonomythIcons`) | ✅ its one ATHANTO dex (362 numbers, metric), SaveBlock1's flags (SEEN 22 / OWN 11 on the save), smol front pictures | `NATIVE_MONOMYTH`, `GameKind.MONOMYTH`, detected by hash under `HACK_GAME_CODES`; tables from `scripts/gen_monomyth_tables.py` (its own EXP curves past Lv70 too). Its struct Main is in its own order (no intrCheck: `frameCounterOff`; inBattle at 0x02020601, 0x17 before callback1). setwildbattle takes species, level, item, a byte and a word; ScriptContext_SetupScript 0x08090871. GUIDE: NEXT BOSS and HERE; DEX AREA by gMapGroups 0x0886EED8. EXPAND and field reads (`PK_WIDE_FAMILY_MM`: lock 0x0203BF67, 16-bit camera offsets, 80 sprites) and PC anywhere (special 57); STEADY FF music (`M4aSongs`' fifth signature: agbcc's m4aSongNumStart at 0x08259D0D, gSongTable 0x08E3AE10 with every song header stored top bit flipped); no WILD ENCOUNTERS (no switch), bag USE, FLY or card. 1.1 is the same game rebuilt: `NATIVE_MONOMYTH_V1_1` over v1.0's RAM, every pool word pointing at RAM unchanged and v1.0's save loading as it is, with the ROM moved (`POKEDEX_` / `GUIDE_TABLES_` / `FIELD_ITEMS_MONOMYTH_V1_1`; `gen_monomyth_tables.py` with both ROMs checks its tables equal v1.0's, so `MonomythGen.kt` serves both; of the trainers, only one name changed). Its fixtures are `monomyth_v1_1*`. Its header says BPEE, so whatever goes by game code sees Emerald: `fanfareSongId` turns it away by its title, and RegionMapWatch, REUSABLE TMS and the save editor find nothing to act on. |
@@ -281,6 +282,8 @@ working · — = not attempted.
 | **Pokémon Yellow Legacy** v1.0.10 (Game Boy, cRz-Shadows') | a pret/pokeyellow fork, open source: `make pokeyellow.gbc` with rgbds 0.6.1 at tag V1.0.10 is the release BPS over retail Yellow byte for byte (sha1 `2ac87de4…`, CRC `e7d07a3f`) | ✅ (`GEN1_YELLOW_LEGACY`) | ⚠️ both battlers, touch controls and the POKéMON switch as Yellow's (`yellow_legacy_battle*`) | ✅ one list of 59 | ✅ its own town map, Yellow's places | ✅ its own (an icon a species) | ✅ its own base data and pages | `GameKind.YELLOW_LEGACY`. See below. |
 | **Pokémon Crystal Legacy** v1.3.1 (Game Boy Color, cRz-Shadows') | a pret/pokecrystal fork, open source: `make pokecrystal.gbc` with rgbds 0.5.2 at tag V1.3.1 is the release BPS over either retail revision byte for byte (sha1 `74a6727e…`, CRC `12e97fb4`) | ✅ (`GEN2_CRYSTAL_LEGACY`) | ⚠️ both battlers, touch controls and the POKéMON switch as Crystal's (`crystal_legacy_battle*`) | ✅ four pockets, ITEMS 84 | ✅ its own POKéGEAR maps, Crystal's places | ✅ its own (an icon a species, eight palettes) | ✅ its own base data and pages (a far pointer each) | `GameKind.CRYSTAL_LEGACY`. See below. |
 | **Pokémon Crystal** (Game Boy Color: USA rev 0, USA/Europe rev 1, Australia) | Gen 2 retail carts (sha1 `f4cd194b…` / `f2f52230…` / `a0fc810f…`, = pret/pokecrystal's `crystal` / `crystal11` / `crystal_au` builds) | ✅ (`Gen2Reader`: big-endian 48-byte party_struct, species = Dex number, held item, gender from the DVs; `crystal` / `crystal_rev0` / `crystal_au`: one save in all three) | ⚠️ both battlers (wBattleMon / wEnemyMon, 32-byte battle_struct with its types) from a wild battle (`crystal_battle`); a trainer's party (wOTPartyMons) is read but no trainer battle was captured. Touch controls: the 2D menu's cursor (`readGen2BattleInput`), steered like Yellow's; a move and RUN checked headless | ✅ four pockets (ITEMS, BALLS, KEY ITEMS, the TM / HM quantities) | ✅ landmarks: each map header's landmark by (group, number), the POKéGEAR's Johto and Kanto maps from the ROM (`Gen2Art`) | ✅ its party icons from the ROM (IconPointers, PartyMenuOBPals), the held-item / Mail marks | ✅ 251, national order; SEEN 2 / OWN 2 = the game's own POKéDEX (flag poked on to look) | Runs on mGBA's GB core. Tables from `scripts/gen_gen2_tables.py crystal` (pokecrystal.sym addresses, the three releases checked byte for byte). WRAM bank 1 is read by bank (`wramx`), see below. |
+| **Pokémon Goldene Edition / Silberne Edition** (Game Boy Color, German Gold / Silver) | English Gold / Silver translated (sha1 `9254195d…` / `8ecc58d6…`) | ✅ English Gold's RAM (`gold_de` / `silver_de`: the gold fixture's save, loaded unchanged) | ⚠️ as English (`gold_de_battle*`, `silver_de_battle`), the menus at Kristall's columns | ✅ English's four pockets, their own names (BEUTEL) | ✅ their own landmark names, English's POKéGEAR maps | ✅ English's icons | ✅ 251, each version's own pages, metric | `GEN2_GOLD_DE` / `GEN2_SILVER_DE`. Names from `scripts/gen_gen2_tables.py gold_silver_de` (everything else checked equal to English's). See below. |
+| **Pokémon Kristall** (Game Boy Color, German Crystal) | English Crystal translated (sha1 `accb5842…`) | ✅ English's RAM (`crystal_de`: the crystal fixture's save, loaded unchanged) | ⚠️ as English (`crystal_de_battle*`), its menus at its own columns | ✅ English's four pockets, its own names (BEUTEL) | ✅ its own landmark names, English's POKéGEAR maps | ✅ English's icons | ✅ 251, its own pages, metric | `GEN2_CRYSTAL_DE`. Names from `scripts/gen_gen2_tables.py crystal_de` (everything else checked equal to English's). See below. |
 | **Pokémon Gold / Silver** (Game Boy Color, USA/Europe) | Gen 2 retail carts (sha1 `d8b8a360…` / `49b163f7…`, = pret/pokegold's `pokegold` / `pokesilver` builds) | ✅ Crystal's struct at their own RAM (`GEN2_GOLD` / `GEN2_SILVER`; `gold` / `silver`: one save played headless in Gold, loaded in both) | ⚠️ both battlers from wild battles (`gold_battle`, `silver_battle`) and a trainer's six (`gold_trainer`); touch controls and the POKéMON switch on Crystal's menus (`gold_battle_*`) | ✅ Crystal's four pockets, their own item names | ✅ their own 95 landmarks and maps, the POKéGEAR's Johto / Kanto maps (`Gen2Art`), the boy on them | ✅ their party icons from the ROM, Crystal's colours | ✅ 251, each version's own pages | `GameKind.GOLD` / `.SILVER`. Tables from `scripts/gen_gen2_tables.py gold_silver` (species, moves, types and chart checked equal to Crystal's with `--base`). See below. |
 | **Polished Crystal** 3.2.0 - 3.2.3 (normal, faithful, + debug: 16 builds) | Rangi42's open-source Crystal hack (GBC, 2 MB); every official release build, by SHA-1 | ✅ its own 48-byte party_struct (9-bit species + forms, gender bit), `GEN2_POLISHED_CRYSTAL` (`polished_crystal*`: a new game played headless) | ⚠️ both battlers (35-byte battle_struct) from a wild battle (`polished_crystal_battle`) and LYRA's (`polished_crystal_trainer`); touch controls and the POKéMON switch on its menus (`polished_crystal_battle_*`) | ✅ ITEMS / MEDICINE / BALLS / BERRIES, key items (their own ids), TMs a bit each | ✅ its 145 landmarks and 605 maps, Johto / Kanto / Orange Islands town maps (`Gen2Art`) | ✅ its party minis, each species' own colours | ✅ 289 in National order, metric | `GameKind.POLISHED_CRYSTAL`. Tables from `scripts/gen_polished_crystal_tables.py` (the releases' own .sym files). See below. |
 | **Pokémon Crystal Clear** v2.5.11, v2.6.0 (each Standard Colors and Color Filter) | Crystal-based (GBC, 2 MB), ShockSlayer's open-world hack: pokecrystal grown and rebuilt, no source or symbols (sha1 `a1c4da6b…` / `6fc677bf…` / `84d5c492…` / `534876e4…`) | ✅ Crystal's struct (`crystal_clear` / `crystal_clear_v2_5_11`: one save made headless in v2.6.0, loaded in all four builds) | ⚠️ both battlers and a trainer's team (`crystal_clear_trainer`: MOM's six), wild battles in both versions; touch controls on Crystal's 2D menu (a move and RUN checked headless in both) | ✅ Crystal's four pockets, its own item names | ✅ its own 117 landmarks and 488 maps from the ROM, its POKéGEAR Johto / Kanto maps (`Gen2Art`); no player head (the player is customised) | ✅ its own per-species icons (LZ, each in its colours) | ✅ 251, its dex pages (text packed with a dictionary) | `GEN2_CRYSTAL_CLEAR_V2_6_0` / `_V2_5_11`, `GameKind.CRYSTAL_CLEAR`. Tables from `scripts/gen_gen2_tables.py crystal_clear` (species, moves, types and chart checked equal to Crystal's with `--base`). See below. |
@@ -527,6 +530,38 @@ address and every table the companion reads at the same place (their .sym files 
   only the channels a song uses, so each one is recorded after PlayMusic(0) (`_InitSound`): HEAL "looped" the last song's
   drums every 3.6 s before that. On the Thor: ROUTE 29 62.3 s, NEW BARK 37.5 s, the wild battle 36.5 s, HEAL ends.
 - **Not done**: GUIDE, the POKéMON switch, a trainer-battle fixture, the TRAINER CARD.
+
+**Pokémon Kristall** (German Crystal, Game Boy Color; `GEN2_CRYSTAL_DE`, still `GameKind.CRYSTAL`; sha1 `accb5842…`, CRC32
+`616d85de`): English Crystal's code translated. Its RAM is English's byte for byte (the `crystal` fixture's save, written out by
+`scripts/gen2_save_from_fixture.py crystal`, loads in it unchanged: `crystal_de*`); its ROM tables moved. What differs:
+- **Names**: `scripts/gen_gen2_tables.py crystal_de <kristall.gbc> --base <crystal rev 1.gbc>` checks every table but the names
+  against English's (species, moves' types and powers, the chart, landmark places, maps) and writes the names alone
+  (`Gen2TextCrystalDeGen.kt`), laid over Crystal's as a `GameText` keyed by its game code BYTD (`CRYSTAL_DE_TEXT`); its
+  landmarks break a name with 0x1E (a hyphen). `Gen2Config.language` / `gameCode` set `romLanguage` / `romGameCode`, so type
+  names follow the cart too (DRACHEN, where the German GBA games say DRACHE) and the bag tab reads BEUTEL.
+- **Battle menus**: KMPF / PkMn / BEUTEL / FLUCHT from column 5 (English's 9, `battleMenuLeft`), TAUSCH / STATUS / ZURÜCK from
+  column 10 (12, `switchMenuLeft`); the party menu is English's.
+- **DEX** (`GEN2_DEX_CRYSTAL_DE`): its own pointers; a page is metric (`metricBody`: height a byte in dm, weight a u16 in hg,
+  then the text), printed as GR. 0.9m / GEW 6.4kg with no category suffix (`POKEDEX_CRYSTAL_DE`).
+- **Art**: English's pixels (font, icons, maps, checked equal); only the town maps' tilemaps moved (`Gen2Art.CRYSTAL_DE`).
+- **STEADY music**: PlayMusic 0x3B81, the park 0x289C; songs loop exactly as English's (`gbloop`, songs 4 and 9).
+- **EXPAND**: English's `GB_ROMS` row but SpriteMovementData (bank 1, 0x4276).
+- **PC / FLY / WILD**: `GbField.CrystalDe` (RunMemScript one byte later, Flypoints 0x1E later, its Fly script's text id).
+- **GUIDE**: Crystal's; its hand-written lines stay English, like the European Yellows'.
+
+**Pokémon Goldene Edition / Silberne Edition** (German Gold / Silver, Game Boy Color; `GEN2_GOLD_DE` / `GEN2_SILVER_DE`, still
+`GameKind.GOLD` / `.SILVER`; sha1 `9254195d…` / `8ecc58d6…`, CRC32 `4889dfaa` / `96c9db95`): English Gold / Silver translated,
+the way Kristall is English Crystal. Their RAM is English Gold's (`port_gen1.py` over pokegold.sym: every symbol at the same
+place), so the gold fixture's save (`scripts/gen2_save_from_fixture.py gold`) loads in both; the two German carts share every
+name table byte for byte. What differs:
+- **Names**: `scripts/gen_gen2_tables.py gold_silver_de <goldene.gbc> <silberne.gbc> --base <gold.gbc> <silver.gbc>` writes the
+  names alone (`Gen2TextGoldSilverDeGen.kt`, `GOLD_SILVER_DE_TEXT`, game codes AAUD / AAXD); species, move and type names are
+  Kristall's words, items and landmarks their own.
+- **Battle menus**: Kristall's columns (5 and 10).
+- **DEX** (`GEN2_DEX_GOLD_SILVER_DE`): English Gold's formats at their own addresses, pages metric as Kristall's.
+- **Art**: English's pixels; the icon tables 2 bytes later, the town maps' tilemaps 0x32 later (`Gen2Art.GOLD_DE` / `.SILVER_DE`).
+- **STEADY music**: PlayMusic 0x3D8F, the park 0x29D0; the songs loop as English's (`gbloop`).
+- The user's German Gold saves were empty, hence the fixture's save.
 
 **Pokémon Gold and Silver** (Game Boy Color; `GEN2_GOLD` / `GEN2_SILVER`, `GameKind.GOLD` / `.SILVER`): pret/pokegold
 builds both carts byte for byte (`pokegold.gbc` / `pokesilver.gbc`, its roms.sha1), and the two keep every RAM address at the
@@ -2076,7 +2111,7 @@ only keeps a 256x256 ring of tiles in VRAM (`field_camera.c`), so the rest would
   pixel for pixel on both games (2026-10-09). Not covered yet: weather drawn over the field (rain sprites, fog on
   BG0) stops at the GBA's edges; scanline effects aren't extended.
 
-### WIDE on the Game Boy (`pk_wide_gb.c`, Pokémon Yellow, Crystal, their Legacy hacks and Crystal Clear)
+### WIDE on the Game Boy (`pk_wide_gb.c`, Pokémon Yellow, Crystal, their Legacy hacks, Crystal Clear and Polished Crystal)
 
 Since 2026-10-18 English Yellow (CRC32 `7d527d62`) has EXPAND, ZOOM and the look-around too. `pk_wide.c` hands every call
 to `pk_wide_gb.c` while a Game Boy game is configured (`pk_wide_gb_knows` / `_configure`, same CRC lookup); the frame is
@@ -2193,10 +2228,243 @@ ZOOM's steps are whole Game Boy pixels: 7.5 -> 6 / 5 / 4 / 3 on 1080 rows). Addr
     Not counted as a fault: a battle's wave transition (per-line SCX, LYOverrides) can't match the
     middle, for about 40 frames on the way into a battle indoors. Retail does the same (rev 1, Union Cave: 44 frames,
     `gbMarkTorn` sees no VRAM or palette write there), so `widecheck` lists them on every Crystal.
+- **Polished Crystal** (3.2.3's normal build, CRC32 `f98367e4`; Keegan's profile, written for the libretro core on 2026-11-08,
+  in the app since 2026-11-12). Its RAM isn't Crystal's shape, so it isn't a `GB_ROMS` row: `pk_wide_gb_knows` / `_configure`
+  answer for its CRC with `pcWideConfig` (`pk_wide_gb_polished_tables.h`, written from the release's own `.sym` by
+  `scripts/gen_polished_wide.py`, which checks the file's SHA-256: addresses only, no ROM bytes) and `gbPolished` set. What
+  differs: metatiles and attributes decompressed into WRAM (`PC_METATILES` / `PC_ATTRIBUTES`, a byte of attributes per tile),
+  34-byte object structs and 14-byte map objects, its LZ (`pk_wide_gb_polished_lz.inc`: connected maps' blocks, overworld
+  sprites), its object palettes as loaded (`PC_LOADED_PALS`: a sprite whose palette isn't loaded isn't drawn) and the map
+  objects in `pk_wide_gb_polished.inc`. Its battle transition sets `hVBlank` to 3, not Crystal's 1 (its 1 is the magnet
+  train), so that's the pull-in's cue there. Checked headless on the new-game save (`native-capture/boot/polished_crystal.txt`):
+  walking its route and grass, the START menu and OPTION, 2197 of 2265 map frames exact; the 68 others are a wild battle's
+  wipe, as on Crystal, and report BATTLE_START. The faithful and debug builds and 3.2.0 - 3.2.2 have their own CRCs and RAM
+  and aren't on yet: a `.sym` each through the generator, then a table of profiles by CRC.
 - **Not yet**: the other languages' Yellows (their RAM is English's + 5 from 0xD018: a `GB_ROMS` row each, plus
   `MapHeaderPointers`), Red / Blue (Yellow's + 1 from 0xCF1B, SGB palettes: `palette` takes `sgbAttributes` there), Gold /
-  Silver, Prism and Polished Crystal (Crystal's engine, their own addresses), battles past the edges, walking frames for Gen 1's
-  off-screen NPCs.
+  Silver and Prism (Crystal's engine, their own addresses), Polished Crystal's other builds, battles past the edges, walking
+  frames for Gen 1's off-screen NPCs.
+
+## FREE FLIGHT and the scenic FLY (`pk_flight.c`, `Flight.kt`, `ScenicFly.kt`)
+
+Retail FireRed rev 1 (`FLIGHT_FIRERED_REV1`, every address from pret's pokefirered built clean as firered_rev1 and its
+ELF) and retail Emerald (`FLIGHT_EMERALD`, from pret's pokeemerald symbols - the `symbols` branch's `pokeemerald.sym`: the
+build is retail byte for byte); the called functions are CRC-checked like FLY's. No ROM patch: the flight is the game's own pieces, driven after
+every frame by `pk_flight_tick` (native, so mgba_dump runs the same code headless: `flighton`, `flight`, `flightroute`,
+`flightinfo` in native-capture/README.md).
+
+- **Moving**: LockPlayerFieldControls, then the player stepped with held movements written into its ObjectEvent
+  (ObjectEventSetHeldMovement's fields: `movementActionId`, heldMovementActive / Finished, the sprite's data[1] / [2]),
+  WALK_FAST (A held: WALK_FASTER). A held movement never checks collision, and with the controls locked nothing a step
+  triggers runs (ProcessPlayerFieldInput: wild battles, trainers' sight, warps, the START menu). The camera follows the
+  player as for any step, so CameraUpdate loads the next map across a connection and the game shows its map sign. Each
+  step's tile is checked against GetMapBorderIdAt's rule, read from RAM (VMap + gMapConnectionFlags): the world's edge
+  turns the bird instead.
+- **Drawing**: the player hidden and its localId set to the camera object's (127): DoFlaggedGroundEffects skips an
+  invisible object with that id, so no footprints, grass or ripples under the bird. The bird is the game's FLY bird
+  (`gFieldEffectObjectTemplate_Bird`, CreateSprite; anims 1 / 3 = Red / Leaf riding seen from the side, flipped going
+  east since the game's flies off west, 2 / 4 from behind going north), priority 1 (over BG1's tree tops), at a fixed
+  place on screen: the camera keeps the player there (anchored from the player's sprite at take-off, checked constant).
+- **Emerald's rider**: its bird (`gFieldEffectObjectTemplate_Bird`, 32x32) is one picture with no rider - its FLY seats
+  the player's own sprite on it (the surfing graphics, ANIM_GET_ON_OFF_POKEMON_WEST, 8 px over the bird's centre). The
+  flight makes that rider a sprite of its own (`PK_FLIGHT_RIDER_*`): GetPlayerAvatarGraphicsIdByStateId(SURFING),
+  CopyObjectGraphicsInfoToSpriteTemplate into a scratch template (CreateObjectGraphicsSprite takes a fifth argument,
+  which pk_call can't pass), CreateSprite, the pose, and the player's own palette slot (Emerald loads it by slot, so the
+  template's tag finds none and CreateSprite picks 15: a white and green rider). In front of the bird (subpriority 0):
+  the game's cut-in has the bird in front, all but the hat hidden, which over a long flight read as no rider at all. Its
+  id + 1 in the bird's data[6], so a state brings it back. One side view only (flipped going east, the last side kept
+  going north); DestroySprite as the player lands.
+- **Turning (`flTurn`, `flCapture`)**: the bird banks toward the velocity the flight means: half the angle between the
+  picture's nose and that heading, at most 35 degrees, eased, level again after a few still frames. While it's ridden
+  the bird's (and Emerald's rider's) sprites are hidden and pk_flight_draw draws them into the finished frame instead:
+  each frame their tiles and palettes are read from VRAM into one 64x64 picture (the game keeps animating them), its 8x
+  scale built by Scale2x three times when the picture changes, and every pixel of the box around the bird looks that up
+  through the turn and the mirror (RotSprite's way). The GBA's own affine sprites were tried first: their nearest-pixel
+  turn broke the outlines and the rider's face up (seen on the RP6). The bird alone, coming in and leaving, is the
+  game's sprite again.
+- **The look on a diagonal**: the bird faces the D-pad's east / west, and only north alone shows it from behind. On a
+  route it goes by where the next 24 steps go in all, with some slack: a mostly north staircase (Pallet Town to Viridian
+  City: a step east every eight or so) took the side view at each jog and the back view between them.
+- **Diagonal speed**: a staircase covers 1.41 tiles in two steps, 71% of the straight speed at the same step time. Where
+  the trip isn't straight (the D-pad's two ways; the route's next 8 steps' net distance under their length) each step
+  takes that share of the time, picked from the game's 8 / 6 / 4 / 2 frames a tile (WALK_FAST, RIDE_WATER_CURRENT,
+  WALK_FASTER, SLIDE) by a running balance, so the average is exact (headless: 2.01 vs 2.02 px a frame).
+- **The smooth camera (EXPAND)**: the game moves in tile steps, four ways, so a diagonal scrolls in a staircase - and with
+  the step times mixed, unevenly. `pk_wide.c`'s `flyBegin` follows the camera from BG2's scroll at line 0 (continuous
+  across map connections) and moves the view at the velocity the flight means (`pk_wide_flight`'s vx / vy: the route's
+  way over its next 8 steps at the straight speed, the D-pad's, a landing's step), eased, pulled toward that camera (3%
+  a frame moving, 12% standing); the drawn window and the bird's OAM entry move by the difference (put back after line
+  159). Averaging the camera over the last steps (tried first) left a 2:1 or 3:1 staircase jumpy. Headless, Route 20 to
+  Fuchsia / Pallet / Cerulean: speed 3.9-4.3 px a frame, frame-to-frame change at most 1.4 (whole-pixel rounding),
+  never more than ~40 px off the camera. Without EXPAND the game's staircase stays. `WideCamera.flying` keeps the map
+  signs (text while the controls are locked) from pulling the zoom in. The map's name sign (BG0, the top-left corner,
+  20 tiles wide) would ride the offset: `flyLabel` paints the map back where it landed (drawRegion) and the sign where
+  it'd be with no offset, its pixels found from BG0's tilemap and the line's registers (bgPixel), not the layer tags
+  (mGBA keeps those only with the windows off; the Mac / Debian builds have none).
+- **The shadow** is drawn into each finished frame (`pk_flight_draw`: a soft oval in three bands, larger, fainter and
+  lower the higher the bird) and undone line by line first where the frame still holds it: mGBA redraws a line only when
+  something on it changed, and a still line used to darken again every frame (the blink seen on the RP6).
+- **The map grid mended (`flMend`)**: crossing into a map, the game copies the screen-sized area around the camera from
+  the old map's grid into the new one (MoveMapViewToBackup), so near the crossing the new grid holds what the old one had
+  there: its undefined squares (Route 21 above Cinnabar's corner, entered along Route 20's top row; Route 20's own edge
+  after Cinnabar; Emerald's Route 116 beside Rustboro after Route 115, where the route stopped), a third map it was joined
+  to, its border. Walking never reaches those corners; a diagonal flight does. For 30 frames after each new map (a frame
+  can end part-way through Emerald's LoadMapFromCameraTransition, the new layout already in gMapHeader and the copy
+  made on the next frame: a mend done once came too early), the map's own undefined squares get theirs back from its
+  layout and its padding is what the connections fill, in their order, undefined where none reaches. Then the whole view
+  is drawn again (DrawWholeMapView, once the game is at rest): what's on screen was drawn from the old map's metatiles,
+  garbled where the two tilesets differ (Route 117 into Verdanturf) and unmatched by EXPAND until it scrolled away (the
+  zoom pulled in, the margins showed the menu's bars). For the two or three frames the screen takes to catch up, pk_wide
+  takes the camera as the RAM has it while flying (no menu opens with the controls locked) and draws the margins from the
+  mended grid, rather than freezing them (the map and its people stood still, then jumped); `flyHold` is what's left if
+  even that snapshot is torn. Headless, Emerald's routes
+  from Route 114 to every town: no menu scene at all (they were 50-300 frames a crossing), FireRed's still none.
+- **No-fly maps** (`FlightFns.noFly`, pk_flight's NO_FLY words): stand-ins the game only shows from outside - FireRed's
+  SaffronCity_Connection (3.11), Saffron seen past its gatehouses, whose tiles come out scrambled up close (EXPAND then
+  lost its match: zoom pulled in, wrong sides). The flight stops at its edge (the map's connections, `flNoFlyAt`) and
+  ScenicFly leaves it out of the world, as it does every map's undefined squares (`Placed.holes`).
+- **The HUD** closes its open panel (its map, where FLY was picked) as FLY or TAKE OFF starts (`hudCloseTick`).
+- **State lives in the game's RAM**: the marked player (localId 127 + isPlayer) and the bird's sprite id in the player's
+  fieldEffectSpriteId (the surf blob's slot: never both). A save state or REWIND taken in the air loads back flying:
+  the tick adopts a marked player (or drops its own flight when the state had none). The app re-sends the same words every
+  half second (`syncFlight`), so a resume state taken in the air is adopted as soon as the game is known.
+- **Landing**: ring by ring around the player, the nearest tile inside the current map whose collision is 0, elevation
+  not 15, behaviour on the record's `landOk` list (ground, grass, sand... never water, ledges, doors, warps) and with no
+  one on it (MapGridGet*At / GetObjectEventIdByXY called once, when B is pressed). The bird flies there, comes down,
+  the player is shown with that tile's elevation and the controls unlocked, and the bird leaves.
+- **The scenic FLY** (`ScenicFly.kt`): the maps joined to the player's by connections (gMapGroups' headers, layout size,
+  connection offsets) laid out on one grid; A* where a step between two maps must be one of their connections; the path
+  pulled into staircases (`straighten`); flown with `pk_flight_route` at WALK_FASTER while EmulatorEngine runs the game at
+  `SCENIC_SPEED` and WideCamera's `flightZoom` takes the widest EXPAND step; it lands on sMapFlyDestinations' heal
+  location. A town not joined to the player's map (Saffron: its gatehouses are warps; the Sevii Islands) goes the classic
+  way; Emerald's Littleroot by the player's gender, Ever Grande and the Battle Frontier outside (HEAL_WARP_EMERALD's
+  special ids, as its Fly map exit). `ScenicFlyTest` replays every Kanto route over the world from the user's save's spot,
+  and Emerald's from Oldale Town (every town but Sootopolis, reached only by diving). SCENIC is FLY STYLE's default;
+  the first scenic landing asks once (`FlyStyleAsk`, the tip card's look where the tips go: KEEP IT / USE CLASSIC, the bar
+  running out keeps it; `Prefs.flyStyleAsked`, also set by any FLY STYLE pick).
+- **FLIGHT AREA** (GAMEPLAY, `Prefs.flightAreaId`, `FlightAreaMode`; `FlightArea.kt`): VISITED (default) keeps the
+  flight to maps the player has seen, so it can't skip the story. The games keep no record of routes, so the app keeps one per
+  save (`FlightArea.SeenMaps`, `filesDir/flight-area/<rom crc>-<save key>.txt`, the key a CRC of SaveBlock2's name, gender
+  and trainer ID): every map stood on (a field job every half second, `Keeper.tick`), and, the first time a save is met in a
+  run, what the save proves (`FlightArea.seed`): the towns GetMapsecType calls visited, the maps on a shortest way between two
+  of them through non-town maps, and maps where FlagGet(0x500 + trainer id) is set for a trainerbattle object (the trainer id
+  at +2, or +3 in the expansion's 1.12+ TrainerBattleParameter: voted per ROM by where the text pointer's top byte sits) -
+  only next to a map already in, so a hack that numbers its trainer flags otherwise can't open a far map (Quetzal: none, its
+  flag check is a region-badge one). pk_flight gets a bit per map (`pk_flight_set_area`, `MgbaCore.pkFlightArea`; kept
+  across configure / reset), `flNoFlyAt` turns the bird at a connection to a map not in it and `pk_flight_area_turned` lets
+  the app say why; `ScenicFly.read(allowed)` plans over those maps. ANYWHERE sends none and pauses RetroAchievements from the
+  first take-off (`RetroAchievements.setFlightAnywhere`) until it's switched back. `FlightAreaTest` checks the maps and
+  trainers read on every flight hack's ROM and the seeds on FireRed / Emerald's saves; mgba_dump `flightarea G.N ...`.
+  The GBA libretro core (and so pokedaisy-linux) has it too, for its TAKE OFF (retail English FireRed rev 0 / 1, Emerald):
+  `libretro/pd_flight_area.c` is the Keeper in C - keep the two in step - over `pd_flight_gen.h`'s `area` (the flight / FLY /
+  HealWarp records, `libretro/gen_flight.py`, `--check` in libretro.yml), its seen maps in the frontend's save directory
+  (`pokedaisy/flight-area/<rom crc>-<save key>.txt`, the app's format), the row in the companion's SETTINGS
+  (`pd_settings.flightAnywhere`, `host.hasFlightArea`). There ANYWHERE can't pause achievements: the frontend runs them.
+  The core flies the scenic FLY and FLY ON too (`host.flightSupported`: the compact SETTINGS list then has FLY STYLE /
+  FLIGHT AREA / FLY ON by QUICK MENU): FLY ON is the profile's words with `PK_FLIGHT_VEHICLE` set (`flight_configure_words`,
+  sent again when it changes, mid-flight too); a FLY pick under SCENIC routes with `linux/flight.c`'s `flight_here` /
+  `flight_destination` / `flight_route` over the config's flight record and FLIGHT AREA's maps (`scenic_job`, the 3DS's
+  flight_jobs), else the game's own FLY (no route, surfing, a config without the record: FireRed rev 0). MAP's TAKE OFF /
+  LAND is `PD_ACTION_FLIGHT` (`host.flightReady` / `host.flying`).
+- **Clouds** (pk_flight.c's flDrawClouds): while up, round-puff cumulus (flMakeClouds: clusters of domes on a wrapped 128 x 128
+  map, 2 x 2 px a texel, read bilinear) drawn into the finished frame over the ground and shadow, under the bird: a white core
+  and a thinner rim, bluer where the cloud thins below, at most 70% opaque, as thick as the bird is high. They slide by at
+  1.15x the camera the frame shows (the map's BG2 scroll as it was drawn, `pk_wide_bg2_scroll`: it moves as the ground
+  does, staircase and all - the flight's own speed, or gSpriteCoordOffset, which is the next frame's, shook them against
+  the ground on diagonals) plus EXPAND's smooth-camera offset times 0.15, and a slow wind; mgba_dump's `flightinfo` prints
+  their offset and the scroll, so a diagonal's frames can be checked: against the ground they only ever drift one way. With
+  EXPAND the clouds go over its whole picture after it's made (`pk_flight_draw_wide`, the bird's pixels masked out), else
+  into the GBA frame; there the draw's undo covers the whole frame (its buffers grow to it). Taking off from a bike gets off it first (`offBikeThen`: the game's own SELECT path).
+- **FLY ON** (MAKEOVER, `Prefs.flightVehicleId`, `FlightVehicle`, the PK_FLIGHT_VEHICLE word): an air balloon, a helicopter,
+  a zeppelin or a small plane in place of the bird, our own pixel art from `scripts/gen_flight_vehicles.py` at the games' angle (from
+  the side and a little above: spinning discs for rotors and propellers, roofs, wings and fins spread both ways; parts shaded by a normal lit
+  from the top left over a colour ramp, coloured outlines; rerun it after changing the art) -> `pk_flight_vehicles.h`.
+  flCapture draws the vehicle's frame for the whole flight (the bird's hardware sprite and Emerald's rider stay hidden), the
+  player's own overworld sprite (hidden while flying) over its SEAT pixels, then its FRONT pixels over them; the sprite held
+  on the player's standing frame the way they fly (`flPosePlayer`: ANIM_STD_FACE_WEST, mirrored going east; the balloon's
+  `upDown` takes FACE_NORTH / SOUTH going up / down; their walking frames bobbed in the seat), put back on landing; a 32 x 32
+  hero (Unbound's) is seated centred like a 16 x 32 one. Each has its own lean (the balloon none) and no back view.
+  A FireRed-engine bird in a palette of its own (`flBirdNoRider`: Unbound's tag 0x11A2) has no rider in its pictures: it
+  flies like Emerald's (one side picture), the player seated on its back (flSeatOnBird). Changing it mid-flight only swaps the picture (configure
+  compares the words without it). mgba_dump: the word after the bird palette's tag in `flighton`.
+- **Which games** (`flightAllowed`, `FieldItemFns.flight`; the code CRCs still decide): retail FireRed rev 0 / 1, LeafGreen
+  rev 0 / 1, Emerald, Ruby / Sapphire rev 1 / 2 (pret's `symbols` branches; R/S ride as Emerald, their save blocks in place,
+  gSpriteCoordOffsetY its own s32 - `spriteOffsetY` - and the covering ground effects turned off on the hidden player each
+  step, which FireRed / Emerald skip for the camera's localId by themselves), the randomized retail builds (retail's code;
+  the Poller's `retailRom` covers them), and three hacks by their hash: Radical Red, Unbound (also French) and Glazed. CFRU
+  hooks DestroySprite / PlaySE (their CRCs carry the hook's target) and sets the FLY bird's palette through its own loader in
+  CreateFlyBirdSprite (`birdPalette` called with `birdPaletteTag`: Radical Red's player tag 0x1100, Unbound's bird 0x11A2 -
+  palette 0 drew the bird in someone else's colours). Unbound XORs gMapGroups' group pointers (`mapGroupsXor`, as
+  DexDetails reads them) and its FLY lands on its own fly spots (`FlySpots`: u16 section, num, group, u16 x, y), which
+  `ScenicFly.destination` takes before heal locations. Glazed is Emerald's code: only its map group sizes differ. A new hack:
+  its world flown headless first (free flight, then mgba_dump `flightroute` sweeps with `wideon`, counting frames whose
+  margins didn't match - a randomized or edited build needs `wideon 60 <retail CRC>`), then a record and its kind in
+  `flightAllowed`.
+- **Every language** (40 carts): `scripts/port_field_items.py`'s port_flight maps the English record (functions by code, RAM
+  through the literal pools, gFieldEffectObjectTemplate_Bird through gFieldEffectObjectTemplatePointers' pool, gMapGroups /
+  sHealLocations through theirs) into `FieldItemsPortsGen.kt`, checking the bird template's callback, every map group's
+  headers and the heal locations' bytes. MapGridGetCollisionAt and MapGridGetElevationAt start with the same 32 bytes, so
+  a code match put both on one function: the collision one is placed at English's distance from the elevation one and
+  compared past their pools (`ScenicFlyTest.everyLanguageCartsFlightMatchesItsRom` keeps them apart).
+- **The FireRed rev 0 hacks** (`FLIGHT_ULTRA_VIOLET` ... `FLIGHT_GS_CHRONICLES`, firered.toml): rev 0's record with each
+  hack's map groups and heal locations read through rev 0's literal pools, its own DestroySprite CRC (CFRU hooks it), the
+  Saffron stand-in kept only where map 3.11 is still FireRed's. The ones running as FIRERED are picked by config
+  (`fireRedHackFlight`) and let in by identity (`FIRERED_HACK_FLIGHTS`), Rocket Edition and Ash Gray (both builds) too
+  since 2026-11-11. Ash Gray has gMapGroups of its own (rev 0's pool word points there); Rocket Edition hooks DestroySprite. Emerald Legacy (`FLIGHT_EMERALD_LEGACY`)
+  is Emerald's record mapped into its rebuild by code; its GetPlayerAvatarGraphicsIdByStateId returns a u16.
+- **The player is inanimate while up** (`flHidePlayer`: ObjectEvent.inanimate with invisible): the flight's fast movement
+  actions start the "go faster / fastest" step animations, which no player table has (FireRed's has 13 entries: anim 13 / 17
+  are past its end, read from EWRAM as commands). Rocket Edition reset on long flights from it (AnimateSprite's command jumped
+  through a bad pointer into the BIOS); retail had harmless bytes there. A state from before the fix is made inanimate on adoption.
+  Debugging a reset like it: single-step whole frames (pk_flight_tick at each frame's end) into a big ring of PCs and stop when
+  gMain.callback2 changes; the last ROM code before the BIOS names the culprit.
+- **Emerald Kaizo** (`FLIGHT_EMERALD_KAIZO`, Emerald's record under its own name for `flightAllowed`): its classic FLY's warp
+  crashed from the field, so `FieldItemFns.classicFly` is false there: FLY flies over the map whatever FLY STYLE says, and a
+  town with no route answers `FlyResult.NO_ROUTE` instead of falling back.
+- **A blank bird** (Ghost Grey blanked its graphics): flCapture finds nothing in the bird's frame and flies the player in
+  the balloon (`flBirdBlank`). **Greyscale games**: when every colour of the player's own sprite palette is a grey, a
+  vehicle's colours are each taken to the nearest of those greys by brightness (`flReadGreys` / `flGrey`).
+- **The pokeemerald-expansion hacks** (Emerald Imperium, Lazarus, Heart and Soul, SoulGold's five builds; emerald.toml):
+  their ObjectEvent keeps the sprite id at +0x23 (`objSpriteId`) and graphicsId as a u16. Mapped from pokeemerald-expansion
+  1.13's build (the scratch mapper: masked code, then shapes - CreateSprite from CreateFlyBirdSprite's 0xFF / 0xB4 / 1 call,
+  LoadPlayerObjectEventPalette right after it, called with the player's gender: `birdPaletteTag` 0xFFFF), and every grid
+  read checked by calling it on known tiles: a match can land past a function's first instructions (Heart and Soul's
+  MapGridGetMetatileBehaviorAt was mapped two `lsls` late and read tile 0,0 everywhere, so no landing ever came). SoulGold's
+  metatile ids are 11 bits with one collision bit (`mapGridUndefined` 0x7FF, which pk_flight's mend and ScenicFly's holes
+  use) and gcc split DestroySprite: its callers test inUse and call the body. Its v1.2 builds came from v1.1.4 by masked code
+  and the pool words of the matched functions. Lazarus, Heart and Soul and SoulGold have no rider graphics: `riderTemplate`
+  0 seats the player's own sprite on the bird. Heart and Soul's bird template has no callback (`spriteDummy` is written after
+  CreateSprite) and its SaveBlock1 position sits at +4 (`saveBlock1PosOff`, for ScenicFly's start).
+- **Seaglass and Too Many Types 2** (FLY came with the flight; `FIELD_ITEMS_SEAGLASS` / `_TMT2`): read the expansion version
+  off the ROM's RHHEXP block (0x204: `RHHEXP 01 <minor> <patch>`: Seaglass 1.9.2, Lazarus 1.9.4, TMT2 1.12.3, SoulGold 1.15.2).
+  Seaglass is Lazarus's build: Lazarus's verified table ports by masked code, then by callers (each BL to a function from a
+  caller that ports, the BL at the same place: votes), then pool words. TMT2 matched no plain build of its tag, so each
+  function was matched by its mnemonic sequence (registers and pool values left out, difflib ratio over every BL target)
+  and then proved: grid reads called on known tiles (elevation 3s, collision 0 / 1, metatile ids, behaviour 0 / sand / sea),
+  CreateSprite by creating the bird, gPaletteFade through BeginNormalPaletteFade's pool, the lock trio beside
+  ArePlayerFieldControlsLocked. Its CB_ExitFlyMap (found by calling both heal-warp functions) gives the town table and the
+  specials, read straight from its code.
+- **R.O.W.E. and Super Mariomon 1.5.x** (`FIELD_ITEMS_ROWE`, `_MARIOMON_V1_5(_2)`): pokeemerald forks, so retail Emerald's
+  whole verified table ports (masked code, callers, pool words; R.O.W.E.'s RAM checked against the symbol table its ROM
+  carries at 0x08FB0670). Both load the bird's palette before CreateSprite by an index (0x1A): `birdPaletteTag` with bit 16
+  calls the loader first and keeps the slot CreateSprite picks from the template's tag. Their CB_ExitFlyMap is where the FLY
+  rules are: find it as the one function calling both SetWarpDestinationToHealLocation and ...ToMapWarp, then read it -
+  R.O.W.E.'s is a compiled switch (a jump table of 0x9E cases: `movs r0, #heal; bl` per case) decoded into
+  `HealWarp.special`. A badge flag that moved (R.O.W.E.'s FLAG_BADGE01_GET 0xCD7) shows at retail's trainer-card badge check.
+  Mariomon's builds share a kind and code: `fieldItemsCandidatesForGame` lets the CRCs pick, like SoulGold's.
+- **Quetzal Alpha 9** (`FIELD_ITEMS_QUETZAL(_ES)(_V1)`): agbcc code (`adds rX, rY, #0` moves), so retail Emerald's table is
+  the source, not an expansion or modern build. Its field-move gate is its own (`flagGet` = its region-badge check, `badgeFlag`
+  = FLY's entry in its table), its ObjectEvent keeps the sprite id at +0x23 (with the wrong offset the held movement was set
+  but never ran: the flight drove another sprite), its Fly warp is a function of its own (Hoenn's table and Emerald's
+  specials replayed; its other regions not). Its saves: the Spanish one (Jagged Pass) loads in every Alpha 9 build.
+- **Emerald Rogue** has no FLY: its party menu refuses it, so `flightAllowed` never sees a table there.
+- **Following Pokemon** (the expansion's OW followers: Imperium, Lazarus, Heart and Soul, SoulGold, Seaglass): left on the ground, the follower was lost on the next map.
+  The game's FLY removes it in its return-to-field code (`if (gFieldCallback == FieldCallback_UseFly) RemoveFollowingPokemon();
+  else UpdateFollowingPokemon();`), which is where both are found: `followerRemove` is called at take-off, `followerUpdate`
+  once down (it spawns the follower hidden on the player's tile; it walks out at the first step).
+- **Overlapping layouts**: a loop of connections that doesn't close (Heart and Soul's Violet side) puts two maps on the same
+  tiles. ScenicFly keeps the first placed, drops a town whose landing tile another map holds, and crosses an edge only where
+  the game's first connection that way (fieldmap.c's order) is the map the layout shows, placed where that connection puts it.
 
 ## PC, FLY and WILD ENCOUNTERS on the Game Boy (`GbField.kt`)
 
@@ -2760,9 +3028,14 @@ Platinum (USA rev 1, `CPUE`; France rev 0, `CPUF`), HeartGold / SoulSilver (USA,
 the Gen 5 carts are DSi enhanced and run in DS mode) run on melonDS, with the companion, EXPAND and STEADY music.
 
 **The core.** `third_party/melonds` (a submodule pinned to upstream 1.1) builds its core library only, with the
-software 3D renderer (unthreaded: on the emulation thread, since melonDS's render thread raced fast-forward's frame skip
-on the Thor and showed frames with black rows), its OpenGL renderer ported to OpenGL ES (DS RESOLUTION, below) and the
-JIT without fast memory. Our changes are one patch,
+software 3D renderer on melonDS's render thread (a quarter less time a frame than on the emulation thread, HeartGold's
+overworld headless; from 2026-10-20 to 2026-11-09 it ran unthreaded, because a render started for a frame fast-forward
+skipped - a state taken or loaded mid-skip, a restart, the thread switched on - left its 192 line signals for the next
+frame, which then read 3D lines not drawn yet: black rows on the Thor, never on the Mac, whose render thread kept up; the
+patch's `EnableRenderThread` starts none on a skipped frame now, and `RenderFrame` drops and logs any left over -
+nds_dump prints `3D: dropped ...`), its OpenGL renderer ported to OpenGL ES (DS RESOLUTION, below) and the
+JIT with fast memory (since 2026-11-09; melonDS's own fault handler, set up with the JIT either way, takes the faults in
+compiled code and passes the rest on to crash reporting's). Our changes are one patch,
 `third_party/patches/melonds-pokedaisy.patch`, applied to the submodule's working tree at configure time by
 `apply_melonds_patch.cmake` (once; a tree that has it is left alone): EXPAND's GPU3D hooks (every polygon past culling,
 the lists' swap at VBlank, the clipper), the software renderer's column range, fast-forward's frame skip
@@ -2926,6 +3199,26 @@ places: v1.2.0's ARM9, overlays 16 / 21 and the four ARM9 tables are v1.3.0's by
 apart), and its own 12 changed files (personal, moves, trainers, encounters...) come through the file system. Both builds
 keep the original typings of a few species v1.3.0 retyped (`RenegadePlatinumTest`'s "other builds" case).
 
+**Blaze Black 2 Redux / Volt White 2 Redux** (Drayano and AphexCubed's v1.4.1; `Black2Redux`, eight SHA-1s): xdelta patches
+on the US / Europe Black 2 and White 2, each with three more on top (Classic, EVless, Classic EVless). The headers stay
+the retail carts' (`IREO` / `IRDO` rev 0) and so do the RAM, the save and the code the native side calls (the PC's and
+FLY's code checks pass): the player's retail saves load in them, and `GEN5_BLACK2_REDUX` / `GEN5_WHITE2_REDUX` are the
+retail configs with a DEX of their own. Changed: overlays 36, 166-168, 207, 255 and 265, and 33 data files (species,
+moves, items, trainers, encounters, text, icons). The ARM9 is stored unpacked (retail's is BLZ-packed) with its tables
+where the unpacked retail ARM9 has them: sTMHMMoves at 0x0208CC84 (15 TMs teach other moves), the party icon palettes at
+0x0208C54C, the item icon pairs at 0x0208CD50 (White 2's all 0x2C later). Battle overlay 167 loads 0x180 lower and opens
+with an 18 x 18 type chart (Gen 5's ids, Fairy 17; 4 = 1x), Gen 6's: `Black2Redux.matches` reads overlay 167's RAM address
+from the overlay table (now at cart 0x9EE00, so its entry is at 0xA02E4), 0x02199740 / 0x02199780 against retail's
+0x021998C0 / 0x02199900 (the retail table sits at 0x77800). Everything is read from the cart at run time (`NdsArt.readRedux`):
+`/a/0/1/6` types at 6 / 7, `/a/0/2/1` (type 0, category 2 - Gen 5's 0 status, 1 physical, 2 special, turned into the
+app's order - power 3), the chart from overlay 167 (BLZ, `NdsArt.overlay`), the ARM9 tables, and each zone's wild set
+(`/a/0/1/2` +0x14, bits 0-12) into `/a/1/2/7`'s per-season rates for WILD ENCOUNTERS. `gen5Type` maps 17 to the app's 9
+(Fairy in "???"'s slot, as Renegade Platinum, Glazed's names and chart); the battle structs and the DEX go through it too.
+Their art and DEX go to `nds/redux/` with the build's personal-records CRC in the marker (Classic's species differ). Names
+come from the cart's text as every DS cart's (Power-Up Punch in Comet Punch's slot, Dual Wingbeat in ViceGrip's...). No
+GUIDE: their wild Pokémon and trainers are their own. The White 2 dump on this machine (`[b]`) has its DSi ARM9i's last
+byte (0x11824C37) at 0xFF; Volt White 2's patch reads it as 0x00 (its checksums only pass with that byte put back).
+
 **GUIDE.** `scripts/gen_gen4_guide.py` writes `GuideGen4PlatinumGen.kt` / `GuideGen4HeartGoldGen.kt` from the decomps,
 numbers only: every map header's wild set (Platinum's grass with its day / night pair, HG / SS's per time of day and
 each version's own branch, surf, rock smash, rods and HG / SS's night fish), the bosses' teams, and HERE's item balls
@@ -3058,9 +3351,48 @@ added once more ahead (`pk_nds_wide_need`, which the slices follow too). Far zoo
 budget of 1.75 screens at 8x: a 16:9 window at 1x and its pad stay at 8x). Headless: nds_dump's `NDS_DUMP_GL` build runs
 it through ANGLE (its README).
 
+**EXPAND's slices off the emulator's thread** (2026-11-12). With the software renderer the margins are slices, each a
+second SoftRenderer of its own drawing the lists the last VBlank swapped. After each frame they go to four helper threads
+and draw while the next frame runs: what they read (our lists, the 3D registers latched at VBlank, the textures in
+`GPU::VRAMFlat_*`, copied at line 215) doesn't change before the next VBlank, where `onVisibleEnd` waits for them
+(`waitSlices`; `pk_nds_wide_sync` before a state load / save, a reset or another renderer). HeartGold walking headless
+(the interpreter, as a 32-bit device runs it): EXPAND's cost a frame 1.15 -> 0.45 ms at 1x, 3.8 -> 1.45 ms zoomed out,
+the emulator waiting ~0 ms; every `widecheck` count and wide shot the same as drawn in place, and a ThreadSanitizer
+build of nds_dump found no race (it did find helpers restarted at an old job generation when EXPAND went off and on:
+`stopPool` resets it).
+
+**DSperate, the second DS core (DS CORE, 2026-11-10).** For devices too slow for melonDS (the RG DS's Cortex-A55s, the
+Retroid Pocket Duo Lite, 32-bit tablets: melonDS has no JIT on 32-bit ARM), `third_party/dsperate` (beebono/DSperate, GPL-3.0,
+the submodule the Linux port uses) runs DS carts too: its ARM -> AArch64 and ARM -> ARMv7 recompilers, fast memory (a memfd
+mapped in 4 KB views; off on a 16 KB-page kernel), the 3D on worker threads and idle-loop skipping. `nds/dsperate.cmake` builds
+its `src/core` alone (never its top-level CMakeLists: it turns LTO on for everything and builds ARMv7 hard-float, which isn't
+Android's ABI) and makes what the NDK's clang and bionic need **without touching the submodule** (the Linux port builds it
+unmodified): sources clang refuses are copied into the build directory with the fix (`dsperate_fix`: a braced NEON vector in a
+macro argument, a `const void*` cast to a function pointer; a fix whose text has moved fails the configure), `dsperate_android.h`
+is forced into every file (bionic's `PAGE_SIZE` macro, `aligned_alloc` before API 28, defined in `pk_nds_dsp.cpp`), and its
+tiny-AES-c is renamed (`pk_dsp_AES_*`: melonDS bundles its own). The app side: `pk_nds.cpp`'s functions are `pk_ndsm_*`,
+`pk_nds_dsp.cpp`'s `pk_ndsd_*`, and `pk_nds_core.cpp` defines pk_nds.h's from the list in `pk_nds_cores.h`, handing each call
+to the core that's up (`pk_nds_set_core` before `pk_nds_init`, from `EmulatorEngine.ndsCore`, from `companion.DsCore`: AUTO =
+DSperate where `DevicePerformance.looksWeak` or the process is 32-bit). On DSperate the field read is the same RAM-only
+`pk_nds_field.cpp` (BG tiles and master brightness from DSperate's GPU), saves the same quiet-frames flush, audio resampled
+linearly from its ~32728 Hz mixer; EXPAND, DS RESOLUTION, the game's own functions (PC / FLY), STEADY music and DS CPU BOOST are
+melonDS internals and report off (the activity greys them out: `PokeDaisyActivity.dsperate`). States are each core's own,
+behind a header with the save's CRC32 ("PKDS" melonDS, "PKDP" DSperate): `pk_nds_state_matches_save` answers 2 for the other
+core's, which the engine parks as `resume.melonds` / `resume.dsperate` (`SaveStates.parkedResume`) and the next start on that
+core takes back; a DSperate state loads into a second console first (a failed load leaves DSperate's machine unusable), and a
+save file of the wrong size for the chip makes DSperate refuse to start rather than cut it. Headless: `native-capture/dsp_dump`
+(its README) runs nds_dump's script commands through the app's `pk_ndsd_*`, so one script runs on both cores. HeartGold walking,
+an arm64 Linux container on the Mac (4000 frames): DSperate 0.69-0.92 ms a frame wall, 1.07-1.68 ms CPU; melonDS as the app runs
+it (JIT, 3D on the emulation thread, DS CPU BOOST) 2.86-3.15 ms, single-threaded. On a Galaxy Tab A (SM-T510, Exynos 7904,
+Android 11, a 32-bit app), HeartGold walking: DSperate 60 fps, 12-17 ms of work a frame; melonDS 16 fps, ~63 ms (no JIT there).
+32-bit ARM faults on clang's aligned NEON forms where a byte buffer is cast to `u16*` / `u32*` (its depth pre-pass's pass plane
+killed a 3D band worker with SIGBUS on the tablet; arm64 doesn't care, so headless never showed it): those four sites are
+`dsperate_fix`es too, through `dsperate_android.h`'s `pk_dsp_load16` / `load32` / `store32`. Check a new DSperate on a 32-bit
+device, or disassemble the armv7 library for `[rN:16]` / `[rN:32]` forms in `ds::gpu::kern::neon`.
+
 **Fast-forward.** A shown frame of an FF group draws; the others skip drawing (above), which took 4x from ~200 to 240
 DS frames a second on the Thor. Whether the next frame is seen is decided a frame ahead (its 3D starts at line 215,
-EXPAND's slices are drawn after the frame before), and FF can end a group part-way (SMART's 1x for a menu, FF off, the
+EXPAND's slices are handed out after the frame before), and FF can end a group part-way (SMART's 1x for a menu, FF off, the
 refresh pacing dropping out): `pk_nds_run_frame` then skips that frame too and shows the next, whole - drawn, it came
 up with an older frame's 3D and EXPAND's margins black, a flash each time (nds_dump's `ffmode` / `ffgroup` / `ffguard`).
 SMART's battle wait reads HG/SS's `BattleContext.command` (5 = SELECTION_SCREEN_INPUT) and reports it as `MgbaCore.FIELD_BATTLE_INPUT`. STEADY music is a second melonDS loaded from
@@ -3219,22 +3551,28 @@ masked, from Black's RAM to Black 2's - and checked headless on the player's thr
 At 1x a game frame runs on the game screen's refresh: `EmulatorView`'s GL thread calls `engine.onVsync()` once per
 draw, and the loop runs one frame per refresh (60 Hz) or per two (120 Hz), the audio resampled to match with dynamic
 rate control and written non-blocking. Whole-number FF speeds run their group of frames on each refresh (`FfGroupFit`).
-Three ways out of that, each latched:
+Three ways out of that:
 
 - `slowFrames`: a GBA game whose frames keep missing the draw's wait is still paced by the refresh, but the GL thread
-  stops waiting for it (DS games always run that way).
+  stops waiting for it (DS games always run that way). Latched until the core stops.
 - the audio fallback (`vsyncFallback`, from `AudioTroubleWatch`): underruns that keep coming put the loop on the timer
-  (`Thread.sleep` to 1/60 s) with blocking `track.write`s, which pace it in real time.
+  (`Thread.sleep` to 1/60 s) with blocking `track.write`s, which pace it in real time. Not for the whole run any more:
+  vsync pacing is tried again after 60 s, the wait doubling each time it gives up again (to 16 min).
 - `VsyncCheck` (GitHub #350): the ticks don't follow the refresh at all. The Anbernic RG DS (GammaOS, Android 14)
   swaps without waiting for vsync: ~400 draws a second on a 60 Hz screen, the period estimate (which only keeps 4-34 ms
   intervals) anywhere from 70 to 205 Hz, vsync pacing switching on and off on a made-up rate, 25-60 fps at 1x. The
-  check counts ticks per second; a second strikes when it's over 1.25x the display's fastest mode (250 when the display
-  reports none), or jumps 25% from the one before while one of the two is past 1.1x that mode. Two strikes out of four
-  and the process stays on the audio fallback's path (timer + blocking writes, FF on the timer too). A screen moving
-  between 60 and 120 Hz or a GL thread too busy to keep up never strikes (`VsyncCheckTest`, with recorded sequences).
+  check counts ticks per second; a second strikes when it's over 1.25x the display's fastest mode and not steady (within
+  5% of the one before), or over 2.1x it whatever it does (250 when the display reports none), or jumps 25% from the one
+  before while one of the two is past 1.1x that mode. Two strikes out of four and the timer paces (blocking writes, FF on
+  the timer too). A screen moving between 60 and 120 Hz, one that runs steadily faster than the modes it reports, or a
+  GL thread too busy to keep up never strikes (`VsyncCheckTest`, with recorded sequences). The finding is kept across
+  games but not for good: 10 clean seconds in a row and vsync paces again, the next stretch twice as long (to 160 s).
+  1.5.0 kept it for the process, and a report from a Retroid Pocket Nova ("smooth, then suddenly choppy, still 60 fps")
+  looked like a false strike that never let go.
 
-The `fps=` log line says which: `paced=N` (refreshes per frame, 0 = the timer), `fallback` / `fallback (ticks don't
-follow the refresh)`, `ticks=N/s` (the GL thread's last second) and, on the timer at 1x, `block=avg/max ms`, how long the
+FPS / CPU's panel names it on its SCREEN line: `VSYNC N:1`, `TIMER (AUDIO)` or `TIMER (SCREEN)`
+(`EmulatorEngine.timerFallback`). The `fps=` log line says which: `paced=N` (refreshes per frame, 0 = the timer),
+`fallback (audio)` / `fallback (ticks don't follow the refresh)`, `ticks=N/s` (the GL thread's last second) and, on the timer at 1x, `block=avg/max ms`, how long the
 blocking writes held the loop. A device whose audio takes writes in big chunks shows a large max there (the RG DS's
 reporter measured 60-88 ms: the loop stops for 4-5 frames, then runs them back to back); if that's what's left, the
 next step is the timer with non-blocking writes and rate control.

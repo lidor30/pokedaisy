@@ -152,6 +152,10 @@ import com.pokedaisy.app.companion.ui.PixelRoundedShape
  * anyway) — every cover, fetched or manually picked, is normalized to this. */
 private const val ICON_ASPECT = 1f
 
+/** The BLOCKED tag ([com.pokedaisy.app.companion.data.BlockedGames]): black, white text, in both looks. */
+internal val BLOCKED_BADGE = androidx.compose.ui.graphics.Color(0xFF202020)
+internal val BLOCKED_BADGE_SHADOW = androidx.compose.ui.graphics.Color(0x99000000)
+
 /**
  * Launcher screen: pick a ROM to play, or import one. ROMs live in
  * `Android/data/<pkg>/files/roms/`; a save + savestates folder is keyed per ROM
@@ -282,6 +286,7 @@ class LibraryActivity : ComponentActivity() {
 
     private fun bump() {
         unsupportedRoms = RomFolder.unsupported(this)
+        blockedRoms = RomFolder.blocked(this)
         partialRoms = RomFolder.partial(this)
         revision++
         if (launcherOn) refreshLauncherGames()
@@ -289,6 +294,9 @@ class LibraryActivity : ComponentActivity() {
 
     /** ROMs the second screen can't read, per [RomFolder]'s cache: their NOT SUPPORTED tag (internal for ui-preview). */
     internal var unsupportedRoms by mutableStateOf(emptySet<String>())
+
+    /** Games on the blocked list ([com.pokedaisy.app.companion.data.BlockedGames]): a black BLOCKED tag, over NOT SUPPORTED. */
+    internal var blockedRoms by mutableStateOf(emptySet<String>())
 
     /** ROMs read through a PARTIAL best-effort match: their PARTIALLY SUPPORTED tag (internal for ui-preview). */
     internal var partialRoms by mutableStateOf(emptySet<String>())
@@ -325,6 +333,7 @@ class LibraryActivity : ComponentActivity() {
 
         // The device's marker can change between visits (FeatureFlags): read before setup builds its steps.
         ScreenScraperClient.enabled = FeatureFlags.screenScraper(this)
+        FeatureFlags.applyBlocked(this)
         sort = LibrarySort.of(prefs.librarySort)
         quickView = LibraryView.of(prefs.libraryView)
         // The second screen (and so SWAP) is the game's media page: ScreenScraper's, off until its flag is on.
@@ -391,6 +400,7 @@ class LibraryActivity : ComponentActivity() {
         com.pokedaisy.app.companion.ui.OptionColors.inGame = false
         com.pokedaisy.app.companion.i18n.L10n.apply(prefs.appLanguage, null)
         unsupportedRoms = RomFolder.unsupported(this)
+        blockedRoms = RomFolder.blocked(this)
         partialRoms = RomFolder.partial(this)
         // The support window, once its play time has come (back from a game, usually); never on WHAT'S NEW's visit.
         if (!supportAsk && whatsNew == null) {
@@ -1398,7 +1408,10 @@ class LibraryActivity : ComponentActivity() {
                             Spacer(Modifier.width(m.u * 4))
                             OptionBadge(tk("NEW"), m, fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow)
                         }
-                        if (rom.absolutePath in unsupportedRoms) {
+                        if (rom.absolutePath in blockedRoms) {
+                            Spacer(Modifier.width(m.u * 4))
+                            OptionBadge(tk("BLOCKED"), m, fill = BLOCKED_BADGE, shadow = BLOCKED_BADGE_SHADOW)
+                        } else if (rom.absolutePath in unsupportedRoms) {
                             Spacer(Modifier.width(m.u * 4))
                             OptionBadge(tk("NOT SUPPORTED"), m)
                         } else if (rom.absolutePath in partialRoms) {
@@ -1458,6 +1471,7 @@ class LibraryActivity : ComponentActivity() {
                         }
                     }
                     val support = when (rom.absolutePath) {
+                        in blockedRoms -> tk("BLOCKED") to BLOCKED_BADGE
                         in unsupportedRoms -> tk("NOT SUPPORTED") to OptionColors.value
                         in partialRoms -> tk("PARTIALLY SUPPORTED") to OptionColors.muted
                         else -> null
@@ -1466,7 +1480,9 @@ class LibraryActivity : ComponentActivity() {
                         Spacer(Modifier.height(m.u * 2))
                         Row(horizontalArrangement = Arrangement.spacedBy(m.u * 2)) {
                             if (isNew) OptionBadge(tk("NEW"), m, fill = OptionColors.newBadge, shadow = OptionColors.newBadgeShadow)
-                            support?.let { (label, fill) -> OptionBadge(label, m, fill = fill) }
+                            support?.let { (label, fill) ->
+                                OptionBadge(label, m, fill = fill, shadow = if (fill == BLOCKED_BADGE) BLOCKED_BADGE_SHADOW else OptionColors.valueShadow.copy(alpha = 0.6f))
+                            }
                         }
                     }
                 }

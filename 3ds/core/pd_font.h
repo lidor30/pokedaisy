@@ -11,6 +11,9 @@ struct pd_glyph {
     uint16_t codepoint;
     uint8_t advance;
     uint16_t rows[PD_FONT_HEIGHT]; // bit 0 = leftmost pixel
+    // Optional: how much of each pixel the letter covers (16 x 16, row by row, 0-255), for a font drawn at a size it wasn't
+    // made at (a Game Boy game's 8 rows drawn as 10): its edges blended rather than rows repeated. NULL = [rows] alone.
+    const uint8_t* alpha;
 };
 
 extern const struct pd_glyph pd_font_glyphs[];

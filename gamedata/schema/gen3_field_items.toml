@@ -63,6 +63,19 @@ type = 'ref'
 record = 'gen3_fly'
 default = 'none'
 
+# FREE FLIGHT and the scenic FLY (Flight.kt, pk_flight.c); null = none. Needs [fly] too (its gates).
+[field.flight]
+kotlin = 'FlightFns?'
+type = 'ref'
+record = 'gen3_flight'
+default = 'none'
+
+# false = never the game's own FLY warp (Emerald Kaizo's crashed from the field): FLY goes over the map alone.
+[field.classicFly]
+kotlin = 'Boolean'
+type = 'bool'
+default = true
+
 # holdEffectParam's offset in struct Item where a build moved it off [itemNameLen] + 5 (Recharged Emerald dropped
 # the itemId field: 0x15 after its name[18]); null = the usual place.
 [field.itemParamOffset]

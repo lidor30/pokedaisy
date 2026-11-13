@@ -2,8 +2,9 @@
 
 Based on PokeDaisy by Lidor Itzhari - https://github.com/lidor30/pokedaisy
 
-The TrimUI Brick package puts two native libretro cores behind one collection.
-NXRedux chooses mGBA for `.gb`, `.gbc` and `.gba`, and DSperate for `.nds`, using
+The TrimUI Brick package puts three native libretro cores behind one collection.
+NXRedux chooses armGBA (`pokedaisy_gba`) for `.gba`, mGBA (`pokedaisy_gbc`) for `.gb` and `.gbc`, and DSperate
+(`pokedaisy_ds`) for `.nds`, using
 the ROM's original path for its save and resume keys. Extract archives before
 adding games.
 
@@ -108,9 +109,10 @@ On Platinum USA revision 1, **Battle Strip** defaults on with **One Screen**
 selected. An existing Off preference is kept and can be changed in the DS
 companion Settings. A new battle returns a temporary screen peek to One
 Screen. Use the D-pad and A to choose Fight,
-Bag, Pokémon or Run. Fight opens the move grid with move types and current PP.
-B returns from the move grid. Native Bag and party windows float over the
-strip. Doubles and native prompts use the game's own controls.
+Bag, Pokémon or Run. Fight opens the move grid with move types and current/max
+PP. B returns from the move grid. Native Bag and party windows open full screen
+at twice the DS size, like the battle. Doubles and native prompts use the
+game's own controls. The picked button has the games' own red corner brackets.
 
 Platinum's compact battle buttons use the native lettering and tiles without
 the Fight sprite. The move cards retain the original type badges and
@@ -120,30 +122,33 @@ current/max PP.
 
 The same One Screen controls are enabled for exact English retail revision 0
 ROMs of HeartGold, SoulSilver, Black, White, Black 2 and White 2. HeartGold
-and SoulSilver have split-color buttons and gold or silver message rims.
-Black and White use charcoal plates and colored command labels. Black 2
-and White 2 use striped plates with colored rims.
+and SoulSilver keep the game's own message frame beside split-color buttons,
+and their move cards follow the games': a type-colored frame, the move name,
+the type badge and current/max PP. Black and White use charcoal plates and
+colored command labels, Black 2 and White 2 striped plates with colored rims;
+their angled move plates show current/max PP, and a move out of PP is greyed.
 
-These themes use PokéDaisy's bitmap font and app-owned move data. The
-native move-card artwork remains specific to Platinum. The new battle paths
-need live retail ROM testing.
+These themes use PokéDaisy's bitmap font and app-owned move data, and each
+move's base PP from the cart. The native move-card artwork remains specific to
+Platinum. The new battle paths need live retail ROM testing.
 
 ### Johto and Unova companion
 
 | Games | Exact revisions | Companion and Quick Menu |
 | --- | --- | --- |
-| HeartGold, SoulSilver | USA rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD toggle |
-| Black, White, Black 2, White 2 | USA/Europe rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD toggle |
+| HeartGold, SoulSilver | USA rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD cursor |
+| Black, White, Black 2, White 2 | USA/Europe rev 0 | Party, read-only Bag, Map, Guide, Dex, Settings, HUD cursor |
 
 Party shows HP, EXP to the next level, type matchups, moves, power and PP.
 A opens the selected party member's summary or Bag item's details. In a party
 summary, A switches between Moves and Stats. Select opens the level-up Learn
 list and Left/Right scrolls it. Up/Down browses the party. In Bag, Left goes
 to the pocket bar and A picks a pocket.
-To turn on the HUD, hold L2, select HUD and press A. It appears after the
-overworld settles in a layout with only the top screen visible. The companion's
-Settings control Minimal HUD, Poké Balls, Repel Steps and the Minimap. Minimal hides the
-party cards. The ball counter shows up to three ball types by quantity and
+Turn on HUD in Companion Settings. In the overworld, hold L2 and choose HUD
+to focus a HUD tile. Use the D-pad and A to open it, or B to cancel. It appears after the
+overworld settles in a layout with only the top screen visible. In the companion's
+Settings, HUD opens the same HUD page as the GB and GBA cores (on or off, LOOK,
+SIZE and each part); Minimal HUD stays a row of its own and hides the party cards. The ball counter shows up to three ball types by quantity and
 Repel Steps appears only while a Repel is active. The Dex lists seen and
 caught species in a list beside Android's four filters. Press Left to focus
 the filters and the regional/National switch at the bottom. Select cycles
@@ -273,17 +278,25 @@ Run from the repository root with CMake, Ninja and Python 3.12 or later.
 `NEXTUI_TOOLCHAIN`.
 
 ```sh
-git submodule update --init third_party/mgba
+git submodule update --init third_party/mgba third_party/armgba third_party/zlib
 git submodule update --init --recursive third_party/dsperate-lr
 python3 linux/setup_trimui_sdk.py /path/to/trimui-sdk
 export NEXTUI_TOOLCHAIN=/path/to/trimui-sdk/cross/x86_64-aarch64-nextui-linux-gnu
 cmake -S libretro -B build/gb -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake"
+# armGBA needs a newer GCC than the toolchain's 8.3: a distribution's aarch64 cross GCC (Ubuntu 22.04's
+# gcc-aarch64-linux-gnu); libretro/armgba/glibc_compat.* keep the core loadable on the Brick's glibc.
+cmake -S libretro/armgba -B build/gba -G Ninja -DCMAKE_BUILD_TYPE=Release \
+  -DCMAKE_TOOLCHAIN_FILE="$PWD/libretro/aarch64.cmake"
 cmake -S linux/libretro-ds -B build/ds -G Ninja -DCMAKE_BUILD_TYPE=Release \
   -DCMAKE_TOOLCHAIN_FILE="$PWD/linux/trimui-toolchain.cmake" -DBUILD_TESTING=OFF
-cmake --build build/gb --target pokedaisy_libretro -j4
+cmake --build build/gb --target pokedaisy_gbc_libretro -j4
+cmake --build build/gba --target pokedaisy_gba_libretro -j4
 cmake --build build/ds --target pokedaisy_ds_libretro -j4
-python3 linux/libretro-unified/package.py build/gb/pokedaisy_libretro.so \
+python3 linux/libretro-unified/package.py build/gb/pokedaisy_gbc_libretro.so build/gba/pokedaisy_gba_libretro.so \
   build/ds/pokedaisy_ds_libretro.so PokeDaisy-NXRedux.zip \
   --strip "$NEXTUI_TOOLCHAIN/bin/aarch64-nextui-linux-gnu-strip" --source-ref "$(git rev-parse HEAD)"
 ```
+
+`--cores-only` makes the release's `pokedaisy-libretro-<arch>.zip` instead: the three cores and their notices in one
+folder named after the zip, no NXRedux launcher or ROM folder. CI's `linux.yml` builds both.

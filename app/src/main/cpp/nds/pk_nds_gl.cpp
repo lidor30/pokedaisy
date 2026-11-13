@@ -542,7 +542,7 @@ int pk_nds_gl_set_scale(NDS* nds, int scale)
         if (gl.renderer) {
             makeCurrent();
             nds->GPU.SetRenderer3D(std::make_unique<SoftRenderer>());
-            static_cast<SoftRenderer&>(nds->GPU.GetRenderer3D()).SetThreaded(false, nds->GPU);
+            static_cast<SoftRenderer&>(nds->GPU.GetRenderer3D()).SetThreaded(true, nds->GPU);   // as pk_nds_init
             gl.renderer = nullptr;
             pk_nds_wide_gpu(false, 1, gl.maxTexture);
             LOGI("DS 3D back on the CPU");

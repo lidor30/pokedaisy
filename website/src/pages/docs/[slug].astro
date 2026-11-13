@@ -1,58 +1,19 @@
 ---
 // One docs page, rendered at build time from docs/manual/<slug>.md (src/lib/docs.js) so search engines get
-// the whole text. The app shows the same page from the docs API.
-import DocsLayout from '../../layouts/DocsLayout.astro';
-import DocBlocks from '../../components/DocBlocks.astro';
-import { loadDocs } from '../../lib/docs.js';
-import { REPO_URL } from '../../lib/releases.js';
+// the whole text. The app shows the same page from the docs API. Its translations, where it has any, are
+// src/pages/[lang]/docs/[slug].astro.
+import DocPage from '../../views/DocPage.astro';
+import { loadDocs, loadTranslations } from '../../lib/docs.js';
 
 export function getStaticPaths() {
   const docs = loadDocs();
+  const { bySlug } = loadTranslations(docs);
   return docs.pages.map((page, i) => ({
     params: { slug: page.slug },
-    props: { page, docs, prev: docs.pages[i - 1], next: docs.pages[i + 1] },
+    props: { page, docs, prev: docs.pages[i - 1], next: docs.pages[i + 1], langs: bySlug.get(page.slug) ?? [] },
   }));
 }
 
-const { page, docs, prev, next } = Astro.props;
-const section = docs.sections.find((s) => s.id === page.section);
-const toc = page.blocks.filter((b) => b.t === 'h2').map((b) => ({ id: b.id, text: b.text }));
-const site = Astro.site ?? new URL('https://pokedaisy.com');
-const url = new URL(`/docs/${page.slug}/`, site).href;
-const firstShot = page.blocks.find((b) => b.t === 'img');
-const jsonLd = [
-  {
-    '@context': 'https://schema.org',
-    '@type': 'TechArticle',
-    headline: page.title,
-    description: page.summary,
-    url,
-    inLanguage: 'en',
-    isPartOf: { '@type': 'WebSite', name: 'PokeDaisy', url: site.href },
-    about: { '@type': 'SoftwareApplication', name: 'PokeDaisy', operatingSystem: 'Android', applicationCategory: 'GameApplication' },
-    ...(firstShot ? { image: new URL(firstShot.src, site).href } : {}),
-  },
-  {
-    '@context': 'https://schema.org',
-    '@type': 'BreadcrumbList',
-    itemListElement: [
-      { '@type': 'ListItem', position: 1, name: 'Docs', item: new URL('/docs/', site).href },
-      { '@type': 'ListItem', position: 2, name: section.title, item: new URL(`/docs/#${section.id}`, site).href },
-      { '@type': 'ListItem', position: 3, name: page.title, item: url },
-    ],
-  },
-];
+const { page, docs, prev, next, langs } = Astro.props;
 ---
-<DocsLayout title={`${page.title} · PokeDaisy docs`} description={page.summary} docs={docs} current={page.slug} toc={toc} jsonLd={jsonLd}>
-  <article class="doc f-card">
-    <p class="doc-crumb"><a href="/docs/">DOCS</a> · <a href={`/docs/#${section.id}`}>{section.title.toUpperCase()}</a></p>
-    <h1 class="doc-title">{page.title}</h1>
-    <p class="doc-summary">{page.summary}</p>
-    <div class="prose"><DocBlocks blocks={page.blocks} /></div>
-    <nav class="doc-foot" aria-label="More pages">
-      {prev ? <a class="prev f-card" href={`/docs/${prev.slug}/`}><small>PREVIOUS</small><span>{prev.title}</span></a> : <span />}
-      {next && <a class="next f-card" href={`/docs/${next.slug}/`}><small>NEXT</small><span>{next.title}</span></a>}
-    </nav>
-    <p class="doc-edit">Something wrong or missing here? <a href={`${REPO_URL}/edit/main/docs/manual/${page.slug}.md`}>Edit this page on GitHub</a> or <a href="/feedback/#bug">tell us</a>.</p>
-  </article>
-</DocsLayout>
+<DocPage page={page} docs={docs} prev={prev} next={next} langs={langs} />

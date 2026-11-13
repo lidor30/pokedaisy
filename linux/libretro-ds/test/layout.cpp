@@ -16,7 +16,7 @@ int main(){
   s.reset();
   s.tick(PK_NDS_FIELD_TOUCH,false,false,true);assert(!s.touch);
   s.tick(PK_NDS_FIELD_TOUCH,false,false,true);assert(s.touch);
-  auto floating=ds_arrange(DS_ONE,s,true);assert(floating.floating && floating.touch.w==352);
+  auto floating=ds_arrange(DS_ONE,s,true);assert(floating.floating && floating.touch.w==512);
   for(int i=0;i<5;i++){s.tick(field,false,false,true);assert(s.touch);}
   s.tick(field,false,false,true);assert(!s.touch);
   s.tick(PK_NDS_FIELD_TOUCH,true,true,true);assert(s.dark && !s.touch);
@@ -76,7 +76,7 @@ int main(){
   const int touchApp=PK_NDS_FIELD_MENU|PK_NDS_FIELD_TOUCH|PK_NDS_FIELD_TOUCH_ONLY;
   assert(automatic(touchApp,true,true,true).useField);
   auto touchPopup=automatic(touchApp,true,false,true);
-  assert(touchPopup.floating&&touchPopup.touch.w==352&&touchPopup.useField);
+  assert(touchPopup.floating&&touchPopup.touch.w==512&&touchPopup.useField);
   const int dualApp=PK_NDS_FIELD_MENU|PK_NDS_FIELD_TOUCH;
   auto waitForOtherScreen=automatic(dualApp,true,false,true);
   assert(waitForOtherScreen.useField&&waitForOtherScreen.touch.w==0);

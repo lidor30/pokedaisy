@@ -38,6 +38,7 @@
 #include "pk_rewind.h"
 #include "pk_savevf.h"
 #include "pk_wide.h"
+#include "pk_flight.h"
 #include "pk_gb_field.h"
 #include "pk_gb_audio.h"
 #include "pk_host.h"
@@ -230,6 +231,7 @@ static void pkTeardown(void) {
     g.audioAvail = 0;
     pk_wide_configure(0);
     pk_wide_extras_reset();   // FOLLOWER and DAY AND NIGHT: the closed game's lead walked on in the next one
+    pk_flight_configure(NULL, 0);   // FREE FLIGHT: the next game configures its own
     g.wideCrc = 0;
     g.wideW = 0;
     free(g.wide);
@@ -519,6 +521,11 @@ Java_com_pokedaisy_app_MgbaCore_pkRunFrame(JNIEnv* env, jobject thiz) {
         pthread_rwlock_rdlock(&pk_coreLock);
         if (g.core) pk_coop_lock_tick(g.core);
         pthread_rwlock_unlock(&pk_coreLock);
+        pk_flight_tick(g.core);   // FREE FLIGHT's next step (nothing until a game configures it)
+        // Its shadow, clouds and bird; with EXPAND drawing its picture next, the clouds go over that (pk_flight_draw_wide).
+        bool wideNext = g.wide && g.wideCrc && g.viewW > 0 && g.viewH > 0 && g.viewW <= PK_WIDE_MAX_VIEW_W &&
+            g.viewH <= PK_WIDE_MAX_VIEW_H && pkWideFrameFits() && !g.wideSkipNext;
+        if (sizeof(color_t) == 4) pk_flight_draw((uint32_t*) g.video, (int) g.vw, (int) g.vh, (int) g.vw, !wideNext);
     }
     pkDrainAudio();
     // WIDE: only with a game it knows and a window set. 32-bit colour, like the screen's upload.
@@ -531,6 +538,7 @@ Java_com_pokedaisy_app_MgbaCore_pkRunFrame(JNIEnv* env, jobject thiz) {
     } else if (g.wide && g.wideCrc && v.w > 0 && v.h > 0 && v.w <= PK_WIDE_MAX_VIEW_W && v.h <= PK_WIDE_MAX_VIEW_H &&
         sizeof(color_t) == 4 && pkWideFrameFits()) {
         pk_wide_view(g.core, (const uint32_t*) g.video, g.wide, v, NULL);
+        pk_flight_draw_wide(g.wide, v.w, v.h, v.x, v.y);   // FREE FLIGHT's clouds over the whole picture
         g.wideW = v.w;
         g.wideH = v.h;
         if (pk_wide_fault()) {
@@ -606,6 +614,26 @@ Java_com_pokedaisy_app_MgbaCore_pkFollowerSet(JNIEnv* env, jobject thiz, jbyteAr
     pk_follower_set((const uint8_t*) f, (const uint8_t*) p);
     (*env)->ReleaseByteArrayElements(env, frames, f, JNI_ABORT);
     (*env)->ReleaseByteArrayElements(env, pal, p, JNI_ABORT);
+}
+
+// RIDE ON: the vehicle's views + palette (null = none) and whether it's drawn. Emu thread.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkRideSet(JNIEnv* env, jobject thiz, jbyteArray frames, jbyteArray pal, jint width) {
+    if (!frames || !pal || (width != 32 && width != 64) || (*env)->GetArrayLength(env, frames) != PK_RIDE_BYTES ||
+        (*env)->GetArrayLength(env, pal) != 32) {
+        pk_ride_set(NULL, NULL, 32);
+        return;
+    }
+    jbyte* f = (*env)->GetByteArrayElements(env, frames, NULL);
+    jbyte* p = (*env)->GetByteArrayElements(env, pal, NULL);
+    pk_ride_set((const uint8_t*) f, (const uint8_t*) p, width);
+    (*env)->ReleaseByteArrayElements(env, frames, f, JNI_ABORT);
+    (*env)->ReleaseByteArrayElements(env, pal, p, JNI_ABORT);
+}
+
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkRideShow(JNIEnv* env, jobject thiz, jboolean on) {
+    if (g.core && pk_is_gba(g.core)) pk_ride_show(g.core, on);
 }
 
 JNIEXPORT void JNICALL
@@ -876,6 +904,73 @@ Java_com_pokedaisy_app_MgbaCore_pkCall(JNIEnv* env, jobject thiz, jlong fn, jint
         return -1;
     }
     return (jlong) r0;
+}
+
+// FREE FLIGHT (pk_flight.h): the game's functions through pk_call.
+static int pkFlightCall(struct mCore* core, uint32_t fn, const uint32_t args[4], uint32_t* r0) {
+    return pk_call(core, fn, args, r0);
+}
+
+// The game's addresses (FlightFns.words(), PK_FLIGHT_WORDS of them), or null to switch it off. Emu thread.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkFlightConfigure(JNIEnv* env, jobject thiz, jintArray words) {
+    pk_flight_set_call(pkFlightCall);
+    if (!words || (*env)->GetArrayLength(env, words) < PK_FLIGHT_WORDS) {
+        pk_flight_configure(NULL, 0);
+        return;
+    }
+    uint32_t w[PK_FLIGHT_WORDS];
+    (*env)->GetIntArrayRegion(env, words, 0, PK_FLIGHT_WORDS, (jint*) w);
+    pk_flight_configure(w, PK_FLIGHT_WORDS);
+}
+
+// Take off (PK_FLIGHT_OK, or why not: pk_flight.h). Emu thread, between frames.
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkFlightTakeOff(JNIEnv* env, jobject thiz) {
+    return g.core && pk_is_gba(g.core) ? pk_flight_take_off(g.core) : PK_FLIGHT_NOT_CONFIGURED;
+}
+
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkFlightLand(JNIEnv* env, jobject thiz) {
+    pk_flight_land();
+}
+
+// The scenic FLY's route: directions 1 down, 2 up, 3 left, 4 right. Emu thread.
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkFlightRoute(JNIEnv* env, jobject thiz, jbyteArray dirs) {
+    jsize n = (*env)->GetArrayLength(env, dirs);
+    jbyte* b = (*env)->GetByteArrayElements(env, dirs, NULL);
+    int r = pk_flight_route((const uint8_t*) b, n);
+    (*env)->ReleaseByteArrayElements(env, dirs, b, JNI_ABORT);
+    return r;
+}
+
+// FLIGHT AREA: a bit per map (group << 8 | num) the flight may cross into, or null = anywhere. Emu thread.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkFlightArea(JNIEnv* env, jobject thiz, jbyteArray bits) {
+    if (!bits) {
+        pk_flight_set_area(NULL, 0);
+        return;
+    }
+    jsize n = (*env)->GetArrayLength(env, bits);
+    jbyte* b = (*env)->GetByteArrayElements(env, bits, NULL);
+    pk_flight_set_area((const uint8_t*) b, n);
+    (*env)->ReleaseByteArrayElements(env, bits, b, JNI_ABORT);
+}
+
+JNIEXPORT jboolean JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkFlightAreaTurned(JNIEnv* env, jobject thiz) {
+    return pk_flight_area_turned() ? JNI_TRUE : JNI_FALSE;
+}
+
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkFlightState(JNIEnv* env, jobject thiz) {
+    return pk_flight_state();
+}
+
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkFlightRouteDone(JNIEnv* env, jobject thiz) {
+    return pk_flight_route_done();
 }
 
 // coop-lock (plan 5 Task 5): what pk_coop_lock_jni.c needs of the player's core (pk_core_access.h)
@@ -1971,6 +2066,18 @@ Java_com_pokedaisy_app_MgbaCore_pkNdsSetDraw(JNIEnv* env, jobject thiz, jboolean
 JNIEXPORT void JNICALL
 Java_com_pokedaisy_app_MgbaCore_pkNdsCpuBoost(JNIEnv* env, jobject thiz, jboolean on) {
     if (pk_nds_active()) pk_nds_set_cpu_boost(on == JNI_TRUE);
+}
+
+// DS CORE: which DS core the next pkInit of a DS cart starts (MgbaCore.NDS_CORE_*: 0 melonDS, 1 DSperate). Emu thread.
+JNIEXPORT void JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsSetCore(JNIEnv* env, jobject thiz, jint core) {
+    pk_nds_set_core(core);
+}
+
+// The DS core that's up (MgbaCore.NDS_CORE_*), or -1 with no DS game.
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkNdsCore(JNIEnv* env, jobject thiz) {
+    return pk_nds_core();
 }
 
 // A DS game's Action Replay codes (cheats/Cheats.kt DsCheats): words, and how many belong to each cheat. Emu thread.

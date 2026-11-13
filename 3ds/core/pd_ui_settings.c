@@ -14,6 +14,9 @@ static const char* const SCREEN_NAMES[PD_SCREEN_MODES] = { "PIXEL 1x", "SHARP 1.
 static const char* const ASPECT_NAMES[PD_ASPECTS] = { "ORIGINAL", "EXPAND", "ZOOM OUT" };
 const char* const PD_GAME_SPEEDS[PD_GAME_SPEED_COUNT] = { "1x", "1.5x", "2x", "3x", "4x", "0.5x", "0.25x" };
 static const char* const VOLUMES[5] = { "20%", "40%", "60%", "80%", "100%" };
+// FLY ON (the app's FlightVehicle, linux/flight.h's enum flight_vehicle): the game's bird, or a vehicle with the player in it.
+static const char* const FLY_ON_NAMES[4] = { "BIRD", "AIR BALLOON", "HELICOPTER", "ZEPPELIN" };
+static const char* flight_vehicle_label(int v) { return FLY_ON_NAMES[v >= 0 && v < 4 ? v : 0]; }
 
 const char* pd_aspect_name(int aspect) {
     return aspect >= 0 && aspect < PD_ASPECTS ? ASPECT_NAMES[aspect] : "";
@@ -26,6 +29,8 @@ const char* pd_screen_mode_name(int mode) {
 // The list's visible band (rows outside it are drawn clipped and take no taps) and its rows' height last time
 // (the scroll is clamped to it before drawing, so a D-pad's step past the end never draws an empty list).
 static int listTop, listBottom, lastTotal = -1;
+// Where the value column starts in a row: the app's labelWeight 0.58 beside the rail (a narrower list), else 42%.
+static int valuePct = 42;
 
 int pd_ui_list_step(int selected, int count, int step) {
     if (count <= 0) return -1;
@@ -59,7 +64,7 @@ static void setting(struct pd_ui* ui, struct pd_canvas* c, int x, int* y, int w,
         int top = *y + ui->settingsScroll - listTop;
         settings_nav_row(ui, HIT_SETTING + row, ui->settingsNavCount == 0 ? 0 : top);
     }
-    ui_row(c, x, *y, w, label, value, ui->pressedId == HIT_SETTING + (int) row);
+    ui_row_split(c, x, *y, w, label, value, ui->pressedId == HIT_SETTING + (int) row, valuePct);
     // A scroll hit: a tap is the row, a drag on it still scrolls the list.
     if (*y >= listTop && *y + ROW_H <= listBottom) {
         ui_add_scroll_hit(ui, x - 4, *y, w + 8, ROW_H, HIT_SETTING + (int) row);
@@ -72,12 +77,37 @@ static void setting(struct pd_ui* ui, struct pd_canvas* c, int x, int* y, int w,
 // A row shown, not tappable (LOAD STATE with none yet, ASPECT N/A).
 static void muted_row(struct pd_canvas* c, int x, int* y, int w, const char* label, const char* value) {
     pd_text(c, x, pd_text_y(*y, ROW_H), label, PD_MUTED, PD_MUTED_SHADOW);
-    int vx = x + w * 42 / 100, past = x + pd_text_width(label) + 8;
+    int vx = x + w * valuePct / 100, past = x + pd_text_width(label) + 8;
     pd_text(c, vx < past ? past : vx, pd_text_y(*y, ROW_H), value, PD_MUTED, PD_MUTED_SHADOW);
     *y += ROW_H;
 }
 
+// The rail's groups as last drawn: each title's top in the list (content pixels) and its label; the one a tab picked, kept
+// while the list stays where that tap put it (a drag or the D-pad hands the choice back to the scroll, as in GroupTabs).
+#define MAX_GROUPS 10
+static int groupCount, groupTop[MAX_GROUPS], picked = -1, pickedScroll;
+
+static const char* groupName[MAX_GROUPS];
+static bool railed;
+
+void ui_settings_group(struct pd_ui* ui, int i) {
+    if (i < 0 || i >= groupCount) return;
+    // The last group goes to the list's end, so what closes the list (CLOSE GAME / RESTART GAME) shows whole.
+    ui->settingsScroll = ui_clamp_scroll(i == groupCount - 1 ? lastTotal : groupTop[i], lastTotal, listBottom - listTop);
+    picked = i;
+    pickedScroll = ui->settingsScroll;
+}
+
+// FLIGHT AREA (the app's GAMEPLAY row): where TAKE OFF may fly. Two values, so it flips in place.
+static void flight_area_row(struct pd_ui* ui, struct pd_canvas* c, int x, int* y, int w, const struct pd_settings* st) {
+    setting(ui, c, x, y, w, SETTING_FLIGHT_AREA, "FLIGHT AREA", st->flightAnywhere ? "ANYWHERE" : "VISITED");
+}
+
 static void group(struct pd_canvas* c, int x, int* y, const char* title) {
+    if (railed && groupCount < MAX_GROUPS) {
+        groupTop[groupCount] = *y - listTop + 0; // the list's scroll is added back below
+        groupName[groupCount++] = title;
+    }
     *y += 3;
     // Gen 1's value colour is the rows' black: its titles are a black band (groupTitleFill).
     if (pd_cur->groupTitleFill != PD_NO_SHADOW) pd_fill(c, x - 4, *y + 1, pd_text_width(title) + 8, ROW_H - 2, pd_cur->groupTitleFill);
@@ -85,10 +115,46 @@ static void group(struct pd_canvas* c, int x, int* y, const char* title) {
     *y += ROW_H;
 }
 
+// SETTINGS' group tabs (TabRail, outside the card - the user's call): a tab chip's frame each, the open group's white with a
+// red label like the bar's, sharing the rail's height out; a tap scrolls the list to that group.
+static void group_rail(struct pd_ui* ui, struct pd_canvas* c, int x, int y, int w, int h, int scroll) {
+    int selected = picked >= 0 && picked < groupCount && scroll == pickedScroll ? picked : -1;
+    if (selected < 0) {
+        picked = -1;
+        int view = listBottom - listTop;
+        selected = 0;
+        if (lastTotal > view && scroll >= lastTotal - view - 1) selected = groupCount - 1;
+        else for (int i = 0; i < groupCount; i++) if (groupTop[i] <= scroll + 4) selected = i;
+    }
+    // The tabs share the window's height out, the rounding spread a pixel at a time so the last ends flush with it.
+    const int gap = 3, n = groupCount > 0 ? groupCount : 1;
+    int room = h - gap * (n - 1), th0 = room / n;
+    if (th0 > 30) th0 = 30, room = th0 * n;
+    for (int i = 0, ty = y; i < groupCount; i++) {
+        int th = th0 + (i < room - th0 * n ? 1 : 0);
+        bool on = i == selected || ui->pressedId == HIT_SETTINGS_GROUP + i;
+        pd_layered_two_tone(c, x, ty, w, th, 3, pd_cur->chip, pd_cur->chipCount, on ? pd_cur->tabSelectedFill : pd_cur->tabIdleFill, 0);
+        pd_text_fit(c, x + 4 + (w - 8 - pd_text_width(groupName[i]) > 0 ? (w - 8 - pd_text_width(groupName[i])) / 2 : 0),
+                    pd_text_y(ty, th), w - 8, groupName[i], on ? PD_VALUE : PD_LABEL, on ? PD_VALUE_SHADOW : PD_LABEL_SHADOW);
+        ui_add_hit(ui, x, ty, w, th, HIT_SETTINGS_GROUP + i);
+        ty += th + gap;
+    }
+}
+
 void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g, const struct pd_snapshot* s,
                      const struct pd_host_info* host) {
     ui->settingsNavCount = 0;
     int x = MARGIN, w = c->w - 2 * MARGIN;
+    // The full companion's long list gets its group tabs down the left, on the backdrop beside the list's window.
+    railed = host && host->fullSettings && !ui->optionSource;
+    valuePct = railed ? 58 : 42;
+    groupCount = 0;
+    int railX = x, railW = 0;
+    if (railed) {
+        static const char* const LABELS[] = { "GAME", "FF / SPEED", "SOUND", "GAMEPLAY", "SCREEN", "COMPANION" };
+        for (unsigned i = 0; i < sizeof(LABELS) / sizeof(*LABELS); i++)
+            if (pd_text_width(LABELS[i]) + 12 > railW) railW = pd_text_width(LABELS[i]) + 12;
+    }
     int f = pd_title_box(c, x, CONTENT_Y, w, TITLE_H, PD_TITLE_FILL);
     int ty = pd_text_y(CONTENT_Y, TITLE_H);
     pd_text(c, x + f + 6, ty, ui->optionSource ? ui->optionSource->title : "SETTINGS", PD_TITLE_TEXT, PD_TITLE_SHADOW);
@@ -101,10 +167,10 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         right -= pd_text_width(pct);
         pd_text(c, right, ty, pct, PD_TITLE_TEXT, PD_TITLE_SHADOW);
         right -= 26;
-        pd_fill(c, right + 2, ty + 6, 18, 8, PD_TITLE_TEXT);
-        pd_fill(c, right + 3, ty + 7, 16, 6, PD_TITLE_FILL);
-        pd_fill(c, right + 4, ty + 8, 14 * host->batteryPct / 100, 4, PD_TITLE_TEXT);
-        pd_fill(c, right + 20, ty + 8, 2, 4, PD_TITLE_TEXT);
+        pd_fill(c, right + 2, ty + 5, 18, 8, PD_TITLE_TEXT);
+        pd_fill(c, right + 3, ty + 6, 16, 6, PD_TITLE_FILL);
+        pd_fill(c, right + 4, ty + 7, 14 * host->batteryPct / 100, 4, PD_TITLE_TEXT);
+        pd_fill(c, right + 20, ty + 7, 2, 4, PD_TITLE_TEXT);
         right -= 2;
     } else if (g->cfg && g->cfg->cardStyle && g->rom) {
         const char* label = "TRAINER CARD";
@@ -126,6 +192,10 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     }
 
     int lh = c->h - LIST_Y - MARGIN;
+    if (railed) {
+        x += railW + 4;
+        w -= railW + 4;
+    }
     int lf = pd_list_box(c, x, LIST_Y, w, lh);
     // The bar takes its column off the rows while there's more than fits.
     const int infoCount = ui->optionSource ? ui->optionSource->infoCount : 0;
@@ -163,6 +233,9 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     if (lastTotal >= 0) ui->settingsScroll = ui_clamp_scroll(ui->settingsScroll, lastTotal, listBottom - listTop);
     int y = listTop - ui->settingsScroll;
     char buf[40];
+    struct pd_settings* st = ui->settings;
+    bool full = host && host->fullSettings;
+    if (full) group(c, ix, &y, "GAME");
     if (s->valid) {
         const char* place = pd_mapsec_name(g, s->mapsec);
         ui_row(c, ix, y, iw, "PLACE", *place ? place : "-", false);
@@ -175,11 +248,10 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         ui_row(c, ix, y, iw, host->labels[i], host->values[i], false);
         y += ROW_H;
     }
-    pd_fill(c, ix, y + 1, iw, 1, PD_DIVIDER);
-    y += 4;
-
-    struct pd_settings* st = ui->settings;
-    bool full = host && host->fullSettings;
+    if (!full) {
+        pd_fill(c, ix, y + 1, iw, 1, PD_DIVIDER);
+        y += 4;
+    }
     if (full) {
         group(c, ix, &y, "FF / SPEED");
         setting(ui, c, ix, &y, iw, SETTING_FF_TOGGLE, "FF", host->ffOn ? "ON" : "OFF");
@@ -197,6 +269,15 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         group(c, ix, &y, "GAMEPLAY");
         if (host->wildSupported) setting(ui, c, ix, &y, iw, SETTING_WILD, "WILD ENCOUNTERS", st->wildOff ? "OFF" : "ON");
         else muted_row(c, ix, &y, iw, "WILD ENCOUNTERS", "N/A");
+        // FREE FLIGHT's (the app's FLY STYLE / FLIGHT AREA, and MAKEOVER's FLY ON): two values flip in place.
+        if (host->flightSupported) {
+            setting(ui, c, ix, &y, iw, SETTING_FLY_STYLE, "FLY STYLE", st->flyClassic ? "CLASSIC" : "SCENIC");
+            setting(ui, c, ix, &y, iw, SETTING_FLIGHT_AREA, "FLIGHT AREA", st->flightAnywhere ? "ANYWHERE" : "VISITED");
+            setting(ui, c, ix, &y, iw, SETTING_FLY_ON, "FLY ON", flight_vehicle_label(st->flightVehicle));
+        } else {
+            muted_row(c, ix, &y, iw, "FLY STYLE", "N/A");
+            muted_row(c, ix, &y, iw, "FLIGHT AREA", "N/A");
+        }
         if (host->fieldSupported) {
             setting(ui, c, ix, &y, iw, SETTING_AUTO_RUN, "AUTO-RUN", st->autoRun ? "ON" : "OFF");
             setting(ui, c, ix, &y, iw, SETTING_RUN_INDOORS, "RUN INDOORS", st->runIndoors ? "ON" : "OFF");
@@ -206,6 +287,8 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         }
         if (host->hasCheats) setting(ui, c, ix, &y, iw, SETTING_CHEATS, "CHEATS", st->cheats ? "ON" : "OFF");
         else muted_row(c, ix, &y, iw, "CHEATS", "N/A");
+        // A host with FREE FLIGHT of its own has FLIGHT AREA above with FLY STYLE; one with TAKE OFF alone, here.
+        if (host->hasFlightArea && !host->flightSupported) flight_area_row(ui, c, ix, &y, iw, st);
         group(c, ix, &y, "SCREEN");
     }
     // PIXEL 1x is ORIGINAL's: EXPAND that wide can't keep up, so there it reads as the next size (pd_session_screen).
@@ -231,6 +314,15 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         setting(ui, c, ix, &y, iw, SETTING_FILTER, "FILTER", st->lcdFilter ? "LCD" : "OFF");
     if (host && host->hasQuickMenu)
         setting(ui, c, ix, &y, iw, SETTING_QUICK_MENU, "QUICK MENU", st->quickGrid ? "GRID" : "RING");
+    // The app keeps them in GAMEPLAY; a host without the groups has them by the QUICK MENU, where TAKE OFF is: FLIGHT
+    // AREA alone, or with FLY STYLE and FLY ON where the host flies FREE FLIGHT's scenic FLY and vehicles too.
+    if (host && host->hasFlightArea && !full) {
+        if (host->flightSupported)
+            setting(ui, c, ix, &y, iw, SETTING_FLY_STYLE, "FLY STYLE", st->flyClassic ? "CLASSIC" : "SCENIC");
+        flight_area_row(ui, c, ix, &y, iw, st);
+        if (host->flightSupported)
+            setting(ui, c, ix, &y, iw, SETTING_FLY_ON, "FLY ON", flight_vehicle_label(st->flightVehicle));
+    }
     if (host && host->hasButtonRows) {
         static const char* const NAMES[PD_BUTTONS] = {"X", "Y", "L2", "R2", "NONE"};
         setting(ui, c, ix, &y, iw, SETTING_QUICK_BTN, "QUICK MENU BUTTON", NAMES[st->quickBtn]);
@@ -244,8 +336,13 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
             if (pd_themes[i].id == st->theme) themeName = pd_themes[i].label;
         setting(ui, c, ix, &y, iw, SETTING_THEME, "THEME", themeName);
         group(c, ix, &y, "COMPANION");
-        setting(ui, c, ix, &y, iw, SETTING_HINTS, "BATTLE HINTS", st->hideHints ? "OFF" : "ON");
+        setting(ui, c, ix, &y, iw, SETTING_BATTLE_INFO, "BATTLE INFO", st->noBattleInfo ? "OFF" : "ON");
+        if (!st->noBattleInfo) {
+            setting(ui, c, ix, &y, iw, SETTING_HINTS, "BATTLE HINTS", st->hideHints ? "OFF" : "ON");
+            setting(ui, c, ix, &y, iw, SETTING_BATTLE_VIEW, "BATTLE VIEW", st->battleInfoFirst ? "INFO" : "BUTTONS");
+        }
         setting(ui, c, ix, &y, iw, SETTING_ONE_TAP, "ONE-TAP MOVES", st->oneTapMoves ? "ON" : "OFF");
+        setting(ui, c, ix, &y, iw, SETTING_BATTLE_STYLE, "BATTLE STYLE", st->battleGen5 ? "GEN 5" : "GEN 4");
     }
     snprintf(buf, sizeof(buf), "%d TABS", ui_bar_count(ui));
     setting(ui, c, ix, &y, iw, SETTING_TAB_BAR, "TAB BAR", buf);
@@ -255,12 +352,17 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
         y += 5;
         // CLOSE GAME / RESTART GAME, under a line.
         int bw = (iw - 6) / 2;
-        if (y >= listTop && y + 22 <= listBottom) {
+        if (y + 22 > listTop && y < listBottom) {
+            // Drawn whenever any of them shows (the list's clip cuts them), tappable on the part that shows.
+            int first = ui->hitCount;
             ui_button(ui, c, ix, y, bw, 22, "CLOSE GAME", HIT_SETTING + SETTING_LEAVE);
             ui_button(ui, c, ix + bw + 6, y, bw, 22, "RESTART GAME", HIT_SETTING + SETTING_RESTART);
-        } else if (!host || !host->frontendOwnsPlayback) {
-            pd_title_box(c, ix, y, bw, 22, PD_TITLE_FILL);
-            pd_title_box(c, ix + bw + 6, y, bw, 22, PD_TITLE_FILL);
+            for (int i = first; i < ui->hitCount; i++) {
+                struct pd_hit* h = &ui->hits[i];
+                int top = h->y < listTop ? listTop : h->y, bottom = h->y + h->h > listBottom ? listBottom : h->y + h->h;
+                h->y = top;
+                h->h = bottom - top;
+            }
         }
         y += 26;
     } else if (!host || !host->frontendOwnsPlayback) {
@@ -276,6 +378,10 @@ void ui_settings_tab(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game
     pd_unclip(c);
     int total = y + ui->settingsScroll - listTop, view = listBottom - listTop;
     lastTotal = total;
+    if (railed) {
+        for (int i = 0; i < groupCount; i++) groupTop[i] += ui->settingsScroll;
+        group_rail(ui, c, railX, LIST_Y, railW, lh, ui->settingsScroll);
+    }
     ui->settingsScroll = ui_clamp_scroll(ui->settingsScroll, total, view);
     if (total > view) {
         // Its own column: a thumb to drag, or a tap on the rail to jump there.
@@ -367,6 +473,10 @@ static void hud_page(struct pd_ui* ui, struct pd_canvas* c) {
     const char* values[N] = { NULL, pd_hud_layout_name(s->hudLayout), pd_hud_look_name(s->hudLook),
                               pd_hud_size_name(s->hudSize) };
     bool on[N] = { s->hud, true, true, true }, muted[N] = { false, !s->hud, !s->hud, !s->hud };
+    if (ui->hudLayoutFixed) {
+        values[1] = "N/A";
+        muted[1] = true;
+    }
     for (int i = 0; i < PD_HUD_PARTS; i++) {
         labels[4 + i] = pd_hud_part_name(i);
         on[4 + i] = !((s->hudHidden >> i) & 1);
@@ -377,27 +487,51 @@ static void hud_page(struct pd_ui* ui, struct pd_canvas* c) {
 
 // MoreScreen: every tab this game has off the bar as an app tile, a line, and the way to SETTINGS' page for it.
 void ui_more_page(struct pd_ui* ui, struct pd_canvas* c, const struct pd_game* g) {
+    // MoreScreen.kt: square tiles across the whole width with one gap everywhere (between tiles and round the grid), a rule,
+    // then the line left of TAB BAR. Tiles are a tab chip's frame, lighter (TILE_LIGHTEN / TILE_LOW), still two-tone.
     enum pd_tab more[UI_BAR_CHOICES];
     int n = ui_more_tabs(ui, g, more);
     int x = MARGIN, w = c->w - 2 * MARGIN;
     title_window(c, CONTENT_Y, "MORE");
     int y = CONTENT_Y + TITLE_H + 3, h = c->h - y - 2;
     int f = pd_list_box(c, x, y, w, h);
-    int ix = x + f + 4, iy = y + f + 4, iw = w - 2 * (f + 4);
-    int tile = 52, gap = 6;
+    const int gap = 6, bottomH = 2 + 2 * gap + 40;
+    int ix = x + f + gap, iy = y + f + gap, iw = w - 2 * (f + gap), gridH = h - 2 * f - gap - bottomH;
+    // As many columns as fit tiles 64 wide, four at most - five when the rows wouldn't fit the 3DS's short screen.
+    int cols = (iw + gap) / (64 + gap);
+    if (cols > 4) cols = 4;
+    if (cols < 1) cols = 1;
+    int tile = (iw - gap * (cols - 1)) / cols;
+    while ((n + cols - 1) / cols * (tile + gap) - gap > gridH && cols < 6) {
+        cols++;
+        tile = (iw - gap * (cols - 1)) / cols;
+    }
+    uint32_t idle = pd_mix(pd_cur->tabIdleFill, PD_TITLE_FILL, 230); // 0.9
     for (int i = 0; i < n; i++) {
-        int tx = ix + (i % 5) * (tile + gap), ty = iy + (i / 5) * (tile + gap);
-        pd_title_box(c, tx, ty, tile, tile, ui->pressedId == HIT_OPTION + i ? PD_LIST_FILL : 0xF0F0F0);
+        int tx = ix + (i % cols) * (tile + gap), ty = iy + (i / cols) * (tile + gap);
+        bool pressed = ui->pressedId == HIT_OPTION + i;
+        uint32_t fill = pressed ? pd_cur->tabSelectedFill : idle;
+        pd_layered_two_tone(c, tx, ty, tile, tile, 3, pd_cur->chip, pd_cur->chipCount, fill,
+                            pd_mix(fill, pd_two_tone_low(fill), 128));
         const struct pd_art* art = ui_tab_art(more[i]);
-        if (art) ui_art(c, art, tx + (tile - 32) / 2, ty + 4, 2);
+        int iconScale = tile >= 52 ? 2 : 1;
+        if (art) ui_art(c, art, tx + (tile - 16 * iconScale) / 2, ty + (tile - 16 - 16 * iconScale) / 2, iconScale);
         const char* label = ui_tab_label(more[i]);
-        pd_text(c, tx + (tile - pd_text_width(label)) / 2, ty + tile - 16, label, PD_TITLE_TEXT, PD_TITLE_SHADOW);
+        pd_text_fit(c, tx + 2 + (tile - 4 - pd_text_width(label) > 0 ? (tile - 4 - pd_text_width(label)) / 2 : 0), ty + tile - 17,
+                    tile - 4, label, pressed ? PD_VALUE : PD_TITLE_TEXT, pressed ? PD_VALUE_SHADOW : PD_TITLE_SHADOW);
         ui_add_hit(ui, tx, ty, tile, tile, HIT_OPTION + i);
     }
-    int by = y + h - f - 23;
-    pd_text_wrap(c, ix, by - 33, iw, 15, 2, "Tabs that aren't on the tab bar are here. Pick the bar's tabs in TAB BAR.",
-                 PD_LABEL, PD_LABEL_SHADOW);
-    ui_button(ui, c, x + w - f - 86, by, 80, 20, "TAB BAR", HIT_MORE_TAB_BAR);
+    // The rule: the window's own inner frame, dark over light (Separator).
+    int ry = y + h - f - bottomH;
+    pd_separator(c, ix, ry, iw, false);
+    int bw = 86, bh = 22, by = ry + 2 + gap + (40 - bh) / 2;
+    pd_text_wrap(c, ix, ry + 2 + gap - 3, iw - bw - gap, 13, 3,
+                 "Tabs that aren't on the tab bar are here. Pick the bar's tabs in TAB BAR.", PD_LABEL, PD_LABEL_SHADOW);
+    int bx = ix + iw - bw;
+    ui_button(ui, c, bx, by, bw, bh, "", HIT_MORE_TAB_BAR);
+    int lw = PD_ICON_GEAR.w + 4 + pd_text_width("TAB BAR"), lx = bx + (bw - lw) / 2;
+    ui_mono(c, &PD_ICON_GEAR, lx, by + (bh - PD_ICON_GEAR.h) / 2, 1, PD_TITLE_TEXT);
+    pd_text(c, lx + PD_ICON_GEAR.w + 4, pd_text_y(by, bh), "TAB BAR", PD_TITLE_TEXT, PD_TITLE_SHADOW);
 }
 
 static void confirm(struct pd_ui* ui, struct pd_canvas* c, const char* title, const char* text, const char* yes) {
@@ -455,6 +589,9 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
     case PD_OVERLAY_PICK_VOLUME:
         pick_list(ui, c, "GAME VOLUME", VOLUMES, 5, ui->settings->gameVolume / 20 - 1);
         break;
+    case PD_OVERLAY_PICK_FLY_ON:
+        pick_list(ui, c, "FLY ON", FLY_ON_NAMES, 4, ui->settings->flightVehicle);
+        break;
     case PD_OVERLAY_TAB_BAR:
         tab_bar_page(ui, c);
         break;
@@ -483,7 +620,9 @@ void ui_overlay(struct pd_ui* ui, struct pd_canvas* c) {
 }
 
 void pd_ui_options_view(struct pd_ui* ui,struct pd_canvas* c,const struct pd_game* g,const struct pd_snapshot* s){
-    ui->hitCount=0;pd_backdrop(c);ui_settings_tab(ui,c,g,s,NULL);
+    ui->hitCount=0;
+    if (!ui->keepBackdrop) pd_backdrop(c);
+    ui_settings_tab(ui,c,g,s,NULL);
 }
 
 void pd_ui_choices_view(struct pd_canvas* c,const char* title,const char* const* choices,int count,int selected){

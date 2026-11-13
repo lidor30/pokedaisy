@@ -107,6 +107,21 @@ test('DS: Renegade Platinum by its code word, retail Platinum by its header', ()
   assert.deepEqual(check(cart(0)), { status: 'supported', title: 'Pokémon Platinum', family: 'Nintendo DS' });
 });
 
+test('DS: Blaze Black 2 / Volt White 2 Redux by their code word, retail Black 2 / White 2 by the header', () => {
+  for (const [code, title, retail] of [['IREO', 'Pokémon Blaze Black 2 Redux', 'Pokémon Black 2'], ['IRDO', 'Pokémon Volt White 2 Redux', 'Pokémon White 2']]) {
+    const hack = data.dsHacks.find((h) => h.code === code);
+    const cart = (word) => {
+      const b = new Uint8Array(hack.offset + 4);
+      b.set(nds(code, 0));
+      new DataView(b.buffer).setUint32(hack.offset, word, true);
+      return b;
+    };
+    const check = (bytes) => verdict(data, { ...readHeader(bytes), size: bytes.length, sha1: '0'.repeat(40), dsHack: dsHackOf(data, readHeader(bytes), bytes) });
+    assert.deepEqual(check(cart(hack.word)), { status: 'supported', title, version: 'v1.4.1', family: 'Nintendo DS' });
+    assert.deepEqual(check(cart(0)), { status: 'supported', title: retail, family: 'Nintendo DS' });
+  }
+});
+
 test('Game Boy: Yellow only', () => {
   assert.equal(verdict(data, { platform: 'gb', sha1: 'cc7d03262ebfaf2f06772c1a480c7d9d5f4a38e1' }).title, 'Pokémon Yellow');
   assert.equal(verdict(data, { platform: 'gb', sha1: '0'.repeat(40) }).reason, 'gb');
