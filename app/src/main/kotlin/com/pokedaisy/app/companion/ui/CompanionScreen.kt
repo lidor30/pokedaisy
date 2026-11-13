@@ -190,6 +190,8 @@ fun CompanionScreen(
         // The PARTY tab's open summary (MonDetailScreen), by party index so it
         // follows live data; null = the party slots.
         var detailIndex by remember { mutableStateOf(initialMonIndex) }
+        // A DEX detail opened from a party summary: its Back returns to that summary, not the dex list.
+        var dexBackToParty by remember { mutableStateOf<Int?>(null) }
         // BATTLE tab: touch Controls (Gen 4 style) vs. info-dense Panel — see
         // BattleControlsScreen.kt. Resets to Controls each time the BATTLE tab
         // becomes available (a fresh battle), matching selectedLabel's own reset.
@@ -383,12 +385,14 @@ fun CompanionScreen(
             }
             backTab = current
             selectedLabel = "MORE"; detailIndex = null; showSuggestions = false; showBattleStats = false; dexUi.open = null
+            dexBackToParty = null
         }
         // A chip's tap (PARTY's own included) closes an open summary; BATTLE's also returns to the controls.
         val openTab: (String) -> Unit = { title ->
             popupReturn = null
             if (title != current) backTab = current
             selectedLabel = title; detailIndex = null; showSuggestions = false; showBattleStats = false; dexUi.open = null
+            dexBackToParty = null
             if (title == "BATTLE") { battleShowControls = opensOnButtons; showSuggestions = opensOnSuggestions }
         }
         // The window over the game (one screen): L / R step along the bar (round, like the game's own pages), from the gear
@@ -595,6 +599,17 @@ fun CompanionScreen(
                                 snapshot.party, shownSlot,
                                 onIndexChange = { detailIndex = it },
                                 onBack = { detailIndex = null },
+                                onOpenDex = if (dex != null) { { i ->
+                                    val mon = snapshot.party.getOrNull(i)
+                                    val national = mon?.let {
+                                        com.pokedaisy.app.companion.data.PokedexSource.nationalOf(dex.tables, it.species)
+                                    } ?: 0
+                                    if (mon != null && national > 0) {
+                                        openTab("DEX")
+                                        dexBackToParty = i
+                                        dexUi.open = national
+                                    }
+                                } } else null,
                                 learn = learnContext,
                                 itemUse = itemUse,
                                 // The PC's DEPOSIT, where its moves work and the boxes are read: pick a box.
@@ -677,7 +692,17 @@ fun CompanionScreen(
                             boxesUi.swapAnim?.let { BoxSwapAnimation(it, snapshot.pokedex?.tables, onDone = { boxesUi.swapAnim = null }) }
                             BoxSwapNotice(boxesUi)
                         } else if (tab == "DEX" && dex != null) {
-                            if (paneKey == "DEX/DETAIL") PokedexEntryScreen(dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables)
+                            if (paneKey == "DEX/DETAIL") PokedexEntryScreen(
+                                dex, dexUi, lastDexEntry.value, guide = snapshot.guideTables,
+                                onBack = dexBackToParty?.let { partySlot ->
+                                    {
+                                        dexUi.open = null
+                                        dexBackToParty = null
+                                        detailIndex = partySlot
+                                        selectedLabel = "PARTY"
+                                    }
+                                },
+                            )
                             else PokedexScreen(
                                 dex, dexUi,
                                 holdings = remember(snapshot.party, pcBoxes) { com.pokedaisy.app.companion.data.dexHoldings(snapshot.party, pcBoxes) },
@@ -876,6 +901,7 @@ fun CompanionScreen(
                 onOpen = { p ->
                     if (current != "ACHIEVEMENTS") popupReturn = current
                     selectedLabel = "ACHIEVEMENTS"; detailIndex = null; showSuggestions = false; showBattleStats = false; dexUi.open = null
+                    dexBackToParty = null
                     achievementFocus = AchievementFocus(p.achievementId, unlocked = p.kind != AchievementPopup.Kind.PROGRESS)
                 },
             )

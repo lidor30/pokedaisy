@@ -38,6 +38,8 @@ If the Pokémon holds an item, its `ITEM` line shows it. In games where the comp
 
 Down the right side is a column with every Pokémon in your party, the one on show framed in red: tap another one to switch to its summary. The page you're on (moves, stats or learn) stays put while you switch, so you can compare the whole team's IVs one after another. The blue button under the column, or BACK, returns to the party.
 
+Tap the highlighted Pokémon again to open its Pokédex entry. That page's blue button, or BACK, returns to this summary; opening the `DEX` tab itself still starts at the list.
+
 ## DEPOSIT: into a PC box
 
 In the games where the [BOXES tab](boxes.md) can move Pokémon, the summary has a green `DEPOSIT` button, like the game's own PC. Tap it, then pick a box from the list, which shows how full each one is. The Pokémon goes into that box's first free slot, right there in your game, and the rest of your party moves up. Back on your party you see it fly over to the box, then a message says where it went.
