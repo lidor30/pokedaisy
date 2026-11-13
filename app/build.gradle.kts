@@ -17,6 +17,8 @@ val crashlytics = file("google-services.json").isFile
 if (crashlytics) {
     apply(plugin = "com.google.gms.google-services")
     apply(plugin = "com.google.firebase.crashlytics")
+    // The dev build's package id (com.pokedaisy.app.dev) has no client in google-services.json, which fails its task.
+    tasks.configureEach { if (name == "processDevGoogleServices") enabled = false }
 }
 
 // Release signing comes from an untracked keystore.properties (storeFile, storePassword,
@@ -140,6 +142,15 @@ android {
             signingConfig = signingConfigs.getByName("debug")
             matchingFallbacks += listOf("release")
         }
+        // A debug build that installs beside the release app (`make install-dev`): its own package id, so its own
+        // data under Android/data/<id>/, named "PokeDaisy Dev" with an orange icon (src/dev/res). No crash reports:
+        // google-services.json has no client for its id.
+        create("dev") {
+            initWith(getByName("debug"))
+            applicationIdSuffix = ".dev"
+            buildConfigField("boolean", "CRASHLYTICS", "false")
+            matchingFallbacks += listOf("debug")
+        }
         release {
             isMinifyEnabled = false
             if (keystoreProps != null) signingConfig = signingConfigs.getByName("release")
@@ -168,6 +179,9 @@ android {
         kotlinCompilerExtensionVersion = "1.5.14"
     }
 
+    // The dev build is a debug build: the debug overlay (exported PokeDaisyActivity, local co-op relay) plus its own name / icon.
+    sourceSets["dev"].manifest.srcFile("src/debug/AndroidManifest.xml")
+    sourceSets["dev"].res.srcDirs("src/debug/res", "src/dev/res")
     sourceSets["main"].java.srcDirs("src/main/kotlin")
     sourceSets["main"].assets.srcDir(layout.buildDirectory.dir("generated/licenses"))
     sourceSets["test"].java.srcDirs("src/test/kotlin", "../server/coop-relay/src/main/kotlin")
