@@ -2,6 +2,7 @@ package com.pokedaisy.app.companion.data
 
 import okio.Source
 import okio.buffer
+import okio.use
 
 /**
  * Retail FireRed (rev 0 / 1) or Emerald (English) as Universal Pokémon Randomizer ZX leaves it ([RANDOMIZED_RETAIL],

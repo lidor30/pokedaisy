@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion.data
 import okio.BufferedSource
 import okio.Source
 import okio.buffer
+import okio.use
 
 /**
  * One retail FireRed / Emerald ROM as collection dumps of it may differ ([RETAIL_DUMPS], from

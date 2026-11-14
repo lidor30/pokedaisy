@@ -398,7 +398,7 @@ const val DEX_IN_PARTY = 0
 fun dexHoldings(party: List<MonView>, boxes: BoxesView?): Map<Int, Int>? {
     if (boxes == null) return null
     val out = HashMap<Int, Int>()
-    boxes.boxes.forEachIndexed { i, box -> box.mons.forEach { m -> if (m != null && !m.isEgg) out.putIfAbsent(m.species, i + 1) } }
+    boxes.boxes.forEachIndexed { i, box -> box.mons.forEach { m -> if (m != null && !m.isEgg) out.getOrPut(m.species) { i + 1 } } }
     party.forEach { if (!it.isEgg) out[it.species] = DEX_IN_PARTY }
     return out
 }

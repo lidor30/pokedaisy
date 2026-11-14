@@ -202,7 +202,7 @@ object MonArt {
         }
         if (s2n < 0) return null
         val speciesOf = HashMap<Int, Int>()
-        for (sp in 1..411) speciesOf.putIfAbsent(r.u16(s2n + (sp - 1) * 2), sp)
+        for (sp in 1..411) speciesOf.getOrPut(r.u16(s2n + (sp - 1) * 2)) { sp }
         val fronts = r.ptr(0x128) ?: return null
         val backs = r.ptr(0x12C) ?: return null
         val pals = r.ptr(0x130) ?: return null

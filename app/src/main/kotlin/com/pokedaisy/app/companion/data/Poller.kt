@@ -1,6 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import com.pokedaisy.app.MgbaCore
 import kotlin.concurrent.Volatile
 import kotlin.time.TimeSource
 import kotlinx.coroutines.channels.Channel
@@ -416,17 +415,17 @@ class TelemetrySampler {
         val t = cfg?.itemDescs
         if (t != null && RomItemText.matchesRom(reader, t)) return t
         if (cfg != null && t == null) return null
-        val size = runCatching { MgbaCore.pkRomSize() }.getOrDefault(0L)
+        val size = runCatching { EmulatorCore.current.romSize() }.getOrDefault(0L)
         return RomItemText.findVanillaItems(reader, size)
     }
 
     private fun detect(reader: MemoryReader) {
-        when (runCatching { MgbaCore.pkPlatform() }.getOrDefault(0)) {
-            MgbaCore.PLATFORM_GB -> return detectGameBoy()
-            MgbaCore.PLATFORM_NDS -> return detectDs()
+        when (runCatching { EmulatorCore.current.platform() }.getOrDefault(0)) {
+            EmulatorCore.PLATFORM_GB -> return detectGameBoy()
+            EmulatorCore.PLATFORM_NDS -> return detectDs()
         }
-        val code = runCatching { MgbaCore.pkRomCode() }.getOrNull().orEmpty()
-        val size = runCatching { MgbaCore.pkRomSize() }.getOrDefault(0L)
+        val code = runCatching { EmulatorCore.current.romCode() }.getOrNull().orEmpty()
+        val size = runCatching { EmulatorCore.current.romSize() }.getOrDefault(0L)
         romSha1 = null
         retailEngine = null
         fireRedEngine =code.startsWith("BPR") || code.startsWith("BPG")
@@ -758,13 +757,13 @@ class TelemetrySampler {
      * "not supported" notice.
      */
     private fun detectDs() {
-        val code = runCatching { MgbaCore.pkRomCode() }.getOrNull().orEmpty()
+        val code = runCatching { EmulatorCore.current.romCode() }.getOrNull().orEmpty()
         dsGameCode = code
         val rev = runCatching { reader0x1E() }.getOrDefault(-1)
-        dsOrigin = code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
-        dsRenegade = code == RenegadePlatinum.CODE && RenegadePlatinum.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
+        dsOrigin = code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
+        dsRenegade = code == RenegadePlatinum.CODE && RenegadePlatinum.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
         dsRedux = (code == Black2Redux.CODE_BLACK2 || code == Black2Redux.CODE_WHITE2) &&
-            Black2Redux.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
+            Black2Redux.matches { off, len -> EmulatorCore.current.readBytes(0x08000000L + off, len) }
         when {
             dsOrigin && NDS_SUPPORT -> { kind = GameKind.HEARTGOLD; gen4Cfg = GEN4_ORIGIN_HEARTGOLD }
             ndsSupported(code, rev) && DsPorts.of(code, rev) != null -> {
@@ -797,15 +796,15 @@ class TelemetrySampler {
     }
 
     /** The DS header's revision byte (0x1E), from the cart's ROM window (pk_nds_read: 0x08000000 + offset). */
-    private fun reader0x1E(): Int = MgbaCore.pkReadBytes(0x0800001EL, 1)?.get(0)?.toInt()?.and(0xFF) ?: -1
+    private fun reader0x1E(): Int = EmulatorCore.current.readBytes(0x0800001EL, 1)?.get(0)?.toInt()?.and(0xFF) ?: -1
 
     private fun detectGameBoy() {
-        val size = runCatching { MgbaCore.pkRomSize() }.getOrDefault(0L)
+        val size = runCatching { EmulatorCore.current.romSize() }.getOrDefault(0L)
         val digest = Sha1()
         var off = 0L
         while (off < size) {
             val len = minOf(1L shl 20, size - off).toInt()
-            digest.update(MgbaCore.pkRomRead(off, len) ?: break)
+            digest.update(EmulatorCore.current.romRead(off, len) ?: break)
             off += len
         }
         val hash = if (off == size && size > 0) digest.digest().hex() else null

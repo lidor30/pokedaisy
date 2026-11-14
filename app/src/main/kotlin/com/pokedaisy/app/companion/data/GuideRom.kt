@@ -492,7 +492,7 @@ object GuideRomSource {
             val group = h[0].toInt() and 0xFF
             if (group == MAP_GROUP_UNDEFINED) break
             // The first header wins, as in GetCurrentMapWildMonHeaderId.
-            out.putIfAbsent(group shl 8 or (h[1].toInt() and 0xFF), addr)
+            out.getOrPut(group shl 8 or (h[1].toInt() and 0xFF)) { addr }
             addr += wildHeaderStride(t)
         }
         return out.also { headers = it }

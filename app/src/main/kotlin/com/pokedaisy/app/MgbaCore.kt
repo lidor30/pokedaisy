@@ -518,3 +518,13 @@ object MgbaCore {
     /** [pkReadBytes] for the render core (which song it's really playing - see FfMusicKey). */
     external fun pkRenderReadBytes(addr: Long, len: Int): ByteArray?
 }
+
+/** [MgbaCore]'s calls for the data code ([com.pokedaisy.app.companion.data.EmulatorCore]); PokeDaisyApp plugs it in. */
+object MgbaEmulatorCore : com.pokedaisy.app.companion.data.EmulatorCore {
+    override fun readBytes(addr: Long, len: Int) = MgbaCore.pkReadBytes(addr, len)
+    override fun readInto(addr: Long, dst: ByteArray) = MgbaCore.pkReadInto(addr, dst)
+    override fun romCode() = MgbaCore.pkRomCode()
+    override fun romSize() = MgbaCore.pkRomSize()
+    override fun platform() = MgbaCore.pkPlatform()
+    override fun romRead(off: Long, len: Int) = MgbaCore.pkRomRead(off, len)
+}
