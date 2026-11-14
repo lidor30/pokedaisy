@@ -99,6 +99,8 @@ object Gen6Reader {
         val encryptionConstant: Long,
         val species: Int,
         val form: Int,
+        /** The record's gender bits (+0x1D: bit 1 female, bit 2 genderless). */
+        val female: Boolean,
         val heldItem: Int,
         val ability: Int,
         val nature: Int,
@@ -209,6 +211,7 @@ object Gen6Reader {
             encryptionConstant = b.getInt(0).toLong() and 0xFFFFFFFFL,
             species = species,
             form = (p[0x1D].toInt() and 0xFF) ushr 3,
+            female = p[0x1D].toInt() and 2 != 0,
             heldItem = b.getShort(0x0A).toInt() and 0xFFFF,
             ability = p[0x14].toInt() and 0xFF,
             nature = p[0x1C].toInt() and 0xFF,

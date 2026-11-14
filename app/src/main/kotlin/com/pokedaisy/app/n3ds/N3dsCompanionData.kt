@@ -17,7 +17,7 @@ object N3dsCompanionData {
             maxHp = m.maxHp,
             status = if (m.hp == 0) "FNT" else statusLabel(m.status.toLong() and 0xFFFFFFFFL),
             types = emptyList(),
-            iconAsset = null,
+            iconAsset = Gen6IconTable.index(m.species, m.form, m.female)?.let(Gen6Icons::asset),
             genderSymbol = GENDER_SYMBOL_UNKNOWN,
             isEgg = m.isEgg,
             personality = m.encryptionConstant,

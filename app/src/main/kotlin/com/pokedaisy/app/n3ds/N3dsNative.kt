@@ -91,7 +91,10 @@ object N3dsNative {
     @JvmStatic external fun gameFps(): Double
     /** The top screen of the next frame at [width] x [height], ARGB, top row first; null when there's no frame to take
      * (no game, paused, another one pending). Blocks up to a second: never on the UI thread. */
-    @JvmStatic external fun screenshot(width: Int, height: Int): IntArray?
+    @JvmStatic external fun screenshot(width: Int, height: Int, bottom: Boolean = false): IntArray?
+
+    /** Debug builds only: [data] into the game's memory at [address] between two frames. */
+    @JvmStatic external fun writeMemory(address: Int, data: ByteArray): Boolean
     /** The names of the modules (CROs) loaded after the static one whose header is at [root]: the game's screens (a
      * Pokemon X field is `DllField`, its party `DllPokeList`). Null without a game; blocks a frame at most. */
     @JvmStatic external fun modules(root: Int): String?

@@ -45,6 +45,7 @@ class N3dsSession(
 
     private val ui = Handler(Looper.getMainLooper())
     private val userDir = N3dsSaves.root(context).absolutePath
+    private val appFiles = context.filesDir
     private var topReady = false
     private var touchReady = false
     private var thread: Thread? = null
@@ -77,7 +78,9 @@ class N3dsSession(
 
     fun start() {
         wanted = true
-        if (started) setPaused(false) else maybeStart()
+        // A pause before the game thread started (the activity paused while it booted) must not outlive the start:
+        // the sampler and the scene reader skip their work while [paused].
+        if (started) setPaused(false) else { paused = false; maybeStart() }
     }
 
     /** The stage placed or dropped [touchView]: a game waiting on its surfaces may start now. */
@@ -242,7 +245,7 @@ class N3dsSession(
                     seen = now
                 }
                 if (pass++ % FIELD_SHOT_EVERY == 0 && scene == Gen6Reader.Scene.FIELD) fieldShot()
-                if (com.pokedaisy.app.BuildConfig.DEBUG && pass % FIELD_SHOT_EVERY == 1) debugDump()
+                if (com.pokedaisy.app.BuildConfig.DEBUG) debugCommands(pass % FIELD_SHOT_EVERY == 1)
             }
             try { Thread.sleep(SCENE_MS) } catch (_: InterruptedException) { break }
         }
@@ -250,8 +253,39 @@ class N3dsSession(
 
     /** Debug builds: `files/debug/n3ds_dump` there = the game's heap (0x08000000, 15 MB) and data (0x005A6000) written
      * to `files/debug/n3ds-<time>-<base>.bin`, the marker deleted (finding addresses on a device: diff two dumps). */
-    private fun debugDump() {
+    /**
+     * Debug builds: also `files/debug/n3ds_cmd`, lines of `poke <hex address> <hex bytes>` (written into the game's
+     * memory) and `shot <name>` (the touch screen at 320 x 240 into `files/debug/<name>.png`), run in order, then
+     * `n3ds_cmd.done` written (what adb waits for). How Pokemon X's party icons were read off the game.
+     */
+    private fun debugCommands(dumpTurn: Boolean) {
         val dir = File(userDir).parentFile?.let { File(it, "debug") } ?: return
+        val cmd = File(dir, "n3ds_cmd")
+        if (cmd.isFile) {
+            val lines = runCatching { cmd.readLines() }.getOrDefault(emptyList())
+            cmd.delete()
+            for (line in lines) {
+                val p = line.trim().split(Regex("\\s+"))
+                when (p.getOrNull(0)) {
+                    "poke" -> if (p.size == 3) {
+                        val data = p[2].chunked(2).map { it.toInt(16).toByte() }.toByteArray()
+                        N3dsNative.writeMemory(p[1].toLong(16).toInt(), data)
+                    }
+                    "shot" -> if (p.size == 2) {
+                        val px = N3dsNative.screenshot(320, 240, bottom = true)
+                        if (px != null) runCatching {
+                            val bmp = android.graphics.Bitmap.createBitmap(px, 320, 240, android.graphics.Bitmap.Config.ARGB_8888)
+                            File(dir, p[1] + ".png").outputStream().use { bmp.compress(android.graphics.Bitmap.CompressFormat.PNG, 100, it) }
+                        }
+                    }
+                }
+            }
+            File(dir, "n3ds_cmd.done").writeText(lines.size.toString())
+        }
+        if (dumpTurn) debugDump(dir)
+    }
+
+    private fun debugDump(dir: File) {
         val marker = File(dir, "n3ds_dump")
         if (!marker.isFile) return
         marker.delete()
@@ -277,6 +311,10 @@ class N3dsSession(
     // ---- the companion's snapshot -------------------------------------------------------------------------------
 
     private val sampler = Thread({
+        // The cart's icons into rom-art once (a few hundred small files), before the first sample needs them.
+        runCatching {
+            if (Gen6Icons.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles))) com.pokedaisy.app.companion.data.RomArt.announce()
+        }.onFailure { Log.w(TAG, "icons failed", it) }
         val config = Gen6Reader.configFor(titleId)
         var text: Gen6Text? = null
         var textLanguage = -1

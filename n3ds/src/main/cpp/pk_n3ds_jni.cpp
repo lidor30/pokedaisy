@@ -170,6 +170,8 @@ struct ReadJob {
     // "next" chain, joined by '\n' into [modules].
     u32 moduleRoot = 0;
     std::string modules;
+    // Written before anything is read (debug builds' pokes: N3dsNative.writeMemory).
+    std::vector<std::pair<u32, std::vector<u8>>> writes;
     bool pending = false, ok = false;
 };
 
@@ -207,6 +209,13 @@ void runReads(Core::System& system) {
     readJob.ok = process != nullptr;
     readJob.out.clear();
     readJob.modules.clear();
+    if (process) {
+        for (const auto& [addr, data] : readJob.writes)
+            if (system.Memory().IsValidVirtualAddress(*process, addr) &&
+                system.Memory().IsValidVirtualAddress(*process, addr + static_cast<u32>(data.size()) - 1))
+                system.Memory().WriteBlock(*process, addr, data.data(), data.size());
+    }
+    readJob.writes.clear();
     if (readJob.moduleRoot != 0) {
         if (process) readJob.modules = moduleNames(system, *process, readJob.moduleRoot);
         readJob.pending = false;
@@ -524,7 +533,8 @@ bool shotInvert = false;
 
 // The top screen of the next frame at [w] x [h] (ARGB, top row first); null without a running game, while another
 // screenshot is still pending, or when no frame came within a second (a paused game). Blocks: never the UI thread.
-extern "C" JNIEXPORT jintArray JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_screenshot(JNIEnv* env, jclass, jint w, jint h) {
+extern "C" JNIEXPORT jintArray JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_screenshot(JNIEnv* env, jclass, jint w, jint h,
+                                                                             jboolean bottom) {
     if (w <= 0 || h <= 0 || w > 4096 || h > 4096) return nullptr;
     auto& system = Core::System::GetInstance();
     std::unique_lock lock(shotMutex);
@@ -543,7 +553,7 @@ extern "C" JNIEXPORT jintArray JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_sc
                 shotDone = true;
                 shotCv.notify_all();
             },
-            Layout::SingleFrameLayout(static_cast<u32>(w), static_cast<u32>(h), false, false));
+            Layout::SingleFrameLayout(static_cast<u32>(w), static_cast<u32>(h), bottom == JNI_TRUE, false));
     }
     if (!shotCv.wait_for(lock, std::chrono::seconds(1), [] { return shotDone; })) return nullptr;
     std::vector<jint> out(shotBuf.size());
@@ -575,4 +585,24 @@ extern "C" JNIEXPORT jstring JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_modu
         out.swap(readJob.modules);
     }
     return env->NewStringUTF(out.c_str());
+}
+
+// Debug builds: [data] written at [addr] in the game's memory between two frames (finding things on a device). Blocks
+// for a frame at most; false without a game.
+extern "C" JNIEXPORT jboolean JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_writeMemory(JNIEnv* env, jclass, jint addr,
+                                                                                    jbyteArray jdata) {
+    const jsize n = env->GetArrayLength(jdata);
+    std::vector<u8> data(static_cast<size_t>(n));
+    env->GetByteArrayRegion(jdata, 0, n, reinterpret_cast<jbyte*>(data.data()));
+    std::scoped_lock caller(readCallers);
+    std::unique_lock lock(requestMutex);
+    if (!Core::System::GetInstance().IsPoweredOn() || stopRun || n == 0) return JNI_FALSE;
+    readJob.ranges.clear();
+    readJob.moduleRoot = 0;
+    readJob.writes.clear();
+    readJob.writes.emplace_back(static_cast<u32>(addr), std::move(data));
+    readJob.pending = true;
+    pauseCv.notify_all();
+    requestDone.wait(lock, [] { return !readJob.pending || stopRun; });
+    return readJob.pending ? JNI_FALSE : JNI_TRUE;
 }

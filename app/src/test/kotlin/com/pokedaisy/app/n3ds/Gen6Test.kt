@@ -102,6 +102,28 @@ class Gen6Test {
         assertEquals("Luminopoli", Gen6Zones.placeName(zones, Gen6Text.load(cart, 4), 67))
     }
 
+    /** The icon table as the game's party screen drew it (the RP6, 2026-11-15), and the cart's icons decoded. */
+    @Test fun iconTableAndTheCartsIcons() {
+        assertEquals(1, Gen6IconTable.index(1, 0, female = false))
+        assertEquals(4, Gen6IconTable.index(3, 0, female = true))         // Venusaur: no female icon
+        assertEquals(3, Gen6IconTable.index(3, 1, female = false))        // its Mega, before it
+        assertEquals(7, Gen6IconTable.index(6, 1, female = false))
+        assertEquals(8, Gen6IconTable.index(6, 2, female = false))
+        assertEquals(22, Gen6IconTable.index(18, 0, female = false))      // Pidgeot: 8-bit pixels
+        assertEquals(833, Gen6IconTable.index(668, 0, female = true))     // Pyroar's female
+        assertEquals(834, Gen6IconTable.index(668, 0, female = false))
+        assertEquals(886, Gen6IconTable.index(658, 0, female = false))    // the player's Greninja
+        assertNull(Gen6IconTable.index(722, 0, female = false))
+        val cart = File(File(RETAIL_ROM_DIR).parentFile, "3ds/Pokemon X (USA) (En,Ja,Fr,De,Es,It,Ko).3ds")
+        assumeTrue(cart.isFile)
+        val files = RomFs(cart).use { it.read("a/0/9/3") }!!.let { Gen6Text.garcFiles(it) }
+        assertEquals(945, files.size)
+        for (i in listOf(1, 22, 886, 944)) {
+            val img = Gen6Icons.decode(files[i])!!
+            assertTrue("icon $i has pixels", img.argb.count { it != 0 } > 100)
+        }
+    }
+
     /** The field object's 0x20 bytes as the RP6 read them (+0x10 the flags, +4 the pointer that goes with an app). */
     private fun fieldObject(flags: Int, pointer: Int = 0x082AA72C, size: Int = 0x20): ByteArray =
         ByteBuffer.allocate(0x20).order(ByteOrder.LITTLE_ENDIAN).apply {

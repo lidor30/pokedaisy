@@ -144,8 +144,13 @@ are checked through this path, then goes.
   icon; with the form counts it totals 945, one too many, and drifts by Mewtwo), a run of the second-icon species, a
   first-icon or icon-count table (u8 / u16, RomFS and `.code`), a pixel-difference threshold (no clean gap: Kingler's
   pair differs more than some evolutions). In memory on the party screen the icons are GPU textures already (only 2 of
-  6 recognisable). Next: ground truth from the game itself, e.g. party slots poked to other species headless and the
-  icon each one draws read off a screenshot of the party screen, or the code that picks the icon in `DllPokeList`.
+  6 recognisable).
+- In the app since 2026-11-15, read off the game itself: on the RP6 every species, both genders and every form were
+  written into the party (debug builds' `n3ds_cmd` pokes), the party screen opened, and its touch screen matched against
+  the archive: `scripts/n3ds_icons/` (README there), `pokemon_x_icons.tsv` -> `Gen6IconTable` (the plain icon per species,
+  4 female icons: Unfezant, Frillish, Jellicent, Pyroar, and the forms). `Gen6Icons` writes the cart's icons into rom-art
+  once (`n3ds/pokemonx/icons/<index>.png`, 40 x 80 sheets); 8 of them have more than 16 colours and a byte per pixel.
+  Headless, the software renderer crashes leaving the summary (and walking in the field), so this needed a device.
 - Item icons are probably `a/0/9/4` (579 files, 30 x 30, same container).
 - The map name (2026-11-15, in the app): the current zone is a u16 at 0x08C6709E (the save's situation in memory, the
   player's coordinates as floats after it; 0x08C670D4 the zone before), found on the RP6 by walking from Lumiose's square
