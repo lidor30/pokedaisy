@@ -1427,7 +1427,11 @@ class EmulatorEngine(
                     // The field's own screen, positively (FfMenuWatch): "no menu found" isn't enough - a game whose field
                     // screen isn't learned yet (a new game) never reports a menu, so its naming screen passed as field.
                     // A Game Boy game: its scene (pk_wide_gb.c's screen match, with EXPAND or without) must say FIELD.
-                    val screen = if (gba || nds) fieldScreen && !mapOpen else wideScene == WideCamera.SCENE_FIELD
+                    // A DS game: not while a script runs on the field either (pk_nds_field.cpp's TEXT: an event in Black /
+                    // White, a task in Gen 4) - the PC's menu, a text box, the X menu are drawn over the field there, and the
+                    // HUD stayed on top of them (its buttons over the text box).
+                    val script = nds && fieldState and MgbaCore.FIELD_TEXT != 0
+                    val screen = if (gba || nds) fieldScreen && !mapOpen && !script else wideScene == WideCamera.SCENE_FIELD
                     val field = screen && !battleInput.holdFrame &&
                         battleInput.gameState == com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE &&
                         (wideScene == -1 || wideScene == WideCamera.SCENE_FIELD)

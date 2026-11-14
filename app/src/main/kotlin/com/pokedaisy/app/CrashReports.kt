@@ -103,6 +103,13 @@ object CrashReports {
         }
     }
 
+    /** A line in the next report's log, for what the stack can't show (an ANR with an idle main thread: which window
+     * had the focus, a move between screens). */
+    fun breadcrumb(text: String) {
+        if (!available) return
+        runCatching { FirebaseCrashlytics.getInstance().log(text) }
+    }
+
     /** [gameStarted]'s launchedFrom for a game opened from the library (the list, the grid, RECENTLY PLAYED, the launcher). */
     const val LAUNCHED_FROM_LIBRARY = "library"
 

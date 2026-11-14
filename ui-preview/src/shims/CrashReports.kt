@@ -10,5 +10,6 @@ object CrashReports {
     fun setEnabled(prefs: Prefs, on: Boolean) { prefs.crashReportsEnabled = on }
     fun gameStarted(context: Context, rom: java.io.File, romData: java.io.File, launchedFrom: String?) {}
     fun gameIdentified(kind: String, how: String? = null) {}
+    fun breadcrumb(text: String) {}
     const val LAUNCHED_FROM_LIBRARY = "library"
 }
