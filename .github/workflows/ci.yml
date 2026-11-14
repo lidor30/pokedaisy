@@ -114,7 +114,7 @@ jobs:
         with:
           ref: ${{ inputs.ref }}
       - run: git submodule update --init third_party/mgba
-      - run: cmake -S app/src/main/cpp/test -B "$RUNNER_TEMP/pk_api" -DCMAKE_BUILD_TYPE=Release
+      - run: cmake -S app/src/main/cpp/test -B "$RUNNER_TEMP/pk_api" -DCMAKE_BUILD_TYPE=Release -DCMAKE_POLICY_VERSION_MINIMUM=3.5
       - run: cmake --build "$RUNNER_TEMP/pk_api" -j4
       - run: ctest --test-dir "$RUNNER_TEMP/pk_api" --output-on-failure
 
