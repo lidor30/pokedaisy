@@ -74,4 +74,5 @@ fun hiddenPowerType(ivs: List<Int>): String {
  * expansion hacks use Gen 6's flat 60); null where it isn't known.
  */
 fun hiddenPowerPower(ivs: List<Int>): Int? =
-    if (activeGame == GameKind.FIRERED || activeGame == GameKind.EMERALD || activeGame == GameKind.ORANGE_ISLANDS) ivBits(ivs, 1) * 40 / 63 + 30 else null
+    if (activeGame == GameKind.FIRERED || activeGame == GameKind.EMERALD || activeGame == GameKind.ORANGE_ISLANDS || retailDsGame)
+        ivBits(ivs, 1) * 40 / 63 + 30 else null

@@ -423,6 +423,11 @@ val GEN4_SOULSILVER_FR = gen4HeartGoldFamily(saveDataPtr = 0x021D2248, fieldSyst
 /** A DS game ([readGen4Telemetry], [readGen5Telemetry]): two screens, its own look and tables. */
 val GameKind?.isDsGame: Boolean get() = this == GameKind.PLATINUM || isHgss || isGen5
 
+/** A retail DS cart running (Gen 4 / 5 kept Gen 3's Hidden Power rule, [hiddenPowerPower]): not Origin HeartGold, Renegade
+ * Platinum or the Redux builds, whose engines may use Gen 6's flat 60. */
+internal val retailDsGame: Boolean
+    get() = activeGame.isDsGame && !originHeartGold && !renegadePlatinum && !black2Redux
+
 /** Gen 5 (Black, White, Black 2, White 2): [readGen5Telemetry], their own tables (Black's for the species and moves of
  * all four; the sequels' places, items and Town Map their own: [isBw2]). */
 val GameKind?.isGen5: Boolean get() = this == GameKind.BLACK || this == GameKind.WHITE || isBw2
@@ -551,6 +556,15 @@ fun decodeGen4PartyMon(
         isEgg = (ivWord ushr 30) and 1L != 0L,
         heldItem = u16(blocks, a + 2),
         nickname = nickname.takeIf { it.isNotBlank() },
+        stats = MonStats(
+            // Gen 3's IV word and order: HP, ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF, five bits each.
+            ivs = List(6) { ((ivWord shr (5 * it)) and 0x1F).toInt() },
+            evs = List(6) { u8(blocks, a + 0x10 + it) },
+            // Gen 4's nature is the personality's; Gen 5 keeps its own byte (block B +0x19), which can differ from it.
+            nature = if (size == GEN4_MON_SIZE) (personality % 25).toInt() else u8(blocks, b + 0x19).takeIf { it < 25 } ?: (personality % 25).toInt(),
+            // Max HP, then the party fields' ATTACK, DEFENSE, SPEED, SP. ATK, SP. DEF.
+            stats = List(6) { u16(party, 8 + 2 * it) },
+        ).takeIf { (ivWord ushr 30) and 1L == 0L },
     )
 }
 
