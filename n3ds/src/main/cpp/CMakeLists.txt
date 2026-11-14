@@ -22,9 +22,10 @@ endif()
 set(ENABLE_BUILTIN_KEYBLOB OFF CACHE BOOL "" FORCE)
 
 # What a front end inside our app needs, nothing else: no Qt / SDL / libusb / Discord / web services / rooms / scripting
-# RPC / GDB stub / tests, no audio backends (we take the samples ourselves), Vulkan and OpenGL ES renderers.
+# RPC / GDB stub / tests, sound through cubeb (AAudio / OpenSL ES) for now, Vulkan and OpenGL ES renderers.
+set(ENABLE_CUBEB ON CACHE BOOL "" FORCE)
 foreach(off ENABLE_QT ENABLE_SDL2 ENABLE_TESTS ENABLE_ROOM ENABLE_ROOM_STANDALONE ENABLE_WEB_SERVICE ENABLE_SCRIPTING
-        ENABLE_GDBSTUB ENABLE_CUBEB ENABLE_OPENAL ENABLE_LIBUSB ENABLE_DISCORD_RPC ENABLE_LIBRETRO CITRA_WARNINGS_AS_ERRORS)
+        ENABLE_GDBSTUB ENABLE_OPENAL ENABLE_LIBUSB ENABLE_DISCORD_RPC ENABLE_LIBRETRO CITRA_WARNINGS_AS_ERRORS)
     set(${off} OFF CACHE BOOL "" FORCE)
 endforeach()
 set(ENABLE_OPENGL ON CACHE BOOL "" FORCE)

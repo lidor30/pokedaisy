@@ -1599,6 +1599,16 @@ class LibraryActivity : ComponentActivity() {
 
     private fun play(rom: File) {
         if (preparing != null) return
+        // A 3DS cart has its own activity for now (N3dsActivity, milestone 1), and is never read whole before it starts.
+        if (FeatureFlags.n3ds() && rom.extension.lowercase() in com.pokedaisy.app.n3ds.N3dsCart.EXTENSIONS) {
+            secondScreen.dismiss()
+            launcher.menu = null
+            prefs.lastRomPath = rom.absolutePath
+            prefs.pushRecentRom(rom.absolutePath)
+            startActivity(Intent(this, com.pokedaisy.app.n3ds.N3dsActivity::class.java)
+                .putExtra(com.pokedaisy.app.n3ds.N3dsActivity.EXTRA_ROM, rom.absolutePath))
+            return
+        }
         // A ROM whose CRC isn't known (or an archive) is read / unpacked first, off the UI thread: the game's window did
         // it on its own and froze on a 512 MB DS cart.
         if (RomCrcs.needsPrepare(this, rom)) {

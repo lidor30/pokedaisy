@@ -49,6 +49,27 @@ on two screens and on one. Moves into docs/DEVELOPMENT.md (and the manual) once 
   key blob lines leave the module's CMake.
 - `native-capture/n3ds_dump`: the same libraries on the Mac with the software renderer, for headless captures.
 
+## The first playable version (2026-11-14)
+
+`N3dsActivity` (only with the flag): the library starts it for a supported cart (`N3dsCart`: NCSD header, title id,
+NoCrypto; `CompanionSupport.isSupported`, `RomFolder` lists `.3ds` / `.cci` up to 4 GB, never hashed or copied).
+`N3dsSaves.prepare` writes the save's format file (or refuses a game whose format isn't known) and copies the save to
+`n3ds/backups/<title id>/<time>/` (newest 10 that differ) before every boot. Native (`pk_n3ds_jni.cpp`): Azahar's
+Vulkan renderer on `PkWindow`s over Android surfaces (two at boot = top screen alone + touch screen alone, one = both,
+LargeScreen), our own button / circle pad devices, touches on either surface, pause, states between two RunLoop calls,
+speed, sound through cubeb. Test keys: L3 saves a state, R3 loads it, R2 held = 300%. Azahar's user folder is
+`Android/data/com.pokedaisy.app/files/n3ds/` (the save: `sdmc/Nintendo 3DS/<0 x32>/<0 x32>/title/00040000/00055d00/
+data/00000001/main`).
+
+On the RP6 (2026-11-14): boots the user's save to the field at 100% speed (60 fps system, the field at its own 30 fps,
+~5 ms of a 16.7 ms frame used at 1x), states save (13 MB) and load, buttons, D-pad and touch work, the format guard wrote
+the save's format file and the backup was taken. Gotchas met on the way: Azahar's Android file code calls back into a Java
+class (`N3dsAndroidUtils`, every method with its exact signature, or CheckJNI aborts) and reads every path relative to
+the user folder it returns, unless the path starts with "!" (the cart's); `LaunchActivity` hands a `.3ds` to the 3DS
+screen too (in place, never copied), which is how to start it from adb: `am start -n com.pokedaisy.app/.LaunchActivity
+--es rom '<path>'`. Not yet: the Thor's two screens, a higher resolution, the library's 3DS tag (it says GBA), sound
+checked by ear.
+
 ## Pokemon X, first findings (n3ds_dump, 2026-11-14)
 
 - Boots with the user's save and plays to the field (Lumiose, the save is Italian: the game follows the save's language).

@@ -173,5 +173,13 @@
             android:launchMode="singleTask"
             android:parentActivityName=".LibraryActivity"
             android:theme="@style/Theme.PokeDaisy" />
+
+        <!-- 3DS games, first version (n3ds/N3dsActivity.kt, only reachable with the n3ds flag). Landscape for now. -->
+        <activity
+            android:name=".n3ds.N3dsActivity"
+            android:exported="false"
+            android:configChanges="orientation|screenSize|smallestScreenSize|screenLayout|keyboard|keyboardHidden|navigation|uiMode"
+            android:screenOrientation="sensorLandscape"
+            android:theme="@style/Theme.PokeDaisy" />
     </application>
 </manifest>

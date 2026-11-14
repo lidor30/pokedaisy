@@ -189,6 +189,7 @@ int main(int argc, char** argv) {
     Settings::values.init_ticks_type = Settings::InitTicks::Fixed;
     for (const auto& [name, code] : BUTTONS)
         Settings::values.current_input_profile.buttons[code] = InputCommon::GenerateKeyboardParam(code);
+    Settings::values.current_input_profile.touch_device = "engine:emu_window"; // the window's touches
     InputCommon::Init();
     // Every system module emulated (HLE), none loaded from a console's NAND (there's none): a front end fills this
     // from its config, and Service::Init looks each one up.

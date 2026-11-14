@@ -63,7 +63,7 @@ class LaunchActivity : Activity() {
                 null
             }
             // Its CRC (and an archive's unpacking) here, not on the game window's UI thread (RomCrcs).
-            if (rom != null) RomCrcs.prepare(this, rom)
+            if (rom != null && !is3ds(rom)) RomCrcs.prepare(this, rom)
             runOnUiThread {
                 if (rom != null) play(rom) else cantRead(uri)
                 close()
@@ -77,6 +77,8 @@ class LaunchActivity : Activity() {
         RomUris.originalPath(this, uri)?.takeIf { it.startsWith("/") }?.let { path ->
             val f = File(path)
             if (RomIntake.isPrivate(this, f)) return null
+            // A 3DS cart (FeatureFlags.n3ds) plays only in place: gigabytes, never copied.
+            if (readable(f) && is3ds(f)) return f.takeIf { com.pokedaisy.app.n3ds.N3dsCart.isCart(it) }
             if (readable(f)) return f.takeIf { RomIdentity.looksLikeRom(it) }
         }
         if (uri.scheme == "file") return null   // no path access, and no provider to copy through
@@ -191,10 +193,21 @@ class LaunchActivity : Activity() {
         return off
     }
 
+    private fun is3ds(f: File) = FeatureFlags.n3ds() && f.extension.lowercase() in com.pokedaisy.app.n3ds.N3dsCart.EXTENSIONS
+
     private fun play(rom: File) {
         val prefs = Prefs(this)
         prefs.lastRomPath = rom.absolutePath
         prefs.pushRecentRom(rom.absolutePath)
+        if (is3ds(rom)) {
+            startActivity(
+                Intent(this, com.pokedaisy.app.n3ds.N3dsActivity::class.java)
+                    .putExtra(com.pokedaisy.app.n3ds.N3dsActivity.EXTRA_ROM, rom.absolutePath)
+                    .addFlags(Intent.FLAG_ACTIVITY_NEW_TASK),
+                Screens.mainDisplayLaunch(this),
+            )
+            return
+        }
         startActivity(
             Intent(this, PokeDaisyActivity::class.java)
                 .putExtra(LibraryActivity.EXTRA_ROM, rom.absolutePath)
