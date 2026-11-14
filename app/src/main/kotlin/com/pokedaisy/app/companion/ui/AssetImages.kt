@@ -63,6 +63,14 @@ internal object GameArt {
     }
 }
 
+/** The data code's [RomArt.Image] as an Android Bitmap, made once per image: the icon and dex caches hand out the
+ * same Image each time, so a list scrolling back doesn't copy its pixels again. */
+fun RomArt.Image.bitmap(): Bitmap = synchronized(androidBitmaps) {
+    androidBitmaps.getOrPut(this) { Bitmap.createBitmap(argb, width, height, Bitmap.Config.ARGB_8888) }
+}
+
+private val androidBitmaps = java.util.WeakHashMap<RomArt.Image, Bitmap>()
+
 /** Changes when [RomArt] adds art, so `remember`s keyed on it load again. */
 @Composable
 fun rememberArtGeneration(): Int = RomArt.updates.collectAsState().value
@@ -85,13 +93,13 @@ private suspend fun loadMonIconSheet(context: Context, asset: String?): Bitmap? 
         asset == null -> null
         // Unbound icons aren't bundled - pull them live from the game.
         asset.startsWith("pokemon-unbound/") -> withContext(Dispatchers.IO) {
-            id?.let { UnboundIconSource.get(it) }
+            id?.let { UnboundIconSource.get(it)?.bitmap() }
         }
         // Native configs that know gMonIconTable: decode
         // straight from the ROM (see IconTables.monPresent - gated
         // independently of item icons since some hacks relocate only one).
         id != null && DecompIconSource.tables.monPresent -> withContext(Dispatchers.IO) {
-            (if ("/shiny/" in asset) DecompIconSource.getShiny(id) else null) ?: DecompIconSource.get(id) ?: GameArt.get(context, asset)
+            ((if ("/shiny/" in asset) DecompIconSource.getShiny(id) else null) ?: DecompIconSource.get(id))?.bitmap() ?: GameArt.get(context, asset)
         }
         else -> withContext(Dispatchers.IO) { GameArt.get(context, asset) }
     }
@@ -103,9 +111,9 @@ internal fun peekMonIcon(asset: String?): Bitmap? {
     GameArt.peek(asset)?.let { return it }   // rom-art sheets (a Game Boy game's own icons)
     val id = asset.substringAfterLast('/').substringBefore('.').toIntOrNull() ?: return null
     return when {
-        asset.startsWith("pokemon-unbound/") -> UnboundIconSource.peek(id)
-        "/shiny/" in asset -> DecompIconSource.peekShiny(id)
-        else -> DecompIconSource.peek(id)
+        asset.startsWith("pokemon-unbound/") -> UnboundIconSource.peek(id)?.bitmap()
+        "/shiny/" in asset -> DecompIconSource.peekShiny(id)?.bitmap()
+        else -> DecompIconSource.peek(id)?.bitmap()
     }
 }
 
@@ -153,7 +161,7 @@ fun ItemIcon(
     // Starts from an already-decoded icon, like SpeciesIcon.
     var bitmap by remember(asset) {
         val id = asset?.takeUnless { it.startsWith("items-unbound/") }?.substringAfterLast('/')?.substringBefore('.')?.toIntOrNull()
-        mutableStateOf(id?.let { DecompIconSource.peekItem(it) })
+        mutableStateOf(id?.let { DecompIconSource.peekItem(it)?.bitmap() })
     }
     val gen = rememberIconGeneration()
     LaunchedEffect(asset, gen) {
@@ -162,10 +170,10 @@ fun ItemIcon(
             asset == null -> null
             // Unbound item icons aren't bundled - pull them live from the game.
             asset.startsWith("items-unbound/") -> withContext(Dispatchers.IO) {
-                id?.let { UnboundIconSource.getItem(it) }
+                id?.let { UnboundIconSource.getItem(it)?.bitmap() }
             }
             id != null && DecompIconSource.tables.itemPresent -> withContext(Dispatchers.IO) {
-                DecompIconSource.getItem(id) ?: GameArt.get(context, asset)
+                DecompIconSource.getItem(id)?.bitmap() ?: GameArt.get(context, asset)
             }
             else -> withContext(Dispatchers.IO) {
                 GameArt.get(context, asset)

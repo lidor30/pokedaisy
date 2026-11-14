@@ -1,6 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import android.graphics.Bitmap
 import kotlin.concurrent.Volatile
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
@@ -20,8 +19,8 @@ object UnboundIconSource {
     private const val PAL_BYTES = 32
     private const val ITEM_TILE_BYTES = 3 * 3 * 32 // 288
 
-    private val monCache = LockedMap<Int, Bitmap>()
-    private val itemCache = LockedMap<Int, Bitmap>()
+    private val monCache = LockedMap<Int, RomArt.Image>()
+    private val itemCache = LockedMap<Int, RomArt.Image>()
     private val lock = SynchronizedObject()
 
     /** Party icon for [species], or null if unavailable (retries later). */
@@ -30,14 +29,14 @@ object UnboundIconSource {
     var reader: MemoryReader = InProcessReader
 
     /** An already-decoded icon (no ROM read), or null. */
-    fun peek(species: Int): Bitmap? = monCache[species]
+    fun peek(species: Int): RomArt.Image? = monCache[species]
 
-    fun get(species: Int): Bitmap? = cached(monCache, species) { fetchMon(species) }
+    fun get(species: Int): RomArt.Image? = cached(monCache, species) { fetchMon(species) }
 
     /** Bag icon for [itemId], or null if unavailable. */
-    fun getItem(itemId: Int): Bitmap? = cached(itemCache, itemId) { fetchItem(itemId) }
+    fun getItem(itemId: Int): RomArt.Image? = cached(itemCache, itemId) { fetchItem(itemId) }
 
-    private inline fun cached(cache: LockedMap<Int, Bitmap>, key: Int, fetch: () -> Bitmap?): Bitmap? {
+    private inline fun cached(cache: LockedMap<Int, RomArt.Image>, key: Int, fetch: () -> RomArt.Image?): RomArt.Image? {
         if (key <= 0) return null
         cache[key]?.let { return it }
         synchronized(lock) {
@@ -69,14 +68,14 @@ object UnboundIconSource {
         return out
     }
 
-    private fun fetchMon(species: Int): Bitmap? {
+    private fun fetchMon(species: Int): RomArt.Image? {
         val ptr = readPtr(MON_ICON_TABLE + species * 4L)
         if (ptr < 0x08000000L || ptr >= 0x0A000000L) return null
         val rec = readChunked(ptr, MON_TILE_BYTES + PAL_BYTES)
         return decode(rec, 0, rec, MON_TILE_BYTES, 4, 8)
     }
 
-    private fun fetchItem(itemId: Int): Bitmap? {
+    private fun fetchItem(itemId: Int): RomArt.Image? {
         val entry = readChunked(ITEM_ICON_TABLE + itemId * 8L, 8)
         val tilesPtr = (entry[0].toLong() and 0xFF) or ((entry[1].toLong() and 0xFF) shl 8) or
             ((entry[2].toLong() and 0xFF) shl 16) or ((entry[3].toLong() and 0xFF) shl 24)
@@ -96,7 +95,7 @@ object UnboundIconSource {
     private fun decode(
         tiles: ByteArray, tilesOff: Int, palRaw: ByteArray, palOff: Int,
         wTiles: Int, hTiles: Int,
-    ): Bitmap {
+    ): RomArt.Image {
         val pal = IntArray(16)
         for (i in 0 until 16) {
             val c = (palRaw[palOff + i * 2].toInt() and 0xFF) or
@@ -124,7 +123,7 @@ object UnboundIconSource {
                 tile++
             }
         }
-        return Bitmap.createBitmap(px, w, h, Bitmap.Config.ARGB_8888)
+        return RomArt.Image(w, h, px)
     }
 
     /** GBA BIOS LZ77 (type 0x10): 4-byte header then flag-grouped literal /

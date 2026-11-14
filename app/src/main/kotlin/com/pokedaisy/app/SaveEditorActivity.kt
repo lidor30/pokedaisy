@@ -37,6 +37,7 @@ import com.pokedaisy.app.companion.ui.PcBoxesScreen
 import com.pokedaisy.app.companion.ui.PcBoxesState
 import com.pokedaisy.app.companion.ui.TradeScreen
 import com.pokedaisy.app.companion.ui.TradeState
+import com.pokedaisy.app.companion.ui.bitmap
 import com.pokedaisy.app.companion.ui.rememberGbaTextMetrics
 import com.pokedaisy.app.companion.ui.theme.AppTheme
 import java.io.File
@@ -207,7 +208,7 @@ class SaveEditorActivity : ComponentActivity() {
         val tables = RomMonIcons.tablesFor(RomIdentity.sha1(rom), RomIdentity.gameCode(rom), RomIdentity.revision(rom)) ?: return
         val file = RomArchive.playable(rom, cacheDir) ?: rom
         val source = RomMonIcons.open(file.toOkioPath(), tables) ?: return
-        runOnUiThread { icons[rom.absolutePath] = MonIconLoader { source.get(it) } }
+        runOnUiThread { icons[rom.absolutePath] = MonIconLoader { source.get(it)?.bitmap() } }
     }
 
     private fun save(ready: Page.Ready) {

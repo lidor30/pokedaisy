@@ -1,6 +1,5 @@
 package com.pokedaisy.app.companion.data
 
-import android.graphics.Bitmap
 import kotlin.concurrent.Volatile
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
@@ -53,28 +52,28 @@ object DecompIconSource {
     var reader: MemoryReader = InProcessReader
 
 
-    private val monCache = LockedMap<Int, Bitmap>()
-    private val itemCache = LockedMap<Int, Bitmap>()
+    private val monCache = LockedMap<Int, RomArt.Image>()
+    private val itemCache = LockedMap<Int, RomArt.Image>()
     private val missing = LockedMap<Long, Unit>()
     private val lock = SynchronizedObject()
     @Volatile private var loggedOnce = false
 
     /** An already-decoded icon (no ROM read), or null. */
-    fun peek(species: Int): Bitmap? = if (tables.monPresent) monCache[species] else null
+    fun peek(species: Int): RomArt.Image? = if (tables.monPresent) monCache[species] else null
 
-    fun get(species: Int): Bitmap? = cached(monCache, species, tables.monPresent) { fetchMon(species) }
+    fun get(species: Int): RomArt.Image? = cached(monCache, species, tables.monPresent) { fetchMon(species) }
 
     /** [species]' icon in its shiny palette (SoulGold keeps one per species, beside the normal one); null where the
      * tables have no per-species palettes. */
-    fun getShiny(species: Int): Bitmap? = if (tables.monIconPalettes == 0L && tables.battlePalettes == 0L) null
+    fun getShiny(species: Int): RomArt.Image? = if (tables.monIconPalettes == 0L && tables.battlePalettes == 0L) null
         else cached(monCache, SHINY_KEY + species, tables.monPresent) { decodeMonIcon(tables, species, shiny = true, rd = ::rd) }
-    fun peekShiny(species: Int): Bitmap? = if (tables.monPresent) monCache[SHINY_KEY + species] else null
+    fun peekShiny(species: Int): RomArt.Image? = if (tables.monPresent) monCache[SHINY_KEY + species] else null
 
     /** An already-decoded item icon (no ROM read), or null. */
-    fun peekItem(itemId: Int): Bitmap? = if (tables.itemPresent) itemCache[1_000_000 + itemId] else null
-    fun getItem(itemId: Int): Bitmap? = cached(itemCache, 1_000_000 + itemId, tables.itemPresent) { fetchItem(itemId) }
+    fun peekItem(itemId: Int): RomArt.Image? = if (tables.itemPresent) itemCache[1_000_000 + itemId] else null
+    fun getItem(itemId: Int): RomArt.Image? = cached(itemCache, 1_000_000 + itemId, tables.itemPresent) { fetchItem(itemId) }
 
-    private inline fun cached(cache: LockedMap<Int, Bitmap>, key: Int, gate: Boolean, fetch: () -> Bitmap?): Bitmap? {
+    private inline fun cached(cache: LockedMap<Int, RomArt.Image>, key: Int, gate: Boolean, fetch: () -> RomArt.Image?): RomArt.Image? {
         if (key <= 0 || !gate) return null
         cache[key]?.let { return it }
         val sig = tables.monIconTable * 31 + key
@@ -106,9 +105,9 @@ object DecompIconSource {
         return out
     }
 
-    private fun fetchMon(species: Int): Bitmap? = decodeMonIcon(tables, species, rd = ::rd)
+    private fun fetchMon(species: Int): RomArt.Image? = decodeMonIcon(tables, species, rd = ::rd)
 
-    private fun fetchItem(itemId: Int): Bitmap? {
+    private fun fetchItem(itemId: Int): RomArt.Image? {
         val t = tables
         val extra = itemId - t.extraItemFirst
         val entry = if (t.extraItemIconTable != 0L && extra in 0 until t.extraItemCount) {
@@ -132,7 +131,7 @@ object DecompIconSource {
  * Species [species]' party icon (32x64, both frames) from [t]'s tables, read through [rd] - the running core
  * ([DecompIconSource]) or a ROM file (`RomMonIcons`, the save editor's). Null if a pointer leaves the ROM.
  */
-internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, rd: (Long, Int) -> ByteArray): Bitmap? {
+internal fun decodeMonIcon(t: IconTables, species: Int, shiny: Boolean = false, rd: (Long, Int) -> ByteArray): RomArt.Image? {
     val tilesPtr = Gfx.u32(rd(t.monIconTable + species.toLong() * t.monIconStride, 4), 0)
     if (!Gfx.inRom(tilesPtr)) {
         Logs.w("DecompIcon mon $species: tilesPtr ${tilesPtr.hex(8)} not in ROM"); return null

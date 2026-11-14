@@ -4,10 +4,13 @@ import kotlin.concurrent.Volatile
 import kotlin.time.TimeSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
-import okio.Path
-import okio.Path.Companion.toPath
 import okio.Deflater
 import okio.DeflaterSink
+import okio.Inflater
+import okio.InflaterSource
+import okio.Path
+import okio.Path.Companion.toPath
+import okio.use
 
 /**
  * Game art the companion draws with - FireRed's / Emerald's party menu (slot,
@@ -149,6 +152,11 @@ object RomArt {
     /** ARGB pixels, 0 = transparent. */
     class Image(val width: Int, val height: Int, val argb: IntArray = IntArray(width * height)) {
         fun png(): ByteArray = Png.encode(this)
+
+        companion object {
+            /** A PNG that [png] wrote, else null (any other kind of PNG: this reads only what the art cache writes). */
+            fun decodePng(bytes: ByteArray): Image? = Png.decode(bytes)
+        }
     }
 
     // --- finding the blobs ---
@@ -644,6 +652,45 @@ object RomArt {
             chunk(out, "IEND", ByteArray(0))
             return out.readByteArray()
         }
+
+        fun decode(bytes: ByteArray): Image? {
+            val b = okio.Buffer().write(bytes)
+            if (b.size < 8 || b.readLong() != PNG_SIGNATURE) return null
+            var w = 0; var h = 0
+            val z = okio.Buffer()
+            while (!b.exhausted()) {
+                val len = b.readInt()
+                val type = b.readUtf8(4)
+                val data = b.readByteArray(len.toLong())
+                b.skip(4)   // CRC
+                when (type) {
+                    "IHDR" -> {
+                        val d = okio.Buffer().write(data)
+                        w = d.readInt(); h = d.readInt()
+                        // 8-bit RGBA, deflate, no filter, no interlace: the only kind [encode] writes.
+                        if (d.readByteArray(5).contentEquals(byteArrayOf(8, 6, 0, 0, 0)).not()) return null
+                    }
+                    "IDAT" -> z.write(data)
+                    "IEND" -> break
+                }
+            }
+            if (w <= 0 || h <= 0) return null
+            val raw = okio.Buffer().also { out -> InflaterSource(z, Inflater()).use { out.writeAll(it) } }.readByteArray()
+            if (raw.size != h * (1 + w * 4)) return null
+            val img = Image(w, h)
+            var o = 0
+            for (y in 0 until h) {
+                if (raw[o++].toInt() != 0) return null   // a filtered row: not one [encode] wrote
+                for (x in 0 until w) {
+                    val r = raw[o++].toInt() and 0xFF; val g = raw[o++].toInt() and 0xFF
+                    val bl = raw[o++].toInt() and 0xFF; val a = raw[o++].toInt() and 0xFF
+                    img.argb[y * w + x] = (a shl 24) or (r shl 16) or (g shl 8) or bl
+                }
+            }
+            return img
+        }
+
+        private const val PNG_SIGNATURE = -0x76afb1b8f2f5e5f6L   // 89 50 4E 47 0D 0A 1A 0A
 
         private fun chunk(out: okio.Buffer, type: String, data: ByteArray) {
             val t = asciiBytes(type)

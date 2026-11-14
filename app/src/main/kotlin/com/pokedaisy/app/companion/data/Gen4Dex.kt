@@ -4,8 +4,6 @@ import kotlin.concurrent.Volatile
 import kotlinx.atomicfu.locks.SynchronizedObject
 import kotlinx.atomicfu.locks.synchronized
 import okio.Path
-import android.graphics.Bitmap
-import android.graphics.BitmapFactory
 
 /**
  * A DS game's POKéDEX (Platinum, HeartGold / SoulSilver): its pages and front pictures, which [NdsArt] takes from the
@@ -129,10 +127,10 @@ object Gen4Dex {
     }
 
     /** The front picture (80 x 80, the dex page shows it whole). */
-    fun front(t: Gen4DexTables, species: Int): Bitmap? {
+    fun front(t: Gen4DexTables, species: Int): RomArt.Image? {
         val dir = NdsArt.dir ?: return null
         val f = dir / "${t.fronts}/$species.png"
-        return if (f.isFile) runCatching { BitmapFactory.decodeFile(f.toString()) }.getOrNull() else null
+        return if (f.isFile) runCatching { RomArt.Image.decodePng(f.readBytes()) }.getOrNull() else null
     }
 
     /** NdsArt's lines: species, category, description, height dm, weight hg, the six stats (the page's order), type 1 / 2,

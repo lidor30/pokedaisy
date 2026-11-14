@@ -1,11 +1,11 @@
 package com.pokedaisy.app.companion.data.save
 
-import android.graphics.Bitmap
 import com.pokedaisy.app.companion.data.IconTables
 import com.pokedaisy.app.companion.data.LockedMap
 import com.pokedaisy.app.companion.data.NATIVE_EMERALD_RETAIL
 import com.pokedaisy.app.companion.data.NATIVE_FIRERED_REV0
 import com.pokedaisy.app.companion.data.NATIVE_FIRERED_REV1
+import com.pokedaisy.app.companion.data.RomArt
 import com.pokedaisy.app.companion.data.TelemetrySampler
 import com.pokedaisy.app.companion.data.decodeMonIcon
 import com.pokedaisy.app.companion.data.readFully
@@ -22,14 +22,14 @@ import okio.Path
  */
 class RomMonIcons private constructor(private val rom: Path, private val tables: IconTables) {
 
-    private val cache = LockedMap<Int, Bitmap>()
+    private val cache = LockedMap<Int, RomArt.Image>()
     private val missing = LockedMap<Int, Unit>()
 
     /** An icon already decoded, without touching the file. */
-    fun peek(species: Int): Bitmap? = cache[species]
+    fun peek(species: Int): RomArt.Image? = cache[species]
 
     /** [species]' icon (32x64, both frames), or null. Blocking: off the UI thread. Eggs are [SPECIES_EGG]. */
-    fun get(species: Int): Bitmap? {
+    fun get(species: Int): RomArt.Image? {
         if (species <= 0 || species in missing) return null
         cache[species]?.let { return it }
         val bmp = runCatching { withRomFile(rom) { f -> decodeMonIcon(tables, species) { a, n -> read(f, a, n) } } }.getOrNull()
