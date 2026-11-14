@@ -3021,7 +3021,7 @@ RetroAchievements' views are the file.
   also when the player is more than 1 tile (Chebyshev) from the recorded one, an OBJECT when his tile or facing changed.
   A held player is never stuck: he can walk away, change map or close the game.
 - **JNI**: `pk_coop_lock_jni.c` (`Java_com_pokedaisy_app_CoopLockNative_*`) takes the core through `pk_core_access.h`
-  (`pkMainCore`, `pk_core_rdlock` / `wrlock`, `pk_core_call`: one block in `pokedaisy_jni.c`): install / uninstall under the
+  (`pkMainCore`, `pk_core_rdlock` / `wrlock`, `pk_core_call`: one block in `pk_session.c`): install / uninstall under the
   write lock, the rest under the read lock like the other co-op JNI calls. `pokedaisy_jni.c` ticks it (`pk_coop_lock_tick`) after every frame and uninstalls it
   wherever co-op is (teardown, `pkRomUnpatch`, `pkRomBlocks`, `pkRomUnblock`).
 - **Tests**: `native-capture/coop/lock_*.txt` (`scripts/coop_headless_check.sh lock_install ...`; each names its events in its
@@ -3613,6 +3613,22 @@ APK: `app/build/outputs/apk/debug/app-debug.apk`. Requires the Android SDK with
 NDK `28.2.13676358` and CMake `3.22.1` (both installable via `sdkmanager`).
 `make help` lists the other workflows (install, Paparazzi shots, ui-preview,
 headless captures).
+
+### The core's C API (`pk_api.h`)
+
+The GBA / Game Boy game itself (starting and closing it, its frames, picture, sound, keys, memory and ROM reads) is a
+plain C API with no JNI in it: `pk_api.h`, implemented by `pk_session.c`. `pokedaisy_jni.c` calls it (and puts the DS
+games in front of it); the iPad app will call the same functions. `pk_api.cmake` builds it, mGBA included, as the
+static library `pk_api`, which the app's `CMakeLists.txt` links and any other host can too. The rest of the native code
+(states, cheats, EXPAND, REWIND, the render core, the game calls...) still reaches into its state as `g`
+(`pk_session.h`, a transitional header) and moves under `pk_api.h` one area at a time.
+
+Its host test runs it off Android on `linux/make_diagnostic.py`'s ROMs (CI's "Core C API (host)" job):
+
+```bash
+cmake -S app/src/main/cpp/test -B build/pk_api_test && cmake --build build/pk_api_test -j4
+ctest --test-dir build/pk_api_test --output-on-failure
+```
 
 **The dev app** (`./gradlew :app:installDev`, or `make install-dev` / `make run-dev`): a debug build under its own
 package id, `com.pokedaisy.app.dev`, named "PokeDaisy Dev" with an orange icon, so it installs beside the release app
