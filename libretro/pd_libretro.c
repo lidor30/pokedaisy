@@ -1046,9 +1046,10 @@ static void canvas_update(bool notify) {
     h = (int)fh;
   } else if (panelW)
     canvas_for((int)fw, (int)fh, want_canvas(), &w, &h);
-  // Keep extra pixels available for the menu throughout gameplay. Double the game
-  // pixels exactly, then draw menu text and icons directly at output resolution.
-  if (PD_BE_IS_GBA() && !companion && (w < 320 || h < 240) && w <= CWMAX / 2 && h <= CHMAX / 2) {
+  // While the Quick Menu is open, double the game pixels exactly so menu text and icons
+  // draw at output resolution. Gameplay stays at 1x: a doubled canvas costs every frame
+  // four times the pixels (Brick: 4.5 -> 7.1 ms per shown frame).
+  if (PD_BE_IS_GBA() && !companion && quickOpen && (w < 320 || h < 240) && w <= CWMAX / 2 && h <= CHMAX / 2) {
     scale = 2;
     w *= scale;
     h *= scale;
