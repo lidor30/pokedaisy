@@ -19,7 +19,8 @@ import java.util.Random
  * Each was checked headless by scripts/verify_shiny.py: the foe made shiny in a scripted wild battle, the battle drawing it
  * in other colours. Hacks by hash too ([HACK_SHINY_BELOW], each through the same check at its own shiny rule), in their
  * own box formats ([Target]): plaintext boxes get the personality written alone, and Elite Redux / R.O.W.E., which keep
- * shininess as a bit of their own, get that bit set instead.
+ * shininess as a bit of their own, get that bit set instead. The DS games' retail carts ([DS_VERIFIED]) by their own way in:
+ * [DsTarget] / [DsRoller], the foe rewritten in the battle's setup before the battle copies it.
  */
 object ShinyOdds {
     /** The game's own odds: 8 shiny values in 65536. */
@@ -165,7 +166,19 @@ object ShinyOdds {
         val shinyBits: Int = -1,
         val shinyBitsMask: Int = 0,
         val shinyBitSet: Int = 0,
-    )
+    ) : FoeTarget {
+        override fun roller(): FoeRoller = Roller(this)
+    }
+
+    /** What the engine watches for SHINY ODDS: a GBA game's [Target] or a DS game's [DsTarget]. */
+    sealed interface FoeTarget {
+        fun roller(): FoeRoller
+    }
+
+    /** One game's new foes, looked at after every frame (emu thread): returns how many it made shiny. */
+    interface FoeRoller {
+        fun tick(odds: Int, read: (Long, Int) -> ByteArray, write: (Long, ByteArray) -> Boolean): Int
+    }
 
     /**
      * [cfg]'s target: its gEnemyParty, the save block with the player's ID and gMain's battle flag; null for a struct
@@ -220,7 +233,7 @@ object ShinyOdds {
      * A personality shiny for [otId] that decides everything [old] did for [species], picked at random among them; null if
      * there's none (never for most species: ~80 of the 2048 tried keep the nature; UNOWN sometimes).
      */
-    fun shinyPersonality(old: Long, otId: Long, species: Int, random: Random, national: Boolean = false): Long? {
+    fun shinyPersonality(old: Long, otId: Long, species: Int, random: Random, national: Boolean = false, keepBits: Long = 0): Long? {
         val wurmple = if (national) WURMPLE_NATIONAL else WURMPLE
         val tsv = (otId ushr 16) xor (otId and 0xFFFF)
         // The low byte is gender and the ability bit. UNOWN has neither, but its letter takes the low 2 bits of each byte;
@@ -237,6 +250,7 @@ object ShinyOdds {
             for (x in 0 until 8) {
                 val p = ((tsv xor lo xor x.toLong()) shl 16) or lo
                 if (p % 25 != old % 25) continue
+                if ((p xor old) and keepBits != 0L) continue
                 if (species == UNOWN && unownLetter(p) != unownLetter(old)) continue
                 if (species == wurmple && wurmpleSilcoon(p) != wurmpleSilcoon(old)) continue
                 found += p
@@ -295,7 +309,7 @@ object ShinyOdds {
     private fun inRam(addr: Long) = addr in 0x02000000L until 0x02040000L || addr in 0x03000000L until 0x03008000L
 
     /** One game's foes, watched frame by frame (emu thread). */
-    class Roller(private val target: Target, private val random: Random = Random()) {
+    class Roller(private val target: Target, private val random: Random = Random()) : FoeRoller {
         // The personality + OT ID last decided on in each slot: a foe is looked at once, when it first shows up.
         private val seen = LongArray(SLOTS) { -1L }
         // A new foe's record as the last frame left it: the game can be halfway through making it when a frame ends
@@ -307,7 +321,7 @@ object ShinyOdds {
          * One frame: a foe new in gEnemyParty since the last call, wild (the player's OT ID), not shiny and not in a battle
          * yet, made shiny with [rerollChance]. Returns the slots changed.
          */
-        fun tick(odds: Int, read: (Long, Int) -> ByteArray, write: (Long, ByteArray) -> Boolean): Int {
+        override fun tick(odds: Int, read: (Long, Int) -> ByteArray, write: (Long, ByteArray) -> Boolean): Int {
             var changed = 0
             for (slot in 0 until SLOTS) {
                 val at = target.enemyParty + slot * target.stride
@@ -368,6 +382,122 @@ object ShinyOdds {
         private companion object {
             // A wild battle's foe is slot 0; a double's second foe slot 1.
             const val SLOTS = 2
+        }
+    }
+
+    /**
+     * A DS game's foes ([DsRoller]): Gen 4's wild battle reached through sFieldSystem ([systemPtr]) -> its process manager ->
+     * the child application whose template is gBattleApplicationTemplate ([battleTemplate]), args = the FieldBattleDTO /
+     * BattleSetup; Gen 5's ([gen5]) through the GameSystem ([systemPtr]) -> its proc system -> the running proc of the
+     * battle's overlay ([battleOverlay]), param = BATTLE_SETUP_PARAM. Both are the readers' own chains ([Gen4Battle],
+     * [Gen5Battle]).
+     */
+    data class DsTarget(
+        val gen5: Boolean,
+        val systemPtr: Long,
+        val battleTemplate: Long = 0,
+        val battleOverlay: Int = 0,
+    ) : FoeTarget {
+        override fun roller(): FoeRoller = DsRoller(this)
+    }
+
+    /**
+     * The DS carts SHINY ODDS was checked on (code + revision): a scripted (Gen 4: a new game's) or a grass (Gen 5: the
+     * player's saves) wild battle, the foe made shiny in its window and the battle drawing it in its shiny colours, beside
+     * the same battle left alone - headless, docs/ROM_FEATURES.md's note 36.
+     */
+    val DS_VERIFIED: Set<String> = setOf(
+        "CPUE1",                    // Platinum (USA, rev 1)
+        "IPKE0", "IPGE0",           // HeartGold, SoulSilver (USA)
+        "IPKE10", "IPGE10",         // HeartGold, SoulSilver (Europe)
+        "IRBO0", "IRAO0",           // Black, White (USA, Europe)
+        "IREO0", "IRDO0",           // Black 2, White 2 (USA, Europe)
+    )
+
+    /**
+     * Gen 4's battle types a wild foe can be made shiny in: a wild Pokémon (0), doubles with a partner, the Safari Zone, a
+     * roaming one, the Bug-Catching Contest - not a trainer's, a link, the Battle Frontier, Pal Park (your own Pokémon from a
+     * GBA game) or the catching tutorial (pret's BATTLE_TYPE_*: TRAINER, LINK, TAG, FRONTIER, PAL_PARK, TUTORIAL, DEBUG).
+     */
+    private const val GEN4_NOT_WILD = 0x1L or 0x4L or 0x10L or 0x80L or 0x200L or 0x400L or (1L shl 31)
+
+    /** Gen 5's BATTLE_SETUP_PARAM competitor: 0 a wild Pokémon. */
+    private const val GEN5_WILD = 0L
+
+    /**
+     * A DS game's wild foes, made shiny in the frames between the battle's setup being handed to it and the battle copying the
+     * parties (pret: Battle_Main's first step only makes a heap, its second allocates the BattleSystem and copies; Gen 5's
+     * proc runs ~14 frames before its main module exists) - the battle's data / work still NULL. Then the setup's foe party
+     * holds the records the battle will copy; each new one is given a shiny personality keeping its nature (Gen 4's is the
+     * personality's; Gen 5 keeps its own), gender and ability bit (the low byte), Gen 5's ability bit 16 and the bit 31 its
+     * wild Pokémon carry, and WURMPLE's branch, its blocks re-shuffled and encrypted again ([gen4WithPersonality]). The
+     * Pokémon's own OT ID (a wild one's is the player's) decides shininess, as the game's check does.
+     */
+    class DsRoller(private val target: DsTarget, private val random: Random = Random()) : FoeRoller {
+        // The personality + checksum decided on in each slot: a foe is looked at once.
+        private val seen = LongArray(SLOTS) { -1L }
+
+        private fun u32(read: (Long, Int) -> ByteArray, at: Long) = u32(read(at, 4), 0)
+        private fun inMain(p: Long) = p in 0x02000000L until 0x02400000L
+
+        /** The foe party of a wild battle in its window, or null. */
+        private fun foeParty(read: (Long, Int) -> ByteArray): Long? {
+            val sys = u32(read, target.systemPtr)
+            if (!inMain(sys)) return null
+            if (target.gen5) {
+                val procSys = u32(read, sys + 8)
+                if (!inMain(procSys)) return null
+                val proc = u32(read, procSys + 8)
+                if (!inMain(proc) || u32(read, proc + 4) != target.battleOverlay.toLong()) return null
+                if (u32(read, proc + 0x14) != 0L) return null            // the main module made: too late
+                val param = u32(read, proc + 0x10)
+                if (!inMain(param) || u32(read, param) != GEN5_WILD) return null
+                return u32(read, param + 0x28).takeIf(::inMain)
+            }
+            val pm = u32(read, sys)
+            if (!inMain(pm)) return null
+            val child = u32(read, pm + 4)
+            if (!inMain(child) || u32(read, child) != u32(read, target.battleTemplate)) return null
+            if (u32(read, child + 0x1C) != 0L) return null               // the BattleSystem made: too late
+            val setup = u32(read, child + 0x18)
+            if (!inMain(setup) || u32(read, setup) and GEN4_NOT_WILD != 0L) return null
+            return u32(read, setup + 8).takeIf(::inMain)
+        }
+
+        override fun tick(odds: Int, read: (Long, Int) -> ByteArray, write: (Long, ByteArray) -> Boolean): Int {
+            val party = foeParty(read) ?: return 0
+            val chance = rerollChance(odds)
+            if (chance <= 0.0) return 0
+            val size = if (target.gen5) GEN5_MON_SIZE else GEN4_MON_SIZE
+            val count = u32(read, party + 4).toInt().coerceIn(0, SLOTS)
+            var changed = 0
+            for (slot in 0 until count) {
+                val at = party + 8 + slot * size
+                val record = read(at, size)
+                val key = u32(record, 0) or ((((record[6].toInt() and 0xFF) or ((record[7].toInt() and 0xFF) shl 8)).toLong()) shl 32)
+                if (key == seen[slot]) continue
+                // Decrypted in place right now (the flags) or not a record: looked at again next frame.
+                val facts = gen4RecordFacts(record) ?: continue
+                seen[slot] = key
+                if (facts.isEgg || shinyValue(facts.personality, facts.otId) < 8) continue
+                if (random.nextDouble() >= chance) continue
+                val keep = if (target.gen5) GEN5_KEEP_BITS else 0L
+                val shiny = shinyPersonality(facts.personality, facts.otId, facts.species, random, national = true, keepBits = keep) ?: continue
+                val rewritten = gen4WithPersonality(record, shiny) ?: continue
+                if (write(at, rewritten)) {
+                    seen[slot] = u32(rewritten, 0) or (key and 0xFFFF00000000L)
+                    changed++
+                }
+            }
+            return changed
+        }
+
+        private companion object {
+            // A wild battle has one foe, a double two.
+            const val SLOTS = 2
+            // Gen 5: the ability slot is the personality's bit 16; a wild one's bit 31 is set by the game to agree with bit 0
+            // and the trainer ID (both kept, so it still agrees).
+            const val GEN5_KEEP_BITS = (1L shl 16) or (1L shl 31)
         }
     }
 }

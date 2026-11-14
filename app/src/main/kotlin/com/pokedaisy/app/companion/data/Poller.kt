@@ -52,6 +52,8 @@ class TelemetrySampler {
     // A DS game's (Gen 4) addresses instead.
     private var gen4Cfg: Gen4Config? = null
     private var dsGameCode = ""
+    /** The DS header's revision byte, with [dsGameCode]: SHINY ODDS goes by both ([ShinyOdds.DS_VERIFIED]). */
+    private var dsRevision = -1
     /** The DS cart is Origin HeartGold's ([OriginHeartGold]: a Japanese HeartGold's header, English text). */
     private var dsOrigin = false
     /** The DS cart is Renegade Platinum's ([RenegadePlatinum]: the retail Platinum header, its own tables). */
@@ -758,6 +760,7 @@ class TelemetrySampler {
         val code = runCatching { MgbaCore.pkRomCode() }.getOrNull().orEmpty()
         dsGameCode = code
         val rev = runCatching { reader0x1E() }.getOrDefault(-1)
+        dsRevision = rev
         dsOrigin = code == OriginHeartGold.CODE && OriginHeartGold.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
         dsRenegade = code == RenegadePlatinum.CODE && RenegadePlatinum.matches { off, len -> MgbaCore.pkReadBytes(0x08000000L + off, len) }
         dsRedux = (code == Black2Redux.CODE_BLACK2 || code == Black2Redux.CODE_WHITE2) &&
@@ -867,10 +870,21 @@ class TelemetrySampler {
 
     /** SHINY ODDS' foe party and player ID: on a config the Poller marked by its ROM's hash ([NativeConfig.shinyBelow]),
      * never a hack on retail's RAM - CFRU's plaintext boxes would be scrambled by a re-encryption. */
-    val knownShinyTarget: ShinyOdds.Target?
-        get() = (nativeCfg ?: unboundCfg.takeIf { kind == GameKind.UNBOUND })?.takeIf { it.shinyBelow > 0 && beMatch == null }
-            ?.let { ShinyOdds.targetFor(it, fireRedFamily = fireRedEngine, plaintext = romSha1 in ShinyOdds.PLAINTEXT_SHA1S,
-                national = romSha1 in ShinyOdds.NATIONAL_SHA1S) }
+    val knownShinyTarget: ShinyOdds.FoeTarget?
+        get() = if (kind.isDsGame) dsShinyTarget
+            else (nativeCfg ?: unboundCfg.takeIf { kind == GameKind.UNBOUND })?.takeIf { it.shinyBelow > 0 && beMatch == null }
+                ?.let { ShinyOdds.targetFor(it, fireRedFamily = fireRedEngine, plaintext = romSha1 in ShinyOdds.PLAINTEXT_SHA1S,
+                    national = romSha1 in ShinyOdds.NATIONAL_SHA1S) }
+
+    /** A DS cart's SHINY ODDS: one it was checked on ([ShinyOdds.DS_VERIFIED]), the retail engine only (not Origin HeartGold's,
+     * nor Renegade Platinum / the Redux builds, whose shiny rules are their own). */
+    private val dsShinyTarget: ShinyOdds.DsTarget?
+        get() {
+            if (dsOrigin || dsRenegade || dsRedux || "$dsGameCode$dsRevision" !in ShinyOdds.DS_VERIFIED) return null
+            // By the game's kind: the other generation's config can be left over from an earlier cart.
+            return if (kind.isGen5) gen5Cfg?.battle?.let { ShinyOdds.DsTarget(gen5 = true, systemPtr = it.gameSystemPtr, battleOverlay = it.battleOverlay) }
+                else gen4Cfg?.battle?.let { ShinyOdds.DsTarget(gen5 = false, systemPtr = it.fieldSystemPtr, battleTemplate = it.battleTemplate) }
+        }
 
     /** The detected game's own USE / GIVE / TAKE tables when its config has them (Recharged Emerald), or null. */
     val knownFieldItems: FieldItemFns?

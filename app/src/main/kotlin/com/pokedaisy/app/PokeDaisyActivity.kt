@@ -162,7 +162,7 @@ class PokeDaisyActivity : Activity() {
     @Volatile private var wildFlag = 0L
     /** SHINY ODDS: the detected game's foe party and player ID ([com.pokedaisy.app.companion.data.ShinyOdds]), null = a
      * game it doesn't know (the row shows N/A). Set once the game is detected. */
-    @Volatile private var shinyTarget: com.pokedaisy.app.companion.data.ShinyOdds.Target? = null
+    @Volatile private var shinyTarget: com.pokedaisy.app.companion.data.ShinyOdds.FoeTarget? = null
 
     /** SHINY ODDS as saved, if this build offers it (a debug build's 1 in 4 / 1 in 1 are NORMAL in a release build). */
     private fun shinyOddsPref(): Int = Prefs(this).shinyOdds

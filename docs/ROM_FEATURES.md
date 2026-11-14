@@ -37,26 +37,26 @@ change to any of the places listed under "Where it's decided" updates its rows h
 | Ruby / Sapphire | USA rev 1 and 2 | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ |
 | Ruby / Sapphire | USA rev 0, ES / DE / FR / IT | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ |
 | Ruby / Sapphire | JP | ✅ | ✅ | ✅ | — | ✅ | ✅ ³⁴ | — | ◐ ⁵ | ✅ | ✅ | ✅ | ✅ ¹⁵ | ✅ ¹⁸ | ✅ ¹⁹ | — | ✅ |
-| Platinum (DS) | USA rev 1 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
+| Platinum (DS) | USA rev 1 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | ✅ ³⁶ | — | — |
 | Platinum (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
 | Platinum (DS) | Spain rev 0 ³¹ | ✅ ¹⁴ | ✅ ²⁶ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ³¹ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
-| HeartGold (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
+| HeartGold (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | ✅ ³⁶ | — | — |
 | HeartGold (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
-| HeartGold (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
-| SoulSilver (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
+| HeartGold (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | ◐ ³⁶ | — | — |
+| SoulSilver (DS) | USA | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | ✅ ³⁶ | — | — |
 | SoulSilver (DS) | France rev 0 | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
-| SoulSilver (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
+| SoulSilver (DS) | Spain, Italy, Japan, Korea rev 0; Europe rev 10 ³¹ | ✅ ¹⁴ | ✅ ²⁴ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | ◐ ³⁶ | — | — |
 | HeartGold (DS) | Germany rev 0 | ✅ ¹⁴ | ✅ ²⁵ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
 | SoulSilver (DS) | Germany rev 0 | ✅ ¹⁴ | ✅ ²⁵ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | — | n/a | — | — | — |
-| Black (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
+| Black (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | ✅ ³⁶ | — | — |
 | Black (DS) | France | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
 | Black (DS) | Germany, Spain, Italy, Japan, Korea ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
-| White (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
+| White (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | ✅ ³⁶ | — | — |
 | White (DS) | France | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
 | White (DS) | Germany, Spain, Italy, Japan, Korea ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
-| Black 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
+| Black 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | ✅ ³⁶ | — | — |
 | Black 2 (DS) | France, Germany, Spain, Italy, Korea; Japan rev 1 ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
-| White 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
+| White 2 (DS) | USA/Europe | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | ✅ ³⁶ | — | — |
 | White 2 (DS) | France, Germany, Spain, Italy, Korea; Japan rev 1 ³¹ | ✅ ¹⁴ | ✅ ²⁷ | — | — | — | ✅ ¹⁴ | — | ✅ ¹⁴ | ◐ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁴ | ✅ ¹⁶ | n/a | — | — | — |
 | Origin HeartGold (DS) | 4.0.3 English 1.0.0 | ✅ ¹⁴ | — ²⁹ | — | — | — | ✅ ²⁹ | — | ✅ ²⁹ | ✅ ¹⁴ | ✅ ²⁹ | ✅ ²⁹ | — | n/a | — | — | — |
 | Renegade Platinum (DS) | 1.3.0, 1.3.0 Classic, 1.2.0 | ✅ ³² | ✅ ³² | — | — | — | ✅ ³² | — | ✅ ³² | ◐ ³² | ◐ ³² | ✅ ³² | — | n/a | — | — | — |
@@ -570,6 +570,23 @@ change to any of the places listed under "Where it's decided" updates its rows h
     beach, `widecheck`'s overlap differences the same as retail Black 2's on the same walk; a wild battle on its water
     (the command menu's input state read, FIGHT pressed through the touch screen); WILD ENCOUNTERS OFF: no battle in 120 steps of surfing, where one came within 16
     with it on. All eight builds pass the same check and read their own species records (`Black2ReduxTest`).
+
+36. SHINY ODDS on the DS (`ShinyOdds.DsRoller`, `DsTarget`; 2026-11-14): a wild foe made shiny in the frames between the
+    battle being handed its setup and copying the parties. Gen 4 (pret's pokeplatinum / pokeheartgold): the field's child
+    ApplicationManager / OverlayManager is the battle's (its template's init word, `Gen4Battle.battleTemplate`) with its data
+    still NULL - its init does nothing and Battle_Main's first step only makes a heap, so the BattleSystem (and its copy of
+    `FieldBattleDTO` / `BattleSetup.parties[1]`) comes two frames later; wild battle types only (not TRAINER / LINK / TAG /
+    FRONTIER / PAL_PARK / TUTORIAL / DEBUG). Gen 5: the GameSystem's running proc is the battle overlay's with its work
+    (the main module) NULL, ~14 frames; `BATTLE_SETUP_PARAM` competitor 0 (wild), foe party at +0x28. The record's
+    personality is swapped for a shiny one (the Pokémon's own OT ID, a wild one's the player's) keeping the nature (Gen 4's
+    is the personality's), the low byte (gender, ability bit), Gen 5's ability bit 16 and wild bit 31, WURMPLE's branch;
+    its blocks re-shuffled and encrypted again with the same checksum, its party fields with the new personality
+    (`gen4WithPersonality`). Checked headless on every cart of `ShinyOdds.DS_VERIFIED` - Platinum USA rev 1 and HG / SS USA
+    on new games (a field script: give a Pokémon, StartWildBattle / WildBattle), HG / SS Europe rev 10 on HG's save, Black /
+    White / Black 2 / White 2 USA on the player's saves in grass - the foe drawn in its shiny colours beside the same battle
+    left alone, the battle's own copy carrying the new personality. ◐: Europe rev 10 only; the other language ports, the
+    French carts, Origin HeartGold, Renegade Platinum and the Redux builds aren't on the list (not checked, or rules of their
+    own). Fixtures `platinum_shiny_window`, `heartgold_shiny_window`, `black2_shiny_window` (`DsShinyOddsTest`).
 
 ## What each column is
 
