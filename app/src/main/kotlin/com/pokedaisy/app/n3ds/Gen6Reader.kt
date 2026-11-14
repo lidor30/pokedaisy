@@ -32,6 +32,11 @@ object Gen6Reader {
          * both 0 on the field, in dialogue, through doors. Mapped while the field module is loaded. Found on the RP6
          * and headless, two saves (2026-11-15). */
         val fieldMenu: Int = 0,
+        /** The battle's touch-screen controller ([battleInput]); its command panel points at the battlers' records
+         * ([battleMon]): the player's at +[panelPlayer], the foe's at +[panelFoe]. */
+        val battleUi: Int = 0,
+        val panelPlayer: Int = 0xDC,
+        val panelFoe: Int = 0xE4,
     )
 
     class Pocket(val offset: Int, val capacity: Int, val companionPocket: Int)
@@ -53,6 +58,7 @@ object Gen6Reader {
         ),
         staticModule = 0x012B6000,
         fieldMenu = 0x08603714,
+        battleUi = 0x08515980,
     )
 
     /** What the game's two screens show, for where the touch screen goes ([sceneOf]). */
@@ -61,8 +67,10 @@ object Gen6Reader {
         FIELD,
         /** The field's X menu: on the touch screen alone, the top screen still the field. */
         MENU,
-        /** A screen of its own (party, bag, a battle...): both screens matter. */
+        /** A screen of its own (party, bag...): both screens matter. */
         SCREEN,
+        /** A battle: full size, the app's strip for its commands, the game's bag / party floating in. */
+        BATTLE,
     }
 
     /** The modules that are the title and the start menu, and the field's: a screen is any other. */
@@ -85,7 +93,60 @@ object Gen6Reader {
             val open = ByteBuffer.wrap(fieldMenu).order(ByteOrder.LITTLE_ENDIAN).getInt(0) != 0 && fieldMenu[0x24].toInt() == 1
             return if (open) Scene.MENU else Scene.FIELD
         }
+        if ("DllBattle" in names) return Scene.BATTLE
         return if (names.all { it in NOT_SCREENS }) null else Scene.SCREEN
+    }
+
+    // ---- battles (found on the RP6 with heap dumps, 2026-11-15: a wild battle at its command menu, its move list,
+    // mid-turn, its bag and party) ----------------------------------------------------------------------------------
+
+    /** What [battleInput] reads at [Config.battleUi]. */
+    const val BATTLE_UI_BYTES = 0x18
+    /** What [battleMon] reads of a battler's record (to its last move). */
+    const val BATTLE_MON_BYTES = 0x150
+
+    /**
+     * The battle's state from its touch-screen controller: +0 / +4 the command and move panels, +0xC the one up, +0x10
+     * the bag (1) or the party (2) while those are open (the panels zero then; left as it was once they close), +0x17
+     * 1 at the command menu, 2 at the move list, 0 otherwise. As the companion's BATTLE_INPUT_* values.
+     */
+    fun battleInput(ui: ByteArray?): Int {
+        if (ui == null || ui.size < BATTLE_UI_BYTES) return com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE
+        val b = ByteBuffer.wrap(ui).order(ByteOrder.LITTLE_ENDIAN)
+        return when (ui[0x17].toInt()) {
+            1 -> com.pokedaisy.app.companion.data.BATTLE_INPUT_ACTION_SELECT
+            2 -> com.pokedaisy.app.companion.data.BATTLE_INPUT_MOVE_SELECT
+            else -> if (b.getInt(0) == 0 && b.getInt(4) == 0 && b.getInt(0xC) == 0) when (b.getInt(0x10)) {
+                1 -> com.pokedaisy.app.companion.data.BATTLE_INPUT_BAG_OPEN
+                2 -> com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
+                else -> com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE
+            } else com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE
+        }
+    }
+
+    /** The command panel's address in [ui] (0 = none), where the battlers' record pointers are. */
+    fun commandPanel(ui: ByteArray?): Int =
+        if (ui == null || ui.size < 4) 0 else ByteBuffer.wrap(ui).order(ByteOrder.LITTLE_ENDIAN).getInt(0).takeIf { inHeap(it) } ?: 0
+
+    fun inHeap(a: Int): Boolean = a in 0x08000000 until 0x10000000
+
+    data class BattleMove(val id: Int, val pp: Int, val maxPp: Int)
+    data class BattleMon(val species: Int, val level: Int, val hp: Int, val maxHp: Int, val moves: List<BattleMove>)
+    data class Battle(val input: Int, val player: BattleMon?, val foe: BattleMon?)
+
+    /** A battler's record: +0xC species, +0xE max HP, +0x10 HP, +0x18 level, from +0x116 four 14-byte moves (id, PP,
+     * max PP, then the move as it was). Null for an empty or broken one. */
+    fun battleMon(rec: ByteArray?): BattleMon? {
+        if (rec == null || rec.size < BATTLE_MON_BYTES) return null
+        val b = ByteBuffer.wrap(rec).order(ByteOrder.LITTLE_ENDIAN)
+        val species = b.getShort(0xC).toInt() and 0xFFFF
+        if (species == 0 || species > 721) return null
+        val moves = (0 until 4).mapNotNull { i ->
+            val o = 0x116 + i * 14
+            val id = b.getShort(o).toInt() and 0xFFFF
+            if (id == 0 || id > 1000) null else BattleMove(id, rec[o + 2].toInt() and 0xFF, rec[o + 3].toInt() and 0xFF)
+        }
+        return BattleMon(species, rec[0x18].toInt() and 0xFF, b.getShort(0x10).toInt() and 0xFFFF, b.getShort(0xE).toInt() and 0xFFFF, moves)
     }
 
     fun configFor(titleId: Long): Config? = when (titleId) {

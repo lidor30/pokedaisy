@@ -232,3 +232,30 @@ class RomFs(cart: File) : AutoCloseable {
         const val NONE = -1
     }
 }
+
+/**
+ * Pokemon X / Y's moves as the battle needs them, from the cart (RomFS `a/2/1/2`: 618 records of 36 bytes, +0 type,
+ * +2 category, +3 power, +4 accuracy, +5 PP). Kept per cart.
+ */
+object Gen6Moves {
+    class Move(val type: Int, val category: Int, val power: Int)
+
+    /** The types by their Gen 6 numbers, as the companion names them (its colours and chart go by these). */
+    val TYPES = listOf(
+        "NORMAL", "FIGHTING", "FLYING", "POISON", "GROUND", "ROCK", "BUG", "GHOST", "STEEL",
+        "FIRE", "WATER", "GRASS", "ELECTRIC", "PSYCHIC", "ICE", "DRAGON", "DARK", "FAIRY",
+    )
+
+    private val cache = HashMap<String, List<Move>>()
+
+    fun load(cart: File): List<Move>? = synchronized(cache) {
+        val key = "${cart.absolutePath}:${cart.length()}"
+        cache[key] ?: runCatching {
+            RomFs(cart).use { fs ->
+                fs.read("a/2/1/2")?.let { Gen6Text.garcFiles(it) }?.map { f ->
+                    if (f.size < 6) Move(0, 0, 0) else Move(f[0].toInt() and 0xFF, f[2].toInt() and 0xFF, f[3].toInt() and 0xFF)
+                }
+            }
+        }.getOrNull()?.also { cache[key] = it }
+    }
+}

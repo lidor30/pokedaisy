@@ -36,6 +36,8 @@ class N3dsSession(
     private val wantsTouchSurface: () -> Boolean = { true },
     /** The game's scene changed ([scene]), on the UI thread. */
     private val onScene: (Gen6Reader.Scene) -> Unit = {},
+    /** The battle's state changed ([battle]: its menu, the battlers), on the UI thread. */
+    private val onBattle: (Gen6Reader.Battle?) -> Unit = {},
     /** The top screen in the field, about once a second (the backdrop of the game's own screens), on the UI thread. */
     private val onFieldShot: (android.graphics.Bitmap) -> Unit = {},
 ) {
@@ -243,6 +245,7 @@ class N3dsSession(
                         ui.post { onScene(now) }
                     }
                     seen = now
+                    readBattle(config, if ("DllBattle" in modules) modules else null)
                 }
                 if (pass++ % FIELD_SHOT_EVERY == 0 && scene == Gen6Reader.Scene.FIELD) fieldShot()
                 if (com.pokedaisy.app.BuildConfig.DEBUG) debugCommands(pass % FIELD_SHOT_EVERY == 1)
@@ -251,8 +254,6 @@ class N3dsSession(
         }
     }, "pokedaisy-n3ds-scene")
 
-    /** Debug builds: `files/debug/n3ds_dump` there = the game's heap (0x08000000, 15 MB) and data (0x005A6000) written
-     * to `files/debug/n3ds-<time>-<base>.bin`, the marker deleted (finding addresses on a device: diff two dumps). */
     /**
      * Debug builds: also `files/debug/n3ds_cmd`, lines of `poke <hex address> <hex bytes>` (written into the game's
      * memory) and `shot <name>` (the touch screen at 320 x 240 into `files/debug/<name>.png`), run in order, then
@@ -285,6 +286,8 @@ class N3dsSession(
         if (dumpTurn) debugDump(dir)
     }
 
+    /** Debug builds: `files/debug/n3ds_dump` there = the game's heap (0x08000000, 15 MB) and data (0x005A6000) written
+     * to `files/debug/n3ds-<time>-<base>.bin`, the marker deleted (finding addresses on a device: diff two dumps). */
     private fun debugDump(dir: File) {
         val marker = File(dir, "n3ds_dump")
         if (!marker.isFile) return
@@ -302,6 +305,77 @@ class N3dsSession(
         Log.i(TAG, "dumped $stamp")
     }
 
+    // ---- battles -------------------------------------------------------------------------------------------------
+
+    /** The battle as last read ([Gen6Reader.Battle]); null out of battle. */
+    @Volatile var battle: Gen6Reader.Battle? = null
+        private set
+
+    /** The battle strip's picks: the game's touch-screen buttons pressed ([N3dsBattleTaps]). */
+    val battleTaps = N3dsBattleTaps({ battle?.input ?: com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE }, ::touchScreen)
+
+    /** The scene thread's battle read: its controller, then (with a command panel) the two battlers' records. */
+    private fun readBattle(config: Gen6Reader.Config, battleModules: String?) {
+        val now = if (battleModules == null || config.battleUi == 0) null else {
+            val ui = N3dsNative.readMemory(intArrayOf(config.battleUi, Gen6Reader.BATTLE_UI_BYTES))
+            val panel = Gen6Reader.commandPanel(ui)
+            var player: Gen6Reader.BattleMon? = battle?.player
+            var foe: Gen6Reader.BattleMon? = battle?.foe
+            if (panel != 0) {
+                val ptrs = N3dsNative.readMemory(intArrayOf(panel + config.panelPlayer, 4, panel + config.panelFoe, 4))
+                if (ptrs != null && ptrs.size >= 8) {
+                    val b = java.nio.ByteBuffer.wrap(ptrs).order(java.nio.ByteOrder.LITTLE_ENDIAN)
+                    val p = b.getInt(0).takeIf(Gen6Reader::inHeap)
+                    val f = b.getInt(4).takeIf(Gen6Reader::inHeap)
+                    val ranges = listOfNotNull(p, f).flatMap { listOf(it, Gen6Reader.BATTLE_MON_BYTES) }.toIntArray()
+                    val recs = if (ranges.isEmpty()) null else N3dsNative.readMemory(ranges)
+                    if (recs != null && recs.size >= ranges.size / 2 * Gen6Reader.BATTLE_MON_BYTES) {
+                        var at = 0
+                        fun next() = recs.copyOfRange(at, at + Gen6Reader.BATTLE_MON_BYTES).also { at += Gen6Reader.BATTLE_MON_BYTES }
+                        if (p != null) player = Gen6Reader.battleMon(next())
+                        if (f != null) foe = Gen6Reader.battleMon(next())
+                    }
+                }
+            }
+            Gen6Reader.Battle(Gen6Reader.battleInput(ui), player, foe)
+        }
+        if (now == battle) return
+        battle = now
+        ui.post { onBattle(now) }
+        publishBattle()
+    }
+
+    /** The last snapshot with [battle]'s fields: the strip follows the battle at once, not at the next sample. */
+    private fun publishBattle() {
+        val view = lastView ?: return
+        ui.post { onSnapshot(withBattle(view)) }
+    }
+
+    @Volatile private var lastView: SnapshotView? = null
+    @Volatile private var text: Gen6Text? = null
+    private val moveData by lazy { Gen6Moves.load(rom) }
+
+    private fun withBattle(view: SnapshotView): SnapshotView {
+        val b = battle ?: return view.copy(inBattle = false, battlePlayer = emptyList(), battleOpponent = emptyList(),
+            battleInputState = com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE)
+        val t = text
+        return view.copy(
+            inBattle = true,
+            battlePlayer = listOfNotNull(b.player?.let { N3dsCompanionData.battleMon(it, t, moveData) }),
+            battleOpponent = listOfNotNull(b.foe?.let { N3dsCompanionData.battleMon(it, t, moveData) }),
+            battleInputState = b.input,
+        )
+    }
+
+    /** The touch screen pressed at ([x], [y]) of its 320 x 240 (or let go), wherever its surface is laid out. */
+    private fun touchScreen(down: Boolean, x: Int, y: Int) {
+        if (!started) return
+        if (!down) { N3dsNative.touch(1, 0, 0, N3dsNative.TOUCH_UP); return }
+        val w = touchView.width.takeIf { it > 0 } ?: return
+        val h = touchView.height.takeIf { it > 0 } ?: return
+        N3dsNative.touch(1, x * w / 320, y * h / 240, N3dsNative.TOUCH_DOWN)
+    }
+
     private fun fieldShot() {
         val px = N3dsNative.screenshot(FIELD_SHOT_W, FIELD_SHOT_H) ?: return
         val bmp = runCatching { android.graphics.Bitmap.createBitmap(px, FIELD_SHOT_W, FIELD_SHOT_H, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull() ?: return
@@ -316,7 +390,6 @@ class N3dsSession(
             if (Gen6Icons.extractTo(rom, com.pokedaisy.app.companion.data.RomArt.dir(appFiles))) com.pokedaisy.app.companion.data.RomArt.announce()
         }.onFailure { Log.w(TAG, "icons failed", it) }
         val config = Gen6Reader.configFor(titleId)
-        var text: Gen6Text? = null
         var textLanguage = -1
         val zones = Gen6Zones.load(rom)
         while (running) {
@@ -338,7 +411,9 @@ class N3dsSession(
                         items = N3dsCompanionData.bag(sample, text),
                         location = N3dsCompanionData.location(sample, text, zones),
                     )
-                    ui.post { onSnapshot(view) }
+                    lastView = view
+                    val shown = withBattle(view)
+                    ui.post { onSnapshot(shown) }
                 }
             }
             try { Thread.sleep(SAMPLE_MS) } catch (_: InterruptedException) { break }

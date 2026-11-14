@@ -449,17 +449,23 @@ class PokeDaisyActivity : Activity() {
     private val battleInput = object : com.pokedaisy.app.companion.BattleInput {
         override val menuCursor get() = if (::engine.isInitialized) engine.battleMenuCursor else -1
         override val menuOnCompanion get() = ::engine.isInitialized && engine.battleMenuHide != 0
-        override val busy get() = if (::engine.isInitialized) engine.battleInputBusy else false
+        override val busy get() = n3ds?.battleTaps?.busy ?: if (::engine.isInitialized) engine.battleInputBusy else false
         override val gameSilent get() = ::engine.isInitialized && engine.gameAudioPaused
+        // A 3DS game: its own touch-screen buttons pressed (N3dsBattleTaps).
         override fun selectAction(actionIndex: Int) {
             if (actionIndex != 0) closeCompanionWindow()
+            n3ds?.let { it.battleTaps.selectAction(actionIndex); return }
             if (::engine.isInitialized) engine.battleSelectAction(actionIndex)
         }
         override fun selectMove(moveIndex: Int) {
             closeCompanionWindow()
+            n3ds?.let { it.battleTaps.selectMove(moveIndex); return }
             if (::engine.isInitialized) engine.battleSelectMove(moveIndex)
         }
-        override fun back() { if (::engine.isInitialized) engine.battleBack() }
+        override fun back() {
+            n3ds?.let { it.battleTaps.back(); return }
+            if (::engine.isInitialized) engine.battleBack()
+        }
         override val canSwitch get() = ::engine.isInitialized && engine.battleSwitchAddrs != null
         override fun switchTo(personality: Long) {
             closeCompanionWindow()
@@ -4377,12 +4383,19 @@ class PokeDaisyActivity : Activity() {
             // (upright phones, for now) Azahar draws both screens on the one surface.
             wantsTouchSurface = { dsStageOn || n3dsTouchOnSecond },
             onScene = { onN3dsScene(it) },
+            onBattle = { onN3dsBattle(it) },
             onFieldShot = { n3dsFieldShot.value = it.asImageBitmap() },
         )
         n3ds = session
         // The idle engine's GL view stays laid out (the stage measures it) but draws nothing: its surface goes.
         view.visibility = View.INVISIBLE
         stage.addView(session.topView, stage.indexOfChild(view) + 1, FrameLayout.LayoutParams(-1, -1))
+        // The battle strip's picture: the top screen's box in the HUD's coordinates (the stage's area under the bar).
+        session.topView.addOnLayoutChangeListener { v, l, t, r, b, _, _, _, _ ->
+            val dx = if (::fieldHud.isInitialized) fieldHud.left else 0
+            val dy = if (::fieldHud.isInitialized) fieldHud.top else 0
+            n3dsTopRect.value = androidx.compose.ui.geometry.Rect((l - dx).toFloat(), (t - dy).toFloat(), (r - dx).toFloat(), (b - dy).toFloat())
+        }
         stage.gameCover = session.topView
         dsTouchView.getChildAt(0)?.visibility = View.GONE
         dsTouchView.addView(session.touchView, FrameLayout.LayoutParams(-1, -1))
@@ -4405,6 +4418,8 @@ class PokeDaisyActivity : Activity() {
         n3dsFloating.value = false
         n3dsAutoFloat = false
         n3dsFieldShot.value = null
+        n3dsBattle.value = false
+        n3dsTopRect.value = null
         session.stop()
         (session.topView.parent as? android.view.ViewGroup)?.removeView(session.topView)
         (session.touchView.parent as? android.view.ViewGroup)?.removeView(session.touchView)
@@ -4445,12 +4460,36 @@ class PokeDaisyActivity : Activity() {
                 n3dsAutoFloat = true
                 return
             }
-            com.pokedaisy.app.n3ds.Gen6Reader.Scene.FIELD, com.pokedaisy.app.n3ds.Gen6Reader.Scene.SCREEN -> if (n3dsAutoFloat || scene == com.pokedaisy.app.n3ds.Gen6Reader.Scene.SCREEN) {
+            com.pokedaisy.app.n3ds.Gen6Reader.Scene.FIELD, com.pokedaisy.app.n3ds.Gen6Reader.Scene.SCREEN,
+            com.pokedaisy.app.n3ds.Gen6Reader.Scene.BATTLE -> if (n3dsAutoFloat || scene == com.pokedaisy.app.n3ds.Gen6Reader.Scene.SCREEN) {
                 n3dsAutoFloat = false
                 if (n3dsFloating.value) { n3dsFloating.value = false; n3ds?.releaseTouch() }
             }
         }
+        // A battle on ONE SCREEN: full size, with the app's strip for its commands (DsBattleMenu) where the touch
+        // screen would float.
+        n3dsBattle.value = scene == com.pokedaisy.app.n3ds.Gen6Reader.Scene.BATTLE && n3dsFloats
         syncGameScreen()
+    }
+
+    /** A 3DS battle on ONE SCREEN ([onN3dsScene]): the strip shows ([DsBattleMenu]); Compose state. */
+    private val n3dsBattle = androidx.compose.runtime.mutableStateOf(false)
+
+    /** The 3DS top screen's box in the HUD's coordinates: the battle strip's picture. */
+    private val n3dsTopRect = androidx.compose.runtime.mutableStateOf<androidx.compose.ui.geometry.Rect?>(null)
+
+    /** The battle's menu changed ([com.pokedaisy.app.n3ds.N3dsSession.battle]): its bag and party are the game's own
+     * screens, so the touch screen floats in for them (and goes once they close); the strip stands for the rest. */
+    private fun onN3dsBattle(battle: com.pokedaisy.app.n3ds.Gen6Reader.Battle?) {
+        if (n3ds == null || !n3dsBattle.value) return
+        val input = battle?.input ?: com.pokedaisy.app.companion.data.BATTLE_INPUT_NONE
+        val screen = input == com.pokedaisy.app.companion.data.BATTLE_INPUT_BAG_OPEN || input == com.pokedaisy.app.companion.data.BATTLE_INPUT_PARTY_OPEN
+        if (screen && !n3dsFloating.value) {
+            setN3dsFloating(true)
+            n3dsAutoFloat = true
+        } else if (!screen && n3dsAutoFloat && n3dsFloating.value) {
+            setN3dsFloating(false)
+        }
     }
 
     /**
@@ -4664,7 +4703,7 @@ class PokeDaisyActivity : Activity() {
                 // A DS battle's menu (the HUD decides when: [dsStripShown]): kept on show behind the floating window - the
                 // bag, the party - under its dim, the keys the window's meanwhile. In the HUD's coordinates (the stage's
                 // area under the status bar).
-                if (romIsNds) androidx.compose.runtime.CompositionLocalProvider(
+                if (romIsNds || romIs3ds) androidx.compose.runtime.CompositionLocalProvider(
                     com.pokedaisy.app.companion.ui.LocalClickSound provides playClick,
                     com.pokedaisy.app.companion.ui.LocalGameSilent provides { battleInput.gameSilent },
                 ) {
@@ -4673,8 +4712,9 @@ class PokeDaisyActivity : Activity() {
                         androidx.compose.ui.Modifier.fillMaxSize().graphicsLayer { translationY = (fieldHud.top - dsWindowView.top).toFloat() },
                     ) {
                         com.pokedaisy.app.companion.ui.DsBattleMenu(
-                            snap, dsBattleMenu, battleInput, coreFrame.value, shown = dsStripShown.value, active = dsStripActive.value,
-                            gameFills = dsFill.value, hints = battleHints.value,
+                            snap, dsBattleMenu, battleInput, if (romIs3ds) n3dsTopRect.value else coreFrame.value,
+                            shown = dsStripShown.value, active = dsStripActive.value,
+                            gameFills = !romIs3ds && dsFill.value, hints = battleHints.value,
                             onTapArea = { touchControls.coverInWindow(it) },
                         )
                     }
@@ -4899,6 +4939,12 @@ class PokeDaisyActivity : Activity() {
                     androidx.compose.runtime.SideEffect {
                         dsStripShown.value = buttonsWanted && battleRead
                         dsStripActive.value = !dsWindowUp
+                    }
+                } else if (romIs3ds) {
+                    // A 3DS battle on ONE SCREEN: the same strip, its picks the game's touch buttons (N3dsBattleTaps).
+                    androidx.compose.runtime.SideEffect {
+                        dsStripShown.value = battleButtonsOn.value && n3dsBattle.value && snap.inBattle
+                        dsStripActive.value = !n3dsFloating.value
                     }
                 } else com.pokedaisy.app.companion.ui.BattleButtons(
                     snap, buttons, battleInput, battleHints.value,

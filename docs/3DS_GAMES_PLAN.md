@@ -115,6 +115,14 @@ are checked through this path, then goes.
   the menu in dialogue and on every door and map change (the window popped in as the player walked): not the menu.
   Test saves: the Citra saves in ~/Downloads/XY Citra Saves (early story, post game); on the RP6, slot 9 = Route 2's
   grass, slot 8 = a wild battle at its command menu (2026-11-15).
+- Battles on one screen (2026-11-15): the game's own buttons in the top screen's bottom-right corner, no backdrop,
+  drawn smooth after its touch screen (the user's call: the game's modern look, not the app's pixel art;
+  `XyBattleMenu.kt`, `DsLook.XY`, run by `DsBattleMenuState` with `xy` keys). Read from the battle UI controller at
+  0x08515980 (+0x17: 1 command menu, 2 moves; +0x10: 1 bag, 2 party, stale once closed) and its command panel's battler
+  records (+0xDC the player's, +0xE4 the foe's; 0x244 bytes: species +0xC, HP +0x10, level +0x18, moves +0x116 by 14:
+  id, PP, max PP); move data from RomFS `a/2/1/2`. A pick taps the touch screen's own buttons (`N3dsBattleTaps`).
+  The bag and the party float in as the game's screens, the corner gone meanwhile. Checked on the RP6: a turn, bag,
+  party, RUN, the D-pad, and at 4:3 (1440 x 1080) and 640 x 480 at 240 dpi (the corner at least 170 dp wide there).
 - Two displays: the touch surface moves into the bottom display's `NdsBottomHost` (`screen`), the companion behind its
   COMPANION switch, as for a DS game; hidden by translationX there too. Not checked on the Thor yet.
 - Companion: `GameKind.POKEMON_X`, the snapshot published through `TelemetryStore.publish`, the bar limited to PARTY,
