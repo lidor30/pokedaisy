@@ -51,7 +51,7 @@ on two screens and on one. Moves into docs/DEVELOPMENT.md (and the manual) once 
 
 ## The first playable version (2026-11-14)
 
-`N3dsActivity` (only with the flag): the library starts it for a supported cart (`N3dsCart`: NCSD header, title id,
+`N3dsActivity` (only with the flag; removed 2026-11-15, its parts live on in `N3dsSession`): the library started it for a supported cart (`N3dsCart`: NCSD header, title id,
 NoCrypto; `CompanionSupport.isSupported`, `RomFolder` lists `.3ds` / `.cci` up to 4 GB, never hashed or copied).
 `N3dsSaves.prepare` writes the save's format file (or refuses a game whose format isn't known) and copies the save to
 `n3ds/backups/<title id>/<time>/` (newest 10 that differ) before every boot. Native (`pk_n3ds_jni.cpp`): Azahar's
@@ -83,15 +83,15 @@ screen on a second display, else a window over the game; a held BACK leaves). `N
 the game's memory between two run loops; `Gen6Reader` decodes the live party (PK6 + the party stats at +0x158, whose
 cipher starts again from the encryption constant) and the bag's five pockets; `Gen6Text` reads the names from the cart's
 RomFS (GARC `a/0/7/<n>` by the save's language, MyStatus +0x2D: 2..8 English, French, Italian, German, Spanish, Korean;
-Japanese 3). They fed the first screen's own PartyScreen / ItemsScreen (`N3dsCompanion`, `LocalItemNames`); in the game screen
+Japanese 3). They fed the first screen's own PartyScreen / ItemsScreen (`N3dsCompanion`, removed with it); in the game screen
 the regular companion shows them (below). Not yet: icons, summaries, types, the map,
 medicine as its own tab.
 
 ## In the game screen (2026-11-15)
 
 A 3DS game now plays in the regular game screen (`PokeDaisyActivity`), so it gets the app's own controls, companion,
-HUD messages, hotkeys and DS LAYOUT instead of a screen of its own. `N3dsActivity` stays until the Thor's two screens
-are checked through this path, then goes.
+HUD messages, hotkeys and DS LAYOUT instead of a screen of its own. `N3dsActivity` went once the Thor's two screens
+were checked through this path (2026-11-15).
 
 - `load3ds` / `endN3ds` (PokeDaisyActivity): `N3dsSession` (`n3ds/N3dsSession.kt`) owns Azahar's thread, its two
   SurfaceViews, input, states and the companion's samples. The GL game view stays laid out but invisible and an idle
@@ -124,7 +124,12 @@ are checked through this path, then goes.
   The bag and the party float in as the game's screens, the corner gone meanwhile. Checked on the RP6: a turn, bag,
   party, RUN, the D-pad, and at 4:3 (1440 x 1080) and 640 x 480 at 240 dpi (the corner at least 170 dp wide there).
 - Two displays: the touch surface moves into the bottom display's `NdsBottomHost` (`screen`), the companion behind its
-  COMPANION switch, as for a DS game; hidden by translationX there too. Not checked on the Thor yet.
+  COMPANION switch, as for a DS game; hidden by translationX there too. Checked on the Thor (2026-11-15, the player's
+  own Italian save): the top screen fills the top display (5:3), the touch screen the bottom one at 4:3 over the
+  COMPANION / GAME SCREEN bar, touches reach the game there, the X menu and the party open on the bottom (nothing floats
+  on top: the scene reader's floating and the battle buttons are ONE SCREEN's), the companion's tabs switch with the
+  game's screen and back. The companion's edge tab stays on the top display, as for a DS game there. A battle wasn't
+  tried (no grass near that save's spot and no states to load): it's the game's own touch screen down there.
 - Companion: `GameKind.POKEMON_X`, the snapshot published through `TelemetryStore.publish`, the bar limited to PARTY,
   BAG and STATES (`N3DS_TABS`); the bag's names go through `OwnItemNames` (the cart's, not the GBA tables by id).
 - States: the save / load hotkeys and STATES use `SaveStates`' files under the title id; a save writes a 160 px
