@@ -17,7 +17,23 @@ data class MonStats(
      * from [MONOMYTH_NATURE_BASE] on. */
     val nature: Int,
     val stats: List<Int>,
+    /** Gen 3's aptitude bit (the IV word's top bit): 0 = the species' first ability, 1 = its second; null = not read. */
+    val abilityNum: Int? = null,
 )
+
+/**
+ * Whether [MonStats.abilityNum] names the ability in this game: only where the engine is the original games' (one bit,
+ * two abilities a species, nothing else). Games with hidden abilities keep them elsewhere (CFRU's own bit, the expansion's
+ * two-bit slot), so there the bit alone would name the wrong one: no row rather than a guess.
+ */
+fun abilitySlotReadable(tables: PokedexTables, game: GameKind = activeGame): Boolean =
+    (game == GameKind.FIRERED || game == GameKind.EMERALD) && tables.hiddenAbilityOff < 0 && tables.expansion == null
+
+/** The species' ability for [slot] (the game's rule: slot 1 with no second ability is the first). */
+fun abilityForSlot(abilities: List<String>, slot: Int): String? {
+    val names = abilities.filter { it.isNotBlank() }
+    return names.getOrNull(slot) ?: names.firstOrNull()
+}
 
 const val STAT_HP = 0
 const val STAT_ATK = 1

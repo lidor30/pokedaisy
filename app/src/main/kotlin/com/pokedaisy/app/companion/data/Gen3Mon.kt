@@ -372,7 +372,7 @@ fun decodeBoxMon(
         pp = dec.pp,
         exp = dec.exp,
         personality = u32(raw, off),
-        stats = stats?.let { MonStats(ivs = ivs, evs = dec.evs, nature = nature, stats = it) },
+        stats = stats?.let { MonStats(ivs = ivs, evs = dec.evs, nature = nature, stats = it, abilityNum = ((dec.ivWord shr 31) and 1L).toInt()) },
         heldItem = dec.heldItem,
         nickname = gen3Nickname(raw, off, layout),
         shiny = layout.shinyBelow > 0 &&
@@ -488,6 +488,7 @@ private fun monStats(raw: ByteArray, off: Int, layout: PartyMonLayout, evs: List
         evs = evs,
         nature = nature,
         stats = List(6) { u16(raw, off + layout.maxHp + 2 * it) },
+        abilityNum = ((ivWord shr 31) and 1L).toInt(),
     )
 }
 

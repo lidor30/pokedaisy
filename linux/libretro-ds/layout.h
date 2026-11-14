@@ -31,6 +31,11 @@ DsArrangement ds_arrange(int mode,const DsScenePolicy&,bool followed,bool manual
 DsArrangement ds_arrange_one_screen(DsArrangement normal,const DsScenePolicy&,int bits,
                                     bool topBlank,bool fieldCached,bool fieldMenuFlow);
 DsPen ds_pen(const DsArrangement&,int x,int y);
+// What [out] holds from the last ds_compose, for a popup over the held field: its backdrop (the field, dimmed, and the
+// popup's frame) is the same every frame, so only the live screens are drawn while the arrangement and the field
+// picture (fieldRevision) stay. The caller keeps [out] between frames and writes outside the screens' rectangles only
+// through ds_compose; a compose without [kept] into the same buffer must clear held.
+struct DsBackdrop { bool held=false; DsArrangement a; unsigned field=0; };
 // 512x384 stage; sources are unmodified native 256x192 framebuffers.
 void ds_compose(uint32_t* out,const DsArrangement&,const uint32_t* top,const uint32_t* bottom,const uint32_t* field=nullptr,
-                void (*overlay)(uint32_t*)=nullptr);
+                void (*overlay)(uint32_t*)=nullptr,DsBackdrop* kept=nullptr,unsigned fieldRevision=0);
