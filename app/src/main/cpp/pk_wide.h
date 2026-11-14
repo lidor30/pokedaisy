@@ -232,13 +232,16 @@ int pk_wide_scene(void);
 void pk_tint_set(struct mCore* core, int r, int g, int b);
 
 /** HIDE BATTLE MENU: [mode] 1 / 2 = the battle's FIGHT / BAG and move menus left off the frames drawn from the next one on
- * (the prompt's box drawn the whole width instead, an arrow at its bottom right pointing down / up at the companion's
+ * (the prompt's box drawn the whole width instead, a two-screens sign at its bottom right lighting the companion's
  * screen), 0 = shown. In the renderer only; [battleTypeFlags] (gBattleTypeFlags, 0 = unknown) keeps a double battle's and the
  * Safari Zone's menus. GBA only; emu thread. */
 void pk_battle_menu_hide(struct mCore* core, int mode, uint32_t battleTypeFlags);
 /** Which battle menu HIDE BATTLE MENU hid on the last frame drawn: 160 = the action menu, 320 = the moves, 0 = none (off,
  * not a battle menu, a double battle / the Safari Zone, or a shape it didn't know). */
 int pk_battle_menu_hidden(void);
+/** Why the menu hidden on the last frame had no two-screens sign (0 = it had one): 1 no room in the box, 2 too few
+ * free tiles, 3 the tiles in use on screen, 4 the text's colours not found. For logs. */
+int pk_battle_menu_sign_why(void);
 
 /** PLAYER LOOK: the player's sprite set up again from its graphics record (after the ROM's look changed), and [pal]
  * (32 bytes; NULL = leave the colours) put over its palette slot (the game's two palette buffers and palette RAM, only

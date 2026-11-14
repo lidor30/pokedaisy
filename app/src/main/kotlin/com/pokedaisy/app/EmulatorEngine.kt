@@ -586,7 +586,7 @@ class EmulatorEngine(
 
     /**
      * HIDE BATTLE MENU ([Prefs.hideBattleMenu]): what the activity wants - 0 = the game's battle menus shown, 1 = hidden
-     * with the arrow pointing down at the companion, 2 = up (SWAP SCREENS) - and gBattleTypeFlags' address (0 = unknown).
+     * with the two-screens sign lighting the bottom one (the companion's), 2 = the top one (SWAP SCREENS) - and gBattleTypeFlags' address (0 = unknown).
      * The core finds the menus on screen itself and keeps a double battle's and the Safari Zone's.
      */
     @Volatile var battleMenuHide = 0
@@ -598,6 +598,7 @@ class EmulatorEngine(
      * 0 none); read after every GBA frame while HIDE BATTLE MENU is on. */
     @Volatile var battleMenuHidden = 0
         private set
+    private var battleMenuSignLogged = -1
 
     /**
      * HIDE BATTLE MENU's D-pad: the game's action menu is off the screen and the companion's buttons stand in for it, so a
@@ -620,6 +621,13 @@ class EmulatorEngine(
             battleMenuHideSent = mode
         }
         battleMenuHidden = if (mode != 0) MgbaCore.pkBattleMenuHidden() else 0
+        if (BuildConfig.DEBUG && battleMenuHidden != 0) {
+            val why = MgbaCore.pkBattleMenuSignWhy()
+            if (why != battleMenuSignLogged) {
+                battleMenuSignLogged = why
+                Log.i("pokedaisy", "battle menu hidden ($battleMenuHidden): " + if (why == 0) "sign drawn" else "no sign, reason $why")
+            }
+        } else battleMenuSignLogged = -1
     }
 
     /** Co-op presence ([CoopPresence]): called once per game frame beside FOLLOWER; null = none (not retail Emerald). */

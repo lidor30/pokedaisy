@@ -1286,10 +1286,17 @@ shrinks - measure both ways, layoutlib's measurer ignores scaleX. `BattleButtons
 2026-11-14): the GBA battle's FIGHT / BAG and move menus left off the game's screen while the companion's battle buttons pick.
 `pk_wide.c`'s `menuHideBegin` / `menuHideEnd` swap BG0's tilemap cells at line 0 and put them back after line 159 (the follower's
 way: the game, VRAM and states never see it): the prompt layout (BG0VOFS 160) / move layout (320) redrawn as the message box's
-frame round the prompt, a bobbing arrow at its bottom right in the text's colours (four message-window tiles borrowed). Found by
+frame round the prompt, a two-screens sign at its right like HeartGold's (the user's pick over a bobbing arrow): two flat 18 x 11
+screens with corners rounded over two pixels (three made them pills, the user's call), softened toward the box as if seen through:
+the outline the palette's colour nearest half the ink, half the paper, the step's notches smoothed inside and out (the user's call:
+lighter in-between pixels) by palette entries no tile on screen uses this frame (`menuFreeEntries`), set to the mixes in the renderer
+only and put back after line 159 (`menuPalIdx`; palette RAM never changes), the companion's
+screen lit in the frame's hue nearest the paper (FireRed's darker gold, Emerald's dusty red), the same margin from the box's right, top and bottom edges (measured in the frame's tiles; Emerald's border spans two cells,
+so the cells under it are copied into the borrowed message-window tiles first). Debug builds log why a hidden menu had no sign
+(`pkBattleMenuSignWhy`; mgba_dump `battlemenuinfo`). Found by
 shape, no per-game address; gBattleTypeFlags keeps doubles' and the Safari Zone's menus. Gate: `battleMenuHideSupported` (BPR /
 BPG / BPE running as FireRed / Emerald with battle input and known action / move cursors), the companion showing on the other screen.
-The arrow points down (SWAP SCREENS is for putting the game on top). Ruby / Sapphire left out: their cursor is drawn apart. mgba_dump
+The sign lights the bottom screen (SWAP SCREENS is for putting the game on top). Ruby / Sapphire left out: their cursor is drawn apart. mgba_dump
 `battlemenu`. The player's buttons follow the companion (the user's call, after a Thor try: the D-pad moved the unseen 2 x 2): on the
 hidden action menu (`pkBattleMenuHidden` 160) the D-pad is taken (`battleSteerTakes` / `steerMotion`) and moves gActionSelectionCursor
 round the companion's layout, FIGHT over BAG / RUN / POKéMON (`HiddenMenuSteer`, written on the next frame, the companion's click);

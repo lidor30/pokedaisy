@@ -353,6 +353,12 @@ Java_com_pokedaisy_app_MgbaCore_pkBattleMenuHidden(JNIEnv* env, jobject thiz) {
     return g.core && pk_is_gba(g.core) ? pk_battle_menu_hidden() : 0;
 }
 
+JNIEXPORT jint JNICALL
+Java_com_pokedaisy_app_MgbaCore_pkBattleMenuSignWhy(JNIEnv* env, jobject thiz) {
+    (void) env; (void) thiz;
+    return g.core && pk_is_gba(g.core) ? pk_battle_menu_sign_why() : 0;
+}
+
 // SCENE SPEEDS' TEXT / AUTO-RUN / RUN INDOORS / WILD ENCOUNTERS: whether the field reads know the ROM with this CRC32.
 // Any thread, no core needed.
 JNIEXPORT jboolean JNICALL

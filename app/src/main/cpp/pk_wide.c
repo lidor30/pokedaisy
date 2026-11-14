@@ -796,7 +796,7 @@ static void (*origWriteVRAM)(struct GBAVideoRenderer*, uint32_t);
 static void followWrote(uint32_t address);
 static void partnerWrote(uint32_t address);
 static void menuWrote(uint32_t address);
-// HIDE BATTLE MENU (menuHideBegin): 0 = off, 1 = hidden with the arrow down, 2 = up; gBattleTypeFlags (EWRAM), 0 = not read.
+// HIDE BATTLE MENU (menuHideBegin): 0 = off, 1 = hidden with the sign's bottom screen lit, 2 = its top; gBattleTypeFlags (EWRAM), 0 = not read.
 static int menuHideMode;
 static uint32_t menuHideTypeFlags;
 #ifdef PK_WIDE_CACHE
@@ -3035,8 +3035,10 @@ static bool onBike(void);
 // will X do?" + the FIGHT / BAG menu box (rows 34-39), 320 = the move names + the PP box (rows 54-59). While each frame
 // is drawn the menu's cells are swapped for the message box's own frame, its inside left blank, so the prompt's box runs
 // the whole width; in the move menu the whole layout is that prompt box (its window still holds the text). At the box's
-// bottom right a bobbing arrow points at the companion's screen (down, or up when the screens are swapped), drawn in the
-// text's colours into four of the message window's tiles (not on screen while the menus are up). Taken out after the
+// right a two-screens sign, like a DS game's, lights the companion's screen (the bottom one, or the top when the screens
+// are swapped): as far from the box's right edge as from its top and bottom (the frame's thickness measured in its
+// tiles), drawn in the text's and the frame's colours over a copy of the cells under it, in up to 16 of the message
+// window's tiles (not on screen while the menus are up). Taken out after the
 // last line like the follower (cells and pixels the game wrote meanwhile kept): VRAM, the game and states never see it.
 // Found by shape alone, no per-game address: both layouts' left parts equal, a box beside the prompt, the frame's
 // 15-tile set (corner T .. T + 14, T + 6 its plain inside) - FireRed's and Emerald's alike. Only the battle type is read
@@ -3045,33 +3047,142 @@ static int menuHideRow = -1;              // the first tilemap row swapped this 
 static uint16_t menuHideSaved[6][30];
 static uint8_t menuHideDirty[6][30];
 static uint32_t menuHideMap;               // the tilemap's VRAM byte offset
-static uint32_t menuArrowAt[4];            // the arrow's four tiles' VRAM byte offsets, 0 = not drawn
-static uint8_t menuArrowSaved[4][32];
-static uint8_t menuArrowDirty[4][16];
+#define MENU_SIGN_TILES 16
+static uint32_t menuArrowAt[MENU_SIGN_TILES];   // the sign's tiles' VRAM byte offsets, 0 = not drawn
+static uint8_t menuArrowSaved[MENU_SIGN_TILES][32];
+static uint8_t menuArrowDirty[MENU_SIGN_TILES][16];
+/** The box's palette entries the sign borrowed this frame (renderer only, put back after the last line): its slot, the
+ * entries, how many. */
+static int menuPalSlot = -1, menuPalIdx[2], menuPalN;
+/** Why the last hidden menu had no sign (0 = drawn): 1 its place in the box, 2 too few tiles, 3 tiles in use, 4 colours. */
+static int menuSignWhy;
 static unsigned menuHideFrames;
 
 static void menuWrote(uint32_t address) {
     if (menuHideRow < 0) return;
-    for (int k = 0; k < 4; k++)
+    for (int k = 0; k < MENU_SIGN_TILES; k++)
         if (menuArrowAt[k] && address >= menuArrowAt[k] && address < menuArrowAt[k] + 32) menuArrowDirty[k][(address - menuArrowAt[k]) >> 1] = 1;
     if (address < menuHideMap + (uint32_t) menuHideRow * 64) return;
     uint32_t k = (address - menuHideMap - (uint32_t) menuHideRow * 64) >> 1;
     if (k < 6 * 32 && (k & 31) < 30) menuHideDirty[k >> 5][k & 31] = 1;
 }
 
-/** The arrow's 16x16 pixels (colour indices: [ink] on [shade] over [paper]), bobbing 0-2 px like the game's own. */
-static void menuArrowPixels(uint8_t px[16][16], int ink, int shade, int paper, bool up, unsigned frame) {
-    memset(px, paper, 16 * 16);
-    static const int bobs[4] = { 0, 1, 2, 1 };
-    int bob = bobs[(frame >> 3) & 3];
-    for (int pass = 0; pass < 2; pass++) {
-        int off = pass == 0 ? 1 : 0, colour = pass == 0 ? shade : ink;
-        for (int r = 0; r < 5; r++) {
-            int w = up ? 1 + 2 * r : 9 - 2 * r;
-            int y = (up ? 6 - bob : 6 + bob) + r + off, x0 = 3 + (9 - w) / 2 + off;
-            for (int x = x0; x < x0 + w; x++) if (y >= 0 && y < 16 && x < 16) px[y][x] = (uint8_t) colour;
+/** The sign's two screens, each SIGN_W x SIGN_H with corners rounded over two pixels, SIGN_GAP apart. */
+#define SIGN_W 18
+#define SIGN_H 11
+#define SIGN_GAP 3
+
+/** A screen's top-left corner, mirrored to the other three: 'o' its outline, 'a' between the outline and the box
+ * outside it and 'b' between the outline and the fill inside (the step's notches filled, so the corner is smoother but
+ * no rounder: a screen, not a pill), 'i' inside, '.' outside. */
+#define SIGN_CORNER_N 3
+static const char SIGN_CORNER[SIGN_CORNER_N][SIGN_CORNER_N + 1] = { ".ao", "aob", "obi" };
+
+/**
+ * The two-screens sign, like a DS game pointing at its touch screen: two little screens one over the other, outlined in
+ * [line], the one with the buttons ([up]: the top one, else the bottom) filled with [lit]; the other shows the box
+ * through it. The corners' notches: [soft] (between the outline and the box), [softLit] inside the lit one (between the
+ * outline and its fill); -1 = left as they are. Drawn into [px] (w x h, the tiles it covers) at ([x0], [y0]); the rest
+ * of [px] is left as it is.
+ */
+static void menuSignPixels(uint8_t* px, int w, int h, int x0, int y0, int line, int soft, int softLit, int lit, bool up) {
+    for (int screen = 0; screen < 2; screen++) {
+        int top = y0 + screen * (SIGN_H + SIGN_GAP);
+        bool on = (screen == 0) == up;
+        for (int y = 0; y < SIGN_H; y++)
+            for (int x = 0; x < SIGN_W; x++) {
+                int cx = x < SIGN_W - 1 - x ? x : SIGN_W - 1 - x, cy = y < SIGN_H - 1 - y ? y : SIGN_H - 1 - y;
+                char k = cx < SIGN_CORNER_N && cy < SIGN_CORNER_N ? SIGN_CORNER[cy][cx] : cx == 0 || cy == 0 ? 'o' : 'i';
+                int py = top + y, pxx = x0 + x, colour;
+                if (py < 0 || py >= h || pxx < 0 || pxx >= w) continue;
+                if (k == 'o') colour = line;
+                else if (k == 'a') colour = soft;
+                else if (k == 'b') colour = on ? (softLit >= 0 ? softLit : lit) : soft;
+                else if (k == 'i') colour = on ? lit : -1;
+                else colour = -1;
+                if (colour >= 0) px[py * w + pxx] = (uint8_t) colour;
+            }
+    }
+}
+
+/**
+ * Entries of BG palette [slot] that no tile shown in it uses this frame - every cell of every BG layer on (BG0 whole,
+ * the others their whole maps) in that palette, its tile's pixels - as a bit per index; 0 when a layer is 256-colour.
+ */
+static unsigned menuFreeEntries(int slot) {
+    const uint16_t* io = hookGba->memory.io;
+    const uint8_t* vram = (const uint8_t*) hookGba->video.vram;
+    unsigned used = 1;   // 0 is transparent
+    static uint8_t seen[1024 / 8];
+    for (int bg = 0; bg < 4; bg++) {
+        if (!(io[0] & (0x100 << bg))) continue;
+        uint16_t cnt = io[(0x08 >> 1) + bg];
+        if (cnt & 0x80) return 0;
+        uint32_t mapOff = ((cnt >> 8) & 31) * 0x800u, charOff = ((cnt >> 2) & 3) * 0x4000u;
+        int size = cnt >> 14, cells = 1024 << (size == 3 ? 2 : size ? 1 : 0);
+        memset(seen, 0, sizeof(seen));
+        for (int i = 0; i < cells; i++) {
+            if (mapOff + (uint32_t) i * 2 + 2 > 0x10000) break;
+            uint16_t cell = ((const uint16_t*) (vram + mapOff))[i];
+            if ((cell >> 12) != slot) continue;
+            int t = cell & 0x3FF;
+            if (seen[t >> 3] & (1 << (t & 7))) continue;
+            seen[t >> 3] |= (uint8_t) (1 << (t & 7));
+            uint32_t at = charOff + (uint32_t) t * 32;
+            if (at + 32 > 0x10000) continue;
+            for (int k = 0; k < 32; k++) used |= 1u << (vram[at + k] & 15) | 1u << (vram[at + k] >> 4);
         }
     }
+    return ~used & 0xFFFF;
+}
+
+/** Half of BGR555 [a], half of [b]. */
+static uint16_t menuMix555(uint16_t a, uint16_t b) {
+    return (uint16_t) ((((a & 31) + (b & 31)) / 2) | ((((a >> 5) & 31) + ((b >> 5) & 31)) / 2) << 5 |
+        ((((a >> 10) & 31) + ((b >> 10) & 31)) / 2) << 10);
+}
+
+/** BGR555 [c] as 8-bit channels. */
+static void menuRgb(uint16_t c, int rgb[3]) {
+    rgb[0] = (c & 31) << 3; rgb[1] = ((c >> 5) & 31) << 3; rgb[2] = ((c >> 10) & 31) << 3;
+}
+
+/** The entry of the 16-colour palette at [pal] nearest ([a]% of [x] + the rest of [y]), skipping [skip] (a bit per index)
+ * and the transparent 0. */
+static int menuNearest(const uint16_t* pal, int x, int y, int a, unsigned skip) {
+    int cx[3], cy[3], t[3];
+    menuRgb(pal[x], cx); menuRgb(pal[y], cy);
+    for (int k = 0; k < 3; k++) t[k] = (cx[k] * a + cy[k] * (100 - a)) / 100;
+    int best = -1, bestD = 0;
+    for (int i = 1; i < 16; i++) {
+        if (skip >> i & 1) continue;
+        int c[3];
+        menuRgb(pal[i], c);
+        int d = (c[0] - t[0]) * (c[0] - t[0]) + (c[1] - t[1]) * (c[1] - t[1]) + (c[2] - t[2]) * (c[2] - t[2]);
+        if (best < 0 || d < bestD) { best = i; bestD = d; }
+    }
+    return best;
+}
+
+/** [c]'s hue in degrees and its saturation (max - min channel). */
+static void menuHue(uint16_t c, int* hue, int* sat) {
+    int v[3];
+    menuRgb(c, v);
+    int hi = v[0] > v[1] ? (v[0] > v[2] ? 0 : 2) : (v[1] > v[2] ? 1 : 2);
+    int lo = v[0] < v[1] ? (v[0] < v[2] ? 0 : 2) : (v[1] < v[2] ? 1 : 2);
+    int d = v[hi] - v[lo];
+    *sat = d;
+    if (!d) { *hue = 0; return; }
+    int h = hi == 0 ? 60 * (v[1] - v[2]) / d : hi == 1 ? 120 + 60 * (v[2] - v[0]) / d : 240 + 60 * (v[0] - v[1]) / d;
+    *hue = (h + 360) % 360;
+}
+
+/** A cell's pixel ([x], [y] in its tile, its flips applied): a 4bpp colour index. */
+static int menuCellPx(const uint8_t* vram, uint32_t charOff, uint16_t cell, int x, int y) {
+    if (cell & 0x400) x = 7 - x;
+    if (cell & 0x800) y = 7 - y;
+    uint8_t b = vram[charOff + (cell & 0x3FF) * 32u + (uint32_t) (y * 4 + x / 2)];
+    return x & 1 ? b >> 4 : b & 15;
 }
 
 /** Which battle menu the last frame hid: BG0VOFS 160 (the action menu) or 320 (the moves), 0 none. */
@@ -3123,19 +3234,49 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
             want[row][c] = t >= T && t <= T + 14 ? src : (uint16_t) (pal | (T + 6));
         }
     }
-    // The arrow's tiles: the message window's last four on its bottom line, used nowhere on screen now. Its colours: the
-    // prompt text's ink and shadow (the two most used after the paper in the prompt window's tiles).
+    // The sign, at the box's right: as far from its right edge as from its top and bottom edges (the frame's own
+    // thickness measured in its tiles), in the cells it covers - plain inside, right of the prompt.
     int at = vofs == 160 ? 34 : 54;
-    int arrowTiles[4], n = 0;
-    for (int c = 28; c >= split && n < 4; c--) {
-        int t = msg[4 * 32 + c] & 0x3FF;
-        if (t < T || t > T + 14) arrowTiles[n++] = t;
+    // Walked in pixel by pixel from each edge (Emerald's right border takes two cells), on the box's middle line / column 20.
+    int edgeR = 0, edgeT = 0, edgeB = 0;
+    while (edgeR < 32) {
+        int x = 239 - edgeR;
+        if (menuCellPx(vram, charOff, msg[2 * 32 + x / 8], x & 7, 4) == paper) break;
+        edgeR++;
     }
-    bool arrow = n == 4;
+    while (edgeT < 16 && menuCellPx(vram, charOff, msg[(edgeT / 8) * 32 + 20], 4, edgeT & 7) != paper) edgeT++;
+    while (edgeB < 16) {
+        int y = 47 - edgeB;
+        if (menuCellPx(vram, charOff, msg[(y / 8) * 32 + 20], 4, y & 7) == paper) break;
+        edgeB++;
+    }
+    int signH = 2 * SIGN_H + SIGN_GAP;
+    int margin = (48 - edgeT - edgeB - signH) / 2;
+    int sy = edgeT + margin, sx1 = 240 - edgeR - margin, sx = sx1 - SIGN_W;
+    int c0 = sx / 8, c1 = (sx1 - 1) / 8, r0 = sy / 8, r1 = (sy + signH - 1) / 8;
+    int cols = c1 - c0 + 1, rows = r1 - r0 + 1, need = cols * rows;
+    bool arrow = margin >= 1 && c0 >= split && c1 <= 28 && r0 >= 1 && r1 <= 4 && need <= MENU_SIGN_TILES;
+    // Its cells keep what they show (a frame piece: Emerald's border runs into the cell left of its edge cell), copied
+    // into the borrowed tiles under the sign; only the frame's own cells and the plain inside, never the prompt's text.
+    for (int row = r0; arrow && row <= r1; row++)
+        for (int c = c0; c <= c1; c++) { int t = want[row][c] & 0x3FF; if (t < T || t > T + 14) arrow = false; }
+    menuSignWhy = arrow ? 0 : 1;
+    // Its tiles: the message window's last ones (bottom line first, from the right), used nowhere on screen now. Its
+    // colours: the prompt text's ink (the most used after the paper in the prompt window's tiles) and the frame's.
+    int arrowTiles[MENU_SIGN_TILES], n = 0;
+    for (int row = 4; arrow && row >= 1 && n < need; row--)
+        for (int c = 28; c >= 1 && n < need; c--) {
+            int t = msg[row * 32 + c] & 0x3FF;
+            if (t >= T && t <= T + 14) continue;
+            bool dup = false;
+            for (int k = 0; k < n; k++) if (arrowTiles[k] == t) dup = true;
+            if (!dup) arrowTiles[n++] = t;
+        }
+    if (arrow && n < need) { arrow = false; menuSignWhy = 2; }
     for (int row = vofs / 8; arrow && row < vofs / 8 + 20; row++)
         for (int c = 0; c < 30 && arrow; c++) {
             int t = (row >= at && row < at + 6 ? want[row - at][c] : map[row * 32 + c]) & 0x3FF;
-            for (int k = 0; k < 4; k++) if (t == arrowTiles[k]) arrow = false;
+            for (int k = 0; k < n; k++) if (t == arrowTiles[k]) { arrow = false; menuSignWhy = 3; }
         }
     int ink = -1, shade = -1;
     if (arrow) {
@@ -3148,7 +3289,7 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
         counts[paper] = 0;
         for (int i = 0; i < 16; i++) if (counts[i] && (ink < 0 || counts[i] > counts[ink])) ink = i;
         for (int i = 0; i < 16; i++) if (counts[i] && i != ink && (shade < 0 || counts[i] > counts[shade])) shade = i;
-        arrow = ink >= 0 && shade >= 0;
+        if (!(ink >= 0 && shade >= 0)) { arrow = false; menuSignWhy = 4; }
         // Which is the shadow: it sits right of and below the ink, so more of its pixels have the other on their left.
         int inkFirst = 0;
         for (int c = 1; arrow && c < split; c++)
@@ -3163,21 +3304,102 @@ static void menuHideBegin(struct GBAVideoRenderer* r) {
             }
         if (inkFirst < 0) { int t = ink; ink = shade; shade = t; }
     }
+    // The lit screen: the box frame's own colour - of the colours its tiles use besides the paper and the text's two,
+    // the most colourful and bright (Emerald's red, FireRed's gold; the frame's dark outline is used more).
+    int accent = -1;
     if (arrow) {
-        // Bottom right of the box: the last two columns inside it, its last two text rows.
-        uint8_t px[16][16];
-        menuArrowPixels(px, ink, shade, paper, menuHideMode == 2, menuHideFrames);
+        int counts[16] = { 0 };
+        for (int t = T; t <= T + 14; t++) {
+            if (t == T + 6) continue;
+            const uint8_t* tp = vram + charOff + t * 32;
+            for (int i = 0; i < 32; i++) { counts[tp[i] & 15]++; counts[tp[i] >> 4]++; }
+        }
+        counts[paper] = counts[ink] = counts[shade] = counts[0] = 0;
+        int best = -1;
+        for (int i = 1; i < 16; i++) {
+            if (!counts[i]) continue;
+            uint16_t c = hookGba->video.palette[(pal >> 12) * 16 + i];
+            int r5 = c & 31, g5 = (c >> 5) & 31, b5 = (c >> 10) & 31;
+            int hi = r5 > g5 ? (r5 > b5 ? r5 : b5) : (g5 > b5 ? g5 : b5), lo = r5 < g5 ? (r5 < b5 ? r5 : b5) : (g5 < b5 ? g5 : b5);
+            // Colourful and bright: FireRed's frame has a shaded gold under its bright one.
+            int score = (hi - lo) + hi;
+            if (score > best) { best = score; accent = i; }
+        }
+        if (accent < 0) accent = shade;
+    }
+    // Softened toward the box, as if seen through: the outline the palette's colour nearest a half-and-half of the ink and
+    // the paper (FireRed's light blue on its navy, Emerald's light grey on its teal), the corners' curve nearer the paper
+    // still, the lit screen the colour of the frame's hue nearest the paper (FireRed's darker gold, Emerald's dusty red).
+    int line = ink, soft = -1, lit = accent;
+    if (arrow) {
+        const uint16_t* palette = hookGba->video.palette + (pal >> 12) * 16;
+        unsigned skip = 1u << paper;
+        line = menuNearest(palette, ink, paper, 55, skip);
+        if (line < 0) line = ink;
+        soft = menuNearest(palette, line, paper, 50, skip | 1u << line);
+        // Only a colour that really sits between them: nearer the paper than the outline is, else no softening.
+        if (soft >= 0) {
+            int a[3], b[3], c[3];
+            menuRgb(palette[line], a); menuRgb(palette[paper], b); menuRgb(palette[soft], c);
+            int dl = 0, ds = 0, dp = 0;
+            for (int k = 0; k < 3; k++) { dl += (a[k] - b[k]) * (a[k] - b[k]); ds += (c[k] - b[k]) * (c[k] - b[k]); dp += (c[k] - a[k]) * (c[k] - a[k]); }
+            if (ds >= dl || dp >= dl) soft = -1;
+        }
+        int ah, as, pc[3];
+        menuHue(palette[accent], &ah, &as);
+        menuRgb(palette[paper], pc);
+        int bestD = -1;
+        for (int i = 1; i < 16; i++) {
+            if (i == paper) continue;
+            int h, sat, c[3];
+            menuHue(palette[i], &h, &sat);
+            int dh = h > ah ? h - ah : ah - h;
+            if (dh > 180) dh = 360 - dh;
+            if (sat < 48 || dh > 20) continue;
+            menuRgb(palette[i], c);
+            int d = (c[0] - pc[0]) * (c[0] - pc[0]) + (c[1] - pc[1]) * (c[1] - pc[1]) + (c[2] - pc[2]) * (c[2] - pc[2]);
+            if (bestD < 0 || d < bestD) { bestD = d; lit = i; }
+        }
+    }
+    // The notches' in-between colours: a palette entry nothing on screen uses this frame, set to the mix in the renderer
+    // only (as FOLLOWER's colours; palette RAM never changes) - the palette's own colours rarely sit between (Emerald's
+    // have nothing between its light grey and its teal). Without a free entry, the nearest colour that really sits
+    // between, or none.
+    int softLit = -1;
+    menuPalN = 0;
+    if (arrow && r->writePalette) {
+        int slot = pal >> 12;
+        unsigned free = menuFreeEntries(slot) & ~(1u << paper | 1u << line | 1u << lit | 1u << ink);
+        const uint16_t* palette = hookGba->video.palette + slot * 16;
+        uint16_t mixes[2] = { menuMix555(palette[line], palette[paper]), menuMix555(palette[line], palette[lit]) };
+        for (int i = 1; i < 16 && menuPalN < 2; i++) {
+            if (!(free >> i & 1)) continue;
+            menuPalIdx[menuPalN] = i;
+            r->writePalette(r, (uint32_t) (slot * 32 + i * 2), tintShown ? tint555(mixes[menuPalN]) : mixes[menuPalN]);
+            menuPalN++;
+        }
+        if (menuPalN > 0) { menuPalSlot = slot; soft = menuPalIdx[0]; }
+        if (menuPalN > 1) softLit = menuPalIdx[1];
+    }
+    if (arrow) {
+        uint8_t px[4 * 8 * 4 * 8];
+        int w = cols * 8, h = rows * 8;
+        for (int y = 0; y < h; y++)
+            for (int x = 0; x < w; x++) px[y * w + x] = (uint8_t) menuCellPx(vram, charOff, want[r0 + y / 8][c0 + x / 8], x & 7, y & 7);
+        menuSignPixels(px, w, h, sx - c0 * 8, sy - r0 * 8, line, soft, softLit, lit, menuHideMode == 2);
         memset(menuArrowDirty, 0, sizeof(menuArrowDirty));
-        for (int k = 0; k < 4; k++) {
-            int tx = k & 1, ty = k >> 1, tile = arrowTiles[3 - k];
+        for (int k = 0; k < need; k++) {
+            int tx = k % cols, ty = k / cols, tile = arrowTiles[k];
             uint32_t off = charOff + (uint32_t) tile * 32;
             memcpy(menuArrowSaved[k], vram + off, 32);
             for (int y = 0; y < 8; y++)
-                for (int x = 0; x < 8; x += 2)
-                    vram[off + y * 4 + x / 2] = (uint8_t) (px[ty * 8 + y][tx * 8 + x] | px[ty * 8 + y][tx * 8 + x + 1] << 4);
+                for (int x = 0; x < 8; x += 2) {
+                    const uint8_t* line = px + (ty * 8 + y) * w + tx * 8;
+                    vram[off + y * 4 + x / 2] = (uint8_t) (line[x] | line[x + 1] << 4);
+                }
             for (int i = 0; i < 32; i += 2) origWriteVRAM(r, off + (uint32_t) i);
             menuArrowAt[k] = off;
-            want[3 + ty][27 + tx] = (uint16_t) (pal | tile);
+            want[r0 + ty][c0 + tx] = (uint16_t) (pal | tile);
         }
     }
     menuHideMap = mapOff;
@@ -3207,7 +3429,7 @@ static void menuHideEnd(struct GBAVideoRenderer* r) {
             origWriteVRAM(r, menuHideMap + (uint32_t) ((menuHideRow + row) * 32 + c) * 2);
         }
     }
-    for (int k = 0; k < 4; k++) {
+    for (int k = 0; k < MENU_SIGN_TILES; k++) {
         if (!menuArrowAt[k]) continue;
         for (int i = 0; i < 16; i++) {
             if (menuArrowDirty[k][i]) continue;
@@ -3216,11 +3438,21 @@ static void menuHideEnd(struct GBAVideoRenderer* r) {
         }
         menuArrowAt[k] = 0;
     }
+    for (int k = 0; k < menuPalN && menuPalSlot >= 0; k++) {
+        uint16_t c = hookGba->video.palette[menuPalSlot * 16 + menuPalIdx[k]];
+        r->writePalette(r, (uint32_t) (menuPalSlot * 32 + menuPalIdx[k] * 2), tintShown ? tint555(c) : c);
+    }
+    menuPalN = 0;
+    menuPalSlot = -1;
     menuHideRow = -1;
 }
 
 int pk_battle_menu_hidden(void) {
     return menuHideMode ? menuHidden : 0;
+}
+
+int pk_battle_menu_sign_why(void) {
+    return menuHideMode && menuHidden ? menuSignWhy : 0;
 }
 
 void pk_battle_menu_hide(struct mCore* core, int mode, uint32_t battleTypeFlags) {

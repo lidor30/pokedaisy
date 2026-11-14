@@ -1527,8 +1527,8 @@ class PokeDaisyActivity : Activity() {
         // unseen 2 x 2 under the companion's differently shaped buttons.
         engine.battleCursorAddrs?.menus == BattleInputController.MenuCells.GEN3
 
-    /** HIDE BATTLE MENU to the engine: only with the companion on the other screen, where its battle buttons are. The arrow
-     * points down: SWAP SCREENS is there to put the game on top (a device whose main display is its bottom one). */
+    /** HIDE BATTLE MENU to the engine: only with the companion on the other screen, where its battle buttons are. The sign
+     * lights the bottom screen: SWAP SCREENS is there to put the game on top (a device whose main display is its bottom one). */
     private fun syncBattleMenuHide() {
         if (!::engine.isInitialized) return
         val on = Prefs(this).hideBattleMenu && battleMenuHideSupported() && !debugMirror && !companionClosed &&
