@@ -78,6 +78,7 @@ check: ## Everything a PR must pass: unit tests, translations, game data, ui-pre
 	python3 scripts/gen_gamedata.py --check
 	python3 scripts/gen_nds_ports.py --check
 	python3 scripts/check_melonds_patch.py
+	python3 scripts/check_azahar_patch.py
 	$(MAKE) -C 3ds test-configs-gen
 	./gradlew $(UNIT_TESTS) :app:assembleDebug :shared:compileKotlinIosArm64
 	./gradlew -p ui-preview stress
