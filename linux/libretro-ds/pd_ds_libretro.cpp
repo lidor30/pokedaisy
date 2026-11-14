@@ -133,7 +133,7 @@ DsCompanionUi shell;
 DsScenePolicy scene;
 DsBattleStrip battleStrip;
 DsBattleTap battleTap;
-DsBattleView drawnBattle;
+DsBattleView drawnBattle,battleBalls;
 std::string battleName;
 std::array<uint32_t,256*192> battlePanelArt;
 bool battlePanelArtValid=false;
@@ -194,7 +194,7 @@ void set_wild_rates(){
   pk_nds_field_reset_wild();
 }
 void clear_battle() {
-  battleStrip={};battleTap={};drawnBattle={};battleName.clear();battlePanelArtValid=false;
+  battleStrip={};battleTap={};drawnBattle={};battleBalls={};battleName.clear();battlePanelArtValid=false;
   battleHeld=0;holdStrip=restoreGrace=0;battleActive=injectBattleTap=wasInBattle=false;
 }
 bool wants_strip() {
@@ -326,7 +326,14 @@ void choose_layout() {
     if(drawnBattle.panel!=view.panel || drawnBattle.personality!=view.personality ||
        drawnBattle.partySlot!=view.partySlot || drawnBattle.species!=view.species ||
        (view.panel==DsBattlePanel::Moves &&
-        (drawnBattle.moves!=view.moves || drawnBattle.pp!=view.pp)))battlePanelArtValid=false;
+        (drawnBattle.moves!=view.moves || drawnBattle.pp!=view.pp))){
+      battlePanelArtValid=false;
+      // The ball rows change with the turn, and the command panel comes up once a turn: read them then.
+      battleBalls=view;
+      if(view.panel==DsBattlePanel::Actions && companionGame!=DsGame::Unsupported)
+        ds_read_battle_balls(game,read32,nds->bus.main_ram.get(),nds->bus.main_ram_size(),
+                             ds_read_companion(nds->bus.main_ram.get(),nds->bus.main_ram_size(),companionGame),battleBalls);
+    }
     if(supported && !battlePanelArtValid){
       const auto* lower=nds->gpu.framebuffer(1);
       const bool ready=view.panel==DsBattlePanel::Actions?ds_platinum_has_command_art(lower):
@@ -350,6 +357,8 @@ void choose_layout() {
       }
     }
     drawnBattle=view;
+    drawnBattle.balls=battleBalls.balls;
+    drawnBattle.partyBalls=battleBalls.partyBalls;drawnBattle.foeBalls=battleBalls.foeBalls;
     holdStrip=18;
   }else if(!wants_strip() || !inBattle || ((bits&PK_NDS_FIELD_TOUCH_BATTLE_MENU) &&
             !(battleStrip.moveCommitFrames>0&&battleStrip.cancelingMove))){
@@ -397,9 +406,25 @@ bool field_free(int bits){
   return (bits&PK_NDS_FIELD_SCREEN)&&!(bits&(PK_NDS_FIELD_LOCKED|PK_NDS_FIELD_BATTLE|PK_NDS_FIELD_MENU|PK_NDS_FIELD_TEXT));
 }
 bool field_free(){return field_free(pk_nds_field_state(game,read32,nullptr,0));}
+// A quick-menu action's answer ("No one in your party knows Fly."), shown by the core itself for two seconds. A frontend
+// message (RETRO_ENVIRONMENT_SET_MESSAGE) is only logged by NXRedux, so a refused action looked like a dropped press.
+std::string notice;
+unsigned noticeFrames=0;
 void quick_notice(const char* label){
-  retro_message message{label,120};
-  environment(RETRO_ENVIRONMENT_SET_MESSAGE,&message);
+  notice=label;
+  noticeFrames=120;
+}
+// A slate tab under the top edge, the text at 2x where it fits the frame and at 1x where it doesn't.
+void draw_notice(uint32_t* out){
+  pd_canvas c;pd_canvas_init(&c,512,384,out);
+  const int scale=2*pd_text_width(notice.c_str())<=480?2:1;
+  const int w=std::min(504,scale*pd_text_width(notice.c_str())+24), h=16*scale+8, x=(512-w)/2, y=8;
+  pd_round_rect(&c,x,y,w,h,4,0x182028);
+  pd_round_rect(&c,x+2,y+2,w-4,h-4,3,0xf8f8f8);
+  pd_round_rect(&c,x+4,y+4,w-8,h-8,2,0x283848);
+  pd_clip(&c,x+6,y+4,w-12,h-8);
+  pd_text_scaled(&c,x+12,y+4-scale,notice.c_str(),0xf8f8f8,0x101820,scale);
+  pd_unclip(&c);
 }
 // DSperate's CPU-visible bus handles TCM mirrors and invalidates recompiled
 // code on writes. The field job and its ROM-specific recipes are shared with Android.
@@ -692,25 +717,59 @@ void draw_quick() {
     stageMarked=false;
   }
   geometry(512,384);
+  // The menu is drawn at 341x256 and shown at 1.5x. Nearest-neighbour doubled every other column and row and left the
+  // rest single: uneven strokes. Area-weighted, as ds_compose scales a popup: an output pixel takes the menu pixels it
+  // covers by how much, so two in three are one menu pixel whole and the third is half of each neighbour.
+  static int cx[512],wx[512],cy[384],wy[384];
+  static bool spansReady=false;
+  if(!spansReady){
+    auto spans=[](int n,int source,int* first,int* share){
+      for(int i=0;i<n;++i){
+        const int a=i*source*256/n, b=(i+1)*source*256/n, edge=(a/256+1)*256;
+        first[i]=std::min(a/256,source-1);
+        share[i]=b<=edge?256:(edge-a)*256/(b-a);
+      }
+    };
+    spans(512,341,cx,wx);spans(384,256,cy,wy);
+    spansReady=true;
+  }
   for(unsigned y=0;y<384;++y)for(unsigned x=0;x<512;++x){
     uint32_t base=stage[y*512+x]&0xffffff;
     base=(base&0xfefefe)>>1;
-    uint32_t p=quick_pixels[(y*256/384)*341+x*341/512];
-    if(p!=QUICK_CLEAR){unsigned a=p>>24;
-      unsigned r=(((p>>16)&255)*a+((base>>16)&255)*(255-a))/255;
-      unsigned g=(((p>>8)&255)*a+((base>>8)&255)*(255-a))/255;
-      unsigned b=((p&255)*a+(base&255)*(255-a))/255;
-      base=(r<<16)|(g<<8)|b;
+    // The covered menu pixels' colour and alpha, summed by share (a clear pixel adds nothing).
+    unsigned r=0,g=0,b=0,a=0;
+    auto add=[&](int sx,int sy,unsigned share){
+      const uint32_t p=quick_pixels[sy*341+sx];
+      if(!share || p==QUICK_CLEAR)return;
+      const unsigned alpha=(p>>24)*share;
+      r+=((p>>16)&255)*alpha;g+=((p>>8)&255)*alpha;b+=(p&255)*alpha;a+=alpha;
+    };
+    const int x1=std::min(cx[x]+1,340),y1=std::min(cy[y]+1,255);
+    const unsigned sx=wx[x],sy=wy[y];
+    add(cx[x],cy[y],sx*sy);add(x1,cy[y],(256-sx)*sy);add(cx[x],y1,sx*(256-sy));add(x1,y1,(256-sx)*(256-sy));
+    if(a){
+      // [a] is alpha (0-255) times share (0-65536); colours are already multiplied by it.
+      const unsigned keep=255u*65536u-a;
+      const auto over=[&](unsigned top,unsigned under){return unsigned((uint64_t(top)+uint64_t(under)*keep)/(255u*65536u));};
+      base=(over(r,(base>>16)&255)<<16)|(over(g,(base>>8)&255)<<8)|over(b,base&255);
     }
     quick_stage[y*512+x]=base;
   }
   submit(quick_stage,512,384);
 }
+bool stripShown=false;
+void draw_strip(uint32_t* out);
+void draw_overlay(uint32_t* out){
+  if(stripShown)draw_strip(out);
+  if(noticeFrames)draw_notice(out);
+}
 void draw_strip(uint32_t* out){
-  const int focus=drawnBattle.panel==DsBattlePanel::Moves?battleStrip.moveFocus:battleStrip.actionFocus;
-  ds_draw_battle_strip(out,*battleStyle,drawnBattle,battleName,focus,
-                       battleActive&&!battleStrip.tapFrames,tick,
-                       battlePanelArtValid?battlePanelArt.data():nullptr);
+  const bool moves=drawnBattle.panel==DsBattlePanel::Moves;
+  // A tap in flight shows on the plate it lands on: B's is the move panel's back plate.
+  const bool pressed=battleStrip.tapFrames>0;
+  const int focus=!moves?battleStrip.actionFocus:pressed&&battleStrip.cancelingMove?4:battleStrip.moveFocus;
+  ds_draw_battle_strip(out,*battleStyle,drawnBattle,battleName,focus,battleActive&&!pressed,tick,
+                       battlePanelArtValid?battlePanelArt.data():nullptr,pressed);
 }
 void present_frame(const void* data);
 void present(const void* data,unsigned,unsigned,size_t) {
@@ -746,8 +805,10 @@ void present_frame(const void* data) {
   const unsigned w=512,h=384;
   const bool showStrip=holdStrip>0 && !scene.dark && arrangement.top.w==512 && wants_strip();
   const double c0=perfOn?perf_now():0;
+  stripShown=showStrip;
   ds_compose(stage,arrangement,nds->gpu.framebuffer(0),nds->gpu.framebuffer(1),
-             fieldValid?fieldFrame:nullptr,showStrip?draw_strip:nullptr,&backdrop,fieldRevision);
+             fieldValid?fieldFrame:nullptr,showStrip||noticeFrames?draw_overlay:nullptr,&backdrop,fieldRevision);
+  if(noticeFrames)--noticeFrames;
   stageReady=true;stageMarked=false;
   geometry(w,h);
   if(perfOn)perfCompose+=perf_now()-c0;

@@ -12,6 +12,17 @@ controls and save paths.
 Platinum's One Screen move cards draw the game's native lettering, type badge,
 and PP at an integer scale in the 512×384 frame.
 
+The One Screen battle strip follows each game's own touch screen: Platinum's
+plates and cards are the game's pixels, HeartGold / SoulSilver's and the Unova
+games' are drawn to match (the framed two-tone card; the hexagon plates, blunt
+in Black / White and sharper in the sequels). Every card's lower row is the
+type badge, "PP" and the count, at 2x; a move out of PP stays readable with a
+red count. The cursor is Platinum's red corner brackets: it pulses, and a press
+dips the plate under it. The party's ball row, and a trainer's, sit under the
+prompt. A quick-menu action's answer ("No one in your party knows Fly.") is
+drawn by the core for two seconds, since not every frontend shows a core's
+messages.
+
 ## Desktop checks
 
 ```sh

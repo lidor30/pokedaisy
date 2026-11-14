@@ -242,6 +242,43 @@ void ds_read_battle_companion(const PkNdsFieldGame* game,uint32_t (*read32)(uint
   if(out.foeActive>=out.foeCount)out.foeActive=-1;
 }
 
+// The ball rows are the companion's battle read, a ball to a slot. Gen 4 fights on its own copy of the party
+// (BattleSystem.parties[0], beside the foe's at +0x6c) and writes it back afterwards, so a benched Pokemon's faint or
+// status is only there until the battle ends.
+void ds_read_battle_balls(const PkNdsFieldGame* game,uint32_t (*read32)(uint32_t),
+                          const uint8_t* ram,size_t ramSize,const DsCompanion& save,DsBattleView& view) {
+  view.balls=false;
+  view.partyBalls={};view.foeBalls={};
+  pd_snapshot info;
+  ds_read_battle_companion(game,read32,ram,ramSize,save,info);
+  if(!info.valid)return;
+  auto state=[](int species,int hp,uint32_t status)->uint8_t {return !species?0:hp<=0?3:status?2:1;};
+  for(int i=0;i<info.partyCount;++i)
+    view.partyBalls[i]=state(info.party[i].species,info.party[i].egg?1:info.party[i].hp,info.party[i].status);
+  if(game->gen!=5){
+    const auto system=gen4_battle_system(game,read32);
+    const auto party=in_ram(system,0x6c)?read32(system+0x68):0;
+    if(in_ram(party,8) && int(read32(party+4))==info.partyCount)
+      for(int i=0;i<info.partyCount;++i){
+        const size_t offset=party+8+i*monSize-0x02000000;
+        DsMon mon;
+        if(offset+monSize>ramSize || !ds_decode_mon(ram+offset,monSize,mon,save.game))break;
+        if(mon.species!=info.party[i].species)break;
+        // The Pokemon out front is fresher in its battler than in either party.
+        if(mon.personality==info.party[i].personality && info.party[i].species==info.battlers[PD_POS_PLAYER_LEFT].species &&
+           view.personality==mon.personality)continue;
+        view.partyBalls[i]=state(mon.species,mon.egg?1:mon.hp,mon.status);
+      }
+  }
+  for(int i=0;i<info.foeCount;++i){
+    const auto& foe=info.foes[i];
+    const bool out=i==info.foeActive;
+    const auto& live=info.battlers[PD_POS_OPPONENT_LEFT];
+    view.foeBalls[i]=out?state(live.species,live.hp,live.status):state(foe.species,foe.hp,foe.status);
+  }
+  view.balls=true;
+}
+
 const char* ds_battle_species(const DsBattleView& view){
   return view.gen5?unovaSpecies[view.species]:species[view.species];
 }
