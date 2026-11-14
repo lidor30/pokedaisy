@@ -56,6 +56,8 @@ import androidx.compose.ui.platform.LocalDensity
 import com.pokedaisy.app.companion.data.GENDER_SYMBOL_FEMALE
 import com.pokedaisy.app.companion.data.GENDER_SYMBOL_MALE
 import com.pokedaisy.app.companion.data.MonStats
+import com.pokedaisy.app.companion.data.abilityForSlot
+import com.pokedaisy.app.companion.data.abilitySlotReadable
 import com.pokedaisy.app.companion.data.MonView
 import com.pokedaisy.app.companion.data.MoveView
 import com.pokedaisy.app.companion.data.PokedexSource
@@ -380,18 +382,17 @@ internal fun NavButton(
 /** [mon]'s own ability: Gen 3's aptitude bit picks one of its species' two, read from the dex tables off the UI thread. */
 @Composable
 private fun individualAbility(mon: MonView, stats: MonStats, tables: PokedexTables?): String? {
-    if (tables == null) return null
-    // Formats that don't read the bit (Elite Redux, R.O.W.E.) leave it null: say nothing rather than guess the first.
+    if (tables == null || mon.isEgg) return null
+    // Formats that don't read the bit (Elite Redux, R.O.W.E.) leave it null, and games with hidden abilities keep the
+    // slot elsewhere: say nothing rather than guess.
     val slot = stats.abilityNum ?: return null
+    if (!abilitySlotReadable(tables)) return null
     return rememberLoaded(
         tables, mon.species, slot,
         cached = { null },
         load = {
             val national = PokedexSource.nationalOf(tables, mon.species)
-            val names = if (national > 0) {
-                PokedexSource.entry(tables, national)?.abilities.orEmpty().filter { it.isNotBlank() }
-            } else emptyList()
-            names.getOrNull(slot) ?: names.firstOrNull()
+            if (national > 0) PokedexSource.entry(tables, national)?.abilities?.let { abilityForSlot(it, slot) } else null
         },
     )
 }
