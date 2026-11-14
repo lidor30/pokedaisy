@@ -1,7 +1,9 @@
 package com.pokedaisy.app.companion.data
 
 import org.junit.Assert.assertEquals
+import org.junit.Assert.assertFalse
 import org.junit.Assert.assertNull
+import org.junit.Assert.assertTrue
 import org.junit.Test
 
 /**
@@ -53,6 +55,26 @@ class MonStatsTest {
         raw[0x20] = 1 // plaintext species 1
         activeGame = GameKind.LAZARUS
         assertEquals(5, decodePartyMon(raw, 0)!!.stats!!.nature)
+    }
+
+    @Test
+    fun `the ability bit - read, and named only where the engine has no hidden abilities`() {
+        activeGame = GameKind.FIRERED
+        val party = decodeNative("firered_vanilla", NATIVE_FIRERED_REV1).party
+        // The IV word's top bit: KADABRA (64) is on its second ability; 412 is an egg (the summary leaves it out).
+        assertEquals(listOf(0, 1, 0, 0, 1, 0), party.map { it.stats?.abilityNum })
+        assertTrue(abilitySlotReadable(POKEDEX_FIRERED_REV1, GameKind.FIRERED))
+        assertTrue(abilitySlotReadable(POKEDEX_EMERALD, GameKind.EMERALD))
+        // CFRU keeps hidden abilities apart, the expansion has a two-bit slot: the bit alone could name the wrong one.
+        assertFalse(abilitySlotReadable(POKEDEX_UNBOUND, GameKind.UNBOUND))
+        assertFalse(abilitySlotReadable(POKEDEX_RADICAL_RED, GameKind.RADICAL_RED))
+        assertFalse(abilitySlotReadable(POKEDEX_IMPERIUM, GameKind.IMPERIUM))
+        assertFalse(abilitySlotReadable(POKEDEX_EMERALD, GameKind.LAZARUS))
+        // The game's rule: slot 1 with no second ability is the first.
+        assertEquals("B", abilityForSlot(listOf("A", "B"), 1))
+        assertEquals("A", abilityForSlot(listOf("A"), 1))
+        assertEquals("A", abilityForSlot(listOf("A", ""), 1))
+        assertNull(abilityForSlot(emptyList(), 0))
     }
 
     @Test

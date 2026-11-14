@@ -1,10 +1,23 @@
+import org.jetbrains.kotlin.gradle.dsl.JvmTarget
 import org.jetbrains.kotlin.gradle.tasks.KotlinCompile
 
 // The app's data layer + Android shims, in its own module so its huge
 // generated tables compile once instead of on every UI edit.
 plugins {
     kotlin("jvm")
-    id("org.jetbrains.compose")
+    kotlin("plugin.compose")
+}
+
+// Compose Multiplatform's libraries, by coordinates (the root module uses the same version): its Gradle plugin
+// isn't applied, the Compose compiler is Kotlin's own.
+val cmp: String by rootProject.extra
+val desktopTarget = System.getProperty("os.name").lowercase().let { os ->
+    val arm = System.getProperty("os.arch").let { it == "aarch64" || it == "arm64" }
+    when {
+        os.contains("mac") -> if (arm) "macos-arm64" else "macos-x64"
+        os.contains("win") -> "windows-x64"
+        else -> if (arm) "linux-arm64" else "linux-x64"
+    }
 }
 
 val app = rootDir.resolve("../app/src/main/kotlin/com/pokedaisy/app")
@@ -79,11 +92,11 @@ tasks.withType<KotlinCompile>().configureEach {
     } else {
         source(appSrc)
     }
-    kotlinOptions.jvmTarget = "17"
+    compilerOptions.jvmTarget.set(JvmTarget.JVM_17)
 }
 java { sourceCompatibility = JavaVersion.VERSION_17; targetCompatibility = JavaVersion.VERSION_17 }
 dependencies {
-    api(compose.desktop.currentOs)
+    api("org.jetbrains.compose.desktop:desktop-jvm-$desktopTarget:$cmp")
     // The co-op invite as a QR code (CoopQr).
     implementation("com.google.zxing:core:3.5.3")
     // CoopPairs reads and writes pairs.json.

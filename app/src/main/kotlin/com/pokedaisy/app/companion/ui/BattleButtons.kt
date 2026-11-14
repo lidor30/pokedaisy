@@ -187,7 +187,9 @@ private const val EDGE = 13
 
 // FIGHT's / POKéMON's lists, in GBA pixels at the scale [BattleList] picks: list width (with [EDGE]), row height, gap.
 private const val MOVE_LIST_W = 196
-private const val MOVE_ROW = 34
+// A move row holds two lines (16 + 12) inside PlatinumButton's HeartGold frame (four 1.5 dp layers: ~4.8 a side here):
+// at 34 the second line (type, power, verdict) was cut off.
+private const val MOVE_ROW = 38
 private const val MOVE_GAP = 3
 private const val PARTY_LIST_W = 192
 private const val PARTY_ROW = 34

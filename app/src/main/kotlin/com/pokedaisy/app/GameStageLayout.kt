@@ -111,7 +111,7 @@ class GameStageLayout(
      * windowRecomposer" - issue #31, PortraitPanel enabled from onResume); its first layout corrects it. */
     fun gameHeightFor(width: Int): Int {
         val b = if (!barShown || !bar.isAttachedToWindow) 0 else bar.measuredHeight.takeIf { it > 0 } ?: run {
-            bar.measure(MeasureSpec.makeMeasureSpec(width, MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
+            bar.measure(MeasureSpec.makeMeasureSpec(width.coerceAtLeast(0), MeasureSpec.AT_MOST), MeasureSpec.makeMeasureSpec(0, MeasureSpec.UNSPECIFIED))
             bar.measuredHeight
         }
         return (width / aspect).toInt() + b
@@ -150,8 +150,10 @@ class GameStageLayout(
         if (!topAligned && measureSkin()) return
         if (!barShown && !topAligned) return
         val lp = game.layoutParams as LayoutParams
-        val areaW = measuredWidth - lp.leftMargin - lp.rightMargin
-        val areaH = measuredHeight - lp.topMargin - lp.bottomMargin
+        // Margins can outgrow the stage for a pass (an upright companion's bottom margin still set as the phone turns
+        // sideways): a negative size made a MeasureSpec of 2^30 - 281, which the bar's ComposeView threw on (Crashlytics).
+        val areaW = (measuredWidth - lp.leftMargin - lp.rightMargin).coerceAtLeast(0)
+        val areaH = (measuredHeight - lp.topMargin - lp.bottomMargin).coerceAtLeast(0)
         barH = if (barShown) {
             bar.measure(
                 MeasureSpec.makeMeasureSpec(areaW, MeasureSpec.AT_MOST),

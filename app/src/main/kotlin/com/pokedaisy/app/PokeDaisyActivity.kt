@@ -3797,7 +3797,9 @@ class PokeDaisyActivity : Activity() {
      */
     private fun moveToDisplay(displayId: Int) {
         movingSince = android.os.SystemClock.uptimeMillis()
-        if (!Screens.moveToDisplay(this, displayId)) movingSince = 0L
+        val moved = Screens.moveToDisplay(this, displayId)
+        if (!moved) movingSince = 0L
+        CrashReports.breadcrumb("move to display $displayId: ${if (moved) "asked" else "refused"}")
     }
 
     /** When [moveToDisplay] asked Android to move this activity (0 = not moving). */
@@ -3824,6 +3826,7 @@ class PokeDaisyActivity : Activity() {
     private val refocus = Runnable {
         if (isFinishing || hasWindowFocus()) return@Runnable
         Log.i("pokedaisy", "no focus after a display move: asking again")
+        CrashReports.breadcrumb("no focus after a display move: asking again")
         window.addFlags(android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE)
         window.decorView.post { window.clearFlags(android.view.WindowManager.LayoutParams.FLAG_NOT_FOCUSABLE) }
     }
@@ -3831,6 +3834,7 @@ class PokeDaisyActivity : Activity() {
     // A move between two screens of one size changes no configuration; the moved activity gets the focus.
     override fun onWindowFocusChanged(hasFocus: Boolean) {
         super.onWindowFocusChanged(hasFocus)
+        CrashReports.breadcrumb("game window focus: $hasFocus (display ${Screens.displayOf(this)})")
         if (hasFocus) followDisplay()
     }
 

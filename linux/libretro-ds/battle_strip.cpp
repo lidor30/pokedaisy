@@ -104,6 +104,10 @@ DsBattleView read_gen5(const PkNdsFieldGame* game,uint32_t (*read32)(uint32_t)) 
   result.species=read32(mon+0x0c)&0xffff;
   if(result.species<1 || result.species>=int(std::size(unovaSpecies)))return {};
   result.panel=panel==1?DsBattlePanel::Actions:DsBattlePanel::Moves;
+  // BTL_POKEPARAM's id (Gen5Reader's GEN5_POKE_ID): the place in the party it came from, the player's 0 to 5. A
+  // switch reorders the battle's own array, not this.
+  const auto id=(read32(mon+0x18)>>8)&0xff;
+  if(id<6)result.partySlot=int(id);
   for(int slot=0;slot<4;++slot){
     const auto offset=0x104+slot*14;
     const auto id=(read32(mon+(offset&~3u))>>((offset&3)*8))&0xffff;
@@ -236,6 +240,61 @@ void ds_read_battle_companion(const PkNdsFieldGame* game,uint32_t (*read32)(uint
   }
   out.foeCount=int(count);
   if(out.foeActive>=out.foeCount)out.foeActive=-1;
+}
+
+// The ball rows are the companion's battle read, a ball to a slot. Gen 4 fights on its own copy of the party
+// (BattleSystem.parties[0], beside the foe's at +0x6c) and writes it back afterwards, so a benched Pokemon's faint or
+// status is only there until the battle ends.
+void ds_read_battle_balls(const PkNdsFieldGame* game,uint32_t (*read32)(uint32_t),
+                          const uint8_t* ram,size_t ramSize,const DsCompanion& save,DsBattleView& view) {
+  view.balls=false;
+  view.partyBalls={};view.foeBalls={};
+  pd_snapshot info;
+  ds_read_battle_companion(game,read32,ram,ramSize,save,info);
+  if(!info.valid)return;
+  auto state=[](int species,int hp,uint32_t status)->uint8_t {return !species?0:hp<=0?3:status?2:1;};
+  for(int i=0;i<info.partyCount;++i)
+    view.partyBalls[i]=state(info.party[i].species,info.party[i].egg?1:info.party[i].hp,info.party[i].status);
+  if(game->gen!=5){
+    const auto system=gen4_battle_system(game,read32);
+    const auto party=in_ram(system,0x6c)?read32(system+0x68):0;
+    if(in_ram(party,8) && int(read32(party+4))==info.partyCount)
+      for(int i=0;i<info.partyCount;++i){
+        const size_t offset=party+8+i*monSize-0x02000000;
+        DsMon mon;
+        if(offset+monSize>ramSize || !ds_decode_mon(ram+offset,monSize,mon,save.game))break;
+        if(mon.species!=info.party[i].species)break;
+        // The Pokemon out front is fresher in its battler than in either party.
+        if(mon.personality==info.party[i].personality && info.party[i].species==info.battlers[PD_POS_PLAYER_LEFT].species &&
+           view.personality==mon.personality)continue;
+        view.partyBalls[i]=state(mon.species,mon.egg?1:mon.hp,mon.status);
+      }
+  }
+  for(int i=0;i<info.foeCount;++i){
+    const auto& foe=info.foes[i];
+    const bool out=i==info.foeActive;
+    const auto& live=info.battlers[PD_POS_OPPONENT_LEFT];
+    view.foeBalls[i]=out?state(live.species,live.hp,live.status):state(foe.species,foe.hp,foe.status);
+  }
+  if(game->gen==5){
+    // Gen 5's save record and the setup's foe party stay as the battle began, so a benched faint never showed there.
+    // Gen5Reader.Gen5Battle's parties: the main module's two clients, 0x1c bytes each, a BTL_POKEPARAM for every place
+    // in the battle's order (a switch reorders them), each with its live HP (+0x10) and its place in the party it came
+    // from (+0x19; the foe's from 12). A place with no battler keeps the save's (or the setup's) reading.
+    const auto proc=gen5_battle_proc(game,read32);
+    const auto main=proc?read32(proc+game->offProcWork):0;
+    if(in_ram(main,0xcc+2*0x1c))
+      for(int client=0;client<2;++client)for(int i=0;i<6;++i){
+        const auto mon=read32(main+0xcc+client*0x1c+4*i);
+        if(!in_ram(mon,0x18))continue;
+        const int speciesId=read32(mon+0x0c)&0xffff;
+        const int slot=int((read32(mon+0x18)>>8)&0xff)%6;
+        const auto& known=client?info.foes[slot]:info.party[slot];
+        if(slot>=(client?info.foeCount:info.partyCount) || !speciesId || known.species!=speciesId || known.egg)continue;
+        (client?view.foeBalls:view.partyBalls)[slot]=state(speciesId,int(read32(mon+0x10)&0xffff),known.status);
+      }
+  }
+  view.balls=true;
 }
 
 const char* ds_battle_species(const DsBattleView& view){

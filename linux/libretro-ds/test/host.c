@@ -7,12 +7,17 @@
 #include <stdlib.h>
 #include <string.h>
 static unsigned fmt, w,h, frame,mask;
+// The enhanced core adds its own options (pokedaisy_ds_layout); the stock wrapper does not. Its block below runs in
+// either pixel format: PD_ONLY565=1 makes this a frontend that takes RGB565 alone.
+static bool enhanced;
 static unsigned char image[512*384*4];
 static const char* directory;
 static bool env(unsigned cmd,void* p){
  switch(cmd){
- case RETRO_ENVIRONMENT_SET_VARIABLES:return true;
- case RETRO_ENVIRONMENT_SET_PIXEL_FORMAT:fmt=*(unsigned*)p;return fmt==1||fmt==2;
+ case RETRO_ENVIRONMENT_SET_VARIABLES:
+  for(const struct retro_variable* v=p;v&&v->key;++v)if(!strcmp(v->key,"pokedaisy_ds_layout"))enhanced=true;
+  return true;
+ case RETRO_ENVIRONMENT_SET_PIXEL_FORMAT:fmt=*(unsigned*)p;return getenv("PD_ONLY565")?fmt==2:(fmt==1||fmt==2);
  case RETRO_ENVIRONMENT_SET_GEOMETRY:return true;
  case RETRO_ENVIRONMENT_GET_SAVE_DIRECTORY:
  case RETRO_ENVIRONMENT_GET_SYSTEM_DIRECTORY:*(const char**)p=directory;return true;
@@ -70,7 +75,10 @@ int main(int argc,char** argv){
  void* before=malloc(ramsize);memcpy(before,ram,ramsize);
  // States restore RAM exactly and retain the frontend's save pointer.
  for(int i=0;i<5;++i)retro_run_fn();assert(retro_unserialize_fn(state,n));assert(!memcmp(before,ram,ramsize));assert(save==retro_get_memory_data_fn(RETRO_MEMORY_SAVE_RAM));
- if(fmt==2){
+ // PD_EXPECT_ENHANCED: this run is the enhanced core, so its block must run.
+ if(getenv("PD_EXPECT_ENHANCED"))assert(enhanced);
+ if(getenv("PD_ONLY565"))assert(fmt==2);
+ if(enhanced){
   mask=(1u<<RETRO_DEVICE_ID_JOYPAD_SELECT)|(1u<<RETRO_DEVICE_ID_JOYPAD_L2);retro_run_fn();mask=0;retro_run_fn();assert(w==512&&h==384);assert(!memcmp(before,ram,ramsize));ppm(directory,"quick-ring");
   mask=1u<<RETRO_DEVICE_ID_JOYPAD_A;retro_run_fn();mask=0;retro_run_fn();assert(w==341&&h==256);assert(!memcmp(before,ram,ramsize));ppm(directory,"party");
   for(int i=0;i<3;++i){mask=1u<<RETRO_DEVICE_ID_JOYPAD_R;retro_run_fn();mask=0;retro_run_fn();ppm(directory,i==0?"bag":i==1?"map":"dex");}
@@ -111,5 +119,5 @@ int main(int argc,char** argv){
  }
  assert(!retro_unserialize_fn(state,3));
  free(before);free(state);retro_unload_game_fn();retro_deinit_fn();dlclose(so);
- printf("PASS frames=%u format=%u save_bytes=%zu state_bytes=%zu\n",frames,fmt,saves,n);
+ printf("PASS frames=%u format=%u enhanced=%d save_bytes=%zu state_bytes=%zu\n",frames,fmt,enhanced?1:0,saves,n);
 }

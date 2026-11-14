@@ -92,8 +92,8 @@ private fun MoveListRow(
         // The callback's cursor row: a gold frame (the party list's cursor is its selected colours).
         frame = if (cursor && mv != null) SuggestGold else mv?.let { AppColors.typeColors[it.type] } ?: AppColors.slotFrame,
         modifier = modifier, enabled = enabled, pressesGame = onPick == null,
-        // Clear of the bevel's side bands.
-        contentPadding = PaddingValues(start = u * 9, end = u * 4 + edge, top = u * 2, bottom = u * 2),
+        // Clear of the bevel's side bands; top and bottom, the frame's own layers are the margin.
+        contentPadding = PaddingValues(start = u * 9, end = u * 4 + edge),
         onClick = { if (onPick != null) onPick(index) else battleInput?.selectMove(index) },
     ) {
         if (mv == null) {
