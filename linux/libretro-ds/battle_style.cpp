@@ -192,6 +192,10 @@ void bracket(pd_canvas& canvas,int x,int y,int dx,int dy,int arm){
 
 void corners(pd_canvas& canvas,Rect r,int out,int hexCut){
   const int arm=std::min(16,r.h/3)&~1;
+  // The bottom row's plates end at the frame's foot (the back plate at its last row): a bracket stands off only as far
+  // as the frame has room on that side, so it is drawn whole there instead of cut off by the edge.
+  const int top=std::clamp(r.y,0,out), bottom=std::clamp(canvas.h-r.y-r.h,0,out);
+  const int left=std::clamp(r.x,0,out), right=std::clamp(canvas.w-r.x-r.w,0,out);
   if(hexCut){
     // A hexagonal plate: along its top and bottom from where the ends lean in, then down each slanted end.
     constexpr int thick=cursorThick;
@@ -199,23 +203,25 @@ void corners(pd_canvas& canvas,Rect r,int out,int hexCut){
       const uint32_t color=pass?cursorRed:cursorDark;
       const int grow=pass?0:1;
       for(int sy:{0,1}){
-        const int y=sy?r.y+r.h-thick+out:r.y-out;
-        pd_fill(&canvas,r.x+hexCut-out-grow,y-grow,arm+2*grow,thick+2*grow,color);
-        pd_fill(&canvas,r.x+r.w-hexCut+out-arm-grow,y-grow,arm+2*grow,thick+2*grow,color);
+        // Along the slope: the same step out and down (or up), so the bracket keeps the plate's angle.
+        const int o=std::min({sy?bottom:top,left,right});
+        const int y=sy?r.y+r.h-thick+o:r.y-o;
+        pd_fill(&canvas,r.x+hexCut-o-grow,y-grow,arm+2*grow,thick+2*grow,color);
+        pd_fill(&canvas,r.x+r.w-hexCut+o-arm-grow,y-grow,arm+2*grow,thick+2*grow,color);
         for(int i=0;i<arm;++i){
           const int row=sy?r.h-1-i:i;
-          const int in=hex_inset(row,r.h,hexCut)-out;
-          pd_fill(&canvas,r.x+in-grow,r.y+row+(sy?out:-out)-grow,thick+2*grow,1+2*grow,color);
-          pd_fill(&canvas,r.x+r.w-in-thick-grow,r.y+row+(sy?out:-out)-grow,thick+2*grow,1+2*grow,color);
+          const int in=hex_inset(row,r.h,hexCut)-o;
+          pd_fill(&canvas,r.x+in-grow,r.y+row+(sy?o:-o)-grow,thick+2*grow,1+2*grow,color);
+          pd_fill(&canvas,r.x+r.w-in-thick-grow,r.y+row+(sy?o:-o)-grow,thick+2*grow,1+2*grow,color);
         }
       }
     }
     return;
   }
-  bracket(canvas,r.x-out,r.y-out,1,1,arm);
-  bracket(canvas,r.x+r.w-1+out,r.y-out,-1,1,arm);
-  bracket(canvas,r.x-out,r.y+r.h-1+out,1,-1,arm);
-  bracket(canvas,r.x+r.w-1+out,r.y+r.h-1+out,-1,-1,arm);
+  bracket(canvas,r.x-left,r.y-top,1,1,arm);
+  bracket(canvas,r.x+r.w-1+right,r.y-top,-1,1,arm);
+  bracket(canvas,r.x-left,r.y+r.h-1+bottom,1,-1,arm);
+  bracket(canvas,r.x+r.w-1+right,r.y+r.h-1+bottom,-1,-1,arm);
 }
 
 // A pressed plate: everything on it a step darker for the frames the tap is held, as the games' buttons dip.

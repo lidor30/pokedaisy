@@ -321,14 +321,17 @@ void choose_layout() {
   else if(inBattle || (fieldScreen&&!(bits&PK_NDS_FIELD_LOCKED)&&!topBlank))fieldMenuFlow=false;
   if(topBlank&&!bottomBlank)bits|=PK_NDS_FIELD_TOUCH;
   const auto view=battle_view(bits);
+  const bool stripWasUp=battleActive;
   battleActive=view.panel!=DsBattlePanel::Native;
   if(battleActive){
-    if(drawnBattle.panel!=view.panel || drawnBattle.personality!=view.personality ||
+    const bool changed=drawnBattle.panel!=view.panel || drawnBattle.personality!=view.personality ||
        drawnBattle.partySlot!=view.partySlot || drawnBattle.species!=view.species ||
        (view.panel==DsBattlePanel::Moves &&
-        (drawnBattle.moves!=view.moves || drawnBattle.pp!=view.pp))){
-      battlePanelArtValid=false;
-      // The ball rows change with the turn, and the command panel comes up once a turn: read them then.
+        (drawnBattle.moves!=view.moves || drawnBattle.pp!=view.pp));
+    if(changed)battlePanelArtValid=false;
+    // The ball rows change with the turn, and the command panel comes up once a turn: read them then, and whenever it
+    // comes back after the strip was away (a turn spent in the bag or on a failed run never opens the moves).
+    if(changed || !stripWasUp){
       battleBalls=view;
       if(view.panel==DsBattlePanel::Actions && companionGame!=DsGame::Unsupported)
         ds_read_battle_balls(game,read32,nds->bus.main_ram.get(),nds->bus.main_ram_size(),
@@ -755,14 +758,13 @@ void draw_quick() {
     }
     quick_stage[y*512+x]=base;
   }
+  // A refused action leaves the menu open: its answer goes over the menu.
+  if(noticeFrames)draw_notice(quick_stage);
   submit(quick_stage,512,384);
 }
-bool stripShown=false;
-void draw_strip(uint32_t* out);
-void draw_overlay(uint32_t* out){
-  if(stripShown)draw_strip(out);
-  if(noticeFrames)draw_notice(out);
-}
+// An overlay that draws nothing: while a notice is up, it keeps ds_compose from holding a popup's backdrop (the notice is
+// drawn into stage after it, and a held backdrop would keep it there once it is over).
+void keep_composing(uint32_t*){}
 void draw_strip(uint32_t* out){
   const bool moves=drawnBattle.panel==DsBattlePanel::Moves;
   // A tap in flight shows on the plate it lands on: B's is the move panel's back plate.
@@ -805,10 +807,8 @@ void present_frame(const void* data) {
   const unsigned w=512,h=384;
   const bool showStrip=holdStrip>0 && !scene.dark && arrangement.top.w==512 && wants_strip();
   const double c0=perfOn?perf_now():0;
-  stripShown=showStrip;
   ds_compose(stage,arrangement,nds->gpu.framebuffer(0),nds->gpu.framebuffer(1),
-             fieldValid?fieldFrame:nullptr,showStrip||noticeFrames?draw_overlay:nullptr,&backdrop,fieldRevision);
-  if(noticeFrames)--noticeFrames;
+             fieldValid?fieldFrame:nullptr,showStrip?draw_strip:noticeFrames?keep_composing:nullptr,&backdrop,fieldRevision);
   stageReady=true;stageMarked=false;
   geometry(w,h);
   if(perfOn)perfCompose+=perf_now()-c0;
@@ -943,6 +943,9 @@ void present_frame(const void* data) {
     }
   }
   if(perfOn)perfHud+=perf_now()-h0;
+  // A notice goes over everything (a floating popup's dim, DS_BOTTOM's touch screen, the HUD), and marks the stage: the
+  // quick menu composes it again before it opens over it.
+  if(noticeFrames){draw_notice(stage);stageMarked=true;}
   presentedField=true;
   presentedArrangement=arrangement;
   submit(stage,w,h);
@@ -1236,7 +1239,7 @@ RETRO_API bool retro_load_game(const retro_game_info* info){
   return true;
 }
 RETRO_API void retro_reset(){
-  pd_ds::clear_battle();pd_ds::reset_skip();
+  pd_ds::clear_battle();pd_ds::reset_skip();pd_ds::noticeFrames=0;
   ds_reset();pd_ds::clear_hud_focus();pd_ds::stageReady=false;pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;
 }
 RETRO_API bool retro_unserialize(const void* data,size_t n){
@@ -1254,7 +1257,7 @@ RETRO_API bool retro_unserialize(const void* data,size_t n){
     if(!dirty)nds->cart->clear_sram_dirty();
     if(sram.data()!=frontendSave)log(RETRO_LOG_WARN,"PokeDaisy DS: the save buffer moved on a state load\n");
   }
-  if(ok){pd_ds::reset_skip();pd_ds::shell.battle={};pd_ds::shell.update_battle();pd_ds::stageReady=false;pd_ds::restoreGrace=4;pd_ds::set_wild_rates();}
+  if(ok){pd_ds::reset_skip();pd_ds::noticeFrames=0;pd_ds::shell.battle={};pd_ds::shell.update_battle();pd_ds::stageReady=false;pd_ds::restoreGrace=4;pd_ds::set_wild_rates();}
   if(ok){pd_ds::clear_hud_focus();pd_ds::clear_field_actions();pd_ds::flyJob={};pd_ds::flyPicker=pd_ds::heldQuickConfirm=false;pd_ds::companion=pd_ds::quickOpen=false;pd_ds::shell.picker=-1;pd_ds::shell.summary=false;pd_ds::shell.details=false;pd_ds::shell.dexEntry=0;pd_ds::shell.guideLoadedPage=-1;pd_ui_guide_reset(&pd_ds::shell.frame);pd_ds::shell.placeRow=pd_ds::shell.mapAction=-1;pd_ds::screen_override=0;pd_ds::snapshot={};pd_ds::repelFull=0;pd_ds::tick=0;pd_ds::scene.reset();pd_ds::arrangement={};pd_ds::manualTouch=pd_ds::fieldValid=pd_ds::fieldMenuFlow=false;pd_ds::companionHold=0;}
   return ok;
 }
@@ -1306,5 +1309,7 @@ RETRO_API void retro_run(){
     pd_ds::swallowMenuInput=false;
     ++pd_ds::tick;
   }
+  // Once a frame, whichever way it was drawn (the quick menu, the companion, a frame DSperate skipped).
+  if(pd_ds::noticeFrames)--pd_ds::noticeFrames;
 }
 }

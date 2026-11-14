@@ -276,6 +276,24 @@ void ds_read_battle_balls(const PkNdsFieldGame* game,uint32_t (*read32)(uint32_t
     const auto& live=info.battlers[PD_POS_OPPONENT_LEFT];
     view.foeBalls[i]=out?state(live.species,live.hp,live.status):state(foe.species,foe.hp,foe.status);
   }
+  if(game->gen==5){
+    // Gen 5's save record and the setup's foe party stay as the battle began, so a benched faint never showed there.
+    // Gen5Reader.Gen5Battle's parties: the main module's two clients, 0x1c bytes each, a BTL_POKEPARAM for every place
+    // in the battle's order (a switch reorders them), each with its live HP (+0x10) and its place in the party it came
+    // from (+0x19; the foe's from 12). A place with no battler keeps the save's (or the setup's) reading.
+    const auto proc=gen5_battle_proc(game,read32);
+    const auto main=proc?read32(proc+game->offProcWork):0;
+    if(in_ram(main,0xcc+2*0x1c))
+      for(int client=0;client<2;++client)for(int i=0;i<6;++i){
+        const auto mon=read32(main+0xcc+client*0x1c+4*i);
+        if(!in_ram(mon,0x18))continue;
+        const int speciesId=read32(mon+0x0c)&0xffff;
+        const int slot=int((read32(mon+0x18)>>8)&0xff)%6;
+        const auto& known=client?info.foes[slot]:info.party[slot];
+        if(slot>=(client?info.foeCount:info.partyCount) || !speciesId || known.species!=speciesId || known.egg)continue;
+        (client?view.foeBalls:view.partyBalls)[slot]=state(speciesId,int(read32(mon+0x10)&0xffff),known.status);
+      }
+  }
   view.balls=true;
 }
 

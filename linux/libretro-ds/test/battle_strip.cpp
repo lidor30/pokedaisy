@@ -253,4 +253,34 @@ int main(int argc,char** argv){
   assert(withBalls.balls && withBalls.partyBalls[0]==1 && withBalls.foeBalls[0]==0);
   ds_draw_battle_strip(stage.data(),*bwStyle,withBalls,"Latios",0,true,0);
   assert(stage!=noBalls);
+  // Gen 5's rows come from the battle's own members, which the save record isn't: a benched member that faints shows
+  // at once, at the party place its id names.
+  const auto blackMain=read32(proc+0x14);
+  uint32_t bench=0;
+  int benchSlot=-1;
+  for(int i=1;i<6 && !bench;++i){
+    const auto member=read32(blackMain+0xcc+4*i);
+    if(member<base || member-base>=ram.size()-0x20 || !(read32(member+0x0c)&0xffff))continue;
+    bench=member;benchSlot=int((read32(member+0x18)>>8)&0xff)%6;
+  }
+  assert(bench && benchSlot>=0 && benchSlot<int(blackSave.party.size()) && withBalls.partyBalls[benchSlot]!=3);
+  const auto benchHp=read32(bench+0x10);
+  write32(bench+0x10,benchHp&~0xffffu);
+  auto benchFainted=blackActions;
+  ds_read_battle_balls(black,read32,ram.data(),ram.size(),blackSave,benchFainted);
+  assert(benchFainted.balls && benchFainted.partyBalls[benchSlot]==3);
+  for(int i=0;i<6;++i)if(i!=benchSlot)assert(benchFainted.partyBalls[i]==withBalls.partyBalls[i]);
+  write32(bench+0x10,benchHp);
+  // The cursor stays inside the frame: the bottom row's brackets (focus 3, a move panel's last plate at the frame's
+  // foot) are as whole as the top row's (focus 1), in both phases of the pulse and on Unova's slanted ones too.
+  auto cursorOn=[&](const DsBattleStyle& style,const DsBattleView& at,int focus,unsigned frame){
+    std::fill(stage.begin(),stage.end(),0x808080u);
+    ds_draw_battle_strip(stage.data(),style,at,"Turtwig",focus,true,frame);
+    return cursorPixels();
+  };
+  for(unsigned frame:{0u,ds_battle_pulse_frames}){
+    assert(cursorOn(*goldStyle,johtoView,1,frame)==cursorOn(*goldStyle,johtoView,3,frame));
+    assert(cursorOn(*goldStyle,moves,1,frame)==cursorOn(*goldStyle,moves,3,frame));
+    assert(cursorOn(*bwStyle,blackMoves,1,frame)==cursorOn(*bwStyle,blackMoves,3,frame));
+  }
 }
