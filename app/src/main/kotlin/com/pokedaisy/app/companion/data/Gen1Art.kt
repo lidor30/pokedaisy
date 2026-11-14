@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
+import okio.Path
 
 /**
  * A Game Boy Pokémon game's own art, rebuilt from the player's ROM on its first
@@ -378,10 +379,10 @@ object Gen1Art {
     }
 
     /** In the background, once per ROM file: a Game Boy cart is at most a few MB. */
-    fun prefetch(filesDir: File, rom: File) {
+    fun prefetch(filesDir: File, rom: Path) {
         Thread({
             runCatching {
-                val wrote = extractTo(rom.readBytes(), RomArt.dir(filesDir))
+                val wrote = extractTo(readRomFile(rom), RomArt.dir(filesDir))
                 if (wrote.isNotEmpty()) RomArt.announce()
             }.onFailure { android.util.Log.w("pokedaisy", "Gen1Art: failed", it) }
         }, "pokedaisy-gen1-art").apply { isDaemon = true; start() }

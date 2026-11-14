@@ -1,7 +1,8 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
-import java.io.RandomAccessFile
+import okio.FileHandle
+import okio.Path
 
 /**
  * A DS game's art, rebuilt from the player's own cart like [RomArt] / [Gen2Art] (nothing of the game is bundled):
@@ -122,7 +123,7 @@ object NdsArt {
     @Volatile var names: Names? = null
 
     /** In the background, once per cart build (a marker keeps its header's game code, revision and [VERSION]). */
-    fun prefetch(filesDir: File, rom: File) {
+    fun prefetch(filesDir: File, rom: Path) {
         names = null
         OriginHeartGold.data = null
         RenegadePlatinum.data = null
@@ -162,7 +163,7 @@ object NdsArt {
     private fun portIs(code: String, rev: Int, vararg kind: GameKind) = DsPorts.of(code, rev)?.kind in kind
 
     /** Writes [rom]'s icons into [dir] if it's a cart this knows and they aren't there yet; true when it wrote any. */
-    fun extractTo(rom: File, dir: File): Boolean = RandomAccessFile(rom, "r").use { f ->
+    fun extractTo(rom: Path, dir: File): Boolean = withRomFile(rom) { f ->
         val header = f.read(0, 0x200)
         val code = asciiString(header, 0x0C, 4)
         val rev = header[0x1E].toInt() and 0xFF
@@ -252,7 +253,7 @@ object NdsArt {
      * table gives ([OriginHeartGold.ICON_PALETTES_OFFSET]); its item icons (`/a/0/1/8`, 2 x item + 2 the icon, + 3 its
      * palette: no index table, checked on its own items); HeartGold's Pokégear and bag buttons, which it kept. No DEX.
      */
-    private fun extractOrigin(f: RandomAccessFile, header: ByteArray, dir: File): Boolean {
+    private fun extractOrigin(f: FileHandle, header: ByteArray, dir: File): Boolean {
         val narc = Narc(file(f, header, "/data/pokeicon.narc") ?: return false)
         val palettes = palettes(narc.member(0))
         val iconPalettes = f.read(OriginHeartGold.ICON_PALETTES_OFFSET, OriginHeartGold.LAST_SPECIES + 1)
@@ -286,7 +287,7 @@ object NdsArt {
      * `/data/pokepic_m.narc`, eight members a species, the front first (160 x 80, linear, unscrambled: both frames) and its
      * palette next.
      */
-    private fun dexOrigin(f: RandomAccessFile, header: ByteArray, dir: File) {
+    private fun dexOrigin(f: FileHandle, header: ByteArray, dir: File) {
         val msg = Narc(file(f, header, "/a/0/2/7") ?: return)
         val text = msg.member(791)?.let { Gen4Text.lines(it) } ?: return
         val category = msg.member(803)?.let { Gen4Text.lines(it) } ?: return
@@ -353,7 +354,7 @@ object NdsArt {
     }
 
     /** Origin HeartGold's machine moves from its ARM9 ([OriginHeartGold.Data.machines]' order). */
-    private fun readMachines(f: RandomAccessFile): IntArray {
+    private fun readMachines(f: FileHandle): IntArray {
         val tm93 = f.read(OriginHeartGold.TM93_MOVES_OFFSET, 38 * 2)
         val tm01 = f.read(OriginHeartGold.TM_MOVES_OFFSET, 100 * 2)
         return IntArray(138) { if (it < 100) u16(tm01, it * 2) else u16(tm93, (it - 100) * 2) }
@@ -367,7 +368,7 @@ object NdsArt {
      * records, `/a/0/0/2`, types at 6 and 7 as HeartGold's), each move's type and power (its own `/extra/new_move_data.narc`,
      * 40 bytes a move: type 0, category 2, power 3) under the cart's move names, the type chart, the forms and the machines.
      */
-    fun readOrigin(rom: File): OriginHeartGold.Data? = RandomAccessFile(rom, "r").use { f ->
+    fun readOrigin(rom: Path): OriginHeartGold.Data? = withRomFile(rom) { f ->
         val header = f.read(0, 0x200)
         val personal = Narc(file(f, header, "/a/0/0/2") ?: return null)
         val types = HashMap<Int, SpeciesTypes>()
@@ -417,7 +418,7 @@ object NdsArt {
      * the cart's move names, its type chart (overlay 21's triples), its machines, its icon palettes and each map's wild
      * encounter rates (the map header's set in `pl_enc_data.narc`: the walking rate a u32 at 0, the surfing rate at 0xCC).
      */
-    fun readRenegade(rom: File): RenegadePlatinum.Data? = RandomAccessFile(rom, "r").use { f ->
+    fun readRenegade(rom: Path): RenegadePlatinum.Data? = withRomFile(rom) { f ->
         val header = f.read(0, 0x200)
         val personal = Narc(file(f, header, "/poketool/personal/pl_personal.narc") ?: return null)
         val types = HashMap<Int, SpeciesTypes>()
@@ -467,7 +468,7 @@ object NdsArt {
      * item icons and the zones' wild encounter rates (a zone's set, bits 0-12 of its +0x14, in `/a/1/2/7`: one 0xE8-byte
      * block, or four for the seasons, its first 7 bytes the rates).
      */
-    fun readRedux(rom: File): Black2Redux.Data? = RandomAccessFile(rom, "r").use { f ->
+    fun readRedux(rom: Path): Black2Redux.Data? = withRomFile(rom) { f ->
         val header = f.read(0, 0x200)
         val white2 = Black2Redux.which { off, len -> f.read(off, len) }?.let { it == Black2Redux.CODE_WHITE2 } ?: return null
         val personal = Narc(file(f, header, "/a/0/1/6") ?: return null)
@@ -517,7 +518,7 @@ object NdsArt {
     }
 
     /** ARM9 overlay [id] of the cart, unpacked (the overlay table at the header's 0x50; its file in the FAT). */
-    private fun overlay(f: RandomAccessFile, header: ByteArray, id: Int): ByteArray? {
+    private fun overlay(f: FileHandle, header: ByteArray, id: Int): ByteArray? {
         val table = u32(header, 0x50)
         if (id * 32 + 32 > u32(header, 0x54)) return null
         val entry = f.read(table + id * 32L, 32)
@@ -613,7 +614,7 @@ object NdsArt {
 
     /** The Redux hacks' ([Black2Redux]): Black 2's archives, their own icon palettes and item icon table (read from
      * the cart's ARM9), written apart from a retail Black 2's. */
-    private fun reduxFiles(f: RandomAccessFile, white2: Boolean): Gen5Files? {
+    private fun reduxFiles(f: FileHandle, white2: Boolean): Gen5Files? {
         val palettes = readReduxIconPalettes(f, white2)
         return GEN5_BLACK2_FILES.copy(
             icons = REDUX_ICONS, items = REDUX_ITEMS, dex = REDUX_DEX, front = REDUX_FRONT,
@@ -623,11 +624,11 @@ object NdsArt {
 
     /** The Redux hacks' party icon palettes: their ARM9's byte an icon entry, its low nibble the icon's own (the high
      * nibble its female icon's), as [iconPalettesBlack2] keeps them. */
-    private fun readReduxIconPalettes(f: RandomAccessFile, white2: Boolean): ByteArray =
+    private fun readReduxIconPalettes(f: FileHandle, white2: Boolean): ByteArray =
         f.read(Black2Redux.iconPalettesOffset(white2), Black2Redux.ICON_PALETTES_SIZE).map { (it.toInt() and 0xF).toByte() }.toByteArray()
 
     /** The Redux hacks' item icons: their ARM9's (graphics, palette) pairs for the items Black 2 has icons for. */
-    private fun readReduxItemIcons(f: RandomAccessFile, white2: Boolean): Map<Int, Int> {
+    private fun readReduxItemIcons(f: FileHandle, white2: Boolean): Map<Int, Int> {
         val last = itemIconsBlack2.keys.max()
         val t = f.read(Black2Redux.itemIconsOffset(white2), (last + 1) * 4)
         return itemIconsBlack2.keys.associateWith { (u16(t, it * 4) shl 16) or u16(t, it * 4 + 2) }
@@ -641,7 +642,7 @@ object NdsArt {
      * [Gen5Files.itemIcons] (the ARM9's pairs by item id). Both generated from the cart, NdsArtBlackTest checks them
      * against it. Then the Town Map ([townMapBlack]) and the DEX ([dexBlack]).
      */
-    private fun extractGen5(f: RandomAccessFile, header: ByteArray, dir: File, files: Gen5Files): Boolean {
+    private fun extractGen5(f: FileHandle, header: ByteArray, dir: File, files: Gen5Files): Boolean {
         val narc = Narc(file(f, header, "/a/0/0/7") ?: return false)
         val palettes = palettes(narc.member(0))
         for (species in 1..BLACK_EGG) {
@@ -740,7 +741,7 @@ object NdsArt {
      *   in 8 x 8 tiles laid out as four OAM blocks (64 x 64, 32 x 64 right of it, 64 x 32 and 32 x 32 under them); its
      *   palette member species x 20 + 18 (+ 19 the shiny one).
      */
-    private fun dexBlack(f: RandomAccessFile, header: ByteArray, dir: File, files: Gen5Files) {
+    private fun dexBlack(f: FileHandle, header: ByteArray, dir: File, files: Gen5Files) {
         val msg = Narc(file(f, header, "/a/0/0/2") ?: return)
         val text = msg.member(files.description)?.let { Gen5Text.lines(it) } ?: return
         val category = msg.member(files.category)?.let { Gen5Text.lines(it) } ?: return
@@ -911,12 +912,7 @@ object NdsArt {
         tmp.renameTo(out)
     }
 
-    private fun RandomAccessFile.read(off: Long, len: Int): ByteArray {
-        val b = ByteArray(len)
-        seek(off)
-        readFully(b)
-        return b
-    }
+    private fun FileHandle.read(off: Long, len: Int): ByteArray = readFully(off, len)
 
     private fun u8(b: ByteArray, o: Int) = b[o].toInt() and 0xFF
     private fun u16(b: ByteArray, o: Int) = u8(b, o) or (u8(b, o + 1) shl 8)
@@ -1017,7 +1013,7 @@ object NdsArt {
     )
 
     /** [rom]'s own names ([Names]), or null for a cart this doesn't read. */
-    fun readNames(rom: File): Names? = RandomAccessFile(rom, "r").use { f ->
+    fun readNames(rom: Path): Names? = withRomFile(rom) { f ->
         val header = f.read(0, 0x200)
         val code = asciiString(header, 0x0C, 4)
         val rev = header[0x1E].toInt() and 0xFF
@@ -1093,7 +1089,7 @@ object NdsArt {
      *   unscrambled as the game does (pokepic.c's UnscanPokepic_PtHGSS: each u16 XORed with an LCG seeded by the
      *   first), 160 x 80 linear 4bpp, two frames side by side; the palette species x 6 + 4.
      */
-    private fun dex(f: RandomAccessFile, header: ByteArray, dir: File, d: DexFiles) {
+    private fun dex(f: FileHandle, header: ByteArray, dir: File, d: DexFiles) {
         val msg = Narc(file(f, header, d.msg) ?: return)
         val text = msg.member(d.description)?.let { Gen4Text.lines(it) } ?: return
         val category = msg.member(d.category)?.let { Gen4Text.lines(it) } ?: return
@@ -1183,7 +1179,7 @@ object NdsArt {
     }
 
     /** A file in the cart's file system by its path: the FNT walked a directory at a time, the FAT for its bytes. */
-    private fun file(f: RandomAccessFile, header: ByteArray, path: String): ByteArray? {
+    private fun file(f: FileHandle, header: ByteArray, path: String): ByteArray? {
         val fnt = f.read(u32(header, 0x40), u32(header, 0x44).toInt())
         val fatOff = u32(header, 0x48)
         var id = 0xF000

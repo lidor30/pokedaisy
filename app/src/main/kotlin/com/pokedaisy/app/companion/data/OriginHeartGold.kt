@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.io.RandomAccessFile
+import okio.Path
 
 /**
  * Pokémon Origin HeartGold (v4.0.3, English patch 1.0.0): Yannanfei TB's hack, rebuilt by Alex on hg-engine over the
@@ -57,11 +56,7 @@ object OriginHeartGold {
     }
 
     /** [matches] on a plain ROM file (an archive's goes through RomArchive's reader: CompanionSupport). */
-    fun matches(rom: File): Boolean = runCatching {
-        RandomAccessFile(rom, "r").use { f ->
-            matches { off, len -> if (off + len > f.length()) null else ByteArray(len).also { f.seek(off); f.readFully(it) } }
-        }
-    }.getOrDefault(false)
+    fun matches(rom: Path): Boolean = runCatching { withRomFile(rom) { matches(it.cartReader()) } }.getOrDefault(false)
 
     /** Its tables from the player's cart ([NdsArt.readOrigin]); null until read, or for another game. */
     class Data(

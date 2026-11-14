@@ -7,6 +7,7 @@ import org.junit.Test
 import java.io.File
 import java.util.zip.CRC32
 import java.util.zip.Inflater
+import okio.Path.Companion.toOkioPath
 
 /**
  * Pokémon Black's art and DEX rebuilt from the player's own cart (NdsArt): party and bag icons, the DEX's pages, the
@@ -51,7 +52,7 @@ class NdsArtBlackTest {
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         val out = File("build/nds-art").apply { mkdirs() }
         try {
-            assertTrue(NdsArt.extractTo(rom, dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
             // name -> (width, height, CRC32 of the ARGB pixels)
             val golden = mapOf(
                 "${NdsArt.BLACK_ICONS}/1.png" to Triple(32, 64, 2950989826L),         // BULBASAUR, palette 1
@@ -115,9 +116,8 @@ class NdsArtBlackTest {
     }
 
     /** [len] bytes of the cart's unpacked ARM9 at RAM address [addr]. */
-    private fun arm9(addr: Long, len: Int): ByteArray = java.io.RandomAccessFile(rom, "r").use { f ->
-        val header = ByteArray(0x200).also { f.readFully(it) }
-        Gen5Lz.arm9(f, header)!!.at(addr, len)!!
+    private fun arm9(addr: Long, len: Int): ByteArray = withRomFile(rom.toOkioPath()) { f ->
+        Gen5Lz.arm9(f, f.readFully(0, 0x200))!!.at(addr, len)!!
     }
 
     private fun u16s(b: ByteArray) = IntArray(b.size / 2) { (b[it * 2].toInt() and 0xFF) or ((b[it * 2 + 1].toInt() and 0xFF) shl 8) }
@@ -147,7 +147,7 @@ class NdsArtBlackTest {
     @Test
     fun `its names, read from its own text`() {
         assumeTrue("no Black ROM at $rom", rom.isFile)
-        val n = NdsArt.readNames(rom)!!
+        val n = NdsArt.readNames(rom.toOkioPath())!!
         assertEquals('E', n.language)
         assertEquals(listOf("Bulbasaur", "Victini", "Genesect"), listOf(1, 494, 649).map { n.species(it) })
         assertEquals("Tackle", n.move(33))
@@ -161,7 +161,7 @@ class NdsArtBlackTest {
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         val out = File("build/nds-art").apply { mkdirs() }
         try {
-            assertTrue(NdsArt.extractTo(rom, dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
             // Checked against the game's own Town Map headless (nds_dump, the user's save): the picture pixel for pixel
             // where no sprite is, each sprite where the game puts it.
             val golden = mapOf(

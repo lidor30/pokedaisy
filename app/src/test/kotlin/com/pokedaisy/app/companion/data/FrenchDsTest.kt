@@ -11,6 +11,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * The French DS carts (Platinum rev 0, HeartGold / SoulSilver, Black, White): the US carts' code and save layouts at their
@@ -149,13 +150,13 @@ class FrenchDsTest {
     fun `Platinum's names and art come from its cart`() {
         val rom = rom("Pokemon - Version Platine (France).nds")
         assertTrue(CompanionSupport.isSupported(rom))
-        val n = NdsArt.readNames(rom)!!
+        val n = NdsArt.readNames(rom.toOkioPath())!!
         assertEquals('F', n.language)
         assertEquals("BULBIZARRE", n.species(1))
         assertEquals("Bonaugure", n.place(GEN4_PLATINUM_FR.mapPlaceIds.getValue(415)))
         val dir = kotlin.io.path.createTempDirectory("nds-fr").toFile()
         try {
-            assertTrue(NdsArt.extractTo(rom, dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
             assertTrue(File(dir, "${NdsArt.PLATINUM_ICONS}/387.png").isFile)
             val page = File(dir, NdsArt.PLATINUM_DEX).readLines().first().split('\t')
             assertTrue(page[1], page[1].contains("Graine"))
@@ -168,11 +169,11 @@ class FrenchDsTest {
         try {
             val pages = listOf("Pokemon - Version Or HeartGold (France).nds", "Pokemon - Version Argent SoulSilver (France).nds").map { name ->
                 val rom = rom(name)
-                val n = NdsArt.readNames(rom)!!
+                val n = NdsArt.readNames(rom.toOkioPath())!!
                 assertEquals('F', n.language)
                 assertEquals("BULBIZARRE", n.species(1))
                 assertEquals("Doublonville", n.place(GEN4_HEARTGOLD_FR.mapPlaceIds.getValue(76)))
-                assertTrue(NdsArt.extractTo(rom, dir))
+                assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
                 File(dir, NdsArt.HEARTGOLD_DEX).readLines()
             }
             assertEquals(493, pages[0].size)
@@ -189,10 +190,10 @@ class FrenchDsTest {
                 "Pokemon - Version Blanche (France) (NDSi Enhanced).nds" to NdsArt.WHITE_DEX,
             )) {
                 val rom = rom(name)
-                val n = NdsArt.readNames(rom)!!
+                val n = NdsArt.readNames(rom.toOkioPath())!!
                 assertEquals('F', n.language)
                 assertEquals("Bulbizarre", n.species(1))
-                assertTrue(NdsArt.extractTo(rom, dir))
+                assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
                 assertTrue(File(dir, dex).readLines().first().split('\t')[1].contains("Graine"))
             }
         } finally { dir.deleteRecursively() }

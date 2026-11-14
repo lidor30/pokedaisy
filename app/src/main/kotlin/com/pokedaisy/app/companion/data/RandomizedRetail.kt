@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.InputStream
+import okio.Source
+import okio.buffer
 
 /**
  * Retail FireRed (rev 0 / 1) or Emerald (English) as Universal Pokémon Randomizer ZX leaves it ([RANDOMIZED_RETAIL],
@@ -85,9 +86,9 @@ object RandomizedRetail {
 
     /** The randomized retail ROM a ROM of this [code] / [rev] and [size] is, reading it from [input] (from its start, in
      * order), or null. */
-    fun matchStream(code: String?, rev: Int?, size: Long, input: () -> InputStream): RandomizedRetailRom? {
+    fun matchStream(code: String?, rev: Int?, size: Long, input: () -> Source): RandomizedRetailRom? {
         val rom = candidate(code, rev, size) ?: return null
-        return input().use { s -> rom.takeIf { hash(it) { len -> RetailDumps.readFully(s, len) } == it.sha1 } }
+        return input().buffer().use { s -> rom.takeIf { hash(it) { len -> RetailDumps.readFully(s, len) } == it.sha1 } }
     }
 
     /** [matchStream] over a reader that gives [len] bytes at an offset (the game's bus), in order. */

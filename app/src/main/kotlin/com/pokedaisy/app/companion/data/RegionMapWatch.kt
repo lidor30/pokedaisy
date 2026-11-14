@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.io.RandomAccessFile
+import okio.Path
 
 /**
  * Whether the game has its region map (Town Map, Fly map, a wall map, the
@@ -28,16 +27,11 @@ object RegionMapWatch {
     private var watches = emptyList<Watch>()
 
     /** Scans [rom] in the background for its map pointers. */
-    fun load(rom: File) {
+    fun load(rom: Path) {
         watches = emptyList()
         Thread({
             try {
-                watches = RandomAccessFile(rom, "r").use { f ->
-                    val n = minOf(f.length(), SCAN_END.toLong()).toInt()
-                    val b = ByteArray(n)
-                    f.readFully(b)
-                    find(b)
-                }
+                watches = withRomFile(rom) { f -> find(f.readFully(0, minOf(f.size(), SCAN_END.toLong()).toInt())) }
             } catch (t: Throwable) {
                 android.util.Log.w("pokedaisy", "RegionMapWatch: scan failed", t)
             }

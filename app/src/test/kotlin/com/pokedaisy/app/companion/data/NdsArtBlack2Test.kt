@@ -5,6 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Pokémon Black 2's and White 2's art and DEX from their carts (NdsArt): the same files in both, written to Black 2's
@@ -22,8 +23,8 @@ class NdsArtBlack2Test {
         val bDir = kotlin.io.path.createTempDirectory("nds-art-b2").toFile()
         val wDir = kotlin.io.path.createTempDirectory("nds-art-w2").toFile()
         try {
-            assertTrue(NdsArt.extractTo(black2, bDir))
-            assertTrue(NdsArt.extractTo(white2, wDir))
+            assertTrue(NdsArt.extractTo(black2.toOkioPath(), bDir))
+            assertTrue(NdsArt.extractTo(white2.toOkioPath(), wDir))
             val paths = listOf("${NdsArt.BLACK2_ICONS}/495.png", "${NdsArt.BLACK2_ICONS}/${NdsArt.BLACK_EGG}.png",
                 "${NdsArt.BLACK2_ITEMS}/17.png", "${NdsArt.BLACK2_ITEMS}/627.png", "${NdsArt.BLACK2_FRONT}/643.png",
                 "regionmap/${NdsArt.BLACK2_MAP}.png", "regionmap/${NdsArt.BLACK2_PLAYER}.png",
@@ -44,13 +45,13 @@ class NdsArtBlack2Test {
             for (species in 1..649) {
                 assertEquals("$species", (unovaDexBlack2.indexOf(species) + 1).toString(), pages[species - 1][19])
             }
-            val names = NdsArt.readNames(black2)!!
+            val names = NdsArt.readNames(black2.toOkioPath())!!
             assertEquals("Snivy", names.species(495))
             assertEquals("Humilau City", names.place(mapPlaceIdsBlack2.getValue(465)))
             assertEquals("Medal Box", names.item(627))
             assertEquals("Medal Box", names.itemsMerged(false)[627])
             assertEquals('E', names.language)
-            assertEquals(false, NdsArt.extractTo(black2, bDir))
+            assertEquals(false, NdsArt.extractTo(black2.toOkioPath(), bDir))
             val look = File("build/nds-art-black2").apply { deleteRecursively(); mkdirs() }
             File(bDir, "regionmap").copyRecursively(File(look, "regionmap"), overwrite = true)
             for (s in listOf(495, 500, 643, 646)) File(bDir, "${NdsArt.BLACK2_FRONT}/$s.png").copyTo(File(look, "front_$s.png"), true)

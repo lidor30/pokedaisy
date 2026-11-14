@@ -1,7 +1,8 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
-import java.io.RandomAccessFile
+import okio.FileHandle
+import okio.Path
 
 /**
  * A FireRed-engine hack's own region map - Unbound's Borrius, Odyssey's,
@@ -67,7 +68,7 @@ object RomRegionMap {
     private const val FIRERED_TILES = 0x3EF61C
 
     /** Reads [rom] in the background and publishes its map as [current]. */
-    fun load(filesDir: File, romKey: String, rom: File) {
+    fun load(filesDir: File, romKey: String, rom: Path) {
         current = null
         Thread({
             try {
@@ -80,8 +81,8 @@ object RomRegionMap {
     }
 
     /** [read] [rom], writing its screens (once per [romKey]) where [RomArt]'s art goes. */
-    fun loadNow(filesDir: File, romKey: String, rom: File): Data? {
-        val parsed = RandomAccessFile(rom, "r").use { read(FileRom(it)) } ?: return null
+    fun loadNow(filesDir: File, romKey: String, rom: Path): Data? {
+        val parsed = withRomFile(rom) { read(FileRom(it)) } ?: return null
         val dir = File(RomArt.dir(filesDir), "regionmap").apply { mkdirs() }
         val names = parsed.images.mapIndexed { i, img ->
             val name = "rom-$romKey-v$VERSION-$i"
@@ -96,14 +97,11 @@ object RomRegionMap {
         return Data(names.toTypedArray(), parsed.sections, parsed.layouts)
     }
 
-    private class FileRom(private val f: RandomAccessFile) : Rom {
-        override val size = f.length().toInt()
+    private class FileRom(private val f: FileHandle) : Rom {
+        override val size = f.size().toInt()
         override fun read(off: Int, n: Int): ByteArray {
             if (off < 0 || off >= size) return ByteArray(0)
-            val out = ByteArray(minOf(n, size - off))
-            f.seek(off.toLong())
-            f.readFully(out)
-            return out
+            return f.readFully(off.toLong(), minOf(n, size - off))
         }
     }
 

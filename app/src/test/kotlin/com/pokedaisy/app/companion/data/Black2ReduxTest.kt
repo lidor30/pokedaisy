@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Blaze Black 2 Redux / Volt White 2 Redux ([Black2Redux]): Black 2's and White 2's reader on their RAM, the player's
@@ -107,15 +108,15 @@ class Black2ReduxTest {
     @Test
     fun `the carts - detection and their tables`() {
         assumeTrue("no Blaze Black 2 Redux ROM at $blaze", blaze.isFile)
-        assertTrue(Black2Redux.matches(blaze))
+        assertTrue(Black2Redux.matches(blaze.toOkioPath()))
         for (retail in listOf("Pokemon - Black Version 2 (USA, Europe) (NDSi Enhanced) [b].nds",
                 "Pokemon - White Version 2 (USA, Europe) (NDSi Enhanced) [b].nds")) {
             val f = File(nds, retail)
-            if (f.isFile) assertFalse(retail, Black2Redux.matches(f))
+            if (f.isFile) assertFalse(retail, Black2Redux.matches(f.toOkioPath()))
         }
-        val names = NdsArt.readNames(blaze)!!
+        val names = NdsArt.readNames(blaze.toOkioPath())!!
         assertEquals('E', names.language)
-        val data = NdsArt.readRedux(blaze)!!
+        val data = NdsArt.readRedux(blaze.toOkioPath())!!
         assertEquals(SpeciesTypes(9, 9), data.speciesTypes[35])               // CLEFAIRY: Fairy
         assertEquals(SpeciesTypes(11, 9), data.speciesTypes[184])             // AZUMARILL: Water / Fairy
         assertEquals(SpeciesTypes(12, 16), data.speciesTypes[497])            // SERPERIOR: Grass / Dragon (Complete)
@@ -160,12 +161,12 @@ class Black2ReduxTest {
         assertNull(guideId(GameKind.BLACK2, null))
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         try {
-            assertTrue(NdsArt.extractTo(blaze, dir))
+            assertTrue(NdsArt.extractTo(blaze.toOkioPath(), dir))
             for (id in listOf(1, 35, 184, 649)) assertTrue("$id", File(dir, "${NdsArt.REDUX_ICONS}/$id.png").isFile)
             for (id in listOf(1, 17, 4)) assertTrue("$id", File(dir, "${NdsArt.REDUX_ITEMS}/$id.png").isFile)
             for (id in listOf(1, 35, 649)) assertTrue("$id", File(dir, "${NdsArt.REDUX_FRONT}/$id.png").isFile)
             assertFalse(File(dir, NdsArt.BLACK2_DEX).exists())
-            assertFalse(NdsArt.extractTo(blaze, dir))                          // built once
+            assertFalse(NdsArt.extractTo(blaze.toOkioPath(), dir))                          // built once
             NdsArt.dir = dir
             val clefairy = Gen4Dex.entry(GEN5_DEX_REDUX, 35)!!
             assertEquals(9 to 9, clefairy.type1 to clefairy.type2)
@@ -199,10 +200,10 @@ class Black2ReduxTest {
             val rom = File(nds, name)
             if (!rom.isFile) continue
             assertEquals(name, sha1, com.pokedaisy.app.RomIdentity.sha1(rom))
-            assertTrue(name, Black2Redux.matches(rom))
+            assertTrue(name, Black2Redux.matches(rom.toOkioPath()))
             assertEquals(name, if (name.contains("Volt")) "Pokémon Volt White 2 Redux" else "Pokémon Blaze Black 2 Redux",
                 com.pokedaisy.app.GameTitles.BY_SHA1[sha1])
-            val data = NdsArt.readRedux(rom)!!
+            val data = NdsArt.readRedux(rom.toOkioPath())!!
             val classic = name.contains("Classic")
             assertEquals(name, SpeciesTypes(9, 9), data.speciesTypes[35])
             assertEquals(name, SpeciesTypes(11, 9), data.speciesTypes[184])

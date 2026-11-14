@@ -1,6 +1,8 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.InputStream
+import okio.BufferedSource
+import okio.Source
+import okio.buffer
 
 /**
  * One retail FireRed / Emerald ROM as collection dumps of it may differ ([RETAIL_DUMPS], from
@@ -31,9 +33,9 @@ object RetailDumps {
 
     /** The retail SHA-1 a ROM of this [code] / [rev] and [size] is a dump of, reading it from [input] (from its
      *  start, in order), or null. */
-    fun matchStream(code: String?, rev: Int?, size: Long, input: () -> InputStream): String? {
+    fun matchStream(code: String?, rev: Int?, size: Long, input: () -> Source): String? {
         val dump = candidate(code, rev, size) ?: return null
-        return input().use { s ->
+        return input().buffer().use { s ->
             val ok = normalizedSha1(dump) { len -> readFully(s, len) } == dump.sha1
             if (ok) dump.retailSha1 else null
         }
@@ -81,14 +83,5 @@ object RetailDumps {
     }
 
     /** [len] bytes from [s], or null at its end. */
-    internal fun readFully(s: InputStream, len: Int): ByteArray? {
-        val buf = ByteArray(len)
-        var n = 0
-        while (n < len) {
-            val r = s.read(buf, n, len - n)
-            if (r < 0) return null
-            n += r
-        }
-        return buf
-    }
+    internal fun readFully(s: BufferedSource, len: Int): ByteArray? = if (s.request(len.toLong())) s.readByteArray(len.toLong()) else null
 }

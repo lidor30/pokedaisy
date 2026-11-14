@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.io.RandomAccessFile
+import okio.Path
 
 /**
  * Pokémon Renegade Platinum (v1.3.0): Drayano's hack, retail Platinum (USA rev 1) edited in place. Its header is the
@@ -55,11 +54,7 @@ object RenegadePlatinum {
     }
 
     /** [matches] on a plain ROM file. */
-    fun matches(rom: File): Boolean = runCatching {
-        RandomAccessFile(rom, "r").use { f ->
-            matches { off, len -> if (off + len > f.length()) null else ByteArray(len).also { f.seek(off); f.readFully(it) } }
-        }
-    }.getOrDefault(false)
+    fun matches(rom: Path): Boolean = runCatching { withRomFile(rom) { matches(it.cartReader()) } }.getOrDefault(false)
 
     /** Its tables from the player's cart ([NdsArt.readRenegade]); null until read, or for another game. */
     class Data(

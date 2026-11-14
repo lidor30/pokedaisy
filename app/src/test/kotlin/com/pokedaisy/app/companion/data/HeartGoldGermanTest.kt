@@ -7,6 +7,7 @@ import org.junit.Assert.*
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 class HeartGoldGermanTest {
     @Test
@@ -207,14 +208,14 @@ class HeartGoldGermanTest {
         try {
             for (rom in roms) {
                 assertTrue(CompanionSupport.isSupported(rom))
-                val names = NdsArt.readNames(rom)!!
+                val names = NdsArt.readNames(rom.toOkioPath())!!
                 assertEquals('D', names.language)
                 assertEquals("BISASAM", names.species(1))
                 assertEquals("Tackle", names.move(33))
                 assertEquals("Trank", names.item(17))
                 assertEquals("Dukatia City", names.place(GEN4_HEARTGOLD_DE.mapPlaceIds.getValue(76)))
-                assertTrue(NdsArt.extractTo(rom, dir))
-                assertFalse(NdsArt.extractTo(rom, dir))
+                assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
+                assertFalse(NdsArt.extractTo(rom.toOkioPath(), dir))
                 assertTrue(File(dir, "${NdsArt.HEARTGOLD_ICONS}/152.png").isFile)
                 assertTrue(File(dir, "${NdsArt.HEARTGOLD_ITEMS}/17.png").isFile)
                 assertTrue(File(dir, PokegearMap.TILES).isFile)
@@ -228,9 +229,9 @@ class HeartGoldGermanTest {
                 assertEquals(256, Gen4Dex.parse(lines).regional.size)
             }
             assertNotEquals("SoulSilver must use its own Pokédex pages after HeartGold", pages[0], pages[1])
-            assertTrue("switching back to HeartGold must refresh the shared cache", NdsArt.extractTo(roms[0], dir))
+            assertTrue("switching back to HeartGold must refresh the shared cache", NdsArt.extractTo(roms[0].toOkioPath(), dir))
             assertEquals("HeartGold must recover its original Pokédex pages", pages[0], File(dir, NdsArt.HEARTGOLD_DEX).readLines())
-            assertFalse("the next HeartGold extraction must hit the cache", NdsArt.extractTo(roms[0], dir))
+            assertFalse("the next HeartGold extraction must hit the cache", NdsArt.extractTo(roms[0].toOkioPath(), dir))
         } finally { dir.deleteRecursively() }
     }
 }

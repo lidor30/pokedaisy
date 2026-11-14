@@ -3,6 +3,7 @@ package com.pokedaisy.app.companion.data
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
+import okio.Path
 import okio.Deflater
 import okio.DeflaterSink
 
@@ -51,7 +52,7 @@ object RomArt {
      * Scans [rom] in the background unless a ROM with this [romKey] was
      * already scanned, or every file is already cached. A few hundred ms, once.
      */
-    fun prefetch(filesDir: File, romKey: String, rom: File) {
+    fun prefetch(filesDir: File, romKey: String, rom: Path) {
         val dir = dir(filesDir)
         val marker = File(dir, "scanned/v$SCAN_VERSION-$romKey")
         if (marker.isFile || running || OUTPUTS.all { File(dir, it).isFile }) return
@@ -59,7 +60,7 @@ object RomArt {
         Thread({
             try {
                 val t0 = System.nanoTime()
-                val wrote = extractTo(readChunked(rom), dir)
+                val wrote = extractTo(readRomFile(rom), dir)
                 marker.parentFile?.mkdirs()
                 marker.writeText(wrote.joinToString("\n"))
                 android.util.Log.i("pokedaisy", "RomArt: ${wrote.size} new files from ${rom.name} in ${(System.nanoTime() - t0) / 1_000_000} ms")
@@ -70,20 +71,6 @@ object RomArt {
                 running = false
             }
         }, "pokedaisy-rom-art").apply { isDaemon = true; start() }
-    }
-
-    /** The whole file, 1 MiB per read: one 32 MiB read holds a JNI critical lock (stalling GC) for ~20 ms. */
-    private fun readChunked(f: File): ByteArray {
-        val out = ByteArray(f.length().toInt())
-        f.inputStream().use { s ->
-            var o = 0
-            while (o < out.size) {
-                val n = s.read(out, o, minOf(1 shl 20, out.size - o))
-                if (n < 0) break
-                o += n
-            }
-        }
-        return out
     }
 
     /** Writes every art file [rom] can supply that [dir] doesn't have yet; returns their paths. */

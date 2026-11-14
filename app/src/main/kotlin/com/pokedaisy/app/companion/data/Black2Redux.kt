@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
-import java.io.File
-import java.io.RandomAccessFile
+import okio.Path
 
 /**
  * Pokémon Blaze Black 2 Redux / Volt White 2 Redux (v1.4.1): Drayano and AphexCubed's hacks, US / Europe Black 2 and
@@ -79,11 +78,7 @@ object Black2Redux {
     }
 
     /** [matches] on a plain ROM file. */
-    fun matches(rom: File): Boolean = runCatching {
-        RandomAccessFile(rom, "r").use { f ->
-            matches { off, len -> if (off + len > f.length()) null else ByteArray(len).also { f.seek(off); f.readFully(it) } }
-        }
-    }.getOrDefault(false)
+    fun matches(rom: Path): Boolean = runCatching { withRomFile(rom) { matches(it.cartReader()) } }.getOrDefault(false)
 
     /** A type id of these carts' -> the app's (Gen 3's): Gen 5's ([gen5Type]), Fairy (17) in "???"'s slot, 9. */
     fun type(t: Int): Int = gen5Type(t)

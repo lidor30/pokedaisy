@@ -9,6 +9,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Origin HeartGold (OriginHeartGold): HeartGold's reader over its grown save, on a new game played headless (the
@@ -109,15 +110,15 @@ class OriginHeartGoldTest {
     @Test
     fun `the cart - detection, its tables and art`() {
         assumeTrue("no Origin HeartGold ROM at $rom", rom.isFile)
-        assertTrue(OriginHeartGold.matches(rom))
+        assertTrue(OriginHeartGold.matches(rom.toOkioPath()))
         val us = File(File(RETAIL_ROM_DIR).parentFile, "nds/Pokemon - HeartGold Version (USA).nds")
-        if (us.isFile) assertFalse(OriginHeartGold.matches(us))
-        val names = NdsArt.readNames(rom)!!
+        if (us.isFile) assertFalse(OriginHeartGold.matches(us.toOkioPath()))
+        val names = NdsArt.readNames(rom.toOkioPath())!!
         assertEquals('E', names.language)
         assertEquals(listOf("Bulbasaur", "Sylveon", "Dragapult", "Pecharunt"), listOf(1, 700, 887, 1025).map { names.species[it] })
         assertEquals("Rash Mint", names.items[780])
         assertEquals("Pallet Town", names.places[GEN4_ORIGIN_HEARTGOLD.mapPlaceIds.getValue(49)])
-        val data = NdsArt.readOrigin(rom)!!
+        val data = NdsArt.readOrigin(rom.toOkioPath())!!
         assertEquals(SpeciesTypes(9, 9), data.speciesTypes[700])           // Sylveon: Fairy
         assertEquals(SpeciesTypes(16, 7), data.speciesTypes[887])          // Dragapult: Dragon / Ghost
         assertEquals(SpeciesTypes(9, 9), data.speciesTypes[35])            // Clefairy, Fairy here
@@ -149,7 +150,7 @@ class OriginHeartGoldTest {
         assertEquals(Triple(815, false, 130), OriginHeartGold.machine(574))
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         try {
-            assertTrue(NdsArt.extractTo(rom, dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
             for (id in listOf(1, 700, 887, 1025, 1028, 1440, NdsArt.ORIGIN_EGG)) assertTrue("$id", File(dir, "${NdsArt.ORIGIN_ICONS}/$id.png").isFile)
             for (id in listOf(1, 17, 780, 790)) assertTrue("$id", File(dir, "${NdsArt.ORIGIN_ITEMS}/$id.png").isFile)
             // The DEX: its pages and fronts for the National Dex's 1025.

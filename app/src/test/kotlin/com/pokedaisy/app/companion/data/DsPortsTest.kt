@@ -12,6 +12,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * The DS language ports ([NDS_PORTS], gamedata/nds/ports.toml): the US carts' code and save layouts at their own globals,
@@ -120,7 +121,7 @@ class DsPortsTest {
         try {
             for ((p, rom) in present) {
                 assertTrue(p.code, CompanionSupport.isSupported(rom))
-                val n = NdsArt.readNames(rom)
+                val n = NdsArt.readNames(rom.toOkioPath())
                 assertNotNull(p.code, n)
                 // Europe rev 10 HeartGold / SoulSilver are English (the header's E is the US build's code).
                 assertEquals(p.code, if (p.code[3] == 'E') 'E' else p.code[3], n!!.language)
@@ -130,7 +131,7 @@ class DsPortsTest {
                 assertEquals(p.code, mapOf('D' to "Meisterball", 'J' to "マスターボール", 'K' to "마스터볼").getOrDefault(p.code[3], "Master Ball"), n.item(1))
                 // Each cart's art goes to its own folder here, so one cart's pages never stand for another's.
                 val out = File(dir, "${p.code}-${p.revision}").apply { mkdirs() }
-                assertTrue(p.code, NdsArt.extractTo(rom, out))
+                assertTrue(p.code, NdsArt.extractTo(rom.toOkioPath(), out))
                 val dex = when (p.kind) {
                     GameKind.PLATINUM -> NdsArt.PLATINUM_DEX
                     GameKind.HEARTGOLD, GameKind.SOULSILVER -> NdsArt.HEARTGOLD_DEX

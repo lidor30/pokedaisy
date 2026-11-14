@@ -105,6 +105,7 @@ import com.pokedaisy.app.companion.ui.CompanionScreen
 import java.awt.image.BufferedImage
 import java.io.File
 import javax.imageio.ImageIO
+import okio.Path.Companion.toOkioPath
 
 private val scratch = File(System.getProperty("scratch") ?: "build/scratch").apply { mkdirs() }
 
@@ -1345,18 +1346,18 @@ fun main(args: Array<String>) {
         val dir = RomArt.dir(android.content.Context().filesDir)
         com.pokedaisy.app.companion.data.PokegearMap.dir = dir
         com.pokedaisy.app.companion.data.NdsArt.dir = dir
-        if (com.pokedaisy.app.companion.data.NdsArt.extractTo(File(path), dir)) println("nds art: from ${File(path).name}")
+        if (com.pokedaisy.app.companion.data.NdsArt.extractTo(File(path).toOkioPath(), dir)) println("nds art: from ${File(path).name}")
         // Its own words (the Poller's NdsArt.prefetch), and Origin HeartGold's tables (it runs as HEARTGOLD).
-        com.pokedaisy.app.companion.data.NdsArt.names = com.pokedaisy.app.companion.data.NdsArt.readNames(File(path))
-        if (com.pokedaisy.app.companion.data.OriginHeartGold.matches(File(path))) {
+        com.pokedaisy.app.companion.data.NdsArt.names = com.pokedaisy.app.companion.data.NdsArt.readNames(File(path).toOkioPath())
+        if (com.pokedaisy.app.companion.data.OriginHeartGold.matches(File(path).toOkioPath())) {
             com.pokedaisy.app.companion.data.originHeartGold = true
-            com.pokedaisy.app.companion.data.OriginHeartGold.data = com.pokedaisy.app.companion.data.NdsArt.readOrigin(File(path))
+            com.pokedaisy.app.companion.data.OriginHeartGold.data = com.pokedaisy.app.companion.data.NdsArt.readOrigin(File(path).toOkioPath())
         }
     }
     // A FireRed-engine hack's own region map (Unbound, Odyssey, ...) from -Prom.
     System.getProperty("rom").orEmpty().takeIf { it.isNotBlank() }?.let { path ->
         val f = File(path)
-        RomRegionMap.current = RomRegionMap.loadNow(android.content.Context().filesDir, "preview-%08x".format(f.name.hashCode()), f)
+        RomRegionMap.current = RomRegionMap.loadNow(android.content.Context().filesDir, "preview-%08x".format(f.name.hashCode()), f.toOkioPath())
     }
     val out = File(args.getOrElse(0) { "build/shots" }).apply { mkdirs() }
     val only = args.getOrElse(1) { "" }.split(",").filter { it.isNotBlank() }

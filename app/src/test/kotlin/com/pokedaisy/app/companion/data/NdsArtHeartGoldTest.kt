@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * HeartGold's art rebuilt from the player's own cart (NdsArt): the party and bag icons, the Pokégear map's pieces and
@@ -20,7 +21,7 @@ class NdsArtHeartGoldTest {
         assumeTrue("no HeartGold ROM at $rom", rom.isFile)
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         try {
-            assertTrue(NdsArt.extractTo(rom, dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
             assertTrue(File(dir, "${NdsArt.HEARTGOLD_ICONS}/152.png").isFile)          // CHIKORITA
             assertTrue(File(dir, "${NdsArt.HEARTGOLD_ITEMS}/17.png").isFile)           // Potion
             assertTrue(File(dir, "${NdsArt.HEARTGOLD_ITEMS}/468.png").isFile)          // Apricorn Box (HG/SS's own)

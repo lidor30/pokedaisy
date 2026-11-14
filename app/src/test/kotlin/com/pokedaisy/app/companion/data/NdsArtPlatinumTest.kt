@@ -5,6 +5,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Platinum's DEX rebuilt from the player's own cart (NdsArt): a page a species, the Sinnoh order, evolutions, level-up
@@ -19,7 +20,7 @@ class NdsArtPlatinumTest {
         assumeTrue("no Platinum ROM at $rom", rom.isFile)
         val dir = kotlin.io.path.createTempDirectory("nds-art").toFile()
         try {
-            assertTrue(NdsArt.extractTo(rom, dir))
+            assertTrue(NdsArt.extractTo(rom.toOkioPath(), dir))
             val dex = File(dir, NdsArt.PLATINUM_DEX).readLines()
             assertEquals(493, dex.size)
             val bulbasaur = dex.first().split('\t')

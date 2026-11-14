@@ -6,6 +6,7 @@ import org.junit.Assert.assertTrue
 import org.junit.Assume.assumeTrue
 import org.junit.Test
 import java.io.File
+import okio.Path.Companion.toOkioPath
 
 /**
  * Pokémon White's art and DEX from its cart (NdsArt): the same art as Black's, written to Black's paths, and its own
@@ -23,8 +24,8 @@ class NdsArtWhiteTest {
         val bDir = kotlin.io.path.createTempDirectory("nds-art-b").toFile()
         val wDir = kotlin.io.path.createTempDirectory("nds-art-w").toFile()
         try {
-            assertTrue(NdsArt.extractTo(black, bDir))
-            assertTrue(NdsArt.extractTo(white, wDir))
+            assertTrue(NdsArt.extractTo(black.toOkioPath(), bDir))
+            assertTrue(NdsArt.extractTo(white.toOkioPath(), wDir))
             // the art: file for file
             for (path in listOf("${NdsArt.BLACK_ICONS}/495.png", "${NdsArt.BLACK_ITEMS}/17.png", "${NdsArt.BLACK_FRONT}/643.png",
                 "regionmap/${NdsArt.BLACK_MAP}.png", "regionmap/${NdsArt.BLACK_PLAYER}.png")) {
@@ -39,9 +40,9 @@ class NdsArtWhiteTest {
             assertEquals(b.map(::noText), w.map(::noText))
             assertNotEquals(b[494][2], w[494][2])   // SNIVY's entry
             // the names: White's cart reads as Black's
-            assertEquals("Snivy", NdsArt.readNames(white)?.species(495))
+            assertEquals("Snivy", NdsArt.readNames(white.toOkioPath())?.species(495))
             // a second run on the same cart writes nothing
-            assertEquals(false, NdsArt.extractTo(white, wDir))
+            assertEquals(false, NdsArt.extractTo(white.toOkioPath(), wDir))
         } finally {
             bDir.deleteRecursively()
             wDir.deleteRecursively()

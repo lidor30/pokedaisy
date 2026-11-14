@@ -104,6 +104,7 @@ import androidx.compose.ui.unit.dp
 import org.junit.Before
 import org.junit.Rule
 import org.junit.Test
+import okio.Path.Companion.toOkioPath
 
 /**
  * Paparazzi screenshots of the bottom-screen companion, one per tab, plus the
@@ -1596,7 +1597,7 @@ open class CompanionScreenshotTest {
         if (art) RomArt.extractTo(java.io.File(RETAIL_ROM_DIR + romFile).readBytes(), RomArt.dirOverride!!)
         // A FireRed-engine hack's own region map, read from its ROM (the app does this on every launch).
         com.pokedaisy.app.companion.data.RomRegionMap.current =
-            if (romMap) com.pokedaisy.app.companion.data.RomRegionMap.loadNow(RomArt.dirOverride!!, fixture, java.io.File(RETAIL_ROM_DIR + romFile)) else null
+            if (romMap) com.pokedaisy.app.companion.data.RomRegionMap.loadNow(RomArt.dirOverride!!, fixture, java.io.File(RETAIL_ROM_DIR + romFile).toOkioPath()) else null
         activeGame = kind
         amethystV141 = cfg === NATIVE_AMETHYST_V1_4_1 // the Poller sets these with activeGame
         com.pokedaisy.app.companion.data.fireRedHack = com.pokedaisy.app.companion.data.fireRedHackFor(cfg)

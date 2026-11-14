@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
+import okio.Path
 
 /**
  * A Game Boy Color (Gen 2) Pokémon game's own art, rebuilt from the player's ROM on its first launch
@@ -570,10 +571,10 @@ object Gen2Art {
     }
 
     /** In the background, once per ROM file: a Game Boy Color cart is 2 MB. */
-    fun prefetch(filesDir: File, rom: File) {
+    fun prefetch(filesDir: File, rom: Path) {
         Thread({
             runCatching {
-                val wrote = extractTo(rom.readBytes(), RomArt.dir(filesDir))
+                val wrote = extractTo(readRomFile(rom), RomArt.dir(filesDir))
                 if (wrote.isNotEmpty()) RomArt.announce()
             }.onFailure { android.util.Log.w("pokedaisy", "Gen2Art: failed", it) }
         }, "pokedaisy-gen2-art").apply { isDaemon = true; start() }
