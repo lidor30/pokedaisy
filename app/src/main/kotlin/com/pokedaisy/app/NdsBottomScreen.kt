@@ -177,6 +177,7 @@ class NdsBottomHost(
         if (w <= 0 || h <= 0) return
         post {
             if (fill) {
+                touch.layoutParams = (touch.layoutParams as LayoutParams).apply { height = LayoutParams.MATCH_PARENT }
                 companionView.layoutParams = (companionView.layoutParams as LayoutParams).apply { height = LayoutParams.MATCH_PARENT }
                 button.layoutParams = (button.layoutParams as LayoutParams).apply {
                     width = LayoutParams.WRAP_CONTENT
@@ -185,10 +186,12 @@ class NdsBottomHost(
                 }
             } else {
                 // The touch screen's height at its own 4:3 (NdsTouchScreenView), the button's bar the rest; a display with
-                // no room under it keeps a bar of a button's height, the companion above it.
+                // no room under it (a 4:3 one: the Retroid Pocket Duo's) keeps a bar of a button's height, the touch screen
+                // shrunk to fit above it like the companion - the button sat over its bottom row of buttons there.
                 val screenH = minOf(h, (minOf(w.toFloat() / NdsBottomFrame.W, h.toFloat() / NdsBottomFrame.H) * NdsBottomFrame.H).toInt())
                 val minBar = (resources.displayMetrics.density * 56).toInt()
                 val bar = maxOf(h - screenH, minBar)
+                touch.layoutParams = (touch.layoutParams as LayoutParams).apply { height = h - bar; gravity = Gravity.TOP }
                 companionView.layoutParams = (companionView.layoutParams as LayoutParams).apply { height = h - bar }
                 button.layoutParams = (button.layoutParams as LayoutParams).apply {
                     width = LayoutParams.MATCH_PARENT

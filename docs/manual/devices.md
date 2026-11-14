@@ -60,7 +60,7 @@ A DS has two screens, and so does a dual-screen handheld, so a DS game uses both
 
 The companion is still there:
 
-- **On the bottom screen:** tap `COMPANION` in the bar under the touch screen and the companion takes the touch screen's place. The bar takes a little of its height, so its text is a size smaller there, as on a small screen. Tap `GAME SCREEN` in the same spot to bring the touch screen back. `BACK` with nothing left to go back from also returns to the touch screen. PokeDaisy remembers which of the two you had.
+- **On the bottom screen:** tap `COMPANION` in the bar under the touch screen and the companion takes the touch screen's place. The bar takes a little of its height, so its text is a size smaller there, as on a small screen. Tap `GAME SCREEN` in the same spot to bring the touch screen back. `BACK` with nothing left to go back from also returns to the touch screen. PokeDaisy remembers which of the two you had. On a 4:3 bottom screen, like the Retroid Pocket Duo's, there's no room under the touch screen, so it's drawn a little smaller to leave room for the bar.
 - **Over the game:** tap `BACK` and the companion opens over the top screen, as on a one-screen handheld (see [The window](#the-window)).
 
 Rather have the touch screen fill your whole bottom screen, without the bar? Set `DS TOUCH SCREEN` to `STRETCH` in SETTINGS (SCREEN group). The touch screen is stretched a little taller then, and `COMPANION` becomes a small tab on the right edge, halfway down, where the games keep nothing you need to tap. It works the same way: tap it for the companion, and tap it again there for the touch screen.
