@@ -798,7 +798,7 @@ class TelemetrySampler {
 
     private fun detectGameBoy() {
         val size = runCatching { MgbaCore.pkRomSize() }.getOrDefault(0L)
-        val digest = java.security.MessageDigest.getInstance("SHA-1")
+        val digest = Sha1()
         var off = 0L
         while (off < size) {
             val len = minOf(1L shl 20, size - off).toInt()
@@ -1353,7 +1353,7 @@ private const val GPIO_HOLE_SIZE = 6
 
 private fun sha1HexChunked(reader: MemoryReader, baseAddr: Long, size: Long): String {
     val chunkSize = 1 shl 20 // 1 MB - comfortably under pkReadBytes' 16 MB cap
-    val digest = java.security.MessageDigest.getInstance("SHA-1")
+    val digest = Sha1()
     var off = 0L
     while (off < size) {
         val len = minOf(chunkSize.toLong(), size - off).toInt()

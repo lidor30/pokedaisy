@@ -3,8 +3,8 @@ package com.pokedaisy.app.companion.data
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import java.io.File
-import java.util.zip.CRC32
-import java.util.zip.Deflater
+import okio.Deflater
+import okio.DeflaterSink
 
 /**
  * Game art the companion draws with - FireRed's / Emerald's party menu (slot,
@@ -220,7 +220,7 @@ object RomArt {
         } catch (_: IllegalArgumentException) {
             null // not a smol blob after all
         } ?: return null
-        val crc = CRC32().apply { update(data) }.value
+        val crc = crc32(data)
         return data.takeIf { crc == blob.crc }
     }
 
@@ -647,25 +647,10 @@ object RomArt {
                     raw[o++] = (c shr 16).toByte(); raw[o++] = (c shr 8).toByte(); raw[o++] = c.toByte(); raw[o++] = (c ushr 24).toByte()
                 }
             }
-            // Fed 16 KiB at a time: each deflate() holds a JNI critical lock
+            // okio deflates a segment (8 KiB) at a time: each deflate() holds a JNI critical lock on Android
             // (stalling GC while the game runs) for as long as its input lasts.
             val z = okio.Buffer()
-            val def = Deflater()
-            val chunk = ByteArray(8192)
-            var at = 0
-            while (!def.finished()) {
-                if (def.needsInput()) {
-                    if (at < raw.size) {
-                        val n = minOf(16 shl 10, raw.size - at)
-                        def.setInput(raw, at, n)
-                        at += n
-                    } else {
-                        def.finish()
-                    }
-                }
-                z.write(chunk, 0, def.deflate(chunk))
-            }
-            def.end()
+            DeflaterSink(z, Deflater()).use { it.write(okio.Buffer().write(raw), raw.size.toLong()) }
             val out = okio.Buffer()
             out.write(byteArrayOf(0x89.toByte(), 'P'.code.toByte(), 'N'.code.toByte(), 'G'.code.toByte(), 13, 10, 26, 10))
             // 8-bit depth, colour type 6 (RGBA), deflate, no filter, no interlace.
@@ -680,7 +665,7 @@ object RomArt {
             val t = asciiBytes(type)
             out.writeInt(data.size)
             out.write(t); out.write(data)
-            val crc = CRC32().apply { update(t); update(data) }.value
+            val crc = Crc32().apply { update(t); update(data) }.value
             out.writeInt(crc.toInt())
         }
     }

@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
-import java.util.zip.CRC32
 
 /** Whose sprite set a hero has: FireRed / LeafGreen's (same art in both), Emerald's, Ruby / Sapphire's (Emerald's
  * sheets, but the heroes drawn before Emerald's redraw and walking and running in one sheet) or Heart and Soul's (Emerald's
@@ -533,7 +532,7 @@ object PlayerLook {
             for ((at, bytes) in writes) {
                 if (at >= s && at + bytes.size <= e) bytes.copyInto(data, at - s)
             }
-            Block(s, CRC32().apply { update(rom, s, e - s) }.value.toInt(), data)
+            Block(s, crc32(rom, s, e - s).toInt(), data)
         }
     }
 
@@ -791,6 +790,6 @@ object Fingerprints {
         } catch (_: RuntimeException) { // a stream that isn't one after all (out of bounds, a smol header that lies)
             null
         } ?: return null
-        return data.takeIf { CRC32().apply { update(it) }.value == blob.crc }
+        return data.takeIf { crc32(it) == blob.crc }
     }
 }

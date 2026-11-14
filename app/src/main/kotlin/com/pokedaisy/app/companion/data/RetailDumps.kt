@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.InputStream
-import java.security.MessageDigest
 
 /**
  * One retail FireRed / Emerald ROM as collection dumps of it may differ ([RETAIL_DUMPS], from
@@ -57,7 +56,7 @@ object RetailDumps {
     /** SHA-1 of bytes [0, [end]) with the text in [fold] upper-cased (Gen 3's a-z as A-Z) and then [ranges] zeroed,
      * [next] giving each following chunk; null if one's short. [RandomizedRetail] hashes the same way. */
     internal fun maskedSha1(end: Int, ranges: List<IntRange>, fold: List<IntRange>, next: (Int) -> ByteArray?): String? {
-        val digest = MessageDigest.getInstance("SHA-1")
+        val digest = Sha1()
         var off = 0
         while (off < end) {
             val len = minOf(CHUNK, end - off)

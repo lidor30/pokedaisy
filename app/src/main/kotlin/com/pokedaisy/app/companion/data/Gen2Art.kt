@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
-import java.security.MessageDigest
 
 /**
  * A Game Boy Color (Gen 2) Pokémon game's own art, rebuilt from the player's ROM on its first launch
@@ -546,7 +545,7 @@ object Gen2Art {
      * versions and colour builds) share their paths, so starting another of them rebuilds them.
      */
     fun extractTo(rom: ByteArray, dir: File): List<String> {
-        val sha1 = MessageDigest.getInstance("SHA-1").digest(rom).hex()
+        val sha1 = sha1(rom).hex()
         val t = GAMES.firstOrNull { sha1 in it.sha1s } ?: return emptyList()
         val marker = File(dir, "gen2/${t.name}-built")
         val stamp = "v$VERSION $sha1"

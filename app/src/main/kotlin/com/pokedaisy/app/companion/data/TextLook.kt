@@ -92,7 +92,7 @@ object TextLook {
             val start = at - sig.anchor
             if (start >= 0 && start % 4 == 0 && start + sig.length <= rom.size) {
                 val keep = mask(rom, start, sig.length)
-                val crc = java.util.zip.CRC32()
+                val crc = Crc32()
                 for (k in 0 until sig.length) crc.update(if (keep[k]) rom[start + k].toInt() and 0xFF else 0)
                 if (crc.value == sig.crc) out += start
             }

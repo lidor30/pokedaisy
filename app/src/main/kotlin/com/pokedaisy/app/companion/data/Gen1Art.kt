@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
-import java.security.MessageDigest
 
 /**
  * A Game Boy Pokémon game's own art, rebuilt from the player's ROM on its first
@@ -356,7 +355,7 @@ object Gen1Art {
 
     /** Writes [rom]'s art into [dir] if it's a known Gen 1 cart (once per [VERSION]); returns the paths written. */
     fun extractTo(rom: ByteArray, dir: File): List<String> {
-        val sha1 = MessageDigest.getInstance("SHA-1").digest(rom).hex()
+        val sha1 = sha1(rom).hex()
         val t = GAMES.firstOrNull { it.sha1 == sha1 } ?: return emptyList()
         val marker = File(dir, "gen1/scanned-v$VERSION-${sha1.take(12)}")
         if (marker.isFile) return emptyList()

@@ -189,7 +189,7 @@ object NdsArt {
         })
         // The Redux builds share a code and revision but not their species' records (Classic, EVless): the DEX's types
         // and stats are theirs, so the marker keeps a CRC of those too.
-        val stamp = "v$VERSION $code $rev" + if (redux) " " + (file(f, header, "/a/0/1/6")?.let { java.util.zip.CRC32().apply { update(it) }.value } ?: 0L) else ""
+        val stamp = "v$VERSION $code $rev" + if (redux) " " + (file(f, header, "/a/0/1/6")?.let { crc32(it) } ?: 0L) else ""
         if (marker.isFile && runCatching { marker.readText() }.getOrNull() == stamp) return false
         if (origin) {
             if (!extractOrigin(f, header, dir)) return false

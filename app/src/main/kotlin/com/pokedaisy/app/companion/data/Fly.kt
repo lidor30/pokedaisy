@@ -179,7 +179,7 @@ fun flyVisitedTowns(fly: FlyFns, g: GameCalls): List<Int> =
 /** Whether the running ROM has [fly]'s functions where they're expected. */
 fun flyCodeMatches(fly: FlyFns, read: (addr: Long, len: Int) -> ByteArray): Boolean =
     fly.functions.zip(fly.codeCrcs).all { (fn, crc) ->
-        val got = java.util.zip.CRC32().apply { update(read(fn, 32)) }.value
+        val got = crc32(read(fn, 32))
         got == crc || fn == fly.getMapsecType && got == fly.getMapsecTypeAltCrc
     }
 

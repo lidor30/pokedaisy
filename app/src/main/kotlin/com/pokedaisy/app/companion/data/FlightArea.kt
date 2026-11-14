@@ -1,7 +1,6 @@
 package com.pokedaisy.app.companion.data
 
 import java.io.File
-import java.util.zip.CRC32
 
 /**
  * FLIGHT AREA (SETTINGS > GAMEPLAY, [com.pokedaisy.app.companion.FlightAreaMode]): FREE FLIGHT and the scenic FLY cross only
@@ -153,7 +152,7 @@ object FlightArea {
         val b = read(sb2, 14)
         val key = b.copyOfRange(0, 9) + b.copyOfRange(10, 14)
         if (key.all { it == 0.toByte() } || key.all { it == 0xFF.toByte() }) return null
-        return CRC32().apply { update(key) }.value.hex(8)
+        return crc32(key).hex(8)
     }
 
     /** One save's seen maps, kept in [file] (a line per map, `group.num`). */
