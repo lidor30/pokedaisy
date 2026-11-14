@@ -10,8 +10,8 @@ import java.io.File
 
 /**
  * The DS games' IVs, EVs and nature (the summary's STATS page): Gen 4 / 5 keep them in the record the party decode already
- * decrypts ([decodeGen4PartyMon]). Checked the way the GBA's were: every Black 2 / White 2 fixture's party and foes worked
- * out again from the base stats in the cart's own personal records (skips without the ROMs: `-DromDir=`'s ../nds/), and
+ * decrypts ([decodeGen4PartyMon]). Checked the way the GBA's were: every Black / White / Black 2 / White 2 fixture's party and
+ * foes worked out again from the base stats in Black 2's / White 2's own personal records (skips without the ROMs: `-DromDir=`'s ../nds/), and
  * Platinum / SoulSilver fixture Pokémon from their public base stats.
  */
 class DsStatsTest {
@@ -41,10 +41,15 @@ class DsStatsTest {
     }
 
     @Test
-    fun `Black 2 and White 2 - every fixture's stats from the cart's base stats`() {
+    fun `Black, White, Black 2 and White 2 - every fixture's stats from the cart's base stats`() {
+        val black2 = "Pokemon - Black Version 2 (USA, Europe) (NDSi Enhanced).nds"
+        // Black / White's species and base stats are Black 2's (Gen 5 changed none between them): their fixtures are checked
+        // against Black 2's cart, read through their own configs.
         val carts = listOf(
-            Triple(GameKind.BLACK2, "Pokemon - Black Version 2 (USA, Europe) (NDSi Enhanced).nds", listOf("black2", "black2_nimbasa", "black2_wild")),
+            Triple(GameKind.BLACK2, black2, listOf("black2", "black2_nimbasa", "black2_wild")),
             Triple(GameKind.WHITE2, "Pokemon - White Version 2 (USA, Europe) (NDSi Enhanced).nds", listOf("white2")),
+            Triple(GameKind.BLACK, black2, listOf("black", "black_battle", "black_route1", "black_wild")),
+            Triple(GameKind.WHITE, black2, listOf("white", "white_forest", "white_route1", "white_wild")),
         )
         var checked = 0
         for ((kind, file, fixtures) in carts) {
@@ -57,7 +62,12 @@ class DsStatsTest {
                 activeGame = kind
                 romLanguage = 'E'
                 romGameCode = ""
-                val cfg = if (kind == GameKind.WHITE2) GEN5_WHITE2 else GEN5_BLACK2
+                val cfg = when (kind) {
+                    GameKind.WHITE2 -> GEN5_WHITE2
+                    GameKind.BLACK -> GEN5_BLACK
+                    GameKind.WHITE -> GEN5_WHITE
+                    else -> GEN5_BLACK2
+                }
                 for (f in fixtures) {
                     val t = readGen5Telemetry(FixtureMemoryReader.load(f), cfg)
                     for (mon in (t.party + t.battleFoes).filter { !it.isEgg }) {
