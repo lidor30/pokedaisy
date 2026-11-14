@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 import kotlin.concurrent.Volatile
+import kotlin.time.TimeSource
 import kotlinx.coroutines.flow.MutableStateFlow
 import kotlinx.coroutines.flow.StateFlow
 import okio.Path
@@ -60,10 +61,10 @@ object RomArt {
         running = true
         background("pokedaisy-rom-art") {
             try {
-                val t0 = System.nanoTime()
+                val t0 = TimeSource.Monotonic.markNow()
                 val wrote = extractTo(readRomFile(rom), dir)
                 marker.writeText(wrote.joinToString("\n"))
-                android.util.Log.i("pokedaisy", "RomArt: ${wrote.size} new files from ${rom.name} in ${(System.nanoTime() - t0) / 1_000_000} ms")
+                android.util.Log.i("pokedaisy", "RomArt: ${wrote.size} new files from ${rom.name} in ${t0.elapsedNow().inWholeMilliseconds} ms")
                 if (wrote.isNotEmpty()) _updates.value++
             } catch (t: Throwable) {
                 android.util.Log.w("pokedaisy", "RomArt: scan failed", t)

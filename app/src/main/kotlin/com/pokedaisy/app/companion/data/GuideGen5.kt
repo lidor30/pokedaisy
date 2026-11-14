@@ -1,5 +1,7 @@
 package com.pokedaisy.app.companion.data
 
+import kotlinx.datetime.number
+
 /**
  * The month (1-12) for Black's seasons, as a var past the save's own (like [GEN4_VAR_HOUR]): 0 / missing = use the
  * device's clock. The DS clock is the device's, so the two agree unless a reader has the game's own.
@@ -143,7 +145,7 @@ class Gen5World(wildRaw: List<String>, bossesRaw: List<String>) : GuideWorld {
 
     /** The season for [progress]'s month ([GEN5_VAR_MONTH]), else the device's: 0 spring, 1 summer, 2 autumn, 3 winter. */
     fun season(progress: SaveProgress?): Int {
-        val month = progress?.variable(GEN5_VAR_MONTH)?.takeIf { it in 1..12 } ?: java.time.LocalDate.now().monthValue
+        val month = progress?.variable(GEN5_VAR_MONTH)?.takeIf { it in 1..12 } ?: localNow().month.number
         return (month - 1) % 4
     }
 

@@ -1,6 +1,7 @@
 package com.pokedaisy.app.companion.data
 
 import kotlin.concurrent.Volatile
+import kotlinx.datetime.number
 import okio.Path
 
 /**
@@ -105,7 +106,7 @@ object Black2Redux {
         val wildRates: List<IntArray>,
     ) {
         /** The rates for the device's season, as Black 2's world gives its own. */
-        fun wildRateWords(): IntArray = wildRates.getOrNull((java.time.LocalDate.now().monthValue - 1) % 4) ?: IntArray(0)
+        fun wildRateWords(): IntArray = wildRates.getOrNull((localNow().month.number - 1) % 4) ?: IntArray(0)
     }
 
     @Volatile var data: Data? = null
