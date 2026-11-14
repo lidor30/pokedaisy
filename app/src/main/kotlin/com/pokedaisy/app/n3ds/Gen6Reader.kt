@@ -22,6 +22,8 @@ object Gen6Reader {
         val partyStatsAt: Int,
         val myStatus: Int,
         val bag: Int,
+        /** The current zone (u16; the save's situation, the player's coordinates as floats after it): [Gen6Zones]. */
+        val zone: Int,
         /** Each pocket: its offset from [bag] and how many entries it holds, with the companion's pocket. */
         val pockets: List<Pocket>,
         /** The static module's (CRS) header: the loaded modules' chain starts there ([N3dsNative.modules]). */
@@ -40,6 +42,7 @@ object Gen6Reader {
         partyStatsAt = 0x158,
         myStatus = 0x08C79C2C,
         bag = 0x08C67154,
+        zone = 0x08C6709E,
         pockets = listOf(
             Pocket(0x400, 400, com.pokedaisy.app.companion.data.POCKET_ITEMS),
             Pocket(0xA40, 96, com.pokedaisy.app.companion.data.POCKET_KEY_ITEMS),
@@ -115,19 +118,21 @@ object Gen6Reader {
 
     data class Item(val id: Int, val count: Int, val pocket: Int)
 
-    /** The memory [read] needs for [c], as (address, length) pairs: the party, MyStatus and the bag. */
+    /** The memory [read] needs for [c], as (address, length) pairs: the party, MyStatus, the bag and the zone. */
     fun ranges(c: Config): IntArray = intArrayOf(
         c.party, c.partyStride * 6,
         c.myStatus, 0x170,
         c.bag + 0x400, 0xF68 - 0x400,
+        c.zone, 2,
     )
 
-    class Sample(val party: List<Mon>, val language: Int, val bag: List<Item>)
+    class Sample(val party: List<Mon>, val language: Int, val bag: List<Item>, val zone: Int = -1)
 
     /** [bytes] is [ranges]' memory, one after another. */
     fun read(c: Config, bytes: ByteArray): Sample? {
         val partyLen = c.partyStride * 6
-        if (bytes.size < partyLen + 0x170 + (0xF68 - 0x400)) return null
+        val zoneAt = partyLen + 0x170 + (0xF68 - 0x400)
+        if (bytes.size < zoneAt) return null
         val party = (0 until 6).mapNotNull { slot ->
             val at = slot * c.partyStride
             val raw = ByteArray(PARTY_SIZE)
@@ -149,7 +154,8 @@ object Gen6Reader {
             }
             out
         }
-        return Sample(party, language, bag)
+        val zone = if (bytes.size >= zoneAt + 2) ByteBuffer.wrap(bytes).order(ByteOrder.LITTLE_ENDIAN).getShort(zoneAt).toInt() and 0xFFFF else -1
+        return Sample(party, language, bag, zone)
     }
 
     const val STORED_SIZE = 0xE8

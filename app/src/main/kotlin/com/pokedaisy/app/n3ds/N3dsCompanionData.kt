@@ -27,6 +27,10 @@ object N3dsCompanionData {
         )
     }
 
+    /** Where the player is: the zone's place name ([Gen6Zones]), for the status bars. No region map yet. */
+    fun location(sample: Gen6Reader.Sample, text: Gen6Text?, zones: IntArray?): com.pokedaisy.app.companion.data.LocationView =
+        com.pokedaisy.app.companion.data.LocationView(Gen6Zones.placeName(zones, text, sample.zone), null, 0, 0, 0, 0)
+
     fun bag(sample: Gen6Reader.Sample, text: Gen6Text?): List<ItemView> = sample.bag.map { i ->
         ItemView(itemId = i.id, name = text?.items?.getOrNull(i.id) ?: "#${i.id}", quantity = i.count, iconAsset = null, pocket = i.pocket)
     }

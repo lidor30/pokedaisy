@@ -4365,6 +4365,8 @@ class PokeDaisyActivity : Activity() {
         if (::portraitPanel.isInitialized) portraitPanel.ds = false
         val key = "%016x".format(header.titleId)
         romKey = key
+        // AUTO language: the title id names none (its 4th character is a digit); the session sets the save's.
+        com.pokedaisy.app.companion.i18n.L10n.apply(Prefs(this).appLanguage, key)
         states = SaveStates(getExternalFilesDir(null) ?: filesDir, key)
         engine = EmulatorEngine(input, states!!, FfMusicCache(getExternalFilesDir(null) ?: filesDir, key))
         val session = com.pokedaisy.app.n3ds.N3dsSession(

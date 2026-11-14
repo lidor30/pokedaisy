@@ -44,6 +44,18 @@ class Gen6Text private constructor(private val files: List<ByteArray>) {
             else -> 4
         }
 
+        /** The save's language as a game code's language letter (AUTO's app language follows it); null for none. */
+        fun languageLetter(language: Int): Char? = when (language) {
+            1 -> 'J'
+            2 -> 'E'
+            3 -> 'F'
+            4 -> 'I'
+            5 -> 'D'
+            7 -> 'S'
+            8 -> 'K'
+            else -> null
+        }
+
         private val cache = HashMap<String, Gen6Text>()
 
         /** [cart]'s text in [language]; null when the cart can't be read that far. Kept per cart and language. */
@@ -115,6 +127,35 @@ class Gen6Text private constructor(private val files: List<ByteArray>) {
             }
             return out
         }
+    }
+}
+
+/**
+ * Pokemon X / Y's zones: each zone's place name ([Gen6Text.places]), from the cart's zone records (`a/0/1/2`: one LZ11
+ * "ZO" bundle a zone, and last all the zones' 0x38-byte records together; a record's +0x1C, low 9 bits, is the place).
+ * Kept per cart.
+ */
+object Gen6Zones {
+    private const val RECORD = 0x38
+    private val cache = HashMap<String, IntArray>()
+
+    /** Each zone's line in the place names; null when the cart can't be read that far. */
+    fun load(cart: File): IntArray? = synchronized(cache) {
+        val key = "${cart.absolutePath}:${cart.length()}"
+        cache[key] ?: runCatching {
+            RomFs(cart).use { fs ->
+                val files = fs.read("a/0/1/2")?.let { Gen6Text.garcFiles(it) } ?: return@use null
+                val all = files.lastOrNull()?.takeIf { it.isNotEmpty() && it.size % RECORD == 0 } ?: return@use null
+                val b = ByteBuffer.wrap(all).order(ByteOrder.LITTLE_ENDIAN)
+                IntArray(all.size / RECORD) { z -> b.getShort(z * RECORD + 0x1C).toInt() and 0x1FF }
+            }
+        }.getOrNull()?.also { cache[key] = it }
+    }
+
+    /** [zone]'s place name in [text], or "" (an unknown zone, a blank line). */
+    fun placeName(zones: IntArray?, text: Gen6Text?, zone: Int): String {
+        val line = zones?.getOrNull(zone) ?: return ""
+        return text?.places?.getOrNull(line).orEmpty()
     }
 }
 

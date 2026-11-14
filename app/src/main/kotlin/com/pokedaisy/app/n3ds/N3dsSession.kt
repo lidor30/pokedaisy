@@ -242,10 +242,31 @@ class N3dsSession(
                     seen = now
                 }
                 if (pass++ % FIELD_SHOT_EVERY == 0 && scene == Gen6Reader.Scene.FIELD) fieldShot()
+                if (com.pokedaisy.app.BuildConfig.DEBUG && pass % FIELD_SHOT_EVERY == 1) debugDump()
             }
             try { Thread.sleep(SCENE_MS) } catch (_: InterruptedException) { break }
         }
     }, "pokedaisy-n3ds-scene")
+
+    /** Debug builds: `files/debug/n3ds_dump` there = the game's heap (0x08000000, 15 MB) and data (0x005A6000) written
+     * to `files/debug/n3ds-<time>-<base>.bin`, the marker deleted (finding addresses on a device: diff two dumps). */
+    private fun debugDump() {
+        val dir = File(userDir).parentFile?.let { File(it, "debug") } ?: return
+        val marker = File(dir, "n3ds_dump")
+        if (!marker.isFile) return
+        marker.delete()
+        val stamp = System.currentTimeMillis()
+        for ((base, len) in listOf(0x005A6000 to 0x260000, 0x08000000 to 0xF00000)) {
+            val ranges = IntArray(len / 0x100000 * 2 + 2).also { r ->
+                var i = 0
+                var a = 0
+                while (a < len) { r[i++] = base + a; r[i++] = minOf(0x100000, len - a); a += 0x100000 }
+            }.let { r -> r.copyOf(r.indexOfLast { it != 0 } + 1) }
+            val bytes = N3dsNative.readMemory(ranges) ?: continue
+            File(dir, "n3ds-$stamp-%08x.bin".format(base)).writeBytes(bytes)
+        }
+        Log.i(TAG, "dumped $stamp")
+    }
 
     private fun fieldShot() {
         val px = N3dsNative.screenshot(FIELD_SHOT_W, FIELD_SHOT_H) ?: return
@@ -258,11 +279,16 @@ class N3dsSession(
     private val sampler = Thread({
         val config = Gen6Reader.configFor(titleId)
         var text: Gen6Text? = null
+        var textLanguage = -1
+        val zones = Gen6Zones.load(rom)
         while (running) {
             if (config != null && !paused) {
                 val sample = N3dsNative.readMemory(Gen6Reader.ranges(config))?.let { Gen6Reader.read(config, it) }
                 if (sample != null) {
-                    if (text == null) text = Gen6Text.load(rom, sample.language)?.also { t ->
+                    // Reloaded when the language changes: a read before the save is loaded (the title) has none yet.
+                    if (text == null || sample.language != textLanguage) text = Gen6Text.load(rom, sample.language)?.also { t ->
+                        textLanguage = sample.language
+                        Gen6Text.languageLetter(sample.language)?.let { l -> ui.post { com.pokedaisy.app.companion.i18n.L10n.applyGameLanguage(l) } }
                         val names = t.items
                         OwnItemNames.lookup = { id -> names.getOrNull(id) }
                     }
@@ -272,6 +298,7 @@ class N3dsSession(
                         frameCounter = N3dsNative.frames(),
                         party = N3dsCompanionData.party(sample, text),
                         items = N3dsCompanionData.bag(sample, text),
+                        location = N3dsCompanionData.location(sample, text, zones),
                     )
                     ui.post { onSnapshot(view) }
                 }

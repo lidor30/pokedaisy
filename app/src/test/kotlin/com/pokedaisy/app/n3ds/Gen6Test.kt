@@ -87,6 +87,21 @@ class Gen6Test {
         assertTrue(en.types.contains("Fairy"))
     }
 
+    /** The zones' place names from the cart (zone numbers as the RP6 read them, 2026-11-15: 67 outside in Lumiose's
+     * south, 359 its Pokemon Center). */
+    @Test fun readsTheCartsZones() {
+        val cart = File(File(RETAIL_ROM_DIR).parentFile, "3ds/Pokemon X (USA) (En,Ja,Fr,De,Es,It,Ko).3ds")
+        assumeTrue(cart.isFile)
+        val zones = Gen6Zones.load(cart)!!
+        assertEquals(360, zones.size)
+        val en = Gen6Text.load(cart, 2)!!
+        assertEquals("Vaniville Town", Gen6Zones.placeName(zones, en, 0))
+        assertEquals("Lumiose City", Gen6Zones.placeName(zones, en, 67))
+        assertEquals("Lumiose City", Gen6Zones.placeName(zones, en, 359))
+        assertEquals("", Gen6Zones.placeName(zones, en, 9999))
+        assertEquals("Luminopoli", Gen6Zones.placeName(zones, Gen6Text.load(cart, 4), 67))
+    }
+
     /** The field object's 0x20 bytes as the RP6 read them (+0x10 the flags, +4 the pointer that goes with an app). */
     private fun fieldObject(flags: Int, pointer: Int = 0x082AA72C, size: Int = 0x20): ByteArray =
         ByteBuffer.allocate(0x20).order(ByteOrder.LITTLE_ENDIAN).apply {

@@ -134,9 +134,27 @@ are checked through this path, then goes.
   give. No species-to-icon table was found as u8 / u16 / u32 runs in `.code` (ExeFS, BLZ-compressed) or any `.cro`: the
   game computes it, or keeps it in another shape. Next: find the rule (the pairs may be gender; the personal data's
   gender / flags bytes), or read which icon the game loads (its party menu's texture).
+- 2026-11-15, more on the order (still no mapping in the app): the archive is blank 0, then each species with its Megas
+  just before its plain icon (Venusaur 3 Mega / 4, Charizard 7 X / 8 Y / 9, Blastoise 12 / 13), and some species with a
+  second, near-identical icon right after the plain one (Clefairy 39 / 40, Clefable 41 / 42, Jigglypuff 45 / 46,
+  Wigglytuff 47 / 48, Poliwhirl, Poliwrath, Kingler with a bigger claw, Cleffa, Igglybuff; not Zubat / Golbat, which
+  differ by gender), the egg last (944). `a/0/0/6` entry 0 is the 3D models' table (u16 per species, Megas before the
+  plain model, then 822 nine-word records per model): the same order without those second icons, so it matches the
+  archive only up to Clefairy. Ruled out: personal `0x21` bit 6 (set on Poliwag, Kadabra, Machoke... with no second
+  icon; with the form counts it totals 945, one too many, and drifts by Mewtwo), a run of the second-icon species, a
+  first-icon or icon-count table (u8 / u16, RomFS and `.code`), a pixel-difference threshold (no clean gap: Kingler's
+  pair differs more than some evolutions). In memory on the party screen the icons are GPU textures already (only 2 of
+  6 recognisable). Next: ground truth from the game itself, e.g. party slots poked to other species headless and the
+  icon each one draws read off a screenshot of the party screen, or the code that picks the icon in `DllPokeList`.
 - Item icons are probably `a/0/9/4` (579 files, 30 x 30, same container).
-- The map: the save's Situation block isn't at 0x1E00 in XY (zeros there); the zone data with place-name indexes is one
-  of the GARCs whose entries name places (text file 72), not pinned down yet.
+- The map name (2026-11-15, in the app): the current zone is a u16 at 0x08C6709E (the save's situation in memory, the
+  player's coordinates as floats after it; 0x08C670D4 the zone before), found on the RP6 by walking from Lumiose's square
+  into its Pokemon Center (67 -> 359) with the debug builds' heap dumps (`files/debug/n3ds_dump` -> `n3ds-<time>-<base>.bin`,
+  `N3dsSession.debugDump`). The zones' records are `a/0/1/2`: one LZ11 "ZO" bundle a zone (its first section the 0x38-byte
+  record) and, last, all 360 records together; a record's +0x1C, low 9 bits, is its line in the place names (text file
+  72): `Gen6Zones`. The status bars show it (`LocationView.mapSecName`), in the save's language, and AUTO's app language
+  follows the save's (`Gen6Text.languageLetter` -> `L10n.applyGameLanguage`). Lumiose's districts ("Piazza Rosa") are the
+  same zone: their signs come from elsewhere. No region map yet.
 
 ## Pokemon X, first findings (n3ds_dump, 2026-11-14)
 
