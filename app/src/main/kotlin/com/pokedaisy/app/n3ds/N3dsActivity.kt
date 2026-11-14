@@ -27,7 +27,9 @@ import kotlin.math.abs
 
 /**
  * A 3DS game, first version (docs/3DS_GAMES_PLAN.md, milestone 1): Azahar on this activity's surface and, with a second
- * display, the touch screen alone on a [Presentation] there (the Thor's bottom screen); one display shows both screens.
+ * display, the touch screen alone on a [Presentation] there (the Thor's bottom screen). One display follows DS LAYOUT:
+ * ONE SCREEN (and PICTURE IN PICTURE, for now) the top screen alone with the touch screen floating in on L2 / TOUCH, the
+ * others Azahar's own layouts of both screens.
  * Buttons and the left stick from a controller, touches on either surface. Not the game stage the GBA / DS games use yet:
  * no companion, HUD or settings; test keys: L3 saves a state, R3 loads it, R2 held runs fast.
  */
@@ -50,14 +52,22 @@ class N3dsActivity : Activity() {
     private val ui = Handler(Looper.getMainLooper())
     private var buttons = 0
     private var ffHeld = false
+    private lateinit var layout: com.pokedaisy.app.companion.DsLayout
+    // ONE SCREEN (and PICTURE IN PICTURE, for now): the touch screen as a second surface in a window over the game.
+    private var floatFrame: FrameLayout? = null
+    private var dim: View? = null
+    private var touchButton: TextView? = null
+    private var floating = false
 
     override fun onCreate(savedInstanceState: Bundle?) {
         super.onCreate(savedInstanceState)
         window.addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON)
         rom = File(intent.getStringExtra(EXTRA_ROM) ?: run { finish(); return })
+        layout = com.pokedaisy.app.Prefs(this).dsLayout
         val frame = FrameLayout(this).apply { setBackgroundColor(Color.BLACK) }
         main = SurfaceView(this)
         frame.addView(main, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        root = frame
         notice = TextView(this).apply {
             setTextColor(Color.WHITE)
             textSize = 18f
@@ -78,7 +88,69 @@ class N3dsActivity : Activity() {
 
         main.holder.addCallback(surfaceCallback(0) { mainReady = it })
         main.setOnTouchListener { _, e -> touch(0, e); true }
-        secondDisplay()?.let { showOnSecond(it) }
+        val second = secondDisplay()
+        if (second != null) showOnSecond(second) else if (layout.floats) floatingTouchWindow()
+    }
+
+    private lateinit var root: FrameLayout
+
+    /**
+     * ONE SCREEN's touch screen: a window of its own over a dim of the game, 4:3 at 82% of the height. Hidden, it's moved
+     * off the screen, not removed: Azahar draws into its surface every frame, and a surface that goes away under it
+     * would have to be rebuilt. L2, the TOUCH button or a tap on the dim open / close it.
+     */
+    private fun floatingTouchWindow() {
+        wantsSecond = true
+        val dimView = View(this).apply {
+            setBackgroundColor(0x99000000.toInt())
+            visibility = View.GONE
+            setOnClickListener { setFloating(false) }
+        }
+        root.addView(dimView, FrameLayout.LayoutParams(FrameLayout.LayoutParams.MATCH_PARENT, FrameLayout.LayoutParams.MATCH_PARENT))
+        val view = SurfaceView(this).apply { setZOrderMediaOverlay(true) }
+        view.holder.addCallback(surfaceCallback(1) { secondReady = it })
+        view.setOnTouchListener { _, e -> touch(1, e); true }
+        val box = FrameLayout(this).apply { addView(view) }
+        root.addView(box, FrameLayout.LayoutParams(1, 1, Gravity.CENTER))
+        val button = TextView(this).apply {
+            text = "TOUCH"
+            setTextColor(Color.WHITE)
+            textSize = 14f
+            setBackgroundColor(0x88000000.toInt())
+            setPadding(28, 14, 28, 14)
+            setOnClickListener { setFloating(!floating) }
+        }
+        root.addView(button, FrameLayout.LayoutParams(FrameLayout.LayoutParams.WRAP_CONTENT, FrameLayout.LayoutParams.WRAP_CONTENT,
+            Gravity.BOTTOM or Gravity.END).apply { setMargins(0, 0, 24, 24) })
+        root.addOnLayoutChangeListener { _, l, t, r, b, _, _, _, _ ->
+            val h = ((b - t) * 0.82f).toInt()
+            val w = h * 4 / 3
+            (box.layoutParams as FrameLayout.LayoutParams).let { lp ->
+                if (lp.width != w || lp.height != h) { lp.width = w; lp.height = h; box.layoutParams = lp }
+            }
+            box.translationX = if (floating) 0f else (r - l).toFloat() * 2
+        }
+        floatFrame = box
+        dim = dimView
+        touchButton = button
+        box.translationX = 100_000f
+    }
+
+    private fun setFloating(on: Boolean) {
+        val box = floatFrame ?: return
+        floating = on
+        dim?.visibility = if (on) View.VISIBLE else View.GONE
+        box.translationX = if (on) 0f else root.width.toFloat() * 2
+        touchButton?.text = if (on) "CLOSE" else "TOUCH"
+        // A finger down on the touch screen when it goes away would stay down in the game.
+        if (!on) N3dsNative.touch(1, 0, 0, N3dsNative.TOUCH_UP)
+    }
+
+    /** Azahar's layout of both screens on the one surface, for a layout that doesn't float the touch screen. */
+    private fun azaharLayout(): Int = when (layout) {
+        com.pokedaisy.app.companion.DsLayout.SIDE_BY_SIDE -> 3   // Settings::LayoutOption::SideScreen
+        com.pokedaisy.app.companion.DsLayout.STACKED -> 0        // Default: the touch screen under the game
+        else -> 2                                                // LargeScreen
     }
 
     private fun secondDisplay(): Display? =
@@ -124,7 +196,7 @@ class N3dsActivity : Activity() {
             // 3x for now (the RP6 / Thor draw the top screen at 4x): sharp, and cheap on a Snapdragon 8 Gen 2. A setting
             // later, like DS RESOLUTION.
             N3dsNative.setResolution(RESOLUTION)
-            val result = N3dsNative.run(path)
+            val result = N3dsNative.run(path, azaharLayout())
             Log.i(TAG, "game ended: $result")
             ui.post {
                 if (result != 0 && !isFinishing) showNotice("The game stopped (Azahar status $result).") else finish()
@@ -179,6 +251,11 @@ class N3dsActivity : Activity() {
             KeyEvent.KEYCODE_BUTTON_THUMBL -> { if (down && event.repeatCount == 0) state(save = true); return true }
             KeyEvent.KEYCODE_BUTTON_THUMBR -> { if (down && event.repeatCount == 0) state(save = false); return true }
             KeyEvent.KEYCODE_BUTTON_R2 -> { fastForward(down); return true }
+            // One screen: L2 brings the touch screen in and sends it away (the DS games' TOUCH SCREEN key).
+            KeyEvent.KEYCODE_BUTTON_L2 -> if (floatFrame != null) {
+                if (down && event.repeatCount == 0) setFloating(!floating)
+                return true
+            }
         }
         val bit = buttonFor(event.keyCode)
         if (bit == 0) return super.dispatchKeyEvent(event)
@@ -197,13 +274,20 @@ class N3dsActivity : Activity() {
         val hy = event.getAxisValue(MotionEvent.AXIS_HAT_Y)
         val hat = (if (hx < -0.5f) N3dsNative.Button.LEFT else 0) or (if (hx > 0.5f) N3dsNative.Button.RIGHT else 0) or
             (if (hy < -0.5f) N3dsNative.Button.UP else 0) or (if (hy > 0.5f) N3dsNative.Button.DOWN else 0)
-        val zl = if (event.getAxisValue(MotionEvent.AXIS_LTRIGGER) > 0.5f) N3dsNative.Button.ZL else 0
+        val lTrigger = event.getAxisValue(MotionEvent.AXIS_LTRIGGER) > 0.5f
+        val zl = if (lTrigger && floatFrame == null) N3dsNative.Button.ZL else 0
+        if (floatFrame != null && lTrigger != lTriggerHeld) {
+            lTriggerHeld = lTrigger
+            if (lTrigger) setFloating(!floating)
+        }
         val dpad = N3dsNative.Button.LEFT or N3dsNative.Button.RIGHT or N3dsNative.Button.UP or N3dsNative.Button.DOWN
         buttons = (buttons and (dpad or N3dsNative.Button.ZL).inv()) or hat or zl
         N3dsNative.setButtons(buttons)
         fastForward(event.getAxisValue(MotionEvent.AXIS_RTRIGGER) > 0.5f)
         return true
     }
+
+    private var lTriggerHeld = false
 
     private fun fastForward(on: Boolean) {
         if (on == ffHeld) return

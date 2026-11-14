@@ -72,6 +72,12 @@ screen alone the bottom one (black only during the title's intro), a touch there
 3x). Screenshots of one display: `screencap -p -d <physical id>` (`dumpsys display`'s uniqueId numbers), not the
 display id. Sound (cubeb) is right on the Thor, by ear.
 
+ONE SCREEN (2026-11-14, checked on the RP6): with one display and DS LAYOUT's ONE SCREEN (or PICTURE IN PICTURE, for now),
+the top screen alone fills the display and the touch screen is a second surface in a 4:3 window over a dim, brought in
+and sent away by L2 or a TOUCH button (a tap on the dim closes it). Hidden, the window is moved off the screen, not
+removed: Azahar draws to its surface every frame. SIDE BY SIDE / LARGE + SMALL / STACKED are Azahar's SideScreen /
+LargeScreen / Default on the one surface. Not yet: the window coming in by itself when the game wants touch.
+
 ## Pokemon X, first findings (n3ds_dump, 2026-11-14)
 
 - Boots with the user's save and plays to the field (Lumiose, the save is Italian: the game follows the save's language).

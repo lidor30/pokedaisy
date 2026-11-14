@@ -2,8 +2,8 @@
 // surfaces, and take buttons, the circle pad and touches. The JNI functions belong to com.pokedaisy.app.n3ds.N3dsNative.
 //
 // Screens: with two surfaces, the main one shows the top screen alone and the second one the touch screen alone (the
-// Thor's two displays, or ONE SCREEN's floating touch window later); with one, the main surface shows both
-// (LargeScreen). Which it is is decided at boot, from the surfaces there are.
+// Thor's two displays, or ONE SCREEN's floating touch window); with one, the main surface shows both in the layout the
+// app asks for. Which it is is decided at boot, from the surfaces there are.
 #include <android/log.h>
 #include <android/native_window.h>
 #include <android/native_window_jni.h>
@@ -264,7 +264,8 @@ JNIEXPORT void JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_setSurface(JNIEnv*
 }
 
 // Boots path and runs it on this thread until stop(); returns Core::System::ResultStatus (0 = stopped normally).
-JNIEXPORT jint JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_run(JNIEnv* env, jclass, jstring jpath) {
+JNIEXPORT jint JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_run(JNIEnv* env, jclass, jstring jpath,
+                                                                 jint oneSurfaceLayout) {
     std::scoped_lock runLock(runMutex);
     const std::string path = nativePath(fromJava(env, jpath));
     auto& system = Core::System::GetInstance();
@@ -273,8 +274,10 @@ JNIEXPORT jint JNICALL Java_com_pokedaisy_app_n3ds_N3dsNative_run(JNIEnv* env, j
     {
         std::scoped_lock lock(surfaceMutex);
         const bool two = surfaces[1] != nullptr;
-        // Two surfaces: the top screen alone on the main one, the touch screen alone on the second. One: both.
-        Settings::values.layout_option = two ? Settings::LayoutOption::SingleScreen : Settings::LayoutOption::LargeScreen;
+        // Two surfaces: the top screen alone on the main one, the touch screen alone on the second. One: both, the way
+        // the app asks (DS LAYOUT's SIDE BY SIDE / LARGE + SMALL / STACKED as Azahar's SideScreen / LargeScreen / Default).
+        Settings::values.layout_option = two ? Settings::LayoutOption::SingleScreen
+                                             : static_cast<Settings::LayoutOption>(std::clamp(oneSurfaceLayout, 0, 3));
         Settings::values.secondary_display_layout = Settings::SecondaryDisplayLayout::BottomScreenOnly;
         Settings::values.swap_screen = false;
         windows[0] = std::make_unique<PkWindow>(surfaces[0], false);

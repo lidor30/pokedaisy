@@ -66,8 +66,10 @@ object N3dsNative {
     @JvmStatic private external fun init(userDir: String, utils: Class<*>): Boolean
     /** The main (0) or second (1) surface; null when it goes away. Two at boot = top screen + touch screen apart. */
     @JvmStatic external fun setSurface(which: Int, surface: Surface?)
-    /** Boots the cart and runs it on the calling thread until [stop]; Azahar's Core::System::ResultStatus (0 = stopped). */
-    @JvmStatic external fun run(path: String): Int
+    /** Boots the cart and runs it on the calling thread until [stop]; Azahar's Core::System::ResultStatus (0 = stopped).
+     * [oneSurfaceLayout]: Azahar's Settings::LayoutOption for both screens on the main surface, used when there's no
+     * second surface (with one, the top screen goes alone on the main surface). */
+    @JvmStatic external fun run(path: String, oneSurfaceLayout: Int): Int
     @JvmStatic external fun stop()
     @JvmStatic external fun setPaused(paused: Boolean)
     @JvmStatic external fun setButtons(bits: Int)
