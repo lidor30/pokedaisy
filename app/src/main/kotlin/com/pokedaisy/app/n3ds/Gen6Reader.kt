@@ -28,10 +28,13 @@ object Gen6Reader {
         val pockets: List<Pocket>,
         /** The static module's (CRS) header: the loaded modules' chain starts there ([N3dsNative.modules]). */
         val staticModule: Int = 0,
-        /** The field's X menu ([sceneOf]): a pointer, set while the menu is open, and at +0x24 a byte that's 1 then;
-         * both 0 on the field, in dialogue, through doors. Mapped while the field module is loaded. Found on the RP6
-         * and headless, two saves (2026-11-15). */
-        val fieldMenu: Int = 0,
+        /** The field's X menu ([sceneOf]): at [fieldMenuRoot] the field's object, and in it, +[fieldMenuOffset], a
+         * pointer set while the menu is open, with at +0x24 a byte that's 1 then; both 0 on the field, in dialogue,
+         * through doors. The object moves with the heap (it sat at 0x086036D4, then after a Save at 0x08602794: a fixed
+         * 0x08603714 went blind), its root doesn't. Mapped while the field module is loaded. Found on the RP6 and
+         * headless (two saves), the root checked against ten dumps on two devices (2026-11-15). */
+        val fieldMenuRoot: Int = 0,
+        val fieldMenuOffset: Int = 0x40,
         /** The battle's touch-screen controller ([battleInput]); its command panel points at the battlers' records
          * ([battleMon]): the player's at +[panelPlayer], the foe's at +[panelFoe]. */
         val battleUi: Int = 0,
@@ -57,7 +60,7 @@ object Gen6Reader {
             Pocket(0xE68, 64, com.pokedaisy.app.companion.data.POCKET_BERRIES),
         ),
         staticModule = 0x012B6000,
-        fieldMenu = 0x08603714,
+        fieldMenuRoot = 0x08C54044,
         battleUi = 0x08515980,
     )
 
@@ -76,11 +79,15 @@ object Gen6Reader {
     /** The modules that are the title and the start menu, and the field's: a screen is any other. */
     private val NOT_SCREENS = setOf("DllTitle", "DllBackGround", "DllSequence", "DllStartMenu")
 
-    /** What [sceneOf] reads at [Config.fieldMenu]. */
+    /** Field modules whose question waits on the touch screen alone, the top screen dimmed: MENU too (Save's "save the
+     * game?" with its Yes / No: the X menu's marker is cleared meanwhile). */
+    private val FIELD_TOUCH = setOf("DllReport")
+
+    /** What [sceneOf] reads at the field object's [Config.fieldMenuOffset]. */
     const val FIELD_MENU_BYTES = 0x28
 
     /**
-     * The scene from the loaded modules ([N3dsNative.modules], one name a line) and [Config.fieldMenu]'s
+     * The scene from the loaded modules ([N3dsNative.modules], one name a line) and the field menu's ([Config.fieldMenuRoot])
      * [FIELD_MENU_BYTES]; null while it can't tell (between two screens no module is loaded; the title): the last
      * one stands. (The field's lower-screen object's flags, tried first, also read as the menu in dialogue and on
      * every door.)
@@ -89,6 +96,7 @@ object Gen6Reader {
         val names = modules.split('\n').filter { it.isNotEmpty() }
         if (names.isEmpty()) return null
         if ("DllField" in names) {
+            if (names.any { it in FIELD_TOUCH }) return Scene.MENU
             if (fieldMenu == null || fieldMenu.size < FIELD_MENU_BYTES) return Scene.FIELD
             val open = ByteBuffer.wrap(fieldMenu).order(ByteOrder.LITTLE_ENDIAN).getInt(0) != 0 && fieldMenu[0x24].toInt() == 1
             return if (open) Scene.MENU else Scene.FIELD

@@ -229,17 +229,27 @@ class N3dsSession(
     private val scenes = Thread({
         val config = Gen6Reader.configFor(titleId)
         var lastModules: String? = null
-        // A change counts once two reads in a row agree (between two screens the modules come and go).
+        // A change counts once two reads in a row agree (between two screens the modules come and go). Out of one of
+        // the game's screens, the field counts only after a second of it: on the way back to the X menu the field's
+        // module loads about a second before the menu is set again (the window went away and came back).
         var seen: Gen6Reader.Scene? = null
+        var streak = 0
         var pass = 0
         while (running && config != null && config.staticModule != 0) {
             if (!paused) {
                 val modules = N3dsNative.modules(config.staticModule)
                 if (modules != null) {
                     if (modules != lastModules) { Log.d(TAG, "modules: ${modules.replace('\n', ',')}"); lastModules = modules }
-                    val menu = if ("DllField" in modules) N3dsNative.readMemory(intArrayOf(config.fieldMenu, Gen6Reader.FIELD_MENU_BYTES)) else null
+                    val menu = if ("DllField" in modules) fieldMenu(config) else null
                     val now = Gen6Reader.sceneOf(modules, menu)
-                    if (now != null && now != scene && now == seen) {
+                    streak = if (now == seen) streak + 1 else 1
+                    val needed = when {
+                        scene == Gen6Reader.Scene.SCREEN && now == Gen6Reader.Scene.FIELD -> SCREEN_TO_FIELD_READS
+                        // Save's question going (back to the menu) leaves the menu unset for a read or two.
+                        scene == Gen6Reader.Scene.MENU && now == Gen6Reader.Scene.FIELD -> 3
+                        else -> 2
+                    }
+                    if (now != null && now != scene && streak >= needed) {
                         scene = now
                         Log.i(TAG, "scene: $now")
                         ui.post { onScene(now) }
@@ -380,6 +390,15 @@ class N3dsSession(
      * buffer): every taker here goes through this, one after the other, trying again a moment later if the game's
      * renderer still had one pending. A state's thumbnail once lost to the field picture and was never written. */
     private val shotLock = Any()
+
+    /** The field menu's bytes ([Gen6Reader.sceneOf]): the field's object from its root, then the pointer and flag in it. */
+    private fun fieldMenu(config: Gen6Reader.Config): ByteArray? {
+        if (config.fieldMenuRoot == 0) return null
+        val root = N3dsNative.readMemory(intArrayOf(config.fieldMenuRoot, 4))?.takeIf { it.size == 4 } ?: return null
+        val obj = java.nio.ByteBuffer.wrap(root).order(java.nio.ByteOrder.LITTLE_ENDIAN).getInt(0)
+        if (obj !in 0x08000000 until 0x0A000000) return null
+        return N3dsNative.readMemory(intArrayOf(obj + config.fieldMenuOffset, Gen6Reader.FIELD_MENU_BYTES))
+    }
     private fun screenshot(w: Int, h: Int, bottom: Boolean = false): IntArray? = synchronized(shotLock) {
         repeat(SHOT_TRIES) { i ->
             N3dsNative.screenshot(w, h, bottom)?.let { return it }
@@ -391,6 +410,11 @@ class N3dsSession(
 
     private fun fieldShot() {
         val px = screenshot(FIELD_SHOT_W, FIELD_SHOT_H) ?: return
+        // Not a fade's frame (a door, a screen opening): the backdrop would be black. Every 7th pixel's brightness.
+        var sum = 0L
+        var n = 0
+        for (i in px.indices step 7) { val c = px[i]; sum += ((c shr 16) and 0xFF) + ((c shr 8) and 0xFF) + (c and 0xFF); n++ }
+        if (n == 0 || sum / (3 * n) < FIELD_SHOT_DARK) return
         val bmp = runCatching { android.graphics.Bitmap.createBitmap(px, FIELD_SHOT_W, FIELD_SHOT_H, android.graphics.Bitmap.Config.ARGB_8888) }.getOrNull() ?: return
         ui.post { onFieldShot(bmp) }
     }
@@ -444,9 +468,13 @@ class N3dsSession(
         private const val SCENE_MS = 100L
         /** The field's picture every this many scene reads (a second), at the 3DS's own top-screen size. */
         private const val FIELD_SHOT_EVERY = 10
+        /** Scene reads the field must hold coming out of one of the game's screens (see the scene thread). */
+        private const val SCREEN_TO_FIELD_READS = 11
         /** [screenshot]'s tries, a frame or so apart. */
         private const val SHOT_TRIES = 3
         private const val SHOT_RETRY_MS = 20L
+        /** A field picture darker than this on average (0-255) is a fade's, not kept. */
+        private const val FIELD_SHOT_DARK = 24
         private const val FIELD_SHOT_W = 400
         private const val FIELD_SHOT_H = 240
     }

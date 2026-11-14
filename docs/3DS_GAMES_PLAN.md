@@ -104,8 +104,10 @@ were checked through this path (2026-11-15).
   surface showed at the stage's top left. L2 / TOUCH bring it in, a tap on the dim sends it away.
 - The touch screen by itself (ONE SCREEN, 2026-11-15): `N3dsSession`'s scene thread reads, ten times a second, the
   modules the game has loaded (`N3dsNative.modules`: the CRO chain from the static module's header at 0x012B6000, each
-  header's name at +0x84 and next at +0x88) and the field's X menu (`Gen6Reader.Config.fieldMenu`, 0x08603714: a
-  pointer set while the menu is open and a byte at +0x24 that's 1 then; checked on two saves, headless and on the RP6).
+  header's name at +0x84 and next at +0x88) and the field's X menu (`Gen6Reader.Config.fieldMenuRoot`: 0x08C54044
+  points to the field's object, and at +0x40 in it a pointer is set while the menu is open, with a byte at +0x24
+  that's 1 then. The object moves with the heap: first found as a fixed 0x08603714, which went blind after a Save
+  moved it to 0x08602794; the root held in ten dumps from the RP6 and the Thor).
   `Gen6Reader.sceneOf`: `DllField` with the menu open = MENU (the touch screen floats in); no `DllField` = a screen of the game's own
   (`DllPokeList` for the party and the bag, a battle...): both screens side by side, framed over a picture of the field
   (Azahar's screenshot once a second while on the field); the title's modules and the empty moments between screens keep
@@ -113,6 +115,14 @@ were checked through this path (2026-11-15).
   Checked on the RP6: menu, party, bag, back, dialogue, doors, a wild battle (side by side: the battle's modules are
   `DllBattle`, `DllBackGround`). The field object's flags tried first (0x08D033F0 +0x10: 0x3D1 / 0x3D3) also read as
   the menu in dialogue and on every door and map change (the window popped in as the player walked): not the menu.
+- The X menu's entries on one screen (2026-11-15, the Thor with SINGLE SCREEN, the player's save, nothing saved): the
+  Pokedex (`DllTownmap`, `DllZukan`), the party, the trainer card (`DllTrainerCase`) and Options (`DllConfig`) are
+  SCREEN, both screens over the field; Save's "save the game?" waits on the touch screen alone, the top dimmed, its
+  `DllReport` beside the field: MENU, the window up. Back from a screen to the menu, the field's module loads about a
+  second before the menu is set again: out of a screen the field counts only after 1.1 s, and out of the menu after
+  three reads (Save's question going leaves it unset a moment), so the window doesn't blink away. The field picture
+  behind the two screens skips fades' near-black frames. Not tried yet: shops, the nurse's Yes / No, the PC, Amie and
+  Super Training (no Pokemon Center near that save's spot).
   Test saves: the Citra saves in ~/Downloads/XY Citra Saves (early story, post game); on the RP6, slot 9 = Route 2's
   grass, slot 8 = a wild battle at its command menu (2026-11-15).
 - Battles on one screen (2026-11-15): the game's own buttons in the top screen's bottom-right corner, no backdrop,

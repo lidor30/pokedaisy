@@ -124,7 +124,7 @@ class Gen6Test {
         }
     }
 
-    /** [Gen6Reader.Config.fieldMenu]'s bytes as the RP6 read them: the menu's pointer and the byte at +0x24. */
+    /** The field menu's bytes ([Gen6Reader.Config.fieldMenuRoot]) as the RP6 read them: the menu's pointer and the byte at +0x24. */
     private fun fieldMenu(pointer: Int, flag: Int): ByteArray =
         ByteBuffer.allocate(Gen6Reader.FIELD_MENU_BYTES).order(ByteOrder.LITTLE_ENDIAN).apply {
             putInt(0, pointer)
@@ -143,8 +143,13 @@ class Gen6Test {
         assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", fieldMenu(0x086511A4, 0)))
         assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", fieldMenu(0, 1)))
         assertEquals(Gen6Reader.Scene.FIELD, scene("DllField", null))
-        // A screen of the game's own.
+        // Save's question waits on the touch screen alone (the menu's marker cleared meanwhile; the Thor, 2026-11-15).
+        assertEquals(Gen6Reader.Scene.MENU, scene("DllField\nDllUSC02\nDllReport", fieldMenu(0, 0)))
+        // A screen of the game's own: the party, the Pokedex, the trainer card, the options.
         assertEquals(Gen6Reader.Scene.SCREEN, scene("DllPokeList", null))
+        assertEquals(Gen6Reader.Scene.SCREEN, scene("DllTownmap\nDllZukan\nDllBackGround", null))
+        assertEquals(Gen6Reader.Scene.SCREEN, scene("DllTrainerCase", null))
+        assertEquals(Gen6Reader.Scene.SCREEN, scene("DllConfig", null))
         // Between two screens and on the title: can't tell.
         assertNull(scene("", null))
         assertNull(scene("DllTitle\nDllBackGround\nDllSequence", null))
