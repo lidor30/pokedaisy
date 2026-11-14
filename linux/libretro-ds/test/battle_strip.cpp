@@ -43,8 +43,16 @@ int main(int argc,char** argv){
   assert(info.valid && info.inBattle && info.isTrainer && !info.isDouble);
   assert(info.battlers[0].species==387 && info.battlers[0].pp[0]==35);
   assert(info.battlers[1].species==390 && info.foeCount==1 && info.foeActive==0);
+  // The ball rows of the same fight: Turtwig out, and the rival's one Pokemon.
+  DsBattleView balls;
+  balls.personality=info.party[0].personality;
+  ds_read_battle_balls(game,read32,ram.data(),ram.size(),platinumSave,balls);
+  assert(balls.balls && balls.partyBalls[0]==1 && balls.foeBalls[0]==1 && balls.foeBalls[1]==0);
+  for(int i=info.partyCount;i<6;++i)assert(balls.partyBalls[i]==0);
   ds_read_battle_companion(game,read32,ram.data(),1,platinumSave,info);
   assert(!info.inBattle && !info.valid);
+  ds_read_battle_balls(game,read32,ram.data(),1,platinumSave,balls);
+  assert(!balls.balls);
   const auto manager=read32(read32(battle_fieldSystemPtr));
   const auto system=read32(read32(manager+battle_offChild)+battle_offAppData);
   const auto context=read32(system+battle_offBattleCtx);
@@ -156,6 +164,9 @@ int main(int argc,char** argv){
   auto unovaView=[&]{return ds_read_battle(black,read32,pk_nds_field_state(black,read32,nullptr,0));};
   const auto blackActions=unovaView();
   assert(blackActions.panel==DsBattlePanel::Actions && blackActions.species==381 && blackActions.gen5);
+  // The battler's party slot names it: the prompt's nickname comes from that save record.
+  assert(blackActions.partySlot>=0 && blackActions.partySlot<int(blackSave.party.size()) &&
+         blackSave.party[blackActions.partySlot].species==381);
   DsBattleStrip unovaStrip;
   unovaStrip.select(blackActions,0,0,true,false);
   auto tap=unovaStrip.tick();
@@ -192,7 +203,7 @@ int main(int argc,char** argv){
   assert(bw2Style && bw2Style==ds_battle_style(white2Sha1) && bwStyle!=bw2Style);
   assert(!ds_battle_style("unknown"));
   // The games' own cursor: red brackets on the picked plate, in both Unova styles, which draw differently.
-  auto cursorPixels=[&]{return std::count(stage.begin(),stage.end(),0xf0141cu);};
+  auto cursorPixels=[&]{return std::count(stage.begin(),stage.end(),0xf80000u);};
   ds_draw_battle_strip(stage.data(),*bwStyle,blackMoves,"Latios",0,true,0);
   assert(stage[276*512]==0x0c3c34 && stage[376*512]==0x4d201c && cursorPixels()>100);
   const auto bw=stage;
@@ -202,4 +213,74 @@ int main(int argc,char** argv){
   std::fill(stage.begin(),stage.end(),0x808080u);
   ds_draw_battle_strip(stage.data(),*bwStyle,blackMoves,"Latios",0,false,0);
   assert(cursorPixels()==0);
+  const auto idle=stage;
+  // The tap itself shows: the plate dips under closed brackets, and the back plate takes B's.
+  ds_draw_battle_strip(stage.data(),*bwStyle,blackMoves,"Latios",0,false,0,nullptr,true);
+  assert(cursorPixels()>100 && stage!=idle);
+  const auto pressedMove=stage;
+  std::fill(stage.begin(),stage.end(),0x808080u);
+  ds_draw_battle_strip(stage.data(),*bwStyle,blackMoves,"Latios",4,false,0,nullptr,true);
+  assert(cursorPixels()>100 && stage!=pressedMove);
+  // The cursor's pulse is the only thing the frame number changes, and it has two phases.
+  auto drawn=[&](unsigned frame){
+    std::fill(stage.begin(),stage.end(),0x808080u);
+    ds_draw_battle_strip(stage.data(),*bw2Style,blackMoves,"Latios",1,true,frame);
+    return stage;
+  };
+  assert(drawn(0)==drawn(ds_battle_pulse_frames-1) && drawn(0)!=drawn(ds_battle_pulse_frames));
+  assert(drawn(0)==drawn(2*ds_battle_pulse_frames));
+  // A move out of PP keeps its name's ink on a greyed card, and its count is red.
+  for(const auto* style:{goldStyle,&ds_platinum_battle_style}){
+    auto spent=moves;
+    spent.pp={0,5,5,5};spent.maxPp={35,35,35,35};
+    std::fill(stage.begin(),stage.end(),0x808080u);
+    ds_draw_battle_strip(stage.data(),*style,spent,"Turtwig",1,true,0);
+    assert(!spent.enabled(0));
+    const auto ink=[&](uint32_t color){
+      int n=0;
+      for(int y=274;y<328;++y)n+=std::count(stage.begin()+y*512+6,stage.begin()+y*512+229,color);
+      return n;
+    };
+    assert(ink(0x403848)>100 && ink(0xd82818)>20);
+  }
+  // The ball rows: nothing drawn until the battle's parties are read.
+  auto withBalls=blackActions;
+  std::fill(stage.begin(),stage.end(),0x808080u);
+  ds_draw_battle_strip(stage.data(),*bwStyle,withBalls,"Latios",0,true,0);
+  const auto noBalls=stage;
+  ram.assign(std::istreambuf_iterator<char>(blackFile.seekg(0)),{});
+  ds_read_battle_balls(black,read32,ram.data(),ram.size(),blackSave,withBalls);
+  assert(withBalls.balls && withBalls.partyBalls[0]==1 && withBalls.foeBalls[0]==0);
+  ds_draw_battle_strip(stage.data(),*bwStyle,withBalls,"Latios",0,true,0);
+  assert(stage!=noBalls);
+  // Gen 5's rows come from the battle's own members, which the save record isn't: a benched member that faints shows
+  // at once, at the party place its id names.
+  const auto blackMain=read32(proc+0x14);
+  uint32_t bench=0;
+  int benchSlot=-1;
+  for(int i=1;i<6 && !bench;++i){
+    const auto member=read32(blackMain+0xcc+4*i);
+    if(member<base || member-base>=ram.size()-0x20 || !(read32(member+0x0c)&0xffff))continue;
+    bench=member;benchSlot=int((read32(member+0x18)>>8)&0xff)%6;
+  }
+  assert(bench && benchSlot>=0 && benchSlot<int(blackSave.party.size()) && withBalls.partyBalls[benchSlot]!=3);
+  const auto benchHp=read32(bench+0x10);
+  write32(bench+0x10,benchHp&~0xffffu);
+  auto benchFainted=blackActions;
+  ds_read_battle_balls(black,read32,ram.data(),ram.size(),blackSave,benchFainted);
+  assert(benchFainted.balls && benchFainted.partyBalls[benchSlot]==3);
+  for(int i=0;i<6;++i)if(i!=benchSlot)assert(benchFainted.partyBalls[i]==withBalls.partyBalls[i]);
+  write32(bench+0x10,benchHp);
+  // The cursor stays inside the frame: the bottom row's brackets (focus 3, a move panel's last plate at the frame's
+  // foot) are as whole as the top row's (focus 1), in both phases of the pulse and on Unova's slanted ones too.
+  auto cursorOn=[&](const DsBattleStyle& style,const DsBattleView& at,int focus,unsigned frame){
+    std::fill(stage.begin(),stage.end(),0x808080u);
+    ds_draw_battle_strip(stage.data(),style,at,"Turtwig",focus,true,frame);
+    return cursorPixels();
+  };
+  for(unsigned frame:{0u,ds_battle_pulse_frames}){
+    assert(cursorOn(*goldStyle,johtoView,1,frame)==cursorOn(*goldStyle,johtoView,3,frame));
+    assert(cursorOn(*goldStyle,moves,1,frame)==cursorOn(*goldStyle,moves,3,frame));
+    assert(cursorOn(*bwStyle,blackMoves,1,frame)==cursorOn(*bwStyle,blackMoves,3,frame));
+  }
 }

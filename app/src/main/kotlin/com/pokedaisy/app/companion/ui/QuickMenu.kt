@@ -395,8 +395,10 @@ fun QuickMenu(state: QuickMenuState, snapshot: SnapshotView, actions: QuickActio
             val hint = current?.let { why ?: quickHint(it, actions) }
             val ring = state.ring
             val tile: @Composable (Int) -> Unit = { i ->
-                val a = items[i]
-                QuickTile(a, snapshot, actions, selected = i == state.index, blocked = quickBlocked(a, snapshot, repelSteps, dark, flying) != null, m, label = state.labels) { state.tap(i) }
+                // UniformTiles' slots can recompose with the count they were last measured with while this lambda
+                // already sees the new, shorter list (an action no longer offered): skip the index that's gone.
+                val a = items.getOrNull(i)
+                if (a != null) QuickTile(a, snapshot, actions, selected = i == state.index, blocked = quickBlocked(a, snapshot, repelSteps, dark, flying) != null, m, label = state.labels) { state.tap(i) }
             }
             if (fly != null || repels != null || items.isEmpty() || !ring) {
                 Column(

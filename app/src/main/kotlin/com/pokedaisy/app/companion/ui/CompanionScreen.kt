@@ -612,6 +612,7 @@ fun CompanionScreen(
                                 } } else null,
                                 learn = learnContext,
                                 itemUse = itemUse,
+                                dexTables = dex?.tables,
                                 // The PC's DEPOSIT, where its moves work and the boxes are read: pick a box.
                                 onDeposit = if (pcBoxes != null && itemUse?.canSwapBox() == true) {
                                     { boxesUi.depositing = shownSlot }
@@ -645,6 +646,7 @@ fun CompanionScreen(
                                 inBox, lastBoxMon.value.coerceIn(0, (inBox.size - 1).coerceAtLeast(0)),
                                 onIndexChange = { i -> boxesUi.open = i; boxesUi.looked = pcBoxes.boxes[boxIndex].mons.indexOf(inBox.getOrNull(i)) },
                                 onBack = { boxesUi.open = null },
+                                dexTables = dex?.tables,
                                 // WITHDRAW into the party; with six there, SWAP's pick instead.
                                 onWithdraw = if (itemUse?.canSwapBox() == true) {
                                     {

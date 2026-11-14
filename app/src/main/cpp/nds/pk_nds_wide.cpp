@@ -40,6 +40,12 @@ constexpr int OW = PK_NDS_WIDE_MAX_W, OH = PK_NDS_WIDE_MAX_H;
 // and only a sprite that has kept its place across the screen EDGE_STEADY frames (a box that has slid in; not one sliding).
 constexpr int EDGE_BAND = 5;
 constexpr int EDGE_STEADY = 8;
+// A carried box goes this far past the screen's side, then ends in its own outline (its top line's colour and
+// thickness), its corners stepped round like a pixel-art window's (BOX_CORNER: how far each row from the top / bottom
+// stops short): the box closed just past where the DS's screen ended, the battle's scene beyond it. Carried to the
+// view's edge, a box ran across the whole margin (players' reports).
+constexpr int BOX_RUN = 3;
+constexpr int BOX_CORNER[] = {2, 1};
 constexpr u32 NONE = 0xFFFFFFFFu;   // not drawn (a 3D colour's alpha is 5 bits: never this)
 // Threads drawing the slices: the slices are independent, and the 3x zoom step's (eight of them, ~4.7 screens) took
 // ~6 ms a frame on one thread on an M-series Mac, more on a handheld. They draw while the next frame runs (drawSlices).
@@ -1337,6 +1343,19 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
                     }
                 }
             }
+        // Each run of carried rows (a box, or boxes touching): its outline row (the run's first) and that line's
+        // thickness, for the end drawn past BOX_RUN.
+        int runTop[2][H3D] = {}, runBottom[2][H3D] = {}, capW[2][H3D] = {};
+        for (int side = 0; side < 2; side++)
+            for (int y = 0; y < H3D;) {
+                if (!carry[side][y]) { y++; continue; }
+                int r1 = y;
+                while (r1 + 1 < H3D && carry[side][r1 + 1]) r1++;
+                int t = 1;
+                while (y + t <= r1 && t < 3 && carry[side][y + t] == carry[side][y]) t++;
+                for (int r = y; r <= r1; r++) { runTop[side][r] = y; runBottom[side][r] = r1; capW[side][r] = t; }
+                y = r1 + 1;
+            }
         wide.cx0 = -wide.needL;
         wide.cx1 = W3D + wide.needR;
         wide.cy0 = -wide.needT;
@@ -1377,8 +1396,20 @@ bool pk_nds_wide_frame(NDS* nds, const uint32_t* top, bool draw, bool margins, b
                     }
                     int side = x < 0 ? 0 : 1;
                     if (y >= 0 && y < H3D && carry[side][y]) {
-                        row[x] = wide.gpu ? screen(side ? W3D - 1 : 0, carryRow[side][y]) : carry[side][y];
-                        return;
+                        int d = side ? x - (W3D - 1) : -x;   // 1 = the first column past the screen
+                        int t = capW[side][y];
+                        int k = std::min(y - runTop[side][y], runBottom[side][y] - y);   // rows from the box's top / bottom
+                        int end = BOX_RUN + t - (k < 2 ? BOX_CORNER[k] : 0);
+                        if (d <= end - t) {
+                            row[x] = wide.gpu ? screen(side ? W3D - 1 : 0, carryRow[side][y]) : carry[side][y];
+                            return;
+                        }
+                        if (d <= end) {
+                            int r0 = runTop[side][y];
+                            row[x] = wide.gpu ? screen(side ? W3D - 1 : 0, carryRow[side][r0]) : carry[side][r0];
+                            return;
+                        }
+                        // Past the box's end: the scene, as anywhere else in the margin.
                     }
                     u16 c = y >= 0 && y < H3D ? pk_nds_bg_pixel(nds, 3, x + bgx, y + bgy) : 0;
                     // The background, else the backdrop (its palette's colour 0), or a sprite over it - under the
