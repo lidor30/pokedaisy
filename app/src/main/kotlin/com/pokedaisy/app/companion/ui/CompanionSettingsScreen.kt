@@ -642,6 +642,15 @@ private fun homeRows(
         ) {
             if (s.reusableTmsSupported) { s.setReusableTms(!s.reusableTms); changed() }
         },
+        // The field moves (a tree, a rock, the water...) with the badge alone: the game's own move check patched to take
+        // the first Pokémon when nobody knows the move (HmFree.kt); the companion's FLY and FLASH follow it.
+        SettingRow(
+            tk("NO HMS NEEDED"), if (s.hmFreeSupported) onOff(s.hmFree) else tk("N/A"),
+            enabled = s.hmFreeSupported, labelBadge = NewFeatures.badge(NewFeatures.HM_FREE),
+            subtitle = "Field moves with the badge alone",
+        ) {
+            if (s.hmFreeSupported) { s.setHmFree(!s.hmFree); changed() }
+        },
         // A Pokémon that evolves by trading evolves from its summary, through the game's own evolution (TradeEvolution.kt).
         SettingRow(
             tk("TRADE EVOS"), if (s.tradeEvolutionsSupported) onOff(s.tradeEvolutions) else tk("N/A"),

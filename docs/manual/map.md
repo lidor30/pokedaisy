@@ -45,7 +45,7 @@ In the `PLACES` list, places that aren't on the first map say which map they're 
 
 ## Flying to a town
 
-When someone in your party knows the move that carries you between towns, a blue button for it appears under `PLACES`. Tap it for the towns you can fly to right now, pick one, and the game takes you there with its own animation, just as if you'd used the move from the party menu.
+When someone in your party knows the move that carries you between towns, a blue button for it appears under `PLACES`. Tap it for the towns you can fly to right now, pick one, and the game takes you there with its own animation, just as if you'd used the move from the party menu. With [`NO HMS NEEDED`](controls.md#no-hms-needed) on, the badge is enough: the button shows even when nobody knows the move, and your first Pokémon carries you.
 
 The game's own rules still apply: you need the badge that allows it and you have to be outdoors, walking around, with no menu or conversation open. If something's missing, the button tells you what instead of flying.
 
@@ -67,7 +67,7 @@ Press `B` (or tap the button again, which now says `LAND`) to come down. The bir
 
 In games where a Pokémon walks behind you, it goes back to its ball as you take off, as it does for the game's own flight, and comes out again at your first steps after landing.
 
-It needs what the game's own flight needs: the badge, a Pokémon in your party that knows the move, and being outdoors on foot (not surfing). On your bike, you get off first and then take off. It's also a tile in the [quick menu](controls.md#the-quick-menu) and a hotkey, `FREE FLIGHT`, that you can give a button in `HOTKEYS`. A save state made in the air brings you back in the air.
+It needs what the game's own flight needs: the badge, a Pokémon in your party that knows the move (any Pokémon with [`NO HMS NEEDED`](controls.md#no-hms-needed) on), and being outdoors on foot (not surfing). On your bike, you get off first and then take off. It's also a tile in the [quick menu](controls.md#the-quick-menu) and a hotkey, `FREE FLIGHT`, that you can give a button in `HOTKEYS`. A save state made in the air brings you back in the air.
 
 ## Where you can fly
 

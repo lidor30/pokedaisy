@@ -102,7 +102,8 @@ EXPAND works in every Gen 3 game, many hacks and the Game Boy's Yellow and Cryst
 ## And more
 
 - **Fast-forward** that slows down in menus, with music that keeps its tempo. Slow motion, rewind, turbo, save states.
-- **Less walking back**: PC anywhere, FLY from the map, wild encounters off, reusable TMs, auto-run, instant text.
+- **Less walking back**: PC anywhere, FLY from the map, wild encounters off, reusable TMs, field moves without HMs, auto-run,
+  instant text.
 - **Shaders** (LCD, scanlines, CRT, GBA colours, edge smoothing), themes, dark mode, overlays.
 - **Controls**: remap everything, touch controls you lay out yourself (or a Delta skin), any controller.
 - **DS games**: the touch screen on the bottom screen, or in five layouts on one, upscaled 2x to 8x.

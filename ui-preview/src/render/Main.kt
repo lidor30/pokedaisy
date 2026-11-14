@@ -243,6 +243,10 @@ class FakeSettings(showHintsInitially: Boolean = true, initialTabs: List<String>
     override val reusableTms get() = reusableTmsOn
     override fun setReusableTms(on: Boolean) { reusableTmsOn = on }
     override val reusableTmsSupported get() = true
+    private var hmFreeOn = false
+    override val hmFree get() = hmFreeOn
+    override fun setHmFree(on: Boolean) { hmFreeOn = on }
+    override val hmFreeSupported get() = true
     private var shinyOddsValue = com.pokedaisy.app.companion.data.ShinyOdds.NORMAL
     override val shinyOdds get() = shinyOddsValue
     override fun setShinyOdds(odds: Int) { shinyOddsValue = odds }
@@ -1940,6 +1944,13 @@ fun main(args: Array<String>) {
         Shot("$g-settings-reusable-tms", bw, bh, bd, companion("SETTINGS")) {
             // Scrolled to AUTO-RUN, the row under it: a greyed row (Unbound's, Radical Red's: BUILT_IN) won't scroll to itself here.
             onNodeWithText(com.pokedaisy.app.companion.i18n.tr("AUTO-RUN")).performScrollTo()
+        },
+        // NO HMS NEEDED under REUSABLE TMS (OFF), then flipped ON.
+        Shot("$g-settings-hm-free", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("NO HMS NEEDED")).performScrollTo()
+        },
+        Shot("$g-settings-hm-free-on", bw, bh, bd, companion("SETTINGS")) {
+            onNodeWithText(com.pokedaisy.app.companion.i18n.tr("NO HMS NEEDED")).performScrollTo().performSemanticsAction(SemanticsActions.OnClick)
         },
         // PLAYER LOOK under REUSABLE TMS, then its tiles (OFF = the player's own hero, then the other games' heroes).
         Shot("$g-settings-player-look", bw, bh, bd, companion("SETTINGS")) {

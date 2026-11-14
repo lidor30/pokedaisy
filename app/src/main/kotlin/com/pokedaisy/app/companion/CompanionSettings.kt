@@ -82,6 +82,11 @@ interface CompanionSettings {
     val reusableTmsSupported: Boolean get() = false
     /** The game's own TMs never run out ([com.pokedaisy.app.companion.data.ReusableTms.BUILT_IN]): the row says so. */
     val reusableTmsBuiltIn: Boolean get() = false
+    /** NO HMS NEEDED - see [com.pokedaisy.app.Prefs.hmFree]; [hmFreeSupported]: the ROM's field move check is known
+     * ([com.pokedaisy.app.companion.data.HmFree]). */
+    val hmFree: Boolean get() = false
+    fun setHmFree(on: Boolean) {}
+    val hmFreeSupported: Boolean get() = false
     /** INSTANT TEXT - see [com.pokedaisy.app.Prefs.instantText]; [instantTextSupported]: the ROM's text code is known
      * ([com.pokedaisy.app.companion.data.InstantText]). */
     val instantText: Boolean get() = false

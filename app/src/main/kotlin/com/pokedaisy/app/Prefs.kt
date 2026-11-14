@@ -201,6 +201,11 @@ class Prefs(context: Context) {
         get() = p.getBoolean("reusable_tms", false)
         set(v) = p.edit().putBoolean("reusable_tms", v).apply()
 
+    /** NO HMS NEEDED: the field moves work without a Pokémon that knows them, once the badge is in (HmFree.kt). */
+    var hmFree: Boolean
+        get() = p.getBoolean("hm_free", false)
+        set(v) = p.edit().putBoolean("hm_free", v).apply()
+
     /** INSTANT TEXT: a text box's words appear at once (InstantText.kt). */
     var instantText: Boolean
         get() = p.getBoolean("instant_text", false)

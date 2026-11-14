@@ -182,6 +182,14 @@ class PokeDaisyActivity : Activity() {
     private var tmSites: List<com.pokedaisy.app.companion.data.ReusableTms.Site> = emptyList()
     /** INSTANT TEXT: the ROM's patch ([com.pokedaisy.app.companion.data.InstantText]; null = the row shows N/A). */
     private var textPatch: com.pokedaisy.app.companion.data.InstantText.Patch? = null
+    /** NO HMS NEEDED: the ROM's patch ([com.pokedaisy.app.companion.data.HmFree]; null = the row shows N/A). */
+    private var hmPatch: com.pokedaisy.app.companion.data.HmFree.Patch? = null
+
+    /** NO HMS NEEDED on the engine, and FLY / FREE FLIGHT / FLASH told whether to ask for the move (HmFree.active). */
+    private fun syncHmFree(on: Boolean = Prefs(this).hmFree) {
+        com.pokedaisy.app.companion.data.HmFree.active = on && hmPatch != null
+        if (::engine.isInitialized) engine.setHmFree(hmPatch, on)
+    }
     /** EXPAND's one-time offer is up on the companion ([CompanionSettings.expandOffer]). */
     private val expandOfferUp = androidx.compose.runtime.mutableStateOf(false)
     private var states: SaveStates? = null
@@ -1790,6 +1798,13 @@ class PokeDaisyActivity : Activity() {
             if (::engine.isInitialized) engine.setInstantText(textPatch, on)
         }
         override val instantTextSupported get() = textPatch != null
+        override val hmFree get() = Prefs(this@PokeDaisyActivity).hmFree
+        override fun setHmFree(on: Boolean) {
+            if (coopRefuses()) return
+            Prefs(this@PokeDaisyActivity).hmFree = on
+            syncHmFree(on)
+        }
+        override val hmFreeSupported get() = hmPatch != null
         override val dsResolution get() = if (romIsNds) Prefs(this@PokeDaisyActivity).dsResolution else null
         override val dsGpuAvailable get() = GlCaps.gles32(this@PokeDaisyActivity) && MgbaCore.pkNdsGpuSupported() != 0
         override val dsMelonDs get() = !dsperate
@@ -2598,6 +2613,8 @@ class PokeDaisyActivity : Activity() {
         if (::engine.isInitialized) engine.setReusableTms(tmSites, false)
         textPatch = null
         if (::engine.isInitialized) engine.setInstantText(null, false)
+        hmPatch = null
+        syncHmFree(false)
         shinyTarget = null
         if (::engine.isInitialized) engine.setShinyTarget(null)
         syncShinyAchievements()
@@ -2610,6 +2627,9 @@ class PokeDaisyActivity : Activity() {
             val tms = com.pokedaisy.app.companion.data.ReusableTms.find(r.toOkioPath())
             Log.i("pokedaisy", "reusable TMs: ${tms.size} site(s)")
             val text = com.pokedaisy.app.companion.data.InstantText.find(r.toOkioPath())
+            // NO HMS NEEDED: the field move check and Surf's, by their code (none = the row shows N/A).
+            val hm = com.pokedaisy.app.companion.data.HmFree.find(r.toOkioPath())
+            Log.i("pokedaisy", "no HMs needed: ${if (hm != null) "found" else "not found"}")
             runOnUiThread {
                 if (romData != r) return@runOnUiThread
                 wildFlag = flag
@@ -2618,6 +2638,8 @@ class PokeDaisyActivity : Activity() {
                 if (::engine.isInitialized) engine.setReusableTms(tms, Prefs(this).reusableTms)
                 textPatch = text
                 if (::engine.isInitialized) engine.setInstantText(text, Prefs(this).instantText)
+                hmPatch = hm
+                syncHmFree()
             }
         }, "wild-encounters").start()
         Prefs(this).let { p ->
@@ -2950,6 +2972,7 @@ class PokeDaisyActivity : Activity() {
         e.ndsCpuBoost = p.dsCpuBoost
         e.setReusableTms(tmSites, p.reusableTms)
         e.setInstantText(textPatch, p.instantText)
+        e.setHmFree(hmPatch, p.hmFree)
         e.setShinyTarget(shinyTarget)
         e.shinyOdds = shinyOddsPref()
     }

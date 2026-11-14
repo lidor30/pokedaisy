@@ -264,6 +264,8 @@ internal val trSettings: Map<String, Tr> = mapOf(
     "Holding B walks instead" to Tr(ja = "Bを おすと あるく", fr = "Maintenir B pour marcher", de = "B halten zum Gehen", it = "Tieni premuto B per camminare", es = "Mantén B para caminar", br = "Segure B para andar", pt = "Mantenha B para andar", ko = "B를 누르고 있으면 걸어요"),
     "RUN INDOORS" to Tr(ja = "なかでも ダッシュ", fr = "COURIR DEDANS", de = "DRINNEN RENNEN", it = "CORRERE DENTRO", es = "CORRER DENTRO", br = "CORRER DENTRO", pt = "CORRER DENTRO", ko = "실내 달리기"),
     "INSTANT TEXT" to Tr(ja = "もじ いっしゅん", fr = "TEXTE INSTANTANÉ", de = "SOFORT-TEXT", it = "TESTO ISTANTANEO", es = "TEXTO INSTANTÁNEO", br = "TEXTO INSTANTÂNEO", pt = "TEXTO INSTANTÂNEO", ko = "텍스트 즉시 표시"),
+    "NO HMS NEEDED" to Tr(ja = "ひでん いらず", fr = "SANS CS", de = "OHNE VM", it = "SENZA MN", es = "SIN MO", br = "SEM MO", pt = "SEM MO", ko = "비전머신 불필요"),
+    "Field moves with the badge alone" to Tr(ja = "バッジ だけで ひでんわざ", fr = "Capacités terrain avec le badge seul", de = "Feldattacken nur mit dem Orden", it = "Mosse da campo con la sola medaglia", es = "Movimientos de campo solo con la medalla", br = "Golpes de campo só com a insígnia", pt = "Golpes de campo só com a insígnia", ko = "배지만으로 필드 기술"),
     "REUSABLE TMS" to Tr(ja = "マシン むげん", fr = "CT ILLIMITÉES", de = "TM BLEIBEN", it = "MT ILLIMITATE", es = "MT ILIMITADAS", br = "MT ILIMITADOS", pt = "MT ILIMITADOS", ko = "기술머신 재사용"),
     "SWITCH" to Tr(ja = "いれかえ", fr = "ÉCHANGER", de = "TAUSCHEN", it = "SCAMBIA", es = "CAMBIAR", br = "TROCAR", pt = "TROCAR", ko = "교체"),
     "Not right now" to Tr(ja = "いまは できない", fr = "Pas maintenant", de = "Gerade nicht", it = "Non ora", es = "Ahora no", br = "Agora não", pt = "Agora não", ko = "지금은 안 돼요"),
